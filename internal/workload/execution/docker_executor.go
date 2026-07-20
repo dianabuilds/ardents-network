@@ -128,16 +128,15 @@ func (e *DockerExecutor) startNew(ctx context.Context, spec containerSpec, prepa
 		return Instance{}, dockerSafeError("create workload container", err)
 	}
 	if _, err := e.client.ContainerStart(ctx, created.ID, client.ContainerStartOptions{}); err != nil {
-		return Instance{}, dockerSafeError("start workload container", err)
+		return e.failCreatedContainer(created.ID, dockerSafeError("start workload container", err))
 	}
 	instance, err := e.inspectID(ctx, created.ID)
 	if err != nil {
-		return Instance{}, err
+		return e.failCreatedContainer(created.ID, err)
 	}
 	if len(prepared.Ingress) > 0 {
 		if err := e.ensureIngressProxy(ctx, prepared, created.ID); err != nil {
-			_ = e.stopAndRemoveContainer(context.Background(), created.ID)
-			return Instance{}, err
+			return e.failCreatedContainer(created.ID, err)
 		}
 	}
 	return instance, nil

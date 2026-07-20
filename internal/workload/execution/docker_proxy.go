@@ -140,7 +140,7 @@ func (e *DockerExecutor) stopAndRemoveIngressProxy(ctx context.Context, instance
 
 func (e *DockerExecutor) stopAndRemoveContainer(ctx context.Context, id string) error {
 	timeout := int(e.stopTimeout.Seconds())
-	if _, err := e.client.ContainerStop(ctx, id, client.ContainerStopOptions{Timeout: &timeout}); err != nil && !cerrdefs.IsNotFound(err) {
+	if _, err := e.client.ContainerStop(ctx, id, client.ContainerStopOptions{Timeout: &timeout}); err != nil && !cerrdefs.IsNotFound(err) && !cerrdefs.IsNotModified(err) {
 		return dockerSafeError("stop managed container", err)
 	}
 	if _, err := e.client.ContainerRemove(ctx, id, client.ContainerRemoveOptions{Force: true, RemoveVolumes: true}); err != nil && !cerrdefs.IsNotFound(err) {
