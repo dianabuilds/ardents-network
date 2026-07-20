@@ -4,6 +4,9 @@ param(
     [string]$BuildMode = "IfMissing",
     [ValidateRange(1, 4)]
     [int]$BuildParallelism = 1,
+    [ValidateRange(0, 3600)]
+    [int]$StabilitySeconds = 0,
+    [switch]$StabilityOnly,
     [switch]$Keep
 )
 
@@ -21,6 +24,11 @@ $composePrefix = @("compose", "-p", $project, "-f", $composeFile)
 $services = @("seed", "bridge", "a1", "a2", "b1", "b2", "recovery")
 $results = [Collections.Generic.List[object]]::new()
 $snapshots = [ordered]@{}
+$stabilitySamples = [Collections.Generic.List[object]]::new()
+
+if ($StabilityOnly -and $StabilitySeconds -eq 0) {
+    throw "StabilityOnly requires StabilitySeconds greater than zero"
+}
 
 function Invoke-Compose([string[]]$CommandArgs) {
     & docker @composePrefix @CommandArgs
@@ -155,6 +163,66 @@ function Capture-Snapshot([string]$Label) {
     $snapshots[$Label] = $items
 }
 
+function Capture-StabilitySample([string]$Label) {
+    $capturedAt = [DateTime]::UtcNow
+    $ids = @()
+    foreach ($service in $services) {
+        $id = (& docker @composePrefix ps -q $service).Trim()
+        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($id)) {
+            throw "stability sample could not resolve running container for $service"
+        }
+        $ids += $id
+    }
+    if ($ids.Count -ne $services.Count) {
+        throw "stability sample expected $($services.Count) running containers, got $($ids.Count)"
+    }
+    foreach ($line in @(& docker stats --no-stream --format "{{json .}}" $ids)) {
+        if ($LASTEXITCODE -ne 0) { throw "docker stats failed during stability sample" }
+        $stat = $line | ConvertFrom-Json
+        $memoryPercent = [double]::Parse(
+            $stat.MemPerc.TrimEnd("%"),
+            [Globalization.CultureInfo]::InvariantCulture
+        )
+        if ($memoryPercent -ge 2.0) {
+            throw "$($stat.Name) exceeded the 2% container memory safety bound: $($stat.MemPerc)"
+        }
+        $sizeRaw = & docker inspect --size --format "{{.SizeRw}}" $stat.ID
+        if ($LASTEXITCODE -ne 0) { throw "docker size inspection failed for $($stat.Name)" }
+        $writableBytes = [int64]($sizeRaw | Select-Object -First 1)
+        if ($writableBytes -gt 128MB) {
+            throw "$($stat.Name) exceeded the 128 MiB writable-layer safety bound"
+        }
+        $stabilitySamples.Add([ordered]@{
+            sample = $Label
+            captured_at = $capturedAt
+            name = $stat.Name
+            cpu_percent = $stat.CPUPerc
+            memory_percent = $stat.MemPerc
+            memory_usage = $stat.MemUsage
+            writable_bytes = $writableBytes
+            pids = $stat.PIDs
+        })
+    }
+}
+
+function Run-StabilitySample([int]$Seconds) {
+    $deadline = [DateTime]::UtcNow.AddSeconds($Seconds)
+    $sample = 0
+    while ([DateTime]::UtcNow -lt $deadline) {
+        Wait-API "seed"
+        foreach ($service in @("bridge", "a1", "a2", "b1", "b2", "recovery")) {
+            Wait-Joined $service 15
+        }
+        Capture-StabilitySample "sample-$sample"
+        $sample++
+        $remaining = [math]::Ceiling(($deadline - [DateTime]::UtcNow).TotalSeconds)
+        if ($remaining -gt 0) {
+            Start-Sleep -Seconds ([math]::Min(30, $remaining))
+        }
+    }
+    Capture-StabilitySample "final"
+}
+
 function Run-Step([string]$Name, [scriptblock]$Body) {
     $started = [DateTime]::UtcNow
     try {
@@ -220,6 +288,12 @@ try {
         foreach ($service in @("a1", "a2", "b1", "b2", "recovery")) { Wait-Joined $service 60 }
         Capture-Snapshot "initial"
     }
+    if ($StabilitySeconds -gt 0) {
+        Run-Step "bounded stability sample" {
+            Run-StabilitySample $StabilitySeconds
+        }
+    }
+    if (-not $StabilityOnly) {
     Run-Step "kill node process and recover" {
         Invoke-Compose @("kill", "-s", "SIGKILL", "a1")
         Invoke-Compose @("up", "-d", "a1")
@@ -292,6 +366,7 @@ try {
         Wait-Joined "recovery" 60
         Invoke-StoreProbe "recovery" @("-action", "fetch", "-provider", $script:bridgeZoneA, "-topic", $storeTopic, "-payload", $storePayload)
     }
+    }
     Run-Step "retain resource and topology evidence" {
         Capture-Snapshot "final"
         $ids = & docker @composePrefix ps -q
@@ -317,6 +392,9 @@ try {
     }
     $summary | ConvertTo-Json -Depth 20 | Set-Content -Encoding utf8 (Join-Path $reportPath "summary.json")
     $snapshots | ConvertTo-Json -Depth 30 | Set-Content -Encoding utf8 (Join-Path $reportPath "snapshots.json")
+    if ($stabilitySamples.Count -gt 0) {
+        $stabilitySamples | ConvertTo-Json -Depth 10 | Set-Content -Encoding utf8 (Join-Path $reportPath "stability-samples.json")
+    }
     try { & docker @composePrefix logs --no-color 2>&1 | Set-Content -Encoding utf8 (Join-Path $reportPath "compose.log") } catch {}
     if (-not $Keep) {
         try { Invoke-Compose @("down", "-v", "--remove-orphans") } catch {}

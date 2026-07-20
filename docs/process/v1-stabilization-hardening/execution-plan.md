@@ -1045,7 +1045,7 @@ and prove the final release candidate against every mandatory property.
   - pending operations reach recovery or explicit terminal fate.
 - Evidence: `docs/process/v1-stabilization-hardening/stb-703-evidence.md`.
 
-### `in_progress` STB-704 — Run Performance And Resource Safety Baselines
+### `completed` STB-704 — Run Performance And Resource Safety Baselines
 
 - Owner: Network Foundation, Workload Control, Data Substrate, Diagnostics.
 - Dependencies: `STB-703`.
@@ -1060,9 +1060,9 @@ and prove the final release candidate against every mandatory property.
   - no unbounded growth, deadlock, runaway retry, or silent drop occurs within
     declared release profiles;
   - threshold breaches fail the test or mark diagnostics degraded.
-- Evidence: `pending`.
+- Evidence: `docs/process/v1-stabilization-hardening/stb-704-evidence.md`.
 
-### `pending` STB-705 — Run Multi-Day Release Candidate Soak
+### `in_progress` STB-705 — Run Multi-Day Release Candidate Soak
 
 - Owner: repository release process.
 - Dependencies: `STB-702`, `STB-704`.

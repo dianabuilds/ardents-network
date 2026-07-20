@@ -8,9 +8,11 @@ param(
     [string]$BuildMode = "IfMissing",
     [ValidateRange(1, 4)]
     [int]$BuildParallelism = 1,
+    [ValidateRange(0, 3600)]
+    [int]$StabilitySeconds = 0,
+    [switch]$StabilityOnly,
     [switch]$Keep
 )
 
 $ErrorActionPreference = "Stop"
 & "$PSScriptRoot/../run-multihost.ps1" @PSBoundParameters
-
