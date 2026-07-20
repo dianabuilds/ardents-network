@@ -86,4 +86,8 @@ docker compose -f docker/docker-compose.production.yml config --quiet
 
 `docker-compose.testnet.yml` and `tests/run-multihost.ps1` remain adversarial QA
 artifacts. They exercise segmented networks, WSS, partitions, churn, and Store
-recovery; they are not the operator quick-start surface.
+recovery; they are not the operator quick-start surface. Service nodes share a
+test-only, volume-isolated Docker-in-Docker workload engine so the topology uses
+the real Docker executor without exposing the host Docker socket. Production
+continues to require the external TLS-authenticated workload endpoint described
+above.

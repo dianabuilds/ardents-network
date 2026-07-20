@@ -13,6 +13,7 @@ Set-Location $root
 $reportPath = [IO.Path]::GetFullPath($ReportDir)
 $project = "ardents-stb307-$PID"
 $secretPath = Join-Path ([IO.Path]::GetTempPath()) "$project-secrets"
+New-Item -ItemType Directory -Force -Path $reportPath | Out-Null
 New-Item -ItemType Directory -Force -Path $secretPath | Out-Null
 $composeFile = Join-Path $root "docker/docker-compose.testnet.yml"
 $dockerfile = Join-Path $root "docker/ardd.Dockerfile"

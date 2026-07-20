@@ -22,6 +22,10 @@ x-node: &node
     ARDENTS_TRANSPORT_BIND_ADDRESS: 0.0.0.0
     ARDENTS_NODE_PROFILE: service_node
     ARDENTS_REACHABILITY_MODE: private_lan
+    DOCKER_HOST: unix:///run/ardents/workload-engine/docker.sock
+  depends_on:
+    workload-engine:
+      condition: service_healthy
   healthcheck:
     test: ["CMD", "ard", "--token-file", "/run/ardents/api-token", "node", "status"]
     interval: 2s
@@ -30,6 +34,25 @@ x-node: &node
   restart: unless-stopped
 
 services:
+  workload-engine:
+    image: ${ARDENTS_WORKLOAD_ENGINE_IMAGE:-docker:29.6.1-dind}
+    privileged: true
+    environment:
+      DOCKER_TLS_CERTDIR: ""
+    command: ["--host=unix:///run/workload-engine/docker.sock"]
+    healthcheck:
+      test: ["CMD", "docker", "-H", "unix:///run/workload-engine/docker.sock", "info"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+    restart: unless-stopped
+    volumes:
+      - workload_engine_data:/var/lib/docker
+      - workload_engine_socket:/run/workload-engine
+    networks:
+      - zone_a
+
   seed:
     <<: *node
     environment:
@@ -45,6 +68,7 @@ services:
         mode: 0444
     volumes:
       - seed_data:/var/lib/ardents
+      - workload_engine_socket:/run/ardents/workload-engine
     networks:
       zone_a:
         ipv4_address: 172.31.10.10
@@ -79,6 +103,7 @@ services:
         mode: 0400
     volumes:
       - bridge_data:/var/lib/ardents
+      - workload_engine_socket:/run/ardents/workload-engine
     networks:
       zone_a:
         ipv4_address: 172.31.10.20
@@ -101,6 +126,7 @@ services:
         mode: 0444
     volumes:
       - a1_data:/var/lib/ardents
+      - workload_engine_socket:/run/ardents/workload-engine
     networks:
       zone_a:
         ipv4_address: 172.31.10.11
@@ -121,6 +147,7 @@ services:
         mode: 0444
     volumes:
       - a2_data:/var/lib/ardents
+      - workload_engine_socket:/run/ardents/workload-engine
     networks:
       zone_a:
         ipv4_address: ${ARDENTS_A2_IP:-172.31.10.12}
@@ -141,6 +168,7 @@ services:
         mode: 0444
     volumes:
       - b1_data:/var/lib/ardents
+      - workload_engine_socket:/run/ardents/workload-engine
     networks:
       zone_b:
         ipv4_address: 172.31.20.11
@@ -173,6 +201,7 @@ services:
         mode: 0400
     volumes:
       - b2_data:/var/lib/ardents
+      - workload_engine_socket:/run/ardents/workload-engine
     networks:
       zone_b:
         ipv4_address: 172.31.20.12
@@ -195,6 +224,7 @@ services:
         mode: 0444
     volumes:
       - recovery_data:/var/lib/ardents
+      - workload_engine_socket:/run/ardents/workload-engine
     networks:
       zone_a:
         ipv4_address: 172.31.10.13
@@ -212,6 +242,8 @@ networks:
         - subnet: 172.31.20.0/24
 
 volumes:
+  workload_engine_data:
+  workload_engine_socket:
   seed_data:
   bridge_data:
   a1_data:
