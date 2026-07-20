@@ -167,6 +167,20 @@ function Start-CleanCluster {
     Ensure-LocalSecrets
     Set-DeploymentEnvironment
     Assert-NodesStopped
+    try {
+        Start-ClusterComponents
+    } catch {
+        $startupFailure = $_.Exception
+        try {
+            Invoke-Compose @("down", "--remove-orphans")
+        } catch {
+            throw "cluster startup failed: $($startupFailure.Message); partial cleanup failed: $($_.Exception.Message)"
+        }
+        throw $startupFailure
+    }
+}
+
+function Start-ClusterComponents {
     if ($Build) { Invoke-Compose @("build", "realm-provisioner") }
     Invoke-ProvisionNode "seed" 61001
     Invoke-ProvisionNode "peer2" 61002

@@ -27,7 +27,10 @@ peer IDs, generated node keys, or hidden runtime values by hand.
 
 Startup fails closed when the seed has no usable endpoint or a dependent node
 does not become ready within the bounded deadline. A partially formed cluster
-is reported as degraded and is not described as ready.
+is never described as ready. A failed `up` removes only the partial containers
+and Compose network from that deployment project, retains persistent volumes
+and deployment state for recovery, and returns the original startup failure.
+If cleanup also fails, both failures remain operator-visible.
 
 ## Exposure And Secrets
 
@@ -98,6 +101,7 @@ The deployment slice is accepted only when Docker/Linux evidence proves:
 - restart preserves Ardents and Waku identity plus retained state;
 - backup/restore preserves the complete stopped-node consistency group;
 - an invalid bootstrap result, missing production secret, or failed readiness
-  check stops the lifecycle command with an actionable, redacted error;
+  check stops the lifecycle command with an actionable, redacted error and
+  leaves no partial project container running;
 - upgrade and rollback procedures retain immutable image references and do not
   claim success before per-node readiness is re-proved.
