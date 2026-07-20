@@ -65,6 +65,7 @@ docs/qa/
 ## Связанные документы
 
 - [Test Model](./test-model.md)
+- [Requirements Coverage](./requirements-coverage.md)
 - [Unit Tests](./unit-tests.md)
 - [Active Testing](./active-testing/README.md)
 - [Integration Scenarios](./integration/README.md)

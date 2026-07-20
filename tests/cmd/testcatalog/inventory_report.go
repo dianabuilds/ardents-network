@@ -20,6 +20,10 @@ func buildInventory(patterns []string) (inventoryReport, error) {
 	if err != nil {
 		return inventoryReport{}, err
 	}
+	requirements, err := collectRequirementCoverage(scenarios)
+	if err != nil {
+		return inventoryReport{}, err
+	}
 
 	docByScenario, docByRelatedTest := inventoryDocIndexes(scenarios)
 	report := inventoryReport{
@@ -39,6 +43,8 @@ func buildInventory(patterns []string) (inventoryReport, error) {
 		report.Summary = accumulateScenarioSummary(report.Summary, entry)
 		report.Scenarios = append(report.Scenarios, entry)
 	}
+	report.Requirements = append(report.Requirements, requirements...)
+	report.Summary = accumulateRequirementSummaries(report.Summary, requirements)
 
 	sortInventoryReport(&report)
 	report.Summary.TestCount = len(report.Tests)
@@ -72,6 +78,7 @@ func filterInventory(report inventoryReport, layer string, domain string, scenar
 		}
 		filtered.Scenarios = append(filtered.Scenarios, doc)
 	}
+	filtered.Requirements = append(filtered.Requirements, report.Requirements...)
 	filtered.Summary = inventorySummary{
 		TestCount:                len(filtered.Tests),
 		ScenarioCount:            len(filtered.Scenarios),
@@ -81,6 +88,7 @@ func filterInventory(report inventoryReport, layer string, domain string, scenar
 		ScenarioWithoutTestCount: countScenariosWithIssue(filtered.Scenarios, "scenario doc has no runnable code binding"),
 		IssueCount:               countTestIssues(filtered.Tests) + countScenarioIssues(filtered.Scenarios),
 	}
+	filtered.Summary = accumulateRequirementSummaries(filtered.Summary, filtered.Requirements)
 	return filtered
 }
 
@@ -215,5 +223,8 @@ func sortInventoryReport(report *inventoryReport) {
 	})
 	sort.Slice(report.Scenarios, func(i, j int) bool {
 		return report.Scenarios[i].ScenarioID < report.Scenarios[j].ScenarioID
+	})
+	sort.Slice(report.Requirements, func(i, j int) bool {
+		return report.Requirements[i].ID < report.Requirements[j].ID
 	})
 }

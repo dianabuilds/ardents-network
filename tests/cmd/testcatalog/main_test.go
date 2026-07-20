@@ -114,6 +114,17 @@ func TestParseScenarioDocAcceptsInlineRiskFields(t *testing.T) {
 	require.True(t, doc.FalseNegativeRisk)
 }
 
+func TestValidateRequirementRejectsUnknownScenarioAndMissingEvidence(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "source.md")
+	require.NoError(t, os.WriteFile(path, []byte("## Required Section\n"), 0o644))
+	requirement := inventoryRequirement{
+		ID: "REQ-001", Source: path, Section: "Required Section", Status: "covered",
+		Scenarios: []string{"UNKNOWN-001"},
+	}
+	validateRequirement(&requirement, map[string]bool{}, map[string]bool{})
+	require.Contains(t, requirement.Issues, "unknown scenario evidence: UNKNOWN-001")
+}
+
 func TestParseInventoryFileDetectsFormalAndMissingBindings(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "sample_test.go")

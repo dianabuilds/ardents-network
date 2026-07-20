@@ -1,9 +1,10 @@
 package main
 
 type inventoryReport struct {
-	Summary   inventorySummary    `json:"summary"`
-	Tests     []inventoryTest     `json:"tests"`
-	Scenarios []inventoryScenario `json:"scenarios"`
+	Summary      inventorySummary       `json:"summary"`
+	Tests        []inventoryTest        `json:"tests"`
+	Scenarios    []inventoryScenario    `json:"scenarios"`
+	Requirements []inventoryRequirement `json:"requirements"`
 }
 
 type inventorySummary struct {
@@ -14,6 +15,10 @@ type inventorySummary struct {
 	MissingDocCount          int `json:"missing_doc_count"`
 	ScenarioWithoutTestCount int `json:"scenario_without_test_count"`
 	IssueCount               int `json:"issue_count"`
+	RequirementCount         int `json:"requirement_count"`
+	CoveredRequirementCount  int `json:"covered_requirement_count"`
+	BlockedRequirementCount  int `json:"blocked_requirement_count"`
+	RequirementIssueCount    int `json:"requirement_issue_count"`
 }
 
 type inventoryTest struct {
@@ -47,6 +52,22 @@ type scenarioDoc struct {
 	RelatedTests      []string
 	FalsePositiveRisk bool
 	FalseNegativeRisk bool
+}
+
+type inventoryRequirement struct {
+	ID             string   `json:"id"`
+	Source         string   `json:"source"`
+	Section        string   `json:"section"`
+	Status         string   `json:"status"`
+	Scenarios      []string `json:"scenarios,omitempty"`
+	StaticEvidence []string `json:"static_evidence,omitempty"`
+	BlockedReason  string   `json:"blocked_reason,omitempty"`
+	Issues         []string `json:"issues,omitempty"`
+}
+
+type requirementCoverageFile struct {
+	Version      int                    `json:"version"`
+	Requirements []inventoryRequirement `json:"requirements"`
 }
 
 type parsedTest struct {

@@ -995,7 +995,7 @@ Transition gate: `passed` on 2026-07-20; evidence in
 Goal: pressure the complete system, convert weaknesses into regression coverage,
 and prove the final release candidate against every mandatory property.
 
-### `in_progress` STB-701 — Complete Scenario And Invariant Coverage Audit
+### `completed` STB-701 — Complete Scenario And Invariant Coverage Audit
 
 - Owner: QA across all product domains.
 - Dependencies: Phase 6 gate.
@@ -1008,9 +1008,9 @@ and prove the final release candidate against every mandatory property.
 - Checks:
   - no mandatory invariant lacks evidence or a formal blocked decision;
   - catalog validation and all canonical suites pass.
-- Evidence: `pending`.
+- Evidence: `docs/process/v1-stabilization-hardening/stb-701-evidence.md`.
 
-### `pending` STB-702 — Run Mutation Campaigns
+### `in_progress` STB-702 — Run Mutation Campaigns
 
 - Owner: QA with each affected domain owner.
 - Dependencies: `STB-701`.
