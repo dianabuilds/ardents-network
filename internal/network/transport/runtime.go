@@ -7,6 +7,7 @@ import (
 	networkreadiness "ardents/internal/network/readiness"
 
 	libp2pevent "github.com/libp2p/go-libp2p/core/event"
+	libp2pnetwork "github.com/libp2p/go-libp2p/core/network"
 )
 
 var timeNowUTC = func() time.Time {
@@ -64,7 +65,7 @@ func (s *Service) runRuntimeLoop(ctx context.Context, done chan struct{}) {
 			return
 		case raw, ok := <-reachabilityEvents:
 			if !ok {
-				reachabilityEvents = nil
+				s.handleReachabilityEventsClosed(reachabilityEvents)
 				continue
 			}
 			s.handleReachabilityEvent(raw)
@@ -73,6 +74,23 @@ func (s *Service) runRuntimeLoop(ctx context.Context, done chan struct{}) {
 				return
 			}
 		}
+	}
+}
+
+func (s *Service) handleReachabilityEventsClosed(closed <-chan any) {
+	s.mu.Lock()
+	if s.reachabilityEvents == nil || s.reachabilityEvents.Out() != closed {
+		s.mu.Unlock()
+		return
+	}
+	s.reachabilityEvents = nil
+	s.applyReachabilityEventLocked(libp2pnetwork.ReachabilityUnknown, timeNowUTC())
+	s.reachability.Reason = "public ingress observation stream closed"
+	s.reconcileRuntimeLocked(timeNowUTC())
+	snapshot, observer := s.reachability, s.reachabilityObs
+	s.mu.Unlock()
+	if observer != nil {
+		go observer(snapshot)
 	}
 }
 

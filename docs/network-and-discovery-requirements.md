@@ -275,7 +275,10 @@ peer dialback reports `Public`. A later `Private` or `Unknown` observation must
 withdraw those addresses and expose an explicit degraded reason through the
 local status surface. Changing an advertised address requires a restart and a
 fresh reachability observation; a previous observation must not authorize the
-new address.
+new address. Unexpected closure of the observation stream is equivalent to an
+`Unknown` observation: it withdraws the public claim, remains visible in
+status, and must not turn the runtime reconciliation loop into an unbounded
+retry or CPU spin.
 
 Automatic UPnP/NAT-PMP router mutation, Circuit Relay reservations, hole
 punching, and browser inbound participation are not supported by this contract.
