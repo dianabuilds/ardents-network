@@ -957,7 +957,7 @@ without code-only knowledge.
   - artifact version and runtime-reported version agree.
 - Evidence: `docs/process/v1-stabilization-hardening/stb-605-evidence.md`.
 
-### `in_progress` STB-606 — Implement CI And Release Candidate Automation
+### `completed` STB-606 — Implement CI And Release Candidate Automation
 
 - Owner: repository QA and release process.
 - Dependencies: `STB-605`.
@@ -979,9 +979,10 @@ without code-only knowledge.
   - CI does not contain competing test semantics or hidden skips;
   - a deliberately failing scenario blocks release and retains evidence;
   - a clean release candidate is reproducible.
-- Evidence: `pending`.
+- Evidence: `docs/process/v1-stabilization-hardening/stb-606-evidence.md`.
 
-Transition gate:
+Transition gate: `passed` on 2026-07-20; evidence in
+`docs/process/v1-stabilization-hardening/stb-606-evidence.md`.
 
 - hardened domain behavior is configurable and validated;
 - operator privileges, diagnostics, metrics, deployment, backup/restore, and
@@ -994,7 +995,7 @@ Transition gate:
 Goal: pressure the complete system, convert weaknesses into regression coverage,
 and prove the final release candidate against every mandatory property.
 
-### `pending` STB-701 — Complete Scenario And Invariant Coverage Audit
+### `in_progress` STB-701 — Complete Scenario And Invariant Coverage Audit
 
 - Owner: QA across all product domains.
 - Dependencies: Phase 6 gate.
