@@ -71,6 +71,14 @@ func TestParseScenarioDocExtractsScenarioAndRelatedTests(t *testing.T) {
 ## Related Tests
 
 - ` + "`tests/integration/discovery/domain_test.go::TestDiscoveryPublishesNodeEnvelope`" + `
+
+## False Positive Risk
+
+The assertion could observe only local state.
+
+## False Negative Risk
+
+Bounded convergence may exceed the test deadline.
 `
 	require.NoError(t, os.WriteFile(path, []byte(source), 0o644))
 
@@ -80,6 +88,30 @@ func TestParseScenarioDocExtractsScenarioAndRelatedTests(t *testing.T) {
 	require.Equal(t, "integration", doc.Layer)
 	require.Equal(t, "Discovery", doc.Domain)
 	require.Equal(t, []string{"tests/integration/discovery/domain_test.go::TestDiscoveryPublishesNodeEnvelope"}, doc.RelatedTests)
+	require.True(t, doc.FalsePositiveRisk)
+	require.True(t, doc.FalseNegativeRisk)
+}
+
+func TestInventoryScenarioEntryRequiresRiskAnalysisAndCanonicalMetadata(t *testing.T) {
+	entry := inventoryScenarioEntry(scenarioDoc{ScenarioID: "BAD-001", Layer: "Integration."}, nil)
+	require.Contains(t, entry.Issues, "scenario doc layer must be integration or e2e")
+	require.Contains(t, entry.Issues, "scenario doc is missing domain")
+	require.Contains(t, entry.Issues, "scenario doc is missing non-empty False Positive Risk")
+	require.Contains(t, entry.Issues, "scenario doc is missing non-empty False Negative Risk")
+}
+
+func TestParseScenarioDocAcceptsInlineRiskFields(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "inline.md")
+	source := "- Scenario ID: `INLINE-001`\n- Layer: `e2e`\n- Domain: `node`\n" +
+		"- `False Positive Risk`:\n  runtime truth is not asserted\n" +
+		"- `False Negative Risk`:\n  bounded convergence may be slow\n"
+	require.NoError(t, os.WriteFile(path, []byte(source), 0o644))
+
+	doc, err := parseScenarioDoc(path)
+	require.NoError(t, err)
+	require.True(t, doc.FalsePositiveRisk)
+	require.True(t, doc.FalseNegativeRisk)
 }
 
 func TestParseInventoryFileDetectsFormalAndMissingBindings(t *testing.T) {

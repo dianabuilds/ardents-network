@@ -55,3 +55,10 @@ bounded reason without raw dial or resolver errors.
 The repository integration injects the same typed libp2p reachability outcome
 consumed by production so it is deterministic on one host. Multi-host external
 dialback and deployment ingress evidence remain mandatory in STB-307.
+
+## False Negative Risk
+
+Public AutoNAT dialback is not deterministic inside a single-host container.
+This integration scenario injects the typed production observation; external
+reachability remains a separate deployment qualification rather than making
+this scenario timing-dependent.

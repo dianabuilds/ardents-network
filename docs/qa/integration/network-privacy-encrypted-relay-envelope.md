@@ -1,7 +1,7 @@
 # Encrypted Private Relay Envelope
 
 - Scenario ID: `NPI-002`
-- Layer: Integration
+- Layer: integration
 - Domain: Network Foundation / Messaging + Identity
 - Category: Security / messaging / recovery
 

@@ -1,7 +1,7 @@
 # Private Data Request And Response Exchange
 
 - Scenario ID: `NPI-004`
-- Layer: Integration
+- Layer: integration
 - Domain: Data Substrate over Network Foundation / Identity
 - Category: Security / encrypted request-response
 
@@ -32,3 +32,13 @@ prevents delivery to Data Substrate.
 - `tests/integration/network-foundation/data_privacy_test.go::TestPrivateDataRequestHidesRoutingAndContentIdentity`
 - `tests/integration/network-foundation/data_privacy_test.go::TestPrivateDataExchangeRejectsRevokedRequesterCapability`
 
+## False Positive Risk
+
+Local Seal/Open could bypass the carrier boundary. The scenario captures the
+real Waku topic and payload and requires domain dispatch only after authorized
+private-envelope intake.
+
+## False Negative Risk
+
+Relay delivery is asynchronous. Bounded waits separate transport convergence,
+replay rejection, and receive-time revocation failures.

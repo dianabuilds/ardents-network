@@ -59,3 +59,15 @@ Store fetch.
 - `tests/integration/network-foundation/light_client_test.go::TestConstrainedClientFilterLightpushAndOfflineRecovery`
 - `tests/integration/network-foundation/light_client_test.go::TestConstrainedClientRejectsPeerWithoutRequiredProviderProtocols`
 - `tests/integration/network-foundation/light_client_test.go::TestConstrainedClientCapabilitiesReachCanonicalStatus`
+
+## False Positive Risk
+
+Connection to a provider could be mistaken for protocol readiness. The tests
+require observed Filter, Lightpush, and Store protocols plus actual encrypted
+publish, delivery, and retained fetch outcomes.
+
+## False Negative Risk
+
+Provider discovery and Filter delivery are asynchronous. Each stage has a
+bounded wait and reports its own failure, so temporary scheduling delay is not
+confused with an unsupported provider shape.

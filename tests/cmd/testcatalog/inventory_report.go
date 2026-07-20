@@ -169,6 +169,18 @@ func inventoryScenarioEntry(doc scenarioDoc, matchedTests map[string][]string) i
 	if len(entry.MatchedTests) == 0 {
 		entry.Issues = append(entry.Issues, "scenario doc has no runnable code binding")
 	}
+	if doc.Layer != "integration" && doc.Layer != "e2e" {
+		entry.Issues = append(entry.Issues, "scenario doc layer must be integration or e2e")
+	}
+	if doc.Domain == "" {
+		entry.Issues = append(entry.Issues, "scenario doc is missing domain")
+	}
+	if !doc.FalsePositiveRisk {
+		entry.Issues = append(entry.Issues, "scenario doc is missing non-empty False Positive Risk")
+	}
+	if !doc.FalseNegativeRisk {
+		entry.Issues = append(entry.Issues, "scenario doc is missing non-empty False Negative Risk")
+	}
 	return entry
 }
 

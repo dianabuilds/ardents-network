@@ -1,7 +1,7 @@
 # External Waku Privacy Capture
 
 - Scenario ID: `E2E-NPI-001`
-- Layer: E2E
+- Layer: e2e
 - Domain: Network Privacy
 - Category: Security / carrier observation
 

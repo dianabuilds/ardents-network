@@ -166,7 +166,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - shell: pwsh
-        run: ./tests/run-multihost.ps1 -BuildMode Always -ReportDir tests/.artifacts/reports/multihost
+        run: ./tests/ci/multihost-gate.ps1 -BuildMode Always -ReportDir tests/.artifacts/reports/multihost
       - uses: actions/upload-artifact@v4
         if: always()
         with:

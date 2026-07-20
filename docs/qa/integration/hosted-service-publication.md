@@ -32,3 +32,14 @@ withdrawal within the bounded refresh interval; the receiving node must resolve
 ## Related Tests
 
 - `tests/integration/hosted-services/publication_test.go::TestPublishedServiceResolvesAndConnectsAcrossRealWakuNodes`
+
+## False Positive Risk
+
+A signed record alone could look published while the workload is unreachable.
+The scenario requires a successful request to the advertised endpoint and
+withdrawal after the backing listener stops.
+
+## False Negative Risk
+
+Probe and discovery refresh loops are asynchronous. Assertions use bounded
+convergence windows and distinguish readiness timeout from request failure.

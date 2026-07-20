@@ -6,9 +6,9 @@ Private capability resolution and opaque selector interoperability.
 
 ## Layer
 
-Integration.
+integration
 
-## Domains
+## Domain
 
 Identity, Policy authority boundary, and Network Foundation / Messaging.
 
@@ -40,3 +40,18 @@ and that revocation plus fresh-secret rotation excludes old material.
 
 Failure means selector interoperability, local non-correlation, issuer trust,
 revocation, or key rotation is not safe enough for encrypted Waku envelopes.
+
+## Related Tests
+
+- `tests/integration/network-foundation/privacy_capability_test.go::TestPrivateCapabilitySelectorsInteroperateAndRevokeAcrossNodes`
+
+## False Positive Risk
+
+Two nodes could accidentally share local store identity. The scenario requires
+distinct local references while deriving the same channel selector/key only
+from the common authorized grant.
+
+## False Negative Risk
+
+Clock-bound grant validity can fail at a boundary. The scenario uses a fixed
+validity window and explicit evaluation time, then tests revocation separately.

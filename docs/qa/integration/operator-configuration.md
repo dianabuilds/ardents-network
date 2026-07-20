@@ -6,9 +6,9 @@ Validated operator configuration inspection and atomic reload.
 
 ## Layer
 
-Integration.
+integration
 
-## Domains
+## Domain
 
 Node Runtime, Policy, Diagnostics, and canonical local control surface.
 
@@ -35,3 +35,18 @@ candidate without replacing the active generation.
 Failure means the operator surface can leak protected configuration, report
 the wrong generation, or replace working runtime behavior with an invalid
 candidate.
+
+## Related Tests
+
+- `tests/integration/local-control-surface/configuration_test.go::TestOperatorConfigurationCLIShowsReloadsAndRejectsInvalidCandidate`
+
+## False Positive Risk
+
+A CLI response could claim reload success without changing active runtime
+truth. The scenario checks the effective generation before and after the
+reload and verifies the rejected candidate does not replace it.
+
+## False Negative Risk
+
+Filesystem observation could race an editor write. The test writes complete
+candidate documents atomically and invokes reload explicitly.

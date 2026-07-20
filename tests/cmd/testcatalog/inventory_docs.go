@@ -48,6 +48,9 @@ func parseScenarioDoc(path string) (scenarioDoc, error) {
 		line := strings.TrimSpace(scanner.Text())
 		if key, value, ok := parseFieldLine(line); ok {
 			doc = applyDocField(doc, key, value)
+			if key == "False Positive Risk" || key == "False Negative Risk" {
+				current = key
+			}
 			continue
 		}
 		if heading, value := parseHeading(line); heading != "" {
@@ -76,6 +79,10 @@ func applyDocField(doc scenarioDoc, key string, value string) scenarioDoc {
 		doc.Layer = value
 	case "Domain":
 		doc.Domain = value
+	case "False Positive Risk":
+		doc.FalsePositiveRisk = value != ""
+	case "False Negative Risk":
+		doc.FalseNegativeRisk = value != ""
 	}
 	return doc
 }
@@ -97,6 +104,14 @@ func applyDocSectionLine(doc scenarioDoc, current string, line string) scenarioD
 	case "Related Tests":
 		if ref := parseRelatedTest(line); ref != "" {
 			doc.RelatedTests = append(doc.RelatedTests, ref)
+		}
+	case "False Positive Risk":
+		if line != "" {
+			doc.FalsePositiveRisk = true
+		}
+	case "False Negative Risk":
+		if line != "" {
+			doc.FalseNegativeRisk = true
 		}
 	}
 	return doc
@@ -147,11 +162,14 @@ func parseFieldLine(line string) (string, string, bool) {
 	key := parseMarkdownValue(parts[0])
 	value := parseMarkdownValue(parts[1])
 	switch key {
-	case "Scenario ID", "Layer", "Domain", "Category":
+	case "Scenario ID", "Layer", "Domain", "Category", "False Positive Risk", "False Negative Risk":
 	default:
 		return "", "", false
 	}
-	if key == "" || value == "" {
+	if key == "" {
+		return "", "", false
+	}
+	if value == "" && key != "False Positive Risk" && key != "False Negative Risk" {
 		return "", "", false
 	}
 	return key, value, true

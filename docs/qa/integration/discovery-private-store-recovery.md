@@ -1,7 +1,7 @@
 # Private Discovery Store And Restart Recovery
 
 - Scenario ID: `DKI-003`
-- Layer: Integration
+- Layer: integration
 - Domain: Discovery / Publication over Network Foundation
 - Category: Private publication / Store / restart
 
@@ -25,3 +25,14 @@ classified as replay by its durable ledger.
 
 - `tests/integration/discovery/private_network_test.go::TestPrivateDiscoveryImportsSignedRecordFromWakuStore`
 
+## False Positive Risk
+
+Persisted local discovery state could be mistaken for a network recovery. The
+scenario requires publication through the private Waku path and import by a
+separate receiver before restart.
+
+## False Negative Risk
+
+Store convergence is asynchronous. The test uses bounded readiness and fetch
+deadlines and reports the failed network stage rather than assuming an
+immediate retained result.

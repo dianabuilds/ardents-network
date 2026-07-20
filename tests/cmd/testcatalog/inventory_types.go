@@ -40,11 +40,13 @@ type inventoryScenario struct {
 }
 
 type scenarioDoc struct {
-	ScenarioID   string
-	Layer        string
-	Domain       string
-	DocPath      string
-	RelatedTests []string
+	ScenarioID        string
+	Layer             string
+	Domain            string
+	DocPath           string
+	RelatedTests      []string
+	FalsePositiveRisk bool
+	FalseNegativeRisk bool
 }
 
 type parsedTest struct {
