@@ -18,7 +18,7 @@ The documents in this directory do not replace system, domain, security, or QA
 sources of truth. When they conflict, source-of-truth documents are updated
 first, then this process plan, then code.
 
-Current loop state: `active`
+Current loop state: `done`
 
-The active task is `STB-707`. The loop terminates only at the final `done` gate
-or at a real `blocked` decision recorded in `decision-log.md`.
+No stabilization task remains active. Refactoring and the later immutable-
+candidate soak qualification are governed outside this completed loop.

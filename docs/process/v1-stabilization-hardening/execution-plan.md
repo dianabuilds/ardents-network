@@ -1102,7 +1102,7 @@ and make the candidate ready for the separate pre-release qualification run.
   `stb-706-release-error-handling-review.md`, and
   `stb-706-release-regression-sweep.md`.
 
-### `in_progress` STB-707 — Execute Final Acceptance Gate
+### `done` STB-707 — Execute Final Acceptance Gate
 
 - Owner: repository release process using `ardents-acceptance-gate`.
 - Dependencies: `STB-706`.
@@ -1114,7 +1114,7 @@ and make the candidate ready for the separate pre-release qualification run.
     release decision.
 - Checks:
   - all final acceptance conditions below pass simultaneously.
-- Evidence: `pending`.
+- Evidence: `docs/process/v1-stabilization-hardening/stb-707-evidence.md`.
 
 Transition gate:
 

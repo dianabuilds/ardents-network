@@ -41,7 +41,7 @@ Every entry must contain:
   progress and conflicts with runtime-truth and development-contract rules.
 - `Impact`: no new product expansion may bypass Phase 0 and Phase 1 gates.
 - `Follow-up`: start with `STB-001`.
-- `Status`: `active`
+- `Status`: `accepted`
 
 ### DEC-STB-002
 
@@ -64,7 +64,7 @@ Every entry must contain:
 - `Impact`: abuse protection remains mandatory, but token economics, consensus,
   staking, and dispute arbitration are not acceptance requirements here.
 - `Follow-up`: document any future permissionless proposal outside this loop.
-- `Status`: `active`
+- `Status`: `accepted`
 
 ### DEC-STB-003
 
@@ -85,7 +85,7 @@ Every entry must contain:
 - `Impact`: Phase 3 can pass without QUIC only while diagnostics and local API
   report it as unsupported.
 - `Follow-up`: retain explicit negative tests for `tcp_quic`.
-- `Status`: `active`
+- `Status`: `accepted`
 
 ### DEC-STB-004
 
