@@ -220,8 +220,9 @@ try {
         foreach ($service in @("a1", "a2", "b1", "b2", "recovery")) { Wait-Joined $service 60 }
         Capture-Snapshot "initial"
     }
-    Run-Step "restart node and recover" {
-        Invoke-Compose @("restart", "a1")
+    Run-Step "kill node process and recover" {
+        Invoke-Compose @("kill", "-s", "SIGKILL", "a1")
+        Invoke-Compose @("up", "-d", "a1")
         Wait-Joined "a1" 60
     }
     Run-Step "change address through controlled recreation" {

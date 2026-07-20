@@ -1,6 +1,6 @@
 # STB-703 Bounded Chaos Campaign
 
-Status: predeclared; execution pending.
+Status: completed on 2026-07-20.
 
 ## Execution Contract
 
@@ -46,16 +46,16 @@ Status: predeclared; execution pending.
 
 | ID | Actual signal | Recovery | Result | Follow-up |
 | --- | --- | --- | --- | --- |
-| CH-01 | pending | pending | pending | pending |
-| CH-02 | pending | pending | pending | pending |
-| CH-03 | pending | pending | pending | pending |
-| CH-04 | pending | pending | pending | pending |
-| CH-05 | pending | pending | pending | pending |
-| CH-06 | pending | pending | pending | pending |
-| CH-07 | pending | pending | pending | pending |
-| CH-08 | pending | pending | pending | pending |
-| CH-09 | pending | pending | pending | pending |
-| CH-10 | pending | pending | pending | pending |
-| CH-11 | pending | pending | pending | pending |
-| CH-12 | pending | pending | pending | pending |
-| CH-13 | pending | pending | pending | pending |
+| CH-01 | `a1` received `SIGKILL`; the same persisted node rejoined. | Joined in 2.6 seconds. | robust | Canonical NFM step now injects a real crash. |
+| CH-02 | Readonly, external network, tmpfs, PID, and OOM attempts failed inside the workload boundary; OOM required operator action. | DIND topology removed after the 11.6-second suite. | robust | None. |
+| CH-03 | Corrupt state produced an explicit startup error and no ready state. | Temporary state removed by test cleanup. | robust | None. |
+| CH-04 | Expired/future envelope time was rejected before message acceptance. | No persistent fault. | robust | None. |
+| CH-05 | Isolated `b1` entered `restricted_defense`. | Rejoin restored steady provider shape within 40.5 seconds. | robust | None. |
+| CH-06 | Slow probe produced `probe_timeout`/not-ready truth. | Immediate on the next healthy observation. | robust | None. |
+| CH-07 | Zone-B partition preserved truthful local participation. | Bridge and peer rejoin restored cross-segment steady state. | robust | None. |
+| CH-08 | Three consecutive real peer restarts completed with joined checks after each. | Churn block completed in 32.7 seconds. | robust | None. |
+| CH-09 | Seed loss did not collapse the alternative live mesh. | Remaining nodes stayed joined; disposable seed remained stopped until teardown. | robust | None. |
+| CH-10 | Expired CA-issued WSS material was rejected with `expired`. | No transport started; temporary secrets removed. | robust | None. |
+| CH-11 | Cross-node use after capability revocation was rejected. | Scenario reached explicit revoked truth in 47.6 ms. | robust | None. |
+| CH-12 | Quota denial participated in an honest terminal-loss outcome, not false availability. | E2E completed in 17.4 seconds. | robust | None. |
+| CH-13 | Waku peer crash/restarts exposed transient unavailability during bounded waits and recovered without state repair. | Crash, rejoin, churn, and Store recovery all passed. | robust | None. |

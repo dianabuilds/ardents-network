@@ -1027,7 +1027,7 @@ and prove the final release candidate against every mandatory property.
   - mutation evidence references the resulting canonical tests.
 - Evidence: `docs/process/v1-stabilization-hardening/stb-702-evidence.md`.
 
-### `in_progress` STB-703 — Run Bounded Chaos Campaigns
+### `completed` STB-703 — Run Bounded Chaos Campaigns
 
 - Owner: QA, Node Runtime, Network Foundation, Workload Control, Data Substrate,
   Diagnostics.
@@ -1043,9 +1043,9 @@ and prove the final release candidate against every mandatory property.
   - system never reports healthy/available/published when the corresponding
     observed truth is absent;
   - pending operations reach recovery or explicit terminal fate.
-- Evidence: `pending`.
+- Evidence: `docs/process/v1-stabilization-hardening/stb-703-evidence.md`.
 
-### `pending` STB-704 — Run Performance And Resource Safety Baselines
+### `in_progress` STB-704 — Run Performance And Resource Safety Baselines
 
 - Owner: Network Foundation, Workload Control, Data Substrate, Diagnostics.
 - Dependencies: `STB-703`.

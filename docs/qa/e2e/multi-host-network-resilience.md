@@ -39,8 +39,8 @@ single-process simulations.
    their signed runtime records.
 3. Start both segments and a constrained client whose only cross-segment path
    uses WSS; require joined network truth for every node.
-4. Restart a peer and require recovery without replacing its persisted node
-   identity.
+4. Kill a peer process with `SIGKILL`, recreate the container, and require
+   recovery without replacing its persisted node identity.
 5. Recreate another peer at a new address and require the new signed endpoint.
 6. Lose the seed while the remaining healthy mesh stays operational.
 7. Partition and rejoin one segment; require local steady participation,
@@ -69,4 +69,3 @@ Waku convergence and Docker scheduling are asynchronous. Every wait is bounded;
 the runner retains step results, compose logs, topology snapshots, versions,
 and resource evidence so infrastructure slowness can be distinguished from a
 product failure.
-
