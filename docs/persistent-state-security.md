@@ -83,6 +83,11 @@ retained state, and expected blob decryptability.
   explicit repair/fetch behavior; metadata alone is not availability.
 - Missing payload/capability keys make encrypted bytes unreadable. Retention
   does not grant decryption authority.
+- Blob metadata and payload-file transitions fail atomically from the runtime's
+  perspective. A failed metadata commit must remove a newly written orphan;
+  drop/expiry stages payload removal by private same-directory rename and
+  restores it if the metadata commit fails. No intermediate filename is a
+  locally available blob or a source of plaintext diagnostics.
 
 ## Rotation And Revocation
 

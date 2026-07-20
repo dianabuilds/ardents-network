@@ -1,7 +1,9 @@
 package data
 
 import (
+	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"time"
 
@@ -32,18 +34,23 @@ func (s *Service) RetainRelayBlob(blob Blob, payload []byte, expiresAt time.Time
 	if blob.CreatedAt.IsZero() {
 		blob.CreatedAt = now
 	}
+	previous, previousState := maps.Clone(s.blobs.Items), s.state
 	if err := s.writePayloadLocked(blob.ID, payload); err != nil {
 		return Blob{}, err
 	}
 	s.blobs.Put(blob)
 	s.state = "ready"
-	return blob, s.saveLocked()
+	if err := s.saveLocked(); err != nil {
+		return Blob{}, errors.Join(err, s.rollbackUncommittedPayloadLocked(previous, previousState, blob.ID))
+	}
+	return blob, nil
 }
 
 func (s *Service) RetainBlob(id string, expiresAt time.Time) (Blob, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	previous, previousState := maps.Clone(s.blobs.Items), s.state
 	now := time.Now().UTC()
 	blob, err := retentionpkg.RetainBlob(&s.blobs, id, expiresAt, now, s.cfg.DefaultLocalRetentionTTL, s.hasLocalPayloadLocked, retentionAuthorizer(s.retention))
 	if err != nil {
@@ -51,55 +58,70 @@ func (s *Service) RetainBlob(id string, expiresAt time.Time) (Blob, error) {
 	}
 	s.blobs.Put(blob)
 	s.state = "ready"
-	return blob, s.saveLocked()
+	if err := s.saveLocked(); err != nil {
+		s.blobs.Load(previous)
+		s.state = previousState
+		return Blob{}, err
+	}
+	return blob, nil
 }
 
 func (s *Service) PinBlob(id string) (Blob, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	previous, previousState := maps.Clone(s.blobs.Items), s.state
 	blob, err := retentionpkg.PinBlob(&s.blobs, id, s.hasLocalPayloadLocked)
 	if err != nil {
 		return Blob{}, err
 	}
 	s.blobs.Put(blob)
 	s.state = "ready"
-	return blob, s.saveLocked()
+	if err := s.saveLocked(); err != nil {
+		s.blobs.Load(previous)
+		s.state = previousState
+		return Blob{}, err
+	}
+	return blob, nil
 }
 
 func (s *Service) DropBlob(id string) (Blob, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	blob, err := retentionpkg.DropBlob(&s.blobs, id, func(id string) error {
-		err := os.Remove(s.payloadPath(id))
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return err
-	})
+	previous, previousState := maps.Clone(s.blobs.Items), s.state
+	removals := payloadRemovalBatch{service: s}
+	blob, err := retentionpkg.DropBlob(&s.blobs, id, removals.Stage)
 	if err != nil {
-		return Blob{}, err
+		s.blobs.Load(previous)
+		s.state = previousState
+		return Blob{}, errors.Join(err, removals.Rollback())
 	}
 	s.blobs.Put(blob)
 	s.state = "ready"
-	return blob, s.saveLocked()
+	if err := s.saveLocked(); err != nil {
+		s.blobs.Load(previous)
+		s.state = previousState
+		return Blob{}, errors.Join(err, removals.Rollback())
+	}
+	if err := removals.Commit(); err != nil {
+		return blob, err
+	}
+	return blob, nil
 }
 
 func (s *Service) PruneExpired(now time.Time) ([]Blob, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	previous, previousState := maps.Clone(s.blobs.Items), s.state
+	removals := payloadRemovalBatch{service: s}
 	now = now.UTC()
-	prunedIDs, changed, err := retentionpkg.PruneExpired(&s.blobs, now, func(id string) error {
-		err := os.Remove(s.payloadPath(id))
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return err
-	})
+	prunedIDs, changed, err := retentionpkg.PruneExpired(&s.blobs, now, removals.Stage)
 	if err != nil {
-		return nil, err
+		s.blobs.Load(previous)
+		s.state = previousState
+		return nil, errors.Join(err, removals.Rollback())
 	}
 	if !changed {
 		return nil, nil
@@ -109,7 +131,15 @@ func (s *Service) PruneExpired(now time.Time) ([]Blob, error) {
 		pruned = append(pruned, s.blobs.Items[id])
 	}
 	s.state = "ready"
-	return append([]Blob(nil), pruned...), s.saveLocked()
+	if err := s.saveLocked(); err != nil {
+		s.blobs.Load(previous)
+		s.state = previousState
+		return nil, errors.Join(err, removals.Rollback())
+	}
+	if err := removals.Commit(); err != nil {
+		return append([]Blob(nil), pruned...), err
+	}
+	return append([]Blob(nil), pruned...), nil
 }
 
 func (s *Service) ensureRelayRetentionBudgetLocked(id string, payload []byte) error {

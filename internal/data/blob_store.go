@@ -1,7 +1,9 @@
 package data
 
 import (
+	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,12 +25,20 @@ func (s *Service) StoreBlob(blob Blob, payload []byte) (Blob, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	previous, previousState := maps.Clone(s.blobs.Items), s.state
 	blob, err := blobpkg.Store(&s.blobs, blob, payload, s.nextID, s.writePayloadLocked)
 	if err != nil {
 		return Blob{}, err
 	}
 	s.state = "ready"
-	return blob, s.saveLocked()
+	if err := s.saveLocked(); err != nil {
+		if len(payload) == 0 {
+			s.restoreBlobSnapshotLocked(previous, previousState)
+			return Blob{}, err
+		}
+		return Blob{}, errors.Join(err, s.rollbackUncommittedPayloadLocked(previous, previousState, blob.ID))
+	}
+	return blob, nil
 }
 
 func (s *Service) AnnounceRemoteBlob(blob Blob) (Blob, error) {
@@ -38,12 +48,17 @@ func (s *Service) AnnounceRemoteBlob(blob Blob) (Blob, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	previous, previousState := maps.Clone(s.blobs.Items), s.state
 	blob, err := blobpkg.AnnounceRemote(&s.blobs, blob)
 	if err != nil {
 		return Blob{}, err
 	}
 	s.state = "ready"
-	return blob, s.saveLocked()
+	if err := s.saveLocked(); err != nil {
+		s.restoreBlobSnapshotLocked(previous, previousState)
+		return Blob{}, err
+	}
+	return blob, nil
 }
 
 func (s *Service) FetchBlob(id string, source BlobSource) (Blob, error) {
