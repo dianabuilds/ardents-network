@@ -19,6 +19,12 @@ func TestCarrierValidationDetectsReadableSelectorMutation(t *testing.T) {
 	require.Equal(t, CodeSelectorMalformed, CodeOf(err))
 }
 
+func TestCarrierValidationRejectsWrongLengthOpaqueSelector(t *testing.T) {
+	err := ValidateOpaqueSelector(DefaultPubsubTopic, "/ardents/1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/proto")
+
+	require.Equal(t, CodeSelectorMalformed, CodeOf(err))
+}
+
 func TestCarrierValidationDetectsPlaintextPayloadMutation(t *testing.T) {
 	err := ValidateEncryptedPayload([]byte(`{"principal":"visible"}`))
 

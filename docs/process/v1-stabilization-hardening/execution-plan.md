@@ -1010,7 +1010,7 @@ and prove the final release candidate against every mandatory property.
   - catalog validation and all canonical suites pass.
 - Evidence: `docs/process/v1-stabilization-hardening/stb-701-evidence.md`.
 
-### `in_progress` STB-702 — Run Mutation Campaigns
+### `completed` STB-702 — Run Mutation Campaigns
 
 - Owner: QA with each affected domain owner.
 - Dependencies: `STB-701`.
@@ -1025,9 +1025,9 @@ and prove the final release candidate against every mandatory property.
 - Checks:
   - no critical invariant mutation survives without follow-up closure;
   - mutation evidence references the resulting canonical tests.
-- Evidence: `pending`.
+- Evidence: `docs/process/v1-stabilization-hardening/stb-702-evidence.md`.
 
-### `pending` STB-703 — Run Bounded Chaos Campaigns
+### `in_progress` STB-703 — Run Bounded Chaos Campaigns
 
 - Owner: QA, Node Runtime, Network Foundation, Workload Control, Data Substrate,
   Diagnostics.

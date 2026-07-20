@@ -15,4 +15,8 @@ func TestCheckRouteUse(t *testing.T) {
 	denied := CheckRouteUse(RouteConfig{DeniedRouteSchemes: []string{"quic"}}, domainnetwork.Candidate{Scheme: "quic", Trusted: true})
 	require.False(t, denied.Allowed, "expected quic route denial")
 	require.Equal(t, "policy_route_denied", denied.Reason.Code)
+
+	untrusted := CheckRouteUse(RouteConfig{DisableUntrustedRouteUse: true}, domainnetwork.Candidate{Scheme: "tcp", Trusted: false})
+	require.False(t, untrusted.Allowed, "expected untrusted route denial")
+	require.Equal(t, "policy_route_denied", untrusted.Reason.Code)
 }
