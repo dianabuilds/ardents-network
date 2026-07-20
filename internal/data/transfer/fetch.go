@@ -42,13 +42,11 @@ func FetchBlob(ctx context.Context, cfg ExchangeConfig, blobID string) (appdata.
 
 	responses, unregister, err := cfg.Private.RegisterResponse(requestID)
 	if err != nil {
-		_, _ = cfg.Data.FailTransfer(transfer.ID, "", err.Error())
-		return appdata.Blob{}, err
+		return appdata.Blob{}, failTransfer(cfg.Data, transfer.ID, "", err)
 	}
 	defer unregister()
 	if err := publishBlobFetchRequest(ctx, cfg, requestID, blobID, requester); err != nil {
-		_, _ = cfg.Data.FailTransfer(transfer.ID, "", err.Error())
-		return appdata.Blob{}, err
+		return appdata.Blob{}, failTransfer(cfg.Data, transfer.ID, "", err)
 	}
 	return awaitBlobFetchResponse(ctx, cfg, transfer.ID, blobID, requester, requestID, responses)
 }
@@ -96,28 +94,26 @@ func handleBlobRequest(ctx context.Context, cfg ExchangeConfig, payload []byte) 
 	}
 	wire, responseErr, err := prepareServedBlobResponse(cfg, req)
 	if err != nil {
-		_, _ = cfg.Data.FailTransfer(transfer.ID, req.Requester, err.Error())
-		return err
+		return failTransfer(cfg.Data, transfer.ID, req.Requester, err)
 	}
 	if wire == nil {
 		if responseErr != nil {
-			_, _ = cfg.Data.FailTransfer(transfer.ID, req.Requester, responseErr.Error())
+			return failTransfer(cfg.Data, transfer.ID, req.Requester, responseErr)
 		}
-		return responseErr
+		return fmt.Errorf("blob response is unavailable")
 	}
 	if err := cfg.Private.Publish(ctx, networkprivacy.MessageClassBlobFetchResponse, wire); err != nil {
-		_, _ = cfg.Data.FailTransfer(transfer.ID, req.Requester, err.Error())
 		if responseErr != nil {
-			return fmt.Errorf("%w: %v", err, responseErr)
+			err = fmt.Errorf("%w: %v", err, responseErr)
 		}
-		return err
+		return failTransfer(cfg.Data, transfer.ID, req.Requester, err)
 	}
 	if responseErr != nil {
-		_, _ = cfg.Data.FailTransfer(transfer.ID, req.Requester, responseErr.Error())
-		return blobRequestOutcomeError{err: responseErr, responded: true}
+		return blobRequestOutcomeError{
+			err: failTransfer(cfg.Data, transfer.ID, req.Requester, responseErr), responded: true,
+		}
 	}
-	_, _ = cfg.Data.CompleteTransfer(transfer.ID, req.Requester, 0, "blob response sent to peer")
-	return nil
+	return completeTransfer(cfg.Data, transfer.ID, req.Requester, 0, "blob response sent to peer")
 }
 
 func observePrivateFailures(ctx context.Context, cfg ExchangeConfig) {

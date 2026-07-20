@@ -97,6 +97,21 @@ func TestChunkWorkersPropagateCancellation(t *testing.T) {
 	require.ErrorIs(t, <-done, context.Canceled)
 }
 
+func TestChunkWorkersSurfaceProgressPersistenceFailure(t *testing.T) {
+	source, target, plan := chunkWorkerFixture(t, 1)
+	transferID := startChunkWorkerTransfer(t, target, plan)
+	data := failingProgressData{DataExchange: target, err: fmt.Errorf("disk unavailable")}
+
+	_, err := fetchChunkSet(context.Background(), ExchangeConfig{Data: data}, transferID, plan, ChunkFetchOptions{
+		Concurrency: 1, PerChunkTimeout: time.Second,
+	}, func(_ context.Context, id string) (appdata.Blob, error) {
+		return copyFixtureChunk(source, target, id)
+	})
+
+	require.ErrorContains(t, err, "record transfer progress")
+	require.ErrorContains(t, err, "disk unavailable")
+}
+
 func TestChunkRateLimiterUsesCanonicalChunkBurst(t *testing.T) {
 	limiter := chunkRateLimiter(2048)
 	require.NotNil(t, limiter)
@@ -172,4 +187,13 @@ func updateMaximum(maximum *atomic.Int64, value int64) {
 			return
 		}
 	}
+}
+
+type failingProgressData struct {
+	DataExchange
+	err error
+}
+
+func (d failingProgressData) UpdateTransferProgress(string, int64, int64, string) (appdata.TransferRecord, error) {
+	return appdata.TransferRecord{}, d.err
 }

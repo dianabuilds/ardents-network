@@ -42,14 +42,14 @@ func FetchChunked(ctx context.Context, cfg ExchangeConfig, rootID string, option
 		return FetchBlob(fetchCtx, cfg, id)
 	})
 	if err != nil {
-		recordChunkFetchFailure(cfg, transfer.ID, rootID, err)
-		return ChunkFetchResult{}, err
+		return ChunkFetchResult{}, recordChunkFetchFailure(cfg, transfer.ID, rootID, err)
 	}
 	if err := publishResolvedPlan(cfg.Data, plan); err != nil {
-		recordChunkFetchFailure(cfg, transfer.ID, rootID, err)
-		return ChunkFetchResult{}, err
+		return ChunkFetchResult{}, recordChunkFetchFailure(cfg, transfer.ID, rootID, err)
 	}
-	_, _ = cfg.Data.CompleteTransfer(transfer.ID, "", workerResult.TotalBytes, "chunked manifest fetch completed")
+	if err := completeTransfer(cfg.Data, transfer.ID, "", workerResult.TotalBytes, "chunked manifest fetch completed"); err != nil {
+		return ChunkFetchResult{}, recordChunkFetchFailure(cfg, transfer.ID, rootID, err)
+	}
 	if cfg.Publish != nil {
 		cfg.Publish("data.chunked_fetched", map[string]any{"id": rootID, "chunks": len(plan.ChunkIDs), "bytes": workerResult.TotalBytes})
 	}
@@ -62,11 +62,12 @@ func FetchChunked(ctx context.Context, cfg ExchangeConfig, rootID string, option
 	}, nil
 }
 
-func recordChunkFetchFailure(cfg ExchangeConfig, transferID, rootID string, err error) {
-	_, _ = cfg.Data.FailTransfer(transferID, "", err.Error())
+func recordChunkFetchFailure(cfg ExchangeConfig, transferID, rootID string, cause error) error {
+	err := failTransfer(cfg.Data, transferID, "", cause)
 	if cfg.Diagnostics != nil {
 		cfg.Diagnostics.RecordEvent("data", "chunked_fetch_failed", rootID, "chunked manifest fetch failed", "data.chunked.fetch_failed", nil)
 	}
+	return err
 }
 
 func loadChunkPlan(ctx context.Context, cfg ExchangeConfig, rootID string) (chunking.ResolvedPlan, error) {

@@ -23,12 +23,10 @@ func awaitBlobFetchResponse(ctx context.Context, cfg ExchangeConfig, transferID,
 		select {
 		case <-ctx.Done():
 			if candidateErr != nil {
-				_, _ = cfg.Data.FailTransfer(transferID, candidatePeer, candidateErr.Error())
-				return appdata.Blob{}, candidateErr
+				return appdata.Blob{}, failTransfer(cfg.Data, transferID, candidatePeer, candidateErr)
 			}
 			err := ctx.Err()
-			_, _ = cfg.Data.FailTransfer(transferID, candidatePeer, err.Error())
-			return appdata.Blob{}, err
+			return appdata.Blob{}, failTransfer(cfg.Data, transferID, candidatePeer, err)
 		case payload, ok := <-responses:
 			if !ok {
 				return failAwaitedTransfer(cfg, transferID, candidatePeer, candidateErr, fmt.Errorf("blob response stream closed"))
@@ -37,8 +35,7 @@ func awaitBlobFetchResponse(ctx context.Context, cfg ExchangeConfig, transferID,
 			if err != nil {
 				var terminalErr blobFetchTerminalError
 				if errors.As(err, &terminalErr) {
-					_, _ = cfg.Data.FailTransfer(transferID, peer, terminalErr.err.Error())
-					return appdata.Blob{}, terminalErr.err
+					return appdata.Blob{}, failTransfer(cfg.Data, transferID, peer, terminalErr.err)
 				}
 				var rememberedErr blobFetchCandidateError
 				if errors.As(err, &rememberedErr) {
@@ -47,7 +44,9 @@ func awaitBlobFetchResponse(ctx context.Context, cfg ExchangeConfig, transferID,
 				}
 				continue
 			}
-			_, _ = cfg.Data.CompleteTransfer(transferID, peer, totalBytes, "blob fetched from trusted peer")
+			if err := completeTransfer(cfg.Data, transferID, peer, totalBytes, "blob fetched from trusted peer"); err != nil {
+				return appdata.Blob{}, err
+			}
 			return blob, nil
 		}
 	}
@@ -55,9 +54,7 @@ func awaitBlobFetchResponse(ctx context.Context, cfg ExchangeConfig, transferID,
 
 func failAwaitedTransfer(cfg ExchangeConfig, transferID, candidatePeer string, candidateErr, fallback error) (appdata.Blob, error) {
 	if candidateErr != nil {
-		_, _ = cfg.Data.FailTransfer(transferID, candidatePeer, candidateErr.Error())
-		return appdata.Blob{}, candidateErr
+		return appdata.Blob{}, failTransfer(cfg.Data, transferID, candidatePeer, candidateErr)
 	}
-	_, _ = cfg.Data.FailTransfer(transferID, candidatePeer, fallback.Error())
-	return appdata.Blob{}, fallback
+	return appdata.Blob{}, failTransfer(cfg.Data, transferID, candidatePeer, fallback)
 }

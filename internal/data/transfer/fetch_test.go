@@ -231,12 +231,16 @@ func TestAwaitBlobFetchResponseReturnsCandidateRejectionInsteadOfTimeout(t *test
 	responses <- wire
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
+	transfer, err := store.StartTransfer(appdata.TransferRecord{
+		ID: "xfer-timeout", Kind: "blob_fetch", ResourceID: blobID, Direction: "inbound", State: "pending",
+	})
+	require.NoError(t, err)
 
 	_, err = awaitBlobFetchResponse(ctx, ExchangeConfig{
 		Discovery: disc,
 		Trust:     discovery.NewTrustEvaluator(),
 		Data:      store,
-	}, "xfer-timeout", blobID, requester, requestID, responses)
+	}, transfer.ID, blobID, requester, requestID, responses)
 	require.Falsef(t, err == nil || err.
 		Error() !=
 		"remote source is not trusted", "error = %v, want explicit remote trust rejection", err)

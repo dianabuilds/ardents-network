@@ -78,7 +78,14 @@ func chunkWorker(
 		current := progress.bytes.Add(bytes)
 		completed := progress.fetched.Load() + progress.resumed.Load()
 		if completed%16 == 0 || completed == int64(len(plan.ChunkIDs)) {
-			_, _ = cfg.Data.UpdateTransferProgress(transferID, current, encryptedPlanBytes(plan), "verified manifest chunks")
+			if err := updateTransferProgress(cfg.Data, transferID, current, encryptedPlanBytes(plan), "verified manifest chunks"); err != nil {
+				select {
+				case errorsFound <- err:
+				default:
+				}
+				cancel()
+				return
+			}
 		}
 	}
 }

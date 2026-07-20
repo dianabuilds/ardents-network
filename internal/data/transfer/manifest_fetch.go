@@ -24,13 +24,11 @@ func FetchManifest(ctx context.Context, cfg ExchangeConfig, manifestID string) (
 	}
 	responses, unregister, err := cfg.Private.RegisterResponse(requestID)
 	if err != nil {
-		_, _ = cfg.Data.FailTransfer(started.ID, "", err.Error())
-		return appdata.Manifest{}, err
+		return appdata.Manifest{}, failTransfer(cfg.Data, started.ID, "", err)
 	}
 	defer unregister()
 	if err := publishDataFetchRequest(ctx, cfg, requestID, manifestID, requester, "manifest"); err != nil {
-		_, _ = cfg.Data.FailTransfer(started.ID, "", err.Error())
-		return appdata.Manifest{}, err
+		return appdata.Manifest{}, failTransfer(cfg.Data, started.ID, "", err)
 	}
 	return awaitManifestResponse(ctx, cfg, started.ID, manifestID, requester, requestID, responses)
 }
@@ -50,8 +48,7 @@ func awaitManifestResponse(ctx context.Context, cfg ExchangeConfig, transferID, 
 			if err != nil {
 				var terminal blobFetchTerminalError
 				if errors.As(err, &terminal) {
-					_, _ = cfg.Data.FailTransfer(transferID, peer, terminal.err.Error())
-					return appdata.Manifest{}, terminal.err
+					return appdata.Manifest{}, failTransfer(cfg.Data, transferID, peer, terminal.err)
 				}
 				var candidate blobFetchCandidateError
 				if errors.As(err, &candidate) {
@@ -59,7 +56,9 @@ func awaitManifestResponse(ctx context.Context, cfg ExchangeConfig, transferID, 
 				}
 				continue
 			}
-			_, _ = cfg.Data.CompleteTransfer(transferID, peer, 0, "manifest fetched from trusted peer")
+			if err := completeTransfer(cfg.Data, transferID, peer, 0, "manifest fetched from trusted peer"); err != nil {
+				return appdata.Manifest{}, err
+			}
 			return manifest, nil
 		}
 	}
@@ -69,6 +68,5 @@ func failManifestTransfer(cfg ExchangeConfig, transferID, peer string, candidate
 	if candidateErr != nil {
 		fallback = candidateErr
 	}
-	_, _ = cfg.Data.FailTransfer(transferID, peer, fallback.Error())
-	return appdata.Manifest{}, fallback
+	return appdata.Manifest{}, failTransfer(cfg.Data, transferID, peer, fallback)
 }
