@@ -1083,7 +1083,7 @@ and make the candidate ready for the separate pre-release qualification run.
   - interruption leaves no child process or container behind.
 - Evidence: `docs/process/v1-stabilization-hardening/stb-705-evidence.md`.
 
-### `pending` STB-706 — Execute Release Review Sequence
+### `done` STB-706 — Execute Release Review Sequence
 
 - Owner: release process.
 - Dependencies: `STB-705`.
@@ -1097,9 +1097,12 @@ and make the candidate ready for the separate pre-release qualification run.
 - Checks:
   - review outputs contain no unresolved release blocker;
   - documentation, runtime, tests, and security register remain synchronized.
-- Evidence: `pending`.
+- Evidence: `stb-706-release-code-review.md`, `stb-706-release-bug-hunt.md`,
+  `stb-706-release-vulnerability-review.md`,
+  `stb-706-release-error-handling-review.md`, and
+  `stb-706-release-regression-sweep.md`.
 
-### `pending` STB-707 — Execute Final Acceptance Gate
+### `in_progress` STB-707 — Execute Final Acceptance Gate
 
 - Owner: repository release process using `ardents-acceptance-gate`.
 - Dependencies: `STB-706`.

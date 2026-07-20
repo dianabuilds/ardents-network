@@ -20,5 +20,5 @@ first, then this process plan, then code.
 
 Current loop state: `active`
 
-The active task is `STB-706`. The loop terminates only at the final `done` gate
+The active task is `STB-707`. The loop terminates only at the final `done` gate
 or at a real `blocked` decision recorded in `decision-log.md`.
