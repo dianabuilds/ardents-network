@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ardents Acceptance Gate"
+  short_description: "Final slice validation for Ardents"
+  default_prompt: "Use $ardents-acceptance-gate to validate that this Ardents slice is actually complete and acceptable."

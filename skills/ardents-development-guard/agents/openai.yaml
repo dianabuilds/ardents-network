@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ardents Development Guard"
+  short_description: "Prevent prototype-first drift in Ardents"
+  default_prompt: "Use $ardents-development-guard to keep this Ardents change aligned with the project development contract."

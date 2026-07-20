@@ -1,0 +1,203 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: Optional vX.Y.Z release candidate version
+        required: false
+        type: string
+
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-interface:
+    name: Windows orchestration contract
+    runs-on: windows-2025
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse supported PowerShell surfaces
+        shell: pwsh
+        run: |
+          $files = @('ardents.ps1') + @(Get-ChildItem scripts,tests -Recurse -Filter '*.ps1' | ForEach-Object FullName)
+          foreach ($file in $files) {
+            $errors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($file, [ref]$null, [ref]$errors)
+            if ($errors.Count) { throw "$file contains PowerShell syntax errors: $($errors.Message -join '; ')" }
+          }
+          ./ardents.ps1 help
+
+  static:
+    name: Format, vet, and scenario catalog
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Canonical static gates
+        shell: pwsh
+        run: |
+          ./tests/check-format.ps1
+          go vet ./...
+          New-Item -ItemType Directory -Force tests/.artifacts/reports/catalog | Out-Null
+          go run ./tests/cmd/testcatalog -mode validate ./tests/... | Tee-Object tests/.artifacts/reports/catalog/validation.json
+          if ($LASTEXITCODE -ne 0) { throw "scenario catalog validation failed" }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: catalog-validation
+          path: tests/.artifacts/reports/catalog
+          retention-days: 30
+          if-no-files-found: error
+
+  fast:
+    name: Fast Docker/Linux suite
+    needs: static
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - shell: pwsh
+        run: ./ardents.ps1 test fast -RebuildContainer -CoverageProfile tests/.artifacts/coverage/fast.out
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fast-evidence
+          path: |
+            tests/.artifacts/coverage
+            tests/.artifacts/resources
+          retention-days: 30
+          if-no-files-found: error
+
+  tagged:
+    name: ${{ matrix.suite }} Docker/Linux suite
+    needs: static
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [integration, e2e]
+    steps:
+      - uses: actions/checkout@v4
+      - shell: pwsh
+        run: ./ardents.ps1 test ${{ matrix.suite }} -ReportDir tests/.artifacts/reports/${{ matrix.suite }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ matrix.suite }}-evidence
+          path: |
+            tests/.artifacts/reports/${{ matrix.suite }}
+            tests/.artifacts/resources
+          retention-days: 30
+          if-no-files-found: error
+
+  failure-contract:
+    name: Deliberate failure evidence
+    needs: static
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - shell: pwsh
+        run: ./tests/ci/verify-failure-evidence.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deliberate-failure-evidence
+          path: |
+            tests/.artifacts/reports/ci-deliberate-failure
+            tests/.artifacts/resources
+          retention-days: 30
+          if-no-files-found: error
+
+  security:
+    name: Vulnerability reconciliation
+    needs: static
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - shell: pwsh
+        run: ./tests/ci/security-gate.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-evidence
+          path: tests/.artifacts/security
+          retention-days: 30
+          if-no-files-found: error
+
+  deployment:
+    name: Product-ready Docker cluster
+    needs: static
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Canonical deployment gate
+        shell: pwsh
+        run: ./tests/ci/deployment-gate.ps1 -Build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deployment-evidence
+          path: tests/.artifacts/deployment
+          retention-days: 30
+          if-no-files-found: error
+
+  multinode:
+    name: Segmented multi-node topology
+    needs: static
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - shell: pwsh
+        run: ./tests/run-multihost.ps1 -BuildMode Always -ReportDir tests/.artifacts/reports/multihost
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: multihost-evidence
+          path: tests/.artifacts/reports/multihost
+          retention-days: 30
+          if-no-files-found: error
+
+  release-candidate:
+    name: Reproducible release candidate
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.release_version != ''
+    needs: [windows-interface, fast, tagged, failure-contract, security, deployment, multinode]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      RELEASE_VERSION: ${{ inputs.release_version || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build twice and compare
+        shell: pwsh
+        run: |
+          ./ardents.ps1 package $env:RELEASE_VERSION -OutputDir dist/repro-a
+          ./ardents.ps1 package $env:RELEASE_VERSION -OutputDir dist/repro-b
+          $difference = Compare-Object (Get-Content dist/repro-a/SHA256SUMS) (Get-Content dist/repro-b/SHA256SUMS)
+          if ($difference) { throw "release artifacts are not reproducible: $($difference | Out-String)" }
+          docker run --rm --mount type=bind,source=${PWD}/dist/repro-a,target=/release,readonly --mount type=bind,source=${PWD},target=/workspace,readonly debian:bookworm-slim /bin/sh /workspace/scripts/release/smoke.sh /release $env:RELEASE_VERSION $env:GITHUB_SHA
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ardents-${{ env.RELEASE_VERSION }}
+          path: dist/repro-a
+          retention-days: 90
+          if-no-files-found: error

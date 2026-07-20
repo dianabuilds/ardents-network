@@ -1,0 +1,247 @@
+x-node: &node
+  image: ${ARDENTS_TESTNET_IMAGE:-ardents/ardd-testnet:dev}
+  build:
+    context: ..
+    dockerfile: docker/ardd.Dockerfile
+  entrypoint: ["/bin/sh", "-lc"]
+  command:
+    - |
+      install -d -m 0700 /run/ardents
+      install -m 0600 /run/secrets/ardents-api-token /run/ardents/api-token
+      if [ -f /run/secrets/wss-key ]; then
+        install -m 0600 /run/secrets/wss-key /run/ardents/wss-key
+      fi
+      cp /run/secrets/wss-ca /usr/local/share/ca-certificates/ardents-test-ca.crt
+      update-ca-certificates >/dev/null
+      exec /usr/local/bin/ardd
+  environment: &node_environment
+    ARDENTS_API_TOKEN_FILE: /run/ardents/api-token
+    ARDENTS_ADDR: 127.0.0.1:8080
+    ARDENTS_DATA_DIR: /var/lib/ardents
+    ARDENTS_WAKU_STORE_PATH: /var/lib/ardents/waku-store.db
+    ARDENTS_TRANSPORT_BIND_ADDRESS: 0.0.0.0
+    ARDENTS_NODE_PROFILE: service_node
+    ARDENTS_REACHABILITY_MODE: private_lan
+  healthcheck:
+    test: ["CMD", "ard", "--token-file", "/run/ardents/api-token", "node", "status"]
+    interval: 2s
+    timeout: 2s
+    retries: 30
+  restart: unless-stopped
+
+services:
+  seed:
+    <<: *node
+    environment:
+      <<: *node_environment
+      ARDENTS_NODE_NAME: seed
+      ARDENTS_TRANSPORT_PORT: 61001
+    secrets:
+      - source: seed_token
+        target: ardents-api-token
+        mode: 0400
+      - source: wss_ca
+        target: wss-ca
+        mode: 0444
+    volumes:
+      - seed_data:/var/lib/ardents
+    networks:
+      zone_a:
+        ipv4_address: 172.31.10.10
+      zone_b:
+        ipv4_address: 172.31.20.10
+
+  bridge:
+    <<: *node
+    environment:
+      <<: *node_environment
+      ARDENTS_NODE_NAME: bridge
+      ARDENTS_TRANSPORT_PORT: 61002
+      ARDENTS_TRANSPORT_PROFILE: tcp_wss
+      ARDENTS_WSS_PORT: 61443
+      ARDENTS_WSS_CERT_PATH: /run/secrets/wss-cert
+      ARDENTS_WSS_KEY_PATH: /run/ardents/wss-key
+      ARDENTS_WSS_CA_PATH: /run/secrets/wss-ca
+      ARDENTS_WSS_ADVERTISE_ADDRESS: bridge
+      ARDENTS_BOOTSTRAP_PEERS: ${ARDENTS_SEED_ZONE_A:?seed endpoint is required}
+    secrets:
+      - source: bridge_token
+        target: ardents-api-token
+        mode: 0400
+      - source: wss_ca
+        target: wss-ca
+        mode: 0444
+      - source: bridge_cert
+        target: wss-cert
+        mode: 0444
+      - source: bridge_key
+        target: wss-key
+        mode: 0400
+    volumes:
+      - bridge_data:/var/lib/ardents
+    networks:
+      zone_a:
+        ipv4_address: 172.31.10.20
+      zone_b:
+        ipv4_address: 172.31.20.20
+
+  a1:
+    <<: *node
+    environment:
+      <<: *node_environment
+      ARDENTS_NODE_NAME: a1
+      ARDENTS_TRANSPORT_PORT: 61101
+      ARDENTS_BOOTSTRAP_PEERS: ${ARDENTS_ZONE_A_BOOTSTRAP:?zone A bootstrap endpoints are required}
+    secrets:
+      - source: a1_token
+        target: ardents-api-token
+        mode: 0400
+      - source: wss_ca
+        target: wss-ca
+        mode: 0444
+    volumes:
+      - a1_data:/var/lib/ardents
+    networks:
+      zone_a:
+        ipv4_address: 172.31.10.11
+
+  a2:
+    <<: *node
+    environment:
+      <<: *node_environment
+      ARDENTS_NODE_NAME: a2
+      ARDENTS_TRANSPORT_PORT: 61102
+      ARDENTS_BOOTSTRAP_PEERS: ${ARDENTS_ZONE_A_BOOTSTRAP:?zone A bootstrap endpoints are required}
+    secrets:
+      - source: a2_token
+        target: ardents-api-token
+        mode: 0400
+      - source: wss_ca
+        target: wss-ca
+        mode: 0444
+    volumes:
+      - a2_data:/var/lib/ardents
+    networks:
+      zone_a:
+        ipv4_address: ${ARDENTS_A2_IP:-172.31.10.12}
+
+  b1:
+    <<: *node
+    environment:
+      <<: *node_environment
+      ARDENTS_NODE_NAME: b1
+      ARDENTS_TRANSPORT_PORT: 61201
+      ARDENTS_BOOTSTRAP_PEERS: ${ARDENTS_ZONE_B_BOOTSTRAP:?zone B bootstrap endpoints are required}
+    secrets:
+      - source: b1_token
+        target: ardents-api-token
+        mode: 0400
+      - source: wss_ca
+        target: wss-ca
+        mode: 0444
+    volumes:
+      - b1_data:/var/lib/ardents
+    networks:
+      zone_b:
+        ipv4_address: 172.31.20.11
+
+  b2:
+    <<: *node
+    environment:
+      <<: *node_environment
+      ARDENTS_NODE_NAME: b2
+      ARDENTS_TRANSPORT_PORT: 61202
+      ARDENTS_TRANSPORT_PROFILE: tcp_wss
+      ARDENTS_WSS_PORT: 62443
+      ARDENTS_WSS_CERT_PATH: /run/secrets/wss-cert
+      ARDENTS_WSS_KEY_PATH: /run/ardents/wss-key
+      ARDENTS_WSS_CA_PATH: /run/secrets/wss-ca
+      ARDENTS_WSS_ADVERTISE_ADDRESS: b2
+      ARDENTS_BOOTSTRAP_PEERS: ${ARDENTS_BRIDGE_WSS:?bridge WSS endpoint is required}
+    secrets:
+      - source: b2_token
+        target: ardents-api-token
+        mode: 0400
+      - source: wss_ca
+        target: wss-ca
+        mode: 0444
+      - source: b2_cert
+        target: wss-cert
+        mode: 0444
+      - source: b2_key
+        target: wss-key
+        mode: 0400
+    volumes:
+      - b2_data:/var/lib/ardents
+    networks:
+      zone_b:
+        ipv4_address: 172.31.20.12
+
+  recovery:
+    <<: *node
+    environment:
+      <<: *node_environment
+      ARDENTS_NODE_NAME: recovery
+      ARDENTS_NODE_PROFILE: constrained_light_client
+      ARDENTS_REACHABILITY_MODE: outbound_only
+      ARDENTS_TRANSPORT_PORT: 61301
+      ARDENTS_BOOTSTRAP_PEERS: ${ARDENTS_ZONE_A_BOOTSTRAP:?zone A bootstrap endpoints are required}
+    secrets:
+      - source: recovery_token
+        target: ardents-api-token
+        mode: 0400
+      - source: wss_ca
+        target: wss-ca
+        mode: 0444
+    volumes:
+      - recovery_data:/var/lib/ardents
+    networks:
+      zone_a:
+        ipv4_address: 172.31.10.13
+
+networks:
+  zone_a:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.31.10.0/24
+  zone_b:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.31.20.0/24
+
+volumes:
+  seed_data:
+  bridge_data:
+  a1_data:
+  a2_data:
+  b1_data:
+  b2_data:
+  recovery_data:
+
+secrets:
+  seed_token:
+    file: ${ARDENTS_SEED_TOKEN_FILE:?seed token file is required}
+  bridge_token:
+    file: ${ARDENTS_BRIDGE_TOKEN_FILE:?bridge token file is required}
+  a1_token:
+    file: ${ARDENTS_A1_TOKEN_FILE:?a1 token file is required}
+  a2_token:
+    file: ${ARDENTS_A2_TOKEN_FILE:?a2 token file is required}
+  b1_token:
+    file: ${ARDENTS_B1_TOKEN_FILE:?b1 token file is required}
+  b2_token:
+    file: ${ARDENTS_B2_TOKEN_FILE:?b2 token file is required}
+  recovery_token:
+    file: ${ARDENTS_RECOVERY_TOKEN_FILE:?recovery token file is required}
+  wss_ca:
+    file: ${ARDENTS_WSS_CA_FILE:?WSS CA file is required}
+  bridge_cert:
+    file: ${ARDENTS_BRIDGE_CERT_FILE:?bridge certificate is required}
+  bridge_key:
+    file: ${ARDENTS_BRIDGE_KEY_FILE:?bridge key is required}
+  b2_cert:
+    file: ${ARDENTS_B2_CERT_FILE:?b2 certificate is required}
+  b2_key:
+    file: ${ARDENTS_B2_KEY_FILE:?b2 key is required}

@@ -1,0 +1,297 @@
+//go:build e2e
+
+package workloade2e_test
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net"
+	"net/http"
+	"os"
+	"testing"
+	"time"
+
+	diagapi "ardents/internal/diagnostics/api"
+	discoveryapi "ardents/internal/discovery/api"
+	networkapi "ardents/internal/network/api"
+	runtimeinfra "ardents/internal/runtime/process"
+	workloadapi "ardents/internal/workload/api"
+	"ardents/tests/testkit"
+
+	"github.com/stretchr/testify/require"
+)
+
+func TestWorkloadReadyHelper(t *testing.T) {
+	if os.Getenv("ARDENTS_E2E_READY_HELPER") != "1" {
+		return
+	}
+	generation := os.Getenv("ARDENTS_WORKLOAD_GENERATION")
+	server := &http.Server{Addr: os.Getenv("ARDENTS_E2E_READY_ADDRESS"), Handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("X-Ardents-Generation", generation)
+		w.WriteHeader(http.StatusNoContent)
+	})}
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		os.Exit(2)
+	}
+}
+
+func TestWorkloadHostedServiceLifecycleAcrossNodeRestart(t *testing.T) {
+	scenario := testkit.BeginScenario(t, testkit.Spec{
+		Layer:       testkit.LayerE2E,
+		Domain:      "workload",
+		ScenarioID:  "WKE-001",
+		Suite:       "e2e",
+		Tags:        []string{"integration", "e2e", "workload"},
+		Speed:       "default",
+		Environment: "local",
+	})
+	ctx := context.Background()
+	dir := t.TempDir()
+	cfg := workloadLifecycleConfig(t, dir)
+	var first workloadRuntime
+	var second workloadRuntime
+
+	scenario.Precondition("start node with workload-backed service", func(t *testing.T) {
+		first = testkit.StartNode(t, cfg)
+	})
+
+	scenario.Step("assert running state and initial publication", func(t *testing.T) {
+		assertReadyRunningPublished(t, first, "initial start")
+	})
+
+	scenario.Step("stop node and withdraw publication", func(t *testing.T) {
+		stopAndAssertWithdrawal(t, ctx, first)
+	})
+
+	scenario.Step("restart node from persisted state", func(t *testing.T) {
+		second = testkit.StartNode(t, cfg)
+	})
+
+	scenario.Assert("recovered runtime republishes without stale restart marker", func(t *testing.T) {
+		recovered := assertReadyRunningPublished(t, second, "restart recovery")
+		require.Equal(t, "running", recovered.Observed)
+		require.NotContains(t, recovered.Reason, "restart reconciliation after node restart")
+	})
+}
+
+func TestWorkloadHostedServiceObservedExitWithdrawsPublicationAndDegradesDiagnostics(t *testing.T) {
+	scenario := testkit.BeginScenario(t, testkit.Spec{
+		Layer:       testkit.LayerE2E,
+		Domain:      "workload",
+		ScenarioID:  "WKE-001",
+		Suite:       "e2e",
+		Tags:        []string{"integration", "e2e", "workload"},
+		Speed:       "default",
+		Environment: "local",
+	})
+	cfg := workloadLifecycleConfig(t, t.TempDir())
+	var harness *testkit.RuntimeHarness
+	var n workloadRuntime
+
+	scenario.Precondition("start node with workload-backed service", func(t *testing.T) {
+		harness = testkit.StartRuntime(t, cfg)
+		n = harness.Node
+	})
+
+	scenario.Step("assert running state and publication before observed exit", func(t *testing.T) {
+		assertReadyRunningPublished(t, n, "before observed exit")
+	})
+
+	scenario.Degraded("unexpected workload exit withdraws publication and surfaces degraded diagnostics", func(t *testing.T) {
+		killWorkloadProcess(t, harness, "work.echo")
+
+		item := waitForWorkloadObserved(t, n, "work.echo", "degraded")
+		require.Contains(t, item.Reason, "restart reconciliation")
+		require.Len(t, item.PublishedServices, 1)
+		require.False(t, item.PublishedServices[0].Published)
+		require.NotEmpty(t, item.PublishedServices[0].Reason)
+		diag := n.DiagnosticsSnapshot()
+		current, currentErr := n.GetWorkloadStatus("work.echo")
+		require.Equalf(t, "degraded", diag.Health.State, "workload=%+v current=%+v current_err=%v diagnostics=%+v", item, current, currentErr, diag.Health)
+		require.NotNil(t, diag.Health.PrimaryReason)
+		require.Equal(t, "workload.hosted_service.degraded", diag.Health.PrimaryReason.Code)
+
+		res, err := n.ResolveService("echo")
+		require.NoError(t, err)
+		require.Equal(t, "not_found", res.Outcome)
+		require.Empty(t, res.Matches)
+	})
+
+	scenario.Assert("operator restart proves fresh readiness before republishing", func(t *testing.T) {
+		require.NoError(t, n.RestartWorkload("work.echo"))
+		assertReadyRunningPublished(t, n, "crash recovery")
+	})
+}
+
+func workloadLifecycleConfig(t *testing.T, dir string) runtimeinfra.Config {
+	t.Helper()
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	port := listener.Addr().(*net.TCPAddr).Port
+	require.NoError(t, listener.Close())
+	host := privateContainerIPv4(t)
+	probe := fmt.Sprintf("http://127.0.0.1:%d/ready", port)
+	advertised := fmt.Sprintf("http://%s:%d/ready", host, port)
+	privacy := testkit.NewDiscoveryPrivacyFixture(t, time.Now().UTC().Truncate(time.Second))
+	return runtimeinfra.Config{
+		Name: "workload-e2e", NodeProfile: networkapi.NodeProfileServiceNode,
+		Boot:      runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
+		Transport: runtimeinfra.NodeTransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: networkapi.ReachabilityPrivateLAN},
+		Data:      runtimeinfra.NodeDataConfig{Dir: dir}, Privacy: privacy.Sender,
+		DiscoveryRefreshInterval: 50 * time.Millisecond,
+		Workload: []runtimeinfra.NodeWorkloadConfig{{
+			ID:      "work.echo",
+			Kind:    "service",
+			Owner:   "node",
+			Config:  readyHelperConfig(t, port),
+			Desired: "running",
+			Services: []runtimeinfra.NodeServiceConfig{{
+				ID:        "svc.work.echo",
+				Type:      "echo",
+				Mode:      "NetworkPublished",
+				Endpoints: []string{advertised}, ProbeEndpoints: []string{probe},
+			}},
+		}},
+	}
+}
+
+func readyHelperConfig(t *testing.T, port int) string {
+	t.Helper()
+	executable, err := os.Executable()
+	require.NoError(t, err)
+	raw, err := json.Marshal(map[string]any{
+		"command": executable,
+		"args":    []string{"-test.run=TestWorkloadReadyHelper"},
+		"env": map[string]string{"ARDENTS_E2E_READY_HELPER": "1",
+			"ARDENTS_E2E_READY_ADDRESS": fmt.Sprintf("0.0.0.0:%d", port)},
+	})
+	require.NoError(t, err)
+	return string(raw)
+}
+
+func privateContainerIPv4(t *testing.T) string {
+	t.Helper()
+	addresses, err := net.InterfaceAddrs()
+	require.NoError(t, err)
+	for _, address := range addresses {
+		ip, _, parseErr := net.ParseCIDR(address.String())
+		if parseErr == nil && ip.To4() != nil && ip.IsPrivate() && !ip.IsLoopback() {
+			return ip.String()
+		}
+	}
+	t.Fatal("Linux test container has no private IPv4 address")
+	return ""
+}
+
+func waitForRunningAndPublished(t *testing.T, n workloadRuntime) workloadapi.WorkloadStatusSnapshot {
+	t.Helper()
+	var last workloadapi.WorkloadStatusSnapshot
+	var lastService string
+	testkit.WaitForCondition(t, 10*time.Second, "running workload and published service", func() (bool, string) {
+		items, err := n.ListWorkloads()
+		if err != nil {
+			lastService = err.Error()
+			return false, err.Error()
+		}
+		if len(items) != 1 {
+			lastService = fmt.Sprintf("workloads=%d", len(items))
+			return false, lastService
+		}
+		last = items[0]
+		res, err := n.ResolveService("echo")
+		if err != nil {
+			lastService = err.Error()
+			return false, err.Error()
+		}
+		lastService = fmt.Sprintf("outcome=%q matches=%d", res.Outcome, len(res.Matches))
+		if last.Observed != "running" {
+			return false, fmt.Sprintf("observed=%q", last.Observed)
+		}
+		if len(last.PublishedServices) != 1 || !last.PublishedServices[0].Published {
+			return false, fmt.Sprintf("published_services=%d", len(last.PublishedServices))
+		}
+		if res.Outcome != "usable" && len(res.Matches) == 0 {
+			return false, lastService
+		}
+		return len(res.Matches) == 1, lastService
+	})
+	require.Equalf(t, "running", last.Observed, "service=%s snapshot=%#v", lastService, last)
+	return last
+}
+
+func assertReadyRunningPublished(t *testing.T, n workloadRuntime, stage string) workloadapi.WorkloadStatusSnapshot {
+	t.Helper()
+	item := waitForRunningAndPublished(t, n)
+	require.Len(t, item.PublishedServices[0].Endpoints, 1)
+	client := &http.Client{Timeout: time.Second}
+	response, err := client.Get(item.PublishedServices[0].Endpoints[0])
+	require.NoError(t, err, "%s", stage)
+	require.Equal(t, http.StatusNoContent, response.StatusCode, "%s", stage)
+	require.NoError(t, response.Body.Close())
+	diag := n.DiagnosticsSnapshot()
+	require.Equal(t, "ready", diag.Health.State, "%s", stage)
+	return item
+}
+
+func stopAndAssertWithdrawal(t *testing.T, ctx context.Context, n workloadRuntime) {
+	t.Helper()
+	require.NoError(t, n.Stop(ctx))
+	testkit.WaitForCondition(t, 10*time.Second, "stopped workload after node stop", func() (bool, string) {
+		items, err := n.ListWorkloads()
+		if err != nil {
+			return false, err.Error()
+		}
+		if len(items) != 1 {
+			return false, fmt.Sprintf("workloads=%d", len(items))
+		}
+		return items[0].Observed == "stopped", fmt.Sprintf("observed=%q", items[0].Observed)
+	})
+	testkit.WaitForCondition(t, 10*time.Second, "service withdrawal after node stop", func() (bool, string) {
+		res, err := n.ResolveService("echo")
+		if err != nil {
+			return false, err.Error()
+		}
+		if res.Outcome == "not_found" && len(res.Matches) == 0 {
+			return true, ""
+		}
+		return false, fmt.Sprintf("outcome=%q matches=%d", res.Outcome, len(res.Matches))
+	})
+}
+
+func waitForWorkloadObserved(t *testing.T, n workloadRuntime, workloadID, observed string) workloadapi.WorkloadStatusSnapshot {
+	t.Helper()
+
+	var item workloadapi.WorkloadStatusSnapshot
+	testkit.WaitForCondition(t, 10*time.Second, fmt.Sprintf("%s workload observed=%s", workloadID, observed), func() (bool, string) {
+		current, err := n.GetWorkloadStatus(workloadID)
+		if err != nil {
+			return false, err.Error()
+		}
+		item = current
+		return current.Observed == observed, fmt.Sprintf("observed=%q reason=%q", current.Observed, current.Reason)
+	})
+	return item
+}
+
+func killWorkloadProcess(t *testing.T, harness *testkit.RuntimeHarness, workloadID string) {
+	t.Helper()
+
+	status, ok := testkit.WorkloadStatusForIntegrationTest(harness, workloadID)
+	require.Truef(t, ok, "expected internal status for workload %q", workloadID)
+	pid := status.Instance.PID
+	require.NotZero(t, pid)
+
+	proc, err := os.FindProcess(pid)
+	require.NoError(t, err)
+	require.NoError(t, proc.Kill())
+}
+
+type workloadRuntime interface {
+	Stop(context.Context) error
+	ListWorkloads() ([]workloadapi.WorkloadStatusSnapshot, error)
+	GetWorkloadStatus(string) (workloadapi.WorkloadStatusSnapshot, error)
+	RestartWorkload(string) error
+	ResolveService(string) (discoveryapi.ServiceResult, error)
+	DiagnosticsSnapshot() diagapi.DiagSnapshot
+}

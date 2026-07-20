@@ -1,0 +1,7 @@
+var/
+*.db
+.artifacts/
+.codex-tmp/
+.gocache/
+.idea/
+dist/

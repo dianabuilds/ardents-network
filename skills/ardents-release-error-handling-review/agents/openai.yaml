@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ardents Release Error Handling Review"
+  short_description: "Check error paths and failure handling"
+  default_prompt: "Use -release-error-handling-review to review Ardents error handling, failure propagation, and degraded-path behavior before release."

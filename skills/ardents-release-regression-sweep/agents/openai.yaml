@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ardents Release Regression Sweep"
+  short_description: "Cross-cutting release regression pass"
+  default_prompt: "Use -release-regression-sweep to run a final cross-cutting regression sweep across Ardents before release."

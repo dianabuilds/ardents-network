@@ -1,0 +1,187 @@
+package transfer
+
+import (
+	"context"
+	"crypto/ed25519"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+
+	appdata "ardents/internal/data"
+	dataapi "ardents/internal/data/api"
+	identityapi "ardents/internal/identity/api"
+	networkprivacy "ardents/internal/network/privacy"
+)
+
+func prepareBlobResponseWire(cfg ExchangeConfig, source string, key ed25519.PrivateKey, req blobFetchRequest) ([]byte, error, error) {
+	if req.ResourceKind == "manifest" {
+		return prepareManifestResponseWire(cfg, source, key, req)
+	}
+	if req.ResourceKind != "" && req.ResourceKind != "blob" {
+		return nil, nil, fmt.Errorf("data fetch resource kind is unsupported")
+	}
+	blob, payload, err := prepareBlobResponse(cfg, req)
+	if err != nil {
+		if !shouldReplyWithBlobFetchError(err) {
+			return nil, err, nil
+		}
+		wire, marshalErr := marshalBlobErrorResponse(source, key, req, err)
+		if marshalErr != nil {
+			return nil, nil, marshalErr
+		}
+		return wire, err, nil
+	}
+	wire, err := marshalBlobResponse(source, key, req, blob, payload)
+	if err != nil {
+		return nil, nil, err
+	}
+	return wire, nil, nil
+}
+
+func prepareBlobResponse(cfg ExchangeConfig, req blobFetchRequest) (appdata.Blob, []byte, error) {
+	blob, ok := cfg.Data.GetBlob(req.BlobID)
+	if !ok {
+		return appdata.Blob{}, nil, fmt.Errorf("blob not found")
+	}
+	if blob.Retention == "staging" {
+		return appdata.Blob{}, nil, fmt.Errorf("blob is not committed for serving")
+	}
+	blobView := blobSnapshot(blob)
+	if err := authorizeBlobServing(cfg, req.BlobID, blobView); err != nil {
+		if cfg.PolicyDenied != nil {
+			cfg.PolicyDenied(req.BlobID, "data.blob_re_serve", err)
+		}
+		return appdata.Blob{}, nil, err
+	}
+	if err := authorizeBlobRequester(req, blobView); err != nil {
+		return appdata.Blob{}, nil, err
+	}
+	raw, err := cfg.Data.GetBlobPayload(req.BlobID)
+	if err != nil {
+		return appdata.Blob{}, nil, err
+	}
+	return blob, raw, nil
+}
+
+func authorizeBlobServing(cfg ExchangeConfig, blobID string, blob dataapi.BlobSnapshot) error {
+	if cfg.Data.HasCurrentReplicaCommitment(blobID) {
+		return cfg.Policy.AllowReplicaBlobServing(blob)
+	}
+	return cfg.Policy.AllowPeerBlobReserving(blob)
+}
+
+func decodeBlobRequest(payload []byte) (blobFetchRequest, error) {
+	var req blobFetchRequest
+	if err := json.Unmarshal(payload, &req); err != nil {
+		return blobFetchRequest{}, err
+	}
+	if req.RequestID == "" || req.BlobID == "" || req.Requester == "" {
+		return blobFetchRequest{}, fmt.Errorf("blob request is incomplete")
+	}
+	return req, nil
+}
+
+func publishBlobFetchRequest(ctx context.Context, cfg ExchangeConfig, requestID, blobID, requester string) error {
+	return publishDataFetchRequest(ctx, cfg, requestID, blobID, requester, "")
+}
+
+func publishDataFetchRequest(ctx context.Context, cfg ExchangeConfig, requestID, resourceID, requester, resourceKind string) error {
+	if cfg.Identity == nil || cfg.Private == nil || cfg.PrivateKey == nil {
+		return fmt.Errorf("blob requester dependencies are unavailable")
+	}
+
+	req := blobFetchRequest{
+		RequestID:    requestID,
+		BlobID:       resourceID,
+		ResourceKind: resourceKind,
+		Requester:    requester,
+		PublicKey:    cfg.Identity.NodeSummary().PublicKey,
+	}
+	payload, err := canonicalBlobFetchRequest(req)
+	if err != nil {
+		return err
+	}
+	key := cfg.PrivateKey()
+	if len(key) == 0 {
+		return fmt.Errorf("blob requester signing key is unavailable")
+	}
+	req.Signature = base64.StdEncoding.EncodeToString(ed25519.Sign(key, payload))
+	wire, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+	return cfg.Private.Publish(ctx, networkprivacy.MessageClassBlobFetchRequest, wire)
+}
+
+func authorizeBlobRequester(req blobFetchRequest, blob dataapi.BlobSnapshot) error {
+	if !blob.Encrypted {
+		return fmt.Errorf("plaintext blob re-serve is not allowed")
+	}
+	return verifyBlobRequester(req)
+}
+
+func blobSnapshot(blob appdata.Blob) dataapi.BlobSnapshot {
+	return dataapi.BlobSnapshot{
+		ID:        blob.ID,
+		CID:       blob.CID,
+		MediaType: blob.MediaType,
+		Size:      blob.Size,
+		Hash:      blob.Hash,
+		Cipher:    blob.Cipher,
+		KeyID:     blob.KeyID,
+		State:     blob.State,
+		Retention: blob.Retention,
+		Encrypted: blob.Encrypted,
+		ExpiresAt: blob.ExpiresAt,
+		CreatedAt: blob.CreatedAt,
+	}
+}
+
+func shouldReplyWithBlobFetchError(err error) bool {
+	return err != nil && err.Error() != "blob not found"
+}
+
+func canonicalBlobFetchRequest(req blobFetchRequest) ([]byte, error) {
+	return json.Marshal(struct {
+		RequestID    string `json:"request_id"`
+		BlobID       string `json:"blob_id"`
+		ResourceKind string `json:"resource_kind,omitempty"`
+		Requester    string `json:"requester"`
+		PublicKey    string `json:"public_key"`
+	}{
+		RequestID:    req.RequestID,
+		BlobID:       req.BlobID,
+		ResourceKind: req.ResourceKind,
+		Requester:    req.Requester,
+		PublicKey:    req.PublicKey,
+	})
+}
+
+func verifyBlobRequester(req blobFetchRequest) error {
+	if req.PublicKey == "" || req.Signature == "" {
+		return fmt.Errorf("blob requester identity is incomplete")
+	}
+	expectedRequester, err := identityapi.PrincipalFromPublicKey(req.PublicKey)
+	if err != nil {
+		return fmt.Errorf("blob requester identity is invalid")
+	}
+	if expectedRequester != req.Requester {
+		return fmt.Errorf("blob requester identity does not match principal")
+	}
+	publicKey, err := base64.StdEncoding.DecodeString(req.PublicKey)
+	if err != nil {
+		return fmt.Errorf("blob requester public key is invalid")
+	}
+	signature, err := base64.StdEncoding.DecodeString(req.Signature)
+	if err != nil {
+		return fmt.Errorf("blob requester signature is invalid")
+	}
+	payload, err := canonicalBlobFetchRequest(req)
+	if err != nil {
+		return err
+	}
+	if !ed25519.Verify(publicKey, payload, signature) {
+		return fmt.Errorf("blob requester signature verification failed")
+	}
+	return nil
+}

@@ -1,0 +1,51 @@
+groups:
+  - name: ardents-node
+    rules:
+      - alert: ArdentsNodeNotReady
+        expr: ardents_node_ready == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Ardents node is not ready
+          description: Readiness has remained false for five minutes; inspect canonical Diagnostics health.
+      - alert: ArdentsNodeFailed
+        expr: ardents_node_health{state="failed"} == 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: Ardents node health is failed
+          description: Canonical Diagnostics health has remained failed for one minute.
+      - alert: ArdentsObservabilityCollectionError
+        expr: ardents_collection_errors > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Ardents observability cannot collect a domain snapshot
+          description: A public runtime snapshot has failed collection for five minutes.
+      - alert: ArdentsWorkloadOOMKilled
+        expr: ardents_workload_oom_killed > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: Ardents workload was OOM killed
+          description: At least one workload reports an OOM-killed latest runtime outcome.
+      - alert: ArdentsPendingOperationStalled
+        expr: sum(ardents_pending_operations) > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Ardents operation remains pending
+          description: At least one canonical operation has remained pending for fifteen minutes.
+      - alert: ArdentsNetworkProtectionSpike
+        expr: sum(increase(ardents_network_rejections_total[5m])) > 20
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Ardents network protection rejections increased
+          description: Rate-limit, backpressure, or oversized-message rejections spiked in the last five minutes.
