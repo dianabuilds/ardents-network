@@ -33,7 +33,21 @@ function Get-CandidateIdentity {
     if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($imageID)) {
         throw "candidate image is unavailable: $CandidateImage"
     }
-    return [ordered]@{ commit = $commit; image = $CandidateImage; image_id = $imageID }
+    $labels = (& docker image inspect $CandidateImage --format "{{json .Config.Labels}}") | ConvertFrom-Json
+    if ($LASTEXITCODE -ne 0 -or $labels.'org.opencontainers.image.revision' -ne $commit) {
+        throw "candidate image revision does not match Git commit $commit"
+    }
+    if ([string]::IsNullOrWhiteSpace($labels.'org.opencontainers.image.created') -or
+        $labels.'org.opencontainers.image.created' -eq "unknown") {
+        throw "candidate image build date is unavailable"
+    }
+    return [ordered]@{
+        commit = $commit
+        image = $CandidateImage
+        image_id = $imageID
+        version = $labels.'org.opencontainers.image.version'
+        build_date = $labels.'org.opencontainers.image.created'
+    }
 }
 
 function Write-Event([string]$Kind, [hashtable]$Data = @{}) {

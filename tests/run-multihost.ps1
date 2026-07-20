@@ -49,10 +49,19 @@ function Ensure-TestnetImage {
     $exists = Test-ImageExists $image
     $shouldBuild = $BuildMode -eq "Always" -or ($BuildMode -eq "IfMissing" -and -not $exists)
     if ($shouldBuild) {
+        $version = if ([string]::IsNullOrWhiteSpace($env:ARDENTS_VERSION)) { "dev" } else { $env:ARDENTS_VERSION }
+        $commit = if ([string]::IsNullOrWhiteSpace($env:ARDENTS_COMMIT)) { (& git rev-parse HEAD).Trim() } else { $env:ARDENTS_COMMIT }
+        $buildDate = if ([string]::IsNullOrWhiteSpace($env:ARDENTS_BUILD_DATE)) { [DateTime]::UtcNow.ToString("o") } else { $env:ARDENTS_BUILD_DATE }
+        if ([string]::IsNullOrWhiteSpace($commit)) { throw "cannot resolve testnet image commit" }
         $previousGitInfo = $env:BUILDX_GIT_INFO
         try {
             $env:BUILDX_GIT_INFO = "false"
-            & docker build --build-arg "GO_BUILD_PARALLELISM=$BuildParallelism" -t $image -f $dockerfile $root
+            & docker build `
+                --build-arg "GO_BUILD_PARALLELISM=$BuildParallelism" `
+                --build-arg "ARDENTS_VERSION=$version" `
+                --build-arg "ARDENTS_COMMIT=$commit" `
+                --build-arg "ARDENTS_BUILD_DATE=$buildDate" `
+                -t $image -f $dockerfile $root
             if ($LASTEXITCODE -ne 0) { throw "testnet image build failed: $image" }
         } finally {
             if ($null -eq $previousGitInfo) { Remove-Item Env:BUILDX_GIT_INFO -ErrorAction SilentlyContinue }
