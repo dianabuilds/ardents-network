@@ -3,6 +3,7 @@ package replication
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -15,6 +16,8 @@ import (
 
 const (
 	capacityQueryTimeout  = 3 * time.Second
+	capacityQueryAttempts = 2
+	capacityRetryDelay    = 250 * time.Millisecond
 	maxCapacityCandidates = 16
 	capacityQueryWorkers  = 4
 )
@@ -32,8 +35,8 @@ func (s *Service) PlaceAvailable(ctx context.Context, blobID string, count int, 
 	if !blob.Encrypted {
 		return PlacementOutcome{}, fmt.Errorf("plaintext replica placement is forbidden")
 	}
-	candidates := s.observeCandidates(ctx, blob)
 	excluded := s.existingReplicaPeers(blobID, intentVersion)
+	candidates := s.observeCandidates(ctx, blob, excluded)
 	decision := placement.SelectTargets(placement.SelectionRequest{
 		OwnerNodeID: s.cfg.LocalNodeID, EncryptedSize: blob.Size, Count: count, Now: s.cfg.Now().UTC(),
 		ExcludedNodes: excluded,
@@ -80,17 +83,26 @@ func (s *Service) existingReplicaPeers(blobID string, intentVersion uint64) map[
 	return excluded
 }
 
-func (s *Service) observeCandidates(ctx context.Context, blob appdata.Blob) []placement.Candidate {
+func (s *Service) observeCandidates(ctx context.Context, blob appdata.Blob, excluded map[string]bool) []placement.Candidate {
 	targets := s.candidateTargets()
-	jobs := make(chan string, len(targets))
+	pending := make([]string, 0, len(targets))
+	candidates := make([]placement.Candidate, 0, len(targets))
 	results := make(chan placement.Candidate, len(targets))
 	for _, target := range targets {
+		if excluded[target] {
+			candidates = append(candidates, placement.Candidate{NodeID: target})
+			continue
+		}
+		pending = append(pending, target)
+	}
+	jobs := make(chan string, len(pending))
+	for _, target := range pending {
 		jobs <- target
 	}
 	close(jobs)
 	workers := capacityQueryWorkers
-	if len(targets) < workers {
-		workers = len(targets)
+	if len(pending) < workers {
+		workers = len(pending)
 	}
 	var group sync.WaitGroup
 	group.Add(workers)
@@ -104,7 +116,6 @@ func (s *Service) observeCandidates(ctx context.Context, blob appdata.Blob) []pl
 	}
 	group.Wait()
 	close(results)
-	candidates := make([]placement.Candidate, 0, len(targets))
 	for candidate := range results {
 		candidates = append(candidates, candidate)
 	}
@@ -141,7 +152,7 @@ func (s *Service) observeCandidate(ctx context.Context, target string, blob appd
 	if !candidate.Trusted || !candidate.Usable || !candidate.PolicyAllowed {
 		return candidate
 	}
-	observation, err := s.queryCapacity(ctx, target, blob)
+	observation, err := s.queryCapacityWithRetry(ctx, target, blob)
 	if err != nil {
 		candidate.DenialReason = placement.ReasonObservation
 		return candidate
@@ -151,6 +162,34 @@ func (s *Service) observeCandidate(ctx context.Context, target string, blob appd
 	candidate.CapacityBytes = observation.Capacity.FreeBytes
 	candidate.ObservedAt = observation.Capacity.ObservedAt
 	return candidate
+}
+
+func (s *Service) queryCapacityWithRetry(ctx context.Context, target string, blob appdata.Blob) (capacityObservation, error) {
+	return retryCapacityQuery(ctx, func(attemptCtx context.Context) (capacityObservation, error) {
+		return s.queryCapacity(attemptCtx, target, blob)
+	})
+}
+
+func retryCapacityQuery(ctx context.Context, query func(context.Context) (capacityObservation, error)) (capacityObservation, error) {
+	var lastErr error
+	for attempt := 0; attempt < capacityQueryAttempts; attempt++ {
+		observation, err := query(ctx)
+		if err == nil {
+			return observation, nil
+		}
+		lastErr = err
+		if attempt+1 == capacityQueryAttempts {
+			break
+		}
+		timer := time.NewTimer(capacityRetryDelay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return capacityObservation{}, errors.Join(lastErr, ctx.Err())
+		case <-timer.C:
+		}
+	}
+	return capacityObservation{}, lastErr
 }
 
 type capacityObservation struct {

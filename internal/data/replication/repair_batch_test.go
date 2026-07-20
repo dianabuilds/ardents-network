@@ -1,6 +1,8 @@
 package replication
 
 import (
+	"context"
+	"errors"
 	"testing"
 
 	appdata "ardents/internal/data"
@@ -8,6 +10,31 @@ import (
 
 	"github.com/stretchr/testify/require"
 )
+
+func TestCapacityObservationRetriesOneTransientFailure(t *testing.T) {
+	attempts := 0
+	got, err := retryCapacityQuery(t.Context(), func(context.Context) (capacityObservation, error) {
+		attempts++
+		if attempts == 1 {
+			return capacityObservation{}, errors.New("transient Waku response loss")
+		}
+		return capacityObservation{Capacity: placement.Capacity{NodeID: "peer-ready"}}, nil
+	})
+	require.NoError(t, err)
+	require.Equal(t, 2, attempts)
+	require.Equal(t, "peer-ready", got.Capacity.NodeID)
+}
+
+func TestRepairRetriesOnlyTransientPlacementFailures(t *testing.T) {
+	require.True(t, retryablePlacementFailure([]placement.Denial{
+		{Reason: placement.ReasonExisting}, {Reason: placement.ReasonObservation},
+	}))
+	require.True(t, retryablePlacementFailure([]placement.Denial{{Reason: reasonReplicaControlRejected}}))
+	require.False(t, retryablePlacementFailure([]placement.Denial{{Reason: placement.ReasonQuota}}))
+	require.False(t, retryablePlacementFailure([]placement.Denial{
+		{Reason: placement.ReasonObservation}, {Reason: placement.ReasonPolicy},
+	}))
+}
 
 func TestBatchDueRepairsSerializesOneBlobIntentAndPreservesCrossBlobParallelism(t *testing.T) {
 	batches := batchDueRepairs([]appdata.RepairRecord{

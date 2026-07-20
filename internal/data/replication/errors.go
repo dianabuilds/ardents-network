@@ -5,6 +5,8 @@ import (
 	"strings"
 )
 
+const reasonReplicaControlRejected = "replica_control_rejected"
+
 var ErrDependencies = errors.New("replica control dependencies are unavailable")
 
 func safeReason(err error) string {
@@ -31,6 +33,6 @@ func safeReason(err error) string {
 	case strings.Contains(err.Error(), "unsupported") || strings.Contains(err.Error(), "requires chunking"):
 		return "transfer_unsupported"
 	default:
-		return "replica_control_rejected"
+		return reasonReplicaControlRejected
 	}
 }

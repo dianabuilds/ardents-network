@@ -156,7 +156,10 @@ func (s *Service) runDueRepairs(ctx context.Context, repairs []appdata.RepairRec
 func (s *Service) runRepair(ctx context.Context, repair appdata.RepairRecord, failures chan<- error) {
 	attemptCtx, cancel := context.WithTimeout(ctx, s.cfg.RepairAttemptTimeout)
 	defer cancel()
-	_, err := s.PlaceAvailable(attemptCtx, repair.BlobID, 1, repair.IntentVersion)
+	outcome, err := s.PlaceAvailable(attemptCtx, repair.BlobID, 1, repair.IntentVersion)
+	if err != nil && retryablePlacementFailure(outcome.Decision.Denials) && waitPlacementRetry(attemptCtx) {
+		_, err = s.PlaceAvailable(attemptCtx, repair.BlobID, 1, repair.IntentVersion)
+	}
 	if err == nil {
 		if s.cfg.Diagnostics != nil {
 			s.cfg.Diagnostics.RecordEvent("data", "replica_repaired", repair.ID, "replica repair committed", "", map[string]any{
@@ -170,6 +173,31 @@ func (s *Service) runRepair(ctx context.Context, repair appdata.RepairRecord, fa
 		err = errors.Join(err, recordErr)
 	}
 	failures <- fmt.Errorf("repair %s: %w", repair.ID, err)
+}
+
+func retryablePlacementFailure(denials []placement.Denial) bool {
+	transient := false
+	for _, denial := range denials {
+		switch denial.Reason {
+		case placement.ReasonExisting:
+		case placement.ReasonObservation, reasonReplicaControlRejected:
+			transient = true
+		default:
+			return false
+		}
+	}
+	return transient
+}
+
+func waitPlacementRetry(ctx context.Context) bool {
+	timer := time.NewTimer(capacityRetryDelay)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return false
+	case <-timer.C:
+		return true
+	}
 }
 
 func (s *Service) recordReconcileFailure(err error) {

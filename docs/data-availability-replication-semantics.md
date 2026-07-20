@@ -113,7 +113,11 @@ These scores choose among eligible peers only; they cannot override admission.
 For initial `v1` placement, the owner enumerates at most sixteen current node
 records in deterministic identity order and requests a target-signed capacity
 observation over `BLOB_REPLICA_CONTROL`. At most four queries run concurrently;
-each query is bounded to three seconds.
+each round trip is bounded to three seconds. Peers already represented by a
+commitment for the same Blob and intent are excluded before network I/O. A
+transient missing response from an otherwise eligible peer receives one bounded
+retry within the caller's placement/repair deadline; rejection and invalid
+responses are never retried as availability.
 The response binds the operation and target identity and reports free, reserved,
 and committed bytes at the target's observed time. Selection requires headroom
 of the greater of 64 KiB or five percent of the encrypted Blob size. Missing,
@@ -286,6 +290,13 @@ Repair is idempotent per `(intent version, Blob CID, missing ordinal)`, uses
 bounded concurrency and exponential backoff with jitter, and persists its state
 across daemon restart. It MUST NOT create more simultaneous reservations than
 the desired count plus one replacement candidate per missing Blob.
+
+One persisted repair attempt may perform one additional placement cycle when
+the first cycle contains only transient missing-response or generic control
+exchange failures. The retry remains inside the same attempt deadline and does
+not apply to quota, policy, capability, trust, integrity, lease, or explicit
+unsupported denials. A failed bounded cycle is recorded once before normal
+persisted backoff.
 
 Missing ordinals for the same Blob and intent are scheduled sequentially so a
 successful commitment is visible before the next ordinal selects a target.
