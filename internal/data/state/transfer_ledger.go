@@ -31,6 +31,10 @@ func (s *TransferLedger) Put(item model.TransferRecord) {
 	s.Items[item.ID] = item
 }
 
+func (s *TransferLedger) Delete(id string) {
+	delete(s.Items, id)
+}
+
 func (s *TransferLedger) Count() int {
 	return len(s.Items)
 }

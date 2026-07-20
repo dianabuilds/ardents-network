@@ -182,6 +182,8 @@ Unit:
 - object catalog rules;
 - manifest/blob consistency;
 - transfer transitions;
+- duplicate transfer IDs are rejected and a failed durable transition restores
+  the previously observable transfer state;
 - retention decisions.
 
 Integration:

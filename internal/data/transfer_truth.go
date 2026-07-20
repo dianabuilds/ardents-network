@@ -1,6 +1,8 @@
 package data
 
 import (
+	"fmt"
+
 	dataapi "ardents/internal/data/api"
 	lifecyclepkg "ardents/internal/data/transfer/lifecycle"
 )
@@ -9,9 +11,20 @@ func (s *Service) StartTransfer(record TransferRecord) (TransferRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	if record.ID != "" {
+		if _, exists := s.transfers.Get(record.ID); exists {
+			return TransferRecord{}, fmt.Errorf("transfer %s already exists", record.ID)
+		}
+	}
+	previousState := s.state
 	record = lifecyclepkg.Start(&s.transfers, record)
 	s.state = "ready"
-	return record, s.saveLocked()
+	if err := s.saveLocked(); err != nil {
+		s.transfers.Delete(record.ID)
+		s.state = previousState
+		return TransferRecord{}, err
+	}
+	return record, nil
 }
 
 func (s *Service) CompleteTransfer(id, peer string, totalBytes int64, reason string) (TransferRecord, error) {
@@ -25,11 +38,19 @@ func (s *Service) FailTransfer(id, peer, reason string) (TransferRecord, error) 
 func (s *Service) UpdateTransferProgress(id string, progressBytes, totalBytes int64, reason string) (TransferRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	previous, ok := s.transfers.Get(id)
+	if !ok {
+		return TransferRecord{}, fmt.Errorf("transfer not found")
+	}
 	item, err := lifecyclepkg.Update(&s.transfers, id, progressBytes, totalBytes, reason)
 	if err != nil {
 		return TransferRecord{}, err
 	}
-	return item, s.saveLocked()
+	if err := s.saveLocked(); err != nil {
+		s.transfers.Put(previous)
+		return TransferRecord{}, err
+	}
+	return item, nil
 }
 
 func (s *Service) GetTransfer(id string) (TransferRecord, bool) {
@@ -65,10 +86,20 @@ func (s *Service) finishTransfer(id, state, peer string, totalBytes int64, reaso
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	previous, ok := s.transfers.Get(id)
+	if !ok {
+		return TransferRecord{}, fmt.Errorf("transfer not found")
+	}
+	previousState := s.state
 	item, err := lifecyclepkg.Finish(&s.transfers, id, state, peer, totalBytes, reason)
 	if err != nil {
 		return TransferRecord{}, err
 	}
 	s.state = "ready"
-	return item, s.saveLocked()
+	if err := s.saveLocked(); err != nil {
+		s.transfers.Put(previous)
+		s.state = previousState
+		return TransferRecord{}, err
+	}
+	return item, nil
 }
