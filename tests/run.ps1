@@ -20,8 +20,16 @@ function Convert-ToContainerPath {
     if (-not $Path) { return "" }
     if (-not [IO.Path]::IsPathRooted($Path)) { return $Path.Replace("\", "/") }
     $full = [IO.Path]::GetFullPath($Path)
-    $relative = [IO.Path]::GetRelativePath($Root, $full)
-    if ($relative.StartsWith("..")) { throw "container report path must remain inside the repository: $Path" }
+    $rootFull = [IO.Path]::GetFullPath($Root).TrimEnd(
+        [IO.Path]::DirectorySeparatorChar,
+        [IO.Path]::AltDirectorySeparatorChar
+    )
+    if ($full.Equals($rootFull, [StringComparison]::OrdinalIgnoreCase)) { return "." }
+    $rootPrefix = $rootFull + [IO.Path]::DirectorySeparatorChar
+    if (-not $full.StartsWith($rootPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "container report path must remain inside the repository: $Path"
+    }
+    $relative = $full.Substring($rootPrefix.Length)
     return $relative.Replace("\", "/")
 }
 
