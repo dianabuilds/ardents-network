@@ -12,9 +12,10 @@ import (
 )
 
 type recordingApplier struct {
-	active    Document
-	failApply bool
-	rollbacks int
+	active       Document
+	failApply    bool
+	failRollback bool
+	rollbacks    int
 }
 
 func (a *recordingApplier) Prepare(context.Context, Document, Document) error { return nil }
@@ -29,6 +30,9 @@ func (a *recordingApplier) Apply(_ context.Context, _ Document, next Document) e
 
 func (a *recordingApplier) Rollback(_ context.Context, previous Document) error {
 	a.rollbacks++
+	if a.failRollback {
+		return errors.New("rollback failed")
+	}
 	a.active = previous
 	return nil
 }
@@ -195,6 +199,24 @@ func TestManagerRollsBackWhenAnyApplierFails(t *testing.T) {
 	require.Equal(t, OutcomeRolledBack, result.Outcome)
 	require.False(t, first.active.Policy.DisableServicePublication)
 	require.Equal(t, 1, first.rollbacks)
+	require.Equal(t, uint64(1), result.ActiveGeneration)
+}
+
+func TestManagerReportsRollbackFailureWithoutClaimingRestoration(t *testing.T) {
+	doc := Defaults()
+	path := writeDocument(t, doc)
+	first := &recordingApplier{active: doc, failRollback: true}
+	second := &recordingApplier{active: doc, failApply: true}
+	manager, err := NewManager(path, doc, first, second)
+	require.NoError(t, err)
+
+	doc.Policy.DisableServicePublication = true
+	writeDocumentAt(t, path, doc)
+	result := manager.Reload(context.Background())
+
+	require.Equal(t, OutcomeRollbackFailed, result.Outcome)
+	require.Contains(t, result.Reason, "rollback applier 0")
+	require.True(t, first.active.Policy.DisableServicePublication)
 	require.Equal(t, uint64(1), result.ActiveGeneration)
 }
 

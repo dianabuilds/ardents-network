@@ -14,6 +14,7 @@ const (
 	OutcomeRejectedInvalid   Outcome = "rejected_invalid"
 	OutcomeRejectedImmutable Outcome = "rejected_immutable"
 	OutcomeRolledBack        Outcome = "rolled_back"
+	OutcomeRollbackFailed    Outcome = "rollback_failed"
 )
 
 type Applier interface {

@@ -2,9 +2,15 @@ package config
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 )
+
+type rollbackFailure struct{ err error }
+
+func (e rollbackFailure) Error() string { return e.err.Error() }
+func (e rollbackFailure) Unwrap() error { return e.err }
 
 func (m *Manager) Reload(ctx context.Context) ReloadResult {
 	m.mu.Lock()
@@ -30,12 +36,9 @@ func (m *Manager) Reload(ctx context.Context) ReloadResult {
 	}
 	next := applyReloadableChanges(m.active, candidate)
 	if len(reloadable) > 0 {
-		if err := m.applyTransaction(ctx, next); err != nil {
-			return m.recordResult(ReloadResult{Outcome: OutcomeRolledBack, Reason: safeReason(err)})
+		if result, failed := m.commitReloadable(ctx, next); failed {
+			return m.recordResult(result)
 		}
-		m.active = next
-		m.activeGeneration++
-		m.loadedAt = nowUTC()
 	}
 	m.candidate = candidate
 	m.candidateGeneration++
@@ -45,6 +48,21 @@ func (m *Manager) Reload(ctx context.Context) ReloadResult {
 		outcome = OutcomeRestartRequired
 	}
 	return m.recordResult(ReloadResult{Outcome: outcome, RestartRequired: restart})
+}
+
+func (m *Manager) commitReloadable(ctx context.Context, next Document) (ReloadResult, bool) {
+	if err := m.applyTransaction(ctx, next); err != nil {
+		outcome := OutcomeRolledBack
+		var failed rollbackFailure
+		if errors.As(err, &failed) {
+			outcome = OutcomeRollbackFailed
+		}
+		return ReloadResult{Outcome: outcome, Reason: safeReason(err)}, true
+	}
+	m.active = next
+	m.activeGeneration++
+	m.loadedAt = nowUTC()
+	return ReloadResult{}, false
 }
 
 func (m *Manager) loadCandidate() (Document, error) {
@@ -75,18 +93,25 @@ func (m *Manager) applyTransaction(ctx context.Context, next Document) error {
 	applied := 0
 	for index, applier := range m.appliers {
 		if err := applier.Apply(ctx, m.active, next); err != nil {
-			m.rollback(ctx, applied)
-			return fmt.Errorf("apply applier %d: %w", index, err)
+			applyErr := fmt.Errorf("apply applier %d: %w", index, err)
+			if rollbackErr := m.rollback(ctx, applied); rollbackErr != nil {
+				return rollbackFailure{err: errors.Join(applyErr, rollbackErr)}
+			}
+			return applyErr
 		}
 		applied++
 	}
 	return nil
 }
 
-func (m *Manager) rollback(ctx context.Context, count int) {
+func (m *Manager) rollback(ctx context.Context, count int) error {
+	var failures []error
 	for index := count - 1; index >= 0; index-- {
-		_ = m.appliers[index].Rollback(ctx, m.active)
+		if err := m.appliers[index].Rollback(ctx, m.active); err != nil {
+			failures = append(failures, fmt.Errorf("rollback applier %d: %w", index, err))
+		}
 	}
+	return errors.Join(failures...)
 }
 
 func (m *Manager) recordResult(result ReloadResult) ReloadResult {

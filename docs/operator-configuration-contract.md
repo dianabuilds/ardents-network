@@ -199,8 +199,12 @@ Reload follows one transaction:
 9. publish a redacted diagnostic outcome.
 
 Outcomes are `unchanged`, `applied`, `restart_required`,
-`rejected_invalid`, `rejected_immutable`, or `rolled_back`. Reload is
-idempotent for the same normalized fingerprint.
+`rejected_invalid`, `rejected_immutable`, `rolled_back`, or
+`rollback_failed`. `rolled_back` is valid only when every already-applied owner
+confirmed restoration. `rollback_failed` means the runtime may contain a mixed
+effective generation; the node becomes degraded, records an operator-action
+reason, and must not claim the previous generation as operationally restored.
+Reload is idempotent for the same normalized fingerprint.
 
 ## 9. Startup And Failure Truth
 
@@ -208,8 +212,11 @@ idempotent for the same normalized fingerprint.
   starting the node and before opening the local API listener.
 - An invalid document is a process startup failure, not a degraded partially
   started node.
-- A failed live reload does not degrade already-correct running behavior; its
-  diagnostic record explains the rejected candidate.
+- A rejected or fully rolled-back live reload does not degrade already-correct
+  running behavior; its diagnostic record explains the rejected candidate.
+- A failed rollback degrades the node with
+  `config.reload.rollback_failed`; operator recovery or restart is required
+  because in-memory owners may no longer agree on one effective generation.
 - A valid candidate with restart-required changes is visible but never claimed
   as active.
 
@@ -223,6 +230,8 @@ The contract is complete only when tests prove:
 - effective inspection is deterministic and redacted;
 - reload success changes behavior through owning services;
 - invalid and mid-commit failures preserve the previous behavior/generation;
+- rollback failure is distinct from successful rollback and degrades runtime
+  truth instead of claiming restoration;
 - immutable and restart-required changes produce distinct outcomes;
 - restart activates a previously restart-required valid document;
 - Docker integration covers the daemon and canonical local control surface.
