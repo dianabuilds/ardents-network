@@ -990,10 +990,10 @@ Transition gate: `passed` on 2026-07-20; evidence in
 - clean installation and multi-node formation work from release artifacts;
 - CI runs canonical repository gates on the supported platform matrix.
 
-## Phase 7. Adversarial QA, Soak, And Final Release Acceptance
+## Phase 7. Adversarial QA And Stabilization Acceptance
 
 Goal: pressure the complete system, convert weaknesses into regression coverage,
-and prove the final release candidate against every mandatory property.
+and make the candidate ready for the separate pre-release qualification run.
 
 ### `completed` STB-701 — Complete Scenario And Invariant Coverage Audit
 
@@ -1062,22 +1062,26 @@ and prove the final release candidate against every mandatory property.
   - threshold breaches fail the test or mark diagnostics degraded.
 - Evidence: `docs/process/v1-stabilization-hardening/stb-704-evidence.md`.
 
-### `in_progress` STB-705 — Run Multi-Day Release Candidate Soak
+### `completed` STB-705 — Prepare And Smoke-Validate The Bounded Soak Gate
 
 - Owner: repository release process.
 - Dependencies: `STB-702`, `STB-704`.
 - Work:
-  - run the release candidate on the reproducible multi-host topology;
-  - include node restarts, address changes, workload/service lifecycle, encrypted
-    replication/fetch/repair, privacy capture, and controlled network faults;
-  - retain complete versions, topology, metrics, diagnostics, failures, resource
-    trends, and repair outcomes;
-  - restart the soak after any release-blocking code change.
+  - provide a bounded, resumable, fail-fast driver for the reproducible
+    multi-host topology and cross-domain scenarios;
+  - freeze and verify the candidate commit, image ID, build date, and OCI
+    revision before execution;
+  - retain versions, topology, metrics, diagnostics, failures, resource trends,
+    and repair outcomes in machine-readable artifacts;
+  - smoke-validate process exit handling, teardown, resource guards, and the
+    first cross-domain checkpoint without blocking stabilization work for days.
 - Checks:
-  - no unexplained crash, data loss, plaintext leakage, stale publication,
-    unrecovered partition, or unbounded resource trend remains;
-  - every degraded interval has an explained cause and recovery/terminal outcome.
-- Evidence: `pending`.
+  - the 48-hour plan validates before launch and every child operation has a
+    hard timeout and exact Docker cleanup scope;
+  - representative multi-host, encrypted fetch/repair, and workload lifecycle
+    scenarios pass through the driver;
+  - interruption leaves no child process or container behind.
+- Evidence: `docs/process/v1-stabilization-hardening/stb-705-evidence.md`.
 
 ### `pending` STB-706 — Execute Release Review Sequence
 
@@ -1112,8 +1116,16 @@ and prove the final release candidate against every mandatory property.
 Transition gate:
 
 - every Phase 7 task is `done`;
-- no release-blocking mutation, chaos, performance, soak, review, vulnerability,
+- no release-blocking mutation, chaos, performance, review, vulnerability,
   error-handling, regression, or acceptance finding remains.
+
+### Pre-release qualification outside this stabilization loop
+
+Publishing a release still requires an uninterrupted 48-hour execution of the
+STB-705 gate against the exact release commit and image. Any release-blocking
+code change restarts that clock. This qualification is deliberately not a
+blocking task in the current stabilization/refactoring goal; STB-707 may only
+declare the candidate ready for qualification, not publicly releasable.
 
 ## Canonical Verification Matrix
 

@@ -201,3 +201,29 @@ Every entry must contain:
   `STB-402`, then enforce the complete admission and resource posture in
   `STB-403`.
 - `Status`: `accepted`
+
+### DEC-STB-008
+
+- `Date`: 2026-07-20
+- `Domain / Scope`: Phase 7 release process and stabilization-loop exit criteria
+- `Stage`: Phase 7 / `STB-705`
+- `Situation`: the bounded soak driver was ready, but making an uninterrupted
+  48-hour qualification run part of the active stabilization goal prevented the
+  remaining release reviews and refactoring from progressing. Two early runs
+  correctly exposed Windows orchestration defects before product scenarios.
+- `Options Considered`: keep the development loop blocked for two days; claim a
+  partial run as a completed soak; remove soak entirely; or separate tooling and
+  smoke acceptance from the later immutable-candidate qualification.
+- `Decision`: close STB-705 when the bounded driver, provenance checks,
+  fail-fast behavior, cleanup, and representative cross-domain execution are
+  verified. Require the uninterrupted 48-hour run as a separate pre-release
+  qualification after refactoring and final candidate freeze.
+- `Reason`: long-duration evidence is meaningful only for an immutable final
+  candidate. Running it before release review and refactoring wastes the clock,
+  while treating a partial run as success would falsify evidence.
+- `Impact`: STB-706 begins immediately. STB-707 can declare readiness for
+  qualification, but no public release decision is valid until the separate
+  48-hour gate passes.
+- `Follow-up`: preserve failed/aborted artifacts, complete review and
+  refactoring, then run SOAK-001 once against the frozen release candidate.
+- `Status`: `accepted`
