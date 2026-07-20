@@ -82,6 +82,12 @@ function Assert-NoChildResources([int]$ChildPID) {
     }
 }
 
+function ConvertTo-ProcessArgument([string]$Value) {
+    if ($Value.Contains('"')) { throw "process argument contains an unsupported quote" }
+    if ($Value -notmatch '\s') { return $Value }
+    return '"' + $Value + '"'
+}
+
 function Invoke-BoundedScript {
     param(
         [string]$Name,
@@ -96,27 +102,43 @@ function Invoke-BoundedScript {
     $argumentList = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $Script) + $Arguments
     $started = [DateTime]::UtcNow
     Write-Event "command_started" @{ name = $Name; timeout_seconds = $TimeoutSeconds; log_dir = $LogDir }
-    $process = Start-Process -FilePath $powershell -ArgumentList $argumentList -WindowStyle Hidden `
-        -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
+    $startInfo = [Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = $powershell
+    $startInfo.Arguments = (($argumentList | ForEach-Object { ConvertTo-ProcessArgument $_ }) -join " ")
+    $startInfo.UseShellExecute = $false
+    $startInfo.CreateNoWindow = $true
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $process = [Diagnostics.Process]::new()
+    $process.StartInfo = $startInfo
+    if (-not $process.Start()) { throw "cannot start bounded child process: $Name" }
+    $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+    $stderrTask = $process.StandardError.ReadToEndAsync()
     $finished = $process.WaitForExit($TimeoutSeconds * 1000)
     if (-not $finished) {
-        Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+        $process.Kill()
+        $process.WaitForExit()
+        [IO.File]::WriteAllText($stdout, $stdoutTask.Result, [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllText($stderr, $stderrTask.Result, [Text.UTF8Encoding]::new($false))
         Remove-TimedOutResources $process.Id
         Write-Event "command_timeout" @{ name = $Name; pid = $process.Id; elapsed_seconds = [math]::Round(([DateTime]::UtcNow - $started).TotalSeconds, 1) }
         throw "$Name exceeded its $TimeoutSeconds second deadline"
     }
     $process.WaitForExit()
+    [IO.File]::WriteAllText($stdout, $stdoutTask.Result, [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText($stderr, $stderrTask.Result, [Text.UTF8Encoding]::new($false))
+    $exitCode = $process.ExitCode
     Assert-NoChildResources $process.Id
     $result = [ordered]@{
         name = $Name
         started_at = $started.ToString("o")
         ended_at = [DateTime]::UtcNow.ToString("o")
-        exit_code = $process.ExitCode
+        exit_code = $exitCode
         stdout = $stdout
         stderr = $stderr
     }
-    Write-Event "command_finished" @{ name = $Name; exit_code = $process.ExitCode }
-    if ($process.ExitCode -ne 0) { throw "$Name failed with exit code $($process.ExitCode); see $stderr" }
+    Write-Event "command_finished" @{ name = $Name; exit_code = $exitCode }
+    if ($exitCode -ne 0) { throw "$Name failed with exit code $exitCode; see $stderr" }
     return $result
 }
 
