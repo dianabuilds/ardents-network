@@ -11,15 +11,16 @@ x-production-node: &production_node
       install -m 0600 /run/secrets/docker-ca /run/ardents/docker-tls/ca.pem
       install -m 0600 /run/secrets/docker-cert /run/ardents/docker-tls/cert.pem
       install -m 0600 /run/secrets/docker-key /run/ardents/docker-tls/key.pem
-      exec /usr/local/bin/ardd
+      exec /usr/local/bin/ardentsd
   environment:
     ARDENTS_CONFIG_FILE: /run/config/ardents.json
     ARDENTS_API_TOKEN_FILE: /run/ardents/api-token
+    ARDENTS_WORKLOAD_EXECUTOR: docker
     DOCKER_HOST: ${ARDENTS_DOCKER_HOST:?TLS Docker workload endpoint is required}
     DOCKER_TLS_VERIFY: "1"
     DOCKER_CERT_PATH: /run/ardents/docker-tls
   healthcheck:
-    test: ["CMD", "ard", "--token-file", "/run/ardents/api-token", "node", "status"]
+    test: ["CMD", "ardentsctl", "--token-file", "/run/ardents/api-token", "node", "status"]
     interval: 10s
     timeout: 3s
     retries: 12

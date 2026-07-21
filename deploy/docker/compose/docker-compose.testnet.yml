@@ -1,8 +1,8 @@
 x-node: &node
-  image: ${ARDENTS_TESTNET_IMAGE:-ardents/ardd-testnet:dev}
+  image: ${ARDENTS_TESTNET_IMAGE:-ardents/node-testnet:dev}
   build:
     context: ../../..
-    dockerfile: deploy/docker/images/ardd.Dockerfile
+    dockerfile: deploy/docker/images/node.Dockerfile
   entrypoint: ["/bin/sh", "-lc"]
   command:
     - |
@@ -13,7 +13,7 @@ x-node: &node
       fi
       cp /run/secrets/wss-ca /usr/local/share/ca-certificates/ardents-test-ca.crt
       update-ca-certificates >/dev/null
-      exec /usr/local/bin/ardd
+      exec /usr/local/bin/ardentsd
   environment: &node_environment
     ARDENTS_API_TOKEN_FILE: /run/ardents/api-token
     ARDENTS_ADDR: 127.0.0.1:8080
@@ -22,12 +22,13 @@ x-node: &node
     ARDENTS_TRANSPORT_BIND_ADDRESS: 0.0.0.0
     ARDENTS_NODE_PROFILE: service_node
     ARDENTS_REACHABILITY_MODE: private_lan
+    ARDENTS_WORKLOAD_EXECUTOR: docker
     DOCKER_HOST: unix:///run/ardents/workload-engine/docker.sock
   depends_on:
     workload-engine:
       condition: service_healthy
   healthcheck:
-    test: ["CMD", "ard", "--token-file", "/run/ardents/api-token", "node", "status"]
+    test: ["CMD", "ardentsctl", "--token-file", "/run/ardents/api-token", "node", "status"]
     interval: 2s
     timeout: 2s
     retries: 30

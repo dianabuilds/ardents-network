@@ -19,7 +19,7 @@ $secretPath = Join-Path ([IO.Path]::GetTempPath()) "$project-secrets"
 New-Item -ItemType Directory -Force -Path $reportPath | Out-Null
 New-Item -ItemType Directory -Force -Path $secretPath | Out-Null
 $composeFile = Join-Path $root "deploy/docker/compose/docker-compose.testnet.yml"
-$dockerfile = Join-Path $root "deploy/docker/images/ardd.Dockerfile"
+$dockerfile = Join-Path $root "deploy/docker/images/node.Dockerfile"
 $composePrefix = @("compose", "-p", $project, "-f", $composeFile)
 $services = @("seed", "bridge", "a1", "a2", "b1", "b2", "recovery")
 $results = [Collections.Generic.List[object]]::new()
@@ -45,7 +45,7 @@ function Test-ImageExists([string]$Image) {
 }
 
 function Ensure-TestnetImage {
-    $image = if ([string]::IsNullOrWhiteSpace($env:ARDENTS_TESTNET_IMAGE)) { "ardents/ardd-testnet:dev" } else { $env:ARDENTS_TESTNET_IMAGE }
+    $image = if ([string]::IsNullOrWhiteSpace($env:ARDENTS_TESTNET_IMAGE)) { "ardents/node-testnet:dev" } else { $env:ARDENTS_TESTNET_IMAGE }
     $exists = Test-ImageExists $image
     $shouldBuild = $BuildMode -eq "Always" -or ($BuildMode -eq "IfMissing" -and -not $exists)
     if ($shouldBuild) {
@@ -112,8 +112,8 @@ function New-TestCertificate([string]$Name, [string[]]$Names) {
 }
 
 function Invoke-ArdJson([string]$Service, [string[]]$CommandArgs) {
-    $raw = & docker @composePrefix exec -T $Service ard --token-file /run/secrets/ardents-api-token --output json @CommandArgs
-    if ($LASTEXITCODE -ne 0) { throw "ard command failed for $Service" }
+    $raw = & docker @composePrefix exec -T $Service ardentsctl --token-file /run/secrets/ardents-api-token --output json @CommandArgs
+    if ($LASTEXITCODE -ne 0) { throw "ardentsctl command failed for $Service" }
     return (($raw -join "`n") | ConvertFrom-Json)
 }
 
@@ -384,7 +384,7 @@ try {
         $versions = [ordered]@{
             docker = (& docker version --format "{{.Server.Version}}")
             compose = (& docker compose version --short)
-            image_build = (& docker @composePrefix exec -T bridge ardd --version)
+            image_build = (& docker @composePrefix exec -T bridge ardentsd --version)
             project = $project
         }
         $versions | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $reportPath "versions.json")

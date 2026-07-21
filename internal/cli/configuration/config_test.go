@@ -87,3 +87,41 @@ func TestConfigResolveRequiresToken(t *testing.T) {
 		t.Fatal("Resolve() error = nil, want missing token")
 	}
 }
+
+func TestConfigResolveAcceptsUnixSocket(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.ContextFile = filepath.Join(t.TempDir(), "missing.json")
+	cfg.Addr = "unix:///run/ardents/control.sock"
+	cfg.Token = "token"
+	if err := cfg.Resolve(); err != nil {
+		t.Fatalf("Resolve() error = %v", err)
+	}
+	if cfg.Addr != "unix:///run/ardents/control.sock" {
+		t.Fatalf("Addr = %q", cfg.Addr)
+	}
+}
+
+func TestConfigResolveAcceptsSSHToLoopbackAPI(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.ContextFile = filepath.Join(t.TempDir(), "missing.json")
+	cfg.Addr = "127.0.0.1:8080"
+	cfg.SSH = "ops@node.example"
+	cfg.Token = "token"
+	if err := cfg.Resolve(); err != nil {
+		t.Fatalf("Resolve() error = %v", err)
+	}
+	if cfg.Addr != "http://127.0.0.1:8080" {
+		t.Fatalf("Addr = %q", cfg.Addr)
+	}
+}
+
+func TestConfigResolveRejectsSSHToRemoteAPIAddress(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.ContextFile = filepath.Join(t.TempDir(), "missing.json")
+	cfg.Addr = "http://api.example:8080"
+	cfg.SSH = "ops@node.example"
+	cfg.Token = "token"
+	if err := cfg.Resolve(); err == nil {
+		t.Fatal("Resolve() error = nil, want remote API rejection")
+	}
+}

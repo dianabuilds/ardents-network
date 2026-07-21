@@ -1,8 +1,8 @@
 x-node: &node
-  image: ${ARDENTS_DOCKER_IMAGE:-ardents/ardd-local:dev}
+  image: ${ARDENTS_DOCKER_IMAGE:-ardents/node-local:dev}
   build:
     context: ../../..
-    dockerfile: deploy/docker/images/ardd.Dockerfile
+    dockerfile: deploy/docker/images/node.Dockerfile
   entrypoint: ["/bin/sh", "-ec"]
   command:
     - |
@@ -11,13 +11,14 @@ x-node: &node
       install -m 0600 /var/lib/ardents-secrets/capability-store.key /run/ardents/capability-store.key
       install -m 0600 /var/lib/ardents-secrets/replay.key /run/ardents/replay.key
       install -m 0600 /var/lib/ardents-secrets/operator.json /run/ardents/operator.json
-      exec /usr/local/bin/ardd
+      exec /usr/local/bin/ardentsd
   environment: &node_environment
     ARDENTS_API_TOKEN_FILE: /run/ardents/api-token
     ARDENTS_CONFIG_FILE: /run/ardents/operator.json
+    ARDENTS_WORKLOAD_EXECUTOR: docker
     DOCKER_HOST: unix:///run/ardents/workload-engine/docker.sock
   healthcheck:
-    test: ["CMD", "ard", "--token-file", "/run/ardents/api-token", "node", "status"]
+    test: ["CMD", "ardentsctl", "--token-file", "/run/ardents/api-token", "node", "status"]
     interval: 2s
     timeout: 2s
     retries: 30
@@ -28,12 +29,12 @@ x-node: &node
 
 services:
   realm-provisioner:
-    image: ${ARDENTS_DOCKER_IMAGE:-ardents/ardd-local:dev}
+    image: ${ARDENTS_DOCKER_IMAGE:-ardents/node-local:dev}
     build:
       context: ../../..
-      dockerfile: deploy/docker/images/ardd.Dockerfile
+      dockerfile: deploy/docker/images/node.Dockerfile
     profiles: ["provisioning"]
-    entrypoint: ["/usr/local/bin/ardd", "provision"]
+    entrypoint: ["/usr/local/bin/ardentsd", "init"]
     network_mode: none
     read_only: true
     cap_drop: ["ALL"]

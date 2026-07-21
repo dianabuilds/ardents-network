@@ -6,7 +6,7 @@ param(
     [string]$ReportDir = "tests/.artifacts/deployment",
     [string]$Project = "ardents-ci",
     [string]$StateDir = "tests/.artifacts/runtime/ci",
-    [string]$Image = "ardents/ardd-local:ci",
+    [string]$Image = "ardents/node-local:ci",
     [ValidateRange(10, 300)]
     [int]$TimeoutSeconds = 120,
     [switch]$Build

@@ -46,7 +46,55 @@ Start with:
 - [persistent state and key security](docs/security/persistent-state-security.md)
 - [deployment contract](docs/operations/deployment-contract.md)
 
-## Safe Local Quick Start
+## Distribution Model
+
+The public release contains two executables:
+
+- `ardentsd` is the self-contained node daemon; `ardentsd init` initializes a
+  local node, its protected state, operator configuration, and API credential;
+- `ardentsctl` is the local operator client and can be installed independently
+  on an administrator workstation.
+
+Docker is an optional delivery and workload-execution adapter. A node starts
+without Docker by default because `workloads.executor` defaults to `disabled`.
+Set it explicitly to `docker` only where the node is allowed to control a
+Docker Engine, or to `trusted-process` for the restricted local-development
+profile. `ardents-ingress-proxy` is an internal, optional adapter used only for
+isolated hosted-service ingress; it is not required to start or operate a node.
+
+For a native Linux node, extract the release archive and run the included
+installer. It creates the `ardents` service account, protected state, a systemd
+unit, and the initial operator credential:
+
+```sh
+sudo ./scripts/install/linux.sh install \
+  --node-name node-1 --transport-port 61001
+sudo ardentsctl --addr unix:///var/lib/ardents/secrets/control.sock \
+  --token-file /var/lib/ardents/secrets/api-token node status
+```
+
+Use `--bootstrap-peer` during first installation when the node must join an
+existing endpoint. Re-running `install` replaces the binaries atomically and
+preserves configuration, identity, API credential, and retained data. See the
+[native Linux installation contract](docs/operations/native-linux-installation.md)
+for upgrade and uninstall behavior.
+
+From an administrator workstation with a scoped node credential and OpenSSH
+key/agent access, connect without exposing the control API:
+
+```sh
+ardentsctl --ssh ops@node.example \
+  --ssh-port 22 \
+  --ssh-identity ~/.ssh/id_ed25519 \
+  --ssh-known-hosts ~/.ssh/known_hosts \
+  --token-file ~/.config/ardents/node-1.token \
+  --node-name node-1 node status
+```
+
+The SSH transport uses the remote node's loopback API and normal OpenSSH host
+key verification. It requires non-interactive key or agent authentication.
+
+## Docker Local Quick Start
 
 Requirements: a supported host from [the platform matrix](docs/product/supported-platforms.md),
 Docker Engine, Docker Compose v2, and PowerShell 7 for the lifecycle command.
@@ -86,11 +134,11 @@ Inside a node container, use its private runtime token:
 
 ```powershell
 docker compose -p ardents-local -f deploy/docker/compose/docker-compose.multinode.yml exec seed `
-  ard --token-file /run/ardents/api-token node status
+  ardentsctl --token-file /run/ardents/api-token node status
 ```
 
 Useful groups are `node`, `network`, `diagnostics`, `config`, `workload`, and
-`data`. `ard version` prints the build identity without connecting to a node.
+`data`. `ardentsctl version` prints the build identity without connecting to a node.
 Use `--output json` for automation and explicit `--node-name`, `--principal`,
 and scoped contexts where operator identity must be pinned.
 
@@ -109,8 +157,10 @@ waits.
 
 ## Current Limitations
 
-- supported deployment is single-host Docker Compose; Kubernetes and multi-host
-  schedulers have no `v1` support contract;
+- single-host Docker Compose is the supported deployment shape; the native
+  systemd installer is a qualification candidate pending old-to-new upgrade,
+  rollback, and backup/restore acceptance evidence;
+- Kubernetes and multi-host schedulers do not have a `v1` support contract;
 - remote operator API exposure is unsupported;
 - private capability issuance is an external realm-authority operation;
 - QUIC, WebTransport, and WebRTC are suppressed in supported profiles;

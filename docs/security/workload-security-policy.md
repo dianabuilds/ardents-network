@@ -16,7 +16,7 @@ The Docker endpoint is part of the control-plane trust boundary. Local
 `unix`/`npipe` endpoints are accepted. TCP endpoints require TLS verification
 and an explicit client certificate path. Plaintext TCP is available only to the
 isolated Docker-in-Docker test fixture through an internal test-only constructor
-option and is not exposed by `ardd` configuration.
+option and is not exposed by `ardentsd` configuration.
 
 ## Closed Workload Configuration
 
@@ -58,7 +58,7 @@ The isolated Docker integration fixture explicitly enables the trusted tier
 because Docker-in-Docker does not provide gVisor. This is test environment
 truth, not a product fallback.
 
-`ardd` reads the operator boundary from:
+`ardentsd` reads the operator boundary from:
 
 - `ARDENTS_WORKLOAD_ALLOWED_REGISTRIES`;
 - `ARDENTS_WORKLOAD_ALLOWED_POLICY_REFS`;

@@ -38,14 +38,14 @@ func (a *Command) Run(ctx context.Context, args []string) int {
 	case "events":
 		return a.nodeEvents(ctx, args[1:])
 	default:
-		output.Writef(a.ctx.Renderer.Err, "ard node: unknown subcommand %q\n", args[0])
+		output.Writef(a.ctx.Renderer.Err, "ardentsctl node: unknown subcommand %q\n", args[0])
 		renderNodeUsage(a.ctx.Renderer.Err)
 		return 2
 	}
 }
 
 func renderNodeUsage(writer io.Writer) {
-	output.Writeln(writer, "Usage: ard [global flags] node <start|stop|status|runtime|capabilities|events>")
+	output.Writeln(writer, "Usage: ardentsctl [global flags] node <start|stop|status|runtime|capabilities|events>")
 }
 
 func (a *Command) nodeStart(ctx context.Context) int {

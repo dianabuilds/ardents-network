@@ -34,56 +34,67 @@ type OperatorSurface interface {
 
 type OperatorSurfaceFactory func(Owners, string) (OperatorSurface, error)
 
-func Run(localAPI LocalAPIHandlerFactory, operatorSurface OperatorSurfaceFactory) {
+func Run(localAPI LocalAPIHandlerFactory, operatorSurface OperatorSurfaceFactory) error {
 	if len(os.Args) == 2 && (os.Args[1] == "version" || os.Args[1] == "--version") {
 		encoded, err := json.Marshal(buildinfo.Current())
 		if err != nil {
 			_, _ = fmt.Fprintln(os.Stderr, "encode build info")
-			return
+			return fmt.Errorf("encode build info: %w", err)
 		}
 		_, _ = fmt.Println(string(encoded))
-		return
+		return nil
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	cfg, err := loadRuntimeConfig()
 	if err != nil {
-		log.Fatalf("load runtime config: %v", err)
+		return fmt.Errorf("load runtime config: %w", err)
 	}
 
 	process := NewOwners(cfg.Node)
 	n := process.Node
 
 	if err := n.Start(ctx); err != nil {
-		log.Fatalf("start node: %v", err)
+		return fmt.Errorf("start node: %w", err)
 	}
 	defer stopNode(n)
 
 	if operatorSurface == nil {
-		log.Printf("configure observability: operator surface factory is required")
-		return
+		return fmt.Errorf("configure observability: operator surface factory is required")
 	}
 	surface, err := operatorSurface(process, cfg.ObservabilityToken)
 	if err != nil {
-		log.Printf("configure observability: %v", err)
-		return
+		return fmt.Errorf("configure observability: %w", err)
 	}
 	server, path, err := newServer(process, cfg, surface, localAPI)
 	if err != nil {
-		log.Printf("configure server: %v", err)
-		return
+		return fmt.Errorf("configure server: %w", err)
 	}
 	observabilityServer := newHTTPServer(cfg.ObservabilityAddr, surface.Handler())
-	go shutdownServerOnContext(ctx, server)
-	go shutdownServerOnContext(ctx, observabilityServer)
-
-	slog.Info("ardd listening", "addr", server.Addr, "path", path)
-	slog.Info("ardd observability listening", "addr", observabilityServer.Addr)
-	if err := serveUntilFailure(server, observabilityServer); err != nil {
-		log.Printf("serve daemon: %v", err)
-		stop()
+	targets := []serveTarget{{serve: server.ListenAndServe}}
+	servers := []*http.Server{server, observabilityServer}
+	if cfg.SocketPath != "" {
+		socketServer, socketListener, socketErr := newUnixHTTPServer(cfg.SocketPath, server.Handler)
+		if socketErr != nil {
+			return fmt.Errorf("configure local API socket: %w", socketErr)
+		}
+		servers = append(servers, socketServer)
+		targets = append(targets, serveTarget{serve: func() error { return socketServer.Serve(socketListener) }})
+		slog.Info("ardentsd local control socket ready", "path", cfg.SocketPath)
 	}
+	targets = append(targets, serveTarget{serve: observabilityServer.ListenAndServe})
+	for _, current := range servers {
+		go shutdownServerOnContext(ctx, current)
+	}
+
+	slog.Info("ardentsd listening", "addr", server.Addr, "path", path)
+	slog.Info("ardentsd observability listening", "addr", observabilityServer.Addr)
+	if err := serveUntilFailure(targets...); err != nil {
+		stop()
+		return fmt.Errorf("serve daemon: %w", err)
+	}
+	return nil
 }
 
 func stopNode(n *Node) {
@@ -105,16 +116,20 @@ func newServer(process Owners, cfg runtimeConfig, surface OperatorSurface, local
 	return newHTTPServer(cfg.ListenAddr, mux), path, nil
 }
 
-func serveUntilFailure(servers ...*http.Server) error {
-	errorsChannel := make(chan error, len(servers))
-	for _, server := range servers {
-		go func(current *http.Server) {
-			err := current.ListenAndServe()
+type serveTarget struct {
+	serve func() error
+}
+
+func serveUntilFailure(targets ...serveTarget) error {
+	errorsChannel := make(chan error, len(targets))
+	for _, target := range targets {
+		go func(current serveTarget) {
+			err := current.serve()
 			if errors.Is(err, http.ErrServerClosed) {
 				err = nil
 			}
 			errorsChannel <- err
-		}(server)
+		}(target)
 	}
 	return <-errorsChannel
 }

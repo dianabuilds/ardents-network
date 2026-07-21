@@ -1,22 +1,29 @@
 package provision
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"flag"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	apppolicy "ardents/internal/policy"
+	"ardents/internal/storage"
 )
 
 type options struct {
-	authorityDir  string
-	nodeDir       string
-	secretDir     string
-	nodeName      string
-	bootstrapPeer string
-	transportPort int
+	authorityDir     string
+	nodeDir          string
+	secretDir        string
+	nodeName         string
+	bootstrapPeer    string
+	transportPort    int
+	runtimeDataDir   string
+	runtimeSecretDir string
 }
 
 func Run(args []string, stdout io.Writer) error {
@@ -39,15 +46,18 @@ func run(args []string, stdout io.Writer, clock func() time.Time) error {
 		return err
 	}
 	document := operatorDocument(configured, provisioned)
+	if err := ensureAPIToken(configured.secretDir); err != nil {
+		return err
+	}
 	if err := writeOperatorDocument(configured.secretDir, document); err != nil {
 		return err
 	}
-	_, err = fmt.Fprintf(stdout, "local-realm-node=provisioned node=%s\n", configured.nodeName)
+	_, err = fmt.Fprintf(stdout, "node=initialized name=%s config=%s\n", configured.nodeName, filepath.Join(configured.secretDir, "operator.json"))
 	return err
 }
 
 func parseOptions(args []string) (options, error) {
-	set := flag.NewFlagSet("ardd provision", flag.ContinueOnError)
+	set := flag.NewFlagSet("ardentsd init", flag.ContinueOnError)
 	set.SetOutput(io.Discard)
 	var configured options
 	set.StringVar(&configured.authorityDir, "authority-dir", "", "protected local realm authority directory")
@@ -56,6 +66,8 @@ func parseOptions(args []string) (options, error) {
 	set.StringVar(&configured.nodeName, "node-name", "", "canonical node name")
 	set.StringVar(&configured.bootstrapPeer, "bootstrap-peer", "", "validated Waku bootstrap multiaddr")
 	set.IntVar(&configured.transportPort, "transport-port", 0, "Waku TCP listen port")
+	set.StringVar(&configured.runtimeDataDir, "runtime-data-dir", "", "node data path visible to ardentsd")
+	set.StringVar(&configured.runtimeSecretDir, "runtime-secret-dir", "", "node secret path visible to ardentsd")
 	if err := set.Parse(args); err != nil {
 		return options{}, fmt.Errorf("invalid provisioning arguments")
 	}
@@ -64,5 +76,36 @@ func parseOptions(args []string) (options, error) {
 		strings.TrimSpace(configured.nodeName) == "" || configured.transportPort < 1 || configured.transportPort > 65535 {
 		return options{}, fmt.Errorf("authority-dir, node-dir, secret-dir, node-name, and transport-port are required")
 	}
+	if strings.TrimSpace(configured.runtimeDataDir) == "" {
+		configured.runtimeDataDir = configured.nodeDir
+	}
+	if strings.TrimSpace(configured.runtimeSecretDir) == "" {
+		configured.runtimeSecretDir = configured.secretDir
+	}
 	return configured, nil
+}
+
+func ensureAPIToken(secretDir string) error {
+	path := filepath.Join(secretDir, "api-token")
+	if info, err := os.Lstat(path); err == nil {
+		if !info.Mode().IsRegular() || info.Mode().Perm()&0o077 != 0 {
+			return fmt.Errorf("existing api token permissions are invalid")
+		}
+		raw, err := os.ReadFile(path)
+		if err != nil || strings.TrimSpace(string(raw)) == "" {
+			return fmt.Errorf("existing api token is unreadable or empty")
+		}
+		return nil
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("inspect api token: %w", err)
+	}
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		return fmt.Errorf("generate api token: %w", err)
+	}
+	token := []byte(base64.RawURLEncoding.EncodeToString(raw))
+	if err := storage.AtomicWritePrivateFile(path, token); err != nil {
+		return fmt.Errorf("write api token: %w", err)
+	}
+	return nil
 }

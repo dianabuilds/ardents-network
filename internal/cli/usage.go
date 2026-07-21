@@ -19,7 +19,7 @@ var groupDescriptions = map[string]string{
 }
 
 func renderRootUsage(w io.Writer) {
-	output.Writeln(w, "Usage: ard [global flags] <command> [subcommand]")
+	output.Writeln(w, "Usage: ardentsctl [global flags] <command> [subcommand]")
 	output.Writeln(w)
 	output.Writeln(w, "Commands:")
 	for _, name := range []string{"node", "network", "workload", "data", "diagnostics", "config", "shell", "tui", "version"} {
@@ -29,6 +29,10 @@ func renderRootUsage(w io.Writer) {
 	output.Writeln(w, "Global flags:")
 	for _, line := range []string{
 		"  --addr         local API address",
+		"  --ssh          OpenSSH target for secure remote access",
+		"  --ssh-port     OpenSSH server port (default 22)",
+		"  --ssh-identity OpenSSH private key path",
+		"  --ssh-known-hosts OpenSSH known_hosts path",
 		"  --token        bearer token override",
 		"  --token-file   path to bearer token file",
 		"  --context      named operator context",
@@ -46,6 +50,6 @@ func renderRootUsage(w io.Writer) {
 }
 
 func renderGroupUsage(w io.Writer, group string) {
-	output.Writef(w, "Usage: ard [global flags] %s <subcommand>\n", group)
+	output.Writef(w, "Usage: ardentsctl [global flags] %s <subcommand>\n", group)
 	output.Writeln(w, groupDescriptions[group])
 }

@@ -192,10 +192,11 @@ func OperatorFile() string { return strings.TrimSpace(os.Getenv(OperatorFileEnv)
 
 func LegacyEnvironment() (Document, string, error) {
 	doc := Defaults()
-	doc.Node.Name = envOr("ARDENTS_NODE_NAME", "ardd")
+	doc.Node.Name = envOr("ARDENTS_NODE_NAME", "ardentsd")
 	doc.Node.DataDir = envOr("ARDENTS_DATA_DIR", filepath.Join("var", doc.Node.Name))
 	doc.Node.Profile = envOr("ARDENTS_NODE_PROFILE", doc.Node.Profile)
 	doc.API.ListenAddress = envOr("ARDENTS_ADDR", doc.API.ListenAddress)
+	doc.API.SocketPath = envOr("ARDENTS_API_SOCKET", doc.API.SocketPath)
 	doc.Network.StorePath = envOr("ARDENTS_WAKU_STORE_PATH", filepath.Join(doc.Node.DataDir, "waku-store.db"))
 	doc.Network.BindAddress = envOr("ARDENTS_TRANSPORT_BIND_ADDRESS", doc.Network.BindAddress)
 	doc.Network.BootstrapPeers = envList("ARDENTS_BOOTSTRAP_PEERS")

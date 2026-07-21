@@ -25,7 +25,7 @@ design decisions; they are not a claim about the current working tree:
 - one generated ConnectRPC service exposes 48 unrelated operations;
 - `runtime/process.NodeRuntime` exposes more than 60 methods and is supplied as
   eight different dependencies to the RPC server;
-- construction passes through `cmd/ardd`, `internal/app`,
+- construction passes through `cmd/ardentsd`, `internal/app`,
   `runtime/process`, `runtime/orchestration`, and `runtime/assembly`;
 - `runtime/process` directly imports 26 internal packages;
 - `control/projection` directly imports 24 internal packages;
@@ -105,9 +105,9 @@ api/
     diagnostics.proto
 
 cmd/
-  ard/
+  ardentsctl/
     main.go
-  ardd/
+  ardentsd/
     main.go
   ardents-ingress-proxy/
     main.go
@@ -454,7 +454,7 @@ Additional rules:
 ### 7.1 Startup And Shutdown
 
 ```text
-cmd/ardd
+cmd/ardentsd
   -> daemon
      -> config: resolve and validate
      -> storage: open durable stores
@@ -485,7 +485,7 @@ chain. `daemon` owns process sequencing; each module owns its own recovery.
 ### 7.2 CLI And Local Control
 
 ```text
-cmd/ard
+cmd/ardentsctl
   -> cli/<command family>
   -> cli/client
   -> one localapi protocol service
@@ -829,7 +829,7 @@ Completed structural replacements:
   packages and the shallow `lifecycle` wrapper were deleted. Durable key
   access moved from the vague `continuity` name to `keyring`; node identity
   creation/restoration now sits behind the root `identity.Service` seam.
-  Local-realm provisioning lives behind the explicit `ardd provision` mode and
+  Local-realm provisioning lives behind the explicit `ardentsd init` mode and
   composes identity and capability through `internal/provision`, avoiding both
   a reverse import cycle, a false reusable identity subdomain, and a separate
   deployment binary.
@@ -879,7 +879,7 @@ Completed structural replacements:
   diagnostics owner.
 - removed the duplicate `Daemon` facade, which only copied the same owner
   pointers and exposed trivial getters. `daemon.Owners` is now the single
-  process composition value consumed by `Run`, `cmd/ardd`, local API assembly
+  process composition value consumed by `Run`, `cmd/ardentsd`, local API assembly
   and observability assembly; construction no longer advertises an impossible
   error result.
 - moved local content mutation rules into `content.Commands`: process guards,
@@ -961,7 +961,7 @@ Completed structural replacements:
   ownership and its non-responsibilities, making the source tree itself the
   first navigation surface.
 - inverted process-surface construction. `daemon` exposes neutral local API and
-  operator-surface hooks; `cmd/ardd` selects the localapi and observability
+  operator-surface hooks; `cmd/ardentsd` selects the localapi and observability
   adapters. This removed the former daemon-to-adapter imports and allowed the
   process aggregate snapshot to return to daemon instead of making diagnostics
   depend on content, discovery, identity, network and workload.

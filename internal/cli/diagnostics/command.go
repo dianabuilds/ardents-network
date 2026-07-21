@@ -36,7 +36,7 @@ func (a *Command) Run(ctx context.Context, args []string) int {
 	case "events":
 		return a.diagnosticsEvents(ctx, args[1:])
 	default:
-		output.Writef(a.ctx.Renderer.Err, "ard diagnostics: unknown subcommand %q\n", args[0])
+		output.Writef(a.ctx.Renderer.Err, "ardentsctl diagnostics: unknown subcommand %q\n", args[0])
 		renderDiagnosticsUsage(a.ctx.Renderer.Err)
 		return 2
 	}
@@ -221,7 +221,7 @@ func (a *Command) diagnosticsEvents(ctx context.Context, args []string) int {
 }
 
 func renderDiagnosticsUsage(writer io.Writer) {
-	output.Writeln(writer, "Usage: ard [global flags] diagnostics <snapshot|health|pending|explain|events>")
+	output.Writeln(writer, "Usage: ardentsctl [global flags] diagnostics <snapshot|health|pending|explain|events>")
 }
 
 func requireValue(name, value string) error {

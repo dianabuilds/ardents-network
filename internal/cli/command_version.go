@@ -18,7 +18,7 @@ func renderVersion(w io.Writer, outputMode string) int {
 		output.Writeln(w, string(encoded))
 		return 0
 	}
-	output.Writef(w, "ard %s (%s) %s/%s built %s with %s\n",
+	output.Writef(w, "ardentsctl %s (%s) %s/%s built %s with %s\n",
 		info.Version, info.Commit, info.OS, info.Arch, info.BuildDate, info.GoVersion)
 	return 0
 }

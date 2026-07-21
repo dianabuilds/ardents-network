@@ -22,7 +22,7 @@ func (a *Shell) Run(ctx context.Context, args []string) int {
 	a.printShellBanner()
 	scanner := bufio.NewScanner(a.ctx.Input)
 	for {
-		if _, err := fmt.Fprint(a.ctx.Renderer.Out, "ard> "); err != nil {
+		if _, err := fmt.Fprint(a.ctx.Renderer.Out, "ardents> "); err != nil {
 			return a.ctx.Failure(err)
 		}
 		line, done, err := scanShellLine(scanner)
@@ -52,7 +52,7 @@ func (a *Shell) Run(ctx context.Context, args []string) int {
 }
 
 func renderShellUsage(writer io.Writer) {
-	output.Writeln(writer, "Usage: ard [global flags] shell")
+	output.Writeln(writer, "Usage: ardentsctl [global flags] shell")
 }
 
 func (a *Shell) validateShellStart(args []string) (int, bool) {
@@ -61,7 +61,7 @@ func (a *Shell) validateShellStart(args []string) (int, bool) {
 			renderShellUsage(a.ctx.Renderer.Out)
 			return 0, true
 		}
-		output.Writef(a.ctx.Renderer.Err, "ard shell: unknown argument %q\n", args[0])
+		output.Writef(a.ctx.Renderer.Err, "ardentsctl shell: unknown argument %q\n", args[0])
 		renderShellUsage(a.ctx.Renderer.Err)
 		return 2, true
 	}

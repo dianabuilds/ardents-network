@@ -28,6 +28,7 @@ type NodeConfig struct {
 
 type APIConfig struct {
 	ListenAddress       string   `json:"listen_address"`
+	SocketPath          string   `json:"socket_path,omitempty"`
 	TokenFile           string   `json:"token_file"`
 	OperatorSubject     string   `json:"operator_subject"`
 	Capabilities        []string `json:"capabilities"`

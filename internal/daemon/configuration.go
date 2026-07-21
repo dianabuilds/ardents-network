@@ -28,6 +28,7 @@ import (
 
 type runtimeConfig struct {
 	ListenAddr         string
+	SocketPath         string
 	ObservabilityAddr  string
 	ObservabilityToken string
 	APIToken           string
@@ -410,7 +411,7 @@ func runtimeConfigFromDocument(doc runtimeconfig.Document, token string) (runtim
 		return runtimeConfig{}, err
 	}
 	cfg := runtimeConfig{
-		ListenAddr: doc.API.ListenAddress, ObservabilityAddr: doc.Observability.ListenAddress,
+		ListenAddr: doc.API.ListenAddress, SocketPath: doc.API.SocketPath, ObservabilityAddr: doc.Observability.ListenAddress,
 		ObservabilityToken: observabilityToken,
 		APIToken:           token,
 		APISubject:         credential.SubjectID, APICapabilities: credential.Capabilities, APICredentialEnd: credential.ExpiresAt,
@@ -479,16 +480,22 @@ func parseCredentialExpiry(raw string) (time.Time, error) {
 }
 
 func operatorWorkloadExecutor(doc runtimeconfig.Document) (workloadcontroller.Executor, error) {
-	if doc.Workloads.Executor == "trusted-process" {
+	switch doc.Workloads.Executor {
+	case "disabled":
+		return workloadcontroller.NewDisabledExecutor(), nil
+	case "trusted-process":
 		return workloadcontroller.NewLocalExecutor(), nil
+	case "docker":
+		return workloaddocker.NewExecutor(workloaddocker.ExecutorConfig{
+			NodeID: doc.Node.Name, AllowedRegistries: cloneStrings(doc.Workloads.AllowedRegistries),
+			AllowedPolicyRefs: cloneStrings(operatorAllowedPolicyRefs(doc)),
+			TrustedRuntime:    doc.Workloads.TrustedRuntime, UntrustedRuntime: doc.Workloads.UntrustedRuntime,
+			AllowedIngressHosts: cloneStrings(doc.Workloads.AllowedIngressHosts),
+			IngressBindAddress:  doc.Workloads.IngressBindAddress, IngressProxyImage: doc.Workloads.IngressProxyImage,
+		})
+	default:
+		return nil, fmt.Errorf("unsupported workload executor %q", doc.Workloads.Executor)
 	}
-	return workloaddocker.NewExecutor(workloaddocker.ExecutorConfig{
-		NodeID: doc.Node.Name, AllowedRegistries: cloneStrings(doc.Workloads.AllowedRegistries),
-		AllowedPolicyRefs: cloneStrings(operatorAllowedPolicyRefs(doc)),
-		TrustedRuntime:    doc.Workloads.TrustedRuntime, UntrustedRuntime: doc.Workloads.UntrustedRuntime,
-		AllowedIngressHosts: cloneStrings(doc.Workloads.AllowedIngressHosts),
-		IngressBindAddress:  doc.Workloads.IngressBindAddress, IngressProxyImage: doc.Workloads.IngressProxyImage,
-	})
 }
 
 func operatorAllowedPolicyRefs(doc runtimeconfig.Document) []string {

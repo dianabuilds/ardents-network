@@ -2,10 +2,10 @@
 
 ## Routine Checks
 
-- `ard node status`: lifecycle, Identity, subsystem, and Diagnostics truth;
-- `ard network status`: joined/reachability/privacy/profile truth;
+- `ardentsctl node status`: lifecycle, Identity, subsystem, and Diagnostics truth;
+- `ardentsctl network status`: joined/reachability/privacy/profile truth;
 - `/readyz` and bounded Prometheus alerts: fleet-level readiness;
-- `ard diagnostics pending` and `explain`: incomplete or degraded operations.
+- `ardentsctl diagnostics pending` and `explain`: incomplete or degraded operations.
 
 Never infer readiness solely from a running container or open TCP port.
 

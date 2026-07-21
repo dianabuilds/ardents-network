@@ -2,7 +2,7 @@
 
 ## Release Identity
 
-Use only a release artifact whose `ard version` or `ardd --version` matches the
+Use only a release artifact whose `ardentsctl version` or `ardentsd --version` matches the
 version, commit, build date, OS, and architecture in its provenance statement.
 Verify `SHA256SUMS` before installation and retain the previous immutable image
 digest until rollback acceptance.

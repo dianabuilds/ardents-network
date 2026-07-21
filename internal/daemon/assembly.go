@@ -333,7 +333,7 @@ func normalizeNode(name, dir string) (string, string) {
 func buildCore(cfg coreConfig) coreServices {
 	executor := cfg.WorkloadExecutor
 	if executor == nil {
-		executor = execution.NewLocalExecutor()
+		executor = execution.NewDisabledExecutor()
 	}
 	contentStore := content.NewInDirWithConfig(cfg.DataDir, cfg.Data)
 	return coreServices{

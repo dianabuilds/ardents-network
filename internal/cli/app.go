@@ -41,6 +41,10 @@ func newApp(cfg configurationcmd.Config, stdin io.Reader, stdout, stderr io.Writ
 		stdin: stdin,
 		client: client.New(client.Config{
 			BaseURL:           cfg.Addr,
+			SSH:               cfg.SSH,
+			SSHPort:           cfg.SSHPort,
+			SSHIdentity:       cfg.SSHIdentity,
+			SSHKnownHosts:     cfg.SSHKnownHosts,
 			Token:             cfg.Token,
 			Timeout:           cfg.Timeout,
 			ExpectedNode:      cfg.ExpectedNode,

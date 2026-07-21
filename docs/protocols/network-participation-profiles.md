@@ -20,7 +20,7 @@ that protocol.
 
 | Node profile | Startup selection | Transport profiles | Current product status |
 |---|---|---|---|
-| `service_node` | selectable; explicit default at the `ardd` boundary | `tcp_only`, `tcp_wss` | implemented full-node shape with explicit TCP-only and operator-provisioned WSS paths |
+| `service_node` | selectable; explicit default at the `ardentsd` boundary | `tcp_only`, `tcp_wss` | implemented full-node shape with explicit TCP-only and operator-provisioned WSS paths |
 | `local_development` | selectable; safe default for embedded/generic runtime construction | `tcp_only` | implemented with loopback binding; no public reachability claim |
 | `constrained_light_client` | selectable | `tcp_only` | implemented outbound-only Filter/Lightpush client with Store recovery; no local Relay, Store server, or Filter server |
 | `restricted_defense` | never selectable | inherits the running transport | automatic runtime mode; full nodes rebuild as Relay-only and recover by rebuilding the steady provider shape |
@@ -98,7 +98,7 @@ and browser inbound participation are not currently supported or advertised.
 ## 6. Configuration Contract
 
 The local runtime validates the normalized node profile and transport profile
-before invoking the lifecycle command. The `ardd` loader performs the same
+before invoking the lifecycle command. The `ardentsd` loader performs the same
 validation before constructing or starting a node.
 
 Stable startup errors explain only the invalid profile or combination. Invalid

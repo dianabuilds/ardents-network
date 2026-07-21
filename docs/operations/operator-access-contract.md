@@ -13,6 +13,24 @@ This boundary reuses the canonical Identity `SubjectRef`, `CallContext`, and
 authorization decision types. Product policy remains owned by the Policy
 domain and is evaluated after operator-boundary authorization where relevant.
 
+## Transports
+
+The same authenticated ConnectRPC boundary is available over:
+
+- loopback HTTP for local compatibility and SSH forwarding;
+- an optional Unix socket in a private directory for same-host operation;
+- `ardentsctl --ssh <target>`, which asks the system OpenSSH client to forward
+  one connection to the node's loopback API with `ssh -W`.
+
+SSH does not change API authorization and does not make the bearer credential
+optional. The client must still provide a node-scoped token and should pin the
+expected node identity. OpenSSH owns host-key verification and authentication;
+the CLI uses batch mode, so keys or an agent must be prepared in advance.
+Non-default ports, an explicit private key, and an isolated host-key database
+are configured with `--ssh-port`, `--ssh-identity`, and `--ssh-known-hosts` (or
+the corresponding named-context fields).
+Remote non-loopback plaintext API addresses remain forbidden.
+
 ## Credential
 
 An operator credential contains:
@@ -38,7 +56,7 @@ catalog. Each entry declares:
 
 Unknown procedures and catalog entries with missing metadata are denied. A
 capability for one action never implies a sibling action. `*` is reserved for
-explicit test or break-glass credentials and is not used by the normal `ardd`
+explicit test or break-glass credentials and is not used by the normal `ardentsd`
 operator credential.
 
 Diagnostics queries are read-only. Node lifecycle, configuration reload,
@@ -49,6 +67,7 @@ drop actions are mutating even when their RPC response is a snapshot.
 
 A named CLI context may declare:
 
+- a local API address and optional OpenSSH target;
 - an expected node name;
 - an expected node principal and public key;
 - a list of exact action scopes.

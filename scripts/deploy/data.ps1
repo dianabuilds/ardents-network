@@ -38,8 +38,8 @@ function Invoke-Compose([string[]]$Arguments) {
 }
 
 function Invoke-ArdJson([string[]]$Arguments) {
-    $raw = & docker @composePrefix exec -T $Node ard --token-file /run/ardents/api-token --output json @Arguments
-    if ($LASTEXITCODE -ne 0) { throw "ard command failed for $Node" }
+    $raw = & docker @composePrefix exec -T $Node ardentsctl --token-file /run/ardents/api-token --output json @Arguments
+    if ($LASTEXITCODE -ne 0) { throw "ardentsctl command failed for $Node" }
     return (($raw -join "`n") | ConvertFrom-Json)
 }
 

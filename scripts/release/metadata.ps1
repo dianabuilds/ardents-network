@@ -40,7 +40,7 @@ $sbom = [ordered]@{
 $sbom | ConvertTo-Json -Depth 10 | Set-Content -Encoding utf8 -LiteralPath (Join-Path $artifactPath "sbom.cdx.json")
 
 $subjects = foreach ($file in Get-ChildItem -LiteralPath $artifactPath -File | Where-Object {
-    $_.Name -match '^(ard|ardd)-linux-' -or $_.Name -match '^ardents-.*\.(tar\.gz|docker\.tar)$'
+    $_.Name -match '^ardents(?:ctl|d)-linux-' -or $_.Name -match '^ardents-.*\.(tar\.gz|docker\.tar)$'
 } | Sort-Object Name) {
     [ordered]@{
         name = $file.Name

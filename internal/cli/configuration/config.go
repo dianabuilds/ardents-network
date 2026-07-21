@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -22,6 +23,10 @@ const (
 
 type Config struct {
 	Addr              string
+	SSH               string
+	SSHPort           int
+	SSHIdentity       string
+	SSHKnownHosts     string
 	Token             string
 	TokenFile         string
 	ContextName       string
@@ -43,6 +48,10 @@ type ContextFile struct {
 
 type StoredContext struct {
 	Addr              string   `json:"addr,omitempty"`
+	SSH               string   `json:"ssh,omitempty"`
+	SSHPort           int      `json:"ssh_port,omitempty"`
+	SSHIdentity       string   `json:"ssh_identity,omitempty"`
+	SSHKnownHosts     string   `json:"ssh_known_hosts,omitempty"`
 	TokenEnv          string   `json:"token_env,omitempty"`
 	TokenFile         string   `json:"token_file,omitempty"`
 	ExpectedNode      string   `json:"expected_node,omitempty"`
@@ -143,6 +152,18 @@ func (c *Config) applyStored(stored StoredContext) {
 	if c.Addr == "" {
 		c.Addr = stored.Addr
 	}
+	if c.SSH == "" {
+		c.SSH = stored.SSH
+	}
+	if c.SSHPort == 0 {
+		c.SSHPort = stored.SSHPort
+	}
+	if c.SSHIdentity == "" {
+		c.SSHIdentity = stored.SSHIdentity
+	}
+	if c.SSHKnownHosts == "" {
+		c.SSHKnownHosts = stored.SSHKnownHosts
+	}
 	if c.TokenFile == "" {
 		c.TokenFile = stored.TokenFile
 	}
@@ -173,6 +194,25 @@ func (c *Config) applyStored(stored StoredContext) {
 func (c *Config) applyEnv() {
 	if c.Addr == "" {
 		c.Addr = strings.TrimSpace(os.Getenv("ARDENTS_ADDR"))
+	}
+	if c.SSH == "" {
+		c.SSH = strings.TrimSpace(os.Getenv("ARDENTS_SSH"))
+	}
+	if c.SSHPort == 0 {
+		if raw := strings.TrimSpace(os.Getenv("ARDENTS_SSH_PORT")); raw != "" {
+			port, err := strconv.Atoi(raw)
+			if err != nil {
+				c.SSHPort = -1
+			} else {
+				c.SSHPort = port
+			}
+		}
+	}
+	if c.SSHIdentity == "" {
+		c.SSHIdentity = strings.TrimSpace(os.Getenv("ARDENTS_SSH_IDENTITY"))
+	}
+	if c.SSHKnownHosts == "" {
+		c.SSHKnownHosts = strings.TrimSpace(os.Getenv("ARDENTS_SSH_KNOWN_HOSTS"))
 	}
 	if c.Token == "" {
 		c.Token = strings.TrimSpace(os.Getenv(defaultTokenEnv))
@@ -220,8 +260,34 @@ func (c *Config) validateAndNormalize() error {
 		c.Addr = scheme + "://" + c.Addr
 	}
 	parsed, err := url.Parse(c.Addr)
-	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+	if err != nil || parsed.Scheme == "" {
 		return fmt.Errorf("invalid addr %q", c.Addr)
+	}
+	if parsed.Scheme == "unix" {
+		if parsed.Path == "" || parsed.Host != "" {
+			return fmt.Errorf("invalid unix socket address %q", c.Addr)
+		}
+		if c.SSH != "" {
+			return fmt.Errorf("--ssh cannot be combined with a unix socket address")
+		}
+	} else if parsed.Host == "" {
+		return fmt.Errorf("invalid addr %q", c.Addr)
+	}
+	if c.SSH != "" {
+		if strings.HasPrefix(c.SSH, "-") || strings.ContainsAny(c.SSH, " \t\r\n") {
+			return fmt.Errorf("invalid ssh target %q", c.SSH)
+		}
+		if parsed.Scheme != "http" || !isLoopbackAddress(parsed.Host) {
+			return fmt.Errorf("ssh transport requires a loopback HTTP API address")
+		}
+		if c.SSHPort == 0 {
+			c.SSHPort = 22
+		}
+		if c.SSHPort < 1 || c.SSHPort > 65535 {
+			return fmt.Errorf("ssh port must be between 1 and 65535")
+		}
+	} else if c.SSHPort != 0 || c.SSHIdentity != "" || c.SSHKnownHosts != "" {
+		return fmt.Errorf("ssh transport options require --ssh")
 	}
 	if c.Token == "" && c.TokenFile != "" {
 		token, err := readTokenFile(c.TokenFile)

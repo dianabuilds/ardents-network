@@ -25,7 +25,7 @@ func runWithIO(ctx context.Context, args []string, stdin io.Reader, stdout, stde
 	renderer := output.NewRenderer(stdout, stderr, false)
 	cfg, rest, help, err := parseRoot(args, renderer.Err)
 	if err != nil {
-		output.Writef(renderer.Err, "ard: %v\n", err)
+		output.Writef(renderer.Err, "ardentsctl: %v\n", err)
 		return 2
 	}
 	if help || len(rest) == 0 {
@@ -54,7 +54,7 @@ func dispatch(ctx context.Context, cfg configurationcmd.Config, rest []string, s
 		return renderVersion(stdout, cfg.Output)
 	}
 	if err := cfg.Resolve(); err != nil {
-		output.Writef(stderr, "ard: %v\n", err)
+		output.Writef(stderr, "ardentsctl: %v\n", err)
 		return 2
 	}
 	app := newApp(cfg, stdin, stdout, stderr)
@@ -84,7 +84,7 @@ func (a *app) dispatch(ctx context.Context, rest []string) int {
 	case "shell":
 		code = tuicmd.NewShell(a.command()).Run(ctx, rest[1:])
 	default:
-		output.Writef(a.renderer.Err, "ard: unknown command %q\n", rest[0])
+		output.Writef(a.renderer.Err, "ardentsctl: unknown command %q\n", rest[0])
 		renderRootUsage(a.renderer.Err)
 		code = 2
 	}
@@ -120,10 +120,14 @@ func isGroup(name string) bool {
 
 func parseRoot(args []string, stderr io.Writer) (configurationcmd.Config, []string, bool, error) {
 	cfg := configurationcmd.DefaultConfig()
-	fs := flag.NewFlagSet("ard", flag.ContinueOnError)
+	fs := flag.NewFlagSet("ardentsctl", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	var scopeHints multiString
 	fs.StringVar(&cfg.Addr, "addr", cfg.Addr, "local API address")
+	fs.StringVar(&cfg.SSH, "ssh", cfg.SSH, "OpenSSH target for secure remote access")
+	fs.IntVar(&cfg.SSHPort, "ssh-port", cfg.SSHPort, "OpenSSH server port")
+	fs.StringVar(&cfg.SSHIdentity, "ssh-identity", cfg.SSHIdentity, "OpenSSH private key path")
+	fs.StringVar(&cfg.SSHKnownHosts, "ssh-known-hosts", cfg.SSHKnownHosts, "OpenSSH known_hosts path")
 	fs.StringVar(&cfg.Token, "token", cfg.Token, "bearer token override")
 	fs.StringVar(&cfg.TokenFile, "token-file", cfg.TokenFile, "path to bearer token file")
 	fs.StringVar(&cfg.ContextName, "context", cfg.ContextName, "named operator context")

@@ -34,14 +34,14 @@ func (a *Command) Run(ctx context.Context, args []string) int {
 	case "transfers":
 		return a.dataTransfers(ctx, args[1:])
 	default:
-		output.Writef(a.ctx.Renderer.Err, "ard data: unknown subcommand %q\n", args[0])
+		output.Writef(a.ctx.Renderer.Err, "ardentsctl data: unknown subcommand %q\n", args[0])
 		renderDataUsage(a.ctx.Renderer.Err)
 		return 2
 	}
 }
 
 func renderDataUsage(writer io.Writer) {
-	output.Writeln(writer, "Usage: ard [global flags] data <inventory|objects|blobs|manifests|transfers>")
+	output.Writeln(writer, "Usage: ardentsctl [global flags] data <inventory|objects|blobs|manifests|transfers>")
 }
 
 func requireValue(name, value string) error {

@@ -158,6 +158,24 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
+  native-install:
+    name: Native systemd installation
+    needs: static
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Native install, restart, upgrade, and uninstall gate
+        shell: pwsh
+        run: ./tests/ci/native-install-gate.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-install-evidence
+          path: tests/.artifacts/native-install
+          retention-days: 30
+          if-no-files-found: error
+
   multinode:
     name: Segmented multi-node topology
     needs: static
@@ -178,7 +196,7 @@ jobs:
   release-candidate:
     name: Reproducible release candidate
     if: startsWith(github.ref, 'refs/tags/v') || inputs.release_version != ''
-    needs: [windows-interface, fast, tagged, failure-contract, security, deployment, multinode]
+    needs: [windows-interface, fast, tagged, failure-contract, security, deployment, native-install, multinode]
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:

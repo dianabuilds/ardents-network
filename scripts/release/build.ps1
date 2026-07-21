@@ -47,7 +47,7 @@ docker run --rm `
     -w /workspace golang:1.26-bookworm /bin/sh scripts/release/bundle.sh
 if ($LASTEXITCODE -ne 0) { throw "Docker release build failed" }
 
-$imageTag = "ardents/ardd:$Version"
+$imageTag = "ardents/node:$Version"
 $previousGitInfo = $env:BUILDX_GIT_INFO
 try {
     $env:BUILDX_GIT_INFO = "false"
@@ -57,7 +57,7 @@ try {
         --build-arg "ARDENTS_COMMIT=$Commit" `
         --build-arg "ARDENTS_BUILD_DATE=$buildDate" `
         --build-arg "GO_BUILD_PARALLELISM=2" `
-        -t $imageTag -f deploy/docker/images/ardd.Dockerfile .
+        -t $imageTag -f deploy/docker/images/node.Dockerfile .
     if ($LASTEXITCODE -ne 0) { throw "Docker release image build failed" }
 } finally {
     if ($null -eq $previousGitInfo) { Remove-Item Env:BUILDX_GIT_INFO -ErrorAction SilentlyContinue }

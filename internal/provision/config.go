@@ -10,34 +10,38 @@ import (
 	"ardents/internal/storage"
 )
 
-const (
-	runtimeDataDir   = "/var/lib/ardents"
-	runtimeSecretDir = "/run/ardents"
-)
-
 func operatorDocument(configured options, provisioned NodeProvision) runtimeconfig.Document {
+	runtimeDataDir := configured.runtimeDataDir
+	if runtimeDataDir == "" {
+		runtimeDataDir = "/var/lib/ardents"
+	}
+	runtimeSecretDir := configured.runtimeSecretDir
+	if runtimeSecretDir == "" {
+		runtimeSecretDir = "/run/ardents"
+	}
 	doc := runtimeconfig.Defaults()
 	doc.Node.Name = configured.nodeName
 	doc.Node.DataDir = runtimeDataDir
-	doc.API.TokenFile = runtimeSecretDir + "/api-token"
+	doc.API.TokenFile = filepath.Join(runtimeSecretDir, "api-token")
+	doc.API.SocketPath = filepath.Join(runtimeSecretDir, "control.sock")
 	doc.API.OperatorSubject = "local-deployment-operator"
 	doc.Network.ListenPort = configured.transportPort
-	doc.Network.StorePath = runtimeDataDir + "/waku-store.db"
+	doc.Network.StorePath = filepath.Join(runtimeDataDir, "waku-store.db")
 	if configured.bootstrapPeer != "" {
 		doc.Network.BootstrapPeers = []string{configured.bootstrapPeer}
 	}
 	doc.Privacy = runtimeconfig.PrivacyConfig{
-		Required: true, CapabilityStore: runtimeDataDir + "/capabilities.db",
-		CapabilityStoreKeyFile: runtimeSecretDir + "/capability-store.key",
-		ReplayKeyFile:          runtimeSecretDir + "/replay.key", Subject: provisioned.Subject,
+		Required: true, CapabilityStore: filepath.Join(runtimeDataDir, "capabilities.db"),
+		CapabilityStoreKeyFile: filepath.Join(runtimeSecretDir, "capability-store.key"),
+		ReplayKeyFile:          filepath.Join(runtimeSecretDir, "replay.key"), Subject: provisioned.Subject,
 		TrustedIssuers: map[string]string{
 			provisioned.Issuer: base64.StdEncoding.EncodeToString(provisioned.IssuerPublic),
 		},
 		Discovery: runtimeconfig.PrivacyChannelConfig{
-			Reference: string(provisioned.DiscoveryRef), ReplayPath: runtimeDataDir + "/discovery-replay.db",
+			Reference: string(provisioned.DiscoveryRef), ReplayPath: filepath.Join(runtimeDataDir, "discovery-replay.db"),
 		},
 		Data: runtimeconfig.PrivacyChannelConfig{
-			Reference: string(provisioned.DataRef), ReplayPath: runtimeDataDir + "/data-replay.db",
+			Reference: string(provisioned.DataRef), ReplayPath: filepath.Join(runtimeDataDir, "data-replay.db"),
 		},
 	}
 	return doc

@@ -14,6 +14,10 @@ import (
 
 type Config struct {
 	BaseURL           string
+	SSH               string
+	SSHPort           int
+	SSHIdentity       string
+	SSHKnownHosts     string
 	Token             string
 	Timeout           time.Duration
 	ExpectedNode      string
@@ -49,14 +53,15 @@ type services struct {
 }
 
 func New(cfg Config) *Client {
+	baseURL, transport := controlTransport(cfg)
 	httpClient := &http.Client{
 		Timeout: cfg.Timeout,
 		Transport: contextTransport{
-			base: http.DefaultTransport, expectedNode: cfg.ExpectedNode,
+			base: transport, expectedNode: cfg.ExpectedNode,
 			expectedPrincipal: cfg.ExpectedPrincipal, scopes: append([]string(nil), cfg.Scopes...),
 		},
 	}
-	service := NewService(httpClient, cfg.BaseURL)
+	service := NewService(httpClient, baseURL)
 	return &Client{service: service, token: cfg.Token}
 }
 

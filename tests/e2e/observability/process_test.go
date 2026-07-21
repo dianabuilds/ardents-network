@@ -32,16 +32,16 @@ func TestArddProductionObservabilityProcessBoundary(t *testing.T) {
 	writeToken(t, filepath.Join(dir, "api-token"), "api-secret")
 	writeToken(t, filepath.Join(dir, "metrics-token"), "metrics-secret")
 	configPath := writeObservabilityConfig(t, dir, apiAddress, observabilityAddress)
-	binary := filepath.Join(dir, "ardd")
+	binary := filepath.Join(dir, "ardentsd")
 
 	scenario.Precondition("build and start the real daemon entry point", func(t *testing.T) {
-		build := exec.Command("go", "build", "-o", binary, "./cmd/ardd")
+		build := exec.Command("go", "build", "-o", binary, "./cmd/ardentsd")
 		buildOutput, err := build.CombinedOutput()
 		require.NoError(t, err, string(buildOutput))
 	})
 	command := exec.Command(binary)
 	command.Env = append(os.Environ(), "ARDENTS_CONFIG_FILE="+configPath, "ARDENTS_API_TOKEN=", "ARDENTS_API_TOKEN_FILE=")
-	logPath := filepath.Join(dir, "ardd.log")
+	logPath := filepath.Join(dir, "ardentsd.log")
 	output, err := os.Create(logPath)
 	require.NoError(t, err)
 	command.Stdout = output
@@ -78,7 +78,7 @@ func TestArddProductionObservabilityProcessBoundary(t *testing.T) {
 			require.NoError(t, err, readLog(logPath))
 		case <-time.After(10 * time.Second):
 			_ = command.Process.Kill()
-			t.Fatal("ardd did not shut down within 10 seconds")
+			t.Fatal("ardentsd did not shut down within 10 seconds")
 		}
 	})
 }
@@ -126,7 +126,7 @@ func waitForLive(url string, exited <-chan error) error {
 	for time.Now().Before(deadline) {
 		select {
 		case err := <-exited:
-			return fmt.Errorf("ardd exited before readiness: %w", err)
+			return fmt.Errorf("ardentsd exited before readiness: %w", err)
 		default:
 		}
 		response, err := httpClient().Get(url)

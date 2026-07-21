@@ -22,7 +22,7 @@ func (a *Command) Run(ctx context.Context, args []string) int {
 			renderTUIUsage(a.ctx.Renderer.Out)
 			return 0
 		}
-		output.Writef(a.ctx.Renderer.Err, "ard tui: unknown argument %q\n", args[0])
+		output.Writef(a.ctx.Renderer.Err, "ardentsctl tui: unknown argument %q\n", args[0])
 		renderTUIUsage(a.ctx.Renderer.Err)
 		return 2
 	}
@@ -33,4 +33,4 @@ func (a *Command) Run(ctx context.Context, args []string) int {
 	return 0
 }
 
-func renderTUIUsage(writer io.Writer) { output.Writeln(writer, "Usage: ard [global flags] tui") }
+func renderTUIUsage(writer io.Writer) { output.Writeln(writer, "Usage: ardentsctl [global flags] tui") }

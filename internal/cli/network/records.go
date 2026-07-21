@@ -192,11 +192,11 @@ func loadDiscoveryRecord(input io.Reader, path string) (*ardentsv1.DiscoveryReco
 }
 
 func renderNetworkResolveUsage(writer io.Writer) {
-	output.Writeln(writer, "Usage: ard [global flags] network resolve <record|service>")
+	output.Writeln(writer, "Usage: ardentsctl [global flags] network resolve <record|service>")
 }
 
 func renderNetworkRecordsUsage(writer io.Writer) {
-	output.Writeln(writer, "Usage: ard [global flags] network records <list|import>")
+	output.Writeln(writer, "Usage: ardentsctl [global flags] network records <list|import>")
 }
 
 func requireValue(name, value string) error {

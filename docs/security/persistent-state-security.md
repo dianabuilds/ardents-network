@@ -36,7 +36,7 @@ dedicated service identity so this ACL has the intended ownership boundary.
 
 ## Consistent Backup Groups
 
-Backup is taken only while `ardd` is stopped. Copying a live bbolt or SQLite
+Backup is taken only while `ardentsd` is stopped. Copying a live bbolt or SQLite
 set by unrelated file operations is not a supported backup procedure.
 
 The following items form consistency groups and must not be restored partially:

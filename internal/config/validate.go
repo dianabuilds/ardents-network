@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -46,6 +47,13 @@ func Validate(doc Document) error {
 }
 
 func validateAPI(cfg APIConfig) error {
+	if strings.ContainsRune(cfg.SocketPath, '\x00') {
+		return fmt.Errorf("api.socket_path contains an invalid character")
+	}
+	if cfg.SocketPath != "" && !filepath.IsAbs(cfg.SocketPath) &&
+		!strings.HasPrefix(cfg.SocketPath, "/") && !strings.HasPrefix(cfg.SocketPath, `\`) {
+		return fmt.Errorf("api.socket_path must be absolute")
+	}
 	if strings.TrimSpace(cfg.OperatorSubject) == "" {
 		return fmt.Errorf("api.operator_subject is required")
 	}
@@ -264,7 +272,10 @@ func sameStrings(left, right []string) bool {
 }
 
 func validateWorkloads(doc Document) error {
+	disabled := false
 	switch doc.Workloads.Executor {
+	case "disabled":
+		disabled = true
 	case "docker":
 	case "trusted-process":
 		if doc.Node.Profile != string(networkapi.NodeProfileLocalDevelopment) {
@@ -294,6 +305,9 @@ func validateWorkloads(doc Document) error {
 		if err := validateServiceList(path+".services", workload.Services, true, workload.ID); err != nil {
 			return err
 		}
+	}
+	if disabled && len(doc.Workloads.Initial) > 0 {
+		return fmt.Errorf("workloads.initial requires an enabled workload executor")
 	}
 	return nil
 }

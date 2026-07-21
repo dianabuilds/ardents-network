@@ -5,6 +5,7 @@
 | Surface | Supported | Qualification |
 | --- | --- | --- |
 | Linux amd64 binaries | yes | canonical build and runtime target |
+| Native Linux amd64 systemd service | qualification | install/start/restart/reinstall/uninstall evidence exists; old-to-new upgrade, rollback, and backup/restore gates remain |
 | Linux arm64 binaries | unsupported | Waku/RLN requires CGO; native build and runtime qualification are required |
 | Docker Engine 29.x + Compose v2 on Linux amd64 | yes | canonical deployment and multi-node E2E target |
 | Windows 11 amd64 host with WSL2/Docker Desktop | orchestration | tests and daemons run in Linux containers; host resources must be monitored |

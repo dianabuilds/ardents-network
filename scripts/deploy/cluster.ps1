@@ -4,7 +4,7 @@ param(
     [string]$Action = "status",
     [string]$StateDir = "var/deployment/local-multinode",
     [string]$Project = "ardents-local",
-    [string]$Image = "ardents/ardd-local:dev",
+    [string]$Image = "ardents/node-local:dev",
     [ValidateRange(10, 300)]
     [int]$TimeoutSeconds = 90,
     [switch]$Build,
@@ -70,6 +70,8 @@ function Invoke-ProvisionNode([string]$Service, [int]$Port, [string]$Bootstrap =
         "-authority-dir", "/authority",
         "-node-dir", "/nodes/$Service",
         "-secret-dir", "/secrets/$Service",
+        "-runtime-data-dir", "/var/lib/ardents",
+        "-runtime-secret-dir", "/run/ardents",
         "-node-name", $Service,
         "-transport-port", "$Port"
     )
@@ -78,8 +80,8 @@ function Invoke-ProvisionNode([string]$Service, [int]$Port, [string]$Bootstrap =
 }
 
 function Invoke-ArdJson([string]$Service, [string[]]$Arguments) {
-    $raw = & docker @composePrefix exec -T $Service ard --token-file /run/ardents/api-token --output json @Arguments
-    if ($LASTEXITCODE -ne 0) { throw "ard command failed for $Service" }
+    $raw = & docker @composePrefix exec -T $Service ardentsctl --token-file /run/ardents/api-token --output json @Arguments
+    if ($LASTEXITCODE -ne 0) { throw "ardentsctl command failed for $Service" }
     return (($raw -join "`n") | ConvertFrom-Json)
 }
 

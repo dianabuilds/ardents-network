@@ -92,3 +92,9 @@ func TestValidateRejectsDormantPrivacyMaterial(t *testing.T) {
 	doc.Privacy.Subject = "p_subject"
 	require.ErrorContains(t, Validate(doc), "privacy.required=true")
 }
+
+func TestValidateRejectsRelativeAPISocketPath(t *testing.T) {
+	doc := Defaults()
+	doc.API.SocketPath = "run/ardents/control.sock"
+	require.ErrorContains(t, Validate(doc), "api.socket_path must be absolute")
+}

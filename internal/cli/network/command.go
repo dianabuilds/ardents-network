@@ -40,14 +40,14 @@ func (a *Command) Run(ctx context.Context, args []string) int {
 	case "records":
 		return a.records(ctx, args[1:])
 	default:
-		output.Writef(a.ctx.Renderer.Err, "ard network: unknown subcommand %q\n", args[0])
+		output.Writef(a.ctx.Renderer.Err, "ardentsctl network: unknown subcommand %q\n", args[0])
 		renderNetworkUsage(a.ctx.Renderer.Err)
 		return 2
 	}
 }
 
 func renderNetworkUsage(writer io.Writer) {
-	output.Writeln(writer, "Usage: ard [global flags] network <status|discovery|presence|peers|routes|resolve|records>")
+	output.Writeln(writer, "Usage: ardentsctl [global flags] network <status|discovery|presence|peers|routes|resolve|records>")
 }
 
 func (a *Command) networkStatus(ctx context.Context) int {

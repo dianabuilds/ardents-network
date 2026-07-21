@@ -13,14 +13,17 @@ import (
 )
 
 func main() {
-	if len(os.Args) > 1 && os.Args[1] == "provision" {
+	if len(os.Args) > 1 && os.Args[1] == "init" {
 		if err := provision.Run(os.Args[2:], os.Stdout); err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "provision local realm: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "ardentsd init: %v\n", err)
 			os.Exit(1)
 		}
 		return
 	}
-	daemon.Run(newLocalAPIHandler, newOperatorSurface)
+	if err := daemon.Run(newLocalAPIHandler, newOperatorSurface); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "ardentsd: %v\n", err)
+		os.Exit(1)
+	}
 }
 
 func newLocalAPIHandler(process daemon.Owners, cfg daemon.LocalAPIConfig) (string, http.Handler, error) {

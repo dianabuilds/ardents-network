@@ -3,12 +3,19 @@
 ## Supported Target
 
 The supported `v1` deployment target is Docker Engine with Docker Compose v2 on
-one Linux host. Containers form a real multi-node Waku network; Compose is the
-deployment boundary, not a replacement transport or a fake in-process cluster.
-Multi-host scheduling and Kubernetes packaging are outside this target until a
-separate support contract and acceptance environment exist.
+one Linux amd64 host. Native systemd installation on Linux amd64 is a
+qualification candidate: install, startup, restart, same-build reinstall, and
+non-destructive uninstall are covered, while old-to-new upgrade, rollback, and
+backup/restore acceptance remain required before production support. Both run
+the same `ardentsd`; Docker is packaging and an optional workload adapter, not a
+runtime prerequisite. Multi-host scheduling and Kubernetes packaging remain
+outside this target until a separate support contract and acceptance
+environment exist.
 
-Two profiles are versioned:
+Two supported profiles and one qualification profile are versioned:
+
+- `native` (qualification): one node installed as the unprivileged `ardents` system service,
+  with protected local state and a loopback/Unix-socket operator surface;
 
 - `local-multinode`: three service nodes on an isolated Compose network, with
   generated operator credentials, an isolated local realm authority, real
@@ -58,7 +65,7 @@ If cleanup also fails, both failures remain operator-visible.
 
 ## Health And Readiness
 
-Container health uses the local authenticated `ard node status` path. Accepted
+Container health uses the local authenticated `ardentsctl node status` path. Accepted
 local cluster readiness requires every node to report product readiness, real
 private discovery/data channels, joined network truth for peers, and a usable
 published Waku endpoint. Missing or invalid authority/capability material fails
@@ -91,7 +98,10 @@ consistency groups and failure rules remain canonical in
 
 ## Acceptance
 
-The deployment slice is accepted only when Docker/Linux evidence proves:
+The deployment slice is accepted only when Linux evidence proves:
+
+- native install initializes and starts a node without Docker, repeat install
+  preserves identity and credentials, and ordinary uninstall retains state;
 
 - clean `up` forms the cluster without a manually supplied peer ID or endpoint;
 - every node is product-ready with real protected capability material; a merely

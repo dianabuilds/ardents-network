@@ -56,7 +56,7 @@ The `v1` document contains these typed sections:
 | Section | Owning behavior | Representative fields |
 | --- | --- | --- |
 | `node` | Node Runtime / assembly | `name`, `profile`, `data_dir` |
-| `api` | local boundary | `listen_address`, `token_file` |
+| `api` | local boundary | loopback `listen_address`, optional private `socket_path`, `token_file` |
 | `network` | Network Foundation | Waku `transport_profile`, bind/listen, bootstrap, trust, DNS, reachability, advertised endpoints, WSS material references, abuse limits |
 | `privacy` | Identity + Network privacy assembly | protected capability-store/key references, trusted issuer public keys, and separate discovery/data replay ledgers; never raw selector/channel material |
 | `workloads` | Workload Control + Policy | executor, registries, policy refs, runtime names, ingress allow-list and proxy image |
@@ -93,7 +93,7 @@ applied to the running process:
 - node and Waku participation profiles;
 - bind/listen/advertised endpoints and WSS material;
 - bootstrap and DNS discovery sources;
-- local API listen address or credential reference;
+- local API listen address, Unix socket path, or credential reference;
 - observability listen address or scrape credential reference;
 - workload executor/runtime and ingress proxy shape;
 - storage paths and hard capacity limits;

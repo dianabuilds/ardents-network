@@ -95,11 +95,11 @@ func (c Command) renderSnapshot(snapshot *protocol.EffectiveConfigurationSnapsho
 }
 
 func (c Command) usageError(message string) int {
-	output.Writef(c.Renderer.Err, "ard config: %s\n", message)
+	output.Writef(c.Renderer.Err, "ardentsctl config: %s\n", message)
 	usage(c.Renderer.Err)
 	return 2
 }
 
 func usage(writer io.Writer) {
-	output.Writeln(writer, "Usage: ard [global flags] config <show|reload>")
+	output.Writeln(writer, "Usage: ardentsctl [global flags] config <show|reload>")
 }

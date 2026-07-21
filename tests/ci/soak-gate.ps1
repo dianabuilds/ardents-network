@@ -11,7 +11,7 @@ param(
     [int]$FullCycleEvery = 6,
     [ValidateRange(180, 3600)]
     [int]$StabilitySeconds = 3000,
-    [string]$CandidateImage = "ardents/ardd-testnet:dev",
+    [string]$CandidateImage = "ardents/node-testnet:dev",
     [string]$ReportDir = "tests/.artifacts/reports/stb-705-soak",
     [switch]$PlanOnly
 )

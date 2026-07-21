@@ -7,6 +7,7 @@ import (
 
 	process "ardents/internal/daemon"
 	workloadapi "ardents/internal/workload"
+	"ardents/internal/workload/execution"
 	"ardents/tests/testkit"
 
 	"github.com/stretchr/testify/require"
@@ -14,9 +15,10 @@ import (
 
 func TestNodeWorkloadAPIReportsStatusAndRestarts(t *testing.T) {
 	n := process.NewNode(process.Config{
-		Name: "workload-api-restart",
-		Boot: process.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: process.DataConfig{Dir: t.TempDir()},
+		Name:             "workload-api-restart",
+		Boot:             process.BootConfig{Sources: []string{"local://bootstrap"}},
+		Data:             process.DataConfig{Dir: t.TempDir()},
+		WorkloadExecutor: execution.NewLocalExecutor(),
 	})
 	require.NoError(t, n.Start(context.Background()))
 	defer func() { require.NoError(t, n.Stop(context.Background())) }()

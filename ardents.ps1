@@ -6,7 +6,7 @@ param(
     [string]$Target = "",
     [string]$StateDir = "var/deployment/local-multinode",
     [string]$Project = "ardents-local",
-    [string]$Image = "ardents/ardd-local:dev",
+    [string]$Image = "ardents/node-local:dev",
     [ValidateRange(10, 300)]
     [int]$TimeoutSeconds = 90,
     [switch]$Build,

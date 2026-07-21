@@ -36,6 +36,6 @@ func TestVersionHumanOutputContainsTarget(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := Run(context.Background(), []string{"version"}, &stdout, &stderr)
 	require.Zero(t, code, stderr.String())
-	require.Contains(t, stdout.String(), "ard ")
+	require.Contains(t, stdout.String(), "ardentsctl ")
 	require.Contains(t, stdout.String(), buildinfo.Current().OS+"/"+buildinfo.Current().Arch)
 }

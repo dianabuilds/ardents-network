@@ -1,0 +1,36 @@
+[Unit]
+Description=Ardents Network node daemon
+Documentation=https://github.com/ardents-network/ardents-network
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=ardents
+Group=ardents
+Environment=ARDENTS_CONFIG_FILE=/etc/ardents/operator.json
+ExecStart=/usr/local/bin/ardentsd
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=30s
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectKernelLogs=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/var/lib/ardents
+
+[Install]
+WantedBy=multi-user.target

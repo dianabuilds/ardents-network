@@ -13,8 +13,12 @@ tar -xzf "ardents-${version}-linux-amd64.tar.gz" -C "$extract_dir"
 test -f "$extract_dir/LICENSE"
 test -f "$extract_dir/ardents.ps1"
 test -f "$extract_dir/scripts/deploy/cluster.ps1"
+test -x "$extract_dir/scripts/install/linux.sh"
+test -x "$extract_dir/scripts/install/smoke.sh"
+test -f "$extract_dir/systemd/ardentsd.service"
 test -f "$extract_dir/docker/docker-compose.multinode.yml"
-"$extract_dir/ard" version | grep -F "$version" >/dev/null
-"$extract_dir/ardd" --version | grep -F "$version" >/dev/null
-"$extract_dir/ard" --output json version | grep -F "\"commit\":\"$commit\"" >/dev/null
+"$extract_dir/ardentsctl" version | grep -F "$version" >/dev/null
+"$extract_dir/ardentsd" --version | grep -F "$version" >/dev/null
+"$extract_dir/ardentsctl" --output json version | grep -F "\"commit\":\"$commit\"" >/dev/null
+"$extract_dir/scripts/install/smoke.sh" "$extract_dir"
 printf 'release-smoke=passed\n'

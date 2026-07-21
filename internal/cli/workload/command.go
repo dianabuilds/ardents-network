@@ -42,14 +42,14 @@ func (a *Command) Run(ctx context.Context, args []string) int {
 	case "publication":
 		return a.workloadPublication(ctx, args[1:])
 	default:
-		output.Writef(a.ctx.Renderer.Err, "ard workload: unknown subcommand %q\n", args[0])
+		output.Writef(a.ctx.Renderer.Err, "ardentsctl workload: unknown subcommand %q\n", args[0])
 		renderWorkloadUsage(a.ctx.Renderer.Err)
 		return 2
 	}
 }
 
 func renderWorkloadUsage(writer io.Writer) {
-	output.Writeln(writer, "Usage: ard [global flags] workload <list|get|register|start|stop|restart|services|service|publication>")
+	output.Writeln(writer, "Usage: ardentsctl [global flags] workload <list|get|register|start|stop|restart|services|service|publication>")
 }
 
 func (a *Command) workloadList(ctx context.Context) int {
