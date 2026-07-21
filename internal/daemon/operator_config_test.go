@@ -56,6 +56,27 @@ func TestRuntimeConfigMapsExplicitOperatorCredential(t *testing.T) {
 	require.Equal(t, time.Date(2027, 1, 2, 3, 4, 5, 0, time.UTC), cfg.APICredentialEnd)
 }
 
+func TestRuntimeConfigSeparatesApplicationCredential(t *testing.T) {
+	dir := t.TempDir()
+	applicationTokenPath := filepath.Join(dir, "application-token")
+	require.NoError(t, os.WriteFile(applicationTokenPath, []byte("application-token"), 0o600))
+	doc := runtimeconfig.Defaults()
+	doc.ApplicationInterface = runtimeconfig.ApplicationInterfaceConfig{
+		Enabled: true, ListenAddress: "127.0.0.1:18081", TokenFile: applicationTokenPath,
+		Subject: "example", Capabilities: []string{"application.content.get"}, CredentialExpiresAt: "2027-01-01T00:00:00Z",
+	}
+
+	cfg, err := runtimeConfigFromDocument(doc, "operator-token")
+	require.NoError(t, err)
+	require.True(t, cfg.ApplicationEnabled)
+	require.Equal(t, "application-token", cfg.ApplicationToken)
+	require.Equal(t, "example", cfg.ApplicationSubject)
+	require.Equal(t, []string{"application.content.get"}, cfg.ApplicationCapabilities)
+
+	_, err = runtimeConfigFromDocument(doc, "application-token")
+	require.EqualError(t, err, "application and operator credentials must be distinct")
+}
+
 func TestRuntimeConfigMapsInitialWorkloadSecurityAndLifecycleFields(t *testing.T) {
 	doc := runtimeconfig.Defaults()
 	doc.Workloads.AllowedPolicyRefs = []string{"trusted"}

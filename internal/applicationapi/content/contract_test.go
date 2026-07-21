@@ -10,8 +10,12 @@ import (
 	applicationv1 "ardents/sdk/go/protocol/applicationv1"
 	"context"
 	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -80,6 +84,36 @@ func TestClientRejectsRemotePlaintextEndpoint(t *testing.T) {
 		Endpoint: "http://node.example:8080", Credential: client.StaticCredential("application-secret"),
 	})
 	require.ErrorContains(t, err, "must be loopback")
+}
+
+func TestApplicationClientUsesUnixSocket(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix sockets are unavailable on Windows")
+	}
+	store := &memoryStore{payloads: map[string][]byte{}, blobs: map[string]appcontent.Blob{}}
+	path, handler, err := applicationcontent.NewHTTPHandler(store, &testAuthorizer{token: "application-secret"})
+	require.NoError(t, err)
+	mux := http.NewServeMux()
+	mux.Handle(path, handler)
+	socketPath := filepath.Join(t.TempDir(), "application.sock")
+	listener, err := net.Listen("unix", socketPath)
+	require.NoError(t, err)
+	server := &http.Server{Handler: mux}
+	go func() { _ = server.Serve(listener) }()
+	t.Cleanup(func() {
+		_ = server.Close()
+		_ = os.Remove(socketPath)
+	})
+
+	application, err := client.New(client.Config{
+		SocketPath: socketPath, Credential: client.StaticCredential("application-secret"),
+	})
+	require.NoError(t, err)
+	reference, err := application.Content.Put(context.Background(), []byte("over unix"))
+	require.NoError(t, err)
+	payload, err := application.Content.Get(context.Background(), reference)
+	require.NoError(t, err)
+	require.Equal(t, []byte("over unix"), payload)
 }
 
 func TestContentGetRejectsSameLengthPayloadTampering(t *testing.T) {

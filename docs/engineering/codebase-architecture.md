@@ -103,6 +103,8 @@ api/
     retention.proto
     workload.proto
     diagnostics.proto
+  ardents/application/v1/
+    content.proto
 
 cmd/
   ardentsctl/
@@ -219,6 +221,17 @@ internal/
     tui/
   observability/
   ingressproxy/
+  applicationapi/
+    auth/
+    content/
+
+sdk/
+  go/
+    client/
+    content/
+    errors/
+    internal/
+    protocol/
 
 scripts/
   deploy/
@@ -242,6 +255,7 @@ tests/
     diagnostics/
     localapi/
   e2e/
+    applicationapi/
     node/
     network/
     messaging/

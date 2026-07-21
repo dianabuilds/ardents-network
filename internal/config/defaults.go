@@ -86,6 +86,39 @@ func ObservabilityToken(path string) (string, error) {
 	return token, nil
 }
 
+func ApplicationToken(path string) (string, error) {
+	if strings.TrimSpace(path) == "" {
+		return "", fmt.Errorf("application_interface.token_file is required")
+	}
+	token, err := readApplicationSecretFile(path)
+	if err != nil {
+		return "", fmt.Errorf("application credential source is unavailable or invalid")
+	}
+	return token, nil
+}
+
+func readApplicationSecretFile(path string) (string, error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return "", err
+	}
+	if !info.Mode().IsRegular() {
+		return "", fmt.Errorf("application credential source must be a regular file")
+	}
+	if runtime.GOOS != "windows" && info.Mode().Perm()&0o027 != 0 {
+		return "", fmt.Errorf("application credential source permissions are invalid")
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	token := strings.TrimSpace(string(raw))
+	if token == "" {
+		return "", fmt.Errorf("application credential source is empty")
+	}
+	return token, nil
+}
+
 func readSecretFile(path string) (string, error) {
 	info, err := os.Lstat(path)
 	if err != nil {
@@ -118,6 +151,7 @@ func redactDocument(doc Document) map[string]any {
 		return map[string]any{"configuration": "unavailable"}
 	}
 	redactMapValue(out, "api", "token_file")
+	redactMapValue(out, "application_interface", "token_file")
 	redactMapValue(out, "observability", "token_file")
 	redactMapValue(out, "network", "private_key_path")
 	redactNestedMapValue(out, "network", "wss", "private_key_file")

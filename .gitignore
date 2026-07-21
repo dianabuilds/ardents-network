@@ -5,3 +5,4 @@ var/
 .gocache/
 .idea/
 dist/
+/.tmp-application-review-cache/*

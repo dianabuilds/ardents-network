@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestUnixHTTPServerCreatesPrivateSocket(t *testing.T) {
@@ -37,4 +39,19 @@ func TestUnixHTTPServerCreatesPrivateSocket(t *testing.T) {
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatalf("socket still exists: %v", err)
 	}
+}
+
+func TestApplicationUnixHTTPServerCreatesGroupAccessibleSocket(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unix sockets are unavailable on windows")
+	}
+	dir := filepath.Join(t.TempDir(), "applications")
+	require.NoError(t, os.Mkdir(dir, 0o750))
+	path := filepath.Join(dir, "application.sock")
+	_, listener, err := newApplicationUnixHTTPServer(path, http.NotFoundHandler())
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = listener.Close() })
+	info, err := os.Stat(path)
+	require.NoError(t, err)
+	require.Equal(t, os.FileMode(0o660), info.Mode().Perm())
 }

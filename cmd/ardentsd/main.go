@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
 
+	applicationauth "ardents/internal/applicationapi/auth"
+	applicationcontent "ardents/internal/applicationapi/content"
+	contentdomain "ardents/internal/content"
 	"ardents/internal/daemon"
 	"ardents/internal/localapi"
 	localauth "ardents/internal/localapi/auth"
@@ -20,10 +24,43 @@ func main() {
 		}
 		return
 	}
-	if err := daemon.Run(newLocalAPIHandler, newOperatorSurface); err != nil {
+	if err := daemon.Run(newLocalAPIHandler, newApplicationAPIHandler, newOperatorSurface); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "ardentsd: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+func newApplicationAPIHandler(process daemon.Owners, cfg daemon.ApplicationAPIConfig) (string, http.Handler, error) {
+	authorizer, err := applicationauth.New(applicationauth.Config{
+		Token: cfg.Token, Subject: cfg.Subject, Capabilities: cfg.Capabilities, ExpiresAt: cfg.ExpiresAt,
+		Audit: func(decision applicationauth.Decision) {
+			process.Events.RecordEvent("application-interface", "authorization", decision.Subject,
+				"Application request authorization "+decision.Outcome, "application.authorization."+decision.Outcome,
+				map[string]any{"action": decision.Action})
+		},
+	})
+	if err != nil {
+		return "", nil, err
+	}
+	return applicationcontent.NewHTTPHandler(applicationContentStore{owners: process}, authorizer)
+}
+
+type applicationContentStore struct{ owners daemon.Owners }
+
+func (s applicationContentStore) PublishBlob(command contentdomain.PublishBlobCommand) (contentdomain.Blob, error) {
+	return s.owners.ContentCommands.PublishBlob(command)
+}
+
+func (s applicationContentStore) GetBlob(id string) (contentdomain.Blob, bool) {
+	return s.owners.Content.GetBlob(id)
+}
+
+func (s applicationContentStore) GetBlobPayload(id string) ([]byte, error) {
+	return s.owners.Content.GetBlobPayload(id)
+}
+
+func (s applicationContentStore) FetchBlob(ctx context.Context, id string) (contentdomain.Blob, error) {
+	return s.owners.Node.FetchBlob(ctx, id)
 }
 
 func newLocalAPIHandler(process daemon.Owners, cfg daemon.LocalAPIConfig) (string, http.Handler, error) {

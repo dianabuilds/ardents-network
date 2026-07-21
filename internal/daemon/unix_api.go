@@ -13,11 +13,24 @@ import (
 )
 
 func newUnixHTTPServer(path string, handler http.Handler) (*http.Server, net.Listener, error) {
+	return newUnixHTTPServerWithPermissions(path, handler, ensurePrivateSocketDir, 0o600)
+}
+
+func newApplicationUnixHTTPServer(path string, handler http.Handler) (*http.Server, net.Listener, error) {
+	return newUnixHTTPServerWithPermissions(path, handler, ensureApplicationSocketDir, 0o660)
+}
+
+func newUnixHTTPServerWithPermissions(
+	path string,
+	handler http.Handler,
+	validateDirectory func(string) error,
+	mode os.FileMode,
+) (*http.Server, net.Listener, error) {
 	if runtime.GOOS == "windows" {
 		return nil, nil, fmt.Errorf("unix sockets are not supported on windows")
 	}
 	path = filepath.Clean(path)
-	if err := ensurePrivateSocketDir(filepath.Dir(path)); err != nil {
+	if err := validateDirectory(filepath.Dir(path)); err != nil {
 		return nil, nil, err
 	}
 	if err := removeStaleUnixSocket(path); err != nil {
@@ -27,11 +40,22 @@ func newUnixHTTPServer(path string, handler http.Handler) (*http.Server, net.Lis
 	if err != nil {
 		return nil, nil, fmt.Errorf("listen on local API socket: %w", err)
 	}
-	if err := os.Chmod(path, 0o600); err != nil {
+	if err := os.Chmod(path, mode); err != nil {
 		_ = listener.Close()
 		return nil, nil, fmt.Errorf("protect local API socket: %w", err)
 	}
 	return newHTTPServer("unix://"+path, handler), &removingListener{Listener: listener, path: path}, nil
+}
+
+func ensureApplicationSocketDir(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("inspect Application Interface socket directory: %w", err)
+	}
+	if !info.IsDir() || info.Mode().Perm()&0o027 != 0 {
+		return fmt.Errorf("Application Interface socket directory must deny group writes and other access")
+	}
+	return nil
 }
 
 func ensurePrivateSocketDir(path string) error {

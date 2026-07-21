@@ -7,10 +7,18 @@ The public SDK targets `ardents.application.v1`, not the administrative
 technology, but they do not share credentials, authorization actions, generated
 packages, or handlers.
 
-An Application normally talks to a Node on the same host through a private Unix
-socket. A future remote transport requires an explicit mutually authenticated
+An Application normally talks to a Node on the same host through the dedicated
+private Unix socket configured by `application_interface.socket_path`. The
+Operator Interface has a different listener and rejects Application
+Credentials. A future remote transport requires an explicit mutually authenticated
 TLS profile; binding the existing plaintext Operator Interface to a remote
 address is not an Application transport.
+
+`ardentsd init` creates an initial least-privilege Application Credential at
+`application-token` alongside `application.sock`. This bootstrap credential is
+limited to `application.content.put` and `application.content.get`. It is not an
+Operator credential and grants no lifecycle, configuration, diagnostics, or
+workload authority.
 
 ## Go SDK Shape
 
@@ -42,6 +50,28 @@ ref, err := app.Content.Put(ctx, payload, content.WithMediaType("text/plain"))
 payload, err = app.Content.Get(ctx, ref)
 ```
 
+For a native Linux installation, construct the client with the provisioned
+socket and credential:
+
+```go
+credential, err := client.FileCredential(
+    "/var/lib/ardents/applications/application-token",
+)
+if err != nil {
+    return err
+}
+app, err := client.New(client.Config{
+    SocketPath: "/var/lib/ardents/applications/application.sock",
+    Credential: credential,
+})
+```
+
+The native installer creates the `ardents-apps` system group. An operator grants
+a local service access by adding its Unix account to that group; the Application
+directory is setgid `0750`, the bootstrap token is `0640`, and the socket is
+`0660`. Membership grants only the configured Application actions, never
+Operator authority.
+
 `Put` succeeds only after durable local storage and returns a content-derived
 reference. `Get` uses a verified local payload when present and otherwise asks
 the Node to perform its normal source selection and network fetch. The SDK does
@@ -67,9 +97,11 @@ of unary `Put` and `Get`.
 ## Delivery Sequence
 
 1. Content protocol, Node adapter, Go client, and contract test.
-2. Application credential issuance, revocation, and separate Unix listener.
-3. Discovery resolution.
-4. Messaging send/receive with bounded cursors and backpressure.
-5. Hosting registration, readiness, lease renewal, and drain.
-6. Extract and publish the Go SDK as an independently versioned module after the
+2. Separate listener and bootstrap Application Credential (implemented).
+3. Online credential issuance, listing, rotation, and revocation through the
+   Operator Interface.
+4. Discovery resolution.
+5. Messaging send/receive with bounded cursors and backpressure.
+6. Hosting registration, readiness, lease renewal, and drain.
+7. Extract and publish the Go SDK as an independently versioned module after the
    repository remote and public module path are fixed.

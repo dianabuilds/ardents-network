@@ -344,12 +344,6 @@ func (n *Node) FetchBlob(ctx context.Context, id string) (appdata.Blob, error) {
 	return blob, err
 }
 
-func (n *Node) GetBlobPayload(id string) ([]byte, error) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	return n.data.GetBlobPayload(id)
-}
-
 func (n *Node) FetchChunked(ctx context.Context, rootID string) (appdata.ChunkFetchResult, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()

@@ -6,18 +6,29 @@ import (
 )
 
 type Document struct {
-	APIVersion    string              `json:"api_version"`
-	Node          NodeConfig          `json:"node"`
-	API           APIConfig           `json:"api"`
-	Network       NetworkConfig       `json:"network"`
-	Privacy       PrivacyConfig       `json:"privacy"`
-	Workloads     WorkloadsConfig     `json:"workloads"`
-	Services      []ServiceConfig     `json:"services"`
-	Data          DataConfig          `json:"data"`
-	Policy        PolicyConfig        `json:"policy"`
-	Logging       LoggingConfig       `json:"logging"`
-	Observability ObservabilityConfig `json:"observability"`
-	Diagnostics   DiagnosticsConfig   `json:"diagnostics"`
+	APIVersion           string                     `json:"api_version"`
+	Node                 NodeConfig                 `json:"node"`
+	API                  APIConfig                  `json:"api"`
+	ApplicationInterface ApplicationInterfaceConfig `json:"application_interface"`
+	Network              NetworkConfig              `json:"network"`
+	Privacy              PrivacyConfig              `json:"privacy"`
+	Workloads            WorkloadsConfig            `json:"workloads"`
+	Services             []ServiceConfig            `json:"services"`
+	Data                 DataConfig                 `json:"data"`
+	Policy               PolicyConfig               `json:"policy"`
+	Logging              LoggingConfig              `json:"logging"`
+	Observability        ObservabilityConfig        `json:"observability"`
+	Diagnostics          DiagnosticsConfig          `json:"diagnostics"`
+}
+
+type ApplicationInterfaceConfig struct {
+	Enabled             bool     `json:"enabled"`
+	ListenAddress       string   `json:"listen_address,omitempty"`
+	SocketPath          string   `json:"socket_path,omitempty"`
+	TokenFile           string   `json:"token_file,omitempty"`
+	Subject             string   `json:"subject,omitempty"`
+	Capabilities        []string `json:"capabilities,omitempty"`
+	CredentialExpiresAt string   `json:"credential_expires_at,omitempty"`
 }
 
 type NodeConfig struct {

@@ -37,16 +37,17 @@ type NodeOptions struct {
 }
 
 type NodeProvision struct {
-	Subject         string
-	Issuer          string
-	IssuerPublic    ed25519.PublicKey
-	DiscoveryRef    identityapi.CapabilityRef
-	DataRef         identityapi.CapabilityRef
-	StoreKeyPath    string
-	ReplayKeyPath   string
-	CapabilityStore string
-	DiscoveryReplay string
-	DataReplay      string
+	Subject              string
+	Issuer               string
+	IssuerPublic         ed25519.PublicKey
+	DiscoveryRef         identityapi.CapabilityRef
+	DataRef              identityapi.CapabilityRef
+	StoreKeyPath         string
+	ReplayKeyPath        string
+	CapabilityStore      string
+	DiscoveryReplay      string
+	DataReplay           string
+	ApplicationExpiresAt time.Time
 }
 
 type authorityState struct {
@@ -161,7 +162,15 @@ func (a *Authority) provisionSubject(options NodeOptions, subject string, admiss
 		DiscoveryRef: discoveryRef, DataRef: dataRef, StoreKeyPath: nodeStorage.storeKeyPath,
 		ReplayKeyPath: nodeStorage.replayKeyPath, CapabilityStore: nodeStorage.capabilityStore,
 		DiscoveryReplay: nodeStorage.discoveryReplay, DataReplay: nodeStorage.dataReplay,
+		ApplicationExpiresAt: earliestTime(record.Discovery.NotAfter, record.Data.NotAfter),
 	}, nil
+}
+
+func earliestTime(left, right time.Time) time.Time {
+	if left.Before(right) {
+		return left
+	}
+	return right
 }
 
 func (a *Authority) loadOrCreateNodeState(path, subject, issuer string, now time.Time) (nodeState, error) {

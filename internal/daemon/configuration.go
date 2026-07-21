@@ -15,6 +15,7 @@ import (
 	workloadcontroller "ardents/internal/workload/execution"
 	"context"
 	"crypto/ed25519"
+	"crypto/subtle"
 	"encoding/base64"
 	"fmt"
 	"log/slog"
@@ -27,15 +28,22 @@ import (
 )
 
 type runtimeConfig struct {
-	ListenAddr         string
-	SocketPath         string
-	ObservabilityAddr  string
-	ObservabilityToken string
-	APIToken           string
-	APISubject         string
-	APICapabilities    []string
-	APICredentialEnd   time.Time
-	Node               Config
+	ListenAddr               string
+	SocketPath               string
+	ObservabilityAddr        string
+	ObservabilityToken       string
+	APIToken                 string
+	APISubject               string
+	APICapabilities          []string
+	APICredentialEnd         time.Time
+	ApplicationEnabled       bool
+	ApplicationListenAddr    string
+	ApplicationSocketPath    string
+	ApplicationToken         string
+	ApplicationSubject       string
+	ApplicationCapabilities  []string
+	ApplicationCredentialEnd time.Time
+	Node                     Config
 }
 
 func loadRuntimeConfig() (runtimeConfig, error) {
@@ -410,12 +418,35 @@ func runtimeConfigFromDocument(doc runtimeconfig.Document, token string) (runtim
 	if err != nil {
 		return runtimeConfig{}, err
 	}
+	applicationToken := ""
+	applicationExpiresAt := time.Time{}
+	if doc.ApplicationInterface.Enabled {
+		applicationToken, err = runtimeconfig.ApplicationToken(doc.ApplicationInterface.TokenFile)
+		if err != nil {
+			return runtimeConfig{}, err
+		}
+		if subtle.ConstantTimeCompare([]byte(applicationToken), []byte(token)) == 1 {
+			return runtimeConfig{}, fmt.Errorf("application and operator credentials must be distinct")
+		}
+		applicationExpiresAt, err = parseCredentialExpiryField(
+			"application_interface.credential_expires_at", doc.ApplicationInterface.CredentialExpiresAt,
+		)
+		if err != nil {
+			return runtimeConfig{}, err
+		}
+	}
 	cfg := runtimeConfig{
 		ListenAddr: doc.API.ListenAddress, SocketPath: doc.API.SocketPath, ObservabilityAddr: doc.Observability.ListenAddress,
 		ObservabilityToken: observabilityToken,
 		APIToken:           token,
 		APISubject:         credential.SubjectID, APICapabilities: credential.Capabilities, APICredentialEnd: credential.ExpiresAt,
-		Node: operatorNodeConfig(doc, data, executor),
+		ApplicationEnabled:    doc.ApplicationInterface.Enabled,
+		ApplicationListenAddr: doc.ApplicationInterface.ListenAddress,
+		ApplicationSocketPath: doc.ApplicationInterface.SocketPath,
+		ApplicationToken:      applicationToken, ApplicationSubject: doc.ApplicationInterface.Subject,
+		ApplicationCapabilities:  cloneStrings(doc.ApplicationInterface.Capabilities),
+		ApplicationCredentialEnd: applicationExpiresAt,
+		Node:                     operatorNodeConfig(doc, data, executor),
 	}
 	privacy, dataPrivacy, policyService, err := operatorPrivacyChannels(doc, cfg.Node.Policy)
 	if err != nil {
@@ -469,12 +500,16 @@ func operatorCredential(api runtimeconfig.APIConfig, token string) (operatorCred
 }
 
 func parseCredentialExpiry(raw string) (time.Time, error) {
+	return parseCredentialExpiryField("api.credential_expires_at", raw)
+}
+
+func parseCredentialExpiryField(field, raw string) (time.Time, error) {
 	if raw == "" {
 		return time.Time{}, nil
 	}
 	value, err := time.Parse(time.RFC3339, raw)
 	if err != nil {
-		return time.Time{}, fmt.Errorf("api.credential_expires_at: %w", err)
+		return time.Time{}, fmt.Errorf("%s: %w", field, err)
 	}
 	return value, nil
 }

@@ -63,6 +63,22 @@ sudo ardentsctl \
 Remote administration uses `ardentsctl --ssh`; the daemon API remains bound to
 loopback and is not published as remote HTTP.
 
+Local applications use the separate
+`/var/lib/ardents/applications/application.sock` with the bootstrap credential in
+`/var/lib/ardents/applications/application-token`, or the dedicated loopback
+Application Interface on `127.0.0.1:8081`. This credential cannot call the
+Operator Interface. Applications should use the Go SDK rather than generated
+wire bindings directly.
+
+The installer creates the `ardents-apps` system group and protects the shared
+bootstrap boundary with a setgid `0750` directory, `0640` token, and `0660`
+socket. Add only the service account that should consume the bootstrap
+credential, then restart that service so its supplementary groups are refreshed:
+
+```sh
+sudo usermod --append --groups ardents-apps hello-service
+```
+
 ## Backup, Upgrade, Rollback, And Restore
 
 A backup is a consistency group: operator configuration, node state and

@@ -57,6 +57,18 @@ func TestValidateRejectsCrossFieldContradictions(t *testing.T) {
 		{"invalid credential expiry", func(d *Document) {
 			d.API.CredentialExpiresAt = "tomorrow"
 		}, "RFC3339"},
+		{"remote plaintext application listener", func(d *Document) {
+			d.ApplicationInterface = validApplicationInterface()
+			d.ApplicationInterface.ListenAddress = "0.0.0.0:8081"
+		}, "must be loopback"},
+		{"shared operator and application listener", func(d *Document) {
+			d.ApplicationInterface = validApplicationInterface()
+			d.ApplicationInterface.ListenAddress = d.API.ListenAddress
+		}, "must differ"},
+		{"unsupported application capability", func(d *Document) {
+			d.ApplicationInterface = validApplicationInterface()
+			d.ApplicationInterface.Capabilities = []string{"node.stop"}
+		}, "unsupported action"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -65,6 +77,13 @@ func TestValidateRejectsCrossFieldContradictions(t *testing.T) {
 			tc.mutate(&doc)
 			require.ErrorContains(t, Validate(doc), tc.want)
 		})
+	}
+}
+
+func validApplicationInterface() ApplicationInterfaceConfig {
+	return ApplicationInterfaceConfig{
+		Enabled: true, ListenAddress: "127.0.0.1:8081", TokenFile: "application-token",
+		Subject: "example", Capabilities: []string{"application.content.get"}, CredentialExpiresAt: "2027-01-01T00:00:00Z",
 	}
 }
 

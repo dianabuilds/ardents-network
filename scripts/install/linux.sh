@@ -69,6 +69,7 @@ bin_dir="$path_root/usr/local/bin"
 config_dir="$path_root/etc/ardents"
 state_dir="$path_root/var/lib/ardents"
 secret_dir="$state_dir/secrets"
+application_dir="$state_dir/applications"
 authority_dir="$path_root/var/lib/ardents-authority"
 upgrade_dir="$path_root/var/lib/ardents-upgrades"
 backup_dir="$path_root/var/backups/ardents"
@@ -256,6 +257,7 @@ ensure_service_account() {
     [ "$root" = / ] || return 0
     for required_command in getent groupadd useradd; do command -v "$required_command" >/dev/null 2>&1 || fail "required account-management command is unavailable: $required_command"; done
     getent group ardents >/dev/null 2>&1 || groupadd --system ardents
+    getent group ardents-apps >/dev/null 2>&1 || groupadd --system ardents-apps
     id ardents >/dev/null 2>&1 || useradd --system --gid ardents --home-dir /var/lib/ardents --shell /usr/sbin/nologin ardents
     account=$(getent passwd ardents) || fail "cannot resolve ardents service account"
     [ "$(printf '%s' "$account" | cut -d: -f4)" = "$(getent group ardents | cut -d: -f3)" ] || fail "existing ardents account must use the ardents primary group"
@@ -339,7 +341,7 @@ case "$transport_port" in ''|*[!0-9]*) fail "--transport-port must be an integer
 unit_source="$source_dir/systemd/ardentsd.service"; [ -f "$unit_source" ] || unit_source="$script_dir/../../deploy/systemd/ardentsd.service"
 [ -f "$unit_source" ] || fail "missing systemd unit template"
 ensure_service_account
-install -d -m 0755 "$bin_dir" "$unit_dir"; install -d -m 0750 "$config_dir" "$state_dir"; install -d -m 0700 "$secret_dir" "$authority_dir"
+install -d -m 0755 "$bin_dir" "$unit_dir"; install -d -m 0750 "$config_dir" "$state_dir"; install -d -m 0700 "$secret_dir" "$application_dir" "$authority_dir"
 stage_binaries
 if [ -x "$bin_dir/ardentsd" ] || [ -x "$bin_dir/ardentsctl" ]; then
     if [ ! -x "$bin_dir/ardentsd" ] || [ ! -x "$bin_dir/ardentsctl" ]; then
@@ -369,7 +371,14 @@ if [ ! -f "$config_path" ]; then
     mv "$secret_dir/operator.json" "$config_path"
 fi
 install -m 0644 "$unit_source" "$unit_path"; chmod 0600 "$config_path"
-if [ "$root" = / ]; then chown -R ardents:ardents "$state_dir" "$config_dir"; chown -R root:root "$authority_dir"; chmod 0700 "$authority_dir"; fi
+if [ "$root" = / ]; then
+    chown -R ardents:ardents "$state_dir" "$config_dir"
+    chown ardents:ardents-apps "$application_dir"; chmod 2750 "$application_dir"
+    if [ -f "$application_dir/application-token" ]; then
+        chown ardents:ardents-apps "$application_dir/application-token"; chmod 0640 "$application_dir/application-token"
+    fi
+    chown -R root:root "$authority_dir"; chmod 0700 "$authority_dir"
+fi
 if [ "$systemctl_available" = true ]; then
     systemctl daemon-reload
     systemctl enable ardentsd.service >/dev/null

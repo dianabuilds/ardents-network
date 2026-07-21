@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"ardents/internal/buildinfo"
+	applicationv1 "ardents/sdk/go/protocol/applicationv1"
 )
 
 type LocalAPIConfig struct {
@@ -27,6 +28,15 @@ type LocalAPIConfig struct {
 
 type LocalAPIHandlerFactory func(Owners, LocalAPIConfig) (string, http.Handler, error)
 
+type ApplicationAPIConfig struct {
+	Token        string
+	Subject      string
+	Capabilities []string
+	ExpiresAt    time.Time
+}
+
+type ApplicationAPIHandlerFactory func(Owners, ApplicationAPIConfig) (string, http.Handler, error)
+
 type OperatorSurface interface {
 	Handler() http.Handler
 	Middleware(http.Handler) http.Handler
@@ -34,7 +44,7 @@ type OperatorSurface interface {
 
 type OperatorSurfaceFactory func(Owners, string) (OperatorSurface, error)
 
-func Run(localAPI LocalAPIHandlerFactory, operatorSurface OperatorSurfaceFactory) error {
+func Run(localAPI LocalAPIHandlerFactory, applicationAPI ApplicationAPIHandlerFactory, operatorSurface OperatorSurfaceFactory) error {
 	if len(os.Args) == 2 && (os.Args[1] == "version" || os.Args[1] == "--version") {
 		encoded, err := json.Marshal(buildinfo.Current())
 		if err != nil {
@@ -82,6 +92,27 @@ func Run(localAPI LocalAPIHandlerFactory, operatorSurface OperatorSurfaceFactory
 		servers = append(servers, socketServer)
 		targets = append(targets, serveTarget{serve: func() error { return socketServer.Serve(socketListener) }})
 		slog.Info("ardentsd local control socket ready", "path", cfg.SocketPath)
+	}
+	if cfg.ApplicationEnabled {
+		applicationPath, applicationHandler, applicationErr := newApplicationAPIHandler(process, cfg, applicationAPI)
+		if applicationErr != nil {
+			return fmt.Errorf("configure Application Interface: %w", applicationErr)
+		}
+		if cfg.ApplicationListenAddr != "" {
+			applicationServer := newHTTPServer(cfg.ApplicationListenAddr, applicationHandler)
+			servers = append(servers, applicationServer)
+			targets = append(targets, serveTarget{serve: applicationServer.ListenAndServe})
+			slog.Info("ardentsd Application Interface listening", "addr", applicationServer.Addr, "path", applicationPath)
+		}
+		if cfg.ApplicationSocketPath != "" {
+			applicationSocketServer, applicationListener, socketErr := newApplicationUnixHTTPServer(cfg.ApplicationSocketPath, applicationHandler)
+			if socketErr != nil {
+				return fmt.Errorf("configure Application Interface socket: %w", socketErr)
+			}
+			servers = append(servers, applicationSocketServer)
+			targets = append(targets, serveTarget{serve: func() error { return applicationSocketServer.Serve(applicationListener) }})
+			slog.Info("ardentsd Application Interface socket ready", "path", cfg.ApplicationSocketPath)
+		}
 	}
 	targets = append(targets, serveTarget{serve: observabilityServer.ListenAndServe})
 	for _, current := range servers {
@@ -148,6 +179,20 @@ func newLocalAPIHandler(process Owners, cfg runtimeConfig, factory LocalAPIHandl
 		return "", nil, err
 	}
 	return path, limitLocalAPIHandler(handler, localAPIMaxBodyBytes, localAPIRequestTimeout), nil
+}
+
+func newApplicationAPIHandler(process Owners, cfg runtimeConfig, factory ApplicationAPIHandlerFactory) (string, http.Handler, error) {
+	if factory == nil {
+		return "", nil, fmt.Errorf("Application Interface handler factory is required")
+	}
+	path, handler, err := factory(process, ApplicationAPIConfig{
+		Token: cfg.ApplicationToken, Subject: cfg.ApplicationSubject,
+		Capabilities: cfg.ApplicationCapabilities, ExpiresAt: cfg.ApplicationCredentialEnd,
+	})
+	if err != nil {
+		return "", nil, err
+	}
+	return path, limitLocalAPIHandler(handler, int64(applicationv1.MaxUnaryMessageBytes), localAPIRequestTimeout), nil
 }
 
 func shutdownServerOnContext(ctx context.Context, server *http.Server) {

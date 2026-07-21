@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"time"
 
 	runtimeconfig "ardents/internal/config"
 	"ardents/internal/storage"
@@ -25,6 +26,16 @@ func operatorDocument(configured options, provisioned NodeProvision) runtimeconf
 	doc.API.TokenFile = filepath.Join(runtimeSecretDir, "api-token")
 	doc.API.SocketPath = filepath.Join(runtimeSecretDir, "control.sock")
 	doc.API.OperatorSubject = "local-deployment-operator"
+	doc.ApplicationInterface.Enabled = true
+	doc.ApplicationInterface.ListenAddress = "127.0.0.1:8081"
+	applicationDir := filepath.Join(runtimeDataDir, "applications")
+	doc.ApplicationInterface.SocketPath = filepath.Join(applicationDir, "application.sock")
+	doc.ApplicationInterface.TokenFile = filepath.Join(applicationDir, "application-token")
+	doc.ApplicationInterface.Subject = "local-application"
+	doc.ApplicationInterface.Capabilities = []string{"application.content.put", "application.content.get"}
+	if !provisioned.ApplicationExpiresAt.IsZero() {
+		doc.ApplicationInterface.CredentialExpiresAt = provisioned.ApplicationExpiresAt.UTC().Format(time.RFC3339)
+	}
 	doc.Network.ListenPort = configured.transportPort
 	doc.Network.StorePath = filepath.Join(runtimeDataDir, "waku-store.db")
 	if configured.bootstrapPeer != "" {

@@ -28,6 +28,17 @@ func Validate(doc Document) error {
 	if err := validateAPI(doc.API); err != nil {
 		return err
 	}
+	if err := validateApplicationInterface(doc.ApplicationInterface); err != nil {
+		return err
+	}
+	if doc.ApplicationInterface.Enabled {
+		if doc.ApplicationInterface.ListenAddress != "" && doc.ApplicationInterface.ListenAddress == doc.API.ListenAddress {
+			return fmt.Errorf("application_interface.listen_address must differ from api.listen_address")
+		}
+		if doc.ApplicationInterface.SocketPath != "" && doc.ApplicationInterface.SocketPath == doc.API.SocketPath {
+			return fmt.Errorf("application_interface.socket_path must differ from api.socket_path")
+		}
+	}
 	if err := validateNetwork(doc); err != nil {
 		return err
 	}
@@ -44,6 +55,59 @@ func Validate(doc Document) error {
 		return err
 	}
 	return validateObservability(doc)
+}
+
+func validateApplicationInterface(cfg ApplicationInterfaceConfig) error {
+	if !cfg.Enabled {
+		return nil
+	}
+	if strings.TrimSpace(cfg.ListenAddress) == "" && strings.TrimSpace(cfg.SocketPath) == "" {
+		return fmt.Errorf("application_interface requires a listen_address or socket_path")
+	}
+	if cfg.ListenAddress != "" {
+		host, _, err := net.SplitHostPort(cfg.ListenAddress)
+		if err != nil {
+			return fmt.Errorf("application_interface.listen_address: %w", err)
+		}
+		ip := net.ParseIP(host)
+		if !strings.EqualFold(host, "localhost") && (ip == nil || !ip.IsLoopback()) {
+			return fmt.Errorf("application_interface.listen_address must be loopback")
+		}
+	}
+	if strings.ContainsRune(cfg.SocketPath, '\x00') {
+		return fmt.Errorf("application_interface.socket_path contains an invalid character")
+	}
+	if cfg.SocketPath != "" && !filepath.IsAbs(cfg.SocketPath) &&
+		!strings.HasPrefix(cfg.SocketPath, "/") && !strings.HasPrefix(cfg.SocketPath, `\`) {
+		return fmt.Errorf("application_interface.socket_path must be absolute")
+	}
+	if strings.TrimSpace(cfg.TokenFile) == "" {
+		return fmt.Errorf("application_interface.token_file is required")
+	}
+	if strings.TrimSpace(cfg.Subject) == "" {
+		return fmt.Errorf("application_interface.subject is required")
+	}
+	if len(cfg.Capabilities) == 0 {
+		return fmt.Errorf("application_interface.capabilities requires explicit action names")
+	}
+	seen := make(map[string]struct{}, len(cfg.Capabilities))
+	for _, capability := range cfg.Capabilities {
+		capability = strings.TrimSpace(capability)
+		if capability != "application.content.put" && capability != "application.content.get" {
+			return fmt.Errorf("application_interface.capabilities contains unsupported action %q", capability)
+		}
+		if _, duplicate := seen[capability]; duplicate {
+			return fmt.Errorf("application_interface.capabilities contains duplicate %q", capability)
+		}
+		seen[capability] = struct{}{}
+	}
+	if cfg.CredentialExpiresAt == "" {
+		return fmt.Errorf("application_interface.credential_expires_at is required")
+	}
+	if _, err := time.Parse(time.RFC3339, cfg.CredentialExpiresAt); err != nil {
+		return fmt.Errorf("application_interface.credential_expires_at must be RFC3339: %w", err)
+	}
+	return nil
 }
 
 func validateAPI(cfg APIConfig) error {

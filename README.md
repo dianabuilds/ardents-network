@@ -64,6 +64,11 @@ profile. `ardents-ingress-proxy` is an internal, optional image used only for
 isolated hosted-service ingress; it is versioned with the node release but is
 not required to install, start, or operate a node.
 
+Initialization also creates a separate `application.sock` and
+`application-token` for least-privilege local Application SDK access. These do
+not authorize the administrative Operator Interface. See the
+[Application Interface and SDK](docs/product/application-api-and-sdk.md).
+
 For a native Linux node, extract the release archive and run the included
 installer. It creates the `ardents` service account, protected state, a systemd
 unit, and the initial operator credential:
