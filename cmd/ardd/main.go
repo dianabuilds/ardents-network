@@ -1,15 +1,25 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
+	"os"
 
 	"ardents/internal/daemon"
 	"ardents/internal/localapi"
 	localauth "ardents/internal/localapi/auth"
 	"ardents/internal/observability"
+	"ardents/internal/provision"
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "provision" {
+		if err := provision.Run(os.Args[2:], os.Stdout); err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "provision local realm: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
 	daemon.Run(newLocalAPIHandler, newOperatorSurface)
 }
 

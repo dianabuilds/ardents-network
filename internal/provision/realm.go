@@ -1,4 +1,4 @@
-package main
+package provision
 
 import (
 	identityapi "ardents/internal/identity"

@@ -16,7 +16,6 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     export LDFLAGS="-s -w -X ardents/internal/buildinfo.Version=${ARDENTS_VERSION} -X ardents/internal/buildinfo.Commit=${ARDENTS_COMMIT} -X ardents/internal/buildinfo.BuildDate=${ARDENTS_BUILD_DATE}" && \
     GOMAXPROCS=${GO_BUILD_PARALLELISM} go build -trimpath -buildvcs=false -p=${GO_BUILD_PARALLELISM} -ldflags "$LDFLAGS" -o /out/ardd ./cmd/ardd && \
     GOMAXPROCS=${GO_BUILD_PARALLELISM} go build -trimpath -buildvcs=false -p=${GO_BUILD_PARALLELISM} -ldflags "$LDFLAGS" -o /out/ard ./cmd/ard && \
-    GOMAXPROCS=${GO_BUILD_PARALLELISM} go build -trimpath -buildvcs=false -p=${GO_BUILD_PARALLELISM} -ldflags "$LDFLAGS" -o /out/ard-provision ./cmd/ard-provision && \
     GOMAXPROCS=${GO_BUILD_PARALLELISM} go build -trimpath -buildvcs=false -p=${GO_BUILD_PARALLELISM} -ldflags "$LDFLAGS" -o /out/ard-store-probe ./tests/tooling/store-probe
 
 FROM debian:bookworm-slim
@@ -37,7 +36,6 @@ RUN apt-get update && \
 
 COPY --from=build /out/ardd /usr/local/bin/ardd
 COPY --from=build /out/ard /usr/local/bin/ard
-COPY --from=build /out/ard-provision /usr/local/bin/ard-provision
 COPY --from=build /out/ard-store-probe /usr/local/bin/ard-store-probe
 COPY LICENSE /usr/share/doc/ardents/LICENSE
 

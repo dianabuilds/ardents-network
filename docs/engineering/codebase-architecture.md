@@ -109,8 +109,6 @@ cmd/
     main.go
   ardd/
     main.go
-  ard-provision/
-    main.go
   ardents-ingress-proxy/
     main.go
 
@@ -831,9 +829,10 @@ Completed structural replacements:
   packages and the shallow `lifecycle` wrapper were deleted. Durable key
   access moved from the vague `continuity` name to `keyring`; node identity
   creation/restoration now sits behind the root `identity.Service` seam.
-  Local-realm provisioning moved to the `ard-provision` application that
-  composes identity and capability, avoiding both a reverse import cycle and a
-  false reusable identity subdomain.
+  Local-realm provisioning lives behind the explicit `ardd provision` mode and
+  composes identity and capability through `internal/provision`, avoiding both
+  a reverse import cycle, a false reusable identity subdomain, and a separate
+  deployment binary.
 - collapsed `policy/decision`, `policy/evaluation`, `policy/policyset`,
   `policy/reason` and `policy/rule` into the flat policy owner required by the
   target tree. Callers now learn one policy interface and one `BlobView` type;

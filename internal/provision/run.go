@@ -1,10 +1,9 @@
-package main
+package provision
 
 import (
 	"flag"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"time"
 
@@ -20,11 +19,8 @@ type options struct {
 	transportPort int
 }
 
-func main() {
-	if err := run(os.Args[1:], os.Stdout, time.Now); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "provision local realm: %v\n", err)
-		os.Exit(1)
-	}
+func Run(args []string, stdout io.Writer) error {
+	return run(args, stdout, time.Now)
 }
 
 func run(args []string, stdout io.Writer, clock func() time.Time) error {
@@ -51,7 +47,7 @@ func run(args []string, stdout io.Writer, clock func() time.Time) error {
 }
 
 func parseOptions(args []string) (options, error) {
-	set := flag.NewFlagSet("ard-provision", flag.ContinueOnError)
+	set := flag.NewFlagSet("ardd provision", flag.ContinueOnError)
 	set.SetOutput(io.Discard)
 	var configured options
 	set.StringVar(&configured.authorityDir, "authority-dir", "", "protected local realm authority directory")

@@ -33,7 +33,7 @@ services:
       context: ../../..
       dockerfile: deploy/docker/images/ardd.Dockerfile
     profiles: ["provisioning"]
-    entrypoint: ["/usr/local/bin/ard-provision"]
+    entrypoint: ["/usr/local/bin/ardd", "provision"]
     network_mode: none
     read_only: true
     cap_drop: ["ALL"]
