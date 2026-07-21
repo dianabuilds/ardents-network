@@ -1,4 +1,0 @@
-interface:
-  display_name: "Ardents Runtime Security Guard"
-  short_description: "Review runtime security-sensitive changes"
-  default_prompt: "Use $ardents-runtime-security-guard to review this Ardents change for runtime security risks and secret-handling violations."

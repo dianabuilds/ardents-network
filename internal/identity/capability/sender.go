@@ -3,7 +3,7 @@ package capability
 import (
 	"crypto/hmac"
 
-	identityapi "ardents/internal/identity/api"
+	identityapi "ardents/internal/identity"
 )
 
 func (s *Service) ImportSenderGrant(grant identityapi.CapabilityGrant) error {
@@ -79,8 +79,14 @@ func (s *Service) validateSenderGrantConflict(grant identityapi.CapabilityGrant)
 	if err != nil {
 		return capabilityError(CodeInvalid, err.Error())
 	}
-	want, _ := canonicalGrant(existing)
-	got, _ := canonicalGrant(grant)
+	want, err := canonicalGrant(existing)
+	if err != nil {
+		return capabilityError(CodeInvalid, err.Error())
+	}
+	got, err := canonicalGrant(grant)
+	if err != nil {
+		return capabilityError(CodeInvalid, err.Error())
+	}
 	if !hmac.Equal(want, got) || !hmac.Equal(existing.Signature, grant.Signature) {
 		return capabilityError(CodeInvalid, "sender grant identifier conflicts with retained grant")
 	}

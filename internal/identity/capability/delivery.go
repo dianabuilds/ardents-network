@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	identityapi "ardents/internal/identity/api"
+	identityapi "ardents/internal/identity"
 )
 
 const deliveryInfoDomain = "ardents-capability-delivery/1"

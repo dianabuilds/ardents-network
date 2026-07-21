@@ -15,7 +15,7 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Set-Location $root
 $statePath = [IO.Path]::GetFullPath($StateDir)
-$composeFile = Join-Path $root "docker/docker-compose.multinode.yml"
+$composeFile = Join-Path $root "deploy/docker/compose/docker-compose.multinode.yml"
 $manifestPath = Join-Path $statePath "cluster.json"
 $services = @("seed", "peer2", "peer3")
 $composePrefix = @("compose", "-p", $Project, "-f", $composeFile)

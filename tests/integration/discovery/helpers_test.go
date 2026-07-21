@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -14,10 +15,8 @@ import (
 	"testing"
 	"time"
 
-	discovery "ardents/internal/discovery"
-	discoveryapi "ardents/internal/discovery/api"
-	identityapi "ardents/internal/identity/api"
-	"ardents/tests/testkit"
+	"ardents/internal/discovery"
+	identityprincipal "ardents/internal/identity/principal"
 
 	"github.com/stretchr/testify/require"
 )
@@ -31,11 +30,12 @@ func TestDiscoveryIntegrationReadyHelper(t *testing.T) {
 		w.Header().Set("X-Ardents-Generation", generation)
 		w.WriteHeader(http.StatusNoContent)
 	})}
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		os.Exit(2)
 	}
 }
 
+//goland:noinspection ALL
 func readyServiceFixture(t *testing.T) (string, string, string) {
 	t.Helper()
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -70,22 +70,17 @@ func mustInterfaceAddresses(t *testing.T) []net.IP {
 	return result
 }
 
-func helperProcessConfig(t *testing.T, mode string) string {
-	t.Helper()
-	return testkit.HelperProcessConfig(t, mode)
-}
-
-func signedNodeRecord(t *testing.T, endpoints []string) (discoveryapi.DiscoveryRecord, ed25519.PrivateKey) {
+func signedNodeRecord(t *testing.T, endpoints []string) (discovery.CatalogRecordSnapshot, ed25519.PrivateKey) {
 	t.Helper()
 
 	public, private, err := ed25519.GenerateKey(rand.Reader)
 	require.NoErrorf(t, err, "generate key: %v", err)
 
 	publicKey := base64.StdEncoding.EncodeToString(public)
-	principal, err := identityapi.PrincipalFromPublicKey(publicKey)
+	principal, err := identityprincipal.FromPublicKey(publicKey)
 	require.NoErrorf(t, err, "principal from public key: %v", err)
 
-	record := discoveryapi.DiscoveryRecord{
+	record := discovery.CatalogRecordSnapshot{
 		ID:        principal + ":node",
 		Kind:      "node",
 		Subject:   principal,
@@ -100,7 +95,7 @@ func signedNodeRecord(t *testing.T, endpoints []string) (discoveryapi.DiscoveryR
 	return record, private
 }
 
-func signDiscoveryRecord(t *testing.T, record *discoveryapi.DiscoveryRecord, private ed25519.PrivateKey) {
+func signDiscoveryRecord(t *testing.T, record *discovery.CatalogRecordSnapshot, private ed25519.PrivateKey) {
 	t.Helper()
 
 	payload, err := discovery.Canonical(discovery.Record{

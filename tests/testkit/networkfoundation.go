@@ -4,8 +4,9 @@ import (
 	"testing"
 	"time"
 
-	transport "ardents/internal/network/api"
-	nodeapi "ardents/internal/node/api"
+	nodeapi "ardents/internal/daemon"
+	transport "ardents/internal/network"
+	networkwaku "ardents/internal/network/waku"
 
 	"github.com/stretchr/testify/require"
 )
@@ -14,22 +15,28 @@ func StartTransport(t *testing.T) transport.Service {
 	t.Helper()
 
 	ConfigureLoopbackTransport(t)
-	svc := transport.New()
+	svc := networkwaku.New()
 	require.NoError(t, svc.Start(t.Context()))
 	t.Cleanup(func() {
-		_ = svc.Stop(t.Context())
+		require.NoError(t, svc.Stop(t.Context()))
 	})
 	return svc
+}
+
+// NewTransport constructs the canonical network adapter without starting it.
+// Tests that exercise startup and recovery own the lifecycle explicitly.
+func NewTransport(cfg ...transport.Config) transport.Service {
+	return networkwaku.New(cfg...)
 }
 
 func StartTransportWithConfig(t *testing.T, cfg transport.Config) transport.Service {
 	t.Helper()
 
 	ConfigureLoopbackTransport(t)
-	svc := transport.New(cfg)
+	svc := networkwaku.New(cfg)
 	require.NoError(t, svc.Start(t.Context()))
 	t.Cleanup(func() {
-		_ = svc.Stop(t.Context())
+		require.NoError(t, svc.Stop(t.Context()))
 	})
 	return svc
 }
@@ -37,11 +44,11 @@ func StartTransportWithConfig(t *testing.T, cfg transport.Config) transport.Serv
 func StartBootstrappedTransport(t *testing.T, remote transport.Service) transport.Service {
 	t.Helper()
 
-	local := transport.New()
+	local := networkwaku.New()
 	local.SetBootstrapNodes(remote.Endpoints())
 	require.NoError(t, local.Start(t.Context()))
 	t.Cleanup(func() {
-		_ = local.Stop(t.Context())
+		require.NoError(t, local.Stop(t.Context()))
 	})
 	return local
 }
@@ -85,7 +92,7 @@ func WaitForTransportDegradedAfterPeerLoss(t *testing.T, svc transport.Service) 
 	return status
 }
 
-func WaitForNodeBootstrapReady(t *testing.T, n interface{ Snapshot() nodeapi.Snapshot }) {
+func WaitForNodeBootstrapReady(t *testing.T, n interface{ Snapshot() nodeapi.SystemSnapshot }) {
 	t.Helper()
 
 	WaitForCondition(t, 5*time.Second, "node join bootstrap peer", func() (bool, string) {
@@ -97,7 +104,7 @@ func WaitForNodeBootstrapReady(t *testing.T, n interface{ Snapshot() nodeapi.Sna
 	})
 }
 
-func WaitForNodeDegradedAfterPeerLoss(t *testing.T, n interface{ Snapshot() nodeapi.Snapshot }) {
+func WaitForNodeDegradedAfterPeerLoss(t *testing.T, n interface{ Snapshot() nodeapi.SystemSnapshot }) {
 	t.Helper()
 
 	WaitForCondition(t, 5*time.Second, "node degrade after peer loss", func() (bool, string) {
@@ -115,10 +122,10 @@ func WaitForNodeDegradedAfterPeerLoss(t *testing.T, n interface{ Snapshot() node
 	})
 }
 
-func WaitForNodeBootstrapRecovery(t *testing.T, n interface{ Snapshot() nodeapi.Snapshot }) nodeapi.Snapshot {
+func WaitForNodeBootstrapRecovery(t *testing.T, n interface{ Snapshot() nodeapi.SystemSnapshot }) nodeapi.SystemSnapshot {
 	t.Helper()
 
-	return WaitForSnapshot(t, 45*time.Second, n, "node recovery after bootstrap restart", func(snap nodeapi.Snapshot) (bool, string) {
+	return WaitForSnapshot(t, 45*time.Second, n, "node recovery after bootstrap restart", func(snap nodeapi.SystemSnapshot) (bool, string) {
 		if snap.Boot.Joined && snap.Boot.State == "ready" && snap.Trans.State == "ready" && snap.Diag.Health.State == "ready" {
 			return true, ""
 		}

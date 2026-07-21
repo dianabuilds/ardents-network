@@ -1,7 +1,5 @@
 package discovery
 
-import statepkg "ardents/internal/discovery/state"
-
 func (s *Service) Load() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -9,15 +7,15 @@ func (s *Service) Load() error {
 	if s.path == "" {
 		return nil
 	}
-	var persisted statepkg.Snapshot
-	found, err := statepkg.LoadSnapshot(s.path, &persisted)
+	var persisted Snapshot
+	found, err := LoadSnapshot(s.path, &persisted)
 	if err != nil {
 		return err
 	}
 	if !found {
 		return nil
 	}
-	s.records = statepkg.CloneEntries(persisted.Records)
+	s.records = CloneEntries(persisted.Records)
 	if persisted.State != "" {
 		s.state = persisted.State
 		s.reason = persisted.Reason

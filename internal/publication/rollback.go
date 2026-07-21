@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"ardents/internal/diagnostics"
-	nodelifecycle "ardents/internal/node/lifecycle"
-	publicationapi "ardents/internal/publication/api"
 )
 
 const (
@@ -27,9 +25,9 @@ func (m *Manager) moveLifecycleLocked(next string) {
 	}
 }
 
-func (m *Manager) CaptureWorkloadPublicationSnapshotLocked() publicationapi.Snapshot {
+func (m *Manager) CaptureWorkloadPublicationSnapshotLocked() Snapshot {
 	entries, state, reason := m.disco.Snapshot()
-	return publicationapi.Snapshot{
+	return Snapshot{
 		Workloads:       m.workload.Snapshot(),
 		Discovery:       entries,
 		DiscoveryState:  state,
@@ -37,7 +35,7 @@ func (m *Manager) CaptureWorkloadPublicationSnapshotLocked() publicationapi.Snap
 	}
 }
 
-func (m *Manager) RollbackWorkloadMutationLocked(ctx context.Context, action string, cause error, snapshot publicationapi.Snapshot) error {
+func (m *Manager) RollbackWorkloadMutationLocked(ctx context.Context, action string, cause error, snapshot Snapshot) error {
 	restoreCtx, cancel := rollbackContext(ctx)
 	defer cancel()
 	if err := m.workload.Restore(restoreCtx, snapshot.Workloads); err != nil {
@@ -95,9 +93,9 @@ func (m *Manager) recordRollbackLocked(action string, cause, rollbackErr error) 
 		m.diag.SetPrimary(state, reason)
 	}
 	if state == diagnostics.HealthFailed {
-		m.moveLifecycleLocked(nodelifecycle.Failed)
-	} else if m.life.State() != nodelifecycle.Failed {
-		m.moveLifecycleLocked(nodelifecycle.Degraded)
+		m.moveLifecycleLocked("failed")
+	} else if m.life.State() != "failed" {
+		m.moveLifecycleLocked("degraded")
 	}
 	m.diag.RecordEvent(Subsystem, eventType, m.cfgName, reason.Summary, reason.Code, map[string]any{
 		"action": action,

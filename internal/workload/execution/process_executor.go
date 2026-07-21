@@ -20,7 +20,7 @@ type processSpec struct {
 	Dir     string            `json:"dir,omitempty"`
 }
 
-const workloadGenerationEnvironment = "ARDENTS_WORKLOAD_GENERATION"
+const WorkloadGenerationEnvironment = "ARDENTS_WORKLOAD_GENERATION"
 
 type managedProcess struct {
 	cmd      *exec.Cmd
@@ -62,7 +62,7 @@ func (e *LocalExecutor) Start(_ context.Context, prepared PreparedWorkload) (Ins
 		for k, v := range cfg.Env {
 			env = append(env, k+"="+v)
 		}
-		env = append(env, workloadGenerationEnvironment+"="+strconv.FormatInt(prepared.Generation, 10))
+		env = append(env, WorkloadGenerationEnvironment+"="+strconv.FormatInt(prepared.Generation, 10))
 		cmd.Env = append(cmd.Environ(), env...)
 	}
 	if err := cmd.Start(); err != nil {
@@ -119,8 +119,7 @@ func (e *LocalExecutor) wait(workloadID string, cmd *exec.Cmd) {
 	reason := "exited"
 	if err != nil {
 		reason = err.Error()
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
+		if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 			exitCode = exitErr.ExitCode()
 			if status, ok := exitErr.Sys().(syscall.WaitStatus); ok {
 				exitCode = status.ExitStatus()
@@ -142,8 +141,7 @@ func (e *LocalExecutor) wait(workloadID string, cmd *exec.Cmd) {
 	proc.instance.Reason = reason
 	proc.instance.PID = 0
 	if exitCode != 0 || err == nil {
-		code := exitCode
-		proc.instance.ExitCode = &code
+		proc.instance.ExitCode = new(exitCode)
 	}
 }
 
@@ -160,7 +158,7 @@ func parseProcessSpec(raw string) (processSpec, error) {
 		if strings.TrimSpace(cfg.Command) == "" {
 			return processSpec{}, fmt.Errorf("missing process command")
 		}
-		if _, reserved := cfg.Env[workloadGenerationEnvironment]; reserved {
+		if _, reserved := cfg.Env[WorkloadGenerationEnvironment]; reserved {
 			return processSpec{}, fmt.Errorf("process environment key is reserved")
 		}
 		return cfg, nil

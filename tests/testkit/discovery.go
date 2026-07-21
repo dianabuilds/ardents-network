@@ -5,18 +5,18 @@ import (
 	"testing"
 	"time"
 
-	discoveryapi "ardents/internal/discovery/api"
-	nodeapi "ardents/internal/node/api"
+	nodeapi "ardents/internal/daemon"
+	discoveryapi "ardents/internal/discovery"
 
 	"github.com/stretchr/testify/require"
 )
 
 type discoveryRecordsReader interface {
-	ListRecords() ([]discoveryapi.DiscoveryRecord, error)
+	ListRecords() ([]discoveryapi.CatalogRecordSnapshot, error)
 }
 
 type discoveryImportTarget interface {
-	ImportRecord(discoveryapi.DiscoveryRecord) (discoveryapi.RecordImportResult, error)
+	ImportRecord(discoveryapi.CatalogRecordSnapshot) (discoveryapi.RecordImportResult, error)
 }
 
 type serviceResolver interface {
@@ -24,7 +24,7 @@ type serviceResolver interface {
 }
 
 type snapshotReader interface {
-	Snapshot() nodeapi.Snapshot
+	Snapshot() nodeapi.SystemSnapshot
 }
 
 func BootstrapEndpoints(t *testing.T, n discoveryRecordsReader) []string {
@@ -43,13 +43,13 @@ func BootstrapEndpoints(t *testing.T, n discoveryRecordsReader) []string {
 	return nil
 }
 
-func ImportRecordsFromNode(t *testing.T, target discoveryImportTarget, source discoveryRecordsReader, sourceLabel string, filter func(discoveryapi.DiscoveryRecord) bool) []discoveryapi.DiscoveryRecord {
+func ImportRecordsFromNode(t *testing.T, target discoveryImportTarget, source discoveryRecordsReader, sourceLabel string, filter func(discoveryapi.CatalogRecordSnapshot) bool) []discoveryapi.CatalogRecordSnapshot {
 	t.Helper()
 
 	records, err := source.ListRecords()
 	require.NoError(t, err)
 
-	imported := make([]discoveryapi.DiscoveryRecord, 0, len(records))
+	imported := make([]discoveryapi.CatalogRecordSnapshot, 0, len(records))
 	for _, record := range records {
 		if filter != nil && !filter(record) {
 			continue
@@ -79,10 +79,10 @@ func WaitForServiceMatchCount(t *testing.T, timeout time.Duration, n serviceReso
 	return last
 }
 
-func WaitForSnapshot(t *testing.T, timeout time.Duration, n snapshotReader, description string, check func(nodeapi.Snapshot) (bool, string)) nodeapi.Snapshot {
+func WaitForSnapshot(t *testing.T, timeout time.Duration, n snapshotReader, description string, check func(nodeapi.SystemSnapshot) (bool, string)) nodeapi.SystemSnapshot {
 	t.Helper()
 
-	var last nodeapi.Snapshot
+	var last nodeapi.SystemSnapshot
 	WaitForCondition(t, timeout, description, func() (bool, string) {
 		last = n.Snapshot()
 		return check(last)

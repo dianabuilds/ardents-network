@@ -66,8 +66,8 @@ function Remove-TimedOutResources([int]$ChildPID) {
     $testContainer = "ardents-tests-$ChildPID"
     & docker rm -f $testContainer 2>$null | Out-Null
     foreach ($cleanup in @(
-        @{ Project = "ardents-stb307-$ChildPID"; File = "docker/docker-compose.testnet.yml" },
-        @{ Project = "ardents-workload-$ChildPID"; File = "docker/docker-compose.workload-test.yml" }
+        @{ Project = "ardents-stb307-$ChildPID"; File = "deploy/docker/compose/docker-compose.testnet.yml" },
+        @{ Project = "ardents-workload-$ChildPID"; File = "deploy/docker/compose/docker-compose.workload-test.yml" }
     )) {
         & docker compose -p $cleanup.Project -f $cleanup.File down -v --remove-orphans 2>$null | Out-Null
     }

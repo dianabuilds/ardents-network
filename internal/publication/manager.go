@@ -5,14 +5,12 @@ import (
 	"crypto/ed25519"
 
 	"ardents/internal/diagnostics"
-	discovery "ardents/internal/discovery"
-	hostingregistry "ardents/internal/hosting/registry"
-	identityapi "ardents/internal/identity/api"
-	transport "ardents/internal/network/api"
-	networkprivacy "ardents/internal/network/privacy"
-	nodelifecycle "ardents/internal/node/lifecycle"
-	policyapi "ardents/internal/policy/api"
-	workloadcontroller "ardents/internal/workload/controller"
+	"ardents/internal/discovery"
+	identityapi "ardents/internal/identity"
+	networkprivacy "ardents/internal/messaging"
+	transport "ardents/internal/network"
+	workloadcontroller "ardents/internal/workload/execution"
+	hostingregistry "ardents/internal/workload/registry"
 )
 
 const Subsystem = "publication"
@@ -20,9 +18,9 @@ const Subsystem = "publication"
 type Manager struct {
 	cfgName    string
 	diag       *diagnostics.Recorder
-	life       *nodelifecycle.Machine
+	life       Lifecycle
 	disco      *discovery.Service
-	policy     policyapi.Service
+	policy     Policy
 	srv        *hostingregistry.Registry
 	workload   *workloadcontroller.Service
 	trans      transport.Service
@@ -36,15 +34,25 @@ type Manager struct {
 	publicationAttempted    bool
 }
 
+type Policy interface {
+	AllowServicePublication(hostingregistry.ServiceSpec) error
+}
+
+type Lifecycle interface {
+	State() string
+	Move(string) error
+}
+
 func NewManager(
 	cfgName string,
 	diag *diagnostics.Recorder,
-	life *nodelifecycle.Machine,
+	life Lifecycle,
 	disco *discovery.Service,
-	policySvc policyapi.Service,
+	policySvc Policy,
 	srv *hostingregistry.Registry,
 	workloadSvc *workloadcontroller.Service,
 	trans transport.Service,
+	privateCarrier networkprivacy.Carrier,
 	ident identityapi.Service,
 	trustSvc *discovery.TrustEvaluator,
 	privateKey func() ed25519.PrivateKey,
@@ -65,16 +73,21 @@ func NewManager(
 		privateKey: privateKey,
 		publish:    publish,
 	}
-	mgr.publishDiscoveryEntries = privateDiscoveryPublisher(trans, privateChannels)
+	mgr.publishDiscoveryEntries = privateDiscoveryPublisher(privateCarrier, privateChannels)
 	return mgr
 }
 
-func privateDiscoveryPublisher(trans transport.Service, channels []*networkprivacy.Channel) func(context.Context, []discovery.Entry) error {
+func (m *Manager) EffectiveWorkloadStatus(item workloadcontroller.Status) workloadcontroller.Status {
+	item.PublishedServices = EffectivePublishedServices(item.PublishedServices, m.policy.AllowServicePublication)
+	return item
+}
+
+func privateDiscoveryPublisher(carrier networkprivacy.Carrier, channels []*networkprivacy.Channel) func(context.Context, []discovery.Entry) error {
 	var channel *networkprivacy.Channel
 	if len(channels) > 0 {
 		channel = channels[0]
 	}
 	return func(ctx context.Context, entries []discovery.Entry) error {
-		return PublishPrivateDiscoveryEntries(ctx, entries, channel, trans)
+		return PublishPrivateDiscoveryEntries(ctx, entries, channel, carrier)
 	}
 }

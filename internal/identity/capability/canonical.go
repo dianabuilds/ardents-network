@@ -7,7 +7,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	identityapi "ardents/internal/identity/api"
+	identityapi "ardents/internal/identity"
 )
 
 const grantSignatureDomain = "ardents-capability-grant/1"
@@ -103,10 +103,14 @@ func writeString(out *bytes.Buffer, value string) error {
 	if len(value) > int(^uint16(0)) {
 		return fmt.Errorf("capability field is too long")
 	}
-	_ = binary.Write(out, binary.BigEndian, uint16(len(value)))
+	out.Write(binary.BigEndian.AppendUint16(nil, uint16(len(value))))
 	out.WriteString(value)
 	return nil
 }
 
-func writeUint32(out *bytes.Buffer, value uint32) { _ = binary.Write(out, binary.BigEndian, value) }
-func writeInt64(out *bytes.Buffer, value int64)   { _ = binary.Write(out, binary.BigEndian, value) }
+func writeUint32(out *bytes.Buffer, value uint32) {
+	out.Write(binary.BigEndian.AppendUint32(nil, value))
+}
+func writeInt64(out *bytes.Buffer, value int64) {
+	out.Write(binary.BigEndian.AppendUint64(nil, uint64(value)))
+}

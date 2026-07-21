@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	networkprivacy "ardents/internal/network/privacy"
+	networkprivacy "ardents/internal/messaging"
 
 	"github.com/stretchr/testify/require"
 )

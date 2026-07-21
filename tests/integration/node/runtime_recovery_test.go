@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
+	runtimeinfra "ardents/internal/daemon"
+	persistence "ardents/internal/diagnostics"
 	operations "ardents/internal/diagnostics/operation"
-	persistence "ardents/internal/diagnostics/recorder"
-	runtimeinfra "ardents/internal/runtime/process"
 	"ardents/tests/testkit"
 
 	"github.com/stretchr/testify/require"
@@ -35,10 +35,10 @@ func TestNodeRuntimeRecoveryShowsPendingOperationAfterRestart(t *testing.T) {
 	n := testkit.StartNode(t, runtimeinfra.Config{
 		Name: "runtime-recovery",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: dir},
+		Data: runtimeinfra.DataConfig{Dir: dir},
 	})
 
-	pending := n.PendingOperations()
+	pending := testkit.Diagnostics(n).PendingOperations()
 	require.Len(t, pending, 1)
 	require.Equal(t, "recovering", pending[0].State)
 }
@@ -57,7 +57,7 @@ func TestNodeRuntimeShutdownPersistsCompletedOperation(t *testing.T) {
 	n := testkit.StartNode(t, runtimeinfra.Config{
 		Name: "runtime-shutdown",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: dir},
+		Data: runtimeinfra.DataConfig{Dir: dir},
 	})
 	require.NoError(t, n.Stop(context.Background()))
 
@@ -84,13 +84,13 @@ func TestNodeRuntimeStartupFailureRemainsExplainable(t *testing.T) {
 	n := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "runtime-startup-failure",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: dir},
+		Data: runtimeinfra.DataConfig{Dir: dir},
 	}).Node
 	err := n.Start(context.Background())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "node start failed")
 
-	snapshot := n.DiagnosticsSnapshot()
+	snapshot := testkit.Diagnostics(n).DiagnosticsSnapshot()
 	require.NotNil(t, snapshot.Health.PrimaryReason)
 	require.Equal(t, "node.state.load_failed", snapshot.Health.PrimaryReason.Code)
 }
@@ -141,10 +141,10 @@ func TestNodeRuntimeRestartCompactsClosedOperationsLedger(t *testing.T) {
 	n := testkit.StartNode(t, runtimeinfra.Config{
 		Name: "runtime-compaction",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: dir},
+		Data: runtimeinfra.DataConfig{Dir: dir},
 	})
 
-	pending := n.PendingOperations()
+	pending := testkit.Diagnostics(n).PendingOperations()
 	require.Len(t, pending, 1)
 	require.Equal(t, "recovering", pending[0].State)
 	require.Equal(t, "open-running", pending[0].ID)

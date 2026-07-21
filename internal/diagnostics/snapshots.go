@@ -1,34 +1,68 @@
 package diagnostics
 
-import (
-	diagapi "ardents/internal/diagnostics/api"
-	"ardents/internal/diagnostics/projection"
-)
+import "time"
 
-func DiagnosticsSnapshot(in Snapshot) diagapi.DiagSnapshot {
-	return projection.DiagnosticsSnapshot(in.Health, in.RecentEvents, in.PendingOperations)
+type ReasonSnapshot struct {
+	Code                   string `json:"code,omitempty"`
+	Domain                 string `json:"domain,omitempty"`
+	Summary                string `json:"summary,omitempty"`
+	Detail                 string `json:"detail,omitempty"`
+	Impact                 string `json:"impact,omitempty"`
+	Recovery               string `json:"recovery,omitempty"`
+	OperatorActionRequired bool   `json:"operator_action_required,omitempty"`
+	Resource               string `json:"resource,omitempty"`
 }
 
-func OperationSnapshots(in []OperationRecord) []diagapi.OperationSnapshot {
-	return projection.OperationSnapshots(in)
+type SubsystemHealthSnapshot struct {
+	Domain    string          `json:"domain,omitempty"`
+	State     string          `json:"state,omitempty"`
+	UpdatedAt time.Time       `json:"updated_at"`
+	Reason    *ReasonSnapshot `json:"reason,omitempty"`
 }
 
-func HealthSnapshot(in HealthSummary) diagapi.HealthSnapshot {
-	return projection.HealthSnapshot(in)
+type HealthSnapshot struct {
+	State                  string                    `json:"state,omitempty"`
+	UpdatedAt              time.Time                 `json:"updated_at"`
+	OperatorActionRequired bool                      `json:"operator_action_required,omitempty"`
+	PrimaryReason          *ReasonSnapshot           `json:"primary_reason,omitempty"`
+	Subsystems             []SubsystemHealthSnapshot `json:"subsystems,omitempty"`
 }
 
-func EventEnvelopes(in []EventRecord) []diagapi.EventEnvelope {
-	return projection.EventEnvelopes(in)
+type OperationSnapshot struct {
+	ID             string     `json:"id,omitempty"`
+	Kind           string     `json:"kind,omitempty"`
+	State          string     `json:"state,omitempty"`
+	Domain         string     `json:"domain,omitempty"`
+	Resource       string     `json:"resource,omitempty"`
+	Reason         string     `json:"reason,omitempty"`
+	Recoverable    bool       `json:"recoverable,omitempty"`
+	RecoveryAction string     `json:"recovery_action,omitempty"`
+	StartedAt      time.Time  `json:"started_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
+	FinishedAt     *time.Time `json:"finished_at,omitempty"`
 }
 
-func ReasonSnapshot(in *Reason) diagapi.ReasonSnapshot {
-	return projection.ReasonSnapshot(in)
+type EventEnvelope struct {
+	Seq      int64          `json:"seq,omitempty"`
+	Time     time.Time      `json:"time"`
+	Domain   string         `json:"domain,omitempty"`
+	Type     string         `json:"type,omitempty"`
+	Resource string         `json:"resource,omitempty"`
+	Payload  map[string]any `json:"payload,omitempty"`
 }
 
-func ReasonSnapshotPtr(in *Reason) *diagapi.ReasonSnapshot {
-	return projection.ReasonSnapshotPtr(in)
+type DiagSnapshot struct {
+	Health            HealthSnapshot      `json:"health"`
+	RecentEvents      []EventEnvelope     `json:"recent_events,omitempty"`
+	PendingOperations []OperationSnapshot `json:"pending_operations,omitempty"`
 }
 
-func FailureExplanation(scope, resourceID, state string, reason diagapi.ReasonSnapshot) diagapi.FailureExplanationSnapshot {
-	return projection.FailureExplanation(scope, resourceID, state, reason)
+type FailureExplanationSnapshot struct {
+	Scope      string          `json:"scope,omitempty"`
+	ResourceID string          `json:"resource_id,omitempty"`
+	State      string          `json:"state,omitempty"`
+	Reason     *ReasonSnapshot `json:"reason,omitempty"`
+	Impact     string          `json:"impact,omitempty"`
+	Recovery   string          `json:"recovery,omitempty"`
+	NextSteps  []string        `json:"next_steps,omitempty"`
 }

@@ -5,11 +5,10 @@ import (
 	"crypto/ed25519"
 	"fmt"
 
-	discovery "ardents/internal/discovery"
-	discoverysource "ardents/internal/discovery/source"
-	hostingexposure "ardents/internal/hosting/exposure"
-	hostingservice "ardents/internal/hosting/service"
-	identityapi "ardents/internal/identity/api"
+	"ardents/internal/discovery"
+	discoverysource "ardents/internal/discovery/records"
+	identityapi "ardents/internal/identity"
+	hostingservice "ardents/internal/workload/registry"
 	"time"
 )
 
@@ -73,7 +72,7 @@ func (m *Manager) publishDesiredServicesLocked(ctx context.Context, id identitya
 	return nil
 }
 
-func (m *Manager) publicationPlanLocked(ctx context.Context) ([]hostingservice.Spec, []hostingexposure.Denial, error) {
+func (m *Manager) publicationPlanLocked(ctx context.Context) ([]hostingservice.ServiceSpec, []Denial, error) {
 	if err := m.observeHostingReadinessLocked(ctx); err != nil {
 		return nil, nil, err
 	}
@@ -84,7 +83,7 @@ func (m *Manager) publicationPlanLocked(ctx context.Context) ([]hostingservice.S
 	return allowed, denied, nil
 }
 
-func (m *Manager) publishDesiredServiceLocked(id identityapi.Summary, private ed25519.PrivateKey, svc hostingservice.Spec) error {
+func (m *Manager) publishDesiredServiceLocked(id identityapi.Summary, private ed25519.PrivateKey, svc hostingservice.ServiceSpec) error {
 	return PublishLocalService(m.disco, id, private, LocalServiceSpec{
 		ID:        svc.ID,
 		Type:      svc.Type,

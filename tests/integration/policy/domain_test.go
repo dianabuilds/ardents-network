@@ -8,12 +8,11 @@ import (
 	"testing"
 	"time"
 
-	appdata "ardents/internal/data"
-	dataapi "ardents/internal/data/api"
-	diagapi "ardents/internal/diagnostics/api"
-	transport "ardents/internal/network/api"
-	runtimeinfra "ardents/internal/runtime/process"
-	workloadapi "ardents/internal/workload/api"
+	appdata "ardents/internal/content"
+	runtimeinfra "ardents/internal/daemon"
+	diagapi "ardents/internal/diagnostics"
+	transport "ardents/internal/network"
+	workloadapi "ardents/internal/workload"
 	"ardents/tests/testkit"
 
 	"github.com/stretchr/testify/require"
@@ -32,13 +31,13 @@ func TestPolicyRejectsWorkloadByCapability(t *testing.T) {
 	n := testkit.StartNode(t, runtimeinfra.Config{
 		Name: "policy-admission",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: t.TempDir()},
-		Policy: runtimeinfra.NodePolicyConfig{
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
+		Policy: runtimeinfra.PolicyConfig{
 			DeniedCapabilities: []string{"net-bind"},
 		},
 	})
 
-	err := n.RegisterWorkload(workloadapi.WorkloadSpecSnapshot{
+	err := testkit.Workloads(n).Register(context.Background(), workloadapi.SpecSnapshot{
 		ID:           "work.blocked",
 		Kind:         "service",
 		Owner:        "node",
@@ -59,9 +58,9 @@ func TestPolicyRejectsWorkloadByCapability(t *testing.T) {
 	}
 	{
 
-		_, err := n.PublishBlob(dataapi.BlobSnapshot{
-			MediaType: "text/plain",
-			Payload:   []byte("allowed after deny"),
+		_, err := n.PublishBlob(appdata.PublishBlobCommand{
+			Blob:    appdata.Blob{MediaType: "text/plain"},
+			Payload: []byte("allowed after deny"),
 		})
 		require.NoErrorf(t, err, "publish allowed blob after deny: %v", err)
 	}
@@ -71,9 +70,7 @@ func TestPolicyRejectsWorkloadByCapability(t *testing.T) {
 		require.Falsef(t, snapshot.Policy.State !=
 			"enforced", "policy state after allowed operation = %q, want enforced", snapshot.Policy.State)
 	}
-	require.True(t, hasPolicyDeniedEvent(n.
-		DiagnosticsSnapshot(),
-	), "expected policy.denied diagnostics event")
+	require.True(t, hasPolicyDeniedEvent(testkit.Diagnostics(n).DiagnosticsSnapshot()), "expected policy.denied diagnostics event")
 
 }
 
@@ -90,17 +87,17 @@ func TestPolicyBlocksHostedServicePublicationAndSurfaceProjection(t *testing.T) 
 	n := testkit.StartNode(t, runtimeinfra.Config{
 		Name: "policy-publish",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: t.TempDir()},
-		Policy: runtimeinfra.NodePolicyConfig{
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
+		Policy: runtimeinfra.PolicyConfig{
 			DisableNetworkPublishedServices: true,
 		},
-		Workload: []runtimeinfra.NodeWorkloadConfig{{
+		Workload: []runtimeinfra.WorkloadConfig{{
 			ID:      "work.echo",
 			Kind:    "service",
 			Owner:   "node",
 			Config:  testkit.HelperProcessConfig(t, "sleep"),
 			Desired: "running",
-			Services: []runtimeinfra.NodeServiceConfig{{
+			Services: []runtimeinfra.ServiceConfig{{
 				ID:        "svc.work.echo",
 				Type:      "echo",
 				Mode:      "NetworkPublished",
@@ -113,19 +110,17 @@ func TestPolicyBlocksHostedServicePublicationAndSurfaceProjection(t *testing.T) 
 	require.NoErrorf(t, err, "resolve service: %v", err)
 	require.Falsef(t, len(res.Matches) != 0, "matches = %d, want 0 when publication denied", len(res.Matches))
 
-	item, err := n.GetWorkloadStatus("work.echo")
+	item, err := testkit.Workloads(n).Get("work.echo")
 	require.NoErrorf(t, err, "get workload: %v", err)
 	require.Falsef(t, len(item.PublishedServices) != 1, "published services = %d, want 1", len(item.PublishedServices))
 	require.False(t, item.PublishedServices[0].Published, "expected workload published service to be false when policy denies publication")
 	require.False(t, item.PublishedServices[0].Reason == "", "expected workload publication denial reason")
 
-	hosted, err := n.GetHostedService("svc.work.echo")
+	hosted, err := testkit.Hosting(n).GetHostedService("svc.work.echo")
 	require.NoErrorf(t, err, "get hosted service: %v", err)
 	require.False(t, hosted.Published, "expected hosted service published to be false when policy denies publication")
 	require.False(t, hosted.Reason == "", "expected hosted service denial reason")
-	require.True(t, hasPolicyDeniedEvent(n.
-		DiagnosticsSnapshot(),
-	), "expected policy.denied diagnostics event")
+	require.True(t, hasPolicyDeniedEvent(testkit.Diagnostics(n).DiagnosticsSnapshot()), "expected policy.denied diagnostics event")
 
 }
 
@@ -143,16 +138,16 @@ func TestPolicyRejectsBlobRetentionAndPinning(t *testing.T) {
 	n := testkit.StartNode(t, runtimeinfra.Config{
 		Name: "policy-retention",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: dir},
-		Policy: runtimeinfra.NodePolicyConfig{
+		Data: runtimeinfra.DataConfig{Dir: dir},
+		Policy: runtimeinfra.PolicyConfig{
 			DisableLocalBlobRetention: true,
 			DisableBlobPinning:        true,
 		},
 	})
 
-	blob, err := n.PublishBlob(dataapi.BlobSnapshot{
-		MediaType: "text/plain",
-		Payload:   []byte("policy payload"),
+	blob, err := n.PublishBlob(appdata.PublishBlobCommand{
+		Blob:    appdata.Blob{MediaType: "text/plain"},
+		Payload: []byte("policy payload"),
 	})
 	require.NoErrorf(t, err, "publish blob: %v", err)
 	{
@@ -173,9 +168,7 @@ func TestPolicyRejectsBlobRetentionAndPinning(t *testing.T) {
 				"policy_pin_denied",
 			), "pin error = %v, want policy pin denial", err)
 	}
-	require.True(t, hasPolicyDeniedEvent(n.
-		DiagnosticsSnapshot(),
-	), "expected policy.denied diagnostics event")
+	require.True(t, hasPolicyDeniedEvent(testkit.Diagnostics(n).DiagnosticsSnapshot()), "expected policy.denied diagnostics event")
 
 }
 
@@ -202,8 +195,8 @@ func TestPolicyRejectsPeerBlobReserving(t *testing.T) {
 	source := testkit.StartNode(t, runtimeinfra.Config{
 		Name: "source-no-reserve",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: sourceDir},
-		Policy: runtimeinfra.NodePolicyConfig{
+		Data: runtimeinfra.DataConfig{Dir: sourceDir},
+		Policy: runtimeinfra.PolicyConfig{
 			DisablePeerBlobReserving: true,
 		},
 	})
@@ -216,7 +209,7 @@ func TestPolicyRejectsPeerBlobReserving(t *testing.T) {
 		Name:  "requester-no-reserve",
 		Boot:  runtimeinfra.BootConfig{Sources: append([]string(nil), records[0].Endpoints...)},
 		Trust: runtimeinfra.TrustConfig{Anchors: []string{source.Snapshot().Ident.PublicKey}},
-		Data:  runtimeinfra.NodeDataConfig{Dir: t.TempDir()},
+		Data:  runtimeinfra.DataConfig{Dir: t.TempDir()},
 	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -231,11 +224,10 @@ func TestPolicyRejectsPeerBlobReserving(t *testing.T) {
 	}
 	{
 
-		_, err := requester.GetBlob(stored.ID)
-		require.Error(t, err, "expected requester to keep blob unavailable locally")
+		_, ok := testkit.Content(requester).GetBlob(stored.ID)
+		require.False(t, ok, "expected requester to keep blob unavailable locally")
 	}
-	require.True(t, hasPolicyDeniedEvent(source.
-		DiagnosticsSnapshot()), "expected source node to emit policy.denied diagnostics event")
+	require.True(t, hasPolicyDeniedEvent(testkit.Diagnostics(source).DiagnosticsSnapshot()), "expected source node to emit policy.denied diagnostics event")
 
 }
 
@@ -254,23 +246,23 @@ func TestPolicyRejectsRouteUse(t *testing.T) {
 	localNode := testkit.StartNode(t, runtimeinfra.Config{
 		Name: "local-route-policy",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: t.TempDir()}, Privacy: privacy.Receiver,
-		Policy: runtimeinfra.NodePolicyConfig{
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()}, Privacy: privacy.Receiver,
+		Policy: runtimeinfra.PolicyConfig{
 			DeniedRouteSchemes: []string{"http"},
 		},
 	})
 	remoteNode := testkit.StartNode(t, runtimeinfra.Config{
 		Name: "remote-route-policy", NodeProfile: transport.NodeProfileServiceNode,
 		Boot:      runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Transport: runtimeinfra.NodeTransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: transport.ReachabilityPrivateLAN},
-		Data:      runtimeinfra.NodeDataConfig{Dir: t.TempDir()}, Privacy: privacy.Sender,
-		Workload: []runtimeinfra.NodeWorkloadConfig{{
+		Transport: runtimeinfra.TransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: transport.ReachabilityPrivateLAN},
+		Data:      runtimeinfra.DataConfig{Dir: t.TempDir()}, Privacy: privacy.Sender,
+		Workload: []runtimeinfra.WorkloadConfig{{
 			ID:      "work.echo.route",
 			Kind:    "service",
 			Owner:   "node",
 			Config:  config,
 			Desired: "running",
-			Services: []runtimeinfra.NodeServiceConfig{{
+			Services: []runtimeinfra.ServiceConfig{{
 				ID:             "svc.echo.policy",
 				Type:           "echo",
 				Mode:           "NetworkPublished",
@@ -301,8 +293,7 @@ func TestPolicyRejectsRouteUse(t *testing.T) {
 	res, err := localNode.ResolveService("echo")
 	require.NoErrorf(t, err, "resolve service: %v", err)
 	require.Falsef(t, res.Route.Outcome == "usable", "route outcome = %q, want denied by policy", res.Route.Outcome)
-	require.True(t, hasPolicyDeniedEvent(localNode.
-		DiagnosticsSnapshot()), "expected policy.denied diagnostics event")
+	require.True(t, hasPolicyDeniedEvent(testkit.Diagnostics(localNode).DiagnosticsSnapshot()), "expected policy.denied diagnostics event")
 
 }
 

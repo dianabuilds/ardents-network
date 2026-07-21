@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	identityapi "ardents/internal/identity/api"
+	identityapi "ardents/internal/identity"
 	identitycapability "ardents/internal/identity/capability"
 	identityprincipal "ardents/internal/identity/principal"
-	networkprivacy "ardents/internal/network/privacy"
-	policy "ardents/internal/policy"
+	networkprivacy "ardents/internal/messaging"
+	"ardents/internal/policy"
 
 	"github.com/stretchr/testify/require"
 )

@@ -1,26 +1,24 @@
 package publication
 
 import (
+	"ardents/internal/diagnostics"
+	"ardents/internal/discovery"
+	"ardents/internal/hosting"
+	apppolicy "ardents/internal/policy"
+	workloadcontroller "ardents/internal/workload/execution"
+	hostingregistry "ardents/internal/workload/registry"
 	"context"
 	"crypto/ed25519"
 	"testing"
-
-	discovery "ardents/internal/discovery"
-	hostingapi "ardents/internal/hosting/api"
-	hostingregistry "ardents/internal/hosting/registry"
-	transport "ardents/internal/network/api"
-	nodelifecycle "ardents/internal/node/lifecycle"
-	apppolicy "ardents/internal/policy"
-	workloadcontroller "ardents/internal/workload/controller"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestLocalPresenceSnapshotLockedRequiresPublicationWhenReady(t *testing.T) {
 	mgr := testPublicationManager(t)
-	require.NoError(t, mgr.life.Move(nodelifecycle.Starting))
-	require.NoError(t, mgr.life.Move(nodelifecycle.Initializing))
-	require.NoError(t, mgr.life.Move(nodelifecycle.Ready))
+	require.NoError(t, mgr.life.Move(diagnostics.Starting))
+	require.NoError(t, mgr.life.Move(diagnostics.Initializing))
+	require.NoError(t, mgr.life.Move(diagnostics.Ready))
 
 	snapshot := mgr.LocalPresenceSnapshotLocked()
 
@@ -39,7 +37,7 @@ func TestServicePublicationStatusLockedReflectsWithdrawnLocalService(t *testing.
 
 	snapshot := mgr.ServicePublicationStatusLocked("svc.echo")
 
-	require.Equal(t, hostingapi.PublicationStatusSnapshot{
+	require.Equal(t, hosting.PublicationSnapshot{
 		State:                  "withdrawn",
 		Reason:                 "service publication has no active endpoints",
 		PublishedAt:            snapshot.PublishedAt,
@@ -64,20 +62,20 @@ func TestServicePublicationStatusLockedIgnoresRemoteDiscoveryKnowledge(t *testin
 
 	snapshot := mgr.ServicePublicationStatusLocked("svc.remote-only")
 
-	require.Equal(t, hostingapi.PublicationStatusSnapshot{}, snapshot)
+	require.Equal(t, hosting.PublicationSnapshot{}, snapshot)
 }
 
 func TestHostedServiceSnapshotLockedUsesPolicyFilteredPublicationTruth(t *testing.T) {
 	dir := t.TempDir()
 	identSvc, private := publicationIdentity(t, dir)
 	workloadSvc := workloadcontroller.NewWithExecutorInDir(dir, &publicationRunningExecutor{})
-	require.NoError(t, workloadSvc.Register(workloadcontroller.Spec{
+	require.NoError(t, workloadSvc.Register(hostingregistry.Spec{
 		ID:      "work.admin",
 		Kind:    "service",
 		Owner:   "node",
 		Config:  "test",
-		Desired: workloadcontroller.DesiredRunning,
-		Services: []workloadcontroller.ServiceSpec{{
+		Desired: hostingregistry.DesiredRunning,
+		Services: []hostingregistry.ServiceSpec{{
 			ID:        "svc.admin",
 			Type:      "admin",
 			Owner:     "work.admin",
@@ -89,12 +87,13 @@ func TestHostedServiceSnapshotLockedUsesPolicyFilteredPublicationTruth(t *testin
 	mgr := NewManager(
 		"publication-test",
 		nil,
-		nodelifecycle.NewMachine(),
+		diagnostics.NewMachine(),
 		discovery.NewInDir(dir),
 		apppolicy.New(apppolicy.Config{DeniedServiceTypes: []string{"admin"}}),
 		hostingregistry.New(nil),
 		workloadSvc,
-		transport.New(),
+		publicationReachableNetwork(),
+		nil,
 		identSvc,
 		nil,
 		func() ed25519.PrivateKey { return private },
@@ -118,13 +117,13 @@ func TestHostedServiceSnapshotLockedKeepsInventoryWithoutRuntimeBacking(t *testi
 	dir := t.TempDir()
 	identSvc, private := publicationIdentity(t, dir)
 	workloadSvc := workloadcontroller.NewWithExecutorInDir(dir, &publicationRunningExecutor{})
-	require.NoError(t, workloadSvc.Register(workloadcontroller.Spec{
+	require.NoError(t, workloadSvc.Register(hostingregistry.Spec{
 		ID:      "work.echo",
 		Kind:    "service",
 		Owner:   "node",
 		Config:  "test",
-		Desired: workloadcontroller.DesiredStopped,
-		Services: []workloadcontroller.ServiceSpec{{
+		Desired: hostingregistry.DesiredStopped,
+		Services: []hostingregistry.ServiceSpec{{
 			ID:        "svc.echo",
 			Type:      "echo",
 			Owner:     "work.echo",
@@ -136,12 +135,13 @@ func TestHostedServiceSnapshotLockedKeepsInventoryWithoutRuntimeBacking(t *testi
 	mgr := NewManager(
 		"publication-test",
 		nil,
-		nodelifecycle.NewMachine(),
+		diagnostics.NewMachine(),
 		discovery.NewInDir(dir),
 		nil,
 		hostingregistry.New(nil),
 		workloadSvc,
-		transport.New(),
+		publicationReachableNetwork(),
+		nil,
 		identSvc,
 		nil,
 		func() ed25519.PrivateKey { return private },
@@ -167,8 +167,9 @@ func testPublicationManager(t *testing.T) *Manager {
 	return NewManager(
 		"publication-test",
 		nil,
-		nodelifecycle.NewMachine(),
+		diagnostics.NewMachine(),
 		discovery.NewInDir(dir),
+		nil,
 		nil,
 		nil,
 		nil,

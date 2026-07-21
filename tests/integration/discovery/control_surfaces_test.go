@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	transport "ardents/internal/network/api"
-	nodeapi "ardents/internal/node/api"
-	runtimeinfra "ardents/internal/runtime/process"
+	runtimeinfra "ardents/internal/daemon"
+	discoveryapi "ardents/internal/discovery"
+	transport "ardents/internal/network"
 	"ardents/tests/testkit"
 
 	"github.com/stretchr/testify/require"
@@ -28,12 +28,12 @@ func TestLocalDiscoveryResolveImportedRecord(t *testing.T) {
 	localNode := testkit.StartNode(t, runtimeinfra.Config{
 		Name: "local",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: t.TempDir()},
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
 	})
 	remoteNode := testkit.StartNode(t, runtimeinfra.Config{
 		Name: "remote",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"remote://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: t.TempDir()},
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
 	})
 	imported := testkit.ImportRecordsFromNode(t, localNode, remoteNode, "bootstrap", nil)
 	require.NotEmpty(t, imported)
@@ -59,7 +59,7 @@ func TestLocalDiscoveryRejectsStaleImport(t *testing.T) {
 	localNode := testkit.StartNode(t, runtimeinfra.Config{
 		Name: "local",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: t.TempDir()},
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
 	})
 	rec, private := signedNodeRecord(t, []string{"tcp://fresh"})
 	rec.Source = "bootstrap"
@@ -93,21 +93,21 @@ func TestLocalDiscoveryCandidatesAreNotUsableAfterNodeStop(t *testing.T) {
 	localNode := testkit.StartNode(t, runtimeinfra.Config{
 		Name: "local",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: t.TempDir()}, Privacy: privacy.Receiver,
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()}, Privacy: privacy.Receiver,
 	})
 	config, endpoint, probe := readyServiceFixture(t)
 	remoteNode := testkit.StartNode(t, runtimeinfra.Config{
 		Name: "remote", NodeProfile: transport.NodeProfileServiceNode,
 		Boot:      runtimeinfra.BootConfig{Sources: []string{"remote://bootstrap"}},
-		Transport: runtimeinfra.NodeTransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: transport.ReachabilityPrivateLAN},
-		Data:      runtimeinfra.NodeDataConfig{Dir: t.TempDir()}, Privacy: privacy.Sender,
-		Workload: []runtimeinfra.NodeWorkloadConfig{{
+		Transport: runtimeinfra.TransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: transport.ReachabilityPrivateLAN},
+		Data:      runtimeinfra.DataConfig{Dir: t.TempDir()}, Privacy: privacy.Sender,
+		Workload: []runtimeinfra.WorkloadConfig{{
 			ID:      "work.remote.echo",
 			Kind:    "service",
 			Owner:   "node",
 			Config:  config,
 			Desired: "running",
-			Services: []runtimeinfra.NodeServiceConfig{{
+			Services: []runtimeinfra.ServiceConfig{{
 				ID:             "svc.remote.echo",
 				Type:           "echo",
 				Mode:           "NetworkPublished",
@@ -126,7 +126,7 @@ func TestLocalDiscoveryCandidatesAreNotUsableAfterNodeStop(t *testing.T) {
 	require.Equal(t, "not_found", res.Route.Outcome)
 	require.Nil(t, res.Route.Selected)
 
-	items, route, err := localNode.ListRouteCandidates(nodeapi.ListRouteCandidatesQuery{
+	items, route, err := localNode.ListRouteCandidates(discoveryapi.ListRouteCandidatesQuery{
 		Subject: remoteNode.Snapshot().Ident.Principal,
 		Kind:    "node",
 	})

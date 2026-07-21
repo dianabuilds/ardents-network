@@ -1,7 +1,6 @@
 package health
 
 import (
-	"ardents/internal/diagnostics/reason"
 	"sort"
 	"time"
 )
@@ -13,15 +12,15 @@ const (
 )
 
 type SubsystemStatus struct {
-	Domain    string         `json:"domain"`
-	State     string         `json:"state"`
-	Reason    *reason.Reason `json:"reason,omitempty"`
-	UpdatedAt time.Time      `json:"updated_at"`
+	Domain    string    `json:"domain"`
+	State     string    `json:"state"`
+	Reason    *Reason   `json:"reason,omitempty"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type Summary struct {
 	State         string            `json:"state"`
-	PrimaryReason *reason.Reason    `json:"primary_reason,omitempty"`
+	PrimaryReason *Reason           `json:"primary_reason,omitempty"`
 	Subsystems    []SubsystemStatus `json:"subsystems,omitempty"`
 	UpdatedAt     time.Time         `json:"updated_at"`
 }
@@ -30,7 +29,7 @@ func CloneSubsystem(in SubsystemStatus) SubsystemStatus {
 	return SubsystemStatus{
 		Domain:    in.Domain,
 		State:     in.State,
-		Reason:    reason.Clone(in.Reason),
+		Reason:    Clone(in.Reason),
 		UpdatedAt: in.UpdatedAt,
 	}
 }
@@ -38,7 +37,7 @@ func CloneSubsystem(in SubsystemStatus) SubsystemStatus {
 func CloneSummary(in Summary) Summary {
 	out := Summary{
 		State:         in.State,
-		PrimaryReason: reason.Clone(in.PrimaryReason),
+		PrimaryReason: Clone(in.PrimaryReason),
 		UpdatedAt:     in.UpdatedAt,
 	}
 	if len(in.Subsystems) == 0 {
@@ -51,16 +50,16 @@ func CloneSummary(in Summary) Summary {
 	return out
 }
 
-func Compose(now time.Time, primaryState string, primarySet bool, primary *reason.Reason, subsystems map[string]SubsystemStatus) Summary {
+func Compose(now time.Time, primaryState string, primarySet bool, primary *Reason, subsystems map[string]SubsystemStatus) Summary {
 	state := Ready
-	currentPrimary := (*reason.Reason)(nil)
+	currentPrimary := (*Reason)(nil)
 
 	if primarySet && primary != nil {
 		state = Degraded
 		if primaryState == Failed {
 			state = Failed
 		}
-		currentPrimary = reason.Clone(primary)
+		currentPrimary = Clone(primary)
 	}
 
 	items := make([]SubsystemStatus, 0, len(subsystems))
@@ -69,14 +68,14 @@ func Compose(now time.Time, primaryState string, primarySet bool, primary *reaso
 		if item.State == Failed {
 			state = Failed
 			if currentPrimary == nil && item.Reason != nil {
-				currentPrimary = reason.Clone(item.Reason)
+				currentPrimary = Clone(item.Reason)
 			}
 			continue
 		}
 		if state == Ready {
 			state = Degraded
 			if currentPrimary == nil && item.Reason != nil {
-				currentPrimary = reason.Clone(item.Reason)
+				currentPrimary = Clone(item.Reason)
 			}
 		}
 	}
@@ -91,8 +90,8 @@ func Compose(now time.Time, primaryState string, primarySet bool, primary *reaso
 	}
 }
 
-func Restore(in Summary) (*reason.Reason, bool, string, map[string]SubsystemStatus) {
-	primary := reason.Clone(in.PrimaryReason)
+func Restore(in Summary) (*Reason, bool, string, map[string]SubsystemStatus) {
+	primary := Clone(in.PrimaryReason)
 	primarySet := in.PrimaryReason != nil
 	primaryState := ""
 	if primarySet {

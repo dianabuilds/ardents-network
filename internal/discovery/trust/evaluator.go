@@ -1,3 +1,5 @@
+// Package trust owns trust anchors and peer trust evaluation.
+// It does not own identity authentication or policy enforcement.
 package trust
 
 import (
@@ -6,8 +8,8 @@ import (
 	"sort"
 	"time"
 
-	discoveryrecord "ardents/internal/discovery/record"
-	identityapi "ardents/internal/identity/api"
+	discoveryrecord "ardents/internal/discovery/records"
+	identityprincipal "ardents/internal/identity/principal"
 )
 
 type Result struct {
@@ -96,7 +98,7 @@ func rejectedRecord(record discoveryrecord.Record, result Result) (Result, bool)
 }
 
 func rejectedIdentityBinding(record discoveryrecord.Record, result Result) (Result, bool) {
-	expectedPrincipal, err := identityapi.PrincipalFromPublicKey(record.PublicKey)
+	expectedPrincipal, err := identityprincipal.FromPublicKey(record.PublicKey)
 	if err != nil {
 		result.Reason = err.Error()
 		return result, true
@@ -128,7 +130,7 @@ func verifiedSignatureInputs(record discoveryrecord.Record, result Result) (ed25
 		result.Reason = "payload encoding failed"
 		return nil, nil, nil, result, false
 	}
-	return ed25519.PublicKey(publicKey), signature, payload, Result{}, true
+	return publicKey, signature, payload, Result{}, true
 }
 
 func (s *Evaluator) State() string {

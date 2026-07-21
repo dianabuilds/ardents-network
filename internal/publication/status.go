@@ -5,22 +5,18 @@ import (
 	"errors"
 	"time"
 
-	discovery "ardents/internal/discovery"
-	hostingapi "ardents/internal/hosting/api"
-	hostingexposure "ardents/internal/hosting/exposure"
-	hostingreadiness "ardents/internal/hosting/readiness"
-	hostingregistry "ardents/internal/hosting/registry"
-	hostingservice "ardents/internal/hosting/service"
-	nodeapi "ardents/internal/node/api"
-	"ardents/internal/workload/observedstate"
-	domainworkload "ardents/internal/workload/workload"
+	"ardents/internal/discovery"
+	"ardents/internal/hosting"
+	"ardents/internal/workload/execution"
+	hostingreadiness "ardents/internal/workload/readiness"
+	"ardents/internal/workload/registry"
 )
 
-func (m *Manager) LocalPresenceSnapshotLocked() nodeapi.LocalPresenceSnapshot {
+func (m *Manager) LocalPresenceSnapshotLocked() LocalPresenceSnapshot {
 	entry, ok := m.localNodePresenceLocked()
 	ready := m.life.State() == "ready"
 	if !ok {
-		return nodeapi.LocalPresenceSnapshot{
+		return LocalPresenceSnapshot{
 			State:                  "unpublished",
 			Reason:                 "local node presence is not published",
 			OperatorActionRequired: ready,
@@ -33,7 +29,7 @@ func (m *Manager) LocalPresenceSnapshotLocked() nodeapi.LocalPresenceSnapshot {
 		state = "withdrawn"
 		reason = "local node presence has no active endpoints"
 	}
-	return nodeapi.LocalPresenceSnapshot{
+	return LocalPresenceSnapshot{
 		Published:              published,
 		State:                  state,
 		Reason:                 reason,
@@ -44,7 +40,7 @@ func (m *Manager) LocalPresenceSnapshotLocked() nodeapi.LocalPresenceSnapshot {
 	}
 }
 
-func (m *Manager) ServicePublicationStatusLocked(id string) hostingapi.PublicationStatusSnapshot {
+func (m *Manager) ServicePublicationStatusLocked(id string) hosting.PublicationSnapshot {
 	status, err := m.serviceRuntimeStatusLocked(id)
 	if err != nil {
 		if entry, ok := m.localServiceEntryLocked(id); ok {
@@ -55,7 +51,7 @@ func (m *Manager) ServicePublicationStatusLocked(id string) hostingapi.Publicati
 				state = "withdrawn"
 				reason = "service publication has no active endpoints"
 			}
-			return hostingapi.PublicationStatusSnapshot{
+			return hosting.PublicationSnapshot{
 				State:                  state,
 				Reason:                 reason,
 				Published:              published,
@@ -64,18 +60,18 @@ func (m *Manager) ServicePublicationStatusLocked(id string) hostingapi.Publicati
 				OperatorActionRequired: !published,
 			}
 		}
-		return hostingapi.PublicationStatusSnapshot{}
+		return hosting.PublicationSnapshot{}
 	}
 	return m.servicePublicationSnapshotLocked(id, m.servicePublicationReasonLocked(id, status.Reason))
 }
 
-func (m *Manager) HostedServiceSnapshotLocked(id string) (hostingapi.HostedServiceStatusSnapshot, error) {
+func (m *Manager) HostedServiceSnapshotLocked(id string) (hosting.ServiceStatusSnapshot, error) {
 	status, err := m.serviceRuntimeStatusLocked(id)
 	if err != nil {
-		return hostingapi.HostedServiceStatusSnapshot{}, err
+		return hosting.ServiceStatusSnapshot{}, err
 	}
 	publication := m.servicePublicationSnapshotLocked(id, m.servicePublicationReasonLocked(id, status.Reason))
-	return hostingapi.HostedServiceStatusSnapshot{
+	return hosting.ServiceStatusSnapshot{
 		ServiceID:              status.ID,
 		State:                  status.State,
 		Reason:                 hostedReadinessReason(status),
@@ -90,10 +86,10 @@ func (m *Manager) HostedServiceSnapshotLocked(id string) (hostingapi.HostedServi
 	}, nil
 }
 
-func (m *Manager) servicePublicationSnapshotLocked(id string, reason string) hostingapi.PublicationStatusSnapshot {
+func (m *Manager) servicePublicationSnapshotLocked(id string, reason string) hosting.PublicationSnapshot {
 	entry, ok := m.localServiceEntryLocked(id)
 	if !ok {
-		return hostingapi.PublicationStatusSnapshot{
+		return hosting.PublicationSnapshot{
 			State:                  "unpublished",
 			Reason:                 reason,
 			OperatorActionRequired: true,
@@ -108,7 +104,7 @@ func (m *Manager) servicePublicationSnapshotLocked(id string, reason string) hos
 			publicationReason = "service publication has no active endpoints"
 		}
 	}
-	return hostingapi.PublicationStatusSnapshot{
+	return hosting.PublicationSnapshot{
 		State:                  state,
 		Reason:                 publicationReason,
 		Published:              published,
@@ -122,7 +118,7 @@ func (m *Manager) servicePublicationReasonLocked(id, fallback string) string {
 	if m.srv == nil || m.trans == nil {
 		return fallback
 	}
-	var allow hostingexposure.PolicyFunc
+	var allow PolicyFunc
 	if m.policy != nil {
 		allow = m.policy.AllowServicePublication
 	}
@@ -158,7 +154,7 @@ func (m *Manager) serviceRuntimeStatusLocked(id string) (hostingreadiness.Status
 			return status, nil
 		}
 	}
-	var specs []hostingservice.Spec
+	var specs []registry.ServiceSpec
 	if m.srv != nil {
 		specs = m.srv.List()
 	}
@@ -170,14 +166,14 @@ func (m *Manager) serviceRuntimeStatusLocked(id string) (hostingreadiness.Status
 	return hostingreadiness.Status{}, errors.New("hosted service not found")
 }
 
-func (m *Manager) workloadStatusesLocked() []observedstate.Status {
+func (m *Manager) workloadStatusesLocked() []execution.Status {
 	if m.workload == nil {
 		return nil
 	}
 	return m.workload.List()
 }
 
-func (m *Manager) workloadHostedServiceStatus(item observedstate.Status, id string) (hostingreadiness.Status, bool) {
+func (m *Manager) workloadHostedServiceStatus(item execution.Status, id string) (hostingreadiness.Status, bool) {
 	effective := effectiveWorkloadStatus(item, m.policy)
 	for _, svc := range effective.PublishedServices {
 		if svc.ID == id {
@@ -192,7 +188,7 @@ func (m *Manager) workloadHostedServiceStatus(item observedstate.Status, id stri
 	return hostingreadiness.Status{}, false
 }
 
-func (m *Manager) publishedHostedServiceStatus(svc observedstate.PublishedServiceStatus) hostingreadiness.Status {
+func (m *Manager) publishedHostedServiceStatus(svc execution.PublishedServiceStatus) hostingreadiness.Status {
 	status := hostingreadiness.Status{
 		ID:        svc.ID,
 		Type:      svc.Type,
@@ -206,7 +202,7 @@ func (m *Manager) publishedHostedServiceStatus(svc observedstate.PublishedServic
 	return m.withProbeStatus(status)
 }
 
-func (m *Manager) unpublishedHostedServiceStatus(svc domainworkload.ServiceSpec, reason string) hostingreadiness.Status {
+func (m *Manager) unpublishedHostedServiceStatus(svc registry.ServiceSpec, reason string) hostingreadiness.Status {
 	return m.withProbeStatus(hostingreadiness.Status{
 		ID:        svc.ID,
 		Type:      svc.Type,
@@ -249,18 +245,18 @@ func (m *Manager) observeHostingReadinessLocked(ctx context.Context) error {
 		return nil
 	}
 	items := m.workloadStatusesLocked()
-	backings := make([]hostingregistry.Backing, 0)
+	backings := make([]registry.Backing, 0)
 	for _, item := range items {
 		for _, svc := range item.Spec.Services {
-			backings = append(backings, hostingregistry.Backing{Spec: svc, WorkloadID: item.Spec.ID,
-				Generation: item.Instance.Generation, Running: item.Observed == observedstate.Running && item.Instance.Running,
+			backings = append(backings, registry.Backing{Spec: svc, WorkloadID: item.Spec.ID,
+				Generation: item.Instance.Generation, Running: item.Observed == execution.ObservedRunning && item.Instance.Running,
 				StartedAt: item.Instance.StartedAt})
 		}
 	}
 	return m.srv.Observe(ctx, backings, time.Now().UTC())
 }
 
-func (m *Manager) unpublishedServiceReason(svc domainworkload.ServiceSpec) string {
+func (m *Manager) unpublishedServiceReason(svc registry.ServiceSpec) string {
 	if m.policy == nil {
 		return "service has no active runtime backing"
 	}

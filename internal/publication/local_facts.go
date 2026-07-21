@@ -6,9 +6,9 @@ import (
 	"errors"
 	"time"
 
-	discovery "ardents/internal/discovery"
-	discoverysource "ardents/internal/discovery/source"
-	identityapi "ardents/internal/identity/api"
+	"ardents/internal/discovery"
+	discoverysource "ardents/internal/discovery/records"
+	identityapi "ardents/internal/identity"
 )
 
 type LocalServiceSpec struct {

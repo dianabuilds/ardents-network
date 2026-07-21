@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	discoveryrecord "ardents/internal/discovery/record"
+	discoveryrecord "ardents/internal/discovery/records"
 
 	"github.com/stretchr/testify/require"
 )

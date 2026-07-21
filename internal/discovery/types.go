@@ -1,11 +1,8 @@
 package discovery
 
 import (
+	discoveryrecord "ardents/internal/discovery/records"
 	"sync"
-
-	discoveryintake "ardents/internal/discovery/intake"
-	discoveryrecord "ardents/internal/discovery/record"
-	statepkg "ardents/internal/discovery/state"
 )
 
 const LocalRecordTTL = discoveryrecord.LocalRecordTTL
@@ -14,7 +11,7 @@ type Record = discoveryrecord.Record
 
 type Entry = discoveryrecord.Entry
 
-type ImportResult = discoveryintake.ImportResult
+type ImportResult = discoveryrecord.ImportResult
 
 type Service struct {
 	mu      sync.Mutex
@@ -32,15 +29,15 @@ func New(path string) *Service {
 }
 
 func NewInDir(dir string) *Service {
-	return New(statepkg.PathInDir(dir))
+	return New(PathInDir(dir))
 }
 
 func (s *Service) saveLocked() error {
 	if s.path == "" {
 		return nil
 	}
-	return statepkg.SaveSnapshot(s.path, statepkg.Snapshot{
-		Records: statepkg.CloneEntries(s.records),
+	return SaveSnapshot(s.path, Snapshot{
+		Records: CloneEntries(s.records),
 		State:   s.state,
 		Reason:  s.reason,
 	})

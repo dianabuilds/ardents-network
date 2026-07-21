@@ -1,4 +1,0 @@
-interface:
-  display_name: "Ardents Size Guard"
-  short_description: "Keep files and functions small"
-  default_prompt: "Use $ardents-code-size-guard to enforce file and function size limits while changing Go code in this repo."

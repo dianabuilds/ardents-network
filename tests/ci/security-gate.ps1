@@ -40,9 +40,9 @@ foreach ($section in [regex]::Matches($verbose, $sectionPattern)) {
 }
 
 $expected = [ordered]@{ "GO-2026-4479" = "symbol"; "GO-2026-5932" = "module" }
-$exceptions = Get-Content -Raw -LiteralPath "docs/security-exceptions.md"
+$exceptions = Get-Content -Raw -LiteralPath "docs/security/security-exceptions.md"
 foreach ($id in $expected.Keys) {
-    if (-not $exceptions.Contains($id)) { throw "accepted finding $id is absent from docs/security-exceptions.md" }
+    if (-not $exceptions.Contains($id)) { throw "accepted finding $id is absent from docs/security/security-exceptions.md" }
 }
 $actualIds = @($findings.Keys | Sort-Object)
 $expectedIds = @($expected.Keys | Sort-Object)

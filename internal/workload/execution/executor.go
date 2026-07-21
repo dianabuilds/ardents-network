@@ -1,3 +1,5 @@
+// Package execution owns executor-neutral desired and observed lifecycle reconciliation.
+// It does not own executor implementation or service publication.
 package execution
 
 import (
@@ -39,8 +41,8 @@ type Instance struct {
 	RuntimeID        string    `json:"runtime_id,omitempty"`
 	Running          bool      `json:"running"`
 	PID              int       `json:"pid,omitempty"`
-	StartedAt        time.Time `json:"started_at,omitempty"`
-	FinishedAt       time.Time `json:"finished_at,omitempty"`
+	StartedAt        time.Time `json:"started_at"`
+	FinishedAt       time.Time `json:"finished_at"`
 	ExitCode         *int      `json:"exit_code,omitempty"`
 	OOMKilled        bool      `json:"oom_killed,omitempty"`
 	Restarts         int       `json:"restarts,omitempty"`

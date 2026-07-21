@@ -10,7 +10,7 @@ import (
 	"strings"
 	"syscall"
 
-	"ardents/internal/workload/ingressproxy"
+	"ardents/internal/ingressproxy"
 )
 
 func main() {
@@ -19,13 +19,13 @@ func main() {
 	flag.Parse()
 	parsed, err := parsePorts(*ports)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 	if err := ingressproxy.Run(ctx, *target, parsed); err != nil && ctx.Err() == nil {
-		fmt.Fprintln(os.Stderr, err)
+		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }

@@ -3,11 +3,12 @@
 package workload_test
 
 import (
+	workloadregistry "ardents/internal/workload/registry"
 	"context"
 	"path/filepath"
 	"testing"
 
-	workloadcontroller "ardents/internal/workload/controller"
+	workloadcontroller "ardents/internal/workload/execution"
 	"ardents/tests/testkit"
 
 	"github.com/stretchr/testify/require"
@@ -26,13 +27,13 @@ func TestRuntimeRecoveryPersistsAndPublishes(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "ardents.db")
 	svc := workloadcontroller.New(path, workloadcontroller.NewLocalExecutor())
 	require.NoError(t, svc.Load())
-	require.NoError(t, svc.Register(workloadcontroller.Spec{
+	require.NoError(t, svc.Register(workloadregistry.Spec{
 		ID:      "work.echo",
 		Kind:    "service",
 		Owner:   "node",
 		Config:  testkit.HelperProcessConfig(t, "sleep"),
-		Desired: workloadcontroller.DesiredRunning,
-		Services: []workloadcontroller.ServiceSpec{{
+		Desired: workloadregistry.DesiredRunning,
+		Services: []workloadregistry.ServiceSpec{{
 			ID:        "svc.work.echo",
 			Type:      "echo",
 			Mode:      "NetworkPublished",
@@ -70,21 +71,21 @@ func TestRuntimeStoppedAndRemovedTransitions(t *testing.T) {
 		Environment: "local",
 	})
 	svc := workloadcontroller.New(filepath.Join(t.TempDir(), "ardents.db"), workloadcontroller.NewLocalExecutor())
-	require.NoError(t, svc.Register(workloadcontroller.Spec{
+	require.NoError(t, svc.Register(workloadregistry.Spec{
 		ID:      "work.echo",
 		Kind:    "service",
 		Owner:   "node",
 		Config:  testkit.HelperProcessConfig(t, "sleep"),
-		Desired: workloadcontroller.DesiredRunning,
+		Desired: workloadregistry.DesiredRunning,
 	}))
 	require.NoError(t, svc.Reconcile(context.Background()))
-	require.NoError(t, svc.SetDesired("work.echo", workloadcontroller.DesiredStopped))
+	require.NoError(t, svc.SetDesired("work.echo", workloadregistry.DesiredStopped))
 	require.NoError(t, svc.Reconcile(context.Background()))
 	item, ok := svc.Get("work.echo")
 	require.True(t, ok)
 	require.Equal(t, workloadcontroller.ObservedStopped, item.Observed)
 
-	require.NoError(t, svc.SetDesired("work.echo", workloadcontroller.DesiredRemoved))
+	require.NoError(t, svc.SetDesired("work.echo", workloadregistry.DesiredRemoved))
 	require.NoError(t, svc.Reconcile(context.Background()))
 	{
 		_, ok := svc.Get("work.echo")
@@ -106,13 +107,13 @@ func TestRuntimeStopAllMarksStoppedAndUnpublished(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "ardents.db")
 	svc := workloadcontroller.New(path, workloadcontroller.NewLocalExecutor())
 	require.NoError(t, svc.Load())
-	require.NoError(t, svc.Register(workloadcontroller.Spec{
+	require.NoError(t, svc.Register(workloadregistry.Spec{
 		ID:      "work.echo",
 		Kind:    "service",
 		Owner:   "node",
 		Config:  testkit.HelperProcessConfig(t, "sleep"),
-		Desired: workloadcontroller.DesiredRunning,
-		Services: []workloadcontroller.ServiceSpec{{
+		Desired: workloadregistry.DesiredRunning,
+		Services: []workloadregistry.ServiceSpec{{
 			ID:        "svc.work.echo",
 			Type:      "echo",
 			Mode:      "NetworkPublished",

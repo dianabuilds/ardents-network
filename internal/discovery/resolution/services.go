@@ -3,7 +3,7 @@ package resolution
 import (
 	"time"
 
-	discoveryrecord "ardents/internal/discovery/record"
+	discoveryrecord "ardents/internal/discovery/records"
 )
 
 func FindService(entries []discoveryrecord.Entry, serviceType string, now time.Time) []discoveryrecord.Entry {

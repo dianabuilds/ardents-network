@@ -8,12 +8,13 @@ import (
 	"encoding/base32"
 	"encoding/hex"
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
-	identityapi "ardents/internal/identity/api"
+	identityapi "ardents/internal/identity"
 )
 
 type Service struct {
@@ -195,15 +196,9 @@ func resolved(ref identityapi.CapabilityRef, grant identityapi.CapabilityGrant) 
 func cloneLedger(source ledger) ledger {
 	out := emptyLedger()
 	out.DeliveryPrivateKey = append([]byte(nil), source.DeliveryPrivateKey...)
-	for key, value := range source.Grants {
-		out.Grants[key] = value
-	}
-	for key, value := range source.SenderGrants {
-		out.SenderGrants[key] = value
-	}
-	for key, value := range source.Revocations {
-		out.Revocations[key] = value
-	}
+	maps.Copy(out.Grants, source.Grants)
+	maps.Copy(out.SenderGrants, source.SenderGrants)
+	maps.Copy(out.Revocations, source.Revocations)
 	return out
 }
 
@@ -224,8 +219,14 @@ func (s *Service) rejectConflictingGrant(ref identityapi.CapabilityRef, grant id
 	if err != nil {
 		return capabilityError(CodeInvalid, err.Error())
 	}
-	want, _ := canonicalGrant(existing)
-	got, _ := canonicalGrant(grant)
+	want, err := canonicalGrant(existing)
+	if err != nil {
+		return capabilityError(CodeInvalid, err.Error())
+	}
+	got, err := canonicalGrant(grant)
+	if err != nil {
+		return capabilityError(CodeInvalid, err.Error())
+	}
 	if !hmac.Equal(want, got) || !hmac.Equal(existing.Signature, grant.Signature) {
 		return capabilityError(CodeInvalid, "grant identifier conflicts with retained grant")
 	}

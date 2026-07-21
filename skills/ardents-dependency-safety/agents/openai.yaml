@@ -1,4 +1,0 @@
-interface:
-  display_name: "Ardents Dependency Safety"
-  short_description: "Review dependency fit and security posture"
-  default_prompt: "Use $ardents-dependency-safety to evaluate a dependency choice for Ardents by role, security, and maintenance risk."

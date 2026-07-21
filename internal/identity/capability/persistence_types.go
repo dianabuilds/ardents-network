@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	identityapi "ardents/internal/identity/api"
+	identityapi "ardents/internal/identity"
 )
 
 type persistedGrant struct {

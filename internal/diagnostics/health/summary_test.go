@@ -1,7 +1,6 @@
 package health
 
 import (
-	"ardents/internal/diagnostics/reason"
 	"testing"
 	"time"
 
@@ -14,7 +13,7 @@ func TestComposeUsesFailedSubsystemAsPrimaryReason(t *testing.T) {
 		"transport": {
 			Domain: "transport",
 			State:  Failed,
-			Reason: &reason.Reason{Code: "transport.failed", Domain: "transport", Summary: "transport failed"},
+			Reason: &Reason{Code: "transport.failed", Domain: "transport", Summary: "transport failed"},
 		},
 	})
 	require.Falsef(t, summary.State != Failed, "state = %q, want failed", summary.State)
@@ -26,11 +25,11 @@ func TestCloneSummaryCopiesReasonAndSubsystems(t *testing.T) {
 	current := Summary{
 		State:         Degraded,
 		UpdatedAt:     now,
-		PrimaryReason: &reason.Reason{Code: "boot.degraded", Domain: "boot", Summary: "boot degraded"},
+		PrimaryReason: &Reason{Code: "boot.degraded", Domain: "boot", Summary: "boot degraded"},
 		Subsystems: []SubsystemStatus{{
 			Domain:    "boot",
 			State:     Degraded,
-			Reason:    &reason.Reason{Code: "boot.degraded", Domain: "boot", Summary: "boot degraded"},
+			Reason:    &Reason{Code: "boot.degraded", Domain: "boot", Summary: "boot degraded"},
 			UpdatedAt: now,
 		}},
 	}

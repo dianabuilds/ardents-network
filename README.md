@@ -40,23 +40,15 @@ proofs fail closed and remain visible through Diagnostics.
 
 Start with:
 
-- [system concept](docs/system-concept.md)
-- [canonical Waku foundation](docs/canonical-network-foundation.md)
-- [network privacy protocol](docs/network-privacy-protocol.md)
-- [persistent state and key security](docs/persistent-state-security.md)
-- [deployment contract](docs/deployment-contract.md)
-
-## Architecture At A Glance
-
-Product domains own Identity, Discovery, Network Foundation, Messaging, Data,
-Workload Control, Hosted Services, Policy, and Diagnostics truth. Node Runtime
-assembles them; the local control surface projects their public contracts. Waku
-is the only `v1` network carrier. See [system frame](docs/system-frame.md) and
-[module map](docs/module-map.md).
+- [system concept](docs/product/system-concept.md)
+- [canonical Waku foundation](docs/protocols/canonical-network-foundation.md)
+- [network privacy protocol](docs/protocols/network-privacy-protocol.md)
+- [persistent state and key security](docs/security/persistent-state-security.md)
+- [deployment contract](docs/operations/deployment-contract.md)
 
 ## Safe Local Quick Start
 
-Requirements: a supported host from [the platform matrix](docs/supported-platforms.md),
+Requirements: a supported host from [the platform matrix](docs/product/supported-platforms.md),
 Docker Engine, Docker Compose v2, and PowerShell 7 for the lifecycle command.
 
 ```powershell
@@ -85,7 +77,7 @@ Stop without deleting state:
 ./ardents.ps1 down
 ```
 
-See [Docker deployment](docker/README.md) for backup, restore, upgrade, rollback,
+See [Docker deployment](deploy/docker/README.md) for backup, restore, upgrade, rollback,
 and production service definitions.
 
 ## Operator CLI
@@ -93,7 +85,7 @@ and production service definitions.
 Inside a node container, use its private runtime token:
 
 ```powershell
-docker compose -p ardents-local -f docker/docker-compose.multinode.yml exec seed `
+docker compose -p ardents-local -f deploy/docker/compose/docker-compose.multinode.yml exec seed `
   ard --token-file /run/ardents/api-token node status
 ```
 
@@ -111,11 +103,9 @@ Canonical tests run in Docker/Linux; Windows is orchestration only.
 ./ardents.ps1 test integration
 ```
 
-Run targeted scenarios during development. Full integration/E2E suites belong
-at phase or release gates, or after a cross-domain runtime change. Slow commands
-must have explicit deadlines and trigger CPU/RAM/disk diagnosis instead of being
-left as unbounded waits. The [test model](docs/qa/test-model.md) defines layers
-and evidence rules.
+Run targeted scenarios during development. Slow commands must have explicit
+deadlines and trigger CPU/RAM/disk diagnosis instead of being left as unbounded
+waits.
 
 ## Current Limitations
 
@@ -130,8 +120,8 @@ and evidence rules.
   acceptance remain open in the stabilization plan.
 
 Security exceptions and upgrade triggers are recorded in
-[security exceptions](docs/security-exceptions.md). Do not delete retained keys
-or databases to “repair” a node; follow the [operator runbook](docs/operator-runbook.md).
+[security exceptions](docs/security/security-exceptions.md). Do not delete retained keys
+or databases to “repair” a node; follow the [operator runbook](docs/operations/operator-runbook.md).
 
 Ardents Network is distributed under the [MIT License](LICENSE). Third-party
 components retain their respective licenses.

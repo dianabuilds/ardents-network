@@ -4,6 +4,7 @@ package workload_test
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -20,7 +21,7 @@ func TestWorkloadIntegrationReadyHelper(t *testing.T) {
 	}
 	generation := os.Getenv("ARDENTS_WORKLOAD_GENERATION")
 	server := &http.Server{Addr: os.Getenv("ARDENTS_WORKLOAD_INTEGRATION_ADDRESS"), Handler: generationHandler(func() string { return generation })}
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		os.Exit(2)
 	}
 }
@@ -58,10 +59,11 @@ func reserveWorkloadPort(t *testing.T) int {
 	t.Helper()
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	defer listener.Close()
+	defer func() { require.NoError(t, listener.Close()) }()
 	return listener.Addr().(*net.TCPAddr).Port
 }
 
+//goland:noinspection ALL
 func workloadAdvertisedEndpoint(t *testing.T, port int) string {
 	t.Helper()
 	addresses, err := net.InterfaceAddrs()

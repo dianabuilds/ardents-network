@@ -1,6 +1,26 @@
 package publication
 
-import "context"
+import (
+	"context"
+	"errors"
+	"time"
+
+	"ardents/internal/discovery"
+	"ardents/internal/discovery/records"
+	"ardents/internal/network"
+)
+
+func requiresNetworkCompensation(err error) bool {
+	publishErr, ok := errors.AsType[*network.DiscoveryPublishError](err)
+	return ok && publishErr.Published > 0
+}
+
+func (m *Manager) compensateNetworkLocked(ctx context.Context, entries []discovery.Entry) error {
+	if len(entries) == 0 {
+		return nil
+	}
+	return m.publishDiscoveryEntries(ctx, records.RefreshSeenAt(records.LocalEntries(entries), time.Now().UTC()))
+}
 
 func (m *Manager) RefreshNetworkPublicationLocked(ctx context.Context) error {
 	id := m.ident.NodeSummary()

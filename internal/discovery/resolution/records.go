@@ -1,9 +1,11 @@
+// Package resolution owns freshness- and trust-aware record and service selection.
+// It does not own record persistence or transport routing.
 package resolution
 
 import (
 	"time"
 
-	discoveryrecord "ardents/internal/discovery/record"
+	discoveryrecord "ardents/internal/discovery/records"
 )
 
 func Resolve(entries []discoveryrecord.Entry, subject, kind string, now time.Time) (discoveryrecord.Entry, string, bool) {

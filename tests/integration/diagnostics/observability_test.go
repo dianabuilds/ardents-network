@@ -9,10 +9,10 @@ import (
 	"strings"
 	"testing"
 
+	runtimeprocess "ardents/internal/daemon"
 	"ardents/internal/diagnostics"
-	diagapi "ardents/internal/diagnostics/api"
+	diagapi "ardents/internal/diagnostics"
 	"ardents/internal/observability"
-	runtimeprocess "ardents/internal/runtime/process"
 	"ardents/tests/testkit"
 
 	"github.com/stretchr/testify/require"
@@ -28,7 +28,12 @@ func TestProductionObservabilityCorrelatesCanonicalSuccessAndFailure(t *testing.
 		Name: "observability-node", Boot: runtimeprocess.BootConfig{Sources: []string{"local://bootstrap"}},
 		Data: runtimeprocess.DataConfig{Dir: t.TempDir()},
 	})
-	surface, err := observability.NewSurface(node, "")
+	owners, ok := runtimeprocess.OwnersFor(node)
+	require.True(t, ok)
+	surface, err := observability.NewSurface(observability.Dependencies{
+		Runtime: node, Diagnostics: testkit.Diagnostics(node), Workloads: owners.Workloads, Hosting: owners.Hosting,
+		Data: testkit.Content(node), Transfers: testkit.Transfers(node),
+	}, "")
 	require.NoError(t, err)
 	server := httptest.NewServer(surface.Handler())
 	t.Cleanup(server.Close)
@@ -43,12 +48,10 @@ func TestProductionObservabilityCorrelatesCanonicalSuccessAndFailure(t *testing.
 	})
 
 	scenario.Degraded("inject Diagnostics-owned degradation and a sensitive denial event", func(t *testing.T) {
-		concrete, ok := node.NodeForTesting().(*runtimeprocess.Node)
-		require.True(t, ok)
 		reason := &diagnostics.Reason{Code: "observability.injected", Domain: "diagnostics", Summary: "injected degradation"}
-		concrete.DiagnosticsRecorder().SetSubsystem("diagnostics", diagnostics.HealthDegraded, reason)
-		concrete.DiagnosticsRecorder().SetPrimary(diagnostics.HealthDegraded, reason)
-		node.RecordEventCommand(diagapi.RecordEventCommand{
+		node.DiagnosticsRecorder().SetSubsystem("diagnostics", diagnostics.HealthDegraded, reason)
+		node.DiagnosticsRecorder().SetPrimary(diagnostics.HealthDegraded, reason)
+		node.DiagnosticsRecorder().RecordEventCommand(diagapi.RecordEventCommand{
 			Domain: "policy", Type: "denied", Resource: "blob-sensitive-id",
 			Payload: map[string]any{"action": "route.use", "token": "scrape-secret-value"},
 		})
@@ -70,7 +73,7 @@ func getObservability(t *testing.T, url string) (int, string) {
 	t.Helper()
 	response, err := http.Get(url)
 	require.NoError(t, err)
-	defer response.Body.Close()
+	defer func() { require.NoError(t, response.Body.Close()) }()
 	body, err := io.ReadAll(io.LimitReader(response.Body, 2<<20))
 	require.NoError(t, err)
 	return response.StatusCode, strings.TrimSpace(string(body))

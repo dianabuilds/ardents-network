@@ -11,12 +11,11 @@ import (
 	"strings"
 	"testing"
 
-	dataapi "ardents/internal/data/api"
-	discoveryapi "ardents/internal/discovery/api"
-	nodelifecycle "ardents/internal/node/lifecycle"
-	runtimeinfra "ardents/internal/runtime/process"
-	workloadapi "ardents/internal/workload/api"
-	workloadcontroller "ardents/internal/workload/controller"
+	appdata "ardents/internal/content"
+	runtimeinfra "ardents/internal/daemon"
+	discoveryapi "ardents/internal/discovery"
+	workloadapi "ardents/internal/workload"
+	workloadcontroller "ardents/internal/workload/execution"
 	"ardents/tests/testkit"
 
 	"github.com/stretchr/testify/require"
@@ -36,7 +35,7 @@ func TestNodeStartDegraded(t *testing.T) {
 	harness := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "test",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"/ip4/127.0.0.1/tcp/9000"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: t.TempDir()},
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
 	})
 	n := harness.Node
 	{
@@ -82,7 +81,7 @@ func TestNodeFailsWhenStateLoadIsCorrupt(t *testing.T) {
 	harness := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "broken",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: dir},
+		Data: runtimeinfra.DataConfig{Dir: dir},
 	})
 	n := harness.Node
 	err := n.Start(context.Background())
@@ -114,7 +113,7 @@ func TestNodeStopReturnsErrorWhenShutdownFails(t *testing.T) {
 	harness := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "stop-fail",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: dir},
+		Data: runtimeinfra.DataConfig{Dir: dir},
 	})
 	n := harness.Node
 	testkit.ReplaceWorkloadForIntegrationTest(harness, workloadcontroller.NewWithExecutorInDir(dir, nodeStopFailExecutor{}))
@@ -124,7 +123,7 @@ func TestNodeStopReturnsErrorWhenShutdownFails(t *testing.T) {
 	}
 	{
 
-		err := n.RegisterWorkload(workloadapi.WorkloadSpecSnapshot{
+		err := testkit.Workloads(n).Register(context.Background(), workloadapi.SpecSnapshot{
 			ID:      "work.stop.fail",
 			Kind:    "service",
 			Owner:   "node",
@@ -165,7 +164,7 @@ func TestNodeRejectsAuthoritativeMutationsWhenFailed(t *testing.T) {
 	harness := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "failed-mutations",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: dir},
+		Data: runtimeinfra.DataConfig{Dir: dir},
 	})
 	n := harness.Node
 	{
@@ -174,7 +173,7 @@ func TestNodeRejectsAuthoritativeMutationsWhenFailed(t *testing.T) {
 	}
 	{
 
-		_, err := n.ImportRecord(discoveryapi.DiscoveryRecord{ID: "x"})
+		_, err := n.ImportRecord(discoveryapi.CatalogRecordSnapshot{ID: "x"})
 		require.Falsef(t, err == nil || !strings.
 			Contains(err.Error(),
 				"node is failed",
@@ -182,7 +181,7 @@ func TestNodeRejectsAuthoritativeMutationsWhenFailed(t *testing.T) {
 	}
 	{
 
-		err := n.RegisterWorkload(workloadapi.WorkloadSpecSnapshot{ID: "work.echo", Kind: "service", Owner: "node"})
+		err := testkit.Workloads(n).Register(context.Background(), workloadapi.SpecSnapshot{ID: "work.echo", Kind: "service", Owner: "node"})
 		require.Falsef(t, err == nil || !strings.
 			Contains(err.Error(),
 				"node is failed",
@@ -190,7 +189,7 @@ func TestNodeRejectsAuthoritativeMutationsWhenFailed(t *testing.T) {
 	}
 	{
 
-		_, err := n.PublishObject(dataapi.ObjectSnapshot{Type: "doc"})
+		_, err := n.PublishObject(appdata.Object{Type: "doc"})
 		require.Falsef(t, err == nil || !strings.
 			Contains(err.Error(),
 				"node is failed",
@@ -213,7 +212,7 @@ func TestNodeStartRollsBackRuntimeWhenBlobExchangeStartupFails(t *testing.T) {
 	harness := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "data-plane-rollback",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: t.TempDir()},
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
 	})
 	n := harness.Node
 	testkit.SetBlobExchangeStarterForIntegrationTest(harness, func(context.Context) error {
@@ -247,7 +246,7 @@ func TestNodeStartRollsBackRuntimeWhenCallerContextCancelsDuringBlobExchangeStar
 	harness := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "data-plane-cancel",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: t.TempDir()},
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
 	})
 	n := harness.Node
 	ctx, cancel := context.WithCancel(context.Background())
@@ -284,7 +283,7 @@ func TestNodeStartupPhasesPersistAsCompletedOperations(t *testing.T) {
 	harness := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "phases",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: dir},
+		Data: runtimeinfra.DataConfig{Dir: dir},
 	})
 	n := harness.Node
 	{
@@ -307,10 +306,10 @@ func TestNodeStartupPhasesPersistAsCompletedOperations(t *testing.T) {
 	}
 
 	want := map[string]bool{
-		nodelifecycle.StartupPhaseStateLoad: false,
-		nodelifecycle.StartupPhaseIdentity:  false,
-		nodelifecycle.StartupPhaseDiscovery: false,
-		nodelifecycle.StartupPhaseWorkloads: false,
+		runtimeinfra.StartupPhaseStateLoad: false,
+		runtimeinfra.StartupPhaseIdentity:  false,
+		runtimeinfra.StartupPhaseDiscovery: false,
+		runtimeinfra.StartupPhaseWorkloads: false,
 	}
 	for _, item := range ledger.Operations {
 		if _, ok := want[item.Kind]; !ok {
@@ -341,7 +340,7 @@ func TestNodeShutdownPhasePersistsAsCompletedOperation(t *testing.T) {
 	harness := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "shutdown",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: dir},
+		Data: runtimeinfra.DataConfig{Dir: dir},
 	})
 	n := harness.Node
 	{
@@ -375,20 +374,20 @@ func TestNodeShutdownPhasePersistsAsCompletedOperation(t *testing.T) {
 
 	found := false
 	for _, item := range ledger.Operations {
-		if item.Kind != nodelifecycle.ShutdownPhaseNode {
+		if item.Kind != runtimeinfra.ShutdownPhaseNode {
 			continue
 		}
 		found = true
 		require.Falsef(t, item.State != "completed", "shutdown phase state = %q, want completed", item.State)
 
 	}
-	require.Truef(t, found, "missing shutdown phase %s in operations ledger", nodelifecycle.ShutdownPhaseNode)
+	require.Truef(t, found, "missing shutdown phase %s in operations ledger", runtimeinfra.ShutdownPhaseNode)
 
 }
 
 type nodeStopFailExecutor struct{}
 
-func (nodeStopFailExecutor) Prepare(context.Context, workloadcontroller.Spec) (workloadcontroller.PreparedWorkload, error) {
+func (nodeStopFailExecutor) Prepare(context.Context, workloadcontroller.Request) (workloadcontroller.PreparedWorkload, error) {
 	return workloadcontroller.PreparedWorkload{
 		WorkloadID: "work.stop.fail",
 		Generation: 1,

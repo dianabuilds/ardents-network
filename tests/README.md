@@ -40,9 +40,8 @@ reporting semantics in workflow-specific scripts.
 | 3 | fast + import boundary | `powershell -NoProfile -File tests/run.ps1 fast -CoverageProfile tests/.artifacts/coverage/fast.out` | import guard and default `go test ./...` both exit zero; coverage is retained |
 | 4 | integration | `powershell -NoProfile -File tests/run.ps1 integration -ReportDir tests/.artifacts/reports/integration` | runner exits zero and summary reports zero failures |
 | 5 | E2E | `powershell -NoProfile -File tests/run.ps1 e2e -ReportDir tests/.artifacts/reports/e2e` | runner exits zero and summary reports zero failures |
-| 6 | scenario traceability | `go run ./tests/cmd/testcatalog -mode validate ./tests/...` | exit zero and `issue_count` is zero |
-| 7 | reachable vulnerabilities | `powershell -NoProfile -File tests/ci/security-gate.ps1` | exact finding IDs and reachability agree with the active exception register; any drift fails |
-| 8 | vulnerability evidence | produced by the same security gate | pinned JSON, verbose output, and reconciliation JSON are retained under `tests/.artifacts/security` |
+| 6 | reachable vulnerabilities | `powershell -NoProfile -File tests/ci/security-gate.ps1` | exact finding IDs and reachability agree with the active exception register; any drift fails |
+| 7 | vulnerability evidence | produced by the same security gate | pinned JSON, verbose output, and reconciliation JSON are retained under `tests/.artifacts/security` |
 
 `tests/run.ps1 all -ReportDir tests/.artifacts/reports/all` is the release
 cross-check for tag interaction. It does not replace the separately attributable
@@ -57,7 +56,7 @@ its retained environment evidence.
 The matrix is fail-closed: warnings, missing summary/JUnit files, non-zero child
 processes, and vulnerability drift cannot be converted into a successful job
 by wrapper logic. The security gate permits only the exact IDs and reachability
-documented in `docs/security-exceptions.md`; disappearance also fails until the
+documented in `docs/security/security-exceptions.md`; disappearance also fails until the
 stale exception is deliberately removed. Earlier findings were Phase 1
 stabilization work, not an implicit waiver of gates 7–8.
 
@@ -74,27 +73,20 @@ Expected tagged-suite artifacts when selection or explicit report paths are used
 - canonical JSON summary under `tests/.artifacts/reports/<suite>/summary.json`
 - JUnit-compatible export under `tests/.artifacts/reports/<suite>/junit.xml`
 
-Scenario traceability gate:
-
-- all repository-level `integration` and `e2e` tests now declare formal
-  `testkit.Spec` metadata directly in test code;
-- `testcatalog -mode inventory` is the generated inventory path for package/test
-  to scenario bindings;
-- `testcatalog -mode validate` is the machine-readable gate for tests without
-  scenario ids, scenarios without runnable bindings, and docs/code drift.
+Focused test selection uses `testkit.Spec` metadata declared directly in test
+code. `testcatalog` reads only that executable metadata; it does not depend on a
+parallel scenario-document or requirement-coverage hierarchy.
 
 Artifact publication and storage rules:
 
 - `fast` keeps console-only output unless a caller opts into extra artifacts
 - `integration` and `e2e` CI jobs must publish `summary.json`, `junit.xml`, and
   raw per-test JSON under `tests/.artifacts/reports/<suite>/`
-- traceability validation output should be persisted as a generated JSON artifact
-  such as `tests/.artifacts/reports/catalog/validation.json`
 - raw tagged-suite captures are the canonical debugging payload and should be
   retained at least on failures and release-gate runs
 - failed integration/E2E jobs must retain raw JSON, `summary.json`, `junit.xml`,
   console output, and the environment/toolchain snapshot for at least 30 days
-- release-candidate runs must retain those artifacts, catalog validation, both
+- release-candidate runs must retain those artifacts, both
   vulnerability outputs, and checksums with the release evidence for the whole
   supported lifetime of that release
 - a job that cannot publish its required failure or release artifacts is itself
@@ -106,7 +98,7 @@ Release and review use cases:
 - `integration`: domain remediation, bug reproduction, and review-time runtime
   validation
 - `e2e`: operator-facing lifecycle, participation, and recovery validation
-- `all` plus `testcatalog -mode validate`: release-candidate and final QA gate
+- `all`: release-candidate and final QA gate
 - `-Domain`, `-Scenario`, and `-Tag` selections are the focused review path for
   release-sized or incident-specific sweeps
 

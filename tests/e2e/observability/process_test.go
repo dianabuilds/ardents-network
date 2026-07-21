@@ -14,12 +14,13 @@ import (
 	"testing"
 	"time"
 
-	runtimeconfig "ardents/internal/runtime/config"
+	runtimeconfig "ardents/internal/config"
 	"ardents/tests/testkit"
 
 	"github.com/stretchr/testify/require"
 )
 
+//goland:noinspection ALL
 func TestArddProductionObservabilityProcessBoundary(t *testing.T) {
 	scenario := testkit.BeginScenario(t, testkit.Spec{
 		Layer: testkit.LayerE2E, Domain: "diagnostics", ScenarioID: "OBE-001", Suite: "e2e",
@@ -149,7 +150,7 @@ func requestEndpoint(t *testing.T, url, token string) (int, string, string) {
 	}
 	response, err := httpClient().Do(request)
 	require.NoError(t, err)
-	defer response.Body.Close()
+	defer func() { require.NoError(t, response.Body.Close()) }()
 	body, err := io.ReadAll(io.LimitReader(response.Body, 4<<20))
 	require.NoError(t, err)
 	return response.StatusCode, string(body), response.Header.Get("Ardents-Correlation-ID")
@@ -162,7 +163,7 @@ func readLog(path string) string {
 	if err != nil {
 		return "daemon log unavailable"
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	raw, _ := io.ReadAll(io.LimitReader(file, 64<<10))
 	return string(raw)
 }

@@ -1,19 +1,31 @@
 package observability
 
 import (
-	diagapi "ardents/internal/diagnostics/api"
-	nodeapi "ardents/internal/node/api"
+	diagapi "ardents/internal/diagnostics"
+	"ardents/internal/discovery"
+	"slices"
 	"strings"
 )
 
 func oneOf(value string, allowed ...string) string {
 	value = strings.ToLower(strings.TrimSpace(value))
-	for _, item := range allowed {
-		if value == item {
-			return value
-		}
+	if slices.Contains(allowed, value) {
+		return value
 	}
 	return "other"
+}
+
+func discoveryTrustState(value discovery.TrustSnapshot) string {
+	switch {
+	case !value.Valid:
+		return "invalid"
+	case value.Trusted && value.Usable:
+		return "trusted"
+	case value.Usable:
+		return "usable"
+	default:
+		return "untrusted"
+	}
 }
 
 func lifecycleState(value string) string {
@@ -26,19 +38,6 @@ func healthState(value string) string {
 
 func peerState(value string) string {
 	return oneOf(value, "connected", "disconnected", "candidate", "degraded", "failed", "ready")
-}
-
-func trustState(value nodeapi.TrustSnapshot) string {
-	switch {
-	case value.Trusted && value.Usable:
-		return "trusted"
-	case value.Valid && !value.Trusted:
-		return "untrusted"
-	case !value.Valid:
-		return "invalid"
-	default:
-		return "other"
-	}
 }
 
 func domain(value string) string {

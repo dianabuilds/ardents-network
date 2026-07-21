@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	identityapi "ardents/internal/identity/api"
+	identityapi "ardents/internal/identity"
 	identityprincipal "ardents/internal/identity/principal"
 
 	"github.com/stretchr/testify/require"
@@ -335,9 +335,9 @@ func withTime(use identityapi.CapabilityUse, at time.Time) identityapi.Capabilit
 
 func requireCapabilityCode(t *testing.T, err error, code string) {
 	t.Helper()
-	var capabilityErr *Error
 	require.Error(t, err)
-	require.True(t, errors.As(err, &capabilityErr))
+	capabilityErr, ok := errors.AsType[*Error](err)
+	require.True(t, ok)
 	require.Equal(t, code, capabilityErr.Code)
 	require.NotContains(t, err.Error(), "p_subject")
 }

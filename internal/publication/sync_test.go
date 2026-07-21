@@ -1,6 +1,15 @@
 package publication
 
 import (
+	"ardents/internal/diagnostics"
+	"ardents/internal/discovery"
+	"ardents/internal/identity"
+	identityapi "ardents/internal/identity"
+	identitykeyring "ardents/internal/identity/keyring"
+	transport "ardents/internal/network"
+	apppolicy "ardents/internal/policy"
+	workloadcontroller "ardents/internal/workload/execution"
+	hostingregistry "ardents/internal/workload/registry"
 	"context"
 	"crypto/ed25519"
 	"errors"
@@ -12,18 +21,6 @@ import (
 	"testing"
 	"time"
 
-	"ardents/internal/diagnostics"
-	discovery "ardents/internal/discovery"
-	hostingregistry "ardents/internal/hosting/registry"
-	identityapi "ardents/internal/identity/api"
-	identitycontinuity "ardents/internal/identity/continuity"
-	identitylifecycle "ardents/internal/identity/lifecycle"
-	transport "ardents/internal/network/api"
-	nodelifecycle "ardents/internal/node/lifecycle"
-	noderecovery "ardents/internal/node/recovery"
-	apppolicy "ardents/internal/policy"
-	workloadcontroller "ardents/internal/workload/controller"
-
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,12 +30,12 @@ func TestRollbackWorkloadMutationLockedStopsOnCanceledContext(t *testing.T) {
 	disco := discovery.NewInDir(dir)
 	workloadSvc := workloadcontroller.NewWithExecutorInDir(dir, publicationCancelAwareExecutor{})
 	{
-		err := workloadSvc.Register(workloadcontroller.Spec{
+		err := workloadSvc.Register(hostingregistry.Spec{
 			ID:      "work.echo",
 			Kind:    "service",
 			Owner:   "node",
 			Config:  "test",
-			Desired: workloadcontroller.DesiredRunning,
+			Desired: hostingregistry.DesiredRunning,
 		})
 		require.NoErrorf(t, err, "register workload: %v", err)
 	}
@@ -56,12 +53,13 @@ func TestRollbackWorkloadMutationLockedStopsOnCanceledContext(t *testing.T) {
 	mgr := NewManager(
 		"publication-test",
 		diagnostics.New(""),
-		nodelifecycle.NewMachine(),
+		diagnostics.NewMachine(),
 		disco,
 		apppolicy.New(apppolicy.Config{}),
 		hostingregistry.New(nil),
 		workloadSvc,
-		transport.New(),
+		publicationReachableNetwork(),
+		nil,
 		identSvc,
 		nil,
 		func() ed25519.PrivateKey { return nil },
@@ -70,7 +68,7 @@ func TestRollbackWorkloadMutationLockedStopsOnCanceledContext(t *testing.T) {
 	mgr.privateKey = func() ed25519.PrivateKey { return private }
 
 	snapshot := mgr.CaptureWorkloadPublicationSnapshotLocked()
-	snapshot.Workloads[0].Spec.Desired = workloadcontroller.DesiredStopped
+	snapshot.Workloads[0].Spec.Desired = hostingregistry.DesiredStopped
 	snapshot.Workloads[0].Observed = workloadcontroller.ObservedStopped
 	compensated := false
 	mgr.publishDiscoveryEntries = func(_ context.Context, entries []discovery.Entry) error {
@@ -105,13 +103,13 @@ func TestRefreshNetworkPublicationLockedPublishesNodeAndServices(t *testing.T) {
 	executor := &publicationRunningExecutor{generation: 42}
 	workloadSvc := workloadcontroller.NewWithExecutorInDir(dir, executor)
 	{
-		err = workloadSvc.Register(workloadcontroller.Spec{
+		err = workloadSvc.Register(hostingregistry.Spec{
 			ID:      "work.echo",
 			Kind:    "service",
 			Owner:   "node",
 			Config:  "test",
-			Desired: workloadcontroller.DesiredRunning,
-			Services: []workloadcontroller.ServiceSpec{{
+			Desired: hostingregistry.DesiredRunning,
+			Services: []hostingregistry.ServiceSpec{{
 				ID:             "svc.echo",
 				Type:           "echo",
 				Mode:           "NetworkPublished",
@@ -127,18 +125,19 @@ func TestRefreshNetworkPublicationLockedPublishesNodeAndServices(t *testing.T) {
 		require.NoErrorf(t, err, "reconcile workload: %v", err)
 	}
 
-	network := &publicationNetwork{Service: transport.New(), snapshot: transport.ReachabilitySnapshot{
+	network := &publicationNetwork{snapshot: transport.ReachabilitySnapshot{
 		Mode: transport.ReachabilityPrivateLAN, State: "lan", Reachable: true,
 	}}
 	mgr := NewManager(
 		"publication-test",
 		diagnostics.New(""),
-		nodelifecycle.NewMachine(),
+		diagnostics.NewMachine(),
 		disco,
 		apppolicy.New(apppolicy.Config{}),
 		hostingregistry.New(nil),
 		workloadSvc,
 		network,
+		nil,
 		identSvc,
 		discovery.NewTrustEvaluator(),
 		func() ed25519.PrivateKey { return private },
@@ -219,12 +218,13 @@ func TestWithdrawNetworkPublicationLockedPublishesWithdrawnNodeRecord(t *testing
 	mgr := NewManager(
 		"publication-test",
 		diagnostics.New(""),
-		nodelifecycle.NewMachine(),
+		diagnostics.NewMachine(),
 		disco,
 		apppolicy.New(apppolicy.Config{}),
 		hostingregistry.New(nil),
 		workloadcontroller.NewWithExecutorInDir(dir, &publicationRunningExecutor{}),
-		transport.New(),
+		publicationReachableNetwork(),
+		nil,
 		identSvc,
 		discovery.NewTrustEvaluator(),
 		func() ed25519.PrivateKey { return private },
@@ -256,9 +256,9 @@ func TestWithdrawNetworkPublicationLockedPublishesWithdrawnNodeRecord(t *testing
 
 func publicationIdentity(t *testing.T, dir string) (identityapi.Service, []byte) {
 	t.Helper()
-	store := noderecovery.NewStore(filepath.Join(dir, "ardents.db"))
-	keys := identitycontinuity.NewKeyStoreInDir(dir)
-	identSvc := identitylifecycle.New()
+	store := identity.NewStore(filepath.Join(dir, "ardents.db"))
+	keys := identitykeyring.NewKeyStoreInDir(dir)
+	identSvc := identityapi.NewService()
 	_, private, err := identSvc.EnsureNode(store, keys)
 	require.NoErrorf(t, err, "ensure identity: %v", err)
 
@@ -269,7 +269,7 @@ type publicationRunningExecutor struct {
 	generation int64
 }
 
-func (e *publicationRunningExecutor) Prepare(context.Context, workloadcontroller.Spec) (workloadcontroller.PreparedWorkload, error) {
+func (e *publicationRunningExecutor) Prepare(context.Context, workloadcontroller.Request) (workloadcontroller.PreparedWorkload, error) {
 	generation := e.generation
 	if generation == 0 {
 		generation = time.Now().UTC().UnixNano()
@@ -292,7 +292,7 @@ func (e *publicationRunningExecutor) Inspect(context.Context, string) (workloadc
 
 type publicationCancelAwareExecutor struct{}
 
-func (publicationCancelAwareExecutor) Prepare(context.Context, workloadcontroller.Spec) (workloadcontroller.PreparedWorkload, error) {
+func (publicationCancelAwareExecutor) Prepare(context.Context, workloadcontroller.Request) (workloadcontroller.PreparedWorkload, error) {
 	return workloadcontroller.PreparedWorkload{WorkloadID: "work.echo", Generation: time.Now().UTC().UnixNano(), PreparedAt: time.Now().UTC()}, nil
 }
 
@@ -311,6 +311,16 @@ func (publicationCancelAwareExecutor) Inspect(context.Context, string) (workload
 type publicationNetwork struct {
 	transport.Service
 	snapshot transport.ReachabilitySnapshot
+}
+
+func (n *publicationNetwork) Endpoints() []string {
+	return []string{"/ip4/127.0.0.1/tcp/60000/p2p/publication-test"}
+}
+
+func publicationReachableNetwork() *publicationNetwork {
+	return &publicationNetwork{snapshot: transport.ReachabilitySnapshot{
+		Mode: transport.ReachabilityPrivateLAN, State: "lan", Reachable: true,
+	}}
 }
 
 func (n *publicationNetwork) ReachabilitySnapshot() transport.ReachabilitySnapshot {

@@ -1,16 +1,12 @@
 package publication
 
-import (
-	hostingexposure "ardents/internal/hosting/exposure"
-	policyapi "ardents/internal/policy/api"
-	"ardents/internal/workload/observedstate"
-)
+import "ardents/internal/workload/execution"
 
-func effectiveWorkloadStatus(item observedstate.Status, policy policyapi.Service) observedstate.Status {
+func effectiveWorkloadStatus(item execution.Status, policy Policy) execution.Status {
 	if policy == nil {
 		return item
 	}
-	item.PublishedServices = hostingexposure.EffectivePublishedServices(item.PublishedServices, policy.AllowServicePublication)
+	item.PublishedServices = EffectivePublishedServices(item.PublishedServices, policy.AllowServicePublication)
 	return item
 }
 

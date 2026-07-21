@@ -67,7 +67,7 @@ func normalizedRoute(path string) string {
 	case "/healthz", "/readyz", "/metrics":
 		return path
 	}
-	if strings.HasPrefix(path, "/ardents.v1.ArdentsService/") {
+	if strings.HasPrefix(path, "/ardents.v1.") {
 		return "connect_rpc"
 	}
 	return "unknown"

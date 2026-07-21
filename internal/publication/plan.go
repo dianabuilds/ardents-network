@@ -6,23 +6,21 @@ import (
 	"net/url"
 	"strings"
 
-	hostingexposure "ardents/internal/hosting/exposure"
-	hostingreadiness "ardents/internal/hosting/readiness"
-	hostingregistry "ardents/internal/hosting/registry"
-	hostingservice "ardents/internal/hosting/service"
-	networkreadiness "ardents/internal/network/readiness"
+	networkreadiness "ardents/internal/network"
+	hostingreadiness "ardents/internal/workload/readiness"
+	"ardents/internal/workload/registry"
 )
 
-func publicationGatePlan(items []hostingregistry.ServiceStatus, network networkreadiness.ReachabilitySnapshot,
-	allow hostingexposure.PolicyFunc) ([]hostingservice.Spec, []hostingexposure.Denial) {
-	allowed := make([]hostingservice.Spec, 0, len(items))
-	denied := make([]hostingexposure.Denial, 0)
+func publicationGatePlan(items []registry.ServiceStatus, network networkreadiness.ReachabilitySnapshot,
+	allow PolicyFunc) ([]registry.ServiceSpec, []Denial) {
+	allowed := make([]registry.ServiceSpec, 0, len(items))
+	denied := make([]Denial, 0)
 	for _, item := range items {
 		if item.Spec.Mode != "NetworkPublished" {
 			continue
 		}
 		if err := publicationEligibilityError(item, network, allow); err != nil {
-			denied = append(denied, hostingexposure.Denial{ID: item.Spec.ID, Err: err})
+			denied = append(denied, Denial{ID: item.Spec.ID, Err: err})
 			continue
 		}
 		allowed = append(allowed, cloneServiceSpec(item.Spec))
@@ -30,8 +28,8 @@ func publicationGatePlan(items []hostingregistry.ServiceStatus, network networkr
 	return allowed, denied
 }
 
-func publicationEligibilityError(item hostingregistry.ServiceStatus, network networkreadiness.ReachabilitySnapshot,
-	allow hostingexposure.PolicyFunc) error {
+func publicationEligibilityError(item registry.ServiceStatus, network networkreadiness.ReachabilitySnapshot,
+	allow PolicyFunc) error {
 	if !item.Readiness.Ready || !item.Readiness.ExposureEligible {
 		reason := item.Readiness.Reason
 		if reason == "" {
@@ -58,7 +56,7 @@ func networkAllowsServicePublication(snapshot networkreadiness.ReachabilitySnaps
 	return snapshot.Mode == networkreadiness.ReachabilityPrivateLAN || snapshot.Mode == networkreadiness.ReachabilityPublicDirect
 }
 
-func validateEndpointPairs(spec hostingservice.Spec, mode networkreadiness.ReachabilityMode) error {
+func validateEndpointPairs(spec registry.ServiceSpec, mode networkreadiness.ReachabilityMode) error {
 	if len(spec.Endpoints) == 0 || len(spec.ProbeEndpoints) != len(spec.Endpoints) {
 		return fmt.Errorf("service endpoint and probe endpoint sets must have equal non-zero size")
 	}
@@ -117,13 +115,13 @@ func advertisedEndpointHost(host string, mode networkreadiness.ReachabilityMode)
 	}
 }
 
-func cloneServiceSpec(spec hostingservice.Spec) hostingservice.Spec {
+func cloneServiceSpec(spec registry.ServiceSpec) registry.ServiceSpec {
 	spec.Endpoints = append([]string(nil), spec.Endpoints...)
 	spec.ProbeEndpoints = append([]string(nil), spec.ProbeEndpoints...)
 	return spec
 }
 
-func staticHostedServiceStatus(spec hostingservice.Spec) hostingreadiness.Status {
+func staticHostedServiceStatus(spec registry.ServiceSpec) hostingreadiness.Status {
 	return hostingreadiness.Status{
 		ID: spec.ID, Type: spec.Type, Owner: spec.Owner, Mode: spec.Mode, Published: false,
 		State: hostingreadiness.StateInactive, Reason: "static service has no runtime-backed publication",

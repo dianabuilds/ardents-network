@@ -1,13 +1,11 @@
 package discovery
 
 import (
+	"ardents/internal/discovery/records"
+	networkprivacy "ardents/internal/messaging"
 	"context"
 	"encoding/json"
 	"sort"
-
-	discoveryfreshness "ardents/internal/discovery/freshness"
-	discoverysource "ardents/internal/discovery/source"
-	networkprivacy "ardents/internal/network/privacy"
 )
 
 type PrivateFetchResult struct {
@@ -85,12 +83,12 @@ func privateDiscoveryEntry(opened networkprivacy.OpenedMessage) (Entry, bool) {
 	if err := json.Unmarshal(opened.Payload, &record); err != nil || record.ID == "" {
 		return Entry{}, false
 	}
-	return Entry{Record: record, Source: discoverysource.Network, SeenAt: opened.IssuedAt}, true
+	return Entry{Record: record, Source: records.Network, SeenAt: opened.IssuedAt}, true
 }
 
 func privateEntryNewer(candidate, current Entry) bool {
-	candidateFreshness := discoveryfreshness.Score(candidate.Record)
-	currentFreshness := discoveryfreshness.Score(current.Record)
+	candidateFreshness := records.Score(candidate.Record)
+	currentFreshness := records.Score(current.Record)
 	if candidateFreshness != currentFreshness {
 		return candidateFreshness > currentFreshness
 	}

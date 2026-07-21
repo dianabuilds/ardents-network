@@ -1,33 +1,62 @@
+// Package observability owns Prometheus and HTTP exposure of owned runtime evidence.
+// It does not own health truth or diagnostics history.
 package observability
 
 import (
-	dataapi "ardents/internal/data/api"
-	diagapi "ardents/internal/diagnostics/api"
-	hostingapi "ardents/internal/hosting/api"
-	nodeapi "ardents/internal/node/api"
-	workloadapi "ardents/internal/workload/api"
+	appdata "ardents/internal/content"
+	daemonruntime "ardents/internal/daemon"
+	diagapi "ardents/internal/diagnostics"
+	"ardents/internal/discovery"
+	"ardents/internal/hosting"
+	"ardents/internal/network"
+	"ardents/internal/transfer"
+	workloadapi "ardents/internal/workload"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-type Source interface {
-	GetNodeRuntime() nodeapi.NodeRuntimeSnapshot
-	GetNetworkStatus() nodeapi.NetworkStatusSnapshot
-	ListPeers() []nodeapi.PeerSnapshot
+type RuntimeSource interface {
+	GetNodeRuntime() daemonruntime.RuntimeSnapshot
+	GetNetworkStatus() network.StatusSnapshot
+	ListPeers() []discovery.PeerSnapshot
+}
+
+type DiagnosticsSource interface {
 	DiagnosticsSnapshot() diagapi.DiagSnapshot
-	ListWorkloads() ([]workloadapi.WorkloadStatusSnapshot, error)
-	ListHostedServices() ([]hostingapi.HostedServiceSnapshot, error)
-	DataInventory() dataapi.DataInventorySnapshot
-	ListTransfers() []dataapi.TransferSnapshot
+}
+
+type WorkloadSource interface {
+	List() ([]workloadapi.StatusSnapshot, error)
+}
+
+type HostingSource interface {
+	ListHostedServices() ([]hosting.ServiceSnapshot, error)
+}
+
+type DataSource interface {
+	InventorySnapshot() appdata.InventorySnapshot
+}
+
+type TransferSource interface {
+	List() []transfer.Record
+}
+
+type Dependencies struct {
+	Runtime     RuntimeSource
+	Diagnostics DiagnosticsSource
+	Workloads   WorkloadSource
+	Hosting     HostingSource
+	Data        DataSource
+	Transfers   TransferSource
 }
 
 type Collector struct {
-	source Source
-	desc   descriptors
+	deps Dependencies
+	desc descriptors
 }
 
-func NewCollector(source Source) *Collector {
-	return &Collector{source: source, desc: newDescriptors()}
+func NewCollector(deps Dependencies) *Collector {
+	return &Collector{deps: deps, desc: newDescriptors()}
 }
 
 func (c *Collector) Describe(out chan<- *prometheus.Desc) {
@@ -35,12 +64,12 @@ func (c *Collector) Describe(out chan<- *prometheus.Desc) {
 }
 
 func (c *Collector) Collect(out chan<- prometheus.Metric) {
-	runtime := c.source.GetNodeRuntime()
-	network := c.source.GetNetworkStatus()
-	diagnostics := c.source.DiagnosticsSnapshot()
+	runtime := c.deps.Runtime.GetNodeRuntime()
+	networkStatus := c.deps.Runtime.GetNetworkStatus()
+	diagnostics := c.deps.Diagnostics.DiagnosticsSnapshot()
 	c.collectNode(out, runtime)
-	c.collectNetwork(out, network)
-	c.collectPeers(out, c.source.ListPeers())
+	c.collectNetwork(out, networkStatus)
+	c.collectPeers(out, c.deps.Runtime.ListPeers())
 	c.collectDiagnostics(out, diagnostics)
 	c.collectWorkloads(out)
 	c.collectServices(out)
@@ -55,13 +84,13 @@ func counter(out chan<- prometheus.Metric, desc *prometheus.Desc, value float64,
 	out <- prometheus.MustNewConstMetric(desc, prometheus.CounterValue, value, labels...)
 }
 
-func (c *Collector) collectNode(out chan<- prometheus.Metric, runtime nodeapi.NodeRuntimeSnapshot) {
+func (c *Collector) collectNode(out chan<- prometheus.Metric, runtime daemonruntime.RuntimeSnapshot) {
 	gauge(out, c.desc.nodeState, 1, lifecycleState(runtime.Node.State))
 	gauge(out, c.desc.nodeReady, boolValue(runtime.Node.Ready))
 	gauge(out, c.desc.healthState, 1, healthState(runtime.Health.State))
 }
 
-func (c *Collector) collectNetwork(out chan<- prometheus.Metric, snapshot nodeapi.NetworkStatusSnapshot) {
+func (c *Collector) collectNetwork(out chan<- prometheus.Metric, snapshot network.StatusSnapshot) {
 	for _, protocol := range protocols(snapshot.ActiveCapabilities) {
 		gauge(out, c.desc.wakuProtocol, 1, protocol)
 	}
@@ -78,10 +107,10 @@ func (c *Collector) collectNetwork(out chan<- prometheus.Metric, snapshot nodeap
 	}
 }
 
-func (c *Collector) collectPeers(out chan<- prometheus.Metric, peers []nodeapi.PeerSnapshot) {
+func (c *Collector) collectPeers(out chan<- prometheus.Metric, peers []discovery.PeerSnapshot) {
 	counts := map[[2]string]int{}
-	for _, peer := range peers {
-		key := [2]string{peerState(peer.State), trustState(peer.Trust)}
+	for _, snapshot := range peers {
+		key := [2]string{peerState(snapshot.State), discoveryTrustState(snapshot.Trust)}
 		counts[key]++
 	}
 	for key, count := range counts {
@@ -126,7 +155,7 @@ func (c *Collector) collectEventWindow(out chan<- prometheus.Metric, events []di
 }
 
 func (c *Collector) collectWorkloads(out chan<- prometheus.Metric) {
-	items, err := c.source.ListWorkloads()
+	items, err := c.deps.Workloads.List()
 	if err != nil {
 		gauge(out, c.desc.collectionErrors, 1, "workload")
 		return
@@ -154,7 +183,7 @@ func (c *Collector) collectWorkloads(out chan<- prometheus.Metric) {
 }
 
 func (c *Collector) collectServices(out chan<- prometheus.Metric) {
-	items, err := c.source.ListHostedServices()
+	items, err := c.deps.Hosting.ListHostedServices()
 	if err != nil {
 		gauge(out, c.desc.collectionErrors, 1, "hosting")
 		return
@@ -169,7 +198,7 @@ func (c *Collector) collectServices(out chan<- prometheus.Metric) {
 }
 
 func (c *Collector) collectData(out chan<- prometheus.Metric) {
-	inventory := c.source.DataInventory()
+	inventory := c.deps.Data.InventorySnapshot()
 	items := map[string]int{"objects": inventory.Objects, "manifests": inventory.Manifests, "blobs": inventory.Blobs,
 		"local_blobs": inventory.LocalBlobs, "remote_blobs": inventory.RemoteBlobs, "pinned": inventory.Pinned,
 		"expired": inventory.Expired, "deleted": inventory.Deleted}
@@ -179,8 +208,8 @@ func (c *Collector) collectData(out chan<- prometheus.Metric) {
 	gauge(out, c.desc.storageBytes, float64(inventory.LocalBytes), "local")
 	gauge(out, c.desc.storageBytes, float64(inventory.RelayBytes), "relay")
 	transfers := map[[2]string]int{}
-	for _, transfer := range c.source.ListTransfers() {
-		transfers[[2]string{transferState(transfer.State), direction(transfer.Direction)}]++
+	for _, record := range c.deps.Transfers.List() {
+		transfers[[2]string{transferState(record.State), direction(record.Direction)}]++
 	}
 	for key, count := range transfers {
 		gauge(out, c.desc.transfers, float64(count), key[0], key[1])

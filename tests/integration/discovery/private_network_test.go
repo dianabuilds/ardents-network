@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	discoveryapi "ardents/internal/discovery/api"
-	runtimeinfra "ardents/internal/runtime/process"
+	runtimeinfra "ardents/internal/daemon"
+	discoveryapi "ardents/internal/discovery"
 	"ardents/tests/testkit"
 
 	"github.com/stretchr/testify/require"
@@ -24,7 +24,7 @@ func TestPrivateDiscoveryImportsSignedRecordFromWakuStore(t *testing.T) {
 	privacy := testkit.NewDiscoveryPrivacyFixture(t, now)
 	remote := testkit.StartNode(t, runtimeinfra.Config{
 		Name: "private-discovery-remote", Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: t.TempDir()}, Privacy: privacy.Sender,
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()}, Privacy: privacy.Sender,
 	})
 	remoteRecords, err := remote.ListRecords()
 	require.NoError(t, err)
@@ -35,7 +35,7 @@ func TestPrivateDiscoveryImportsSignedRecordFromWakuStore(t *testing.T) {
 	localDir := t.TempDir()
 	localConfig := runtimeinfra.Config{
 		Name: "private-discovery-local", Boot: runtimeinfra.BootConfig{Sources: append([]string(nil), remoteRecord.Endpoints...)},
-		Data: runtimeinfra.NodeDataConfig{Dir: localDir}, Privacy: privacy.Receiver,
+		Data: runtimeinfra.DataConfig{Dir: localDir}, Privacy: privacy.Receiver,
 	}
 	local := testkit.StartNode(t, runtimeinfra.Config{
 		Name: localConfig.Name, Boot: localConfig.Boot, Data: localConfig.Data, Privacy: localConfig.Privacy,
@@ -61,7 +61,7 @@ func TestPrivateDiscoveryImportsSignedRecordFromWakuStore(t *testing.T) {
 	require.Contains(t, recordIDs(restartedRecords), remoteRecord.ID)
 }
 
-func recordIDs(records []discoveryapi.DiscoveryRecord) []string {
+func recordIDs(records []discoveryapi.CatalogRecordSnapshot) []string {
 	ids := make([]string, 0, len(records))
 	for _, record := range records {
 		ids = append(ids, record.ID)

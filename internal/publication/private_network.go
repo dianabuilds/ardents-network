@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 
-	discovery "ardents/internal/discovery"
-	discoverysource "ardents/internal/discovery/source"
-	transport "ardents/internal/network/api"
-	networkprivacy "ardents/internal/network/privacy"
+	"ardents/internal/discovery"
+	discoverysource "ardents/internal/discovery/records"
+	networkprivacy "ardents/internal/messaging"
+	transport "ardents/internal/network"
 )
 
 func PublishPrivateDiscoveryEntries(ctx context.Context, entries []discovery.Entry, channel *networkprivacy.Channel, carrier networkprivacy.Carrier) error {

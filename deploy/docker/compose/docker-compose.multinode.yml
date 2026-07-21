@@ -1,0 +1,148 @@
+x-node: &node
+  image: ${ARDENTS_DOCKER_IMAGE:-ardents/ardd-local:dev}
+  build:
+    context: ../../..
+    dockerfile: deploy/docker/images/ardd.Dockerfile
+  entrypoint: ["/bin/sh", "-ec"]
+  command:
+    - |
+      install -d -m 0700 /run/ardents
+      install -m 0600 /run/secrets/ardents-api-token /run/ardents/api-token
+      install -m 0600 /var/lib/ardents-secrets/capability-store.key /run/ardents/capability-store.key
+      install -m 0600 /var/lib/ardents-secrets/replay.key /run/ardents/replay.key
+      install -m 0600 /var/lib/ardents-secrets/operator.json /run/ardents/operator.json
+      exec /usr/local/bin/ardd
+  environment: &node_environment
+    ARDENTS_API_TOKEN_FILE: /run/ardents/api-token
+    ARDENTS_CONFIG_FILE: /run/ardents/operator.json
+    DOCKER_HOST: unix:///run/ardents/workload-engine/docker.sock
+  healthcheck:
+    test: ["CMD", "ard", "--token-file", "/run/ardents/api-token", "node", "status"]
+    interval: 2s
+    timeout: 2s
+    retries: 30
+    start_period: 5s
+  restart: unless-stopped
+  networks:
+    - ardents
+
+services:
+  realm-provisioner:
+    image: ${ARDENTS_DOCKER_IMAGE:-ardents/ardd-local:dev}
+    build:
+      context: ../../..
+      dockerfile: deploy/docker/images/ardd.Dockerfile
+    profiles: ["provisioning"]
+    entrypoint: ["/usr/local/bin/ard-provision"]
+    network_mode: none
+    read_only: true
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - realm_authority:/authority
+      - seed_data:/nodes/seed
+      - seed_secrets:/secrets/seed
+      - peer2_data:/nodes/peer2
+      - peer2_secrets:/secrets/peer2
+      - peer3_data:/nodes/peer3
+      - peer3_secrets:/secrets/peer3
+
+  workload-engine:
+    image: ${ARDENTS_WORKLOAD_ENGINE_IMAGE:-docker:29.6.1-dind}
+    privileged: true
+    environment:
+      DOCKER_TLS_CERTDIR: ""
+    command: ["--host=unix:///run/workload-engine/docker.sock"]
+    healthcheck:
+      test: ["CMD", "docker", "-H", "unix:///run/workload-engine/docker.sock", "info"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+    restart: unless-stopped
+    volumes:
+      - workload_engine_data:/var/lib/docker
+      - workload_engine_socket:/run/workload-engine
+    networks:
+      - ardents
+
+  seed:
+    <<: *node
+    depends_on:
+      workload-engine:
+        condition: service_healthy
+    environment:
+      <<: *node_environment
+    secrets:
+      - source: seed_api_token
+        target: ardents-api-token
+        mode: 0400
+    volumes:
+      - seed_data:/var/lib/ardents
+      - seed_secrets:/var/lib/ardents-secrets:ro
+      - workload_engine_socket:/run/ardents/workload-engine
+    ports:
+      - "127.0.0.1:${ARDENTS_SEED_TRANSPORT_HOST_PORT:-61001}:61001"
+
+  peer2:
+    <<: *node
+    depends_on:
+      workload-engine:
+        condition: service_healthy
+      seed:
+        condition: service_healthy
+    environment:
+      <<: *node_environment
+    secrets:
+      - source: peer2_api_token
+        target: ardents-api-token
+        mode: 0400
+    volumes:
+      - peer2_data:/var/lib/ardents
+      - peer2_secrets:/var/lib/ardents-secrets:ro
+      - workload_engine_socket:/run/ardents/workload-engine
+    ports:
+      - "127.0.0.1:${ARDENTS_PEER2_TRANSPORT_HOST_PORT:-61002}:61002"
+
+  peer3:
+    <<: *node
+    depends_on:
+      workload-engine:
+        condition: service_healthy
+      seed:
+        condition: service_healthy
+    environment:
+      <<: *node_environment
+    secrets:
+      - source: peer3_api_token
+        target: ardents-api-token
+        mode: 0400
+    volumes:
+      - peer3_data:/var/lib/ardents
+      - peer3_secrets:/var/lib/ardents-secrets:ro
+      - workload_engine_socket:/run/ardents/workload-engine
+    ports:
+      - "127.0.0.1:${ARDENTS_PEER3_TRANSPORT_HOST_PORT:-61003}:61003"
+
+networks:
+  ardents:
+    driver: bridge
+
+volumes:
+  realm_authority:
+  workload_engine_data:
+  workload_engine_socket:
+  seed_data:
+  seed_secrets:
+  peer2_data:
+  peer2_secrets:
+  peer3_data:
+  peer3_secrets:
+
+secrets:
+  seed_api_token:
+    file: ${ARDENTS_SEED_API_TOKEN_FILE:?seed API token file is required}
+  peer2_api_token:
+    file: ${ARDENTS_PEER2_API_TOKEN_FILE:?peer2 API token file is required}
+  peer3_api_token:
+    file: ${ARDENTS_PEER3_API_TOKEN_FILE:?peer3 API token file is required}

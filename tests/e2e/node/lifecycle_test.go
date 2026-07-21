@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	runtimeinfra "ardents/internal/runtime/process"
-	runtimeprocess "ardents/internal/runtime/process"
+	runtimeinfra "ardents/internal/daemon"
+	runtimeprocess "ardents/internal/daemon"
 	"ardents/tests/testkit"
 
 	"github.com/stretchr/testify/require"
@@ -33,11 +33,11 @@ func TestNodeRuntimeLifecycleAcrossRestartPreservesPendingTruth(t *testing.T) {
 	cfg := runtimeinfra.Config{
 		Name: "node-runtime-e2e",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: dir},
+		Data: runtimeinfra.DataConfig{Dir: dir},
 	}
 
-	var first runtimeprocess.NodeRuntime
-	var second runtimeprocess.NodeRuntime
+	var first *runtimeprocess.Node
+	var second *runtimeprocess.Node
 
 	scenario.Precondition("start node from persisted recoverable operation", func(t *testing.T) {
 		first = testkit.NewRuntime(t, cfg).Runtime
@@ -71,7 +71,7 @@ func TestNodeRuntimeLifecycleAcrossRestartPreservesPendingTruth(t *testing.T) {
 	})
 }
 
-func assertReadyRuntime(t *testing.T, runtime runtimeprocess.NodeRuntime) {
+func assertReadyRuntime(t *testing.T, runtime *runtimeprocess.Node) {
 	t.Helper()
 
 	status := runtime.Snapshot()
@@ -80,15 +80,15 @@ func assertReadyRuntime(t *testing.T, runtime runtimeprocess.NodeRuntime) {
 	require.Equal(t, "ready", status.Node.Lifecycle.Current)
 }
 
-func assertRecoveringPendingOperation(t *testing.T, runtime runtimeprocess.NodeRuntime) {
+func assertRecoveringPendingOperation(t *testing.T, runtime *runtimeprocess.Node) {
 	t.Helper()
 
-	diag := runtime.DiagnosticsSnapshot()
+	diag := testkit.Diagnostics(runtime).DiagnosticsSnapshot()
 	require.NotEmpty(t, diag.PendingOperations)
 	require.Equal(t, "recovering", diag.PendingOperations[0].State)
 	require.Equal(t, "node.startup.workloads", diag.PendingOperations[0].Kind)
 
-	pending := runtime.PendingOperations()
+	pending := testkit.Diagnostics(runtime).PendingOperations()
 	require.NotEmpty(t, pending)
 	require.Equal(t, "recovering", pending[0].State)
 	require.Equal(t, "restart node", pending[0].RecoveryAction)

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Ardents Release Bug Hunt"
-  short_description: "Find latent product bugs before release"
-  default_prompt: "Use -release-bug-hunt to search Ardents for latent bugs, unsafe assumptions, and product regressions before release."

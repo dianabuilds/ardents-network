@@ -3,6 +3,7 @@ package observability
 import (
 	"crypto/subtle"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -12,24 +13,24 @@ import (
 )
 
 type Surface struct {
-	source   Source
+	runtime  RuntimeSource
 	token    string
 	registry *prometheus.Registry
 	requests *requestMetrics
 }
 
-func NewSurface(source Source, token string) (*Surface, error) {
+func NewSurface(deps Dependencies, token string) (*Surface, error) {
 	registry := prometheus.NewRegistry()
 	requests := newRequestMetrics()
 	for _, collector := range []prometheus.Collector{
-		NewCollector(source), collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
+		NewCollector(deps), collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 		requests.count, requests.duration,
 	} {
 		if err := registry.Register(collector); err != nil {
 			return nil, err
 		}
 	}
-	return &Surface{source: source, token: strings.TrimSpace(token), registry: registry, requests: requests}, nil
+	return &Surface{runtime: deps.Runtime, token: strings.TrimSpace(token), registry: registry, requests: requests}, nil
 }
 
 func (s *Surface) Handler() http.Handler {
@@ -65,7 +66,7 @@ func (s *Surface) health(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (s *Surface) ready(w http.ResponseWriter, _ *http.Request) {
-	snapshot := s.source.GetNodeRuntime()
+	snapshot := s.runtime.GetNodeRuntime()
 	state := lifecycleState(snapshot.Node.State)
 	health := healthState(snapshot.Health.State)
 	status := http.StatusServiceUnavailable
@@ -87,5 +88,7 @@ func writeProbe(w http.ResponseWriter, status int, response probeResponse) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		slog.Error("write probe response", "error", err)
+	}
 }

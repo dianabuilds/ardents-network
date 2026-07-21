@@ -1,3 +1,5 @@
+// Package capability owns capability assertion validation and attenuation.
+// It does not own local RPC method authorization.
 package capability
 
 import (
@@ -7,7 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	identityapi "ardents/internal/identity/api"
+	identityapi "ardents/internal/identity"
 	identityprincipal "ardents/internal/identity/principal"
 )
 
@@ -37,7 +39,11 @@ func (s *Service) AttestDeliveryPublicKey(identityPrivate ed25519.PrivateKey, no
 	if err := validateAttestationFields(attestation, now); err != nil {
 		return identityapi.CapabilityDeliveryAttestation{}, err
 	}
-	attestation.Signature = ed25519.Sign(identityPrivate, attestationDigest(attestation))
+	digest, err := attestationDigest(attestation)
+	if err != nil {
+		return identityapi.CapabilityDeliveryAttestation{}, err
+	}
+	attestation.Signature = ed25519.Sign(identityPrivate, digest)
 	return attestation, nil
 }
 
@@ -50,7 +56,11 @@ func VerifyDeliveryAttestation(attestation identityapi.CapabilityDeliveryAttesta
 	if identityprincipal.DeriveID("p", public) != attestation.SubjectPrincipal {
 		return fmt.Errorf("delivery attestation identity does not match subject")
 	}
-	if !ed25519.Verify(public, attestationDigest(attestation), attestation.Signature) {
+	digest, err := attestationDigest(attestation)
+	if err != nil {
+		return err
+	}
+	if !ed25519.Verify(public, digest, attestation.Signature) {
 		return fmt.Errorf("delivery attestation signature is invalid")
 	}
 	return nil
@@ -74,18 +84,24 @@ func validateAttestationFields(attestation identityapi.CapabilityDeliveryAttesta
 	return nil
 }
 
-func attestationDigest(attestation identityapi.CapabilityDeliveryAttestation) []byte {
+func attestationDigest(attestation identityapi.CapabilityDeliveryAttestation) ([]byte, error) {
 	var raw bytes.Buffer
 	writeUint32(&raw, attestation.Version)
-	_ = writeString(&raw, attestation.SubjectPrincipal)
-	writeBytes(&raw, attestation.IdentityPublicKey)
-	writeBytes(&raw, attestation.DeliveryPublicKey)
+	if err := writeString(&raw, attestation.SubjectPrincipal); err != nil {
+		return nil, err
+	}
+	if err := writeBytes(&raw, attestation.IdentityPublicKey); err != nil {
+		return nil, err
+	}
+	if err := writeBytes(&raw, attestation.DeliveryPublicKey); err != nil {
+		return nil, err
+	}
 	writeInt64(&raw, attestation.NotBefore.Unix())
 	writeInt64(&raw, attestation.NotAfter.Unix())
 	sum := sha256.Sum256(append(append([]byte(deliveryAttestationDomain), 0), raw.Bytes()...))
-	return sum[:]
+	return sum[:], nil
 }
 
-func writeBytes(out *bytes.Buffer, raw []byte) {
-	_ = writeString(out, string(raw))
+func writeBytes(out *bytes.Buffer, raw []byte) error {
+	return writeString(out, string(raw))
 }

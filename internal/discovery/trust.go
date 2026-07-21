@@ -9,7 +9,3 @@ type TrustEvaluator = discoverytrust.Evaluator
 func NewTrustEvaluator() *TrustEvaluator {
 	return discoverytrust.NewEvaluator()
 }
-
-func EvaluateTrustRecord(anchor map[string]struct{}, record Record) TrustResult {
-	return discoverytrust.EvaluateRecord(anchor, record)
-}

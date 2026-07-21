@@ -1,3 +1,5 @@
+// Package event owns bounded operational event records.
+// It does not own health aggregation or product state.
 package event
 
 import "time"

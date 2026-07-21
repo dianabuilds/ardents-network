@@ -4,7 +4,7 @@ import (
 	"context"
 	"os"
 
-	"ardents/boundary/cli"
+	"ardents/internal/cli"
 )
 
 func main() {

@@ -9,18 +9,21 @@ import (
 	"testing"
 	"time"
 
-	dataapi "ardents/internal/data/api"
-	diagapi "ardents/internal/diagnostics/api"
-	hostingapi "ardents/internal/hosting/api"
-	nodeapi "ardents/internal/node/api"
-	workloadapi "ardents/internal/workload/api"
+	appdata "ardents/internal/content"
+	daemonruntime "ardents/internal/daemon"
+	diagapi "ardents/internal/diagnostics"
+	"ardents/internal/discovery"
+	"ardents/internal/hosting"
+	"ardents/internal/network"
+	"ardents/internal/transfer"
+	workloadapi "ardents/internal/workload"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestSurfaceProjectsCanonicalReadyMetricsWithoutResourceLabels(t *testing.T) {
 	source := populatedSource()
-	surface, err := NewSurface(source, "")
+	surface, err := NewSurface(testDependencies(source), "")
 	require.NoError(t, err)
 
 	ready := httptest.NewRecorder()
@@ -47,7 +50,7 @@ func TestSurfaceCorrelatesDegradedReadinessAndFailureMetrics(t *testing.T) {
 	source.runtime.Node.Ready = false
 	source.runtime.Node.State = "degraded"
 	source.runtime.Health.State = "degraded"
-	surface, err := NewSurface(source, "scrape-secret")
+	surface, err := NewSurface(testDependencies(source), "scrape-secret")
 	require.NoError(t, err)
 
 	ready := httptest.NewRecorder()
@@ -69,7 +72,7 @@ func TestRequestLogUsesNormalizedRouteAndSafeCorrelation(t *testing.T) {
 	previous := slog.Default()
 	slog.SetDefault(slog.New(slog.NewJSONHandler(&output, nil)))
 	t.Cleanup(func() { slog.SetDefault(previous) })
-	surface, err := NewSurface(populatedSource(), "")
+	surface, err := NewSurface(testDependencies(populatedSource()), "")
 	require.NoError(t, err)
 
 	recorder := httptest.NewRecorder()
@@ -106,43 +109,50 @@ func scrape(t *testing.T, surface *Surface, token string) string {
 	return string(body)
 }
 
+func testDependencies(source *fakeSource) Dependencies {
+	return Dependencies{Runtime: source, Diagnostics: source, Workloads: fakeWorkloads{source}, Hosting: source, Data: source, Transfers: source}
+}
+
 type fakeSource struct {
-	runtime     nodeapi.NodeRuntimeSnapshot
-	network     nodeapi.NetworkStatusSnapshot
-	peers       []nodeapi.PeerSnapshot
+	runtime     daemonruntime.RuntimeSnapshot
+	network     network.StatusSnapshot
+	peers       []discovery.PeerSnapshot
 	diagnostics diagapi.DiagSnapshot
-	workloads   []workloadapi.WorkloadStatusSnapshot
-	services    []hostingapi.HostedServiceSnapshot
-	inventory   dataapi.DataInventorySnapshot
-	transfers   []dataapi.TransferSnapshot
+	workloads   []workloadapi.StatusSnapshot
+	services    []hosting.ServiceSnapshot
+	inventory   appdata.InventorySnapshot
+	transfers   []transfer.Record
 }
 
 func populatedSource() *fakeSource {
 	return &fakeSource{
-		runtime: nodeapi.NodeRuntimeSnapshot{Node: nodeapi.NodeSnapshot{State: "ready", Ready: true}, Health: diagapi.HealthSnapshot{State: "ready"}},
-		network: nodeapi.NetworkStatusSnapshot{ActiveCapabilities: []string{"waku-relay", "waku-store"}, RateLimitedOperations: 2},
-		peers:   []nodeapi.PeerSnapshot{{NodeID: "peer-secret-id", State: "connected", Trust: nodeapi.TrustSnapshot{Valid: true, Trusted: true, Usable: true}}},
+		runtime: daemonruntime.RuntimeSnapshot{Node: daemonruntime.NodeSnapshot{State: "ready", Ready: true}, Health: diagapi.HealthSnapshot{State: "ready"}},
+		network: network.StatusSnapshot{ActiveCapabilities: []string{"waku-relay", "waku-store"}, RateLimitedOperations: 2},
+		peers:   []discovery.PeerSnapshot{{NodeID: "peer-secret-id", State: "connected", Trust: discovery.TrustSnapshot{Valid: true, Trusted: true, Usable: true}}},
 		diagnostics: diagapi.DiagSnapshot{RecentEvents: []diagapi.EventEnvelope{
 			{Domain: "policy", Type: "denied", Resource: "blob-secret-id", Payload: map[string]any{"action": "route.use", "selector": "selector-secret"}},
 			{Domain: "data", Type: "privacy_degraded", Resource: "blob-secret-id"},
 			{Domain: "data", Type: "replica_repaired", Resource: "blob-secret-id"},
 		}},
-		workloads: []workloadapi.WorkloadStatusSnapshot{{Spec: workloadapi.WorkloadSpecSnapshot{ID: "workload-secret-id"}, Observed: "running", Instance: workloadapi.WorkloadInstanceSnapshot{MemoryLimitBytes: 512, NanoCPUs: 100, PIDsLimit: 10, Restarts: 2}}},
-		services:  []hostingapi.HostedServiceSnapshot{{ID: "service-secret-id", Readiness: "ready", Ready: true}},
-		inventory: dataapi.DataInventorySnapshot{Blobs: 1, LocalBytes: 512},
-		transfers: []dataapi.TransferSnapshot{{ID: "blob-secret-id", State: "running", Direction: "inbound", UpdatedAt: time.Now()}},
+		workloads: []workloadapi.StatusSnapshot{{Spec: workloadapi.SpecSnapshot{ID: "workload-secret-id"}, Observed: "running", Instance: workloadapi.InstanceSnapshot{MemoryLimitBytes: 512, NanoCPUs: 100, PIDsLimit: 10, Restarts: 2}}},
+		services:  []hosting.ServiceSnapshot{{ID: "service-secret-id", Readiness: "ready", Ready: true}},
+		inventory: appdata.InventorySnapshot{Blobs: 1, LocalBytes: 512},
+		transfers: []transfer.Record{{ID: "blob-secret-id", State: "running", Direction: "inbound", UpdatedAt: time.Now()}},
 	}
 }
 
-func (s *fakeSource) GetNodeRuntime() nodeapi.NodeRuntimeSnapshot     { return s.runtime }
-func (s *fakeSource) GetNetworkStatus() nodeapi.NetworkStatusSnapshot { return s.network }
-func (s *fakeSource) ListPeers() []nodeapi.PeerSnapshot               { return s.peers }
-func (s *fakeSource) DiagnosticsSnapshot() diagapi.DiagSnapshot       { return s.diagnostics }
-func (s *fakeSource) ListWorkloads() ([]workloadapi.WorkloadStatusSnapshot, error) {
-	return s.workloads, nil
+func (s *fakeSource) GetNodeRuntime() daemonruntime.RuntimeSnapshot { return s.runtime }
+func (s *fakeSource) GetNetworkStatus() network.StatusSnapshot      { return s.network }
+func (s *fakeSource) ListPeers() []discovery.PeerSnapshot           { return s.peers }
+func (s *fakeSource) DiagnosticsSnapshot() diagapi.DiagSnapshot     { return s.diagnostics }
+
+type fakeWorkloads struct{ source *fakeSource }
+
+func (s fakeWorkloads) List() ([]workloadapi.StatusSnapshot, error) {
+	return s.source.workloads, nil
 }
-func (s *fakeSource) ListHostedServices() ([]hostingapi.HostedServiceSnapshot, error) {
+func (s *fakeSource) ListHostedServices() ([]hosting.ServiceSnapshot, error) {
 	return s.services, nil
 }
-func (s *fakeSource) DataInventory() dataapi.DataInventorySnapshot { return s.inventory }
-func (s *fakeSource) ListTransfers() []dataapi.TransferSnapshot    { return s.transfers }
+func (s *fakeSource) InventorySnapshot() appdata.InventorySnapshot { return s.inventory }
+func (s *fakeSource) List() []transfer.Record                      { return s.transfers }

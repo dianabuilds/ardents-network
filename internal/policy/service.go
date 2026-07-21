@@ -1,23 +1,17 @@
 package policy
 
 import (
+	"ardents/internal/content"
 	"sync"
 	"time"
 
-	dataapi "ardents/internal/data/api"
-	hostingservice "ardents/internal/hosting/service"
-	identityapi "ardents/internal/identity/api"
-	transport "ardents/internal/network/api"
-	nodeapi "ardents/internal/node/api"
-	policyapi "ardents/internal/policy/api"
-	"ardents/internal/policy/decision"
-	"ardents/internal/policy/enforcement"
-	"ardents/internal/policy/evaluation"
-	"ardents/internal/workload/observedstate"
-	domainworkload "ardents/internal/workload/workload"
+	identityapi "ardents/internal/identity"
+	transport "ardents/internal/network"
+	"ardents/internal/workload/execution"
+	"ardents/internal/workload/registry"
 )
 
-var _ policyapi.Service = (*Service)(nil)
+var _ Policy = (*Service)(nil)
 
 type Service struct {
 	mu     sync.Mutex
@@ -50,11 +44,11 @@ func (s *Service) Reason() string {
 	return s.reason
 }
 
-func (s *Service) AdmitWorkload(spec domainworkload.Spec, existing []observedstate.Status) error {
+func (s *Service) AdmitWorkload(spec registry.Spec, existing []execution.Status) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	result := evaluation.CheckWorkload(evaluation.WorkloadConfig{
+	result := CheckWorkload(WorkloadConfig{
 		MaxWorkloads:       s.cfg.MaxWorkloads,
 		AllowedPolicyRefs:  s.cfg.AllowedPolicyRefs,
 		DeniedCapabilities: s.cfg.DeniedCapabilities,
@@ -62,11 +56,11 @@ func (s *Service) AdmitWorkload(spec domainworkload.Spec, existing []observedsta
 	return s.applyDecisionLocked(result)
 }
 
-func (s *Service) AllowServicePublication(spec hostingservice.Spec) error {
+func (s *Service) AllowServicePublication(spec registry.ServiceSpec) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	result := evaluation.CheckServicePublication(evaluation.ServicePublicationConfig{
+	result := CheckServicePublication(ServicePublicationConfig{
 		DisableServicePublication:       s.cfg.DisableServicePublication,
 		DisableNetworkPublishedServices: s.cfg.DisableNetworkPublishedServices,
 		DeniedServiceTypes:              s.cfg.DeniedServiceTypes,
@@ -74,57 +68,61 @@ func (s *Service) AllowServicePublication(spec hostingservice.Spec) error {
 	return s.applyDecisionLocked(result)
 }
 
-func (s *Service) AllowBlobRetention(blob dataapi.BlobSnapshot, relay bool, expiresAt time.Time, now time.Time) error {
+func (s *Service) AllowBlobRetention(blob content.BlobPolicyView, relay bool, expiresAt time.Time, now time.Time) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	result := evaluation.CheckRetention(evaluation.RetentionConfig{
+	result := CheckRetention(RetentionConfig{
 		DisableLocalBlobRetention: s.cfg.DisableLocalBlobRetention,
 		DisableRelayBlobRetention: s.cfg.DisableRelayBlobRetention,
 		MaxLocalRetentionTTL:      s.cfg.MaxLocalRetentionTTL,
 		MaxRelayRetentionTTL:      s.cfg.MaxRelayRetentionTTL,
-	}, blob, relay, expiresAt, now)
+	}, retentionBlobView(blob), relay, expiresAt, now)
 	return s.applyDecisionLocked(result)
 }
 
-func (s *Service) AllowBlobPin(blob dataapi.BlobSnapshot) error {
+func (s *Service) AllowBlobPin(blob content.BlobPolicyView) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	result := evaluation.CheckPin(evaluation.RetentionConfig{
+	result := CheckPin(RetentionConfig{
 		DisableBlobPinning:         s.cfg.DisableBlobPinning,
 		AllowPinRelayRetainedBlobs: s.cfg.AllowPinRelayRetainedBlobs,
-	}, blob)
+	}, retentionBlobView(blob))
 	return s.applyDecisionLocked(result)
 }
 
-func (s *Service) AllowPeerBlobReserving(blob dataapi.BlobSnapshot) error {
+func (s *Service) AllowPeerBlobReserving(blob content.BlobPolicyView) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	result := evaluation.CheckPeerReserving(evaluation.RetentionConfig{
+	result := CheckPeerReserving(RetentionConfig{
 		DisablePeerBlobReserving: s.cfg.DisablePeerBlobReserving,
 		AllowReservingRelayBlobs: s.cfg.AllowReservingRelayBlobs,
-	}, blob)
+	}, retentionBlobView(blob))
 	return s.applyDecisionLocked(result)
 }
 
-func (s *Service) AllowReplicaBlobServing(blob dataapi.BlobSnapshot) error {
+func (s *Service) AllowReplicaBlobServing(blob content.BlobPolicyView) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	result := evaluation.CheckPeerReserving(evaluation.RetentionConfig{
+	result := CheckPeerReserving(RetentionConfig{
 		DisablePeerBlobReserving: s.cfg.DisablePeerBlobReserving,
 		AllowReservingRelayBlobs: true,
-	}, blob)
+	}, retentionBlobView(blob))
 	return s.applyDecisionLocked(result)
+}
+
+func retentionBlobView(blob content.BlobPolicyView) content.BlobPolicyView {
+	return content.BlobPolicyView{State: blob.State, Retention: blob.Retention, Encrypted: blob.Encrypted}
 }
 
 func (s *Service) AllowRouteUse(candidate transport.Candidate) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	result := evaluation.CheckRouteUse(evaluation.RouteConfig{
+	result := CheckRouteUse(RouteConfig{
 		DisableUntrustedRouteUse: s.cfg.DisableUntrustedRouteUse,
 		DeniedRouteSchemes:       s.cfg.DeniedRouteSchemes,
 	}, candidate)
@@ -134,18 +132,18 @@ func (s *Service) AllowRouteUse(candidate transport.Candidate) error {
 func (s *Service) AllowCapabilityUse(use identityapi.CapabilityUse) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	result := evaluation.CheckCapabilityUse(evaluation.CapabilityConfig{
+	result := CheckCapabilityUse(CapabilityConfig{
 		DisablePrivateCapabilityUse: s.cfg.DisablePrivateCapabilityUse,
 		DeniedCapabilityScopes:      s.cfg.DeniedCapabilityScopes,
 	}, use)
 	return s.applyDecisionLocked(result)
 }
 
-func (s *Service) Snapshot() nodeapi.PartSnapshot {
-	return enforcement.Snapshot(s.State(), s.Reason())
+func (s *Service) Snapshot() Snapshot {
+	return Snapshot{State: s.State(), Reason: s.Reason()}
 }
 
-func (s *Service) applyDecisionLocked(result decision.Result) error {
+func (s *Service) applyDecisionLocked(result Result) error {
 	if result.Allowed {
 		return nil
 	}

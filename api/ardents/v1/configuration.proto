@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package ardents.v1;
+
+option go_package = "ardents/internal/localapi/protocol;ardentsv1";
+
+import "api/ardents/v1/types.proto";
+service ConfigurationService {
+  rpc GetEffectiveConfiguration(GetEffectiveConfigurationRequest) returns (EffectiveConfigurationResponse);
+  rpc ReloadConfiguration(ReloadConfigurationRequest) returns (ReloadConfigurationResponse);
+}

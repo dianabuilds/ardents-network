@@ -18,7 +18,7 @@ $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Set-Location $root
 $statePath = [IO.Path]::GetFullPath($StateDir)
 $manifestPath = Join-Path $statePath "cluster.json"
-$composeFile = Join-Path $root "docker/docker-compose.multinode.yml"
+$composeFile = Join-Path $root "deploy/docker/compose/docker-compose.multinode.yml"
 $composePrefix = @("compose", "-p", $Project, "-f", $composeFile)
 
 if (-not (Test-Path -LiteralPath $manifestPath)) {

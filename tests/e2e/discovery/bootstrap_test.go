@@ -3,7 +3,9 @@
 package discoverye2e_test
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -11,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	networkapi "ardents/internal/network/api"
-	networkprivacy "ardents/internal/network/privacy"
-	runtimeinfra "ardents/internal/runtime/process"
+	runtimeinfra "ardents/internal/daemon"
+	networkprivacy "ardents/internal/messaging"
+	networkapi "ardents/internal/network"
 	"ardents/tests/testkit"
 
 	"github.com/stretchr/testify/require"
@@ -28,7 +30,7 @@ func TestDiscoveryReadyHelper(t *testing.T) {
 		w.Header().Set("X-Ardents-Generation", generation)
 		w.WriteHeader(http.StatusNoContent)
 	})}
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		os.Exit(2)
 	}
 }
@@ -66,11 +68,12 @@ func TestDiscoveryBootstrapDropsWithdrawnRemoteService(t *testing.T) {
 	first := testkit.StartNode(t, discoveryClientConfig(t, "first-client", t.TempDir(), privacy.Receiver, bootstrap))
 	testkit.WaitForServiceMatchCount(t, 10*time.Second, first, "echo", 1)
 
-	require.NoError(t, remote.StopWorkload("work.echo"))
+	require.NoError(t, testkit.Workloads(remote).Stop(context.Background(), "work.echo"))
 	second := testkit.StartNode(t, discoveryClientConfig(t, "second-client", t.TempDir(), privacy.Receiver, bootstrap))
 	testkit.WaitForServiceMatchCount(t, 10*time.Second, second, "echo", 0)
 }
 
+//goland:noinspection ALL
 func discoveryServiceConfig(t *testing.T, name, dir string, privacy *networkprivacy.Channel, workloadID, serviceID string) runtimeinfra.Config {
 	t.Helper()
 	port := reserveDiscoveryPort(t)
@@ -78,10 +81,10 @@ func discoveryServiceConfig(t *testing.T, name, dir string, privacy *networkpriv
 	return runtimeinfra.Config{
 		Name: name, NodeProfile: networkapi.NodeProfileServiceNode,
 		Boot:      runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Transport: runtimeinfra.NodeTransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: networkapi.ReachabilityPrivateLAN},
-		Data:      runtimeinfra.NodeDataConfig{Dir: dir}, Privacy: privacy, DiscoveryRefreshInterval: 50 * time.Millisecond,
-		Workload: []runtimeinfra.NodeWorkloadConfig{{ID: workloadID, Kind: "service", Owner: "node",
-			Config: discoveryReadyConfig(t, port), Desired: "running", Services: []runtimeinfra.NodeServiceConfig{{
+		Transport: runtimeinfra.TransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: networkapi.ReachabilityPrivateLAN},
+		Data:      runtimeinfra.DataConfig{Dir: dir}, Privacy: privacy, DiscoveryRefreshInterval: 50 * time.Millisecond,
+		Workload: []runtimeinfra.WorkloadConfig{{ID: workloadID, Kind: "service", Owner: "node",
+			Config: discoveryReadyConfig(t, port), Desired: "running", Services: []runtimeinfra.ServiceConfig{{
 				ID: serviceID, Type: "echo", Mode: "NetworkPublished",
 				Endpoints:      []string{fmt.Sprintf("http://%s:%d/ready", host, port)},
 				ProbeEndpoints: []string{fmt.Sprintf("http://127.0.0.1:%d/ready", port)},
@@ -93,8 +96,8 @@ func discoveryClientConfig(t *testing.T, name, dir string, privacy *networkpriva
 	t.Helper()
 	return runtimeinfra.Config{Name: name, NodeProfile: networkapi.NodeProfileServiceNode,
 		Boot:      runtimeinfra.BootConfig{Sources: bootstrap},
-		Transport: runtimeinfra.NodeTransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: networkapi.ReachabilityPrivateLAN},
-		Data:      runtimeinfra.NodeDataConfig{Dir: dir}, Privacy: privacy, DiscoveryRefreshInterval: 50 * time.Millisecond}
+		Transport: runtimeinfra.TransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: networkapi.ReachabilityPrivateLAN},
+		Data:      runtimeinfra.DataConfig{Dir: dir}, Privacy: privacy, DiscoveryRefreshInterval: 50 * time.Millisecond}
 }
 
 func discoveryReadyConfig(t *testing.T, port int) string {
@@ -111,7 +114,7 @@ func reserveDiscoveryPort(t *testing.T) int {
 	t.Helper()
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	defer listener.Close()
+	defer func() { require.NoError(t, listener.Close()) }()
 	return listener.Addr().(*net.TCPAddr).Port
 }
 
@@ -134,6 +137,6 @@ func requireServiceEndpoint(t *testing.T, endpoint string) {
 	client := &http.Client{Timeout: time.Second}
 	response, err := client.Get(endpoint)
 	require.NoError(t, err)
-	defer response.Body.Close()
+	defer func() { require.NoError(t, response.Body.Close()) }()
 	require.Equal(t, http.StatusNoContent, response.StatusCode)
 }

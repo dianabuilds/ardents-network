@@ -1,3 +1,5 @@
+// Package buildinfo owns immutable build and version identity.
+// It does not own runtime health or release orchestration.
 package buildinfo
 
 import "runtime"

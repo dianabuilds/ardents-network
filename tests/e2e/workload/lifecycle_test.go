@@ -5,6 +5,7 @@ package workloade2e_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -12,11 +13,9 @@ import (
 	"testing"
 	"time"
 
-	diagapi "ardents/internal/diagnostics/api"
-	discoveryapi "ardents/internal/discovery/api"
-	networkapi "ardents/internal/network/api"
-	runtimeinfra "ardents/internal/runtime/process"
-	workloadapi "ardents/internal/workload/api"
+	runtimeinfra "ardents/internal/daemon"
+	networkapi "ardents/internal/network"
+	workloadapi "ardents/internal/workload"
 	"ardents/tests/testkit"
 
 	"github.com/stretchr/testify/require"
@@ -31,7 +30,7 @@ func TestWorkloadReadyHelper(t *testing.T) {
 		w.Header().Set("X-Ardents-Generation", generation)
 		w.WriteHeader(http.StatusNoContent)
 	})}
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		os.Exit(2)
 	}
 }
@@ -49,8 +48,8 @@ func TestWorkloadHostedServiceLifecycleAcrossNodeRestart(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
 	cfg := workloadLifecycleConfig(t, dir)
-	var first workloadRuntime
-	var second workloadRuntime
+	var first *runtimeinfra.Node
+	var second *runtimeinfra.Node
 
 	scenario.Precondition("start node with workload-backed service", func(t *testing.T) {
 		first = testkit.StartNode(t, cfg)
@@ -87,7 +86,7 @@ func TestWorkloadHostedServiceObservedExitWithdrawsPublicationAndDegradesDiagnos
 	})
 	cfg := workloadLifecycleConfig(t, t.TempDir())
 	var harness *testkit.RuntimeHarness
-	var n workloadRuntime
+	var n *runtimeinfra.Node
 
 	scenario.Precondition("start node with workload-backed service", func(t *testing.T) {
 		harness = testkit.StartRuntime(t, cfg)
@@ -106,8 +105,8 @@ func TestWorkloadHostedServiceObservedExitWithdrawsPublicationAndDegradesDiagnos
 		require.Len(t, item.PublishedServices, 1)
 		require.False(t, item.PublishedServices[0].Published)
 		require.NotEmpty(t, item.PublishedServices[0].Reason)
-		diag := n.DiagnosticsSnapshot()
-		current, currentErr := n.GetWorkloadStatus("work.echo")
+		diag := testkit.Diagnostics(n).DiagnosticsSnapshot()
+		current, currentErr := testkit.Workloads(n).Get("work.echo")
 		require.Equalf(t, "degraded", diag.Health.State, "workload=%+v current=%+v current_err=%v diagnostics=%+v", item, current, currentErr, diag.Health)
 		require.NotNil(t, diag.Health.PrimaryReason)
 		require.Equal(t, "workload.hosted_service.degraded", diag.Health.PrimaryReason.Code)
@@ -119,11 +118,12 @@ func TestWorkloadHostedServiceObservedExitWithdrawsPublicationAndDegradesDiagnos
 	})
 
 	scenario.Assert("operator restart proves fresh readiness before republishing", func(t *testing.T) {
-		require.NoError(t, n.RestartWorkload("work.echo"))
+		require.NoError(t, testkit.Workloads(n).Restart(context.Background(), "work.echo"))
 		assertReadyRunningPublished(t, n, "crash recovery")
 	})
 }
 
+//goland:noinspection ALL
 func workloadLifecycleConfig(t *testing.T, dir string) runtimeinfra.Config {
 	t.Helper()
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -137,16 +137,16 @@ func workloadLifecycleConfig(t *testing.T, dir string) runtimeinfra.Config {
 	return runtimeinfra.Config{
 		Name: "workload-e2e", NodeProfile: networkapi.NodeProfileServiceNode,
 		Boot:      runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Transport: runtimeinfra.NodeTransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: networkapi.ReachabilityPrivateLAN},
-		Data:      runtimeinfra.NodeDataConfig{Dir: dir}, Privacy: privacy.Sender,
+		Transport: runtimeinfra.TransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: networkapi.ReachabilityPrivateLAN},
+		Data:      runtimeinfra.DataConfig{Dir: dir}, Privacy: privacy.Sender,
 		DiscoveryRefreshInterval: 50 * time.Millisecond,
-		Workload: []runtimeinfra.NodeWorkloadConfig{{
+		Workload: []runtimeinfra.WorkloadConfig{{
 			ID:      "work.echo",
 			Kind:    "service",
 			Owner:   "node",
 			Config:  readyHelperConfig(t, port),
 			Desired: "running",
-			Services: []runtimeinfra.NodeServiceConfig{{
+			Services: []runtimeinfra.ServiceConfig{{
 				ID:        "svc.work.echo",
 				Type:      "echo",
 				Mode:      "NetworkPublished",
@@ -184,12 +184,12 @@ func privateContainerIPv4(t *testing.T) string {
 	return ""
 }
 
-func waitForRunningAndPublished(t *testing.T, n workloadRuntime) workloadapi.WorkloadStatusSnapshot {
+func waitForRunningAndPublished(t *testing.T, n *runtimeinfra.Node) workloadapi.StatusSnapshot {
 	t.Helper()
-	var last workloadapi.WorkloadStatusSnapshot
+	var last workloadapi.StatusSnapshot
 	var lastService string
 	testkit.WaitForCondition(t, 10*time.Second, "running workload and published service", func() (bool, string) {
-		items, err := n.ListWorkloads()
+		items, err := testkit.Workloads(n).List()
 		if err != nil {
 			lastService = err.Error()
 			return false, err.Error()
@@ -220,7 +220,7 @@ func waitForRunningAndPublished(t *testing.T, n workloadRuntime) workloadapi.Wor
 	return last
 }
 
-func assertReadyRunningPublished(t *testing.T, n workloadRuntime, stage string) workloadapi.WorkloadStatusSnapshot {
+func assertReadyRunningPublished(t *testing.T, n *runtimeinfra.Node, stage string) workloadapi.StatusSnapshot {
 	t.Helper()
 	item := waitForRunningAndPublished(t, n)
 	require.Len(t, item.PublishedServices[0].Endpoints, 1)
@@ -229,16 +229,16 @@ func assertReadyRunningPublished(t *testing.T, n workloadRuntime, stage string) 
 	require.NoError(t, err, "%s", stage)
 	require.Equal(t, http.StatusNoContent, response.StatusCode, "%s", stage)
 	require.NoError(t, response.Body.Close())
-	diag := n.DiagnosticsSnapshot()
+	diag := testkit.Diagnostics(n).DiagnosticsSnapshot()
 	require.Equal(t, "ready", diag.Health.State, "%s", stage)
 	return item
 }
 
-func stopAndAssertWithdrawal(t *testing.T, ctx context.Context, n workloadRuntime) {
+func stopAndAssertWithdrawal(t *testing.T, ctx context.Context, n *runtimeinfra.Node) {
 	t.Helper()
 	require.NoError(t, n.Stop(ctx))
 	testkit.WaitForCondition(t, 10*time.Second, "stopped workload after node stop", func() (bool, string) {
-		items, err := n.ListWorkloads()
+		items, err := testkit.Workloads(n).List()
 		if err != nil {
 			return false, err.Error()
 		}
@@ -259,12 +259,12 @@ func stopAndAssertWithdrawal(t *testing.T, ctx context.Context, n workloadRuntim
 	})
 }
 
-func waitForWorkloadObserved(t *testing.T, n workloadRuntime, workloadID, observed string) workloadapi.WorkloadStatusSnapshot {
+func waitForWorkloadObserved(t *testing.T, n *runtimeinfra.Node, workloadID, observed string) workloadapi.StatusSnapshot {
 	t.Helper()
 
-	var item workloadapi.WorkloadStatusSnapshot
+	var item workloadapi.StatusSnapshot
 	testkit.WaitForCondition(t, 10*time.Second, fmt.Sprintf("%s workload observed=%s", workloadID, observed), func() (bool, string) {
-		current, err := n.GetWorkloadStatus(workloadID)
+		current, err := testkit.Workloads(n).Get(workloadID)
 		if err != nil {
 			return false, err.Error()
 		}
@@ -285,13 +285,4 @@ func killWorkloadProcess(t *testing.T, harness *testkit.RuntimeHarness, workload
 	proc, err := os.FindProcess(pid)
 	require.NoError(t, err)
 	require.NoError(t, proc.Kill())
-}
-
-type workloadRuntime interface {
-	Stop(context.Context) error
-	ListWorkloads() ([]workloadapi.WorkloadStatusSnapshot, error)
-	GetWorkloadStatus(string) (workloadapi.WorkloadStatusSnapshot, error)
-	RestartWorkload(string) error
-	ResolveService(string) (discoveryapi.ServiceResult, error)
-	DiagnosticsSnapshot() diagapi.DiagSnapshot
 }

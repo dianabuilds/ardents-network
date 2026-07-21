@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
-	discovery "ardents/internal/discovery"
-	transport "ardents/internal/network/api"
-	db "ardents/internal/persistence"
-	runtimeinfra "ardents/internal/runtime/process"
+	runtimeinfra "ardents/internal/daemon"
+	"ardents/internal/discovery"
+	transport "ardents/internal/network"
+	db "ardents/internal/storage"
 	"ardents/tests/testkit"
 
 	"github.com/stretchr/testify/require"
@@ -34,7 +34,7 @@ func TestDiscoveryResolveQueriesDoNotMutateRouteTruth(t *testing.T) {
 	n := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "query-route",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: t.TempDir()},
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
 	}).Node
 	{
 		err := n.Start(context.Background())
@@ -78,7 +78,7 @@ func TestDiscoveryResolveQueriesDoNotMutateTrustTruth(t *testing.T) {
 	localNode := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "local-trust-query",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: t.TempDir()},
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
 	}).Node
 	{
 		err := localNode.Start(context.Background())
@@ -90,7 +90,7 @@ func TestDiscoveryResolveQueriesDoNotMutateTrustTruth(t *testing.T) {
 	remoteNode := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "remote-trust-query",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"remote://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: t.TempDir()},
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
 	}).Node
 	{
 		err := remoteNode.Start(context.Background())
@@ -132,7 +132,7 @@ func TestDiscoveryResolveImportedRecord(t *testing.T) {
 	localNode := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "local",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: t.TempDir()},
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
 	}).Node
 	{
 		err := localNode.Start(context.Background())
@@ -144,7 +144,7 @@ func TestDiscoveryResolveImportedRecord(t *testing.T) {
 	remoteNode := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "remote",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"remote://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: t.TempDir()},
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
 	}).Node
 	{
 		err := remoteNode.Start(context.Background())
@@ -217,7 +217,7 @@ func TestDiscoveryResolveRecordRejectsExpiredPersistedRecord(t *testing.T) {
 	localNode := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "local-expired",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: dir},
+		Data: runtimeinfra.DataConfig{Dir: dir},
 	}).Node
 	{
 		err := localNode.Start(context.Background())
@@ -293,7 +293,7 @@ func TestDiscoveryStatusCountsExpiredRecordAsStaleAndRejected(t *testing.T) {
 	localNode := testkit.StartNode(t, runtimeinfra.Config{
 		Name: "local-expired-summary",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: dir},
+		Data: runtimeinfra.DataConfig{Dir: dir},
 	})
 
 	status := localNode.GetDiscoveryStatus()
@@ -315,8 +315,8 @@ func TestDiscoveryDoesNotPublishStaticServiceRecordWithoutRuntimeBacking(t *test
 	n := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "svc",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: t.TempDir()},
-		Service: []runtimeinfra.NodeServiceConfig{{
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
+		Service: []runtimeinfra.ServiceConfig{{
 			ID:        "svc.local.echo",
 			Type:      "echo",
 			Owner:     "node",
@@ -351,7 +351,7 @@ func TestDiscoveryResolveServiceType(t *testing.T) {
 	localNode := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "local",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: t.TempDir()}, Privacy: privacy.Receiver,
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()}, Privacy: privacy.Receiver,
 	}).Node
 	{
 		err := localNode.Start(context.Background())
@@ -364,15 +364,15 @@ func TestDiscoveryResolveServiceType(t *testing.T) {
 	remoteNode := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "remote", NodeProfile: transport.NodeProfileServiceNode,
 		Boot:      runtimeinfra.BootConfig{Sources: []string{"remote://bootstrap"}},
-		Transport: runtimeinfra.NodeTransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: transport.ReachabilityPrivateLAN},
-		Data:      runtimeinfra.NodeDataConfig{Dir: t.TempDir()}, Privacy: privacy.Sender,
-		Workload: []runtimeinfra.NodeWorkloadConfig{{
+		Transport: runtimeinfra.TransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: transport.ReachabilityPrivateLAN},
+		Data:      runtimeinfra.DataConfig{Dir: t.TempDir()}, Privacy: privacy.Sender,
+		Workload: []runtimeinfra.WorkloadConfig{{
 			ID:      "work.remote.echo",
 			Kind:    "service",
 			Owner:   "node",
 			Config:  config,
 			Desired: "running",
-			Services: []runtimeinfra.NodeServiceConfig{{
+			Services: []runtimeinfra.ServiceConfig{{
 				ID:             "svc.remote.echo",
 				Type:           "echo",
 				Mode:           "NetworkPublished",
@@ -427,7 +427,7 @@ func TestDiscoveryImportRecordRejectsStaleRecordWithoutPublishingSuccess(t *test
 	localNode := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "local",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: t.TempDir()},
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
 	}).Node
 	{
 		err := localNode.Start(context.Background())
@@ -477,7 +477,7 @@ func TestDiscoveryResolveRecordAndServiceDoNotReturnUsableRoutesAfterStop(t *tes
 	localNode := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "local",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: t.TempDir()}, Privacy: privacy.Receiver,
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()}, Privacy: privacy.Receiver,
 	}).Node
 	{
 		err := localNode.Start(context.Background())
@@ -488,15 +488,15 @@ func TestDiscoveryResolveRecordAndServiceDoNotReturnUsableRoutesAfterStop(t *tes
 	remoteNode := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "remote", NodeProfile: transport.NodeProfileServiceNode,
 		Boot:      runtimeinfra.BootConfig{Sources: []string{"remote://bootstrap"}},
-		Transport: runtimeinfra.NodeTransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: transport.ReachabilityPrivateLAN},
-		Data:      runtimeinfra.NodeDataConfig{Dir: t.TempDir()}, Privacy: privacy.Sender,
-		Workload: []runtimeinfra.NodeWorkloadConfig{{
+		Transport: runtimeinfra.TransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: transport.ReachabilityPrivateLAN},
+		Data:      runtimeinfra.DataConfig{Dir: t.TempDir()}, Privacy: privacy.Sender,
+		Workload: []runtimeinfra.WorkloadConfig{{
 			ID:      "work.remote.echo",
 			Kind:    "service",
 			Owner:   "node",
 			Config:  config,
 			Desired: "running",
-			Services: []runtimeinfra.NodeServiceConfig{{
+			Services: []runtimeinfra.ServiceConfig{{
 				ID:             "svc.remote.echo",
 				Type:           "echo",
 				Mode:           "NetworkPublished",

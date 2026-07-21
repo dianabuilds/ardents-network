@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	db "ardents/internal/persistence"
+	db "ardents/internal/storage"
 
 	"golang.org/x/crypto/chacha20poly1305"
 )

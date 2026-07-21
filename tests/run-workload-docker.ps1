@@ -7,7 +7,7 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 $project = "ardents-workload-$PID"
-$composeFile = Join-Path $root "docker/docker-compose.workload-test.yml"
+$composeFile = Join-Path $root "deploy/docker/compose/docker-compose.workload-test.yml"
 $reportPath = [IO.Path]::GetFullPath($ReportDir)
 New-Item -ItemType Directory -Force -Path $reportPath | Out-Null
 $prefix = @("compose", "-p", $project, "-f", $composeFile)

@@ -1,14 +1,14 @@
 package policy
 
 import (
+	"ardents/internal/content"
 	"testing"
 	"time"
 
-	dataapi "ardents/internal/data/api"
-	hostingservice "ardents/internal/hosting/service"
-	transport "ardents/internal/network/api"
-	"ardents/internal/workload/observedstate"
-	domainworkload "ardents/internal/workload/workload"
+	transport "ardents/internal/network"
+	"ardents/internal/workload/execution"
+	domainworkload "ardents/internal/workload/registry"
+	hostingservice "ardents/internal/workload/registry"
 
 	"github.com/stretchr/testify/require"
 )
@@ -23,7 +23,7 @@ func TestPolicyAllowDenyMatrix(t *testing.T) {
 		MaxLocalRetentionTTL:            time.Hour,
 	})
 
-	existing := []observedstate.Status{{Spec: domainworkload.Spec{ID: "work.present"}}}
+	existing := []execution.Status{{Spec: domainworkload.Spec{ID: "work.present"}}}
 	{
 		err := svc.AdmitWorkload(domainworkload.Spec{ID: "work.new", Kind: "service", Desired: "running"}, existing)
 		require.Error(t, err, "expected workload limit denial")
@@ -37,7 +37,7 @@ func TestPolicyAllowDenyMatrix(t *testing.T) {
 		require.Error(t, err, "expected unlisted policy reference denial")
 	}
 	{
-		err := svc.AllowServicePublication(hostingservice.Spec{ID: "svc.echo", Type: "echo", Mode: "NetworkPublished"})
+		err := svc.AllowServicePublication(hostingservice.ServiceSpec{ID: "svc.echo", Type: "echo", Mode: "NetworkPublished"})
 		require.Error(t, err, "expected network publication denial")
 	}
 	{
@@ -45,15 +45,15 @@ func TestPolicyAllowDenyMatrix(t *testing.T) {
 		require.Error(t, err, "expected denied route scheme")
 	}
 	{
-		err := svc.AllowPeerBlobReserving(dataapi.BlobSnapshot{ID: "blob", State: "available-local", Retention: "pinned", Encrypted: true})
+		err := svc.AllowPeerBlobReserving(content.BlobPolicyView{State: "available-local", Retention: "pinned", Encrypted: true})
 		require.Error(t, err, "expected peer re-serving denial")
 	}
 	{
-		err := svc.AllowReplicaBlobServing(dataapi.BlobSnapshot{ID: "blob", State: "retained-temporary", Retention: "relay-temporary", Encrypted: true})
+		err := svc.AllowReplicaBlobServing(content.BlobPolicyView{State: "retained-temporary", Retention: "relay-temporary", Encrypted: true})
 		require.Error(t, err, "expected committed replica serving denial when peer serving is disabled")
 	}
 	{
-		err := svc.AllowBlobRetention(dataapi.BlobSnapshot{ID: "blob", Encrypted: true}, false, time.Now().Add(2*time.Hour), time.Now())
+		err := svc.AllowBlobRetention(content.BlobPolicyView{Encrypted: true}, false, time.Now().Add(2*time.Hour), time.Now())
 		require.Error(t, err, "expected local retention ttl denial")
 	}
 
@@ -67,7 +67,7 @@ func TestPolicyAllowDenyMatrix(t *testing.T) {
 		require.NoErrorf(t, err, "admit allowed workload: %v", err)
 	}
 	{
-		err := allowed.AllowServicePublication(hostingservice.Spec{ID: "svc.ok", Type: "echo", Mode: "LocalOnly"})
+		err := allowed.AllowServicePublication(hostingservice.ServiceSpec{ID: "svc.ok", Type: "echo", Mode: "LocalOnly"})
 		require.NoErrorf(t, err, "allow local service publication: %v", err)
 	}
 	{
@@ -75,12 +75,12 @@ func TestPolicyAllowDenyMatrix(t *testing.T) {
 		require.NoErrorf(t, err, "allow trusted tcp route: %v", err)
 	}
 	{
-		err := allowed.AllowPeerBlobReserving(dataapi.BlobSnapshot{ID: "blob", State: "available-local", Retention: "relay-temporary", Encrypted: true})
+		err := allowed.AllowPeerBlobReserving(content.BlobPolicyView{State: "available-local", Retention: "relay-temporary", Encrypted: true})
 		require.NoErrorf(t, err, "allow relay blob reserving: %v", err)
 	}
 	{
 		defaultPolicy := New(Config{})
-		err := defaultPolicy.AllowReplicaBlobServing(dataapi.BlobSnapshot{ID: "replica", State: "retained-temporary", Retention: "relay-temporary", Encrypted: true})
+		err := defaultPolicy.AllowReplicaBlobServing(content.BlobPolicyView{State: "retained-temporary", Retention: "relay-temporary", Encrypted: true})
 		require.NoErrorf(t, err, "allow current committed replica serving: %v", err)
 	}
 }
@@ -99,7 +99,7 @@ func TestPolicySnapshotStaysEnforcedAfterSubsequentAllows(t *testing.T) {
 			"enforced", "snapshot state = %q, want enforced", snapshot.State)
 	}
 	{
-		err := svc.AllowBlobPin(dataapi.BlobSnapshot{ID: "blob", State: "available-local"})
+		err := svc.AllowBlobPin(content.BlobPolicyView{State: "available-local"})
 		require.NoErrorf(t, err, "allow blob pin: %v", err)
 	}
 	{
@@ -130,7 +130,7 @@ func TestPolicyUsesOneNormalizationRuleAcrossSurfaces(t *testing.T) {
 		require.Error(t, err, "expected normalized denied capability")
 	}
 	{
-		err := svc.AllowServicePublication(hostingservice.Spec{ID: "svc.admin", Type: "admin", Mode: "LocalOnly"})
+		err := svc.AllowServicePublication(hostingservice.ServiceSpec{ID: "svc.admin", Type: "admin", Mode: "LocalOnly"})
 		require.Error(t, err, "expected normalized denied service type")
 	}
 	{

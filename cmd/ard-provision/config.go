@@ -4,11 +4,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 
-	identitylocalrealm "ardents/internal/identity/localrealm"
-	runtimeconfig "ardents/internal/runtime/config"
+	runtimeconfig "ardents/internal/config"
+	"ardents/internal/storage"
 )
 
 const (
@@ -16,7 +15,7 @@ const (
 	runtimeSecretDir = "/run/ardents"
 )
 
-func operatorDocument(configured options, provisioned identitylocalrealm.NodeProvision) runtimeconfig.Document {
+func operatorDocument(configured options, provisioned NodeProvision) runtimeconfig.Document {
 	doc := runtimeconfig.Defaults()
 	doc.Node.Name = configured.nodeName
 	doc.Node.DataDir = runtimeDataDir
@@ -53,20 +52,5 @@ func writeOperatorDocument(secretDir string, doc runtimeconfig.Document) error {
 		return fmt.Errorf("encode operator configuration")
 	}
 	path := filepath.Join(secretDir, "operator.json")
-	temp, err := os.CreateTemp(secretDir, ".operator-*.json")
-	if err != nil {
-		return err
-	}
-	name := temp.Name()
-	defer os.Remove(name)
-	if err := temp.Chmod(0o600); err == nil {
-		_, err = temp.Write(raw)
-	}
-	if closeErr := temp.Close(); err == nil {
-		err = closeErr
-	}
-	if err != nil {
-		return err
-	}
-	return os.Rename(name, path)
+	return storage.AtomicWritePrivateFile(path, raw)
 }

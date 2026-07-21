@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	transport "ardents/internal/network/api"
-	runtimeinfra "ardents/internal/runtime/process"
-	workloadapi "ardents/internal/workload/api"
+	runtimeinfra "ardents/internal/daemon"
+	transport "ardents/internal/network"
+	workloadapi "ardents/internal/workload"
 	"ardents/tests/testkit"
 
-	ardentsv1 "ardents/proto/ardents/v1"
+	ardentsv1 "ardents/internal/localapi/protocol"
 
 	"connectrpc.com/connect"
 	"github.com/stretchr/testify/require"
@@ -31,9 +31,9 @@ func TestLocalWorkloadManagementFlow(t *testing.T) {
 	rt := testkit.StartRuntime(t, runtimeinfra.Config{
 		Name: "local",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: t.TempDir()},
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
 	})
-	err := rt.Workload.RegisterWorkloadContext(context.Background(), workloadapi.WorkloadSpecSnapshot{
+	err := rt.Workload.Register(context.Background(), workloadapi.SpecSnapshot{
 		ID:      "work.echo",
 		Kind:    "service",
 		Owner:   "node",
@@ -42,27 +42,27 @@ func TestLocalWorkloadManagementFlow(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	require.NoError(t, rt.Workload.StartWorkloadContext(context.Background(), "work.echo"))
+	require.NoError(t, rt.Workload.Start(context.Background(), "work.echo"))
 
-	items, err := rt.Workload.ListWorkloads()
+	items, err := rt.Workload.List()
 	require.NoError(t, err)
 	require.NotEmpty(t, items)
 	require.Equal(t, "running", items[0].Observed)
 	require.Empty(t, items[0].PublishedServices)
 
-	item, err := rt.Workload.GetWorkloadStatus("work.echo")
+	item, err := rt.Workload.Get("work.echo")
 	require.NoError(t, err)
 	require.Equal(t, "running", item.Observed)
 	require.Equal(t, "running", item.Spec.Desired)
 
-	require.NoError(t, rt.Workload.StopWorkloadContext(context.Background(), "work.echo"))
-	item, err = rt.Workload.GetWorkloadStatus("work.echo")
+	require.NoError(t, rt.Workload.Stop(context.Background(), "work.echo"))
+	item, err = rt.Workload.Get("work.echo")
 	require.NoError(t, err)
 	require.Equal(t, "stopped", item.Observed)
 	require.Equal(t, "stopped", item.Spec.Desired)
 
-	require.NoError(t, rt.Workload.RestartWorkloadContext(context.Background(), "work.echo"))
-	item, err = rt.Workload.GetWorkloadStatus("work.echo")
+	require.NoError(t, rt.Workload.Restart(context.Background(), "work.echo"))
+	item, err = rt.Workload.Get("work.echo")
 	require.NoError(t, err)
 	require.Equal(t, "running", item.Observed)
 	require.Equal(t, "running", item.Spec.Desired)
@@ -81,9 +81,9 @@ func TestLocalWorkloadStartFailureIsObservable(t *testing.T) {
 	rt := testkit.StartRuntime(t, runtimeinfra.Config{
 		Name: "local-workload-start-fail",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: t.TempDir()},
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
 	})
-	err := rt.Workload.RegisterWorkloadContext(context.Background(), workloadapi.WorkloadSpecSnapshot{
+	err := rt.Workload.Register(context.Background(), workloadapi.SpecSnapshot{
 		ID:      "work.invalid.start",
 		Kind:    "unsupported",
 		Owner:   "tenant",
@@ -91,11 +91,11 @@ func TestLocalWorkloadStartFailureIsObservable(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = rt.Workload.StartWorkloadContext(context.Background(), "work.invalid.start")
+	err = rt.Workload.Start(context.Background(), "work.invalid.start")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "unsupported")
 
-	item, err := rt.Workload.GetWorkloadStatus("work.invalid.start")
+	item, err := rt.Workload.Get("work.invalid.start")
 	require.NoError(t, err)
 	require.Equal(t, "failed", item.Observed)
 }
@@ -113,11 +113,12 @@ func TestLocalWorkloadRegisterFailsWhenNodeStopped(t *testing.T) {
 	n := testkit.StartNode(t, runtimeinfra.Config{
 		Name: "local-workload-stopped",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: t.TempDir()},
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
 	})
 	require.NoError(t, n.Stop(context.Background()))
 
-	err := n.RegisterWorkloadContext(context.Background(), workloadapi.WorkloadSpecSnapshot{
+	workloads := testkit.Workloads(n)
+	err := workloads.Register(context.Background(), workloadapi.SpecSnapshot{
 		ID:      "work.after.stop",
 		Kind:    "service",
 		Owner:   "node",
@@ -126,7 +127,7 @@ func TestLocalWorkloadRegisterFailsWhenNodeStopped(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "stopped")
 
-	items, err := n.ListWorkloads()
+	items, err := workloads.List()
 	require.NoError(t, err)
 	require.Len(t, items, 0)
 }
@@ -146,20 +147,20 @@ func TestLocalResolveWorkloadServiceType(t *testing.T) {
 	localNode := testkit.StartNode(t, runtimeinfra.Config{
 		Name: "local",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: t.TempDir()}, Privacy: privacy.Receiver,
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()}, Privacy: privacy.Receiver,
 	})
 	remoteNode := testkit.StartNode(t, runtimeinfra.Config{
 		Name: "remote", NodeProfile: transport.NodeProfileServiceNode,
 		Boot:      runtimeinfra.BootConfig{Sources: []string{"remote://bootstrap"}},
-		Transport: runtimeinfra.NodeTransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: transport.ReachabilityPrivateLAN},
-		Data:      runtimeinfra.NodeDataConfig{Dir: t.TempDir()}, Privacy: privacy.Sender,
-		Workload: []runtimeinfra.NodeWorkloadConfig{{
+		Transport: runtimeinfra.TransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: transport.ReachabilityPrivateLAN},
+		Data:      runtimeinfra.DataConfig{Dir: t.TempDir()}, Privacy: privacy.Sender,
+		Workload: []runtimeinfra.WorkloadConfig{{
 			ID:      "work.remote.echo",
 			Kind:    "service",
 			Owner:   "node",
 			Config:  config,
 			Desired: "running",
-			Services: []runtimeinfra.NodeServiceConfig{{
+			Services: []runtimeinfra.ServiceConfig{{
 				ID:             "svc.remote.echo",
 				Type:           "echo",
 				Mode:           "NetworkPublished",
@@ -201,7 +202,7 @@ func TestConnectAPIWorkloadRoundTrip(t *testing.T) {
 	n := testkit.StartNode(t, runtimeinfra.Config{
 		Name: "connect",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: t.TempDir()},
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
 	})
 	client := testkit.NewArdentsClient(t, n)
 	_, err := client.RegisterWorkload(context.Background(), testkit.AuthorizedRequest(&ardentsv1.RegisterWorkloadRequest{
@@ -244,7 +245,7 @@ func TestConnectAPIRejectsDuplicateWorkloadRegistrationWithoutStateDrift(t *test
 	n := testkit.StartNode(t, runtimeinfra.Config{
 		Name: "connect-duplicate",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: t.TempDir()},
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
 	})
 	client := testkit.NewArdentsClient(t, n)
 

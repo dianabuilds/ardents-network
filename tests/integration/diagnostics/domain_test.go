@@ -12,14 +12,14 @@ import (
 	"testing"
 	"time"
 
+	runtimeinfra "ardents/internal/daemon"
+	runtimeprocess "ardents/internal/daemon"
 	"ardents/internal/diagnostics"
-	diagapi "ardents/internal/diagnostics/api"
-	discovery "ardents/internal/discovery"
-	discoveryapi "ardents/internal/discovery/api"
-	identityapi "ardents/internal/identity/api"
-	db "ardents/internal/persistence"
-	runtimeinfra "ardents/internal/runtime/process"
-	runtimeprocess "ardents/internal/runtime/process"
+	diagapi "ardents/internal/diagnostics"
+	"ardents/internal/discovery"
+	discoveryapi "ardents/internal/discovery"
+	identityprincipal "ardents/internal/identity/principal"
+	db "ardents/internal/storage"
 	"ardents/tests/testkit"
 
 	"github.com/stretchr/testify/require"
@@ -64,7 +64,7 @@ func TestDiagnosticsRestartKeepsRetainedExplainabilityWithoutMaskingActiveHealth
 	n := testkit.StartNode(t, runtimeinfra.Config{
 		Name:    "diag-restart",
 		Boot:    runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data:    runtimeinfra.NodeDataConfig{Dir: dir},
+		Data:    runtimeinfra.DataConfig{Dir: dir},
 		Privacy: privacy.Receiver,
 	})
 
@@ -123,7 +123,7 @@ func TestDiagnosticsRestartKeepsMalformedPendingOperationVisible(t *testing.T) {
 	n := testkit.StartNode(t, runtimeinfra.Config{
 		Name: "diag-ops-restart",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: dir},
+		Data: runtimeinfra.DataConfig{Dir: dir},
 	})
 
 	snapshot := diagnosticsSnapshot(t, n)
@@ -152,7 +152,7 @@ func TestDiagnosticsSurfaceIncludesRecentEvents(t *testing.T) {
 	n := testkit.StartNode(t, runtimeinfra.Config{
 		Name: "diag-live",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: t.TempDir()},
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
 	})
 
 	got := diagnosticsSnapshot(t, n)
@@ -178,14 +178,14 @@ func TestDiagnosticsProjectsUntrustedDiscoveryRecord(t *testing.T) {
 	localNode := testkit.StartNode(t, runtimeinfra.Config{
 		Name:    "diag-trust-import",
 		Boot:    runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data:    runtimeinfra.NodeDataConfig{Dir: t.TempDir()},
+		Data:    runtimeinfra.DataConfig{Dir: t.TempDir()},
 		Privacy: privacy.Receiver,
 	})
 
 	remoteNode := testkit.StartNode(t, runtimeinfra.Config{
 		Name:    "diag-trust-remote",
 		Boot:    runtimeinfra.BootConfig{Sources: []string{"remote://bootstrap"}},
-		Data:    runtimeinfra.NodeDataConfig{Dir: t.TempDir()},
+		Data:    runtimeinfra.DataConfig{Dir: t.TempDir()},
 		Privacy: privacy.Sender,
 	})
 
@@ -210,9 +210,9 @@ func TestDiagnosticsProjectsUntrustedDiscoveryRecord(t *testing.T) {
 	require.Falsef(t, trust.State != "ready", "trust snapshot state = %q, want ready after local trust bootstrap", trust.State)
 	require.Falsef(t, !trust.Usable || !trust.
 		Trusted, "trust snapshot = %#v, want trusted usable local trust", trust)
-	discovery := localNode.GetDiscoveryStatus()
-	require.Equal(t, 1, discovery.RemoteRecords)
-	require.Equal(t, 1, discovery.RejectedRecords)
+	discoveryStatus := localNode.GetDiscoveryStatus()
+	require.Equal(t, 1, discoveryStatus.RemoteRecords)
+	require.Equal(t, 1, discoveryStatus.RejectedRecords)
 	peers := localNode.ListPeers()
 	require.Len(t, peers, 1)
 	require.Equal(t, "degraded", peers[0].State)
@@ -269,7 +269,7 @@ func TestDiagnosticsProjectsPersistedInvalidDiscoveryRecordOnRestart(t *testing.
 	n := testkit.StartNode(t, runtimeinfra.Config{
 		Name: "diag-trust-restart",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: dir},
+		Data: runtimeinfra.DataConfig{Dir: dir},
 	})
 
 	snapshot := diagnosticsSnapshot(t, n)
@@ -335,7 +335,7 @@ func TestDiagnosticsObservedTruthProjectsExpiredDiscoveryRecordWithoutRestart(t 
 	n := testkit.StartNode(t, runtimeinfra.Config{
 		Name: "diag-trust-expiry-observed",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: dir},
+		Data: runtimeinfra.DataConfig{Dir: dir},
 	})
 
 	initial := diagnosticsSnapshot(t, n)
@@ -373,14 +373,14 @@ func subsystemReason(snapshot diagapi.DiagSnapshot, domain string) *diagapi.Reas
 	return nil
 }
 
-func diagnosticsSnapshot(t *testing.T, runtime runtimeprocess.NodeRuntime) diagapi.DiagSnapshot {
+func diagnosticsSnapshot(t *testing.T, runtime *runtimeprocess.Node) diagapi.DiagSnapshot {
 	t.Helper()
-	return runtime.DiagnosticsSnapshot()
+	return testkit.Diagnostics(runtime).DiagnosticsSnapshot()
 }
 
-func pendingOperations(t *testing.T, runtime runtimeprocess.NodeRuntime) []diagapi.OperationSnapshot {
+func pendingOperations(t *testing.T, runtime *runtimeprocess.Node) []diagapi.OperationSnapshot {
 	t.Helper()
-	return runtime.PendingOperations()
+	return testkit.Diagnostics(runtime).PendingOperations()
 }
 
 func hasDiagnosticsEvent(snapshot diagapi.DiagSnapshot, domain string, eventType string, resource string) bool {
@@ -392,16 +392,16 @@ func hasDiagnosticsEvent(snapshot diagapi.DiagSnapshot, domain string, eventType
 	return false
 }
 
-func signedNodeRecord(t *testing.T, endpoints []string) (discoveryapi.DiscoveryRecord, ed25519.PrivateKey) {
+func signedNodeRecord(t *testing.T, endpoints []string) (discoveryapi.CatalogRecordSnapshot, ed25519.PrivateKey) {
 	t.Helper()
 	public, private, err := ed25519.GenerateKey(rand.Reader)
 	require.NoErrorf(t, err, "generate key: %v", err)
 
 	publicKey := base64.StdEncoding.EncodeToString(public)
-	principal, err := identityapi.PrincipalFromPublicKey(publicKey)
+	principal, err := identityprincipal.FromPublicKey(publicKey)
 	require.NoErrorf(t, err, "principal from public key: %v", err)
 
-	record := discoveryapi.DiscoveryRecord{
+	record := discoveryapi.CatalogRecordSnapshot{
 		ID:        principal + ":node",
 		Kind:      "node",
 		Subject:   principal,
@@ -430,7 +430,7 @@ func signedNodeRecord(t *testing.T, endpoints []string) (discoveryapi.DiscoveryR
 	return record, private
 }
 
-func signDiscoveryRecord(t *testing.T, record *discoveryapi.DiscoveryRecord, private ed25519.PrivateKey) {
+func signDiscoveryRecord(t *testing.T, record *discoveryapi.CatalogRecordSnapshot, private ed25519.PrivateKey) {
 	t.Helper()
 
 	payload, err := discovery.Canonical(discovery.Record{

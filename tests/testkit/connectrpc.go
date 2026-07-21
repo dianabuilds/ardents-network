@@ -5,16 +5,17 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	runtimeprocess "ardents/internal/runtime/process"
-	rpcadapter "ardents/internal/transport/connectrpc"
-	"ardents/proto/ardents/v1/ardentsv1connect"
+	cliclient "ardents/internal/cli/client"
+	runtimeprocess "ardents/internal/daemon"
+	rpcadapter "ardents/internal/localapi"
+	localauth "ardents/internal/localapi/auth"
 
 	"connectrpc.com/connect"
 	"github.com/stretchr/testify/require"
 )
 
-func ConnectAuthConfig() rpcadapter.AuthConfig {
-	return rpcadapter.AuthConfig{
+func ConnectAuthConfig() localauth.Config {
+	return localauth.Config{
 		Token:        "test-token",
 		SubjectID:    "connect-test",
 		Capabilities: []string{"*"},
@@ -27,20 +28,30 @@ func AuthorizedRequest[T any](msg *T) *connect.Request[T] {
 	return req
 }
 
-func ConnectDependencies(runtime runtimeprocess.NodeRuntime) rpcadapter.Dependencies {
+func ConnectDependencies(runtime *runtimeprocess.Node) rpcadapter.Dependencies {
+	owners, ok := runtimeprocess.OwnersFor(runtime)
+	if !ok {
+		return rpcadapter.Dependencies{}
+	}
 	return rpcadapter.Dependencies{
-		Node:          runtime,
-		Discovery:     runtime,
-		Diagnostics:   runtime,
-		Workload:      runtime,
-		Hosting:       runtime,
-		Data:          runtime,
-		Configuration: runtime,
-		Audit:         runtime,
+		Node:             runtime,
+		Discovery:        runtime,
+		DiscoveryRecords: owners.DiscoveryCommands,
+		Network:          runtime,
+		Diagnostics:      owners.Diagnostics,
+		Workload:         owners.Workloads,
+		Hosting:          owners.Hosting,
+		Content:          owners.Content,
+		Sources:          owners.Content,
+		Transfers:        owners.Transfers,
+		Data:             owners.ContentCommands,
+		DataFetch:        runtime,
+		Configuration:    runtime,
+		Audit:            owners.Events,
 	}
 }
 
-func NewArdentsClient(t *testing.T, runtime runtimeprocess.NodeRuntime) ardentsv1connect.ArdentsServiceClient {
+func NewArdentsClient(t *testing.T, runtime *runtimeprocess.Node) cliclient.Service {
 	t.Helper()
 
 	mux := http.NewServeMux()
@@ -51,5 +62,5 @@ func NewArdentsClient(t *testing.T, runtime runtimeprocess.NodeRuntime) ardentsv
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 
-	return ardentsv1connect.NewArdentsServiceClient(srv.Client(), srv.URL, connect.WithGRPC())
+	return cliclient.NewService(srv.Client(), srv.URL, connect.WithGRPC())
 }

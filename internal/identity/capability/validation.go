@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	identityapi "ardents/internal/identity/api"
+	identityapi "ardents/internal/identity"
 	identityprincipal "ardents/internal/identity/principal"
 )
 

@@ -57,7 +57,7 @@ try {
         --build-arg "ARDENTS_COMMIT=$Commit" `
         --build-arg "ARDENTS_BUILD_DATE=$buildDate" `
         --build-arg "GO_BUILD_PARALLELISM=2" `
-        -t $imageTag -f docker/ardd.Dockerfile .
+        -t $imageTag -f deploy/docker/images/ardd.Dockerfile .
     if ($LASTEXITCODE -ne 0) { throw "Docker release image build failed" }
 } finally {
     if ($null -eq $previousGitInfo) { Remove-Item Env:BUILDX_GIT_INFO -ErrorAction SilentlyContinue }

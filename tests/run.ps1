@@ -35,14 +35,15 @@ function Convert-ToContainerPath {
 
 function Invoke-ContainerRunner {
     $root = Split-Path -Parent $PSScriptRoot
-    $dockerfile = Join-Path $root "docker/test-runner.Dockerfile"
+    $dockerfile = Join-Path $root "deploy/docker/images/test-runner.Dockerfile"
     $resourceDir = Join-Path $PSScriptRoot ".artifacts/resources"
     $runID = [DateTime]::UtcNow.ToString("yyyyMMdd-HHmmss") + "-$PID"
 
     & (Join-Path $PSScriptRoot "resource-snapshot.ps1") -Label "before-$Suite" -OutputPath (Join-Path $resourceDir "$runID-before.json")
 
-    & docker image inspect $ContainerImage *> $null
-    $imageExists = $LASTEXITCODE -eq 0
+    $imageIDs = @(& docker image ls --quiet $ContainerImage)
+    if ($LASTEXITCODE -ne 0) { throw "inspect test container failed" }
+    $imageExists = $imageIDs.Count -gt 0
     if ($RebuildContainer -or -not $imageExists) {
         Write-Host "==> build test container $ContainerImage"
         $previousGitInfo = $env:BUILDX_GIT_INFO
@@ -147,7 +148,7 @@ function Invoke-GoTest {
 }
 
 function Invoke-RepoGuards {
-    & go run ./tests/cmd/importguard
+    & go run ./tests/tooling/importguard
     if ($LASTEXITCODE -ne 0) {
         throw "repository guard checks failed"
     }
@@ -355,7 +356,7 @@ function Get-TestCatalog {
         [string]$Profile = ""
     )
 
-    $args = @("run", "./tests/cmd/testcatalog")
+    $args = @("run", "./tests/tooling/testcatalog")
     $effectiveTags = Get-EffectiveTags -Tags $Tags
     if ($effectiveTags.Count -gt 0) {
         $args += "-tags"

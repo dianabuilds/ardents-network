@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package ardents.v1;
+
+option go_package = "ardents/internal/localapi/protocol;ardentsv1";
+
+import "api/ardents/v1/types.proto";
+service NodeService {
+  rpc StartNode(StartNodeRequest) returns (CommandAckResponse);
+  rpc StopNode(StopNodeRequest) returns (CommandAckResponse);
+  rpc GetNodeStatus(GetNodeStatusRequest) returns (NodeStatusResponse);
+  rpc GetNodeCapabilities(GetNodeCapabilitiesRequest) returns (CapabilitiesResponse);
+  rpc GetNodeRuntime(GetNodeRuntimeRequest) returns (NodeRuntimeResponse);
+  rpc StreamNodeEvents(StreamNodeEventsRequest) returns (stream EventEnvelope);
+}

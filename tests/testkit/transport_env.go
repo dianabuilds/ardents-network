@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	transport "ardents/internal/network/api"
+	transport "ardents/internal/network"
 )
 
 var configureLoopbackTransportOnce sync.Once

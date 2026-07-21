@@ -3,6 +3,7 @@
 package workload_test
 
 import (
+	workloadregistry "ardents/internal/workload/registry"
 	"context"
 	"fmt"
 	"strings"
@@ -10,12 +11,12 @@ import (
 	"testing"
 	"time"
 
+	runtimeinfra "ardents/internal/daemon"
 	"ardents/internal/diagnostics"
-	transport "ardents/internal/network/api"
+	transport "ardents/internal/network"
 	runtimepublication "ardents/internal/publication"
-	runtimeinfra "ardents/internal/runtime/process"
-	workloadapi "ardents/internal/workload/api"
-	workloadcontroller "ardents/internal/workload/controller"
+	workloadapi "ardents/internal/workload"
+	workloadcontroller "ardents/internal/workload/execution"
 	"ardents/tests/testkit"
 
 	"github.com/stretchr/testify/require"
@@ -37,14 +38,14 @@ func TestWorkloadNodeStopClearsRestartRecoveryMarker(t *testing.T) {
 	first := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "work-stop",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: dir},
-		Workload: []runtimeinfra.NodeWorkloadConfig{{
+		Data: runtimeinfra.DataConfig{Dir: dir},
+		Workload: []runtimeinfra.WorkloadConfig{{
 			ID:      "work.echo",
 			Kind:    "service",
 			Owner:   "node",
 			Config:  testkit.HelperProcessConfig(t, "sleep"),
 			Desired: "running",
-			Services: []runtimeinfra.NodeServiceConfig{{
+			Services: []runtimeinfra.ServiceConfig{{
 				ID:        "svc.work.echo",
 				Type:      "echo",
 				Mode:      "NetworkPublished",
@@ -76,14 +77,14 @@ func TestWorkloadNodeStopClearsRestartRecoveryMarker(t *testing.T) {
 	second := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "work-stop",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: dir},
-		Workload: []runtimeinfra.NodeWorkloadConfig{{
+		Data: runtimeinfra.DataConfig{Dir: dir},
+		Workload: []runtimeinfra.WorkloadConfig{{
 			ID:      "work.echo",
 			Kind:    "service",
 			Owner:   "node",
 			Config:  testkit.HelperProcessConfig(t, "sleep"),
 			Desired: "running",
-			Services: []runtimeinfra.NodeServiceConfig{{
+			Services: []runtimeinfra.ServiceConfig{{
 				ID:        "svc.work.echo",
 				Type:      "echo",
 				Mode:      "NetworkPublished",
@@ -98,7 +99,7 @@ func TestWorkloadNodeStopClearsRestartRecoveryMarker(t *testing.T) {
 
 	defer func() { _ = second.Node.Stop(context.Background()) }()
 
-	item, err := second.Node.GetWorkloadStatus("work.echo")
+	item, err := second.Workload.Get("work.echo")
 	require.NoErrorf(t, err, "get workload after restart: %v", err)
 	require.Falsef(t, item.Observed != "running", "observed = %q, want running", item.Observed)
 	require.Falsef(t, strings.Contains(item.Reason,
@@ -121,8 +122,8 @@ func TestWorkloadNodeFailureWithoutHostedServiceImpactKeepsReady(t *testing.T) {
 	n := testkit.StartNode(t, runtimeinfra.Config{
 		Name: "work-ready-without-service-impact",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: t.TempDir()},
-		Workload: []runtimeinfra.NodeWorkloadConfig{{
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
+		Workload: []runtimeinfra.WorkloadConfig{{
 			ID:      "work.invalid",
 			Kind:    "unsupported",
 			Owner:   "tenant",
@@ -136,7 +137,7 @@ func TestWorkloadNodeFailureWithoutHostedServiceImpactKeepsReady(t *testing.T) {
 			State !=
 			"ready", "snapshot = %#v, want ready node and diagnostics", snap)
 
-	items, err := n.ListWorkloads()
+	items, err := testkit.Workloads(n).List()
 	require.NoErrorf(t, err, "list workloads: %v", err)
 	require.Falsef(t, len(items) != 1 || items[0].Observed != "failed", "workloads = %#v, want single failed workload", items)
 
@@ -156,7 +157,7 @@ func TestWorkloadNodeStopFailureDegradesWorkload(t *testing.T) {
 	harness := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "work-stop-fail",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: dir},
+		Data: runtimeinfra.DataConfig{Dir: dir},
 	})
 	n := harness.Node
 	testkit.ReplaceWorkloadForIntegrationTest(harness, workloadcontroller.NewWithExecutorInDir(dir, nodeStopFailExecutor{}))
@@ -168,7 +169,7 @@ func TestWorkloadNodeStopFailureDegradesWorkload(t *testing.T) {
 	defer func() { _ = n.Stop(context.Background()) }()
 	{
 
-		err := n.RegisterWorkload(workloadapi.WorkloadSpecSnapshot{
+		err := harness.Workload.Register(context.Background(), workloadapi.SpecSnapshot{
 			ID:      "work.stop.fail",
 			Kind:    "service",
 			Owner:   "node",
@@ -179,12 +180,12 @@ func TestWorkloadNodeStopFailureDegradesWorkload(t *testing.T) {
 	}
 	{
 
-		err := n.StopWorkload("work.stop.fail")
+		err := harness.Workload.Stop(context.Background(), "work.stop.fail")
 		require.Falsef(t, err == nil || !strings.
 			Contains(err.Error(), "workload stop failed"), "error = %v, want workload stop failed", err)
 	}
 
-	item, err := n.GetWorkloadStatus("work.stop.fail")
+	item, err := harness.Workload.Get("work.stop.fail")
 	require.NoErrorf(t, err, "get workload: %v", err)
 	require.Falsef(t, item.Observed != workloadcontroller.
 		ObservedDegraded, "observed = %q, want degraded", item.Observed)
@@ -206,14 +207,14 @@ func TestWorkloadNodeInspectFailureWithdrawsPublication(t *testing.T) {
 	harness := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "work-inspect-fail",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: dir},
-		Workload: []runtimeinfra.NodeWorkloadConfig{{
+		Data: runtimeinfra.DataConfig{Dir: dir},
+		Workload: []runtimeinfra.WorkloadConfig{{
 			ID:      "work.inspect",
 			Kind:    "service",
 			Owner:   "node",
 			Config:  testkit.HelperProcessConfig(t, "sleep"),
 			Desired: "running",
-			Services: []runtimeinfra.NodeServiceConfig{{
+			Services: []runtimeinfra.ServiceConfig{{
 				ID:        "svc.work.inspect",
 				Type:      "echo",
 				Mode:      "NetworkPublished",
@@ -231,7 +232,7 @@ func TestWorkloadNodeInspectFailureWithdrawsPublication(t *testing.T) {
 	defer func() { _ = n.Stop(context.Background()) }()
 
 	exec.inspectErr = fmt.Errorf("temporary inspect failure")
-	item, err := n.GetWorkloadStatus("work.inspect")
+	item, err := harness.Workload.Get("work.inspect")
 	require.NoErrorf(t, err, "get workload: %v", err)
 	require.Falsef(t, item.Observed != workloadcontroller.
 		ObservedDegraded ||
@@ -244,9 +245,9 @@ func TestWorkloadNodeInspectFailureWithdrawsPublication(t *testing.T) {
 	service, err := n.ResolveService("echo")
 	require.NoErrorf(t, err, "resolve service: %v", err)
 	require.Falsef(t, service.Outcome != "not_found", "service outcome = %q, want not_found", service.Outcome)
-	require.Falsef(t, n.DiagnosticsSnapshot().
+	require.Falsef(t, testkit.Diagnostics(n).DiagnosticsSnapshot().
 		Health.State != diagnostics.
-		HealthDegraded, "health = %#v, want degraded", n.DiagnosticsSnapshot().
+		HealthDegraded, "health = %#v, want degraded", testkit.Diagnostics(n).DiagnosticsSnapshot().
 		Health)
 
 }
@@ -264,14 +265,14 @@ func TestWorkloadNodeDuplicateRegistrationPrefersConflictOverPolicy(t *testing.T
 	n := testkit.StartNode(t, runtimeinfra.Config{
 		Name: "work-duplicate-policy",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: t.TempDir()},
-		Policy: runtimeinfra.NodePolicyConfig{
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
+		Policy: runtimeinfra.PolicyConfig{
 			DeniedCapabilities: []string{"net-bind"},
 		},
 	})
 	{
 
-		err := n.RegisterWorkload(workloadapi.WorkloadSpecSnapshot{
+		err := testkit.Workloads(n).Register(context.Background(), workloadapi.SpecSnapshot{
 			ID:      "work.echo",
 			Kind:    "service",
 			Owner:   "node",
@@ -281,7 +282,7 @@ func TestWorkloadNodeDuplicateRegistrationPrefersConflictOverPolicy(t *testing.T
 	}
 	{
 
-		err := n.RegisterWorkload(workloadapi.WorkloadSpecSnapshot{
+		err := testkit.Workloads(n).Register(context.Background(), workloadapi.SpecSnapshot{
 			ID:           "work.echo",
 			Kind:         "service",
 			Owner:        "node",
@@ -314,7 +315,7 @@ func TestWorkloadNodeRollbackOnPublicationFailure(t *testing.T) {
 	harness := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "rollback-publication",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: dir},
+		Data: runtimeinfra.DataConfig{Dir: dir},
 	})
 	n := harness.Node
 	testkit.ReplaceWorkloadForIntegrationTest(harness, workloadcontroller.NewWithExecutorInDir(dir, exec))
@@ -326,12 +327,12 @@ func TestWorkloadNodeRollbackOnPublicationFailure(t *testing.T) {
 	defer func() { _ = n.Stop(context.Background()) }()
 	{
 
-		err := n.RegisterWorkload(workloadapi.WorkloadSpecSnapshot{
+		err := harness.Workload.Register(context.Background(), workloadapi.SpecSnapshot{
 			ID:      "work.echo",
 			Kind:    "service",
 			Owner:   "node",
 			Config:  "test",
-			Desired: workloadcontroller.DesiredStopped,
+			Desired: workloadregistry.DesiredStopped,
 			Services: []workloadapi.PublishedServiceSnapshot{{
 				ID:        "svc.work.echo",
 				Type:      "echo",
@@ -349,15 +350,14 @@ func TestWorkloadNodeRollbackOnPublicationFailure(t *testing.T) {
 	}
 	{
 
-		err := n.StartWorkload("work.echo")
+		err := harness.Workload.Start(context.Background(), "work.echo")
 		require.Falsef(t, err == nil || !strings.
 			Contains(err.Error(), "workload start failed"), "error = %v, want workload start failed", err)
 	}
 
-	item, err := n.GetWorkloadStatus("work.echo")
+	item, err := harness.Workload.Get("work.echo")
 	require.NoErrorf(t, err, "get workload: %v", err)
-	require.Falsef(t, item.Spec.Desired != workloadcontroller.
-		DesiredStopped ||
+	require.Falsef(t, item.Spec.Desired != workloadregistry.DesiredStopped ||
 		item.
 			Observed !=
 			workloadcontroller.
@@ -370,7 +370,7 @@ func TestWorkloadNodeRollbackOnPublicationFailure(t *testing.T) {
 		0, "matches = %d, want 0 after rollback", len(result.Matches))
 
 	found := false
-	for _, item := range n.DiagnosticsSnapshot().Health.Subsystems {
+	for _, item := range testkit.Diagnostics(n).DiagnosticsSnapshot().Health.Subsystems {
 		if item.Domain == runtimepublication.Subsystem && item.State == diagnostics.HealthDegraded {
 			found = true
 			break
@@ -398,8 +398,8 @@ func TestWorkloadNodeReadPathsRefreshExitedTruth(t *testing.T) {
 	harness := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "work-observed-exit", NodeProfile: transport.NodeProfileServiceNode,
 		Boot:      runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Transport: runtimeinfra.NodeTransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: transport.ReachabilityPrivateLAN},
-		Data:      runtimeinfra.NodeDataConfig{Dir: dir}, Privacy: privacy.Sender,
+		Transport: runtimeinfra.TransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: transport.ReachabilityPrivateLAN},
+		Data:      runtimeinfra.DataConfig{Dir: dir}, Privacy: privacy.Sender,
 	})
 	n := harness.Node
 	testkit.ReplaceWorkloadForIntegrationTest(harness, workloadcontroller.NewWithExecutorInDir(dir, exec))
@@ -411,7 +411,7 @@ func TestWorkloadNodeReadPathsRefreshExitedTruth(t *testing.T) {
 	defer func() { _ = n.Stop(context.Background()) }()
 	{
 
-		err := n.RegisterWorkload(workloadapi.WorkloadSpecSnapshot{
+		err := harness.Workload.Register(context.Background(), workloadapi.SpecSnapshot{
 			ID:      "work.echo",
 			Kind:    "service",
 			Owner:   "node",
@@ -436,7 +436,7 @@ func TestWorkloadNodeReadPathsRefreshExitedTruth(t *testing.T) {
 		1, "matches = %d, want 1 before exit", len(before.Matches))
 
 	exec.running.Store(false)
-	item, err := n.GetWorkloadStatus("work.echo")
+	item, err := harness.Workload.Get("work.echo")
 	require.NoErrorf(t, err, "get workload after exit: %v", err)
 	require.Falsef(t, item.Observed != workloadcontroller.
 		ObservedDegraded ||
@@ -447,9 +447,9 @@ func TestWorkloadNodeReadPathsRefreshExitedTruth(t *testing.T) {
 	require.NoErrorf(t, err, "resolve service after exit: %v", err)
 	require.Falsef(t, after.Outcome != "not_found" ||
 		len(after.Matches) != 0, "result = %#v, want not_found after observed exit", after)
-	require.Falsef(t, n.DiagnosticsSnapshot().
+	require.Falsef(t, testkit.Diagnostics(n).DiagnosticsSnapshot().
 		Health.State != diagnostics.
-		HealthDegraded, "health = %#v, want degraded", n.DiagnosticsSnapshot().
+		HealthDegraded, "health = %#v, want degraded", testkit.Diagnostics(n).DiagnosticsSnapshot().
 		Health)
 
 }
@@ -471,7 +471,7 @@ type nodeObservedExitExecutor struct {
 	generation atomic.Int64
 }
 
-func (e *publicationRollbackExecutor) Prepare(context.Context, workloadcontroller.Spec) (workloadcontroller.PreparedWorkload, error) {
+func (e *publicationRollbackExecutor) Prepare(context.Context, workloadcontroller.Request) (workloadcontroller.PreparedWorkload, error) {
 	return workloadcontroller.PreparedWorkload{WorkloadID: "work.echo", Generation: time.Now().UTC().UnixNano(), PreparedAt: time.Now().UTC()}, nil
 }
 
@@ -489,7 +489,7 @@ func (e *publicationRollbackExecutor) Inspect(context.Context, string) (workload
 	return workloadcontroller.Instance{WorkloadID: "work.echo", Running: true, StartedAt: time.Now().UTC()}, nil
 }
 
-func (nodeStopFailExecutor) Prepare(context.Context, workloadcontroller.Spec) (workloadcontroller.PreparedWorkload, error) {
+func (nodeStopFailExecutor) Prepare(context.Context, workloadcontroller.Request) (workloadcontroller.PreparedWorkload, error) {
 	return workloadcontroller.PreparedWorkload{WorkloadID: "work.stop.fail", Generation: time.Now().UTC().UnixNano(), PreparedAt: time.Now().UTC()}, nil
 }
 
@@ -505,7 +505,7 @@ func (nodeStopFailExecutor) Inspect(context.Context, string) (workloadcontroller
 	return workloadcontroller.Instance{WorkloadID: "work.stop.fail", Running: true, StartedAt: time.Now().UTC()}, nil
 }
 
-func (e *nodeInspectFailureExecutor) Prepare(context.Context, workloadcontroller.Spec) (workloadcontroller.PreparedWorkload, error) {
+func (e *nodeInspectFailureExecutor) Prepare(context.Context, workloadcontroller.Request) (workloadcontroller.PreparedWorkload, error) {
 	return workloadcontroller.PreparedWorkload{WorkloadID: "work.inspect", Generation: time.Now().UTC().UnixNano(), PreparedAt: time.Now().UTC()}, nil
 }
 
@@ -525,7 +525,7 @@ func (e *nodeInspectFailureExecutor) Inspect(context.Context, string) (workloadc
 	return workloadcontroller.Instance{WorkloadID: "work.inspect", Running: true, StartedAt: time.Now().UTC()}, nil
 }
 
-func (e *nodeObservedExitExecutor) Prepare(context.Context, workloadcontroller.Spec) (workloadcontroller.PreparedWorkload, error) {
+func (e *nodeObservedExitExecutor) Prepare(context.Context, workloadcontroller.Request) (workloadcontroller.PreparedWorkload, error) {
 	return workloadcontroller.PreparedWorkload{WorkloadID: "work.echo", Generation: time.Now().UTC().UnixNano(), PreparedAt: time.Now().UTC()}, nil
 }
 

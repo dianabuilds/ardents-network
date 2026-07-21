@@ -1,3 +1,5 @@
+// Package principal owns principal derivation and canonical identity encoding.
+// It does not own credential storage or authorization policy.
 package principal
 
 import (

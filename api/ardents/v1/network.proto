@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package ardents.v1;
+
+option go_package = "ardents/internal/localapi/protocol;ardentsv1";
+
+import "api/ardents/v1/types.proto";
+service NetworkService {
+  rpc GetNetworkStatus(GetNetworkStatusRequest) returns (NetworkStatusResponse);
+  rpc GetDiscoveryStatus(GetDiscoveryStatusRequest) returns (DiscoveryStatusResponse);
+  rpc GetLocalPresence(GetLocalPresenceRequest) returns (LocalPresenceResponse);
+  rpc ListPeers(ListPeersRequest) returns (ListPeersResponse);
+  rpc ListRouteCandidates(ListRouteCandidatesRequest) returns (ListRouteCandidatesResponse);
+  rpc ResolveRecord(ResolveRecordRequest) returns (DiscoveryResult);
+  rpc ResolveService(ResolveServiceRequest) returns (ServiceResult);
+  rpc ListRecords(ListRecordsRequest) returns (ListRecordsResponse);
+  rpc ImportRecord(ImportRecordRequest) returns (RecordImportResponse);
+}

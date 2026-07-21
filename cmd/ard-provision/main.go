@@ -8,8 +8,7 @@ import (
 	"strings"
 	"time"
 
-	identitylocalrealm "ardents/internal/identity/localrealm"
-	runtimeprocess "ardents/internal/runtime/process"
+	apppolicy "ardents/internal/policy"
 )
 
 type options struct {
@@ -23,7 +22,7 @@ type options struct {
 
 func main() {
 	if err := run(os.Args[1:], os.Stdout, time.Now); err != nil {
-		fmt.Fprintf(os.Stderr, "provision local realm: %v\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "provision local realm: %v\n", err)
 		os.Exit(1)
 	}
 }
@@ -33,13 +32,13 @@ func run(args []string, stdout io.Writer, clock func() time.Time) error {
 	if err != nil {
 		return err
 	}
-	authority, err := identitylocalrealm.OpenOrCreate(configured.authorityDir)
+	authority, err := OpenOrCreate(configured.authorityDir)
 	if err != nil {
 		return err
 	}
-	provisioned, err := authority.ProvisionNode(identitylocalrealm.NodeOptions{
+	provisioned, err := authority.ProvisionNode(NodeOptions{
 		DataDir: configured.nodeDir, SecretDir: configured.secretDir, Clock: clock,
-	}, runtimeprocess.NewPolicyService(runtimeprocess.PolicyConfig{}))
+	}, apppolicy.New(apppolicy.Config{}))
 	if err != nil {
 		return err
 	}

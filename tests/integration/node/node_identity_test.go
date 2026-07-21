@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	db "ardents/internal/persistence"
-	runtimeinfra "ardents/internal/runtime/process"
+	runtimeinfra "ardents/internal/daemon"
+	db "ardents/internal/storage"
 	"ardents/tests/testkit"
 
 	"github.com/stretchr/testify/require"
@@ -32,7 +32,7 @@ func TestNodeRestoresPersistentState(t *testing.T) {
 	cfg := runtimeinfra.Config{
 		Name: "test",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: dir},
+		Data: runtimeinfra.DataConfig{Dir: dir},
 	}
 	first := testkit.NewRuntime(t, cfg).Node
 	{
@@ -77,7 +77,7 @@ func TestNodeRestoresIdentityAcrossRestart(t *testing.T) {
 	cfg := runtimeinfra.Config{
 		Name: "test",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: dir},
+		Data: runtimeinfra.DataConfig{Dir: dir},
 	}
 	first := testkit.NewRuntime(t, cfg).Node
 	{
@@ -126,7 +126,7 @@ func TestNodeStoresPrivateKeyOutsideGeneralState(t *testing.T) {
 	n := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "identity-boundary",
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: dir},
+		Data: runtimeinfra.DataConfig{Dir: dir},
 	}).Node
 	{
 		err := n.Start(context.Background())
@@ -164,7 +164,7 @@ func TestNodeRestoresStoppedDataDirectoryBackup(t *testing.T) {
 	sourceDir := t.TempDir()
 	cfg := runtimeinfra.Config{
 		Name: "backup-source", Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: sourceDir},
+		Data: runtimeinfra.DataConfig{Dir: sourceDir},
 	}
 	first := testkit.NewRuntime(t, cfg).Node
 	require.NoError(t, first.Start(context.Background()))
@@ -196,7 +196,7 @@ func TestNodeRejectsPartialIdentityRestore(t *testing.T) {
 	dir := t.TempDir()
 	cfg := runtimeinfra.Config{
 		Name: "partial-restore", Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.NodeDataConfig{Dir: dir},
+		Data: runtimeinfra.DataConfig{Dir: dir},
 	}
 	first := testkit.NewRuntime(t, cfg).Node
 	require.NoError(t, first.Start(context.Background()))

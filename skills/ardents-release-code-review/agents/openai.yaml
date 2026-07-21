@@ -1,4 +1,0 @@
-interface:
-  display_name: "Ardents Release Code Review"
-  short_description: "Release-focused code review workflow"
-  default_prompt: "Use -release-code-review to review Ardents changes for bugs, regressions, and release blockers before shipping."

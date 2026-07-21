@@ -16,13 +16,13 @@ for arch in amd64; do
     cp README.md "$stage/README.md"
     cp LICENSE "$stage/LICENSE"
     install -d -m 0755 "$stage/docker" "$stage/docs" "$stage/scripts/deploy"
-    cp docker/README.md docker/docker-compose.multinode.yml docker/docker-compose.production.yml \
+    cp deploy/docker/README.md deploy/docker/compose/docker-compose.multinode.yml deploy/docker/compose/docker-compose.production.yml \
         "$stage/docker/"
     cp ardents.ps1 "$stage/ardents.ps1"
     cp scripts/deploy/cluster.ps1 scripts/deploy/data.ps1 scripts/deploy/rollout.ps1 \
         "$stage/scripts/deploy/"
-    cp docs/deployment-contract.md docs/operator-runbook.md docs/upgrade-migration.md \
-        docs/incident-response.md docs/persistent-state-security.md docs/supported-platforms.md \
+    cp docs/operations/deployment-contract.md docs/operations/operator-runbook.md docs/operations/upgrade-migration.md \
+        docs/operations/incident-response.md docs/security/persistent-state-security.md docs/product/supported-platforms.md \
         "$stage/docs/"
     tar --sort=name --mtime="@${SOURCE_DATE_EPOCH}" --owner=0 --group=0 --numeric-owner -C "$stage" -cf - . |
         gzip -n > "/out/ardents-${ARDENTS_VERSION}-linux-${arch}.tar.gz"

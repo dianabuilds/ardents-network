@@ -1,3 +1,5 @@
+// Package operation owns long-running operation state and history.
+// It does not own executing product operations.
 package operation
 
 import (

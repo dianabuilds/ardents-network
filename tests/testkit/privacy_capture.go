@@ -2,9 +2,10 @@ package testkit
 
 import (
 	"bytes"
+	"slices"
 
-	networkapi "ardents/internal/network/api"
-	networkprivacy "ardents/internal/network/privacy"
+	networkprivacy "ardents/internal/messaging"
+	networkapi "ardents/internal/network"
 )
 
 const (
@@ -37,10 +38,8 @@ func InspectPrivateCapture(envelope networkapi.Envelope, forbidden ...[]byte) []
 }
 
 func appendUniqueFinding(findings []string, value string) []string {
-	for _, finding := range findings {
-		if finding == value {
-			return findings
-		}
+	if slices.Contains(findings, value) {
+		return findings
 	}
 	return append(findings, value)
 }
