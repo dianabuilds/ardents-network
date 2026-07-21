@@ -23,8 +23,8 @@ func TestOperatorDocumentEnablesRealPrivateChannels(t *testing.T) {
 	require.NotEqual(t, doc.Privacy.Discovery.Reference, doc.Privacy.Data.Reference)
 	require.True(t, doc.ApplicationInterface.Enabled)
 	require.Equal(t, "127.0.0.1:8081", doc.ApplicationInterface.ListenAddress)
-	require.Equal(t, filepath.Join("/var/lib/ardents", "applications", "application.sock"), doc.ApplicationInterface.SocketPath)
-	require.Equal(t, filepath.Join("/var/lib/ardents", "applications", "application-token"), doc.ApplicationInterface.TokenFile)
+	require.Equal(t, filepath.Join("/var/lib/ardents-applications", "application.sock"), doc.ApplicationInterface.SocketPath)
+	require.Equal(t, filepath.Join("/var/lib/ardents-applications", "application-token"), doc.ApplicationInterface.TokenFile)
 	require.Equal(t, []string{"application.content.put", "application.content.get"}, doc.ApplicationInterface.Capabilities)
 	require.Equal(t, "2026-08-21T00:00:00Z", doc.ApplicationInterface.CredentialExpiresAt)
 }

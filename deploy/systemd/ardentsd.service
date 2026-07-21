@@ -30,7 +30,7 @@ LockPersonality=true
 CapabilityBoundingSet=
 AmbientCapabilities=
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
-ReadWritePaths=/var/lib/ardents
+ReadWritePaths=/var/lib/ardents /var/lib/ardents-applications
 
 [Install]
 WantedBy=multi-user.target

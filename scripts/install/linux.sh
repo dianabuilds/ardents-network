@@ -9,6 +9,7 @@ Usage:
   linux.sh rollback
   linux.sh backup --output /var/backups/ardents/NAME.tar.gz
   linux.sh restore --archive PATH
+  linux.sh renew-application
   linux.sh uninstall [--root PATH] [--no-start]
 
 Install options:
@@ -30,7 +31,7 @@ fail() { printf 'ardents-install: %s\n' "$*" >&2; exit 1; }
 
 command_name=${1:-}
 case "$command_name" in
-    install|upgrade|rollback|backup|restore|uninstall) shift ;;
+    install|upgrade|rollback|backup|restore|renew-application|uninstall) shift ;;
     -h|--help|help) usage; exit 0 ;;
     *) usage >&2; exit 2 ;;
 esac
@@ -69,7 +70,7 @@ bin_dir="$path_root/usr/local/bin"
 config_dir="$path_root/etc/ardents"
 state_dir="$path_root/var/lib/ardents"
 secret_dir="$state_dir/secrets"
-application_dir="$state_dir/applications"
+application_dir="$path_root/var/lib/ardents-applications"
 authority_dir="$path_root/var/lib/ardents-authority"
 upgrade_dir="$path_root/var/lib/ardents-upgrades"
 backup_dir="$path_root/var/backups/ardents"
@@ -86,7 +87,7 @@ if [ "$no_start" = false ]; then
     systemctl_available=true
 fi
 case "$command_name" in
-    upgrade|rollback|backup|restore) [ "$systemctl_available" = true ] || fail "$command_name requires systemd" ;;
+    upgrade|rollback|backup|restore|renew-application) [ "$systemctl_available" = true ] || fail "$command_name requires systemd" ;;
 esac
 
 service_active() { systemctl is-active --quiet ardentsd.service; }
@@ -121,6 +122,8 @@ manifest_value() {
 create_backup() {
     output=$1
     require_stopped backup
+    [ -d "$application_dir" ] && [ ! -L "$application_dir" ] || fail "application data directory is unavailable or invalid: $application_dir"
+    [ -f "$application_dir/application-token" ] && [ ! -L "$application_dir/application-token" ] || fail "application credential is unavailable or invalid"
     for required_file in "$config_path" "$token_file" "$state_dir/identity_key.json" "$state_dir/waku_node_key.json" "$authority_dir/authority.json"; do
         [ -f "$required_file" ] && [ ! -L "$required_file" ] || fail "cannot back up: missing or unsafe regular file $required_file"
     done
@@ -136,7 +139,8 @@ create_backup() {
     tmp=$(mktemp "$backup_dir/.backup.XXXXXX") || fail "create backup temporary file"
     tmp_manifest=$(mktemp "$backup_dir/.manifest.XXXXXX") || { rm -f "$tmp"; fail "create backup manifest temporary file"; }
     trap 'rm -f "$tmp" "$tmp_manifest"' HUP INT TERM EXIT
-    tar -czf "$tmp" -C "$path_root/" etc/ardents/operator.json var/lib/ardents var/lib/ardents-authority
+    set -- etc/ardents/operator.json var/lib/ardents var/lib/ardents-applications var/lib/ardents-authority
+    tar -czf "$tmp" -C "$path_root/" "$@"
     archive_sha=$(file_hash "$tmp")
     {
         printf 'schema=ardents.native-backup/v1\n'
@@ -159,7 +163,7 @@ validate_archive_paths() {
     tar -tzf "$1" | while IFS= read -r entry; do
         case "$entry" in
             /*|../*|*/../*|*/..) exit 1 ;;
-            etc/ardents/operator.json|var/lib/ardents|var/lib/ardents/*|var/lib/ardents-authority|var/lib/ardents-authority/*) ;;
+            etc/ardents/operator.json|var/lib/ardents|var/lib/ardents/*|var/lib/ardents-applications|var/lib/ardents-applications/*|var/lib/ardents-authority|var/lib/ardents-authority/*) ;;
             *) exit 1 ;;
         esac
     done
@@ -174,6 +178,8 @@ restore_backup() {
     [ -f "$manifest" ] || fail "backup manifest not found: $manifest"
     directory_empty "$config_dir" || fail "restore target is not empty: $config_dir"
     directory_empty "$state_dir" || fail "restore target is not empty: $state_dir"
+    [ ! -L "$application_dir" ] || fail "restore target must not be a symbolic link: $application_dir"
+    directory_empty "$application_dir" || fail "restore target is not empty: $application_dir"
     directory_empty "$authority_dir" || fail "restore target is not empty: $authority_dir"
     install -d -m 0700 "$upgrade_dir"
     staging=$(mktemp -d "$upgrade_dir/restore.XXXXXX") || fail "create restore staging directory"
@@ -189,6 +195,7 @@ restore_backup() {
     tar -xzf "$archive_snapshot" -C "$content"
     staged_config="$content/etc/ardents/operator.json"
     staged_state="$content/var/lib/ardents"
+    staged_application="$content/var/lib/ardents-applications"
     staged_authority="$content/var/lib/ardents-authority"
     [ "$(file_hash "$staged_config")" = "$(manifest_value config_sha256 "$manifest_snapshot")" ] || fail "restored config checksum mismatch"
     [ "$(file_hash "$staged_state/identity_key.json")" = "$(manifest_value identity_sha256 "$manifest_snapshot")" ] || fail "restored identity checksum mismatch"
@@ -196,8 +203,17 @@ restore_backup() {
     [ "$(tree_hash "$staged_authority")" = "$(manifest_value authority_sha256 "$manifest_snapshot")" ] || fail "restored authority checksum mismatch"
     install -d -m 0750 "$config_dir" "$state_dir"; install -d -m 0700 "$authority_dir"
     cp -a "$staged_state/." "$state_dir/"; cp -a "$staged_authority/." "$authority_dir/"
+    if [ -d "$staged_application" ]; then
+        install -d -m 2750 "$application_dir"
+        cp -a "$staged_application/." "$application_dir/"
+    fi
     install -m 0600 "$staged_config" "$config_path"
     chown -R ardents:ardents "$state_dir" "$config_dir"
+    if [ -d "$application_dir" ]; then
+        chown -R ardents:ardents-apps "$application_dir"
+        chmod 2750 "$application_dir"
+        [ ! -f "$application_dir/application-token" ] || chmod 0640 "$application_dir/application-token"
+    fi
     chown -R root:root "$authority_dir"; chmod 0700 "$authority_dir"
     rm -rf "$staging"; trap - HUP INT TERM EXIT
     printf 'ardents-install: restored=%s; service remains stopped\n' "$archive"
@@ -279,6 +295,21 @@ fi
 
 if [ "$command_name" = backup ]; then [ -n "$backup_path" ] || fail "backup requires --output PATH"; create_backup "$backup_path"; exit 0; fi
 if [ "$command_name" = restore ]; then [ -n "$archive_path" ] || fail "restore requires --archive PATH"; ensure_service_account; restore_backup "$archive_path"; exit 0; fi
+if [ "$command_name" = renew-application ]; then
+    [ -x "$bin_dir/ardentsd" ] && [ -f "$config_path" ] || fail "renew-application requires an existing native installation"
+    was_active=false; service_active && was_active=true
+    [ "$was_active" = false ] || systemctl stop ardentsd.service
+    if ! "$bin_dir/ardentsd" application-credential renew --config "$config_path"; then
+        fail "application credential renewal failed; service remains stopped"
+    fi
+    chmod 0600 "$config_path"; chown ardents:ardents "$config_path"
+    if [ "$was_active" = true ]; then
+        systemctl start ardentsd.service || fail "application credential renewed but service did not restart"
+        wait_ready || fail "application credential renewed but service readiness did not recover"
+    fi
+    printf 'ardents-install: application credential renewed; active_before=%s\n' "$was_active"
+    exit 0
+fi
 
 if [ "$command_name" = upgrade ]; then
     [ -x "$bin_dir/ardentsd" ] && [ -x "$bin_dir/ardentsctl" ] && [ -f "$unit_path" ] || fail "upgrade requires an existing native installation"

@@ -42,6 +42,7 @@ Installed paths are stable:
 | `/etc/ardents/operator.json` | private active operator configuration |
 | `/var/lib/ardents` | persistent node identity, databases, and retained data |
 | `/var/lib/ardents/secrets` | persistent API and protected-state keys |
+| `/var/lib/ardents-applications` | `ardents-apps`-scoped bootstrap Application credential and Unix socket |
 | `/var/lib/ardents-authority` | root-only local bootstrap authority material |
 | `/etc/systemd/system/ardentsd.service` | hardened native service definition |
 
@@ -64,8 +65,8 @@ Remote administration uses `ardentsctl --ssh`; the daemon API remains bound to
 loopback and is not published as remote HTTP.
 
 Local applications use the separate
-`/var/lib/ardents/applications/application.sock` with the bootstrap credential in
-`/var/lib/ardents/applications/application-token`, or the dedicated loopback
+`/var/lib/ardents-applications/application.sock` with the bootstrap credential in
+`/var/lib/ardents-applications/application-token`, or the dedicated loopback
 Application Interface on `127.0.0.1:8081`. This credential cannot call the
 Operator Interface. Applications should use the Go SDK rather than generated
 wire bindings directly.
@@ -78,6 +79,12 @@ credential, then restart that service so its supplementary groups are refreshed:
 ```sh
 sudo usermod --append --groups ardents-apps hello-service
 ```
+
+The bootstrap Application credential is time-bounded. Renew its active local
+admission before expiry with `sudo ./scripts/install/linux.sh
+renew-application`. The operation atomically updates the active operator
+document and restarts the service when it was running. Online per-Application
+issuance, token rotation, and revocation remain a later lifecycle.
 
 ## Backup, Upgrade, Rollback, And Restore
 

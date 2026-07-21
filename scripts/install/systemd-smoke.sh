@@ -8,6 +8,9 @@ installer="$v1_dir/scripts/install/linux.sh"
 token_file=/var/lib/ardents/secrets/api-token
 config_file=/etc/ardents/operator.json
 socket_path=/var/lib/ardents/secrets/control.sock
+application_dir=/var/lib/ardents-applications
+application_token="$application_dir/application-token"
+application_socket="$application_dir/application.sock"
 backup=/var/backups/ardents/manual-smoke.tar.gz
 restore_backup=/var/backups/ardents/restore-smoke.tar.gz
 
@@ -36,6 +39,25 @@ systemctl is-enabled --quiet ardentsd.service
 systemctl is-active --quiet ardentsd.service
 wait_ready
 version_is v0.1.0
+getent group ardents-apps >/dev/null
+test "$(stat -c '%a' "$application_dir")" = 2750
+test "$(stat -c '%a' "$application_token")" = 640
+test "$(stat -c '%a' "$application_socket")" = 660
+test "$(stat -c '%G' "$application_dir")" = ardents-apps
+test "$(stat -c '%G' "$application_token")" = ardents-apps
+test "$(stat -c '%G' "$application_socket")" = ardents-apps
+id application-smoke >/dev/null 2>&1 || useradd --system --gid ardents-apps --no-create-home --shell /usr/sbin/nologin application-smoke
+runuser -u application-smoke -- /release/application-probe "$application_socket" "$application_token"
+
+systemctl stop ardentsd.service
+/usr/local/bin/ardentsd init --authority-dir /var/lib/ardents-authority --node-dir /var/lib/ardents \
+    --secret-dir /var/lib/ardents/secrets --node-name systemd-smoke --transport-port 61002 \
+    --runtime-data-dir /var/lib/ardents --runtime-secret-dir /var/lib/ardents/secrets
+systemctl start ardentsd.service
+wait_ready
+"$installer" renew-application
+wait_ready
+runuser -u application-smoke -- /release/application-probe "$application_socket" "$application_token"
 
 token_before=$(sha256sum "$token_file")
 config_before=$(sha256sum "$config_file")
@@ -98,6 +120,7 @@ systemctl stop ardentsd.service
 "$installer" backup --output "$restore_backup"
 mv /etc/ardents/operator.json /tmp/operator.json.original
 mv /var/lib/ardents /tmp/ardents-state.original
+mv "$application_dir" /tmp/ardents-applications.original
 mv /var/lib/ardents-authority /tmp/ardents-authority.original
 "$installer" restore --archive "$restore_backup"
 ! systemctl is-active --quiet ardentsd.service
@@ -107,6 +130,10 @@ test "$identity_before" = "$(sha256sum /var/lib/ardents/identity_key.json)"
 test "$waku_before" = "$(sha256sum /var/lib/ardents/waku_node_key.json)"
 test "$authority_before" = "$(authority_hash)"
 systemctl start ardentsd.service; wait_ready
+test "$(stat -c '%a' "$application_dir")" = 2750
+test "$(stat -c '%a' "$application_token")" = 640
+test "$(stat -c '%a' "$application_socket")" = 660
+runuser -u application-smoke -- /release/application-probe "$application_socket" "$application_token"
 
 "$installer" uninstall
 ! systemctl is-active --quiet ardentsd.service

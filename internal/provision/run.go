@@ -46,10 +46,10 @@ func run(args []string, stdout io.Writer, clock func() time.Time) error {
 		return err
 	}
 	document := operatorDocument(configured, provisioned)
-	if err := ensureToken(configured.secretDir, "api-token"); err != nil {
+	if err := ensureToken(configured.secretDir, "api-token", 0o077); err != nil {
 		return err
 	}
-	if err := ensureToken(filepath.Join(configured.nodeDir, "applications"), "application-token"); err != nil {
+	if err := ensureToken(applicationDataDir(configured.nodeDir), "application-token", 0o027); err != nil {
 		return err
 	}
 	if err := writeOperatorDocument(configured.secretDir, document); err != nil {
@@ -88,10 +88,10 @@ func parseOptions(args []string) (options, error) {
 	return configured, nil
 }
 
-func ensureToken(secretDir, name string) error {
+func ensureToken(secretDir, name string, forbiddenPermissions os.FileMode) error {
 	path := filepath.Join(secretDir, name)
 	if info, err := os.Lstat(path); err == nil {
-		if !info.Mode().IsRegular() || info.Mode().Perm()&0o077 != 0 {
+		if !info.Mode().IsRegular() || info.Mode().Perm()&forbiddenPermissions != 0 {
 			return fmt.Errorf("existing %s permissions are invalid", name)
 		}
 		raw, err := os.ReadFile(path)

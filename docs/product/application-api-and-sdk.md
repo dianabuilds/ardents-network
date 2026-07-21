@@ -55,13 +55,13 @@ socket and credential:
 
 ```go
 credential, err := client.FileCredential(
-    "/var/lib/ardents/applications/application-token",
+    "/var/lib/ardents-applications/application-token",
 )
 if err != nil {
     return err
 }
 app, err := client.New(client.Config{
-    SocketPath: "/var/lib/ardents/applications/application.sock",
+    SocketPath: "/var/lib/ardents-applications/application.sock",
     Credential: credential,
 })
 ```
@@ -71,6 +71,10 @@ a local service access by adding its Unix account to that group; the Application
 directory is setgid `0750`, the bootstrap token is `0640`, and the socket is
 `0660`. Membership grants only the configured Application actions, never
 Operator authority.
+
+The native bootstrap admission is time-bounded and can be extended locally
+through the installer `renew-application` operation. This is an operational
+bridge, not the final per-Application issuance, rotation, and revocation API.
 
 `Put` succeeds only after durable local storage and returns a content-derived
 reference. `Get` uses a verified local payload when present and otherwise asks

@@ -28,7 +28,7 @@ func operatorDocument(configured options, provisioned NodeProvision) runtimeconf
 	doc.API.OperatorSubject = "local-deployment-operator"
 	doc.ApplicationInterface.Enabled = true
 	doc.ApplicationInterface.ListenAddress = "127.0.0.1:8081"
-	applicationDir := filepath.Join(runtimeDataDir, "applications")
+	applicationDir := applicationDataDir(runtimeDataDir)
 	doc.ApplicationInterface.SocketPath = filepath.Join(applicationDir, "application.sock")
 	doc.ApplicationInterface.TokenFile = filepath.Join(applicationDir, "application-token")
 	doc.ApplicationInterface.Subject = "local-application"
@@ -56,6 +56,10 @@ func operatorDocument(configured options, provisioned NodeProvision) runtimeconf
 		},
 	}
 	return doc
+}
+
+func applicationDataDir(dataDir string) string {
+	return filepath.Clean(dataDir) + "-applications"
 }
 
 func writeOperatorDocument(secretDir string, doc runtimeconfig.Document) error {

@@ -53,7 +53,8 @@ A directory is invalid when its responsibility is a technical category such as
 or `helpers`.
 
 Technical terms are allowed only for concrete adapters with a single external
-system, such as `network/waku`, `workload/docker`, or `localapi/protocol`.
+system or interface, such as `network/waku`, `workload/docker`,
+`localapi/protocol`, or `applicationapi`.
 
 ### 3.2 Grouping Is Required
 
@@ -82,9 +83,10 @@ Interfaces belong to the consuming module. There are no shared `api`,
 
 ### 3.5 Generated And Handwritten Code Are Separated
 
-Protocol source lives under `api/`. Generated Go code lives in one generated
-package under `internal/localapi/protocol` and is never mixed with handwritten
-handlers or product models.
+Protocol source lives under `api/`. Operator protocol Go code lives under
+`internal/localapi/protocol`; the public Application protocol Go code lives
+under `sdk/go/protocol` so external SDK consumers do not import `internal`.
+Generated code is never mixed with handwritten handlers or product models.
 
 ## 4. Target Repository Topology
 
@@ -349,6 +351,7 @@ resolved through `go.mod` unless a separately approved fork is actually used.
 | `hosting` | canonical hosted-service inventory and service/publication status read model | workload transitions, probes, advertisements |
 | `publication` | creation, refresh, withdrawal and retry of local node/service advertisements | workload execution, discovery intake, Waku lifecycle |
 | `localapi` | authenticated local-control protocol server and protocol-specific mapping | product decisions, module state, CLI rendering |
+| `applicationapi` | authenticated Application Interface adapters and protocol mapping | product decisions, content state, Operator authority, public SDK ergonomics |
 | `cli` | operator command model, remote client use, human/JSON presentation, shell and TUI UX | product state transitions, RPC server behaviour |
 | `observability` | Prometheus/HTTP exposure of already-owned runtime evidence | creating product health truth or diagnostics history |
 | `ingressproxy` | generation-bound forwarding for admitted hosted-service ingress | workload admission, readiness, publication |
@@ -366,6 +369,11 @@ resolved through `go.mod` unless a separately approved fork is actually used.
   handwritten architecture layer.
 - `localapi/auth` owns local-protocol authentication, method authorization and
   audit context. It does not own product policy.
+- `applicationapi/auth` authenticates Application calls and evaluates the
+  admitted Application action set; it does not own content or Operator policy.
+- each `applicationapi/<area>` directory adapts one bounded public Application
+  service to the corresponding product owner. Generated bindings remain in
+  `sdk/go/protocol`.
 - each `localapi/<area>` directory implements one bounded protocol service and
   maps only that owner's transport types;
 - each `cli/<area>` directory owns one command family. Generated protocol
@@ -459,8 +467,8 @@ Additional rules:
 - `storage` never imports a product module;
 - adapter packages depend inward on the interface they implement;
 - only `daemon` may construct the complete process;
-- `localapi` and `observability` may read multiple module interfaces, but they
-  may not coordinate product workflows;
+- `localapi`, `applicationapi`, and `observability` may read multiple module
+  interfaces, but they may not coordinate product workflows;
 - `cli` communicates only through the local control protocol.
 
 ## 7. Complete Runtime Flows
@@ -482,7 +490,7 @@ cmd/ardentsd
      -> replication: restore leases and begin reconciliation
      -> workload: recover desired/observed execution
      -> publication: publish only currently eligible facts
-     -> localapi and observability: expose the running node
+     -> localapi, applicationapi and observability: expose the running node
 ```
 
 Every start operation is idempotent. Failure rolls back successfully started
