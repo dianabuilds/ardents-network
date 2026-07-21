@@ -7,13 +7,21 @@ Ardents has two public executable roles, independent of deployment mechanism.
 | `ardentsd` | Node daemon, native bootstrap, network and optional workload control | Every node host |
 | `ardentsctl` | Operator CLI/TUI over the authenticated local control API | Operator workstation or node host |
 | `ardents/node` image | Optional packaging of `ardentsd` and `ardentsctl` | Docker deployments only |
-| workload ingress proxy image | Optional isolated forwarding adapter | Only Docker workloads that publish admitted ingress |
+| `ardents-ingress-proxy` image | Optional isolated forwarding adapter | Only Docker workloads that publish admitted ingress |
 
 The proxy is not a third public installation prerequisite. It belongs to the
 Docker workload adapter and is acquired as an image only when an admitted
 hosted service needs isolated ingress. Nodes with workload execution disabled,
 native applications that expose their own endpoints, and workloads without
 published ingress do not need it.
+
+The proxy is versioned and attested with the node release, but remains a
+separate minimal image so its exposed container does not carry daemon or
+operator tooling. `release-manifest.json` binds the node and proxy exports to a
+single release and declares the supported ingress protocol. The Docker executor
+rejects a locally available proxy image whose protocol label is incompatible.
+After registry publication, the separately attested `published-images.json`
+maps both component names to their exact GHCR digests for operator configuration.
 
 ## Runtime Selection
 
@@ -43,14 +51,17 @@ another daemon-shaped binary.
 
 ## Release Channels And Verification
 
-Version tags publish the native archive, standalone binaries, Docker image
-export, `SHA256SUMS`, attestation subject manifest `ARTIFACTS.sha256`, CycloneDX
-SBOM, and explicitly unsigned local provenance statement as GitHub Release
-assets. The node image is published separately to GHCR under its release version
-and a version-plus-commit candidate identity; no mutable `latest` tag is part of
-the release contract. Candidate tags also include the workflow run identity and
-are retained as immutable publication evidence rather than reused as moving
-channels.
+Version tags publish the native archive, standalone binaries, node and optional
+ingress-proxy Docker image exports, `release-manifest.json`, `SHA256SUMS`,
+attestation subject manifest `ARTIFACTS.sha256`, CycloneDX SBOM, and explicitly
+unsigned local provenance statement as GitHub Release assets. The node and
+proxy images are published separately to GHCR under their release versions and
+version-plus-commit candidate identities; no mutable `latest` tag is part of the
+release contract. Candidate tags also include the workflow run identity and are
+retained as immutable publication evidence rather than reused as moving
+channels. Published GitHub Releases additionally contain
+`published-images.json`; release-candidate artifacts created without registry
+access intentionally do not.
 
 GitHub Actions signs build-provenance and SBOM attestations with its OIDC-backed
 Sigstore identity. Release files use the Go application SBOM shipped with the

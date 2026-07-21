@@ -1,11 +1,23 @@
 package docker
 
 import (
+	"ardents/internal/ingressproxy"
 	"ardents/internal/workload/execution"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
+
+func TestValidateIngressProxyLabels(t *testing.T) {
+	t.Parallel()
+	require.NoError(t, validateIngressProxyLabels(map[string]string{
+		ingressproxy.ProtocolLabel: ingressproxy.ProtocolVersion(),
+	}))
+	require.ErrorContains(t, validateIngressProxyLabels(nil), "protocol is incompatible")
+	require.ErrorContains(t, validateIngressProxyLabels(map[string]string{
+		ingressproxy.ProtocolLabel: "2",
+	}), "protocol is incompatible")
+}
 
 func TestDockerIngressUsesOnlyAdmittedInternalNetworkPorts(t *testing.T) {
 	executor := ingressTestExecutor()

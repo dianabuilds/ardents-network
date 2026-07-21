@@ -33,6 +33,8 @@ if (Test-Path -LiteralPath $outputPath) {
 [IO.Directory]::CreateDirectory($outputPath) | Out-Null
 
 $buildDate = [DateTimeOffset]::FromUnixTimeSeconds($SourceDateEpoch).UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ")
+$ingressProtocol = (Get-Content -Raw -LiteralPath (Join-Path $root "internal/ingressproxy/protocol_version.txt")).Trim()
+if ($ingressProtocol -notmatch '^[1-9][0-9]*$') { throw "ingress proxy protocol version is invalid" }
 
 docker run --rm `
     -e "ARDENTS_VERSION=$Version" `
@@ -48,6 +50,7 @@ docker run --rm `
 if ($LASTEXITCODE -ne 0) { throw "Docker release build failed" }
 
 $imageTag = "ardents/node:$Version"
+$proxyImageTag = "ardents/ingress-proxy:$Version"
 $previousGitInfo = $env:BUILDX_GIT_INFO
 try {
     $env:BUILDX_GIT_INFO = "false"
@@ -59,12 +62,23 @@ try {
         --build-arg "GO_BUILD_PARALLELISM=2" `
         -t $imageTag -f deploy/docker/images/node.Dockerfile .
     if ($LASTEXITCODE -ne 0) { throw "Docker release image build failed" }
+    docker build `
+        --provenance=false `
+        --build-arg "ARDENTS_VERSION=$Version" `
+        --build-arg "ARDENTS_COMMIT=$Commit" `
+        --build-arg "ARDENTS_BUILD_DATE=$buildDate" `
+        --build-arg "ARDENTS_INGRESS_PROTOCOL=$ingressProtocol" `
+        --build-arg "GO_BUILD_PARALLELISM=2" `
+        -t $proxyImageTag -f deploy/docker/images/workload-ingress-proxy.Dockerfile .
+    if ($LASTEXITCODE -ne 0) { throw "Docker ingress proxy release image build failed" }
 } finally {
     if ($null -eq $previousGitInfo) { Remove-Item Env:BUILDX_GIT_INFO -ErrorAction SilentlyContinue }
     else { $env:BUILDX_GIT_INFO = $previousGitInfo }
 }
 docker save -o (Join-Path $outputPath "ardents-$Version-linux-amd64.docker.tar") $imageTag
 if ($LASTEXITCODE -ne 0) { throw "Docker release image export failed" }
+docker save -o (Join-Path $outputPath "ardents-ingress-proxy-$Version-linux-amd64.docker.tar") $proxyImageTag
+if ($LASTEXITCODE -ne 0) { throw "Docker ingress proxy release image export failed" }
 
 docker run --rm `
     -e "ARDENTS_VERSION=$Version" `
@@ -72,6 +86,7 @@ docker run --rm `
     -e "ARDENTS_BUILD_DATE=$buildDate" `
     -e "SOURCE_DATE_EPOCH=$SourceDateEpoch" `
     -e "ARDENTS_SOURCE_DIRTY=$($dirty.ToString().ToLowerInvariant())" `
+    -e "ARDENTS_INGRESS_PROTOCOL=$ingressProtocol" `
     --mount "type=bind,source=$root,target=/workspace,readonly" `
     --mount "type=bind,source=$outputPath,target=/out" `
     -w /workspace mcr.microsoft.com/powershell:7.5-debian-12 `

@@ -5,17 +5,23 @@ param(
     [string]$ExpectedVersion,
     [Parameter(Mandatory = $true)]
     [string]$ExpectedCommit,
-    [switch]$RequireClean
+    [switch]$RequireClean,
+    [switch]$RequirePublishedImages,
+    [string]$ExpectedImageNamespace
 )
 
 $ErrorActionPreference = "Stop"
+$root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$expectedIngressProtocol = (Get-Content -Raw -LiteralPath (Join-Path $root "internal/ingressproxy/protocol_version.txt")).Trim()
 $artifactPath = [IO.Path]::GetFullPath($ArtifactDir)
 $checksumPath = Join-Path $artifactPath "SHA256SUMS"
 $subjectChecksumPath = Join-Path $artifactPath "ARTIFACTS.sha256"
 $provenancePath = Join-Path $artifactPath "provenance.unsigned.intoto.json"
 $sbomPath = Join-Path $artifactPath "sbom.cdx.json"
+$releaseManifestPath = Join-Path $artifactPath "release-manifest.json"
+$publishedImagesPath = Join-Path $artifactPath "published-images.json"
 
-foreach ($required in $checksumPath, $subjectChecksumPath, $provenancePath, $sbomPath) {
+foreach ($required in $checksumPath, $subjectChecksumPath, $provenancePath, $sbomPath, $releaseManifestPath) {
     if (-not (Test-Path -LiteralPath $required -PathType Leaf)) {
         throw "release metadata is incomplete: missing $required"
     }
@@ -37,6 +43,7 @@ foreach ($line in Get-Content -LiteralPath $checksumPath) {
 
 $expectedSubjectNames = @(
     "ardents-$ExpectedVersion-linux-amd64.docker.tar"
+    "ardents-ingress-proxy-$ExpectedVersion-linux-amd64.docker.tar"
     "ardents-$ExpectedVersion-linux-amd64.tar.gz"
     "ardentsctl-$ExpectedVersion-linux-amd64"
     "ardentsd-$ExpectedVersion-linux-amd64"
@@ -45,8 +52,19 @@ $expectedPayloadNames = @(
     $expectedSubjectNames
     "ARTIFACTS.sha256"
     "provenance.unsigned.intoto.json"
+    "release-manifest.json"
     "sbom.cdx.json"
-) | Sort-Object
+)
+if ($RequirePublishedImages) {
+    if ([string]::IsNullOrWhiteSpace($ExpectedImageNamespace)) {
+        throw "ExpectedImageNamespace is required for published image verification"
+    }
+    if (-not (Test-Path -LiteralPath $publishedImagesPath -PathType Leaf)) {
+        throw "published release metadata is incomplete: missing $publishedImagesPath"
+    }
+    $expectedPayloadNames += "published-images.json"
+}
+$expectedPayloadNames = @($expectedPayloadNames | Sort-Object)
 $payloadNames = @(Get-ChildItem -LiteralPath $artifactPath -File |
     Where-Object Name -ne "SHA256SUMS" | Sort-Object Name | ForEach-Object Name)
 $payloadDifference = @(Compare-Object $expectedPayloadNames $payloadNames)
@@ -61,6 +79,45 @@ if ($difference.Count -ne 0) {
 foreach ($name in $checksumNames) {
     $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $artifactPath $name)).Hash.ToLowerInvariant()
     if ($actual -ne $checksums[$name]) { throw "checksum mismatch: $name" }
+}
+
+$releaseManifest = Get-Content -Raw -LiteralPath $releaseManifestPath | ConvertFrom-Json
+if ($releaseManifest.schema_version -ne 1 -or $releaseManifest.platform -ne "linux/amd64") {
+    throw "release manifest contract mismatch"
+}
+if ($releaseManifest.version -ne $ExpectedVersion -or $releaseManifest.commit -ne $ExpectedCommit) {
+    throw "release manifest identity mismatch"
+}
+if ($releaseManifest.components.node.artifact -ne "ardents-$ExpectedVersion-linux-amd64.docker.tar" -or
+    $releaseManifest.components.node.local_image -ne "ardents/node:$ExpectedVersion") {
+    throw "release manifest node component mismatch"
+}
+if ($releaseManifest.components.ingress_proxy.artifact -ne "ardents-ingress-proxy-$ExpectedVersion-linux-amd64.docker.tar" -or
+    $releaseManifest.components.ingress_proxy.local_image -ne "ardents/ingress-proxy:$ExpectedVersion" -or
+    $releaseManifest.components.ingress_proxy.protocol_version -ne $expectedIngressProtocol -or
+    -not [bool]$releaseManifest.components.ingress_proxy.optional) {
+    throw "release manifest ingress proxy component mismatch"
+}
+
+if ($RequirePublishedImages) {
+    $imageNamespace = $ExpectedImageNamespace.Trim().TrimEnd('/').ToLowerInvariant()
+    $expectedNodeImage = "$imageNamespace/ardents-node"
+    $expectedProxyImage = "$imageNamespace/ardents-ingress-proxy"
+    $publishedImages = Get-Content -Raw -LiteralPath $publishedImagesPath | ConvertFrom-Json
+    if ($publishedImages.schema_version -ne 1 -or $publishedImages.version -ne $ExpectedVersion -or
+        $publishedImages.commit -ne $ExpectedCommit) {
+        throw "published image manifest identity mismatch"
+    }
+    if ($publishedImages.images.node.name -cne $expectedNodeImage -or
+        $publishedImages.images.ingress_proxy.name -cne $expectedProxyImage -or
+        $publishedImages.images.node.name -cne $publishedImages.images.node.name.ToLowerInvariant() -or
+        $publishedImages.images.ingress_proxy.name -cne $publishedImages.images.ingress_proxy.name.ToLowerInvariant() -or
+        $publishedImages.images.node.digest -notmatch '^sha256:[0-9a-f]{64}$' -or
+        $publishedImages.images.ingress_proxy.digest -notmatch '^sha256:[0-9a-f]{64}$' -or
+        $publishedImages.images.ingress_proxy.protocol_version -ne $expectedIngressProtocol -or
+        -not [bool]$publishedImages.images.ingress_proxy.optional) {
+        throw "published image manifest component mismatch"
+    }
 }
 
 $provenance = Get-Content -Raw -LiteralPath $provenancePath | ConvertFrom-Json

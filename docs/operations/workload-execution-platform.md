@@ -152,7 +152,10 @@ bounded encoded set of admitted bindings. Startup reconciliation treats the
 proxy as ancillary runtime owned by the current workload generation: a missing
 or stopped current proxy is recreated, while a proxy with no current registry
 generation is stopped and removed. Recovery never reads arbitrary port intent
-from container configuration and never adopts an unlabeled proxy.
+from container configuration and never adopts an unlabeled proxy. Before proxy
+creation or recovery, the executor inspects the locally available immutable
+image and requires `io.ardents.ingress.protocol=1`; a missing or different label
+is an incompatible runtime component and fails closed.
 
 Docker daemon restart, Ardents daemon restart, and workload process restart are
 separate events and must remain distinguishable in diagnostics.

@@ -59,8 +59,9 @@ Docker is an optional delivery and workload-execution adapter. A node starts
 without Docker by default because `workloads.executor` defaults to `disabled`.
 Set it explicitly to `docker` only where the node is allowed to control a
 Docker Engine, or to `trusted-process` for the restricted local-development
-profile. `ardents-ingress-proxy` is an internal, optional adapter used only for
-isolated hosted-service ingress; it is not required to start or operate a node.
+profile. `ardents-ingress-proxy` is an internal, optional image used only for
+isolated hosted-service ingress; it is versioned with the node release but is
+not required to install, start, or operate a node.
 
 For a native Linux node, extract the release archive and run the included
 installer. It creates the `ardents` service account, protected state, a systemd

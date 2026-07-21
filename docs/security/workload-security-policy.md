@@ -103,9 +103,11 @@ only the proxy publishes the exact TCP ports derived from canonical service
 declarations. The workload bridge supplies no arbitrary egress, while the proxy
 contains no workload secrets and can dial only the fixed workload target/ports
 provided by the executor. Container JSON cannot request a network, bind address,
-proxy command, or published port. The operator must explicitly configure an
-immutable Ardents ingress-proxy image, the ingress bind address, and every
-advertised host. Missing or ambiguous ingress configuration fails admission
+proxy command, or published port. The operator must explicitly configure the
+immutable digest of the optional Ardents ingress-proxy image published with the
+node release, the ingress bind address, and every advertised host. The executor
+also requires the release compatibility label before creating the proxy.
+Missing, incompatible, or ambiguous ingress configuration fails admission
 closed.
 
 The Docker adapter accepts literal IPv4/IPv6 advertised hosts for direct

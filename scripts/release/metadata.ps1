@@ -10,7 +10,9 @@ $commit = $env:ARDENTS_COMMIT
 $buildDate = $env:ARDENTS_BUILD_DATE
 $epoch = [long]$env:SOURCE_DATE_EPOCH
 $sourceDirty = [bool]::Parse($env:ARDENTS_SOURCE_DIRTY)
-if ([string]::IsNullOrWhiteSpace($version) -or [string]::IsNullOrWhiteSpace($commit) -or $epoch -le 0) {
+$ingressProtocol = $env:ARDENTS_INGRESS_PROTOCOL
+if ([string]::IsNullOrWhiteSpace($version) -or [string]::IsNullOrWhiteSpace($commit) -or $epoch -le 0 -or
+    $ingressProtocol -notmatch '^[1-9][0-9]*$') {
     throw "release identity environment is incomplete"
 }
 
@@ -38,6 +40,26 @@ $sbom = [ordered]@{
     components = @($modules)
 }
 $sbom | ConvertTo-Json -Depth 10 | Set-Content -Encoding utf8 -LiteralPath (Join-Path $artifactPath "sbom.cdx.json")
+
+$releaseManifest = [ordered]@{
+    schema_version = 1
+    version = $version
+    commit = $commit
+    platform = "linux/amd64"
+    components = [ordered]@{
+        node = [ordered]@{
+            artifact = "ardents-$version-linux-amd64.docker.tar"
+            local_image = "ardents/node:$version"
+        }
+        ingress_proxy = [ordered]@{
+            artifact = "ardents-ingress-proxy-$version-linux-amd64.docker.tar"
+            local_image = "ardents/ingress-proxy:$version"
+            protocol_version = $ingressProtocol
+            optional = $true
+        }
+    }
+}
+$releaseManifest | ConvertTo-Json -Depth 8 | Set-Content -Encoding utf8 -LiteralPath (Join-Path $artifactPath "release-manifest.json")
 
 $subjects = foreach ($file in Get-ChildItem -LiteralPath $artifactPath -File | Where-Object {
     $_.Name -match '^ardents(?:ctl|d)-.+-linux-' -or $_.Name -match '^ardents-.+\.(tar\.gz|docker\.tar)$'

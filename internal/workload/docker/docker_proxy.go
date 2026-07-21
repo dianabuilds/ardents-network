@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"ardents/internal/ingressproxy"
 	"ardents/internal/workload/execution"
 	"context"
 	"errors"
@@ -18,11 +19,22 @@ func (e *Executor) ensureIngressProxy(ctx context.Context, prepared execution.Pr
 	if err != nil {
 		return err
 	}
+	expectedImageID, validationErr := e.validateIngressProxyImage(ctx)
+	if validationErr != nil {
+		for _, item := range items {
+			validationErr = errors.Join(validationErr, e.stopAndRemoveContainer(ctx, item.ID))
+		}
+		return validationErr
+	}
 	if len(items) > 1 {
-		return fmt.Errorf("workload ingress proxy identity is duplicated")
+		duplicateErr := error(fmt.Errorf("workload ingress proxy identity is duplicated"))
+		for _, item := range items {
+			duplicateErr = errors.Join(duplicateErr, e.stopAndRemoveContainer(ctx, item.ID))
+		}
+		return duplicateErr
 	}
 	if len(items) == 1 {
-		if items[0].State == "running" {
+		if items[0].State == "running" && items[0].ImageID == expectedImageID {
 			return nil
 		}
 		if _, err := e.client.ContainerRemove(ctx, items[0].ID, client.ContainerRemoveOptions{Force: true}); err != nil {
@@ -41,6 +53,30 @@ func (e *Executor) ensureIngressProxy(ctx context.Context, prepared execution.Pr
 			return startErr
 		}
 		return errors.Join(startErr, dockerSafeError("remove failed workload ingress proxy", cleanupErr))
+	}
+	return nil
+}
+
+func (e *Executor) validateIngressProxyImage(ctx context.Context) (string, error) {
+	inspected, err := e.client.ImageInspect(ctx, e.ingressProxyImage)
+	if err != nil {
+		return "", dockerSafeError("inspect workload ingress proxy image", err)
+	}
+	if inspected.Config == nil {
+		return "", fmt.Errorf("workload ingress proxy image has no configuration")
+	}
+	if err := validateIngressProxyLabels(inspected.Config.Labels); err != nil {
+		return "", err
+	}
+	if inspected.ID == "" {
+		return "", fmt.Errorf("workload ingress proxy image has no immutable identity")
+	}
+	return inspected.ID, nil
+}
+
+func validateIngressProxyLabels(labels map[string]string) error {
+	if labels[ingressproxy.ProtocolLabel] != ingressproxy.ProtocolVersion() {
+		return fmt.Errorf("workload ingress proxy protocol is incompatible")
 	}
 	return nil
 }
@@ -81,6 +117,7 @@ func proxyContainerName(prepared execution.PreparedWorkload) string {
 
 type proxyContainer struct {
 	ID         string
+	ImageID    string
 	State      string
 	WorkloadID string
 	Generation int64
@@ -102,7 +139,7 @@ func (e *Executor) ingressProxyContainers(ctx context.Context, prepared executio
 		if parseErr != nil || item.Labels[labelWorkload] == "" {
 			return nil, fmt.Errorf("workload ingress proxy has invalid ownership identity")
 		}
-		items = append(items, proxyContainer{ID: item.ID, State: string(item.State),
+		items = append(items, proxyContainer{ID: item.ID, ImageID: item.ImageID, State: string(item.State),
 			WorkloadID: item.Labels[labelWorkload], Generation: generation})
 	}
 	return items, nil
@@ -122,7 +159,7 @@ func (e *Executor) allIngressProxyContainers(ctx context.Context) ([]proxyContai
 		if parseErr != nil || item.Labels[labelWorkload] == "" {
 			return nil, fmt.Errorf("workload ingress proxy has invalid ownership identity")
 		}
-		items = append(items, proxyContainer{ID: item.ID, State: string(item.State),
+		items = append(items, proxyContainer{ID: item.ID, ImageID: item.ImageID, State: string(item.State),
 			WorkloadID: item.Labels[labelWorkload], Generation: generation})
 	}
 	return items, nil

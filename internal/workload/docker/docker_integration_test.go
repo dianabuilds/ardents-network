@@ -293,6 +293,16 @@ func TestDockerExecutorPublishesOnlyAdmittedIngressOnInternalNetwork(t *testing.
 	require.NoError(t, err)
 	require.Eventually(t, func() bool { return !dockerIngressReady(httpClient, endpoint) }, 5*time.Second, 100*time.Millisecond)
 
+	incompatibleExecutor := dockerExecutorWith(t, workloaddocker.ExecutorConfig{
+		NodeID: "stb405-ingress", Runtime: "runc", AllowedRegistries: []string{"docker.io"},
+		AllowedIngressHosts: []string{host}, IngressBindAddress: "0.0.0.0", IngressProxyImage: dockerImage(t),
+	})
+	err = incompatibleExecutor.ReconcileAncillary(ctx, []execution.Instance{instance})
+	require.ErrorContains(t, err, "proxy protocol is incompatible")
+	proxies, err = engine.ContainerList(ctx, client.ContainerListOptions{All: true, Filters: filters})
+	require.NoError(t, err)
+	require.Empty(t, proxies.Items, "incompatible recovery must close the managed ingress proxy")
+
 	recoveredExecutor := dockerExecutorWith(t, workloaddocker.ExecutorConfig{
 		NodeID: "stb405-ingress", Runtime: "runc", AllowedRegistries: []string{"docker.io"},
 		AllowedIngressHosts: []string{host}, IngressBindAddress: "0.0.0.0", IngressProxyImage: dockerProxyImage(t),

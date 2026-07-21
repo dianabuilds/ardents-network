@@ -90,6 +90,19 @@ Assert-Rejected "SBOM identity mismatch" {
     [IO.File]::WriteAllBytes((Join-Path $artifactPath "SHA256SUMS"), $checksumBytes)
 }
 
+$releaseManifestPath = Join-Path $artifactPath "release-manifest.json"
+$releaseManifestBytes = [IO.File]::ReadAllBytes($releaseManifestPath)
+$checksumBytes = [IO.File]::ReadAllBytes((Join-Path $artifactPath "SHA256SUMS"))
+Assert-Rejected "ingress proxy protocol mismatch" {
+    $document = Get-Content -Raw -LiteralPath $releaseManifestPath | ConvertFrom-Json
+    $document.components.ingress_proxy.protocol_version = "invalid"
+    $document | ConvertTo-Json -Depth 20 | Set-Content -Encoding utf8 -LiteralPath $releaseManifestPath
+    Set-OuterChecksum "release-manifest.json"
+} {
+    [IO.File]::WriteAllBytes($releaseManifestPath, $releaseManifestBytes)
+    [IO.File]::WriteAllBytes((Join-Path $artifactPath "SHA256SUMS"), $checksumBytes)
+}
+
 $requiredArtifact = Join-Path $artifactPath "ardentsd-$ExpectedVersion-linux-amd64"
 $hiddenArtifact = "$requiredArtifact.missing"
 Assert-Rejected "missing canonical artifact" {
@@ -103,6 +116,48 @@ Assert-Rejected "extra payload" {
     Set-Content -LiteralPath $extraArtifact -Value "unexpected"
 } {
     if (Test-Path -LiteralPath $extraArtifact) { Remove-Item -LiteralPath $extraArtifact -Force }
+}
+
+$publishedImagesPath = Join-Path $artifactPath "published-images.json"
+$checksumPath = Join-Path $artifactPath "SHA256SUMS"
+$checksumBytes = [IO.File]::ReadAllBytes($checksumPath)
+$expectedIngressProtocol = (Get-Content -Raw -LiteralPath (Join-Path $artifactPath "release-manifest.json") |
+    ConvertFrom-Json).components.ingress_proxy.protocol_version
+try {
+    $publishedImages = [ordered]@{
+        schema_version = 1
+        version = $ExpectedVersion
+        commit = $ExpectedCommit
+        images = [ordered]@{
+            node = [ordered]@{ name = "ghcr.io/example/ardents-node"; digest = "sha256:$('a' * 64)" }
+            ingress_proxy = [ordered]@{
+                name = "ghcr.io/example/ardents-ingress-proxy"
+                digest = "sha256:$('b' * 64)"
+                protocol_version = $expectedIngressProtocol
+                optional = $true
+            }
+        }
+    }
+    $publishedImages | ConvertTo-Json -Depth 8 | Set-Content -Encoding utf8 -LiteralPath $publishedImagesPath
+    $lines = [Collections.Generic.List[string]]::new()
+    $lines.AddRange([string[]](Get-Content -LiteralPath $checksumPath))
+    $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $publishedImagesPath).Hash.ToLowerInvariant()
+    $lines.Add("$hash  published-images.json")
+    [IO.File]::WriteAllLines($checksumPath, @($lines | Sort-Object), [Text.UTF8Encoding]::new($false))
+    & $verifier -ArtifactDir $artifactPath -ExpectedVersion $ExpectedVersion -ExpectedCommit $ExpectedCommit `
+        -RequirePublishedImages -ExpectedImageNamespace "ghcr.io/example"
+    $wrongNamespaceRejected = $false
+    try {
+        & $verifier -ArtifactDir $artifactPath -ExpectedVersion $ExpectedVersion -ExpectedCommit $ExpectedCommit `
+            -RequirePublishedImages -ExpectedImageNamespace "ghcr.io/not-example"
+    } catch {
+        $wrongNamespaceRejected = $true
+    }
+    if (-not $wrongNamespaceRejected) { throw "published image verifier accepted the wrong namespace" }
+    Assert-Rejected "published manifest accepted by candidate verifier" {} {}
+} finally {
+    if (Test-Path -LiteralPath $publishedImagesPath) { Remove-Item -LiteralPath $publishedImagesPath -Force }
+    [IO.File]::WriteAllBytes($checksumPath, $checksumBytes)
 }
 & $verifier -ArtifactDir $artifactPath -ExpectedVersion $ExpectedVersion -ExpectedCommit $ExpectedCommit
 Write-Host "release-metadata-gate=passed"

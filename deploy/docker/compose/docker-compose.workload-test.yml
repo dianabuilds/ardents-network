@@ -26,7 +26,8 @@ services:
       - |
         docker pull busybox:1.37.0
         docker image inspect busybox:1.37.0 --format '{{index .RepoDigests 0}}' > /fixture/image.txt
-        docker build -t ardents/ingress-proxy:test -f /workspace/deploy/docker/images/workload-ingress-proxy.Dockerfile /workspace
+        docker build --build-arg "ARDENTS_INGRESS_PROTOCOL=$$(cat /workspace/internal/ingressproxy/protocol_version.txt)" \
+          -t ardents/ingress-proxy:test -f /workspace/deploy/docker/images/workload-ingress-proxy.Dockerfile /workspace
         docker image inspect ardents/ingress-proxy:test --format '{{.Id}}' > /fixture/proxy-image.txt
         touch /fixture/ready
         exec tail -f /dev/null
