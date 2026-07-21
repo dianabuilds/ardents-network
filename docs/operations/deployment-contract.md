@@ -4,13 +4,14 @@
 
 The supported `v1` deployment target is Docker Engine with Docker Compose v2 on
 one Linux amd64 host. Native systemd installation on Linux amd64 is a
-qualification candidate: install, startup, restart, same-build reinstall, and
-non-destructive uninstall are covered, while old-to-new upgrade, rollback, and
-backup/restore acceptance remain required before production support. Both run
-the same `ardentsd`; Docker is packaging and an optional workload adapter, not a
-runtime prerequisite. Multi-host scheduling and Kubernetes packaging remain
-outside this target until a separate support contract and acceptance
-environment exist.
+qualification candidate: Debian/systemd CI covers install, startup, restart,
+same-build reinstall, old-to-new build transition, failed and explicit binary
+rollback, stopped-node backup/restore, and non-destructive uninstall. Production
+support still requires distribution-matrix and real-release transition evidence.
+Both shapes run the same `ardentsd`; Docker is packaging and an optional workload
+adapter, not a runtime prerequisite. Multi-host scheduling and Kubernetes
+packaging remain outside this target until a separate support contract and
+acceptance environment exist.
 
 Two supported profiles and one qualification profile are versioned:
 

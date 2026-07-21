@@ -74,8 +74,9 @@ sudo ardentsctl --addr unix:///var/lib/ardents/secrets/control.sock \
 ```
 
 Use `--bootstrap-peer` during first installation when the node must join an
-existing endpoint. Re-running `install` replaces the binaries atomically and
-preserves configuration, identity, API credential, and retained data. See the
+existing endpoint. Re-running `install` repairs only the same build and
+preserves configuration, identity, API credential, and retained data; changing
+build identity requires the readiness-gated `upgrade` command. See the
 [native Linux installation contract](docs/operations/native-linux-installation.md)
 for upgrade and uninstall behavior.
 
@@ -158,16 +159,17 @@ waits.
 ## Current Limitations
 
 - single-host Docker Compose is the supported deployment shape; the native
-  systemd installer is a qualification candidate pending old-to-new upgrade,
-  rollback, and backup/restore acceptance evidence;
+  systemd installer is a qualification candidate with lifecycle acceptance,
+  pending distribution-matrix and real-release transition evidence;
 - Kubernetes and multi-host schedulers do not have a `v1` support contract;
 - remote operator API exposure is unsupported;
 - private capability issuance is an external realm-authority operation;
 - QUIC, WebTransport, and WebRTC are suppressed in supported profiles;
 - Linux arm64 requires a native CGO build/qualification runner and is not yet a
   release target;
-- CI provenance/signing, adversarial QA, and release
-  acceptance remain open in the stabilization plan.
+- tag releases receive GitHub OIDC/Sigstore artifact and SBOM attestations, but
+  adversarial QA and broader release acceptance remain open in the
+  stabilization plan.
 
 Security exceptions and upgrade triggers are recorded in
 [security exceptions](docs/security/security-exceptions.md). Do not delete retained keys

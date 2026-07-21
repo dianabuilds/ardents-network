@@ -30,8 +30,9 @@ for arch in amd64; do
         "$stage/docs/"
     tar --sort=name --mtime="@${SOURCE_DATE_EPOCH}" --owner=0 --group=0 --numeric-owner -C "$stage" -cf - . |
         gzip -n > "/out/ardents-${ARDENTS_VERSION}-linux-${arch}.tar.gz"
-    cp "$stage/ardentsctl" "/out/ardentsctl-linux-${arch}"
-    cp "$stage/ardentsd" "/out/ardentsd-linux-${arch}"
+    cp "$stage/ardentsctl" "/out/ardentsctl-${ARDENTS_VERSION}-linux-${arch}"
+    cp "$stage/ardentsd" "/out/ardentsd-${ARDENTS_VERSION}-linux-${arch}"
+    rm -rf "$stage"
 done
 
 go list -m -f '{{.Path}}\t{{.Version}}\t{{.Sum}}' all > /out/modules.tsv

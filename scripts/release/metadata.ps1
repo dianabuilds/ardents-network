@@ -40,7 +40,7 @@ $sbom = [ordered]@{
 $sbom | ConvertTo-Json -Depth 10 | Set-Content -Encoding utf8 -LiteralPath (Join-Path $artifactPath "sbom.cdx.json")
 
 $subjects = foreach ($file in Get-ChildItem -LiteralPath $artifactPath -File | Where-Object {
-    $_.Name -match '^ardents(?:ctl|d)-linux-' -or $_.Name -match '^ardents-.*\.(tar\.gz|docker\.tar)$'
+    $_.Name -match '^ardents(?:ctl|d)-.+-linux-' -or $_.Name -match '^ardents-.+\.(tar\.gz|docker\.tar)$'
 } | Sort-Object Name) {
     [ordered]@{
         name = $file.Name
@@ -72,7 +72,12 @@ $provenance = [ordered]@{
         }
     }
 }
-$provenance | ConvertTo-Json -Depth 12 | Set-Content -Encoding utf8 -LiteralPath (Join-Path $artifactPath "provenance.intoto.json")
+$provenance | ConvertTo-Json -Depth 12 | Set-Content -Encoding utf8 -LiteralPath (Join-Path $artifactPath "provenance.unsigned.intoto.json")
+
+$subjectChecksumLines = foreach ($subject in $subjects) {
+    "$($subject.digest.sha256)  $($subject.name)"
+}
+[IO.File]::WriteAllLines((Join-Path $artifactPath "ARTIFACTS.sha256"), $subjectChecksumLines, [Text.UTF8Encoding]::new($false))
 
 Remove-Item -LiteralPath (Join-Path $artifactPath "modules.tsv") -Force
 

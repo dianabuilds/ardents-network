@@ -202,7 +202,7 @@ jobs:
     env:
       RELEASE_VERSION: ${{ inputs.release_version || github.ref_name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
       - name: Build twice and compare
@@ -212,10 +212,157 @@ jobs:
           ./ardents.ps1 package $env:RELEASE_VERSION -OutputDir dist/repro-b
           $difference = Compare-Object (Get-Content dist/repro-a/SHA256SUMS) (Get-Content dist/repro-b/SHA256SUMS)
           if ($difference) { throw "release artifacts are not reproducible: $($difference | Out-String)" }
+          ./scripts/release/verify.ps1 -ArtifactDir dist/repro-a -ExpectedVersion $env:RELEASE_VERSION -ExpectedCommit $env:GITHUB_SHA -RequireClean
+          ./tests/ci/release-metadata-gate.ps1 -ArtifactDir dist/repro-a -ExpectedVersion $env:RELEASE_VERSION -ExpectedCommit $env:GITHUB_SHA
           docker run --rm --mount type=bind,source=${PWD}/dist/repro-a,target=/release,readonly --mount type=bind,source=${PWD},target=/workspace,readonly debian:bookworm-slim /bin/sh /workspace/scripts/release/smoke.sh /release $env:RELEASE_VERSION $env:GITHUB_SHA
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: ardents-${{ env.RELEASE_VERSION }}
           path: dist/repro-a
           retention-days: 90
           if-no-files-found: error
+
+  publish-release:
+    name: Publish signed release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: release-candidate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      artifact-metadata: write
+      attestations: write
+      contents: write
+      id-token: write
+      packages: write
+    env:
+      RELEASE_VERSION: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: ardents-${{ github.ref_name }}
+          path: dist/release
+      - name: Verify downloaded release payload
+        shell: pwsh
+        run: ./scripts/release/verify.ps1 -ArtifactDir dist/release -ExpectedVersion $env:RELEASE_VERSION -ExpectedCommit $env:GITHUB_SHA -RequireClean
+      - name: Attest release provenance
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6
+        with:
+          subject-checksums: dist/release/ARTIFACTS.sha256
+      - name: Attest release SBOM
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6
+        with:
+          subject-checksums: dist/release/ARTIFACTS.sha256
+          sbom-path: dist/release/sbom.cdx.json
+      - name: Load release node image
+        shell: pwsh
+        run: |
+          docker load --input "dist/release/ardents-$env:RELEASE_VERSION-linux-amd64.docker.tar"
+          if ($LASTEXITCODE -ne 0) { throw "release image load failed" }
+      - name: Generate release node image SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610
+        with:
+          image: ardents/node:${{ env.RELEASE_VERSION }}
+          format: cyclonedx-json
+          output-file: dist/image-sbom.cdx.json
+          upload-artifact: false
+          upload-release-assets: false
+      - name: Publish versioned node image
+        id: image
+        shell: pwsh
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $imageName = "ghcr.io/${{ github.repository_owner }}/ardents-node".ToLowerInvariant()
+          $imageTag = "$imageName`:$env:RELEASE_VERSION"
+          $candidateTag = "$imageName`:candidate-$env:RELEASE_VERSION-$env:GITHUB_SHA-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          $env:GHCR_TOKEN | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          if ($LASTEXITCODE -ne 0) { throw "GHCR login failed" }
+          docker tag "ardents/node:$env:RELEASE_VERSION" $candidateTag
+          docker push $candidateTag
+          if ($LASTEXITCODE -ne 0) { throw "GHCR candidate-tag push failed" }
+          $candidateDigest = (& docker buildx imagetools inspect $candidateTag --format '{{.Manifest.Digest}}').Trim()
+          if ($candidateDigest -notmatch '^sha256:[0-9a-f]{64}$') { throw "cannot resolve candidate-tag digest: $candidateDigest" }
+
+          $publishedDigest = (& docker buildx imagetools inspect $imageTag --format '{{.Manifest.Digest}}' 2>$null)
+          if ($LASTEXITCODE -eq 0) {
+            $publishedDigest = $publishedDigest.Trim()
+            if ($publishedDigest -ne $candidateDigest) {
+              throw "refusing to overwrite $imageTag ($publishedDigest) with $candidateDigest"
+            }
+          } else {
+            docker buildx imagetools create --prefer-index=false --tag $imageTag "$imageName@$candidateDigest"
+            if ($LASTEXITCODE -ne 0) { throw "GHCR version-tag publication failed" }
+          }
+          $verifiedDigest = (& docker buildx imagetools inspect $imageTag --format '{{.Manifest.Digest}}').Trim()
+          if ($LASTEXITCODE -ne 0 -or $verifiedDigest -ne $candidateDigest) { throw "published image digest verification failed" }
+          "name=$imageName" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "digest=$candidateDigest" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+      - name: Attest published node image
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6
+        with:
+          subject-name: ${{ steps.image.outputs.name }}
+          subject-digest: ${{ steps.image.outputs.digest }}
+          push-to-registry: true
+      - name: Attest published node image SBOM
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6
+        with:
+          subject-name: ${{ steps.image.outputs.name }}
+          subject-digest: ${{ steps.image.outputs.digest }}
+          sbom-path: dist/image-sbom.cdx.json
+          push-to-registry: true
+      - name: Remove GHCR write credential
+        if: always()
+        shell: pwsh
+        run: docker logout ghcr.io
+      - name: Publish GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $artifactDir = (Resolve-Path "dist/release").Path
+          $assets = @(Get-ChildItem -LiteralPath $artifactDir -File | Sort-Object Name)
+          $assetPaths = @($assets | ForEach-Object FullName)
+
+          function Assert-RemoteRelease([string]$DownloadDir) {
+            gh release download $env:RELEASE_VERSION --dir $DownloadDir
+            if ($LASTEXITCODE -ne 0) { throw "release asset download failed" }
+            $remote = @(Get-ChildItem -LiteralPath $DownloadDir -File | Sort-Object Name)
+            $difference = @(Compare-Object @($assets.Name) @($remote.Name))
+            if ($difference.Count -ne 0) { throw "published release has a different asset set: $($difference | Out-String)" }
+            foreach ($asset in $assets) {
+              $localHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $asset.FullName).Hash
+              $remoteHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $DownloadDir $asset.Name)).Hash
+              if ($localHash -ne $remoteHash) { throw "published asset differs: $($asset.Name)" }
+            }
+            ./scripts/release/verify.ps1 -ArtifactDir $DownloadDir -ExpectedVersion $env:RELEASE_VERSION -ExpectedCommit $env:GITHUB_SHA -RequireClean
+          }
+
+          $release = gh release view $env:RELEASE_VERSION --json isDraft,assets 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $env:RELEASE_VERSION --verify-tag --draft --title "Ardents $env:RELEASE_VERSION" --generate-notes
+            if ($LASTEXITCODE -ne 0) { throw "draft release creation failed" }
+            $releaseInfo = [pscustomobject]@{ isDraft = $true; assets = @() }
+          } else {
+            $releaseInfo = $release | ConvertFrom-Json
+          }
+
+          $verificationDir = Join-Path ([IO.Path]::GetTempPath()) "ardents-release-$([guid]::NewGuid())"
+          New-Item -ItemType Directory -Path $verificationDir | Out-Null
+          try {
+            if (-not $releaseInfo.isDraft) {
+              Assert-RemoteRelease $verificationDir
+              exit 0
+            }
+            $extraAssets = @($releaseInfo.assets.name | Where-Object { $_ -notin $assets.Name })
+            if ($extraAssets.Count -ne 0) { throw "draft release contains unexpected assets: $($extraAssets -join ', ')" }
+            gh release upload $env:RELEASE_VERSION $assetPaths --clobber
+            if ($LASTEXITCODE -ne 0) { throw "draft release asset upload failed" }
+            Assert-RemoteRelease $verificationDir
+            gh release edit $env:RELEASE_VERSION --draft=false
+            if ($LASTEXITCODE -ne 0) { throw "draft release publication failed" }
+          } finally {
+            Remove-Item -LiteralPath $verificationDir -Recurse -Force
+          }

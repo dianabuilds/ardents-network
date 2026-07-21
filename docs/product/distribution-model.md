@@ -40,3 +40,23 @@ API on the network. Same-host automation may use the private Unix socket emitted
 by `ardentsd init`. A public application SDK remains a separate delivery layer;
 it should build on versioned application protocols rather than introducing
 another daemon-shaped binary.
+
+## Release Channels And Verification
+
+Version tags publish the native archive, standalone binaries, Docker image
+export, `SHA256SUMS`, attestation subject manifest `ARTIFACTS.sha256`, CycloneDX
+SBOM, and explicitly unsigned local provenance statement as GitHub Release
+assets. The node image is published separately to GHCR under its release version
+and a version-plus-commit candidate identity; no mutable `latest` tag is part of
+the release contract. Candidate tags also include the workflow run identity and
+are retained as immutable publication evidence rather than reused as moving
+channels.
+
+GitHub Actions signs build-provenance and SBOM attestations with its OIDC-backed
+Sigstore identity. Release files use the Go application SBOM shipped with the
+assets; the published image digest receives a separate container-aware SBOM that
+also inventories its operating-system packages. Consumers must first verify
+`SHA256SUMS`, then verify the downloaded artifact against the repository identity
+with `gh attestation verify`. The `provenance.unsigned.intoto.json` file inside
+the release is useful offline metadata, but it is not by itself a signature and
+must not be treated as one.

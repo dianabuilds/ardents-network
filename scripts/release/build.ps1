@@ -78,4 +78,6 @@ docker run --rm `
     pwsh -NoLogo -NoProfile -File scripts/release/metadata.ps1 -ArtifactDir /out
 if ($LASTEXITCODE -ne 0) { throw "release metadata generation failed" }
 
+& "$PSScriptRoot/verify.ps1" -ArtifactDir $outputPath -ExpectedVersion $Version -ExpectedCommit $Commit -RequireClean:(-not $AllowDirty)
+
 Write-Host "Release artifacts created: $outputPath"
