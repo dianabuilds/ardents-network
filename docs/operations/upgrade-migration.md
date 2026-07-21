@@ -21,6 +21,11 @@ digest until rollback acceptance.
 
 `./ardents.ps1 upgrade` automates the single-host Compose sequence.
 
+For a native systemd node, run the new release's
+`scripts/install/linux.sh upgrade`. It stops only that node, creates a verified
+backup under `/var/backups/ardents` by default, retains one previous binary
+pair, and accepts the candidate only after authenticated local API readiness.
+
 ## Rollback
 
 Recreate one node at a time with the previous immutable image and re-prove
@@ -31,6 +36,12 @@ migrated database or silently discard newer state.
 If automatic rollback fails, stop the affected node, preserve logs and the
 complete state directory, and follow the incident runbook. A failed node must
 not be reported as healthy merely because another peer remains available.
+
+For a native node, `scripts/install/linux.sh rollback` swaps the retained
+binary pair and proves readiness. Failed upgrade readiness triggers this binary
+rollback automatically. Persisted-state restore is deliberately separate and
+only accepts an empty target, so an operator must preserve the current state
+before restoring the archive and its `.manifest` sidecar.
 
 ## Configuration And Protocol Migration
 

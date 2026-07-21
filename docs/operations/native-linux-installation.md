@@ -1,8 +1,10 @@
 # Native Linux Installation
 
-> Status: qualification candidate. Install, startup, restart, same-build
-> reinstall, and non-destructive uninstall are accepted. Production support
-> still requires old-to-new upgrade, rollback, and backup/restore evidence.
+> Status: native lifecycle qualification candidate. CI accepts first install,
+> restart, same-build reinstall, old-to-new upgrade, failed-upgrade rollback,
+> explicit rollback, stopped-node backup/restore, and non-destructive uninstall.
+> A published support promise still requires validation on the declared Linux
+> distribution matrix and an operational observation window.
 
 ## Supported Shape
 
@@ -61,20 +63,59 @@ sudo ardentsctl \
 Remote administration uses `ardentsctl --ssh`; the daemon API remains bound to
 loopback and is not published as remote HTTP.
 
-## Upgrade And Uninstall
+## Backup, Upgrade, Rollback, And Restore
+
+A backup is a consistency group: operator configuration, node state and
+identity, secrets, and local authority material are archived together. Stop the
+service first; the command refuses a live node and writes a checksum-bearing
+sidecar manifest next to the archive:
+
+```sh
+sudo systemctl stop ardentsd
+sudo ./scripts/install/linux.sh backup \
+  --output /var/backups/ardents/node-1-$(date -u +%Y%m%dT%H%M%SZ).tar.gz
+sudo systemctl start ardentsd
+```
+
+Backup destinations are intentionally restricted to the root-owned
+`/var/backups/ardents` tree; this prevents a privileged installer from writing
+through an attacker-controlled temporary path.
 
 To upgrade, extract the new verified release and run:
 
 ```sh
-sudo ./scripts/install/linux.sh install
+sudo ./scripts/install/linux.sh upgrade
 ```
 
 The installer executes both staged roles, requires matching build identities,
-then transactionally replaces the executables with rollback on replacement
-failure. It keeps the existing
-configuration, identity, secrets, and data, reloads systemd, and restarts an
-already active service. Create a consistency-group backup before an upgrade
-whose release notes mention persisted-format changes.
+stops an active node, creates a consistency-group backup, retains the previous
+binary pair, and starts the candidate. Success requires the authenticated local
+API to report readiness. A candidate that cannot become ready is stopped and
+the previous healthy pair is restored automatically; the command still exits
+non-zero so automation cannot mistake rollback for upgrade success. If the node
+was stopped before the command, the candidate is started only for validation and
+the original stopped state is restored afterward.
+
+One prior binary pair is retained for an explicit operator rollback:
+
+```sh
+sudo ./scripts/install/linux.sh rollback
+```
+
+Rollback changes binaries only. Restore persisted data only when release notes
+state that the newer release performed an incompatible migration. Restore
+verifies the archive, its allowed paths, and continuity hashes; it refuses a
+non-empty target and leaves the service stopped for operator inspection:
+
+```sh
+sudo systemctl stop ardentsd
+# Move the retained current config/state aside; do not delete it yet.
+sudo ./scripts/install/linux.sh restore \
+  --archive /var/backups/ardents/node-1-20260721T000000Z.tar.gz
+sudo systemctl start ardentsd
+sudo ardentsctl --addr unix:///var/lib/ardents/secrets/control.sock \
+  --token-file /var/lib/ardents/secrets/api-token node status
+```
 
 Ordinary uninstall is deliberately non-destructive:
 
@@ -87,5 +128,7 @@ not remove `/etc/ardents`, `/var/lib/ardents`, the service account, identity,
 authority material, credentials, or retained content. State erasure is a
 separate operator-controlled action and is not provided as a convenience flag.
 
-`--no-start` and `--root` exist for release packaging and isolated acceptance;
-they are not normal production installation options.
+`install` is not the version-transition command: use it for first installation
+or same-build repair, and use `upgrade` when changing releases. `--no-start`
+and `--root` exist for release packaging and isolated acceptance; they are not
+normal production installation options.
