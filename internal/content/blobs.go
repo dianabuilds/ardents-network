@@ -66,7 +66,7 @@ func Fetch(id string, source Source, store func(model.Blob, []byte) (model.Blob,
 	}
 	meta, ok := source.GetBlob(id)
 	if !ok {
-		return model.Blob{}, fmt.Errorf("remote blob not found")
+		return model.Blob{}, fmt.Errorf("%w: remote source", ErrBlobNotFound)
 	}
 	payload, err := source.GetBlobPayload(id)
 	if err != nil {
@@ -93,9 +93,20 @@ func Payload(blobs *model.BlobStore, id string, readPayload func(string) ([]byte
 		return nil, fmt.Errorf("blob not found")
 	}
 	if !datapayload.StateRequiresLocalPayload(blob.State) {
-		return nil, fmt.Errorf("blob payload is not locally available")
+		return nil, ErrBlobPayloadNotLocal
 	}
 	return readPayload(id)
+}
+
+func VerifyBlobPayload(blob Blob, payload []byte) error {
+	hash, blobCID, err := datapayload.DeriveIdentity(payload)
+	if err != nil {
+		return fmt.Errorf("%w: derive identity", ErrBlobIntegrity)
+	}
+	if blob.ID != blobCID || blob.CID != blobCID || blob.Hash != hash || blob.Size != int64(len(payload)) {
+		return ErrBlobIntegrity
+	}
+	return nil
 }
 
 func List(blobs *model.BlobStore, sortedKeys func(map[string]model.Blob) []string) []model.Blob {

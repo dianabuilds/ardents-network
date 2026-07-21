@@ -48,9 +48,22 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      - name: Install pinned Application API generators
+        shell: bash
+        run: |
+          set -euo pipefail
+          protoc_version=33.4
+          curl --fail --location --silent --show-error \
+            "https://github.com/protocolbuffers/protobuf/releases/download/v${protoc_version}/protoc-${protoc_version}-linux-x86_64.zip" \
+            --output "$RUNNER_TEMP/protoc.zip"
+          unzip -q "$RUNNER_TEMP/protoc.zip" -d "$RUNNER_TEMP/protoc"
+          echo "$RUNNER_TEMP/protoc/bin" >> "$GITHUB_PATH"
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.9
+          go install connectrpc.com/connect/cmd/protoc-gen-connect-go@v1.19.1
       - name: Canonical static gates
         shell: pwsh
         run: |
+          ./scripts/generate-application-api.ps1 -Check
           ./tests/check-format.ps1
           go vet ./...
           New-Item -ItemType Directory -Force tests/.artifacts/reports/catalog | Out-Null

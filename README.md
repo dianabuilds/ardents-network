@@ -41,6 +41,7 @@ proofs fail closed and remain visible through Diagnostics.
 Start with:
 
 - [system concept](docs/product/system-concept.md)
+- [Application Interface and SDK](docs/product/application-api-and-sdk.md)
 - [canonical Waku foundation](docs/protocols/canonical-network-foundation.md)
 - [network privacy protocol](docs/protocols/network-privacy-protocol.md)
 - [persistent state and key security](docs/security/persistent-state-security.md)

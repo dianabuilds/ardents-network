@@ -9,6 +9,8 @@ import (
 
 var ErrBlobNotFound = errors.New("blob not found")
 var ErrStoreUnavailable = errors.New("content store is unavailable")
+var ErrBlobPayloadNotLocal = errors.New("blob payload is not locally available")
+var ErrBlobIntegrity = errors.New("blob integrity verification failed")
 
 type CommandGuard func(action string) error
 type PinAuthorizer func(Blob) error
