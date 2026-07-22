@@ -129,7 +129,12 @@ func (r grantRepository) matches(ctx context.Context, now time.Time, subject str
 }
 
 func grantMatches(tx storage.ReadTransaction, now time.Time, subject string, audience Audience, action Action, resource ResourceRef, prefix []byte) (bool, error) {
-	matched := false
+	matches, err := matchingGrantIDs(tx, now, subject, audience, action, resource, prefix)
+	return len(matches) > 0, err
+}
+
+func matchingGrantIDs(tx storage.ReadTransaction, now time.Time, subject string, audience Audience, action Action, resource ResourceRef, prefix []byte) ([]string, error) {
+	var matches []string
 	err := tx.ForEach(grantIndexBucket, func(key, indexedHash []byte) error {
 		if !bytes.HasPrefix(key, prefix) {
 			return nil
@@ -182,12 +187,12 @@ func grantMatches(tx storage.ReadTransaction, now time.Time, subject string, aud
 		if !registeredActionAllowsScope(audience.Interface, action, scope.Kind) {
 			return nil
 		}
-		if !matched && scope.Matches(resource, audience) {
-			matched = true
+		if scope.Matches(resource, audience) {
+			matches = append(matches, grant.ID())
 		}
 		return nil
 	})
-	return matched, err
+	return matches, err
 }
 
 func loadGrant(tx storage.ReadTransaction, id string, now time.Time) (*Artifact, error) {

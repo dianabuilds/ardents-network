@@ -13,7 +13,6 @@ import (
 
 var (
 	ErrPermissionDenied      = errors.New("identity access denied")
-	ErrDelegationUnsupported = errors.New("delegation is not enabled")
 	ErrInvalidResourceTarget = errors.New("identity resource target is invalid")
 )
 
@@ -66,12 +65,25 @@ type TargetAttempt struct {
 
 type admissionSeal struct{}
 
+type admissionTrace struct {
+	Actor, Effective string
+	Action           Action
+	GrantIDs         []string
+	DelegationID     string
+}
+
+func deniedAdmission(session Session, _ admissionTrace, cause error) (AuthorizedCall, Session, error) {
+	return AuthorizedCall{}, session, cause
+}
+
 type AuthorizedCall struct {
 	actor, effective string
 	audience         Audience
 	action           Action
 	resource         ResourceRef
 	sessionID        string
+	grantIDs         []string
+	delegationID     string
 	seal             *admissionSeal
 }
 
@@ -85,6 +97,8 @@ func (c AuthorizedCall) Audience() Audience    { return c.audience }
 func (c AuthorizedCall) Action() Action        { return c.action }
 func (c AuthorizedCall) Resource() ResourceRef { return c.resource }
 func (c AuthorizedCall) SessionID() string     { return c.sessionID }
+func (c AuthorizedCall) GrantIDs() []string    { return append([]string(nil), c.grantIDs...) }
+func (c AuthorizedCall) DelegationID() string  { return c.delegationID }
 func (c AuthorizedCall) IsAdmitted() bool {
 	return c.seal != nil && c.actor != "" && c.effective != "" && c.sessionID != ""
 }
@@ -174,8 +188,10 @@ func scopeFromPayload(scope *identityprotocol.ResourceScope, node string) (Resou
 }
 
 func (s *Service) Admit(ctx context.Context, attempt Attempt) (AuthorizedCall, error) {
-	return s.admit(ctx, attempt.Binding, func(tx storage.ReadTransaction, now time.Time) (AuthorizedCall, Session, error) {
-		return s.admitInTransaction(tx, now, attempt)
+	return s.admit(ctx, attempt.Binding, func(tx storage.ReadTransaction, now time.Time) (AuthorizedCall, Session, admissionTrace, error) {
+		var trace admissionTrace
+		call, session, err := s.admitInTransactionWithTrace(tx, now, attempt, &trace)
+		return call, session, trace, err
 	})
 }
 
@@ -183,8 +199,9 @@ func (s *Service) AdmitTarget(ctx context.Context, attempt TargetAttempt) (Autho
 	if attempt.Finalize == nil {
 		return AuthorizedCall{}, ErrInvalidArgument
 	}
-	return s.admit(ctx, attempt.Binding, func(tx storage.ReadTransaction, now time.Time) (AuthorizedCall, Session, error) {
-		return s.admitResolvedInTransaction(tx, now, attempt.SessionSecret, attempt.Binding, attempt.Action, attempt.Delegation, func(actor, effective string) (ResourceRef, error) {
+	return s.admit(ctx, attempt.Binding, func(tx storage.ReadTransaction, now time.Time) (AuthorizedCall, Session, admissionTrace, error) {
+		var trace admissionTrace
+		call, session, err := s.admitResolvedInTransaction(tx, now, attempt.SessionSecret, attempt.Binding, attempt.Action, attempt.Delegation, &trace, func(actor, effective string) (ResourceRef, error) {
 			target := attempt.Target
 			if attempt.ResolveTarget != nil {
 				var err error
@@ -195,40 +212,60 @@ func (s *Service) AdmitTarget(ctx context.Context, attempt TargetAttempt) (Autho
 			}
 			return attempt.Finalize(target, attempt.Binding.Audience, actor, effective)
 		})
+		return call, session, trace, err
 	})
 }
 
-func (s *Service) admit(ctx context.Context, binding AuthenticationBinding, invoke func(storage.ReadTransaction, time.Time) (AuthorizedCall, Session, error)) (AuthorizedCall, error) {
+func (s *Service) admit(ctx context.Context, binding AuthenticationBinding, invoke func(storage.ReadTransaction, time.Time) (AuthorizedCall, Session, admissionTrace, error)) (AuthorizedCall, error) {
 	s.deviceMu.Lock()
 	defer s.deviceMu.Unlock()
 	now := canonicalNow(s.clock.Now())
 	var call AuthorizedCall
 	var session Session
+	var trace admissionTrace
 	err := s.grants.database.View(ctx, func(tx storage.ReadTransaction) error {
 		var admitErr error
-		call, session, admitErr = invoke(tx, now)
+		call, session, trace, admitErr = invoke(tx, now)
 		return admitErr
 	})
 	if err != nil {
 		if errors.Is(err, ErrUnauthenticated) {
-			s.record("denied", "session_or_device_invalid", session.Principal, session.DeviceID, binding.Audience)
+			s.recordAdmission("denied", "session_or_device_invalid", session, binding.Audience, trace)
 			return AuthorizedCall{}, ErrUnauthenticated
 		}
-		if errors.Is(err, ErrPermissionDenied) || errors.Is(err, ErrInvalidArgument) || errors.Is(err, ErrInvalidResourceTarget) || errors.Is(err, ErrDelegationUnsupported) {
-			s.record("denied", "access_denied", session.Principal, session.DeviceID, binding.Audience)
+		if errors.Is(err, ErrPermissionDenied) || errors.Is(err, ErrInvalidArgument) || errors.Is(err, ErrInvalidResourceTarget) {
+			s.recordAdmission("denied", "access_denied", session, binding.Audience, trace)
 			return AuthorizedCall{}, err
 		}
-		s.record("denied", "store_unavailable", session.Principal, session.DeviceID, binding.Audience)
+		s.recordAdmission("denied", "store_unavailable", session, binding.Audience, trace)
 		return AuthorizedCall{}, ErrUnavailable
 	}
-	s.record("accepted", "access_admitted", session.Principal, session.DeviceID, binding.Audience)
+	s.recordAdmission("accepted", "access_admitted", session, call.audience, admissionTrace{
+		Actor: call.actor, Effective: call.effective, Action: call.action,
+		GrantIDs: call.GrantIDs(), DelegationID: call.delegationID,
+	})
 	return call, nil
+}
+
+func (s *Service) recordAdmission(outcome, reason string, session Session, audience Audience, trace admissionTrace) {
+	if s.audit == nil {
+		return
+	}
+	s.audit.RecordIdentityAccess(AuditEvent{
+		Outcome: outcome, Reason: reason, Principal: session.Principal, DeviceID: session.DeviceID,
+		Audience: audience, Actor: trace.Actor, Effective: trace.Effective, Action: trace.Action,
+		GrantIDs: append([]string(nil), trace.GrantIDs...), DelegationID: trace.DelegationID,
+	})
 }
 
 // admitInTransaction repeats all mutable authority checks in the supplied
 // durable snapshot. The caller must hold deviceMu across this callback.
 func (s *Service) admitInTransaction(tx storage.ReadTransaction, now time.Time, attempt Attempt) (AuthorizedCall, Session, error) {
-	return s.admitResolvedInTransaction(tx, now, attempt.SessionSecret, attempt.Binding, attempt.Action, attempt.Delegation, func(string, string) (ResourceRef, error) {
+	return s.admitInTransactionWithTrace(tx, now, attempt, nil)
+}
+
+func (s *Service) admitInTransactionWithTrace(tx storage.ReadTransaction, now time.Time, attempt Attempt, trace *admissionTrace) (AuthorizedCall, Session, error) {
+	return s.admitResolvedInTransaction(tx, now, attempt.SessionSecret, attempt.Binding, attempt.Action, attempt.Delegation, trace, func(string, string) (ResourceRef, error) {
 		resource, err := NewResourceRef(attempt.Resource.Node, attempt.Resource.Owner, string(attempt.Resource.Kind), attempt.Resource.ID)
 		if err != nil || resource.Node != attempt.Binding.Audience.Node {
 			return ResourceRef{}, ErrInvalidArgument
@@ -237,9 +274,20 @@ func (s *Service) admitInTransaction(tx storage.ReadTransaction, now time.Time, 
 	})
 }
 
-func (s *Service) admitResolvedInTransaction(tx storage.ReadTransaction, now time.Time, secret SessionSecret, binding AuthenticationBinding, requestedAction Action, delegation []byte, finalize func(string, string) (ResourceRef, error)) (AuthorizedCall, Session, error) {
-	if len(delegation) > 0 {
-		return AuthorizedCall{}, Session{}, ErrDelegationUnsupported
+func (s *Service) admitResolvedInTransaction(tx storage.ReadTransaction, now time.Time, secret SessionSecret, binding AuthenticationBinding, requestedAction Action, delegation []byte, traceOutput *admissionTrace, finalize func(string, string) (ResourceRef, error)) (AuthorizedCall, Session, error) {
+	trace := admissionTrace{}
+	defer func() {
+		if traceOutput != nil {
+			traceOutput.Actor = trace.Actor
+			traceOutput.Effective = trace.Effective
+			traceOutput.Action = trace.Action
+			traceOutput.GrantIDs = append([]string(nil), trace.GrantIDs...)
+			traceOutput.DelegationID = trace.DelegationID
+		}
+	}()
+	// Reject an oversized presentation before protobuf parsing or hashing.
+	if len(delegation) > maxArtifactBytes {
+		return AuthorizedCall{}, Session{}, ErrUnauthenticated
 	}
 	action, err := ParseAction(binding.Audience.Interface, string(requestedAction))
 	if err != nil {
@@ -249,46 +297,116 @@ func (s *Service) admitResolvedInTransaction(tx storage.ReadTransaction, now tim
 	if !found || session.Binding != binding {
 		return AuthorizedCall{}, Session{}, ErrUnauthenticated
 	}
+	trace.Actor, trace.Action = session.Principal, action
+	if len(delegation) == 0 {
+		trace.Effective = session.Principal
+	}
 	key, err := deviceRevocationKey(session.Binding.Audience.Node, session.Principal, session.DeviceID)
 	if err != nil {
-		return AuthorizedCall{}, session, err
+		return deniedAdmission(session, trace, err)
 	}
 	revoked, err := deviceRevoked(tx, key)
 	if err != nil {
-		return AuthorizedCall{}, session, err
+		return deniedAdmission(session, trace, err)
 	}
 	if revoked {
 		s.sessions.invalidateDevice(session.DeviceID)
-		return AuthorizedCall{}, session, ErrUnauthenticated
+		return deniedAdmission(session, trace, ErrUnauthenticated)
 	}
 	effective := session.Principal
+	var delegationArtifact *Artifact
+	if len(delegation) > 0 {
+		delegationArtifact, err = ParseAndVerifyDelegation(delegation, now)
+		if err != nil {
+			return deniedAdmission(session, trace, ErrUnauthenticated)
+		}
+		payload := delegationArtifact.DelegationPayload()
+		if payload == nil || payload.Delegatee != session.Principal || audienceFromProtocol(payload.Audience) != binding.Audience {
+			return deniedAdmission(session, trace, ErrUnauthenticated)
+		}
+		trace.Effective = payload.Delegator
+		trace.DelegationID = delegationArtifact.ID()
+		credential := payload.Credential.GetPayload()
+		delegatorRevocationKey, keyErr := deviceRevocationKey(binding.Audience.Node, payload.Delegator, credential.GetDeviceId())
+		if keyErr != nil {
+			return deniedAdmission(session, trace, ErrUnauthenticated)
+		}
+		delegatorDeviceRevoked, repositoryErr := deviceRevoked(tx, delegatorRevocationKey)
+		if repositoryErr != nil {
+			return deniedAdmission(session, trace, repositoryErr)
+		}
+		if delegatorDeviceRevoked {
+			return deniedAdmission(session, trace, ErrUnauthenticated)
+		}
+		delegationIsRevoked, repositoryErr := delegationRevoked(tx, delegationArtifact)
+		if repositoryErr != nil {
+			return deniedAdmission(session, trace, repositoryErr)
+		}
+		if delegationIsRevoked {
+			return deniedAdmission(session, trace, ErrUnauthenticated)
+		}
+		effective = payload.Delegator
+	}
 	resource, err := finalize(session.Principal, effective)
 	if errors.Is(err, ErrInvalidResourceTarget) {
-		return AuthorizedCall{}, session, ErrInvalidResourceTarget
+		return deniedAdmission(session, trace, ErrInvalidResourceTarget)
 	}
 	if err != nil || resource.Node != binding.Audience.Node {
-		return AuthorizedCall{}, session, ErrInvalidArgument
+		return deniedAdmission(session, trace, ErrInvalidArgument)
 	}
 	resource, err = NewResourceRef(resource.Node, resource.Owner, string(resource.Kind), resource.ID)
 	if err != nil {
-		return AuthorizedCall{}, session, ErrInvalidArgument
+		return deniedAdmission(session, trace, ErrInvalidArgument)
 	}
-	prefix := grantIndexPrefix(binding.Audience, session.Principal)
-	matched, err := grantMatches(tx, now, session.Principal, binding.Audience, action, resource, prefix)
+	actorPrefix := grantIndexPrefix(binding.Audience, session.Principal)
+	actorGrantIDs, err := matchingGrantIDs(tx, now, session.Principal, binding.Audience, action, resource, actorPrefix)
 	if err != nil {
-		return AuthorizedCall{}, session, err
+		return deniedAdmission(session, trace, err)
 	}
-	if !matched {
-		return AuthorizedCall{}, session, ErrPermissionDenied
+	trace.GrantIDs = append([]string(nil), actorGrantIDs...)
+	if len(actorGrantIDs) == 0 {
+		return deniedAdmission(session, trace, ErrPermissionDenied)
+	}
+	grantIDs := actorGrantIDs
+	delegationID := ""
+	if delegationArtifact != nil {
+		payload := delegationArtifact.DelegationPayload()
+		hasAction := false
+		for _, delegatedAction := range payload.Actions {
+			if delegatedAction == string(action) {
+				hasAction = true
+				break
+			}
+		}
+		delegationScope, scopeErr := scopeFromPayload(payload.Scope, binding.Audience.Node)
+		if scopeErr != nil {
+			return deniedAdmission(session, trace, ErrUnauthenticated)
+		}
+		if !hasAction || !delegationScope.Matches(resource, binding.Audience) {
+			return deniedAdmission(session, trace, ErrPermissionDenied)
+		}
+		effectivePrefix := grantIndexPrefix(binding.Audience, effective)
+		effectiveGrantIDs, matchErr := matchingGrantIDs(tx, now, effective, binding.Audience, action, resource, effectivePrefix)
+		if matchErr != nil {
+			return deniedAdmission(session, trace, matchErr)
+		}
+		if len(effectiveGrantIDs) == 0 {
+			return deniedAdmission(session, trace, ErrPermissionDenied)
+		}
+		grantIDs = append(append([]string(nil), actorGrantIDs...), effectiveGrantIDs...)
+		delegationID = delegationArtifact.ID()
+		trace.GrantIDs = append([]string(nil), grantIDs...)
 	}
 	call := AuthorizedCall{
-		actor:     session.Principal,
-		effective: effective,
-		audience:  binding.Audience,
-		action:    action,
-		resource:  resource,
-		sessionID: session.ID,
-		seal:      &admissionSeal{},
+		actor:        session.Principal,
+		effective:    effective,
+		audience:     binding.Audience,
+		action:       action,
+		resource:     resource,
+		sessionID:    session.ID,
+		grantIDs:     grantIDs,
+		delegationID: delegationID,
+		seal:         &admissionSeal{},
 	}
 	return call, session, nil
 }

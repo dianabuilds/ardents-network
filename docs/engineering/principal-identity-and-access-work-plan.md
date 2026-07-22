@@ -1,7 +1,7 @@
 # Principal Identity And Access Work Plan
 
-Status: proposed implementation plan; no task in this document has been started
-or authorized by the document itself.
+Status: active implementation plan. Completion is recorded per leaf; `PIA-012`
+and `PIA-013` are complete against the acceptance evidence below.
 
 Design source: `docs/product/principal-identity-and-access.md`
 
@@ -37,7 +37,7 @@ These are the known change points at the time of design:
 | Generic call identity | `identity.SubjectRef`, `identity.CallContext` | `access.AuthorizedCall` with Actor and Effective |
 | Operator bearer auth | `internal/localapi/auth/*`, `localapi/access_interceptor.go` | Delete; protected Operator adapter uses `identity/access` only |
 | Application bearer auth | `internal/applicationapi/auth/*` | Delete; protected Application adapter uses the same owner only |
-| Application auth propagation | `applicationapi/content/handler.go` authorizes headers itself | Interceptor derives and propagates `AuthorizedCall` once |
+| Application auth propagation | `internal/applicationapi/admission/interceptor.go`, `internal/applicationapi/content/handler.go` | **PIA-012 complete:** interceptor admits once and passes sealed Principal facts; handler consumes them without parsing headers |
 | Operator protocol | `api/ardents/v1/*.proto`, `internal/localapi/protocol` | Separate Operator identity/authentication service |
 | Application protocol | `api/ardents/application/v1/content.proto`, `sdk/go/protocol` | Separate Application authentication service, same semantics |
 | SDK token source | `sdk/go/client/client.go` | Signer plus Audience-indexed session provider |
@@ -71,7 +71,7 @@ flowchart TD
     T2 --> T15[PIA-015 discovery/device/trust normalization]
     T14 --> T16[PIA-016 identifier and vocabulary cleanup]
     T15 --> T16
-    T10 --> T17[PIA-017 pre-release compatibility removal]
+    T10 --> T17[PIA-017 Principal-only release cleanup]
     T11 --> T17
     T14 --> T17
     T16 --> T18[PIA-018 adversarial and release gate]
@@ -81,16 +81,17 @@ flowchart TD
 Release gates:
 
 - **Format gate:** PIA-001, PIA-002, and PIA-005. PIA-003/004A/004B/004C are
-  retired greenfield leaves, not pending work. No user key issuance before this
-  gate because IDs and signed bytes must be stable first.
+  removed/superseded greenfield leaves, not pending work. No user key issuance
+  before this gate because IDs and signed bytes must be stable first.
 - **Operator gate:** PIA-006 through PIA-010. Normal Node administration works
   for a Principal on multiple Nodes through Principal sessions only.
-- **Application gate:** PIA-011 and PIA-012. Applications authenticate as their
-  own Principals and handlers receive proven identity.
+- **Application gate:** PIA-011 and **PIA-012 (complete)**. Applications
+  authenticate as their own Principals and handlers receive proven identity.
 - **Delegation/content gate:** PIA-013 and PIA-014. A user can safely authorize
   an Application and ownership is enforced.
 - **Release gate:** PIA-015 through PIA-018. Ambiguous identifiers and all
-  pre-release compatibility paths are removed.
+  pre-release-only credential/configuration paths are removed; no compatibility
+  mode is introduced.
 
 After PIA-002, PIA-005 and independent fresh-state normalization may run in
 parallel. After the Operator gate, PIA-011 and CLI portions not sharing generated files may be developed in
@@ -108,10 +109,10 @@ boundary; do not deliver an entire broad workstream as one change.
 |---|---|---|
 | `PIA-001` | — | Architecture/protocol/resource catalogue freeze; docs and stale-generation check only |
 | `PIA-002` | 001 | Strict `p1_`/`d1_` codecs and public golden vectors |
-| `PIA-003` | — | **Retired:** no released `p_` state exists, so inventory/dry-run tooling is deleted |
-| `PIA-004A` | — | **Retired:** no Node `p_ -> p1_` persisted-state migration is a release requirement |
-| `PIA-004B` | — | **Retired:** fresh canonical signed artifacts are created directly; none are reissued from `p_` |
-| `PIA-004C` | — | **Retired:** there is no whole-network identity epoch before the first release |
+| `PIA-003` | — | **Removed/superseded:** no released `p_` state exists, so inventory/dry-run tooling is not a deliverable |
+| `PIA-004A` | — | **Removed/superseded:** no Node `p_ -> p1_` persisted-state migration is a release requirement |
+| `PIA-004B` | — | **Removed/superseded:** fresh canonical signed artifacts are created directly; none are reissued from `p_` |
+| `PIA-004C` | — | **Removed/superseded:** there is no whole-network identity epoch before the first release |
 | `PIA-005` | 002 | Canonical Credential/Grant/Delegation/revocation codecs and server/SDK vectors |
 | `PIA-006A` | 001 | Long-lived Storage database lifecycle and transaction API; backup/lock/schema tests |
 | `PIA-006B` | 002, 005, 006A | Bounded challenge, Credential verification, session issue/lookup/invalidation only |
@@ -129,8 +130,8 @@ boundary; do not deliver an entire broad workstream as one change.
 | `PIA-010C` | 010B | Enrollment/grant/device administration commands and consent/output tests |
 | `PIA-011A` | 009A | Application auth proto and SDK Signer/session single-flight flow on Unix socket |
 | `PIA-011B` | 009B1–009B4, 011A | Application enrollment as the only supported Application credential path |
-| `PIA-012` | 011B | Application interceptor/context propagation; header auth removed from content handler |
-| `PIA-013` | 010B, 012 | Full one-hop Delegation validation, revocation, CLI consent, SDK attachment |
+| `PIA-012` | 011B | **Complete:** Application interceptor/context propagation; header auth removed from content handler; catalogue and fail-closed tests present |
+| `PIA-013` | 010B, 012 | **Complete:** full one-hop Delegation validation, revocation/import, CLI consent, SDK attachment, audit provenance |
 | `PIA-014A` | 012 | Atomic Blob payload/metadata/owner binding for Application acting as itself |
 | `PIA-014B` | 013, 014A | Alice-via-Application ownership/intersection and non-enumeration behavior |
 | `PIA-014C` | 014B | Object/Manifest owner binding plus remote-fetch/claim boundary and owner-aware GC/reconciliation |
@@ -140,7 +141,7 @@ boundary; do not deliver an entire broad workstream as one change.
 | `PIA-016A` | 002 | Rename replication Principal targets; Waku Peer ID remains adapter-only |
 | `PIA-016B` | 014C | Collapse domain Blob ID/CID directly into the final versioned wire/state form |
 | `PIA-016C` | 015C, 016A, 016B | Type remaining security Owners and split overloaded Capability vocabulary |
-| `PIA-017` | 010C, 011B, 014C | Delete all pre-release bearer/config/SDK/provisioning compatibility and prove Principal-only clean install |
+| `PIA-017` | 010C, 011B, 014C | **Pending:** delete remaining pre-release bearer/config/SDK/provisioning paths and prove a Principal-only clean install; this adds no compatibility mode |
 | `PIA-018` | 016C, 017 | Adversarial, fresh-install, persistence recovery, redaction and full release acceptance |
 
 If one leaf exceeds a reviewable change after inspection, split it by product
@@ -277,7 +278,7 @@ may accept both forms.
 **Do not do:** migrate persisted Node state, add key recovery, or change Waku
 Peer ID.
 
-### PIA-003 And PIA-004A/B/C — Retired Greenfield Leaves
+### PIA-003 And PIA-004A/B/C — Removed/Superseded Greenfield Leaves
 
 These leaves are removed from the dependency graph. Ardents has no released
 `p_` identity state, signed artifact, or bearer-authenticated installation to
@@ -710,7 +711,7 @@ go test -tags=e2e ./tests/e2e/applicationapi/...
 **Do not do:** implement user delegation or change content ownership in this
 task.
 
-### PIA-012 — Propagate `AuthorizedCall` Through Application Handlers
+### PIA-012 — Propagate `AuthorizedCall` Through Application Handlers (Complete)
 
 **Depends on:** PIA-011.
 
@@ -742,7 +743,15 @@ authorization errors remain structured/redacted.
 **Do not do:** let product packages depend on Connect/http, or trust a request
 owner/user header.
 
-### PIA-013 — Add One-Hop User-To-Application Delegation
+**Completion evidence:** `internal/applicationapi/admission/interceptor.go`
+performs the single `AdmitTarget` call and injects sealed Principal facts;
+`internal/applicationapi/content/handler.go` consumes those facts and does not
+parse authentication headers. Tests cover real-service Actor/Effective
+propagation, sealed/foreign context rejection, exact catalogue coverage,
+fail-closed authentication, denial before mutation, bounded payloads, and
+structured redacted errors.
+
+### PIA-013 — Add One-Hop User-To-Application Delegation (Complete)
 
 **Depends on:** PIA-010B and PIA-012.
 
@@ -788,6 +797,18 @@ session.
 
 **Do not do:** user-to-user sharing, multi-hop OAuth-style chains, refresh tokens,
 global consent registry, or arbitrary caveat language.
+
+**Completion evidence:** `identity/access` verifies the exact device-signed
+one-hop artifact and all three authority legs on every call, persists permanent
+idempotent revocations, and records Actor, Effective, matched grants, and the
+Delegation ID for admitted and safely attributable denied calls. The Application
+interceptor enforces the single canonical bounded header; the SDK attaches only
+an opaque verified artifact and exposes no Alice signer in runtime config. CLI
+commands display exact consent, create protected artifacts, sign typed
+revocations, and import them through the bounded self-authorizing RPC. Unit,
+integration, race, restart, concurrency, cross-Node/interface, malformed,
+expiry, sibling-action/resource, redaction, generation, and repository compile
+gates pass for this leaf.
 
 ### PIA-014 — Make Content Ownership Principal-Bound
 
@@ -926,9 +947,12 @@ fixtures fail with a precise safe error.
 **Do not do:** rename actual Waku/libp2p APIs, turn WorkloadID/ServiceID into
 PrincipalID, or combine Content Reference with ownership.
 
-### PIA-017 — Remove Pre-Release Compatibility Paths
+### PIA-017 — Finalize The Principal-Only Release Surface
 
 **Depends on:** PIA-010C, PIA-011B, and PIA-014C.
+
+**Status:** pending; remaining pre-release token paths still exist in CLI and
+deployment/install surfaces.
 
 **Outcome:** the repository and clean-install output expose only canonical
 Principal identity, protected Principal sessions, one-use enrollment tickets,

@@ -5,18 +5,15 @@ import (
 	"net/http"
 	"strings"
 	"testing"
-	"time"
+
+	"connectrpc.com/connect"
 )
 
-func TestRequestAddsBearerAuthorization(t *testing.T) {
-	c := New(Config{
-		BaseURL: "http://127.0.0.1:8080",
-		Token:   "test-token",
-		Timeout: time.Second,
-	})
-	req := Request(c.token, &struct{}{})
-	if got := req.Header().Get("Authorization"); got != "Bearer test-token" {
-		t.Fatalf("Authorization = %q", got)
+func TestRequestCannotSupplyBearerCredential(t *testing.T) {
+	var requestBuilder func(*struct{}) *connect.Request[struct{}] = Request[struct{}]
+	req := requestBuilder(&struct{}{})
+	if got := req.Header().Get("Authorization"); got != "" {
+		t.Fatalf("Authorization = %q, want empty before Principal session interception", got)
 	}
 }
 

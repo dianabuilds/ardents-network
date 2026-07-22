@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"errors"
 	"net/http"
+	"time"
 
 	identityaccess "ardents/internal/identity/access"
 	identityprotocol "ardents/internal/identity/protocol"
@@ -214,6 +215,25 @@ func (h *Handler) IssueApplicationEnrollmentTicket(ctx context.Context, request 
 	return connect.NewResponse(&protocol.IssueApplicationEnrollmentTicketResponse{
 		ApplicationEnrollmentTicket: append([]byte(nil), result.Ticket[:]...), ExpiresAt: timestamppb.New(result.ExpiresAt),
 	}), nil
+}
+
+const maxDelegationRevocationImportBytes = 16 << 10
+
+func (h *Handler) ImportDelegationRevocation(ctx context.Context, request *connect.Request[protocol.ImportDelegationRevocationRequest]) (*connect.Response[protocol.ImportDelegationRevocationResponse], error) {
+	raw := request.Msg.Revocation
+	if len(raw) == 0 || len(raw) > maxDelegationRevocationImportBytes {
+		return nil, accessError(identityaccess.ErrInvalidArgument)
+	}
+	// Parse without a wall-clock bound to obtain the verified canonical ID. The
+	// service repeats verification using its own clock before persisting.
+	revocation, err := identityaccess.ParseAndVerifyDelegationRevocation(raw, time.Time{})
+	if err != nil {
+		return nil, accessError(identityaccess.ErrInvalidArgument)
+	}
+	if err := h.service.ImportDelegationRevocation(ctx, raw); err != nil {
+		return nil, accessError(err)
+	}
+	return connect.NewResponse(&protocol.ImportDelegationRevocationResponse{RevocationId: revocation.ID()}), nil
 }
 
 func parseEnrollment(fields *identityprotocol.ChallengeFields, proofRaw, rootRaw, ticketRaw []byte) (identityaccess.Challenge, identityaccess.EnrollmentProof, [ed25519.PublicKeySize]byte, identityaccess.BootstrapTicket, error) {

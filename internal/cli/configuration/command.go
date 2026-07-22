@@ -16,13 +16,12 @@ import (
 
 type Command struct {
 	Client   *client.Client
-	Token    string
 	Timeout  time.Duration
 	Renderer output.Renderer
 }
 
 func FromContext(ctx commandctx.Context) Command {
-	return Command{Client: ctx.Client, Token: ctx.Token, Timeout: ctx.Timeout, Renderer: ctx.Renderer}
+	return Command{Client: ctx.Client, Timeout: ctx.Timeout, Renderer: ctx.Renderer}
 }
 
 func (c Command) Run(ctx context.Context, args []string) int {
@@ -46,7 +45,7 @@ func (c Command) Run(ctx context.Context, args []string) int {
 func (c Command) show(ctx context.Context) int {
 	callCtx, cancel := context.WithTimeout(ctx, c.Timeout)
 	defer cancel()
-	response, err := c.Client.Service().GetEffectiveConfiguration(callCtx, client.Request(c.Token, &protocol.GetEffectiveConfigurationRequest{}))
+	response, err := c.Client.Service().GetEffectiveConfiguration(callCtx, client.Request(&protocol.GetEffectiveConfigurationRequest{}))
 	if err != nil {
 		return c.Renderer.Failure(err)
 	}
@@ -63,7 +62,7 @@ func (c Command) show(ctx context.Context) int {
 func (c Command) reload(ctx context.Context) int {
 	callCtx, cancel := context.WithTimeout(ctx, c.Timeout)
 	defer cancel()
-	response, err := c.Client.Service().ReloadConfiguration(callCtx, client.Request(c.Token, &protocol.ReloadConfigurationRequest{}))
+	response, err := c.Client.Service().ReloadConfiguration(callCtx, client.Request(&protocol.ReloadConfigurationRequest{}))
 	if err != nil {
 		return c.Renderer.Failure(err)
 	}

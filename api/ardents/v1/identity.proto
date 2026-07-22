@@ -18,6 +18,7 @@ service IdentityService {
   rpc RevokeAccessGrant(RevokeAccessGrantRequest) returns (RevokeAccessGrantResponse);
   rpc ListAccessGrants(ListAccessGrantsRequest) returns (ListAccessGrantsResponse);
   rpc IssueApplicationEnrollmentTicket(IssueApplicationEnrollmentTicketRequest) returns (IssueApplicationEnrollmentTicketResponse);
+  rpc ImportDelegationRevocation(ImportDelegationRevocationRequest) returns (ImportDelegationRevocationResponse);
 }
 
 message BeginAuthenticationRequest {
@@ -130,3 +131,7 @@ message IssueApplicationEnrollmentTicketResponse {
   bytes application_enrollment_ticket = 1;
   google.protobuf.Timestamp expires_at = 2;
 }
+
+message ImportDelegationRevocationRequest { bytes revocation = 1; }
+
+message ImportDelegationRevocationResponse { string revocation_id = 1; }

@@ -45,7 +45,7 @@ func (a *Command) Run(ctx context.Context, args []string) int {
 func (a *Command) diagnosticsSnapshot(ctx context.Context) int {
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().GetDiagnostics(callCtx, client.Request(a.ctx.Token, &ardentsv1.GetDiagnosticsRequest{}))
+	resp, err := a.ctx.Client.Service().GetDiagnostics(callCtx, client.Request(&ardentsv1.GetDiagnosticsRequest{}))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}
@@ -68,7 +68,7 @@ func (a *Command) diagnosticsSnapshot(ctx context.Context) int {
 
 func (a *Command) diagnosticsHealth(ctx context.Context) int {
 	return commandctx.RunQuery(ctx, a.ctx, "diagnostics health", func(callCtx context.Context) (*ardentsv1.HealthSummaryResponse, error) {
-		resp, err := a.ctx.Client.Service().GetHealthSummary(callCtx, client.Request(a.ctx.Token, &ardentsv1.GetHealthSummaryRequest{}))
+		resp, err := a.ctx.Client.Service().GetHealthSummary(callCtx, client.Request(&ardentsv1.GetHealthSummaryRequest{}))
 		if err != nil {
 			return nil, err
 		}
@@ -93,7 +93,7 @@ func renderDiagnosticsHealthHuman(w io.Writer, msg *ardentsv1.HealthSummaryRespo
 func (a *Command) diagnosticsPending(ctx context.Context) int {
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().GetPendingOperations(callCtx, client.Request(a.ctx.Token, &ardentsv1.GetPendingOperationsRequest{}))
+	resp, err := a.ctx.Client.Service().GetPendingOperations(callCtx, client.Request(&ardentsv1.GetPendingOperationsRequest{}))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}
@@ -119,7 +119,7 @@ func (a *Command) diagnosticsExplain(ctx context.Context, args []string) int {
 	}
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().ExplainFailure(callCtx, client.Request(a.ctx.Token, &req))
+	resp, err := a.ctx.Client.Service().ExplainFailure(callCtx, client.Request(&req))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}
@@ -199,7 +199,7 @@ func (a *Command) diagnosticsEvents(ctx context.Context, args []string) int {
 	req.Limit = int32(limit)
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().ListRecentEvents(callCtx, client.Request(a.ctx.Token, &req))
+	resp, err := a.ctx.Client.Service().ListRecentEvents(callCtx, client.Request(&req))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}

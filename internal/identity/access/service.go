@@ -58,6 +58,7 @@ type Service struct {
 	revocations                  deviceRevocations
 	enrollments                  enrollmentRepository
 	grants                       grantRepository
+	delegations                  delegationRepository
 	sessionLifetime              time.Duration
 	deviceMu                     sync.Mutex
 	bootstrapEnabled             bool
@@ -88,7 +89,7 @@ func NewService(config Config) (*Service, error) {
 	if _, err := io.ReadFull(config.Entropy, proofKey[:]); err != nil {
 		return nil, fmt.Errorf("initialize ephemeral proof key: %w", err)
 	}
-	return &Service{clock: config.Clock, entropy: config.Entropy, audit: config.Audit, challenges: newChallengeStore(), sessions: newSessionStore(sessionKey), proofs: newProofStore(proofKey), revocations: deviceRevocations{database: config.Database}, enrollments: enrollmentRepository{database: config.Database}, grants: grantRepository{database: config.Database}, sessionLifetime: config.SessionLifetime, bootstrapEnabled: config.EnableBootstrapTickets, grantIssuer: config.GrantIssuer, applicationEnrollmentEnabled: config.EnableApplicationEnrollment}, nil
+	return &Service{clock: config.Clock, entropy: config.Entropy, audit: config.Audit, challenges: newChallengeStore(), sessions: newSessionStore(sessionKey), proofs: newProofStore(proofKey), revocations: deviceRevocations{database: config.Database}, enrollments: enrollmentRepository{database: config.Database}, grants: grantRepository{database: config.Database}, delegations: delegationRepository{database: config.Database}, sessionLifetime: config.SessionLifetime, bootstrapEnabled: config.EnableBootstrapTickets, grantIssuer: config.GrantIssuer, applicationEnrollmentEnabled: config.EnableApplicationEnrollment}, nil
 }
 
 func (s *Service) Begin(_ context.Context, request BeginRequest) (Challenge, error) {

@@ -35,13 +35,13 @@ func (a *Command) executeTUIAction(ctx context.Context, action tuiAction) (strin
 	defer cancel()
 	switch action {
 	case tuiActionNodeStart:
-		resp, err := a.ctx.Client.Service().StartNode(callCtx, client.Request(a.ctx.Token, &ardentsv1.StartNodeRequest{}))
+		resp, err := a.ctx.Client.Service().StartNode(callCtx, client.Request(&ardentsv1.StartNodeRequest{}))
 		if err != nil {
 			return "", err
 		}
 		return fmt.Sprintf("node start -> %s", resp.Msg.GetStatus().GetState()), nil
 	case tuiActionNodeStop:
-		resp, err := a.ctx.Client.Service().StopNode(callCtx, client.Request(a.ctx.Token, &ardentsv1.StopNodeRequest{}))
+		resp, err := a.ctx.Client.Service().StopNode(callCtx, client.Request(&ardentsv1.StopNodeRequest{}))
 		if err != nil {
 			return "", err
 		}

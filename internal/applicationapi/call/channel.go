@@ -2,7 +2,11 @@
 // without importing either wire protocol or the identity/access implementation.
 package call
 
-import "context"
+import (
+	"context"
+
+	identityaccess "ardents/internal/identity/access"
+)
 
 // channelKey is deliberately non-zero-sized: Go may give distinct allocations
 // of zero-sized values the same address, which would collapse channel isolation.
@@ -12,7 +16,7 @@ type contextKey struct{ channel *channelKey }
 type Injector struct{ channel *channelKey }
 type Extractor struct{ channel *channelKey }
 
-type PrincipalFacts struct {
+type principalFacts struct {
 	Actor, Effective            string
 	Node                        string
 	Interface                   int32
@@ -23,7 +27,7 @@ type PrincipalFacts struct {
 }
 
 type Call struct {
-	principal *PrincipalFacts
+	principal *principalFacts
 }
 
 // NewChannel returns a matched injector/extractor pair. Context values from a
@@ -36,8 +40,21 @@ func NewChannel() (Injector, Extractor) {
 func (i Injector) Valid() bool  { return i.channel != nil }
 func (e Extractor) Valid() bool { return e.channel != nil }
 
-func (i Injector) WithPrincipal(ctx context.Context, facts PrincipalFacts) context.Context {
-	if ctx == nil || !i.Valid() || !validPrincipal(facts) {
+// WithAuthorizedCall accepts only the sealed result of identity/access Admit.
+// Callers cannot manufacture Actor or Effective through a public field mapper.
+func (i Injector) WithAuthorizedCall(ctx context.Context, admitted identityaccess.AuthorizedCall) context.Context {
+	if ctx == nil || !i.Valid() || !admitted.IsAdmitted() {
+		return ctx
+	}
+	audience := admitted.Audience()
+	resource := admitted.Resource()
+	facts := principalFacts{
+		Actor: admitted.Actor(), Effective: admitted.Effective(), Node: audience.Node,
+		Interface: int32(audience.Interface), ProtocolMajor: audience.ProtocolMajor,
+		Action: string(admitted.Action()), ResourceNode: resource.Node, ResourceOwner: resource.Owner,
+		ResourceKind: string(resource.Kind), ResourceID: resource.ID,
+	}
+	if !validPrincipal(facts) {
 		return ctx
 	}
 	copy := facts
@@ -55,7 +72,7 @@ func (e Extractor) Extract(ctx context.Context) (Call, bool) {
 	return stored.clone(), true
 }
 
-func validPrincipal(f PrincipalFacts) bool {
+func validPrincipal(f principalFacts) bool {
 	return f.Actor != "" && f.Effective != "" && f.Node != "" && f.Action != "" &&
 		f.ResourceNode == f.Node && f.ResourceKind != "" && f.ResourceOwner == f.Effective
 }

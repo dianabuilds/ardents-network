@@ -1,9 +1,11 @@
 package configuration
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/url"
 	"os"
@@ -20,7 +22,6 @@ const (
 	defaultAddr      = "127.0.0.1:8080"
 	defaultOutput    = "human"
 	defaultTimeout   = 10 * time.Second
-	defaultTokenEnv  = "ARDENTS_LEGACY_API_TOKEN"
 	contextsFileName = "contexts.json"
 )
 
@@ -32,8 +33,6 @@ type Config struct {
 	SSHKnownHosts     string
 	SSHOperatorSocket string
 	SignerFile        string
-	Token             string
-	TokenFile         string
 	ContextName       string
 	ContextFile       string
 	ExpectedNode      string
@@ -44,7 +43,6 @@ type Config struct {
 	Watch             bool
 	Interval          time.Duration
 	Timeout           time.Duration
-	LegacyWarning     bool
 }
 
 type ContextFile struct {
@@ -60,8 +58,6 @@ type StoredContext struct {
 	SSHKnownHosts     string   `json:"ssh_known_hosts,omitempty"`
 	SSHOperatorSocket string   `json:"ssh_operator_socket,omitempty"`
 	SignerFile        string   `json:"signer_file,omitempty"`
-	TokenEnv          string   `json:"legacy_token_env,omitempty"`
-	TokenFile         string   `json:"legacy_token_file,omitempty"`
 	ExpectedNode      string   `json:"expected_node,omitempty"`
 	ExpectedPrincipal string   `json:"expected_principal,omitempty"`
 	ExpectedPublicKey string   `json:"expected_public_key,omitempty"`
@@ -112,8 +108,8 @@ func (c *Config) resolveContextName() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("read contexts file: %w", err)
 	}
-	var store ContextFile
-	if err := json.Unmarshal(data, &store); err != nil {
+	store, err := decodeContextFile(data)
+	if err != nil {
 		return "", fmt.Errorf("parse contexts file: %w", err)
 	}
 	return strings.TrimSpace(store.Default), nil
@@ -131,8 +127,8 @@ func (c *Config) loadContext(name string) (StoredContext, error) {
 	if err != nil {
 		return StoredContext{}, fmt.Errorf("read contexts file: %w", err)
 	}
-	var store ContextFile
-	if err := json.Unmarshal(data, &store); err != nil {
+	store, err := decodeContextFile(data)
+	if err != nil {
 		return StoredContext{}, fmt.Errorf("parse contexts file: %w", err)
 	}
 	ctx, ok := store.Contexts[name]
@@ -140,6 +136,22 @@ func (c *Config) loadContext(name string) (StoredContext, error) {
 		return StoredContext{}, fmt.Errorf("context %q not found", name)
 	}
 	return ctx, nil
+}
+
+func decodeContextFile(data []byte) (ContextFile, error) {
+	var store ContextFile
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&store); err != nil {
+		return ContextFile{}, err
+	}
+	if err := decoder.Decode(new(any)); !errors.Is(err, io.EOF) {
+		if err == nil {
+			return ContextFile{}, errors.New("multiple JSON values")
+		}
+		return ContextFile{}, err
+	}
+	return store, nil
 }
 
 func (c *Config) contextFilePath() (string, error) {
@@ -178,9 +190,6 @@ func (c *Config) applyStored(stored StoredContext) {
 	if c.SignerFile == "" {
 		c.SignerFile = stored.SignerFile
 	}
-	if c.TokenFile == "" {
-		c.TokenFile = stored.TokenFile
-	}
 	if c.ExpectedPrincipal == "" {
 		c.ExpectedPrincipal = stored.ExpectedPrincipal
 	}
@@ -196,11 +205,6 @@ func (c *Config) applyStored(stored StoredContext) {
 	if c.Timeout == defaultTimeout && stored.Timeout != "" {
 		if d, err := time.ParseDuration(stored.Timeout); err == nil {
 			c.Timeout = d
-		}
-	}
-	if c.Token == "" && c.TokenFile == "" {
-		if envName := strings.TrimSpace(stored.TokenEnv); envName != "" {
-			c.Token = strings.TrimSpace(os.Getenv(envName))
 		}
 	}
 }
@@ -233,12 +237,6 @@ func (c *Config) applyEnv() {
 	}
 	if c.SignerFile == "" {
 		c.SignerFile = strings.TrimSpace(os.Getenv("ARDENTS_SIGNER_FILE"))
-	}
-	if c.Token == "" {
-		c.Token = strings.TrimSpace(os.Getenv(defaultTokenEnv))
-	}
-	if c.TokenFile == "" {
-		c.TokenFile = strings.TrimSpace(os.Getenv("ARDENTS_LEGACY_TOKEN_FILE"))
 	}
 	if c.ExpectedPrincipal == "" {
 		c.ExpectedPrincipal = strings.TrimSpace(os.Getenv("ARDENTS_EXPECTED_PRINCIPAL"))
@@ -313,23 +311,13 @@ func (c *Config) validateAndNormalize() error {
 	} else if c.SSHPort != 0 || c.SSHIdentity != "" || c.SSHKnownHosts != "" || c.SSHOperatorSocket != "" {
 		return fmt.Errorf("ssh transport options require --ssh")
 	}
-	if c.Token == "" && c.TokenFile != "" {
-		token, err := readTokenFile(c.TokenFile)
-		if err != nil {
-			return err
-		}
-		c.Token = token
-	}
 	principalTransport := parsed.Scheme == "unix" || c.SSHOperatorSocket != ""
-	if c.Token == "" && c.SignerFile == "" && principalTransport {
+	if c.SignerFile == "" && principalTransport {
 		dir, err := os.UserConfigDir()
 		if err != nil {
 			return fmt.Errorf("resolve signer location: %w", err)
 		}
 		c.SignerFile = filepath.Join(dir, "ardents", "identity", "device-v1.json")
-	}
-	if c.Token != "" && c.SignerFile != "" {
-		return fmt.Errorf("Principal signer and legacy bearer cannot be configured together")
 	}
 	if c.SignerFile != "" {
 		if !principalTransport {
@@ -341,11 +329,8 @@ func (c *Config) validateAndNormalize() error {
 		if _, err := identityprincipal.Parse(c.ExpectedPrincipal); err != nil {
 			return fmt.Errorf("target Node Principal is invalid")
 		}
-	} else if c.Token == "" {
-		return fmt.Errorf("authentication requires a Principal signer on a protected transport or an explicit legacy bearer")
-	}
-	if c.AuthMode() == AuthModeLegacy {
-		c.LegacyWarning = true
+	} else {
+		return fmt.Errorf("authentication requires a Principal signer on a protected Unix socket or SSH stream-local forwarding")
 	}
 	switch c.Output {
 	case "human", "json":
@@ -362,24 +347,6 @@ func (c *Config) validateAndNormalize() error {
 	return nil
 }
 
-type AuthMode string
-
-const (
-	AuthModeNone      AuthMode = ""
-	AuthModePrincipal AuthMode = "principal"
-	AuthModeLegacy    AuthMode = "legacy"
-)
-
-func (c Config) AuthMode() AuthMode {
-	if strings.TrimSpace(c.SignerFile) != "" && strings.TrimSpace(c.Token) == "" {
-		return AuthModePrincipal
-	}
-	if strings.TrimSpace(c.Token) != "" && strings.TrimSpace(c.SignerFile) == "" {
-		return AuthModeLegacy
-	}
-	return AuthModeNone
-}
-
 func (c *Config) HasIdentityBinding() bool {
 	return strings.TrimSpace(c.ExpectedNode) != "" || strings.TrimSpace(c.ExpectedPrincipal) != "" ||
 		strings.TrimSpace(c.ExpectedPublicKey) != ""
@@ -392,18 +359,6 @@ func isLoopbackAddress(addr string) bool {
 	}
 	host := parsed.Hostname()
 	return strings.EqualFold(host, "localhost") || net.ParseIP(host).IsLoopback()
-}
-
-func readTokenFile(path string) (string, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "", fmt.Errorf("read token file: %w", err)
-	}
-	token := strings.TrimSpace(string(data))
-	if token == "" {
-		return "", fmt.Errorf("token file %q is empty", path)
-	}
-	return token, nil
 }
 
 func splitCSV(raw string) []string {

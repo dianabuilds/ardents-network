@@ -3,45 +3,33 @@ package cli
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
 	"encoding/json"
 	"errors"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
-	cliclient "ardents/internal/cli/client"
-	runtimeinfra "ardents/internal/daemon"
-	ardentsv1 "ardents/internal/localapi/protocol"
-	"ardents/internal/localapi/protocol/ardentsv1connect"
-	"ardents/tests/testkit"
-
-	"connectrpc.com/connect"
+	identityprincipal "ardents/internal/identity/principal"
 )
 
 type failingWriter struct{}
 
 func (failingWriter) Write([]byte) (int, error) { return 0, errors.New("output unavailable") }
 
-func TestLegacyCredentialFlagIsExplicitAndWarningContainsNoValue(t *testing.T) {
+func TestLegacyCredentialFlagIsRejectedWithoutValueLeak(t *testing.T) {
 	var stderr bytes.Buffer
-	cfg, rest, _, err := parseRoot([]string{"--legacy-token", "do-not-print", "node", "status"}, &stderr)
-	if err != nil {
-		t.Fatal(err)
+	_, _, _, err := parseRoot([]string{"--legacy-token", "do-not-print", "node", "status"}, &stderr)
+	if err == nil || !strings.Contains(err.Error(), "flag provided but not defined") {
+		t.Fatalf("parseRoot() error = %v, want unknown legacy flag rejection", err)
 	}
-	if !cfg.LegacyWarning || cfg.Token != "do-not-print" || len(rest) != 2 {
-		t.Fatalf("unexpected parse result: warning=%v rest=%v", cfg.LegacyWarning, rest)
-	}
-	if strings.Contains(stderr.String(), "do-not-print") {
-		t.Fatal("legacy credential leaked to warning output")
+	if strings.Contains(stderr.String(), "do-not-print") || strings.Contains(err.Error(), "do-not-print") {
+		t.Fatal("rejected legacy credential value leaked to output")
 	}
 }
 
 func TestIdentityCommandsAreOfflineDeterministicAndRedacted(t *testing.T) {
-	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "")
 	t.Setenv("ARDENTS_ADDR", "://invalid-node-address")
 	dir := filepath.Join(t.TempDir(), "identity")
 	rootPath := filepath.Join(dir, "root.json")
@@ -149,281 +137,63 @@ func TestIdentityFilesystemFailureDoesNotRevealSignerPathOrContent(t *testing.T)
 }
 
 func TestRunReturnsFailureWhenOutputCannotBeWritten(t *testing.T) {
-	srv := newCLIServer(t)
-	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
-	t.Setenv("ARDENTS_ADDR", srv.URL)
-
 	var stderr bytes.Buffer
-	code := Run(context.Background(), []string{"node", "status"}, failingWriter{}, &stderr)
+	code := Run(context.Background(), []string{"version"}, failingWriter{}, &stderr)
 	if code == 0 {
 		t.Fatal("code = 0, want output failure")
 	}
 }
 
-func TestRunNodeStatusJSONSuccess(t *testing.T) {
-	srv := newCLIServer(t)
-	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
-	t.Setenv("ARDENTS_ADDR", srv.URL)
+func TestProtectedCommandRejectsLegacyBearerEnvironment(t *testing.T) {
+	t.Setenv("ARDENTS_ADDR", "http://127.0.0.1:18080")
+	t.Setenv("ARDENTS_SIGNER_FILE", "")
+	t.Setenv("ARDENTS_EXPECTED_PRINCIPAL", "")
+	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "do-not-print")
+	t.Setenv("ARDENTS_LEGACY_TOKEN_FILE", filepath.Join(t.TempDir(), "legacy-token"))
 
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	code := Run(context.Background(), []string{"--output", "json", "node", "status"}, &stdout, &stderr)
-	if code != 0 {
+	var stdout, stderr bytes.Buffer
+	code := Run(context.Background(), []string{"--context-file", filepath.Join(t.TempDir(), "missing.json"), "node", "status"}, &stdout, &stderr)
+	if code != 2 || !strings.Contains(stderr.String(), "authentication requires a Principal signer") {
 		t.Fatalf("code = %d, stderr = %s", code, stderr.String())
 	}
-	if !bytes.Contains(stdout.Bytes(), []byte(`"snapshot"`)) {
-		t.Fatalf("stdout = %s", stdout.String())
+	if strings.Contains(stderr.String(), "do-not-print") {
+		t.Fatal("legacy bearer leaked to error output")
 	}
 }
 
-func TestRunDiagnosticsHealthHumanSuccess(t *testing.T) {
-	srv := newCLIServer(t)
-	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
-	t.Setenv("ARDENTS_ADDR", srv.URL)
-
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	code := Run(context.Background(), []string{"diagnostics", "health"}, &stdout, &stderr)
-	if code != 0 {
-		t.Fatalf("code = %d, stderr = %s", code, stderr.String())
-	}
-	if !bytes.Contains(stdout.Bytes(), []byte("diagnostics health")) {
-		t.Fatalf("stdout = %s", stdout.String())
-	}
-}
-
-func TestRunWorkloadListSuccess(t *testing.T) {
-	srv := newCLIServer(t)
-	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
-	t.Setenv("ARDENTS_ADDR", srv.URL)
-
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	code := Run(context.Background(), []string{"workload", "list"}, &stdout, &stderr)
-	if code != 0 {
-		t.Fatalf("code = %d, stderr = %s", code, stderr.String())
-	}
-	if !bytes.Contains(stdout.Bytes(), []byte("workload list")) {
-		t.Fatalf("stdout = %s", stdout.String())
-	}
-}
-
-func TestRunDataInventoryJSONSuccess(t *testing.T) {
-	srv := newCLIServer(t)
-	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
-	t.Setenv("ARDENTS_ADDR", srv.URL)
-
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	code := Run(context.Background(), []string{"--output", "json", "data", "inventory"}, &stdout, &stderr)
-	if code != 0 {
-		t.Fatalf("code = %d, stderr = %s", code, stderr.String())
-	}
-	if !bytes.Contains(stdout.Bytes(), []byte(`"objects"`)) {
-		t.Fatalf("stdout = %s", stdout.String())
-	}
-}
-
-func TestRunNodeStatusHumanIncludesOperatorTruth(t *testing.T) {
-	srv := newCLIServer(t)
-	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
-	t.Setenv("ARDENTS_ADDR", srv.URL)
-
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	code := Run(context.Background(), []string{"node", "status"}, &stdout, &stderr)
-	if code != 0 {
-		t.Fatalf("code = %d, stderr = %s", code, stderr.String())
-	}
-	if !bytes.Contains(stdout.Bytes(), []byte("node status")) {
-		t.Fatalf("stdout = %s", stdout.String())
-	}
-	if !bytes.Contains(stdout.Bytes(), []byte("state:")) {
-		t.Fatalf("stdout = %s", stdout.String())
-	}
-	if !bytes.Contains(stdout.Bytes(), []byte("ready:")) {
-		t.Fatalf("stdout = %s", stdout.String())
-	}
-}
-
-func TestRunDiagnosticsHealthWatchPrintsInitialSnapshot(t *testing.T) {
-	srv := newCLIServer(t)
-	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
-	t.Setenv("ARDENTS_ADDR", srv.URL)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
-	defer cancel()
-
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	code := Run(ctx, []string{"--watch", "--interval", "10ms", "diagnostics", "health"}, &stdout, &stderr)
-	if code != 0 {
-		t.Fatalf("code = %d, stderr = %s", code, stderr.String())
-	}
-	if !bytes.Contains(stdout.Bytes(), []byte("diagnostics health")) {
-		t.Fatalf("stdout = %s", stdout.String())
-	}
-	if !bytes.Contains(stdout.Bytes(), []byte("state:")) {
-		t.Fatalf("stdout = %s", stdout.String())
-	}
-}
-
-func TestRunNetworkStatusWatchJSONPrintsSnapshotDocument(t *testing.T) {
-	srv := newCLIServer(t)
-	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
-	t.Setenv("ARDENTS_ADDR", srv.URL)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
-	defer cancel()
-
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	code := Run(ctx, []string{"--output", "json", "--watch", "--interval", "10ms", "network", "status"}, &stdout, &stderr)
-	if code != 0 {
-		t.Fatalf("code = %d, stderr = %s", code, stderr.String())
-	}
-	if !bytes.Contains(stdout.Bytes(), []byte(`"network"`)) {
-		t.Fatalf("stdout = %s", stdout.String())
-	}
-}
-
-func TestRunNodeStatusIdentityPreflightMismatchFails(t *testing.T) {
-	srv := newCLIServer(t)
-	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
-	t.Setenv("ARDENTS_ADDR", srv.URL)
-
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	code := Run(context.Background(), []string{"--public-key", "wrong-key", "node", "status"}, &stdout, &stderr)
-	if code == 0 {
-		t.Fatal("code = 0, want preflight failure")
-	}
-	if !bytes.Contains(stderr.Bytes(), []byte("public key mismatch")) {
-		t.Fatalf("stderr = %s", stderr.String())
-	}
-}
-
-func TestRunNodeStatusIdentityPreflightPrincipalSuccess(t *testing.T) {
-	srv := newCLIServer(t)
-	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
-	t.Setenv("ARDENTS_ADDR", srv.URL)
-
-	identity := fetchRuntimeIdentity(t, srv.URL)
-
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	code := Run(context.Background(), []string{"--principal", identity.GetPrincipal(), "node", "status"}, &stdout, &stderr)
-	if code != 0 {
+func TestProtectedCommandRequiresTargetNodePrincipal(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := Run(context.Background(), []string{
+		"--context-file", filepath.Join(t.TempDir(), "missing.json"),
+		"--addr", "unix:///run/ardents/operator.sock",
+		"--signer-file", filepath.Join(t.TempDir(), "device.json"),
+		"node", "status",
+	}, &stdout, &stderr)
+	if code != 2 || !strings.Contains(stderr.String(), "target Node Principal") {
 		t.Fatalf("code = %d, stderr = %s", code, stderr.String())
 	}
 }
 
-func TestRunNodeStatusIdentityPreflightNodeMismatchFails(t *testing.T) {
-	srv := newCLIServer(t)
-	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
-	t.Setenv("ARDENTS_ADDR", srv.URL)
-
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	code := Run(context.Background(), []string{"--node-name", "wrong-node", "node", "status"}, &stdout, &stderr)
-	if code == 0 {
-		t.Fatal("code = 0, want identity preflight failure")
-	}
-	if !bytes.Contains(stderr.Bytes(), []byte("node mismatch")) {
-		t.Fatalf("stderr = %s", stderr.String())
-	}
-}
-
-func TestRunShellExecutesContextAndCommand(t *testing.T) {
-	srv := newCLIServer(t)
-	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
-	t.Setenv("ARDENTS_ADDR", srv.URL)
-
-	identity := fetchRuntimeIdentity(t, srv.URL)
-	input := strings.NewReader("context\nnode status\nexit\n")
-
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	code := runWithIO(context.Background(), []string{"--principal", identity.GetPrincipal(), "shell"}, input, &stdout, &stderr)
-	if code != 0 {
+func TestProtectedCommandRejectsPrincipalSignerOverPlaintext(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := Run(context.Background(), []string{
+		"--context-file", filepath.Join(t.TempDir(), "missing.json"),
+		"--addr", "http://127.0.0.1:18080",
+		"--principal", cliTestPrincipal(t),
+		"--signer-file", filepath.Join(t.TempDir(), "device.json"),
+		"node", "status",
+	}, &stdout, &stderr)
+	if code != 2 || !strings.Contains(stderr.String(), "protected Unix socket") {
 		t.Fatalf("code = %d, stderr = %s", code, stderr.String())
 	}
-	text := stdout.String()
-	if !strings.Contains(text, "interactive shell") {
-		t.Fatalf("stdout = %s", text)
-	}
-	if !strings.Contains(text, "current context") {
-		t.Fatalf("stdout = %s", text)
-	}
-	if !strings.Contains(text, "node status") {
-		t.Fatalf("stdout = %s", text)
-	}
 }
 
-func fetchRuntimeIdentity(t *testing.T, baseURL string) *ardentsv1.IdentitySnapshot {
+func cliTestPrincipal(t *testing.T) string {
 	t.Helper()
-	httpClient := &http.Client{Timeout: time.Second}
-	service := cliclient.NewService(httpClient, baseURL)
-	resp, err := service.GetNodeRuntime(context.Background(), connect.NewRequest(&ardentsv1.GetNodeRuntimeRequest{}))
+	key := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x41}, ed25519.SeedSize))
+	principal, err := identityprincipal.FromEd25519PublicKey(key.Public().(ed25519.PublicKey))
 	if err != nil {
-		t.Fatalf("GetNodeRuntime() error = %v", err)
+		t.Fatal(err)
 	}
-	return resp.Msg.GetRuntime().GetIdentity()
-}
-
-func newCLIServer(t *testing.T) *httptest.Server {
-	t.Helper()
-
-	n := testkit.NewRuntime(t, runtimeinfra.Config{
-		Name: "cli-test",
-		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
-	}).Runtime
-	principal := testkit.NewArdentsClient(t, n)
-	proxy := cliPrincipalProxy{service: principal}
-
-	mux := http.NewServeMux()
-	mux.Handle(ardentsv1connect.NewNodeServiceHandler(&proxy))
-	mux.Handle(ardentsv1connect.NewDiagnosticsServiceHandler(&proxy))
-	mux.Handle(ardentsv1connect.NewNetworkServiceHandler(&proxy))
-	mux.Handle(ardentsv1connect.NewWorkloadServiceHandler(&proxy))
-	mux.Handle(ardentsv1connect.NewContentServiceHandler(&proxy))
-	srv := httptest.NewServer(mux)
-	t.Cleanup(srv.Close)
-	return srv
-}
-
-// cliPrincipalProxy keeps these root-command tests focused on CLI behavior.
-// Product calls are authorized by testkit's Principal-only client; the outer
-// HTTP server only adapts the root CLI's independently constructed transport.
-type cliPrincipalProxy struct {
-	ardentsv1connect.UnimplementedNodeServiceHandler
-	ardentsv1connect.UnimplementedDiagnosticsServiceHandler
-	ardentsv1connect.UnimplementedNetworkServiceHandler
-	ardentsv1connect.UnimplementedWorkloadServiceHandler
-	ardentsv1connect.UnimplementedContentServiceHandler
-	service cliclient.Service
-}
-
-func (p *cliPrincipalProxy) GetNodeStatus(ctx context.Context, req *connect.Request[ardentsv1.GetNodeStatusRequest]) (*connect.Response[ardentsv1.NodeStatusResponse], error) {
-	return p.service.GetNodeStatus(ctx, connect.NewRequest(req.Msg))
-}
-
-func (p *cliPrincipalProxy) GetNodeRuntime(ctx context.Context, req *connect.Request[ardentsv1.GetNodeRuntimeRequest]) (*connect.Response[ardentsv1.NodeRuntimeResponse], error) {
-	return p.service.GetNodeRuntime(ctx, connect.NewRequest(req.Msg))
-}
-
-func (p *cliPrincipalProxy) GetHealthSummary(ctx context.Context, req *connect.Request[ardentsv1.GetHealthSummaryRequest]) (*connect.Response[ardentsv1.HealthSummaryResponse], error) {
-	return p.service.GetHealthSummary(ctx, connect.NewRequest(req.Msg))
-}
-
-func (p *cliPrincipalProxy) GetNetworkStatus(ctx context.Context, req *connect.Request[ardentsv1.GetNetworkStatusRequest]) (*connect.Response[ardentsv1.NetworkStatusResponse], error) {
-	return p.service.GetNetworkStatus(ctx, connect.NewRequest(req.Msg))
-}
-
-func (p *cliPrincipalProxy) ListWorkloads(ctx context.Context, req *connect.Request[ardentsv1.ListWorkloadsRequest]) (*connect.Response[ardentsv1.ListWorkloadsResponse], error) {
-	return p.service.ListWorkloads(ctx, connect.NewRequest(req.Msg))
-}
-
-func (p *cliPrincipalProxy) GetDataInventory(ctx context.Context, req *connect.Request[ardentsv1.GetDataInventoryRequest]) (*connect.Response[ardentsv1.DataInventorySnapshot], error) {
-	return p.service.GetDataInventory(ctx, connect.NewRequest(req.Msg))
+	return principal.String()
 }

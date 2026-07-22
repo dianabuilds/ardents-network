@@ -13,7 +13,7 @@ import (
 func (a *Command) workloadServices(ctx context.Context) int {
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().ListHostedServices(callCtx, client.Request(a.ctx.Token, &ardentsv1.ListHostedServicesRequest{}))
+	resp, err := a.ctx.Client.Service().ListHostedServices(callCtx, client.Request(&ardentsv1.ListHostedServicesRequest{}))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}
@@ -47,7 +47,7 @@ func (a *Command) workloadService(ctx context.Context, args []string) int {
 	}
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().GetHostedService(callCtx, client.Request(a.ctx.Token, &ardentsv1.GetHostedServiceRequest{Id: id}))
+	resp, err := a.ctx.Client.Service().GetHostedService(callCtx, client.Request(&ardentsv1.GetHostedServiceRequest{Id: id}))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}
@@ -76,7 +76,7 @@ func (a *Command) workloadPublication(ctx context.Context, args []string) int {
 	}
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().GetServicePublicationStatus(callCtx, client.Request(a.ctx.Token, &ardentsv1.GetServicePublicationStatusRequest{Id: id}))
+	resp, err := a.ctx.Client.Service().GetServicePublicationStatus(callCtx, client.Request(&ardentsv1.GetServicePublicationStatusRequest{Id: id}))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}

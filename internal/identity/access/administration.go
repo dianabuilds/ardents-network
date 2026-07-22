@@ -320,7 +320,7 @@ func recordAdminCommand(tx storage.WriteTransaction, key []byte, digest [sha256.
 }
 
 func mapAdminError(err error) error {
-	if err == nil || err == ErrConflict || err == ErrPermissionDenied || err == ErrUnauthenticated || err == ErrInvalidArgument || err == ErrDelegationUnsupported {
+	if err == nil || err == ErrConflict || err == ErrPermissionDenied || err == ErrUnauthenticated || err == ErrInvalidArgument {
 		return err
 	}
 	return ErrUnavailable

@@ -16,6 +16,7 @@ import (
 	"ardents/internal/storage"
 
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -38,11 +39,15 @@ func (f *serviceFixture) sessionSecret() SessionSecret {
 }
 
 func (f *serviceFixture) grant(actions []string, scope *identityprotocol.ResourceScope) *Artifact {
+	return f.grantFor(f.principal, actions, scope)
+}
+
+func (f *serviceFixture) grantFor(subject string, actions []string, scope *identityprotocol.ResourceScope) *Artifact {
 	f.t.Helper()
 	grant, err := SignAccessGrant(&identityprotocol.AccessGrantPayload{
 		Version:   1,
 		Issuer:    f.nodeID,
-		Subject:   f.principal,
+		Subject:   subject,
 		Audience:  protocolAudience(f.binding.Audience),
 		Actions:   actions,
 		Scope:     scope,
@@ -186,7 +191,7 @@ func TestAdmitReadsAllDurableAuthorityInOneSnapshot(t *testing.T) {
 	require.Equal(t, int32(1), counted.views.Load())
 }
 
-func TestAdmitDeniesSiblingActionCrossNodeAndDelegation(t *testing.T) {
+func TestAdmitDeniesSiblingActionCrossNodeAndMalformedDelegation(t *testing.T) {
 	f := newServiceFixture(t)
 	secret := f.sessionSecret()
 	f.grant([]string{"node.status"}, nodeScope())
@@ -205,7 +210,7 @@ func TestAdmitDeniesSiblingActionCrossNodeAndDelegation(t *testing.T) {
 	_, err = f.service.Admit(f.ctx, Attempt{SessionSecret: secret, Binding: f.binding, Action: "node.status", Resource: otherResource})
 	require.ErrorIs(t, err, ErrInvalidArgument)
 	_, err = f.service.Admit(f.ctx, Attempt{SessionSecret: secret, Binding: f.binding, Action: "node.status", Resource: resource, Delegation: []byte{1}})
-	require.ErrorIs(t, err, ErrDelegationUnsupported)
+	require.ErrorIs(t, err, ErrUnauthenticated)
 }
 
 func TestAdmitKeepsAlphaBetaAndInterfaceAuthorityIndependent(t *testing.T) {
@@ -341,6 +346,177 @@ func TestConcurrentAdmitAfterRevocationNeverSucceeds(t *testing.T) {
 			defer wg.Done()
 			_, admitErr := f.service.Admit(context.Background(), attempt)
 			require.True(t, errors.Is(admitErr, ErrPermissionDenied))
+		}()
+	}
+	wg.Wait()
+}
+
+type delegatedAdmissionFixture struct {
+	serviceFixture *serviceFixture
+	secret         SessionSecret
+	alice          string
+	aliceDeviceID  string
+	aliceDevice    ed25519.PrivateKey
+	credential     *identityprotocol.KeyCredential
+	delegation     *Artifact
+	attempt        TargetAttempt
+}
+
+func newDelegatedAdmissionFixture(t *testing.T, actorGrant, effectiveGrant bool, delegationActions []string) *delegatedAdmissionFixture {
+	t.Helper()
+	f := newServiceFixture(t)
+	f.binding.Audience.Interface = identityprotocol.Interface_INTERFACE_APPLICATION
+	secret := f.sessionSecret()
+	aliceRoot := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x71}, 32))
+	aliceDevice := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x72}, 32))
+	alicePrincipal, err := identityprincipal.FromEd25519PublicKey(aliceRoot.Public().(ed25519.PublicKey))
+	require.NoError(t, err)
+	aliceDeviceID, err := identityprincipal.DeviceFromEd25519PublicKey(aliceDevice.Public().(ed25519.PublicKey))
+	require.NoError(t, err)
+	credentialArtifact, err := SignKeyCredential(&identityprotocol.KeyCredentialPayload{
+		Version: 1, Subject: alicePrincipal.String(), RootPublicKey: aliceRoot.Public().(ed25519.PublicKey),
+		DeviceId: aliceDeviceID.String(), DevicePublicKey: aliceDevice.Public().(ed25519.PublicKey),
+		Purposes:  []identityprotocol.CredentialPurpose{identityprotocol.CredentialPurpose_CREDENTIAL_PURPOSE_AUTHENTICATE},
+		NotBefore: timestamppb.New(f.clock.Now().Add(-time.Hour)), NotAfter: timestamppb.New(f.clock.Now().Add(time.Hour)),
+	}, aliceRoot)
+	require.NoError(t, err)
+	credentialRaw, err := credentialArtifact.MarshalBinary()
+	require.NoError(t, err)
+	credential := new(identityprotocol.KeyCredential)
+	require.NoError(t, proto.Unmarshal(credentialRaw, credential))
+	allActions := []string{"application.content.get", "application.content.put"}
+	if actorGrant {
+		f.grantFor(f.principal, allActions, nodeScope())
+	}
+	if effectiveGrant {
+		f.grantFor(alicePrincipal.String(), allActions, ownedScope(alicePrincipal.String()))
+	}
+	delegation, err := SignDelegation(&identityprotocol.DelegationPayload{
+		Version: 1, Delegator: alicePrincipal.String(), Delegatee: f.principal,
+		Audience: protocolAudience(f.binding.Audience), Actions: delegationActions, Scope: ownedScope(alicePrincipal.String()),
+		NotBefore: timestamppb.New(f.clock.Now().Add(-time.Minute)), NotAfter: timestamppb.New(f.clock.Now().Add(time.Hour)), Credential: credential,
+	}, aliceDevice, f.clock.Now())
+	require.NoError(t, err)
+	delegationRaw, err := delegation.MarshalBinary()
+	require.NoError(t, err)
+	attempt := TargetAttempt{
+		SessionSecret: secret, Binding: f.binding, Action: "application.content.get", Delegation: delegationRaw,
+		Target: ResourceTarget{Kind: "content-blob", ID: "blob-1"},
+		Finalize: func(target ResourceTarget, audience Audience, _, effective string) (ResourceRef, error) {
+			return NewResourceRef(audience.Node, effective, string(target.Kind), target.ID)
+		},
+	}
+	return &delegatedAdmissionFixture{serviceFixture: f, secret: secret, alice: alicePrincipal.String(), aliceDeviceID: aliceDeviceID.String(), aliceDevice: aliceDevice, credential: credential, delegation: delegation, attempt: attempt}
+}
+
+func TestAdmitOneHopDelegationRequiresAllAuthorityLegsAndAttenuatesAction(t *testing.T) {
+	f := newDelegatedAdmissionFixture(t, true, true, []string{"application.content.get"})
+	call, err := f.serviceFixture.service.AdmitTarget(f.serviceFixture.ctx, f.attempt)
+	require.NoError(t, err)
+	require.Equal(t, f.serviceFixture.principal, call.Actor())
+	require.Equal(t, f.alice, call.Effective())
+	require.Equal(t, f.alice, call.Resource().Owner)
+	require.Len(t, call.GrantIDs(), 2)
+	require.Equal(t, f.delegation.ID(), call.DelegationID())
+
+	missingEffective := newDelegatedAdmissionFixture(t, true, false, []string{"application.content.get"})
+	_, err = missingEffective.serviceFixture.service.AdmitTarget(missingEffective.serviceFixture.ctx, missingEffective.attempt)
+	require.ErrorIs(t, err, ErrPermissionDenied)
+	missingActor := newDelegatedAdmissionFixture(t, false, true, []string{"application.content.get"})
+	_, err = missingActor.serviceFixture.service.AdmitTarget(missingActor.serviceFixture.ctx, missingActor.attempt)
+	require.ErrorIs(t, err, ErrPermissionDenied)
+
+	f.attempt.Action = "application.content.put"
+	_, err = f.serviceFixture.service.AdmitTarget(f.serviceFixture.ctx, f.attempt)
+	require.ErrorIs(t, err, ErrPermissionDenied)
+}
+
+func TestDelegatedDenialAuditRetainsSafeActorEffectiveAndAuthorityProvenance(t *testing.T) {
+	f := newDelegatedAdmissionFixture(t, true, true, []string{"application.content.get"})
+	var events []AuditEvent
+	f.serviceFixture.service.audit = AuditSinkFunc(func(event AuditEvent) { events = append(events, event) })
+	f.attempt.Action = "application.content.put"
+
+	_, err := f.serviceFixture.service.AdmitTarget(f.serviceFixture.ctx, f.attempt)
+	require.ErrorIs(t, err, ErrPermissionDenied)
+	require.NotEmpty(t, events)
+	denied := events[len(events)-1]
+	require.Equal(t, "denied", denied.Outcome)
+	require.Equal(t, f.serviceFixture.principal, denied.Actor)
+	require.Equal(t, f.alice, denied.Effective)
+	require.Equal(t, Action("application.content.put"), denied.Action)
+	require.Equal(t, f.delegation.ID(), denied.DelegationID)
+	require.Len(t, denied.GrantIDs, 1, "the matched Actor grant remains safe audit provenance")
+}
+
+func TestAdmitDelegationChecksAudienceBoundsAndDelegatorDeviceRevocation(t *testing.T) {
+	f := newDelegatedAdmissionFixture(t, true, true, []string{"application.content.get"})
+	oversized := f.attempt
+	oversized.Delegation = make([]byte, maxArtifactBytes+1)
+	resolved := false
+	oversized.ResolveTarget = func() (ResourceTarget, error) {
+		resolved = true
+		return oversized.Target, nil
+	}
+	_, err := f.serviceFixture.service.AdmitTarget(f.serviceFixture.ctx, oversized)
+	require.ErrorIs(t, err, ErrUnauthenticated)
+	require.False(t, resolved)
+
+	wrongBinding := f.attempt
+	wrongBinding.Binding.Audience.ProtocolMajor++
+	_, err = f.serviceFixture.service.AdmitTarget(f.serviceFixture.ctx, wrongBinding)
+	require.ErrorIs(t, err, ErrUnauthenticated)
+
+	revocation, err := SignDeviceRevocation(&identityprotocol.DeviceRevocationPayload{
+		Version: 1, TargetId: f.aliceDeviceID, TargetDeviceId: f.aliceDeviceID, Subject: f.alice,
+		Issuer: f.serviceFixture.nodeID, Audience: protocolAudience(f.serviceFixture.binding.Audience), RevokedAt: timestamppb.New(f.serviceFixture.clock.Now()),
+	}, f.serviceFixture.node, f.serviceFixture.clock.Now())
+	require.NoError(t, err)
+	require.NoError(t, f.serviceFixture.service.recordDeviceRevocation(f.serviceFixture.ctx, revocation))
+	_, err = f.serviceFixture.service.AdmitTarget(f.serviceFixture.ctx, f.attempt)
+	require.ErrorIs(t, err, ErrUnauthenticated)
+}
+
+func TestDelegationRevocationIsIdempotentPermanentAcrossRestartAndConcurrentAdmit(t *testing.T) {
+	f := newDelegatedAdmissionFixture(t, true, true, []string{"application.content.get"})
+	payload := f.delegation.DelegationPayload()
+	revocation, err := SignDelegationRevocation(&identityprotocol.DelegationRevocationPayload{
+		Version: 1, TargetId: f.delegation.ID(), Issuer: f.alice, Audience: payload.Audience,
+		RevokedAt: timestamppb.New(f.serviceFixture.clock.Now()), Delegator: f.alice, Delegatee: f.serviceFixture.principal, Credential: f.credential,
+	}, f.aliceDevice, f.serviceFixture.clock.Now())
+	require.NoError(t, err)
+	raw, err := revocation.MarshalBinary()
+	require.NoError(t, err)
+	require.NoError(t, f.serviceFixture.service.ImportDelegationRevocation(f.serviceFixture.ctx, raw))
+	require.NoError(t, f.serviceFixture.service.ImportDelegationRevocation(f.serviceFixture.ctx, raw))
+	_, err = f.serviceFixture.service.AdmitTarget(f.serviceFixture.ctx, f.attempt)
+	require.ErrorIs(t, err, ErrUnauthenticated)
+
+	conflict, err := SignDelegationRevocation(&identityprotocol.DelegationRevocationPayload{
+		Version: 1, TargetId: f.delegation.ID(), Issuer: f.alice, Audience: payload.Audience,
+		RevokedAt: timestamppb.New(f.serviceFixture.clock.Now().Add(-time.Second)), Delegator: f.alice, Delegatee: f.serviceFixture.principal, Credential: f.credential,
+	}, f.aliceDevice, f.serviceFixture.clock.Now())
+	require.NoError(t, err)
+	conflictRaw, err := conflict.MarshalBinary()
+	require.NoError(t, err)
+	require.ErrorIs(t, f.serviceFixture.service.ImportDelegationRevocation(f.serviceFixture.ctx, conflictRaw), ErrConflict)
+
+	require.NoError(t, f.serviceFixture.database.Close(f.serviceFixture.ctx))
+	reopened, err := storage.OpenIdentityAccess(f.serviceFixture.ctx, f.serviceFixture.dir, StorageSchema())
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, reopened.Close(context.Background())) })
+	f.serviceFixture.database = reopened
+	f.serviceFixture.service, err = NewService(Config{Database: reopened, Clock: f.serviceFixture.clock, Entropy: &sequentialEntropy{next: 91}})
+	require.NoError(t, err)
+	f.attempt.SessionSecret = f.serviceFixture.sessionSecret()
+
+	var wg sync.WaitGroup
+	for range 32 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, admitErr := f.serviceFixture.service.AdmitTarget(context.Background(), f.attempt)
+			require.ErrorIs(t, admitErr, ErrUnauthenticated)
 		}()
 	}
 	wg.Wait()

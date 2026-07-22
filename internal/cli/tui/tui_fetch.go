@@ -32,11 +32,11 @@ func (a *Command) fetchTUISnapshot(ctx context.Context, section tuiSection) (tui
 func (a *Command) fetchTUINode(ctx context.Context) (tuiSnapshot, error) {
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	status, err := a.ctx.Client.Service().GetNodeStatus(callCtx, client.Request(a.ctx.Token, &ardentsv1.GetNodeStatusRequest{}))
+	status, err := a.ctx.Client.Service().GetNodeStatus(callCtx, client.Request(&ardentsv1.GetNodeStatusRequest{}))
 	if err != nil {
 		return tuiSnapshot{}, err
 	}
-	runtime, err := a.ctx.Client.Service().GetNodeRuntime(callCtx, client.Request(a.ctx.Token, &ardentsv1.GetNodeRuntimeRequest{}))
+	runtime, err := a.ctx.Client.Service().GetNodeRuntime(callCtx, client.Request(&ardentsv1.GetNodeRuntimeRequest{}))
 	if err != nil {
 		return tuiSnapshot{}, err
 	}
@@ -61,15 +61,15 @@ func (a *Command) fetchTUINode(ctx context.Context) (tuiSnapshot, error) {
 func (a *Command) fetchTUINetwork(ctx context.Context) (tuiSnapshot, error) {
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	network, err := a.ctx.Client.Service().GetNetworkStatus(callCtx, client.Request(a.ctx.Token, &ardentsv1.GetNetworkStatusRequest{}))
+	network, err := a.ctx.Client.Service().GetNetworkStatus(callCtx, client.Request(&ardentsv1.GetNetworkStatusRequest{}))
 	if err != nil {
 		return tuiSnapshot{}, err
 	}
-	discovery, err := a.ctx.Client.Service().GetDiscoveryStatus(callCtx, client.Request(a.ctx.Token, &ardentsv1.GetDiscoveryStatusRequest{}))
+	discovery, err := a.ctx.Client.Service().GetDiscoveryStatus(callCtx, client.Request(&ardentsv1.GetDiscoveryStatusRequest{}))
 	if err != nil {
 		return tuiSnapshot{}, err
 	}
-	presence, err := a.ctx.Client.Service().GetLocalPresence(callCtx, client.Request(a.ctx.Token, &ardentsv1.GetLocalPresenceRequest{}))
+	presence, err := a.ctx.Client.Service().GetLocalPresence(callCtx, client.Request(&ardentsv1.GetLocalPresenceRequest{}))
 	if err != nil {
 		return tuiSnapshot{}, err
 	}
@@ -93,11 +93,11 @@ func (a *Command) fetchTUINetwork(ctx context.Context) (tuiSnapshot, error) {
 func (a *Command) fetchTUIWorkloads(ctx context.Context) (tuiSnapshot, error) {
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	workloads, err := a.ctx.Client.Service().ListWorkloads(callCtx, client.Request(a.ctx.Token, &ardentsv1.ListWorkloadsRequest{}))
+	workloads, err := a.ctx.Client.Service().ListWorkloads(callCtx, client.Request(&ardentsv1.ListWorkloadsRequest{}))
 	if err != nil {
 		return tuiSnapshot{}, err
 	}
-	services, err := a.ctx.Client.Service().ListHostedServices(callCtx, client.Request(a.ctx.Token, &ardentsv1.ListHostedServicesRequest{}))
+	services, err := a.ctx.Client.Service().ListHostedServices(callCtx, client.Request(&ardentsv1.ListHostedServicesRequest{}))
 	if err != nil {
 		return tuiSnapshot{}, err
 	}
@@ -129,11 +129,11 @@ func (a *Command) fetchTUIWorkloads(ctx context.Context) (tuiSnapshot, error) {
 func (a *Command) fetchTUIData(ctx context.Context) (tuiSnapshot, error) {
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	inventory, err := a.ctx.Client.Service().GetDataInventory(callCtx, client.Request(a.ctx.Token, &ardentsv1.GetDataInventoryRequest{}))
+	inventory, err := a.ctx.Client.Service().GetDataInventory(callCtx, client.Request(&ardentsv1.GetDataInventoryRequest{}))
 	if err != nil {
 		return tuiSnapshot{}, err
 	}
-	transfers, err := a.ctx.Client.Service().ListTransfers(callCtx, client.Request(a.ctx.Token, &ardentsv1.ListTransfersRequest{}))
+	transfers, err := a.ctx.Client.Service().ListTransfers(callCtx, client.Request(&ardentsv1.ListTransfersRequest{}))
 	if err != nil {
 		return tuiSnapshot{}, err
 	}
@@ -163,11 +163,11 @@ func (a *Command) fetchTUIData(ctx context.Context) (tuiSnapshot, error) {
 func (a *Command) fetchTUIDiagnostics(ctx context.Context) (tuiSnapshot, error) {
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	health, err := a.ctx.Client.Service().GetHealthSummary(callCtx, client.Request(a.ctx.Token, &ardentsv1.GetHealthSummaryRequest{}))
+	health, err := a.ctx.Client.Service().GetHealthSummary(callCtx, client.Request(&ardentsv1.GetHealthSummaryRequest{}))
 	if err != nil {
 		return tuiSnapshot{}, err
 	}
-	pending, err := a.ctx.Client.Service().GetPendingOperations(callCtx, client.Request(a.ctx.Token, &ardentsv1.GetPendingOperationsRequest{}))
+	pending, err := a.ctx.Client.Service().GetPendingOperations(callCtx, client.Request(&ardentsv1.GetPendingOperationsRequest{}))
 	if err != nil {
 		return tuiSnapshot{}, err
 	}

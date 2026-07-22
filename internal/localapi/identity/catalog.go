@@ -25,4 +25,5 @@ var procedureCatalog = map[string]procedureRule{
 	ardentsv1connect.IdentityServiceRevokeAccessGrantProcedure:                {class: accessProtected, action: "identity.grant.revoke"},
 	ardentsv1connect.IdentityServiceListAccessGrantsProcedure:                 {class: accessProtected, action: "identity.grant.list"},
 	ardentsv1connect.IdentityServiceIssueApplicationEnrollmentTicketProcedure: {class: accessProtected, action: "identity.principal.enroll"},
+	ardentsv1connect.IdentityServiceImportDelegationRevocationProcedure:       {class: accessPublicBounded},
 }

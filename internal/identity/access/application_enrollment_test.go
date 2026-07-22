@@ -151,7 +151,7 @@ func TestApplicationEnrollmentAtomicallyPersistsCredentialAndGrant(t *testing.T)
 	}))
 	require.Equal(t, []string{"application.content.get", "application.content.put"}, grant.AccessGrantPayload().Actions)
 	require.Equal(t, identityprotocol.Interface_INTERFACE_APPLICATION, grant.AccessGrantPayload().Audience.Interface)
-	require.Equal(t, f.appPrincipal, grant.AccessGrantPayload().Scope.GetPrincipalOwned().Owner)
+	require.NotNil(t, grant.AccessGrantPayload().Scope.GetNode())
 
 }
 

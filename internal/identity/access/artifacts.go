@@ -108,7 +108,26 @@ func (a *Artifact) AccessGrantRevocationPayload() *identityprotocol.AccessGrantR
 	}
 	return proto.Clone(p).(*identityprotocol.AccessGrantRevocationPayload)
 }
-
+func (a *Artifact) DelegationPayload() *identityprotocol.DelegationPayload {
+	if a == nil {
+		return nil
+	}
+	p, _ := a.payload.(*identityprotocol.DelegationPayload)
+	if p == nil {
+		return nil
+	}
+	return proto.Clone(p).(*identityprotocol.DelegationPayload)
+}
+func (a *Artifact) DelegationRevocationPayload() *identityprotocol.DelegationRevocationPayload {
+	if a == nil {
+		return nil
+	}
+	p, _ := a.payload.(*identityprotocol.DelegationRevocationPayload)
+	if p == nil {
+		return nil
+	}
+	return proto.Clone(p).(*identityprotocol.DelegationRevocationPayload)
+}
 func SignKeyCredential(input *identityprotocol.KeyCredentialPayload, key ed25519.PrivateKey) (*Artifact, error) {
 	p, ok := cloneCredential(input)
 	if !ok || hasUnknown(input) || len(key) != ed25519.PrivateKeySize || !bytes.Equal(key.Public().(ed25519.PublicKey), p.GetRootPublicKey()) {

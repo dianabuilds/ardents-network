@@ -51,7 +51,7 @@ func renderNodeUsage(writer io.Writer) {
 func (a *Command) nodeStart(ctx context.Context) int {
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().StartNode(callCtx, client.Request(a.ctx.Token, &ardentsv1.StartNodeRequest{}))
+	resp, err := a.ctx.Client.Service().StartNode(callCtx, client.Request(&ardentsv1.StartNodeRequest{}))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}
@@ -67,7 +67,7 @@ func (a *Command) nodeStart(ctx context.Context) int {
 func (a *Command) nodeStop(ctx context.Context) int {
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().StopNode(callCtx, client.Request(a.ctx.Token, &ardentsv1.StopNodeRequest{}))
+	resp, err := a.ctx.Client.Service().StopNode(callCtx, client.Request(&ardentsv1.StopNodeRequest{}))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}
@@ -83,7 +83,7 @@ func (a *Command) nodeStop(ctx context.Context) int {
 func (a *Command) nodeStatus(ctx context.Context) int {
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().GetNodeStatus(callCtx, client.Request(a.ctx.Token, &ardentsv1.GetNodeStatusRequest{}))
+	resp, err := a.ctx.Client.Service().GetNodeStatus(callCtx, client.Request(&ardentsv1.GetNodeStatusRequest{}))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}
@@ -109,7 +109,7 @@ func (a *Command) nodeStatus(ctx context.Context) int {
 func (a *Command) nodeRuntime(ctx context.Context) int {
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().GetNodeRuntime(callCtx, client.Request(a.ctx.Token, &ardentsv1.GetNodeRuntimeRequest{}))
+	resp, err := a.ctx.Client.Service().GetNodeRuntime(callCtx, client.Request(&ardentsv1.GetNodeRuntimeRequest{}))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}
@@ -137,7 +137,7 @@ func (a *Command) nodeRuntime(ctx context.Context) int {
 func (a *Command) nodeCapabilities(ctx context.Context) int {
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().GetNodeCapabilities(callCtx, client.Request(a.ctx.Token, &ardentsv1.GetNodeCapabilitiesRequest{}))
+	resp, err := a.ctx.Client.Service().GetNodeCapabilities(callCtx, client.Request(&ardentsv1.GetNodeCapabilitiesRequest{}))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}
@@ -167,7 +167,7 @@ func (a *Command) nodeEvents(ctx context.Context, args []string) int {
 	}
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	stream, err := a.ctx.Client.Service().StreamNodeEvents(callCtx, client.Request(a.ctx.Token, &ardentsv1.StreamNodeEventsRequest{}))
+	stream, err := a.ctx.Client.Service().StreamNodeEvents(callCtx, client.Request(&ardentsv1.StreamNodeEventsRequest{}))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}

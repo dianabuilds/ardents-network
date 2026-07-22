@@ -42,6 +42,7 @@ type fakeIdentityClient struct {
 	list              func(*protocol.ListAccessGrantsRequest) *protocol.ListAccessGrantsResponse
 	revokeDevice      func(*protocol.RevokeDeviceRequest) *protocol.RevokeDeviceResponse
 	applicationTicket func(*protocol.IssueApplicationEnrollmentTicketRequest) *protocol.IssueApplicationEnrollmentTicketResponse
+	importDelegation  func(*protocol.ImportDelegationRevocationRequest) *protocol.ImportDelegationRevocationResponse
 	mutationCalls     int
 	issueErrors       []error
 	issueRequests     []string
@@ -115,6 +116,13 @@ func (f *fakeIdentityClient) IssueApplicationEnrollmentTicket(_ context.Context,
 	}
 	f.mutationCalls++
 	return connect.NewResponse(f.applicationTicket(request.Msg)), nil
+}
+func (f *fakeIdentityClient) ImportDelegationRevocation(_ context.Context, request *connect.Request[protocol.ImportDelegationRevocationRequest]) (*connect.Response[protocol.ImportDelegationRevocationResponse], error) {
+	if f.importDelegation == nil {
+		return nil, errors.New("unexpected ImportDelegationRevocation")
+	}
+	f.mutationCalls++
+	return connect.NewResponse(f.importDelegation(request.Msg)), nil
 }
 
 type administrationSessions struct {

@@ -44,7 +44,7 @@ func (a *Command) dataBlobs(ctx context.Context, args []string) int {
 func (a *Command) dataBlobsList(ctx context.Context) int {
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().ListBlobs(callCtx, client.Request(a.ctx.Token, &ardentsv1.ListBlobsRequest{}))
+	resp, err := a.ctx.Client.Service().ListBlobs(callCtx, client.Request(&ardentsv1.ListBlobsRequest{}))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}
@@ -66,7 +66,7 @@ func (a *Command) dataBlobsGet(ctx context.Context, args []string) int {
 	}
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().GetBlob(callCtx, client.Request(a.ctx.Token, &ardentsv1.GetBlobRequest{Id: id}))
+	resp, err := a.ctx.Client.Service().GetBlob(callCtx, client.Request(&ardentsv1.GetBlobRequest{Id: id}))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}
@@ -90,7 +90,7 @@ func (a *Command) dataBlobsPublish(ctx context.Context, args []string) int {
 	}
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().PublishBlob(callCtx, client.Request(a.ctx.Token, &ardentsv1.PublishBlobRequest{Blob: blob}))
+	resp, err := a.ctx.Client.Service().PublishBlob(callCtx, client.Request(&ardentsv1.PublishBlobRequest{Blob: blob}))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}
@@ -110,7 +110,7 @@ func (a *Command) dataBlobsFetch(ctx context.Context, args []string) int {
 	}
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().FetchBlob(callCtx, client.Request(a.ctx.Token, &ardentsv1.FetchBlobRequest{Id: id}))
+	resp, err := a.ctx.Client.Service().FetchBlob(callCtx, client.Request(&ardentsv1.FetchBlobRequest{Id: id}))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}
@@ -130,7 +130,7 @@ func (a *Command) dataBlobsSources(ctx context.Context, args []string) int {
 	}
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().ListBlobSources(callCtx, client.Request(a.ctx.Token, &ardentsv1.ListBlobSourcesRequest{Id: id}))
+	resp, err := a.ctx.Client.Service().ListBlobSources(callCtx, client.Request(&ardentsv1.ListBlobSourcesRequest{Id: id}))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}
@@ -170,7 +170,7 @@ func (a *Command) dataBlobRetain(ctx context.Context, args []string) int {
 	}
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().RetainBlob(callCtx, client.Request(a.ctx.Token, &ardentsv1.RetainBlobRequest{
+	resp, err := a.ctx.Client.Service().RetainBlob(callCtx, client.Request(&ardentsv1.RetainBlobRequest{
 		Id:        id,
 		ExpiresAt: timestamppb.New(parsed),
 	}))
@@ -195,7 +195,7 @@ func (a *Command) dataBlobAck(ctx context.Context, action string, args []string)
 	defer cancel()
 	switch action {
 	case "pin":
-		resp, err := a.ctx.Client.Service().PinBlob(callCtx, client.Request(a.ctx.Token, &ardentsv1.PinBlobRequest{Id: id}))
+		resp, err := a.ctx.Client.Service().PinBlob(callCtx, client.Request(&ardentsv1.PinBlobRequest{Id: id}))
 		if err != nil {
 			return a.ctx.Failure(err)
 		}
@@ -207,7 +207,7 @@ func (a *Command) dataBlobAck(ctx context.Context, action string, args []string)
 		printBlobSummary(a.ctx.Renderer.Out, resp.Msg)
 		return 0
 	case "drop":
-		resp, err := a.ctx.Client.Service().DropBlob(callCtx, client.Request(a.ctx.Token, &ardentsv1.DropBlobRequest{Id: id}))
+		resp, err := a.ctx.Client.Service().DropBlob(callCtx, client.Request(&ardentsv1.DropBlobRequest{Id: id}))
 		if err != nil {
 			return a.ctx.Failure(err)
 		}

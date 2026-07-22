@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -25,6 +26,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -42,14 +44,16 @@ func (i testGrantIssuer) IssueAccessGrant(payload *identityprotocol.AccessGrantP
 }
 
 type realApplicationFixture struct {
-	service      *identityaccess.Service
-	clock        *testClock
-	nodeID       string
-	appPrincipal string
-	binding      identityaccess.AuthenticationBinding
-	peer         [32]byte
-	source       identityaccess.SourceKey
-	secret       identityaccess.SessionSecret
+	service         *identityaccess.Service
+	clock           *testClock
+	nodeID          string
+	appPrincipal    string
+	binding         identityaccess.AuthenticationBinding
+	peer            [32]byte
+	source          identityaccess.SourceKey
+	secret          identityaccess.SessionSecret
+	operatorSecret  identityaccess.SessionSecret
+	operatorBinding identityaccess.AuthenticationBinding
 }
 
 func newRealApplicationFixture(t *testing.T, actions []identityaccess.Action) *realApplicationFixture {
@@ -129,7 +133,75 @@ func newRealApplicationFixture(t *testing.T, actions []identityaccess.Action) *r
 	})
 	require.NoError(t, err)
 	secret := authenticate(t, service, appPrincipal, appRoot, appDevice, appCredential, appBinding, appSource)
-	return &realApplicationFixture{service: service, clock: clock, nodeID: nodeID, appPrincipal: appPrincipal, binding: appBinding, peer: appPeer, source: appSource, secret: secret}
+	return &realApplicationFixture{
+		service: service, clock: clock, nodeID: nodeID, appPrincipal: appPrincipal,
+		binding: appBinding, peer: appPeer, source: appSource, secret: secret,
+		operatorSecret: operatorSecret, operatorBinding: operatorBinding,
+	}
+}
+
+func enrollDelegator(t *testing.T, fixture *realApplicationFixture) (string, ed25519.PrivateKey, *identityprotocol.KeyCredential) {
+	t.Helper()
+	ctx := context.Background()
+	root := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x81}, ed25519.SeedSize))
+	device := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x82}, ed25519.SeedSize))
+	principal, credentialArtifact := makeCredential(t, fixture.clock.Now(), root, device)
+	resource, err := identityaccess.NewResourceRef(fixture.nodeID, "", "principal", principal)
+	require.NoError(t, err)
+	ticket, err := fixture.service.IssueApplicationEnrollmentTicket(ctx, identityaccess.IssueApplicationEnrollmentTicketRequest{
+		Attempt: identityaccess.Attempt{
+			SessionSecret: fixture.operatorSecret, Binding: fixture.operatorBinding,
+			Action: "identity.principal.enroll", Resource: resource,
+		},
+		Principal: principal,
+		Actions:   []identityaccess.Action{"application.content.get", "application.content.put"},
+	})
+	require.NoError(t, err)
+
+	binding := fixture.binding
+	copy(binding.PeerBinding[:], bytes.Repeat([]byte{0x83}, len(binding.PeerBinding)))
+	var source identityaccess.SourceKey
+	copy(source[:], bytes.Repeat([]byte{0x84}, len(source)))
+	challenge, err := fixture.service.Begin(ctx, identityaccess.BeginRequest{
+		Principal: principal, Purpose: identityprotocol.ChallengePurpose_CHALLENGE_PURPOSE_ENROLLMENT_PROOF,
+		Binding: binding, Source: source,
+	})
+	require.NoError(t, err)
+	signature, err := identityaccess.SignEnrollmentChallenge(challenge, root)
+	require.NoError(t, err)
+	proof := complete(t, fixture.service, challenge, binding, source, root, nil, signature)
+	var rootPublic [ed25519.PublicKeySize]byte
+	copy(rootPublic[:], root.Public().(ed25519.PublicKey))
+	_, err = fixture.service.EnrollApplication(ctx, binding, identityaccess.EnrollApplicationRequest{
+		Ticket: ticket.Ticket, Challenge: challenge, Proof: *proof.EnrollmentProof,
+		RootPublicKey: rootPublic, Credential: artifactBytes(t, credentialArtifact),
+	})
+	require.NoError(t, err)
+
+	credential := new(identityprotocol.KeyCredential)
+	require.NoError(t, proto.Unmarshal(artifactBytes(t, credentialArtifact), credential))
+	return principal, device, credential
+}
+
+func signedDelegation(t *testing.T, fixture *realApplicationFixture, delegator string, device ed25519.PrivateKey, credential *identityprotocol.KeyCredential, node, delegatee string) ([]byte, string) {
+	t.Helper()
+	artifact, err := identityaccess.SignDelegation(&identityprotocol.DelegationPayload{
+		Version: identitycontract.Version, Delegator: delegator, Delegatee: delegatee,
+		Audience: &identityprotocol.Audience{
+			Node: node, Interface: identityprotocol.Interface_INTERFACE_APPLICATION,
+			ProtocolMajor: identitycontract.ProtocolMajor,
+		},
+		Actions: []string{"application.content.get", "application.content.put"},
+		Scope: &identityprotocol.ResourceScope{Scope: &identityprotocol.ResourceScope_PrincipalOwned{
+			PrincipalOwned: &identityprotocol.PrincipalOwnedScope{Owner: delegator},
+		}},
+		NotBefore:  timestamppb.New(fixture.clock.Now().Add(-time.Minute)),
+		NotAfter:   timestamppb.New(fixture.clock.Now().Add(time.Hour)),
+		Credential: credential,
+	}, device, fixture.clock.Now())
+	require.NoError(t, err)
+	raw := artifactBytes(t, artifact)
+	return raw, base64.RawURLEncoding.EncodeToString(raw)
 }
 
 func makeCredential(t *testing.T, now time.Time, root, device ed25519.PrivateKey) (string, *identityaccess.Artifact) {
@@ -179,13 +251,18 @@ func authenticate(t *testing.T, service *identityaccess.Service, principal strin
 }
 
 type countingAdmitter struct {
-	service *identityaccess.Service
-	calls   atomic.Int32
+	service   *identityaccess.Service
+	calls     atomic.Int32
+	presented []byte
+	lastErr   error
 }
 
 func (a *countingAdmitter) AdmitTarget(ctx context.Context, attempt identityaccess.TargetAttempt) (identityaccess.AuthorizedCall, error) {
 	a.calls.Add(1)
-	return a.service.AdmitTarget(ctx, attempt)
+	a.presented = attempt.Delegation
+	call, err := a.service.AdmitTarget(ctx, attempt)
+	a.lastErr = err
+	return call, err
 }
 
 type recordingStore struct {
@@ -246,6 +323,122 @@ func TestPrincipalContentAdmissionUsesRealAccessServiceAndPropagatesActorEffecti
 	}
 }
 
+func TestDelegatedContentAdmissionUsesRealAccessServiceAndClearsPresentation(t *testing.T) {
+	fixture := newRealApplicationFixture(t, []identityaccess.Action{"application.content.get", "application.content.put"})
+	alice, aliceDevice, aliceCredential := enrollDelegator(t, fixture)
+	raw, encoded := signedDelegation(t, fixture, alice, aliceDevice, aliceCredential, fixture.nodeID, fixture.appPrincipal)
+	store := newRecordingStore()
+	admitter := &countingAdmitter{service: fixture.service}
+	client := principalContentClient(t, fixture, admitter, store)
+
+	request := connect.NewRequest(&applicationv1.PutContentRequest{Payload: []byte("delegated payload")})
+	request.Header().Set("Authorization", "ArdentsApplicationSession "+base64.RawURLEncoding.EncodeToString(fixture.secret[:]))
+	request.Header().Set(applicationDelegationHeader, encoded)
+	response, err := client.Put(context.Background(), request)
+	require.NoError(t, err, "access error: %v", admitter.lastErr)
+	require.NotNil(t, response.Msg.Reference)
+	require.Equal(t, int32(1), admitter.calls.Load())
+	require.Len(t, admitter.presented, len(raw))
+	require.Equal(t, make([]byte, len(raw)), admitter.presented, "decoded Delegation must be cleared immediately after Admit")
+	require.NotEmpty(t, store.calls)
+	for _, admitted := range store.calls {
+		require.Equal(t, fixture.appPrincipal, admitted.Actor())
+		require.Equal(t, alice, admitted.Effective())
+		require.Equal(t, alice, admitted.ResourceOwner())
+	}
+}
+
+func TestDelegationPresentationBoundsMultiplicityAndCanonicalEncoding(t *testing.T) {
+	raw := bytes.Repeat([]byte{0xa5}, 32)
+	encoded := base64.RawURLEncoding.EncodeToString(raw)
+
+	parsed, err := parseDelegation(http.Header{"ardents-delegation": []string{encoded}})
+	require.NoError(t, err)
+	require.Equal(t, raw, parsed)
+	clear(parsed)
+
+	for name, header := range map[string]http.Header{
+		"empty":               {applicationDelegationHeader: []string{""}},
+		"padded":              {applicationDelegationHeader: []string{encoded + "="}},
+		"whitespace":          {applicationDelegationHeader: []string{" " + encoded}},
+		"invalid alphabet":    {applicationDelegationHeader: []string{"opaque-secret-proof!"}},
+		"noncanonical bits":   {applicationDelegationHeader: []string{"AB"}},
+		"duplicate values":    {applicationDelegationHeader: []string{encoded, encoded}},
+		"case-fold duplicate": {applicationDelegationHeader: []string{encoded}, "ardents-delegation": []string{encoded}},
+		"encoded oversized":   {applicationDelegationHeader: []string{strings.Repeat("A", base64.RawURLEncoding.EncodedLen(identitycontract.MaxArtifactBytes)+1)}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			presentation, parseErr := parseDelegation(header)
+			require.ErrorIs(t, parseErr, identityaccess.ErrUnauthenticated)
+			require.Nil(t, presentation)
+		})
+	}
+
+	tooLarge := bytes.Repeat([]byte{0x5a}, identitycontract.MaxArtifactBytes+1)
+	presentation, err := parseDelegation(http.Header{applicationDelegationHeader: []string{base64.RawURLEncoding.EncodeToString(tooLarge)}})
+	require.ErrorIs(t, err, identityaccess.ErrUnauthenticated)
+	require.Nil(t, presentation)
+}
+
+func TestDelegationPresentationFailuresAreRedactedAndNeverReachAdmit(t *testing.T) {
+	fixture := newRealApplicationFixture(t, []identityaccess.Action{"application.content.get"})
+	store := newRecordingStore()
+	admitter := &countingAdmitter{service: fixture.service}
+	client := principalContentClient(t, fixture, admitter, store)
+	authorization := "ArdentsApplicationSession " + base64.RawURLEncoding.EncodeToString(fixture.secret[:])
+	secretProof := "opaque-secret-proof!"
+
+	for name, values := range map[string][]string{
+		"malformed": {secretProof},
+		"duplicate": {base64.RawURLEncoding.EncodeToString([]byte("one")), base64.RawURLEncoding.EncodeToString([]byte("two"))},
+		"oversized": {strings.Repeat("A", base64.RawURLEncoding.EncodedLen(identitycontract.MaxArtifactBytes)+1)},
+	} {
+		t.Run(name, func(t *testing.T) {
+			request := connect.NewRequest(&applicationv1.GetContentRequest{Reference: &applicationv1.ContentReference{Kind: "blob", Id: "missing"}})
+			request.Header().Set("Authorization", authorization)
+			for _, value := range values {
+				request.Header().Add(applicationDelegationHeader, value)
+			}
+			_, err := client.Get(context.Background(), request)
+			require.Equal(t, connect.CodeUnauthenticated, connect.CodeOf(err))
+			require.NotContains(t, err.Error(), secretProof)
+			for _, value := range values {
+				require.NotContains(t, err.Error(), value)
+			}
+		})
+	}
+	require.Zero(t, admitter.calls.Load())
+	require.Empty(t, store.calls)
+}
+
+func TestDelegationForAnotherNodeOrApplicationFailsClosedWithoutProofLeakage(t *testing.T) {
+	fixture := newRealApplicationFixture(t, []identityaccess.Action{"application.content.get"})
+	alice, aliceDevice, aliceCredential := enrollDelegator(t, fixture)
+	otherKey := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x91}, ed25519.SeedSize))
+	otherPrincipal, err := identityprincipal.FromEd25519PublicKey(otherKey.Public().(ed25519.PublicKey))
+	require.NoError(t, err)
+	authorization := "ArdentsApplicationSession " + base64.RawURLEncoding.EncodeToString(fixture.secret[:])
+
+	for name, bounds := range map[string]struct{ node, delegatee string }{
+		"other node":        {node: otherPrincipal.String(), delegatee: fixture.appPrincipal},
+		"other application": {node: fixture.nodeID, delegatee: otherPrincipal.String()},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, encoded := signedDelegation(t, fixture, alice, aliceDevice, aliceCredential, bounds.node, bounds.delegatee)
+			store := newRecordingStore()
+			admitter := &countingAdmitter{service: fixture.service}
+			client := principalContentClient(t, fixture, admitter, store)
+			request := connect.NewRequest(&applicationv1.GetContentRequest{Reference: &applicationv1.ContentReference{Kind: "blob", Id: "missing"}})
+			request.Header().Set("Authorization", authorization)
+			request.Header().Set(applicationDelegationHeader, encoded)
+			_, err := client.Get(context.Background(), request)
+			require.Equal(t, connect.CodeUnauthenticated, connect.CodeOf(err))
+			require.NotContains(t, err.Error(), encoded)
+			require.Empty(t, store.calls)
+		})
+	}
+}
+
 func TestPrincipalAdmissionFailsClosedBeforeMutationAndNeverFallsBack(t *testing.T) {
 	fixture := newRealApplicationFixture(t, []identityaccess.Action{"application.content.get"})
 	store := newRecordingStore()
@@ -266,12 +459,6 @@ func TestPrincipalAdmissionFailsClosedBeforeMutationAndNeverFallsBack(t *testing
 	require.Equal(t, connect.CodeUnauthenticated, connect.CodeOf(err))
 	require.Equal(t, int32(1), admitter.calls.Load())
 
-	delegated := connect.NewRequest(&applicationv1.GetContentRequest{Reference: &applicationv1.ContentReference{Kind: "blob", Id: "missing"}})
-	delegated.Header().Set("Authorization", header)
-	delegated.Header().Set("Ardents-Delegation", "opaque-secret-proof")
-	_, err = client.Get(context.Background(), delegated)
-	require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
-	require.Equal(t, int32(1), admitter.calls.Load())
 }
 
 func principalContentClient(t *testing.T, fixture *realApplicationFixture, admitter Admitter, store applicationcontent.Store) applicationv1connect.ContentServiceClient {

@@ -54,7 +54,7 @@ func requireValue(name, value string) error {
 func (a *Command) dataInventory(ctx context.Context) int {
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().GetDataInventory(callCtx, client.Request(a.ctx.Token, &ardentsv1.GetDataInventoryRequest{}))
+	resp, err := a.ctx.Client.Service().GetDataInventory(callCtx, client.Request(&ardentsv1.GetDataInventoryRequest{}))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}

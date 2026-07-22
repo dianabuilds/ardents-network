@@ -21,7 +21,6 @@ type Config struct {
 	SSHIdentity       string
 	SSHKnownHosts     string
 	SSHOperatorSocket string
-	Token             string
 	Timeout           time.Duration
 	ExpectedNode      string
 	ExpectedPrincipal string
@@ -31,7 +30,6 @@ type Config struct {
 
 type Client struct {
 	service           Service
-	token             string
 	sessions          *SessionManager
 	close             func() error
 	identityPublic    ardentsv1connect.IdentityServiceClient
@@ -71,7 +69,7 @@ func New(cfg Config) *Client {
 		},
 	}
 	if cfg.Signer == nil {
-		return &Client{service: NewService(httpClient, baseURL), token: cfg.Token, close: closeTransport}
+		return &Client{service: NewService(httpClient, baseURL), close: closeTransport}
 	}
 	rawIdentity := ardentsv1connect.NewIdentityServiceClient(httpClient, baseURL)
 	var auth authenticationService = rawIdentity
@@ -143,12 +141,8 @@ func (c *Client) Service() Service {
 	return c.service
 }
 
-func Request[T any](token string, msg *T) *connect.Request[T] {
-	req := connect.NewRequest(msg)
-	if token = strings.TrimSpace(token); token != "" {
-		req.Header().Set("Authorization", "Bearer "+token)
-	}
-	return req
+func Request[T any](msg *T) *connect.Request[T] {
+	return connect.NewRequest(msg)
 }
 
 func (c *Client) Login(ctx context.Context) (SessionKey, error) {

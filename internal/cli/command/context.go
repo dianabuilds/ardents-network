@@ -23,7 +23,6 @@ type WatchSnapshots func(
 type Context struct {
 	Client   *client.Client
 	Input    io.Reader
-	Token    string
 	Timeout  time.Duration
 	Interval time.Duration
 	Watch    bool

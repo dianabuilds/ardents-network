@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 
 	configurationcmd "ardents/internal/cli/configuration"
 	contentcmd "ardents/internal/cli/content"
@@ -70,13 +69,6 @@ func dispatch(ctx context.Context, cfg configurationcmd.Config, rest []string, s
 	if err := cfg.Resolve(); err != nil {
 		output.Writef(stderr, "ardentsctl: %v\n", err)
 		return 2
-	}
-	if cfg.LegacyWarning {
-		if cfg.Output == "json" {
-			output.Writeln(stderr, `{"warning":"legacy bearer authentication is migration-only"}`)
-		} else {
-			output.Writef(stderr, "ardentsctl: warning: explicit legacy bearer authentication is migration-only\n")
-		}
 	}
 	app, err := newApp(cfg, stdin, stdout, stderr)
 	if err != nil {
@@ -160,8 +152,6 @@ func parseRoot(args []string, stderr io.Writer) (configurationcmd.Config, []stri
 	fs.StringVar(&cfg.SSHKnownHosts, "ssh-known-hosts", cfg.SSHKnownHosts, "OpenSSH known_hosts path")
 	fs.StringVar(&cfg.SSHOperatorSocket, "ssh-operator-socket", cfg.SSHOperatorSocket, "absolute remote Operator Unix socket")
 	fs.StringVar(&cfg.SignerFile, "signer-file", cfg.SignerFile, "protected device signer bundle")
-	fs.StringVar(&cfg.Token, "legacy-token", cfg.Token, "legacy bearer token override")
-	fs.StringVar(&cfg.TokenFile, "legacy-token-file", cfg.TokenFile, "path to legacy bearer token file")
 	fs.StringVar(&cfg.ContextName, "context", cfg.ContextName, "named operator context")
 	fs.StringVar(&cfg.ContextFile, "context-file", cfg.ContextFile, "path to contexts file")
 	fs.StringVar(&cfg.ExpectedNode, "node-name", cfg.ExpectedNode, "expected node name for identity preflight")
@@ -177,12 +167,6 @@ func parseRoot(args []string, stderr io.Writer) (configurationcmd.Config, []stri
 	fs.BoolVar(&help, "h", false, "show help")
 	if err := fs.Parse(args); err != nil {
 		return configurationcmd.Config{}, nil, false, err
-	}
-	for _, argument := range args[:len(args)-len(fs.Args())] {
-		if argument == "--legacy-token" || argument == "--legacy-token-file" || strings.HasPrefix(argument, "--legacy-token=") || strings.HasPrefix(argument, "--legacy-token-file=") {
-			cfg.LegacyWarning = true
-			break
-		}
 	}
 	cfg.ScopeHints = scopeHints
 	return cfg, fs.Args(), help, nil

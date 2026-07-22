@@ -206,7 +206,7 @@ func (s *Service) EnrollApplication(ctx context.Context, currentBinding Authenti
 		payload := &identityprotocol.AccessGrantPayload{
 			Version: identitycontract.Version, Issuer: node.String(), Subject: principal.String(), Audience: protocolAudience(currentBinding.Audience),
 			Actions:   actionStrings(ticketRecord.actions),
-			Scope:     &identityprotocol.ResourceScope{Scope: &identityprotocol.ResourceScope_PrincipalOwned{PrincipalOwned: &identityprotocol.PrincipalOwnedScope{Owner: principal.String()}}},
+			Scope:     &identityprotocol.ResourceScope{Scope: &identityprotocol.ResourceScope_Node{Node: &identityprotocol.NodeScope{}}},
 			NotBefore: timestamppb.New(transactionNow), NotAfter: timestamppb.New(transactionNow.Add(identitycontract.DefaultGrantLifetime)),
 		}
 		grant, issueErr := s.grantIssuer.IssueAccessGrant(proto.Clone(payload).(*identityprotocol.AccessGrantPayload))

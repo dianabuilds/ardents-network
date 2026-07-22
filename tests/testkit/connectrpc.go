@@ -126,7 +126,8 @@ func newOperatorPrincipalAccess(t *testing.T) (*identityaccess.Service, string, 
 	require.NoError(t, err)
 
 	service, err := identityaccess.NewService(identityaccess.Config{
-		Database: database, EnableBootstrapTickets: true, GrantIssuer: testNodeGrantIssuer{key: nodeKey},
+		Database: database, EnableBootstrapTickets: true, EnableApplicationEnrollment: true,
+		GrantIssuer: testNodeGrantIssuer{key: nodeKey},
 	})
 	require.NoError(t, err)
 	var peer [32]byte
@@ -213,6 +214,103 @@ func newOperatorPrincipalAccess(t *testing.T) (*identityaccess.Service, string, 
 	})
 	require.NoError(t, err)
 	return service, node.String(), *authenticated.SessionSecret, peer, source
+}
+
+// ApplicationPrincipalAccess is a real enrolled Application identity fixture.
+// Its Session can only be admitted by the returned Service for the exact
+// Application Audience and transport binding.
+type ApplicationPrincipalAccess struct {
+	Service   *identityaccess.Service
+	Node      string
+	Principal string
+	Session   identityaccess.SessionSecret
+	Peer      [32]byte
+	Source    identityaccess.SourceKey
+}
+
+func NewApplicationPrincipalAccess(t *testing.T, actions []identityaccess.Action) ApplicationPrincipalAccess {
+	t.Helper()
+	ctx := context.Background()
+	service, node, operatorSession, operatorPeer, _ := newOperatorPrincipalAccess(t)
+	now := time.Now().UTC().Truncate(time.Second)
+	_, root, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	principal, err := identityprincipal.FromEd25519PublicKey(root.Public().(ed25519.PublicKey))
+	require.NoError(t, err)
+	_, device, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	deviceID, err := identityprincipal.DeviceFromEd25519PublicKey(device.Public().(ed25519.PublicKey))
+	require.NoError(t, err)
+	credential, err := identityaccess.SignKeyCredential(&identityprotocol.KeyCredentialPayload{
+		Version: identitycontract.Version, Subject: principal.String(), RootPublicKey: root.Public().(ed25519.PublicKey),
+		DeviceId: deviceID.String(), DevicePublicKey: device.Public().(ed25519.PublicKey),
+		Purposes:  []identityprotocol.CredentialPurpose{identityprotocol.CredentialPurpose_CREDENTIAL_PURPOSE_AUTHENTICATE},
+		NotBefore: timestamppb.New(now.Add(-time.Minute)), NotAfter: timestamppb.New(now.Add(time.Hour)),
+	}, root)
+	require.NoError(t, err)
+	credentialRaw, err := credential.MarshalBinary()
+	require.NoError(t, err)
+
+	operatorBinding := identityaccess.AuthenticationBinding{
+		Audience:         identityaccess.Audience{Node: node, Interface: identityprotocol.Interface_INTERFACE_OPERATOR, ProtocolMajor: identitycontract.ProtocolMajor},
+		TransportProfile: identityprotocol.TransportProfile_TRANSPORT_PROFILE_UNIX_LOCAL_V1, PeerBinding: operatorPeer,
+	}
+	resource, err := identityaccess.NewResourceRef(node, "", "principal", principal.String())
+	require.NoError(t, err)
+	ticket, err := service.IssueApplicationEnrollmentTicket(ctx, identityaccess.IssueApplicationEnrollmentTicketRequest{
+		Attempt:   identityaccess.Attempt{SessionSecret: operatorSession, Binding: operatorBinding, Action: "identity.principal.enroll", Resource: resource},
+		Principal: principal.String(), Actions: append([]identityaccess.Action(nil), actions...),
+	})
+	require.NoError(t, err)
+
+	var peer [32]byte
+	_, err = rand.Read(peer[:])
+	require.NoError(t, err)
+	var source identityaccess.SourceKey
+	_, err = rand.Read(source[:])
+	require.NoError(t, err)
+	binding := identityaccess.AuthenticationBinding{
+		Audience:         identityaccess.Audience{Node: node, Interface: identityprotocol.Interface_INTERFACE_APPLICATION, ProtocolMajor: identitycontract.ProtocolMajor},
+		TransportProfile: identityprotocol.TransportProfile_TRANSPORT_PROFILE_UNIX_LOCAL_V1, PeerBinding: peer,
+	}
+	enrollment, err := service.Begin(ctx, identityaccess.BeginRequest{
+		Principal: principal.String(), Purpose: identityprotocol.ChallengePurpose_CHALLENGE_PURPOSE_ENROLLMENT_PROOF,
+		Binding: binding, Source: source,
+	})
+	require.NoError(t, err)
+	enrollmentSignature, err := identityaccess.SignEnrollmentChallenge(enrollment, root)
+	require.NoError(t, err)
+	var rootPublic [ed25519.PublicKeySize]byte
+	copy(rootPublic[:], root.Public().(ed25519.PublicKey))
+	proof, err := service.Complete(ctx, identityaccess.CompleteRequest{
+		ChallengeID: enrollment.ID, Principal: principal.String(), Binding: binding, Source: source,
+		RootPublicKey: rootPublic, Signature: enrollmentSignature,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, proof.EnrollmentProof)
+	_, err = service.EnrollApplication(ctx, binding, identityaccess.EnrollApplicationRequest{
+		Ticket: ticket.Ticket, Challenge: enrollment, Proof: *proof.EnrollmentProof,
+		RootPublicKey: rootPublic, Credential: credentialRaw,
+	})
+	require.NoError(t, err)
+
+	login, err := service.Begin(ctx, identityaccess.BeginRequest{
+		Principal: principal.String(), Purpose: identityprotocol.ChallengePurpose_CHALLENGE_PURPOSE_SESSION,
+		Binding: binding, Source: source,
+	})
+	require.NoError(t, err)
+	loginSignature, err := identityaccess.SignAuthenticationChallenge(login, credential, device)
+	require.NoError(t, err)
+	authenticated, err := service.Complete(ctx, identityaccess.CompleteRequest{
+		ChallengeID: login.ID, Principal: principal.String(), Binding: binding, Source: source,
+		RootPublicKey: rootPublic, Credential: credentialRaw, Signature: loginSignature,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, authenticated.SessionSecret)
+	return ApplicationPrincipalAccess{
+		Service: service, Node: node, Principal: principal.String(), Session: *authenticated.SessionSecret,
+		Peer: peer, Source: source,
+	}
 }
 
 var testOperatorActions = []identityaccess.Action{

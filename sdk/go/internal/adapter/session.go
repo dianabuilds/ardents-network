@@ -6,6 +6,7 @@ import (
 	"encoding/base32"
 	"encoding/base64"
 	"errors"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -21,7 +22,10 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-const applicationSessionScheme = "ArdentsApplicationSession"
+const (
+	applicationSessionScheme    = "ArdentsApplicationSession"
+	applicationDelegationHeader = "Ardents-Delegation"
+)
 
 type SessionSigner interface {
 	Principal(context.Context) (string, error)
@@ -105,14 +109,14 @@ func (m *SessionManager) key(ctx context.Context) (sessionKey, error) {
 }
 
 func (m *SessionManager) Authenticate(ctx context.Context) error {
-	_, _, err := m.authorization(ctx)
+	_, _, _, err := m.authorization(ctx)
 	return err
 }
 
-func (m *SessionManager) authorization(ctx context.Context) (string, uint64, error) {
+func (m *SessionManager) authorization(ctx context.Context) (string, uint64, sessionKey, error) {
 	key, err := m.key(ctx)
 	if err != nil {
-		return "", 0, err
+		return "", 0, sessionKey{}, err
 	}
 	for {
 		now := m.now().UTC()
@@ -122,7 +126,7 @@ func (m *SessionManager) authorization(ctx context.Context) (string, uint64, err
 				m.active = key
 				header := applicationSessionScheme + " " + base64.RawURLEncoding.EncodeToString(entry.secret[:])
 				m.mu.Unlock()
-				return header, entry.generation, nil
+				return header, entry.generation, key, nil
 			}
 			m.zeroAndDelete(key, entry)
 		}
@@ -131,13 +135,13 @@ func (m *SessionManager) authorization(ctx context.Context) (string, uint64, err
 			m.mu.Unlock()
 			select {
 			case <-ctx.Done():
-				return "", 0, ctx.Err()
+				return "", 0, sessionKey{}, ctx.Err()
 			case <-done:
 				if flight.err != nil {
 					if ctx.Err() == nil && (errors.Is(flight.err, context.Canceled) || errors.Is(flight.err, context.DeadlineExceeded)) {
 						continue
 					}
-					return "", 0, flight.err
+					return "", 0, sessionKey{}, flight.err
 				}
 				continue
 			}
@@ -163,7 +167,7 @@ func (m *SessionManager) authorization(ctx context.Context) (string, uint64, err
 		close(flight.done)
 		m.mu.Unlock()
 		if loginErr != nil {
-			return "", 0, loginErr
+			return "", 0, sessionKey{}, loginErr
 		}
 	}
 }
@@ -390,10 +394,59 @@ func (m *SessionManager) zeroAndDelete(key sessionKey, entry cachedSession) {
 	delete(m.entries, key)
 }
 
-type SessionInterceptor struct{ manager *SessionManager }
+type applicationDelegation struct {
+	headerValue string
+	node        string
+	delegatee   string
+}
+
+type SessionInterceptor struct {
+	manager    *SessionManager
+	delegation *applicationDelegation
+}
 
 func NewSessionInterceptor(manager *SessionManager) *SessionInterceptor {
 	return &SessionInterceptor{manager: manager}
+}
+
+func NewSessionInterceptorWithDelegation(manager *SessionManager, artifact *sdkidentity.Artifact) (*SessionInterceptor, error) {
+	if manager == nil || manager.now == nil || artifact == nil || artifact.Kind() != sdkidentity.KindDelegation {
+		return nil, invalidApplicationDelegation()
+	}
+	raw, err := artifact.MarshalBinary()
+	if err != nil {
+		return nil, invalidApplicationDelegation()
+	}
+	defer clear(raw)
+	if !identitycontract.ValidArtifactSize(len(raw)) {
+		return nil, invalidApplicationDelegation()
+	}
+	parsed, err := sdkidentity.ParseDelegation(raw, manager.now().UTC())
+	if err != nil || parsed.ID() != artifact.ID() {
+		return nil, invalidApplicationDelegation()
+	}
+	view := parsed.Delegation()
+	if view == nil || view.Audience.Node != manager.targetNode ||
+		view.Audience.Interface != sdkidentity.InterfaceApplication ||
+		view.Audience.ProtocolMajor != identitycontract.ProtocolMajor ||
+		!ValidPrincipalID(view.Delegatee) {
+		return nil, invalidApplicationDelegation()
+	}
+	encoded := base64.RawURLEncoding.EncodeToString(raw)
+	if len(encoded) == 0 || len(encoded) > base64.RawURLEncoding.EncodedLen(identitycontract.MaxArtifactBytes) {
+		return nil, invalidApplicationDelegation()
+	}
+	return &SessionInterceptor{manager: manager, delegation: &applicationDelegation{
+		headerValue: encoded, node: view.Audience.Node, delegatee: view.Delegatee,
+	}}, nil
+}
+
+func invalidApplicationDelegation() error {
+	return errors.New("Application Delegation is invalid")
+}
+
+func invalidApplicationDelegationPresentation() error {
+	return connect.NewError(connect.CodeUnauthenticated, errors.New("Application Delegation presentation is invalid"))
 }
 
 func (i *SessionInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
@@ -401,9 +454,18 @@ func (i *SessionInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc
 		if request.Header().Get("Authorization") != "" {
 			return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("multiple Application authentication schemes are forbidden"))
 		}
-		header, generation, err := i.manager.authorization(ctx)
+		if headerValueCount(request.Header(), applicationDelegationHeader) != 0 {
+			return nil, invalidApplicationDelegationPresentation()
+		}
+		header, generation, key, err := i.manager.authorization(ctx)
 		if err != nil {
 			return nil, err
+		}
+		if i.delegation != nil {
+			if key.node != i.delegation.node || key.principal != i.delegation.delegatee {
+				return nil, invalidApplicationDelegationPresentation()
+			}
+			request.Header().Set(applicationDelegationHeader, i.delegation.headerValue)
 		}
 		request.Header().Set("Authorization", header)
 		response, err := next(ctx, request)
@@ -411,13 +473,29 @@ func (i *SessionInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc
 			return response, err
 		}
 		i.manager.evictGeneration(generation)
-		header, _, authErr := i.manager.authorization(ctx)
+		header, _, key, authErr := i.manager.authorization(ctx)
 		if authErr != nil {
 			return nil, authErr
+		}
+		if i.delegation != nil {
+			if key.node != i.delegation.node || key.principal != i.delegation.delegatee {
+				return nil, invalidApplicationDelegationPresentation()
+			}
+			request.Header().Set(applicationDelegationHeader, i.delegation.headerValue)
 		}
 		request.Header().Set("Authorization", header)
 		return next(ctx, request)
 	}
+}
+
+func headerValueCount(header http.Header, name string) int {
+	count := 0
+	for key, values := range header {
+		if strings.EqualFold(key, name) {
+			count += len(values)
+		}
+	}
+	return count
 }
 
 func (i *SessionInterceptor) WrapStreamingClient(next connect.StreamingClientFunc) connect.StreamingClientFunc {

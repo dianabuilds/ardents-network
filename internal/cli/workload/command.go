@@ -55,7 +55,7 @@ func renderWorkloadUsage(writer io.Writer) {
 func (a *Command) workloadList(ctx context.Context) int {
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().ListWorkloads(callCtx, client.Request(a.ctx.Token, &ardentsv1.ListWorkloadsRequest{}))
+	resp, err := a.ctx.Client.Service().ListWorkloads(callCtx, client.Request(&ardentsv1.ListWorkloadsRequest{}))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}
@@ -81,7 +81,7 @@ func (a *Command) workloadGet(ctx context.Context, args []string) int {
 	}
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().GetWorkloadStatus(callCtx, client.Request(a.ctx.Token, &ardentsv1.GetWorkloadStatusRequest{Id: id}))
+	resp, err := a.ctx.Client.Service().GetWorkloadStatus(callCtx, client.Request(&ardentsv1.GetWorkloadStatusRequest{Id: id}))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}
@@ -105,7 +105,7 @@ func (a *Command) workloadRegister(ctx context.Context, args []string) int {
 	}
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().RegisterWorkload(callCtx, client.Request(a.ctx.Token, &ardentsv1.RegisterWorkloadRequest{Spec: spec}))
+	resp, err := a.ctx.Client.Service().RegisterWorkload(callCtx, client.Request(&ardentsv1.RegisterWorkloadRequest{Spec: spec}))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}
@@ -128,19 +128,19 @@ func (a *Command) workloadMutate(ctx context.Context, action string, args []stri
 	defer cancel()
 	switch action {
 	case "start":
-		resp, err := a.ctx.Client.Service().StartWorkload(callCtx, client.Request(a.ctx.Token, &ardentsv1.StartWorkloadRequest{Id: id}))
+		resp, err := a.ctx.Client.Service().StartWorkload(callCtx, client.Request(&ardentsv1.StartWorkloadRequest{Id: id}))
 		if err != nil {
 			return a.ctx.Failure(err)
 		}
 		return renderWorkloadCommand(a, "workload start", resp.Msg)
 	case "stop":
-		resp, err := a.ctx.Client.Service().StopWorkload(callCtx, client.Request(a.ctx.Token, &ardentsv1.StopWorkloadRequest{Id: id}))
+		resp, err := a.ctx.Client.Service().StopWorkload(callCtx, client.Request(&ardentsv1.StopWorkloadRequest{Id: id}))
 		if err != nil {
 			return a.ctx.Failure(err)
 		}
 		return renderWorkloadCommand(a, "workload stop", resp.Msg)
 	case "restart":
-		resp, err := a.ctx.Client.Service().RestartWorkload(callCtx, client.Request(a.ctx.Token, &ardentsv1.RestartWorkloadRequest{Id: id}))
+		resp, err := a.ctx.Client.Service().RestartWorkload(callCtx, client.Request(&ardentsv1.RestartWorkloadRequest{Id: id}))
 		if err != nil {
 			return a.ctx.Failure(err)
 		}

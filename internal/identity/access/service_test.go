@@ -69,13 +69,15 @@ type serviceFixture struct {
 	binding                     AuthenticationBinding
 	source                      SourceKey
 	credential                  *Artifact
+	dir                         string
 }
 
 func newServiceFixture(t *testing.T) *serviceFixture {
 	t.Helper()
 	ctx := context.Background()
 	clock := &fakeAccessClock{now: time.Date(2035, 1, 2, 3, 4, 5, 0, time.UTC)}
-	database, err := storage.OpenIdentityAccess(ctx, t.TempDir(), StorageSchema())
+	dir := t.TempDir()
+	database, err := storage.OpenIdentityAccess(ctx, dir, StorageSchema())
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, database.Close(ctx)) })
 	root := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x11}, 32))
@@ -93,7 +95,7 @@ func newServiceFixture(t *testing.T) *serviceFixture {
 	binding := AuthenticationBinding{Audience: Audience{Node: nodePrincipal.String(), Interface: identityprotocol.Interface_INTERFACE_OPERATOR, ProtocolMajor: 1}, TransportProfile: identityprotocol.TransportProfile_TRANSPORT_PROFILE_UNIX_LOCAL_V1, PeerBinding: peer}
 	service, err := NewService(Config{Database: database, Clock: clock, Entropy: &sequentialEntropy{next: 1}})
 	require.NoError(t, err)
-	return &serviceFixture{t: t, ctx: ctx, clock: clock, database: database, service: service, root: root, device: device, node: node, principal: principal.String(), nodeID: nodePrincipal.String(), deviceID: deviceID.String(), binding: binding, source: source, credential: credential}
+	return &serviceFixture{t: t, ctx: ctx, clock: clock, database: database, service: service, root: root, device: device, node: node, principal: principal.String(), nodeID: nodePrincipal.String(), deviceID: deviceID.String(), binding: binding, source: source, credential: credential, dir: dir}
 }
 
 func (f *serviceFixture) begin(purpose identityprotocol.ChallengePurpose) Challenge {
@@ -409,14 +411,13 @@ func fakePrincipal(seed byte) string {
 	return id.String()
 }
 
-func TestStorageSchemaUpgradesBaseDatabase(t *testing.T) {
-	dir := t.TempDir()
-	base, err := storage.OpenIdentityAccess(context.Background(), dir, storage.BaseIdentityAccessSchema())
+func TestStorageSchemaIsOneFreshPreReleaseSchema(t *testing.T) {
+	schema := StorageSchema()
+	require.Equal(t, uint32(1), schema.Version)
+	require.Len(t, schema.Migrations, 1)
+	database, err := storage.OpenIdentityAccess(context.Background(), t.TempDir(), schema)
 	require.NoError(t, err)
-	require.NoError(t, base.Close(context.Background()))
-	upgraded, err := storage.OpenIdentityAccess(context.Background(), dir, StorageSchema())
-	require.NoError(t, err)
-	require.NoError(t, upgraded.Close(context.Background()))
+	require.NoError(t, database.Close(context.Background()))
 }
 
 func TestServiceSessionLifetimeConfigurationBoundaries(t *testing.T) {

@@ -27,7 +27,7 @@ func (a *Command) dataTransfers(ctx context.Context, args []string) int {
 
 func (a *Command) dataTransfersList(ctx context.Context) int {
 	return commandctx.RunQuery(ctx, a.ctx, "data transfers", func(callCtx context.Context) (*ardentsv1.ListTransfersResponse, error) {
-		resp, err := a.ctx.Client.Service().ListTransfers(callCtx, client.Request(a.ctx.Token, &ardentsv1.ListTransfersRequest{}))
+		resp, err := a.ctx.Client.Service().ListTransfers(callCtx, client.Request(&ardentsv1.ListTransfersRequest{}))
 		if err != nil {
 			return nil, err
 		}
@@ -41,7 +41,7 @@ func (a *Command) dataTransfersGet(ctx context.Context, args []string) int {
 		return a.ctx.Failure(fmt.Errorf("transfer id is required"))
 	}
 	return commandctx.RunQuery(ctx, a.ctx, "data transfer", func(callCtx context.Context) (*ardentsv1.GetTransferResponse, error) {
-		resp, err := a.ctx.Client.Service().GetTransfer(callCtx, client.Request(a.ctx.Token, &ardentsv1.GetTransferRequest{Id: id}))
+		resp, err := a.ctx.Client.Service().GetTransfer(callCtx, client.Request(&ardentsv1.GetTransferRequest{Id: id}))
 		if err != nil {
 			return nil, err
 		}

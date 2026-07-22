@@ -1315,6 +1315,94 @@ func (x *IssueApplicationEnrollmentTicketResponse) GetExpiresAt() *timestamppb.T
 	return nil
 }
 
+type ImportDelegationRevocationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Revocation    []byte                 `protobuf:"bytes,1,opt,name=revocation,proto3" json:"revocation,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ImportDelegationRevocationRequest) Reset() {
+	*x = ImportDelegationRevocationRequest{}
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ImportDelegationRevocationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ImportDelegationRevocationRequest) ProtoMessage() {}
+
+func (x *ImportDelegationRevocationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ImportDelegationRevocationRequest.ProtoReflect.Descriptor instead.
+func (*ImportDelegationRevocationRequest) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *ImportDelegationRevocationRequest) GetRevocation() []byte {
+	if x != nil {
+		return x.Revocation
+	}
+	return nil
+}
+
+type ImportDelegationRevocationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RevocationId  string                 `protobuf:"bytes,1,opt,name=revocation_id,json=revocationId,proto3" json:"revocation_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ImportDelegationRevocationResponse) Reset() {
+	*x = ImportDelegationRevocationResponse{}
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ImportDelegationRevocationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ImportDelegationRevocationResponse) ProtoMessage() {}
+
+func (x *ImportDelegationRevocationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ImportDelegationRevocationResponse.ProtoReflect.Descriptor instead.
+func (*ImportDelegationRevocationResponse) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *ImportDelegationRevocationResponse) GetRevocationId() string {
+	if x != nil {
+		return x.RevocationId
+	}
+	return ""
+}
+
 var File_api_ardents_v1_identity_proto protoreflect.FileDescriptor
 
 const file_api_ardents_v1_identity_proto_rawDesc = "" +
@@ -1417,7 +1505,13 @@ const file_api_ardents_v1_identity_proto_rawDesc = "" +
 	"(IssueApplicationEnrollmentTicketResponse\x12B\n" +
 	"\x1dapplication_enrollment_ticket\x18\x01 \x01(\fR\x1bapplicationEnrollmentTicket\x129\n" +
 	"\n" +
-	"expires_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt2\xa2\b\n" +
+	"expires_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"C\n" +
+	"!ImportDelegationRevocationRequest\x12\x1e\n" +
+	"\n" +
+	"revocation\x18\x01 \x01(\fR\n" +
+	"revocation\"I\n" +
+	"\"ImportDelegationRevocationResponse\x12#\n" +
+	"\rrevocation_id\x18\x01 \x01(\tR\frevocationId2\x9f\t\n" +
 	"\x0fIdentityService\x12f\n" +
 	"\x13BeginAuthentication\x12&.ardents.v1.BeginAuthenticationRequest\x1a'.ardents.v1.BeginAuthenticationResponse\x12o\n" +
 	"\x16CompleteAuthentication\x12).ardents.v1.CompleteAuthenticationRequest\x1a*.ardents.v1.CompleteAuthenticationResponse\x12i\n" +
@@ -1428,7 +1522,8 @@ const file_api_ardents_v1_identity_proto_rawDesc = "" +
 	"\x10IssueAccessGrant\x12#.ardents.v1.IssueAccessGrantRequest\x1a$.ardents.v1.IssueAccessGrantResponse\x12`\n" +
 	"\x11RevokeAccessGrant\x12$.ardents.v1.RevokeAccessGrantRequest\x1a%.ardents.v1.RevokeAccessGrantResponse\x12]\n" +
 	"\x10ListAccessGrants\x12#.ardents.v1.ListAccessGrantsRequest\x1a$.ardents.v1.ListAccessGrantsResponse\x12\x8d\x01\n" +
-	" IssueApplicationEnrollmentTicket\x123.ardents.v1.IssueApplicationEnrollmentTicketRequest\x1a4.ardents.v1.IssueApplicationEnrollmentTicketResponseB.Z,ardents/internal/localapi/protocol;ardentsv1b\x06proto3"
+	" IssueApplicationEnrollmentTicket\x123.ardents.v1.IssueApplicationEnrollmentTicketRequest\x1a4.ardents.v1.IssueApplicationEnrollmentTicketResponse\x12{\n" +
+	"\x1aImportDelegationRevocation\x12-.ardents.v1.ImportDelegationRevocationRequest\x1a..ardents.v1.ImportDelegationRevocationResponseB.Z,ardents/internal/localapi/protocol;ardentsv1b\x06proto3"
 
 var (
 	file_api_ardents_v1_identity_proto_rawDescOnce sync.Once
@@ -1442,7 +1537,7 @@ func file_api_ardents_v1_identity_proto_rawDescGZIP() []byte {
 	return file_api_ardents_v1_identity_proto_rawDescData
 }
 
-var file_api_ardents_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
+var file_api_ardents_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_api_ardents_v1_identity_proto_goTypes = []any{
 	(*BeginAuthenticationRequest)(nil),               // 0: ardents.v1.BeginAuthenticationRequest
 	(*BeginAuthenticationResponse)(nil),              // 1: ardents.v1.BeginAuthenticationResponse
@@ -1467,28 +1562,30 @@ var file_api_ardents_v1_identity_proto_goTypes = []any{
 	(*ListAccessGrantsResponse)(nil),                 // 20: ardents.v1.ListAccessGrantsResponse
 	(*IssueApplicationEnrollmentTicketRequest)(nil),  // 21: ardents.v1.IssueApplicationEnrollmentTicketRequest
 	(*IssueApplicationEnrollmentTicketResponse)(nil), // 22: ardents.v1.IssueApplicationEnrollmentTicketResponse
-	(protocol.ChallengePurpose)(0),                   // 23: ardents.identity.v1.ChallengePurpose
-	(*protocol.ChallengeFields)(nil),                 // 24: ardents.identity.v1.ChallengeFields
-	(*timestamppb.Timestamp)(nil),                    // 25: google.protobuf.Timestamp
-	(*protocol.ResourceScope)(nil),                   // 26: ardents.identity.v1.ResourceScope
+	(*ImportDelegationRevocationRequest)(nil),        // 23: ardents.v1.ImportDelegationRevocationRequest
+	(*ImportDelegationRevocationResponse)(nil),       // 24: ardents.v1.ImportDelegationRevocationResponse
+	(protocol.ChallengePurpose)(0),                   // 25: ardents.identity.v1.ChallengePurpose
+	(*protocol.ChallengeFields)(nil),                 // 26: ardents.identity.v1.ChallengeFields
+	(*timestamppb.Timestamp)(nil),                    // 27: google.protobuf.Timestamp
+	(*protocol.ResourceScope)(nil),                   // 28: ardents.identity.v1.ResourceScope
 }
 var file_api_ardents_v1_identity_proto_depIdxs = []int32{
-	23, // 0: ardents.v1.BeginAuthenticationRequest.purpose:type_name -> ardents.identity.v1.ChallengePurpose
-	24, // 1: ardents.v1.BeginAuthenticationResponse.challenge:type_name -> ardents.identity.v1.ChallengeFields
-	25, // 2: ardents.v1.CompleteAuthenticationResponse.expires_at:type_name -> google.protobuf.Timestamp
-	24, // 3: ardents.v1.EnrollFirstPrincipalRequest.challenge:type_name -> ardents.identity.v1.ChallengeFields
-	24, // 4: ardents.v1.EnrollPrincipalRequest.challenge:type_name -> ardents.identity.v1.ChallengeFields
-	25, // 5: ardents.v1.DeviceRevocationMetadata.revoked_at:type_name -> google.protobuf.Timestamp
+	25, // 0: ardents.v1.BeginAuthenticationRequest.purpose:type_name -> ardents.identity.v1.ChallengePurpose
+	26, // 1: ardents.v1.BeginAuthenticationResponse.challenge:type_name -> ardents.identity.v1.ChallengeFields
+	27, // 2: ardents.v1.CompleteAuthenticationResponse.expires_at:type_name -> google.protobuf.Timestamp
+	26, // 3: ardents.v1.EnrollFirstPrincipalRequest.challenge:type_name -> ardents.identity.v1.ChallengeFields
+	26, // 4: ardents.v1.EnrollPrincipalRequest.challenge:type_name -> ardents.identity.v1.ChallengeFields
+	27, // 5: ardents.v1.DeviceRevocationMetadata.revoked_at:type_name -> google.protobuf.Timestamp
 	11, // 6: ardents.v1.ListDeviceRevocationsResponse.revocations:type_name -> ardents.v1.DeviceRevocationMetadata
-	26, // 7: ardents.v1.AccessGrantProposal.scope:type_name -> ardents.identity.v1.ResourceScope
-	25, // 8: ardents.v1.AccessGrantProposal.not_before:type_name -> google.protobuf.Timestamp
-	25, // 9: ardents.v1.AccessGrantProposal.not_after:type_name -> google.protobuf.Timestamp
+	28, // 7: ardents.v1.AccessGrantProposal.scope:type_name -> ardents.identity.v1.ResourceScope
+	27, // 8: ardents.v1.AccessGrantProposal.not_before:type_name -> google.protobuf.Timestamp
+	27, // 9: ardents.v1.AccessGrantProposal.not_after:type_name -> google.protobuf.Timestamp
 	13, // 10: ardents.v1.IssueAccessGrantRequest.proposal:type_name -> ardents.v1.AccessGrantProposal
-	26, // 11: ardents.v1.AccessGrantMetadata.scope:type_name -> ardents.identity.v1.ResourceScope
-	25, // 12: ardents.v1.AccessGrantMetadata.not_before:type_name -> google.protobuf.Timestamp
-	25, // 13: ardents.v1.AccessGrantMetadata.not_after:type_name -> google.protobuf.Timestamp
+	28, // 11: ardents.v1.AccessGrantMetadata.scope:type_name -> ardents.identity.v1.ResourceScope
+	27, // 12: ardents.v1.AccessGrantMetadata.not_before:type_name -> google.protobuf.Timestamp
+	27, // 13: ardents.v1.AccessGrantMetadata.not_after:type_name -> google.protobuf.Timestamp
 	19, // 14: ardents.v1.ListAccessGrantsResponse.grants:type_name -> ardents.v1.AccessGrantMetadata
-	25, // 15: ardents.v1.IssueApplicationEnrollmentTicketResponse.expires_at:type_name -> google.protobuf.Timestamp
+	27, // 15: ardents.v1.IssueApplicationEnrollmentTicketResponse.expires_at:type_name -> google.protobuf.Timestamp
 	0,  // 16: ardents.v1.IdentityService.BeginAuthentication:input_type -> ardents.v1.BeginAuthenticationRequest
 	2,  // 17: ardents.v1.IdentityService.CompleteAuthentication:input_type -> ardents.v1.CompleteAuthenticationRequest
 	4,  // 18: ardents.v1.IdentityService.EnrollFirstPrincipal:input_type -> ardents.v1.EnrollFirstPrincipalRequest
@@ -1499,18 +1596,20 @@ var file_api_ardents_v1_identity_proto_depIdxs = []int32{
 	16, // 23: ardents.v1.IdentityService.RevokeAccessGrant:input_type -> ardents.v1.RevokeAccessGrantRequest
 	18, // 24: ardents.v1.IdentityService.ListAccessGrants:input_type -> ardents.v1.ListAccessGrantsRequest
 	21, // 25: ardents.v1.IdentityService.IssueApplicationEnrollmentTicket:input_type -> ardents.v1.IssueApplicationEnrollmentTicketRequest
-	1,  // 26: ardents.v1.IdentityService.BeginAuthentication:output_type -> ardents.v1.BeginAuthenticationResponse
-	3,  // 27: ardents.v1.IdentityService.CompleteAuthentication:output_type -> ardents.v1.CompleteAuthenticationResponse
-	5,  // 28: ardents.v1.IdentityService.EnrollFirstPrincipal:output_type -> ardents.v1.EnrollFirstPrincipalResponse
-	7,  // 29: ardents.v1.IdentityService.EnrollPrincipal:output_type -> ardents.v1.EnrollPrincipalResponse
-	9,  // 30: ardents.v1.IdentityService.RevokeDevice:output_type -> ardents.v1.RevokeDeviceResponse
-	12, // 31: ardents.v1.IdentityService.ListDeviceRevocations:output_type -> ardents.v1.ListDeviceRevocationsResponse
-	15, // 32: ardents.v1.IdentityService.IssueAccessGrant:output_type -> ardents.v1.IssueAccessGrantResponse
-	17, // 33: ardents.v1.IdentityService.RevokeAccessGrant:output_type -> ardents.v1.RevokeAccessGrantResponse
-	20, // 34: ardents.v1.IdentityService.ListAccessGrants:output_type -> ardents.v1.ListAccessGrantsResponse
-	22, // 35: ardents.v1.IdentityService.IssueApplicationEnrollmentTicket:output_type -> ardents.v1.IssueApplicationEnrollmentTicketResponse
-	26, // [26:36] is the sub-list for method output_type
-	16, // [16:26] is the sub-list for method input_type
+	23, // 26: ardents.v1.IdentityService.ImportDelegationRevocation:input_type -> ardents.v1.ImportDelegationRevocationRequest
+	1,  // 27: ardents.v1.IdentityService.BeginAuthentication:output_type -> ardents.v1.BeginAuthenticationResponse
+	3,  // 28: ardents.v1.IdentityService.CompleteAuthentication:output_type -> ardents.v1.CompleteAuthenticationResponse
+	5,  // 29: ardents.v1.IdentityService.EnrollFirstPrincipal:output_type -> ardents.v1.EnrollFirstPrincipalResponse
+	7,  // 30: ardents.v1.IdentityService.EnrollPrincipal:output_type -> ardents.v1.EnrollPrincipalResponse
+	9,  // 31: ardents.v1.IdentityService.RevokeDevice:output_type -> ardents.v1.RevokeDeviceResponse
+	12, // 32: ardents.v1.IdentityService.ListDeviceRevocations:output_type -> ardents.v1.ListDeviceRevocationsResponse
+	15, // 33: ardents.v1.IdentityService.IssueAccessGrant:output_type -> ardents.v1.IssueAccessGrantResponse
+	17, // 34: ardents.v1.IdentityService.RevokeAccessGrant:output_type -> ardents.v1.RevokeAccessGrantResponse
+	20, // 35: ardents.v1.IdentityService.ListAccessGrants:output_type -> ardents.v1.ListAccessGrantsResponse
+	22, // 36: ardents.v1.IdentityService.IssueApplicationEnrollmentTicket:output_type -> ardents.v1.IssueApplicationEnrollmentTicketResponse
+	24, // 37: ardents.v1.IdentityService.ImportDelegationRevocation:output_type -> ardents.v1.ImportDelegationRevocationResponse
+	27, // [27:38] is the sub-list for method output_type
+	16, // [16:27] is the sub-list for method input_type
 	16, // [16:16] is the sub-list for extension type_name
 	16, // [16:16] is the sub-list for extension extendee
 	0,  // [0:16] is the sub-list for field type_name
@@ -1527,7 +1626,7 @@ func file_api_ardents_v1_identity_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_ardents_v1_identity_proto_rawDesc), len(file_api_ardents_v1_identity_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   23,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

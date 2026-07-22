@@ -1,18 +1,21 @@
 package content_test
 
 import (
+	"encoding/base64"
+
+	applicationadmission "ardents/internal/applicationapi/admission"
 	applicationcall "ardents/internal/applicationapi/call"
 	applicationcontent "ardents/internal/applicationapi/content"
 	appcontent "ardents/internal/content"
 	contentpayload "ardents/internal/content/payload"
-	"ardents/sdk/go/client"
+	identityaccess "ardents/internal/identity/access"
 	applicationv1 "ardents/sdk/go/protocol/applicationv1"
 	applicationv1connect "ardents/sdk/go/protocol/applicationv1/applicationv1connect"
+	"ardents/tests/testkit"
 	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -62,16 +65,6 @@ func TestContentClientMapsPublicStructuredError(t *testing.T) {
 	require.False(t, protocolErr.GetRetryable())
 }
 
-func TestApplicationClientRequiresProtectedUnixSocket(t *testing.T) {
-	_, err := client.New(client.Config{})
-	require.ErrorContains(t, err, "protected Unix socket")
-}
-
-func TestApplicationClientRequiresPrincipalSessionSigner(t *testing.T) {
-	_, err := client.New(client.Config{SocketPath: filepath.Join(t.TempDir(), "application.sock")})
-	require.ErrorContains(t, err, "session signer is required")
-}
-
 func TestContentGetRejectsSameLengthPayloadTampering(t *testing.T) {
 	store := &memoryStore{payloads: map[string][]byte{}, blobs: map[string]appcontent.Blob{}}
 	contentClient := newPrincipalContentClient(t, store)
@@ -109,7 +102,7 @@ func TestContentGetRejectsOversizedBlobBeforeReadingPayload(t *testing.T) {
 	require.Equal(t, applicationv1.ErrorCode_ERROR_CODE_RESOURCE_EXHAUSTED, requireApplicationError(t, err).GetCode())
 }
 
-func TestContentHandlerRejectsMissingAndForeignAdmissionChannel(t *testing.T) {
+func TestContentHandlerRejectsMissingAndUnsealedAdmission(t *testing.T) {
 	store := &memoryStore{payloads: map[string][]byte{}, blobs: map[string]appcontent.Blob{}}
 	_, extractor := applicationcall.NewChannel()
 	handler, err := applicationcontent.NewHandler(store, extractor)
@@ -120,28 +113,30 @@ func TestContentHandlerRejectsMissingAndForeignAdmissionChannel(t *testing.T) {
 	require.Equal(t, connect.CodeUnauthenticated, connect.CodeOf(err))
 	require.Empty(t, store.blobs)
 
-	foreignInjector, _ := applicationcall.NewChannel()
-	ctx := foreignInjector.WithPrincipal(context.Background(), applicationcall.PrincipalFacts{
-		Actor: "p1_actor", Effective: "p1_actor", Node: "p1_node", Interface: 2, ProtocolMajor: 1,
-		Action: applicationcontent.ActionPut, ResourceNode: "p1_node", ResourceOwner: "p1_actor", ResourceKind: "content-owner",
-	})
+	injector, _ := applicationcall.NewChannel()
+	ctx := injector.WithAuthorizedCall(context.Background(), identityaccess.AuthorizedCall{})
 	_, err = handler.Put(ctx, request)
 	require.Equal(t, connect.CodeUnauthenticated, connect.CodeOf(err))
 	require.Empty(t, store.blobs)
 }
 
-func newPrincipalHTTPHandler(t *testing.T, store applicationcontent.Store) (string, http.Handler) {
+func newPrincipalHTTPHandler(t *testing.T, store applicationcontent.Store) (string, http.Handler, string) {
 	t.Helper()
+	fixture := testkit.NewApplicationPrincipalAccess(t, []identityaccess.Action{applicationcontent.ActionGet, applicationcontent.ActionPut})
 	injector, extractor := applicationcall.NewChannel()
-	interceptor := testPrincipalAdmission{injector: injector}
+	interceptor, err := applicationadmission.NewInterceptor(applicationadmission.Config{
+		Access: fixture.Service, Node: fixture.Node, FallbackPeer: fixture.Peer, FallbackSource: fixture.Source, Injector: injector,
+	})
+	require.NoError(t, err)
 	path, handler, err := applicationcontent.NewHTTPHandler(store, extractor, interceptor)
 	require.NoError(t, err)
-	return path, handler
+	authorization := "ArdentsApplicationSession " + base64.RawURLEncoding.EncodeToString(fixture.Session[:])
+	return path, handler, authorization
 }
 
 func newPrincipalContentClient(t *testing.T, store applicationcontent.Store) applicationv1connect.ContentServiceClient {
 	t.Helper()
-	path, handler := newPrincipalHTTPHandler(t, store)
+	path, handler, authorization := newPrincipalHTTPHandler(t, store)
 	mux := http.NewServeMux()
 	mux.Handle(path, handler)
 	server := httptest.NewServer(mux)
@@ -151,7 +146,23 @@ func newPrincipalContentClient(t *testing.T, store applicationcontent.Store) app
 		server.URL,
 		connect.WithReadMaxBytes(applicationv1.MaxUnaryMessageBytes),
 		connect.WithSendMaxBytes(applicationv1.MaxUnaryMessageBytes),
+		connect.WithInterceptors(applicationSessionHeader{authorization: authorization}),
 	)
+}
+
+type applicationSessionHeader struct{ authorization string }
+
+func (i applicationSessionHeader) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
+	return func(ctx context.Context, request connect.AnyRequest) (connect.AnyResponse, error) {
+		request.Header().Set("Authorization", i.authorization)
+		return next(ctx, request)
+	}
+}
+func (applicationSessionHeader) WrapStreamingClient(next connect.StreamingClientFunc) connect.StreamingClientFunc {
+	return next
+}
+func (applicationSessionHeader) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
+	return next
 }
 
 func requireApplicationError(t *testing.T, err error) *applicationv1.ApplicationError {
@@ -167,38 +178,6 @@ func requireApplicationError(t *testing.T, err error) *applicationv1.Application
 	}
 	require.FailNow(t, "connect error has no ApplicationError detail")
 	return nil
-}
-
-type testPrincipalAdmission struct{ injector applicationcall.Injector }
-
-func (i testPrincipalAdmission) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
-	return func(ctx context.Context, request connect.AnyRequest) (connect.AnyResponse, error) {
-		rule, err := applicationcontent.RuleForProcedure(request.Spec().Procedure)
-		if err != nil {
-			if errors.Is(err, applicationcontent.ErrPayloadTooLarge) {
-				return nil, applicationcontent.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_RESOURCE_EXHAUSTED, rule.Action, "content payload exceeds the unary limit", false, connect.CodeResourceExhausted)
-			}
-			return nil, applicationcontent.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_INVALID_ARGUMENT, rule.Action, "invalid application content request", false, connect.CodeInvalidArgument)
-		}
-		target, err := applicationcontent.CanonicalizeResource(request.Spec().Procedure, request.Any())
-		if err != nil {
-			if errors.Is(err, applicationcontent.ErrPayloadTooLarge) {
-				return nil, applicationcontent.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_RESOURCE_EXHAUSTED, rule.Action, "content payload exceeds the unary limit", false, connect.CodeResourceExhausted)
-			}
-			return nil, applicationcontent.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_INVALID_ARGUMENT, rule.Action, "invalid application content request", false, connect.CodeInvalidArgument)
-		}
-		ctx = i.injector.WithPrincipal(ctx, applicationcall.PrincipalFacts{
-			Actor: "p1_test", Effective: "p1_test", Node: "p1_node", Interface: 2, ProtocolMajor: 1,
-			Action: rule.Action, ResourceNode: "p1_node", ResourceOwner: "p1_test", ResourceKind: target.Kind, ResourceID: target.ID,
-		})
-		return next(ctx, request)
-	}
-}
-func (testPrincipalAdmission) WrapStreamingClient(next connect.StreamingClientFunc) connect.StreamingClientFunc {
-	return next
-}
-func (testPrincipalAdmission) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
-	return next
 }
 
 type memoryStore struct {

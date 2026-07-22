@@ -47,7 +47,7 @@ func (a *Command) resolveRecord(ctx context.Context, args []string) int {
 	}
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().ResolveRecord(callCtx, client.Request(a.ctx.Token, &req))
+	resp, err := a.ctx.Client.Service().ResolveRecord(callCtx, client.Request(&req))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}
@@ -81,7 +81,7 @@ func (a *Command) resolveService(ctx context.Context, args []string) int {
 	}
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().ResolveService(callCtx, client.Request(a.ctx.Token, &req))
+	resp, err := a.ctx.Client.Service().ResolveService(callCtx, client.Request(&req))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}
@@ -121,7 +121,7 @@ func (a *Command) records(ctx context.Context, args []string) int {
 func (a *Command) listRecords(ctx context.Context) int {
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().ListRecords(callCtx, client.Request(a.ctx.Token, &ardentsv1.ListRecordsRequest{}))
+	resp, err := a.ctx.Client.Service().ListRecords(callCtx, client.Request(&ardentsv1.ListRecordsRequest{}))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}
@@ -160,7 +160,7 @@ func (a *Command) importRecord(ctx context.Context, args []string) int {
 	}
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().ImportRecord(callCtx, client.Request(a.ctx.Token, &ardentsv1.ImportRecordRequest{Record: record}))
+	resp, err := a.ctx.Client.Service().ImportRecord(callCtx, client.Request(&ardentsv1.ImportRecordRequest{Record: record}))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}

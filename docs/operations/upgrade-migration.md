@@ -1,6 +1,6 @@
 # Upgrade, Backup, And Recovery Guide
 
-## First-Release Identity Contract
+## First-Release Greenfield Identity Contract
 
 Ardents has no released Operator/Application bearer authentication or truncated
 `p_` Principal state. The first release creates canonical `p1_` Principals,
@@ -22,6 +22,11 @@ document. Unknown versions and fields, obsolete token-file inputs, alternate
 environment-only configuration, `p_` identifiers, and duplicate pre-release
 wire/storage fields fail closed. Operators must correct the configuration or
 state; the daemon does not translate or guess.
+
+Accordingly, this guide's upgrade, rollback, and recovery procedures apply to
+future released schemas and operational failures. They do not define an
+identity cutover from bearer authentication or `p_` identifiers, and they must
+not be used to justify retaining a dual runtime path.
 
 ## Release Identity
 

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"ardents/sdk/go/content"
+	sdkidentity "ardents/sdk/go/identity"
 	"ardents/sdk/go/internal/adapter"
 
 	"connectrpc.com/connect"
@@ -20,6 +21,7 @@ type Config struct {
 	SocketPath    string
 	Signer        SessionSigner
 	NodePrincipal string
+	Delegation    *sdkidentity.Artifact
 	HTTPClient    *http.Client
 }
 
@@ -47,6 +49,12 @@ func New(config Config) (*Client, error) {
 	const endpoint = "http://localhost"
 	manager := adapter.NewSessionManager(httpClient, endpoint, config.Signer, node, nil)
 	interceptor := adapter.NewSessionInterceptor(manager)
+	if config.Delegation != nil {
+		interceptor, err = adapter.NewSessionInterceptorWithDelegation(manager, config.Delegation)
+		if err != nil {
+			return nil, fmt.Errorf("Application Delegation configuration is invalid")
+		}
+	}
 	return &Client{
 		Content: adapter.NewContent(httpClient, endpoint, connect.WithInterceptors(interceptor)),
 		Session: &sessionProvider{manager: manager},

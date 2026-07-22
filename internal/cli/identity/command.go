@@ -59,6 +59,8 @@ func (c Command) Run(ctx context.Context, args []string) int {
 		return c.runEnroll(ctx, args[1:])
 	case "grant":
 		return c.runGrant(ctx, args[1:])
+	case "delegation":
+		return c.runDelegation(ctx, args[1:])
 	case "application-ticket":
 		return c.runApplicationTicket(ctx, args[1:])
 	case "login":
@@ -334,7 +336,7 @@ func (c Command) usageError(message string) int {
 }
 
 func usage(writer io.Writer) {
-	output.Writeln(writer, "Usage: ardentsctl [global flags] identity <principal|device|enroll|grant|application-ticket|login|status|logout> [subcommand]")
+	output.Writeln(writer, "Usage: ardentsctl [global flags] identity <principal|device|enroll|grant|delegation|application-ticket|login|status|logout> [subcommand]")
 	output.Writeln(writer, "Principal/device custody is offline; session commands use the selected protected Operator transport.")
 }
 

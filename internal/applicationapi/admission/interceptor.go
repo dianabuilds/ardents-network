@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strings"
 
+	identitycontract "ardents/api/ardents/identity/v1"
 	applicationbinding "ardents/internal/applicationapi/binding"
 	applicationcall "ardents/internal/applicationapi/call"
 	applicationcontent "ardents/internal/applicationapi/content"
@@ -23,6 +24,8 @@ import (
 )
 
 const applicationSessionScheme = "ArdentsApplicationSession"
+
+const applicationDelegationHeader = "Ardents-Delegation"
 
 type Admitter interface {
 	AdmitTarget(context.Context, identityaccess.TargetAttempt) (identityaccess.AuthorizedCall, error)
@@ -59,9 +62,12 @@ func (i *interceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 		if err != nil {
 			return nil, targetError(rule.Action, err)
 		}
-		if len(request.Header().Values("Ardents-Delegation")) != 0 {
-			return nil, applicationcontent.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_FORBIDDEN, rule.Action, "application action is forbidden", false, connect.CodePermissionDenied)
+		delegation, err := parseDelegation(request.Header())
+		if err != nil {
+			return nil, authenticationError(rule.Action)
 		}
+		defer clear(delegation)
+		deleteHeaderFold(request.Header(), applicationDelegationHeader)
 		values := request.Header().Values("Authorization")
 		if len(values) != 1 || len(values[0]) > 128 {
 			return nil, authenticationError(rule.Action)
@@ -69,11 +75,11 @@ func (i *interceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 		if !strings.HasPrefix(values[0], applicationSessionScheme+" ") {
 			return nil, authenticationError(rule.Action)
 		}
-		return i.admitPrincipal(ctx, request, next, rule, target)
+		return i.admitPrincipal(ctx, request, next, rule, target, delegation)
 	}
 }
 
-func (i *interceptor) admitPrincipal(ctx context.Context, request connect.AnyRequest, next connect.UnaryFunc, rule applicationcontent.ProcedureRule, target applicationcontent.ResourceTarget) (connect.AnyResponse, error) {
+func (i *interceptor) admitPrincipal(ctx context.Context, request connect.AnyRequest, next connect.UnaryFunc, rule applicationcontent.ProcedureRule, target applicationcontent.ResourceTarget, delegation []byte) (connect.AnyResponse, error) {
 	secret, err := parseSession(request.Header())
 	if err != nil {
 		return nil, authenticationError(rule.Action)
@@ -90,21 +96,56 @@ func (i *interceptor) admitPrincipal(ctx context.Context, request connect.AnyReq
 		Target: identityaccess.ResourceTarget{
 			Kind: identityaccess.ResourceKind(target.Kind), ID: target.ID,
 		},
-		Finalize: finalizeTarget,
+		Finalize:   finalizeTarget,
+		Delegation: delegation,
 	})
+	clear(delegation)
 	if err != nil {
 		return nil, principalError(rule.Action, err)
 	}
 	ctx = identityaccess.ContextWithAuthorizedCall(ctx, admitted)
-	audience := admitted.Audience()
-	resource := admitted.Resource()
-	ctx = i.config.Injector.WithPrincipal(ctx, applicationcall.PrincipalFacts{
-		Actor: admitted.Actor(), Effective: admitted.Effective(), Node: audience.Node,
-		Interface: int32(audience.Interface), ProtocolMajor: audience.ProtocolMajor,
-		Action: string(admitted.Action()), ResourceNode: resource.Node, ResourceOwner: resource.Owner,
-		ResourceKind: string(resource.Kind), ResourceID: resource.ID,
-	})
+	ctx = i.config.Injector.WithAuthorizedCall(ctx, admitted)
 	return next(ctx, request)
+}
+
+// parseDelegation accepts the one frozen Application presentation form. Header
+// names are case-insensitive, including map entries inserted without net/http's
+// canonicalization, so differently-cased duplicates cannot bypass the count.
+// The encoded and decoded bounds are enforced before the access service parses
+// the protobuf artifact.
+func parseDelegation(header http.Header) ([]byte, error) {
+	var value string
+	count := 0
+	for name, values := range header {
+		if !strings.EqualFold(name, applicationDelegationHeader) {
+			continue
+		}
+		count += len(values)
+		if len(values) == 1 {
+			value = values[0]
+		}
+	}
+	if count == 0 {
+		return nil, nil
+	}
+	maxEncoded := base64.RawURLEncoding.EncodedLen(identitycontract.MaxArtifactBytes)
+	if count != 1 || value == "" || len(value) > maxEncoded {
+		return nil, identityaccess.ErrUnauthenticated
+	}
+	raw, err := base64.RawURLEncoding.Strict().DecodeString(value)
+	if err != nil || !identitycontract.ValidArtifactSize(len(raw)) || base64.RawURLEncoding.EncodeToString(raw) != value {
+		clear(raw)
+		return nil, identityaccess.ErrUnauthenticated
+	}
+	return raw, nil
+}
+
+func deleteHeaderFold(header http.Header, target string) {
+	for name := range header {
+		if strings.EqualFold(name, target) {
+			delete(header, name)
+		}
+	}
 }
 
 func (i *interceptor) WrapStreamingClient(next connect.StreamingClientFunc) connect.StreamingClientFunc {
@@ -156,7 +197,7 @@ func principalError(operation string, err error) error {
 	switch {
 	case errors.Is(err, identityaccess.ErrUnauthenticated):
 		return authenticationError(operation)
-	case errors.Is(err, identityaccess.ErrPermissionDenied), errors.Is(err, identityaccess.ErrInvalidArgument), errors.Is(err, identityaccess.ErrInvalidResourceTarget), errors.Is(err, identityaccess.ErrDelegationUnsupported):
+	case errors.Is(err, identityaccess.ErrPermissionDenied), errors.Is(err, identityaccess.ErrInvalidArgument), errors.Is(err, identityaccess.ErrInvalidResourceTarget):
 		return applicationcontent.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_FORBIDDEN, operation, "application action is forbidden", false, connect.CodePermissionDenied)
 	default:
 		return applicationcontent.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_UNAVAILABLE, operation, "application authorization unavailable", true, connect.CodeUnavailable)

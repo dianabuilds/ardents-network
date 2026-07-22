@@ -63,6 +63,9 @@ const (
 	// IdentityServiceIssueApplicationEnrollmentTicketProcedure is the fully-qualified name of the
 	// IdentityService's IssueApplicationEnrollmentTicket RPC.
 	IdentityServiceIssueApplicationEnrollmentTicketProcedure = "/ardents.v1.IdentityService/IssueApplicationEnrollmentTicket"
+	// IdentityServiceImportDelegationRevocationProcedure is the fully-qualified name of the
+	// IdentityService's ImportDelegationRevocation RPC.
+	IdentityServiceImportDelegationRevocationProcedure = "/ardents.v1.IdentityService/ImportDelegationRevocation"
 )
 
 // IdentityServiceClient is a client for the ardents.v1.IdentityService service.
@@ -77,6 +80,7 @@ type IdentityServiceClient interface {
 	RevokeAccessGrant(context.Context, *connect.Request[protocol.RevokeAccessGrantRequest]) (*connect.Response[protocol.RevokeAccessGrantResponse], error)
 	ListAccessGrants(context.Context, *connect.Request[protocol.ListAccessGrantsRequest]) (*connect.Response[protocol.ListAccessGrantsResponse], error)
 	IssueApplicationEnrollmentTicket(context.Context, *connect.Request[protocol.IssueApplicationEnrollmentTicketRequest]) (*connect.Response[protocol.IssueApplicationEnrollmentTicketResponse], error)
+	ImportDelegationRevocation(context.Context, *connect.Request[protocol.ImportDelegationRevocationRequest]) (*connect.Response[protocol.ImportDelegationRevocationResponse], error)
 }
 
 // NewIdentityServiceClient constructs a client for the ardents.v1.IdentityService service. By
@@ -150,6 +154,12 @@ func NewIdentityServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(identityServiceMethods.ByName("IssueApplicationEnrollmentTicket")),
 			connect.WithClientOptions(opts...),
 		),
+		importDelegationRevocation: connect.NewClient[protocol.ImportDelegationRevocationRequest, protocol.ImportDelegationRevocationResponse](
+			httpClient,
+			baseURL+IdentityServiceImportDelegationRevocationProcedure,
+			connect.WithSchema(identityServiceMethods.ByName("ImportDelegationRevocation")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -165,6 +175,7 @@ type identityServiceClient struct {
 	revokeAccessGrant                *connect.Client[protocol.RevokeAccessGrantRequest, protocol.RevokeAccessGrantResponse]
 	listAccessGrants                 *connect.Client[protocol.ListAccessGrantsRequest, protocol.ListAccessGrantsResponse]
 	issueApplicationEnrollmentTicket *connect.Client[protocol.IssueApplicationEnrollmentTicketRequest, protocol.IssueApplicationEnrollmentTicketResponse]
+	importDelegationRevocation       *connect.Client[protocol.ImportDelegationRevocationRequest, protocol.ImportDelegationRevocationResponse]
 }
 
 // BeginAuthentication calls ardents.v1.IdentityService.BeginAuthentication.
@@ -218,6 +229,11 @@ func (c *identityServiceClient) IssueApplicationEnrollmentTicket(ctx context.Con
 	return c.issueApplicationEnrollmentTicket.CallUnary(ctx, req)
 }
 
+// ImportDelegationRevocation calls ardents.v1.IdentityService.ImportDelegationRevocation.
+func (c *identityServiceClient) ImportDelegationRevocation(ctx context.Context, req *connect.Request[protocol.ImportDelegationRevocationRequest]) (*connect.Response[protocol.ImportDelegationRevocationResponse], error) {
+	return c.importDelegationRevocation.CallUnary(ctx, req)
+}
+
 // IdentityServiceHandler is an implementation of the ardents.v1.IdentityService service.
 type IdentityServiceHandler interface {
 	BeginAuthentication(context.Context, *connect.Request[protocol.BeginAuthenticationRequest]) (*connect.Response[protocol.BeginAuthenticationResponse], error)
@@ -230,6 +246,7 @@ type IdentityServiceHandler interface {
 	RevokeAccessGrant(context.Context, *connect.Request[protocol.RevokeAccessGrantRequest]) (*connect.Response[protocol.RevokeAccessGrantResponse], error)
 	ListAccessGrants(context.Context, *connect.Request[protocol.ListAccessGrantsRequest]) (*connect.Response[protocol.ListAccessGrantsResponse], error)
 	IssueApplicationEnrollmentTicket(context.Context, *connect.Request[protocol.IssueApplicationEnrollmentTicketRequest]) (*connect.Response[protocol.IssueApplicationEnrollmentTicketResponse], error)
+	ImportDelegationRevocation(context.Context, *connect.Request[protocol.ImportDelegationRevocationRequest]) (*connect.Response[protocol.ImportDelegationRevocationResponse], error)
 }
 
 // NewIdentityServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -299,6 +316,12 @@ func NewIdentityServiceHandler(svc IdentityServiceHandler, opts ...connect.Handl
 		connect.WithSchema(identityServiceMethods.ByName("IssueApplicationEnrollmentTicket")),
 		connect.WithHandlerOptions(opts...),
 	)
+	identityServiceImportDelegationRevocationHandler := connect.NewUnaryHandler(
+		IdentityServiceImportDelegationRevocationProcedure,
+		svc.ImportDelegationRevocation,
+		connect.WithSchema(identityServiceMethods.ByName("ImportDelegationRevocation")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/ardents.v1.IdentityService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case IdentityServiceBeginAuthenticationProcedure:
@@ -321,6 +344,8 @@ func NewIdentityServiceHandler(svc IdentityServiceHandler, opts ...connect.Handl
 			identityServiceListAccessGrantsHandler.ServeHTTP(w, r)
 		case IdentityServiceIssueApplicationEnrollmentTicketProcedure:
 			identityServiceIssueApplicationEnrollmentTicketHandler.ServeHTTP(w, r)
+		case IdentityServiceImportDelegationRevocationProcedure:
+			identityServiceImportDelegationRevocationHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -368,4 +393,8 @@ func (UnimplementedIdentityServiceHandler) ListAccessGrants(context.Context, *co
 
 func (UnimplementedIdentityServiceHandler) IssueApplicationEnrollmentTicket(context.Context, *connect.Request[protocol.IssueApplicationEnrollmentTicketRequest]) (*connect.Response[protocol.IssueApplicationEnrollmentTicketResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.IdentityService.IssueApplicationEnrollmentTicket is not implemented"))
+}
+
+func (UnimplementedIdentityServiceHandler) ImportDelegationRevocation(context.Context, *connect.Request[protocol.ImportDelegationRevocationRequest]) (*connect.Response[protocol.ImportDelegationRevocationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.IdentityService.ImportDelegationRevocation is not implemented"))
 }

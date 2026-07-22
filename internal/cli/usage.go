@@ -36,8 +36,6 @@ func renderRootUsage(w io.Writer) {
 		"  --ssh-known-hosts OpenSSH known_hosts path",
 		"  --ssh-operator-socket absolute remote Operator Unix socket",
 		"  --signer-file  protected device signer bundle",
-		"  --legacy-token explicit migration bearer override",
-		"  --legacy-token-file path to explicit migration bearer",
 		"  --context      named operator context",
 		"  --context-file path to contexts file",
 		"  --principal    expected node principal for identity preflight",

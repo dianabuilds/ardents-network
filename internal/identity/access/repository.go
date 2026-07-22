@@ -19,17 +19,27 @@ const (
 	enrollmentCredentialsBucket        = "identity-enrollment-credentials-v1"
 	adminCommandsBucket                = "identity-admin-commands-v1"
 	applicationEnrollmentTicketsBucket = "identity-application-enrollment-tickets-v1"
+	delegationRevocationsBucket        = "identity-delegation-revocations-v1"
+	delegationRevocationIDsBucket      = "identity-delegation-revocation-ids-v1"
 )
 
 func StorageSchema() storage.Schema {
-	return storage.Schema{Version: 6, Migrations: []storage.Migration{
-		{Version: 1},
-		{Version: 2, Buckets: []string{deviceRevocationsBucket}},
-		{Version: 3, Buckets: []string{enrollmentsBucket, grantsBucket, grantIndexBucket, grantRevocationsBucket}},
-		{Version: 4, Buckets: []string{bootstrapTicketsBucket}},
-		{Version: 5, Buckets: []string{enrollmentCredentialsBucket, adminCommandsBucket}},
-		{Version: 6, Buckets: []string{applicationEnrollmentTicketsBucket}},
-	}}
+	return storage.Schema{Version: 1, Migrations: []storage.Migration{{
+		Version: 1,
+		Buckets: []string{
+			deviceRevocationsBucket,
+			enrollmentsBucket,
+			grantsBucket,
+			grantIndexBucket,
+			grantRevocationsBucket,
+			bootstrapTicketsBucket,
+			enrollmentCredentialsBucket,
+			adminCommandsBucket,
+			applicationEnrollmentTicketsBucket,
+			delegationRevocationsBucket,
+			delegationRevocationIDsBucket,
+		},
+	}}}
 }
 
 type deviceRevocations struct{ database storage.Database }

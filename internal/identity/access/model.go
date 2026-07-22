@@ -104,11 +104,16 @@ func (r CompleteResult) MarshalJSON() ([]byte, error) {
 }
 
 type AuditEvent struct {
-	Outcome   string
-	Reason    string
-	Principal string
-	DeviceID  string
-	Audience  Audience
+	Outcome      string
+	Reason       string
+	Principal    string
+	DeviceID     string
+	Audience     Audience
+	Actor        string
+	Effective    string
+	Action       Action
+	GrantIDs     []string
+	DelegationID string
 }
 
 type AuditSink interface{ RecordIdentityAccess(AuditEvent) }

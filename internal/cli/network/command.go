@@ -52,7 +52,7 @@ func renderNetworkUsage(writer io.Writer) {
 
 func (a *Command) networkStatus(ctx context.Context) int {
 	return commandctx.RunQuery(ctx, a.ctx, "network status", func(callCtx context.Context) (*ardentsv1.NetworkStatusResponse, error) {
-		resp, err := a.ctx.Client.Service().GetNetworkStatus(callCtx, client.Request(a.ctx.Token, &ardentsv1.GetNetworkStatusRequest{}))
+		resp, err := a.ctx.Client.Service().GetNetworkStatus(callCtx, client.Request(&ardentsv1.GetNetworkStatusRequest{}))
 		if err != nil {
 			return nil, err
 		}
@@ -89,7 +89,7 @@ func renderNetworkStatusHuman(w io.Writer, msg *ardentsv1.NetworkStatusResponse)
 func (a *Command) discoveryStatus(ctx context.Context) int {
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().GetDiscoveryStatus(callCtx, client.Request(a.ctx.Token, &ardentsv1.GetDiscoveryStatusRequest{}))
+	resp, err := a.ctx.Client.Service().GetDiscoveryStatus(callCtx, client.Request(&ardentsv1.GetDiscoveryStatusRequest{}))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}
@@ -113,7 +113,7 @@ func (a *Command) discoveryStatus(ctx context.Context) int {
 func (a *Command) localPresence(ctx context.Context) int {
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().GetLocalPresence(callCtx, client.Request(a.ctx.Token, &ardentsv1.GetLocalPresenceRequest{}))
+	resp, err := a.ctx.Client.Service().GetLocalPresence(callCtx, client.Request(&ardentsv1.GetLocalPresenceRequest{}))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}
@@ -135,7 +135,7 @@ func (a *Command) localPresence(ctx context.Context) int {
 func (a *Command) listPeers(ctx context.Context) int {
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().ListPeers(callCtx, client.Request(a.ctx.Token, &ardentsv1.ListPeersRequest{}))
+	resp, err := a.ctx.Client.Service().ListPeers(callCtx, client.Request(&ardentsv1.ListPeersRequest{}))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}
@@ -174,7 +174,7 @@ func (a *Command) listRoutes(ctx context.Context, args []string) int {
 	}
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().ListRouteCandidates(callCtx, client.Request(a.ctx.Token, &req))
+	resp, err := a.ctx.Client.Service().ListRouteCandidates(callCtx, client.Request(&req))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}

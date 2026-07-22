@@ -1,6 +1,7 @@
 # Principal Identity And Access
 
-Status: proposed design; this document does not authorize implementation.
+Status: accepted first-release product contract; implementation status is tracked
+in the engineering work plan.
 
 Related decisions:
 
@@ -718,8 +719,11 @@ state backup; the Bootstrap Ticket exists only for the first enrollment.
 
 An Application installation generates its key locally and proves possession
 through a one-time enrollment operation authorized by an Operator. The Node
-issues exact Application-interface grants. The Application then authenticates
-and calls with `Actor == Effective == Application`.
+issues exact Application-interface actions with Node scope. For a direct call,
+server-owned resource finalization still binds `Effective` and every owned
+resource to the Application Principal; Node scope does not let the Application
+select another owner. The Application then authenticates and calls with
+`Actor == Effective == Application`.
 
 No shared or installation-wide Application bearer token is created. The
 Application's own Principal, device Credential, Node-issued grant, and
@@ -1060,10 +1064,13 @@ unknown actions, malformed scopes, or malformed identity.
 
 ## 16. Greenfield Delivery Strategy
 
-The first release is Principal-only. Pre-release bearer authentication,
-coexistence state machines, dual credential parsing, truncated `p_` identifiers,
-and their migration/rollback tooling are not product contracts and must be
-deleted rather than preserved behind flags.
+The first release is Principal-only and reads one canonical versioned
+configuration contract. Pre-release bearer authentication, coexistence state
+machines, dual credential parsing, truncated `p_` identifiers, alternate
+configuration inputs, and identity-cutover tooling are not product contracts
+and must be deleted rather than preserved behind flags. This is a greenfield
+release, not a production identity migration, and there is no supported dual
+path.
 
 1. Freeze the canonical `p1_`/`d1_` and signed-artifact formats and golden
    vectors before issuing real credentials.
@@ -1090,8 +1097,8 @@ there is no alternate authentication path to try.
 This greenfield rule does not remove real safety mechanisms. Short-lived
 sessions, one-use Bootstrap/Application Enrollment Tickets, transactional store
 rollback, stopped-Node consistency-group backup, and restore of a released
-persisted schema remain required. They are current mechanisms, not legacy
-compatibility. Because no released `p_` state or bearer credential exists,
+persisted schema remain required. They are current first-release mechanisms,
+not compatibility paths. Because no released `p_` state or bearer credential exists,
 there is no `p_ -> p1_` epoch, dual-ID alias, bearer retirement window, or
 break-glass bearer mode in the first-release contract.
 

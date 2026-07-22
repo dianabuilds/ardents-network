@@ -27,7 +27,7 @@ type app struct {
 
 func (a *app) command() commandctx.Context {
 	ctx := commandctx.Context{
-		Client: a.client, Input: a.stdin, Token: a.cfg.Token, Timeout: a.cfg.Timeout, Interval: a.cfg.Interval, Watch: a.cfg.Watch,
+		Client: a.client, Input: a.stdin, Timeout: a.cfg.Timeout, Interval: a.cfg.Interval, Watch: a.cfg.Watch,
 		Renderer: a.renderer,
 		Dispatch: a.dispatch, Usage: renderRootUsage,
 		Operator: commandctx.Operator{Address: a.cfg.Addr, Name: a.cfg.ContextName, Principal: a.cfg.ExpectedPrincipal, Node: a.cfg.ExpectedNode, PublicKey: a.cfg.ExpectedPublicKey},
@@ -37,13 +37,9 @@ func (a *app) command() commandctx.Context {
 }
 
 func newApp(cfg configurationcmd.Config, stdin io.Reader, stdout, stderr io.Writer) (*app, error) {
-	var signer client.SessionSigner
-	if cfg.AuthMode() == configurationcmd.AuthModePrincipal {
-		opened, err := identitycmd.OpenDeviceFileSigner(cfg.SignerFile)
-		if err != nil {
-			return nil, err
-		}
-		signer = opened
+	opened, err := identitycmd.OpenDeviceFileSigner(cfg.SignerFile)
+	if err != nil {
+		return nil, err
 	}
 	return &app{
 		cfg:   cfg,
@@ -55,12 +51,11 @@ func newApp(cfg configurationcmd.Config, stdin io.Reader, stdout, stderr io.Writ
 			SSHIdentity:       cfg.SSHIdentity,
 			SSHKnownHosts:     cfg.SSHKnownHosts,
 			SSHOperatorSocket: cfg.SSHOperatorSocket,
-			Token:             cfg.Token,
 			Timeout:           cfg.Timeout,
 			ExpectedNode:      cfg.ExpectedNode,
 			ExpectedPrincipal: cfg.ExpectedPrincipal,
 			Scopes:            cfg.ScopeHints,
-			Signer:            signer,
+			Signer:            opened,
 		}),
 		stdout:   stdout,
 		stderr:   stderr,
@@ -84,7 +79,7 @@ func (a *app) verifyIdentity(ctx context.Context) error {
 	}
 	callCtx, cancel := a.commandContext(ctx)
 	defer cancel()
-	resp, err := a.client.Service().GetNodeRuntime(callCtx, client.Request(a.cfg.Token, &ardentsv1.GetNodeRuntimeRequest{}))
+	resp, err := a.client.Service().GetNodeRuntime(callCtx, client.Request(&ardentsv1.GetNodeRuntimeRequest{}))
 	if err != nil {
 		return fmt.Errorf("identity preflight failed: %w", err)
 	}

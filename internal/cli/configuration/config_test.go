@@ -5,63 +5,62 @@ import (
 	"crypto/ed25519"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	identityprincipal "ardents/internal/identity/principal"
 )
 
-func TestConfigResolveFromEnv(t *testing.T) {
-	t.Setenv("ARDENTS_ADDR", "127.0.0.1:18080")
-	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "env-token")
+func TestConfigResolvePrincipalFromEnv(t *testing.T) {
+	node := configTestPrincipal(t)
+	signerFile := filepath.Join(t.TempDir(), "device.json")
+	t.Setenv("ARDENTS_ADDR", "unix:///run/ardents/operator.sock")
+	t.Setenv("ARDENTS_SIGNER_FILE", signerFile)
+	t.Setenv("ARDENTS_EXPECTED_PRINCIPAL", node)
 	t.Setenv("ARDENTS_SCOPE_HINTS", "node.status,diagnostics.snapshot")
 	t.Setenv("ARDENTS_OUTPUT", "json")
 	t.Setenv("ARDENTS_TIMEOUT", "3s")
 
 	cfg := DefaultConfig()
+	cfg.ContextFile = filepath.Join(t.TempDir(), "missing.json")
 	if err := cfg.Resolve(); err != nil {
 		t.Fatalf("Resolve() error = %v", err)
 	}
-	if cfg.Addr != "http://127.0.0.1:18080" {
+	if cfg.Addr != "unix:///run/ardents/operator.sock" {
 		t.Fatalf("Addr = %q", cfg.Addr)
 	}
-	if cfg.Token != "env-token" {
-		t.Fatalf("Token = %q", cfg.Token)
+	if cfg.SignerFile != signerFile || cfg.ExpectedPrincipal != node {
+		t.Fatalf("Principal configuration = signer %q principal %q", cfg.SignerFile, cfg.ExpectedPrincipal)
 	}
-	if !cfg.LegacyWarning {
-		t.Fatal("legacy environment selection did not request a warning")
-	}
-	if cfg.Output != "json" {
-		t.Fatalf("Output = %q", cfg.Output)
-	}
-	if cfg.Timeout != 3*time.Second {
-		t.Fatalf("Timeout = %v", cfg.Timeout)
+	if cfg.Output != "json" || cfg.Timeout != 3*time.Second {
+		t.Fatalf("presentation configuration = output %q timeout %v", cfg.Output, cfg.Timeout)
 	}
 	if len(cfg.ScopeHints) != 2 {
 		t.Fatalf("ScopeHints = %#v", cfg.ScopeHints)
 	}
 }
 
-func TestConfigResolveFromContextFile(t *testing.T) {
+func TestConfigResolvePrincipalFromContextFile(t *testing.T) {
 	dir := t.TempDir()
 	contextFile := filepath.Join(dir, "contexts.json")
-	if err := os.WriteFile(contextFile, []byte(`{
+	node := configTestPrincipal(t)
+	signerFile := filepath.Join(dir, "device.json")
+	raw := `{
   "default": "local",
   "contexts": {
     "local": {
-      "addr": "127.0.0.1:19090",
-      "legacy_token_file": "`+filepath.ToSlash(filepath.Join(dir, "token.txt"))+`",
-      "expected_principal": "principal-1",
+      "addr": "unix:///run/ardents/operator.sock",
+      "signer_file": "` + filepath.ToSlash(signerFile) + `",
+      "expected_principal": "` + node + `",
       "expected_public_key": "pub-1",
       "scope_hints": ["node.status"],
       "timeout": "4s"
     }
   }
-}`), 0o600); err != nil {
+}`
+	if err := os.WriteFile(contextFile, []byte(raw), 0o600); err != nil {
 		t.Fatalf("WriteFile(contexts): %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "token.txt"), []byte("file-token\n"), 0o600); err != nil {
-		t.Fatalf("WriteFile(token): %v", err)
 	}
 
 	cfg := DefaultConfig()
@@ -69,157 +68,125 @@ func TestConfigResolveFromContextFile(t *testing.T) {
 	if err := cfg.Resolve(); err != nil {
 		t.Fatalf("Resolve() error = %v", err)
 	}
-	if cfg.Addr != "http://127.0.0.1:19090" {
-		t.Fatalf("Addr = %q", cfg.Addr)
+	if cfg.Addr != "unix:///run/ardents/operator.sock" || cfg.SignerFile != filepath.ToSlash(signerFile) {
+		t.Fatalf("transport configuration = addr %q signer %q", cfg.Addr, cfg.SignerFile)
 	}
-	if cfg.Token != "file-token" {
-		t.Fatalf("Token = %q", cfg.Token)
-	}
-	if cfg.ExpectedPrincipal != "principal-1" {
-		t.Fatalf("ExpectedPrincipal = %q", cfg.ExpectedPrincipal)
-	}
-	if cfg.ExpectedPublicKey != "pub-1" {
-		t.Fatalf("ExpectedPublicKey = %q", cfg.ExpectedPublicKey)
+	if cfg.ExpectedPrincipal != node || cfg.ExpectedPublicKey != "pub-1" {
+		t.Fatalf("identity binding = principal %q public key %q", cfg.ExpectedPrincipal, cfg.ExpectedPublicKey)
 	}
 	if cfg.Timeout != 4*time.Second {
 		t.Fatalf("Timeout = %v", cfg.Timeout)
 	}
 }
 
-func TestConfigResolveRequiresToken(t *testing.T) {
+func TestConfigResolveRequiresPrincipalAuthentication(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg.ContextFile = filepath.Join(t.TempDir(), "missing.json")
 	err := cfg.Resolve()
-	if err == nil {
-		t.Fatal("Resolve() error = nil, want missing token")
+	if err == nil || !strings.Contains(err.Error(), "authentication requires a Principal signer") {
+		t.Fatalf("Resolve() error = %v, want Principal authentication requirement", err)
 	}
 }
 
-func TestConfigResolveAcceptsUnixSocket(t *testing.T) {
+func TestConfigResolveAcceptsProtectedUnixSocket(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg.ContextFile = filepath.Join(t.TempDir(), "missing.json")
-	cfg.Addr = "unix:///run/ardents/control.sock"
-	cfg.Token = "token"
+	cfg.Addr = "unix:///run/ardents/operator.sock"
+	cfg.ExpectedPrincipal = configTestPrincipal(t)
+	cfg.SignerFile = filepath.Join(t.TempDir(), "device.json")
 	if err := cfg.Resolve(); err != nil {
 		t.Fatalf("Resolve() error = %v", err)
 	}
-	if cfg.Addr != "unix:///run/ardents/control.sock" {
+	if cfg.Addr != "unix:///run/ardents/operator.sock" {
 		t.Fatalf("Addr = %q", cfg.Addr)
 	}
 }
 
-func TestConfigResolveAcceptsSSHToLoopbackAPI(t *testing.T) {
+func TestConfigResolveAcceptsSSHStreamLocalForwarding(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg.ContextFile = filepath.Join(t.TempDir(), "missing.json")
-	cfg.Addr = "127.0.0.1:8080"
 	cfg.SSH = "ops@node.example"
-	cfg.Token = "token"
+	cfg.SSHOperatorSocket = "/var/lib/ardents/operator.sock"
+	cfg.ExpectedPrincipal = configTestPrincipal(t)
+	cfg.SignerFile = filepath.Join(t.TempDir(), "device.json")
 	if err := cfg.Resolve(); err != nil {
 		t.Fatalf("Resolve() error = %v", err)
 	}
-	if cfg.Addr != "http://127.0.0.1:8080" {
-		t.Fatalf("Addr = %q", cfg.Addr)
+	if cfg.SSHPort != 22 {
+		t.Fatalf("SSHPort = %d", cfg.SSHPort)
 	}
 }
 
-func TestConfigResolveRejectsSSHToRemoteAPIAddress(t *testing.T) {
+func TestConfigResolveRejectsLegacySSHLoopbackForwarding(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg.ContextFile = filepath.Join(t.TempDir(), "missing.json")
 	cfg.Addr = "http://api.example:8080"
 	cfg.SSH = "ops@node.example"
-	cfg.Token = "token"
+	cfg.ExpectedPrincipal = configTestPrincipal(t)
+	cfg.SignerFile = filepath.Join(t.TempDir(), "device.json")
 	if err := cfg.Resolve(); err == nil {
-		t.Fatal("Resolve() error = nil, want remote API rejection")
+		t.Fatal("Resolve() error = nil, want non-stream-local SSH rejection")
 	}
 }
 
-func TestConfigResolveSelectsPrincipalOnlyForProtectedLocalTransport(t *testing.T) {
-	node := configTestPrincipal(t)
+func TestConfigResolveRejectsPrincipalSignerOverHTTP(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg.ContextFile = filepath.Join(t.TempDir(), "missing.json")
-	cfg.Addr = "unix:///run/ardents/operator.sock"
-	cfg.ExpectedPrincipal = node
+	cfg.Addr = "http://127.0.0.1:8080"
+	cfg.ExpectedPrincipal = configTestPrincipal(t)
 	cfg.SignerFile = filepath.Join(t.TempDir(), "device.json")
-	if err := cfg.Resolve(); err != nil {
-		t.Fatalf("Resolve() error = %v", err)
-	}
-	if cfg.AuthMode() != AuthModePrincipal {
-		t.Fatalf("AuthMode() = %q", cfg.AuthMode())
-	}
-
-	httpConfig := DefaultConfig()
-	httpConfig.ContextFile = filepath.Join(t.TempDir(), "missing.json")
-	httpConfig.Addr = "http://127.0.0.1:8080"
-	httpConfig.ExpectedPrincipal = node
-	httpConfig.SignerFile = filepath.Join(t.TempDir(), "device.json")
-	if err := httpConfig.Resolve(); err == nil {
-		t.Fatal("Resolve() error = nil, want Principal-over-HTTP rejection")
+	if err := cfg.Resolve(); err == nil || !strings.Contains(err.Error(), "protected Unix socket") {
+		t.Fatalf("Resolve() error = %v, want protected transport requirement", err)
 	}
 }
 
 func TestConfigResolvePrincipalSSHRequiresAbsoluteOperatorSocket(t *testing.T) {
-	node := configTestPrincipal(t)
 	cfg := DefaultConfig()
 	cfg.ContextFile = filepath.Join(t.TempDir(), "missing.json")
 	cfg.SSH = "ops@node.example"
-	cfg.SSHOperatorSocket = "/var/lib/ardents/secrets/control.sock"
-	cfg.ExpectedPrincipal = node
-	cfg.SignerFile = filepath.Join(t.TempDir(), "device.json")
-	if err := cfg.Resolve(); err != nil {
-		t.Fatalf("Resolve() error = %v", err)
-	}
-	if cfg.AuthMode() != AuthModePrincipal {
-		t.Fatalf("AuthMode() = %q", cfg.AuthMode())
-	}
-
 	cfg.SSHOperatorSocket = "relative.sock"
+	cfg.ExpectedPrincipal = configTestPrincipal(t)
+	cfg.SignerFile = filepath.Join(t.TempDir(), "device.json")
 	if err := cfg.Resolve(); err == nil {
 		t.Fatal("Resolve() error = nil, want relative remote socket rejection")
 	}
 }
 
-func TestConfigResolveRejectsMixedPrincipalAndLegacyCredentials(t *testing.T) {
+func TestLegacyBearerEnvironmentCannotEnableProtectedCommands(t *testing.T) {
+	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "stale-secret")
+	t.Setenv("ARDENTS_LEGACY_TOKEN_FILE", filepath.Join(t.TempDir(), "stale-token"))
+	t.Setenv("ARDENTS_API_TOKEN", "older-secret")
+	t.Setenv("ARDENTS_TOKEN_FILE", filepath.Join(t.TempDir(), "older-token"))
+
 	cfg := DefaultConfig()
 	cfg.ContextFile = filepath.Join(t.TempDir(), "missing.json")
-	cfg.Addr = "unix:///run/ardents/operator.sock"
-	cfg.ExpectedPrincipal = configTestPrincipal(t)
-	cfg.SignerFile = filepath.Join(t.TempDir(), "device.json")
-	cfg.Token = "legacy"
-	if err := cfg.Resolve(); err == nil {
-		t.Fatal("Resolve() error = nil, want mixed authentication rejection")
+	cfg.Addr = "http://127.0.0.1:8080"
+	err := cfg.Resolve()
+	if err == nil || !strings.Contains(err.Error(), "authentication requires a Principal signer") {
+		t.Fatalf("Resolve() error = %v, want legacy bearer inputs ignored", err)
+	}
+	for _, secret := range []string{"stale-secret", "older-secret"} {
+		if strings.Contains(err.Error(), secret) {
+			t.Fatalf("legacy secret leaked in error: %q", secret)
+		}
 	}
 }
 
-func TestOldAmbientBearerNamesCannotDowngradePrincipalDefault(t *testing.T) {
-	t.Setenv("ARDENTS_API_TOKEN", "stale-ambient-bearer")
-	t.Setenv("ARDENTS_TOKEN_FILE", filepath.Join(t.TempDir(), "stale-token"))
-	cfg := DefaultConfig()
-	cfg.ContextFile = filepath.Join(t.TempDir(), "missing.json")
-	cfg.Addr = "unix:///run/ardents/operator.sock"
-	cfg.ExpectedPrincipal = configTestPrincipal(t)
-	if err := cfg.Resolve(); err != nil {
-		t.Fatalf("Resolve() error = %v", err)
-	}
-	if cfg.AuthMode() != AuthModePrincipal || cfg.Token != "" || cfg.SignerFile == "" {
-		t.Fatalf("old ambient bearer selected mode=%q token_set=%v signer_set=%v", cfg.AuthMode(), cfg.Token != "", cfg.SignerFile != "")
-	}
-}
-
-func TestOldContextBearerFieldsCannotDowngradePrincipalDefault(t *testing.T) {
-	dir := t.TempDir()
-	contextFile := filepath.Join(dir, "contexts.json")
-	raw := `{"default":"alpha","contexts":{"alpha":{"addr":"unix:///run/ardents/operator.sock","expected_principal":"` + configTestPrincipal(t) + `","token_env":"OLD_TOKEN","token_file":"old-token"}}}`
-	if err := os.WriteFile(contextFile, []byte(raw), 0o600); err != nil {
+func TestLegacyBearerContextFieldIsRejectedAsUnknown(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "contexts.json")
+	secret := "stale-secret-name"
+	raw := `{"default":"local","contexts":{"local":{"addr":"unix:///run/ardents/operator.sock","legacy_token_env":"` + secret + `"}}}`
+	if err := os.WriteFile(path, []byte(raw), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("OLD_TOKEN", "stale-context-bearer")
 	cfg := DefaultConfig()
-	cfg.ContextFile = contextFile
-	if err := cfg.Resolve(); err != nil {
-		t.Fatalf("Resolve() error = %v", err)
+	cfg.ContextFile = path
+	err := cfg.Resolve()
+	if err == nil || !strings.Contains(err.Error(), "unknown field") {
+		t.Fatalf("Resolve() error = %v, want unknown legacy field rejection", err)
 	}
-	if cfg.AuthMode() != AuthModePrincipal || cfg.Token != "" {
-		t.Fatalf("old context bearer selected mode=%q token_set=%v", cfg.AuthMode(), cfg.Token != "")
+	if strings.Contains(err.Error(), secret) {
+		t.Fatal("legacy field value leaked in parse error")
 	}
 }
 
