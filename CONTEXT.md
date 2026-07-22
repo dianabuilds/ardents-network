@@ -20,12 +20,16 @@ _Avoid_: Administrator account, global admin, user type
 A least-privilege program represented by its own Principal that consumes capabilities provided by a Node without receiving administrative authority.
 _Avoid_: Operator, workload, client
 
+**Workload**:
+A Node-scoped managed execution resource; it has no Principal identity unless it is explicitly enrolled as an Application.
+_Avoid_: User, Application, daemon identity
+
 **Credential**:
 Evidence accepted by a Node to authenticate one Principal; a Credential does not itself define the Principal's authority.
 _Avoid_: Permission, role, grant
 
 **Application Credential**:
-An expiring, audience-bound Credential that authenticates one Application Principal. Its permitted actions come from separate Access Grants.
+A finite Key Credential that authenticates one Application Principal; the key may be portable, while every resulting Session is Node/interface-bound. Permissions come from separate Access Grants.
 _Avoid_: Operator token, API key
 
 **Access Grant**:
@@ -33,8 +37,20 @@ A signed, time-bounded statement authorizing one Principal to perform exact acti
 _Avoid_: Credential, role, policy, channel capability
 
 **Delegation**:
-An attenuated Access Grant through which one Principal allows another Principal, normally an Application, to act within a subset of its authority.
+A signed, time-bounded authorization through which one Principal allows one Application Principal to act within a subset of the delegator's existing authority.
 _Avoid_: Impersonation, shared credential
+
+**Enrollment**:
+The creation of a local relationship between an existing Principal and one Node after key proof, normally accompanied by Node-issued Access Grants.
+_Avoid_: Creating the Principal, global account registration
+
+**Bootstrap Ticket**:
+A Node-local, single-use secret authorizing only initial enrollment; it is not a Principal or a normal session.
+_Avoid_: User, Operator identity, permanent API token
+
+**Realm Attestation**:
+A purpose-scoped signed claim about a Principal, such as membership or vendor identity; it does not authenticate a call or grant Node authority by itself.
+_Avoid_: Access Grant, certificate login, global account
 
 **Actor Principal**:
 The Principal that directly authenticated the current call.
