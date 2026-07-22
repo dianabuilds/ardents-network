@@ -9,6 +9,7 @@ import (
 	appcontent "ardents/internal/content"
 	contentpayload "ardents/internal/content/payload"
 	identityaccess "ardents/internal/identity/access"
+	identityprincipal "ardents/internal/identity/principal"
 	applicationv1 "ardents/sdk/go/protocol/applicationv1"
 	applicationv1connect "ardents/sdk/go/protocol/applicationv1/applicationv1connect"
 	"ardents/tests/testkit"
@@ -42,6 +43,32 @@ func TestContentPutGetCrossesPublicApplicationContract(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []byte("hello"), get.Msg.GetPayload())
 	require.Equal(t, []string{applicationcontent.ActionPut, applicationcontent.ActionGet}, store.actions)
+}
+
+func TestContentGetRequiresEffectivePrincipalOwnerBinding(t *testing.T) {
+	domainStore := appcontent.NewInDir(t.TempDir())
+	require.NoError(t, domainStore.Load())
+	store := &contentOwner{store: domainStore, commands: appcontent.NewCommands(domainStore, appcontent.CommandConfig{})}
+	firstAccess := testkit.NewApplicationPrincipalAccess(t, []identityaccess.Action{applicationcontent.ActionGet, applicationcontent.ActionPut})
+	secondAccess := testkit.NewApplicationPrincipalAccess(t, []identityaccess.Action{applicationcontent.ActionGet, applicationcontent.ActionPut})
+	first := newPrincipalContentClientWithAccess(t, store, firstAccess)
+	second := newPrincipalContentClientWithAccess(t, store, secondAccess)
+
+	put, err := first.Put(context.Background(), connect.NewRequest(&applicationv1.PutContentRequest{Payload: []byte("shared bytes")}))
+	require.NoError(t, err)
+	reference := put.Msg.GetReference()
+
+	_, err = second.Get(context.Background(), connect.NewRequest(&applicationv1.GetContentRequest{Reference: reference}))
+	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
+	require.Equal(t, applicationv1.ErrorCode_ERROR_CODE_NOT_FOUND, requireApplicationError(t, err).GetCode())
+
+	secondPut, err := second.Put(context.Background(), connect.NewRequest(&applicationv1.PutContentRequest{Payload: []byte("shared bytes")}))
+	require.NoError(t, err)
+	require.Equal(t, reference.GetId(), secondPut.Msg.GetReference().GetId())
+	require.Len(t, domainStore.ListBlobs(), 1)
+
+	_, err = second.Get(context.Background(), connect.NewRequest(&applicationv1.GetContentRequest{Reference: reference}))
+	require.NoError(t, err)
 }
 
 func storeCID(t *testing.T, store *appcontent.Service, id string) string {
@@ -120,9 +147,14 @@ func TestContentHandlerRejectsMissingAndUnsealedAdmission(t *testing.T) {
 	require.Empty(t, store.blobs)
 }
 
-func newPrincipalHTTPHandler(t *testing.T, store applicationcontent.Store) (string, http.Handler, string) {
+func newPrincipalContentClient(t *testing.T, store applicationcontent.Store) applicationv1connect.ContentServiceClient {
 	t.Helper()
 	fixture := testkit.NewApplicationPrincipalAccess(t, []identityaccess.Action{applicationcontent.ActionGet, applicationcontent.ActionPut})
+	return newPrincipalContentClientWithAccess(t, store, fixture)
+}
+
+func newPrincipalContentClientWithAccess(t *testing.T, store applicationcontent.Store, fixture testkit.ApplicationPrincipalAccess) applicationv1connect.ContentServiceClient {
+	t.Helper()
 	injector, extractor := applicationcall.NewChannel()
 	interceptor, err := applicationadmission.NewInterceptor(applicationadmission.Config{
 		Access: fixture.Service, Node: fixture.Node, FallbackPeer: fixture.Peer, FallbackSource: fixture.Source, Injector: injector,
@@ -131,12 +163,6 @@ func newPrincipalHTTPHandler(t *testing.T, store applicationcontent.Store) (stri
 	path, handler, err := applicationcontent.NewHTTPHandler(store, extractor, interceptor)
 	require.NoError(t, err)
 	authorization := "ArdentsApplicationSession " + base64.RawURLEncoding.EncodeToString(fixture.Session[:])
-	return path, handler, authorization
-}
-
-func newPrincipalContentClient(t *testing.T, store applicationcontent.Store) applicationv1connect.ContentServiceClient {
-	t.Helper()
-	path, handler, authorization := newPrincipalHTTPHandler(t, store)
 	mux := http.NewServeMux()
 	mux.Handle(path, handler)
 	server := httptest.NewServer(mux)
@@ -193,16 +219,28 @@ type contentOwner struct {
 
 func (o *contentOwner) PublishBlob(call applicationcall.Call, command appcontent.PublishBlobCommand) (appcontent.Blob, error) {
 	o.actions = append(o.actions, call.Action())
-	return o.commands.PublishBlob(command)
+	owner, err := identityprincipal.Parse(call.Effective())
+	if err != nil {
+		return appcontent.Blob{}, err
+	}
+	return o.commands.PublishBlobForOwner(owner, command)
 }
 
 func (o *contentOwner) GetBlob(call applicationcall.Call, id string) (appcontent.Blob, bool) {
 	o.actions = append(o.actions, call.Action())
-	return o.store.GetBlob(id)
+	owner, err := identityprincipal.Parse(call.Effective())
+	if err != nil {
+		return appcontent.Blob{}, false
+	}
+	return o.store.GetBlobForOwner(owner, id)
 }
 
-func (o *contentOwner) GetBlobPayload(_ applicationcall.Call, id string) ([]byte, error) {
-	return o.store.GetBlobPayload(id)
+func (o *contentOwner) GetBlobPayload(call applicationcall.Call, id string) ([]byte, error) {
+	owner, err := identityprincipal.Parse(call.Effective())
+	if err != nil {
+		return nil, appcontent.ErrBlobNotFound
+	}
+	return o.store.GetBlobPayloadForOwner(owner, id)
 }
 
 func (o *contentOwner) FetchBlob(context.Context, applicationcall.Call, string) (appcontent.Blob, error) {

@@ -12,16 +12,24 @@ import (
 )
 
 type persistedContent struct {
-	Objects   map[string]catalog.Object             `json:"objects"`
-	Blobs     map[string]catalog.Blob               `json:"blobs"`
-	Sources   map[string][]catalog.BlobSourceRecord `json:"sources"`
-	Manifests map[string]catalog.Manifest           `json:"manifests"`
+	Objects       map[string]catalog.Object             `json:"objects"`
+	Blobs         map[string]catalog.Blob               `json:"blobs"`
+	Sources       map[string][]catalog.BlobSourceRecord `json:"sources"`
+	Manifests     map[string]catalog.Manifest           `json:"manifests"`
+	BlobOwnership persistedBlobOwnership                `json:"blob_ownership"`
+}
+
+const blobOwnershipVersion = 1
+
+type persistedBlobOwnership struct {
+	Version  uint32                     `json:"version"`
+	Bindings []catalog.BlobOwnerBinding `json:"bindings"`
 }
 
 func contentPath(dir string) string { return storage.PathInDir(dir) }
 
 func loadContent(path string, out *persistedContent) (bool, error) {
-	return storage.LoadJSON(path, "data", "snapshot", out)
+	return storage.LoadJSONStrict(path, "data", "snapshot", out)
 }
 
 func saveContent(path string, snapshot persistedContent) error {

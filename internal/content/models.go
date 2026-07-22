@@ -8,6 +8,7 @@ import (
 )
 
 type Config struct {
+	Now                      func() time.Time
 	DefaultLocalRetentionTTL time.Duration
 	DefaultRelayRetentionTTL time.Duration
 	MaxRelayRetentionBytes   int64

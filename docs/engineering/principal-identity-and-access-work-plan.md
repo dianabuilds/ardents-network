@@ -1,7 +1,7 @@
 # Principal Identity And Access Work Plan
 
-Status: active implementation plan. Completion is recorded per leaf; `PIA-012`
-and `PIA-013` are complete against the acceptance evidence below.
+Status: active implementation plan. Completion is recorded per leaf; `PIA-012`,
+`PIA-013`, and `PIA-014A` are complete against the acceptance evidence below.
 
 Design source: `docs/product/principal-identity-and-access.md`
 
@@ -132,7 +132,7 @@ boundary; do not deliver an entire broad workstream as one change.
 | `PIA-011B` | 009B1–009B4, 011A | Application enrollment as the only supported Application credential path |
 | `PIA-012` | 011B | **Complete:** Application interceptor/context propagation; header auth removed from content handler; catalogue and fail-closed tests present |
 | `PIA-013` | 010B, 012 | **Complete:** full one-hop Delegation validation, revocation/import, CLI consent, SDK attachment, audit provenance |
-| `PIA-014A` | 012 | Atomic Blob payload/metadata/owner binding for Application acting as itself |
+| `PIA-014A` | 012 | **Complete:** atomic Blob payload/metadata/typed owner binding for an Application acting as itself |
 | `PIA-014B` | 013, 014A | Alice-via-Application ownership/intersection and non-enumeration behavior |
 | `PIA-014C` | 014B | Object/Manifest owner binding plus remote-fetch/claim boundary and owner-aware GC/reconciliation |
 | `PIA-015A` | 002 | Remove fake same-seed Device; expose Device only for an actual Credential |
@@ -810,7 +810,7 @@ integration, race, restart, concurrency, cross-Node/interface, malformed,
 expiry, sibling-action/resource, redaction, generation, and repository compile
 gates pass for this leaf.
 
-### PIA-014 — Make Content Ownership Principal-Bound
+### PIA-014 — Make Content Ownership Principal-Bound (PIA-014A Complete)
 
 **Depends on:** split by leaf: PIA-014A depends on PIA-012; PIA-014B depends on
 PIA-013 and PIA-014A; PIA-014C depends on PIA-014B.
@@ -867,6 +867,19 @@ invent local ownership.
 
 **Do not do:** encode owner into CID, duplicate payloads, or use a display name as
 Principal.
+
+**PIA-014A completion evidence:** `catalog.BlobOwnerBinding` stores a typed
+Principal and content reference separately from globally deduplicated Blob
+metadata. `Service.StoreBlobForOwner` hashes and durably installs the payload,
+then commits metadata and the binding in one versioned catalogue snapshot;
+failure restores both in-memory facts and removes only a newly installed
+payload. Startup reclaims untracked payload files without inventing a binding.
+The daemon Application adapter derives the owner only from the sealed
+`AuthorizedCall.Effective`, requires `Actor == Effective` for this leaf, and
+keeps remote fetch disabled until PIA-014C. Tests cover restart, injected time,
+empty payload identity, same-CID deduplication, sibling-owner denial, malformed/
+unknown/duplicate persisted bindings, transaction rollback for new and existing
+payloads, orphan recovery, concurrency, Application wire behavior, and race.
 
 ### PIA-015 — Normalize Device, Discovery Identity, And Purpose-Scoped Trust
 

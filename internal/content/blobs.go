@@ -5,6 +5,7 @@ package content
 import (
 	model "ardents/internal/content/catalog"
 	datapayload "ardents/internal/content/payload"
+	"ardents/internal/identity/principal"
 	db "ardents/internal/storage"
 	"errors"
 	"fmt"
@@ -184,6 +185,112 @@ func (s *Service) StoreBlob(blob Blob, payload []byte) (Blob, error) {
 		return Blob{}, errors.Join(err, s.rollbackUncommittedPayloadLocked(previous, previousState, blob.ID))
 	}
 	return blob, nil
+}
+
+// StoreBlobForOwner installs a content-addressed payload and commits its Blob
+// metadata and Principal owner binding in the same catalogue transaction.
+// It is the Application Put path; unlike the Operator metadata command, an
+// empty payload is still a real payload with a derived content reference.
+func (s *Service) StoreBlobForOwner(owner principal.ID, blob Blob, payload []byte) (Blob, error) {
+	if owner.String() == "" {
+		return Blob{}, fmt.Errorf("blob owner is required")
+	}
+	if blob.Retention == "staging" {
+		return Blob{}, fmt.Errorf("staging retention is reserved for chunk assembly")
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	previousBlobs := s.blobs.Snapshot()
+	previousOwners := s.blobOwners.Snapshot()
+	previousState := s.state
+	now := s.now()
+
+	stored, payloadExisted, err := s.installOwnedPayloadLocked(blob, payload, now)
+	if err != nil {
+		return Blob{}, err
+	}
+	if !s.blobOwners.Has(owner, stored.ID) {
+		s.blobOwners.Put(model.BlobOwnerBinding{
+			Owner: owner, Reference: stored.ID, CreatedAt: now,
+		})
+	}
+	s.state = "ready"
+	if err := s.saveLocked(); err != nil {
+		restoreErr := s.restoreOwnedBlobSnapshotLocked(previousBlobs, previousOwners, previousState)
+		var payloadErr error
+		if !payloadExisted {
+			if removeErr := os.Remove(s.payloadPath(stored.ID)); removeErr != nil && !os.IsNotExist(removeErr) {
+				payloadErr = fmt.Errorf("remove uncommitted payload")
+			}
+		}
+		return Blob{}, errors.Join(err, restoreErr, payloadErr)
+	}
+	return stored, nil
+}
+
+func (s *Service) installOwnedPayloadLocked(blob Blob, payload []byte, now time.Time) (Blob, bool, error) {
+	blob = Normalize(blob)
+	hash, reference, err := datapayload.DeriveIdentity(payload)
+	if err != nil {
+		return Blob{}, false, err
+	}
+	if err := datapayload.ApplyDerivedIdentity(&blob, hash, reference); err != nil {
+		return Blob{}, false, err
+	}
+	blob.Size = int64(len(payload))
+	blob.State = "available-local"
+
+	payloadExisted := s.hasLocalPayloadLocked(reference)
+	if existing, ok := s.blobs.Get(reference); ok {
+		if existing.ID != reference || existing.CID != reference || existing.Hash != hash || existing.Size != blob.Size {
+			return Blob{}, payloadExisted, ErrBlobIntegrity
+		}
+		blob = existing
+		blob.State = "available-local"
+		blob.ExpiresAt = time.Time{}
+	}
+	if blob.CreatedAt.IsZero() {
+		blob.CreatedAt = now
+	}
+	if err := s.writePayloadLocked(reference, payload); err != nil {
+		return Blob{}, payloadExisted, err
+	}
+	s.blobs.Put(blob)
+	return blob, payloadExisted, nil
+}
+
+func (s *Service) restoreOwnedBlobSnapshotLocked(blobs map[string]Blob, owners []model.BlobOwnerBinding, state string) error {
+	s.blobs.Load(blobs)
+	s.state = state
+	return s.blobOwners.Load(owners, blobs)
+}
+
+// GetBlobForOwner deliberately collapses an absent binding and absent metadata
+// into the same result so a known CID is not an ownership oracle.
+func (s *Service) GetBlobForOwner(owner principal.ID, reference string) (Blob, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if owner.String() == "" || !s.blobOwners.Has(owner, reference) {
+		return Blob{}, false
+	}
+	return Get(&s.blobs, reference)
+}
+
+func (s *Service) GetBlobPayloadForOwner(owner principal.ID, reference string) ([]byte, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if owner.String() == "" || !s.blobOwners.Has(owner, reference) {
+		return nil, ErrBlobNotFound
+	}
+	return Payload(&s.blobs, reference, s.readPayloadLocked)
+}
+
+func (s *Service) HasBlobOwner(owner principal.ID, reference string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return owner.String() != "" && s.blobOwners.Has(owner, reference)
 }
 
 func (s *Service) AnnounceRemoteBlob(blob Blob) (Blob, error) {

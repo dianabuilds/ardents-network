@@ -1,6 +1,9 @@
 package catalog
 
-import "time"
+import (
+	"ardents/internal/identity/principal"
+	"time"
+)
 
 type Ref struct {
 	Kind string `json:"kind"`
@@ -30,6 +33,14 @@ type Blob struct {
 	Encrypted bool      `json:"encrypted"`
 	ExpiresAt time.Time `json:"expires_at"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+// BlobOwnerBinding is the durable authority fact for one Principal and one
+// content-addressed Blob. The payload remains global and deduplicated.
+type BlobOwnerBinding struct {
+	Owner     principal.ID `json:"owner"`
+	Reference string       `json:"reference"`
+	CreatedAt time.Time    `json:"created_at"`
 }
 
 func RequiresLocalPayload(state string) bool {

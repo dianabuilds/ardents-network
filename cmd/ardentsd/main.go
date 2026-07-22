@@ -12,6 +12,7 @@ import (
 	applicationprincipal "ardents/internal/applicationapi/principal"
 	contentdomain "ardents/internal/content"
 	"ardents/internal/daemon"
+	"ardents/internal/identity/principal"
 	"ardents/internal/localapi"
 	"ardents/internal/observability"
 	"ardents/internal/provision"
@@ -60,19 +61,44 @@ func newApplicationAPIHandler(process daemon.Owners, cfg daemon.ApplicationAPICo
 type applicationContentStore struct{ owners daemon.Owners }
 
 func (s applicationContentStore) PublishBlob(call applicationcall.Call, command contentdomain.PublishBlobCommand) (contentdomain.Blob, error) {
-	return contentdomain.Blob{}, contentdomain.ErrStoreUnavailable
+	owner, err := applicationContentOwner(call)
+	if err != nil {
+		return contentdomain.Blob{}, err
+	}
+	return s.owners.Node.PublishBlobForOwner(owner, command)
 }
 
 func (s applicationContentStore) GetBlob(call applicationcall.Call, id string) (contentdomain.Blob, bool) {
-	return contentdomain.Blob{}, false
+	owner, err := applicationContentOwner(call)
+	if err != nil {
+		return contentdomain.Blob{}, false
+	}
+	return s.owners.Content.GetBlobForOwner(owner, id)
 }
 
 func (s applicationContentStore) GetBlobPayload(call applicationcall.Call, id string) ([]byte, error) {
-	return nil, contentdomain.ErrStoreUnavailable
+	owner, err := applicationContentOwner(call)
+	if err != nil {
+		return nil, contentdomain.ErrBlobNotFound
+	}
+	return s.owners.Content.GetBlobPayloadForOwner(owner, id)
 }
 
 func (s applicationContentStore) FetchBlob(ctx context.Context, call applicationcall.Call, id string) (contentdomain.Blob, error) {
-	return contentdomain.Blob{}, contentdomain.ErrStoreUnavailable
+	// Remote Application Get stays disabled until PIA-014C completes the
+	// owner-aware fetch boundary. Fetching bytes must never create ownership.
+	return contentdomain.Blob{}, contentdomain.ErrBlobNotFound
+}
+
+func applicationContentOwner(call applicationcall.Call) (principal.ID, error) {
+	if !call.IsPrincipal() || call.Actor() != call.Effective() {
+		return principal.ID{}, contentdomain.ErrBlobNotFound
+	}
+	owner, err := principal.Parse(call.Effective())
+	if err != nil {
+		return principal.ID{}, contentdomain.ErrBlobNotFound
+	}
+	return owner, nil
 }
 
 func newLocalAPIHandler(process daemon.Owners, cfg daemon.LocalAPIConfig) (string, http.Handler, error) {

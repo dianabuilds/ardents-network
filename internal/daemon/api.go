@@ -7,6 +7,7 @@ import (
 	"ardents/internal/diagnostics"
 	discoveryapi "ardents/internal/discovery"
 	"ardents/internal/identity"
+	"ardents/internal/identity/principal"
 	"ardents/internal/network"
 	"ardents/internal/publication"
 	"ardents/internal/replication/availability"
@@ -307,6 +308,12 @@ func (n *Node) PublishBlob(command appdata.PublishBlobCommand) (appdata.Blob, er
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	return n.dataCommands.PublishBlob(command)
+}
+
+func (n *Node) PublishBlobForOwner(owner principal.ID, command appdata.PublishBlobCommand) (appdata.Blob, error) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	return n.dataCommands.PublishBlobForOwner(owner, command)
 }
 
 func (n *Node) FetchBlob(ctx context.Context, id string) (appdata.Blob, error) {

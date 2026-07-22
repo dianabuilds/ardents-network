@@ -135,7 +135,8 @@ func (h *Handler) admittedCall(ctx context.Context, action string, target Resour
 		return applicationcall.Call{}, protocolError(applicationv1.ErrorCode_ERROR_CODE_UNAUTHENTICATED, action, "application authentication required", false, connect.CodeUnauthenticated)
 	}
 	if !admitted.IsPrincipal() || admitted.ResourceNode() != admitted.Node() ||
-		admitted.ResourceOwner() != admitted.Effective() || admitted.ResourceKind() != target.Kind || admitted.ResourceID() != target.ID {
+		admitted.ResourceOwner() != admitted.Effective() || admitted.ResourceKind() != target.Kind ||
+		admitted.ResourceID() != target.ID {
 		return applicationcall.Call{}, protocolError(applicationv1.ErrorCode_ERROR_CODE_FORBIDDEN, action, "application action is forbidden", false, connect.CodePermissionDenied)
 	}
 	return admitted, nil

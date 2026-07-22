@@ -2,6 +2,7 @@ package content
 
 import (
 	model "ardents/internal/content/catalog"
+	"ardents/internal/identity/principal"
 	"errors"
 	"strings"
 	"time"
@@ -49,6 +50,19 @@ func (c *Commands) PublishBlob(command PublishBlobCommand) (Blob, error) {
 	published, err := c.store.StoreBlob(command.Blob, command.Payload)
 	if err == nil {
 		c.emit("data.blob_published", map[string]any{"id": published.ID, "state": published.State, "encrypted": published.Encrypted})
+	}
+	return published, err
+}
+
+func (c *Commands) PublishBlobForOwner(owner principal.ID, command PublishBlobCommand) (Blob, error) {
+	if err := c.guard("data publish blob"); err != nil {
+		return Blob{}, err
+	}
+	published, err := c.store.StoreBlobForOwner(owner, command.Blob, command.Payload)
+	if err == nil {
+		c.emit("data.blob_published", map[string]any{
+			"id": published.ID, "state": published.State, "encrypted": published.Encrypted,
+		})
 	}
 	return published, err
 }

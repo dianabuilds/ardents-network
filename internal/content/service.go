@@ -23,6 +23,7 @@ type Service struct {
 	retention   RetentionAuthorizer
 	objects     catalog.ObjectStore
 	blobs       catalog.BlobStore
+	blobOwners  catalog.BlobOwnerStore
 	sources     catalog.SourceLedger
 	manifests   catalog.ManifestStore
 }
@@ -34,14 +35,15 @@ func New(path string) *Service {
 func NewWithConfig(path string, cfg Config) *Service {
 	dir := filepath.Dir(path)
 	service := &Service{
-		path:      path,
-		dir:       dir,
-		cfg:       cfg,
-		state:     "new",
-		objects:   catalog.NewObjectStore(),
-		blobs:     catalog.NewBlobStore(),
-		sources:   catalog.NewSourceLedger(),
-		manifests: catalog.NewManifestStore(),
+		path:       path,
+		dir:        dir,
+		cfg:        cfg,
+		state:      "new",
+		objects:    catalog.NewObjectStore(),
+		blobs:      catalog.NewBlobStore(),
+		blobOwners: catalog.NewBlobOwnerStore(),
+		sources:    catalog.NewSourceLedger(),
+		manifests:  catalog.NewManifestStore(),
 	}
 	return service
 }
@@ -52,6 +54,13 @@ func NewInDir(dir string) *Service {
 
 func NewInDirWithConfig(dir string, cfg Config) *Service {
 	return NewWithConfig(contentPath(dir), cfg)
+}
+
+func (s *Service) now() time.Time {
+	if s.cfg.Now != nil {
+		return s.cfg.Now().UTC()
+	}
+	return time.Now().UTC()
 }
 
 func (s *Service) SetRetentionAuthorizer(fn RetentionAuthorizer) {
@@ -74,13 +83,22 @@ func (s *Service) Load() error {
 		return nil
 	}
 	var data persistedContent
-	_, err := loadContent(s.path, &data)
+	found, err := loadContent(s.path, &data)
 	if err != nil {
 		return err
+	}
+	if !found {
+		data.BlobOwnership.Version = blobOwnershipVersion
+	}
+	if data.BlobOwnership.Version != blobOwnershipVersion {
+		return fmt.Errorf("unsupported blob ownership version")
 	}
 	normalizeSnapshot(&data)
 	s.objects.Load(data.Objects)
 	s.blobs.Load(data.Blobs)
+	if err := s.blobOwners.Load(data.BlobOwnership.Bindings, data.Blobs); err != nil {
+		return err
+	}
 	s.sources.Load(data.Sources)
 	s.manifests.Load(data.Manifests)
 	if err := s.removeUntrackedPayloadsLocked(); err != nil {
@@ -195,6 +213,9 @@ func (s *Service) saveLocked() error {
 		Blobs:     s.blobs.Snapshot(),
 		Sources:   s.sources.Snapshot(),
 		Manifests: s.manifests.Snapshot(),
+		BlobOwnership: persistedBlobOwnership{
+			Version: blobOwnershipVersion, Bindings: s.blobOwners.Snapshot(),
+		},
 	})
 }
 

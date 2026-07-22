@@ -87,6 +87,35 @@ old binary to a partially upgraded database. Transaction rollback on an update
 error and whole-state restore after a failed release are both required safety
 mechanisms.
 
+### Blob ownership catalogue version 1
+
+The first-release `ardents.db` content snapshot contains a required
+`blob_ownership` section with `version: 1`. Each binding contains one canonical
+typed `p1_` owner, one Blob content reference, and its creation time. Payloads
+and Blob metadata remain global and content-addressed; the owner is not encoded
+into the CID and identical bytes are not copied per Principal. Unknown versions,
+malformed Principals, duplicate `(owner, reference)` pairs, and bindings to
+missing Blob metadata fail startup closed.
+
+This is a greenfield first-release schema, so there is no importer for a
+pre-release snapshot that lacks `blob_ownership`. Such state is rejected rather
+than assigned an inferred owner. Create fresh state or restore a complete
+same-version stopped-Node backup.
+
+Application Put writes, hashes, and fsyncs a private temporary payload, installs
+the content-addressed file atomically, and then commits Blob metadata plus the
+owner binding in one bbolt update. A failed catalogue update rolls back the
+binding and metadata and removes a payload only when that payload did not exist
+before the operation. On restart, an installed `.blob` file with no catalogue
+metadata is reclaimable and is removed; recovery never creates an ownership
+binding from file or CID knowledge.
+
+An older pre-PIA-014A binary does not understand this authority fact and is not
+a supported in-place rollback target. Stop the Node and restore the complete
+matching consistency-group backup before starting that binary. Never delete the
+`blob_ownership` section or copy `ardents.db` independently from the rest of the
+backup group to force rollback.
+
 ## Rollback And Recovery
 
 Recreate one Node at a time with the previous immutable image and re-prove

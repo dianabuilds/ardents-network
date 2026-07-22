@@ -389,6 +389,7 @@ func TestBlobPartStateDegradesWhenLocalPayloadIsMissing(t *testing.T) {
 func TestObjectPartStateDegradesOnBrokenBlobRefsAfterLoad(t *testing.T) {
 	dir := t.TempDir()
 	persisted := persistedContent{
+		BlobOwnership: persistedBlobOwnership{Version: blobOwnershipVersion},
 		Objects: map[string]model.Object{
 			"obj-broken": {
 				ID:    "obj-broken",

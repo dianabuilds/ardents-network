@@ -4,6 +4,7 @@ package content_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -20,9 +21,11 @@ import (
 )
 
 type persistedDataSnapshot struct {
-	Objects   map[string]appdata.Object   `json:"objects"`
-	Blobs     map[string]appdata.Blob     `json:"blobs"`
-	Manifests map[string]appdata.Manifest `json:"manifests"`
+	Objects       map[string]appdata.Object             `json:"objects"`
+	Blobs         map[string]appdata.Blob               `json:"blobs"`
+	Sources       map[string][]appdata.BlobSourceRecord `json:"sources"`
+	Manifests     map[string]appdata.Manifest           `json:"manifests"`
+	BlobOwnership json.RawMessage                       `json:"blob_ownership"`
 }
 
 func TestDataSubstrateRestartReconcilesExpiredRetention(t *testing.T) {
