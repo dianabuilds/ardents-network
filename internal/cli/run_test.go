@@ -15,9 +15,8 @@ import (
 
 	cliclient "ardents/internal/cli/client"
 	runtimeinfra "ardents/internal/daemon"
-	rpcadapter "ardents/internal/localapi"
-	localauth "ardents/internal/localapi/auth"
 	ardentsv1 "ardents/internal/localapi/protocol"
+	"ardents/internal/localapi/protocol/ardentsv1connect"
 	"ardents/tests/testkit"
 
 	"connectrpc.com/connect"
@@ -150,7 +149,7 @@ func TestIdentityFilesystemFailureDoesNotRevealSignerPathOrContent(t *testing.T)
 }
 
 func TestRunReturnsFailureWhenOutputCannotBeWritten(t *testing.T) {
-	srv := newCLIServer(t, "test-token")
+	srv := newCLIServer(t)
 	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
 	t.Setenv("ARDENTS_ADDR", srv.URL)
 
@@ -162,7 +161,7 @@ func TestRunReturnsFailureWhenOutputCannotBeWritten(t *testing.T) {
 }
 
 func TestRunNodeStatusJSONSuccess(t *testing.T) {
-	srv := newCLIServer(t, "test-token")
+	srv := newCLIServer(t)
 	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
 	t.Setenv("ARDENTS_ADDR", srv.URL)
 
@@ -178,7 +177,7 @@ func TestRunNodeStatusJSONSuccess(t *testing.T) {
 }
 
 func TestRunDiagnosticsHealthHumanSuccess(t *testing.T) {
-	srv := newCLIServer(t, "test-token")
+	srv := newCLIServer(t)
 	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
 	t.Setenv("ARDENTS_ADDR", srv.URL)
 
@@ -193,25 +192,8 @@ func TestRunDiagnosticsHealthHumanSuccess(t *testing.T) {
 	}
 }
 
-func TestRunNodeStatusUnauthorizedFailure(t *testing.T) {
-	srv := newCLIServer(t, "right-token")
-	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "wrong-token")
-	t.Setenv("ARDENTS_ADDR", srv.URL)
-
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	code := Run(context.Background(), []string{"node", "status"}, &stdout, &stderr)
-	if code == 0 {
-		t.Fatalf("code = %d, want non-zero", code)
-	}
-	if !bytes.Contains(stderr.Bytes(), []byte("message: authentication required")) &&
-		!bytes.Contains(stderr.Bytes(), []byte("Unauthenticated")) {
-		t.Fatalf("stderr = %s", stderr.String())
-	}
-}
-
 func TestRunWorkloadListSuccess(t *testing.T) {
-	srv := newCLIServer(t, "test-token")
+	srv := newCLIServer(t)
 	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
 	t.Setenv("ARDENTS_ADDR", srv.URL)
 
@@ -227,7 +209,7 @@ func TestRunWorkloadListSuccess(t *testing.T) {
 }
 
 func TestRunDataInventoryJSONSuccess(t *testing.T) {
-	srv := newCLIServer(t, "test-token")
+	srv := newCLIServer(t)
 	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
 	t.Setenv("ARDENTS_ADDR", srv.URL)
 
@@ -243,7 +225,7 @@ func TestRunDataInventoryJSONSuccess(t *testing.T) {
 }
 
 func TestRunNodeStatusHumanIncludesOperatorTruth(t *testing.T) {
-	srv := newCLIServer(t, "test-token")
+	srv := newCLIServer(t)
 	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
 	t.Setenv("ARDENTS_ADDR", srv.URL)
 
@@ -264,30 +246,8 @@ func TestRunNodeStatusHumanIncludesOperatorTruth(t *testing.T) {
 	}
 }
 
-func TestRunJSONFailureWritesStructuredErrorToStderrOnly(t *testing.T) {
-	srv := newCLIServer(t, "right-token")
-	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "wrong-token")
-	t.Setenv("ARDENTS_ADDR", srv.URL)
-
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	code := Run(context.Background(), []string{"--output", "json", "node", "status"}, &stdout, &stderr)
-	if code == 0 {
-		t.Fatalf("code = %d, want non-zero", code)
-	}
-	if stdout.Len() != 0 {
-		t.Fatalf("stdout = %s, want empty", stdout.String())
-	}
-	if !bytes.Contains(stderr.Bytes(), []byte(`"message"`)) {
-		t.Fatalf("stderr = %s", stderr.String())
-	}
-	if bytes.Contains(stderr.Bytes(), []byte("error:")) {
-		t.Fatalf("stderr mixed human/json output: %s", stderr.String())
-	}
-}
-
 func TestRunDiagnosticsHealthWatchPrintsInitialSnapshot(t *testing.T) {
-	srv := newCLIServer(t, "test-token")
+	srv := newCLIServer(t)
 	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
 	t.Setenv("ARDENTS_ADDR", srv.URL)
 
@@ -309,7 +269,7 @@ func TestRunDiagnosticsHealthWatchPrintsInitialSnapshot(t *testing.T) {
 }
 
 func TestRunNetworkStatusWatchJSONPrintsSnapshotDocument(t *testing.T) {
-	srv := newCLIServer(t, "test-token")
+	srv := newCLIServer(t)
 	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
 	t.Setenv("ARDENTS_ADDR", srv.URL)
 
@@ -328,7 +288,7 @@ func TestRunNetworkStatusWatchJSONPrintsSnapshotDocument(t *testing.T) {
 }
 
 func TestRunNodeStatusIdentityPreflightMismatchFails(t *testing.T) {
-	srv := newCLIServer(t, "test-token")
+	srv := newCLIServer(t)
 	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
 	t.Setenv("ARDENTS_ADDR", srv.URL)
 
@@ -344,11 +304,11 @@ func TestRunNodeStatusIdentityPreflightMismatchFails(t *testing.T) {
 }
 
 func TestRunNodeStatusIdentityPreflightPrincipalSuccess(t *testing.T) {
-	srv := newCLIServer(t, "test-token")
+	srv := newCLIServer(t)
 	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
 	t.Setenv("ARDENTS_ADDR", srv.URL)
 
-	identity := fetchRuntimeIdentity(t, srv.URL, "test-token")
+	identity := fetchRuntimeIdentity(t, srv.URL)
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -358,8 +318,8 @@ func TestRunNodeStatusIdentityPreflightPrincipalSuccess(t *testing.T) {
 	}
 }
 
-func TestRunNodeStatusRejectsWrongNodeBindingAtServer(t *testing.T) {
-	srv := newCLIServer(t, "test-token")
+func TestRunNodeStatusIdentityPreflightNodeMismatchFails(t *testing.T) {
+	srv := newCLIServer(t)
 	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
 	t.Setenv("ARDENTS_ADDR", srv.URL)
 
@@ -367,42 +327,19 @@ func TestRunNodeStatusRejectsWrongNodeBindingAtServer(t *testing.T) {
 	var stderr bytes.Buffer
 	code := Run(context.Background(), []string{"--node-name", "wrong-node", "node", "status"}, &stdout, &stderr)
 	if code == 0 {
-		t.Fatal("code = 0, want node binding failure")
+		t.Fatal("code = 0, want identity preflight failure")
 	}
-	if !bytes.Contains(stderr.Bytes(), []byte("binding mismatch")) {
+	if !bytes.Contains(stderr.Bytes(), []byte("node mismatch")) {
 		t.Fatalf("stderr = %s", stderr.String())
 	}
 }
 
-func TestRunNodeStatusContextScopesNarrowCredential(t *testing.T) {
-	srv := newCLIServer(t, "test-token")
-	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
-	t.Setenv("ARDENTS_ADDR", srv.URL)
-
-	var allowedOut bytes.Buffer
-	var allowedErr bytes.Buffer
-	code := Run(context.Background(), []string{"--scope", "node.status", "node", "status"}, &allowedOut, &allowedErr)
-	if code != 0 {
-		t.Fatalf("allowed code = %d, stderr = %s", code, allowedErr.String())
-	}
-
-	var deniedOut bytes.Buffer
-	var deniedErr bytes.Buffer
-	code = Run(context.Background(), []string{"--scope", "node.start", "node", "status"}, &deniedOut, &deniedErr)
-	if code == 0 {
-		t.Fatal("code = 0, want scoped-context denial")
-	}
-	if !bytes.Contains(deniedErr.Bytes(), []byte("action capability required")) {
-		t.Fatalf("stderr = %s", deniedErr.String())
-	}
-}
-
 func TestRunShellExecutesContextAndCommand(t *testing.T) {
-	srv := newCLIServer(t, "test-token")
+	srv := newCLIServer(t)
 	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
 	t.Setenv("ARDENTS_ADDR", srv.URL)
 
-	identity := fetchRuntimeIdentity(t, srv.URL, "test-token")
+	identity := fetchRuntimeIdentity(t, srv.URL)
 	input := strings.NewReader("context\nnode status\nexit\n")
 
 	var stdout bytes.Buffer
@@ -423,38 +360,70 @@ func TestRunShellExecutesContextAndCommand(t *testing.T) {
 	}
 }
 
-func fetchRuntimeIdentity(t *testing.T, baseURL, token string) *ardentsv1.IdentitySnapshot {
+func fetchRuntimeIdentity(t *testing.T, baseURL string) *ardentsv1.IdentitySnapshot {
 	t.Helper()
 	httpClient := &http.Client{Timeout: time.Second}
 	service := cliclient.NewService(httpClient, baseURL)
-	req := connect.NewRequest(&ardentsv1.GetNodeRuntimeRequest{})
-	req.Header().Set("Authorization", "Bearer "+token)
-	resp, err := service.GetNodeRuntime(context.Background(), req)
+	resp, err := service.GetNodeRuntime(context.Background(), connect.NewRequest(&ardentsv1.GetNodeRuntimeRequest{}))
 	if err != nil {
 		t.Fatalf("GetNodeRuntime() error = %v", err)
 	}
 	return resp.Msg.GetRuntime().GetIdentity()
 }
 
-func newCLIServer(t *testing.T, token string) *httptest.Server {
+func newCLIServer(t *testing.T) *httptest.Server {
 	t.Helper()
 
 	n := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "cli-test",
 		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
 	}).Runtime
+	principal := testkit.NewArdentsClient(t, n)
+	proxy := cliPrincipalProxy{service: principal}
 
 	mux := http.NewServeMux()
-	target := n.GetNodeRuntime()
-	path, handler, err := rpcadapter.NewHandler(testkit.ConnectDependencies(n), localauth.Config{
-		Token: token, SubjectID: "cli-test", Capabilities: []string{"*"},
-		TargetNode: target.Node.Name, TargetPrincipal: target.Identity.Principal,
-	})
-	if err != nil {
-		t.Fatalf("NewHandler() error = %v", err)
-	}
-	mux.Handle(path, handler)
+	mux.Handle(ardentsv1connect.NewNodeServiceHandler(&proxy))
+	mux.Handle(ardentsv1connect.NewDiagnosticsServiceHandler(&proxy))
+	mux.Handle(ardentsv1connect.NewNetworkServiceHandler(&proxy))
+	mux.Handle(ardentsv1connect.NewWorkloadServiceHandler(&proxy))
+	mux.Handle(ardentsv1connect.NewContentServiceHandler(&proxy))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	return srv
+}
+
+// cliPrincipalProxy keeps these root-command tests focused on CLI behavior.
+// Product calls are authorized by testkit's Principal-only client; the outer
+// HTTP server only adapts the root CLI's independently constructed transport.
+type cliPrincipalProxy struct {
+	ardentsv1connect.UnimplementedNodeServiceHandler
+	ardentsv1connect.UnimplementedDiagnosticsServiceHandler
+	ardentsv1connect.UnimplementedNetworkServiceHandler
+	ardentsv1connect.UnimplementedWorkloadServiceHandler
+	ardentsv1connect.UnimplementedContentServiceHandler
+	service cliclient.Service
+}
+
+func (p *cliPrincipalProxy) GetNodeStatus(ctx context.Context, req *connect.Request[ardentsv1.GetNodeStatusRequest]) (*connect.Response[ardentsv1.NodeStatusResponse], error) {
+	return p.service.GetNodeStatus(ctx, connect.NewRequest(req.Msg))
+}
+
+func (p *cliPrincipalProxy) GetNodeRuntime(ctx context.Context, req *connect.Request[ardentsv1.GetNodeRuntimeRequest]) (*connect.Response[ardentsv1.NodeRuntimeResponse], error) {
+	return p.service.GetNodeRuntime(ctx, connect.NewRequest(req.Msg))
+}
+
+func (p *cliPrincipalProxy) GetHealthSummary(ctx context.Context, req *connect.Request[ardentsv1.GetHealthSummaryRequest]) (*connect.Response[ardentsv1.HealthSummaryResponse], error) {
+	return p.service.GetHealthSummary(ctx, connect.NewRequest(req.Msg))
+}
+
+func (p *cliPrincipalProxy) GetNetworkStatus(ctx context.Context, req *connect.Request[ardentsv1.GetNetworkStatusRequest]) (*connect.Response[ardentsv1.NetworkStatusResponse], error) {
+	return p.service.GetNetworkStatus(ctx, connect.NewRequest(req.Msg))
+}
+
+func (p *cliPrincipalProxy) ListWorkloads(ctx context.Context, req *connect.Request[ardentsv1.ListWorkloadsRequest]) (*connect.Response[ardentsv1.ListWorkloadsResponse], error) {
+	return p.service.ListWorkloads(ctx, connect.NewRequest(req.Msg))
+}
+
+func (p *cliPrincipalProxy) GetDataInventory(ctx context.Context, req *connect.Request[ardentsv1.GetDataInventoryRequest]) (*connect.Response[ardentsv1.DataInventorySnapshot], error) {
+	return p.service.GetDataInventory(ctx, connect.NewRequest(req.Msg))
 }

@@ -25,13 +25,6 @@ func main() {
 		}
 		return
 	}
-	if len(os.Args) > 2 && os.Args[1] == "application-credential" && os.Args[2] == "renew" {
-		if err := provision.RenewApplicationCredential(os.Args[3:], os.Stdout); err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "ardentsd application-credential renew: %v\n", err)
-			os.Exit(1)
-		}
-		return
-	}
 	if err := daemon.Run(newLocalAPIHandler, newApplicationAPIHandler, newOperatorSurface); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "ardentsd: %v\n", err)
 		os.Exit(1)

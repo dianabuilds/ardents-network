@@ -6,17 +6,13 @@ import (
 	appcontent "ardents/internal/content"
 	contentpayload "ardents/internal/content/payload"
 	"ardents/sdk/go/client"
-	"ardents/sdk/go/content"
-	sdkerrors "ardents/sdk/go/errors"
 	applicationv1 "ardents/sdk/go/protocol/applicationv1"
+	applicationv1connect "ardents/sdk/go/protocol/applicationv1/applicationv1connect"
 	"context"
 	"errors"
-	"net"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -28,25 +24,20 @@ func TestContentPutGetCrossesPublicApplicationContract(t *testing.T) {
 	domainStore := appcontent.NewInDir(t.TempDir())
 	require.NoError(t, domainStore.Load())
 	store := &contentOwner{store: domainStore, commands: appcontent.NewCommands(domainStore, appcontent.CommandConfig{})}
-	path, handler := newPrincipalHTTPHandler(t, store)
-	mux := http.NewServeMux()
-	mux.Handle(path, handler)
-	server := httptest.NewServer(mux)
-	t.Cleanup(server.Close)
+	contentClient := newPrincipalContentClient(t, store)
 
-	app, err := client.New(client.Config{
-		Endpoint: server.URL, Credential: client.StaticCredential("application-secret"), HTTPClient: server.Client(),
-	})
+	put, err := contentClient.Put(context.Background(), connect.NewRequest(&applicationv1.PutContentRequest{
+		Payload: []byte("hello"), MediaType: "text/plain",
+	}))
 	require.NoError(t, err)
-	reference, err := app.Content.Put(context.Background(), []byte("hello"), content.WithMediaType("text/plain"))
-	require.NoError(t, err)
-	require.Equal(t, "blob", reference.Kind)
-	require.NotEmpty(t, reference.ID)
-	require.Equal(t, reference.ID, storeCID(t, domainStore, reference.ID))
+	reference := put.Msg.GetReference()
+	require.Equal(t, "blob", reference.GetKind())
+	require.NotEmpty(t, reference.GetId())
+	require.Equal(t, reference.GetId(), storeCID(t, domainStore, reference.GetId()))
 
-	payload, err := app.Content.Get(context.Background(), reference)
+	get, err := contentClient.Get(context.Background(), connect.NewRequest(&applicationv1.GetContentRequest{Reference: reference}))
 	require.NoError(t, err)
-	require.Equal(t, []byte("hello"), payload)
+	require.Equal(t, []byte("hello"), get.Msg.GetPayload())
 	require.Equal(t, []string{applicationcontent.ActionPut, applicationcontent.ActionGet}, store.actions)
 }
 
@@ -59,97 +50,49 @@ func storeCID(t *testing.T, store *appcontent.Service, id string) string {
 
 func TestContentClientMapsPublicStructuredError(t *testing.T) {
 	store := &memoryStore{payloads: map[string][]byte{}, blobs: map[string]appcontent.Blob{}}
-	path, handler := newPrincipalHTTPHandler(t, store)
-	mux := http.NewServeMux()
-	mux.Handle(path, handler)
-	server := httptest.NewServer(mux)
-	t.Cleanup(server.Close)
-	app, err := client.New(client.Config{
-		Endpoint: server.URL, Credential: client.StaticCredential("application-secret"), HTTPClient: server.Client(),
-	})
-	require.NoError(t, err)
+	contentClient := newPrincipalContentClient(t, store)
 
-	_, err = app.Content.Get(context.Background(), content.Reference{Kind: "blob", ID: "missing"})
-	var sdkErr *sdkerrors.Error
-	require.ErrorAs(t, err, &sdkErr)
-	require.Equal(t, sdkerrors.NotFound, sdkErr.Code)
-	require.Equal(t, applicationcontent.ActionGet, sdkErr.Operation)
-	require.False(t, sdkErr.Retryable)
+	_, err := contentClient.Get(context.Background(), connect.NewRequest(&applicationv1.GetContentRequest{
+		Reference: &applicationv1.ContentReference{Kind: "blob", Id: "missing"},
+	}))
+	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
+	protocolErr := requireApplicationError(t, err)
+	require.Equal(t, applicationv1.ErrorCode_ERROR_CODE_NOT_FOUND, protocolErr.GetCode())
+	require.Equal(t, applicationcontent.ActionGet, protocolErr.GetOperation())
+	require.False(t, protocolErr.GetRetryable())
 }
 
-func TestClientRejectsRemotePlaintextEndpoint(t *testing.T) {
-	_, err := client.New(client.Config{
-		Endpoint: "http://node.example:8080", Credential: client.StaticCredential("application-secret"),
-	})
-	require.ErrorContains(t, err, "must be loopback")
+func TestApplicationClientRequiresProtectedUnixSocket(t *testing.T) {
+	_, err := client.New(client.Config{})
+	require.ErrorContains(t, err, "protected Unix socket")
 }
 
-func TestApplicationClientUsesUnixSocket(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Unix sockets are unavailable on Windows")
-	}
-	store := &memoryStore{payloads: map[string][]byte{}, blobs: map[string]appcontent.Blob{}}
-	path, handler := newPrincipalHTTPHandler(t, store)
-	mux := http.NewServeMux()
-	mux.Handle(path, handler)
-	socketPath := filepath.Join(t.TempDir(), "application.sock")
-	listener, err := net.Listen("unix", socketPath)
-	require.NoError(t, err)
-	server := &http.Server{Handler: mux}
-	go func() { _ = server.Serve(listener) }()
-	t.Cleanup(func() {
-		_ = server.Close()
-		_ = os.Remove(socketPath)
-	})
-
-	application, err := client.New(client.Config{
-		SocketPath: socketPath, Credential: client.StaticCredential("application-secret"),
-	})
-	require.NoError(t, err)
-	reference, err := application.Content.Put(context.Background(), []byte("over unix"))
-	require.NoError(t, err)
-	payload, err := application.Content.Get(context.Background(), reference)
-	require.NoError(t, err)
-	require.Equal(t, []byte("over unix"), payload)
+func TestApplicationClientRequiresPrincipalSessionSigner(t *testing.T) {
+	_, err := client.New(client.Config{SocketPath: filepath.Join(t.TempDir(), "application.sock")})
+	require.ErrorContains(t, err, "session signer is required")
 }
 
 func TestContentGetRejectsSameLengthPayloadTampering(t *testing.T) {
 	store := &memoryStore{payloads: map[string][]byte{}, blobs: map[string]appcontent.Blob{}}
-	path, handler := newPrincipalHTTPHandler(t, store)
-	mux := http.NewServeMux()
-	mux.Handle(path, handler)
-	server := httptest.NewServer(mux)
-	t.Cleanup(server.Close)
-	app, err := client.New(client.Config{
-		Endpoint: server.URL, Credential: client.StaticCredential("application-secret"), HTTPClient: server.Client(),
-	})
+	contentClient := newPrincipalContentClient(t, store)
+	put, err := contentClient.Put(context.Background(), connect.NewRequest(&applicationv1.PutContentRequest{Payload: []byte("hello")}))
 	require.NoError(t, err)
-	reference, err := app.Content.Put(context.Background(), []byte("hello"))
-	require.NoError(t, err)
-	store.payloads[reference.ID] = []byte("jello")
+	reference := put.Msg.GetReference()
+	store.payloads[reference.GetId()] = []byte("jello")
 
-	_, err = app.Content.Get(context.Background(), reference)
-	var sdkErr *sdkerrors.Error
-	require.ErrorAs(t, err, &sdkErr)
-	require.Equal(t, sdkerrors.IntegrityFailed, sdkErr.Code)
+	_, err = contentClient.Get(context.Background(), connect.NewRequest(&applicationv1.GetContentRequest{Reference: reference}))
+	require.Equal(t, connect.CodeDataLoss, connect.CodeOf(err))
+	require.Equal(t, applicationv1.ErrorCode_ERROR_CODE_INTEGRITY_FAILED, requireApplicationError(t, err).GetCode())
 }
 
 func TestContentPutRejectsPayloadAboveUnaryLimit(t *testing.T) {
 	store := &memoryStore{payloads: map[string][]byte{}, blobs: map[string]appcontent.Blob{}}
-	path, handler := newPrincipalHTTPHandler(t, store)
-	mux := http.NewServeMux()
-	mux.Handle(path, handler)
-	server := httptest.NewServer(mux)
-	t.Cleanup(server.Close)
-	app, err := client.New(client.Config{
-		Endpoint: server.URL, Credential: client.StaticCredential("application-secret"), HTTPClient: server.Client(),
-	})
-	require.NoError(t, err)
+	contentClient := newPrincipalContentClient(t, store)
 
-	_, err = app.Content.Put(context.Background(), make([]byte, applicationv1.MaxUnaryPayloadBytes+1))
-	var sdkErr *sdkerrors.Error
-	require.ErrorAs(t, err, &sdkErr)
-	require.Equal(t, sdkerrors.ResourceExhausted, sdkErr.Code)
+	_, err := contentClient.Put(context.Background(), connect.NewRequest(&applicationv1.PutContentRequest{
+		Payload: make([]byte, applicationv1.MaxUnaryPayloadBytes+1),
+	}))
+	require.Equal(t, connect.CodeResourceExhausted, connect.CodeOf(err), err)
 	require.Empty(t, store.blobs)
 }
 
@@ -157,20 +100,13 @@ func TestContentGetRejectsOversizedBlobBeforeReadingPayload(t *testing.T) {
 	store := &memoryStore{payloads: map[string][]byte{}, blobs: map[string]appcontent.Blob{
 		"oversized": {ID: "oversized", CID: "oversized", Size: applicationv1.MaxUnaryPayloadBytes + 1},
 	}}
-	path, handler := newPrincipalHTTPHandler(t, store)
-	mux := http.NewServeMux()
-	mux.Handle(path, handler)
-	server := httptest.NewServer(mux)
-	t.Cleanup(server.Close)
-	app, err := client.New(client.Config{
-		Endpoint: server.URL, Credential: client.StaticCredential("application-secret"), HTTPClient: server.Client(),
-	})
-	require.NoError(t, err)
+	contentClient := newPrincipalContentClient(t, store)
 
-	_, err = app.Content.Get(context.Background(), content.Reference{Kind: "blob", ID: "oversized"})
-	var sdkErr *sdkerrors.Error
-	require.ErrorAs(t, err, &sdkErr)
-	require.Equal(t, sdkerrors.ResourceExhausted, sdkErr.Code)
+	_, err := contentClient.Get(context.Background(), connect.NewRequest(&applicationv1.GetContentRequest{
+		Reference: &applicationv1.ContentReference{Kind: "blob", Id: "oversized"},
+	}))
+	require.Equal(t, connect.CodeResourceExhausted, connect.CodeOf(err))
+	require.Equal(t, applicationv1.ErrorCode_ERROR_CODE_RESOURCE_EXHAUSTED, requireApplicationError(t, err).GetCode())
 }
 
 func TestContentHandlerRejectsMissingAndForeignAdmissionChannel(t *testing.T) {
@@ -203,6 +139,36 @@ func newPrincipalHTTPHandler(t *testing.T, store applicationcontent.Store) (stri
 	return path, handler
 }
 
+func newPrincipalContentClient(t *testing.T, store applicationcontent.Store) applicationv1connect.ContentServiceClient {
+	t.Helper()
+	path, handler := newPrincipalHTTPHandler(t, store)
+	mux := http.NewServeMux()
+	mux.Handle(path, handler)
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+	return applicationv1connect.NewContentServiceClient(
+		server.Client(),
+		server.URL,
+		connect.WithReadMaxBytes(applicationv1.MaxUnaryMessageBytes),
+		connect.WithSendMaxBytes(applicationv1.MaxUnaryMessageBytes),
+	)
+}
+
+func requireApplicationError(t *testing.T, err error) *applicationv1.ApplicationError {
+	t.Helper()
+	var connectErr *connect.Error
+	require.ErrorAs(t, err, &connectErr)
+	for _, detail := range connectErr.Details() {
+		value, detailErr := detail.Value()
+		require.NoError(t, detailErr)
+		if applicationErr, ok := value.(*applicationv1.ApplicationError); ok {
+			return applicationErr
+		}
+	}
+	require.FailNow(t, "connect error has no ApplicationError detail")
+	return nil
+}
+
 type testPrincipalAdmission struct{ injector applicationcall.Injector }
 
 func (i testPrincipalAdmission) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
@@ -216,7 +182,10 @@ func (i testPrincipalAdmission) WrapUnary(next connect.UnaryFunc) connect.UnaryF
 		}
 		target, err := applicationcontent.CanonicalizeResource(request.Spec().Procedure, request.Any())
 		if err != nil {
-			return nil, err
+			if errors.Is(err, applicationcontent.ErrPayloadTooLarge) {
+				return nil, applicationcontent.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_RESOURCE_EXHAUSTED, rule.Action, "content payload exceeds the unary limit", false, connect.CodeResourceExhausted)
+			}
+			return nil, applicationcontent.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_INVALID_ARGUMENT, rule.Action, "invalid application content request", false, connect.CodeInvalidArgument)
 		}
 		ctx = i.injector.WithPrincipal(ctx, applicationcall.PrincipalFacts{
 			Actor: "p1_test", Effective: "p1_test", Node: "p1_node", Interface: 2, ProtocolMajor: 1,

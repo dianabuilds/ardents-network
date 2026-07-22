@@ -3,6 +3,8 @@ var/
 .artifacts/
 .codex-tmp/
 .gocache/
+.cache/
+.tmp-go-cache*/
 .idea/
 dist/
 /.tmp-application-review-cache/*
