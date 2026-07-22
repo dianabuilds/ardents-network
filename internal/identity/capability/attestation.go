@@ -21,7 +21,8 @@ func (s *Service) AttestDeliveryPublicKey(identityPrivate ed25519.PrivateKey, no
 		return identityapi.CapabilityDeliveryAttestation{}, fmt.Errorf("identity private key is invalid")
 	}
 	public := identityPrivate.Public().(ed25519.PublicKey)
-	if identityprincipal.DeriveID("p", public) != s.localPrincipal {
+	derived, err := identityprincipal.FromEd25519PublicKey(public)
+	if err != nil || derived.String() != s.localPrincipal {
 		return identityapi.CapabilityDeliveryAttestation{}, fmt.Errorf("identity key does not match local capability principal")
 	}
 	now := s.clock().UTC().Truncate(time.Second)
@@ -53,7 +54,8 @@ func VerifyDeliveryAttestation(attestation identityapi.CapabilityDeliveryAttesta
 		return err
 	}
 	public := ed25519.PublicKey(attestation.IdentityPublicKey)
-	if identityprincipal.DeriveID("p", public) != attestation.SubjectPrincipal {
+	derived, err := identityprincipal.FromEd25519PublicKey(public)
+	if err != nil || derived.String() != attestation.SubjectPrincipal {
 		return fmt.Errorf("delivery attestation identity does not match subject")
 	}
 	digest, err := attestationDigest(attestation)

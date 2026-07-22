@@ -89,7 +89,8 @@ func validateDecodedInner(raw []byte, message *PrivateMessageV1) error {
 		len(message.Signature) != ed25519.SignatureSize {
 		return fmt.Errorf("private message identity fields are invalid")
 	}
-	if identityprincipal.DeriveID("p", message.SenderPublicKey) != message.SenderPrincipal {
+	derived, err := identityprincipal.FromEd25519PublicKey(message.SenderPublicKey)
+	if err != nil || derived.String() != message.SenderPrincipal {
 		return fmt.Errorf("private message principal does not match its public key")
 	}
 	if !allZero(message.Padding) {

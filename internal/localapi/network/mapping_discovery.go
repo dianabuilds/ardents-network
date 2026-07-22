@@ -24,7 +24,7 @@ func fromDiscoveryRecord(in *ardentsv1.DiscoveryRecord) discoveryapi.CatalogReco
 	}
 	return discoveryapi.CatalogRecordSnapshot{
 		ID: in.GetId(), Kind: in.GetKind(), Subject: in.GetSubject(), Node: in.GetNode(), Device: in.GetDevice(), Owner: in.GetOwner(), Service: in.GetService(), Mode: in.GetMode(),
-		PublicKey: in.GetPublicKey(), Endpoints: append([]string(nil), in.GetEndpoints()...), IssuedAt: rpc.Time(in.GetIssuedAt()), ExpiresAt: rpc.Time(in.GetExpiresAt()), Signature: in.GetSignature(), Source: in.GetSource(),
+		PublicKey: in.GetPublicKey(), Endpoints: append([]string(nil), in.GetEndpoints()...), IssuedAt: rpc.Time(in.GetIssuedAt()), ExpiresAt: rpc.Time(in.GetExpiresAt()), Signature: in.GetSignature(),
 	}
 }
 

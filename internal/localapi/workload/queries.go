@@ -9,11 +9,8 @@ import (
 	"connectrpc.com/connect"
 )
 
-func (h *Service) GetWorkloadStatus(_ context.Context, req *connect.Request[ardents.GetWorkloadStatusRequest]) (*connect.Response[ardents.WorkloadStatusSnapshot], error) {
-	return rpc.Respond(h.auth, req.Header(), func(call rpc.CallContext) (*ardents.WorkloadStatusSnapshot, *rpc.Error) {
-		if err := rpc.RequireRead(call, "workload", "workload.status"); err != nil {
-			return nil, err
-		}
+func (h *Service) GetWorkloadStatus(ctx context.Context, req *connect.Request[ardents.GetWorkloadStatusRequest]) (*connect.Response[ardents.WorkloadStatusSnapshot], error) {
+	return rpc.RespondContext(ctx, func(rpc.Call) (*ardents.WorkloadStatusSnapshot, *rpc.Error) {
 		res, err := h.workload.Get(req.Msg.GetId())
 		if err != nil {
 			return nil, rpc.MapError("workload", "workload.status", "failed", "workload status failed", false, err)
@@ -22,11 +19,8 @@ func (h *Service) GetWorkloadStatus(_ context.Context, req *connect.Request[arde
 	})
 }
 
-func (h *Service) ListWorkloads(_ context.Context, req *connect.Request[ardents.ListWorkloadsRequest]) (*connect.Response[ardents.ListWorkloadsResponse], error) {
-	return rpc.Respond(h.auth, req.Header(), func(call rpc.CallContext) (*ardents.ListWorkloadsResponse, *rpc.Error) {
-		if err := rpc.RequireRead(call, "workload", "workload.list"); err != nil {
-			return nil, err
-		}
+func (h *Service) ListWorkloads(ctx context.Context, _ *connect.Request[ardents.ListWorkloadsRequest]) (*connect.Response[ardents.ListWorkloadsResponse], error) {
+	return rpc.RespondContext(ctx, func(rpc.Call) (*ardents.ListWorkloadsResponse, *rpc.Error) {
 		items, err := h.workload.List()
 		if err != nil {
 			return nil, rpc.MapError("workload", "workload.list", "failed", "workload list failed", false, err)

@@ -123,6 +123,18 @@ func TestServiceRejectsTamperedGrantSignature(t *testing.T) {
 	requireCapabilityCode(t, err, CodeInvalid)
 }
 
+func TestServiceRejectsCorrectlySignedNonCanonicalPrincipalGrant(t *testing.T) {
+	grant, issuerPublic, issuerPrivate := signedTestGrant(t, 1)
+	grant.IssuerPrincipal = "p_deadbeefdeadbeef"
+	grant.SubjectPrincipal = "p_feedfacefeedface"
+	grant, err := SignGrant(grant, issuerPrivate)
+	require.NoError(t, err)
+	service, err := NewService(filepath.Join(t.TempDir(), "capabilities.db"), bytes.Repeat([]byte{7}, 32), otherPrincipal(), map[string]ed25519.PublicKey{grant.IssuerPrincipal: issuerPublic}, allowCapabilityAdmission{}, func() time.Time { return capabilityTestNow })
+	require.NoError(t, err)
+	_, err = service.ImportGrant(grant)
+	require.Error(t, err)
+}
+
 func TestServiceRejectsGrantBoundToAnotherCanonicalPrincipal(t *testing.T) {
 	grant, issuerPublic, issuerPrivate := signedTestGrant(t, 1)
 	grant.SubjectPrincipal = otherPrincipal()
@@ -288,8 +300,8 @@ func signedTestGrant(t *testing.T, generation uint32) (identityapi.CapabilityGra
 	grant := identityapi.CapabilityGrant{
 		Version: 1, ChannelID: fixedID(0x11), Generation: generation,
 		Secret: secret, GrantID: fixedID(byte(0x20 + generation)),
-		IssuerPrincipal:  identityprincipal.DeriveID("p", issuerPublic),
-		SubjectPrincipal: identityprincipal.DeriveID("p", subjectPublic), Scope: identityapi.CapabilityRealmDiscovery,
+		IssuerPrincipal:  capabilityTestPrincipal(issuerPublic),
+		SubjectPrincipal: capabilityTestPrincipal(subjectPublic), Scope: identityapi.CapabilityRealmDiscovery,
 		Permissions: identityapi.CapabilitySubscribe | identityapi.CapabilityPublish,
 		NotBefore:   capabilityTestNow.Add(-time.Hour), NotAfter: capabilityTestNow.Add(time.Hour),
 	}
@@ -344,7 +356,7 @@ func requireCapabilityCode(t *testing.T, err error, code string) {
 
 func trustedIssuer(public ed25519.PublicKey) map[string]ed25519.PublicKey {
 	return map[string]ed25519.PublicKey{
-		identityprincipal.DeriveID("p", public): public,
+		capabilityTestPrincipal(public): public,
 	}
 }
 
@@ -362,17 +374,25 @@ func subjectIdentityPrivate(t *testing.T, expected string) ed25519.PrivateKey {
 	t.Helper()
 	private := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x31}, ed25519.SeedSize))
 	if expected != "" {
-		require.Equal(t, expected, identityprincipal.DeriveID("p", private.Public().(ed25519.PublicKey)))
+		require.Equal(t, expected, capabilityTestPrincipal(private.Public().(ed25519.PublicKey)))
 	}
 	return private
 }
 
 func otherPrincipal() string {
 	private := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x32}, ed25519.SeedSize))
-	return identityprincipal.DeriveID("p", private.Public().(ed25519.PublicKey))
+	return capabilityTestPrincipal(private.Public().(ed25519.PublicKey))
 }
 
 func subjectIdentityPrincipal() string {
 	private := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x31}, ed25519.SeedSize))
-	return identityprincipal.DeriveID("p", private.Public().(ed25519.PublicKey))
+	return capabilityTestPrincipal(private.Public().(ed25519.PublicKey))
+}
+
+func capabilityTestPrincipal(public ed25519.PublicKey) string {
+	id, err := identityprincipal.FromEd25519PublicKey(public)
+	if err != nil {
+		panic(err)
+	}
+	return id.String()
 }

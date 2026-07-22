@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$unformatted = @(& gofmt -l boundary cmd internal tests)
+$unformatted = @(& gofmt -l api cmd internal scripts sdk tests)
 if ($LASTEXITCODE -ne 0) {
     throw "gofmt inspection failed"
 }

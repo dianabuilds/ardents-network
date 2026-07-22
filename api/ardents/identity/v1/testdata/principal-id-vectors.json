@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "vectors": [
+    {"name":"zero","public_key_hex":"0000000000000000000000000000000000000000000000000000000000000000","principal_id":"p1_755gnz2wffu3osamddsj7ggiasqtwnwomsooe5mxh2yipr2urmwq","device_id":"d1_yz6wjefimpimmbmvors3zynizcl6pefpvvaxlgt2z3lji63ongsq"},
+    {"name":"incrementing","public_key_hex":"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f","principal_id":"p1_3jpjq5f6xcseuwt3lqehljybby73urlizy6lncqvx6ef67yk4tsq","device_id":"d1_k6b6xtrqwcz6zwym6sotzgcvgioqj3kqp3ekvcvuj2xgawblhspa"},
+    {"name":"rfc8032","public_key_hex":"d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a","principal_id":"p1_ip3uipzhc4mbfbt4de43plet7tbasdbsbyp5rozdpklw4cadlr3q","device_id":"d1_knebuzpo3qeo7in5ebh63pkidmcmj5lmv5huukmnuhfnp4ahyfyq"},
+    {"name":"high","public_key_hex":"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff","principal_id":"p1_nfe7wuqpp6oy4kiyy4dbpz7y3e4i2mslxc5bzsq2wqnhmiywzt7q","device_id":"d1_hoqbxzw5bis3r532umlcubtqllpd2nole2x3zemckbjanavsitcq"}
+  ]
+}

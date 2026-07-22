@@ -53,7 +53,8 @@ func validateSealRequest(request SealRequest) (ed25519.PublicKey, time.Duration,
 		return nil, 0, envelopeError(CodeEnvelopeSenderUnauthorized, "capability grant identifier is invalid")
 	}
 	public := request.Signer.Public().(ed25519.PublicKey)
-	if identityprincipal.DeriveID("p", public) != request.Capability.Subject {
+	derived, err := identityprincipal.FromEd25519PublicKey(public)
+	if err != nil || derived.String() != request.Capability.Subject {
 		return nil, 0, envelopeError(CodeEnvelopeSenderUnauthorized, "signer does not match capability subject")
 	}
 	issuedAt := request.IssuedAt.UTC()

@@ -29,7 +29,7 @@ func TestPrivateEnvelopeRoundTripHidesProductSemantics(t *testing.T) {
 	payload := []byte("service=private-api blob=QmSecret request=req-42")
 	sealed := fixture.seal(t, payload)
 	digest := sha256.Sum256(sealed.Payload)
-	require.Equal(t, "e29d0284fb9ac2b66be0ef4f06a310670256ad4d7b6280967f9e97982ccbe576", hex.EncodeToString(digest[:]))
+	require.Equal(t, "b2ffdf681e1a3fa12371ecc7ff284363b1911c3db74e28f35f18a465ce9d5295", hex.EncodeToString(digest[:]))
 
 	require.NotContains(t, sealed.ContentTopic, "service")
 	require.NotContains(t, sealed.Payload, payload)
@@ -156,13 +156,21 @@ func TestPrivateEnvelopeRejectsInvalidInnerSignatureAndSenderGrant(t *testing.T)
 	requireEnvelopeCode(t, openWithFreshReplay(t, fixture, badClass), CodeEnvelopeSenderUnauthorized)
 
 	badPrincipal := rewriteAuthenticatedInner(t, fixture, sealed, func(message *PrivateMessageV1) {
-		message.SenderPrincipal = identityprincipal.DeriveID("p", deterministicPrivate(0x44).Public().(ed25519.PublicKey))
+		message.SenderPrincipal = envelopeTestPrincipal(deterministicPrivate(0x44).Public().(ed25519.PublicKey))
 	})
 	requireEnvelopeCode(t, openWithFreshReplay(t, fixture, badPrincipal), CodeEnvelopeMalformed)
 
 	unauthorized := newEnvelopeFixture(t, false)
 	unauthorizedSealed := unauthorized.seal(t, []byte("unknown sender"))
 	requireEnvelopeCode(t, openWithFreshReplay(t, unauthorized, unauthorizedSealed), CodeEnvelopeSenderUnauthorized)
+}
+
+func TestSealRejectsNonCanonicalPrincipal(t *testing.T) {
+	fixture := newEnvelopeFixture(t, true)
+	request := fixture.sealRequest([]byte("invalid principal"))
+	request.Capability.Subject = "p_deadbeefdeadbeef"
+	_, err := Seal(request)
+	require.Error(t, err)
 }
 
 func TestPrivateEnvelopeRejectsRevokedSenderAndOversizedPlaintext(t *testing.T) {
@@ -341,8 +349,8 @@ func signedEnvelopeGrant(t *testing.T, issuer, subject ed25519.PrivateKey, secre
 	grant := identityapi.CapabilityGrant{
 		Version: 1, ChannelID: channelID, Generation: 1, Secret: secret,
 		GrantID:          testID(grantByte),
-		IssuerPrincipal:  identityprincipal.DeriveID("p", issuerPublic),
-		SubjectPrincipal: identityprincipal.DeriveID("p", subjectPublic),
+		IssuerPrincipal:  envelopeTestPrincipal(issuerPublic),
+		SubjectPrincipal: envelopeTestPrincipal(subjectPublic),
 		Permissions:      identityapi.CapabilitySubscribe | identityapi.CapabilityPublish,
 		Scope:            identityapi.CapabilityRealmDiscovery,
 		NotBefore:        envelopeTestNow.Add(-time.Hour), NotAfter: envelopeTestNow.Add(time.Hour),
@@ -362,6 +370,14 @@ func resolvedGrant(ref identityapi.CapabilityRef, grant identityapi.CapabilityGr
 
 func deterministicPrivate(value byte) ed25519.PrivateKey {
 	return ed25519.NewKeyFromSeed(bytes.Repeat([]byte{value}, ed25519.SeedSize))
+}
+
+func envelopeTestPrincipal(public ed25519.PublicKey) string {
+	id, err := identityprincipal.FromEd25519PublicKey(public)
+	if err != nil {
+		panic(err)
+	}
+	return id.String()
 }
 
 func mustSecret(t *testing.T, value byte) identityapi.CapabilitySecret {

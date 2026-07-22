@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"ardents/internal/daemon"
-	localauth "ardents/internal/localapi/auth"
 )
 
 type Runtime interface {
@@ -18,9 +17,8 @@ type Runtime interface {
 
 type RuntimeHandler struct {
 	service Runtime
-	auth    localauth.Config
 }
 
-func NewHandler(service Runtime, auth localauth.Config) *RuntimeHandler {
-	return &RuntimeHandler{service: service, auth: auth}
+func NewHandler(service Runtime) *RuntimeHandler {
+	return &RuntimeHandler{service: service}
 }

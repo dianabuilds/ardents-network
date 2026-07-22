@@ -62,7 +62,7 @@ from becoming interchangeable strings.
 | Entity | Target representation | Identity scope | Authentication rule |
 |---|---|---|---|
 | Human or long-lived pseudonymous user | Principal | Portable across Nodes | Proves a root or root-authorized device key |
-| Node | Principal plus Node-owned runtime state | Portable network identity | Existing Node key, migrated to the `p1_` identifier |
+| Node | Principal plus Node-owned runtime state | Portable network identity | Node key derives the canonical `p1_` identifier |
 | Operator | Contextual role, not an entity | One Node and Operator Interface | Principal session plus Node-issued administrative grant |
 | Application installation | Principal | Per installation by default | Its own root/device key and Application session |
 | Application product/vendor | Optional attested claim | Realm or vendor namespace | Never inferred from an installation's display name |
@@ -104,10 +104,10 @@ alphabet, length, and checksum-free canonical spelling. They reject uppercase,
 padding, whitespace, shortened values, unknown versions, and unknown key
 algorithms. Comparisons use the decoded 32 bytes, not display strings.
 
-The current `p_<16 hex characters>` identifier is only a 64-bit fingerprint. It
-must not be used for new human or Application Principals. The same existing root
-key deterministically maps to one `p1_` Principal during the coordinated Node
-identity migration.
+The pre-release `p_<16 hex characters>` fingerprint is not a supported
+Principal identifier. No released wire or persisted format accepts it, and no
+runtime alias or migration mapping is provided. Every Node, human, and
+Application Principal uses the canonical `p1_` form from creation.
 
 Root-key rotation changes the Principal in v1. Recovery identities, mutable DID
 documents, social recovery, and key-history consensus are explicitly deferred.
@@ -681,7 +681,7 @@ Begin/Complete are `public_bounded` and have no grant resource. Bootstrap Ticket
 is an alternate authenticator only for `identity.principal.enroll`; it is never
 accepted by the other methods. Administration may not fall back to a generic
 Node resource merely because the operation is privileged. The code catalogue
-and these tables are compatibility artifacts; adding a procedure requires its
+and these tables are synchronized protocol artifacts; adding a procedure requires its
 extractor and sibling-denial test in the same change.
 
 The grant-proposal ID is lowercase unpadded base32 of
@@ -699,9 +699,9 @@ keys, proves possession, and the Node issues an Operator Access Grant for Alice.
 The ticket is atomically consumed and its file is deleted by the provisioning
 workflow.
 
-An explicitly enabled break-glass file credential may remain for recovery, but
-it is Node-local, separately audited, narrowly scoped, and never represented as
-a portable Principal. Normal calls use Principal sessions.
+There is no permanent Operator token or bearer break-glass path. Recovery uses
+the documented Principal/device/grant administration mechanisms and protected
+state backup; the Bootstrap Ticket exists only for the first enrollment.
 
 ### 8.2 Alice Operates Two Nodes
 
@@ -721,8 +721,9 @@ through a one-time enrollment operation authorized by an Operator. The Node
 issues exact Application-interface grants. The Application then authenticates
 and calls with `Actor == Effective == Application`.
 
-The current shared `application-token` is a migration bootstrap credential. It
-must not become the permanent Application identity.
+No shared or installation-wide Application bearer token is created. The
+Application's own Principal, device Credential, Node-issued grant, and
+Application session are required from the first supported release.
 
 ### 8.4 Application Acts For Alice
 
@@ -749,8 +750,8 @@ payload.
 
 Application `Put` derives owner from `AuthorizedCall.Effective`; a
 request-provided owner is rejected. Operator content commands retain their
-Node-administrative semantics until their separate typed-owner migration and do
-not silently reinterpret a legacy `owner` string as a human Principal.
+Node-administrative semantics until their separate typed-owner cleanup and do
+not silently reinterpret a pre-release untyped `owner` string as a human Principal.
 
 For Application Put, payload publication and ownership use this crash-safe
 order:
@@ -768,9 +769,7 @@ and requires an existing owner binding before local read or network fetch. A
 remote fetch may fill missing bytes for an existing binding, but successful
 payload verification does not create ownership. Version 1 has no implicit
 “claim any known CID” operation; sharing/import must later introduce an explicit
-authorized binding command. Until PIA content migration is enabled, legacy
-remote-Get behavior remains behind the legacy Application credential path rather
-than being silently weakened. Public NotFound/PermissionDenied mapping must not
+authorized binding command. Public NotFound/PermissionDenied mapping must not
 become a cross-owner existence oracle.
 
 ## 9. Module Boundary
@@ -817,7 +816,6 @@ The Module hides:
 - exact action and typed resource matching;
 - Actor/Effective derivation and Delegation attenuation;
 - grant mutation concurrency and safe audit reasons;
-- legacy credential observation during migration.
 
 It does not own product Policy, content ownership facts, workload state,
 transport encryption, Waku identity, UI consent, or realm governance.
@@ -870,7 +868,7 @@ there. Version 1 transport acceptance is:
 | Transport | Operator session | Application session | Rule |
 |---|---:|---:|---|
 | Permission-protected Unix socket | issue/accept | issue/accept | Default same-host transport; session bound to listener and peer UID |
-| Plaintext loopback HTTP | no | no | Legacy bearer compatibility only until retirement |
+| Plaintext loopback HTTP | no | no | Principal authentication endpoints and protected calls are not exposed |
 | SSH stream-local forwarding to the Unix socket | yes | no normal need | SSH protects the remote leg; the target is the protected socket, not loopback TCP |
 | TCP with the future Ardents mTLS profile | future issue/accept | future issue/accept | Requires a separate transport contract and verified certificate/channel binding |
 | Non-loopback plaintext TCP | no | no | Forbidden |
@@ -941,15 +939,15 @@ type Database interface {
 Identity repositories receive the transaction supplied by `access.Service`.
 For an administration command, session proof is checked first, then current
 Credential/grant authority is re-read and the mutation/idempotency/audit-outbox
-record is committed in one write transaction. Backup, daemon shutdown, schema
-upgrade, and migration must coordinate with the same database lifecycle; a
+record is committed in one write transaction. Backup, daemon shutdown, and
+released-schema upgrade must coordinate with the same database lifecycle; a
 second process or helper may not open the live bbolt file independently.
 
 `identity-access.db` contains signed/public artifacts, enrollment/revocation
 metadata, idempotency records, audit-outbox records, and Bootstrap Ticket digests
 only. It never contains private keys, session secrets, or raw Bootstrap Tickets.
 Whole-state backup treats `ardents.db`, `identity-access.db`, key files, and
-migration markers as one consistency group even though no transaction spans the
+released-schema upgrade markers as one consistency group even though no transaction spans the
 two product databases.
 
 Challenges and sessions are deliberately ephemeral. Restart invalidates them;
@@ -964,7 +962,7 @@ because sessions do not cache authority. Revoking a DeviceID also removes every
 session indexed by that DeviceID and invalidates renewed Credentials and
 Delegations using the same device key.
 
-No private key, session secret, Bootstrap Ticket, bearer token, channel secret,
+No private key, session secret, Bootstrap Ticket, channel secret,
 or unredacted canonical delegation is written to audit or diagnostics.
 
 ## 12. Realm Trust And Certificates
@@ -1020,14 +1018,14 @@ distinction is intentional, not missing unification.
 
 | Current shape | Decision | Required disposition |
 |---|---|---|
-| `principal.DeriveID` truncates SHA-256 to 8 bytes | Replace | Introduce strict full-length `p1_` before user/Application issuance |
+| `principal.DeriveID` truncates SHA-256 to 8 bytes | Remove | Use strict full-length `p1_` exclusively before the first release; no compatibility parser or alias |
 | Node `Device` is derived from the same private seed as Node Principal | Replace | Make Device a real independent public key Credential or remove the field where no device exists |
-| `SubjectRef{Kind:"token"}` identifies a configured bearer label | Replace | Derive Actor from cryptographic proof; keep legacy label only in migration audit |
-| Operator and Application authorizers duplicate token/action logic | Consolidate internally | Keep surface adapters separate; route both to `identity/access` |
+| `SubjectRef{Kind:"token"}` identifies a configured bearer label | Remove | Derive Actor only from cryptographic proof; do not retain token subjects in runtime or audit |
+| Operator and Application authorizers duplicate token/action logic | Remove | Keep Principal-session surface adapters separate; route both to `identity/access` |
 | Channel `CapabilityGrant` includes secrets and Waku permissions | Separate | Keep as `ChannelGrant` concept; never reuse it as Access Grant |
 | Discovery record repeats `ID`, `Subject`, `Node`, `Device`, `Owner` | Normalize later | Define kind-specific signed record payloads; remove fields that cannot differ |
 | Replication `PeerID` often contains a Node Principal | Rename | Use `NodePrincipal`/`TargetNode`; reserve Peer ID for Waku/libp2p |
-| Blob `ID` and `CID` are constrained equal | Normalize later | Keep one Content Reference in the domain model; adapt legacy wire/persistence during migration |
+| Blob `ID` and `CID` are constrained equal | Normalize before release | Keep one Content Reference in the domain model and remove the duplicate pre-release fields |
 | Content/workload/service `Owner` is an arbitrary string | Type and scope | Security-relevant owners become PrincipalID or typed ResourceOwner; local workload ownership remains explicitly Node-scoped |
 | Trust anchors and issuer maps duplicate public-key trust | Consolidate later | One purpose-scoped trusted-Principal registry with owner-specific projections |
 | “Capability” means action, channel secret, workload requirement, and transport feature | Rename vocabulary | Permission, Channel Grant, Workload Requirement, and Transport Feature respectively |
@@ -1058,96 +1056,44 @@ Do not merge these valid distinctions:
 | Realm outage/compromise | No synchronous dependency; purpose-scoped trust; Node remains local grant authority |
 
 Security-sensitive decisions fail closed on unavailable stores, unknown versions,
-unknown actions, malformed scopes, or ambiguous legacy identity.
+unknown actions, malformed scopes, or malformed identity.
 
-## 16. Migration Strategy
+## 16. Greenfield Delivery Strategy
 
-Migration is vertical and reversible until legacy credentials are retired.
+The first release is Principal-only. Pre-release bearer authentication,
+coexistence state machines, dual credential parsing, truncated `p_` identifiers,
+and their migration/rollback tooling are not product contracts and must be
+deleted rather than preserved behind flags.
 
-1. Freeze formats and golden vectors; update the architecture topology before
-   adding `identity/access`.
-2. Add strict typed `p1_` support, then perform one coordinated migration of
-   existing Node IDs derived from unchanged Node root keys. Reissue signed
-   discovery/capability artifacts whose canonical bytes contain `p_`. Never let
-   one key act as both `p_` and `p1_` in authorization.
-3. Add `identity/access` and run decision parity/shadow evidence without changing
-   accepted credentials.
-4. Treat existing Operator bearer and Application token only as legacy adapters.
-   They do not mint synthetic portable Principals.
-5. Use legacy authority to enroll the first real Operator/Application keys and
-   issue Node-signed grants.
-6. Move Operator authentication and `ardentsctl` session management to the new
-   flow while retaining an explicitly selected and measured compatibility
-   scheme.
-7. Move Application authentication and SDK session management; propagate
-   `AuthorizedCall` into handlers.
-8. Add the one-hop Alice-to-Application delegation slice and owner-bound content
-   operations.
-9. Complete identifier/trust cleanup as independent compatibility-reviewed
-   slices.
-10. Disable legacy credentials by default, retain narrowly documented
-    break-glass recovery if required, and remove normal-path token configuration
-    only after upgrade and rollback evidence passes.
+1. Freeze the canonical `p1_`/`d1_` and signed-artifact formats and golden
+   vectors before issuing real credentials.
+2. Create fresh Node, human, and Application identity state directly in the
+   canonical formats. Runtime parsers never accept `p_`, aliases, or ambiguous
+   alternate spellings.
+3. Build `identity/access`, protected Operator sessions, Application sessions,
+   one-use enrollment tickets, grants, revocations, and one-hop Delegation as
+   the only public identity path.
+4. Provision the first Operator through a short-lived one-use Bootstrap Ticket.
+   Enroll each Application installation through its own short-lived one-use
+   enrollment ticket. Neither mechanism is a normal session or reusable
+   credential.
+5. Use one canonical versioned configuration document. Pre-release environment
+   and token-file compatibility inputs are rejected rather than translated.
+6. Complete owner binding and identifier/trust cleanup directly against the
+   canonical model, then run the full adversarial and release suites.
 
-Legacy coexistence is governed by a durable, monotonic state machine per public
-surface, stored in `identity-access.db`:
+Operator and Application keep distinct listeners, wire schemes, and action
+catalogues. Each accepts only its own Principal session scheme for protected
+calls. A malformed, expired, unknown, or cross-surface session fails closed;
+there is no alternate authentication path to try.
 
-```text
-legacy_only -> dual_enrollment -> principal_required -> break_glass_only -> removed
-```
-
-- `legacy_only` is the unchanged pre-migration behavior while the new feature is
-  disabled. Entering `dual_enrollment` is an atomic database/config migration
-  and starts a `legacy_deadline` no later than 90 days in the future.
-- In Operator `dual_enrollment`, an explicitly presented legacy Operator scheme
-  is accepted only for `node.status`, `diagnostics.snapshot`,
-  `identity.principal.enroll`, `identity.grant.issue`,
-  `identity.grant.revoke`, and `identity.device.revoke`. The transition narrows
-  the old token to this list atomically; it cannot retain its old action set.
-- In Application `dual_enrollment`, an explicitly presented legacy Application
-  token retains only its existing `application.content.put` and
-  `application.content.get` behavior. Successful enrollment of that concrete
-  Application installation atomically disables its legacy token. The token
-  cannot select a Principal, Delegation, or owner under the new model.
-- `principal_required` rejects normal legacy credentials. `break_glass_only` is
-  optional, Operator-only, protected-Unix-socket recovery for the same narrow
-  recovery/inspection action set above; it cannot operate workloads, mutate
-  configuration or content, or start/stop the Node. `removed` accepts neither
-  legacy nor break-glass credentials. A Bootstrap Ticket remains a distinct,
-  one-use authenticator only for `identity.principal.enroll`.
-- Runtime configuration may advance this state but may not move it backwards or
-  extend the recorded deadline. Rollback after a transition restores the whole
-  documented consistency-group backup with the matching old binary; it does not
-  reinterpret new identity state with an older credential policy.
-- Credential parsing never falls back after failure. A request presenting an
-  `ArdentsOperatorSession` or `ArdentsApplicationSession` is either accepted as
-  that scheme or rejected; it is never retried as legacy. Legacy acceptance
-  requires its explicit legacy scheme, an allowed state, and an exact allowed
-  action. Ambiguous/multiple schemes fail before authentication.
-- Every allowed legacy success and every downgrade/scheme-confusion attempt emits a
-  redacted counter/audit reason. Startup fails closed after `legacy_deadline`
-  unless the surface has advanced to `principal_required` or later.
-
-The state is scoped per Operator/Application surface so an Application rollout
-cannot reopen Operator legacy access. The target architecture contains only
-Principal sessions plus the optional narrowly scoped break-glass and one-use
-bootstrap mechanisms; `dual_enrollment` is a bounded migration exception, not a
-permanent authentication mode.
-
-The `p_` migration is an explicitly non-rolling, whole-private-network epoch
-change. All Nodes and the realm authority stop; every state directory passes the
-same dry-run inventory and backup gate; local state and signed artifacts are
-migrated; then all Nodes start on the `p1_`-only release and converge. The normal
-one-Node-at-a-time upgrade contract does not apply to this release and
-`docs/operations/upgrade-migration.md` must carry a release-specific exception.
-
-Mixed old/new peers are expected to reject one another and are tested as a safe
-failure, not as convergence. Rollback stops the whole network and restores every
-Node/authority consistency-group backup before any old binary starts. A dual-ID
-compatibility alias is prohibited because it makes signatures, ownership, and
-revocation ambiguous. If the deployment cannot coordinate this epoch cutover,
-the migration is blocked until a separately designed versioned bridge exists;
-an implementation agent must not invent one inside the migrator.
+This greenfield rule does not remove real safety mechanisms. Short-lived
+sessions, one-use Bootstrap/Application Enrollment Tickets, transactional store
+rollback, stopped-Node consistency-group backup, and restore of a released
+persisted schema remain required. They are current mechanisms, not legacy
+compatibility. Because no released `p_` state or bearer credential exists,
+there is no `p_ -> p1_` epoch, dual-ID alias, bearer retirement window, or
+break-glass bearer mode in the first-release contract.
 
 ## 17. Alternatives Compared
 
@@ -1195,11 +1141,13 @@ The design is implemented only when tests demonstrate all of these cases:
   `principal-owned` scope for the caller;
 - Waku Peer ID is rejected wherever PrincipalID is required;
 - private-channel CapabilityGrant behavior and test vectors are unchanged;
-- logs/errors contain no root/device private material, session token, bearer
-  token, Bootstrap Ticket, channel secret, or proof bytes;
-- migration dry-run identifies every persisted/signed `p_` reference before the
-  coordinated cutover;
+- logs/errors contain no root/device private material, session token, Bootstrap
+  Ticket, Application Enrollment Ticket, channel secret, or proof bytes;
+- a clean install creates only canonical `p1_`/`d1_` identity state and no
+  permanent Operator/Application bearer credential;
+- runtime configuration rejects pre-release token files, alternate environment
+  configuration, `p_` identifiers, and unknown fields;
 - Operator and Application protocol packages and listeners remain separate;
-- a failed Principal-session presentation never falls back to a legacy scheme,
-  and legacy state cannot be downgraded through runtime configuration;
+- a failed Principal-session presentation is denied without another credential
+  path being attempted;
 - all canonical artifacts pass cross-implementation golden vectors.

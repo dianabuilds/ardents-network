@@ -1,6 +1,7 @@
 package identity
 
 import (
+	"fmt"
 	"sync"
 
 	"ardents/internal/storage"
@@ -13,7 +14,8 @@ type persistedIdentity struct {
 }
 
 type persistedState struct {
-	Identity persistedIdentity `json:"identity"`
+	SchemaVersion uint32            `json:"schema_version"`
+	Identity      persistedIdentity `json:"identity"`
 }
 
 type Store struct {
@@ -37,11 +39,14 @@ func (s *Store) Load() error {
 		return nil
 	}
 	var data persistedState
-	found, err := storage.LoadJSON(s.path, "node-runtime", "state", &data)
+	found, err := storage.LoadJSONStrict(s.path, "node-runtime", "state", &data)
 	if err != nil {
 		return err
 	}
 	if found {
+		if data.SchemaVersion != 1 {
+			return fmt.Errorf("node identity state schema is unsupported")
+		}
 		s.data = data
 	}
 	return nil
@@ -63,7 +68,7 @@ func (s *Store) LoadIdentity() (string, string, string) {
 func (s *Store) SaveIdentity(principal, device, publicKey string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.data.Identity = persistedIdentity{Principal: principal, Device: device, PublicKey: publicKey}
+	s.data = persistedState{SchemaVersion: 1, Identity: persistedIdentity{Principal: principal, Device: device, PublicKey: publicKey}}
 	return s.saveLocked()
 }
 

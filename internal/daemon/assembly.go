@@ -6,6 +6,7 @@ import (
 	"ardents/internal/discovery"
 	"ardents/internal/hosting"
 	"ardents/internal/identity"
+	identityaccess "ardents/internal/identity/access"
 	identitykeyring "ardents/internal/identity/keyring"
 	networkprivacy "ardents/internal/messaging"
 	"ardents/internal/network"
@@ -537,6 +538,8 @@ func (n *Node) configureLocalServicesLocked() {
 
 type Owners struct {
 	Node              *Node
+	IdentityAccess    storage.Database
+	PrincipalAccess   *identityaccess.Service
 	Content           *content.Service
 	ContentCommands   *content.Commands
 	DiscoveryCommands *discovery.Commands

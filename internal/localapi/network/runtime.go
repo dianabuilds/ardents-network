@@ -9,11 +9,8 @@ import (
 	"connectrpc.com/connect"
 )
 
-func (h *API) GetNetworkStatus(_ context.Context, req *connect.Request[protocol.GetNetworkStatusRequest]) (*connect.Response[protocol.NetworkStatusResponse], error) {
-	return rpc.Respond(h.auth, req.Header(), func(call rpc.CallContext) (*protocol.NetworkStatusResponse, *rpc.Error) {
-		if err := rpc.RequireRead(call, "transport", "transport.network_status"); err != nil {
-			return nil, err
-		}
+func (h *API) GetNetworkStatus(ctx context.Context, _ *connect.Request[protocol.GetNetworkStatusRequest]) (*connect.Response[protocol.NetworkStatusResponse], error) {
+	return rpc.RespondContext(ctx, func(rpc.Call) (*protocol.NetworkStatusResponse, *rpc.Error) {
 		return &protocol.NetworkStatusResponse{Status: operationStatus("completed", "network status available", true), Network: networkStatus(h.status.GetNetworkStatus())}, nil
 	})
 }

@@ -1,0 +1,132 @@
+syntax = "proto3";
+
+package ardents.v1;
+
+option go_package = "ardents/internal/localapi/protocol;ardentsv1";
+
+import "api/ardents/identity/v1/artifacts.proto";
+import "google/protobuf/timestamp.proto";
+
+service IdentityService {
+  rpc BeginAuthentication(BeginAuthenticationRequest) returns (BeginAuthenticationResponse);
+  rpc CompleteAuthentication(CompleteAuthenticationRequest) returns (CompleteAuthenticationResponse);
+  rpc EnrollFirstPrincipal(EnrollFirstPrincipalRequest) returns (EnrollFirstPrincipalResponse);
+  rpc EnrollPrincipal(EnrollPrincipalRequest) returns (EnrollPrincipalResponse);
+  rpc RevokeDevice(RevokeDeviceRequest) returns (RevokeDeviceResponse);
+  rpc ListDeviceRevocations(ListDeviceRevocationsRequest) returns (ListDeviceRevocationsResponse);
+  rpc IssueAccessGrant(IssueAccessGrantRequest) returns (IssueAccessGrantResponse);
+  rpc RevokeAccessGrant(RevokeAccessGrantRequest) returns (RevokeAccessGrantResponse);
+  rpc ListAccessGrants(ListAccessGrantsRequest) returns (ListAccessGrantsResponse);
+  rpc IssueApplicationEnrollmentTicket(IssueApplicationEnrollmentTicketRequest) returns (IssueApplicationEnrollmentTicketResponse);
+}
+
+message BeginAuthenticationRequest {
+  string principal_id = 1;
+  ardents.identity.v1.ChallengePurpose purpose = 2;
+}
+
+message BeginAuthenticationResponse {
+  ardents.identity.v1.ChallengeFields challenge = 1;
+}
+
+message CompleteAuthenticationRequest {
+  bytes challenge_id = 1;
+  string principal_id = 2;
+  bytes root_public_key = 3;
+  bytes credential = 4;
+  bytes signature = 5;
+}
+
+message CompleteAuthenticationResponse {
+  bytes session_secret = 1;
+  bytes enrollment_proof = 2;
+  string session_id = 3;
+  google.protobuf.Timestamp expires_at = 4;
+}
+
+message EnrollFirstPrincipalRequest {
+  bytes bootstrap_ticket = 1;
+  ardents.identity.v1.ChallengeFields challenge = 2;
+  bytes enrollment_proof = 3;
+  bytes root_public_key = 4;
+  bytes credential = 5;
+}
+
+message EnrollFirstPrincipalResponse { string principal_id = 1; }
+
+message EnrollPrincipalRequest {
+  string request_id = 1;
+  ardents.identity.v1.ChallengeFields challenge = 2;
+  bytes enrollment_proof = 3;
+  bytes root_public_key = 4;
+  bytes credential = 5;
+}
+
+message EnrollPrincipalResponse { string principal_id = 1; }
+
+message RevokeDeviceRequest {
+  string request_id = 1;
+  string principal_id = 2;
+  string device_id = 3;
+}
+
+message RevokeDeviceResponse { string revocation_id = 1; }
+
+message ListDeviceRevocationsRequest { string principal_id = 1; }
+
+message DeviceRevocationMetadata {
+  string id = 1;
+  string principal_id = 2;
+  string device_id = 3;
+  google.protobuf.Timestamp revoked_at = 4;
+}
+
+message ListDeviceRevocationsResponse { repeated DeviceRevocationMetadata revocations = 1; }
+
+message AccessGrantProposal {
+  string subject_principal_id = 1;
+  repeated string actions = 2;
+  ardents.identity.v1.ResourceScope scope = 3;
+  google.protobuf.Timestamp not_before = 4;
+  google.protobuf.Timestamp not_after = 5;
+}
+
+message IssueAccessGrantRequest {
+  string request_id = 1;
+  AccessGrantProposal proposal = 2;
+}
+
+message IssueAccessGrantResponse { string grant_id = 1; }
+
+message RevokeAccessGrantRequest {
+  string request_id = 1;
+  string grant_id = 2;
+}
+
+message RevokeAccessGrantResponse { string revocation_id = 1; }
+
+message ListAccessGrantsRequest { string subject_principal_id = 1; }
+
+message AccessGrantMetadata {
+  string id = 1;
+  string subject_principal_id = 2;
+  repeated string actions = 3;
+  ardents.identity.v1.ResourceScope scope = 4;
+  google.protobuf.Timestamp not_before = 5;
+  google.protobuf.Timestamp not_after = 6;
+  bool revoked = 7;
+}
+
+message ListAccessGrantsResponse { repeated AccessGrantMetadata grants = 1; }
+
+message IssueApplicationEnrollmentTicketRequest {
+  string application_principal_id = 1;
+  repeated string initial_actions = 2;
+  reserved 3;
+  reserved "replace_current_legacy_credential";
+}
+
+message IssueApplicationEnrollmentTicketResponse {
+  bytes application_enrollment_ticket = 1;
+  google.protobuf.Timestamp expires_at = 2;
+}

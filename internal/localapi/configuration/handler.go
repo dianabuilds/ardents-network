@@ -5,11 +5,8 @@ package configuration
 import (
 	"context"
 	"fmt"
-	"net/http"
 
 	runtimeconfig "ardents/internal/config"
-	"ardents/internal/identity"
-	localauth "ardents/internal/localapi/auth"
 	protocol "ardents/internal/localapi/protocol"
 	"ardents/internal/localapi/rpc"
 
@@ -18,50 +15,40 @@ import (
 
 type Controller struct {
 	service runtimeconfig.Service
-	auth    localauth.Config
 }
 
-func NewHandler(service runtimeconfig.Service, auth localauth.Config) *Controller {
-	return &Controller{service: service, auth: auth}
+func NewHandler(service runtimeconfig.Service) *Controller {
+	return &Controller{service: service}
 }
 
-func (h *Controller) GetEffectiveConfiguration(_ context.Context, req *connect.Request[protocol.GetEffectiveConfigurationRequest]) (*connect.Response[protocol.EffectiveConfigurationResponse], error) {
-	if err := h.authorize(req.Header(), "config.effective", identity.AccessRead); err != nil {
-		return nil, err
-	}
-	if h.service == nil {
-		return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("operator configuration source is unavailable"))
-	}
-	return connect.NewResponse(&protocol.EffectiveConfigurationResponse{
-		Status:        operationStatus("completed", "effective configuration available", true),
-		Configuration: effectiveConfiguration(h.service.GetEffectiveConfig()),
-	}), nil
+func (h *Controller) GetEffectiveConfiguration(ctx context.Context, _ *connect.Request[protocol.GetEffectiveConfigurationRequest]) (*connect.Response[protocol.EffectiveConfigurationResponse], error) {
+	return rpc.RespondContext(ctx, func(rpc.Call) (*protocol.EffectiveConfigurationResponse, *rpc.Error) {
+		return h.effectiveConfiguration()
+	})
 }
 
 func (h *Controller) ReloadConfiguration(ctx context.Context, req *connect.Request[protocol.ReloadConfigurationRequest]) (*connect.Response[protocol.ReloadConfigurationResponse], error) {
-	if err := h.authorize(req.Header(), "config.reload", identity.AccessWrite); err != nil {
-		return nil, err
-	}
-	if h.service == nil {
-		return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("operator configuration source is unavailable"))
-	}
 	callCtx, cancel := rpc.MutationContext(ctx)
 	defer cancel()
-	result := h.service.ReloadConfig(callCtx)
-	accepted := result.Outcome != runtimeconfig.OutcomeRejectedInvalid && result.Outcome != runtimeconfig.OutcomeRejectedImmutable && result.Outcome != runtimeconfig.OutcomeRolledBack
-	return connect.NewResponse(&protocol.ReloadConfigurationResponse{
-		Status:        operationStatus(string(result.Outcome), reloadReason(result), accepted),
-		Result:        reloadConfiguration(result),
-		Configuration: effectiveConfiguration(h.service.GetEffectiveConfig()),
-	}), nil
+	return rpc.RespondContext(ctx, func(rpc.Call) (*protocol.ReloadConfigurationResponse, *rpc.Error) {
+		return h.reloadConfiguration(callCtx)
+	})
 }
 
-func (h *Controller) authorize(header http.Header, operation string, access identity.Access) error {
-	call, err := h.auth.CallContext(header)
-	if err != nil {
-		return err
+func (h *Controller) effectiveConfiguration() (*protocol.EffectiveConfigurationResponse, *rpc.Error) {
+	if h.service == nil {
+		return nil, rpc.MapError("config", "config.effective", "unavailable", "operator configuration source is unavailable", true, fmt.Errorf("configuration unavailable"))
 	}
-	return localauth.Require(call, operation, access)
+	return &protocol.EffectiveConfigurationResponse{Status: operationStatus("completed", "effective configuration available", true), Configuration: effectiveConfiguration(h.service.GetEffectiveConfig())}, nil
+}
+
+func (h *Controller) reloadConfiguration(ctx context.Context) (*protocol.ReloadConfigurationResponse, *rpc.Error) {
+	if h.service == nil {
+		return nil, rpc.MapError("config", "config.reload", "unavailable", "operator configuration source is unavailable", true, fmt.Errorf("configuration unavailable"))
+	}
+	result := h.service.ReloadConfig(ctx)
+	accepted := result.Outcome != runtimeconfig.OutcomeRejectedInvalid && result.Outcome != runtimeconfig.OutcomeRejectedImmutable && result.Outcome != runtimeconfig.OutcomeRolledBack
+	return &protocol.ReloadConfigurationResponse{Status: operationStatus(string(result.Outcome), reloadReason(result), accepted), Result: reloadConfiguration(result), Configuration: effectiveConfiguration(h.service.GetEffectiveConfig())}, nil
 }
 
 func reloadReason(result runtimeconfig.ReloadResult) string {

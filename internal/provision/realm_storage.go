@@ -39,10 +39,7 @@ func prepareNodeStorage(options NodeOptions) (protectedNodeStorage, error) {
 }
 
 func ensurePrivateDir(path string) error {
-	if err := os.MkdirAll(path, 0o700); err != nil {
-		return err
-	}
-	return os.Chmod(path, 0o700)
+	return storage.EnsurePrivateDir(path)
 }
 
 func readPrivateJSON(path string, target any) error {
@@ -57,14 +54,14 @@ func readPrivateJSON(path string, target any) error {
 }
 
 func readPrivate(path string) ([]byte, error) {
-	info, err := os.Lstat(path)
+	raw, found, err := storage.ReadPrivateFile(path)
 	if err != nil {
 		return nil, err
 	}
-	if !info.Mode().IsRegular() || info.Mode().Perm()&0o077 != 0 {
-		return nil, fmt.Errorf("protected state permissions are invalid")
+	if !found {
+		return nil, os.ErrNotExist
 	}
-	return os.ReadFile(path)
+	return raw, nil
 }
 
 func writePrivateJSON(path string, value any) error {

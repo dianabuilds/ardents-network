@@ -9,11 +9,8 @@ import (
 	"connectrpc.com/connect"
 )
 
-func (h *Service) GetHostedService(_ context.Context, req *connect.Request[ardentsv1.GetHostedServiceRequest]) (*connect.Response[ardentsv1.GetHostedServiceResponse], error) {
-	return rpc.Respond(h.auth, req.Header(), func(call rpc.CallContext) (*ardentsv1.GetHostedServiceResponse, *rpc.Error) {
-		if err := rpc.RequireRead(call, "workload", "workload.hosted_service"); err != nil {
-			return nil, err
-		}
+func (h *Service) GetHostedService(ctx context.Context, req *connect.Request[ardentsv1.GetHostedServiceRequest]) (*connect.Response[ardentsv1.GetHostedServiceResponse], error) {
+	return rpc.RespondContext(ctx, func(rpc.Call) (*ardentsv1.GetHostedServiceResponse, *rpc.Error) {
 		res, err := h.hosting.GetHostedService(req.Msg.GetId())
 		if err != nil {
 			return nil, rpc.MapError("workload", "workload.hosted_service", "failed", "hosted service lookup failed", false, err)
@@ -25,11 +22,8 @@ func (h *Service) GetHostedService(_ context.Context, req *connect.Request[arden
 	})
 }
 
-func (h *Service) ListHostedServices(_ context.Context, req *connect.Request[ardentsv1.ListHostedServicesRequest]) (*connect.Response[ardentsv1.ListHostedServicesResponse], error) {
-	return rpc.Respond(h.auth, req.Header(), func(call rpc.CallContext) (*ardentsv1.ListHostedServicesResponse, *rpc.Error) {
-		if err := rpc.RequireRead(call, "workload", "workload.hosted_services"); err != nil {
-			return nil, err
-		}
+func (h *Service) ListHostedServices(ctx context.Context, _ *connect.Request[ardentsv1.ListHostedServicesRequest]) (*connect.Response[ardentsv1.ListHostedServicesResponse], error) {
+	return rpc.RespondContext(ctx, func(rpc.Call) (*ardentsv1.ListHostedServicesResponse, *rpc.Error) {
 		res, err := h.hosting.ListHostedServices()
 		if err != nil {
 			return nil, rpc.MapError("workload", "workload.hosted_services", "failed", "hosted service listing failed", false, err)
@@ -38,11 +32,8 @@ func (h *Service) ListHostedServices(_ context.Context, req *connect.Request[ard
 	})
 }
 
-func (h *Service) GetServicePublicationStatus(_ context.Context, req *connect.Request[ardentsv1.GetServicePublicationStatusRequest]) (*connect.Response[ardentsv1.ServicePublicationStatusResponse], error) {
-	return rpc.Respond(h.auth, req.Header(), func(call rpc.CallContext) (*ardentsv1.ServicePublicationStatusResponse, *rpc.Error) {
-		if err := rpc.RequireRead(call, "workload", "workload.service_publication"); err != nil {
-			return nil, err
-		}
+func (h *Service) GetServicePublicationStatus(ctx context.Context, req *connect.Request[ardentsv1.GetServicePublicationStatusRequest]) (*connect.Response[ardentsv1.ServicePublicationStatusResponse], error) {
+	return rpc.RespondContext(ctx, func(rpc.Call) (*ardentsv1.ServicePublicationStatusResponse, *rpc.Error) {
 		res, err := h.hosting.GetServicePublicationStatus(req.Msg.GetId())
 		if err != nil {
 			return nil, rpc.MapError("workload", "workload.service_publication", "failed", "service publication lookup failed", false, err)

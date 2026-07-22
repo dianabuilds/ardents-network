@@ -56,7 +56,7 @@ func newPrivacyGroupFixture(t *testing.T, now time.Time, count int, scope identi
 	}
 	issuerPrivate := privacyPrivate(0x17)
 	issuerPublic := issuerPrivate.Public().(ed25519.PublicKey)
-	issuer := identityprincipal.DeriveID("p", issuerPublic)
+	issuer := testkitPrincipalID(issuerPublic)
 	secret, ok := identityapi.NewCapabilitySecret(bytes.Repeat([]byte{secretByte}, 32))
 	require.True(t, ok)
 	privates := make([]ed25519.PrivateKey, count)
@@ -105,7 +105,7 @@ func newPrivacyFixture(t *testing.T, now time.Time, scope identityapi.Capability
 	}
 	issuerPrivate := privacyPrivate(0x17)
 	issuerPublic := issuerPrivate.Public().(ed25519.PublicKey)
-	issuer := identityprincipal.DeriveID("p", issuerPublic)
+	issuer := testkitPrincipalID(issuerPublic)
 	senderPrivate := privacyPrivate(0x27)
 	receiverPrivate := privacyPrivate(0x37)
 	secret, ok := identityapi.NewCapabilitySecret(bytes.Repeat([]byte{secretByte}, 32))
@@ -166,7 +166,7 @@ func privacyGrant(t *testing.T, issuerPrivate ed25519.PrivateKey, issuer string,
 	grant := identityapi.CapabilityGrant{
 		Version: 1, ChannelID: channelID, Generation: 1, Secret: secret,
 		GrantID: privacyID(grantByte), IssuerPrincipal: issuer,
-		SubjectPrincipal: identityprincipal.DeriveID("p", subjectPrivate.Public().(ed25519.PublicKey)),
+		SubjectPrincipal: testkitPrincipalID(subjectPrivate.Public().(ed25519.PublicKey)),
 		Permissions:      identityapi.CapabilitySubscribe | identityapi.CapabilityPublish | identityapi.CapabilityStoreFetch,
 		Scope:            scope,
 		NotBefore:        now.Add(-time.Hour), NotAfter: now.Add(time.Hour),
@@ -174,6 +174,14 @@ func privacyGrant(t *testing.T, issuerPrivate ed25519.PrivateKey, issuer string,
 	signed, err := identitycapability.SignGrant(grant, issuerPrivate)
 	require.NoError(t, err)
 	return signed
+}
+
+func testkitPrincipalID(public ed25519.PublicKey) string {
+	id, err := identityprincipal.FromEd25519PublicKey(public)
+	if err != nil {
+		panic(err)
+	}
+	return id.String()
 }
 
 func privacyPrivate(value byte) ed25519.PrivateKey {

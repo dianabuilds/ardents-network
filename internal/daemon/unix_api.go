@@ -1,6 +1,9 @@
 package daemon
 
 import (
+	"context"
+	"crypto/sha256"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"net"
@@ -10,21 +13,33 @@ import (
 	"runtime"
 	"syscall"
 	"time"
+
+	identityaccess "ardents/internal/identity/access"
 )
 
+func canonicalUnixPeerUID(uid uint32) []byte {
+	identity := make([]byte, 5)
+	identity[0] = 1
+	binary.BigEndian.PutUint32(identity[1:], uid)
+	return identity
+}
+
 func newUnixHTTPServer(path string, handler http.Handler) (*http.Server, net.Listener, error) {
-	return newUnixHTTPServerWithPermissions(path, handler, ensurePrivateSocketDir, 0o600)
+	return newUnixHTTPServerWithPermissions(path, handler, ensurePrivateSocketDir, 0o600, operatorTransportContext)
 }
 
 func newApplicationUnixHTTPServer(path string, handler http.Handler) (*http.Server, net.Listener, error) {
-	return newUnixHTTPServerWithPermissions(path, handler, ensureApplicationSocketDir, 0o660)
+	return newUnixHTTPServerWithPermissions(path, handler, ensureApplicationSocketDir, 0o660, applicationTransportContext)
 }
+
+type transportContextBinder func(context.Context, net.Conn, string) context.Context
 
 func newUnixHTTPServerWithPermissions(
 	path string,
 	handler http.Handler,
 	validateDirectory func(string) error,
 	mode os.FileMode,
+	bindTransport transportContextBinder,
 ) (*http.Server, net.Listener, error) {
 	if runtime.GOOS == "windows" {
 		return nil, nil, fmt.Errorf("unix sockets are not supported on windows")
@@ -44,7 +59,39 @@ func newUnixHTTPServerWithPermissions(
 		_ = listener.Close()
 		return nil, nil, fmt.Errorf("protect local API socket: %w", err)
 	}
-	return newHTTPServer("unix://"+path, handler), &removingListener{Listener: listener, path: path}, nil
+	server := newHTTPServer("unix://"+path, handler)
+	if bindTransport != nil {
+		server.ConnContext = func(ctx context.Context, connection net.Conn) context.Context {
+			return bindTransport(ctx, connection, path)
+		}
+	}
+	return server, &removingListener{Listener: listener, path: path}, nil
+}
+
+func operatorTransportContext(ctx context.Context, connection net.Conn, path string) context.Context {
+	material, peerSpecific := unixPeerIdentity(connection)
+	domain := "ardents:operator-unix-peer-fallback:v1\x00"
+	if peerSpecific {
+		domain = "ardents:operator-unix-peer:v1\x00"
+	}
+	peer := sha256.Sum256(append(append([]byte(domain), []byte(path)...), material...))
+	sourceDigest := sha256.Sum256(append([]byte("ardents:operator-unix-source:v1\x00"), peer[:]...))
+	var source identityaccess.SourceKey
+	copy(source[:], sourceDigest[:])
+	return identityaccess.WithTransportPeer(ctx, peer, source)
+}
+
+func applicationTransportContext(ctx context.Context, connection net.Conn, path string) context.Context {
+	material, peerSpecific := unixPeerIdentity(connection)
+	domain := "ardents:application-unix-peer-fallback:v1\x00"
+	if peerSpecific {
+		domain = "ardents:application-unix-peer:v1\x00"
+	}
+	peer := sha256.Sum256(append(append([]byte(domain), []byte(path)...), material...))
+	sourceDigest := sha256.Sum256(append([]byte("ardents:application-unix-source:v1\x00"), peer[:]...))
+	var source identityaccess.SourceKey
+	copy(source[:], sourceDigest[:])
+	return identityaccess.WithTransportPeer(ctx, peer, source)
 }
 
 func ensureApplicationSocketDir(path string) error {

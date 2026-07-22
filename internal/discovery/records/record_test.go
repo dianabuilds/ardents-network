@@ -47,6 +47,17 @@ func TestValidateRejectsTamperedSignature(t *testing.T) {
 	require.Error(t, discoveryrecord.Validate(record))
 }
 
+func TestValidateRejectsCorrectlySignedNonCanonicalNodePrincipal(t *testing.T) {
+	private := ed25519.NewKeyFromSeed(make([]byte, ed25519.SeedSize))
+	public := private.Public().(ed25519.PublicKey)
+	invalid := "p_deadbeefdeadbeef"
+	record := discoveryrecord.Record{ID: invalid + ":node", Kind: "node", Subject: invalid, Node: invalid, PublicKey: base64.StdEncoding.EncodeToString(public), IssuedAt: time.Now().UTC(), ExpiresAt: time.Now().UTC().Add(time.Hour)}
+	payload, err := discoveryrecord.Canonical(record)
+	require.NoError(t, err)
+	record.Signature = base64.StdEncoding.EncodeToString(ed25519.Sign(private, payload))
+	require.Error(t, discoveryrecord.Validate(record))
+}
+
 func TestFreshnessUsesIssuedAtBeforeExpiresAt(t *testing.T) {
 	now := time.Now().UTC()
 	record := discoveryrecord.Record{IssuedAt: now, ExpiresAt: now.Add(time.Hour)}

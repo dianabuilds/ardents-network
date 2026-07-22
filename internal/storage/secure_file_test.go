@@ -1,14 +1,55 @@
 package storage
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
+
+func TestAtomicCreatePrivateFileRefusesExistingAndHasOneConcurrentWinner(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "private")
+	path := filepath.Join(dir, "signer.json")
+
+	start := make(chan struct{})
+	errs := make([]error, 8)
+	var wait sync.WaitGroup
+	for i := range errs {
+		wait.Add(1)
+		go func(index int) {
+			defer wait.Done()
+			<-start
+			errs[index] = AtomicCreatePrivateFile(path, []byte{byte('0' + index)})
+		}(i)
+	}
+	close(start)
+	wait.Wait()
+
+	winners := 0
+	for _, err := range errs {
+		if err == nil {
+			winners++
+			continue
+		}
+		require.True(t, errors.Is(err, os.ErrExist), "unexpected loser error: %v", err)
+	}
+	require.Equal(t, 1, winners)
+
+	before, found, err := ReadPrivateFile(path)
+	require.NoError(t, err)
+	require.True(t, found)
+	require.ErrorIs(t, AtomicCreatePrivateFile(path, []byte("replacement")), os.ErrExist)
+	after, found, err := ReadPrivateFile(path)
+	require.NoError(t, err)
+	require.True(t, found)
+	require.Equal(t, before, after)
+	assertPrivateMode(t, path)
+}
 
 func TestAtomicWritePrivateFileReplacesCompleteContent(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "private")
@@ -32,6 +73,17 @@ func TestAtomicWritePrivateFileReplacesCompleteContent(t *testing.T) {
 func TestReadPrivateFileRejectsNonRegularState(t *testing.T) {
 	_, _, err := ReadPrivateFile(t.TempDir())
 	require.ErrorContains(t, err, "regular file")
+}
+
+func TestReadPrivateFileBoundedRejectsOversizeContent(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "private", "private.json")
+	require.NoError(t, AtomicCreatePrivateFile(path, []byte("12345")))
+	_, _, err := ReadPrivateFileBounded(path, 4)
+	require.ErrorContains(t, err, "size limit")
+	raw, found, err := ReadPrivateFileBounded(path, 5)
+	require.NoError(t, err)
+	require.True(t, found)
+	require.Equal(t, "12345", string(raw))
 }
 
 func TestReadProtectedFileUpgradesRetainedDataPermissions(t *testing.T) {

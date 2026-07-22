@@ -77,7 +77,7 @@ unit, and the initial operator credential:
 sudo ./scripts/install/linux.sh install \
   --node-name node-1 --transport-port 61001
 sudo ardentsctl --addr unix:///var/lib/ardents/secrets/control.sock \
-  --token-file /var/lib/ardents/secrets/api-token node status
+  --legacy-token-file /var/lib/ardents/secrets/api-token node status
 ```
 
 Use `--bootstrap-peer` during first installation when the node must join an
@@ -95,7 +95,7 @@ ardentsctl --ssh ops@node.example \
   --ssh-port 22 \
   --ssh-identity ~/.ssh/id_ed25519 \
   --ssh-known-hosts ~/.ssh/known_hosts \
-  --token-file ~/.config/ardents/node-1.token \
+  --legacy-token-file ~/.config/ardents/node-1.token \
   --node-name node-1 node status
 ```
 
@@ -142,7 +142,7 @@ Inside a node container, use its private runtime token:
 
 ```powershell
 docker compose -p ardents-local -f deploy/docker/compose/docker-compose.multinode.yml exec seed `
-  ardentsctl --token-file /run/ardents/api-token node status
+  ardentsctl --legacy-token-file /run/ardents/api-token node status
 ```
 
 Useful groups are `node`, `network`, `diagnostics`, `config`, `workload`, and

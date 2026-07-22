@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -22,7 +23,7 @@ import (
 
 func TestOperatorPrivacyChannelsLoadProtectedProvisionedChannels(t *testing.T) {
 	doc := provisionOperatorPrivacy(t)
-	cfg, err := runtimeConfigFromDocument(doc, "operator-token")
+	cfg, err := runtimeConfigFromDocument(doc)
 	require.NoError(t, err)
 	require.NotNil(t, cfg.Node.Privacy)
 	require.NotNil(t, cfg.Node.DataPrivacy)
@@ -38,7 +39,7 @@ func TestOperatorPrivacyChannelsLoadProtectedProvisionedChannels(t *testing.T) {
 func TestOperatorPrivacyRejectsIdentitySubjectMismatch(t *testing.T) {
 	doc := provisionOperatorPrivacy(t)
 	doc.Privacy.Subject = "p_wrong"
-	_, err := runtimeConfigFromDocument(doc, "operator-token")
+	_, err := runtimeConfigFromDocument(doc)
 	require.ErrorContains(t, err, "privacy.subject")
 }
 
@@ -47,7 +48,7 @@ func TestOperatorPrivacyRejectsWrongStoreKeyWithoutLeakingMaterial(t *testing.T)
 	wrong := bytes.Repeat([]byte{0xee}, 32)
 	require.NoError(t, os.WriteFile(doc.Privacy.CapabilityStoreKeyFile,
 		[]byte(base64.StdEncoding.EncodeToString(wrong)), 0o600))
-	_, err := runtimeConfigFromDocument(doc, "operator-token")
+	_, err := runtimeConfigFromDocument(doc)
 	require.EqualError(t, err, "protected privacy capability store is unavailable or invalid")
 	require.NotContains(t, err.Error(), doc.Privacy.CapabilityStore)
 	require.NotContains(t, err.Error(), base64.StdEncoding.EncodeToString(wrong))
@@ -56,7 +57,11 @@ func TestOperatorPrivacyRejectsWrongStoreKeyWithoutLeakingMaterial(t *testing.T)
 func TestOperatorPrivacyRequiresPrivateKeyFilePermissions(t *testing.T) {
 	doc := provisionOperatorPrivacy(t)
 	require.NoError(t, os.Chmod(doc.Privacy.ReplayKeyFile, 0o644))
-	_, err := runtimeConfigFromDocument(doc, "operator-token")
+	_, err := runtimeConfigFromDocument(doc)
+	if runtime.GOOS == "windows" {
+		require.NoError(t, err, "chmod does not weaken the protected Windows ACL")
+		return
+	}
 	require.ErrorContains(t, err, "permissions")
 	require.NotContains(t, err.Error(), doc.Privacy.ReplayKeyFile)
 }
@@ -72,7 +77,9 @@ func provisionOperatorPrivacy(t *testing.T) runtimeconfig.Document {
 
 	issuerPrivate := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x41}, ed25519.SeedSize))
 	issuerPublic := issuerPrivate.Public().(ed25519.PublicKey)
-	issuer := identityprincipal.DeriveID("p", issuerPublic)
+	issuerID, err := identityprincipal.FromEd25519PublicKey(issuerPublic)
+	require.NoError(t, err)
+	issuer := issuerID.String()
 	storeKey := bytes.Repeat([]byte{0x51}, 32)
 	replayKey := bytes.Repeat([]byte{0x61}, 32)
 	storePath := filepath.Join(dir, "capabilities.db")

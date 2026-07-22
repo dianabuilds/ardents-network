@@ -2,7 +2,6 @@ package network
 
 import (
 	"ardents/internal/discovery"
-	localauth "ardents/internal/localapi/auth"
 	domain "ardents/internal/network"
 	"ardents/internal/publication"
 )
@@ -29,9 +28,8 @@ type API struct {
 	discovery Discovery
 	records   Records
 	status    Status
-	auth      localauth.Config
 }
 
-func NewHandler(discovery Discovery, records Records, status Status, auth localauth.Config) *API {
-	return &API{discovery: discovery, records: records, status: status, auth: auth}
+func NewHandler(discovery Discovery, records Records, status Status) *API {
+	return &API{discovery: discovery, records: records, status: status}
 }

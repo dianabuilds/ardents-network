@@ -6,12 +6,13 @@ import (
 	"net/http"
 	"os"
 
-	applicationauth "ardents/internal/applicationapi/auth"
+	applicationadmission "ardents/internal/applicationapi/admission"
+	applicationcall "ardents/internal/applicationapi/call"
 	applicationcontent "ardents/internal/applicationapi/content"
+	applicationprincipal "ardents/internal/applicationapi/principal"
 	contentdomain "ardents/internal/content"
 	"ardents/internal/daemon"
 	"ardents/internal/localapi"
-	localauth "ardents/internal/localapi/auth"
 	"ardents/internal/observability"
 	"ardents/internal/provision"
 )
@@ -38,61 +39,61 @@ func main() {
 }
 
 func newApplicationAPIHandler(process daemon.Owners, cfg daemon.ApplicationAPIConfig) (string, http.Handler, error) {
-	authorizer, err := applicationauth.New(applicationauth.Config{
-		Token: cfg.Token, Subject: cfg.Subject, Capabilities: cfg.Capabilities, ExpiresAt: cfg.ExpiresAt,
-		Audit: func(decision applicationauth.Decision) {
-			process.Events.RecordEvent("application-interface", "authorization", decision.Subject,
-				"Application request authorization "+decision.Outcome, "application.authorization."+decision.Outcome,
-				map[string]any{"action": decision.Action})
-		},
+	if !cfg.Protected {
+		return "", nil, fmt.Errorf("Application Interface requires the protected Principal socket")
+	}
+	injector, extractor := applicationcall.NewChannel()
+	interceptor, err := applicationadmission.NewInterceptor(applicationadmission.Config{
+		Access: process.PrincipalAccess, Node: cfg.TargetID,
+		FallbackPeer: cfg.PeerBinding, FallbackSource: cfg.Source, Injector: injector,
 	})
 	if err != nil {
 		return "", nil, err
 	}
-	return applicationcontent.NewHTTPHandler(applicationContentStore{owners: process}, authorizer)
+	contentPath, contentHandler, err := applicationcontent.NewHTTPHandler(applicationContentStore{owners: process}, extractor, interceptor)
+	if err != nil {
+		return contentPath, contentHandler, err
+	}
+	identityPath, identityHandler, err := applicationprincipal.NewHandler(process.PrincipalAccess, cfg.TargetID, cfg.PeerBinding, cfg.Source)
+	if err != nil {
+		return "", nil, err
+	}
+	mux := http.NewServeMux()
+	mux.Handle(contentPath, contentHandler)
+	mux.Handle(identityPath, identityHandler)
+	return contentPath, mux, nil
 }
 
 type applicationContentStore struct{ owners daemon.Owners }
 
-func (s applicationContentStore) PublishBlob(command contentdomain.PublishBlobCommand) (contentdomain.Blob, error) {
-	return s.owners.ContentCommands.PublishBlob(command)
+func (s applicationContentStore) PublishBlob(call applicationcall.Call, command contentdomain.PublishBlobCommand) (contentdomain.Blob, error) {
+	return contentdomain.Blob{}, contentdomain.ErrStoreUnavailable
 }
 
-func (s applicationContentStore) GetBlob(id string) (contentdomain.Blob, bool) {
-	return s.owners.Content.GetBlob(id)
+func (s applicationContentStore) GetBlob(call applicationcall.Call, id string) (contentdomain.Blob, bool) {
+	return contentdomain.Blob{}, false
 }
 
-func (s applicationContentStore) GetBlobPayload(id string) ([]byte, error) {
-	return s.owners.Content.GetBlobPayload(id)
+func (s applicationContentStore) GetBlobPayload(call applicationcall.Call, id string) ([]byte, error) {
+	return nil, contentdomain.ErrStoreUnavailable
 }
 
-func (s applicationContentStore) FetchBlob(ctx context.Context, id string) (contentdomain.Blob, error) {
-	return s.owners.Node.FetchBlob(ctx, id)
+func (s applicationContentStore) FetchBlob(ctx context.Context, call applicationcall.Call, id string) (contentdomain.Blob, error) {
+	return contentdomain.Blob{}, contentdomain.ErrStoreUnavailable
 }
 
 func newLocalAPIHandler(process daemon.Owners, cfg daemon.LocalAPIConfig) (string, http.Handler, error) {
 	runtime := process.Node
-	if len(cfg.Capabilities) == 0 {
-		cfg.Capabilities = localauth.OperatorActions()
+	deps := localapi.Dependencies{
+		Node: runtime, Discovery: runtime, DiscoveryRecords: process.DiscoveryCommands, Network: runtime,
+		Diagnostics: process.Diagnostics, Workload: process.Workloads, Hosting: process.Hosting,
+		Content: process.Content, Sources: process.Content, Transfers: process.Transfers,
+		Data: process.ContentCommands, DataFetch: runtime, Configuration: runtime, Audit: process.Events,
 	}
-	auth := localauth.Config{Token: cfg.Token, SubjectID: cfg.SubjectID, Capabilities: cfg.Capabilities,
-		ExpiresAt: cfg.ExpiresAt, TargetNode: cfg.TargetNode, TargetPrincipal: cfg.TargetID}
-	return localapi.NewHandler(localapi.Dependencies{
-		Node:             runtime,
-		Discovery:        runtime,
-		DiscoveryRecords: process.DiscoveryCommands,
-		Network:          runtime,
-		Diagnostics:      process.Diagnostics,
-		Workload:         process.Workloads,
-		Hosting:          process.Hosting,
-		Content:          process.Content,
-		Sources:          process.Content,
-		Transfers:        process.Transfers,
-		Data:             process.ContentCommands,
-		DataFetch:        runtime,
-		Configuration:    runtime,
-		Audit:            process.Events,
-	}, auth)
+	if !cfg.Protected {
+		return "", nil, fmt.Errorf("Operator Interface requires the protected Principal socket")
+	}
+	return localapi.NewProtectedHandler(deps, process.PrincipalAccess, cfg.TargetID, cfg.PeerBinding, cfg.Source)
 }
 
 func newOperatorSurface(process daemon.Owners, token string) (daemon.OperatorSurface, error) {

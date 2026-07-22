@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"ardents/internal/hosting"
-	localauth "ardents/internal/localapi/auth"
 	domain "ardents/internal/workload"
 )
 
@@ -26,9 +25,8 @@ type Hosting interface {
 type Service struct {
 	workload Runtime
 	hosting  Hosting
-	auth     localauth.Config
 }
 
-func NewHandler(runtime Runtime, hosting Hosting, auth localauth.Config) *Service {
-	return &Service{workload: runtime, hosting: hosting, auth: auth}
+func NewHandler(runtime Runtime, hosting Hosting) *Service {
+	return &Service{workload: runtime, hosting: hosting}
 }

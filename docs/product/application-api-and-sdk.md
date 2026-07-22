@@ -66,6 +66,54 @@ app, err := client.New(client.Config{
 })
 ```
 
+PIA-011A provides the typed Principal authentication SDK flow for an
+Application installation with an enrolled Principal and Key Credential:
+
+```go
+type SessionSigner interface {
+    Principal(context.Context) (string, error)
+    Credential(context.Context) (*identity.Artifact, error)
+    SignAuthenticationChallenge(context.Context, identity.Challenge) ([]byte, error)
+}
+
+app, err := client.New(client.Config{
+    SocketPath:    "/var/lib/ardents-applications/application.sock",
+    NodePrincipal: expectedNodePrincipal,
+    Signer:        applicationSigner,
+})
+if err == nil {
+    err = app.Session.Authenticate(ctx)
+}
+```
+
+`SessionSigner` has no generic byte-signing method. The SDK validates the exact
+Application Audience, Unix transport profile, purpose, timestamps, peer
+binding, Principal, and pinned Node before asking it to sign. Sessions remain
+in memory, concurrent login is single-flight, and a unary call refreshes once
+only after `Unauthenticated`. Key storage belongs to the embedding Application;
+there is no built-in file signer until cross-platform custody rules can be
+tested.
+
+PIA-011B adds a distinct one-use enrollment flow. An Operator authorizes the
+exact prospective Application Principal and initial `application.content.*`
+actions, then writes the returned ten-minute ticket to a protected file. The
+Application parses that ticket and supplies a typed `EnrollmentSigner` with
+only `Principal`, `Credential`, and `SignEnrollmentChallenge` operations to
+`client.EnrollApplication`. The SDK never receives a generic signing oracle and
+does not provide a root/file signer. Enrollment, the initial Application grant,
+and retirement of that exact installation's legacy token are atomic.
+The ticket is never an `application-token`, Principal, session, owner, or
+delegation.
+
+PIA-012 propagates a Principal `AuthorizedCall` through content handlers, but
+production activation remains deliberately blocked until PIA-014 supplies
+durable owner-aware Blob/content access. Knowledge of a CID alone is not
+ownership proof or authorization to read. Provisioning therefore continues to
+create the legacy token and the example above remains the normal content path
+for this staged release. PIA-017 later owns the monotonic surface
+retirement state machine and default removal; neither is silently introduced by
+PIA-011B.
+
 The native installer creates the `ardents-apps` system group. An operator grants
 a local service access by adding its Unix account to that group; the Application
 directory is setgid `0750`, the bootstrap token is `0640`, and the socket is

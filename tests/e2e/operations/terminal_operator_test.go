@@ -426,13 +426,19 @@ func (h terminalHarness) run(t *testing.T, ctx context.Context, args ...string) 
 	t.Helper()
 
 	t.Setenv("ARDENTS_ADDR", h.addr)
-	t.Setenv("ARDENTS_API_TOKEN", h.token)
+	t.Setenv("ARDENTS_LEGACY_API_TOKEN", h.token)
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	code := cli.Run(ctx, args, &stdout, &stderr)
 	require.Equalf(t, 0, code, "stderr=%s", stderr.String())
-	require.Empty(t, stderr.String())
+	expectedWarning := "ardentsctl: warning: explicit legacy bearer authentication is migration-only\n"
+	for index, argument := range args {
+		if argument == "--output=json" || (argument == "--output" && index+1 < len(args) && args[index+1] == "json") {
+			expectedWarning = "{\"warning\":\"legacy bearer authentication is migration-only\"}\n"
+		}
+	}
+	require.Equal(t, expectedWarning, stderr.String())
 
 	return terminalResult{stdout: stdout.String(), stderr: stderr.String(), code: code}
 }

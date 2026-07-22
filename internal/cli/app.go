@@ -11,6 +11,7 @@ import (
 	"ardents/internal/cli/client"
 	commandctx "ardents/internal/cli/command"
 	configurationcmd "ardents/internal/cli/configuration"
+	identitycmd "ardents/internal/cli/identity"
 	"ardents/internal/cli/output"
 	ardentsv1 "ardents/internal/localapi/protocol"
 )
@@ -35,7 +36,15 @@ func (a *app) command() commandctx.Context {
 	return ctx
 }
 
-func newApp(cfg configurationcmd.Config, stdin io.Reader, stdout, stderr io.Writer) *app {
+func newApp(cfg configurationcmd.Config, stdin io.Reader, stdout, stderr io.Writer) (*app, error) {
+	var signer client.SessionSigner
+	if cfg.AuthMode() == configurationcmd.AuthModePrincipal {
+		opened, err := identitycmd.OpenDeviceFileSigner(cfg.SignerFile)
+		if err != nil {
+			return nil, err
+		}
+		signer = opened
+	}
 	return &app{
 		cfg:   cfg,
 		stdin: stdin,
@@ -45,16 +54,18 @@ func newApp(cfg configurationcmd.Config, stdin io.Reader, stdout, stderr io.Writ
 			SSHPort:           cfg.SSHPort,
 			SSHIdentity:       cfg.SSHIdentity,
 			SSHKnownHosts:     cfg.SSHKnownHosts,
+			SSHOperatorSocket: cfg.SSHOperatorSocket,
 			Token:             cfg.Token,
 			Timeout:           cfg.Timeout,
 			ExpectedNode:      cfg.ExpectedNode,
 			ExpectedPrincipal: cfg.ExpectedPrincipal,
 			Scopes:            cfg.ScopeHints,
+			Signer:            signer,
 		}),
 		stdout:   stdout,
 		stderr:   stderr,
 		renderer: output.NewRenderer(stdout, stderr, cfg.Output == "json"),
-	}
+	}, nil
 }
 
 func (a *app) commandContext(parent context.Context) (context.Context, context.CancelFunc) {

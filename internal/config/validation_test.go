@@ -48,32 +48,18 @@ func TestValidateRejectsCrossFieldContradictions(t *testing.T) {
 			d.Policy.DisableBlobPinning = true
 			d.Policy.AllowPinRelayRetainedBlobs = true
 		}, "while blob pinning is disabled"},
-		{"wildcard operator capability", func(d *Document) {
-			d.API.Capabilities = []string{"*"}
-		}, "explicit action names"},
-		{"duplicate operator capability", func(d *Document) {
-			d.API.Capabilities = []string{"node.status", "node.status"}
-		}, "duplicate"},
-		{"invalid credential expiry", func(d *Document) {
-			d.API.CredentialExpiresAt = "tomorrow"
-		}, "RFC3339"},
-		{"remote plaintext application listener", func(d *Document) {
+		{"missing application socket", func(d *Document) {
 			d.ApplicationInterface = validApplicationInterface()
-			d.ApplicationInterface.ListenAddress = "0.0.0.0:8081"
-		}, "must be loopback"},
-		{"shared operator and application listener", func(d *Document) {
+			d.ApplicationInterface.SocketPath = ""
+		}, "application_interface.socket_path is required"},
+		{"shared operator and application socket", func(d *Document) {
 			d.ApplicationInterface = validApplicationInterface()
-			d.ApplicationInterface.ListenAddress = d.API.ListenAddress
+			d.ApplicationInterface.SocketPath = d.API.SocketPath
 		}, "must differ"},
-		{"unsupported application capability", func(d *Document) {
-			d.ApplicationInterface = validApplicationInterface()
-			d.ApplicationInterface.Capabilities = []string{"node.stop"}
-		}, "unsupported action"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			doc := Defaults()
-			doc.API.TokenFile = "token"
 			tc.mutate(&doc)
 			require.ErrorContains(t, Validate(doc), tc.want)
 		})
@@ -81,16 +67,12 @@ func TestValidateRejectsCrossFieldContradictions(t *testing.T) {
 }
 
 func validApplicationInterface() ApplicationInterfaceConfig {
-	return ApplicationInterfaceConfig{
-		Enabled: true, ListenAddress: "127.0.0.1:8081", TokenFile: "application-token",
-		Subject: "example", Capabilities: []string{"application.content.get"}, CredentialExpiresAt: "2027-01-01T00:00:00Z",
-	}
+	return ApplicationInterfaceConfig{Enabled: true, SocketPath: "/run/ardents/application.sock"}
 }
 
 func TestValidateAcceptsCompleteServiceNode(t *testing.T) {
 	doc := Defaults()
 	doc.Node.Name = "node-a"
-	doc.API.TokenFile = "token"
 	doc.Network.BootstrapPeers = []string{"/ip4/10.0.0.2/tcp/60000/p2p/peer"}
 	require.NoError(t, Validate(doc))
 }

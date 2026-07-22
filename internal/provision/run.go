@@ -1,18 +1,14 @@
 package provision
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"flag"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	apppolicy "ardents/internal/policy"
-	"ardents/internal/storage"
 )
 
 type options struct {
@@ -46,12 +42,6 @@ func run(args []string, stdout io.Writer, clock func() time.Time) error {
 		return err
 	}
 	document := operatorDocument(configured, provisioned)
-	if err := ensureToken(configured.secretDir, "api-token", 0o077); err != nil {
-		return err
-	}
-	if err := ensureToken(applicationDataDir(configured.nodeDir), "application-token", 0o027); err != nil {
-		return err
-	}
 	if err := writeOperatorDocument(configured.secretDir, document); err != nil {
 		return err
 	}
@@ -86,29 +76,4 @@ func parseOptions(args []string) (options, error) {
 		configured.runtimeSecretDir = configured.secretDir
 	}
 	return configured, nil
-}
-
-func ensureToken(secretDir, name string, forbiddenPermissions os.FileMode) error {
-	path := filepath.Join(secretDir, name)
-	if info, err := os.Lstat(path); err == nil {
-		if !info.Mode().IsRegular() || info.Mode().Perm()&forbiddenPermissions != 0 {
-			return fmt.Errorf("existing %s permissions are invalid", name)
-		}
-		raw, err := os.ReadFile(path)
-		if err != nil || strings.TrimSpace(string(raw)) == "" {
-			return fmt.Errorf("existing %s is unreadable or empty", name)
-		}
-		return nil
-	} else if !os.IsNotExist(err) {
-		return fmt.Errorf("inspect %s: %w", name, err)
-	}
-	raw := make([]byte, 32)
-	if _, err := rand.Read(raw); err != nil {
-		return fmt.Errorf("generate %s: %w", name, err)
-	}
-	token := []byte(base64.RawURLEncoding.EncodeToString(raw))
-	if err := storage.AtomicWritePrivateFile(path, token); err != nil {
-		return fmt.Errorf("write %s: %w", name, err)
-	}
-	return nil
 }

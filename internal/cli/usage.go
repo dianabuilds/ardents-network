@@ -13,6 +13,7 @@ var groupDescriptions = map[string]string{
 	"data":        "objects, blobs, manifests and transfers",
 	"diagnostics": "health, failures, pending operations and events",
 	"config":      "effective operator configuration and atomic reload",
+	"identity":    "Principal custody, enrollment, sessions and access administration",
 	"shell":       "interactive terminal session over the current operator context",
 	"tui":         "optional fullscreen operator dashboard",
 	"version":     "binary version, commit, build date and target platform",
@@ -22,7 +23,7 @@ func renderRootUsage(w io.Writer) {
 	output.Writeln(w, "Usage: ardentsctl [global flags] <command> [subcommand]")
 	output.Writeln(w)
 	output.Writeln(w, "Commands:")
-	for _, name := range []string{"node", "network", "workload", "data", "diagnostics", "config", "shell", "tui", "version"} {
+	for _, name := range []string{"node", "network", "workload", "data", "diagnostics", "config", "identity", "shell", "tui", "version"} {
 		output.Writef(w, "  %-11s %s\n", name, groupDescriptions[name])
 	}
 	output.Writeln(w)
@@ -33,8 +34,10 @@ func renderRootUsage(w io.Writer) {
 		"  --ssh-port     OpenSSH server port (default 22)",
 		"  --ssh-identity OpenSSH private key path",
 		"  --ssh-known-hosts OpenSSH known_hosts path",
-		"  --token        bearer token override",
-		"  --token-file   path to bearer token file",
+		"  --ssh-operator-socket absolute remote Operator Unix socket",
+		"  --signer-file  protected device signer bundle",
+		"  --legacy-token explicit migration bearer override",
+		"  --legacy-token-file path to explicit migration bearer",
 		"  --context      named operator context",
 		"  --context-file path to contexts file",
 		"  --principal    expected node principal for identity preflight",

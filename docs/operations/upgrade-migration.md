@@ -1,52 +1,120 @@
-# Upgrade And Migration Guide
+# Upgrade, Backup, And Recovery Guide
+
+## First-Release Identity Contract
+
+Ardents has no released Operator/Application bearer authentication or truncated
+`p_` Principal state. The first release creates canonical `p1_` Principals,
+independent `d1_` device identities, Principal sessions, Access Grants, and
+one-use enrollment tickets directly. There is no supported `p_ -> p1_` epoch,
+dual-ID alias, credential coexistence state, bearer retirement window, or
+identity-migration command.
+
+Operator and Application protected calls use their distinct Principal session
+schemes on their distinct protected Unix listeners. A failed or unknown scheme
+is denied without fallback. Provisioning creates no permanent Operator or
+Application token. The first Operator uses a short-lived one-use Bootstrap
+Ticket; an Application installation uses its own short-lived one-use enrollment
+ticket. These tickets and the short-lived sessions are current security
+mechanisms, not compatibility credentials.
+
+Runtime configuration comes from one canonical versioned configuration
+document. Unknown versions and fields, obsolete token-file inputs, alternate
+environment-only configuration, `p_` identifiers, and duplicate pre-release
+wire/storage fields fail closed. Operators must correct the configuration or
+state; the daemon does not translate or guess.
 
 ## Release Identity
 
-Use only a release artifact whose `ardentsctl version` or `ardentsd --version` matches the
-version, commit, build date, OS, and architecture in its provenance statement.
-Verify `SHA256SUMS` before installation and retain the previous immutable image
-digest until rollback acceptance.
+Use only a release artifact whose `ardentsctl version` or `ardentsd --version`
+matches the version, commit, build date, OS, and architecture in its provenance
+statement. Verify `SHA256SUMS` before installation and retain the previous
+immutable image digest until rollback acceptance.
 
 ## Rolling Upgrade
 
-1. Read release notes, persisted-format changes, dependency exceptions, and
+1. Read the release notes, persisted-schema changes, dependency exceptions, and
    platform support.
-2. Stop each node in turn and create a verified consistency-group backup.
+2. Stop one Node and create a verified consistency-group backup.
 3. Record the current image digest and cluster manifest.
-4. Recreate one node with the new immutable image.
-5. Require local API health, canonical network readiness, expected privacy
-   state, Diagnostics, and retained identity before continuing.
-6. Repeat for remaining nodes; do not upgrade all bootstrap nodes together.
+4. Recreate that Node with the new immutable image.
+5. Require protected local API readiness, canonical network readiness,
+   Diagnostics, and retained Principal/grant state before continuing.
+6. Repeat for remaining Nodes; do not upgrade all bootstrap Nodes together.
 7. Retain backups and the previous image until the observation window closes.
 
-`./ardents.ps1 upgrade` automates the single-host Compose sequence.
+`./ardents.ps1 upgrade` automates the supported single-host Compose sequence.
+For a native systemd Node, use the release's documented
+`scripts/install/linux.sh upgrade` command when present.
 
-For a native systemd node, run the new release's
-`scripts/install/linux.sh upgrade`. It stops only that node, creates a verified
-backup under `/var/backups/ardents` by default, retains one previous binary
-pair, and accepts the candidate only after authenticated local API readiness.
+## Consistency-Group Backup
 
-## Rollback
+A whole-state backup is taken while the Node is stopped and drained. It includes
+`ardents.db`, `identity-access.db`, key files, the canonical configuration, and
+any released-schema upgrade marker from the same state directory. The databases
+are independently transactional; no backup or restore procedure may claim one
+transaction across both files.
 
-Recreate one node at a time with the previous immutable image and re-prove
-readiness. Restore data only when release notes say the newer version migrated a
-persisted format incompatibly. Never attach an old binary to a partially
-migrated database or silently discard newer state.
+The daemon owns the only live `identity-access.db` handle. Backup, upgrade, and
+recovery helpers stop and drain the daemon before copying the whole group and do
+not open that live file independently. A repository checkpoint made through the
+daemon is one `identity-access.db` read-transaction boundary only; it is not a
+whole-state backup.
 
-If automatic rollback fails, stop the affected node, preserve logs and the
-complete state directory, and follow the incident runbook. A failed node must
-not be reported as healthy merely because another peer remains available.
+Backups and manifests contain no session secret, raw Bootstrap/Application
+Enrollment Ticket, private key, proof, or channel secret. Key files remain part
+of the protected consistency group and retain their platform permissions.
 
-For a native node, `scripts/install/linux.sh rollback` swaps the retained
-binary pair and proves readiness. Failed upgrade readiness triggers this binary
-rollback automatically. Persisted-state restore is deliberately separate and
-only accepts an empty target, so an operator must preserve the current state
-before restoring the archive and its `.manifest` sidecar.
+## Persisted-Schema Upgrade
 
-## Configuration And Protocol Migration
+Released schema changes are versioned, transactional, and fail closed on
+unknown versions. A release that changes a persisted schema must document:
 
-Unknown operator-config versions and fields are rejected. Generate and validate
-the new version before restart; preserve the previous document for rollback.
-Private protocol versions never downgrade to readable legacy topics. Capability
-and selector rotation uses an explicit encrypted cutover as defined by
-`docs/protocols/network-privacy-protocol.md`.
+- the exact old/new schema versions and changed buckets/records;
+- preflight and corruption checks;
+- every durable interruption point and resume behavior;
+- whether an older binary can read the new schema;
+- the required stopped-Node backup and restore drill;
+- redaction checks for backup manifests, logs, and errors.
+
+An older binary must reject a newer incompatible schema. Never lower a schema
+marker, delete buckets, copy individual grants between versions, or attach an
+old binary to a partially upgraded database. Transaction rollback on an update
+error and whole-state restore after a failed release are both required safety
+mechanisms.
+
+## Rollback And Recovery
+
+Recreate one Node at a time with the previous immutable image and re-prove
+readiness. Restore data only when release notes say the newer release changed a
+persisted format incompatibly or state verification failed.
+
+To restore, stop and drain the Node, preserve the failed state and redacted
+logs, verify the backup manifest, and restore the entire matching consistency
+group into an empty target. Do not restore only `identity-access.db` or only the
+configuration. Start the retained binary only after all files, hashes,
+permissions, and schema versions verify.
+
+Sessions and challenges are memory-only and intentionally disappear on restart;
+clients authenticate again. Durable Principal enrollment, Access Grants, and
+revocations must survive a normal restart and a verified same-version restore.
+The recovery procedure never recreates a reusable bearer credential.
+
+If automatic rollback or restore fails, keep the Node stopped, preserve the
+complete state directory, and follow the incident runbook. Do not report the
+Node healthy merely because another peer remains available.
+
+## Release Acceptance
+
+Before accepting an identity-affecting release, prove:
+
+- a clean install produces only canonical `p1_`/`d1_` state and no permanent
+  Operator/Application token;
+- first Operator and first Application enrollment work and tickets are one-use,
+  short-lived, and redacted;
+- Operator/Application sessions reject cross-Node and cross-surface use;
+- obsolete identifiers, credential schemes, configuration inputs, duplicate
+  fields, and unknown versions fail closed;
+- restart invalidates sessions but retains grants/revocations;
+- transaction failure is atomic and stopped-Node backup/restore is verified;
+- the repository-supported generation, unit, integration, e2e, and
+  `go test ./...` checks pass or have a precise documented external exception.

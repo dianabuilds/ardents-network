@@ -63,7 +63,7 @@ jobs:
       - name: Canonical static gates
         shell: pwsh
         run: |
-          ./scripts/generate-application-api.ps1 -Check
+          ./scripts/generate-api.ps1 -Check
           ./tests/check-format.ps1
           go vet ./...
           New-Item -ItemType Directory -Force tests/.artifacts/reports/catalog | Out-Null

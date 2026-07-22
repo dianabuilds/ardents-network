@@ -13,10 +13,7 @@ import (
 	"ardents/internal/workload"
 	"context"
 	"errors"
-	"fmt"
-	"net"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -231,25 +228,6 @@ const (
 	localAPIHeaderTimeout        = 5 * time.Second
 	localAPIMaxHeaderBytes       = 16 << 10
 )
-
-func validateLocalAPIListenAddr(addr string) error {
-	host, portText, err := net.SplitHostPort(strings.TrimSpace(addr))
-	if err != nil {
-		return fmt.Errorf("invalid local api address: %w", err)
-	}
-	port, err := strconv.Atoi(portText)
-	if err != nil || port < 0 || port > 65535 {
-		return fmt.Errorf("invalid local api port")
-	}
-	if strings.EqualFold(host, "localhost") {
-		return nil
-	}
-	ip := net.ParseIP(host)
-	if ip == nil || !ip.IsLoopback() {
-		return fmt.Errorf("plaintext local api must bind to a loopback address; secure remote mode is not configured")
-	}
-	return nil
-}
 
 func newHTTPServer(addr string, handler http.Handler) *http.Server {
 	return &http.Server{

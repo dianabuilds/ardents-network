@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	authorityVersion = "ardents.local-realm/v1"
-	nodeVersion      = "ardents.local-realm-node/v1"
+	authorityVersion = "ardents.local-realm/v2"
+	nodeVersion      = "ardents.local-realm-node/v2"
 	grantLifetime    = 30 * 24 * time.Hour
 	refreshBefore    = 24 * time.Hour
 )
@@ -132,7 +132,11 @@ func (a *Authority) ProvisionNode(options NodeOptions, admission identityapi.Cap
 
 func (a *Authority) provisionSubject(options NodeOptions, subject string, admission identityapi.CapabilityAdmission, now time.Time) (NodeProvision, error) {
 	issuerPublic := a.key.Public().(ed25519.PublicKey)
-	issuer := identityprincipal.DeriveID("p", issuerPublic)
+	issuerID, err := identityprincipal.FromEd25519PublicKey(issuerPublic)
+	if err != nil {
+		return NodeProvision{}, fmt.Errorf("derive local realm issuer Principal")
+	}
+	issuer := issuerID.String()
 	nodeStorage, err := prepareNodeStorage(options)
 	if err != nil {
 		return NodeProvision{}, err

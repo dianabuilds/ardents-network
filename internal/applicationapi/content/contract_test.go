@@ -1,6 +1,7 @@
 package content_test
 
 import (
+	applicationcall "ardents/internal/applicationapi/call"
 	applicationcontent "ardents/internal/applicationapi/content"
 	appcontent "ardents/internal/content"
 	contentpayload "ardents/internal/content/payload"
@@ -27,9 +28,7 @@ func TestContentPutGetCrossesPublicApplicationContract(t *testing.T) {
 	domainStore := appcontent.NewInDir(t.TempDir())
 	require.NoError(t, domainStore.Load())
 	store := &contentOwner{store: domainStore, commands: appcontent.NewCommands(domainStore, appcontent.CommandConfig{})}
-	authorizer := &testAuthorizer{token: "application-secret"}
-	path, handler, err := applicationcontent.NewHTTPHandler(store, authorizer)
-	require.NoError(t, err)
+	path, handler := newPrincipalHTTPHandler(t, store)
 	mux := http.NewServeMux()
 	mux.Handle(path, handler)
 	server := httptest.NewServer(mux)
@@ -48,7 +47,7 @@ func TestContentPutGetCrossesPublicApplicationContract(t *testing.T) {
 	payload, err := app.Content.Get(context.Background(), reference)
 	require.NoError(t, err)
 	require.Equal(t, []byte("hello"), payload)
-	require.Equal(t, []string{applicationcontent.ActionPut, applicationcontent.ActionGet}, authorizer.actions)
+	require.Equal(t, []string{applicationcontent.ActionPut, applicationcontent.ActionGet}, store.actions)
 }
 
 func storeCID(t *testing.T, store *appcontent.Service, id string) string {
@@ -60,8 +59,7 @@ func storeCID(t *testing.T, store *appcontent.Service, id string) string {
 
 func TestContentClientMapsPublicStructuredError(t *testing.T) {
 	store := &memoryStore{payloads: map[string][]byte{}, blobs: map[string]appcontent.Blob{}}
-	path, handler, err := applicationcontent.NewHTTPHandler(store, &testAuthorizer{token: "application-secret"})
-	require.NoError(t, err)
+	path, handler := newPrincipalHTTPHandler(t, store)
 	mux := http.NewServeMux()
 	mux.Handle(path, handler)
 	server := httptest.NewServer(mux)
@@ -91,8 +89,7 @@ func TestApplicationClientUsesUnixSocket(t *testing.T) {
 		t.Skip("Unix sockets are unavailable on Windows")
 	}
 	store := &memoryStore{payloads: map[string][]byte{}, blobs: map[string]appcontent.Blob{}}
-	path, handler, err := applicationcontent.NewHTTPHandler(store, &testAuthorizer{token: "application-secret"})
-	require.NoError(t, err)
+	path, handler := newPrincipalHTTPHandler(t, store)
 	mux := http.NewServeMux()
 	mux.Handle(path, handler)
 	socketPath := filepath.Join(t.TempDir(), "application.sock")
@@ -118,8 +115,7 @@ func TestApplicationClientUsesUnixSocket(t *testing.T) {
 
 func TestContentGetRejectsSameLengthPayloadTampering(t *testing.T) {
 	store := &memoryStore{payloads: map[string][]byte{}, blobs: map[string]appcontent.Blob{}}
-	path, handler, err := applicationcontent.NewHTTPHandler(store, &testAuthorizer{token: "application-secret"})
-	require.NoError(t, err)
+	path, handler := newPrincipalHTTPHandler(t, store)
 	mux := http.NewServeMux()
 	mux.Handle(path, handler)
 	server := httptest.NewServer(mux)
@@ -138,31 +134,9 @@ func TestContentGetRejectsSameLengthPayloadTampering(t *testing.T) {
 	require.Equal(t, sdkerrors.IntegrityFailed, sdkErr.Code)
 }
 
-func TestContentAuthorizationFailureIsStructuredAndRedacted(t *testing.T) {
-	store := &memoryStore{payloads: map[string][]byte{}, blobs: map[string]appcontent.Blob{}}
-	path, handler, err := applicationcontent.NewHTTPHandler(store, &testAuthorizer{token: "correct-secret"})
-	require.NoError(t, err)
-	mux := http.NewServeMux()
-	mux.Handle(path, handler)
-	server := httptest.NewServer(mux)
-	t.Cleanup(server.Close)
-	app, err := client.New(client.Config{
-		Endpoint: server.URL, Credential: client.StaticCredential("wrong-secret"), HTTPClient: server.Client(),
-	})
-	require.NoError(t, err)
-
-	_, err = app.Content.Put(context.Background(), []byte("hello"))
-	var sdkErr *sdkerrors.Error
-	require.ErrorAs(t, err, &sdkErr)
-	require.Equal(t, sdkerrors.Unauthenticated, sdkErr.Code)
-	require.Equal(t, applicationcontent.ActionPut, sdkErr.Operation)
-	require.NotContains(t, sdkErr.Error(), "sensitive")
-}
-
 func TestContentPutRejectsPayloadAboveUnaryLimit(t *testing.T) {
 	store := &memoryStore{payloads: map[string][]byte{}, blobs: map[string]appcontent.Blob{}}
-	path, handler, err := applicationcontent.NewHTTPHandler(store, &testAuthorizer{token: "application-secret"})
-	require.NoError(t, err)
+	path, handler := newPrincipalHTTPHandler(t, store)
 	mux := http.NewServeMux()
 	mux.Handle(path, handler)
 	server := httptest.NewServer(mux)
@@ -183,8 +157,7 @@ func TestContentGetRejectsOversizedBlobBeforeReadingPayload(t *testing.T) {
 	store := &memoryStore{payloads: map[string][]byte{}, blobs: map[string]appcontent.Blob{
 		"oversized": {ID: "oversized", CID: "oversized", Size: applicationv1.MaxUnaryPayloadBytes + 1},
 	}}
-	path, handler, err := applicationcontent.NewHTTPHandler(store, &testAuthorizer{token: "application-secret"})
-	require.NoError(t, err)
+	path, handler := newPrincipalHTTPHandler(t, store)
 	mux := http.NewServeMux()
 	mux.Handle(path, handler)
 	server := httptest.NewServer(mux)
@@ -200,17 +173,63 @@ func TestContentGetRejectsOversizedBlobBeforeReadingPayload(t *testing.T) {
 	require.Equal(t, sdkerrors.ResourceExhausted, sdkErr.Code)
 }
 
-type testAuthorizer struct {
-	token   string
-	actions []string
+func TestContentHandlerRejectsMissingAndForeignAdmissionChannel(t *testing.T) {
+	store := &memoryStore{payloads: map[string][]byte{}, blobs: map[string]appcontent.Blob{}}
+	_, extractor := applicationcall.NewChannel()
+	handler, err := applicationcontent.NewHandler(store, extractor)
+	require.NoError(t, err)
+	request := connect.NewRequest(&applicationv1.PutContentRequest{Payload: []byte("must not mutate")})
+
+	_, err = handler.Put(context.Background(), request)
+	require.Equal(t, connect.CodeUnauthenticated, connect.CodeOf(err))
+	require.Empty(t, store.blobs)
+
+	foreignInjector, _ := applicationcall.NewChannel()
+	ctx := foreignInjector.WithPrincipal(context.Background(), applicationcall.PrincipalFacts{
+		Actor: "p1_actor", Effective: "p1_actor", Node: "p1_node", Interface: 2, ProtocolMajor: 1,
+		Action: applicationcontent.ActionPut, ResourceNode: "p1_node", ResourceOwner: "p1_actor", ResourceKind: "content-owner",
+	})
+	_, err = handler.Put(ctx, request)
+	require.Equal(t, connect.CodeUnauthenticated, connect.CodeOf(err))
+	require.Empty(t, store.blobs)
 }
 
-func (a *testAuthorizer) Authorize(_ context.Context, header http.Header, action string) error {
-	if header.Get("Authorization") != "ArdentsApplication "+a.token {
-		return connect.NewError(connect.CodeUnauthenticated, errors.New("sensitive internal auth detail"))
+func newPrincipalHTTPHandler(t *testing.T, store applicationcontent.Store) (string, http.Handler) {
+	t.Helper()
+	injector, extractor := applicationcall.NewChannel()
+	interceptor := testPrincipalAdmission{injector: injector}
+	path, handler, err := applicationcontent.NewHTTPHandler(store, extractor, interceptor)
+	require.NoError(t, err)
+	return path, handler
+}
+
+type testPrincipalAdmission struct{ injector applicationcall.Injector }
+
+func (i testPrincipalAdmission) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
+	return func(ctx context.Context, request connect.AnyRequest) (connect.AnyResponse, error) {
+		rule, err := applicationcontent.RuleForProcedure(request.Spec().Procedure)
+		if err != nil {
+			if errors.Is(err, applicationcontent.ErrPayloadTooLarge) {
+				return nil, applicationcontent.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_RESOURCE_EXHAUSTED, rule.Action, "content payload exceeds the unary limit", false, connect.CodeResourceExhausted)
+			}
+			return nil, applicationcontent.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_INVALID_ARGUMENT, rule.Action, "invalid application content request", false, connect.CodeInvalidArgument)
+		}
+		target, err := applicationcontent.CanonicalizeResource(request.Spec().Procedure, request.Any())
+		if err != nil {
+			return nil, err
+		}
+		ctx = i.injector.WithPrincipal(ctx, applicationcall.PrincipalFacts{
+			Actor: "p1_test", Effective: "p1_test", Node: "p1_node", Interface: 2, ProtocolMajor: 1,
+			Action: rule.Action, ResourceNode: "p1_node", ResourceOwner: "p1_test", ResourceKind: target.Kind, ResourceID: target.ID,
+		})
+		return next(ctx, request)
 	}
-	a.actions = append(a.actions, action)
-	return nil
+}
+func (testPrincipalAdmission) WrapStreamingClient(next connect.StreamingClientFunc) connect.StreamingClientFunc {
+	return next
+}
+func (testPrincipalAdmission) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
+	return next
 }
 
 type memoryStore struct {
@@ -221,25 +240,28 @@ type memoryStore struct {
 type contentOwner struct {
 	store    *appcontent.Service
 	commands *appcontent.Commands
+	actions  []string
 }
 
-func (o *contentOwner) PublishBlob(command appcontent.PublishBlobCommand) (appcontent.Blob, error) {
+func (o *contentOwner) PublishBlob(call applicationcall.Call, command appcontent.PublishBlobCommand) (appcontent.Blob, error) {
+	o.actions = append(o.actions, call.Action())
 	return o.commands.PublishBlob(command)
 }
 
-func (o *contentOwner) GetBlob(id string) (appcontent.Blob, bool) {
+func (o *contentOwner) GetBlob(call applicationcall.Call, id string) (appcontent.Blob, bool) {
+	o.actions = append(o.actions, call.Action())
 	return o.store.GetBlob(id)
 }
 
-func (o *contentOwner) GetBlobPayload(id string) ([]byte, error) {
+func (o *contentOwner) GetBlobPayload(_ applicationcall.Call, id string) ([]byte, error) {
 	return o.store.GetBlobPayload(id)
 }
 
-func (o *contentOwner) FetchBlob(context.Context, string) (appcontent.Blob, error) {
+func (o *contentOwner) FetchBlob(context.Context, applicationcall.Call, string) (appcontent.Blob, error) {
 	return appcontent.Blob{}, appcontent.ErrBlobNotFound
 }
 
-func (s *memoryStore) PublishBlob(command appcontent.PublishBlobCommand) (appcontent.Blob, error) {
+func (s *memoryStore) PublishBlob(_ applicationcall.Call, command appcontent.PublishBlobCommand) (appcontent.Blob, error) {
 	hash, id, err := contentpayload.DeriveIdentity(command.Payload)
 	if err != nil {
 		return appcontent.Blob{}, err
@@ -254,12 +276,12 @@ func (s *memoryStore) PublishBlob(command appcontent.PublishBlobCommand) (appcon
 	return blob, nil
 }
 
-func (s *memoryStore) GetBlob(id string) (appcontent.Blob, bool) {
+func (s *memoryStore) GetBlob(_ applicationcall.Call, id string) (appcontent.Blob, bool) {
 	blob, ok := s.blobs[id]
 	return blob, ok
 }
 
-func (s *memoryStore) GetBlobPayload(id string) ([]byte, error) {
+func (s *memoryStore) GetBlobPayload(_ applicationcall.Call, id string) ([]byte, error) {
 	payload, ok := s.payloads[id]
 	if !ok {
 		return nil, appcontent.ErrBlobNotFound
@@ -267,7 +289,7 @@ func (s *memoryStore) GetBlobPayload(id string) ([]byte, error) {
 	return append([]byte(nil), payload...), nil
 }
 
-func (s *memoryStore) FetchBlob(_ context.Context, id string) (appcontent.Blob, error) {
+func (s *memoryStore) FetchBlob(_ context.Context, _ applicationcall.Call, id string) (appcontent.Blob, error) {
 	if strings.TrimSpace(id) == "" {
 		return appcontent.Blob{}, errors.New("invalid blob id")
 	}

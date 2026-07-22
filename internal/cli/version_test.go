@@ -17,8 +17,8 @@ func TestVersionDoesNotRequireNodeOrCredential(t *testing.T) {
 		buildinfo.Version, buildinfo.Commit, buildinfo.BuildDate = previousVersion, previousCommit, previousDate
 	})
 	buildinfo.Version, buildinfo.Commit, buildinfo.BuildDate = "v1.2.3", "abc123", "2026-07-20T00:00:00Z"
-	t.Setenv("ARDENTS_API_TOKEN", "")
-	t.Setenv("ARDENTS_API_TOKEN_FILE", "")
+	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "")
+	t.Setenv("ARDENTS_LEGACY_TOKEN_FILE", "")
 	t.Setenv("ARDENTS_ADDR", "127.0.0.1:1")
 
 	var stdout, stderr bytes.Buffer

@@ -6,7 +6,6 @@ import (
 	"context"
 
 	domain "ardents/internal/content"
-	localauth "ardents/internal/localapi/auth"
 	transferdomain "ardents/internal/transfer"
 )
 
@@ -27,9 +26,8 @@ type Handler struct {
 	sources Sources
 	records Records
 	fetcher Fetcher
-	auth    localauth.Config
 }
 
-func NewHandler(sources Sources, records Records, fetcher Fetcher, auth localauth.Config) *Handler {
-	return &Handler{sources: sources, records: records, fetcher: fetcher, auth: auth}
+func NewHandler(sources Sources, records Records, fetcher Fetcher) *Handler {
+	return &Handler{sources: sources, records: records, fetcher: fetcher}
 }

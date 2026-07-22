@@ -393,8 +393,6 @@ func TestConnectRPCDiagnosticsSurfaceMatchesLocalTruth(t *testing.T) {
 	client := testkit.NewArdentsClient(t, rt.Runtime)
 	localHealth := rt.Diagnostics.GetHealthSummary()
 	localExplanation := rt.Diagnostics.ExplainFailure("service", "svc.work.invalid")
-	localEvents, _ := rt.Diagnostics.ListRecentEvents(2, "")
-
 	rpcHealth, err := client.GetHealthSummary(context.Background(), testkit.AuthorizedRequest(&ardentsv1.GetHealthSummaryRequest{}))
 	require.NoError(t, err)
 	rpcExplanation, err := client.ExplainFailure(context.Background(), testkit.AuthorizedRequest(&ardentsv1.ExplainFailureRequest{
@@ -404,6 +402,7 @@ func TestConnectRPCDiagnosticsSurfaceMatchesLocalTruth(t *testing.T) {
 	require.NoError(t, err)
 	rpcEvents, err := client.ListRecentEvents(context.Background(), testkit.AuthorizedRequest(&ardentsv1.ListRecentEventsRequest{Limit: 2}))
 	require.NoError(t, err)
+	localEvents, _ := rt.Diagnostics.ListRecentEvents(2, "")
 
 	require.Equal(t, localHealth.State, rpcHealth.Msg.GetHealth().GetState())
 	require.NotNil(t, localHealth.PrimaryReason)

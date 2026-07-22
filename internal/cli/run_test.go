@@ -3,9 +3,12 @@ package cli
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -24,9 +27,131 @@ type failingWriter struct{}
 
 func (failingWriter) Write([]byte) (int, error) { return 0, errors.New("output unavailable") }
 
+func TestLegacyCredentialFlagIsExplicitAndWarningContainsNoValue(t *testing.T) {
+	var stderr bytes.Buffer
+	cfg, rest, _, err := parseRoot([]string{"--legacy-token", "do-not-print", "node", "status"}, &stderr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.LegacyWarning || cfg.Token != "do-not-print" || len(rest) != 2 {
+		t.Fatalf("unexpected parse result: warning=%v rest=%v", cfg.LegacyWarning, rest)
+	}
+	if strings.Contains(stderr.String(), "do-not-print") {
+		t.Fatal("legacy credential leaked to warning output")
+	}
+}
+
+func TestIdentityCommandsAreOfflineDeterministicAndRedacted(t *testing.T) {
+	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "")
+	t.Setenv("ARDENTS_ADDR", "://invalid-node-address")
+	dir := filepath.Join(t.TempDir(), "identity")
+	rootPath := filepath.Join(dir, "root.json")
+	devicePath := filepath.Join(dir, "device.json")
+
+	var rootOut, rootErr bytes.Buffer
+	code := runWithIO(context.Background(), []string{"--output", "json", "identity", "principal", "create", "--signer-file", rootPath}, strings.NewReader(""), &rootOut, &rootErr)
+	if code != 0 {
+		t.Fatalf("principal create code = %d, stderr = %s", code, rootErr.String())
+	}
+	var principal map[string]any
+	if err := json.Unmarshal(rootOut.Bytes(), &principal); err != nil {
+		t.Fatalf("principal output is not JSON: %v: %s", err, rootOut.String())
+	}
+	if !strings.HasPrefix(principal["principal"].(string), "p1_") {
+		t.Fatalf("principal output = %v", principal)
+	}
+
+	var deviceOut, deviceErr bytes.Buffer
+	code = runWithIO(context.Background(), []string{"--output", "json", "identity", "device", "create", "--root-signer-file", rootPath, "--signer-file", devicePath, "--valid-for", "24h"}, strings.NewReader(""), &deviceOut, &deviceErr)
+	if code != 0 {
+		t.Fatalf("device create code = %d, stderr = %s", code, deviceErr.String())
+	}
+	var device map[string]any
+	if err := json.Unmarshal(deviceOut.Bytes(), &device); err != nil {
+		t.Fatalf("device output is not JSON: %v: %s", err, deviceOut.String())
+	}
+	if device["principal"] != principal["principal"] || !strings.HasPrefix(device["device_id"].(string), "d1_") || !strings.HasPrefix(device["credential_id"].(string), "kc1_") {
+		t.Fatalf("device output = %v", device)
+	}
+
+	rootRaw, err := os.ReadFile(rootPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	deviceRaw, err := os.ReadFile(devicePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	combinedOutput := rootOut.String() + rootErr.String() + deviceOut.String() + deviceErr.String()
+	for _, marker := range []string{"root_private_seed", "device_private_seed", "credential\""} {
+		if strings.Contains(combinedOutput, marker) {
+			t.Fatalf("private bundle field leaked to output: %q", marker)
+		}
+	}
+	if bytes.Contains(rootOut.Bytes(), rootRaw) || bytes.Contains(deviceOut.Bytes(), deviceRaw) {
+		t.Fatal("signer bundle leaked to output")
+	}
+
+	var showOut, showErr bytes.Buffer
+	code = runWithIO(context.Background(), []string{"identity", "device", "show", "--signer-file", devicePath}, strings.NewReader(""), &showOut, &showErr)
+	if code != 0 || !strings.Contains(showOut.String(), device["device_id"].(string)) {
+		t.Fatalf("device show code = %d, stdout = %s, stderr = %s", code, showOut.String(), showErr.String())
+	}
+}
+
+func TestIdentityCreateRefusesExistingSignerWithoutMutation(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "identity", "root.json")
+	var stdout, stderr bytes.Buffer
+	code := Run(context.Background(), []string{"identity", "principal", "create", "--signer-file", path}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("first create code = %d, stderr = %s", code, stderr.String())
+	}
+	before, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stdout.Reset()
+	stderr.Reset()
+	code = Run(context.Background(), []string{"--output", "json", "identity", "principal", "create", "--signer-file", path}, &stdout, &stderr)
+	if code == 0 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "already exists") {
+		t.Fatalf("second create code = %d, stdout = %s, stderr = %s", code, stdout.String(), stderr.String())
+	}
+	after, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(before, after) {
+		t.Fatal("existing signer was mutated")
+	}
+	if bytes.Contains(stderr.Bytes(), before) {
+		t.Fatal("signer bytes leaked to error output")
+	}
+}
+
+func TestIdentityFilesystemFailureDoesNotRevealSignerPathOrContent(t *testing.T) {
+	parentFile := filepath.Join(t.TempDir(), "private-path-marker")
+	if err := os.WriteFile(parentFile, []byte("private-content-marker"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(parentFile, "root.json")
+	var stdout, stderr bytes.Buffer
+	code := Run(context.Background(), []string{"--output", "json", "identity", "principal", "create", "--signer-file", path}, &stdout, &stderr)
+	if code == 0 || stdout.Len() != 0 {
+		t.Fatalf("code = %d, stdout = %s, stderr = %s", code, stdout.String(), stderr.String())
+	}
+	for _, secret := range []string{path, parentFile, "private-path-marker", "private-content-marker"} {
+		if strings.Contains(stderr.String(), secret) {
+			t.Fatalf("filesystem detail leaked to error output: %q in %s", secret, stderr.String())
+		}
+	}
+	if !strings.Contains(stderr.String(), "signer file is unavailable") {
+		t.Fatalf("stderr = %s", stderr.String())
+	}
+}
+
 func TestRunReturnsFailureWhenOutputCannotBeWritten(t *testing.T) {
 	srv := newCLIServer(t, "test-token")
-	t.Setenv("ARDENTS_API_TOKEN", "test-token")
+	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
 	t.Setenv("ARDENTS_ADDR", srv.URL)
 
 	var stderr bytes.Buffer
@@ -38,7 +163,7 @@ func TestRunReturnsFailureWhenOutputCannotBeWritten(t *testing.T) {
 
 func TestRunNodeStatusJSONSuccess(t *testing.T) {
 	srv := newCLIServer(t, "test-token")
-	t.Setenv("ARDENTS_API_TOKEN", "test-token")
+	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
 	t.Setenv("ARDENTS_ADDR", srv.URL)
 
 	var stdout bytes.Buffer
@@ -54,7 +179,7 @@ func TestRunNodeStatusJSONSuccess(t *testing.T) {
 
 func TestRunDiagnosticsHealthHumanSuccess(t *testing.T) {
 	srv := newCLIServer(t, "test-token")
-	t.Setenv("ARDENTS_API_TOKEN", "test-token")
+	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
 	t.Setenv("ARDENTS_ADDR", srv.URL)
 
 	var stdout bytes.Buffer
@@ -70,7 +195,7 @@ func TestRunDiagnosticsHealthHumanSuccess(t *testing.T) {
 
 func TestRunNodeStatusUnauthorizedFailure(t *testing.T) {
 	srv := newCLIServer(t, "right-token")
-	t.Setenv("ARDENTS_API_TOKEN", "wrong-token")
+	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "wrong-token")
 	t.Setenv("ARDENTS_ADDR", srv.URL)
 
 	var stdout bytes.Buffer
@@ -87,7 +212,7 @@ func TestRunNodeStatusUnauthorizedFailure(t *testing.T) {
 
 func TestRunWorkloadListSuccess(t *testing.T) {
 	srv := newCLIServer(t, "test-token")
-	t.Setenv("ARDENTS_API_TOKEN", "test-token")
+	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
 	t.Setenv("ARDENTS_ADDR", srv.URL)
 
 	var stdout bytes.Buffer
@@ -103,7 +228,7 @@ func TestRunWorkloadListSuccess(t *testing.T) {
 
 func TestRunDataInventoryJSONSuccess(t *testing.T) {
 	srv := newCLIServer(t, "test-token")
-	t.Setenv("ARDENTS_API_TOKEN", "test-token")
+	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
 	t.Setenv("ARDENTS_ADDR", srv.URL)
 
 	var stdout bytes.Buffer
@@ -119,7 +244,7 @@ func TestRunDataInventoryJSONSuccess(t *testing.T) {
 
 func TestRunNodeStatusHumanIncludesOperatorTruth(t *testing.T) {
 	srv := newCLIServer(t, "test-token")
-	t.Setenv("ARDENTS_API_TOKEN", "test-token")
+	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
 	t.Setenv("ARDENTS_ADDR", srv.URL)
 
 	var stdout bytes.Buffer
@@ -141,7 +266,7 @@ func TestRunNodeStatusHumanIncludesOperatorTruth(t *testing.T) {
 
 func TestRunJSONFailureWritesStructuredErrorToStderrOnly(t *testing.T) {
 	srv := newCLIServer(t, "right-token")
-	t.Setenv("ARDENTS_API_TOKEN", "wrong-token")
+	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "wrong-token")
 	t.Setenv("ARDENTS_ADDR", srv.URL)
 
 	var stdout bytes.Buffer
@@ -163,10 +288,10 @@ func TestRunJSONFailureWritesStructuredErrorToStderrOnly(t *testing.T) {
 
 func TestRunDiagnosticsHealthWatchPrintsInitialSnapshot(t *testing.T) {
 	srv := newCLIServer(t, "test-token")
-	t.Setenv("ARDENTS_API_TOKEN", "test-token")
+	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
 	t.Setenv("ARDENTS_ADDR", srv.URL)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
 	defer cancel()
 
 	var stdout bytes.Buffer
@@ -185,10 +310,10 @@ func TestRunDiagnosticsHealthWatchPrintsInitialSnapshot(t *testing.T) {
 
 func TestRunNetworkStatusWatchJSONPrintsSnapshotDocument(t *testing.T) {
 	srv := newCLIServer(t, "test-token")
-	t.Setenv("ARDENTS_API_TOKEN", "test-token")
+	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
 	t.Setenv("ARDENTS_ADDR", srv.URL)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
 	defer cancel()
 
 	var stdout bytes.Buffer
@@ -204,7 +329,7 @@ func TestRunNetworkStatusWatchJSONPrintsSnapshotDocument(t *testing.T) {
 
 func TestRunNodeStatusIdentityPreflightMismatchFails(t *testing.T) {
 	srv := newCLIServer(t, "test-token")
-	t.Setenv("ARDENTS_API_TOKEN", "test-token")
+	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
 	t.Setenv("ARDENTS_ADDR", srv.URL)
 
 	var stdout bytes.Buffer
@@ -220,7 +345,7 @@ func TestRunNodeStatusIdentityPreflightMismatchFails(t *testing.T) {
 
 func TestRunNodeStatusIdentityPreflightPrincipalSuccess(t *testing.T) {
 	srv := newCLIServer(t, "test-token")
-	t.Setenv("ARDENTS_API_TOKEN", "test-token")
+	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
 	t.Setenv("ARDENTS_ADDR", srv.URL)
 
 	identity := fetchRuntimeIdentity(t, srv.URL, "test-token")
@@ -235,7 +360,7 @@ func TestRunNodeStatusIdentityPreflightPrincipalSuccess(t *testing.T) {
 
 func TestRunNodeStatusRejectsWrongNodeBindingAtServer(t *testing.T) {
 	srv := newCLIServer(t, "test-token")
-	t.Setenv("ARDENTS_API_TOKEN", "test-token")
+	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
 	t.Setenv("ARDENTS_ADDR", srv.URL)
 
 	var stdout bytes.Buffer
@@ -251,7 +376,7 @@ func TestRunNodeStatusRejectsWrongNodeBindingAtServer(t *testing.T) {
 
 func TestRunNodeStatusContextScopesNarrowCredential(t *testing.T) {
 	srv := newCLIServer(t, "test-token")
-	t.Setenv("ARDENTS_API_TOKEN", "test-token")
+	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
 	t.Setenv("ARDENTS_ADDR", srv.URL)
 
 	var allowedOut bytes.Buffer
@@ -274,7 +399,7 @@ func TestRunNodeStatusContextScopesNarrowCredential(t *testing.T) {
 
 func TestRunShellExecutesContextAndCommand(t *testing.T) {
 	srv := newCLIServer(t, "test-token")
-	t.Setenv("ARDENTS_API_TOKEN", "test-token")
+	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "test-token")
 	t.Setenv("ARDENTS_ADDR", srv.URL)
 
 	identity := fetchRuntimeIdentity(t, srv.URL, "test-token")

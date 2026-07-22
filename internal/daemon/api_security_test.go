@@ -13,17 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestValidateLocalAPIListenAddrAllowsLoopbackOnly(t *testing.T) {
-	for _, addr := range []string{"127.0.0.1:8080", "localhost:8080", "[::1]:8080"} {
-		require.NoError(t, validateLocalAPIListenAddr(addr), addr)
-	}
-	for _, addr := range []string{"0.0.0.0:8080", "192.0.2.1:8080", ":8080", "api.internal:8080"} {
-		err := validateLocalAPIListenAddr(addr)
-		require.Error(t, err, addr)
-		require.Contains(t, err.Error(), "loopback")
-	}
-}
-
 func TestLocalAdminCapabilitiesAreExplicit(t *testing.T) {
 	capabilities := localauth.OperatorActions()
 	require.NotEmpty(t, capabilities)

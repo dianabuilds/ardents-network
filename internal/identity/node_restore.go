@@ -7,13 +7,13 @@ import (
 )
 
 func (s *NodeService) loadReadyIdentity(store StateStore, keys KeyStore) (bool, string, error) {
-	principal, device, publicKey := store.LoadIdentity()
+	principal, _, publicKey := store.LoadIdentity()
 	privateKey, err := keys.Load()
 	if err != nil {
 		return false, "", err
 	}
 	identityFields := 0
-	for _, value := range []string{principal, device, publicKey} {
+	for _, value := range []string{principal, publicKey} {
 		if value != "" {
 			identityFields++
 		}
@@ -21,7 +21,7 @@ func (s *NodeService) loadReadyIdentity(store StateStore, keys KeyStore) (bool, 
 	if identityFields == 0 && privateKey == "" {
 		return false, "", nil
 	}
-	if identityFields == 3 && privateKey != "" {
+	if identityFields == 2 && privateKey != "" {
 		return true, privateKey, nil
 	}
 	return false, "", fmt.Errorf("identity continuity state is incomplete; restore matching state and key backup")

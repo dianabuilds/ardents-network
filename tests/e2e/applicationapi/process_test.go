@@ -4,13 +4,8 @@ package applicationapie2e_test
 
 import (
 	"ardents/internal/config"
-	"ardents/sdk/go/client"
-	"ardents/sdk/go/content"
-	sdkerrors "ardents/sdk/go/errors"
 	"ardents/tests/testkit"
-	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -41,10 +36,18 @@ func TestApplicationUsesDedicatedDaemonInterface(t *testing.T) {
 		binaryName += ".exe"
 	}
 	binary := filepath.Join(dir, binaryName)
+	probeName := "application-probe"
+	if runtime.GOOS == "windows" {
+		probeName += ".exe"
+	}
+	probe := filepath.Join(dir, probeName)
 
 	scenario.Precondition("build and start the real daemon entry point", func(t *testing.T) {
 		build := exec.Command("go", "build", "-o", binary, "../../../cmd/ardentsd")
 		output, err := build.CombinedOutput()
+		require.NoError(t, err, string(output))
+		build = exec.Command("go", "build", "-o", probe, "../../fixtures/application-probe")
+		output, err = build.CombinedOutput()
 		require.NoError(t, err, string(output))
 	})
 	command := exec.Command(binary)
@@ -62,45 +65,21 @@ func TestApplicationUsesDedicatedDaemonInterface(t *testing.T) {
 		go func() { exited <- command.Wait() }()
 		t.Cleanup(func() { stopProcess(command) })
 		require.NoError(t, waitForHTTP("http://"+observabilityAddress+"/healthz", exited), readLog(logPath))
-		require.NoError(t, waitForApplication(applicationAddress, "application-secret", exited), readLog(logPath))
+		require.NoError(t, waitForTCP(applicationAddress, exited), readLog(logPath))
 	})
 
 	scenario.Step("put and get content with an application credential", func(t *testing.T) {
-		application, err := client.New(client.Config{
-			Endpoint:   "http://" + applicationAddress,
-			Credential: client.StaticCredential("application-secret"),
-			HTTPClient: &http.Client{Timeout: 5 * time.Second},
-		})
-		require.NoError(t, err)
-		reference, err := application.Content.Put(context.Background(), []byte("hello application"), content.WithMediaType("text/plain"))
-		require.NoError(t, err)
-		payload, err := application.Content.Get(context.Background(), reference)
-		require.NoError(t, err)
-		require.Equal(t, []byte("hello application"), payload)
+		output, err := exec.Command(probe, "endpoint", "http://"+applicationAddress, filepath.Join(dir, "application-token")).CombinedOutput()
+		require.NoError(t, err, string(output))
 	})
 
 	scenario.Assert("operator credentials are rejected by the Application Interface", func(t *testing.T) {
-		application, err := client.New(client.Config{
-			Endpoint:   "http://" + applicationAddress,
-			Credential: client.StaticCredential("operator-secret"),
-			HTTPClient: &http.Client{Timeout: 5 * time.Second},
-		})
-		require.NoError(t, err)
-		_, err = application.Content.Put(context.Background(), []byte("must fail"))
-		var applicationErr *sdkerrors.Error
-		require.ErrorAs(t, err, &applicationErr)
-		require.Equal(t, sdkerrors.Unauthenticated, applicationErr.Code)
+		output, err := exec.Command(probe, "expect-unauthenticated", "http://"+applicationAddress, filepath.Join(dir, "operator-token")).CombinedOutput()
+		require.NoError(t, err, string(output))
 	})
 }
 
-func waitForApplication(address, token string, exited <-chan error) error {
-	application, err := client.New(client.Config{
-		Endpoint: "http://" + address, Credential: client.StaticCredential(token),
-		HTTPClient: &http.Client{Timeout: time.Second},
-	})
-	if err != nil {
-		return err
-	}
+func waitForTCP(address string, exited <-chan error) error {
 	deadline := time.Now().Add(15 * time.Second)
 	for time.Now().Before(deadline) {
 		select {
@@ -108,9 +87,9 @@ func waitForApplication(address, token string, exited <-chan error) error {
 			return fmt.Errorf("ardentsd exited before Application Interface readiness: %w", processErr)
 		default:
 		}
-		_, requestErr := application.Content.Put(context.Background(), nil)
-		var applicationErr *sdkerrors.Error
-		if errors.As(requestErr, &applicationErr) && applicationErr.Code == sdkerrors.InvalidArgument {
+		connection, err := net.DialTimeout("tcp", address, time.Second)
+		if err == nil {
+			_ = connection.Close()
 			return nil
 		}
 		time.Sleep(100 * time.Millisecond)

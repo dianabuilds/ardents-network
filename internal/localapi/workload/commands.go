@@ -4,7 +4,6 @@ package workload
 
 import (
 	"context"
-	"net/http"
 
 	ardents "ardents/internal/localapi/protocol"
 	"ardents/internal/localapi/rpc"
@@ -15,10 +14,7 @@ import (
 func (h *Service) RegisterWorkload(ctx context.Context, req *connect.Request[ardents.RegisterWorkloadRequest]) (*connect.Response[ardents.WorkloadCommandResponse], error) {
 	callCtx, cancel := rpc.MutationContext(ctx)
 	defer cancel()
-	return rpc.Respond(h.auth, req.Header(), func(call rpc.CallContext) (*ardents.WorkloadCommandResponse, *rpc.Error) {
-		if err := rpc.RequireWrite(call, "workload", "workload.register"); err != nil {
-			return nil, err
-		}
+	return rpc.RespondContext(ctx, func(rpc.Call) (*ardents.WorkloadCommandResponse, *rpc.Error) {
 		if err := h.workload.Register(callCtx, fromWorkloadSpecSnapshot(req.Msg.GetSpec())); err != nil {
 			return nil, rpc.MapError("workload", "workload.register", "register_failed", "workload register failed", false, err)
 		}
@@ -34,27 +30,24 @@ func (h *Service) RegisterWorkload(ctx context.Context, req *connect.Request[ard
 }
 
 func (h *Service) StartWorkload(ctx context.Context, req *connect.Request[ardents.StartWorkloadRequest]) (*connect.Response[ardents.WorkloadCommandResponse], error) {
-	return h.mutateWorkload(ctx, req.Header(), req.Msg.GetId(), "start", "started", h.workload.Start)
+	return h.mutateWorkload(ctx, req.Msg.GetId(), "start", "started", h.workload.Start)
 }
 
 func (h *Service) StopWorkload(ctx context.Context, req *connect.Request[ardents.StopWorkloadRequest]) (*connect.Response[ardents.WorkloadCommandResponse], error) {
-	return h.mutateWorkload(ctx, req.Header(), req.Msg.GetId(), "stop", "stopped", h.workload.Stop)
+	return h.mutateWorkload(ctx, req.Msg.GetId(), "stop", "stopped", h.workload.Stop)
 }
 
 func (h *Service) RestartWorkload(ctx context.Context, req *connect.Request[ardents.RestartWorkloadRequest]) (*connect.Response[ardents.WorkloadCommandResponse], error) {
-	return h.mutateWorkload(ctx, req.Header(), req.Msg.GetId(), "restart", "restarted", h.workload.Restart)
+	return h.mutateWorkload(ctx, req.Msg.GetId(), "restart", "restarted", h.workload.Restart)
 }
 
-func (h *Service) mutateWorkload(ctx context.Context, header http.Header, id, action, completedAction string,
+func (h *Service) mutateWorkload(ctx context.Context, id, action, completedAction string,
 	mutate func(context.Context, string) error,
 ) (*connect.Response[ardents.WorkloadCommandResponse], error) {
 	callCtx, cancel := rpc.MutationContext(ctx)
 	defer cancel()
 	operation := "workload." + action
-	return rpc.Respond(h.auth, header, func(call rpc.CallContext) (*ardents.WorkloadCommandResponse, *rpc.Error) {
-		if err := rpc.RequireWrite(call, "workload", operation); err != nil {
-			return nil, err
-		}
+	return rpc.RespondContext(ctx, func(rpc.Call) (*ardents.WorkloadCommandResponse, *rpc.Error) {
 		if err := mutate(callCtx, id); err != nil {
 			return nil, rpc.MapError("workload", operation, action+"_failed", "workload "+action+" failed", true, err)
 		}

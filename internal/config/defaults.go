@@ -14,7 +14,7 @@ func Defaults() Document {
 	return Document{
 		APIVersion: Version,
 		Node:       NodeConfig{Name: "ardents", Profile: "service_node", DataDir: "var/ardents"},
-		API:        APIConfig{ListenAddress: "127.0.0.1:8080", OperatorSubject: "ardentsd-local-api"},
+		API:        APIConfig{SocketPath: "/run/ardents/control.sock"},
 		Network: NetworkConfig{
 			TransportProfile: "tcp_only", BindAddress: "0.0.0.0",
 			StorePath: "var/ardents/waku-store.db", ReachabilityMode: "private_lan",
@@ -33,48 +33,6 @@ func Defaults() Document {
 	}
 }
 
-const (
-	APITokenEnv     = "ARDENTS_API_TOKEN"
-	APITokenFileEnv = "ARDENTS_API_TOKEN_FILE"
-)
-
-func ResolveDocumentSecrets(doc Document) (Document, error) {
-	token := strings.TrimSpace(os.Getenv(APITokenEnv))
-	path := strings.TrimSpace(os.Getenv(APITokenFileEnv))
-	if token != "" && path != "" {
-		return Document{}, fmt.Errorf("configure only one of %s and %s", APITokenEnv, APITokenFileEnv)
-	}
-	if token != "" {
-		doc.API.TokenFile = "environment-secret"
-	} else if path != "" {
-		doc.API.TokenFile = path
-	}
-	return doc, nil
-}
-
-func APIToken(documentPath string) (string, error) {
-	environmentToken := strings.TrimSpace(os.Getenv(APITokenEnv))
-	environmentPath := strings.TrimSpace(os.Getenv(APITokenFileEnv))
-	if environmentToken != "" && environmentPath != "" {
-		return "", fmt.Errorf("configure only one of %s and %s", APITokenEnv, APITokenFileEnv)
-	}
-	if environmentToken != "" {
-		return environmentToken, nil
-	}
-	path := environmentPath
-	if path == "" {
-		path = strings.TrimSpace(documentPath)
-	}
-	if path == "" {
-		return "", fmt.Errorf("api.token_file or %s is required", APITokenEnv)
-	}
-	token, err := readSecretFile(path)
-	if err != nil {
-		return "", fmt.Errorf("api credential source is unavailable or invalid")
-	}
-	return token, nil
-}
-
 func ObservabilityToken(path string) (string, error) {
 	if strings.TrimSpace(path) == "" {
 		return "", nil
@@ -82,39 +40,6 @@ func ObservabilityToken(path string) (string, error) {
 	token, err := readSecretFile(path)
 	if err != nil {
 		return "", fmt.Errorf("observability credential source is unavailable or invalid")
-	}
-	return token, nil
-}
-
-func ApplicationToken(path string) (string, error) {
-	if strings.TrimSpace(path) == "" {
-		return "", fmt.Errorf("application_interface.token_file is required")
-	}
-	token, err := readApplicationSecretFile(path)
-	if err != nil {
-		return "", fmt.Errorf("application credential source is unavailable or invalid")
-	}
-	return token, nil
-}
-
-func readApplicationSecretFile(path string) (string, error) {
-	info, err := os.Lstat(path)
-	if err != nil {
-		return "", err
-	}
-	if !info.Mode().IsRegular() {
-		return "", fmt.Errorf("application credential source must be a regular file")
-	}
-	if runtime.GOOS != "windows" && info.Mode().Perm()&0o027 != 0 {
-		return "", fmt.Errorf("application credential source permissions are invalid")
-	}
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
-	}
-	token := strings.TrimSpace(string(raw))
-	if token == "" {
-		return "", fmt.Errorf("application credential source is empty")
 	}
 	return token, nil
 }
@@ -150,8 +75,6 @@ func redactDocument(doc Document) map[string]any {
 	if err := json.Unmarshal(raw, &out); err != nil {
 		return map[string]any{"configuration": "unavailable"}
 	}
-	redactMapValue(out, "api", "token_file")
-	redactMapValue(out, "application_interface", "token_file")
 	redactMapValue(out, "observability", "token_file")
 	redactMapValue(out, "network", "private_key_path")
 	redactNestedMapValue(out, "network", "wss", "private_key_file")

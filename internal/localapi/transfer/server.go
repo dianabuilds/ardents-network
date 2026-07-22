@@ -10,10 +10,7 @@ import (
 )
 
 func (h *Handler) FetchBlob(ctx context.Context, req *connect.Request[ardentsv1.FetchBlobRequest]) (*connect.Response[ardentsv1.BlobSnapshot], error) {
-	return rpc.Respond(h.auth, req.Header(), func(call rpc.CallContext) (*ardentsv1.BlobSnapshot, *rpc.Error) {
-		if err := rpc.RequireWrite(call, "data", "data.fetch_blob"); err != nil {
-			return nil, err
-		}
+	return rpc.RespondContext(ctx, func(rpc.Call) (*ardentsv1.BlobSnapshot, *rpc.Error) {
 		res, err := h.fetcher.FetchBlob(ctx, req.Msg.GetId())
 		if err != nil {
 			return nil, rpc.MapError("data", "data.fetch_blob", "fetch_failed", "data fetch blob failed", true, err)
@@ -22,20 +19,14 @@ func (h *Handler) FetchBlob(ctx context.Context, req *connect.Request[ardentsv1.
 	})
 }
 
-func (h *Handler) ListBlobSources(_ context.Context, req *connect.Request[ardentsv1.ListBlobSourcesRequest]) (*connect.Response[ardentsv1.ListBlobSourcesResponse], error) {
-	return rpc.Respond(h.auth, req.Header(), func(call rpc.CallContext) (*ardentsv1.ListBlobSourcesResponse, *rpc.Error) {
-		if err := rpc.RequireRead(call, "data", "data.blob_sources"); err != nil {
-			return nil, err
-		}
+func (h *Handler) ListBlobSources(ctx context.Context, req *connect.Request[ardentsv1.ListBlobSourcesRequest]) (*connect.Response[ardentsv1.ListBlobSourcesResponse], error) {
+	return rpc.RespondContext(ctx, func(rpc.Call) (*ardentsv1.ListBlobSourcesResponse, *rpc.Error) {
 		return &ardentsv1.ListBlobSourcesResponse{Sources: sourceSnapshots(h.sources.ListBlobSources(req.Msg.GetId()))}, nil
 	})
 }
 
-func (h *Handler) GetTransfer(_ context.Context, req *connect.Request[ardentsv1.GetTransferRequest]) (*connect.Response[ardentsv1.GetTransferResponse], error) {
-	return rpc.Respond(h.auth, req.Header(), func(call rpc.CallContext) (*ardentsv1.GetTransferResponse, *rpc.Error) {
-		if err := rpc.RequireRead(call, "data", "data.get_transfer"); err != nil {
-			return nil, err
-		}
+func (h *Handler) GetTransfer(ctx context.Context, req *connect.Request[ardentsv1.GetTransferRequest]) (*connect.Response[ardentsv1.GetTransferResponse], error) {
+	return rpc.RespondContext(ctx, func(rpc.Call) (*ardentsv1.GetTransferResponse, *rpc.Error) {
 		res, ok := h.records.Get(req.Msg.GetId())
 		if !ok {
 			return nil, rpc.NotFound("data", "data.get_transfer", "data transfer not found")
@@ -44,11 +35,8 @@ func (h *Handler) GetTransfer(_ context.Context, req *connect.Request[ardentsv1.
 	})
 }
 
-func (h *Handler) ListTransfers(_ context.Context, req *connect.Request[ardentsv1.ListTransfersRequest]) (*connect.Response[ardentsv1.ListTransfersResponse], error) {
-	return rpc.Respond(h.auth, req.Header(), func(call rpc.CallContext) (*ardentsv1.ListTransfersResponse, *rpc.Error) {
-		if err := rpc.RequireRead(call, "data", "data.list_transfers"); err != nil {
-			return nil, err
-		}
+func (h *Handler) ListTransfers(ctx context.Context, _ *connect.Request[ardentsv1.ListTransfersRequest]) (*connect.Response[ardentsv1.ListTransfersResponse], error) {
+	return rpc.RespondContext(ctx, func(rpc.Call) (*ardentsv1.ListTransfersResponse, *rpc.Error) {
 		return &ardentsv1.ListTransfersResponse{Transfers: transferSnapshots(h.records.List())}, nil
 	})
 }

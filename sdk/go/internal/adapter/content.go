@@ -1,34 +1,34 @@
 package adapter
 
 import (
+	"context"
+	stderrors "errors"
+	"strings"
+
 	"ardents/sdk/go/content"
 	sdkerrors "ardents/sdk/go/errors"
 	applicationv1 "ardents/sdk/go/protocol/applicationv1"
 	applicationv1connect "ardents/sdk/go/protocol/applicationv1/applicationv1connect"
-	"context"
-	stderrors "errors"
-	"net/http"
-	"strings"
 
 	"connectrpc.com/connect"
 )
 
-type CredentialSource func(context.Context) (string, error)
-
 type Content struct {
-	client     applicationv1connect.ContentServiceClient
-	credential CredentialSource
+	client applicationv1connect.ContentServiceClient
 }
 
-func NewContent(httpClient connect.HTTPClient, endpoint string, credential CredentialSource) *Content {
+func NewContent(httpClient connect.HTTPClient, endpoint string, options ...connect.ClientOption) *Content {
+	clientOptions := []connect.ClientOption{
+		connect.WithReadMaxBytes(applicationv1.MaxUnaryMessageBytes),
+		connect.WithSendMaxBytes(applicationv1.MaxUnaryMessageBytes),
+	}
+	clientOptions = append(clientOptions, options...)
 	return &Content{
 		client: applicationv1connect.NewContentServiceClient(
 			httpClient,
 			strings.TrimRight(endpoint, "/"),
-			connect.WithReadMaxBytes(applicationv1.MaxUnaryMessageBytes),
-			connect.WithSendMaxBytes(applicationv1.MaxUnaryMessageBytes),
+			clientOptions...,
 		),
-		credential: credential,
 	}
 }
 
@@ -40,9 +40,6 @@ func (c *Content) Put(ctx context.Context, payload []byte, options ...content.Pu
 		}
 	}
 	req := connect.NewRequest(&applicationv1.PutContentRequest{Payload: append([]byte(nil), payload...), MediaType: configured.MediaType})
-	if err := c.authorize(ctx, req.Header()); err != nil {
-		return content.Reference{}, err
-	}
 	response, err := c.client.Put(ctx, req)
 	if err != nil {
 		return content.Reference{}, mapError(err)
@@ -56,9 +53,6 @@ func (c *Content) Put(ctx context.Context, payload []byte, options ...content.Pu
 
 func (c *Content) Get(ctx context.Context, reference content.Reference) ([]byte, error) {
 	req := connect.NewRequest(&applicationv1.GetContentRequest{Reference: &applicationv1.ContentReference{Kind: reference.Kind, Id: reference.ID}})
-	if err := c.authorize(ctx, req.Header()); err != nil {
-		return nil, err
-	}
 	response, err := c.client.Get(ctx, req)
 	if err != nil {
 		return nil, mapError(err)
@@ -66,20 +60,11 @@ func (c *Content) Get(ctx context.Context, reference content.Reference) ([]byte,
 	return append([]byte(nil), response.Msg.GetPayload()...), nil
 }
 
-func (c *Content) authorize(ctx context.Context, header http.Header) error {
-	credential, err := c.credential(ctx)
-	if err != nil {
-		return &sdkerrors.Error{Code: sdkerrors.Unauthenticated, Message: "application credential is unavailable"}
-	}
-	credential = strings.TrimSpace(credential)
-	if credential == "" {
-		return &sdkerrors.Error{Code: sdkerrors.Unauthenticated, Message: "application credential is unavailable"}
-	}
-	header.Set("Authorization", "ArdentsApplication "+credential)
-	return nil
-}
-
 func mapError(err error) error {
+	var sdkErr *sdkerrors.Error
+	if stderrors.As(err, &sdkErr) {
+		return sdkErr
+	}
 	var connectErr *connect.Error
 	if !stderrors.As(err, &connectErr) {
 		return &sdkerrors.Error{Code: sdkerrors.Internal, Message: "application request failed"}

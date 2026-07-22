@@ -28,7 +28,7 @@ func TestPrivateCapabilitySelectorsInteroperateAndRevokeAcrossNodes(t *testing.T
 	now := time.Unix(1_800_000_000, 0).UTC()
 	issuerPrivate := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x41}, ed25519.SeedSize))
 	issuerPublic := issuerPrivate.Public().(ed25519.PublicKey)
-	issuer := identityprincipal.DeriveID("p", issuerPublic)
+	issuer := integrationPrincipalID(issuerPublic)
 	trusted := map[string]ed25519.PublicKey{issuer: issuerPublic}
 	grant := signedIntegrationGrant(t, issuerPrivate, issuer, now, 1, 0x21)
 
@@ -69,12 +69,20 @@ func TestPrivateCapabilitySelectorsInteroperateAndRevokeAcrossNodes(t *testing.T
 	require.NotEqual(t, leftMaterial.EnvelopeKey(), rotatedMaterial.EnvelopeKey())
 }
 
+func integrationPrincipalID(public ed25519.PublicKey) string {
+	id, err := identityprincipal.FromEd25519PublicKey(public)
+	if err != nil {
+		panic(err)
+	}
+	return id.String()
+}
+
 func signedIntegrationGrant(t *testing.T, issuerPrivate ed25519.PrivateKey, issuer string, now time.Time, generation uint32, secretByte byte) identityapi.CapabilityGrant {
 	t.Helper()
 	secret, ok := identityapi.NewCapabilitySecret(bytes.Repeat([]byte{secretByte}, 32))
 	require.True(t, ok)
 	subjectPrivate := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x43}, ed25519.SeedSize))
-	subject := identityprincipal.DeriveID("p", subjectPrivate.Public().(ed25519.PublicKey))
+	subject := integrationPrincipalID(subjectPrivate.Public().(ed25519.PublicKey))
 	grant := identityapi.CapabilityGrant{
 		Version: 1, ChannelID: integrationID(0x11), Generation: generation,
 		Secret: secret, GrantID: integrationID(byte(0x30 + generation)),

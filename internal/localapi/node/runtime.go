@@ -9,11 +9,8 @@ import (
 	"connectrpc.com/connect"
 )
 
-func (h *RuntimeHandler) GetNodeRuntime(_ context.Context, req *connect.Request[ardentsv1.GetNodeRuntimeRequest]) (*connect.Response[ardentsv1.NodeRuntimeResponse], error) {
-	return rpc.Respond(h.auth, req.Header(), func(call rpc.CallContext) (*ardentsv1.NodeRuntimeResponse, *rpc.Error) {
-		if err := rpc.RequireRead(call, "node", "node.runtime"); err != nil {
-			return nil, err
-		}
+func (h *RuntimeHandler) GetNodeRuntime(ctx context.Context, _ *connect.Request[ardentsv1.GetNodeRuntimeRequest]) (*connect.Response[ardentsv1.NodeRuntimeResponse], error) {
+	return rpc.RespondContext(ctx, func(rpc.Call) (*ardentsv1.NodeRuntimeResponse, *rpc.Error) {
 		return &ardentsv1.NodeRuntimeResponse{
 			Status:  statusProto("completed", "node runtime available", true),
 			Runtime: toNodeRuntimeSnapshot(h.service.GetNodeRuntime()),

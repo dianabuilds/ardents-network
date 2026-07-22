@@ -1,34 +1,49 @@
 package provision
 
 import (
+	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestEnsureTokenAcceptsInstalledApplicationPermissions(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Windows does not expose Unix group permission bits")
-	}
-	dir := t.TempDir()
-	path := filepath.Join(dir, "application-token")
-	require.NoError(t, os.WriteFile(path, []byte("existing-token"), 0o640))
+func TestRunWritesCanonicalSocketConfigurationWithoutBearerArtifacts(t *testing.T) {
+	root := t.TempDir()
+	authorityDir := filepath.Join(root, "authority")
+	nodeDir := filepath.Join(root, "node")
+	secretDir := filepath.Join(root, "secret")
+	applicationDir := applicationDataDir(nodeDir)
 
-	require.NoError(t, ensureToken(dir, "application-token", 0o027))
-}
+	var output bytes.Buffer
+	err := run([]string{
+		"--authority-dir", authorityDir,
+		"--node-dir", nodeDir,
+		"--secret-dir", secretDir,
+		"--node-name", "node-a",
+		"--transport-port", "61000",
+	}, &output, func() time.Time { return time.Date(2026, 7, 22, 12, 0, 0, 0, time.UTC) })
+	require.NoError(t, err)
+	require.Contains(t, output.String(), filepath.Join(secretDir, "operator.json"))
 
-func TestEnsureTokenRejectsWritableApplicationToken(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Windows does not expose Unix group permission bits")
-	}
-	dir := t.TempDir()
-	path := filepath.Join(dir, "application-token")
-	require.NoError(t, os.WriteFile(path, []byte("existing-token"), 0o660))
-	require.NoError(t, os.Chmod(path, 0o660))
+	raw, err := os.ReadFile(filepath.Join(secretDir, "operator.json"))
+	require.NoError(t, err)
+	var document map[string]any
+	require.NoError(t, json.Unmarshal(raw, &document))
+	api := document["api"].(map[string]any)
+	application := document["application_interface"].(map[string]any)
+	require.Equal(t, filepath.Join(secretDir, "control.sock"), api["socket_path"])
+	require.Equal(t, filepath.Join(applicationDir, "application.sock"), application["socket_path"])
+	require.NotContains(t, api, "token_file")
+	require.NotContains(t, api, "listen_address")
+	require.NotContains(t, application, "token_file")
+	require.NotContains(t, application, "listen_address")
 
-	err := ensureToken(dir, "application-token", 0o027)
-	require.ErrorContains(t, err, "permissions are invalid")
+	_, err = os.Stat(filepath.Join(secretDir, "api-token"))
+	require.ErrorIs(t, err, os.ErrNotExist)
+	_, err = os.Stat(filepath.Join(applicationDir, "application-token"))
+	require.ErrorIs(t, err, os.ErrNotExist)
 }

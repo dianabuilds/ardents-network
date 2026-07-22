@@ -143,8 +143,6 @@ func TestCLIDiagnosticsSurfaceExplainsDegradedTruth(t *testing.T) {
 
 	health := rt.Diagnostics.GetHealthSummary()
 	explanation := rt.Diagnostics.ExplainFailure("service", "svc.work.invalid")
-	events, _ := rt.Diagnostics.ListRecentEvents(2, "")
-
 	cliHarness := newCLIHarness(t, rt.Runtime)
 
 	healthOut := cliHarness.run(t, "diagnostics", "health")
@@ -164,6 +162,7 @@ func TestCLIDiagnosticsSurfaceExplainsDegradedTruth(t *testing.T) {
 	require.Contains(t, explainOut.stdout, "recovery: "+explanation.Reason.Recovery)
 
 	eventsOut := cliHarness.run(t, "diagnostics", "events", "--limit", "2")
+	events, _ := rt.Diagnostics.ListRecentEvents(2, "")
 	require.Contains(t, eventsOut.stdout, "diagnostics events")
 	require.NotEmpty(t, events)
 	require.Contains(t, eventsOut.stdout, events[len(events)-1].Type)
@@ -417,13 +416,19 @@ func (h cliHarness) run(t *testing.T, args ...string) cliResult {
 	t.Helper()
 
 	t.Setenv("ARDENTS_ADDR", h.addr)
-	t.Setenv("ARDENTS_API_TOKEN", h.token)
+	t.Setenv("ARDENTS_LEGACY_API_TOKEN", h.token)
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	code := cli.Run(context.Background(), args, &stdout, &stderr)
 	require.Equalf(t, 0, code, "stderr=%s", stderr.String())
-	require.Empty(t, stderr.String())
+	expectedWarning := "ardentsctl: warning: explicit legacy bearer authentication is migration-only\n"
+	for index, argument := range args {
+		if argument == "--output=json" || (argument == "--output" && index+1 < len(args) && args[index+1] == "json") {
+			expectedWarning = "{\"warning\":\"legacy bearer authentication is migration-only\"}\n"
+		}
+	}
+	require.Equal(t, expectedWarning, stderr.String())
 
 	return cliResult{stdout: stdout.String(), stderr: stderr.String(), code: code}
 }

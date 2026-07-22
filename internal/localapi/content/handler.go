@@ -5,7 +5,6 @@ import (
 	"time"
 
 	domain "ardents/internal/content"
-	localauth "ardents/internal/localapi/auth"
 )
 
 var ErrQueryRequired = errors.New("content query is required")
@@ -32,12 +31,11 @@ type Commands interface {
 type QueryHandler struct {
 	content  Reader
 	commands Commands
-	auth     localauth.Config
 }
 
-func NewHandler(content Reader, commands Commands, auth localauth.Config) (*QueryHandler, error) {
+func NewHandler(content Reader, commands Commands) (*QueryHandler, error) {
 	if content == nil {
 		return nil, ErrQueryRequired
 	}
-	return &QueryHandler{content: content, commands: commands, auth: auth}, nil
+	return &QueryHandler{content: content, commands: commands}, nil
 }

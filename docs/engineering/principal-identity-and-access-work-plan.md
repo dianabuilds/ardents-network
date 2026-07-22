@@ -17,7 +17,7 @@ Do not replace those files from an older branch or assume this plan describes
 their eventual diff exactly.
 
 Each task is a reviewable vertical or enabling slice. A task is complete only
-when its named behavior, negative tests, migration/compatibility evidence, and
+when its named behavior, negative tests, persistence/rollback evidence, and
 documentation are all present. Empty target packages, compatibility aliases,
 unused abstractions, and “tests later” handoffs are not acceptable.
 
@@ -35,8 +35,8 @@ These are the known change points at the time of design:
 | Principal derivation | `internal/identity/principal/principal.go` truncates SHA-256 | Strict typed `p1_` codec with full digest |
 | Node identity/device | `internal/identity/node_create.go`, `node_restore.go`, `contracts.go` | Node Principal retained; fake same-seed Device removed/replaced |
 | Generic call identity | `identity.SubjectRef`, `identity.CallContext` | `access.AuthorizedCall` with Actor and Effective |
-| Operator bearer auth | `internal/localapi/auth/*`, `localapi/access_interceptor.go` | Thin Operator adapter over `identity/access` |
-| Application bearer auth | `internal/applicationapi/auth/*` | Thin Application adapter over the same owner |
+| Operator bearer auth | `internal/localapi/auth/*`, `localapi/access_interceptor.go` | Delete; protected Operator adapter uses `identity/access` only |
+| Application bearer auth | `internal/applicationapi/auth/*` | Delete; protected Application adapter uses the same owner only |
 | Application auth propagation | `applicationapi/content/handler.go` authorizes headers itself | Interceptor derives and propagates `AuthorizedCall` once |
 | Operator protocol | `api/ardents/v1/*.proto`, `internal/localapi/protocol` | Separate Operator identity/authentication service |
 | Application protocol | `api/ardents/application/v1/content.proto`, `sdk/go/protocol` | Separate Application authentication service, same semantics |
@@ -54,11 +54,9 @@ Generated files are outputs, never edited by hand.
 ```mermaid
 flowchart TD
     T1[PIA-001 architecture and protocol freeze] --> T2[PIA-002 p1 codec]
-    T2 --> T3[PIA-003 identity migration inventory]
-    T3 --> T4[PIA-004 Node p1 cutover]
     T2 --> T5[PIA-005 signed artifact codec]
     T1 --> T6A[PIA-006A storage transactions]
-    T4 --> T6B[PIA-006B authentication core]
+    T2 --> T6B[PIA-006B authentication core]
     T5 --> T6B
     T6A --> T6B
     T6B --> T7[PIA-007 grants and direct admission]
@@ -70,10 +68,10 @@ flowchart TD
     T10 --> T13[PIA-013 user-to-Application delegation]
     T12 --> T13
     T13 --> T14[PIA-014 content owner binding]
-    T4 --> T15[PIA-015 discovery/device/trust normalization]
+    T2 --> T15[PIA-015 discovery/device/trust normalization]
     T14 --> T16[PIA-016 identifier and vocabulary cleanup]
     T15 --> T16
-    T10 --> T17[PIA-017 legacy credential retirement]
+    T10 --> T17[PIA-017 pre-release compatibility removal]
     T11 --> T17
     T14 --> T17
     T16 --> T18[PIA-018 adversarial and release gate]
@@ -82,19 +80,20 @@ flowchart TD
 
 Release gates:
 
-- **Format gate:** PIA-001 through PIA-005. No user key issuance before this
+- **Format gate:** PIA-001, PIA-002, and PIA-005. PIA-003/004A/004B/004C are
+  retired greenfield leaves, not pending work. No user key issuance before this
   gate because IDs and signed bytes must be stable first.
 - **Operator gate:** PIA-006 through PIA-010. Normal Node administration works
-  for a Principal on multiple Nodes; explicit legacy coexistence remains measurable.
+  for a Principal on multiple Nodes through Principal sessions only.
 - **Application gate:** PIA-011 and PIA-012. Applications authenticate as their
   own Principals and handlers receive proven identity.
 - **Delegation/content gate:** PIA-013 and PIA-014. A user can safely authorize
   an Application and ownership is enforced.
-- **Retirement gate:** PIA-015 through PIA-018. Ambiguous identifiers are
-  cleaned up and normal bearer-token paths are disabled.
+- **Release gate:** PIA-015 through PIA-018. Ambiguous identifiers and all
+  pre-release compatibility paths are removed.
 
-PIA-003 and PIA-005 may run in parallel after PIA-002. After the Operator gate,
-PIA-011 and the CLI portions not sharing generated files may be developed in
+After PIA-002, PIA-005 and independent fresh-state normalization may run in
+parallel. After the Operator gate, PIA-011 and CLI portions not sharing generated files may be developed in
 parallel. Do not parallelize tasks that both edit the same proto generation
 script or persisted schema without an explicit file split.
 
@@ -109,40 +108,40 @@ boundary; do not deliver an entire broad workstream as one change.
 |---|---|---|
 | `PIA-001` | — | Architecture/protocol/resource catalogue freeze; docs and stale-generation check only |
 | `PIA-002` | 001 | Strict `p1_`/`d1_` codecs and public golden vectors |
-| `PIA-003` | 002 | Read-only legacy identity inventory/dry run; hashes prove no mutation |
-| `PIA-004A` | 003 | Offline versioned migration of Node identity store/config/indices with interruption tests |
-| `PIA-004B` | 004A | Local realm, discovery/publication, channel grant/revocation reissue or safe expiry; signature tests |
-| `PIA-004C` | 004B | Whole-network stop/start epoch orchestrator, all-node verification, whole-network rollback drill; mixed versions fail safely |
+| `PIA-003` | — | **Retired:** no released `p_` state exists, so inventory/dry-run tooling is deleted |
+| `PIA-004A` | — | **Retired:** no Node `p_ -> p1_` persisted-state migration is a release requirement |
+| `PIA-004B` | — | **Retired:** fresh canonical signed artifacts are created directly; none are reissued from `p_` |
+| `PIA-004C` | — | **Retired:** there is no whole-network identity epoch before the first release |
 | `PIA-005` | 002 | Canonical Credential/Grant/Delegation/revocation codecs and server/SDK vectors |
 | `PIA-006A` | 001 | Long-lived Storage database lifecycle and transaction API; backup/lock/schema tests |
-| `PIA-006B` | 004C, 005, 006A | Bounded challenge, Credential verification, session issue/lookup/invalidation only |
+| `PIA-006B` | 002, 005, 006A | Bounded challenge, Credential verification, session issue/lookup/invalidation only |
 | `PIA-007` | 006B | Durable grants and direct `Actor == Effective` admission; no Delegation code |
-| `PIA-008A` | 007 | Feature-gated one-use Bootstrap Ticket state machine, no default switch |
+| `PIA-008A` | 007 | One-use Bootstrap Ticket state machine for the only first-Operator path |
 | `PIA-008B` | 008A | Proof-bound Principal enrollment and atomic first grant |
 | `PIA-008C` | 008B | Grant/Credential administration, idempotency and last-recovery-path guard |
 | `PIA-009A` | 008C | Operator identity proto plus Unix-socket session adapter/catalogue entries |
 | `PIA-009B1` | 009A | Shared `rpc.Respond` context plumbing plus Node/Configuration handlers; exactly one Admit per RPC |
-| `PIA-009B2` | 009B1 | Network/Diagnostics handler migration and streaming context tests |
-| `PIA-009B3` | 009B1 | Workload handler migration and resource-extractor tests |
-| `PIA-009B4` | 009B1 | Content/Transfer/Retention handler migration and resource-extractor tests |
+| `PIA-009B2` | 009B1 | Network/Diagnostics handler conversion and streaming context tests |
+| `PIA-009B3` | 009B1 | Workload handler conversion and resource-extractor tests |
+| `PIA-009B4` | 009B1 | Content/Transfer/Retention handler conversion and resource-extractor tests |
 | `PIA-010A` | 009A | Protected CLI device-signer storage and identity commands |
 | `PIA-010B` | 009B1–009B4, 010A | Audience-indexed CLI session client, Alpha/Beta behavior, SSH stream-local forwarding |
 | `PIA-010C` | 010B | Enrollment/grant/device administration commands and consent/output tests |
 | `PIA-011A` | 009A | Application auth proto and SDK Signer/session single-flight flow on Unix socket |
-| `PIA-011B` | 009B1–009B4, 011A | Application enrollment plus feature-gated coexistence with legacy content bearer |
+| `PIA-011B` | 009B1–009B4, 011A | Application enrollment as the only supported Application credential path |
 | `PIA-012` | 011B | Application interceptor/context propagation; header auth removed from content handler |
 | `PIA-013` | 010B, 012 | Full one-hop Delegation validation, revocation, CLI consent, SDK attachment |
 | `PIA-014A` | 012 | Atomic Blob payload/metadata/owner binding for Application acting as itself |
 | `PIA-014B` | 013, 014A | Alice-via-Application ownership/intersection and non-enumeration behavior |
-| `PIA-014C` | 014B | Object/Manifest migration plus remote-fetch/claim boundary and owner-aware GC/reconciliation |
-| `PIA-015A` | 004C | Remove fake same-seed Device; expose Device only for an actual Credential |
-| `PIA-015B` | 015A | Versioned kind-specific discovery records and retained-state migration |
+| `PIA-014C` | 014B | Object/Manifest owner binding plus remote-fetch/claim boundary and owner-aware GC/reconciliation |
+| `PIA-015A` | 002 | Remove fake same-seed Device; expose Device only for an actual Credential |
+| `PIA-015B` | 015A | Final versioned kind-specific discovery records and strict retained-state validation |
 | `PIA-015C` | 015B | Purpose-scoped trust registry and verification cache invalidation |
-| `PIA-016A` | 004C | Rename replication Principal targets; Waku Peer ID remains adapter-only |
-| `PIA-016B` | 014C | Collapse domain Blob ID/CID with versioned wire/state compatibility |
+| `PIA-016A` | 002 | Rename replication Principal targets; Waku Peer ID remains adapter-only |
+| `PIA-016B` | 014C | Collapse domain Blob ID/CID directly into the final versioned wire/state form |
 | `PIA-016C` | 015C, 016A, 016B | Type remaining security Owners and split overloaded Capability vocabulary |
-| `PIA-017` | 010C, 011B, 014C | Disable normal legacy bearers by default after evidence; preserve tested break-glass |
-| `PIA-018` | 016C, 017 | Adversarial, migration, recovery, redaction and full release acceptance |
+| `PIA-017` | 010C, 011B, 014C | Delete all pre-release bearer/config/SDK/provisioning compatibility and prove Principal-only clean install |
+| `PIA-018` | 016C, 017 | Adversarial, fresh-install, persistence recovery, redaction and full release acceptance |
 
 If one leaf exceeds a reviewable change after inspection, split it by product
 owner while preserving the same acceptance boundary. Never recombine adjacent
@@ -159,7 +158,7 @@ Every implementation task must:
 5. reject unknown versions/actions/resource kinds and duplicate set entries;
 6. add positive, sibling-denial, malformed, expiry, and redaction tests;
 7. use an injected clock and entropy source for time/random behavior;
-8. keep private keys, session/bootstrap/bearer tokens, proof bytes, and channel
+8. keep private keys, session/bootstrap/enrollment tickets, proof bytes, and channel
    secrets out of errors, logs, snapshots, fixtures committed to source, and
    assertion failure output;
 9. update package responsibility comments and the exhaustive architecture tree
@@ -181,7 +180,7 @@ Never reuse production or developer keys.
 **Depends on:** none.
 
 **Outcome:** the repository topology, protocol sources, generated-code locations,
-and compatibility policy are explicit before a new package or wire method is
+and first-release support policy are explicit before a new package or wire method is
 created.
 
 **Required changes:**
@@ -212,12 +211,11 @@ created.
 - Copy the exact v1 time, count, rate, artifact, and header bounds from section
   4.7 into protocol/config constants with one named owner; do not create a second
   set of adapter defaults.
-- Freeze the transport matrix: new sessions on protected Unix sockets only;
-  plaintext loopback remains legacy-only; future TCP requires a separate mTLS
+- Freeze the transport matrix: sessions on protected Unix sockets only;
+  plaintext loopback is unsupported; future TCP requires a separate mTLS
   contract. Specify SSH stream-local forwarding before changing the CLI.
-- Add a short compatibility matrix: legacy Operator `Bearer`, legacy
-  `ArdentsApplication`, new Operator session, new Application session, and where
-  each is accepted/rejected during migration.
+- Add a credential matrix proving that Operator and Application sessions are
+  accepted only on their own protected surface and every other scheme is rejected.
 - Confirm that adding the two authentication methods does not violate the
   per-service RPC budget; use a focused identity service rather than adding them
   to Content or Configuration.
@@ -260,8 +258,7 @@ with published vectors and no new use of the truncated helper.
 - Add a separate typed `DeviceID` derivation from the device public key using the
   exact `ardents:device:v1` domain and `d1_` format. It must not accept or derive
   from a private seed.
-- Keep legacy `p_` parsing only in a migration-only type/package introduced by
-  PIA-003; runtime `principal.Parse` accepts only `p1_` after cutover.
+- Delete every `p_` parser/helper; runtime `principal.Parse` accepts only `p1_`.
 - Add golden vectors for zero-like, low/high-byte, and fixed RFC-compatible
   Ed25519 public keys plus malformed prefix/length/alphabet/case/padding tests.
 - Add a fuzz/property test: parse/string round-trip is canonical; all one-byte
@@ -274,113 +271,30 @@ go test ./internal/identity/principal/...
 go test ./sdk/go/...                 # vector consumer only at this stage
 ```
 
-Existing `p_` identity tests may be updated only with an explicit migration
-expectation; they must not be weakened into accepting both IDs everywhere.
+Replace pre-release `p_` expectations with explicit rejection tests; no package
+may accept both forms.
 
 **Do not do:** migrate persisted Node state, add key recovery, or change Waku
 Peer ID.
 
-### PIA-003 — Build A Complete `p_` Migration Inventory And Dry Run
+### PIA-003 And PIA-004A/B/C — Retired Greenfield Leaves
 
-**Depends on:** PIA-002.
+These leaves are removed from the dependency graph. Ardents has no released
+`p_` identity state, signed artifact, or bearer-authenticated installation to
+inventory or migrate. Their implementation is deletion of any pre-release
+inventory, epoch, marker, alias, reissue, and restore tooling.
 
-**Outcome:** before any cutover, a read-only tool/test can enumerate every old
-Principal reference and show the deterministic new ID plus affected signed
-artifacts.
+**Acceptance evidence:** runtime and tools contain no `p_` parser or
+`identity-migration` command; fresh Node/realm/Application state is created
+directly with canonical `p1_` identifiers; canonical signed-artifact tests and
+ordinary stopped-Node backup/restore tests remain green.
 
-**Likely inspection scope:**
-
-- identity stores and Node keyring;
-- realm/provisioning authority state;
-- discovery records and trust anchors;
-- channel CapabilityGrants, revocations, and delivery attestations;
-- messaging/publication retained records;
-- replication targets and any content/manifest ownership that currently stores
-  a Node Principal;
-- configuration and generated deployment documents;
-- test fixtures and scripts that assume `p_`.
-
-**Required behavior:**
-
-- Add a migration-only strict `LegacyPrincipalID`; never make it assignable to
-  `principal.ID` without an explicit mapping function.
-- Derive old and new IDs from the same restored Ed25519 public key and fail if a
-  stored old ID does not match that key.
-- Inventory structured stores, signed canonical payloads, config documents, and
-  file names/indices. Plain-text grep is supporting evidence, not the migrator.
-- Classify each occurrence as rewrite-in-place metadata, re-sign/reissue,
-  rebuildable projection, external peer coordination, or impossible/ambiguous.
-- Produce machine-readable dry-run output with counts and old/new IDs, but no
-  private key or secret material.
-- Abort on an unknown store version, inconsistent public key, ambiguous owner
-  string, or signed artifact that cannot be reissued.
-
-**Acceptance evidence:**
-
-- fixtures cover a complete old Node, realm, discovery record, grant/revocation,
-  and retained product state;
-- dry-run makes no file/database changes (hashes before/after equal);
-- a deliberately inconsistent old ID aborts without partial output presented as
-  safe;
-- the inventory is linked from `docs/operations/upgrade-migration.md`.
-
-**Do not do:** accept both identities at runtime or perform the cutover.
-
-### PIA-004 — Perform The Coordinated Node `p1_` Cutover
-
-**Depends on:** PIA-003 and a reviewed dry-run fixture.
-
-**Outcome:** existing Node root keys retain continuity but every security-relevant
-Node Principal reference uses `p1_`; old signed artifacts are reissued, not
-aliased.
-
-**Leaf boundaries:** `PIA-004A` changes only Node/config/store identity and
-derived indices; `PIA-004B` reissues or expires signed realm, discovery,
-publication, and channel artifacts; `PIA-004C` owns the whole-network epoch
-orchestration and rollback evidence. Each leaf consumes the verified output of
-the previous one and has its own interruption fixtures.
-
-**Required behavior:**
-
-- Add a versioned, resumable offline migration with preflight, backup marker,
-  apply, verify, and explicit completion marker phases.
-- Require the daemon to be stopped. Lock the state directory and refuse a live
-  or already ambiguously migrated store.
-- Rewrite durable metadata transactionally per store and atomically replace
-  files only after fsync/verification according to existing storage rules.
-- Re-sign local discovery/publication and channel artifacts whose signed bytes
-  contain the old Principal. Expire/re-fetch remote artifacts; never forge a
-  remote issuer signature.
-- Rebuild derived indices/projections from canonical migrated records.
-- Update provisioning/config output and all Node construction/restore checks.
-- Startup after the completion marker accepts only `p1_`; startup before apply
-  continues on the old binary. A partially applied marker fails closed and
-  directs the operator to resume/restore.
-- Mark this release as a non-rolling whole-private-network epoch migration in
-  `docs/operations/upgrade-migration.md`. All Nodes/authorities stop before the
-  first apply and start only after every state directory verifies. Rollback
-  restores every consistency-group backup before any old binary starts.
-
-**Acceptance evidence:**
-
-- old fixture → dry run → backup → apply → verify → new daemon startup passes;
-- interruption is injected after every durable phase and resume/restore is
-  proven;
-- Node key bytes are identical before/after while Principal changes exactly to
-  the PIA-002 vector;
-- no runtime authorization path accepts the old ID;
-- mixed old/new Nodes reject one another safely; this is expected and never
-  reported as convergence;
-- after all Nodes migrate and restart, they rediscover one another and validate
-  reissued artifacts;
-- private-channel capability behavior remains intact.
-
-**Do not do:** rotate Node root keys or map `p_` and `p1_` as equivalent actors.
+**Do not do:** retain dead migration code for a hypothetical deployment, accept
+dual identifiers, or remove transactional rollback and released-schema recovery.
 
 ### PIA-005 — Implement Canonical Signed Identity Artifacts
 
-**Depends on:** PIA-002 and the protocol layout from PIA-001. May run alongside
-PIA-003.
+**Depends on:** PIA-002 and the protocol layout from PIA-001.
 
 **Outcome:** Credential, Access Grant, Delegation, and revocation artifacts have
 one canonical codec, strict constructors, verification, and cross-SDK vectors.
@@ -416,6 +330,13 @@ one canonical codec, strict constructors, verification, and cross-SDK vectors.
   preemptive; do not imply cross-Node delivery.
 - Enforce every numerical limit from product section 4.7 in constructors and
   verifiers, with boundary vectors at max and max+1.
+  For a maximum that is unreachable under another closed v1 invariant (the
+  registered catalogues contain fewer than 64 actions and no 128-byte action
+  or 32-byte ResourceKind, while canonical artifact schemas contain no padding
+  or free-form field capable of reaching exactly 4/16 KiB), do not invent a
+  registered value or padding field. Exercise the shared bound predicate at
+  max/max+1 and the largest constructible canonical value instead; accepted
+  signed max/max+1 vectors remain mandatory for every reachable boundary.
 - Golden vectors include UTC Unix-second timestamps (`nanos == 0`), the 2020/
   2100 range boundaries, half-open expiry, exactly ±120-second portable skew,
   no-skew challenge/session boundaries, and rejection of zero/noncanonical time.
@@ -435,7 +356,7 @@ wildcards, X.509, DID, or wallet integration.
 ### PIA-006 — Establish Transactions And Build Authentication Core
 
 **Depends on:** split by leaf: PIA-006A depends on PIA-001; PIA-006B depends on
-PIA-004C, PIA-005, and PIA-006A.
+PIA-002, PIA-005, and PIA-006A.
 
 **Outcome:** identity state has a real transaction/lifecycle primitive, then
 `access.Service.Begin` and `Complete` safely authenticate a Principal and issue
@@ -461,7 +382,7 @@ leaf.
   stop the process. No repository may reopen the file during shutdown.
 - Define backup/checkpoint coordination used by install/upgrade scripts and
   prove a backup represents one transaction boundary.
-- Do not point legacy `LoadJSON`/`SaveJSON` at `identity-access.db` or claim an
+- Do not point product `LoadJSON`/`SaveJSON` at `identity-access.db` or claim an
   atomic transaction across it and `ardents.db`.
 - Add in-memory/test transaction behavior only if it preserves atomicity and
   isolation semantics; otherwise tests use a temporary bbolt database.
@@ -575,8 +496,8 @@ put actions into sessions, or implement Delegation ahead of PIA-013.
 Operators can enroll Principals, revoke Devices, and issue/revoke Node-signed grants
 without a TOCTOU gap.
 
-**Leaf boundaries:** `PIA-008A` implements only the ticket state machine behind a
-disabled feature flag; `PIA-008B` atomically proves/enrolls a Principal and issues
+**Leaf boundaries:** `PIA-008A` implements only the ticket state machine;
+`PIA-008B` atomically proves/enrolls a Principal and issues
 the first grant; `PIA-008C` adds later administration, idempotency, and recovery
 guards. Operator proto/handlers belong to PIA-009A, not this workstream.
 
@@ -586,9 +507,8 @@ config validation and operations docs.
 **Required behavior:**
 
 - Introduce a random one-use Bootstrap Ticket accepted only for first-Operator
-  enrollment. Keep it feature-gated while the current Operator token remains the
-  default; do not switch new-install defaults until the PIA-010 CLI vertical
-  slice and recovery drill are complete and PIA-017 authorizes retirement.
+  enrollment. It is the only first-install bootstrap credential; coordinate its
+  activation with the PIA-010 CLI consumer and recovery drill.
 - Store only a protected digest/state for the ticket; configure short expiry;
   consume atomically with issuance of the first Operator grant.
 - Enrollment requires proof of the submitted Principal key before any grant is
@@ -605,41 +525,37 @@ config validation and operations docs.
   separately tested replacement is committed atomically.
 - Define idempotency: same command/request ID and same payload returns the prior
   result; same ID with different payload is Conflict.
-- Keep an optional break-glass file credential separate, narrowly scoped, off by
-  default after migration, and unmistakably non-portable in audit.
-- The feature flag selects a complete old or complete new bootstrap flow. It may
-  not create a Node whose permanent token is gone while no released CLI can
-  consume the ticket.
+- Make the one-use Bootstrap Ticket the only first-Operator bootstrap path and
+  prove the released CLI can consume it before the daemon is considered ready.
 
 **Acceptance scenarios:** first enrollment, replayed ticket, concurrent first
 enrollment, expired ticket, proof for another Principal, last-Operator guard,
 grant issue/revoke idempotency, operator loses authority between request parsing
 and transaction, and redacted list/audit output.
 
-**Do not do:** represent Bootstrap Ticket/break-glass labels as Principal, grant
+**Do not do:** represent Bootstrap Ticket labels as Principal, grant
 all `*`, or let a realm authority sign local Node grants.
 
 ### PIA-009 — Deliver The Operator Principal Authentication Slice
 
 **Depends on:** PIA-008.
 
-**Outcome:** every Operator RPC can authenticate a Principal session and receive
-one `AuthorizedCall`; existing bearer remains only as an explicit, measured
-migration scheme.
+**Outcome:** every protected Operator RPC authenticates only a Principal session
+and receives one `AuthorizedCall`.
 
 **Leaf boundaries:** `PIA-009A` owns proto, public/protected catalogue entries,
 Unix-socket presentation, and interceptor context creation. `PIA-009B1` changes
 shared response plumbing and Node/Configuration. `PIA-009B2`, `B3`, and `B4`
 migrate Network/Diagnostics, Workload, and Content/Transfer/Retention
-respectively. A family leaf deletes its second authorization only for handlers it
-converts; old families remain on the legacy path until their leaf lands.
+respectively. Each family leaf removes its old authorization when it converts
+the handlers; no dual route is retained.
 
 **Likely files:**
 
 - `api/ardents/v1/identity.proto` and generated local protocol;
 - `internal/localapi/auth/*`, `access_interceptor.go`, server composition;
 - `internal/daemon/*` composition only where access dependencies are wired;
-- Operator access contract and migration docs.
+- Operator access contract and operations docs.
 
 **Required behavior:**
 
@@ -660,20 +576,18 @@ converts; old families remain on the legacy path until their leaf lands.
   the extractor's Finalize phase.
 - Replace `rpc.Respond(auth, header, ...)` with a context-only responder that
   requires the interceptor value. It must not parse Authorization or call
-  `Admit`/legacy authorization a second time. Streaming handlers receive the
+  `Admit` a second time. Streaming handlers receive the
   same call at stream establishment and cannot swap identity mid-stream.
 - Add an instrumented guard fixture that counts admission calls and proves one
   and only one `Admit` per protected unary/stream establishment for every
   converted handler family.
-- Run new and legacy paths side by side during migration, but never accept an
-  Application token/session on this listener. Emit a counter/audit reason for
-  every legacy success without logging the token.
-- Add shadow parity only where semantics are equivalent; new grant semantics may
-  be stricter and must have an explicit expected-difference fixture.
+- Delete Operator bearer parsing, plaintext protected routes, and token-derived
+  subjects as each handler family lands. Never accept an Application credential
+  on the Operator listener.
 
 **Acceptance scenarios:** all current Operator procedures have exact catalogue
 entries; Alice/Alpha/Beta; cross-surface rejection; missing/unknown procedure;
-legacy-scheme success metric; malformed headers; public error redaction; converted
+old/unknown schemes rejected; malformed headers; public error redaction; converted
 handlers observe Actor/Effective Alice.
 
 **Narrow test commands:**
@@ -683,8 +597,8 @@ go test ./internal/identity/... ./internal/localapi/...
 go test ./tests/integration/localapi/...
 ```
 
-**Do not do:** remove legacy configuration yet, change Application handlers, or
-merge generated services. Do not send a Principal session over the current
+**Do not do:** change Application handlers in this leaf or merge generated
+services. Do not send a Principal session over the current
 loopback HTTP or `ssh -W` path.
 
 ### PIA-010 — Add CLI Signer, Enrollment, And Multi-Node Sessions
@@ -692,13 +606,13 @@ loopback HTTP or `ssh -W` path.
 **Depends on:** PIA-009.
 
 **Outcome:** `ardentsctl` can create/import a Principal signer, enroll it, log in
-to multiple Nodes, refresh sessions, and perform Operator commands without a
-normal bearer token.
+to multiple Nodes, refresh sessions, and perform Operator commands through the
+only supported Principal-session path.
 
 **Leaf boundaries:** `PIA-010A` is key custody and identity display only;
 `PIA-010B` is challenge/session refresh, Audience cache, Alpha/Beta, and SSH
 transport; `PIA-010C` adds enrollment/grant/revocation commands. Do not mix
-private-key file review with broad command migration in one change.
+private-key file review with broad command conversion in one change.
 
 **Likely files:** `internal/cli/client`, `internal/cli/command`, a focused
 identity command family, `cmd/ardentsctl`, config/operations docs.
@@ -727,8 +641,7 @@ identity command family, `cmd/ardentsctl`, config/operations docs.
 - Display Principal, target Node, exact actions/scope/expiry for every grant
   mutation and require explicit confirmation in interactive mode; JSON mode is
   deterministic and noninteractive.
-- Preserve existing token flags only under explicit `--legacy-*` migration names
-  and warn without exposing values.
+- Delete token flags, token-file configuration, and plaintext endpoint modes.
 
 **Acceptance scenarios:** one Alice signer controls Alpha and Beta; session for
 Alpha is never sent to Beta; daemon restart triggers one safe re-login; revoked
@@ -753,7 +666,7 @@ uses an Application-bound session through the public SDK.
 - `api/ardents/application/v1/identity.proto` and generated SDK protocol;
 - `internal/applicationapi/auth/*` and server composition;
 - `sdk/go/client/*`, `sdk/go/internal/adapter/*`, SDK errors/tests;
-- provisioning Application bootstrap migration.
+- provisioning for one-use Application enrollment.
 
 **Required behavior:**
 
@@ -772,23 +685,18 @@ uses an Application-bound session through the public SDK.
 - Supply an explicit protected-file Ed25519 Application signer or enrollment
   helper only if its cross-platform key-file rules are fully tested. Otherwise
   make Signer required and keep key custody with the embedding Application.
-- Introduce a new, separately named one-use Application enrollment ticket or
-  require Operator enrollment. Never reinterpret the existing
-  `application-token`: while compatibility is enabled it continues to authorize
-  its current exact content actions, so an intermediate release cannot break an
-  installed Application silently.
-- Keep legacy content bearer, enrollment ticket, and Principal session as three
-  distinct schemes/metrics. New provisioning defaults remain legacy-compatible
-  until the complete SDK/enrollment vertical slice and PIA-017 retirement gate;
-  the new path is feature-gated before then.
+- Introduce a separately named one-use Application Enrollment Ticket authorized
+  by an Operator. It is accepted only by the enrollment method and never by
+  content methods.
+- Provision no reusable Application token. Application Principal sessions are
+  the only protected Application credential from the first release.
 - Accept `ArdentsApplicationSession` only on the Application listener. Reject
-  Operator session/bearer and legacy Application token on every unintended
+  Operator sessions and every unknown credential scheme on every unintended
   endpoint.
-- Instrument legacy Application token successes for retirement evidence.
 
 **Acceptance scenarios:** independent installations of the same app get
 different Principals; app session is rejected on Operator listener and another
-Node; application-token cannot be used as a Principal ID; SDK refresh is
+Node; old/unknown schemes are rejected; SDK refresh is
 single-flight under concurrent requests; secrets are redacted.
 
 **Narrow test commands:**
@@ -796,7 +704,7 @@ single-flight under concurrent requests; secrets are redacted.
 ```text
 powershell -File scripts/generate-application-api.ps1 -Check
 go test ./internal/applicationapi/... ./sdk/go/...
-go test ./tests/e2e/applicationapi/...
+go test -tags=e2e ./tests/e2e/applicationapi/...
 ```
 
 **Do not do:** implement user delegation or change content ownership in this
@@ -823,8 +731,8 @@ of reparsing headers.
 - Preserve public SDK error codes and the existing bounded payload behavior.
 - Add a guard test that every protected Application procedure is registered in
   the action/resource catalogue exactly once.
-- Delete duplicate constant-time bearer/action evaluation only after legacy
-  adapter parity is proven; keep the legacy parser at the outermost adapter.
+- Delete duplicate bearer/action evaluation and its parser; the Principal
+  admission interceptor is the only protected entry path.
 
 **Acceptance scenarios:** handler observes App as both Actor/Effective; forged
 context values cannot construct the sealed call; direct handler tests use a real
@@ -891,14 +799,14 @@ ownership are keyed by Principal; knowing a CID is never sufficient authority.
 
 **Leaf boundaries:** `PIA-014A` changes only Blob Put/Get for an Application
 acting as itself and the crash-safe owner-binding transaction. `PIA-014B` adds
-Actor/Effective delegation behavior and non-enumeration. `PIA-014C` migrates
+Actor/Effective delegation behavior and non-enumeration. `PIA-014C` finalizes
 Object/Manifest owner semantics, reconciliation/GC, and remote-fetch/explicit
 claim boundaries. Operator administrative content semantics do not change
 implicitly in A or B.
 
 **Likely files:** `internal/content/catalog`, content service/commands, Application
-content adapter and SDK protocol only if an owner selector is needed, persistence
-migration, content integration/e2e tests.
+content adapter and SDK protocol only if an owner selector is needed, final
+persistence format, content integration/e2e tests.
 
 **Required behavior:**
 
@@ -920,21 +828,20 @@ migration, content integration/e2e tests.
   local read or remote fetch. Fetch may fill bytes for that binding but cannot
   create it. V1 adds no implicit claim-by-CID operation; an explicit sharing/
   import command is a later protocol slice.
-- Define migration for existing arbitrary Owner strings. Automatically map only
-  values that can be proven as a valid Principal. Quarantine/report ambiguous
-  labels (`node`, `owner`, `tenant`, etc.); do not silently turn them into
-  Principals.
-- Keep Blob-only Principal ownership behind a feature gate until PIA-014C either
-  migrates Object/Manifest semantics or explicitly denies their owner-sensitive
-  use. Legacy Application remote Get continues only on the legacy bearer path
-  during coexistence; do not weaken the new Principal path to preserve it.
+- Replace pre-release arbitrary Owner strings with the typed owner model. Fresh
+  state is canonical; startup rejects untyped or ambiguous owner records rather
+  than guessing or providing a compatibility mapping.
+- Enable Blob-only Principal ownership only after PIA-014C either finalizes
+  Object/Manifest semantics or explicitly denies their owner-sensitive
+  use. Remote Get is enabled only when the Principal ownership boundary is
+  complete; do not add a second authorization path to preserve old behavior.
 - Add reference-count/garbage-collection rules: deleting one owner binding does
   not delete payload still bound/retained elsewhere.
 
 **Acceptance scenarios:** same CID owned by Alice and Bob; Alice cannot infer or
 read Bob-only binding; Gallery acts for Alice successfully; Gallery cannot
 substitute Bob; App own data stays App-owned; one binding deletion preserves
-other owner; restart/migration; remote fetch still verifies payload but does not
+other owner; restart/recovery; remote fetch still verifies payload but does not
 invent local ownership.
 
 **Do not do:** encode owner into CID, duplicate payloads, or use a display name as
@@ -942,16 +849,15 @@ Principal.
 
 ### PIA-015 — Normalize Device, Discovery Identity, And Purpose-Scoped Trust
 
-**Depends on:** PIA-004. It may be designed earlier but should land after the
-core identity format is stable.
+**Depends on:** PIA-002. It should land after the core identity format is stable.
 
 **Outcome:** discovery and trust no longer present duplicated fields or fake
 Device identity as evidence about Principals.
 
 **Leaf boundaries:** `PIA-015A` only removes/replaces fake Device projection;
-`PIA-015B` owns discovery record v2 and retained-state compatibility;
+`PIA-015B` owns the first-release discovery record format;
 `PIA-015C` owns purpose-scoped trust and cache invalidation. None of these leaves
-may smuggle the other two schema changes into its migration.
+may smuggle the other two schema changes into its boundary.
 
 **Required behavior:**
 
@@ -963,9 +869,8 @@ may smuggle the other two schema changes into its migration.
 - Node records identify the Node Principal once; service records use a typed
   Service ID plus explicit owning Node/Principal and workload binding where
   required.
-- Keep signed canonical compatibility/versioning and migration for retained
-  records. Reject conflicting legacy duplicates rather than selecting one field
-  silently.
+- Emit and accept only the canonical kind-specific record version. Reject
+  duplicate pre-release shapes rather than selecting one field silently.
 - Consolidate duplicated raw-public-key/trusted-issuer configuration into a
   purpose-scoped trusted-Principal model with exact purposes such as
   `discovery.publish`, `channel.issue`, and `identity.attest`.
@@ -976,7 +881,7 @@ may smuggle the other two schema changes into its migration.
 - Add `RealmAttestation` only if a current policy consumer exists; otherwise
   reserve the purpose vocabulary and defer the artifact.
 
-**Acceptance scenarios:** conflicting old discovery fields fail migration;
+**Acceptance scenarios:** conflicting/old discovery fields fail closed;
 Node/service round trips; trust purpose A never implies purpose B; trust anchor
 rotation invalidates cached evidence; Waku Peer ID remains separate; remote
 records cannot claim a local owner through duplicate fields.
@@ -992,9 +897,8 @@ authority for request admission.
 transport/resource/string identifier where a Principal is required.
 
 **Leaf boundaries:** `PIA-016A` is the replication target rename/type;
-`PIA-016B` is Blob ID/CID domain normalization and compatibility;
-`PIA-016C` is remaining Owner typing and vocabulary. Each has its own persisted
-and wire compatibility fixture.
+`PIA-016B` is Blob ID/CID domain normalization; `PIA-016C` is remaining Owner
+typing and vocabulary. Each has its own final persisted/wire fixture.
 
 **Required changes:**
 
@@ -1002,8 +906,7 @@ and wire compatibility fixture.
   Principal to `NodePrincipal` or `TargetNode`. Keep `WakuPeerID` only at the
   transport adapter boundary.
 - Collapse domain `Blob.ID`/`Blob.CID` where equality is invariant into one
-  typed Content Reference. Preserve legacy fields only in versioned wire/storage
-  adapters with equality validation during compatibility.
+  typed Content Reference. Delete duplicate pre-release wire/storage fields.
 - Replace security-sensitive arbitrary `Owner string` fields with
   `PrincipalID` or a closed `ResourceOwner` sum type. Keep workload/service local
   IDs typed and Node-scoped; do not make every resource a Principal.
@@ -1012,80 +915,56 @@ and wire compatibility fixture.
   retain `CapabilityGrant` until its protocol migration), `WorkloadRequirement`,
   and `TransportFeature`.
 - Add compile-time/type tests or constructors that reject accidental mixing.
-- Update protocol/operations/product docs and JSON fields through explicit
-  compatibility mappings; do not mass-rename persisted fields without versioning.
+- Update protocol/operations/product docs and JSON fields to the final versioned
+  formats; do not keep pre-release aliases.
 
 **Acceptance evidence:** repository search has no product-level `PeerID` storing
 a Principal; domain Blob cannot contain two unequal IDs; security owner parsing
-is closed/typed; channel capability test vectors unchanged; old wire/state
-fixtures either migrate or fail with a precise safe error.
+is closed/typed; channel capability test vectors unchanged; obsolete wire/state
+fixtures fail with a precise safe error.
 
 **Do not do:** rename actual Waku/libp2p APIs, turn WorkloadID/ServiceID into
 PrincipalID, or combine Content Reference with ownership.
 
-### PIA-017 — Retire Normal Bearer Credential Paths
+### PIA-017 — Remove Pre-Release Compatibility Paths
 
-**Depends on:** PIA-010C, PIA-011B, PIA-014C, and an agreed observation window.
+**Depends on:** PIA-010C, PIA-011B, and PIA-014C.
 
-**Outcome:** Principal sessions are the default and only normal credential;
-legacy Operator/Application bearer credentials are disabled by default and
-removable without locking out recovery.
+**Outcome:** the repository and clean-install output expose only canonical
+Principal identity, protected Principal sessions, one-use enrollment tickets,
+and canonical versioned configuration.
 
 **Required behavior:**
 
-- Persist the product-design state machine independently per surface in
-  `identity-access.db`:
-  `legacy_only -> dual_enrollment -> principal_required -> break_glass_only -> removed`.
-  Transitions are atomic and monotonic. Configuration can advance but cannot
-  downgrade state or extend the stored deadline; rollback restores the whole
-  consistency-group backup with the matching old binary.
-- On entry to `dual_enrollment`, record a hard `legacy_deadline` no more than 90
-  days away. Startup fails closed after it unless the surface has reached
-  `principal_required` or later.
-- Freeze the exact Operator dual-mode allowlist to `node.status`,
-  `diagnostics.snapshot`, `identity.principal.enroll`, `identity.grant.issue`,
-  `identity.grant.revoke`, and `identity.device.revoke`. The transition
-  atomically narrows the old token to this list. Freeze Application dual mode to
-  its existing `application.content.put/get`; enrollment of that exact
-  Application installation atomically disables its legacy token.
-- Parse credential schemes without failure fallback: a failed Principal session
-  is never retried as bearer, multiple/ambiguous schemes fail, and legacy is
-  considered only when explicitly presented and allowed by surface state/action.
-- Define retirement readiness from telemetry/audit counts, not elapsed time
-  alone: no normal legacy successes for the documented window, all known
-  Applications enrolled, at least two tested Operator/recovery paths where
-  required, and rollback drill completed.
-- Change configuration defaults to reject legacy credentials. Keep an explicit
-  temporary compatibility flag for one release window, with startup warning and
-  security event, then schedule its deletion.
-- Separate optional break-glass recovery from the old all-purpose Operator token;
-  allow it only on the protected Operator Unix socket and only for the frozen
-  recovery/inspection allowlist. It cannot operate workloads, mutate
-  configuration/content, or start/stop the Node. Bootstrap Ticket remains
-  separate and valid only for `identity.principal.enroll`.
-- Stop provisioning `application-token` and permanent Operator token on new
-  installs. Upgrade preserves old files only while compatibility is explicitly
-  enabled; removal is recoverable/documented.
-- Remove `SubjectRef{Kind:"token"}` and token-carried capability slices after all
-  product consumers use `AuthorizedCall`.
-- Remove duplicated bearer authorizers only after negative cross-surface and
-  rollback tests pass.
-- Update native install, operator access, configuration contract, SDK migration,
-  and incident/recovery documentation.
+- Delete Operator/Application bearer authorizers, plaintext protected routes,
+  token subjects/capabilities, reusable token files, token CLI/SDK inputs, and
+  provisioning/deployment output for those paths.
+- Delete `p_` parsing, identity inventory/epoch commands, dual-ID markers,
+  reissue/restore code specific to the nonexistent cutover, and tests/docs that
+  imply released `p_` state.
+- Delete coexistence/tombstone/deadline state and every fallback or ambiguous
+  credential branch. Each protected listener accepts only its own session
+  scheme; public enrollment methods accept only their exact one-use ticket/proof.
+- Require one canonical versioned configuration document. Reject obsolete
+  environment/token compatibility inputs; unknown fields fail closed.
+- Keep the first-Operator Bootstrap Ticket and Application Enrollment Ticket
+  flows usable, one-use, short-lived, redacted, and surface-specific.
+- Keep transactional database rollback, atomic file replacement, stopped-Node
+  consistency-group backup, and released-schema recovery. These are current
+  safety properties, not compatibility paths.
+- Update install, operator access, configuration, SDK, incident, and recovery
+  documentation to describe only the Principal-only first release.
 
-**Acceptance scenarios:** clean install has no permanent normal bearer; every
-legal forward transition and every attempted downgrade; deadline expiry;
-Operator allowlist sibling denials; per-install Application token retirement;
-failed/malformed Principal session never falls back; multiple schemes reject;
-Operator and Application states remain isolated; disabling legacy rejects both
-old schemes; break-glass cannot call unrelated methods; no last-Operator
-lockout; rollback procedure restores access without restoring a leaked
-credential.
+**Acceptance scenarios:** clean install emits no permanent Operator/Application
+token; repository search finds no runtime old-scheme parser or `p_` migrator;
+old/unknown schemes and cross-surface sessions reject; first Operator and first
+Application can enroll; daemon restart and store recovery preserve durable grants
+while invalidating sessions; no secret appears in output or logs.
 
-**Do not do:** delete the only proven recovery path or treat lack of telemetry as
-proof of zero use.
+**Do not do:** remove sessions/tickets because they are bearer-like secrets,
+remove transactional rollback, or add a new recovery architecture.
 
-### PIA-018 — Run Adversarial, Migration, And Release Acceptance
+### PIA-018 — Run Adversarial, Persistence-Recovery, And Release Acceptance
 
 **Depends on:** PIA-016 and PIA-017; all earlier task acceptance tests green.
 
@@ -1100,8 +979,8 @@ restart, corruption, cross-surface attacks, and upgrade/rollback before release.
 - Operator↔Application cross-surface credential matrix;
 - full Delegation intersection and confused-deputy matrix;
 - content multi-owner/non-enumeration/remote-fetch behavior;
-- p_ dry-run/cutover/interruption/resume/whole-network rollback; mixed old/new
-  peers must reject safely, then all-new peers must converge after epoch start;
+- fresh-install canonical state plus explicit rejection of `p_`, obsolete
+  config/token inputs, unknown schemes, and duplicate wire fields;
 - corrupted/unknown persisted identity schema fails closed;
 - discovery/trust purpose separation and channel capability regression;
 - audit/error/log snapshot scanning for all secret classes;
@@ -1118,14 +997,14 @@ restart, corruption, cross-surface attacks, and upgrade/rollback before release.
 3. Can a valid artifact/session cross Node, interface, protocol major, or
    Application delegatee?
 4. Does revocation take effect on the next call without session rotation?
-5. Which private or bearer values are ever persisted, and why is each necessary?
+5. Which private or session/ticket values are ever persisted, and why is each necessary?
 6. What happens when root key, device key, session, or Node state is lost?
-7. Can the system start safely with partial migration or corrupted grant state?
+7. Can the system start safely with interrupted schema upgrade or corrupted grant state?
 8. Does any trust purpose imply another accidentally?
 9. Can CID/PeerID/WorkloadID/ServiceID be accepted as PrincipalID through a
    string conversion?
-10. Is legacy coexistence measurable, time-bounded, monotonic, explicit-scheme
-    only, disabled by default, and recoverable without runtime downgrade?
+10. Does any obsolete credential/config/identifier path remain reachable, and
+    do first enrollment plus persistence recovery work without it?
 
 **Final commands:** use the repository/CI-supported Go and protocol toolchain.
 At minimum run the generation stale checks, all focused suites above, then:
@@ -1143,9 +1022,9 @@ equivalent; do not call the release gate green because only narrow tests passed.
 An agent completing any PIA task should hand off:
 
 1. outcome in one paragraph;
-2. changed behavior and exact compatibility effect;
+2. changed behavior and exact public-contract effect;
 3. files/packages/protocols/persisted schemas changed;
-4. migrations and rollback behavior;
+4. persisted-schema transitions and rollback behavior;
 5. tests run with results;
 6. security-negative cases added;
 7. remaining risks or the next unblocked task;
@@ -1154,4 +1033,4 @@ An agent completing any PIA task should hand off:
 For PIA-001 through PIA-005, include updated canonical vector hashes. For tasks
 changing persistence, include fixture versions and interruption points. For
 PIA-009 onward, include the public credential acceptance matrix. For PIA-017 and
-PIA-018, include legacy-use evidence and recovery-drill results.
+PIA-018, include repository-removal evidence and recovery-drill results.

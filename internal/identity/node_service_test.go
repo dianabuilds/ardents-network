@@ -51,8 +51,7 @@ func TestEnsureReportsRestoredSourceAndReadyState(t *testing.T) {
 	require.NoError(t, err)
 	privateText := base64.StdEncoding.EncodeToString(private)
 
-	store.principal = identityprincipal.DeriveID("p", public)
-	store.device = identityprincipal.DeriveID("d", private.Seed())
+	store.principal = testPrincipalID(t, public)
 	store.publicKey = base64.StdEncoding.EncodeToString(public)
 	require.NoError(t, keys.Save(privateText))
 
@@ -67,6 +66,13 @@ func TestEnsureReportsRestoredSourceAndReadyState(t *testing.T) {
 	require.Equal(t, "restored", svc.Source())
 	require.Equal(t, "ready", svc.State())
 	require.Equal(t, privateText, base64.StdEncoding.EncodeToString(restored))
+}
+
+func testPrincipalID(t *testing.T, public ed25519.PublicKey) string {
+	t.Helper()
+	id, err := identityprincipal.FromEd25519PublicKey(public)
+	require.NoError(t, err)
+	return id.String()
 }
 
 func TestPrincipalFromPublicKeyRejectsInvalidInput(t *testing.T) {

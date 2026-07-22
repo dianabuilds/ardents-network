@@ -39,7 +39,6 @@ func (a *recordingApplier) Rollback(_ context.Context, previous Document) error 
 
 func TestManagerAppliesReloadablePolicyAndRedactsEffectiveSnapshot(t *testing.T) {
 	doc := Defaults()
-	doc.API.TokenFile = filepath.Join(t.TempDir(), "operator-secret-token")
 	doc.Network.PrivateKeyPath = filepath.Join(t.TempDir(), "private-key")
 	path := writeDocument(t, doc)
 	applier := &recordingApplier{active: doc}
@@ -56,9 +55,8 @@ func TestManagerAppliesReloadablePolicyAndRedactsEffectiveSnapshot(t *testing.T)
 	snapshot := manager.Snapshot()
 	raw, err := json.Marshal(snapshot.Effective)
 	require.NoError(t, err)
-	require.NotContains(t, string(raw), "operator-secret-token")
 	require.NotContains(t, string(raw), "private-key")
-	require.Contains(t, string(raw), `"token_file":"configured"`)
+	require.Contains(t, string(raw), `"private_key_path":"configured"`)
 }
 
 func TestManagerRedactsAllProtectedPrivacyReferences(t *testing.T) {
@@ -174,12 +172,12 @@ func TestManagerRejectsCandidateThatFailsRuntimeValidation(t *testing.T) {
 
 func TestManagerResolvesCandidateBeforeComparingAndValidating(t *testing.T) {
 	doc := Defaults()
-	doc.API.TokenFile = "resolved-secret-reference"
+	doc.Network.StorePath = "resolved-store"
 	path := writeDocument(t, Defaults())
 	manager, err := NewManager(path, doc)
 	require.NoError(t, err)
 	require.NoError(t, manager.RegisterResolver(func(candidate Document) (Document, error) {
-		candidate.API.TokenFile = "resolved-secret-reference"
+		candidate.Network.StorePath = "resolved-store"
 		return candidate, nil
 	}))
 	require.Equal(t, OutcomeUnchanged, manager.Reload(context.Background()).Outcome)

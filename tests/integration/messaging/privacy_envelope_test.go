@@ -11,7 +11,6 @@ import (
 
 	identityapi "ardents/internal/identity"
 	identitycapability "ardents/internal/identity/capability"
-	identityprincipal "ardents/internal/identity/principal"
 	networkprivacy "ardents/internal/messaging"
 	networkapi "ardents/internal/network"
 	"ardents/internal/policy"
@@ -141,7 +140,7 @@ func newRelayPrivacyFixture(t *testing.T, now time.Time) relayPrivacyFixture {
 	t.Helper()
 	issuerPrivate := relayPrivate(0x12)
 	issuerPublic := issuerPrivate.Public().(ed25519.PublicKey)
-	issuer := identityprincipal.DeriveID("p", issuerPublic)
+	issuer := integrationPrincipalID(issuerPublic)
 	senderPrivate := relayPrivate(0x22)
 	receiverPrivate := relayPrivate(0x32)
 	secret, ok := identityapi.NewCapabilitySecret(bytes.Repeat([]byte{0x42}, 32))
@@ -225,7 +224,7 @@ func signedRelayGrant(t *testing.T, issuerPrivate ed25519.PrivateKey, issuer str
 	grant := identityapi.CapabilityGrant{
 		Version: 1, ChannelID: channelID, Generation: 1, Secret: secret,
 		GrantID: integrationID(grantByte), IssuerPrincipal: issuer,
-		SubjectPrincipal: identityprincipal.DeriveID("p", subjectPrivate.Public().(ed25519.PublicKey)),
+		SubjectPrincipal: integrationPrincipalID(subjectPrivate.Public().(ed25519.PublicKey)),
 		Permissions:      identityapi.CapabilitySubscribe | identityapi.CapabilityPublish | identityapi.CapabilityStoreFetch,
 		Scope:            identityapi.CapabilityRealmDiscovery,
 		NotBefore:        now.Add(-time.Hour), NotAfter: now.Add(time.Hour),

@@ -2,9 +2,7 @@ package capability
 
 import (
 	"crypto/ed25519"
-	"encoding/hex"
 	"fmt"
-	"strings"
 
 	identityapi "ardents/internal/identity"
 	identityprincipal "ardents/internal/identity/principal"
@@ -30,7 +28,8 @@ func validateGrant(grant identityapi.CapabilityGrant, issuerPublic ed25519.Publi
 	if !validPrincipal(grant.SubjectPrincipal) || !validPrincipal(grant.IssuerPrincipal) {
 		return fmt.Errorf("capability grant principal is invalid")
 	}
-	if identityprincipal.DeriveID("p", issuerPublic) != grant.IssuerPrincipal {
+	issuerID, err := identityprincipal.FromEd25519PublicKey(issuerPublic)
+	if err != nil || issuerID.String() != grant.IssuerPrincipal {
 		return fmt.Errorf("capability grant issuer key does not match issuer")
 	}
 	return verifyGrantSignature(grant, issuerPublic)
@@ -41,7 +40,8 @@ func validateRevocation(rev identityapi.CapabilityRevocation, issuerPublic ed255
 		rev.RevokedAt.Nanosecond() != 0 {
 		return fmt.Errorf("capability revocation is invalid")
 	}
-	if identityprincipal.DeriveID("p", issuerPublic) != rev.IssuerPrincipal {
+	issuerID, err := identityprincipal.FromEd25519PublicKey(issuerPublic)
+	if err != nil || issuerID.String() != rev.IssuerPrincipal {
 		return fmt.Errorf("capability revocation issuer key does not match issuer")
 	}
 	return verifyRevocationSignature(rev, issuerPublic)
@@ -60,10 +60,7 @@ func knownScope(scope identityapi.CapabilityScope) bool {
 }
 
 func validPrincipal(value string) bool {
-	if !strings.HasPrefix(value, "p_") || len(value) != 18 {
-		return false
-	}
-	_, err := hex.DecodeString(value[2:])
+	_, err := identityprincipal.Parse(value)
 	return err == nil
 }
 

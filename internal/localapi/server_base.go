@@ -5,10 +5,11 @@ import (
 
 	runtimeconfig "ardents/internal/config"
 	diagapi "ardents/internal/diagnostics"
-	localauth "ardents/internal/localapi/auth"
+	identityaccess "ardents/internal/identity/access"
 	configurationapi "ardents/internal/localapi/configuration"
 	contenthandler "ardents/internal/localapi/content"
 	diagnosticshandler "ardents/internal/localapi/diagnostics"
+	identityhandler "ardents/internal/localapi/identity"
 	networkhandler "ardents/internal/localapi/network"
 	nodehandler "ardents/internal/localapi/node"
 	"ardents/internal/localapi/protocol/ardentsv1connect"
@@ -35,6 +36,29 @@ type Dependencies struct {
 	Audit            diagapi.EventWriter
 }
 
+func NewPrincipalHandler(deps Dependencies, access *identityaccess.Service, node string, peer [32]byte, source identityaccess.SourceKey) (http.Handler, error) {
+	server, err := newOperatorServer(deps)
+	if err != nil {
+		return nil, err
+	}
+	interceptor, err := identityhandler.NewOperatorInterceptor(identityhandler.OperatorInterceptorConfig{Access: access, Node: node, FallbackPeer: peer, FallbackSource: source, Canonicalize: CanonicalizeOperatorResource})
+	if err != nil {
+		return nil, err
+	}
+	option := connect.WithInterceptors(interceptor)
+	mux := http.NewServeMux()
+	register := func(path string, handler http.Handler) { mux.Handle(path, handler) }
+	register(ardentsv1connect.NewNodeServiceHandler(server, option))
+	register(ardentsv1connect.NewConfigurationServiceHandler(server, option))
+	register(ardentsv1connect.NewNetworkServiceHandler(server, option))
+	register(ardentsv1connect.NewDiagnosticsServiceHandler(server, option))
+	register(ardentsv1connect.NewWorkloadServiceHandler(server, option))
+	register(ardentsv1connect.NewContentServiceHandler(server, option))
+	register(ardentsv1connect.NewTransferServiceHandler(server, option))
+	register(ardentsv1connect.NewRetentionServiceHandler(server, option))
+	return mux, nil
+}
+
 type Server struct {
 	*contenthandler.QueryHandler
 	*configurationapi.Controller
@@ -45,43 +69,18 @@ type Server struct {
 	*workloadhandler.Service
 }
 
-func New(deps Dependencies, auth localauth.Config) (*Server, error) {
-	contentAPI, err := contenthandler.NewHandler(deps.Content, deps.Data, auth)
+func newOperatorServer(deps Dependencies) (*Server, error) {
+	contentAPI, err := contenthandler.NewHandler(deps.Content, deps.Data)
 	if err != nil {
 		return nil, err
 	}
 	return &Server{
 		QueryHandler:   contentAPI,
-		Controller:     configurationapi.NewHandler(deps.Configuration, auth),
-		Endpoint:       diagnosticshandler.NewHandler(deps.Diagnostics, auth),
-		API:            networkhandler.NewHandler(deps.Discovery, deps.DiscoveryRecords, deps.Network, auth),
-		RuntimeHandler: nodehandler.NewHandler(deps.Node, auth),
-		Handler:        transferhandler.NewHandler(deps.Sources, deps.Transfers, deps.DataFetch, auth),
-		Service:        workloadhandler.NewHandler(deps.Workload, deps.Hosting, auth),
+		Controller:     configurationapi.NewHandler(deps.Configuration),
+		Endpoint:       diagnosticshandler.NewHandler(deps.Diagnostics),
+		API:            networkhandler.NewHandler(deps.Discovery, deps.DiscoveryRecords, deps.Network),
+		RuntimeHandler: nodehandler.NewHandler(deps.Node),
+		Handler:        transferhandler.NewHandler(deps.Sources, deps.Transfers, deps.DataFetch),
+		Service:        workloadhandler.NewHandler(deps.Workload, deps.Hosting),
 	}, nil
-}
-
-func NewHandler(deps Dependencies, auth localauth.Config) (string, http.Handler, error) {
-	if err := auth.Validate(); err != nil {
-		return "", nil, err
-	}
-	server, err := New(deps, auth)
-	if err != nil {
-		return "", nil, err
-	}
-	mux := http.NewServeMux()
-	interceptor := connect.WithInterceptors(newAccessInterceptor(auth, deps.Audit))
-	register := func(path string, handler http.Handler) { mux.Handle(path, handler) }
-	register(ardentsv1connect.NewNodeServiceHandler(server, interceptor))
-	register(ardentsv1connect.NewConfigurationServiceHandler(server, interceptor))
-	register(ardentsv1connect.NewNetworkServiceHandler(server, interceptor))
-	register(ardentsv1connect.NewWorkloadServiceHandler(server, interceptor))
-	register(ardentsv1connect.NewContentServiceHandler(server, interceptor))
-	register(ardentsv1connect.NewTransferServiceHandler(server, interceptor))
-	register(ardentsv1connect.NewRetentionServiceHandler(server, interceptor))
-	register(ardentsv1connect.NewDiagnosticsServiceHandler(server, interceptor))
-	// The inner mux owns the exact bounded-service routes. The outer daemon
-	// server must mount it at the root; net/http does not treat
-	// "/ardents.v1." as a prefix pattern.
-	return "/", mux, nil
 }

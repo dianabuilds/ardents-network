@@ -22,13 +22,8 @@ type Document struct {
 }
 
 type ApplicationInterfaceConfig struct {
-	Enabled             bool     `json:"enabled"`
-	ListenAddress       string   `json:"listen_address,omitempty"`
-	SocketPath          string   `json:"socket_path,omitempty"`
-	TokenFile           string   `json:"token_file,omitempty"`
-	Subject             string   `json:"subject,omitempty"`
-	Capabilities        []string `json:"capabilities,omitempty"`
-	CredentialExpiresAt string   `json:"credential_expires_at,omitempty"`
+	Enabled    bool   `json:"enabled"`
+	SocketPath string `json:"socket_path,omitempty"`
 }
 
 type NodeConfig struct {
@@ -38,12 +33,7 @@ type NodeConfig struct {
 }
 
 type APIConfig struct {
-	ListenAddress       string   `json:"listen_address"`
-	SocketPath          string   `json:"socket_path,omitempty"`
-	TokenFile           string   `json:"token_file"`
-	OperatorSubject     string   `json:"operator_subject"`
-	Capabilities        []string `json:"capabilities"`
-	CredentialExpiresAt string   `json:"credential_expires_at"`
+	SocketPath string `json:"socket_path"`
 }
 
 type PrivacyConfig struct {

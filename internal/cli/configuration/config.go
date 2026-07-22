@@ -7,17 +7,20 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	identityprincipal "ardents/internal/identity/principal"
 )
 
 const (
 	defaultAddr      = "127.0.0.1:8080"
 	defaultOutput    = "human"
 	defaultTimeout   = 10 * time.Second
-	defaultTokenEnv  = "ARDENTS_API_TOKEN"
+	defaultTokenEnv  = "ARDENTS_LEGACY_API_TOKEN"
 	contextsFileName = "contexts.json"
 )
 
@@ -27,6 +30,8 @@ type Config struct {
 	SSHPort           int
 	SSHIdentity       string
 	SSHKnownHosts     string
+	SSHOperatorSocket string
+	SignerFile        string
 	Token             string
 	TokenFile         string
 	ContextName       string
@@ -39,6 +44,7 @@ type Config struct {
 	Watch             bool
 	Interval          time.Duration
 	Timeout           time.Duration
+	LegacyWarning     bool
 }
 
 type ContextFile struct {
@@ -52,8 +58,10 @@ type StoredContext struct {
 	SSHPort           int      `json:"ssh_port,omitempty"`
 	SSHIdentity       string   `json:"ssh_identity,omitempty"`
 	SSHKnownHosts     string   `json:"ssh_known_hosts,omitempty"`
-	TokenEnv          string   `json:"token_env,omitempty"`
-	TokenFile         string   `json:"token_file,omitempty"`
+	SSHOperatorSocket string   `json:"ssh_operator_socket,omitempty"`
+	SignerFile        string   `json:"signer_file,omitempty"`
+	TokenEnv          string   `json:"legacy_token_env,omitempty"`
+	TokenFile         string   `json:"legacy_token_file,omitempty"`
 	ExpectedNode      string   `json:"expected_node,omitempty"`
 	ExpectedPrincipal string   `json:"expected_principal,omitempty"`
 	ExpectedPublicKey string   `json:"expected_public_key,omitempty"`
@@ -164,6 +172,12 @@ func (c *Config) applyStored(stored StoredContext) {
 	if c.SSHKnownHosts == "" {
 		c.SSHKnownHosts = stored.SSHKnownHosts
 	}
+	if c.SSHOperatorSocket == "" {
+		c.SSHOperatorSocket = stored.SSHOperatorSocket
+	}
+	if c.SignerFile == "" {
+		c.SignerFile = stored.SignerFile
+	}
 	if c.TokenFile == "" {
 		c.TokenFile = stored.TokenFile
 	}
@@ -214,11 +228,17 @@ func (c *Config) applyEnv() {
 	if c.SSHKnownHosts == "" {
 		c.SSHKnownHosts = strings.TrimSpace(os.Getenv("ARDENTS_SSH_KNOWN_HOSTS"))
 	}
+	if c.SSHOperatorSocket == "" {
+		c.SSHOperatorSocket = strings.TrimSpace(os.Getenv("ARDENTS_SSH_OPERATOR_SOCKET"))
+	}
+	if c.SignerFile == "" {
+		c.SignerFile = strings.TrimSpace(os.Getenv("ARDENTS_SIGNER_FILE"))
+	}
 	if c.Token == "" {
 		c.Token = strings.TrimSpace(os.Getenv(defaultTokenEnv))
 	}
 	if c.TokenFile == "" {
-		c.TokenFile = strings.TrimSpace(os.Getenv("ARDENTS_TOKEN_FILE"))
+		c.TokenFile = strings.TrimSpace(os.Getenv("ARDENTS_LEGACY_TOKEN_FILE"))
 	}
 	if c.ExpectedPrincipal == "" {
 		c.ExpectedPrincipal = strings.TrimSpace(os.Getenv("ARDENTS_EXPECTED_PRINCIPAL"))
@@ -277,7 +297,11 @@ func (c *Config) validateAndNormalize() error {
 		if strings.HasPrefix(c.SSH, "-") || strings.ContainsAny(c.SSH, " \t\r\n") {
 			return fmt.Errorf("invalid ssh target %q", c.SSH)
 		}
-		if parsed.Scheme != "http" || !isLoopbackAddress(parsed.Host) {
+		if c.SSHOperatorSocket != "" {
+			if !path.IsAbs(c.SSHOperatorSocket) || strings.ContainsAny(c.SSHOperatorSocket, "\x00:\r\n") {
+				return fmt.Errorf("ssh operator socket must be an absolute remote path")
+			}
+		} else if parsed.Scheme != "http" || !isLoopbackAddress(parsed.Host) {
 			return fmt.Errorf("ssh transport requires a loopback HTTP API address")
 		}
 		if c.SSHPort == 0 {
@@ -286,7 +310,7 @@ func (c *Config) validateAndNormalize() error {
 		if c.SSHPort < 1 || c.SSHPort > 65535 {
 			return fmt.Errorf("ssh port must be between 1 and 65535")
 		}
-	} else if c.SSHPort != 0 || c.SSHIdentity != "" || c.SSHKnownHosts != "" {
+	} else if c.SSHPort != 0 || c.SSHIdentity != "" || c.SSHKnownHosts != "" || c.SSHOperatorSocket != "" {
 		return fmt.Errorf("ssh transport options require --ssh")
 	}
 	if c.Token == "" && c.TokenFile != "" {
@@ -296,8 +320,32 @@ func (c *Config) validateAndNormalize() error {
 		}
 		c.Token = token
 	}
-	if c.Token == "" {
-		return fmt.Errorf("api token is required via --token, --token-file, %s, or context file", defaultTokenEnv)
+	principalTransport := parsed.Scheme == "unix" || c.SSHOperatorSocket != ""
+	if c.Token == "" && c.SignerFile == "" && principalTransport {
+		dir, err := os.UserConfigDir()
+		if err != nil {
+			return fmt.Errorf("resolve signer location: %w", err)
+		}
+		c.SignerFile = filepath.Join(dir, "ardents", "identity", "device-v1.json")
+	}
+	if c.Token != "" && c.SignerFile != "" {
+		return fmt.Errorf("Principal signer and legacy bearer cannot be configured together")
+	}
+	if c.SignerFile != "" {
+		if !principalTransport {
+			return fmt.Errorf("Principal sessions require a protected Unix socket or SSH stream-local forwarding")
+		}
+		if strings.TrimSpace(c.ExpectedPrincipal) == "" {
+			return fmt.Errorf("Principal sessions require the target Node Principal via --principal or context")
+		}
+		if _, err := identityprincipal.Parse(c.ExpectedPrincipal); err != nil {
+			return fmt.Errorf("target Node Principal is invalid")
+		}
+	} else if c.Token == "" {
+		return fmt.Errorf("authentication requires a Principal signer on a protected transport or an explicit legacy bearer")
+	}
+	if c.AuthMode() == AuthModeLegacy {
+		c.LegacyWarning = true
 	}
 	switch c.Output {
 	case "human", "json":
@@ -312,6 +360,24 @@ func (c *Config) validateAndNormalize() error {
 	}
 	c.ScopeHints = compactStrings(c.ScopeHints)
 	return nil
+}
+
+type AuthMode string
+
+const (
+	AuthModeNone      AuthMode = ""
+	AuthModePrincipal AuthMode = "principal"
+	AuthModeLegacy    AuthMode = "legacy"
+)
+
+func (c Config) AuthMode() AuthMode {
+	if strings.TrimSpace(c.SignerFile) != "" && strings.TrimSpace(c.Token) == "" {
+		return AuthModePrincipal
+	}
+	if strings.TrimSpace(c.Token) != "" && strings.TrimSpace(c.SignerFile) == "" {
+		return AuthModeLegacy
+	}
+	return AuthModeNone
 }
 
 func (c *Config) HasIdentityBinding() bool {

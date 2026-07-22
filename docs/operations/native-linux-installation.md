@@ -57,7 +57,7 @@ Same-host access uses the private Unix socket:
 ```sh
 sudo ardentsctl \
   --addr unix:///var/lib/ardents/secrets/control.sock \
-  --token-file /var/lib/ardents/secrets/api-token \
+  --legacy-token-file /var/lib/ardents/secrets/api-token \
   node status
 ```
 
@@ -83,15 +83,25 @@ sudo usermod --append --groups ardents-apps hello-service
 The bootstrap Application credential is time-bounded. Renew its active local
 admission before expiry with `sudo ./scripts/install/linux.sh
 renew-application`. The operation atomically updates the active operator
-document and restarts the service when it was running. Online per-Application
-issuance, token rotation, and revocation remain a later lifecycle.
+document and restarts the service when it was running. PIA-011B includes the
+separate one-use Principal enrollment protocol and protected-file Operator CLI,
+but `application_interface.principal_enrollment_enabled` remains default-off
+and is rejected until PIA-014 supplies owner-aware Principal Blob/content
+access. PIA-012 admission alone does not make knowledge of a CID authorization
+to read.
+Do not bypass that readiness gate: replacement enrollment atomically disables
+the exact legacy credential. PIA-017 later governs token rotation, retirement
+state, deadlines, and default removal.
 
 ## Backup, Upgrade, Rollback, And Restore
 
-A backup is a consistency group: operator configuration, node state and
-identity, secrets, and local authority material are archived together. Stop the
-service first; the command refuses a live node and writes a checksum-bearing
-sidecar manifest next to the archive:
+A backup is a consistency group: operator configuration, both `ardents.db` and
+`identity-access.db`, node identity, secrets, migration markers, and local
+authority material are archived together. No transaction spans the two
+databases. Stop the service first; this drains and releases the daemon-owned
+identity database handle. The command refuses a live node, never opens the live
+database independently, and writes a checksum-bearing sidecar manifest next to
+the archive:
 
 ```sh
 sudo systemctl stop ardentsd
@@ -137,7 +147,7 @@ sudo ./scripts/install/linux.sh restore \
   --archive /var/backups/ardents/node-1-20260721T000000Z.tar.gz
 sudo systemctl start ardentsd
 sudo ardentsctl --addr unix:///var/lib/ardents/secrets/control.sock \
-  --token-file /var/lib/ardents/secrets/api-token node status
+  --legacy-token-file /var/lib/ardents/secrets/api-token node status
 ```
 
 Ordinary uninstall is deliberately non-destructive:

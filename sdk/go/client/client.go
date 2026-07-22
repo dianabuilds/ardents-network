@@ -2,101 +2,55 @@
 package client
 
 import (
-	"ardents/sdk/go/content"
-	"ardents/sdk/go/internal/adapter"
 	"context"
 	"fmt"
 	"net"
 	"net/http"
-	"net/url"
-	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"ardents/sdk/go/content"
+	"ardents/sdk/go/internal/adapter"
+
+	"connectrpc.com/connect"
 )
 
-type CredentialSource interface {
-	Credential(context.Context) (string, error)
-}
-
-type staticCredential struct{ token string }
-
-type fileCredential struct{ path string }
-
-func StaticCredential(token string) CredentialSource {
-	return staticCredential{token: token}
-}
-
-func FileCredential(path string) (CredentialSource, error) {
-	path = strings.TrimSpace(path)
-	if strings.ContainsRune(path, '\x00') || !filepath.IsAbs(path) {
-		return nil, fmt.Errorf("application credential path must be absolute")
-	}
-	return fileCredential{path: path}, nil
-}
-
-func (c staticCredential) Credential(context.Context) (string, error) {
-	return c.token, nil
-}
-
-func (c fileCredential) Credential(context.Context) (string, error) {
-	info, err := os.Lstat(c.path)
-	if err != nil || !info.Mode().IsRegular() ||
-		(runtime.GOOS != "windows" && info.Mode().Perm()&0o027 != 0) {
-		return "", fmt.Errorf("application credential is unavailable")
-	}
-	raw, err := os.ReadFile(c.path)
-	if err != nil {
-		return "", fmt.Errorf("application credential is unavailable")
-	}
-	token := strings.TrimSpace(string(raw))
-	if token == "" {
-		return "", fmt.Errorf("application credential is unavailable")
-	}
-	return token, nil
-}
-
 type Config struct {
-	Endpoint   string
-	SocketPath string
-	Credential CredentialSource
-	HTTPClient *http.Client
+	SocketPath    string
+	Signer        SessionSigner
+	NodePrincipal string
+	HTTPClient    *http.Client
 }
 
 type Client struct {
 	Content content.Service
+	Session SessionProvider
 }
 
 func New(config Config) (*Client, error) {
-	endpoint := strings.TrimSpace(config.Endpoint)
 	socketPath := strings.TrimSpace(config.SocketPath)
-	if endpoint != "" && socketPath != "" {
-		return nil, fmt.Errorf("configure either application endpoint or socket path")
+	if socketPath == "" {
+		return nil, fmt.Errorf("Application Principal sessions require a protected Unix socket")
 	}
-	if endpoint == "" && socketPath == "" {
-		return nil, fmt.Errorf("application endpoint is required")
+	if config.Signer == nil {
+		return nil, fmt.Errorf("Application Principal session signer is required")
 	}
-	if config.Credential == nil {
-		return nil, fmt.Errorf("application credential source is required")
+	node := strings.TrimSpace(config.NodePrincipal)
+	if !adapter.ValidPrincipalID(node) {
+		return nil, fmt.Errorf("Application Principal sessions require a canonical Node Principal")
 	}
-	httpClient := config.HTTPClient
-	if socketPath != "" {
-		var err error
-		httpClient, err = unixHTTPClient(socketPath, httpClient)
-		if err != nil {
-			return nil, err
-		}
-		endpoint = "http://localhost"
-	} else {
-		if err := validateEndpoint(endpoint); err != nil {
-			return nil, err
-		}
-		if httpClient == nil {
-			httpClient = http.DefaultClient
-		}
+	httpClient, err := unixHTTPClient(socketPath, config.HTTPClient)
+	if err != nil {
+		return nil, err
 	}
-	credential := func(ctx context.Context) (string, error) { return config.Credential.Credential(ctx) }
-	return &Client{Content: adapter.NewContent(httpClient, endpoint, credential)}, nil
+	const endpoint = "http://localhost"
+	manager := adapter.NewSessionManager(httpClient, endpoint, config.Signer, node, nil)
+	interceptor := adapter.NewSessionInterceptor(manager)
+	return &Client{
+		Content: adapter.NewContent(httpClient, endpoint, connect.WithInterceptors(interceptor)),
+		Session: &sessionProvider{manager: manager},
+	}, nil
 }
 
 func unixHTTPClient(path string, configured *http.Client) (*http.Client, error) {
@@ -125,26 +79,4 @@ func unixHTTPClient(path string, configured *http.Client) (*http.Client, error) 
 	}
 	client.Transport = transport
 	return client, nil
-}
-
-func validateEndpoint(endpoint string) error {
-	parsed, err := url.Parse(endpoint)
-	if err != nil || parsed.Host == "" {
-		return fmt.Errorf("application endpoint is invalid")
-	}
-	if parsed.Scheme == "https" {
-		return nil
-	}
-	if parsed.Scheme != "http" {
-		return fmt.Errorf("application endpoint scheme is unsupported")
-	}
-	host := parsed.Hostname()
-	if strings.EqualFold(host, "localhost") {
-		return nil
-	}
-	ip := net.ParseIP(host)
-	if ip == nil || !ip.IsLoopback() {
-		return fmt.Errorf("plaintext application endpoint must be loopback")
-	}
-	return nil
 }

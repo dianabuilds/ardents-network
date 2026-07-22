@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package ardents.application.v1;
+
+option go_package = "ardents/sdk/go/protocol/applicationv1;applicationv1";
+
+import "api/ardents/identity/v1/artifacts.proto";
+import "google/protobuf/timestamp.proto";
+
+// IdentityService is the bounded Application identity surface. It is
+// registered only on the permission-protected Application Unix listener.
+service IdentityService {
+  rpc BeginAuthentication(BeginAuthenticationRequest) returns (BeginAuthenticationResponse);
+  rpc CompleteAuthentication(CompleteAuthenticationRequest) returns (CompleteAuthenticationResponse);
+  rpc EnrollApplication(EnrollApplicationRequest) returns (EnrollApplicationResponse);
+}
+
+message BeginAuthenticationRequest {
+  string principal_id = 1;
+  ardents.identity.v1.ChallengePurpose purpose = 2;
+}
+
+message BeginAuthenticationResponse {
+  ardents.identity.v1.ChallengeFields challenge = 1;
+}
+
+message CompleteAuthenticationRequest {
+  bytes challenge_id = 1;
+  string principal_id = 2;
+  bytes root_public_key = 3;
+  bytes credential = 4;
+  bytes signature = 5;
+}
+
+message CompleteAuthenticationResponse {
+  bytes session_secret = 1;
+  bytes enrollment_proof = 2;
+  string session_id = 3;
+  google.protobuf.Timestamp expires_at = 4;
+}
+
+message EnrollApplicationRequest {
+  bytes application_enrollment_ticket = 1;
+  ardents.identity.v1.ChallengeFields challenge = 2;
+  bytes enrollment_proof = 3;
+  bytes root_public_key = 4;
+  bytes credential = 5;
+}
+
+message EnrollApplicationResponse {
+  string principal_id = 1;
+  string credential_id = 2;
+  string grant_id = 3;
+  google.protobuf.Timestamp grant_expires_at = 4;
+}

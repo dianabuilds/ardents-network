@@ -3,6 +3,8 @@
 package client
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -18,16 +20,23 @@ type Config struct {
 	SSHPort           int
 	SSHIdentity       string
 	SSHKnownHosts     string
+	SSHOperatorSocket string
 	Token             string
 	Timeout           time.Duration
 	ExpectedNode      string
 	ExpectedPrincipal string
 	Scopes            []string
+	Signer            SessionSigner
 }
 
 type Client struct {
-	service Service
-	token   string
+	service           Service
+	token             string
+	sessions          *SessionManager
+	close             func() error
+	identityPublic    ardentsv1connect.IdentityServiceClient
+	identityProtected ardentsv1connect.IdentityServiceClient
+	targetNode        string
 }
 
 type Service interface {
@@ -53,7 +62,7 @@ type services struct {
 }
 
 func New(cfg Config) *Client {
-	baseURL, transport := controlTransport(cfg)
+	baseURL, transport, kind, closeTransport := controlTransport(cfg)
 	httpClient := &http.Client{
 		Timeout: cfg.Timeout,
 		Transport: contextTransport{
@@ -61,8 +70,44 @@ func New(cfg Config) *Client {
 			expectedPrincipal: cfg.ExpectedPrincipal, scopes: append([]string(nil), cfg.Scopes...),
 		},
 	}
-	service := NewService(httpClient, baseURL)
-	return &Client{service: service, token: cfg.Token}
+	if cfg.Signer == nil {
+		return &Client{service: NewService(httpClient, baseURL), token: cfg.Token, close: closeTransport}
+	}
+	rawIdentity := ardentsv1connect.NewIdentityServiceClient(httpClient, baseURL)
+	var auth authenticationService = rawIdentity
+	eligible := kind == transportUnix || kind == transportSSHStreamLocal
+	if kind != transportUnix && kind != transportSSHStreamLocal {
+		auth = rejectedAuthenticationService{}
+	}
+	sessions := NewSessionManager(auth, cfg.Signer, cfg.ExpectedPrincipal, time.Now)
+	interceptor := newSessionInterceptor(sessions)
+	service := NewService(httpClient, baseURL, connect.WithInterceptors(interceptor))
+	if !eligible {
+		return &Client{service: service, sessions: sessions, close: closeTransport, targetNode: cfg.ExpectedPrincipal}
+	}
+	protectedIdentity := ardentsv1connect.NewIdentityServiceClient(httpClient, baseURL, connect.WithInterceptors(interceptor))
+	return &Client{service: service, sessions: sessions, close: closeTransport, identityPublic: rawIdentity, identityProtected: protectedIdentity, targetNode: cfg.ExpectedPrincipal}
+}
+
+func (c *Client) PublicIdentityService() (ardentsv1connect.IdentityServiceClient, error) {
+	if c == nil || c.identityPublic == nil {
+		return nil, errors.New("Principal identity service is not configured")
+	}
+	return c.identityPublic, nil
+}
+
+func (c *Client) ProtectedIdentityService() (ardentsv1connect.IdentityServiceClient, error) {
+	if c == nil || c.identityProtected == nil {
+		return nil, errors.New("Principal identity service is not configured")
+	}
+	return c.identityProtected, nil
+}
+
+func (c *Client) TargetNodePrincipal() string {
+	if c == nil {
+		return ""
+	}
+	return c.targetNode
 }
 
 func NewService(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) Service {
@@ -100,6 +145,42 @@ func (c *Client) Service() Service {
 
 func Request[T any](token string, msg *T) *connect.Request[T] {
 	req := connect.NewRequest(msg)
-	req.Header().Set("Authorization", "Bearer "+token)
+	if token = strings.TrimSpace(token); token != "" {
+		req.Header().Set("Authorization", "Bearer "+token)
+	}
 	return req
+}
+
+func (c *Client) Login(ctx context.Context) (SessionKey, error) {
+	if c == nil || c.sessions == nil {
+		return SessionKey{}, errors.New("Principal session mode is not configured")
+	}
+	if _, _, err := c.sessions.authorization(ctx); err != nil {
+		return SessionKey{}, err
+	}
+	return c.sessions.Status(), nil
+}
+
+func (c *Client) SessionStatus() SessionKey {
+	if c == nil || c.sessions == nil {
+		return SessionKey{}
+	}
+	return c.sessions.Status()
+}
+
+func (c *Client) Logout() {
+	if c != nil && c.sessions != nil {
+		c.sessions.Logout()
+	}
+}
+
+func (c *Client) Close() error {
+	if c == nil {
+		return nil
+	}
+	c.Logout()
+	if c.close != nil {
+		return c.close()
+	}
+	return nil
 }

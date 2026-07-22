@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"fmt"
 	"maps"
 	"strings"
 
@@ -12,11 +13,8 @@ import (
 	"connectrpc.com/connect"
 )
 
-func (h *RuntimeHandler) GetNodeStatus(_ context.Context, req *connect.Request[ardents.GetNodeStatusRequest]) (*connect.Response[ardents.NodeStatusResponse], error) {
-	return rpc.Respond(h.auth, req.Header(), func(call rpc.CallContext) (*ardents.NodeStatusResponse, *rpc.Error) {
-		if err := rpc.RequireRead(call, "node", "node.status"); err != nil {
-			return nil, err
-		}
+func (h *RuntimeHandler) GetNodeStatus(ctx context.Context, _ *connect.Request[ardents.GetNodeStatusRequest]) (*connect.Response[ardents.NodeStatusResponse], error) {
+	return rpc.RespondContext(ctx, func(rpc.Call) (*ardents.NodeStatusResponse, *rpc.Error) {
 		return &ardents.NodeStatusResponse{
 			Status:       statusProto("completed", "snapshot available", true),
 			Snapshot:     toSnapshot(h.service.Snapshot()),
@@ -25,22 +23,15 @@ func (h *RuntimeHandler) GetNodeStatus(_ context.Context, req *connect.Request[a
 	})
 }
 
-func (h *RuntimeHandler) GetNodeCapabilities(_ context.Context, req *connect.Request[ardents.GetNodeCapabilitiesRequest]) (*connect.Response[ardents.CapabilitiesResponse], error) {
-	return rpc.Respond(h.auth, req.Header(), func(call rpc.CallContext) (*ardents.CapabilitiesResponse, *rpc.Error) {
-		if err := rpc.RequireRead(call, "node", "node.capabilities"); err != nil {
-			return nil, err
-		}
+func (h *RuntimeHandler) GetNodeCapabilities(ctx context.Context, _ *connect.Request[ardents.GetNodeCapabilitiesRequest]) (*connect.Response[ardents.CapabilitiesResponse], error) {
+	return rpc.RespondContext(ctx, func(rpc.Call) (*ardents.CapabilitiesResponse, *rpc.Error) {
 		return &ardents.CapabilitiesResponse{Capabilities: toCapabilitiesSnapshot(h.service.Capabilities())}, nil
 	})
 }
 
-func (h *RuntimeHandler) StreamNodeEvents(ctx context.Context, req *connect.Request[ardents.StreamNodeEventsRequest], stream *connect.ServerStream[ardents.EventEnvelope]) error {
-	call, err := h.auth.CallContext(req.Header())
-	if err != nil {
-		return err
-	}
-	if apiErr := rpc.RequireRead(call, "node", "node.events"); apiErr != nil {
-		return rpc.ToConnectError(apiErr)
+func (h *RuntimeHandler) StreamNodeEvents(ctx context.Context, _ *connect.Request[ardents.StreamNodeEventsRequest], stream *connect.ServerStream[ardents.EventEnvelope]) error {
+	if _, ok := rpc.CallFromContext(ctx); !ok {
+		return connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("authenticated call context is required"))
 	}
 	for evt := range bridgeRuntimeEvents(ctx, h.service.Subscribe(ctx)) {
 		if err := stream.Send(evt); err != nil {

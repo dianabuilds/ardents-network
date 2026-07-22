@@ -37,6 +37,9 @@ func TestProcedureAccessCatalogCoversEveryRPCExactlyOnce(t *testing.T) {
 			require.NotEmpty(t, rule.Action, procedure)
 			require.NotEmpty(t, rule.Domain, procedure)
 			require.NotEmpty(t, rule.Access, procedure)
+			if service.Name() == "NodeService" || service.Name() == "ConfigurationService" || service.Name() == "NetworkService" || service.Name() == "WorkloadService" || service.Name() == "ContentService" || service.Name() == "TransferService" || service.Name() == "RetentionService" || service.Name() == "DiagnosticsService" {
+				require.NotEmpty(t, rule.ResourceKind, procedure)
+			}
 			prior, duplicate := actions[rule.Action]
 			require.Falsef(t, duplicate, "action %q is shared by %s and %s", rule.Action, prior, procedure)
 			actions[rule.Action] = procedure

@@ -84,9 +84,12 @@ Interfaces belong to the consuming module. There are no shared `api`,
 ### 3.5 Generated And Handwritten Code Are Separated
 
 Protocol source lives under `api/`. Operator protocol Go code lives under
-`internal/localapi/protocol`; the public Application protocol Go code lives
-under `sdk/go/protocol` so external SDK consumers do not import `internal`.
-Generated code is never mixed with handwritten handlers or product models.
+`internal/localapi/protocol`. Public Application protocol Go code lives under
+`sdk/go/protocol` so external SDK consumers do not import `internal`.
+Application identity additionally has a generated-only Node adapter copy under
+`internal/applicationapi/protocol`; its explicit import mappings prevent
+server and SDK artifact descriptors from entering the same binary. Generated
+code is never mixed with handwritten handlers or product models.
 
 ## 4. Target Repository Topology
 
@@ -105,8 +108,12 @@ api/
     retention.proto
     workload.proto
     diagnostics.proto
+    identity.proto
+  ardents/identity/v1/
+    artifacts.proto
   ardents/application/v1/
     content.proto
+    identity.proto
 
 cmd/
   ardentsctl/
@@ -166,9 +173,12 @@ internal/
   buildinfo/
   config/
   identity/
+    access/
     capability/
     keyring/
+    migration/
     principal/
+    protocol/
   policy/
   storage/
   diagnostics/
@@ -202,6 +212,7 @@ internal/
     protocol/
       ardentsv1connect/
     auth/
+    identity/
     rpc/
     node/
     network/
@@ -226,6 +237,9 @@ internal/
   applicationapi/
     auth/
     content/
+    principal/
+    protocol/
+      applicationv1/
 
 sdk/
   go/
@@ -296,8 +310,11 @@ The nested directories have these exact responsibilities:
 | Directory | Sole responsibility |
 |---|---|
 | `identity/capability` | capability assertion validation and attenuation |
+| `identity/access` | local-interface authentication, ephemeral sessions, signed Access Grants and revocations, and request admission; not product Policy |
 | `identity/keyring` | durable node-key continuity and key material access |
+| `identity/migration` | offline, versioned identity inventory and coordinated epoch migration; never runtime dual-ID authorization |
 | `identity/principal` | principal derivation and canonical identity encoding |
+| `identity/protocol` | generated server-side signed-identity artifact messages only; no domain model or verification behavior |
 | `diagnostics/event` | bounded operational event records |
 | `diagnostics/health` | health evidence and aggregate health result |
 | `diagnostics/operation` | long-running operation state and history |
@@ -369,17 +386,32 @@ resolved through `go.mod` unless a separately approved fork is actually used.
   handwritten architecture layer.
 - `localapi/auth` owns local-protocol authentication, method authorization and
   audit context. It does not own product policy.
-- `applicationapi/auth` authenticates Application calls and evaluates the
-  admitted Application action set; it does not own content or Operator policy.
+- `localapi/identity` is the protected Operator Unix-socket adapter for typed
+  Principal authentication and identity administration. It accepts no legacy
+  or Application credential scheme and owns no durable identity state.
+- `applicationapi/auth` authenticates the explicit legacy bearer during
+  coexistence; it does not own content or Operator policy.
+- `applicationapi/principal` is the protected Application Unix-socket adapter
+  for typed Principal authentication. It derives Application Audience and
+  transport binding and owns no durable identity state.
+- `applicationapi/protocol/applicationv1` is the generated-only Node copy of
+  the Application identity service. The public SDK copy is
+  `sdk/go/protocol/applicationidentityv1`; both come from the same proto source
+  with explicit mappings to their respective artifact packages.
 - each `applicationapi/<area>` directory adapts one bounded public Application
   service to the corresponding product owner. Generated bindings remain in
-  `sdk/go/protocol`.
+  the generated-only protocol directories above.
 - each `localapi/<area>` directory implements one bounded protocol service and
   maps only that owner's transport types;
 - each `cli/<area>` directory owns one command family. Generated protocol
   clients are composed in `cli/client`; shared call context, input and watch
   mechanics live in `cli/command`; presentation mechanics live in
   `cli/output`.
+- `identity/protocol` is generated only from
+  `api/ardents/identity/v1/artifacts.proto`. The same source is generated a
+  second time under `sdk/go/protocol/identityv1` with an explicit protobuf
+  import mapping. Handwritten identity domain models alias neither generated
+  representation.
 
 ## 6. Dependency Direction
 

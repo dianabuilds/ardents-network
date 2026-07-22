@@ -15,7 +15,6 @@ import (
 	workloadcontroller "ardents/internal/workload/execution"
 	"context"
 	"crypto/ed25519"
-	"crypto/subtle"
 	"encoding/base64"
 	"fmt"
 	"log/slog"
@@ -28,33 +27,20 @@ import (
 )
 
 type runtimeConfig struct {
-	ListenAddr               string
-	SocketPath               string
-	ObservabilityAddr        string
-	ObservabilityToken       string
-	APIToken                 string
-	APISubject               string
-	APICapabilities          []string
-	APICredentialEnd         time.Time
-	ApplicationEnabled       bool
-	ApplicationListenAddr    string
-	ApplicationSocketPath    string
-	ApplicationToken         string
-	ApplicationSubject       string
-	ApplicationCapabilities  []string
-	ApplicationCredentialEnd time.Time
-	Node                     Config
+	SocketPath            string
+	ObservabilityAddr     string
+	ObservabilityToken    string
+	ApplicationEnabled    bool
+	ApplicationSocketPath string
+	Node                  Config
 }
 
 func loadRuntimeConfig() (runtimeConfig, error) {
-	if path := runtimeconfig.OperatorFile(); path != "" {
-		return loadOperatorRuntimeConfig(path)
+	path := runtimeconfig.OperatorFile()
+	if path == "" {
+		return runtimeConfig{}, fmt.Errorf("ARDENTS_CONFIG_FILE is required")
 	}
-	doc, token, err := runtimeconfig.LegacyEnvironment()
-	if err != nil {
-		return runtimeConfig{}, err
-	}
-	return runtimeConfigFromDocument(doc, token)
+	return loadOperatorRuntimeConfig(path)
 }
 
 func ValidateConfig(cfg Config) error {
@@ -355,15 +341,7 @@ func loadOperatorRuntimeConfig(path string) (runtimeConfig, error) {
 	if err != nil {
 		return runtimeConfig{}, err
 	}
-	doc, err = runtimeconfig.ResolveDocumentSecrets(doc)
-	if err != nil {
-		return runtimeConfig{}, err
-	}
-	token, err := runtimeconfig.APIToken(doc.API.TokenFile)
-	if err != nil {
-		return runtimeConfig{}, err
-	}
-	cfg, err := runtimeConfigFromDocument(doc, token)
+	cfg, err := runtimeConfigFromDocument(normalizeOperatorDocumentPaths(doc))
 	if err != nil {
 		return runtimeConfig{}, err
 	}
@@ -380,9 +358,6 @@ func newOperatorConfigManager(path string, doc runtimeconfig.Document) (*runtime
 	if err != nil {
 		return nil, err
 	}
-	if err := manager.RegisterResolver(runtimeconfig.ResolveDocumentSecrets); err != nil {
-		return nil, err
-	}
 	if err := registerOperatorCandidateValidator(manager); err != nil {
 		return nil, err
 	}
@@ -391,16 +366,12 @@ func newOperatorConfigManager(path string, doc runtimeconfig.Document) (*runtime
 
 func registerOperatorCandidateValidator(manager *runtimeconfig.Manager) error {
 	return manager.RegisterValidator(func(candidate runtimeconfig.Document) error {
-		candidateToken, err := runtimeconfig.APIToken(candidate.API.TokenFile)
-		if err != nil {
-			return err
-		}
-		_, err = runtimeConfigFromDocument(candidate, candidateToken)
+		_, err := runtimeConfigFromDocument(normalizeOperatorDocumentPaths(candidate))
 		return err
 	})
 }
 
-func runtimeConfigFromDocument(doc runtimeconfig.Document, token string) (runtimeConfig, error) {
+func runtimeConfigFromDocument(doc runtimeconfig.Document) (runtimeConfig, error) {
 	executor, err := operatorWorkloadExecutor(doc)
 	if err != nil {
 		return runtimeConfig{}, err
@@ -410,43 +381,16 @@ func runtimeConfigFromDocument(doc runtimeconfig.Document, token string) (runtim
 		return runtimeConfig{}, err
 	}
 	data.Dir = doc.Node.DataDir
-	credential, err := operatorCredential(doc.API, token)
-	if err != nil {
-		return runtimeConfig{}, err
-	}
 	observabilityToken, err := runtimeconfig.ObservabilityToken(doc.Observability.TokenFile)
 	if err != nil {
 		return runtimeConfig{}, err
 	}
-	applicationToken := ""
-	applicationExpiresAt := time.Time{}
-	if doc.ApplicationInterface.Enabled {
-		applicationToken, err = runtimeconfig.ApplicationToken(doc.ApplicationInterface.TokenFile)
-		if err != nil {
-			return runtimeConfig{}, err
-		}
-		if subtle.ConstantTimeCompare([]byte(applicationToken), []byte(token)) == 1 {
-			return runtimeConfig{}, fmt.Errorf("application and operator credentials must be distinct")
-		}
-		applicationExpiresAt, err = parseCredentialExpiryField(
-			"application_interface.credential_expires_at", doc.ApplicationInterface.CredentialExpiresAt,
-		)
-		if err != nil {
-			return runtimeConfig{}, err
-		}
-	}
 	cfg := runtimeConfig{
-		ListenAddr: doc.API.ListenAddress, SocketPath: doc.API.SocketPath, ObservabilityAddr: doc.Observability.ListenAddress,
-		ObservabilityToken: observabilityToken,
-		APIToken:           token,
-		APISubject:         credential.SubjectID, APICapabilities: credential.Capabilities, APICredentialEnd: credential.ExpiresAt,
+		SocketPath: doc.API.SocketPath, ObservabilityAddr: doc.Observability.ListenAddress,
+		ObservabilityToken:    observabilityToken,
 		ApplicationEnabled:    doc.ApplicationInterface.Enabled,
-		ApplicationListenAddr: doc.ApplicationInterface.ListenAddress,
 		ApplicationSocketPath: doc.ApplicationInterface.SocketPath,
-		ApplicationToken:      applicationToken, ApplicationSubject: doc.ApplicationInterface.Subject,
-		ApplicationCapabilities:  cloneStrings(doc.ApplicationInterface.Capabilities),
-		ApplicationCredentialEnd: applicationExpiresAt,
-		Node:                     operatorNodeConfig(doc, data, executor),
+		Node:                  operatorNodeConfig(doc, data, executor),
 	}
 	privacy, dataPrivacy, policyService, err := operatorPrivacyChannels(doc, cfg.Node.Policy)
 	if err != nil {
@@ -455,13 +399,18 @@ func runtimeConfigFromDocument(doc runtimeconfig.Document, token string) (runtim
 	cfg.Node.Privacy = privacy
 	cfg.Node.DataPrivacy = dataPrivacy
 	cfg.Node.PolicyService = policyService
-	if err := validateLocalAPIListenAddr(cfg.ListenAddr); err != nil {
-		return runtimeConfig{}, err
-	}
 	if err := ValidateConfig(cfg.Node); err != nil {
 		return runtimeConfig{}, err
 	}
 	return cfg, nil
+}
+
+func normalizeOperatorDocumentPaths(doc runtimeconfig.Document) runtimeconfig.Document {
+	doc.Node.DataDir = filepath.Clean(doc.Node.DataDir)
+	if doc.Network.StorePath != "" {
+		doc.Network.StorePath = filepath.Clean(doc.Network.StorePath)
+	}
+	return doc
 }
 
 func operatorNodeConfig(doc runtimeconfig.Document, data DataConfig, executor workloadcontroller.Executor) Config {
@@ -475,43 +424,6 @@ func operatorNodeConfig(doc runtimeconfig.Document, data DataConfig, executor wo
 		DiscoveryRefreshInterval: time.Duration(doc.Network.DiscoveryRefreshSeconds) * time.Second,
 		WorkloadExecutor:         executor,
 	}
-}
-
-type operatorCredentialConfig struct {
-	Token        string
-	SubjectID    string
-	Capabilities []string
-	ExpiresAt    time.Time
-}
-
-func operatorCredential(api runtimeconfig.APIConfig, token string) (operatorCredentialConfig, error) {
-	expiresAt, err := parseCredentialExpiry(api.CredentialExpiresAt)
-	if err != nil {
-		return operatorCredentialConfig{}, err
-	}
-	capabilities := cloneStrings(api.Capabilities)
-	credential := operatorCredentialConfig{
-		Token: token, SubjectID: api.OperatorSubject, Capabilities: capabilities, ExpiresAt: expiresAt,
-	}
-	if strings.TrimSpace(credential.Token) == "" {
-		return operatorCredentialConfig{}, fmt.Errorf("connect api token is required")
-	}
-	return credential, nil
-}
-
-func parseCredentialExpiry(raw string) (time.Time, error) {
-	return parseCredentialExpiryField("api.credential_expires_at", raw)
-}
-
-func parseCredentialExpiryField(field, raw string) (time.Time, error) {
-	if raw == "" {
-		return time.Time{}, nil
-	}
-	value, err := time.Parse(time.RFC3339, raw)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("%s: %w", field, err)
-	}
-	return value, nil
 }
 
 func operatorWorkloadExecutor(doc runtimeconfig.Document) (workloadcontroller.Executor, error) {
@@ -807,7 +719,11 @@ func operatorIdentityPrivate(dataDir, subject string) (ed25519.PrivateKey, error
 		return nil, fmt.Errorf("protected node identity is invalid")
 	}
 	private := ed25519.PrivateKey(raw)
-	principal := identityprincipal.DeriveID("p", private.Public().(ed25519.PublicKey))
+	principalID, err := identityprincipal.FromEd25519PublicKey(private.Public().(ed25519.PublicKey))
+	if err != nil {
+		return nil, fmt.Errorf("derive operator Principal")
+	}
+	principal := principalID.String()
 	if principal != subject {
 		return nil, fmt.Errorf("privacy.subject does not match the protected node identity")
 	}
@@ -831,7 +747,8 @@ func operatorTrustedIssuers(configured map[string]string) (map[string]ed25519.Pu
 		if err != nil || len(raw) != ed25519.PublicKeySize {
 			return nil, fmt.Errorf("privacy.trusted_issuers contains an invalid public key")
 		}
-		if identityprincipal.DeriveID("p", raw) != principal {
+		derived, deriveErr := identityprincipal.FromEd25519PublicKey(ed25519.PublicKey(raw))
+		if deriveErr != nil || derived.String() != principal {
 			return nil, fmt.Errorf("privacy.trusted_issuers principal does not match its public key")
 		}
 		issuers[principal] = append([]byte(nil), raw...)

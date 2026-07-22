@@ -2,7 +2,7 @@
 package content
 
 import (
-	applicationauth "ardents/internal/applicationapi/auth"
+	applicationcall "ardents/internal/applicationapi/call"
 	appcontent "ardents/internal/content"
 	applicationv1 "ardents/sdk/go/protocol/applicationv1"
 	applicationv1connect "ardents/sdk/go/protocol/applicationv1/applicationv1connect"
@@ -21,33 +21,29 @@ const (
 )
 
 type Store interface {
-	PublishBlob(appcontent.PublishBlobCommand) (appcontent.Blob, error)
-	GetBlob(string) (appcontent.Blob, bool)
-	GetBlobPayload(string) ([]byte, error)
-	FetchBlob(context.Context, string) (appcontent.Blob, error)
-}
-
-type Authorizer interface {
-	Authorize(context.Context, http.Header, string) error
+	PublishBlob(applicationcall.Call, appcontent.PublishBlobCommand) (appcontent.Blob, error)
+	GetBlob(applicationcall.Call, string) (appcontent.Blob, bool)
+	GetBlobPayload(applicationcall.Call, string) ([]byte, error)
+	FetchBlob(context.Context, applicationcall.Call, string) (appcontent.Blob, error)
 }
 
 type Handler struct {
-	store      Store
-	authorizer Authorizer
+	store     Store
+	extractor applicationcall.Extractor
 }
 
-func NewHandler(store Store, authorizer Authorizer) (*Handler, error) {
+func NewHandler(store Store, extractor applicationcall.Extractor) (*Handler, error) {
 	if store == nil {
 		return nil, fmt.Errorf("application content store is required")
 	}
-	if authorizer == nil {
-		return nil, fmt.Errorf("application authorizer is required")
+	if !extractor.Valid() {
+		return nil, fmt.Errorf("application admission extractor is required")
 	}
-	return &Handler{store: store, authorizer: authorizer}, nil
+	return &Handler{store: store, extractor: extractor}, nil
 }
 
-func NewHTTPHandler(store Store, authorizer Authorizer) (string, http.Handler, error) {
-	handler, err := NewHandler(store, authorizer)
+func NewHTTPHandler(store Store, extractor applicationcall.Extractor, interceptors ...connect.Interceptor) (string, http.Handler, error) {
+	handler, err := NewHandler(store, extractor)
 	if err != nil {
 		return "", nil, err
 	}
@@ -55,26 +51,26 @@ func NewHTTPHandler(store Store, authorizer Authorizer) (string, http.Handler, e
 		handler,
 		connect.WithReadMaxBytes(applicationv1.MaxUnaryMessageBytes),
 		connect.WithSendMaxBytes(applicationv1.MaxUnaryMessageBytes),
+		connect.WithInterceptors(interceptors...),
 	)
 	return path, httpHandler, nil
 }
 
 func (h *Handler) Put(ctx context.Context, req *connect.Request[applicationv1.PutContentRequest]) (*connect.Response[applicationv1.PutContentResponse], error) {
-	if err := h.authorizer.Authorize(ctx, req.Header(), ActionPut); err != nil {
-		return nil, mapAuthorizationError(ActionPut, err)
+	target, err := CanonicalizeResource(applicationv1connect.ContentServicePutProcedure, req.Msg)
+	if err != nil {
+		return nil, mapTargetError(ActionPut, err)
+	}
+	admitted, err := h.admittedCall(ctx, ActionPut, target)
+	if err != nil {
+		return nil, err
 	}
 	payload := req.Msg.GetPayload()
-	if len(payload) == 0 {
-		return nil, protocolError(applicationv1.ErrorCode_ERROR_CODE_INVALID_ARGUMENT, ActionPut, "content payload is required", false, connect.CodeInvalidArgument)
-	}
-	if len(payload) > applicationv1.MaxUnaryPayloadBytes {
-		return nil, contentTooLarge(ActionPut)
-	}
 	mediaType := strings.TrimSpace(req.Msg.GetMediaType())
 	if mediaType == "" {
 		mediaType = "application/octet-stream"
 	}
-	stored, err := h.store.PublishBlob(appcontent.PublishBlobCommand{
+	stored, err := h.store.PublishBlob(admitted, appcontent.PublishBlobCommand{
 		Blob: appcontent.Blob{MediaType: mediaType}, Payload: append([]byte(nil), payload...),
 	})
 	if err != nil {
@@ -87,35 +83,37 @@ func (h *Handler) Put(ctx context.Context, req *connect.Request[applicationv1.Pu
 }
 
 func (h *Handler) Get(ctx context.Context, req *connect.Request[applicationv1.GetContentRequest]) (*connect.Response[applicationv1.GetContentResponse], error) {
-	if err := h.authorizer.Authorize(ctx, req.Header(), ActionGet); err != nil {
-		return nil, mapAuthorizationError(ActionGet, err)
+	target, err := CanonicalizeResource(applicationv1connect.ContentServiceGetProcedure, req.Msg)
+	if err != nil {
+		return nil, mapTargetError(ActionGet, err)
+	}
+	admitted, err := h.admittedCall(ctx, ActionGet, target)
+	if err != nil {
+		return nil, err
 	}
 	reference := req.Msg.GetReference()
-	if reference == nil || reference.GetKind() != "blob" || strings.TrimSpace(reference.GetId()) == "" {
-		return nil, protocolError(applicationv1.ErrorCode_ERROR_CODE_INVALID_ARGUMENT, ActionGet, "valid blob reference is required", false, connect.CodeInvalidArgument)
-	}
-	blob, found := h.store.GetBlob(reference.GetId())
+	blob, found := h.store.GetBlob(admitted, reference.GetId())
 	var payload []byte
 	var payloadErr error
 	if found {
 		if blob.Size < 0 || blob.Size > applicationv1.MaxUnaryPayloadBytes {
 			return nil, contentTooLarge(ActionGet)
 		}
-		payload, payloadErr = h.store.GetBlobPayload(reference.GetId())
+		payload, payloadErr = h.store.GetBlobPayload(admitted, reference.GetId())
 		if payloadErr != nil && !errors.Is(payloadErr, appcontent.ErrBlobPayloadNotLocal) {
 			return nil, mapStoreError(ActionGet, payloadErr, false)
 		}
 	}
 	if !found || payloadErr != nil {
 		var fetchErr error
-		blob, fetchErr = h.store.FetchBlob(ctx, reference.GetId())
+		blob, fetchErr = h.store.FetchBlob(ctx, admitted, reference.GetId())
 		if fetchErr != nil {
 			return nil, mapStoreError(ActionGet, fetchErr, true)
 		}
 		if blob.Size < 0 || blob.Size > applicationv1.MaxUnaryPayloadBytes {
 			return nil, contentTooLarge(ActionGet)
 		}
-		payload, payloadErr = h.store.GetBlobPayload(blob.ID)
+		payload, payloadErr = h.store.GetBlobPayload(admitted, blob.ID)
 	}
 	if payloadErr != nil {
 		return nil, mapStoreError(ActionGet, payloadErr, false)
@@ -129,6 +127,25 @@ func (h *Handler) Get(ctx context.Context, req *connect.Request[applicationv1.Ge
 	return connect.NewResponse(&applicationv1.GetContentResponse{
 		Payload: append([]byte(nil), payload...), Size: blob.Size, MediaType: blob.MediaType,
 	}), nil
+}
+
+func (h *Handler) admittedCall(ctx context.Context, action string, target ResourceTarget) (applicationcall.Call, error) {
+	admitted, ok := h.extractor.Extract(ctx)
+	if !ok || admitted.Action() != action {
+		return applicationcall.Call{}, protocolError(applicationv1.ErrorCode_ERROR_CODE_UNAUTHENTICATED, action, "application authentication required", false, connect.CodeUnauthenticated)
+	}
+	if !admitted.IsPrincipal() || admitted.Actor() != admitted.Effective() || admitted.ResourceNode() != admitted.Node() ||
+		admitted.ResourceOwner() != admitted.Effective() || admitted.ResourceKind() != target.Kind || admitted.ResourceID() != target.ID {
+		return applicationcall.Call{}, protocolError(applicationv1.ErrorCode_ERROR_CODE_FORBIDDEN, action, "application action is forbidden", false, connect.CodePermissionDenied)
+	}
+	return admitted, nil
+}
+
+func mapTargetError(operation string, err error) error {
+	if errors.Is(err, ErrPayloadTooLarge) {
+		return contentTooLarge(operation)
+	}
+	return protocolError(applicationv1.ErrorCode_ERROR_CODE_INVALID_ARGUMENT, operation, "invalid application content request", false, connect.CodeInvalidArgument)
 }
 
 func contentTooLarge(operation string) error {
@@ -148,23 +165,7 @@ func mapStoreError(operation string, err error, retryable bool) error {
 	}
 }
 
-func mapAuthorizationError(operation string, err error) error {
-	var connectErr *connect.Error
-	switch {
-	case errors.Is(err, applicationauth.ErrUnauthenticated):
-		return protocolError(applicationv1.ErrorCode_ERROR_CODE_UNAUTHENTICATED, operation, "application authentication required", false, connect.CodeUnauthenticated)
-	case errors.Is(err, applicationauth.ErrForbidden):
-		return protocolError(applicationv1.ErrorCode_ERROR_CODE_FORBIDDEN, operation, "application action is forbidden", false, connect.CodePermissionDenied)
-	case errors.As(err, &connectErr) && connectErr.Code() == connect.CodeUnauthenticated:
-		return protocolError(applicationv1.ErrorCode_ERROR_CODE_UNAUTHENTICATED, operation, "application authentication required", false, connect.CodeUnauthenticated)
-	case errors.As(err, &connectErr) && connectErr.Code() == connect.CodePermissionDenied:
-		return protocolError(applicationv1.ErrorCode_ERROR_CODE_FORBIDDEN, operation, "application action is forbidden", false, connect.CodePermissionDenied)
-	default:
-		return protocolError(applicationv1.ErrorCode_ERROR_CODE_INTERNAL, operation, "application authorization failed", false, connect.CodeInternal)
-	}
-}
-
-func protocolError(code applicationv1.ErrorCode, operation, message string, retryable bool, connectCode connect.Code) error {
+func ProtocolError(code applicationv1.ErrorCode, operation, message string, retryable bool, connectCode connect.Code) error {
 	result := connect.NewError(connectCode, errors.New(message))
 	detail, err := connect.NewErrorDetail(&applicationv1.ApplicationError{
 		Code: code, Operation: operation, Message: message, Retryable: retryable,
@@ -173,4 +174,8 @@ func protocolError(code applicationv1.ErrorCode, operation, message string, retr
 		result.AddDetail(detail)
 	}
 	return result
+}
+
+func protocolError(code applicationv1.ErrorCode, operation, message string, retryable bool, connectCode connect.Code) error {
+	return ProtocolError(code, operation, message, retryable, connectCode)
 }

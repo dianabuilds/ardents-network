@@ -5,12 +5,10 @@ package rpc
 import (
 	"context"
 	"errors"
-	"net/http"
 	"strings"
 	"time"
 
-	"ardents/internal/identity"
-	localauth "ardents/internal/localapi/auth"
+	identityaccess "ardents/internal/identity/access"
 	protocol "ardents/internal/localapi/protocol"
 
 	"connectrpc.com/connect"
@@ -18,7 +16,34 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type CallContext = identity.CallContext
+type Call struct {
+	actor, effective string
+	authorized       *identityaccess.AuthorizedCall
+}
+
+func (c Call) Actor() string     { return c.actor }
+func (c Call) Effective() string { return c.effective }
+func (c Call) Authorized() (identityaccess.AuthorizedCall, bool) {
+	if c.authorized == nil || !c.authorized.IsAdmitted() {
+		return identityaccess.AuthorizedCall{}, false
+	}
+	return *c.authorized, true
+}
+
+type callContextKey struct{}
+
+func WithAuthorizedCall(ctx context.Context, authorized identityaccess.AuthorizedCall) context.Context {
+	if !authorized.IsAdmitted() {
+		return ctx
+	}
+	copy := authorized
+	return context.WithValue(ctx, callContextKey{}, Call{actor: authorized.Actor(), effective: authorized.Effective(), authorized: &copy})
+}
+
+func CallFromContext(ctx context.Context) (Call, bool) {
+	call, ok := ctx.Value(callContextKey{}).(Call)
+	return call, ok && call.actor != "" && call.effective != "" && call.authorized != nil
+}
 
 type Error struct {
 	Code, Category, Message, Domain, Operation, Reason string
@@ -26,32 +51,16 @@ type Error struct {
 	Details                                            map[string]any
 }
 
-func Respond[T any](auth localauth.Config, header http.Header, invoke func(CallContext) (*T, *Error)) (*connect.Response[T], error) {
-	call, err := auth.CallContext(header)
-	if err != nil {
-		return nil, err
+func RespondContext[T any](ctx context.Context, invoke func(Call) (*T, *Error)) (*connect.Response[T], error) {
+	call, ok := CallFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("authenticated call context is required"))
 	}
 	message, rpcErr := invoke(call)
 	if rpcErr != nil {
 		return nil, ToConnectError(rpcErr)
 	}
 	return connect.NewResponse(message), nil
-}
-
-func RequireRead(call CallContext, domain, operation string) *Error {
-	return requireAccess(call, domain, operation, identity.AccessRead)
-}
-
-func RequireWrite(call CallContext, domain, operation string) *Error {
-	return requireAccess(call, domain, operation, identity.AccessWrite)
-}
-
-func requireAccess(call CallContext, domain, operation string, access identity.Access) *Error {
-	decision := identity.AuthorizeAction(call, operation, access)
-	if decision.Allowed {
-		return nil
-	}
-	return &Error{Code: decision.Code, Category: ErrorCategory(decision.Code), Message: decision.Message, Domain: domain, Operation: operation, Reason: decision.Reason}
 }
 
 func MapError(domain, operation, fallback, message string, retryable bool, err error) *Error {

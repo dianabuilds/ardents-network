@@ -56,8 +56,7 @@ func TestEnsureRestoresPrivateKeyFromKeyStore(t *testing.T) {
 	require.NoError(t, err)
 	privateText := base64.StdEncoding.EncodeToString(private)
 
-	store.principal = identityprincipal.DeriveID("p", public)
-	store.device = identityprincipal.DeriveID("d", private.Seed())
+	store.principal = externalTestPrincipalID(t, public)
 	store.publicKey = base64.StdEncoding.EncodeToString(public)
 	require.NoError(t, keys.Save(privateText))
 
@@ -104,8 +103,7 @@ func TestEnsureRejectsMismatchedIdentityKeyPair(t *testing.T) {
 	otherPublic, _, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 	store := &keystoreTestIdentityStore{
-		principal: identityprincipal.DeriveID("p", public),
-		device:    identityprincipal.DeriveID("d", private.Seed()),
+		principal: externalTestPrincipalID(t, public),
 		publicKey: base64.StdEncoding.EncodeToString(otherPublic),
 	}
 	keys := identitykeyring.NewKeyStoreInDir(t.TempDir())
@@ -113,4 +111,11 @@ func TestEnsureRejectsMismatchedIdentityKeyPair(t *testing.T) {
 
 	_, _, err = identity.NewService().Ensure(store, keys)
 	require.ErrorContains(t, err, "does not match")
+}
+
+func externalTestPrincipalID(t *testing.T, public ed25519.PublicKey) string {
+	t.Helper()
+	id, err := identityprincipal.FromEd25519PublicKey(public)
+	require.NoError(t, err)
+	return id.String()
 }

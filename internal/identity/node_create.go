@@ -15,9 +15,12 @@ func (s *NodeService) createIdentity(store StateStore, keys KeyStore) (Summary, 
 		return Summary{}, nil, fmt.Errorf("generate key: %w", err)
 	}
 
+	principalID, err := identityprincipal.FromEd25519PublicKey(public)
+	if err != nil {
+		return Summary{}, nil, fmt.Errorf("derive Principal: %w", err)
+	}
 	sum := Summary{
-		Principal: identityprincipal.DeriveID("p", public),
-		Device:    identityprincipal.DeriveID("d", private.Seed()),
+		Principal: principalID.String(),
 		PublicKey: base64.StdEncoding.EncodeToString(public),
 	}
 

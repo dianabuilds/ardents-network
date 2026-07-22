@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	runtimeconfig "ardents/internal/config"
 
@@ -15,66 +14,39 @@ import (
 
 func TestLoadRuntimeConfigUsesVersionedOperatorDocument(t *testing.T) {
 	dir := t.TempDir()
-	tokenPath := filepath.Join(dir, "token")
-	require.NoError(t, os.WriteFile(tokenPath, []byte("operator-token"), 0o600))
 	configPath := filepath.Join(dir, "ardents.json")
 	raw := `{
       "api_version":"ardents.config/v1",
       "node":{"name":"node-a","data_dir":"` + filepath.ToSlash(filepath.Join(dir, "data")) + `"},
-      "api":{"listen_address":"127.0.0.1:19091","token_file":"` + filepath.ToSlash(tokenPath) + `"},
+      "api":{"socket_path":"` + filepath.ToSlash(filepath.Join(dir, "operator.sock")) + `"},
       "network":{"bootstrap_peers":["/ip4/10.0.0.2/tcp/60000/p2p/peer"]},
       "data":{"max_replica_bytes":4096,"desired_replicas":3,"minimum_replicas":2},
       "policy":{"disable_untrusted_route_use":true}
     }`
 	require.NoError(t, os.WriteFile(configPath, []byte(raw), 0o600))
 	t.Setenv(operatorConfigFileEnv, configPath)
-	t.Setenv(apiTokenEnv, "")
-	t.Setenv(apiTokenFileEnv, "")
 
 	cfg, err := loadRuntimeConfig()
 	require.NoError(t, err)
-	require.Equal(t, "operator-token", cfg.APIToken)
 	require.Equal(t, "node-a", cfg.Node.Name)
 	require.Equal(t, filepath.Join(dir, "data"), cfg.Node.Data.Dir)
 	require.Equal(t, filepath.Join(dir, "data", "waku-store.db"), cfg.Node.Transport.StorePath)
-	require.Equal(t, "127.0.0.1:19091", cfg.ListenAddr)
+	require.Equal(t, filepath.ToSlash(filepath.Join(dir, "operator.sock")), cfg.SocketPath)
 	require.Equal(t, int64(4096), cfg.Node.Data.MaxReplicaRetentionBytes)
 	require.True(t, cfg.Node.Policy.DisableUntrustedRouteUse)
 	require.Equal(t, []string{"/ip4/10.0.0.2/tcp/60000/p2p/peer"}, cfg.Node.Boot.Sources)
 }
 
-func TestRuntimeConfigMapsExplicitOperatorCredential(t *testing.T) {
+func TestRuntimeConfigMapsPrincipalSockets(t *testing.T) {
 	doc := runtimeconfig.Defaults()
-	doc.API.OperatorSubject = "automation-release"
-	doc.API.Capabilities = []string{"node.status", "diagnostics.health_summary"}
-	doc.API.CredentialExpiresAt = "2027-01-02T03:04:05Z"
+	doc.API.SocketPath = "operator.sock"
+	doc.ApplicationInterface = runtimeconfig.ApplicationInterfaceConfig{Enabled: true, SocketPath: "application.sock"}
 
-	cfg, err := runtimeConfigFromDocument(doc, "operator-token")
+	cfg, err := runtimeConfigFromDocument(doc)
 	require.NoError(t, err)
-	require.Equal(t, "automation-release", cfg.APISubject)
-	require.Equal(t, doc.API.Capabilities, cfg.APICapabilities)
-	require.Equal(t, time.Date(2027, 1, 2, 3, 4, 5, 0, time.UTC), cfg.APICredentialEnd)
-}
-
-func TestRuntimeConfigSeparatesApplicationCredential(t *testing.T) {
-	dir := t.TempDir()
-	applicationTokenPath := filepath.Join(dir, "application-token")
-	require.NoError(t, os.WriteFile(applicationTokenPath, []byte("application-token"), 0o600))
-	doc := runtimeconfig.Defaults()
-	doc.ApplicationInterface = runtimeconfig.ApplicationInterfaceConfig{
-		Enabled: true, ListenAddress: "127.0.0.1:18081", TokenFile: applicationTokenPath,
-		Subject: "example", Capabilities: []string{"application.content.get"}, CredentialExpiresAt: "2027-01-01T00:00:00Z",
-	}
-
-	cfg, err := runtimeConfigFromDocument(doc, "operator-token")
-	require.NoError(t, err)
+	require.Equal(t, "operator.sock", cfg.SocketPath)
 	require.True(t, cfg.ApplicationEnabled)
-	require.Equal(t, "application-token", cfg.ApplicationToken)
-	require.Equal(t, "example", cfg.ApplicationSubject)
-	require.Equal(t, []string{"application.content.get"}, cfg.ApplicationCapabilities)
-
-	_, err = runtimeConfigFromDocument(doc, "application-token")
-	require.EqualError(t, err, "application and operator credentials must be distinct")
+	require.Equal(t, "application.sock", cfg.ApplicationSocketPath)
 }
 
 func TestRuntimeConfigMapsInitialWorkloadSecurityAndLifecycleFields(t *testing.T) {
@@ -85,7 +57,7 @@ func TestRuntimeConfigMapsInitialWorkloadSecurityAndLifecycleFields(t *testing.T
 		Capabilities: []string{"network.read"}, PolicyRef: "trusted", RestartPolicy: "never",
 	}}
 
-	cfg, err := runtimeConfigFromDocument(doc, "operator-token")
+	cfg, err := runtimeConfigFromDocument(doc)
 	require.NoError(t, err)
 	require.Len(t, cfg.Node.Workload, 1)
 	require.Equal(t, []string{"network.read"}, cfg.Node.Workload[0].Capabilities)
@@ -107,50 +79,12 @@ func TestLoadRuntimeConfigRejectsInvalidDocumentBeforeCreatingState(t *testing.T
 	require.ErrorIs(t, statErr, os.ErrNotExist)
 }
 
-func TestOperatorDocumentEnvironmentTokenOverridesFileReference(t *testing.T) {
-	dir := t.TempDir()
-	configPath := filepath.Join(dir, "ardents.json")
-	require.NoError(t, os.WriteFile(configPath, []byte(`{
-      "api_version":"ardents.config/v1",
-      "api":{"token_file":"missing"}
-    }`), 0o600))
-	t.Setenv(operatorConfigFileEnv, configPath)
-	t.Setenv(apiTokenEnv, "environment-token")
-	t.Setenv(apiTokenFileEnv, "")
-
-	cfg, err := loadRuntimeConfig()
-	require.NoError(t, err)
-	require.Equal(t, "environment-token", cfg.APIToken)
-	require.Equal(t, "configured", cfg.Node.OperatorConfig.Snapshot().Effective["api"].(map[string]any)["token_file"])
-	require.Equal(t, runtimeconfig.OutcomeUnchanged, cfg.Node.OperatorConfig.Reload(context.Background()).Outcome)
-}
-
-func TestOperatorDocumentDoesNotLeakCredentialPathOnFailure(t *testing.T) {
-	dir := t.TempDir()
-	secretPath := filepath.Join(dir, "private", "operator-token")
-	doc := runtimeconfig.Defaults()
-	doc.API.TokenFile = secretPath
-	configPath := writeRuntimeDocument(t, dir, doc)
-	t.Setenv(operatorConfigFileEnv, configPath)
-	t.Setenv(apiTokenEnv, "")
-	t.Setenv(apiTokenFileEnv, "")
-
-	_, err := loadRuntimeConfig()
-	require.EqualError(t, err, "api credential source is unavailable or invalid")
-	require.NotContains(t, err.Error(), secretPath)
-}
-
 func TestRestartRequiredCandidateActivatesOnNextLoad(t *testing.T) {
 	dir := t.TempDir()
-	tokenPath := filepath.Join(dir, "token")
-	require.NoError(t, os.WriteFile(tokenPath, []byte("operator-token"), 0o600))
 	doc := runtimeconfig.Defaults()
-	doc.API.TokenFile = tokenPath
 	doc.Node.DataDir = filepath.Join(dir, "data")
 	configPath := writeRuntimeDocument(t, dir, doc)
 	t.Setenv(operatorConfigFileEnv, configPath)
-	t.Setenv(apiTokenEnv, "")
-	t.Setenv(apiTokenFileEnv, "")
 
 	first, err := loadRuntimeConfig()
 	require.NoError(t, err)
@@ -167,15 +101,10 @@ func TestRestartRequiredCandidateActivatesOnNextLoad(t *testing.T) {
 
 func TestReloadRejectsUnavailableProtectedPrivacyBeforeCandidateAcceptance(t *testing.T) {
 	dir := t.TempDir()
-	tokenPath := filepath.Join(dir, "token")
-	require.NoError(t, os.WriteFile(tokenPath, []byte("operator-token"), 0o600))
 	doc := runtimeconfig.Defaults()
-	doc.API.TokenFile = tokenPath
 	doc.Node.DataDir = filepath.Join(dir, "data")
 	configPath := writeRuntimeDocument(t, dir, doc)
 	t.Setenv(operatorConfigFileEnv, configPath)
-	t.Setenv(apiTokenEnv, "")
-	t.Setenv(apiTokenFileEnv, "")
 	cfg, err := loadRuntimeConfig()
 	require.NoError(t, err)
 

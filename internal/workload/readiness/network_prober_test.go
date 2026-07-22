@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -18,6 +19,9 @@ import (
 func TestNetworkProberRequiresGenerationHandshakeForTCPAndUnix(t *testing.T) {
 	for _, network := range []string{"tcp", "unix"} {
 		t.Run(network, func(t *testing.T) {
+			if network == "unix" && runtime.GOOS == "windows" {
+				t.Skip("Windows does not provide Unix-domain sockets through this test transport")
+			}
 			address := "127.0.0.1:0"
 			if network == "unix" {
 				address = filepath.Join(t.TempDir(), "ready.sock")

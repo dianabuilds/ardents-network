@@ -6,10 +6,6 @@ import (
 	"time"
 
 	runtimeconfig "ardents/internal/config"
-	localauth "ardents/internal/localapi/auth"
-	ardents "ardents/internal/localapi/protocol"
-
-	"connectrpc.com/connect"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,15 +25,12 @@ func TestConfigurationSurfaceReturnsRedactedEffectiveSnapshot(t *testing.T) {
 			"api": map[string]any{"token_file": "configured"},
 		}, PendingRestart: []string{"network.listen_port"},
 	}}
-	server := NewHandler(stub, configAuth("config.effective"))
-	req := connect.NewRequest(&ardents.GetEffectiveConfigurationRequest{})
-	req.Header().Set("Authorization", "Bearer token")
-
-	response, err := server.GetEffectiveConfiguration(context.Background(), req)
-	require.NoError(t, err)
-	require.Equal(t, uint64(2), response.Msg.Configuration.ActiveGeneration)
-	require.Equal(t, "configured", response.Msg.Configuration.Effective.Fields["api"].GetStructValue().Fields["token_file"].GetStringValue())
-	require.Equal(t, []string{"network.listen_port"}, response.Msg.Configuration.PendingRestart)
+	server := NewHandler(stub)
+	response, rpcErr := server.effectiveConfiguration()
+	require.Nil(t, rpcErr)
+	require.Equal(t, uint64(2), response.Configuration.ActiveGeneration)
+	require.Equal(t, "configured", response.Configuration.Effective.Fields["api"].GetStructValue().Fields["token_file"].GetStringValue())
+	require.Equal(t, []string{"network.listen_port"}, response.Configuration.PendingRestart)
 }
 
 func TestConfigurationReloadRequiresWriteAndReturnsOutcome(t *testing.T) {
@@ -45,20 +38,9 @@ func TestConfigurationReloadRequiresWriteAndReturnsOutcome(t *testing.T) {
 		snapshot: runtimeconfig.EffectiveSnapshot{APIVersion: runtimeconfig.Version},
 		result:   runtimeconfig.ReloadResult{Outcome: runtimeconfig.OutcomeApplied, ActiveGeneration: 2, CandidateGeneration: 2},
 	}
-	server := NewHandler(stub, configAuth("config.reload"))
-	req := connect.NewRequest(&ardents.ReloadConfigurationRequest{})
-	req.Header().Set("Authorization", "Bearer token")
-
-	response, err := server.ReloadConfiguration(context.Background(), req)
-	require.NoError(t, err)
-	require.Equal(t, "applied", response.Msg.Result.Outcome)
-	require.True(t, response.Msg.Status.Accepted)
-
-	server.auth = configAuth("config.effective")
-	_, err = server.ReloadConfiguration(context.Background(), req)
-	require.Error(t, err)
-}
-
-func configAuth(capability string) localauth.Config {
-	return localauth.Config{Token: "token", SubjectID: "operator", Capabilities: []string{capability}}
+	server := NewHandler(stub)
+	response, rpcErr := server.reloadConfiguration(context.Background())
+	require.Nil(t, rpcErr)
+	require.Equal(t, "applied", response.Result.Outcome)
+	require.True(t, response.Status.Accepted)
 }
