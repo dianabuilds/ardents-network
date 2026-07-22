@@ -91,7 +91,7 @@ func (s applicationContentStore) FetchBlob(ctx context.Context, call application
 }
 
 func applicationContentOwner(call applicationcall.Call) (principal.ID, error) {
-	if !call.IsPrincipal() || call.Actor() != call.Effective() {
+	if !call.IsPrincipal() {
 		return principal.ID{}, contentdomain.ErrBlobNotFound
 	}
 	owner, err := principal.Parse(call.Effective())

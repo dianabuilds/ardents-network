@@ -141,10 +141,14 @@ func newRealApplicationFixture(t *testing.T, actions []identityaccess.Action) *r
 }
 
 func enrollDelegator(t *testing.T, fixture *realApplicationFixture) (string, ed25519.PrivateKey, *identityprotocol.KeyCredential) {
+	return enrollDelegatorWithMarkers(t, fixture, 0x81, 0x82, 0x83, 0x84)
+}
+
+func enrollDelegatorWithMarkers(t *testing.T, fixture *realApplicationFixture, rootMarker, deviceMarker, peerMarker, sourceMarker byte) (string, ed25519.PrivateKey, *identityprotocol.KeyCredential) {
 	t.Helper()
 	ctx := context.Background()
-	root := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x81}, ed25519.SeedSize))
-	device := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x82}, ed25519.SeedSize))
+	root := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{rootMarker}, ed25519.SeedSize))
+	device := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{deviceMarker}, ed25519.SeedSize))
 	principal, credentialArtifact := makeCredential(t, fixture.clock.Now(), root, device)
 	resource, err := identityaccess.NewResourceRef(fixture.nodeID, "", "principal", principal)
 	require.NoError(t, err)
@@ -159,9 +163,9 @@ func enrollDelegator(t *testing.T, fixture *realApplicationFixture) (string, ed2
 	require.NoError(t, err)
 
 	binding := fixture.binding
-	copy(binding.PeerBinding[:], bytes.Repeat([]byte{0x83}, len(binding.PeerBinding)))
+	copy(binding.PeerBinding[:], bytes.Repeat([]byte{peerMarker}, len(binding.PeerBinding)))
 	var source identityaccess.SourceKey
-	copy(source[:], bytes.Repeat([]byte{0x84}, len(source)))
+	copy(source[:], bytes.Repeat([]byte{sourceMarker}, len(source)))
 	challenge, err := fixture.service.Begin(ctx, identityaccess.BeginRequest{
 		Principal: principal, Purpose: identityprotocol.ChallengePurpose_CHALLENGE_PURPOSE_ENROLLMENT_PROOF,
 		Binding: binding, Source: source,
@@ -271,6 +275,45 @@ type recordingStore struct {
 	payloads map[string][]byte
 }
 
+type ownerBoundStore struct {
+	service *contentdomain.Service
+}
+
+func newOwnerBoundStore(t *testing.T) *ownerBoundStore {
+	t.Helper()
+	service := contentdomain.NewInDir(t.TempDir())
+	require.NoError(t, service.Load())
+	return &ownerBoundStore{service: service}
+}
+
+func (s *ownerBoundStore) PublishBlob(call applicationcall.Call, command contentdomain.PublishBlobCommand) (contentdomain.Blob, error) {
+	owner, err := identityprincipal.Parse(call.Effective())
+	if err != nil {
+		return contentdomain.Blob{}, contentdomain.ErrBlobNotFound
+	}
+	return s.service.StoreBlobForOwner(owner, command.Blob, command.Payload)
+}
+
+func (s *ownerBoundStore) GetBlob(call applicationcall.Call, id string) (contentdomain.Blob, bool) {
+	owner, err := identityprincipal.Parse(call.Effective())
+	if err != nil {
+		return contentdomain.Blob{}, false
+	}
+	return s.service.GetBlobForOwner(owner, id)
+}
+
+func (s *ownerBoundStore) GetBlobPayload(call applicationcall.Call, id string) ([]byte, error) {
+	owner, err := identityprincipal.Parse(call.Effective())
+	if err != nil {
+		return nil, contentdomain.ErrBlobNotFound
+	}
+	return s.service.GetBlobPayloadForOwner(owner, id)
+}
+
+func (*ownerBoundStore) FetchBlob(context.Context, applicationcall.Call, string) (contentdomain.Blob, error) {
+	return contentdomain.Blob{}, contentdomain.ErrBlobNotFound
+}
+
 func newRecordingStore() *recordingStore {
 	return &recordingStore{blobs: map[string]contentdomain.Blob{}, payloads: map[string][]byte{}}
 }
@@ -346,6 +389,68 @@ func TestDelegatedContentAdmissionUsesRealAccessServiceAndClearsPresentation(t *
 		require.Equal(t, alice, admitted.Effective())
 		require.Equal(t, alice, admitted.ResourceOwner())
 	}
+}
+
+func TestDelegatedContentOwnershipUsesEffectiveAndDoesNotEnumerateSiblingBinding(t *testing.T) {
+	fixture := newRealApplicationFixture(t, []identityaccess.Action{"application.content.get", "application.content.put"})
+	alice, aliceDevice, aliceCredential := enrollDelegator(t, fixture)
+	bob, bobDevice, bobCredential := enrollDelegatorWithMarkers(t, fixture, 0x91, 0x92, 0x93, 0x94)
+	_, aliceDelegation := signedDelegation(t, fixture, alice, aliceDevice, aliceCredential, fixture.nodeID, fixture.appPrincipal)
+	_, bobDelegation := signedDelegation(t, fixture, bob, bobDevice, bobCredential, fixture.nodeID, fixture.appPrincipal)
+	store := newOwnerBoundStore(t)
+	client := principalContentClient(t, fixture, fixture.service, store)
+	authorization := "ArdentsApplicationSession " + base64.RawURLEncoding.EncodeToString(fixture.secret[:])
+
+	put := connect.NewRequest(&applicationv1.PutContentRequest{Payload: []byte("same delegated bytes"), MediaType: "text/plain"})
+	put.Header().Set("Authorization", authorization)
+	put.Header().Set(applicationDelegationHeader, aliceDelegation)
+	aliceResult, err := client.Put(context.Background(), put)
+	require.NoError(t, err)
+	reference := aliceResult.Msg.GetReference()
+
+	bobBeforePut := connect.NewRequest(&applicationv1.GetContentRequest{Reference: reference})
+	bobBeforePut.Header().Set("Authorization", authorization)
+	bobBeforePut.Header().Set(applicationDelegationHeader, bobDelegation)
+	_, err = client.Get(context.Background(), bobBeforePut)
+	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
+	bobMissingBindingErr := err
+
+	aliceUnknown := connect.NewRequest(&applicationv1.GetContentRequest{
+		Reference: &applicationv1.ContentReference{Kind: "blob", Id: "unknown-content-reference"},
+	})
+	aliceUnknown.Header().Set("Authorization", authorization)
+	aliceUnknown.Header().Set(applicationDelegationHeader, aliceDelegation)
+	_, err = client.Get(context.Background(), aliceUnknown)
+	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
+	require.Equal(t, bobMissingBindingErr.Error(), err.Error(), "missing binding must not reveal payload existence")
+
+	directAppGet := connect.NewRequest(&applicationv1.GetContentRequest{Reference: reference})
+	directAppGet.Header().Set("Authorization", authorization)
+	_, err = client.Get(context.Background(), directAppGet)
+	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
+
+	bobPut := connect.NewRequest(&applicationv1.PutContentRequest{Payload: []byte("same delegated bytes"), MediaType: "text/plain"})
+	bobPut.Header().Set("Authorization", authorization)
+	bobPut.Header().Set(applicationDelegationHeader, bobDelegation)
+	bobResult, err := client.Put(context.Background(), bobPut)
+	require.NoError(t, err)
+	require.Equal(t, reference.GetId(), bobResult.Msg.GetReference().GetId())
+	require.Len(t, store.service.ListBlobs(), 1)
+
+	for ownerValue, delegation := range map[string]string{alice: aliceDelegation, bob: bobDelegation} {
+		get := connect.NewRequest(&applicationv1.GetContentRequest{Reference: reference})
+		get.Header().Set("Authorization", authorization)
+		get.Header().Set(applicationDelegationHeader, delegation)
+		response, getErr := client.Get(context.Background(), get)
+		require.NoError(t, getErr, ownerValue)
+		require.Equal(t, []byte("same delegated bytes"), response.Msg.GetPayload())
+		owner, parseErr := identityprincipal.Parse(ownerValue)
+		require.NoError(t, parseErr)
+		require.True(t, store.service.HasBlobOwner(owner, reference.GetId()))
+	}
+	appOwner, err := identityprincipal.Parse(fixture.appPrincipal)
+	require.NoError(t, err)
+	require.False(t, store.service.HasBlobOwner(appOwner, reference.GetId()))
 }
 
 func TestDelegationPresentationBoundsMultiplicityAndCanonicalEncoding(t *testing.T) {

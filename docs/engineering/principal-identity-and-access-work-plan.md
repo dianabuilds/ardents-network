@@ -1,7 +1,8 @@
 # Principal Identity And Access Work Plan
 
 Status: active implementation plan. Completion is recorded per leaf; `PIA-012`,
-`PIA-013`, and `PIA-014A` are complete against the acceptance evidence below.
+`PIA-013`, `PIA-014A`, and `PIA-014B` are complete against the acceptance
+evidence below.
 
 Design source: `docs/product/principal-identity-and-access.md`
 
@@ -133,7 +134,7 @@ boundary; do not deliver an entire broad workstream as one change.
 | `PIA-012` | 011B | **Complete:** Application interceptor/context propagation; header auth removed from content handler; catalogue and fail-closed tests present |
 | `PIA-013` | 010B, 012 | **Complete:** full one-hop Delegation validation, revocation/import, CLI consent, SDK attachment, audit provenance |
 | `PIA-014A` | 012 | **Complete:** atomic Blob payload/metadata/typed owner binding for an Application acting as itself |
-| `PIA-014B` | 013, 014A | Alice-via-Application ownership/intersection and non-enumeration behavior |
+| `PIA-014B` | 013, 014A | **Complete:** Alice-via-Application ownership/intersection and non-enumeration behavior |
 | `PIA-014C` | 014B | Object/Manifest owner binding plus remote-fetch/claim boundary and owner-aware GC/reconciliation |
 | `PIA-015A` | 002 | Remove fake same-seed Device; expose Device only for an actual Credential |
 | `PIA-015B` | 015A | Final versioned kind-specific discovery records and strict retained-state validation |
@@ -810,7 +811,7 @@ integration, race, restart, concurrency, cross-Node/interface, malformed,
 expiry, sibling-action/resource, redaction, generation, and repository compile
 gates pass for this leaf.
 
-### PIA-014 — Make Content Ownership Principal-Bound (PIA-014A Complete)
+### PIA-014 — Make Content Ownership Principal-Bound (PIA-014A/B Complete)
 
 **Depends on:** split by leaf: PIA-014A depends on PIA-012; PIA-014B depends on
 PIA-013 and PIA-014A; PIA-014C depends on PIA-014B.
@@ -880,6 +881,18 @@ keeps remote fetch disabled until PIA-014C. Tests cover restart, injected time,
 empty payload identity, same-CID deduplication, sibling-owner denial, malformed/
 unknown/duplicate persisted bindings, transaction rollback for new and existing
 payloads, orphan recovery, concurrency, Application wire behavior, and race.
+
+**PIA-014B completion evidence:** the production Application content adapter
+accepts a successfully admitted delegated call and derives the binding owner
+only by parsing sealed `AuthorizedCall.Effective`; Actor remains the Application
+for audit/admission and no request field can substitute another owner. A
+real-service integration test enrolls Alice and Bob, issues independent exact
+one-hop Delegations to one Application, and runs delegated Put/Get through the
+Application interceptor and owner-aware content service. It proves that Bob and
+the Application cannot read Alice's binding, that unknown content and a
+sibling-owner binding have the same public NotFound result, and that after Bob's
+own Put the identical payload remains one Blob with two independent bindings.
+Unit and race suites cover the full boundary.
 
 ### PIA-015 — Normalize Device, Discovery Identity, And Purpose-Scoped Trust
 
