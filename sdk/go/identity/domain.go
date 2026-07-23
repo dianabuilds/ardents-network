@@ -31,10 +31,15 @@ const (
 	ScopeExact          ScopeKind = "exact"
 )
 
-type ResourceRef struct{ Node, Owner, Kind, CanonicalID string }
+type ResourceRef struct {
+	Node        string
+	Owner       ResourceOwner
+	Kind        string
+	CanonicalID string
+}
 type ResourceScope struct {
 	Kind     ScopeKind
-	Owner    string
+	Owner    ResourceOwner
 	Resource ResourceRef
 }
 type CredentialPurpose string
@@ -101,14 +106,22 @@ func (a *Artifact) AccessGrant() *AccessGrant {
 	if !ok {
 		return nil
 	}
-	return &AccessGrant{Issuer: p.Issuer, Subject: p.Subject, Audience: audienceFromProto(p.Audience), Actions: append([]string(nil), p.Actions...), Scope: scopeFromProto(p.Scope), NotBefore: p.NotBefore.AsTime(), NotAfter: p.NotAfter.AsTime()}
+	scope, err := scopeFromProto(p.Scope)
+	if err != nil {
+		return nil
+	}
+	return &AccessGrant{Issuer: p.Issuer, Subject: p.Subject, Audience: audienceFromProto(p.Audience), Actions: append([]string(nil), p.Actions...), Scope: scope, NotBefore: p.NotBefore.AsTime(), NotAfter: p.NotAfter.AsTime()}
 }
 func (a *Artifact) Delegation() *Delegation {
 	p, ok := a.payload.(*identityv1.DelegationPayload)
 	if !ok {
 		return nil
 	}
-	return &Delegation{Delegator: p.Delegator, Delegatee: p.Delegatee, Audience: audienceFromProto(p.Audience), Actions: append([]string(nil), p.Actions...), Scope: scopeFromProto(p.Scope), NotBefore: p.NotBefore.AsTime(), NotAfter: p.NotAfter.AsTime(), CredentialID: p.GetCredential().GetId()}
+	scope, err := scopeFromProto(p.Scope)
+	if err != nil {
+		return nil
+	}
+	return &Delegation{Delegator: p.Delegator, Delegatee: p.Delegatee, Audience: audienceFromProto(p.Audience), Actions: append([]string(nil), p.Actions...), Scope: scope, NotBefore: p.NotBefore.AsTime(), NotAfter: p.NotAfter.AsTime(), CredentialID: p.GetCredential().GetId()}
 }
 func (a *Artifact) DeviceRevocation() *DeviceRevocation {
 	p, ok := a.payload.(*identityv1.DeviceRevocationPayload)
@@ -177,29 +190,37 @@ func scopeToProto(s ResourceScope) *identityv1.ResourceScope {
 	case ScopeNode:
 		return &identityv1.ResourceScope{Scope: &identityv1.ResourceScope_Node{Node: &identityv1.NodeScope{}}}
 	case ScopePrincipalOwned:
-		return &identityv1.ResourceScope{Scope: &identityv1.ResourceScope_PrincipalOwned{PrincipalOwned: &identityv1.PrincipalOwnedScope{Owner: s.Owner}}}
+		return &identityv1.ResourceScope{Scope: &identityv1.ResourceScope_PrincipalOwned{PrincipalOwned: &identityv1.PrincipalOwnedScope{Owner: s.Owner.String()}}}
 	case ScopeExact:
-		return &identityv1.ResourceScope{Scope: &identityv1.ResourceScope_Exact{Exact: &identityv1.ExactScope{Resource: &identityv1.ResourceRef{Node: s.Resource.Node, Owner: s.Resource.Owner, Kind: s.Resource.Kind, CanonicalId: s.Resource.CanonicalID}}}}
+		return &identityv1.ResourceScope{Scope: &identityv1.ResourceScope_Exact{Exact: &identityv1.ExactScope{Resource: &identityv1.ResourceRef{Node: s.Resource.Node, Owner: s.Resource.Owner.String(), Kind: s.Resource.Kind, CanonicalId: s.Resource.CanonicalID}}}}
 	}
 	return &identityv1.ResourceScope{}
 }
-func scopeFromProto(s *identityv1.ResourceScope) ResourceScope {
+func scopeFromProto(s *identityv1.ResourceScope) (ResourceScope, error) {
 	if s == nil {
-		return ResourceScope{}
+		return ResourceScope{}, ErrInvalidResourceOwner
 	}
 	switch x := s.Scope.(type) {
 	case *identityv1.ResourceScope_Node:
-		return ResourceScope{Kind: ScopeNode}
+		return ResourceScope{Kind: ScopeNode}, nil
 	case *identityv1.ResourceScope_PrincipalOwned:
-		return ResourceScope{Kind: ScopePrincipalOwned, Owner: x.PrincipalOwned.Owner}
+		owner, err := ParseResourceOwner(x.PrincipalOwned.Owner)
+		if err != nil || owner.IsNone() {
+			return ResourceScope{}, ErrInvalidResourceOwner
+		}
+		return ResourceScope{Kind: ScopePrincipalOwned, Owner: owner}, nil
 	case *identityv1.ResourceScope_Exact:
 		r := x.Exact.GetResource()
 		if r == nil {
-			return ResourceScope{Kind: ScopeExact}
+			return ResourceScope{}, ErrInvalidResourceOwner
 		}
-		return ResourceScope{Kind: ScopeExact, Resource: ResourceRef{Node: r.Node, Owner: r.Owner, Kind: r.Kind, CanonicalID: r.CanonicalId}}
+		owner, err := ParseResourceOwner(r.Owner)
+		if err != nil {
+			return ResourceScope{}, ErrInvalidResourceOwner
+		}
+		return ResourceScope{Kind: ScopeExact, Resource: ResourceRef{Node: r.Node, Owner: owner, Kind: r.Kind, CanonicalID: r.CanonicalId}}, nil
 	}
-	return ResourceScope{}
+	return ResourceScope{}, ErrInvalidResourceOwner
 }
 func credentialEnvelope(a *Artifact) (*identityv1.KeyCredential, error) {
 	if a == nil || a.kind != KindKeyCredential {

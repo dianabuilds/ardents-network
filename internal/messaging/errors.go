@@ -50,14 +50,14 @@ func CodeOf(err error) string {
 	return ""
 }
 
-func IsCapabilityFailure(err error) bool {
-	return strings.HasPrefix(CodeOf(err), "privacy.capability.")
+func IsChannelGrantFailure(err error) bool {
+	return strings.HasPrefix(CodeOf(err), "privacy.channel_grant.")
 }
 
 func envelopeError(code, detail string) error {
 	return &Error{Code: code, err: fmt.Errorf("%s", detail)}
 }
 
-func CapabilityUnavailable() error {
-	return envelopeError(CodeCapabilityMissing, "private channel is unavailable")
+func ChannelGrantUnavailable() error {
+	return envelopeError(CodeChannelGrantMissing, "private channel is unavailable")
 }

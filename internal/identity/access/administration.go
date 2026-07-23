@@ -238,16 +238,16 @@ func scopeToProtocol(scope ResourceScope, audience Audience) (*identityprotocol.
 		}
 		return &identityprotocol.ResourceScope{Scope: &identityprotocol.ResourceScope_Node{Node: &identityprotocol.NodeScope{}}}, nil
 	case ScopePrincipalOwned:
-		if _, err := identityprincipal.Parse(scope.Owner); err != nil {
+		if scope.Owner.IsNone() {
 			return nil, errInvalid
 		}
-		return &identityprotocol.ResourceScope{Scope: &identityprotocol.ResourceScope_PrincipalOwned{PrincipalOwned: &identityprotocol.PrincipalOwnedScope{Owner: scope.Owner}}}, nil
+		return &identityprotocol.ResourceScope{Scope: &identityprotocol.ResourceScope_PrincipalOwned{PrincipalOwned: &identityprotocol.PrincipalOwnedScope{Owner: scope.Owner.String()}}}, nil
 	case ScopeExact:
 		if !scope.Matches(scope.Exact, audience) {
 			return nil, errInvalid
 		}
 		r := scope.Exact
-		return &identityprotocol.ResourceScope{Scope: &identityprotocol.ResourceScope_Exact{Exact: &identityprotocol.ExactScope{Resource: &identityprotocol.ResourceRef{Node: r.Node, Owner: r.Owner, Kind: string(r.Kind), CanonicalId: r.ID}}}}, nil
+		return &identityprotocol.ResourceScope{Scope: &identityprotocol.ResourceScope_Exact{Exact: &identityprotocol.ExactScope{Resource: &identityprotocol.ResourceRef{Node: r.Node, Owner: r.Owner.String(), Kind: string(r.Kind), CanonicalId: r.ID}}}}, nil
 	default:
 		return nil, errInvalid
 	}

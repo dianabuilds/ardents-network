@@ -8,7 +8,7 @@ x-node: &node
     - |
       install -d -m 0700 /run/ardents
       install -m 0600 /run/secrets/ardents-api-token /run/ardents/api-token
-      install -m 0600 /var/lib/ardents-secrets/capability-store.key /run/ardents/capability-store.key
+      install -m 0600 /var/lib/ardents-secrets/channel-grant-store.key /run/ardents/channel-grant-store.key
       install -m 0600 /var/lib/ardents-secrets/replay.key /run/ardents/replay.key
       install -m 0600 /var/lib/ardents-secrets/operator.json /run/ardents/operator.json
       exec /usr/local/bin/ardentsd

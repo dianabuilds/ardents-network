@@ -40,9 +40,9 @@ const (
 	// NodeServiceGetNodeStatusProcedure is the fully-qualified name of the NodeService's GetNodeStatus
 	// RPC.
 	NodeServiceGetNodeStatusProcedure = "/ardents.v1.NodeService/GetNodeStatus"
-	// NodeServiceGetNodeCapabilitiesProcedure is the fully-qualified name of the NodeService's
-	// GetNodeCapabilities RPC.
-	NodeServiceGetNodeCapabilitiesProcedure = "/ardents.v1.NodeService/GetNodeCapabilities"
+	// NodeServiceGetNodeFeaturesProcedure is the fully-qualified name of the NodeService's
+	// GetNodeFeatures RPC.
+	NodeServiceGetNodeFeaturesProcedure = "/ardents.v1.NodeService/GetNodeFeatures"
 	// NodeServiceGetNodeRuntimeProcedure is the fully-qualified name of the NodeService's
 	// GetNodeRuntime RPC.
 	NodeServiceGetNodeRuntimeProcedure = "/ardents.v1.NodeService/GetNodeRuntime"
@@ -56,7 +56,7 @@ type NodeServiceClient interface {
 	StartNode(context.Context, *connect.Request[protocol.StartNodeRequest]) (*connect.Response[protocol.CommandAckResponse], error)
 	StopNode(context.Context, *connect.Request[protocol.StopNodeRequest]) (*connect.Response[protocol.CommandAckResponse], error)
 	GetNodeStatus(context.Context, *connect.Request[protocol.GetNodeStatusRequest]) (*connect.Response[protocol.NodeStatusResponse], error)
-	GetNodeCapabilities(context.Context, *connect.Request[protocol.GetNodeCapabilitiesRequest]) (*connect.Response[protocol.CapabilitiesResponse], error)
+	GetNodeFeatures(context.Context, *connect.Request[protocol.GetNodeFeaturesRequest]) (*connect.Response[protocol.NodeFeaturesResponse], error)
 	GetNodeRuntime(context.Context, *connect.Request[protocol.GetNodeRuntimeRequest]) (*connect.Response[protocol.NodeRuntimeResponse], error)
 	StreamNodeEvents(context.Context, *connect.Request[protocol.StreamNodeEventsRequest]) (*connect.ServerStreamForClient[protocol.EventEnvelope], error)
 }
@@ -90,10 +90,10 @@ func NewNodeServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(nodeServiceMethods.ByName("GetNodeStatus")),
 			connect.WithClientOptions(opts...),
 		),
-		getNodeCapabilities: connect.NewClient[protocol.GetNodeCapabilitiesRequest, protocol.CapabilitiesResponse](
+		getNodeFeatures: connect.NewClient[protocol.GetNodeFeaturesRequest, protocol.NodeFeaturesResponse](
 			httpClient,
-			baseURL+NodeServiceGetNodeCapabilitiesProcedure,
-			connect.WithSchema(nodeServiceMethods.ByName("GetNodeCapabilities")),
+			baseURL+NodeServiceGetNodeFeaturesProcedure,
+			connect.WithSchema(nodeServiceMethods.ByName("GetNodeFeatures")),
 			connect.WithClientOptions(opts...),
 		),
 		getNodeRuntime: connect.NewClient[protocol.GetNodeRuntimeRequest, protocol.NodeRuntimeResponse](
@@ -113,12 +113,12 @@ func NewNodeServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 
 // nodeServiceClient implements NodeServiceClient.
 type nodeServiceClient struct {
-	startNode           *connect.Client[protocol.StartNodeRequest, protocol.CommandAckResponse]
-	stopNode            *connect.Client[protocol.StopNodeRequest, protocol.CommandAckResponse]
-	getNodeStatus       *connect.Client[protocol.GetNodeStatusRequest, protocol.NodeStatusResponse]
-	getNodeCapabilities *connect.Client[protocol.GetNodeCapabilitiesRequest, protocol.CapabilitiesResponse]
-	getNodeRuntime      *connect.Client[protocol.GetNodeRuntimeRequest, protocol.NodeRuntimeResponse]
-	streamNodeEvents    *connect.Client[protocol.StreamNodeEventsRequest, protocol.EventEnvelope]
+	startNode        *connect.Client[protocol.StartNodeRequest, protocol.CommandAckResponse]
+	stopNode         *connect.Client[protocol.StopNodeRequest, protocol.CommandAckResponse]
+	getNodeStatus    *connect.Client[protocol.GetNodeStatusRequest, protocol.NodeStatusResponse]
+	getNodeFeatures  *connect.Client[protocol.GetNodeFeaturesRequest, protocol.NodeFeaturesResponse]
+	getNodeRuntime   *connect.Client[protocol.GetNodeRuntimeRequest, protocol.NodeRuntimeResponse]
+	streamNodeEvents *connect.Client[protocol.StreamNodeEventsRequest, protocol.EventEnvelope]
 }
 
 // StartNode calls ardents.v1.NodeService.StartNode.
@@ -136,9 +136,9 @@ func (c *nodeServiceClient) GetNodeStatus(ctx context.Context, req *connect.Requ
 	return c.getNodeStatus.CallUnary(ctx, req)
 }
 
-// GetNodeCapabilities calls ardents.v1.NodeService.GetNodeCapabilities.
-func (c *nodeServiceClient) GetNodeCapabilities(ctx context.Context, req *connect.Request[protocol.GetNodeCapabilitiesRequest]) (*connect.Response[protocol.CapabilitiesResponse], error) {
-	return c.getNodeCapabilities.CallUnary(ctx, req)
+// GetNodeFeatures calls ardents.v1.NodeService.GetNodeFeatures.
+func (c *nodeServiceClient) GetNodeFeatures(ctx context.Context, req *connect.Request[protocol.GetNodeFeaturesRequest]) (*connect.Response[protocol.NodeFeaturesResponse], error) {
+	return c.getNodeFeatures.CallUnary(ctx, req)
 }
 
 // GetNodeRuntime calls ardents.v1.NodeService.GetNodeRuntime.
@@ -156,7 +156,7 @@ type NodeServiceHandler interface {
 	StartNode(context.Context, *connect.Request[protocol.StartNodeRequest]) (*connect.Response[protocol.CommandAckResponse], error)
 	StopNode(context.Context, *connect.Request[protocol.StopNodeRequest]) (*connect.Response[protocol.CommandAckResponse], error)
 	GetNodeStatus(context.Context, *connect.Request[protocol.GetNodeStatusRequest]) (*connect.Response[protocol.NodeStatusResponse], error)
-	GetNodeCapabilities(context.Context, *connect.Request[protocol.GetNodeCapabilitiesRequest]) (*connect.Response[protocol.CapabilitiesResponse], error)
+	GetNodeFeatures(context.Context, *connect.Request[protocol.GetNodeFeaturesRequest]) (*connect.Response[protocol.NodeFeaturesResponse], error)
 	GetNodeRuntime(context.Context, *connect.Request[protocol.GetNodeRuntimeRequest]) (*connect.Response[protocol.NodeRuntimeResponse], error)
 	StreamNodeEvents(context.Context, *connect.Request[protocol.StreamNodeEventsRequest], *connect.ServerStream[protocol.EventEnvelope]) error
 }
@@ -186,10 +186,10 @@ func NewNodeServiceHandler(svc NodeServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(nodeServiceMethods.ByName("GetNodeStatus")),
 		connect.WithHandlerOptions(opts...),
 	)
-	nodeServiceGetNodeCapabilitiesHandler := connect.NewUnaryHandler(
-		NodeServiceGetNodeCapabilitiesProcedure,
-		svc.GetNodeCapabilities,
-		connect.WithSchema(nodeServiceMethods.ByName("GetNodeCapabilities")),
+	nodeServiceGetNodeFeaturesHandler := connect.NewUnaryHandler(
+		NodeServiceGetNodeFeaturesProcedure,
+		svc.GetNodeFeatures,
+		connect.WithSchema(nodeServiceMethods.ByName("GetNodeFeatures")),
 		connect.WithHandlerOptions(opts...),
 	)
 	nodeServiceGetNodeRuntimeHandler := connect.NewUnaryHandler(
@@ -212,8 +212,8 @@ func NewNodeServiceHandler(svc NodeServiceHandler, opts ...connect.HandlerOption
 			nodeServiceStopNodeHandler.ServeHTTP(w, r)
 		case NodeServiceGetNodeStatusProcedure:
 			nodeServiceGetNodeStatusHandler.ServeHTTP(w, r)
-		case NodeServiceGetNodeCapabilitiesProcedure:
-			nodeServiceGetNodeCapabilitiesHandler.ServeHTTP(w, r)
+		case NodeServiceGetNodeFeaturesProcedure:
+			nodeServiceGetNodeFeaturesHandler.ServeHTTP(w, r)
 		case NodeServiceGetNodeRuntimeProcedure:
 			nodeServiceGetNodeRuntimeHandler.ServeHTTP(w, r)
 		case NodeServiceStreamNodeEventsProcedure:
@@ -239,8 +239,8 @@ func (UnimplementedNodeServiceHandler) GetNodeStatus(context.Context, *connect.R
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.NodeService.GetNodeStatus is not implemented"))
 }
 
-func (UnimplementedNodeServiceHandler) GetNodeCapabilities(context.Context, *connect.Request[protocol.GetNodeCapabilitiesRequest]) (*connect.Response[protocol.CapabilitiesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.NodeService.GetNodeCapabilities is not implemented"))
+func (UnimplementedNodeServiceHandler) GetNodeFeatures(context.Context, *connect.Request[protocol.GetNodeFeaturesRequest]) (*connect.Response[protocol.NodeFeaturesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.NodeService.GetNodeFeatures is not implemented"))
 }
 
 func (UnimplementedNodeServiceHandler) GetNodeRuntime(context.Context, *connect.Request[protocol.GetNodeRuntimeRequest]) (*connect.Response[protocol.NodeRuntimeResponse], error) {

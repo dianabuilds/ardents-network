@@ -3,13 +3,13 @@ package capability
 import "fmt"
 
 const (
-	CodeMissing         = "privacy.capability.missing"
-	CodeNotYetValid     = "privacy.capability.not_yet_valid"
-	CodeExpired         = "privacy.capability.expired"
-	CodeRevoked         = "privacy.capability.revoked"
-	CodeScopeDenied     = "privacy.capability.scope_denied"
-	CodeIssuerUntrusted = "privacy.capability.issuer_untrusted"
-	CodeInvalid         = "privacy.capability.invalid"
+	CodeMissing         = "privacy.channel_grant.missing"
+	CodeNotYetValid     = "privacy.channel_grant.not_yet_valid"
+	CodeExpired         = "privacy.channel_grant.expired"
+	CodeRevoked         = "privacy.channel_grant.revoked"
+	CodeScopeDenied     = "privacy.channel_grant.scope_denied"
+	CodeIssuerUntrusted = "privacy.channel_grant.issuer_untrusted"
+	CodeInvalid         = "privacy.channel_grant.invalid"
 )
 
 type Error struct {

@@ -12,7 +12,7 @@ import (
 
 func TestOperatorPrincipalAccessFixtureAdmitsSession(t *testing.T) {
 	service, node, session, peer, _ := newOperatorPrincipalAccess(t)
-	resource, err := identityaccess.NewResourceRef(node, "", "node", "")
+	resource, err := identityaccess.NewResourceRef(node, identityaccess.ResourceOwner{}, "node", "")
 	require.NoError(t, err)
 	call, err := service.Admit(context.Background(), identityaccess.Attempt{
 		SessionSecret: session,

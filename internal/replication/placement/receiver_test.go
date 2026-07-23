@@ -48,7 +48,7 @@ func TestReceiverReserveCommitAndDuplicateAreIdempotent(t *testing.T) {
 	require.Equal(t, 1, stored)
 }
 
-func TestReceiverRejectsQuotaAndUntrustedPeer(t *testing.T) {
+func TestReceiverRejectsQuotaUntrustedPeerAndMissingPermission(t *testing.T) {
 	now := time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC)
 	receiver := placement.NewReceiver(placement.ReceiverConfig{
 		NodePrincipal: testPrincipal("target"), MaxBytes: 4, Now: func() time.Time { return now },
@@ -68,6 +68,13 @@ func TestReceiverRejectsQuotaAndUntrustedPeer(t *testing.T) {
 	denied, err = receiver.Reserve(offer, auth)
 	require.NoError(t, err)
 	require.Equal(t, placement.ReasonUntrusted, denied.Reason)
+
+	permissionOffer, _, _ := validOffer(t, now, "op-permission", "nonce-permission", []byte("permission"))
+	auth = validAuth("source")
+	auth.PermissionValid = false
+	denied, err = receiver.Reserve(permissionOffer, auth)
+	require.NoError(t, err)
+	require.Equal(t, placement.ReasonPermission, denied.Reason)
 }
 
 func TestReceiverRejectsWrongCIDPartialCommitExpiryAndReplay(t *testing.T) {
@@ -218,16 +225,33 @@ func TestReceiverSnapshotRedactsTokenAndRestoreRejectsPartialReservations(t *tes
 			require.Empty(t, restored.Snapshot().Reservations)
 		})
 	}
+
+	rejectedReceiver := placement.NewReceiver(placement.ReceiverConfig{
+		NodePrincipal: testPrincipal("target"), MaxBytes: 4096, Now: func() time.Time { return now },
+	})
+	rejectedOffer, _, _ := validOffer(t, now, "op-old-reason", "nonce-old-reason", []byte("denied"))
+	permissionDenied := validAuth("source")
+	permissionDenied.PermissionValid = false
+	_, err = rejectedReceiver.Reserve(rejectedOffer, permissionDenied)
+	require.NoError(t, err)
+	oldReasonState := rejectedReceiver.Snapshot()
+	oldReason := oldReasonState.Reservations[rejectedOffer.OperationID]
+	oldReason.Result.Reason = "capability_denied"
+	oldReasonState.Reservations[rejectedOffer.OperationID] = oldReason
+
+	restored := placement.NewReceiver(placement.ReceiverConfig{Now: func() time.Time { return now }})
+	require.ErrorContains(t, restored.Restore(oldReasonState), "rejected reservation is invalid")
+	require.Empty(t, restored.Snapshot().Reservations)
 }
 
 func TestSelectTargetsUsesOnlyFreshEligibleCapacityAndDiversity(t *testing.T) {
 	now := time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC)
 	candidates := []placement.Candidate{
-		{NodePrincipal: testPrincipal("owner"), Trusted: true, CapabilityValid: true, PolicyAllowed: true, Usable: true, CapacityBytes: 128 * 1024, ObservedAt: now},
-		{NodePrincipal: testPrincipal("good-b"), FailureDomain: "b", Trusted: true, CapabilityValid: true, PolicyAllowed: true, Usable: true, CapacityBytes: 128 * 1024, ObservedAt: now},
-		{NodePrincipal: testPrincipal("good-a"), FailureDomain: "a", Trusted: true, CapabilityValid: true, PolicyAllowed: true, Usable: true, CapacityBytes: 128 * 1024, ObservedAt: now},
-		{NodePrincipal: testPrincipal("stale"), Trusted: true, CapabilityValid: true, PolicyAllowed: true, Usable: true, CapacityBytes: 128 * 1024, ObservedAt: now.Add(-16 * time.Minute)},
-		{NodePrincipal: testPrincipal("untrusted"), CapabilityValid: true, PolicyAllowed: true, Usable: true, CapacityBytes: 128 * 1024, ObservedAt: now},
+		{NodePrincipal: testPrincipal("owner"), Trusted: true, PermissionValid: true, PolicyAllowed: true, Usable: true, CapacityBytes: 128 * 1024, ObservedAt: now},
+		{NodePrincipal: testPrincipal("good-b"), FailureDomain: "b", Trusted: true, PermissionValid: true, PolicyAllowed: true, Usable: true, CapacityBytes: 128 * 1024, ObservedAt: now},
+		{NodePrincipal: testPrincipal("good-a"), FailureDomain: "a", Trusted: true, PermissionValid: true, PolicyAllowed: true, Usable: true, CapacityBytes: 128 * 1024, ObservedAt: now},
+		{NodePrincipal: testPrincipal("stale"), Trusted: true, PermissionValid: true, PolicyAllowed: true, Usable: true, CapacityBytes: 128 * 1024, ObservedAt: now.Add(-16 * time.Minute)},
+		{NodePrincipal: testPrincipal("untrusted"), PermissionValid: true, PolicyAllowed: true, Usable: true, CapacityBytes: 128 * 1024, ObservedAt: now},
 		{NodePrincipal: testPrincipal("unavailable"), Trusted: true, PolicyAllowed: true, Usable: true, DenialReason: placement.ReasonObservation},
 	}
 
@@ -254,7 +278,7 @@ func validOffer(t *testing.T, now time.Time, operationID, nonce string, cipherte
 func validAuth(peer string) placement.PeerAuthorization {
 	return placement.PeerAuthorization{
 		NodePrincipal: testPrincipal(peer), Authenticated: true, Trusted: true,
-		CapabilityValid: true, PolicyAllowed: true,
+		PermissionValid: true, PolicyAllowed: true,
 	}
 }
 

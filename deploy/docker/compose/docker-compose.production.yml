@@ -5,7 +5,7 @@ x-production-node: &production_node
     - |
       install -d -m 0700 /run/ardents
       install -m 0600 /run/secrets/ardents-api-token /run/ardents/api-token
-      install -m 0600 /run/secrets/capability-store-key /run/ardents/capability-store.key
+      install -m 0600 /run/secrets/channel-grant-store-key /run/ardents/channel-grant-store.key
       install -m 0600 /run/secrets/replay-key /run/ardents/replay.key
       install -d -m 0700 /run/ardents/docker-tls
       install -m 0600 /run/secrets/docker-ca /run/ardents/docker-tls/ca.pem
@@ -47,8 +47,8 @@ services:
       - source: seed_api_token
         target: ardents-api-token
         mode: 0400
-      - source: seed_capability_store_key
-        target: capability-store-key
+      - source: seed_channel_grant_store_key
+        target: channel-grant-store-key
         mode: 0400
       - source: seed_replay_key
         target: replay-key
@@ -79,8 +79,8 @@ services:
       - source: peer_api_token
         target: ardents-api-token
         mode: 0400
-      - source: peer_capability_store_key
-        target: capability-store-key
+      - source: peer_channel_grant_store_key
+        target: channel-grant-store-key
         mode: 0400
       - source: peer_replay_key
         target: replay-key
@@ -112,12 +112,12 @@ secrets:
     file: ${ARDENTS_SEED_API_TOKEN_FILE:?seed API token file is required}
   peer_api_token:
     file: ${ARDENTS_PEER_API_TOKEN_FILE:?peer API token file is required}
-  seed_capability_store_key:
-    file: ${ARDENTS_SEED_CAPABILITY_STORE_KEY_FILE:?seed capability-store key file is required}
+  seed_channel_grant_store_key:
+    file: ${ARDENTS_SEED_CHANNEL_GRANT_STORE_KEY_FILE:?seed channel-grant-store key file is required}
   seed_replay_key:
     file: ${ARDENTS_SEED_REPLAY_KEY_FILE:?seed replay key file is required}
-  peer_capability_store_key:
-    file: ${ARDENTS_PEER_CAPABILITY_STORE_KEY_FILE:?peer capability-store key file is required}
+  peer_channel_grant_store_key:
+    file: ${ARDENTS_PEER_CHANNEL_GRANT_STORE_KEY_FILE:?peer channel-grant-store key file is required}
   peer_replay_key:
     file: ${ARDENTS_PEER_REPLAY_KEY_FILE:?peer replay key file is required}
   seed_docker_ca:

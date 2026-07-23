@@ -46,8 +46,8 @@ func TestOperatorAccessLeastPrivilegeAndAudit(t *testing.T) {
 	_, err = client.StartNode(context.Background(), command)
 	require.NoError(t, err)
 
-	sibling := operatorRequest(&ardentsv1.GetNodeCapabilitiesRequest{}, auth.Token, target.Node.Name, target.Identity.Principal, "node.status")
-	_, err = client.GetNodeCapabilities(context.Background(), sibling)
+	sibling := operatorRequest(&ardentsv1.GetNodeFeaturesRequest{}, auth.Token, target.Node.Name, target.Identity.Principal, "node.status")
+	_, err = client.GetNodeFeatures(context.Background(), sibling)
 	require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
 
 	wrongNode := operatorRequest(&ardentsv1.GetNodeStatusRequest{}, auth.Token, "wrong-node", target.Identity.Principal, "node.status")

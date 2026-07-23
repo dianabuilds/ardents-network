@@ -12,7 +12,7 @@ func (s *Service) saveLocked() error {
 	if s.path == "" {
 		return nil
 	}
-	return db.SaveJSON(s.path, "workload", "snapshot", persistentState{Items: s.items})
+	return db.SaveJSON(s.path, "workload", "snapshot", persistentState{Version: persistentStateVersion, Items: s.items})
 }
 
 const runtimeInventoryTimeout = 30 * time.Second

@@ -15,16 +15,24 @@ func (h *Service) RegisterWorkload(ctx context.Context, req *connect.Request[ard
 	callCtx, cancel := rpc.MutationContext(ctx)
 	defer cancel()
 	return rpc.RespondContext(ctx, func(rpc.Call) (*ardents.WorkloadCommandResponse, *rpc.Error) {
-		if err := h.workload.Register(callCtx, fromWorkloadSpecSnapshot(req.Msg.GetSpec())); err != nil {
+		spec, specErr := fromWorkloadSpecSnapshot(req.Msg.GetSpec())
+		if specErr != nil {
+			return nil, rpc.MapError("workload", "workload.register", "invalid_request", "workload specification is invalid", false, specErr)
+		}
+		if err := h.workload.Register(callCtx, spec); err != nil {
 			return nil, rpc.MapError("workload", "workload.register", "register_failed", "workload register failed", false, err)
 		}
 		workload, err := h.workload.Get(req.Msg.GetSpec().GetId())
 		if err != nil {
 			return nil, rpc.MapError("workload", "workload.register", "failed", "workload lookup after register failed", false, err)
 		}
+		snapshot, snapshotErr := toWorkloadStatusSnapshot(workload)
+		if snapshotErr != nil {
+			return nil, rpc.MapError("workload", "workload.register", "invalid_state", "workload state is invalid", false, snapshotErr)
+		}
 		return &ardents.WorkloadCommandResponse{
 			Status:   statusProto("completed", "workload registered", true),
-			Workload: toWorkloadStatusSnapshot(workload),
+			Workload: snapshot,
 		}, nil
 	})
 }
@@ -55,9 +63,13 @@ func (h *Service) mutateWorkload(ctx context.Context, id, action, completedActio
 		if err != nil {
 			return nil, rpc.MapError("workload", operation, "failed", "workload lookup after "+action+" failed", false, err)
 		}
+		snapshot, snapshotErr := toWorkloadStatusSnapshot(workload)
+		if snapshotErr != nil {
+			return nil, rpc.MapError("workload", operation, "invalid_state", "workload state is invalid", false, snapshotErr)
+		}
 		return &ardents.WorkloadCommandResponse{
 			Status:   statusProto("completed", "workload "+completedAction, true),
-			Workload: toWorkloadStatusSnapshot(workload),
+			Workload: snapshot,
 		}, nil
 	})
 }

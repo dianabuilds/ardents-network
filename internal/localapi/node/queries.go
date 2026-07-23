@@ -15,17 +15,21 @@ import (
 
 func (h *RuntimeHandler) GetNodeStatus(ctx context.Context, _ *connect.Request[ardents.GetNodeStatusRequest]) (*connect.Response[ardents.NodeStatusResponse], error) {
 	return rpc.RespondContext(ctx, func(rpc.Call) (*ardents.NodeStatusResponse, *rpc.Error) {
+		snapshot, err := toSnapshot(h.service.Snapshot())
+		if err != nil {
+			return nil, rpc.MapError("node", "node.status", "invalid_snapshot", "node status is invalid", false, err)
+		}
 		return &ardents.NodeStatusResponse{
-			Status:       statusProto("completed", "snapshot available", true),
-			Snapshot:     toSnapshot(h.service.Snapshot()),
-			Capabilities: toCapabilitiesSnapshot(h.service.Capabilities()),
+			Status:   statusProto("completed", "snapshot available", true),
+			Snapshot: snapshot,
+			Features: toNodeFeaturesSnapshot(h.service.NodeFeatures()),
 		}, nil
 	})
 }
 
-func (h *RuntimeHandler) GetNodeCapabilities(ctx context.Context, _ *connect.Request[ardents.GetNodeCapabilitiesRequest]) (*connect.Response[ardents.CapabilitiesResponse], error) {
-	return rpc.RespondContext(ctx, func(rpc.Call) (*ardents.CapabilitiesResponse, *rpc.Error) {
-		return &ardents.CapabilitiesResponse{Capabilities: toCapabilitiesSnapshot(h.service.Capabilities())}, nil
+func (h *RuntimeHandler) GetNodeFeatures(ctx context.Context, _ *connect.Request[ardents.GetNodeFeaturesRequest]) (*connect.Response[ardents.NodeFeaturesResponse], error) {
+	return rpc.RespondContext(ctx, func(rpc.Call) (*ardents.NodeFeaturesResponse, *rpc.Error) {
+		return &ardents.NodeFeaturesResponse{Features: toNodeFeaturesSnapshot(h.service.NodeFeatures())}, nil
 	})
 }
 

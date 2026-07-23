@@ -41,7 +41,7 @@ func TestConstrainedClientFilterLightpushAndOfflineRecovery(t *testing.T) {
 		require.NoError(t, client.Start(ctx))
 		require.Equal(t, "ready", client.State())
 		require.Zero(t, client.RelayPeerCount(networkapi.DefaultPubsubTopic))
-		require.ElementsMatch(t, []string{"filter_client", "lightpush_client", "store_client"}, client.ProfileSnapshot().ActiveCapabilities)
+		require.ElementsMatch(t, []networkapi.TransportFeature{networkapi.TransportFeatureFilterClient, networkapi.TransportFeatureLightpushClient, networkapi.TransportFeatureStoreClient}, client.ProfileSnapshot().ActiveFeatures)
 	})
 
 	scenario.Step("subscribe with an opaque capability-derived Filter selector", func(t *testing.T) {
@@ -115,8 +115,8 @@ func TestConstrainedClientCapabilitiesReachCanonicalStatus(t *testing.T) {
 		status := client.GetNetworkStatus()
 		require.True(t, status.Joined)
 		require.False(t, status.Reachable)
-		require.ElementsMatch(t, []string{"filter_client", "lightpush_client", "store_client"}, status.ActiveCapabilities)
-		require.ElementsMatch(t, status.ActiveCapabilities, client.Snapshot().Transport.ActiveCapabilities)
+		require.ElementsMatch(t, []networkapi.TransportFeature{networkapi.TransportFeatureFilterClient, networkapi.TransportFeatureLightpushClient, networkapi.TransportFeatureStoreClient}, status.ActiveFeatures)
+		require.ElementsMatch(t, status.ActiveFeatures, client.Snapshot().Transport.ActiveFeatures)
 	})
 }
 
@@ -148,7 +148,7 @@ func TestConstrainedClientRejectsPeerWithoutRequiredProviderProtocols(t *testing
 		require.False(t, client.BootstrapStatus().Joined)
 		require.Equal(t, "degraded", client.State())
 		require.Contains(t, client.Reason(), "do not provide required Filter, Lightpush, and Store protocols")
-		require.NotContains(t, client.ProfileSnapshot().ActiveCapabilities, "filter_client")
-		require.NotContains(t, client.ProfileSnapshot().ActiveCapabilities, "store_client")
+		require.NotContains(t, client.ProfileSnapshot().ActiveFeatures, networkapi.TransportFeatureFilterClient)
+		require.NotContains(t, client.ProfileSnapshot().ActiveFeatures, networkapi.TransportFeatureStoreClient)
 	})
 }

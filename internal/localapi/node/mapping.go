@@ -8,7 +8,11 @@ import (
 	"ardents/internal/workload"
 )
 
-func toSnapshot(in daemonruntime.SystemSnapshot) *ardentsv1.Snapshot {
+func toSnapshot(in daemonruntime.SystemSnapshot) (*ardentsv1.Snapshot, error) {
+	transport, err := toTransportSnapshot(in.Transport)
+	if err != nil {
+		return nil, err
+	}
 	return &ardentsv1.Snapshot{
 		Node:      toNodeSnapshot(in.Node),
 		Boot:      toBootSnapshot(in.Boot),
@@ -16,7 +20,7 @@ func toSnapshot(in daemonruntime.SystemSnapshot) *ardentsv1.Snapshot {
 		Trust:     toTrustSnapshot(in.Trust),
 		Disco:     toDiscoverySnapshot(in.Disco),
 		Trans:     toPartSnapshot(in.Trans),
-		Transport: toTransportSnapshot(in.Transport),
+		Transport: transport,
 		Route:     toPartSnapshot(in.Route),
 		Object:    toPartSnapshot(in.Object),
 		Blob:      toPartSnapshot(in.Blob),
@@ -24,7 +28,7 @@ func toSnapshot(in daemonruntime.SystemSnapshot) *ardentsv1.Snapshot {
 		Workload:  toWorkloadStateSnapshot(in.Workload),
 		Store:     toStoreSnapshot(in.Store),
 		Diag:      diagnosticsapi.DiagSnapshot(in.Diag),
-	}
+	}, nil
 }
 
 func toNodeSnapshot(in daemonruntime.NodeSnapshot) *ardentsv1.NodeSnapshot {

@@ -1,6 +1,10 @@
 package workload
 
-import "time"
+import (
+	"time"
+
+	"ardents/internal/workload/registry"
+)
 
 type PublishedServiceSnapshot struct {
 	ID             string   `json:"id,omitempty"`
@@ -14,15 +18,15 @@ type PublishedServiceSnapshot struct {
 }
 
 type SpecSnapshot struct {
-	ID            string                     `json:"id,omitempty"`
-	Kind          string                     `json:"kind,omitempty"`
-	Owner         string                     `json:"owner,omitempty"`
-	Config        string                     `json:"config,omitempty"`
-	Desired       string                     `json:"desired,omitempty"`
-	Services      []PublishedServiceSnapshot `json:"services,omitempty"`
-	Capabilities  []string                   `json:"capabilities,omitempty"`
-	PolicyRef     string                     `json:"policy_ref,omitempty"`
-	RestartPolicy string                     `json:"restart_policy,omitempty"`
+	ID            string                         `json:"id,omitempty"`
+	Kind          string                         `json:"kind,omitempty"`
+	Owner         string                         `json:"owner,omitempty"`
+	Config        string                         `json:"config,omitempty"`
+	Desired       string                         `json:"desired,omitempty"`
+	Services      []PublishedServiceSnapshot     `json:"services,omitempty"`
+	Requirements  []registry.WorkloadRequirement `json:"requirements,omitempty"`
+	PolicyRef     string                         `json:"policy_ref,omitempty"`
+	RestartPolicy string                         `json:"restart_policy,omitempty"`
 }
 
 type InstanceSnapshot struct {

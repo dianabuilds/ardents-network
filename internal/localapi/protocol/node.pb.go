@@ -25,39 +25,39 @@ var File_api_ardents_v1_node_proto protoreflect.FileDescriptor
 const file_api_ardents_v1_node_proto_rawDesc = "" +
 	"\n" +
 	"\x19api/ardents/v1/node.proto\x12\n" +
-	"ardents.v1\x1a\x1aapi/ardents/v1/types.proto2\x81\x04\n" +
+	"ardents.v1\x1a\x1aapi/ardents/v1/types.proto2\xf9\x03\n" +
 	"\vNodeService\x12I\n" +
 	"\tStartNode\x12\x1c.ardents.v1.StartNodeRequest\x1a\x1e.ardents.v1.CommandAckResponse\x12G\n" +
 	"\bStopNode\x12\x1b.ardents.v1.StopNodeRequest\x1a\x1e.ardents.v1.CommandAckResponse\x12Q\n" +
-	"\rGetNodeStatus\x12 .ardents.v1.GetNodeStatusRequest\x1a\x1e.ardents.v1.NodeStatusResponse\x12_\n" +
-	"\x13GetNodeCapabilities\x12&.ardents.v1.GetNodeCapabilitiesRequest\x1a .ardents.v1.CapabilitiesResponse\x12T\n" +
+	"\rGetNodeStatus\x12 .ardents.v1.GetNodeStatusRequest\x1a\x1e.ardents.v1.NodeStatusResponse\x12W\n" +
+	"\x0fGetNodeFeatures\x12\".ardents.v1.GetNodeFeaturesRequest\x1a .ardents.v1.NodeFeaturesResponse\x12T\n" +
 	"\x0eGetNodeRuntime\x12!.ardents.v1.GetNodeRuntimeRequest\x1a\x1f.ardents.v1.NodeRuntimeResponse\x12T\n" +
 	"\x10StreamNodeEvents\x12#.ardents.v1.StreamNodeEventsRequest\x1a\x19.ardents.v1.EventEnvelope0\x01B.Z,ardents/internal/localapi/protocol;ardentsv1b\x06proto3"
 
 var file_api_ardents_v1_node_proto_goTypes = []any{
-	(*StartNodeRequest)(nil),           // 0: ardents.v1.StartNodeRequest
-	(*StopNodeRequest)(nil),            // 1: ardents.v1.StopNodeRequest
-	(*GetNodeStatusRequest)(nil),       // 2: ardents.v1.GetNodeStatusRequest
-	(*GetNodeCapabilitiesRequest)(nil), // 3: ardents.v1.GetNodeCapabilitiesRequest
-	(*GetNodeRuntimeRequest)(nil),      // 4: ardents.v1.GetNodeRuntimeRequest
-	(*StreamNodeEventsRequest)(nil),    // 5: ardents.v1.StreamNodeEventsRequest
-	(*CommandAckResponse)(nil),         // 6: ardents.v1.CommandAckResponse
-	(*NodeStatusResponse)(nil),         // 7: ardents.v1.NodeStatusResponse
-	(*CapabilitiesResponse)(nil),       // 8: ardents.v1.CapabilitiesResponse
-	(*NodeRuntimeResponse)(nil),        // 9: ardents.v1.NodeRuntimeResponse
-	(*EventEnvelope)(nil),              // 10: ardents.v1.EventEnvelope
+	(*StartNodeRequest)(nil),        // 0: ardents.v1.StartNodeRequest
+	(*StopNodeRequest)(nil),         // 1: ardents.v1.StopNodeRequest
+	(*GetNodeStatusRequest)(nil),    // 2: ardents.v1.GetNodeStatusRequest
+	(*GetNodeFeaturesRequest)(nil),  // 3: ardents.v1.GetNodeFeaturesRequest
+	(*GetNodeRuntimeRequest)(nil),   // 4: ardents.v1.GetNodeRuntimeRequest
+	(*StreamNodeEventsRequest)(nil), // 5: ardents.v1.StreamNodeEventsRequest
+	(*CommandAckResponse)(nil),      // 6: ardents.v1.CommandAckResponse
+	(*NodeStatusResponse)(nil),      // 7: ardents.v1.NodeStatusResponse
+	(*NodeFeaturesResponse)(nil),    // 8: ardents.v1.NodeFeaturesResponse
+	(*NodeRuntimeResponse)(nil),     // 9: ardents.v1.NodeRuntimeResponse
+	(*EventEnvelope)(nil),           // 10: ardents.v1.EventEnvelope
 }
 var file_api_ardents_v1_node_proto_depIdxs = []int32{
 	0,  // 0: ardents.v1.NodeService.StartNode:input_type -> ardents.v1.StartNodeRequest
 	1,  // 1: ardents.v1.NodeService.StopNode:input_type -> ardents.v1.StopNodeRequest
 	2,  // 2: ardents.v1.NodeService.GetNodeStatus:input_type -> ardents.v1.GetNodeStatusRequest
-	3,  // 3: ardents.v1.NodeService.GetNodeCapabilities:input_type -> ardents.v1.GetNodeCapabilitiesRequest
+	3,  // 3: ardents.v1.NodeService.GetNodeFeatures:input_type -> ardents.v1.GetNodeFeaturesRequest
 	4,  // 4: ardents.v1.NodeService.GetNodeRuntime:input_type -> ardents.v1.GetNodeRuntimeRequest
 	5,  // 5: ardents.v1.NodeService.StreamNodeEvents:input_type -> ardents.v1.StreamNodeEventsRequest
 	6,  // 6: ardents.v1.NodeService.StartNode:output_type -> ardents.v1.CommandAckResponse
 	6,  // 7: ardents.v1.NodeService.StopNode:output_type -> ardents.v1.CommandAckResponse
 	7,  // 8: ardents.v1.NodeService.GetNodeStatus:output_type -> ardents.v1.NodeStatusResponse
-	8,  // 9: ardents.v1.NodeService.GetNodeCapabilities:output_type -> ardents.v1.CapabilitiesResponse
+	8,  // 9: ardents.v1.NodeService.GetNodeFeatures:output_type -> ardents.v1.NodeFeaturesResponse
 	9,  // 10: ardents.v1.NodeService.GetNodeRuntime:output_type -> ardents.v1.NodeRuntimeResponse
 	10, // 11: ardents.v1.NodeService.StreamNodeEvents:output_type -> ardents.v1.EventEnvelope
 	6,  // [6:12] is the sub-list for method output_type

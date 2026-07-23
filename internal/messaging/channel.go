@@ -8,7 +8,7 @@ import (
 	identityapi "ardents/internal/identity"
 )
 
-const CodeCapabilityMissing = "privacy.capability.missing"
+const CodeChannelGrantMissing = "privacy.channel_grant.missing"
 
 type ChannelConfig struct {
 	Resolver   identityapi.CapabilityResolver
@@ -62,7 +62,7 @@ func (c *Channel) contentTopic(permission identityapi.CapabilityPermission) (str
 	}
 	material, err := Derive(resolved)
 	if err != nil {
-		return "", envelopeError(CodeCapabilityMissing, "private channel material is unavailable")
+		return "", envelopeError(CodeChannelGrantMissing, "private channel material is unavailable")
 	}
 	return material.ContentTopic, nil
 }

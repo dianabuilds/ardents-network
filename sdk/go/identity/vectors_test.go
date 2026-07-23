@@ -242,7 +242,11 @@ func rebuildVectorWithSDKSigner(t *testing.T, kind string, wire []byte, credenti
 		if proto.Unmarshal(wire, &e) != nil {
 			t.Fatal("decode")
 		}
-		artifact, err := SignDelegation(DelegationSpec{Delegator: e.Payload.Delegator, Delegatee: e.Payload.Delegatee, Audience: audienceFromProto(e.Payload.Audience), Actions: append([]string(nil), e.Payload.Actions...), Scope: scopeFromProto(e.Payload.Scope), NotBefore: e.Payload.NotBefore.AsTime(), NotAfter: e.Payload.NotAfter.AsTime(), Credential: credential}, device, now)
+		scope, err := scopeFromProto(e.Payload.Scope)
+		if err != nil {
+			t.Fatal(err)
+		}
+		artifact, err := SignDelegation(DelegationSpec{Delegator: e.Payload.Delegator, Delegatee: e.Payload.Delegatee, Audience: audienceFromProto(e.Payload.Audience), Actions: append([]string(nil), e.Payload.Actions...), Scope: scope, NotBefore: e.Payload.NotBefore.AsTime(), NotAfter: e.Payload.NotAfter.AsTime(), Credential: credential}, device, now)
 		if err != nil {
 			t.Fatal(err)
 		}

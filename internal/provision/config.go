@@ -38,9 +38,9 @@ func operatorDocument(configured options, provisioned NodeProvision) runtimeconf
 		Purposes:  []identitytrust.Purpose{identitytrust.PurposeChannelIssue},
 	}}
 	doc.Privacy = runtimeconfig.PrivacyConfig{
-		Required: true, CapabilityStore: filepath.Join(runtimeDataDir, "capabilities.db"),
-		CapabilityStoreKeyFile: filepath.Join(runtimeSecretDir, "capability-store.key"),
-		ReplayKeyFile:          filepath.Join(runtimeSecretDir, "replay.key"), Subject: provisioned.Subject,
+		Required: true, ChannelGrantStore: filepath.Join(runtimeDataDir, "channel-grants.db"),
+		ChannelGrantStoreKeyFile: filepath.Join(runtimeSecretDir, "channel-grant-store.key"),
+		ReplayKeyFile:            filepath.Join(runtimeSecretDir, "replay.key"), Subject: provisioned.Subject,
 		Discovery: runtimeconfig.PrivacyChannelConfig{
 			Reference: string(provisioned.DiscoveryRef), ReplayPath: filepath.Join(runtimeDataDir, "discovery-replay.db"),
 		},

@@ -47,11 +47,11 @@ func TestOperatorPrivacyRejectsIdentitySubjectMismatch(t *testing.T) {
 func TestOperatorPrivacyRejectsWrongStoreKeyWithoutLeakingMaterial(t *testing.T) {
 	doc := provisionOperatorPrivacy(t)
 	wrong := bytes.Repeat([]byte{0xee}, 32)
-	require.NoError(t, os.WriteFile(doc.Privacy.CapabilityStoreKeyFile,
+	require.NoError(t, os.WriteFile(doc.Privacy.ChannelGrantStoreKeyFile,
 		[]byte(base64.StdEncoding.EncodeToString(wrong)), 0o600))
 	_, err := runtimeConfigFromDocument(doc)
-	require.EqualError(t, err, "protected privacy capability store is unavailable or invalid")
-	require.NotContains(t, err.Error(), doc.Privacy.CapabilityStore)
+	require.EqualError(t, err, "protected privacy channel grant store is unavailable or invalid")
+	require.NotContains(t, err.Error(), doc.Privacy.ChannelGrantStore)
 	require.NotContains(t, err.Error(), base64.StdEncoding.EncodeToString(wrong))
 }
 
@@ -99,13 +99,13 @@ func provisionOperatorPrivacy(t *testing.T) runtimeconfig.Document {
 		identityapi.CapabilityRealmDiscovery, now)
 	dataRef := importOperatorGrant(t, Workloads, issuerPrivate, issuer, subject, 0x72, 0x82,
 		identityapi.CapabilityDataExchange, now)
-	storeKeyPath := writeOperatorKey(t, dir, "capability-store.key", storeKey)
+	storeKeyPath := writeOperatorKey(t, dir, "channel-grant-store.key", storeKey)
 	replayKeyPath := writeOperatorKey(t, dir, "replay.key", replayKey)
 
 	doc := runtimeconfig.Defaults()
 	doc.Node.DataDir = dir
 	doc.Privacy = runtimeconfig.PrivacyConfig{
-		Required: true, CapabilityStore: storePath, CapabilityStoreKeyFile: storeKeyPath,
+		Required: true, ChannelGrantStore: storePath, ChannelGrantStoreKeyFile: storeKeyPath,
 		ReplayKeyFile: replayKeyPath, Subject: subject,
 		Discovery: runtimeconfig.PrivacyChannelConfig{
 			Reference: string(discoveryRef), ReplayPath: filepath.Join(dir, "discovery-replay.db"),

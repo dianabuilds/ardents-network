@@ -12,7 +12,7 @@ type Runtime interface {
 	Snapshot() daemon.SystemSnapshot
 	Subscribe(context.Context) <-chan daemon.Event
 	GetNodeRuntime() daemon.RuntimeSnapshot
-	Capabilities() daemon.CapabilitiesSnapshot
+	NodeFeatures() daemon.NodeFeaturesSnapshot
 }
 
 type RuntimeHandler struct {

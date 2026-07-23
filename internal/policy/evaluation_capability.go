@@ -4,17 +4,17 @@ import (
 	identityapi "ardents/internal/identity"
 )
 
-type CapabilityConfig struct {
-	DisablePrivateCapabilityUse bool
-	DeniedCapabilityScopes      []string
+type ChannelGrantPolicyConfig struct {
+	DisablePrivateChannelGrantUse bool
+	DeniedChannelGrantScopes      []string
 }
 
-func CheckCapabilityUse(cfg CapabilityConfig, use identityapi.CapabilityUse) Result {
-	if cfg.DisablePrivateCapabilityUse {
-		return Deny("policy_capability_denied", "private capability use is disabled by policy")
+func CheckChannelGrantUse(cfg ChannelGrantPolicyConfig, use identityapi.CapabilityUse) Result {
+	if cfg.DisablePrivateChannelGrantUse {
+		return Deny("policy_channel_grant_denied", "private channel grant use is disabled by policy")
 	}
-	if ContainsNormalized(cfg.DeniedCapabilityScopes, string(use.Scope)) {
-		return Deny("policy_capability_denied", "capability scope is denied by policy")
+	if ContainsNormalized(cfg.DeniedChannelGrantScopes, string(use.Scope)) {
+		return Deny("policy_channel_grant_denied", "channel grant scope is denied by policy")
 	}
 	return Allow()
 }

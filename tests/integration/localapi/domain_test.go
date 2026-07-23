@@ -255,7 +255,7 @@ func TestConnectRPCProjectsTCPWSSProfileTruth(t *testing.T) {
 	require.Contains(t, status.Msg.GetSnapshot().GetTransport().GetSuppressedFamilies(), "quic")
 	require.Equal(t, "startup_default", status.Msg.GetSnapshot().GetTransport().GetSwitchReason())
 	require.Equal(t, "steady", status.Msg.GetSnapshot().GetTransport().GetMode())
-	require.Empty(t, status.Msg.GetSnapshot().GetTransport().GetReducedCapabilities())
+	require.Empty(t, status.Msg.GetSnapshot().GetTransport().GetReducedFeatures())
 }
 
 func TestConnectRPCReadRequiresExactAction(t *testing.T) {

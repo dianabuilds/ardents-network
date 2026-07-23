@@ -12,7 +12,7 @@ const (
 	ReplicaCommitmentCorrupt = "corrupt"
 
 	ReplicaReasonQuota      = "quota_refused"
-	ReplicaReasonCapability = "capability_denied"
+	ReplicaReasonPermission = "permission_denied"
 )
 
 type ReplicaCommitment struct {

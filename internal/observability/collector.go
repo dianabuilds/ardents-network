@@ -91,7 +91,7 @@ func (c *Collector) collectNode(out chan<- prometheus.Metric, runtime daemonrunt
 }
 
 func (c *Collector) collectNetwork(out chan<- prometheus.Metric, snapshot network.StatusSnapshot) {
-	for _, protocol := range protocols(snapshot.ActiveCapabilities) {
+	for _, protocol := range transportProtocols(snapshot.ActiveFeatures) {
 		gauge(out, c.desc.wakuProtocol, 1, protocol)
 	}
 	values := []struct {

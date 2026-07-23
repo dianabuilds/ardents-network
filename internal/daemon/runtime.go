@@ -274,7 +274,7 @@ func (m *RuntimeManager) initializeIdentityLocked(ctx context.Context, out *ed25
 func (m *RuntimeManager) publishDiscoveryLocked(ctx context.Context, privateKey ed25519.PrivateKey) bool {
 	return m.runStartupStepLocked(ctx, StartupPhaseDiscovery, "discovery", "records", false, "", func() error {
 		if err := m.publication.RefreshNetworkPublicationLocked(ctx); err != nil {
-			if !networkprivacy.IsCapabilityFailure(err) {
+			if !networkprivacy.IsChannelGrantFailure(err) {
 				return err
 			}
 			m.degradeDiscoveryPrivacyLocked(networkprivacy.CodeOf(err), 0)
@@ -453,9 +453,9 @@ func (m *RuntimeManager) RefreshDiscoveryPublicationLocked(ctx context.Context) 
 		return
 	}
 	if err := m.publication.RefreshNetworkPublicationLocked(ctx); err != nil {
-		if networkprivacy.IsCapabilityFailure(err) {
+		if networkprivacy.IsChannelGrantFailure(err) {
 			current := diagnostics.SubsystemReasonCode(m.diag.Health(), "discovery")
-			if current == "" || strings.HasPrefix(current, "privacy.capability.") {
+			if current == "" || strings.HasPrefix(current, "privacy.channel_grant.") {
 				m.degradeDiscoveryPrivacyLocked(networkprivacy.CodeOf(err), 0)
 			}
 			return
@@ -514,7 +514,7 @@ func (n *Node) emitPolicyDeniedLocked(resource, action string, err error) {
 }
 
 func (n *Node) handleDataPrivacyFailureLocked(err error) bool {
-	if !networkprivacy.IsCapabilityFailure(err) {
+	if !networkprivacy.IsChannelGrantFailure(err) {
 		return false
 	}
 	code := networkprivacy.CodeOf(err)

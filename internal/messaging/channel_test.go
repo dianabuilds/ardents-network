@@ -37,14 +37,14 @@ func TestChannelResolvesEveryPublishAndReceiveWithoutCapabilityCache(t *testing.
 	}, receiverResolver.permissions)
 }
 
-func TestChannelFailsClosedWhenCapabilityResolutionIsRevoked(t *testing.T) {
+func TestChannelFailsClosedWhenChannelGrantResolutionIsRevoked(t *testing.T) {
 	fixture := newEnvelopeFixture(t, true)
-	resolver := &channelResolver{resolved: fixture.senderResolved, err: channelFailure{"privacy.capability.revoked"}}
+	resolver := &channelResolver{resolved: fixture.senderResolved, err: channelFailure{"privacy.channel_grant.revoked"}}
 	channel := newTestChannel(t, resolver, fixture.receiverAuthority, fixture.senderResolved, fixture.senderPrivate, 0xe1)
 
 	_, err := channel.Seal(MessageClassDiscoveryRecord, 1, []byte("denied"))
 	require.Error(t, err)
-	require.Equal(t, "privacy.capability.revoked", CodeOf(err))
+	require.Equal(t, "privacy.channel_grant.revoked", CodeOf(err))
 }
 
 type channelResolver struct {

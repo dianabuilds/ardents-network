@@ -46,6 +46,8 @@ func TestAuthorityProvisionsDistinctNodesIdempotently(t *testing.T) {
 	require.NotEqual(t, first.DiscoveryRef, second.DiscoveryRef)
 	require.Equal(t, first.Issuer, second.Issuer)
 	require.NotEqual(t, first.StoreKeyPath, second.StoreKeyPath)
+	require.Equal(t, "channel-grant-store.key", filepath.Base(first.StoreKeyPath))
+	require.Equal(t, "channel-grants.db", filepath.Base(first.ChannelGrantStore))
 	require.NotEqual(t, first.ReplayKeyPath, second.ReplayKeyPath)
 	require.NotEqual(t, identityapi.CapabilityRef(""), first.DiscoveryRef)
 }

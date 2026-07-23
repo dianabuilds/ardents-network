@@ -63,7 +63,7 @@ supported target. It requires:
 - an immutable `ARDENTS_IMAGE` reference, preferably a registry digest;
 - separate versioned operator-config files for every node, including explicit
   advertised/bootstrap addresses and required private channel references;
-- separate external API token, capability-store key, and replay-key files for
+- separate external API token, channel-grant-store key, and replay-key files for
   every node; config files reference their copied `/run/ardents/` paths;
 - an external TLS-authenticated Docker workload endpoint plus separate client
   CA/certificate/key files for each node; plaintext Docker API and host socket

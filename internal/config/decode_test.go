@@ -32,6 +32,23 @@ func TestDecodeAcceptsPurposeScopedTrustedPrincipals(t *testing.T) {
 	require.Equal(t, []TrustedPrincipalConfig{entry}, doc.Trust.Principals)
 }
 
+func TestDecodeAcceptsTypedWorkloadRequirements(t *testing.T) {
+	raw := `{
+		"api_version":"ardents.config/v1",
+		"workloads":{
+			"executor":"disabled",
+			"initial":[]
+		},
+		"policy":{"denied_workload_requirements":["gpu","network.read"]}
+	}`
+	doc, err := Decode(strings.NewReader(raw))
+	require.NoError(t, err)
+	require.Equal(t, []string{"gpu", "network.read"}, []string{
+		doc.Policy.DeniedWorkloadRequirements[0].String(),
+		doc.Policy.DeniedWorkloadRequirements[1].String(),
+	})
+}
+
 func TestDecodeRejectsUnknownDuplicateAndDeprecatedFields(t *testing.T) {
 	tests := []struct {
 		name string
@@ -41,12 +58,20 @@ func TestDecodeRejectsUnknownDuplicateAndDeprecatedFields(t *testing.T) {
 		{"unknown", `{"api_version":"ardents.config/v1","mystery":true}`, "unknown field"},
 		{"duplicate", `{"api_version":"ardents.config/v1","api_version":"ardents.config/v1"}`, "duplicate field"},
 		{"deprecated", `{"api_version":"ardents.config/v1","network":{"transport_mode":"tcp"}}`, "network.transport_profile"},
+		{"legacy channel grant store", `{"api_version":"ardents.config/v1","privacy":{"capability_store":"store"}}`, "privacy.channel_grant_store"},
+		{"legacy channel grant store key", `{"api_version":"ardents.config/v1","privacy":{"capability_store_key_file":"key"}}`, "privacy.channel_grant_store_key_file"},
+		{"legacy private channel grant switch", `{"api_version":"ardents.config/v1","policy":{"disable_private_capability_use":true}}`, "policy.disable_private_channel_grant_use"},
+		{"legacy denied channel grant scopes", `{"api_version":"ardents.config/v1","policy":{"denied_capability_scopes":["realm.discovery"]}}`, "policy.denied_channel_grant_scopes"},
 		{"operator bearer field", `{"api_version":"ardents.config/v1","api":{"token_file":"token"}}`, "unknown field"},
 		{"operator plaintext listener", `{"api_version":"ardents.config/v1","api":{"listen_address":"127.0.0.1:8080"}}`, "unknown field"},
 		{"application bearer field", `{"api_version":"ardents.config/v1","application_interface":{"token_file":"token"}}`, "unknown field"},
 		{"application plaintext listener", `{"api_version":"ardents.config/v1","application_interface":{"listen_address":"127.0.0.1:8081"}}`, "unknown field"},
 		{"legacy discovery trust anchors", `{"api_version":"ardents.config/v1","network":{"trust_anchors":["public"]}}`, "unknown field"},
 		{"legacy privacy trusted issuers", `{"api_version":"ardents.config/v1","privacy":{"trusted_issuers":{"p_issuer":"public"}}}`, "unknown field"},
+		{"legacy workload capabilities", `{"api_version":"ardents.config/v1","workloads":{"initial":[{"id":"work.echo","kind":"service","owner":"node","desired":"present","capabilities":["gpu"]}]}}`, "unknown field"},
+		{"legacy denied capabilities", `{"api_version":"ardents.config/v1","policy":{"denied_capabilities":["gpu"]}}`, "unknown field"},
+		{"malformed workload requirement", `{"api_version":"ardents.config/v1","workloads":{"initial":[{"id":"work.echo","kind":"service","owner":"node","desired":"present","requirements":[" GPU "]}]}}`, "invalid workload requirement"},
+		{"malformed denied workload requirement", `{"api_version":"ardents.config/v1","policy":{"denied_workload_requirements":["gpu/admin"]}}`, "invalid workload requirement"},
 		{"version", `{"api_version":"ardents.config/v2"}`, "unsupported api_version"},
 	}
 	for _, tc := range tests {

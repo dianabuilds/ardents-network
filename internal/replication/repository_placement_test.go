@@ -36,7 +36,7 @@ func TestReplicaReservationAndCommitmentPersistAcrossRestart(t *testing.T) {
 	}
 	auth := placement.PeerAuthorization{
 		NodePrincipal: replicationTestPrincipal("source"), Authenticated: true, Trusted: true,
-		CapabilityValid: true, PolicyAllowed: true,
+		PermissionValid: true, PolicyAllowed: true,
 	}
 
 	first := newInDirWithConfig(dir, ContentConfig{MaxReplicaRetentionBytes: 1024})
@@ -239,7 +239,7 @@ func committedReplicaFixture(t *testing.T, dir string, now time.Time) (*reposito
 		IntentVersion: 1, ContentReference: cid, EncryptedSize: int64(len(ciphertext)),
 		RequestedLease: 24 * time.Hour, ExpiresAt: now.Add(2 * time.Minute), Nonce: "renewable-nonce",
 	}
-	auth := placement.PeerAuthorization{NodePrincipal: replicationTestPrincipal("source"), Authenticated: true, Trusted: true, CapabilityValid: true, PolicyAllowed: true}
+	auth := placement.PeerAuthorization{NodePrincipal: replicationTestPrincipal("source"), Authenticated: true, Trusted: true, PermissionValid: true, PolicyAllowed: true}
 	service := newInDirWithConfig(dir, ContentConfig{MaxReplicaRetentionBytes: 1024})
 	service.SetLocalNodeID("target")
 	require.NoError(t, service.Load())

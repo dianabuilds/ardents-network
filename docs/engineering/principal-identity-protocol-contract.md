@@ -423,7 +423,7 @@ listed; unknown scope/resource/action values deny.
 | Procedures | Action(s) | Class | ResourceKind and C/F contract | Scopes |
 |---|---|---|---|---|
 | Identity Begin/Complete on each surface and Application EnrollApplication | public_bounded | read/write | no grant resource; listener derives binding; EnrollApplication additionally consumes the separately typed ticket and proof | none |
-| StartNode, StopNode, GetNodeStatus, GetNodeCapabilities, GetNodeRuntime, StreamNodeEvents | `node.start`, `node.stop`, `node.status`, `node.capabilities`, `node.runtime`, `node.events` | per existing catalogue | `node`; C empty, F audience Node | node |
+| StartNode, StopNode, GetNodeStatus, GetNodeFeatures, GetNodeRuntime, StreamNodeEvents | `node.start`, `node.stop`, `node.status`, `node.features`, `node.runtime`, `node.events` | per existing catalogue | `node`; C empty, F audience Node | node |
 | GetEffectiveConfiguration, ReloadConfiguration | `config.effective`, `config.reload` | read/write | `configuration`; C empty, F audience Node singleton | node, exact |
 | GetNetworkStatus, ListRouteCandidates | `transport.network_status`, `transport.route_candidates` | read | `network`; C empty, F audience Node | node, exact |
 | GetDiscoveryStatus, GetLocalPresence, ListPeers, ListRecords | `discovery.status`, `discovery.local_presence`, `discovery.peers`, `discovery.list_records` | read | corresponding Node collection; C validates paging only, F audience Node | node, exact |

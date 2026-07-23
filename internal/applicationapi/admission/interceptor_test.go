@@ -104,7 +104,7 @@ func newRealApplicationFixture(t *testing.T, actions []identityaccess.Action) *r
 	appRoot := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x61}, ed25519.SeedSize))
 	appDevice := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x62}, ed25519.SeedSize))
 	appPrincipal, appCredential := makeCredential(t, clock.Now(), appRoot, appDevice)
-	resource, err := identityaccess.NewResourceRef(nodeID, "", "principal", appPrincipal)
+	resource, err := identityaccess.NewResourceRef(nodeID, identityaccess.ResourceOwner{}, "principal", appPrincipal)
 	require.NoError(t, err)
 	ticket, err := service.IssueApplicationEnrollmentTicket(ctx, identityaccess.IssueApplicationEnrollmentTicketRequest{
 		Attempt:   identityaccess.Attempt{SessionSecret: operatorSecret, Binding: operatorBinding, Action: "identity.principal.enroll", Resource: resource},
@@ -150,7 +150,7 @@ func enrollDelegatorWithMarkers(t *testing.T, fixture *realApplicationFixture, r
 	root := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{rootMarker}, ed25519.SeedSize))
 	device := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{deviceMarker}, ed25519.SeedSize))
 	principal, credentialArtifact := makeCredential(t, fixture.clock.Now(), root, device)
-	resource, err := identityaccess.NewResourceRef(fixture.nodeID, "", "principal", principal)
+	resource, err := identityaccess.NewResourceRef(fixture.nodeID, identityaccess.ResourceOwner{}, "principal", principal)
 	require.NoError(t, err)
 	ticket, err := fixture.service.IssueApplicationEnrollmentTicket(ctx, identityaccess.IssueApplicationEnrollmentTicketRequest{
 		Attempt: identityaccess.Attempt{
@@ -361,7 +361,7 @@ func TestPrincipalContentAdmissionUsesRealAccessServiceAndPropagatesActorEffecti
 		require.True(t, admitted.IsPrincipal())
 		require.Equal(t, fixture.appPrincipal, admitted.Actor())
 		require.Equal(t, admitted.Actor(), admitted.Effective())
-		require.Equal(t, admitted.Effective(), admitted.ResourceOwner())
+		require.Equal(t, admitted.Effective(), admitted.ResourceOwner().String())
 		require.Equal(t, fixture.nodeID, admitted.ResourceNode())
 	}
 }
@@ -387,7 +387,7 @@ func TestDelegatedContentAdmissionUsesRealAccessServiceAndClearsPresentation(t *
 	for _, admitted := range store.calls {
 		require.Equal(t, fixture.appPrincipal, admitted.Actor())
 		require.Equal(t, alice, admitted.Effective())
-		require.Equal(t, alice, admitted.ResourceOwner())
+		require.Equal(t, alice, admitted.ResourceOwner().String())
 	}
 }
 

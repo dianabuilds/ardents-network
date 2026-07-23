@@ -148,7 +148,7 @@ func validStoredOffer(offer ReservationOffer) bool {
 
 func validRejectionReason(reason string) bool {
 	switch reason {
-	case ReasonQuota, ReasonUntrusted, ReasonCapability, ReasonPolicy, ReasonLease, ReasonUnsupported,
+	case ReasonQuota, ReasonUntrusted, ReasonPermission, ReasonPolicy, ReasonLease, ReasonUnsupported,
 		ReasonObservation, ReasonExisting:
 		return true
 	default:

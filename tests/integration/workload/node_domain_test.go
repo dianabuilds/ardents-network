@@ -267,7 +267,7 @@ func TestWorkloadNodeDuplicateRegistrationPrefersConflictOverPolicy(t *testing.T
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
 		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
 		Policy: runtimeinfra.PolicyConfig{
-			DeniedCapabilities: []string{"net-bind"},
+			DeniedWorkloadRequirements: []workloadregistry.WorkloadRequirement{"net-bind"},
 		},
 	})
 	{
@@ -287,7 +287,7 @@ func TestWorkloadNodeDuplicateRegistrationPrefersConflictOverPolicy(t *testing.T
 			Kind:         "service",
 			Owner:        "node",
 			Desired:      "present",
-			Capabilities: []string{"net-bind"},
+			Requirements: []workloadregistry.WorkloadRequirement{"net-bind"},
 		})
 		require.Falsef(t, err == nil || !strings.
 			Contains(err.Error(), "already exists"), "error = %v, want already exists", err)

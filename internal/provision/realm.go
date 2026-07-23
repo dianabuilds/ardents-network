@@ -45,7 +45,7 @@ type NodeProvision struct {
 	DataRef              identityapi.CapabilityRef
 	StoreKeyPath         string
 	ReplayKeyPath        string
-	CapabilityStore      string
+	ChannelGrantStore    string
 	DiscoveryReplay      string
 	DataReplay           string
 	ApplicationExpiresAt time.Time
@@ -149,10 +149,10 @@ func (a *Authority) provisionSubject(options NodeOptions, subject string, admiss
 	if err != nil {
 		return NodeProvision{}, err
 	}
-	service, err := identitycapability.NewService(nodeStorage.capabilityStore, nodeStorage.storeKey, subject,
+	service, err := identitycapability.NewService(nodeStorage.channelGrantStore, nodeStorage.storeKey, subject,
 		trustedIssuers, admission, func() time.Time { return now })
 	if err != nil {
-		return NodeProvision{}, fmt.Errorf("open protected capability store: %w", err)
+		return NodeProvision{}, fmt.Errorf("open protected channel grant store: %w", err)
 	}
 	record, err := a.loadOrCreateNodeState(nodeStorage.recordPath, subject, issuer, now)
 	if err != nil {
@@ -172,7 +172,7 @@ func (a *Authority) provisionSubject(options NodeOptions, subject string, admiss
 	return NodeProvision{
 		Subject: subject, Issuer: issuer, IssuerPublic: append(ed25519.PublicKey(nil), issuerPublic...),
 		DiscoveryRef: discoveryRef, DataRef: dataRef, StoreKeyPath: nodeStorage.storeKeyPath,
-		ReplayKeyPath: nodeStorage.replayKeyPath, CapabilityStore: nodeStorage.capabilityStore,
+		ReplayKeyPath: nodeStorage.replayKeyPath, ChannelGrantStore: nodeStorage.channelGrantStore,
 		DiscoveryReplay: nodeStorage.discoveryReplay, DataReplay: nodeStorage.dataReplay,
 		ApplicationExpiresAt: earliestTime(record.Discovery.NotAfter, record.Data.NotAfter),
 	}, nil

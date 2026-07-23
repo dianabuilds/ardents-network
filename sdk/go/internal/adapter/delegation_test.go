@@ -116,11 +116,13 @@ func testDelegation(t *testing.T, now time.Time, node, application string) *sdki
 		NotBefore: now.Add(-time.Hour), NotAfter: now.Add(time.Hour),
 	}, root)
 	require.NoError(t, err)
+	owner, err := sdkidentity.PrincipalOwner(delegator)
+	require.NoError(t, err)
 	artifact, err := sdkidentity.SignDelegation(sdkidentity.DelegationSpec{
 		Delegator: delegator, Delegatee: application,
 		Audience:  sdkidentity.Audience{Node: node, Interface: sdkidentity.InterfaceApplication, ProtocolMajor: identitycontract.ProtocolMajor},
 		Actions:   []string{"application.content.get"},
-		Scope:     sdkidentity.ResourceScope{Kind: sdkidentity.ScopePrincipalOwned, Owner: delegator},
+		Scope:     sdkidentity.ResourceScope{Kind: sdkidentity.ScopePrincipalOwned, Owner: owner},
 		NotBefore: now, NotAfter: now.Add(15 * time.Minute), Credential: credential,
 	}, device, now)
 	require.NoError(t, err)

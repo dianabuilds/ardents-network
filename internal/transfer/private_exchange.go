@@ -35,7 +35,7 @@ func NewPrivateExchange(channel *networkprivacy.Channel, carrier networkprivacy.
 
 func (e *PrivateExchange) Start(ctx context.Context) error {
 	if e == nil || e.channel == nil || e.carrier == nil {
-		return networkprivacy.CapabilityUnavailable()
+		return networkprivacy.ChannelGrantUnavailable()
 	}
 	topic, err := e.channel.ContentTopic()
 	if err != nil {
@@ -94,7 +94,7 @@ func (e *PrivateExchange) RegisterResponse(requestID string) (<-chan []byte, fun
 
 func (e *PrivateExchange) Publish(ctx context.Context, class networkprivacy.MessageClass, payload []byte) error {
 	if e == nil || e.channel == nil || e.carrier == nil {
-		return networkprivacy.CapabilityUnavailable()
+		return networkprivacy.ChannelGrantUnavailable()
 	}
 	envelope, err := e.channel.Seal(class, 1, payload)
 	if err != nil {

@@ -28,7 +28,7 @@ func TestValidateRejectsCrossFieldContradictions(t *testing.T) {
 		}, "minimum_replicas"},
 		{"privacy material", func(d *Document) {
 			d.Privacy.Required = true
-		}, "privacy.capability_store"},
+		}, "privacy.channel_grant_store"},
 		{"trusted process", func(d *Document) {
 			d.Workloads.Executor = "trusted-process"
 		}, "local_development"},
@@ -87,7 +87,7 @@ func TestValidateAcceptsCompletePrivateChannelReferences(t *testing.T) {
 	doc := Defaults()
 	doc.Trust.Principals = []TrustedPrincipalConfig{trustedPrincipalConfig(t, "channel.issue")}
 	doc.Privacy = PrivacyConfig{
-		Required: true, CapabilityStore: "capabilities.db", CapabilityStoreKeyFile: "capabilities.key",
+		Required: true, ChannelGrantStore: "channel-grants.db", ChannelGrantStoreKeyFile: "channel-grants.key",
 		ReplayKeyFile: "replay.key", Subject: "p_subject",
 		Discovery: PrivacyChannelConfig{Reference: "discovery-ref", ReplayPath: "discovery-replay.db"},
 		Data:      PrivacyChannelConfig{Reference: "data-ref", ReplayPath: "data-replay.db"},
@@ -134,7 +134,7 @@ func TestValidatePrivateChannelsRequireChannelIssuePurpose(t *testing.T) {
 	doc := Defaults()
 	doc.Trust.Principals = []TrustedPrincipalConfig{trustedPrincipalConfig(t, "discovery.publish")}
 	doc.Privacy = PrivacyConfig{
-		Required: true, CapabilityStore: "capabilities.db", CapabilityStoreKeyFile: "capabilities.key",
+		Required: true, ChannelGrantStore: "channel-grants.db", ChannelGrantStoreKeyFile: "channel-grants.key",
 		ReplayKeyFile: "replay.key", Subject: "p_subject",
 		Discovery: PrivacyChannelConfig{Reference: "discovery-ref", ReplayPath: "discovery-replay.db"},
 		Data:      PrivacyChannelConfig{Reference: "data-ref", ReplayPath: "data-replay.db"},

@@ -298,7 +298,7 @@ from the transport profile. The stable privacy fields are `privacy_state`,
 `reduced_capabilities` as `private_publication`, `private_discovery`, or
 `private_data_exchange`.
 
-The projection may expose only stable `privacy.capability.*` categories. It
+The projection may expose only stable `privacy.channel_grant.*` categories. It
 must never include capability references, subjects, selectors, keys, store
 paths, resolver error text, or decryptable material. A configured capability
 that currently fails resolution is `recovery_pending`; a missing channel

@@ -56,7 +56,7 @@ func trustSignedRecordForLocalTest(t *testing.T, private ed25519.PrivateKey, pri
 }
 
 func TestConfigureLocalServicesWiresBootstrapAndAdmission(t *testing.T) {
-	policy := apppolicy.New(apppolicy.Config{DeniedCapabilities: []string{"net.admin"}})
+	policy := apppolicy.New(apppolicy.Config{DeniedWorkloadRequirements: []workloadregistry.WorkloadRequirement{"net.admin"}})
 	workload := workloadcontroller.NewInDir(t.TempDir())
 	data := appdata.NewInDir(t.TempDir())
 	trans := networkwaku.New()
@@ -68,7 +68,7 @@ func TestConfigureLocalServicesWiresBootstrapAndAdmission(t *testing.T) {
 		Kind:         "service",
 		Owner:        "node",
 		Desired:      workloadregistry.DesiredRunning,
-		Capabilities: []string{"net.admin"},
+		Requirements: []workloadregistry.WorkloadRequirement{"net.admin"},
 	}); err != nil {
 		t.Fatalf("register workload: %v", err)
 	}

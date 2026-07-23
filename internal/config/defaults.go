@@ -78,7 +78,7 @@ func redactDocument(doc Document) map[string]any {
 	redactMapValue(out, "observability", "token_file")
 	redactMapValue(out, "network", "private_key_path")
 	redactNestedMapValue(out, "network", "wss", "private_key_file")
-	for _, field := range []string{"capability_store", "capability_store_key_file", "replay_key_file", "subject"} {
+	for _, field := range []string{"channel_grant_store", "channel_grant_store_key_file", "replay_key_file", "subject"} {
 		redactMapValue(out, "privacy", field)
 	}
 	redactTrustedPrincipalKeys(out)

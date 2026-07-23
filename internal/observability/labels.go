@@ -3,6 +3,7 @@ package observability
 import (
 	diagapi "ardents/internal/diagnostics"
 	"ardents/internal/discovery"
+	"ardents/internal/network"
 	"slices"
 	"strings"
 )
@@ -86,6 +87,14 @@ func protocols(values []string) []string {
 	return out
 }
 
+func transportProtocols(values []network.TransportFeature) []string {
+	raw, err := network.TransportFeatureStrings(values)
+	if err != nil {
+		return nil
+	}
+	return protocols(raw)
+}
+
 func classifyEvent(event diagapi.EventEnvelope, privacy map[[2]string]int, repairs, denials, messages map[string]int) {
 	typeName := strings.ToLower(event.Type)
 	switch {
@@ -108,8 +117,8 @@ func eventCategory(value string) string {
 		return "decrypt"
 	case strings.Contains(value, "encrypt"):
 		return "encrypt"
-	case strings.Contains(value, "capability"):
-		return "capability"
+	case strings.Contains(value, "channel_grant"):
+		return "channel_grant"
 	case strings.Contains(value, "chunk"):
 		return "chunked"
 	case strings.Contains(value, "blob"):
@@ -140,8 +149,8 @@ func policyAction(payload map[string]any) string {
 		return "service"
 	case strings.Contains(value, "retention"), strings.Contains(value, "blob"), strings.Contains(value, "pin"):
 		return "data"
-	case strings.Contains(value, "capability"):
-		return "capability"
+	case strings.Contains(value, "channel_grant"):
+		return "channel_grant"
 	default:
 		return "other"
 	}

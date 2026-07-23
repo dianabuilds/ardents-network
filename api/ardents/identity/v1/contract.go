@@ -165,7 +165,7 @@ func set(values ...string) map[string]struct{} {
 
 var applicationActions = set("application.content.put", "application.content.get")
 var operatorActions = set(
-	"node.start", "node.stop", "node.status", "node.capabilities", "node.runtime", "node.events", "config.effective", "config.reload", "transport.network_status", "transport.route_candidates",
+	"node.start", "node.stop", "node.status", "node.features", "node.runtime", "node.events", "config.effective", "config.reload", "transport.network_status", "transport.route_candidates",
 	"discovery.status", "discovery.local_presence", "discovery.peers", "discovery.list_records", "discovery.resolve_record", "discovery.resolve_service", "discovery.import",
 	"workload.register", "workload.start", "workload.stop", "workload.restart", "workload.status", "workload.list", "workload.hosted_service", "workload.service_publication", "workload.hosted_services",
 	"data.publish_object", "data.get_object", "data.list_objects", "data.publish_blob", "data.get_blob", "data.fetch_blob", "data.retain_blob", "data.pin_blob", "data.drop_blob", "data.blob_sources", "data.list_blobs", "data.get_transfer", "data.list_transfers", "data.publish_manifest", "data.get_manifest", "data.list_manifests", "data.inventory",

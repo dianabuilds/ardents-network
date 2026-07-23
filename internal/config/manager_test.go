@@ -63,8 +63,8 @@ func TestManagerRedactsAllProtectedPrivacyReferences(t *testing.T) {
 	doc := Defaults()
 	doc.Trust.Principals = []TrustedPrincipalConfig{trustedPrincipalConfig(t, "channel.issue")}
 	doc.Privacy = PrivacyConfig{
-		Required: true, CapabilityStore: "/protected/capabilities.db",
-		CapabilityStoreKeyFile: "/protected/capabilities.key", ReplayKeyFile: "/protected/replay.key",
+		Required: true, ChannelGrantStore: "/protected/channel-grants.db",
+		ChannelGrantStoreKeyFile: "/protected/channel-grants.key", ReplayKeyFile: "/protected/replay.key",
 		Subject:   "p_private_subject",
 		Discovery: PrivacyChannelConfig{Reference: "secret-discovery-ref", ReplayPath: "/protected/discovery.db"},
 		Data:      PrivacyChannelConfig{Reference: "secret-data-ref", ReplayPath: "/protected/data.db"},
@@ -79,7 +79,7 @@ func TestManagerRedactsAllProtectedPrivacyReferences(t *testing.T) {
 	} {
 		require.NotContains(t, string(raw), protected)
 	}
-	require.Contains(t, string(raw), `"capability_store":"configured"`)
+	require.Contains(t, string(raw), `"channel_grant_store":"configured"`)
 	require.Contains(t, string(raw), `"public_key":"configured"`)
 }
 
@@ -149,6 +149,24 @@ func TestManagerRedactsSourcePathFromReloadFailure(t *testing.T) {
 	require.Equal(t, OutcomeRejectedInvalid, result.Outcome)
 	require.Equal(t, "operator configuration source is unavailable", result.Reason)
 	require.NotContains(t, result.Reason, path)
+}
+
+func TestManagerRejectsLegacyChannelGrantFieldWithoutChangingActiveConfig(t *testing.T) {
+	doc := Defaults()
+	path := writeDocument(t, doc)
+	manager, err := NewManager(path, doc)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(path, []byte(`{
+		"api_version":"ardents.config/v1",
+		"policy":{"disable_private_capability_use":true}
+	}`), 0o600))
+
+	result := manager.Reload(context.Background())
+
+	require.Equal(t, OutcomeRejectedInvalid, result.Outcome)
+	require.Equal(t, uint64(1), result.ActiveGeneration)
+	require.Equal(t, uint64(1), result.CandidateGeneration)
+	require.False(t, manager.active.Policy.DisablePrivateChannelGrantUse)
 }
 
 func TestManagerRejectsCandidateThatFailsRuntimeValidation(t *testing.T) {

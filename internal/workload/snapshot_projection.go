@@ -10,7 +10,7 @@ func ProjectStatus(in execution.Status) StatusSnapshot {
 		Spec: SpecSnapshot{
 			ID: in.Spec.ID, Kind: in.Spec.Kind, Owner: in.Spec.Owner, Desired: in.Spec.Desired,
 			Services:     projectServices(in.Spec.Services, false, ""),
-			Capabilities: append([]string(nil), in.Spec.Capabilities...), PolicyRef: in.Spec.PolicyRef,
+			Requirements: append([]domain.WorkloadRequirement(nil), in.Spec.Requirements...), PolicyRef: in.Spec.PolicyRef,
 			RestartPolicy: in.Spec.RestartPolicy,
 		},
 		Observed: in.Observed, Reason: in.Reason, LastTransitionAt: in.LastTransitionAt,

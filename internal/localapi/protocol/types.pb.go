@@ -500,19 +500,19 @@ func (x *PartSnapshot) GetReason() string {
 }
 
 type TransportSnapshot struct {
-	state               protoimpl.MessageState `protogen:"open.v1"`
-	Profile             string                 `protobuf:"bytes,1,opt,name=profile,proto3" json:"profile,omitempty"`
-	Health              string                 `protobuf:"bytes,2,opt,name=health,proto3" json:"health,omitempty"`
-	ActiveFamilies      []string               `protobuf:"bytes,3,rep,name=active_families,json=activeFamilies,proto3" json:"active_families,omitempty"`
-	SuppressedFamilies  []string               `protobuf:"bytes,4,rep,name=suppressed_families,json=suppressedFamilies,proto3" json:"suppressed_families,omitempty"`
-	SwitchReason        string                 `protobuf:"bytes,5,opt,name=switch_reason,json=switchReason,proto3" json:"switch_reason,omitempty"`
-	SwitchAutomatic     bool                   `protobuf:"varint,6,opt,name=switch_automatic,json=switchAutomatic,proto3" json:"switch_automatic,omitempty"`
-	ReducedCapabilities []string               `protobuf:"bytes,7,rep,name=reduced_capabilities,json=reducedCapabilities,proto3" json:"reduced_capabilities,omitempty"`
-	RecoveryState       string                 `protobuf:"bytes,8,opt,name=recovery_state,json=recoveryState,proto3" json:"recovery_state,omitempty"`
-	Mode                string                 `protobuf:"bytes,9,opt,name=mode,proto3" json:"mode,omitempty"`
-	ActiveCapabilities  []string               `protobuf:"bytes,10,rep,name=active_capabilities,json=activeCapabilities,proto3" json:"active_capabilities,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Profile            string                 `protobuf:"bytes,1,opt,name=profile,proto3" json:"profile,omitempty"`
+	Health             string                 `protobuf:"bytes,2,opt,name=health,proto3" json:"health,omitempty"`
+	ActiveFamilies     []string               `protobuf:"bytes,3,rep,name=active_families,json=activeFamilies,proto3" json:"active_families,omitempty"`
+	SuppressedFamilies []string               `protobuf:"bytes,4,rep,name=suppressed_families,json=suppressedFamilies,proto3" json:"suppressed_families,omitempty"`
+	SwitchReason       string                 `protobuf:"bytes,5,opt,name=switch_reason,json=switchReason,proto3" json:"switch_reason,omitempty"`
+	SwitchAutomatic    bool                   `protobuf:"varint,6,opt,name=switch_automatic,json=switchAutomatic,proto3" json:"switch_automatic,omitempty"`
+	RecoveryState      string                 `protobuf:"bytes,8,opt,name=recovery_state,json=recoveryState,proto3" json:"recovery_state,omitempty"`
+	Mode               string                 `protobuf:"bytes,9,opt,name=mode,proto3" json:"mode,omitempty"`
+	ReducedFeatures    []string               `protobuf:"bytes,11,rep,name=reduced_features,json=reducedFeatures,proto3" json:"reduced_features,omitempty"`
+	ActiveFeatures     []string               `protobuf:"bytes,12,rep,name=active_features,json=activeFeatures,proto3" json:"active_features,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *TransportSnapshot) Reset() {
@@ -587,13 +587,6 @@ func (x *TransportSnapshot) GetSwitchAutomatic() bool {
 	return false
 }
 
-func (x *TransportSnapshot) GetReducedCapabilities() []string {
-	if x != nil {
-		return x.ReducedCapabilities
-	}
-	return nil
-}
-
 func (x *TransportSnapshot) GetRecoveryState() string {
 	if x != nil {
 		return x.RecoveryState
@@ -608,9 +601,16 @@ func (x *TransportSnapshot) GetMode() string {
 	return ""
 }
 
-func (x *TransportSnapshot) GetActiveCapabilities() []string {
+func (x *TransportSnapshot) GetReducedFeatures() []string {
 	if x != nil {
-		return x.ActiveCapabilities
+		return x.ReducedFeatures
+	}
+	return nil
+}
+
+func (x *TransportSnapshot) GetActiveFeatures() []string {
+	if x != nil {
+		return x.ActiveFeatures
 	}
 	return nil
 }
@@ -1539,7 +1539,7 @@ func (x *Snapshot) GetTransport() *TransportSnapshot {
 	return nil
 }
 
-type CapabilitiesSnapshot struct {
+type NodeFeaturesSnapshot struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Version       string                 `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
 	Services      []string               `protobuf:"bytes,2,rep,name=services,proto3" json:"services,omitempty"`
@@ -1548,20 +1548,20 @@ type CapabilitiesSnapshot struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *CapabilitiesSnapshot) Reset() {
-	*x = CapabilitiesSnapshot{}
+func (x *NodeFeaturesSnapshot) Reset() {
+	*x = NodeFeaturesSnapshot{}
 	mi := &file_api_ardents_v1_types_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *CapabilitiesSnapshot) String() string {
+func (x *NodeFeaturesSnapshot) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CapabilitiesSnapshot) ProtoMessage() {}
+func (*NodeFeaturesSnapshot) ProtoMessage() {}
 
-func (x *CapabilitiesSnapshot) ProtoReflect() protoreflect.Message {
+func (x *NodeFeaturesSnapshot) ProtoReflect() protoreflect.Message {
 	mi := &file_api_ardents_v1_types_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1573,26 +1573,26 @@ func (x *CapabilitiesSnapshot) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use CapabilitiesSnapshot.ProtoReflect.Descriptor instead.
-func (*CapabilitiesSnapshot) Descriptor() ([]byte, []int) {
+// Deprecated: Use NodeFeaturesSnapshot.ProtoReflect.Descriptor instead.
+func (*NodeFeaturesSnapshot) Descriptor() ([]byte, []int) {
 	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{19}
 }
 
-func (x *CapabilitiesSnapshot) GetVersion() string {
+func (x *NodeFeaturesSnapshot) GetVersion() string {
 	if x != nil {
 		return x.Version
 	}
 	return ""
 }
 
-func (x *CapabilitiesSnapshot) GetServices() []string {
+func (x *NodeFeaturesSnapshot) GetServices() []string {
 	if x != nil {
 		return x.Services
 	}
 	return nil
 }
 
-func (x *CapabilitiesSnapshot) GetFeatures() map[string]bool {
+func (x *NodeFeaturesSnapshot) GetFeatures() map[string]bool {
 	if x != nil {
 		return x.Features
 	}
@@ -2325,9 +2325,9 @@ type WorkloadSpecSnapshot struct {
 	Config        string                      `protobuf:"bytes,4,opt,name=config,proto3" json:"config,omitempty"`
 	Desired       string                      `protobuf:"bytes,5,opt,name=desired,proto3" json:"desired,omitempty"`
 	Services      []*PublishedServiceSnapshot `protobuf:"bytes,6,rep,name=services,proto3" json:"services,omitempty"`
-	Capabilities  []string                    `protobuf:"bytes,7,rep,name=capabilities,proto3" json:"capabilities,omitempty"`
 	PolicyRef     string                      `protobuf:"bytes,8,opt,name=policy_ref,json=policyRef,proto3" json:"policy_ref,omitempty"`
 	RestartPolicy string                      `protobuf:"bytes,9,opt,name=restart_policy,json=restartPolicy,proto3" json:"restart_policy,omitempty"`
+	Requirements  []string                    `protobuf:"bytes,10,rep,name=requirements,proto3" json:"requirements,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2404,13 +2404,6 @@ func (x *WorkloadSpecSnapshot) GetServices() []*PublishedServiceSnapshot {
 	return nil
 }
 
-func (x *WorkloadSpecSnapshot) GetCapabilities() []string {
-	if x != nil {
-		return x.Capabilities
-	}
-	return nil
-}
-
 func (x *WorkloadSpecSnapshot) GetPolicyRef() string {
 	if x != nil {
 		return x.PolicyRef
@@ -2423,6 +2416,13 @@ func (x *WorkloadSpecSnapshot) GetRestartPolicy() string {
 		return x.RestartPolicy
 	}
 	return ""
+}
+
+func (x *WorkloadSpecSnapshot) GetRequirements() []string {
+	if x != nil {
+		return x.Requirements
+	}
+	return nil
 }
 
 type WorkloadInstanceSnapshot struct {
@@ -3217,7 +3217,6 @@ type NetworkStatusSnapshot struct {
 	Reachable               bool                   `protobuf:"varint,4,opt,name=reachable,proto3" json:"reachable,omitempty"`
 	ActiveProfile           string                 `protobuf:"bytes,5,opt,name=active_profile,json=activeProfile,proto3" json:"active_profile,omitempty"`
 	ActiveMode              string                 `protobuf:"bytes,6,opt,name=active_mode,json=activeMode,proto3" json:"active_mode,omitempty"`
-	ReducedCapabilities     []string               `protobuf:"bytes,7,rep,name=reduced_capabilities,json=reducedCapabilities,proto3" json:"reduced_capabilities,omitempty"`
 	LastTransitionAt        *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=last_transition_at,json=lastTransitionAt,proto3" json:"last_transition_at,omitempty"`
 	PrivacyProfile          string                 `protobuf:"bytes,9,opt,name=privacy_profile,json=privacyProfile,proto3" json:"privacy_profile,omitempty"`
 	PrivacyState            string                 `protobuf:"bytes,10,opt,name=privacy_state,json=privacyState,proto3" json:"privacy_state,omitempty"`
@@ -3229,13 +3228,14 @@ type NetworkStatusSnapshot struct {
 	ReachabilityState       string                 `protobuf:"bytes,16,opt,name=reachability_state,json=reachabilityState,proto3" json:"reachability_state,omitempty"`
 	ReachabilityReason      string                 `protobuf:"bytes,17,opt,name=reachability_reason,json=reachabilityReason,proto3" json:"reachability_reason,omitempty"`
 	ReachabilityObservedAt  *timestamppb.Timestamp `protobuf:"bytes,18,opt,name=reachability_observed_at,json=reachabilityObservedAt,proto3" json:"reachability_observed_at,omitempty"`
-	ActiveCapabilities      []string               `protobuf:"bytes,19,rep,name=active_capabilities,json=activeCapabilities,proto3" json:"active_capabilities,omitempty"`
 	AbuseState              string                 `protobuf:"bytes,20,opt,name=abuse_state,json=abuseState,proto3" json:"abuse_state,omitempty"`
 	AbuseReason             string                 `protobuf:"bytes,21,opt,name=abuse_reason,json=abuseReason,proto3" json:"abuse_reason,omitempty"`
 	RateLimitedOperations   uint64                 `protobuf:"varint,22,opt,name=rate_limited_operations,json=rateLimitedOperations,proto3" json:"rate_limited_operations,omitempty"`
 	BackpressuredOperations uint64                 `protobuf:"varint,23,opt,name=backpressured_operations,json=backpressuredOperations,proto3" json:"backpressured_operations,omitempty"`
 	OversizedMessages       uint64                 `protobuf:"varint,24,opt,name=oversized_messages,json=oversizedMessages,proto3" json:"oversized_messages,omitempty"`
 	BannedProviders         int32                  `protobuf:"varint,25,opt,name=banned_providers,json=bannedProviders,proto3" json:"banned_providers,omitempty"`
+	ReducedFeatures         []string               `protobuf:"bytes,26,rep,name=reduced_features,json=reducedFeatures,proto3" json:"reduced_features,omitempty"`
+	ActiveFeatures          []string               `protobuf:"bytes,27,rep,name=active_features,json=activeFeatures,proto3" json:"active_features,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -3310,13 +3310,6 @@ func (x *NetworkStatusSnapshot) GetActiveMode() string {
 		return x.ActiveMode
 	}
 	return ""
-}
-
-func (x *NetworkStatusSnapshot) GetReducedCapabilities() []string {
-	if x != nil {
-		return x.ReducedCapabilities
-	}
-	return nil
 }
 
 func (x *NetworkStatusSnapshot) GetLastTransitionAt() *timestamppb.Timestamp {
@@ -3396,13 +3389,6 @@ func (x *NetworkStatusSnapshot) GetReachabilityObservedAt() *timestamppb.Timesta
 	return nil
 }
 
-func (x *NetworkStatusSnapshot) GetActiveCapabilities() []string {
-	if x != nil {
-		return x.ActiveCapabilities
-	}
-	return nil
-}
-
 func (x *NetworkStatusSnapshot) GetAbuseState() string {
 	if x != nil {
 		return x.AbuseState
@@ -3443,6 +3429,20 @@ func (x *NetworkStatusSnapshot) GetBannedProviders() int32 {
 		return x.BannedProviders
 	}
 	return 0
+}
+
+func (x *NetworkStatusSnapshot) GetReducedFeatures() []string {
+	if x != nil {
+		return x.ReducedFeatures
+	}
+	return nil
+}
+
+func (x *NetworkStatusSnapshot) GetActiveFeatures() []string {
+	if x != nil {
+		return x.ActiveFeatures
+	}
+	return nil
 }
 
 type PeerSnapshot struct {
@@ -4669,7 +4669,7 @@ type NodeStatusResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Status        *OperationStatus       `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
 	Snapshot      *Snapshot              `protobuf:"bytes,2,opt,name=snapshot,proto3" json:"snapshot,omitempty"`
-	Capabilities  *CapabilitiesSnapshot  `protobuf:"bytes,3,opt,name=capabilities,proto3" json:"capabilities,omitempty"`
+	Features      *NodeFeaturesSnapshot  `protobuf:"bytes,4,opt,name=features,proto3" json:"features,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4718,9 +4718,9 @@ func (x *NodeStatusResponse) GetSnapshot() *Snapshot {
 	return nil
 }
 
-func (x *NodeStatusResponse) GetCapabilities() *CapabilitiesSnapshot {
+func (x *NodeStatusResponse) GetFeatures() *NodeFeaturesSnapshot {
 	if x != nil {
-		return x.Capabilities
+		return x.Features
 	}
 	return nil
 }
@@ -5081,27 +5081,27 @@ func (x *ReloadConfigurationResponse) GetConfiguration() *EffectiveConfiguration
 	return nil
 }
 
-type CapabilitiesResponse struct {
+type NodeFeaturesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Capabilities  *CapabilitiesSnapshot  `protobuf:"bytes,1,opt,name=capabilities,proto3" json:"capabilities,omitempty"`
+	Features      *NodeFeaturesSnapshot  `protobuf:"bytes,2,opt,name=features,proto3" json:"features,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *CapabilitiesResponse) Reset() {
-	*x = CapabilitiesResponse{}
+func (x *NodeFeaturesResponse) Reset() {
+	*x = NodeFeaturesResponse{}
 	mi := &file_api_ardents_v1_types_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *CapabilitiesResponse) String() string {
+func (x *NodeFeaturesResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CapabilitiesResponse) ProtoMessage() {}
+func (*NodeFeaturesResponse) ProtoMessage() {}
 
-func (x *CapabilitiesResponse) ProtoReflect() protoreflect.Message {
+func (x *NodeFeaturesResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_ardents_v1_types_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -5113,14 +5113,14 @@ func (x *CapabilitiesResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use CapabilitiesResponse.ProtoReflect.Descriptor instead.
-func (*CapabilitiesResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use NodeFeaturesResponse.ProtoReflect.Descriptor instead.
+func (*NodeFeaturesResponse) Descriptor() ([]byte, []int) {
 	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{55}
 }
 
-func (x *CapabilitiesResponse) GetCapabilities() *CapabilitiesSnapshot {
+func (x *NodeFeaturesResponse) GetFeatures() *NodeFeaturesSnapshot {
 	if x != nil {
-		return x.Capabilities
+		return x.Features
 	}
 	return nil
 }
@@ -6381,26 +6381,26 @@ func (*GetNodeStatusRequest) Descriptor() ([]byte, []int) {
 	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{81}
 }
 
-type GetNodeCapabilitiesRequest struct {
+type GetNodeFeaturesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *GetNodeCapabilitiesRequest) Reset() {
-	*x = GetNodeCapabilitiesRequest{}
+func (x *GetNodeFeaturesRequest) Reset() {
+	*x = GetNodeFeaturesRequest{}
 	mi := &file_api_ardents_v1_types_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GetNodeCapabilitiesRequest) String() string {
+func (x *GetNodeFeaturesRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetNodeCapabilitiesRequest) ProtoMessage() {}
+func (*GetNodeFeaturesRequest) ProtoMessage() {}
 
-func (x *GetNodeCapabilitiesRequest) ProtoReflect() protoreflect.Message {
+func (x *GetNodeFeaturesRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_ardents_v1_types_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -6412,8 +6412,8 @@ func (x *GetNodeCapabilitiesRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetNodeCapabilitiesRequest.ProtoReflect.Descriptor instead.
-func (*GetNodeCapabilitiesRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use GetNodeFeaturesRequest.ProtoReflect.Descriptor instead.
+func (*GetNodeFeaturesRequest) Descriptor() ([]byte, []int) {
 	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{82}
 }
 
@@ -8297,19 +8297,19 @@ const file_api_ardents_v1_types_proto_rawDesc = "" +
 	"\x06source\x18\x04 \x03(\tR\x06source\"<\n" +
 	"\fPartSnapshot\x12\x14\n" +
 	"\x05state\x18\x01 \x01(\tR\x05state\x12\x16\n" +
-	"\x06reason\x18\x02 \x01(\tR\x06reason\"\x8e\x03\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"\xb5\x03\n" +
 	"\x11TransportSnapshot\x12\x18\n" +
 	"\aprofile\x18\x01 \x01(\tR\aprofile\x12\x16\n" +
 	"\x06health\x18\x02 \x01(\tR\x06health\x12'\n" +
 	"\x0factive_families\x18\x03 \x03(\tR\x0eactiveFamilies\x12/\n" +
 	"\x13suppressed_families\x18\x04 \x03(\tR\x12suppressedFamilies\x12#\n" +
 	"\rswitch_reason\x18\x05 \x01(\tR\fswitchReason\x12)\n" +
-	"\x10switch_automatic\x18\x06 \x01(\bR\x0fswitchAutomatic\x121\n" +
-	"\x14reduced_capabilities\x18\a \x03(\tR\x13reducedCapabilities\x12%\n" +
+	"\x10switch_automatic\x18\x06 \x01(\bR\x0fswitchAutomatic\x12%\n" +
 	"\x0erecovery_state\x18\b \x01(\tR\rrecoveryState\x12\x12\n" +
-	"\x04mode\x18\t \x01(\tR\x04mode\x12/\n" +
-	"\x13active_capabilities\x18\n" +
-	" \x03(\tR\x12activeCapabilities\"s\n" +
+	"\x04mode\x18\t \x01(\tR\x04mode\x12)\n" +
+	"\x10reduced_features\x18\v \x03(\tR\x0freducedFeatures\x12'\n" +
+	"\x0factive_features\x18\f \x03(\tR\x0eactiveFeaturesJ\x04\b\a\x10\bJ\x04\b\n" +
+	"\x10\vR\x14reduced_capabilitiesR\x13active_capabilities\"s\n" +
 	"\x10IdentitySnapshot\x12\x14\n" +
 	"\x05state\x18\x01 \x01(\tR\x05state\x12\x1c\n" +
 	"\tprincipal\x18\x02 \x01(\tR\tprincipal\x12\x1d\n" +
@@ -8398,10 +8398,10 @@ const file_api_ardents_v1_types_proto_rawDesc = "" +
 	"\x05store\x18\f \x01(\v2\x19.ardents.v1.StoreSnapshotR\x05store\x12,\n" +
 	"\x04diag\x18\r \x01(\v2\x18.ardents.v1.DiagSnapshotR\x04diag\x12;\n" +
 	"\ttransport\x18\x0e \x01(\v2\x1d.ardents.v1.TransportSnapshotR\ttransport\"\xd5\x01\n" +
-	"\x14CapabilitiesSnapshot\x12\x18\n" +
+	"\x14NodeFeaturesSnapshot\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\tR\aversion\x12\x1a\n" +
 	"\bservices\x18\x02 \x03(\tR\bservices\x12J\n" +
-	"\bfeatures\x18\x03 \x03(\v2..ardents.v1.CapabilitiesSnapshot.FeaturesEntryR\bfeatures\x1a;\n" +
+	"\bfeatures\x18\x03 \x03(\v2..ardents.v1.NodeFeaturesSnapshot.FeaturesEntryR\bfeatures\x1a;\n" +
 	"\rFeaturesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\bR\x05value:\x028\x01\"o\n" +
@@ -8476,18 +8476,19 @@ const file_api_ardents_v1_types_proto_rawDesc = "" +
 	"\tpublished\x18\x05 \x01(\bR\tpublished\x12\x1c\n" +
 	"\tendpoints\x18\x06 \x03(\tR\tendpoints\x12\x16\n" +
 	"\x06reason\x18\a \x01(\tR\x06reason\x12'\n" +
-	"\x0fprobe_endpoints\x18\b \x03(\tR\x0eprobeEndpoints\"\xae\x02\n" +
+	"\x0fprobe_endpoints\x18\b \x03(\tR\x0eprobeEndpoints\"\xc2\x02\n" +
 	"\x14WorkloadSpecSnapshot\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04kind\x18\x02 \x01(\tR\x04kind\x12\x14\n" +
 	"\x05owner\x18\x03 \x01(\tR\x05owner\x12\x16\n" +
 	"\x06config\x18\x04 \x01(\tR\x06config\x12\x18\n" +
 	"\adesired\x18\x05 \x01(\tR\adesired\x12@\n" +
-	"\bservices\x18\x06 \x03(\v2$.ardents.v1.PublishedServiceSnapshotR\bservices\x12\"\n" +
-	"\fcapabilities\x18\a \x03(\tR\fcapabilities\x12\x1d\n" +
+	"\bservices\x18\x06 \x03(\v2$.ardents.v1.PublishedServiceSnapshotR\bservices\x12\x1d\n" +
 	"\n" +
 	"policy_ref\x18\b \x01(\tR\tpolicyRef\x12%\n" +
-	"\x0erestart_policy\x18\t \x01(\tR\rrestartPolicy\"\xb5\x02\n" +
+	"\x0erestart_policy\x18\t \x01(\tR\rrestartPolicy\x12\"\n" +
+	"\frequirements\x18\n" +
+	" \x03(\tR\frequirementsJ\x04\b\a\x10\bR\fcapabilities\"\xb5\x02\n" +
 	"\x18WorkloadInstanceSnapshot\x12\x1f\n" +
 	"\vworkload_id\x18\x01 \x01(\tR\n" +
 	"workloadId\x12\x1e\n" +
@@ -8574,7 +8575,7 @@ const file_api_ardents_v1_types_proto_rawDesc = "" +
 	"\x04node\x18\x01 \x01(\v2\x18.ardents.v1.NodeSnapshotR\x04node\x12,\n" +
 	"\x04boot\x18\x02 \x01(\v2\x18.ardents.v1.BootSnapshotR\x04boot\x128\n" +
 	"\bidentity\x18\x03 \x01(\v2\x1c.ardents.v1.IdentitySnapshotR\bidentity\x122\n" +
-	"\x06health\x18\x04 \x01(\v2\x1a.ardents.v1.HealthSnapshotR\x06health\"\xfa\b\n" +
+	"\x06health\x18\x04 \x01(\v2\x1a.ardents.v1.HealthSnapshotR\x06health\"\xa1\t\n" +
 	"\x15NetworkStatusSnapshot\x12\x14\n" +
 	"\x05state\x18\x01 \x01(\tR\x05state\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x16\n" +
@@ -8582,8 +8583,7 @@ const file_api_ardents_v1_types_proto_rawDesc = "" +
 	"\treachable\x18\x04 \x01(\bR\treachable\x12%\n" +
 	"\x0eactive_profile\x18\x05 \x01(\tR\ractiveProfile\x12\x1f\n" +
 	"\vactive_mode\x18\x06 \x01(\tR\n" +
-	"activeMode\x121\n" +
-	"\x14reduced_capabilities\x18\a \x03(\tR\x13reducedCapabilities\x12H\n" +
+	"activeMode\x12H\n" +
 	"\x12last_transition_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\x10lastTransitionAt\x12'\n" +
 	"\x0fprivacy_profile\x18\t \x01(\tR\x0eprivacyProfile\x12#\n" +
 	"\rprivacy_state\x18\n" +
@@ -8595,15 +8595,16 @@ const file_api_ardents_v1_types_proto_rawDesc = "" +
 	"\x11reachability_mode\x18\x0f \x01(\tR\x10reachabilityMode\x12-\n" +
 	"\x12reachability_state\x18\x10 \x01(\tR\x11reachabilityState\x12/\n" +
 	"\x13reachability_reason\x18\x11 \x01(\tR\x12reachabilityReason\x12T\n" +
-	"\x18reachability_observed_at\x18\x12 \x01(\v2\x1a.google.protobuf.TimestampR\x16reachabilityObservedAt\x12/\n" +
-	"\x13active_capabilities\x18\x13 \x03(\tR\x12activeCapabilities\x12\x1f\n" +
+	"\x18reachability_observed_at\x18\x12 \x01(\v2\x1a.google.protobuf.TimestampR\x16reachabilityObservedAt\x12\x1f\n" +
 	"\vabuse_state\x18\x14 \x01(\tR\n" +
 	"abuseState\x12!\n" +
 	"\fabuse_reason\x18\x15 \x01(\tR\vabuseReason\x126\n" +
 	"\x17rate_limited_operations\x18\x16 \x01(\x04R\x15rateLimitedOperations\x129\n" +
 	"\x18backpressured_operations\x18\x17 \x01(\x04R\x17backpressuredOperations\x12-\n" +
 	"\x12oversized_messages\x18\x18 \x01(\x04R\x11oversizedMessages\x12)\n" +
-	"\x10banned_providers\x18\x19 \x01(\x05R\x0fbannedProviders\"\xaf\x02\n" +
+	"\x10banned_providers\x18\x19 \x01(\x05R\x0fbannedProviders\x12)\n" +
+	"\x10reduced_features\x18\x1a \x03(\tR\x0freducedFeatures\x12'\n" +
+	"\x0factive_features\x18\x1b \x03(\tR\x0eactiveFeaturesJ\x04\b\a\x10\bJ\x04\b\x13\x10\x14R\x14reduced_capabilitiesR\x13active_capabilities\"\xaf\x02\n" +
 	"\fPeerSnapshot\x12\x17\n" +
 	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12\x1c\n" +
 	"\taddresses\x18\x03 \x03(\tR\taddresses\x12/\n" +
@@ -8742,11 +8743,11 @@ const file_api_ardents_v1_types_proto_rawDesc = "" +
 	"\x06impact\x18\x05 \x01(\tR\x06impact\x12\x1a\n" +
 	"\brecovery\x18\x06 \x01(\tR\brecovery\x12\x1d\n" +
 	"\n" +
-	"next_steps\x18\a \x03(\tR\tnextSteps\"\xc1\x01\n" +
+	"next_steps\x18\a \x03(\tR\tnextSteps\"\xcd\x01\n" +
 	"\x12NodeStatusResponse\x123\n" +
 	"\x06status\x18\x01 \x01(\v2\x1b.ardents.v1.OperationStatusR\x06status\x120\n" +
-	"\bsnapshot\x18\x02 \x01(\v2\x14.ardents.v1.SnapshotR\bsnapshot\x12D\n" +
-	"\fcapabilities\x18\x03 \x01(\v2 .ardents.v1.CapabilitiesSnapshotR\fcapabilities\"\x85\x01\n" +
+	"\bsnapshot\x18\x02 \x01(\v2\x14.ardents.v1.SnapshotR\bsnapshot\x12<\n" +
+	"\bfeatures\x18\x04 \x01(\v2 .ardents.v1.NodeFeaturesSnapshotR\bfeaturesJ\x04\b\x03\x10\x04R\fcapabilities\"\x85\x01\n" +
 	"\x13NodeRuntimeResponse\x123\n" +
 	"\x06status\x18\x01 \x01(\v2\x1b.ardents.v1.OperationStatusR\x06status\x129\n" +
 	"\aruntime\x18\x02 \x01(\v2\x1f.ardents.v1.NodeRuntimeSnapshotR\aruntime\"\xba\x03\n" +
@@ -8774,9 +8775,9 @@ const file_api_ardents_v1_types_proto_rawDesc = "" +
 	"\x1bReloadConfigurationResponse\x123\n" +
 	"\x06status\x18\x01 \x01(\v2\x1b.ardents.v1.OperationStatusR\x06status\x12=\n" +
 	"\x06result\x18\x02 \x01(\v2%.ardents.v1.ConfigurationReloadResultR\x06result\x12P\n" +
-	"\rconfiguration\x18\x03 \x01(\v2*.ardents.v1.EffectiveConfigurationSnapshotR\rconfiguration\"\\\n" +
-	"\x14CapabilitiesResponse\x12D\n" +
-	"\fcapabilities\x18\x01 \x01(\v2 .ardents.v1.CapabilitiesSnapshotR\fcapabilities\"\x89\x01\n" +
+	"\rconfiguration\x18\x03 \x01(\v2*.ardents.v1.EffectiveConfigurationSnapshotR\rconfiguration\"h\n" +
+	"\x14NodeFeaturesResponse\x12<\n" +
+	"\bfeatures\x18\x02 \x01(\v2 .ardents.v1.NodeFeaturesSnapshotR\bfeaturesJ\x04\b\x01\x10\x02R\fcapabilities\"\x89\x01\n" +
 	"\x15NetworkStatusResponse\x123\n" +
 	"\x06status\x18\x01 \x01(\v2\x1b.ardents.v1.OperationStatusR\x06status\x12;\n" +
 	"\anetwork\x18\x02 \x01(\v2!.ardents.v1.NetworkStatusSnapshotR\anetwork\"\x91\x01\n" +
@@ -8847,8 +8848,8 @@ const file_api_ardents_v1_types_proto_rawDesc = "" +
 	"nextCursor\"\x12\n" +
 	"\x10StartNodeRequest\"\x11\n" +
 	"\x0fStopNodeRequest\"\x16\n" +
-	"\x14GetNodeStatusRequest\"\x1c\n" +
-	"\x1aGetNodeCapabilitiesRequest\"\x17\n" +
+	"\x14GetNodeStatusRequest\"\x18\n" +
+	"\x16GetNodeFeaturesRequest\"\x17\n" +
 	"\x15GetNodeRuntimeRequest\"\"\n" +
 	" GetEffectiveConfigurationRequest\"\x1c\n" +
 	"\x1aReloadConfigurationRequest\"\x19\n" +
@@ -8961,7 +8962,7 @@ var file_api_ardents_v1_types_proto_goTypes = []any{
 	(*OperationSnapshot)(nil),                  // 16: ardents.v1.OperationSnapshot
 	(*DiagSnapshot)(nil),                       // 17: ardents.v1.DiagSnapshot
 	(*Snapshot)(nil),                           // 18: ardents.v1.Snapshot
-	(*CapabilitiesSnapshot)(nil),               // 19: ardents.v1.CapabilitiesSnapshot
+	(*NodeFeaturesSnapshot)(nil),               // 19: ardents.v1.NodeFeaturesSnapshot
 	(*NodeDiscoveryFacts)(nil),                 // 20: ardents.v1.NodeDiscoveryFacts
 	(*ServiceDiscoveryFacts)(nil),              // 21: ardents.v1.ServiceDiscoveryFacts
 	(*DiscoveryRecord)(nil),                    // 22: ardents.v1.DiscoveryRecord
@@ -8997,7 +8998,7 @@ var file_api_ardents_v1_types_proto_goTypes = []any{
 	(*ConfigurationReloadResult)(nil),          // 52: ardents.v1.ConfigurationReloadResult
 	(*EffectiveConfigurationResponse)(nil),     // 53: ardents.v1.EffectiveConfigurationResponse
 	(*ReloadConfigurationResponse)(nil),        // 54: ardents.v1.ReloadConfigurationResponse
-	(*CapabilitiesResponse)(nil),               // 55: ardents.v1.CapabilitiesResponse
+	(*NodeFeaturesResponse)(nil),               // 55: ardents.v1.NodeFeaturesResponse
 	(*NetworkStatusResponse)(nil),              // 56: ardents.v1.NetworkStatusResponse
 	(*DiscoveryStatusResponse)(nil),            // 57: ardents.v1.DiscoveryStatusResponse
 	(*LocalPresenceResponse)(nil),              // 58: ardents.v1.LocalPresenceResponse
@@ -9024,7 +9025,7 @@ var file_api_ardents_v1_types_proto_goTypes = []any{
 	(*StartNodeRequest)(nil),                   // 79: ardents.v1.StartNodeRequest
 	(*StopNodeRequest)(nil),                    // 80: ardents.v1.StopNodeRequest
 	(*GetNodeStatusRequest)(nil),               // 81: ardents.v1.GetNodeStatusRequest
-	(*GetNodeCapabilitiesRequest)(nil),         // 82: ardents.v1.GetNodeCapabilitiesRequest
+	(*GetNodeFeaturesRequest)(nil),             // 82: ardents.v1.GetNodeFeaturesRequest
 	(*GetNodeRuntimeRequest)(nil),              // 83: ardents.v1.GetNodeRuntimeRequest
 	(*GetEffectiveConfigurationRequest)(nil),   // 84: ardents.v1.GetEffectiveConfigurationRequest
 	(*ReloadConfigurationRequest)(nil),         // 85: ardents.v1.ReloadConfigurationRequest
@@ -9069,7 +9070,7 @@ var file_api_ardents_v1_types_proto_goTypes = []any{
 	(*GetHealthSummaryRequest)(nil),            // 124: ardents.v1.GetHealthSummaryRequest
 	(*ExplainFailureRequest)(nil),              // 125: ardents.v1.ExplainFailureRequest
 	(*ListRecentEventsRequest)(nil),            // 126: ardents.v1.ListRecentEventsRequest
-	nil,                                        // 127: ardents.v1.CapabilitiesSnapshot.FeaturesEntry
+	nil,                                        // 127: ardents.v1.NodeFeaturesSnapshot.FeaturesEntry
 	(*structpb.Struct)(nil),                    // 128: google.protobuf.Struct
 	(*timestamppb.Timestamp)(nil),              // 129: google.protobuf.Timestamp
 }
@@ -9103,7 +9104,7 @@ var file_api_ardents_v1_types_proto_depIdxs = []int32{
 	12,  // 26: ardents.v1.Snapshot.store:type_name -> ardents.v1.StoreSnapshot
 	17,  // 27: ardents.v1.Snapshot.diag:type_name -> ardents.v1.DiagSnapshot
 	7,   // 28: ardents.v1.Snapshot.transport:type_name -> ardents.v1.TransportSnapshot
-	127, // 29: ardents.v1.CapabilitiesSnapshot.features:type_name -> ardents.v1.CapabilitiesSnapshot.FeaturesEntry
+	127, // 29: ardents.v1.NodeFeaturesSnapshot.features:type_name -> ardents.v1.NodeFeaturesSnapshot.FeaturesEntry
 	20,  // 30: ardents.v1.DiscoveryRecord.node_facts:type_name -> ardents.v1.NodeDiscoveryFacts
 	21,  // 31: ardents.v1.DiscoveryRecord.service_facts:type_name -> ardents.v1.ServiceDiscoveryFacts
 	129, // 32: ardents.v1.DiscoveryRecord.issued_at_v1:type_name -> google.protobuf.Timestamp
@@ -9158,7 +9159,7 @@ var file_api_ardents_v1_types_proto_depIdxs = []int32{
 	13,  // 81: ardents.v1.FailureExplanationSnapshot.reason:type_name -> ardents.v1.ReasonSnapshot
 	1,   // 82: ardents.v1.NodeStatusResponse.status:type_name -> ardents.v1.OperationStatus
 	18,  // 83: ardents.v1.NodeStatusResponse.snapshot:type_name -> ardents.v1.Snapshot
-	19,  // 84: ardents.v1.NodeStatusResponse.capabilities:type_name -> ardents.v1.CapabilitiesSnapshot
+	19,  // 84: ardents.v1.NodeStatusResponse.features:type_name -> ardents.v1.NodeFeaturesSnapshot
 	1,   // 85: ardents.v1.NodeRuntimeResponse.status:type_name -> ardents.v1.OperationStatus
 	36,  // 86: ardents.v1.NodeRuntimeResponse.runtime:type_name -> ardents.v1.NodeRuntimeSnapshot
 	129, // 87: ardents.v1.EffectiveConfigurationSnapshot.loaded_at:type_name -> google.protobuf.Timestamp
@@ -9168,7 +9169,7 @@ var file_api_ardents_v1_types_proto_depIdxs = []int32{
 	1,   // 91: ardents.v1.ReloadConfigurationResponse.status:type_name -> ardents.v1.OperationStatus
 	52,  // 92: ardents.v1.ReloadConfigurationResponse.result:type_name -> ardents.v1.ConfigurationReloadResult
 	51,  // 93: ardents.v1.ReloadConfigurationResponse.configuration:type_name -> ardents.v1.EffectiveConfigurationSnapshot
-	19,  // 94: ardents.v1.CapabilitiesResponse.capabilities:type_name -> ardents.v1.CapabilitiesSnapshot
+	19,  // 94: ardents.v1.NodeFeaturesResponse.features:type_name -> ardents.v1.NodeFeaturesSnapshot
 	1,   // 95: ardents.v1.NetworkStatusResponse.status:type_name -> ardents.v1.OperationStatus
 	37,  // 96: ardents.v1.NetworkStatusResponse.network:type_name -> ardents.v1.NetworkStatusSnapshot
 	1,   // 97: ardents.v1.DiscoveryStatusResponse.status:type_name -> ardents.v1.OperationStatus

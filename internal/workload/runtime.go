@@ -99,7 +99,10 @@ func (r *Runtime) Register(ctx context.Context, spec SpecSnapshot) error {
 	if _, exists := r.cfg.Execution.Get(spec.ID); exists {
 		return fmt.Errorf("workload %s already exists", spec.ID)
 	}
-	model := SpecFromSnapshot(spec)
+	model, err := SpecFromSnapshot(spec)
+	if err != nil {
+		return err
+	}
 	if err := r.cfg.Policy.AdmitWorkload(model, r.cfg.Execution.List()); err != nil {
 		r.denied(spec.ID, "workload.register", err)
 		return err

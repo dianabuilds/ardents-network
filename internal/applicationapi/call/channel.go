@@ -17,13 +17,14 @@ type Injector struct{ channel *channelKey }
 type Extractor struct{ channel *channelKey }
 
 type principalFacts struct {
-	Actor, Effective            string
-	Node                        string
-	Interface                   int32
-	ProtocolMajor               uint32
-	Action                      string
-	ResourceNode, ResourceOwner string
-	ResourceKind, ResourceID    string
+	Actor, Effective         string
+	Node                     string
+	Interface                int32
+	ProtocolMajor            uint32
+	Action                   string
+	ResourceNode             string
+	ResourceOwner            identityaccess.ResourceOwner
+	ResourceKind, ResourceID string
 }
 
 type Call struct {
@@ -74,7 +75,7 @@ func (e Extractor) Extract(ctx context.Context) (Call, bool) {
 
 func validPrincipal(f principalFacts) bool {
 	return f.Actor != "" && f.Effective != "" && f.Node != "" && f.Action != "" &&
-		f.ResourceNode == f.Node && f.ResourceKind != "" && f.ResourceOwner == f.Effective
+		f.ResourceNode == f.Node && f.ResourceKind != "" && f.ResourceOwner.String() == f.Effective
 }
 
 func (c Call) clone() Call {
@@ -132,11 +133,11 @@ func (c Call) ResourceNode() string {
 	}
 	return ""
 }
-func (c Call) ResourceOwner() string {
+func (c Call) ResourceOwner() identityaccess.ResourceOwner {
 	if c.principal != nil {
 		return c.principal.ResourceOwner
 	}
-	return ""
+	return identityaccess.ResourceOwner{}
 }
 func (c Call) ResourceKind() string {
 	if c.principal != nil {

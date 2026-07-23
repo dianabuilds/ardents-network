@@ -33,8 +33,8 @@ func (a *Command) Run(ctx context.Context, args []string) int {
 		return a.nodeStatus(ctx)
 	case "runtime":
 		return a.nodeRuntime(ctx)
-	case "capabilities":
-		return a.nodeCapabilities(ctx)
+	case "features":
+		return a.nodeFeatures(ctx)
 	case "events":
 		return a.nodeEvents(ctx, args[1:])
 	default:
@@ -45,7 +45,7 @@ func (a *Command) Run(ctx context.Context, args []string) int {
 }
 
 func renderNodeUsage(writer io.Writer) {
-	output.Writeln(writer, "Usage: ardentsctl [global flags] node <start|stop|status|runtime|capabilities|events>")
+	output.Writeln(writer, "Usage: ardentsctl [global flags] node <start|stop|status|runtime|features|events>")
 }
 
 func (a *Command) nodeStart(ctx context.Context) int {
@@ -98,9 +98,9 @@ func (a *Command) nodeStatus(ctx context.Context) int {
 	output.KV(a.ctx.Renderer.Out, "state", node.GetState())
 	output.KV(a.ctx.Renderer.Out, "ready", output.Bool(node.GetReady()))
 	output.KV(a.ctx.Renderer.Out, "reason", node.GetReason())
-	caps := resp.Msg.GetCapabilities()
-	output.KV(a.ctx.Renderer.Out, "version", caps.GetVersion())
-	if services := caps.GetServices(); len(services) > 0 {
+	features := resp.Msg.GetFeatures()
+	output.KV(a.ctx.Renderer.Out, "version", features.GetVersion())
+	if services := features.GetServices(); len(services) > 0 {
 		output.KV(a.ctx.Renderer.Out, "services", strings.Join(services, ", "))
 	}
 	return 0
@@ -134,10 +134,10 @@ func (a *Command) nodeRuntime(ctx context.Context) int {
 	return 0
 }
 
-func (a *Command) nodeCapabilities(ctx context.Context) int {
+func (a *Command) nodeFeatures(ctx context.Context) int {
 	callCtx, cancel := a.ctx.Call(ctx)
 	defer cancel()
-	resp, err := a.ctx.Client.Service().GetNodeCapabilities(callCtx, client.Request(&ardentsv1.GetNodeCapabilitiesRequest{}))
+	resp, err := a.ctx.Client.Service().GetNodeFeatures(callCtx, client.Request(&ardentsv1.GetNodeFeaturesRequest{}))
 	if err != nil {
 		return a.ctx.Failure(err)
 	}
@@ -145,10 +145,10 @@ func (a *Command) nodeCapabilities(ctx context.Context) int {
 		output.JSON(a.ctx.Renderer.Out, resp.Msg)
 		return 0
 	}
-	output.Header(a.ctx.Renderer.Out, "node capabilities")
-	caps := resp.Msg.GetCapabilities()
-	output.KV(a.ctx.Renderer.Out, "version", caps.GetVersion())
-	if services := caps.GetServices(); len(services) > 0 {
+	output.Header(a.ctx.Renderer.Out, "node features")
+	features := resp.Msg.GetFeatures()
+	output.KV(a.ctx.Renderer.Out, "version", features.GetVersion())
+	if services := features.GetServices(); len(services) > 0 {
 		output.KV(a.ctx.Renderer.Out, "services", strings.Join(services, ", "))
 	}
 	return 0

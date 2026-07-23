@@ -58,22 +58,52 @@ func (s *Service) Load() error {
 	}
 
 	var stored persistentState
-	found, err := db.LoadJSON(s.path, "workload", "snapshot", &stored)
+	found, err := db.LoadJSONStrict(s.path, "workload", "snapshot", &stored)
 	if err != nil {
 		return err
 	}
 	if found {
-		s.items = NormalizeItems(stored.Items)
+		items, validateErr := validatePersistentState(stored)
+		if validateErr != nil {
+			return validateErr
+		}
+		previousItems, previousState := s.items, s.state
+		s.items = items
 		s.state = "ready"
 		if err := s.recoverLoadedProcessesLocked(); err != nil {
+			s.items, s.state = previousItems, previousState
 			return err
 		}
-		return s.reconcileRuntimeInventoryLocked()
+		if err := s.reconcileRuntimeInventoryLocked(); err != nil {
+			s.items, s.state = previousItems, previousState
+			return err
+		}
+		return nil
 	}
 
 	s.items = map[string]Status{}
 	s.state = "ready"
 	return s.reconcileRuntimeInventoryLocked()
+}
+
+func validatePersistentState(stored persistentState) (map[string]Status, error) {
+	if stored.Version != persistentStateVersion {
+		return nil, fmt.Errorf("unsupported workload state version")
+	}
+	if stored.Items == nil {
+		return nil, fmt.Errorf("workload state items are missing")
+	}
+	items := make(map[string]Status, len(stored.Items))
+	for id, item := range stored.Items {
+		if id == "" || item.Spec.ID != id {
+			return nil, fmt.Errorf("workload state key does not match workload id")
+		}
+		if err := workloadregistry.ValidateSpec(item.Spec); err != nil {
+			return nil, fmt.Errorf("workload state spec is invalid: %w", err)
+		}
+		items[id] = NormalizeStatus(item)
+	}
+	return items, nil
 }
 
 func (s *Service) Save() error {
@@ -90,6 +120,9 @@ func (s *Service) Seed(specs []workloadregistry.Spec) error {
 		spec = workloadregistry.NormalizeSpec(spec)
 		if spec.ID == "" || spec.Kind == "" {
 			continue
+		}
+		if err := workloadregistry.ValidateWorkloadRequirements(spec.Requirements); err != nil {
+			return err
 		}
 		if _, ok := s.items[spec.ID]; ok {
 			continue
@@ -112,6 +145,9 @@ func (s *Service) Register(spec workloadregistry.Spec) error {
 	spec = workloadregistry.NormalizeSpec(spec)
 	if spec.ID == "" || spec.Kind == "" {
 		return fmt.Errorf("workload id and kind are required")
+	}
+	if err := workloadregistry.ValidateWorkloadRequirements(spec.Requirements); err != nil {
+		return err
 	}
 	if _, exists := s.items[spec.ID]; exists {
 		return fmt.Errorf("workload %s already exists", spec.ID)

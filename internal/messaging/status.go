@@ -3,46 +3,47 @@ package messaging
 import "slices"
 
 import identityapi "ardents/internal/identity"
+import "ardents/internal/network"
 
 const (
-	ProfileV1                 = "ardents-private/1"
-	StatusActive              = "active"
-	StatusDegraded            = "degraded"
-	ReasonCapabilityReady     = "capability_ready"
-	RecoverySteady            = "steady"
-	RecoveryPending           = "recovery_pending"
-	RecoveryBlocked           = "blocked"
-	CodeCapabilityUnavailable = "privacy.capability.unavailable"
+	ProfileV1                   = "ardents-private/1"
+	StatusActive                = "active"
+	StatusDegraded              = "degraded"
+	ReasonChannelGrantReady     = "channel_grant_ready"
+	RecoverySteady              = "steady"
+	RecoveryPending             = "recovery_pending"
+	RecoveryBlocked             = "blocked"
+	CodeChannelGrantUnavailable = "privacy.channel_grant.unavailable"
 )
 
 type StatusSnapshot struct {
-	Profile             string
-	State               string
-	SwitchReason        string
-	RecoveryState       string
-	ReducedCapabilities []string
-	ErrorCategories     []string
+	Profile         string
+	State           string
+	SwitchReason    string
+	RecoveryState   string
+	ReducedFeatures []network.TransportFeature
+	ErrorCategories []string
 }
 
 func Snapshot(discovery, data *Channel) StatusSnapshot {
-	status := StatusSnapshot{Profile: ProfileV1, State: StatusActive, SwitchReason: ReasonCapabilityReady, RecoveryState: RecoverySteady}
+	status := StatusSnapshot{Profile: ProfileV1, State: StatusActive, SwitchReason: ReasonChannelGrantReady, RecoveryState: RecoverySteady}
 	blocked := false
-	check := func(channel *Channel, capability string, permissions ...identityapi.CapabilityPermission) {
+	check := func(channel *Channel, feature network.TransportFeature, permissions ...identityapi.CapabilityPermission) {
 		if channel == nil {
-			status.reduce(capability, CodeCapabilityMissing)
+			status.reduce(feature, CodeChannelGrantMissing)
 			blocked = true
 			return
 		}
 		for _, permission := range permissions {
 			if _, _, err := channel.resolve(permission); err != nil {
-				status.reduce(capability, safeCapabilityCode(err))
+				status.reduce(feature, safeChannelGrantCode(err))
 				return
 			}
 		}
 	}
-	check(discovery, "private_publication", identityapi.CapabilityPublish)
-	check(discovery, "private_discovery", identityapi.CapabilitySubscribe, identityapi.CapabilityStoreFetch)
-	check(data, "private_data_exchange", identityapi.CapabilityPublish, identityapi.CapabilitySubscribe)
+	check(discovery, network.TransportFeaturePrivatePublication, identityapi.CapabilityPublish)
+	check(discovery, network.TransportFeaturePrivateDiscovery, identityapi.CapabilitySubscribe, identityapi.CapabilityStoreFetch)
+	check(data, network.TransportFeaturePrivateDataExchange, identityapi.CapabilityPublish, identityapi.CapabilitySubscribe)
 	if status.State == StatusDegraded {
 		status.RecoveryState = RecoveryPending
 		if blocked {
@@ -52,32 +53,32 @@ func Snapshot(discovery, data *Channel) StatusSnapshot {
 	return status
 }
 
-func (s *StatusSnapshot) reduce(capability, code string) {
+func (s *StatusSnapshot) reduce(feature network.TransportFeature, code string) {
 	s.State = StatusDegraded
-	s.ReducedCapabilities = appendUnique(s.ReducedCapabilities, capability)
+	s.ReducedFeatures = appendUniqueFeature(s.ReducedFeatures, feature)
 	s.ErrorCategories = appendUnique(s.ErrorCategories, code)
-	if s.SwitchReason == ReasonCapabilityReady {
+	if s.SwitchReason == ReasonChannelGrantReady {
 		s.SwitchReason = code
 	}
 }
 
-func safeCapabilityCode(err error) string {
+func safeChannelGrantCode(err error) string {
 	if code := CodeOf(err); IsSafeErrorCategory(code) {
 		return code
 	}
-	return CodeCapabilityUnavailable
+	return CodeChannelGrantUnavailable
 }
 
 func IsSafeErrorCategory(code string) bool {
 	switch code {
-	case CodeCapabilityMissing,
-		"privacy.capability.not_yet_valid",
-		"privacy.capability.expired",
-		"privacy.capability.revoked",
-		"privacy.capability.scope_denied",
-		"privacy.capability.issuer_untrusted",
-		"privacy.capability.invalid",
-		CodeCapabilityUnavailable:
+	case CodeChannelGrantMissing,
+		"privacy.channel_grant.not_yet_valid",
+		"privacy.channel_grant.expired",
+		"privacy.channel_grant.revoked",
+		"privacy.channel_grant.scope_denied",
+		"privacy.channel_grant.issuer_untrusted",
+		"privacy.channel_grant.invalid",
+		CodeChannelGrantUnavailable:
 		return true
 	default:
 		return false
@@ -85,6 +86,13 @@ func IsSafeErrorCategory(code string) bool {
 }
 
 func appendUnique(items []string, value string) []string {
+	if slices.Contains(items, value) {
+		return items
+	}
+	return append(items, value)
+}
+
+func appendUniqueFeature(items []network.TransportFeature, value network.TransportFeature) []network.TransportFeature {
 	if slices.Contains(items, value) {
 		return items
 	}

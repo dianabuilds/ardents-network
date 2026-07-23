@@ -94,7 +94,7 @@ The supported `local-multinode` deployment implements this workflow with a
 real deployment-local issuer. The issuer private key and channel authority
 state are retained in a dedicated Docker volume, separate from node data. Each
 stopped node receives a unique subject-bound signed grant in its encrypted
-Identity-owned capability store plus distinct store/replay keys. Re-running the
+Identity-owned channel grant store plus distinct store/replay keys. Re-running the
 workflow is idempotent and reuses the same authority and grant identities. The
 local issuer is not trusted by production profiles and is never exported as a
 public or Ardents-operated realm authority.
@@ -140,7 +140,7 @@ Waku/blob payloads, backed up as secret material, and resolved by opaque local
 reference. The transport facade receives only resolved operation-specific key
 material and may not persist a second copy.
 
-The capability-store master key is a separately provisioned 32-byte deployment
+The channel-grant-store master key is a separately provisioned 32-byte deployment
 secret. Identity derives independent store-encryption and local-reference keys
 with HKDF-SHA256 domain separation. The master key is never written into
 `ardents.db`; a missing/wrong key makes the authenticated capability ledger
@@ -388,13 +388,13 @@ Stable internal reason codes:
 - `privacy.envelope.replayed`
 - `privacy.envelope.signature_invalid`
 - `privacy.envelope.sender_unauthorized`
-- `privacy.capability.missing`
-- `privacy.capability.not_yet_valid`
-- `privacy.capability.expired`
-- `privacy.capability.revoked`
-- `privacy.capability.scope_denied`
-- `privacy.capability.issuer_untrusted`
-- `privacy.capability.invalid`
+- `privacy.channel_grant.missing`
+- `privacy.channel_grant.not_yet_valid`
+- `privacy.channel_grant.expired`
+- `privacy.channel_grant.revoked`
+- `privacy.channel_grant.scope_denied`
+- `privacy.channel_grant.issuer_untrusted`
+- `privacy.channel_grant.invalid`
 - `privacy.replay.capacity_exhausted`
 - `privacy.migration.legacy_rejected`
 
@@ -459,12 +459,18 @@ Migration is a coordinated maintenance boundary:
 New nodes do not subscribe to, query, decode, bridge, or dual-publish legacy
 topics. If a required capability is missing, local domain truth remains local,
 publication/fetch is denied, and diagnostics reports
-`privacy.capability.missing`; plaintext is never used to preserve availability.
+`privacy.channel_grant.missing`; plaintext is never used to preserve availability.
 Previously exposed plaintext cannot be made confidential retroactively.
 
 Rolling interoperability with technical-alpha nodes is deliberately rejected.
 Availability during migration is achieved through a scheduled cutover and
 verified backups, not a privacy downgrade.
+
+The product concept and operational vocabulary are **Channel Grant**. The
+existing cryptographic `CapabilityGrant` type, `CAPABILITY_CONTROL` wire
+identifier, `realm.capability_control` purpose, canonical/domain-separated
+bytes, and persisted ledger format remain unchanged until a separately
+versioned protocol migration.
 
 ## 11. Acceptance Requirements
 

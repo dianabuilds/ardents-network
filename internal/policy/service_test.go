@@ -16,7 +16,7 @@ import (
 func TestPolicyAllowDenyMatrix(t *testing.T) {
 	svc := New(Config{
 		MaxWorkloads:                    1,
-		DeniedCapabilities:              []string{"gpu"},
+		DeniedWorkloadRequirements:      []domainworkload.WorkloadRequirement{"gpu"},
 		DisableNetworkPublishedServices: true,
 		DeniedRouteSchemes:              []string{"quic"},
 		DisablePeerBlobReserving:        true,
@@ -29,7 +29,7 @@ func TestPolicyAllowDenyMatrix(t *testing.T) {
 		require.Error(t, err, "expected workload limit denial")
 	}
 	{
-		err := svc.AdmitWorkload(domainworkload.Spec{ID: "work.gpu", Kind: "service", Capabilities: []string{"gpu"}}, nil)
+		err := svc.AdmitWorkload(domainworkload.Spec{ID: "work.gpu", Kind: "service", Requirements: []domainworkload.WorkloadRequirement{"gpu"}}, nil)
 		require.Error(t, err, "expected denied capability")
 	}
 	{
@@ -87,10 +87,10 @@ func TestPolicyAllowDenyMatrix(t *testing.T) {
 
 func TestPolicySnapshotStaysEnforcedAfterSubsequentAllows(t *testing.T) {
 	svc := New(Config{
-		DeniedCapabilities: []string{"gpu"},
+		DeniedWorkloadRequirements: []domainworkload.WorkloadRequirement{"gpu"},
 	})
 	{
-		err := svc.AdmitWorkload(domainworkload.Spec{ID: "work.gpu", Kind: "service", Capabilities: []string{"gpu"}}, nil)
+		err := svc.AdmitWorkload(domainworkload.Spec{ID: "work.gpu", Kind: "service", Requirements: []domainworkload.WorkloadRequirement{"gpu"}}, nil)
 		require.Error(t, err, "expected denied capability")
 	}
 	{
@@ -116,17 +116,17 @@ func TestPolicySnapshotStaysEnforcedAfterSubsequentAllows(t *testing.T) {
 
 func TestPolicyUsesOneNormalizationRuleAcrossSurfaces(t *testing.T) {
 	svc := New(Config{
-		AllowedPolicyRefs:  []string{" Trusted ", "trusted"},
-		DeniedCapabilities: []string{" GPU "},
-		DeniedServiceTypes: []string{" Admin "},
-		DeniedRouteSchemes: []string{" Quic "},
+		AllowedPolicyRefs:          []string{" Trusted ", "trusted"},
+		DeniedWorkloadRequirements: []domainworkload.WorkloadRequirement{"gpu"},
+		DeniedServiceTypes:         []string{" Admin "},
+		DeniedRouteSchemes:         []string{" Quic "},
 	})
 	{
 		err := svc.AdmitWorkload(domainworkload.Spec{ID: "work.ok", Kind: "service", PolicyRef: "trusted"}, nil)
 		require.NoErrorf(t, err, "admit normalized policy ref: %v", err)
 	}
 	{
-		err := svc.AdmitWorkload(domainworkload.Spec{ID: "work.gpu", Kind: "service", Capabilities: []string{"gpu"}}, nil)
+		err := svc.AdmitWorkload(domainworkload.Spec{ID: "work.gpu", Kind: "service", Requirements: []domainworkload.WorkloadRequirement{"gpu"}}, nil)
 		require.Error(t, err, "expected normalized denied capability")
 	}
 	{
@@ -137,4 +137,20 @@ func TestPolicyUsesOneNormalizationRuleAcrossSurfaces(t *testing.T) {
 		err := svc.AllowRouteUse(transport.Candidate{Scheme: "quic", Trusted: true})
 		require.Error(t, err, "expected normalized denied route scheme")
 	}
+}
+
+func TestWorkloadPolicyFailsClosedForMalformedTypedRequirements(t *testing.T) {
+	invalidPolicy := New(Config{
+		DeniedWorkloadRequirements: []domainworkload.WorkloadRequirement{" GPU "},
+	})
+	err := invalidPolicy.AdmitWorkload(domainworkload.Spec{
+		ID: "work.gpu", Kind: "service", Requirements: []domainworkload.WorkloadRequirement{"gpu"},
+	}, nil)
+	require.Error(t, err)
+
+	validPolicy := New(Config{})
+	err = validPolicy.AdmitWorkload(domainworkload.Spec{
+		ID: "work.bad", Kind: "service", Requirements: []domainworkload.WorkloadRequirement{"gpu/admin"},
+	}, nil)
+	require.Error(t, err)
 }

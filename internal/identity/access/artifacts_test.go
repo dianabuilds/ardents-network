@@ -101,6 +101,12 @@ func TestAccessGrantNormalizesActionsAndRejectsUnknownAction(t *testing.T) {
 	require.Error(t, err, "unknown resource kind must fail closed")
 	payload.Scope.GetExact().Resource.Kind = "content-blob"
 	payload.Scope.GetExact().Resource.Owner = subject.String()
+	for _, invalidOwner := range []string{"node", "workload_1", "service_1", strings.Replace(subject.String(), "p1_", "p_", 1)} {
+		payload.Scope.GetExact().Resource.Owner = invalidOwner
+		_, err = SignAccessGrant(payload, nodeKey)
+		require.Error(t, err, "non-Principal resource owner must fail closed")
+	}
+	payload.Scope.GetExact().Resource.Owner = subject.String()
 	payload.Scope.GetExact().Resource.CanonicalId = strings.Repeat("x", 512)
 	_, err = SignAccessGrant(payload, nodeKey)
 	require.NoError(t, err)

@@ -3,6 +3,7 @@ package daemon
 import (
 	"ardents/internal/diagnostics"
 	diagapi "ardents/internal/diagnostics"
+	networkapi "ardents/internal/network"
 	"context"
 	"testing"
 
@@ -46,15 +47,19 @@ func TestNodeStartSurvivesCallerContextCancellation(t *testing.T) {
 	snapshot := n.Snapshot()
 	require.Equal(t, "degraded", snapshot.Node.State)
 	require.NotNil(t, snapshot.Diag.Health.PrimaryReason)
-	require.Equal(t, "privacy.capability.missing", snapshot.Diag.Health.PrimaryReason.Code)
-	require.True(t, hasSubsystemReason(snapshot.Diag.Health.Subsystems, "data", "privacy.capability.missing"))
+	require.Equal(t, "privacy.channel_grant.missing", snapshot.Diag.Health.PrimaryReason.Code)
+	require.True(t, hasSubsystemReason(snapshot.Diag.Health.Subsystems, "data", "privacy.channel_grant.missing"))
 	network := n.GetNetworkStatus()
 	require.Equal(t, "ardents-private/1", network.PrivacyProfile)
 	require.Equal(t, "degraded", network.PrivacyState)
-	require.Equal(t, "privacy.capability.missing", network.PrivacySwitchReason)
+	require.Equal(t, "privacy.channel_grant.missing", network.PrivacySwitchReason)
 	require.Equal(t, "blocked", network.PrivacyRecoveryState)
-	require.Equal(t, []string{"privacy.capability.missing"}, network.PrivacyErrors)
-	require.ElementsMatch(t, []string{"private_publication", "private_discovery", "private_data_exchange"}, network.ReducedCapabilities)
+	require.Equal(t, []string{"privacy.channel_grant.missing"}, network.PrivacyErrors)
+	require.ElementsMatch(t, []networkapi.TransportFeature{
+		networkapi.TransportFeaturePrivatePublication,
+		networkapi.TransportFeaturePrivateDiscovery,
+		networkapi.TransportFeaturePrivateDataExchange,
+	}, network.ReducedFeatures)
 
 	records, err := n.ListRecords()
 	require.NoError(t, err)

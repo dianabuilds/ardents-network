@@ -114,7 +114,7 @@ Explainability is required at the level of:
 
 - active privacy profile;
 - reason for automatic switching;
-- reduced capabilities;
+- reduced transport features;
 - recovery path.
 
 It is not allowed to expose:
@@ -151,7 +151,7 @@ These profiles are allowed only if:
 
 - they are variants of the same `Waku` foundation;
 - automatic switching is explicit and operator-visible;
-- switching does not silently claim capabilities that are no longer active;
+- switching does not silently claim transport features that are no longer active;
 - privacy reduction or exposure increase is visible as runtime truth.
 
 ## 7. Threat Model Baseline

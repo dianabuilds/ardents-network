@@ -55,7 +55,7 @@ func TestAvailabilityFailureMatrixEndsInHonestTerminalLoss(t *testing.T) {
 
 	err = fixture.owner.ReconcileDataAvailability(ctx)
 	require.Error(t, err)
-	require.ErrorContains(t, err, appreplication.ReplicaReasonCapability)
+	require.ErrorContains(t, err, appreplication.ReplicaReasonPermission)
 	unavailable, err := fixture.owner.GetAvailability(root.ID)
 	require.NoError(t, err)
 	require.Equal(t, "unavailable", unavailable.State)

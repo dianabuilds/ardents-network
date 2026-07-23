@@ -235,6 +235,7 @@ func TestLoadRejectsPidReuseWhenProcessDoesNotMatchConfig(t *testing.T) {
 
 	startedAt := time.Now().UTC()
 	state := map[string]any{
+		"version": 1,
 		"items": map[string]any{
 			"work.echo": map[string]any{
 				"spec": map[string]any{
@@ -249,9 +250,7 @@ func TestLoadRejectsPidReuseWhenProcessDoesNotMatchConfig(t *testing.T) {
 						"type":      "echo",
 						"owner":     "work.echo",
 						"mode":      "NetworkPublished",
-						"published": true,
 						"endpoints": []string{"tcp://echo:9000"},
-						"reason":    "",
 					}},
 				},
 				"observed": workloadcontroller.ObservedRunning,

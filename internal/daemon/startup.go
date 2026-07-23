@@ -305,15 +305,15 @@ func RunStartupStep(
 func (m *RuntimeManager) transportProfilePayloadLocked() map[string]any {
 	snapshot := m.trans.ProfileSnapshot()
 	return map[string]any{
-		"profile":              string(snapshot.Profile),
-		"mode":                 string(snapshot.Mode),
-		"health":               string(snapshot.Health),
-		"active_families":      transportFamilies(snapshot.ActiveFamilies),
-		"suppressed_families":  transportFamilies(snapshot.SuppressedFamilies),
-		"switch_reason":        string(snapshot.SwitchReason),
-		"switch_automatic":     snapshot.SwitchAutomatic,
-		"reduced_capabilities": append([]string(nil), snapshot.ReducedCapabilities...),
-		"recovery_state":       string(snapshot.RecoveryState),
+		"profile":             string(snapshot.Profile),
+		"mode":                string(snapshot.Mode),
+		"health":              string(snapshot.Health),
+		"active_families":     transportFamilies(snapshot.ActiveFamilies),
+		"suppressed_families": transportFamilies(snapshot.SuppressedFamilies),
+		"switch_reason":       string(snapshot.SwitchReason),
+		"switch_automatic":    snapshot.SwitchAutomatic,
+		"reduced_features":    append([]transport.TransportFeature(nil), snapshot.ReducedFeatures...),
+		"recovery_state":      string(snapshot.RecoveryState),
 	}
 }
 

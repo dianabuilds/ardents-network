@@ -17,7 +17,7 @@ func newDescriptors() descriptors {
 		nodeReady:         metric("node_ready", "Whether the node is canonically ready."),
 		healthState:       metric("node_health", "Current canonical Diagnostics health state.", "state"),
 		peers:             metric("peers", "Observed peers grouped by bounded state and trust.", "state", "trust"),
-		wakuProtocol:      metric("waku_protocol_active", "Active canonical Waku protocol capabilities.", "protocol"),
+		wakuProtocol:      metric("waku_protocol_active", "Active canonical Waku transport features.", "protocol"),
 		networkRejections: metric("network_rejections_total", "Cumulative network protection rejections.", "reason"),
 		privacyFailures:   metric("privacy_failures_window", "Privacy failures in the bounded Diagnostics window.", "domain", "category"),
 		messageFailures:   metric("message_failures_window", "Message failures in the bounded Diagnostics window.", "category"),

@@ -60,3 +60,9 @@ func TestVersionOneNumericalBoundaries(t *testing.T) {
 		t.Fatal("upper timestamp")
 	}
 }
+
+func TestOperatorNodeFeaturesActionHasNoCapabilitiesAlias(t *testing.T) {
+	require.True(t, IsRegisteredAction(InterfaceOperator, "node.features"))
+	require.False(t, IsRegisteredAction(InterfaceOperator, "node.capabilities"))
+	require.False(t, IsRegisteredAction(InterfaceApplication, "node.features"))
+}

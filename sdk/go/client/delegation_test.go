@@ -35,7 +35,7 @@ func TestDelegationProposalDisplaysExactCanonicalConsentAndCreatesOpaqueArtifact
 		ApplicationPrincipal: application,
 		NodePrincipal:        node,
 		Actions:              []string{"application.content.put", "application.content.get"},
-		Scope:                sdkidentity.ResourceScope{Kind: sdkidentity.ScopePrincipalOwned, Owner: delegator},
+		Scope:                sdkidentity.ResourceScope{Kind: sdkidentity.ScopePrincipalOwned, Owner: mustClientResourceOwner(t, delegator)},
 		NotBefore:            now,
 		NotAfter:             now.Add(15 * time.Minute),
 	})
@@ -69,7 +69,7 @@ func TestDelegationProposalRejectsNoncanonicalOrOverbroadConsent(t *testing.T) {
 	valid := DelegationRequest{
 		DelegatorPrincipal: delegator, ApplicationPrincipal: application, NodePrincipal: node,
 		Actions:   []string{"application.content.get"},
-		Scope:     sdkidentity.ResourceScope{Kind: sdkidentity.ScopePrincipalOwned, Owner: delegator},
+		Scope:     sdkidentity.ResourceScope{Kind: sdkidentity.ScopePrincipalOwned, Owner: mustClientResourceOwner(t, delegator)},
 		NotBefore: now, NotAfter: now.Add(15 * time.Minute),
 	}
 	cases := map[string]func(*DelegationRequest){
@@ -83,12 +83,12 @@ func TestDelegationProposalRejectsNoncanonicalOrOverbroadConsent(t *testing.T) {
 		"noncanonical time": func(r *DelegationRequest) { r.NotBefore = r.NotBefore.Add(time.Nanosecond) },
 		"cross-Node exact": func(r *DelegationRequest) {
 			r.Scope = sdkidentity.ResourceScope{Kind: sdkidentity.ScopeExact, Resource: sdkidentity.ResourceRef{
-				Node: application, Owner: delegator, Kind: "owned-content", CanonicalID: "blob-reference",
+				Node: application, Owner: mustClientResourceOwner(t, delegator), Kind: "owned-content", CanonicalID: "blob-reference",
 			}}
 		},
 		"consent text injection": func(r *DelegationRequest) {
 			r.Scope = sdkidentity.ResourceScope{Kind: sdkidentity.ScopeExact, Resource: sdkidentity.ResourceRef{
-				Node: node, Owner: delegator, Kind: "owned-content", CanonicalID: "blob\nforged-consent",
+				Node: node, Owner: mustClientResourceOwner(t, delegator), Kind: "owned-content", CanonicalID: "blob\nforged-consent",
 			}}
 		},
 	}
@@ -113,7 +113,7 @@ func TestDelegationProposalQuotesExactScopeFieldsWithoutConsentAmbiguity(t *test
 		DelegatorPrincipal: delegator, ApplicationPrincipal: application, NodePrincipal: node,
 		Actions: []string{"application.content.get"},
 		Scope: sdkidentity.ResourceScope{Kind: sdkidentity.ScopeExact, Resource: sdkidentity.ResourceRef{
-			Node: node, Owner: delegator, Kind: "owned-content", CanonicalID: canonicalID,
+			Node: node, Owner: mustClientResourceOwner(t, delegator), Kind: "owned-content", CanonicalID: canonicalID,
 		}},
 		NotBefore: now, NotAfter: now.Add(15 * time.Minute),
 	})
@@ -131,7 +131,7 @@ func TestCreateDelegationRejectsSignerMismatchAndRedactsSignerFailure(t *testing
 	proposal, err := NewDelegationProposal(DelegationRequest{
 		DelegatorPrincipal: delegator, ApplicationPrincipal: application, NodePrincipal: node,
 		Actions:   []string{"application.content.get"},
-		Scope:     sdkidentity.ResourceScope{Kind: sdkidentity.ScopePrincipalOwned, Owner: delegator},
+		Scope:     sdkidentity.ResourceScope{Kind: sdkidentity.ScopePrincipalOwned, Owner: mustClientResourceOwner(t, delegator)},
 		NotBefore: now, NotAfter: now.Add(15 * time.Minute),
 	})
 	require.NoError(t, err)
@@ -183,4 +183,11 @@ func delegationDigestID(prefix, domain string, material []byte) string {
 	payload := append(append([]byte(domain), byte(1)), material...)
 	sum := sha256.Sum256(payload)
 	return prefix + strings.ToLower(base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(sum[:]))
+}
+
+func mustClientResourceOwner(t *testing.T, value string) sdkidentity.ResourceOwner {
+	t.Helper()
+	owner, err := sdkidentity.PrincipalOwner(value)
+	require.NoError(t, err)
+	return owner
 }

@@ -8,11 +8,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCheckCapabilityUseEnforcesDisableAndScopeRules(t *testing.T) {
+func TestCheckChannelGrantUseEnforcesDisableAndScopeRules(t *testing.T) {
 	use := identityapi.CapabilityUse{Scope: identityapi.CapabilityRealmDiscovery}
-	require.True(t, CheckCapabilityUse(CapabilityConfig{}, use).Allowed)
-	require.False(t, CheckCapabilityUse(CapabilityConfig{DisablePrivateCapabilityUse: true}, use).Allowed)
-	require.False(t, CheckCapabilityUse(CapabilityConfig{
-		DeniedCapabilityScopes: []string{"REALM.DISCOVERY"},
+	require.True(t, CheckChannelGrantUse(ChannelGrantPolicyConfig{}, use).Allowed)
+	require.False(t, CheckChannelGrantUse(ChannelGrantPolicyConfig{DisablePrivateChannelGrantUse: true}, use).Allowed)
+	require.False(t, CheckChannelGrantUse(ChannelGrantPolicyConfig{
+		DeniedChannelGrantScopes: []string{"REALM.DISCOVERY"},
 	}, use).Allowed)
 }

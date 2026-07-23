@@ -60,7 +60,7 @@ The exact profile set may evolve, but every profile must:
 - remain a `Waku`-backed runtime mode;
 - preserve the required role mapping of `relay`, `store`, `filter`, and
   `lightpush` in the product model;
-- make active transport capabilities explicit through diagnostics and local
+- make active transport features explicit through diagnostics and local
   control surfaces.
 
 For the current `v1` runtime, the recognized transport-profile set is:
@@ -145,7 +145,7 @@ The operator must be able to inspect:
 - transport families currently suppressed or disabled;
 - switch reason;
 - whether the switch was automatic or policy-forced;
-- reduced capabilities;
+- reduced transport features;
 - recovery conditions.
 
 Diagnostics must explain transport adaptation without exposing private selector

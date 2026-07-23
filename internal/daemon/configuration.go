@@ -14,6 +14,7 @@ import (
 	apppolicy "ardents/internal/policy"
 	workloaddocker "ardents/internal/workload/docker"
 	workloadcontroller "ardents/internal/workload/execution"
+	workloadregistry "ardents/internal/workload/registry"
 	"context"
 	"crypto/ed25519"
 	"encoding/base64"
@@ -171,14 +172,14 @@ type TransportConfig struct {
 type PolicyConfig struct {
 	MaxWorkloads                    int
 	AllowedPolicyRefs               []string
-	DeniedCapabilities              []string
+	DeniedWorkloadRequirements      []workloadregistry.WorkloadRequirement
 	DisableServicePublication       bool
 	DisableNetworkPublishedServices bool
 	DeniedServiceTypes              []string
 	DisableUntrustedRouteUse        bool
 	DeniedRouteSchemes              []string
-	DisablePrivateCapabilityUse     bool
-	DeniedCapabilityScopes          []string
+	DisablePrivateChannelGrantUse   bool
+	DeniedChannelGrantScopes        []string
 	DisableLocalBlobRetention       bool
 	DisableRelayBlobRetention       bool
 	DisableBlobPinning              bool
@@ -204,7 +205,7 @@ type WorkloadConfig struct {
 	Owner         string
 	Config        string
 	Desired       string
-	Capabilities  []string
+	Requirements  []workloadregistry.WorkloadRequirement
 	PolicyRef     string
 	RestartPolicy string
 	Services      []ServiceConfig
@@ -227,14 +228,14 @@ func defaultDataDir(name, dir string) string {
 func policyConfigFromOperator(in runtimeconfig.PolicyConfig) PolicyConfig {
 	return PolicyConfig{
 		MaxWorkloads: in.MaxWorkloads, AllowedPolicyRefs: cloneStrings(in.AllowedPolicyRefs),
-		DeniedCapabilities:              cloneStrings(in.DeniedCapabilities),
+		DeniedWorkloadRequirements:      append([]workloadregistry.WorkloadRequirement(nil), in.DeniedWorkloadRequirements...),
 		DisableServicePublication:       in.DisableServicePublication,
 		DisableNetworkPublishedServices: in.DisableNetworkPublishedServices,
 		DeniedServiceTypes:              cloneStrings(in.DeniedServiceTypes),
 		DisableUntrustedRouteUse:        in.DisableUntrustedRouteUse,
 		DeniedRouteSchemes:              cloneStrings(in.DeniedRouteSchemes),
-		DisablePrivateCapabilityUse:     in.DisablePrivateCapabilityUse,
-		DeniedCapabilityScopes:          cloneStrings(in.DeniedCapabilityScopes),
+		DisablePrivateChannelGrantUse:   in.DisablePrivateChannelGrantUse,
+		DeniedChannelGrantScopes:        cloneStrings(in.DeniedChannelGrantScopes),
 		DisableLocalBlobRetention:       in.DisableLocalBlobRetention,
 		DisableRelayBlobRetention:       in.DisableRelayBlobRetention,
 		DisableBlobPinning:              in.DisableBlobPinning,
@@ -516,14 +517,14 @@ func operatorPolicyConfig(doc runtimeconfig.Document) PolicyConfig {
 	}
 	return PolicyConfig{
 		MaxWorkloads: in.MaxWorkloads, AllowedPolicyRefs: cloneStrings(allowed),
-		DeniedCapabilities:              cloneStrings(in.DeniedCapabilities),
+		DeniedWorkloadRequirements:      append([]workloadregistry.WorkloadRequirement(nil), in.DeniedWorkloadRequirements...),
 		DisableServicePublication:       in.DisableServicePublication,
 		DisableNetworkPublishedServices: in.DisableNetworkPublishedServices,
 		DeniedServiceTypes:              cloneStrings(in.DeniedServiceTypes),
 		DisableUntrustedRouteUse:        in.DisableUntrustedRouteUse,
 		DeniedRouteSchemes:              cloneStrings(in.DeniedRouteSchemes),
-		DisablePrivateCapabilityUse:     in.DisablePrivateCapabilityUse,
-		DeniedCapabilityScopes:          cloneStrings(in.DeniedCapabilityScopes),
+		DisablePrivateChannelGrantUse:   in.DisablePrivateChannelGrantUse,
+		DeniedChannelGrantScopes:        cloneStrings(in.DeniedChannelGrantScopes),
 		DisableLocalBlobRetention:       in.DisableLocalBlobRetention,
 		DisableRelayBlobRetention:       in.DisableRelayBlobRetention,
 		DisableBlobPinning:              in.DisableBlobPinning,
@@ -559,7 +560,7 @@ func operatorWorkloadConfigs(in []runtimeconfig.WorkloadSpec) []WorkloadConfig {
 	for _, item := range in {
 		out = append(out, WorkloadConfig{
 			ID: item.ID, Kind: item.Kind, Owner: item.Owner, Config: item.Config,
-			Desired: item.Desired, Capabilities: cloneStrings(item.Capabilities),
+			Desired: item.Desired, Requirements: append([]workloadregistry.WorkloadRequirement(nil), item.Requirements...),
 			PolicyRef: item.PolicyRef, RestartPolicy: item.RestartPolicy,
 			Services: operatorServiceConfigs(item.Services),
 		})
@@ -626,10 +627,10 @@ func operatorPrivacyChannels(
 		return nil, nil, nil, err
 	}
 	Workloads, err := identitycapability.NewService(
-		doc.Privacy.CapabilityStore, storeKey, doc.Privacy.Subject, trustedPrincipals, policyService, time.Now,
+		doc.Privacy.ChannelGrantStore, storeKey, doc.Privacy.Subject, trustedPrincipals, policyService, time.Now,
 	)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("protected privacy capability store is unavailable or invalid")
+		return nil, nil, nil, fmt.Errorf("protected privacy channel grant store is unavailable or invalid")
 	}
 	discovery, err := buildOperatorPrivacyChannel(Workloads, private, replayKey, doc.Privacy.Subject,
 		doc.Privacy.Discovery, identity.CapabilityRealmDiscovery)
@@ -651,7 +652,7 @@ func operatorPrivacyInputs(doc runtimeconfig.Document) (
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	storeKey, err := readProtectedKey(doc.Privacy.CapabilityStoreKeyFile, "privacy capability-store key file")
+	storeKey, err := readProtectedKey(doc.Privacy.ChannelGrantStoreKeyFile, "privacy channel-grant-store key file")
 	if err != nil {
 		return nil, nil, nil, err
 	}

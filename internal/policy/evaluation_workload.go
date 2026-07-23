@@ -4,12 +4,13 @@ import (
 	"ardents/internal/workload/execution"
 	domainworkload "ardents/internal/workload/registry"
 	"fmt"
+	"slices"
 )
 
 type WorkloadConfig struct {
-	MaxWorkloads       int
-	AllowedPolicyRefs  []string
-	DeniedCapabilities []string
+	MaxWorkloads               int
+	AllowedPolicyRefs          []string
+	DeniedWorkloadRequirements []domainworkload.WorkloadRequirement
 }
 
 func CheckWorkload(cfg WorkloadConfig, spec domainworkload.Spec, existing []execution.Status) Result {
@@ -22,9 +23,15 @@ func CheckWorkload(cfg WorkloadConfig, spec domainworkload.Spec, existing []exec
 	if spec.PolicyRef != "" && !ContainsNormalized(cfg.AllowedPolicyRefs, spec.PolicyRef) {
 		return Deny("policy_admission_denied", "policy reference is not allowed")
 	}
-	for _, capability := range spec.Capabilities {
-		if ContainsNormalized(cfg.DeniedCapabilities, capability) {
-			return Deny("policy_admission_denied", "workload capability is denied by policy")
+	if err := domainworkload.ValidateWorkloadRequirements(cfg.DeniedWorkloadRequirements); err != nil {
+		return Deny("policy_admission_denied", "workload requirement policy is invalid")
+	}
+	if err := domainworkload.ValidateSpec(spec); err != nil {
+		return Deny("policy_admission_denied", "workload specification is invalid")
+	}
+	for _, requirement := range spec.Requirements {
+		if slices.Contains(cfg.DeniedWorkloadRequirements, requirement) {
+			return Deny("policy_admission_denied", "workload requirement is denied by policy")
 		}
 	}
 	return Allow()

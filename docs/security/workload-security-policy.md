@@ -41,7 +41,7 @@ separate reference-only contract and a non-persistent delivery design before it
 can enter this schema.
 
 Read/status surfaces never return the raw container configuration. They return
-workload identity, desired/observed state, policy reference, capabilities,
+workload identity, desired/observed state, policy reference, requirements,
 services, and safe execution outcome only.
 
 ## Trust And Runtime Selection

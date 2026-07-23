@@ -22,12 +22,12 @@ func TestStatusUsesObservedReachability(t *testing.T) {
 
 func TestStatusReportsObservedCapabilitiesAndAbuse(t *testing.T) {
 	status := ProjectStatus(NodeProfileConstrainedClient, "degraded", "", false,
-		Snapshot{Profile: ProfileTCPOnly, ActiveCapabilities: []string{"filter_client"}, ReducedCapabilities: []string{"store_recovery"}},
+		Snapshot{Profile: ProfileTCPOnly, ActiveFeatures: []TransportFeature{TransportFeatureFilterClient}, ReducedFeatures: []TransportFeature{TransportFeatureStoreRecovery}},
 		ReachabilitySnapshot{Mode: ReachabilityOutboundOnly},
 		AbuseSnapshot{State: "degraded", RateLimitedOperations: 3, BackpressuredOperations: 2, OversizedMessages: 1, BannedProviders: 1},
 		time.Time{}, PrivateMessagingStatus{})
-	require.Equal(t, []string{"filter_client"}, status.ActiveCapabilities)
-	require.Contains(t, status.ReducedCapabilities, "store_recovery")
+	require.Equal(t, []TransportFeature{TransportFeatureFilterClient}, status.ActiveFeatures)
+	require.Contains(t, status.ReducedFeatures, TransportFeatureStoreRecovery)
 	require.Equal(t, uint64(3), status.RateLimitedOperations)
 	require.Equal(t, 1, status.BannedProviders)
 }

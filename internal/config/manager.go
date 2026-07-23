@@ -152,7 +152,7 @@ func classifyChanges(paths []string) (immutable, restart, reloadable []string) {
 	for _, path := range paths {
 		switch {
 		case hasPathPrefix(path, "node.name", "node.data_dir", "network.private_key_path",
-			"privacy.capability_store", "privacy.capability_store_key_file", "privacy.replay_key_file",
+			"privacy.channel_grant_store", "privacy.channel_grant_store_key_file", "privacy.replay_key_file",
 			"privacy.discovery.replay_path", "privacy.data.replay_path"):
 			immutable = append(immutable, path)
 		case hasPathPrefix(path, "policy", "logging.level", "diagnostics", "network.discovery_refresh_seconds"):

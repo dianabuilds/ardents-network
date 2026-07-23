@@ -341,17 +341,21 @@ func delegationActions(values []string) ([]identityaccess.Action, []string, erro
 }
 
 func delegationScope(name, node, owner, kind, resourceID string) (identityaccess.ResourceScope, error) {
+	parsedOwner, err := identityaccess.ParseResourceOwner(owner)
+	if err != nil || parsedOwner.IsNone() {
+		return identityaccess.ResourceScope{}, errors.New("--resource-owner must be a Principal ID")
+	}
 	switch name {
 	case "principal-owned":
 		if kind != "" || resourceID != "" {
 			return identityaccess.ResourceScope{}, errors.New("resource flags require --scope exact")
 		}
-		return identityaccess.ResourceScope{Kind: identityaccess.ScopePrincipalOwned, Owner: owner}, nil
+		return identityaccess.ResourceScope{Kind: identityaccess.ScopePrincipalOwned, Owner: parsedOwner}, nil
 	case "exact":
 		if kind == "" {
 			return identityaccess.ResourceScope{}, errors.New("--resource-kind is required for --scope exact")
 		}
-		resource, err := identityaccess.NewResourceRef(node, owner, kind, resourceID)
+		resource, err := identityaccess.NewResourceRef(node, parsedOwner, kind, resourceID)
 		if err != nil {
 			return identityaccess.ResourceScope{}, errors.New("exact resource is invalid")
 		}

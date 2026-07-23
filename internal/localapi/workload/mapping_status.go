@@ -5,9 +5,13 @@ import (
 	workloadapi "ardents/internal/workload"
 )
 
-func toWorkloadStatusSnapshot(in workloadapi.StatusSnapshot) *ardentsv1.WorkloadStatusSnapshot {
+func toWorkloadStatusSnapshot(in workloadapi.StatusSnapshot) (*ardentsv1.WorkloadStatusSnapshot, error) {
+	spec, err := toWorkloadSpecSnapshot(in.Spec)
+	if err != nil {
+		return nil, err
+	}
 	out := &ardentsv1.WorkloadStatusSnapshot{
-		Spec:                toWorkloadSpecSnapshot(in.Spec),
+		Spec:                spec,
 		Observed:            in.Observed,
 		Reason:              in.Reason,
 		LastTransitionAt:    ts(in.LastTransitionAt),
@@ -18,7 +22,7 @@ func toWorkloadStatusSnapshot(in workloadapi.StatusSnapshot) *ardentsv1.Workload
 	for _, item := range in.PublishedServices {
 		out.PublishedServices = append(out.PublishedServices, toPublishedServiceSnapshot(item))
 	}
-	return out
+	return out, nil
 }
 
 func toPublishedServiceSnapshot(in workloadapi.PublishedServiceSnapshot) *ardentsv1.PublishedServiceSnapshot {

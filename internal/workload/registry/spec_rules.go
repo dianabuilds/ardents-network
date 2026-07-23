@@ -1,6 +1,9 @@
 package registry
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 func ValidateSpec(spec Spec) error {
 	if spec.ID == "" {
@@ -17,6 +20,9 @@ func ValidateSpec(spec Spec) error {
 	if spec.Config == "invalid" {
 		return fmt.Errorf("invalid config reference")
 	}
+	if err := ValidateWorkloadRequirements(spec.Requirements); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -24,8 +30,11 @@ func NormalizeSpec(spec Spec) Spec {
 	if spec.Services == nil {
 		spec.Services = []ServiceSpec{}
 	}
-	if spec.Capabilities == nil {
-		spec.Capabilities = []string{}
+	if spec.Requirements == nil {
+		spec.Requirements = []WorkloadRequirement{}
+	} else {
+		spec.Requirements = append([]WorkloadRequirement(nil), spec.Requirements...)
+		slices.Sort(spec.Requirements)
 	}
 	spec.Desired = NormalizeDesired(spec.Desired)
 	if spec.RestartPolicy == "" {

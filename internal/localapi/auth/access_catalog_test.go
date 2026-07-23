@@ -46,3 +46,12 @@ func TestProcedureAccessCatalogCoversEveryRPCExactlyOnce(t *testing.T) {
 		}
 	}
 }
+
+func TestNodeFeaturesActionIsExactAndOldActionIsAbsent(t *testing.T) {
+	rule, ok := RuleForProcedure("/ardents.v1.NodeService/GetNodeFeatures")
+	require.True(t, ok)
+	require.Equal(t, "node.features", rule.Action)
+	require.NotContains(t, OperatorActions(), "node.capabilities")
+	_, ok = RuleForProcedure("/ardents.v1.NodeService/GetNodeCapabilities")
+	require.False(t, ok)
+}

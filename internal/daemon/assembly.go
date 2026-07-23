@@ -207,14 +207,14 @@ func runtimePolicyConfig(cfg PolicyConfig) apppolicy.Config {
 	return apppolicy.Config{
 		MaxWorkloads:                    cfg.MaxWorkloads,
 		AllowedPolicyRefs:               cloneStrings(cfg.AllowedPolicyRefs),
-		DeniedCapabilities:              cloneStrings(cfg.DeniedCapabilities),
+		DeniedWorkloadRequirements:      append([]registry.WorkloadRequirement(nil), cfg.DeniedWorkloadRequirements...),
 		DisableServicePublication:       cfg.DisableServicePublication,
 		DisableNetworkPublishedServices: cfg.DisableNetworkPublishedServices,
 		DeniedServiceTypes:              cloneStrings(cfg.DeniedServiceTypes),
 		DisableUntrustedRouteUse:        cfg.DisableUntrustedRouteUse,
 		DeniedRouteSchemes:              cloneStrings(cfg.DeniedRouteSchemes),
-		DisablePrivateCapabilityUse:     cfg.DisablePrivateCapabilityUse,
-		DeniedCapabilityScopes:          cloneStrings(cfg.DeniedCapabilityScopes),
+		DisablePrivateChannelGrantUse:   cfg.DisablePrivateChannelGrantUse,
+		DeniedChannelGrantScopes:        cloneStrings(cfg.DeniedChannelGrantScopes),
 		DisableLocalBlobRetention:       cfg.DisableLocalBlobRetention,
 		DisableRelayBlobRetention:       cfg.DisableRelayBlobRetention,
 		DisableBlobPinning:              cfg.DisableBlobPinning,
@@ -247,7 +247,7 @@ func runtimeWorkloadSpecs(items []WorkloadConfig) []registry.Spec {
 			Owner:        item.Owner,
 			Config:       item.Config,
 			Desired:      item.Desired,
-			Capabilities: cloneStrings(item.Capabilities),
+			Requirements: append([]registry.WorkloadRequirement(nil), item.Requirements...),
 			PolicyRef:    item.PolicyRef, RestartPolicy: item.RestartPolicy,
 			Services: runtimeWorkloadServiceSpecs(item.Services),
 		})
@@ -583,7 +583,7 @@ type querySurface interface {
 	RoutingDetailsLocked() discovery.RouteSnapshot
 	DiagnosticsSnapshotLocked() diagnostics.DiagSnapshot
 	PendingOperationsLocked() []diagnostics.OperationSnapshot
-	CapabilitiesSnapshotLocked() CapabilitiesSnapshot
+	NodeFeaturesSnapshotLocked() NodeFeaturesSnapshot
 	NodeRuntimeSnapshotLocked() RuntimeSnapshot
 	NetworkStatusSnapshotLocked() network.StatusSnapshot
 	DiscoveryStatusSnapshotLocked(time time.Time) discovery.StatusSnapshot
@@ -705,7 +705,7 @@ func configureLocalServices(
 	}
 }
 
-type CapabilitiesSnapshot struct {
+type NodeFeaturesSnapshot struct {
 	Version  string
 	Services []string
 	Features map[string]bool

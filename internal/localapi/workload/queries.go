@@ -15,7 +15,11 @@ func (h *Service) GetWorkloadStatus(ctx context.Context, req *connect.Request[ar
 		if err != nil {
 			return nil, rpc.MapError("workload", "workload.status", "failed", "workload status failed", false, err)
 		}
-		return toWorkloadStatusSnapshot(res), nil
+		snapshot, snapshotErr := toWorkloadStatusSnapshot(res)
+		if snapshotErr != nil {
+			return nil, rpc.MapError("workload", "workload.status", "invalid_state", "workload state is invalid", false, snapshotErr)
+		}
+		return snapshot, nil
 	})
 }
 
@@ -27,7 +31,11 @@ func (h *Service) ListWorkloads(ctx context.Context, _ *connect.Request[ardents.
 		}
 		out := make([]*ardents.WorkloadStatusSnapshot, 0, len(items))
 		for _, item := range items {
-			out = append(out, toWorkloadStatusSnapshot(item))
+			snapshot, snapshotErr := toWorkloadStatusSnapshot(item)
+			if snapshotErr != nil {
+				return nil, rpc.MapError("workload", "workload.list", "invalid_state", "workload state is invalid", false, snapshotErr)
+			}
+			out = append(out, snapshot)
 		}
 		return &ardents.ListWorkloadsResponse{Workloads: out}, nil
 	})

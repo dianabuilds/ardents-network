@@ -8,13 +8,13 @@ import (
 )
 
 type runtimeAssessment struct {
-	state               string
-	reason              string
-	health              network.HealthState
-	switchReason        network.SwitchReason
-	switchAutomatic     bool
-	reducedCapabilities []string
-	recoveryState       network.RecoveryState
+	state           string
+	reason          string
+	health          network.HealthState
+	switchReason    network.SwitchReason
+	switchAutomatic bool
+	reducedFeatures []network.TransportFeature
+	recoveryState   network.RecoveryState
 }
 
 func (r runtimeAssessment) Health() network.HealthState {
@@ -85,7 +85,12 @@ func ProfileSnapshot(state ServiceState) network.Snapshot {
 		snapshot.Health = network.HealthStateFailed
 		snapshot.SwitchReason = network.SwitchReasonStartupFailed
 		snapshot.RecoveryState = network.RecoveryStateBlocked
-		snapshot.ReducedCapabilities = []string{"relay", "store", "filter", "lightpush"}
+		snapshot.ReducedFeatures = []network.TransportFeature{
+			network.TransportFeatureRelay,
+			network.TransportFeatureStore,
+			network.TransportFeatureFilter,
+			network.TransportFeatureLightpush,
+		}
 		return snapshot
 	}
 	assessment := runtimeAssessmentFor(state)
@@ -95,8 +100,8 @@ func ProfileSnapshot(state ServiceState) network.Snapshot {
 	snapshot.SwitchReason = assessment.switchReason
 	snapshot.SwitchAutomatic = assessment.switchAutomatic
 	snapshot.RecoveryState = assessment.recoveryState
-	snapshot.ReducedCapabilities = cloneStrings(assessment.reducedCapabilities)
-	snapshot.ActiveCapabilities = activeMessagingCapabilities(state)
+	snapshot.ReducedFeatures = cloneFeatures(assessment.reducedFeatures)
+	snapshot.ActiveFeatures = activeMessagingFeatures(state)
 	return snapshot
 }
 
@@ -144,13 +149,13 @@ func runtimeAssessmentFor(state ServiceState) runtimeAssessment {
 	if applied.reason == "" {
 		applied.reason = "restricted defense mode is active"
 	}
-	applied.reducedCapabilities = appendUniqueCapabilities(
-		applied.reducedCapabilities,
-		"store",
-		"filter_service",
-		"lightpush_service",
-		"transport_surface_expansion",
-		"profile_recovery_pending",
+	applied.reducedFeatures = appendUniqueFeatures(
+		applied.reducedFeatures,
+		network.TransportFeatureStore,
+		network.TransportFeatureFilterService,
+		network.TransportFeatureLightpushService,
+		network.TransportFeatureSurfaceExpansion,
+		network.TransportFeatureProfileRecoveryPending,
 	)
 	if applied.recoveryState == "" {
 		applied.recoveryState = network.RecoveryStateRecoveryPending
@@ -184,12 +189,17 @@ func classifyHealth(signals network.HealthSignals) runtimeAssessment {
 
 func failedAssessment(reason string) runtimeAssessment {
 	return runtimeAssessment{
-		state:               "failed",
-		reason:              reason,
-		health:              network.HealthStateFailed,
-		switchReason:        network.SwitchReasonStartupFailed,
-		reducedCapabilities: []string{"relay", "store", "filter", "lightpush"},
-		recoveryState:       network.RecoveryStateBlocked,
+		state:        "failed",
+		reason:       reason,
+		health:       network.HealthStateFailed,
+		switchReason: network.SwitchReasonStartupFailed,
+		reducedFeatures: []network.TransportFeature{
+			network.TransportFeatureRelay,
+			network.TransportFeatureStore,
+			network.TransportFeatureFilter,
+			network.TransportFeatureLightpush,
+		},
+		recoveryState: network.RecoveryStateBlocked,
 	}
 }
 
@@ -199,13 +209,13 @@ func degradedAssessment(signals network.HealthSignals) runtimeAssessment {
 		reason = signals.ServiceReason
 	}
 	return runtimeAssessment{
-		state:               "degraded",
-		reason:              reason,
-		health:              network.HealthStateDegraded,
-		switchReason:        network.SwitchReasonBootstrapDegraded,
-		switchAutomatic:     true,
-		reducedCapabilities: []string{"peer_connectivity", "bootstrap_sync"},
-		recoveryState:       network.RecoveryStateRecoveryPending,
+		state:           "degraded",
+		reason:          reason,
+		health:          network.HealthStateDegraded,
+		switchReason:    network.SwitchReasonBootstrapDegraded,
+		switchAutomatic: true,
+		reducedFeatures: []network.TransportFeature{network.TransportFeaturePeerConnectivity, network.TransportFeatureBootstrapSync},
+		recoveryState:   network.RecoveryStateRecoveryPending,
 	}
 }
 
@@ -220,23 +230,23 @@ func readyAssessment(signals network.HealthSignals) runtimeAssessment {
 				reason = "public ingress has not been verified"
 			}
 			return runtimeAssessment{
-				state:               "degraded",
-				reason:              reason,
-				health:              network.HealthStateDegraded,
-				switchReason:        network.SwitchReasonBootstrapDegraded,
-				switchAutomatic:     true,
-				reducedCapabilities: []string{"inbound_reachability", "endpoint_publication"},
-				recoveryState:       network.RecoveryStateRecoveryPending,
+				state:           "degraded",
+				reason:          reason,
+				health:          network.HealthStateDegraded,
+				switchReason:    network.SwitchReasonBootstrapDegraded,
+				switchAutomatic: true,
+				reducedFeatures: []network.TransportFeature{network.TransportFeatureInboundReachability, network.TransportFeatureEndpointPublication},
+				recoveryState:   network.RecoveryStateRecoveryPending,
 			}
 		}
 		return runtimeAssessment{
-			state:               "degraded",
-			reason:              "transport endpoints are not operational",
-			health:              network.HealthStateDegraded,
-			switchReason:        network.SwitchReasonBootstrapDegraded,
-			switchAutomatic:     true,
-			reducedCapabilities: []string{"peer_connectivity"},
-			recoveryState:       network.RecoveryStateRecoveryPending,
+			state:           "degraded",
+			reason:          "transport endpoints are not operational",
+			health:          network.HealthStateDegraded,
+			switchReason:    network.SwitchReasonBootstrapDegraded,
+			switchAutomatic: true,
+			reducedFeatures: []network.TransportFeature{network.TransportFeaturePeerConnectivity},
+			recoveryState:   network.RecoveryStateRecoveryPending,
 		}
 	}
 	return readyWithBootstrap(signals)
@@ -247,7 +257,7 @@ func readyWithBootstrap(signals network.HealthSignals) runtimeAssessment {
 		return runtimeAssessment{
 			state: "degraded", reason: "constrained light client has no Filter, Lightpush, or Store providers",
 			health: network.HealthStateDegraded, switchReason: network.SwitchReasonBootstrapDegraded, switchAutomatic: true,
-			reducedCapabilities: []string{"filter", "lightpush", "store_recovery"}, recoveryState: network.RecoveryStateRecoveryPending,
+			reducedFeatures: []network.TransportFeature{network.TransportFeatureFilter, network.TransportFeatureLightpush, network.TransportFeatureStoreRecovery}, recoveryState: network.RecoveryStateRecoveryPending,
 		}
 	}
 	if signals.BootstrapSourceCount == 0 || signals.BootstrapStatus.State == "ready" {
@@ -263,13 +273,13 @@ func readyWithBootstrap(signals network.HealthSignals) runtimeAssessment {
 		reason = "bootstrap relay path is not operational"
 	}
 	return runtimeAssessment{
-		state:               "degraded",
-		reason:              reason,
-		health:              network.HealthStateDegraded,
-		switchReason:        network.SwitchReasonBootstrapDegraded,
-		switchAutomatic:     true,
-		reducedCapabilities: []string{"peer_connectivity", "bootstrap_sync"},
-		recoveryState:       network.RecoveryStateRecoveryPending,
+		state:           "degraded",
+		reason:          reason,
+		health:          network.HealthStateDegraded,
+		switchReason:    network.SwitchReasonBootstrapDegraded,
+		switchAutomatic: true,
+		reducedFeatures: []network.TransportFeature{network.TransportFeaturePeerConnectivity, network.TransportFeatureBootstrapSync},
+		recoveryState:   network.RecoveryStateRecoveryPending,
 	}
 }
 
@@ -283,43 +293,52 @@ func countBootstrapPeers(peers []string) int {
 	return count
 }
 
-func activeMessagingCapabilities(state ServiceState) []string {
+func activeMessagingFeatures(state ServiceState) []network.TransportFeature {
 	if state.State != "ready" && state.State != "degraded" {
 		return nil
 	}
 	if state.NodeProfile != network.NodeProfileConstrainedClient {
 		if state.ActiveMode == network.ModeRestrictedDefense {
-			return []string{"relay"}
+			return []network.TransportFeature{network.TransportFeatureRelay}
 		}
-		return []string{"relay", "store", "filter_service", "lightpush_service"}
+		return []network.TransportFeature{
+			network.TransportFeatureRelay,
+			network.TransportFeatureStore,
+			network.TransportFeatureFilterService,
+			network.TransportFeatureLightpushService,
+		}
 	}
-	var active []string
+	var active []network.TransportFeature
 	if state.FilterPeerCount > 0 {
-		active = append(active, "filter_client")
+		active = append(active, network.TransportFeatureFilterClient)
 	}
 	if state.LightpushPeerCount > 0 {
-		active = append(active, "lightpush_client")
+		active = append(active, network.TransportFeatureLightpushClient)
 	}
 	if state.StorePeerCount > 0 {
-		active = append(active, "store_client")
+		active = append(active, network.TransportFeatureStoreClient)
 	}
 	return active
 }
 
-func appendUniqueCapabilities(base []string, items ...string) []string {
+func appendUniqueFeatures(base []network.TransportFeature, items ...network.TransportFeature) []network.TransportFeature {
 	seen := make(map[string]struct{}, len(base)+len(items))
-	out := make([]string, 0, len(base)+len(items))
-	for _, item := range append(cloneStrings(base), items...) {
-		if item == "" {
+	out := make([]network.TransportFeature, 0, len(base)+len(items))
+	for _, item := range append(cloneFeatures(base), items...) {
+		if !item.Valid() {
 			continue
 		}
-		if _, ok := seen[item]; ok {
+		if _, ok := seen[item.String()]; ok {
 			continue
 		}
-		seen[item] = struct{}{}
+		seen[item.String()] = struct{}{}
 		out = append(out, item)
 	}
 	return out
+}
+
+func cloneFeatures(in []network.TransportFeature) []network.TransportFeature {
+	return append([]network.TransportFeature(nil), in...)
 }
 
 func cloneFamilies(in []network.Family) []network.Family {

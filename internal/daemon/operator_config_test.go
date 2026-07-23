@@ -13,6 +13,7 @@ import (
 	runtimeconfig "ardents/internal/config"
 	identityprincipal "ardents/internal/identity/principal"
 	identitytrust "ardents/internal/identity/trust"
+	workloadregistry "ardents/internal/workload/registry"
 
 	"github.com/stretchr/testify/require"
 )
@@ -59,13 +60,13 @@ func TestRuntimeConfigMapsInitialWorkloadSecurityAndLifecycleFields(t *testing.T
 	doc.Workloads.AllowedPolicyRefs = []string{"trusted"}
 	doc.Workloads.Initial = []runtimeconfig.WorkloadSpec{{
 		ID: "worker-a", Kind: "worker", Owner: "operator", Desired: "stopped",
-		Capabilities: []string{"network.read"}, PolicyRef: "trusted", RestartPolicy: "never",
+		Requirements: []workloadregistry.WorkloadRequirement{"network.read"}, PolicyRef: "trusted", RestartPolicy: "never",
 	}}
 
 	cfg, err := runtimeConfigFromDocument(doc)
 	require.NoError(t, err)
 	require.Len(t, cfg.Node.Workload, 1)
-	require.Equal(t, []string{"network.read"}, cfg.Node.Workload[0].Capabilities)
+	require.Equal(t, []workloadregistry.WorkloadRequirement{"network.read"}, cfg.Node.Workload[0].Requirements)
 	require.Equal(t, "trusted", cfg.Node.Workload[0].PolicyRef)
 	require.Equal(t, "never", cfg.Node.Workload[0].RestartPolicy)
 }
@@ -114,7 +115,7 @@ func TestReloadRejectsUnavailableProtectedPrivacyBeforeCandidateAcceptance(t *te
 	require.NoError(t, err)
 
 	doc.Privacy = runtimeconfig.PrivacyConfig{
-		Required: true, CapabilityStore: "missing-store", CapabilityStoreKeyFile: "missing-key",
+		Required: true, ChannelGrantStore: "missing-store", ChannelGrantStoreKeyFile: "missing-key",
 		ReplayKeyFile: "missing-replay-key", Subject: "p_subject",
 		Discovery: runtimeconfig.PrivacyChannelConfig{Reference: "discovery", ReplayPath: "discovery-replay"},
 		Data:      runtimeconfig.PrivacyChannelConfig{Reference: "data", ReplayPath: "data-replay"},

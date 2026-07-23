@@ -22,6 +22,8 @@ func TestOperatorDocumentEnablesRealPrivateChannels(t *testing.T) {
 
 	require.NoError(t, runtimeconfig.Validate(doc))
 	require.True(t, doc.Privacy.Required)
+	require.Equal(t, filepath.Join("/var/lib/ardents", "channel-grants.db"), doc.Privacy.ChannelGrantStore)
+	require.Equal(t, filepath.Join("/run/ardents", "channel-grant-store.key"), doc.Privacy.ChannelGrantStoreKeyFile)
 	require.Equal(t, []string{"/dns4/seed/tcp/61001/p2p/peer"}, doc.Network.BootstrapPeers)
 	require.NotEqual(t, doc.Privacy.Discovery.Reference, doc.Privacy.Data.Reference)
 	require.True(t, doc.ApplicationInterface.Enabled)

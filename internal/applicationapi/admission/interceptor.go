@@ -179,7 +179,11 @@ func finalizeTarget(target identityaccess.ResourceTarget, audience identityacces
 	if audience.Interface != identityprotocol.Interface_INTERFACE_APPLICATION || effective == "" {
 		return identityaccess.ResourceRef{}, identityaccess.ErrInvalidArgument
 	}
-	return identityaccess.NewResourceRef(audience.Node, effective, string(target.Kind), target.ID)
+	owner, err := identityaccess.ParseResourceOwner(effective)
+	if err != nil || owner.IsNone() {
+		return identityaccess.ResourceRef{}, identityaccess.ErrInvalidArgument
+	}
+	return identityaccess.NewResourceRef(audience.Node, owner, string(target.Kind), target.ID)
 }
 
 func targetError(operation string, err error) error {

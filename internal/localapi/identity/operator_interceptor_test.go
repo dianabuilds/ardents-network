@@ -91,8 +91,8 @@ func (h *admissionGuardHandler) GetNodeStatus(ctx context.Context, _ *connect.Re
 	return connect.NewResponse(&protocol.NodeStatusResponse{}), h.admitted(ctx)
 }
 
-func (h *admissionGuardHandler) GetNodeCapabilities(ctx context.Context, _ *connect.Request[protocol.GetNodeCapabilitiesRequest]) (*connect.Response[protocol.CapabilitiesResponse], error) {
-	return connect.NewResponse(&protocol.CapabilitiesResponse{}), h.admitted(ctx)
+func (h *admissionGuardHandler) GetNodeFeatures(ctx context.Context, _ *connect.Request[protocol.GetNodeFeaturesRequest]) (*connect.Response[protocol.NodeFeaturesResponse], error) {
+	return connect.NewResponse(&protocol.NodeFeaturesResponse{}), h.admitted(ctx)
 }
 
 func (h *admissionGuardHandler) GetNodeRuntime(ctx context.Context, _ *connect.Request[protocol.GetNodeRuntimeRequest]) (*connect.Response[protocol.NodeRuntimeResponse], error) {
@@ -180,9 +180,9 @@ func TestOperatorPrincipalInterceptorAdmitsExactlyOnceAndPropagatesActorEffectiv
 	require.Equal(t, int32(2), counter.calls.Load())
 	require.Equal(t, principal, handler.streamActor)
 
-	sibling := connect.NewRequest(&protocol.GetNodeCapabilitiesRequest{})
+	sibling := connect.NewRequest(&protocol.GetNodeFeaturesRequest{})
 	sibling.Header().Set("Authorization", request.Header().Get("Authorization"))
-	_, err = client.GetNodeCapabilities(context.Background(), sibling)
+	_, err = client.GetNodeFeatures(context.Background(), sibling)
 	require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
 	require.Equal(t, int32(3), counter.calls.Load())
 
@@ -209,7 +209,7 @@ func TestOperatorPrincipalInterceptorAdmitsExactlyOnceAndPropagatesActorEffectiv
 	require.Equal(t, int32(3), counter.calls.Load())
 
 	binding := identityaccess.AuthenticationBinding{Audience: identityaccess.Audience{Node: node, Interface: identityprotocol.Interface_INTERFACE_OPERATOR, ProtocolMajor: 1}, TransportProfile: identityprotocol.TransportProfile_TRANSPORT_PROFILE_UNIX_LOCAL_V1, PeerBinding: peer}
-	grantResource, err := identityaccess.NewResourceRef(node, "", "access-grant", grantID)
+	grantResource, err := identityaccess.NewResourceRef(node, identityaccess.ResourceOwner{}, "access-grant", grantID)
 	require.NoError(t, err)
 	_, err = service.RevokeAccessGrant(context.Background(), identityaccess.RevokeGrantRequest{Command: identityaccess.AdminCommand{RequestID: "revoke-node-status", Attempt: identityaccess.Attempt{SessionSecret: secret, Binding: binding, Action: "identity.grant.revoke", Resource: grantResource}}, GrantID: grantID})
 	require.NoError(t, err)
@@ -258,7 +258,7 @@ func TestOperatorPrincipalInterceptorAdmitsExactlyOnceAndPropagatesActorEffectiv
 
 func TestOperatorPrincipalInterceptorGuardsEveryB1ProcedureExactlyOnce(t *testing.T) {
 	actions := []identityaccess.Action{
-		"node.start", "node.stop", "node.status", "node.capabilities", "node.runtime", "node.events",
+		"node.start", "node.stop", "node.status", "node.features", "node.runtime", "node.events",
 		"config.effective", "config.reload",
 	}
 	service, node, _, secret, peer, source, _ := operatorAccessFixtureWithActions(t, actions)
@@ -290,8 +290,8 @@ func TestOperatorPrincipalInterceptorGuardsEveryB1ProcedureExactlyOnce(t *testin
 	call(stop, func() error { _, err := nodeClient.StopNode(context.Background(), stop); return err })
 	status := connect.NewRequest(&protocol.GetNodeStatusRequest{})
 	call(status, func() error { _, err := nodeClient.GetNodeStatus(context.Background(), status); return err })
-	capabilities := connect.NewRequest(&protocol.GetNodeCapabilitiesRequest{})
-	call(capabilities, func() error { _, err := nodeClient.GetNodeCapabilities(context.Background(), capabilities); return err })
+	features := connect.NewRequest(&protocol.GetNodeFeaturesRequest{})
+	call(features, func() error { _, err := nodeClient.GetNodeFeatures(context.Background(), features); return err })
 	runtime := connect.NewRequest(&protocol.GetNodeRuntimeRequest{})
 	call(runtime, func() error { _, err := nodeClient.GetNodeRuntime(context.Background(), runtime); return err })
 	streamRequest := connect.NewRequest(&protocol.StreamNodeEventsRequest{})
@@ -371,7 +371,7 @@ func operatorAccessFixtureWithActions(t *testing.T, actions []identityaccess.Act
 	proposal := identityaccess.GrantProposal{Subject: principalID.String(), Actions: canonicalActions, Scope: identityaccess.ResourceScope{Kind: identityaccess.ScopeNode, Exact: identityaccess.ResourceRef{Node: nodeID.String()}}, NotBefore: now, NotAfter: now.Add(time.Hour)}
 	proposalID, err := identityaccess.GrantProposalResourceID(nodeID.String(), binding.Audience, proposal)
 	require.NoError(t, err)
-	resource, err := identityaccess.NewResourceRef(nodeID.String(), "", "grant-proposal", proposalID)
+	resource, err := identityaccess.NewResourceRef(nodeID.String(), identityaccess.ResourceOwner{}, "grant-proposal", proposalID)
 	require.NoError(t, err)
 	grantID, err := service.IssueAccessGrant(ctx, identityaccess.IssueGrantRequest{Command: identityaccess.AdminCommand{RequestID: "grant-node-status", Attempt: identityaccess.Attempt{SessionSecret: *session.SessionSecret, Binding: binding, Action: "identity.grant.issue", Resource: resource}}, Proposal: proposal})
 	require.NoError(t, err)

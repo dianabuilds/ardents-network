@@ -125,7 +125,7 @@ func ClearRuntimeHealthForStop(recorder *Recorder) {
 	for _, domain := range []string{"boot", "transport", "discovery", "workload", "publication"} {
 		recorder.ClearSubsystem(domain)
 	}
-	if strings.HasPrefix(SubsystemReasonCode(recorder.Health(), "data"), "privacy.capability.") {
+	if strings.HasPrefix(SubsystemReasonCode(recorder.Health(), "data"), "privacy.channel_grant.") {
 		recorder.ClearSubsystem("data")
 	}
 	primary := recorder.Health().PrimaryReason
@@ -133,7 +133,7 @@ func ClearRuntimeHealthForStop(recorder *Recorder) {
 		return
 	}
 	shouldClearPrimary := primary.Domain == "boot" || primary.Domain == "transport" || primary.Domain == "discovery" || primary.Domain == "workload" || primary.Domain == "publication"
-	if shouldClearPrimary || (primary.Domain == "data" && strings.HasPrefix(primary.Code, "privacy.capability.")) {
+	if shouldClearPrimary || (primary.Domain == "data" && strings.HasPrefix(primary.Code, "privacy.channel_grant.")) {
 		recorder.ClearPrimary()
 		PromoteSubsystemPrimary(recorder, "")
 	}

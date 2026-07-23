@@ -169,6 +169,6 @@ func deriveAttempt(binding identityaccess.AuthenticationBinding, procedure, regi
 	if err != nil {
 		return "", identityaccess.ResourceRef{}, err
 	}
-	resource, err := identityaccess.NewResourceRef(binding.Audience.Node, "", kind, id)
+	resource, err := identityaccess.NewResourceRef(binding.Audience.Node, identityaccess.ResourceOwner{}, kind, id)
 	return parsed, resource, err
 }

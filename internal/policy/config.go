@@ -3,20 +3,21 @@
 package policy
 
 import (
+	workloadregistry "ardents/internal/workload/registry"
 	"time"
 )
 
 type Config struct {
 	MaxWorkloads                    int
 	AllowedPolicyRefs               []string
-	DeniedCapabilities              []string
+	DeniedWorkloadRequirements      []workloadregistry.WorkloadRequirement
 	DisableServicePublication       bool
 	DisableNetworkPublishedServices bool
 	DeniedServiceTypes              []string
 	DisableUntrustedRouteUse        bool
 	DeniedRouteSchemes              []string
-	DisablePrivateCapabilityUse     bool
-	DeniedCapabilityScopes          []string
+	DisablePrivateChannelGrantUse   bool
+	DeniedChannelGrantScopes        []string
 	DisableLocalBlobRetention       bool
 	DisableRelayBlobRetention       bool
 	DisableBlobPinning              bool
@@ -29,9 +30,9 @@ type Config struct {
 
 func normalizeConfig(cfg Config) Config {
 	cfg.AllowedPolicyRefs = NormalizeStrings(cfg.AllowedPolicyRefs)
-	cfg.DeniedCapabilities = NormalizeStrings(cfg.DeniedCapabilities)
+	cfg.DeniedWorkloadRequirements = append([]workloadregistry.WorkloadRequirement(nil), cfg.DeniedWorkloadRequirements...)
 	cfg.DeniedServiceTypes = NormalizeStrings(cfg.DeniedServiceTypes)
 	cfg.DeniedRouteSchemes = NormalizeStrings(cfg.DeniedRouteSchemes)
-	cfg.DeniedCapabilityScopes = NormalizeStrings(cfg.DeniedCapabilityScopes)
+	cfg.DeniedChannelGrantScopes = NormalizeStrings(cfg.DeniedChannelGrantScopes)
 	return cfg
 }

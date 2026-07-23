@@ -122,7 +122,7 @@ authority while all nodes are stopped. Every node receives a distinct
 subject-bound discovery/data capability and distinct protected storage keys;
 the authority key remains in a separate Docker volume and is never copied into
 a node. `up` succeeds only after all three nodes report product readiness, so a
-network-only or `privacy.capability.missing` cluster is rejected. Production
+network-only or `privacy.channel_grant.missing` cluster is rejected. Production
 never uses this local authority and requires deployment-managed realm material.
 
 Stop without deleting state:

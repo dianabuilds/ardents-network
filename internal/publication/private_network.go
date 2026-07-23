@@ -12,7 +12,7 @@ import (
 
 func PublishPrivateDiscoveryEntries(ctx context.Context, entries []discovery.Entry, channel *networkprivacy.Channel, carrier networkprivacy.Carrier) error {
 	if channel == nil || carrier == nil {
-		return networkprivacy.CapabilityUnavailable()
+		return networkprivacy.ChannelGrantUnavailable()
 	}
 	published := 0
 	for _, entry := range entries {

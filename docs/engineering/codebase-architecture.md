@@ -827,7 +827,7 @@ Completed structural replacements:
   312-line `daemon/config.go` parser is now a small composition adapter; there
   is no second configuration model in daemon.
 - moved the canonical network status read model and projection into `network`.
-  Reachability, active capabilities, abuse state and privacy posture are no
+  Reachability, active transport features, abuse state and privacy posture are no
   longer modelled or computed by `daemon/status`; daemon only supplies the
   current owner snapshots to `network.ProjectStatus`.
 - moved discovery health counters and peer read models into `discovery`.
@@ -837,7 +837,7 @@ Completed structural replacements:
 - moved workload status and aggregate workload-state projections into
   `workload`; the daemon mapping file and daemon-owned workload summary type
   were deleted. Workload callers now consume one owner-defined read model.
-- moved route-candidate queries to `discovery` and process capabilities/events
+- moved route-candidate queries to `discovery` and process features/events
   to the daemon root. These leaf contracts no longer depend on the omnibus
   `daemon/status` package, and its separate query file was deleted.
 - replaced daemon-owned identity, trust, discovery-summary and content-store
@@ -849,7 +849,7 @@ Completed structural replacements:
 - deleted `internal/daemon/status`. The remaining process-wide aggregate is a
   daemon composition read model whose fields retain canonical owner types from
   identity, discovery, network, content and workload. Diagnostics owns only
-  health/evidence types; runtime events and process capabilities remain at the
+  health/evidence types; runtime events and process features remain at the
   daemon interface itself.
 - deleted `internal/daemon/readiness`. Transport health, primary-reason
   ownership, observed-health synchronization and stop cleanup now belong to

@@ -50,7 +50,7 @@ func newFixture(t *testing.T) fixture {
 		Delegator: principalID(f.root.Public().(ed25519.PublicKey)), Delegatee: principalID(f.app.Public().(ed25519.PublicKey)),
 		Audience:  Audience{Node: principalID(f.node.Public().(ed25519.PublicKey)), Interface: InterfaceApplication, ProtocolMajor: 1},
 		Actions:   []string{"application.content.put", "application.content.get", "application.content.put"},
-		Scope:     ResourceScope{Kind: ScopePrincipalOwned, Owner: principalID(f.root.Public().(ed25519.PublicKey))},
+		Scope:     ResourceScope{Kind: ScopePrincipalOwned, Owner: mustSDKResourceOwner(t, principalID(f.root.Public().(ed25519.PublicKey)))},
 		NotBefore: testNow, NotAfter: testNow.Add(15 * time.Minute), Credential: f.credential,
 	}, f.device, testNow)
 	if err != nil {

@@ -175,7 +175,7 @@ For `v1`, the required Waku role mapping is:
 
 The product must be designed assuming that mobile/light clients are real
 first-class participants. This means `filter` and `lightpush` are not optional
-"future" capabilities in the product model.
+"future" transport features in the product model.
 
 `constrained_light_client` implements this mapping without local Relay
 participation. It may report Filter, Lightpush, or Store client capability only
@@ -209,7 +209,7 @@ This penalty is not a global trust verdict.
 Restricted defense is a real protocol-shape transition for full nodes: the
 running Waku node is rebuilt as Relay-only, removing Store, Filter-server, and
 Lightpush-server exposure. Recovery rebuilds the steady full-provider shape.
-The active and reduced capabilities must describe the rebuilt node, not merely
+The active and reduced transport features must describe the rebuilt node, not merely
 the desired mode.
 
 RLN is not active in `v1`. The bounded operated-realm admission path is not

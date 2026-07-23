@@ -293,10 +293,10 @@ func (n *Node) RoutingDetails() discoveryapi.RouteSnapshot {
 	return n.queryService.RoutingDetailsLocked()
 }
 
-func (n *Node) Capabilities() CapabilitiesSnapshot {
+func (n *Node) NodeFeatures() NodeFeaturesSnapshot {
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	return n.queryService.CapabilitiesSnapshotLocked()
+	return n.queryService.NodeFeaturesSnapshotLocked()
 }
 
 func (n *Node) PublishObject(object appdata.Object) (appdata.Object, error) {

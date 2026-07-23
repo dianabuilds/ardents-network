@@ -7,6 +7,7 @@ import (
 	daemonruntime "ardents/internal/daemon"
 	diagapi "ardents/internal/diagnostics"
 	ardentsv1 "ardents/internal/localapi/protocol"
+	"ardents/internal/network"
 
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -15,6 +16,14 @@ import (
 func TestIdentitySnapshotDoesNotProjectFakeNodeDevice(t *testing.T) {
 	fields := (&ardentsv1.IdentitySnapshot{}).ProtoReflect().Descriptor().Fields()
 	require.Nil(t, fields.ByName(protoreflect.Name("device")))
+}
+
+func TestSnapshotMappingRejectsUnknownTransportFeature(t *testing.T) {
+	_, err := toSnapshot(daemonruntime.SystemSnapshot{Transport: &network.Snapshot{
+		ActiveFeatures: []network.TransportFeature{"secret_unknown_feature"},
+	}})
+
+	require.EqualError(t, err, "invalid transport feature")
 }
 
 func TestSurfaceMappersPreserveNewSnapshotFields(t *testing.T) {

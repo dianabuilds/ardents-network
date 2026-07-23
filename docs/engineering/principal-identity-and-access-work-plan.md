@@ -141,7 +141,7 @@ boundary; do not deliver an entire broad workstream as one change.
 | `PIA-015C` | 015B | **Complete:** purpose-scoped trusted-Principal registry, persisted verification evidence, and generation-aware cache invalidation |
 | `PIA-016A` | 002 | **Complete:** replication source/target Principals are typed and obsolete PeerID state/wire fields fail closed |
 | `PIA-016B` | 014C | **Complete:** one typed Content Reference replaces duplicate Blob ID/CID fields in domain, wire, state, and Operator projection |
-| `PIA-016C` | 015C, 016A, 016B | Type remaining security Owners and split overloaded Capability vocabulary |
+| `PIA-016C` | 015C, 016A, 016B | **Complete:** typed security Owners and distinct Permission, ChannelGrant, WorkloadRequirement, and TransportFeature vocabulary |
 | `PIA-017` | 010C, 011B, 014C | **Pending:** delete remaining pre-release bearer/config/SDK/provisioning paths and prove a Principal-only clean install; this adds no compatibility mode |
 | `PIA-018` | 016C, 017 | Adversarial, fresh-install, persistence recovery, redaction and full release acceptance |
 
@@ -1054,6 +1054,20 @@ mismatches without aliases or migration readers. Signed fetch and replica
 control bodies carry one canonical resource/reference field; Operator
 `BlobSnapshot` reserves the removed protobuf tags and exposes only `reference`.
 Ownership remains a separate `(Principal, Content Reference)` binding.
+
+**PIA-016C completion evidence:** security-sensitive resource owners use a
+closed Principal-only `ResourceOwner`; malformed, non-Principal, and persisted
+pre-release owner values fail closed. Workload admission and persisted schema 1
+use closed `WorkloadRequirement` values, replication denial state uses
+`Permission`, and transport/runtime/Operator surfaces use closed
+`TransportFeature` values plus the exact `node.features` action and RPC.
+Private-channel operational config, diagnostics, filenames, and deployment
+contracts use `ChannelGrant`; the existing signed `CapabilityGrant` protocol,
+vectors, domain separation, AAD, and persisted cryptographic ledger remain
+byte-compatible. Removed JSON and wire names are rejected rather than aliased,
+and invalid internal projections return a safe error instead of silently
+omitting unknown values. Unit, race, persistence/restart, generated API, and
+repository compile gates cover the slice.
 
 ### PIA-017 — Finalize The Principal-Only Release Surface
 

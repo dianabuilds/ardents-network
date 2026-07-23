@@ -127,7 +127,7 @@ type fakeSource struct {
 func populatedSource() *fakeSource {
 	return &fakeSource{
 		runtime: daemonruntime.RuntimeSnapshot{Node: daemonruntime.NodeSnapshot{State: "ready", Ready: true}, Health: diagapi.HealthSnapshot{State: "ready"}},
-		network: network.StatusSnapshot{ActiveCapabilities: []string{"waku-relay", "waku-store"}, RateLimitedOperations: 2},
+		network: network.StatusSnapshot{ActiveFeatures: []network.TransportFeature{network.TransportFeatureRelay, network.TransportFeatureStore}, RateLimitedOperations: 2},
 		peers:   []discovery.PeerSnapshot{{NodeID: "peer-secret-id", State: "connected", Trust: discovery.TrustSnapshot{Valid: true, Trusted: true, Usable: true}}},
 		diagnostics: diagapi.DiagSnapshot{RecentEvents: []diagapi.EventEnvelope{
 			{Domain: "policy", Type: "denied", Resource: "blob-secret-id", Payload: map[string]any{"action": "route.use", "selector": "selector-secret"}},

@@ -6,7 +6,7 @@ import (
 )
 
 func (m *Manager) HandleSyncError(err error) error {
-	if !privacy.IsCapabilityFailure(err) {
+	if !privacy.IsChannelGrantFailure(err) {
 		return err
 	}
 	code := privacy.CodeOf(err)

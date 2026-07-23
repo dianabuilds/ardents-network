@@ -100,7 +100,7 @@ func TestOperatorNetworkSurfaceLifecycle(t *testing.T) {
 		require.Equal(t, "service_node", network.Msg.GetNetwork().GetNodeProfile())
 		require.Equal(t, "ardents-private/1", network.Msg.GetNetwork().GetPrivacyProfile())
 		require.Equal(t, "active", network.Msg.GetNetwork().GetPrivacyState())
-		require.Equal(t, "capability_ready", network.Msg.GetNetwork().GetPrivacySwitchReason())
+		require.Equal(t, "channel_grant_ready", network.Msg.GetNetwork().GetPrivacySwitchReason())
 		require.Equal(t, "steady", network.Msg.GetNetwork().GetPrivacyRecoveryState())
 		require.Empty(t, network.Msg.GetNetwork().GetPrivacyErrorCategories())
 

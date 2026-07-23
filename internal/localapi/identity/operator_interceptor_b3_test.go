@@ -204,7 +204,7 @@ func issueB3ExactGrant(t *testing.T, service *identityaccess.Service, node, prin
 		TransportProfile: identityprotocol.TransportProfile_TRANSPORT_PROFILE_UNIX_LOCAL_V1,
 		PeerBinding:      peer,
 	}
-	exact, err := identityaccess.NewResourceRef(node, "", string(kind), id)
+	exact, err := identityaccess.NewResourceRef(node, identityaccess.ResourceOwner{}, string(kind), id)
 	require.NoError(t, err)
 	proposal := identityaccess.GrantProposal{
 		Subject:   principal,
@@ -215,7 +215,7 @@ func issueB3ExactGrant(t *testing.T, service *identityaccess.Service, node, prin
 	}
 	proposalID, err := identityaccess.GrantProposalResourceID(node, binding.Audience, proposal)
 	require.NoError(t, err)
-	resource, err := identityaccess.NewResourceRef(node, "", "grant-proposal", proposalID)
+	resource, err := identityaccess.NewResourceRef(node, identityaccess.ResourceOwner{}, "grant-proposal", proposalID)
 	require.NoError(t, err)
 	_, err = service.IssueAccessGrant(context.Background(), identityaccess.IssueGrantRequest{
 		Command: identityaccess.AdminCommand{

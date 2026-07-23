@@ -525,7 +525,11 @@ func (c Command) grantProposal(subject string, actions []string, scopeName, kind
 		if !visibleASCII(resourceID) {
 			return nil, grantView{}, errors.New("exact resource ID must contain visible ASCII bytes")
 		}
-		resource, err := identityaccess.NewResourceRef(node, owner, kind, resourceID)
+		parsedOwner, err := identityaccess.ParseResourceOwner(owner)
+		if err != nil {
+			return nil, grantView{}, errors.New("exact resource owner must be a canonical Principal")
+		}
+		resource, err := identityaccess.NewResourceRef(node, parsedOwner, kind, resourceID)
 		if err != nil {
 			return nil, grantView{}, errors.New("exact resource is invalid")
 		}
@@ -667,7 +671,7 @@ func parseGrantView(item *protocol.AccessGrantMetadata, node, subject string) (g
 		if scope.Exact.Node != node || !visibleASCII(scope.Exact.ID) {
 			return grantView{}, errInvalidIdentityResponse
 		}
-		view.Scope, view.ResourceKind, view.ResourceID, view.ResourceOwner = "exact", string(scope.Exact.Kind), scope.Exact.ID, scope.Exact.Owner
+		view.Scope, view.ResourceKind, view.ResourceID, view.ResourceOwner = "exact", string(scope.Exact.Kind), scope.Exact.ID, scope.Exact.Owner.String()
 	} else {
 		return grantView{}, errInvalidIdentityResponse
 	}

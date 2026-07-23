@@ -75,11 +75,11 @@ func renderNetworkStatusHuman(w io.Writer, msg *ardentsv1.NetworkStatusResponse)
 	output.KV(w, "privacy_state", network.GetPrivacyState())
 	output.KV(w, "privacy_switch_reason", network.GetPrivacySwitchReason())
 	output.KV(w, "privacy_recovery_state", network.GetPrivacyRecoveryState())
-	if reduced := network.GetReducedCapabilities(); len(reduced) > 0 {
-		output.KV(w, "reduced_capabilities", strings.Join(reduced, ", "))
+	if reduced := network.GetReducedFeatures(); len(reduced) > 0 {
+		output.KV(w, "reduced_features", strings.Join(reduced, ", "))
 	}
-	if active := network.GetActiveCapabilities(); len(active) > 0 {
-		output.KV(w, "active_capabilities", strings.Join(active, ", "))
+	if active := network.GetActiveFeatures(); len(active) > 0 {
+		output.KV(w, "active_features", strings.Join(active, ", "))
 	}
 	if categories := network.GetPrivacyErrorCategories(); len(categories) > 0 {
 		output.KV(w, "privacy_error_categories", strings.Join(categories, ", "))

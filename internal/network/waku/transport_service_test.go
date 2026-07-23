@@ -75,7 +75,7 @@ func TestPublicDirectProfileStaysDegradedUntilIngressIsVerified(t *testing.T) {
 
 	snapshot := svc.ProfileSnapshot()
 	require.Equal(t, network.HealthStateDegraded, snapshot.Health)
-	require.Contains(t, snapshot.ReducedCapabilities, "inbound_reachability")
+	require.Contains(t, snapshot.ReducedFeatures, network.TransportFeatureInboundReachability)
 }
 
 func TestOutboundOnlyProfileDoesNotRequirePublishedIngressEndpoint(t *testing.T) {
@@ -120,7 +120,7 @@ func TestProfileSnapshotReportsBootstrapDegradation(t *testing.T) {
 	require.Equal(t, network.SwitchReasonBootstrapDegraded, snapshot.SwitchReason)
 	require.True(t, snapshot.SwitchAutomatic)
 	require.Equal(t, network.RecoveryStateRecoveryPending, snapshot.RecoveryState)
-	require.NotEmpty(t, snapshot.ReducedCapabilities)
+	require.NotEmpty(t, snapshot.ReducedFeatures)
 }
 
 func TestProfileSnapshotFailsForUnimplementedProfile(t *testing.T) {

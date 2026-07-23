@@ -76,7 +76,7 @@ func newAdminFixture(t *testing.T) *adminFixture {
 
 func (f *adminFixture) command(requestID, action, kind, id string) AdminCommand {
 	f.t.Helper()
-	resource, err := NewResourceRef(f.nodeID, "", kind, id)
+	resource, err := NewResourceRef(f.nodeID, ResourceOwner{}, kind, id)
 	require.NoError(f.t, err)
 	return AdminCommand{RequestID: requestID, Attempt: Attempt{SessionSecret: f.secret, Binding: f.binding, Action: Action(action), Resource: resource}}
 }
@@ -166,7 +166,7 @@ func TestEnrollPrincipalIsProofBoundAndIdempotent(t *testing.T) {
 
 func TestAdministrationListsAreSubjectFilteredAndNonSecret(t *testing.T) {
 	f := newAdminFixture(t)
-	grantResource, err := NewResourceRef(f.nodeID, "", "grant-collection", f.principal)
+	grantResource, err := NewResourceRef(f.nodeID, ResourceOwner{}, "grant-collection", f.principal)
 	require.NoError(t, err)
 	grants, err := f.service.ListAccessGrants(f.ctx, Attempt{SessionSecret: f.secret, Binding: f.binding, Action: "identity.grant.list", Resource: grantResource}, f.principal)
 	require.NoError(t, err)
@@ -175,7 +175,7 @@ func TestAdministrationListsAreSubjectFilteredAndNonSecret(t *testing.T) {
 	_, err = f.service.ListAccessGrants(f.ctx, Attempt{SessionSecret: f.secret, Binding: f.binding, Action: "identity.grant.list", Resource: grantResource}, f.nodeID)
 	require.ErrorIs(t, err, ErrInvalidArgument)
 
-	deviceResource, err := NewResourceRef(f.nodeID, "", "device-revocation-collection", f.principal)
+	deviceResource, err := NewResourceRef(f.nodeID, ResourceOwner{}, "device-revocation-collection", f.principal)
 	require.NoError(t, err)
 	revocations, err := f.service.ListDeviceRevocations(f.ctx, Attempt{SessionSecret: f.secret, Binding: f.binding, Action: "identity.device-revocations.list", Resource: deviceResource}, f.principal)
 	require.NoError(t, err)
@@ -304,7 +304,7 @@ func TestDeviceRevocationReplayAfterClockAdvanceAndFilteredList(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, id, replayed)
 
-	resource, err := NewResourceRef(f.nodeID, "", "device-revocation-collection", bob)
+	resource, err := NewResourceRef(f.nodeID, ResourceOwner{}, "device-revocation-collection", bob)
 	require.NoError(t, err)
 	items, err := f.service.ListDeviceRevocations(f.ctx, Attempt{SessionSecret: f.secret, Binding: f.binding, Action: "identity.device-revocations.list", Resource: resource}, bob)
 	require.NoError(t, err)

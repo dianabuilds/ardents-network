@@ -92,7 +92,7 @@ func CloneStatus(item Status) Status {
 		item.Spec.Services[i].Endpoints = append([]string(nil), item.Spec.Services[i].Endpoints...)
 		item.Spec.Services[i].ProbeEndpoints = append([]string(nil), item.Spec.Services[i].ProbeEndpoints...)
 	}
-	item.Spec.Capabilities = append([]string(nil), item.Spec.Capabilities...)
+	item.Spec.Requirements = append([]registry.WorkloadRequirement(nil), item.Spec.Requirements...)
 	item.PublishedServices = append([]PublishedServiceStatus(nil), item.PublishedServices...)
 	for i := range item.PublishedServices {
 		item.PublishedServices[i].Endpoints = append([]string(nil), item.PublishedServices[i].Endpoints...)

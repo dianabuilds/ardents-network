@@ -634,7 +634,7 @@ The initial Operator catalogue is:
 
 | Exact action(s) | Canonical resource extractor |
 |---|---|
-| `node.start`, `node.stop`, `node.status`, `node.capabilities`, `node.runtime`, `node.events` | `node(Audience.Node)` |
+| `node.start`, `node.stop`, `node.status`, `node.features`, `node.runtime`, `node.events` | `node(Audience.Node)` |
 | `config.effective`, `config.reload` | `configuration(Audience.Node)` singleton |
 | `transport.network_status`, `transport.route_candidates` | `network(Audience.Node)` singleton/collection |
 | `discovery.status`, `discovery.local_presence`, `discovery.peers`, `discovery.list_records` | corresponding discovery collection on Audience Node |

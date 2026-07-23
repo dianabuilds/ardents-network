@@ -42,8 +42,8 @@ func candidateDenial(request SelectionRequest, candidate Candidate) string {
 		return candidate.DenialReason
 	case !candidate.Trusted:
 		return ReasonUntrusted
-	case !candidate.CapabilityValid:
-		return ReasonCapability
+	case !candidate.PermissionValid:
+		return ReasonPermission
 	case !candidate.PolicyAllowed:
 		return ReasonPolicy
 	case !candidate.Usable:

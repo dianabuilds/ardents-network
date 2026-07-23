@@ -187,9 +187,13 @@ func finalizeOperatorTarget(target identityaccess.ResourceTarget, audience ident
 	if !known {
 		return identityaccess.ResourceRef{}, identityaccess.ErrInvalidArgument
 	}
-	owner := ""
+	owner := identityaccess.ResourceOwner{}
 	if contract.OwnerRequired {
-		owner = effective
+		var err error
+		owner, err = identityaccess.ParseResourceOwner(effective)
+		if err != nil {
+			return identityaccess.ResourceRef{}, identityaccess.ErrInvalidArgument
+		}
 	}
 	return identityaccess.NewResourceRef(audience.Node, owner, string(target.Kind), target.ID)
 }

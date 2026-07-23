@@ -49,9 +49,9 @@ func (s *Service) AdmitWorkload(spec registry.Spec, existing []execution.Status)
 	defer s.mu.Unlock()
 
 	result := CheckWorkload(WorkloadConfig{
-		MaxWorkloads:       s.cfg.MaxWorkloads,
-		AllowedPolicyRefs:  s.cfg.AllowedPolicyRefs,
-		DeniedCapabilities: s.cfg.DeniedCapabilities,
+		MaxWorkloads:               s.cfg.MaxWorkloads,
+		AllowedPolicyRefs:          s.cfg.AllowedPolicyRefs,
+		DeniedWorkloadRequirements: s.cfg.DeniedWorkloadRequirements,
 	}, spec, existing)
 	return s.applyDecisionLocked(result)
 }
@@ -132,9 +132,9 @@ func (s *Service) AllowRouteUse(candidate transport.Candidate) error {
 func (s *Service) AllowCapabilityUse(use identityapi.CapabilityUse) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	result := CheckCapabilityUse(CapabilityConfig{
-		DisablePrivateCapabilityUse: s.cfg.DisablePrivateCapabilityUse,
-		DeniedCapabilityScopes:      s.cfg.DeniedCapabilityScopes,
+	result := CheckChannelGrantUse(ChannelGrantPolicyConfig{
+		DisablePrivateChannelGrantUse: s.cfg.DisablePrivateChannelGrantUse,
+		DeniedChannelGrantScopes:      s.cfg.DeniedChannelGrantScopes,
 	}, use)
 	return s.applyDecisionLocked(result)
 }

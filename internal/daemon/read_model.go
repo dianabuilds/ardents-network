@@ -63,7 +63,7 @@ func projectRuntime(snapshot SystemSnapshot, health diagnostics.HealthSnapshot) 
 	return RuntimeSnapshot{Node: snapshot.Node, Boot: snapshot.Boot, Identity: snapshot.Ident, Health: health}
 }
 
-type Capabilities struct {
+type NodeFeatures struct {
 	Version  string
 	Services []string
 	Features map[string]bool
@@ -187,8 +187,8 @@ func (r *QueryService) RecentDiagnosticsLocked(limit int) []string {
 	return r.diag.Last(limit)
 }
 
-func (r *QueryService) Capabilities() Capabilities {
-	return Capabilities{
+func (r *QueryService) NodeFeatures() NodeFeatures {
+	return NodeFeatures{
 		Version: "v1alpha",
 		Services: []string{
 			"node",
@@ -379,7 +379,7 @@ func (r *QueryService) NetworkStatusSnapshotLocked() network.StatusSnapshot {
 func privateMessagingStatus(status networkprivacy.StatusSnapshot) network.PrivateMessagingStatus {
 	return network.PrivateMessagingStatus{
 		Profile: status.Profile, State: status.State, SwitchReason: status.SwitchReason,
-		RecoveryState: status.RecoveryState, ReducedCapabilities: status.ReducedCapabilities,
+		RecoveryState: status.RecoveryState, ReducedFeatures: status.ReducedFeatures,
 		ErrorCategories: status.ErrorCategories,
 	}
 }
@@ -424,12 +424,12 @@ func (r *QueryService) DiagnosticsSnapshotLocked() diagnostics.DiagSnapshot {
 	return r.projectDiagnosticsLocked()
 }
 
-func (r *QueryService) CapabilitiesSnapshotLocked() CapabilitiesSnapshot {
-	caps := r.Capabilities()
-	return CapabilitiesSnapshot{
-		Version:  caps.Version,
-		Services: cloneStrings(caps.Services),
-		Features: cloneBoolMap(caps.Features),
+func (r *QueryService) NodeFeaturesSnapshotLocked() NodeFeaturesSnapshot {
+	features := r.NodeFeatures()
+	return NodeFeaturesSnapshot{
+		Version:  features.Version,
+		Services: cloneStrings(features.Services),
+		Features: cloneBoolMap(features.Features),
 	}
 }
 

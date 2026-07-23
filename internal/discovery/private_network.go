@@ -17,13 +17,13 @@ type PrivateFetchResult struct {
 
 func FetchPrivateRecords(ctx context.Context, endpoints []string, channel *networkprivacy.Channel, carrier networkprivacy.Carrier) (PrivateFetchResult, error) {
 	if channel == nil || carrier == nil {
-		return PrivateFetchResult{Reason: networkprivacy.CodeCapabilityMissing}, nil
+		return PrivateFetchResult{Reason: networkprivacy.CodeChannelGrantMissing}, nil
 	}
 	contentTopic, err := channel.StoreContentTopic()
 	if err != nil {
 		reason := networkprivacy.CodeOf(err)
 		if reason == "" {
-			reason = networkprivacy.CodeCapabilityMissing
+			reason = networkprivacy.CodeChannelGrantMissing
 		}
 		return PrivateFetchResult{Reason: reason}, nil
 	}

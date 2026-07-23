@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	identitytrust "ardents/internal/identity/trust"
+	workloadregistry "ardents/internal/workload/registry"
 )
 
 type Document struct {
@@ -50,13 +51,13 @@ type APIConfig struct {
 }
 
 type PrivacyConfig struct {
-	Required               bool                 `json:"required"`
-	CapabilityStore        string               `json:"capability_store"`
-	CapabilityStoreKeyFile string               `json:"capability_store_key_file"`
-	ReplayKeyFile          string               `json:"replay_key_file"`
-	Subject                string               `json:"subject"`
-	Discovery              PrivacyChannelConfig `json:"discovery"`
-	Data                   PrivacyChannelConfig `json:"data"`
+	Required                 bool                 `json:"required"`
+	ChannelGrantStore        string               `json:"channel_grant_store"`
+	ChannelGrantStoreKeyFile string               `json:"channel_grant_store_key_file"`
+	ReplayKeyFile            string               `json:"replay_key_file"`
+	Subject                  string               `json:"subject"`
+	Discovery                PrivacyChannelConfig `json:"discovery"`
+	Data                     PrivacyChannelConfig `json:"data"`
 }
 
 type PrivacyChannelConfig struct {
@@ -134,24 +135,24 @@ type DataConfig struct {
 }
 
 type PolicyConfig struct {
-	MaxWorkloads                    int      `json:"max_workloads"`
-	AllowedPolicyRefs               []string `json:"allowed_policy_refs"`
-	DeniedCapabilities              []string `json:"denied_capabilities"`
-	DisableServicePublication       bool     `json:"disable_service_publication"`
-	DisableNetworkPublishedServices bool     `json:"disable_network_published_services"`
-	DeniedServiceTypes              []string `json:"denied_service_types"`
-	DisableUntrustedRouteUse        bool     `json:"disable_untrusted_route_use"`
-	DeniedRouteSchemes              []string `json:"denied_route_schemes"`
-	DisablePrivateCapabilityUse     bool     `json:"disable_private_capability_use"`
-	DeniedCapabilityScopes          []string `json:"denied_capability_scopes"`
-	DisableLocalBlobRetention       bool     `json:"disable_local_blob_retention"`
-	DisableRelayBlobRetention       bool     `json:"disable_relay_blob_retention"`
-	DisableBlobPinning              bool     `json:"disable_blob_pinning"`
-	DisablePeerBlobReserving        bool     `json:"disable_peer_blob_reserving"`
-	AllowPinRelayRetainedBlobs      bool     `json:"allow_pin_relay_retained_blobs"`
-	AllowReservingRelayBlobs        bool     `json:"allow_reserving_relay_blobs"`
-	MaxLocalRetention               string   `json:"max_local_retention"`
-	MaxRelayRetention               string   `json:"max_relay_retention"`
+	MaxWorkloads                    int                                    `json:"max_workloads"`
+	AllowedPolicyRefs               []string                               `json:"allowed_policy_refs"`
+	DeniedWorkloadRequirements      []workloadregistry.WorkloadRequirement `json:"denied_workload_requirements"`
+	DisableServicePublication       bool                                   `json:"disable_service_publication"`
+	DisableNetworkPublishedServices bool                                   `json:"disable_network_published_services"`
+	DeniedServiceTypes              []string                               `json:"denied_service_types"`
+	DisableUntrustedRouteUse        bool                                   `json:"disable_untrusted_route_use"`
+	DeniedRouteSchemes              []string                               `json:"denied_route_schemes"`
+	DisablePrivateChannelGrantUse   bool                                   `json:"disable_private_channel_grant_use"`
+	DeniedChannelGrantScopes        []string                               `json:"denied_channel_grant_scopes"`
+	DisableLocalBlobRetention       bool                                   `json:"disable_local_blob_retention"`
+	DisableRelayBlobRetention       bool                                   `json:"disable_relay_blob_retention"`
+	DisableBlobPinning              bool                                   `json:"disable_blob_pinning"`
+	DisablePeerBlobReserving        bool                                   `json:"disable_peer_blob_reserving"`
+	AllowPinRelayRetainedBlobs      bool                                   `json:"allow_pin_relay_retained_blobs"`
+	AllowReservingRelayBlobs        bool                                   `json:"allow_reserving_relay_blobs"`
+	MaxLocalRetention               string                                 `json:"max_local_retention"`
+	MaxRelayRetention               string                                 `json:"max_relay_retention"`
 }
 
 type WorkloadsConfig struct {
@@ -167,15 +168,15 @@ type WorkloadsConfig struct {
 }
 
 type WorkloadSpec struct {
-	ID            string          `json:"id"`
-	Kind          string          `json:"kind"`
-	Owner         string          `json:"owner"`
-	Config        string          `json:"config"`
-	Desired       string          `json:"desired"`
-	Capabilities  []string        `json:"capabilities"`
-	PolicyRef     string          `json:"policy_ref"`
-	RestartPolicy string          `json:"restart_policy"`
-	Services      []ServiceConfig `json:"services"`
+	ID            string                                 `json:"id"`
+	Kind          string                                 `json:"kind"`
+	Owner         string                                 `json:"owner"`
+	Config        string                                 `json:"config"`
+	Desired       string                                 `json:"desired"`
+	Requirements  []workloadregistry.WorkloadRequirement `json:"requirements"`
+	PolicyRef     string                                 `json:"policy_ref"`
+	RestartPolicy string                                 `json:"restart_policy"`
+	Services      []ServiceConfig                        `json:"services"`
 }
 
 func applyContextDefaults(raw []byte, doc *Document) {

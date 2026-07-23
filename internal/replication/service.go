@@ -29,8 +29,8 @@ func safeReason(err error) string {
 		return "peer_untrusted"
 	case strings.Contains(err.Error(), "policy"):
 		return "policy_denied"
-	case strings.Contains(err.Error(), "capability"):
-		return "capability_denied"
+	case strings.Contains(err.Error(), "permission"):
+		return "permission_denied"
 	case strings.Contains(err.Error(), "expired") || strings.Contains(err.Error(), "lease"):
 		return "lease_invalid"
 	case strings.Contains(err.Error(), "content identity") || strings.Contains(err.Error(), "ciphertext"):

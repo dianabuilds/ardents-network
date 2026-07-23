@@ -5,12 +5,12 @@ import (
 )
 
 type PrivateMessagingStatus struct {
-	Profile             string
-	State               string
-	SwitchReason        string
-	RecoveryState       string
-	ReducedCapabilities []string
-	ErrorCategories     []string
+	Profile         string
+	State           string
+	SwitchReason    string
+	RecoveryState   string
+	ReducedFeatures []TransportFeature
+	ErrorCategories []string
 }
 
 type StatusSnapshot struct {
@@ -24,8 +24,8 @@ type StatusSnapshot struct {
 	ReachabilityObservedAt  time.Time
 	ActiveProfile           string
 	ActiveMode              string
-	ReducedCapabilities     []string
-	ActiveCapabilities      []string
+	ReducedFeatures         []TransportFeature
+	ActiveFeatures          []TransportFeature
 	AbuseState              string
 	AbuseReason             string
 	RateLimitedOperations   uint64
@@ -47,8 +47,8 @@ func ProjectStatus(nodeProfile NodeProfile, state, reason string, joined bool, p
 		Reachable: reachability.Reachable, ReachabilityMode: string(reachability.Mode), ReachabilityState: reachability.State,
 		ReachabilityReason: reachability.Reason, ReachabilityObservedAt: reachability.ObservedAt,
 		ActiveProfile: string(profile.Profile), ActiveMode: string(profile.Mode),
-		ReducedCapabilities: append(append([]string(nil), profile.ReducedCapabilities...), privacyStatus.ReducedCapabilities...),
-		ActiveCapabilities:  append([]string(nil), profile.ActiveCapabilities...), AbuseState: abuse.State, AbuseReason: abuse.Reason,
+		ReducedFeatures: append(append([]TransportFeature(nil), profile.ReducedFeatures...), privacyStatus.ReducedFeatures...),
+		ActiveFeatures:  append([]TransportFeature(nil), profile.ActiveFeatures...), AbuseState: abuse.State, AbuseReason: abuse.Reason,
 		RateLimitedOperations: abuse.RateLimitedOperations, BackpressuredOperations: abuse.BackpressuredOperations,
 		OversizedMessages: abuse.OversizedMessages, BannedProviders: abuse.BannedProviders, LastTransitionAt: lastTransitionAt,
 		PrivacyProfile: privacyStatus.Profile, PrivacyState: privacyStatus.State, PrivacySwitchReason: privacyStatus.SwitchReason,

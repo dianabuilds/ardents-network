@@ -60,7 +60,7 @@ The `v1` document contains these typed sections:
 | `application_interface` | least-privilege Application boundary | enablement, separate loopback/socket listener, credential reference, subject, explicit `application.*` capabilities, expiry |
 | `trust` | Identity trust registry | Principal/public-key bindings with exact `discovery.publish`, `channel.issue`, or reserved `identity.attest` purposes |
 | `network` | Network Foundation | Waku `transport_profile`, bind/listen, bootstrap, DNS, reachability, advertised endpoints, WSS material references, abuse limits |
-| `privacy` | Identity + Network privacy assembly | protected capability-store/key references and separate discovery/data replay ledgers; never raw selector/channel material |
+| `privacy` | Identity + Network privacy assembly | protected channel-grant-store/key references and separate discovery/data replay ledgers; never raw selector/channel material |
 | `workloads` | Workload Control + Policy | executor, registries, policy refs, runtime names, ingress allow-list and proxy image |
 | `services` | Hosted Services | declared service/probe inputs that still require runtime backing before publication |
 | `data` | Data Substrate + Policy | data/store paths, local/relay TTL, storage and replica quotas, replica target/minimum |
@@ -150,11 +150,11 @@ material, raw selectors, protected filesystem paths, or secret file contents.
 ### 6.1 Private-channel provisioning shape
 
 When `privacy.required=true`, the stopped node must already have its canonical
-identity and an encrypted Identity-owned capability store provisioned through a
+identity and an encrypted Identity-owned channel grant store provisioned through a
 secure operator workflow. Runtime configuration references that store; it does
 not import plaintext grants or create replacement secrets.
 
-The privacy section contains one protected capability-store path, a separate
+The privacy section contains one protected channel-grant-store path, a separate
 32-byte store-key file, the local identity subject, and two channel bindings.
 Issuer trust is defined once in `trust.principals`, never duplicated in
 `privacy` or `network`:

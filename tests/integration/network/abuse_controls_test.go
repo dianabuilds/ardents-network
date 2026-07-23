@@ -121,8 +121,8 @@ func TestRestrictedDefenseRemovesAndRestoresProviderServices(t *testing.T) {
 
 	scenario.Degraded("restart into Relay-only restricted defense", func(t *testing.T) {
 		require.NoError(t, modeControl.SetModeForIntegration(t.Context(), networkapi.ModeRestrictedDefense))
-		require.Equal(t, []string{"relay"}, provider.ProfileSnapshot().ActiveCapabilities)
-		require.Contains(t, provider.ProfileSnapshot().ReducedCapabilities, "store")
+		require.Equal(t, []networkapi.TransportFeature{networkapi.TransportFeatureRelay}, provider.ProfileSnapshot().ActiveFeatures)
+		require.Contains(t, provider.ProfileSnapshot().ReducedFeatures, networkapi.TransportFeatureStore)
 		restrictedClient := startLimitedClient(t, provider, networkapi.Limits{})
 		require.Equal(t, "degraded", restrictedClient.State())
 	})
@@ -131,7 +131,7 @@ func TestRestrictedDefenseRemovesAndRestoresProviderServices(t *testing.T) {
 		require.NoError(t, modeControl.SetModeForIntegration(t.Context(), networkapi.ModeSteady))
 		require.ElementsMatch(t,
 			[]string{"relay", "store", "filter_service", "lightpush_service"},
-			provider.ProfileSnapshot().ActiveCapabilities,
+			provider.ProfileSnapshot().ActiveFeatures,
 		)
 		recoveredClient := startLimitedClient(t, provider, networkapi.Limits{})
 		require.Equal(t, "ready", recoveredClient.State())

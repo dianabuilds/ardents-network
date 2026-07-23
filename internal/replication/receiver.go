@@ -77,8 +77,8 @@ func placementAuthorizationDenial(auth placement.PeerAuthorization) string {
 	switch {
 	case !auth.Authenticated || !auth.Trusted:
 		return placement.ReasonUntrusted
-	case !auth.CapabilityValid:
-		return placement.ReasonCapability
+	case !auth.PermissionValid:
+		return placement.ReasonPermission
 	case !auth.PolicyAllowed:
 		return placement.ReasonPolicy
 	default:
@@ -132,7 +132,7 @@ func (s *Service) handleCommit(ctx context.Context, wire controlWire) error {
 }
 
 func (s *Service) authorizePeer(principal identityprincipal.ID, blob model.Blob, expiresAt time.Time) placement.PeerAuthorization {
-	auth := placement.PeerAuthorization{NodePrincipal: principal, Authenticated: principal.String() != "", CapabilityValid: true}
+	auth := placement.PeerAuthorization{NodePrincipal: principal, Authenticated: principal.String() != "", PermissionValid: true}
 	entry, outcome, ok := s.cfg.Discovery.Resolve(principal.String(), "node")
 	if ok && outcome == "found" {
 		trust := s.cfg.Trust.Evaluate(entry.Record)

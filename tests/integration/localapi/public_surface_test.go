@@ -95,7 +95,7 @@ func TestConnectRPCNetworkPublicSurfaceMatchesLocalTruth(t *testing.T) {
 	require.Equal(t, localNetwork.NodeProfile, rpcNetwork.Msg.GetNetwork().GetNodeProfile())
 	require.Equal(t, "ardents-private/1", localNetwork.PrivacyProfile)
 	require.Equal(t, "active", localNetwork.PrivacyState)
-	require.Equal(t, "capability_ready", localNetwork.PrivacySwitchReason)
+	require.Equal(t, "channel_grant_ready", localNetwork.PrivacySwitchReason)
 	require.Equal(t, "steady", localNetwork.PrivacyRecoveryState)
 	require.Empty(t, localNetwork.PrivacyErrors)
 	require.Equal(t, localNetwork.PrivacyProfile, rpcNetwork.Msg.GetNetwork().GetPrivacyProfile())

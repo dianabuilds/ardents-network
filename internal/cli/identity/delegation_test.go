@@ -139,7 +139,7 @@ func TestDelegationRevokeSignsExactTargetAndImportsToSelectedNode(t *testing.T) 
 		Delegatee: application,
 		Audience:  identityaccess.Audience{Node: node, Interface: identityprotocol.Interface_INTERFACE_APPLICATION, ProtocolMajor: identitycontract.ProtocolMajor},
 		Actions:   []identityaccess.Action{"application.content.get"},
-		Scope:     identityaccess.ResourceScope{Kind: identityaccess.ScopePrincipalOwned, Owner: root.Principal},
+		Scope:     identityaccess.ResourceScope{Kind: identityaccess.ScopePrincipalOwned, Owner: mustCLIResourceOwner(t, root.Principal)},
 		NotBefore: now, NotAfter: now.Add(time.Hour),
 	}, now)
 	require.NoError(t, err)
@@ -200,7 +200,7 @@ func TestDelegationRevocationRejectsWrongSignerCrossNodeAndOversizedInput(t *tes
 	require.NoError(t, err)
 	delegation, err := signer.SignDelegation(context.Background(), DelegationSpec{
 		Delegatee: application, Audience: identityaccess.Audience{Node: node, Interface: identityprotocol.Interface_INTERFACE_APPLICATION, ProtocolMajor: 1},
-		Actions: []identityaccess.Action{"application.content.get"}, Scope: identityaccess.ResourceScope{Kind: identityaccess.ScopePrincipalOwned, Owner: delegator}, NotBefore: now, NotAfter: now.Add(time.Hour),
+		Actions: []identityaccess.Action{"application.content.get"}, Scope: identityaccess.ResourceScope{Kind: identityaccess.ScopePrincipalOwned, Owner: mustCLIResourceOwner(t, delegator)}, NotBefore: now, NotAfter: now.Add(time.Hour),
 	}, now)
 	require.NoError(t, err)
 	delegationRaw, err := delegation.MarshalBinary()
@@ -242,6 +242,13 @@ func delegationTestPrincipal(t *testing.T) string {
 	principal, err := identityprincipal.FromEd25519PublicKey(public)
 	require.NoError(t, err)
 	return principal.String()
+}
+
+func mustCLIResourceOwner(t *testing.T, value string) identityaccess.ResourceOwner {
+	t.Helper()
+	owner, err := identityaccess.ParseResourceOwner(value)
+	require.NoError(t, err)
+	return owner
 }
 
 var _ DelegationSigner = (*DeviceFileSigner)(nil)

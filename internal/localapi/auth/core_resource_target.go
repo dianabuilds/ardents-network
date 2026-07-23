@@ -23,8 +23,8 @@ func CanonicalizeCoreResource(procedure string, message any) (identityaccess.Res
 		_, known = message.(*protocol.StopNodeRequest)
 	case ardentsv1connect.NodeServiceGetNodeStatusProcedure:
 		_, known = message.(*protocol.GetNodeStatusRequest)
-	case ardentsv1connect.NodeServiceGetNodeCapabilitiesProcedure:
-		_, known = message.(*protocol.GetNodeCapabilitiesRequest)
+	case ardentsv1connect.NodeServiceGetNodeFeaturesProcedure:
+		_, known = message.(*protocol.GetNodeFeaturesRequest)
 	case ardentsv1connect.NodeServiceGetNodeRuntimeProcedure:
 		_, known = message.(*protocol.GetNodeRuntimeRequest)
 	case ardentsv1connect.NodeServiceStreamNodeEventsProcedure:

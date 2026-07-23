@@ -13,12 +13,13 @@ import (
 	diagapi "ardents/internal/diagnostics"
 	transport "ardents/internal/network"
 	workloadapi "ardents/internal/workload"
+	workloadregistry "ardents/internal/workload/registry"
 	"ardents/tests/testkit"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestPolicyRejectsWorkloadByCapability(t *testing.T) {
+func TestPolicyRejectsWorkloadByRequirement(t *testing.T) {
 	testkit.BeginScenario(t, testkit.Spec{
 		Layer:       testkit.LayerIntegration,
 		Domain:      "policy",
@@ -33,7 +34,7 @@ func TestPolicyRejectsWorkloadByCapability(t *testing.T) {
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
 		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
 		Policy: runtimeinfra.PolicyConfig{
-			DeniedCapabilities: []string{"net-bind"},
+			DeniedWorkloadRequirements: []workloadregistry.WorkloadRequirement{"net-bind"},
 		},
 	})
 
@@ -43,7 +44,7 @@ func TestPolicyRejectsWorkloadByCapability(t *testing.T) {
 		Owner:        "node",
 		Config:       testkit.HelperProcessConfig(t, "sleep"),
 		Desired:      "present",
-		Capabilities: []string{"net-bind"},
+		Requirements: []workloadregistry.WorkloadRequirement{"net-bind"},
 	})
 	require.Falsef(t, err == nil || !strings.
 		Contains(err.Error(),

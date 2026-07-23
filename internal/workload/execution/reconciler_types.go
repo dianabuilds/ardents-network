@@ -12,5 +12,8 @@ const (
 type AdmissionFunc func(registry.Spec, []Status) error
 
 type persistentState struct {
-	Items map[string]Status `json:"items"`
+	Version uint32            `json:"version"`
+	Items   map[string]Status `json:"items"`
 }
+
+const persistentStateVersion uint32 = 1

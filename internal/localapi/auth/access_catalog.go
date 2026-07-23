@@ -22,7 +22,7 @@ var procedureAccess = map[string]Rule{
 	ardentsv1connect.NodeServiceStartNodeProcedure:                          resourceAction("node.start", "node", "node", identityapi.AccessWrite),
 	ardentsv1connect.NodeServiceStopNodeProcedure:                           resourceAction("node.stop", "node", "node", identityapi.AccessWrite),
 	ardentsv1connect.NodeServiceGetNodeStatusProcedure:                      resourceAction("node.status", "node", "node", identityapi.AccessRead),
-	ardentsv1connect.NodeServiceGetNodeCapabilitiesProcedure:                resourceAction("node.capabilities", "node", "node", identityapi.AccessRead),
+	ardentsv1connect.NodeServiceGetNodeFeaturesProcedure:                    resourceAction("node.features", "node", "node", identityapi.AccessRead),
 	ardentsv1connect.NodeServiceGetNodeRuntimeProcedure:                     resourceAction("node.runtime", "node", "node", identityapi.AccessRead),
 	ardentsv1connect.ConfigurationServiceGetEffectiveConfigurationProcedure: resourceAction("config.effective", "config", "configuration", identityapi.AccessRead),
 	ardentsv1connect.ConfigurationServiceReloadConfigurationProcedure:       resourceAction("config.reload", "config", "configuration", identityapi.AccessWrite),

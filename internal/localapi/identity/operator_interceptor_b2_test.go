@@ -106,7 +106,7 @@ func TestOperatorPrincipalInterceptorGuardsEveryB2ProcedureExactlyOnce(t *testin
 	authorization := "ArdentsOperatorSession " + base64.RawURLEncoding.EncodeToString(secret[:])
 	directID, err := discoveryrecord.AccessResourceID("node", b2SignedNodeRecord(t).GetNodeFacts().GetPrincipal())
 	require.NoError(t, err)
-	directResource, err := identityaccess.NewResourceRef(node, "", "discovery-record", directID)
+	directResource, err := identityaccess.NewResourceRef(node, identityaccess.ResourceOwner{}, "discovery-record", directID)
 	require.NoError(t, err)
 	directBinding := identityaccess.AuthenticationBinding{
 		Audience:         identityaccess.Audience{Node: node, Interface: identityprotocol.Interface_INTERFACE_OPERATOR, ProtocolMajor: 1},

@@ -87,7 +87,7 @@ Workload admission должен учитывать:
 
 - локальную конфигурацию;
 - policy rules;
-- допустимость capabilities;
+- допустимость workload requirements;
 - ограничения ресурса и режима узла.
 
 Hosted-service readiness и publication также должны учитывать policy.

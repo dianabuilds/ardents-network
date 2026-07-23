@@ -57,15 +57,15 @@ const (
 )
 
 type Snapshot struct {
-	NodeProfile         NodeProfile
-	Profile             Profile
-	Mode                Mode
-	Health              HealthState
-	ActiveFamilies      []Family
-	SuppressedFamilies  []Family
-	SwitchReason        SwitchReason
-	SwitchAutomatic     bool
-	ReducedCapabilities []string
-	ActiveCapabilities  []string
-	RecoveryState       RecoveryState
+	NodeProfile        NodeProfile
+	Profile            Profile
+	Mode               Mode
+	Health             HealthState
+	ActiveFamilies     []Family
+	SuppressedFamilies []Family
+	SwitchReason       SwitchReason
+	SwitchAutomatic    bool
+	ReducedFeatures    []TransportFeature
+	ActiveFeatures     []TransportFeature
+	RecoveryState      RecoveryState
 }

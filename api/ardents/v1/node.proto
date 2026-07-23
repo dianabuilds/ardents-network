@@ -9,7 +9,7 @@ service NodeService {
   rpc StartNode(StartNodeRequest) returns (CommandAckResponse);
   rpc StopNode(StopNodeRequest) returns (CommandAckResponse);
   rpc GetNodeStatus(GetNodeStatusRequest) returns (NodeStatusResponse);
-  rpc GetNodeCapabilities(GetNodeCapabilitiesRequest) returns (CapabilitiesResponse);
+  rpc GetNodeFeatures(GetNodeFeaturesRequest) returns (NodeFeaturesResponse);
   rpc GetNodeRuntime(GetNodeRuntimeRequest) returns (NodeRuntimeResponse);
   rpc StreamNodeEvents(StreamNodeEventsRequest) returns (stream EventEnvelope);
 }

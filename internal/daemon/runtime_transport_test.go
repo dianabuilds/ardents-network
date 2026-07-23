@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"ardents/internal/network"
 	"context"
 	"testing"
 
@@ -9,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTransportProfilePayloadLockedClonesReducedCapabilities(t *testing.T) {
+func TestTransportProfilePayloadLockedClonesReducedFeatures(t *testing.T) {
 	svc := networkwaku.New()
 	svc.SetBootstrapNodes([]string{"local://bootstrap"})
 	require.NoError(t, svc.Start(context.Background()))
@@ -17,12 +18,12 @@ func TestTransportProfilePayloadLockedClonesReducedCapabilities(t *testing.T) {
 
 	mgr := &RuntimeManager{trans: svc}
 	payload := mgr.transportProfilePayloadLocked()
-	reduced := payload["reduced_capabilities"].([]string)
+	reduced := payload["reduced_features"].([]network.TransportFeature)
 	if len(reduced) == 0 {
-		t.Skip("transport profile did not report reduced capabilities")
+		t.Skip("transport profile did not report reduced features")
 	}
 
 	snapshot := svc.ProfileSnapshot()
-	reduced[0] = "mutated"
-	require.NotEqual(t, "mutated", snapshot.ReducedCapabilities[0])
+	reduced[0] = network.TransportFeature("mutated")
+	require.NotEqual(t, network.TransportFeature("mutated"), snapshot.ReducedFeatures[0])
 }

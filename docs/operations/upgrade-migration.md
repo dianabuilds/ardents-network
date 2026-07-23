@@ -87,9 +87,9 @@ old binary to a partially upgraded database. Transaction rollback on an update
 error and whole-state restore after a failed release are both required safety
 mechanisms.
 
-### Content catalogue version 1
+### Content catalogue version 2
 
-The first-release `ardents.db` content snapshot has top-level `version: 1` and a
+The first-release `ardents.db` content snapshot has top-level `version: 2` and a
 required `blob_ownership` section with `version: 1`. Object and Manifest owner
 fields contain one canonical typed `p1_` Principal. Each Blob binding contains
 one canonical typed `p1_` owner, one content reference, and its creation time.
@@ -99,8 +99,9 @@ versions, missing/malformed/untyped owners, duplicate `(owner, reference)`
 pairs, and bindings to missing Blob metadata fail startup closed.
 
 This is a greenfield first-release schema, so there is no importer for a
-pre-release snapshot that lacks `blob_ownership`. Such state is rejected rather
-than assigned an inferred owner. Create fresh state or restore a complete
+pre-release version-1 snapshot, duplicate Blob `id`/`cid` fields, or state that
+lacks `blob_ownership`. Such state is rejected rather than assigned an inferred
+owner or content reference. Create fresh state or restore a complete
 same-version stopped-Node backup.
 
 Application Put writes, hashes, and fsyncs a private temporary payload, installs

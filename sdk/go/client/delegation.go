@@ -162,15 +162,15 @@ func canonicalDelegationInterval(start, end time.Time) bool {
 func validDelegationScope(scope sdkidentity.ResourceScope, node string) bool {
 	switch scope.Kind {
 	case sdkidentity.ScopeNode:
-		return scope.Owner == "" && scope.Resource == (sdkidentity.ResourceRef{})
+		return scope.Owner.IsNone() && scope.Resource == (sdkidentity.ResourceRef{})
 	case sdkidentity.ScopePrincipalOwned:
-		return validPrincipalID(scope.Owner) && scope.Resource == (sdkidentity.ResourceRef{})
+		return !scope.Owner.IsNone() && validPrincipalID(scope.Owner.String()) && scope.Resource == (sdkidentity.ResourceRef{})
 	case sdkidentity.ScopeExact:
 		resource := scope.Resource
 		contract, known := identitycontract.LookupResourceKind(resource.Kind)
-		ownerPresent := resource.Owner != ""
-		return scope.Owner == "" && resource.Node == node && known &&
-			ownerPresent == contract.OwnerRequired && (!ownerPresent || validPrincipalID(resource.Owner)) &&
+		ownerPresent := !resource.Owner.IsNone()
+		return scope.Owner.IsNone() && resource.Node == node && known &&
+			ownerPresent == contract.OwnerRequired && (!ownerPresent || validPrincipalID(resource.Owner.String())) &&
 			((contract.AllowEmptyID && resource.CanonicalID == "") || validConsentToken(resource.CanonicalID, identitycontract.MaxCanonicalResourceIDBytes))
 	default:
 		return false
@@ -194,9 +194,9 @@ func delegationScopeText(scope sdkidentity.ResourceScope) string {
 	case sdkidentity.ScopeNode:
 		return "node"
 	case sdkidentity.ScopePrincipalOwned:
-		return "principal-owned(owner=" + scope.Owner + ")"
+		return "principal-owned(owner=" + scope.Owner.String() + ")"
 	case sdkidentity.ScopeExact:
-		return fmt.Sprintf("exact(node=%q, owner=%q, kind=%q, id=%q)", scope.Resource.Node, scope.Resource.Owner, scope.Resource.Kind, scope.Resource.CanonicalID)
+		return fmt.Sprintf("exact(node=%q, owner=%q, kind=%q, id=%q)", scope.Resource.Node, scope.Resource.Owner.String(), scope.Resource.Kind, scope.Resource.CanonicalID)
 	default:
 		return "invalid"
 	}

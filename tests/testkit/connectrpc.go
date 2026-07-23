@@ -200,7 +200,7 @@ func newOperatorPrincipalAccess(t *testing.T) (*identityaccess.Service, string, 
 	}
 	proposalID, err := identityaccess.GrantProposalResourceID(node.String(), binding.Audience, proposal)
 	require.NoError(t, err)
-	resource, err := identityaccess.NewResourceRef(node.String(), "", "grant-proposal", proposalID)
+	resource, err := identityaccess.NewResourceRef(node.String(), identityaccess.ResourceOwner{}, "grant-proposal", proposalID)
 	require.NoError(t, err)
 	_, err = service.IssueAccessGrant(ctx, identityaccess.IssueGrantRequest{
 		Command: identityaccess.AdminCommand{
@@ -255,7 +255,7 @@ func NewApplicationPrincipalAccess(t *testing.T, actions []identityaccess.Action
 		Audience:         identityaccess.Audience{Node: node, Interface: identityprotocol.Interface_INTERFACE_OPERATOR, ProtocolMajor: identitycontract.ProtocolMajor},
 		TransportProfile: identityprotocol.TransportProfile_TRANSPORT_PROFILE_UNIX_LOCAL_V1, PeerBinding: operatorPeer,
 	}
-	resource, err := identityaccess.NewResourceRef(node, "", "principal", principal.String())
+	resource, err := identityaccess.NewResourceRef(node, identityaccess.ResourceOwner{}, "principal", principal.String())
 	require.NoError(t, err)
 	ticket, err := service.IssueApplicationEnrollmentTicket(ctx, identityaccess.IssueApplicationEnrollmentTicketRequest{
 		Attempt:   identityaccess.Attempt{SessionSecret: operatorSession, Binding: operatorBinding, Action: "identity.principal.enroll", Resource: resource},
@@ -314,7 +314,7 @@ func NewApplicationPrincipalAccess(t *testing.T, actions []identityaccess.Action
 }
 
 var testOperatorActions = []identityaccess.Action{
-	"node.start", "node.stop", "node.status", "node.capabilities", "node.runtime", "node.events",
+	"node.start", "node.stop", "node.status", "node.features", "node.runtime", "node.events",
 	"config.effective", "config.reload", "transport.network_status", "transport.route_candidates",
 	"discovery.status", "discovery.local_presence", "discovery.peers", "discovery.list_records",
 	"discovery.resolve_record", "discovery.resolve_service", "discovery.import", "workload.register",

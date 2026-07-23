@@ -169,7 +169,7 @@ func (s *Service) observeCandidate(ctx context.Context, target identityprincipal
 		candidate.DenialReason = placement.ReasonObservation
 		return candidate
 	}
-	candidate.CapabilityValid = true
+	candidate.PermissionValid = true
 	candidate.DenialReason = observation.DenialReason
 	candidate.CapacityBytes = observation.Capacity.FreeBytes
 	candidate.ObservedAt = observation.Capacity.ObservedAt
@@ -242,6 +242,6 @@ func (s *Service) queryCapacity(ctx context.Context, target identityprincipal.ID
 }
 
 func validCapacityDenial(reason string) bool {
-	return reason == placement.ReasonUntrusted || reason == placement.ReasonCapability ||
+	return reason == placement.ReasonUntrusted || reason == placement.ReasonPermission ||
 		reason == placement.ReasonPolicy || reason == placement.ReasonUnsupported
 }

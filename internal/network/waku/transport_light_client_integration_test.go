@@ -27,7 +27,7 @@ func TestConstrainedClientUsesFilterLightpushAndStoreRecovery(t *testing.T) {
 	require.NoError(t, client.Start(ctx))
 	t.Cleanup(func() { require.NoError(t, client.Stop(context.Background())) })
 	require.Equal(t, "ready", client.State())
-	require.ElementsMatch(t, []string{"filter_client", "lightpush_client", "store_client"}, client.ProfileSnapshot().ActiveCapabilities)
+	require.ElementsMatch(t, []network.TransportFeature{network.TransportFeatureFilterClient, network.TransportFeatureLightpushClient, network.TransportFeatureStoreClient}, client.ProfileSnapshot().ActiveFeatures)
 
 	topic := "ardents/1/private/filter-lightpush"
 	received, err := client.SubscribeFilterEnvelopes(ctx, provider.Endpoints(), topic)
@@ -133,17 +133,17 @@ func TestRestrictedDefenseRestartRemovesAndRestoresProviderServices(t *testing.T
 	provider := startMessagingRoleNode(t, network.NodeProfileServiceNode)
 
 	require.NoError(t, provider.SetModeForIntegration(ctx, network.ModeRestrictedDefense))
-	require.Equal(t, []string{"relay"}, provider.ProfileSnapshot().ActiveCapabilities)
-	require.Contains(t, provider.ProfileSnapshot().ReducedCapabilities, "store")
-	require.Contains(t, provider.ProfileSnapshot().ReducedCapabilities, "filter_service")
-	require.Contains(t, provider.ProfileSnapshot().ReducedCapabilities, "lightpush_service")
+	require.Equal(t, []network.TransportFeature{network.TransportFeatureRelay}, provider.ProfileSnapshot().ActiveFeatures)
+	require.Contains(t, provider.ProfileSnapshot().ReducedFeatures, network.TransportFeatureStore)
+	require.Contains(t, provider.ProfileSnapshot().ReducedFeatures, network.TransportFeatureFilterService)
+	require.Contains(t, provider.ProfileSnapshot().ReducedFeatures, network.TransportFeatureLightpushService)
 	restrictedClient := startConstrainedClient(t, provider, network.Limits{})
 	require.Equal(t, "degraded", restrictedClient.State())
 
 	require.NoError(t, provider.SetModeForIntegration(ctx, network.ModeSteady))
 	require.ElementsMatch(t,
 		[]string{"relay", "store", "filter_service", "lightpush_service"},
-		provider.ProfileSnapshot().ActiveCapabilities,
+		provider.ProfileSnapshot().ActiveFeatures,
 	)
 	recoveredClient := startConstrainedClient(t, provider, network.Limits{})
 	require.Equal(t, "ready", recoveredClient.State())

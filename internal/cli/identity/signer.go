@@ -100,7 +100,7 @@ func (s *DeviceFileSigner) SignDelegation(ctx context.Context, spec DelegationSp
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if len(spec.Actions) == 0 || len(spec.Actions) > identitycontract.MaxActions || spec.Scope.Kind == identityaccess.ScopePrincipalOwned && spec.Scope.Owner != s.material.principal {
+	if len(spec.Actions) == 0 || len(spec.Actions) > identitycontract.MaxActions || spec.Scope.Kind == identityaccess.ScopePrincipalOwned && spec.Scope.Owner.String() != s.material.principal {
 		return nil, identityaccess.ErrInvalidArgument
 	}
 	seen := make(map[identityaccess.Action]struct{}, len(spec.Actions))

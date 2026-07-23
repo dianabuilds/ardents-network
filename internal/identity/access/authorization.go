@@ -28,13 +28,13 @@ const (
 
 type ResourceRef struct {
 	Node  string
-	Owner string
+	Owner ResourceOwner
 	Kind  ResourceKind
 	ID    string
 }
 type ResourceScope struct {
 	Kind  ScopeKind
-	Owner string
+	Owner ResourceOwner
 	Exact ResourceRef
 }
 
@@ -118,7 +118,7 @@ func ParseAction(surface identityprotocol.Interface, value string) (Action, erro
 	return Action(value), nil
 }
 
-func NewResourceRef(node, owner, kind, id string) (ResourceRef, error) {
+func NewResourceRef(node string, owner ResourceOwner, kind, id string) (ResourceRef, error) {
 	if _, err := identityprincipal.Parse(node); err != nil {
 		return ResourceRef{}, ErrInvalidArgument
 	}
@@ -126,13 +126,8 @@ func NewResourceRef(node, owner, kind, id string) (ResourceRef, error) {
 	if !known {
 		return ResourceRef{}, ErrInvalidArgument
 	}
-	if len(id) > identitycontract.MaxCanonicalResourceIDBytes || (!contract.AllowEmptyID && id == "") || contract.OwnerRequired != (owner != "") {
+	if len(id) > identitycontract.MaxCanonicalResourceIDBytes || (!contract.AllowEmptyID && id == "") || contract.OwnerRequired != !owner.IsNone() {
 		return ResourceRef{}, ErrInvalidArgument
-	}
-	if owner != "" {
-		if _, err := identityprincipal.Parse(owner); err != nil {
-			return ResourceRef{}, ErrInvalidArgument
-		}
 	}
 	return ResourceRef{Node: node, Owner: owner, Kind: ResourceKind(kind), ID: id}, nil
 }
@@ -142,7 +137,7 @@ func (s ResourceScope) Matches(resource ResourceRef, audience Audience) bool {
 	case ScopeNode:
 		return resource.Node == audience.Node && resource.Node == s.Exact.Node
 	case ScopePrincipalOwned:
-		return resource.Node == audience.Node && resource.Owner != "" && resource.Owner == s.Owner
+		return resource.Node == audience.Node && !resource.Owner.IsNone() && resource.Owner.Equal(s.Owner)
 	case ScopeExact:
 		return resource == s.Exact
 	default:
@@ -171,13 +166,21 @@ func scopeFromPayload(scope *identityprotocol.ResourceScope, node string) (Resou
 		if x.PrincipalOwned == nil {
 			return ResourceScope{}, errInvalid
 		}
-		return ResourceScope{Kind: ScopePrincipalOwned, Owner: x.PrincipalOwned.Owner}, nil
+		owner, err := ParseResourceOwner(x.PrincipalOwned.Owner)
+		if err != nil || owner.IsNone() {
+			return ResourceScope{}, errInvalid
+		}
+		return ResourceScope{Kind: ScopePrincipalOwned, Owner: owner}, nil
 	case *identityprotocol.ResourceScope_Exact:
 		r := x.Exact.GetResource()
 		if r == nil {
 			return ResourceScope{}, errInvalid
 		}
-		ref, err := NewResourceRef(r.Node, r.Owner, r.Kind, r.CanonicalId)
+		owner, ownerErr := ParseResourceOwner(r.Owner)
+		if ownerErr != nil {
+			return ResourceScope{}, errInvalid
+		}
+		ref, err := NewResourceRef(r.Node, owner, r.Kind, r.CanonicalId)
 		if err != nil {
 			return ResourceScope{}, errInvalid
 		}

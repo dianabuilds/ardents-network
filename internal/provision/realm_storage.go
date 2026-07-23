@@ -9,25 +9,25 @@ import (
 )
 
 type protectedNodeStorage struct {
-	capabilityStore string
-	storeKey        []byte
-	storeKeyPath    string
-	replayKeyPath   string
-	discoveryReplay string
-	dataReplay      string
-	recordPath      string
+	channelGrantStore string
+	storeKey          []byte
+	storeKeyPath      string
+	replayKeyPath     string
+	discoveryReplay   string
+	dataReplay        string
+	recordPath        string
 }
 
 func prepareNodeStorage(options NodeOptions) (protectedNodeStorage, error) {
 	nodeStorage := protectedNodeStorage{
-		capabilityStore: filepath.Join(options.DataDir, "capabilities.db"),
-		storeKeyPath:    filepath.Join(options.SecretDir, "capability-store.key"),
-		replayKeyPath:   filepath.Join(options.SecretDir, "replay.key"),
-		discoveryReplay: filepath.Join(options.DataDir, "discovery-replay.db"),
-		dataReplay:      filepath.Join(options.DataDir, "data-replay.db"),
-		recordPath:      filepath.Join(options.SecretDir, "local-realm-node.json"),
+		channelGrantStore: filepath.Join(options.DataDir, "channel-grants.db"),
+		storeKeyPath:      filepath.Join(options.SecretDir, "channel-grant-store.key"),
+		replayKeyPath:     filepath.Join(options.SecretDir, "replay.key"),
+		discoveryReplay:   filepath.Join(options.DataDir, "discovery-replay.db"),
+		dataReplay:        filepath.Join(options.DataDir, "data-replay.db"),
+		recordPath:        filepath.Join(options.SecretDir, "local-realm-node.json"),
 	}
-	key, err := loadOrCreateKey(nodeStorage.storeKeyPath, nodeStorage.capabilityStore)
+	key, err := loadOrCreateKey(nodeStorage.storeKeyPath, nodeStorage.channelGrantStore)
 	if err != nil {
 		return protectedNodeStorage{}, err
 	}

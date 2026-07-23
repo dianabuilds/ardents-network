@@ -7,6 +7,7 @@ import (
 	identityprincipal "ardents/internal/identity/principal"
 	db "ardents/internal/storage"
 	workloadapi "ardents/internal/workload"
+	workloadregistry "ardents/internal/workload/registry"
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/base64"
@@ -59,7 +60,7 @@ func TestWorkloadSpecFromAPIClonesSlices(t *testing.T) {
 	spec := workloadapi.SpecSnapshot{
 		ID:           "wl-1",
 		Kind:         "service",
-		Capabilities: []string{"exec"},
+		Requirements: []workloadregistry.WorkloadRequirement{"exec"},
 		Services: []workloadapi.PublishedServiceSnapshot{{
 			ID:        "svc-1",
 			Type:      "http",
@@ -69,11 +70,12 @@ func TestWorkloadSpecFromAPIClonesSlices(t *testing.T) {
 		}},
 	}
 
-	out := workloadapi.SpecFromSnapshot(spec)
-	out.Capabilities[0] = "mutated"
+	out, err := workloadapi.SpecFromSnapshot(spec)
+	require.NoError(t, err)
+	out.Requirements[0] = "mutated"
 	out.Services[0].Endpoints[0] = "mutated"
 
-	require.Equal(t, "exec", spec.Capabilities[0])
+	require.Equal(t, workloadregistry.WorkloadRequirement("exec"), spec.Requirements[0])
 	require.Equal(t, "tcp://127.0.0.1:9000", spec.Services[0].Endpoints[0])
 }
 

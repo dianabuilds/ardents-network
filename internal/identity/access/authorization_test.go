@@ -68,14 +68,14 @@ func ownedScope(owner string) *identityprotocol.ResourceScope {
 }
 
 func exactScope(resource ResourceRef) *identityprotocol.ResourceScope {
-	return &identityprotocol.ResourceScope{Scope: &identityprotocol.ResourceScope_Exact{Exact: &identityprotocol.ExactScope{Resource: &identityprotocol.ResourceRef{Node: resource.Node, Owner: resource.Owner, Kind: string(resource.Kind), CanonicalId: resource.ID}}}}
+	return &identityprotocol.ResourceScope{Scope: &identityprotocol.ResourceScope_Exact{Exact: &identityprotocol.ExactScope{Resource: &identityprotocol.ResourceRef{Node: resource.Node, Owner: resource.Owner.String(), Kind: string(resource.Kind), CanonicalId: resource.ID}}}}
 }
 
 func TestAdmitDirectGrantReturnsSealedActorEffectiveFacts(t *testing.T) {
 	f := newServiceFixture(t)
 	secret := f.sessionSecret()
 	f.grant([]string{"node.status"}, nodeScope())
-	resource, err := NewResourceRef(f.nodeID, "", "node", "")
+	resource, err := NewResourceRef(f.nodeID, ResourceOwner{}, "node", "")
 	require.NoError(t, err)
 
 	call, err := f.service.Admit(f.ctx, Attempt{SessionSecret: secret, Binding: f.binding, Action: "node.status", Resource: resource})
@@ -106,7 +106,7 @@ func TestAdmitTargetFinalizesServerResourceAfterIdentityDerivation(t *testing.T)
 			require.Equal(t, f.binding.Audience, audience)
 			require.Equal(t, f.principal, actor)
 			require.Equal(t, actor, effective)
-			return NewResourceRef(audience.Node, "", string(target.Kind), target.ID)
+			return NewResourceRef(audience.Node, ResourceOwner{}, string(target.Kind), target.ID)
 		},
 	})
 	require.NoError(t, err)
@@ -138,7 +138,7 @@ func TestAdmitTargetDefersExpensiveResolutionUntilSessionValidation(t *testing.T
 	finalize := func(target ResourceTarget, audience Audience, actor, effective string) (ResourceRef, error) {
 		finalized = true
 		require.True(t, resolved)
-		return NewResourceRef(audience.Node, effective, string(target.Kind), target.ID)
+		return NewResourceRef(audience.Node, mustResourceOwner(t, effective), string(target.Kind), target.ID)
 	}
 
 	_, err := f.service.AdmitTarget(f.ctx, TargetAttempt{
@@ -154,7 +154,7 @@ func TestAdmitTargetDefersExpensiveResolutionUntilSessionValidation(t *testing.T
 	require.NoError(t, err)
 	require.True(t, resolved)
 	require.True(t, finalized)
-	require.Equal(t, f.principal, call.Resource().Owner)
+	require.Equal(t, f.principal, call.Resource().Owner.String())
 
 	_, err = f.service.AdmitTarget(f.ctx, TargetAttempt{
 		SessionSecret: secret, Binding: f.binding, Action: "data.publish_blob",
@@ -184,7 +184,7 @@ func TestAdmitReadsAllDurableAuthorityInOneSnapshot(t *testing.T) {
 	f.grant([]string{"node.status"}, nodeScope())
 	counted := &countingViewDatabase{Database: f.database}
 	f.service.grants.database = counted
-	resource, err := NewResourceRef(f.nodeID, "", "node", "")
+	resource, err := NewResourceRef(f.nodeID, ResourceOwner{}, "node", "")
 	require.NoError(t, err)
 	_, err = f.service.Admit(f.ctx, Attempt{SessionSecret: secret, Binding: f.binding, Action: "node.status", Resource: resource})
 	require.NoError(t, err)
@@ -195,7 +195,7 @@ func TestAdmitDeniesSiblingActionCrossNodeAndMalformedDelegation(t *testing.T) {
 	f := newServiceFixture(t)
 	secret := f.sessionSecret()
 	f.grant([]string{"node.status"}, nodeScope())
-	resource, err := NewResourceRef(f.nodeID, "", "node", "")
+	resource, err := NewResourceRef(f.nodeID, ResourceOwner{}, "node", "")
 	require.NoError(t, err)
 
 	_, err = f.service.Admit(f.ctx, Attempt{SessionSecret: secret, Binding: f.binding, Action: "node.start", Resource: resource})
@@ -205,7 +205,7 @@ func TestAdmitDeniesSiblingActionCrossNodeAndMalformedDelegation(t *testing.T) {
 	otherKey := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x66}, 32))
 	otherNode, err := identityprincipal.FromEd25519PublicKey(otherKey.Public().(ed25519.PublicKey))
 	require.NoError(t, err)
-	otherResource, err := NewResourceRef(otherNode.String(), "", "node", "")
+	otherResource, err := NewResourceRef(otherNode.String(), ResourceOwner{}, "node", "")
 	require.NoError(t, err)
 	_, err = f.service.Admit(f.ctx, Attempt{SessionSecret: secret, Binding: f.binding, Action: "node.status", Resource: otherResource})
 	require.ErrorIs(t, err, ErrInvalidArgument)
@@ -219,7 +219,7 @@ func TestAdmitKeepsAlphaBetaAndInterfaceAuthorityIndependent(t *testing.T) {
 	alphaNode := f.nodeID
 	alphaSecret := f.sessionSecret()
 	f.grant([]string{"node.status"}, nodeScope())
-	alphaResource, err := NewResourceRef(alphaNode, "", "node", "")
+	alphaResource, err := NewResourceRef(alphaNode, ResourceOwner{}, "node", "")
 	require.NoError(t, err)
 
 	betaKey := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x68}, 32))
@@ -229,7 +229,7 @@ func TestAdmitKeepsAlphaBetaAndInterfaceAuthorityIndependent(t *testing.T) {
 	f.nodeID = betaNode.String()
 	f.binding.Audience.Node = betaNode.String()
 	betaSecret := f.sessionSecret()
-	betaResource, err := NewResourceRef(betaNode.String(), "", "node", "")
+	betaResource, err := NewResourceRef(betaNode.String(), ResourceOwner{}, "node", "")
 	require.NoError(t, err)
 	_, err = f.service.Admit(f.ctx, Attempt{SessionSecret: betaSecret, Binding: f.binding, Action: "node.status", Resource: betaResource})
 	require.ErrorIs(t, err, ErrPermissionDenied)
@@ -248,12 +248,12 @@ func TestAdmitKeepsAlphaBetaAndInterfaceAuthorityIndependent(t *testing.T) {
 func TestAdmitRejectsUnsupportedOperatorPrincipalOwnedAndMatchesExactTuple(t *testing.T) {
 	f := newServiceFixture(t)
 	secret := f.sessionSecret()
-	aliceBlob, err := NewResourceRef(f.nodeID, f.principal, "content-blob", "b1")
+	aliceBlob, err := NewResourceRef(f.nodeID, mustResourceOwner(t, f.principal), "content-blob", "b1")
 	require.NoError(t, err)
 	bobKey := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x77}, 32))
 	bob, err := identityprincipal.FromEd25519PublicKey(bobKey.Public().(ed25519.PublicKey))
 	require.NoError(t, err)
-	bobBlob, err := NewResourceRef(f.nodeID, bob.String(), "content-blob", "b1")
+	bobBlob, err := NewResourceRef(f.nodeID, mustResourceOwner(t, bob.String()), "content-blob", "b1")
 	require.NoError(t, err)
 
 	f.grant([]string{"data.get_blob"}, ownedScope(f.principal))
@@ -273,7 +273,7 @@ func TestGrantProposalRejectsPrincipalOwnedScopeOnOperatorSurface(t *testing.T) 
 	f := newServiceFixture(t)
 	proposal := GrantProposal{
 		Subject: f.principal, Actions: []Action{"data.get_object"},
-		Scope:     ResourceScope{Kind: ScopePrincipalOwned, Owner: f.principal},
+		Scope:     ResourceScope{Kind: ScopePrincipalOwned, Owner: mustResourceOwner(t, f.principal)},
 		NotBefore: f.clock.Now(), NotAfter: f.clock.Now().Add(time.Hour),
 	}
 	_, err := GrantProposalResourceID(f.nodeID, f.binding.Audience, proposal)
@@ -284,7 +284,7 @@ func TestAdmitRechecksGrantRevocationOnEveryCall(t *testing.T) {
 	f := newServiceFixture(t)
 	secret := f.sessionSecret()
 	grant := f.grant([]string{"node.status"}, nodeScope())
-	resource, err := NewResourceRef(f.nodeID, "", "node", "")
+	resource, err := NewResourceRef(f.nodeID, ResourceOwner{}, "node", "")
 	require.NoError(t, err)
 	attempt := Attempt{SessionSecret: secret, Binding: f.binding, Action: "node.status", Resource: resource}
 	_, err = f.service.Admit(f.ctx, attempt)
@@ -305,7 +305,7 @@ func TestAdmitFailsClosedForCorruptGrantIndex(t *testing.T) {
 	require.NoError(t, f.database.Update(f.ctx, func(tx storage.WriteTransaction) error {
 		return tx.Put(grantIndexBucket, key, bytes.Repeat([]byte{0xff}, 32))
 	}))
-	resource, err := NewResourceRef(f.nodeID, "", "node", "")
+	resource, err := NewResourceRef(f.nodeID, ResourceOwner{}, "node", "")
 	require.NoError(t, err)
 	_, err = f.service.Admit(f.ctx, Attempt{SessionSecret: secret, Binding: f.binding, Action: "node.status", Resource: resource})
 	require.ErrorIs(t, err, ErrUnavailable)
@@ -323,7 +323,7 @@ func TestAdmitValidatesCorruptSiblingAfterMatchingGrant(t *testing.T) {
 	require.NoError(t, f.database.Update(f.ctx, func(tx storage.WriteTransaction) error {
 		return tx.Put(grantIndexBucket, corruptKey, bytes.Repeat([]byte{0xaa}, 32))
 	}))
-	resource, err := NewResourceRef(f.nodeID, "", "node", "")
+	resource, err := NewResourceRef(f.nodeID, ResourceOwner{}, "node", "")
 	require.NoError(t, err)
 	_, err = f.service.Admit(f.ctx, Attempt{SessionSecret: secret, Binding: f.binding, Action: "node.status", Resource: resource})
 	require.ErrorIs(t, err, ErrUnavailable)
@@ -333,7 +333,7 @@ func TestConcurrentAdmitAfterRevocationNeverSucceeds(t *testing.T) {
 	f := newServiceFixture(t)
 	secret := f.sessionSecret()
 	grant := f.grant([]string{"node.status"}, nodeScope())
-	resource, err := NewResourceRef(f.nodeID, "", "node", "")
+	resource, err := NewResourceRef(f.nodeID, ResourceOwner{}, "node", "")
 	require.NoError(t, err)
 	attempt := Attempt{SessionSecret: secret, Binding: f.binding, Action: "node.status", Resource: resource}
 	revocation, err := SignAccessGrantRevocation(&identityprotocol.AccessGrantRevocationPayload{Version: 1, TargetId: grant.ID(), Issuer: f.nodeID, Audience: protocolAudience(f.binding.Audience), RevokedAt: timestamppb.New(f.clock.Now())}, f.node, f.clock.Now(), grant)
@@ -403,7 +403,7 @@ func newDelegatedAdmissionFixture(t *testing.T, actorGrant, effectiveGrant bool,
 		SessionSecret: secret, Binding: f.binding, Action: "application.content.get", Delegation: delegationRaw,
 		Target: ResourceTarget{Kind: "content-blob", ID: "blob-1"},
 		Finalize: func(target ResourceTarget, audience Audience, _, effective string) (ResourceRef, error) {
-			return NewResourceRef(audience.Node, effective, string(target.Kind), target.ID)
+			return NewResourceRef(audience.Node, mustResourceOwner(t, effective), string(target.Kind), target.ID)
 		},
 	}
 	return &delegatedAdmissionFixture{serviceFixture: f, secret: secret, alice: alicePrincipal.String(), aliceDeviceID: aliceDeviceID.String(), aliceDevice: aliceDevice, credential: credential, delegation: delegation, attempt: attempt}
@@ -415,7 +415,7 @@ func TestAdmitOneHopDelegationRequiresAllAuthorityLegsAndAttenuatesAction(t *tes
 	require.NoError(t, err)
 	require.Equal(t, f.serviceFixture.principal, call.Actor())
 	require.Equal(t, f.alice, call.Effective())
-	require.Equal(t, f.alice, call.Resource().Owner)
+	require.Equal(t, f.alice, call.Resource().Owner.String())
 	require.Len(t, call.GrantIDs(), 2)
 	require.Equal(t, f.delegation.ID(), call.DelegationID())
 

@@ -57,16 +57,19 @@ message PartSnapshot {
 }
 
 message TransportSnapshot {
+  reserved 7, 10;
+  reserved "reduced_capabilities", "active_capabilities";
+
   string profile = 1;
   string health = 2;
   repeated string active_families = 3;
   repeated string suppressed_families = 4;
   string switch_reason = 5;
   bool switch_automatic = 6;
-  repeated string reduced_capabilities = 7;
   string recovery_state = 8;
   string mode = 9;
-  repeated string active_capabilities = 10;
+  repeated string reduced_features = 11;
+  repeated string active_features = 12;
 }
 
 message IdentitySnapshot {
@@ -171,7 +174,7 @@ message Snapshot {
   TransportSnapshot transport = 14;
 }
 
-message CapabilitiesSnapshot {
+message NodeFeaturesSnapshot {
   string version = 1;
   repeated string services = 2;
   map<string, bool> features = 3;
@@ -257,15 +260,17 @@ message PublishedServiceSnapshot {
 }
 
 message WorkloadSpecSnapshot {
+  reserved 7;
+  reserved "capabilities";
   string id = 1;
   string kind = 2;
   string owner = 3;
   string config = 4;
   string desired = 5;
   repeated PublishedServiceSnapshot services = 6;
-  repeated string capabilities = 7;
   string policy_ref = 8;
   string restart_policy = 9;
+  repeated string requirements = 10;
 }
 
 message WorkloadInstanceSnapshot {
@@ -357,13 +362,15 @@ message NodeRuntimeSnapshot {
 }
 
 message NetworkStatusSnapshot {
+  reserved 7, 19;
+  reserved "reduced_capabilities", "active_capabilities";
+
   string state = 1;
   string reason = 2;
   bool joined = 3;
   bool reachable = 4;
   string active_profile = 5;
   string active_mode = 6;
-  repeated string reduced_capabilities = 7;
   google.protobuf.Timestamp last_transition_at = 8;
   string privacy_profile = 9;
   string privacy_state = 10;
@@ -375,13 +382,14 @@ message NetworkStatusSnapshot {
   string reachability_state = 16;
   string reachability_reason = 17;
   google.protobuf.Timestamp reachability_observed_at = 18;
-  repeated string active_capabilities = 19;
   string abuse_state = 20;
   string abuse_reason = 21;
   uint64 rate_limited_operations = 22;
   uint64 backpressured_operations = 23;
   uint64 oversized_messages = 24;
   int32 banned_providers = 25;
+  repeated string reduced_features = 26;
+  repeated string active_features = 27;
 }
 
 message PeerSnapshot {
@@ -526,9 +534,12 @@ message FailureExplanationSnapshot {
 }
 
 message NodeStatusResponse {
+  reserved 3;
+  reserved "capabilities";
+
   OperationStatus status = 1;
   Snapshot snapshot = 2;
-  CapabilitiesSnapshot capabilities = 3;
+  NodeFeaturesSnapshot features = 4;
 }
 
 message NodeRuntimeResponse {
@@ -568,8 +579,11 @@ message ReloadConfigurationResponse {
   EffectiveConfigurationSnapshot configuration = 3;
 }
 
-message CapabilitiesResponse {
-  CapabilitiesSnapshot capabilities = 1;
+message NodeFeaturesResponse {
+  reserved 1;
+  reserved "capabilities";
+
+  NodeFeaturesSnapshot features = 2;
 }
 
 message NetworkStatusResponse {
@@ -690,7 +704,7 @@ message StopNodeRequest {
 message GetNodeStatusRequest {
 }
 
-message GetNodeCapabilitiesRequest {
+message GetNodeFeaturesRequest {
 }
 
 message GetNodeRuntimeRequest {

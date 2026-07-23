@@ -11,7 +11,7 @@ import (
 
 func StartBlobExchange(ctx context.Context, cfg ExchangeConfig) error {
 	if cfg.Private == nil {
-		return networkprivacy.CapabilityUnavailable()
+		return networkprivacy.ChannelGrantUnavailable()
 	}
 	if err := cfg.Private.Start(ctx); err != nil {
 		return err

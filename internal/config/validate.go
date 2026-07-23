@@ -14,6 +14,7 @@ import (
 
 	identitytrust "ardents/internal/identity/trust"
 	networkapi "ardents/internal/network"
+	workloadregistry "ardents/internal/workload/registry"
 )
 
 func Validate(doc Document) error {
@@ -84,7 +85,7 @@ func validateSocketPath(field, value string) error {
 
 func validatePrivacy(cfg PrivacyConfig, trust TrustConfig) error {
 	if !cfg.Required {
-		if cfg.CapabilityStore != "" || cfg.CapabilityStoreKeyFile != "" || cfg.ReplayKeyFile != "" ||
+		if cfg.ChannelGrantStore != "" || cfg.ChannelGrantStoreKeyFile != "" || cfg.ReplayKeyFile != "" ||
 			cfg.Subject != "" || cfg.Discovery.Reference != "" ||
 			cfg.Discovery.ReplayPath != "" || cfg.Data.Reference != "" || cfg.Data.ReplayPath != "" {
 			return fmt.Errorf("privacy material requires privacy.required=true")
@@ -95,8 +96,8 @@ func validatePrivacy(cfg PrivacyConfig, trust TrustConfig) error {
 		path  string
 		value string
 	}{
-		{"privacy.capability_store", cfg.CapabilityStore},
-		{"privacy.capability_store_key_file", cfg.CapabilityStoreKeyFile},
+		{"privacy.channel_grant_store", cfg.ChannelGrantStore},
+		{"privacy.channel_grant_store_key_file", cfg.ChannelGrantStoreKeyFile},
 		{"privacy.replay_key_file", cfg.ReplayKeyFile},
 		{"privacy.subject", cfg.Subject},
 		{"privacy.discovery.reference", cfg.Discovery.Reference},
@@ -325,13 +326,16 @@ func validateWorkloads(doc Document) error {
 	}
 	seen := map[string]struct{}{}
 	allowedPolicyRefs := normalizedStrings(effectiveAllowedPolicyRefs(doc))
-	deniedCapabilities := normalizedStrings(doc.Policy.DeniedCapabilities)
+	deniedRequirements := workloadRequirementSet(doc.Policy.DeniedWorkloadRequirements)
+	if err := validateWorkloadRequirements("policy.denied_workload_requirements", doc.Policy.DeniedWorkloadRequirements); err != nil {
+		return err
+	}
 	for index, workload := range doc.Workloads.Initial {
 		path := fmt.Sprintf("workloads.initial[%d]", index)
 		if err := validateWorkload(path, workload); err != nil {
 			return err
 		}
-		if err := validateWorkloadPolicy(path, workload, allowedPolicyRefs, deniedCapabilities); err != nil {
+		if err := validateWorkloadPolicy(path, workload, allowedPolicyRefs, deniedRequirements); err != nil {
 			return err
 		}
 		if _, duplicate := seen[workload.ID]; duplicate {
@@ -348,16 +352,31 @@ func validateWorkloads(doc Document) error {
 	return nil
 }
 
-func validateWorkloadPolicy(path string, workload WorkloadSpec, allowed, denied map[string]struct{}) error {
+func validateWorkloadPolicy(path string, workload WorkloadSpec, allowed map[string]struct{}, denied map[workloadregistry.WorkloadRequirement]struct{}) error {
 	if workload.PolicyRef != "" {
 		if _, ok := allowed[strings.ToLower(strings.TrimSpace(workload.PolicyRef))]; !ok {
 			return fmt.Errorf("%s.policy_ref is not allowed", path)
 		}
 	}
-	for _, capability := range workload.Capabilities {
-		if _, ok := denied[strings.ToLower(strings.TrimSpace(capability))]; ok {
-			return fmt.Errorf("%s.capabilities contains a policy-denied capability", path)
+	for _, requirement := range workload.Requirements {
+		if _, ok := denied[requirement]; ok {
+			return fmt.Errorf("%s.requirements contains a policy-denied workload requirement", path)
 		}
+	}
+	return nil
+}
+
+func workloadRequirementSet(values []workloadregistry.WorkloadRequirement) map[workloadregistry.WorkloadRequirement]struct{} {
+	out := make(map[workloadregistry.WorkloadRequirement]struct{}, len(values))
+	for _, value := range values {
+		out[value] = struct{}{}
+	}
+	return out
+}
+
+func validateWorkloadRequirements(path string, values []workloadregistry.WorkloadRequirement) error {
+	if err := workloadregistry.ValidateWorkloadRequirements(values); err != nil {
+		return fmt.Errorf("%s: %w", path, err)
 	}
 	return nil
 }
@@ -398,6 +417,9 @@ func validateWorkload(path string, workload WorkloadSpec) error {
 	}
 	if workload.RestartPolicy != "" && workload.RestartPolicy != "on-failure" && workload.RestartPolicy != "never" {
 		return fmt.Errorf("%s.restart_policy is unsupported", path)
+	}
+	if err := validateWorkloadRequirements(path+".requirements", workload.Requirements); err != nil {
+		return err
 	}
 	return nil
 }

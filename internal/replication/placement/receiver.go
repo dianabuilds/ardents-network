@@ -112,8 +112,8 @@ func authorizationDenial(auth PeerAuthorization) string {
 	switch {
 	case auth.NodePrincipal.String() == "" || !auth.Authenticated || !auth.Trusted:
 		return ReasonUntrusted
-	case !auth.CapabilityValid:
-		return ReasonCapability
+	case !auth.PermissionValid:
+		return ReasonPermission
 	case !auth.PolicyAllowed:
 		return ReasonPolicy
 	default:

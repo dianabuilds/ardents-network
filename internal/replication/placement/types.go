@@ -21,7 +21,7 @@ const (
 
 	ReasonQuota       = "quota_refused"
 	ReasonUntrusted   = "peer_untrusted"
-	ReasonCapability  = "capability_denied"
+	ReasonPermission  = "permission_denied"
 	ReasonPolicy      = "policy_denied"
 	ReasonLease       = "lease_invalid"
 	ReasonUnsupported = "transfer_unsupported"
@@ -44,7 +44,7 @@ type PeerAuthorization struct {
 	NodePrincipal   identityprincipal.ID
 	Authenticated   bool
 	Trusted         bool
-	CapabilityValid bool
+	PermissionValid bool
 	PolicyAllowed   bool
 }
 
@@ -89,7 +89,7 @@ type Candidate struct {
 	NodePrincipal   identityprincipal.ID
 	FailureDomain   string
 	Trusted         bool
-	CapabilityValid bool
+	PermissionValid bool
 	PolicyAllowed   bool
 	Usable          bool
 	CapacityBytes   int64
