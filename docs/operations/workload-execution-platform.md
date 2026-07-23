@@ -157,6 +157,27 @@ creation or recovery, the executor inspects the locally available immutable
 image and requires `io.ardents.ingress.protocol=1`; a missing or different label
 is an incompatible runtime component and fails closed.
 
+The Node supervises every current proxy during observed-state refresh. A stopped
+or missing proxy is recreated without restarting its backing Workload.
+Repeated recovery failures use a bounded `1s, 2s, 4s, 8s, 16s, 30s` backoff;
+the refresh remains degraded and records the causal ancillary-runtime error
+until recovery succeeds.
+
+The proxy treats RST, stream-copy, deadline, close, and half-close failures as
+connection-local. They never terminate another connection or its listener.
+The released defaults are a five-second backend dial timeout, a 30-second
+whole-connection inactivity deadline, a ten-second write deadline, 128 active connections globally,
+64 per admitted port, and 16 per source address. The image CLI exposes these as
+`--dial-timeout`, `--idle-timeout`, `--write-timeout`, `--max-connections`,
+`--max-connections-per-port`, and `--max-connections-per-source`; invalid or
+non-positive combinations fail startup. This keeps global resource protection
+while reserving capacity across ports and sources.
+
+Every admission and abnormal connection close is emitted as a structured JSON
+container-log event. Rejections use the stable reasons `global_limit`,
+`port_limit`, or `source_limit`, so saturation and fairness failures are
+operator-diagnosable without logging payload data.
+
 Docker daemon restart, Ardents daemon restart, and workload process restart are
 separate events and must remain distinguishable in diagnostics.
 

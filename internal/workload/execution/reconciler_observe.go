@@ -11,7 +11,7 @@ func (s *Service) RefreshObserved(ctx context.Context) (bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	now := time.Now().UTC()
+	now := s.now().UTC()
 	changed := false
 	for id, item := range s.items {
 		next := s.observeLocked(ctx, item, now)
@@ -21,10 +21,64 @@ func (s *Service) RefreshObserved(ctx context.Context) (bool, error) {
 		s.items[id] = next
 		changed = true
 	}
+	if err := s.refreshAncillaryLocked(ctx, now); err != nil {
+		return changed, err
+	}
 	if !changed {
 		return false, nil
 	}
 	return true, s.saveLocked()
+}
+
+func (s *Service) refreshAncillaryLocked(ctx context.Context, now time.Time) error {
+	reconciler, ok := s.executor.(AncillaryReconciler)
+	if !ok {
+		return nil
+	}
+	if err := s.ancillaryBackoff.waitError(now); err != nil {
+		return err
+	}
+	current := make([]Instance, 0, len(s.items))
+	for _, item := range s.items {
+		if item.Instance.WorkloadID != "" && item.Instance.Running {
+			current = append(current, item.Instance)
+		}
+	}
+	if err := reconciler.ReconcileAncillary(ctx, current); err != nil {
+		return s.ancillaryBackoff.fail(now, err)
+	}
+	s.ancillaryBackoff.reset()
+	return nil
+}
+
+type ancillaryBackoff struct {
+	failures    int
+	retryAt     time.Time
+	lastFailure error
+}
+
+func (b *ancillaryBackoff) waitError(now time.Time) error {
+	if !now.Before(b.retryAt) {
+		return nil
+	}
+	return fmt.Errorf("ancillary runtime degraded; retry after %s: %w",
+		b.retryAt.Format(time.RFC3339Nano), b.lastFailure)
+}
+
+func (b *ancillaryBackoff) fail(now time.Time, failure error) error {
+	b.failures++
+	delay := time.Second << min(b.failures-1, 5)
+	if delay > 30*time.Second {
+		delay = 30 * time.Second
+	}
+	b.retryAt = now.Add(delay)
+	b.lastFailure = failure
+	return fmt.Errorf("ancillary runtime degraded; retry after %s: %w",
+		b.retryAt.Format(time.RFC3339Nano), failure)
+}
+
+func (b *ancillaryBackoff) reset() {
+	*b = ancillaryBackoff{}
 }
 
 func (s *Service) observeLocked(ctx context.Context, item Status, now time.Time) Status {

@@ -12,13 +12,15 @@ import (
 )
 
 type Service struct {
-	mu            sync.Mutex
-	path          string
-	state         string
-	executor      Executor
-	admission     AdmissionFunc
-	items         map[string]Status
-	restartBudget int
+	mu               sync.Mutex
+	path             string
+	state            string
+	executor         Executor
+	admission        AdmissionFunc
+	items            map[string]Status
+	restartBudget    int
+	now              func() time.Time
+	ancillaryBackoff ancillaryBackoff
 }
 
 func New(path string, executor Executor) *Service {
@@ -31,6 +33,7 @@ func New(path string, executor Executor) *Service {
 		executor:      executor,
 		items:         map[string]Status{},
 		restartBudget: DefaultRestartBudget,
+		now:           time.Now,
 	}
 }
 

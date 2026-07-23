@@ -120,6 +120,15 @@ component with a fixed entrypoint and no Docker socket, mounts, capabilities, or
 workload environment. Ports below 1024, duplicate host ports, protocol mismatches, and
 endpoint sets beyond the hosted-service limit are rejected.
 
+Ingress forwarding is bounded by safe defaults: 128 active connections
+globally, 64 for one admitted port, and 16 for one source address. Connections
+have a five-second backend dial timeout, a 30-second whole-connection inactivity
+deadline, and a ten-second write deadline. Operators may lower or deliberately tune these
+limits through the proxy CLI, but zero, negative, or internally inconsistent
+values fail startup. RST, copy, deadline, and half-close errors are isolated to
+the affected connection. Admission rejection is emitted as a structured event
+with a stable global/port/source reason and never includes payload content.
+
 Container output uses Docker's bounded `local` log driver with 10 MiB files and
 two-file rotation. This closes stdout/stderr disk growth without exposing logs
 through the Ardents API. Image-layer storage remains node-operated and images
