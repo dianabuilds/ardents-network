@@ -29,8 +29,7 @@ param(
     [switch]$RebuildContainer,
     [string]$Commit,
     [string]$OutputDir,
-    [long]$SourceDateEpoch = 0,
-    [switch]$AllowDirty
+    [long]$SourceDateEpoch = 0
 )
 
 $ErrorActionPreference = "Stop"
@@ -103,7 +102,6 @@ Ardents repository interface
         $params = @{ Version = $Target; SourceDateEpoch = $SourceDateEpoch }
         if ($Commit) { $params.Commit = $Commit }
         if ($OutputDir) { $params.OutputDir = $OutputDir }
-        if ($AllowDirty) { $params.AllowDirty = $true }
         & "$root/scripts/release/build.ps1" @params
     }
 }

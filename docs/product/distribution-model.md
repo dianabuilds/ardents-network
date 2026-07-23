@@ -51,6 +51,15 @@ another daemon-shaped binary.
 
 ## Release Channels And Verification
 
+Release builds use the current checked-out Git `HEAD` as their only source tree.
+The optional `-Commit` argument is an assertion that must resolve to that exact
+commit; it does not select a historical tree. Packaging fails before Docker is
+invoked when tracked or untracked source changes are present. Ignored build
+outputs do not change source identity, but there is no dirty-build override.
+After validation, packaging exports the exact commit with `git archive`; every
+bundle, image, metadata, and verification step reads that immutable snapshot
+instead of the mutable worktree. Ignored files are therefore never build input.
+
 Version tags publish the native archive, standalone binaries, node and optional
 ingress-proxy Docker image exports, `release-manifest.json`, `SHA256SUMS`,
 attestation subject manifest `ARTIFACTS.sha256`, CycloneDX SBOM, and explicitly
