@@ -137,15 +137,19 @@ func TestApplicationEnrollmentRejectsCrossNodeBeforeRootSigning(t *testing.T) {
 func TestApplicationEnrollmentRejectsPaddedNodeAndSignerPrincipalBeforeAuthentication(t *testing.T) {
 	now := time.Unix(1_900_000_000, 0).UTC()
 	node, signer := enrollmentIdentity(t, now)
-	paddedSigner := *signer
-	paddedSigner.principal = " " + paddedSigner.principal
+	paddedSigner := &testEnrollmentSigner{
+		principal:  " " + signer.principal,
+		credential: signer.credential,
+		root:       signer.root,
+		err:        signer.err,
+	}
 	for _, testCase := range []struct {
 		name   string
 		node   string
 		signer EnrollmentSigner
 	}{
 		{name: "expected node", node: node + "\n", signer: signer},
-		{name: "signer principal", node: node, signer: &paddedSigner},
+		{name: "signer principal", node: node, signer: paddedSigner},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			var begins atomic.Int32

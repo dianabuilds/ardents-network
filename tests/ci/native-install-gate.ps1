@@ -6,6 +6,9 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Set-Location $root
 $reportPath = [IO.Path]::GetFullPath($ReportDir)
+[IO.Directory]::CreateDirectory($reportPath) | Out-Null
+$passedPath = Join-Path $reportPath "passed.txt"
+Remove-Item -LiteralPath $passedPath -Force -ErrorAction SilentlyContinue
 $runID = [guid]::NewGuid().ToString("N")
 $stage = Join-Path ([IO.Path]::GetTempPath()) "ardents-native-install-$runID"
 $v1 = Join-Path $stage "v1"
@@ -51,7 +54,7 @@ try {
 
     docker exec $container /bin/sh /release/v1/scripts/install/systemd-smoke.sh /release/v1 /release/v2 /release/bad
     if ($LASTEXITCODE -ne 0) { throw "native systemd acceptance failed" }
-    [IO.File]::WriteAllText((Join-Path $reportPath "passed.txt"), "native-systemd-smoke=passed`n")
+    [IO.File]::WriteAllText($passedPath, "native-systemd-smoke=passed`n")
 } finally {
     if (docker ps -a --format '{{.Names}}' | Select-String -SimpleMatch $container -Quiet) {
         docker rm -f $container 2>$null | Out-Null

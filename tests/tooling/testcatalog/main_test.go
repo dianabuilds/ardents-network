@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -51,4 +52,12 @@ func TestFilterCatalogMatchesTagAndScenario(t *testing.T) {
 	filtered := filterCatalog(entries, "integration", "network-foundation", "NFI-001", "network", "integration")
 	require.Len(t, filtered, 1)
 	require.Equal(t, "NFI-001", filtered[0].ScenarioID)
+}
+
+func TestCatalogCommandRejectsIncompleteScenarioMetadata(t *testing.T) {
+	command := exec.Command("go", "run", ".", "./testdata/incomplete")
+	output, err := command.CombinedOutput()
+
+	require.Error(t, err)
+	require.Contains(t, string(output), "incomplete scenario metadata")
 }

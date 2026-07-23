@@ -117,7 +117,10 @@ func parseCatalogFile(path string, importPath string) ([]catalogEntry, error) {
 
 	var entries []catalogEntry
 	for _, decl := range file.Decls {
-		entry, ok := catalogEntryFromDecl(decl, path, importPath, aliases)
+		entry, ok, err := catalogEntryFromDecl(decl, path, importPath, aliases)
+		if err != nil {
+			return nil, err
+		}
 		if !ok {
 			continue
 		}
@@ -145,15 +148,18 @@ func testkitAliases(file *ast.File) (map[string]struct{}, error) {
 	return aliases, nil
 }
 
-func catalogEntryFromDecl(decl ast.Decl, path string, importPath string, aliases map[string]struct{}) (catalogEntry, bool) {
+func catalogEntryFromDecl(decl ast.Decl, path string, importPath string, aliases map[string]struct{}) (catalogEntry, bool, error) {
 	fn, ok := decl.(*ast.FuncDecl)
 	if !ok || fn.Recv != nil || fn.Body == nil || !strings.HasPrefix(fn.Name.Name, "Test") {
-		return catalogEntry{}, false
+		return catalogEntry{}, false, nil
 	}
 
-	spec, ok := findScenarioSpec(fn.Body, aliases)
+	spec, ok, err := findScenarioSpec(fn.Body, aliases)
+	if err != nil {
+		return catalogEntry{}, false, fmt.Errorf("%s: %s: %w", path, fn.Name.Name, err)
+	}
 	if !ok {
-		return catalogEntry{}, false
+		return catalogEntry{}, false, nil
 	}
 
 	return catalogEntry{
@@ -167,13 +173,17 @@ func catalogEntryFromDecl(decl ast.Decl, path string, importPath string, aliases
 		Tags:        spec.Tags,
 		Speed:       spec.Speed,
 		Environment: spec.Environment,
-	}, true
+	}, true, nil
 }
 
-func findScenarioSpec(body *ast.BlockStmt, aliases map[string]struct{}) (specData, bool) {
+func findScenarioSpec(body *ast.BlockStmt, aliases map[string]struct{}) (specData, bool, error) {
 	var found specData
 	var ok bool
+	var validationErr error
 	ast.Inspect(body, func(node ast.Node) bool {
+		if validationErr != nil {
+			return false
+		}
 		call, isCall := node.(*ast.CallExpr)
 		if !isCall {
 			return true
@@ -188,18 +198,24 @@ func findScenarioSpec(body *ast.BlockStmt, aliases map[string]struct{}) (specDat
 		if !isIdent {
 			return true
 		}
-		if _, exists := aliases[ident.Name]; !exists || len(call.Args) < 2 {
+		if _, exists := aliases[ident.Name]; !exists {
 			return true
+		}
+		if len(call.Args) < 2 {
+			validationErr = fmt.Errorf("incomplete scenario metadata")
+			return false
 		}
 
 		spec, matched := parseSpecLiteral(call.Args[1], aliases)
-		if matched {
-			found = spec
-			ok = true
+		if !matched {
+			validationErr = fmt.Errorf("incomplete scenario metadata")
+			return false
 		}
+		found = spec
+		ok = true
 		return false
 	})
-	return found, ok
+	return found, ok, validationErr
 }
 
 func parseSpecLiteral(expr ast.Expr, aliases map[string]struct{}) (specData, bool) {
