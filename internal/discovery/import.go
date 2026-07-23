@@ -14,12 +14,17 @@ func (s *Service) Import(record Record, source string) (ImportResult, error) {
 	if err != nil {
 		return ImportResult{}, err
 	}
+	previousRecords, previousState, previousReason := s.records, s.state, s.reason
 	s.records = updatedRecords
 	if !result.Applied {
 		return result, nil
 	}
 	s.markReadyLocked()
-	return result, s.saveLocked()
+	if err := s.saveLocked(); err != nil {
+		s.records, s.state, s.reason = previousRecords, previousState, previousReason
+		return ImportResult{}, err
+	}
+	return result, nil
 }
 
 func (s *Service) upsertLocked(entry Entry) (ImportResult, error) {

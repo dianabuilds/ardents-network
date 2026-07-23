@@ -406,7 +406,7 @@ func (r *QueryService) PeerSnapshotsLocked() []discovery.PeerSnapshot {
 		r.ident.NodeSummary().Principal,
 		func(record discovery.Record, trusted bool) (string, string) {
 			return network.PeerReachability(r.trans.BuildCandidates(network.RouteRecord{
-				Subject: record.Subject, Service: record.Service, Mode: record.Mode, Endpoints: record.Endpoints,
+				Subject: record.Subject(), Service: record.ServiceType(), Mode: record.ServiceMode(), Endpoints: record.EndpointList(),
 			}, trusted))
 		},
 		r.trust.Evaluate,
@@ -469,7 +469,7 @@ func (r *QueryService) observedTrustSnapshotLocked() (discovery.TrustResult, str
 	)
 	for _, entry := range r.disco.Entries() {
 		result := r.trust.Evaluate(entry.Record)
-		if entry.Source == "local" && entry.Record.Kind == "node" && entry.Record.Subject == localID {
+		if entry.Source == "local" && entry.Record.Kind() == "node" && entry.Record.Subject() == localID {
 			localResult = result
 			localFound = true
 		}

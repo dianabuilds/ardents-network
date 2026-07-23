@@ -216,7 +216,7 @@ func TestDataSubstrateRejectsPlaintextRemoteReserve(t *testing.T) {
 	requesterDir := t.TempDir()
 	requester := testkit.StartNode(t, runtimeinfra.Config{
 		Name:    "data-requester-plaintext",
-		Boot:    runtimeinfra.BootConfig{Sources: append([]string(nil), records[0].Endpoints...)},
+		Boot:    runtimeinfra.BootConfig{Sources: append([]string(nil), records[0].EndpointList()...)},
 		Trust:   runtimeinfra.TrustConfig{Anchors: []string{source.Snapshot().Ident.PublicKey}},
 		Data:    runtimeinfra.DataConfig{Dir: requesterDir},
 		Privacy: privacy.Receiver,
@@ -277,7 +277,7 @@ func TestDataSubstrateBlobResponseRequiresDiscoveredRequester(t *testing.T) {
 	require.False(t, len(records) == 0, "expected source record")
 
 	attacker := testkit.NewTransport()
-	attacker.SetBootstrapNodes(append([]string(nil), records[0].Endpoints...))
+	attacker.SetBootstrapNodes(append([]string(nil), records[0].EndpointList()...))
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
 	defer cancel()
 	{

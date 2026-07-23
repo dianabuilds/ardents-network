@@ -174,7 +174,7 @@ func TestLocalResolveWorkloadServiceType(t *testing.T) {
 	records, err := remoteNode.ListRecords()
 	require.NoError(t, err)
 	for _, record := range records {
-		if record.Kind != "service" {
+		if record.Kind() != "service" {
 			continue
 		}
 		record.Source = "bootstrap"

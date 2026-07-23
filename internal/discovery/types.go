@@ -37,9 +37,10 @@ func (s *Service) saveLocked() error {
 		return nil
 	}
 	return SaveSnapshot(s.path, Snapshot{
-		Records: CloneEntries(s.records),
-		State:   s.state,
-		Reason:  s.reason,
+		SchemaVersion: 1,
+		Records:       CloneEntries(s.records),
+		State:         s.state,
+		Reason:        s.reason,
 	})
 }
 

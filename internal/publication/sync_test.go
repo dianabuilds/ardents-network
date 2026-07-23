@@ -243,14 +243,8 @@ func TestWithdrawNetworkPublicationLockedPublishesWithdrawnNodeRecord(t *testing
 		require.NoErrorf(t, err, "withdraw network publication: %v", err)
 	}
 	require.Falsef(t, len(published) != 1, "published entries = %d, want 1", len(published))
-	require.Falsef(t, published[0].Record.
-		Kind !=
-		"node", "published kind = %q, want node", published[0].Record.
-		Kind)
-	require.Falsef(t, len(published[0].Record.
-		Endpoints,
-	) != 0, "published endpoints = %v, want empty", published[0].Record.
-		Endpoints)
+	require.Equal(t, "node", published[0].Record.Kind())
+	require.Empty(t, published[0].Record.EndpointList())
 
 }
 
@@ -329,8 +323,8 @@ func (n *publicationNetwork) ReachabilitySnapshot() transport.ReachabilitySnapsh
 
 func serviceRecordEndpoints(entries []discovery.Entry, id string) []string {
 	for _, entry := range entries {
-		if entry.Source == "local" && entry.Record.ID == id {
-			return append([]string(nil), entry.Record.Endpoints...)
+		if entry.Source == "local" && entry.Record.RecordID() == id {
+			return append([]string(nil), entry.Record.EndpointList()...)
 		}
 	}
 	return nil
@@ -343,7 +337,7 @@ func generationHeader(generation int64) string {
 func recordIDs(entries []discovery.Entry) []string {
 	out := make([]string, 0, len(entries))
 	for _, item := range entries {
-		out = append(out, item.Record.ID)
+		out = append(out, item.Record.RecordID())
 	}
 	return out
 }
@@ -355,7 +349,7 @@ func cloneEntries(entries []discovery.Entry) []discovery.Entry {
 	out := make([]discovery.Entry, 0, len(entries))
 	for _, item := range entries {
 		entry := item
-		entry.Record.Endpoints = append([]string(nil), item.Record.Endpoints...)
+		entry.Record = item.Record.Clone()
 		out = append(out, entry)
 	}
 	return out
@@ -363,7 +357,7 @@ func cloneEntries(entries []discovery.Entry) []discovery.Entry {
 
 func containsRecord(entries []discovery.Entry, id string) bool {
 	for _, item := range entries {
-		if item.Record.ID == id {
+		if item.Record.RecordID() == id {
 			return true
 		}
 	}

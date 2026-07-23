@@ -137,8 +137,8 @@ func (s *Service) candidateTargets() []string {
 	seen := map[string]bool{}
 	targets := make([]string, 0)
 	for _, entry := range s.cfg.Discovery.Entries() {
-		target := entry.Record.Subject
-		if entry.Record.Kind != "node" || target == "" || target == s.cfg.LocalNodeID || seen[target] {
+		target := entry.Record.Subject()
+		if entry.Record.Kind() != "node" || target == "" || target == s.cfg.LocalNodeID || seen[target] {
 			continue
 		}
 		seen[target] = true

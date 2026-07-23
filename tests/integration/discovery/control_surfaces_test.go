@@ -35,11 +35,11 @@ func TestLocalDiscoveryResolveImportedRecord(t *testing.T) {
 		Boot: runtimeinfra.BootConfig{Sources: []string{"remote://bootstrap"}},
 		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
 	})
-	imported := testkit.ImportRecordsFromNode(t, localNode, remoteNode, "bootstrap", nil)
+	imported := testkit.ImportRecordsFromNode(t, localNode, remoteNode, "imported", nil)
 	require.NotEmpty(t, imported)
 	rec := imported[0]
 
-	res, err := localNode.ResolveRecord(rec.Subject, rec.Kind)
+	res, err := localNode.ResolveRecord(rec.Subject(), rec.Kind())
 	require.NoError(t, err)
 	require.Equal(t, "found", res.Outcome)
 	require.True(t, res.Trust.Valid)
@@ -62,7 +62,7 @@ func TestLocalDiscoveryRejectsStaleImport(t *testing.T) {
 		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
 	})
 	rec, private := signedNodeRecord(t, []string{"tcp://fresh"})
-	rec.Source = "bootstrap"
+	rec.Source = "imported"
 
 	first, err := localNode.ImportRecord(rec)
 	require.NoError(t, err)
@@ -70,7 +70,9 @@ func TestLocalDiscoveryRejectsStaleImport(t *testing.T) {
 	require.True(t, first.Accepted)
 
 	stale := rec
-	stale.Endpoints = []string{"tcp://older"}
+	staleNode := *rec.Node
+	staleNode.Endpoints = []string{"tcp://older"}
+	stale.Node = &staleNode
 	stale.IssuedAt = rec.IssuedAt.Add(-time.Minute)
 	signDiscoveryRecord(t, &stale, private)
 	rejected, err := localNode.ImportRecord(stale)
@@ -117,7 +119,7 @@ func TestLocalDiscoveryCandidatesAreNotUsableAfterNodeStop(t *testing.T) {
 		}},
 	})
 	testkit.WaitForServiceMatchCount(t, 10*time.Second, remoteNode, "echo", 1)
-	testkit.ImportRecordsFromNode(t, localNode, remoteNode, "bootstrap", nil)
+	testkit.ImportRecordsFromNode(t, localNode, remoteNode, "imported", nil)
 	require.NoError(t, localNode.Stop(context.Background()))
 
 	res, err := localNode.ResolveService("echo")

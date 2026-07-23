@@ -50,7 +50,8 @@ func (c *Commands) ImportRecord(record CatalogRecordSnapshot) (RecordImportResul
 			return RecordImportResult{}, err
 		}
 	}
-	result, err := c.store.Import(RecordFromSnapshot(record), record.Source)
+	domainRecord := RecordFromSnapshot(record)
+	result, err := c.store.Import(domainRecord, "")
 	if err != nil {
 		return RecordImportResult{}, err
 	}
@@ -61,7 +62,7 @@ func (c *Commands) ImportRecord(record CatalogRecordSnapshot) (RecordImportResul
 		c.cfg.OnChanged()
 	}
 	if c.cfg.Emit != nil {
-		c.cfg.Emit("discovery.imported", map[string]any{"id": record.ID, "subject": record.Subject, "kind": record.Kind})
+		c.cfg.Emit("discovery.imported", map[string]any{"id": domainRecord.RecordID(), "subject": domainRecord.Subject(), "kind": domainRecord.Kind()})
 	}
 	return RecordImportResult{State: "completed", Reason: "record imported", Accepted: true}, nil
 }

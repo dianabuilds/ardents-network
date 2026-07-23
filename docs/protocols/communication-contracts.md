@@ -213,22 +213,17 @@ The canonical signed discovery record must include every field that affects:
 - freshness;
 - expiry.
 
-At minimum this includes:
+Version 1 contains the common `version`, `issued_at`, and `expires_at` fields
+plus exactly one kind-specific body:
 
-- `id`
-- `kind`
-- `subject`
-- `node`
-- `device`
-- `owner`
-- `service`
-- `mode`
-- `public_key`
-- `endpoints`
-- `issued_at`
-- `expires_at`
+- `NodeFacts`: one Node `principal`, its `public_key`, and `endpoints`;
+- `ServiceFacts`: one typed `service_id`, `service_type`, owning
+  `node_principal`, `workload_id`, `mode`, `public_key`, and `endpoints`.
 
-The signature must be computed over those fields in canonical form.
+There is no generic `id`, `kind`, `subject`, `device`, or `owner` field. A
+Node/Service union with neither or both bodies, an unknown version or field,
+and every pre-release flat shape fail closed. The signature is computed over
+the domain-separated canonical version, exact facts body, and validity interval.
 
 ### 5.3 Intake Provenance
 

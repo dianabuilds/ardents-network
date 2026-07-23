@@ -14,6 +14,7 @@ import (
 	runtimeprocess "ardents/internal/daemon"
 	diagapi "ardents/internal/diagnostics"
 	discoveryapi "ardents/internal/discovery"
+	identityprincipal "ardents/internal/identity/principal"
 	appreplication "ardents/internal/replication"
 	"ardents/internal/replication/availability"
 	"ardents/tests/testkit"
@@ -55,8 +56,10 @@ func TestDataAvailabilityRepairsCorruptReplicaToDifferentWakuPeer(t *testing.T) 
 		Payload: []byte("repairable ciphertext"),
 	})
 	require.NoError(t, err)
+	sourcePrincipal, err := identityprincipal.Parse(sourceIdentity.Principal)
+	require.NoError(t, err)
 	root, err := source.PublishManifest(appdata.Manifest{
-		Kind: "blob-set", Owner: sourceIdentity.Principal, Encrypted: true, Retention: "durable",
+		Kind: "blob-set", Owner: sourcePrincipal, Encrypted: true, Retention: "durable",
 		Refs: []appdata.Ref{{Kind: "blob", ID: blob.ID}},
 	})
 	require.NoError(t, err)
@@ -129,7 +132,7 @@ func TestDataAvailabilityRepairsCorruptReplicaToDifferentWakuPeer(t *testing.T) 
 
 func importRepairNodeRecords(t *testing.T, source, targetOne, targetTwo *runtimeprocess.Node) {
 	t.Helper()
-	filter := func(record discoveryapi.CatalogRecordSnapshot) bool { return record.Kind == "node" }
+	filter := func(record discoveryapi.CatalogRecordSnapshot) bool { return record.Kind() == "node" }
 	testkit.ImportRecordsFromNode(t, source, targetOne, "repair-target-one", filter)
 	testkit.ImportRecordsFromNode(t, source, targetTwo, "repair-target-two", filter)
 	testkit.ImportRecordsFromNode(t, targetOne, source, "repair-source", filter)

@@ -277,7 +277,7 @@ func TestCLIDataTransferSurfaceReflectsFetchRuntimeTruth(t *testing.T) {
 
 	rt := testkit.StartRuntime(t, runtimeinfra.Config{
 		Name:  "cli-data-surface-requester",
-		Boot:  runtimeinfra.BootConfig{Sources: append([]string(nil), records[0].Endpoints...)},
+		Boot:  runtimeinfra.BootConfig{Sources: append([]string(nil), records[0].EndpointList()...)},
 		Trust: runtimeinfra.TrustConfig{Anchors: []string{source.Snapshot().Ident.PublicKey}},
 		Data:  runtimeinfra.DataConfig{Dir: t.TempDir()},
 	})

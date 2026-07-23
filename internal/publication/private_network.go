@@ -16,7 +16,7 @@ func PublishPrivateDiscoveryEntries(ctx context.Context, entries []discovery.Ent
 	}
 	published := 0
 	for _, entry := range entries {
-		if entry.Source != discoverysource.Local || entry.Record.ID == "" {
+		if entry.Source != discoverysource.Local || entry.Record.RecordID() == "" {
 			continue
 		}
 		payload, err := json.Marshal(entry.Record)

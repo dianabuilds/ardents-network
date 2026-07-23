@@ -48,7 +48,7 @@ func TestPublishedServiceResolvesAndConnectsAcrossRealWakuNodes(t *testing.T) {
 		if err != nil {
 			return false, err.Error()
 		}
-		if result.Outcome == "found" && len(result.Record.Endpoints) == 1 {
+		if result.Outcome == "found" && result.Record.Service != nil && len(result.Record.Service.Endpoints) == 1 {
 			return true, ""
 		}
 		hosted, hostedErr := testkit.Hosting(remote).GetHostedService("svc.published")
@@ -74,7 +74,7 @@ func TestPublishedServiceResolvesAndConnectsAcrossRealWakuNodes(t *testing.T) {
 		if resolveErr != nil {
 			return false, resolveErr.Error()
 		}
-		return result.Outcome == "found" && len(result.Record.Endpoints) == 1 && result.Record.Endpoints[0] == advertised, result.Outcome
+		return result.Outcome == "found" && result.Record.Service != nil && len(result.Record.Service.Endpoints) == 1 && result.Record.Service.Endpoints[0] == advertised, result.Outcome
 	})
 	requireServiceRequest(t, advertised)
 
@@ -84,7 +84,7 @@ func TestPublishedServiceResolvesAndConnectsAcrossRealWakuNodes(t *testing.T) {
 		if resolveErr != nil {
 			return false, resolveErr.Error()
 		}
-		return result.Outcome == "withdrawn" && len(result.Record.Endpoints) == 0, result.Outcome
+		return result.Outcome == "withdrawn" && result.Record.Service != nil && len(result.Record.Service.Endpoints) == 0, result.Outcome
 	})
 	require.Eventually(t, func() bool {
 		client := &http.Client{Timeout: 150 * time.Millisecond}
@@ -120,8 +120,8 @@ func reservePort(t *testing.T) int {
 
 func nodeRecordEndpoints(records []discoveryapi.CatalogRecordSnapshot) []string {
 	for _, record := range records {
-		if record.Kind == "node" && len(record.Endpoints) > 0 {
-			return append([]string(nil), record.Endpoints...)
+		if record.Node != nil && record.Service == nil && len(record.Node.Endpoints) > 0 {
+			return append([]string(nil), record.Node.Endpoints...)
 		}
 	}
 	return nil

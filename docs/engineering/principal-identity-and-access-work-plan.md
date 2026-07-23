@@ -137,7 +137,7 @@ boundary; do not deliver an entire broad workstream as one change.
 | `PIA-014B` | 013, 014A | **Complete:** Alice-via-Application ownership/intersection and non-enumeration behavior |
 | `PIA-014C` | 014B | **Complete:** typed Object/Manifest owners, remote-fetch/claim boundary, and owner-aware GC/reconciliation |
 | `PIA-015A` | 002 | **Complete:** fake same-seed Device removed from Node state, summaries, discovery publication input, and Operator snapshot wire |
-| `PIA-015B` | 015A | Final versioned kind-specific discovery records and strict retained-state validation |
+| `PIA-015B` | 015A | **Complete:** final versioned kind-specific discovery records and strict retained-state validation |
 | `PIA-015C` | 015B | Purpose-scoped trust registry and verification cache invalidation |
 | `PIA-016A` | 002 | Rename replication Principal targets; Waku Peer ID remains adapter-only |
 | `PIA-016B` | 014C | Collapse domain Blob ID/CID directly into the final versioned wire/state form |
@@ -959,6 +959,21 @@ restart restoration, strict-schema rejection, generated-wire descriptor, daemon
 privacy continuity, repository compilation, and API stale-generation checks
 cover the slice. PIA-015B deliberately retains ownership of the generic
 discovery-record replacement.
+
+**PIA-015B completion evidence:** the signed discovery envelope is version 1
+and contains exactly one `NodeFacts` or `ServiceFacts` body. Node facts identify
+one Node Principal; service facts contain one typed Service ID, owning Node
+Principal, Workload ID, mode, public key, and endpoints. The removed flat wire
+tags/names are reserved, unknown wire fields and all pre-release flat shapes
+fail closed, and source/seen-at remain unsigned local intake metadata. The
+`ardents.db` `discovery/records` value is strict snapshot schema version 1;
+startup and restore revalidate signatures, unions, metadata, and duplicate IDs
+before mutating memory. Import/restore persistence failure rolls memory back,
+expired valid records survive restart but are non-routable, and Node/service
+round-trip, strict JSON, private-network, Operator mapping, unit, race, tagged
+compile/integration, generated API, and repository compile gates cover the
+slice. PIA-015C retains ownership of trust purposes and verification-cache
+generation.
 
 ### PIA-016 — Remove Remaining Ambiguous Identifier And “Capability” Names
 

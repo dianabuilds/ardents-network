@@ -3,6 +3,7 @@ package publication
 import (
 	"ardents/internal/diagnostics"
 	"ardents/internal/discovery"
+	discoveryrecord "ardents/internal/discovery/records"
 	"ardents/internal/hosting"
 	apppolicy "ardents/internal/policy"
 	workloadcontroller "ardents/internal/workload/execution"
@@ -31,8 +32,7 @@ func TestServicePublicationStatusLockedReflectsWithdrawnLocalService(t *testing.
 	id := mgr.ident.NodeSummary()
 	private := mgr.privateKey()
 	require.NoError(t, PublishLocalService(mgr.disco, id, private, LocalServiceSpec{
-		ID:   "svc.echo",
-		Type: "echo",
+		ID: "svc.echo", Type: "echo", WorkloadID: "work.echo", Mode: "NetworkPublished",
 	}))
 
 	snapshot := mgr.ServicePublicationStatusLocked("svc.echo")
@@ -52,12 +52,11 @@ func TestServicePublicationStatusLockedIgnoresRemoteDiscoveryKnowledge(t *testin
 	id := mgr.ident.NodeSummary()
 	private := mgr.privateKey()
 	require.NoError(t, PublishLocalService(helper, id, private, LocalServiceSpec{
-		ID:        "svc.remote-only",
-		Type:      "echo",
+		ID: "svc.remote-only", Type: "echo", WorkloadID: "work.remote", Mode: "NetworkPublished",
 		Endpoints: []string{"tcp://remote:9000"},
 	}))
 	record := helper.Entries()[0].Record
-	_, err := mgr.disco.Import(record, "remote")
+	_, err := mgr.disco.Import(record, discoveryrecord.Network)
 	require.NoError(t, err)
 
 	snapshot := mgr.ServicePublicationStatusLocked("svc.remote-only")

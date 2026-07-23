@@ -154,7 +154,9 @@ func availabilityNodeConfig(name, dir string, privacy, dataPrivacy *networkpriva
 
 func importAvailabilityRecords(t *testing.T, owner *runtimeprocess.Node, peers map[string]*runtimeprocess.Node) {
 	t.Helper()
-	filter := func(record discoveryapi.CatalogRecordSnapshot) bool { return record.Kind == "node" }
+	filter := func(record discoveryapi.CatalogRecordSnapshot) bool {
+		return record.Node != nil && record.Service == nil
+	}
 	for principal, peer := range peers {
 		testkit.ImportRecordsFromNode(t, owner, peer, "availability-peer", filter)
 		testkit.ImportRecordsFromNode(t, peer, owner, "availability-owner", filter)

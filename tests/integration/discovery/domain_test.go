@@ -4,9 +4,6 @@ package discovery_test
 
 import (
 	"context"
-	"crypto/ed25519"
-	"crypto/rand"
-	"encoding/base64"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -102,7 +99,7 @@ func TestDiscoveryResolveQueriesDoNotMutateTrustTruth(t *testing.T) {
 	require.NoErrorf(t, err, "list remote records: %v", err)
 
 	record := records[0]
-	record.Source = "bootstrap"
+	record.Source = "imported"
 	{
 		_, err := localNode.ImportRecord(record)
 		require.NoErrorf(t, err, "import record: %v", err)
@@ -110,7 +107,7 @@ func TestDiscoveryResolveQueriesDoNotMutateTrustTruth(t *testing.T) {
 
 	before := localNode.Snapshot().Trust
 	{
-		_, err := localNode.ResolveRecord(record.Subject, record.Kind)
+		_, err := localNode.ResolveRecord(record.Subject(), record.Kind())
 		require.NoErrorf(t, err, "resolve record: %v", err)
 	}
 
@@ -156,14 +153,14 @@ func TestDiscoveryResolveImportedRecord(t *testing.T) {
 	require.NoErrorf(t, err, "list remote records: %v", err)
 
 	record := records[0]
-	record.Source = "bootstrap"
+	record.Source = "imported"
 	{
 
 		_, err := localNode.ImportRecord(record)
 		require.NoErrorf(t, err, "import record: %v", err)
 	}
 
-	result, err := localNode.ResolveRecord(record.Subject, record.Kind)
+	result, err := localNode.ResolveRecord(record.Subject(), record.Kind())
 	require.NoErrorf(t, err, "resolve record: %v", err)
 	require.Falsef(t, result.Outcome != "found", "outcome = %q, want found", result.Outcome)
 	require.True(t, result.Trust.Valid, "expected valid record")
@@ -183,33 +180,17 @@ func TestDiscoveryResolveRecordRejectsExpiredPersistedRecord(t *testing.T) {
 	})
 	dir := t.TempDir()
 	now := time.Now().UTC()
-	public, private, err := ed25519.GenerateKey(rand.Reader)
-	require.NoErrorf(t, err, "generate key: %v", err)
-
-	record := discovery.Record{
-		ID:        "expired-remote:node",
-		Kind:      "node",
-		Subject:   "expired-remote",
-		Node:      "expired-remote",
-		Device:    "expired-device",
-		PublicKey: base64.StdEncoding.EncodeToString(public),
-		Endpoints: []string{"tcp://expired-remote:9000"},
-		IssuedAt:  now.Add(-2 * time.Hour),
-		ExpiresAt: now.Add(-time.Minute),
-	}
-	payload, err := discovery.Canonical(record)
-	require.NoErrorf(t, err, "canonical expired record: %v", err)
-
-	record.Signature = base64.StdEncoding.EncodeToString(ed25519.Sign(private, payload))
+	record := signedExpiredNodeRecord(t, now, []string{"tcp://expired-remote:9000"})
 	entry := discovery.Entry{
 		Record: record,
-		Source: "cache",
+		Source: "imported",
 		SeenAt: now,
 	}
 	{
 		err := db.SaveJSON(filepath.Join(dir, "ardents.db"), "discovery", "records", map[string]any{
-			"records": []discovery.Entry{entry},
-			"state":   "ready",
+			"schema_version": 1,
+			"records":        []discovery.Entry{entry},
+			"state":          "ready",
 		})
 		require.NoErrorf(t, err, "save expired records: %v", err)
 	}
@@ -227,7 +208,7 @@ func TestDiscoveryResolveRecordRejectsExpiredPersistedRecord(t *testing.T) {
 	defer func() { _ = localNode.Stop(context.Background()) }()
 	beforeSnapshot := localNode.Snapshot()
 
-	result, err := localNode.ResolveRecord("expired-remote", "node")
+	result, err := localNode.ResolveRecord(record.Subject(), record.Kind())
 	require.NoErrorf(t, err, "resolve expired record: %v", err)
 	require.Falsef(t, result.Outcome != "expired", "outcome = %q, want expired", result.Outcome)
 	require.Falsef(t, len(result.Candidates) !=
@@ -259,33 +240,18 @@ func TestDiscoveryStatusCountsExpiredRecordAsStaleAndRejected(t *testing.T) {
 	})
 	dir := t.TempDir()
 	now := time.Now().UTC()
-	public, private, err := ed25519.GenerateKey(rand.Reader)
-	require.NoErrorf(t, err, "generate key: %v", err)
-
-	record := discovery.Record{
-		ID:        "expired-summary:node",
-		Kind:      "node",
-		Subject:   "expired-summary",
-		Node:      "expired-summary",
-		Device:    "expired-device",
-		PublicKey: base64.StdEncoding.EncodeToString(public),
-		Endpoints: []string{"tcp://expired-summary:9000"},
-		IssuedAt:  now.Add(-2 * time.Hour),
-		ExpiresAt: now.Add(-time.Minute),
-	}
-	payload, err := discovery.Canonical(record)
-	require.NoErrorf(t, err, "canonical expired record: %v", err)
-	record.Signature = base64.StdEncoding.EncodeToString(ed25519.Sign(private, payload))
+	record := signedExpiredNodeRecord(t, now, []string{"tcp://expired-summary:9000"})
 
 	entry := discovery.Entry{
 		Record: record,
-		Source: "cache",
+		Source: "imported",
 		SeenAt: now,
 	}
 	{
 		err := db.SaveJSON(filepath.Join(dir, "ardents.db"), "discovery", "records", map[string]any{
-			"records": []discovery.Entry{entry},
-			"state":   "ready",
+			"schema_version": 1,
+			"records":        []discovery.Entry{entry},
+			"state":          "ready",
 		})
 		require.NoErrorf(t, err, "save expired records: %v", err)
 	}
@@ -393,10 +359,10 @@ func TestDiscoveryResolveServiceType(t *testing.T) {
 	require.NoErrorf(t, err, "list remote records: %v", err)
 
 	for _, record := range records {
-		if record.Kind != "service" {
+		if record.Kind() != "service" {
 			continue
 		}
-		record.Source = "bootstrap"
+		record.Source = "imported"
 		{
 			_, err := localNode.ImportRecord(record)
 			require.NoErrorf(t, err, "import service record: %v", err)
@@ -437,14 +403,16 @@ func TestDiscoveryImportRecordRejectsStaleRecordWithoutPublishingSuccess(t *test
 	defer func() { _ = localNode.Stop(context.Background()) }()
 
 	record, private := signedNodeRecord(t, []string{"tcp://fresh"})
-	record.Source = "bootstrap"
+	record.Source = "imported"
 	first, err := localNode.ImportRecord(record)
 	require.NoErrorf(t, err, "import fresh record: %v", err)
 	require.Falsef(t, first.State != "completed" ||
 		!first.Accepted, "status = %#v, want completed accepted", first)
 
 	stale := record
-	stale.Endpoints = []string{"tcp://older"}
+	staleNode := *record.Node
+	staleNode.Endpoints = []string{"tcp://older"}
+	stale.Node = &staleNode
 	stale.IssuedAt = record.IssuedAt.Add(-time.Minute)
 	signDiscoveryRecord(t, &stale, private)
 	result, err := localNode.ImportRecord(stale)
@@ -453,14 +421,11 @@ func TestDiscoveryImportRecordRejectsStaleRecordWithoutPublishingSuccess(t *test
 		"rejected" ||
 		result.Accepted, "status = %#v, want rejected not accepted", result)
 
-	resolved, err := localNode.ResolveRecord(record.Subject, record.Kind)
+	resolved, err := localNode.ResolveRecord(record.Subject(), record.Kind())
 	require.NoErrorf(t, err, "resolve record: %v", err)
-	require.Falsef(t, len(resolved.Record.Endpoints) != len(record.Endpoints) ||
-		strings.Join(resolved.Record.
-			Endpoints, ",",
-		) != strings.Join(
-			record.Endpoints,
-			","), "endpoints = %v, want original %v", resolved.Record.Endpoints, record.Endpoints)
+	require.Falsef(t, len(resolved.Record.EndpointList()) != len(record.EndpointList()) ||
+		strings.Join(resolved.Record.EndpointList(), ",") != strings.Join(record.EndpointList(), ","),
+		"endpoints = %v, want original %v", resolved.Record.EndpointList(), record.EndpointList())
 
 }
 func TestDiscoveryResolveRecordAndServiceDoNotReturnUsableRoutesAfterStop(t *testing.T) {
@@ -517,7 +482,7 @@ func TestDiscoveryResolveRecordAndServiceDoNotReturnUsableRoutesAfterStop(t *tes
 	require.NoErrorf(t, err, "list remote records: %v", err)
 
 	for _, record := range records {
-		record.Source = "bootstrap"
+		record.Source = "imported"
 		{
 			_, err := localNode.ImportRecord(record)
 			require.NoErrorf(t, err, "import record: %v", err)

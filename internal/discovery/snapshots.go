@@ -3,20 +3,69 @@ package discovery
 import "time"
 
 type CatalogRecordSnapshot struct {
-	ID        string    `json:"id,omitempty"`
-	Kind      string    `json:"kind,omitempty"`
-	Subject   string    `json:"subject,omitempty"`
-	Node      string    `json:"node,omitempty"`
-	Device    string    `json:"device,omitempty"`
-	Owner     string    `json:"owner,omitempty"`
-	Service   string    `json:"service,omitempty"`
-	Mode      string    `json:"mode,omitempty"`
-	PublicKey string    `json:"public_key,omitempty"`
-	Endpoints []string  `json:"endpoints,omitempty"`
-	IssuedAt  time.Time `json:"issued_at"`
-	ExpiresAt time.Time `json:"expires_at"`
-	Signature string    `json:"signature,omitempty"`
-	Source    string    `json:"source,omitempty"`
+	Version   uint32                       `json:"version"`
+	Node      *CatalogNodeFactsSnapshot    `json:"node,omitempty"`
+	Service   *CatalogServiceFactsSnapshot `json:"service,omitempty"`
+	IssuedAt  time.Time                    `json:"issued_at"`
+	ExpiresAt time.Time                    `json:"expires_at"`
+	Signature string                       `json:"signature,omitempty"`
+	Source    string                       `json:"source,omitempty"`
+}
+
+type CatalogNodeFactsSnapshot struct {
+	Principal string   `json:"principal,omitempty"`
+	PublicKey string   `json:"public_key,omitempty"`
+	Endpoints []string `json:"endpoints,omitempty"`
+}
+
+type CatalogServiceFactsSnapshot struct {
+	ID            string   `json:"service_id,omitempty"`
+	Type          string   `json:"service_type,omitempty"`
+	NodePrincipal string   `json:"node_principal,omitempty"`
+	WorkloadID    string   `json:"workload_id,omitempty"`
+	Mode          string   `json:"mode,omitempty"`
+	PublicKey     string   `json:"public_key,omitempty"`
+	Endpoints     []string `json:"endpoints,omitempty"`
+}
+
+func (r CatalogRecordSnapshot) RecordID() string {
+	if r.Node != nil {
+		return r.Node.Principal + ":node"
+	}
+	if r.Service != nil {
+		return r.Service.ID
+	}
+	return ""
+}
+
+func (r CatalogRecordSnapshot) Subject() string {
+	if r.Node != nil {
+		return r.Node.Principal
+	}
+	if r.Service != nil {
+		return r.Service.ID
+	}
+	return ""
+}
+
+func (r CatalogRecordSnapshot) Kind() string {
+	if r.Node != nil && r.Service == nil {
+		return "node"
+	}
+	if r.Service != nil && r.Node == nil {
+		return "service"
+	}
+	return ""
+}
+
+func (r CatalogRecordSnapshot) EndpointList() []string {
+	if r.Node != nil {
+		return r.Node.Endpoints
+	}
+	if r.Service != nil {
+		return r.Service.Endpoints
+	}
+	return nil
 }
 
 type TransportTarget struct {
@@ -115,7 +164,6 @@ type SummarySnapshot struct {
 
 type PeerSnapshot struct {
 	NodeID       string
-	DeviceID     string
 	Addresses    []string
 	Trust        TrustSnapshot
 	Reachability string

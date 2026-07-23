@@ -30,11 +30,11 @@ func TestPrivateDiscoveryImportsSignedRecordFromWakuStore(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, remoteRecords)
 	remoteRecord := remoteRecords[0]
-	require.NotEmpty(t, remoteRecord.Endpoints)
+	require.NotEmpty(t, remoteRecord.EndpointList())
 
 	localDir := t.TempDir()
 	localConfig := runtimeinfra.Config{
-		Name: "private-discovery-local", Boot: runtimeinfra.BootConfig{Sources: append([]string(nil), remoteRecord.Endpoints...)},
+		Name: "private-discovery-local", Boot: runtimeinfra.BootConfig{Sources: append([]string(nil), remoteRecord.EndpointList()...)},
 		Data: runtimeinfra.DataConfig{Dir: localDir}, Privacy: privacy.Receiver,
 	}
 	local := testkit.StartNode(t, runtimeinfra.Config{
@@ -47,7 +47,7 @@ func TestPrivateDiscoveryImportsSignedRecordFromWakuStore(t *testing.T) {
 			return false, listErr.Error()
 		}
 		for _, record := range records {
-			if record.ID == remoteRecord.ID {
+			if record.RecordID() == remoteRecord.RecordID() {
 				return true, ""
 			}
 		}
@@ -58,13 +58,13 @@ func TestPrivateDiscoveryImportsSignedRecordFromWakuStore(t *testing.T) {
 	restarted := testkit.StartNode(t, localConfig)
 	restartedRecords, err := restarted.ListRecords()
 	require.NoError(t, err)
-	require.Contains(t, recordIDs(restartedRecords), remoteRecord.ID)
+	require.Contains(t, recordIDs(restartedRecords), remoteRecord.RecordID())
 }
 
 func recordIDs(records []discoveryapi.CatalogRecordSnapshot) []string {
 	ids := make([]string, 0, len(records))
 	for _, record := range records {
-		ids = append(ids, record.ID)
+		ids = append(ids, record.RecordID())
 	}
 	return ids
 }

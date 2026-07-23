@@ -201,7 +201,7 @@ func TestDiscoveryRefreshesLocalPublicationBeforeTTLExpiry(t *testing.T) {
 	require.GreaterOrEqual(t, len(records), 2)
 	initialExpiry := map[string]time.Time{}
 	for _, record := range records {
-		initialExpiry[record.ID] = record.ExpiresAt
+		initialExpiry[record.RecordID()] = record.ExpiresAt
 	}
 
 	testkit.WaitForCondition(t, 3*time.Second, "discovery publication refresh before ttl expiry", func() (bool, string) {
@@ -210,20 +210,21 @@ func TestDiscoveryRefreshesLocalPublicationBeforeTTLExpiry(t *testing.T) {
 			return false, err.Error()
 		}
 		for _, record := range refreshedRecords {
-			if !record.ExpiresAt.After(initialExpiry[record.ID]) {
-				return false, record.ID
+			if !record.ExpiresAt.After(initialExpiry[record.RecordID()]) {
+				return false, record.RecordID()
 			}
 		}
 		return true, ""
 	})
 }
 
-func invalidNetworkRecord(now time.Time) discovery.Record {
-	return discovery.Record{
-		ID: "broken:node", Kind: "node", Subject: "broken", Node: "broken", Device: "broken-device",
-		PublicKey: "YnJva2VuLXB1YmxpYy1rZXktYnJva2VuLXB1YmxpYy1rZXk=", Signature: "aW52YWxpZA==",
-		IssuedAt: now, ExpiresAt: now.Add(time.Hour),
-	}
+func invalidNetworkRecord(t *testing.T, now time.Time) discovery.Record {
+	t.Helper()
+	record, _ := signedNodeRecord(t, nil)
+	record.IssuedAt = now
+	record.ExpiresAt = now.Add(time.Hour)
+	record.Signature = "aW52YWxpZA=="
+	return discovery.RecordFromSnapshot(record)
 }
 
 func publishInvalidDiscoveryRecord(t *testing.T, ctx context.Context, now time.Time) (testkit.DiscoveryPrivacyFixture, transport.Service) {
@@ -232,7 +233,7 @@ func publishInvalidDiscoveryRecord(t *testing.T, ctx context.Context, now time.T
 	remoteTransport := testkit.NewTransport()
 	require.NoError(t, remoteTransport.Start(ctx))
 	require.NoError(t, publication.PublishPrivateDiscoveryEntries(ctx, []discovery.Entry{{
-		Record: invalidNetworkRecord(now), Source: "local", SeenAt: now,
+		Record: invalidNetworkRecord(t, now), Source: "local", SeenAt: now,
 	}}, privacy.Sender, testkit.PrivateCarrier(remoteTransport)))
 	return privacy, remoteTransport
 }

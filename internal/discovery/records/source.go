@@ -5,10 +5,15 @@ import (
 )
 
 const (
-	Local    = "local"
-	Imported = "imported"
-	Network  = "network"
+	Local     = "local"
+	Imported  = "imported"
+	Network   = "network"
+	Bootstrap = "bootstrap"
 )
+
+func ValidSource(source string) bool {
+	return source == Local || source == Imported || source == Network || source == Bootstrap
+}
 
 func LocalEntries(entries []Entry) []Entry {
 	out := make([]Entry, 0, len(entries))

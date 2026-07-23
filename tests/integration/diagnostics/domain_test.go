@@ -18,6 +18,7 @@ import (
 	diagapi "ardents/internal/diagnostics"
 	"ardents/internal/discovery"
 	discoveryapi "ardents/internal/discovery"
+	discoveryrecord "ardents/internal/discovery/records"
 	identityprincipal "ardents/internal/identity/principal"
 	db "ardents/internal/storage"
 	"ardents/tests/testkit"
@@ -222,11 +223,11 @@ func TestDiagnosticsProjectsUntrustedDiscoveryRecord(t *testing.T) {
 
 		"trust", "catalog_untrusted",
 
-		record.ID), "expected trust diagnostics event for untrusted record")
+		record.RecordID()), "expected trust diagnostics event for untrusted record")
 
 }
 
-func TestDiagnosticsProjectsPersistedInvalidDiscoveryRecordOnRestart(t *testing.T) {
+func TestDiscoveryRestartFailsClosedForPersistedInvalidVersionedRecord(t *testing.T) {
 	testkit.BeginScenario(t, testkit.Spec{
 		Layer:       testkit.LayerIntegration,
 		Domain:      "diagnostics",
@@ -240,53 +241,24 @@ func TestDiagnosticsProjectsPersistedInvalidDiscoveryRecordOnRestart(t *testing.
 	record, _ := signedNodeRecord(t, []string{"tcp://invalid:9000"})
 	record.Signature = "not-base64"
 	entry := discovery.Entry{
-		Record: discovery.Record{
-			ID:        record.ID,
-			Kind:      record.Kind,
-			Subject:   record.Subject,
-			Node:      record.Node,
-			Device:    record.Device,
-			Owner:     record.Owner,
-			Service:   record.Service,
-			Mode:      record.Mode,
-			PublicKey: record.PublicKey,
-			Endpoints: append([]string(nil), record.Endpoints...),
-			IssuedAt:  record.IssuedAt,
-			ExpiresAt: record.ExpiresAt,
-			Signature: record.Signature,
-		},
-		Source: "cache",
+		Record: snapshotNodeRecord(t, record),
+		Source: discoveryrecord.Imported,
 		SeenAt: time.Now().UTC(),
 	}
 	{
 		err := db.SaveJSON(filepath.Join(dir, "ardents.db"), "discovery", "records", map[string]any{
-			"records": []discovery.Entry{entry},
-			"state":   "ready",
+			"schema_version": 1,
+			"records":        []discovery.Entry{entry},
+			"state":          "ready",
 		})
 		require.NoErrorf(t, err, "save discovery records: %v", err)
 	}
 
-	n := testkit.StartNode(t, runtimeinfra.Config{
-		Name: "diag-trust-restart",
-		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Data: runtimeinfra.DataConfig{Dir: dir},
-	})
-
-	snapshot := diagnosticsSnapshot(t, n)
-	reason := subsystemReason(snapshot, "trust")
-	require.NotNil(t, reason, "expected trust subsystem reason after restart")
-	require.Falsef(t, reason.Code != "trust.record.invalid", "reason code = %q, want trust.record.invalid", reason.Code)
-	trust := n.Snapshot().Trust
-	require.Equal(t, "degraded", trust.State)
-	require.Equal(t, "unverified", trust.Outcome)
-	require.False(t, trust.Valid)
-	require.False(t, trust.Usable)
-	require.Contains(t, trust.Reason, "signature is invalid")
-	require.True(t, hasDiagnosticsEvent(snapshot,
-
-		"trust", "catalog_degraded",
-
-		record.ID), "expected invalid trust diagnostics event after restart")
+	restarted := discovery.NewInDir(dir)
+	err := restarted.Load()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "persisted discovery snapshot is invalid")
+	require.Contains(t, err.Error(), "record signature is invalid")
 
 }
 
@@ -306,28 +278,15 @@ func TestDiagnosticsObservedTruthProjectsExpiredDiscoveryRecordWithoutRestart(t 
 	record.ExpiresAt = now.Add(3 * time.Second)
 	signDiscoveryRecord(t, &record, private)
 	entry := discovery.Entry{
-		Record: discovery.Record{
-			ID:        record.ID,
-			Kind:      record.Kind,
-			Subject:   record.Subject,
-			Node:      record.Node,
-			Device:    record.Device,
-			Owner:     record.Owner,
-			Service:   record.Service,
-			Mode:      record.Mode,
-			PublicKey: record.PublicKey,
-			Endpoints: append([]string(nil), record.Endpoints...),
-			IssuedAt:  record.IssuedAt,
-			ExpiresAt: record.ExpiresAt,
-			Signature: record.Signature,
-		},
-		Source: "cache",
+		Record: snapshotNodeRecord(t, record),
+		Source: discoveryrecord.Imported,
 		SeenAt: now,
 	}
 	{
 		err := db.SaveJSON(filepath.Join(dir, "ardents.db"), "discovery", "records", map[string]any{
-			"records": []discovery.Entry{entry},
-			"state":   "ready",
+			"schema_version": 1,
+			"records":        []discovery.Entry{entry},
+			"state":          "ready",
 		})
 		require.NoErrorf(t, err, "save discovery records: %v", err)
 	}
@@ -350,7 +309,7 @@ func TestDiagnosticsObservedTruthProjectsExpiredDiscoveryRecordWithoutRestart(t 
 		if reason.Code != "trust.record.expired" {
 			return false, "unexpected trust code: " + reason.Code
 		}
-		if !hasDiagnosticsEvent(snapshot, "trust", "catalog_degraded", record.ID) {
+		if !hasDiagnosticsEvent(snapshot, "trust", "catalog_degraded", record.RecordID()) {
 			return false, "catalog_degraded event for expired record not visible yet"
 		}
 		return true, ""
@@ -402,28 +361,16 @@ func signedNodeRecord(t *testing.T, endpoints []string) (discoveryapi.CatalogRec
 	require.NoErrorf(t, err, "principal from public key: %v", err)
 
 	record := discoveryapi.CatalogRecordSnapshot{
-		ID:        principal + ":node",
-		Kind:      "node",
-		Subject:   principal,
-		Node:      principal,
-		Device:    "diag-test-device",
-		PublicKey: publicKey,
-		Endpoints: append([]string(nil), endpoints...),
+		Version: discoveryrecord.Version,
+		Node: &discoveryapi.CatalogNodeFactsSnapshot{
+			Principal: principal,
+			PublicKey: publicKey,
+			Endpoints: append([]string(nil), endpoints...),
+		},
 		IssuedAt:  time.Now().UTC(),
 		ExpiresAt: time.Now().UTC().Add(time.Hour),
 	}
-	payload, err := discovery.Canonical(discovery.Record{
-		ID:        record.ID,
-		Kind:      record.Kind,
-		Subject:   record.Subject,
-		Node:      record.Node,
-		Device:    record.Device,
-		Owner:     record.Owner,
-		Service:   record.Service,
-		Mode:      record.Mode,
-		PublicKey: record.PublicKey,
-		Endpoints: record.Endpoints,
-	})
+	payload, err := discovery.Canonical(snapshotNodeRecord(t, record))
 	require.NoErrorf(t, err, "canonical record: %v", err)
 
 	record.Signature = base64.StdEncoding.EncodeToString(ed25519.Sign(private, payload))
@@ -433,20 +380,24 @@ func signedNodeRecord(t *testing.T, endpoints []string) (discoveryapi.CatalogRec
 func signDiscoveryRecord(t *testing.T, record *discoveryapi.CatalogRecordSnapshot, private ed25519.PrivateKey) {
 	t.Helper()
 
-	payload, err := discovery.Canonical(discovery.Record{
-		ID:        record.ID,
-		Kind:      record.Kind,
-		Subject:   record.Subject,
-		Node:      record.Node,
-		Device:    record.Device,
-		Owner:     record.Owner,
-		Service:   record.Service,
-		Mode:      record.Mode,
-		PublicKey: record.PublicKey,
-		Endpoints: append([]string(nil), record.Endpoints...),
-		IssuedAt:  record.IssuedAt,
-		ExpiresAt: record.ExpiresAt,
-	})
+	payload, err := discovery.Canonical(snapshotNodeRecord(t, *record))
 	require.NoErrorf(t, err, "canonical record: %v", err)
 	record.Signature = base64.StdEncoding.EncodeToString(ed25519.Sign(private, payload))
+}
+
+func snapshotNodeRecord(t *testing.T, snapshot discoveryapi.CatalogRecordSnapshot) discovery.Record {
+	t.Helper()
+	require.NotNil(t, snapshot.Node)
+	require.Nil(t, snapshot.Service)
+	principal, err := identityprincipal.Parse(snapshot.Node.Principal)
+	require.NoError(t, err)
+	return discovery.Record{
+		Version: snapshot.Version,
+		Node: &discoveryrecord.NodeFacts{
+			Principal: principal,
+			PublicKey: snapshot.Node.PublicKey,
+			Endpoints: append([]string(nil), snapshot.Node.Endpoints...),
+		},
+		IssuedAt: snapshot.IssuedAt, ExpiresAt: snapshot.ExpiresAt, Signature: snapshot.Signature,
+	}
 }

@@ -3,8 +3,8 @@ package discovery
 import (
 	"ardents/internal/discovery/records"
 	networkprivacy "ardents/internal/messaging"
+	"ardents/internal/storage"
 	"context"
-	"encoding/json"
 	"sort"
 )
 
@@ -49,16 +49,16 @@ func decodePrivateRecords(envelopes []networkprivacy.SealedEnvelope, channel *ne
 			result.Reason = networkprivacy.CodeEnvelopeMalformed
 			continue
 		}
-		current, exists := seen[entry.Record.ID]
+		current, exists := seen[entry.Record.RecordID()]
 		if !exists || privateEntryNewer(entry, current) {
-			seen[entry.Record.ID] = entry
+			seen[entry.Record.RecordID()] = entry
 		}
 	}
 	for _, entry := range seen {
 		result.Entries = append(result.Entries, entry)
 	}
 	sort.Slice(result.Entries, func(i, j int) bool {
-		return result.Entries[i].Record.ID < result.Entries[j].Record.ID
+		return result.Entries[i].Record.RecordID() < result.Entries[j].Record.RecordID()
 	})
 	return result
 }
@@ -80,7 +80,7 @@ func privateDiscoveryEntry(opened networkprivacy.OpenedMessage) (Entry, bool) {
 		return Entry{}, false
 	}
 	var record Record
-	if err := json.Unmarshal(opened.Payload, &record); err != nil || record.ID == "" {
+	if err := storage.DecodeJSONStrict(opened.Payload, &record); err != nil || records.ValidateRetained(record) != nil {
 		return Entry{}, false
 	}
 	return Entry{Record: record, Source: records.Network, SeenAt: opened.IssuedAt}, true

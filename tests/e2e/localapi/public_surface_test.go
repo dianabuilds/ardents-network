@@ -195,10 +195,11 @@ func TestOperatorServiceAndDataSurfaceReadiness(t *testing.T) {
 	records, err := source.ListRecords()
 	require.NoError(t, err)
 	require.NotEmpty(t, records)
+	require.NotNil(t, records[0].Node)
 
 	rt := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "operator-svc-data-sut", NodeProfile: transport.NodeProfileServiceNode,
-		Boot:      runtimeinfra.BootConfig{Sources: append([]string(nil), records[0].Endpoints...)},
+		Boot:      runtimeinfra.BootConfig{Sources: append([]string(nil), records[0].Node.Endpoints...)},
 		Trust:     runtimeinfra.TrustConfig{Anchors: []string{source.Snapshot().Ident.PublicKey}},
 		Transport: runtimeinfra.TransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: transport.ReachabilityPrivateLAN},
 		Data:      runtimeinfra.DataConfig{Dir: t.TempDir()}, Privacy: discoveryPrivacy.Receiver,
@@ -364,22 +365,32 @@ func surfaceAdvertisedEndpoint(t *testing.T, port int) string {
 }
 
 func toProtoDiscoveryRecord(record discoveryapi.CatalogRecordSnapshot) *ardentsv1.DiscoveryRecord {
-	return &ardentsv1.DiscoveryRecord{
-		Id:        record.ID,
-		Kind:      record.Kind,
-		Subject:   record.Subject,
-		Node:      record.Node,
-		Device:    record.Device,
-		Owner:     record.Owner,
-		Service:   record.Service,
-		Mode:      record.Mode,
-		PublicKey: record.PublicKey,
-		Endpoints: append([]string(nil), record.Endpoints...),
-		IssuedAt:  timestampProto(record.IssuedAt),
-		ExpiresAt: timestampProto(record.ExpiresAt),
-		Signature: record.Signature,
-		Source:    record.Source,
+	out := &ardentsv1.DiscoveryRecord{
+		Version:     record.Version,
+		IssuedAtV1:  timestampProto(record.IssuedAt),
+		ExpiresAtV1: timestampProto(record.ExpiresAt),
+		SignatureV1: record.Signature,
+		SourceV1:    record.Source,
 	}
+	if record.Node != nil {
+		out.Facts = &ardentsv1.DiscoveryRecord_NodeFacts{NodeFacts: &ardentsv1.NodeDiscoveryFacts{
+			Principal: record.Node.Principal,
+			PublicKey: record.Node.PublicKey,
+			Endpoints: append([]string(nil), record.Node.Endpoints...),
+		}}
+	}
+	if record.Service != nil {
+		out.Facts = &ardentsv1.DiscoveryRecord_ServiceFacts{ServiceFacts: &ardentsv1.ServiceDiscoveryFacts{
+			ServiceId:     record.Service.ID,
+			ServiceType:   record.Service.Type,
+			NodePrincipal: record.Service.NodePrincipal,
+			WorkloadId:    record.Service.WorkloadID,
+			Mode:          record.Service.Mode,
+			PublicKey:     record.Service.PublicKey,
+			Endpoints:     append([]string(nil), record.Service.Endpoints...),
+		}}
+	}
+	return out
 }
 
 func timestampProto(value time.Time) *timestamppb.Timestamp {

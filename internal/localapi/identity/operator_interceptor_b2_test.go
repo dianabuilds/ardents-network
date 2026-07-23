@@ -104,7 +104,7 @@ func TestOperatorPrincipalInterceptorGuardsEveryB2ProcedureExactlyOnce(t *testin
 	network := ardentsv1connect.NewNetworkServiceClient(server.Client(), server.URL)
 	diagnostics := ardentsv1connect.NewDiagnosticsServiceClient(server.Client(), server.URL)
 	authorization := "ArdentsOperatorSession " + base64.RawURLEncoding.EncodeToString(secret[:])
-	directID, err := discoveryrecord.AccessResourceID("node", b2SignedNodeRecord(t).GetSubject())
+	directID, err := discoveryrecord.AccessResourceID("node", b2SignedNodeRecord(t).GetNodeFacts().GetPrincipal())
 	require.NoError(t, err)
 	directResource, err := identityaccess.NewResourceRef(node, "", "discovery-record", directID)
 	require.NoError(t, err)
@@ -133,7 +133,7 @@ func TestOperatorPrincipalInterceptorGuardsEveryB2ProcedureExactlyOnce(t *testin
 	routes := connect.NewRequest(&protocol.ListRouteCandidatesRequest{})
 	call(routes, func() error { _, err := network.ListRouteCandidates(context.Background(), routes); return err })
 	record := b2SignedNodeRecord(t)
-	resolveRecord := connect.NewRequest(&protocol.ResolveRecordRequest{Subject: record.GetSubject(), Kind: record.GetKind()})
+	resolveRecord := connect.NewRequest(&protocol.ResolveRecordRequest{Subject: record.GetNodeFacts().GetPrincipal(), Kind: "node"})
 	call(resolveRecord, func() error { _, err := network.ResolveRecord(context.Background(), resolveRecord); return err })
 	resolveService := connect.NewRequest(&protocol.ResolveServiceRequest{Service: "svc.echo"})
 	call(resolveService, func() error { _, err := network.ResolveService(context.Background(), resolveService); return err })
@@ -236,7 +236,7 @@ func invokeB2Procedure(ctx context.Context, network ardentsv1connect.NetworkServ
 		_, err := network.ListRouteCandidates(ctx, request)
 		return err
 	case ardentsv1connect.NetworkServiceResolveRecordProcedure:
-		request := connect.NewRequest(&protocol.ResolveRecordRequest{Kind: record.GetKind(), Subject: record.GetSubject()})
+		request := connect.NewRequest(&protocol.ResolveRecordRequest{Kind: "node", Subject: record.GetNodeFacts().GetPrincipal()})
 		setAuthorization(request)
 		_, err := network.ResolveRecord(ctx, request)
 		return err
@@ -293,14 +293,14 @@ func b2SignedNodeRecord(t *testing.T) *protocol.DiscoveryRecord {
 	require.NoError(t, err)
 	now := time.Now().UTC().Truncate(time.Second)
 	record := discoveryrecord.Record{
-		ID: principal.String() + ":node", Kind: "node", Subject: principal.String(), Node: principal.String(),
-		PublicKey: base64.StdEncoding.EncodeToString(public), IssuedAt: now, ExpiresAt: now.Add(time.Hour),
+		Version: discoveryrecord.Version, Node: &discoveryrecord.NodeFacts{Principal: principal, PublicKey: base64.StdEncoding.EncodeToString(public)},
+		IssuedAt: now, ExpiresAt: now.Add(time.Hour),
 	}
 	canonical, err := discoveryrecord.Canonical(record)
 	require.NoError(t, err)
 	record.Signature = base64.StdEncoding.EncodeToString(ed25519.Sign(private, canonical))
 	return &protocol.DiscoveryRecord{
-		Id: record.ID, Kind: record.Kind, Subject: record.Subject, Node: record.Node, PublicKey: record.PublicKey,
-		IssuedAt: timestamppb.New(record.IssuedAt), ExpiresAt: timestamppb.New(record.ExpiresAt), Signature: record.Signature,
+		Version: record.Version, Facts: &protocol.DiscoveryRecord_NodeFacts{NodeFacts: &protocol.NodeDiscoveryFacts{Principal: principal.String(), PublicKey: record.Node.PublicKey}},
+		IssuedAtV1: timestamppb.New(record.IssuedAt), ExpiresAtV1: timestamppb.New(record.ExpiresAt), SignatureV1: record.Signature,
 	}
 }

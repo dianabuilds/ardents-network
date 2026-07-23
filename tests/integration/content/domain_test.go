@@ -115,7 +115,7 @@ func TestDataSubstrateFetchesEncryptedBlobFromTrustedPeer(t *testing.T) {
 	require.False(t, len(records) == 0, "expected source discovery records")
 
 	requesterDir := t.TempDir()
-	requesterBoot := append([]string(nil), records[0].Endpoints...)
+	requesterBoot := append([]string(nil), records[0].EndpointList()...)
 	requester := testkit.StartNode(t, runtimeinfra.Config{
 		Name:    "data-requester",
 		Boot:    runtimeinfra.BootConfig{Sources: requesterBoot},
@@ -177,7 +177,7 @@ func TestDataSubstrateRejectsFetchFromUntrustedPeer(t *testing.T) {
 	requesterDir := t.TempDir()
 	requester := testkit.StartNode(t, runtimeinfra.Config{
 		Name: "data-requester-untrusted",
-		Boot: runtimeinfra.BootConfig{Sources: append([]string(nil), records[0].Endpoints...)},
+		Boot: runtimeinfra.BootConfig{Sources: append([]string(nil), records[0].EndpointList()...)},
 		Data: runtimeinfra.DataConfig{Dir: requesterDir},
 	})
 

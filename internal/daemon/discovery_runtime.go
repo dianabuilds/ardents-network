@@ -119,7 +119,7 @@ func discoveryTrustReason(entry discovery.Entry, result discovery.TrustResult) *
 		Impact:                 "discovery routing truth may include records that cannot be used safely",
 		Recovery:               "operator",
 		OperatorActionRequired: true,
-		Resource:               entry.Record.ID,
+		Resource:               entry.Record.RecordID(),
 	}
 	switch {
 	case result.Outcome == "expired":

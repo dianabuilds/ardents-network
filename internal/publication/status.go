@@ -22,7 +22,7 @@ func (m *Manager) LocalPresenceSnapshotLocked() LocalPresenceSnapshot {
 			OperatorActionRequired: ready,
 		}
 	}
-	published := len(entry.Record.Endpoints) > 0
+	published := len(entry.Record.EndpointList()) > 0
 	state := "published"
 	reason := ""
 	if !published {
@@ -33,7 +33,7 @@ func (m *Manager) LocalPresenceSnapshotLocked() LocalPresenceSnapshot {
 		Published:              published,
 		State:                  state,
 		Reason:                 reason,
-		RecordID:               entry.Record.ID,
+		RecordID:               entry.Record.RecordID(),
 		PublishedAt:            entry.Record.IssuedAt,
 		ExpiresAt:              entry.Record.ExpiresAt,
 		OperatorActionRequired: !published && ready,
@@ -44,7 +44,7 @@ func (m *Manager) ServicePublicationStatusLocked(id string) hosting.PublicationS
 	status, err := m.serviceRuntimeStatusLocked(id)
 	if err != nil {
 		if entry, ok := m.localServiceEntryLocked(id); ok {
-			published := len(entry.Record.Endpoints) > 0
+			published := len(entry.Record.EndpointList()) > 0
 			state := "published"
 			reason := ""
 			if !published {
@@ -95,7 +95,7 @@ func (m *Manager) servicePublicationSnapshotLocked(id string, reason string) hos
 			OperatorActionRequired: true,
 		}
 	}
-	published := len(entry.Record.Endpoints) > 0
+	published := len(entry.Record.EndpointList()) > 0
 	state := "published"
 	publicationReason := reason
 	if !published {
@@ -269,7 +269,7 @@ func (m *Manager) unpublishedServiceReason(svc registry.ServiceSpec) string {
 func (m *Manager) localNodePresenceLocked() (entry discovery.Entry, ok bool) {
 	principal := m.ident.NodeSummary().Principal
 	for _, item := range m.disco.Entries() {
-		if item.Source == "local" && item.Record.Kind == "node" && item.Record.Subject == principal {
+		if item.Source == "local" && item.Record.Kind() == "node" && item.Record.Subject() == principal {
 			return item, true
 		}
 	}
@@ -278,7 +278,7 @@ func (m *Manager) localNodePresenceLocked() (entry discovery.Entry, ok bool) {
 
 func (m *Manager) localServiceEntryLocked(id string) (entry discovery.Entry, ok bool) {
 	for _, item := range m.disco.Entries() {
-		if item.Source == "local" && item.Record.Kind == "service" && item.Record.ID == id {
+		if item.Source == "local" && item.Record.Kind() == "service" && item.Record.RecordID() == id {
 			return item, true
 		}
 	}

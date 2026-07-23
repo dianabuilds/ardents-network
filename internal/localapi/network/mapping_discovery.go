@@ -12,30 +12,47 @@ func toDiscoveryTrustSnapshot(in discoveryapi.TrustSnapshot) *ardentsv1.TrustSna
 }
 
 func toDiscoveryRecord(in discoveryapi.CatalogRecordSnapshot) *ardentsv1.DiscoveryRecord {
-	return &ardentsv1.DiscoveryRecord{
-		Id: in.ID, Kind: in.Kind, Subject: in.Subject, Node: in.Node, Device: in.Device, Owner: in.Owner, Service: in.Service, Mode: in.Mode,
-		PublicKey: in.PublicKey, Endpoints: append([]string(nil), in.Endpoints...), IssuedAt: rpc.Timestamp(in.IssuedAt), ExpiresAt: rpc.Timestamp(in.ExpiresAt), Signature: in.Signature, Source: in.Source,
+	out := &ardentsv1.DiscoveryRecord{
+		Version: in.Version, IssuedAtV1: rpc.Timestamp(in.IssuedAt), ExpiresAtV1: rpc.Timestamp(in.ExpiresAt),
+		SignatureV1: in.Signature, SourceV1: in.Source,
 	}
+	if in.Node != nil {
+		out.Facts = &ardentsv1.DiscoveryRecord_NodeFacts{NodeFacts: &ardentsv1.NodeDiscoveryFacts{
+			Principal: in.Node.Principal, PublicKey: in.Node.PublicKey, Endpoints: append([]string(nil), in.Node.Endpoints...),
+		}}
+	}
+	if in.Service != nil {
+		out.Facts = &ardentsv1.DiscoveryRecord_ServiceFacts{ServiceFacts: &ardentsv1.ServiceDiscoveryFacts{
+			ServiceId: in.Service.ID, ServiceType: in.Service.Type, NodePrincipal: in.Service.NodePrincipal,
+			WorkloadId: in.Service.WorkloadID, Mode: in.Service.Mode, PublicKey: in.Service.PublicKey,
+			Endpoints: append([]string(nil), in.Service.Endpoints...),
+		}}
+	}
+	return out
 }
 
 func fromDiscoveryRecord(in *ardentsv1.DiscoveryRecord) discoveryapi.CatalogRecordSnapshot {
 	if in == nil {
 		return discoveryapi.CatalogRecordSnapshot{}
 	}
-	return discoveryapi.CatalogRecordSnapshot{
-		ID: in.GetId(), Kind: in.GetKind(), Subject: in.GetSubject(), Node: in.GetNode(), Device: in.GetDevice(), Owner: in.GetOwner(), Service: in.GetService(), Mode: in.GetMode(),
-		PublicKey: in.GetPublicKey(), Endpoints: append([]string(nil), in.GetEndpoints()...), IssuedAt: rpc.Time(in.GetIssuedAt()), ExpiresAt: rpc.Time(in.GetExpiresAt()), Signature: in.GetSignature(),
+	out := discoveryapi.CatalogRecordSnapshot{
+		Version: in.GetVersion(), IssuedAt: rpc.Time(in.GetIssuedAtV1()), ExpiresAt: rpc.Time(in.GetExpiresAtV1()),
+		Signature: in.GetSignatureV1(),
 	}
+	if facts := in.GetNodeFacts(); facts != nil {
+		out.Node = &discoveryapi.CatalogNodeFactsSnapshot{Principal: facts.GetPrincipal(), PublicKey: facts.GetPublicKey(), Endpoints: append([]string(nil), facts.GetEndpoints()...)}
+	}
+	if facts := in.GetServiceFacts(); facts != nil {
+		out.Service = &discoveryapi.CatalogServiceFactsSnapshot{
+			ID: facts.GetServiceId(), Type: facts.GetServiceType(), NodePrincipal: facts.GetNodePrincipal(), WorkloadID: facts.GetWorkloadId(),
+			Mode: facts.GetMode(), PublicKey: facts.GetPublicKey(), Endpoints: append([]string(nil), facts.GetEndpoints()...),
+		}
+	}
+	return out
 }
 
 func toDiscoveryResult(in discoveryapi.ResolutionResult) *ardentsv1.DiscoveryResult {
-	out := &ardentsv1.DiscoveryResult{
-		Outcome: in.Outcome,
-		Source:  in.Source,
-		Record:  toDiscoveryRecord(in.Record),
-		Trust:   toDiscoveryTrustSnapshot(in.Trust),
-		Route:   toRouteSnapshot(in.Route),
-	}
+	out := &ardentsv1.DiscoveryResult{Outcome: in.Outcome, Source: in.Source, Record: toDiscoveryRecord(in.Record), Trust: toDiscoveryTrustSnapshot(in.Trust), Route: toRouteSnapshot(in.Route)}
 	for _, item := range in.Candidates {
 		out.Candidates = append(out.Candidates, toTransportTarget(item))
 	}
@@ -51,10 +68,7 @@ func toServiceResult(in discoveryapi.ServiceResult) *ardentsv1.ServiceResult {
 }
 
 func toTransportTarget(in discoveryapi.TransportTarget) *ardentsv1.TransportTarget {
-	return &ardentsv1.TransportTarget{
-		Subject: in.Subject, Service: in.Service, Endpoint: in.Endpoint, Scheme: in.Scheme, Mode: in.Mode,
-		Trusted: in.Trusted, Usable: in.Usable, Cost: int32(in.Cost), Privacy: int32(in.Privacy), Reliability: int32(in.Reliability),
-	}
+	return &ardentsv1.TransportTarget{Subject: in.Subject, Service: in.Service, Endpoint: in.Endpoint, Scheme: in.Scheme, Mode: in.Mode, Trusted: in.Trusted, Usable: in.Usable, Cost: int32(in.Cost), Privacy: int32(in.Privacy), Reliability: int32(in.Reliability)}
 }
 
 func toRouteSnapshot(in discoveryapi.RouteSnapshot) *ardentsv1.RouteSnapshot {

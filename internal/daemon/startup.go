@@ -3,6 +3,7 @@ package daemon
 import (
 	"ardents/internal/diagnostics"
 	"ardents/internal/discovery"
+	discoveryrecord "ardents/internal/discovery/records"
 	identityapi "ardents/internal/identity"
 	transport "ardents/internal/network"
 	domainworkload "ardents/internal/workload/registry"
@@ -110,13 +111,13 @@ func ImportBootstrapEntries(
 ) bool {
 	hadImportErrors := false
 	for _, entry := range entries {
-		if entry.Record.Node == localPrincipal {
+		if entry.Record.NodeID() == localPrincipal {
 			continue
 		}
 		applied, err := importRecord(entry.Record)
 		if err != nil {
 			hadImportErrors = true
-			degradeImport(entry.Record.ID, err.Error())
+			degradeImport(entry.Record.RecordID(), err.Error())
 			continue
 		}
 		if applied {
@@ -406,7 +407,7 @@ func (m *RuntimeManager) importBootstrapEntriesLocked(entries []discovery.Entry)
 		m.ident.NodeSummary().Principal,
 		entries,
 		func(record discovery.Record) (bool, error) {
-			result, err := m.disco.Import(record, "bootstrap")
+			result, err := m.disco.Import(record, discoveryrecord.Bootstrap)
 			if err != nil {
 				return false, err
 			}

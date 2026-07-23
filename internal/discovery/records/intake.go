@@ -1,6 +1,7 @@
 package records
 
 import (
+	"errors"
 	"time"
 )
 
@@ -14,7 +15,10 @@ func Import(entries []Entry, record Record, source string, now time.Time) ([]Ent
 	if source == "" {
 		source = Imported
 	}
-	if err := Validate(record); err != nil {
+	if !ValidSource(source) {
+		return entries, ImportResult{}, errors.New("record source is invalid")
+	}
+	if err := ValidateAt(record, now); err != nil {
 		return entries, ImportResult{}, err
 	}
 	return Upsert(entries, Entry{

@@ -68,8 +68,8 @@ func localNodeEndpoints(t *testing.T, runtime *runtimeprocess.Node) []string {
 	records, err := runtime.ListRecords()
 	require.NoError(t, err)
 	for _, record := range records {
-		if record.Kind == "node" && record.Source == "local" {
-			return record.Endpoints
+		if record.Kind() == "node" && record.Source == "local" {
+			return record.EndpointList()
 		}
 	}
 	return nil

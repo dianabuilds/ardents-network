@@ -140,6 +140,30 @@ backup; never copy only the identity record or synthesize a Device from the Node
 key. Rollback to a pre-PIA-015A binary requires restoring its entire matching
 consistency group rather than editing the version-1 record.
 
+### Discovery retained state version 1
+
+The first-release `ardents.db` value at bucket/key `discovery/records` is a
+strict JSON snapshot with `schema_version: 1`, state/reason, and signed record
+entries. Each record has `version: 1` and exactly one NodeFacts or ServiceFacts
+body. NodeFacts identify one Node Principal. ServiceFacts contain one Service
+ID, service type, owning Node Principal, Workload ID, mode, public key, and
+endpoints. Entry `source` and `seen_at` are local observations and are not part
+of the signed record.
+
+Startup rejects missing/unknown/duplicate schema fields, trailing JSON,
+malformed unions, invalid signatures or Principal/public-key bindings, invalid
+entry metadata, and duplicate record IDs or kind/subject pairs before changing
+runtime state. A valid record that expired while the Node was stopped is loaded
+for retained-state continuity but remains non-routable. Import and restore save
+failures roll in-memory discovery state back atomically.
+
+This is the only supported first-release shape. There is no flat-record
+importer, field precedence rule, or dual-format alias. Discard pre-release state
+or restore a complete canonical stopped-Node backup. Rollback to a binary with
+the flat record format requires restoring its complete matching consistency
+group; never edit the bucket, remove the schema marker, or copy only
+`discovery/records`.
+
 ## Rollback And Recovery
 
 Recreate one Node at a time with the previous immutable image and re-prove

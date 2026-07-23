@@ -3,6 +3,7 @@ package daemon
 import (
 	"ardents/internal/diagnostics"
 	"ardents/internal/discovery"
+	discoveryrecord "ardents/internal/discovery/records"
 	identityprincipal "ardents/internal/identity/principal"
 	db "ardents/internal/storage"
 	workloadapi "ardents/internal/workload"
@@ -149,7 +150,7 @@ func TestSyncDiscoveryTrustDiagnosticsPrioritizesInvalidCatalogEntryOverUntruste
 	require.Equal(t, "trust.record.invalid", snapshot.Health.PrimaryReason.Code)
 	require.Len(t, snapshot.Health.Subsystems, 1)
 	require.Equal(t, "trust.record.invalid", snapshot.Health.Subsystems[0].Reason.Code)
-	require.Equal(t, invalid.ID, snapshot.Health.Subsystems[0].Reason.Resource)
+	require.Equal(t, invalid.RecordID(), snapshot.Health.Subsystems[0].Reason.Resource)
 	require.Len(t, snapshot.RecentEvents, 1)
 	require.Equal(t, "catalog_degraded", snapshot.RecentEvents[0].Type)
 	require.Equal(t, "trust.record.invalid", snapshot.RecentEvents[0].ReasonCode)
@@ -162,16 +163,12 @@ func signedTrustRecord(t *testing.T) discovery.Record {
 	require.NoError(t, err)
 
 	publicKey := base64.StdEncoding.EncodeToString(public)
-	principal, err := identityprincipal.FromPublicKey(publicKey)
+	principal, err := identityprincipal.FromEd25519PublicKey(public)
 	require.NoError(t, err)
 
 	record := discovery.Record{
-		ID:        principal + ":node",
-		Kind:      "node",
-		Subject:   principal,
-		Node:      principal,
-		PublicKey: publicKey,
-		Endpoints: []string{"tcp://remote:9000"},
+		Version:   discoveryrecord.Version,
+		Node:      &discoveryrecord.NodeFacts{Principal: principal, PublicKey: publicKey, Endpoints: []string{"tcp://remote:9000"}},
 		IssuedAt:  time.Now().UTC(),
 		ExpiresAt: time.Now().UTC().Add(time.Hour),
 	}

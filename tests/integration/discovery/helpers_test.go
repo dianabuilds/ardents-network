@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"ardents/internal/discovery"
+	discoveryrecords "ardents/internal/discovery/records"
 	identityprincipal "ardents/internal/identity/principal"
 
 	"github.com/stretchr/testify/require"
@@ -81,13 +82,12 @@ func signedNodeRecord(t *testing.T, endpoints []string) (discovery.CatalogRecord
 	require.NoErrorf(t, err, "principal from public key: %v", err)
 
 	record := discovery.CatalogRecordSnapshot{
-		ID:        principal + ":node",
-		Kind:      "node",
-		Subject:   principal,
-		Node:      principal,
-		Device:    "test-device",
-		PublicKey: publicKey,
-		Endpoints: append([]string(nil), endpoints...),
+		Version: discoveryrecords.Version,
+		Node: &discovery.CatalogNodeFactsSnapshot{
+			Principal: principal,
+			PublicKey: publicKey,
+			Endpoints: append([]string(nil), endpoints...),
+		},
 		IssuedAt:  time.Now().UTC(),
 		ExpiresAt: time.Now().UTC().Add(time.Hour),
 	}
@@ -98,21 +98,17 @@ func signedNodeRecord(t *testing.T, endpoints []string) (discovery.CatalogRecord
 func signDiscoveryRecord(t *testing.T, record *discovery.CatalogRecordSnapshot, private ed25519.PrivateKey) {
 	t.Helper()
 
-	payload, err := discovery.Canonical(discovery.Record{
-		ID:        record.ID,
-		Kind:      record.Kind,
-		Subject:   record.Subject,
-		Node:      record.Node,
-		Device:    record.Device,
-		Owner:     record.Owner,
-		Service:   record.Service,
-		Mode:      record.Mode,
-		PublicKey: record.PublicKey,
-		Endpoints: append([]string(nil), record.Endpoints...),
-		IssuedAt:  record.IssuedAt,
-		ExpiresAt: record.ExpiresAt,
-	})
+	payload, err := discovery.Canonical(discovery.RecordFromSnapshot(*record))
 	require.NoErrorf(t, err, "canonical record: %v", err)
 
 	record.Signature = base64.StdEncoding.EncodeToString(ed25519.Sign(private, payload))
+}
+
+func signedExpiredNodeRecord(t *testing.T, now time.Time, endpoints []string) discovery.Record {
+	t.Helper()
+	record, private := signedNodeRecord(t, endpoints)
+	record.IssuedAt = now.Add(-2 * time.Hour)
+	record.ExpiresAt = now.Add(-time.Minute)
+	signDiscoveryRecord(t, &record, private)
+	return discovery.RecordFromSnapshot(record)
 }

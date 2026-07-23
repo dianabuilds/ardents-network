@@ -76,18 +76,25 @@ func loadJSON(path, bucketName, key string, out any, strict bool) (found bool, r
 		}
 		return true, nil
 	}
-	if err := rejectDuplicateJSONFields(payload); err != nil {
+	if err := DecodeJSONStrict(payload, out); err != nil {
 		return false, err
+	}
+	return true, nil
+}
+
+func DecodeJSONStrict(payload []byte, out any) error {
+	if err := rejectDuplicateJSONFields(payload); err != nil {
+		return err
 	}
 	decoder := json.NewDecoder(bytes.NewReader(payload))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(out); err != nil {
-		return false, err
+		return err
 	}
 	if err := decoder.Decode(&struct{}{}); err != io.EOF {
-		return false, fmt.Errorf("persisted JSON has trailing content")
+		return fmt.Errorf("JSON has trailing content")
 	}
-	return true, nil
+	return nil
 }
 
 func rejectDuplicateJSONFields(raw []byte) error {

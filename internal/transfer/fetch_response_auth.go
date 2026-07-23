@@ -83,14 +83,14 @@ func verifyBlobResponder(response blobFetchResponse, record discovery.Record) er
 	if response.Signature == "" {
 		return fmt.Errorf("blob response signature is missing")
 	}
-	expectedSource, err := identityprincipal.FromPublicKey(record.PublicKey)
+	expectedSource, err := identityprincipal.FromPublicKey(record.PublicKeyText())
 	if err != nil {
 		return fmt.Errorf("blob response source identity is invalid")
 	}
 	if expectedSource != response.Source {
 		return fmt.Errorf("blob response source does not match signing identity")
 	}
-	publicKey, err := base64.StdEncoding.DecodeString(record.PublicKey)
+	publicKey, err := base64.StdEncoding.DecodeString(record.PublicKeyText())
 	if err != nil {
 		return fmt.Errorf("blob response public key is invalid")
 	}

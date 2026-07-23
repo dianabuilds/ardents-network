@@ -8,6 +8,7 @@ import (
 	identityaccess "ardents/internal/identity/access"
 	protocol "ardents/internal/localapi/protocol"
 	"ardents/internal/localapi/protocol/ardentsv1connect"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var ErrInvalidResourceTarget = errors.New("network resource target is invalid")
@@ -48,14 +49,14 @@ func CanonicalizeResource(procedure string, message any, kind identityaccess.Res
 		valid = err == nil
 	case ardentsv1connect.NetworkServiceImportRecordProcedure:
 		request, ok := message.(*protocol.ImportRecordRequest)
-		if !ok || request.GetRecord() == nil {
+		if !ok || request.GetRecord() == nil || discoveryRecordHasUnknownFields(request.GetRecord()) {
 			valid = false
 			break
 		}
 		snapshot := fromDiscoveryRecord(request.GetRecord())
 		record := discoveryapi.RecordFromSnapshot(snapshot)
-		valid = discoveryrecord.ValidAccessIdentifier(record.ID) && discoveryrecord.Validate(record) == nil
-		target.ID = record.ID
+		valid = discoveryrecord.ValidAccessIdentifier(record.RecordID()) && discoveryrecord.Validate(record) == nil
+		target.ID = record.RecordID()
 	default:
 		valid = false
 	}
@@ -63,4 +64,22 @@ func CanonicalizeResource(procedure string, message any, kind identityaccess.Res
 		return identityaccess.ResourceTarget{}, ErrInvalidResourceTarget
 	}
 	return target, nil
+}
+
+func discoveryRecordHasUnknownFields(record *protocol.DiscoveryRecord) bool {
+	if len(record.ProtoReflect().GetUnknown()) != 0 {
+		return true
+	}
+	if facts := record.GetNodeFacts(); facts != nil && len(facts.ProtoReflect().GetUnknown()) != 0 {
+		return true
+	}
+	if facts := record.GetServiceFacts(); facts != nil && len(facts.ProtoReflect().GetUnknown()) != 0 {
+		return true
+	}
+	for _, timestamp := range []*timestamppb.Timestamp{record.GetIssuedAtV1(), record.GetExpiresAtV1()} {
+		if timestamp == nil || timestamp.CheckValid() != nil || len(timestamp.ProtoReflect().GetUnknown()) != 0 {
+			return true
+		}
+	}
+	return false
 }

@@ -59,10 +59,11 @@ func (a *Command) resolveRecord(ctx context.Context, args []string) int {
 	output.KV(a.ctx.Renderer.Out, "outcome", resp.Msg.GetOutcome())
 	output.KV(a.ctx.Renderer.Out, "source", resp.Msg.GetSource())
 	record := resp.Msg.GetRecord()
-	output.KV(a.ctx.Renderer.Out, "record_id", record.GetId())
-	output.KV(a.ctx.Renderer.Out, "subject", record.GetSubject())
-	output.KV(a.ctx.Renderer.Out, "kind", record.GetKind())
-	output.KV(a.ctx.Renderer.Out, "node", record.GetNode())
+	id, kind, subject, node := discoveryRecordFields(record)
+	output.KV(a.ctx.Renderer.Out, "record_id", id)
+	output.KV(a.ctx.Renderer.Out, "subject", subject)
+	output.KV(a.ctx.Renderer.Out, "kind", kind)
+	output.KV(a.ctx.Renderer.Out, "node", node)
 	output.KV(a.ctx.Renderer.Out, "trust", resp.Msg.GetTrust().GetState())
 	output.KV(a.ctx.Renderer.Out, "usable", output.Bool(resp.Msg.GetTrust().GetUsable()))
 	return 0
@@ -95,8 +96,9 @@ func (a *Command) resolveService(ctx context.Context, args []string) int {
 	output.KV(a.ctx.Renderer.Out, "matches", fmt.Sprintf("%d", len(resp.Msg.GetMatches())))
 	output.KV(a.ctx.Renderer.Out, "route_outcome", resp.Msg.GetRoute().GetOutcome())
 	for _, match := range resp.Msg.GetMatches() {
-		output.KV(a.ctx.Renderer.Out, "match_record", match.GetRecord().GetId())
-		output.KV(a.ctx.Renderer.Out, "  node", match.GetRecord().GetNode())
+		id, _, _, node := discoveryRecordFields(match.GetRecord())
+		output.KV(a.ctx.Renderer.Out, "match_record", id)
+		output.KV(a.ctx.Renderer.Out, "  node", node)
 		output.KV(a.ctx.Renderer.Out, "  trust", match.GetTrust().GetState())
 	}
 	return 0
@@ -135,10 +137,11 @@ func (a *Command) listRecords(ctx context.Context) int {
 		return 0
 	}
 	for _, item := range resp.Msg.GetRecords() {
-		output.KV(a.ctx.Renderer.Out, "record", item.GetId())
-		output.KV(a.ctx.Renderer.Out, "  kind", item.GetKind())
-		output.KV(a.ctx.Renderer.Out, "  subject", item.GetSubject())
-		output.KV(a.ctx.Renderer.Out, "  node", item.GetNode())
+		id, kind, subject, node := discoveryRecordFields(item)
+		output.KV(a.ctx.Renderer.Out, "record", id)
+		output.KV(a.ctx.Renderer.Out, "  kind", kind)
+		output.KV(a.ctx.Renderer.Out, "  subject", subject)
+		output.KV(a.ctx.Renderer.Out, "  node", node)
 	}
 	return 0
 }
@@ -204,4 +207,18 @@ func requireValue(name, value string) error {
 		return fmt.Errorf("%s is required", name)
 	}
 	return nil
+}
+
+func discoveryRecordFields(record *ardentsv1.DiscoveryRecord) (id, kind, subject, node string) {
+	if record == nil {
+		return "", "", "", ""
+	}
+	if facts := record.GetNodeFacts(); facts != nil {
+		principal := facts.GetPrincipal()
+		return principal + ":node", "node", principal, principal
+	}
+	if facts := record.GetServiceFacts(); facts != nil {
+		return facts.GetServiceId(), "service", facts.GetServiceId(), facts.GetNodePrincipal()
+	}
+	return "", "", "", ""
 }

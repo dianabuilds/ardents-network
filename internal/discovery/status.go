@@ -38,7 +38,7 @@ type Reachability func(Record, bool) (state, reason string)
 func ProjectPeers(entries []Entry, localID string, reachability Reachability, evaluate func(Record) TrustResult) []PeerSnapshot {
 	peers := make([]PeerSnapshot, 0, len(entries))
 	for _, item := range entries {
-		if item.Record.Kind != "node" || item.Record.Subject == localID {
+		if item.Record.Kind() != "node" || item.Record.Subject() == localID {
 			continue
 		}
 		trust := evaluate(item.Record)
@@ -54,8 +54,8 @@ func ProjectPeers(entries []Entry, localID string, reachability Reachability, ev
 			reason = trust.Reason
 		}
 		peers = append(peers, PeerSnapshot{
-			NodeID: item.Record.Node, DeviceID: item.Record.Device,
-			Addresses: append([]string(nil), item.Record.Endpoints...),
+			NodeID:    item.Record.NodeID(),
+			Addresses: append([]string(nil), item.Record.EndpointList()...),
 			Trust:     ProjectTrust(TrustStateForResult(trust), trust), Reachability: reachabilityState,
 			Source: item.Source, LastSeenAt: item.SeenAt, State: state, Reason: reason,
 		})

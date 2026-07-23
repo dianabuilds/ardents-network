@@ -39,7 +39,7 @@ func TestDataReplicaPlacementCommitsEncryptedCopyOverPrivateWaku(t *testing.T) {
 	target := testkit.StartNode(t, replicaNodeConfig("replica-target", targetDir, discoveryPrivacy.Sender, dataPrivacy.Receiver, []string{"local://bootstrap"}, []string{sourceIdentity.PublicKey}))
 	source := testkit.StartNode(t, replicaNodeConfig("replica-source", sourceDir, discoveryPrivacy.Receiver, dataPrivacy.Sender, testkit.BootstrapEndpoints(t, target), []string{targetIdentity.PublicKey}))
 
-	testkit.ImportRecordsFromNode(t, target, source, "replica-source", func(record discoveryapi.CatalogRecordSnapshot) bool { return record.Kind == "node" })
+	testkit.ImportRecordsFromNode(t, target, source, "replica-source", func(record discoveryapi.CatalogRecordSnapshot) bool { return record.Kind() == "node" })
 	require.Equal(t, sourcePrincipal, source.Snapshot().Ident.Principal)
 	require.Equal(t, targetPrincipal, target.Snapshot().Ident.Principal)
 

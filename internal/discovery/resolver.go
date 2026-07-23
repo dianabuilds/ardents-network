@@ -139,5 +139,5 @@ func ProjectRoute(in routing.Snapshot) RouteSnapshot {
 }
 
 func routeRecord(record Record) network.RouteRecord {
-	return network.RouteRecord{Subject: record.Subject, Service: record.Service, Mode: record.Mode, Endpoints: append([]string(nil), record.Endpoints...)}
+	return network.RouteRecord{Subject: record.Subject(), Service: record.ServiceType(), Mode: record.ServiceMode(), Endpoints: append([]string(nil), record.EndpointList()...)}
 }

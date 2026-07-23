@@ -34,8 +34,8 @@ func BootstrapEndpoints(t *testing.T, n discoveryRecordsReader) []string {
 	require.NoError(t, err)
 
 	for _, record := range records {
-		if record.Kind == "node" && len(record.Endpoints) > 0 {
-			return append([]string(nil), record.Endpoints...)
+		if record.Kind() == "node" && record.Node != nil && len(record.Node.Endpoints) > 0 {
+			return append([]string(nil), record.Node.Endpoints...)
 		}
 	}
 

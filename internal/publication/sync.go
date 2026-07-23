@@ -8,7 +8,6 @@ import (
 	"ardents/internal/discovery"
 	discoverysource "ardents/internal/discovery/records"
 	identityapi "ardents/internal/identity"
-	hostingservice "ardents/internal/workload/registry"
 	"time"
 )
 
@@ -72,7 +71,7 @@ func (m *Manager) publishDesiredServicesLocked(ctx context.Context, id identitya
 	return nil
 }
 
-func (m *Manager) publicationPlanLocked(ctx context.Context) ([]hostingservice.ServiceSpec, []Denial, error) {
+func (m *Manager) publicationPlanLocked(ctx context.Context) ([]publicationCandidate, []Denial, error) {
 	if err := m.observeHostingReadinessLocked(ctx); err != nil {
 		return nil, nil, err
 	}
@@ -83,13 +82,14 @@ func (m *Manager) publicationPlanLocked(ctx context.Context) ([]hostingservice.S
 	return allowed, denied, nil
 }
 
-func (m *Manager) publishDesiredServiceLocked(id identityapi.Summary, private ed25519.PrivateKey, svc hostingservice.ServiceSpec) error {
+func (m *Manager) publishDesiredServiceLocked(id identityapi.Summary, private ed25519.PrivateKey, candidate publicationCandidate) error {
+	svc := candidate.Spec
 	return PublishLocalService(m.disco, id, private, LocalServiceSpec{
-		ID:        svc.ID,
-		Type:      svc.Type,
-		Owner:     svc.Owner,
-		Mode:      svc.Mode,
-		Endpoints: cloneStrings(svc.Endpoints),
+		ID:         svc.ID,
+		Type:       svc.Type,
+		WorkloadID: candidate.WorkloadID,
+		Mode:       svc.Mode,
+		Endpoints:  cloneStrings(svc.Endpoints),
 	})
 }
 

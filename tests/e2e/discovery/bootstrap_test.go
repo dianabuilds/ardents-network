@@ -46,7 +46,13 @@ func TestDiscoveryBootstrapsFromPeerTransport(t *testing.T) {
 
 	result := testkit.WaitForServiceMatchCount(t, 10*time.Second, local, "echo", 1)
 	require.NotEmpty(t, result.Matches)
-	requireServiceEndpoint(t, result.Matches[0].Record.Endpoints[0])
+	serviceRecord := result.Matches[0].Record
+	require.NotNil(t, serviceRecord.Service)
+	require.Nil(t, serviceRecord.Node)
+	require.Equal(t, "svc.remote.echo", serviceRecord.Service.ID)
+	require.Equal(t, "work.remote.echo", serviceRecord.Service.WorkloadID)
+	require.NotEmpty(t, serviceRecord.Service.Endpoints)
+	requireServiceEndpoint(t, serviceRecord.Service.Endpoints[0])
 	record, err := local.ResolveRecord(remote.Snapshot().Ident.Principal, "node")
 	require.NoError(t, err)
 	require.Equal(t, "usable", record.Route.Outcome)

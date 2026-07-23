@@ -20,14 +20,14 @@ func TestNodeStopWithdrawsLocalNodeRecord(t *testing.T) {
 	before, err := n.ListRecords()
 	require.NoError(t, err)
 	require.NotEmpty(t, before)
-	require.NotEmpty(t, before[0].Endpoints)
+	require.NotEmpty(t, before[0].EndpointList())
 
 	require.NoError(t, n.Stop(context.Background()))
 
 	after, err := n.ListRecords()
 	require.NoError(t, err)
 	require.NotEmpty(t, after)
-	require.Empty(t, after[0].Endpoints)
+	require.Empty(t, after[0].EndpointList())
 }
 
 func TestNodeStartSurvivesCallerContextCancellation(t *testing.T) {
@@ -58,7 +58,7 @@ func TestNodeStartSurvivesCallerContextCancellation(t *testing.T) {
 	records, err := n.ListRecords()
 	require.NoError(t, err)
 	require.NotEmpty(t, records)
-	require.NotEmpty(t, records[0].Endpoints)
+	require.NotEmpty(t, records[0].EndpointList())
 
 	require.NoError(t, n.Stop(context.Background()))
 }

@@ -45,7 +45,7 @@ func TestDataSubstrateFetchesAndResumesChunkedPayloadOverPrivateWaku(t *testing.
 
 	requesterDir := t.TempDir()
 	requester := testkit.StartNode(t, runtimeinfra.Config{
-		Name: "chunked-requester", Boot: runtimeinfra.BootConfig{Sources: append([]string(nil), records[0].Endpoints...)},
+		Name: "chunked-requester", Boot: runtimeinfra.BootConfig{Sources: append([]string(nil), records[0].EndpointList()...)},
 		Trust: runtimeinfra.TrustConfig{Anchors: []string{source.Snapshot().Ident.PublicKey}},
 		Data:  runtimeinfra.DataConfig{Dir: requesterDir}, Privacy: privacy.Receiver,
 	})

@@ -31,7 +31,7 @@ func TestPublicationPlanSeparatesAllowedAndDeniedServices(t *testing.T) {
 		}
 		return nil
 	})
-	require.Falsef(t, len(allowed) != 1 || allowed[0].ID != "svc.allowed", "allowed services = %#v, want only svc.allowed", allowed)
+	require.Falsef(t, len(allowed) != 1 || allowed[0].Spec.ID != "svc.allowed", "allowed services = %#v, want only svc.allowed", allowed)
 	require.Len(t, denied, 3)
 	require.Equal(t, "svc.denied", denied[0].ID)
 	require.Equal(t, "svc.inactive", denied[1].ID)

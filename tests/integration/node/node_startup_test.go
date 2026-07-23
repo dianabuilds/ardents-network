@@ -173,7 +173,10 @@ func TestNodeRejectsAuthoritativeMutationsWhenFailed(t *testing.T) {
 	}
 	{
 
-		_, err := n.ImportRecord(discoveryapi.CatalogRecordSnapshot{ID: "x"})
+		_, err := n.ImportRecord(discoveryapi.CatalogRecordSnapshot{
+			Version: 1,
+			Node:    &discoveryapi.CatalogNodeFactsSnapshot{Principal: "x"},
+		})
 		require.Falsef(t, err == nil || !strings.
 			Contains(err.Error(),
 				"node is failed",

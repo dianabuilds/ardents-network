@@ -31,7 +31,7 @@ func networkStatus(in domain.StatusSnapshot) *protocol.NetworkStatusSnapshot {
 func toPeerSnapshots(items []discovery.PeerSnapshot) []*protocol.PeerSnapshot {
 	out := make([]*protocol.PeerSnapshot, 0, len(items))
 	for _, item := range items {
-		out = append(out, &protocol.PeerSnapshot{NodeId: item.NodeID, DeviceId: item.DeviceID,
+		out = append(out, &protocol.PeerSnapshot{NodeId: item.NodeID,
 			Addresses: append([]string(nil), item.Addresses...), Trust: toDiscoveryTrustSnapshot(item.Trust),
 			Reachability: item.Reachability, Source: item.Source, LastSeenAt: rpc.Timestamp(item.LastSeenAt),
 			State: item.State, Reason: item.Reason})

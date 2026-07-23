@@ -1,109 +1,86 @@
 package records
 
 import (
-	identityapi "ardents/internal/identity"
-	identitykeyring "ardents/internal/identity/keyring"
 	"crypto/ed25519"
 	"encoding/base64"
 	"testing"
 	"time"
 
+	identityprincipal "ardents/internal/identity/principal"
 	"github.com/stretchr/testify/require"
 )
 
-type testIdentityStore struct {
-	principal string
-	publicKey string
-}
-
-func (s *testIdentityStore) LoadIdentity() (string, string) {
-	return s.principal, s.publicKey
-}
-
-func (s *testIdentityStore) SaveIdentity(principal string, publicKey string) error {
-	s.principal = principal
-	s.publicKey = publicKey
-	return nil
-}
-
 func TestImportDefaultsSourceToImported(t *testing.T) {
-	record, _, err := signedNodeRecord(t)
-	require.NoErrorf(t, err, "signed node record: %v", err)
-
+	record, _ := intakeNodeRecord(t, 1, time.Now().UTC())
 	entries, result, err := Import(nil, record, "", time.Now().UTC())
-	require.NoErrorf(t, err, "import record: %v", err)
-	require.Falsef(t, !result.Applied ||
-		result.
-			Outcome != "imported", "result = %#v, want applied imported", result)
-	require.Falsef(t, len(entries) !=
-		1 || entries[0].Source != "imported", "entries = %#v, want imported source", entries)
-
+	require.NoError(t, err)
+	require.True(t, result.Applied)
+	require.Equal(t, Imported, entries[0].Source)
 }
 
-func TestUpsertRejectsConflictingPublicKey(t *testing.T) {
-	record, _, err := signedNodeRecord(t)
-	require.NoErrorf(t, err, "signed node record: %v", err)
-
-	other, _, err := signedNodeRecord(t)
-	require.NoErrorf(t, err, "other signed node record: %v", err)
-
-	other.ID = record.ID
-	other.Subject = record.Subject
-	entries := []Entry{{Record: record, Source: "bootstrap", SeenAt: time.Now().UTC()}}
-	_, result, err := Upsert(entries, Entry{Record: other, Source: "bootstrap", SeenAt: time.Now().UTC()})
-	require.NoErrorf(t, err, "upsert conflict: %v", err)
-	require.Falsef(t, result.Applied ||
-		result.
-			Outcome != "rejected_conflict", "result = %#v, want rejected_conflict", result)
-
+func TestImportRejectsUnknownSourceWithoutMutation(t *testing.T) {
+	now := time.Now().UTC()
+	record, _ := intakeNodeRecord(t, 1, now)
+	before := []Entry{{Record: record.Clone(), Source: Local, SeenAt: now}}
+	got, _, err := Import(before, record, "operator-supplied", now)
+	require.Error(t, err)
+	require.Equal(t, before, got)
 }
 
-func TestUpsertRejectsStaleRecord(t *testing.T) {
-	record, key, err := signedNodeRecord(t)
-	require.NoErrorf(t, err, "signed node record: %v", err)
+func TestUpsertRejectsConflictingPublicKeyAndStaleRecord(t *testing.T) {
+	now := time.Now().UTC()
+	record, key := intakeNodeRecord(t, 1, now)
+	conflict := record.Clone()
+	conflict.Node.PublicKey = base64.StdEncoding.EncodeToString(ed25519.NewKeyFromSeed(bytesOfValue(2)).Public().(ed25519.PublicKey))
+	_, result, err := Upsert([]Entry{{Record: record}}, Entry{Record: conflict})
+	require.NoError(t, err)
+	require.False(t, result.Applied)
+	require.Equal(t, "rejected_conflict", result.Outcome)
 
-	entries := []Entry{{Record: record, Source: "bootstrap", SeenAt: time.Now().UTC()}}
-	stale := record
-	stale.IssuedAt = record.IssuedAt.Add(-time.Minute)
-	payload, err := Canonical(stale)
-	require.NoErrorf(t, err, "canonical stale record: %v", err)
-
-	stale.Signature = signRecord(key, payload)
-	_, result, err := Upsert(entries, Entry{Record: stale, Source: "bootstrap", SeenAt: time.Now().UTC()})
-	require.NoErrorf(t, err, "upsert stale: %v", err)
-	require.Falsef(t, result.Applied ||
-		result.
-			Outcome != "rejected_stale", "result = %#v, want rejected_stale", result)
-
+	stale := record.Clone()
+	stale.IssuedAt = now.Add(-time.Minute)
+	stale.ExpiresAt = stale.IssuedAt.Add(time.Hour)
+	intakeSign(t, &stale, key)
+	_, result, err = Upsert([]Entry{{Record: record}}, Entry{Record: stale})
+	require.NoError(t, err)
+	require.False(t, result.Applied)
+	require.Equal(t, "rejected_stale", result.Outcome)
 }
 
-func signedNodeRecord(t *testing.T) (Record, ed25519.PrivateKey, error) {
+func TestUpsertDoesNotMutateInputSlice(t *testing.T) {
+	now := time.Now().UTC()
+	old, _ := intakeNodeRecord(t, 1, now)
+	newer, key := intakeNodeRecord(t, 1, now.Add(time.Minute))
+	intakeSign(t, &newer, key)
+	entries := []Entry{{Record: old}}
+	updated, result, err := Upsert(entries, Entry{Record: newer})
+	require.NoError(t, err)
+	require.True(t, result.Applied)
+	require.Equal(t, old.IssuedAt, entries[0].Record.IssuedAt)
+	require.Equal(t, newer.IssuedAt, updated[0].Record.IssuedAt)
+}
+
+func intakeNodeRecord(t *testing.T, seed byte, issued time.Time) (Record, ed25519.PrivateKey) {
 	t.Helper()
-
-	st := &testIdentityStore{}
-	ids := identityapi.NewService()
-	summary, key, err := ids.EnsureNode(st, identitykeyring.NewKeyStoreInDir(t.TempDir()))
-	if err != nil {
-		return Record{}, nil, err
-	}
-	record := Record{
-		ID:        summary.Principal + ":node",
-		Kind:      "node",
-		Subject:   summary.Principal,
-		Node:      summary.Principal,
-		PublicKey: summary.PublicKey,
-		Endpoints: []string{"tcp://bootstrap"},
-		IssuedAt:  time.Now().UTC(),
-		ExpiresAt: time.Now().UTC().Add(time.Hour),
-	}
-	payload, err := Canonical(record)
-	if err != nil {
-		return Record{}, nil, err
-	}
-	record.Signature = signRecord(key, payload)
-	return record, key, nil
+	key := ed25519.NewKeyFromSeed(bytesOfValue(seed))
+	principal, err := identityprincipal.FromEd25519PublicKey(key.Public().(ed25519.PublicKey))
+	require.NoError(t, err)
+	record := Record{Version: Version, Node: &NodeFacts{Principal: principal, PublicKey: base64.StdEncoding.EncodeToString(key.Public().(ed25519.PublicKey)), Endpoints: []string{"tcp://node:9000"}}, IssuedAt: issued, ExpiresAt: issued.Add(time.Hour)}
+	intakeSign(t, &record, key)
+	return record, key
 }
 
-func signRecord(key ed25519.PrivateKey, payload []byte) string {
-	return base64.StdEncoding.EncodeToString(ed25519.Sign(key, payload))
+func intakeSign(t *testing.T, record *Record, key ed25519.PrivateKey) {
+	t.Helper()
+	payload, err := Canonical(*record)
+	require.NoError(t, err)
+	record.Signature = base64.StdEncoding.EncodeToString(ed25519.Sign(key, payload))
+}
+
+func bytesOfValue(value byte) []byte {
+	seed := make([]byte, ed25519.SeedSize)
+	for i := range seed {
+		seed[i] = value
+	}
+	return seed
 }

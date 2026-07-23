@@ -11,9 +11,14 @@ import (
 	"ardents/internal/workload/registry"
 )
 
+type publicationCandidate struct {
+	Spec       registry.ServiceSpec
+	WorkloadID string
+}
+
 func publicationGatePlan(items []registry.ServiceStatus, network networkreadiness.ReachabilitySnapshot,
-	allow PolicyFunc) ([]registry.ServiceSpec, []Denial) {
-	allowed := make([]registry.ServiceSpec, 0, len(items))
+	allow PolicyFunc) ([]publicationCandidate, []Denial) {
+	allowed := make([]publicationCandidate, 0, len(items))
 	denied := make([]Denial, 0)
 	for _, item := range items {
 		if item.Spec.Mode != "NetworkPublished" {
@@ -23,7 +28,7 @@ func publicationGatePlan(items []registry.ServiceStatus, network networkreadines
 			denied = append(denied, Denial{ID: item.Spec.ID, Err: err})
 			continue
 		}
-		allowed = append(allowed, cloneServiceSpec(item.Spec))
+		allowed = append(allowed, publicationCandidate{Spec: cloneServiceSpec(item.Spec), WorkloadID: item.Readiness.WorkloadID})
 	}
 	return allowed, denied
 }

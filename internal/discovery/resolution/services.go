@@ -9,16 +9,16 @@ import (
 func FindService(entries []discoveryrecord.Entry, serviceType string, now time.Time) []discoveryrecord.Entry {
 	out := make([]discoveryrecord.Entry, 0)
 	for _, item := range entries {
-		if item.Record.Kind != "service" {
+		if item.Record.Kind() != discoveryrecord.KindService {
 			continue
 		}
 		if isWithdrawnService(item.Record) {
 			continue
 		}
-		if item.Record.Service != serviceType {
+		if item.Record.ServiceType() != serviceType {
 			continue
 		}
-		if !item.Record.ExpiresAt.IsZero() && now.After(item.Record.ExpiresAt) {
+		if !recordActiveAt(item.Record, now) {
 			continue
 		}
 		out = append(out, item)
@@ -27,5 +27,5 @@ func FindService(entries []discoveryrecord.Entry, serviceType string, now time.T
 }
 
 func isWithdrawnService(record discoveryrecord.Record) bool {
-	return record.Kind == "service" && len(record.Endpoints) == 0
+	return record.Kind() == discoveryrecord.KindService && len(record.EndpointList()) == 0
 }

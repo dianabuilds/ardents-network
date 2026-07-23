@@ -177,21 +177,35 @@ message CapabilitiesSnapshot {
   map<string, bool> features = 3;
 }
 
+message NodeDiscoveryFacts {
+  string principal = 1;
+  string public_key = 2;
+  repeated string endpoints = 3;
+}
+
+message ServiceDiscoveryFacts {
+  string service_id = 1;
+  string service_type = 2;
+  string node_principal = 3;
+  string workload_id = 4;
+  string mode = 5;
+  string public_key = 6;
+  repeated string endpoints = 7;
+}
+
 message DiscoveryRecord {
-  string id = 1;
-  string kind = 2;
-  string subject = 3;
-  string node = 4;
-  string device = 5;
-  string owner = 6;
-  string service = 7;
-  string mode = 8;
-  string public_key = 9;
-  repeated string endpoints = 10;
-  google.protobuf.Timestamp issued_at = 11;
-  google.protobuf.Timestamp expires_at = 12;
-  string signature = 13;
-  string source = 14;
+  reserved 1 to 14;
+  reserved "id", "kind", "subject", "node", "device", "owner", "service", "mode", "public_key", "endpoints", "issued_at", "expires_at", "signature", "source";
+
+  uint32 version = 15;
+  oneof facts {
+    NodeDiscoveryFacts node_facts = 16;
+    ServiceDiscoveryFacts service_facts = 17;
+  }
+  google.protobuf.Timestamp issued_at_v1 = 18;
+  google.protobuf.Timestamp expires_at_v1 = 19;
+  string signature_v1 = 20;
+  string source_v1 = 21;
 }
 
 message TransportTarget {
@@ -370,8 +384,10 @@ message NetworkStatusSnapshot {
 }
 
 message PeerSnapshot {
+  reserved 2;
+  reserved "device_id";
+
   string node_id = 1;
-  string device_id = 2;
   repeated string addresses = 3;
   TrustSnapshot trust = 4;
   string reachability = 5;

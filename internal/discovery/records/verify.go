@@ -10,41 +10,59 @@ import (
 	identityprincipal "ardents/internal/identity/principal"
 )
 
+var recordDomain = []byte("ardents:discovery-record:v1\x00")
+
 func Canonical(record Record) ([]byte, error) {
-	return json.Marshal(struct {
-		ID        string    `json:"id"`
-		Kind      string    `json:"kind"`
-		Subject   string    `json:"subject"`
-		Node      string    `json:"node"`
-		Device    string    `json:"device"`
-		Owner     string    `json:"owner,omitempty"`
-		Service   string    `json:"service,omitempty"`
-		Mode      string    `json:"mode,omitempty"`
-		PublicKey string    `json:"public_key"`
-		Endpoints []string  `json:"endpoints"`
-		IssuedAt  time.Time `json:"issued_at"`
-		ExpiresAt time.Time `json:"expires_at"`
-	}{
-		ID:        record.ID,
-		Kind:      record.Kind,
-		Subject:   record.Subject,
-		Node:      record.Node,
-		Device:    record.Device,
-		Owner:     record.Owner,
-		Service:   record.Service,
-		Mode:      record.Mode,
-		PublicKey: record.PublicKey,
-		Endpoints: record.Endpoints,
-		IssuedAt:  record.IssuedAt,
-		ExpiresAt: record.ExpiresAt,
-	})
+	raw, err := json.Marshal(struct {
+		Version   uint32        `json:"version"`
+		Node      *NodeFacts    `json:"node,omitempty"`
+		Service   *ServiceFacts `json:"service,omitempty"`
+		IssuedAt  time.Time     `json:"issued_at"`
+		ExpiresAt time.Time     `json:"expires_at"`
+	}{Version: record.Version, Node: record.Node, Service: record.Service, IssuedAt: record.IssuedAt, ExpiresAt: record.ExpiresAt})
+	if err != nil {
+		return nil, err
+	}
+	return append(append([]byte(nil), recordDomain...), raw...), nil
 }
 
 func Validate(record Record) error {
-	if err := validateRequiredFields(record); err != nil {
+	return ValidateAt(record, time.Now().UTC())
+}
+
+func ValidateAt(record Record, now time.Time) error {
+	if err := validateSignedRecord(record); err != nil {
 		return err
 	}
-	if err := validateAuthority(record); err != nil {
+	if now.Before(record.IssuedAt) {
+		return errors.New("record is not yet valid")
+	}
+	if !record.ExpiresAt.After(now) {
+		return errors.New("record expired")
+	}
+	return nil
+}
+
+// ValidateRetained verifies durable authority without rejecting a record only
+// because it expired while the Node was stopped.
+func ValidateRetained(record Record) error {
+	return validateSignedRecord(record)
+}
+
+func validateSignedRecord(record Record) error {
+	if record.Version != Version {
+		return errors.New("record version is unsupported")
+	}
+	if (record.Node == nil) == (record.Service == nil) {
+		return errors.New("record must contain exactly one facts body")
+	}
+	if record.IssuedAt.IsZero() || record.ExpiresAt.IsZero() || !record.ExpiresAt.After(record.IssuedAt) {
+		return errors.New("record validity interval is invalid")
+	}
+	if record.Signature == "" {
+		return errors.New("record signature is required")
+	}
+	if err := validateFacts(record); err != nil {
 		return err
 	}
 	publicKey, signature, err := decodeSignatureInputs(record)
@@ -61,63 +79,69 @@ func Validate(record Record) error {
 	return nil
 }
 
-func validateRequiredFields(record Record) error {
-	switch {
-	case record.ID == "":
-		return errors.New("record id is required")
-	case record.Kind == "":
-		return errors.New("record kind is required")
-	case record.Subject == "":
-		return errors.New("record subject is required")
-	case record.PublicKey == "":
-		return errors.New("record public key is required")
-	case record.Signature == "":
-		return errors.New("record signature is required")
+func validateFacts(record Record) error {
+	if record.Node != nil {
+		if record.Node.Principal.String() == "" {
+			return errors.New("node Principal is required")
+		}
+		if err := validateAuthority(record.Node.Principal, record.Node.PublicKey); err != nil {
+			return err
+		}
+		return validateEndpoints(record.Node.Endpoints)
+	}
+	facts := record.Service
+	if !validResourcePart(string(facts.ID)) || !validResourcePart(facts.Type) || !validResourcePart(string(facts.Workload)) || !validResourcePart(facts.Mode) {
+		return errors.New("service discovery facts are invalid")
+	}
+	if facts.NodePrincipal.String() == "" {
+		return errors.New("service Node Principal is required")
+	}
+	if err := validateAuthority(facts.NodePrincipal, facts.PublicKey); err != nil {
+		return err
+	}
+	return validateEndpoints(facts.Endpoints)
+}
+
+func validateAuthority(principal identityprincipal.ID, encodedPublic string) error {
+	expected, err := identityprincipal.FromPublicKey(encodedPublic)
+	if err != nil {
+		return err
+	}
+	if expected != principal.String() {
+		return errors.New("record Node Principal does not match signing identity")
 	}
 	return nil
 }
 
-func validateAuthority(record Record) error {
-	expectedPrincipal, err := identityprincipal.FromPublicKey(record.PublicKey)
-	if err != nil {
-		return err
-	}
-	if record.Node != expectedPrincipal {
-		return errors.New("record node does not match signing identity")
-	}
-	if record.Kind != "node" {
-		return validateExpiry(record)
-	}
-	if record.Subject != expectedPrincipal {
-		return errors.New("record subject does not match signing identity")
-	}
-	if record.ID != expectedPrincipal+":node" {
-		return errors.New("record id does not match signing identity")
-	}
-	return validateExpiry(record)
-}
-
-func validateExpiry(record Record) error {
-	if !record.ExpiresAt.IsZero() && !record.ExpiresAt.After(time.Now().UTC()) {
-		return errors.New("record expired")
+func validateEndpoints(endpoints []string) error {
+	seen := make(map[string]struct{}, len(endpoints))
+	for _, endpoint := range endpoints {
+		if !validResourcePart(endpoint) {
+			return errors.New("record endpoint is invalid")
+		}
+		if _, duplicate := seen[endpoint]; duplicate {
+			return errors.New("record endpoint is duplicated")
+		}
+		seen[endpoint] = struct{}{}
 	}
 	return nil
 }
 
 func decodeSignatureInputs(record Record) (ed25519.PublicKey, []byte, error) {
-	publicKey, err := base64.StdEncoding.DecodeString(record.PublicKey)
-	if err != nil {
+	encodedPublic := record.PublicKeyText()
+	publicKey, err := base64.StdEncoding.DecodeString(encodedPublic)
+	if err != nil || base64.StdEncoding.EncodeToString(publicKey) != encodedPublic {
 		return nil, nil, errors.New("record public key is invalid")
 	}
 	if len(publicKey) != ed25519.PublicKeySize {
 		return nil, nil, errors.New("record public key length is invalid")
 	}
 	signature, err := base64.StdEncoding.DecodeString(record.Signature)
-	if err != nil {
+	if err != nil || base64.StdEncoding.EncodeToString(signature) != record.Signature {
 		return nil, nil, errors.New("record signature is invalid")
 	}
 	if len(signature) != ed25519.SignatureSize {
 		return nil, nil, errors.New("record signature length is invalid")
 	}
-	return publicKey, signature, nil
+	return ed25519.PublicKey(publicKey), signature, nil
 }
