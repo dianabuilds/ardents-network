@@ -227,8 +227,7 @@ func printBlobSummary(w io.Writer, item *ardentsv1.BlobSnapshot) {
 	if item == nil {
 		return
 	}
-	output.KV(w, "blob", item.GetId())
-	output.KV(w, "  cid", item.GetCid())
+	output.KV(w, "blob", item.GetReference())
 	output.KV(w, "  media_type", item.GetMediaType())
 	output.KV(w, "  state", item.GetState())
 	output.KV(w, "  retention", item.GetRetention())

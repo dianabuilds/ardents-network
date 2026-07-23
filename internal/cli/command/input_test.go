@@ -21,7 +21,8 @@ func TestParseFileArgRequiresFileFlag(t *testing.T) {
 
 func TestLoadProtoJSONReadsFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "blob.json")
-	data := []byte(`{"id":"blob-1","state":"available-local","createdAt":"1970-01-01T00:00:01Z"}`)
+	reference := "bafkreibm6jg3ux5qumhcn2b3flc3tyu6dmlb4xa7u5bf44yegnrjhc4yeq"
+	data := []byte(`{"reference":"` + reference + `","state":"available-local","createdAt":"1970-01-01T00:00:01Z"}`)
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
@@ -30,7 +31,7 @@ func TestLoadProtoJSONReadsFile(t *testing.T) {
 	if err := LoadProtoJSON(nil, path, msg); err != nil {
 		t.Fatalf("loadProtoJSON() error = %v", err)
 	}
-	if msg.GetId() != "blob-1" || msg.GetState() != "available-local" {
+	if msg.GetReference() != reference || msg.GetState() != "available-local" {
 		t.Fatalf("msg = %+v", msg)
 	}
 	if got := msg.GetCreatedAt(); got == nil || !got.AsTime().Equal(time.Unix(1, 0).UTC()) {

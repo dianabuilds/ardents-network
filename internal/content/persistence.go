@@ -20,7 +20,7 @@ type persistedContent struct {
 	BlobOwnership persistedBlobOwnership                `json:"blob_ownership"`
 }
 
-const contentSchemaVersion = 1
+const contentSchemaVersion = 2
 const blobOwnershipVersion = 1
 
 type persistedBlobOwnership struct {

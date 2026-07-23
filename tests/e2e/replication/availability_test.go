@@ -61,16 +61,16 @@ func TestEncryptedAvailabilitySurvivesPeerLossRepairAndOwnerPayloadLoss(t *testi
 	require.NotContains(t, commitmentPeers(repaired), lost.TargetNode.String())
 	assertForeignCopiesAreCiphertext(t, fixture, repaired)
 
-	_, err := fixture.owner.DropBlob(fixture.blob.ID)
+	_, err := fixture.owner.DropBlob(fixture.blob.Reference.String())
 	require.NoError(t, err)
 	fetchCtx, fetchCancel := context.WithTimeout(t.Context(), 35*time.Second)
-	fetched, err := fixture.owner.FetchBlob(fetchCtx, fixture.blob.ID)
+	fetched, err := fixture.owner.FetchBlob(fetchCtx, fixture.blob.Reference.String())
 	fetchCancel()
 	require.NoError(t, err)
 	require.True(t, fetched.Encrypted)
 	ownerStore := appdata.NewInDir(fixture.ownerDir)
 	require.NoError(t, ownerStore.Load())
-	plaintext, err := ownerStore.DecryptBlobPayload(fixture.blob.ID, fixture.key)
+	plaintext, err := ownerStore.DecryptBlobPayload(fixture.blob.Reference.String(), fixture.key)
 	require.NoError(t, err)
 	require.Equal(t, fixture.plaintext, plaintext)
 	reconcileAvailability(t, fixture.owner)
@@ -195,7 +195,7 @@ func publishAvailabilityManifest(t *testing.T, fixture availabilityFixture) appd
 	t.Helper()
 	root, err := fixture.owner.PublishManifest(appdata.Manifest{
 		Kind: "blob-set", Encrypted: true, Retention: "durable",
-		Refs: []appdata.Ref{{Kind: "blob", ID: fixture.blob.ID}},
+		Refs: []appdata.Ref{{Kind: "blob", ID: fixture.blob.Reference.String()}},
 	})
 	require.NoError(t, err)
 	return root
@@ -249,11 +249,11 @@ func lossCommitment(items []appreplication.ReplicaCommitment, bootstrapPeer stri
 func assertForeignCopiesAreCiphertext(t *testing.T, fixture availabilityFixture, commitments []appreplication.ReplicaCommitment) {
 	t.Helper()
 	for _, commitment := range commitments {
-		raw, err := os.ReadFile(e2eReplicaPayloadPath(fixture.peerDirs[commitment.TargetNode.String()], fixture.blob.ID))
+		raw, err := os.ReadFile(e2eReplicaPayloadPath(fixture.peerDirs[commitment.TargetNode.String()], fixture.blob.Reference.String()))
 		require.NoError(t, err)
 		require.NotEqual(t, fixture.plaintext, raw)
 		require.False(t, bytes.Contains(raw, fixture.plaintext))
-		stored, ok := testkit.Content(fixture.peers[commitment.TargetNode.String()]).GetBlob(fixture.blob.ID)
+		stored, ok := testkit.Content(fixture.peers[commitment.TargetNode.String()]).GetBlob(fixture.blob.Reference.String())
 		require.True(t, ok)
 		require.True(t, stored.Encrypted)
 	}

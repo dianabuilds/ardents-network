@@ -30,8 +30,7 @@ func TestFetchRemoteBlobToLocalCopy(t *testing.T) {
 	{
 
 		_, err := target.AnnounceRemoteBlob(Blob{
-			ID:        published.ID,
-			CID:       published.CID,
+			Reference: published.Reference,
 			MediaType: published.MediaType,
 			Hash:      published.Hash,
 			Encrypted: published.Encrypted,
@@ -39,12 +38,12 @@ func TestFetchRemoteBlobToLocalCopy(t *testing.T) {
 		require.NoErrorf(t, err, "announce remote blob: %v", err)
 	}
 
-	fetched, err := target.FetchBlob(published.ID, source)
+	fetched, err := target.FetchBlob(published.Reference.String(), source)
 	require.NoErrorf(t, err, "fetch blob: %v", err)
 	require.Falsef(t, fetched.State !=
 		"available-local", "state = %q, want available-local", fetched.State)
 
-	payload, err := target.GetBlobPayload(published.ID)
+	payload, err := target.GetBlobPayload(published.Reference.String())
 	require.NoErrorf(t, err, "target payload: %v", err)
 	require.Falsef(t, string(payload) != "from source", "payload = %q, want from source", string(payload))
 
@@ -77,16 +76,16 @@ func TestFetchEncryptedRemoteBlobPreservesCiphertext(t *testing.T) {
 		require.NoErrorf(t, err, "announce remote blob: %v", err)
 	}
 
-	fetched, err := target.FetchBlob(published.ID, source)
+	fetched, err := target.FetchBlob(published.Reference.String(), source)
 	require.NoErrorf(t, err, "fetch blob: %v", err)
 	require.True(t, fetched.Encrypted, "expected encrypted fetched blob")
 
-	raw, err := target.GetBlobPayload(published.ID)
+	raw, err := target.GetBlobPayload(published.Reference.String())
 	require.NoErrorf(t, err, "target raw payload: %v", err)
 	require.False(t, string(raw) ==
 		"encrypted source", "expected fetched payload to remain ciphertext")
 
-	plaintext, err := target.DecryptBlobPayload(published.ID, key)
+	plaintext, err := target.DecryptBlobPayload(published.Reference.String(), key)
 	require.NoErrorf(t, err, "decrypt fetched blob: %v", err)
 	require.Falsef(t, string(plaintext) != "encrypted source", "plaintext = %q, want encrypted source", string(plaintext))
 
@@ -116,7 +115,7 @@ func TestPeerAssistedReServingAfterFetch(t *testing.T) {
 	}
 	{
 
-		_, err := peerOne.FetchBlob(blob.ID, source)
+		_, err := peerOne.FetchBlob(blob.Reference.String(), source)
 		require.NoErrorf(t, err, "peer one fetch: %v", err)
 	}
 
@@ -132,11 +131,11 @@ func TestPeerAssistedReServingAfterFetch(t *testing.T) {
 	}
 	{
 
-		_, err := peerTwo.FetchBlob(blob.ID, peerOne)
+		_, err := peerTwo.FetchBlob(blob.Reference.String(), peerOne)
 		require.NoErrorf(t, err, "peer two fetch from peer one: %v", err)
 	}
 
-	payload, err := peerTwo.GetBlobPayload(blob.ID)
+	payload, err := peerTwo.GetBlobPayload(blob.Reference.String())
 	require.NoErrorf(t, err, "peer two payload: %v", err)
 	require.Falsef(t, string(payload) != "shared by peers", "payload = %q, want shared by peers", string(payload))
 
@@ -155,7 +154,7 @@ func TestRetentionUsesConfiguredDefaultTTLs(t *testing.T) {
 	local, err := svc.StoreBlob(Blob{MediaType: "text/plain"}, []byte("local default ttl"))
 	require.NoErrorf(t, err, "store local blob: %v", err)
 
-	retained, err := svc.RetainBlob(local.ID, time.Time{})
+	retained, err := svc.RetainBlob(local.Reference.String(), time.Time{})
 	require.NoErrorf(t, err, "retain local blob: %v", err)
 	require.False(t, retained.ExpiresAt.
 		IsZero(), "expected default local retention expiry")
@@ -215,8 +214,7 @@ func TestRelayRetentionRefreshDoesNotDoubleCountSameBlob(t *testing.T) {
 	require.NoErrorf(t, err, "retain first relay blob: %v", err)
 
 	refreshed, err := svc.RetainRelayBlob(Blob{
-		ID:        first.ID,
-		CID:       first.CID,
+		Reference: first.Reference,
 		Hash:      first.Hash,
 		MediaType: first.MediaType,
 		Encrypted: true,
@@ -243,7 +241,7 @@ func TestBlobSourceTruthPersistsAndIncludesLocalSource(t *testing.T) {
 	blob, err := svc.StoreBlob(Blob{MediaType: "text/plain"}, []byte("source-truth"))
 	require.NoError(t, err)
 
-	observed, err := svc.ObserveBlobSource(blob.ID, BlobSourceRecord{
+	observed, err := svc.ObserveBlobSource(blob.Reference.String(), BlobSourceRecord{
 		NodeID:    "p_remote",
 		Trust:     SourceTrust{State: "ready", Outcome: "usable", Valid: true, Trusted: true, Usable: true},
 		Usable:    true,
@@ -251,16 +249,16 @@ func TestBlobSourceTruthPersistsAndIncludesLocalSource(t *testing.T) {
 		Reason:    "trusted remote source answered blob fetch",
 	})
 	require.NoError(t, err)
-	require.Equal(t, blob.ID, observed.BlobID)
+	require.True(t, blob.Reference.Equal(observed.ContentReference))
 
-	sources := svc.ListBlobSources(blob.ID)
+	sources := svc.ListBlobSources(blob.Reference.String())
 	require.Len(t, sources, 2)
 
 	restored := NewInDir(dir)
 	restored.SetLocalNodeID("p_local")
 	require.NoError(t, restored.Load())
 
-	persisted := restored.ListBlobSources(blob.ID)
+	persisted := restored.ListBlobSources(blob.Reference.String())
 	require.Len(t, persisted, 2)
 	require.Equal(t, "p_local", persisted[0].NodeID)
 	require.Equal(t, "local", persisted[0].Transport)
@@ -276,14 +274,13 @@ func TestListBlobSourcesMarksStaleRemoteSourcesUnusable(t *testing.T) {
 	require.NoError(t, svc.Load())
 
 	blob, err := svc.AnnounceRemoteBlob(Blob{
-		ID:        "blob-stale-source",
-		CID:       "blob-stale-source",
+		Reference: testContentReference(t, "blob-stale-source"),
 		MediaType: "application/octet-stream",
 		State:     "available-remote",
 	})
 	require.NoError(t, err)
 
-	_, err = svc.ObserveBlobSource(blob.ID, BlobSourceRecord{
+	_, err = svc.ObserveBlobSource(blob.Reference.String(), BlobSourceRecord{
 		NodeID:     "p_remote",
 		Trust:      SourceTrust{State: "ready", Outcome: "usable", Valid: true, Trusted: true, Usable: true},
 		Usable:     true,
@@ -293,7 +290,7 @@ func TestListBlobSourcesMarksStaleRemoteSourcesUnusable(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	sources := svc.ListBlobSources(blob.ID)
+	sources := svc.ListBlobSources(blob.Reference.String())
 	require.Len(t, sources, 1)
 	require.Equal(t, "p_remote", sources[0].NodeID)
 	require.False(t, sources[0].Usable)
@@ -316,7 +313,7 @@ func TestContentServiceExposesCohesiveLocalDomainFlow(t *testing.T) {
 		Owner: contentTestOwner(0x32),
 		BlobRefs: []Ref{{
 			Kind: "blob",
-			ID:   blob.ID,
+			ID:   blob.Reference.String(),
 		}},
 	})
 	require.NoError(t, err)
@@ -325,16 +322,16 @@ func TestContentServiceExposesCohesiveLocalDomainFlow(t *testing.T) {
 		Owner: contentTestOwner(0x32),
 		Refs: []Ref{{
 			Kind: "blob",
-			ID:   blob.ID,
+			ID:   blob.Reference.String(),
 		}},
 	})
 	require.NoError(t, err)
 
-	retained, err := svc.RetainBlob(blob.ID, time.Now().UTC().Add(time.Hour))
+	retained, err := svc.RetainBlob(blob.Reference.String(), time.Now().UTC().Add(time.Hour))
 	require.NoError(t, err)
 	require.Equal(t, "retained-temporary", retained.State)
 
-	source, err := svc.ObserveBlobSource(blob.ID, BlobSourceRecord{
+	source, err := svc.ObserveBlobSource(blob.Reference.String(), BlobSourceRecord{
 		NodeID:    "p_remote",
 		Trust:     SourceTrust{State: "ready", Outcome: "usable", Valid: true, Trusted: true, Usable: true},
 		Usable:    true,
@@ -342,7 +339,7 @@ func TestContentServiceExposesCohesiveLocalDomainFlow(t *testing.T) {
 		Reason:    "trusted remote source answered blob fetch",
 	})
 	require.NoError(t, err)
-	require.Equal(t, blob.ID, source.BlobID)
+	require.True(t, blob.Reference.Equal(source.ContentReference))
 
 	inventory := svc.Inventory()
 	require.Equal(t, 1, inventory.Objects)
@@ -356,5 +353,5 @@ func TestContentServiceExposesCohesiveLocalDomainFlow(t *testing.T) {
 	storedManifest, ok := svc.GetManifest(manifest.ID)
 	require.True(t, ok)
 	require.Equal(t, manifest.ID, storedManifest.ID)
-	require.Len(t, svc.ListBlobSources(blob.ID), 1)
+	require.Len(t, svc.ListBlobSources(blob.Reference.String()), 1)
 }

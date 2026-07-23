@@ -72,14 +72,14 @@ func TestDataSubstrateRemoteFetchAndUnavailableTruth(t *testing.T) {
 
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		blob, err := trusted.FetchBlob(ctx, stored.ID)
+		blob, err := trusted.FetchBlob(ctx, stored.Reference.String())
 		require.NoError(t, err)
-		require.Equal(t, stored.ID, blob.ID)
+		require.Equal(t, stored.Reference.String(), blob.Reference.String())
 		require.True(t, blob.Encrypted)
 	})
 
 	scenario.Assert("trusted requester keeps encrypted local truth and inventory", func(t *testing.T) {
-		blob, ok := testkit.Content(trusted).GetBlob(stored.ID)
+		blob, ok := testkit.Content(trusted).GetBlob(stored.Reference.String())
 		require.True(t, ok)
 		require.True(t, blob.Encrypted)
 
@@ -89,7 +89,7 @@ func TestDataSubstrateRemoteFetchAndUnavailableTruth(t *testing.T) {
 
 		requesterStore := appdata.NewInDir(trustedDir)
 		require.NoError(t, requesterStore.Load())
-		plaintext, err := requesterStore.DecryptBlobPayload(stored.ID, key)
+		plaintext, err := requesterStore.DecryptBlobPayload(stored.Reference.String(), key)
 		require.NoError(t, err)
 		require.Equal(t, "network payload", string(plaintext))
 	})
@@ -111,7 +111,7 @@ func TestDataSubstrateRemoteFetchAndUnavailableTruth(t *testing.T) {
 
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
-		_, err = untrusted.FetchBlob(ctx, stored.ID)
+		_, err = untrusted.FetchBlob(ctx, stored.Reference.String())
 		require.Error(t, err)
 		require.False(t, errors.Is(err, context.DeadlineExceeded))
 		require.NotContains(t, err.Error(), context.DeadlineExceeded.Error())
@@ -120,7 +120,7 @@ func TestDataSubstrateRemoteFetchAndUnavailableTruth(t *testing.T) {
 		require.Equal(t, 0, inventory.LocalBlobs)
 		require.Equal(t, 0, inventory.Encrypted)
 
-		_, ok := testkit.Content(untrusted).GetBlob(stored.ID)
+		_, ok := testkit.Content(untrusted).GetBlob(stored.Reference.String())
 		require.False(t, ok)
 	})
 }

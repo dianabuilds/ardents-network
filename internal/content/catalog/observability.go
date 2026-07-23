@@ -13,14 +13,14 @@ type SourceTrust struct {
 }
 
 type BlobSourceRecord struct {
-	BlobID     string      `json:"blob_id"`
-	NodeID     string      `json:"node_id,omitempty"`
-	ServiceID  string      `json:"service_id,omitempty"`
-	Trust      SourceTrust `json:"trust"`
-	Usable     bool        `json:"usable"`
-	Transport  string      `json:"transport,omitempty"`
-	LastSeenAt time.Time   `json:"last_seen_at"`
-	Reason     string      `json:"reason,omitempty"`
+	ContentReference ContentReference `json:"content_reference"`
+	NodeID           string           `json:"node_id,omitempty"`
+	ServiceID        string           `json:"service_id,omitempty"`
+	Trust            SourceTrust      `json:"trust"`
+	Usable           bool             `json:"usable"`
+	Transport        string           `json:"transport,omitempty"`
+	LastSeenAt       time.Time        `json:"last_seen_at"`
+	Reason           string           `json:"reason,omitempty"`
 }
 
 type Inventory struct {

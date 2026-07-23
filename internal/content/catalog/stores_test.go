@@ -4,9 +4,13 @@ import "testing"
 
 func TestStoreSnapshotsDoNotAliasMutableState(t *testing.T) {
 	blobs := NewBlobStore()
-	blobs.Put(Blob{ID: "blob-1", State: "stored"})
-	delete(blobs.Snapshot(), "blob-1")
-	if _, ok := blobs.Get("blob-1"); !ok {
+	reference, err := ParseContentReference("bafkreibm6jg3ux5qumhcn2b3flc3tyu6dmlb4xa7u5bf44yegnrjhc4yeq")
+	if err != nil {
+		t.Fatal(err)
+	}
+	blobs.Put(Blob{Reference: reference, State: "stored"})
+	delete(blobs.Snapshot(), reference.String())
+	if _, ok := blobs.Get(reference.String()); !ok {
 		t.Fatal("snapshot deletion mutated blob store")
 	}
 

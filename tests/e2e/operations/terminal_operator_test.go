@@ -343,9 +343,9 @@ func TestTerminalServiceAndDataSurfaceReadiness(t *testing.T) {
 	})
 
 	scenario.Step("terminal executes data fetch flow and exposes transfer truth", func(t *testing.T) {
-		fetch := terminal.run(t, context.Background(), "data", "blobs", "fetch", stored.ID)
+		fetch := terminal.run(t, context.Background(), "data", "blobs", "fetch", stored.Reference.String())
 		require.Contains(t, fetch.stdout, "data blob fetch")
-		require.Contains(t, fetch.stdout, "blob: "+stored.ID)
+		require.Contains(t, fetch.stdout, "blob: "+stored.Reference.String())
 
 		testkit.WaitForCondition(t, 10*time.Second, "terminal transfer becomes completed", func() (bool, string) {
 			list := terminal.run(t, context.Background(), "data", "transfers", "list")
@@ -357,7 +357,7 @@ func TestTerminalServiceAndDataSurfaceReadiness(t *testing.T) {
 
 		transfers, err := terminal.client.ListTransfers(context.Background(), testkit.AuthorizedRequest(&ardentsv1.ListTransfersRequest{}))
 		require.NoError(t, err)
-		transfer := findTransferByResource(t, transfers.Msg.GetTransfers(), stored.ID)
+		transfer := findTransferByResource(t, transfers.Msg.GetTransfers(), stored.Reference.String())
 
 		getTransfer := terminal.run(t, context.Background(), "data", "transfers", "get", transfer.GetId())
 		require.Contains(t, getTransfer.stdout, "data transfer")

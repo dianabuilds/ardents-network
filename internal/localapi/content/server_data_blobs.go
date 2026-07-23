@@ -11,7 +11,11 @@ import (
 
 func (h *QueryHandler) PublishBlob(ctx context.Context, req *connect.Request[ardentsv1.PublishBlobRequest]) (*connect.Response[ardentsv1.BlobSnapshot], error) {
 	return rpc.RespondContext(ctx, func(rpc.Call) (*ardentsv1.BlobSnapshot, *rpc.Error) {
-		res, err := h.commands.PublishBlob(fromBlobSnapshot(req.Msg.GetBlob()))
+		command, err := fromBlobSnapshot(req.Msg.GetBlob())
+		if err != nil {
+			return nil, rpc.MapError("data", "data.publish_blob", "invalid_reference", "data publish blob reference is invalid", false, err)
+		}
+		res, err := h.commands.PublishBlob(command)
 		if err != nil {
 			return nil, rpc.MapError("data", "data.publish_blob", "publish_failed", "data publish blob failed", false, err)
 		}

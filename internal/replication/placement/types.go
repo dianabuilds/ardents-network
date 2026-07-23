@@ -16,7 +16,7 @@ const (
 	CommitmentCorrupt             = "corrupt"
 	CommitmentRevoked             = "revoked"
 	CommitmentExpired             = "expired"
-	ReplicaProtocolVersion uint32 = 1
+	ReplicaProtocolVersion uint32 = 2
 	MaxInlineReplicaBytes  int64  = 64*1024 + 16
 
 	ReasonQuota       = "quota_refused"
@@ -30,15 +30,14 @@ const (
 )
 
 type ReservationOffer struct {
-	OperationID     string
-	ProtocolVersion uint32
-	IntentVersion   uint64
-	BlobID          string
-	CID             string
-	EncryptedSize   int64
-	RequestedLease  time.Duration
-	ExpiresAt       time.Time
-	Nonce           string
+	OperationID      string                 `json:"operation_id"`
+	ProtocolVersion  uint32                 `json:"protocol_version"`
+	IntentVersion    uint64                 `json:"intent_version"`
+	ContentReference model.ContentReference `json:"content_reference"`
+	EncryptedSize    int64                  `json:"encrypted_size"`
+	RequestedLease   time.Duration          `json:"requested_lease"`
+	ExpiresAt        time.Time              `json:"expires_at"`
+	Nonce            string                 `json:"nonce"`
 }
 
 type PeerAuthorization struct {
@@ -50,11 +49,11 @@ type PeerAuthorization struct {
 }
 
 type ReservationResult struct {
-	OperationID string
-	Status      string
-	Reason      string
-	Token       string
-	ExpiresAt   time.Time
+	OperationID string    `json:"operation_id"`
+	Status      string    `json:"status"`
+	Reason      string    `json:"reason,omitempty"`
+	Token       string    `json:"token,omitempty"`
+	ExpiresAt   time.Time `json:"expires_at"`
 }
 
 type CommitRequest struct {
@@ -66,17 +65,16 @@ type CommitRequest struct {
 }
 
 type Commitment struct {
-	OperationID    string               `json:"operation_id"`
-	IntentVersion  uint64               `json:"intent_version"`
-	BlobID         string               `json:"blob_id"`
-	CID            string               `json:"cid"`
-	TargetNode     identityprincipal.ID `json:"target_node"`
-	Size           int64                `json:"size"`
-	State          string               `json:"state"`
-	HealthReason   string               `json:"health_reason,omitempty"`
-	LeaseStartsAt  time.Time            `json:"lease_starts_at"`
-	LastObservedAt time.Time            `json:"last_observed_at"`
-	LeaseExpiresAt time.Time            `json:"lease_expires_at"`
+	OperationID      string                 `json:"operation_id"`
+	IntentVersion    uint64                 `json:"intent_version"`
+	ContentReference model.ContentReference `json:"content_reference"`
+	TargetNode       identityprincipal.ID   `json:"target_node"`
+	Size             int64                  `json:"size"`
+	State            string                 `json:"state"`
+	HealthReason     string                 `json:"health_reason,omitempty"`
+	LeaseStartsAt    time.Time              `json:"lease_starts_at"`
+	LastObservedAt   time.Time              `json:"last_observed_at"`
+	LeaseExpiresAt   time.Time              `json:"lease_expires_at"`
 }
 
 type ReceiverConfig struct {

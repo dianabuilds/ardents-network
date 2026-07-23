@@ -140,7 +140,7 @@ boundary; do not deliver an entire broad workstream as one change.
 | `PIA-015B` | 015A | **Complete:** final versioned kind-specific discovery records and strict retained-state validation |
 | `PIA-015C` | 015B | **Complete:** purpose-scoped trusted-Principal registry, persisted verification evidence, and generation-aware cache invalidation |
 | `PIA-016A` | 002 | **Complete:** replication source/target Principals are typed and obsolete PeerID state/wire fields fail closed |
-| `PIA-016B` | 014C | Collapse domain Blob ID/CID directly into the final versioned wire/state form |
+| `PIA-016B` | 014C | **Complete:** one typed Content Reference replaces duplicate Blob ID/CID fields in domain, wire, state, and Operator projection |
 | `PIA-016C` | 015C, 016A, 016B | Type remaining security Owners and split overloaded Capability vocabulary |
 | `PIA-017` | 010C, 011B, 014C | **Pending:** delete remaining pre-release bearer/config/SDK/provisioning paths and prove a Principal-only clean install; this adds no compatibility mode |
 | `PIA-018` | 016C, 017 | Adversarial, fresh-install, persistence recovery, redaction and full release acceptance |
@@ -1039,11 +1039,21 @@ PrincipalID, or combine Content Reference with ownership.
 commitment, capacity, selection, health, and repair seams carry typed
 `principal.ID` values. Source authorization persists as `node_principal`; the
 retaining Node persists and projects as `target_node`. `replication/state` is
-strict schema version 1 with no pre-release `data/snapshot` fallback, and both
+strict schema version 2 after the PIA-016B cutover with no pre-release
+`data/snapshot` fallback, and both
 persisted state and signed control bodies reject `peer_id`, `PeerID`, malformed
 Principals, unknown fields, and partial restore. The Operator snapshot exposes
 the same typed names. Actual Waku/libp2p identifiers remain confined to the
 transport adapter.
+
+**PIA-016B completion evidence:** `catalog.ContentReference` accepts only
+canonical CIDv1/raw/SHA2-256 values and the Blob domain has one `reference`.
+Content schema 2 and replication schema 2 reject the pre-release `id`, `cid`,
+`blob_id`, partial collections, malformed references, and map-key/reference
+mismatches without aliases or migration readers. Signed fetch and replica
+control bodies carry one canonical resource/reference field; Operator
+`BlobSnapshot` reserves the removed protobuf tags and exposes only `reference`.
+Ownership remains a separate `(Principal, Content Reference)` binding.
 
 ### PIA-017 — Finalize The Principal-Only Release Surface
 

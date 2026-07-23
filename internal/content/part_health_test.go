@@ -10,28 +10,31 @@ import (
 )
 
 func TestInventoryProjectsObservedLocalAndRelayTruth(t *testing.T) {
+	local := testContentReference(t, "local")
+	relay := testContentReference(t, "relay")
+	remote := testContentReference(t, "remote")
 	blobs := map[string]model.Blob{
-		"local": {
-			ID:    "local",
-			State: "available-local",
+		local.String(): {
+			Reference: local,
+			State:     "available-local",
 		},
-		"relay": {
-			ID:        "relay",
+		relay.String(): {
+			Reference: relay,
 			State:     "retained-temporary",
 			Retention: "relay-temporary",
 			Encrypted: true,
 		},
-		"remote": {
-			ID:    "remote",
-			State: "available-remote",
+		remote.String(): {
+			Reference: remote,
+			State:     "available-remote",
 		},
 	}
 
 	inv := ProjectInventory(2, 1, blobs, func(id string) (bool, int64) {
 		switch id {
-		case "local":
+		case local.String():
 			return true, 11
-		case "relay":
+		case relay.String():
 			return true, 17
 		default:
 			return false, 0
@@ -53,22 +56,24 @@ func TestInventoryProjectsObservedLocalAndRelayTruth(t *testing.T) {
 func TestReconcileLoadedBlobsProjectsExpiredAndMissingPayloadState(t *testing.T) {
 	now := time.Date(2026, 3, 27, 12, 0, 0, 0, time.UTC)
 	removed := make([]string, 0)
+	expired := testContentReference(t, "expired")
+	missing := testContentReference(t, "missing")
 	blobs := map[string]model.Blob{
-		"expired": {
-			ID:        "expired",
+		expired.String(): {
+			Reference: expired,
 			State:     "retained-temporary",
 			ExpiresAt: now.Add(-time.Hour),
 		},
-		"missing": {
-			ID:    "missing",
-			State: "available-local",
+		missing.String(): {
+			Reference: missing,
+			State:     "available-local",
 		},
 	}
 
 	updated, changed, err := ReconcileLoadedBlobs(
 		blobs,
 		now,
-		func(id string) bool { return id == "expired" },
+		func(id string) bool { return id == expired.String() },
 		func(id string) error {
 			removed = append(removed, id)
 			return nil
@@ -76,10 +81,10 @@ func TestReconcileLoadedBlobsProjectsExpiredAndMissingPayloadState(t *testing.T)
 	)
 	require.NoError(t, err)
 	require.True(t, changed)
-	require.Equal(t, []string{"expired"}, removed)
-	require.Equal(t, "expired", updated["expired"].State)
-	require.Equal(t, "deleted", updated["missing"].State)
-	require.True(t, updated["missing"].ExpiresAt.IsZero())
-	require.Equal(t, "retained-temporary", blobs["expired"].State)
-	require.Equal(t, "available-local", blobs["missing"].State)
+	require.Equal(t, []string{expired.String()}, removed)
+	require.Equal(t, "expired", updated[expired.String()].State)
+	require.Equal(t, "deleted", updated[missing.String()].State)
+	require.True(t, updated[missing.String()].ExpiresAt.IsZero())
+	require.Equal(t, "retained-temporary", blobs[expired.String()].State)
+	require.Equal(t, "available-local", blobs[missing.String()].State)
 }

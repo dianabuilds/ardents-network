@@ -133,8 +133,7 @@ type BlobSource interface {
 }
 
 type BlobPolicyView struct {
-	ID        string
-	CID       string
+	Reference model.ContentReference
 	MediaType string
 	Size      int64
 	Hash      string

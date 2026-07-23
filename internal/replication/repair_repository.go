@@ -7,13 +7,14 @@ import (
 	"sort"
 	"time"
 
+	"ardents/internal/content/catalog"
 	"ardents/internal/replication/availability"
 )
 
 const maxRepairDuration = 30 * time.Minute
 
-func (r *Repository) ensureRepairLocked(intent availability.ReplicaIntent, blobID string, ordinal int, now, leaseBarrier time.Time) availability.RepairRecord {
-	id := repairID(intent.Version, blobID, ordinal)
+func (r *Repository) ensureRepairLocked(intent availability.ReplicaIntent, reference catalog.ContentReference, ordinal int, now, leaseBarrier time.Time) availability.RepairRecord {
+	id := repairID(intent.Version, reference, ordinal)
 	repair, ok := r.availability.Repairs[id]
 	if !ok || repair.State == "completed" {
 		lossEligibleAt := now
@@ -22,7 +23,7 @@ func (r *Repository) ensureRepairLocked(intent availability.ReplicaIntent, blobI
 		}
 		repair = availability.RepairRecord{
 			ID: id, IntentID: intent.ID, IntentVersion: intent.Version, RootManifestID: intent.RootManifestID,
-			BlobID: blobID, MissingOrdinal: ordinal, State: "pending", StartedAt: now,
+			ContentReference: reference, MissingOrdinal: ordinal, State: "pending", StartedAt: now,
 			LossEligibleAt: lossEligibleAt, DeadlineAt: lossEligibleAt.Add(maxRepairDuration), NextAttemptAt: now,
 		}
 		r.availability.Repairs[id] = repair
@@ -155,7 +156,7 @@ func availabilityState(snapshot availability.Snapshot, repairTerminal bool) (str
 	}
 }
 
-func repairID(intentVersion uint64, blobID string, ordinal int) string {
-	sum := sha256.Sum256(fmt.Appendf(nil, "%d:%s:%d", intentVersion, blobID, ordinal))
+func repairID(intentVersion uint64, reference catalog.ContentReference, ordinal int) string {
+	sum := sha256.Sum256(fmt.Appendf(nil, "%d:%s:%d", intentVersion, reference.String(), ordinal))
 	return hex.EncodeToString(sum[:])
 }

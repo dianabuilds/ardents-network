@@ -261,9 +261,9 @@ func TestOperatorServiceAndDataSurfaceReadiness(t *testing.T) {
 	scenario.Step("operator executes data fetch flow and observes transfer truth", func(t *testing.T) {
 		fetchCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		fetched, err := rt.Runtime.FetchBlob(fetchCtx, stored.ID)
+		fetched, err := rt.Runtime.FetchBlob(fetchCtx, stored.Reference.String())
 		require.NoError(t, err)
-		require.Equal(t, stored.ID, fetched.ID)
+		require.Equal(t, stored.Reference.String(), fetched.Reference.String())
 
 		testkit.WaitForCondition(t, 10*time.Second, "transfer and local source become visible", func() (bool, string) {
 			transfers, err := client.ListTransfers(context.Background(), testkit.AuthorizedRequest(&ardentsv1.ListTransfersRequest{}))
@@ -271,8 +271,8 @@ func TestOperatorServiceAndDataSurfaceReadiness(t *testing.T) {
 				return false, err.Error()
 			}
 			for _, item := range transfers.Msg.GetTransfers() {
-				if item.GetResourceId() == stored.ID && item.GetState() == "completed" {
-					sources, err := client.ListBlobSources(context.Background(), testkit.AuthorizedRequest(&ardentsv1.ListBlobSourcesRequest{Id: stored.ID}))
+				if item.GetResourceId() == stored.Reference.String() && item.GetState() == "completed" {
+					sources, err := client.ListBlobSources(context.Background(), testkit.AuthorizedRequest(&ardentsv1.ListBlobSourcesRequest{Id: stored.Reference.String()}))
 					if err != nil {
 						return false, err.Error()
 					}
@@ -287,7 +287,7 @@ func TestOperatorServiceAndDataSurfaceReadiness(t *testing.T) {
 
 		transfers, err := client.ListTransfers(context.Background(), testkit.AuthorizedRequest(&ardentsv1.ListTransfersRequest{}))
 		require.NoError(t, err)
-		transfer := findTransferByResource(t, transfers.Msg.GetTransfers(), stored.ID)
+		transfer := findTransferByResource(t, transfers.Msg.GetTransfers(), stored.Reference.String())
 
 		getTransfer, err := client.GetTransfer(context.Background(), testkit.AuthorizedRequest(&ardentsv1.GetTransferRequest{Id: transfer.GetId()}))
 		require.NoError(t, err)

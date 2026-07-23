@@ -28,6 +28,7 @@ func TestNodeStopWithdrawsLocalNodeRecord(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, after)
 	require.Empty(t, after[0].EndpointList())
+	require.NoError(t, n.Stop(context.Background()))
 }
 
 func TestNodeStartSurvivesCallerContextCancellation(t *testing.T) {

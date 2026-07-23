@@ -29,7 +29,7 @@ func TestManifestResponseBindsCompleteManifestToTrustedSource(t *testing.T) {
 		Owner: owner, MediaType: "application/octet-stream", KeyID: "key-1", TotalPlaintextBytes: 2,
 	})
 	require.NoError(t, err)
-	request := blobFetchRequest{RequestID: "manifest-request", Requester: "requester", BlobID: plan.Root.ID, ResourceKind: "manifest"}
+	request := blobFetchRequest{RequestID: "manifest-request", Requester: "requester", ResourceID: plan.Root.ID, ResourceKind: "manifest"}
 	wire, err := marshalManifestResponse(principal, privateKey, request, plan.Root, nil)
 	require.NoError(t, err)
 	cfg := ExchangeConfig{Discovery: disc, Trust: trust}

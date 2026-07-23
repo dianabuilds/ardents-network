@@ -91,7 +91,7 @@ func CanonicalManifestID(manifest model.Manifest) (string, error) {
 		return "", err
 	}
 	_, id, err := payload.DeriveIdentity(canonical)
-	return id, err
+	return id.String(), err
 }
 
 func manifestMetadata(spec ManifestSpec, start, count int) map[string]any {

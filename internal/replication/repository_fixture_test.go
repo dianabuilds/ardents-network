@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"ardents/internal/content"
+	"ardents/internal/content/catalog"
+	contentpayload "ardents/internal/content/payload"
 	identityprincipal "ardents/internal/identity/principal"
 	"ardents/internal/replication/availability"
 	"ardents/internal/replication/placement"
@@ -23,6 +25,18 @@ type ContentConfig = content.Config
 type repositoryFixture struct {
 	*content.Service
 	repository *Repository
+}
+
+func replicationTestReference(t interface {
+	Helper()
+	Fatal(...any)
+}, label string) catalog.ContentReference {
+	t.Helper()
+	_, reference, err := contentpayload.DeriveIdentity([]byte(label))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return reference
 }
 
 func newInDir(dir string) *repositoryFixture { return newInDirWithConfig(dir, ContentConfig{}) }

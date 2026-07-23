@@ -73,17 +73,18 @@ func LocalBlobSource(blob Blob, localNodeID string) (BlobSourceRecord, bool) {
 		return BlobSourceRecord{}, false
 	}
 	return BlobSourceRecord{
-		BlobID:    blob.ID,
-		NodeID:    localNodeID,
-		Trust:     SourceTrust{State: "ready", Outcome: "usable", Valid: true, Trusted: true, Usable: true},
-		Usable:    true,
-		Transport: "local",
-		Reason:    "blob is available on the local node",
+		ContentReference: blob.Reference,
+		NodeID:           localNodeID,
+		Trust:            SourceTrust{State: "ready", Outcome: "usable", Valid: true, Trusted: true, Usable: true},
+		Usable:           true,
+		Transport:        "local",
+		Reason:           "blob is available on the local node",
 	}, true
 }
 
 func NormalizeSource(blobID string, source BlobSourceRecord) BlobSourceRecord {
-	source.BlobID = blobID
+	reference, _ := ParseContentReference(blobID)
+	source.ContentReference = reference
 	if source.LastSeenAt.IsZero() {
 		source.LastSeenAt = time.Now().UTC()
 	}
@@ -98,14 +99,14 @@ func SameSource(left, right BlobSourceRecord) bool {
 
 func CloneSource(source BlobSourceRecord) BlobSourceRecord {
 	return BlobSourceRecord{
-		BlobID:     source.BlobID,
-		NodeID:     source.NodeID,
-		ServiceID:  source.ServiceID,
-		Trust:      source.Trust,
-		Usable:     source.Usable,
-		Transport:  source.Transport,
-		LastSeenAt: source.LastSeenAt,
-		Reason:     source.Reason,
+		ContentReference: source.ContentReference,
+		NodeID:           source.NodeID,
+		ServiceID:        source.ServiceID,
+		Trust:            source.Trust,
+		Usable:           source.Usable,
+		Transport:        source.Transport,
+		LastSeenAt:       source.LastSeenAt,
+		Reason:           source.Reason,
 	}
 }
 

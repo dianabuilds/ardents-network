@@ -102,7 +102,7 @@ func (s *Service) handleHealthQuery(ctx context.Context, wire controlWire) error
 	if !ok || !sameHealthCommitment(current, query.Commitment) {
 		return fmt.Errorf("replica health commitment is unknown")
 	}
-	blob, ok := s.cfg.Data.GetBlob(current.BlobID)
+	blob, ok := s.cfg.Data.GetBlob(current.ContentReference.String())
 	if !ok || !validReplicaBlobMetadata(blob) {
 		return s.publishUnhealthyReplica(ctx, wire, current, placement.CommitmentCorrupt, "replica_integrity_failed", now)
 	}
@@ -110,12 +110,12 @@ func (s *Service) handleHealthQuery(ctx context.Context, wire controlWire) error
 	if placementAuthorizationDenial(auth) != "" {
 		return s.publishUnhealthyReplica(ctx, wire, current, placement.CommitmentRevoked, "replica_authorization_revoked", now)
 	}
-	raw, err := s.cfg.Data.GetBlobPayload(current.BlobID)
+	raw, err := s.cfg.Data.GetBlobPayload(current.ContentReference.String())
 	if err != nil {
 		return s.publishUnhealthyReplica(ctx, wire, current, placement.CommitmentCorrupt, "replica_integrity_failed", now)
 	}
 	hash, cid, err := payload.DeriveIdentity(raw)
-	if err != nil || hash != blob.Hash || cid != current.CID {
+	if err != nil || hash != blob.Hash || !cid.Equal(current.ContentReference) {
 		return s.publishUnhealthyReplica(ctx, wire, current, placement.CommitmentCorrupt, "replica_integrity_failed", now)
 	}
 	renewed, err := s.cfg.Data.RenewReplicaCommitment(current.OperationID, now, query.RequestedLeaseExpiresAt)
@@ -144,6 +144,6 @@ func healthStatus(state string) string {
 
 func sameHealthCommitment(left, right placement.Commitment) bool {
 	return left.OperationID == right.OperationID && left.IntentVersion == right.IntentVersion &&
-		left.BlobID == right.BlobID && left.CID == right.CID && left.TargetNode.Equal(right.TargetNode) &&
+		left.ContentReference.Equal(right.ContentReference) && left.TargetNode.Equal(right.TargetNode) &&
 		left.Size == right.Size && left.LeaseStartsAt.Equal(right.LeaseStartsAt)
 }

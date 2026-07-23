@@ -18,13 +18,13 @@ import (
 )
 
 func TestReplicaCapacityQueryRequiresBoundEncryptedBlobMetadata(t *testing.T) {
-	valid := model.Blob{ID: "cid", CID: "cid", Hash: "hash", Cipher: datapayload.AES256GCMCipher, Size: 10, Encrypted: true}
+	valid := model.Blob{Reference: replicationTestReference(t, "cid"), Hash: "hash", Cipher: datapayload.AES256GCMCipher, Size: 10, Encrypted: true}
 	if !validReplicaBlobMetadata(valid) {
 		t.Fatal("valid encrypted blob metadata was rejected")
 	}
 	for name, mutate := range map[string]func(*model.Blob){
 		"plaintext":          func(blob *model.Blob) { blob.Encrypted = false },
-		"wrong cid":          func(blob *model.Blob) { blob.CID = "other" },
+		"missing reference":  func(blob *model.Blob) { blob.Reference = model.ContentReference{} },
 		"missing hash":       func(blob *model.Blob) { blob.Hash = "" },
 		"missing cipher":     func(blob *model.Blob) { blob.Cipher = "" },
 		"unsupported cipher": func(blob *model.Blob) { blob.Cipher = "custom" },
@@ -139,7 +139,7 @@ func TestReplicaControlRejectsWrongLocalTarget(t *testing.T) {
 
 func TestReplicaControlBodyRejectsObsoleteCommitmentTargetFields(t *testing.T) {
 	body := healthQueryBody{Commitment: placement.Commitment{
-		OperationID: "operation", IntentVersion: 1, BlobID: "cid", CID: "cid",
+		OperationID: "operation", IntentVersion: 1, ContentReference: replicationTestReference(t, "cid"),
 		TargetNode: replicationTestPrincipal("target"), Size: 1, State: placement.CommitmentActive,
 		LeaseStartsAt: time.Now().UTC(), LastObservedAt: time.Now().UTC(), LeaseExpiresAt: time.Now().UTC().Add(time.Hour),
 	}, RequestedLeaseExpiresAt: time.Now().UTC().Add(time.Hour)}
@@ -153,6 +153,15 @@ func TestReplicaControlBodyRejectsObsoleteCommitmentTargetFields(t *testing.T) {
 			var decoded healthQueryBody
 			if err := decodeControlBody([]byte(obsolete), &decoded); err == nil {
 				t.Fatal("obsolete replica target field was accepted")
+			}
+		})
+	}
+	for _, oldField := range []string{"blob_id", "BlobID", "cid", "CID"} {
+		t.Run(oldField, func(t *testing.T) {
+			obsolete := strings.Replace(string(raw), "content_reference", oldField, 1)
+			var decoded healthQueryBody
+			if err := decodeControlBody([]byte(obsolete), &decoded); err == nil {
+				t.Fatal("obsolete replica content identity field was accepted")
 			}
 		})
 	}

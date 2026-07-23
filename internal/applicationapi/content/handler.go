@@ -77,7 +77,7 @@ func (h *Handler) Put(ctx context.Context, req *connect.Request[applicationv1.Pu
 		return nil, mapStoreError(ActionPut, err, false)
 	}
 	return connect.NewResponse(&applicationv1.PutContentResponse{
-		Reference: &applicationv1.ContentReference{Kind: "blob", Id: stored.ID},
+		Reference: &applicationv1.ContentReference{Kind: "blob", Id: stored.Reference.String()},
 		Size:      stored.Size, MediaType: stored.MediaType,
 	}), nil
 }
@@ -113,7 +113,7 @@ func (h *Handler) Get(ctx context.Context, req *connect.Request[applicationv1.Ge
 		if blob.Size < 0 || blob.Size > applicationv1.MaxUnaryPayloadBytes {
 			return nil, contentTooLarge(ActionGet)
 		}
-		payload, payloadErr = h.store.GetBlobPayload(admitted, blob.ID)
+		payload, payloadErr = h.store.GetBlobPayload(admitted, blob.Reference.String())
 	}
 	if payloadErr != nil {
 		return nil, mapStoreError(ActionGet, payloadErr, false)

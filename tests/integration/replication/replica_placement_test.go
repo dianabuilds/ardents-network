@@ -58,16 +58,16 @@ func TestDataReplicaPlacementCommitsEncryptedCopyOverPrivateWaku(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
 	defer cancel()
 	sourceNode := source
-	outcome, err := runtimeprocess.PlaceAvailableBlobReplicasForIntegrationTest(sourceNode, ctx, blob.ID, 1, 1)
+	outcome, err := runtimeprocess.PlaceAvailableBlobReplicasForIntegrationTest(sourceNode, ctx, blob.Reference.String(), 1, 1)
 	require.NoError(t, err)
 	require.Len(t, outcome.Commitments, 1)
 	require.Equal(t, targetPrincipal, outcome.Decision.SelectedNodePrincipals()[0].String())
 	commitment := outcome.Commitments[0]
 	require.Equal(t, targetPrincipal, commitment.TargetNode.String())
-	require.Equal(t, blob.CID, commitment.CID)
+	require.Equal(t, blob.Reference.String(), commitment.ContentReference.String())
 	require.True(t, commitment.LeaseExpiresAt.After(time.Now().UTC()))
 
-	targetBlob, ok := testkit.Content(target).GetBlob(blob.ID)
+	targetBlob, ok := testkit.Content(target).GetBlob(blob.Reference.String())
 	require.True(t, ok)
 	require.True(t, targetBlob.Encrypted)
 	require.Equal(t, "relay-temporary", targetBlob.Retention)
@@ -85,7 +85,7 @@ func TestDataReplicaPlacementCommitsEncryptedCopyOverPrivateWaku(t *testing.T) {
 	sourceState = runtimeprocess.ReplicaPlacementStateForIntegrationTest(sourceNode)
 	require.Equal(t, renewed, targetState.Commitments[commitment.OperationID])
 	require.Equal(t, renewed, sourceState.Commitments[commitment.OperationID])
-	targetBlob, ok = testkit.Content(target).GetBlob(blob.ID)
+	targetBlob, ok = testkit.Content(target).GetBlob(blob.Reference.String())
 	require.True(t, ok)
 	require.Equal(t, renewed.LeaseExpiresAt, targetBlob.ExpiresAt)
 }

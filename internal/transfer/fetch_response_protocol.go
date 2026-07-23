@@ -3,8 +3,8 @@ package transfer
 import (
 	model "ardents/internal/content/catalog"
 	"ardents/internal/discovery"
+	"ardents/internal/storage"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 )
@@ -56,11 +56,11 @@ func storeAcceptedBlobResponse(cfg ExchangeConfig, response blobFetchResponse, t
 	if response.Blob.Retention == "" {
 		response.Blob.Retention = "fetched"
 	}
-	stored, err := cfg.Data.StoreBlob(response.Blob, raw)
+	stored, err := cfg.Data.StoreBlob(*response.Blob, raw)
 	if err != nil {
 		return model.Blob{}, response.Source, 0, err
 	}
-	_, err = cfg.Data.ObserveBlobSource(stored.ID, model.BlobSourceRecord{
+	_, err = cfg.Data.ObserveBlobSource(stored.Reference.String(), model.BlobSourceRecord{
 		NodeID:    response.Source,
 		Trust:     model.SourceTrust{State: discovery.TrustStateForResult(trustResult), Outcome: trustResult.Outcome, Valid: trustResult.Valid, Trusted: trustResult.Trusted, Usable: trustResult.Usable},
 		Usable:    trustResult.Usable,
@@ -71,20 +71,20 @@ func storeAcceptedBlobResponse(cfg ExchangeConfig, response blobFetchResponse, t
 		return model.Blob{}, response.Source, 0, err
 	}
 	if cfg.Publish != nil {
-		cfg.Publish("data.blob_fetched", map[string]any{"id": stored.ID, "source": response.Source})
+		cfg.Publish("data.blob_fetched", map[string]any{"reference": stored.Reference.String(), "source": response.Source})
 	}
 	if cfg.RecordEvent != nil {
-		cfg.RecordEvent("data", "blob_fetched", stored.ID, "blob fetched from trusted peer", "", map[string]any{"source": response.Source})
+		cfg.RecordEvent("data", "blob_fetched", stored.Reference.String(), "blob fetched from trusted peer", "", map[string]any{"source": response.Source})
 	}
 	return stored, response.Source, int64(len(raw)), nil
 }
 
 func decodeBlobResponse(payload []byte, blobID, requester, requestID string) (blobFetchResponse, error) {
 	var response blobFetchResponse
-	if err := json.Unmarshal(payload, &response); err != nil {
+	if err := storage.DecodeJSONStrict(payload, &response); err != nil {
 		return blobFetchResponse{}, err
 	}
-	if response.RequestID != requestID || response.Requester != requester || response.BlobID != blobID || response.Source == "" {
+	if response.RequestID != requestID || response.Requester != requester || response.Source == "" {
 		return blobFetchResponse{}, fmt.Errorf("blob response does not match request")
 	}
 	if response.Status == "" {
@@ -92,7 +92,7 @@ func decodeBlobResponse(payload []byte, blobID, requester, requestID string) (bl
 	}
 	switch response.Status {
 	case blobFetchStatusOK:
-		if response.Blob.ID != blobID {
+		if response.Blob == nil || response.Blob.Reference.String() != blobID {
 			return blobFetchResponse{}, fmt.Errorf("blob response does not match request")
 		}
 	case blobFetchStatusError:

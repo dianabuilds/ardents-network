@@ -53,14 +53,14 @@ func TestLoadCleansOrphanChunkStagingAndFinalizesReferencedChunk(t *testing.T) {
 	require.NoError(t, err)
 	referenced, err := service.storeStagedChunk(Blob{MediaType: "application/octet-stream", Retention: "staging"}, []byte("referenced"), key, "")
 	require.NoError(t, err)
-	_, err = service.PublishManifest(Manifest{Kind: "blob-set", Owner: contentTestOwner(0x34), Encrypted: true, Retention: "durable", Refs: []Ref{{Kind: "blob", ID: referenced.ID}}})
+	_, err = service.PublishManifest(Manifest{Kind: "blob-set", Owner: contentTestOwner(0x34), Encrypted: true, Retention: "durable", Refs: []Ref{{Kind: "blob", ID: referenced.Reference.String()}}})
 	require.NoError(t, err)
 
 	reloaded := NewInDir(dir)
 	require.NoError(t, reloaded.Load())
-	_, exists := reloaded.GetBlob(orphan.ID)
+	_, exists := reloaded.GetBlob(orphan.Reference.String())
 	require.False(t, exists)
-	kept, exists := reloaded.GetBlob(referenced.ID)
+	kept, exists := reloaded.GetBlob(referenced.Reference.String())
 	require.True(t, exists)
 	require.Equal(t, "durable", kept.Retention)
 }
@@ -111,11 +111,11 @@ func TestStagedChunkIsNotReportedOrServedAsAvailable(t *testing.T) {
 	key := bytes.Repeat([]byte{0x53}, 32)
 	blob, err := service.storeStagedChunk(Blob{MediaType: "application/octet-stream", Retention: "staging"}, []byte("partial"), key, "")
 	require.NoError(t, err)
-	stored, ok := service.GetBlob(blob.ID)
+	stored, ok := service.GetBlob(blob.Reference.String())
 	require.True(t, ok)
 	require.Equal(t, "staging", stored.State)
 	require.Zero(t, service.InventorySnapshot().AvailableForResend)
-	_, err = service.GetBlobPayload(blob.ID)
+	_, err = service.GetBlobPayload(blob.Reference.String())
 	require.ErrorContains(t, err, "not locally available")
 }
 

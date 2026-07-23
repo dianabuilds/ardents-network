@@ -126,7 +126,7 @@ func validLocalChunk(data DataExchange, id string) (int64, bool) {
 		return 0, false
 	}
 	hash, cid, err := payload.DeriveIdentity(raw)
-	if err != nil || cid != id || blob.CID != cid || blob.Hash != hash {
+	if err != nil || cid.String() != id || !blob.Reference.Equal(cid) || blob.Hash != hash {
 		return 0, false
 	}
 	return int64(len(raw)), true

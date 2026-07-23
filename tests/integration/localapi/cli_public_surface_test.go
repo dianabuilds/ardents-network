@@ -13,6 +13,7 @@ import (
 
 	"ardents/internal/cli"
 	appdata "ardents/internal/content"
+	contentpayload "ardents/internal/content/payload"
 	runtimeinfra "ardents/internal/daemon"
 	runtimeprocess "ardents/internal/daemon"
 	discoveryapi "ardents/internal/discovery"
@@ -284,14 +285,14 @@ func TestCLIDataTransferSurfaceReflectsFetchRuntimeTruth(t *testing.T) {
 
 	cliHarness := newCLIHarness(t, rt.Runtime)
 
-	fetchOut := cliHarness.run(t, "data", "blobs", "fetch", stored.ID)
+	fetchOut := cliHarness.run(t, "data", "blobs", "fetch", stored.Reference.String())
 	require.Contains(t, fetchOut.stdout, "data blob fetch")
-	require.Contains(t, fetchOut.stdout, "blob: "+stored.ID)
+	require.Contains(t, fetchOut.stdout, "blob: "+stored.Reference.String())
 
 	var transfers []transfer.Record
 	testkit.WaitForCondition(t, 5*time.Second, "cli data transfer becomes visible through local truth", func() (bool, string) {
 		transfers = rt.Transfers.List()
-		transferRecord, ok := findLocalTransferByResource(transfers, stored.ID)
+		transferRecord, ok := findLocalTransferByResource(transfers, stored.Reference.String())
 		if !ok {
 			return false, "local transfer not visible yet"
 		}
@@ -301,14 +302,14 @@ func TestCLIDataTransferSurfaceReflectsFetchRuntimeTruth(t *testing.T) {
 		return true, ""
 	})
 
-	sources := rt.Data.ListBlobSources(stored.ID)
-	transferRecord, ok := findLocalTransferByResource(transfers, stored.ID)
+	sources := rt.Data.ListBlobSources(stored.Reference.String())
+	transferRecord, ok := findLocalTransferByResource(transfers, stored.Reference.String())
 	require.True(t, ok)
 	detail, ok := rt.Transfers.Get(transferRecord.ID)
 	require.True(t, ok)
 	inventory := rt.Data.InventorySnapshot()
 
-	sourcesOut := cliHarness.run(t, "data", "blobs", "sources", stored.ID)
+	sourcesOut := cliHarness.run(t, "data", "blobs", "sources", stored.Reference.String())
 	require.Contains(t, sourcesOut.stdout, "data blob sources")
 	require.GreaterOrEqual(t, len(sources), 2)
 	localSource, ok := findLocalBlobSourceByTransport(sources, "local")
@@ -350,14 +351,15 @@ func TestCLIDataSurfaceShowsStaleRemoteSourceAsUnusable(t *testing.T) {
 	dataDir := t.TempDir()
 	store := appdata.NewInDir(dataDir)
 	require.NoError(t, store.Load())
+	_, staleReference, err := contentpayload.DeriveIdentity([]byte("blob-cli-stale-remote"))
+	require.NoError(t, err)
 	blob, err := store.AnnounceRemoteBlob(appdata.Blob{
-		ID:        "blob-cli-stale-remote",
-		CID:       "blob-cli-stale-remote",
+		Reference: staleReference,
 		MediaType: "application/octet-stream",
 		State:     "available-remote",
 	})
 	require.NoError(t, err)
-	_, err = store.ObserveBlobSource(blob.ID, appdata.BlobSourceRecord{
+	_, err = store.ObserveBlobSource(blob.Reference.String(), appdata.BlobSourceRecord{
 		NodeID:     "p_remote_stale_cli",
 		Trust:      appdata.SourceTrust{State: "ready", Outcome: "usable", Valid: true, Trusted: true, Usable: true},
 		Usable:     true,
@@ -373,13 +375,13 @@ func TestCLIDataSurfaceShowsStaleRemoteSourceAsUnusable(t *testing.T) {
 		Data: runtimeinfra.DataConfig{Dir: dataDir},
 	})
 
-	sources := rt.Data.ListBlobSources(blob.ID)
+	sources := rt.Data.ListBlobSources(blob.Reference.String())
 	require.Len(t, sources, 1)
 	require.False(t, sources[0].Usable)
 	require.Contains(t, sources[0].Reason, "stale")
 
 	cliHarness := newCLIHarness(t, rt.Runtime)
-	sourcesOut := cliHarness.run(t, "data", "blobs", "sources", blob.ID)
+	sourcesOut := cliHarness.run(t, "data", "blobs", "sources", blob.Reference.String())
 	require.Contains(t, sourcesOut.stdout, "data blob sources")
 	require.Contains(t, sourcesOut.stdout, "source: "+sources[0].NodeID)
 	require.Contains(t, sourcesOut.stdout, "  usable: false")

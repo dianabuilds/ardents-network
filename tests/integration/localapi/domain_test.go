@@ -343,14 +343,14 @@ func TestConnectRPCDataRoundTripAndErrors(t *testing.T) {
 			Access:    "participants",
 			Retention: "temporary",
 			Encrypted: true,
-			Refs:      []*ardentsv1.RefSnapshot{{Kind: "blob", Id: publishedBlob.Msg.GetId()}},
+			Refs:      []*ardentsv1.RefSnapshot{{Kind: "blob", Id: publishedBlob.Msg.GetReference()}},
 		},
 	}))
 	require.NoError(t, err)
 	require.NotEmpty(t, manifest.Msg.GetId())
 
 	_, err = client.RetainBlob(context.Background(), testkit.AuthorizedRequest(&ardentsv1.RetainBlobRequest{
-		Id:        publishedBlob.Msg.GetId(),
+		Id:        publishedBlob.Msg.GetReference(),
 		ExpiresAt: timestamppb.New(time.Now().Add(time.Hour)),
 	}))
 	require.Error(t, err)

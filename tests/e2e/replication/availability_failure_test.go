@@ -33,7 +33,7 @@ func TestAvailabilityFailureMatrixEndsInHonestTerminalLoss(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
-	outcome, err := runtimeprocess.PlaceAvailableBlobReplicasForIntegrationTest(ownerNode, ctx, fixture.blob.ID, 1, 1)
+	outcome, err := runtimeprocess.PlaceAvailableBlobReplicasForIntegrationTest(ownerNode, ctx, fixture.blob.Reference.String(), 1, 1)
 	require.NoError(t, err)
 	require.Len(t, outcome.Commitments, 1)
 	quotaPrincipal, err := identityprincipal.Parse(fixture.quotaPeer)
@@ -45,12 +45,12 @@ func TestAvailabilityFailureMatrixEndsInHonestTerminalLoss(t *testing.T) {
 	commitment := outcome.Commitments[0]
 	spare := fixture.healthySpare(commitment.TargetNode.String())
 	require.NotEmpty(t, spare)
-	require.NoError(t, os.WriteFile(e2eReplicaPayloadPath(fixture.peerDirs[commitment.TargetNode.String()], fixture.blob.ID), []byte("corrupt replica"), 0o600))
+	require.NoError(t, os.WriteFile(e2eReplicaPayloadPath(fixture.peerDirs[commitment.TargetNode.String()], fixture.blob.Reference.String()), []byte("corrupt replica"), 0o600))
 	corrupt, err := runtimeprocess.ProbeBlobReplicaForIntegrationTest(ownerNode, ctx, commitment)
 	require.Error(t, err)
 	require.Equal(t, appreplication.ReplicaCommitmentCorrupt, corrupt.State)
 	fixture.dataPrivacy.RevokeSender(t, fixture.peerIndexes[spare], fixture.ownerIndex, fixture.now)
-	_, err = fixture.owner.DropBlob(fixture.blob.ID)
+	_, err = fixture.owner.DropBlob(fixture.blob.Reference.String())
 	require.NoError(t, err)
 
 	err = fixture.owner.ReconcileDataAvailability(ctx)
@@ -152,7 +152,7 @@ func publishFailureManifest(t *testing.T, fixture availabilityFailureFixture) ap
 	t.Helper()
 	root, err := fixture.owner.PublishManifest(appdata.Manifest{
 		Kind: "blob-set", Encrypted: true, Retention: "durable",
-		Refs: []appdata.Ref{{Kind: "blob", ID: fixture.blob.ID}},
+		Refs: []appdata.Ref{{Kind: "blob", ID: fixture.blob.Reference.String()}},
 	})
 	require.NoError(t, err)
 	return root

@@ -152,7 +152,7 @@ func TestPolicyRejectsBlobRetentionAndPinning(t *testing.T) {
 	require.NoErrorf(t, err, "publish blob: %v", err)
 	{
 
-		_, err := n.RetainBlob(blob.ID, time.Now().UTC().Add(time.Hour))
+		_, err := n.RetainBlob(blob.Reference.String(), time.Now().UTC().Add(time.Hour))
 		require.Falsef(t, err == nil || !strings.
 			Contains(err.Error(),
 
@@ -161,7 +161,7 @@ func TestPolicyRejectsBlobRetentionAndPinning(t *testing.T) {
 	}
 	{
 
-		_, err := n.PinBlob(blob.ID)
+		_, err := n.PinBlob(blob.Reference.String())
 		require.Falsef(t, err == nil || !strings.
 			Contains(err.Error(),
 
@@ -215,7 +215,7 @@ func TestPolicyRejectsPeerBlobReserving(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	{
-		_, err := requester.FetchBlob(ctx, stored.ID)
+		_, err := requester.FetchBlob(ctx, stored.Reference.String())
 		require.Falsef(t, err == nil || !strings.
 			Contains(err.Error(),
 
@@ -224,7 +224,7 @@ func TestPolicyRejectsPeerBlobReserving(t *testing.T) {
 	}
 	{
 
-		_, ok := testkit.Content(requester).GetBlob(stored.ID)
+		_, ok := testkit.Content(requester).GetBlob(stored.Reference.String())
 		require.False(t, ok, "expected requester to keep blob unavailable locally")
 	}
 	require.True(t, hasPolicyDeniedEvent(testkit.Diagnostics(source).DiagnosticsSnapshot()), "expected source node to emit policy.denied diagnostics event")

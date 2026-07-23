@@ -102,8 +102,8 @@ func (s *Service) storeChunkStream(ctx context.Context, spec ChunkedPayloadSpec,
 			MediaType: spec.MediaType,
 			Retention: "staging",
 		}, plaintext, key, spec.KeyID)
-		if blob.ID != "" {
-			outcome.IDs = append(outcome.IDs, blob.ID)
+		if blob.Reference.String() != "" {
+			outcome.IDs = append(outcome.IDs, blob.Reference.String())
 		}
 		if storeErr == nil && len(outcome.IDs)%stagedChunkCheckpointInterval == 0 {
 			storeErr = s.Save()
@@ -157,7 +157,7 @@ func (s *Service) storeStagedChunk(blob Blob, plaintext, key []byte, keyID strin
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	stored, err := StoreEncrypted(blob, plaintext, key, keyID, func(item Blob, ciphertext []byte) (Blob, error) {
-		return Store(&s.blobs, item, ciphertext, s.nextID, s.writePayloadLocked)
+		return Store(&s.blobs, item, ciphertext, s.writePayloadLocked)
 	})
 	if err != nil {
 		return stored, err

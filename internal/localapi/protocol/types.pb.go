@@ -2755,13 +2755,12 @@ func (x *ObjectSnapshot) GetCreatedAt() *timestamppb.Timestamp {
 
 type BlobSnapshot struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Reference     string                 `protobuf:"bytes,14,opt,name=reference,proto3" json:"reference,omitempty"`
 	MediaType     string                 `protobuf:"bytes,2,opt,name=media_type,json=mediaType,proto3" json:"media_type,omitempty"`
 	Size          int64                  `protobuf:"varint,3,opt,name=size,proto3" json:"size,omitempty"`
 	Payload       []byte                 `protobuf:"bytes,13,opt,name=payload,proto3" json:"payload,omitempty"`
 	Hash          string                 `protobuf:"bytes,4,opt,name=hash,proto3" json:"hash,omitempty"`
 	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	Cid           string                 `protobuf:"bytes,6,opt,name=cid,proto3" json:"cid,omitempty"`
 	Cipher        string                 `protobuf:"bytes,7,opt,name=cipher,proto3" json:"cipher,omitempty"`
 	KeyId         string                 `protobuf:"bytes,8,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty"`
 	State         string                 `protobuf:"bytes,9,opt,name=state,proto3" json:"state,omitempty"`
@@ -2802,9 +2801,9 @@ func (*BlobSnapshot) Descriptor() ([]byte, []int) {
 	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{33}
 }
 
-func (x *BlobSnapshot) GetId() string {
+func (x *BlobSnapshot) GetReference() string {
 	if x != nil {
-		return x.Id
+		return x.Reference
 	}
 	return ""
 }
@@ -2842,13 +2841,6 @@ func (x *BlobSnapshot) GetCreatedAt() *timestamppb.Timestamp {
 		return x.CreatedAt
 	}
 	return nil
-}
-
-func (x *BlobSnapshot) GetCid() string {
-	if x != nil {
-		return x.Cid
-	}
-	return ""
 }
 
 func (x *BlobSnapshot) GetCipher() string {
@@ -4350,17 +4342,17 @@ func (x *HostedServiceStatusSnapshot) GetLastProbeAt() *timestamppb.Timestamp {
 }
 
 type BlobSourceSnapshot struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	BlobId        string                 `protobuf:"bytes,1,opt,name=blob_id,json=blobId,proto3" json:"blob_id,omitempty"`
-	NodeId        string                 `protobuf:"bytes,2,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
-	ServiceId     string                 `protobuf:"bytes,3,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
-	Trust         *TrustSnapshot         `protobuf:"bytes,4,opt,name=trust,proto3" json:"trust,omitempty"`
-	Usable        bool                   `protobuf:"varint,5,opt,name=usable,proto3" json:"usable,omitempty"`
-	Transport     string                 `protobuf:"bytes,6,opt,name=transport,proto3" json:"transport,omitempty"`
-	LastSeenAt    *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=last_seen_at,json=lastSeenAt,proto3" json:"last_seen_at,omitempty"`
-	Reason        string                 `protobuf:"bytes,8,opt,name=reason,proto3" json:"reason,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	ContentReference string                 `protobuf:"bytes,9,opt,name=content_reference,json=contentReference,proto3" json:"content_reference,omitempty"`
+	NodeId           string                 `protobuf:"bytes,2,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	ServiceId        string                 `protobuf:"bytes,3,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
+	Trust            *TrustSnapshot         `protobuf:"bytes,4,opt,name=trust,proto3" json:"trust,omitempty"`
+	Usable           bool                   `protobuf:"varint,5,opt,name=usable,proto3" json:"usable,omitempty"`
+	Transport        string                 `protobuf:"bytes,6,opt,name=transport,proto3" json:"transport,omitempty"`
+	LastSeenAt       *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=last_seen_at,json=lastSeenAt,proto3" json:"last_seen_at,omitempty"`
+	Reason           string                 `protobuf:"bytes,8,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *BlobSourceSnapshot) Reset() {
@@ -4393,9 +4385,9 @@ func (*BlobSourceSnapshot) Descriptor() ([]byte, []int) {
 	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{46}
 }
 
-func (x *BlobSourceSnapshot) GetBlobId() string {
+func (x *BlobSourceSnapshot) GetContentReference() string {
 	if x != nil {
-		return x.BlobId
+		return x.ContentReference
 	}
 	return ""
 }
@@ -8530,17 +8522,16 @@ const file_api_ardents_v1_types_proto_rawDesc = "" +
 	"\x04body\x18\x04 \x01(\v2\x17.google.protobuf.StructR\x04body\x124\n" +
 	"\tblob_refs\x18\x05 \x03(\v2\x17.ardents.v1.RefSnapshotR\bblobRefs\x129\n" +
 	"\n" +
-	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\x88\x03\n" +
-	"\fBlobSnapshot\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
+	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\x99\x03\n" +
+	"\fBlobSnapshot\x12\x1c\n" +
+	"\treference\x18\x0e \x01(\tR\treference\x12\x1d\n" +
 	"\n" +
 	"media_type\x18\x02 \x01(\tR\tmediaType\x12\x12\n" +
 	"\x04size\x18\x03 \x01(\x03R\x04size\x12\x18\n" +
 	"\apayload\x18\r \x01(\fR\apayload\x12\x12\n" +
 	"\x04hash\x18\x04 \x01(\tR\x04hash\x129\n" +
 	"\n" +
-	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x10\n" +
-	"\x03cid\x18\x06 \x01(\tR\x03cid\x12\x16\n" +
+	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x16\n" +
 	"\x06cipher\x18\a \x01(\tR\x06cipher\x12\x15\n" +
 	"\x06key_id\x18\b \x01(\tR\x05keyId\x12\x14\n" +
 	"\x05state\x18\t \x01(\tR\x05state\x12\x1c\n" +
@@ -8548,7 +8539,7 @@ const file_api_ardents_v1_types_proto_rawDesc = "" +
 	" \x01(\tR\tretention\x12\x1c\n" +
 	"\tencrypted\x18\v \x01(\bR\tencrypted\x129\n" +
 	"\n" +
-	"expires_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"\xbd\x02\n" +
+	"expires_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAtJ\x04\b\x01\x10\x02J\x04\b\x06\x10\aR\x02idR\x03cid\"\xbd\x02\n" +
 	"\x10ManifestSnapshot\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04kind\x18\x02 \x01(\tR\x04kind\x12\x14\n" +
@@ -8711,9 +8702,9 @@ const file_api_ardents_v1_types_proto_rawDesc = "" +
 	"\n" +
 	"generation\x18\v \x01(\x03R\n" +
 	"generation\x12>\n" +
-	"\rlast_probe_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\vlastProbeAt\"\xa2\x02\n" +
-	"\x12BlobSourceSnapshot\x12\x17\n" +
-	"\ablob_id\x18\x01 \x01(\tR\x06blobId\x12\x17\n" +
+	"\rlast_probe_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\vlastProbeAt\"\xc5\x02\n" +
+	"\x12BlobSourceSnapshot\x12+\n" +
+	"\x11content_reference\x18\t \x01(\tR\x10contentReference\x12\x17\n" +
 	"\anode_id\x18\x02 \x01(\tR\x06nodeId\x12\x1d\n" +
 	"\n" +
 	"service_id\x18\x03 \x01(\tR\tserviceId\x12/\n" +
@@ -8722,7 +8713,7 @@ const file_api_ardents_v1_types_proto_rawDesc = "" +
 	"\ttransport\x18\x06 \x01(\tR\ttransport\x12<\n" +
 	"\flast_seen_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"lastSeenAt\x12\x16\n" +
-	"\x06reason\x18\b \x01(\tR\x06reason\"\xb2\x03\n" +
+	"\x06reason\x18\b \x01(\tR\x06reasonJ\x04\b\x01\x10\x02R\ablob_id\"\xb2\x03\n" +
 	"\x10TransferSnapshot\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04kind\x18\x02 \x01(\tR\x04kind\x12\x1f\n" +

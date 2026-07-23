@@ -11,35 +11,32 @@ import (
 	mh "github.com/multiformats/go-multihash"
 )
 
-func DeriveIdentity(raw []byte) (string, string, error) {
+func DeriveIdentity(raw []byte) (string, model.ContentReference, error) {
 	sum := sha256.Sum256(raw)
 	hash := "sha256:" + hex.EncodeToString(sum[:])
 	encoded, err := mh.Encode(sum[:], mh.SHA2_256)
 	if err != nil {
-		return "", "", err
+		return "", model.ContentReference{}, err
 	}
-	return hash, cid.NewCidV1(cid.Raw, encoded).String(), nil
+	reference, err := model.ParseContentReference(cid.NewCidV1(cid.Raw, encoded).String())
+	return hash, reference, err
 }
 
-func ApplyDerivedIdentity(blob *model.Blob, hash, blobCID string) error {
-	if blob.ID != "" && blob.ID != blobCID {
-		return fmt.Errorf("blob id mismatch")
+func ApplyDerivedIdentity(blob *model.Blob, hash string, reference model.ContentReference) error {
+	if blob.Reference.String() != "" && !blob.Reference.Equal(reference) {
+		return fmt.Errorf("blob content reference mismatch")
 	}
 	if blob.Hash != "" && blob.Hash != hash {
 		return fmt.Errorf("blob hash mismatch")
 	}
-	if blob.CID != "" && blob.CID != blobCID {
-		return fmt.Errorf("blob cid mismatch")
-	}
-	blob.ID = blobCID
+	blob.Reference = reference
 	blob.Hash = hash
-	blob.CID = blobCID
 	return nil
 }
 
 func ValidateMetadataIdentity(blob model.Blob) error {
-	if blob.ID != "" && blob.CID != "" && blob.ID != blob.CID {
-		return fmt.Errorf("blob id mismatch")
+	if blob.Reference.String() == "" {
+		return fmt.Errorf("blob content reference is required")
 	}
 	return nil
 }

@@ -11,6 +11,7 @@ import (
 	model "ardents/internal/content/catalog"
 	identityprincipal "ardents/internal/identity/principal"
 	networkprivacy "ardents/internal/messaging"
+	"ardents/internal/storage"
 )
 
 func prepareBlobResponseWire(cfg ExchangeConfig, source string, key ed25519.PrivateKey, req blobFetchRequest) ([]byte, error, error) {
@@ -39,7 +40,10 @@ func prepareBlobResponseWire(cfg ExchangeConfig, source string, key ed25519.Priv
 }
 
 func prepareBlobResponse(cfg ExchangeConfig, req blobFetchRequest) (model.Blob, []byte, error) {
-	blob, ok := cfg.Data.GetBlob(req.BlobID)
+	if _, err := model.ParseContentReference(req.ResourceID); err != nil {
+		return model.Blob{}, nil, fmt.Errorf("blob Content Reference is invalid")
+	}
+	blob, ok := cfg.Data.GetBlob(req.ResourceID)
 	if !ok {
 		return model.Blob{}, nil, fmt.Errorf("blob not found")
 	}
@@ -47,16 +51,16 @@ func prepareBlobResponse(cfg ExchangeConfig, req blobFetchRequest) (model.Blob, 
 		return model.Blob{}, nil, fmt.Errorf("blob is not committed for serving")
 	}
 	blobView := blobPolicyView(blob)
-	if err := authorizeBlobServing(cfg, req.BlobID, blobView); err != nil {
+	if err := authorizeBlobServing(cfg, req.ResourceID, blobView); err != nil {
 		if cfg.PolicyDenied != nil {
-			cfg.PolicyDenied(req.BlobID, "data.blob_re_serve", err)
+			cfg.PolicyDenied(req.ResourceID, "data.blob_re_serve", err)
 		}
 		return model.Blob{}, nil, err
 	}
 	if err := authorizeBlobRequester(req, blobView); err != nil {
 		return model.Blob{}, nil, err
 	}
-	raw, err := cfg.Data.GetBlobPayload(req.BlobID)
+	raw, err := cfg.Data.GetBlobPayload(req.ResourceID)
 	if err != nil {
 		return model.Blob{}, nil, err
 	}
@@ -72,10 +76,10 @@ func authorizeBlobServing(cfg ExchangeConfig, blobID string, blob content.BlobPo
 
 func decodeBlobRequest(payload []byte) (blobFetchRequest, error) {
 	var req blobFetchRequest
-	if err := json.Unmarshal(payload, &req); err != nil {
+	if err := storage.DecodeJSONStrict(payload, &req); err != nil {
 		return blobFetchRequest{}, err
 	}
-	if req.RequestID == "" || req.BlobID == "" || req.Requester == "" {
+	if req.RequestID == "" || req.ResourceID == "" || req.Requester == "" {
 		return blobFetchRequest{}, fmt.Errorf("blob request is incomplete")
 	}
 	return req, nil
@@ -92,7 +96,7 @@ func publishDataFetchRequest(ctx context.Context, cfg ExchangeConfig, requestID,
 
 	req := blobFetchRequest{
 		RequestID:    requestID,
-		BlobID:       resourceID,
+		ResourceID:   resourceID,
 		ResourceKind: resourceKind,
 		Requester:    requester,
 		PublicKey:    cfg.Identity().PublicKey,
@@ -131,13 +135,13 @@ func shouldReplyWithBlobFetchError(err error) bool {
 func canonicalBlobFetchRequest(req blobFetchRequest) ([]byte, error) {
 	return json.Marshal(struct {
 		RequestID    string `json:"request_id"`
-		BlobID       string `json:"blob_id"`
+		ResourceID   string `json:"resource_id"`
 		ResourceKind string `json:"resource_kind,omitempty"`
 		Requester    string `json:"requester"`
 		PublicKey    string `json:"public_key"`
 	}{
 		RequestID:    req.RequestID,
-		BlobID:       req.BlobID,
+		ResourceID:   req.ResourceID,
 		ResourceKind: req.ResourceKind,
 		Requester:    req.Requester,
 		PublicKey:    req.PublicKey,

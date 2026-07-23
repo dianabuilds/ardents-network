@@ -60,7 +60,7 @@ func TestDataAvailabilityRepairsCorruptReplicaToDifferentWakuPeer(t *testing.T) 
 	require.NoError(t, err)
 	root, err := source.PublishManifest(appdata.Manifest{
 		Kind: "blob-set", Owner: sourcePrincipal, Encrypted: true, Retention: "durable",
-		Refs: []appdata.Ref{{Kind: "blob", ID: blob.ID}},
+		Refs: []appdata.Ref{{Kind: "blob", ID: blob.Reference.String()}},
 	})
 	require.NoError(t, err)
 	sourceNode := source
@@ -73,9 +73,9 @@ func TestDataAvailabilityRepairsCorruptReplicaToDifferentWakuPeer(t *testing.T) 
 
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
-	commitment, err := runtimeprocess.PlaceBlobReplicaForIntegrationTest(sourceNode, ctx, blob.ID, targetOneIdentity.Principal, 1)
+	commitment, err := runtimeprocess.PlaceBlobReplicaForIntegrationTest(sourceNode, ctx, blob.Reference.String(), targetOneIdentity.Principal, 1)
 	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(replicaPayloadPath(targetOneDir, blob.ID), []byte("corrupt protected payload"), 0o600))
+	require.NoError(t, os.WriteFile(replicaPayloadPath(targetOneDir, blob.Reference.String()), []byte("corrupt protected payload"), 0o600))
 
 	corrupt, err := runtimeprocess.ProbeBlobReplicaForIntegrationTest(sourceNode, ctx, commitment)
 	require.Error(t, err)
@@ -100,9 +100,9 @@ func TestDataAvailabilityRepairsCorruptReplicaToDifferentWakuPeer(t *testing.T) 
 		CreatedAt: now, UpdatedAt: updatedAt,
 	})
 	require.NoError(t, err)
-	peerLossCommitment, err := runtimeprocess.PlaceBlobReplicaForIntegrationTest(sourceNode, ctx, blob.ID, targetOneIdentity.Principal, 2)
+	peerLossCommitment, err := runtimeprocess.PlaceBlobReplicaForIntegrationTest(sourceNode, ctx, blob.Reference.String(), targetOneIdentity.Principal, 2)
 	require.NoError(t, err)
-	require.NoError(t, runtimeprocess.StopTransportForIntegrationTest(targetOne, context.Background()))
+	require.NoError(t, targetOne.Stop(context.Background()))
 	probeCtx, probeCancel := context.WithTimeout(t.Context(), 4*time.Second)
 	defer probeCancel()
 	_, err = runtimeprocess.ProbeBlobReplicaForIntegrationTest(sourceNode, probeCtx, peerLossCommitment)
@@ -118,7 +118,7 @@ func TestDataAvailabilityRepairsCorruptReplicaToDifferentWakuPeer(t *testing.T) 
 	require.GreaterOrEqual(t, snapshot.StaleCopies, 1)
 
 	require.NoError(t, source.Stop(context.Background()))
-	retainedWhileOwnerOffline, ok := testkit.Content(targetTwo).GetBlob(blob.ID)
+	retainedWhileOwnerOffline, ok := testkit.Content(targetTwo).GetBlob(blob.Reference.String())
 	require.True(t, ok)
 	require.True(t, retainedWhileOwnerOffline.Encrypted)
 	restarted := testkit.StartNode(t, sourceConfig)

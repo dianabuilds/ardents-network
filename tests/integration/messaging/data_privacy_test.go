@@ -31,7 +31,7 @@ func TestPrivateDataRequestHidesRoutingAndContentIdentity(t *testing.T) {
 	sender := testkit.StartBootstrappedTransport(t, receiver)
 	testkit.WaitForRelayReadiness(t, sender)
 
-	payload := []byte(`{"request_id":"request-visible","blob_id":"blob-visible","requester":"principal-visible"}`)
+	payload := []byte(`{"request_id":"request-visible","resource_id":"blob-visible","requester":"principal-visible"}`)
 	exchange := testkit.NewPrivateExchange(privacy.Sender, sender)
 	require.NoError(t, exchange.Publish(ctx, networkprivacy.MessageClassBlobFetchRequest, payload))
 

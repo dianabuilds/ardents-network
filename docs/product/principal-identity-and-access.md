@@ -1033,7 +1033,7 @@ distinction is intentional, not missing unification.
 | Channel `CapabilityGrant` includes secrets and Waku permissions | Separate | Keep as `ChannelGrant` concept; never reuse it as Access Grant |
 | Discovery record repeats `ID`, `Subject`, `Node`, `Device`, `Owner` | Removed | Version 1 contains exactly one NodeFacts or ServiceFacts body; contradictory flat fields are not representable and pre-release shapes fail closed |
 | Replication `PeerID` often contained a Node Principal | Removed | Typed `NodePrincipal`/`TargetNode` fields are canonical; Peer ID is reserved for Waku/libp2p |
-| Blob `ID` and `CID` are constrained equal | Normalize before release | Keep one Content Reference in the domain model and remove the duplicate pre-release fields |
+| Blob `ID` and `CID` were constrained equal | Removed | One strict typed Content Reference is canonical across domain, persisted state, signed transfer/replication wire, and Operator projection |
 | Content/workload/service `Owner` is an arbitrary string | Type and scope | Security-relevant owners become PrincipalID or typed ResourceOwner; local workload ownership remains explicitly Node-scoped |
 | Trust anchors and issuer maps duplicate public-key trust | Consolidated | One immutable purpose-scoped trusted-Principal registry with owner-specific projections; exact-purpose trust is rechecked on every use |
 | “Capability” means action, channel secret, workload requirement, and transport feature | Rename vocabulary | Permission, Channel Grant, Workload Requirement, and Transport Feature respectively |

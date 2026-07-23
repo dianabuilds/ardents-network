@@ -53,7 +53,7 @@ func TestDataSubstrateRestartReconcilesExpiredRetention(t *testing.T) {
 	require.NoErrorf(t, err, "publish blob: %v", err)
 	{
 
-		_, err := first.RetainBlob(published.ID, time.Now().UTC().Add(-time.Minute))
+		_, err := first.RetainBlob(published.Reference.String(), time.Now().UTC().Add(-time.Minute))
 		require.NoErrorf(t, err, "retain blob: %v", err)
 	}
 	{
@@ -68,7 +68,7 @@ func TestDataSubstrateRestartReconcilesExpiredRetention(t *testing.T) {
 		Data: runtimeinfra.DataConfig{Dir: dir},
 	})
 
-	blob, ok := testkit.Content(second).GetBlob(published.ID)
+	blob, ok := testkit.Content(second).GetBlob(published.Reference.String())
 	require.True(t, ok, "get blob")
 	require.Falsef(t, blob.State != "expired", "state = %q, want expired", blob.State)
 
@@ -126,9 +126,9 @@ func TestDataSubstrateFetchesEncryptedBlobFromTrustedPeer(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	blob, err := requester.FetchBlob(ctx, stored.ID)
+	blob, err := requester.FetchBlob(ctx, stored.Reference.String())
 	require.NoErrorf(t, err, "fetch blob: %v", err)
-	require.Falsef(t, blob.ID != stored.ID, "blob id = %q, want %q", blob.ID, stored.ID)
+	require.Falsef(t, blob.Reference.String() != stored.Reference.String(), "blob id = %q, want %q", blob.Reference.String(), stored.Reference.String())
 	require.True(t, blob.Encrypted, "expected fetched blob to stay encrypted")
 
 	requesterStore := appdata.NewInDir(requesterDir)
@@ -137,7 +137,7 @@ func TestDataSubstrateFetchesEncryptedBlobFromTrustedPeer(t *testing.T) {
 		require.NoErrorf(t, err, "load requester data store: %v", err)
 	}
 
-	plaintext, err := requesterStore.DecryptBlobPayload(stored.ID, key)
+	plaintext, err := requesterStore.DecryptBlobPayload(stored.Reference.String(), key)
 	require.NoErrorf(t, err, "decrypt fetched payload: %v", err)
 	require.Falsef(t, string(plaintext) != "network payload", "payload = %q, want network payload", string(plaintext))
 
@@ -183,7 +183,7 @@ func TestDataSubstrateRejectsFetchFromUntrustedPeer(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	if _, err := requester.FetchBlob(ctx, stored.ID); err == nil {
+	if _, err := requester.FetchBlob(ctx, stored.Reference.String()); err == nil {
 		require.FailNow(t, "expected fetch failure for untrusted peer")
 	} else if errors.Is(err, context.DeadlineExceeded) {
 		require.FailNowf(t, "unexpected timeout", "error = %v, want explicit terminal denial instead of timeout", err)
@@ -196,7 +196,7 @@ func TestDataSubstrateRejectsFetchFromUntrustedPeer(t *testing.T) {
 	}
 	{
 
-		_, ok := requesterStore.GetBlob(stored.ID)
+		_, ok := requesterStore.GetBlob(stored.Reference.String())
 		require.False(t, ok, "expected requester to keep blob unavailable locally")
 	}
 
@@ -224,7 +224,7 @@ func TestDataSubstrateSnapshotExplainsBlobPayloadLoss(t *testing.T) {
 	})
 	require.NoErrorf(t, err, "publish blob: %v", err)
 
-	payloadPath := filepath.Join(dir, "blobs", strings.NewReplacer("/", "_", "\\", "_", ":", "_").Replace(blob.ID)+".blob")
+	payloadPath := filepath.Join(dir, "blobs", strings.NewReplacer("/", "_", "\\", "_", ":", "_").Replace(blob.Reference.String())+".blob")
 	{
 		err := os.Remove(payloadPath)
 		require.NoErrorf(t, err, "remove payload: %v", err)
@@ -234,7 +234,7 @@ func TestDataSubstrateSnapshotExplainsBlobPayloadLoss(t *testing.T) {
 	require.Falsef(t, snapshot.Blob.State !=
 		"degraded", "blob state = %q, want degraded", snapshot.Blob.State)
 	require.Truef(t, strings.Contains(snapshot.
-		Blob.Reason, blob.ID), "blob reason = %q, want blob-specific explanation", snapshot.Blob.Reason)
+		Blob.Reason, blob.Reference.String()), "blob reason = %q, want blob-specific explanation", snapshot.Blob.Reason)
 	require.Falsef(t, snapshot.Object.State !=
 		"ready", "object state = %q, want ready", snapshot.Object.State)
 
@@ -267,7 +267,7 @@ func TestDataSubstrateSnapshotExplainsBrokenObjectRefsAfterRestart(t *testing.T)
 			Type: "chat.message",
 			BlobRefs: []appdata.Ref{{
 				Kind: "blob",
-				ID:   blob.ID,
+				ID:   blob.Reference.String(),
 			}},
 		})
 		require.NoErrorf(t, err, "publish object: %v", err)
@@ -285,7 +285,7 @@ func TestDataSubstrateSnapshotExplainsBrokenObjectRefsAfterRestart(t *testing.T)
 		require.NoErrorf(t, err, "load persisted snapshot: %v", err)
 	}
 
-	delete(persisted.Blobs, blob.ID)
+	delete(persisted.Blobs, blob.Reference.String())
 	{
 		err := db.SaveJSON(dbPath, "data", "snapshot", persisted)
 		require.NoErrorf(t, err, "save persisted snapshot: %v", err)

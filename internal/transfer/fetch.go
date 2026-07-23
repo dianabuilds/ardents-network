@@ -134,7 +134,7 @@ func startServeTransfer(cfg ExchangeConfig, req blobFetchRequest) (Record, error
 	return cfg.History.Start(Record{
 		ID:         "serve-" + req.RequestID,
 		Kind:       "blob_re_serve",
-		ResourceID: req.BlobID,
+		ResourceID: req.ResourceID,
 		Direction:  "outbound",
 		State:      "pending",
 		Peer:       req.Requester,

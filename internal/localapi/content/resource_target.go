@@ -39,7 +39,11 @@ func CanonicalizeResource(procedure string, message any, kind identityaccess.Res
 			valid = false
 			break
 		}
-		id, err = contentapi.PublishBlobAccessResourceID(fromBlobSnapshot(request.GetBlob()))
+		var command contentapi.PublishBlobCommand
+		command, err = fromBlobSnapshot(request.GetBlob())
+		if err == nil {
+			id, err = contentapi.PublishBlobAccessResourceID(command)
+		}
 	case ardentsv1connect.ContentServiceGetBlobProcedure:
 		request, ok := message.(*protocol.GetBlobRequest)
 		if !ok {

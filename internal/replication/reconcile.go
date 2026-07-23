@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"ardents/internal/content/catalog"
 	identityprincipal "ardents/internal/identity/principal"
 	"ardents/internal/replication/availability"
 	"ardents/internal/replication/placement"
@@ -17,13 +18,13 @@ const replicaHealthRefresh = 5 * time.Minute
 
 type repairBatch struct {
 	intentVersion uint64
-	blobID        string
+	reference     catalog.ContentReference
 	repairs       []availability.RepairRecord
 }
 
 type repairBatchKey struct {
 	intentVersion uint64
-	blobID        string
+	reference     catalog.ContentReference
 }
 
 func batchDueRepairs(repairs []availability.RepairRecord) []repairBatch {
@@ -32,12 +33,12 @@ func batchDueRepairs(repairs []availability.RepairRecord) []repairBatch {
 	batches := make([]repairBatch, 0, len(ordered))
 	indices := make(map[repairBatchKey]int, len(ordered))
 	for _, repair := range ordered {
-		key := repairBatchKey{intentVersion: repair.IntentVersion, blobID: repair.BlobID}
+		key := repairBatchKey{intentVersion: repair.IntentVersion, reference: repair.ContentReference}
 		index, ok := indices[key]
 		if !ok {
 			index = len(batches)
 			indices[key] = index
-			batches = append(batches, repairBatch{intentVersion: key.intentVersion, blobID: key.blobID})
+			batches = append(batches, repairBatch{intentVersion: key.intentVersion, reference: key.reference})
 		}
 		batches[index].repairs = append(batches[index].repairs, repair)
 	}
@@ -184,9 +185,9 @@ func (s *Service) runDueRepairs(ctx context.Context, repairs []availability.Repa
 func (s *Service) runRepair(ctx context.Context, repair availability.RepairRecord, failures chan<- error) {
 	attemptCtx, cancel := context.WithTimeout(ctx, s.cfg.RepairAttemptTimeout)
 	defer cancel()
-	_, err := s.PlaceAvailable(attemptCtx, repair.BlobID, 1, repair.IntentVersion)
+	_, err := s.PlaceAvailable(attemptCtx, repair.ContentReference.String(), 1, repair.IntentVersion)
 	if err != nil && retryablePlacementError(err) && waitPlacementRetry(attemptCtx) {
-		_, err = s.PlaceAvailable(attemptCtx, repair.BlobID, 1, repair.IntentVersion)
+		_, err = s.PlaceAvailable(attemptCtx, repair.ContentReference.String(), 1, repair.IntentVersion)
 	}
 	if err == nil {
 		if s.cfg.RecordEvent != nil {

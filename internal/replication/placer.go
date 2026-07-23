@@ -41,8 +41,8 @@ func (s *Service) PlaceBlob(ctx context.Context, blobID string, target identityp
 	now := s.cfg.Now().UTC()
 	offer := placement.ReservationOffer{
 		OperationID: operationID, ProtocolVersion: placement.ReplicaProtocolVersion,
-		IntentVersion: intentVersion, BlobID: blob.ID,
-		CID: blob.CID, EncryptedSize: int64(len(ciphertext)), RequestedLease: 24 * time.Hour,
+		IntentVersion: intentVersion, ContentReference: blob.Reference,
+		EncryptedSize: int64(len(ciphertext)), RequestedLease: 24 * time.Hour,
 		ExpiresAt: now.Add(2 * time.Minute), Nonce: nonce,
 	}
 	result, err := s.reserve(ctx, responses, target, offer, blob)
@@ -80,7 +80,7 @@ func (s *Service) loadPlacementBlob(blobID string) (model.Blob, []byte, error) {
 func (s *Service) reserve(ctx context.Context, responses <-chan transfer.ReplicaControlMessage, target identityprincipal.ID, offer placement.ReservationOffer, blob model.Blob) (placement.ReservationResult, error) {
 	var result placement.ReservationResult
 	err := retryReplicaControl(ctx, func(attemptCtx context.Context) error {
-		if err := s.publishControl(attemptCtx, actionReserveOffer, offer.OperationID, target, reserveOfferBody{Offer: offer, Blob: blob}); err != nil {
+		if err := s.publishControl(attemptCtx, actionReserveOffer, offer.OperationID, target, newReserveOfferBody(offer, blob)); err != nil {
 			return err
 		}
 		wire, err := s.awaitControl(attemptCtx, responses, actionReserveResult, target)
@@ -123,7 +123,7 @@ func (s *Service) commit(ctx context.Context, responses <-chan transfer.ReplicaC
 			return fmt.Errorf("replica commit rejected: %s", response.Reason)
 		}
 		if response.Commitment == nil || response.Commitment.OperationID != offer.OperationID || response.Commitment.IntentVersion != offer.IntentVersion ||
-			response.Commitment.BlobID != offer.BlobID || response.Commitment.CID != offer.CID ||
+			!response.Commitment.ContentReference.Equal(offer.ContentReference) ||
 			!response.Commitment.TargetNode.Equal(target) || response.Commitment.Size != offer.EncryptedSize ||
 			response.Commitment.State != placement.CommitmentActive || response.Commitment.LeaseStartsAt.IsZero() ||
 			response.Commitment.LeaseStartsAt.After(response.Commitment.LeaseExpiresAt) ||

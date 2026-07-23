@@ -37,18 +37,20 @@ func TestRepairRetriesOnlyTransientPlacementFailures(t *testing.T) {
 }
 
 func TestBatchDueRepairsSerializesOneBlobIntentAndPreservesCrossBlobParallelism(t *testing.T) {
+	referenceA := replicationTestReference(t, "blob-a")
+	referenceB := replicationTestReference(t, "blob-b")
 	batches := batchDueRepairs([]availability.RepairRecord{
-		{ID: "repair-c", IntentVersion: 1, BlobID: "blob-a", MissingOrdinal: 2},
-		{ID: "repair-a", IntentVersion: 1, BlobID: "blob-a", MissingOrdinal: 1},
-		{ID: "repair-b", IntentVersion: 1, BlobID: "blob-b", MissingOrdinal: 1},
-		{ID: "repair-d", IntentVersion: 2, BlobID: "blob-a", MissingOrdinal: 1},
+		{ID: "repair-c", IntentVersion: 1, ContentReference: referenceA, MissingOrdinal: 2},
+		{ID: "repair-a", IntentVersion: 1, ContentReference: referenceA, MissingOrdinal: 1},
+		{ID: "repair-b", IntentVersion: 1, ContentReference: referenceB, MissingOrdinal: 1},
+		{ID: "repair-d", IntentVersion: 2, ContentReference: referenceA, MissingOrdinal: 1},
 	})
 
 	require.Len(t, batches, 3)
-	require.Equal(t, "blob-a", batches[0].blobID)
+	require.True(t, referenceA.Equal(batches[0].reference))
 	require.Equal(t, uint64(1), batches[0].intentVersion)
 	require.Equal(t, []string{"repair-a", "repair-c"}, repairRecordIDs(batches[0].repairs))
-	require.Equal(t, "blob-b", batches[1].blobID)
+	require.True(t, referenceB.Equal(batches[1].reference))
 	require.Equal(t, uint64(2), batches[2].intentVersion)
 }
 

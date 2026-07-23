@@ -65,7 +65,7 @@ func (r *Receiver) recordCommit(reservation reservation, request CommitRequest) 
 	now := r.cfg.Now().UTC()
 	commitment := Commitment{
 		OperationID: request.OperationID, IntentVersion: reservation.offer.IntentVersion,
-		BlobID: request.Blob.ID, CID: request.Blob.CID, TargetNode: r.cfg.NodePrincipal,
+		ContentReference: request.Blob.Reference, TargetNode: r.cfg.NodePrincipal,
 		Size: int64(len(request.Ciphertext)), State: CommitmentActive,
 		LeaseStartsAt: now, LastObservedAt: now, LeaseExpiresAt: request.LeaseExpiresAt.UTC(),
 	}
@@ -99,7 +99,7 @@ func validateCommit(offer ReservationOffer, request CommitRequest, now time.Time
 	if err != nil {
 		return err
 	}
-	if cid != offer.CID || request.Blob.ID != cid || request.Blob.CID != cid || request.Blob.Hash != hash {
+	if !cid.Equal(offer.ContentReference) || !request.Blob.Reference.Equal(cid) || request.Blob.Hash != hash {
 		return fmt.Errorf("commit content identity does not match reservation")
 	}
 	if !request.LeaseExpiresAt.After(now) || request.LeaseExpiresAt.After(now.Add(offer.RequestedLease)) {
@@ -109,7 +109,7 @@ func validateCommit(offer ReservationOffer, request CommitRequest, now time.Time
 }
 
 func sameCommit(existing Commitment, request CommitRequest, principal identityprincipal.ID) bool {
-	return existing.OperationID == request.OperationID && existing.BlobID == request.Blob.ID &&
-		existing.CID == request.Blob.CID && existing.Size == int64(len(request.Ciphertext)) &&
+	return existing.OperationID == request.OperationID && existing.ContentReference.Equal(request.Blob.Reference) &&
+		existing.Size == int64(len(request.Ciphertext)) &&
 		existing.LeaseExpiresAt.Equal(request.LeaseExpiresAt.UTC()) && principal.String() != ""
 }

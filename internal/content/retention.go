@@ -27,20 +27,21 @@ func (s *Service) RetainRelayBlob(blob Blob, payload []byte, expiresAt time.Time
 	if err != nil {
 		return Blob{}, err
 	}
-	if err := s.ensureRelayRetentionBudgetLocked(blob.ID, payload); err != nil {
+	reference := blob.Reference.String()
+	if err := s.ensureRelayRetentionBudgetLocked(reference, payload); err != nil {
 		return Blob{}, err
 	}
 	if blob.CreatedAt.IsZero() {
 		blob.CreatedAt = now
 	}
 	previous, previousState := s.blobs.Snapshot(), s.state
-	if err := s.writePayloadLocked(blob.ID, payload); err != nil {
+	if err := s.writePayloadLocked(reference, payload); err != nil {
 		return Blob{}, err
 	}
 	s.blobs.Put(blob)
 	s.state = "ready"
 	if err := s.saveLocked(); err != nil {
-		return Blob{}, errors.Join(err, s.rollbackUncommittedPayloadLocked(previous, previousState, blob.ID))
+		return Blob{}, errors.Join(err, s.rollbackUncommittedPayloadLocked(previous, previousState, reference))
 	}
 	return blob, nil
 }
@@ -131,7 +132,8 @@ func (s *Service) DropBlob(id string) (Blob, error) {
 func (s *Service) DropBlobForOwner(owner principal.ID, id string) (Blob, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if owner.String() == "" || !s.blobOwners.Has(owner, id) {
+	reference, err := model.ParseContentReference(id)
+	if err != nil || owner.String() == "" || !s.blobOwners.Has(owner, reference) {
 		return Blob{}, ErrBlobNotFound
 	}
 	blob, ok := s.blobs.Get(id)
@@ -139,8 +141,8 @@ func (s *Service) DropBlobForOwner(owner principal.ID, id string) (Blob, error) 
 		return Blob{}, ErrBlobNotFound
 	}
 	previousBlobs, previousOwners, previousState := s.blobs.Snapshot(), s.blobOwners.Snapshot(), s.state
-	s.blobOwners.Delete(owner, id)
-	shouldKeep := s.blobOwners.CountReference(id) > 0 || s.blobReferencedLocked(id) || independentlyRetained(blob)
+	s.blobOwners.Delete(owner, reference)
+	shouldKeep := s.blobOwners.CountReference(reference) > 0 || s.blobReferencedLocked(id) || independentlyRetained(blob)
 	removals := payloadRemovalBatch{service: s}
 	if !shouldKeep {
 		if err := removals.Stage(id); err != nil {
@@ -376,8 +378,7 @@ func NormalizeBlob(blob model.Blob) model.Blob {
 
 func BlobPolicySnapshot(blob model.Blob) BlobPolicyView {
 	return BlobPolicyView{
-		ID:        blob.ID,
-		CID:       blob.CID,
+		Reference: blob.Reference,
 		MediaType: blob.MediaType,
 		Size:      blob.Size,
 		Hash:      blob.Hash,

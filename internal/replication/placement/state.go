@@ -93,8 +93,8 @@ func (r *Receiver) Restore(state State) error {
 }
 
 func validRetainedCommitment(commitment Commitment) bool {
-	return commitment.OperationID != "" && commitment.IntentVersion != 0 && commitment.BlobID != "" &&
-		commitment.CID != "" && commitment.BlobID == commitment.CID && commitment.TargetNode.String() != "" &&
+	return commitment.OperationID != "" && commitment.IntentVersion != 0 && commitment.ContentReference.String() != "" &&
+		commitment.TargetNode.String() != "" &&
 		commitment.Size > 0 && validCommitmentState(commitment.State) && !commitment.LeaseStartsAt.IsZero() &&
 		!commitment.LeaseExpiresAt.IsZero() && commitment.LeaseExpiresAt.After(commitment.LeaseStartsAt)
 }
@@ -142,7 +142,7 @@ func restoreReservation(stored StoredReservation) (reservation, error) {
 
 func validStoredOffer(offer ReservationOffer) bool {
 	return offer.OperationID != "" && offer.ProtocolVersion != 0 && offer.IntentVersion != 0 &&
-		offer.BlobID != "" && offer.CID != "" && offer.BlobID == offer.CID && offer.EncryptedSize > 0 &&
+		offer.ContentReference.String() != "" && offer.EncryptedSize > 0 &&
 		!offer.ExpiresAt.IsZero() && offer.Nonce != ""
 }
 
@@ -165,8 +165,8 @@ func (r *Receiver) SetNodePrincipal(principal identityprincipal.ID) {
 func (r *Receiver) ObserveCommitment(commitment Commitment, now time.Time) (Commitment, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if commitment.OperationID == "" || commitment.IntentVersion == 0 || commitment.BlobID == "" ||
-		commitment.CID == "" || commitment.BlobID != commitment.CID || commitment.TargetNode.String() == "" ||
+	if commitment.OperationID == "" || commitment.IntentVersion == 0 || commitment.ContentReference.String() == "" ||
+		commitment.TargetNode.String() == "" ||
 		commitment.Size <= 0 || !validCommitmentState(commitment.State) {
 		return Commitment{}, &StateError{"replica commitment is invalid"}
 	}
@@ -193,7 +193,7 @@ func validCommitmentState(state string) bool {
 
 func sameCommitmentIdentity(left, right Commitment) bool {
 	return left.OperationID == right.OperationID && left.IntentVersion == right.IntentVersion &&
-		left.BlobID == right.BlobID && left.CID == right.CID && left.TargetNode.Equal(right.TargetNode) &&
+		left.ContentReference.Equal(right.ContentReference) && left.TargetNode.Equal(right.TargetNode) &&
 		left.Size == right.Size && left.LeaseStartsAt.Equal(right.LeaseStartsAt)
 }
 

@@ -154,7 +154,7 @@ func (r *remoteContent) replicationService() (*replication.Service, error) {
 func replicaCommitmentModel(in replication.ReplicaCommitment) placement.Commitment {
 	return placement.Commitment{
 		OperationID: in.OperationID, IntentVersion: in.IntentVersion,
-		BlobID: in.BlobID, CID: in.CID, TargetNode: in.TargetNode, Size: in.Size,
+		ContentReference: in.ContentReference, TargetNode: in.TargetNode, Size: in.Size,
 		State: in.State, HealthReason: in.HealthReason,
 		LeaseStartsAt: in.LeaseStartsAt, LastObservedAt: in.LastObservedAt,
 		LeaseExpiresAt: in.LeaseExpiresAt,
@@ -164,7 +164,7 @@ func replicaCommitmentModel(in replication.ReplicaCommitment) placement.Commitme
 func replicaCommitmentSnapshot(in placement.Commitment) replication.ReplicaCommitment {
 	return replication.ReplicaCommitment{
 		OperationID: in.OperationID, IntentVersion: in.IntentVersion,
-		BlobID: in.BlobID, CID: in.CID, TargetNode: in.TargetNode, Size: in.Size,
+		ContentReference: in.ContentReference, TargetNode: in.TargetNode, Size: in.Size,
 		State: in.State, HealthReason: in.HealthReason,
 		LeaseStartsAt: in.LeaseStartsAt, LastObservedAt: in.LastObservedAt,
 		LeaseExpiresAt: in.LeaseExpiresAt,

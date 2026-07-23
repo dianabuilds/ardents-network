@@ -44,9 +44,9 @@ func TestDataSubstrateObjectAndBlobPersistAcrossRestart(t *testing.T) {
 	})
 	require.NoErrorf(t, err, "publish object: %v", err)
 
-	blob, err := first.PublishBlob(appdata.PublishBlobCommand{Blob: appdata.Blob{
-		MediaType: "text/plain", Size: 12, Hash: "sha256:blob",
-	}})
+	blob, err := first.PublishBlob(appdata.PublishBlobCommand{
+		Blob: appdata.Blob{MediaType: "text/plain"}, Payload: []byte("hello world!"),
+	})
 	require.NoErrorf(t, err, "publish blob: %v", err)
 	{
 
@@ -64,7 +64,7 @@ func TestDataSubstrateObjectAndBlobPersistAcrossRestart(t *testing.T) {
 	require.True(t, ok, "get object")
 	require.Falsef(t, storedObject.Body["text"] != "hello", "text = %v, want hello", storedObject.Body["text"])
 
-	storedBlob, ok := testkit.Content(second).GetBlob(blob.ID)
+	storedBlob, ok := testkit.Content(second).GetBlob(blob.Reference.String())
 	require.True(t, ok, "get blob")
 	require.Falsef(t, storedBlob.MediaType !=
 		"text/plain" || storedBlob.
@@ -98,11 +98,11 @@ func TestDataSubstrateRestartReconcilesMissingPinnedPayloadBlob(t *testing.T) {
 	require.NoErrorf(t, err, "publish blob: %v", err)
 	{
 
-		_, err := first.PinBlob(blob.ID)
+		_, err := first.PinBlob(blob.Reference.String())
 		require.NoErrorf(t, err, "pin blob: %v", err)
 	}
 
-	payloadPath := filepath.Join(dir, "blobs", strings.NewReplacer("/", "_", "\\", "_", ":", "_").Replace(blob.ID)+".blob")
+	payloadPath := filepath.Join(dir, "blobs", strings.NewReplacer("/", "_", "\\", "_", ":", "_").Replace(blob.Reference.String())+".blob")
 	{
 		err := os.Remove(payloadPath)
 		require.NoErrorf(t, err, "remove payload: %v", err)
@@ -119,7 +119,7 @@ func TestDataSubstrateRestartReconcilesMissingPinnedPayloadBlob(t *testing.T) {
 		Data: runtimeinfra.DataConfig{Dir: dir},
 	})
 
-	item, ok := testkit.Content(second).GetBlob(blob.ID)
+	item, ok := testkit.Content(second).GetBlob(blob.Reference.String())
 	require.True(t, ok, "get blob")
 	require.Falsef(t, item.State != "deleted", "state = %q, want deleted", item.State)
 
@@ -150,13 +150,15 @@ func TestDataSubstrateOperationsEmitDiagnosticsEvents(t *testing.T) {
 		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
 	})
 
-	blob, err := n.PublishBlob(appdata.PublishBlobCommand{Blob: appdata.Blob{MediaType: "text/plain"}})
+	blob, err := n.PublishBlob(appdata.PublishBlobCommand{
+		Blob: appdata.Blob{MediaType: "text/plain"}, Payload: []byte("diagnostic payload"),
+	})
 	require.NoErrorf(t, err, "publish blob: %v", err)
 	{
 
 		_, err := n.PublishManifest(appdata.Manifest{
 			Kind: "message-attachment",
-			Refs: []appdata.Ref{{Kind: "blob", ID: blob.ID}},
+			Refs: []appdata.Ref{{Kind: "blob", ID: blob.Reference.String()}},
 		})
 		require.NoErrorf(t, err, "publish manifest: %v", err)
 	}
@@ -225,7 +227,7 @@ func TestDataSubstrateRejectsPlaintextRemoteReserve(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	{
-		_, err := requester.FetchBlob(ctx, stored.ID)
+		_, err := requester.FetchBlob(ctx, stored.Reference.String())
 		require.Falsef(t, err == nil || !strings.
 			Contains(err.Error(), "plaintext blob re-serve is not allowed"), "error = %v, want terminal plaintext reserve rejection", err)
 	}
@@ -237,7 +239,7 @@ func TestDataSubstrateRejectsPlaintextRemoteReserve(t *testing.T) {
 	}
 	{
 
-		_, ok := requesterStore.GetBlob(stored.ID)
+		_, ok := requesterStore.GetBlob(stored.Reference.String())
 		require.False(t, ok, "expected requester to keep plaintext blob unavailable locally")
 	}
 
@@ -297,9 +299,9 @@ func TestDataSubstrateBlobResponseRequiresDiscoveredRequester(t *testing.T) {
 	defer unregister()
 
 	wire, err := json.Marshal(map[string]string{
-		"request_id": requestID,
-		"blob_id":    stored.ID,
-		"requester":  requester,
+		"request_id":  requestID,
+		"resource_id": stored.Reference.String(),
+		"requester":   requester,
 	})
 	require.NoErrorf(t, err, "marshal blob request: %v", err)
 	{

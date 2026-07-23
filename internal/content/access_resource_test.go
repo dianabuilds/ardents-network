@@ -1,6 +1,8 @@
 package content
 
 import (
+	model "ardents/internal/content/catalog"
+	"ardents/internal/content/payload"
 	"strings"
 	"testing"
 
@@ -23,13 +25,16 @@ func TestPublishBlobAccessResourceIDDerivesAndValidatesPayload(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, id)
 
-	command.Blob.ID = id
-	command.Blob.CID = id
+	reference, err := model.ParseContentReference(id)
+	require.NoError(t, err)
+	command.Blob.Reference = reference
 	again, err := PublishBlobAccessResourceID(command)
 	require.NoError(t, err)
 	require.Equal(t, id, again)
 
-	command.Blob.CID = "different"
+	_, different, err := payload.DeriveIdentity([]byte("different"))
+	require.NoError(t, err)
+	command.Blob.Reference = different
 	_, err = PublishBlobAccessResourceID(command)
 	require.Error(t, err)
 	_, err = PublishBlobAccessResourceID(PublishBlobCommand{})

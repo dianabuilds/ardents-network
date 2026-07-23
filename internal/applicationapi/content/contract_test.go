@@ -75,7 +75,7 @@ func storeCID(t *testing.T, store *appcontent.Service, id string) string {
 	t.Helper()
 	blob, ok := store.GetBlob(id)
 	require.True(t, ok)
-	return blob.CID
+	return blob.Reference.String()
 }
 
 func TestContentClientMapsPublicStructuredError(t *testing.T) {
@@ -117,13 +117,15 @@ func TestContentPutRejectsPayloadAboveUnaryLimit(t *testing.T) {
 }
 
 func TestContentGetRejectsOversizedBlobBeforeReadingPayload(t *testing.T) {
+	_, oversized, err := contentpayload.DeriveIdentity([]byte("oversized"))
+	require.NoError(t, err)
 	store := &memoryStore{payloads: map[string][]byte{}, blobs: map[string]appcontent.Blob{
-		"oversized": {ID: "oversized", CID: "oversized", Size: applicationv1.MaxUnaryPayloadBytes + 1},
+		oversized.String(): {Reference: oversized, Size: applicationv1.MaxUnaryPayloadBytes + 1},
 	}}
 	contentClient := newPrincipalContentClient(t, store)
 
-	_, err := contentClient.Get(context.Background(), connect.NewRequest(&applicationv1.GetContentRequest{
-		Reference: &applicationv1.ContentReference{Kind: "blob", Id: "oversized"},
+	_, err = contentClient.Get(context.Background(), connect.NewRequest(&applicationv1.GetContentRequest{
+		Reference: &applicationv1.ContentReference{Kind: "blob", Id: oversized.String()},
 	}))
 	require.Equal(t, connect.CodeResourceExhausted, connect.CodeOf(err))
 	require.Equal(t, applicationv1.ErrorCode_ERROR_CODE_RESOURCE_EXHAUSTED, requireApplicationError(t, err).GetCode())
@@ -253,12 +255,11 @@ func (s *memoryStore) PublishBlob(_ applicationcall.Call, command appcontent.Pub
 		return appcontent.Blob{}, err
 	}
 	blob := command.Blob
-	blob.ID = id
-	blob.CID = id
+	blob.Reference = id
 	blob.Hash = hash
 	blob.Size = int64(len(command.Payload))
-	s.blobs[id] = blob
-	s.payloads[id] = append([]byte(nil), command.Payload...)
+	s.blobs[id.String()] = blob
+	s.payloads[id.String()] = append([]byte(nil), command.Payload...)
 	return blob, nil
 }
 

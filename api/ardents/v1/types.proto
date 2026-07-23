@@ -304,13 +304,14 @@ message ObjectSnapshot {
 }
 
 message BlobSnapshot {
-  string id = 1;
+  reserved 1, 6;
+  reserved "id", "cid";
+  string reference = 14;
   string media_type = 2;
   int64 size = 3;
   bytes payload = 13;
   string hash = 4;
   google.protobuf.Timestamp created_at = 5;
-  string cid = 6;
   string cipher = 7;
   string key_id = 8;
   string state = 9;
@@ -487,7 +488,9 @@ message HostedServiceStatusSnapshot {
 }
 
 message BlobSourceSnapshot {
-  string blob_id = 1;
+  reserved 1;
+  reserved "blob_id";
+  string content_reference = 9;
   string node_id = 2;
   string service_id = 3;
   TrustSnapshot trust = 4;

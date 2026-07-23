@@ -20,10 +20,9 @@ func marshalBlobResponse(source string, key ed25519.PrivateKey, req blobFetchReq
 	response := blobFetchResponse{
 		RequestID:    req.RequestID,
 		Requester:    req.Requester,
-		BlobID:       req.BlobID,
 		ResourceKind: req.ResourceKind,
 		Status:       blobFetchStatusOK,
-		Blob:         blob,
+		Blob:         &blob,
 		Payload:      base64.StdEncoding.EncodeToString(payload),
 		Source:       source,
 	}
@@ -39,7 +38,6 @@ func marshalBlobErrorResponse(source string, key ed25519.PrivateKey, req blobFet
 	response := blobFetchResponse{
 		RequestID:    req.RequestID,
 		Requester:    req.Requester,
-		BlobID:       req.BlobID,
 		ResourceKind: req.ResourceKind,
 		Status:       blobFetchStatusError,
 		Error:        err.Error(),
@@ -57,18 +55,16 @@ func canonicalBlobFetchResponse(response blobFetchResponse) ([]byte, error) {
 	return json.Marshal(struct {
 		RequestID    string        `json:"request_id"`
 		Requester    string        `json:"requester"`
-		BlobID       string        `json:"blob_id"`
 		ResourceKind string        `json:"resource_kind,omitempty"`
 		Status       string        `json:"status,omitempty"`
 		Error        string        `json:"error,omitempty"`
-		Blob         model.Blob    `json:"blob"`
+		Blob         *model.Blob   `json:"blob,omitempty"`
 		Manifest     *manifestWire `json:"manifest,omitempty"`
 		Payload      string        `json:"payload"`
 		Source       string        `json:"source"`
 	}{
 		RequestID:    response.RequestID,
 		Requester:    response.Requester,
-		BlobID:       response.BlobID,
 		ResourceKind: response.ResourceKind,
 		Status:       response.Status,
 		Error:        response.Error,

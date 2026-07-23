@@ -69,7 +69,7 @@ func (s *Service) handleCapacityQuery(ctx context.Context, wire controlWire) err
 }
 
 func validReplicaBlobMetadata(blob model.Blob) bool {
-	return blob.Encrypted && blob.ID != "" && blob.ID == blob.CID && blob.Hash != "" &&
+	return blob.Encrypted && blob.Reference.String() != "" && blob.Hash != "" &&
 		blob.Cipher == datapayload.AES256GCMCipher && blob.Size > 0
 }
 
@@ -91,12 +91,12 @@ func (s *Service) handleReserve(ctx context.Context, wire controlWire) error {
 	if err := decodeControlBody(wire.Body, &body); err != nil {
 		return err
 	}
-	if body.Offer.OperationID != wire.OperationID || body.Offer.BlobID != body.Blob.ID ||
-		body.Offer.CID != body.Blob.CID || body.Offer.EncryptedSize != body.Blob.Size || !validReplicaBlobMetadata(body.Blob) {
+	offer := body.offer(wire.OperationID)
+	if offer.EncryptedSize != body.Blob.Size || !validReplicaBlobMetadata(body.Blob) {
 		return fmt.Errorf("replica reservation content binding is invalid")
 	}
-	auth := s.authorizePeer(wire.Source, body.Blob, body.Offer.ExpiresAt)
-	result, err := s.cfg.Data.ReserveReplica(body.Offer, auth)
+	auth := s.authorizePeer(wire.Source, body.Blob, offer.ExpiresAt)
+	result, err := s.cfg.Data.ReserveReplica(offer, auth)
 	if err != nil {
 		result = placement.ReservationResult{OperationID: wire.OperationID, Status: placement.ReservationRejected, Reason: safeReason(err)}
 	}

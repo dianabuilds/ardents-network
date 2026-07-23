@@ -93,7 +93,7 @@ type ExchangeConfig struct {
 
 type blobFetchRequest struct {
 	RequestID    string `json:"request_id"`
-	BlobID       string `json:"blob_id"`
+	ResourceID   string `json:"resource_id"`
 	ResourceKind string `json:"resource_kind,omitempty"`
 	Requester    string `json:"requester"`
 	PublicKey    string `json:"public_key"`
@@ -103,11 +103,10 @@ type blobFetchRequest struct {
 type blobFetchResponse struct {
 	RequestID    string        `json:"request_id"`
 	Requester    string        `json:"requester"`
-	BlobID       string        `json:"blob_id"`
 	ResourceKind string        `json:"resource_kind,omitempty"`
 	Status       string        `json:"status,omitempty"`
 	Error        string        `json:"error,omitempty"`
-	Blob         model.Blob    `json:"blob"`
+	Blob         *model.Blob   `json:"blob,omitempty"`
 	Manifest     *manifestWire `json:"manifest,omitempty"`
 	Payload      string        `json:"payload"`
 	Source       string        `json:"source"`

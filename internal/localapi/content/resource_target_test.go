@@ -44,8 +44,7 @@ func TestCanonicalizePublishBlobDerivesPayloadTarget(t *testing.T) {
 	target, err := CanonicalizeResource(ardentsv1connect.ContentServicePublishBlobProcedure, request, "content-blob")
 	require.NoError(t, err)
 	require.NotEmpty(t, target.ID)
-	request.Blob.Id = target.ID
-	request.Blob.Cid = target.ID
+	request.Blob.Reference = target.ID
 	again, err := CanonicalizeResource(ardentsv1connect.ContentServicePublishBlobProcedure, request, "content-blob")
 	require.NoError(t, err)
 	require.Equal(t, target, again)
@@ -60,6 +59,7 @@ func TestCanonicalizeResourceRejectsMalformedContentBeforeMutation(t *testing.T)
 		{ardentsv1connect.ContentServicePublishObjectProcedure, &protocol.PublishObjectRequest{Object: &protocol.ObjectSnapshot{}}},
 		{ardentsv1connect.ContentServicePublishBlobProcedure, &protocol.PublishBlobRequest{}},
 		{ardentsv1connect.ContentServicePublishBlobProcedure, &protocol.PublishBlobRequest{Blob: &protocol.BlobSnapshot{}}},
+		{ardentsv1connect.ContentServicePublishBlobProcedure, &protocol.PublishBlobRequest{Blob: &protocol.BlobSnapshot{Reference: "not-a-content-reference", Payload: []byte("payload")}}},
 		{ardentsv1connect.ContentServicePublishManifestProcedure, &protocol.PublishManifestRequest{Manifest: &protocol.ManifestSnapshot{}}},
 		{ardentsv1connect.ContentServiceGetObjectProcedure, &protocol.GetObjectRequest{Id: " obj"}},
 		{ardentsv1connect.RetentionServiceRetainBlobProcedure, &protocol.RetainBlobRequest{Id: "blob", ExpiresAt: &timestamppb.Timestamp{Seconds: 253402300800}}},

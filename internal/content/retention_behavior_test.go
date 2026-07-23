@@ -21,23 +21,23 @@ func TestLocalRetentionLifecycle(t *testing.T) {
 	require.NoErrorf(t, err, "store blob: %v", err)
 
 	until := time.Now().UTC().Add(time.Hour)
-	retained, err := svc.RetainBlob(blob.ID, until)
+	retained, err := svc.RetainBlob(blob.Reference.String(), until)
 	require.NoErrorf(t, err, "retain blob: %v", err)
 	require.Falsef(t, retained.State !=
 		"retained-temporary", "state = %q, want retained-temporary", retained.State)
 
-	pinned, err := svc.PinBlob(blob.ID)
+	pinned, err := svc.PinBlob(blob.Reference.String())
 	require.NoErrorf(t, err, "pin blob: %v", err)
 	require.Falsef(t, pinned.State !=
 		"pinned", "state = %q, want pinned", pinned.State)
 
-	dropped, err := svc.DropBlob(blob.ID)
+	dropped, err := svc.DropBlob(blob.Reference.String())
 	require.NoErrorf(t, err, "drop blob: %v", err)
 	require.Falsef(t, dropped.State !=
 		"deleted", "state = %q, want deleted", dropped.State)
 	{
 
-		_, err := svc.GetBlobPayload(blob.ID)
+		_, err := svc.GetBlobPayload(blob.Reference.String())
 		require.Error(t, err, "expected dropped payload to be unavailable")
 	}
 
@@ -56,7 +56,7 @@ func TestPruneExpiredRetention(t *testing.T) {
 	require.NoErrorf(t, err, "store blob: %v", err)
 	{
 
-		_, err := svc.RetainBlob(blob.ID, time.Now().UTC().Add(-time.Minute))
+		_, err := svc.RetainBlob(blob.Reference.String(), time.Now().UTC().Add(-time.Minute))
 		require.NoErrorf(t, err, "retain blob: %v", err)
 	}
 
@@ -68,7 +68,7 @@ func TestPruneExpiredRetention(t *testing.T) {
 		"expired", "state = %q, want expired", pruned[0].State)
 	{
 
-		_, err := svc.GetBlobPayload(blob.ID)
+		_, err := svc.GetBlobPayload(blob.Reference.String())
 		require.Error(t, err, "expected pruned payload to be unavailable")
 	}
 
@@ -87,7 +87,7 @@ func TestLoadReconcilesExpiredRetentionState(t *testing.T) {
 	require.NoErrorf(t, err, "store blob: %v", err)
 	{
 
-		_, err := svc.RetainBlob(blob.ID, time.Now().UTC().Add(-time.Minute))
+		_, err := svc.RetainBlob(blob.Reference.String(), time.Now().UTC().Add(-time.Minute))
 		require.NoErrorf(t, err, "retain blob: %v", err)
 	}
 
@@ -97,13 +97,13 @@ func TestLoadReconcilesExpiredRetentionState(t *testing.T) {
 		require.NoErrorf(t, err, "restore load: %v", err)
 	}
 
-	item, ok := restored.GetBlob(blob.ID)
+	item, ok := restored.GetBlob(blob.Reference.String())
 	require.True(t, ok, "expected restored blob")
 	require.Falsef(t, item.State !=
 		"expired", "state = %q, want expired", item.State)
 	{
 
-		_, err := restored.GetBlobPayload(blob.ID)
+		_, err := restored.GetBlobPayload(blob.Reference.String())
 		require.Error(t, err, "expected expired payload to be unavailable after load reconciliation")
 	}
 
@@ -132,7 +132,7 @@ func TestLoadReconcilesMissingAvailableLocalPayloadState(t *testing.T) {
 	require.NoErrorf(t, err, "store blob: %v", err)
 	{
 
-		err := os.Remove(svc.payloadPath(blob.ID))
+		err := os.Remove(svc.payloadPath(blob.Reference.String()))
 		require.NoErrorf(t, err, "remove payload: %v", err)
 	}
 
@@ -142,13 +142,13 @@ func TestLoadReconcilesMissingAvailableLocalPayloadState(t *testing.T) {
 		require.NoErrorf(t, err, "restore load: %v", err)
 	}
 
-	item, ok := restored.GetBlob(blob.ID)
+	item, ok := restored.GetBlob(blob.Reference.String())
 	require.True(t, ok, "expected restored blob")
 	require.Falsef(t, item.State !=
 		"deleted", "state = %q, want deleted", item.State)
 	{
 
-		_, err := restored.GetBlobPayload(blob.ID)
+		_, err := restored.GetBlobPayload(blob.Reference.String())
 		require.Error(t, err, "expected deleted payload to be unavailable after load reconciliation")
 	}
 
@@ -175,12 +175,12 @@ func TestLoadReconcilesMissingPinnedPayloadState(t *testing.T) {
 	require.NoErrorf(t, err, "store blob: %v", err)
 	{
 
-		_, err := svc.PinBlob(blob.ID)
+		_, err := svc.PinBlob(blob.Reference.String())
 		require.NoErrorf(t, err, "pin blob: %v", err)
 	}
 	{
 
-		err := os.Remove(svc.payloadPath(blob.ID))
+		err := os.Remove(svc.payloadPath(blob.Reference.String()))
 		require.NoErrorf(t, err, "remove payload: %v", err)
 	}
 
@@ -190,7 +190,7 @@ func TestLoadReconcilesMissingPinnedPayloadState(t *testing.T) {
 		require.NoErrorf(t, err, "restore load: %v", err)
 	}
 
-	item, ok := restored.GetBlob(blob.ID)
+	item, ok := restored.GetBlob(blob.Reference.String())
 	require.True(t, ok, "expected restored blob")
 	require.Falsef(t, item.State !=
 		"deleted", "state = %q, want deleted", item.State)
@@ -223,7 +223,7 @@ func TestRetainRelayBlobRequiresEncryptedPayload(t *testing.T) {
 	require.Falsef(t, retained.Retention !=
 		"relay-temporary", "retention = %q, want relay-temporary", retained.Retention)
 
-	payload, err := svc.GetBlobPayload(retained.ID)
+	payload, err := svc.GetBlobPayload(retained.Reference.String())
 	require.NoErrorf(t, err, "get payload: %v", err)
 	require.Falsef(t, string(payload) != "ciphertext", "payload = %q, want ciphertext", string(payload))
 
@@ -240,7 +240,7 @@ func TestRetainRelayBlobRejectsMismatchedContentIdentity(t *testing.T) {
 	{
 
 		_, err := svc.RetainRelayBlob(Blob{
-			ID:        "blob.logical",
+			Reference: testContentReference(t, "different"),
 			MediaType: "application/octet-stream",
 			Encrypted: true,
 		}, []byte("ciphertext"), time.Now().UTC().Add(time.Hour))
@@ -273,17 +273,17 @@ func TestStoreEncryptedBlobKeepsCiphertextAndRequiresKey(t *testing.T) {
 	require.Falsef(t, blob.Cipher !=
 		blobCipherAES256GCM, "cipher = %q, want %q", blob.Cipher, blobCipherAES256GCM)
 
-	raw, err := svc.GetBlobPayload(blob.ID)
+	raw, err := svc.GetBlobPayload(blob.Reference.String())
 	require.NoErrorf(t, err, "get raw payload: %v", err)
 	require.False(t, string(raw) ==
 		"secret payload", "expected ciphertext on disk, got plaintext")
 	{
 
-		_, err := svc.DecryptBlobPayload(blob.ID, []byte("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"))
+		_, err := svc.DecryptBlobPayload(blob.Reference.String(), []byte("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"))
 		require.Error(t, err, "expected decryption failure with wrong key")
 	}
 
-	plaintext, err := svc.DecryptBlobPayload(blob.ID, key)
+	plaintext, err := svc.DecryptBlobPayload(blob.Reference.String(), key)
 	require.NoErrorf(t, err, "decrypt blob: %v", err)
 	require.Falsef(t, string(plaintext) != "secret payload", "plaintext = %q, want secret payload", string(plaintext))
 
@@ -298,9 +298,9 @@ func TestStoreEncryptedBlobDecryptsWithExplicitOpaqueKeyID(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "key-1", blob.KeyID)
 
-	plaintext, err := svc.DecryptBlobPayload(blob.ID, key)
+	plaintext, err := svc.DecryptBlobPayload(blob.Reference.String(), key)
 	require.NoError(t, err)
 	require.Equal(t, []byte("secret payload"), plaintext)
-	_, err = svc.DecryptBlobPayload(blob.ID, []byte("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"))
+	_, err = svc.DecryptBlobPayload(blob.Reference.String(), []byte("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"))
 	require.Error(t, err)
 }

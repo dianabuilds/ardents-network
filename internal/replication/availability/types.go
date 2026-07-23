@@ -2,7 +2,11 @@
 // It does not own placement commitments or payload storage.
 package availability
 
-import "time"
+import (
+	"time"
+
+	"ardents/internal/content/catalog"
+)
 
 type ReplicaIntent struct {
 	ID             string        `json:"id"`
@@ -19,22 +23,22 @@ type ReplicaIntent struct {
 }
 
 type RepairRecord struct {
-	ID                string     `json:"id"`
-	IntentID          string     `json:"intent_id"`
-	IntentVersion     uint64     `json:"intent_version"`
-	RootManifestID    string     `json:"root_manifest_id"`
-	BlobID            string     `json:"blob_id"`
-	MissingOrdinal    int        `json:"missing_ordinal"`
-	State             string     `json:"state"`
-	Attempts          int        `json:"attempts"`
-	PostLeaseAttempts int        `json:"post_lease_attempts"`
-	StartedAt         time.Time  `json:"started_at"`
-	LossEligibleAt    time.Time  `json:"loss_eligible_at"`
-	DeadlineAt        time.Time  `json:"deadline_at"`
-	NextAttemptAt     time.Time  `json:"next_attempt_at"`
-	LastAttemptAt     time.Time  `json:"last_attempt_at"`
-	Reason            string     `json:"reason,omitempty"`
-	FinishedAt        *time.Time `json:"finished_at,omitempty"`
+	ID                string                   `json:"id"`
+	IntentID          string                   `json:"intent_id"`
+	IntentVersion     uint64                   `json:"intent_version"`
+	RootManifestID    string                   `json:"root_manifest_id"`
+	ContentReference  catalog.ContentReference `json:"content_reference"`
+	MissingOrdinal    int                      `json:"missing_ordinal"`
+	State             string                   `json:"state"`
+	Attempts          int                      `json:"attempts"`
+	PostLeaseAttempts int                      `json:"post_lease_attempts"`
+	StartedAt         time.Time                `json:"started_at"`
+	LossEligibleAt    time.Time                `json:"loss_eligible_at"`
+	DeadlineAt        time.Time                `json:"deadline_at"`
+	NextAttemptAt     time.Time                `json:"next_attempt_at"`
+	LastAttemptAt     time.Time                `json:"last_attempt_at"`
+	Reason            string                   `json:"reason,omitempty"`
+	FinishedAt        *time.Time               `json:"finished_at,omitempty"`
 }
 
 type Snapshot struct {

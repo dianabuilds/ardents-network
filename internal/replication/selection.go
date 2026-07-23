@@ -89,7 +89,7 @@ func placementUnsatisfiedMessage(decision placement.SelectionDecision, committed
 func (s *Service) existingReplicaPeers(blobID string, intentVersion uint64) map[identityprincipal.ID]bool {
 	excluded := map[identityprincipal.ID]bool{}
 	for _, commitment := range s.cfg.Data.ReplicaPlacementState().Commitments {
-		if commitment.BlobID == blobID && commitment.IntentVersion == intentVersion && commitment.TargetNode.String() != "" {
+		if commitment.ContentReference.String() == blobID && commitment.IntentVersion == intentVersion && commitment.TargetNode.String() != "" {
 			excluded[commitment.TargetNode] = true
 		}
 	}

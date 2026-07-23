@@ -93,7 +93,7 @@ func (s applicationContentStore) FetchBlob(ctx context.Context, call application
 	if err != nil {
 		return contentdomain.Blob{}, err
 	}
-	if blob.ID != id || !s.owners.Content.HasBlobOwner(owner, id) {
+	if blob.Reference.String() != id || !s.owners.Content.HasBlobOwner(owner, id) {
 		return contentdomain.Blob{}, contentdomain.ErrBlobNotFound
 	}
 	return blob, nil

@@ -57,8 +57,38 @@ type controlWire struct {
 }
 
 type reserveOfferBody struct {
-	Offer placement.ReservationOffer `json:"offer"`
-	Blob  model.Blob                 `json:"blob"`
+	ProtocolVersion uint32        `json:"protocol_version"`
+	IntentVersion   uint64        `json:"intent_version"`
+	EncryptedSize   int64         `json:"encrypted_size"`
+	RequestedLease  time.Duration `json:"requested_lease"`
+	ExpiresAt       time.Time     `json:"expires_at"`
+	Nonce           string        `json:"nonce"`
+	Blob            model.Blob    `json:"blob"`
+}
+
+func newReserveOfferBody(offer placement.ReservationOffer, blob model.Blob) reserveOfferBody {
+	return reserveOfferBody{
+		ProtocolVersion: offer.ProtocolVersion,
+		IntentVersion:   offer.IntentVersion,
+		EncryptedSize:   offer.EncryptedSize,
+		RequestedLease:  offer.RequestedLease,
+		ExpiresAt:       offer.ExpiresAt,
+		Nonce:           offer.Nonce,
+		Blob:            blob,
+	}
+}
+
+func (body reserveOfferBody) offer(operationID string) placement.ReservationOffer {
+	return placement.ReservationOffer{
+		OperationID:      operationID,
+		ProtocolVersion:  body.ProtocolVersion,
+		IntentVersion:    body.IntentVersion,
+		ContentReference: body.Blob.Reference,
+		EncryptedSize:    body.EncryptedSize,
+		RequestedLease:   body.RequestedLease,
+		ExpiresAt:        body.ExpiresAt,
+		Nonce:            body.Nonce,
+	}
 }
 
 type reserveResultBody struct {

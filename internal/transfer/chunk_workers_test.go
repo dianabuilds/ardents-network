@@ -158,7 +158,7 @@ func chunkWorkerFixture(t *testing.T, count int) (*chunkTestData, *chunkTestData
 		raw := bytes.Repeat([]byte{fixtureID, byte(index + 1)}, 32)
 		blob, err := source.StoreBlob(model.Blob{Encrypted: true, Retention: "fetched"}, raw)
 		require.NoError(t, err)
-		ids = append(ids, blob.ID)
+		ids = append(ids, blob.Reference.String())
 	}
 	return source, target, chunking.ResolvedPlan{
 		ChunkIDs: ids, TotalPlaintextBytes: int64(count * chunking.PlaintextChunkSize),
@@ -229,7 +229,7 @@ func (d *chunkTestData) StoreBlob(blob model.Blob, raw []byte) (model.Blob, erro
 	blob.Size = int64(len(raw))
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	d.blobs[blob.ID], d.payloads[blob.ID] = blob, append([]byte(nil), raw...)
+	d.blobs[blob.Reference.String()], d.payloads[blob.Reference.String()] = blob, append([]byte(nil), raw...)
 	return blob, nil
 }
 

@@ -99,7 +99,7 @@ func (r *Receiver) rememberRejection(offer ReservationOffer, principal identityp
 }
 
 func validateOffer(offer ReservationOffer, now time.Time) error {
-	if offer.OperationID == "" || offer.ProtocolVersion == 0 || offer.IntentVersion == 0 || offer.BlobID == "" || offer.CID == "" || offer.BlobID != offer.CID || offer.Nonce == "" || offer.EncryptedSize <= 0 {
+	if offer.OperationID == "" || offer.ProtocolVersion == 0 || offer.IntentVersion == 0 || offer.ContentReference.String() == "" || offer.Nonce == "" || offer.EncryptedSize <= 0 {
 		return fmt.Errorf("reservation offer is incomplete")
 	}
 	if !offer.ExpiresAt.After(now) || offer.ExpiresAt.After(now.Add(defaultReservationTTL)) {

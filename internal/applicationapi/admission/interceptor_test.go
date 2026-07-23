@@ -324,8 +324,8 @@ func (s *recordingStore) PublishBlob(call applicationcall.Call, command contentd
 		return contentdomain.Blob{}, err
 	}
 	blob := command.Blob
-	blob.ID, blob.CID, blob.Hash, blob.Size = id, id, hash, int64(len(command.Payload))
-	s.blobs[id], s.payloads[id] = blob, append([]byte(nil), command.Payload...)
+	blob.Reference, blob.Hash, blob.Size = id, hash, int64(len(command.Payload))
+	s.blobs[id.String()], s.payloads[id.String()] = blob, append([]byte(nil), command.Payload...)
 	return blob, nil
 }
 func (s *recordingStore) GetBlob(call applicationcall.Call, id string) (contentdomain.Blob, bool) {

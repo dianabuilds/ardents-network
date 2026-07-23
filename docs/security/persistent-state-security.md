@@ -55,12 +55,19 @@ The following items form consistency groups and must not be restored partially:
    replay-digest master key. Losing either side fails closed and must not reset
    replay protection while retained private envelopes remain eligible.
 
-The `ardents.db` `replication/state` record is strict schema version 1. Replica
+The `ardents.db` `replication/state` record is strict schema version 2. Replica
 reservations persist `node_principal` and commitments persist `target_node` as
-canonical `p1_` identifiers. Unversioned state, unknown fields, `peer_id`,
-`PeerID`, malformed Principals, and the removed pre-release `data/snapshot`
+canonical `p1_` identifiers, and reservations/commitments carry one strict
+`content_reference`. Unversioned/schema-1 state, unknown fields, `peer_id`,
+`PeerID`, `blob_id`, `cid`, malformed Principals or Content References, and the removed pre-release `data/snapshot`
 location have no compatibility reader and fail startup without partially
 replacing live placement or availability state.
+
+The content `data/snapshot` record is strict schema version 2. Blob values use
+only `reference`; persisted Blob map keys, source records, and owner bindings
+must bind the same canonical Content Reference. Pre-release schema 1, `id`/`cid`
+fields, malformed references, missing collections, and key/reference mismatch
+fail before live content state is replaced.
 
 `operations.json` is optional recovery evidence. The API token and TCP-WSS
 private key are provisioned from deployment secret management and are not part

@@ -20,13 +20,13 @@ func (s *BlobStore) Load(items map[string]Blob) {
 }
 func (s *BlobStore) Snapshot() map[string]Blob  { return maps.Clone(s.Items) }
 func (s *BlobStore) Get(id string) (Blob, bool) { item, ok := s.Items[id]; return item, ok }
-func (s *BlobStore) Put(item Blob)              { s.Items[item.ID] = item }
+func (s *BlobStore) Put(item Blob)              { s.Items[item.Reference.String()] = item }
 func (s *BlobStore) Delete(id string)           { delete(s.Items, id) }
 func (s *BlobStore) Count() int                 { return len(s.Items) }
 
 type blobOwnerKey struct {
 	Owner     principal.ID
-	Reference string
+	Reference ContentReference
 }
 
 type BlobOwnerStore struct {
@@ -40,10 +40,10 @@ func NewBlobOwnerStore() BlobOwnerStore {
 func (s *BlobOwnerStore) Load(items []BlobOwnerBinding, blobs map[string]Blob) error {
 	loaded := make(map[blobOwnerKey]BlobOwnerBinding, len(items))
 	for _, item := range items {
-		if item.Owner.String() == "" || item.Reference == "" || item.CreatedAt.IsZero() {
+		if item.Owner.String() == "" || item.Reference.String() == "" || item.CreatedAt.IsZero() {
 			return fmt.Errorf("blob owner binding is invalid")
 		}
-		if _, ok := blobs[item.Reference]; !ok {
+		if _, ok := blobs[item.Reference.String()]; !ok {
 			return fmt.Errorf("blob owner binding references unknown content")
 		}
 		key := blobOwnerKey{Owner: item.Owner, Reference: item.Reference}
@@ -66,12 +66,12 @@ func (s *BlobOwnerStore) Snapshot() []BlobOwnerBinding {
 		if leftOwner != rightOwner {
 			return leftOwner < rightOwner
 		}
-		return items[i].Reference < items[j].Reference
+		return items[i].Reference.String() < items[j].Reference.String()
 	})
 	return items
 }
 
-func (s *BlobOwnerStore) Has(owner principal.ID, reference string) bool {
+func (s *BlobOwnerStore) Has(owner principal.ID, reference ContentReference) bool {
 	_, ok := s.items[blobOwnerKey{Owner: owner, Reference: reference}]
 	return ok
 }
@@ -80,11 +80,11 @@ func (s *BlobOwnerStore) Put(item BlobOwnerBinding) {
 	s.items[blobOwnerKey{Owner: item.Owner, Reference: item.Reference}] = item
 }
 
-func (s *BlobOwnerStore) Delete(owner principal.ID, reference string) {
+func (s *BlobOwnerStore) Delete(owner principal.ID, reference ContentReference) {
 	delete(s.items, blobOwnerKey{Owner: owner, Reference: reference})
 }
 
-func (s *BlobOwnerStore) CountReference(reference string) int {
+func (s *BlobOwnerStore) CountReference(reference ContentReference) int {
 	count := 0
 	for key := range s.items {
 		if key.Reference == reference {

@@ -23,16 +23,16 @@ func TestOwnedBlobPutCommitsBindingAndSurvivesRestart(t *testing.T) {
 
 	stored, err := service.StoreBlobForOwner(owner, Blob{MediaType: "text/plain"}, []byte("owned"))
 	require.NoError(t, err)
-	require.True(t, service.HasBlobOwner(owner, stored.ID))
+	require.True(t, service.HasBlobOwner(owner, stored.Reference.String()))
 	require.Equal(t, now, stored.CreatedAt)
 	require.Equal(t, now, service.blobOwners.Snapshot()[0].CreatedAt)
 
 	restarted := NewInDir(dir)
 	require.NoError(t, restarted.Load())
-	loaded, found := restarted.GetBlobForOwner(owner, stored.ID)
+	loaded, found := restarted.GetBlobForOwner(owner, stored.Reference.String())
 	require.True(t, found)
 	require.Equal(t, stored, loaded)
-	raw, err := restarted.GetBlobPayloadForOwner(owner, stored.ID)
+	raw, err := restarted.GetBlobPayloadForOwner(owner, stored.Reference.String())
 	require.NoError(t, err)
 	require.Equal(t, []byte("owned"), raw)
 }
@@ -46,18 +46,18 @@ func TestOwnedBlobIsDeduplicatedWithoutGrantingSiblingOwner(t *testing.T) {
 
 	aliceBlob, err := service.StoreBlobForOwner(alice, Blob{MediaType: "text/plain"}, []byte("same bytes"))
 	require.NoError(t, err)
-	_, found := service.GetBlobForOwner(bob, aliceBlob.ID)
+	_, found := service.GetBlobForOwner(bob, aliceBlob.Reference.String())
 	require.False(t, found)
-	_, err = service.GetBlobPayloadForOwner(bob, aliceBlob.ID)
+	_, err = service.GetBlobPayloadForOwner(bob, aliceBlob.Reference.String())
 	require.ErrorIs(t, err, ErrBlobNotFound)
 
 	bobBlob, err := service.StoreBlobForOwner(bob, Blob{MediaType: "text/plain"}, []byte("same bytes"))
 	require.NoError(t, err)
-	require.Equal(t, aliceBlob.ID, bobBlob.ID)
+	require.Equal(t, aliceBlob.Reference.String(), bobBlob.Reference.String())
 	require.Len(t, service.ListBlobs(), 1)
-	require.True(t, service.HasBlobOwner(alice, aliceBlob.ID))
-	require.True(t, service.HasBlobOwner(bob, aliceBlob.ID))
-	require.False(t, service.HasBlobOwner(unknown, aliceBlob.ID))
+	require.True(t, service.HasBlobOwner(alice, aliceBlob.Reference.String()))
+	require.True(t, service.HasBlobOwner(bob, aliceBlob.Reference.String()))
+	require.False(t, service.HasBlobOwner(unknown, aliceBlob.Reference.String()))
 }
 
 func TestOwnedBlobSupportsEmptyPayload(t *testing.T) {
@@ -69,8 +69,8 @@ func TestOwnedBlobSupportsEmptyPayload(t *testing.T) {
 	require.NoError(t, err)
 	_, expectedReference, err := payload.DeriveIdentity(nil)
 	require.NoError(t, err)
-	require.Equal(t, expectedReference, stored.ID)
-	raw, err := service.GetBlobPayloadForOwner(owner, stored.ID)
+	require.Equal(t, expectedReference, stored.Reference)
+	raw, err := service.GetBlobPayloadForOwner(owner, stored.Reference.String())
 	require.NoError(t, err)
 	require.Empty(t, raw)
 }
@@ -86,10 +86,10 @@ func TestOwnedBlobRollsBackNewPayloadAndBindingWhenCatalogueCommitFails(t *testi
 
 	_, err = service.StoreBlobForOwner(owner, Blob{MediaType: "text/plain"}, []byte("uncommitted"))
 	require.Error(t, err)
-	require.False(t, service.HasBlobOwner(owner, reference))
-	_, found := service.GetBlob(reference)
+	require.False(t, service.HasBlobOwner(owner, reference.String()))
+	_, found := service.GetBlob(reference.String())
 	require.False(t, found)
-	_, statErr := os.Stat(service.payloadPath(reference))
+	_, statErr := os.Stat(service.payloadPath(reference.String()))
 	require.ErrorIs(t, statErr, os.ErrNotExist)
 }
 
@@ -105,9 +105,9 @@ func TestOwnedBlobRollsBackOnlyNewBindingForExistingPayload(t *testing.T) {
 
 	_, err = service.StoreBlobForOwner(second, Blob{MediaType: "text/plain"}, []byte("preserved"))
 	require.Error(t, err)
-	require.True(t, service.HasBlobOwner(first, stored.ID))
-	require.False(t, service.HasBlobOwner(second, stored.ID))
-	raw, err := service.GetBlobPayloadForOwner(first, stored.ID)
+	require.True(t, service.HasBlobOwner(first, stored.Reference.String()))
+	require.False(t, service.HasBlobOwner(second, stored.Reference.String()))
+	raw, err := service.GetBlobPayloadForOwner(first, stored.Reference.String())
 	require.NoError(t, err)
 	require.Equal(t, []byte("preserved"), raw)
 }
@@ -154,13 +154,17 @@ func TestLoadRejectsUnknownBlobOwnershipVersion(t *testing.T) {
 func TestLoadRejectsMalformedAndDuplicateBlobOwnerBindings(t *testing.T) {
 	owner := contentTestPrincipal(t, 10)
 	createdAt := time.Now().UTC()
-	validBlob := Blob{ID: "ref", CID: "ref", CreatedAt: createdAt}
+	_, reference, err := payload.DeriveIdentity([]byte("known"))
+	require.NoError(t, err)
+	_, unknown, err := payload.DeriveIdentity([]byte("missing"))
+	require.NoError(t, err)
+	validBlob := Blob{Reference: reference, CreatedAt: createdAt}
 	tests := map[string][]map[string]any{
-		"malformed principal": {{"owner": "p1_invalid", "reference": "ref", "created_at": createdAt}},
-		"unknown reference":   {{"owner": owner.String(), "reference": "missing", "created_at": createdAt}},
+		"malformed principal": {{"owner": "p1_invalid", "reference": reference.String(), "created_at": createdAt}},
+		"unknown reference":   {{"owner": owner.String(), "reference": unknown.String(), "created_at": createdAt}},
 		"duplicate": {
-			{"owner": owner.String(), "reference": "ref", "created_at": createdAt},
-			{"owner": owner.String(), "reference": "ref", "created_at": createdAt},
+			{"owner": owner.String(), "reference": reference.String(), "created_at": createdAt},
+			{"owner": owner.String(), "reference": reference.String(), "created_at": createdAt},
 		},
 	}
 	for name, bindings := range tests {
@@ -168,7 +172,7 @@ func TestLoadRejectsMalformedAndDuplicateBlobOwnerBindings(t *testing.T) {
 			dir := t.TempDir()
 			require.NoError(t, storage.SaveJSON(contentPath(dir), "data", "snapshot", map[string]any{
 				"version": contentSchemaVersion,
-				"objects": map[string]any{}, "blobs": map[string]Blob{"ref": validBlob},
+				"objects": map[string]any{}, "blobs": map[string]Blob{reference.String(): validBlob},
 				"sources": map[string]any{}, "manifests": map[string]any{},
 				"blob_ownership": map[string]any{"version": blobOwnershipVersion, "bindings": bindings},
 			}))
@@ -182,13 +186,13 @@ func TestStartupReclaimsInstalledPayloadWithoutInventingBinding(t *testing.T) {
 	service := NewInDir(dir)
 	_, reference, err := payload.DeriveIdentity([]byte("orphan"))
 	require.NoError(t, err)
-	require.NoError(t, storage.AtomicWritePrivateFile(service.payloadPath(reference), []byte("orphan")))
+	require.NoError(t, storage.AtomicWritePrivateFile(service.payloadPath(reference.String()), []byte("orphan")))
 
 	restarted := NewInDir(dir)
 	require.NoError(t, restarted.Load())
-	_, statErr := os.Stat(filepath.Join(dir, "blobs", reference+".blob"))
+	_, statErr := os.Stat(filepath.Join(dir, "blobs", reference.String()+".blob"))
 	require.ErrorIs(t, statErr, os.ErrNotExist)
-	require.False(t, restarted.HasBlobOwner(contentTestPrincipal(t, 11), reference))
+	require.False(t, restarted.HasBlobOwner(contentTestPrincipal(t, 11), reference.String()))
 }
 
 func contentTestPrincipal(t *testing.T, marker byte) principal.ID {

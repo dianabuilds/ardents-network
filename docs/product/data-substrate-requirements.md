@@ -49,8 +49,8 @@ package, module, layer, or directory tree.
 
 Canonical identity contract:
 
-- payload-backed blob ID must match the content-derived CID; local store, relay retention, and fetch acceptance cannot bind payload under a different logical ID.
-- metadata-only blob may exist before payload is available, but once CID is known the ID/CID pair must remain canonical and drift-free.
+- every Blob has exactly one typed Content Reference using the canonical content-derived CID; local store, relay retention, and fetch acceptance cannot bind payload under a different logical identifier.
+- metadata-only Blob announcements require an already known canonical Content Reference; the Node does not synthesize provisional Blob IDs.
 - fetch request acceptance must preserve the mapping between requested blob ID and accepted content identity; otherwise the response is not authoritative truth.
 
 ### 2.2 Manifest

@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -43,7 +44,7 @@ func (d *fetchTestData) StoreBlob(blob model.Blob, raw []byte) (model.Blob, erro
 	if err := payload.ApplyDerivedIdentity(&blob, hash, blobCID); err != nil {
 		return model.Blob{}, err
 	}
-	d.blobs[blob.ID] = blob
+	d.blobs[blob.Reference.String()] = blob
 	return blob, nil
 }
 
@@ -82,14 +83,13 @@ func TestAcceptBlobResponseRejectsUnsignedSpoofedSource(t *testing.T) {
 
 	requestID := "req-1"
 	requester := "p_requester"
-	blobID := "blob-1"
+	blobID := transferTestContentReference(t, "blob-1").String()
 	forged, err := json.Marshal(blobFetchResponse{
 		RequestID: requestID,
 		Requester: requester,
-		BlobID:    blobID,
 		Status:    blobFetchStatusOK,
-		Blob: model.Blob{
-			ID:        blobID,
+		Blob: &model.Blob{
+			Reference: transferTestContentReference(t, "blob-1"),
 			MediaType: "application/octet-stream",
 			Size:      int64(len("forged payload")),
 		},
@@ -115,6 +115,30 @@ func TestAcceptBlobResponseRejectsUnsignedSpoofedSource(t *testing.T) {
 
 }
 
+func TestBlobFetchWireRejectsObsoleteContentIdentityFields(t *testing.T) {
+	reference := transferTestContentReference(t, "wire-reference")
+	request := []byte(`{"request_id":"request","blob_id":"` + reference.String() + `","requester":"requester","public_key":"key","signature":"signature"}`)
+	_, err := decodeBlobRequest(request)
+	require.ErrorContains(t, err, "unknown field")
+
+	response := blobFetchResponse{
+		RequestID: "request", Requester: "requester", Status: blobFetchStatusOK,
+		Blob: &model.Blob{Reference: reference}, Source: "source",
+	}
+	raw, err := json.Marshal(response)
+	require.NoError(t, err)
+	for _, mutate := range []func(string) string{
+		func(value string) string {
+			return strings.Replace(value, `"requester"`, `"blob_id":"`+reference.String()+`","requester"`, 1)
+		},
+		func(value string) string { return strings.Replace(value, `"reference"`, `"id"`, 1) },
+		func(value string) string { return strings.Replace(value, `"reference"`, `"cid"`, 1) },
+	} {
+		_, err := decodeBlobResponse([]byte(mutate(string(raw))), reference.String(), "requester", "request")
+		require.Error(t, err)
+	}
+}
+
 func TestAcceptBlobResponseReturnsSignedTerminalError(t *testing.T) {
 	publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)
 	require.NoErrorf(t, err, "generate key: %v", err)
@@ -134,11 +158,11 @@ func TestAcceptBlobResponseReturnsSignedTerminalError(t *testing.T) {
 
 	requestID := "req-err"
 	requester := "p_requester"
-	blobID := "blob-err"
+	blobID := transferTestContentReference(t, "blob-err").String()
 	wire, err := marshalBlobErrorResponse(sourcePrincipal, privateKey, blobFetchRequest{
-		RequestID: requestID,
-		BlobID:    blobID,
-		Requester: requester,
+		RequestID:  requestID,
+		ResourceID: blobID,
+		Requester:  requester,
 	}, errors.New("plaintext blob re-serve is not allowed"))
 	require.NoErrorf(t, err, "marshal error response: %v", err)
 
@@ -180,13 +204,13 @@ func TestAcceptBlobResponseRejectsSignedMismatchedContentIdentity(t *testing.T) 
 
 	requestID := "req-2"
 	requester := "p_requester"
-	blobID := "blob.logical"
+	blobID := transferTestContentReference(t, "blob.logical").String()
 	wire, err := marshalBlobResponse(sourcePrincipal, privateKey, blobFetchRequest{
-		RequestID: requestID,
-		BlobID:    blobID,
-		Requester: requester,
+		RequestID:  requestID,
+		ResourceID: blobID,
+		Requester:  requester,
 	}, model.Blob{
-		ID:        blobID,
+		Reference: transferTestContentReference(t, "blob.logical"),
 		MediaType: "application/octet-stream",
 	}, []byte("payload bound to another cid"))
 	require.NoErrorf(t, err, "marshal signed response: %v", err)
@@ -240,13 +264,13 @@ func TestAwaitBlobFetchResponseReturnsCandidateRejectionInsteadOfTimeout(t *test
 
 	requestID := "req-timeout"
 	requester := "p_requester"
-	blobID := "blob-timeout"
+	blobID := transferTestContentReference(t, "blob-timeout").String()
 	wire, err := marshalBlobResponse(sourcePrincipal, privateKey, blobFetchRequest{
-		RequestID: requestID,
-		BlobID:    blobID,
-		Requester: requester,
+		RequestID:  requestID,
+		ResourceID: blobID,
+		Requester:  requester,
 	}, model.Blob{
-		ID:        blobID,
+		Reference: transferTestContentReference(t, "blob-timeout"),
 		MediaType: "application/octet-stream",
 	}, []byte("network payload"))
 	require.NoErrorf(t, err, "marshal response: %v", err)

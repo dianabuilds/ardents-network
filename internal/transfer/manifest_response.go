@@ -10,6 +10,7 @@ import (
 
 	model "ardents/internal/content/catalog"
 	"ardents/internal/identity/principal"
+	"ardents/internal/storage"
 )
 
 func prepareManifestResponseWire(cfg ExchangeConfig, source string, key ed25519.PrivateKey, req blobFetchRequest) ([]byte, error, error) {
@@ -26,7 +27,7 @@ func prepareManifestResponseWire(cfg ExchangeConfig, source string, key ed25519.
 }
 
 func prepareManifestResponse(cfg ExchangeConfig, req blobFetchRequest) (model.Manifest, error) {
-	manifest, ok := cfg.Data.ReadTransferManifest(req.BlobID)
+	manifest, ok := cfg.Data.ReadTransferManifest(req.ResourceID)
 	if !ok {
 		return model.Manifest{}, fmt.Errorf("manifest not found")
 	}
@@ -50,7 +51,7 @@ func marshalManifestResponse(source string, key ed25519.PrivateKey, req blobFetc
 		value = new(manifestWireFromSnapshot(manifest))
 	}
 	response := blobFetchResponse{
-		RequestID: req.RequestID, Requester: req.Requester, BlobID: req.BlobID,
+		RequestID: req.RequestID, Requester: req.Requester,
 		ResourceKind: "manifest", Status: status, Error: detail, Manifest: value, Source: source,
 	}
 	signed, err := canonicalBlobFetchResponse(response)
@@ -123,10 +124,10 @@ func cloneMetadata(in map[string]any) map[string]any {
 
 func decodeManifestResponse(payload []byte, manifestID, requester, requestID string) (blobFetchResponse, error) {
 	var response blobFetchResponse
-	if err := json.Unmarshal(payload, &response); err != nil {
+	if err := storage.DecodeJSONStrict(payload, &response); err != nil {
 		return blobFetchResponse{}, err
 	}
-	if response.RequestID != requestID || response.Requester != requester || response.BlobID != manifestID || response.ResourceKind != "manifest" || response.Source == "" {
+	if response.RequestID != requestID || response.Requester != requester || response.ResourceKind != "manifest" || response.Source == "" {
 		return blobFetchResponse{}, fmt.Errorf("manifest response does not match request")
 	}
 	if response.Status == blobFetchStatusOK {

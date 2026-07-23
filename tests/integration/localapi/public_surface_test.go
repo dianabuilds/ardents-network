@@ -249,9 +249,9 @@ func TestConnectRPCDataTransferSurfaceMatchesLocalTruth(t *testing.T) {
 		Data:  runtimeinfra.DataConfig{Dir: t.TempDir()},
 	})
 	client := testkit.NewArdentsClient(t, rt.Runtime)
-	fetched, err := client.FetchBlob(context.Background(), testkit.AuthorizedRequest(&ardentsv1.FetchBlobRequest{Id: stored.ID}))
+	fetched, err := client.FetchBlob(context.Background(), testkit.AuthorizedRequest(&ardentsv1.FetchBlobRequest{Id: stored.Reference.String()}))
 	require.NoError(t, err)
-	require.Equal(t, stored.ID, fetched.Msg.GetId())
+	require.Equal(t, stored.Reference.String(), fetched.Msg.GetReference())
 
 	var localTransfers []transfer.Record
 	var rpcTransfers *ardentsv1.ListTransfersResponse
@@ -262,11 +262,11 @@ func TestConnectRPCDataTransferSurfaceMatchesLocalTruth(t *testing.T) {
 			return false, err.Error()
 		}
 		rpcTransfers = resp.Msg
-		localTransfer, ok := findLocalTransferByResource(localTransfers, stored.ID)
+		localTransfer, ok := findLocalTransferByResource(localTransfers, stored.Reference.String())
 		if !ok {
 			return false, "local transfer not visible yet"
 		}
-		rpcTransfer, ok := findProtoTransferByResource(rpcTransfers.GetTransfers(), stored.ID)
+		rpcTransfer, ok := findProtoTransferByResource(rpcTransfers.GetTransfers(), stored.Reference.String())
 		if !ok {
 			return false, "rpc transfer not visible yet"
 		}
@@ -276,13 +276,13 @@ func TestConnectRPCDataTransferSurfaceMatchesLocalTruth(t *testing.T) {
 		return true, ""
 	})
 
-	localSources := rt.Data.ListBlobSources(stored.ID)
-	localTransfer, ok := findLocalTransferByResource(localTransfers, stored.ID)
+	localSources := rt.Data.ListBlobSources(stored.Reference.String())
+	localTransfer, ok := findLocalTransferByResource(localTransfers, stored.Reference.String())
 	require.True(t, ok)
 	localGetTransfer, ok := rt.Transfers.Get(localTransfer.ID)
 	require.True(t, ok)
 
-	rpcSources, err := client.ListBlobSources(context.Background(), testkit.AuthorizedRequest(&ardentsv1.ListBlobSourcesRequest{Id: stored.ID}))
+	rpcSources, err := client.ListBlobSources(context.Background(), testkit.AuthorizedRequest(&ardentsv1.ListBlobSourcesRequest{Id: stored.Reference.String()}))
 	require.NoError(t, err)
 	rpcGetTransfer, err := client.GetTransfer(context.Background(), testkit.AuthorizedRequest(&ardentsv1.GetTransferRequest{Id: localTransfer.ID}))
 	require.NoError(t, err)
@@ -298,7 +298,7 @@ func TestConnectRPCDataTransferSurfaceMatchesLocalTruth(t *testing.T) {
 	rpcRemoteSource, ok := findProtoBlobSourceByTransport(rpcSources.Msg.GetSources(), "remote")
 	require.True(t, ok)
 	require.Equal(t, localLocalSource.NodeID, rpcLocalSource.GetNodeId())
-	require.Equal(t, localLocalSource.BlobID, rpcLocalSource.GetBlobId())
+	require.Equal(t, localLocalSource.ContentReference.String(), rpcLocalSource.GetContentReference())
 	require.Equal(t, localRemoteSource.NodeID, rpcRemoteSource.GetNodeId())
 	require.Equal(t, localRemoteSource.Usable, rpcRemoteSource.GetUsable())
 
@@ -330,7 +330,7 @@ func TestConnectRPCDataSurfaceMarksStaleRemoteSourceUnusable(t *testing.T) {
 		State:     "available-remote",
 	})
 	require.NoError(t, err)
-	_, err = store.ObserveBlobSource(blob.ID, appdata.BlobSourceRecord{
+	_, err = store.ObserveBlobSource(blob.Reference.String(), appdata.BlobSourceRecord{
 		NodeID:     "p_remote_stale",
 		Trust:      appdata.SourceTrust{State: "ready", Outcome: "usable", Valid: true, Trusted: true, Usable: true},
 		Usable:     true,
@@ -346,14 +346,14 @@ func TestConnectRPCDataSurfaceMarksStaleRemoteSourceUnusable(t *testing.T) {
 		Data: runtimeinfra.DataConfig{Dir: dataDir},
 	})
 	client := testkit.NewArdentsClient(t, rt.Runtime)
-	localSources := rt.Data.ListBlobSources(blob.ID)
+	localSources := rt.Data.ListBlobSources(blob.Reference.String())
 	require.Len(t, localSources, 1)
 	require.Equal(t, "p_remote_stale", localSources[0].NodeID)
 	require.False(t, localSources[0].Usable)
 	require.False(t, localSources[0].Trust.Usable)
 	require.Contains(t, localSources[0].Reason, "stale")
 
-	rpcSources, err := client.ListBlobSources(context.Background(), testkit.AuthorizedRequest(&ardentsv1.ListBlobSourcesRequest{Id: blob.ID}))
+	rpcSources, err := client.ListBlobSources(context.Background(), testkit.AuthorizedRequest(&ardentsv1.ListBlobSourcesRequest{Id: blob.Reference.String()}))
 	require.NoError(t, err)
 	require.Len(t, rpcSources.Msg.GetSources(), 1)
 	require.Equal(t, localSources[0].NodeID, rpcSources.Msg.GetSources()[0].GetNodeId())

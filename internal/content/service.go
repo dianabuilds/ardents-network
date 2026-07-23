@@ -88,14 +88,22 @@ func (s *Service) Load() error {
 		return err
 	}
 	if !found {
-		data.Version = contentSchemaVersion
-		data.BlobOwnership.Version = blobOwnershipVersion
+		data = persistedContent{
+			Version: contentSchemaVersion, Objects: map[string]catalog.Object{}, Blobs: map[string]catalog.Blob{},
+			Sources: map[string][]catalog.BlobSourceRecord{}, Manifests: map[string]catalog.Manifest{},
+			BlobOwnership: persistedBlobOwnership{Version: blobOwnershipVersion, Bindings: []catalog.BlobOwnerBinding{}},
+		}
 	}
 	if data.Version != contentSchemaVersion {
 		return fmt.Errorf("unsupported content schema version")
 	}
 	if data.BlobOwnership.Version != blobOwnershipVersion {
 		return fmt.Errorf("unsupported blob ownership version")
+	}
+	if found {
+		if err := validatePersistedContent(data); err != nil {
+			return err
+		}
 	}
 	normalizeSnapshot(&data)
 	for _, object := range data.Objects {
@@ -108,6 +116,24 @@ func (s *Service) Load() error {
 			return fmt.Errorf("persisted manifest owner is invalid")
 		}
 	}
+	previousObjects := s.objects.Snapshot()
+	previousBlobs := s.blobs.Snapshot()
+	previousOwners := s.blobOwners.Snapshot()
+	previousSources := s.sources.Snapshot()
+	previousManifests := s.manifests.Snapshot()
+	previousState := s.state
+	committed := false
+	defer func() {
+		if committed {
+			return
+		}
+		s.objects.Load(previousObjects)
+		s.blobs.Load(previousBlobs)
+		_ = s.blobOwners.Load(previousOwners, previousBlobs)
+		s.sources.Load(previousSources)
+		s.manifests.Load(previousManifests)
+		s.state = previousState
+	}()
 	s.objects.Load(data.Objects)
 	s.blobs.Load(data.Blobs)
 	if err := s.blobOwners.Load(data.BlobOwnership.Bindings, data.Blobs); err != nil {
@@ -125,6 +151,34 @@ func (s *Service) Load() error {
 		return err
 	}
 	s.state = "ready"
+	committed = true
+	return nil
+}
+
+func validatePersistedContent(data persistedContent) error {
+	if data.Objects == nil || data.Blobs == nil || data.Sources == nil || data.Manifests == nil || data.BlobOwnership.Bindings == nil {
+		return fmt.Errorf("persisted content collections are required")
+	}
+	for key, blob := range data.Blobs {
+		if blob.Reference.String() == "" || key != blob.Reference.String() {
+			return fmt.Errorf("persisted Blob Content Reference binding is invalid")
+		}
+	}
+	for key, records := range data.Sources {
+		reference, err := catalog.ParseContentReference(key)
+		if err != nil {
+			return fmt.Errorf("persisted Blob source Content Reference is invalid")
+		}
+		for _, record := range records {
+			if !record.ContentReference.Equal(reference) {
+				return fmt.Errorf("persisted Blob source Content Reference binding is invalid")
+			}
+		}
+	}
+	owners := catalog.NewBlobOwnerStore()
+	if err := owners.Load(data.BlobOwnership.Bindings, data.Blobs); err != nil {
+		return fmt.Errorf("persisted Blob ownership is invalid: %w", err)
+	}
 	return nil
 }
 

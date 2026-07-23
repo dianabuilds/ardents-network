@@ -34,5 +34,5 @@ func PublishBlobAccessResourceID(command PublishBlobCommand) (string, error) {
 	if err := datapayload.ApplyDerivedIdentity(&command.Blob, hash, blobCID); err != nil {
 		return "", errors.New("content payload identity is invalid")
 	}
-	return AccessResourceID(blobCID)
+	return AccessResourceID(blobCID.String())
 }

@@ -24,7 +24,6 @@ func Store(
 	blobs *model.BlobStore,
 	blob model.Blob,
 	payload []byte,
-	nextID func(string) string,
 	writePayload func(string, []byte) error,
 ) (model.Blob, error) {
 	blob = Normalize(blob)
@@ -32,7 +31,7 @@ func Store(
 		if err := populateStoredBlob(&blob, payload, writePayload); err != nil {
 			return model.Blob{}, err
 		}
-	} else if err := prepareMetadataOnlyBlob(&blob, nextID); err != nil {
+	} else if err := prepareMetadataOnlyBlob(&blob); err != nil {
 		return model.Blob{}, err
 	}
 	if blob.CreatedAt.IsZero() {
@@ -47,12 +46,8 @@ func AnnounceRemote(blobs *model.BlobStore, blob model.Blob) (model.Blob, error)
 	if err := datapayload.ValidateMetadataIdentity(blob); err != nil {
 		return model.Blob{}, err
 	}
-	if blob.ID == "" {
-		if blob.CID != "" {
-			blob.ID = blob.CID
-		} else {
-			return model.Blob{}, fmt.Errorf("remote blob id is required")
-		}
+	if blob.Reference.String() == "" {
+		return model.Blob{}, fmt.Errorf("remote Blob Content Reference is required")
 	}
 	if blob.State == "" || blob.State == "announced" || datapayload.StateRequiresLocalPayload(blob.State) {
 		blob.State = "available-remote"
@@ -104,7 +99,7 @@ func VerifyBlobPayload(blob Blob, payload []byte) error {
 	if err != nil {
 		return fmt.Errorf("%w: derive identity", ErrBlobIntegrity)
 	}
-	if blob.ID != blobCID || blob.CID != blobCID || blob.Hash != hash || blob.Size != int64(len(payload)) {
+	if !blob.Reference.Equal(blobCID) || blob.Hash != hash || blob.Size != int64(len(payload)) {
 		return ErrBlobIntegrity
 	}
 	return nil
@@ -136,19 +131,12 @@ func populateStoredBlob(blob *model.Blob, payload []byte, writePayload func(stri
 	}
 	blob.Size = int64(len(payload))
 	blob.State = "available-local"
-	return writePayload(blob.ID, payload)
+	return writePayload(blob.Reference.String(), payload)
 }
 
-func prepareMetadataOnlyBlob(blob *model.Blob, nextID func(string) string) error {
+func prepareMetadataOnlyBlob(blob *model.Blob) error {
 	if err := datapayload.ValidateMetadataIdentity(*blob); err != nil {
 		return err
-	}
-	if blob.ID == "" {
-		if blob.CID != "" {
-			blob.ID = blob.CID
-		} else {
-			blob.ID = nextID("blob")
-		}
 	}
 	if blob.State == "" {
 		blob.State = "announced"
@@ -172,7 +160,7 @@ func (s *Service) StoreBlob(blob Blob, payload []byte) (Blob, error) {
 	defer s.mu.Unlock()
 
 	previous, previousState := s.blobs.Snapshot(), s.state
-	blob, err := Store(&s.blobs, blob, payload, s.nextID, s.writePayloadLocked)
+	blob, err := Store(&s.blobs, blob, payload, s.writePayloadLocked)
 	if err != nil {
 		return Blob{}, err
 	}
@@ -182,7 +170,7 @@ func (s *Service) StoreBlob(blob Blob, payload []byte) (Blob, error) {
 			s.restoreBlobSnapshotLocked(previous, previousState)
 			return Blob{}, err
 		}
-		return Blob{}, errors.Join(err, s.rollbackUncommittedPayloadLocked(previous, previousState, blob.ID))
+		return Blob{}, errors.Join(err, s.rollbackUncommittedPayloadLocked(previous, previousState, blob.Reference.String()))
 	}
 	return blob, nil
 }
@@ -211,9 +199,9 @@ func (s *Service) StoreBlobForOwner(owner principal.ID, blob Blob, payload []byt
 	if err != nil {
 		return Blob{}, err
 	}
-	if !s.blobOwners.Has(owner, stored.ID) {
+	if !s.blobOwners.Has(owner, stored.Reference) {
 		s.blobOwners.Put(model.BlobOwnerBinding{
-			Owner: owner, Reference: stored.ID, CreatedAt: now,
+			Owner: owner, Reference: stored.Reference, CreatedAt: now,
 		})
 	}
 	s.state = "ready"
@@ -221,7 +209,7 @@ func (s *Service) StoreBlobForOwner(owner principal.ID, blob Blob, payload []byt
 		restoreErr := s.restoreOwnedBlobSnapshotLocked(previousBlobs, previousOwners, previousState)
 		var payloadErr error
 		if !payloadExisted {
-			if removeErr := os.Remove(s.payloadPath(stored.ID)); removeErr != nil && !os.IsNotExist(removeErr) {
+			if removeErr := os.Remove(s.payloadPath(stored.Reference.String())); removeErr != nil && !os.IsNotExist(removeErr) {
 				payloadErr = fmt.Errorf("remove uncommitted payload")
 			}
 		}
@@ -242,9 +230,9 @@ func (s *Service) installOwnedPayloadLocked(blob Blob, payload []byte, now time.
 	blob.Size = int64(len(payload))
 	blob.State = "available-local"
 
-	payloadExisted := s.hasLocalPayloadLocked(reference)
-	if existing, ok := s.blobs.Get(reference); ok {
-		if existing.ID != reference || existing.CID != reference || existing.Hash != hash || existing.Size != blob.Size {
+	payloadExisted := s.hasLocalPayloadLocked(reference.String())
+	if existing, ok := s.blobs.Get(reference.String()); ok {
+		if !existing.Reference.Equal(reference) || existing.Hash != hash || existing.Size != blob.Size {
 			return Blob{}, payloadExisted, ErrBlobIntegrity
 		}
 		blob = existing
@@ -254,7 +242,7 @@ func (s *Service) installOwnedPayloadLocked(blob Blob, payload []byte, now time.
 	if blob.CreatedAt.IsZero() {
 		blob.CreatedAt = now
 	}
-	if err := s.writePayloadLocked(reference, payload); err != nil {
+	if err := s.writePayloadLocked(reference.String(), payload); err != nil {
 		return Blob{}, payloadExisted, err
 	}
 	s.blobs.Put(blob)
@@ -272,7 +260,8 @@ func (s *Service) restoreOwnedBlobSnapshotLocked(blobs map[string]Blob, owners [
 func (s *Service) GetBlobForOwner(owner principal.ID, reference string) (Blob, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if owner.String() == "" || !s.blobOwners.Has(owner, reference) {
+	parsed, err := model.ParseContentReference(reference)
+	if err != nil || owner.String() == "" || !s.blobOwners.Has(owner, parsed) {
 		return Blob{}, false
 	}
 	return Get(&s.blobs, reference)
@@ -281,7 +270,8 @@ func (s *Service) GetBlobForOwner(owner principal.ID, reference string) (Blob, b
 func (s *Service) GetBlobPayloadForOwner(owner principal.ID, reference string) ([]byte, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if owner.String() == "" || !s.blobOwners.Has(owner, reference) {
+	parsed, err := model.ParseContentReference(reference)
+	if err != nil || owner.String() == "" || !s.blobOwners.Has(owner, parsed) {
 		return nil, ErrBlobNotFound
 	}
 	return Payload(&s.blobs, reference, s.readPayloadLocked)
@@ -290,7 +280,8 @@ func (s *Service) GetBlobPayloadForOwner(owner principal.ID, reference string) (
 func (s *Service) HasBlobOwner(owner principal.ID, reference string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return owner.String() != "" && s.blobOwners.Has(owner, reference)
+	parsed, err := model.ParseContentReference(reference)
+	return err == nil && owner.String() != "" && s.blobOwners.Has(owner, parsed)
 }
 
 func (s *Service) AnnounceRemoteBlob(blob Blob) (Blob, error) {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"ardents/internal/content/catalog"
 	identityprincipal "ardents/internal/identity/principal"
 	"ardents/internal/replication/availability"
 	"ardents/internal/replication/placement"
@@ -31,14 +32,22 @@ func (r *Repository) ReconcileAvailability(rootManifestID string, now time.Time)
 	if err != nil {
 		return availability.ReconcileResult{}, err
 	}
-	result := r.reconcileIntentLocked(intent, blobIDs, now.UTC())
+	references := make([]catalog.ContentReference, 0, len(blobIDs))
+	for _, blobID := range blobIDs {
+		reference, parseErr := catalog.ParseContentReference(blobID)
+		if parseErr != nil {
+			return availability.ReconcileResult{}, fmt.Errorf("manifest contains invalid content reference: %w", parseErr)
+		}
+		references = append(references, reference)
+	}
+	result := r.reconcileIntentLocked(intent, references, now.UTC())
 	if err := r.saveLocked(); err != nil {
 		return availability.ReconcileResult{}, err
 	}
 	return result, nil
 }
 
-func (r *Repository) reconcileIntentLocked(intent availability.ReplicaIntent, blobIDs []string, now time.Time) availability.ReconcileResult {
+func (r *Repository) reconcileIntentLocked(intent availability.ReplicaIntent, references []catalog.ContentReference, now time.Time) availability.ReconcileResult {
 	placementState := r.placement.Snapshot()
 	snapshot := availability.Snapshot{
 		RootManifestID: intent.RootManifestID, IntentID: intent.ID, IntentVersion: intent.Version,
@@ -46,8 +55,8 @@ func (r *Repository) reconcileIntentLocked(intent availability.ReplicaIntent, bl
 		ValidCopies: intent.DesiredCopies, CurrentLeases: intent.DesiredCopies, ObservedAt: now,
 	}
 	activeRepairIDs := map[string]bool{}
-	for _, blobID := range blobIDs {
-		truth := r.blobReplicaTruthLocked(blobID, intent.Version, now, placementState)
+	for _, reference := range references {
+		truth := r.blobReplicaTruthLocked(reference, intent.Version, now, placementState)
 		if truth.valid < snapshot.ValidCopies {
 			snapshot.ValidCopies = truth.valid
 		}
@@ -61,7 +70,7 @@ func (r *Repository) reconcileIntentLocked(intent availability.ReplicaIntent, bl
 			snapshot.NextLeaseExpiry = truth.nextExpiry
 		}
 		for ordinal := truth.valid; ordinal < intent.DesiredCopies; ordinal++ {
-			repair := r.ensureRepairLocked(intent, blobID, ordinal, now, truth.lossEligibleAt)
+			repair := r.ensureRepairLocked(intent, reference, ordinal, now, truth.lossEligibleAt)
 			activeRepairIDs[repair.ID] = true
 		}
 	}
@@ -77,15 +86,15 @@ type blobReplicaTruth struct {
 	nextExpiry, lossEligibleAt                    time.Time
 }
 
-func (r *Repository) blobReplicaTruthLocked(blobID string, intentVersion uint64, now time.Time, state placement.State) blobReplicaTruth {
+func (r *Repository) blobReplicaTruthLocked(reference catalog.ContentReference, intentVersion uint64, now time.Time, state placement.State) blobReplicaTruth {
 	truth := blobReplicaTruth{}
 	peers := map[identityprincipal.ID]bool{}
-	if r.localReplicaValidLocked(blobID, now) {
+	if r.localReplicaValidLocked(reference.String(), now) {
 		peers[r.localNodePrincipal] = true
 		truth.valid++
 	}
 	for _, commitment := range state.Commitments {
-		if commitment.BlobID != blobID || commitment.IntentVersion != intentVersion || peers[commitment.TargetNode] {
+		if !commitment.ContentReference.Equal(reference) || commitment.IntentVersion != intentVersion || peers[commitment.TargetNode] {
 			continue
 		}
 		if truth.observeCommitment(commitment, now) {

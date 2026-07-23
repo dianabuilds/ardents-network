@@ -87,8 +87,9 @@ func TestReceiverRejectsWrongCIDPartialCommitExpiryAndReplay(t *testing.T) {
 	require.ErrorContains(t, err, "ciphertext")
 
 	wrong := blob
-	wrong.ID = "wrong-cid"
-	wrong.CID = "wrong-cid"
+	_, wrongReference, err := payload.DeriveIdentity([]byte("wrong-cid"))
+	require.NoError(t, err)
+	wrong.Reference = wrongReference
 	_, err = receiver.Commit(placement.CommitRequest{
 		OperationID: offer.OperationID, Token: accepted.Token, Blob: wrong,
 		Ciphertext: ciphertext, LeaseExpiresAt: now.Add(time.Hour),
@@ -241,10 +242,10 @@ func validOffer(t *testing.T, now time.Time, operationID, nonce string, cipherte
 	t.Helper()
 	hash, cid, err := payload.DeriveIdentity(ciphertext)
 	require.NoError(t, err)
-	blob := model.Blob{ID: cid, CID: cid, Hash: hash, Size: int64(len(ciphertext)), Encrypted: true, Cipher: payload.AES256GCMCipher}
+	blob := model.Blob{Reference: cid, Hash: hash, Size: int64(len(ciphertext)), Encrypted: true, Cipher: payload.AES256GCMCipher}
 	return placement.ReservationOffer{
 		OperationID: operationID, ProtocolVersion: placement.ReplicaProtocolVersion,
-		IntentVersion: 1, BlobID: cid, CID: cid,
+		IntentVersion: 1, ContentReference: cid,
 		EncryptedSize: int64(len(ciphertext)), RequestedLease: 24 * time.Hour,
 		ExpiresAt: now.Add(2 * time.Minute), Nonce: nonce,
 	}, blob, ciphertext

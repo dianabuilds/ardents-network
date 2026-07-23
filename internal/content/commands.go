@@ -49,7 +49,7 @@ func (c *Commands) PublishBlob(command PublishBlobCommand) (Blob, error) {
 	}
 	published, err := c.store.StoreBlob(command.Blob, command.Payload)
 	if err == nil {
-		c.emit("data.blob_published", map[string]any{"id": published.ID, "state": published.State, "encrypted": published.Encrypted})
+		c.emit("data.blob_published", map[string]any{"reference": published.Reference.String(), "state": published.State, "encrypted": published.Encrypted})
 	}
 	return published, err
 }
@@ -61,7 +61,7 @@ func (c *Commands) PublishBlobForOwner(owner principal.ID, command PublishBlobCo
 	published, err := c.store.StoreBlobForOwner(owner, command.Blob, command.Payload)
 	if err == nil {
 		c.emit("data.blob_published", map[string]any{
-			"id": published.ID, "state": published.State, "encrypted": published.Encrypted,
+			"reference": published.Reference.String(), "state": published.State, "encrypted": published.Encrypted,
 		})
 	}
 	return published, err
@@ -87,7 +87,7 @@ func (c *Commands) RetainBlob(id string, expiresAt time.Time) (Blob, error) {
 		c.denied(id, "data.retain_blob", err)
 	}
 	if err == nil {
-		c.emit("data.blob_retained", map[string]any{"id": item.ID, "state": item.State, "retention": item.Retention})
+		c.emit("data.blob_retained", map[string]any{"reference": item.Reference.String(), "state": item.State, "retention": item.Retention})
 	}
 	return item, err
 }
@@ -108,7 +108,7 @@ func (c *Commands) PinBlob(id string) (Blob, error) {
 	}
 	item, err := c.store.PinBlob(id)
 	if err == nil {
-		c.emit("data.blob_pinned", map[string]any{"id": item.ID})
+		c.emit("data.blob_pinned", map[string]any{"reference": item.Reference.String()})
 	}
 	return item, err
 }
@@ -119,7 +119,7 @@ func (c *Commands) DropBlob(id string) (Blob, error) {
 	}
 	item, err := c.store.DropBlob(id)
 	if err == nil {
-		c.emit("data.blob_dropped", map[string]any{"id": item.ID, "state": item.State})
+		c.emit("data.blob_dropped", map[string]any{"reference": item.Reference.String(), "state": item.State})
 	}
 	return item, err
 }

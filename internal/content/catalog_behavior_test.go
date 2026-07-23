@@ -31,7 +31,7 @@ func TestPublishObjectAndPersist(t *testing.T) {
 		},
 		BlobRefs: []Ref{{
 			Kind: "blob",
-			ID:   blob.ID,
+			ID:   blob.Reference.String(),
 		}},
 	})
 	require.NoErrorf(t, err, "publish object: %v", err)
@@ -54,7 +54,7 @@ func TestPublishObjectAndPersist(t *testing.T) {
 	) !=
 		1 ||
 		items[0].BlobRefs[0].ID !=
-			blob.ID, "blob refs = %v, want %q", items[0].BlobRefs, blob.ID)
+			blob.Reference.String(), "blob refs = %v, want %q", items[0].BlobRefs, blob.Reference.String())
 
 }
 
@@ -95,8 +95,8 @@ func TestPublishBlobAndPersist(t *testing.T) {
 		Encrypted: true,
 	}, []byte("hello"))
 	require.NoErrorf(t, err, "publish blob: %v", err)
-	require.False(t, blob.ID == "", "expected generated blob id")
-	require.False(t, blob.CID == "", "expected generated blob cid")
+	require.False(t, blob.Reference.String() == "", "expected generated blob id")
+	require.False(t, blob.Reference.String() == "", "expected generated blob cid")
 	require.Falsef(t, blob.State !=
 		"available-local", "state = %q, want available-local", blob.State)
 	require.True(t, blob.Encrypted, "expected encrypted blob metadata")
@@ -112,10 +112,10 @@ func TestPublishBlobAndPersist(t *testing.T) {
 		1, "blobs = %d, want 1", len(items))
 	require.Falsef(t, items[0].MediaType !=
 		"application/octet-stream", "media type = %q, want application/octet-stream", items[0].MediaType)
-	require.False(t, items[0].CID ==
+	require.False(t, items[0].Reference.String() ==
 		"", "expected restored blob cid")
 
-	payload, err := restored.GetBlobPayload(blob.ID)
+	payload, err := restored.GetBlobPayload(blob.Reference.String())
 	require.NoErrorf(t, err, "get payload: %v", err)
 	require.Falsef(t, string(payload) != "hello", "payload = %q, want hello", string(payload))
 
@@ -132,7 +132,7 @@ func TestStoreBlobRejectsMismatchedContentIdentity(t *testing.T) {
 	{
 
 		_, err := svc.StoreBlob(Blob{
-			ID:        "blob.logical",
+			Reference: testContentReference(t, "different"),
 			MediaType: "application/octet-stream",
 		}, []byte("hello"))
 		require.Error(t, err, "expected blob id mismatch")
@@ -156,7 +156,7 @@ func TestPublishAnnouncedBlobWithoutLocalPayload(t *testing.T) {
 	}
 
 	blob, err := svc.PublishBlob(Blob{
-		ID:        "blob.remote.demo",
+		Reference: testContentReference(t, "blob.remote.demo"),
 		MediaType: "application/octet-stream",
 		Hash:      "sha256:demo",
 		State:     "announced",
@@ -167,13 +167,13 @@ func TestPublishAnnouncedBlobWithoutLocalPayload(t *testing.T) {
 		"announced", "state = %q, want announced", blob.State)
 	{
 
-		_, err := svc.GetBlobPayload(blob.ID)
+		_, err := svc.GetBlobPayload(blob.Reference.String())
 		require.Error(t, err, "expected missing local payload for announced blob")
 	}
 
 }
 
-func TestPublishAnnouncedBlobRejectsMismatchedCIDAndID(t *testing.T) {
+func TestPublishAnnouncedBlobRejectsMissingContentReference(t *testing.T) {
 	dir := t.TempDir()
 
 	svc := NewInDir(dir)
@@ -184,12 +184,10 @@ func TestPublishAnnouncedBlobRejectsMismatchedCIDAndID(t *testing.T) {
 	{
 
 		_, err := svc.PublishBlob(Blob{
-			ID:        "blob.remote.demo",
-			CID:       "bafkreigh2akiscaildc2",
 			MediaType: "application/octet-stream",
 			State:     "announced",
 		})
-		require.Error(t, err, "expected publish rejection for mismatched blob id and cid")
+		require.Error(t, err, "expected publish rejection without Content Reference")
 	}
 
 }
@@ -206,7 +204,7 @@ func TestPublishBlobRejectsMetadataOnlyLocalAvailabilityState(t *testing.T) {
 	for _, state := range []string{"available-local", "retained-temporary", "pinned"} {
 		{
 			_, err := svc.PublishBlob(Blob{
-				ID:        "blob-" + state,
+				Reference: testContentReference(t, "blob-"+state),
 				MediaType: "application/octet-stream",
 				State:     state,
 			})
@@ -241,7 +239,7 @@ func TestAnnounceRemoteBlobRewritesLocalOnlyStatesToAvailableRemote(t *testing.T
 
 	for _, state := range []string{"available-local", "retained-temporary", "pinned"} {
 		blob, err := svc.AnnounceRemoteBlob(Blob{
-			ID:        "blob-" + state,
+			Reference: testContentReference(t, "blob-"+state),
 			MediaType: "application/octet-stream",
 			State:     state,
 		})
@@ -272,14 +270,14 @@ func TestAnnounceRemoteBlobDefaultsToAvailableRemote(t *testing.T) {
 	}
 
 	blob, err := svc.AnnounceRemoteBlob(Blob{
-		ID:        "blob-remote",
+		Reference: testContentReference(t, "blob-remote"),
 		MediaType: "application/octet-stream",
 	})
 	require.NoErrorf(t, err, "announce remote blob: %v", err)
 	require.Falsef(t, blob.State !=
 		"available-remote", "state = %q, want available-remote", blob.State)
 
-	item, ok := svc.GetBlob(blob.ID)
+	item, ok := svc.GetBlob(blob.Reference.String())
 	require.True(t, ok, "expected announced remote blob")
 	require.Falsef(t, item.State !=
 		"available-remote", "stored state = %q, want available-remote", item.State)
@@ -309,7 +307,7 @@ func TestPublishManifestAndPersist(t *testing.T) {
 		Encrypted: true,
 		Refs: []Ref{{
 			Kind: "blob",
-			ID:   blob.ID,
+			ID:   blob.Reference.String(),
 		}},
 		Metadata: map[string]any{
 			"chat": "room.demo",
@@ -329,7 +327,7 @@ func TestPublishManifestAndPersist(t *testing.T) {
 	require.Falsef(t, len(items) !=
 		1, "manifests = %d, want 1", len(items))
 	require.Falsef(t, items[0].Refs[0].ID !=
-		blob.ID, "ref id = %q, want %q", items[0].Refs[0].ID, blob.ID)
+		blob.Reference.String(), "ref id = %q, want %q", items[0].Refs[0].ID, blob.Reference.String())
 	require.Falsef(t, items[0].Metadata["chat"] !=
 		"room.demo", "chat = %v, want room.demo", items[0].Metadata["chat"])
 
@@ -369,7 +367,7 @@ func TestBlobPartStateDegradesWhenLocalPayloadIsMissing(t *testing.T) {
 	blob, err := svc.StoreBlob(Blob{MediaType: "text/plain"}, []byte("missing payload"))
 	require.NoErrorf(t, err, "store blob: %v", err)
 
-	payloadPath := filepath.Join(dir, "blobs", strings.NewReplacer("/", "_", "\\", "_", ":", "_").Replace(blob.ID)+".blob")
+	payloadPath := filepath.Join(dir, "blobs", strings.NewReplacer("/", "_", "\\", "_", ":", "_").Replace(blob.Reference.String())+".blob")
 	{
 		err := os.Remove(payloadPath)
 		require.NoErrorf(t, err, "remove payload: %v", err)
@@ -378,8 +376,7 @@ func TestBlobPartStateDegradesWhenLocalPayloadIsMissing(t *testing.T) {
 	state, reason := svc.BlobPartState()
 	require.Falsef(t, state != "degraded", "state = %q, want degraded", state)
 	require.Falsef(t, !strings.Contains(reason,
-		blob.
-			ID) || !strings.
+		blob.Reference.String()) || !strings.
 		Contains(reason,
 			"without local payload",
 		), "reason = %q, want blob-specific missing-payload explanation", reason)
@@ -390,7 +387,8 @@ func TestObjectPartStateDegradesOnBrokenBlobRefsAfterLoad(t *testing.T) {
 	dir := t.TempDir()
 	persisted := persistedContent{
 		Version:       contentSchemaVersion,
-		BlobOwnership: persistedBlobOwnership{Version: blobOwnershipVersion},
+		BlobOwnership: persistedBlobOwnership{Version: blobOwnershipVersion, Bindings: []model.BlobOwnerBinding{}},
+		Sources:       map[string][]model.BlobSourceRecord{},
 		Objects: map[string]model.Object{
 			"obj-broken": {
 				ID:    "obj-broken",

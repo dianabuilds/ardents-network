@@ -24,7 +24,7 @@ func TestReplicaIntentReconciliationPersistsRepairAndReachesTarget(t *testing.T)
 	require.NoError(t, err)
 	root, err := service.PublishManifest(Manifest{
 		Kind: "blob-set", Owner: replicationTestOwner(t), Encrypted: true, Retention: "durable",
-		Refs: []Ref{{Kind: "blob", ID: blob.ID}},
+		Refs: []Ref{{Kind: "blob", ID: blob.Reference.String()}},
 	})
 	require.NoError(t, err)
 
@@ -55,7 +55,7 @@ func TestReplicaIntentReconciliationPersistsRepairAndReachesTarget(t *testing.T)
 	require.Equal(t, result.DueRepairs[0].ID, persistedResult.DueRepairs[0].ID)
 
 	_, err = reloaded.ObserveReplicaCommitment(placement.Commitment{
-		OperationID: "commit-remote-1", IntentVersion: 1, BlobID: blob.ID, CID: blob.CID,
+		OperationID: "commit-remote-1", IntentVersion: 1, ContentReference: blob.Reference,
 		TargetNode: replicationTestPrincipal("remote-node"), Size: blob.Size, State: placement.CommitmentActive,
 		LeaseStartsAt: now, LastObservedAt: now, LeaseExpiresAt: now.Add(24 * time.Hour),
 	}, now)
@@ -79,7 +79,7 @@ func TestReplicaRepairFailurePersistsTerminalLossAcrossRestart(t *testing.T) {
 	require.NoError(t, err)
 	root, err := service.PublishManifest(Manifest{
 		Kind: "blob-set", Owner: replicationTestOwner(t), Encrypted: true, Retention: "durable",
-		Refs: []Ref{{Kind: "blob", ID: blob.ID}},
+		Refs: []Ref{{Kind: "blob", ID: blob.Reference.String()}},
 	})
 	require.NoError(t, err)
 	_, err = service.SetReplicaIntent(ReplicaIntent{
@@ -90,7 +90,7 @@ func TestReplicaRepairFailurePersistsTerminalLossAcrossRestart(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, service.Save())
 
-	_, err = service.DropBlob(blob.ID)
+	_, err = service.DropBlob(blob.Reference.String())
 	require.NoError(t, err)
 	result, err := service.ReconcileAvailability(root.ID, now)
 	require.NoError(t, err)
@@ -120,15 +120,15 @@ func TestReplicaAvailabilityIgnoresFreshSourceWithoutCommitment(t *testing.T) {
 	service := newInDir(t.TempDir())
 	require.NoError(t, service.Load())
 	blob, err := service.AnnounceRemoteBlob(Blob{
-		ID: "uncommitted-blob", CID: "uncommitted-blob", MediaType: "application/octet-stream", State: "available-remote",
+		Reference: replicationTestReference(t, "uncommitted-blob"), MediaType: "application/octet-stream", State: "available-remote",
 	})
 	require.NoError(t, err)
-	_, err = service.ObserveBlobSource(blob.ID, BlobSourceRecord{
+	_, err = service.ObserveBlobSource(blob.Reference.String(), BlobSourceRecord{
 		NodeID: "announcing-peer", Trust: SourceTrust{Valid: true, Trusted: true, Usable: true},
 		Usable: true, Transport: "waku", LastSeenAt: now,
 	})
 	require.NoError(t, err)
-	root, err := service.PublishManifest(Manifest{Kind: "blob-set", Owner: replicationTestOwner(t), Refs: []Ref{{Kind: "blob", ID: blob.ID}}})
+	root, err := service.PublishManifest(Manifest{Kind: "blob-set", Owner: replicationTestOwner(t), Refs: []Ref{{Kind: "blob", ID: blob.Reference.String()}}})
 	require.NoError(t, err)
 	_, err = service.SetReplicaIntent(ReplicaIntent{
 		ID: "intent-uncommitted", RootManifestID: root.ID, Version: 1, DesiredCopies: 1, MinimumCopies: 1,
@@ -147,10 +147,10 @@ func TestReplicaAvailabilityDoesNotDeclareLossDuringCurrentLeasePartition(t *tes
 	service := newInDir(t.TempDir())
 	require.NoError(t, service.Load())
 	blob, err := service.AnnounceRemoteBlob(Blob{
-		ID: "partitioned-blob", CID: "partitioned-blob", MediaType: "application/octet-stream", State: "available-remote",
+		Reference: replicationTestReference(t, "partitioned-blob"), MediaType: "application/octet-stream", State: "available-remote",
 	})
 	require.NoError(t, err)
-	root, err := service.PublishManifest(Manifest{Kind: "blob-set", Owner: replicationTestOwner(t), Refs: []Ref{{Kind: "blob", ID: blob.ID}}})
+	root, err := service.PublishManifest(Manifest{Kind: "blob-set", Owner: replicationTestOwner(t), Refs: []Ref{{Kind: "blob", ID: blob.Reference.String()}}})
 	require.NoError(t, err)
 	_, err = service.SetReplicaIntent(ReplicaIntent{
 		ID: "intent-partition", RootManifestID: root.ID, Version: 1, DesiredCopies: 1, MinimumCopies: 1,
@@ -159,7 +159,7 @@ func TestReplicaAvailabilityDoesNotDeclareLossDuringCurrentLeasePartition(t *tes
 	require.NoError(t, err)
 	leaseExpiry := now.Add(24 * time.Hour)
 	_, err = service.ObserveReplicaCommitment(placement.Commitment{
-		OperationID: "partitioned-commitment", IntentVersion: 1, BlobID: blob.ID, CID: blob.CID,
+		OperationID: "partitioned-commitment", IntentVersion: 1, ContentReference: blob.Reference,
 		TargetNode: replicationTestPrincipal("partitioned-peer"), Size: 1, State: placement.CommitmentActive,
 		LeaseStartsAt: now.Add(-time.Hour), LastObservedAt: now.Add(-20 * time.Minute), LeaseExpiresAt: leaseExpiry,
 	}, now)
@@ -211,14 +211,14 @@ func TestReplicaRepairBecomesTerminalAtThirtyMinuteDeadline(t *testing.T) {
 		[]byte("repair deadline payload"), bytes.Repeat([]byte{0x63}, 32), "key-1",
 	)
 	require.NoError(t, err)
-	root, err := service.PublishManifest(Manifest{Kind: "blob-set", Owner: replicationTestOwner(t), Refs: []Ref{{Kind: "blob", ID: blob.ID}}})
+	root, err := service.PublishManifest(Manifest{Kind: "blob-set", Owner: replicationTestOwner(t), Refs: []Ref{{Kind: "blob", ID: blob.Reference.String()}}})
 	require.NoError(t, err)
 	_, err = service.SetReplicaIntent(ReplicaIntent{
 		ID: "intent-deadline", RootManifestID: root.ID, Version: 1, DesiredCopies: 1, MinimumCopies: 1,
 		LeaseDuration: 24 * time.Hour, RenewalHorizon: 8 * time.Hour, CreatedAt: now, UpdatedAt: now,
 	})
 	require.NoError(t, err)
-	_, err = service.DropBlob(blob.ID)
+	_, err = service.DropBlob(blob.Reference.String())
 	require.NoError(t, err)
 
 	initial, err := service.ReconcileAvailability(root.ID, now)
@@ -241,7 +241,7 @@ func TestReplicaAvailabilityNeverReportsLostWhileValidatedCopyRemains(t *testing
 		bytes.Repeat([]byte{0x64}, 32), "key-1",
 	)
 	require.NoError(t, err)
-	root, err := service.PublishManifest(Manifest{Kind: "blob-set", Owner: replicationTestOwner(t), Refs: []Ref{{Kind: "blob", ID: blob.ID}}})
+	root, err := service.PublishManifest(Manifest{Kind: "blob-set", Owner: replicationTestOwner(t), Refs: []Ref{{Kind: "blob", ID: blob.Reference.String()}}})
 	require.NoError(t, err)
 	_, err = service.SetReplicaIntent(ReplicaIntent{
 		ID: "intent-partial", RootManifestID: root.ID, Version: 1, DesiredCopies: 2, MinimumCopies: 2,
@@ -268,7 +268,7 @@ func TestReplicaAvailabilityTreatsExpiredLeaseAsUnavailable(t *testing.T) {
 	now := time.Date(2026, 7, 20, 1, 0, 0, 0, time.UTC)
 	service, root, blob := remoteAvailabilityFixture(t, now, "expired")
 	_, err := service.ObserveReplicaCommitment(placement.Commitment{
-		OperationID: "expired-commitment", IntentVersion: 1, BlobID: blob.ID, CID: blob.CID,
+		OperationID: "expired-commitment", IntentVersion: 1, ContentReference: blob.Reference,
 		TargetNode: replicationTestPrincipal("expired-peer"), Size: 1, State: placement.CommitmentActive,
 		LeaseStartsAt: now.Add(-time.Hour), LastObservedAt: now, LeaseExpiresAt: now.Add(time.Minute),
 	}, now)
@@ -285,7 +285,7 @@ func TestReplicaAvailabilityRecoversAfterPartitionRejoin(t *testing.T) {
 	now := time.Date(2026, 7, 20, 2, 0, 0, 0, time.UTC)
 	service, root, blob := remoteAvailabilityFixture(t, now, "rejoin")
 	commitment := placement.Commitment{
-		OperationID: "rejoined-commitment", IntentVersion: 1, BlobID: blob.ID, CID: blob.CID,
+		OperationID: "rejoined-commitment", IntentVersion: 1, ContentReference: blob.Reference,
 		TargetNode: replicationTestPrincipal("rejoined-peer"), Size: 1, State: placement.CommitmentStale,
 		LeaseStartsAt: now.Add(-time.Hour), LastObservedAt: now.Add(-20 * time.Minute), LeaseExpiresAt: now.Add(24 * time.Hour),
 	}
@@ -312,10 +312,10 @@ func TestReplicaIntentUsesConfiguredCopyDefaults(t *testing.T) {
 		DefaultMinimumReplicas: 2,
 	})
 	blob, err := service.AnnounceRemoteBlob(Blob{
-		ID: "defaults-blob", CID: "defaults-blob", MediaType: "application/octet-stream", State: "available-remote",
+		Reference: replicationTestReference(t, "defaults-blob"), MediaType: "application/octet-stream", State: "available-remote",
 	})
 	require.NoError(t, err)
-	root, err := service.PublishManifest(Manifest{Kind: "blob-set", Owner: replicationTestOwner(t), Refs: []Ref{{Kind: "blob", ID: blob.ID}}})
+	root, err := service.PublishManifest(Manifest{Kind: "blob-set", Owner: replicationTestOwner(t), Refs: []Ref{{Kind: "blob", ID: blob.Reference.String()}}})
 	require.NoError(t, err)
 	intent, err := service.SetReplicaIntent(ReplicaIntent{
 		ID: "intent-defaults", RootManifestID: root.ID, Version: 1,
@@ -332,10 +332,10 @@ func remoteAvailabilityFixture(t *testing.T, now time.Time, suffix string) (*rep
 	service := newInDir(t.TempDir())
 	require.NoError(t, service.Load())
 	blob, err := service.AnnounceRemoteBlob(Blob{
-		ID: suffix + "-blob", CID: suffix + "-blob", MediaType: "application/octet-stream", State: "available-remote",
+		Reference: replicationTestReference(t, suffix+"-blob"), MediaType: "application/octet-stream", State: "available-remote",
 	})
 	require.NoError(t, err)
-	root, err := service.PublishManifest(Manifest{Kind: "blob-set", Owner: replicationTestOwner(t), Refs: []Ref{{Kind: "blob", ID: blob.ID}}})
+	root, err := service.PublishManifest(Manifest{Kind: "blob-set", Owner: replicationTestOwner(t), Refs: []Ref{{Kind: "blob", ID: blob.Reference.String()}}})
 	require.NoError(t, err)
 	_, err = service.SetReplicaIntent(ReplicaIntent{
 		ID: "intent-" + suffix, RootManifestID: root.ID, Version: 1, DesiredCopies: 1, MinimumCopies: 1,

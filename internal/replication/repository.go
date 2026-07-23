@@ -93,12 +93,12 @@ func (r *Repository) Load() error {
 	if err != nil {
 		return err
 	}
-	if found && snapshot.SchemaVersion != 1 {
+	if found && snapshot.SchemaVersion != 2 {
 		return fmt.Errorf("replication state schema is unsupported")
 	}
 	if !found {
 		snapshot = repositorySnapshot{
-			SchemaVersion: 1,
+			SchemaVersion: 2,
 			Placement: placement.State{
 				Reservations: map[string]placement.StoredReservation{},
 				Commitments:  map[string]placement.Commitment{},
@@ -108,6 +108,11 @@ func (r *Repository) Load() error {
 	}
 	if snapshot.Availability.Intents == nil || snapshot.Availability.Snapshots == nil || snapshot.Availability.Repairs == nil {
 		return fmt.Errorf("replication availability collections are required")
+	}
+	for key, repair := range snapshot.Availability.Repairs {
+		if key == "" || repair.ID != key || repair.ContentReference.String() == "" {
+			return fmt.Errorf("replication repair Content Reference binding is invalid")
+		}
 	}
 	if err := r.placement.Restore(snapshot.Placement); err != nil {
 		return err
@@ -128,7 +133,7 @@ func (r *Repository) SetLocalNodePrincipal(principal identityprincipal.ID) {
 
 func (r *Repository) saveLocked() error {
 	return storage.SaveJSON(r.path, "replication", "state", repositorySnapshot{
-		SchemaVersion: 1, Placement: r.placement.Snapshot(), Availability: r.availability,
+		SchemaVersion: 2, Placement: r.placement.Snapshot(), Availability: r.availability,
 	})
 }
 
@@ -179,14 +184,14 @@ func (r *Repository) RenewReplicaCommitment(operationID string, observedAt, expi
 	if !ok {
 		return placement.Commitment{}, fmt.Errorf("replica commitment not found")
 	}
-	if _, err := r.content.GetBlobPayload(commitment.BlobID); err != nil {
+	if _, err := r.content.GetBlobPayload(commitment.ContentReference.String()); err != nil {
 		return placement.Commitment{}, fmt.Errorf("replica payload is not locally available")
 	}
 	commitment, err := r.placement.RenewCommitment(operationID, observedAt, expiresAt)
 	if err != nil {
 		return placement.Commitment{}, err
 	}
-	if _, err := r.content.ExtendRelayRetention(commitment.BlobID, commitment.LeaseExpiresAt); err != nil {
+	if _, err := r.content.ExtendRelayRetention(commitment.ContentReference.String(), commitment.LeaseExpiresAt); err != nil {
 		return placement.Commitment{}, err
 	}
 	return commitment, r.saveLocked()
@@ -207,7 +212,7 @@ func (r *Repository) HasCurrentReplicaCommitment(blobID string) bool {
 	defer r.mu.Unlock()
 	now := time.Now().UTC()
 	for _, commitment := range r.placement.Snapshot().Commitments {
-		if commitment.BlobID == blobID && commitment.TargetNode.Equal(r.localNodePrincipal) &&
+		if commitment.ContentReference.String() == blobID && commitment.TargetNode.Equal(r.localNodePrincipal) &&
 			commitment.State == placement.CommitmentActive && now.Before(commitment.LeaseExpiresAt) {
 			if _, err := r.content.GetBlobPayload(blobID); err == nil {
 				return true
