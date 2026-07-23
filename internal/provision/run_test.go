@@ -28,6 +28,7 @@ func TestRunWritesCanonicalSocketConfigurationWithoutBearerArtifacts(t *testing.
 	}, &output, func() time.Time { return time.Date(2026, 7, 22, 12, 0, 0, 0, time.UTC) })
 	require.NoError(t, err)
 	require.Contains(t, output.String(), filepath.Join(secretDir, "operator.json"))
+	require.Contains(t, output.String(), "principal=p1_")
 
 	raw, err := os.ReadFile(filepath.Join(secretDir, "operator.json"))
 	require.NoError(t, err)

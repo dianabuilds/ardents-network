@@ -45,7 +45,7 @@ func run(args []string, stdout io.Writer, clock func() time.Time) error {
 	if err := writeOperatorDocument(configured.secretDir, document); err != nil {
 		return err
 	}
-	_, err = fmt.Fprintf(stdout, "node=initialized name=%s config=%s\n", configured.nodeName, filepath.Join(configured.secretDir, "operator.json"))
+	_, err = fmt.Fprintf(stdout, "node=initialized name=%s principal=%s config=%s\n", configured.nodeName, provisioned.Subject, filepath.Join(configured.secretDir, "operator.json"))
 	return err
 }
 

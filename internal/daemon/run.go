@@ -106,7 +106,7 @@ func Run(localAPI LocalAPIHandlerFactory, applicationAPI ApplicationAPIHandlerFa
 	if err := configureApplicationIdentity(&process, identityAccess, applicationIdentityOptions{Enabled: cfg.ApplicationEnabled}); err != nil {
 		return fmt.Errorf("configure Application identity: %w", err)
 	}
-	if err := ensureFirstOperatorBootstrapTicket(ctx, process.PrincipalAccess, n.GetNodeRuntime().Identity.Principal); err != nil {
+	if err := ensureFirstOperatorBootstrapTicket(ctx, process.PrincipalAccess, n.GetNodeRuntime().Identity.Principal, cfg.SocketPath); err != nil {
 		return fmt.Errorf("prepare first Operator bootstrap: %w", err)
 	}
 
@@ -154,13 +154,12 @@ func Run(localAPI LocalAPIHandlerFactory, applicationAPI ApplicationAPIHandlerFa
 	return nil
 }
 
-func ensureFirstOperatorBootstrapTicket(ctx context.Context, service *identityaccess.Service, node string) error {
+func ensureFirstOperatorBootstrapTicket(ctx context.Context, service *identityaccess.Service, node, socketPath string) error {
 	if service == nil {
 		return fmt.Errorf("Principal access service is required")
 	}
-	configPath := runtimeconfig.OperatorFile()
-	if strings.TrimSpace(configPath) == "" {
-		return fmt.Errorf("canonical operator configuration is required")
+	if strings.TrimSpace(socketPath) == "" {
+		return fmt.Errorf("protected Operator socket path is required")
 	}
 	ticket, err := service.IssueBootstrapTicket(ctx, node)
 	if errors.Is(err, identityaccess.ErrConflict) {
@@ -169,7 +168,7 @@ func ensureFirstOperatorBootstrapTicket(ctx context.Context, service *identityac
 	if err != nil {
 		return err
 	}
-	path := filepath.Join(filepath.Dir(configPath), "operator-bootstrap-ticket")
+	path := filepath.Join(filepath.Dir(socketPath), "operator-bootstrap-ticket")
 	encoded := []byte(base64.RawURLEncoding.EncodeToString(ticket[:]))
 	if err := storage.AtomicWritePrivateFile(path, encoded); err != nil {
 		return fmt.Errorf("write protected Bootstrap Ticket")

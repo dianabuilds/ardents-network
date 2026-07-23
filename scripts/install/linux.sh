@@ -9,7 +9,6 @@ Usage:
   linux.sh rollback
   linux.sh backup --output /var/backups/ardents/NAME.tar.gz
   linux.sh restore --archive PATH
-  linux.sh renew-application
   linux.sh uninstall [--root PATH] [--no-start]
 
 Install options:
@@ -31,7 +30,7 @@ fail() { printf 'ardents-install: %s\n' "$*" >&2; exit 1; }
 
 command_name=${1:-}
 case "$command_name" in
-    install|upgrade|rollback|backup|restore|renew-application|uninstall) shift ;;
+    install|upgrade|rollback|backup|restore|uninstall) shift ;;
     -h|--help|help) usage; exit 0 ;;
     *) usage >&2; exit 2 ;;
 esac
@@ -77,8 +76,8 @@ backup_dir="$path_root/var/backups/ardents"
 unit_dir="$path_root/etc/systemd/system"
 unit_path="$unit_dir/ardentsd.service"
 config_path="$config_dir/operator.json"
-token_file="$secret_dir/api-token"
 socket_path="$secret_dir/control.sock"
+bootstrap_ticket="$secret_dir/operator-bootstrap-ticket"
 
 systemctl_available=false
 if [ "$no_start" = false ]; then
@@ -87,7 +86,7 @@ if [ "$no_start" = false ]; then
     systemctl_available=true
 fi
 case "$command_name" in
-    upgrade|rollback|backup|restore|renew-application) [ "$systemctl_available" = true ] || fail "$command_name requires systemd" ;;
+    upgrade|rollback|backup|restore) [ "$systemctl_available" = true ] || fail "$command_name requires systemd" ;;
 esac
 
 service_active() { systemctl is-active --quiet ardentsd.service; }
@@ -96,9 +95,9 @@ require_stopped() { ! service_active || fail "stop ardentsd.service before $1"; 
 wait_ready() {
     attempt=0
     while [ "$attempt" -lt 150 ]; do
-        if [ -S "$socket_path" ] && "$bin_dir/ardentsctl" --addr "unix://$socket_path" \
-            --token-file "$token_file" --output json node status 2>/dev/null |
-            grep -E '"ready":[[:space:]]*true' >/dev/null; then
+        if [ -S "$socket_path" ] && curl --fail --silent --show-error \
+            http://127.0.0.1:9090/readyz 2>/dev/null |
+            grep -E '"status":[[:space:]]*"ready"' >/dev/null; then
             return 0
         fi
         attempt=$((attempt + 1)); sleep 0.1
@@ -123,8 +122,7 @@ create_backup() {
     output=$1
     require_stopped backup
     [ -d "$application_dir" ] && [ ! -L "$application_dir" ] || fail "application data directory is unavailable or invalid: $application_dir"
-    [ -f "$application_dir/application-token" ] && [ ! -L "$application_dir/application-token" ] || fail "application credential is unavailable or invalid"
-    for required_file in "$config_path" "$token_file" "$state_dir/identity_key.json" "$state_dir/waku_node_key.json" "$authority_dir/authority.json"; do
+    for required_file in "$config_path" "$state_dir/identity_key.json" "$state_dir/waku_node_key.json" "$authority_dir/authority.json"; do
         [ -f "$required_file" ] && [ ! -L "$required_file" ] || fail "cannot back up: missing or unsafe regular file $required_file"
     done
     [ -d "$state_dir" ] && [ ! -L "$state_dir" ] || fail "cannot back up: missing or unsafe $state_dir"
@@ -212,7 +210,6 @@ restore_backup() {
     if [ -d "$application_dir" ]; then
         chown -R ardents:ardents-apps "$application_dir"
         chmod 2750 "$application_dir"
-        [ ! -f "$application_dir/application-token" ] || chmod 0640 "$application_dir/application-token"
     fi
     chown -R root:root "$authority_dir"; chmod 0700 "$authority_dir"
     rm -rf "$staging"; trap - HUP INT TERM EXIT
@@ -295,22 +292,6 @@ fi
 
 if [ "$command_name" = backup ]; then [ -n "$backup_path" ] || fail "backup requires --output PATH"; create_backup "$backup_path"; exit 0; fi
 if [ "$command_name" = restore ]; then [ -n "$archive_path" ] || fail "restore requires --archive PATH"; ensure_service_account; restore_backup "$archive_path"; exit 0; fi
-if [ "$command_name" = renew-application ]; then
-    [ -x "$bin_dir/ardentsd" ] && [ -f "$config_path" ] || fail "renew-application requires an existing native installation"
-    was_active=false; service_active && was_active=true
-    [ "$was_active" = false ] || systemctl stop ardentsd.service
-    if ! "$bin_dir/ardentsd" application-credential renew --config "$config_path"; then
-        fail "application credential renewal failed; service remains stopped"
-    fi
-    chmod 0600 "$config_path"; chown ardents:ardents "$config_path"
-    if [ "$was_active" = true ]; then
-        systemctl start ardentsd.service || fail "application credential renewed but service did not restart"
-        wait_ready || fail "application credential renewed but service readiness did not recover"
-    fi
-    printf 'ardents-install: application credential renewed; active_before=%s\n' "$was_active"
-    exit 0
-fi
-
 if [ "$command_name" = upgrade ]; then
     [ -x "$bin_dir/ardentsd" ] && [ -x "$bin_dir/ardentsctl" ] && [ -f "$unit_path" ] || fail "upgrade requires an existing native installation"
     stage_binaries
@@ -372,6 +353,7 @@ case "$transport_port" in ''|*[!0-9]*) fail "--transport-port must be an integer
 unit_source="$source_dir/systemd/ardentsd.service"; [ -f "$unit_source" ] || unit_source="$script_dir/../../deploy/systemd/ardentsd.service"
 [ -f "$unit_source" ] || fail "missing systemd unit template"
 ensure_service_account
+if [ "$systemctl_available" = true ]; then command -v curl >/dev/null 2>&1 || fail "curl is required for the local readiness probe"; fi
 install -d -m 0755 "$bin_dir" "$unit_dir"; install -d -m 0750 "$config_dir" "$state_dir"; install -d -m 0700 "$secret_dir" "$application_dir" "$authority_dir"
 stage_binaries
 if [ -x "$bin_dir/ardentsd" ] || [ -x "$bin_dir/ardentsctl" ]; then
@@ -405,9 +387,6 @@ install -m 0644 "$unit_source" "$unit_path"; chmod 0600 "$config_path"
 if [ "$root" = / ]; then
     chown -R ardents:ardents "$state_dir" "$config_dir"
     chown ardents:ardents-apps "$application_dir"; chmod 2750 "$application_dir"
-    if [ -f "$application_dir/application-token" ]; then
-        chown ardents:ardents-apps "$application_dir/application-token"; chmod 0640 "$application_dir/application-token"
-    fi
     chown -R root:root "$authority_dir"; chmod 0700 "$authority_dir"
 fi
 if [ "$systemctl_available" = true ]; then
@@ -415,4 +394,4 @@ if [ "$systemctl_available" = true ]; then
     systemctl enable ardentsd.service >/dev/null
     if service_active; then systemctl restart ardentsd.service; else systemctl start ardentsd.service; fi
 fi
-printf 'ardents-install: installed config=%s state=%s service=ardentsd.service\n' "$config_path" "$state_dir"
+printf 'ardents-install: installed config=%s state=%s bootstrap_ticket=%s service=ardentsd.service\n' "$config_path" "$state_dir" "$bootstrap_ticket"
