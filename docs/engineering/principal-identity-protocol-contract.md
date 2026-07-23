@@ -1,13 +1,13 @@
 # Principal Identity Protocol Contract
 
-Status: frozen v1 implementation contract through PIA-011B.
+Status: frozen Principal-only v1 implementation contract.
 
 This document materializes the protocol, transport, generation, and resource
-catalogue decisions in the Principal Identity and Access product design. It
-enables the identity service for each surface only on its own protected Unix
-listener. Application enrollment is implemented behind a dormant gate;
-product-call admission is staged in PIA-012, while production activation
-remains blocked until PIA-014 supplies owner-aware Blob/content access.
+catalogue decisions in the Principal Identity and Access product design.
+Operator and Application identity services are enabled only on their respective
+protected Unix listeners. Both product surfaces use Principal sessions on their
+normal paths; Application content admission uses the durable owner-aware
+Blob/content boundary.
 
 ## Sources And Generated Outputs
 
@@ -47,9 +47,9 @@ leaf that introduces that source.
 
 ## Authentication Core
 
-PIA-006B implements the transport-independent owner in
-`internal/identity/access`; PIA-009A adds the Operator adapter and PIA-011A adds
-the separate Application adapter. `Begin` accepts only a server-derived `SourceKey` and complete
+The transport-independent owner is `internal/identity/access`. The Operator and
+Application adapters remain separate. `Begin` accepts only a server-derived
+`SourceKey` and complete
 `AuthenticationBinding`. It returns structured `ChallengeFields`; neither the
 server nor SDK exposes an opaque signing payload. Server and SDK independently
 marshal deterministic protobuf and prepend exactly one immutable domain:
@@ -63,39 +63,37 @@ The SDK exposes only purpose-specific signers. The authentication signer also
 binds the supplied device key to its parsed Key Credential; the enrollment
 signer binds the offline root key to `Challenge.Principal`.
 
-PIA-011A exposes Application `BeginAuthentication` and
-`CompleteAuthentication` only on the permission-protected Application Unix
+Application `BeginAuthentication` and `CompleteAuthentication` are exposed only
+on the permission-protected Application Unix
 listener. The public SDK requires a typed `SessionSigner`, a pinned Node
 Principal, and that Unix socket. It validates every structured challenge field,
 keeps the resulting session secret in process memory, coalesces concurrent
 login attempts, retries a product unary call exactly once after
 `Unauthenticated`, and never treats `PermissionDenied` as a login signal.
-No protected-file Application signer is supplied by this leaf; embedding
+No protected-file Application signer is supplied; embedding
 Applications retain key custody. Plaintext loopback/TCP never carries a
 Principal session.
 
-PIA-011B adds a separately named 32-byte `ApplicationEnrollmentTicket`; it is
-never parsed as `application-token`, a Principal, a session, or a grant. A
-protected Operator call authorized by the existing exact
+`ApplicationEnrollmentTicket` is a separately typed 32-byte one-use secret; it
+is never parsed as a Principal, Credential, session, or grant. A protected
+Operator call authorized by the exact
 `identity.principal.enroll` action issues one ten-minute ticket bound to the
 Node, the exact prospective Application Principal, a sorted subset of
-`application.content.get/put`, and the currently configured legacy Application
-installation. Only a domain-separated SHA-256 ticket digest is
+`application.content.get/put`. Only a domain-separated SHA-256 ticket digest is
 durable. The Application proves root possession through the Application
 Begin/Complete enrollment purpose, then calls `EnrollApplication` without an
 Authorization header on the protected Application Unix listener.
 
-`identity-access.db` schema version 6 adds
-`identity-application-enrollment-tickets-v1` and
-`identity-application-legacy-installations-v1`. Ticket consumption, root-key
-enrollment, the canonical authenticate-only Device Credential, a Node-signed
-Application-audience grant with principal-owned scope, and the exact
-legacy-installation disable tombstone commit in one transaction. The grant is
-finite and contains only the ticket's exact sorted actions. Corrupt records,
-replay, cross-Node/interface/peer/principal presentation, expiry at the exact
-boundary, and storage failure all fail closed. A transaction failure leaves the
-ticket active and legacy state unchanged; the ephemeral EnrollmentProof must be
-re-created after restart or a failed attempt.
+The canonical fresh-install `identity-access.db` schema is version 1.
+`identity-application-enrollment-tickets-v1` stores the ticket digest and its
+exact bindings. Ticket consumption, root-key enrollment, the canonical
+authenticate-only Device Credential, and a finite Node-signed
+Application-audience grant with principal-owned scope commit in one
+transaction. The grant contains only the ticket's exact sorted actions. Corrupt
+records, replay, cross-Node/interface/peer/principal presentation, expiry at the
+exact boundary, and storage failure all fail closed. A transaction failure
+leaves the ticket active and writes no partial enrollment or grant; the
+ephemeral EnrollmentProof must be re-created after restart or a failed attempt.
 
 The public SDK exposes a distinct typed `EnrollmentSigner` and an opaque,
 redacted `ApplicationEnrollmentTicket`. It validates the pinned Node, exact
@@ -105,16 +103,10 @@ returning; it clears all ticket, proof, signature, and Credential wire copies.
 The Operator CLI writes a newly issued ticket only to a new protected file and
 never prints it. There is no built-in Application root/file signer.
 
-The `application_interface.principal_enrollment_enabled` configuration field is
-default-false and deliberately rejected until PIA-014 supplies durable,
-owner-aware Principal Blob/content access. PIA-012 admission alone is not
-sufficient: knowledge of a CID is not ownership proof or authorization to read.
-This staged activation is required because a replacement enrollment atomically
-disables the exact legacy token; enabling it earlier would lock the Application
-out of content. The code and protocol are testable
-with an injected gate, while production provisioning remains legacy-compatible.
-PIA-017, not this leaf, owns the durable five-state surface retirement machine,
-deadline, default change, and final credential removal.
+Application enrollment is available whenever the Application Interface itself
+is enabled. Owner-aware content access is mandatory: knowledge of a CID is not
+ownership proof or authorization to read. The Application session path is the
+only normal Application credential branch.
 
 Challenges are memory-only, exactly 120 seconds, atomic one-use, capped at
 4,096 per Node and eight per normalized source, and rate-limited by the v1
@@ -124,9 +116,9 @@ authority, default to 15 minutes, and are capped at 16,384 globally and 16 per
 stores only its process-keyed HMAC and non-secret session facts. Restart creates
 new HMAC keys and invalidates sessions and one-use EnrollmentProof values.
 
-`identity-access.db` schema version 2 adds
-`identity-device-revocations-v1`, keyed by exact `(Audience Node, Subject,
-DeviceID)`. Credential presentation alone performs no durable write. Complete,
+The schema contains `identity-device-revocations-v1`, keyed by exact
+`(Audience Node, Subject, DeviceID)`. Credential presentation alone performs no
+durable write. Complete,
 session presentation, and durable Device revocation share a device-lifecycle
 linearization boundary, so a committed revocation cannot race a newly inserted
 session. Revocation remains Node-local and blocks renewed Credentials for the
@@ -134,9 +126,9 @@ same DeviceID.
 
 ## Direct Admission
 
-PIA-007 upgrades `identity-access.db` to schema version 3 and adds separate
-versioned buckets for Principal enrollment metadata, canonical Access Grants,
-the grant lookup index, and permanent Access Grant revocations. Enrollment
+The same fresh-install schema contains separate versioned buckets for Principal
+enrollment metadata, canonical Access Grants, the grant lookup index, and
+permanent Access Grant revocations. Enrollment
 records bind the exact `(Node, Principal)` key to the root public key and a
 canonical whole-second enrollment time; loading re-derives the Principal.
 Grant records contain the canonical signed artifact and issuer public key.
@@ -150,22 +142,20 @@ resource scope. Sessions contain no actions or permissions. The only v1 scopes
 are `node`, `principal-owned`, and the complete exact
 `(Node, Owner, ResourceKind, CanonicalID)` tuple. Success returns immutable
 facts with `Actor == Effective`; product Policy remains a separate subsequent
-decision. A Delegation presentation is rejected as unsupported until PIA-013.
-Unknown actions/resources, corrupt records, and storage failures fail closed.
+decision. A valid one-hop Application Delegation changes only Effective after
+the full delegatee, audience, action, scope, time, Credential, signature, and
+revocation checks. Unknown actions/resources, corrupt records, and storage
+failures fail closed.
 
-PIA-008A adds schema version 4 with the single
-`identity-bootstrap-tickets-v1` bucket. Bootstrap Tickets remain disabled by
-default. When explicitly enabled, issuance returns one 32-byte secret once and
-persists only a domain-separated SHA-256 digest, canonical issue/expiry seconds,
-and an active/consumed state. There is at most one active ticket per unenrolled
-Node; it expires after exactly ten minutes and may then be replaced. Consumption
-is a single write transaction and persists a terminal tombstone, so replay and
-concurrent consumption fail after one winner. The transaction helper is the
-seam PIA-008B will extend with proof-bound enrollment and first-grant issuance;
-PIA-008A does not expose a listener or change the legacy bootstrap default.
+The `identity-bootstrap-tickets-v1` bucket stores first-enrollment ticket
+records. Issuance returns one 32-byte secret once and persists only a
+domain-separated SHA-256 digest, canonical issue/expiry seconds, and an
+active/consumed state. There is at most one active ticket per unenrolled Node;
+it expires after exactly ten minutes and may then be replaced. Consumption
+commits with proof-bound enrollment and first-grant issuance in one transaction;
+replay and concurrent consumption fail after one winner.
 
-PIA-008B adds the owner operation for first Principal enrollment, still without
-a listener or default-flow switch. The adapter supplies the current trusted
+For first Principal enrollment, the adapter supplies the current trusted
 `AuthenticationBinding` separately; it must equal the proof Challenge binding
 including Node, Operator interface, protocol, transport profile, and peer. The
 operation verifies the root-bound Principal, canonical initial Credential, and
@@ -181,8 +171,7 @@ and grant index commit in one `identity-access.db` write transaction; any later
 write error rolls back all four. The standalone ticket-consume API remains
 absent, so no caller can burn the recovery path without atomic enrollment.
 
-PIA-008C upgrades `identity-access.db` to schema version 5. It adds canonical
-enrolled-Credential records, keyed by the complete
+The schema also contains canonical enrolled-Credential records, keyed by the complete
 `(Node, Principal, DeviceID, CredentialID)` tuple, and durable administration
 idempotency records. Idempotency records are versioned and bind the stable
 semantic request digest to a typed result prefix and checksum; changed payloads
@@ -207,26 +196,28 @@ events; successful read-only lists do not produce mutation events.
 
 ## Services, Paths, And Limits
 
-Both identity services use the method names `BeginAuthentication` and
-`CompleteAuthentication`. Operator bootstrap uses the distinct public-bounded
+Both identity services use the method names `BeginAuthentication`,
+`CompleteAuthentication`, and `EndSession`. Operator bootstrap uses the
+distinct public-bounded
 `EnrollFirstPrincipal`; authenticated administration uses `EnrollPrincipal`,
 `RevokeDevice`, `ListDeviceRevocations`, `IssueAccessGrant`,
-`RevokeAccessGrant`, `ListAccessGrants`, and
-`IssueApplicationEnrollmentTicket`; Application enrollment adds the distinct
-`EnrollApplication` method. Their Connect paths are the normal
+`RevokeAccessGrant`, `ListAccessGrants`,
+`IssueApplicationEnrollmentTicket`, and `ImportDelegationRevocation`;
+Application enrollment adds the distinct `EnrollApplication` method. Their
+Connect paths are the normal
 fully-qualified paths under `/ardents.v1.IdentityService/` and
-`/ardents.application.v1.IdentityService/` respectively. Keeping a focused
-ten-method Operator service and a three-method Application service stays below
-the twelve-RPC budget.
+`/ardents.application.v1.IdentityService/` respectively. The focused
+twelve-method Operator service and four-method Application service remain
+within the protocol budget.
 
-PIA-009A registers the Operator service only in the permission-protected Unix
-mux. Authentication and feature-gated first enrollment are explicit
+The Operator service is registered only in the permission-protected Unix mux.
+Authentication and first enrollment are explicit
 `public_bounded` catalogue entries; every administration method has one exact
 action and a server-derived canonical resource. Unknown procedures fail
 closed. The adapter accepts exactly one unpadded base64url
-`ArdentsOperatorSession` value decoding to 32 bytes. Bearer,
-Application-session, malformed, multiple, padded, and oversized values fail
-without fallback. Linux derives a per-connection binding from kernel
+`ArdentsOperatorSession` value decoding to 32 bytes. Any other scheme,
+Application-session, malformed, multiple, padded, and oversized value fails
+closed. Linux derives a per-connection binding from kernel
 `SO_PEERCRED` normalized UID plus the configured socket path. PID and GID are
 excluded so sessions and per-source limits remain stable across CLI processes
 owned by the same OS user. Platforms without a
@@ -235,8 +226,8 @@ separately domain-separated binding derived from the socket path. The fallback
 reduces per-process isolation but never removes
 Node/interface/protocol/transport/peer checks.
 
-PIA-009B1 migrates the Node and Configuration service families on that Unix
-listener. Their Principal interceptor derives the action from the single
+All Operator service families on that Unix listener use the Principal
+interceptor. It derives the action from the single
 Operator procedure catalogue, derives an exact Node or Configuration resource,
 passes the request-only `ResourceTarget` to `AdmitTarget` once, and places the
 sealed `AuthorizedCall` in request context. `AdmitTarget` authenticates the
@@ -246,15 +237,8 @@ Actor, Effective, Node, or Owner.
 Unary and streaming handlers require that context and never parse Authorization
 or repeat authorization. The streaming request is decoded and rejected for
 unknown fields before admission; the resulting context is fixed at
-establishment. During migration an explicit scheme router
-keeps `Bearer` on the legacy interceptor and every value claiming
-`ArdentsOperatorSession` on the Principal interceptor; malformed or failed
-Principal presentation can never downgrade to bearer. Every accepted legacy
-credential presentation emits a redacted migration audit record. PIA-009B2
-extends the same path to Network and Diagnostics, PIA-009B3 extends it to
-Workload, and PIA-009B4 completes the Operator handler migration with
-Content/Transfer/Retention. The explicit legacy scheme remains a separate
-migration path until PIA-017; a Principal failure never selects it.
+establishment. There is one credential parser on this listener. A malformed or
+failed Principal presentation is denied without invoking another authenticator.
 
 The two tuple-shaped B2 exact resources use target-module-owned canonical IDs;
 access control never joins fields with a delimiter. A discovery-record lookup
@@ -269,33 +253,33 @@ use the same printable-ASCII/512-byte rule. Diagnostic scope is one of `boot`,
 `network`, `node`, `operator_access`, `policy`, `service`, `transport`, or
 `workload`. Recent-event limits are `0..1000`; a non-empty cursor is the unique
 positive canonical decimal representation of an `int64` sequence.
-`DiscoveryRecord.source` is response metadata only. Import ignores any supplied
-value and assigns the server-owned `imported` source after signature validation.
+Discovery uses only the canonical versioned kind-specific envelope containing
+exactly one `NodeFacts` or `ServiceFacts` body. Flat or contradictory identity
+fields fail closed. `DiscoveryRecord.source` is response metadata only. Import
+ignores any supplied value and assigns the server-owned `imported` source after
+signature and kind-specific validation.
 
-PIA-009B3 uses the exact, unmodified WorkloadID or ServiceID as the canonical
+The exact, unmodified WorkloadID or ServiceID is the canonical
 resource ID. Both must be 1 through 512 bytes of printable non-space ASCII
 (`0x21` through `0x7e`); no trimming, case folding, or path normalization is
 performed. `RegisterWorkload` reads only `spec.id` during canonicalization.
 `spec.owner` is never authoritative and cannot become the ResourceRef owner;
 only the server finalizer may attach Effective after a successful Admit.
 
-PIA-009B4 applies the same 1-through-512 printable non-space ASCII rule to
+The same 1-through-512 printable non-space ASCII rule applies to
 ObjectID, ContentReference, ManifestID, and TransferID. Owner fields in object
 or manifest requests are not access authority; owner-required Operator
 ResourceRefs use `Owner=Effective` only in the server finalizer. Principal
 `PublishObject` and `PublishManifest` require a non-empty canonical declared ID.
 Principal `PublishBlob` requires a non-empty payload no larger than 1 MiB. Its
-exact resource ID is the payload-derived CID; any declared ID, CID, or hash must
-match the derived identity. Payload hashing is deferred inside the single Admit
-until session and DeviceID revocation checks succeed. The explicit legacy path
-retains its prior metadata-only/server-generated-ID compatibility during the
-migration window.
+exact resource ID is the payload-derived CID; any declared reference or hash
+must match the derived identity. Payload hashing is deferred inside the single
+Admit until session and DeviceID revocation checks succeed.
 The Operator catalogue has no `principal-owned` action rows: such grant
-proposals are rejected, and any previously persisted signed Operator grant with
-that scope is ignored during every match. Content ownership scopes remain an
-Application-only feature and require the server-owned binding introduced by
-PIA-014; PIA-012 admission and stamping a request ID with Effective are not
-ownership proof.
+proposals and signed Operator grants are rejected, and that scope is never
+matched on the Operator surface. Content ownership scopes remain an
+Application-only feature and require the server-owned durable binding; admission
+or stamping a request ID with Effective is not ownership proof.
 
 Headers are exactly `Authorization: ArdentsOperatorSession <base64url-secret>`,
 `Authorization: ArdentsApplicationSession <base64url-secret>`, and optional
@@ -312,7 +296,8 @@ server `identity/access`, the public SDK domain codec, and adapters must not
 define parallel defaults or catalogues.
 
 Principal authentication endpoints are exposed only on permission-protected
-Unix sockets. Plaintext loopback HTTP is legacy-only. Operator remote access
+Unix sockets. Plaintext loopback HTTP exposes neither authentication nor
+protected product calls. Operator remote access
 uses OpenSSH stream-local forwarding to the protected Operator socket; `ssh -W`
 to loopback HTTP is forbidden for Principal sessions. Non-loopback plaintext
 TCP is forbidden. A future TCP path requires a separately approved mTLS
@@ -320,7 +305,7 @@ transport profile.
 
 ## CLI Signer Custody And Command Names
 
-PIA-010A freezes the local, offline `ardentsctl` identity hierarchy as:
+The local, offline `ardentsctl` identity hierarchy is:
 
 ```text
 identity principal create [--signer-file PATH]
@@ -330,8 +315,8 @@ identity device create [--root-signer-file PATH] [--signer-file PATH] [--valid-f
 identity device show [--signer-file PATH]
 ```
 
-These commands never resolve a Node context, require a bearer, connect to a
-listener, or perform enrollment. `--output json` is deterministic and
+These commands never resolve a Node context, connect to a listener, authenticate
+a call, or perform enrollment. `--output json` is deterministic and
 noninteractive. The default root and device paths are respectively
 `<os.UserConfigDir>/ardents/identity/principal-root-v1.json` and
 `<os.UserConfigDir>/ardents/identity/device-v1.json`. `--valid-for` defaults to
@@ -339,10 +324,11 @@ noninteractive. The default root and device paths are respectively
 only another valid protected `principal-root` bundle; raw seed text and opaque
 wallet formats are not implicit import formats.
 
-PIA-010B implements `identity login|status|logout`. `login` proves connectivity
+`identity login|status|logout` manages the process-local session cache. `login`
+proves connectivity
 and authentication for the current process; `status` and `logout` inspect or
 clear only that process-local cache. No session helper daemon or persistent
-session file is implied. PIA-010C implements the frozen `identity enroll`,
+session file is implied. The frozen `identity enroll`,
 `identity grant list|issue|revoke`, and `identity device revoke` commands over
 the protected Operator transport. Bootstrap Ticket input is a protected file,
 never argv; subsequent enrollment and all grant/revocation RPCs use a current
@@ -358,19 +344,15 @@ failed entry generation, reauthenticates once, and replays once; a second
 unknown failure return without another retry. Server streams may replay their
 single request only when authentication fails before the first event.
 
-Principal mode requires a canonical pinned target Node Principal, the protected
-device signer, and either `unix:///absolute/operator.sock` or
+Every protected CLI call requires a canonical pinned target Node Principal, the
+protected device signer, and either `unix:///absolute/operator.sock` or
 `--ssh-operator-socket /absolute/remote/operator.sock`. Remote Principal mode
 starts one managed OpenSSH `-N -T` tunnel with
 `ExitOnForwardFailure=yes` and a private local stream socket; it never uses
 `ssh -W`, a remote shell helper, or loopback TCP. Effective HTTP targets reject
-before Begin/Complete, even for loopback. Legacy bearer selection is explicit
-through `--legacy-token`, `--legacy-token-file`, the corresponding
-`ARDENTS_LEGACY_*` environment variables, or `legacy_token_*` context fields;
-mixing schemes is invalid and every source emits a warning without the
-credential value. Old ambient CLI token names are ignored rather than allowed
-to downgrade the default Principal mode. Principal context fields are
-`signer_file` and `ssh_operator_socket`.
+before Begin/Complete, even for loopback. The canonical context fields are
+`signer_file` and `ssh_operator_socket`; unknown fields and alternate credential
+inputs fail closed.
 
 Signer files are strict JSON objects no larger than 32 KiB. Version is exactly
 `1`, algorithm is exactly `ed25519`, binary fields use canonical unpadded
@@ -399,18 +381,18 @@ only public IDs, public keys, Credential ID, and validity; private seeds,
 canonical Credential bytes, signatures, paths, and file contents are never
 rendered.
 
-## Credential Compatibility Matrix
+## Credential Acceptance Matrix
 
 | Presented scheme | Operator Unix | Operator loopback HTTP | Application Unix | Application loopback HTTP |
 |---|---:|---:|---:|---:|
-| legacy `Bearer` | explicit migration state only | explicit migration state only | reject | reject |
-| legacy `ArdentsApplication` | reject | reject | explicit migration state only | explicit migration state only |
-| `ArdentsOperatorSession` | accept when Principal path enabled | reject | reject | reject |
-| `ArdentsApplicationSession` | reject | reject | accept when Principal path enabled | reject |
+| `ArdentsOperatorSession` | accept | reject | reject | reject |
+| `ArdentsApplicationSession` | reject | reject | accept | reject |
+| any other or unknown scheme | reject | reject | reject | reject |
 
 Multiple schemes, a malformed selected scheme, or a failed Principal session
-always reject without fallback. Bootstrap and break-glass credentials are
-separate schemes and are not represented by this normal-credential matrix.
+always reject without fallback. Bootstrap and Application Enrollment Tickets
+are accepted only by their exact public-bounded enrollment methods and are not
+normal call credentials.
 
 ## Resource Catalogue
 
@@ -422,7 +404,8 @@ listed; unknown scope/resource/action values deny.
 
 | Procedures | Action(s) | Class | ResourceKind and C/F contract | Scopes |
 |---|---|---|---|---|
-| Identity Begin/Complete on each surface and Application EnrollApplication | public_bounded | read/write | no grant resource; listener derives binding; EnrollApplication additionally consumes the separately typed ticket and proof | none |
+| Identity Begin/Complete on each surface, Application EnrollApplication, and Operator ImportDelegationRevocation | public_bounded | read/write | no grant resource; listener derives binding; enrollment additionally consumes the separately typed ticket and proof; revocation import verifies one canonical owner-signed artifact | none |
+| Identity EndSession on each surface | session_lifecycle | write | no grant resource; requires and invalidates the exact surface- and transport-bound session | none |
 | StartNode, StopNode, GetNodeStatus, GetNodeFeatures, GetNodeRuntime, StreamNodeEvents | `node.start`, `node.stop`, `node.status`, `node.features`, `node.runtime`, `node.events` | per existing catalogue | `node`; C empty, F audience Node | node |
 | GetEffectiveConfiguration, ReloadConfiguration | `config.effective`, `config.reload` | read/write | `configuration`; C empty, F audience Node singleton | node, exact |
 | GetNetworkStatus, ListRouteCandidates | `transport.network_status`, `transport.route_candidates` | read | `network`; C empty, F audience Node | node, exact |

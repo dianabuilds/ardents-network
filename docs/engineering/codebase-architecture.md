@@ -176,9 +176,9 @@ internal/
     access/
     capability/
     keyring/
-    migration/
     principal/
     protocol/
+    trust/
   policy/
   storage/
   diagnostics/
@@ -235,7 +235,9 @@ internal/
   observability/
   ingressproxy/
   applicationapi/
-    auth/
+    admission/
+    binding/
+    call/
     content/
     principal/
     protocol/
@@ -312,7 +314,6 @@ The nested directories have these exact responsibilities:
 | `identity/capability` | capability assertion validation and attenuation |
 | `identity/access` | local-interface authentication, ephemeral sessions, signed Access Grants and revocations, and request admission; not product Policy |
 | `identity/keyring` | durable node-key continuity and key material access |
-| `identity/migration` | offline, versioned identity inventory and coordinated epoch migration; never runtime dual-ID authorization |
 | `identity/principal` | principal derivation and canonical identity encoding |
 | `identity/trust` | immutable exact-purpose trusted-Principal registry and deterministic generation |
 | `identity/protocol` | generated server-side signed-identity artifact messages only; no domain model or verification behavior |
@@ -323,7 +324,7 @@ The nested directories have these exact responsibilities:
 | `network/routing` | current usable route facts; not discovery intake |
 | `network/waku` | the sole go-waku/libp2p implementation adapter |
 | `messaging` | private authenticated envelopes, opaque selectors, replay protection and messaging privacy status |
-| `discovery/records` | validated durable remote node/service records |
+| `discovery/records` | validated durable canonical kind-specific NodeFacts and ServiceFacts records |
 | `discovery/resolution` | freshness- and trust-aware record/service selection |
 | `discovery/trust` | generation-aware discovery publication trust and verification cache |
 | `content/catalog` | object/manifest graph and content metadata catalogue |
@@ -388,13 +389,19 @@ resolved through `go.mod` unless a separately approved fork is actually used.
 - `localapi/auth` owns local-protocol authentication, method authorization and
   audit context. It does not own product policy.
 - `localapi/identity` is the protected Operator Unix-socket adapter for typed
-  Principal authentication and identity administration. It accepts no legacy
-  or Application credential scheme and owns no durable identity state.
-- `applicationapi/auth` authenticates the explicit legacy bearer during
-  coexistence; it does not own content or Operator policy.
+  Principal authentication and identity administration. It accepts only the
+  Operator session scheme and owns no durable identity state.
+- `applicationapi/admission` is the sole Principal-session interceptor for
+  protected Application product calls. It derives the Application Audience,
+  admits exact actions/resources, and propagates sealed Actor/Effective facts;
+  it owns no product state.
+- `applicationapi/binding` derives the server-owned Application transport
+  binding from the protected listener and OS peer.
+- `applicationapi/call` carries the sealed admitted Application call across the
+  adapter boundary without exposing a constructor for Actor or Effective.
 - `applicationapi/principal` is the protected Application Unix-socket adapter
-  for typed Principal authentication. It derives Application Audience and
-  transport binding and owns no durable identity state.
+  for typed Principal authentication, session termination, and one-use
+  Application enrollment. It owns no durable identity state.
 - `applicationapi/protocol/applicationv1` is the generated-only Node copy of
   the Application identity service. The public SDK copy is
   `sdk/go/protocol/applicationidentityv1`; both come from the same proto source
@@ -799,8 +806,8 @@ Completed structural replacements:
   masquerade as local content operations.
 - moved replica intent, placement commitments, availability snapshots and
   repair state into a durable `replication` repository. `content` no longer
-  imports `replication`; legacy replica state is migrated from the former data
-  snapshot into the replication-owned database bucket during load.
+  imports `replication`; replication loads only its strict current versioned
+  state and has no fallback to the former data snapshot.
 - removed the technical `network/api`, `workload/api`, `diagnostics/api`,
   `diagnostics/projection`, `diagnostics/recorder` and `diagnostics/timeline`
   package layers. Network and workload contracts now live at their owner roots;
@@ -816,16 +823,17 @@ Completed structural replacements:
   The local API and observability read that owner through consumer-defined
   interfaces.
 - removed the technical `content/state` package. Catalogue stores now live in
-  `content/catalog`, while the legacy-compatible disk snapshot is a private
+  `content/catalog`, while the strict versioned disk snapshot is a private
   persistence detail of `content.Service` rather than a reusable state layer.
 - moved operator-document file loading and API/observability secret-source
   resolution into `config`. Daemon now consumes a resolved configuration
   document instead of duplicating file, permission and environment precedence
   rules in the composition root.
-- normalized the supported legacy environment startup contract into the same
-  `config.Document` validation and runtime mapping pipeline. The former
-  312-line `daemon/config.go` parser is now a small composition adapter; there
-  is no second configuration model in daemon.
+- consolidated startup configuration into one canonical versioned
+  `config.Document` validation and runtime mapping pipeline. Obsolete identity
+  environment and credential-file inputs are rejected rather than translated.
+  The former 312-line `daemon/config.go` parser is now a small composition
+  adapter; there is no second configuration model in daemon.
 - moved the canonical network status read model and projection into `network`.
   Reachability, active transport features, abuse state and privacy posture are no
   longer modelled or computed by `daemon/status`; daemon only supplies the
@@ -879,11 +887,14 @@ Completed structural replacements:
   persistence and reconciliation. The shallow controller executor interface
   and its sole pass-through adapter were removed: reconciliation consumes the
   real execution seam directly, with local-process and Docker implementations.
-- reduced `identity` to its target topology: root plus `capability`, `keyring`
-  and `principal`. The compatibility-only `authorization` and `subject`
-  packages and the shallow `lifecycle` wrapper were deleted. Durable key
-  access moved from the vague `continuity` name to `keyring`; node identity
-  creation/restoration now sits behind the root `identity.Service` seam.
+- reduced `identity` to its target topology: root plus `access`, `capability`,
+  `keyring`, `principal`, generated-only `protocol`, and exact-purpose `trust`.
+  The obsolete `authorization`, `subject`, `lifecycle`, and identity-cutover
+  packages were deleted. `identity/access` is the one deep owner of typed
+  authentication challenges, ephemeral sessions, Access Grants, revocations,
+  one-hop Delegation, and sealed Actor/Effective admission; it does not own
+  product Policy. Durable Node key access belongs to `keyring`; Node identity
+  creation/restoration sits behind the root `identity.Service` seam.
   Local-realm provisioning lives behind the explicit `ardentsd init` mode and
   composes identity and capability through `internal/provision`, avoiding both
   a reverse import cycle, a false reusable identity subdomain, and a separate

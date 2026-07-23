@@ -5,13 +5,19 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/base64"
-	"net/http/httptest"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
+	"path/filepath"
+	"runtime"
 	"sort"
 	"testing"
 	"time"
 
 	identitycontract "ardents/api/ardents/identity/v1"
 	cliclient "ardents/internal/cli/client"
+	cliidentity "ardents/internal/cli/identity"
 	runtimeprocess "ardents/internal/daemon"
 	identityaccess "ardents/internal/identity/access"
 	identityprincipal "ardents/internal/identity/principal"
@@ -25,8 +31,8 @@ import (
 )
 
 // AuthorizedRequest exists to keep call sites concise. Authentication is
-// supplied by NewArdentsClient's Principal-session interceptor, never by the
-// request payload or a long-lived bearer credential.
+// supplied by NewArdentsClient's short-lived Principal session, never by the
+// request payload.
 func AuthorizedRequest[T any](msg *T) *connect.Request[T] {
 	return connect.NewRequest(msg)
 }
@@ -56,42 +62,12 @@ func ConnectDependencies(runtime *runtimeprocess.Node) rpcadapter.Dependencies {
 
 func NewArdentsClient(t *testing.T, runtime *runtimeprocess.Node) cliclient.Service {
 	t.Helper()
-
-	access, node, session, peer, source := newOperatorPrincipalAccess(t)
-	handler, err := rpcadapter.NewPrincipalHandler(ConnectDependencies(runtime), access, node, peer, source)
-	require.NoError(t, err)
-
-	srv := httptest.NewServer(handler)
-	t.Cleanup(srv.Close)
-	interceptor := principalSessionInterceptor{
-		authorization: "ArdentsOperatorSession " + base64.RawURLEncoding.EncodeToString(session[:]),
-	}
-	return cliclient.NewService(srv.Client(), srv.URL, connect.WithGRPC(), connect.WithInterceptors(interceptor))
+	return NewOperatorCLIFixture(t, runtime).Client
 }
 
-type principalSessionInterceptor struct{ authorization string }
-
-func (i principalSessionInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
-	return func(ctx context.Context, request connect.AnyRequest) (connect.AnyResponse, error) {
-		if request.Header().Get("Authorization") == "" {
-			request.Header().Set("Authorization", i.authorization)
-		}
-		return next(ctx, request)
-	}
-}
-
-func (i principalSessionInterceptor) WrapStreamingClient(next connect.StreamingClientFunc) connect.StreamingClientFunc {
-	return func(ctx context.Context, spec connect.Spec) connect.StreamingClientConn {
-		connection := next(ctx, spec)
-		if connection.RequestHeader().Get("Authorization") == "" {
-			connection.RequestHeader().Set("Authorization", i.authorization)
-		}
-		return connection
-	}
-}
-
-func (i principalSessionInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
-	return next
+func NewArdentsClientWithActions(t *testing.T, runtime *runtimeprocess.Node, actions []identityaccess.Action) cliclient.Service {
+	t.Helper()
+	return NewOperatorCLIFixtureWithActions(t, runtime, actions).Client
 }
 
 type testNodeGrantIssuer struct{ key ed25519.PrivateKey }
@@ -106,6 +82,26 @@ func (i testNodeGrantIssuer) IssueAccessGrant(payload *identityprotocol.AccessGr
 
 func newOperatorPrincipalAccess(t *testing.T) (*identityaccess.Service, string, identityaccess.SessionSecret, [32]byte, identityaccess.SourceKey) {
 	t.Helper()
+	fixture := newOperatorPrincipalMaterial(t)
+	return fixture.service, fixture.node, fixture.session, fixture.peer, fixture.source
+}
+
+type operatorPrincipalMaterial struct {
+	service    *identityaccess.Service
+	node       string
+	session    identityaccess.SessionSecret
+	peer       [32]byte
+	source     identityaccess.SourceKey
+	signerFile string
+}
+
+func newOperatorPrincipalMaterial(t *testing.T) operatorPrincipalMaterial {
+	t.Helper()
+	return newOperatorPrincipalMaterialWithActions(t, testOperatorActions)
+}
+
+func newOperatorPrincipalMaterialWithActions(t *testing.T, grantedActions []identityaccess.Action) operatorPrincipalMaterial {
+	t.Helper()
 	ctx := context.Background()
 	now := time.Now().UTC().Truncate(time.Second)
 	database, err := storage.OpenIdentityAccess(ctx, t.TempDir(), identityaccess.StorageSchema())
@@ -116,13 +112,25 @@ func newOperatorPrincipalAccess(t *testing.T) (*identityaccess.Service, string, 
 	require.NoError(t, err)
 	node, err := identityprincipal.FromEd25519PublicKey(nodeKey.Public().(ed25519.PublicKey))
 	require.NoError(t, err)
-	_, rootKey, err := ed25519.GenerateKey(rand.Reader)
+	signerDir := filepath.Join(t.TempDir(), "operator-identity")
+	require.NoError(t, storage.EnsurePrivateDir(signerDir))
+	rootPath := filepath.Join(signerDir, "principal-root-v1.json")
+	devicePath := filepath.Join(signerDir, "device-v1.json")
+	rootInfo, err := cliidentity.CreatePrincipal(rootPath, rand.Reader)
 	require.NoError(t, err)
-	principal, err := identityprincipal.FromEd25519PublicKey(rootKey.Public().(ed25519.PublicKey))
+	deviceInfo, err := cliidentity.CreateDevice(rootPath, devicePath, time.Hour, now.Add(-time.Minute), rand.Reader)
 	require.NoError(t, err)
-	_, deviceKey, err := ed25519.GenerateKey(rand.Reader)
+	require.Equal(t, rootInfo.Principal, deviceInfo.Principal)
+	rootSigner, err := cliidentity.OpenRootFileSigner(rootPath)
 	require.NoError(t, err)
-	device, err := identityprincipal.DeviceFromEd25519PublicKey(deviceKey.Public().(ed25519.PublicKey))
+	deviceSigner, err := cliidentity.OpenDeviceFileSigner(devicePath)
+	require.NoError(t, err)
+	rootPublicRaw, err := base64.RawURLEncoding.Strict().DecodeString(rootInfo.RootPublicKey)
+	require.NoError(t, err)
+	require.Len(t, rootPublicRaw, ed25519.PublicKeySize)
+	credential, err := deviceSigner.Credential(ctx)
+	require.NoError(t, err)
+	credentialWire, err := credential.MarshalBinary()
 	require.NoError(t, err)
 
 	service, err := identityaccess.NewService(identityaccess.Config{
@@ -146,31 +154,21 @@ func newOperatorPrincipalAccess(t *testing.T) (*identityaccess.Service, string, 
 	ticket, err := service.IssueBootstrapTicket(ctx, node.String())
 	require.NoError(t, err)
 	enrollment, err := service.Begin(ctx, identityaccess.BeginRequest{
-		Principal: principal.String(), Purpose: identityprotocol.ChallengePurpose_CHALLENGE_PURPOSE_ENROLLMENT_PROOF,
+		Principal: rootInfo.Principal, Purpose: identityprotocol.ChallengePurpose_CHALLENGE_PURPOSE_ENROLLMENT_PROOF,
 		Binding: binding, Source: source,
 	})
 	require.NoError(t, err)
-	enrollmentSignature, err := identityaccess.SignEnrollmentChallenge(enrollment, rootKey)
+	enrollmentSignature, err := rootSigner.SignEnrollmentChallenge(ctx, enrollment)
 	require.NoError(t, err)
 	var rootPublic [ed25519.PublicKeySize]byte
-	copy(rootPublic[:], rootKey.Public().(ed25519.PublicKey))
+	copy(rootPublic[:], rootPublicRaw)
 	completed, err := service.Complete(ctx, identityaccess.CompleteRequest{
-		ChallengeID: enrollment.ID, Principal: principal.String(), Binding: binding, Source: source,
+		ChallengeID: enrollment.ID, Principal: rootInfo.Principal, Binding: binding, Source: source,
 		RootPublicKey: rootPublic, Signature: enrollmentSignature,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, completed.EnrollmentProof)
 
-	credential, err := identityaccess.SignKeyCredential(&identityprotocol.KeyCredentialPayload{
-		Version: identitycontract.Version, Subject: principal.String(),
-		RootPublicKey: rootKey.Public().(ed25519.PublicKey), DeviceId: device.String(),
-		DevicePublicKey: deviceKey.Public().(ed25519.PublicKey),
-		Purposes:        []identityprotocol.CredentialPurpose{identityprotocol.CredentialPurpose_CREDENTIAL_PURPOSE_AUTHENTICATE},
-		NotBefore:       timestamppb.New(now.Add(-time.Minute)), NotAfter: timestamppb.New(now.Add(time.Hour)),
-	}, rootKey)
-	require.NoError(t, err)
-	credentialWire, err := credential.MarshalBinary()
-	require.NoError(t, err)
 	_, err = service.EnrollFirstPrincipal(ctx, binding, identityaccess.FirstEnrollmentRequest{
 		Ticket: ticket, Challenge: enrollment, Proof: *completed.EnrollmentProof,
 		RootPublicKey: rootPublic, Credential: credentialWire,
@@ -178,23 +176,23 @@ func newOperatorPrincipalAccess(t *testing.T) (*identityaccess.Service, string, 
 	require.NoError(t, err)
 
 	login, err := service.Begin(ctx, identityaccess.BeginRequest{
-		Principal: principal.String(), Purpose: identityprotocol.ChallengePurpose_CHALLENGE_PURPOSE_SESSION,
+		Principal: rootInfo.Principal, Purpose: identityprotocol.ChallengePurpose_CHALLENGE_PURPOSE_SESSION,
 		Binding: binding, Source: source,
 	})
 	require.NoError(t, err)
-	loginSignature, err := identityaccess.SignAuthenticationChallenge(login, credential, deviceKey)
+	loginSignature, err := deviceSigner.SignAuthenticationChallenge(ctx, login)
 	require.NoError(t, err)
 	authenticated, err := service.Complete(ctx, identityaccess.CompleteRequest{
-		ChallengeID: login.ID, Principal: principal.String(), Binding: binding, Source: source,
+		ChallengeID: login.ID, Principal: rootInfo.Principal, Binding: binding, Source: source,
 		RootPublicKey: rootPublic, Credential: credentialWire, Signature: loginSignature,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, authenticated.SessionSecret)
 
-	actions := append([]identityaccess.Action(nil), testOperatorActions...)
+	actions := append([]identityaccess.Action(nil), grantedActions...)
 	sort.Slice(actions, func(left, right int) bool { return actions[left] < actions[right] })
 	proposal := identityaccess.GrantProposal{
-		Subject: principal.String(), Actions: actions,
+		Subject: rootInfo.Principal, Actions: actions,
 		Scope:     identityaccess.ResourceScope{Kind: identityaccess.ScopeNode, Exact: identityaccess.ResourceRef{Node: node.String()}},
 		NotBefore: now, NotAfter: now.Add(time.Hour),
 	}
@@ -213,7 +211,75 @@ func newOperatorPrincipalAccess(t *testing.T) (*identityaccess.Service, string, 
 		Proposal: proposal,
 	})
 	require.NoError(t, err)
-	return service, node.String(), *authenticated.SessionSecret, peer, source
+	return operatorPrincipalMaterial{
+		service: service, node: node.String(),
+		session: *authenticated.SessionSecret, peer: peer, source: source, signerFile: devicePath,
+	}
+}
+
+// OperatorCLIFixture exposes a Principal-only Operator endpoint over a real
+// Unix socket. Root material remains in the fixture's private directory; CLI
+// calls receive only the enrolled device signer bundle.
+type OperatorCLIFixture struct {
+	Addr          string
+	SignerFile    string
+	NodePrincipal string
+	Client        cliclient.Service
+}
+
+func NewOperatorCLIFixture(t *testing.T, nodeRuntime *runtimeprocess.Node) OperatorCLIFixture {
+	t.Helper()
+	return NewOperatorCLIFixtureWithActions(t, nodeRuntime, testOperatorActions)
+}
+
+func NewOperatorCLIFixtureWithActions(t *testing.T, nodeRuntime *runtimeprocess.Node, actions []identityaccess.Action) OperatorCLIFixture {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("Principal-only CLI runtime tests require Unix-domain sockets")
+	}
+	material := newOperatorPrincipalMaterialWithActions(t, actions)
+	deps := ConnectDependencies(nodeRuntime)
+	deps.Node = principalBoundRuntime{Node: nodeRuntime, principal: material.node}
+	_, handler, err := rpcadapter.NewProtectedHandler(deps, material.service, material.node, material.peer, material.source)
+	require.NoError(t, err)
+
+	socketPath := filepath.Join(t.TempDir(), "operator.sock")
+	listener, err := net.Listen("unix", socketPath)
+	require.NoError(t, err)
+	require.NoError(t, os.Chmod(socketPath, 0o600))
+	server := &http.Server{Handler: handler}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_ = server.Serve(listener)
+	}()
+	t.Cleanup(func() {
+		require.NoError(t, server.Close())
+		<-done
+	})
+
+	signer, err := cliidentity.OpenDeviceFileSigner(material.signerFile)
+	require.NoError(t, err)
+	addr := (&url.URL{Scheme: "unix", Path: filepath.ToSlash(socketPath)}).String()
+	client, err := cliclient.New(cliclient.Config{
+		BaseURL: addr, ExpectedPrincipal: material.node, Signer: signer, Timeout: 10 * time.Second,
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, client.Close()) })
+	return OperatorCLIFixture{
+		Addr: addr, SignerFile: material.signerFile, NodePrincipal: material.node, Client: client.Service(),
+	}
+}
+
+type principalBoundRuntime struct {
+	*runtimeprocess.Node
+	principal string
+}
+
+func (r principalBoundRuntime) GetNodeRuntime() runtimeprocess.RuntimeSnapshot {
+	snapshot := r.Node.GetNodeRuntime()
+	snapshot.Identity.Principal = r.principal
+	return snapshot
 }
 
 // ApplicationPrincipalAccess is a real enrolled Application identity fixture.

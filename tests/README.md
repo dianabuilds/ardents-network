@@ -142,7 +142,7 @@ Multi-host network recovery:
   whenever a run slows down.
 
 Windows note: `tests/setup-windows-toolchain.ps1` is retained only for focused
-legacy diagnostics. It is not part of the canonical gate and its output cannot
+toolchain diagnostics. It is not part of the canonical gate and its output cannot
 replace Linux-container evidence.
 
 `tests/testkit` is the only place for cross-package test harness code. Repeated

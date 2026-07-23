@@ -366,6 +366,23 @@ func TestPrincipalContentAdmissionUsesRealAccessServiceAndPropagatesActorEffecti
 	}
 }
 
+func TestOperatorSessionIsRejectedByApplicationInterface(t *testing.T) {
+	fixture := newRealApplicationFixture(t, []identityaccess.Action{"application.content.put"})
+	store := newRecordingStore()
+	admitter := &countingAdmitter{service: fixture.service}
+	client := principalContentClient(t, fixture, admitter, store)
+	request := connect.NewRequest(&applicationv1.PutContentRequest{Payload: []byte("cross-surface attempt")})
+	request.Header().Set("Authorization", "ArdentsApplicationSession "+base64.RawURLEncoding.EncodeToString(fixture.operatorSecret[:]))
+
+	_, err := client.Put(context.Background(), request)
+
+	require.Error(t, err)
+	require.Equal(t, connect.CodeUnauthenticated, connect.CodeOf(err))
+	require.Equal(t, int32(1), admitter.calls.Load())
+	require.Error(t, admitter.lastErr)
+	require.Empty(t, store.calls)
+}
+
 func TestDelegatedContentAdmissionUsesRealAccessServiceAndClearsPresentation(t *testing.T) {
 	fixture := newRealApplicationFixture(t, []identityaccess.Action{"application.content.get", "application.content.put"})
 	alice, aliceDevice, aliceCredential := enrollDelegator(t, fixture)

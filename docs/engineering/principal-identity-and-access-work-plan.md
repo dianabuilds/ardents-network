@@ -1073,8 +1073,7 @@ repository compile gates cover the slice.
 
 **Depends on:** PIA-010C, PIA-011B, and PIA-014C.
 
-**Status:** pending; remaining pre-release token paths still exist in CLI and
-deployment/install surfaces.
+**Status:** complete.
 
 **Outcome:** the repository and clean-install output expose only canonical
 Principal identity, protected Principal sessions, one-use enrollment tickets,
@@ -1109,6 +1108,23 @@ while invalidating sessions; no secret appears in output or logs.
 
 **Do not do:** remove sessions/tickets because they are bearer-like secrets,
 remove transactional rollback, or add a new recovery architecture.
+
+**PIA-017 completion evidence:** protected Operator and Application routes have
+no reusable token authorizer, plaintext transport, fallback branch, `p_`
+migrator, coexistence state, or permanent credential output. The Operator CLI
+test harness uses a real Unix listener and device-authenticated Principal
+session; the Application process e2e starts the real daemon, enrolls the first
+Operator with its one-use Bootstrap Ticket, issues and consumes a one-use
+Application Enrollment Ticket, and performs content put/get through the
+separate Application listener. Bearer, opaque, malformed, and cross-interface
+session attempts fail before mutation. Restart tests prove durable enrollment
+and grants survive database reopen while sessions and unfinished proofs do not;
+ticket, challenge, credential, proof, private-key, and session material remain
+redacted. Install, access, configuration, SDK, incident response, backup,
+restore, upgrade, rollback, and Docker documentation now describe only the
+Principal-only first release. The focused Linux process e2e, Linux tagged
+local-control integration suite, identity restart/redaction tests, SDK tests,
+and repository diff guard pass.
 
 ### PIA-018 — Run Adversarial, Persistence-Recovery, And Release Acceptance
 

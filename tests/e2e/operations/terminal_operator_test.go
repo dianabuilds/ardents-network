@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -22,12 +21,10 @@ import (
 	runtimeinfra "ardents/internal/daemon"
 	runtimeprocess "ardents/internal/daemon"
 	discoveryapi "ardents/internal/discovery"
-	rpcadapter "ardents/internal/localapi"
 	"ardents/internal/localapi/protocol"
 	transport "ardents/internal/network"
 	"ardents/tests/testkit"
 
-	"connectrpc.com/connect"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -392,9 +389,10 @@ func TestTerminalServiceAndDataSurfaceReadiness(t *testing.T) {
 }
 
 type terminalHarness struct {
-	addr   string
-	token  string
-	client cliclient.Service
+	addr          string
+	signerFile    string
+	nodePrincipal string
+	client        cliclient.Service
 }
 
 type terminalResult struct {
@@ -405,21 +403,10 @@ type terminalResult struct {
 
 func newTerminalHarness(t *testing.T, runtime *runtimeprocess.Node) terminalHarness {
 	t.Helper()
-
-	mux := http.NewServeMux()
-	auth := testkit.ConnectAuthConfig()
-	path, handler, err := rpcadapter.NewHandler(testkit.ConnectDependencies(runtime), auth)
-	require.NoError(t, err)
-	mux.Handle(path, handler)
-
-	srv := httptest.NewServer(mux)
-	t.Cleanup(srv.Close)
-
-	client := cliclient.NewService(srv.Client(), srv.URL, connect.WithGRPC())
+	fixture := testkit.NewOperatorCLIFixture(t, runtime)
 	return terminalHarness{
-		addr:   srv.URL,
-		token:  auth.Token,
-		client: client,
+		addr: fixture.Addr, signerFile: fixture.SignerFile,
+		nodePrincipal: fixture.NodePrincipal, client: fixture.Client,
 	}
 }
 
@@ -427,19 +414,14 @@ func (h terminalHarness) run(t *testing.T, ctx context.Context, args ...string) 
 	t.Helper()
 
 	t.Setenv("ARDENTS_ADDR", h.addr)
-	t.Setenv("ARDENTS_LEGACY_API_TOKEN", h.token)
+	t.Setenv("ARDENTS_SIGNER_FILE", h.signerFile)
+	t.Setenv("ARDENTS_EXPECTED_PRINCIPAL", h.nodePrincipal)
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	code := cli.Run(ctx, args, &stdout, &stderr)
 	require.Equalf(t, 0, code, "stderr=%s", stderr.String())
-	expectedWarning := "ardentsctl: warning: explicit legacy bearer authentication is migration-only\n"
-	for index, argument := range args {
-		if argument == "--output=json" || (argument == "--output" && index+1 < len(args) && args[index+1] == "json") {
-			expectedWarning = "{\"warning\":\"legacy bearer authentication is migration-only\"}\n"
-		}
-	}
-	require.Equal(t, expectedWarning, stderr.String())
+	require.Empty(t, stderr.String())
 
 	return terminalResult{stdout: stdout.String(), stderr: stderr.String(), code: code}
 }

@@ -16,7 +16,7 @@ acceptance environment exist.
 Two supported profiles and one qualification profile are versioned:
 
 - `native` (qualification): one node installed as the unprivileged `ardents` system service,
-  with protected local state and a loopback/Unix-socket operator surface;
+  with protected local state and separate Operator/Application Unix sockets;
 
 - `local-multinode`: three service nodes on an isolated Compose network, with
   generated operator credentials, an isolated local realm authority, real
@@ -42,17 +42,21 @@ If cleanup also fails, both failures remain operator-visible.
 
 ## Exposure And Secrets
 
-- The local control API and daemon observability listener remain loopback-only
-  inside each container and are not published to the host.
-- Operators inspect a node with `docker compose exec`; remote control exposure
-  is unsupported in `v1`.
+- Operator and Application APIs are protected Unix sockets and are never
+  published as TCP listeners. The observability listener remains loopback-only
+  inside each container and is not published to the host.
+- Operators use the profile's isolated helper container locally. Remote
+  Operator access uses SSH stream-local forwarding to the same protected socket.
 - Only Waku transport ports are published where the selected profile requires
   host ingress.
-- Local profile credentials are generated into a private, ignored deployment
-  state directory. Production credentials and TLS keys are externally supplied
-  files; Compose never embeds them in environment values or images.
-- Every node has a distinct API token and persistent data volume. Waku and
-  Ardents identity keys are generated once in that volume and survive restart.
+- Local Principal/device signer material is generated into private,
+  deployment-scoped volumes. Production device signer, observability, and TLS
+  secrets are externally supplied files; Compose never embeds them in
+  environment values or images.
+- Every node has a distinct Node Principal and persistent data volume. Node and
+  Waku keys are generated once in that volume and survive restart. Normal
+  Operator/Application access uses short-lived Principal sessions; no reusable
+  control-plane token exists.
 - The local realm issuer key and channel authority state live in a dedicated
   deployment-managed volume, separate from every node data and capability
   store. Per-node capability/replay keys are distinct protected secrets.
@@ -74,7 +78,7 @@ startup; orchestration never weakens privacy or accepts a degraded quick start.
 
 ## Lifecycle And Persistence
 
-- `up`: generate missing local-only credentials, provision or reuse the
+- `up`: generate missing local-only Principal and authority material, provision or reuse the
   stopped-node local realm, start the seed, discover its canonical endpoint,
   finalize peer configuration, start peers, and retain a sanitized manifest.
 - `status`: read authenticated node/network/diagnostics truth without printing

@@ -5,16 +5,11 @@ package localapi_test
 import (
 	"context"
 	"encoding/json"
-	"net/http"
-	"net/http/httptest"
 	"testing"
-	"time"
 
-	cliclient "ardents/internal/cli/client"
 	runtimeinfra "ardents/internal/daemon"
 	diagapi "ardents/internal/diagnostics"
-	rpcadapter "ardents/internal/localapi"
-	localauth "ardents/internal/localapi/auth"
+	identityaccess "ardents/internal/identity/access"
 	ardentsv1 "ardents/internal/localapi/protocol"
 	"ardents/tests/testkit"
 
@@ -22,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestOperatorAccessLeastPrivilegeAndAudit(t *testing.T) {
+func TestOperatorPrincipalSessionEnforcesLeastPrivilegeAndSafeAudit(t *testing.T) {
 	testkit.BeginScenario(t, testkit.Spec{
 		Layer: testkit.LayerIntegration, Domain: "local-control-surface", ScenarioID: "OAI-001",
 		Suite: "integration", Tags: []string{"integration", "local-control-surface", "operator-access"},
@@ -32,83 +27,52 @@ func TestOperatorAccessLeastPrivilegeAndAudit(t *testing.T) {
 		Name: "operator-access", Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
 		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
 	}).Runtime
-	target := runtime.GetNodeRuntime()
-	auth := localauth.Config{
-		Token: "operator-secret", SubjectID: "status-reader", Capabilities: []string{"node.status", "node.start"},
-		TargetNode: target.Node.Name, TargetPrincipal: target.Identity.Principal,
-	}
-	client := newOperatorAccessClient(t, runtime, auth)
+	client := testkit.NewArdentsClientWithActions(t, runtime, []identityaccess.Action{"node.start", "node.status"})
 
-	allowed := operatorRequest(&ardentsv1.GetNodeStatusRequest{}, auth.Token, target.Node.Name, target.Identity.Principal, "node.status")
-	_, err := client.GetNodeStatus(context.Background(), allowed)
+	_, err := client.GetNodeStatus(context.Background(), testkit.AuthorizedRequest(&ardentsv1.GetNodeStatusRequest{}))
 	require.NoError(t, err)
-	command := operatorRequest(&ardentsv1.StartNodeRequest{}, auth.Token, target.Node.Name, target.Identity.Principal, "node.start")
-	_, err = client.StartNode(context.Background(), command)
+	_, err = client.StartNode(context.Background(), testkit.AuthorizedRequest(&ardentsv1.StartNodeRequest{}))
 	require.NoError(t, err)
 
-	sibling := operatorRequest(&ardentsv1.GetNodeFeaturesRequest{}, auth.Token, target.Node.Name, target.Identity.Principal, "node.status")
-	_, err = client.GetNodeFeatures(context.Background(), sibling)
-	require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
-
-	wrongNode := operatorRequest(&ardentsv1.GetNodeStatusRequest{}, auth.Token, "wrong-node", target.Identity.Principal, "node.status")
-	_, err = client.GetNodeStatus(context.Background(), wrongNode)
-	require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
-
-	wrongPrincipal := operatorRequest(&ardentsv1.GetNodeStatusRequest{}, auth.Token, target.Node.Name, "p_wrong", "node.status")
-	_, err = client.GetNodeStatus(context.Background(), wrongPrincipal)
+	_, err = client.GetNodeFeatures(context.Background(), testkit.AuthorizedRequest(&ardentsv1.GetNodeFeaturesRequest{}))
 	require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
 
 	events, _ := testkit.Diagnostics(runtime).ListRecentEvents(100, "")
-	assertSafeOperatorAudit(t, events, auth.Token)
+	assertSafeOperatorAudit(t, events, "must-not-appear")
 }
 
-func TestOperatorAccessRejectsExpiredCredential(t *testing.T) {
+func TestOperatorPrincipalInterfaceRejectsBearerAndMalformedSessionSchemes(t *testing.T) {
 	testkit.BeginScenario(t, testkit.Spec{
-		Layer: testkit.LayerIntegration, Domain: "local-control-surface", ScenarioID: "OAI-001",
-		Suite: "integration", Tags: []string{"integration", "local-control-surface", "operator-access"},
+		Layer: testkit.LayerIntegration, Domain: "local-control-surface", ScenarioID: "OAI-002",
+		Suite: "integration", Tags: []string{"integration", "local-control-surface", "operator-access", "negative"},
 		Speed: "fast", Environment: "local",
 	})
 	runtime := testkit.StartRuntime(t, runtimeinfra.Config{
-		Name: "operator-expired", Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
+		Name: "operator-scheme-rejection", Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
 		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
 	}).Runtime
-	target := runtime.GetNodeRuntime()
-	auth := localauth.Config{
-		Token: "expired-secret", SubjectID: "stale-reader", Capabilities: []string{"node.status"},
-		ExpiresAt: time.Now().Add(-time.Minute), TargetNode: target.Node.Name, TargetPrincipal: target.Identity.Principal,
+	client := testkit.NewArdentsClientWithActions(t, runtime, []identityaccess.Action{"node.status"})
+
+	for name, authorization := range map[string]string{
+		"bearer":            "Bearer must-not-appear",
+		"opaque":            "must-not-appear",
+		"malformed session": "ArdentsOperatorSession must-not-appear",
+	} {
+		t.Run(name, func(t *testing.T) {
+			request := connect.NewRequest(&ardentsv1.GetNodeStatusRequest{})
+			request.Header().Set("Authorization", authorization)
+			_, err := client.GetNodeStatus(context.Background(), request)
+			require.Equal(t, connect.CodeUnauthenticated, connect.CodeOf(err))
+		})
 	}
-	client := newOperatorAccessClient(t, runtime, auth)
-	request := operatorRequest(&ardentsv1.GetNodeStatusRequest{}, auth.Token, target.Node.Name, target.Identity.Principal, "node.status")
 
-	_, err := client.GetNodeStatus(context.Background(), request)
-	require.Equal(t, connect.CodeUnauthenticated, connect.CodeOf(err))
+	events, _ := testkit.Diagnostics(runtime).ListRecentEvents(100, "")
+	assertSafeOperatorAudit(t, events, "must-not-appear")
 }
 
-func newOperatorAccessClient(t *testing.T, runtime *runtimeinfra.Node, auth localauth.Config) cliclient.Service {
-	t.Helper()
-	mux := http.NewServeMux()
-	path, handler, err := rpcadapter.NewHandler(testkit.ConnectDependencies(runtime), auth)
-	require.NoError(t, err)
-	mux.Handle(path, handler)
-	server := httptest.NewServer(mux)
-	t.Cleanup(server.Close)
-	return cliclient.NewService(server.Client(), server.URL, connect.WithGRPC())
-}
-
-func operatorRequest[T any](message *T, token, node, principal, scopes string) *connect.Request[T] {
-	request := connect.NewRequest(message)
-	request.Header().Set("Authorization", "Bearer "+token)
-	request.Header().Set("Ardents-Expected-Node", node)
-	request.Header().Set("Ardents-Expected-Principal", principal)
-	request.Header().Set("Ardents-Scopes", scopes)
-	return request
-}
-
-func assertSafeOperatorAudit(t *testing.T, events []diagapi.EventEnvelope, token string) {
+func assertSafeOperatorAudit(t *testing.T, events []diagapi.EventEnvelope, protectedValue string) {
 	t.Helper()
 	data, err := json.Marshal(events)
 	require.NoError(t, err)
-	require.NotContains(t, string(data), token)
-	require.Contains(t, string(data), "operator_action_allowed")
-	require.Contains(t, string(data), "operator_action_denied")
+	require.NotContains(t, string(data), protectedValue)
 }

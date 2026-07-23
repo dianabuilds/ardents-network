@@ -14,24 +14,18 @@ This document defines the versioned operator configuration contract for the
 - Waku remains the canonical network foundation. A transport profile selects a
   Waku-backed participation variant and never selects a different substrate.
 
-## 2. Source And Precedence
+## 2. Canonical Source
 
 The canonical source is a strict UTF-8 JSON document selected by
 `ARDENTS_CONFIG_FILE`. JSON is used in `v1` so strict decoding, duplicate
 unknown-field rejection, and deterministic redaction need no new parsing
 dependency.
 
-Resolution order, from lowest to highest precedence:
-
-1. versioned product defaults;
-2. the canonical JSON document;
-3. the process-only API credential override `ARDENTS_API_TOKEN` or
-   `ARDENTS_API_TOKEN_FILE`.
-
-The legacy environment-only startup path remains available when
-`ARDENTS_CONFIG_FILE` is absent. Once that file is selected, non-secret legacy
-environment variables do not silently override it. New fields are added to the
-versioned document first. Ambiguous API secret sources are rejected.
+There is one configuration contract: versioned product defaults plus this
+document. `ARDENTS_CONFIG_FILE` selects the document; environment variables do
+not provide alternate field values or control credentials. An absent selector,
+unreadable document, obsolete environment input, or ambiguous source fails
+startup. New fields are added to the versioned document first.
 
 ## 3. Document Identity
 
@@ -46,8 +40,8 @@ Every file must contain:
 
 Missing, empty, or unknown `api_version` values are rejected before any data
 directory, key store, transport listener, workload, or API server is opened.
-Unknown fields are rejected with a bounded JSON path. Deprecated fields are
-rejected with the replacement path; they never silently change semantics.
+Unknown or obsolete fields are rejected with a bounded JSON path. They are
+never translated, ignored, or described as compatibility aliases.
 
 ## 4. Canonical Sections
 
@@ -56,8 +50,8 @@ The `v1` document contains these typed sections:
 | Section | Owning behavior | Representative fields |
 | --- | --- | --- |
 | `node` | Node Runtime / assembly | `name`, `profile`, `data_dir` |
-| `api` | local boundary | loopback `listen_address`, optional private `socket_path`, `token_file` |
-| `application_interface` | least-privilege Application boundary | enablement, separate loopback/socket listener, credential reference, subject, explicit `application.*` capabilities, expiry |
+| `api` | Operator Interface | required permission-protected `socket_path` |
+| `application_interface` | least-privilege Application Interface | `enabled` and a distinct protected `socket_path`; identity and authority are enrolled, not configured |
 | `trust` | Identity trust registry | Principal/public-key bindings with exact `discovery.publish`, `channel.issue`, or reserved `identity.attest` purposes |
 | `network` | Network Foundation | Waku `transport_profile`, bind/listen, bootstrap, DNS, reachability, advertised endpoints, WSS material references, abuse limits |
 | `privacy` | Identity + Network privacy assembly | protected channel-grant-store/key references and separate discovery/data replay ledgers; never raw selector/channel material |
@@ -66,7 +60,7 @@ The `v1` document contains these typed sections:
 | `data` | Data Substrate + Policy | data/store paths, local/relay TTL, storage and replica quotas, replica target/minimum |
 | `policy` | Policy | workload, route, capability, publication, retention, pinning and reservation rules |
 | `logging` | process observability | `level`, `format` |
-| `observability` | read-only operator monitoring boundary | loopback `listen_address`, optional protected `token_file` for defense in depth |
+| `observability` | read-only monitoring boundary | loopback `listen_address`, optional protected `token_file` used only for defense in depth |
 | `diagnostics` | Diagnostics | bounded event retention and operator-visible detail level |
 
 Fields that the runtime cannot enforce are not accepted merely for future
@@ -95,8 +89,8 @@ applied to the running process:
 - node and Waku participation profiles;
 - bind/listen/advertised endpoints and WSS material;
 - bootstrap and DNS discovery sources;
-- local Operator or Application Interface listen address, Unix socket path, or credential reference;
-- observability listen address or scrape credential reference;
+- local Operator or Application Unix socket path;
+- observability listen address or scrape-token reference;
 - workload executor/runtime and ingress proxy shape;
 - storage paths and hard capacity limits;
 - privacy channel identity/scope/material references.
@@ -124,7 +118,7 @@ mutating a shared config struct behind it.
 
 Validation is deterministic and completes before application. It includes:
 
-- strict schema/version/unknown/deprecated-field checks;
+- strict schema/version/unknown/obsolete-field checks;
 - required secret references and regular-file checks without reading secrets
   into diagnostics;
 - Waku node-profile, transport-profile, role, reachability, address, WSS, DNS,
@@ -139,8 +133,13 @@ Validation is deterministic and completes before application. It includes:
   storage compatibility;
 - policy contradictions and TTL ceilings;
 - logging and diagnostics bounds.
+- `api.socket_path` is absolute; an enabled
+  `application_interface.socket_path` is absolute and distinct;
+- plaintext Operator/Application listener and token fields are unknown and
+  rejected;
 - observability binds only to a valid loopback TCP address; remote exposure is
-  owned by the deployment boundary and must not be enabled by a bearer token alone.
+  owned by the deployment boundary and must not be enabled by its optional
+  scrape token alone.
 
 Errors contain a bounded safe summary and the configuration field when that is
 safe and actionable. Reload outcomes separately identify immutable and
@@ -202,8 +201,8 @@ The effective snapshot contains:
 - active generation, validated candidate generation, and pending-restart paths;
 - the last reload outcome and bounded safe reasons.
 
-The snapshot never exposes API tokens, private keys, trusted-Principal public
-keys, capability grants,
+The snapshot never exposes the observability scrape token, private keys,
+trusted-Principal public keys, capability grants,
 selectors, encryption material, environment secret values, or secret file
 contents. Paths that reveal sensitive topology or identity storage are reduced
 to a safe configured/not-configured state where appropriate.
@@ -250,7 +249,7 @@ Reload is idempotent for the same normalized fingerprint.
 The contract is complete only when tests prove:
 
 - defaults and a complete document map to real runtime behavior;
-- unknown version/field, deprecated field, invalid combinations, missing secret
+- unknown version/field, obsolete field, invalid combinations, missing secret
   reference, and oversized document fail before partial startup;
 - effective inspection is deterministic and redacted;
 - reload success changes behavior through owning services;
@@ -259,4 +258,5 @@ The contract is complete only when tests prove:
   truth instead of claiming restoration;
 - immutable and restart-required changes produce distinct outcomes;
 - restart activates a previously restart-required valid document;
-- Docker integration covers the daemon and canonical local control surface.
+- Docker integration covers the daemon and canonical protected Unix-socket
+  control surface.

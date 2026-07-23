@@ -1,6 +1,6 @@
 # CLI Principal Sessions
 
-Status: operational contract for PIA-010B and PIA-010C.
+Status: canonical operational contract for Principal-only `v1`.
 
 ## Enrollment
 
@@ -42,16 +42,12 @@ ardentsctl ... identity application-ticket issue \
   --out-file /protected/path/application-enrollment-ticket
 ```
 
-This command is intentionally rejected by the daemon until PIA-014 supplies
-owner-aware Principal Blob/content access. PIA-012 admission alone is not
-sufficient because knowledge of a CID is not authorization to read. Do not
-bypass the gate: successful
-enrollment atomically disables the exact configured legacy
-Application credential. The ticket expires after ten minutes, is one-use, and
-is consumed only by `EnrollApplication` on the protected Application Unix
-listener. It is not the existing `application-token`, and the SDK requires a
-typed Application `EnrollmentSigner` while leaving root/device custody with the
-embedding Application.
+The ticket expires after ten minutes, is one-use, and is consumed only by
+`EnrollApplication` on the protected Application Unix listener. It authorizes
+no other method and is not a normal Credential or Session. The SDK requires a
+typed Application `EnrollmentSigner` while leaving root/device custody with
+the embedding Application. Owner-aware admission remains mandatory: knowledge
+of a CID is never authorization to read.
 
 ## Grants And Device Revocation
 
@@ -116,9 +112,11 @@ root signer for routine authentication.
 
 `identity login` verifies one invocation. Session reuse occurs only inside the
 same live client, such as the interactive shell/TUI. `identity status` reports
-only public cache-key facts, and `identity logout` clears and best-effort zeros
-that process's entries. Session secrets, SessionIDs, signatures, Credentials,
-and signer paths are not printed or persisted.
+only public cache-key facts. `identity logout` calls `EndSession` for every
+cached, bound Operator Session before clearing and best-effort zeroing its
+local secret; closing the client performs the same cleanup. Session secrets,
+SessionIDs, signatures, Credentials, and signer paths are not printed or
+persisted.
 
 ## Remote Operator Login
 
@@ -149,16 +147,10 @@ performs one new Begin/Complete exchange, and replays the RPC once. A second
 exhaustion, cancellation, and transport errors do not trigger login or fallback.
 For a server stream, replay is permitted only before its first event. Device
 revocation therefore invalidates the live session and makes the single refresh
-fail; the client never falls back to a bearer.
+fail. No authentication failure can select another credential path.
 
-## Explicit Legacy Migration Mode
-
-Legacy credentials are selected only with `--legacy-token`,
-`--legacy-token-file`, `ARDENTS_LEGACY_API_TOKEN`,
-`ARDENTS_LEGACY_TOKEN_FILE`, or explicitly legacy-named context fields. Every
-source emits a value-free migration warning. Old ambient
-`ARDENTS_API_TOKEN`/`ARDENTS_TOKEN_FILE` and context `token_*` fields are not
-CLI authentication selectors and cannot downgrade a Principal context. Principal and
-legacy credential selection cannot be combined. An effective HTTP target,
-including loopback, never receives `ArdentsOperatorSession` and cannot issue a
-Principal challenge through the CLI.
+Operator Principal Sessions are issued and accepted only on the protected
+Operator Unix listener, directly or through SSH stream-local forwarding.
+Application Principal Sessions are issued and accepted only on the distinct
+Application Unix listener. Plaintext HTTP is not a Principal authentication or
+protected-call transport.

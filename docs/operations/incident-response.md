@@ -16,8 +16,15 @@
 
 ## Credential And Key Events
 
-- Suspected API token exposure: replace the deployment secret, restart the local
-  API, verify the old token is rejected, and review bounded audit events.
+- Suspected device-key exposure: revoke the exact `DeviceID`, create a fresh
+  device Credential from the offline Principal root, and verify the revoked key
+  is rejected on its next call even if it presents a renewed Credential.
+- Suspected session exposure: terminate the process-local session, contain the
+  transport peer, and revoke the underlying device or grant when its authority
+  may be compromised. Sessions are never converted into reusable credentials.
+- Suspected Principal root-key exposure: take the affected Principal out of
+  service and follow the explicit replacement/re-enrollment procedure. A root
+  key defines the Principal and cannot be silently rotated in place.
 - Capability compromise: revoke the grant, issue a fresh channel generation to
   remaining members, rotate selector/channel secret, and reject the old sender.
 - WSS key compromise: replace certificate/key as one deployment operation,
@@ -34,4 +41,3 @@ Close the incident only after the cause and exposure window are recorded,
 revoked authority no longer works, restored nodes preserve expected identities,
 private operations do not downgrade, committed replica counts are truthful, and
 monitoring/alerts have returned to their expected state.
-

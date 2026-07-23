@@ -1,160 +1,149 @@
 # Operator Access Contract
 
-Status: canonical for the `v1` local control surface.
+Status: canonical for the Principal-only `v1` control surface.
 
 ## Purpose
 
-The local ConnectRPC API is an authenticated operator boundary. Possession of
-an API token identifies one operator credential; it does not grant every
-operation in a domain. Authorization is closed by default and is evaluated for
-the exact RPC action before application code runs.
+The Operator Interface is a protected ConnectRPC boundary. An Operator is a
+Principal holding current administrative Access Grants for this Node; it is not
+an account type and the CLI process is not the Operator. Authentication and
+authorization are separate:
 
-This boundary reuses the canonical Identity `SubjectRef`, `CallContext`, and
-authorization decision types. Product policy remains owned by the Policy
-domain and is evaluated after operator-boundary authorization where relevant.
+1. the client proves a root-authorized device Credential and receives a
+   short-lived Operator Session;
+2. every protected call presents that Session;
+3. the interceptor reloads current device-revocation, grant, and Policy state
+   before dispatch.
 
-## Transports
+Sessions contain no permissions. Actor and Effective are created only by a
+successful admission. They are equal on the Operator Interface because
+Delegation is an Application-only mechanism.
 
-The same authenticated ConnectRPC boundary is available over:
+There is no permanent Operator token, token file, plaintext protected route, or
+break-glass credential in `v1`.
 
-- loopback HTTP for explicit legacy compatibility only;
-- an optional Unix socket in a private directory for same-host operation;
-- `ardentsctl --ssh <target>` legacy bearer mode, which currently forwards one
-  connection to loopback HTTP with `ssh -W`;
-- Principal-session remote operation, which must use OpenSSH stream-local
-  forwarding to the protected Operator Unix socket.
+## Transport And Audience
 
-SSH does not change API authorization. Principal mode supplies a device signer
-and pins the target Node Principal; explicit legacy mode supplies a Node-scoped
-bearer. OpenSSH owns host-key verification and authentication;
-the CLI uses batch mode, so keys or an agent must be prepared in advance.
-Non-default ports, an explicit private key, and an isolated host-key database
-are configured with `--ssh-port`, `--ssh-identity`, and `--ssh-known-hosts` (or
-the corresponding named-context fields).
-Remote non-loopback plaintext API addresses remain forbidden.
-Principal sessions are never sent over the legacy loopback or `ssh -W` path.
-Remote Principal operation additionally requires
-`--ssh-operator-socket /absolute/remote/operator.sock`; the CLI creates one
-private local stream socket and runs OpenSSH with `-N -T`, batch mode, and
-`ExitOnForwardFailure=yes`. It owns and removes the tunnel state when the CLI
-client closes. Remote shell commands, forwarded trust headers, socat/netcat,
-and TCP fallback are not part of this contract.
-The complete frozen transport and credential matrix is in
-`docs/engineering/principal-identity-protocol-contract.md`.
+The normal same-host transport is the permission-protected Operator Unix
+socket configured by `api.socket_path`. The server derives the exact Audience
+and transport binding from the accepting listener:
 
-## Credential
+```text
+(Node Principal, operator interface, protocol major 1, transport peer)
+```
 
-Node, Configuration, Network, Diagnostics, Workload, Content, Transfer, and
-Retention RPCs on the protected Unix socket
-additionally accept Principal sessions. Their handlers consume only the interceptor-created sealed
-call context. The interceptor reloads current grant and revocation state once
-per unary call or stream establishment. It derives Actor/Effective before its
-server-owned resource finalizer creates the canonical resource. Malformed
-Network selectors, signed record imports, Diagnostics scopes/cursors, WorkloadID,
-ServiceID, and streaming requests are rejected before admission when malformed.
-Workload registration never treats the request's owner as authority. During
-the bounded migration, an exact
-legacy `Bearer` value stays on the legacy path; anything claiming the
-`ArdentsOperatorSession` scheme stays on the Principal path even when malformed
-or rejected. No fallback occurs. Each accepted legacy presentation emits one
-redacted `operator_access` migration event containing action, subject, outcome,
-and Node, but never the bearer value.
+For remote administration, `ardentsctl --ssh` creates an OpenSSH stream-local
+forward directly to that protected remote Unix socket. It does not use
+loopback HTTP, `ssh -W`, a remote shell, forwarded trust headers, socat/netcat,
+or TCP fallback. OpenSSH owns host-key verification and SSH authentication.
+`--ssh-port`, `--ssh-identity`, `--ssh-known-hosts`, and the required absolute
+`--ssh-operator-socket` select that transport.
 
-Content ObjectID, ContentReference, ManifestID, and TransferID values are exact
-and are rejected before handler mutation when empty, non-printable, or longer
-than 512 bytes. Principal blob publication is payload-addressed: the session is
-validated before hashing, the payload is bounded to 1 MiB, and declared
-ID/CID/hash values must match the derived content identity. Object/manifest
-owner fields cannot grant authority; the admitted ResourceRef owner is the
-successful call's Effective Principal.
+Principal authentication endpoints and protected calls are not exposed over
+plaintext HTTP or non-loopback TCP. A Session issued for another Node,
+interface, protocol major, or transport peer is unauthenticated. A malformed or
+failed Session presentation never selects another credential path.
 
-An operator credential contains:
+Operator and Application listeners, wire packages, credential schemes, and
+action catalogues remain separate. An Application Session is rejected on the
+Operator Interface and vice versa.
 
-- an opaque bearer secret;
-- a stable operator subject;
-- an explicit set of action capabilities;
-- an optional expiry time;
-- the node name and node principal on which the credential is valid.
+## Enrollment And Credentials
 
-An expired credential is unauthenticated. A credential configured for another
-node name or principal is rejected before dispatch. Token values are compared
-in constant time and are never included in diagnostics.
+`ardentsd init` creates the Node Principal and writes one random, short-lived,
+one-use Bootstrap Ticket beside the protected Operator socket. The Ticket
+authorizes only the first Principal enrollment. It is not a Principal,
+Credential, Session, Access Grant, or recovery credential.
 
-## Exact Actions
+The prospective Operator creates an offline root signer and a routine device
+signer, then enrolls through the protected socket. The root signs only the
+typed, domain-separated enrollment challenge. Normal login uses the
+root-signed finite device Credential and device signer; the root is not loaded
+for routine calls. Successful first enrollment atomically consumes the Ticket,
+and the provisioning workflow deletes its file.
 
-Every generated RPC procedure is present in one version-controlled access
-catalog. Each entry declares:
+Later enrollments and all grant/device administration require an admitted
+Operator Session. Each Application installation has its own Principal and
+enrolls only through a separate one-use Application Enrollment Ticket issued
+by an Operator for that exact Principal and initial Application actions.
 
-- the exact action capability, such as `workload.start` or `data.get_blob`;
-- the owning domain;
-- whether the action is read-only or mutating.
+## Sessions
 
-Unknown procedures and catalog entries with missing metadata are denied. A
-capability for one action never implies a sibling action. `*` is reserved for
-explicit test or break-glass credentials and is not used by the normal `ardentsd`
-operator credential.
+Begin/Complete authentication validates the typed challenge, Credential,
+device proof, Audience, expiry, replay state, and server-derived transport
+peer. Session secrets exist only in client and daemon memory, are short-lived,
+and are never persisted or printed. Restart invalidates every Session while
+durable Credentials, grants, enrollment records, and revocations remain.
 
-Diagnostics queries are read-only. Node lifecycle, configuration reload,
-discovery import, workload commands, publication, fetch, retention, pin, and
-drop actions are mutating even when their RPC response is a snapshot.
+The CLI session cache key includes Node Principal, Operator interface, protocol
+major, and signer Principal. Alpha and Beta therefore never share a Session
+when Alice operates both Nodes. Concurrent callers in one client share a
+single Begin/Complete exchange. `identity logout` invokes `EndSession` for each
+live bound Session, then best-effort zeros the local secret; closing a client
+does the same. `identity status` exposes only public cache-key facts.
 
-## Scoped CLI Contexts
+On `Unauthenticated`, the client may discard only the failed generation,
+authenticate once, and replay one unary call once. A second failure stops.
+`PermissionDenied` and other failures do not trigger authentication fallback.
+A stream may be replayed only before its first event.
 
-A named CLI context may declare:
+## Exact Actions And Resources
 
-- a local API address and optional OpenSSH target;
-- an expected node name;
-- an expected node principal and public key;
-- a list of exact action scopes.
+Every generated protected RPC procedure is present in one version-controlled
+Operator action catalogue. Each entry declares its exact action, owning domain,
+read/mutation class, and resource extraction/finalization rule. Unknown
+procedures, actions, resource kinds, identifiers, scopes, versions, or missing
+metadata fail closed. Authority for one action never implies a sibling action.
 
-Principal contexts also declare `signer_file`, `ssh_operator_socket` when
-remote, and a canonical expected Node Principal. Sessions live only in the
-configured client process and are keyed by Node Principal, Operator interface,
-protocol major, and signer Principal. Alpha and Beta therefore never share a
-session even when Alice uses the same device signer. `identity login` is an
-authentication/connectivity check for a one-shot CLI invocation; sustained
-cache reuse exists inside long-lived shell/TUI clients. `identity status` and
-`identity logout` never read or write session state on disk.
+Request owner strings, display names, Unix user IDs, Waku Peer IDs,
+WorkloadIDs, ServiceIDs, CIDs, and other resource identifiers never become a
+Principal or confer authority. For server-owned resources, admission resolves
+Actor/Effective before the finalizer creates the canonical resource. Knowledge
+of a Content Reference is not proof of ownership or read authority.
 
-The CLI sends the expected node binding and scopes on every request. The server
-validates node name and principal against its runtime identity, so the check is
-not only a client-side preflight. A non-empty scope list narrows the credential:
-the requested action must be present both in the credential and in the context
-scope list. Context scopes can never add authority.
+Content identifiers are validated before mutation. Principal content
+publication derives the immutable Content Reference from the bounded payload;
+declared reference/hash values must match, and owner binding comes from the
+admitted Effective Principal.
 
-The CLI also performs an identity preflight before the requested command and
-checks the returned public key where configured. A mismatch stops the command.
+## CLI Contexts
 
-## Audit
+A named Principal context may contain:
 
-The legacy control-surface interceptor records one bounded diagnostics event for
-each authorized mutating command after application dispatch and every denied
-call. Principal access admission additionally records its bounded allow/deny
-decision before handler dispatch, including for reads; diagnostics pagination
-therefore observes that admission event. Audit payloads may contain only:
+- the Operator Unix-socket address, or an SSH target and remote socket path;
+- the expected canonical Node Principal and optional public-key pin;
+- the device signer file;
+- optional exact action scopes that can only narrow authority.
 
-- action, domain, and read/write class;
-- operator subject;
-- outcome and stable reason code;
-- node name.
+The CLI performs a public Node identity preflight and stops on a pin mismatch.
+The Node and interface bindings are also enforced by session admission, not
+only by the client.
 
-The bearer token, authorization header, request/response payloads, filesystem
-paths, selectors, object identifiers, and secret material are forbidden from
-audit events. Audit recording must not turn an allowed command into a failure;
-the diagnostics recorder is an in-process bounded sink.
+## Audit And Redaction
+
+Principal admission records bounded allow/deny evidence before protected
+handler dispatch. Audit may include the exact action, resource kind, Actor,
+Effective, Node Principal, outcome, and stable reason code. It must not include
+private keys, device signatures, Credentials, session secrets or IDs,
+Bootstrap/Application Enrollment Tickets, proofs, Delegations, channel
+secrets, bearer values used by the separate observability boundary, request
+payloads, or protected filesystem paths.
 
 ## Failure Semantics
 
-- missing, malformed, unknown, or expired credentials: `Unauthenticated`;
-- unknown procedure, missing exact action, scope narrowing, or binding mismatch:
-  `PermissionDenied`;
-- application policy denials retain their domain-specific error contract after
-  operator authorization succeeds.
+- missing, malformed, expired, revoked, unknown, replayed, or cross-Audience
+  authentication evidence: `Unauthenticated`;
+- unknown procedure/action/resource/scope, missing current grant, scope
+  mismatch, or sibling action: `PermissionDenied`;
+- malformed requests fail before product mutation;
+- product Policy denials retain their domain error contract after identity
+  admission succeeds;
+- unavailable or corrupt identity state fails closed.
 
 ## Acceptance
 
-Docker/Linux tests must prove catalog completeness, exact sibling-action
-denial, read/write separation, scoped-context narrowing, expired credentials,
-wrong node, wrong principal, allowed and denied audit events, and audit
-redaction. CLI integration tests must prove that configured identity and scope
-bindings are transmitted and enforced.
+Tests must prove successful device authentication, first enrollment, exact
+grant enforcement, sibling denial, Alpha/Beta isolation, cross-interface and
+cross-peer rejection, expiry boundaries, replay/concurrent completion,
+next-call grant/device revocation, `EndSession`, restart invalidation, durable
+grant recovery, atomic administration, and secret redaction.

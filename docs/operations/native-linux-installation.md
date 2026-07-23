@@ -12,11 +12,8 @@ The native `v1` target is a Linux amd64 host using systemd. It runs the same
 `ardentsd` artifact as the Docker image and does not require Docker, a workload
 executor, or an ingress proxy. The default workload executor remains disabled.
 
-The release archive contains:
-
-- `ardentsd` and `ardentsctl`;
-- `scripts/install/linux.sh`;
-- `systemd/ardentsd.service`.
+The release archive contains `ardentsd`, `ardentsctl`,
+`scripts/install/linux.sh`, and `systemd/ardentsd.service`.
 
 ## First Installation
 
@@ -30,7 +27,7 @@ sudo ./scripts/install/linux.sh install \
 
 Add `--bootstrap-peer <multiaddr>` when joining an existing network endpoint.
 The installer creates the locked `ardents` service account, initializes the
-node once, installs the systemd unit, enables it, and starts it. It never
+Node once, installs the systemd unit, enables it, and starts it. It never
 enables Docker workload execution implicitly.
 
 Installed paths are stable:
@@ -38,70 +35,94 @@ Installed paths are stable:
 | Path | Ownership and purpose |
 | --- | --- |
 | `/usr/local/bin/ardentsd` | root-owned daemon executable |
-| `/usr/local/bin/ardentsctl` | root-owned operator client |
-| `/etc/ardents/operator.json` | private active operator configuration |
-| `/var/lib/ardents` | persistent node identity, databases, and retained data |
-| `/var/lib/ardents/secrets` | persistent API and protected-state keys |
-| `/var/lib/ardents-applications` | `ardents-apps`-scoped bootstrap Application credential and Unix socket |
+| `/usr/local/bin/ardentsctl` | root-owned Operator client |
+| `/etc/ardents/operator.json` | private canonical `ardents.config/v1` document |
+| `/var/lib/ardents` | persistent Node identity, databases, and retained data |
+| `/var/lib/ardents/secrets` | protected Operator socket, one-use Bootstrap Ticket, and protected-state keys |
+| `/var/lib/ardents-applications` | `ardents-apps`-scoped Application Unix socket |
 | `/var/lib/ardents-authority` | root-only local bootstrap authority material |
 | `/etc/systemd/system/ardentsd.service` | hardened native service definition |
 
-The local authority is bootstrap material for the self-contained first-node
+The local authority is bootstrap material for the self-contained first-Node
 path. It is not a replacement for externally governed realm capability
-issuance. Back it up separately and do not expose it to applications.
+issuance. Back it up separately and do not expose it to Applications.
 
-## Operator Access
+## First Operator And Routine Access
 
-Same-host access uses the private Unix socket:
+The install output contains the public Node Principal and the protected path of
+its short-lived one-use Bootstrap Ticket. It does not print the Ticket or
+create a permanent Operator credential.
+
+Create the prospective Operator's offline root and routine device bundles,
+then enroll through the permission-protected Unix socket:
+
+```sh
+ardentsctl identity principal create
+ardentsctl identity device create --valid-for 720h
+
+sudo ardentsctl \
+  --addr unix:///var/lib/ardents/secrets/control.sock \
+  --principal p1_<node> \
+  identity enroll \
+  --root-signer-file "$HOME/.config/ardents/identity/principal-root-v1.json" \
+  --device-signer-file "$HOME/.config/ardents/identity/device-v1.json" \
+  --bootstrap-ticket-file /var/lib/ardents/secrets/operator-bootstrap-ticket
+```
+
+Successful enrollment atomically consumes the Ticket. The provisioning client
+deletes its file; if cleanup reports a failure, remove that exact consumed file
+before continuing. Do not keep the root signer on the Node. Issue the exact
+operational grants needed by the Operator, then use only the device signer for
+routine calls:
 
 ```sh
 sudo ardentsctl \
   --addr unix:///var/lib/ardents/secrets/control.sock \
-  --legacy-token-file /var/lib/ardents/secrets/api-token \
+  --principal p1_<node> \
+  --signer-file "$HOME/.config/ardents/identity/device-v1.json" \
   node status
 ```
 
-Remote administration uses `ardentsctl --ssh`; the daemon API remains bound to
-loopback and is not published as remote HTTP.
+Remote administration uses OpenSSH stream-local forwarding directly to the
+protected socket:
 
-Local applications use the separate
-`/var/lib/ardents-applications/application.sock` with the bootstrap credential in
-`/var/lib/ardents-applications/application-token`, or the dedicated loopback
-Application Interface on `127.0.0.1:8081`. This credential cannot call the
-Operator Interface. Applications should use the Go SDK rather than generated
-wire bindings directly.
+```sh
+ardentsctl --ssh ops@node-1.example \
+  --ssh-operator-socket /var/lib/ardents/secrets/control.sock \
+  --principal p1_<node> node status
+```
 
-The installer creates the `ardents-apps` system group and protects the shared
-bootstrap boundary with a setgid `0750` directory, `0640` token, and `0660`
-socket. Add only the service account that should consume the bootstrap
-credential, then restart that service so its supplementary groups are refreshed:
+The daemon does not expose an Operator HTTP endpoint. SSH host verification and
+authentication remain OpenSSH responsibilities.
+
+## Application Enrollment
+
+Local Applications connect only to the separate
+`/var/lib/ardents-applications/application.sock`. The installer creates the
+`ardents-apps` system group and protects this setgid directory as `0750`. Add
+only the service identity that must connect, then restart it so supplementary
+groups are refreshed:
 
 ```sh
 sudo usermod --append --groups ardents-apps hello-service
 ```
 
-The bootstrap Application credential is time-bounded. Renew its active local
-admission before expiry with `sudo ./scripts/install/linux.sh
-renew-application`. The operation atomically updates the active operator
-document and restarts the service when it was running. PIA-011B includes the
-separate one-use Principal enrollment protocol and protected-file Operator CLI,
-but `application_interface.principal_enrollment_enabled` remains default-off
-and is rejected until PIA-014 supplies owner-aware Principal Blob/content
-access. PIA-012 admission alone does not make knowledge of a CID authorization
-to read.
-Do not bypass that readiness gate: replacement enrollment atomically disables
-the exact legacy credential. PIA-017 later governs token rotation, retirement
-state, deadlines, and default removal.
+Each Application installation generates its own Principal and root/device
+material. An Operator issues a ten-minute, one-use Application Enrollment
+Ticket for that exact Principal and exact initial Application actions. The
+embedding Application consumes it through the SDK's typed enrollment signer;
+the Ticket is not a normal Credential or Session and is never placed on argv or
+printed. Operator and Application Sessions have distinct schemes and are
+cross-surface-invalid. Knowledge of a CID never establishes ownership or read
+authority.
 
 ## Backup, Upgrade, Rollback, And Restore
 
-A backup is a consistency group: operator configuration, both `ardents.db` and
-`identity-access.db`, node identity, secrets, migration markers, and local
-authority material are archived together. No transaction spans the two
-databases. Stop the service first; this drains and releases the daemon-owned
-identity database handle. The command refuses a live node, never opens the live
-database independently, and writes a checksum-bearing sidecar manifest next to
-the archive:
+A backup is a stopped-Node consistency group: the canonical configuration,
+`ardents.db`, `identity-access.db`, Node/Waku identity, protected state,
+Application runtime state, and local authority material are archived together.
+No transaction spans the two databases. Stop the service first; the command
+refuses a live Node and writes a checksum-bearing sidecar manifest:
 
 ```sh
 sudo systemctl stop ardentsd
@@ -110,9 +131,8 @@ sudo ./scripts/install/linux.sh backup \
 sudo systemctl start ardentsd
 ```
 
-Backup destinations are intentionally restricted to the root-owned
-`/var/backups/ardents` tree; this prevents a privileged installer from writing
-through an attacker-controlled temporary path.
+Backup destinations are restricted to the root-owned
+`/var/backups/ardents` tree.
 
 To upgrade, extract the new verified release and run:
 
@@ -120,25 +140,22 @@ To upgrade, extract the new verified release and run:
 sudo ./scripts/install/linux.sh upgrade
 ```
 
-The installer executes both staged roles, requires matching build identities,
-stops an active node, creates a consistency-group backup, retains the previous
-binary pair, and starts the candidate. Success requires the authenticated local
-API to report readiness. A candidate that cannot become ready is stopped and
-the previous healthy pair is restored automatically; the command still exits
-non-zero so automation cannot mistake rollback for upgrade success. If the node
-was stopped before the command, the candidate is started only for validation and
-the original stopped state is restored afterward.
+The installer requires matching daemon/CLI build identities, stops an active
+Node, creates a consistency-group backup, retains the prior binary pair, and
+starts the candidate. Success requires the local observability `/readyz`
+endpoint to report ready. This endpoint is a read-only health boundary, not an
+Operator credential. A failed candidate is stopped and the previous healthy
+pair is restored automatically; the command still exits non-zero.
 
-One prior binary pair is retained for an explicit operator rollback:
+One prior binary pair is retained for explicit rollback:
 
 ```sh
 sudo ./scripts/install/linux.sh rollback
 ```
 
 Rollback changes binaries only. Restore persisted data only when release notes
-state that the newer release performed an incompatible migration. Restore
-verifies the archive, its allowed paths, and continuity hashes; it refuses a
-non-empty target and leaves the service stopped for operator inspection:
+require it. Restore verifies the archive, allowed paths, and continuity hashes;
+it refuses a non-empty target and leaves the service stopped for inspection:
 
 ```sh
 sudo systemctl stop ardentsd
@@ -147,21 +164,24 @@ sudo ./scripts/install/linux.sh restore \
   --archive /var/backups/ardents/node-1-20260721T000000Z.tar.gz
 sudo systemctl start ardentsd
 sudo ardentsctl --addr unix:///var/lib/ardents/secrets/control.sock \
-  --legacy-token-file /var/lib/ardents/secrets/api-token node status
+  --principal p1_<node> \
+  --signer-file "$HOME/.config/ardents/identity/device-v1.json" node status
 ```
 
-Ordinary uninstall is deliberately non-destructive:
+Daemon restart deliberately invalidates all Sessions. The CLI authenticates
+again with its device Credential; durable grants and revocations survive.
+
+## Uninstall
 
 ```sh
 sudo ./scripts/install/linux.sh uninstall
 ```
 
-It stops and disables the service and removes the unit and executables. It does
-not remove `/etc/ardents`, `/var/lib/ardents`, the service account, identity,
-authority material, credentials, or retained content. State erasure is a
-separate operator-controlled action and is not provided as a convenience flag.
+Uninstall stops and disables the service and removes the unit and executables.
+It retains `/etc/ardents`, `/var/lib/ardents`, the service account, identity,
+authority material, device/grant state, and content. State erasure is a
+separate operator-controlled action.
 
-`install` is not the version-transition command: use it for first installation
-or same-build repair, and use `upgrade` when changing releases. `--no-start`
-and `--root` exist for release packaging and isolated acceptance; they are not
-normal production installation options.
+Use `install` only for first installation or same-build repair and `upgrade`
+for release changes. `--no-start` and `--root` exist for packaging and isolated
+acceptance, not normal production installation.

@@ -17,13 +17,17 @@ Diagnostics documents; their domain ownership remains unchanged.
 | Private-envelope replay ledger | `network-privacy-replay/ledger` bucket in `ardents.db` | private security state | stores only keyed local digests and expiry, never message IDs, selectors, capability references, keys, or payloads; authenticated duplicates remain rejected across restart |
 | Replay-digest master key | deployment secret supplied to Network privacy replay storage | secret | exactly 32 bytes, HKDF-separated before use, never stored in `ardents.db`, and required for stable replay identity across restart |
 | Ardents identity record and product state | `<data-dir>/ardents.db` | private retained state | bbolt transaction, `0600`; contains the public identity record, never the identity private key |
+| Principal access state | `<data-dir>/identity-access.db` | private security state | signed/public Credentials and grants, enrollment/revocation metadata, idempotency/audit-outbox records, and ticket digests; never private keys, raw tickets, proofs, or Session secrets |
+| First-Operator Bootstrap Ticket | beside the protected Operator Unix socket until consumed | secret | random, ten-minute, one-use enrollment input; the protected file is deleted after successful provisioning and is never a reusable recovery credential |
+| Application Enrollment Ticket | Operator-selected protected output file until consumed by one Application installation | secret | random, ten-minute, one-use input bound to the Application Principal and initial actions; never argv/stdout and never accepted on the Operator Interface |
+| Operator/Application signers | client/Application protected key store | secret | generated and owned by that Principal; the root normally remains offline and the device signer performs routine typed authentication |
 | Waku secp256k1 node key | `<data-dir>/waku_node_key.json` | secret | `0600`, regular non-symlink file, atomically replaced; must be restored with an existing Waku Store |
 | Waku retained messages | configured Waku Store, normally `<data-dir>/waku-store.db` | private retained payload/metadata | private directory and `0600` regular database file; no Ardents or payload decryption key is stored here |
 | Blob payloads | `<data-dir>/blobs/*.blob` | private payload | atomically replaced private files; remotely retained payloads must remain encrypted |
 | Blob metadata, sources, transfers and manifests | `<data-dir>/ardents.db` | private retained state | bbolt transaction; encryption key identifiers may be retained, raw payload keys may not |
 | Payload encryption keys | supplied by the authorized caller/capability owner | secret | never persisted beside blob bytes or in `ardents.db`; loss makes the corresponding encrypted payload unrecoverable |
-| Diagnostics ledger | `<data-dir>/operations.json` | private operational state | existing regular files are migrated to `0600`; subsequent writes are atomic and redacted |
-| Local API bearer token | exactly one of `ARDENTS_API_TOKEN` or `ARDENTS_API_TOKEN_FILE` | secret | token file must be regular and private; it is provisioned independently from node-state backup |
+| Diagnostics ledger | `<data-dir>/operations.json` | private operational state | existing regular files are forced to `0600`; subsequent writes are atomic and redacted |
+| Observability scrape token | optional `observability.token_file` | secret | defense in depth for the separate read-only loopback monitoring boundary; never accepted by Operator or Application interfaces |
 | TCP-WSS private key | configured external key path | secret | owned and rotated by deployment secret management; it is not copied into the data directory |
 | Private selectors and capability material | encrypted Identity capability ledger plus operation-local Network privacy material | secret | issuance, scoped storage, rotation, revocation, and recovery follow `network-privacy-protocol.md`; selectors and channel secrets never share retained payload storage or diagnostics |
 
@@ -41,13 +45,15 @@ set by unrelated file operations is not a supported backup procedure.
 
 The following items form consistency groups and must not be restored partially:
 
-1. Identity continuity: `ardents.db` and `identity_key.json`.
+1. Identity and access continuity: `ardents.db`, `identity-access.db`, and
+   `identity_key.json`. Restore preserves durable enrollments, grants, and
+   revocations; Sessions are memory-only and must not survive restart.
 2. Waku continuity: `waku_node_key.json`, `waku-store.db`, and any SQLite
    sidecar files present after a clean stop.
 3. Data availability: `ardents.db` and the complete `blobs/` directory.
 4. Payload readability: the data availability group and its separately managed
    payload/capability keys.
-5. Capability authority: `ardents.db`, the separately provisioned
+5. Capability authority: `ardents.db`, `identity-access.db`, the separately provisioned
    channel-grant-store master key, Identity signing key, and purpose-scoped
    trusted-Principal configuration. Partial restore must not regenerate channel, delivery, or
    master keys.
@@ -69,15 +75,16 @@ must bind the same canonical Content Reference. Pre-release schema 1, `id`/`cid`
 fields, malformed references, missing collections, and key/reference mismatch
 fail before live content state is replaced.
 
-`operations.json` is optional recovery evidence. The API token and TCP-WSS
-private key are provisioned from deployment secret management and are not part
-of the node-state archive.
+`operations.json` is optional recovery evidence. The observability scrape
+token and TCP-WSS private key are provisioned from deployment secret management
+and are not part of the node-state archive.
 
-Restore into an empty, stopped node data directory. Preserve private ownership
+Restore into an empty, stopped Node data directory. Preserve private ownership
 and permissions, restore every member of each selected group, then start the
 node and inspect readiness and diagnostics. A backup is accepted only after a
-test restore proves the same Ardents principal, device, Waku peer identity,
-retained state, and expected blob decryptability.
+test restore proves the same Node Principal, Waku Peer ID, durable Principal
+grants/revocations, retained state, and expected blob decryptability. Old
+Session secrets must be rejected after restore.
 
 ## Failure And Recovery Rules
 
@@ -105,8 +112,12 @@ retained state, and expected blob decryptability.
 
 ## Rotation And Revocation
 
-- API token rotation replaces the deployment secret and restarts the local API;
-  the previous token must cease authorizing requests immediately after restart.
+- Observability scrape-token rotation replaces only that deployment secret and
+  restarts the monitoring listener. It never changes Principal access.
+- Device rotation creates a new DeviceID and root-signed Credential. Revoke the
+  compromised DeviceID on every relevant Node; this invalidates its live
+  Sessions and prevents a renewed Credential for the same key from restoring
+  access.
 - TCP-WSS certificate/key rotation is performed by deployment secret management
   and requires a controlled listener restart. Both files must be replaced as
   one deployment operation before restart; every start rereads and revalidates
@@ -116,7 +127,7 @@ retained state, and expected blob decryptability.
   Ardents does not live-reload, copy, generate, or log this private key.
 - Ardents identity and Waku node keys have no implicit in-place rotation in
   `v1`. Intentional replacement creates a new identity boundary and requires an
-  explicit operator migration/reset procedure, withdrawal of old publication,
+  explicit operator replacement/reset procedure, withdrawal of old publication,
   and validation of the new node. Deleting a key file is never a rotation API.
 - Capability and selector rotation/revocation follows
   `docs/protocols/network-privacy-protocol.md`: signed grant revocation rejects the old
@@ -125,8 +136,11 @@ retained state, and expected blob decryptability.
 
 ## Disclosure Controls
 
-Private keys, bearer tokens, payload keys, capability material, raw private
+Private keys, device signatures, Credentials, Session secrets/IDs,
+Bootstrap/Application Enrollment Tickets, enrollment proofs, Delegations,
+observability bearer values, payload keys, capability material, raw private
 selectors, plaintext payloads, ciphertext, and nonces must not appear in logs,
-API errors, diagnostics details, or canonical test reports. Diagnostics may
-expose a stable public identifier, state, reason code, key/capability version,
-or non-sensitive fingerprint only where required for operation.
+API errors, diagnostics details, backup manifests, or canonical test reports.
+Diagnostics may expose a stable public identifier, state, reason code,
+key/capability version, or non-sensitive fingerprint only where required for
+operation.

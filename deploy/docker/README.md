@@ -15,10 +15,12 @@ From the repository root:
 ./ardents.ps1 status
 ```
 
-The lifecycle command generates three distinct API credentials under the
-git-ignored `var/deployment/local-multinode/` directory, starts the seed, reads
-its authenticated canonical Waku endpoint, and starts both peers with that
-endpoint. No peer ID or multiaddr is copied manually.
+The lifecycle command creates three canonical Node Principals, starts the seed,
+reads its authenticated canonical Waku endpoint, and starts both peers with
+that endpoint. A test-owned Alice root/device identity enrolls independently on
+each Node through its one-use Bootstrap Ticket and receives separate
+Node-scoped Operator grants. No permanent Operator/Application token is
+generated, and no peer ID or multiaddr is copied manually.
 
 The local profile also starts a disposable shared Docker-in-Docker workload
 engine. Ardents reaches it through a Unix socket in a dedicated named volume;
@@ -42,8 +44,8 @@ Stopped-node continuity operations are explicit:
 ./ardents.ps1 restore -Node peer2 -Archive <archive> -ConfirmReplace
 ```
 
-Restore verifies the archive checksum and then proves that Ardents principal,
-device, and Waku peer identity match the backup manifest. Upgrade and rollback
+Restore verifies the archive checksum and then proves that the Node Principal
+and Waku PeerID match the backup manifest. Upgrade and rollback
 recreate one node at a time and re-prove network participation:
 
 ```powershell
@@ -52,8 +54,13 @@ recreate one node at a time and re-prove network participation:
 ```
 
 `docker-compose.multinode.yml` publishes only Waku TCP ports on host loopback.
-The operator API and observability listener stay on container loopback; inspect
-them through `docker compose exec`, as the lifecycle command does.
+Each protected Operator socket and one-use Bootstrap Ticket lives in that
+Node's private runtime volume. Ephemeral `*-operator` helpers mount only the
+selected Node runtime plus the separate Operator identity volume; they use a
+device signer and Principal Session. The Application socket has a distinct
+runtime volume. Observability stays on container loopback and may use its own
+optional scrape token as defense in depth; that token is never a control
+credential.
 
 ## Production Service Definition
 
@@ -61,19 +68,22 @@ them through `docker compose exec`, as the lifecycle command does.
 supported target. It requires:
 
 - an immutable `ARDENTS_IMAGE` reference, preferably a registry digest;
-- separate versioned operator-config files for every node, including explicit
-  advertised/bootstrap addresses and required private channel references;
-- separate external API token, channel-grant-store key, and replay-key files for
-  every node; config files reference their copied `/run/ardents/` paths;
+- separate canonical versioned configuration files for every Node, including
+  explicit advertised/bootstrap addresses and required private channel
+  references;
+- separate channel-grant-store and replay-key files for every Node; config
+  files reference their copied `/run/ardents/` paths;
 - an external TLS-authenticated Docker workload endpoint plus separate client
   CA/certificate/key files for each node; plaintext Docker API and host socket
   mounts are not supported in production;
 - deployment-managed backup and secret handling.
 
 It drops Linux capabilities, enables `no-new-privileges`, uses a read-only root
-filesystem with a bounded temporary filesystem, retains data in named volumes,
-and publishes transport ports only. It intentionally does not generate
-production credentials or invent public addresses.
+filesystem with bounded temporary filesystems, retains product data and each
+protected Operator/Application runtime in separate named volumes, and
+publishes transport ports only. It intentionally does not generate production
+Operator identities, enrollment tickets outside an explicit provisioning
+workflow, or public addresses.
 
 The production file can be validated without starting services after required
 values are supplied:

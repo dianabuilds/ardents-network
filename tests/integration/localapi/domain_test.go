@@ -5,16 +5,14 @@ package localapi_test
 import (
 	"context"
 	"errors"
-	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
-	cliclient "ardents/internal/cli/client"
+	appdata "ardents/internal/content"
+	contentpayload "ardents/internal/content/payload"
 	runtimeinfra "ardents/internal/daemon"
-	rpcadapter "ardents/internal/localapi"
-	localauth "ardents/internal/localapi/auth"
+	identityaccess "ardents/internal/identity/access"
 	ardentsv1 "ardents/internal/localapi/protocol"
 	transport "ardents/internal/network"
 	"ardents/tests/testkit"
@@ -273,21 +271,8 @@ func TestConnectRPCReadRequiresExactAction(t *testing.T) {
 		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
 		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
 	})
-	mux := http.NewServeMux()
-	path, handler, err := rpcadapter.NewHandler(testkit.ConnectDependencies(rt.Runtime), localauth.Config{
-		Token:        "limited-token",
-		SubjectID:    "connect-test",
-		Capabilities: []string{"node.status"},
-	})
-	require.NoError(t, err)
-	mux.Handle(path, handler)
-	srv := httptest.NewServer(mux)
-	defer srv.Close()
-
-	client := cliclient.NewService(srv.Client(), srv.URL, connect.WithGRPC())
-	req := connect.NewRequest(&ardentsv1.GetDataInventoryRequest{})
-	req.Header().Set("Authorization", "Bearer limited-token")
-	_, err = client.GetDataInventory(context.Background(), req)
+	client := testkit.NewArdentsClientWithActions(t, rt.Runtime, []identityaccess.Action{"node.status"})
+	_, err := client.GetDataInventory(context.Background(), testkit.AuthorizedRequest(&ardentsv1.GetDataInventoryRequest{}))
 	require.Error(t, err)
 
 	connectErr, ok := errors.AsType[*connect.Error](err)
@@ -331,26 +316,29 @@ func TestConnectRPCDataRoundTripAndErrors(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "available-local", withPayload.Msg.GetState())
 
-	publishedBlob, err := client.PublishBlob(context.Background(), testkit.AuthorizedRequest(&ardentsv1.PublishBlobRequest{
-		Blob: &ardentsv1.BlobSnapshot{MediaType: "application/octet-stream", Hash: "sha256:connect-data"},
-	}))
+	remoteHash, remoteReference, err := contentpayload.DeriveIdentity([]byte("connect-data"))
+	require.NoError(t, err)
+	publishedBlob, err := rt.Data.AnnounceRemoteBlob(appdata.Blob{
+		Reference: remoteReference, MediaType: "application/octet-stream",
+		Hash: remoteHash, State: "available-remote",
+	})
 	require.NoError(t, err)
 
 	manifest, err := client.PublishManifest(context.Background(), testkit.AuthorizedRequest(&ardentsv1.PublishManifestRequest{
 		Manifest: &ardentsv1.ManifestSnapshot{
+			Id:        "manifest-1",
 			Kind:      "message-attachment",
-			Owner:     "node",
 			Access:    "participants",
 			Retention: "temporary",
 			Encrypted: true,
-			Refs:      []*ardentsv1.RefSnapshot{{Kind: "blob", Id: publishedBlob.Msg.GetReference()}},
+			Refs:      []*ardentsv1.RefSnapshot{{Kind: "blob", Id: publishedBlob.Reference.String()}},
 		},
 	}))
 	require.NoError(t, err)
 	require.NotEmpty(t, manifest.Msg.GetId())
 
 	_, err = client.RetainBlob(context.Background(), testkit.AuthorizedRequest(&ardentsv1.RetainBlobRequest{
-		Id:        publishedBlob.Msg.GetReference(),
+		Id:        publishedBlob.Reference.String(),
 		ExpiresAt: timestamppb.New(time.Now().Add(time.Hour)),
 	}))
 	require.Error(t, err)
@@ -372,14 +360,8 @@ func TestConnectRPCDataRoundTripAndErrors(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, connect.CodeNotFound, connectErr.Code())
 
-	_, err = client.GetDataInventory(context.Background(), connect.NewRequest(&ardentsv1.GetDataInventoryRequest{}))
-	require.Error(t, err)
-	connectErr, ok = errors.AsType[*connect.Error](err)
-	require.True(t, ok)
-	require.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
-
 	bareTokenReq := connect.NewRequest(&ardentsv1.GetDataInventoryRequest{})
-	bareTokenReq.Header().Set("Authorization", testkit.ConnectAuthConfig().Token)
+	bareTokenReq.Header().Set("Authorization", "Bearer must-not-be-accepted")
 	_, err = client.GetDataInventory(context.Background(), bareTokenReq)
 	require.Error(t, err)
 	connectErr, ok = errors.AsType[*connect.Error](err)

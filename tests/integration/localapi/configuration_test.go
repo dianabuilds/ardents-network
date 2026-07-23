@@ -22,7 +22,7 @@ func TestOperatorConfigurationCLIShowsReloadsAndRejectsInvalidCandidate(t *testi
 		Speed: "default", Environment: "local",
 	})
 	doc := runtimeconfig.Defaults()
-	doc.API.TokenFile = filepath.Join(t.TempDir(), "operator-token")
+	doc.Observability.TokenFile = filepath.Join(t.TempDir(), "metrics-token")
 	path := writeOperatorDocument(t, doc)
 	manager, err := runtimeconfig.NewManager(path, doc)
 	require.NoError(t, err)
@@ -37,8 +37,8 @@ func TestOperatorConfigurationCLIShowsReloadsAndRejectsInvalidCandidate(t *testi
 	configuration := shownJSON["configuration"].(map[string]any)
 	require.Equal(t, "1", configuration["activeGeneration"])
 	effective := configuration["effective"].(map[string]any)
-	require.Equal(t, "configured", effective["api"].(map[string]any)["token_file"])
-	require.NotContains(t, shown.stdout, doc.API.TokenFile)
+	require.Equal(t, "configured", effective["observability"].(map[string]any)["token_file"])
+	require.NotContains(t, shown.stdout, doc.Observability.TokenFile)
 
 	doc.Policy.DisableServicePublication = true
 	writeOperatorDocumentAt(t, path, doc)

@@ -3,8 +3,8 @@
 package applicationapie2e_test
 
 import (
-	"ardents/internal/config"
-	"ardents/tests/testkit"
+	"crypto/ed25519"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -12,118 +12,224 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
+
+	"ardents/tests/testkit"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestApplicationUsesDedicatedDaemonInterface(t *testing.T) {
+type applicationIdentityFile struct {
+	Credential       string `json:"credential"`
+	DevicePrivateKey string `json:"device_private_key"`
+}
+
+func TestApplicationUsesDedicatedPrincipalInterface(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Application process e2e requires Unix domain sockets")
+	}
 	scenario := testkit.BeginScenario(t, testkit.Spec{
 		Layer: testkit.LayerE2E, Domain: "application-interface", ScenarioID: "APP-001", Suite: "e2e",
 		Tags: []string{"e2e", "application-interface", "security", "process"}, Speed: "fast", Environment: "linux-container",
 	})
 	dir := t.TempDir()
-	operatorAddress := reserveAddress(t)
-	applicationAddress := reserveAddress(t)
+	authorityDir := filepath.Join(dir, "authority")
+	nodeDir := filepath.Join(dir, "node")
+	secretDir := filepath.Join(dir, "secrets")
+	identityDir := filepath.Join(dir, "identities")
+	require.NoError(t, os.MkdirAll(identityDir, 0o700))
+	require.NoError(t, os.Chmod(identityDir, 0o700))
+	operatorSocket := filepath.Join(secretDir, "control.sock")
+	applicationSocket := filepath.Join(nodeDir+"-applications", "application.sock")
+	bootstrapTicket := filepath.Join(secretDir, "operator-bootstrap-ticket")
 	observabilityAddress := reserveAddress(t)
-	writeSecret(t, filepath.Join(dir, "operator-token"), "operator-secret")
-	writeSecret(t, filepath.Join(dir, "application-token"), "application-secret")
-	configPath := writeConfig(t, dir, operatorAddress, applicationAddress, observabilityAddress)
-	binaryName := "ardentsd"
-	if runtime.GOOS == "windows" {
-		binaryName += ".exe"
-	}
-	binary := filepath.Join(dir, binaryName)
-	probeName := "application-probe"
-	if runtime.GOOS == "windows" {
-		probeName += ".exe"
-	}
-	probe := filepath.Join(dir, probeName)
+	transportAddress := reserveAddress(t)
 
-	scenario.Precondition("build and start the real daemon entry point", func(t *testing.T) {
-		build := exec.Command("go", "build", "-o", binary, "../../../cmd/ardentsd")
-		output, err := build.CombinedOutput()
-		require.NoError(t, err, string(output))
-		build = exec.Command("go", "build", "-o", probe, "../../fixtures/application-probe")
-		output, err = build.CombinedOutput()
-		require.NoError(t, err, string(output))
-	})
-	command := exec.Command(binary)
-	command.Env = append(os.Environ(), "ARDENTS_CONFIG_FILE="+configPath, "ARDENTS_API_TOKEN=", "ARDENTS_API_TOKEN_FILE=")
-	logPath := filepath.Join(dir, "ardentsd.log")
-	output, err := os.Create(logPath)
-	require.NoError(t, err)
-	command.Stdout = output
-	command.Stderr = output
-	t.Cleanup(func() { _ = output.Close() })
-	exited := make(chan error, 1)
+	daemonBinary := filepath.Join(dir, "ardentsd")
+	cliBinary := filepath.Join(dir, "ardentsctl")
+	probeBinary := filepath.Join(dir, "application-probe")
+	root := repositoryRoot(t)
+	for output, source := range map[string]string{
+		daemonBinary: filepath.Join(root, "cmd", "ardentsd"),
+		cliBinary:    filepath.Join(root, "cmd", "ardentsctl"),
+		probeBinary:  filepath.Join(root, "tests", "fixtures", "application-probe"),
+	} {
+		build := exec.Command("go", "build", "-o", output, source)
+		raw, err := build.CombinedOutput()
+		require.NoError(t, err, string(raw))
+	}
 
-	scenario.Step("start the daemon and wait for the application listener", func(t *testing.T) {
+	var nodePrincipal string
+	scenario.Precondition("provision and start the real Principal-only daemon", func(t *testing.T) {
+		raw := run(t, daemonBinary, "init",
+			"--authority-dir", authorityDir,
+			"--node-dir", nodeDir,
+			"--secret-dir", secretDir,
+			"--node-name", "application-api-e2e",
+			"--transport-port", portOf(t, transportAddress),
+			"--runtime-data-dir", nodeDir,
+			"--runtime-secret-dir", secretDir,
+		)
+		nodePrincipal = extractNodePrincipal(t, raw)
+		configPath := filepath.Join(secretDir, "operator.json")
+		setObservabilityAddress(t, configPath, observabilityAddress)
+		require.NoError(t, os.MkdirAll(filepath.Dir(applicationSocket), 0o700))
+
+		command := exec.Command(daemonBinary)
+		command.Env = append(os.Environ(), "ARDENTS_CONFIG_FILE="+configPath)
+		logPath := filepath.Join(dir, "ardentsd.log")
+		output, err := os.Create(logPath)
+		require.NoError(t, err)
+		command.Stdout = output
+		command.Stderr = output
+		t.Cleanup(func() { _ = output.Close() })
+		exited := make(chan error, 1)
 		require.NoError(t, command.Start())
 		go func() { exited <- command.Wait() }()
 		t.Cleanup(func() { stopProcess(command) })
 		require.NoError(t, waitForHTTP("http://"+observabilityAddress+"/healthz", exited), readLog(logPath))
-		require.NoError(t, waitForTCP(applicationAddress, exited), readLog(logPath))
+		require.NoError(t, waitForPath(operatorSocket, exited), readLog(logPath))
+		require.NoError(t, waitForPath(applicationSocket, exited), readLog(logPath))
+		require.FileExists(t, bootstrapTicket)
 	})
 
-	scenario.Step("put and get content with an application credential", func(t *testing.T) {
-		output, err := exec.Command(probe, "endpoint", "http://"+applicationAddress, filepath.Join(dir, "application-token")).CombinedOutput()
-		require.NoError(t, err, string(output))
+	operatorRoot := filepath.Join(identityDir, "operator-root.json")
+	operatorDevice := filepath.Join(identityDir, "operator-device.json")
+	var operatorPrincipal string
+	scenario.Step("enroll the Operator Principal and issue a one-use Application ticket", func(t *testing.T) {
+		raw := run(t, cliBinary, "--output", "json", "identity", "principal", "create", "--signer-file", operatorRoot)
+		var principalView struct {
+			Principal string `json:"principal"`
+		}
+		require.NoError(t, json.Unmarshal(raw, &principalView))
+		operatorPrincipal = principalView.Principal
+		require.NotEmpty(t, operatorPrincipal)
+		run(t, cliBinary, "--output", "json", "identity", "device", "create",
+			"--root-signer-file", operatorRoot, "--signer-file", operatorDevice, "--valid-for", "24h")
+		run(t, cliBinary,
+			"--addr", "unix://"+operatorSocket, "--principal", nodePrincipal, "--signer-file", operatorDevice,
+			"--output", "json", "identity", "enroll",
+			"--root-signer-file", operatorRoot, "--device-signer-file", operatorDevice,
+			"--bootstrap-ticket-file", bootstrapTicket)
+		require.NoFileExists(t, bootstrapTicket)
 	})
 
-	scenario.Assert("operator credentials are rejected by the Application Interface", func(t *testing.T) {
-		output, err := exec.Command(probe, "expect-unauthenticated", "http://"+applicationAddress, filepath.Join(dir, "operator-token")).CombinedOutput()
-		require.NoError(t, err, string(output))
+	appIdentityPath := filepath.Join(identityDir, "application-identity.json")
+	appRootPath := filepath.Join(identityDir, "application-root.json")
+	appPrincipal := strings.TrimSpace(string(run(t, probeBinary, "create", appIdentityPath, appRootPath)))
+	require.Regexp(t, `^p1_[a-z2-7]{52}$`, appPrincipal)
+	ticketPath := filepath.Join(identityDir, "application-enrollment-ticket")
+	scenario.Step("enroll the Application Principal through its dedicated listener", func(t *testing.T) {
+		run(t, cliBinary,
+			"--addr", "unix://"+operatorSocket, "--principal", nodePrincipal, "--signer-file", operatorDevice,
+			"--output", "json", "identity", "application-ticket", "issue",
+			"--principal", appPrincipal,
+			"--action", "application.content.put", "--action", "application.content.get",
+			"--out-file", ticketPath, "--yes")
+		run(t, probeBinary, "enroll", applicationSocket, nodePrincipal, ticketPath, appIdentityPath, appRootPath)
+	})
+
+	scenario.Step("put and get content with an Application Principal session", func(t *testing.T) {
+		run(t, probeBinary, "use", applicationSocket, nodePrincipal, appIdentityPath)
+	})
+
+	scenario.Assert("an Operator credential cannot establish an Application session without an Application grant", func(t *testing.T) {
+		operatorIdentityPath := applicationIdentityFromDeviceBundle(t, identityDir, operatorDevice)
+		command := exec.Command(probeBinary, "use", applicationSocket, nodePrincipal, operatorIdentityPath)
+		raw, err := command.CombinedOutput()
+		require.Error(t, err, string(raw))
+		require.NotContains(t, string(raw), operatorPrincipal)
 	})
 }
 
-func waitForTCP(address string, exited <-chan error) error {
+func repositoryRoot(t *testing.T) string {
+	t.Helper()
+	current, err := os.Getwd()
+	require.NoError(t, err)
+	for {
+		info, statErr := os.Stat(filepath.Join(current, "go.mod"))
+		if statErr == nil && info.Mode().IsRegular() {
+			return current
+		}
+		parent := filepath.Dir(current)
+		if parent == current {
+			require.FailNow(t, "repository root with go.mod was not found")
+		}
+		current = parent
+	}
+}
+
+func applicationIdentityFromDeviceBundle(t *testing.T, dir, bundlePath string) string {
+	t.Helper()
+	raw, err := os.ReadFile(bundlePath)
+	require.NoError(t, err)
+	var bundle struct {
+		DevicePrivateSeed string `json:"device_private_seed"`
+		Credential        string `json:"credential"`
+	}
+	require.NoError(t, json.Unmarshal(raw, &bundle))
+	seed, err := base64.RawURLEncoding.DecodeString(bundle.DevicePrivateSeed)
+	require.NoError(t, err)
+	require.Len(t, seed, ed25519.SeedSize)
+	path := filepath.Join(dir, "operator-application-attempt.json")
+	writeApplicationIdentity(t, path, bundle.Credential, ed25519.NewKeyFromSeed(seed))
+	return path
+}
+
+func writeApplicationIdentity(t *testing.T, path, credential string, device ed25519.PrivateKey) {
+	t.Helper()
+	raw, err := json.Marshal(applicationIdentityFile{
+		Credential: credential, DevicePrivateKey: base64.RawURLEncoding.EncodeToString(device),
+	})
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(path, raw, 0o600))
+}
+
+func setObservabilityAddress(t *testing.T, path, address string) {
+	t.Helper()
+	raw, err := os.ReadFile(path)
+	require.NoError(t, err)
+	var document map[string]any
+	require.NoError(t, json.Unmarshal(raw, &document))
+	document["observability"].(map[string]any)["listen_address"] = address
+	raw, err = json.Marshal(document)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(path, raw, 0o600))
+}
+
+func extractNodePrincipal(t *testing.T, raw []byte) string {
+	t.Helper()
+	match := regexp.MustCompile(`principal=(p1_[a-z2-7]+)`).FindSubmatch(raw)
+	require.Len(t, match, 2, string(raw))
+	return string(match[1])
+}
+
+func run(t *testing.T, binary string, args ...string) []byte {
+	t.Helper()
+	command := exec.Command(binary, args...)
+	raw, err := command.CombinedOutput()
+	require.NoError(t, err, string(raw))
+	return raw
+}
+
+func waitForPath(path string, exited <-chan error) error {
 	deadline := time.Now().Add(15 * time.Second)
 	for time.Now().Before(deadline) {
 		select {
 		case processErr := <-exited:
-			return fmt.Errorf("ardentsd exited before Application Interface readiness: %w", processErr)
+			return fmt.Errorf("ardentsd exited before socket readiness: %w", processErr)
 		default:
 		}
-		connection, err := net.DialTimeout("tcp", address, time.Second)
-		if err == nil {
-			_ = connection.Close()
+		if info, err := os.Stat(path); err == nil && info.Mode()&os.ModeSocket != 0 {
 			return nil
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	return fmt.Errorf("Application Interface did not become ready")
-}
-
-func writeConfig(t *testing.T, dir, operatorAddress, applicationAddress, observabilityAddress string) string {
-	t.Helper()
-	doc := config.Defaults()
-	doc.Node.Name = "application-api-e2e"
-	doc.Node.Profile = "local_development"
-	doc.Node.DataDir = filepath.Join(dir, "data")
-	doc.API.ListenAddress = operatorAddress
-	doc.API.TokenFile = filepath.Join(dir, "operator-token")
-	doc.ApplicationInterface.Enabled = true
-	doc.ApplicationInterface.ListenAddress = applicationAddress
-	doc.ApplicationInterface.TokenFile = filepath.Join(dir, "application-token")
-	doc.ApplicationInterface.Subject = "hello-application"
-	doc.ApplicationInterface.Capabilities = []string{"application.content.put", "application.content.get"}
-	doc.ApplicationInterface.CredentialExpiresAt = time.Now().UTC().Add(time.Hour).Format(time.RFC3339)
-	doc.Observability.ListenAddress = observabilityAddress
-	doc.Network.BindAddress = "127.0.0.1"
-	doc.Network.ListenPort = 0
-	doc.Network.ReachabilityMode = "local_only"
-	doc.Network.BootstrapPeers = []string{"local://bootstrap"}
-	doc.Network.StorePath = filepath.Join(dir, "waku-store.db")
-	doc.Network.PrivateKeyPath = filepath.Join(dir, "waku-key.json")
-	doc.Workloads.Executor = "trusted-process"
-	raw, err := json.Marshal(doc)
-	require.NoError(t, err)
-	path := filepath.Join(dir, "ardents.json")
-	require.NoError(t, os.WriteFile(path, raw, 0o600))
-	return path
+	return fmt.Errorf("Unix socket did not become ready")
 }
 
 func reserveAddress(t *testing.T) string {
@@ -135,9 +241,11 @@ func reserveAddress(t *testing.T) string {
 	return address
 }
 
-func writeSecret(t *testing.T, path, value string) {
+func portOf(t *testing.T, address string) string {
 	t.Helper()
-	require.NoError(t, os.WriteFile(path, []byte(value), 0o600))
+	_, port, err := net.SplitHostPort(address)
+	require.NoError(t, err)
+	return port
 }
 
 func waitForHTTP(url string, exited <-chan error) error {
@@ -157,7 +265,7 @@ func waitForHTTP(url string, exited <-chan error) error {
 		}
 		time.Sleep(250 * time.Millisecond)
 	}
-	return fmt.Errorf("application listener did not become available")
+	return fmt.Errorf("observability listener did not become available")
 }
 
 func readLog(path string) string {

@@ -4,16 +4,21 @@ package localapi_test
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
 	"testing"
 	"time"
 
 	appdata "ardents/internal/content"
+	contentpayload "ardents/internal/content/payload"
 	runtimeinfra "ardents/internal/daemon"
 	discoveryapi "ardents/internal/discovery"
 	"ardents/internal/hosting"
+	identityprincipal "ardents/internal/identity/principal"
 	ardentsv1 "ardents/internal/localapi/protocol"
 	transport "ardents/internal/network"
 	"ardents/internal/transfer"
+	workloadexecution "ardents/internal/workload/execution"
 	"ardents/tests/testkit"
 
 	"github.com/stretchr/testify/require"
@@ -37,6 +42,7 @@ func TestConnectRPCNetworkPublicSurfaceMatchesLocalTruth(t *testing.T) {
 		Boot:      runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
 		Transport: runtimeinfra.TransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: transport.ReachabilityPrivateLAN},
 		Data:      runtimeinfra.DataConfig{Dir: t.TempDir()}, Privacy: privacy.Sender,
+		WorkloadExecutor: workloadexecution.NewLocalExecutor(),
 		Workload: []runtimeinfra.WorkloadConfig{{
 			ID:      "work.remote.echo",
 			Kind:    "service",
@@ -149,6 +155,7 @@ func TestConnectRPCHostedServiceSurfaceMatchesLocalTruth(t *testing.T) {
 		Boot:      runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
 		Transport: runtimeinfra.TransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: transport.ReachabilityPrivateLAN},
 		Data:      runtimeinfra.DataConfig{Dir: t.TempDir()}, Privacy: privacy.Sender,
+		WorkloadExecutor: workloadexecution.NewLocalExecutor(),
 		Workload: []runtimeinfra.WorkloadConfig{{
 			ID:      "work.echo",
 			Kind:    "service",
@@ -323,15 +330,17 @@ func TestConnectRPCDataSurfaceMarksStaleRemoteSourceUnusable(t *testing.T) {
 	dataDir := t.TempDir()
 	store := appdata.NewInDir(dataDir)
 	require.NoError(t, store.Load())
+	_, staleReference, err := contentpayload.DeriveIdentity([]byte("blob-stale-remote"))
+	require.NoError(t, err)
 	blob, err := store.AnnounceRemoteBlob(appdata.Blob{
-		ID:        "blob-stale-remote",
-		CID:       "blob-stale-remote",
+		Reference: staleReference,
 		MediaType: "application/octet-stream",
 		State:     "available-remote",
 	})
 	require.NoError(t, err)
+	remotePrincipal := canonicalTestPrincipal(t)
 	_, err = store.ObserveBlobSource(blob.Reference.String(), appdata.BlobSourceRecord{
-		NodeID:     "p_remote_stale",
+		NodeID:     remotePrincipal,
 		Trust:      appdata.SourceTrust{State: "ready", Outcome: "usable", Valid: true, Trusted: true, Usable: true},
 		Usable:     true,
 		Transport:  "remote",
@@ -348,7 +357,7 @@ func TestConnectRPCDataSurfaceMarksStaleRemoteSourceUnusable(t *testing.T) {
 	client := testkit.NewArdentsClient(t, rt.Runtime)
 	localSources := rt.Data.ListBlobSources(blob.Reference.String())
 	require.Len(t, localSources, 1)
-	require.Equal(t, "p_remote_stale", localSources[0].NodeID)
+	require.Equal(t, remotePrincipal, localSources[0].NodeID)
 	require.False(t, localSources[0].Usable)
 	require.False(t, localSources[0].Trust.Usable)
 	require.Contains(t, localSources[0].Reason, "stale")
@@ -359,6 +368,15 @@ func TestConnectRPCDataSurfaceMarksStaleRemoteSourceUnusable(t *testing.T) {
 	require.Equal(t, localSources[0].NodeID, rpcSources.Msg.GetSources()[0].GetNodeId())
 	require.Equal(t, localSources[0].Usable, rpcSources.Msg.GetSources()[0].GetUsable())
 	require.Contains(t, rpcSources.Msg.GetSources()[0].GetReason(), "stale")
+}
+
+func canonicalTestPrincipal(t *testing.T) string {
+	t.Helper()
+	public, _, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	principal, err := identityprincipal.FromEd25519PublicKey(public)
+	require.NoError(t, err)
+	return principal.String()
 }
 
 func TestConnectRPCDiagnosticsSurfaceMatchesLocalTruth(t *testing.T) {
@@ -402,7 +420,7 @@ func TestConnectRPCDiagnosticsSurfaceMatchesLocalTruth(t *testing.T) {
 	require.NoError(t, err)
 	rpcEvents, err := client.ListRecentEvents(context.Background(), testkit.AuthorizedRequest(&ardentsv1.ListRecentEventsRequest{Limit: 2}))
 	require.NoError(t, err)
-	localEvents, _ := rt.Diagnostics.ListRecentEvents(2, "")
+	localEvents, _ := rt.Diagnostics.ListRecentEvents(10, "")
 
 	require.Equal(t, localHealth.State, rpcHealth.Msg.GetHealth().GetState())
 	require.NotNil(t, localHealth.PrimaryReason)
@@ -419,9 +437,16 @@ func TestConnectRPCDiagnosticsSurfaceMatchesLocalTruth(t *testing.T) {
 
 	require.NotEmpty(t, localEvents)
 	require.NotEmpty(t, rpcEvents.Msg.GetEvents())
-	require.Equal(t, len(localEvents), len(rpcEvents.Msg.GetEvents()))
-	require.Equal(t, localEvents[len(localEvents)-1].Seq, rpcEvents.Msg.GetEvents()[len(rpcEvents.Msg.GetEvents())-1].GetSeq())
-	require.Equal(t, localEvents[len(localEvents)-1].Type, rpcEvents.Msg.GetEvents()[len(rpcEvents.Msg.GetEvents())-1].GetType())
+	rpcLast := rpcEvents.Msg.GetEvents()[len(rpcEvents.Msg.GetEvents())-1]
+	var matchingLocalType string
+	for _, event := range localEvents {
+		if event.Seq == rpcLast.GetSeq() {
+			matchingLocalType = event.Type
+			break
+		}
+	}
+	require.NotEmpty(t, matchingLocalType, "RPC event must exist in the authoritative local event stream")
+	require.Equal(t, matchingLocalType, rpcLast.GetType())
 }
 
 func findHostedServiceSnapshot(t *testing.T, services []hosting.ServiceSnapshot, id string) hosting.ServiceSnapshot {

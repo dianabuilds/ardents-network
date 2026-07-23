@@ -5,8 +5,6 @@ package localapi_test
 import (
 	"bytes"
 	"context"
-	"net/http"
-	"net/http/httptest"
 	"strconv"
 	"testing"
 	"time"
@@ -17,9 +15,9 @@ import (
 	runtimeinfra "ardents/internal/daemon"
 	runtimeprocess "ardents/internal/daemon"
 	discoveryapi "ardents/internal/discovery"
-	rpcadapter "ardents/internal/localapi"
 	transport "ardents/internal/network"
 	"ardents/internal/transfer"
+	workloadexecution "ardents/internal/workload/execution"
 	"ardents/tests/testkit"
 
 	"github.com/stretchr/testify/require"
@@ -43,6 +41,7 @@ func TestCLINetworkPublicSurfaceReflectsLocalTruth(t *testing.T) {
 		Boot:      runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
 		Transport: runtimeinfra.TransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: transport.ReachabilityPrivateLAN},
 		Data:      runtimeinfra.DataConfig{Dir: t.TempDir()}, Privacy: privacy.Sender,
+		WorkloadExecutor: workloadexecution.NewLocalExecutor(),
 		Workload: []runtimeinfra.WorkloadConfig{{
 			ID:      "work.remote.echo",
 			Kind:    "service",
@@ -359,8 +358,9 @@ func TestCLIDataSurfaceShowsStaleRemoteSourceAsUnusable(t *testing.T) {
 		State:     "available-remote",
 	})
 	require.NoError(t, err)
+	remotePrincipal := canonicalTestPrincipal(t)
 	_, err = store.ObserveBlobSource(blob.Reference.String(), appdata.BlobSourceRecord{
-		NodeID:     "p_remote_stale_cli",
+		NodeID:     remotePrincipal,
 		Trust:      appdata.SourceTrust{State: "ready", Outcome: "usable", Valid: true, Trusted: true, Usable: true},
 		Usable:     true,
 		Transport:  "remote",
@@ -389,8 +389,9 @@ func TestCLIDataSurfaceShowsStaleRemoteSourceAsUnusable(t *testing.T) {
 }
 
 type cliHarness struct {
-	addr  string
-	token string
+	addr          string
+	signerFile    string
+	nodePrincipal string
 }
 
 type cliResult struct {
@@ -401,36 +402,24 @@ type cliResult struct {
 
 func newCLIHarness(t *testing.T, runtime *runtimeprocess.Node) cliHarness {
 	t.Helper()
-
-	mux := http.NewServeMux()
-	auth := testkit.ConnectAuthConfig()
-	path, handler, err := rpcadapter.NewHandler(testkit.ConnectDependencies(runtime), auth)
-	require.NoError(t, err)
-	mux.Handle(path, handler)
-
-	srv := httptest.NewServer(mux)
-	t.Cleanup(srv.Close)
-
-	return cliHarness{addr: srv.URL, token: auth.Token}
+	fixture := testkit.NewOperatorCLIFixture(t, runtime)
+	return cliHarness{
+		addr: fixture.Addr, signerFile: fixture.SignerFile, nodePrincipal: fixture.NodePrincipal,
+	}
 }
 
 func (h cliHarness) run(t *testing.T, args ...string) cliResult {
 	t.Helper()
 
 	t.Setenv("ARDENTS_ADDR", h.addr)
-	t.Setenv("ARDENTS_LEGACY_API_TOKEN", h.token)
+	t.Setenv("ARDENTS_SIGNER_FILE", h.signerFile)
+	t.Setenv("ARDENTS_EXPECTED_PRINCIPAL", h.nodePrincipal)
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	code := cli.Run(context.Background(), args, &stdout, &stderr)
 	require.Equalf(t, 0, code, "stderr=%s", stderr.String())
-	expectedWarning := "ardentsctl: warning: explicit legacy bearer authentication is migration-only\n"
-	for index, argument := range args {
-		if argument == "--output=json" || (argument == "--output" && index+1 < len(args) && args[index+1] == "json") {
-			expectedWarning = "{\"warning\":\"legacy bearer authentication is migration-only\"}\n"
-		}
-	}
-	require.Equal(t, expectedWarning, stderr.String())
+	require.Empty(t, stderr.String())
 
 	return cliResult{stdout: stdout.String(), stderr: stderr.String(), code: code}
 }
