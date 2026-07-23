@@ -136,7 +136,7 @@ boundary; do not deliver an entire broad workstream as one change.
 | `PIA-014A` | 012 | **Complete:** atomic Blob payload/metadata/typed owner binding for an Application acting as itself |
 | `PIA-014B` | 013, 014A | **Complete:** Alice-via-Application ownership/intersection and non-enumeration behavior |
 | `PIA-014C` | 014B | **Complete:** typed Object/Manifest owners, remote-fetch/claim boundary, and owner-aware GC/reconciliation |
-| `PIA-015A` | 002 | Remove fake same-seed Device; expose Device only for an actual Credential |
+| `PIA-015A` | 002 | **Complete:** fake same-seed Device removed from Node state, summaries, discovery publication input, and Operator snapshot wire |
 | `PIA-015B` | 015A | Final versioned kind-specific discovery records and strict retained-state validation |
 | `PIA-015C` | 015B | Purpose-scoped trust registry and verification cache invalidation |
 | `PIA-016A` | 002 | Rename replication Principal targets; Waku Peer ID remains adapter-only |
@@ -948,6 +948,17 @@ records cannot claim a local owner through duplicate fields.
 
 **Do not do:** turn Realm into a global login service or require an online trust
 authority for request admission.
+
+**PIA-015A completion evidence:** Node identity state version 1 now persists only
+the canonical Principal and public key; strict loading rejects any pre-release
+`identity.device` member. `identity.Summary`, runtime snapshots, local discovery
+publication input, and the Operator `IdentitySnapshot` no longer expose a Node
+Device. A Device remains valid only in Credential/session/revocation contracts,
+where it is derived from an independent Credential public key. Fresh creation,
+restart restoration, strict-schema rejection, generated-wire descriptor, daemon
+privacy continuity, repository compilation, and API stale-generation checks
+cover the slice. PIA-015B deliberately retains ownership of the generic
+discovery-record replacement.
 
 ### PIA-016 — Remove Remaining Ambiguous Identifier And “Capability” Names
 

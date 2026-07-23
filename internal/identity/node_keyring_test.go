@@ -17,17 +17,15 @@ import (
 
 type keystoreTestIdentityStore struct {
 	principal string
-	device    string
 	publicKey string
 }
 
-func (s *keystoreTestIdentityStore) LoadIdentity() (string, string, string) {
-	return s.principal, s.device, s.publicKey
+func (s *keystoreTestIdentityStore) LoadIdentity() (string, string) {
+	return s.principal, s.publicKey
 }
 
-func (s *keystoreTestIdentityStore) SaveIdentity(principal string, device string, publicKey string) error {
+func (s *keystoreTestIdentityStore) SaveIdentity(principal string, publicKey string) error {
 	s.principal = principal
-	s.device = device
 	s.publicKey = publicKey
 	return nil
 }
@@ -64,7 +62,6 @@ func TestEnsureRestoresPrivateKeyFromKeyStore(t *testing.T) {
 	summary, restored, err := svc.Ensure(store, keys)
 	require.NoErrorf(t, err, "ensure identity: %v", err)
 	require.Equal(t, store.principal, summary.Principal)
-	require.Equal(t, store.device, summary.Device)
 	require.Equal(t, store.publicKey, summary.PublicKey)
 	{
 		got := base64.StdEncoding.EncodeToString(restored)
@@ -79,7 +76,6 @@ func TestEnsureRestoresPrivateKeyFromKeyStore(t *testing.T) {
 func TestEnsureRejectsIdentityStateWithoutMatchingKey(t *testing.T) {
 	store := &keystoreTestIdentityStore{
 		principal: "p_retained",
-		device:    "d_retained",
 		publicKey: "retained",
 	}
 	keys := identitykeyring.NewKeyStoreInDir(t.TempDir())

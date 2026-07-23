@@ -22,7 +22,7 @@ func TestNodeIdentityStoreRoundTripAndRestore(t *testing.T) {
 	require.NoError(t, err)
 	encodedPublic := base64.StdEncoding.EncodeToString(public)
 	store := NewStoreInDir(dir)
-	require.NoError(t, store.SaveIdentity(principal.String(), "", encodedPublic))
+	require.NoError(t, store.SaveIdentity(principal.String(), encodedPublic))
 	require.NoError(t, identitykeyring.NewKeyStoreInDir(dir).Save(base64.StdEncoding.EncodeToString(private)))
 
 	reopened := NewStoreInDir(dir)
@@ -35,9 +35,10 @@ func TestNodeIdentityStoreRoundTripAndRestore(t *testing.T) {
 
 func TestNodeIdentityStoreRejectsLegacyUnknownAndDuplicateSchemas(t *testing.T) {
 	for name, raw := range map[string][]byte{
-		"legacy":    []byte(`{"identity":{"principal":"p_deadbeefdeadbeef","device":"d_deadbeefdeadbeef","public_key":"x"}}`),
-		"unknown":   []byte(`{"schema_version":1,"identity":{"principal":"x","device":"x","public_key":"x"},"extra":true}`),
-		"duplicate": []byte(`{"schema_version":1,"schema_version":1,"identity":{"principal":"x","device":"x","public_key":"x"}}`),
+		"legacy":      []byte(`{"identity":{"principal":"p_deadbeefdeadbeef","device":"d_deadbeefdeadbeef","public_key":"x"}}`),
+		"fake_device": []byte(`{"schema_version":1,"identity":{"principal":"p1_test","device":"d1_same-seed","public_key":"x"}}`),
+		"unknown":     []byte(`{"schema_version":1,"identity":{"principal":"x","public_key":"x"},"extra":true}`),
+		"duplicate":   []byte(`{"schema_version":1,"schema_version":1,"identity":{"principal":"x","public_key":"x"}}`),
 	} {
 		t.Run(name, func(t *testing.T) {
 			dir := t.TempDir()
@@ -74,8 +75,9 @@ func TestFreshNodeCreationUsesCanonicalPrincipalWithoutFakeDevice(t *testing.T) 
 	require.NoError(t, err)
 	require.True(t, found)
 	require.Equal(t, uint32(1), persisted.SchemaVersion)
-	_, _ = json.Marshal(persisted)
-	require.Empty(t, summary.Device)
+	raw, err := json.Marshal(persisted)
+	require.NoError(t, err)
+	require.NotContains(t, string(raw), "device")
 	require.NotContains(t, summary.Principal, "p_")
 	require.Equal(t, filepath.Join(dir, "ardents.db"), storage.PathInDir(dir))
 }

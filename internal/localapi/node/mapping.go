@@ -36,7 +36,7 @@ func toBootSnapshot(in daemonruntime.BootSnapshot) *ardentsv1.BootSnapshot {
 }
 
 func toIdentitySnapshot(in identity.Snapshot) *ardentsv1.IdentitySnapshot {
-	return &ardentsv1.IdentitySnapshot{State: in.State, Principal: in.Principal, Device: in.Device, PublicKey: in.PublicKey}
+	return &ardentsv1.IdentitySnapshot{State: in.State, Principal: in.Principal, PublicKey: in.PublicKey}
 }
 
 func toWorkloadStateSnapshot(in workload.StateSnapshot) *ardentsv1.WorkloadStateSnapshot {

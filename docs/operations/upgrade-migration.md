@@ -124,6 +124,22 @@ matching consistency-group backup before starting that binary. Never delete the
 `blob_ownership` section or copy `ardents.db` independently from the rest of the
 backup group to force rollback.
 
+### Node identity state version 1
+
+The first-release `node-runtime/state` identity payload contains only
+`principal` and `public_key`. It never contains a Node `device`: the Node root
+key establishes the Node Principal, while Device IDs belong only to independent
+root-authorized Credentials used for normal authentication. The Operator
+`IdentitySnapshot` likewise exposes only state, Principal, and public key.
+
+Strict loading rejects a pre-release `identity.device` member, missing or
+duplicate schema markers, unknown fields, and unsupported versions. There is no
+in-place importer for fake same-seed Device state. Before the first release,
+discard that pre-release state or restore a complete canonical stopped-Node
+backup; never copy only the identity record or synthesize a Device from the Node
+key. Rollback to a pre-PIA-015A binary requires restoring its entire matching
+consistency group rather than editing the version-1 record.
+
 ## Rollback And Recovery
 
 Recreate one Node at a time with the previous immutable image and re-prove

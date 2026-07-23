@@ -101,9 +101,6 @@ func TestNodeRestoresIdentityAcrossRestart(t *testing.T) {
 	require.Falsef(t, firstSnap.Ident.Principal !=
 		secondSnap.Ident.
 			Principal, "principal changed: %q != %q", firstSnap.Ident.Principal, secondSnap.Ident.Principal)
-	require.Falsef(t, firstSnap.Ident.Device !=
-		secondSnap.Ident.
-			Device, "device changed: %q != %q", firstSnap.Ident.Device, secondSnap.Ident.Device)
 	require.Falsef(t, firstSnap.Ident.Source !=
 		"created", "first source = %q, want created", firstSnap.Ident.Source)
 	require.Falsef(t, secondSnap.Ident.Source !=
@@ -181,7 +178,6 @@ func TestNodeRestoresStoppedDataDirectoryBackup(t *testing.T) {
 	require.NoError(t, restored.Start(context.Background()))
 	got := restored.Snapshot().Ident
 	require.Equal(t, want.Principal, got.Principal)
-	require.Equal(t, want.Device, got.Device)
 	require.Equal(t, "restored", got.Source)
 	require.NoError(t, restored.Stop(context.Background()))
 }

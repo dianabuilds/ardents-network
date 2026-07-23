@@ -619,7 +619,6 @@ type IdentitySnapshot struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	State         string                 `protobuf:"bytes,1,opt,name=state,proto3" json:"state,omitempty"`
 	Principal     string                 `protobuf:"bytes,2,opt,name=principal,proto3" json:"principal,omitempty"`
-	Device        string                 `protobuf:"bytes,3,opt,name=device,proto3" json:"device,omitempty"`
 	PublicKey     string                 `protobuf:"bytes,4,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -665,13 +664,6 @@ func (x *IdentitySnapshot) GetState() string {
 func (x *IdentitySnapshot) GetPrincipal() string {
 	if x != nil {
 		return x.Principal
-	}
-	return ""
-}
-
-func (x *IdentitySnapshot) GetDevice() string {
-	if x != nil {
-		return x.Device
 	}
 	return ""
 }
@@ -8207,13 +8199,12 @@ const file_api_ardents_v1_types_proto_rawDesc = "" +
 	"\x0erecovery_state\x18\b \x01(\tR\rrecoveryState\x12\x12\n" +
 	"\x04mode\x18\t \x01(\tR\x04mode\x12/\n" +
 	"\x13active_capabilities\x18\n" +
-	" \x03(\tR\x12activeCapabilities\"}\n" +
+	" \x03(\tR\x12activeCapabilities\"s\n" +
 	"\x10IdentitySnapshot\x12\x14\n" +
 	"\x05state\x18\x01 \x01(\tR\x05state\x12\x1c\n" +
-	"\tprincipal\x18\x02 \x01(\tR\tprincipal\x12\x16\n" +
-	"\x06device\x18\x03 \x01(\tR\x06device\x12\x1d\n" +
+	"\tprincipal\x18\x02 \x01(\tR\tprincipal\x12\x1d\n" +
 	"\n" +
-	"public_key\x18\x04 \x01(\tR\tpublicKey\"\x96\x01\n" +
+	"public_key\x18\x04 \x01(\tR\tpublicKeyJ\x04\b\x03\x10\x04R\x06device\"\x96\x01\n" +
 	"\x11DiscoverySnapshot\x12\x14\n" +
 	"\x05state\x18\x01 \x01(\tR\x05state\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x18\n" +

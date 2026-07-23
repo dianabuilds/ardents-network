@@ -25,35 +25,6 @@ func (c CallContext) CanonicalCapabilities() []string {
 	return append([]string(nil), c.Capabilities...)
 }
 
-type Summary struct {
-	Principal string
-	Device    string
-	PublicKey string
-}
-
-type Snapshot struct {
-	State     string
-	Principal string
-	Device    string
-	PublicKey string
-	Source    string
-}
-
-func ProjectSnapshot(service Service) Snapshot {
-	summary := service.NodeSummary()
-	return Snapshot{State: service.NodeState(), Principal: summary.Principal, Device: summary.Device, PublicKey: summary.PublicKey, Source: service.NodeSource()}
-}
-
-type StateStore interface {
-	LoadIdentity() (principal string, device string, publicKey string)
-	SaveIdentity(principal string, device string, publicKey string) error
-}
-
-type KeyStore interface {
-	Load() (string, error)
-	Save(privateKey string) error
-}
-
 type Subject struct {
 	Ref           SubjectRef
 	Authenticated bool

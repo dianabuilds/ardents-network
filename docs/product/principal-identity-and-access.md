@@ -1027,7 +1027,7 @@ distinction is intentional, not missing unification.
 | Current shape | Decision | Required disposition |
 |---|---|---|
 | `principal.DeriveID` truncates SHA-256 to 8 bytes | Remove | Use strict full-length `p1_` exclusively before the first release; no compatibility parser or alias |
-| Node `Device` is derived from the same private seed as Node Principal | Replace | Make Device a real independent public key Credential or remove the field where no device exists |
+| Node `Device` was derived from the same private seed as Node Principal | Removed | Node state and snapshots expose only the Node Principal/public key; Device exists only for an independent root-authorized Credential |
 | `SubjectRef{Kind:"token"}` identifies a configured bearer label | Remove | Derive Actor only from cryptographic proof; do not retain token subjects in runtime or audit |
 | Operator and Application authorizers duplicate token/action logic | Remove | Keep Principal-session surface adapters separate; route both to `identity/access` |
 | Channel `CapabilityGrant` includes secrets and Waku permissions | Separate | Keep as `ChannelGrant` concept; never reuse it as Access Grant |

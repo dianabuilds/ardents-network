@@ -731,9 +731,9 @@ func operatorIdentityPrivate(dataDir, subject string) (ed25519.PrivateKey, error
 	if err := state.Load(); err != nil {
 		return nil, fmt.Errorf("privacy requires readable canonical node identity state")
 	}
-	statePrincipal, device, encodedPublic := state.LoadIdentity()
+	statePrincipal, encodedPublic := state.LoadIdentity()
 	public, decodeErr := base64.StdEncoding.DecodeString(encodedPublic)
-	if statePrincipal != principal || device == "" || decodeErr != nil ||
+	if statePrincipal != principal || decodeErr != nil ||
 		!private.Public().(ed25519.PublicKey).Equal(ed25519.PublicKey(public)) {
 		return nil, fmt.Errorf("privacy requires complete matching canonical node identity state")
 	}

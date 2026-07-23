@@ -7,7 +7,7 @@ import (
 )
 
 func (s *NodeService) loadReadyIdentity(store StateStore, keys KeyStore) (bool, string, error) {
-	principal, _, publicKey := store.LoadIdentity()
+	principal, publicKey := store.LoadIdentity()
 	privateKey, err := keys.Load()
 	if err != nil {
 		return false, "", err
@@ -28,7 +28,7 @@ func (s *NodeService) loadReadyIdentity(store StateStore, keys KeyStore) (bool, 
 }
 
 func (s *NodeService) restoreLoadedIdentity(store StateStore, privateKey string) (Summary, ed25519.PrivateKey, error) {
-	principal, device, publicKey := store.LoadIdentity()
+	principal, publicKey := store.LoadIdentity()
 	raw, err := base64.StdEncoding.DecodeString(privateKey)
 	if err != nil {
 		return Summary{}, nil, fmt.Errorf("decode private key: %w", err)
@@ -44,14 +44,13 @@ func (s *NodeService) restoreLoadedIdentity(store StateStore, privateKey string)
 	if !private.Public().(ed25519.PublicKey).Equal(ed25519.PublicKey(public)) {
 		return Summary{}, nil, fmt.Errorf("identity private key does not match persisted public key")
 	}
-	if err := validateDerivedIdentity(principal, device, private); err != nil {
+	if err := validateDerivedIdentity(principal, private); err != nil {
 		return Summary{}, nil, err
 	}
 	s.state = "ready"
 	s.source = "restored"
 	s.summary = Summary{
 		Principal: principal,
-		Device:    device,
 		PublicKey: publicKey,
 	}
 	return s.summary, private, nil

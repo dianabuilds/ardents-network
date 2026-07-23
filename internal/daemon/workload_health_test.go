@@ -170,7 +170,6 @@ func signedTrustRecord(t *testing.T) discovery.Record {
 		Kind:      "node",
 		Subject:   principal,
 		Node:      principal,
-		Device:    "device-test",
 		PublicKey: publicKey,
 		Endpoints: []string{"tcp://remote:9000"},
 		IssuedAt:  time.Now().UTC(),

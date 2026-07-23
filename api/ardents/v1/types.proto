@@ -70,9 +70,11 @@ message TransportSnapshot {
 }
 
 message IdentitySnapshot {
+  reserved 3;
+  reserved "device";
+
   string state = 1;
   string principal = 2;
-  string device = 3;
   string public_key = 4;
 }
 

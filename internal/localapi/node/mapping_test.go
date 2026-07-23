@@ -6,9 +6,16 @@ import (
 
 	daemonruntime "ardents/internal/daemon"
 	diagapi "ardents/internal/diagnostics"
+	ardentsv1 "ardents/internal/localapi/protocol"
 
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
+
+func TestIdentitySnapshotDoesNotProjectFakeNodeDevice(t *testing.T) {
+	fields := (&ardentsv1.IdentitySnapshot{}).ProtoReflect().Descriptor().Fields()
+	require.Nil(t, fields.ByName(protoreflect.Name("device")))
+}
 
 func TestSurfaceMappersPreserveNewSnapshotFields(t *testing.T) {
 	now := time.Now().UTC()

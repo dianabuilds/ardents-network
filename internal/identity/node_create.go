@@ -27,7 +27,7 @@ func (s *NodeService) createIdentity(store StateStore, keys KeyStore) (Summary, 
 	if err := keys.Save(base64.StdEncoding.EncodeToString(private)); err != nil {
 		return Summary{}, nil, err
 	}
-	if err := store.SaveIdentity(sum.Principal, sum.Device, sum.PublicKey); err != nil {
+	if err := store.SaveIdentity(sum.Principal, sum.PublicKey); err != nil {
 		return Summary{}, nil, err
 	}
 

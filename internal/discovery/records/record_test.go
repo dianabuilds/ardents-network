@@ -14,17 +14,15 @@ import (
 
 type testIdentityStore struct {
 	principal string
-	device    string
 	publicKey string
 }
 
-func (s *testIdentityStore) LoadIdentity() (string, string, string) {
-	return s.principal, s.device, s.publicKey
+func (s *testIdentityStore) LoadIdentity() (string, string) {
+	return s.principal, s.publicKey
 }
 
-func (s *testIdentityStore) SaveIdentity(principal string, device string, publicKey string) error {
+func (s *testIdentityStore) SaveIdentity(principal string, publicKey string) error {
 	s.principal = principal
-	s.device = device
 	s.publicKey = publicKey
 	return nil
 }
@@ -84,7 +82,6 @@ func signedNodeRecord(t *testing.T) (discoveryrecord.Record, ed25519.PrivateKey,
 		Kind:      "node",
 		Subject:   summary.Principal,
 		Node:      summary.Principal,
-		Device:    summary.Device,
 		PublicKey: summary.PublicKey,
 		Endpoints: []string{"tcp://bootstrap"},
 		IssuedAt:  time.Now().UTC(),

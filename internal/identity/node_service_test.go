@@ -13,7 +13,6 @@ import (
 
 type serviceTestIdentityStore struct {
 	principal string
-	device    string
 	publicKey string
 }
 
@@ -21,13 +20,12 @@ type serviceTestKeyStore struct {
 	privateKey string
 }
 
-func (s *serviceTestIdentityStore) LoadIdentity() (string, string, string) {
-	return s.principal, s.device, s.publicKey
+func (s *serviceTestIdentityStore) LoadIdentity() (string, string) {
+	return s.principal, s.publicKey
 }
 
-func (s *serviceTestIdentityStore) SaveIdentity(principal string, device string, publicKey string) error {
+func (s *serviceTestIdentityStore) SaveIdentity(principal string, publicKey string) error {
 	s.principal = principal
-	s.device = device
 	s.publicKey = publicKey
 	return nil
 }
@@ -60,7 +58,6 @@ func TestEnsureReportsRestoredSourceAndReadyState(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, Summary{
 		Principal: store.principal,
-		Device:    store.device,
 		PublicKey: store.publicKey,
 	}, summary)
 	require.Equal(t, "restored", svc.Source())

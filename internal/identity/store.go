@@ -9,7 +9,6 @@ import (
 
 type persistedIdentity struct {
 	Principal string `json:"principal,omitempty"`
-	Device    string `json:"device,omitempty"`
 	PublicKey string `json:"public_key,omitempty"`
 }
 
@@ -58,17 +57,17 @@ func (s *Store) Save() error {
 	return s.saveLocked()
 }
 
-func (s *Store) LoadIdentity() (string, string, string) {
+func (s *Store) LoadIdentity() (string, string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	identity := s.data.Identity
-	return identity.Principal, identity.Device, identity.PublicKey
+	return identity.Principal, identity.PublicKey
 }
 
-func (s *Store) SaveIdentity(principal, device, publicKey string) error {
+func (s *Store) SaveIdentity(principal, publicKey string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.data = persistedState{SchemaVersion: 1, Identity: persistedIdentity{Principal: principal, Device: device, PublicKey: publicKey}}
+	s.data = persistedState{SchemaVersion: 1, Identity: persistedIdentity{Principal: principal, PublicKey: publicKey}}
 	return s.saveLocked()
 }
 
