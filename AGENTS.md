@@ -11,7 +11,9 @@
 - Keep the external Go cache for normal incremental test runs. Run
   `scripts/clean-go-cache.ps1` only after a release gate, when the cache exceeds
   5 GiB, when disk space is low, or while diagnosing suspected stale build
-  output. Do not clear it after every unit test.
+  output. `scripts/clean-go-cache.ps1 -StatusOnly` reports its size; the normal
+  cleanup command retains caches at or below 5 GiB, and `-Force` is reserved
+  for the other listed cases. Do not clear it after every unit test.
 - Use disposable Docker containers for clean release/CI verification when
   required. Remember that `--rm` removes containers, not Docker image or
   BuildKit caches; never run a broad Docker prune automatically.
