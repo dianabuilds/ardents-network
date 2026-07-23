@@ -89,7 +89,7 @@ func NewSessionManager(httpClient connect.HTTPClient, endpoint string, signer Se
 		connect.WithSendMaxBytes(identitycontract.MaxArtifactBytes+4<<10),
 	)
 	return &SessionManager{
-		auth: auth, signer: signer, targetNode: strings.TrimSpace(targetNode), now: now,
+		auth: auth, signer: signer, targetNode: targetNode, now: now,
 		entries: make(map[sessionKey]cachedSession), flights: make(map[sessionKey]*loginFlight),
 	}
 }
@@ -102,7 +102,6 @@ func (m *SessionManager) key(ctx context.Context) (sessionKey, error) {
 	if err != nil {
 		return sessionKey{}, signerUnavailable(ctx)
 	}
-	principal = strings.TrimSpace(principal)
 	if !validDigestID(principal, "p1_") {
 		return sessionKey{}, invalidAuthenticationResponse()
 	}
@@ -288,7 +287,7 @@ func validDigestID(value, prefix string) bool {
 
 // ValidPrincipalID reports whether value is a canonical v1 Principal ID.
 func ValidPrincipalID(value string) bool {
-	return validDigestID(strings.TrimSpace(value), "p1_")
+	return validDigestID(value, "p1_")
 }
 
 func invalidAuthenticationResponse() error {

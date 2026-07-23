@@ -85,19 +85,21 @@ func TestLocalWorkloadStartFailureIsObservable(t *testing.T) {
 	})
 	err := rt.Workload.Register(context.Background(), workloadapi.SpecSnapshot{
 		ID:      "work.invalid.start",
-		Kind:    "unsupported",
+		Kind:    "service",
 		Owner:   "tenant",
+		Config:  `{"command":"ardents-missing-workload-executable"}`,
 		Desired: "present",
 	})
 	require.NoError(t, err)
 
 	err = rt.Workload.Start(context.Background(), "work.invalid.start")
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "unsupported")
+	require.NotContains(t, err.Error(), `{"command"`)
 
 	item, err := rt.Workload.Get("work.invalid.start")
 	require.NoError(t, err)
-	require.Equal(t, "failed", item.Observed)
+	require.Equal(t, "degraded", item.Observed)
+	require.NotEmpty(t, item.Reason)
 }
 
 func TestLocalWorkloadRegisterFailsWhenNodeStopped(t *testing.T) {

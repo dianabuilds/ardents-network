@@ -19,7 +19,7 @@ func FuzzCanonicalArtifactParsers(f *testing.F) {
 		Now     string   `json:"now"`
 		Vectors []vector `json:"vectors"`
 	}
-	raw, err := os.ReadFile("../../../api/ardents/identity/v1/testdata/artifact-vectors.json")
+	raw, err := os.ReadFile(artifactVectorFixturePath())
 	if err != nil || json.Unmarshal(raw, &fixture) != nil {
 		f.Fatal("cannot load artifact vectors")
 	}

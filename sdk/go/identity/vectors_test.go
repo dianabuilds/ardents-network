@@ -9,6 +9,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -38,7 +40,7 @@ func TestSDKConsumesCanonicalServerVectors(t *testing.T) {
 		Vectors         []vector   `json:"vectors"`
 		BoundaryVectors []boundary `json:"boundary_vectors"`
 	}
-	raw, err := os.ReadFile("../../../api/ardents/identity/v1/testdata/artifact-vectors.json")
+	raw, err := os.ReadFile(sdkArtifactVectorFixturePath())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,6 +190,14 @@ func TestSDKConsumesCanonicalServerVectors(t *testing.T) {
 			}
 		})
 	}
+}
+
+func sdkArtifactVectorFixturePath() string {
+	_, source, _, ok := runtime.Caller(0)
+	if !ok {
+		panic("artifact vector test source path is unavailable")
+	}
+	return filepath.Clean(filepath.Join(filepath.Dir(source), "..", "..", "..", "api", "ardents", "identity", "v1", "testdata", "artifact-vectors.json"))
 }
 
 func verifyMalformedSDKVector(kind string, wire []byte, public ed25519.PublicKey, now time.Time, knownGrant *Artifact) error {

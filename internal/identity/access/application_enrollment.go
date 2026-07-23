@@ -50,6 +50,16 @@ type IssueApplicationEnrollmentTicketRequest struct {
 	Actions   []Action
 }
 
+func (IssueApplicationEnrollmentTicketRequest) String() string {
+	return "issue Application enrollment ticket request [redacted]"
+}
+func (IssueApplicationEnrollmentTicketRequest) GoString() string {
+	return "issue Application enrollment ticket request [redacted]"
+}
+func (IssueApplicationEnrollmentTicketRequest) MarshalJSON() ([]byte, error) {
+	return []byte(`{"protected":"[redacted]"}`), nil
+}
+
 type ApplicationEnrollmentTicketResult struct {
 	Ticket    ApplicationEnrollmentTicket
 	ExpiresAt time.Time

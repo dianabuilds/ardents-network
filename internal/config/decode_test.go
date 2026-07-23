@@ -82,6 +82,26 @@ func TestDecodeRejectsUnknownDuplicateAndDeprecatedFields(t *testing.T) {
 	}
 }
 
+func TestObsoleteCredentialEnvironmentIsRejectedEvenWhenEmpty(t *testing.T) {
+	for _, name := range []string{
+		"ARDENTS_API_TOKEN",
+		"ARDENTS_API_TOKEN_FILE",
+		"ARDENTS_APPLICATION_TOKEN",
+		"ARDENTS_APPLICATION_TOKEN_FILE",
+		"ARDENTS_LEGACY_API_TOKEN",
+		"ARDENTS_LEGACY_TOKEN_FILE",
+		"ARDENTS_TOKEN",
+		"ARDENTS_TOKEN_FILE",
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Setenv(name, "")
+			err := RejectObsoleteCredentialEnvironment()
+			require.Error(t, err)
+			require.Contains(t, err.Error(), name)
+		})
+	}
+}
+
 func TestDecodeRejectsOversizedDocument(t *testing.T) {
 	raw := `{"api_version":"ardents.config/v1","node":{"name":"` + strings.Repeat("x", MaxDocumentBytes) + `"}}`
 	_, err := Decode(strings.NewReader(raw))

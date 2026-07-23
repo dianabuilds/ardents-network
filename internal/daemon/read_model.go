@@ -356,7 +356,13 @@ func partSnapshot(state, reason string) PartSnapshot {
 }
 
 func (r *QueryService) NodeRuntimeSnapshotLocked() RuntimeSnapshot {
-	r.syncObservedTruthLocked()
+	// Identity preflight is allowed before startup. Do not refresh observed
+	// runtime truth in that state: refresh hooks can persist an empty
+	// diagnostics view before the startup loader has restored durable
+	// operations.
+	if r.life.State() != diagnostics.Stopped {
+		r.syncObservedTruthLocked()
+	}
 	return projectRuntime(r.projectSnapshotLocked(), diagnostics.ProjectHealth(r.diag.Health()))
 }
 

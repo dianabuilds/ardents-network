@@ -145,7 +145,7 @@ func TestRunReturnsFailureWhenOutputCannotBeWritten(t *testing.T) {
 }
 
 func TestProtectedCommandRejectsLegacyBearerEnvironment(t *testing.T) {
-	t.Setenv("ARDENTS_ADDR", "http://127.0.0.1:18080")
+	t.Setenv("ARDENTS_ADDR", "unix:///run/ardents/operator.sock")
 	t.Setenv("ARDENTS_SIGNER_FILE", "")
 	t.Setenv("ARDENTS_EXPECTED_PRINCIPAL", "")
 	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "do-not-print")
@@ -153,7 +153,7 @@ func TestProtectedCommandRejectsLegacyBearerEnvironment(t *testing.T) {
 
 	var stdout, stderr bytes.Buffer
 	code := Run(context.Background(), []string{"--context-file", filepath.Join(t.TempDir(), "missing.json"), "node", "status"}, &stdout, &stderr)
-	if code != 2 || !strings.Contains(stderr.String(), "operator address must use a protected Unix socket") {
+	if code != 2 || !strings.Contains(stderr.String(), "obsolete credential environment variable") {
 		t.Fatalf("code = %d, stderr = %s", code, stderr.String())
 	}
 	if strings.Contains(stderr.String(), "do-not-print") {

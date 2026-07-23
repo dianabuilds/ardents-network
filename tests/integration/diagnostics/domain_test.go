@@ -239,15 +239,18 @@ func TestDiscoveryRestartFailsClosedForPersistedInvalidVersionedRecord(t *testin
 	})
 	dir := t.TempDir()
 	record, _ := signedNodeRecord(t, []string{"tcp://invalid:9000"})
+	validRecord := snapshotNodeRecord(t, record)
+	evidence := retainedDiscoveryEvidence(t, validRecord)
 	record.Signature = "not-base64"
 	entry := discovery.Entry{
-		Record: snapshotNodeRecord(t, record),
-		Source: discoveryrecord.Imported,
-		SeenAt: time.Now().UTC(),
+		Record:   snapshotNodeRecord(t, record),
+		Source:   discoveryrecord.Imported,
+		SeenAt:   time.Now().UTC(),
+		Evidence: evidence,
 	}
 	{
 		err := db.SaveJSON(filepath.Join(dir, "ardents.db"), "discovery", "records", map[string]any{
-			"schema_version": 1,
+			"schema_version": 2,
 			"records":        []discovery.Entry{entry},
 			"state":          "ready",
 		})
@@ -278,13 +281,14 @@ func TestDiagnosticsObservedTruthProjectsExpiredDiscoveryRecordWithoutRestart(t 
 	record.ExpiresAt = now.Add(3 * time.Second)
 	signDiscoveryRecord(t, &record, private)
 	entry := discovery.Entry{
-		Record: snapshotNodeRecord(t, record),
-		Source: discoveryrecord.Imported,
-		SeenAt: now,
+		Record:   snapshotNodeRecord(t, record),
+		Source:   discoveryrecord.Imported,
+		SeenAt:   now,
+		Evidence: retainedDiscoveryEvidence(t, snapshotNodeRecord(t, record)),
 	}
 	{
 		err := db.SaveJSON(filepath.Join(dir, "ardents.db"), "discovery", "records", map[string]any{
-			"schema_version": 1,
+			"schema_version": 2,
 			"records":        []discovery.Entry{entry},
 			"state":          "ready",
 		})
@@ -400,4 +404,11 @@ func snapshotNodeRecord(t *testing.T, snapshot discoveryapi.CatalogRecordSnapsho
 		},
 		IssuedAt: snapshot.IssuedAt, ExpiresAt: snapshot.ExpiresAt, Signature: snapshot.Signature,
 	}
+}
+
+func retainedDiscoveryEvidence(t *testing.T, record discovery.Record) discoveryrecord.VerificationEvidence {
+	t.Helper()
+	evidence, err := discovery.NewTrustEvaluator(nil).VerifyRetained(record)
+	require.NoError(t, err)
+	return evidence
 }

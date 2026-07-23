@@ -12,12 +12,14 @@ var ErrUnknownProcedure = errors.New("application content procedure is not regis
 type ProcedureRule struct {
 	Action       string
 	ResourceKind string
+	Mutating     bool
 }
 
 var procedureAccess = map[string]ProcedureRule{
 	applicationv1connect.ContentServicePutProcedure: {
 		Action:       ActionPut,
 		ResourceKind: "content-owner",
+		Mutating:     true,
 	},
 	applicationv1connect.ContentServiceGetProcedure: {
 		Action:       ActionGet,

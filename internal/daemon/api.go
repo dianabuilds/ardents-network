@@ -302,6 +302,9 @@ func (n *Node) NodeFeatures() NodeFeaturesSnapshot {
 func (n *Node) PublishObject(object appdata.Object) (appdata.Object, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
+	if err := n.requireDataMutableLocked("data publish object"); err != nil {
+		return appdata.Object{}, err
+	}
 	owner, err := n.nodeContentOwnerLocked()
 	if err != nil {
 		return appdata.Object{}, err
@@ -351,6 +354,9 @@ func (n *Node) FetchChunked(ctx context.Context, rootID string) (appdata.ChunkFe
 func (n *Node) PublishManifest(manifest appdata.Manifest) (appdata.Manifest, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
+	if err := n.requireDataMutableLocked("data publish manifest"); err != nil {
+		return appdata.Manifest{}, err
+	}
 	owner, err := n.nodeContentOwnerLocked()
 	if err != nil {
 		return appdata.Manifest{}, err

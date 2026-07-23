@@ -47,6 +47,15 @@ func (m *Manager) WithdrawNetworkPublicationLocked(ctx context.Context) error {
 	if err := WithdrawLocalNode(m.disco, id, private); err != nil {
 		return err
 	}
+	if m.trans == nil || m.trans.State() == "stopped" {
+		// The local authoritative record is already withdrawn. When the
+		// carrier has failed or was stopped independently there is no network
+		// channel on which a withdrawal can be published; shutdown must still
+		// converge locally and remain idempotent.
+		m.networkPublished = false
+		m.publicationAttempted = true
+		return nil
+	}
 	if m.publicationAttempted && !m.networkPublished {
 		return nil
 	}

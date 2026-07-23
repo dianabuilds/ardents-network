@@ -13,6 +13,7 @@ import (
 	"ardents/internal/hosting"
 	"ardents/internal/transfer"
 	workloadapi "ardents/internal/workload"
+	workloadexecution "ardents/internal/workload/execution"
 
 	"github.com/stretchr/testify/require"
 )
@@ -46,6 +47,9 @@ func NewRuntime(t *testing.T, cfg runtimeinfra.Config) *RuntimeHarness {
 	}
 	if cfg.DataPrivacy == nil {
 		cfg.DataPrivacy = NewDataPrivacyFixture(t, time.Now().UTC().Truncate(time.Second)).Receiver
+	}
+	if cfg.WorkloadExecutor == nil {
+		cfg.WorkloadExecutor = workloadexecution.NewLocalExecutor()
 	}
 	n := runtimeprocess.NewNode(cfg)
 	owners, ok := runtimeprocess.OwnersFor(n)

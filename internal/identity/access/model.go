@@ -90,6 +90,9 @@ type CompleteRequest struct {
 
 func (CompleteRequest) String() string   { return "identity completion request [redacted]" }
 func (CompleteRequest) GoString() string { return "identity completion request [redacted]" }
+func (CompleteRequest) MarshalJSON() ([]byte, error) {
+	return []byte(`{"protected":"[redacted]"}`), nil
+}
 
 type CompleteResult struct {
 	Session         *Session
@@ -104,16 +107,17 @@ func (r CompleteResult) MarshalJSON() ([]byte, error) {
 }
 
 type AuditEvent struct {
-	Outcome      string
-	Reason       string
-	Principal    string
-	DeviceID     string
-	Audience     Audience
-	Actor        string
-	Effective    string
-	Action       Action
-	GrantIDs     []string
-	DelegationID string
+	Outcome       string
+	Reason        string
+	Principal     string
+	DeviceID      string
+	Audience      Audience
+	Actor         string
+	Effective     string
+	Action        Action
+	GrantIDs      []string
+	DelegationID  string
+	CorrelationID string
 }
 
 type AuditSink interface{ RecordIdentityAccess(AuditEvent) }

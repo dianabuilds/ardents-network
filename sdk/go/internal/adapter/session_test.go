@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/base32"
 	"errors"
+	"net/http"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -224,6 +225,32 @@ func TestApplicationSessionRejectsMismatchedAudienceBeforeSigning(t *testing.T) 
 	require.Zero(t, signed.Load())
 	require.NotContains(t, err.Error(), node)
 	require.NotContains(t, err.Error(), signer.principal)
+}
+
+func TestApplicationSessionRejectsPaddedNodeAndSignerPrincipalBeforeAuthentication(t *testing.T) {
+	now := time.Unix(1_900_000_000, 0).UTC()
+	node, signer := testIdentity(t, now)
+	paddedSigner := *signer
+	paddedSigner.principal += "\t"
+	for _, testCase := range []struct {
+		name   string
+		node   string
+		signer SessionSigner
+	}{
+		{name: "expected node", node: " " + node, signer: signer},
+		{name: "signer principal", node: node, signer: &paddedSigner},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			var begins atomic.Int32
+			manager := NewSessionManager(http.DefaultClient, "http://localhost", testCase.signer, testCase.node, func() time.Time { return now })
+			manager.auth = successfulAuthentication(node, signer.principal, now, &begins)
+
+			err := manager.Authenticate(context.Background())
+
+			require.Error(t, err)
+			require.Zero(t, begins.Load())
+		})
+	}
 }
 
 type countingSigner struct {

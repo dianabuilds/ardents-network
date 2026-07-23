@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	runtimeconfig "ardents/internal/config"
 	identityprincipal "ardents/internal/identity/principal"
 )
 
@@ -74,6 +75,9 @@ func DefaultConfig() Config {
 }
 
 func (c *Config) Resolve() error {
+	if err := runtimeconfig.RejectObsoleteCredentialEnvironment(); err != nil {
+		return err
+	}
 	ctxName, err := c.resolveContextName()
 	if err != nil {
 		return err

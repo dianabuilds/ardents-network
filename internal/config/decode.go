@@ -113,3 +113,26 @@ func scanJSONArray(decoder *json.Decoder, path string) error {
 const OperatorFileEnv = "ARDENTS_CONFIG_FILE"
 
 func OperatorFile() string { return strings.TrimSpace(os.Getenv(OperatorFileEnv)) }
+
+var obsoleteCredentialEnvironment = [...]string{
+	"ARDENTS_API_TOKEN",
+	"ARDENTS_API_TOKEN_FILE",
+	"ARDENTS_APPLICATION_TOKEN",
+	"ARDENTS_APPLICATION_TOKEN_FILE",
+	"ARDENTS_LEGACY_API_TOKEN",
+	"ARDENTS_LEGACY_TOKEN_FILE",
+	"ARDENTS_TOKEN",
+	"ARDENTS_TOKEN_FILE",
+}
+
+// RejectObsoleteCredentialEnvironment prevents a stale deployment environment
+// from appearing to configure authentication. Values are never included in the
+// error because they may contain retired bearer secrets.
+func RejectObsoleteCredentialEnvironment() error {
+	for _, name := range obsoleteCredentialEnvironment {
+		if _, present := os.LookupEnv(name); present {
+			return fmt.Errorf("obsolete credential environment variable %s is not supported", name)
+		}
+	}
+	return nil
+}

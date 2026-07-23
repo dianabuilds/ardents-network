@@ -142,7 +142,12 @@ func TestRestrictedDefenseRestartRemovesAndRestoresProviderServices(t *testing.T
 
 	require.NoError(t, provider.SetModeForIntegration(ctx, network.ModeSteady))
 	require.ElementsMatch(t,
-		[]string{"relay", "store", "filter_service", "lightpush_service"},
+		[]network.TransportFeature{
+			network.TransportFeatureRelay,
+			network.TransportFeatureStore,
+			network.TransportFeatureFilterService,
+			network.TransportFeatureLightpushService,
+		},
 		provider.ProfileSnapshot().ActiveFeatures,
 	)
 	recoveredClient := startConstrainedClient(t, provider, network.Limits{})

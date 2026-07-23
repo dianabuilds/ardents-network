@@ -248,6 +248,71 @@ func TestWithdrawNetworkPublicationLockedPublishesWithdrawnNodeRecord(t *testing
 
 }
 
+func TestWithdrawNetworkPublicationLockedConvergesWhenTransportAlreadyStopped(t *testing.T) {
+	dir := t.TempDir()
+	identSvc, private := publicationIdentity(t, dir)
+	disco := discovery.NewInDir(dir)
+	network := publicationReachableNetwork()
+	network.state = "stopped"
+	mgr := NewManager(
+		"publication-test",
+		diagnostics.New(""),
+		diagnostics.NewMachine(),
+		disco,
+		apppolicy.New(apppolicy.Config{}),
+		hostingregistry.New(nil),
+		workloadcontroller.NewWithExecutorInDir(dir, &publicationRunningExecutor{}),
+		network,
+		nil,
+		identSvc,
+		discovery.NewTrustEvaluator(nil),
+		func() ed25519.PrivateKey { return private },
+		func(string, map[string]any) {},
+	)
+	requirePublishedNodeRecord(t, disco, identSvc.NodeSummary(), private)
+	mgr.networkPublished = true
+	mgr.publicationAttempted = true
+	mgr.publishDiscoveryEntries = func(context.Context, []discovery.Entry) error {
+		t.Fatal("stopped transport must not be used for withdrawal")
+		return nil
+	}
+
+	require.NoError(t, mgr.WithdrawNetworkPublicationLocked(context.Background()))
+	require.False(t, mgr.networkPublished)
+	require.Empty(t, disco.Entries()[0].Record.EndpointList())
+}
+
+func TestSyncDesiredLockedConvergesLocallyWhenTransportAlreadyStopped(t *testing.T) {
+	dir := t.TempDir()
+	identSvc, private := publicationIdentity(t, dir)
+	disco := discovery.NewInDir(dir)
+	network := publicationReachableNetwork()
+	network.state = "stopped"
+	mgr := NewManager(
+		"publication-test",
+		diagnostics.New(""),
+		diagnostics.NewMachine(),
+		disco,
+		apppolicy.New(apppolicy.Config{}),
+		hostingregistry.New(nil),
+		workloadcontroller.NewWithExecutorInDir(dir, &publicationRunningExecutor{}),
+		network,
+		nil,
+		identSvc,
+		discovery.NewTrustEvaluator(nil),
+		func() ed25519.PrivateKey { return private },
+		func(string, map[string]any) {},
+	)
+	mgr.publishDiscoveryEntries = func(context.Context, []discovery.Entry) error {
+		t.Fatal("stopped transport must not be used for publication sync")
+		return nil
+	}
+
+	require.NoError(t, mgr.SyncDesiredLocked(context.Background()))
+	require.True(t, mgr.publicationAttempted)
+	require.False(t, mgr.networkPublished)
+}
+
 func publicationIdentity(t *testing.T, dir string) (identityapi.Service, []byte) {
 	t.Helper()
 	store := identity.NewStore(filepath.Join(dir, "ardents.db"))
@@ -305,6 +370,14 @@ func (publicationCancelAwareExecutor) Inspect(context.Context, string) (workload
 type publicationNetwork struct {
 	transport.Service
 	snapshot transport.ReachabilitySnapshot
+	state    string
+}
+
+func (n *publicationNetwork) State() string {
+	if n.state == "" {
+		return "ready"
+	}
+	return n.state
 }
 
 func (n *publicationNetwork) Endpoints() []string {

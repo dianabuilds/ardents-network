@@ -49,7 +49,7 @@ func NewEnrollmentClient(httpClient connect.HTTPClient, endpoint string, signer 
 	}
 	return &EnrollmentClient{
 		service: applicationidentityv1connect.NewIdentityServiceClient(httpClient, strings.TrimRight(endpoint, "/"), connect.WithReadMaxBytes(identitycontract.MaxArtifactBytes+4<<10), connect.WithSendMaxBytes(identitycontract.MaxArtifactBytes+4<<10)),
-		signer:  signer, node: strings.TrimSpace(node), now: now,
+		signer:  signer, node: node, now: now,
 	}
 }
 
@@ -61,7 +61,6 @@ func (c *EnrollmentClient) Enroll(ctx context.Context, ticket [identitycontract.
 	if err != nil {
 		return EnrollmentResult{}, enrollmentSignerUnavailable(ctx)
 	}
-	principal = strings.TrimSpace(principal)
 	if !validDigestID(principal, "p1_") {
 		return EnrollmentResult{}, invalidEnrollmentResponse()
 	}

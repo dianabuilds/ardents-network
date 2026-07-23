@@ -170,9 +170,9 @@ func TestNodeRestoresStoppedDataDirectoryBackup(t *testing.T) {
 
 	restoreDir := t.TempDir()
 	require.NoError(t, copyStoppedBackup(restoreDir, sourceDir))
-	restoredKey, err := os.Stat(filepath.Join(restoreDir, "identity_key.json"))
+	_, found, err := db.ReadStrictPrivateFileBounded(filepath.Join(restoreDir, "identity_key.json"), 1<<20)
 	require.NoError(t, err)
-	require.Zero(t, restoredKey.Mode().Perm()&0o077, "restored identity key must remain private")
+	require.True(t, found, "restored identity key must remain private")
 	cfg.Data.Dir = restoreDir
 	restored := testkit.NewRuntime(t, cfg).Node
 	require.NoError(t, restored.Start(context.Background()))

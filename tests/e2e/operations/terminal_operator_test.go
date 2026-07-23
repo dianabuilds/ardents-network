@@ -12,9 +12,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
+	identitycontract "ardents/api/ardents/identity/v1"
 	"ardents/internal/cli"
 	cliclient "ardents/internal/cli/client"
 	appdata "ardents/internal/content"
@@ -81,6 +83,8 @@ func TestTerminalNodeRuntimeLifecycleAcrossRestartPreservesPendingTruth(t *testi
 		require.Contains(t, status.stdout, "state: ready")
 		require.Contains(t, status.stdout, "ready: true")
 
+		directPending := testkit.Diagnostics(first).PendingOperations()
+		require.NotEmpty(t, directPending, "direct diagnostics must retain recovery truth before terminal projection")
 		pending := firstTerminal.run(t, context.Background(), "diagnostics", "pending")
 		require.Contains(t, pending.stdout, "diagnostics pending")
 		require.Contains(t, pending.stdout, "operation: op-1")
@@ -206,7 +210,7 @@ func TestTerminalNetworkSurfaceLifecycle(t *testing.T) {
 		require.NotEmpty(t, records)
 		for _, record := range records {
 			record.Source = "bootstrap"
-			_, err := terminal.client.ImportRecord(context.Background(), testkit.AuthorizedRequest(&ardentsv1.ImportRecordRequest{
+			_, err := terminal.service().ImportRecord(context.Background(), testkit.AuthorizedRequest(&ardentsv1.ImportRecordRequest{
 				Record: toProtoDiscoveryRecord(record),
 			}))
 			require.NoError(t, err)
@@ -352,7 +356,7 @@ func TestTerminalServiceAndDataSurfaceReadiness(t *testing.T) {
 			return true, ""
 		})
 
-		transfers, err := terminal.client.ListTransfers(context.Background(), testkit.AuthorizedRequest(&ardentsv1.ListTransfersRequest{}))
+		transfers, err := terminal.service().ListTransfers(context.Background(), testkit.AuthorizedRequest(&ardentsv1.ListTransfersRequest{}))
 		require.NoError(t, err)
 		transfer := findTransferByResource(t, transfers.Msg.GetTransfers(), stored.Reference.String())
 
@@ -393,6 +397,14 @@ type terminalHarness struct {
 	signerFile    string
 	nodePrincipal string
 	client        cliclient.Service
+	authPacer     *terminalAuthPacer
+}
+
+type terminalAuthPacer struct {
+	mu                 sync.Mutex
+	begins             int
+	nextAllowed        time.Time
+	persistentReserved bool
 }
 
 type terminalResult struct {
@@ -407,11 +419,15 @@ func newTerminalHarness(t *testing.T, runtime *runtimeprocess.Node) terminalHarn
 	return terminalHarness{
 		addr: fixture.Addr, signerFile: fixture.SignerFile,
 		nodePrincipal: fixture.NodePrincipal, client: fixture.Client,
+		// Fixture provisioning performs enrollment-proof and session Begin
+		// calls against the same in-process Unix source before CLI commands.
+		authPacer: &terminalAuthPacer{begins: 2},
 	}
 }
 
 func (h terminalHarness) run(t *testing.T, ctx context.Context, args ...string) terminalResult {
 	t.Helper()
+	h.authPacer.wait()
 
 	t.Setenv("ARDENTS_ADDR", h.addr)
 	t.Setenv("ARDENTS_SIGNER_FILE", h.signerFile)
@@ -424,6 +440,52 @@ func (h terminalHarness) run(t *testing.T, ctx context.Context, args ...string) 
 	require.Empty(t, stderr.String())
 
 	return terminalResult{stdout: stdout.String(), stderr: stderr.String(), code: code}
+}
+
+func (h terminalHarness) service() cliclient.Service {
+	if h.authPacer != nil && h.authPacer.reservePersistent() {
+		h.authPacer.wait()
+	}
+	return h.client
+}
+
+func (p *terminalAuthPacer) reservePersistent() bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.persistentReserved {
+		return false
+	}
+	p.persistentReserved = true
+	return true
+}
+
+func (p *terminalAuthPacer) wait() {
+	if p == nil {
+		return
+	}
+	const refillSlack = 100 * time.Millisecond
+	interval := time.Minute / time.Duration(identitycontract.BeginRatePerMinute)
+
+	p.mu.Lock()
+	now := time.Now()
+	if p.begins < identitycontract.BeginRateBurst {
+		p.begins++
+		if p.begins == identitycontract.BeginRateBurst {
+			p.nextAllowed = now.Add(interval + refillSlack)
+		}
+		p.mu.Unlock()
+		return
+	}
+	target := p.nextAllowed
+	if target.Before(now) {
+		target = now
+	}
+	p.nextAllowed = target.Add(interval + refillSlack)
+	p.mu.Unlock()
+
+	if delay := time.Until(target); delay > 0 {
+		time.Sleep(delay)
+	}
 }
 
 func writeProtoJSON(t *testing.T, msg proto.Message) string {

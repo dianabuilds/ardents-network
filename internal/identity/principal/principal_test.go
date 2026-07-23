@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -23,7 +25,10 @@ type vectorFile struct {
 
 func loadVectors(t *testing.T) vectorFile {
 	t.Helper()
-	raw, err := os.ReadFile("../../../api/ardents/identity/v1/testdata/principal-id-vectors.json")
+	_, source, _, ok := runtime.Caller(0)
+	require.True(t, ok)
+	path := filepath.Clean(filepath.Join(filepath.Dir(source), "..", "..", "..", "api", "ardents", "identity", "v1", "testdata", "principal-id-vectors.json"))
+	raw, err := os.ReadFile(path)
 	require.NoError(t, err)
 	var vectors vectorFile
 	require.NoError(t, json.Unmarshal(raw, &vectors))

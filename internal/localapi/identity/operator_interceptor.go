@@ -22,6 +22,10 @@ type Admitter interface {
 	AdmitTarget(context.Context, identityaccess.TargetAttempt) (identityaccess.AuthorizedCall, error)
 }
 
+type successfulMutationRecorder interface {
+	RecordSuccessfulMutation(identityaccess.AuthorizedCall)
+}
+
 type ResourceCanonicalizer func(string, any) (identityaccess.ResourceTarget, error)
 
 type OperatorInterceptorConfig struct {
@@ -53,7 +57,9 @@ func (i *operatorInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFun
 			if err != nil {
 				return nil, err
 			}
-			return next(rpc.WithAuthorizedCall(ctx, call), request)
+			response, nextErr := next(rpc.WithAuthorizedCall(ctx, call), request)
+			i.recordSuccessfulMutation(request.Spec().Procedure, call, nextErr)
+			return response, nextErr
 		}
 		target, err := i.config.Canonicalize(request.Spec().Procedure, request.Any())
 		if err != nil {
@@ -63,7 +69,22 @@ func (i *operatorInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFun
 		if err != nil {
 			return nil, err
 		}
-		return next(rpc.WithAuthorizedCall(ctx, call), request)
+		response, nextErr := next(rpc.WithAuthorizedCall(ctx, call), request)
+		i.recordSuccessfulMutation(request.Spec().Procedure, call, nextErr)
+		return response, nextErr
+	}
+}
+
+func (i *operatorInterceptor) recordSuccessfulMutation(procedure string, call identityaccess.AuthorizedCall, dispatchErr error) {
+	if dispatchErr != nil {
+		return
+	}
+	rule, known := localauth.RuleForProcedure(procedure)
+	if !known || !rule.Mutating {
+		return
+	}
+	if recorder, ok := i.config.Access.(successfulMutationRecorder); ok {
+		recorder.RecordSuccessfulMutation(call)
 	}
 }
 

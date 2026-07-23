@@ -31,6 +31,10 @@ type Admitter interface {
 	AdmitTarget(context.Context, identityaccess.TargetAttempt) (identityaccess.AuthorizedCall, error)
 }
 
+type successfulMutationRecorder interface {
+	RecordSuccessfulMutation(identityaccess.AuthorizedCall)
+}
+
 type Config struct {
 	Access         Admitter
 	Node           string
@@ -105,7 +109,13 @@ func (i *interceptor) admitPrincipal(ctx context.Context, request connect.AnyReq
 	}
 	ctx = identityaccess.ContextWithAuthorizedCall(ctx, admitted)
 	ctx = i.config.Injector.WithAuthorizedCall(ctx, admitted)
-	return next(ctx, request)
+	response, dispatchErr := next(ctx, request)
+	if dispatchErr == nil && rule.Mutating {
+		if recorder, ok := i.config.Access.(successfulMutationRecorder); ok {
+			recorder.RecordSuccessfulMutation(admitted)
+		}
+	}
+	return response, dispatchErr
 }
 
 // parseDelegation accepts the one frozen Application presentation form. Header

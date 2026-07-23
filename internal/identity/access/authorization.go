@@ -3,6 +3,8 @@ package access
 import (
 	"context"
 	"errors"
+	"fmt"
+	"sync/atomic"
 	"time"
 
 	identitycontract "ardents/api/ardents/identity/v1"
@@ -46,6 +48,12 @@ type Attempt struct {
 	Delegation    []byte
 }
 
+func (Attempt) String() string   { return "identity access attempt [redacted]" }
+func (Attempt) GoString() string { return "identity access attempt [redacted]" }
+func (Attempt) MarshalJSON() ([]byte, error) {
+	return []byte(`{"protected":"[redacted]"}`), nil
+}
+
 type ResourceTarget struct {
 	Kind ResourceKind
 	ID   string
@@ -61,6 +69,12 @@ type TargetAttempt struct {
 	ResolveTarget func() (ResourceTarget, error)
 	Finalize      ResourceFinalizer
 	Delegation    []byte
+}
+
+func (TargetAttempt) String() string   { return "identity target attempt [redacted]" }
+func (TargetAttempt) GoString() string { return "identity target attempt [redacted]" }
+func (TargetAttempt) MarshalJSON() ([]byte, error) {
+	return []byte(`{"protected":"[redacted]"}`), nil
 }
 
 type admissionSeal struct{}
@@ -82,6 +96,8 @@ type AuthorizedCall struct {
 	action           Action
 	resource         ResourceRef
 	sessionID        string
+	deviceID         string
+	correlationID    string
 	grantIDs         []string
 	delegationID     string
 	seal             *admissionSeal
@@ -97,6 +113,7 @@ func (c AuthorizedCall) Audience() Audience    { return c.audience }
 func (c AuthorizedCall) Action() Action        { return c.action }
 func (c AuthorizedCall) Resource() ResourceRef { return c.resource }
 func (c AuthorizedCall) SessionID() string     { return c.sessionID }
+func (c AuthorizedCall) CorrelationID() string { return c.correlationID }
 func (c AuthorizedCall) GrantIDs() []string    { return append([]string(nil), c.grantIDs...) }
 func (c AuthorizedCall) DelegationID() string  { return c.delegationID }
 func (c AuthorizedCall) IsAdmitted() bool {
@@ -226,6 +243,7 @@ func (s *Service) admit(ctx context.Context, binding AuthenticationBinding, invo
 	var call AuthorizedCall
 	var session Session
 	var trace admissionTrace
+	correlationID := nextAuditCorrelationID()
 	err := s.grants.database.View(ctx, func(tx storage.ReadTransaction) error {
 		var admitErr error
 		call, session, trace, admitErr = invoke(tx, now)
@@ -233,32 +251,51 @@ func (s *Service) admit(ctx context.Context, binding AuthenticationBinding, invo
 	})
 	if err != nil {
 		if errors.Is(err, ErrUnauthenticated) {
-			s.recordAdmission("denied", "session_or_device_invalid", session, binding.Audience, trace)
+			s.recordAdmission("denied", "session_or_device_invalid", correlationID, session, binding.Audience, trace)
 			return AuthorizedCall{}, ErrUnauthenticated
 		}
 		if errors.Is(err, ErrPermissionDenied) || errors.Is(err, ErrInvalidArgument) || errors.Is(err, ErrInvalidResourceTarget) {
-			s.recordAdmission("denied", "access_denied", session, binding.Audience, trace)
+			s.recordAdmission("denied", "access_denied", correlationID, session, binding.Audience, trace)
 			return AuthorizedCall{}, err
 		}
-		s.recordAdmission("denied", "store_unavailable", session, binding.Audience, trace)
+		s.recordAdmission("denied", "store_unavailable", correlationID, session, binding.Audience, trace)
 		return AuthorizedCall{}, ErrUnavailable
 	}
-	s.recordAdmission("accepted", "access_admitted", session, call.audience, admissionTrace{
-		Actor: call.actor, Effective: call.effective, Action: call.action,
-		GrantIDs: call.GrantIDs(), DelegationID: call.delegationID,
-	})
+	call.deviceID = session.DeviceID
+	call.correlationID = correlationID
 	return call, nil
 }
 
-func (s *Service) recordAdmission(outcome, reason string, session Session, audience Audience, trace admissionTrace) {
+func (s *Service) recordAdmission(outcome, reason, correlationID string, session Session, audience Audience, trace admissionTrace) {
 	if s.audit == nil {
 		return
 	}
 	s.audit.RecordIdentityAccess(AuditEvent{
 		Outcome: outcome, Reason: reason, Principal: session.Principal, DeviceID: session.DeviceID,
 		Audience: audience, Actor: trace.Actor, Effective: trace.Effective, Action: trace.Action,
-		GrantIDs: append([]string(nil), trace.GrantIDs...), DelegationID: trace.DelegationID,
+		GrantIDs: append([]string(nil), trace.GrantIDs...), DelegationID: trace.DelegationID, CorrelationID: correlationID,
 	})
+}
+
+// RecordSuccessfulMutation is called by a protected surface only after its
+// mutating handler returns success. Admission alone never records a successful
+// event, so read-only diagnostics cannot mutate the event stream they read.
+func (s *Service) RecordSuccessfulMutation(call AuthorizedCall) {
+	if s.audit == nil || !call.IsAdmitted() || call.correlationID == "" {
+		return
+	}
+	s.audit.RecordIdentityAccess(AuditEvent{
+		Outcome: "accepted", Reason: "mutation_dispatched",
+		Principal: call.actor, DeviceID: call.deviceID, Audience: call.audience,
+		Actor: call.actor, Effective: call.effective, Action: call.action,
+		GrantIDs: call.GrantIDs(), DelegationID: call.delegationID, CorrelationID: call.correlationID,
+	})
+}
+
+var auditCorrelationSequence atomic.Uint64
+
+func nextAuditCorrelationID() string {
+	return fmt.Sprintf("c1_%016x", auditCorrelationSequence.Add(1))
 }
 
 // admitInTransaction repeats all mutable authority checks in the supplied

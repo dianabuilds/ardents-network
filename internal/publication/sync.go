@@ -25,6 +25,10 @@ func (m *Manager) SyncDesiredLocked(ctx context.Context) error {
 		return err
 	}
 	m.publicationAttempted = true
+	if m.trans == nil || m.trans.State() == "stopped" {
+		m.networkPublished = false
+		return nil
+	}
 	if err := m.publishDiscoveryEntriesWithCompensationLocked(ctx, previousEntries); err != nil {
 		return err
 	}

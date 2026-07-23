@@ -130,7 +130,12 @@ func TestRestrictedDefenseRemovesAndRestoresProviderServices(t *testing.T) {
 	scenario.Assert("restart back to steady restores provider services", func(t *testing.T) {
 		require.NoError(t, modeControl.SetModeForIntegration(t.Context(), networkapi.ModeSteady))
 		require.ElementsMatch(t,
-			[]string{"relay", "store", "filter_service", "lightpush_service"},
+			[]networkapi.TransportFeature{
+				networkapi.TransportFeatureRelay,
+				networkapi.TransportFeatureStore,
+				networkapi.TransportFeatureFilterService,
+				networkapi.TransportFeatureLightpushService,
+			},
 			provider.ProfileSnapshot().ActiveFeatures,
 		)
 		recoveredClient := startLimitedClient(t, provider, networkapi.Limits{})

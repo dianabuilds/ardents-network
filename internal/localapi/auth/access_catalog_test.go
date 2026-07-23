@@ -54,3 +54,17 @@ func TestNodeFeaturesActionIsExactAndOldActionIsAbsent(t *testing.T) {
 	_, ok = RuleForProcedure("/ardents.v1.NodeService/GetNodeCapabilities")
 	require.False(t, ok)
 }
+
+func TestProcedureMutationClassificationIsServerOwned(t *testing.T) {
+	for procedure, want := range map[string]bool{
+		"/ardents.v1.NodeService/StartNode":               true,
+		"/ardents.v1.NodeService/GetNodeStatus":           false,
+		"/ardents.v1.DiagnosticsService/ListRecentEvents": false,
+		"/ardents.v1.ContentService/PublishBlob":          true,
+		"/ardents.v1.ContentService/GetBlob":              false,
+	} {
+		rule, ok := RuleForProcedure(procedure)
+		require.True(t, ok, procedure)
+		require.Equal(t, want, rule.Mutating, procedure)
+	}
+}

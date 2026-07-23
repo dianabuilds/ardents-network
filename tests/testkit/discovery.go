@@ -73,7 +73,21 @@ func WaitForServiceMatchCount(t *testing.T, timeout time.Duration, n serviceReso
 			return false, err.Error()
 		}
 		last = result
-		return len(result.Matches) == want, fmt.Sprintf("outcome=%q matches=%d", result.Outcome, len(result.Matches))
+		detail := fmt.Sprintf("outcome=%q matches=%d", result.Outcome, len(result.Matches))
+		if reader, ok := n.(snapshotReader); ok {
+			snapshot := reader.Snapshot()
+			detail += fmt.Sprintf(
+				" node=%q workload=%q active=%d/%d",
+				snapshot.Node.State,
+				snapshot.Workload.State,
+				snapshot.Workload.Active,
+				snapshot.Workload.Desired,
+			)
+			if reason := snapshot.Diag.Health.PrimaryReason; reason != nil {
+				detail += fmt.Sprintf(" reason=%q detail=%q", reason.Code, reason.Detail)
+			}
+		}
+		return len(result.Matches) == want, detail
 	})
 
 	return last

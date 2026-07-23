@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"errors"
+	"net/http"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -131,6 +132,40 @@ func TestApplicationEnrollmentRejectsCrossNodeBeforeRootSigning(t *testing.T) {
 	require.Zero(t, signer.signed.Load())
 	require.NotContains(t, err.Error(), node)
 	require.NotContains(t, err.Error(), signer.principal)
+}
+
+func TestApplicationEnrollmentRejectsPaddedNodeAndSignerPrincipalBeforeAuthentication(t *testing.T) {
+	now := time.Unix(1_900_000_000, 0).UTC()
+	node, signer := enrollmentIdentity(t, now)
+	paddedSigner := *signer
+	paddedSigner.principal = " " + paddedSigner.principal
+	for _, testCase := range []struct {
+		name   string
+		node   string
+		signer EnrollmentSigner
+	}{
+		{name: "expected node", node: node + "\n", signer: signer},
+		{name: "signer principal", node: node, signer: &paddedSigner},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			var begins atomic.Int32
+			service := &enrollmentServiceStub{
+				begin: func(context.Context, *connect.Request[applicationidentityv1.BeginAuthenticationRequest]) (*connect.Response[applicationidentityv1.BeginAuthenticationResponse], error) {
+					begins.Add(1)
+					return nil, errors.New("must not begin authentication")
+				},
+			}
+			client := NewEnrollmentClient(http.DefaultClient, "http://localhost", testCase.signer, testCase.node, func() time.Time { return now })
+			client.service = service
+			var ticket [identitycontract.ApplicationEnrollmentTicketBytes]byte
+			ticket[0] = 1
+
+			_, err := client.Enroll(context.Background(), ticket)
+
+			require.Error(t, err)
+			require.Zero(t, begins.Load())
+		})
+	}
 }
 
 func TestApplicationEnrollmentRejectsMalformedProofAndServerErrorsRemainRedacted(t *testing.T) {

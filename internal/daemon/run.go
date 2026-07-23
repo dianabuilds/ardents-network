@@ -65,6 +65,9 @@ func Run(localAPI LocalAPIHandlerFactory, applicationAPI ApplicationAPIHandlerFa
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	if err := runtimeconfig.RejectObsoleteCredentialEnvironment(); err != nil {
+		return err
+	}
 	stateDir, err := startupStateDirectory()
 	if err != nil {
 		return fmt.Errorf("resolve state directory before startup: %w", err)
@@ -248,7 +251,18 @@ func (a identityAccessAudit) RecordIdentityAccess(event identityaccess.AuditEven
 	if a.events == nil {
 		return
 	}
-	a.events.RecordEventCommand(diagapi.RecordEventCommand{Domain: "identity_access", Type: "principal_access_" + event.Outcome, Resource: event.Audience.Node, Message: "Principal access " + event.Outcome, ReasonCode: event.Reason, Payload: map[string]any{"outcome": event.Outcome, "reason": event.Reason, "principal": event.Principal, "device": event.DeviceID, "node": event.Audience.Node, "interface": event.Audience.Interface.String(), "protocol_major": event.Audience.ProtocolMajor}})
+	a.events.RecordEventCommand(diagapi.RecordEventCommand{
+		Domain: "identity_access", Type: "principal_access_" + event.Outcome,
+		Resource: event.Audience.Node, Message: "Principal access " + event.Outcome, ReasonCode: event.Reason,
+		Payload: map[string]any{
+			"outcome": event.Outcome, "reason": event.Reason,
+			"principal": event.Principal, "device": event.DeviceID,
+			"node": event.Audience.Node, "interface": event.Audience.Interface.String(), "protocol_major": event.Audience.ProtocolMajor,
+			"action": string(event.Action), "actor": event.Actor, "effective": event.Effective,
+			"grant_ids": append([]string(nil), event.GrantIDs...), "delegation_id": event.DelegationID,
+			"correlation_id": event.CorrelationID,
+		},
+	})
 }
 
 type nodeAccessGrantIssuer struct{ node *Node }

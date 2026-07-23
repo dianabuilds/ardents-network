@@ -9,6 +9,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -36,7 +38,7 @@ func TestServerConsumesCanonicalArtifactVectors(t *testing.T) {
 		Vectors         []vector   `json:"vectors"`
 		BoundaryVectors []boundary `json:"boundary_vectors"`
 	}
-	raw, err := os.ReadFile("../../../api/ardents/identity/v1/testdata/artifact-vectors.json")
+	raw, err := os.ReadFile(artifactVectorFixturePath())
 	require.NoError(t, err)
 	require.NoError(t, json.Unmarshal(raw, &fixture))
 	require.Equal(t, uint32(1), fixture.Version)
@@ -133,6 +135,14 @@ func TestServerConsumesCanonicalArtifactVectors(t *testing.T) {
 			}
 		})
 	}
+}
+
+func artifactVectorFixturePath() string {
+	_, source, _, ok := runtime.Caller(0)
+	if !ok {
+		panic("artifact vector test source path is unavailable")
+	}
+	return filepath.Clean(filepath.Join(filepath.Dir(source), "..", "..", "..", "api", "ardents", "identity", "v1", "testdata", "artifact-vectors.json"))
 }
 
 func verifyMalformedVector(kind string, wire []byte, public ed25519.PublicKey, now time.Time, knownGrant *Artifact) error {

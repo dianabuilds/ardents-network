@@ -38,7 +38,7 @@ func New(config Config) (*Client, error) {
 	if config.Signer == nil {
 		return nil, fmt.Errorf("Application Principal session signer is required")
 	}
-	node := strings.TrimSpace(config.NodePrincipal)
+	node := config.NodePrincipal
 	if !adapter.ValidPrincipalID(node) {
 		return nil, fmt.Errorf("Application Principal sessions require a canonical Node Principal")
 	}

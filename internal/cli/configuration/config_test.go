@@ -172,7 +172,7 @@ func TestConfigResolvePrincipalSSHRequiresAbsoluteOperatorSocket(t *testing.T) {
 	}
 }
 
-func TestLegacyBearerEnvironmentCannotEnableProtectedCommands(t *testing.T) {
+func TestObsoleteBearerEnvironmentIsRejectedWithoutSecretLeak(t *testing.T) {
 	t.Setenv("ARDENTS_LEGACY_API_TOKEN", "stale-secret")
 	t.Setenv("ARDENTS_LEGACY_TOKEN_FILE", filepath.Join(t.TempDir(), "stale-token"))
 	t.Setenv("ARDENTS_API_TOKEN", "older-secret")
@@ -180,10 +180,9 @@ func TestLegacyBearerEnvironmentCannotEnableProtectedCommands(t *testing.T) {
 
 	cfg := DefaultConfig()
 	cfg.ContextFile = filepath.Join(t.TempDir(), "missing.json")
-	cfg.Addr = "http://127.0.0.1:8080"
 	err := cfg.Resolve()
-	if err == nil || !strings.Contains(err.Error(), "operator address must use a protected Unix socket") {
-		t.Fatalf("Resolve() error = %v, want legacy bearer inputs ignored", err)
+	if err == nil || !strings.Contains(err.Error(), "obsolete credential environment variable") {
+		t.Fatalf("Resolve() error = %v, want obsolete credential rejection", err)
 	}
 	for _, secret := range []string{"stale-secret", "older-secret"} {
 		if strings.Contains(err.Error(), secret) {

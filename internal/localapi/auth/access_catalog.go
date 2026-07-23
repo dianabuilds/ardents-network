@@ -14,16 +14,17 @@ type Rule struct {
 	Action       string
 	Domain       string
 	ResourceKind string
+	Mutating     bool
 }
 
 var procedureAccess = map[string]Rule{
-	ardentsv1connect.NodeServiceStartNodeProcedure:                          resourceAction("node.start", "node", "node"),
-	ardentsv1connect.NodeServiceStopNodeProcedure:                           resourceAction("node.stop", "node", "node"),
+	ardentsv1connect.NodeServiceStartNodeProcedure:                          mutationAction("node.start", "node", "node"),
+	ardentsv1connect.NodeServiceStopNodeProcedure:                           mutationAction("node.stop", "node", "node"),
 	ardentsv1connect.NodeServiceGetNodeStatusProcedure:                      resourceAction("node.status", "node", "node"),
 	ardentsv1connect.NodeServiceGetNodeFeaturesProcedure:                    resourceAction("node.features", "node", "node"),
 	ardentsv1connect.NodeServiceGetNodeRuntimeProcedure:                     resourceAction("node.runtime", "node", "node"),
 	ardentsv1connect.ConfigurationServiceGetEffectiveConfigurationProcedure: resourceAction("config.effective", "config", "configuration"),
-	ardentsv1connect.ConfigurationServiceReloadConfigurationProcedure:       resourceAction("config.reload", "config", "configuration"),
+	ardentsv1connect.ConfigurationServiceReloadConfigurationProcedure:       mutationAction("config.reload", "config", "configuration"),
 	ardentsv1connect.NodeServiceStreamNodeEventsProcedure:                   resourceAction("node.events", "node", "node"),
 	ardentsv1connect.NetworkServiceGetNetworkStatusProcedure:                resourceAction("transport.network_status", "transport", "network"),
 	ardentsv1connect.NetworkServiceGetDiscoveryStatusProcedure:              resourceAction("discovery.status", "discovery", "discovery-status"),
@@ -33,32 +34,32 @@ var procedureAccess = map[string]Rule{
 	ardentsv1connect.NetworkServiceResolveRecordProcedure:                   resourceAction("discovery.resolve_record", "discovery", "discovery-record"),
 	ardentsv1connect.NetworkServiceResolveServiceProcedure:                  resourceAction("discovery.resolve_service", "discovery", "service"),
 	ardentsv1connect.NetworkServiceListRecordsProcedure:                     resourceAction("discovery.list_records", "discovery", "discovery-record-collection"),
-	ardentsv1connect.NetworkServiceImportRecordProcedure:                    resourceAction("discovery.import", "discovery", "discovery-record"),
-	ardentsv1connect.WorkloadServiceRegisterWorkloadProcedure:               resourceAction("workload.register", "workload", "workload"),
-	ardentsv1connect.WorkloadServiceStartWorkloadProcedure:                  resourceAction("workload.start", "workload", "workload"),
-	ardentsv1connect.WorkloadServiceStopWorkloadProcedure:                   resourceAction("workload.stop", "workload", "workload"),
-	ardentsv1connect.WorkloadServiceRestartWorkloadProcedure:                resourceAction("workload.restart", "workload", "workload"),
+	ardentsv1connect.NetworkServiceImportRecordProcedure:                    mutationAction("discovery.import", "discovery", "discovery-record"),
+	ardentsv1connect.WorkloadServiceRegisterWorkloadProcedure:               mutationAction("workload.register", "workload", "workload"),
+	ardentsv1connect.WorkloadServiceStartWorkloadProcedure:                  mutationAction("workload.start", "workload", "workload"),
+	ardentsv1connect.WorkloadServiceStopWorkloadProcedure:                   mutationAction("workload.stop", "workload", "workload"),
+	ardentsv1connect.WorkloadServiceRestartWorkloadProcedure:                mutationAction("workload.restart", "workload", "workload"),
 	ardentsv1connect.WorkloadServiceGetWorkloadStatusProcedure:              resourceAction("workload.status", "workload", "workload"),
 	ardentsv1connect.WorkloadServiceListWorkloadsProcedure:                  resourceAction("workload.list", "workload", "workload-collection"),
 	ardentsv1connect.WorkloadServiceGetHostedServiceProcedure:               resourceAction("workload.hosted_service", "workload", "service"),
 	ardentsv1connect.WorkloadServiceListHostedServicesProcedure:             resourceAction("workload.hosted_services", "workload", "service-collection"),
 	ardentsv1connect.WorkloadServiceGetServicePublicationStatusProcedure:    resourceAction("workload.service_publication", "workload", "service"),
-	ardentsv1connect.ContentServicePublishObjectProcedure:                   resourceAction("data.publish_object", "data", "content-object"),
+	ardentsv1connect.ContentServicePublishObjectProcedure:                   mutationAction("data.publish_object", "data", "content-object"),
 	ardentsv1connect.ContentServiceGetObjectProcedure:                       resourceAction("data.get_object", "data", "content-object"),
 	ardentsv1connect.ContentServiceListObjectsProcedure:                     resourceAction("data.list_objects", "data", "content-object-collection"),
-	ardentsv1connect.ContentServicePublishBlobProcedure:                     resourceAction("data.publish_blob", "data", "content-blob"),
-	ardentsv1connect.TransferServiceFetchBlobProcedure:                      resourceAction("data.fetch_blob", "data", "content-blob"),
+	ardentsv1connect.ContentServicePublishBlobProcedure:                     mutationAction("data.publish_blob", "data", "content-blob"),
+	ardentsv1connect.TransferServiceFetchBlobProcedure:                      mutationAction("data.fetch_blob", "data", "content-blob"),
 	ardentsv1connect.ContentServiceGetBlobProcedure:                         resourceAction("data.get_blob", "data", "content-blob"),
 	ardentsv1connect.ContentServiceListBlobsProcedure:                       resourceAction("data.list_blobs", "data", "content-blob-collection"),
 	ardentsv1connect.TransferServiceListBlobSourcesProcedure:                resourceAction("data.blob_sources", "data", "content-blob"),
 	ardentsv1connect.TransferServiceGetTransferProcedure:                    resourceAction("data.get_transfer", "data", "transfer"),
 	ardentsv1connect.TransferServiceListTransfersProcedure:                  resourceAction("data.list_transfers", "data", "transfer-collection"),
-	ardentsv1connect.ContentServicePublishManifestProcedure:                 resourceAction("data.publish_manifest", "data", "content-manifest"),
+	ardentsv1connect.ContentServicePublishManifestProcedure:                 mutationAction("data.publish_manifest", "data", "content-manifest"),
 	ardentsv1connect.ContentServiceGetManifestProcedure:                     resourceAction("data.get_manifest", "data", "content-manifest"),
 	ardentsv1connect.ContentServiceListManifestsProcedure:                   resourceAction("data.list_manifests", "data", "content-manifest-collection"),
-	ardentsv1connect.RetentionServiceRetainBlobProcedure:                    resourceAction("data.retain_blob", "data", "content-blob"),
-	ardentsv1connect.RetentionServicePinBlobProcedure:                       resourceAction("data.pin_blob", "data", "content-blob"),
-	ardentsv1connect.RetentionServiceDropBlobProcedure:                      resourceAction("data.drop_blob", "data", "content-blob"),
+	ardentsv1connect.RetentionServiceRetainBlobProcedure:                    mutationAction("data.retain_blob", "data", "content-blob"),
+	ardentsv1connect.RetentionServicePinBlobProcedure:                       mutationAction("data.pin_blob", "data", "content-blob"),
+	ardentsv1connect.RetentionServiceDropBlobProcedure:                      mutationAction("data.drop_blob", "data", "content-blob"),
 	ardentsv1connect.ContentServiceGetDataInventoryProcedure:                resourceAction("data.inventory", "data", "content-inventory"),
 	ardentsv1connect.DiagnosticsServiceGetDiagnosticsProcedure:              resourceAction("diagnostics.snapshot", "diagnostics", "diagnostics"),
 	ardentsv1connect.DiagnosticsServiceGetPendingOperationsProcedure:        resourceAction("diagnostics.pending_operations", "diagnostics", "operation-collection"),
@@ -69,6 +70,12 @@ var procedureAccess = map[string]Rule{
 
 func resourceAction(name, domain, kind string) Rule {
 	return Rule{Action: name, Domain: domain, ResourceKind: kind}
+}
+
+func mutationAction(name, domain, kind string) Rule {
+	rule := resourceAction(name, domain, kind)
+	rule.Mutating = true
+	return rule
 }
 
 func RuleForProcedure(procedure string) (Rule, bool) {

@@ -64,7 +64,7 @@ type EnrollmentResult struct {
 // EnrollApplication performs the one-use root possession flow over the
 // protected Application Unix listener. Key custody remains with Signer.
 func EnrollApplication(ctx context.Context, config EnrollmentConfig) (EnrollmentResult, error) {
-	if config.Signer == nil || config.Ticket.value == [identitycontract.ApplicationEnrollmentTicketBytes]byte{} || !adapter.ValidPrincipalID(strings.TrimSpace(config.NodePrincipal)) {
+	if config.Signer == nil || config.Ticket.value == [identitycontract.ApplicationEnrollmentTicketBytes]byte{} || !adapter.ValidPrincipalID(config.NodePrincipal) {
 		return EnrollmentResult{}, fmt.Errorf("Application enrollment configuration is invalid")
 	}
 	httpClient, err := unixHTTPClient(strings.TrimSpace(config.SocketPath), config.HTTPClient)

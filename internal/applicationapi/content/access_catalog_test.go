@@ -44,6 +44,7 @@ func TestApplicationContentCatalogueUsesFrozenActionsAndResources(t *testing.T) 
 		require.NoError(t, err)
 		require.Equal(t, test.action, rule.Action)
 		require.Equal(t, test.kind, rule.ResourceKind)
+		require.Equal(t, test.action == applicationcontent.ActionPut, rule.Mutating)
 	}
 
 	_, err := applicationcontent.RuleForProcedure("/ardents.application.v1.ContentService/Delete")

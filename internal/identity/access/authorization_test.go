@@ -90,6 +90,44 @@ func TestAdmitDirectGrantReturnsSealedActorEffectiveFacts(t *testing.T) {
 	require.False(t, (AuthorizedCall{}).IsAdmitted())
 }
 
+func TestAuditRecordsDenialAndSuccessfulMutationButNotReadAdmission(t *testing.T) {
+	f := newServiceFixture(t)
+	secret := f.sessionSecret()
+	grant := f.grant([]string{"node.status"}, nodeScope())
+	resource, err := NewResourceRef(f.nodeID, ResourceOwner{}, "node", "")
+	require.NoError(t, err)
+	var events []AuditEvent
+	f.service.audit = AuditSinkFunc(func(event AuditEvent) { events = append(events, event) })
+
+	readCall, err := f.service.Admit(f.ctx, Attempt{
+		SessionSecret: secret, Binding: f.binding, Action: "node.status", Resource: resource,
+	})
+	require.NoError(t, err)
+	require.Empty(t, events, "successful read admission must not append to the event stream")
+	require.NotEmpty(t, readCall.CorrelationID())
+
+	f.service.RecordSuccessfulMutation(readCall)
+	require.Len(t, events, 1)
+	accepted := events[0]
+	require.Equal(t, "accepted", accepted.Outcome)
+	require.Equal(t, "mutation_dispatched", accepted.Reason)
+	require.Equal(t, readCall.CorrelationID(), accepted.CorrelationID)
+	require.Equal(t, f.principal, accepted.Actor)
+	require.Equal(t, accepted.Actor, accepted.Effective)
+	require.Equal(t, Action("node.status"), accepted.Action)
+	require.Equal(t, []string{grant.ID()}, accepted.GrantIDs)
+
+	_, err = f.service.Admit(f.ctx, Attempt{
+		SessionSecret: secret, Binding: f.binding, Action: "node.start", Resource: resource,
+	})
+	require.ErrorIs(t, err, ErrPermissionDenied)
+	require.Len(t, events, 2)
+	denied := events[1]
+	require.Equal(t, "denied", denied.Outcome)
+	require.NotEmpty(t, denied.CorrelationID)
+	require.NotEqual(t, accepted.CorrelationID, denied.CorrelationID)
+}
+
 func TestAdmitTargetFinalizesServerResourceAfterIdentityDerivation(t *testing.T) {
 	f := newServiceFixture(t)
 	secret := f.sessionSecret()

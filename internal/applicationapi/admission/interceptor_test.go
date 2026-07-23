@@ -259,6 +259,7 @@ type countingAdmitter struct {
 	calls     atomic.Int32
 	presented []byte
 	lastErr   error
+	mutations []identityaccess.AuthorizedCall
 }
 
 func (a *countingAdmitter) AdmitTarget(ctx context.Context, attempt identityaccess.TargetAttempt) (identityaccess.AuthorizedCall, error) {
@@ -267,6 +268,10 @@ func (a *countingAdmitter) AdmitTarget(ctx context.Context, attempt identityacce
 	call, err := a.service.AdmitTarget(ctx, attempt)
 	a.lastErr = err
 	return call, err
+}
+
+func (a *countingAdmitter) RecordSuccessfulMutation(call identityaccess.AuthorizedCall) {
+	a.mutations = append(a.mutations, call)
 }
 
 type recordingStore struct {
@@ -356,6 +361,8 @@ func TestPrincipalContentAdmissionUsesRealAccessServiceAndPropagatesActorEffecti
 	require.NoError(t, err)
 	require.Equal(t, []byte("principal payload"), getResponse.Msg.Payload)
 	require.Equal(t, int32(2), admitter.calls.Load())
+	require.Len(t, admitter.mutations, 1)
+	require.Equal(t, identityaccess.Action("application.content.put"), admitter.mutations[0].Action())
 	require.NotEmpty(t, store.calls)
 	for _, admitted := range store.calls {
 		require.True(t, admitted.IsPrincipal())

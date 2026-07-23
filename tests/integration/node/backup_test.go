@@ -5,9 +5,14 @@ package node_test
 import (
 	"os"
 	"path/filepath"
+
+	"ardents/internal/storage"
 )
 
 func copyStoppedBackup(destination, source string) error {
+	if err := storage.EnsurePrivateDir(destination); err != nil {
+		return err
+	}
 	if err := os.CopyFS(destination, os.DirFS(source)); err != nil {
 		return err
 	}
@@ -19,6 +24,10 @@ func copyStoppedBackup(destination, source string) error {
 		if err != nil || relative == "." {
 			return err
 		}
-		return os.Chmod(filepath.Join(destination, relative), info.Mode().Perm())
+		target := filepath.Join(destination, relative)
+		if info.IsDir() {
+			return storage.EnsurePrivateDir(target)
+		}
+		return storage.ProtectPrivateFile(target)
 	})
 }
