@@ -102,7 +102,7 @@ func IdentityAccessPathInDir(dir string) string {
 }
 
 // OpenIdentityAccess opens and migrates the dedicated identity-access database.
-// It never opens or changes the legacy ardents.db file.
+// It never opens or changes the separate content and runtime database.
 func OpenIdentityAccess(ctx context.Context, dir string, schema Schema) (*Handle, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err

@@ -1,5 +1,5 @@
 // Package identity adapts Principal identity access to the protected Operator
-// Unix-socket Connect surface. It never accepts legacy bearer credentials.
+// Unix-socket Connect surface. It accepts only the Operator session scheme.
 package identity
 
 import (

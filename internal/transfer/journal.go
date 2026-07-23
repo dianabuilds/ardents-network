@@ -44,18 +44,6 @@ func (j *Journal) Load() error {
 	if err != nil {
 		return err
 	}
-	if !found {
-		var legacy struct {
-			Transfers map[string]Record `json:"transfers"`
-		}
-		legacyFound, legacyErr := storage.LoadJSON(j.path, "data", "snapshot", &legacy)
-		if legacyErr != nil {
-			return legacyErr
-		}
-		if legacyFound {
-			snapshot.Transfers = legacy.Transfers
-		}
-	}
 	if snapshot.Transfers == nil {
 		snapshot.Transfers = map[string]Record{}
 	}
