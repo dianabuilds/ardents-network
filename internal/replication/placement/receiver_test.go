@@ -1,11 +1,14 @@
 package placement_test
 
 import (
+	"crypto/ed25519"
+	"crypto/sha256"
 	"testing"
 	"time"
 
 	model "ardents/internal/content/catalog"
 	"ardents/internal/content/payload"
+	identityprincipal "ardents/internal/identity/principal"
 	"ardents/internal/replication/placement"
 
 	"github.com/stretchr/testify/require"
@@ -15,7 +18,7 @@ func TestReceiverReserveCommitAndDuplicateAreIdempotent(t *testing.T) {
 	now := time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC)
 	stored := 0
 	receiver := placement.NewReceiver(placement.ReceiverConfig{
-		NodeID: "target", MaxBytes: 1024, Now: func() time.Time { return now },
+		NodePrincipal: testPrincipal("target"), MaxBytes: 1024, Now: func() time.Time { return now },
 		Store: func(_ model.Blob, _ []byte, _ time.Time) error { stored++; return nil },
 	})
 	offer, blob, ciphertext := validOffer(t, now, "op-1", "nonce-1", []byte("encrypted-ciphertext"))
@@ -48,7 +51,7 @@ func TestReceiverReserveCommitAndDuplicateAreIdempotent(t *testing.T) {
 func TestReceiverRejectsQuotaAndUntrustedPeer(t *testing.T) {
 	now := time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC)
 	receiver := placement.NewReceiver(placement.ReceiverConfig{
-		NodeID: "target", MaxBytes: 4, Now: func() time.Time { return now },
+		NodePrincipal: testPrincipal("target"), MaxBytes: 4, Now: func() time.Time { return now },
 	})
 	offer, _, _ := validOffer(t, now, "op-quota", "nonce-q", []byte("ciphertext"))
 
@@ -58,7 +61,7 @@ func TestReceiverRejectsQuotaAndUntrustedPeer(t *testing.T) {
 	require.Equal(t, placement.ReasonQuota, denied.Reason)
 
 	receiver = placement.NewReceiver(placement.ReceiverConfig{
-		NodeID: "target", MaxBytes: 1024, Now: func() time.Time { return now },
+		NodePrincipal: testPrincipal("target"), MaxBytes: 1024, Now: func() time.Time { return now },
 	})
 	auth := validAuth("source")
 	auth.Trusted = false
@@ -70,7 +73,7 @@ func TestReceiverRejectsQuotaAndUntrustedPeer(t *testing.T) {
 func TestReceiverRejectsWrongCIDPartialCommitExpiryAndReplay(t *testing.T) {
 	now := time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC)
 	receiver := placement.NewReceiver(placement.ReceiverConfig{
-		NodeID: "target", MaxBytes: 4096, Now: func() time.Time { return now },
+		NodePrincipal: testPrincipal("target"), MaxBytes: 4096, Now: func() time.Time { return now },
 	})
 	offer, blob, ciphertext := validOffer(t, now, "op-guard", "nonce-g", []byte("ciphertext"))
 	auth := validAuth("source")
@@ -110,7 +113,7 @@ func TestReceiverRejectsWrongCIDPartialCommitExpiryAndReplay(t *testing.T) {
 func TestReceiverRejectsMutatedDuplicateReservationAndExcessiveLease(t *testing.T) {
 	now := time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC)
 	receiver := placement.NewReceiver(placement.ReceiverConfig{
-		NodeID: "target", MaxBytes: 4096, Now: func() time.Time { return now },
+		NodePrincipal: testPrincipal("target"), MaxBytes: 4096, Now: func() time.Time { return now },
 	})
 	offer, _, _ := validOffer(t, now, "op-duplicate", "nonce-d", []byte("ciphertext"))
 	auth := validAuth("source")
@@ -141,7 +144,7 @@ func TestReceiverRejectsMutatedDuplicateReservationAndExcessiveLease(t *testing.
 func TestReceiverCapacityTracksReservationsAndCommittedBytes(t *testing.T) {
 	now := time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC)
 	receiver := placement.NewReceiver(placement.ReceiverConfig{
-		NodeID: "target", MaxBytes: 4096, Now: func() time.Time { return now },
+		NodePrincipal: testPrincipal("target"), MaxBytes: 4096, Now: func() time.Time { return now },
 		Store: func(_ model.Blob, _ []byte, _ time.Time) error { return nil },
 	})
 	offer, blob, ciphertext := validOffer(t, now, "op-capacity", "nonce-c", []byte("ciphertext"))
@@ -168,7 +171,7 @@ func TestReceiverCapacityTracksReservationsAndCommittedBytes(t *testing.T) {
 func TestReceiverAcceptsCanonicalEncryptedChunkLimit(t *testing.T) {
 	now := time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC)
 	receiver := placement.NewReceiver(placement.ReceiverConfig{
-		NodeID: "target", MaxBytes: placement.MaxInlineReplicaBytes + 1024, Now: func() time.Time { return now },
+		NodePrincipal: testPrincipal("target"), MaxBytes: placement.MaxInlineReplicaBytes + 1024, Now: func() time.Time { return now },
 	})
 	offer, _, _ := validOffer(t, now, "op-canonical-chunk", "nonce-chunk", make([]byte, placement.MaxInlineReplicaBytes))
 	result, err := receiver.Reserve(offer, validAuth("source"))
@@ -176,22 +179,62 @@ func TestReceiverAcceptsCanonicalEncryptedChunkLimit(t *testing.T) {
 	require.Equal(t, placement.ReservationAccepted, result.Status)
 }
 
+func TestReceiverSnapshotRedactsTokenAndRestoreRejectsPartialReservations(t *testing.T) {
+	now := time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC)
+	receiver := placement.NewReceiver(placement.ReceiverConfig{
+		NodePrincipal: testPrincipal("target"), MaxBytes: 4096, Now: func() time.Time { return now },
+	})
+	offer, _, _ := validOffer(t, now, "op-persisted", "nonce-persisted", []byte("ciphertext"))
+	accepted, err := receiver.Reserve(offer, validAuth("source"))
+	require.NoError(t, err)
+	require.NotEmpty(t, accepted.Token)
+
+	canonical := receiver.Snapshot()
+	stored := canonical.Reservations[offer.OperationID]
+	require.Empty(t, stored.Result.Token)
+	require.NotEmpty(t, stored.TokenDigest)
+
+	valid := placement.NewReceiver(placement.ReceiverConfig{Now: func() time.Time { return now }})
+	require.NoError(t, valid.Restore(canonical))
+	require.Equal(t, offer.EncryptedSize, valid.Capacity().ReservedBytes)
+
+	tests := map[string]func(*placement.StoredReservation){
+		"missing token digest": func(item *placement.StoredReservation) { item.TokenDigest = "" },
+		"plaintext token":      func(item *placement.StoredReservation) { item.Result.Token = accepted.Token },
+		"missing protocol":     func(item *placement.StoredReservation) { item.Offer.ProtocolVersion = 0 },
+		"result mismatch":      func(item *placement.StoredReservation) { item.Result.OperationID = "other" },
+		"unknown status":       func(item *placement.StoredReservation) { item.Result.Status = "unknown" },
+	}
+	for name, mutate := range tests {
+		t.Run(name, func(t *testing.T) {
+			state := canonical
+			state.Reservations = map[string]placement.StoredReservation{offer.OperationID: stored}
+			item := state.Reservations[offer.OperationID]
+			mutate(&item)
+			state.Reservations[offer.OperationID] = item
+			restored := placement.NewReceiver(placement.ReceiverConfig{Now: func() time.Time { return now }})
+			require.Error(t, restored.Restore(state))
+			require.Empty(t, restored.Snapshot().Reservations)
+		})
+	}
+}
+
 func TestSelectTargetsUsesOnlyFreshEligibleCapacityAndDiversity(t *testing.T) {
 	now := time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC)
 	candidates := []placement.Candidate{
-		{NodeID: "owner", Trusted: true, CapabilityValid: true, PolicyAllowed: true, Usable: true, CapacityBytes: 128 * 1024, ObservedAt: now},
-		{NodeID: "good-b", FailureDomain: "b", Trusted: true, CapabilityValid: true, PolicyAllowed: true, Usable: true, CapacityBytes: 128 * 1024, ObservedAt: now},
-		{NodeID: "good-a", FailureDomain: "a", Trusted: true, CapabilityValid: true, PolicyAllowed: true, Usable: true, CapacityBytes: 128 * 1024, ObservedAt: now},
-		{NodeID: "stale", Trusted: true, CapabilityValid: true, PolicyAllowed: true, Usable: true, CapacityBytes: 128 * 1024, ObservedAt: now.Add(-16 * time.Minute)},
-		{NodeID: "untrusted", CapabilityValid: true, PolicyAllowed: true, Usable: true, CapacityBytes: 128 * 1024, ObservedAt: now},
-		{NodeID: "unavailable", Trusted: true, PolicyAllowed: true, Usable: true, DenialReason: placement.ReasonObservation},
+		{NodePrincipal: testPrincipal("owner"), Trusted: true, CapabilityValid: true, PolicyAllowed: true, Usable: true, CapacityBytes: 128 * 1024, ObservedAt: now},
+		{NodePrincipal: testPrincipal("good-b"), FailureDomain: "b", Trusted: true, CapabilityValid: true, PolicyAllowed: true, Usable: true, CapacityBytes: 128 * 1024, ObservedAt: now},
+		{NodePrincipal: testPrincipal("good-a"), FailureDomain: "a", Trusted: true, CapabilityValid: true, PolicyAllowed: true, Usable: true, CapacityBytes: 128 * 1024, ObservedAt: now},
+		{NodePrincipal: testPrincipal("stale"), Trusted: true, CapabilityValid: true, PolicyAllowed: true, Usable: true, CapacityBytes: 128 * 1024, ObservedAt: now.Add(-16 * time.Minute)},
+		{NodePrincipal: testPrincipal("untrusted"), CapabilityValid: true, PolicyAllowed: true, Usable: true, CapacityBytes: 128 * 1024, ObservedAt: now},
+		{NodePrincipal: testPrincipal("unavailable"), Trusted: true, PolicyAllowed: true, Usable: true, DenialReason: placement.ReasonObservation},
 	}
 
 	decision := placement.SelectTargets(placement.SelectionRequest{
-		OwnerNodeID: "owner", EncryptedSize: 50, Count: 2, Now: now,
+		OwnerPrincipal: testPrincipal("owner"), EncryptedSize: 50, Count: 2, Now: now,
 	}, candidates)
-	require.Equal(t, []string{"good-a", "good-b"}, decision.SelectedNodeIDs())
-	require.Contains(t, decision.Denials, placement.Denial{NodeID: "unavailable", Reason: placement.ReasonObservation})
+	require.Equal(t, []identityprincipal.ID{testPrincipal("good-a"), testPrincipal("good-b")}, decision.SelectedNodePrincipals())
+	require.Contains(t, decision.Denials, placement.Denial{NodePrincipal: testPrincipal("unavailable"), Reason: placement.ReasonObservation})
 }
 
 func validOffer(t *testing.T, now time.Time, operationID, nonce string, ciphertext []byte) (placement.ReservationOffer, model.Blob, []byte) {
@@ -209,7 +252,17 @@ func validOffer(t *testing.T, now time.Time, operationID, nonce string, cipherte
 
 func validAuth(peer string) placement.PeerAuthorization {
 	return placement.PeerAuthorization{
-		PeerID: peer, Authenticated: true, Trusted: true,
+		NodePrincipal: testPrincipal(peer), Authenticated: true, Trusted: true,
 		CapabilityValid: true, PolicyAllowed: true,
 	}
+}
+
+func testPrincipal(label string) identityprincipal.ID {
+	seed := sha256.Sum256([]byte(label))
+	private := ed25519.NewKeyFromSeed(seed[:])
+	principal, err := identityprincipal.FromEd25519PublicKey(private.Public().(ed25519.PublicKey))
+	if err != nil {
+		panic(err)
+	}
+	return principal
 }

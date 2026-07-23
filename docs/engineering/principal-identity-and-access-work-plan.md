@@ -139,7 +139,7 @@ boundary; do not deliver an entire broad workstream as one change.
 | `PIA-015A` | 002 | **Complete:** fake same-seed Device removed from Node state, summaries, discovery publication input, and Operator snapshot wire |
 | `PIA-015B` | 015A | **Complete:** final versioned kind-specific discovery records and strict retained-state validation |
 | `PIA-015C` | 015B | **Complete:** purpose-scoped trusted-Principal registry, persisted verification evidence, and generation-aware cache invalidation |
-| `PIA-016A` | 002 | Rename replication Principal targets; Waku Peer ID remains adapter-only |
+| `PIA-016A` | 002 | **Complete:** replication source/target Principals are typed and obsolete PeerID state/wire fields fail closed |
 | `PIA-016B` | 014C | Collapse domain Blob ID/CID directly into the final versioned wire/state form |
 | `PIA-016C` | 015C, 016A, 016B | Type remaining security Owners and split overloaded Capability vocabulary |
 | `PIA-017` | 010C, 011B, 014C | **Pending:** delete remaining pre-release bearer/config/SDK/provisioning paths and prove a Principal-only clean install; this adds no compatibility mode |
@@ -1034,6 +1034,16 @@ fixtures fail with a precise safe error.
 
 **Do not do:** rename actual Waku/libp2p APIs, turn WorkloadID/ServiceID into
 PrincipalID, or combine Content Reference with ownership.
+
+**PIA-016A completion evidence:** replica authorization, reservation,
+commitment, capacity, selection, health, and repair seams carry typed
+`principal.ID` values. Source authorization persists as `node_principal`; the
+retaining Node persists and projects as `target_node`. `replication/state` is
+strict schema version 1 with no pre-release `data/snapshot` fallback, and both
+persisted state and signed control bodies reject `peer_id`, `PeerID`, malformed
+Principals, unknown fields, and partial restore. The Operator snapshot exposes
+the same typed names. Actual Waku/libp2p identifiers remain confined to the
+transport adapter.
 
 ### PIA-017 — Finalize The Principal-Only Release Surface
 

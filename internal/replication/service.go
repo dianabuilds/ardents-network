@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"ardents/internal/discovery"
+	identityprincipal "ardents/internal/identity/principal"
 	"ardents/internal/transfer"
 )
 
@@ -44,7 +45,7 @@ func safeReason(err error) string {
 }
 
 type Config struct {
-	LocalNodeID          string
+	LocalNodePrincipal   identityprincipal.ID
 	Data                 DataService
 	Policy               PolicyService
 	Discovery            *discovery.Service
@@ -78,7 +79,7 @@ func New(cfg Config) *Service {
 }
 
 func (s *Service) Start(ctx context.Context) error {
-	if s == nil || s.cfg.LocalNodeID == "" || s.cfg.Data == nil || s.cfg.Policy == nil ||
+	if s == nil || s.cfg.LocalNodePrincipal.String() == "" || s.cfg.Data == nil || s.cfg.Policy == nil ||
 		s.cfg.Discovery == nil || s.cfg.Trust == nil || s.cfg.Exchange == nil || s.cfg.Identity == nil || s.cfg.PrivateKey == nil {
 		return ErrDependencies
 	}

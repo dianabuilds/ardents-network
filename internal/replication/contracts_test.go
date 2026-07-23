@@ -6,11 +6,14 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"strings"
 	"testing"
+	"time"
 
 	model "ardents/internal/content/catalog"
 	datapayload "ardents/internal/content/payload"
 	identityprincipal "ardents/internal/identity/principal"
+	"ardents/internal/replication/placement"
 	"ardents/internal/transfer"
 )
 
@@ -43,23 +46,28 @@ func TestReplicaControlSignatureBindsRoutingAndBody(t *testing.T) {
 		t.Fatal(err)
 	}
 	encodedKey := base64.StdEncoding.EncodeToString(publicKey)
-	source, err := identityprincipal.FromPublicKey(encodedKey)
+	sourceText, err := identityprincipal.FromPublicKey(encodedKey)
 	if err != nil {
 		t.Fatal(err)
 	}
-	raw, err := signControl(actionReserveOffer, "operation-1", source, "target-1", encodedKey, map[string]string{"cid": "cid-1"}, privateKey)
+	source, err := identityprincipal.Parse(sourceText)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := verifyControl(raw, "target-1"); err != nil {
+	target := replicationTestPrincipal("target-1")
+	raw, err := signControl(actionReserveOffer, "operation-1", source, target, encodedKey, map[string]string{"cid": "cid-1"}, privateKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := verifyControl(raw, target); err != nil {
 		t.Fatalf("verify signed control: %v", err)
 	}
 
 	for name, mutate := range map[string]func(*controlWire){
 		"action":    func(wire *controlWire) { wire.Action = actionCommitRequest },
 		"operation": func(wire *controlWire) { wire.OperationID = "operation-2" },
-		"source":    func(wire *controlWire) { wire.Source = "p_forged" },
-		"target":    func(wire *controlWire) { wire.Target = "target-2" },
+		"source":    func(wire *controlWire) { wire.Source = replicationTestPrincipal("forged") },
+		"target":    func(wire *controlWire) { wire.Target = replicationTestPrincipal("target-2") },
 		"body":      func(wire *controlWire) { wire.Body = json.RawMessage(`{"cid":"cid-2"}`) },
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -85,15 +93,19 @@ func TestReplicaControlForAnotherTargetIsSilentlyIgnored(t *testing.T) {
 		t.Fatal(err)
 	}
 	encodedKey := base64.StdEncoding.EncodeToString(publicKey)
-	source, err := identityprincipal.FromPublicKey(encodedKey)
+	sourceText, err := identityprincipal.FromPublicKey(encodedKey)
 	if err != nil {
 		t.Fatal(err)
 	}
-	raw, err := signControl(actionReserveOffer, "operation-1", source, "target-1", encodedKey, struct{}{}, privateKey)
+	source, err := identityprincipal.Parse(sourceText)
 	if err != nil {
 		t.Fatal(err)
 	}
-	service := New(Config{LocalNodeID: "target-2"})
+	raw, err := signControl(actionReserveOffer, "operation-1", source, replicationTestPrincipal("target-1"), encodedKey, struct{}{}, privateKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := New(Config{LocalNodePrincipal: replicationTestPrincipal("target-2")})
 	err = service.handle(context.Background(), transfer.ReplicaControlMessage{
 		OperationID: "operation-1", Action: actionReserveOffer, Payload: raw,
 	})
@@ -108,15 +120,45 @@ func TestReplicaControlRejectsWrongLocalTarget(t *testing.T) {
 		t.Fatal(err)
 	}
 	encodedKey := base64.StdEncoding.EncodeToString(publicKey)
-	source, err := identityprincipal.FromPublicKey(encodedKey)
+	sourceText, err := identityprincipal.FromPublicKey(encodedKey)
 	if err != nil {
 		t.Fatal(err)
 	}
-	raw, err := signControl(actionReserveOffer, "operation-1", source, "target-1", encodedKey, struct{}{}, privateKey)
+	source, err := identityprincipal.Parse(sourceText)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := verifyControl(raw, "target-2"); err == nil {
+	raw, err := signControl(actionReserveOffer, "operation-1", source, replicationTestPrincipal("target-1"), encodedKey, struct{}{}, privateKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := verifyControl(raw, replicationTestPrincipal("target-2")); err == nil {
 		t.Fatal("replica control for another target was accepted")
+	}
+}
+
+func TestReplicaControlBodyRejectsObsoleteCommitmentTargetFields(t *testing.T) {
+	body := healthQueryBody{Commitment: placement.Commitment{
+		OperationID: "operation", IntentVersion: 1, BlobID: "cid", CID: "cid",
+		TargetNode: replicationTestPrincipal("target"), Size: 1, State: placement.CommitmentActive,
+		LeaseStartsAt: time.Now().UTC(), LastObservedAt: time.Now().UTC(), LeaseExpiresAt: time.Now().UTC().Add(time.Hour),
+	}, RequestedLeaseExpiresAt: time.Now().UTC().Add(time.Hour)}
+	raw, err := json.Marshal(body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, oldField := range []string{"peer_id", "PeerID"} {
+		t.Run(oldField, func(t *testing.T) {
+			obsolete := strings.Replace(string(raw), "target_node", oldField, 1)
+			var decoded healthQueryBody
+			if err := decodeControlBody([]byte(obsolete), &decoded); err == nil {
+				t.Fatal("obsolete replica target field was accepted")
+			}
+		})
+	}
+	malformed := strings.Replace(string(raw), body.Commitment.TargetNode.String(), "not-a-principal", 1)
+	var decoded healthQueryBody
+	if err := decodeControlBody([]byte(malformed), &decoded); err == nil {
+		t.Fatal("malformed replica target Principal was accepted")
 	}
 }

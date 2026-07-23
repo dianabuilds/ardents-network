@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	identityprincipal "ardents/internal/identity/principal"
 	"ardents/internal/replication/availability"
 	"ardents/internal/replication/placement"
 )
@@ -78,17 +79,17 @@ type blobReplicaTruth struct {
 
 func (r *Repository) blobReplicaTruthLocked(blobID string, intentVersion uint64, now time.Time, state placement.State) blobReplicaTruth {
 	truth := blobReplicaTruth{}
-	peers := map[string]bool{}
+	peers := map[identityprincipal.ID]bool{}
 	if r.localReplicaValidLocked(blobID, now) {
-		peers[r.localNodeID] = true
+		peers[r.localNodePrincipal] = true
 		truth.valid++
 	}
 	for _, commitment := range state.Commitments {
-		if commitment.BlobID != blobID || commitment.IntentVersion != intentVersion || peers[commitment.PeerID] {
+		if commitment.BlobID != blobID || commitment.IntentVersion != intentVersion || peers[commitment.TargetNode] {
 			continue
 		}
 		if truth.observeCommitment(commitment, now) {
-			peers[commitment.PeerID] = true
+			peers[commitment.TargetNode] = true
 		}
 	}
 	return truth

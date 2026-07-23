@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	appdata "ardents/internal/content"
+	identityprincipal "ardents/internal/identity/principal"
 	"ardents/internal/replication"
 	"ardents/internal/replication/placement"
 	"ardents/internal/transfer"
@@ -59,13 +60,13 @@ func newRemoteContent(cfg ownerAssemblyConfig) *remoteContent {
 	}
 }
 
-func (r *remoteContent) SetLocalNodeID(id string) {
+func (r *remoteContent) SetLocalNodePrincipal(principal identityprincipal.ID) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	config := r.replicationConfig
-	config.LocalNodeID = id
+	config.LocalNodePrincipal = principal
 	r.replicationConfig = config
-	if id == "" {
+	if principal.String() == "" {
 		r.replication = nil
 		return
 	}
@@ -107,7 +108,11 @@ func (r *remoteContent) PlaceBlob(ctx context.Context, blobID, target string, in
 	if err != nil {
 		return replication.ReplicaCommitment{}, err
 	}
-	commitment, err := service.PlaceBlob(ctx, blobID, target, intentVersion)
+	targetPrincipal, err := identityprincipal.Parse(target)
+	if err != nil {
+		return replication.ReplicaCommitment{}, fmt.Errorf("replica target Principal is invalid")
+	}
+	commitment, err := service.PlaceBlob(ctx, blobID, targetPrincipal, intentVersion)
 	return replicaCommitmentSnapshot(commitment), err
 }
 
@@ -149,7 +154,7 @@ func (r *remoteContent) replicationService() (*replication.Service, error) {
 func replicaCommitmentModel(in replication.ReplicaCommitment) placement.Commitment {
 	return placement.Commitment{
 		OperationID: in.OperationID, IntentVersion: in.IntentVersion,
-		BlobID: in.BlobID, CID: in.CID, PeerID: in.PeerID, Size: in.Size,
+		BlobID: in.BlobID, CID: in.CID, TargetNode: in.TargetNode, Size: in.Size,
 		State: in.State, HealthReason: in.HealthReason,
 		LeaseStartsAt: in.LeaseStartsAt, LastObservedAt: in.LastObservedAt,
 		LeaseExpiresAt: in.LeaseExpiresAt,
@@ -159,7 +164,7 @@ func replicaCommitmentModel(in replication.ReplicaCommitment) placement.Commitme
 func replicaCommitmentSnapshot(in placement.Commitment) replication.ReplicaCommitment {
 	return replication.ReplicaCommitment{
 		OperationID: in.OperationID, IntentVersion: in.IntentVersion,
-		BlobID: in.BlobID, CID: in.CID, PeerID: in.PeerID, Size: in.Size,
+		BlobID: in.BlobID, CID: in.CID, TargetNode: in.TargetNode, Size: in.Size,
 		State: in.State, HealthReason: in.HealthReason,
 		LeaseStartsAt: in.LeaseStartsAt, LastObservedAt: in.LastObservedAt,
 		LeaseExpiresAt: in.LeaseExpiresAt,
@@ -169,16 +174,16 @@ func replicaCommitmentSnapshot(in placement.Commitment) replication.ReplicaCommi
 func replicaPlacementOutcomeSnapshot(in replication.PlacementOutcome) replication.ReplicaPlacementOutcome {
 	out := replication.ReplicaPlacementOutcome{
 		Decision: replication.ReplicaPlacementDecision{
-			Selected: make([]string, 0, len(in.Decision.Selected)),
+			Selected: make([]identityprincipal.ID, 0, len(in.Decision.Selected)),
 			Denials:  make([]replication.ReplicaPlacementDenial, 0, len(in.Decision.Denials)),
 		},
 		Commitments: make([]replication.ReplicaCommitment, 0, len(in.Commitments)),
 	}
 	for _, selected := range in.Decision.Selected {
-		out.Decision.Selected = append(out.Decision.Selected, selected.NodeID)
+		out.Decision.Selected = append(out.Decision.Selected, selected.NodePrincipal)
 	}
 	for _, denial := range in.Decision.Denials {
-		out.Decision.Denials = append(out.Decision.Denials, replication.ReplicaPlacementDenial{NodeID: denial.NodeID, Reason: denial.Reason})
+		out.Decision.Denials = append(out.Decision.Denials, replication.ReplicaPlacementDenial{NodePrincipal: denial.NodePrincipal, Reason: denial.Reason})
 	}
 	for _, commitment := range in.Commitments {
 		out.Commitments = append(out.Commitments, replicaCommitmentSnapshot(commitment))
@@ -214,8 +219,13 @@ func (c contentLifecycle) Load() error {
 	return c.replica.Load()
 }
 
-func (c contentLifecycle) SetLocalNodeID(id string) {
+func (c contentLifecycle) SetLocalNodeID(id string) error {
+	principal, err := identityprincipal.Parse(id)
+	if err != nil {
+		return fmt.Errorf("local Node Principal is invalid")
+	}
 	c.content.SetLocalNodeID(id)
-	c.replica.SetLocalNodeID(id)
-	c.remote.SetLocalNodeID(id)
+	c.replica.SetLocalNodePrincipal(principal)
+	c.remote.SetLocalNodePrincipal(principal)
+	return nil
 }

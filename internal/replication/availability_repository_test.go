@@ -56,7 +56,7 @@ func TestReplicaIntentReconciliationPersistsRepairAndReachesTarget(t *testing.T)
 
 	_, err = reloaded.ObserveReplicaCommitment(placement.Commitment{
 		OperationID: "commit-remote-1", IntentVersion: 1, BlobID: blob.ID, CID: blob.CID,
-		PeerID: "remote-node", Size: blob.Size, State: placement.CommitmentActive,
+		TargetNode: replicationTestPrincipal("remote-node"), Size: blob.Size, State: placement.CommitmentActive,
 		LeaseStartsAt: now, LastObservedAt: now, LeaseExpiresAt: now.Add(24 * time.Hour),
 	}, now)
 	require.NoError(t, err)
@@ -160,7 +160,7 @@ func TestReplicaAvailabilityDoesNotDeclareLossDuringCurrentLeasePartition(t *tes
 	leaseExpiry := now.Add(24 * time.Hour)
 	_, err = service.ObserveReplicaCommitment(placement.Commitment{
 		OperationID: "partitioned-commitment", IntentVersion: 1, BlobID: blob.ID, CID: blob.CID,
-		PeerID: "partitioned-peer", Size: 1, State: placement.CommitmentActive,
+		TargetNode: replicationTestPrincipal("partitioned-peer"), Size: 1, State: placement.CommitmentActive,
 		LeaseStartsAt: now.Add(-time.Hour), LastObservedAt: now.Add(-20 * time.Minute), LeaseExpiresAt: leaseExpiry,
 	}, now)
 	require.NoError(t, err)
@@ -269,7 +269,7 @@ func TestReplicaAvailabilityTreatsExpiredLeaseAsUnavailable(t *testing.T) {
 	service, root, blob := remoteAvailabilityFixture(t, now, "expired")
 	_, err := service.ObserveReplicaCommitment(placement.Commitment{
 		OperationID: "expired-commitment", IntentVersion: 1, BlobID: blob.ID, CID: blob.CID,
-		PeerID: "expired-peer", Size: 1, State: placement.CommitmentActive,
+		TargetNode: replicationTestPrincipal("expired-peer"), Size: 1, State: placement.CommitmentActive,
 		LeaseStartsAt: now.Add(-time.Hour), LastObservedAt: now, LeaseExpiresAt: now.Add(time.Minute),
 	}, now)
 	require.NoError(t, err)
@@ -286,7 +286,7 @@ func TestReplicaAvailabilityRecoversAfterPartitionRejoin(t *testing.T) {
 	service, root, blob := remoteAvailabilityFixture(t, now, "rejoin")
 	commitment := placement.Commitment{
 		OperationID: "rejoined-commitment", IntentVersion: 1, BlobID: blob.ID, CID: blob.CID,
-		PeerID: "rejoined-peer", Size: 1, State: placement.CommitmentStale,
+		TargetNode: replicationTestPrincipal("rejoined-peer"), Size: 1, State: placement.CommitmentStale,
 		LeaseStartsAt: now.Add(-time.Hour), LastObservedAt: now.Add(-20 * time.Minute), LeaseExpiresAt: now.Add(24 * time.Hour),
 	}
 	_, err := service.ObserveReplicaCommitment(commitment, now)

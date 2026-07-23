@@ -55,6 +55,13 @@ The following items form consistency groups and must not be restored partially:
    replay-digest master key. Losing either side fails closed and must not reset
    replay protection while retained private envelopes remain eligible.
 
+The `ardents.db` `replication/state` record is strict schema version 1. Replica
+reservations persist `node_principal` and commitments persist `target_node` as
+canonical `p1_` identifiers. Unversioned state, unknown fields, `peer_id`,
+`PeerID`, malformed Principals, and the removed pre-release `data/snapshot`
+location have no compatibility reader and fail startup without partially
+replacing live placement or availability state.
+
 `operations.json` is optional recovery evidence. The API token and TCP-WSS
 private key are provisioned from deployment secret management and are not part
 of the node-state archive.

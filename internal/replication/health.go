@@ -2,7 +2,6 @@ package replication
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -14,7 +13,7 @@ import (
 const replicaLeaseDuration = 24 * time.Hour
 
 func (s *Service) ProbeReplica(ctx context.Context, commitment placement.Commitment) (placement.Commitment, error) {
-	if commitment.State != placement.CommitmentActive || commitment.PeerID == "" || commitment.PeerID == s.cfg.LocalNodeID {
+	if commitment.State != placement.CommitmentActive || commitment.TargetNode.String() == "" || commitment.TargetNode.Equal(s.cfg.LocalNodePrincipal) {
 		return placement.Commitment{}, fmt.Errorf("replica health target is invalid")
 	}
 	operationID, _, err := operationIdentity()
@@ -29,15 +28,15 @@ func (s *Service) ProbeReplica(ctx context.Context, commitment placement.Commitm
 	now := s.cfg.Now().UTC()
 	requestedExpiry := now.Add(replicaLeaseDuration)
 	body := healthQueryBody{Commitment: commitment, RequestedLeaseExpiresAt: requestedExpiry}
-	if err := s.publishControl(ctx, actionHealthQuery, operationID, commitment.PeerID, body); err != nil {
+	if err := s.publishControl(ctx, actionHealthQuery, operationID, commitment.TargetNode, body); err != nil {
 		return placement.Commitment{}, s.markProbeStale(commitment, err)
 	}
-	wire, err := s.awaitControl(ctx, responses, actionHealthResult, commitment.PeerID)
+	wire, err := s.awaitControl(ctx, responses, actionHealthResult, commitment.TargetNode)
 	if err != nil {
 		return placement.Commitment{}, s.markProbeStale(commitment, err)
 	}
 	var result healthResultBody
-	if err := json.Unmarshal(wire.Body, &result); err != nil {
+	if err := decodeControlBody(wire.Body, &result); err != nil {
 		return placement.Commitment{}, s.markProbeStale(commitment, err)
 	}
 	if err := validateHealthResult(commitment, requestedExpiry, result, now); err != nil {
@@ -91,11 +90,11 @@ func validateHealthResult(previous placement.Commitment, requestedExpiry time.Ti
 
 func (s *Service) handleHealthQuery(ctx context.Context, wire controlWire) error {
 	var query healthQueryBody
-	if err := json.Unmarshal(wire.Body, &query); err != nil {
+	if err := decodeControlBody(wire.Body, &query); err != nil {
 		return err
 	}
 	now := s.cfg.Now().UTC()
-	if query.Commitment.PeerID != s.cfg.LocalNodeID || !query.RequestedLeaseExpiresAt.After(now) ||
+	if !query.Commitment.TargetNode.Equal(s.cfg.LocalNodePrincipal) || !query.RequestedLeaseExpiresAt.After(now) ||
 		query.RequestedLeaseExpiresAt.After(now.Add(replicaLeaseDuration)) {
 		return fmt.Errorf("replica health query binding is invalid")
 	}
@@ -145,6 +144,6 @@ func healthStatus(state string) string {
 
 func sameHealthCommitment(left, right placement.Commitment) bool {
 	return left.OperationID == right.OperationID && left.IntentVersion == right.IntentVersion &&
-		left.BlobID == right.BlobID && left.CID == right.CID && left.PeerID == right.PeerID &&
+		left.BlobID == right.BlobID && left.CID == right.CID && left.TargetNode.Equal(right.TargetNode) &&
 		left.Size == right.Size && left.LeaseStartsAt.Equal(right.LeaseStartsAt)
 }

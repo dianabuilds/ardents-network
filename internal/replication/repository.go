@@ -7,6 +7,7 @@ import (
 	"time"
 
 	model "ardents/internal/content/catalog"
+	identityprincipal "ardents/internal/identity/principal"
 	"ardents/internal/replication/availability"
 	"ardents/internal/replication/placement"
 	"ardents/internal/storage"
@@ -31,19 +32,37 @@ type RepositoryConfig struct {
 }
 
 type repositorySnapshot struct {
-	Placement    placement.State    `json:"placement"`
-	Availability availability.State `json:"availability"`
+	SchemaVersion uint32             `json:"schema_version"`
+	Placement     placement.State    `json:"placement"`
+	Availability  availability.State `json:"availability"`
+}
+
+func (s *repositorySnapshot) UnmarshalJSON(payload []byte) error {
+	type snapshotWire struct {
+		SchemaVersion *uint32             `json:"schema_version"`
+		Placement     *placement.State    `json:"placement"`
+		Availability  *availability.State `json:"availability"`
+	}
+	var wire snapshotWire
+	if err := storage.DecodeJSONStrict(payload, &wire); err != nil {
+		return err
+	}
+	if wire.SchemaVersion == nil || wire.Placement == nil || wire.Availability == nil {
+		return fmt.Errorf("replication state lacks required fields")
+	}
+	*s = repositorySnapshot{SchemaVersion: *wire.SchemaVersion, Placement: *wire.Placement, Availability: *wire.Availability}
+	return nil
 }
 
 type Repository struct {
-	mu           sync.Mutex
-	path         string
-	content      ContentRepository
-	desired      int
-	minimum      int
-	localNodeID  string
-	placement    *placement.Receiver
-	availability availability.State
+	mu                 sync.Mutex
+	path               string
+	content            ContentRepository
+	desired            int
+	minimum            int
+	localNodePrincipal identityprincipal.ID
+	placement          *placement.Receiver
+	availability       availability.State
 }
 
 func NewRepository(config RepositoryConfig) *Repository {
@@ -70,43 +89,46 @@ func (r *Repository) Load() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	var snapshot repositorySnapshot
-	found, err := storage.LoadJSON(r.path, "replication", "state", &snapshot)
+	found, err := storage.LoadJSONStrict(r.path, "replication", "state", &snapshot)
 	if err != nil {
 		return err
 	}
+	if found && snapshot.SchemaVersion != 1 {
+		return fmt.Errorf("replication state schema is unsupported")
+	}
 	if !found {
-		var legacy struct {
-			Placement    placement.State    `json:"placement"`
-			Availability availability.State `json:"availability"`
-		}
-		legacyFound, legacyErr := storage.LoadJSON(r.path, "data", "snapshot", &legacy)
-		if legacyErr != nil {
-			return legacyErr
-		}
-		if legacyFound {
-			snapshot = repositorySnapshot{Placement: legacy.Placement, Availability: legacy.Availability}
+		snapshot = repositorySnapshot{
+			SchemaVersion: 1,
+			Placement: placement.State{
+				Reservations: map[string]placement.StoredReservation{},
+				Commitments:  map[string]placement.Commitment{},
+			},
+			Availability: availability.NewState(),
 		}
 	}
-	r.availability = availability.Normalize(snapshot.Availability)
+	if snapshot.Availability.Intents == nil || snapshot.Availability.Snapshots == nil || snapshot.Availability.Repairs == nil {
+		return fmt.Errorf("replication availability collections are required")
+	}
 	if err := r.placement.Restore(snapshot.Placement); err != nil {
 		return err
 	}
+	r.availability = snapshot.Availability
 	if !found {
 		return r.saveLocked()
 	}
 	return nil
 }
 
-func (r *Repository) SetLocalNodeID(id string) {
+func (r *Repository) SetLocalNodePrincipal(principal identityprincipal.ID) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.localNodeID = id
-	r.placement.SetNodeID(id)
+	r.localNodePrincipal = principal
+	r.placement.SetNodePrincipal(principal)
 }
 
 func (r *Repository) saveLocked() error {
 	return storage.SaveJSON(r.path, "replication", "state", repositorySnapshot{
-		Placement: r.placement.Snapshot(), Availability: r.availability,
+		SchemaVersion: 1, Placement: r.placement.Snapshot(), Availability: r.availability,
 	})
 }
 
@@ -185,7 +207,7 @@ func (r *Repository) HasCurrentReplicaCommitment(blobID string) bool {
 	defer r.mu.Unlock()
 	now := time.Now().UTC()
 	for _, commitment := range r.placement.Snapshot().Commitments {
-		if commitment.BlobID == blobID && commitment.PeerID == r.localNodeID &&
+		if commitment.BlobID == blobID && commitment.TargetNode.Equal(r.localNodePrincipal) &&
 			commitment.State == placement.CommitmentActive && now.Before(commitment.LeaseExpiresAt) {
 			if _, err := r.content.GetBlobPayload(blobID); err == nil {
 				return true

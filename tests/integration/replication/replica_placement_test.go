@@ -61,9 +61,9 @@ func TestDataReplicaPlacementCommitsEncryptedCopyOverPrivateWaku(t *testing.T) {
 	outcome, err := runtimeprocess.PlaceAvailableBlobReplicasForIntegrationTest(sourceNode, ctx, blob.ID, 1, 1)
 	require.NoError(t, err)
 	require.Len(t, outcome.Commitments, 1)
-	require.Equal(t, []string{targetPrincipal}, outcome.Decision.SelectedNodeIDs())
+	require.Equal(t, targetPrincipal, outcome.Decision.SelectedNodePrincipals()[0].String())
 	commitment := outcome.Commitments[0]
-	require.Equal(t, targetPrincipal, commitment.PeerID)
+	require.Equal(t, targetPrincipal, commitment.TargetNode.String())
 	require.Equal(t, blob.CID, commitment.CID)
 	require.True(t, commitment.LeaseExpiresAt.After(time.Now().UTC()))
 

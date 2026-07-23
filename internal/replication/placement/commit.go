@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"ardents/internal/content/payload"
+	identityprincipal "ardents/internal/identity/principal"
 )
 
 func (r *Receiver) Commit(request CommitRequest, auth PeerAuthorization) (Commitment, error) {
@@ -32,14 +33,14 @@ func (r *Receiver) beginCommit(request CommitRequest, auth PeerAuthorization) (r
 	if !ok || reservation.result.Status != ReservationAccepted {
 		return reservation, Commitment{}, fmt.Errorf("accepted reservation not found")
 	}
-	if reservation.peerID != auth.PeerID || authorizationDenial(auth) != "" {
+	if !reservation.principal.Equal(auth.NodePrincipal) || authorizationDenial(auth) != "" {
 		return reservation, Commitment{}, fmt.Errorf("commit peer is not authorized")
 	}
 	if !tokenMatches(reservation.tokenDigest, request.Token) {
 		return reservation, Commitment{}, fmt.Errorf("commit token is invalid")
 	}
 	if existing, ok := r.commitments[request.OperationID]; ok {
-		if sameCommit(existing, request, auth.PeerID) {
+		if sameCommit(existing, request, auth.NodePrincipal) {
 			return reservation, existing, nil
 		}
 		return reservation, Commitment{}, fmt.Errorf("commit replay conflicts with existing operation")
@@ -64,7 +65,7 @@ func (r *Receiver) recordCommit(reservation reservation, request CommitRequest) 
 	now := r.cfg.Now().UTC()
 	commitment := Commitment{
 		OperationID: request.OperationID, IntentVersion: reservation.offer.IntentVersion,
-		BlobID: request.Blob.ID, CID: request.Blob.CID, PeerID: r.cfg.NodeID,
+		BlobID: request.Blob.ID, CID: request.Blob.CID, TargetNode: r.cfg.NodePrincipal,
 		Size: int64(len(request.Ciphertext)), State: CommitmentActive,
 		LeaseStartsAt: now, LastObservedAt: now, LeaseExpiresAt: request.LeaseExpiresAt.UTC(),
 	}
@@ -107,8 +108,8 @@ func validateCommit(offer ReservationOffer, request CommitRequest, now time.Time
 	return nil
 }
 
-func sameCommit(existing Commitment, request CommitRequest, peerID string) bool {
+func sameCommit(existing Commitment, request CommitRequest, principal identityprincipal.ID) bool {
 	return existing.OperationID == request.OperationID && existing.BlobID == request.Blob.ID &&
 		existing.CID == request.Blob.CID && existing.Size == int64(len(request.Ciphertext)) &&
-		existing.LeaseExpiresAt.Equal(request.LeaseExpiresAt.UTC()) && peerID != ""
+		existing.LeaseExpiresAt.Equal(request.LeaseExpiresAt.UTC()) && principal.String() != ""
 }

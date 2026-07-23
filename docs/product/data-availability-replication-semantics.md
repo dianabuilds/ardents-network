@@ -88,6 +88,12 @@ commit acknowledgements establish replica truth.
 
 ## 3. Eligible Peers And Placement
 
+Within the replication domain, every source, candidate, owner-local node, and
+retaining target identity is a typed Ardents Node Principal. `node_principal`
+names the authenticated requesting/source Node and `target_node` names the Node
+retaining a committed replica. A Waku/libp2p Peer ID exists only at the
+transport adapter and is never accepted in either field.
+
 A peer is eligible for a reservation only when all are true:
 
 - its identity and current network presence are authenticated and fresh;
@@ -169,10 +175,10 @@ Interrupted attempts retain valid chunks for CID-based resume; unreferenced
 
 ### 4.3 Commit Acknowledgement
 
-After durable write and CID verification, the retaining peer returns a signed
+After durable write and CID verification, the retaining Node returns a signed
 commit acknowledgement containing:
 
-- peer and Blob identity;
+- typed `target_node` Principal and Blob identity;
 - Replica Intent version;
 - reservation nonce/token digest;
 - committed encrypted size;

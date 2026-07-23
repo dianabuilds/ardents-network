@@ -18,11 +18,11 @@ func TestCapacityObservationRetriesOneTransientFailure(t *testing.T) {
 		if attempts == 1 {
 			return capacityObservation{}, errors.New("transient Waku response loss")
 		}
-		return capacityObservation{Capacity: placement.Capacity{NodeID: "peer-ready"}}, nil
+		return capacityObservation{Capacity: placement.Capacity{NodePrincipal: replicationTestPrincipal("peer-ready")}}, nil
 	})
 	require.NoError(t, err)
 	require.Equal(t, 2, attempts)
-	require.Equal(t, "peer-ready", got.Capacity.NodeID)
+	require.Equal(t, replicationTestPrincipal("peer-ready"), got.Capacity.NodePrincipal)
 }
 
 func TestRepairRetriesOnlyTransientPlacementFailures(t *testing.T) {
@@ -62,9 +62,9 @@ func repairRecordIDs(repairs []availability.RepairRecord) []string {
 
 func TestPlacementUnsatisfiedErrorAggregatesReasonsWithoutPeerIdentity(t *testing.T) {
 	err := placementUnsatisfiedError(placement.SelectionDecision{Denials: []placement.Denial{
-		{NodeID: "peer-secret-one", Reason: placement.ReasonQuota},
-		{NodeID: "peer-secret-two", Reason: placement.ReasonQuota},
-		{NodeID: "peer-secret-three", Reason: placement.ReasonObservation},
+		{NodePrincipal: replicationTestPrincipal("peer-secret-one"), Reason: placement.ReasonQuota},
+		{NodePrincipal: replicationTestPrincipal("peer-secret-two"), Reason: placement.ReasonQuota},
+		{NodePrincipal: replicationTestPrincipal("peer-secret-three"), Reason: placement.ReasonObservation},
 	}}, 0, 1)
 
 	require.ErrorContains(t, err, "quota_refused:2")

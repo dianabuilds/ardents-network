@@ -1,11 +1,14 @@
 package replication
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
 	"ardents/internal/content/payload"
 	"ardents/internal/replication/placement"
+	"ardents/internal/storage"
 
 	"github.com/stretchr/testify/require"
 )
@@ -32,7 +35,7 @@ func TestReplicaReservationAndCommitmentPersistAcrossRestart(t *testing.T) {
 		ExpiresAt: now.Add(2 * time.Minute), Nonce: "persistent-nonce",
 	}
 	auth := placement.PeerAuthorization{
-		PeerID: "source", Authenticated: true, Trusted: true,
+		NodePrincipal: replicationTestPrincipal("source"), Authenticated: true, Trusted: true,
 		CapabilityValid: true, PolicyAllowed: true,
 	}
 
@@ -48,7 +51,8 @@ func TestReplicaReservationAndCommitmentPersistAcrossRestart(t *testing.T) {
 	require.NoError(t, restored.Load())
 	duplicate, err := restored.ReserveReplica(offer, auth)
 	require.NoError(t, err)
-	require.Equal(t, accepted, duplicate)
+	require.Equal(t, placement.ReservationAccepted, duplicate.Status)
+	require.Empty(t, duplicate.Token)
 
 	commitment, err := restored.CommitReplica(placement.CommitRequest{
 		OperationID: offer.OperationID, Token: accepted.Token, Blob: blob,
@@ -68,6 +72,76 @@ func TestReplicaReservationAndCommitmentPersistAcrossRestart(t *testing.T) {
 	raw, err := final.GetBlobPayload(cid)
 	require.NoError(t, err)
 	require.Equal(t, ciphertext, raw)
+}
+
+func TestReplicationStateRejectsMissingAvailabilityCollections(t *testing.T) {
+	dir := t.TempDir()
+	principal := replicationTestPrincipal("not-restored")
+	require.NoError(t, storage.SaveJSON(storage.PathInDir(dir), "replication", "state", map[string]any{
+		"schema_version": 1,
+		"placement": map[string]any{
+			"reserved": 0, "used": 1, "reservations": map[string]any{}, "commitments": map[string]any{
+				"operation": placement.Commitment{
+					OperationID: "operation", IntentVersion: 1, BlobID: "cid", CID: "cid", TargetNode: principal,
+					Size: 1, State: placement.CommitmentActive, LeaseStartsAt: time.Now().UTC(),
+					LastObservedAt: time.Now().UTC(), LeaseExpiresAt: time.Now().UTC().Add(time.Hour),
+				},
+			},
+		},
+		"availability": map[string]any{},
+	}))
+	service := newInDir(dir)
+	err := service.Load()
+	require.ErrorContains(t, err, "availability collections are required")
+	require.Empty(t, service.ReplicaPlacementState().Reservations)
+	require.Empty(t, service.ReplicaPlacementState().Commitments)
+}
+
+func TestReplicationStateRejectsObsoletePeerIdentityFields(t *testing.T) {
+	principal := replicationTestPrincipal("target")
+	for _, oldField := range []string{"peer_id", "PeerID"} {
+		t.Run(oldField, func(t *testing.T) {
+			dir := t.TempDir()
+			commitment := map[string]any{
+				"operation_id": "operation", "intent_version": 1, "blob_id": "cid", "cid": "cid",
+				oldField: principal.String(), "size": 1, "state": placement.CommitmentActive,
+				"lease_starts_at": time.Now().UTC(), "last_observed_at": time.Now().UTC(),
+				"lease_expires_at": time.Now().UTC().Add(time.Hour),
+			}
+			require.NoError(t, storage.SaveJSON(storage.PathInDir(dir), "replication", "state", map[string]any{
+				"schema_version": 1,
+				"placement":      map[string]any{"reserved": 0, "used": 0, "reservations": map[string]any{}, "commitments": map[string]any{"operation": commitment}},
+				"availability":   map[string]any{},
+			}))
+
+			service := newInDir(dir)
+			err := service.Load()
+			require.ErrorContains(t, err, "unknown field")
+			require.Empty(t, service.ReplicaPlacementState().Commitments)
+		})
+	}
+	t.Run("malformed target_node", func(t *testing.T) {
+		dir := t.TempDir()
+		require.NoError(t, storage.SaveJSON(storage.PathInDir(dir), "replication", "state", map[string]any{
+			"schema_version": 1,
+			"placement": map[string]any{"reserved": 0, "used": 0, "reservations": map[string]any{}, "commitments": map[string]any{
+				"operation": map[string]any{"operation_id": "operation", "intent_version": 1, "blob_id": "cid", "cid": "cid", "target_node": "not-a-principal"},
+			}},
+			"availability": map[string]any{},
+		}))
+		service := newInDir(dir)
+		require.Error(t, service.Load())
+		require.Empty(t, service.ReplicaPlacementState().Commitments)
+	})
+}
+
+func TestReplicaCommitmentJSONUsesCanonicalTargetNode(t *testing.T) {
+	commitment := placement.Commitment{OperationID: "operation", IntentVersion: 1, BlobID: "cid", CID: "cid", TargetNode: replicationTestPrincipal("target")}
+	raw, err := json.Marshal(commitment)
+	require.NoError(t, err)
+	require.Contains(t, string(raw), `"target_node":"p1_`)
+	require.False(t, strings.Contains(string(raw), "peer_id"))
+	require.False(t, strings.Contains(string(raw), "PeerID"))
 }
 
 func TestReplicaLeaseRenewalAndCorruptionPersistAcrossRestart(t *testing.T) {
@@ -119,7 +193,7 @@ func committedReplicaFixture(t *testing.T, dir string, now time.Time) (*reposito
 		IntentVersion: 1, BlobID: cid, CID: cid, EncryptedSize: int64(len(ciphertext)),
 		RequestedLease: 24 * time.Hour, ExpiresAt: now.Add(2 * time.Minute), Nonce: "renewable-nonce",
 	}
-	auth := placement.PeerAuthorization{PeerID: "source", Authenticated: true, Trusted: true, CapabilityValid: true, PolicyAllowed: true}
+	auth := placement.PeerAuthorization{NodePrincipal: replicationTestPrincipal("source"), Authenticated: true, Trusted: true, CapabilityValid: true, PolicyAllowed: true}
 	service := newInDirWithConfig(dir, ContentConfig{MaxReplicaRetentionBytes: 1024})
 	service.SetLocalNodeID("target")
 	require.NoError(t, service.Load())

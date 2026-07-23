@@ -11,6 +11,7 @@ import (
 	appdata "ardents/internal/content"
 	runtimeprocess "ardents/internal/daemon"
 	diagapi "ardents/internal/diagnostics"
+	identityprincipal "ardents/internal/identity/principal"
 	networkprivacy "ardents/internal/messaging"
 	appreplication "ardents/internal/replication"
 	"ardents/internal/replication/availability"
@@ -35,14 +36,16 @@ func TestAvailabilityFailureMatrixEndsInHonestTerminalLoss(t *testing.T) {
 	outcome, err := runtimeprocess.PlaceAvailableBlobReplicasForIntegrationTest(ownerNode, ctx, fixture.blob.ID, 1, 1)
 	require.NoError(t, err)
 	require.Len(t, outcome.Commitments, 1)
-	require.Contains(t, outcome.Decision.Denials, appreplication.ReplicaPlacementDenial{NodeID: fixture.quotaPeer, Reason: appreplication.ReplicaReasonQuota})
+	quotaPrincipal, err := identityprincipal.Parse(fixture.quotaPeer)
+	require.NoError(t, err)
+	require.Contains(t, outcome.Decision.Denials, appreplication.ReplicaPlacementDenial{NodePrincipal: quotaPrincipal, Reason: appreplication.ReplicaReasonQuota})
 	require.NoError(t, fixture.owner.ReconcileDataAvailability(ctx))
 	assertAvailability(t, fixture.owner, root.ID, "target-satisfied", 2)
 
 	commitment := outcome.Commitments[0]
-	spare := fixture.healthySpare(commitment.PeerID)
+	spare := fixture.healthySpare(commitment.TargetNode.String())
 	require.NotEmpty(t, spare)
-	require.NoError(t, os.WriteFile(e2eReplicaPayloadPath(fixture.peerDirs[commitment.PeerID], fixture.blob.ID), []byte("corrupt replica"), 0o600))
+	require.NoError(t, os.WriteFile(e2eReplicaPayloadPath(fixture.peerDirs[commitment.TargetNode.String()], fixture.blob.ID), []byte("corrupt replica"), 0o600))
 	corrupt, err := runtimeprocess.ProbeBlobReplicaForIntegrationTest(ownerNode, ctx, commitment)
 	require.Error(t, err)
 	require.Equal(t, appreplication.ReplicaCommitmentCorrupt, corrupt.State)

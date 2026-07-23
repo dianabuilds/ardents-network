@@ -47,7 +47,7 @@ func TestEncryptedAvailabilitySurvivesPeerLossRepairAndOwnerPayloadLoss(t *testi
 	require.Len(t, initial, 2)
 	lost := lossCommitment(initial, fixture.bootstrapPeer)
 	require.NotEmpty(t, lost.OperationID)
-	require.NoError(t, runtimeprocess.StopTransportForIntegrationTest(fixture.peers[lost.PeerID], context.Background()))
+	require.NoError(t, runtimeprocess.StopTransportForIntegrationTest(fixture.peers[lost.TargetNode.String()], context.Background()))
 	probeCtx, probeCancel := context.WithTimeout(t.Context(), 4*time.Second)
 	_, probeErr := runtimeprocess.ProbeBlobReplicaForIntegrationTest(ownerNode, probeCtx, lost)
 	probeCancel()
@@ -58,7 +58,7 @@ func TestEncryptedAvailabilitySurvivesPeerLossRepairAndOwnerPayloadLoss(t *testi
 
 	repaired := activeRemoteCommitments(runtimeprocess.ReplicaPlacementStateForIntegrationTest(ownerNode))
 	require.Len(t, repaired, 2)
-	require.NotContains(t, commitmentPeers(repaired), lost.PeerID)
+	require.NotContains(t, commitmentPeers(repaired), lost.TargetNode.String())
 	assertForeignCopiesAreCiphertext(t, fixture, repaired)
 
 	_, err := fixture.owner.DropBlob(fixture.blob.ID)
@@ -232,14 +232,14 @@ func activeRemoteCommitments(state appreplication.ReplicaPlacementSnapshot) []ap
 func commitmentPeers(items []appreplication.ReplicaCommitment) []string {
 	peers := make([]string, 0, len(items))
 	for _, item := range items {
-		peers = append(peers, item.PeerID)
+		peers = append(peers, item.TargetNode.String())
 	}
 	return peers
 }
 
 func lossCommitment(items []appreplication.ReplicaCommitment, bootstrapPeer string) appreplication.ReplicaCommitment {
 	for _, item := range items {
-		if item.PeerID != bootstrapPeer {
+		if item.TargetNode.String() != bootstrapPeer {
 			return item
 		}
 	}
@@ -249,11 +249,11 @@ func lossCommitment(items []appreplication.ReplicaCommitment, bootstrapPeer stri
 func assertForeignCopiesAreCiphertext(t *testing.T, fixture availabilityFixture, commitments []appreplication.ReplicaCommitment) {
 	t.Helper()
 	for _, commitment := range commitments {
-		raw, err := os.ReadFile(e2eReplicaPayloadPath(fixture.peerDirs[commitment.PeerID], fixture.blob.ID))
+		raw, err := os.ReadFile(e2eReplicaPayloadPath(fixture.peerDirs[commitment.TargetNode.String()], fixture.blob.ID))
 		require.NoError(t, err)
 		require.NotEqual(t, fixture.plaintext, raw)
 		require.False(t, bytes.Contains(raw, fixture.plaintext))
-		stored, ok := testkit.Content(fixture.peers[commitment.PeerID]).GetBlob(fixture.blob.ID)
+		stored, ok := testkit.Content(fixture.peers[commitment.TargetNode.String()]).GetBlob(fixture.blob.ID)
 		require.True(t, ok)
 		require.True(t, stored.Encrypted)
 	}

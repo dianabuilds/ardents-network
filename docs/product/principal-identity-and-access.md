@@ -1032,7 +1032,7 @@ distinction is intentional, not missing unification.
 | Operator and Application authorizers duplicate token/action logic | Remove | Keep Principal-session surface adapters separate; route both to `identity/access` |
 | Channel `CapabilityGrant` includes secrets and Waku permissions | Separate | Keep as `ChannelGrant` concept; never reuse it as Access Grant |
 | Discovery record repeats `ID`, `Subject`, `Node`, `Device`, `Owner` | Removed | Version 1 contains exactly one NodeFacts or ServiceFacts body; contradictory flat fields are not representable and pre-release shapes fail closed |
-| Replication `PeerID` often contains a Node Principal | Rename | Use `NodePrincipal`/`TargetNode`; reserve Peer ID for Waku/libp2p |
+| Replication `PeerID` often contained a Node Principal | Removed | Typed `NodePrincipal`/`TargetNode` fields are canonical; Peer ID is reserved for Waku/libp2p |
 | Blob `ID` and `CID` are constrained equal | Normalize before release | Keep one Content Reference in the domain model and remove the duplicate pre-release fields |
 | Content/workload/service `Owner` is an arbitrary string | Type and scope | Security-relevant owners become PrincipalID or typed ResourceOwner; local workload ownership remains explicitly Node-scoped |
 | Trust anchors and issuer maps duplicate public-key trust | Consolidated | One immutable purpose-scoped trusted-Principal registry with owner-specific projections; exact-purpose trust is rechecked on every use |

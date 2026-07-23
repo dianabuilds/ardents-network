@@ -3,6 +3,8 @@ package placement
 import (
 	"sort"
 	"time"
+
+	identityprincipal "ardents/internal/identity/principal"
 )
 
 const candidateFreshness = 15 * time.Minute
@@ -15,7 +17,7 @@ func SelectTargets(request SelectionRequest, candidates []Candidate) SelectionDe
 	for _, candidate := range candidates {
 		reason := candidateDenial(request, candidate)
 		if reason != "" {
-			decision.Denials = append(decision.Denials, Denial{NodeID: candidate.NodeID, Reason: reason})
+			decision.Denials = append(decision.Denials, Denial{NodePrincipal: candidate.NodePrincipal, Reason: reason})
 			continue
 		}
 		eligible = append(eligible, candidate)
@@ -24,7 +26,7 @@ func SelectTargets(request SelectionRequest, candidates []Candidate) SelectionDe
 		if eligible[i].FailureDomain != eligible[j].FailureDomain {
 			return eligible[i].FailureDomain < eligible[j].FailureDomain
 		}
-		return eligible[i].NodeID < eligible[j].NodeID
+		return eligible[i].NodePrincipal.String() < eligible[j].NodePrincipal.String()
 	})
 	decision.Selected = selectDiverse(eligible, request.Count)
 	return decision
@@ -32,9 +34,9 @@ func SelectTargets(request SelectionRequest, candidates []Candidate) SelectionDe
 
 func candidateDenial(request SelectionRequest, candidate Candidate) string {
 	switch {
-	case candidate.NodeID == "" || candidate.NodeID == request.OwnerNodeID:
+	case candidate.NodePrincipal.String() == "" || candidate.NodePrincipal.Equal(request.OwnerPrincipal):
 		return "node_ineligible"
-	case request.ExcludedNodes[candidate.NodeID]:
+	case request.ExcludedNodes[candidate.NodePrincipal]:
 		return ReasonExisting
 	case candidate.DenialReason != "":
 		return candidate.DenialReason
@@ -80,7 +82,7 @@ func selectDiverse(candidates []Candidate, count int) []Candidate {
 		}
 	}
 	for _, candidate := range candidates {
-		if containsCandidate(selected, candidate.NodeID) {
+		if containsCandidate(selected, candidate.NodePrincipal) {
 			continue
 		}
 		selected = append(selected, candidate)
@@ -91,9 +93,9 @@ func selectDiverse(candidates []Candidate, count int) []Candidate {
 	return selected
 }
 
-func containsCandidate(items []Candidate, nodeID string) bool {
+func containsCandidate(items []Candidate, principal identityprincipal.ID) bool {
 	for _, item := range items {
-		if item.NodeID == nodeID {
+		if item.NodePrincipal.Equal(principal) {
 			return true
 		}
 	}

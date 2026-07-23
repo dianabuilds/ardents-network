@@ -5,12 +5,12 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
 	model "ardents/internal/content/catalog"
+	identityprincipal "ardents/internal/identity/principal"
 	"ardents/internal/replication/placement"
 	"ardents/internal/transfer"
 )
@@ -21,7 +21,7 @@ const (
 	replicaControlRetryDelay     = 250 * time.Millisecond
 )
 
-func (s *Service) PlaceBlob(ctx context.Context, blobID, target string, intentVersion uint64) (placement.Commitment, error) {
+func (s *Service) PlaceBlob(ctx context.Context, blobID string, target identityprincipal.ID, intentVersion uint64) (placement.Commitment, error) {
 	blob, ciphertext, err := s.loadPlacementBlob(blobID)
 	if err != nil {
 		return placement.Commitment{}, err
@@ -77,7 +77,7 @@ func (s *Service) loadPlacementBlob(blobID string) (model.Blob, []byte, error) {
 	return blob, ciphertext, nil
 }
 
-func (s *Service) reserve(ctx context.Context, responses <-chan transfer.ReplicaControlMessage, target string, offer placement.ReservationOffer, blob model.Blob) (placement.ReservationResult, error) {
+func (s *Service) reserve(ctx context.Context, responses <-chan transfer.ReplicaControlMessage, target identityprincipal.ID, offer placement.ReservationOffer, blob model.Blob) (placement.ReservationResult, error) {
 	var result placement.ReservationResult
 	err := retryReplicaControl(ctx, func(attemptCtx context.Context) error {
 		if err := s.publishControl(attemptCtx, actionReserveOffer, offer.OperationID, target, reserveOfferBody{Offer: offer, Blob: blob}); err != nil {
@@ -88,7 +88,7 @@ func (s *Service) reserve(ctx context.Context, responses <-chan transfer.Replica
 			return err
 		}
 		var body reserveResultBody
-		if err := json.Unmarshal(wire.Body, &body); err != nil {
+		if err := decodeControlBody(wire.Body, &body); err != nil {
 			return err
 		}
 		if body.Result.OperationID != offer.OperationID || !body.Result.ExpiresAt.Equal(offer.ExpiresAt) {
@@ -103,7 +103,7 @@ func (s *Service) reserve(ctx context.Context, responses <-chan transfer.Replica
 	return result, err
 }
 
-func (s *Service) commit(ctx context.Context, responses <-chan transfer.ReplicaControlMessage, target string, result placement.ReservationResult, offer placement.ReservationOffer, blob model.Blob, ciphertext []byte, leaseExpiresAt time.Time) (placement.Commitment, error) {
+func (s *Service) commit(ctx context.Context, responses <-chan transfer.ReplicaControlMessage, target identityprincipal.ID, result placement.ReservationResult, offer placement.ReservationOffer, blob model.Blob, ciphertext []byte, leaseExpiresAt time.Time) (placement.Commitment, error) {
 	request := placement.CommitRequest{OperationID: offer.OperationID, Token: result.Token, Blob: blob, LeaseExpiresAt: leaseExpiresAt}
 	body := commitRequestBody{Request: request, Ciphertext: base64.RawStdEncoding.EncodeToString(ciphertext)}
 	var commitment placement.Commitment
@@ -116,21 +116,21 @@ func (s *Service) commit(ctx context.Context, responses <-chan transfer.ReplicaC
 			return err
 		}
 		var response commitResultBody
-		if err := json.Unmarshal(wire.Body, &response); err != nil {
+		if err := decodeControlBody(wire.Body, &response); err != nil {
 			return err
 		}
 		if response.Status != "committed" {
 			return fmt.Errorf("replica commit rejected: %s", response.Reason)
 		}
-		if response.Commitment.OperationID != offer.OperationID || response.Commitment.IntentVersion != offer.IntentVersion ||
+		if response.Commitment == nil || response.Commitment.OperationID != offer.OperationID || response.Commitment.IntentVersion != offer.IntentVersion ||
 			response.Commitment.BlobID != offer.BlobID || response.Commitment.CID != offer.CID ||
-			response.Commitment.PeerID != target || response.Commitment.Size != offer.EncryptedSize ||
+			!response.Commitment.TargetNode.Equal(target) || response.Commitment.Size != offer.EncryptedSize ||
 			response.Commitment.State != placement.CommitmentActive || response.Commitment.LeaseStartsAt.IsZero() ||
 			response.Commitment.LeaseStartsAt.After(response.Commitment.LeaseExpiresAt) ||
 			!response.Commitment.LeaseExpiresAt.Equal(leaseExpiresAt) {
 			return fmt.Errorf("replica commitment response binding is invalid")
 		}
-		commitment = response.Commitment
+		commitment = *response.Commitment
 		return nil
 	})
 	return commitment, err
@@ -162,7 +162,7 @@ func retryReplicaControl(ctx context.Context, roundTrip func(context.Context) er
 	return lastErr
 }
 
-func (s *Service) awaitControl(ctx context.Context, responses <-chan transfer.ReplicaControlMessage, action, source string) (controlWire, error) {
+func (s *Service) awaitControl(ctx context.Context, responses <-chan transfer.ReplicaControlMessage, action string, source identityprincipal.ID) (controlWire, error) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -171,16 +171,16 @@ func (s *Service) awaitControl(ctx context.Context, responses <-chan transfer.Re
 			if message.Action != action {
 				continue
 			}
-			wire, err := verifyControl(message.Payload, s.cfg.LocalNodeID)
-			if err == nil && wire.Source == source && wire.OperationID == message.OperationID {
+			wire, err := verifyControl(message.Payload, s.cfg.LocalNodePrincipal)
+			if err == nil && wire.Source.Equal(source) && wire.OperationID == message.OperationID {
 				return wire, nil
 			}
 		}
 	}
 }
 
-func (s *Service) authorizeTarget(target string, blob model.Blob) error {
-	entry, outcome, ok := s.cfg.Discovery.Resolve(target, "node")
+func (s *Service) authorizeTarget(target identityprincipal.ID, blob model.Blob) error {
+	entry, outcome, ok := s.cfg.Discovery.Resolve(target.String(), "node")
 	if !ok || outcome != "found" || !s.cfg.Trust.Evaluate(entry.Record).Usable {
 		return fmt.Errorf("replica target is not trusted and usable")
 	}

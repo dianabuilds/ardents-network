@@ -5,6 +5,7 @@ import (
 	"time"
 
 	model "ardents/internal/content/catalog"
+	identityprincipal "ardents/internal/identity/principal"
 )
 
 const (
@@ -41,7 +42,7 @@ type ReservationOffer struct {
 }
 
 type PeerAuthorization struct {
-	PeerID          string
+	NodePrincipal   identityprincipal.ID
 	Authenticated   bool
 	Trusted         bool
 	CapabilityValid bool
@@ -65,29 +66,29 @@ type CommitRequest struct {
 }
 
 type Commitment struct {
-	OperationID    string
-	IntentVersion  uint64
-	BlobID         string
-	CID            string
-	PeerID         string
-	Size           int64
-	State          string
-	HealthReason   string
-	LeaseStartsAt  time.Time
-	LastObservedAt time.Time
-	LeaseExpiresAt time.Time
+	OperationID    string               `json:"operation_id"`
+	IntentVersion  uint64               `json:"intent_version"`
+	BlobID         string               `json:"blob_id"`
+	CID            string               `json:"cid"`
+	TargetNode     identityprincipal.ID `json:"target_node"`
+	Size           int64                `json:"size"`
+	State          string               `json:"state"`
+	HealthReason   string               `json:"health_reason,omitempty"`
+	LeaseStartsAt  time.Time            `json:"lease_starts_at"`
+	LastObservedAt time.Time            `json:"last_observed_at"`
+	LeaseExpiresAt time.Time            `json:"lease_expires_at"`
 }
 
 type ReceiverConfig struct {
-	NodeID   string
-	MaxBytes int64
-	Now      func() time.Time
-	Random   io.Reader
-	Store    func(model.Blob, []byte, time.Time) error
+	NodePrincipal identityprincipal.ID
+	MaxBytes      int64
+	Now           func() time.Time
+	Random        io.Reader
+	Store         func(model.Blob, []byte, time.Time) error
 }
 
 type Candidate struct {
-	NodeID          string
+	NodePrincipal   identityprincipal.ID
 	FailureDomain   string
 	Trusted         bool
 	CapabilityValid bool
@@ -99,16 +100,16 @@ type Candidate struct {
 }
 
 type SelectionRequest struct {
-	OwnerNodeID   string
-	EncryptedSize int64
-	Count         int
-	Now           time.Time
-	ExcludedNodes map[string]bool
+	OwnerPrincipal identityprincipal.ID
+	EncryptedSize  int64
+	Count          int
+	Now            time.Time
+	ExcludedNodes  map[identityprincipal.ID]bool
 }
 
 type Denial struct {
-	NodeID string
-	Reason string
+	NodePrincipal identityprincipal.ID
+	Reason        string
 }
 
 type SelectionDecision struct {
@@ -117,17 +118,17 @@ type SelectionDecision struct {
 }
 
 type Capacity struct {
-	NodeID        string
-	FreeBytes     int64
-	ReservedBytes int64
-	UsedBytes     int64
-	ObservedAt    time.Time
+	NodePrincipal identityprincipal.ID `json:"node_principal"`
+	FreeBytes     int64                `json:"free_bytes"`
+	ReservedBytes int64                `json:"reserved_bytes"`
+	UsedBytes     int64                `json:"used_bytes"`
+	ObservedAt    time.Time            `json:"observed_at"`
 }
 
-func (d SelectionDecision) SelectedNodeIDs() []string {
-	out := make([]string, 0, len(d.Selected))
+func (d SelectionDecision) SelectedNodePrincipals() []identityprincipal.ID {
+	out := make([]identityprincipal.ID, 0, len(d.Selected))
 	for _, candidate := range d.Selected {
-		out = append(out, candidate.NodeID)
+		out = append(out, candidate.NodePrincipal)
 	}
 	return out
 }

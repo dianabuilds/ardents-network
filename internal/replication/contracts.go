@@ -12,6 +12,7 @@ import (
 	identityprincipal "ardents/internal/identity/principal"
 	"ardents/internal/replication/availability"
 	"ardents/internal/replication/placement"
+	"ardents/internal/storage"
 )
 
 const (
@@ -46,13 +47,13 @@ type PolicyService interface {
 }
 
 type controlWire struct {
-	Action      string          `json:"action"`
-	OperationID string          `json:"operation_id"`
-	Source      string          `json:"source"`
-	Target      string          `json:"target"`
-	PublicKey   string          `json:"public_key"`
-	Body        json.RawMessage `json:"body"`
-	Signature   string          `json:"signature"`
+	Action      string               `json:"action"`
+	OperationID string               `json:"operation_id"`
+	Source      identityprincipal.ID `json:"source"`
+	Target      identityprincipal.ID `json:"target"`
+	PublicKey   string               `json:"public_key"`
+	Body        json.RawMessage      `json:"body"`
+	Signature   string               `json:"signature"`
 }
 
 type reserveOfferBody struct {
@@ -70,9 +71,9 @@ type commitRequestBody struct {
 }
 
 type commitResultBody struct {
-	Commitment placement.Commitment `json:"commitment"`
-	Status     string               `json:"status"`
-	Reason     string               `json:"reason,omitempty"`
+	Commitment *placement.Commitment `json:"commitment,omitempty"`
+	Status     string                `json:"status"`
+	Reason     string                `json:"reason,omitempty"`
 }
 
 type capacityQueryBody struct {
@@ -80,9 +81,9 @@ type capacityQueryBody struct {
 }
 
 type capacityResultBody struct {
-	Capacity placement.Capacity `json:"capacity"`
-	Status   string             `json:"status"`
-	Reason   string             `json:"reason,omitempty"`
+	Capacity *placement.Capacity `json:"capacity,omitempty"`
+	Status   string              `json:"status"`
+	Reason   string              `json:"reason,omitempty"`
 }
 
 type healthQueryBody struct {
@@ -96,7 +97,7 @@ type healthResultBody struct {
 	Reason     string               `json:"reason,omitempty"`
 }
 
-func signControl(action, operationID, source, target, publicKey string, body any, key ed25519.PrivateKey) ([]byte, error) {
+func signControl(action, operationID string, source, target identityprincipal.ID, publicKey string, body any, key ed25519.PrivateKey) ([]byte, error) {
 	rawBody, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
@@ -110,16 +111,16 @@ func signControl(action, operationID, source, target, publicKey string, body any
 	return json.Marshal(wire)
 }
 
-func verifyControl(raw []byte, localNodeID string) (controlWire, error) {
+func verifyControl(raw []byte, localNode identityprincipal.ID) (controlWire, error) {
 	var wire controlWire
-	if err := json.Unmarshal(raw, &wire); err != nil {
+	if err := storage.DecodeJSONStrict(raw, &wire); err != nil {
 		return controlWire{}, err
 	}
-	if wire.Action == "" || wire.OperationID == "" || wire.Source == "" || wire.Target != localNodeID || len(wire.Body) == 0 {
+	if wire.Action == "" || wire.OperationID == "" || wire.Source.String() == "" || !wire.Target.Equal(localNode) || len(wire.Body) == 0 {
 		return controlWire{}, fmt.Errorf("replica control routing is invalid")
 	}
 	expected, err := identityprincipal.FromPublicKey(wire.PublicKey)
-	if err != nil || expected != wire.Source {
+	if err != nil || expected != wire.Source.String() {
 		return controlWire{}, fmt.Errorf("replica control node identity is invalid")
 	}
 	publicKey, err := base64.StdEncoding.DecodeString(wire.PublicKey)
@@ -139,7 +140,15 @@ func verifyControl(raw []byte, localNodeID string) (controlWire, error) {
 
 func canonicalControl(wire controlWire) ([]byte, error) {
 	return json.Marshal(struct {
-		Action, OperationID, Source, Target, PublicKey string
-		Body                                           json.RawMessage
+		Action      string
+		OperationID string
+		Source      identityprincipal.ID
+		Target      identityprincipal.ID
+		PublicKey   string
+		Body        json.RawMessage
 	}{wire.Action, wire.OperationID, wire.Source, wire.Target, wire.PublicKey, wire.Body})
+}
+
+func decodeControlBody(raw []byte, out any) error {
+	return storage.DecodeJSONStrict(raw, out)
 }

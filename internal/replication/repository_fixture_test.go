@@ -1,9 +1,12 @@
 package replication
 
 import (
+	"crypto/ed25519"
+	"crypto/sha256"
 	"time"
 
 	"ardents/internal/content"
+	identityprincipal "ardents/internal/identity/principal"
 	"ardents/internal/replication/availability"
 	"ardents/internal/replication/placement"
 	"ardents/internal/storage"
@@ -45,8 +48,19 @@ func (s *repositoryFixture) Load() error {
 }
 
 func (s *repositoryFixture) SetLocalNodeID(id string) {
-	s.Service.SetLocalNodeID(id)
-	s.repository.SetLocalNodeID(id)
+	principal := replicationTestPrincipal(id)
+	s.Service.SetLocalNodeID(principal.String())
+	s.repository.SetLocalNodePrincipal(principal)
+}
+
+func replicationTestPrincipal(label string) identityprincipal.ID {
+	seed := sha256.Sum256([]byte(label))
+	private := ed25519.NewKeyFromSeed(seed[:])
+	principal, err := identityprincipal.FromEd25519PublicKey(private.Public().(ed25519.PublicKey))
+	if err != nil {
+		panic(err)
+	}
+	return principal
 }
 
 func (s *repositoryFixture) SetReplicaIntent(intent ReplicaIntent) (ReplicaIntent, error) {

@@ -9,6 +9,8 @@ import (
 	"io"
 	"sync"
 	"time"
+
+	identityprincipal "ardents/internal/identity/principal"
 )
 
 const (
@@ -18,7 +20,7 @@ const (
 
 type reservation struct {
 	offer       ReservationOffer
-	peerID      string
+	principal   identityprincipal.ID
 	result      ReservationResult
 	tokenDigest [32]byte
 }
@@ -50,7 +52,7 @@ func (r *Receiver) Capacity() Capacity {
 	defer r.mu.Unlock()
 	free := max(r.cfg.MaxBytes-r.used-r.reserved, 0)
 	return Capacity{
-		NodeID: r.cfg.NodeID, FreeBytes: free, ReservedBytes: r.reserved,
+		NodePrincipal: r.cfg.NodePrincipal, FreeBytes: free, ReservedBytes: r.reserved,
 		UsedBytes: r.used, ObservedAt: r.cfg.Now().UTC(),
 	}
 }
@@ -60,7 +62,7 @@ func (r *Receiver) Reserve(offer ReservationOffer, auth PeerAuthorization) (Rese
 	defer r.mu.Unlock()
 	now := r.cfg.Now().UTC()
 	if existing, ok := r.reservations[offer.OperationID]; ok {
-		if existing.offer != offer || existing.peerID != auth.PeerID {
+		if existing.offer != offer || !existing.principal.Equal(auth.NodePrincipal) {
 			return ReservationResult{}, fmt.Errorf("reservation replay conflicts with existing operation")
 		}
 		return existing.result, nil
@@ -69,30 +71,30 @@ func (r *Receiver) Reserve(offer ReservationOffer, auth PeerAuthorization) (Rese
 		return ReservationResult{}, err
 	}
 	if offer.ProtocolVersion != ReplicaProtocolVersion || offer.EncryptedSize > MaxInlineReplicaBytes {
-		return r.rememberRejection(offer, auth.PeerID, ReasonUnsupported), nil
+		return r.rememberRejection(offer, auth.NodePrincipal, ReasonUnsupported), nil
 	}
 	if offer.RequestedLease <= 0 || offer.RequestedLease > defaultLeaseTTL {
-		return r.rememberRejection(offer, auth.PeerID, ReasonLease), nil
+		return r.rememberRejection(offer, auth.NodePrincipal, ReasonLease), nil
 	}
 	if reason := authorizationDenial(auth); reason != "" {
-		return r.rememberRejection(offer, auth.PeerID, reason), nil
+		return r.rememberRejection(offer, auth.NodePrincipal, reason), nil
 	}
 	if r.cfg.MaxBytes > 0 && r.used+r.reserved+offer.EncryptedSize > r.cfg.MaxBytes {
-		return r.rememberRejection(offer, auth.PeerID, ReasonQuota), nil
+		return r.rememberRejection(offer, auth.NodePrincipal, ReasonQuota), nil
 	}
 	token, digest, err := newToken(r.cfg.Random)
 	if err != nil {
 		return ReservationResult{}, err
 	}
 	result := ReservationResult{OperationID: offer.OperationID, Status: ReservationAccepted, Token: token, ExpiresAt: offer.ExpiresAt.UTC()}
-	r.reservations[offer.OperationID] = reservation{offer: offer, peerID: auth.PeerID, result: result, tokenDigest: digest}
+	r.reservations[offer.OperationID] = reservation{offer: offer, principal: auth.NodePrincipal, result: result, tokenDigest: digest}
 	r.reserved += offer.EncryptedSize
 	return result, nil
 }
 
-func (r *Receiver) rememberRejection(offer ReservationOffer, peerID, reason string) ReservationResult {
+func (r *Receiver) rememberRejection(offer ReservationOffer, principal identityprincipal.ID, reason string) ReservationResult {
 	result := ReservationResult{OperationID: offer.OperationID, Status: ReservationRejected, Reason: reason, ExpiresAt: offer.ExpiresAt.UTC()}
-	r.reservations[offer.OperationID] = reservation{offer: offer, peerID: peerID, result: result}
+	r.reservations[offer.OperationID] = reservation{offer: offer, principal: principal, result: result}
 	return result
 }
 
@@ -108,7 +110,7 @@ func validateOffer(offer ReservationOffer, now time.Time) error {
 
 func authorizationDenial(auth PeerAuthorization) string {
 	switch {
-	case auth.PeerID == "" || !auth.Authenticated || !auth.Trusted:
+	case auth.NodePrincipal.String() == "" || !auth.Authenticated || !auth.Trusted:
 		return ReasonUntrusted
 	case !auth.CapabilityValid:
 		return ReasonCapability

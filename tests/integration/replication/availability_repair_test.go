@@ -146,7 +146,7 @@ func replicaPayloadPath(dir, id string) string {
 
 func hasActiveCommitmentForPeer(state appreplication.ReplicaPlacementSnapshot, peer string) bool {
 	for _, commitment := range state.Commitments {
-		if commitment.PeerID == peer && commitment.State == appreplication.ReplicaCommitmentActive {
+		if commitment.TargetNode.String() == peer && commitment.State == appreplication.ReplicaCommitmentActive {
 			return true
 		}
 	}

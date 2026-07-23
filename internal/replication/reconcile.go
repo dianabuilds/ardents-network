@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	identityprincipal "ardents/internal/identity/principal"
 	"ardents/internal/replication/availability"
 	"ardents/internal/replication/placement"
 )
@@ -110,7 +111,7 @@ func (s *Service) recordAvailability(result availability.ReconcileResult) {
 func (s *Service) refreshIntentCommitments(ctx context.Context, intent availability.ReplicaIntent, now time.Time) []error {
 	var failures []error
 	for _, commitment := range s.cfg.Data.ReplicaPlacementState().Commitments {
-		if commitment.IntentVersion != intent.Version || commitment.PeerID == s.cfg.LocalNodeID || commitment.State != placement.CommitmentActive {
+		if commitment.IntentVersion != intent.Version || commitment.TargetNode.Equal(s.cfg.LocalNodePrincipal) || commitment.State != placement.CommitmentActive {
 			continue
 		}
 		if err := s.refreshCommitment(ctx, commitment, intent, now); err != nil {
@@ -121,7 +122,7 @@ func (s *Service) refreshIntentCommitments(ctx context.Context, intent availabil
 }
 
 func (s *Service) refreshCommitment(ctx context.Context, commitment placement.Commitment, intent availability.ReplicaIntent, now time.Time) error {
-	if !s.targetUsable(commitment.PeerID) {
+	if !s.targetUsable(commitment.TargetNode) {
 		_, err := s.cfg.Data.MarkReplicaCommitment(commitment.OperationID, placement.CommitmentStale, now, "peer presence unavailable")
 		return err
 	}
@@ -142,8 +143,8 @@ func (s *Service) refreshCommitment(ctx context.Context, commitment placement.Co
 	return errors.Join(err, markErr)
 }
 
-func (s *Service) targetUsable(target string) bool {
-	entry, outcome, ok := s.cfg.Discovery.Resolve(target, "node")
+func (s *Service) targetUsable(target identityprincipal.ID) bool {
+	entry, outcome, ok := s.cfg.Discovery.Resolve(target.String(), "node")
 	return ok && outcome == "found" && s.cfg.Trust.Evaluate(entry.Record).Usable
 }
 
