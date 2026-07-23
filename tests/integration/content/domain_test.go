@@ -119,7 +119,7 @@ func TestDataSubstrateFetchesEncryptedBlobFromTrustedPeer(t *testing.T) {
 	requester := testkit.StartNode(t, runtimeinfra.Config{
 		Name:    "data-requester",
 		Boot:    runtimeinfra.BootConfig{Sources: requesterBoot},
-		Trust:   runtimeinfra.TrustConfig{Anchors: []string{source.Snapshot().Ident.PublicKey}},
+		Trust:   runtimeinfra.TrustConfig{Registry: testkit.DiscoveryTrustRegistry(t, source.Snapshot().Ident.PublicKey)},
 		Data:    runtimeinfra.DataConfig{Dir: requesterDir},
 		Privacy: privacy.Receiver,
 	})

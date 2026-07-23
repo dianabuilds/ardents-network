@@ -12,6 +12,7 @@ import (
 	identityapi "ardents/internal/identity"
 	identitycapability "ardents/internal/identity/capability"
 	identityprincipal "ardents/internal/identity/principal"
+	identitytrust "ardents/internal/identity/trust"
 	networkprivacy "ardents/internal/messaging"
 	"ardents/internal/policy"
 	"ardents/tests/testkit"
@@ -29,7 +30,7 @@ func TestPrivateCapabilitySelectorsInteroperateAndRevokeAcrossNodes(t *testing.T
 	issuerPrivate := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x41}, ed25519.SeedSize))
 	issuerPublic := issuerPrivate.Public().(ed25519.PublicKey)
 	issuer := integrationPrincipalID(issuerPublic)
-	trusted := map[string]ed25519.PublicKey{issuer: issuerPublic}
+	trusted := integrationTrustRegistry(t, issuer, issuerPublic)
 	grant := signedIntegrationGrant(t, issuerPrivate, issuer, now, 1, 0x21)
 
 	left, err := identitycapability.NewService(
@@ -67,6 +68,16 @@ func TestPrivateCapabilitySelectorsInteroperateAndRevokeAcrossNodes(t *testing.T
 	rotatedMaterial := resolvedMaterial(t, left, rotatedRef, rotated, now)
 	require.NotEqual(t, leftMaterial.ContentTopic, rotatedMaterial.ContentTopic)
 	require.NotEqual(t, leftMaterial.EnvelopeKey(), rotatedMaterial.EnvelopeKey())
+}
+
+func integrationTrustRegistry(t *testing.T, principal string, public ed25519.PublicKey) *identitytrust.Registry {
+	t.Helper()
+	registry, err := identitytrust.NewRegistry([]identitytrust.Entry{{
+		Principal: principal, PublicKey: public,
+		Purposes: []identitytrust.Purpose{identitytrust.PurposeChannelIssue},
+	}})
+	require.NoError(t, err)
+	return registry
 }
 
 func integrationPrincipalID(public ed25519.PublicKey) string {

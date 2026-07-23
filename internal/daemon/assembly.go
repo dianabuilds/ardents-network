@@ -8,6 +8,8 @@ import (
 	"ardents/internal/identity"
 	identityaccess "ardents/internal/identity/access"
 	identitykeyring "ardents/internal/identity/keyring"
+	identityprincipal "ardents/internal/identity/principal"
+	identitytrust "ardents/internal/identity/trust"
 	networkprivacy "ardents/internal/messaging"
 	"ardents/internal/network"
 	noderoute "ardents/internal/network/routing"
@@ -22,38 +24,42 @@ import (
 	"ardents/internal/workload/registry"
 	"context"
 	"crypto/ed25519"
+	"encoding/base64"
+	"fmt"
 	"path/filepath"
+	"slices"
 	"sync"
 	"time"
 )
 
 type ownerAssemblyConfig struct {
-	NodeName    string
-	NodeProfile network.NodeProfile
-	BootSources []string
-	Workloads   []registry.Spec
-	Life        *diagnostics.Machine
-	Diag        *diagnostics.Recorder
-	State       *identity.Store
-	Keys        identity.KeyStore
-	Boot        *BootStatus
-	Identity    identity.Service
-	Trust       *discovery.TrustEvaluator
-	Discovery   *discovery.Service
-	Transport   network.Service
-	Privacy     *networkprivacy.Channel
-	DataPrivacy *networkprivacy.Channel
-	Route       *noderoute.State
-	Policy      apppolicy.Policy
-	Data        *content.Service
-	Replica     *replication.Repository
-	Transfer    *transfer.Journal
-	Hosting     *registry.Registry
-	Workload    *execution.Service
-	GetPrivate  func() ed25519.PrivateKey
-	SetPrivate  func(ed25519.PrivateKey)
-	Publish     func(string, map[string]any)
-	Lock        sync.Locker
+	NodeName      string
+	NodeProfile   network.NodeProfile
+	BootSources   []string
+	Workloads     []registry.Spec
+	Life          *diagnostics.Machine
+	Diag          *diagnostics.Recorder
+	State         *identity.Store
+	Keys          identity.KeyStore
+	Boot          *BootStatus
+	Identity      identity.Service
+	Trust         *discovery.TrustEvaluator
+	TrustRegistry *identitytrust.Registry
+	Discovery     *discovery.Service
+	Transport     network.Service
+	Privacy       *networkprivacy.Channel
+	DataPrivacy   *networkprivacy.Channel
+	Route         *noderoute.State
+	Policy        apppolicy.Policy
+	Data          *content.Service
+	Replica       *replication.Repository
+	Transfer      *transfer.Journal
+	Hosting       *registry.Registry
+	Workload      *execution.Service
+	GetPrivate    func() ed25519.PrivateKey
+	SetPrivate    func(ed25519.PrivateKey)
+	Publish       func(string, map[string]any)
+	Lock          sync.Locker
 }
 
 type ownerCollaborators struct {
@@ -148,6 +154,7 @@ func newRuntimeManager(cfg ownerAssemblyConfig, workloadRuntime *workload.Runtim
 		cfg.Boot,
 		cfg.Identity,
 		cfg.Trust,
+		cfg.TrustRegistry,
 		cfg.Discovery,
 		cfg.Transport,
 		data,
@@ -165,6 +172,7 @@ func runtimeCoreConfig(cfg Config) coreConfig {
 		Name:             cfg.Name,
 		DataDir:          cfg.Data.Dir,
 		Boot:             BootConfig{Sources: cloneStrings(cfg.Boot.Sources)},
+		Trust:            cfg.Trust.Registry,
 		Transport:        runtimeTransportConfig(cfg.Transport),
 		Policy:           runtimePolicyConfig(cfg.Policy),
 		PolicyService:    cfg.PolicyService,
@@ -280,6 +288,7 @@ type coreConfig struct {
 	Name             string
 	DataDir          string
 	Boot             BootConfig
+	Trust            *identitytrust.Registry
 	Transport        coreTransportConfig
 	Policy           apppolicy.Config
 	PolicyService    *apppolicy.Service
@@ -337,6 +346,7 @@ func buildCore(cfg coreConfig) coreServices {
 		executor = execution.NewDisabledExecutor()
 	}
 	contentStore := content.NewInDirWithConfig(cfg.DataDir, cfg.Data)
+	trustService := discovery.NewTrustEvaluator(cfg.Trust)
 	return coreServices{
 		Life:      diagnostics.NewMachine(),
 		Diag:      diagnostics.NewInDir(cfg.DataDir),
@@ -344,8 +354,8 @@ func buildCore(cfg coreConfig) coreServices {
 		Keys:      identitykeyring.NewKeyStoreInDir(cfg.DataDir),
 		Boot:      newBootStatus(cfg.Boot.Sources),
 		Identity:  identity.NewService(),
-		Trust:     discovery.NewTrustEvaluator(),
-		Discovery: discovery.NewInDir(cfg.DataDir),
+		Trust:     trustService,
+		Discovery: discovery.NewInDirWithTrust(cfg.DataDir, trustService),
 		Transport: networkwaku.New(network.Config{
 			NodeProfile:            cfg.Transport.NodeProfile,
 			StorePath:              cfg.Transport.StorePath,
@@ -406,7 +416,6 @@ func defaultTransportKeyPath(dataDir, explicit string) string {
 func NewNode(cfg Config) *Node {
 	cfg = normalizedConfig(cfg)
 	n := newNodeCore(cfg)
-	n.applyTrustAnchorsLocked()
 	n.configureLocalServicesLocked()
 	n.initOwnerCollaboratorsLocked()
 	n.initOperatorConfig()
@@ -437,32 +446,33 @@ func (n *Node) initOwnerCollaboratorsLocked() {
 
 func runtimeAssemblyConfig(n *Node) ownerAssemblyConfig {
 	return ownerAssemblyConfig{
-		NodeName:    n.cfg.Name,
-		NodeProfile: n.cfg.NodeProfile,
-		BootSources: cloneStrings(n.cfg.Boot.Sources),
-		Workloads:   runtimeWorkloadSpecs(n.cfg.Workload),
-		Life:        n.life,
-		Diag:        n.diag,
-		State:       n.state,
-		Keys:        n.keys,
-		Boot:        n.boot,
-		Identity:    n.ident,
-		Trust:       n.trust,
-		Discovery:   n.disco,
-		Transport:   n.trans,
-		Privacy:     n.privacy,
-		DataPrivacy: n.dataPrivacy,
-		Route:       n.route,
-		Policy:      n.policy,
-		Data:        n.data,
-		Replica:     n.replica,
-		Transfer:    n.transfers,
-		Hosting:     n.srv,
-		Workload:    n.workload,
-		GetPrivate:  func() ed25519.PrivateKey { return n.private },
-		SetPrivate:  func(key ed25519.PrivateKey) { n.private = key },
-		Publish:     n.publishLocked,
-		Lock:        &n.mu,
+		NodeName:      n.cfg.Name,
+		NodeProfile:   n.cfg.NodeProfile,
+		BootSources:   cloneStrings(n.cfg.Boot.Sources),
+		Workloads:     runtimeWorkloadSpecs(n.cfg.Workload),
+		Life:          n.life,
+		Diag:          n.diag,
+		State:         n.state,
+		Keys:          n.keys,
+		Boot:          n.boot,
+		Identity:      n.ident,
+		Trust:         n.trust,
+		TrustRegistry: n.cfg.Trust.Registry,
+		Discovery:     n.disco,
+		Transport:     n.trans,
+		Privacy:       n.privacy,
+		DataPrivacy:   n.dataPrivacy,
+		Route:         n.route,
+		Policy:        n.policy,
+		Data:          n.data,
+		Replica:       n.replica,
+		Transfer:      n.transfers,
+		Hosting:       n.srv,
+		Workload:      n.workload,
+		GetPrivate:    func() ed25519.PrivateKey { return n.private },
+		SetPrivate:    func(key ed25519.PrivateKey) { n.private = key },
+		Publish:       n.publishLocked,
+		Lock:          &n.mu,
 	}
 }
 
@@ -512,10 +522,6 @@ func newNodeCore(cfg Config) *Node {
 		workload:    core.Workload,
 		subs:        map[chan Event]struct{}{},
 	}
-}
-
-func (n *Node) applyTrustAnchorsLocked() {
-	applyTrustAnchors(n.trust, n.cfg.Trust.Anchors)
 }
 
 func (n *Node) configureLocalServicesLocked() {
@@ -634,13 +640,45 @@ func cloneStrings(in []string) []string {
 	return append([]string(nil), in...)
 }
 
-func applyTrustAnchors(trust *discovery.TrustEvaluator, anchors []string) {
-	if trust == nil {
-		return
+func replaceTrustWithLocalPrincipal(trust *discovery.TrustEvaluator, configured *identitytrust.Registry, rawPrincipal, encodedPublic string) error {
+	principalID, err := identityprincipal.Parse(rawPrincipal)
+	if err != nil {
+		return fmt.Errorf("local Principal is invalid")
 	}
-	for _, anchor := range anchors {
-		trust.Trust(anchor)
+	public, err := base64.StdEncoding.DecodeString(encodedPublic)
+	if err != nil || len(public) != ed25519.PublicKeySize || base64.StdEncoding.EncodeToString(public) != encodedPublic {
+		return fmt.Errorf("local Principal public key is invalid")
 	}
+	derived, err := identityprincipal.FromEd25519PublicKey(ed25519.PublicKey(public))
+	if err != nil || !derived.Equal(principalID) {
+		return fmt.Errorf("local Principal public key does not match")
+	}
+	var entries []identitytrust.Entry
+	if configured != nil {
+		entries = configured.Snapshot().Entries
+	}
+	found := false
+	for index := range entries {
+		if entries[index].Principal != rawPrincipal {
+			continue
+		}
+		found = true
+		if !slices.Contains(entries[index].Purposes, identitytrust.PurposeDiscoveryPublish) {
+			entries[index].Purposes = append(entries[index].Purposes, identitytrust.PurposeDiscoveryPublish)
+		}
+	}
+	if !found {
+		entries = append(entries, identitytrust.Entry{
+			Principal: rawPrincipal, PublicKey: ed25519.PublicKey(public),
+			Purposes: []identitytrust.Purpose{identitytrust.PurposeDiscoveryPublish},
+		})
+	}
+	replacement, err := identitytrust.NewRegistry(entries)
+	if err != nil {
+		return fmt.Errorf("local Principal trust is invalid: %w", err)
+	}
+	trust.ReplaceRegistry(replacement)
+	return nil
 }
 
 func configureLocalServices(

@@ -24,8 +24,7 @@ func TestManifestResponseBindsCompleteManifestToTrustedSource(t *testing.T) {
 	require.NoError(t, err)
 	disc := discovery.New("")
 	require.NoError(t, publishTransferTestNode(disc, principal, encodedKey, privateKey))
-	trust := discovery.NewTrustEvaluator()
-	trust.Trust(encodedKey)
+	trust := discovery.NewTrustEvaluator(transferTrustRegistry(t, encodedKey))
 	plan, err := chunking.Plan([]string{"chunk-1", "chunk-2"}, chunking.ManifestSpec{
 		Owner: owner, MediaType: "application/octet-stream", KeyID: "key-1", TotalPlaintextBytes: 2,
 	})

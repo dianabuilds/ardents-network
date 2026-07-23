@@ -148,7 +148,7 @@ func newRelayPrivacyFixture(t *testing.T, now time.Time) relayPrivacyFixture {
 	channelID := integrationID(0x52)
 	senderGrant := signedRelayGrant(t, issuerPrivate, issuer, senderPrivate, secret, channelID, 0x62, now)
 	receiverGrant := signedRelayGrant(t, issuerPrivate, issuer, receiverPrivate, secret, channelID, 0x72, now)
-	trusted := map[string]ed25519.PublicKey{issuer: issuerPublic}
+	trusted := integrationTrustRegistry(t, issuer, issuerPublic)
 	authority, err := identitycapability.NewService(
 		filepath.Join(t.TempDir(), "capabilities.db"), bytes.Repeat([]byte{0x82}, 32),
 		receiverGrant.SubjectPrincipal, trusted, policy.New(policy.Config{}), func() time.Time { return now },

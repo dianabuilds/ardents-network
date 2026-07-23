@@ -24,7 +24,8 @@ func TestLoadStartupStateWrapsStepFailure(t *testing.T) {
 func TestInitializeIdentityForStartupPublishesIdentityOutputs(t *testing.T) {
 	var privateSet bool
 	var localNodeID string
-	var trustedKey string
+	var trustedPrincipal, trustedKey string
+	var discoveryLoaded bool
 	var synced bool
 
 	err := InitializeIdentityForStartup(
@@ -36,13 +37,20 @@ func TestInitializeIdentityForStartupPublishesIdentityOutputs(t *testing.T) {
 		},
 		func(ed25519.PrivateKey) { privateSet = true },
 		func(nodeID string) { localNodeID = nodeID },
-		func(key string) { trustedKey = key },
+		func(principal, key string) error { trustedPrincipal, trustedKey = principal, key; return nil },
+		func() error {
+			require.Equal(t, "node-1", trustedPrincipal)
+			discoveryLoaded = true
+			return nil
+		},
 		func() { synced = true },
 	)
 
 	require.NoError(t, err)
 	require.True(t, privateSet)
 	require.Equal(t, "node-1", localNodeID)
+	require.Equal(t, "node-1", trustedPrincipal)
 	require.Equal(t, "pub-1", trustedKey)
+	require.True(t, discoveryLoaded)
 	require.True(t, synced)
 }

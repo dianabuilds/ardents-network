@@ -15,6 +15,8 @@ import (
 	"time"
 
 	identityapi "ardents/internal/identity"
+	identityprincipal "ardents/internal/identity/principal"
+	identitytrust "ardents/internal/identity/trust"
 )
 
 type Service struct {
@@ -23,7 +25,7 @@ type Service struct {
 	ledger         ledger
 	refKey         [32]byte
 	clock          func() time.Time
-	issuers        map[string]ed25519.PublicKey
+	trust          *identitytrust.Registry
 	localPrincipal string
 	admission      identityapi.CapabilityAdmission
 }
@@ -35,7 +37,7 @@ type Status struct {
 	NotAfter   time.Time
 }
 
-func NewService(path string, storeKey []byte, localPrincipal string, issuers map[string]ed25519.PublicKey, admission identityapi.CapabilityAdmission, clock func() time.Time) (*Service, error) {
+func NewService(path string, storeKey []byte, localPrincipal string, trust *identitytrust.Registry, admission identityapi.CapabilityAdmission, clock func() time.Time) (*Service, error) {
 	if !validPrincipal(localPrincipal) {
 		return nil, fmt.Errorf("local capability principal is invalid")
 	}
@@ -53,9 +55,12 @@ func NewService(path string, storeKey []byte, localPrincipal string, issuers map
 	if clock == nil {
 		clock = time.Now
 	}
+	if trust == nil {
+		trust, _ = identitytrust.NewRegistry(nil)
+	}
 	service := &Service{
 		store: store, ledger: stored, clock: clock,
-		issuers: cloneIssuers(issuers), localPrincipal: localPrincipal, admission: admission,
+		trust: trust, localPrincipal: localPrincipal, admission: admission,
 	}
 	refKey, err := hkdf.Key(sha256.New, storeKey, nil, "ardents-capability-local-reference/1", len(service.refKey))
 	if err != nil {
@@ -68,7 +73,7 @@ func NewService(path string, storeKey []byte, localPrincipal string, issuers map
 func (s *Service) ImportGrant(grant identityapi.CapabilityGrant) (identityapi.CapabilityRef, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	issuerPublic, ok := s.issuers[grant.IssuerPrincipal]
+	issuerPublic, ok := s.trustedIssuer(grant.IssuerPrincipal)
 	if !ok {
 		return "", capabilityError(CodeIssuerUntrusted, "capability issuer is not trusted")
 	}
@@ -99,7 +104,7 @@ func (s *Service) ImportGrant(grant identityapi.CapabilityGrant) (identityapi.Ca
 func (s *Service) ApplyRevocation(rev identityapi.CapabilityRevocation) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	issuerPublic, ok := s.issuers[rev.IssuerPrincipal]
+	issuerPublic, ok := s.trustedIssuer(rev.IssuerPrincipal)
 	if !ok {
 		return capabilityError(CodeIssuerUntrusted, "capability issuer is not trusted")
 	}
@@ -202,12 +207,21 @@ func cloneLedger(source ledger) ledger {
 	return out
 }
 
-func cloneIssuers(source map[string]ed25519.PublicKey) map[string]ed25519.PublicKey {
-	out := make(map[string]ed25519.PublicKey, len(source))
-	for principal, public := range source {
-		out[principal] = append(ed25519.PublicKey(nil), public...)
+func (s *Service) ReplaceTrustRegistry(registry *identitytrust.Registry) {
+	if registry == nil {
+		registry, _ = identitytrust.NewRegistry(nil)
 	}
-	return out
+	s.mu.Lock()
+	s.trust = registry
+	s.mu.Unlock()
+}
+
+func (s *Service) trustedIssuer(raw string) (ed25519.PublicKey, bool) {
+	principalID, err := identityprincipal.Parse(raw)
+	if err != nil {
+		return nil, false
+	}
+	return s.trust.Lookup(identitytrust.PurposeChannelIssue, principalID)
 }
 
 func (s *Service) rejectConflictingGrant(ref identityapi.CapabilityRef, grant identityapi.CapabilityGrant) error {
@@ -248,6 +262,9 @@ func (s *Service) checkRevocationIssuer(rev identityapi.CapabilityRevocation) er
 }
 
 func (s *Service) authorize(grant identityapi.CapabilityGrant, use identityapi.CapabilityUse, at time.Time) error {
+	if _, ok := s.trustedIssuer(grant.IssuerPrincipal); !ok {
+		return capabilityError(CodeIssuerUntrusted, "capability issuer is not trusted")
+	}
 	if use.Subject != grant.SubjectPrincipal || use.Scope != grant.Scope ||
 		use.Permission == 0 || use.Permission&^grant.Permissions != 0 {
 		return capabilityError(CodeScopeDenied, "capability subject, scope, or permission denied")
@@ -265,6 +282,9 @@ func (s *Service) authorize(grant identityapi.CapabilityGrant, use identityapi.C
 }
 
 func (s *Service) state(grant identityapi.CapabilityGrant, at time.Time) string {
+	if _, ok := s.trustedIssuer(grant.IssuerPrincipal); !ok {
+		return "issuer_untrusted"
+	}
 	if rev, ok := s.ledger.Revocations[grantIDKey(grant.GrantID)]; ok && !at.Before(rev.RevokedAt) {
 		return "revoked"
 	}

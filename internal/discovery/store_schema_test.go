@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"encoding/base64"
+	"errors"
 	"testing"
 	"time"
 
 	discoveryrecord "ardents/internal/discovery/records"
 	identityprincipal "ardents/internal/identity/principal"
+	identitytrust "ardents/internal/identity/trust"
 	"ardents/internal/storage"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/bbolt"
@@ -30,7 +32,7 @@ func TestLoadRejectsPreReleaseUnversionedDiscoverySnapshot(t *testing.T) {
 	require.Error(t, NewInDir(dir).Load())
 }
 
-func TestSnapshotV1RoundTripsNodeAndServiceRecords(t *testing.T) {
+func TestSnapshotV2RoundTripsNodeAndServiceRecords(t *testing.T) {
 	dir := t.TempDir()
 	node, key := schemaNodeRecord(t, 1, time.Now().UTC())
 	service := schemaServiceRecord(t, key, node.Node.Principal, time.Now().UTC())
@@ -45,12 +47,12 @@ func TestSnapshotV1RoundTripsNodeAndServiceRecords(t *testing.T) {
 	require.Equal(t, []Record{node, service}, reloaded.Records())
 }
 
-func TestSnapshotV1RetainsCanonicalBootstrapProvenance(t *testing.T) {
+func TestSnapshotV2RetainsCanonicalBootstrapProvenance(t *testing.T) {
 	dir := t.TempDir()
 	node, _ := schemaNodeRecord(t, 1, time.Now().UTC())
 	require.NoError(t, SaveSnapshot(PathInDir(dir), Snapshot{
-		SchemaVersion: 1,
-		Records:       []Entry{{Record: node, Source: discoveryrecord.Bootstrap, SeenAt: time.Now().UTC()}},
+		SchemaVersion: 2,
+		Records:       []Entry{{Record: node, Source: discoveryrecord.Bootstrap, SeenAt: time.Now().UTC(), Evidence: schemaEvidence(t, node)}},
 		State:         "ready",
 	}))
 	store := NewInDir(dir)
@@ -64,8 +66,8 @@ func TestLoadRetainsExpiredSignedRecordButDoesNotRouteIt(t *testing.T) {
 	node, key := schemaNodeRecord(t, 1, issued)
 	service := schemaServiceRecord(t, key, node.Node.Principal, issued)
 	require.NoError(t, SaveSnapshot(PathInDir(dir), Snapshot{
-		SchemaVersion: 1,
-		Records:       []Entry{{Record: service, Source: discoveryrecord.Local, SeenAt: issued}},
+		SchemaVersion: 2,
+		Records:       []Entry{{Record: service, Source: discoveryrecord.Local, SeenAt: issued, Evidence: schemaEvidence(t, service)}},
 		State:         "ready",
 	}))
 
@@ -77,12 +79,13 @@ func TestLoadRetainsExpiredSignedRecordButDoesNotRouteIt(t *testing.T) {
 
 func TestLoadRejectsStrictSnapshotViolations(t *testing.T) {
 	tests := map[string]string{
-		"missing records": `{"schema_version":1,"state":"ready"}`,
-		"null records":    `{"schema_version":1,"records":null,"state":"ready"}`,
-		"unknown field":   `{"schema_version":1,"records":[],"state":"ready","surprise":true}`,
-		"duplicate field": `{"schema_version":1,"schema_version":1,"records":[],"state":"ready"}`,
-		"trailing value":  `{"schema_version":1,"records":[],"state":"ready"} true`,
-		"unknown version": `{"schema_version":2,"records":[],"state":"ready"}`,
+		"missing records": `{"schema_version":2,"state":"ready"}`,
+		"null records":    `{"schema_version":2,"records":null,"state":"ready"}`,
+		"unknown field":   `{"schema_version":2,"records":[],"state":"ready","surprise":true}`,
+		"duplicate field": `{"schema_version":2,"schema_version":2,"records":[],"state":"ready"}`,
+		"trailing value":  `{"schema_version":2,"records":[],"state":"ready"} true`,
+		"old version":     `{"schema_version":1,"records":[],"state":"ready"}`,
+		"unknown version": `{"schema_version":3,"records":[],"state":"ready"}`,
 	}
 	for name, payload := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -93,16 +96,99 @@ func TestLoadRejectsStrictSnapshotViolations(t *testing.T) {
 	}
 }
 
+func TestLoadRejectsMissingOrTamperedVerificationEvidence(t *testing.T) {
+	node, _ := schemaNodeRecord(t, 1, time.Now().UTC())
+	for name, entry := range map[string]map[string]any{
+		"missing evidence": {
+			"record": node, "source": discoveryrecord.Local, "seen_at": time.Now().UTC(),
+		},
+		"tampered record": {
+			"record": func() Record {
+				tampered := node.Clone()
+				tampered.Node.Endpoints = append(tampered.Node.Endpoints, "tcp://tampered:9000")
+				return tampered
+			}(),
+			"source": discoveryrecord.Local, "seen_at": time.Now().UTC(), "evidence": schemaEvidence(t, node),
+		},
+		"tampered trust result": {
+			"record": node, "source": discoveryrecord.Local, "seen_at": time.Now().UTC(),
+			"evidence": func() discoveryrecord.VerificationEvidence {
+				evidence := schemaEvidence(t, node)
+				evidence.Trusted = !evidence.Trusted
+				return evidence
+			}(),
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+			require.NoError(t, storage.SaveJSON(PathInDir(dir), "discovery", "records", map[string]any{
+				"schema_version": 2, "records": []map[string]any{entry}, "state": "ready",
+			}))
+			require.Error(t, NewInDir(dir).Load())
+		})
+	}
+}
+
+func TestLoadRefreshesAndPersistsEvidenceAfterTrustRotation(t *testing.T) {
+	dir := t.TempDir()
+	node, _ := schemaNodeRecord(t, 1, time.Now().UTC())
+	trusted := schemaTrustRegistry(t, node)
+	store := NewInDirWithTrust(dir, NewTrustEvaluator(trusted))
+	_, err := store.Import(node, discoveryrecord.Local)
+	require.NoError(t, err)
+	before := store.Entries()[0].Evidence
+	require.True(t, before.Trusted)
+
+	empty, err := identitytrust.NewRegistry(nil)
+	require.NoError(t, err)
+	reloaded := NewInDirWithTrust(dir, NewTrustEvaluator(empty))
+	require.NoError(t, reloaded.Load())
+	after := reloaded.Entries()[0].Evidence
+	require.False(t, after.Trusted)
+	require.NotEqual(t, before.TrustGeneration, after.TrustGeneration)
+
+	var persisted Snapshot
+	found, err := LoadSnapshot(PathInDir(dir), &persisted)
+	require.NoError(t, err)
+	require.True(t, found)
+	require.Equal(t, after, persisted.Records[0].Evidence)
+}
+
+func TestLoadRollsBackEvidenceRefreshWhenPersistenceFails(t *testing.T) {
+	dir := t.TempDir()
+	node, _ := schemaNodeRecord(t, 1, time.Now().UTC())
+	trusted := schemaTrustRegistry(t, node)
+	store := NewInDirWithTrust(dir, NewTrustEvaluator(trusted))
+	_, err := store.Import(node, discoveryrecord.Local)
+	require.NoError(t, err)
+	before := store.Entries()[0].Evidence
+
+	empty, err := identitytrust.NewRegistry(nil)
+	require.NoError(t, err)
+	reloaded := NewInDirWithTrust(dir, NewTrustEvaluator(empty))
+	reloaded.persist = func(string, any) error { return errors.New("injected persistence failure") }
+	require.ErrorContains(t, reloaded.Load(), "persist refreshed discovery evidence")
+	require.Empty(t, reloaded.Entries())
+	require.Equal(t, "new", reloaded.State())
+
+	var persisted Snapshot
+	found, err := LoadSnapshot(PathInDir(dir), &persisted)
+	require.NoError(t, err)
+	require.True(t, found)
+	require.Equal(t, before, persisted.Records[0].Evidence)
+}
+
 func TestRestoreRejectsDuplicateRecordWithoutMutation(t *testing.T) {
 	node, _ := schemaNodeRecord(t, 1, time.Now().UTC())
 	entry := Entry{Record: node, Source: discoveryrecord.Local, SeenAt: time.Now().UTC()}
 	store := New("")
 	require.NoError(t, store.Restore([]Entry{entry}, "ready", ""))
+	want := store.Entries()
 
 	err := store.Restore([]Entry{entry, entry}, "ready", "")
 	require.Error(t, err)
 	got, state, reason := store.Snapshot()
-	require.Equal(t, []Entry{entry}, got)
+	require.Equal(t, want, got)
 	require.Equal(t, "ready", state)
 	require.Empty(t, reason)
 }
@@ -169,6 +255,25 @@ func schemaSignRecord(t *testing.T, record *Record, key ed25519.PrivateKey) {
 	payload, err := Canonical(*record)
 	require.NoError(t, err)
 	record.Signature = base64.StdEncoding.EncodeToString(ed25519.Sign(key, payload))
+}
+
+func schemaEvidence(t *testing.T, record Record) discoveryrecord.VerificationEvidence {
+	t.Helper()
+	evidence, err := NewTrustEvaluator(nil).VerifyRetained(record)
+	require.NoError(t, err)
+	return evidence
+}
+
+func schemaTrustRegistry(t *testing.T, record Record) *identitytrust.Registry {
+	t.Helper()
+	public, err := base64.StdEncoding.DecodeString(record.PublicKeyText())
+	require.NoError(t, err)
+	registry, err := identitytrust.NewRegistry([]identitytrust.Entry{{
+		Principal: record.NodeID(), PublicKey: ed25519.PublicKey(public),
+		Purposes: []identitytrust.Purpose{identitytrust.PurposeDiscoveryPublish},
+	}})
+	require.NoError(t, err)
+	return registry
 }
 
 func schemaWriteRawSnapshot(t *testing.T, dir, payload string) {

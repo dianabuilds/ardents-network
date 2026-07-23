@@ -16,6 +16,7 @@ import (
 	identityapi "ardents/internal/identity"
 	identitycapability "ardents/internal/identity/capability"
 	identityprincipal "ardents/internal/identity/principal"
+	identitytrust "ardents/internal/identity/trust"
 
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/chacha20poly1305"
@@ -248,7 +249,11 @@ func newEnvelopeFixture(t *testing.T, importSender bool) envelopeFixture {
 	channelID := testID(0x51)
 	senderGrant := signedEnvelopeGrant(t, issuerPrivate, senderPrivate, secret, channelID, 0x61)
 	receiverGrant := signedEnvelopeGrant(t, issuerPrivate, receiverPrivate, secret, channelID, 0x71)
-	issuers := map[string]ed25519.PublicKey{senderGrant.IssuerPrincipal: issuerPublic}
+	issuers, err := identitytrust.NewRegistry([]identitytrust.Entry{{
+		Principal: senderGrant.IssuerPrincipal, PublicKey: issuerPublic,
+		Purposes: []identitytrust.Purpose{identitytrust.PurposeChannelIssue},
+	}})
+	require.NoError(t, err)
 	storePath := filepath.Join(t.TempDir(), "capabilities.db")
 	authority, err := identitycapability.NewService(
 		storePath, bytes.Repeat([]byte{0x81}, 32), receiverGrant.SubjectPrincipal,

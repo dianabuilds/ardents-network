@@ -13,11 +13,11 @@ func (s *Service) Restore(records []Entry, state, reason string) error {
 	if state == "" {
 		state = "ready"
 	}
-	candidate := Snapshot{SchemaVersion: 1, Records: CloneEntries(records), State: state, Reason: reason}
+	candidate := Snapshot{SchemaVersion: 2, Records: CloneEntries(records), State: state, Reason: reason}
 	if err := validateSnapshotState(candidate); err != nil {
 		return err
 	}
-	validated, err := validateSnapshotEntries(candidate.Records)
+	validated, err := s.validateSnapshotEntries(candidate.Records, false)
 	if err != nil {
 		return err
 	}

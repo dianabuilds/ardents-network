@@ -5,6 +5,8 @@ package replication_e2e_test
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -15,6 +17,8 @@ import (
 	appdata "ardents/internal/content"
 	runtimeprocess "ardents/internal/daemon"
 	discoveryapi "ardents/internal/discovery"
+	identityprincipal "ardents/internal/identity/principal"
+	identitytrust "ardents/internal/identity/trust"
 	networkprivacy "ardents/internal/messaging"
 	networkapi "ardents/internal/network"
 	appreplication "ardents/internal/replication"
@@ -147,9 +151,32 @@ func availabilityNodeConfig(name, dir string, privacy, dataPrivacy *networkpriva
 		Boot:      runtimeprocess.BootConfig{Sources: bootstrap},
 		Transport: runtimeprocess.TransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: networkapi.ReachabilityPrivateLAN},
 		Data:      runtimeprocess.DataConfig{Dir: dir, MaxRelayRetentionBytes: 1024 * 1024},
-		Trust:     runtimeprocess.TrustConfig{Anchors: anchors}, Privacy: privacy, DataPrivacy: dataPrivacy,
+		Trust:     runtimeprocess.TrustConfig{Registry: availabilityTrustRegistry(anchors)}, Privacy: privacy, DataPrivacy: dataPrivacy,
 		DiscoveryRefreshInterval: 50 * time.Millisecond,
 	}
+}
+
+func availabilityTrustRegistry(encodedKeys []string) *identitytrust.Registry {
+	entries := make([]identitytrust.Entry, 0, len(encodedKeys))
+	for _, encoded := range encodedKeys {
+		public, err := base64.StdEncoding.DecodeString(encoded)
+		if err != nil {
+			panic(err)
+		}
+		principalID, err := identityprincipal.FromEd25519PublicKey(ed25519.PublicKey(public))
+		if err != nil {
+			panic(err)
+		}
+		entries = append(entries, identitytrust.Entry{
+			Principal: principalID.String(), PublicKey: ed25519.PublicKey(public),
+			Purposes: []identitytrust.Purpose{identitytrust.PurposeDiscoveryPublish},
+		})
+	}
+	registry, err := identitytrust.NewRegistry(entries)
+	if err != nil {
+		panic(err)
+	}
+	return registry
 }
 
 func importAvailabilityRecords(t *testing.T, owner *runtimeprocess.Node, peers map[string]*runtimeprocess.Node) {

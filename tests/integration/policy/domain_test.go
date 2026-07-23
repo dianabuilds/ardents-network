@@ -208,7 +208,7 @@ func TestPolicyRejectsPeerBlobReserving(t *testing.T) {
 	requester := testkit.StartNode(t, runtimeinfra.Config{
 		Name:  "requester-no-reserve",
 		Boot:  runtimeinfra.BootConfig{Sources: append([]string(nil), records[0].EndpointList()...)},
-		Trust: runtimeinfra.TrustConfig{Anchors: []string{source.Snapshot().Ident.PublicKey}},
+		Trust: runtimeinfra.TrustConfig{Registry: testkit.DiscoveryTrustRegistry(t, source.Snapshot().Ident.PublicKey)},
 		Data:  runtimeinfra.DataConfig{Dir: t.TempDir()},
 	})
 

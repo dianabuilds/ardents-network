@@ -1,7 +1,13 @@
 package config
 
 import (
+	"bytes"
+	"crypto/ed25519"
+	"encoding/base64"
 	"testing"
+
+	identityprincipal "ardents/internal/identity/principal"
+	identitytrust "ardents/internal/identity/trust"
 
 	"github.com/stretchr/testify/require"
 )
@@ -79,13 +85,70 @@ func TestValidateAcceptsCompleteServiceNode(t *testing.T) {
 
 func TestValidateAcceptsCompletePrivateChannelReferences(t *testing.T) {
 	doc := Defaults()
+	doc.Trust.Principals = []TrustedPrincipalConfig{trustedPrincipalConfig(t, "channel.issue")}
 	doc.Privacy = PrivacyConfig{
 		Required: true, CapabilityStore: "capabilities.db", CapabilityStoreKeyFile: "capabilities.key",
-		ReplayKeyFile: "replay.key", Subject: "p_subject", TrustedIssuers: map[string]string{"p_issuer": "public"},
+		ReplayKeyFile: "replay.key", Subject: "p_subject",
 		Discovery: PrivacyChannelConfig{Reference: "discovery-ref", ReplayPath: "discovery-replay.db"},
 		Data:      PrivacyChannelConfig{Reference: "data-ref", ReplayPath: "data-replay.db"},
 	}
 	require.NoError(t, Validate(doc))
+}
+
+func TestValidatePurposeScopedTrustRejectsUnknownDuplicateAndMismatchedEntries(t *testing.T) {
+	valid := trustedPrincipalConfig(t, "channel.issue")
+	tests := []struct {
+		name   string
+		mutate func(*Document)
+		want   string
+	}{
+		{"unknown purpose", func(doc *Document) {
+			entry := valid
+			entry.Purposes = []identitytrust.Purpose{"channel.admin"}
+			doc.Trust.Principals = []TrustedPrincipalConfig{entry}
+		}, "trust.principals[0]"},
+		{"duplicate purpose", func(doc *Document) {
+			entry := valid
+			entry.Purposes = []identitytrust.Purpose{identitytrust.PurposeChannelIssue, identitytrust.PurposeChannelIssue}
+			doc.Trust.Principals = []TrustedPrincipalConfig{entry}
+		}, "duplicated"},
+		{"mismatched public key", func(doc *Document) {
+			entry := valid
+			entry.PublicKey = base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{0x55}, ed25519.PublicKeySize))
+			doc.Trust.Principals = []TrustedPrincipalConfig{entry}
+		}, "does not match"},
+		{"duplicate principal", func(doc *Document) {
+			doc.Trust.Principals = []TrustedPrincipalConfig{valid, valid}
+		}, "duplicated"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			doc := Defaults()
+			tc.mutate(&doc)
+			require.ErrorContains(t, Validate(doc), tc.want)
+		})
+	}
+}
+
+func TestValidatePrivateChannelsRequireChannelIssuePurpose(t *testing.T) {
+	doc := Defaults()
+	doc.Trust.Principals = []TrustedPrincipalConfig{trustedPrincipalConfig(t, "discovery.publish")}
+	doc.Privacy = PrivacyConfig{
+		Required: true, CapabilityStore: "capabilities.db", CapabilityStoreKeyFile: "capabilities.key",
+		ReplayKeyFile: "replay.key", Subject: "p_subject",
+		Discovery: PrivacyChannelConfig{Reference: "discovery-ref", ReplayPath: "discovery-replay.db"},
+		Data:      PrivacyChannelConfig{Reference: "data-ref", ReplayPath: "data-replay.db"},
+	}
+	require.ErrorContains(t, Validate(doc), "channel.issue")
+}
+
+func trustedPrincipalConfig(t *testing.T, purposes ...identitytrust.Purpose) TrustedPrincipalConfig {
+	t.Helper()
+	private := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x41}, ed25519.SeedSize))
+	public := private.Public().(ed25519.PublicKey)
+	principal, err := identityprincipal.FromEd25519PublicKey(public)
+	require.NoError(t, err)
+	return TrustedPrincipalConfig{Principal: principal.String(), PublicKey: base64.StdEncoding.EncodeToString(public), Purposes: purposes}
 }
 
 func TestValidateRejectsDormantPrivacyMaterial(t *testing.T) {

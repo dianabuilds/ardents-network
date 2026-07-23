@@ -57,7 +57,7 @@ func TestConnectRPCNetworkPublicSurfaceMatchesLocalTruth(t *testing.T) {
 		Name:        "network-surface-local",
 		NodeProfile: transport.NodeProfileServiceNode,
 		Boot:        runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Trust:       runtimeinfra.TrustConfig{Anchors: []string{remote.Snapshot().Ident.PublicKey}},
+		Trust:       runtimeinfra.TrustConfig{Registry: testkit.DiscoveryTrustRegistry(t, remote.Snapshot().Ident.PublicKey)},
 		Transport:   runtimeinfra.TransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: transport.ReachabilityPrivateLAN},
 		Data:        runtimeinfra.DataConfig{Dir: t.TempDir()}, Privacy: privacy.Receiver,
 	})
@@ -245,7 +245,7 @@ func TestConnectRPCDataTransferSurfaceMatchesLocalTruth(t *testing.T) {
 	rt := testkit.StartRuntime(t, runtimeinfra.Config{
 		Name:  "data-surface-requester",
 		Boot:  runtimeinfra.BootConfig{Sources: append([]string(nil), records[0].EndpointList()...)},
-		Trust: runtimeinfra.TrustConfig{Anchors: []string{source.Snapshot().Ident.PublicKey}},
+		Trust: runtimeinfra.TrustConfig{Registry: testkit.DiscoveryTrustRegistry(t, source.Snapshot().Ident.PublicKey)},
 		Data:  runtimeinfra.DataConfig{Dir: t.TempDir()},
 	})
 	client := testkit.NewArdentsClient(t, rt.Runtime)

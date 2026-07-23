@@ -256,7 +256,8 @@ func InitializeIdentityForStartup(
 	ensureNode func() (identityapi.Summary, ed25519.PrivateKey, error),
 	setPrivate func(ed25519.PrivateKey),
 	setLocalDataNodeID func(string),
-	trustPublicKey func(string),
+	trustLocalPrincipal func(string, string) error,
+	loadDiscovery func() error,
 	syncTrustDiagnostics func(),
 ) error {
 	summary, privateKey, err := ensureNode()
@@ -265,7 +266,12 @@ func InitializeIdentityForStartup(
 	}
 	setPrivate(privateKey)
 	setLocalDataNodeID(summary.Principal)
-	trustPublicKey(summary.PublicKey)
+	if err := trustLocalPrincipal(summary.Principal, summary.PublicKey); err != nil {
+		return err
+	}
+	if err := loadDiscovery(); err != nil {
+		return fmt.Errorf("load discovery: %w", err)
+	}
 	syncTrustDiagnostics()
 	return nil
 }

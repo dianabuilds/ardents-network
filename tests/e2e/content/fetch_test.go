@@ -62,7 +62,7 @@ func TestDataSubstrateRemoteFetchAndUnavailableTruth(t *testing.T) {
 		trusted = testkit.NewRuntime(t, runtimeinfra.Config{
 			Name:  "data-e2e-trusted",
 			Boot:  runtimeinfra.BootConfig{Sources: append([]string(nil), records[0].EndpointList()...)},
-			Trust: runtimeinfra.TrustConfig{Anchors: []string{source.Snapshot().Ident.PublicKey}},
+			Trust: runtimeinfra.TrustConfig{Registry: testkit.DiscoveryTrustRegistry(t, source.Snapshot().Ident.PublicKey)},
 			Data:  runtimeinfra.DataConfig{Dir: trustedDir},
 		}).Runtime
 		require.NoError(t, trusted.Start(context.Background()))

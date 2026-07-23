@@ -61,10 +61,11 @@ func TestManagerAppliesReloadablePolicyAndRedactsEffectiveSnapshot(t *testing.T)
 
 func TestManagerRedactsAllProtectedPrivacyReferences(t *testing.T) {
 	doc := Defaults()
+	doc.Trust.Principals = []TrustedPrincipalConfig{trustedPrincipalConfig(t, "channel.issue")}
 	doc.Privacy = PrivacyConfig{
 		Required: true, CapabilityStore: "/protected/capabilities.db",
 		CapabilityStoreKeyFile: "/protected/capabilities.key", ReplayKeyFile: "/protected/replay.key",
-		Subject: "p_private_subject", TrustedIssuers: map[string]string{"p_issuer": "raw-public-key"},
+		Subject:   "p_private_subject",
 		Discovery: PrivacyChannelConfig{Reference: "secret-discovery-ref", ReplayPath: "/protected/discovery.db"},
 		Data:      PrivacyChannelConfig{Reference: "secret-data-ref", ReplayPath: "/protected/data.db"},
 	}
@@ -74,12 +75,12 @@ func TestManagerRedactsAllProtectedPrivacyReferences(t *testing.T) {
 	raw, err := json.Marshal(manager.Snapshot().Effective)
 	require.NoError(t, err)
 	for _, protected := range []string{
-		"/protected/", "p_private_subject", "raw-public-key", "secret-discovery-ref", "secret-data-ref",
+		"/protected/", "p_private_subject", doc.Trust.Principals[0].PublicKey, "secret-discovery-ref", "secret-data-ref",
 	} {
 		require.NotContains(t, string(raw), protected)
 	}
 	require.Contains(t, string(raw), `"capability_store":"configured"`)
-	require.Contains(t, string(raw), `"p_issuer":"configured"`)
+	require.Contains(t, string(raw), `"public_key":"configured"`)
 }
 
 func TestManagerKeepsRestartCandidateSeparateFromActive(t *testing.T) {

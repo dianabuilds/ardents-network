@@ -24,6 +24,14 @@ func TestDecodeAppliesVersionedDefaults(t *testing.T) {
 	require.Equal(t, 2, doc.Data.MinimumReplicas)
 }
 
+func TestDecodeAcceptsPurposeScopedTrustedPrincipals(t *testing.T) {
+	entry := trustedPrincipalConfig(t, "channel.issue", "discovery.publish")
+	raw := `{"api_version":"ardents.config/v1","node":{"name":"node-a"},"trust":{"principals":[{"principal":"` + entry.Principal + `","public_key":"` + entry.PublicKey + `","purposes":["channel.issue","discovery.publish"]}]}}`
+	doc, err := Decode(strings.NewReader(raw))
+	require.NoError(t, err)
+	require.Equal(t, []TrustedPrincipalConfig{entry}, doc.Trust.Principals)
+}
+
 func TestDecodeRejectsUnknownDuplicateAndDeprecatedFields(t *testing.T) {
 	tests := []struct {
 		name string
@@ -37,6 +45,8 @@ func TestDecodeRejectsUnknownDuplicateAndDeprecatedFields(t *testing.T) {
 		{"operator plaintext listener", `{"api_version":"ardents.config/v1","api":{"listen_address":"127.0.0.1:8080"}}`, "unknown field"},
 		{"application bearer field", `{"api_version":"ardents.config/v1","application_interface":{"token_file":"token"}}`, "unknown field"},
 		{"application plaintext listener", `{"api_version":"ardents.config/v1","application_interface":{"listen_address":"127.0.0.1:8081"}}`, "unknown field"},
+		{"legacy discovery trust anchors", `{"api_version":"ardents.config/v1","network":{"trust_anchors":["public"]}}`, "unknown field"},
+		{"legacy privacy trusted issuers", `{"api_version":"ardents.config/v1","privacy":{"trusted_issuers":{"p_issuer":"public"}}}`, "unknown field"},
 		{"version", `{"api_version":"ardents.config/v2"}`, "unsupported api_version"},
 	}
 	for _, tc := range tests {

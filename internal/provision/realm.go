@@ -5,6 +5,7 @@ import (
 	identitycapability "ardents/internal/identity/capability"
 	identitykeyring "ardents/internal/identity/keyring"
 	identityprincipal "ardents/internal/identity/principal"
+	identitytrust "ardents/internal/identity/trust"
 	"ardents/internal/storage"
 	"crypto/ed25519"
 	"crypto/rand"
@@ -137,12 +138,19 @@ func (a *Authority) provisionSubject(options NodeOptions, subject string, admiss
 		return NodeProvision{}, fmt.Errorf("derive local realm issuer Principal")
 	}
 	issuer := issuerID.String()
+	trustedIssuers, err := identitytrust.NewRegistry([]identitytrust.Entry{{
+		Principal: issuer, PublicKey: issuerPublic,
+		Purposes: []identitytrust.Purpose{identitytrust.PurposeChannelIssue},
+	}})
+	if err != nil {
+		return NodeProvision{}, fmt.Errorf("build local realm trust registry")
+	}
 	nodeStorage, err := prepareNodeStorage(options)
 	if err != nil {
 		return NodeProvision{}, err
 	}
 	service, err := identitycapability.NewService(nodeStorage.capabilityStore, nodeStorage.storeKey, subject,
-		map[string]ed25519.PublicKey{issuer: issuerPublic}, admission, func() time.Time { return now })
+		trustedIssuers, admission, func() time.Time { return now })
 	if err != nil {
 		return NodeProvision{}, fmt.Errorf("open protected capability store: %w", err)
 	}

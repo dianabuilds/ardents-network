@@ -86,7 +86,7 @@ multiplexed inside that lane rather than encoded into separate readable topics.
 
 ### 3.3 Issuance And Delivery
 
-The realm's first trust anchor and discovery capability are provisioned through
+The realm's first `channel.issue` trusted Principal and discovery capability are provisioned through
 a stopped-node, operator-authenticated secret import. A peer endpoint alone is
 never sufficient bootstrap authority.
 

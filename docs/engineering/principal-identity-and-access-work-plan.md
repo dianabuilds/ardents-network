@@ -138,7 +138,7 @@ boundary; do not deliver an entire broad workstream as one change.
 | `PIA-014C` | 014B | **Complete:** typed Object/Manifest owners, remote-fetch/claim boundary, and owner-aware GC/reconciliation |
 | `PIA-015A` | 002 | **Complete:** fake same-seed Device removed from Node state, summaries, discovery publication input, and Operator snapshot wire |
 | `PIA-015B` | 015A | **Complete:** final versioned kind-specific discovery records and strict retained-state validation |
-| `PIA-015C` | 015B | Purpose-scoped trust registry and verification cache invalidation |
+| `PIA-015C` | 015B | **Complete:** purpose-scoped trusted-Principal registry, persisted verification evidence, and generation-aware cache invalidation |
 | `PIA-016A` | 002 | Rename replication Principal targets; Waku Peer ID remains adapter-only |
 | `PIA-016B` | 014C | Collapse domain Blob ID/CID directly into the final versioned wire/state form |
 | `PIA-016C` | 015C, 016A, 016B | Type remaining security Owners and split overloaded Capability vocabulary |
@@ -966,7 +966,8 @@ one Node Principal; service facts contain one typed Service ID, owning Node
 Principal, Workload ID, mode, public key, and endpoints. The removed flat wire
 tags/names are reserved, unknown wire fields and all pre-release flat shapes
 fail closed, and source/seen-at remain unsigned local intake metadata. The
-`ardents.db` `discovery/records` value is strict snapshot schema version 1;
+`ardents.db` `discovery/records` value was introduced as strict snapshot schema
+version 1 and is superseded by PIA-015C schema version 2 evidence;
 startup and restore revalidate signatures, unions, metadata, and duplicate IDs
 before mutating memory. Import/restore persistence failure rolls memory back,
 expired valid records survive restart but are non-routable, and Node/service
@@ -974,6 +975,28 @@ round-trip, strict JSON, private-network, Operator mapping, unit, race, tagged
 compile/integration, generated API, and repository compile gates cover the
 slice. PIA-015C retains ownership of trust purposes and verification-cache
 generation.
+
+**PIA-015C completion evidence:** one immutable trusted-Principal registry owns
+the exact `discovery.publish`, `channel.issue`, and reserved `identity.attest`
+purposes. The strict Operator contract has only `trust.principals`; the removed
+`network.trust_anchors` and `privacy.trusted_issuers` shapes fail unknown-field
+decoding and have no compatibility reader. Discovery verifies a signed record
+once per live-process fingerprint through a 1024-entry bounded cache, checks
+freshness and current purpose on every projection, and persists evidence bound
+to canonical bytes, signature, signer, and the registry's full deterministic
+SHA-256 generation. The `ardents.db` `discovery/records` snapshot is schema
+version 2; startup installs the local Principal into the trust view before
+loading discovery, rejects missing or record-mismatched evidence and a false
+same-generation trust result, reverifies every retained signature, and
+atomically refreshes evidence after a valid trust-generation change. A failed
+refresh write leaves both memory and the durable snapshot unchanged. Capability
+receiver and sender recheck the active `channel.issue` registry on every call,
+so a live registry replacement denies retained grants on the next use;
+Operator-file trust changes remain restart-required and are installed before
+restored capability use. Purpose isolation, rotation, expiry, concurrent
+projection, restart, rollback, redaction, unit, race, and repository compile
+gates cover the slice. No `RealmAttestation` artifact was added because no
+Policy consumer exists.
 
 ### PIA-016 — Remove Remaining Ambiguous Identifier And “Capability” Names
 

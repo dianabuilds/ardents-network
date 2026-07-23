@@ -1,13 +1,18 @@
 package daemon
 
 import (
+	"bytes"
 	"context"
+	"crypto/ed25519"
+	"encoding/base64"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 
 	runtimeconfig "ardents/internal/config"
+	identityprincipal "ardents/internal/identity/principal"
+	identitytrust "ardents/internal/identity/trust"
 
 	"github.com/stretchr/testify/require"
 )
@@ -111,10 +116,16 @@ func TestReloadRejectsUnavailableProtectedPrivacyBeforeCandidateAcceptance(t *te
 	doc.Privacy = runtimeconfig.PrivacyConfig{
 		Required: true, CapabilityStore: "missing-store", CapabilityStoreKeyFile: "missing-key",
 		ReplayKeyFile: "missing-replay-key", Subject: "p_subject",
-		TrustedIssuers: map[string]string{"p_issuer": "public"},
-		Discovery:      runtimeconfig.PrivacyChannelConfig{Reference: "discovery", ReplayPath: "discovery-replay"},
-		Data:           runtimeconfig.PrivacyChannelConfig{Reference: "data", ReplayPath: "data-replay"},
+		Discovery: runtimeconfig.PrivacyChannelConfig{Reference: "discovery", ReplayPath: "discovery-replay"},
+		Data:      runtimeconfig.PrivacyChannelConfig{Reference: "data", ReplayPath: "data-replay"},
 	}
+	issuerPublic := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x44}, ed25519.SeedSize)).Public().(ed25519.PublicKey)
+	issuerPrincipal, err := identityprincipal.FromEd25519PublicKey(issuerPublic)
+	require.NoError(t, err)
+	doc.Trust.Principals = []runtimeconfig.TrustedPrincipalConfig{{
+		Principal: issuerPrincipal.String(), PublicKey: base64.StdEncoding.EncodeToString(issuerPublic),
+		Purposes: []identitytrust.Purpose{identitytrust.PurposeChannelIssue},
+	}}
 	writeRuntimeDocumentAt(t, configPath, doc)
 	result := cfg.Node.OperatorConfig.Reload(context.Background())
 	require.Equal(t, runtimeconfig.OutcomeRejectedInvalid, result.Outcome)

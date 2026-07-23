@@ -21,15 +21,29 @@ func (s *Service) Load() error {
 	if !found {
 		return nil
 	}
-	if persisted.SchemaVersion != 1 {
+	if persisted.SchemaVersion != 2 {
 		return fmt.Errorf("discovery snapshot schema is unsupported")
 	}
 	if err := validateSnapshotState(persisted); err != nil {
 		return err
 	}
-	validated, err := validateSnapshotEntries(persisted.Records)
+	validated, err := s.validateSnapshotEntries(persisted.Records, true)
 	if err != nil {
 		return fmt.Errorf("persisted discovery snapshot is invalid: %w", err)
+	}
+	refreshEvidence := false
+	for index := range validated {
+		if validated[index].Evidence != persisted.Records[index].Evidence {
+			refreshEvidence = true
+			break
+		}
+	}
+	if refreshEvidence {
+		refreshed := persisted
+		refreshed.Records = CloneEntries(validated)
+		if err := s.persist(s.path, refreshed); err != nil {
+			return fmt.Errorf("persist refreshed discovery evidence: %w", err)
+		}
 	}
 	s.records = validated
 	s.state = persisted.State
@@ -37,13 +51,22 @@ func (s *Service) Load() error {
 	return nil
 }
 
-func validateSnapshotEntries(entries []Entry) ([]Entry, error) {
+func (s *Service) validateSnapshotEntries(entries []Entry, persisted bool) ([]Entry, error) {
 	seenID := make(map[string]struct{}, len(entries))
 	seenSubject := make(map[string]struct{}, len(entries))
 	validated := make([]Entry, 0, len(entries))
 	for _, entry := range entries {
-		if err := discoveryrecord.ValidateRetained(entry.Record); err != nil {
+		if persisted {
+			if err := discoveryrecord.ValidateEvidence(entry.Record, entry.Evidence); err != nil {
+				return nil, fmt.Errorf("record evidence is invalid: %w", err)
+			}
+		}
+		freshEvidence, err := s.trust.VerifyRetained(entry.Record)
+		if err != nil {
 			return nil, fmt.Errorf("record is invalid: %w", err)
+		}
+		if persisted && entry.Evidence.TrustGeneration == freshEvidence.TrustGeneration && entry.Evidence.Trusted != freshEvidence.Trusted {
+			return nil, fmt.Errorf("record evidence trust result is invalid")
 		}
 		if !discoveryrecord.ValidSource(entry.Source) || entry.SeenAt.IsZero() {
 			return nil, fmt.Errorf("entry metadata is invalid")
@@ -57,6 +80,7 @@ func validateSnapshotEntries(entries []Entry) ([]Entry, error) {
 		}
 		seenID[id], seenSubject[subjectKey] = struct{}{}, struct{}{}
 		entry.Record = entry.Record.Clone()
+		entry.Evidence = freshEvidence
 		validated = append(validated, entry)
 	}
 	return validated, nil

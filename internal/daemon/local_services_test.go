@@ -1,11 +1,18 @@
 package daemon
 
 import (
+	"bytes"
 	"context"
+	"crypto/ed25519"
+	"encoding/base64"
 	"testing"
+	"time"
 
 	appdata "ardents/internal/content"
 	"ardents/internal/discovery"
+	records "ardents/internal/discovery/records"
+	identityprincipal "ardents/internal/identity/principal"
+	identitytrust "ardents/internal/identity/trust"
 	transport "ardents/internal/network"
 	networkwaku "ardents/internal/network/waku"
 	apppolicy "ardents/internal/policy"
@@ -13,13 +20,39 @@ import (
 	workloadregistry "ardents/internal/workload/registry"
 )
 
-func TestApplyTrustAnchors(t *testing.T) {
-	trust := discovery.NewTrustEvaluator()
-	applyTrustAnchors(trust, []string{"anchor-a", "anchor-b"})
-	anchors := trust.Anchors()
-	if len(anchors) != 2 {
-		t.Fatalf("anchors = %#v, want 2 anchors", anchors)
+func TestReplaceTrustWithLocalPrincipalAddsOnlyDiscoveryPurpose(t *testing.T) {
+	private := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{3}, ed25519.SeedSize))
+	public := private.Public().(ed25519.PublicKey)
+	principalID, err := identityprincipal.FromEd25519PublicKey(public)
+	if err != nil {
+		t.Fatal(err)
 	}
+	configured, err := identitytrust.NewRegistry(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	evaluator := discovery.NewTrustEvaluator(configured)
+	if err := replaceTrustWithLocalPrincipal(evaluator, configured, principalID.String(), base64.StdEncoding.EncodeToString(public)); err != nil {
+		t.Fatal(err)
+	}
+	record := trustSignedRecordForLocalTest(t, private, principalID)
+	if result := evaluator.Evaluate(record); !result.Usable {
+		t.Fatalf("local discovery result = %#v, want usable", result)
+	}
+}
+
+func trustSignedRecordForLocalTest(t *testing.T, private ed25519.PrivateKey, principalID identityprincipal.ID) discovery.Record {
+	t.Helper()
+	now := time.Now().UTC()
+	record := discovery.Record{Version: 1, Node: &records.NodeFacts{
+		Principal: principalID, PublicKey: base64.StdEncoding.EncodeToString(private.Public().(ed25519.PublicKey)),
+	}, IssuedAt: now.Add(-time.Second), ExpiresAt: now.Add(time.Hour)}
+	payload, err := discovery.Canonical(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.Signature = base64.StdEncoding.EncodeToString(ed25519.Sign(private, payload))
+	return record
 }
 
 func TestConfigureLocalServicesWiresBootstrapAndAdmission(t *testing.T) {

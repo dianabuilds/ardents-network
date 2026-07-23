@@ -1035,7 +1035,7 @@ distinction is intentional, not missing unification.
 | Replication `PeerID` often contains a Node Principal | Rename | Use `NodePrincipal`/`TargetNode`; reserve Peer ID for Waku/libp2p |
 | Blob `ID` and `CID` are constrained equal | Normalize before release | Keep one Content Reference in the domain model and remove the duplicate pre-release fields |
 | Content/workload/service `Owner` is an arbitrary string | Type and scope | Security-relevant owners become PrincipalID or typed ResourceOwner; local workload ownership remains explicitly Node-scoped |
-| Trust anchors and issuer maps duplicate public-key trust | Consolidate later | One purpose-scoped trusted-Principal registry with owner-specific projections |
+| Trust anchors and issuer maps duplicate public-key trust | Consolidated | One immutable purpose-scoped trusted-Principal registry with owner-specific projections; exact-purpose trust is rechecked on every use |
 | “Capability” means action, channel secret, workload requirement, and transport feature | Rename vocabulary | Permission, Channel Grant, Workload Requirement, and Transport Feature respectively |
 
 Do not merge these valid distinctions:

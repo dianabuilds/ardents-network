@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"errors"
 	"time"
 
 	discoveryintake "ardents/internal/discovery/records"
@@ -10,7 +11,12 @@ func (s *Service) Import(record Record, source string) (ImportResult, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	updatedRecords, result, err := discoveryintake.Import(s.records, record, source, time.Now().UTC())
+	now := time.Now().UTC()
+	trustResult, evidence := s.trust.EvaluateAtWithEvidence(record, now)
+	if !trustResult.Valid {
+		return ImportResult{}, errors.New(trustResult.Reason)
+	}
+	updatedRecords, result, err := discoveryintake.ImportVerified(s.records, record, source, now, evidence)
 	if err != nil {
 		return ImportResult{}, err
 	}

@@ -1,7 +1,8 @@
 package config
 
 import (
-	networkapi "ardents/internal/network"
+	"crypto/ed25519"
+	"encoding/base64"
 	"fmt"
 	"net"
 	"net/url"
@@ -10,6 +11,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	identitytrust "ardents/internal/identity/trust"
+	networkapi "ardents/internal/network"
 )
 
 func Validate(doc Document) error {
@@ -36,7 +40,10 @@ func Validate(doc Document) error {
 	if err := validateNetwork(doc); err != nil {
 		return err
 	}
-	if err := validatePrivacy(doc.Privacy); err != nil {
+	if err := validateTrust(doc.Trust); err != nil {
+		return err
+	}
+	if err := validatePrivacy(doc.Privacy, doc.Trust); err != nil {
 		return err
 	}
 	if err := validateWorkloads(doc); err != nil {
@@ -75,10 +82,10 @@ func validateSocketPath(field, value string) error {
 	return nil
 }
 
-func validatePrivacy(cfg PrivacyConfig) error {
+func validatePrivacy(cfg PrivacyConfig, trust TrustConfig) error {
 	if !cfg.Required {
 		if cfg.CapabilityStore != "" || cfg.CapabilityStoreKeyFile != "" || cfg.ReplayKeyFile != "" ||
-			cfg.Subject != "" || len(cfg.TrustedIssuers) > 0 || cfg.Discovery.Reference != "" ||
+			cfg.Subject != "" || cfg.Discovery.Reference != "" ||
 			cfg.Discovery.ReplayPath != "" || cfg.Data.Reference != "" || cfg.Data.ReplayPath != "" {
 			return fmt.Errorf("privacy material requires privacy.required=true")
 		}
@@ -102,8 +109,8 @@ func validatePrivacy(cfg PrivacyConfig) error {
 			return fmt.Errorf("%s is required when privacy.required=true", field.path)
 		}
 	}
-	if len(cfg.TrustedIssuers) == 0 {
-		return fmt.Errorf("privacy.trusted_issuers is required when privacy.required=true")
+	if !trustHasPurpose(trust, identitytrust.PurposeChannelIssue) {
+		return fmt.Errorf("trust.principals requires at least one channel.issue purpose when privacy.required=true")
 	}
 	if cfg.Discovery.Reference == cfg.Data.Reference {
 		return fmt.Errorf("privacy discovery and data references must be distinct")
@@ -112,6 +119,39 @@ func validatePrivacy(cfg PrivacyConfig) error {
 		return fmt.Errorf("privacy discovery and data replay paths must be distinct")
 	}
 	return nil
+}
+
+func validateTrust(cfg TrustConfig) error {
+	entries := make([]identitytrust.Entry, 0, len(cfg.Principals))
+	for index, entry := range cfg.Principals {
+		path := fmt.Sprintf("trust.principals[%d]", index)
+		public, err := base64.StdEncoding.DecodeString(entry.PublicKey)
+		if err != nil || len(public) != ed25519.PublicKeySize || base64.StdEncoding.EncodeToString(public) != entry.PublicKey {
+			return fmt.Errorf("%s.public_key is invalid", path)
+		}
+		trusted := identitytrust.Entry{
+			Principal: entry.Principal,
+			PublicKey: ed25519.PublicKey(public),
+			Purposes:  entry.Purposes,
+		}
+		if _, err := identitytrust.NewRegistry([]identitytrust.Entry{trusted}); err != nil {
+			return fmt.Errorf("%s is invalid: %w", path, err)
+		}
+		entries = append(entries, trusted)
+	}
+	if _, err := identitytrust.NewRegistry(entries); err != nil {
+		return fmt.Errorf("trust.principals is invalid: %w", err)
+	}
+	return nil
+}
+
+func trustHasPurpose(cfg TrustConfig, purpose identitytrust.Purpose) bool {
+	for _, entry := range cfg.Principals {
+		if slices.Contains(entry.Purposes, purpose) {
+			return true
+		}
+	}
+	return false
 }
 
 func validateData(cfg DataConfig) error {

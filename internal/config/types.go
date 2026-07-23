@@ -3,6 +3,8 @@ package config
 import (
 	"encoding/json"
 	"path/filepath"
+
+	identitytrust "ardents/internal/identity/trust"
 )
 
 type Document struct {
@@ -10,6 +12,7 @@ type Document struct {
 	Node                 NodeConfig                 `json:"node"`
 	API                  APIConfig                  `json:"api"`
 	ApplicationInterface ApplicationInterfaceConfig `json:"application_interface"`
+	Trust                TrustConfig                `json:"trust"`
 	Network              NetworkConfig              `json:"network"`
 	Privacy              PrivacyConfig              `json:"privacy"`
 	Workloads            WorkloadsConfig            `json:"workloads"`
@@ -19,6 +22,16 @@ type Document struct {
 	Logging              LoggingConfig              `json:"logging"`
 	Observability        ObservabilityConfig        `json:"observability"`
 	Diagnostics          DiagnosticsConfig          `json:"diagnostics"`
+}
+
+type TrustConfig struct {
+	Principals []TrustedPrincipalConfig `json:"principals"`
+}
+
+type TrustedPrincipalConfig struct {
+	Principal string                  `json:"principal"`
+	PublicKey string                  `json:"public_key"`
+	Purposes  []identitytrust.Purpose `json:"purposes"`
 }
 
 type ApplicationInterfaceConfig struct {
@@ -42,7 +55,6 @@ type PrivacyConfig struct {
 	CapabilityStoreKeyFile string               `json:"capability_store_key_file"`
 	ReplayKeyFile          string               `json:"replay_key_file"`
 	Subject                string               `json:"subject"`
-	TrustedIssuers         map[string]string    `json:"trusted_issuers"`
 	Discovery              PrivacyChannelConfig `json:"discovery"`
 	Data                   PrivacyChannelConfig `json:"data"`
 }
@@ -83,7 +95,6 @@ type NetworkConfig struct {
 	StorePath               string        `json:"store_path"`
 	PrivateKeyPath          string        `json:"private_key_path"`
 	BootstrapPeers          []string      `json:"bootstrap_peers"`
-	TrustAnchors            []string      `json:"trust_anchors"`
 	ReachabilityMode        string        `json:"reachability_mode"`
 	AdvertiseAddresses      []string      `json:"advertise_addresses"`
 	DNSDiscoveryURLs        []string      `json:"dns_discovery_urls"`

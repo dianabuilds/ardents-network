@@ -13,6 +13,8 @@ import (
 
 var recordNow = time.Date(2026, 7, 23, 0, 0, 0, 0, time.UTC)
 
+const recordTrustGeneration = "0101010101010101010101010101010101010101010101010101010101010101"
+
 func TestValidateAcceptsVersionedNodeAndServiceRecords(t *testing.T) {
 	node, key := signedNodeRecord(t)
 	require.NoError(t, discoveryrecord.ValidateAt(node, recordNow))
@@ -70,6 +72,36 @@ func TestValidateRejectsRecordBeforeItsIssueBoundary(t *testing.T) {
 	require.Error(t, discoveryrecord.ValidateAt(record, record.IssuedAt.Add(-time.Nanosecond)))
 	require.NoError(t, discoveryrecord.ValidateAt(record, record.IssuedAt))
 	require.NoError(t, discoveryrecord.ValidateRetained(record))
+}
+
+func TestVerificationEvidenceIsBoundToCanonicalRecordAndSignature(t *testing.T) {
+	record, _ := signedNodeRecord(t)
+	evidence, err := discoveryrecord.VerifyRetained(record, recordTrustGeneration, true)
+	require.NoError(t, err)
+	require.Equal(t, uint32(1), evidence.Version)
+	require.Equal(t, record.Node.Principal, evidence.Signer)
+	require.Equal(t, recordTrustGeneration, evidence.TrustGeneration)
+	require.True(t, evidence.Trusted)
+	require.NoError(t, discoveryrecord.ValidateEvidence(record, evidence))
+
+	tamperedFacts := record.Clone()
+	tamperedFacts.Node.Endpoints = append(tamperedFacts.Node.Endpoints, "tcp://tampered:9000")
+	require.Error(t, discoveryrecord.ValidateEvidence(tamperedFacts, evidence))
+
+	tamperedSignature := record.Clone()
+	tamperedSignature.Signature = base64.StdEncoding.EncodeToString(make([]byte, ed25519.SignatureSize))
+	require.Error(t, discoveryrecord.ValidateEvidence(tamperedSignature, evidence))
+}
+
+func TestVerificationEvidenceRejectsMissingOrUnknownTrustGeneration(t *testing.T) {
+	record, _ := signedNodeRecord(t)
+	_, err := discoveryrecord.VerifyRetained(record, "", false)
+	require.Error(t, err)
+
+	evidence, err := discoveryrecord.VerifyRetained(record, recordTrustGeneration, false)
+	require.NoError(t, err)
+	evidence.Version++
+	require.Error(t, discoveryrecord.ValidateEvidence(record, evidence))
 }
 
 func signedNodeRecord(t *testing.T) (discoveryrecord.Record, ed25519.PrivateKey) {

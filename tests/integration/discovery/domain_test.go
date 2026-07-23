@@ -11,6 +11,7 @@ import (
 
 	runtimeinfra "ardents/internal/daemon"
 	"ardents/internal/discovery"
+	discoveryrecord "ardents/internal/discovery/records"
 	transport "ardents/internal/network"
 	db "ardents/internal/storage"
 	"ardents/tests/testkit"
@@ -182,13 +183,12 @@ func TestDiscoveryResolveRecordRejectsExpiredPersistedRecord(t *testing.T) {
 	now := time.Now().UTC()
 	record := signedExpiredNodeRecord(t, now, []string{"tcp://expired-remote:9000"})
 	entry := discovery.Entry{
-		Record: record,
-		Source: "imported",
-		SeenAt: now,
+		Record: record, Source: "imported", SeenAt: now,
+		Evidence: retainedDiscoveryEvidence(t, record),
 	}
 	{
 		err := db.SaveJSON(filepath.Join(dir, "ardents.db"), "discovery", "records", map[string]any{
-			"schema_version": 1,
+			"schema_version": 2,
 			"records":        []discovery.Entry{entry},
 			"state":          "ready",
 		})
@@ -243,13 +243,12 @@ func TestDiscoveryStatusCountsExpiredRecordAsStaleAndRejected(t *testing.T) {
 	record := signedExpiredNodeRecord(t, now, []string{"tcp://expired-summary:9000"})
 
 	entry := discovery.Entry{
-		Record: record,
-		Source: "imported",
-		SeenAt: now,
+		Record: record, Source: "imported", SeenAt: now,
+		Evidence: retainedDiscoveryEvidence(t, record),
 	}
 	{
 		err := db.SaveJSON(filepath.Join(dir, "ardents.db"), "discovery", "records", map[string]any{
-			"schema_version": 1,
+			"schema_version": 2,
 			"records":        []discovery.Entry{entry},
 			"state":          "ready",
 		})
@@ -266,6 +265,13 @@ func TestDiscoveryStatusCountsExpiredRecordAsStaleAndRejected(t *testing.T) {
 	require.Equal(t, 1, status.RemoteRecords)
 	require.Equal(t, 1, status.StaleRecords)
 	require.Equal(t, 1, status.RejectedRecords)
+}
+
+func retainedDiscoveryEvidence(t *testing.T, record discovery.Record) discoveryrecord.VerificationEvidence {
+	t.Helper()
+	evidence, err := discovery.NewTrustEvaluator(nil).VerifyRetained(record)
+	require.NoError(t, err)
+	return evidence
 }
 
 func TestDiscoveryDoesNotPublishStaticServiceRecordWithoutRuntimeBacking(t *testing.T) {

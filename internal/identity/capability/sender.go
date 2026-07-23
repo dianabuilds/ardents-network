@@ -9,7 +9,7 @@ import (
 func (s *Service) ImportSenderGrant(grant identityapi.CapabilityGrant) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	issuerPublic, ok := s.issuers[grant.IssuerPrincipal]
+	issuerPublic, ok := s.trustedIssuer(grant.IssuerPrincipal)
 	if !ok {
 		return capabilityError(CodeIssuerUntrusted, "capability issuer is not trusted")
 	}

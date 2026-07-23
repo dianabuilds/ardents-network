@@ -93,7 +93,7 @@ func TestSyncDiscoveryTrustDiagnosticsKeepsNodeReadyForUntrustedCatalogEntry(t *
 		life:    life,
 		diag:    diagnostics.New(""),
 		disco:   disco,
-		trust:   discovery.NewTrustEvaluator(),
+		trust:   discovery.NewTrustEvaluator(nil),
 		publish: func(string, map[string]any) {},
 	}
 
@@ -109,52 +109,26 @@ func TestSyncDiscoveryTrustDiagnosticsKeepsNodeReadyForUntrustedCatalogEntry(t *
 	require.Equal(t, diagnostics.Ready, life.State())
 }
 
-func TestSyncDiscoveryTrustDiagnosticsPrioritizesInvalidCatalogEntryOverUntrusted(t *testing.T) {
-	life := diagnostics.NewMachine()
-	require.NoError(t, life.Move(diagnostics.Starting))
-	require.NoError(t, life.Move(diagnostics.Initializing))
-	require.NoError(t, life.Move(diagnostics.Ready))
-
-	untrusted := signedTrustRecord(t)
-	invalid := signedTrustRecord(t)
+func TestDiscoveryLoadRejectsInvalidCatalogEntryBeforeDiagnostics(t *testing.T) {
+	valid := signedTrustRecord(t)
+	evidence, err := discovery.NewTrustEvaluator(nil).VerifyRetained(valid)
+	require.NoError(t, err)
+	invalid := valid.Clone()
 	invalid.Signature = "not-base64"
 
 	dir := t.TempDir()
 	path := filepath.Join(dir, "ardents.db")
-	err := db.SaveJSON(path, "discovery", "records", map[string]any{
+	err = db.SaveJSON(path, "discovery", "records", map[string]any{
+		"schema_version": 2,
 		"records": []discovery.Entry{
-			{Record: untrusted, Source: "bootstrap", SeenAt: time.Now().UTC()},
-			{Record: invalid, Source: "cache", SeenAt: time.Now().UTC()},
+			{Record: invalid, Source: "cache", SeenAt: time.Now().UTC(), Evidence: evidence},
 		},
 		"state": "ready",
 	})
 	require.NoError(t, err)
 
 	disco := discovery.New(path)
-	require.NoError(t, disco.Load())
-
-	ctl := &RuntimeManager{
-		cfgName: "node-1",
-		life:    life,
-		diag:    diagnostics.New(""),
-		disco:   disco,
-		trust:   discovery.NewTrustEvaluator(),
-		publish: func(string, map[string]any) {},
-	}
-
-	ctl.SyncDiscoveryTrustDiagnosticsLocked()
-
-	snapshot := ctl.diag.Snapshot()
-	require.Equal(t, diagnostics.HealthDegraded, snapshot.Health.State)
-	require.NotNil(t, snapshot.Health.PrimaryReason)
-	require.Equal(t, "trust.record.invalid", snapshot.Health.PrimaryReason.Code)
-	require.Len(t, snapshot.Health.Subsystems, 1)
-	require.Equal(t, "trust.record.invalid", snapshot.Health.Subsystems[0].Reason.Code)
-	require.Equal(t, invalid.RecordID(), snapshot.Health.Subsystems[0].Reason.Resource)
-	require.Len(t, snapshot.RecentEvents, 1)
-	require.Equal(t, "catalog_degraded", snapshot.RecentEvents[0].Type)
-	require.Equal(t, "trust.record.invalid", snapshot.RecentEvents[0].ReasonCode)
-	require.Equal(t, diagnostics.Degraded, life.State())
+	require.Error(t, disco.Load())
 }
 
 func signedTrustRecord(t *testing.T) discovery.Record {

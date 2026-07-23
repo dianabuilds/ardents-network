@@ -12,7 +12,9 @@ import (
 
 func TestImportDefaultsSourceToImported(t *testing.T) {
 	record, _ := intakeNodeRecord(t, 1, time.Now().UTC())
-	entries, result, err := Import(nil, record, "", time.Now().UTC())
+	evidence, err := VerifyRetained(record, recordTrustGenerationForIntake, false)
+	require.NoError(t, err)
+	entries, result, err := ImportVerified(nil, record, "", time.Now().UTC(), evidence)
 	require.NoError(t, err)
 	require.True(t, result.Applied)
 	require.Equal(t, Imported, entries[0].Source)
@@ -21,11 +23,15 @@ func TestImportDefaultsSourceToImported(t *testing.T) {
 func TestImportRejectsUnknownSourceWithoutMutation(t *testing.T) {
 	now := time.Now().UTC()
 	record, _ := intakeNodeRecord(t, 1, now)
+	evidence, err := VerifyRetained(record, recordTrustGenerationForIntake, false)
+	require.NoError(t, err)
 	before := []Entry{{Record: record.Clone(), Source: Local, SeenAt: now}}
-	got, _, err := Import(before, record, "operator-supplied", now)
+	got, _, err := ImportVerified(before, record, "operator-supplied", now, evidence)
 	require.Error(t, err)
 	require.Equal(t, before, got)
 }
+
+const recordTrustGenerationForIntake = "0202020202020202020202020202020202020202020202020202020202020202"
 
 func TestUpsertRejectsConflictingPublicKeyAndStaleRecord(t *testing.T) {
 	now := time.Now().UTC()

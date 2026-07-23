@@ -58,8 +58,9 @@ The `v1` document contains these typed sections:
 | `node` | Node Runtime / assembly | `name`, `profile`, `data_dir` |
 | `api` | local boundary | loopback `listen_address`, optional private `socket_path`, `token_file` |
 | `application_interface` | least-privilege Application boundary | enablement, separate loopback/socket listener, credential reference, subject, explicit `application.*` capabilities, expiry |
-| `network` | Network Foundation | Waku `transport_profile`, bind/listen, bootstrap, trust, DNS, reachability, advertised endpoints, WSS material references, abuse limits |
-| `privacy` | Identity + Network privacy assembly | protected capability-store/key references, trusted issuer public keys, and separate discovery/data replay ledgers; never raw selector/channel material |
+| `trust` | Identity trust registry | Principal/public-key bindings with exact `discovery.publish`, `channel.issue`, or reserved `identity.attest` purposes |
+| `network` | Network Foundation | Waku `transport_profile`, bind/listen, bootstrap, DNS, reachability, advertised endpoints, WSS material references, abuse limits |
+| `privacy` | Identity + Network privacy assembly | protected capability-store/key references and separate discovery/data replay ledgers; never raw selector/channel material |
 | `workloads` | Workload Control + Policy | executor, registries, policy refs, runtime names, ingress allow-list and proxy image |
 | `services` | Hosted Services | declared service/probe inputs that still require runtime backing before publication |
 | `data` | Data Substrate + Policy | data/store paths, local/relay TTL, storage and replica quotas, replica target/minimum |
@@ -99,6 +100,7 @@ applied to the running process:
 - workload executor/runtime and ingress proxy shape;
 - storage paths and hard capacity limits;
 - privacy channel identity/scope/material references.
+- purpose-scoped trusted-Principal definitions.
 
 The effective snapshot remains the running version and lists the changed paths
 as `restart_required`. A restart re-validates the complete candidate before
@@ -128,6 +130,8 @@ Validation is deterministic and completes before application. It includes:
 - Waku node-profile, transport-profile, role, reachability, address, WSS, DNS,
   bootstrap, and abuse-limit constraints;
 - privacy-required versus capability material and replay persistence;
+- canonical Principal/public-key binding, exact known trust purposes, and
+  duplicate trusted-Principal rejection;
 - trusted-process executor only in `local_development`;
 - workload registry, policy-ref, ingress, and runtime constraints;
 - service endpoint/probe consistency without claiming publication readiness;
@@ -151,8 +155,27 @@ secure operator workflow. Runtime configuration references that store; it does
 not import plaintext grants or create replacement secrets.
 
 The privacy section contains one protected capability-store path, a separate
-32-byte store-key file, the local identity subject, trusted issuer public keys,
-and two channel bindings:
+32-byte store-key file, the local identity subject, and two channel bindings.
+Issuer trust is defined once in `trust.principals`, never duplicated in
+`privacy` or `network`:
+
+```json
+{
+  "trust": {
+    "principals": [{
+      "principal": "p1_...",
+      "public_key": "<canonical-base64-ed25519-public-key>",
+      "purposes": ["channel.issue"]
+    }]
+  }
+}
+```
+
+Purposes are exact and non-transitive: `discovery.publish` never authorizes
+channel issuance, `channel.issue` never authorizes discovery publication, and
+`identity.attest` is reserved vocabulary until a Policy consumer exists.
+
+The two channel bindings are:
 
 - `discovery` is fixed to `realm.discovery` and has an opaque local capability
   reference plus a durable replay-ledger path;
@@ -161,8 +184,8 @@ and two channel bindings:
 - `replay_key_file` is a separately protected 32-byte key used only for replay
   digests.
 
-The daemon checks file type and private permissions, key length, issuer
-principal/public-key binding, local identity/subject binding, grant validity,
+The daemon checks file type and private permissions, key length, purpose-scoped
+issuer Principal/public-key binding, local identity/subject binding, grant validity,
 scope, publish/subscribe/store permissions, and replay persistence before
 constructing the node. `privacy.required=false` accepts no dormant privacy
 material, so a typo cannot be silently ignored. Missing or wrong protected
@@ -179,7 +202,8 @@ The effective snapshot contains:
 - active generation, validated candidate generation, and pending-restart paths;
 - the last reload outcome and bounded safe reasons.
 
-The snapshot never exposes API tokens, private keys, capability grants,
+The snapshot never exposes API tokens, private keys, trusted-Principal public
+keys, capability grants,
 selectors, encryption material, environment secret values, or secret file
 contents. Paths that reveal sensitive topology or identity storage are reduced
 to a safe configured/not-configured state where appropriate.

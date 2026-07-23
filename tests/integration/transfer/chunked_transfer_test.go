@@ -6,12 +6,14 @@ import (
 	"bytes"
 	"context"
 	"crypto/ed25519"
+	"encoding/base64"
 	"testing"
 	"time"
 
 	appdata "ardents/internal/content"
 	runtimeinfra "ardents/internal/daemon"
 	identityprincipal "ardents/internal/identity/principal"
+	identitytrust "ardents/internal/identity/trust"
 	"ardents/tests/testkit"
 
 	"github.com/stretchr/testify/require"
@@ -46,7 +48,7 @@ func TestDataSubstrateFetchesAndResumesChunkedPayloadOverPrivateWaku(t *testing.
 	requesterDir := t.TempDir()
 	requester := testkit.StartNode(t, runtimeinfra.Config{
 		Name: "chunked-requester", Boot: runtimeinfra.BootConfig{Sources: append([]string(nil), records[0].EndpointList()...)},
-		Trust: runtimeinfra.TrustConfig{Anchors: []string{source.Snapshot().Ident.PublicKey}},
+		Trust: runtimeinfra.TrustConfig{Registry: transferIntegrationTrust(t, source.Snapshot().Ident.PublicKey)},
 		Data:  runtimeinfra.DataConfig{Dir: requesterDir}, Privacy: privacy.Receiver,
 	})
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -71,6 +73,20 @@ func TestDataSubstrateFetchesAndResumesChunkedPayloadOverPrivateWaku(t *testing.
 	require.NoError(t, err)
 	require.Zero(t, resumed.FetchedCount)
 	require.Equal(t, stored.ChunkCount, resumed.ResumedCount)
+}
+
+func transferIntegrationTrust(t *testing.T, encoded string) *identitytrust.Registry {
+	t.Helper()
+	public, err := base64.StdEncoding.DecodeString(encoded)
+	require.NoError(t, err)
+	principalID, err := identityprincipal.FromEd25519PublicKey(ed25519.PublicKey(public))
+	require.NoError(t, err)
+	registry, err := identitytrust.NewRegistry([]identitytrust.Entry{{
+		Principal: principalID.String(), PublicKey: ed25519.PublicKey(public),
+		Purposes: []identitytrust.Purpose{identitytrust.PurposeDiscoveryPublish},
+	}})
+	require.NoError(t, err)
+	return registry
 }
 
 func integrationTransferOwner(t *testing.T) identityprincipal.ID {

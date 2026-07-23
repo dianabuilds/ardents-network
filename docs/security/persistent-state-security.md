@@ -48,8 +48,8 @@ The following items form consistency groups and must not be restored partially:
 4. Payload readability: the data availability group and its separately managed
    payload/capability keys.
 5. Capability authority: `ardents.db`, the separately provisioned
-   capability-store master key, Identity signing key, and trusted issuer
-   configuration. Partial restore must not regenerate channel, delivery, or
+   capability-store master key, Identity signing key, and purpose-scoped
+   trusted-Principal configuration. Partial restore must not regenerate channel, delivery, or
    master keys.
 6. Private replay continuity: `ardents.db` and the separately provisioned
    replay-digest master key. Losing either side fails closed and must not reset

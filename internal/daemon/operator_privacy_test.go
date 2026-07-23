@@ -16,6 +16,7 @@ import (
 	identitycapability "ardents/internal/identity/capability"
 	identitykeyring "ardents/internal/identity/keyring"
 	identityprincipal "ardents/internal/identity/principal"
+	identitytrust "ardents/internal/identity/trust"
 	apppolicy "ardents/internal/policy"
 
 	"github.com/stretchr/testify/require"
@@ -83,8 +84,13 @@ func provisionOperatorPrivacy(t *testing.T) runtimeconfig.Document {
 	storeKey := bytes.Repeat([]byte{0x51}, 32)
 	replayKey := bytes.Repeat([]byte{0x61}, 32)
 	storePath := filepath.Join(dir, "capabilities.db")
+	trustedIssuers, err := identitytrust.NewRegistry([]identitytrust.Entry{{
+		Principal: issuer, PublicKey: issuerPublic,
+		Purposes: []identitytrust.Purpose{identitytrust.PurposeChannelIssue},
+	}})
+	require.NoError(t, err)
 	Workloads, err := identitycapability.NewService(
-		storePath, storeKey, subject, map[string]ed25519.PublicKey{issuer: issuerPublic},
+		storePath, storeKey, subject, trustedIssuers,
 		apppolicy.New(apppolicy.Config{}), time.Now,
 	)
 	require.NoError(t, err)
@@ -101,7 +107,6 @@ func provisionOperatorPrivacy(t *testing.T) runtimeconfig.Document {
 	doc.Privacy = runtimeconfig.PrivacyConfig{
 		Required: true, CapabilityStore: storePath, CapabilityStoreKeyFile: storeKeyPath,
 		ReplayKeyFile: replayKeyPath, Subject: subject,
-		TrustedIssuers: map[string]string{issuer: base64.StdEncoding.EncodeToString(issuerPublic)},
 		Discovery: runtimeconfig.PrivacyChannelConfig{
 			Reference: string(discoveryRef), ReplayPath: filepath.Join(dir, "discovery-replay.db"),
 		},
@@ -109,6 +114,10 @@ func provisionOperatorPrivacy(t *testing.T) runtimeconfig.Document {
 			Reference: string(dataRef), ReplayPath: filepath.Join(dir, "data-replay.db"),
 		},
 	}
+	doc.Trust.Principals = []runtimeconfig.TrustedPrincipalConfig{{
+		Principal: issuer, PublicKey: base64.StdEncoding.EncodeToString(issuerPublic),
+		Purposes: []identitytrust.Purpose{identitytrust.PurposeChannelIssue},
+	}}
 	return doc
 }
 

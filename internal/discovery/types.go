@@ -19,12 +19,20 @@ type Service struct {
 	state   string
 	reason  string
 	records []Entry
+	trust   *TrustEvaluator
+	persist func(string, any) error
 }
 
 func New(path string) *Service {
+	return NewWithTrust(path, NewTrustEvaluator(nil))
+}
+
+func NewWithTrust(path string, trust *TrustEvaluator) *Service {
+	if trust == nil {
+		trust = NewTrustEvaluator(nil)
+	}
 	return &Service{
-		path:  path,
-		state: "new",
+		path: path, state: "new", trust: trust, persist: SaveSnapshot,
 	}
 }
 
@@ -32,12 +40,16 @@ func NewInDir(dir string) *Service {
 	return New(PathInDir(dir))
 }
 
+func NewInDirWithTrust(dir string, trust *TrustEvaluator) *Service {
+	return NewWithTrust(PathInDir(dir), trust)
+}
+
 func (s *Service) saveLocked() error {
 	if s.path == "" {
 		return nil
 	}
-	return SaveSnapshot(s.path, Snapshot{
-		SchemaVersion: 1,
+	return s.persist(s.path, Snapshot{
+		SchemaVersion: 2,
 		Records:       CloneEntries(s.records),
 		State:         s.state,
 		Reason:        s.reason,

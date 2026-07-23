@@ -2,7 +2,9 @@ package records
 
 import (
 	"crypto/ed25519"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"time"
@@ -47,6 +49,84 @@ func ValidateAt(record Record, now time.Time) error {
 // because it expired while the Node was stopped.
 func ValidateRetained(record Record) error {
 	return validateSignedRecord(record)
+}
+
+// VerifyRetained verifies durable record authority once and returns evidence
+// suitable for reuse by projections in the same process. Persisted evidence is
+// validated for binding on load, but the signature is still reverified there.
+func VerifyRetained(record Record, trustGeneration string, trusted bool) (VerificationEvidence, error) {
+	if trustGeneration == "" {
+		return VerificationEvidence{}, errors.New("trust generation is required")
+	}
+	if err := validateSignedRecord(record); err != nil {
+		return VerificationEvidence{}, err
+	}
+	return evidenceFor(record, trustGeneration, trusted)
+}
+
+// ValidateEvidence checks that retained evidence describes these exact signed
+// bytes and a concrete trust generation. It intentionally does not verify the
+// signature; callers loading persisted state must call VerifyRetained as well.
+func ValidateEvidence(record Record, evidence VerificationEvidence) error {
+	if evidence.Version != EvidenceVersion {
+		return errors.New("record verification evidence version is unsupported")
+	}
+	if generation, err := hex.DecodeString(evidence.TrustGeneration); err != nil || len(generation) != sha256.Size || hex.EncodeToString(generation) != evidence.TrustGeneration {
+		return errors.New("record verification evidence trust generation is invalid")
+	}
+	want, err := evidenceFor(record, evidence.TrustGeneration, evidence.Trusted)
+	if err != nil {
+		return err
+	}
+	if evidence.CanonicalDigest != want.CanonicalDigest ||
+		evidence.SignatureDigest != want.SignatureDigest ||
+		!evidence.Signer.Equal(want.Signer) {
+		return errors.New("record verification evidence does not match record")
+	}
+	return nil
+}
+
+func evidenceFor(record Record, trustGeneration string, trusted bool) (VerificationEvidence, error) {
+	canonicalDigest, signatureDigest, signer, err := Fingerprint(record)
+	if err != nil {
+		return VerificationEvidence{}, err
+	}
+	return VerificationEvidence{
+		Version:         EvidenceVersion,
+		CanonicalDigest: canonicalDigest,
+		SignatureDigest: signatureDigest,
+		Signer:          signer,
+		TrustGeneration: trustGeneration,
+		Trusted:         trusted,
+	}, nil
+}
+
+// Fingerprint returns a non-authoritative binding for cache lookup. It does not
+// validate facts or verify the signature; only VerifyRetained creates trusted
+// verification evidence.
+func Fingerprint(record Record) (string, string, identityprincipal.ID, error) {
+	canonical, err := Canonical(record)
+	if err != nil {
+		return "", "", identityprincipal.ID{}, err
+	}
+	signature, err := base64.StdEncoding.DecodeString(record.Signature)
+	if err != nil || base64.StdEncoding.EncodeToString(signature) != record.Signature || len(signature) != ed25519.SignatureSize {
+		return "", "", identityprincipal.ID{}, errors.New("record signature is invalid")
+	}
+	canonicalDigest := sha256.Sum256(canonical)
+	signatureDigest := sha256.Sum256(signature)
+	return base64.RawURLEncoding.EncodeToString(canonicalDigest[:]),
+		base64.RawURLEncoding.EncodeToString(signatureDigest[:]), recordSigner(record), nil
+}
+
+func recordSigner(record Record) identityprincipal.ID {
+	if record.Node != nil {
+		return record.Node.Principal
+	}
+	if record.Service != nil {
+		return record.Service.NodePrincipal
+	}
+	return identityprincipal.ID{}
 }
 
 func validateSignedRecord(record Record) error {

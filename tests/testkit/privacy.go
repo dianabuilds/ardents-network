@@ -10,6 +10,7 @@ import (
 	identityapi "ardents/internal/identity"
 	identitycapability "ardents/internal/identity/capability"
 	identityprincipal "ardents/internal/identity/principal"
+	identitytrust "ardents/internal/identity/trust"
 	networkprivacy "ardents/internal/messaging"
 	"ardents/internal/policy"
 
@@ -65,7 +66,7 @@ func newPrivacyGroupFixture(t *testing.T, now time.Time, count int, scope identi
 		privates[index] = privacyPrivate(byte(0x27 + index*0x10))
 		grants[index] = privacyGrant(t, issuerPrivate, issuer, privates[index], secret, privacyID(channelByte), byte(0x67+index), scope, now)
 	}
-	trusted := map[string]ed25519.PublicKey{issuer: issuerPublic}
+	trusted := testkitTrustRegistry(t, issuer, issuerPublic)
 	channels := make([]*networkprivacy.Channel, count)
 	authorities := make([]*identitycapability.Service, count)
 	for index := range count {
@@ -113,7 +114,7 @@ func newPrivacyFixture(t *testing.T, now time.Time, scope identityapi.Capability
 	channelID := privacyID(channelByte)
 	senderGrant := privacyGrant(t, issuerPrivate, issuer, senderPrivate, secret, channelID, 0x67, scope, now)
 	receiverGrant := privacyGrant(t, issuerPrivate, issuer, receiverPrivate, secret, channelID, 0x77, scope, now)
-	trusted := map[string]ed25519.PublicKey{issuer: issuerPublic}
+	trusted := testkitTrustRegistry(t, issuer, issuerPublic)
 	senderAuthority, senderRef := privacyAuthority(t, now, senderGrant, trusted, 0x87)
 	receiverAuthority, receiverRef := privacyAuthority(t, now, receiverGrant, trusted, 0x97)
 	require.NoError(t, senderAuthority.ImportSenderGrant(receiverGrant))
@@ -134,7 +135,7 @@ func (f DiscoveryPrivacyFixture) RevokeSender(t *testing.T, at time.Time) {
 	require.NoError(t, f.receiver.ApplyRevocation(revocation))
 }
 
-func privacyAuthority(t *testing.T, now time.Time, grant identityapi.CapabilityGrant, trusted map[string]ed25519.PublicKey, keyByte byte) (*identitycapability.Service, identityapi.CapabilityRef) {
+func privacyAuthority(t *testing.T, now time.Time, grant identityapi.CapabilityGrant, trusted *identitytrust.Registry, keyByte byte) (*identitycapability.Service, identityapi.CapabilityRef) {
 	t.Helper()
 	authority, err := identitycapability.NewService(
 		filepath.Join(t.TempDir(), "capabilities.db"), bytes.Repeat([]byte{keyByte}, 32),
@@ -144,6 +145,16 @@ func privacyAuthority(t *testing.T, now time.Time, grant identityapi.CapabilityG
 	ref, err := authority.ImportGrant(grant)
 	require.NoError(t, err)
 	return authority, ref
+}
+
+func testkitTrustRegistry(t *testing.T, principal string, public ed25519.PublicKey) *identitytrust.Registry {
+	t.Helper()
+	registry, err := identitytrust.NewRegistry([]identitytrust.Entry{{
+		Principal: principal, PublicKey: public,
+		Purposes: []identitytrust.Purpose{identitytrust.PurposeChannelIssue},
+	}})
+	require.NoError(t, err)
+	return registry
 }
 
 func privacyChannel(t *testing.T, now time.Time, authority *identitycapability.Service, ref identityapi.CapabilityRef, subject string, signer ed25519.PrivateKey, scope identityapi.CapabilityScope, keyByte byte) *networkprivacy.Channel {

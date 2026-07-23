@@ -113,7 +113,7 @@ Trust не должен оставаться только справочной �
 - bootstrap peers или иные входные точки участия;
 - режим сетевого участия узла;
 - ограничения на visibility и publication;
-- доверенные anchors или иные источники доверия;
+- purpose-scoped trusted Principals или иные типизированные источники доверия;
 - limits для сетевой активности и discovery intake.
 
 Транспортный стек внутри канонической `Waku`-основы также может иметь
@@ -223,7 +223,7 @@ This ownership includes:
 
 - signature and provenance verification for remote records
 - trusted/untrusted and usable/unusable outcomes
-- anchor-backed trust evaluation inputs
+- `discovery.publish` trusted-Principal inputs from the shared exact-purpose registry
 - explainable trust outcomes exposed through diagnostics and local surfaces
 
 ## 11. Bootstrap Source And Replenishment Contract

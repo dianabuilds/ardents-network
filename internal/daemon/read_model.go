@@ -237,10 +237,6 @@ func (r *QueryService) ExplainTrustLocked(record discovery.CatalogRecordSnapshot
 	}
 }
 
-func (r *QueryService) TrustAnchorsLocked() []string {
-	return r.trust.Anchors()
-}
-
 func (r *QueryService) LastTransportCandidatesLocked() []network.Candidate {
 	if route := r.route.Last(); route.Selected != nil {
 		return []network.Candidate{*route.Selected}

@@ -14,6 +14,7 @@ import (
 
 	identityapi "ardents/internal/identity"
 	identityprincipal "ardents/internal/identity/principal"
+	identitytrust "ardents/internal/identity/trust"
 
 	"github.com/stretchr/testify/require"
 )
@@ -129,7 +130,7 @@ func TestServiceRejectsCorrectlySignedNonCanonicalPrincipalGrant(t *testing.T) {
 	grant.SubjectPrincipal = "p_feedfacefeedface"
 	grant, err := SignGrant(grant, issuerPrivate)
 	require.NoError(t, err)
-	service, err := NewService(filepath.Join(t.TempDir(), "capabilities.db"), bytes.Repeat([]byte{7}, 32), otherPrincipal(), map[string]ed25519.PublicKey{grant.IssuerPrincipal: issuerPublic}, allowCapabilityAdmission{}, func() time.Time { return capabilityTestNow })
+	service, err := NewService(filepath.Join(t.TempDir(), "capabilities.db"), bytes.Repeat([]byte{7}, 32), otherPrincipal(), trustedIssuer(issuerPublic), allowCapabilityAdmission{}, func() time.Time { return capabilityTestNow })
 	require.NoError(t, err)
 	_, err = service.ImportGrant(grant)
 	require.Error(t, err)
@@ -157,6 +158,27 @@ func TestServiceRejectsGrantFromUntrustedIssuer(t *testing.T) {
 
 	_, err = service.ImportGrant(grant)
 	requireCapabilityCode(t, err, CodeIssuerUntrusted)
+}
+
+func TestTrustRotationInvalidatesRetainedReceiverAndSenderGrantsOnNextUse(t *testing.T) {
+	grant, issuerPublic, _ := signedTestGrant(t, 1)
+	service, err := NewService(filepath.Join(t.TempDir(), "ardents.db"), bytes.Repeat([]byte{1}, 32), grant.SubjectPrincipal, trustedIssuer(issuerPublic), allowCapabilityAdmission{}, func() time.Time { return capabilityTestNow })
+	require.NoError(t, err)
+	ref, err := service.ImportGrant(grant)
+	require.NoError(t, err)
+	require.NoError(t, service.ImportSenderGrant(grant))
+
+	empty, err := identitytrust.NewRegistry(nil)
+	require.NoError(t, err)
+	service.ReplaceTrustRegistry(empty)
+	_, err = service.ResolveCapability(validUse(ref, grant))
+	requireCapabilityCode(t, err, CodeIssuerUntrusted)
+	senderUse := identityapi.CapabilitySenderUse{
+		GrantID: grant.GrantID, ChannelID: grant.ChannelID, Generation: grant.Generation,
+		Subject: grant.SubjectPrincipal, Permission: identityapi.CapabilityPublish, Scope: grant.Scope,
+		At: capabilityTestNow, ObservedAt: capabilityTestNow,
+	}
+	requireCapabilityCode(t, service.AuthorizeCapabilitySender(senderUse), CodeIssuerUntrusted)
 }
 
 func TestServiceAuthorizesAndRevokesImportedSenderGrant(t *testing.T) {
@@ -354,10 +376,15 @@ func requireCapabilityCode(t *testing.T, err error, code string) {
 	require.NotContains(t, err.Error(), "p_subject")
 }
 
-func trustedIssuer(public ed25519.PublicKey) map[string]ed25519.PublicKey {
-	return map[string]ed25519.PublicKey{
-		capabilityTestPrincipal(public): public,
+func trustedIssuer(public ed25519.PublicKey) *identitytrust.Registry {
+	registry, err := identitytrust.NewRegistry([]identitytrust.Entry{{
+		Principal: capabilityTestPrincipal(public), PublicKey: public,
+		Purposes: []identitytrust.Purpose{identitytrust.PurposeChannelIssue},
+	}})
+	if err != nil {
+		panic(err)
 	}
+	return registry
 }
 
 type allowCapabilityAdmission struct{}

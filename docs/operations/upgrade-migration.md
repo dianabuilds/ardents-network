@@ -140,11 +140,14 @@ backup; never copy only the identity record or synthesize a Device from the Node
 key. Rollback to a pre-PIA-015A binary requires restoring its entire matching
 consistency group rather than editing the version-1 record.
 
-### Discovery retained state version 1
+### Discovery retained state version 2
 
-The first-release `ardents.db` value at bucket/key `discovery/records` is a
-strict JSON snapshot with `schema_version: 1`, state/reason, and signed record
-entries. Each record has `version: 1` and exactly one NodeFacts or ServiceFacts
+The PIA-015B `ardents.db` value at bucket/key `discovery/records` introduced a
+strict JSON snapshot with `schema_version: 1`. The supported first-release
+snapshot is `schema_version: 2`; each entry additionally requires local
+verification evidence bound to the record's canonical bytes, signature, signer
+Principal, and full trusted-Principal registry generation. Each signed record
+remains `version: 1` and has exactly one NodeFacts or ServiceFacts
 body. NodeFacts identify one Node Principal. ServiceFacts contain one Service
 ID, service type, owning Node Principal, Workload ID, mode, public key, and
 endpoints. Entry `source` and `seen_at` are local observations and are not part
@@ -152,10 +155,17 @@ of the signed record.
 
 Startup rejects missing/unknown/duplicate schema fields, trailing JSON,
 malformed unions, invalid signatures or Principal/public-key bindings, invalid
-entry metadata, and duplicate record IDs or kind/subject pairs before changing
+or missing verification evidence, invalid entry metadata, and duplicate record
+IDs or kind/subject pairs before changing
 runtime state. A valid record that expired while the Node was stopped is loaded
 for retained-state continuity but remains non-routable. Import and restore save
 failures roll in-memory discovery state back atomically.
+
+Startup never treats persisted evidence as authority: it reverifies every
+retained signature once. If the configured trust generation changed, startup
+re-evaluates the exact `discovery.publish` purpose and atomically rewrites the
+refreshed non-secret evidence before publishing runtime state. A schema-version
+1 snapshot is rejected; there is no dual reader or in-place compatibility path.
 
 This is the only supported first-release shape. There is no flat-record
 importer, field precedence rule, or dual-format alias. Discard pre-release state

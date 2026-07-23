@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	runtimeconfig "ardents/internal/config"
+	identitytrust "ardents/internal/identity/trust"
 	"ardents/internal/storage"
 )
 
@@ -31,13 +32,15 @@ func operatorDocument(configured options, provisioned NodeProvision) runtimeconf
 	if configured.bootstrapPeer != "" {
 		doc.Network.BootstrapPeers = []string{configured.bootstrapPeer}
 	}
+	doc.Trust.Principals = []runtimeconfig.TrustedPrincipalConfig{{
+		Principal: provisioned.Issuer,
+		PublicKey: base64.StdEncoding.EncodeToString(provisioned.IssuerPublic),
+		Purposes:  []identitytrust.Purpose{identitytrust.PurposeChannelIssue},
+	}}
 	doc.Privacy = runtimeconfig.PrivacyConfig{
 		Required: true, CapabilityStore: filepath.Join(runtimeDataDir, "capabilities.db"),
 		CapabilityStoreKeyFile: filepath.Join(runtimeSecretDir, "capability-store.key"),
 		ReplayKeyFile:          filepath.Join(runtimeSecretDir, "replay.key"), Subject: provisioned.Subject,
-		TrustedIssuers: map[string]string{
-			provisioned.Issuer: base64.StdEncoding.EncodeToString(provisioned.IssuerPublic),
-		},
 		Discovery: runtimeconfig.PrivacyChannelConfig{
 			Reference: string(provisioned.DiscoveryRef), ReplayPath: filepath.Join(runtimeDataDir, "discovery-replay.db"),
 		},

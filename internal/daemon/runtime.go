@@ -5,6 +5,7 @@ import (
 	"ardents/internal/discovery"
 	discoveryrecord "ardents/internal/discovery/records"
 	"ardents/internal/identity"
+	identitytrust "ardents/internal/identity/trust"
 	networkprivacy "ardents/internal/messaging"
 	transport "ardents/internal/network"
 	"ardents/internal/policy"
@@ -20,32 +21,33 @@ import (
 )
 
 type RuntimeManager struct {
-	cfgName       string
-	bootSources   []string
-	workloadSpecs []registry.Spec
-	life          *diagnostics.Machine
-	diag          *diagnostics.Recorder
-	state         *identity.Store
-	keys          identity.KeyStore
-	boot          *BootStatus
-	ident         identity.Service
-	trust         *discovery.TrustEvaluator
-	disco         *discovery.Service
-	trans         transport.Service
-	privacy       *networkprivacy.Channel
-	data          *contentLifecycle
-	workloads     *workload.Runtime
-	publication   publication.Coordinator
-	getPrivate    func() ed25519.PrivateKey
-	setPrivate    func(ed25519.PrivateKey)
-	publish       func(string, map[string]any)
+	cfgName         string
+	bootSources     []string
+	workloadSpecs   []registry.Spec
+	life            *diagnostics.Machine
+	diag            *diagnostics.Recorder
+	state           *identity.Store
+	keys            identity.KeyStore
+	boot            *BootStatus
+	ident           identity.Service
+	trust           *discovery.TrustEvaluator
+	configuredTrust *identitytrust.Registry
+	disco           *discovery.Service
+	trans           transport.Service
+	privacy         *networkprivacy.Channel
+	data            *contentLifecycle
+	workloads       *workload.Runtime
+	publication     publication.Coordinator
+	getPrivate      func() ed25519.PrivateKey
+	setPrivate      func(ed25519.PrivateKey)
+	publish         func(string, map[string]any)
 }
 
 func newRuntimeLifecycle(
 	cfgName string, bootSources []string, workloadSpecs []registry.Spec,
 	life *diagnostics.Machine, diag *diagnostics.Recorder,
 	state *identity.Store, keys identity.KeyStore, boot *BootStatus,
-	ident identity.Service, trustSvc *discovery.TrustEvaluator,
+	ident identity.Service, trustSvc *discovery.TrustEvaluator, configuredTrust *identitytrust.Registry,
 	disco *discovery.Service, trans transport.Service,
 	dataSvc *contentLifecycle, workloadRuntime *workload.Runtime, publicationMgr publication.Coordinator,
 	getPrivate func() ed25519.PrivateKey,
@@ -58,25 +60,26 @@ func newRuntimeLifecycle(
 		privacyChannel = privateChannels[0]
 	}
 	return &RuntimeManager{
-		cfgName:       cfgName,
-		bootSources:   append([]string(nil), bootSources...),
-		workloadSpecs: append([]registry.Spec(nil), workloadSpecs...),
-		life:          life,
-		diag:          diag,
-		state:         state,
-		keys:          keys,
-		boot:          boot,
-		ident:         ident,
-		trust:         trustSvc,
-		disco:         disco,
-		trans:         trans,
-		privacy:       privacyChannel,
-		data:          dataSvc,
-		workloads:     workloadRuntime,
-		publication:   publicationMgr,
-		getPrivate:    getPrivate,
-		setPrivate:    setPrivate,
-		publish:       publish,
+		cfgName:         cfgName,
+		bootSources:     append([]string(nil), bootSources...),
+		workloadSpecs:   append([]registry.Spec(nil), workloadSpecs...),
+		life:            life,
+		diag:            diag,
+		state:           state,
+		keys:            keys,
+		boot:            boot,
+		ident:           ident,
+		trust:           trustSvc,
+		configuredTrust: configuredTrust,
+		disco:           disco,
+		trans:           trans,
+		privacy:         privacyChannel,
+		data:            dataSvc,
+		workloads:       workloadRuntime,
+		publication:     publicationMgr,
+		getPrivate:      getPrivate,
+		setPrivate:      setPrivate,
+		publish:         publish,
 	}
 }
 
@@ -240,7 +243,7 @@ func (m *RuntimeManager) startupStateLoadLocked(ctx context.Context) bool {
 	return m.runStartupStepLocked(ctx, StartupPhaseStateLoad, "node", "state", false, "", func() error {
 		return LoadStartupState(
 			m.state.Load,
-			m.disco.Load,
+			func() error { return nil },
 			m.data.Load,
 			m.workloads.Load,
 		)
@@ -259,7 +262,10 @@ func (m *RuntimeManager) initializeIdentityLocked(ctx context.Context, out *ed25
 			},
 			m.setPrivate,
 			m.data.SetLocalNodeID,
-			m.trust.Trust,
+			func(principal, public string) error {
+				return replaceTrustWithLocalPrincipal(m.trust, m.configuredTrust, principal, public)
+			},
+			m.disco.Load,
 			m.SyncDiscoveryTrustDiagnosticsLocked,
 		)
 	})

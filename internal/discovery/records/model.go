@@ -7,10 +7,11 @@ import (
 )
 
 const (
-	Version        uint32 = 1
-	KindNode              = "node"
-	KindService           = "service"
-	LocalRecordTTL        = 24 * time.Hour
+	Version         uint32 = 1
+	EvidenceVersion uint32 = 1
+	KindNode               = "node"
+	KindService            = "service"
+	LocalRecordTTL         = 24 * time.Hour
 )
 
 type ServiceID string
@@ -140,7 +141,20 @@ func (r Record) Clone() Record {
 }
 
 type Entry struct {
-	Record Record    `json:"record"`
-	Source string    `json:"source"`
-	SeenAt time.Time `json:"seen_at"`
+	Record   Record               `json:"record"`
+	Source   string               `json:"source"`
+	SeenAt   time.Time            `json:"seen_at"`
+	Evidence VerificationEvidence `json:"evidence"`
+}
+
+// VerificationEvidence is retained local metadata. It is bound to the signed
+// record and the exact trust-registry generation, but never replaces signature
+// verification when a persisted snapshot is loaded.
+type VerificationEvidence struct {
+	Version         uint32               `json:"version"`
+	CanonicalDigest string               `json:"canonical_digest"`
+	SignatureDigest string               `json:"signature_digest"`
+	Signer          identityprincipal.ID `json:"signer"`
+	TrustGeneration string               `json:"trust_generation"`
+	Trusted         bool                 `json:"trusted"`
 }

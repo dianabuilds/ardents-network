@@ -139,7 +139,7 @@ func TestRefreshNetworkPublicationLockedPublishesNodeAndServices(t *testing.T) {
 		network,
 		nil,
 		identSvc,
-		discovery.NewTrustEvaluator(),
+		discovery.NewTrustEvaluator(nil),
 		func() ed25519.PrivateKey { return private },
 		func(string, map[string]any) {},
 	)
@@ -226,7 +226,7 @@ func TestWithdrawNetworkPublicationLockedPublishesWithdrawnNodeRecord(t *testing
 		publicationReachableNetwork(),
 		nil,
 		identSvc,
-		discovery.NewTrustEvaluator(),
+		discovery.NewTrustEvaluator(nil),
 		func() ed25519.PrivateKey { return private },
 		func(string, map[string]any) {},
 	)

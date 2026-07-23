@@ -81,7 +81,7 @@ func redactDocument(doc Document) map[string]any {
 	for _, field := range []string{"capability_store", "capability_store_key_file", "replay_key_file", "subject"} {
 		redactMapValue(out, "privacy", field)
 	}
-	redactMapEntries(out, "privacy", "trusted_issuers")
+	redactTrustedPrincipalKeys(out)
 	redactNestedMapValue(out, "privacy", "discovery", "reference")
 	redactNestedMapValue(out, "privacy", "discovery", "replay_path")
 	redactNestedMapValue(out, "privacy", "data", "reference")
@@ -89,17 +89,20 @@ func redactDocument(doc Document) map[string]any {
 	return out
 }
 
-func redactMapEntries(root map[string]any, section, field string) {
-	value, ok := root[section].(map[string]any)
+func redactTrustedPrincipalKeys(root map[string]any) {
+	trust, ok := root["trust"].(map[string]any)
 	if !ok {
 		return
 	}
-	entries, ok := value[field].(map[string]any)
+	principals, ok := trust["principals"].([]any)
 	if !ok {
 		return
 	}
-	for key := range entries {
-		entries[key] = "configured"
+	for _, raw := range principals {
+		entry, ok := raw.(map[string]any)
+		if ok {
+			entry["public_key"] = configuredState(entry["public_key"])
+		}
 	}
 }
 

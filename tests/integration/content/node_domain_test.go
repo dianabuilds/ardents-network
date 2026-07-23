@@ -217,7 +217,7 @@ func TestDataSubstrateRejectsPlaintextRemoteReserve(t *testing.T) {
 	requester := testkit.StartNode(t, runtimeinfra.Config{
 		Name:    "data-requester-plaintext",
 		Boot:    runtimeinfra.BootConfig{Sources: append([]string(nil), records[0].EndpointList()...)},
-		Trust:   runtimeinfra.TrustConfig{Anchors: []string{source.Snapshot().Ident.PublicKey}},
+		Trust:   runtimeinfra.TrustConfig{Registry: testkit.DiscoveryTrustRegistry(t, source.Snapshot().Ident.PublicKey)},
 		Data:    runtimeinfra.DataConfig{Dir: requesterDir},
 		Privacy: privacy.Receiver,
 	})

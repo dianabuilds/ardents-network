@@ -165,7 +165,7 @@ func TestTerminalNetworkSurfaceLifecycle(t *testing.T) {
 	sut := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "terminal-network-sut", NodeProfile: transport.NodeProfileServiceNode,
 		Boot:      runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Trust:     runtimeinfra.TrustConfig{Anchors: []string{remote.Snapshot().Ident.PublicKey}},
+		Trust:     runtimeinfra.TrustConfig{Registry: testkit.DiscoveryTrustRegistry(t, remote.Snapshot().Ident.PublicKey)},
 		Transport: runtimeinfra.TransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: transport.ReachabilityPrivateLAN},
 		Data:      runtimeinfra.DataConfig{Dir: t.TempDir()}, Privacy: privacy.Receiver,
 	}).Runtime
@@ -286,7 +286,7 @@ func TestTerminalServiceAndDataSurfaceReadiness(t *testing.T) {
 	sut := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "terminal-service-data-sut", NodeProfile: transport.NodeProfileServiceNode,
 		Boot:      runtimeinfra.BootConfig{Sources: append([]string(nil), records[0].Node.Endpoints...)},
-		Trust:     runtimeinfra.TrustConfig{Anchors: []string{source.Snapshot().Ident.PublicKey}},
+		Trust:     runtimeinfra.TrustConfig{Registry: testkit.DiscoveryTrustRegistry(t, source.Snapshot().Ident.PublicKey)},
 		Transport: runtimeinfra.TransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: transport.ReachabilityPrivateLAN},
 		Data:      runtimeinfra.DataConfig{Dir: t.TempDir()}, Privacy: privacy.Receiver,
 		DiscoveryRefreshInterval: 500 * time.Millisecond,

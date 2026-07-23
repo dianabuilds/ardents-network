@@ -78,7 +78,7 @@ func TestOperatorNetworkSurfaceLifecycle(t *testing.T) {
 		Name:        "operator-network-sut",
 		NodeProfile: transport.NodeProfileServiceNode,
 		Boot:        runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
-		Trust:       runtimeinfra.TrustConfig{Anchors: []string{remote.Snapshot().Ident.PublicKey}},
+		Trust:       runtimeinfra.TrustConfig{Registry: testkit.DiscoveryTrustRegistry(t, remote.Snapshot().Ident.PublicKey)},
 		Transport:   runtimeinfra.TransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: transport.ReachabilityPrivateLAN},
 		Data:        runtimeinfra.DataConfig{Dir: t.TempDir()}, Privacy: privacy.Receiver,
 	})
@@ -200,7 +200,7 @@ func TestOperatorServiceAndDataSurfaceReadiness(t *testing.T) {
 	rt := testkit.NewRuntime(t, runtimeinfra.Config{
 		Name: "operator-svc-data-sut", NodeProfile: transport.NodeProfileServiceNode,
 		Boot:      runtimeinfra.BootConfig{Sources: append([]string(nil), records[0].Node.Endpoints...)},
-		Trust:     runtimeinfra.TrustConfig{Anchors: []string{source.Snapshot().Ident.PublicKey}},
+		Trust:     runtimeinfra.TrustConfig{Registry: testkit.DiscoveryTrustRegistry(t, source.Snapshot().Ident.PublicKey)},
 		Transport: runtimeinfra.TransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: transport.ReachabilityPrivateLAN},
 		Data:      runtimeinfra.DataConfig{Dir: t.TempDir()}, Privacy: discoveryPrivacy.Receiver,
 		DiscoveryRefreshInterval: 500 * time.Millisecond,

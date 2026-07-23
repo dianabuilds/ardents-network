@@ -7,6 +7,7 @@ import (
 	identitycapability "ardents/internal/identity/capability"
 	identitykeyring "ardents/internal/identity/keyring"
 	identityprincipal "ardents/internal/identity/principal"
+	identitytrust "ardents/internal/identity/trust"
 	networkprivacy "ardents/internal/messaging"
 	networkapi "ardents/internal/network"
 	networkwaku "ardents/internal/network/waku"
@@ -134,7 +135,7 @@ type BootConfig struct {
 }
 
 type TrustConfig struct {
-	Anchors []string
+	Registry *identitytrust.Registry
 }
 
 type DataConfig struct {
@@ -385,14 +386,18 @@ func runtimeConfigFromDocument(doc runtimeconfig.Document) (runtimeConfig, error
 	if err != nil {
 		return runtimeConfig{}, err
 	}
+	trustedPrincipals, err := operatorTrustRegistry(doc.Trust)
+	if err != nil {
+		return runtimeConfig{}, err
+	}
 	cfg := runtimeConfig{
 		SocketPath: doc.API.SocketPath, ObservabilityAddr: doc.Observability.ListenAddress,
 		ObservabilityToken:    observabilityToken,
 		ApplicationEnabled:    doc.ApplicationInterface.Enabled,
 		ApplicationSocketPath: doc.ApplicationInterface.SocketPath,
-		Node:                  operatorNodeConfig(doc, data, executor),
+		Node:                  operatorNodeConfig(doc, data, executor, trustedPrincipals),
 	}
-	privacy, dataPrivacy, policyService, err := operatorPrivacyChannels(doc, cfg.Node.Policy)
+	privacy, dataPrivacy, policyService, err := operatorPrivacyChannels(doc, cfg.Node.Policy, trustedPrincipals)
 	if err != nil {
 		return runtimeConfig{}, err
 	}
@@ -413,11 +418,11 @@ func normalizeOperatorDocumentPaths(doc runtimeconfig.Document) runtimeconfig.Do
 	return doc
 }
 
-func operatorNodeConfig(doc runtimeconfig.Document, data DataConfig, executor workloadcontroller.Executor) Config {
+func operatorNodeConfig(doc runtimeconfig.Document, data DataConfig, executor workloadcontroller.Executor, trustedPrincipals *identitytrust.Registry) Config {
 	return Config{
 		Name: doc.Node.Name, NodeProfile: networkapi.NodeProfile(doc.Node.Profile),
 		Boot:  BootConfig{Sources: cloneStrings(doc.Network.BootstrapPeers)},
-		Trust: TrustConfig{Anchors: cloneStrings(doc.Network.TrustAnchors)},
+		Trust: TrustConfig{Registry: trustedPrincipals},
 		Data:  data, Transport: operatorTransportConfig(doc.Network),
 		Policy: operatorPolicyConfig(doc), Service: operatorServiceConfigs(doc.Services),
 		Workload:                 operatorWorkloadConfigs(doc.Workloads.Initial),
@@ -610,17 +615,18 @@ func operatorLogLevel(value string) slog.Level {
 func operatorPrivacyChannels(
 	doc runtimeconfig.Document,
 	policyConfig PolicyConfig,
+	trustedPrincipals *identitytrust.Registry,
 ) (*networkprivacy.Channel, *networkprivacy.Channel, *apppolicy.Service, error) {
 	policyService := apppolicy.New(runtimePolicyConfig(policyConfig))
 	if !doc.Privacy.Required {
 		return nil, nil, policyService, nil
 	}
-	private, storeKey, replayKey, issuers, err := operatorPrivacyInputs(doc)
+	private, storeKey, replayKey, err := operatorPrivacyInputs(doc)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	Workloads, err := identitycapability.NewService(
-		doc.Privacy.CapabilityStore, storeKey, doc.Privacy.Subject, issuers, policyService, time.Now,
+		doc.Privacy.CapabilityStore, storeKey, doc.Privacy.Subject, trustedPrincipals, policyService, time.Now,
 	)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("protected privacy capability store is unavailable or invalid")
@@ -639,22 +645,21 @@ func operatorPrivacyChannels(
 }
 
 func operatorPrivacyInputs(doc runtimeconfig.Document) (
-	ed25519.PrivateKey, []byte, []byte, map[string]ed25519.PublicKey, error,
+	ed25519.PrivateKey, []byte, []byte, error,
 ) {
 	private, err := operatorIdentityPrivate(doc.Node.DataDir, doc.Privacy.Subject)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, err
 	}
 	storeKey, err := readProtectedKey(doc.Privacy.CapabilityStoreKeyFile, "privacy capability-store key file")
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, err
 	}
 	replayKey, err := readProtectedKey(doc.Privacy.ReplayKeyFile, "privacy replay key file")
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, err
 	}
-	issuers, err := operatorTrustedIssuers(doc.Privacy.TrustedIssuers)
-	return private, storeKey, replayKey, issuers, err
+	return private, storeKey, replayKey, nil
 }
 
 func buildOperatorPrivacyChannel(
@@ -740,18 +745,21 @@ func operatorIdentityPrivate(dataDir, subject string) (ed25519.PrivateKey, error
 	return private, nil
 }
 
-func operatorTrustedIssuers(configured map[string]string) (map[string]ed25519.PublicKey, error) {
-	issuers := make(map[string]ed25519.PublicKey, len(configured))
-	for principal, encoded := range configured {
-		raw, err := base64.StdEncoding.DecodeString(strings.TrimSpace(encoded))
-		if err != nil || len(raw) != ed25519.PublicKeySize {
-			return nil, fmt.Errorf("privacy.trusted_issuers contains an invalid public key")
+func operatorTrustRegistry(configured runtimeconfig.TrustConfig) (*identitytrust.Registry, error) {
+	entries := make([]identitytrust.Entry, 0, len(configured.Principals))
+	for _, item := range configured.Principals {
+		public, err := base64.StdEncoding.DecodeString(item.PublicKey)
+		if err != nil || len(public) != ed25519.PublicKeySize || base64.StdEncoding.EncodeToString(public) != item.PublicKey {
+			return nil, fmt.Errorf("trusted Principal public key is invalid")
 		}
-		derived, deriveErr := identityprincipal.FromEd25519PublicKey(ed25519.PublicKey(raw))
-		if deriveErr != nil || derived.String() != principal {
-			return nil, fmt.Errorf("privacy.trusted_issuers principal does not match its public key")
-		}
-		issuers[principal] = append([]byte(nil), raw...)
+		entries = append(entries, identitytrust.Entry{
+			Principal: item.Principal, PublicKey: ed25519.PublicKey(public),
+			Purposes: append([]identitytrust.Purpose(nil), item.Purposes...),
+		})
 	}
-	return issuers, nil
+	registry, err := identitytrust.NewRegistry(entries)
+	if err != nil {
+		return nil, fmt.Errorf("trusted Principal registry is invalid: %w", err)
+	}
+	return registry, nil
 }

@@ -14,6 +14,7 @@ import (
 	"ardents/internal/content/payload"
 	"ardents/internal/discovery"
 	identityprincipal "ardents/internal/identity/principal"
+	identitytrust "ardents/internal/identity/trust"
 
 	"github.com/stretchr/testify/require"
 )
@@ -76,8 +77,7 @@ func TestAcceptBlobResponseRejectsUnsignedSpoofedSource(t *testing.T) {
 		require.NoErrorf(t, err, "publish node: %v", err)
 	}
 
-	trust := discovery.NewTrustEvaluator()
-	trust.Trust(sourcePublicKey)
+	trust := discovery.NewTrustEvaluator(transferTrustRegistry(t, sourcePublicKey))
 	store := newFetchTestData()
 
 	requestID := "req-1"
@@ -129,8 +129,7 @@ func TestAcceptBlobResponseReturnsSignedTerminalError(t *testing.T) {
 		require.NoErrorf(t, err, "publish node: %v", err)
 	}
 
-	trust := discovery.NewTrustEvaluator()
-	trust.Trust(sourcePublicKey)
+	trust := discovery.NewTrustEvaluator(transferTrustRegistry(t, sourcePublicKey))
 	store := newFetchTestData()
 
 	requestID := "req-err"
@@ -176,8 +175,7 @@ func TestAcceptBlobResponseRejectsSignedMismatchedContentIdentity(t *testing.T) 
 		require.NoErrorf(t, err, "publish node: %v", err)
 	}
 
-	trust := discovery.NewTrustEvaluator()
-	trust.Trust(sourcePublicKey)
+	trust := discovery.NewTrustEvaluator(transferTrustRegistry(t, sourcePublicKey))
 	store := newFetchTestData()
 
 	requestID := "req-2"
@@ -208,6 +206,20 @@ func TestAcceptBlobResponseRejectsSignedMismatchedContentIdentity(t *testing.T) 
 		require.False(t, ok, "expected mismatched response to keep blob unavailable locally")
 	}
 
+}
+
+func transferTrustRegistry(t *testing.T, encodedPublic string) *identitytrust.Registry {
+	t.Helper()
+	public, err := base64.StdEncoding.DecodeString(encodedPublic)
+	require.NoError(t, err)
+	principalID, err := identityprincipal.FromEd25519PublicKey(ed25519.PublicKey(public))
+	require.NoError(t, err)
+	registry, err := identitytrust.NewRegistry([]identitytrust.Entry{{
+		Principal: principalID.String(), PublicKey: ed25519.PublicKey(public),
+		Purposes: []identitytrust.Purpose{identitytrust.PurposeDiscoveryPublish},
+	}})
+	require.NoError(t, err)
+	return registry
 }
 
 func TestAwaitBlobFetchResponseReturnsCandidateRejectionInsteadOfTimeout(t *testing.T) {
@@ -250,7 +262,7 @@ func TestAwaitBlobFetchResponseReturnsCandidateRejectionInsteadOfTimeout(t *test
 
 	_, err = awaitBlobFetchResponse(ctx, ExchangeConfig{
 		Discovery: disc,
-		Trust:     discovery.NewTrustEvaluator(),
+		Trust:     discovery.NewTrustEvaluator(nil),
 		Data:      store,
 		History:   store,
 	}, transfer.ID, blobID, requester, requestID, responses)

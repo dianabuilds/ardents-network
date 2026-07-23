@@ -314,6 +314,7 @@ The nested directories have these exact responsibilities:
 | `identity/keyring` | durable node-key continuity and key material access |
 | `identity/migration` | offline, versioned identity inventory and coordinated epoch migration; never runtime dual-ID authorization |
 | `identity/principal` | principal derivation and canonical identity encoding |
+| `identity/trust` | immutable exact-purpose trusted-Principal registry and deterministic generation |
 | `identity/protocol` | generated server-side signed-identity artifact messages only; no domain model or verification behavior |
 | `diagnostics/event` | bounded operational event records |
 | `diagnostics/health` | health evidence and aggregate health result |
@@ -324,7 +325,7 @@ The nested directories have these exact responsibilities:
 | `messaging` | private authenticated envelopes, opaque selectors, replay protection and messaging privacy status |
 | `discovery/records` | validated durable remote node/service records |
 | `discovery/resolution` | freshness- and trust-aware record/service selection |
-| `discovery/trust` | trust anchors and peer trust evaluation |
+| `discovery/trust` | generation-aware discovery publication trust and verification cache |
 | `content/catalog` | object/manifest graph and content metadata catalogue |
 | `content/payload` | local blob bytes, integrity, encryption and atomic file changes |
 | `replication/availability` | replica intents, availability snapshots and repair records |
