@@ -10,7 +10,8 @@ param(
     [string]$JUnitReport = "",
     [string]$CoverageProfile = "",
     [string]$ContainerImage = "ardents/test-runner:dev",
-    [switch]$RebuildContainer
+    [switch]$RebuildContainer,
+    [switch]$EphemeralCache
 )
 
 $ErrorActionPreference = "Stop"
@@ -61,10 +62,24 @@ function Invoke-ContainerRunner {
         "run", "--rm", "--init",
         "--name", "ardents-tests-$PID",
         "--mount", "type=bind,source=$root,target=/workspace",
-        "--mount", "type=volume,source=ardents-go-mod-cache,target=/go/pkg/mod",
-        "--mount", "type=volume,source=ardents-go-build-cache,target=/root/.cache/go-build",
         "-e", "ARDENTS_TEST_RUNTIME=container"
     )
+    if ($EphemeralCache) {
+        # Anonymous volumes are removed together with the --rm container.
+        # This is the clean-room release/CI mode; it intentionally gives up
+        # cross-run cache reuse.
+        $dockerArgs += @(
+            "--mount", "type=volume,target=/go/pkg/mod",
+            "--mount", "type=volume,target=/root/.cache/go-build"
+        )
+        Write-Host "==> use disposable Go module/build caches"
+    } else {
+        $dockerArgs += @(
+            "--mount", "type=volume,source=ardents-go-mod-cache,target=/go/pkg/mod",
+            "--mount", "type=volume,source=ardents-go-build-cache,target=/root/.cache/go-build"
+        )
+        Write-Host "==> use persistent bounded Go module/build caches"
+    }
     foreach ($entry in Get-ChildItem Env: | Where-Object { $_.Name -like "ARDENTS_*" -and $_.Name -ne "ARDENTS_TEST_RUNTIME" }) {
         $dockerArgs += @("-e", $entry.Name)
     }
@@ -492,6 +507,8 @@ function Invoke-StableGoTest {
         } else {
             Remove-Item Env:ARDENTS_TESTKIT_REPORT_DIR -ErrorAction SilentlyContinue
         }
+        $repository = Split-Path -Parent $PSScriptRoot
+        & (Join-Path $repository "scripts/clean-test-binaries.ps1") -Suite $SuiteName
     }
 }
 

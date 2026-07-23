@@ -7,7 +7,9 @@
   never below the workspace.
 - Temporary generated files must be removed when their command finishes. Keep
   the Git worktree limited to source, generated contract outputs, tests, and
-  documentation that belong to the repository.
+  documentation that belong to the repository. Tagged test binaries under
+  `tests/.artifacts/testbin` are temporary and must be removed on both success
+  and failure; retained JSON/JUnit/coverage evidence is not temporary.
 - Keep the external Go cache for normal incremental test runs. Run
   `scripts/clean-go-cache.ps1` only after a release gate, when the cache exceeds
   5 GiB, when disk space is low, or while diagnosing suspected stale build
@@ -16,4 +18,7 @@
   for the other listed cases. Do not clear it after every unit test.
 - Use disposable Docker containers for clean release/CI verification when
   required. Remember that `--rm` removes containers, not Docker image or
-  BuildKit caches; never run a broad Docker prune automatically.
+  BuildKit caches. `tests/run.ps1 -EphemeralCache` also disposes its anonymous
+  Go cache volumes. For normal cached runs, report/bound the two Ardents cache
+  volumes with `scripts/clean-docker-cache.ps1`; never run a broad Docker prune
+  automatically.

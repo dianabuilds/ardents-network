@@ -11,9 +11,13 @@ Execution model:
 - `integration` tests are opt-in via `-tags integration`;
 - `e2e` tests are opt-in via `-tags e2e`;
 - tagged suites compile stable Linux binaries under `.artifacts/testbin/` and
-  retain the existing canonical JSON/JUnit reporting contract;
+  remove those temporary binaries in `finally`, while retaining the existing
+  canonical JSON/JUnit reporting contract;
 - Docker volumes `ardents-go-mod-cache` and `ardents-go-build-cache` retain
   dependency/build caches without writing them into the Windows workspace;
+- `-EphemeralCache` replaces those named caches with anonymous volumes that
+  Docker removes with the test container; use it for clean release/CI evidence,
+  not for the normal incremental loop;
 - `.dockerignore` excludes workspace caches, reports, runtime data, IDE state,
   and Git markers from every Docker build context.
 
@@ -23,9 +27,26 @@ Practical entry points:
 - `powershell -NoProfile -File tests/run.ps1 integration`
 - `powershell -NoProfile -File tests/run.ps1 e2e`
 - `powershell -NoProfile -File tests/run.ps1 all`
+- `powershell -NoProfile -File tests/run.ps1 all -EphemeralCache`
 - `powershell -NoProfile -File tests/run.ps1 integration -Domain network-foundation -Scenario NFI-001`
 - `powershell -NoProfile -File tests/run.ps1 e2e -Domain network-foundation -Scenario NFE-001`
 - `powershell -NoProfile -File tests/resource-snapshot.ps1 -Label manual`
+
+Cache policy:
+
+- normal focused tests reuse the external host Go cache and the two named
+  Docker volumes because deleting them after every run makes development much
+  slower;
+- `scripts/clean-go-cache.ps1 -StatusOnly` reports the host cache, and the
+  normal command removes it only above 5 GiB;
+- `scripts/clean-docker-cache.ps1 -StatusOnly` reports only Ardents Docker Go
+  caches, and the normal command removes only those two volumes above 8 GiB;
+- run both cleanup commands at leaf/release checkpoints, when disk space is
+  low, or while diagnosing stale output; `-Force` is for an intentional cold
+  rebuild;
+- `scripts/clean-docker-cache.ps1 -BoundBuildKit` additionally bounds the
+  Docker-wide BuildKit cache. It is opt-in because BuildKit is shared with
+  other repositories; never replace it with a broad automatic system prune.
 
 ## Mandatory Repository Gate Matrix
 

@@ -7,7 +7,7 @@ $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Set-Location $root
 $reportPath = [IO.Path]::GetFullPath($ReportDir)
 $runID = [guid]::NewGuid().ToString("N")
-$stage = Join-Path $reportPath "stage-$runID"
+$stage = Join-Path ([IO.Path]::GetTempPath()) "ardents-native-install-$runID"
 $v1 = Join-Path $stage "v1"
 $v2 = Join-Path $stage "v2"
 $bad = Join-Path $stage "bad"
