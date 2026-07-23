@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/url"
 	"os"
 	"path"
@@ -19,7 +18,7 @@ import (
 )
 
 const (
-	defaultAddr      = "127.0.0.1:8080"
+	defaultAddr      = "unix:///run/ardents/control.sock"
 	defaultOutput    = "human"
 	defaultTimeout   = 10 * time.Second
 	contextsFileName = "contexts.json"
@@ -67,6 +66,7 @@ type StoredContext struct {
 
 func DefaultConfig() Config {
 	return Config{
+		Addr:     defaultAddr,
 		Output:   defaultOutput,
 		Interval: time.Second,
 		Timeout:  defaultTimeout,
@@ -169,7 +169,7 @@ func (c *Config) contextFilePath() (string, error) {
 }
 
 func (c *Config) applyStored(stored StoredContext) {
-	if c.Addr == "" {
+	if c.Addr == "" || c.Addr == defaultAddr {
 		c.Addr = stored.Addr
 	}
 	if c.SSH == "" {
@@ -210,7 +210,7 @@ func (c *Config) applyStored(stored StoredContext) {
 }
 
 func (c *Config) applyEnv() {
-	if c.Addr == "" {
+	if c.Addr == "" || c.Addr == defaultAddr {
 		c.Addr = strings.TrimSpace(os.Getenv("ARDENTS_ADDR"))
 	}
 	if c.SSH == "" {
@@ -270,37 +270,23 @@ func (c *Config) validateAndNormalize() error {
 	if c.Addr == "" {
 		c.Addr = defaultAddr
 	}
-	if !strings.Contains(c.Addr, "://") {
-		scheme := "https"
-		if isLoopbackAddress(c.Addr) {
-			scheme = "http"
-		}
-		c.Addr = scheme + "://" + c.Addr
-	}
 	parsed, err := url.Parse(c.Addr)
-	if err != nil || parsed.Scheme == "" {
-		return fmt.Errorf("invalid addr %q", c.Addr)
+	validUnixSocket := err == nil && parsed.Scheme == "unix" && parsed.Path != ""
+	if validUnixSocket && parsed.Host != "" {
+		validUnixSocket = filepath.IsAbs(parsed.Host + parsed.Path)
 	}
-	if parsed.Scheme == "unix" {
-		if parsed.Path == "" || parsed.Host != "" {
-			return fmt.Errorf("invalid unix socket address %q", c.Addr)
-		}
-		if c.SSH != "" {
-			return fmt.Errorf("--ssh cannot be combined with a unix socket address")
-		}
-	} else if parsed.Host == "" {
-		return fmt.Errorf("invalid addr %q", c.Addr)
+	if !validUnixSocket {
+		return errors.New("operator address must use a protected Unix socket")
 	}
 	if c.SSH != "" {
 		if strings.HasPrefix(c.SSH, "-") || strings.ContainsAny(c.SSH, " \t\r\n") {
 			return fmt.Errorf("invalid ssh target %q", c.SSH)
 		}
-		if c.SSHOperatorSocket != "" {
-			if !path.IsAbs(c.SSHOperatorSocket) || strings.ContainsAny(c.SSHOperatorSocket, "\x00:\r\n") {
-				return fmt.Errorf("ssh operator socket must be an absolute remote path")
-			}
-		} else if parsed.Scheme != "http" || !isLoopbackAddress(parsed.Host) {
-			return fmt.Errorf("ssh transport requires a loopback HTTP API address")
+		if c.SSHOperatorSocket == "" {
+			return errors.New("SSH transport requires an absolute remote Operator Unix socket")
+		}
+		if !path.IsAbs(c.SSHOperatorSocket) || strings.ContainsAny(c.SSHOperatorSocket, "\x00:\r\n") {
+			return errors.New("SSH transport requires an absolute remote Operator Unix socket")
 		}
 		if c.SSHPort == 0 {
 			c.SSHPort = 22
@@ -311,8 +297,7 @@ func (c *Config) validateAndNormalize() error {
 	} else if c.SSHPort != 0 || c.SSHIdentity != "" || c.SSHKnownHosts != "" || c.SSHOperatorSocket != "" {
 		return fmt.Errorf("ssh transport options require --ssh")
 	}
-	principalTransport := parsed.Scheme == "unix" || c.SSHOperatorSocket != ""
-	if c.SignerFile == "" && principalTransport {
+	if c.SignerFile == "" {
 		dir, err := os.UserConfigDir()
 		if err != nil {
 			return fmt.Errorf("resolve signer location: %w", err)
@@ -320,9 +305,6 @@ func (c *Config) validateAndNormalize() error {
 		c.SignerFile = filepath.Join(dir, "ardents", "identity", "device-v1.json")
 	}
 	if c.SignerFile != "" {
-		if !principalTransport {
-			return fmt.Errorf("Principal sessions require a protected Unix socket or SSH stream-local forwarding")
-		}
 		if strings.TrimSpace(c.ExpectedPrincipal) == "" {
 			return fmt.Errorf("Principal sessions require the target Node Principal via --principal or context")
 		}
@@ -350,15 +332,6 @@ func (c *Config) validateAndNormalize() error {
 func (c *Config) HasIdentityBinding() bool {
 	return strings.TrimSpace(c.ExpectedNode) != "" || strings.TrimSpace(c.ExpectedPrincipal) != "" ||
 		strings.TrimSpace(c.ExpectedPublicKey) != ""
-}
-
-func isLoopbackAddress(addr string) bool {
-	parsed, err := url.Parse("//" + addr)
-	if err != nil {
-		return false
-	}
-	host := parsed.Hostname()
-	return strings.EqualFold(host, "localhost") || net.ParseIP(host).IsLoopback()
 }
 
 func splitCSV(raw string) []string {

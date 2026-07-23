@@ -59,8 +59,15 @@ type services struct {
 	ardentsv1connect.DiagnosticsServiceClient
 }
 
-func New(cfg Config) *Client {
-	baseURL, transport, kind, closeTransport := controlTransport(cfg)
+func New(cfg Config) (*Client, error) {
+	baseURL, transport, _, closeTransport, err := controlTransport(cfg)
+	if err != nil {
+		return nil, err
+	}
+	if cfg.Signer == nil {
+		_ = closeTransport()
+		return nil, errors.New("Principal signer is required")
+	}
 	httpClient := &http.Client{
 		Timeout: cfg.Timeout,
 		Transport: contextTransport{
@@ -68,23 +75,12 @@ func New(cfg Config) *Client {
 			expectedPrincipal: cfg.ExpectedPrincipal, scopes: append([]string(nil), cfg.Scopes...),
 		},
 	}
-	if cfg.Signer == nil {
-		return &Client{service: NewService(httpClient, baseURL), close: closeTransport}
-	}
 	rawIdentity := ardentsv1connect.NewIdentityServiceClient(httpClient, baseURL)
-	var auth authenticationService = rawIdentity
-	eligible := kind == transportUnix || kind == transportSSHStreamLocal
-	if kind != transportUnix && kind != transportSSHStreamLocal {
-		auth = rejectedAuthenticationService{}
-	}
-	sessions := NewSessionManager(auth, cfg.Signer, cfg.ExpectedPrincipal, time.Now)
+	sessions := NewSessionManager(rawIdentity, cfg.Signer, cfg.ExpectedPrincipal, time.Now)
 	interceptor := newSessionInterceptor(sessions)
 	service := NewService(httpClient, baseURL, connect.WithInterceptors(interceptor))
-	if !eligible {
-		return &Client{service: service, sessions: sessions, close: closeTransport, targetNode: cfg.ExpectedPrincipal}
-	}
 	protectedIdentity := ardentsv1connect.NewIdentityServiceClient(httpClient, baseURL, connect.WithInterceptors(interceptor))
-	return &Client{service: service, sessions: sessions, close: closeTransport, identityPublic: rawIdentity, identityProtected: protectedIdentity, targetNode: cfg.ExpectedPrincipal}
+	return &Client{service: service, sessions: sessions, close: closeTransport, identityPublic: rawIdentity, identityProtected: protectedIdentity, targetNode: cfg.ExpectedPrincipal}, nil
 }
 
 func (c *Client) PublicIdentityService() (ardentsv1connect.IdentityServiceClient, error) {

@@ -338,7 +338,7 @@ func TestLogoutRacingLoginPreventsLateSessionPublication(t *testing.T) {
 
 func TestPrincipalClientRefusesHTTPBeforeNetwork(t *testing.T) {
 	signer := newSessionTestSigner(t)
-	client := New(Config{BaseURL: "http://127.0.0.1:1", Timeout: time.Second, ExpectedPrincipal: sessionTestPrincipal(t, 0x31), Signer: signer})
-	_, err := client.Login(context.Background())
-	require.ErrorIs(t, err, ErrPrincipalTransportForbidden)
+	client, err := New(Config{BaseURL: "http://127.0.0.1:1", Timeout: time.Second, ExpectedPrincipal: sessionTestPrincipal(t, 0x31), Signer: signer})
+	require.EqualError(t, err, "Operator transport requires a protected Unix socket or SSH stream-local forwarding")
+	require.Nil(t, client)
 }

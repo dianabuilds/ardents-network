@@ -42,15 +42,3 @@ func (s *NodeService) Source() string {
 func (s *NodeService) NodeSummary() Summary { return s.Summary() }
 func (s *NodeService) NodeSource() string   { return s.Source() }
 func (s *NodeService) NodeState() string    { return s.State() }
-
-func (s *NodeService) NormalizeSubject(call CallContext) Subject {
-	return NormalizeSubject(call)
-}
-
-func (s *NodeService) Authorize(call CallContext, domain string, access Access) Decision {
-	return Authorize(call, domain, access)
-}
-
-func (s *NodeService) AuthorizeSubject(subject Subject, domain string, access Access) Decision {
-	return AuthorizeSubject(subject, domain, access)
-}

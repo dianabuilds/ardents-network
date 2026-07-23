@@ -10,6 +10,8 @@ import (
 	"time"
 
 	identityprincipal "ardents/internal/identity/principal"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestConfigResolvePrincipalFromEnv(t *testing.T) {
@@ -39,6 +41,11 @@ func TestConfigResolvePrincipalFromEnv(t *testing.T) {
 	if len(cfg.ScopeHints) != 2 {
 		t.Fatalf("ScopeHints = %#v", cfg.ScopeHints)
 	}
+}
+
+func TestDefaultConfigUsesProtectedOperatorSocket(t *testing.T) {
+	cfg := DefaultConfig()
+	require.Equal(t, "unix:///run/ardents/control.sock", cfg.Addr)
 }
 
 func TestConfigResolvePrincipalFromContextFile(t *testing.T) {
@@ -83,8 +90,8 @@ func TestConfigResolveRequiresPrincipalAuthentication(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg.ContextFile = filepath.Join(t.TempDir(), "missing.json")
 	err := cfg.Resolve()
-	if err == nil || !strings.Contains(err.Error(), "authentication requires a Principal signer") {
-		t.Fatalf("Resolve() error = %v, want Principal authentication requirement", err)
+	if err == nil || !strings.Contains(err.Error(), "target Node Principal") {
+		t.Fatalf("Resolve() error = %v, want target Principal requirement", err)
 	}
 }
 
@@ -135,8 +142,21 @@ func TestConfigResolveRejectsPrincipalSignerOverHTTP(t *testing.T) {
 	cfg.Addr = "http://127.0.0.1:8080"
 	cfg.ExpectedPrincipal = configTestPrincipal(t)
 	cfg.SignerFile = filepath.Join(t.TempDir(), "device.json")
-	if err := cfg.Resolve(); err == nil || !strings.Contains(err.Error(), "protected Unix socket") {
-		t.Fatalf("Resolve() error = %v, want protected transport requirement", err)
+	if err := cfg.Resolve(); err == nil || !strings.Contains(err.Error(), "operator address must use a protected Unix socket") {
+		t.Fatalf("Resolve() error = %v, want HTTP rejection", err)
+	}
+}
+
+func TestConfigResolveRejectsSSHWithoutStreamLocalSocket(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.ContextFile = filepath.Join(t.TempDir(), "missing.json")
+	cfg.SSH = "ops@node.example"
+	cfg.ExpectedPrincipal = configTestPrincipal(t)
+	cfg.SignerFile = filepath.Join(t.TempDir(), "device.json")
+
+	err := cfg.Resolve()
+	if err == nil || !strings.Contains(err.Error(), "SSH transport requires an absolute remote Operator Unix socket") {
+		t.Fatalf("Resolve() error = %v, want stream-local SSH rejection", err)
 	}
 }
 
@@ -162,7 +182,7 @@ func TestLegacyBearerEnvironmentCannotEnableProtectedCommands(t *testing.T) {
 	cfg.ContextFile = filepath.Join(t.TempDir(), "missing.json")
 	cfg.Addr = "http://127.0.0.1:8080"
 	err := cfg.Resolve()
-	if err == nil || !strings.Contains(err.Error(), "authentication requires a Principal signer") {
+	if err == nil || !strings.Contains(err.Error(), "operator address must use a protected Unix socket") {
 		t.Fatalf("Resolve() error = %v, want legacy bearer inputs ignored", err)
 	}
 	for _, secret := range []string{"stale-secret", "older-secret"} {

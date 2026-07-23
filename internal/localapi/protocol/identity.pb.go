@@ -1498,10 +1498,10 @@ const file_api_ardents_v1_identity_proto_rawDesc = "" +
 	"\tnot_after\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\bnotAfter\x12\x18\n" +
 	"\arevoked\x18\a \x01(\bR\arevoked\"S\n" +
 	"\x18ListAccessGrantsResponse\x127\n" +
-	"\x06grants\x18\x01 \x03(\v2\x1f.ardents.v1.AccessGrantMetadataR\x06grants\"\xb5\x01\n" +
+	"\x06grants\x18\x01 \x03(\v2\x1f.ardents.v1.AccessGrantMetadataR\x06grants\"\x92\x01\n" +
 	"'IssueApplicationEnrollmentTicketRequest\x128\n" +
 	"\x18application_principal_id\x18\x01 \x01(\tR\x16applicationPrincipalId\x12'\n" +
-	"\x0finitial_actions\x18\x02 \x03(\tR\x0einitialActionsJ\x04\b\x03\x10\x04R!replace_current_legacy_credential\"\xa9\x01\n" +
+	"\x0finitial_actions\x18\x02 \x03(\tR\x0einitialActionsJ\x04\b\x03\x10\x04\"\xa9\x01\n" +
 	"(IssueApplicationEnrollmentTicketResponse\x12B\n" +
 	"\x1dapplication_enrollment_ticket\x18\x01 \x01(\fR\x1bapplicationEnrollmentTicket\x129\n" +
 	"\n" +

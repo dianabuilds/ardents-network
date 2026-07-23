@@ -23,7 +23,6 @@ import (
 const operatorSessionScheme = "ArdentsOperatorSession"
 
 var ErrInvalidAuthenticationResponse = errors.New("invalid authentication response")
-var ErrPrincipalTransportForbidden = errors.New("Principal sessions require a protected local transport")
 var ErrSessionInvalidated = errors.New("Principal session login was invalidated")
 var ErrSessionSignerUnavailable = errors.New("Principal session signer is unavailable")
 
@@ -38,16 +37,6 @@ type SessionSigner interface {
 type authenticationService interface {
 	BeginAuthentication(context.Context, *connect.Request[ardentsv1.BeginAuthenticationRequest]) (*connect.Response[ardentsv1.BeginAuthenticationResponse], error)
 	CompleteAuthentication(context.Context, *connect.Request[ardentsv1.CompleteAuthenticationRequest]) (*connect.Response[ardentsv1.CompleteAuthenticationResponse], error)
-}
-
-type rejectedAuthenticationService struct{}
-
-func (rejectedAuthenticationService) BeginAuthentication(context.Context, *connect.Request[ardentsv1.BeginAuthenticationRequest]) (*connect.Response[ardentsv1.BeginAuthenticationResponse], error) {
-	return nil, ErrPrincipalTransportForbidden
-}
-
-func (rejectedAuthenticationService) CompleteAuthentication(context.Context, *connect.Request[ardentsv1.CompleteAuthenticationRequest]) (*connect.Response[ardentsv1.CompleteAuthenticationResponse], error) {
-	return nil, ErrPrincipalTransportForbidden
 }
 
 // SessionKey is the complete version-1 cache identity. It deliberately omits

@@ -24,9 +24,6 @@ func Decode(r io.Reader) (Document, error) {
 	if err := rejectDuplicateFields(raw); err != nil {
 		return Document{}, err
 	}
-	if err := rejectDeprecatedFields(raw); err != nil {
-		return Document{}, err
-	}
 	doc := Defaults()
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.DisallowUnknownFields()
@@ -53,45 +50,6 @@ func requireJSONEnd(decoder *json.Decoder) error {
 		return fmt.Errorf("decode operator configuration: %w", err)
 	}
 	return fmt.Errorf("decode operator configuration: multiple JSON values")
-}
-
-func rejectDeprecatedFields(raw []byte) error {
-	var root map[string]json.RawMessage
-	if err := json.Unmarshal(raw, &root); err != nil {
-		return nil
-	}
-	if _, found := root["version"]; found {
-		return fmt.Errorf("deprecated field version: use api_version")
-	}
-	if value, found := root["privacy"]; found {
-		var privacy map[string]json.RawMessage
-		if json.Unmarshal(value, &privacy) == nil {
-			if _, deprecated := privacy["capability_store"]; deprecated {
-				return fmt.Errorf("deprecated field privacy.capability_store: use privacy.channel_grant_store")
-			}
-			if _, deprecated := privacy["capability_store_key_file"]; deprecated {
-				return fmt.Errorf("deprecated field privacy.capability_store_key_file: use privacy.channel_grant_store_key_file")
-			}
-		}
-	}
-	if value, found := root["policy"]; found {
-		var policy map[string]json.RawMessage
-		if json.Unmarshal(value, &policy) == nil {
-			if _, deprecated := policy["disable_private_capability_use"]; deprecated {
-				return fmt.Errorf("deprecated field policy.disable_private_capability_use: use policy.disable_private_channel_grant_use")
-			}
-			if _, deprecated := policy["denied_capability_scopes"]; deprecated {
-				return fmt.Errorf("deprecated field policy.denied_capability_scopes: use policy.denied_channel_grant_scopes")
-			}
-		}
-	}
-	var network map[string]json.RawMessage
-	if value, found := root["network"]; found && json.Unmarshal(value, &network) == nil {
-		if _, deprecated := network["transport_mode"]; deprecated {
-			return fmt.Errorf("deprecated field network.transport_mode: use network.transport_profile")
-		}
-	}
-	return nil
 }
 
 func rejectDuplicateFields(raw []byte) error {

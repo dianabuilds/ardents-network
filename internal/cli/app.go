@@ -41,22 +41,26 @@ func newApp(cfg configurationcmd.Config, stdin io.Reader, stdout, stderr io.Writ
 	if err != nil {
 		return nil, err
 	}
+	operatorClient, err := client.New(client.Config{
+		BaseURL:           cfg.Addr,
+		SSH:               cfg.SSH,
+		SSHPort:           cfg.SSHPort,
+		SSHIdentity:       cfg.SSHIdentity,
+		SSHKnownHosts:     cfg.SSHKnownHosts,
+		SSHOperatorSocket: cfg.SSHOperatorSocket,
+		Timeout:           cfg.Timeout,
+		ExpectedNode:      cfg.ExpectedNode,
+		ExpectedPrincipal: cfg.ExpectedPrincipal,
+		Scopes:            cfg.ScopeHints,
+		Signer:            opened,
+	})
+	if err != nil {
+		return nil, err
+	}
 	return &app{
-		cfg:   cfg,
-		stdin: stdin,
-		client: client.New(client.Config{
-			BaseURL:           cfg.Addr,
-			SSH:               cfg.SSH,
-			SSHPort:           cfg.SSHPort,
-			SSHIdentity:       cfg.SSHIdentity,
-			SSHKnownHosts:     cfg.SSHKnownHosts,
-			SSHOperatorSocket: cfg.SSHOperatorSocket,
-			Timeout:           cfg.Timeout,
-			ExpectedNode:      cfg.ExpectedNode,
-			ExpectedPrincipal: cfg.ExpectedPrincipal,
-			Scopes:            cfg.ScopeHints,
-			Signer:            opened,
-		}),
+		cfg:      cfg,
+		stdin:    stdin,
+		client:   operatorClient,
 		stdout:   stdout,
 		stderr:   stderr,
 		renderer: output.NewRenderer(stdout, stderr, cfg.Output == "json"),

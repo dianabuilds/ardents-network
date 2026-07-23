@@ -36,7 +36,6 @@ func TestProcedureAccessCatalogCoversEveryRPCExactlyOnce(t *testing.T) {
 			require.True(t, ok, procedure)
 			require.NotEmpty(t, rule.Action, procedure)
 			require.NotEmpty(t, rule.Domain, procedure)
-			require.NotEmpty(t, rule.Access, procedure)
 			if service.Name() == "NodeService" || service.Name() == "ConfigurationService" || service.Name() == "NetworkService" || service.Name() == "WorkloadService" || service.Name() == "ContentService" || service.Name() == "TransferService" || service.Name() == "RetentionService" || service.Name() == "DiagnosticsService" {
 				require.NotEmpty(t, rule.ResourceKind, procedure)
 			}

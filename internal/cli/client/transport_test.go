@@ -122,15 +122,19 @@ func TestSSHStreamLocalHelperProcess(t *testing.T) {
 }
 
 func TestControlTransportClassifiesPrincipalEligibleTargets(t *testing.T) {
-	_, _, kind, closeTransport := controlTransport(Config{BaseURL: "unix:///run/ardents/operator.sock"})
+	_, _, kind, closeTransport, err := controlTransport(Config{BaseURL: "unix:///run/ardents/operator.sock"})
+	require.NoError(t, err)
 	require.Equal(t, transportUnix, kind)
 	require.NoError(t, closeTransport())
 
-	_, _, kind, closeTransport = controlTransport(Config{BaseURL: "http://127.0.0.1:8080", SSH: "ops@alpha", SSHPort: 22, SSHOperatorSocket: "/run/ardents/operator.sock"})
+	_, _, kind, closeTransport, err = controlTransport(Config{SSH: "ops@alpha", SSHPort: 22, SSHOperatorSocket: "/run/ardents/operator.sock"})
+	require.NoError(t, err)
 	require.Equal(t, transportSSHStreamLocal, kind)
 	require.NoError(t, closeTransport())
 
-	_, _, kind, closeTransport = controlTransport(Config{BaseURL: "http://127.0.0.1:8080"})
-	require.Equal(t, transportHTTP, kind)
-	require.NoError(t, closeTransport())
+	_, _, _, _, err = controlTransport(Config{BaseURL: "http://127.0.0.1:8080"})
+	require.EqualError(t, err, "Operator transport requires a protected Unix socket or SSH stream-local forwarding")
+
+	_, _, _, _, err = controlTransport(Config{SSH: "ops@alpha", SSHPort: 22})
+	require.EqualError(t, err, "SSH transport requires an absolute remote Operator Unix socket")
 }

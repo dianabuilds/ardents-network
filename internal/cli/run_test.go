@@ -153,7 +153,7 @@ func TestProtectedCommandRejectsLegacyBearerEnvironment(t *testing.T) {
 
 	var stdout, stderr bytes.Buffer
 	code := Run(context.Background(), []string{"--context-file", filepath.Join(t.TempDir(), "missing.json"), "node", "status"}, &stdout, &stderr)
-	if code != 2 || !strings.Contains(stderr.String(), "authentication requires a Principal signer") {
+	if code != 2 || !strings.Contains(stderr.String(), "operator address must use a protected Unix socket") {
 		t.Fatalf("code = %d, stderr = %s", code, stderr.String())
 	}
 	if strings.Contains(stderr.String(), "do-not-print") {
