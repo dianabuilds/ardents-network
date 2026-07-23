@@ -32,6 +32,9 @@ The bounded metric families cover:
 - node lifecycle, readiness, and Diagnostics health;
 - peer counts and active Waku protocol capabilities;
 - cumulative network rejection counters and recent message/privacy failures;
+- Waku Store retained-message count, configured message/byte capacities,
+  combined SQLite database/WAL/shared-memory bytes, and the greater of message
+  or disk capacity utilization;
 - workload state, configured resource limits, restarts, and OOM outcomes;
 - hosted-service readiness;
 - storage inventory and byte totals;
@@ -42,6 +45,13 @@ The bounded metric families cover:
 
 `recent` and `window` metrics are gauges over the bounded Diagnostics event
 window. They are not presented as lifetime counters.
+
+For persistent Store profiles, `ardents_waku_store_usage_ratio` at or above
+`0.90` projects the network abuse/pressure state as `degraded`. Failure to read
+the Store count or inspect its required database file projects that state as
+`failed`.
+`constrained_light_client` and automatic `restricted_defense` do not run a
+persistent Store and therefore omit these Store gauges.
 
 ## Cardinality And Redaction
 

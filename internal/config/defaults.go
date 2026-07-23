@@ -23,6 +23,8 @@ func Defaults() Document {
 				MaxMessageBytes: 143360, MaxPeerConnections: 64, MaxConnectionsPerIP: 4,
 				MaxConcurrentOperations: 16, OperationRate: 20, OperationBurst: 40,
 				MaxFilterSubscribers: 32, MaxStoreResults: 128,
+				StoreMaxMessages: 100000, StoreMaxAgeSeconds: 7 * 24 * 60 * 60,
+				StoreMaxBytes: 2 << 30,
 			},
 		},
 		Workloads:     WorkloadsConfig{Executor: "disabled"},

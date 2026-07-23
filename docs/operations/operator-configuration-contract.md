@@ -53,7 +53,7 @@ The `v1` document contains these typed sections:
 | `api` | Operator Interface | required permission-protected `socket_path` |
 | `application_interface` | least-privilege Application Interface | `enabled` and a distinct protected `socket_path`; identity and authority are enrolled, not configured |
 | `trust` | Identity trust registry | Principal/public-key bindings with exact `discovery.publish`, `channel.issue`, or reserved `identity.attest` purposes |
-| `network` | Network Foundation | Waku `transport_profile`, bind/listen, bootstrap, DNS, reachability, advertised endpoints, WSS material references, abuse limits |
+| `network` | Network Foundation | Waku `transport_profile`, bind/listen, bootstrap, DNS, reachability, advertised endpoints, WSS material references, abuse and Store retention limits |
 | `privacy` | Identity + Network privacy assembly | protected channel-grant-store/key references and separate discovery/data replay ledgers; never raw selector/channel material |
 | `workloads` | Workload Control + Policy | executor, registries, policy refs, runtime names, ingress allow-list and proxy image |
 | `services` | Hosted Services | declared service/probe inputs that still require runtime backing before publication |
@@ -93,6 +93,8 @@ applied to the running process:
 - observability listen address or scrape-token reference;
 - workload executor/runtime and ingress proxy shape;
 - storage paths and hard capacity limits;
+- Waku Store `store_max_messages`, `store_max_age_seconds`, and
+  `store_max_bytes` retention limits;
 - privacy channel identity/scope/material references.
 - purpose-scoped trusted-Principal definitions.
 

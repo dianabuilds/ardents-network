@@ -83,6 +83,9 @@ func (s *Service) prepareNodeLocked() (*wakuNode.WakuNode, error) {
 }
 
 func (s *Service) validateStartupConfigLocked() error {
+	if s.limitConfigErr != nil {
+		return s.limitConfigErr
+	}
 	if _, err := network.ResolveProfile(s.activeProfile); err != nil {
 		return err
 	}
@@ -98,6 +101,7 @@ func (s *Service) Stop(_ context.Context) error {
 	s.runtimeCancel = nil
 	s.runtimeDone = nil
 	s.node = nil
+	s.messageProvider = nil
 	s.reachabilityEvents = nil
 	s.endpoints = nil
 	s.state = "stopped"

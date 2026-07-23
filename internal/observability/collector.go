@@ -105,6 +105,13 @@ func (c *Collector) collectNetwork(out chan<- prometheus.Metric, snapshot networ
 	for _, item := range values {
 		counter(out, c.desc.networkRejections, float64(item.value), item.reason)
 	}
+	if snapshot.StoreEnabled {
+		gauge(out, c.desc.wakuStoreMessages, float64(snapshot.StoreMessages))
+		gauge(out, c.desc.wakuStoreCapacity, float64(snapshot.StoreCapacityMessages))
+		gauge(out, c.desc.wakuStoreCapacityBytes, float64(snapshot.StoreCapacityBytes))
+		gauge(out, c.desc.wakuStoreFileBytes, float64(snapshot.StoreFileBytes))
+		gauge(out, c.desc.wakuStoreUsageRatio, snapshot.StoreUsageRatio)
+	}
 }
 
 func (c *Collector) collectPeers(out chan<- prometheus.Metric, peers []discovery.PeerSnapshot) {

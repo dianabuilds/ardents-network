@@ -238,6 +238,38 @@ func validateNetwork(doc Document) error {
 	if doc.Network.DiscoveryRefreshSeconds < 1 || doc.Network.DiscoveryRefreshSeconds > 3600 {
 		return fmt.Errorf("network.discovery_refresh_seconds must be between 1 and 3600")
 	}
+	persistentStore := nodeProfile == networkapi.NodeProfileServiceNode ||
+		nodeProfile == networkapi.NodeProfileLocalDevelopment
+	if doc.Network.Limits.StoreMaxMessages < 0 {
+		return fmt.Errorf("network.limits.store_max_messages cannot be negative")
+	}
+	if doc.Network.Limits.StoreMaxAgeSeconds < 0 {
+		return fmt.Errorf("network.limits.store_max_age_seconds cannot be negative")
+	}
+	if doc.Network.Limits.StoreMaxBytes < 0 {
+		return fmt.Errorf("network.limits.store_max_bytes cannot be negative")
+	}
+	if persistentStore && doc.Network.Limits.StoreMaxMessages < 1 {
+		return fmt.Errorf("network.limits.store_max_messages must be finite and positive for persistent Store profiles")
+	}
+	if persistentStore && doc.Network.Limits.StoreMaxAgeSeconds < 1 {
+		return fmt.Errorf("network.limits.store_max_age_seconds must be finite and positive for persistent Store profiles")
+	}
+	if persistentStore && doc.Network.Limits.StoreMaxBytes < 1 {
+		return fmt.Errorf("network.limits.store_max_bytes must be finite and positive for persistent Store profiles")
+	}
+	if doc.Network.Limits.StoreMaxBytes > 0 && doc.Network.Limits.StoreMaxBytes < 4<<20 {
+		return fmt.Errorf("network.limits.store_max_bytes must be at least 4194304")
+	}
+	if doc.Network.Limits.StoreMaxMessages > 10_000_000 {
+		return fmt.Errorf("network.limits.store_max_messages exceeds the supported bound")
+	}
+	if doc.Network.Limits.StoreMaxAgeSeconds > 10*365*24*60*60 {
+		return fmt.Errorf("network.limits.store_max_age_seconds exceeds the supported bound")
+	}
+	if doc.Network.Limits.StoreMaxBytes > 1<<40 {
+		return fmt.Errorf("network.limits.store_max_bytes exceeds the supported bound")
+	}
 	return nil
 }
 

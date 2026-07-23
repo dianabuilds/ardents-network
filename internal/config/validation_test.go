@@ -83,6 +83,45 @@ func TestValidateAcceptsCompleteServiceNode(t *testing.T) {
 	require.NoError(t, Validate(doc))
 }
 
+func TestValidateRequiresFiniteWakuStoreRetentionForPersistentProfiles(t *testing.T) {
+	for _, profile := range []string{"service_node", "local_development"} {
+		t.Run(profile, func(t *testing.T) {
+			doc := Defaults()
+			doc.Node.Profile = profile
+			if profile == "local_development" {
+				doc.Network.BindAddress = "127.0.0.1"
+			}
+			doc.Network.Limits.StoreMaxMessages = 0
+			require.ErrorContains(t, Validate(doc), "network.limits.store_max_messages")
+
+			doc = Defaults()
+			doc.Node.Profile = profile
+			if profile == "local_development" {
+				doc.Network.BindAddress = "127.0.0.1"
+			}
+			doc.Network.Limits.StoreMaxAgeSeconds = 0
+			require.ErrorContains(t, Validate(doc), "network.limits.store_max_age_seconds")
+
+			doc = Defaults()
+			doc.Node.Profile = profile
+			if profile == "local_development" {
+				doc.Network.BindAddress = "127.0.0.1"
+			}
+			doc.Network.Limits.StoreMaxBytes = 0
+			require.ErrorContains(t, Validate(doc), "network.limits.store_max_bytes")
+		})
+	}
+}
+
+func TestValidateAllowsDisabledWakuStoreRetentionForConstrainedClient(t *testing.T) {
+	doc := Defaults()
+	doc.Node.Profile = "constrained_light_client"
+	doc.Network.Limits.StoreMaxMessages = 0
+	doc.Network.Limits.StoreMaxAgeSeconds = 0
+	doc.Network.Limits.StoreMaxBytes = 0
+	require.NoError(t, Validate(doc))
+}
+
 func TestValidateAcceptsCompletePrivateChannelReferences(t *testing.T) {
 	doc := Defaults()
 	doc.Trust.Principals = []TrustedPrincipalConfig{trustedPrincipalConfig(t, "channel.issue")}

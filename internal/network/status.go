@@ -32,6 +32,12 @@ type StatusSnapshot struct {
 	BackpressuredOperations uint64
 	OversizedMessages       uint64
 	BannedProviders         int
+	StoreEnabled            bool
+	StoreMessages           int
+	StoreCapacityMessages   int
+	StoreCapacityBytes      int64
+	StoreFileBytes          int64
+	StoreUsageRatio         float64
 	LastTransitionAt        time.Time
 	PrivacyProfile          string
 	PrivacyState            string
@@ -50,7 +56,11 @@ func ProjectStatus(nodeProfile NodeProfile, state, reason string, joined bool, p
 		ReducedFeatures: append(append([]TransportFeature(nil), profile.ReducedFeatures...), privacyStatus.ReducedFeatures...),
 		ActiveFeatures:  append([]TransportFeature(nil), profile.ActiveFeatures...), AbuseState: abuse.State, AbuseReason: abuse.Reason,
 		RateLimitedOperations: abuse.RateLimitedOperations, BackpressuredOperations: abuse.BackpressuredOperations,
-		OversizedMessages: abuse.OversizedMessages, BannedProviders: abuse.BannedProviders, LastTransitionAt: lastTransitionAt,
+		OversizedMessages: abuse.OversizedMessages, BannedProviders: abuse.BannedProviders,
+		StoreEnabled: abuse.StoreEnabled, StoreMessages: abuse.StoreMessages,
+		StoreCapacityMessages: abuse.StoreCapacityMessages, StoreFileBytes: abuse.StoreFileBytes,
+		StoreCapacityBytes: abuse.StoreCapacityBytes,
+		StoreUsageRatio:    abuse.StoreUsageRatio, LastTransitionAt: lastTransitionAt,
 		PrivacyProfile: privacyStatus.Profile, PrivacyState: privacyStatus.State, PrivacySwitchReason: privacyStatus.SwitchReason,
 		PrivacyRecoveryState: privacyStatus.RecoveryState, PrivacyErrors: append([]string(nil), privacyStatus.ErrorCategories...),
 	}

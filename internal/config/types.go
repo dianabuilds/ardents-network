@@ -114,14 +114,17 @@ type WSSConfig struct {
 }
 
 type NetworkLimits struct {
-	MaxMessageBytes         int `json:"max_message_bytes"`
-	MaxPeerConnections      int `json:"max_peer_connections"`
-	MaxConnectionsPerIP     int `json:"max_connections_per_ip"`
-	MaxConcurrentOperations int `json:"max_concurrent_operations"`
-	OperationRate           int `json:"operation_rate"`
-	OperationBurst          int `json:"operation_burst"`
-	MaxFilterSubscribers    int `json:"max_filter_subscribers"`
-	MaxStoreResults         int `json:"max_store_results"`
+	MaxMessageBytes         int   `json:"max_message_bytes"`
+	MaxPeerConnections      int   `json:"max_peer_connections"`
+	MaxConnectionsPerIP     int   `json:"max_connections_per_ip"`
+	MaxConcurrentOperations int   `json:"max_concurrent_operations"`
+	OperationRate           int   `json:"operation_rate"`
+	OperationBurst          int   `json:"operation_burst"`
+	MaxFilterSubscribers    int   `json:"max_filter_subscribers"`
+	MaxStoreResults         int   `json:"max_store_results"`
+	StoreMaxMessages        int   `json:"store_max_messages"`
+	StoreMaxAgeSeconds      int   `json:"store_max_age_seconds"`
+	StoreMaxBytes           int64 `json:"store_max_bytes"`
 }
 
 type DataConfig struct {

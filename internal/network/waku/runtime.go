@@ -211,6 +211,10 @@ func (s *Service) readinessStateLocked(status network.BootstrapStatus) ServiceSt
 		RecoveryState:   s.recoveryState,
 		Reachability:    s.reachability,
 	}
+	storePressure := network.AbuseSnapshot{State: "ready"}
+	s.populateStorePressureLocked(&storePressure)
+	state.StorePressureState = storePressure.State
+	state.StorePressureReason = storePressure.Reason
 	for _, endpoint := range s.observed {
 		if endpoint.usable {
 			state.ObservedUsable++

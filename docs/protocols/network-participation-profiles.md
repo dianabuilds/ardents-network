@@ -46,6 +46,18 @@ The role states below distinguish actual product use from dependency mounting.
 an active Ardents capability. Capability reporting must be derived from
 runtime checks and product-path tests, never from this static profile table.
 
+Persistent Store participation by `service_node` and `local_development`
+requires finite positive `network.limits.store_max_messages`,
+`network.limits.store_max_age_seconds`, and
+`network.limits.store_max_bytes`. Defaults are 100,000 messages, seven days,
+and 2 GiB. The count/age limits are passed to go-waku and are also enforced
+after every SQLite insert using trusted receiver time; SQLite page/WAL budgets
+enforce the byte ceiling. Telemetry includes the main database, WAL, and shared
+memory. At 90% of either message or byte capacity the Store pressure state is
+`degraded`; an unreadable or missing persistent database is `failed`.
+`constrained_light_client` and automatic `restricted_defense` never create a
+persistent Store, so those states do not apply to them.
+
 ## 4. Transport And Exposure Rules
 
 ### `tcp_only`

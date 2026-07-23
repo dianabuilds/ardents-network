@@ -2,6 +2,7 @@ package waku
 
 import (
 	"ardents/internal/network"
+	"time"
 
 	"github.com/waku-org/go-waku/waku/persistence"
 	wakuNode "github.com/waku-org/go-waku/waku/v2/node"
@@ -44,13 +45,21 @@ func InspectLightProviders(node *wakuNode.WakuNode) LightProviderStatus {
 func (s *Service) prepareMessageProviderLocked() (*persistence.DBStore, bool, error) {
 	if s.cfg.NodeProfile == network.NodeProfileConstrainedClient ||
 		s.activeMode == network.ModeRestrictedDefense {
+		s.messageProvider = nil
 		return nil, false, nil
 	}
 	existed, err := MessageProviderExists(s.cfg.StorePath)
 	if err != nil {
 		return nil, false, err
 	}
-	provider, err := NewMessageProvider(s.cfg.StorePath)
+	provider, err := NewMessageProvider(s.cfg.StorePath, network.StoreRetention{
+		MaxMessages: s.cfg.Limits.StoreMaxMessages,
+		MaxAge:      time.Duration(s.cfg.Limits.StoreMaxAgeSeconds) * time.Second,
+		MaxBytes:    s.cfg.Limits.StoreMaxBytes,
+	})
+	if err == nil {
+		s.messageProvider = provider
+	}
 	return provider, existed, err
 }
 

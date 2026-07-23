@@ -505,6 +505,9 @@ func operatorTransportConfig(in runtimeconfig.NetworkConfig) TransportConfig {
 			OperationRate:           in.Limits.OperationRate, OperationBurst: in.Limits.OperationBurst,
 			MaxFilterSubscribers: in.Limits.MaxFilterSubscribers,
 			MaxStoreResults:      in.Limits.MaxStoreResults,
+			StoreMaxMessages:     in.Limits.StoreMaxMessages,
+			StoreMaxAgeSeconds:   in.Limits.StoreMaxAgeSeconds,
+			StoreMaxBytes:        in.Limits.StoreMaxBytes,
 		},
 	}
 }

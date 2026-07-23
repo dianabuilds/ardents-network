@@ -34,24 +34,26 @@ func (r runtimeAssessment) RecoveryState() network.RecoveryState {
 }
 
 type ServiceState struct {
-	NodeProfile        network.NodeProfile
-	State              string
-	Reason             string
-	BootstrapNodes     []string
-	Endpoints          []string
-	ObservedUsable     int
-	NodePeerCount      int
-	NodeRelayCount     int
-	FilterPeerCount    int
-	LightpushPeerCount int
-	StorePeerCount     int
-	Bootstrap          network.BootstrapStatus
-	ActiveProfile      network.Profile
-	ActiveMode         network.Mode
-	SwitchReason       network.SwitchReason
-	SwitchAutomatic    bool
-	RecoveryState      network.RecoveryState
-	Reachability       network.ReachabilitySnapshot
+	NodeProfile         network.NodeProfile
+	State               string
+	Reason              string
+	BootstrapNodes      []string
+	Endpoints           []string
+	ObservedUsable      int
+	NodePeerCount       int
+	NodeRelayCount      int
+	FilterPeerCount     int
+	LightpushPeerCount  int
+	StorePeerCount      int
+	Bootstrap           network.BootstrapStatus
+	ActiveProfile       network.Profile
+	ActiveMode          network.Mode
+	SwitchReason        network.SwitchReason
+	SwitchAutomatic     bool
+	RecoveryState       network.RecoveryState
+	Reachability        network.ReachabilitySnapshot
+	StorePressureState  string
+	StorePressureReason string
 }
 
 type ServicePartSnapshot struct {
@@ -131,6 +133,23 @@ func HealthSnapshot(state ServiceState) network.HealthSignals {
 func runtimeAssessmentFor(state ServiceState) runtimeAssessment {
 	raw := baseRuntimeAssessment(state)
 	applied := raw
+	switch state.StorePressureState {
+	case "failed":
+		applied.state = "failed"
+		applied.reason = state.StorePressureReason
+		applied.health = network.HealthStateFailed
+		applied.switchReason = network.SwitchReasonStartupFailed
+		applied.recoveryState = network.RecoveryStateBlocked
+		applied.reducedFeatures = appendUniqueFeatures(applied.reducedFeatures, network.TransportFeatureStore)
+	case "degraded":
+		if applied.health != network.HealthStateFailed && applied.health != network.HealthStateStopped {
+			applied.state = "degraded"
+			applied.reason = state.StorePressureReason
+			applied.health = network.HealthStateDegraded
+			applied.recoveryState = network.RecoveryStateRecoveryPending
+			applied.reducedFeatures = appendUniqueFeatures(applied.reducedFeatures, network.TransportFeatureStore)
+		}
+	}
 	if state.SwitchReason != "" {
 		applied.switchReason = state.SwitchReason
 		applied.switchAutomatic = state.SwitchAutomatic

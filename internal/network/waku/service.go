@@ -5,6 +5,7 @@ import (
 	networkroute "ardents/internal/network/routing"
 	db "ardents/internal/storage"
 	"context"
+	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -20,6 +21,7 @@ import (
 	"github.com/waku-org/go-waku/waku/v2/protocol"
 	"github.com/waku-org/go-waku/waku/v2/protocol/relay"
 	"github.com/waku-org/go-waku/waku/v2/utils"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 )
 
@@ -172,11 +174,13 @@ type Service struct {
 	runtimeCancel        context.CancelFunc
 	runtimeDone          chan struct{}
 	node                 *wakuNode.WakuNode
+	messageProvider      *persistence.DBStore
 	operationSlots       chan struct{}
 	operationRate        *rate.Limiter
 	providerPenalties    map[string]providerPenalty
 	abuse                network.AbuseSnapshot
 	cfg                  network.Config
+	limitConfigErr       error
 }
 
 func New(cfg ...network.Config) *Service {
@@ -198,6 +202,7 @@ func New(cfg ...network.Config) *Service {
 	svc.activeProfile = svc.cfg.Profile
 	svc.activeMode = network.ModeSteady
 	svc.controller = network.NewModeController(network.DefaultSelectionPolicy())
+	svc.limitConfigErr = validateLimits(svc.cfg.Limits)
 	svc.initializeLimits()
 	return svc
 }
@@ -262,7 +267,23 @@ func (s *Service) BootstrapStatus() network.BootstrapStatus {
 	return s.currentBootstrapStatusViewLocked()
 }
 
-func NewMessageProvider(path string) (*persistence.DBStore, error) {
+func NewMessageProvider(path string, retention network.StoreRetention) (*persistence.DBStore, error) {
+	if retention.MaxMessages < 1 || retention.MaxAge < time.Second || retention.MaxBytes < 4<<20 {
+		return nil, fmt.Errorf("Waku Store retention limits must be finite and positive")
+	}
+	if strings.TrimSpace(path) != "" {
+		if _, err := os.Stat(path); err == nil {
+			used, sizeErr := storeDiskBytes(path)
+			if sizeErr != nil {
+				return nil, fmt.Errorf("inspect existing Waku Store size: %w", sizeErr)
+			}
+			if used > retention.MaxBytes {
+				return nil, fmt.Errorf("existing Waku Store exceeds configured byte limit")
+			}
+		} else if !os.IsNotExist(err) {
+			return nil, fmt.Errorf("inspect existing Waku Store: %w", err)
+		}
+	}
 	dsn, err := MessageProviderDSN(path)
 	if err != nil {
 		return nil, err
@@ -271,12 +292,72 @@ func NewMessageProvider(path string) (*persistence.DBStore, error) {
 	if err != nil {
 		return nil, err
 	}
+	options := []persistence.DBOption{
+		persistence.WithDB(database),
+		persistence.WithMigrations(func(db *sql.DB, logger *zap.Logger) error {
+			if err := sqlite.Migrations(db, logger); err != nil {
+				return err
+			}
+			return configureBoundedStore(db, retention)
+		}),
+	}
+	options = append(options, persistence.WithRetentionPolicy(retention.MaxMessages, retention.MaxAge))
 	return persistence.NewDBStore(
 		prometheus.DefaultRegisterer,
 		utils.Logger(),
-		persistence.WithDB(database),
-		persistence.WithMigrations(sqlite.Migrations),
+		options...,
 	)
+}
+
+func configureBoundedStore(database *sql.DB, retention network.StoreRetention) error {
+	var pageSize int64
+	if err := database.QueryRow("PRAGMA page_size").Scan(&pageSize); err != nil {
+		return fmt.Errorf("inspect Waku Store page size: %w", err)
+	}
+	mainBudget := retention.MaxBytes * 3 / 4
+	walBudget := retention.MaxBytes / 8
+	maxPages := mainBudget / pageSize
+	walPages := walBudget / pageSize
+	if maxPages < 1 || walPages < 1 {
+		return fmt.Errorf("Waku Store byte limit is too small")
+	}
+	var appliedMaxPages int64
+	if err := database.QueryRow(fmt.Sprintf("PRAGMA max_page_count = %d", maxPages)).Scan(&appliedMaxPages); err != nil {
+		return fmt.Errorf("configure Waku Store page limit: %w", err)
+	}
+	if appliedMaxPages > maxPages {
+		return fmt.Errorf("existing Waku Store main database exceeds configured byte budget")
+	}
+	statements := []string{
+		fmt.Sprintf("PRAGMA journal_size_limit = %d", walBudget),
+		fmt.Sprintf("PRAGMA wal_autocheckpoint = %d", walPages),
+		"DROP TRIGGER IF EXISTS ardents_store_retention_after_insert",
+		fmt.Sprintf(`CREATE TRIGGER ardents_store_retention_after_insert
+AFTER INSERT ON message
+BEGIN
+  UPDATE message
+     SET storedAt = CAST(strftime('%%s','now') AS INTEGER) * 1000000000
+   WHERE messageHash = NEW.messageHash;
+  DELETE FROM message
+   WHERE storedAt < (CAST(strftime('%%s','now') AS INTEGER) - %d) * 1000000000;
+  DELETE FROM message
+   WHERE messageHash IN (
+     SELECT messageHash FROM message
+      ORDER BY storedAt DESC, messageHash DESC
+      LIMIT 1 OFFSET %d
+   );
+END`, int64(retention.MaxAge/time.Second), retention.MaxMessages),
+		fmt.Sprintf(`UPDATE message
+SET storedAt = CAST(strftime('%%s','now') AS INTEGER) * 1000000000
+WHERE storedAt > (CAST(strftime('%%s','now') AS INTEGER) + %d) * 1000000000`,
+			int64(persistence.MaxTimeVariance/time.Second)),
+	}
+	for _, statement := range statements {
+		if _, err := database.Exec(statement); err != nil {
+			return fmt.Errorf("configure bounded Waku Store: %w", err)
+		}
+	}
+	return nil
 }
 
 func MessageProviderExists(path string) (bool, error) {

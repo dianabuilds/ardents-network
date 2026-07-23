@@ -37,6 +37,11 @@ func TestSurfaceProjectsCanonicalReadyMetricsWithoutResourceLabels(t *testing.T)
 	metrics := scrape(t, surface, "")
 	require.Contains(t, metrics, `ardents_node_ready 1`)
 	require.Contains(t, metrics, `ardents_waku_protocol_active{protocol="relay"} 1`)
+	require.Contains(t, metrics, `ardents_waku_store_messages 90`)
+	require.Contains(t, metrics, `ardents_waku_store_capacity_messages 100`)
+	require.Contains(t, metrics, `ardents_waku_store_capacity_bytes 8192`)
+	require.Contains(t, metrics, `ardents_waku_store_file_bytes 4096`)
+	require.Contains(t, metrics, `ardents_waku_store_usage_ratio 0.9`)
 	require.Contains(t, metrics, `ardents_workload_resource_limits{resource="memory_bytes"} 512`)
 	require.Contains(t, metrics, `ardents_policy_denials_window{action="route"} 1`)
 	require.NotContains(t, metrics, "peer-secret-id")
@@ -127,8 +132,13 @@ type fakeSource struct {
 func populatedSource() *fakeSource {
 	return &fakeSource{
 		runtime: daemonruntime.RuntimeSnapshot{Node: daemonruntime.NodeSnapshot{State: "ready", Ready: true}, Health: diagapi.HealthSnapshot{State: "ready"}},
-		network: network.StatusSnapshot{ActiveFeatures: []network.TransportFeature{network.TransportFeatureRelay, network.TransportFeatureStore}, RateLimitedOperations: 2},
-		peers:   []discovery.PeerSnapshot{{NodeID: "peer-secret-id", State: "connected", Trust: discovery.TrustSnapshot{Valid: true, Trusted: true, Usable: true}}},
+		network: network.StatusSnapshot{
+			ActiveFeatures:        []network.TransportFeature{network.TransportFeatureRelay, network.TransportFeatureStore},
+			RateLimitedOperations: 2, StoreEnabled: true, StoreMessages: 90,
+			StoreCapacityMessages: 100, StoreFileBytes: 4096, StoreUsageRatio: 0.9,
+			StoreCapacityBytes: 8192,
+		},
+		peers: []discovery.PeerSnapshot{{NodeID: "peer-secret-id", State: "connected", Trust: discovery.TrustSnapshot{Valid: true, Trusted: true, Usable: true}}},
 		diagnostics: diagapi.DiagSnapshot{RecentEvents: []diagapi.EventEnvelope{
 			{Domain: "policy", Type: "denied", Resource: "blob-secret-id", Payload: map[string]any{"action": "route.use", "selector": "selector-secret"}},
 			{Domain: "data", Type: "privacy_degraded", Resource: "blob-secret-id"},

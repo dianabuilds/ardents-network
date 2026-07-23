@@ -1,6 +1,9 @@
 package network
 
-import "ardents/internal/network/routing"
+import (
+	"ardents/internal/network/routing"
+	"time"
+)
 
 const BindAddressEnv = "ARDENTS_TRANSPORT_BIND_ADDRESS"
 
@@ -32,6 +35,15 @@ type Limits struct {
 	OperationBurst          int
 	MaxFilterSubscribers    int
 	MaxStoreResults         int
+	StoreMaxMessages        int
+	StoreMaxAgeSeconds      int
+	StoreMaxBytes           int64
+}
+
+type StoreRetention struct {
+	MaxMessages int
+	MaxAge      time.Duration
+	MaxBytes    int64
 }
 
 type AbuseSnapshot struct {
@@ -41,6 +53,12 @@ type AbuseSnapshot struct {
 	BackpressuredOperations uint64
 	OversizedMessages       uint64
 	BannedProviders         int
+	StoreEnabled            bool
+	StoreMessages           int
+	StoreCapacityMessages   int
+	StoreCapacityBytes      int64
+	StoreFileBytes          int64
+	StoreUsageRatio         float64
 	Limits                  Limits
 }
 
