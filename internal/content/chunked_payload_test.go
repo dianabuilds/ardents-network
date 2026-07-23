@@ -19,7 +19,7 @@ func TestStoreChunkedPayloadEncryptsChunksAndPublishesManifest(t *testing.T) {
 	plaintext := bytes.Repeat([]byte("payload"), 10000)
 
 	result, err := service.StoreChunkedPayload(context.Background(), ChunkedPayloadSpec{
-		Owner: "owner", MediaType: "application/octet-stream", KeyID: "key-1",
+		Owner: contentTestOwner(0x34), MediaType: "application/octet-stream", KeyID: "key-1",
 		Access: "participants", Retention: "durable",
 	}, bytes.NewReader(plaintext), key)
 	require.NoError(t, err)
@@ -53,7 +53,7 @@ func TestLoadCleansOrphanChunkStagingAndFinalizesReferencedChunk(t *testing.T) {
 	require.NoError(t, err)
 	referenced, err := service.storeStagedChunk(Blob{MediaType: "application/octet-stream", Retention: "staging"}, []byte("referenced"), key, "")
 	require.NoError(t, err)
-	_, err = service.PublishManifest(Manifest{Kind: "blob-set", Owner: "owner", Encrypted: true, Retention: "durable", Refs: []Ref{{Kind: "blob", ID: referenced.ID}}})
+	_, err = service.PublishManifest(Manifest{Kind: "blob-set", Owner: contentTestOwner(0x34), Encrypted: true, Retention: "durable", Refs: []Ref{{Kind: "blob", ID: referenced.ID}}})
 	require.NoError(t, err)
 
 	reloaded := NewInDir(dir)
@@ -70,7 +70,7 @@ func TestStoreChunkedPayloadRollsBackOnLocalStoragePressure(t *testing.T) {
 	require.NoError(t, service.Load())
 	key := bytes.Repeat([]byte{0x52}, 32)
 	_, err := service.StoreChunkedPayload(context.Background(), ChunkedPayloadSpec{
-		Owner: "owner", MediaType: "application/octet-stream", KeyID: "key-1",
+		Owner: contentTestOwner(0x34), MediaType: "application/octet-stream", KeyID: "key-1",
 	}, bytes.NewReader(bytes.Repeat([]byte("x"), PlaintextChunkSize)), key)
 	require.ErrorContains(t, err, "storage capacity")
 	require.Empty(t, service.ListBlobs())
@@ -85,7 +85,7 @@ func TestStoreChunkedPayloadRollsBackOnPayloadWriteFailure(t *testing.T) {
 
 	key := bytes.Repeat([]byte{0x54}, 32)
 	_, err := service.StoreChunkedPayload(context.Background(), ChunkedPayloadSpec{
-		Owner: "owner", MediaType: "application/octet-stream", KeyID: "key-1",
+		Owner: contentTestOwner(0x34), MediaType: "application/octet-stream", KeyID: "key-1",
 	}, bytes.NewReader(bytes.Repeat([]byte("x"), PlaintextChunkSize)), key)
 	require.Error(t, err)
 	require.Empty(t, service.ListBlobs())
@@ -123,7 +123,7 @@ func TestStoreChunkedPayloadCancellationAndReadFailureRollback(t *testing.T) {
 	service := NewInDir(t.TempDir())
 	require.NoError(t, service.Load())
 	key := bytes.Repeat([]byte{0x24}, 32)
-	spec := ChunkedPayloadSpec{Owner: "owner", MediaType: "application/octet-stream", KeyID: "key-1"}
+	spec := ChunkedPayloadSpec{Owner: contentTestOwner(0x34), MediaType: "application/octet-stream", KeyID: "key-1"}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()

@@ -25,7 +25,7 @@ func TestPublishObjectAndPersist(t *testing.T) {
 
 	object, err := svc.PublishObject(Object{
 		Type:  "chat.message",
-		Owner: "principal.local",
+		Owner: contentTestOwner(0x31),
 		Body: map[string]any{
 			"text": "hello",
 		},
@@ -70,7 +70,7 @@ func TestPublishObjectRejectsMissingBlobRef(t *testing.T) {
 
 		_, err := svc.PublishObject(Object{
 			Type:  "chat.message",
-			Owner: "principal.local",
+			Owner: contentTestOwner(0x31),
 			BlobRefs: []Ref{{
 				Kind: "blob",
 				ID:   "missing",
@@ -303,7 +303,7 @@ func TestPublishManifestAndPersist(t *testing.T) {
 
 	manifest, err := svc.PublishManifest(Manifest{
 		Kind:      "message-attachment",
-		Owner:     "principal.local",
+		Owner:     contentTestOwner(0x31),
 		Access:    "participants",
 		Retention: "temporary",
 		Encrypted: true,
@@ -346,7 +346,7 @@ func TestPublishManifestRejectsMissingBlobRef(t *testing.T) {
 	{
 
 		_, err := svc.PublishManifest(Manifest{
-			Owner: "principal.local",
+			Owner: contentTestOwner(0x31),
 			Refs: []Ref{{
 				Kind: "blob",
 				ID:   "missing",
@@ -389,12 +389,13 @@ func TestBlobPartStateDegradesWhenLocalPayloadIsMissing(t *testing.T) {
 func TestObjectPartStateDegradesOnBrokenBlobRefsAfterLoad(t *testing.T) {
 	dir := t.TempDir()
 	persisted := persistedContent{
+		Version:       contentSchemaVersion,
 		BlobOwnership: persistedBlobOwnership{Version: blobOwnershipVersion},
 		Objects: map[string]model.Object{
 			"obj-broken": {
 				ID:    "obj-broken",
 				Type:  "chat.message",
-				Owner: "principal.local",
+				Owner: contentTestOwner(0x31),
 				BlobRefs: []model.Ref{{
 					Kind: "blob",
 					ID:   "blob-missing",
@@ -406,7 +407,7 @@ func TestObjectPartStateDegradesOnBrokenBlobRefsAfterLoad(t *testing.T) {
 			"manifest-broken": {
 				ID:    "manifest-broken",
 				Kind:  "blob-set",
-				Owner: "principal.local",
+				Owner: contentTestOwner(0x31),
 				Refs: []model.Ref{{
 					Kind: "blob",
 					ID:   "blob-missing-2",

@@ -39,9 +39,8 @@ func TestDataSubstrateObjectAndBlobPersistAcrossRestart(t *testing.T) {
 	})
 
 	object, err := first.PublishObject(appdata.Object{
-		Type:  "chat.message",
-		Owner: "node",
-		Body:  map[string]any{"text": "hello"},
+		Type: "chat.message",
+		Body: map[string]any{"text": "hello"},
 	})
 	require.NoErrorf(t, err, "publish object: %v", err)
 
@@ -156,9 +155,8 @@ func TestDataSubstrateOperationsEmitDiagnosticsEvents(t *testing.T) {
 	{
 
 		_, err := n.PublishManifest(appdata.Manifest{
-			Kind:  "message-attachment",
-			Owner: "node",
-			Refs:  []appdata.Ref{{Kind: "blob", ID: blob.ID}},
+			Kind: "message-attachment",
+			Refs: []appdata.Ref{{Kind: "blob", ID: blob.ID}},
 		})
 		require.NoErrorf(t, err, "publish manifest: %v", err)
 	}

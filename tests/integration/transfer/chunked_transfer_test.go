@@ -5,11 +5,13 @@ package transfer_test
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
 	"testing"
 	"time"
 
 	appdata "ardents/internal/content"
 	runtimeinfra "ardents/internal/daemon"
+	identityprincipal "ardents/internal/identity/principal"
 	"ardents/tests/testkit"
 
 	"github.com/stretchr/testify/require"
@@ -28,7 +30,7 @@ func TestDataSubstrateFetchesAndResumesChunkedPayloadOverPrivateWaku(t *testing.
 	key := bytes.Repeat([]byte{0x71}, 32)
 	plaintext := bytes.Repeat([]byte("chunked-network-payload"), 10000)
 	stored, err := sourceStore.StoreChunkedPayload(context.Background(), appdata.ChunkedPayloadSpec{
-		Owner: "owner", MediaType: "application/octet-stream", KeyID: "network-key-1",
+		Owner: integrationTransferOwner(t), MediaType: "application/octet-stream", KeyID: "network-key-1",
 	}, bytes.NewReader(plaintext), key)
 	require.NoError(t, err)
 	require.Greater(t, stored.ChunkCount, 1)
@@ -69,4 +71,12 @@ func TestDataSubstrateFetchesAndResumesChunkedPayloadOverPrivateWaku(t *testing.
 	require.NoError(t, err)
 	require.Zero(t, resumed.FetchedCount)
 	require.Equal(t, stored.ChunkCount, resumed.ResumedCount)
+}
+
+func integrationTransferOwner(t *testing.T) identityprincipal.ID {
+	t.Helper()
+	seed := bytes.Repeat([]byte{0x58}, ed25519.SeedSize)
+	owner, err := identityprincipal.FromEd25519PublicKey(ed25519.NewKeyFromSeed(seed).Public().(ed25519.PublicKey))
+	require.NoError(t, err)
+	return owner
 }

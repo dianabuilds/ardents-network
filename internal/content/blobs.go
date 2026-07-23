@@ -338,7 +338,7 @@ func (s *Service) ListBlobs() []Blob {
 }
 
 func (s *Service) nextID(prefix string) string {
-	return fmt.Sprintf("%s-%d", prefix, time.Now().UTC().UnixNano())
+	return fmt.Sprintf("%s-%d", prefix, s.now().UnixNano())
 }
 
 func (s *Service) writePayloadLocked(id string, payload []byte) error {

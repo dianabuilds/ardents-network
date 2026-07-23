@@ -88,12 +88,26 @@ func (s *Service) Load() error {
 		return err
 	}
 	if !found {
+		data.Version = contentSchemaVersion
 		data.BlobOwnership.Version = blobOwnershipVersion
+	}
+	if data.Version != contentSchemaVersion {
+		return fmt.Errorf("unsupported content schema version")
 	}
 	if data.BlobOwnership.Version != blobOwnershipVersion {
 		return fmt.Errorf("unsupported blob ownership version")
 	}
 	normalizeSnapshot(&data)
+	for _, object := range data.Objects {
+		if object.Owner.String() == "" {
+			return fmt.Errorf("persisted object owner is invalid")
+		}
+	}
+	for _, manifest := range data.Manifests {
+		if manifest.Owner.String() == "" {
+			return fmt.Errorf("persisted manifest owner is invalid")
+		}
+	}
 	s.objects.Load(data.Objects)
 	s.blobs.Load(data.Blobs)
 	if err := s.blobOwners.Load(data.BlobOwnership.Bindings, data.Blobs); err != nil {
@@ -209,6 +223,7 @@ func (s *Service) saveLocked() error {
 		return nil
 	}
 	return saveContent(s.path, persistedContent{
+		Version:   contentSchemaVersion,
 		Objects:   s.objects.Snapshot(),
 		Blobs:     s.blobs.Snapshot(),
 		Sources:   s.sources.Snapshot(),

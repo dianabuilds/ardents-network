@@ -80,6 +80,20 @@ func (s *BlobOwnerStore) Put(item BlobOwnerBinding) {
 	s.items[blobOwnerKey{Owner: item.Owner, Reference: item.Reference}] = item
 }
 
+func (s *BlobOwnerStore) Delete(owner principal.ID, reference string) {
+	delete(s.items, blobOwnerKey{Owner: owner, Reference: reference})
+}
+
+func (s *BlobOwnerStore) CountReference(reference string) int {
+	count := 0
+	for key := range s.items {
+		if key.Reference == reference {
+			count++
+		}
+	}
+	return count
+}
+
 func (s *BlobOwnerStore) Count() int { return len(s.items) }
 
 type ObjectStore struct {

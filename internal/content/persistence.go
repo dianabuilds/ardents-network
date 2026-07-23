@@ -12,6 +12,7 @@ import (
 )
 
 type persistedContent struct {
+	Version       uint32                                `json:"version"`
 	Objects       map[string]catalog.Object             `json:"objects"`
 	Blobs         map[string]catalog.Blob               `json:"blobs"`
 	Sources       map[string][]catalog.BlobSourceRecord `json:"sources"`
@@ -19,6 +20,7 @@ type persistedContent struct {
 	BlobOwnership persistedBlobOwnership                `json:"blob_ownership"`
 }
 
+const contentSchemaVersion = 1
 const blobOwnershipVersion = 1
 
 type persistedBlobOwnership struct {

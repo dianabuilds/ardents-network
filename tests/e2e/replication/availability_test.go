@@ -165,7 +165,7 @@ func importAvailabilityRecords(t *testing.T, owner *runtimeprocess.Node, peers m
 func publishAvailabilityManifest(t *testing.T, fixture availabilityFixture) appdata.Manifest {
 	t.Helper()
 	root, err := fixture.owner.PublishManifest(appdata.Manifest{
-		Kind: "blob-set", Owner: fixture.owner.Snapshot().Ident.Principal, Encrypted: true, Retention: "durable",
+		Kind: "blob-set", Encrypted: true, Retention: "durable",
 		Refs: []appdata.Ref{{Kind: "blob", ID: fixture.blob.ID}},
 	})
 	require.NoError(t, err)

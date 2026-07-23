@@ -10,8 +10,14 @@ import (
 )
 
 func (h *QueryHandler) PublishObject(ctx context.Context, req *connect.Request[ardentsv1.PublishObjectRequest]) (*connect.Response[ardentsv1.ObjectSnapshot], error) {
-	return rpc.RespondContext(ctx, func(rpc.Call) (*ardentsv1.ObjectSnapshot, *rpc.Error) {
-		res, err := h.commands.PublishObject(fromObjectSnapshot(req.Msg.GetObject()))
+	return rpc.RespondContext(ctx, func(call rpc.Call) (*ardentsv1.ObjectSnapshot, *rpc.Error) {
+		owner, ownerErr := admittedOwner(call)
+		if ownerErr != nil {
+			return nil, ownerErr
+		}
+		object := fromObjectSnapshot(req.Msg.GetObject())
+		object.Owner = owner
+		res, err := h.commands.PublishObject(object)
 		if err != nil {
 			return nil, rpc.MapError("data", "data.publish_object", "publish_failed", "data publish object failed", false, err)
 		}

@@ -46,7 +46,7 @@ func TestPlanBuildsDeterministicBoundedManifestTree(t *testing.T) {
 		chunkIDs[index] = fmt.Sprintf("chunk-%04d", index)
 	}
 	spec := ManifestSpec{
-		Owner: "owner", MediaType: "application/octet-stream", KeyID: "key-1",
+		Owner: contentTestOwner(0x35), MediaType: "application/octet-stream", KeyID: "key-1",
 		Access: "participants", Retention: "durable", TotalPlaintextBytes: 42,
 	}
 	first, err := Plan(chunkIDs, spec)
@@ -70,7 +70,7 @@ func TestPlanRejectsInvalidOrOversizedShape(t *testing.T) {
 		tooMany[index] = fmt.Sprintf("chunk-%d", index)
 	}
 	_, err = Plan(tooMany, ManifestSpec{
-		Owner: "owner", MediaType: "application/octet-stream", KeyID: "key",
+		Owner: contentTestOwner(0x35), MediaType: "application/octet-stream", KeyID: "key",
 		TotalPlaintextBytes: int64(len(tooMany)),
 	})
 	require.ErrorContains(t, err, "maximum")
@@ -78,7 +78,7 @@ func TestPlanRejectsInvalidOrOversizedShape(t *testing.T) {
 
 func TestValidateManifestRejectsTamperedIdentityAndShape(t *testing.T) {
 	plan, err := Plan([]string{"chunk-1", "chunk-2"}, ManifestSpec{
-		Owner: "owner", MediaType: "application/octet-stream", KeyID: "key-1",
+		Owner: contentTestOwner(0x35), MediaType: "application/octet-stream", KeyID: "key-1",
 		TotalPlaintextBytes: PlaintextChunkSize + 1,
 	})
 	require.NoError(t, err)
@@ -100,7 +100,7 @@ func TestResolvePreservesLeafAndChunkOrder(t *testing.T) {
 		ids[index] = fmt.Sprintf("chunk-%d", index)
 	}
 	plan, err := Plan(ids, ManifestSpec{
-		Owner: "owner", MediaType: "application/octet-stream", KeyID: "key-1",
+		Owner: contentTestOwner(0x35), MediaType: "application/octet-stream", KeyID: "key-1",
 		TotalPlaintextBytes: int64(len(ids)),
 	})
 	require.NoError(t, err)

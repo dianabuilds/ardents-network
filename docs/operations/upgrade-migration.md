@@ -87,15 +87,16 @@ old binary to a partially upgraded database. Transaction rollback on an update
 error and whole-state restore after a failed release are both required safety
 mechanisms.
 
-### Blob ownership catalogue version 1
+### Content catalogue version 1
 
-The first-release `ardents.db` content snapshot contains a required
-`blob_ownership` section with `version: 1`. Each binding contains one canonical
-typed `p1_` owner, one Blob content reference, and its creation time. Payloads
-and Blob metadata remain global and content-addressed; the owner is not encoded
-into the CID and identical bytes are not copied per Principal. Unknown versions,
-malformed Principals, duplicate `(owner, reference)` pairs, and bindings to
-missing Blob metadata fail startup closed.
+The first-release `ardents.db` content snapshot has top-level `version: 1` and a
+required `blob_ownership` section with `version: 1`. Object and Manifest owner
+fields contain one canonical typed `p1_` Principal. Each Blob binding contains
+one canonical typed `p1_` owner, one content reference, and its creation time.
+Payloads and Blob metadata remain global and content-addressed; the owner is not
+encoded into the CID and identical bytes are not copied per Principal. Unknown
+versions, missing/malformed/untyped owners, duplicate `(owner, reference)`
+pairs, and bindings to missing Blob metadata fail startup closed.
 
 This is a greenfield first-release schema, so there is no importer for a
 pre-release snapshot that lacks `blob_ownership`. Such state is rejected rather
@@ -109,6 +110,13 @@ binding and metadata and removes a payload only when that payload did not exist
 before the operation. On restart, an installed `.blob` file with no catalogue
 metadata is reclaimable and is removed; recovery never creates an ownership
 binding from file or CID knowledge.
+
+Remote Application Get is attempted only when its Effective Principal already
+has a binding, and the binding is rechecked after fetch. Successful payload
+verification alone never creates ownership. Removing one owner binding keeps
+the payload while another binding, Object/Manifest reference, pin, durable
+retention, relay retention, or staging fact remains; catalogue failure restores
+the binding and any staged payload removal.
 
 An older pre-PIA-014A binary does not understand this authority fact and is not
 a supported in-place rollback target. Stop the Node and restore the complete

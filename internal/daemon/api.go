@@ -14,6 +14,7 @@ import (
 	"ardents/internal/workload"
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -301,6 +302,11 @@ func (n *Node) Capabilities() CapabilitiesSnapshot {
 func (n *Node) PublishObject(object appdata.Object) (appdata.Object, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
+	owner, err := n.nodeContentOwnerLocked()
+	if err != nil {
+		return appdata.Object{}, err
+	}
+	object.Owner = owner
 	return n.dataCommands.PublishObject(object)
 }
 
@@ -345,7 +351,20 @@ func (n *Node) FetchChunked(ctx context.Context, rootID string) (appdata.ChunkFe
 func (n *Node) PublishManifest(manifest appdata.Manifest) (appdata.Manifest, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
+	owner, err := n.nodeContentOwnerLocked()
+	if err != nil {
+		return appdata.Manifest{}, err
+	}
+	manifest.Owner = owner
 	return n.dataCommands.PublishManifest(manifest)
+}
+
+func (n *Node) nodeContentOwnerLocked() (principal.ID, error) {
+	owner, err := principal.Parse(n.ident.NodeSummary().Principal)
+	if err != nil {
+		return principal.ID{}, fmt.Errorf("canonical Node content owner is unavailable")
+	}
+	return owner, nil
 }
 
 func (n *Node) RetainBlob(id string, expiresAt time.Time) (appdata.Blob, error) {

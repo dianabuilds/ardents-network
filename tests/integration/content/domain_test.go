@@ -21,6 +21,7 @@ import (
 )
 
 type persistedDataSnapshot struct {
+	Version       uint32                                `json:"version"`
 	Objects       map[string]appdata.Object             `json:"objects"`
 	Blobs         map[string]appdata.Blob               `json:"blobs"`
 	Sources       map[string][]appdata.BlobSourceRecord `json:"sources"`
@@ -263,8 +264,7 @@ func TestDataSubstrateSnapshotExplainsBrokenObjectRefsAfterRestart(t *testing.T)
 	{
 
 		_, err := first.PublishObject(appdata.Object{
-			Type:  "chat.message",
-			Owner: "principal.local",
+			Type: "chat.message",
 			BlobRefs: []appdata.Ref{{
 				Kind: "blob",
 				ID:   blob.ID,

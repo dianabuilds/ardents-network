@@ -3,6 +3,7 @@ package content
 import (
 	model "ardents/internal/content/catalog"
 	datapayload "ardents/internal/content/payload"
+	"ardents/internal/identity/principal"
 	"errors"
 	"fmt"
 	"os"
@@ -122,6 +123,66 @@ func (s *Service) DropBlob(id string) (Blob, error) {
 		return blob, err
 	}
 	return blob, nil
+}
+
+// DropBlobForOwner removes exactly one Principal binding. The shared payload is
+// reclaimed only when no other owner, Object/Manifest reference, or independent
+// retention fact still needs it.
+func (s *Service) DropBlobForOwner(owner principal.ID, id string) (Blob, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if owner.String() == "" || !s.blobOwners.Has(owner, id) {
+		return Blob{}, ErrBlobNotFound
+	}
+	blob, ok := s.blobs.Get(id)
+	if !ok {
+		return Blob{}, ErrBlobNotFound
+	}
+	previousBlobs, previousOwners, previousState := s.blobs.Snapshot(), s.blobOwners.Snapshot(), s.state
+	s.blobOwners.Delete(owner, id)
+	shouldKeep := s.blobOwners.CountReference(id) > 0 || s.blobReferencedLocked(id) || independentlyRetained(blob)
+	removals := payloadRemovalBatch{service: s}
+	if !shouldKeep {
+		if err := removals.Stage(id); err != nil {
+			_ = s.restoreOwnedBlobSnapshotLocked(previousBlobs, previousOwners, previousState)
+			return Blob{}, err
+		}
+		blob.State = "deleted"
+		blob.ExpiresAt = time.Time{}
+		s.blobs.Put(blob)
+	}
+	s.state = "ready"
+	if err := s.saveLocked(); err != nil {
+		restoreErr := s.restoreOwnedBlobSnapshotLocked(previousBlobs, previousOwners, previousState)
+		return Blob{}, errors.Join(err, restoreErr, removals.Rollback())
+	}
+	if err := removals.Commit(); err != nil {
+		return blob, err
+	}
+	return blob, nil
+}
+
+func (s *Service) blobReferencedLocked(id string) bool {
+	for _, object := range s.objects.Snapshot() {
+		for _, ref := range object.BlobRefs {
+			if ref.Kind == "blob" && ref.ID == id {
+				return true
+			}
+		}
+	}
+	for _, manifest := range s.manifests.Snapshot() {
+		for _, ref := range manifest.Refs {
+			if ref.Kind == "blob" && ref.ID == id {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func independentlyRetained(blob Blob) bool {
+	return blob.State == "pinned" || blob.State == "retained-temporary" || blob.Retention == "durable" ||
+		blob.Retention == "relay-temporary" || blob.Retention == "staging"
 }
 
 func (s *Service) PruneExpired(now time.Time) ([]Blob, error) {

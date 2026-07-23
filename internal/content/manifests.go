@@ -10,7 +10,7 @@ func (s *Service) PublishManifest(manifest Manifest) (Manifest, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	stored, err := publishManifestModel(&s.manifests, &s.blobs, manifestModel(manifest), s.nextID)
+	stored, err := publishManifestModel(&s.manifests, &s.blobs, manifestModel(manifest), s.nextID, s.now())
 	if err != nil {
 		return Manifest{}, err
 	}
@@ -36,8 +36,11 @@ func (s *Service) ListManifests() []Manifest {
 	return out
 }
 
-func publishManifestModel(manifests *model.ManifestStore, blobs *model.BlobStore, manifest model.Manifest, nextID func(string) string) (model.Manifest, error) {
+func publishManifestModel(manifests *model.ManifestStore, blobs *model.BlobStore, manifest model.Manifest, nextID func(string) string, now time.Time) (model.Manifest, error) {
 	manifest = normalizeManifestModel(manifest)
+	if manifest.Owner.String() == "" {
+		return model.Manifest{}, fmt.Errorf("manifest owner is required")
+	}
 	if manifest.Kind == "chunk-leaf" || manifest.Kind == "chunk-root" {
 		if err := ValidateManifest(manifest); err != nil {
 			return model.Manifest{}, err
@@ -62,7 +65,7 @@ func publishManifestModel(manifests *model.ManifestStore, blobs *model.BlobStore
 		}
 	}
 	if manifest.CreatedAt.IsZero() {
-		manifest.CreatedAt = time.Now().UTC()
+		manifest.CreatedAt = now.UTC()
 	}
 	manifests.Put(manifest)
 	return cloneManifestModel(manifest), nil

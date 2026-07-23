@@ -141,6 +141,7 @@ func TestLoadRejectsUnknownBlobOwnershipVersion(t *testing.T) {
 	dir := t.TempDir()
 	path := contentPath(dir)
 	require.NoError(t, storage.SaveJSON(path, "data", "snapshot", map[string]any{
+		"version": contentSchemaVersion,
 		"objects": map[string]any{}, "blobs": map[string]any{},
 		"sources": map[string]any{}, "manifests": map[string]any{},
 		"blob_ownership": map[string]any{"version": 99, "bindings": []any{}},
@@ -166,6 +167,7 @@ func TestLoadRejectsMalformedAndDuplicateBlobOwnerBindings(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			dir := t.TempDir()
 			require.NoError(t, storage.SaveJSON(contentPath(dir), "data", "snapshot", map[string]any{
+				"version": contentSchemaVersion,
 				"objects": map[string]any{}, "blobs": map[string]Blob{"ref": validBlob},
 				"sources": map[string]any{}, "manifests": map[string]any{},
 				"blob_ownership": map[string]any{"version": blobOwnershipVersion, "bindings": bindings},
@@ -191,12 +193,20 @@ func TestStartupReclaimsInstalledPayloadWithoutInventingBinding(t *testing.T) {
 
 func contentTestPrincipal(t *testing.T, marker byte) principal.ID {
 	t.Helper()
+	id := contentTestOwner(marker)
+	require.NotEmpty(t, id.String())
+	return id
+}
+
+func contentTestOwner(marker byte) principal.ID {
 	seed := make([]byte, ed25519.SeedSize)
 	for index := range seed {
 		seed[index] = marker
 	}
 	key := ed25519.NewKeyFromSeed(seed)
 	id, err := principal.FromEd25519PublicKey(key.Public().(ed25519.PublicKey))
-	require.NoError(t, err)
+	if err != nil {
+		panic("derive fixed test content owner")
+	}
 	return id
 }

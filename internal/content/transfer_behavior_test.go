@@ -313,7 +313,7 @@ func TestContentServiceExposesCohesiveLocalDomainFlow(t *testing.T) {
 
 	object, err := svc.PublishObject(Object{
 		Type:  "chat.message",
-		Owner: "principal.local",
+		Owner: contentTestOwner(0x32),
 		BlobRefs: []Ref{{
 			Kind: "blob",
 			ID:   blob.ID,
@@ -322,7 +322,7 @@ func TestContentServiceExposesCohesiveLocalDomainFlow(t *testing.T) {
 	require.NoError(t, err)
 
 	manifest, err := svc.PublishManifest(Manifest{
-		Owner: "principal.local",
+		Owner: contentTestOwner(0x32),
 		Refs: []Ref{{
 			Kind: "blob",
 			ID:   blob.ID,

@@ -3,6 +3,7 @@ package content
 import (
 	model "ardents/internal/content/catalog"
 	"ardents/internal/content/payload"
+	"ardents/internal/identity/principal"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -15,7 +16,7 @@ const (
 )
 
 type ManifestSpec struct {
-	Owner               string
+	Owner               principal.ID
 	MediaType           string
 	KeyID               string
 	Access              string
@@ -85,7 +86,7 @@ func CanonicalManifestID(manifest model.Manifest) (string, error) {
 		Encrypted                      bool
 		Refs                           []model.Ref
 		Metadata                       chunkMetadata
-	}{manifest.Kind, manifest.Owner, manifest.Access, manifest.Retention, manifest.Encrypted, manifest.Refs, metadata})
+	}{manifest.Kind, manifest.Owner.String(), manifest.Access, manifest.Retention, manifest.Encrypted, manifest.Refs, metadata})
 	if err != nil {
 		return "", err
 	}
@@ -114,7 +115,7 @@ func normalizeSpec(spec ManifestSpec) ManifestSpec {
 }
 
 func validatePlanInput(chunkIDs []string, spec ManifestSpec) error {
-	if len(chunkIDs) == 0 || spec.Owner == "" || spec.MediaType == "" || spec.KeyID == "" || spec.TotalPlaintextBytes <= 0 {
+	if len(chunkIDs) == 0 || spec.Owner.String() == "" || spec.MediaType == "" || spec.KeyID == "" || spec.TotalPlaintextBytes <= 0 {
 		return fmt.Errorf("chunk manifest input is incomplete")
 	}
 	if len(chunkIDs) > MaxLeafRefs*MaxRootRefs {
@@ -220,7 +221,7 @@ type chunkMetadata struct {
 }
 
 func ValidateManifest(manifest model.Manifest) error {
-	if !manifest.Encrypted || manifest.Owner == "" || manifest.Access == "" || manifest.Retention == "" {
+	if !manifest.Encrypted || manifest.Owner.String() == "" || manifest.Access == "" || manifest.Retention == "" {
 		return fmt.Errorf("chunk manifest security metadata is incomplete")
 	}
 	metadata, err := canonicalMetadata(manifest.Metadata)

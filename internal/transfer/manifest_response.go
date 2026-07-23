@@ -9,6 +9,7 @@ import (
 	"maps"
 
 	model "ardents/internal/content/catalog"
+	"ardents/internal/identity/principal"
 )
 
 func prepareManifestResponseWire(cfg ExchangeConfig, source string, key ed25519.PrivateKey, req blobFetchRequest) ([]byte, error, error) {
@@ -79,7 +80,11 @@ func acceptManifestResponse(cfg ExchangeConfig, manifestID, requester, requestID
 	if response.Status == blobFetchStatusError {
 		return model.Manifest{}, response.Source, blobFetchTerminalError{err: errors.New(response.Error)}
 	}
-	return manifestFromWire(*response.Manifest), response.Source, nil
+	manifest, err := manifestFromWire(*response.Manifest)
+	if err != nil {
+		return model.Manifest{}, response.Source, blobFetchCandidateError{err: err}
+	}
+	return manifest, response.Source, nil
 }
 
 func manifestWireFromSnapshot(in model.Manifest) manifestWire {
@@ -88,22 +93,26 @@ func manifestWireFromSnapshot(in model.Manifest) manifestWire {
 		refs = append(refs, refWire{Kind: ref.Kind, ID: ref.ID})
 	}
 	return manifestWire{
-		ID: in.ID, Kind: in.Kind, Owner: in.Owner, Refs: refs,
+		ID: in.ID, Kind: in.Kind, Owner: in.Owner.String(), Refs: refs,
 		Access: in.Access, Retention: in.Retention, Encrypted: in.Encrypted,
 		Metadata: cloneMetadata(in.Metadata), CreatedAt: in.CreatedAt,
 	}
 }
 
-func manifestFromWire(in manifestWire) model.Manifest {
+func manifestFromWire(in manifestWire) (model.Manifest, error) {
+	owner, err := principal.Parse(in.Owner)
+	if err != nil {
+		return model.Manifest{}, fmt.Errorf("remote manifest owner is invalid")
+	}
 	refs := make([]model.Ref, 0, len(in.Refs))
 	for _, ref := range in.Refs {
 		refs = append(refs, model.Ref{Kind: ref.Kind, ID: ref.ID})
 	}
 	return model.Manifest{
-		ID: in.ID, Kind: in.Kind, Owner: in.Owner, Refs: refs,
+		ID: in.ID, Kind: in.Kind, Owner: owner, Refs: refs,
 		Access: in.Access, Retention: in.Retention, Encrypted: in.Encrypted,
 		Metadata: cloneMetadata(in.Metadata), CreatedAt: in.CreatedAt,
-	}
+	}, nil
 }
 
 func cloneMetadata(in map[string]any) map[string]any {

@@ -1,6 +1,7 @@
 package content
 
 import (
+	"ardents/internal/identity/principal"
 	"context"
 	"errors"
 	"fmt"
@@ -43,7 +44,7 @@ func Stream(reader io.Reader, emit func(int, []byte) error) (int, int64, error) 
 const stagedChunkCheckpointInterval = 16
 
 type ChunkedPayloadSpec struct {
-	Owner     string
+	Owner     principal.ID
 	MediaType string
 	KeyID     string
 	Access    string

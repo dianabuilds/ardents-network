@@ -10,8 +10,14 @@ import (
 )
 
 func (h *QueryHandler) PublishManifest(ctx context.Context, req *connect.Request[ardentsv1.PublishManifestRequest]) (*connect.Response[ardentsv1.ManifestSnapshot], error) {
-	return rpc.RespondContext(ctx, func(rpc.Call) (*ardentsv1.ManifestSnapshot, *rpc.Error) {
-		res, err := h.commands.PublishManifest(fromManifestSnapshot(req.Msg.GetManifest()))
+	return rpc.RespondContext(ctx, func(call rpc.Call) (*ardentsv1.ManifestSnapshot, *rpc.Error) {
+		owner, ownerErr := admittedOwner(call)
+		if ownerErr != nil {
+			return nil, ownerErr
+		}
+		manifest := fromManifestSnapshot(req.Msg.GetManifest())
+		manifest.Owner = owner
+		res, err := h.commands.PublishManifest(manifest)
 		if err != nil {
 			return nil, rpc.MapError("data", "data.publish_manifest", "publish_failed", "data publish manifest failed", false, err)
 		}

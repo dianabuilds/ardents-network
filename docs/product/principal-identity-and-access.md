@@ -753,9 +753,13 @@ so identical bytes may be owned by several Principals without duplicating the
 payload.
 
 Application `Put` derives owner from `AuthorizedCall.Effective`; a
-request-provided owner is rejected. Operator content commands retain their
-Node-administrative semantics until their separate typed-owner cleanup and do
-not silently reinterpret a pre-release untyped `owner` string as a human Principal.
+request-provided owner is rejected. Object and Manifest owners are typed
+Principal IDs. A protected Operator publish derives their owner from the
+successfully admitted Operator Principal and ignores the wire `owner`; an
+internal Node publication derives it from the Node Principal. Operator Blob
+inventory/replica administration remains Node-administrative and does not
+create an Application owner binding. No path silently reinterprets a
+pre-release untyped `owner` string as a Principal.
 
 For Application Put, payload publication and ownership use this crash-safe
 order:

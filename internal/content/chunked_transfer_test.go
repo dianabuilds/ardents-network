@@ -3,10 +3,12 @@ package content_test
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
 	"testing"
 
 	"ardents/internal/content"
 	data "ardents/internal/content"
+	identityprincipal "ardents/internal/identity/principal"
 	"ardents/internal/storage"
 	"ardents/internal/transfer"
 
@@ -21,7 +23,7 @@ func TestFetchChunkedResumesVerifiedLocalChunks(t *testing.T) {
 	require.NoError(t, history.Load())
 	key := bytes.Repeat([]byte{0x61}, 32)
 	stored, err := store.StoreChunkedPayload(context.Background(), data.ChunkedPayloadSpec{
-		Owner: "owner", MediaType: "application/octet-stream", KeyID: "key-1",
+		Owner: externalContentTestOwner(t, 0x33), MediaType: "application/octet-stream", KeyID: "key-1",
 	}, bytes.NewReader(bytes.Repeat([]byte("payload"), 10000)), key)
 	require.NoError(t, err)
 
@@ -46,7 +48,7 @@ func TestFetchChunkedCancellationIsTerminalAndKeepsChunks(t *testing.T) {
 	require.NoError(t, history.Load())
 	key := bytes.Repeat([]byte{0x62}, 32)
 	stored, err := store.StoreChunkedPayload(context.Background(), data.ChunkedPayloadSpec{
-		Owner: "owner", MediaType: "application/octet-stream", KeyID: "key-1",
+		Owner: externalContentTestOwner(t, 0x33), MediaType: "application/octet-stream", KeyID: "key-1",
 	}, bytes.NewReader(bytes.Repeat([]byte("payload"), content.PlaintextChunkSize)), key)
 	require.NoError(t, err)
 
@@ -58,4 +60,12 @@ func TestFetchChunkedCancellationIsTerminalAndKeepsChunks(t *testing.T) {
 	transfers := history.List()
 	require.Len(t, transfers, 1)
 	require.Equal(t, "failed", transfers[0].State)
+}
+
+func externalContentTestOwner(t *testing.T, marker byte) identityprincipal.ID {
+	t.Helper()
+	seed := bytes.Repeat([]byte{marker}, ed25519.SeedSize)
+	owner, err := identityprincipal.FromEd25519PublicKey(ed25519.NewKeyFromSeed(seed).Public().(ed25519.PublicKey))
+	require.NoError(t, err)
+	return owner
 }

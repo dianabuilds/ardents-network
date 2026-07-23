@@ -1,7 +1,7 @@
 # Principal Identity And Access Work Plan
 
 Status: active implementation plan. Completion is recorded per leaf; `PIA-012`,
-`PIA-013`, `PIA-014A`, and `PIA-014B` are complete against the acceptance
+`PIA-013`, `PIA-014A`, `PIA-014B`, and `PIA-014C` are complete against the acceptance
 evidence below.
 
 Design source: `docs/product/principal-identity-and-access.md`
@@ -135,7 +135,7 @@ boundary; do not deliver an entire broad workstream as one change.
 | `PIA-013` | 010B, 012 | **Complete:** full one-hop Delegation validation, revocation/import, CLI consent, SDK attachment, audit provenance |
 | `PIA-014A` | 012 | **Complete:** atomic Blob payload/metadata/typed owner binding for an Application acting as itself |
 | `PIA-014B` | 013, 014A | **Complete:** Alice-via-Application ownership/intersection and non-enumeration behavior |
-| `PIA-014C` | 014B | Object/Manifest owner binding plus remote-fetch/claim boundary and owner-aware GC/reconciliation |
+| `PIA-014C` | 014B | **Complete:** typed Object/Manifest owners, remote-fetch/claim boundary, and owner-aware GC/reconciliation |
 | `PIA-015A` | 002 | Remove fake same-seed Device; expose Device only for an actual Credential |
 | `PIA-015B` | 015A | Final versioned kind-specific discovery records and strict retained-state validation |
 | `PIA-015C` | 015B | Purpose-scoped trust registry and verification cache invalidation |
@@ -811,7 +811,7 @@ integration, race, restart, concurrency, cross-Node/interface, malformed,
 expiry, sibling-action/resource, redaction, generation, and repository compile
 gates pass for this leaf.
 
-### PIA-014 — Make Content Ownership Principal-Bound (PIA-014A/B Complete)
+### PIA-014 — Make Content Ownership Principal-Bound (Complete)
 
 **Depends on:** split by leaf: PIA-014A depends on PIA-012; PIA-014B depends on
 PIA-013 and PIA-014A; PIA-014C depends on PIA-014B.
@@ -893,6 +893,19 @@ the Application cannot read Alice's binding, that unknown content and a
 sibling-owner binding have the same public NotFound result, and that after Bob's
 own Put the identical payload remains one Blob with two independent bindings.
 Unit and race suites cover the full boundary.
+
+**PIA-014C completion evidence:** Object and Manifest domain/catalogue owners
+are strict `principal.ID` values and the versioned content snapshot rejects
+missing, malformed, unknown, and pre-release untyped owner state. Operator wire
+owners are ignored; successful admission supplies the Principal owner, while
+Node-internal publication uses the Node Principal. Remote Manifest import parses
+the canonical owner fail-closed. Application remote Get checks an existing
+`(Effective, reference)` binding before and after fetch; generic verified fetch
+does not create a binding. `DropBlobForOwner` transactionally removes one
+binding and reclaims bytes only when no sibling binding, Object/Manifest ref, or
+independent retention fact remains, with rollback/restart tests. Unit, race,
+tagged content/transfer integration, e2e content, strict persistence, malformed
+remote input, and compile gates pass.
 
 ### PIA-015 — Normalize Device, Discovery Identity, And Purpose-Scoped Trust
 

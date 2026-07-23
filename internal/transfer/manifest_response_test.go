@@ -20,12 +20,14 @@ func TestManifestResponseBindsCompleteManifestToTrustedSource(t *testing.T) {
 	encodedKey := base64.StdEncoding.EncodeToString(publicKey)
 	principal, err := identityprincipal.FromPublicKey(encodedKey)
 	require.NoError(t, err)
+	owner, err := identityprincipal.Parse(principal)
+	require.NoError(t, err)
 	disc := discovery.New("")
 	require.NoError(t, publishTransferTestNode(disc, principal, encodedKey, privateKey))
 	trust := discovery.NewTrustEvaluator()
 	trust.Trust(encodedKey)
 	plan, err := chunking.Plan([]string{"chunk-1", "chunk-2"}, chunking.ManifestSpec{
-		Owner: "owner", MediaType: "application/octet-stream", KeyID: "key-1", TotalPlaintextBytes: 2,
+		Owner: owner, MediaType: "application/octet-stream", KeyID: "key-1", TotalPlaintextBytes: 2,
 	})
 	require.NoError(t, err)
 	request := blobFetchRequest{RequestID: "manifest-request", Requester: "requester", BlobID: plan.Root.ID, ResourceKind: "manifest"}
@@ -46,4 +48,9 @@ func TestManifestResponseBindsCompleteManifestToTrustedSource(t *testing.T) {
 	require.NoError(t, err)
 	_, _, err = acceptManifestResponse(cfg, plan.Root.ID, request.Requester, request.RequestID, wire)
 	require.ErrorContains(t, err, "signature")
+}
+
+func TestManifestFromWireRejectsUntypedOwner(t *testing.T) {
+	_, err := manifestFromWire(manifestWire{ID: "manifest", Kind: "blob-set", Owner: "owner"})
+	require.ErrorContains(t, err, "owner is invalid")
 }

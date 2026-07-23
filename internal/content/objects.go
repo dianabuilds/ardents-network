@@ -10,7 +10,7 @@ func (s *Service) PublishObject(object Object) (Object, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	stored, err := publishObjectModel(&s.objects, &s.blobs, objectModel(object), s.nextID)
+	stored, err := publishObjectModel(&s.objects, &s.blobs, objectModel(object), s.nextID, s.now())
 	if err != nil {
 		return Object{}, err
 	}
@@ -36,8 +36,11 @@ func (s *Service) ListObjects() []Object {
 	return out
 }
 
-func publishObjectModel(objects *model.ObjectStore, blobs *model.BlobStore, object model.Object, nextID func(string) string) (model.Object, error) {
+func publishObjectModel(objects *model.ObjectStore, blobs *model.BlobStore, object model.Object, nextID func(string) string, now time.Time) (model.Object, error) {
 	object = normalizeObjectModel(object)
+	if object.Owner.String() == "" {
+		return model.Object{}, fmt.Errorf("object owner is required")
+	}
 	for _, ref := range object.BlobRefs {
 		if ref.ID == "" || ref.Kind == "" {
 			return model.Object{}, fmt.Errorf("object ref is incomplete")
@@ -52,7 +55,7 @@ func publishObjectModel(objects *model.ObjectStore, blobs *model.BlobStore, obje
 		object.ID = nextID("obj")
 	}
 	if object.CreatedAt.IsZero() {
-		object.CreatedAt = time.Now().UTC()
+		object.CreatedAt = now.UTC()
 	}
 	objects.Put(object)
 	return cloneObjectModel(object), nil

@@ -10,7 +10,7 @@ func toManifestSnapshot(in appdata.Manifest) *ardentsv1.ManifestSnapshot {
 	out := &ardentsv1.ManifestSnapshot{
 		Id:        in.ID,
 		Kind:      in.Kind,
-		Owner:     in.Owner,
+		Owner:     in.Owner.String(),
 		Access:    in.Access,
 		Retention: in.Retention,
 		Encrypted: in.Encrypted,
@@ -30,7 +30,6 @@ func fromManifestSnapshot(in *ardentsv1.ManifestSnapshot) appdata.Manifest {
 	out := appdata.Manifest{
 		ID:        in.GetId(),
 		Kind:      in.GetKind(),
-		Owner:     in.GetOwner(),
 		Access:    in.GetAccess(),
 		Retention: in.GetRetention(),
 		Encrypted: in.GetEncrypted(),

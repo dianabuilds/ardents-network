@@ -85,9 +85,18 @@ func (s applicationContentStore) GetBlobPayload(call applicationcall.Call, id st
 }
 
 func (s applicationContentStore) FetchBlob(ctx context.Context, call applicationcall.Call, id string) (contentdomain.Blob, error) {
-	// Remote Application Get stays disabled until PIA-014C completes the
-	// owner-aware fetch boundary. Fetching bytes must never create ownership.
-	return contentdomain.Blob{}, contentdomain.ErrBlobNotFound
+	owner, err := applicationContentOwner(call)
+	if err != nil || !s.owners.Content.HasBlobOwner(owner, id) {
+		return contentdomain.Blob{}, contentdomain.ErrBlobNotFound
+	}
+	blob, err := s.owners.Node.FetchBlob(ctx, id)
+	if err != nil {
+		return contentdomain.Blob{}, err
+	}
+	if blob.ID != id || !s.owners.Content.HasBlobOwner(owner, id) {
+		return contentdomain.Blob{}, contentdomain.ErrBlobNotFound
+	}
+	return blob, nil
 }
 
 func applicationContentOwner(call applicationcall.Call) (principal.ID, error) {
