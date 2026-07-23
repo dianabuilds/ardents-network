@@ -33,20 +33,20 @@ func TestDaemonRejectsObsoleteCredentialEnvironmentBeforeStartup(t *testing.T) {
 func TestIdentityAccessAuditProjectsCompleteSafeAuthorizationFacts(t *testing.T) {
 	recorder := diagapi.NewInDir(t.TempDir())
 	sink := identityAccessAudit{events: recorder}
-	sink.RecordIdentityAccess(identityaccess.AuditEvent{
+	require.NoError(t, sink.RecordIdentityAccessDurable(identityaccess.AuditEvent{
 		Outcome: "accepted", Reason: "mutation_dispatched",
 		Principal: "p1_actor", DeviceID: "d1_device",
 		Audience: identityaccess.Audience{Node: "p1_node", Interface: identityprotocol.Interface_INTERFACE_OPERATOR, ProtocolMajor: 1},
 		Actor:    "p1_actor", Effective: "p1_effective", Action: "node.start",
-		GrantIDs: []string{"ag1_grant"}, DelegationID: "dg1_delegation", CorrelationID: "c1_0000000000000001",
-	})
+		GrantIDs: []string{"ag1_grant"}, DelegationID: "dg1_delegation", CorrelationID: "c1_00000000000000010000000000000001",
+	}))
 
 	events := recorder.Snapshot().RecentEvents
 	require.Len(t, events, 1)
 	event := events[0]
 	require.Equal(t, "identity_access", event.Domain)
 	require.Equal(t, "principal_access_accepted", event.Type)
-	require.Equal(t, "c1_0000000000000001", event.Payload["correlation_id"])
+	require.Equal(t, "c1_00000000000000010000000000000001", event.Payload["correlation_id"])
 	require.Equal(t, "node.start", event.Payload["action"])
 	require.Equal(t, "p1_actor", event.Payload["actor"])
 	require.Equal(t, "p1_effective", event.Payload["effective"])

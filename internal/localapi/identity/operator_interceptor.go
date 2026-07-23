@@ -26,6 +26,10 @@ type successfulMutationRecorder interface {
 	RecordSuccessfulMutation(identityaccess.AuthorizedCall)
 }
 
+type deniedCallRecorder interface {
+	RecordDeniedCall(identityaccess.Audience, identityaccess.Action, identityaccess.DenialReason)
+}
+
 type ResourceCanonicalizer func(string, any) (identityaccess.ResourceTarget, error)
 
 type OperatorInterceptorConfig struct {
@@ -48,6 +52,7 @@ func NewOperatorInterceptor(config OperatorInterceptorConfig) (connect.Intercept
 func (i *operatorInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 	return func(ctx context.Context, request connect.AnyRequest) (connect.AnyResponse, error) {
 		if hasUnknownFields(request.Any()) {
+			i.recordDenied(ctx, request.Spec().Procedure, identityaccess.DenialMalformedRequest)
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid operator request"))
 		}
 		if request.Spec().Procedure == ardentsv1connect.ContentServicePublishBlobProcedure {
@@ -63,6 +68,7 @@ func (i *operatorInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFun
 		}
 		target, err := i.config.Canonicalize(request.Spec().Procedure, request.Any())
 		if err != nil {
+			i.recordDenied(ctx, request.Spec().Procedure, identityaccess.DenialResourceTarget)
 			return nil, operatorTargetError(err)
 		}
 		call, err := i.admit(ctx, request.Spec().Procedure, request.Header(), target)
@@ -96,6 +102,11 @@ func (i *operatorInterceptor) WrapStreamingHandler(next connect.StreamingHandler
 	return func(ctx context.Context, connection connect.StreamingHandlerConn) error {
 		request, err := receiveOperatorStreamRequest(connection)
 		if err != nil {
+			reason := identityaccess.DenialMalformedRequest
+			if connection.Spec().Procedure != ardentsv1connect.NodeServiceStreamNodeEventsProcedure {
+				reason = identityaccess.DenialActionUnregistered
+			}
+			i.recordDenied(ctx, connection.Spec().Procedure, reason)
 			return err
 		}
 		target, err := i.config.Canonicalize(connection.Spec().Procedure, request)
@@ -155,18 +166,22 @@ func (i *operatorInterceptor) admitDeferred(ctx context.Context, procedure strin
 func (i *operatorInterceptor) admitAttempt(ctx context.Context, procedure string, header http.Header, target identityaccess.ResourceTarget, resolve func() (identityaccess.ResourceTarget, error)) (identityaccess.AuthorizedCall, error) {
 	rule, known := localauth.RuleForProcedure(procedure)
 	if !known || rule.Action == "" || rule.ResourceKind == "" {
+		i.recordDenied(ctx, procedure, identityaccess.DenialActionUnregistered)
 		return identityaccess.AuthorizedCall{}, connect.NewError(connect.CodePermissionDenied, errors.New("operator action is not registered"))
 	}
 	secret, err := parseOperatorSession(header)
 	if err != nil {
+		i.recordDenied(ctx, procedure, identityaccess.DenialSessionPresentation)
 		return identityaccess.AuthorizedCall{}, connect.NewError(connect.CodeUnauthenticated, errInvalidSessionHeader)
 	}
 	binding, _ := OperatorBinding(ctx, i.config.Node, i.config.FallbackPeer, i.config.FallbackSource)
 	action, err := identityaccess.ParseAction(binding.Audience.Interface, rule.Action)
 	if err != nil {
+		i.recordDenied(ctx, procedure, identityaccess.DenialActionUnregistered)
 		return identityaccess.AuthorizedCall{}, connect.NewError(connect.CodePermissionDenied, errors.New("operator action is not registered"))
 	}
 	if resolve == nil && target.Kind != identityaccess.ResourceKind(rule.ResourceKind) {
+		i.recordDenied(ctx, procedure, identityaccess.DenialResourceTarget)
 		return identityaccess.AuthorizedCall{}, connect.NewError(connect.CodePermissionDenied, errors.New("operator access denied"))
 	}
 	if resolve != nil {
@@ -191,6 +206,21 @@ func (i *operatorInterceptor) admitAttempt(ctx context.Context, procedure string
 		return identityaccess.AuthorizedCall{}, operatorAdmissionError(err)
 	}
 	return call, nil
+}
+
+func (i *operatorInterceptor) recordDenied(ctx context.Context, procedure string, reason identityaccess.DenialReason) {
+	recorder, ok := i.config.Access.(deniedCallRecorder)
+	if !ok {
+		return
+	}
+	binding, _ := OperatorBinding(ctx, i.config.Node, i.config.FallbackPeer, i.config.FallbackSource)
+	action := identityaccess.Action("")
+	if rule, known := localauth.RuleForProcedure(procedure); known {
+		if parsed, err := identityaccess.ParseAction(binding.Audience.Interface, rule.Action); err == nil {
+			action = parsed
+		}
+	}
+	recorder.RecordDeniedCall(binding.Audience, action, reason)
 }
 
 func operatorTargetError(err error) error {

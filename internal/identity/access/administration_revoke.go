@@ -29,10 +29,11 @@ type RevokeDeviceRequest struct {
 }
 
 func (s *Service) RevokeAccessGrant(ctx context.Context, request RevokeGrantRequest) (string, error) {
+	audit := newAdministrationAudit(request.Command.Attempt)
 	succeeded := false
 	defer func() {
 		if !succeeded {
-			s.record("denied", "admin_revoke_grant_denied", "", "", request.Command.Attempt.Binding.Audience)
+			audit.recordDenied(s, "admin_revoke_grant_denied", request.Command.Attempt)
 		}
 	}()
 	revoker, ok := s.grantIssuer.(AccessGrantRevocationIssuer)
@@ -67,22 +68,20 @@ func (s *Service) RevokeAccessGrant(ctx context.Context, request RevokeGrantRequ
 	s.deviceMu.Lock()
 	defer s.deviceMu.Unlock()
 	result := ""
-	var actor, device string
 	err = s.grants.database.Update(ctx, func(tx storage.WriteTransaction) error {
 		transactionNow := canonicalNow(s.clock.Now())
-		call, session, admitErr := s.admitInTransaction(tx, transactionNow, request.Command.Attempt)
+		call, admitErr := audit.admit(s, tx, transactionNow, request.Command.Attempt)
 		if admitErr != nil {
 			return admitErr
 		}
-		actor, device = call.Actor(), session.DeviceID
-		key := adminCommandKey(node.String(), actor, string(call.Action()), request.Command.RequestID)
+		key := adminCommandKey(node.String(), call.Actor(), string(call.Action()), request.Command.RequestID)
 		prior, found, commandErr := loadAdminCommand(tx, key, digest, identitycontract.AccessGrantRevocationPrefix)
 		if commandErr != nil {
 			return commandErr
 		}
 		if found {
 			result = prior
-			return nil
+			return audit.commitSuccessfulMutation(tx, "access_grant_revoked")
 		}
 		current, loadErr := loadGrant(tx, targetID, time.Time{})
 		if loadErr != nil || current.ID() != target.ID() {
@@ -101,21 +100,27 @@ func (s *Service) RevokeAccessGrant(ctx context.Context, request RevokeGrantRequ
 			return err
 		}
 		result = revocation.ID()
-		return recordAdminCommand(tx, key, digest, result, identitycontract.AccessGrantRevocationPrefix)
+		if err := recordAdminCommand(tx, key, digest, result, identitycontract.AccessGrantRevocationPrefix); err != nil {
+			return err
+		}
+		return audit.commitSuccessfulMutation(tx, "access_grant_revoked")
 	})
 	if err != nil {
 		return "", mapAdminError(err)
 	}
-	s.record("accepted", "access_grant_revoked", actor, device, request.Command.Attempt.Binding.Audience)
 	succeeded = true
+	if err := s.flushAuditOutbox(ctx); err != nil {
+		return "", ErrUnavailable
+	}
 	return result, nil
 }
 
 func (s *Service) RevokeDevice(ctx context.Context, request RevokeDeviceRequest) (string, error) {
+	audit := newAdministrationAudit(request.Command.Attempt)
 	succeeded := false
 	defer func() {
 		if !succeeded {
-			s.record("denied", "admin_revoke_device_denied", "", "", request.Command.Attempt.Binding.Audience)
+			audit.recordDenied(s, "admin_revoke_device_denied", request.Command.Attempt)
 		}
 	}()
 	issuer, ok := s.grantIssuer.(DeviceRevocationIssuer)
@@ -156,22 +161,20 @@ func (s *Service) RevokeDevice(ctx context.Context, request RevokeDeviceRequest)
 	s.deviceMu.Lock()
 	defer s.deviceMu.Unlock()
 	result := ""
-	var actor, device string
 	err = s.grants.database.Update(ctx, func(tx storage.WriteTransaction) error {
 		transactionNow := canonicalNow(s.clock.Now())
-		call, session, admitErr := s.admitInTransaction(tx, transactionNow, request.Command.Attempt)
+		call, admitErr := audit.admit(s, tx, transactionNow, request.Command.Attempt)
 		if admitErr != nil {
 			return admitErr
 		}
-		actor, device = call.Actor(), session.DeviceID
-		key := adminCommandKey(node.String(), actor, string(call.Action()), request.Command.RequestID)
+		key := adminCommandKey(node.String(), call.Actor(), string(call.Action()), request.Command.RequestID)
 		prior, found, commandErr := loadAdminCommand(tx, key, digest, identitycontract.DeviceRevocationPrefix)
 		if commandErr != nil {
 			return commandErr
 		}
 		if found {
 			result = prior
-			return nil
+			return audit.commitSuccessfulMutation(tx, "device_revoked")
 		}
 		available, guardErr := hasRecoveryPath(tx, node.String(), transactionNow, "", request.Subject, request.DeviceID)
 		if guardErr != nil {
@@ -184,14 +187,19 @@ func (s *Service) RevokeDevice(ctx context.Context, request RevokeDeviceRequest)
 			return err
 		}
 		result = artifact.ID()
-		return recordAdminCommand(tx, key, digest, result, identitycontract.DeviceRevocationPrefix)
+		if err := recordAdminCommand(tx, key, digest, result, identitycontract.DeviceRevocationPrefix); err != nil {
+			return err
+		}
+		return audit.commitSuccessfulMutation(tx, "device_revoked")
 	})
 	if err != nil {
 		return "", mapAdminError(err)
 	}
 	s.sessions.invalidateDevice(request.DeviceID)
-	s.record("accepted", "device_revoked", actor, device, request.Command.Attempt.Binding.Audience)
 	succeeded = true
+	if err := s.flushAuditOutbox(ctx); err != nil {
+		return "", ErrUnavailable
+	}
 	return result, nil
 }
 

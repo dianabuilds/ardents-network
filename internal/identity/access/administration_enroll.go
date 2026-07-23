@@ -26,10 +26,11 @@ func (EnrollPrincipalRequest) MarshalJSON() ([]byte, error) {
 }
 
 func (s *Service) EnrollPrincipal(ctx context.Context, request EnrollPrincipalRequest) (string, error) {
+	audit := newAdministrationAudit(request.Command.Attempt)
 	succeeded := false
 	defer func() {
 		if !succeeded {
-			s.record("denied", "admin_enroll_principal_denied", "", "", request.Command.Attempt.Binding.Audience)
+			audit.recordDenied(s, "admin_enroll_principal_denied", request.Command.Attempt)
 		}
 	}()
 	if validateAdminCommand(request.Command, "identity.principal.enroll", "principal") != nil || request.Challenge.Purpose != identityprotocol.ChallengePurpose_CHALLENGE_PURPOSE_ENROLLMENT_PROOF || request.Challenge.Binding.Audience.Interface != identityprotocol.Interface_INTERFACE_OPERATOR {
@@ -66,22 +67,20 @@ func (s *Service) EnrollPrincipal(ctx context.Context, request EnrollPrincipalRe
 	s.deviceMu.Lock()
 	defer s.deviceMu.Unlock()
 	result := ""
-	var actor, device string
 	err = s.grants.database.Update(ctx, func(tx storage.WriteTransaction) error {
 		transactionNow := canonicalNow(s.clock.Now())
-		call, session, admitErr := s.admitInTransaction(tx, transactionNow, request.Command.Attempt)
+		call, admitErr := audit.admit(s, tx, transactionNow, request.Command.Attempt)
 		if admitErr != nil {
 			return admitErr
 		}
-		actor, device = call.Actor(), session.DeviceID
-		key := adminCommandKey(node, actor, string(call.Action()), request.Command.RequestID)
+		key := adminCommandKey(node, call.Actor(), string(call.Action()), request.Command.RequestID)
 		prior, found, commandErr := loadAdminCommand(tx, key, digest, "p1_")
 		if commandErr != nil {
 			return commandErr
 		}
 		if found {
 			result = prior
-			return nil
+			return audit.commitSuccessfulMutation(tx, "principal_enrolled")
 		}
 		if !s.consumeEnrollmentProof(request.Proof, request.Challenge) {
 			return ErrUnauthenticated
@@ -101,12 +100,17 @@ func (s *Service) EnrollPrincipal(ctx context.Context, request EnrollPrincipalRe
 			return err
 		}
 		result = principal.String()
-		return recordAdminCommand(tx, key, digest, result, "p1_")
+		if err := recordAdminCommand(tx, key, digest, result, "p1_"); err != nil {
+			return err
+		}
+		return audit.commitSuccessfulMutation(tx, "principal_enrolled")
 	})
 	if err != nil {
 		return "", mapAdminError(err)
 	}
-	s.record("accepted", "principal_enrolled", actor, device, request.Command.Attempt.Binding.Audience)
 	succeeded = true
+	if err := s.flushAuditOutbox(ctx); err != nil {
+		return "", ErrUnavailable
+	}
 	return result, nil
 }

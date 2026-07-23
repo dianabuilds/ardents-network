@@ -2,6 +2,8 @@ package access
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"sync/atomic"
@@ -277,25 +279,57 @@ func (s *Service) recordAdmission(outcome, reason, correlationID string, session
 	})
 }
 
+// RecordDeniedCall records a structural or presentation rejection that occurs
+// at a protected surface before enough validated input exists to call Admit.
+// Actor and Effective intentionally remain empty because the surface has not
+// authenticated a Principal.
+func (s *Service) RecordDeniedCall(audience Audience, action Action, reason DenialReason) {
+	switch reason {
+	case DenialMalformedRequest, DenialActionUnregistered, DenialSessionPresentation, DenialResourceTarget, DenialDelegationPresentation:
+	default:
+		return
+	}
+	if _, err := identityprincipal.Parse(audience.Node); err != nil ||
+		(audience.Interface != identityprotocol.Interface_INTERFACE_OPERATOR &&
+			audience.Interface != identityprotocol.Interface_INTERFACE_APPLICATION) ||
+		audience.ProtocolMajor != identitycontract.ProtocolMajor {
+		return
+	}
+	if action != "" {
+		if action != applicationEnrollAction || audience.Interface != identityprotocol.Interface_INTERFACE_APPLICATION {
+			parsed, err := ParseAction(audience.Interface, string(action))
+			if err != nil {
+				action = ""
+			} else {
+				action = parsed
+			}
+		}
+	}
+	s.recordAdmission("denied", string(reason), nextAuditCorrelationID(), Session{}, audience, admissionTrace{Action: action})
+}
+
 // RecordSuccessfulMutation is called by a protected surface only after its
 // mutating handler returns success. Admission alone never records a successful
 // event, so read-only diagnostics cannot mutate the event stream they read.
 func (s *Service) RecordSuccessfulMutation(call AuthorizedCall) {
+	s.recordSuccessfulMutation(call, "mutation_dispatched")
+}
+
+func (s *Service) recordSuccessfulMutation(call AuthorizedCall, reason string) {
 	if s.audit == nil || !call.IsAdmitted() || call.correlationID == "" {
 		return
 	}
-	s.audit.RecordIdentityAccess(AuditEvent{
-		Outcome: "accepted", Reason: "mutation_dispatched",
-		Principal: call.actor, DeviceID: call.deviceID, Audience: call.audience,
-		Actor: call.actor, Effective: call.effective, Action: call.action,
-		GrantIDs: call.GrantIDs(), DelegationID: call.delegationID, CorrelationID: call.correlationID,
-	})
+	s.audit.RecordIdentityAccess(successfulMutationEvent(call, reason))
 }
 
 var auditCorrelationSequence atomic.Uint64
 
 func nextAuditCorrelationID() string {
-	return fmt.Sprintf("c1_%016x", auditCorrelationSequence.Add(1))
+	var random [16]byte
+	if _, err := rand.Read(random[:]); err == nil {
+		return "c1_" + hex.EncodeToString(random[:])
+	}
+	return fmt.Sprintf("c1_%016x%016x", uint64(time.Now().UTC().UnixNano()), auditCorrelationSequence.Add(1))
 }
 
 // admitInTransaction repeats all mutable authority checks in the supplied

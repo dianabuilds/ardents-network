@@ -45,10 +45,11 @@ func (IssueGrantRequest) MarshalJSON() ([]byte, error) {
 }
 
 func (s *Service) IssueAccessGrant(ctx context.Context, request IssueGrantRequest) (string, error) {
+	audit := newAdministrationAudit(request.Command.Attempt)
 	succeeded := false
 	defer func() {
 		if !succeeded {
-			s.record("denied", "admin_issue_grant_denied", "", "", request.Command.Attempt.Binding.Audience)
+			audit.recordDenied(s, "admin_issue_grant_denied", request.Command.Attempt)
 		}
 	}()
 	if s.grantIssuer == nil || validateAdminCommand(request.Command, "identity.grant.issue", "grant-proposal") != nil {
@@ -83,22 +84,20 @@ func (s *Service) IssueAccessGrant(ctx context.Context, request IssueGrantReques
 	s.deviceMu.Lock()
 	defer s.deviceMu.Unlock()
 	result := ""
-	var actor, device string
 	err = s.grants.database.Update(ctx, func(tx storage.WriteTransaction) error {
 		transactionNow := canonicalNow(s.clock.Now())
-		call, session, admitErr := s.admitInTransaction(tx, transactionNow, request.Command.Attempt)
+		call, admitErr := audit.admit(s, tx, transactionNow, request.Command.Attempt)
 		if admitErr != nil {
 			return admitErr
 		}
-		actor, device = call.Actor(), session.DeviceID
-		key := adminCommandKey(node.String(), actor, string(call.Action()), request.Command.RequestID)
+		key := adminCommandKey(node.String(), call.Actor(), string(call.Action()), request.Command.RequestID)
 		prior, found, commandErr := loadAdminCommand(tx, key, digest, identitycontract.AccessGrantPrefix)
 		if commandErr != nil {
 			return commandErr
 		}
 		if found {
 			result = prior
-			return nil
+			return audit.commitSuccessfulMutation(tx, "access_grant_issued")
 		}
 		if validateGrant(grant.AccessGrantPayload(), transactionNow) != nil {
 			return ErrInvalidArgument
@@ -121,13 +120,18 @@ func (s *Service) IssueAccessGrant(ctx context.Context, request IssueGrantReques
 			return err
 		}
 		result = id
-		return recordAdminCommand(tx, key, digest, result, identitycontract.AccessGrantPrefix)
+		if err := recordAdminCommand(tx, key, digest, result, identitycontract.AccessGrantPrefix); err != nil {
+			return err
+		}
+		return audit.commitSuccessfulMutation(tx, "access_grant_issued")
 	})
 	if err != nil {
 		return "", mapAdminError(err)
 	}
-	s.record("accepted", "access_grant_issued", actor, device, request.Command.Attempt.Binding.Audience)
 	succeeded = true
+	if err := s.flushAuditOutbox(ctx); err != nil {
+		return "", ErrUnavailable
+	}
 	return result, nil
 }
 

@@ -96,6 +96,13 @@ type applicationEnrollmentTicketRecord struct {
 }
 
 func (s *Service) IssueApplicationEnrollmentTicket(ctx context.Context, request IssueApplicationEnrollmentTicketRequest) (ApplicationEnrollmentTicketResult, error) {
+	audit := newAdministrationAudit(request.Attempt)
+	succeeded := false
+	defer func() {
+		if !succeeded {
+			audit.recordDenied(s, "application_enrollment_ticket_issue_denied", request.Attempt)
+		}
+	}()
 	if !s.applicationEnrollmentEnabled {
 		return ApplicationEnrollmentTicketResult{}, ErrFeatureDisabled
 	}
@@ -120,17 +127,15 @@ func (s *Service) IssueApplicationEnrollmentTicket(ctx context.Context, request 
 	key := applicationEnrollmentTicketKey(request.Attempt.Binding.Audience.Node, request.Principal)
 	s.deviceMu.Lock()
 	defer s.deviceMu.Unlock()
-	var actor, device string
 	err = s.grants.database.Update(ctx, func(tx storage.WriteTransaction) error {
 		transactionNow := canonicalNow(s.clock.Now())
 		if transactionNow.Before(record.issuedAt) || !transactionNow.Before(record.expiresAt) {
 			return ErrUnauthenticated
 		}
-		call, session, admitErr := s.admitInTransaction(tx, transactionNow, request.Attempt)
+		call, admitErr := audit.admit(s, tx, transactionNow, request.Attempt)
 		if admitErr != nil {
 			return admitErr
 		}
-		actor, device = call.Actor(), session.DeviceID
 		if call.Resource().ID != request.Principal || call.Resource().Kind != "principal" {
 			return ErrInvalidArgument
 		}
@@ -147,13 +152,18 @@ func (s *Service) IssueApplicationEnrollmentTicket(ctx context.Context, request 
 				return ErrConflict
 			}
 		}
-		return tx.Put(applicationEnrollmentTicketsBucket, key, raw)
+		if err := tx.Put(applicationEnrollmentTicketsBucket, key, raw); err != nil {
+			return err
+		}
+		return audit.commitSuccessfulMutation(tx, "application_enrollment_ticket_issued")
 	})
 	if err != nil {
-		s.record("denied", "application_enrollment_ticket_issue_denied", actor, device, request.Attempt.Binding.Audience)
 		return ApplicationEnrollmentTicketResult{}, mapAdminError(err)
 	}
-	s.record("accepted", "application_enrollment_ticket_issued", actor, device, request.Attempt.Binding.Audience)
+	succeeded = true
+	if err := s.flushAuditOutbox(ctx); err != nil {
+		return ApplicationEnrollmentTicketResult{}, ErrUnavailable
+	}
 	return ApplicationEnrollmentTicketResult{Ticket: ticket, ExpiresAt: record.expiresAt}, nil
 }
 
@@ -175,6 +185,13 @@ func validateApplicationTicketIssueRequest(request IssueApplicationEnrollmentTic
 }
 
 func (s *Service) EnrollApplication(ctx context.Context, currentBinding AuthenticationBinding, request EnrollApplicationRequest) (EnrollApplicationResult, error) {
+	audit := newLifecycleAudit(currentBinding.Audience, applicationEnrollAction)
+	succeeded := false
+	defer func() {
+		if !succeeded {
+			audit.recordDenied(s, "application_enrollment_denied")
+		}
+	}()
 	if !s.applicationEnrollmentEnabled {
 		return EnrollApplicationResult{}, ErrFeatureDisabled
 	}
@@ -196,6 +213,7 @@ func (s *Service) EnrollApplication(ctx context.Context, currentBinding Authenti
 	if credentialPayload.Subject != principal.String() || !bytes.Equal(credentialPayload.RootPublicKey, request.RootPublicKey[:]) {
 		return EnrollApplicationResult{}, ErrInvalidArgument
 	}
+	audit.identify(principal.String(), credentialPayload.DeviceId)
 	if !s.consumeEnrollmentProof(request.Proof, request.Challenge) {
 		return EnrollApplicationResult{}, ErrUnauthenticated
 	}
@@ -251,16 +269,18 @@ func (s *Service) EnrollApplication(ctx context.Context, currentBinding Authenti
 			return writeErr
 		}
 		result = EnrollApplicationResult{Principal: principal.String(), CredentialID: credential.ID(), GrantID: grant.ID(), GrantExpiresAt: payload.NotAfter.AsTime()}
-		return nil
+		return audit.commitSuccessfulMutation(tx, "application_enrolled", grantID)
 	})
 	if err != nil {
-		s.record("denied", "application_enrollment_denied", "", "", currentBinding.Audience)
 		if err == ErrUnauthenticated || err == ErrConflict || err == ErrInvalidArgument {
 			return EnrollApplicationResult{}, err
 		}
 		return EnrollApplicationResult{}, ErrUnavailable
 	}
-	s.record("accepted", "application_enrolled", principal.String(), credentialPayload.DeviceId, currentBinding.Audience)
+	succeeded = true
+	if err := s.flushAuditOutbox(ctx); err != nil {
+		return EnrollApplicationResult{}, ErrUnavailable
+	}
 	return result, nil
 }
 

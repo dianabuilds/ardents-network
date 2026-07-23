@@ -260,6 +260,13 @@ type countingAdmitter struct {
 	presented []byte
 	lastErr   error
 	mutations []identityaccess.AuthorizedCall
+	denials   []adapterDenial
+}
+
+type adapterDenial struct {
+	audience identityaccess.Audience
+	action   identityaccess.Action
+	reason   identityaccess.DenialReason
 }
 
 func (a *countingAdmitter) AdmitTarget(ctx context.Context, attempt identityaccess.TargetAttempt) (identityaccess.AuthorizedCall, error) {
@@ -272,6 +279,10 @@ func (a *countingAdmitter) AdmitTarget(ctx context.Context, attempt identityacce
 
 func (a *countingAdmitter) RecordSuccessfulMutation(call identityaccess.AuthorizedCall) {
 	a.mutations = append(a.mutations, call)
+}
+
+func (a *countingAdmitter) RecordDeniedCall(audience identityaccess.Audience, action identityaccess.Action, reason identityaccess.DenialReason) {
+	a.denials = append(a.denials, adapterDenial{audience: audience, action: action, reason: reason})
 }
 
 type recordingStore struct {
@@ -587,6 +598,12 @@ func TestPrincipalAdmissionFailsClosedBeforeMutationAndNeverFallsBack(t *testing
 	_, err = client.Get(context.Background(), malformed)
 	require.Equal(t, connect.CodeUnauthenticated, connect.CodeOf(err))
 	require.Equal(t, int32(1), admitter.calls.Load())
+	require.NotEmpty(t, admitter.denials)
+	denied := admitter.denials[len(admitter.denials)-1]
+	require.Equal(t, fixture.nodeID, denied.audience.Node)
+	require.Equal(t, identityprotocol.Interface_INTERFACE_APPLICATION, denied.audience.Interface)
+	require.Equal(t, identityaccess.Action("application.content.get"), denied.action)
+	require.Equal(t, identityaccess.DenialSessionPresentation, denied.reason)
 
 }
 

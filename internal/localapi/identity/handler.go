@@ -32,7 +32,7 @@ func NewHandler(service *identityaccess.Service, node string, peerBinding [32]by
 		return "", nil, errors.New("identity access service is required")
 	}
 	h := &Handler{service: service, node: node, fallback: transportPeer{peer: peerBinding, source: source}}
-	path, handler := ardentsv1connect.NewIdentityServiceHandler(h, connect.WithInterceptors(&interceptor{binding: h.binding}))
+	path, handler := ardentsv1connect.NewIdentityServiceHandler(h, connect.WithInterceptors(&interceptor{binding: h.binding, audit: service}))
 	return path, handler, nil
 }
 

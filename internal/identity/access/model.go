@@ -122,9 +122,23 @@ type AuditEvent struct {
 
 type AuditSink interface{ RecordIdentityAccess(AuditEvent) }
 
+type DurableAuditSink interface {
+	RecordIdentityAccessDurable(AuditEvent) error
+}
+
 type AuditSinkFunc func(AuditEvent)
 
 func (f AuditSinkFunc) RecordIdentityAccess(event AuditEvent) { f(event) }
+
+type DenialReason string
+
+const (
+	DenialMalformedRequest       DenialReason = "request_malformed"
+	DenialActionUnregistered     DenialReason = "action_unregistered"
+	DenialSessionPresentation    DenialReason = "session_presentation_invalid"
+	DenialResourceTarget         DenialReason = "resource_target_invalid"
+	DenialDelegationPresentation DenialReason = "delegation_presentation_invalid"
+)
 
 var sessionIDEncoding = base32.StdEncoding.WithPadding(base32.NoPadding)
 

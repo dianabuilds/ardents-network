@@ -87,6 +87,17 @@ func StopTransportForIntegrationTest(n *Node, ctx context.Context) error {
 	return n.trans.Stop(ctx)
 }
 
+func SetDiscoveryPublicationErrorForIntegrationTest(n *Node, err error) error {
+	target, ok := n.runtimeMgr.publication.(interface {
+		SetDiscoveryPublicationErrorForIntegrationTest(error)
+	})
+	if !ok {
+		return errors.New("discovery publication integration hook unavailable")
+	}
+	target.SetDiscoveryPublicationErrorForIntegrationTest(err)
+	return nil
+}
+
 func SetReachabilityForIntegrationTest(n *Node, state string) error {
 	target, ok := n.trans.(interface{ SetReachabilityForIntegration(string) error })
 	if !ok {

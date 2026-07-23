@@ -1,8 +1,9 @@
 # Principal Identity And Access Work Plan
 
-Status: active implementation plan. Completion is recorded per leaf; `PIA-012`,
-`PIA-013`, `PIA-014A`, `PIA-014B`, and `PIA-014C` are complete against the acceptance
-evidence below.
+Status: complete for the greenfield first release. Every retained leaf from
+`PIA-001` through `PIA-018` is complete against the acceptance evidence below;
+`PIA-003` and `PIA-004A`/`B`/`C` remain explicitly removed/superseded because
+there is no released legacy identity state to migrate.
 
 Design source: `docs/product/principal-identity-and-access.md`
 
@@ -142,8 +143,8 @@ boundary; do not deliver an entire broad workstream as one change.
 | `PIA-016A` | 002 | **Complete:** replication source/target Principals are typed and obsolete PeerID state/wire fields fail closed |
 | `PIA-016B` | 014C | **Complete:** one typed Content Reference replaces duplicate Blob ID/CID fields in domain, wire, state, and Operator projection |
 | `PIA-016C` | 015C, 016A, 016B | **Complete:** typed security Owners and distinct Permission, ChannelGrant, WorkloadRequirement, and TransportFeature vocabulary |
-| `PIA-017` | 010C, 011B, 014C | **Pending:** delete remaining pre-release bearer/config/SDK/provisioning paths and prove a Principal-only clean install; this adds no compatibility mode |
-| `PIA-018` | 016C, 017 | Adversarial, fresh-install, persistence recovery, redaction and full release acceptance |
+| `PIA-017` | 010C, 011B, 014C | **Complete:** pre-release bearer/config/SDK/provisioning paths deleted and Principal-only clean install proven without a compatibility mode |
+| `PIA-018` | 016C, 017 | **Complete:** adversarial, fresh-install, persistence recovery, redaction and full release acceptance evidence recorded |
 
 If one leaf exceeds a reviewable change after inspection, split it by product
 owner while preserving the same acceptance boundary. Never recombine adjacent
@@ -1130,6 +1131,8 @@ and repository diff guard pass.
 
 **Depends on:** PIA-016 and PIA-017; all earlier task acceptance tests green.
 
+**Status:** complete.
+
 **Outcome:** the whole system satisfies the product design under concurrency,
 restart, corruption, cross-surface attacks, and upgrade/rollback before release.
 
@@ -1178,6 +1181,17 @@ go test ./...
 If the full suite has a documented platform/toolchain exception, record the
 exact failing package and run the repository's compile/import/test-catalog CI
 equivalent; do not call the release gate green because only narrow tests passed.
+
+**PIA-018 completion evidence:** the written security answers, public credential
+matrix, migration/rollback contract, repository-removal evidence, changed
+public contracts, independent review disposition, and exact release commands
+are recorded in
+`docs/engineering/principal-identity-and-access-acceptance.md`. Canonical
+generation checks, the complete untagged Go suite, focused race suite, Linux
+integration suite, and Linux e2e suite pass on the final tree. The integration
+suite reports 133/133 passing scenarios and the e2e suite reports 18/18.
+Disposable tagged binaries and anonymous Go-cache volumes are removed by the
+runner. The final review found no remaining blocker/high finding.
 
 ## 6. Expected Task Handoff Format
 

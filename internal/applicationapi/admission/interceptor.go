@@ -35,6 +35,10 @@ type successfulMutationRecorder interface {
 	RecordSuccessfulMutation(identityaccess.AuthorizedCall)
 }
 
+type deniedCallRecorder interface {
+	RecordDeniedCall(identityaccess.Audience, identityaccess.Action, identityaccess.DenialReason)
+}
+
 type Config struct {
 	Access         Admitter
 	Node           string
@@ -60,23 +64,28 @@ func (i *interceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 	return func(ctx context.Context, request connect.AnyRequest) (connect.AnyResponse, error) {
 		rule, err := applicationcontent.RuleForProcedure(request.Spec().Procedure)
 		if err != nil {
+			i.recordDenied(ctx, "", identityaccess.DenialActionUnregistered)
 			return nil, applicationcontent.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_FORBIDDEN, "application.content", "application action is forbidden", false, connect.CodePermissionDenied)
 		}
 		target, err := applicationcontent.CanonicalizeResource(request.Spec().Procedure, request.Any())
 		if err != nil {
+			i.recordDenied(ctx, rule.Action, identityaccess.DenialResourceTarget)
 			return nil, targetError(rule.Action, err)
 		}
 		delegation, err := parseDelegation(request.Header())
 		if err != nil {
+			i.recordDenied(ctx, rule.Action, identityaccess.DenialDelegationPresentation)
 			return nil, authenticationError(rule.Action)
 		}
 		defer clear(delegation)
 		deleteHeaderFold(request.Header(), applicationDelegationHeader)
 		values := request.Header().Values("Authorization")
 		if len(values) != 1 || len(values[0]) > 128 {
+			i.recordDenied(ctx, rule.Action, identityaccess.DenialSessionPresentation)
 			return nil, authenticationError(rule.Action)
 		}
 		if !strings.HasPrefix(values[0], applicationSessionScheme+" ") {
+			i.recordDenied(ctx, rule.Action, identityaccess.DenialSessionPresentation)
 			return nil, authenticationError(rule.Action)
 		}
 		return i.admitPrincipal(ctx, request, next, rule, target, delegation)
@@ -86,11 +95,13 @@ func (i *interceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 func (i *interceptor) admitPrincipal(ctx context.Context, request connect.AnyRequest, next connect.UnaryFunc, rule applicationcontent.ProcedureRule, target applicationcontent.ResourceTarget, delegation []byte) (connect.AnyResponse, error) {
 	secret, err := parseSession(request.Header())
 	if err != nil {
+		i.recordDenied(ctx, rule.Action, identityaccess.DenialSessionPresentation)
 		return nil, authenticationError(rule.Action)
 	}
 	binding, _ := applicationbinding.Application(ctx, i.config.Node, i.config.FallbackPeer, i.config.FallbackSource)
 	action, err := identityaccess.ParseAction(binding.Audience.Interface, rule.Action)
 	if err != nil || target.Kind != rule.ResourceKind {
+		i.recordDenied(ctx, rule.Action, identityaccess.DenialResourceTarget)
 		return nil, applicationcontent.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_FORBIDDEN, rule.Action, "application action is forbidden", false, connect.CodePermissionDenied)
 	}
 	admitted, err := i.config.Access.AdmitTarget(ctx, identityaccess.TargetAttempt{
@@ -162,9 +173,23 @@ func (i *interceptor) WrapStreamingClient(next connect.StreamingClientFunc) conn
 	return next
 }
 func (i *interceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
-	return func(context.Context, connect.StreamingHandlerConn) error {
+	return func(ctx context.Context, _ connect.StreamingHandlerConn) error {
+		i.recordDenied(ctx, "", identityaccess.DenialActionUnregistered)
 		return connect.NewError(connect.CodePermissionDenied, errors.New("application streaming action is not registered"))
 	}
+}
+
+func (i *interceptor) recordDenied(ctx context.Context, actionName string, reason identityaccess.DenialReason) {
+	recorder, ok := i.config.Access.(deniedCallRecorder)
+	if !ok {
+		return
+	}
+	binding, _ := applicationbinding.Application(ctx, i.config.Node, i.config.FallbackPeer, i.config.FallbackSource)
+	action := identityaccess.Action("")
+	if parsed, err := identityaccess.ParseAction(binding.Audience.Interface, actionName); err == nil {
+		action = parsed
+	}
+	recorder.RecordDeniedCall(binding.Audience, action, reason)
 }
 
 func parseSession(header http.Header) (identityaccess.SessionSecret, error) {

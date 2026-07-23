@@ -59,6 +59,13 @@ type FirstEnrollmentResult struct {
 }
 
 func (s *Service) EnrollFirstPrincipal(ctx context.Context, currentBinding AuthenticationBinding, request FirstEnrollmentRequest) (FirstEnrollmentResult, error) {
+	audit := newLifecycleAudit(currentBinding.Audience, Action("identity.principal.enroll"))
+	succeeded := false
+	defer func() {
+		if !succeeded {
+			audit.recordDenied(s, "first_principal_enrollment_denied")
+		}
+	}()
 	if !s.bootstrapEnabled {
 		return FirstEnrollmentResult{}, ErrFeatureDisabled
 	}
@@ -84,6 +91,7 @@ func (s *Service) EnrollFirstPrincipal(ctx context.Context, currentBinding Authe
 	if credentialPayload.Subject != principal.String() || !bytes.Equal(credentialPayload.RootPublicKey, request.RootPublicKey[:]) {
 		return FirstEnrollmentResult{}, ErrInvalidArgument
 	}
+	audit.identify(principal.String(), credentialPayload.DeviceId)
 	if !s.consumeEnrollmentProof(request.Proof, request.Challenge) {
 		return FirstEnrollmentResult{}, ErrUnauthenticated
 	}
@@ -133,7 +141,10 @@ func (s *Service) EnrollFirstPrincipal(ctx context.Context, currentBinding Authe
 		if err := recordEnrollmentCredential(tx, credentialKey, credentialRecord); err != nil {
 			return err
 		}
-		return recordGrant(tx, grantID, grantIndex, grantHash, grantRecord)
+		if err := recordGrant(tx, grantID, grantIndex, grantHash, grantRecord); err != nil {
+			return err
+		}
+		return audit.commitSuccessfulMutation(tx, "first_principal_enrolled", grantID)
 	})
 	if err != nil {
 		if err == ErrUnauthenticated || err == ErrConflict {
@@ -141,7 +152,10 @@ func (s *Service) EnrollFirstPrincipal(ctx context.Context, currentBinding Authe
 		}
 		return FirstEnrollmentResult{}, ErrUnavailable
 	}
-	s.record("accepted", "first_principal_enrolled", principal.String(), credentialPayload.DeviceId, request.Challenge.Binding.Audience)
+	succeeded = true
+	if err := s.flushAuditOutbox(ctx); err != nil {
+		return FirstEnrollmentResult{}, ErrUnavailable
+	}
 	return FirstEnrollmentResult{Principal: principal.String(), CredentialID: credential.ID(), GrantID: grant.ID()}, nil
 }
 

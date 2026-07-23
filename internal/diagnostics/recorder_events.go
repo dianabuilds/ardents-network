@@ -65,6 +65,43 @@ func (r *Recorder) Last(n int) []string {
 
 func (r *Recorder) RecordEventCommand(cmd RecordEventCommand) EventEnvelope {
 	record := r.RecordEvent(cmd.Domain, cmd.Type, cmd.Resource, cmd.Message, cmd.ReasonCode, cmd.Payload)
+	return projectEventRecord(record)
+}
+
+func (r *Recorder) RecordEventCommandDurable(cmd RecordEventCommand) (EventEnvelope, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.seq++
+	record := event.Record{
+		Seq:        r.seq,
+		Time:       time.Now().UTC(),
+		Domain:     cmd.Domain,
+		Type:       cmd.Type,
+		Resource:   cmd.Resource,
+		Message:    cmd.Message,
+		ReasonCode: cmd.ReasonCode,
+		Payload:    event.CloneMap(cmd.Payload),
+	}
+	if r.detailLevel == "minimal" {
+		record.Resource = ""
+		record.Payload = nil
+	}
+	r.events = event.Append(r.events, record, r.maxEvents)
+	if err := r.saveLocked(); err != nil {
+		r.markPersistenceFailureLocked(err)
+		return projectEventRecord(record), err
+	}
+	if r.clearPersistenceFailureLocked(time.Now().UTC()) {
+		if err := r.saveLocked(); err != nil {
+			r.markPersistenceFailureLocked(err)
+			return projectEventRecord(record), err
+		}
+	}
+	return projectEventRecord(record), nil
+}
+
+func projectEventRecord(record event.Record) EventEnvelope {
 	items := ProjectEvents([]event.Record{record})
 	if len(items) == 0 {
 		return EventEnvelope{}

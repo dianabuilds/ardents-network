@@ -21,6 +21,7 @@ const (
 	applicationEnrollmentTicketsBucket = "identity-application-enrollment-tickets-v1"
 	delegationRevocationsBucket        = "identity-delegation-revocations-v1"
 	delegationRevocationIDsBucket      = "identity-delegation-revocation-ids-v1"
+	auditOutboxBucket                  = "identity-audit-outbox-v1"
 )
 
 func StorageSchema() storage.Schema {
@@ -38,6 +39,7 @@ func StorageSchema() storage.Schema {
 			applicationEnrollmentTicketsBucket,
 			delegationRevocationsBucket,
 			delegationRevocationIDsBucket,
+			auditOutboxBucket,
 		},
 	}}}
 }

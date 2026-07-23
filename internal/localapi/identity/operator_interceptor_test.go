@@ -33,11 +33,22 @@ import (
 type countingAdmitter struct {
 	service *identityaccess.Service
 	calls   atomic.Int32
+	denials []operatorAdapterDenial
+}
+
+type operatorAdapterDenial struct {
+	audience identityaccess.Audience
+	action   identityaccess.Action
+	reason   identityaccess.DenialReason
 }
 
 func (a *countingAdmitter) AdmitTarget(ctx context.Context, attempt identityaccess.TargetAttempt) (identityaccess.AuthorizedCall, error) {
 	a.calls.Add(1)
 	return a.service.AdmitTarget(ctx, attempt)
+}
+
+func (a *countingAdmitter) RecordDeniedCall(audience identityaccess.Audience, action identityaccess.Action, reason identityaccess.DenialReason) {
+	a.denials = append(a.denials, operatorAdapterDenial{audience: audience, action: action, reason: reason})
 }
 
 type nodeIssuer struct{ key ed25519.PrivateKey }
@@ -198,6 +209,12 @@ func TestOperatorPrincipalInterceptorAdmitsExactlyOnceAndPropagatesActorEffectiv
 	_, err = client.GetNodeStatus(context.Background(), unknown)
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 	require.Equal(t, int32(3), counter.calls.Load())
+	require.NotEmpty(t, counter.denials)
+	denied := counter.denials[len(counter.denials)-1]
+	require.Equal(t, node, denied.audience.Node)
+	require.Equal(t, identityprotocol.Interface_INTERFACE_OPERATOR, denied.audience.Interface)
+	require.Equal(t, identityaccess.Action("node.status"), denied.action)
+	require.Equal(t, identityaccess.DenialMalformedRequest, denied.reason)
 
 	unknownStream := connect.NewRequest(&protocol.StreamNodeEventsRequest{})
 	unknownStream.Msg.ProtoReflect().SetUnknown([]byte{0x98, 0x06, 0x01})

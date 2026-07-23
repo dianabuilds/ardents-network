@@ -30,10 +30,11 @@ type DeviceRevocationMetadata struct {
 }
 
 func (s *Service) ListAccessGrants(ctx context.Context, attempt Attempt, subject string) ([]GrantMetadata, error) {
+	audit := newAdministrationAudit(attempt)
 	succeeded := false
 	defer func() {
 		if !succeeded {
-			s.record("denied", "admin_list_grants_denied", "", "", attempt.Binding.Audience)
+			audit.recordDenied(s, "admin_list_grants_denied", attempt)
 		}
 	}()
 	if string(attempt.Action) != "identity.grant.list" || string(attempt.Resource.Kind) != "grant-collection" || attempt.Resource.ID != subject {
@@ -46,7 +47,7 @@ func (s *Service) ListAccessGrants(ctx context.Context, attempt Attempt, subject
 	defer s.deviceMu.Unlock()
 	result := []GrantMetadata{}
 	err := s.grants.database.View(ctx, func(tx storage.ReadTransaction) error {
-		if _, _, err := s.admitInTransaction(tx, canonicalNow(s.clock.Now()), attempt); err != nil {
+		if _, err := audit.admit(s, tx, canonicalNow(s.clock.Now()), attempt); err != nil {
 			return err
 		}
 		return tx.ForEach(grantsBucket, func(key, _ []byte) error {
@@ -83,10 +84,11 @@ func (s *Service) ListAccessGrants(ctx context.Context, attempt Attempt, subject
 }
 
 func (s *Service) ListDeviceRevocations(ctx context.Context, attempt Attempt, subject string) ([]DeviceRevocationMetadata, error) {
+	audit := newAdministrationAudit(attempt)
 	succeeded := false
 	defer func() {
 		if !succeeded {
-			s.record("denied", "admin_list_device_revocations_denied", "", "", attempt.Binding.Audience)
+			audit.recordDenied(s, "admin_list_device_revocations_denied", attempt)
 		}
 	}()
 	if string(attempt.Action) != "identity.device-revocations.list" || string(attempt.Resource.Kind) != "device-revocation-collection" || attempt.Resource.ID != subject {
@@ -103,7 +105,7 @@ func (s *Service) ListDeviceRevocations(ctx context.Context, attempt Attempt, su
 	defer s.deviceMu.Unlock()
 	result := []DeviceRevocationMetadata{}
 	err := s.grants.database.View(ctx, func(tx storage.ReadTransaction) error {
-		if _, _, err := s.admitInTransaction(tx, canonicalNow(s.clock.Now()), attempt); err != nil {
+		if _, err := audit.admit(s, tx, canonicalNow(s.clock.Now()), attempt); err != nil {
 			return err
 		}
 		prefix := tuple([]byte(attempt.Binding.Audience.Node), []byte(subject))

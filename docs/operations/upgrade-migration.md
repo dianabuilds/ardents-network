@@ -87,6 +87,29 @@ old binary to a partially upgraded database. Transaction rollback on an update
 error and whole-state restore after a failed release are both required safety
 mechanisms.
 
+### Principal access schema version 1
+
+The first release creates one greenfield `identity-access.db` schema version 1.
+It includes the enrollment, Credential, grant, revocation, ticket-digest,
+administration-idempotency, Delegation-revocation, and
+`identity-audit-outbox-v1` buckets. There is no supported earlier identity
+schema, bearer-state importer, `p_` identifier migrator, bucket alias, or
+dual-reader mode. A database missing any required version-1 bucket, containing
+an unknown schema marker, or containing a malformed outbox/grant record fails
+startup closed.
+
+An administration or enrollment mutation and its audit-outbox record commit in
+one bbolt transaction. Callback error, panic, cancellation, or process loss
+before commit leaves neither change. Process loss after commit leaves both; the
+next daemon start validates and drains the outbox. Diagnostics persistence
+failure keeps the record pending and the idempotent command reports
+`Unavailable`. Operators must not edit or delete the bucket to force startup.
+
+Rollback from the first release means restoring the complete stopped-Node
+consistency group into an empty directory and running the matching released
+binary. A pre-release binary without the audit-outbox invariant is not a
+rollback target even if it happens to open a development database.
+
 ### Content catalogue version 2
 
 The first-release `ardents.db` content snapshot has top-level `version: 2` and a

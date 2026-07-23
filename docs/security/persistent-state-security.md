@@ -31,6 +31,22 @@ Diagnostics documents; their domain ownership remains unchanged.
 | TCP-WSS private key | configured external key path | secret | owned and rotated by deployment secret management; it is not copied into the data directory |
 | Private selectors and capability material | encrypted Identity capability ledger plus operation-local Network privacy material | secret | issuance, scoped storage, rotation, revocation, and recovery follow `network-privacy-protocol.md`; selectors and channel secrets never share retained payload storage or diagnostics |
 
+Successful Principal administration and enrollment mutations append a redacted
+record to `identity-audit-outbox-v1` in the same `identity-access.db`
+transaction as the authority and idempotency changes. The daemon delivers that
+record to `operations.json` and deletes it only after the diagnostics ledger
+confirms its atomic replacement. Delivery is at least once: a crash after
+diagnostics persistence but before the outbox acknowledgement can repeat one
+event, identified by the same random 128-bit `c1_` correlation ID. Failure to
+persist diagnostics leaves the outbox record durable and returns `Unavailable`
+after the idempotent mutation commit. The retry uses the command request ID and
+cannot apply the authority mutation twice.
+
+Outbox records contain only outcome, stable reason, Principal/DeviceID,
+Audience, Actor, Effective, action, grant/delegation IDs, and correlation ID.
+They never contain a Session ID or secret, challenge, nonce, Credential bytes,
+ticket, proof, private key, request/response payload, or resource identifier.
+
 On Windows, Unix mode bits are not an ACL security boundary. The runtime
 protects private directories and files with a non-inherited DACL granting full
 access only to the current node service identity and Local System; directory

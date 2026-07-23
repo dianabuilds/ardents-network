@@ -17,16 +17,21 @@ type attemptContextKey struct{}
 
 type interceptor struct {
 	binding func(context.Context) (identityaccess.AuthenticationBinding, identityaccess.SourceKey)
+	audit   deniedCallRecorder
 }
 
 func (i *interceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 	return func(ctx context.Context, request connect.AnyRequest) (connect.AnyResponse, error) {
-		if hasUnknownFields(request.Any()) {
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid identity operation"))
-		}
 		procedure := request.Spec().Procedure
 		rule, known := procedureCatalog[procedure]
+		if hasUnknownFields(request.Any()) {
+			if known && rule.class != accessPublicBounded {
+				i.recordDenied(ctx, rule, identityaccess.DenialMalformedRequest)
+			}
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid identity operation"))
+		}
 		if !known {
+			i.recordDenied(ctx, procedureRule{}, identityaccess.DenialActionUnregistered)
 			return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("identity procedure is not registered"))
 		}
 		if rule.class == accessPublicBounded {
@@ -34,6 +39,7 @@ func (i *interceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 		}
 		secret, err := parseOperatorSession(request.Header())
 		if err != nil {
+			i.recordDenied(ctx, rule, identityaccess.DenialSessionPresentation)
 			return nil, connect.NewError(connect.CodeUnauthenticated, errInvalidSessionHeader)
 		}
 		binding, _ := i.binding(ctx)
@@ -43,11 +49,24 @@ func (i *interceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 		}
 		action, resource, err := deriveAttempt(binding, procedure, rule.action, request.Any())
 		if err != nil {
+			i.recordDenied(ctx, rule, identityaccess.DenialResourceTarget)
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid identity operation"))
 		}
 		attempt := identityaccess.Attempt{SessionSecret: secret, Binding: binding, Action: action, Resource: resource}
 		return next(context.WithValue(ctx, attemptContextKey{}, attempt), request)
 	}
+}
+
+func (i *interceptor) recordDenied(ctx context.Context, rule procedureRule, reason identityaccess.DenialReason) {
+	if i.audit == nil {
+		return
+	}
+	binding, _ := i.binding(ctx)
+	action := identityaccess.Action("")
+	if parsed, err := identityaccess.ParseAction(binding.Audience.Interface, rule.action); err == nil {
+		action = parsed
+	}
+	i.audit.RecordDeniedCall(binding.Audience, action, reason)
 }
 
 func hasUnknownFields(value any) bool {
@@ -114,10 +133,19 @@ func deriveAttempt(binding identityaccess.AuthenticationBinding, procedure, regi
 	switch procedure {
 	case ardentsv1connect.IdentityServiceEnrollPrincipalProcedure:
 		r, ok := message.(*protocol.EnrollPrincipalRequest)
-		if !ok || r.Challenge == nil {
+		if !ok {
 			return "", identityaccess.ResourceRef{}, identityaccess.ErrInvalidArgument
 		}
-		kind, id = "principal", r.Challenge.Principal
+		challenge, _, _, _, err := parseEnrollment(
+			r.Challenge,
+			r.EnrollmentProof,
+			r.RootPublicKey,
+			nil,
+		)
+		if err != nil {
+			return "", identityaccess.ResourceRef{}, err
+		}
+		kind, id = "principal", challenge.Principal
 	case ardentsv1connect.IdentityServiceRevokeDeviceProcedure:
 		r, ok := message.(*protocol.RevokeDeviceRequest)
 		if !ok {

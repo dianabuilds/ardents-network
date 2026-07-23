@@ -38,6 +38,10 @@ func StopTransportForIntegrationTest(h *RuntimeHarness, ctx context.Context) err
 	return runtimeprocess.StopTransportForIntegrationTest(ensureNode(h), ctx)
 }
 
+func SetDiscoveryPublicationErrorForIntegrationTest(h *RuntimeHarness, err error) error {
+	return runtimeprocess.SetDiscoveryPublicationErrorForIntegrationTest(ensureNode(h), err)
+}
+
 func WorkloadStatusForIntegrationTest(h *RuntimeHarness, id string) (execution.Status, bool) {
 	return runtimeprocess.WorkloadStatusForIntegrationTest(ensureNode(h), id)
 }

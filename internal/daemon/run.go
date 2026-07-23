@@ -251,7 +251,23 @@ func (a identityAccessAudit) RecordIdentityAccess(event identityaccess.AuditEven
 	if a.events == nil {
 		return
 	}
-	a.events.RecordEventCommand(diagapi.RecordEventCommand{
+	a.events.RecordEventCommand(identityAccessAuditCommand(event))
+}
+
+func (a identityAccessAudit) RecordIdentityAccessDurable(event identityaccess.AuditEvent) error {
+	if a.events == nil {
+		return fmt.Errorf("identity access audit writer is unavailable")
+	}
+	writer, ok := a.events.(diagapi.DurableEventWriter)
+	if !ok {
+		return fmt.Errorf("identity access audit writer is not durable")
+	}
+	_, err := writer.RecordEventCommandDurable(identityAccessAuditCommand(event))
+	return err
+}
+
+func identityAccessAuditCommand(event identityaccess.AuditEvent) diagapi.RecordEventCommand {
+	return diagapi.RecordEventCommand{
 		Domain: "identity_access", Type: "principal_access_" + event.Outcome,
 		Resource: event.Audience.Node, Message: "Principal access " + event.Outcome, ReasonCode: event.Reason,
 		Payload: map[string]any{
@@ -262,7 +278,7 @@ func (a identityAccessAudit) RecordIdentityAccess(event identityaccess.AuditEven
 			"grant_ids": append([]string(nil), event.GrantIDs...), "delegation_id": event.DelegationID,
 			"correlation_id": event.CorrelationID,
 		},
-	})
+	}
 }
 
 type nodeAccessGrantIssuer struct{ node *Node }

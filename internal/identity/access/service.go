@@ -51,6 +51,7 @@ type Service struct {
 	clock                        Clock
 	entropy                      io.Reader
 	entropyMu                    sync.Mutex
+	auditMu                      sync.Mutex
 	audit                        AuditSink
 	challenges                   *challengeStore
 	sessions                     *sessionStore
@@ -89,7 +90,13 @@ func NewService(config Config) (*Service, error) {
 	if _, err := io.ReadFull(config.Entropy, proofKey[:]); err != nil {
 		return nil, fmt.Errorf("initialize ephemeral proof key: %w", err)
 	}
-	return &Service{clock: config.Clock, entropy: config.Entropy, audit: config.Audit, challenges: newChallengeStore(), sessions: newSessionStore(sessionKey), proofs: newProofStore(proofKey), revocations: deviceRevocations{database: config.Database}, enrollments: enrollmentRepository{database: config.Database}, grants: grantRepository{database: config.Database}, delegations: delegationRepository{database: config.Database}, sessionLifetime: config.SessionLifetime, bootstrapEnabled: config.EnableBootstrapTickets, grantIssuer: config.GrantIssuer, applicationEnrollmentEnabled: config.EnableApplicationEnrollment}, nil
+	service := &Service{clock: config.Clock, entropy: config.Entropy, audit: config.Audit, challenges: newChallengeStore(), sessions: newSessionStore(sessionKey), proofs: newProofStore(proofKey), revocations: deviceRevocations{database: config.Database}, enrollments: enrollmentRepository{database: config.Database}, grants: grantRepository{database: config.Database}, delegations: delegationRepository{database: config.Database}, sessionLifetime: config.SessionLifetime, bootstrapEnabled: config.EnableBootstrapTickets, grantIssuer: config.GrantIssuer, applicationEnrollmentEnabled: config.EnableApplicationEnrollment}
+	if config.Audit != nil {
+		if err := service.flushAuditOutbox(context.Background()); err != nil {
+			return nil, fmt.Errorf("initialize identity audit outbox: %w", err)
+		}
+	}
+	return service, nil
 }
 
 func (s *Service) Begin(_ context.Context, request BeginRequest) (Challenge, error) {

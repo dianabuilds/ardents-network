@@ -65,6 +65,7 @@ func (f *adminFixture) enrollmentRequest(requestID string, root, device ed25519.
 
 func newAdminFixture(t *testing.T) *adminFixture {
 	f := newServiceFixture(t)
+	f.service.audit = AuditSinkFunc(func(AuditEvent) {})
 	f.service.bootstrapEnabled = true
 	f.service.grantIssuer = testAccessGrantIssuer{key: f.node}
 	ticket, err := f.service.IssueBootstrapTicket(f.ctx, f.nodeID)
@@ -316,9 +317,19 @@ func TestAdministrationDenialEmitsRedactedAudit(t *testing.T) {
 	f := newAdminFixture(t)
 	events := []AuditEvent{}
 	f.service.audit = AuditSinkFunc(func(event AuditEvent) { events = append(events, event) })
-	_, err := f.service.IssueAccessGrant(f.ctx, IssueGrantRequest{Command: f.command("bad", "identity.grant.issue", "grant-proposal", "not-the-proposal"), Proposal: GrantProposal{Subject: f.principal}})
-	require.Error(t, err)
-	require.NotEmpty(t, events)
-	require.Equal(t, "denied", events[len(events)-1].Outcome)
-	require.Contains(t, events[len(events)-1].Reason, "admin_")
+	_, err := f.issue("", []string{"node.status"})
+	require.ErrorIs(t, err, ErrInvalidArgument)
+	require.Len(t, events, 1)
+	event := events[0]
+	require.Equal(t, "denied", event.Outcome)
+	require.Equal(t, "admin_issue_grant_denied", event.Reason)
+	require.Equal(t, f.principal, event.Principal)
+	require.Equal(t, f.principal, event.Actor)
+	require.Equal(t, f.principal, event.Effective)
+	require.Equal(t, Action("identity.grant.issue"), event.Action)
+	require.Equal(t, f.binding.Audience, event.Audience)
+	require.NotEmpty(t, event.DeviceID)
+	require.NotEmpty(t, event.GrantIDs)
+	require.Empty(t, event.DelegationID)
+	require.True(t, validAuditCorrelationID(event.CorrelationID))
 }

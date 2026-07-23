@@ -49,6 +49,62 @@ func TestBeginAuthenticationDerivesOperatorUnixBinding(t *testing.T) {
 	require.Equal(t, peer[:], response.Msg.Challenge.Binding.PeerBinding)
 }
 
+func TestProtectedIdentityMalformedRequestIsAuditedBeforeAdmission(t *testing.T) {
+	database, err := storage.OpenIdentityAccess(context.Background(), t.TempDir(), identityaccess.StorageSchema())
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, database.Close(context.Background())) })
+	events := []identityaccess.AuditEvent{}
+	service, err := identityaccess.NewService(identityaccess.Config{
+		Database: database,
+		Audit: identityaccess.AuditSinkFunc(func(event identityaccess.AuditEvent) {
+			events = append(events, event)
+		}),
+	})
+	require.NoError(t, err)
+	_, nodeKey, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	node, err := identityprincipal.FromEd25519PublicKey(nodeKey.Public().(ed25519.PublicKey))
+	require.NoError(t, err)
+	peer, source := [32]byte{7}, identityaccess.SourceKey{9}
+	_, handler, err := NewHandler(service, node.String(), peer, source)
+	require.NoError(t, err)
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+
+	request := connect.NewRequest(&protocol.ListAccessGrantsRequest{})
+	request.Msg.ProtoReflect().SetUnknown([]byte{0x98, 0x06, 0x01})
+	_, err = ardentsv1connect.NewIdentityServiceClient(server.Client(), server.URL).ListAccessGrants(context.Background(), request)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+	require.Len(t, events, 1)
+	require.Equal(t, "denied", events[0].Outcome)
+	require.Equal(t, string(identityaccess.DenialMalformedRequest), events[0].Reason)
+	require.Equal(t, node.String(), events[0].Audience.Node)
+	require.Equal(t, identityprotocol.Interface_INTERFACE_OPERATOR, events[0].Audience.Interface)
+	require.Equal(t, identityaccess.Action("identity.grant.list"), events[0].Action)
+	require.Empty(t, events[0].Actor)
+	require.Empty(t, events[0].Effective)
+	require.NotEmpty(t, events[0].CorrelationID)
+
+	events = nil
+	enroll := connect.NewRequest(&protocol.EnrollPrincipalRequest{
+		Challenge:       &identityprotocol.ChallengeFields{Principal: node.String()},
+		EnrollmentProof: []byte{1},
+		RootPublicKey:   make([]byte, ed25519.PublicKeySize),
+	})
+	enroll.Header().Set(
+		"Authorization",
+		operatorSessionScheme+" "+base64.RawURLEncoding.EncodeToString(make([]byte, len(identityaccess.SessionSecret{}))),
+	)
+	_, err = ardentsv1connect.NewIdentityServiceClient(server.Client(), server.URL).EnrollPrincipal(context.Background(), enroll)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+	require.Len(t, events, 1)
+	require.Equal(t, "denied", events[0].Outcome)
+	require.Equal(t, string(identityaccess.DenialResourceTarget), events[0].Reason)
+	require.Equal(t, identityaccess.Action("identity.principal.enroll"), events[0].Action)
+	require.Empty(t, events[0].Actor)
+	require.Empty(t, events[0].Effective)
+}
+
 func TestTransportPeerContextOverridesSharedFallback(t *testing.T) {
 	h := &Handler{node: "node", fallback: transportPeer{peer: [32]byte{1}, source: identityaccess.SourceKey{2}}}
 	fallbackBinding, fallbackSource := h.binding(context.Background())

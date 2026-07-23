@@ -7,13 +7,14 @@ import (
 	"testing"
 	"time"
 
+	identityaccess "ardents/internal/identity/access"
 	"ardents/internal/storage"
 	"github.com/stretchr/testify/require"
 )
 
 func TestDaemonOwnersReceiveSingleIdentityAccessHandle(t *testing.T) {
 	dir := t.TempDir()
-	database, err := storage.OpenIdentityAccess(context.Background(), dir, storage.BaseIdentityAccessSchema())
+	database, err := storage.OpenIdentityAccess(context.Background(), dir, identityaccess.StorageSchema())
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, database.Close(context.Background())) })
 

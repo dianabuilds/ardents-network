@@ -26,6 +26,13 @@ type EventWriter interface {
 	RecordEventCommand(RecordEventCommand) EventEnvelope
 }
 
+// DurableEventWriter reports whether the event reached the persisted ledger.
+// Security outboxes use it to acknowledge delivery without losing an event
+// when operations.json cannot be replaced atomically.
+type DurableEventWriter interface {
+	RecordEventCommandDurable(RecordEventCommand) (EventEnvelope, error)
+}
+
 type Writer interface {
 	EventWriter
 	BeginOperationCommand(BeginOperationCommand) OperationSnapshot

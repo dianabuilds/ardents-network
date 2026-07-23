@@ -5,6 +5,7 @@ package workload_test
 import (
 	workloadregistry "ardents/internal/workload/registry"
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync/atomic"
@@ -345,8 +346,11 @@ func TestWorkloadNodeRollbackOnPublicationFailure(t *testing.T) {
 	}
 	{
 
-		err := testkit.StopTransportForIntegrationTest(harness, context.Background())
-		require.NoErrorf(t, err, "stop transport: %v", err)
+		err := testkit.SetDiscoveryPublicationErrorForIntegrationTest(
+			harness,
+			errors.New("injected discovery publication failure"),
+		)
+		require.NoErrorf(t, err, "inject discovery publication failure: %v", err)
 	}
 	{
 
