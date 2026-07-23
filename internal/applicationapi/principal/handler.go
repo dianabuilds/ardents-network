@@ -5,8 +5,10 @@ package principal
 import (
 	"context"
 	"crypto/ed25519"
+	"encoding/base64"
 	"errors"
 	"net/http"
+	"strings"
 
 	identitycontract "ardents/api/ardents/identity/v1"
 	applicationbinding "ardents/internal/applicationapi/binding"
@@ -20,6 +22,7 @@ import (
 )
 
 const applicationIdentityMaxUnaryMessageBytes = identitycontract.MaxArtifactBytes + 4<<10
+const applicationSessionScheme = "ArdentsApplicationSession"
 
 type principalTransport struct {
 	peer   [32]byte
@@ -97,6 +100,36 @@ func (h *PrincipalHandler) CompleteAuthentication(ctx context.Context, request *
 		response.EnrollmentProof = append([]byte(nil), result.EnrollmentProof[:]...)
 	}
 	return connect.NewResponse(response), nil
+}
+
+func (h *PrincipalHandler) EndSession(ctx context.Context, request *connect.Request[applicationv1.EndSessionRequest]) (*connect.Response[applicationv1.EndSessionResponse], error) {
+	if request == nil || request.Msg == nil || len(request.Msg.ProtoReflect().GetUnknown()) != 0 {
+		return nil, principalAccessError(identityaccess.ErrInvalidArgument)
+	}
+	secret, err := parseApplicationSession(request.Header())
+	if err != nil {
+		return nil, principalAccessError(identityaccess.ErrUnauthenticated)
+	}
+	binding, _ := h.binding(ctx)
+	if err := h.service.EndSession(ctx, secret, binding); err != nil {
+		return nil, principalAccessError(err)
+	}
+	return connect.NewResponse(&applicationv1.EndSessionResponse{}), nil
+}
+
+func parseApplicationSession(header http.Header) (identityaccess.SessionSecret, error) {
+	var secret identityaccess.SessionSecret
+	values := header.Values("Authorization")
+	prefix := applicationSessionScheme + " "
+	if len(values) != 1 || len(values[0]) > 128 || !strings.HasPrefix(values[0], prefix) || strings.Count(values[0], " ") != 1 {
+		return secret, identityaccess.ErrUnauthenticated
+	}
+	raw, err := base64.RawURLEncoding.Strict().DecodeString(strings.TrimPrefix(values[0], prefix))
+	if err != nil || len(raw) != len(secret) {
+		return secret, identityaccess.ErrUnauthenticated
+	}
+	copy(secret[:], raw)
+	return secret, nil
 }
 
 func (h *PrincipalHandler) EnrollApplication(ctx context.Context, request *connect.Request[applicationv1.EnrollApplicationRequest]) (*connect.Response[applicationv1.EnrollApplicationResponse], error) {

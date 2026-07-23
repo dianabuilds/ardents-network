@@ -39,6 +39,9 @@ const (
 	// IdentityServiceCompleteAuthenticationProcedure is the fully-qualified name of the
 	// IdentityService's CompleteAuthentication RPC.
 	IdentityServiceCompleteAuthenticationProcedure = "/ardents.application.v1.IdentityService/CompleteAuthentication"
+	// IdentityServiceEndSessionProcedure is the fully-qualified name of the IdentityService's
+	// EndSession RPC.
+	IdentityServiceEndSessionProcedure = "/ardents.application.v1.IdentityService/EndSession"
 	// IdentityServiceEnrollApplicationProcedure is the fully-qualified name of the IdentityService's
 	// EnrollApplication RPC.
 	IdentityServiceEnrollApplicationProcedure = "/ardents.application.v1.IdentityService/EnrollApplication"
@@ -48,6 +51,7 @@ const (
 type IdentityServiceClient interface {
 	BeginAuthentication(context.Context, *connect.Request[applicationv1.BeginAuthenticationRequest]) (*connect.Response[applicationv1.BeginAuthenticationResponse], error)
 	CompleteAuthentication(context.Context, *connect.Request[applicationv1.CompleteAuthenticationRequest]) (*connect.Response[applicationv1.CompleteAuthenticationResponse], error)
+	EndSession(context.Context, *connect.Request[applicationv1.EndSessionRequest]) (*connect.Response[applicationv1.EndSessionResponse], error)
 	EnrollApplication(context.Context, *connect.Request[applicationv1.EnrollApplicationRequest]) (*connect.Response[applicationv1.EnrollApplicationResponse], error)
 }
 
@@ -74,6 +78,12 @@ func NewIdentityServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(identityServiceMethods.ByName("CompleteAuthentication")),
 			connect.WithClientOptions(opts...),
 		),
+		endSession: connect.NewClient[applicationv1.EndSessionRequest, applicationv1.EndSessionResponse](
+			httpClient,
+			baseURL+IdentityServiceEndSessionProcedure,
+			connect.WithSchema(identityServiceMethods.ByName("EndSession")),
+			connect.WithClientOptions(opts...),
+		),
 		enrollApplication: connect.NewClient[applicationv1.EnrollApplicationRequest, applicationv1.EnrollApplicationResponse](
 			httpClient,
 			baseURL+IdentityServiceEnrollApplicationProcedure,
@@ -87,6 +97,7 @@ func NewIdentityServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 type identityServiceClient struct {
 	beginAuthentication    *connect.Client[applicationv1.BeginAuthenticationRequest, applicationv1.BeginAuthenticationResponse]
 	completeAuthentication *connect.Client[applicationv1.CompleteAuthenticationRequest, applicationv1.CompleteAuthenticationResponse]
+	endSession             *connect.Client[applicationv1.EndSessionRequest, applicationv1.EndSessionResponse]
 	enrollApplication      *connect.Client[applicationv1.EnrollApplicationRequest, applicationv1.EnrollApplicationResponse]
 }
 
@@ -100,6 +111,11 @@ func (c *identityServiceClient) CompleteAuthentication(ctx context.Context, req 
 	return c.completeAuthentication.CallUnary(ctx, req)
 }
 
+// EndSession calls ardents.application.v1.IdentityService.EndSession.
+func (c *identityServiceClient) EndSession(ctx context.Context, req *connect.Request[applicationv1.EndSessionRequest]) (*connect.Response[applicationv1.EndSessionResponse], error) {
+	return c.endSession.CallUnary(ctx, req)
+}
+
 // EnrollApplication calls ardents.application.v1.IdentityService.EnrollApplication.
 func (c *identityServiceClient) EnrollApplication(ctx context.Context, req *connect.Request[applicationv1.EnrollApplicationRequest]) (*connect.Response[applicationv1.EnrollApplicationResponse], error) {
 	return c.enrollApplication.CallUnary(ctx, req)
@@ -110,6 +126,7 @@ func (c *identityServiceClient) EnrollApplication(ctx context.Context, req *conn
 type IdentityServiceHandler interface {
 	BeginAuthentication(context.Context, *connect.Request[applicationv1.BeginAuthenticationRequest]) (*connect.Response[applicationv1.BeginAuthenticationResponse], error)
 	CompleteAuthentication(context.Context, *connect.Request[applicationv1.CompleteAuthenticationRequest]) (*connect.Response[applicationv1.CompleteAuthenticationResponse], error)
+	EndSession(context.Context, *connect.Request[applicationv1.EndSessionRequest]) (*connect.Response[applicationv1.EndSessionResponse], error)
 	EnrollApplication(context.Context, *connect.Request[applicationv1.EnrollApplicationRequest]) (*connect.Response[applicationv1.EnrollApplicationResponse], error)
 }
 
@@ -132,6 +149,12 @@ func NewIdentityServiceHandler(svc IdentityServiceHandler, opts ...connect.Handl
 		connect.WithSchema(identityServiceMethods.ByName("CompleteAuthentication")),
 		connect.WithHandlerOptions(opts...),
 	)
+	identityServiceEndSessionHandler := connect.NewUnaryHandler(
+		IdentityServiceEndSessionProcedure,
+		svc.EndSession,
+		connect.WithSchema(identityServiceMethods.ByName("EndSession")),
+		connect.WithHandlerOptions(opts...),
+	)
 	identityServiceEnrollApplicationHandler := connect.NewUnaryHandler(
 		IdentityServiceEnrollApplicationProcedure,
 		svc.EnrollApplication,
@@ -144,6 +167,8 @@ func NewIdentityServiceHandler(svc IdentityServiceHandler, opts ...connect.Handl
 			identityServiceBeginAuthenticationHandler.ServeHTTP(w, r)
 		case IdentityServiceCompleteAuthenticationProcedure:
 			identityServiceCompleteAuthenticationHandler.ServeHTTP(w, r)
+		case IdentityServiceEndSessionProcedure:
+			identityServiceEndSessionHandler.ServeHTTP(w, r)
 		case IdentityServiceEnrollApplicationProcedure:
 			identityServiceEnrollApplicationHandler.ServeHTTP(w, r)
 		default:
@@ -161,6 +186,10 @@ func (UnimplementedIdentityServiceHandler) BeginAuthentication(context.Context, 
 
 func (UnimplementedIdentityServiceHandler) CompleteAuthentication(context.Context, *connect.Request[applicationv1.CompleteAuthenticationRequest]) (*connect.Response[applicationv1.CompleteAuthenticationResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.application.v1.IdentityService.CompleteAuthentication is not implemented"))
+}
+
+func (UnimplementedIdentityServiceHandler) EndSession(context.Context, *connect.Request[applicationv1.EndSessionRequest]) (*connect.Response[applicationv1.EndSessionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.application.v1.IdentityService.EndSession is not implemented"))
 }
 
 func (UnimplementedIdentityServiceHandler) EnrollApplication(context.Context, *connect.Request[applicationv1.EnrollApplicationRequest]) (*connect.Response[applicationv1.EnrollApplicationResponse], error) {

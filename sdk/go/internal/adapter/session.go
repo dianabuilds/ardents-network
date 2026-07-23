@@ -36,6 +36,7 @@ type SessionSigner interface {
 type authenticationService interface {
 	BeginAuthentication(context.Context, *connect.Request[applicationidentityv1.BeginAuthenticationRequest]) (*connect.Response[applicationidentityv1.BeginAuthenticationResponse], error)
 	CompleteAuthentication(context.Context, *connect.Request[applicationidentityv1.CompleteAuthenticationRequest]) (*connect.Response[applicationidentityv1.CompleteAuthenticationResponse], error)
+	EndSession(context.Context, *connect.Request[applicationidentityv1.EndSessionRequest]) (*connect.Response[applicationidentityv1.EndSessionResponse], error)
 }
 
 type SessionStatus struct {
@@ -378,12 +379,23 @@ func (m *SessionManager) Logout() {
 		return
 	}
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	m.epoch++
+	secrets := make([][identitycontract.SessionSecretBytes]byte, 0, len(m.entries))
 	for key, entry := range m.entries {
+		secrets = append(secrets, entry.secret)
 		m.zeroAndDelete(key, entry)
 	}
 	m.active = sessionKey{}
+	m.mu.Unlock()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	for index := range secrets {
+		request := connect.NewRequest(&applicationidentityv1.EndSessionRequest{})
+		request.Header().Set("Authorization", applicationSessionScheme+" "+base64.RawURLEncoding.EncodeToString(secrets[index][:]))
+		_, _ = m.auth.EndSession(ctx, request)
+		clear(secrets[index][:])
+	}
 }
 
 func zeroSession(entry *cachedSession) { clear(entry.secret[:]) }

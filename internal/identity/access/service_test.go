@@ -351,6 +351,27 @@ func TestServiceSessionExpiryIsHalfOpenAndNeverRevives(t *testing.T) {
 	require.ErrorIs(t, err, ErrUnauthenticated)
 }
 
+func TestServiceEndSessionInvalidatesOnlyThePresentedBoundSession(t *testing.T) {
+	f := newServiceFixture(t)
+	first, err := f.service.Complete(f.ctx, f.sessionRequest(f.begin(identityprotocol.ChallengePurpose_CHALLENGE_PURPOSE_SESSION)))
+	require.NoError(t, err)
+	f.clock.Advance(6 * time.Second)
+	second, err := f.service.Complete(f.ctx, f.sessionRequest(f.begin(identityprotocol.ChallengePurpose_CHALLENGE_PURPOSE_SESSION)))
+	require.NoError(t, err)
+
+	require.NoError(t, f.service.EndSession(f.ctx, *first.SessionSecret, f.binding))
+	_, err = f.service.AuthenticateSession(f.ctx, *first.SessionSecret, f.binding)
+	require.ErrorIs(t, err, ErrUnauthenticated)
+	_, err = f.service.AuthenticateSession(f.ctx, *second.SessionSecret, f.binding)
+	require.NoError(t, err)
+
+	wrongBinding := f.binding
+	wrongBinding.Audience.Node = f.principal
+	require.ErrorIs(t, f.service.EndSession(f.ctx, *second.SessionSecret, wrongBinding), ErrUnauthenticated)
+	_, err = f.service.AuthenticateSession(f.ctx, *second.SessionSecret, f.binding)
+	require.NoError(t, err)
+}
+
 func TestServiceBoundsRateCapacityAndSessionGroup(t *testing.T) {
 	f := newServiceFixture(t)
 	for i := 0; i < identitycontract.BeginRateBurst; i++ {

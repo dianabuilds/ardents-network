@@ -37,6 +37,7 @@ type SessionSigner interface {
 type authenticationService interface {
 	BeginAuthentication(context.Context, *connect.Request[ardentsv1.BeginAuthenticationRequest]) (*connect.Response[ardentsv1.BeginAuthenticationResponse], error)
 	CompleteAuthentication(context.Context, *connect.Request[ardentsv1.CompleteAuthenticationRequest]) (*connect.Response[ardentsv1.CompleteAuthenticationResponse], error)
+	EndSession(context.Context, *connect.Request[ardentsv1.EndSessionRequest]) (*connect.Response[ardentsv1.EndSessionResponse], error)
 }
 
 // SessionKey is the complete version-1 cache identity. It deliberately omits
@@ -298,12 +299,23 @@ func (m *SessionManager) Logout() {
 		return
 	}
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	m.epoch++
+	secrets := make([]identityaccess.SessionSecret, 0, len(m.entries))
 	for key, entry := range m.entries {
+		secrets = append(secrets, entry.secret)
 		m.zeroAndDelete(key, entry)
 	}
 	m.active = SessionKey{}
+	m.mu.Unlock()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	for index := range secrets {
+		request := connect.NewRequest(&ardentsv1.EndSessionRequest{})
+		request.Header().Set("Authorization", operatorSessionScheme+" "+base64.RawURLEncoding.EncodeToString(secrets[index][:]))
+		_, _ = m.auth.EndSession(ctx, request)
+		clear(secrets[index][:])
+	}
 }
 
 func zeroSession(entry *cachedSession) {

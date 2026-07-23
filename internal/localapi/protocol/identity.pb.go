@@ -263,6 +263,78 @@ func (x *CompleteAuthenticationResponse) GetExpiresAt() *timestamppb.Timestamp {
 	return nil
 }
 
+type EndSessionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EndSessionRequest) Reset() {
+	*x = EndSessionRequest{}
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EndSessionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EndSessionRequest) ProtoMessage() {}
+
+func (x *EndSessionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EndSessionRequest.ProtoReflect.Descriptor instead.
+func (*EndSessionRequest) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{4}
+}
+
+type EndSessionResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EndSessionResponse) Reset() {
+	*x = EndSessionResponse{}
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EndSessionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EndSessionResponse) ProtoMessage() {}
+
+func (x *EndSessionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EndSessionResponse.ProtoReflect.Descriptor instead.
+func (*EndSessionResponse) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{5}
+}
+
 type EnrollFirstPrincipalRequest struct {
 	state           protoimpl.MessageState    `protogen:"open.v1"`
 	BootstrapTicket []byte                    `protobuf:"bytes,1,opt,name=bootstrap_ticket,json=bootstrapTicket,proto3" json:"bootstrap_ticket,omitempty"`
@@ -276,7 +348,7 @@ type EnrollFirstPrincipalRequest struct {
 
 func (x *EnrollFirstPrincipalRequest) Reset() {
 	*x = EnrollFirstPrincipalRequest{}
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[4]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -288,7 +360,7 @@ func (x *EnrollFirstPrincipalRequest) String() string {
 func (*EnrollFirstPrincipalRequest) ProtoMessage() {}
 
 func (x *EnrollFirstPrincipalRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[4]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -301,7 +373,7 @@ func (x *EnrollFirstPrincipalRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnrollFirstPrincipalRequest.ProtoReflect.Descriptor instead.
 func (*EnrollFirstPrincipalRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{4}
+	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *EnrollFirstPrincipalRequest) GetBootstrapTicket() []byte {
@@ -348,7 +420,7 @@ type EnrollFirstPrincipalResponse struct {
 
 func (x *EnrollFirstPrincipalResponse) Reset() {
 	*x = EnrollFirstPrincipalResponse{}
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[5]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -360,7 +432,7 @@ func (x *EnrollFirstPrincipalResponse) String() string {
 func (*EnrollFirstPrincipalResponse) ProtoMessage() {}
 
 func (x *EnrollFirstPrincipalResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[5]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -373,7 +445,7 @@ func (x *EnrollFirstPrincipalResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnrollFirstPrincipalResponse.ProtoReflect.Descriptor instead.
 func (*EnrollFirstPrincipalResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{5}
+	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *EnrollFirstPrincipalResponse) GetPrincipalId() string {
@@ -396,7 +468,7 @@ type EnrollPrincipalRequest struct {
 
 func (x *EnrollPrincipalRequest) Reset() {
 	*x = EnrollPrincipalRequest{}
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[6]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -408,7 +480,7 @@ func (x *EnrollPrincipalRequest) String() string {
 func (*EnrollPrincipalRequest) ProtoMessage() {}
 
 func (x *EnrollPrincipalRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[6]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -421,7 +493,7 @@ func (x *EnrollPrincipalRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnrollPrincipalRequest.ProtoReflect.Descriptor instead.
 func (*EnrollPrincipalRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{6}
+	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *EnrollPrincipalRequest) GetRequestId() string {
@@ -468,7 +540,7 @@ type EnrollPrincipalResponse struct {
 
 func (x *EnrollPrincipalResponse) Reset() {
 	*x = EnrollPrincipalResponse{}
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[7]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -480,7 +552,7 @@ func (x *EnrollPrincipalResponse) String() string {
 func (*EnrollPrincipalResponse) ProtoMessage() {}
 
 func (x *EnrollPrincipalResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[7]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -493,7 +565,7 @@ func (x *EnrollPrincipalResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnrollPrincipalResponse.ProtoReflect.Descriptor instead.
 func (*EnrollPrincipalResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{7}
+	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *EnrollPrincipalResponse) GetPrincipalId() string {
@@ -514,7 +586,7 @@ type RevokeDeviceRequest struct {
 
 func (x *RevokeDeviceRequest) Reset() {
 	*x = RevokeDeviceRequest{}
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[8]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -526,7 +598,7 @@ func (x *RevokeDeviceRequest) String() string {
 func (*RevokeDeviceRequest) ProtoMessage() {}
 
 func (x *RevokeDeviceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[8]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -539,7 +611,7 @@ func (x *RevokeDeviceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeDeviceRequest.ProtoReflect.Descriptor instead.
 func (*RevokeDeviceRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{8}
+	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *RevokeDeviceRequest) GetRequestId() string {
@@ -572,7 +644,7 @@ type RevokeDeviceResponse struct {
 
 func (x *RevokeDeviceResponse) Reset() {
 	*x = RevokeDeviceResponse{}
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[9]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -584,7 +656,7 @@ func (x *RevokeDeviceResponse) String() string {
 func (*RevokeDeviceResponse) ProtoMessage() {}
 
 func (x *RevokeDeviceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[9]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -597,7 +669,7 @@ func (x *RevokeDeviceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeDeviceResponse.ProtoReflect.Descriptor instead.
 func (*RevokeDeviceResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{9}
+	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *RevokeDeviceResponse) GetRevocationId() string {
@@ -616,7 +688,7 @@ type ListDeviceRevocationsRequest struct {
 
 func (x *ListDeviceRevocationsRequest) Reset() {
 	*x = ListDeviceRevocationsRequest{}
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[10]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -628,7 +700,7 @@ func (x *ListDeviceRevocationsRequest) String() string {
 func (*ListDeviceRevocationsRequest) ProtoMessage() {}
 
 func (x *ListDeviceRevocationsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[10]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -641,7 +713,7 @@ func (x *ListDeviceRevocationsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDeviceRevocationsRequest.ProtoReflect.Descriptor instead.
 func (*ListDeviceRevocationsRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{10}
+	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ListDeviceRevocationsRequest) GetPrincipalId() string {
@@ -663,7 +735,7 @@ type DeviceRevocationMetadata struct {
 
 func (x *DeviceRevocationMetadata) Reset() {
 	*x = DeviceRevocationMetadata{}
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[11]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -675,7 +747,7 @@ func (x *DeviceRevocationMetadata) String() string {
 func (*DeviceRevocationMetadata) ProtoMessage() {}
 
 func (x *DeviceRevocationMetadata) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[11]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -688,7 +760,7 @@ func (x *DeviceRevocationMetadata) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeviceRevocationMetadata.ProtoReflect.Descriptor instead.
 func (*DeviceRevocationMetadata) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{11}
+	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *DeviceRevocationMetadata) GetId() string {
@@ -728,7 +800,7 @@ type ListDeviceRevocationsResponse struct {
 
 func (x *ListDeviceRevocationsResponse) Reset() {
 	*x = ListDeviceRevocationsResponse{}
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[12]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -740,7 +812,7 @@ func (x *ListDeviceRevocationsResponse) String() string {
 func (*ListDeviceRevocationsResponse) ProtoMessage() {}
 
 func (x *ListDeviceRevocationsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[12]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -753,7 +825,7 @@ func (x *ListDeviceRevocationsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDeviceRevocationsResponse.ProtoReflect.Descriptor instead.
 func (*ListDeviceRevocationsResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{12}
+	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ListDeviceRevocationsResponse) GetRevocations() []*DeviceRevocationMetadata {
@@ -776,7 +848,7 @@ type AccessGrantProposal struct {
 
 func (x *AccessGrantProposal) Reset() {
 	*x = AccessGrantProposal{}
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[13]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -788,7 +860,7 @@ func (x *AccessGrantProposal) String() string {
 func (*AccessGrantProposal) ProtoMessage() {}
 
 func (x *AccessGrantProposal) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[13]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -801,7 +873,7 @@ func (x *AccessGrantProposal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AccessGrantProposal.ProtoReflect.Descriptor instead.
 func (*AccessGrantProposal) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{13}
+	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *AccessGrantProposal) GetSubjectPrincipalId() string {
@@ -849,7 +921,7 @@ type IssueAccessGrantRequest struct {
 
 func (x *IssueAccessGrantRequest) Reset() {
 	*x = IssueAccessGrantRequest{}
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[14]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -861,7 +933,7 @@ func (x *IssueAccessGrantRequest) String() string {
 func (*IssueAccessGrantRequest) ProtoMessage() {}
 
 func (x *IssueAccessGrantRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[14]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -874,7 +946,7 @@ func (x *IssueAccessGrantRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IssueAccessGrantRequest.ProtoReflect.Descriptor instead.
 func (*IssueAccessGrantRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{14}
+	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *IssueAccessGrantRequest) GetRequestId() string {
@@ -900,7 +972,7 @@ type IssueAccessGrantResponse struct {
 
 func (x *IssueAccessGrantResponse) Reset() {
 	*x = IssueAccessGrantResponse{}
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[15]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -912,7 +984,7 @@ func (x *IssueAccessGrantResponse) String() string {
 func (*IssueAccessGrantResponse) ProtoMessage() {}
 
 func (x *IssueAccessGrantResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[15]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -925,7 +997,7 @@ func (x *IssueAccessGrantResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IssueAccessGrantResponse.ProtoReflect.Descriptor instead.
 func (*IssueAccessGrantResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{15}
+	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *IssueAccessGrantResponse) GetGrantId() string {
@@ -945,7 +1017,7 @@ type RevokeAccessGrantRequest struct {
 
 func (x *RevokeAccessGrantRequest) Reset() {
 	*x = RevokeAccessGrantRequest{}
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[16]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -957,7 +1029,7 @@ func (x *RevokeAccessGrantRequest) String() string {
 func (*RevokeAccessGrantRequest) ProtoMessage() {}
 
 func (x *RevokeAccessGrantRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[16]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -970,7 +1042,7 @@ func (x *RevokeAccessGrantRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeAccessGrantRequest.ProtoReflect.Descriptor instead.
 func (*RevokeAccessGrantRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{16}
+	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *RevokeAccessGrantRequest) GetRequestId() string {
@@ -996,7 +1068,7 @@ type RevokeAccessGrantResponse struct {
 
 func (x *RevokeAccessGrantResponse) Reset() {
 	*x = RevokeAccessGrantResponse{}
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[17]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1008,7 +1080,7 @@ func (x *RevokeAccessGrantResponse) String() string {
 func (*RevokeAccessGrantResponse) ProtoMessage() {}
 
 func (x *RevokeAccessGrantResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[17]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1021,7 +1093,7 @@ func (x *RevokeAccessGrantResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeAccessGrantResponse.ProtoReflect.Descriptor instead.
 func (*RevokeAccessGrantResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{17}
+	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *RevokeAccessGrantResponse) GetRevocationId() string {
@@ -1040,7 +1112,7 @@ type ListAccessGrantsRequest struct {
 
 func (x *ListAccessGrantsRequest) Reset() {
 	*x = ListAccessGrantsRequest{}
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[18]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1052,7 +1124,7 @@ func (x *ListAccessGrantsRequest) String() string {
 func (*ListAccessGrantsRequest) ProtoMessage() {}
 
 func (x *ListAccessGrantsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[18]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1065,7 +1137,7 @@ func (x *ListAccessGrantsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAccessGrantsRequest.ProtoReflect.Descriptor instead.
 func (*ListAccessGrantsRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{18}
+	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ListAccessGrantsRequest) GetSubjectPrincipalId() string {
@@ -1090,7 +1162,7 @@ type AccessGrantMetadata struct {
 
 func (x *AccessGrantMetadata) Reset() {
 	*x = AccessGrantMetadata{}
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[19]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1102,7 +1174,7 @@ func (x *AccessGrantMetadata) String() string {
 func (*AccessGrantMetadata) ProtoMessage() {}
 
 func (x *AccessGrantMetadata) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[19]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1115,7 +1187,7 @@ func (x *AccessGrantMetadata) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AccessGrantMetadata.ProtoReflect.Descriptor instead.
 func (*AccessGrantMetadata) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{19}
+	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *AccessGrantMetadata) GetId() string {
@@ -1176,7 +1248,7 @@ type ListAccessGrantsResponse struct {
 
 func (x *ListAccessGrantsResponse) Reset() {
 	*x = ListAccessGrantsResponse{}
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[20]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1188,7 +1260,7 @@ func (x *ListAccessGrantsResponse) String() string {
 func (*ListAccessGrantsResponse) ProtoMessage() {}
 
 func (x *ListAccessGrantsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[20]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1201,7 +1273,7 @@ func (x *ListAccessGrantsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAccessGrantsResponse.ProtoReflect.Descriptor instead.
 func (*ListAccessGrantsResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{20}
+	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *ListAccessGrantsResponse) GetGrants() []*AccessGrantMetadata {
@@ -1221,7 +1293,7 @@ type IssueApplicationEnrollmentTicketRequest struct {
 
 func (x *IssueApplicationEnrollmentTicketRequest) Reset() {
 	*x = IssueApplicationEnrollmentTicketRequest{}
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[21]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1233,7 +1305,7 @@ func (x *IssueApplicationEnrollmentTicketRequest) String() string {
 func (*IssueApplicationEnrollmentTicketRequest) ProtoMessage() {}
 
 func (x *IssueApplicationEnrollmentTicketRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[21]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1246,7 +1318,7 @@ func (x *IssueApplicationEnrollmentTicketRequest) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use IssueApplicationEnrollmentTicketRequest.ProtoReflect.Descriptor instead.
 func (*IssueApplicationEnrollmentTicketRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{21}
+	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *IssueApplicationEnrollmentTicketRequest) GetApplicationPrincipalId() string {
@@ -1273,7 +1345,7 @@ type IssueApplicationEnrollmentTicketResponse struct {
 
 func (x *IssueApplicationEnrollmentTicketResponse) Reset() {
 	*x = IssueApplicationEnrollmentTicketResponse{}
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[22]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1285,7 +1357,7 @@ func (x *IssueApplicationEnrollmentTicketResponse) String() string {
 func (*IssueApplicationEnrollmentTicketResponse) ProtoMessage() {}
 
 func (x *IssueApplicationEnrollmentTicketResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[22]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1298,7 +1370,7 @@ func (x *IssueApplicationEnrollmentTicketResponse) ProtoReflect() protoreflect.M
 
 // Deprecated: Use IssueApplicationEnrollmentTicketResponse.ProtoReflect.Descriptor instead.
 func (*IssueApplicationEnrollmentTicketResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{22}
+	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *IssueApplicationEnrollmentTicketResponse) GetApplicationEnrollmentTicket() []byte {
@@ -1324,7 +1396,7 @@ type ImportDelegationRevocationRequest struct {
 
 func (x *ImportDelegationRevocationRequest) Reset() {
 	*x = ImportDelegationRevocationRequest{}
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[23]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1336,7 +1408,7 @@ func (x *ImportDelegationRevocationRequest) String() string {
 func (*ImportDelegationRevocationRequest) ProtoMessage() {}
 
 func (x *ImportDelegationRevocationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[23]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1349,7 +1421,7 @@ func (x *ImportDelegationRevocationRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use ImportDelegationRevocationRequest.ProtoReflect.Descriptor instead.
 func (*ImportDelegationRevocationRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{23}
+	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ImportDelegationRevocationRequest) GetRevocation() []byte {
@@ -1368,7 +1440,7 @@ type ImportDelegationRevocationResponse struct {
 
 func (x *ImportDelegationRevocationResponse) Reset() {
 	*x = ImportDelegationRevocationResponse{}
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[24]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1380,7 +1452,7 @@ func (x *ImportDelegationRevocationResponse) String() string {
 func (*ImportDelegationRevocationResponse) ProtoMessage() {}
 
 func (x *ImportDelegationRevocationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_identity_proto_msgTypes[24]
+	mi := &file_api_ardents_v1_identity_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1393,7 +1465,7 @@ func (x *ImportDelegationRevocationResponse) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use ImportDelegationRevocationResponse.ProtoReflect.Descriptor instead.
 func (*ImportDelegationRevocationResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{24}
+	return file_api_ardents_v1_identity_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *ImportDelegationRevocationResponse) GetRevocationId() string {
@@ -1428,7 +1500,9 @@ const file_api_ardents_v1_identity_proto_rawDesc = "" +
 	"\n" +
 	"session_id\x18\x03 \x01(\tR\tsessionId\x129\n" +
 	"\n" +
-	"expires_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"\xff\x01\n" +
+	"expires_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"\x13\n" +
+	"\x11EndSessionRequest\"\x14\n" +
+	"\x12EndSessionResponse\"\xff\x01\n" +
 	"\x1bEnrollFirstPrincipalRequest\x12)\n" +
 	"\x10bootstrap_ticket\x18\x01 \x01(\fR\x0fbootstrapTicket\x12B\n" +
 	"\tchallenge\x18\x02 \x01(\v2$.ardents.identity.v1.ChallengeFieldsR\tchallenge\x12)\n" +
@@ -1511,10 +1585,12 @@ const file_api_ardents_v1_identity_proto_rawDesc = "" +
 	"revocation\x18\x01 \x01(\fR\n" +
 	"revocation\"I\n" +
 	"\"ImportDelegationRevocationResponse\x12#\n" +
-	"\rrevocation_id\x18\x01 \x01(\tR\frevocationId2\x9f\t\n" +
+	"\rrevocation_id\x18\x01 \x01(\tR\frevocationId2\xec\t\n" +
 	"\x0fIdentityService\x12f\n" +
 	"\x13BeginAuthentication\x12&.ardents.v1.BeginAuthenticationRequest\x1a'.ardents.v1.BeginAuthenticationResponse\x12o\n" +
-	"\x16CompleteAuthentication\x12).ardents.v1.CompleteAuthenticationRequest\x1a*.ardents.v1.CompleteAuthenticationResponse\x12i\n" +
+	"\x16CompleteAuthentication\x12).ardents.v1.CompleteAuthenticationRequest\x1a*.ardents.v1.CompleteAuthenticationResponse\x12K\n" +
+	"\n" +
+	"EndSession\x12\x1d.ardents.v1.EndSessionRequest\x1a\x1e.ardents.v1.EndSessionResponse\x12i\n" +
 	"\x14EnrollFirstPrincipal\x12'.ardents.v1.EnrollFirstPrincipalRequest\x1a(.ardents.v1.EnrollFirstPrincipalResponse\x12Z\n" +
 	"\x0fEnrollPrincipal\x12\".ardents.v1.EnrollPrincipalRequest\x1a#.ardents.v1.EnrollPrincipalResponse\x12Q\n" +
 	"\fRevokeDevice\x12\x1f.ardents.v1.RevokeDeviceRequest\x1a .ardents.v1.RevokeDeviceResponse\x12l\n" +
@@ -1537,79 +1613,83 @@ func file_api_ardents_v1_identity_proto_rawDescGZIP() []byte {
 	return file_api_ardents_v1_identity_proto_rawDescData
 }
 
-var file_api_ardents_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
+var file_api_ardents_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
 var file_api_ardents_v1_identity_proto_goTypes = []any{
 	(*BeginAuthenticationRequest)(nil),               // 0: ardents.v1.BeginAuthenticationRequest
 	(*BeginAuthenticationResponse)(nil),              // 1: ardents.v1.BeginAuthenticationResponse
 	(*CompleteAuthenticationRequest)(nil),            // 2: ardents.v1.CompleteAuthenticationRequest
 	(*CompleteAuthenticationResponse)(nil),           // 3: ardents.v1.CompleteAuthenticationResponse
-	(*EnrollFirstPrincipalRequest)(nil),              // 4: ardents.v1.EnrollFirstPrincipalRequest
-	(*EnrollFirstPrincipalResponse)(nil),             // 5: ardents.v1.EnrollFirstPrincipalResponse
-	(*EnrollPrincipalRequest)(nil),                   // 6: ardents.v1.EnrollPrincipalRequest
-	(*EnrollPrincipalResponse)(nil),                  // 7: ardents.v1.EnrollPrincipalResponse
-	(*RevokeDeviceRequest)(nil),                      // 8: ardents.v1.RevokeDeviceRequest
-	(*RevokeDeviceResponse)(nil),                     // 9: ardents.v1.RevokeDeviceResponse
-	(*ListDeviceRevocationsRequest)(nil),             // 10: ardents.v1.ListDeviceRevocationsRequest
-	(*DeviceRevocationMetadata)(nil),                 // 11: ardents.v1.DeviceRevocationMetadata
-	(*ListDeviceRevocationsResponse)(nil),            // 12: ardents.v1.ListDeviceRevocationsResponse
-	(*AccessGrantProposal)(nil),                      // 13: ardents.v1.AccessGrantProposal
-	(*IssueAccessGrantRequest)(nil),                  // 14: ardents.v1.IssueAccessGrantRequest
-	(*IssueAccessGrantResponse)(nil),                 // 15: ardents.v1.IssueAccessGrantResponse
-	(*RevokeAccessGrantRequest)(nil),                 // 16: ardents.v1.RevokeAccessGrantRequest
-	(*RevokeAccessGrantResponse)(nil),                // 17: ardents.v1.RevokeAccessGrantResponse
-	(*ListAccessGrantsRequest)(nil),                  // 18: ardents.v1.ListAccessGrantsRequest
-	(*AccessGrantMetadata)(nil),                      // 19: ardents.v1.AccessGrantMetadata
-	(*ListAccessGrantsResponse)(nil),                 // 20: ardents.v1.ListAccessGrantsResponse
-	(*IssueApplicationEnrollmentTicketRequest)(nil),  // 21: ardents.v1.IssueApplicationEnrollmentTicketRequest
-	(*IssueApplicationEnrollmentTicketResponse)(nil), // 22: ardents.v1.IssueApplicationEnrollmentTicketResponse
-	(*ImportDelegationRevocationRequest)(nil),        // 23: ardents.v1.ImportDelegationRevocationRequest
-	(*ImportDelegationRevocationResponse)(nil),       // 24: ardents.v1.ImportDelegationRevocationResponse
-	(protocol.ChallengePurpose)(0),                   // 25: ardents.identity.v1.ChallengePurpose
-	(*protocol.ChallengeFields)(nil),                 // 26: ardents.identity.v1.ChallengeFields
-	(*timestamppb.Timestamp)(nil),                    // 27: google.protobuf.Timestamp
-	(*protocol.ResourceScope)(nil),                   // 28: ardents.identity.v1.ResourceScope
+	(*EndSessionRequest)(nil),                        // 4: ardents.v1.EndSessionRequest
+	(*EndSessionResponse)(nil),                       // 5: ardents.v1.EndSessionResponse
+	(*EnrollFirstPrincipalRequest)(nil),              // 6: ardents.v1.EnrollFirstPrincipalRequest
+	(*EnrollFirstPrincipalResponse)(nil),             // 7: ardents.v1.EnrollFirstPrincipalResponse
+	(*EnrollPrincipalRequest)(nil),                   // 8: ardents.v1.EnrollPrincipalRequest
+	(*EnrollPrincipalResponse)(nil),                  // 9: ardents.v1.EnrollPrincipalResponse
+	(*RevokeDeviceRequest)(nil),                      // 10: ardents.v1.RevokeDeviceRequest
+	(*RevokeDeviceResponse)(nil),                     // 11: ardents.v1.RevokeDeviceResponse
+	(*ListDeviceRevocationsRequest)(nil),             // 12: ardents.v1.ListDeviceRevocationsRequest
+	(*DeviceRevocationMetadata)(nil),                 // 13: ardents.v1.DeviceRevocationMetadata
+	(*ListDeviceRevocationsResponse)(nil),            // 14: ardents.v1.ListDeviceRevocationsResponse
+	(*AccessGrantProposal)(nil),                      // 15: ardents.v1.AccessGrantProposal
+	(*IssueAccessGrantRequest)(nil),                  // 16: ardents.v1.IssueAccessGrantRequest
+	(*IssueAccessGrantResponse)(nil),                 // 17: ardents.v1.IssueAccessGrantResponse
+	(*RevokeAccessGrantRequest)(nil),                 // 18: ardents.v1.RevokeAccessGrantRequest
+	(*RevokeAccessGrantResponse)(nil),                // 19: ardents.v1.RevokeAccessGrantResponse
+	(*ListAccessGrantsRequest)(nil),                  // 20: ardents.v1.ListAccessGrantsRequest
+	(*AccessGrantMetadata)(nil),                      // 21: ardents.v1.AccessGrantMetadata
+	(*ListAccessGrantsResponse)(nil),                 // 22: ardents.v1.ListAccessGrantsResponse
+	(*IssueApplicationEnrollmentTicketRequest)(nil),  // 23: ardents.v1.IssueApplicationEnrollmentTicketRequest
+	(*IssueApplicationEnrollmentTicketResponse)(nil), // 24: ardents.v1.IssueApplicationEnrollmentTicketResponse
+	(*ImportDelegationRevocationRequest)(nil),        // 25: ardents.v1.ImportDelegationRevocationRequest
+	(*ImportDelegationRevocationResponse)(nil),       // 26: ardents.v1.ImportDelegationRevocationResponse
+	(protocol.ChallengePurpose)(0),                   // 27: ardents.identity.v1.ChallengePurpose
+	(*protocol.ChallengeFields)(nil),                 // 28: ardents.identity.v1.ChallengeFields
+	(*timestamppb.Timestamp)(nil),                    // 29: google.protobuf.Timestamp
+	(*protocol.ResourceScope)(nil),                   // 30: ardents.identity.v1.ResourceScope
 }
 var file_api_ardents_v1_identity_proto_depIdxs = []int32{
-	25, // 0: ardents.v1.BeginAuthenticationRequest.purpose:type_name -> ardents.identity.v1.ChallengePurpose
-	26, // 1: ardents.v1.BeginAuthenticationResponse.challenge:type_name -> ardents.identity.v1.ChallengeFields
-	27, // 2: ardents.v1.CompleteAuthenticationResponse.expires_at:type_name -> google.protobuf.Timestamp
-	26, // 3: ardents.v1.EnrollFirstPrincipalRequest.challenge:type_name -> ardents.identity.v1.ChallengeFields
-	26, // 4: ardents.v1.EnrollPrincipalRequest.challenge:type_name -> ardents.identity.v1.ChallengeFields
-	27, // 5: ardents.v1.DeviceRevocationMetadata.revoked_at:type_name -> google.protobuf.Timestamp
-	11, // 6: ardents.v1.ListDeviceRevocationsResponse.revocations:type_name -> ardents.v1.DeviceRevocationMetadata
-	28, // 7: ardents.v1.AccessGrantProposal.scope:type_name -> ardents.identity.v1.ResourceScope
-	27, // 8: ardents.v1.AccessGrantProposal.not_before:type_name -> google.protobuf.Timestamp
-	27, // 9: ardents.v1.AccessGrantProposal.not_after:type_name -> google.protobuf.Timestamp
-	13, // 10: ardents.v1.IssueAccessGrantRequest.proposal:type_name -> ardents.v1.AccessGrantProposal
-	28, // 11: ardents.v1.AccessGrantMetadata.scope:type_name -> ardents.identity.v1.ResourceScope
-	27, // 12: ardents.v1.AccessGrantMetadata.not_before:type_name -> google.protobuf.Timestamp
-	27, // 13: ardents.v1.AccessGrantMetadata.not_after:type_name -> google.protobuf.Timestamp
-	19, // 14: ardents.v1.ListAccessGrantsResponse.grants:type_name -> ardents.v1.AccessGrantMetadata
-	27, // 15: ardents.v1.IssueApplicationEnrollmentTicketResponse.expires_at:type_name -> google.protobuf.Timestamp
+	27, // 0: ardents.v1.BeginAuthenticationRequest.purpose:type_name -> ardents.identity.v1.ChallengePurpose
+	28, // 1: ardents.v1.BeginAuthenticationResponse.challenge:type_name -> ardents.identity.v1.ChallengeFields
+	29, // 2: ardents.v1.CompleteAuthenticationResponse.expires_at:type_name -> google.protobuf.Timestamp
+	28, // 3: ardents.v1.EnrollFirstPrincipalRequest.challenge:type_name -> ardents.identity.v1.ChallengeFields
+	28, // 4: ardents.v1.EnrollPrincipalRequest.challenge:type_name -> ardents.identity.v1.ChallengeFields
+	29, // 5: ardents.v1.DeviceRevocationMetadata.revoked_at:type_name -> google.protobuf.Timestamp
+	13, // 6: ardents.v1.ListDeviceRevocationsResponse.revocations:type_name -> ardents.v1.DeviceRevocationMetadata
+	30, // 7: ardents.v1.AccessGrantProposal.scope:type_name -> ardents.identity.v1.ResourceScope
+	29, // 8: ardents.v1.AccessGrantProposal.not_before:type_name -> google.protobuf.Timestamp
+	29, // 9: ardents.v1.AccessGrantProposal.not_after:type_name -> google.protobuf.Timestamp
+	15, // 10: ardents.v1.IssueAccessGrantRequest.proposal:type_name -> ardents.v1.AccessGrantProposal
+	30, // 11: ardents.v1.AccessGrantMetadata.scope:type_name -> ardents.identity.v1.ResourceScope
+	29, // 12: ardents.v1.AccessGrantMetadata.not_before:type_name -> google.protobuf.Timestamp
+	29, // 13: ardents.v1.AccessGrantMetadata.not_after:type_name -> google.protobuf.Timestamp
+	21, // 14: ardents.v1.ListAccessGrantsResponse.grants:type_name -> ardents.v1.AccessGrantMetadata
+	29, // 15: ardents.v1.IssueApplicationEnrollmentTicketResponse.expires_at:type_name -> google.protobuf.Timestamp
 	0,  // 16: ardents.v1.IdentityService.BeginAuthentication:input_type -> ardents.v1.BeginAuthenticationRequest
 	2,  // 17: ardents.v1.IdentityService.CompleteAuthentication:input_type -> ardents.v1.CompleteAuthenticationRequest
-	4,  // 18: ardents.v1.IdentityService.EnrollFirstPrincipal:input_type -> ardents.v1.EnrollFirstPrincipalRequest
-	6,  // 19: ardents.v1.IdentityService.EnrollPrincipal:input_type -> ardents.v1.EnrollPrincipalRequest
-	8,  // 20: ardents.v1.IdentityService.RevokeDevice:input_type -> ardents.v1.RevokeDeviceRequest
-	10, // 21: ardents.v1.IdentityService.ListDeviceRevocations:input_type -> ardents.v1.ListDeviceRevocationsRequest
-	14, // 22: ardents.v1.IdentityService.IssueAccessGrant:input_type -> ardents.v1.IssueAccessGrantRequest
-	16, // 23: ardents.v1.IdentityService.RevokeAccessGrant:input_type -> ardents.v1.RevokeAccessGrantRequest
-	18, // 24: ardents.v1.IdentityService.ListAccessGrants:input_type -> ardents.v1.ListAccessGrantsRequest
-	21, // 25: ardents.v1.IdentityService.IssueApplicationEnrollmentTicket:input_type -> ardents.v1.IssueApplicationEnrollmentTicketRequest
-	23, // 26: ardents.v1.IdentityService.ImportDelegationRevocation:input_type -> ardents.v1.ImportDelegationRevocationRequest
-	1,  // 27: ardents.v1.IdentityService.BeginAuthentication:output_type -> ardents.v1.BeginAuthenticationResponse
-	3,  // 28: ardents.v1.IdentityService.CompleteAuthentication:output_type -> ardents.v1.CompleteAuthenticationResponse
-	5,  // 29: ardents.v1.IdentityService.EnrollFirstPrincipal:output_type -> ardents.v1.EnrollFirstPrincipalResponse
-	7,  // 30: ardents.v1.IdentityService.EnrollPrincipal:output_type -> ardents.v1.EnrollPrincipalResponse
-	9,  // 31: ardents.v1.IdentityService.RevokeDevice:output_type -> ardents.v1.RevokeDeviceResponse
-	12, // 32: ardents.v1.IdentityService.ListDeviceRevocations:output_type -> ardents.v1.ListDeviceRevocationsResponse
-	15, // 33: ardents.v1.IdentityService.IssueAccessGrant:output_type -> ardents.v1.IssueAccessGrantResponse
-	17, // 34: ardents.v1.IdentityService.RevokeAccessGrant:output_type -> ardents.v1.RevokeAccessGrantResponse
-	20, // 35: ardents.v1.IdentityService.ListAccessGrants:output_type -> ardents.v1.ListAccessGrantsResponse
-	22, // 36: ardents.v1.IdentityService.IssueApplicationEnrollmentTicket:output_type -> ardents.v1.IssueApplicationEnrollmentTicketResponse
-	24, // 37: ardents.v1.IdentityService.ImportDelegationRevocation:output_type -> ardents.v1.ImportDelegationRevocationResponse
-	27, // [27:38] is the sub-list for method output_type
-	16, // [16:27] is the sub-list for method input_type
+	4,  // 18: ardents.v1.IdentityService.EndSession:input_type -> ardents.v1.EndSessionRequest
+	6,  // 19: ardents.v1.IdentityService.EnrollFirstPrincipal:input_type -> ardents.v1.EnrollFirstPrincipalRequest
+	8,  // 20: ardents.v1.IdentityService.EnrollPrincipal:input_type -> ardents.v1.EnrollPrincipalRequest
+	10, // 21: ardents.v1.IdentityService.RevokeDevice:input_type -> ardents.v1.RevokeDeviceRequest
+	12, // 22: ardents.v1.IdentityService.ListDeviceRevocations:input_type -> ardents.v1.ListDeviceRevocationsRequest
+	16, // 23: ardents.v1.IdentityService.IssueAccessGrant:input_type -> ardents.v1.IssueAccessGrantRequest
+	18, // 24: ardents.v1.IdentityService.RevokeAccessGrant:input_type -> ardents.v1.RevokeAccessGrantRequest
+	20, // 25: ardents.v1.IdentityService.ListAccessGrants:input_type -> ardents.v1.ListAccessGrantsRequest
+	23, // 26: ardents.v1.IdentityService.IssueApplicationEnrollmentTicket:input_type -> ardents.v1.IssueApplicationEnrollmentTicketRequest
+	25, // 27: ardents.v1.IdentityService.ImportDelegationRevocation:input_type -> ardents.v1.ImportDelegationRevocationRequest
+	1,  // 28: ardents.v1.IdentityService.BeginAuthentication:output_type -> ardents.v1.BeginAuthenticationResponse
+	3,  // 29: ardents.v1.IdentityService.CompleteAuthentication:output_type -> ardents.v1.CompleteAuthenticationResponse
+	5,  // 30: ardents.v1.IdentityService.EndSession:output_type -> ardents.v1.EndSessionResponse
+	7,  // 31: ardents.v1.IdentityService.EnrollFirstPrincipal:output_type -> ardents.v1.EnrollFirstPrincipalResponse
+	9,  // 32: ardents.v1.IdentityService.EnrollPrincipal:output_type -> ardents.v1.EnrollPrincipalResponse
+	11, // 33: ardents.v1.IdentityService.RevokeDevice:output_type -> ardents.v1.RevokeDeviceResponse
+	14, // 34: ardents.v1.IdentityService.ListDeviceRevocations:output_type -> ardents.v1.ListDeviceRevocationsResponse
+	17, // 35: ardents.v1.IdentityService.IssueAccessGrant:output_type -> ardents.v1.IssueAccessGrantResponse
+	19, // 36: ardents.v1.IdentityService.RevokeAccessGrant:output_type -> ardents.v1.RevokeAccessGrantResponse
+	22, // 37: ardents.v1.IdentityService.ListAccessGrants:output_type -> ardents.v1.ListAccessGrantsResponse
+	24, // 38: ardents.v1.IdentityService.IssueApplicationEnrollmentTicket:output_type -> ardents.v1.IssueApplicationEnrollmentTicketResponse
+	26, // 39: ardents.v1.IdentityService.ImportDelegationRevocation:output_type -> ardents.v1.ImportDelegationRevocationResponse
+	28, // [28:40] is the sub-list for method output_type
+	16, // [16:28] is the sub-list for method input_type
 	16, // [16:16] is the sub-list for extension type_name
 	16, // [16:16] is the sub-list for extension extendee
 	0,  // [0:16] is the sub-list for field type_name
@@ -1626,7 +1706,7 @@ func file_api_ardents_v1_identity_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_ardents_v1_identity_proto_rawDesc), len(file_api_ardents_v1_identity_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   25,
+			NumMessages:   27,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

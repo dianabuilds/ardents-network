@@ -169,6 +169,19 @@ func (s *sessionStore) get(now time.Time, secret SessionSecret) (Session, bool) 
 	return entry.session, ok
 }
 
+func (s *sessionStore) remove(now time.Time, secret SessionSecret, binding AuthenticationBinding) (Session, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.cleanupLocked(now)
+	lookup := s.lookup(secret)
+	entry, ok := s.items[lookup]
+	if !ok || entry.session.Binding != binding {
+		return Session{}, false
+	}
+	s.deleteLocked(lookup, entry)
+	return entry.session, true
+}
+
 func (s *sessionStore) invalidateDevice(deviceID string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

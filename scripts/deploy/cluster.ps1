@@ -19,6 +19,18 @@ $composeFile = Join-Path $root "deploy/docker/compose/docker-compose.multinode.y
 $manifestPath = Join-Path $statePath "cluster.json"
 $services = @("seed", "peer2", "peer3")
 $composePrefix = @("compose", "-p", $Project, "-f", $composeFile)
+$operatorRoot = "/operator-identity/root.json"
+$operatorDevice = "/operator-identity/device.json"
+$operationalActions = @(
+    "node.status",
+    "node.runtime",
+    "transport.network_status",
+    "discovery.list_records",
+    "workload.list",
+    "data.inventory"
+)
+$nodePrincipals = @{}
+$operatorPrincipal = ""
 
 function Invoke-Compose([string[]]$Arguments) {
     & docker @composePrefix @Arguments
@@ -27,32 +39,52 @@ function Invoke-Compose([string[]]$Arguments) {
     }
 }
 
-function New-RandomToken {
-    $bytes = [byte[]]::new(32)
-    $rng = [Security.Cryptography.RandomNumberGenerator]::Create()
-    try { $rng.GetBytes($bytes) } finally { $rng.Dispose() }
-    return [Convert]::ToBase64String($bytes)
+function Invoke-OperatorTool([string]$Service, [string[]]$Arguments, [switch]$AllowFailure) {
+    $raw = & docker @composePrefix --profile tools run --rm --no-deps "$Service-operator" @Arguments
+    if ($LASTEXITCODE -ne 0 -and -not $AllowFailure) {
+        throw "Principal-authenticated ardentsctl command failed for $Service"
+    }
+    return [ordered]@{ ExitCode = $LASTEXITCODE; Output = (($raw -join "`n").Trim()) }
 }
 
-function Ensure-PrivateToken([string]$Path) {
-    if (Test-Path -LiteralPath $Path) { return }
-    [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($Path)) | Out-Null
-    [IO.File]::WriteAllText($Path, (New-RandomToken) + "`n", [Text.UTF8Encoding]::new($false))
+function Test-OperatorFile([string]$Path) {
+    & docker @composePrefix --profile tools run --rm --no-deps --entrypoint /bin/sh seed-operator -ec "test -f '$Path'"
+    return $LASTEXITCODE -eq 0
+}
+
+function Ensure-OperatorIdentity {
+    & docker @composePrefix --profile tools run --rm --no-deps --entrypoint /bin/sh seed-operator -ec "chmod 0700 /operator-identity"
+    if ($LASTEXITCODE -ne 0) { throw "cannot protect the Operator identity volume" }
+    if (-not (Test-OperatorFile $operatorRoot)) {
+        $null = Invoke-OperatorTool "seed" @("--output", "json", "identity", "principal", "create", "--signer-file", $operatorRoot)
+    }
+    if (-not (Test-OperatorFile $operatorDevice)) {
+        $null = Invoke-OperatorTool "seed" @("--output", "json", "identity", "device", "create", "--root-signer-file", $operatorRoot, "--signer-file", $operatorDevice)
+    }
+    $shown = Invoke-OperatorTool "seed" @("--output", "json", "identity", "principal", "show", "--signer-file", $operatorRoot)
+    $identity = $shown.Output | ConvertFrom-Json
+    if ([string]::IsNullOrWhiteSpace([string]$identity.principal)) {
+        throw "operator Principal identity is unavailable"
+    }
+    return [string]$identity.principal
+}
+
+function Invoke-PrincipalJson([string]$Service, [string]$NodePrincipal, [string[]]$Arguments) {
+    if ([string]::IsNullOrWhiteSpace($NodePrincipal)) {
+        throw "node Principal is required for $Service"
+    }
+    $result = Invoke-OperatorTool $Service (@(
+        "--output", "json",
+        "--signer-file", $operatorDevice,
+        "--principal", $NodePrincipal
+    ) + $Arguments)
+    if ([string]::IsNullOrWhiteSpace($result.Output)) { return $null }
+    return ($result.Output | ConvertFrom-Json)
 }
 
 function Set-DeploymentEnvironment([string]$Bootstrap = "pending") {
-    $secretDir = Join-Path $statePath "secrets"
-    $env:ARDENTS_SEED_API_TOKEN_FILE = Join-Path $secretDir "seed.token"
-    $env:ARDENTS_PEER2_API_TOKEN_FILE = Join-Path $secretDir "peer2.token"
-    $env:ARDENTS_PEER3_API_TOKEN_FILE = Join-Path $secretDir "peer3.token"
     $env:ARDENTS_DOCKER_IMAGE = $Image
     $env:ARDENTS_BOOTSTRAP_PEER = $Bootstrap
-}
-
-function Ensure-LocalSecrets {
-    foreach ($service in $services) {
-        Ensure-PrivateToken (Join-Path $statePath "secrets/$service.token")
-    }
 }
 
 function Assert-NodesStopped {
@@ -76,13 +108,21 @@ function Invoke-ProvisionNode([string]$Service, [int]$Port, [string]$Bootstrap =
         "-transport-port", "$Port"
     )
     if ($Bootstrap) { $arguments += @("-bootstrap-peer", $Bootstrap) }
-    Invoke-Compose $arguments
+    $raw = & docker @composePrefix @arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "node provisioning failed for $Service"
+    }
+    $text = ($raw -join "`n").Trim()
+    $match = [regex]::Match($text, "(?:^|\s)principal=(p1_[A-Za-z0-9_-]+)(?:\s|$)")
+    if (-not $match.Success) {
+        throw "node provisioning did not report a canonical Principal for $Service"
+    }
+    Write-Host "Provisioned $Service as $($match.Groups[1].Value)."
+    return $match.Groups[1].Value
 }
 
 function Invoke-ArdJson([string]$Service, [string[]]$Arguments) {
-    $raw = & docker @composePrefix exec -T $Service ardentsctl --token-file /run/ardents/api-token --output json @Arguments
-    if ($LASTEXITCODE -ne 0) { throw "ardentsctl command failed for $Service" }
-    return (($raw -join "`n") | ConvertFrom-Json)
+    return Invoke-PrincipalJson $Service ([string]$nodePrincipals[$Service]) $Arguments
 }
 
 function Wait-Condition([string]$Description, [scriptblock]$Condition) {
@@ -92,16 +132,59 @@ function Wait-Condition([string]$Description, [scriptblock]$Condition) {
         try {
             if (& $Condition) { return }
         } catch { $lastError = $_.Exception.Message }
-        Start-Sleep -Seconds 2
+        # Each disposable helper authenticates once. Keep retries below the
+        # documented 10 authentication challenges/minute source limit.
+        Start-Sleep -Seconds 7
     }
     throw "timed out waiting for $Description; $lastError"
 }
 
-function Wait-API([string]$Service) {
-    Wait-Condition "$Service local API" {
-        $null = Invoke-ArdJson $Service @("node", "status")
-        return $true
+function Test-NodeRuntimePath([string]$Service, [string]$Test, [string]$Path) {
+    & docker @composePrefix --profile tools run --rm --no-deps --entrypoint /bin/sh "$Service-operator" -ec "test $Test '$Path'"
+    return $LASTEXITCODE -eq 0
+}
+
+function Test-ServiceHealthy([string]$Service) {
+    $container = ((& docker @composePrefix ps -q $Service) -join "").Trim()
+    if ([string]::IsNullOrWhiteSpace($container)) { return $false }
+    $health = ((& docker inspect --format "{{.State.Health.Status}}" $container) -join "").Trim()
+    return $LASTEXITCODE -eq 0 -and $health -eq "healthy"
+}
+
+function Ensure-NodeOperator([string]$Service) {
+    Wait-Condition "$Service healthy process and protected Operator socket" {
+        return (Test-ServiceHealthy $Service) -and
+            (Test-NodeRuntimePath $Service "-S" "/run/ardents/control.sock")
     }
+    $ticket = "/run/ardents/operator-bootstrap-ticket"
+    if (-not (Test-NodeRuntimePath $Service "-f" $ticket)) {
+        $null = Invoke-ArdJson $Service @("node", "status")
+        return
+    }
+    $enrollment = Invoke-OperatorTool $Service @(
+        "--output", "json",
+        "--signer-file", $operatorDevice,
+        "--principal", [string]$nodePrincipals[$Service],
+        "identity", "enroll",
+        "--root-signer-file", $operatorRoot,
+        "--device-signer-file", $operatorDevice,
+        "--bootstrap-ticket-file", $ticket
+    )
+    $enrolled = $enrollment.Output | ConvertFrom-Json
+    if ([string]$enrolled.principal -ne $operatorPrincipal) {
+        throw "unexpected enrolled Principal on $Service"
+    }
+    $grantArgs = @(
+        "identity", "grant", "issue",
+        "--subject", $operatorPrincipal,
+        "--scope", "node",
+        "--request-id", "local-deployment-$Service-operational-v1",
+        "--yes"
+    )
+    foreach ($action in $operationalActions) {
+        $grantArgs += @("--action", $action)
+    }
+    $null = Invoke-PrincipalJson $Service ([string]$nodePrincipals[$Service]) $grantArgs
 }
 
 function Wait-NetworkJoined([string]$Service) {
@@ -130,10 +213,10 @@ function Wait-SeedReady {
 function Get-SeedEndpoint {
     $response = Invoke-ArdJson "seed" @("network", "records", "list")
     $record = $response.records |
-        Where-Object { $_.kind -eq "node" -and $_.endpoints.Count -gt 0 } |
+        Where-Object { $null -ne $_.nodeFacts -and $_.nodeFacts.endpoints.Count -gt 0 } |
         Select-Object -First 1
     if ($null -eq $record) { throw "seed has no published node record" }
-    $endpoint = $record.endpoints |
+    $endpoint = $record.nodeFacts.endpoints |
         Where-Object {
             ($_ -match "/tcp/61001/.*/p2p/" -or $_ -match "/tcp/61001/p2p/") -and
             $_ -notmatch "^/ip4/127\." -and $_ -notmatch "^/ip6/(::1|0*:0*:0*:0*:0*:0*:0*:1)/"
@@ -152,12 +235,32 @@ function Read-Manifest {
     return (Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json)
 }
 
+function Import-ManifestIdentities($Manifest) {
+    $script:operatorPrincipal = [string]$Manifest.operator_principal
+    if ([string]::IsNullOrWhiteSpace($script:operatorPrincipal) -or $null -eq $Manifest.node_principals) {
+        throw "cluster manifest has no Principal identity bindings"
+    }
+    foreach ($service in $services) {
+        $property = $Manifest.node_principals.PSObject.Properties[$service]
+        if ($null -eq $property -or [string]::IsNullOrWhiteSpace([string]$property.Value)) {
+            throw "cluster manifest has no node Principal for $service"
+        }
+        $script:nodePrincipals[$service] = [string]$property.Value
+    }
+}
+
 function Write-Manifest([string]$Bootstrap) {
     $manifest = [ordered]@{
         schema = "ardents.deployment/v1"
         project = $Project
         image = $Image
         bootstrap_endpoint = $Bootstrap
+        operator_principal = $operatorPrincipal
+        node_principals = [ordered]@{
+            seed = [string]$nodePrincipals.seed
+            peer2 = [string]$nodePrincipals.peer2
+            peer3 = [string]$nodePrincipals.peer3
+        }
         services = $services
         updated_at = [DateTime]::UtcNow.ToString("O")
     }
@@ -166,9 +269,10 @@ function Write-Manifest([string]$Bootstrap) {
 }
 
 function Start-CleanCluster {
-    Ensure-LocalSecrets
     Set-DeploymentEnvironment
     Assert-NodesStopped
+    if ($Build) { Invoke-Compose @("build", "realm-provisioner") }
+    $script:operatorPrincipal = Ensure-OperatorIdentity
     try {
         Start-ClusterComponents
     } catch {
@@ -183,26 +287,32 @@ function Start-CleanCluster {
 }
 
 function Start-ClusterComponents {
-    if ($Build) { Invoke-Compose @("build", "realm-provisioner") }
-    Invoke-ProvisionNode "seed" 61001
-    Invoke-ProvisionNode "peer2" 61002
-    Invoke-ProvisionNode "peer3" 61003
+    $script:nodePrincipals.seed = Invoke-ProvisionNode "seed" 61001
+    $script:nodePrincipals.peer2 = Invoke-ProvisionNode "peer2" 61002
+    $script:nodePrincipals.peer3 = Invoke-ProvisionNode "peer3" 61003
     # Re-open earlier stopped stores after all realm members exist so every
     # receiver retains the signed sender grants of every other member.
-    Invoke-ProvisionNode "seed" 61001
-    Invoke-ProvisionNode "peer2" 61002
+    $seedPrincipal = Invoke-ProvisionNode "seed" 61001
+    $peer2Principal = Invoke-ProvisionNode "peer2" 61002
+    if ($seedPrincipal -ne $nodePrincipals.seed -or $peer2Principal -ne $nodePrincipals.peer2) {
+        throw "node Principal changed during idempotent realm provisioning"
+    }
     $up = @("up", "-d")
     Invoke-Compose ($up + "seed")
-    Wait-API "seed"
+    Ensure-NodeOperator "seed"
     Wait-SeedReady
     Wait-ProductReady "seed"
     $bootstrap = Get-SeedEndpoint
     Set-DeploymentEnvironment $bootstrap
-    Invoke-ProvisionNode "peer2" 61002 $bootstrap
-    Invoke-ProvisionNode "peer3" 61003 $bootstrap
+    $peer2Principal = Invoke-ProvisionNode "peer2" 61002 $bootstrap
+    $peer3Principal = Invoke-ProvisionNode "peer3" 61003 $bootstrap
+    if ($peer2Principal -ne $nodePrincipals.peer2 -or $peer3Principal -ne $nodePrincipals.peer3) {
+        throw "node Principal changed while applying the bootstrap endpoint"
+    }
     Write-Manifest $bootstrap
     Invoke-Compose ($up + @("peer2", "peer3"))
     foreach ($service in @("peer2", "peer3")) {
+        Ensure-NodeOperator $service
         Wait-NetworkJoined $service
         Wait-ProductReady $service
     }
@@ -211,6 +321,7 @@ function Start-ClusterComponents {
 
 function Show-Status {
     $manifest = Read-Manifest
+    Import-ManifestIdentities $manifest
     Set-DeploymentEnvironment $manifest.bootstrap_endpoint
     $items = foreach ($service in $services) {
         try {
@@ -240,6 +351,7 @@ switch ($Action) {
     "status" { Show-Status }
     "start" {
         $manifest = Read-Manifest
+        Import-ManifestIdentities $manifest
         Set-DeploymentEnvironment $manifest.bootstrap_endpoint
         Invoke-Compose @("start")
         Wait-SeedReady
@@ -251,15 +363,17 @@ switch ($Action) {
     }
     "stop" {
         $manifest = Read-Manifest
+        Import-ManifestIdentities $manifest
         Set-DeploymentEnvironment $manifest.bootstrap_endpoint
         Invoke-Compose @("stop")
     }
     "down" {
         $manifest = Read-Manifest
+        Import-ManifestIdentities $manifest
         Set-DeploymentEnvironment $manifest.bootstrap_endpoint
         $down = @("down", "--remove-orphans")
         if ($RemoveVolumes) {
-            $down = @("--profile", "provisioning") + $down + "--volumes"
+            $down = @("--profile", "provisioning", "--profile", "tools") + $down + "--volumes"
         }
         Invoke-Compose $down
         if ($RemoveVolumes) {

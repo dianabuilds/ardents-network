@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/ed25519"
+	"encoding/base64"
 	"testing"
 	"time"
 
@@ -88,6 +89,21 @@ func TestApplicationCompleteIssuesApplicationBoundSession(t *testing.T) {
 	require.Empty(t, complete.Msg.EnrollmentProof)
 	require.NotEmpty(t, complete.Msg.SessionId)
 	require.True(t, now.Before(complete.Msg.ExpiresAt.AsTime()))
+
+	end := connect.NewRequest(&applicationv1.EndSessionRequest{})
+	end.Header().Set("Authorization", applicationSessionScheme+" "+base64.RawURLEncoding.EncodeToString(complete.Msg.SessionSecret))
+	_, err = handler.EndSession(context.Background(), end)
+	require.NoError(t, err)
+	var secret identityaccess.SessionSecret
+	copy(secret[:], complete.Msg.SessionSecret)
+	binding, _ := handler.binding(context.Background())
+	_, err = service.AuthenticateSession(context.Background(), secret, binding)
+	require.ErrorIs(t, err, identityaccess.ErrUnauthenticated)
+
+	crossSurface := connect.NewRequest(&applicationv1.EndSessionRequest{})
+	crossSurface.Header().Set("Authorization", "ArdentsOperatorSession "+base64.RawURLEncoding.EncodeToString(complete.Msg.SessionSecret))
+	_, err = handler.EndSession(context.Background(), crossSurface)
+	require.Equal(t, connect.CodeUnauthenticated, connect.CodeOf(err))
 }
 
 func TestApplicationTransportContextOverridesFallbackAndCannotBecomeOperator(t *testing.T) {

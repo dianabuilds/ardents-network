@@ -263,6 +263,78 @@ func (x *CompleteAuthenticationResponse) GetExpiresAt() *timestamppb.Timestamp {
 	return nil
 }
 
+type EndSessionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EndSessionRequest) Reset() {
+	*x = EndSessionRequest{}
+	mi := &file_api_ardents_application_v1_identity_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EndSessionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EndSessionRequest) ProtoMessage() {}
+
+func (x *EndSessionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_application_v1_identity_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EndSessionRequest.ProtoReflect.Descriptor instead.
+func (*EndSessionRequest) Descriptor() ([]byte, []int) {
+	return file_api_ardents_application_v1_identity_proto_rawDescGZIP(), []int{4}
+}
+
+type EndSessionResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EndSessionResponse) Reset() {
+	*x = EndSessionResponse{}
+	mi := &file_api_ardents_application_v1_identity_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EndSessionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EndSessionResponse) ProtoMessage() {}
+
+func (x *EndSessionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_application_v1_identity_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EndSessionResponse.ProtoReflect.Descriptor instead.
+func (*EndSessionResponse) Descriptor() ([]byte, []int) {
+	return file_api_ardents_application_v1_identity_proto_rawDescGZIP(), []int{5}
+}
+
 type EnrollApplicationRequest struct {
 	state                       protoimpl.MessageState    `protogen:"open.v1"`
 	ApplicationEnrollmentTicket []byte                    `protobuf:"bytes,1,opt,name=application_enrollment_ticket,json=applicationEnrollmentTicket,proto3" json:"application_enrollment_ticket,omitempty"`
@@ -276,7 +348,7 @@ type EnrollApplicationRequest struct {
 
 func (x *EnrollApplicationRequest) Reset() {
 	*x = EnrollApplicationRequest{}
-	mi := &file_api_ardents_application_v1_identity_proto_msgTypes[4]
+	mi := &file_api_ardents_application_v1_identity_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -288,7 +360,7 @@ func (x *EnrollApplicationRequest) String() string {
 func (*EnrollApplicationRequest) ProtoMessage() {}
 
 func (x *EnrollApplicationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_application_v1_identity_proto_msgTypes[4]
+	mi := &file_api_ardents_application_v1_identity_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -301,7 +373,7 @@ func (x *EnrollApplicationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnrollApplicationRequest.ProtoReflect.Descriptor instead.
 func (*EnrollApplicationRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_application_v1_identity_proto_rawDescGZIP(), []int{4}
+	return file_api_ardents_application_v1_identity_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *EnrollApplicationRequest) GetApplicationEnrollmentTicket() []byte {
@@ -351,7 +423,7 @@ type EnrollApplicationResponse struct {
 
 func (x *EnrollApplicationResponse) Reset() {
 	*x = EnrollApplicationResponse{}
-	mi := &file_api_ardents_application_v1_identity_proto_msgTypes[5]
+	mi := &file_api_ardents_application_v1_identity_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -363,7 +435,7 @@ func (x *EnrollApplicationResponse) String() string {
 func (*EnrollApplicationResponse) ProtoMessage() {}
 
 func (x *EnrollApplicationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_application_v1_identity_proto_msgTypes[5]
+	mi := &file_api_ardents_application_v1_identity_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -376,7 +448,7 @@ func (x *EnrollApplicationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnrollApplicationResponse.ProtoReflect.Descriptor instead.
 func (*EnrollApplicationResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_application_v1_identity_proto_rawDescGZIP(), []int{5}
+	return file_api_ardents_application_v1_identity_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *EnrollApplicationResponse) GetPrincipalId() string {
@@ -431,7 +503,9 @@ const file_api_ardents_application_v1_identity_proto_rawDesc = "" +
 	"\n" +
 	"session_id\x18\x03 \x01(\tR\tsessionId\x129\n" +
 	"\n" +
-	"expires_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"\x95\x02\n" +
+	"expires_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"\x13\n" +
+	"\x11EndSessionRequest\"\x14\n" +
+	"\x12EndSessionResponse\"\x95\x02\n" +
 	"\x18EnrollApplicationRequest\x12B\n" +
 	"\x1dapplication_enrollment_ticket\x18\x01 \x01(\fR\x1bapplicationEnrollmentTicket\x12B\n" +
 	"\tchallenge\x18\x02 \x01(\v2$.ardents.identity.v1.ChallengeFieldsR\tchallenge\x12)\n" +
@@ -444,10 +518,12 @@ const file_api_ardents_application_v1_identity_proto_rawDesc = "" +
 	"\fprincipal_id\x18\x01 \x01(\tR\vprincipalId\x12#\n" +
 	"\rcredential_id\x18\x02 \x01(\tR\fcredentialId\x12\x19\n" +
 	"\bgrant_id\x18\x03 \x01(\tR\agrantId\x12D\n" +
-	"\x10grant_expires_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x0egrantExpiresAt2\x95\x03\n" +
+	"\x10grant_expires_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x0egrantExpiresAt2\xfa\x03\n" +
 	"\x0fIdentityService\x12~\n" +
 	"\x13BeginAuthentication\x122.ardents.application.v1.BeginAuthenticationRequest\x1a3.ardents.application.v1.BeginAuthenticationResponse\x12\x87\x01\n" +
-	"\x16CompleteAuthentication\x125.ardents.application.v1.CompleteAuthenticationRequest\x1a6.ardents.application.v1.CompleteAuthenticationResponse\x12x\n" +
+	"\x16CompleteAuthentication\x125.ardents.application.v1.CompleteAuthenticationRequest\x1a6.ardents.application.v1.CompleteAuthenticationResponse\x12c\n" +
+	"\n" +
+	"EndSession\x12).ardents.application.v1.EndSessionRequest\x1a*.ardents.application.v1.EndSessionResponse\x12x\n" +
 	"\x11EnrollApplication\x120.ardents.application.v1.EnrollApplicationRequest\x1a1.ardents.application.v1.EnrollApplicationResponseB5Z3ardents/sdk/go/protocol/applicationv1;applicationv1b\x06proto3"
 
 var (
@@ -462,35 +538,39 @@ func file_api_ardents_application_v1_identity_proto_rawDescGZIP() []byte {
 	return file_api_ardents_application_v1_identity_proto_rawDescData
 }
 
-var file_api_ardents_application_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_api_ardents_application_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_api_ardents_application_v1_identity_proto_goTypes = []any{
 	(*BeginAuthenticationRequest)(nil),     // 0: ardents.application.v1.BeginAuthenticationRequest
 	(*BeginAuthenticationResponse)(nil),    // 1: ardents.application.v1.BeginAuthenticationResponse
 	(*CompleteAuthenticationRequest)(nil),  // 2: ardents.application.v1.CompleteAuthenticationRequest
 	(*CompleteAuthenticationResponse)(nil), // 3: ardents.application.v1.CompleteAuthenticationResponse
-	(*EnrollApplicationRequest)(nil),       // 4: ardents.application.v1.EnrollApplicationRequest
-	(*EnrollApplicationResponse)(nil),      // 5: ardents.application.v1.EnrollApplicationResponse
-	(protocol.ChallengePurpose)(0),         // 6: ardents.identity.v1.ChallengePurpose
-	(*protocol.ChallengeFields)(nil),       // 7: ardents.identity.v1.ChallengeFields
-	(*timestamppb.Timestamp)(nil),          // 8: google.protobuf.Timestamp
+	(*EndSessionRequest)(nil),              // 4: ardents.application.v1.EndSessionRequest
+	(*EndSessionResponse)(nil),             // 5: ardents.application.v1.EndSessionResponse
+	(*EnrollApplicationRequest)(nil),       // 6: ardents.application.v1.EnrollApplicationRequest
+	(*EnrollApplicationResponse)(nil),      // 7: ardents.application.v1.EnrollApplicationResponse
+	(protocol.ChallengePurpose)(0),         // 8: ardents.identity.v1.ChallengePurpose
+	(*protocol.ChallengeFields)(nil),       // 9: ardents.identity.v1.ChallengeFields
+	(*timestamppb.Timestamp)(nil),          // 10: google.protobuf.Timestamp
 }
 var file_api_ardents_application_v1_identity_proto_depIdxs = []int32{
-	6, // 0: ardents.application.v1.BeginAuthenticationRequest.purpose:type_name -> ardents.identity.v1.ChallengePurpose
-	7, // 1: ardents.application.v1.BeginAuthenticationResponse.challenge:type_name -> ardents.identity.v1.ChallengeFields
-	8, // 2: ardents.application.v1.CompleteAuthenticationResponse.expires_at:type_name -> google.protobuf.Timestamp
-	7, // 3: ardents.application.v1.EnrollApplicationRequest.challenge:type_name -> ardents.identity.v1.ChallengeFields
-	8, // 4: ardents.application.v1.EnrollApplicationResponse.grant_expires_at:type_name -> google.protobuf.Timestamp
-	0, // 5: ardents.application.v1.IdentityService.BeginAuthentication:input_type -> ardents.application.v1.BeginAuthenticationRequest
-	2, // 6: ardents.application.v1.IdentityService.CompleteAuthentication:input_type -> ardents.application.v1.CompleteAuthenticationRequest
-	4, // 7: ardents.application.v1.IdentityService.EnrollApplication:input_type -> ardents.application.v1.EnrollApplicationRequest
-	1, // 8: ardents.application.v1.IdentityService.BeginAuthentication:output_type -> ardents.application.v1.BeginAuthenticationResponse
-	3, // 9: ardents.application.v1.IdentityService.CompleteAuthentication:output_type -> ardents.application.v1.CompleteAuthenticationResponse
-	5, // 10: ardents.application.v1.IdentityService.EnrollApplication:output_type -> ardents.application.v1.EnrollApplicationResponse
-	8, // [8:11] is the sub-list for method output_type
-	5, // [5:8] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	8,  // 0: ardents.application.v1.BeginAuthenticationRequest.purpose:type_name -> ardents.identity.v1.ChallengePurpose
+	9,  // 1: ardents.application.v1.BeginAuthenticationResponse.challenge:type_name -> ardents.identity.v1.ChallengeFields
+	10, // 2: ardents.application.v1.CompleteAuthenticationResponse.expires_at:type_name -> google.protobuf.Timestamp
+	9,  // 3: ardents.application.v1.EnrollApplicationRequest.challenge:type_name -> ardents.identity.v1.ChallengeFields
+	10, // 4: ardents.application.v1.EnrollApplicationResponse.grant_expires_at:type_name -> google.protobuf.Timestamp
+	0,  // 5: ardents.application.v1.IdentityService.BeginAuthentication:input_type -> ardents.application.v1.BeginAuthenticationRequest
+	2,  // 6: ardents.application.v1.IdentityService.CompleteAuthentication:input_type -> ardents.application.v1.CompleteAuthenticationRequest
+	4,  // 7: ardents.application.v1.IdentityService.EndSession:input_type -> ardents.application.v1.EndSessionRequest
+	6,  // 8: ardents.application.v1.IdentityService.EnrollApplication:input_type -> ardents.application.v1.EnrollApplicationRequest
+	1,  // 9: ardents.application.v1.IdentityService.BeginAuthentication:output_type -> ardents.application.v1.BeginAuthenticationResponse
+	3,  // 10: ardents.application.v1.IdentityService.CompleteAuthentication:output_type -> ardents.application.v1.CompleteAuthenticationResponse
+	5,  // 11: ardents.application.v1.IdentityService.EndSession:output_type -> ardents.application.v1.EndSessionResponse
+	7,  // 12: ardents.application.v1.IdentityService.EnrollApplication:output_type -> ardents.application.v1.EnrollApplicationResponse
+	9,  // [9:13] is the sub-list for method output_type
+	5,  // [5:9] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_api_ardents_application_v1_identity_proto_init() }
@@ -504,7 +584,7 @@ func file_api_ardents_application_v1_identity_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_ardents_application_v1_identity_proto_rawDesc), len(file_api_ardents_application_v1_identity_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

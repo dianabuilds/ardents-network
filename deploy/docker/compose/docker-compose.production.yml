@@ -4,7 +4,7 @@ x-production-node: &production_node
   command:
     - |
       install -d -m 0700 /run/ardents
-      install -m 0600 /run/secrets/ardents-api-token /run/ardents/api-token
+      install -d -m 0750 /var/lib/ardents-applications
       install -m 0600 /run/secrets/channel-grant-store-key /run/ardents/channel-grant-store.key
       install -m 0600 /run/secrets/replay-key /run/ardents/replay.key
       install -d -m 0700 /run/ardents/docker-tls
@@ -14,13 +14,12 @@ x-production-node: &production_node
       exec /usr/local/bin/ardentsd
   environment:
     ARDENTS_CONFIG_FILE: /run/config/ardents.json
-    ARDENTS_API_TOKEN_FILE: /run/ardents/api-token
     ARDENTS_WORKLOAD_EXECUTOR: docker
     DOCKER_HOST: ${ARDENTS_DOCKER_HOST:?TLS Docker workload endpoint is required}
     DOCKER_TLS_VERIFY: "1"
     DOCKER_CERT_PATH: /run/ardents/docker-tls
   healthcheck:
-    test: ["CMD", "ardentsctl", "--token-file", "/run/ardents/api-token", "node", "status"]
+    test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:9090/readyz"]
     interval: 10s
     timeout: 3s
     retries: 12
@@ -44,9 +43,6 @@ services:
       - source: seed_config
         target: /run/config/ardents.json
     secrets:
-      - source: seed_api_token
-        target: ardents-api-token
-        mode: 0400
       - source: seed_channel_grant_store_key
         target: channel-grant-store-key
         mode: 0400
@@ -64,6 +60,8 @@ services:
         mode: 0400
     volumes:
       - seed_data:/var/lib/ardents
+      - seed_runtime:/run/ardents
+      - seed_application_runtime:/var/lib/ardents-applications
     ports:
       - "${ARDENTS_SEED_TRANSPORT_PORT:-61001}:61001"
 
@@ -76,9 +74,6 @@ services:
       - source: peer_config
         target: /run/config/ardents.json
     secrets:
-      - source: peer_api_token
-        target: ardents-api-token
-        mode: 0400
       - source: peer_channel_grant_store_key
         target: channel-grant-store-key
         mode: 0400
@@ -96,6 +91,8 @@ services:
         mode: 0400
     volumes:
       - peer_data:/var/lib/ardents
+      - peer_runtime:/run/ardents
+      - peer_application_runtime:/var/lib/ardents-applications
     ports:
       - "${ARDENTS_PEER_TRANSPORT_PORT:-61002}:61002"
 
@@ -105,13 +102,13 @@ networks:
 
 volumes:
   seed_data:
+  seed_runtime:
+  seed_application_runtime:
   peer_data:
+  peer_runtime:
+  peer_application_runtime:
 
 secrets:
-  seed_api_token:
-    file: ${ARDENTS_SEED_API_TOKEN_FILE:?seed API token file is required}
-  peer_api_token:
-    file: ${ARDENTS_PEER_API_TOKEN_FILE:?peer API token file is required}
   seed_channel_grant_store_key:
     file: ${ARDENTS_SEED_CHANNEL_GRANT_STORE_KEY_FILE:?seed channel-grant-store key file is required}
   seed_replay_key:

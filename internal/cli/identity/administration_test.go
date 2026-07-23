@@ -60,6 +60,9 @@ func (f *fakeIdentityClient) CompleteAuthentication(_ context.Context, request *
 	}
 	return connect.NewResponse(f.complete(request.Msg)), nil
 }
+func (*fakeIdentityClient) EndSession(context.Context, *connect.Request[protocol.EndSessionRequest]) (*connect.Response[protocol.EndSessionResponse], error) {
+	return connect.NewResponse(&protocol.EndSessionResponse{}), nil
+}
 func (f *fakeIdentityClient) EnrollFirstPrincipal(_ context.Context, request *connect.Request[protocol.EnrollFirstPrincipalRequest]) (*connect.Response[protocol.EnrollFirstPrincipalResponse], error) {
 	if f.enrollFirst == nil {
 		return nil, errors.New("unexpected EnrollFirstPrincipal")

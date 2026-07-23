@@ -87,6 +87,17 @@ func (h *Handler) CompleteAuthentication(ctx context.Context, request *connect.R
 	return connect.NewResponse(response), nil
 }
 
+func (h *Handler) EndSession(ctx context.Context, _ *connect.Request[protocol.EndSessionRequest]) (*connect.Response[protocol.EndSessionResponse], error) {
+	attempt, ok := attemptFromContext(ctx)
+	if !ok {
+		return nil, accessError(identityaccess.ErrUnauthenticated)
+	}
+	if err := h.service.EndSession(ctx, attempt.SessionSecret, attempt.Binding); err != nil {
+		return nil, accessError(err)
+	}
+	return connect.NewResponse(&protocol.EndSessionResponse{}), nil
+}
+
 func (h *Handler) EnrollFirstPrincipal(ctx context.Context, request *connect.Request[protocol.EnrollFirstPrincipalRequest]) (*connect.Response[protocol.EnrollFirstPrincipalResponse], error) {
 	challenge, proof, root, ticket, err := parseEnrollment(request.Msg.Challenge, request.Msg.EnrollmentProof, request.Msg.RootPublicKey, request.Msg.BootstrapTicket)
 	if err != nil {

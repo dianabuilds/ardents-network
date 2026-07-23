@@ -31,7 +31,7 @@ LABEL org.opencontainers.image.title="Ardents Network" \
       org.opencontainers.image.licenses="MIT"
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates && \
+    apt-get install -y --no-install-recommends ca-certificates curl && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /out/ardentsd /usr/local/bin/ardentsd

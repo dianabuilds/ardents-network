@@ -12,6 +12,7 @@ import "google/protobuf/timestamp.proto";
 service IdentityService {
   rpc BeginAuthentication(BeginAuthenticationRequest) returns (BeginAuthenticationResponse);
   rpc CompleteAuthentication(CompleteAuthenticationRequest) returns (CompleteAuthenticationResponse);
+  rpc EndSession(EndSessionRequest) returns (EndSessionResponse);
   rpc EnrollApplication(EnrollApplicationRequest) returns (EnrollApplicationResponse);
 }
 
@@ -38,6 +39,10 @@ message CompleteAuthenticationResponse {
   string session_id = 3;
   google.protobuf.Timestamp expires_at = 4;
 }
+
+message EndSessionRequest {}
+
+message EndSessionResponse {}
 
 message EnrollApplicationRequest {
   bytes application_enrollment_ticket = 1;

@@ -246,6 +246,20 @@ func (s *Service) AuthenticateSession(ctx context.Context, secret SessionSecret,
 	return session, nil
 }
 
+// EndSession invalidates exactly the presented short-lived session. It does
+// not revoke the Device Credential or any sibling session.
+func (s *Service) EndSession(_ context.Context, secret SessionSecret, binding AuthenticationBinding) error {
+	s.deviceMu.Lock()
+	defer s.deviceMu.Unlock()
+	session, found := s.sessions.remove(canonicalNow(s.clock.Now()), secret, binding)
+	if !found {
+		s.record("denied", "session_invalid", "", "", binding.Audience)
+		return ErrUnauthenticated
+	}
+	s.record("accepted", "session_ended", session.Principal, session.DeviceID, binding.Audience)
+	return nil
+}
+
 func (s *Service) recordDeviceRevocation(ctx context.Context, artifact *Artifact) error {
 	s.deviceMu.Lock()
 	defer s.deviceMu.Unlock()

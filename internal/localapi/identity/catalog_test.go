@@ -10,7 +10,7 @@ import (
 )
 
 func TestIdentityProcedureCatalogueIsExactAndClosed(t *testing.T) {
-	require.Len(t, procedureCatalog, 11)
+	require.Len(t, procedureCatalog, 12)
 	service := protocol.File_api_ardents_v1_identity_proto.Services().ByName("IdentityService")
 	require.NotNil(t, service)
 	for index := 0; index < service.Methods().Len(); index++ {
@@ -32,6 +32,7 @@ func TestIdentityProcedureCatalogueIsExactAndClosed(t *testing.T) {
 			require.NotEmpty(t, rule.action, procedure)
 		}
 	}
+	require.Equal(t, accessSessionLifecycle, procedureCatalog[ardentsv1connect.IdentityServiceEndSessionProcedure].class)
 	_, known := procedureCatalog["/ardents.v1.IdentityService/Unknown"]
 	require.False(t, known)
 }

@@ -28,9 +28,12 @@ $cluster = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
 $image = [string]$cluster.image
 $env:ARDENTS_DOCKER_IMAGE = $image
 $env:ARDENTS_BOOTSTRAP_PEER = [string]$cluster.bootstrap_endpoint
-$env:ARDENTS_SEED_API_TOKEN_FILE = Join-Path $statePath "secrets/seed.token"
-$env:ARDENTS_PEER2_API_TOKEN_FILE = Join-Path $statePath "secrets/peer2.token"
-$env:ARDENTS_PEER3_API_TOKEN_FILE = Join-Path $statePath "secrets/peer3.token"
+$nodePrincipalProperty = $cluster.node_principals.PSObject.Properties[$Node]
+if ($null -eq $nodePrincipalProperty -or [string]::IsNullOrWhiteSpace([string]$nodePrincipalProperty.Value)) {
+    throw "cluster manifest has no node Principal for $Node"
+}
+$nodePrincipal = [string]$nodePrincipalProperty.Value
+$operatorDevice = "/operator-identity/device.json"
 
 function Invoke-Compose([string[]]$Arguments) {
     & docker @composePrefix @Arguments
@@ -38,7 +41,8 @@ function Invoke-Compose([string[]]$Arguments) {
 }
 
 function Invoke-ArdJson([string[]]$Arguments) {
-    $raw = & docker @composePrefix exec -T $Node ardentsctl --token-file /run/ardents/api-token --output json @Arguments
+    $raw = & docker @composePrefix --profile tools run --rm --no-deps "$Node-operator" `
+        --output json --signer-file $operatorDevice --principal $nodePrincipal @Arguments
     if ($LASTEXITCODE -ne 0) { throw "ardentsctl command failed for $Node" }
     return (($raw -join "`n") | ConvertFrom-Json)
 }
@@ -48,7 +52,7 @@ function Wait-Condition([string]$Description, [scriptblock]$Condition) {
     $lastError = ""
     while ([DateTime]::UtcNow -lt $deadline) {
         try { if (& $Condition) { return } } catch { $lastError = $_.Exception.Message }
-        Start-Sleep -Seconds 2
+        Start-Sleep -Seconds 7
     }
     throw "timed out waiting for $Description; $lastError"
 }
@@ -64,15 +68,14 @@ function Wait-Node {
 function Get-ContinuityRecord {
     $response = Invoke-ArdJson @("network", "records", "list")
     $record = $response.records |
-        Where-Object { $_.kind -eq "node" -and $_.source -eq "local" } |
+        Where-Object { $null -ne $_.nodeFacts -and $_.sourceV1 -eq "local" } |
         Select-Object -First 1
     if ($null -eq $record) { throw "$Node has no local continuity record" }
-    $endpoint = $record.endpoints | Where-Object { $_ -match "/p2p/" } | Select-Object -First 1
+    $endpoint = $record.nodeFacts.endpoints | Where-Object { $_ -match "/p2p/" } | Select-Object -First 1
     if ([string]::IsNullOrWhiteSpace($endpoint)) { throw "$Node has no Waku peer endpoint" }
     $peerID = ($endpoint -split "/p2p/", 2)[1]
     return [ordered]@{
-        subject = [string]$record.subject
-        device = [string]$record.device
+        node_principal = [string]$record.nodeFacts.principal
         peer_id = [string]$peerID
     }
 }
@@ -145,7 +148,7 @@ function Invoke-Restore {
     Invoke-Compose @("start", $Node)
     Wait-Node
     $actual = Get-ContinuityRecord
-    foreach ($field in @("subject", "device", "peer_id")) {
+    foreach ($field in @("node_principal", "peer_id")) {
         if ($actual[$field] -ne $backup.consistency.$field) {
             throw "restore continuity mismatch: $field"
         }

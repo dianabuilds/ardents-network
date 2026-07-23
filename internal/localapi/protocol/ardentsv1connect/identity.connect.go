@@ -39,6 +39,9 @@ const (
 	// IdentityServiceCompleteAuthenticationProcedure is the fully-qualified name of the
 	// IdentityService's CompleteAuthentication RPC.
 	IdentityServiceCompleteAuthenticationProcedure = "/ardents.v1.IdentityService/CompleteAuthentication"
+	// IdentityServiceEndSessionProcedure is the fully-qualified name of the IdentityService's
+	// EndSession RPC.
+	IdentityServiceEndSessionProcedure = "/ardents.v1.IdentityService/EndSession"
 	// IdentityServiceEnrollFirstPrincipalProcedure is the fully-qualified name of the IdentityService's
 	// EnrollFirstPrincipal RPC.
 	IdentityServiceEnrollFirstPrincipalProcedure = "/ardents.v1.IdentityService/EnrollFirstPrincipal"
@@ -72,6 +75,7 @@ const (
 type IdentityServiceClient interface {
 	BeginAuthentication(context.Context, *connect.Request[protocol.BeginAuthenticationRequest]) (*connect.Response[protocol.BeginAuthenticationResponse], error)
 	CompleteAuthentication(context.Context, *connect.Request[protocol.CompleteAuthenticationRequest]) (*connect.Response[protocol.CompleteAuthenticationResponse], error)
+	EndSession(context.Context, *connect.Request[protocol.EndSessionRequest]) (*connect.Response[protocol.EndSessionResponse], error)
 	EnrollFirstPrincipal(context.Context, *connect.Request[protocol.EnrollFirstPrincipalRequest]) (*connect.Response[protocol.EnrollFirstPrincipalResponse], error)
 	EnrollPrincipal(context.Context, *connect.Request[protocol.EnrollPrincipalRequest]) (*connect.Response[protocol.EnrollPrincipalResponse], error)
 	RevokeDevice(context.Context, *connect.Request[protocol.RevokeDeviceRequest]) (*connect.Response[protocol.RevokeDeviceResponse], error)
@@ -104,6 +108,12 @@ func NewIdentityServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			httpClient,
 			baseURL+IdentityServiceCompleteAuthenticationProcedure,
 			connect.WithSchema(identityServiceMethods.ByName("CompleteAuthentication")),
+			connect.WithClientOptions(opts...),
+		),
+		endSession: connect.NewClient[protocol.EndSessionRequest, protocol.EndSessionResponse](
+			httpClient,
+			baseURL+IdentityServiceEndSessionProcedure,
+			connect.WithSchema(identityServiceMethods.ByName("EndSession")),
 			connect.WithClientOptions(opts...),
 		),
 		enrollFirstPrincipal: connect.NewClient[protocol.EnrollFirstPrincipalRequest, protocol.EnrollFirstPrincipalResponse](
@@ -167,6 +177,7 @@ func NewIdentityServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 type identityServiceClient struct {
 	beginAuthentication              *connect.Client[protocol.BeginAuthenticationRequest, protocol.BeginAuthenticationResponse]
 	completeAuthentication           *connect.Client[protocol.CompleteAuthenticationRequest, protocol.CompleteAuthenticationResponse]
+	endSession                       *connect.Client[protocol.EndSessionRequest, protocol.EndSessionResponse]
 	enrollFirstPrincipal             *connect.Client[protocol.EnrollFirstPrincipalRequest, protocol.EnrollFirstPrincipalResponse]
 	enrollPrincipal                  *connect.Client[protocol.EnrollPrincipalRequest, protocol.EnrollPrincipalResponse]
 	revokeDevice                     *connect.Client[protocol.RevokeDeviceRequest, protocol.RevokeDeviceResponse]
@@ -186,6 +197,11 @@ func (c *identityServiceClient) BeginAuthentication(ctx context.Context, req *co
 // CompleteAuthentication calls ardents.v1.IdentityService.CompleteAuthentication.
 func (c *identityServiceClient) CompleteAuthentication(ctx context.Context, req *connect.Request[protocol.CompleteAuthenticationRequest]) (*connect.Response[protocol.CompleteAuthenticationResponse], error) {
 	return c.completeAuthentication.CallUnary(ctx, req)
+}
+
+// EndSession calls ardents.v1.IdentityService.EndSession.
+func (c *identityServiceClient) EndSession(ctx context.Context, req *connect.Request[protocol.EndSessionRequest]) (*connect.Response[protocol.EndSessionResponse], error) {
+	return c.endSession.CallUnary(ctx, req)
 }
 
 // EnrollFirstPrincipal calls ardents.v1.IdentityService.EnrollFirstPrincipal.
@@ -238,6 +254,7 @@ func (c *identityServiceClient) ImportDelegationRevocation(ctx context.Context, 
 type IdentityServiceHandler interface {
 	BeginAuthentication(context.Context, *connect.Request[protocol.BeginAuthenticationRequest]) (*connect.Response[protocol.BeginAuthenticationResponse], error)
 	CompleteAuthentication(context.Context, *connect.Request[protocol.CompleteAuthenticationRequest]) (*connect.Response[protocol.CompleteAuthenticationResponse], error)
+	EndSession(context.Context, *connect.Request[protocol.EndSessionRequest]) (*connect.Response[protocol.EndSessionResponse], error)
 	EnrollFirstPrincipal(context.Context, *connect.Request[protocol.EnrollFirstPrincipalRequest]) (*connect.Response[protocol.EnrollFirstPrincipalResponse], error)
 	EnrollPrincipal(context.Context, *connect.Request[protocol.EnrollPrincipalRequest]) (*connect.Response[protocol.EnrollPrincipalResponse], error)
 	RevokeDevice(context.Context, *connect.Request[protocol.RevokeDeviceRequest]) (*connect.Response[protocol.RevokeDeviceResponse], error)
@@ -266,6 +283,12 @@ func NewIdentityServiceHandler(svc IdentityServiceHandler, opts ...connect.Handl
 		IdentityServiceCompleteAuthenticationProcedure,
 		svc.CompleteAuthentication,
 		connect.WithSchema(identityServiceMethods.ByName("CompleteAuthentication")),
+		connect.WithHandlerOptions(opts...),
+	)
+	identityServiceEndSessionHandler := connect.NewUnaryHandler(
+		IdentityServiceEndSessionProcedure,
+		svc.EndSession,
+		connect.WithSchema(identityServiceMethods.ByName("EndSession")),
 		connect.WithHandlerOptions(opts...),
 	)
 	identityServiceEnrollFirstPrincipalHandler := connect.NewUnaryHandler(
@@ -328,6 +351,8 @@ func NewIdentityServiceHandler(svc IdentityServiceHandler, opts ...connect.Handl
 			identityServiceBeginAuthenticationHandler.ServeHTTP(w, r)
 		case IdentityServiceCompleteAuthenticationProcedure:
 			identityServiceCompleteAuthenticationHandler.ServeHTTP(w, r)
+		case IdentityServiceEndSessionProcedure:
+			identityServiceEndSessionHandler.ServeHTTP(w, r)
 		case IdentityServiceEnrollFirstPrincipalProcedure:
 			identityServiceEnrollFirstPrincipalHandler.ServeHTTP(w, r)
 		case IdentityServiceEnrollPrincipalProcedure:
@@ -361,6 +386,10 @@ func (UnimplementedIdentityServiceHandler) BeginAuthentication(context.Context, 
 
 func (UnimplementedIdentityServiceHandler) CompleteAuthentication(context.Context, *connect.Request[protocol.CompleteAuthenticationRequest]) (*connect.Response[protocol.CompleteAuthenticationResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.IdentityService.CompleteAuthentication is not implemented"))
+}
+
+func (UnimplementedIdentityServiceHandler) EndSession(context.Context, *connect.Request[protocol.EndSessionRequest]) (*connect.Response[protocol.EndSessionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.IdentityService.EndSession is not implemented"))
 }
 
 func (UnimplementedIdentityServiceHandler) EnrollFirstPrincipal(context.Context, *connect.Request[protocol.EnrollFirstPrincipalRequest]) (*connect.Response[protocol.EnrollFirstPrincipalResponse], error) {

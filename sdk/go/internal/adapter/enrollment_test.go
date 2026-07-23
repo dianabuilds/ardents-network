@@ -32,6 +32,9 @@ func (s *enrollmentServiceStub) BeginAuthentication(ctx context.Context, request
 func (s *enrollmentServiceStub) CompleteAuthentication(ctx context.Context, request *connect.Request[applicationidentityv1.CompleteAuthenticationRequest]) (*connect.Response[applicationidentityv1.CompleteAuthenticationResponse], error) {
 	return s.complete(ctx, request)
 }
+func (*enrollmentServiceStub) EndSession(context.Context, *connect.Request[applicationidentityv1.EndSessionRequest]) (*connect.Response[applicationidentityv1.EndSessionResponse], error) {
+	return connect.NewResponse(&applicationidentityv1.EndSessionResponse{}), nil
+}
 func (s *enrollmentServiceStub) EnrollApplication(ctx context.Context, request *connect.Request[applicationidentityv1.EnrollApplicationRequest]) (*connect.Response[applicationidentityv1.EnrollApplicationResponse], error) {
 	return s.enroll(ctx, request)
 }

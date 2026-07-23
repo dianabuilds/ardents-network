@@ -6,6 +6,7 @@ type accessClass uint8
 
 const (
 	accessPublicBounded accessClass = iota + 1
+	accessSessionLifecycle
 	accessProtected
 )
 
@@ -17,6 +18,7 @@ type procedureRule struct {
 var procedureCatalog = map[string]procedureRule{
 	ardentsv1connect.IdentityServiceBeginAuthenticationProcedure:              {class: accessPublicBounded},
 	ardentsv1connect.IdentityServiceCompleteAuthenticationProcedure:           {class: accessPublicBounded},
+	ardentsv1connect.IdentityServiceEndSessionProcedure:                       {class: accessSessionLifecycle},
 	ardentsv1connect.IdentityServiceEnrollFirstPrincipalProcedure:             {class: accessPublicBounded},
 	ardentsv1connect.IdentityServiceEnrollPrincipalProcedure:                  {class: accessProtected, action: "identity.principal.enroll"},
 	ardentsv1connect.IdentityServiceRevokeDeviceProcedure:                     {class: accessProtected, action: "identity.device.revoke"},

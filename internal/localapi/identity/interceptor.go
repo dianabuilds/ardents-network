@@ -37,6 +37,10 @@ func (i *interceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 			return nil, connect.NewError(connect.CodeUnauthenticated, errInvalidSessionHeader)
 		}
 		binding, _ := i.binding(ctx)
+		if rule.class == accessSessionLifecycle {
+			attempt := identityaccess.Attempt{SessionSecret: secret, Binding: binding}
+			return next(context.WithValue(ctx, attemptContextKey{}, attempt), request)
+		}
 		action, resource, err := deriveAttempt(binding, procedure, rule.action, request.Any())
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid identity operation"))

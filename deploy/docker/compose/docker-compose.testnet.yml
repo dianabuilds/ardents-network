@@ -3,38 +3,75 @@ x-node: &node
   build:
     context: ../../..
     dockerfile: deploy/docker/images/node.Dockerfile
-  entrypoint: ["/bin/sh", "-lc"]
+  entrypoint: ["/bin/sh", "-ec"]
   command:
     - |
       install -d -m 0700 /run/ardents
-      install -m 0600 /run/secrets/ardents-api-token /run/ardents/api-token
-      if [ -f /run/secrets/wss-key ]; then
-        install -m 0600 /run/secrets/wss-key /run/ardents/wss-key
+      install -d -m 0750 /var/lib/ardents-applications
+      install -m 0600 /var/lib/ardents-secrets/channel-grant-store.key /run/ardents/channel-grant-store.key
+      install -m 0600 /var/lib/ardents-secrets/replay.key /run/ardents/replay.key
+      install -m 0600 /var/lib/ardents-secrets/operator.json /run/ardents/operator.json
+      if [ -f /run/secrets/wss-ca ]; then
+        cp /run/secrets/wss-ca /usr/local/share/ca-certificates/ardents-test-ca.crt
+        update-ca-certificates >/dev/null
       fi
-      cp /run/secrets/wss-ca /usr/local/share/ca-certificates/ardents-test-ca.crt
-      update-ca-certificates >/dev/null
       exec /usr/local/bin/ardentsd
   environment: &node_environment
-    ARDENTS_API_TOKEN_FILE: /run/ardents/api-token
-    ARDENTS_ADDR: 127.0.0.1:8080
-    ARDENTS_DATA_DIR: /var/lib/ardents
-    ARDENTS_WAKU_STORE_PATH: /var/lib/ardents/waku-store.db
-    ARDENTS_TRANSPORT_BIND_ADDRESS: 0.0.0.0
-    ARDENTS_NODE_PROFILE: service_node
-    ARDENTS_REACHABILITY_MODE: private_lan
+    ARDENTS_CONFIG_FILE: /run/ardents/operator.json
     ARDENTS_WORKLOAD_EXECUTOR: docker
     DOCKER_HOST: unix:///run/ardents/workload-engine/docker.sock
   depends_on:
     workload-engine:
       condition: service_healthy
   healthcheck:
-    test: ["CMD", "ardentsctl", "--token-file", "/run/ardents/api-token", "node", "status"]
+    test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:9090/readyz"]
     interval: 2s
     timeout: 2s
     retries: 30
+    start_period: 5s
   restart: unless-stopped
 
+x-operator-cli: &operator_cli
+  image: ${ARDENTS_TESTNET_IMAGE:-ardents/node-testnet:dev}
+  build:
+    context: ../../..
+    dockerfile: deploy/docker/images/node.Dockerfile
+  profiles: ["tools"]
+  entrypoint: ["/usr/local/bin/ardentsctl"]
+  network_mode: none
+  read_only: true
+  cap_drop: ["ALL"]
+  security_opt: ["no-new-privileges:true"]
+
 services:
+  realm-provisioner:
+    image: ${ARDENTS_TESTNET_IMAGE:-ardents/node-testnet:dev}
+    build:
+      context: ../../..
+      dockerfile: deploy/docker/images/node.Dockerfile
+    profiles: ["provisioning"]
+    entrypoint: ["/usr/local/bin/ardentsd", "init"]
+    network_mode: none
+    read_only: true
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - realm_authority:/authority
+      - seed_data:/nodes/seed
+      - seed_secrets:/secrets/seed
+      - bridge_data:/nodes/bridge
+      - bridge_secrets:/secrets/bridge
+      - a1_data:/nodes/a1
+      - a1_secrets:/secrets/a1
+      - a2_data:/nodes/a2
+      - a2_secrets:/secrets/a2
+      - b1_data:/nodes/b1
+      - b1_secrets:/secrets/b1
+      - b2_data:/nodes/b2
+      - b2_secrets:/secrets/b2
+      - recovery_data:/nodes/recovery
+      - recovery_secrets:/secrets/recovery
+
   workload-engine:
     image: ${ARDENTS_WORKLOAD_ENGINE_IMAGE:-docker:29.6.1-dind}
     privileged: true
@@ -58,17 +95,15 @@ services:
     <<: *node
     environment:
       <<: *node_environment
-      ARDENTS_NODE_NAME: seed
-      ARDENTS_TRANSPORT_PORT: 61001
     secrets:
-      - source: seed_token
-        target: ardents-api-token
-        mode: 0400
       - source: wss_ca
         target: wss-ca
         mode: 0444
     volumes:
       - seed_data:/var/lib/ardents
+      - seed_secrets:/var/lib/ardents-secrets:ro
+      - seed_runtime:/run/ardents
+      - seed_application_runtime:/var/lib/ardents-applications
       - workload_engine_socket:/run/ardents/workload-engine
     networks:
       zone_a:
@@ -80,19 +115,7 @@ services:
     <<: *node
     environment:
       <<: *node_environment
-      ARDENTS_NODE_NAME: bridge
-      ARDENTS_TRANSPORT_PORT: 61002
-      ARDENTS_TRANSPORT_PROFILE: tcp_wss
-      ARDENTS_WSS_PORT: 61443
-      ARDENTS_WSS_CERT_PATH: /run/secrets/wss-cert
-      ARDENTS_WSS_KEY_PATH: /run/ardents/wss-key
-      ARDENTS_WSS_CA_PATH: /run/secrets/wss-ca
-      ARDENTS_WSS_ADVERTISE_ADDRESS: bridge
-      ARDENTS_BOOTSTRAP_PEERS: ${ARDENTS_SEED_ZONE_A:?seed endpoint is required}
     secrets:
-      - source: bridge_token
-        target: ardents-api-token
-        mode: 0400
       - source: wss_ca
         target: wss-ca
         mode: 0444
@@ -104,6 +127,9 @@ services:
         mode: 0400
     volumes:
       - bridge_data:/var/lib/ardents
+      - bridge_secrets:/var/lib/ardents-secrets:ro
+      - bridge_runtime:/run/ardents
+      - bridge_application_runtime:/var/lib/ardents-applications
       - workload_engine_socket:/run/ardents/workload-engine
     networks:
       zone_a:
@@ -115,18 +141,15 @@ services:
     <<: *node
     environment:
       <<: *node_environment
-      ARDENTS_NODE_NAME: a1
-      ARDENTS_TRANSPORT_PORT: 61101
-      ARDENTS_BOOTSTRAP_PEERS: ${ARDENTS_ZONE_A_BOOTSTRAP:?zone A bootstrap endpoints are required}
     secrets:
-      - source: a1_token
-        target: ardents-api-token
-        mode: 0400
       - source: wss_ca
         target: wss-ca
         mode: 0444
     volumes:
       - a1_data:/var/lib/ardents
+      - a1_secrets:/var/lib/ardents-secrets:ro
+      - a1_runtime:/run/ardents
+      - a1_application_runtime:/var/lib/ardents-applications
       - workload_engine_socket:/run/ardents/workload-engine
     networks:
       zone_a:
@@ -136,18 +159,15 @@ services:
     <<: *node
     environment:
       <<: *node_environment
-      ARDENTS_NODE_NAME: a2
-      ARDENTS_TRANSPORT_PORT: 61102
-      ARDENTS_BOOTSTRAP_PEERS: ${ARDENTS_ZONE_A_BOOTSTRAP:?zone A bootstrap endpoints are required}
     secrets:
-      - source: a2_token
-        target: ardents-api-token
-        mode: 0400
       - source: wss_ca
         target: wss-ca
         mode: 0444
     volumes:
       - a2_data:/var/lib/ardents
+      - a2_secrets:/var/lib/ardents-secrets:ro
+      - a2_runtime:/run/ardents
+      - a2_application_runtime:/var/lib/ardents-applications
       - workload_engine_socket:/run/ardents/workload-engine
     networks:
       zone_a:
@@ -157,18 +177,15 @@ services:
     <<: *node
     environment:
       <<: *node_environment
-      ARDENTS_NODE_NAME: b1
-      ARDENTS_TRANSPORT_PORT: 61201
-      ARDENTS_BOOTSTRAP_PEERS: ${ARDENTS_ZONE_B_BOOTSTRAP:?zone B bootstrap endpoints are required}
     secrets:
-      - source: b1_token
-        target: ardents-api-token
-        mode: 0400
       - source: wss_ca
         target: wss-ca
         mode: 0444
     volumes:
       - b1_data:/var/lib/ardents
+      - b1_secrets:/var/lib/ardents-secrets:ro
+      - b1_runtime:/run/ardents
+      - b1_application_runtime:/var/lib/ardents-applications
       - workload_engine_socket:/run/ardents/workload-engine
     networks:
       zone_b:
@@ -178,19 +195,7 @@ services:
     <<: *node
     environment:
       <<: *node_environment
-      ARDENTS_NODE_NAME: b2
-      ARDENTS_TRANSPORT_PORT: 61202
-      ARDENTS_TRANSPORT_PROFILE: tcp_wss
-      ARDENTS_WSS_PORT: 62443
-      ARDENTS_WSS_CERT_PATH: /run/secrets/wss-cert
-      ARDENTS_WSS_KEY_PATH: /run/ardents/wss-key
-      ARDENTS_WSS_CA_PATH: /run/secrets/wss-ca
-      ARDENTS_WSS_ADVERTISE_ADDRESS: b2
-      ARDENTS_BOOTSTRAP_PEERS: ${ARDENTS_BRIDGE_WSS:?bridge WSS endpoint is required}
     secrets:
-      - source: b2_token
-        target: ardents-api-token
-        mode: 0400
       - source: wss_ca
         target: wss-ca
         mode: 0444
@@ -202,6 +207,9 @@ services:
         mode: 0400
     volumes:
       - b2_data:/var/lib/ardents
+      - b2_secrets:/var/lib/ardents-secrets:ro
+      - b2_runtime:/run/ardents
+      - b2_application_runtime:/var/lib/ardents-applications
       - workload_engine_socket:/run/ardents/workload-engine
     networks:
       zone_b:
@@ -211,24 +219,61 @@ services:
     <<: *node
     environment:
       <<: *node_environment
-      ARDENTS_NODE_NAME: recovery
-      ARDENTS_NODE_PROFILE: constrained_light_client
-      ARDENTS_REACHABILITY_MODE: outbound_only
-      ARDENTS_TRANSPORT_PORT: 61301
-      ARDENTS_BOOTSTRAP_PEERS: ${ARDENTS_ZONE_A_BOOTSTRAP:?zone A bootstrap endpoints are required}
     secrets:
-      - source: recovery_token
-        target: ardents-api-token
-        mode: 0400
       - source: wss_ca
         target: wss-ca
         mode: 0444
     volumes:
       - recovery_data:/var/lib/ardents
+      - recovery_secrets:/var/lib/ardents-secrets:ro
+      - recovery_runtime:/run/ardents
+      - recovery_application_runtime:/var/lib/ardents-applications
       - workload_engine_socket:/run/ardents/workload-engine
     networks:
       zone_a:
         ipv4_address: 172.31.10.13
+
+  seed-operator:
+    <<: *operator_cli
+    volumes:
+      - seed_runtime:/run/ardents
+      - operator_identity:/operator-identity
+
+  bridge-operator:
+    <<: *operator_cli
+    volumes:
+      - bridge_runtime:/run/ardents
+      - operator_identity:/operator-identity
+
+  a1-operator:
+    <<: *operator_cli
+    volumes:
+      - a1_runtime:/run/ardents
+      - operator_identity:/operator-identity
+
+  a2-operator:
+    <<: *operator_cli
+    volumes:
+      - a2_runtime:/run/ardents
+      - operator_identity:/operator-identity
+
+  b1-operator:
+    <<: *operator_cli
+    volumes:
+      - b1_runtime:/run/ardents
+      - operator_identity:/operator-identity
+
+  b2-operator:
+    <<: *operator_cli
+    volumes:
+      - b2_runtime:/run/ardents
+      - operator_identity:/operator-identity
+
+  recovery-operator:
+    <<: *operator_cli
+    volumes:
+      - recovery_runtime:/run/ardents
+      - operator_identity:/operator-identity
 
 networks:
   zone_a:
@@ -243,31 +288,40 @@ networks:
         - subnet: 172.31.20.0/24
 
 volumes:
+  realm_authority:
   workload_engine_data:
   workload_engine_socket:
+  operator_identity:
   seed_data:
+  seed_secrets:
+  seed_runtime:
+  seed_application_runtime:
   bridge_data:
+  bridge_secrets:
+  bridge_runtime:
+  bridge_application_runtime:
   a1_data:
+  a1_secrets:
+  a1_runtime:
+  a1_application_runtime:
   a2_data:
+  a2_secrets:
+  a2_runtime:
+  a2_application_runtime:
   b1_data:
+  b1_secrets:
+  b1_runtime:
+  b1_application_runtime:
   b2_data:
+  b2_secrets:
+  b2_runtime:
+  b2_application_runtime:
   recovery_data:
+  recovery_secrets:
+  recovery_runtime:
+  recovery_application_runtime:
 
 secrets:
-  seed_token:
-    file: ${ARDENTS_SEED_TOKEN_FILE:?seed token file is required}
-  bridge_token:
-    file: ${ARDENTS_BRIDGE_TOKEN_FILE:?bridge token file is required}
-  a1_token:
-    file: ${ARDENTS_A1_TOKEN_FILE:?a1 token file is required}
-  a2_token:
-    file: ${ARDENTS_A2_TOKEN_FILE:?a2 token file is required}
-  b1_token:
-    file: ${ARDENTS_B1_TOKEN_FILE:?b1 token file is required}
-  b2_token:
-    file: ${ARDENTS_B2_TOKEN_FILE:?b2 token file is required}
-  recovery_token:
-    file: ${ARDENTS_RECOVERY_TOKEN_FILE:?recovery token file is required}
   wss_ca:
     file: ${ARDENTS_WSS_CA_FILE:?WSS CA file is required}
   bridge_cert:

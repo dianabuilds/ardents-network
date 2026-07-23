@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"errors"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -46,6 +47,7 @@ type sessionTestAuth struct {
 	now           time.Time
 	beginCount    atomic.Int32
 	completeCount atomic.Int32
+	endCount      atomic.Int32
 	secretByte    byte
 	gate          chan struct{}
 	beginErrAfter int32
@@ -100,6 +102,14 @@ func (a *sessionTestAuth) CompleteAuthentication(context.Context, *connect.Reque
 		SessionId:     "s1_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		ExpiresAt:     timestamppb.New(a.now.Add(identitycontract.DefaultSessionLifetime)),
 	}), nil
+}
+
+func (a *sessionTestAuth) EndSession(_ context.Context, request *connect.Request[ardentsv1.EndSessionRequest]) (*connect.Response[ardentsv1.EndSessionResponse], error) {
+	a.endCount.Add(1)
+	if !strings.HasPrefix(request.Header().Get("Authorization"), operatorSessionScheme+" ") {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing session"))
+	}
+	return connect.NewResponse(&ardentsv1.EndSessionResponse{}), nil
 }
 
 func newSessionTestSigner(t *testing.T) *sessionTestSigner {
@@ -213,6 +223,20 @@ func TestSessionManagersKeepAlphaAndBetaSecretsIsolated(t *testing.T) {
 	alpha.Logout()
 	require.Equal(t, SessionKey{}, alpha.Status())
 	require.NotEqual(t, SessionKey{}, beta.Status())
+}
+
+func TestSessionManagerLogoutEndsServerSessionBeforeZeroingLocalSecret(t *testing.T) {
+	signer := newSessionTestSigner(t)
+	alpha := sessionTestPrincipal(t, 0x31)
+	auth := &sessionTestAuth{node: alpha, principal: signer.principal, now: sessionTestNow, secretByte: 0x10}
+	manager := NewSessionManager(auth, signer, alpha, func() time.Time { return sessionTestNow })
+
+	_, _, err := manager.authorization(context.Background())
+	require.NoError(t, err)
+	manager.Logout()
+
+	require.EqualValues(t, 1, auth.endCount.Load())
+	require.Equal(t, SessionKey{}, manager.Status())
 }
 
 func TestSessionManagerRejectsWrongAudienceAndSignerFailureWithoutPublishing(t *testing.T) {

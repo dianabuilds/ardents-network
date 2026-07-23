@@ -31,7 +31,7 @@ as a committed data replica.
 Each node owns a long-lived Ardents signing identity and Waku peer identity.
 Private discovery and data exchange require an Identity-owned capability issued
 by a trusted realm authority. Possessing retained ciphertext, a network address,
-or a bearer token for another node does not grant that authority.
+or another Principal's session secret does not grant that authority.
 
 The local API and observability listener bind to loopback only. Deployment
 secrets are separate from retained node state. Missing keys, partial restores,
@@ -52,7 +52,8 @@ Start with:
 The public release contains two executables:
 
 - `ardentsd` is the self-contained node daemon; `ardentsd init` initializes a
-  local node, its protected state, operator configuration, and API credential;
+  local node, its protected state, canonical operator configuration, and the
+  one-use Bootstrap Ticket for first-Operator enrollment;
 - `ardentsctl` is the local operator client and can be installed independently
   on an administrator workstation.
 
@@ -64,43 +65,54 @@ profile. `ardents-ingress-proxy` is an internal, optional image used only for
 isolated hosted-service ingress; it is versioned with the node release but is
 not required to install, start, or operate a node.
 
-Initialization also creates a separate `application.sock` and
-`application-token` for least-privilege local Application SDK access. These do
-not authorize the administrative Operator Interface. See the
+Initialization also creates a separate, permission-protected
+`application.sock`. Each Application installation uses its own Principal,
+device Credential, Node-issued grant, and short-lived Application session;
+enrollment uses a one-use ticket issued through the Operator Interface. See the
 [Application Interface and SDK](docs/product/application-api-and-sdk.md).
 
 For a native Linux node, extract the release archive and run the included
 installer. It creates the `ardents` service account, protected state, a systemd
-unit, and the initial operator credential:
+unit, and the one-use first-Operator Bootstrap Ticket:
 
 ```sh
 sudo ./scripts/install/linux.sh install \
   --node-name node-1 --transport-port 61001
+ardentsctl identity principal create --signer-file ROOT
+ardentsctl identity device create \
+  --root-signer-file ROOT --signer-file DEVICE
 sudo ardentsctl --addr unix:///var/lib/ardents/secrets/control.sock \
-  --legacy-token-file /var/lib/ardents/secrets/api-token node status
+  --signer-file DEVICE \
+  --principal p1_<node> \
+  identity enroll --root-signer-file ROOT --device-signer-file DEVICE \
+  --bootstrap-ticket-file /var/lib/ardents/secrets/operator-bootstrap-ticket
+sudo ardentsctl --addr unix:///var/lib/ardents/secrets/control.sock \
+  --signer-file DEVICE --principal p1_<node> node status
 ```
 
 Use `--bootstrap-peer` during first installation when the node must join an
 existing endpoint. Re-running `install` repairs only the same build and
-preserves configuration, identity, API credential, and retained data; changing
+preserves configuration, identity, Principal access state, and retained data; changing
 build identity requires the readiness-gated `upgrade` command. See the
 [native Linux installation contract](docs/operations/native-linux-installation.md)
 for upgrade and uninstall behavior.
 
-From an administrator workstation with a scoped node credential and OpenSSH
-key/agent access, connect without exposing the control API:
+From an administrator workstation with an enrolled device Credential, a scoped
+Operator grant, and OpenSSH key/agent access, connect without exposing the
+control API:
 
 ```sh
 ardentsctl --ssh ops@node.example \
   --ssh-port 22 \
   --ssh-identity ~/.ssh/id_ed25519 \
   --ssh-known-hosts ~/.ssh/known_hosts \
-  --legacy-token-file ~/.config/ardents/node-1.token \
-  --node-name node-1 node status
+  --ssh-operator-socket /var/lib/ardents/secrets/control.sock \
+  --principal p1_<node> node status
 ```
 
-The SSH transport uses the remote node's loopback API and normal OpenSSH host
-key verification. It requires non-interactive key or agent authentication.
+The SSH transport forwards a private local stream socket to the remote
+permission-protected Operator Unix socket and uses normal OpenSSH host-key
+verification. It requires non-interactive key or agent authentication.
 
 ## Docker Local Quick Start
 
@@ -138,11 +150,14 @@ and production service definitions.
 
 ## Operator CLI
 
-Inside a node container, use its private runtime token:
+Local Docker orchestration uses a disposable helper container. The helper
+mounts the selected Node's protected runtime socket and the test-owned device
+signer; the daemon container never receives the Operator signer:
 
 ```powershell
-docker compose -p ardents-local -f deploy/docker/compose/docker-compose.multinode.yml exec seed `
-  ardentsctl --legacy-token-file /run/ardents/api-token node status
+docker compose -p ardents-local -f deploy/docker/compose/docker-compose.multinode.yml `
+  --profile tools run --rm seed-operator `
+  --signer-file /operator-identity/device.json --principal p1_<seed> node status
 ```
 
 Useful groups are `node`, `network`, `diagnostics`, `config`, `workload`, and

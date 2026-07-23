@@ -22,6 +22,16 @@ $composeFile = Join-Path $root "deploy/docker/compose/docker-compose.testnet.yml
 $dockerfile = Join-Path $root "deploy/docker/images/node.Dockerfile"
 $composePrefix = @("compose", "-p", $project, "-f", $composeFile)
 $services = @("seed", "bridge", "a1", "a2", "b1", "b2", "recovery")
+$nodePrincipals = @{}
+$operatorActions = @(
+    "node.status",
+    "node.runtime",
+    "transport.network_status",
+    "discovery.peers",
+    "discovery.list_records",
+    "workload.list",
+    "data.inventory"
+)
 $results = [Collections.Generic.List[object]]::new()
 $snapshots = [ordered]@{}
 $stabilitySamples = [Collections.Generic.List[object]]::new()
@@ -74,6 +84,141 @@ function Ensure-TestnetImage {
     }
 }
 
+function Set-NodePrincipal([string]$Service, [string]$Principal) {
+    if ($Principal -notmatch "^p1_[A-Za-z0-9]+$") {
+        throw "provisioner returned an invalid Principal for ${Service}"
+    }
+    if ($nodePrincipals.ContainsKey($Service) -and $nodePrincipals[$Service] -ne $Principal) {
+        throw "re-provisioning changed the Principal for ${Service}"
+    }
+    $nodePrincipals[$Service] = $Principal
+}
+
+function Set-ProvisionedNodeShape([string]$Service) {
+    $commands = [Collections.Generic.List[string]]::new()
+    $commands.Add("set -eu")
+    $commands.Add("config=/secrets/$Service/operator.json")
+    $commands.Add('test -s "$config"')
+    if ($Service -eq "bridge" -or $Service -eq "b2") {
+        $wssPort = if ($Service -eq "bridge") { 61443 } else { 62443 }
+        $commands.Add('sed -i ''s/"transport_profile": "tcp_only"/"transport_profile": "tcp_wss"/'' "$config"')
+        $commands.Add("sed -i 's/`"port`": 0/`"port`": $wssPort/' `"`$config`"")
+        $commands.Add('sed -i ''s#"certificate_file": ""#"certificate_file": "/run/secrets/wss-cert"#'' "$config"')
+        $commands.Add('sed -i ''s#"private_key_file": ""#"private_key_file": "/run/secrets/wss-key"#'' "$config"')
+        $commands.Add('sed -i ''s#"ca_file": ""#"ca_file": "/run/secrets/wss-ca"#'' "$config"')
+        $commands.Add("sed -i 's/`"advertise_address`": `"`"/`"advertise_address`": `"$Service`"/' `"`$config`"")
+    }
+    if ($Service -eq "recovery") {
+        $commands.Add('sed -i ''s/"profile": "service_node"/"profile": "constrained_light_client"/'' "$config"')
+        $commands.Add('sed -i ''s/"reachability_mode": "private_lan"/"reachability_mode": "outbound_only"/'' "$config"')
+    }
+    $commands.Add('grep -q ''"api_version": "ardents.config/v1"'' "$config"')
+    $commands.Add('! grep -Eiq ''api[-_]?token|application[-_]?token|bearer'' "$config"')
+    $script = $commands -join "`n"
+    Invoke-Compose @(
+        "run", "--rm", "--no-deps", "--entrypoint", "/bin/sh",
+        "realm-provisioner", "-ec", $script
+    )
+}
+
+function Invoke-ProvisionNode([string]$Service, [int]$Port, [string]$Bootstrap = "") {
+    $arguments = @(
+        "run", "--rm", "--no-deps", "realm-provisioner",
+        "-authority-dir", "/authority",
+        "-node-dir", "/nodes/$Service",
+        "-secret-dir", "/secrets/$Service",
+        "-runtime-data-dir", "/var/lib/ardents",
+        "-runtime-secret-dir", "/run/ardents",
+        "-node-name", $Service,
+        "-transport-port", "$Port"
+    )
+    if (-not [string]::IsNullOrWhiteSpace($Bootstrap)) {
+        $arguments += @("-bootstrap-peer", $Bootstrap)
+    }
+    $raw = & docker @composePrefix @arguments
+    if ($LASTEXITCODE -ne 0) { throw "provisioning failed for $Service" }
+    $text = ($raw -join "`n")
+    if ($text -notmatch "(?:^|\s)principal=(p1_[A-Za-z0-9]+)(?:\s|$)") {
+        throw "provisioner did not report a public Principal for $Service"
+    }
+    Set-NodePrincipal $Service $Matches[1]
+    Set-ProvisionedNodeShape $Service
+}
+
+function Invoke-OfflineIdentityJson([string[]]$CommandArgs) {
+    $raw = & docker @composePrefix run --rm --no-deps seed-operator --output json @CommandArgs
+    if ($LASTEXITCODE -ne 0) { throw "offline test identity command failed" }
+    return (($raw -join "`n") | ConvertFrom-Json)
+}
+
+function Initialize-TestOperator {
+    & docker @composePrefix run --rm --no-deps --entrypoint /bin/sh seed-operator -ec "chmod 0700 /operator-identity"
+    if ($LASTEXITCODE -ne 0) { throw "cannot protect the test Operator identity volume" }
+    $principal = Invoke-OfflineIdentityJson @(
+        "identity", "principal", "create",
+        "--signer-file", "/operator-identity/root.json"
+    )
+    $device = Invoke-OfflineIdentityJson @(
+        "identity", "device", "create",
+        "--root-signer-file", "/operator-identity/root.json",
+        "--signer-file", "/operator-identity/device.json",
+        "--valid-for", "24h"
+    )
+    if ($principal.principal -ne $device.principal -or $principal.principal -notmatch "^p1_[A-Za-z0-9]+$") {
+        throw "test Operator root and device do not identify the same canonical Principal"
+    }
+    $script:operatorPrincipal = $principal.principal
+}
+
+function Invoke-ArdJson([string]$Service, [string[]]$CommandArgs) {
+    if (-not $nodePrincipals.ContainsKey($Service)) {
+        throw "Node Principal is unavailable for $Service"
+    }
+    $raw = & docker @composePrefix run --rm --no-deps "$Service-operator" `
+        --output json `
+        --addr "unix:///run/ardents/control.sock" `
+        --principal $nodePrincipals[$Service] `
+        --signer-file /operator-identity/device.json `
+        @CommandArgs
+    if ($LASTEXITCODE -ne 0) { throw "Principal-authenticated ardentsctl command failed for $Service" }
+    return (($raw -join "`n") | ConvertFrom-Json)
+}
+
+function Wait-NodeControl([string]$Service) {
+    Wait-Condition "$Service healthy process, Principal control socket, and Bootstrap Ticket" {
+        $container = ((& docker @composePrefix ps -q $Service) -join "").Trim()
+        if ([string]::IsNullOrWhiteSpace($container)) { return $false }
+        $health = ((& docker inspect --format "{{.State.Health.Status}}" $container) -join "").Trim()
+        if ($LASTEXITCODE -ne 0 -or $health -ne "healthy") { return $false }
+        & docker @composePrefix run --rm --no-deps --entrypoint /bin/sh "$Service-operator" `
+            -ec "test -S /run/ardents/control.sock && test -s /run/ardents/operator-bootstrap-ticket" `
+            2>$null | Out-Null
+        return $LASTEXITCODE -eq 0
+    } 60
+}
+
+function Enroll-TestOperator([string]$Service) {
+    Wait-NodeControl $Service
+    $null = Invoke-ArdJson $Service @(
+        "identity", "enroll",
+        "--bootstrap-ticket-file", "/run/ardents/operator-bootstrap-ticket",
+        "--root-signer-file", "/operator-identity/root.json",
+        "--device-signer-file", "/operator-identity/device.json"
+    )
+    $grantArgs = @(
+        "identity", "grant", "issue",
+        "--subject", $operatorPrincipal,
+        "--scope", "node",
+        "--valid-for", "24h",
+        "--request-id", "multihost-$Service-operational-v1",
+        "--yes"
+    )
+    foreach ($action in $operatorActions) {
+        $grantArgs += @("--action", $action)
+    }
+    $null = Invoke-ArdJson $Service $grantArgs
+}
+
 function Write-PrivateText([string]$Path, [string]$Value) {
     [IO.File]::WriteAllText($Path, $Value + "`n", [Text.UTF8Encoding]::new($false))
 }
@@ -111,49 +256,43 @@ function New-TestCertificate([string]$Name, [string[]]$Names) {
     return @{ Cert = $cert; Key = $key }
 }
 
-function Invoke-ArdJson([string]$Service, [string[]]$CommandArgs) {
-    $raw = & docker @composePrefix exec -T $Service ardentsctl --token-file /run/secrets/ardents-api-token --output json @CommandArgs
-    if ($LASTEXITCODE -ne 0) { throw "ardentsctl command failed for $Service" }
-    return (($raw -join "`n") | ConvertFrom-Json)
-}
-
 function Invoke-StoreProbe([string]$Service, [string[]]$ProbeArgs) {
     & docker @composePrefix exec -T $Service ard-store-probe @ProbeArgs
     if ($LASTEXITCODE -ne 0) { throw "Store probe failed for $Service" }
 }
 
-function Wait-Condition([string]$Description, [scriptblock]$Condition, [int]$Seconds = 45) {
+function Wait-Condition([string]$Description, [scriptblock]$Condition, [int]$Seconds = 45, [int]$IntervalMilliseconds = 500) {
     $deadline = [DateTime]::UtcNow.AddSeconds($Seconds)
     $last = ""
     while ([DateTime]::UtcNow -lt $deadline) {
         try {
             if (& $Condition) { return }
         } catch { $last = $_.Exception.Message }
-        Start-Sleep -Milliseconds 500
+        Start-Sleep -Milliseconds $IntervalMilliseconds
     }
     throw "timed out waiting for $Description; $last"
 }
 
 function Wait-API([string]$Service) {
-    Wait-Condition "$Service API" { $null = Invoke-ArdJson $Service @("node", "status"); return $true } 60
+    Wait-Condition "$Service API" { $null = Invoke-ArdJson $Service @("node", "status"); return $true } 60 7000
 }
 
 function Wait-Joined([string]$Service, [int]$Seconds = 45) {
     Wait-Condition "$Service joined/ready" {
         $status = Invoke-ArdJson $Service @("network", "status")
         return $status.network.joined -and $status.network.state -eq "ready"
-    } $Seconds
+    } $Seconds 7000
 }
 
 function Get-NodeRecord([string]$Service) {
     $response = Invoke-ArdJson $Service @("network", "records", "list")
-    $record = $response.records | Where-Object { $_.kind -eq "node" -and $_.endpoints.Count -gt 0 } | Select-Object -First 1
+    $record = $response.records | Where-Object { $null -ne $_.nodeFacts -and $_.nodeFacts.endpoints.Count -gt 0 } | Select-Object -First 1
     if ($null -eq $record) { throw "no published node record for $Service" }
     return $record
 }
 
 function Select-Endpoint([object]$Record, [string]$Pattern) {
-    $endpoint = $Record.endpoints | Where-Object { $_ -match $Pattern } | Select-Object -First 1
+    $endpoint = $Record.nodeFacts.endpoints | Where-Object { $_ -match $Pattern } | Select-Object -First 1
     if ([string]::IsNullOrWhiteSpace($endpoint)) { throw "endpoint matching $Pattern was not published" }
     return $endpoint
 }
@@ -243,18 +382,6 @@ function Run-Step([string]$Name, [scriptblock]$Body) {
     }
 }
 
-foreach ($service in $services) {
-    $path = Join-Path $secretPath "$service.token"
-    Write-PrivateText $path ([Guid]::NewGuid().ToString("N"))
-    Set-Item "Env:ARDENTS_$($service.ToUpper())_TOKEN_FILE" $path
-}
-$env:ARDENTS_SEED_TOKEN_FILE = Join-Path $secretPath "seed.token"
-$env:ARDENTS_BRIDGE_TOKEN_FILE = Join-Path $secretPath "bridge.token"
-$env:ARDENTS_A1_TOKEN_FILE = Join-Path $secretPath "a1.token"
-$env:ARDENTS_A2_TOKEN_FILE = Join-Path $secretPath "a2.token"
-$env:ARDENTS_B1_TOKEN_FILE = Join-Path $secretPath "b1.token"
-$env:ARDENTS_B2_TOKEN_FILE = Join-Path $secretPath "b2.token"
-$env:ARDENTS_RECOVERY_TOKEN_FILE = Join-Path $secretPath "recovery.token"
 $env:ARDENTS_WSS_CA_FILE = Join-Path $secretPath "ca.crt"
 Invoke-OpenSSL @("req", "-x509", "-newkey", "rsa:2048", "-nodes", "-keyout", (Join-Path $secretPath "ca.key"), "-out", $env:ARDENTS_WSS_CA_FILE, "-days", "2", "-sha256", "-subj", "/CN=Ardents STB-307 Test CA")
 $bridgeCert = New-TestCertificate "bridge" @("bridge", "localhost")
@@ -263,37 +390,42 @@ $env:ARDENTS_BRIDGE_CERT_FILE = $bridgeCert.Cert
 $env:ARDENTS_BRIDGE_KEY_FILE = $bridgeCert.Key
 $env:ARDENTS_B2_CERT_FILE = $b2Cert.Cert
 $env:ARDENTS_B2_KEY_FILE = $b2Cert.Key
-$env:ARDENTS_SEED_ZONE_A = "pending"
-$env:ARDENTS_ZONE_A_BOOTSTRAP = "pending"
-$env:ARDENTS_ZONE_B_BOOTSTRAP = "pending"
-$env:ARDENTS_BRIDGE_WSS = "pending"
 $env:ARDENTS_A2_IP = "172.31.10.12"
 
 try {
     Run-Step "verify testnet image" {
         Ensure-TestnetImage
+        Initialize-TestOperator
     }
     Run-Step "start seed" {
+        Invoke-ProvisionNode "seed" 61001
         Invoke-Compose @("up", "-d", "seed")
+        Enroll-TestOperator "seed"
         Wait-API "seed"
         $seed = Get-NodeRecord "seed"
-        $env:ARDENTS_SEED_ZONE_A = Select-Endpoint $seed "/ip4/172\.31\.10\.10/tcp/61001/"
+        $script:seedZoneA = Select-Endpoint $seed "/ip4/172\.31\.10\.10/tcp/61001/"
         $script:seedZoneB = Select-Endpoint $seed "/ip4/172\.31\.20\.10/tcp/61001/"
     }
     Run-Step "start dual-homed bridge" {
+        Invoke-ProvisionNode "bridge" 61002 $script:seedZoneA
         Invoke-Compose @("up", "-d", "bridge")
+        Enroll-TestOperator "bridge"
         Wait-Joined "bridge"
         $bridge = Get-NodeRecord "bridge"
         $bridgeA = Select-Endpoint $bridge "/ip4/172\.31\.10\.20/tcp/61002/"
         $bridgeB = Select-Endpoint $bridge "/ip4/172\.31\.20\.20/tcp/61002/"
         $script:bridgeZoneA = $bridgeA
         $script:bridgeZoneB = $bridgeB
-        $env:ARDENTS_BRIDGE_WSS = Select-Endpoint $bridge "/dns4/bridge/tcp/61443/.*/p2p/"
-        $env:ARDENTS_ZONE_A_BOOTSTRAP = "$($env:ARDENTS_SEED_ZONE_A),$bridgeA"
-        $env:ARDENTS_ZONE_B_BOOTSTRAP = "$script:seedZoneB,$bridgeB"
+        $script:bridgeWSS = Select-Endpoint $bridge "/dns4/bridge/tcp/61443/.*/p2p/"
     }
     Run-Step "start two segments and WSS-only client path" {
+        Invoke-ProvisionNode "a1" 61101 $script:seedZoneA
+        Invoke-ProvisionNode "a2" 61102 $bridgeA
+        Invoke-ProvisionNode "b1" 61201 $script:seedZoneB
+        Invoke-ProvisionNode "b2" 61202 $script:bridgeWSS
+        Invoke-ProvisionNode "recovery" 61301 $script:seedZoneA
         Invoke-Compose @("up", "-d", "a1", "a2", "b1", "b2", "recovery")
+        foreach ($service in @("a1", "a2", "b1", "b2", "recovery")) { Enroll-TestOperator $service }
         foreach ($service in @("a1", "a2", "b1", "b2", "recovery")) { Wait-Joined $service 60 }
         Capture-Snapshot "initial"
     }
@@ -314,8 +446,8 @@ try {
         Invoke-Compose @("up", "-d", "--force-recreate", "a2")
         Wait-Joined "a2" 60
         $after = Get-NodeRecord "a2"
-        if (($before.endpoints -join ",") -eq ($after.endpoints -join ",")) { throw "a2 endpoint did not change" }
-        if (-not (($after.endpoints -join ",") -match "172.31.10.14")) { throw "a2 did not publish the new address" }
+        if (($before.nodeFacts.endpoints -join ",") -eq ($after.nodeFacts.endpoints -join ",")) { throw "a2 endpoint did not change" }
+        if (-not (($after.nodeFacts.endpoints -join ",") -match "172.31.10.14")) { throw "a2 did not publish the new address" }
     }
     Run-Step "lose one bootstrap without losing healthy participation" {
         Invoke-Compose @("stop", "seed")
@@ -342,7 +474,7 @@ try {
         Wait-Condition "zone B restricted defense" {
             $status = Invoke-ArdJson "b1" @("network", "status")
             return $status.network.activeMode -eq "restricted_defense"
-        } 45
+        } 45 7000
         Capture-Snapshot "peer-collapsed"
     }
     Run-Step "rejoin partition and recover steady provider shape" {
@@ -356,7 +488,7 @@ try {
         Wait-Condition "zone B steady mode" {
             $status = Invoke-ArdJson "b1" @("network", "status")
             return $status.network.activeMode -eq "steady"
-        } 75
+        } 75 7000
         Capture-Snapshot "recovered"
     }
     Run-Step "peer churn remains recoverable" {

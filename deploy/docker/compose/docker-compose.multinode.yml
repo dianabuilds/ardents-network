@@ -7,18 +7,17 @@ x-node: &node
   command:
     - |
       install -d -m 0700 /run/ardents
-      install -m 0600 /run/secrets/ardents-api-token /run/ardents/api-token
+      install -d -m 0750 /var/lib/ardents-applications
       install -m 0600 /var/lib/ardents-secrets/channel-grant-store.key /run/ardents/channel-grant-store.key
       install -m 0600 /var/lib/ardents-secrets/replay.key /run/ardents/replay.key
       install -m 0600 /var/lib/ardents-secrets/operator.json /run/ardents/operator.json
       exec /usr/local/bin/ardentsd
   environment: &node_environment
-    ARDENTS_API_TOKEN_FILE: /run/ardents/api-token
     ARDENTS_CONFIG_FILE: /run/ardents/operator.json
     ARDENTS_WORKLOAD_EXECUTOR: docker
     DOCKER_HOST: unix:///run/ardents/workload-engine/docker.sock
   healthcheck:
-    test: ["CMD", "ardentsctl", "--token-file", "/run/ardents/api-token", "node", "status"]
+    test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:9090/readyz"]
     interval: 2s
     timeout: 2s
     retries: 30
@@ -26,6 +25,18 @@ x-node: &node
   restart: unless-stopped
   networks:
     - ardents
+
+x-operator-cli: &operator_cli
+  image: ${ARDENTS_DOCKER_IMAGE:-ardents/node-local:dev}
+  build:
+    context: ../../..
+    dockerfile: deploy/docker/images/node.Dockerfile
+  profiles: ["tools"]
+  entrypoint: ["/usr/local/bin/ardentsctl"]
+  network_mode: none
+  read_only: true
+  cap_drop: ["ALL"]
+  security_opt: ["no-new-privileges:true"]
 
 services:
   realm-provisioner:
@@ -74,13 +85,11 @@ services:
         condition: service_healthy
     environment:
       <<: *node_environment
-    secrets:
-      - source: seed_api_token
-        target: ardents-api-token
-        mode: 0400
     volumes:
       - seed_data:/var/lib/ardents
       - seed_secrets:/var/lib/ardents-secrets:ro
+      - seed_runtime:/run/ardents
+      - seed_application_runtime:/var/lib/ardents-applications
       - workload_engine_socket:/run/ardents/workload-engine
     ports:
       - "127.0.0.1:${ARDENTS_SEED_TRANSPORT_HOST_PORT:-61001}:61001"
@@ -94,13 +103,11 @@ services:
         condition: service_healthy
     environment:
       <<: *node_environment
-    secrets:
-      - source: peer2_api_token
-        target: ardents-api-token
-        mode: 0400
     volumes:
       - peer2_data:/var/lib/ardents
       - peer2_secrets:/var/lib/ardents-secrets:ro
+      - peer2_runtime:/run/ardents
+      - peer2_application_runtime:/var/lib/ardents-applications
       - workload_engine_socket:/run/ardents/workload-engine
     ports:
       - "127.0.0.1:${ARDENTS_PEER2_TRANSPORT_HOST_PORT:-61002}:61002"
@@ -114,16 +121,32 @@ services:
         condition: service_healthy
     environment:
       <<: *node_environment
-    secrets:
-      - source: peer3_api_token
-        target: ardents-api-token
-        mode: 0400
     volumes:
       - peer3_data:/var/lib/ardents
       - peer3_secrets:/var/lib/ardents-secrets:ro
+      - peer3_runtime:/run/ardents
+      - peer3_application_runtime:/var/lib/ardents-applications
       - workload_engine_socket:/run/ardents/workload-engine
     ports:
       - "127.0.0.1:${ARDENTS_PEER3_TRANSPORT_HOST_PORT:-61003}:61003"
+
+  seed-operator:
+    <<: *operator_cli
+    volumes:
+      - seed_runtime:/run/ardents
+      - operator_identity:/operator-identity
+
+  peer2-operator:
+    <<: *operator_cli
+    volumes:
+      - peer2_runtime:/run/ardents
+      - operator_identity:/operator-identity
+
+  peer3-operator:
+    <<: *operator_cli
+    volumes:
+      - peer3_runtime:/run/ardents
+      - operator_identity:/operator-identity
 
 networks:
   ardents:
@@ -135,15 +158,14 @@ volumes:
   workload_engine_socket:
   seed_data:
   seed_secrets:
+  seed_runtime:
+  seed_application_runtime:
   peer2_data:
   peer2_secrets:
+  peer2_runtime:
+  peer2_application_runtime:
   peer3_data:
   peer3_secrets:
-
-secrets:
-  seed_api_token:
-    file: ${ARDENTS_SEED_API_TOKEN_FILE:?seed API token file is required}
-  peer2_api_token:
-    file: ${ARDENTS_PEER2_API_TOKEN_FILE:?peer2 API token file is required}
-  peer3_api_token:
-    file: ${ARDENTS_PEER3_API_TOKEN_FILE:?peer3 API token file is required}
+  peer3_runtime:
+  peer3_application_runtime:
+  operator_identity:

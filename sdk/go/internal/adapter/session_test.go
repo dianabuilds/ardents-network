@@ -29,6 +29,7 @@ import (
 type authenticationStub struct {
 	begin    func(context.Context, *connect.Request[applicationidentityv1.BeginAuthenticationRequest]) (*connect.Response[applicationidentityv1.BeginAuthenticationResponse], error)
 	complete func(context.Context, *connect.Request[applicationidentityv1.CompleteAuthenticationRequest]) (*connect.Response[applicationidentityv1.CompleteAuthenticationResponse], error)
+	end      func(context.Context, *connect.Request[applicationidentityv1.EndSessionRequest]) (*connect.Response[applicationidentityv1.EndSessionResponse], error)
 }
 
 func (s *authenticationStub) BeginAuthentication(ctx context.Context, request *connect.Request[applicationidentityv1.BeginAuthenticationRequest]) (*connect.Response[applicationidentityv1.BeginAuthenticationResponse], error) {
@@ -37,6 +38,12 @@ func (s *authenticationStub) BeginAuthentication(ctx context.Context, request *c
 
 func (s *authenticationStub) CompleteAuthentication(ctx context.Context, request *connect.Request[applicationidentityv1.CompleteAuthenticationRequest]) (*connect.Response[applicationidentityv1.CompleteAuthenticationResponse], error) {
 	return s.complete(ctx, request)
+}
+func (s *authenticationStub) EndSession(ctx context.Context, request *connect.Request[applicationidentityv1.EndSessionRequest]) (*connect.Response[applicationidentityv1.EndSessionResponse], error) {
+	if s.end != nil {
+		return s.end(ctx, request)
+	}
+	return connect.NewResponse(&applicationidentityv1.EndSessionResponse{}), nil
 }
 
 type testSessionSigner struct {
@@ -71,7 +78,13 @@ func TestApplicationSessionSingleFlightCachesOnlyProcessMemory(t *testing.T) {
 	now := time.Unix(1_900_000_000, 0).UTC()
 	node, signer := testIdentity(t, now)
 	var begins atomic.Int32
+	var ends atomic.Int32
 	auth := successfulAuthentication(node, signer.principal, now, &begins)
+	auth.end = func(_ context.Context, request *connect.Request[applicationidentityv1.EndSessionRequest]) (*connect.Response[applicationidentityv1.EndSessionResponse], error) {
+		require.True(t, strings.HasPrefix(request.Header().Get("Authorization"), applicationSessionScheme+" "))
+		ends.Add(1)
+		return connect.NewResponse(&applicationidentityv1.EndSessionResponse{}), nil
+	}
 	manager := testSessionManager(auth, signer, node, now)
 
 	start := make(chan struct{})
@@ -95,6 +108,7 @@ func TestApplicationSessionSingleFlightCachesOnlyProcessMemory(t *testing.T) {
 	require.Equal(t, SessionStatus{Authenticated: true, NodePrincipal: node, SignerPrincipal: signer.principal}, manager.Status())
 
 	manager.Logout()
+	require.EqualValues(t, 1, ends.Load())
 	require.Equal(t, SessionStatus{}, manager.Status())
 	require.NoError(t, manager.Authenticate(context.Background()))
 	require.Equal(t, int32(2), begins.Load())
@@ -137,7 +151,7 @@ func TestApplicationSessionLiveWaiterRetriesAfterLeaderCancellation(t *testing.T
 			}
 			return connect.NewResponse(&applicationidentityv1.BeginAuthenticationResponse{Challenge: validChallenge(node, signer.principal, now)}), nil
 		},
-		complete: success.(*authenticationStub).complete,
+		complete: success.complete,
 	}
 	manager := testSessionManager(auth, signer, node, now)
 	leaderContext, cancelLeader := context.WithCancel(context.Background())
@@ -323,7 +337,7 @@ func testSessionManager(auth authenticationService, signer SessionSigner, node s
 	}
 }
 
-func successfulAuthentication(node, principal string, now time.Time, begins *atomic.Int32) authenticationService {
+func successfulAuthentication(node, principal string, now time.Time, begins *atomic.Int32) *authenticationStub {
 	return &authenticationStub{
 		begin: func(context.Context, *connect.Request[applicationidentityv1.BeginAuthenticationRequest]) (*connect.Response[applicationidentityv1.BeginAuthenticationResponse], error) {
 			begins.Add(1)

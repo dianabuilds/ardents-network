@@ -22,9 +22,7 @@ $services = @("seed", "peer2", "peer3")
 if (-not (Test-Path -LiteralPath $manifestPath)) { throw "cluster manifest is missing" }
 $cluster = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
 $env:ARDENTS_BOOTSTRAP_PEER = [string]$cluster.bootstrap_endpoint
-$env:ARDENTS_SEED_API_TOKEN_FILE = Join-Path $statePath "secrets/seed.token"
-$env:ARDENTS_PEER2_API_TOKEN_FILE = Join-Path $statePath "secrets/peer2.token"
-$env:ARDENTS_PEER3_API_TOKEN_FILE = Join-Path $statePath "secrets/peer3.token"
+$operatorDevice = "/operator-identity/device.json"
 
 function Invoke-Compose([string[]]$Arguments) {
     & docker @composePrefix @Arguments
@@ -32,7 +30,12 @@ function Invoke-Compose([string[]]$Arguments) {
 }
 
 function Invoke-ArdJson([string]$Service, [string[]]$Arguments) {
-    $raw = & docker @composePrefix exec -T $Service ardentsctl --token-file /run/ardents/api-token --output json @Arguments
+    $principalProperty = $cluster.node_principals.PSObject.Properties[$Service]
+    if ($null -eq $principalProperty -or [string]::IsNullOrWhiteSpace([string]$principalProperty.Value)) {
+        throw "cluster manifest has no node Principal for $Service"
+    }
+    $raw = & docker @composePrefix --profile tools run --rm --no-deps "$Service-operator" `
+        --output json --signer-file $operatorDevice --principal ([string]$principalProperty.Value) @Arguments
     if ($LASTEXITCODE -ne 0) { throw "ardentsctl command failed for $Service" }
     return (($raw -join "`n") | ConvertFrom-Json)
 }
@@ -71,6 +74,8 @@ function Write-ClusterManifest([string]$Image, [string]$PreviousImage) {
         image = $Image
         previous_image = $PreviousImage
         bootstrap_endpoint = [string]$cluster.bootstrap_endpoint
+        operator_principal = [string]$cluster.operator_principal
+        node_principals = $cluster.node_principals
         services = $services
         updated_at = [DateTime]::UtcNow.ToString("O")
     }
