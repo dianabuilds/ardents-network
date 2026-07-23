@@ -27,11 +27,9 @@ func TestArddProductionObservabilityProcessBoundary(t *testing.T) {
 		Tags: []string{"e2e", "observability", "security", "process"}, Speed: "fast", Environment: "linux-container",
 	})
 	dir := t.TempDir()
-	apiAddress := reserveAddress(t)
 	observabilityAddress := reserveAddress(t)
-	writeToken(t, filepath.Join(dir, "api-token"), "api-secret")
 	writeToken(t, filepath.Join(dir, "metrics-token"), "metrics-secret")
-	configPath := writeObservabilityConfig(t, dir, apiAddress, observabilityAddress)
+	configPath := writeObservabilityConfig(t, dir, observabilityAddress)
 	binary := filepath.Join(dir, "ardentsd")
 
 	scenario.Precondition("build and start the real daemon entry point", func(t *testing.T) {
@@ -40,7 +38,7 @@ func TestArddProductionObservabilityProcessBoundary(t *testing.T) {
 		require.NoError(t, err, string(buildOutput))
 	})
 	command := exec.Command(binary)
-	command.Env = append(os.Environ(), "ARDENTS_CONFIG_FILE="+configPath, "ARDENTS_API_TOKEN=", "ARDENTS_API_TOKEN_FILE=")
+	command.Env = append(os.Environ(), "ARDENTS_CONFIG_FILE="+configPath)
 	logPath := filepath.Join(dir, "ardentsd.log")
 	output, err := os.Create(logPath)
 	require.NoError(t, err)
@@ -83,14 +81,13 @@ func TestArddProductionObservabilityProcessBoundary(t *testing.T) {
 	})
 }
 
-func writeObservabilityConfig(t *testing.T, dir, apiAddress, observabilityAddress string) string {
+func writeObservabilityConfig(t *testing.T, dir, observabilityAddress string) string {
 	t.Helper()
 	doc := runtimeconfig.Defaults()
 	doc.Node.Name = "observability-e2e"
 	doc.Node.Profile = "local_development"
 	doc.Node.DataDir = filepath.Join(dir, "data")
-	doc.API.ListenAddress = apiAddress
-	doc.API.TokenFile = filepath.Join(dir, "api-token")
+	doc.API.SocketPath = filepath.Join(dir, "control.sock")
 	doc.Observability.ListenAddress = observabilityAddress
 	doc.Observability.TokenFile = filepath.Join(dir, "metrics-token")
 	doc.Network.BindAddress = "127.0.0.1"
