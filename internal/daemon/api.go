@@ -173,6 +173,7 @@ func (n *Node) Start(ctx context.Context) error {
 	if n.cancel != nil {
 		return nil
 	}
+	n.startBackgroundWrites()
 	startBlobExchange := func(ctx context.Context) error {
 		err := n.remoteData.Start(ctx)
 		if n.handleDataPrivacyFailureLocked(err) {
@@ -189,7 +190,7 @@ func (n *Node) Start(ctx context.Context) error {
 	}
 	n.network = networkCtx
 	n.cancel = cancel
-	n.restartDiscoveryRefreshLocked()
+	n.replaceDiscoveryRefreshLocked(n.refreshDiscoveryPublication)
 	return nil
 }
 
@@ -202,16 +203,20 @@ func (n *Node) Stop(ctx context.Context) error {
 		n.refreshStop()
 		n.refreshStop = nil
 	}
+	refreshLoops := append([]<-chan struct{}(nil), n.refreshLoops...)
+	n.refreshLoops = nil
 	stop := n.runtimeMgr.beginStopLocked()
 	cancel := n.cancel
+	n.network = nil
 	n.mu.Unlock()
 
+	n.stopBackgroundWrites()
+	waitForRefreshLoops(refreshLoops)
 	workloadErr := stop.runExternal(ctx)
 
 	n.mu.Lock()
 	err := stop.finishLocked(ctx, workloadErr)
 	n.cancel = nil
-	n.network = nil
 	n.mu.Unlock()
 	if cancel != nil {
 		cancel()
@@ -219,7 +224,7 @@ func (n *Node) Stop(ctx context.Context) error {
 	return err
 }
 
-func (n *Node) restartDiscoveryRefreshLocked() {
+func (n *Node) replaceDiscoveryRefreshLocked(refresh func(context.Context)) {
 	if n.refreshStop != nil {
 		n.refreshStop()
 		n.refreshStop = nil
@@ -229,7 +234,30 @@ func (n *Node) restartDiscoveryRefreshLocked() {
 	}
 	refreshCtx, cancel := context.WithCancel(n.network)
 	n.refreshStop = cancel
-	n.runtimeMgr.StartDiscoveryRefreshLoop(refreshCtx, n.cfg.DiscoveryRefreshInterval, n.refreshDiscoveryPublication)
+	n.reapRefreshLoopsLocked()
+	n.refreshLoops = append(n.refreshLoops, n.runtimeMgr.StartDiscoveryRefreshLoop(
+		refreshCtx,
+		n.cfg.DiscoveryRefreshInterval,
+		refresh,
+	))
+}
+
+func (n *Node) reapRefreshLoopsLocked() {
+	active := n.refreshLoops[:0]
+	for _, done := range n.refreshLoops {
+		select {
+		case <-done:
+		default:
+			active = append(active, done)
+		}
+	}
+	n.refreshLoops = active
+}
+
+func waitForRefreshLoops(loops []<-chan struct{}) {
+	for _, done := range loops {
+		<-done
+	}
 }
 
 func (n *Node) refreshDiscoveryPublication(ctx context.Context) {

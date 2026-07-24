@@ -5,10 +5,152 @@ import (
 	diagapi "ardents/internal/diagnostics"
 	networkapi "ardents/internal/network"
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
+
+func TestNodeStopWaitsForDiscoveryRefreshWriter(t *testing.T) {
+	dir := t.TempDir()
+	n := NewNode(Config{
+		Name: "stop-waits-for-discovery-refresh",
+		Boot: BootConfig{Sources: []string{"local://bootstrap"}},
+		Data: DataConfig{Dir: dir},
+	})
+	require.NoError(t, n.Start(context.Background()))
+
+	writerStarted := make(chan struct{})
+	stopObserved := make(chan struct{})
+	releaseWriter := make(chan struct{})
+	writerResult := make(chan error, 1)
+
+	n.mu.Lock()
+	n.cfg.DiscoveryRefreshInterval = time.Nanosecond
+	n.replaceDiscoveryRefreshLocked(func(ctx context.Context) {
+		close(writerStarted)
+		<-ctx.Done()
+		close(stopObserved)
+		<-releaseWriter
+		writerResult <- os.WriteFile(filepath.Join(dir, "refresh-writer.evidence"), []byte("complete"), 0o600)
+	})
+	n.mu.Unlock()
+
+	select {
+	case <-writerStarted:
+	case <-time.After(time.Second):
+		t.Fatal("discovery refresh writer did not start")
+	}
+	stopResult := make(chan error, 1)
+	go func() { stopResult <- n.Stop(context.Background()) }()
+	select {
+	case <-stopObserved:
+	case <-time.After(time.Second):
+		t.Fatal("Node.Stop did not cancel the discovery refresh writer")
+	}
+	require.NoError(t, n.Start(context.Background()), "concurrent Start must not reopen lifecycle while Stop is draining")
+	select {
+	case err := <-stopResult:
+		t.Fatalf("Node.Stop returned before the discovery refresh writer stopped: %v", err)
+	default:
+	}
+
+	close(releaseWriter)
+	select {
+	case err := <-writerResult:
+		require.NoError(t, err)
+	case <-time.After(time.Second):
+		t.Fatal("discovery refresh writer did not persist its final write")
+	}
+	select {
+	case err := <-stopResult:
+		require.NoError(t, err)
+	case <-time.After(time.Second):
+		t.Fatal("Node.Stop did not return after the discovery refresh writer stopped")
+	}
+	evidence, err := os.ReadFile(filepath.Join(dir, "refresh-writer.evidence"))
+	require.NoError(t, err)
+	require.Equal(t, "complete", string(evidence))
+	n.mu.Lock()
+	require.Empty(t, n.refreshLoops)
+	n.mu.Unlock()
+}
+
+func TestNodeStopDrainsBootstrapDiagnosticsWriter(t *testing.T) {
+	dir := t.TempDir()
+	n := NewNode(Config{
+		Name: "stop-drains-bootstrap-writer",
+		Boot: BootConfig{Sources: []string{"local://bootstrap"}},
+		Data: DataConfig{Dir: dir},
+	})
+	require.NoError(t, n.Start(context.Background()))
+
+	n.backgroundMu.Lock()
+	stopObserved := n.backgroundStop
+	n.backgroundMu.Unlock()
+	writerStarted := make(chan struct{})
+	releaseWriter := make(chan struct{})
+	writerFinished := make(chan struct{})
+	go n.runOwnedBackgroundWrite(func() {
+		close(writerStarted)
+		<-releaseWriter
+		RecordBootstrapDial(n.diag, n.cfg.Name, networkapi.BootstrapDialReport{
+			Peer:   "/ip4/127.0.0.1/tcp/1",
+			Detail: "connection refused",
+		})
+		close(writerFinished)
+	})
+	select {
+	case <-writerStarted:
+	case <-time.After(time.Second):
+		t.Fatal("bootstrap diagnostics writer did not start")
+	}
+
+	stopResult := make(chan error, 1)
+	go func() { stopResult <- n.Stop(context.Background()) }()
+	select {
+	case <-stopObserved:
+	case <-time.After(time.Second):
+		t.Fatal("Node.Stop did not close background writer admission")
+	}
+	select {
+	case err := <-stopResult:
+		t.Fatalf("Node.Stop returned before the bootstrap diagnostics writer stopped: %v", err)
+	default:
+	}
+
+	close(releaseWriter)
+	select {
+	case <-writerFinished:
+	case <-time.After(time.Second):
+		t.Fatal("bootstrap diagnostics writer did not finish")
+	}
+	select {
+	case err := <-stopResult:
+		require.NoError(t, err)
+	case <-time.After(time.Second):
+		t.Fatal("Node.Stop did not return after the bootstrap diagnostics writer finished")
+	}
+	snapshot := n.diag.Snapshot()
+	foundBootstrapFailure := false
+	for _, item := range snapshot.RecentEvents {
+		foundBootstrapFailure = foundBootstrapFailure || item.Type == "bootstrap_dial_failed"
+	}
+	require.True(t, foundBootstrapFailure)
+
+	databasePath := filepath.Join(dir, "ardents.db")
+	beforeLateCallback, err := os.ReadFile(databasePath)
+	require.NoError(t, err)
+	n.handleBootstrapDialLocked(networkapi.BootstrapDialReport{
+		Peer:   "/ip4/127.0.0.1/tcp/2",
+		Detail: "late connection refused",
+	})
+	afterLateCallback, err := os.ReadFile(databasePath)
+	require.NoError(t, err)
+	require.Equal(t, beforeLateCallback, afterLateCallback, "late bootstrap observer wrote after Node.Stop")
+}
 
 func TestNodeStopWithdrawsLocalNodeRecord(t *testing.T) {
 	n := NewNode(Config{

@@ -119,12 +119,15 @@ func (m *RuntimeManager) StartDiscoveryRefreshLoop(
 	ctx context.Context,
 	configuredInterval time.Duration,
 	refresh func(context.Context),
-) {
+) <-chan struct{} {
+	done := make(chan struct{})
 	interval := DiscoveryRefreshInterval(configuredInterval)
 	if interval <= 0 {
-		return
+		close(done)
+		return done
 	}
 	go func() {
+		defer close(done)
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 		for {
@@ -132,10 +135,14 @@ func (m *RuntimeManager) StartDiscoveryRefreshLoop(
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
+				if ctx.Err() != nil {
+					return
+				}
 				refresh(ctx)
 			}
 		}
 	}()
+	return done
 }
 
 func DiscoveryRefreshInterval(configuredInterval time.Duration) time.Duration {

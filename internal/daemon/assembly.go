@@ -500,27 +500,28 @@ func normalizedConfig(cfg Config) Config {
 func newNodeCore(cfg Config) *Node {
 	core := buildCore(runtimeCoreConfig(cfg))
 	return &Node{
-		cfg:         cfg,
-		life:        core.Life,
-		diag:        core.Diag,
-		state:       core.State,
-		keys:        core.Keys,
-		boot:        core.Boot,
-		ident:       core.Identity,
-		trust:       core.Trust,
-		disco:       core.Discovery,
-		trans:       core.Transport,
-		privacy:     cfg.Privacy,
-		dataPrivacy: cfg.DataPrivacy,
-		route:       core.Route,
-		policy:      core.Policy,
-		policyLive:  core.Policy,
-		data:        core.Data,
-		replica:     core.Replica,
-		transfers:   core.Transfer,
-		srv:         core.Hosting,
-		workload:    core.Workload,
-		subs:        map[chan Event]struct{}{},
+		cfg:            cfg,
+		life:           core.Life,
+		diag:           core.Diag,
+		state:          core.State,
+		keys:           core.Keys,
+		boot:           core.Boot,
+		ident:          core.Identity,
+		trust:          core.Trust,
+		disco:          core.Discovery,
+		trans:          core.Transport,
+		privacy:        cfg.Privacy,
+		dataPrivacy:    cfg.DataPrivacy,
+		route:          core.Route,
+		policy:         core.Policy,
+		policyLive:     core.Policy,
+		data:           core.Data,
+		replica:        core.Replica,
+		transfers:      core.Transfer,
+		srv:            core.Hosting,
+		workload:       core.Workload,
+		backgroundStop: make(chan struct{}),
+		subs:           map[chan Event]struct{}{},
 	}
 }
 
@@ -592,38 +593,43 @@ type querySurface interface {
 }
 
 type Node struct {
-	mu                sync.Mutex
-	stopMu            sync.Mutex
-	cfg               Config
-	life              *diagnostics.Machine
-	diag              *diagnostics.Recorder
-	state             *identity.Store
-	keys              identity.KeyStore
-	boot              *BootStatus
-	ident             identity.Service
-	trust             *discovery.TrustEvaluator
-	disco             *discovery.Service
-	discoveryCommands *discovery.Commands
-	discoveryResolver *discovery.Resolver
-	trans             network.Service
-	privacy           *networkprivacy.Channel
-	dataPrivacy       *networkprivacy.Channel
-	route             *noderoute.State
-	policy            apppolicy.Policy
-	policyLive        *apppolicy.Service
-	data              *content.Service
-	dataCommands      *content.Commands
-	replica           *replication.Repository
-	transfers         *transfer.Journal
-	remoteData        *remoteContent
-	srv               *registry.Registry
-	workload          *execution.Service
-	private           ed25519.PrivateKey
-	network           context.Context
-	cancel            context.CancelFunc
-	refreshStop       context.CancelFunc
-	seq               int64
-	subs              map[chan Event]struct{}
+	mu                 sync.Mutex
+	stopMu             sync.Mutex
+	cfg                Config
+	life               *diagnostics.Machine
+	diag               *diagnostics.Recorder
+	state              *identity.Store
+	keys               identity.KeyStore
+	boot               *BootStatus
+	ident              identity.Service
+	trust              *discovery.TrustEvaluator
+	disco              *discovery.Service
+	discoveryCommands  *discovery.Commands
+	discoveryResolver  *discovery.Resolver
+	trans              network.Service
+	privacy            *networkprivacy.Channel
+	dataPrivacy        *networkprivacy.Channel
+	route              *noderoute.State
+	policy             apppolicy.Policy
+	policyLive         *apppolicy.Service
+	data               *content.Service
+	dataCommands       *content.Commands
+	replica            *replication.Repository
+	transfers          *transfer.Journal
+	remoteData         *remoteContent
+	srv                *registry.Registry
+	workload           *execution.Service
+	private            ed25519.PrivateKey
+	network            context.Context
+	cancel             context.CancelFunc
+	refreshStop        context.CancelFunc
+	refreshLoops       []<-chan struct{}
+	backgroundMu       sync.Mutex
+	backgroundWriters  sync.WaitGroup
+	backgroundStopping bool
+	backgroundStop     chan struct{}
+	seq                int64
+	subs               map[chan Event]struct{}
 
 	startBlobExchange func(context.Context) error
 

@@ -335,7 +335,7 @@ func (n *Node) applyOperatorDocument(doc runtimeconfig.Document) {
 	n.cfg.DiscoveryRefreshInterval = time.Duration(doc.Network.DiscoveryRefreshSeconds) * time.Second
 	n.diag.SetMaxEvents(doc.Diagnostics.MaxEvents)
 	n.diag.SetDetailLevel(doc.Diagnostics.DetailLevel)
-	n.restartDiscoveryRefreshLocked()
+	n.replaceDiscoveryRefreshLocked(n.refreshDiscoveryPublication)
 }
 
 func loadOperatorRuntimeConfig(path string) (runtimeConfig, error) {

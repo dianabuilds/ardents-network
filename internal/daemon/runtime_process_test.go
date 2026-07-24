@@ -14,13 +14,35 @@ func TestDiscoveryRefreshIntervalUsesConfiguredValue(t *testing.T) {
 
 func TestRuntimeManagerRefreshLoopStopsWithContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	ticks := make(chan struct{}, 2)
-	(&RuntimeManager{}).StartDiscoveryRefreshLoop(ctx, 10*time.Millisecond, func(context.Context) {
-		select {
-		case ticks <- struct{}{}:
-		default:
-		}
+	started := make(chan struct{})
+	releaseWriter := make(chan struct{})
+	writerStopped := make(chan struct{})
+	done := (&RuntimeManager{}).StartDiscoveryRefreshLoop(ctx, time.Nanosecond, func(ctx context.Context) {
+		close(started)
+		<-ctx.Done()
+		<-releaseWriter
+		close(writerStopped)
 	})
-	require.Eventually(t, func() bool { return len(ticks) > 0 }, 500*time.Millisecond, 10*time.Millisecond)
+	select {
+	case <-started:
+	case <-time.After(time.Second):
+		t.Fatal("discovery refresh writer did not start")
+	}
 	cancel()
+	select {
+	case <-done:
+		t.Fatal("refresh loop reported stopped while its writer was still active")
+	default:
+	}
+	close(releaseWriter)
+	select {
+	case <-writerStopped:
+	case <-time.After(time.Second):
+		t.Fatal("discovery refresh writer did not stop")
+	}
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("refresh loop did not report writer shutdown")
+	}
 }

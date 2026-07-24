@@ -456,21 +456,25 @@ func (m *RuntimeManager) degradeDiscoveryImportLocked(recordID, detail string) {
 }
 
 func (n *Node) handleBootstrapDialLocked(report transport.BootstrapDialReport) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	RecordBootstrapDial(n.diag, n.cfg.Name, report)
+	n.runOwnedBackgroundWrite(func() {
+		n.mu.Lock()
+		defer n.mu.Unlock()
+		RecordBootstrapDial(n.diag, n.cfg.Name, report)
+	})
 }
 
 func (n *Node) onReachabilityChanged() {
-	observationErr := n.workloadRuntime.SyncObserved(context.Background())
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	if n.cancel == nil {
-		return
-	}
-	if observationErr != nil {
-		n.runtimeMgr.recordDiscoveryRefreshFailureLocked(observationErr)
-		return
-	}
-	n.runtimeMgr.refreshDiscoveryPublicationAfterObservationLocked(context.Background())
+	n.runOwnedBackgroundWrite(func() {
+		observationErr := n.workloadRuntime.SyncObserved(context.Background())
+		n.mu.Lock()
+		defer n.mu.Unlock()
+		if n.cancel == nil {
+			return
+		}
+		if observationErr != nil {
+			n.runtimeMgr.recordDiscoveryRefreshFailureLocked(observationErr)
+			return
+		}
+		n.runtimeMgr.refreshDiscoveryPublicationAfterObservationLocked(context.Background())
+	})
 }
