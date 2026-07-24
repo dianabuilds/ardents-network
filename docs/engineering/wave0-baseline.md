@@ -1,13 +1,15 @@
-# Wave 0 baseline
+# Wave 0 and R0 baseline
 
 ## Baseline
 
-- Research source baseline: `main@7c0965c`
-- Date: 2026-07-24
+- Frozen source baseline:
+  `main@75471a6c08bf0c8a130db65d64c7f37dc33f03b5`
+- Date: 2026-07-25
 - Host: Windows orchestration environment
 - Go cache: external task cache under the system temporary directory
-- Worktree during verification: intentionally dirty with Wave 0 documentation
-  and `.gitattributes`; this is not release evidence
+- Worktree during R0 snapshot: clean before and after applicable gates
+- Durable evidence:
+  `evidence/stabilization-baseline-75471a6.md`
 
 ## Passed local checks
 
@@ -16,7 +18,8 @@
 | `scripts/generate-api.ps1 -Check` | passed |
 | `go vet ./...` | passed |
 | tooling tests: testcatalog, audittrace, archaccept, doccontract | passed |
-| executable testcatalog invocation | exposed an empty-catalog false pass; remediated in Wave 1 |
+| fresh Windows formatting checkout | passed with `core.autocrlf=true`; zero CRLF Go files |
+| tagged testcatalog invocation | passed: 142 integration/E2E entries |
 | audit traceability | passed: 21 findings, 5 gates |
 | entrypoint contract negative matrix | passed |
 | release source identity negative matrix | passed |
@@ -36,10 +39,10 @@ The race command covered:
 - transfer;
 - configuration.
 
-These results support `locally_verified` status in
+These clean-baseline results support `locally_verified` status in
 `current-remediation-ledger.md`. They do not promote findings to `qualified`
 because the canonical environment is Linux and the complete release matrix has
-not run against a clean exact commit.
+not run against that exact commit.
 
 The initial static catalog command returned `[]` because it omitted tagged
 suite build constraints. Wave 1 corrected the workflow to validate both
@@ -54,20 +57,22 @@ The current checkout has `core.autocrlf=true` and historically had no
 them unformatted. Running `gofmt -w` over the current tree would be a large
 mechanical rewrite unrelated to product behavior.
 
-Wave 0 adds:
+Wave 0 added:
 
 ```gitattributes
 *.go text eol=lf
 ```
 
-This must be validated in a fresh Windows checkout after the Wave 0 changes are
-committed. The existing worktree is deliberately not mass-normalized.
+R0-002 validated this policy from a disposable checkout of the frozen baseline
+with `core.autocrlf=true`. The formatting gate passed and the checkout remained
+clean. Parent commit `7c0965c` without the policy reproduced two CRLF Go files
+and failed the gate, providing the negative control. The original shared
+worktree was not mass-normalized.
 
-## Checks not executed on this worktree
+## Checks not executed for the R0 snapshot
 
 | Check | Reason |
 |---|---|
-| canonical formatting gate | requires fresh checkout to validate new LF contract |
 | fast Docker/Linux suite | Docker daemon unavailable |
 | integration Docker/Linux suite | Docker daemon unavailable |
 | E2E Docker/Linux suite | Docker daemon unavailable |
@@ -102,13 +107,13 @@ deployment matrix runs.
 
 ## Next ready backlog
 
-1. Commit the Wave 0 documents and LF checkout contract intentionally.
-2. Validate `tests/check-format.ps1` in a fresh Windows checkout.
-3. Run the canonical static job from the clean commit.
-4. Run Docker fast, integration and E2E suites without retry.
-5. Run deployment, native-install and segmented multi-node gates.
-6. Reconcile security evidence and execute independent release builds.
-7. Promote ledger rows only from retained commit-bound evidence.
+1. Begin the prepared Application Discovery implementation slices AD-01–AD-04.
+2. Complete the remaining R1 installation-journey, Operator-smoke, and
+   capability-catalogue investigations.
+3. Run Docker fast, integration, and E2E suites without retry as R3 work.
+4. Run deployment, native-install, and segmented multi-node gates as R3 work.
+5. Reconcile security evidence and execute independent release builds.
+6. Promote ledger rows only from retained commit-bound evidence.
 
 New feature work may proceed in parallel only when it does not change the
 qualification baseline. The first bounded research candidate remains

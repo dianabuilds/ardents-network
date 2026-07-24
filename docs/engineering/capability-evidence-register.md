@@ -2,8 +2,8 @@
 
 ## Scope
 
-This register describes the product truth at the Wave 1 research baseline
-`main@7c0965c` plus the uncommitted Wave 0/1 research changes.
+This register describes the product truth at the frozen stabilization baseline
+`main@75471a6c08bf0c8a130db65d64c7f37dc33f03b5`.
 
 It separates four maturity dimensions:
 
@@ -380,17 +380,22 @@ collapse `implemented` into `qualified`.
 
 ## Wave 1 ready work
 
-### Completed during research
+### Completed during research and R0
 
 - W1-001: static catalog now includes `integration,e2e` tags and rejects an
   empty result.
-- W0-001 candidate: Go LF checkout policy added through `.gitattributes`.
+- W0-001: Go LF checkout policy added through `.gitattributes` and validated in
+  a fresh Windows checkout with `core.autocrlf=true`.
+- Stabilization baseline frozen at
+  `75471a6c08bf0c8a130db65d64c7f37dc33f03b5`.
+- Tagged catalogue validated with 142 entries and fail-closed negative tests.
+- Applicable clean local/static snapshot retained in
+  `evidence/stabilization-baseline-75471a6.md`.
 
 ### R0
 
-1. Validate W0-001 in a fresh Windows checkout after commit.
-2. Run the corrected static job and retain its 142-entry catalogue.
-3. Produce a clean commit-bound gate snapshot.
+Completed. New gaps discovered by later qualification return to R0 only when
+they satisfy the ready-work criteria.
 
 ### R1
 

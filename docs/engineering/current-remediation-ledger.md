@@ -4,7 +4,8 @@
 
 This ledger reconciles the historical audit at
 `main@52af3b2480b62da60ae82c7f1d43f45cd5778230` with the implementation at
-`main@7c0965c`.
+the frozen stabilization baseline
+`main@75471a6c08bf0c8a130db65d64c7f37dc33f03b5`.
 
 The retained historical sources
 `docs/audit/2026-07-23/03-audit-coverage.md` and
@@ -85,7 +86,7 @@ and the three non-critical-lifecycle findings `CLI-001`, `ARCH-001`, and
 
 ## Wave 0 observations
 
-### W0-001 — Windows formatting gate is checkout-sensitive
+### W0-001 — Windows formatting gate is deterministic in a fresh checkout
 
 The repository has no historical `.gitattributes` contract while the current
 Windows checkout uses `core.autocrlf=true`. Git therefore considers the worktree
@@ -93,10 +94,15 @@ clean, but `gofmt -l` reports CRLF Go files as unformatted. Running `gofmt -w`
 over the tree would create a large mechanical worktree rewrite and interfere
 with concurrent work.
 
-The remediation candidate adds `*.go text eol=lf` to `.gitattributes` so new
-checkouts have a deterministic Go source representation. Qualification requires
-a fresh checkout on Windows and the canonical Linux static job. The existing
-worktree must not be mass-rewritten merely to manufacture local evidence.
+The remediation adds `*.go text eol=lf` to `.gitattributes` so new checkouts
+have a deterministic Go source representation. R0-002 validated the policy in
+a disposable Windows checkout of
+`75471a6c08bf0c8a130db65d64c7f37dc33f03b5` with `core.autocrlf=true`.
+The checkout contained zero CRLF Go files, passed the canonical formatting
+entrypoint, and remained clean. As a negative control, parent commit
+`7c0965c4b4aeaccd1aefe8c1c0c267159eb01e87` materialized two CRLF Go files
+and failed the gate. The supported Linux static job remains part of R3
+qualification.
 
 ### W1-001 — Static scenario catalog omitted tagged suites
 
@@ -106,6 +112,8 @@ the tagged suite metadata that it claimed to cover.
 
 The remediation candidate passes both build tags, rejects an empty result, and
 extends the entrypoint negative matrix so either omission fails the static job.
+R0-003 generated 142 valid entries from the frozen baseline and the negative
+matrix passed without retry.
 
 ## Promotion rule
 

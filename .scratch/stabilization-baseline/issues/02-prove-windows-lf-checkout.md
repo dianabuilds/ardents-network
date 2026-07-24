@@ -1,6 +1,7 @@
 # R0-002: Prove the Windows LF checkout contract
 
 Status: ready-for-agent
+State: closed
 Labels: ready-for-agent
 Research class: R0
 
@@ -40,4 +41,11 @@ normalize the existing shared worktree to manufacture a passing result.
 
 ## Comments
 
-None.
+- Completed on 2026-07-25 against
+  `75471a6c08bf0c8a130db65d64c7f37dc33f03b5`.
+- A disposable Windows checkout with `core.autocrlf=true` contained zero CRLF
+  Go files, passed `tests/check-format.ps1`, and remained clean.
+- The parent commit without `.gitattributes` materialized two CRLF Go files and
+  failed the formatting gate as expected.
+- Durable evidence:
+  `../../../docs/engineering/evidence/stabilization-baseline-75471a6.md`.

@@ -1,6 +1,7 @@
 # R0-003: Prove the tagged scenario catalogue
 
 Status: ready-for-agent
+State: closed
 Labels: ready-for-agent
 Research class: R0
 
@@ -39,4 +40,12 @@ contract; metadata validity and non-emptiness are the stable requirements.
 
 ## Comments
 
-None.
+- Completed on 2026-07-25 against
+  `75471a6c08bf0c8a130db65d64c7f37dc33f03b5`.
+- The tagged catalogue contains 142 valid entries.
+- The entrypoint negative matrix passed, including missing-tag and empty-result
+  rejection.
+- Local JSON evidence:
+  `tests/.artifacts/reports/catalog/r0-003-75471a6-validation.json`.
+- Durable evidence:
+  `../../../docs/engineering/evidence/stabilization-baseline-75471a6.md`.

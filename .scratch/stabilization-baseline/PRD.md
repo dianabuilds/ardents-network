@@ -1,6 +1,6 @@
 # Stabilization baseline
 
-Status: in-progress
+Status: completed
 
 ## Outcome
 
@@ -44,11 +44,13 @@ remain part of the later R3 qualification program.
 ## Issue order
 
 ```text
-R0-001 Freeze preparation baseline
+R0-001 Freeze preparation baseline [completed]
    |
-   +--> R0-002 Prove Windows LF checkout contract --+
+   +--> R0-002 Prove Windows LF checkout contract [completed] --+
    |                                                |
-   +--> R0-003 Prove tagged scenario catalogue -----+--> R0-004 Retain snapshot
+   +--> R0-003 Prove tagged scenario catalogue [completed] ------+
+                                                            |
+                                                            +--> R0-004 Retain snapshot [completed]
 ```
 
 R0-002 and R0-003 may run independently after R0-001.
@@ -58,3 +60,7 @@ R0-002 and R0-003 may run independently after R0-001.
 This work program is complete when all four issues are accepted, their evidence
 identifies one exact source commit, and active documentation still describes
 the project as a stabilization candidate pending R3 qualification.
+
+Completed against source baseline
+`75471a6c08bf0c8a130db65d64c7f37dc33f03b5`. Durable results are recorded in
+`../../docs/engineering/evidence/stabilization-baseline-75471a6.md`.

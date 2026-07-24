@@ -1,6 +1,7 @@
 # R0-001: Freeze the preparation baseline
 
 Status: ready-for-agent
+State: closed
 Labels: ready-for-agent
 Research class: R0
 
@@ -52,3 +53,10 @@ Nothing.
 ## Comments
 
 - Prepared from the locally verified Wave 0/1 research worktree.
+- Completed on 2026-07-25.
+- Baseline commit:
+  `75471a6c08bf0c8a130db65d64c7f37dc33f03b5`.
+- Before the commit, full unit/tooling tests, vet, audit traceability,
+  entrypoint contracts, and staged whitespace validation passed.
+- Durable evidence:
+  `../../../docs/engineering/evidence/stabilization-baseline-75471a6.md`.

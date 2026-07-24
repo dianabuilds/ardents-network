@@ -8,7 +8,10 @@ Issues and PRDs for this repository live as Markdown files in `.scratch/`.
 - Its optional PRD is `.scratch/<feature-slug>/PRD.md`.
 - Implementation issues are
   `.scratch/<feature-slug>/issues/<NN>-<slug>.md`, numbered from `01`.
+- Issue lifecycle is recorded as `State: open` or `State: closed`.
 - Triage state is recorded as a `Status:` line near the top of each issue.
+- Closing an issue does not remove its triage role; retain the canonical
+  `Status:` value and record completion evidence under `## Comments`.
 - Comments and conversation history are appended under `## Comments`.
 
 ## Skill operations

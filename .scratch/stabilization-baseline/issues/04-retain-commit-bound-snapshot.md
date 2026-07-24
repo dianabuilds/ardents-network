@@ -1,6 +1,7 @@
 # R0-004: Retain a clean commit-bound R0 snapshot
 
 Status: ready-for-agent
+State: closed
 Labels: ready-for-agent
 Research class: R0
 
@@ -47,4 +48,11 @@ capabilities to `qualified` when their required R3 gates have not run.
 
 ## Comments
 
-None.
+- Completed on 2026-07-25 against
+  `75471a6c08bf0c8a130db65d64c7f37dc33f03b5`.
+- Applicable Windows/local/static gates passed without retry.
+- Docker/Linux, native, multi-host, vulnerability, and independent release
+  gates were not available and remain R3 qualification work.
+- No remediation row was promoted to `qualified`.
+- Durable evidence:
+  `../../../docs/engineering/evidence/stabilization-baseline-75471a6.md`.
