@@ -85,9 +85,55 @@ ardentsctl frobnicate node
 
 func TestValidateAllowsExplicitLegacyRejection(t *testing.T) {
 	root := canonicalFixture(t)
-	writeFixture(t, root, "docs/operations/operator-access-contract.md", "The Operator Interface does not accept bearer tokens over loopback TCP.\n")
+	writeFixture(t, root, "docs/operations/operator-access-contract.md", `
+The Operator Interface does not accept bearer tokens over loopback TCP.
+The token-authenticated loopback surface is unsupported.
+`)
 
 	require.NoError(t, Validate(root))
+}
+
+func TestValidateDoesNotLetEarlierNegationHideLegacyDirective(t *testing.T) {
+	root := canonicalFixture(t)
+	writeFixture(t, root, "README.md", "This transport is not supported. Use the token-authenticated loopback surface.\n")
+
+	err := Validate(root)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "token-authenticated loopback")
+}
+
+func TestValidateDoesNotTreatFallbackConditionsAsLegacyRejection(t *testing.T) {
+	for _, directive := range []string{
+		"If the Unix socket is not available, use the token-authenticated loopback control API.",
+		"Use the loopback control API without TLS.",
+		"Use the legacy token-authenticated loopback control API.",
+		"If the Unix socket is unsupported, use the token-authenticated loopback control API.",
+	} {
+		t.Run(directive, func(t *testing.T) {
+			root := canonicalFixture(t)
+			writeFixture(t, root, "README.md", directive)
+
+			err := Validate(root)
+			require.Error(t, err)
+			require.Contains(t, strings.ToLower(err.Error()), "legacy operator directive")
+		})
+	}
+}
+
+func TestValidateRejectsUnknownDockerAndGoCommands(t *testing.T) {
+	for _, command := range []string{
+		"docker compose frobnicate",
+		"go frobnicate ./...",
+	} {
+		t.Run(command, func(t *testing.T) {
+			root := canonicalFixture(t)
+			writeFixture(t, root, "README.md", "```sh\n"+command+"\n```\n")
+
+			err := Validate(root)
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "unknown documented command")
+		})
+	}
 }
 
 func TestRepositoryDocumentationContract(t *testing.T) {

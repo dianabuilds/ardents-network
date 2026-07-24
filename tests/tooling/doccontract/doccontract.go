@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-var activeDocuments = []string{
+var requiredContractDocuments = []string{
 	"README.md",
 	"docs/product/distribution-model.md",
 	"docs/protocols/communication-contracts.md",
@@ -37,7 +37,13 @@ var (
 	legacyMechanismPattern = regexp.MustCompile(
 		`(?i)\b(?:bearer|localhost|loopback|tokens?)\b`,
 	)
-	negationPattern = regexp.MustCompile(`(?i)\b(?:cannot|delete|does\s+not|forbidden|legacy|migrat\w*|never|no|not|obsolete|reject(?:ed|s)?|remov\w*|replac\w*|retir\w*|superseded|unsupported|without)\b`)
+	negatedActionPrefixPattern  = regexp.MustCompile(`(?i)(?:do(?:es)?\s+not|must\s+not|never)\s*$`)
+	rejectedLegacyPrefixPattern = regexp.MustCompile(
+		`(?i)(?:(?:do(?:es)?\s+not|must\s+not|never)\s+(?:accept|authenticate|bind|configure|connect|create|expose|provide|reach|set|supply|use)\w*|delete|migrat\w*|reject(?:ed|s)?|remov\w*|replac\w*|retir\w*)\s+(?:the\s+)?$`,
+	)
+	rejectedLegacySuffixPattern       = regexp.MustCompile(`(?i)^\s+(?:(?:control\s+API|surface)\s+)?(?:is|are)\s+(?:forbidden|rejected|unsupported)\b`)
+	remediationBeforeMechanismPattern = regexp.MustCompile(`(?i)\b(?:delete|migrat\w*|remov\w*|replac\w*|retir\w*)\b`)
+	separateObservabilityPattern      = regexp.MustCompile(`(?i)\bscrape\s+token\b.*\bis\s+not\s+the\s+control\s+API\b`)
 )
 
 var commandGrammar = map[string]map[string]struct{}{
@@ -61,12 +67,20 @@ var identityCommandGrammar = map[string]map[string]struct{}{
 	"principal":          words("create", "import", "show"),
 }
 
+var (
+	goCommands            = words("build", "clean", "env", "fmt", "generate", "install", "list", "mod", "run", "test", "tool", "version", "vet")
+	dockerComposeCommands = words(
+		"build", "config", "create", "down", "exec", "images", "logs", "ps",
+		"pull", "restart", "rm", "run", "start", "stop", "up",
+	)
+)
+
 // Validate checks the active entry, distribution, protocol, and runbook
 // documentation against the Principal-only Operator Interface contract.
 func Validate(root string) error {
 	var violations []error
 
-	for _, relativePath := range activeDocuments {
+	for _, relativePath := range requiredContractDocuments {
 		path := filepath.Join(root, filepath.FromSlash(relativePath))
 		if _, err := os.Stat(path); err != nil {
 			violations = append(violations, fmt.Errorf("%s: required active document: %w", relativePath, err))
@@ -126,36 +140,52 @@ func findLegacyDirectives(relativePath string, text string) []error {
 	var violations []error
 	for _, paragraph := range regexp.MustCompile(`(?:\r?\n){2,}`).Split(text, -1) {
 		normalized := strings.Join(strings.Fields(paragraph), " ")
-		if negationPattern.MatchString(normalized) {
-			continue
-		}
-
-		for _, pattern := range legacyOperatorDirectives {
-			if match := pattern.FindString(normalized); match != "" {
-				violations = append(
-					violations,
-					fmt.Errorf("%s: legacy operator directive %q", relativePath, match),
-				)
+		for _, sentence := range regexp.MustCompile(`[.!?](?:\s|$)`).Split(normalized, -1) {
+			for _, pattern := range legacyOperatorDirectives {
+				for _, location := range pattern.FindAllStringIndex(sentence, -1) {
+					if legacyMatchIsExplicitlyRejected(sentence, location) {
+						continue
+					}
+					violations = append(
+						violations,
+						fmt.Errorf("%s: legacy operator directive %q", relativePath, sentence[location[0]:location[1]]),
+					)
+				}
 			}
 		}
 	}
 	for _, line := range strings.Split(text, "\n") {
 		for _, sentence := range regexp.MustCompile(`[.!?](?:\s|$)`).Split(line, -1) {
 			normalized := strings.Join(strings.Fields(sentence), " ")
-			if negationPattern.MatchString(normalized) {
+			if !legacyBoundaryPattern.MatchString(normalized) || !legacyMechanismPattern.MatchString(normalized) {
 				continue
 			}
-			if legacyActionPattern.MatchString(normalized) &&
-				legacyBoundaryPattern.MatchString(normalized) &&
-				legacyMechanismPattern.MatchString(normalized) {
-				violations = append(
-					violations,
-					fmt.Errorf("%s: legacy operator directive %q", relativePath, normalized),
-				)
+			if separateObservabilityPattern.MatchString(normalized) {
+				continue
+			}
+			for _, action := range legacyActionPattern.FindAllStringIndex(normalized, -1) {
+				if negatedActionPrefixPattern.MatchString(normalized[:action[0]]) {
+					continue
+				}
+				afterAction := normalized[action[1]:]
+				mechanism := legacyMechanismPattern.FindStringIndex(afterAction)
+				if mechanism == nil {
+					continue
+				}
+				if remediationBeforeMechanismPattern.MatchString(afterAction[:mechanism[0]]) {
+					continue
+				}
+				violations = append(violations, fmt.Errorf("%s: legacy operator directive %q", relativePath, normalized))
+				break
 			}
 		}
 	}
 	return violations
+}
+
+func legacyMatchIsExplicitlyRejected(sentence string, location []int) bool {
+	return rejectedLegacyPrefixPattern.MatchString(sentence[:location[0]]) ||
+		rejectedLegacySuffixPattern.MatchString(sentence[location[1]:])
 }
 
 func findBrokenLinks(root string, relativePath string, text string) []error {
@@ -218,48 +248,71 @@ func validateCommandSnippet(root string, relativePath string, snippet string) []
 
 		tokens := strings.Fields(strings.TrimSpace(line))
 		ctlIndex := indexToken(tokens, "ardentsctl")
-		if ctlIndex < 0 {
-			continue
-		}
-		commandIndex := documentedRootCommandIndex(tokens, ctlIndex+1)
-		if commandIndex < 0 {
-			continue
+		if ctlIndex >= 0 {
+			violations = append(violations, validateArdentsctlCommand(relativePath, line, tokens, ctlIndex)...)
 		}
 
-		command := cleanToken(tokens[commandIndex])
-		subcommands, known := commandGrammar[command]
-		if !known {
-			violations = append(violations, fmt.Errorf("%s: unknown ardentsctl command %q", relativePath, command))
-			continue
-		}
-		if subcommands == nil {
-			continue
-		}
-		subcommandIndex := nextCommandToken(tokens, commandIndex+1)
-		if subcommandIndex < 0 {
-			continue
-		}
-		subcommand := cleanToken(tokens[subcommandIndex])
-		if _, ok := subcommands[subcommand]; !ok {
-			violations = append(violations, fmt.Errorf("%s: unknown ardentsctl %s subcommand %q", relativePath, command, subcommand))
-			continue
-		}
-		if command == "identity" {
-			nested := identityCommandGrammar[subcommand]
-			if nested == nil {
-				continue
+		goIndex := indexToken(tokens, "go")
+		if goIndex >= 0 && goIndex+1 < len(tokens) {
+			command := cleanToken(tokens[goIndex+1])
+			if _, ok := goCommands[command]; !ok {
+				violations = append(violations, fmt.Errorf("%s: unknown documented command %q", relativePath, "go "+command))
 			}
-			nestedIndex := nextCommandToken(tokens, subcommandIndex+1)
-			if nestedIndex < 0 {
-				continue
-			}
-			nestedCommand := cleanToken(tokens[nestedIndex])
-			if _, ok := nested[nestedCommand]; !ok {
-				violations = append(violations, fmt.Errorf("%s: unknown ardentsctl identity %s subcommand %q", relativePath, subcommand, nestedCommand))
+		}
+
+		dockerIndex := indexToken(tokens, "docker")
+		if dockerIndex >= 0 && dockerIndex+1 < len(tokens) && cleanToken(tokens[dockerIndex+1]) == "compose" {
+			commandIndex := dockerComposeCommandIndex(tokens, dockerIndex+2)
+			if commandIndex >= 0 {
+				command := cleanToken(tokens[commandIndex])
+				if _, ok := dockerComposeCommands[command]; !ok {
+					violations = append(violations, fmt.Errorf("%s: unknown documented command %q", relativePath, "docker compose "+command))
+				}
 			}
 		}
 	}
 	return violations
+}
+
+func validateArdentsctlCommand(relativePath string, line string, tokens []string, ctlIndex int) []error {
+	commandIndex := documentedRootCommandIndex(tokens, ctlIndex+1)
+	if commandIndex < 0 {
+		return nil
+	}
+
+	command := cleanToken(tokens[commandIndex])
+	subcommands, known := commandGrammar[command]
+	if !known {
+		return []error{fmt.Errorf("%s: unknown ardentsctl command %q", relativePath, command)}
+	}
+	if subcommands == nil {
+		return nil
+	}
+	subcommandIndex := nextCommandToken(tokens, commandIndex+1)
+	if subcommandIndex < 0 {
+		return nil
+	}
+	subcommand := cleanToken(tokens[subcommandIndex])
+	if _, ok := subcommands[subcommand]; !ok {
+		return []error{fmt.Errorf("%s: unknown ardentsctl %s subcommand %q", relativePath, command, subcommand)}
+	}
+	if command != "identity" {
+		return nil
+	}
+
+	nested := identityCommandGrammar[subcommand]
+	if nested == nil {
+		return nil
+	}
+	nestedIndex := nextCommandToken(tokens, subcommandIndex+1)
+	if nestedIndex < 0 {
+		return nil
+	}
+	nestedCommand := cleanToken(tokens[nestedIndex])
+	if _, ok := nested[nestedCommand]; !ok {
+		return []error{fmt.Errorf("%s: unknown ardentsctl identity %s subcommand %q in %q", relativePath, subcommand, nestedCommand, strings.TrimSpace(line))}
+	}
+	return nil
 }
 
 func words(values ...string) map[string]struct{} {
@@ -286,7 +339,7 @@ func documentedRootCommandIndex(tokens []string, start int) int {
 			continue
 		}
 		if strings.HasPrefix(token, "-") {
-			if !strings.Contains(token, "=") && globalFlagTakesValue(token) && index+1 < len(tokens) {
+			if !strings.Contains(token, "=") && index+1 < len(tokens) {
 				index++
 			}
 			continue
@@ -296,15 +349,18 @@ func documentedRootCommandIndex(tokens []string, start int) int {
 	return -1
 }
 
-func globalFlagTakesValue(flag string) bool {
-	switch flag {
-	case "--addr", "--node-name", "--output", "--principal", "--signer-file",
-		"--ssh", "--ssh-identity", "--ssh-known-hosts", "--ssh-operator-socket",
-		"--ssh-port", "--timeout":
-		return true
-	default:
-		return false
+func dockerComposeCommandIndex(tokens []string, start int) int {
+	for index := start; index < len(tokens); index++ {
+		token := cleanToken(tokens[index])
+		if strings.HasPrefix(token, "-") {
+			if !strings.Contains(token, "=") && index+1 < len(tokens) {
+				index++
+			}
+			continue
+		}
+		return index
 	}
+	return -1
 }
 
 func nextCommandToken(tokens []string, start int) int {
