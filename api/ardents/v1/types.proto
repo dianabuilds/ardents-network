@@ -356,11 +356,24 @@ message DataInventorySnapshot {
   int64 relay_bytes = 14;
 }
 
+message ReadinessCheckSnapshot {
+  string name = 1;
+  bool ready = 2;
+  string reason = 3;
+}
+
+message ReadinessSnapshot {
+  bool ready = 1;
+  string reason = 2;
+  repeated ReadinessCheckSnapshot checks = 3;
+}
+
 message NodeRuntimeSnapshot {
   NodeSnapshot node = 1;
   BootSnapshot boot = 2;
   IdentitySnapshot identity = 3;
   HealthSnapshot health = 4;
+  ReadinessSnapshot readiness = 5;
 }
 
 message NetworkStatusSnapshot {

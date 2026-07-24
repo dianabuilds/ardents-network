@@ -12,6 +12,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+. (Join-Path $PSScriptRoot "composite-readiness.ps1")
 Set-Location $root
 $statePath = [IO.Path]::GetFullPath($StateDir)
 $manifestPath = Join-Path $statePath "cluster.json"
@@ -144,17 +145,10 @@ function Invoke-ArdJson([string]$Service, [string[]]$Arguments) {
 }
 
 function Wait-Service([string]$Service) {
-    $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
-    $lastError = ""
-    while ([DateTime]::UtcNow -lt $deadline) {
-        try {
-            $status = Invoke-ArdJson $Service @("network", "status")
-            if ($Service -eq "seed" -and $status.network.state -eq "ready") { return }
-            if ($Service -ne "seed" -and $status.network.joined -eq $true) { return }
-        } catch { $lastError = $_.Exception.Message }
-        Start-Sleep -Seconds 2
-    }
-    throw "timed out waiting for $Service after image change; $lastError"
+    Wait-ArdentsCompositeReadiness `
+        -Service $Service `
+        -TimeoutSeconds $TimeoutSeconds `
+        -Probe { param($target) Invoke-ArdJson $target @("node", "runtime") }
 }
 
 function Set-Image([string]$Image) {

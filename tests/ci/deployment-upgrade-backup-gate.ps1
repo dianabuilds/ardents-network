@@ -112,6 +112,23 @@ function global:docker {
             })
         } | ConvertTo-Json -Depth 6
     }
+    if ($arguments -contains "node" -and $arguments -contains "runtime") {
+        return [ordered]@{
+            runtime = [ordered]@{
+                readiness = [ordered]@{
+                    ready = $true
+                    reason = ""
+                    checks = @(
+                        [ordered]@{ name = "protected_api"; ready = $true }
+                        [ordered]@{ name = "access_grant"; ready = $true }
+                        [ordered]@{ name = "network"; ready = $true }
+                        [ordered]@{ name = "diagnostics"; ready = $true }
+                        [ordered]@{ name = "identity"; ready = $true }
+                    )
+                }
+            }
+        } | ConvertTo-Json -Depth 6
+    }
     if ($arguments -contains "network" -and $arguments -contains "status") {
         return [ordered]@{ network = [ordered]@{ state = "ready"; joined = $true } } | ConvertTo-Json -Depth 3
     }

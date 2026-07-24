@@ -36,10 +36,11 @@ type BootSnapshot struct {
 }
 
 type RuntimeSnapshot struct {
-	Node     NodeSnapshot
-	Boot     BootSnapshot
-	Identity identity.Snapshot
-	Health   diagnostics.HealthSnapshot
+	Node      NodeSnapshot
+	Boot      BootSnapshot
+	Identity  identity.Snapshot
+	Health    diagnostics.HealthSnapshot
+	Readiness ReadinessSnapshot
 }
 
 type SystemSnapshot struct {
@@ -59,8 +60,11 @@ type SystemSnapshot struct {
 	Diag      diagnostics.DiagSnapshot
 }
 
-func projectRuntime(snapshot SystemSnapshot, health diagnostics.HealthSnapshot) RuntimeSnapshot {
-	return RuntimeSnapshot{Node: snapshot.Node, Boot: snapshot.Boot, Identity: snapshot.Ident, Health: health}
+func projectRuntime(snapshot SystemSnapshot, health diagnostics.HealthSnapshot, networkStatus network.StatusSnapshot) RuntimeSnapshot {
+	return RuntimeSnapshot{
+		Node: snapshot.Node, Boot: snapshot.Boot, Identity: snapshot.Ident, Health: health,
+		Readiness: EvaluateRolloutReadiness(snapshot.Ident, networkStatus, health),
+	}
 }
 
 type NodeFeatures struct {
@@ -363,11 +367,17 @@ func (r *QueryService) NodeRuntimeSnapshotLocked() RuntimeSnapshot {
 	if r.life.State() != diagnostics.Stopped {
 		r.syncObservedTruthLocked()
 	}
-	return projectRuntime(r.projectSnapshotLocked(), diagnostics.ProjectHealth(r.diag.Health()))
+	snapshot := r.projectSnapshotLocked()
+	health := diagnostics.ProjectHealth(r.diag.Health())
+	return projectRuntime(snapshot, health, r.networkStatusSnapshotLocked())
 }
 
 func (r *QueryService) NetworkStatusSnapshotLocked() network.StatusSnapshot {
 	r.runtime.SyncObservedTruthLocked()
+	return r.networkStatusSnapshotLocked()
+}
+
+func (r *QueryService) networkStatusSnapshotLocked() network.StatusSnapshot {
 	profile := r.trans.ProfileSnapshot()
 	return network.ProjectStatus(
 		r.nodeProfile,

@@ -46,3 +46,22 @@ func TestSurfaceMappersPreserveNewSnapshotFields(t *testing.T) {
 	require.Equal(t, "transport", health.GetSubsystems()[0].GetDomain())
 
 }
+
+func TestNodeRuntimeReadinessPreservesCanonicalChecks(t *testing.T) {
+	runtime := toNodeRuntimeSnapshot(daemonruntime.RuntimeSnapshot{
+		Readiness: daemonruntime.ReadinessSnapshot{
+			Ready:  false,
+			Reason: "network: relay unavailable",
+			Checks: []daemonruntime.ReadinessCheckSnapshot{
+				{Name: "network", Ready: false, Reason: "relay unavailable"},
+				{Name: "diagnostics", Ready: true},
+				{Name: "identity", Ready: true},
+			},
+		},
+	})
+
+	require.False(t, runtime.GetReadiness().GetReady())
+	require.Equal(t, "network: relay unavailable", runtime.GetReadiness().GetReason())
+	require.Equal(t, "network", runtime.GetReadiness().GetChecks()[0].GetName())
+	require.False(t, runtime.GetReadiness().GetChecks()[0].GetReady())
+}

@@ -33,6 +33,8 @@ try {
         -ReportDir (Join-Path $ReportDir "upgrade-backup")
     & ./tests/ci/deployment-rollout-transaction-gate.ps1 `
         -ReportDir (Join-Path $ReportDir "rollout-transaction")
+    & ./tests/ci/deployment-composite-readiness-gate.ps1 `
+        -ReportDir (Join-Path $ReportDir "composite-readiness")
     & ./tests/resource-snapshot.ps1 -Label before-ci-deployment `
         -OutputPath (Join-Path $reportPath "resources-before.json")
     $up = $common.Clone()

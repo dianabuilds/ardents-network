@@ -3157,19 +3157,140 @@ func (x *DataInventorySnapshot) GetRelayBytes() int64 {
 	return 0
 }
 
+type ReadinessCheckSnapshot struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Ready         bool                   `protobuf:"varint,2,opt,name=ready,proto3" json:"ready,omitempty"`
+	Reason        string                 `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReadinessCheckSnapshot) Reset() {
+	*x = ReadinessCheckSnapshot{}
+	mi := &file_api_ardents_v1_types_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReadinessCheckSnapshot) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReadinessCheckSnapshot) ProtoMessage() {}
+
+func (x *ReadinessCheckSnapshot) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_types_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReadinessCheckSnapshot.ProtoReflect.Descriptor instead.
+func (*ReadinessCheckSnapshot) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *ReadinessCheckSnapshot) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ReadinessCheckSnapshot) GetReady() bool {
+	if x != nil {
+		return x.Ready
+	}
+	return false
+}
+
+func (x *ReadinessCheckSnapshot) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type ReadinessSnapshot struct {
+	state         protoimpl.MessageState    `protogen:"open.v1"`
+	Ready         bool                      `protobuf:"varint,1,opt,name=ready,proto3" json:"ready,omitempty"`
+	Reason        string                    `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	Checks        []*ReadinessCheckSnapshot `protobuf:"bytes,3,rep,name=checks,proto3" json:"checks,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReadinessSnapshot) Reset() {
+	*x = ReadinessSnapshot{}
+	mi := &file_api_ardents_v1_types_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReadinessSnapshot) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReadinessSnapshot) ProtoMessage() {}
+
+func (x *ReadinessSnapshot) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_types_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReadinessSnapshot.ProtoReflect.Descriptor instead.
+func (*ReadinessSnapshot) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *ReadinessSnapshot) GetReady() bool {
+	if x != nil {
+		return x.Ready
+	}
+	return false
+}
+
+func (x *ReadinessSnapshot) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *ReadinessSnapshot) GetChecks() []*ReadinessCheckSnapshot {
+	if x != nil {
+		return x.Checks
+	}
+	return nil
+}
+
 type NodeRuntimeSnapshot struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Node          *NodeSnapshot          `protobuf:"bytes,1,opt,name=node,proto3" json:"node,omitempty"`
 	Boot          *BootSnapshot          `protobuf:"bytes,2,opt,name=boot,proto3" json:"boot,omitempty"`
 	Identity      *IdentitySnapshot      `protobuf:"bytes,3,opt,name=identity,proto3" json:"identity,omitempty"`
 	Health        *HealthSnapshot        `protobuf:"bytes,4,opt,name=health,proto3" json:"health,omitempty"`
+	Readiness     *ReadinessSnapshot     `protobuf:"bytes,5,opt,name=readiness,proto3" json:"readiness,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *NodeRuntimeSnapshot) Reset() {
 	*x = NodeRuntimeSnapshot{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[36]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3181,7 +3302,7 @@ func (x *NodeRuntimeSnapshot) String() string {
 func (*NodeRuntimeSnapshot) ProtoMessage() {}
 
 func (x *NodeRuntimeSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[36]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3194,7 +3315,7 @@ func (x *NodeRuntimeSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NodeRuntimeSnapshot.ProtoReflect.Descriptor instead.
 func (*NodeRuntimeSnapshot) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{36}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *NodeRuntimeSnapshot) GetNode() *NodeSnapshot {
@@ -3221,6 +3342,13 @@ func (x *NodeRuntimeSnapshot) GetIdentity() *IdentitySnapshot {
 func (x *NodeRuntimeSnapshot) GetHealth() *HealthSnapshot {
 	if x != nil {
 		return x.Health
+	}
+	return nil
+}
+
+func (x *NodeRuntimeSnapshot) GetReadiness() *ReadinessSnapshot {
+	if x != nil {
+		return x.Readiness
 	}
 	return nil
 }
@@ -3258,7 +3386,7 @@ type NetworkStatusSnapshot struct {
 
 func (x *NetworkStatusSnapshot) Reset() {
 	*x = NetworkStatusSnapshot{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[37]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3270,7 +3398,7 @@ func (x *NetworkStatusSnapshot) String() string {
 func (*NetworkStatusSnapshot) ProtoMessage() {}
 
 func (x *NetworkStatusSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[37]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3283,7 +3411,7 @@ func (x *NetworkStatusSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NetworkStatusSnapshot.ProtoReflect.Descriptor instead.
 func (*NetworkStatusSnapshot) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{37}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *NetworkStatusSnapshot) GetState() string {
@@ -3477,7 +3605,7 @@ type PeerSnapshot struct {
 
 func (x *PeerSnapshot) Reset() {
 	*x = PeerSnapshot{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[38]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3489,7 +3617,7 @@ func (x *PeerSnapshot) String() string {
 func (*PeerSnapshot) ProtoMessage() {}
 
 func (x *PeerSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[38]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3502,7 +3630,7 @@ func (x *PeerSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PeerSnapshot.ProtoReflect.Descriptor instead.
 func (*PeerSnapshot) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{38}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *PeerSnapshot) GetNodeId() string {
@@ -3578,7 +3706,7 @@ type DiscoveryStatusSnapshot struct {
 
 func (x *DiscoveryStatusSnapshot) Reset() {
 	*x = DiscoveryStatusSnapshot{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[39]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3590,7 +3718,7 @@ func (x *DiscoveryStatusSnapshot) String() string {
 func (*DiscoveryStatusSnapshot) ProtoMessage() {}
 
 func (x *DiscoveryStatusSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[39]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3603,7 +3731,7 @@ func (x *DiscoveryStatusSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DiscoveryStatusSnapshot.ProtoReflect.Descriptor instead.
 func (*DiscoveryStatusSnapshot) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{39}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *DiscoveryStatusSnapshot) GetState() string {
@@ -3684,7 +3812,7 @@ type LocalPresenceSnapshot struct {
 
 func (x *LocalPresenceSnapshot) Reset() {
 	*x = LocalPresenceSnapshot{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[40]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3696,7 +3824,7 @@ func (x *LocalPresenceSnapshot) String() string {
 func (*LocalPresenceSnapshot) ProtoMessage() {}
 
 func (x *LocalPresenceSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[40]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3709,7 +3837,7 @@ func (x *LocalPresenceSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LocalPresenceSnapshot.ProtoReflect.Descriptor instead.
 func (*LocalPresenceSnapshot) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{40}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *LocalPresenceSnapshot) GetPublished() bool {
@@ -3776,7 +3904,7 @@ type PublicationStatusSnapshot struct {
 
 func (x *PublicationStatusSnapshot) Reset() {
 	*x = PublicationStatusSnapshot{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[41]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3788,7 +3916,7 @@ func (x *PublicationStatusSnapshot) String() string {
 func (*PublicationStatusSnapshot) ProtoMessage() {}
 
 func (x *PublicationStatusSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[41]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3801,7 +3929,7 @@ func (x *PublicationStatusSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PublicationStatusSnapshot.ProtoReflect.Descriptor instead.
 func (*PublicationStatusSnapshot) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{41}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *PublicationStatusSnapshot) GetState() string {
@@ -3873,7 +4001,7 @@ type RouteCandidateSnapshot struct {
 
 func (x *RouteCandidateSnapshot) Reset() {
 	*x = RouteCandidateSnapshot{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[42]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3885,7 +4013,7 @@ func (x *RouteCandidateSnapshot) String() string {
 func (*RouteCandidateSnapshot) ProtoMessage() {}
 
 func (x *RouteCandidateSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[42]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3898,7 +4026,7 @@ func (x *RouteCandidateSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RouteCandidateSnapshot.ProtoReflect.Descriptor instead.
 func (*RouteCandidateSnapshot) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{42}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *RouteCandidateSnapshot) GetSubject() string {
@@ -4000,7 +4128,7 @@ type ServiceEndpointSnapshot struct {
 
 func (x *ServiceEndpointSnapshot) Reset() {
 	*x = ServiceEndpointSnapshot{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[43]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4012,7 +4140,7 @@ func (x *ServiceEndpointSnapshot) String() string {
 func (*ServiceEndpointSnapshot) ProtoMessage() {}
 
 func (x *ServiceEndpointSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[43]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4025,7 +4153,7 @@ func (x *ServiceEndpointSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceEndpointSnapshot.ProtoReflect.Descriptor instead.
 func (*ServiceEndpointSnapshot) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{43}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *ServiceEndpointSnapshot) GetKind() string {
@@ -4099,7 +4227,7 @@ type HostedServiceSnapshot struct {
 
 func (x *HostedServiceSnapshot) Reset() {
 	*x = HostedServiceSnapshot{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[44]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4111,7 +4239,7 @@ func (x *HostedServiceSnapshot) String() string {
 func (*HostedServiceSnapshot) ProtoMessage() {}
 
 func (x *HostedServiceSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[44]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4124,7 +4252,7 @@ func (x *HostedServiceSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HostedServiceSnapshot.ProtoReflect.Descriptor instead.
 func (*HostedServiceSnapshot) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{44}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *HostedServiceSnapshot) GetId() string {
@@ -4245,7 +4373,7 @@ type HostedServiceStatusSnapshot struct {
 
 func (x *HostedServiceStatusSnapshot) Reset() {
 	*x = HostedServiceStatusSnapshot{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[45]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4257,7 +4385,7 @@ func (x *HostedServiceStatusSnapshot) String() string {
 func (*HostedServiceStatusSnapshot) ProtoMessage() {}
 
 func (x *HostedServiceStatusSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[45]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4270,7 +4398,7 @@ func (x *HostedServiceStatusSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HostedServiceStatusSnapshot.ProtoReflect.Descriptor instead.
 func (*HostedServiceStatusSnapshot) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{45}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *HostedServiceStatusSnapshot) GetServiceId() string {
@@ -4373,7 +4501,7 @@ type BlobSourceSnapshot struct {
 
 func (x *BlobSourceSnapshot) Reset() {
 	*x = BlobSourceSnapshot{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[46]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4385,7 +4513,7 @@ func (x *BlobSourceSnapshot) String() string {
 func (*BlobSourceSnapshot) ProtoMessage() {}
 
 func (x *BlobSourceSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[46]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4398,7 +4526,7 @@ func (x *BlobSourceSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BlobSourceSnapshot.ProtoReflect.Descriptor instead.
 func (*BlobSourceSnapshot) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{46}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *BlobSourceSnapshot) GetContentReference() string {
@@ -4477,7 +4605,7 @@ type TransferSnapshot struct {
 
 func (x *TransferSnapshot) Reset() {
 	*x = TransferSnapshot{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[47]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4489,7 +4617,7 @@ func (x *TransferSnapshot) String() string {
 func (*TransferSnapshot) ProtoMessage() {}
 
 func (x *TransferSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[47]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4502,7 +4630,7 @@ func (x *TransferSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TransferSnapshot.ProtoReflect.Descriptor instead.
 func (*TransferSnapshot) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{47}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *TransferSnapshot) GetId() string {
@@ -4604,7 +4732,7 @@ type FailureExplanationSnapshot struct {
 
 func (x *FailureExplanationSnapshot) Reset() {
 	*x = FailureExplanationSnapshot{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[48]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4616,7 +4744,7 @@ func (x *FailureExplanationSnapshot) String() string {
 func (*FailureExplanationSnapshot) ProtoMessage() {}
 
 func (x *FailureExplanationSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[48]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4629,7 +4757,7 @@ func (x *FailureExplanationSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FailureExplanationSnapshot.ProtoReflect.Descriptor instead.
 func (*FailureExplanationSnapshot) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{48}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *FailureExplanationSnapshot) GetScope() string {
@@ -4692,7 +4820,7 @@ type NodeStatusResponse struct {
 
 func (x *NodeStatusResponse) Reset() {
 	*x = NodeStatusResponse{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[49]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4704,7 +4832,7 @@ func (x *NodeStatusResponse) String() string {
 func (*NodeStatusResponse) ProtoMessage() {}
 
 func (x *NodeStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[49]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4717,7 +4845,7 @@ func (x *NodeStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NodeStatusResponse.ProtoReflect.Descriptor instead.
 func (*NodeStatusResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{49}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *NodeStatusResponse) GetStatus() *OperationStatus {
@@ -4751,7 +4879,7 @@ type NodeRuntimeResponse struct {
 
 func (x *NodeRuntimeResponse) Reset() {
 	*x = NodeRuntimeResponse{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[50]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4763,7 +4891,7 @@ func (x *NodeRuntimeResponse) String() string {
 func (*NodeRuntimeResponse) ProtoMessage() {}
 
 func (x *NodeRuntimeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[50]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4776,7 +4904,7 @@ func (x *NodeRuntimeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NodeRuntimeResponse.ProtoReflect.Descriptor instead.
 func (*NodeRuntimeResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{50}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *NodeRuntimeResponse) GetStatus() *OperationStatus {
@@ -4810,7 +4938,7 @@ type EffectiveConfigurationSnapshot struct {
 
 func (x *EffectiveConfigurationSnapshot) Reset() {
 	*x = EffectiveConfigurationSnapshot{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[51]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4822,7 +4950,7 @@ func (x *EffectiveConfigurationSnapshot) String() string {
 func (*EffectiveConfigurationSnapshot) ProtoMessage() {}
 
 func (x *EffectiveConfigurationSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[51]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4835,7 +4963,7 @@ func (x *EffectiveConfigurationSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EffectiveConfigurationSnapshot.ProtoReflect.Descriptor instead.
 func (*EffectiveConfigurationSnapshot) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{51}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *EffectiveConfigurationSnapshot) GetApiVersion() string {
@@ -4915,7 +5043,7 @@ type ConfigurationReloadResult struct {
 
 func (x *ConfigurationReloadResult) Reset() {
 	*x = ConfigurationReloadResult{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[52]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4927,7 +5055,7 @@ func (x *ConfigurationReloadResult) String() string {
 func (*ConfigurationReloadResult) ProtoMessage() {}
 
 func (x *ConfigurationReloadResult) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[52]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4940,7 +5068,7 @@ func (x *ConfigurationReloadResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConfigurationReloadResult.ProtoReflect.Descriptor instead.
 func (*ConfigurationReloadResult) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{52}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *ConfigurationReloadResult) GetOutcome() string {
@@ -4995,7 +5123,7 @@ type EffectiveConfigurationResponse struct {
 
 func (x *EffectiveConfigurationResponse) Reset() {
 	*x = EffectiveConfigurationResponse{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[53]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5007,7 +5135,7 @@ func (x *EffectiveConfigurationResponse) String() string {
 func (*EffectiveConfigurationResponse) ProtoMessage() {}
 
 func (x *EffectiveConfigurationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[53]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5020,7 +5148,7 @@ func (x *EffectiveConfigurationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EffectiveConfigurationResponse.ProtoReflect.Descriptor instead.
 func (*EffectiveConfigurationResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{53}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *EffectiveConfigurationResponse) GetStatus() *OperationStatus {
@@ -5048,7 +5176,7 @@ type ReloadConfigurationResponse struct {
 
 func (x *ReloadConfigurationResponse) Reset() {
 	*x = ReloadConfigurationResponse{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[54]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5060,7 +5188,7 @@ func (x *ReloadConfigurationResponse) String() string {
 func (*ReloadConfigurationResponse) ProtoMessage() {}
 
 func (x *ReloadConfigurationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[54]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5073,7 +5201,7 @@ func (x *ReloadConfigurationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReloadConfigurationResponse.ProtoReflect.Descriptor instead.
 func (*ReloadConfigurationResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{54}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *ReloadConfigurationResponse) GetStatus() *OperationStatus {
@@ -5106,7 +5234,7 @@ type NodeFeaturesResponse struct {
 
 func (x *NodeFeaturesResponse) Reset() {
 	*x = NodeFeaturesResponse{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[55]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5118,7 +5246,7 @@ func (x *NodeFeaturesResponse) String() string {
 func (*NodeFeaturesResponse) ProtoMessage() {}
 
 func (x *NodeFeaturesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[55]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5131,7 +5259,7 @@ func (x *NodeFeaturesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NodeFeaturesResponse.ProtoReflect.Descriptor instead.
 func (*NodeFeaturesResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{55}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *NodeFeaturesResponse) GetFeatures() *NodeFeaturesSnapshot {
@@ -5151,7 +5279,7 @@ type NetworkStatusResponse struct {
 
 func (x *NetworkStatusResponse) Reset() {
 	*x = NetworkStatusResponse{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[56]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5163,7 +5291,7 @@ func (x *NetworkStatusResponse) String() string {
 func (*NetworkStatusResponse) ProtoMessage() {}
 
 func (x *NetworkStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[56]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5176,7 +5304,7 @@ func (x *NetworkStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NetworkStatusResponse.ProtoReflect.Descriptor instead.
 func (*NetworkStatusResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{56}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *NetworkStatusResponse) GetStatus() *OperationStatus {
@@ -5203,7 +5331,7 @@ type DiscoveryStatusResponse struct {
 
 func (x *DiscoveryStatusResponse) Reset() {
 	*x = DiscoveryStatusResponse{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[57]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5215,7 +5343,7 @@ func (x *DiscoveryStatusResponse) String() string {
 func (*DiscoveryStatusResponse) ProtoMessage() {}
 
 func (x *DiscoveryStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[57]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5228,7 +5356,7 @@ func (x *DiscoveryStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DiscoveryStatusResponse.ProtoReflect.Descriptor instead.
 func (*DiscoveryStatusResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{57}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *DiscoveryStatusResponse) GetStatus() *OperationStatus {
@@ -5255,7 +5383,7 @@ type LocalPresenceResponse struct {
 
 func (x *LocalPresenceResponse) Reset() {
 	*x = LocalPresenceResponse{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[58]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5267,7 +5395,7 @@ func (x *LocalPresenceResponse) String() string {
 func (*LocalPresenceResponse) ProtoMessage() {}
 
 func (x *LocalPresenceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[58]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5280,7 +5408,7 @@ func (x *LocalPresenceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LocalPresenceResponse.ProtoReflect.Descriptor instead.
 func (*LocalPresenceResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{58}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *LocalPresenceResponse) GetStatus() *OperationStatus {
@@ -5306,7 +5434,7 @@ type RecordImportResponse struct {
 
 func (x *RecordImportResponse) Reset() {
 	*x = RecordImportResponse{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[59]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5318,7 +5446,7 @@ func (x *RecordImportResponse) String() string {
 func (*RecordImportResponse) ProtoMessage() {}
 
 func (x *RecordImportResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[59]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5331,7 +5459,7 @@ func (x *RecordImportResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RecordImportResponse.ProtoReflect.Descriptor instead.
 func (*RecordImportResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{59}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *RecordImportResponse) GetStatus() *OperationStatus {
@@ -5351,7 +5479,7 @@ type WorkloadCommandResponse struct {
 
 func (x *WorkloadCommandResponse) Reset() {
 	*x = WorkloadCommandResponse{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[60]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5363,7 +5491,7 @@ func (x *WorkloadCommandResponse) String() string {
 func (*WorkloadCommandResponse) ProtoMessage() {}
 
 func (x *WorkloadCommandResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[60]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5376,7 +5504,7 @@ func (x *WorkloadCommandResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkloadCommandResponse.ProtoReflect.Descriptor instead.
 func (*WorkloadCommandResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{60}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *WorkloadCommandResponse) GetStatus() *OperationStatus {
@@ -5403,7 +5531,7 @@ type ListRecordsResponse struct {
 
 func (x *ListRecordsResponse) Reset() {
 	*x = ListRecordsResponse{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[61]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5415,7 +5543,7 @@ func (x *ListRecordsResponse) String() string {
 func (*ListRecordsResponse) ProtoMessage() {}
 
 func (x *ListRecordsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[61]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5428,7 +5556,7 @@ func (x *ListRecordsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRecordsResponse.ProtoReflect.Descriptor instead.
 func (*ListRecordsResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{61}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *ListRecordsResponse) GetStatus() *OperationStatus {
@@ -5455,7 +5583,7 @@ type ListPeersResponse struct {
 
 func (x *ListPeersResponse) Reset() {
 	*x = ListPeersResponse{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[62]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5467,7 +5595,7 @@ func (x *ListPeersResponse) String() string {
 func (*ListPeersResponse) ProtoMessage() {}
 
 func (x *ListPeersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[62]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5480,7 +5608,7 @@ func (x *ListPeersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPeersResponse.ProtoReflect.Descriptor instead.
 func (*ListPeersResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{62}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *ListPeersResponse) GetStatus() *OperationStatus {
@@ -5508,7 +5636,7 @@ type ListRouteCandidatesResponse struct {
 
 func (x *ListRouteCandidatesResponse) Reset() {
 	*x = ListRouteCandidatesResponse{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[63]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5520,7 +5648,7 @@ func (x *ListRouteCandidatesResponse) String() string {
 func (*ListRouteCandidatesResponse) ProtoMessage() {}
 
 func (x *ListRouteCandidatesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[63]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5533,7 +5661,7 @@ func (x *ListRouteCandidatesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRouteCandidatesResponse.ProtoReflect.Descriptor instead.
 func (*ListRouteCandidatesResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{63}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *ListRouteCandidatesResponse) GetStatus() *OperationStatus {
@@ -5566,7 +5694,7 @@ type ListWorkloadsResponse struct {
 
 func (x *ListWorkloadsResponse) Reset() {
 	*x = ListWorkloadsResponse{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[64]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5578,7 +5706,7 @@ func (x *ListWorkloadsResponse) String() string {
 func (*ListWorkloadsResponse) ProtoMessage() {}
 
 func (x *ListWorkloadsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[64]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5591,7 +5719,7 @@ func (x *ListWorkloadsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWorkloadsResponse.ProtoReflect.Descriptor instead.
 func (*ListWorkloadsResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{64}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *ListWorkloadsResponse) GetWorkloads() []*WorkloadStatusSnapshot {
@@ -5611,7 +5739,7 @@ type GetHostedServiceResponse struct {
 
 func (x *GetHostedServiceResponse) Reset() {
 	*x = GetHostedServiceResponse{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[65]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5623,7 +5751,7 @@ func (x *GetHostedServiceResponse) String() string {
 func (*GetHostedServiceResponse) ProtoMessage() {}
 
 func (x *GetHostedServiceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[65]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5636,7 +5764,7 @@ func (x *GetHostedServiceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetHostedServiceResponse.ProtoReflect.Descriptor instead.
 func (*GetHostedServiceResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{65}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *GetHostedServiceResponse) GetStatus() *OperationStatus {
@@ -5662,7 +5790,7 @@ type ListHostedServicesResponse struct {
 
 func (x *ListHostedServicesResponse) Reset() {
 	*x = ListHostedServicesResponse{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[66]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5674,7 +5802,7 @@ func (x *ListHostedServicesResponse) String() string {
 func (*ListHostedServicesResponse) ProtoMessage() {}
 
 func (x *ListHostedServicesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[66]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5687,7 +5815,7 @@ func (x *ListHostedServicesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListHostedServicesResponse.ProtoReflect.Descriptor instead.
 func (*ListHostedServicesResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{66}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *ListHostedServicesResponse) GetServices() []*HostedServiceSnapshot {
@@ -5707,7 +5835,7 @@ type ServicePublicationStatusResponse struct {
 
 func (x *ServicePublicationStatusResponse) Reset() {
 	*x = ServicePublicationStatusResponse{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[67]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5719,7 +5847,7 @@ func (x *ServicePublicationStatusResponse) String() string {
 func (*ServicePublicationStatusResponse) ProtoMessage() {}
 
 func (x *ServicePublicationStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[67]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5732,7 +5860,7 @@ func (x *ServicePublicationStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServicePublicationStatusResponse.ProtoReflect.Descriptor instead.
 func (*ServicePublicationStatusResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{67}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *ServicePublicationStatusResponse) GetStatus() *OperationStatus {
@@ -5758,7 +5886,7 @@ type ListObjectsResponse struct {
 
 func (x *ListObjectsResponse) Reset() {
 	*x = ListObjectsResponse{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[68]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5770,7 +5898,7 @@ func (x *ListObjectsResponse) String() string {
 func (*ListObjectsResponse) ProtoMessage() {}
 
 func (x *ListObjectsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[68]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5783,7 +5911,7 @@ func (x *ListObjectsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListObjectsResponse.ProtoReflect.Descriptor instead.
 func (*ListObjectsResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{68}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *ListObjectsResponse) GetObjects() []*ObjectSnapshot {
@@ -5802,7 +5930,7 @@ type ListBlobsResponse struct {
 
 func (x *ListBlobsResponse) Reset() {
 	*x = ListBlobsResponse{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[69]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5814,7 +5942,7 @@ func (x *ListBlobsResponse) String() string {
 func (*ListBlobsResponse) ProtoMessage() {}
 
 func (x *ListBlobsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[69]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5827,7 +5955,7 @@ func (x *ListBlobsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBlobsResponse.ProtoReflect.Descriptor instead.
 func (*ListBlobsResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{69}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *ListBlobsResponse) GetBlobs() []*BlobSnapshot {
@@ -5846,7 +5974,7 @@ type ListBlobSourcesResponse struct {
 
 func (x *ListBlobSourcesResponse) Reset() {
 	*x = ListBlobSourcesResponse{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[70]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5858,7 +5986,7 @@ func (x *ListBlobSourcesResponse) String() string {
 func (*ListBlobSourcesResponse) ProtoMessage() {}
 
 func (x *ListBlobSourcesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[70]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5871,7 +5999,7 @@ func (x *ListBlobSourcesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBlobSourcesResponse.ProtoReflect.Descriptor instead.
 func (*ListBlobSourcesResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{70}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *ListBlobSourcesResponse) GetSources() []*BlobSourceSnapshot {
@@ -5891,7 +6019,7 @@ type GetTransferResponse struct {
 
 func (x *GetTransferResponse) Reset() {
 	*x = GetTransferResponse{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[71]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5903,7 +6031,7 @@ func (x *GetTransferResponse) String() string {
 func (*GetTransferResponse) ProtoMessage() {}
 
 func (x *GetTransferResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[71]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5916,7 +6044,7 @@ func (x *GetTransferResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTransferResponse.ProtoReflect.Descriptor instead.
 func (*GetTransferResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{71}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *GetTransferResponse) GetStatus() *OperationStatus {
@@ -5942,7 +6070,7 @@ type ListTransfersResponse struct {
 
 func (x *ListTransfersResponse) Reset() {
 	*x = ListTransfersResponse{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[72]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5954,7 +6082,7 @@ func (x *ListTransfersResponse) String() string {
 func (*ListTransfersResponse) ProtoMessage() {}
 
 func (x *ListTransfersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[72]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5967,7 +6095,7 @@ func (x *ListTransfersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTransfersResponse.ProtoReflect.Descriptor instead.
 func (*ListTransfersResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{72}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *ListTransfersResponse) GetTransfers() []*TransferSnapshot {
@@ -5986,7 +6114,7 @@ type ListManifestsResponse struct {
 
 func (x *ListManifestsResponse) Reset() {
 	*x = ListManifestsResponse{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[73]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5998,7 +6126,7 @@ func (x *ListManifestsResponse) String() string {
 func (*ListManifestsResponse) ProtoMessage() {}
 
 func (x *ListManifestsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[73]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6011,7 +6139,7 @@ func (x *ListManifestsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListManifestsResponse.ProtoReflect.Descriptor instead.
 func (*ListManifestsResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{73}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *ListManifestsResponse) GetManifests() []*ManifestSnapshot {
@@ -6031,7 +6159,7 @@ type DiagnosticsSnapshotResponse struct {
 
 func (x *DiagnosticsSnapshotResponse) Reset() {
 	*x = DiagnosticsSnapshotResponse{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[74]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6043,7 +6171,7 @@ func (x *DiagnosticsSnapshotResponse) String() string {
 func (*DiagnosticsSnapshotResponse) ProtoMessage() {}
 
 func (x *DiagnosticsSnapshotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[74]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6056,7 +6184,7 @@ func (x *DiagnosticsSnapshotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DiagnosticsSnapshotResponse.ProtoReflect.Descriptor instead.
 func (*DiagnosticsSnapshotResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{74}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *DiagnosticsSnapshotResponse) GetStatus() *OperationStatus {
@@ -6083,7 +6211,7 @@ type PendingOperationsResponse struct {
 
 func (x *PendingOperationsResponse) Reset() {
 	*x = PendingOperationsResponse{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[75]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6095,7 +6223,7 @@ func (x *PendingOperationsResponse) String() string {
 func (*PendingOperationsResponse) ProtoMessage() {}
 
 func (x *PendingOperationsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[75]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6108,7 +6236,7 @@ func (x *PendingOperationsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PendingOperationsResponse.ProtoReflect.Descriptor instead.
 func (*PendingOperationsResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{75}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *PendingOperationsResponse) GetStatus() *OperationStatus {
@@ -6135,7 +6263,7 @@ type HealthSummaryResponse struct {
 
 func (x *HealthSummaryResponse) Reset() {
 	*x = HealthSummaryResponse{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[76]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6147,7 +6275,7 @@ func (x *HealthSummaryResponse) String() string {
 func (*HealthSummaryResponse) ProtoMessage() {}
 
 func (x *HealthSummaryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[76]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6160,7 +6288,7 @@ func (x *HealthSummaryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HealthSummaryResponse.ProtoReflect.Descriptor instead.
 func (*HealthSummaryResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{76}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *HealthSummaryResponse) GetStatus() *OperationStatus {
@@ -6187,7 +6315,7 @@ type FailureExplanationResponse struct {
 
 func (x *FailureExplanationResponse) Reset() {
 	*x = FailureExplanationResponse{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[77]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6199,7 +6327,7 @@ func (x *FailureExplanationResponse) String() string {
 func (*FailureExplanationResponse) ProtoMessage() {}
 
 func (x *FailureExplanationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[77]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6212,7 +6340,7 @@ func (x *FailureExplanationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FailureExplanationResponse.ProtoReflect.Descriptor instead.
 func (*FailureExplanationResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{77}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *FailureExplanationResponse) GetStatus() *OperationStatus {
@@ -6240,7 +6368,7 @@ type ListEventsResponse struct {
 
 func (x *ListEventsResponse) Reset() {
 	*x = ListEventsResponse{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[78]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6252,7 +6380,7 @@ func (x *ListEventsResponse) String() string {
 func (*ListEventsResponse) ProtoMessage() {}
 
 func (x *ListEventsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[78]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6265,7 +6393,7 @@ func (x *ListEventsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListEventsResponse.ProtoReflect.Descriptor instead.
 func (*ListEventsResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{78}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{80}
 }
 
 func (x *ListEventsResponse) GetStatus() *OperationStatus {
@@ -6297,7 +6425,7 @@ type StartNodeRequest struct {
 
 func (x *StartNodeRequest) Reset() {
 	*x = StartNodeRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[79]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6309,7 +6437,7 @@ func (x *StartNodeRequest) String() string {
 func (*StartNodeRequest) ProtoMessage() {}
 
 func (x *StartNodeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[79]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6322,7 +6450,7 @@ func (x *StartNodeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartNodeRequest.ProtoReflect.Descriptor instead.
 func (*StartNodeRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{79}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{81}
 }
 
 type StopNodeRequest struct {
@@ -6333,7 +6461,7 @@ type StopNodeRequest struct {
 
 func (x *StopNodeRequest) Reset() {
 	*x = StopNodeRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[80]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6345,7 +6473,7 @@ func (x *StopNodeRequest) String() string {
 func (*StopNodeRequest) ProtoMessage() {}
 
 func (x *StopNodeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[80]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6358,7 +6486,7 @@ func (x *StopNodeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopNodeRequest.ProtoReflect.Descriptor instead.
 func (*StopNodeRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{80}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{82}
 }
 
 type GetNodeStatusRequest struct {
@@ -6369,7 +6497,7 @@ type GetNodeStatusRequest struct {
 
 func (x *GetNodeStatusRequest) Reset() {
 	*x = GetNodeStatusRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[81]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6381,7 +6509,7 @@ func (x *GetNodeStatusRequest) String() string {
 func (*GetNodeStatusRequest) ProtoMessage() {}
 
 func (x *GetNodeStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[81]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6394,7 +6522,7 @@ func (x *GetNodeStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetNodeStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetNodeStatusRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{81}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{83}
 }
 
 type GetNodeFeaturesRequest struct {
@@ -6405,7 +6533,7 @@ type GetNodeFeaturesRequest struct {
 
 func (x *GetNodeFeaturesRequest) Reset() {
 	*x = GetNodeFeaturesRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[82]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6417,7 +6545,7 @@ func (x *GetNodeFeaturesRequest) String() string {
 func (*GetNodeFeaturesRequest) ProtoMessage() {}
 
 func (x *GetNodeFeaturesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[82]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6430,7 +6558,7 @@ func (x *GetNodeFeaturesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetNodeFeaturesRequest.ProtoReflect.Descriptor instead.
 func (*GetNodeFeaturesRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{82}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{84}
 }
 
 type GetNodeRuntimeRequest struct {
@@ -6441,7 +6569,7 @@ type GetNodeRuntimeRequest struct {
 
 func (x *GetNodeRuntimeRequest) Reset() {
 	*x = GetNodeRuntimeRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[83]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[85]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6453,7 +6581,7 @@ func (x *GetNodeRuntimeRequest) String() string {
 func (*GetNodeRuntimeRequest) ProtoMessage() {}
 
 func (x *GetNodeRuntimeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[83]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[85]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6466,7 +6594,7 @@ func (x *GetNodeRuntimeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetNodeRuntimeRequest.ProtoReflect.Descriptor instead.
 func (*GetNodeRuntimeRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{83}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{85}
 }
 
 type GetEffectiveConfigurationRequest struct {
@@ -6477,7 +6605,7 @@ type GetEffectiveConfigurationRequest struct {
 
 func (x *GetEffectiveConfigurationRequest) Reset() {
 	*x = GetEffectiveConfigurationRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[84]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[86]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6489,7 +6617,7 @@ func (x *GetEffectiveConfigurationRequest) String() string {
 func (*GetEffectiveConfigurationRequest) ProtoMessage() {}
 
 func (x *GetEffectiveConfigurationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[84]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[86]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6502,7 +6630,7 @@ func (x *GetEffectiveConfigurationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetEffectiveConfigurationRequest.ProtoReflect.Descriptor instead.
 func (*GetEffectiveConfigurationRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{84}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{86}
 }
 
 type ReloadConfigurationRequest struct {
@@ -6513,7 +6641,7 @@ type ReloadConfigurationRequest struct {
 
 func (x *ReloadConfigurationRequest) Reset() {
 	*x = ReloadConfigurationRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[85]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[87]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6525,7 +6653,7 @@ func (x *ReloadConfigurationRequest) String() string {
 func (*ReloadConfigurationRequest) ProtoMessage() {}
 
 func (x *ReloadConfigurationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[85]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[87]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6538,7 +6666,7 @@ func (x *ReloadConfigurationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReloadConfigurationRequest.ProtoReflect.Descriptor instead.
 func (*ReloadConfigurationRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{85}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{87}
 }
 
 type StreamNodeEventsRequest struct {
@@ -6549,7 +6677,7 @@ type StreamNodeEventsRequest struct {
 
 func (x *StreamNodeEventsRequest) Reset() {
 	*x = StreamNodeEventsRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[86]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[88]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6561,7 +6689,7 @@ func (x *StreamNodeEventsRequest) String() string {
 func (*StreamNodeEventsRequest) ProtoMessage() {}
 
 func (x *StreamNodeEventsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[86]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[88]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6574,7 +6702,7 @@ func (x *StreamNodeEventsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamNodeEventsRequest.ProtoReflect.Descriptor instead.
 func (*StreamNodeEventsRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{86}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{88}
 }
 
 type ResolveRecordRequest struct {
@@ -6587,7 +6715,7 @@ type ResolveRecordRequest struct {
 
 func (x *ResolveRecordRequest) Reset() {
 	*x = ResolveRecordRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[87]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[89]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6599,7 +6727,7 @@ func (x *ResolveRecordRequest) String() string {
 func (*ResolveRecordRequest) ProtoMessage() {}
 
 func (x *ResolveRecordRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[87]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[89]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6612,7 +6740,7 @@ func (x *ResolveRecordRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveRecordRequest.ProtoReflect.Descriptor instead.
 func (*ResolveRecordRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{87}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{89}
 }
 
 func (x *ResolveRecordRequest) GetSubject() string {
@@ -6638,7 +6766,7 @@ type ResolveServiceRequest struct {
 
 func (x *ResolveServiceRequest) Reset() {
 	*x = ResolveServiceRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[88]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[90]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6650,7 +6778,7 @@ func (x *ResolveServiceRequest) String() string {
 func (*ResolveServiceRequest) ProtoMessage() {}
 
 func (x *ResolveServiceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[88]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[90]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6663,7 +6791,7 @@ func (x *ResolveServiceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveServiceRequest.ProtoReflect.Descriptor instead.
 func (*ResolveServiceRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{88}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{90}
 }
 
 func (x *ResolveServiceRequest) GetService() string {
@@ -6681,7 +6809,7 @@ type ListRecordsRequest struct {
 
 func (x *ListRecordsRequest) Reset() {
 	*x = ListRecordsRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[89]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[91]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6693,7 +6821,7 @@ func (x *ListRecordsRequest) String() string {
 func (*ListRecordsRequest) ProtoMessage() {}
 
 func (x *ListRecordsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[89]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[91]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6706,7 +6834,7 @@ func (x *ListRecordsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRecordsRequest.ProtoReflect.Descriptor instead.
 func (*ListRecordsRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{89}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{91}
 }
 
 type GetNetworkStatusRequest struct {
@@ -6717,7 +6845,7 @@ type GetNetworkStatusRequest struct {
 
 func (x *GetNetworkStatusRequest) Reset() {
 	*x = GetNetworkStatusRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[90]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[92]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6729,7 +6857,7 @@ func (x *GetNetworkStatusRequest) String() string {
 func (*GetNetworkStatusRequest) ProtoMessage() {}
 
 func (x *GetNetworkStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[90]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[92]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6742,7 +6870,7 @@ func (x *GetNetworkStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetNetworkStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetNetworkStatusRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{90}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{92}
 }
 
 type GetDiscoveryStatusRequest struct {
@@ -6753,7 +6881,7 @@ type GetDiscoveryStatusRequest struct {
 
 func (x *GetDiscoveryStatusRequest) Reset() {
 	*x = GetDiscoveryStatusRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[91]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[93]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6765,7 +6893,7 @@ func (x *GetDiscoveryStatusRequest) String() string {
 func (*GetDiscoveryStatusRequest) ProtoMessage() {}
 
 func (x *GetDiscoveryStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[91]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[93]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6778,7 +6906,7 @@ func (x *GetDiscoveryStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDiscoveryStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetDiscoveryStatusRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{91}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{93}
 }
 
 type GetLocalPresenceRequest struct {
@@ -6789,7 +6917,7 @@ type GetLocalPresenceRequest struct {
 
 func (x *GetLocalPresenceRequest) Reset() {
 	*x = GetLocalPresenceRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[92]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[94]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6801,7 +6929,7 @@ func (x *GetLocalPresenceRequest) String() string {
 func (*GetLocalPresenceRequest) ProtoMessage() {}
 
 func (x *GetLocalPresenceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[92]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[94]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6814,7 +6942,7 @@ func (x *GetLocalPresenceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetLocalPresenceRequest.ProtoReflect.Descriptor instead.
 func (*GetLocalPresenceRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{92}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{94}
 }
 
 type ListPeersRequest struct {
@@ -6825,7 +6953,7 @@ type ListPeersRequest struct {
 
 func (x *ListPeersRequest) Reset() {
 	*x = ListPeersRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[93]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[95]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6837,7 +6965,7 @@ func (x *ListPeersRequest) String() string {
 func (*ListPeersRequest) ProtoMessage() {}
 
 func (x *ListPeersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[93]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[95]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6850,7 +6978,7 @@ func (x *ListPeersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPeersRequest.ProtoReflect.Descriptor instead.
 func (*ListPeersRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{93}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{95}
 }
 
 type ListRouteCandidatesRequest struct {
@@ -6865,7 +6993,7 @@ type ListRouteCandidatesRequest struct {
 
 func (x *ListRouteCandidatesRequest) Reset() {
 	*x = ListRouteCandidatesRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[94]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[96]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6877,7 +7005,7 @@ func (x *ListRouteCandidatesRequest) String() string {
 func (*ListRouteCandidatesRequest) ProtoMessage() {}
 
 func (x *ListRouteCandidatesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[94]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[96]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6890,7 +7018,7 @@ func (x *ListRouteCandidatesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRouteCandidatesRequest.ProtoReflect.Descriptor instead.
 func (*ListRouteCandidatesRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{94}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{96}
 }
 
 func (x *ListRouteCandidatesRequest) GetResource() string {
@@ -6930,7 +7058,7 @@ type ImportRecordRequest struct {
 
 func (x *ImportRecordRequest) Reset() {
 	*x = ImportRecordRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[95]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[97]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6942,7 +7070,7 @@ func (x *ImportRecordRequest) String() string {
 func (*ImportRecordRequest) ProtoMessage() {}
 
 func (x *ImportRecordRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[95]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[97]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6955,7 +7083,7 @@ func (x *ImportRecordRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ImportRecordRequest.ProtoReflect.Descriptor instead.
 func (*ImportRecordRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{95}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{97}
 }
 
 func (x *ImportRecordRequest) GetRecord() *DiscoveryRecord {
@@ -6974,7 +7102,7 @@ type RegisterWorkloadRequest struct {
 
 func (x *RegisterWorkloadRequest) Reset() {
 	*x = RegisterWorkloadRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[96]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[98]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6986,7 +7114,7 @@ func (x *RegisterWorkloadRequest) String() string {
 func (*RegisterWorkloadRequest) ProtoMessage() {}
 
 func (x *RegisterWorkloadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[96]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[98]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6999,7 +7127,7 @@ func (x *RegisterWorkloadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterWorkloadRequest.ProtoReflect.Descriptor instead.
 func (*RegisterWorkloadRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{96}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{98}
 }
 
 func (x *RegisterWorkloadRequest) GetSpec() *WorkloadSpecSnapshot {
@@ -7018,7 +7146,7 @@ type StartWorkloadRequest struct {
 
 func (x *StartWorkloadRequest) Reset() {
 	*x = StartWorkloadRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[97]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[99]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7030,7 +7158,7 @@ func (x *StartWorkloadRequest) String() string {
 func (*StartWorkloadRequest) ProtoMessage() {}
 
 func (x *StartWorkloadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[97]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[99]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7043,7 +7171,7 @@ func (x *StartWorkloadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartWorkloadRequest.ProtoReflect.Descriptor instead.
 func (*StartWorkloadRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{97}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{99}
 }
 
 func (x *StartWorkloadRequest) GetId() string {
@@ -7062,7 +7190,7 @@ type StopWorkloadRequest struct {
 
 func (x *StopWorkloadRequest) Reset() {
 	*x = StopWorkloadRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[98]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[100]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7074,7 +7202,7 @@ func (x *StopWorkloadRequest) String() string {
 func (*StopWorkloadRequest) ProtoMessage() {}
 
 func (x *StopWorkloadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[98]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[100]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7087,7 +7215,7 @@ func (x *StopWorkloadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopWorkloadRequest.ProtoReflect.Descriptor instead.
 func (*StopWorkloadRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{98}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{100}
 }
 
 func (x *StopWorkloadRequest) GetId() string {
@@ -7106,7 +7234,7 @@ type RestartWorkloadRequest struct {
 
 func (x *RestartWorkloadRequest) Reset() {
 	*x = RestartWorkloadRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[99]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[101]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7118,7 +7246,7 @@ func (x *RestartWorkloadRequest) String() string {
 func (*RestartWorkloadRequest) ProtoMessage() {}
 
 func (x *RestartWorkloadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[99]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[101]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7131,7 +7259,7 @@ func (x *RestartWorkloadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestartWorkloadRequest.ProtoReflect.Descriptor instead.
 func (*RestartWorkloadRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{99}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{101}
 }
 
 func (x *RestartWorkloadRequest) GetId() string {
@@ -7150,7 +7278,7 @@ type GetWorkloadStatusRequest struct {
 
 func (x *GetWorkloadStatusRequest) Reset() {
 	*x = GetWorkloadStatusRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[100]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[102]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7162,7 +7290,7 @@ func (x *GetWorkloadStatusRequest) String() string {
 func (*GetWorkloadStatusRequest) ProtoMessage() {}
 
 func (x *GetWorkloadStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[100]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[102]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7175,7 +7303,7 @@ func (x *GetWorkloadStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetWorkloadStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetWorkloadStatusRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{100}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{102}
 }
 
 func (x *GetWorkloadStatusRequest) GetId() string {
@@ -7193,7 +7321,7 @@ type ListWorkloadsRequest struct {
 
 func (x *ListWorkloadsRequest) Reset() {
 	*x = ListWorkloadsRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[101]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[103]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7205,7 +7333,7 @@ func (x *ListWorkloadsRequest) String() string {
 func (*ListWorkloadsRequest) ProtoMessage() {}
 
 func (x *ListWorkloadsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[101]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[103]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7218,7 +7346,7 @@ func (x *ListWorkloadsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWorkloadsRequest.ProtoReflect.Descriptor instead.
 func (*ListWorkloadsRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{101}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{103}
 }
 
 type GetHostedServiceRequest struct {
@@ -7230,7 +7358,7 @@ type GetHostedServiceRequest struct {
 
 func (x *GetHostedServiceRequest) Reset() {
 	*x = GetHostedServiceRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[102]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[104]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7242,7 +7370,7 @@ func (x *GetHostedServiceRequest) String() string {
 func (*GetHostedServiceRequest) ProtoMessage() {}
 
 func (x *GetHostedServiceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[102]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[104]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7255,7 +7383,7 @@ func (x *GetHostedServiceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetHostedServiceRequest.ProtoReflect.Descriptor instead.
 func (*GetHostedServiceRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{102}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{104}
 }
 
 func (x *GetHostedServiceRequest) GetId() string {
@@ -7273,7 +7401,7 @@ type ListHostedServicesRequest struct {
 
 func (x *ListHostedServicesRequest) Reset() {
 	*x = ListHostedServicesRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[103]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[105]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7285,7 +7413,7 @@ func (x *ListHostedServicesRequest) String() string {
 func (*ListHostedServicesRequest) ProtoMessage() {}
 
 func (x *ListHostedServicesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[103]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[105]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7298,7 +7426,7 @@ func (x *ListHostedServicesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListHostedServicesRequest.ProtoReflect.Descriptor instead.
 func (*ListHostedServicesRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{103}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{105}
 }
 
 type GetServicePublicationStatusRequest struct {
@@ -7310,7 +7438,7 @@ type GetServicePublicationStatusRequest struct {
 
 func (x *GetServicePublicationStatusRequest) Reset() {
 	*x = GetServicePublicationStatusRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[104]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[106]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7322,7 +7450,7 @@ func (x *GetServicePublicationStatusRequest) String() string {
 func (*GetServicePublicationStatusRequest) ProtoMessage() {}
 
 func (x *GetServicePublicationStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[104]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[106]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7335,7 +7463,7 @@ func (x *GetServicePublicationStatusRequest) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use GetServicePublicationStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetServicePublicationStatusRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{104}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{106}
 }
 
 func (x *GetServicePublicationStatusRequest) GetId() string {
@@ -7354,7 +7482,7 @@ type PublishObjectRequest struct {
 
 func (x *PublishObjectRequest) Reset() {
 	*x = PublishObjectRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[105]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[107]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7366,7 +7494,7 @@ func (x *PublishObjectRequest) String() string {
 func (*PublishObjectRequest) ProtoMessage() {}
 
 func (x *PublishObjectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[105]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[107]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7379,7 +7507,7 @@ func (x *PublishObjectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PublishObjectRequest.ProtoReflect.Descriptor instead.
 func (*PublishObjectRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{105}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{107}
 }
 
 func (x *PublishObjectRequest) GetObject() *ObjectSnapshot {
@@ -7398,7 +7526,7 @@ type GetObjectRequest struct {
 
 func (x *GetObjectRequest) Reset() {
 	*x = GetObjectRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[106]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[108]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7410,7 +7538,7 @@ func (x *GetObjectRequest) String() string {
 func (*GetObjectRequest) ProtoMessage() {}
 
 func (x *GetObjectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[106]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[108]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7423,7 +7551,7 @@ func (x *GetObjectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetObjectRequest.ProtoReflect.Descriptor instead.
 func (*GetObjectRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{106}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{108}
 }
 
 func (x *GetObjectRequest) GetId() string {
@@ -7441,7 +7569,7 @@ type ListObjectsRequest struct {
 
 func (x *ListObjectsRequest) Reset() {
 	*x = ListObjectsRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[107]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[109]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7453,7 +7581,7 @@ func (x *ListObjectsRequest) String() string {
 func (*ListObjectsRequest) ProtoMessage() {}
 
 func (x *ListObjectsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[107]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[109]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7466,7 +7594,7 @@ func (x *ListObjectsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListObjectsRequest.ProtoReflect.Descriptor instead.
 func (*ListObjectsRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{107}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{109}
 }
 
 type PublishBlobRequest struct {
@@ -7478,7 +7606,7 @@ type PublishBlobRequest struct {
 
 func (x *PublishBlobRequest) Reset() {
 	*x = PublishBlobRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[108]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[110]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7490,7 +7618,7 @@ func (x *PublishBlobRequest) String() string {
 func (*PublishBlobRequest) ProtoMessage() {}
 
 func (x *PublishBlobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[108]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[110]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7503,7 +7631,7 @@ func (x *PublishBlobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PublishBlobRequest.ProtoReflect.Descriptor instead.
 func (*PublishBlobRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{108}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{110}
 }
 
 func (x *PublishBlobRequest) GetBlob() *BlobSnapshot {
@@ -7522,7 +7650,7 @@ type GetBlobRequest struct {
 
 func (x *GetBlobRequest) Reset() {
 	*x = GetBlobRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[109]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[111]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7534,7 +7662,7 @@ func (x *GetBlobRequest) String() string {
 func (*GetBlobRequest) ProtoMessage() {}
 
 func (x *GetBlobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[109]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[111]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7547,7 +7675,7 @@ func (x *GetBlobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBlobRequest.ProtoReflect.Descriptor instead.
 func (*GetBlobRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{109}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{111}
 }
 
 func (x *GetBlobRequest) GetId() string {
@@ -7566,7 +7694,7 @@ type FetchBlobRequest struct {
 
 func (x *FetchBlobRequest) Reset() {
 	*x = FetchBlobRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[110]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[112]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7578,7 +7706,7 @@ func (x *FetchBlobRequest) String() string {
 func (*FetchBlobRequest) ProtoMessage() {}
 
 func (x *FetchBlobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[110]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[112]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7591,7 +7719,7 @@ func (x *FetchBlobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FetchBlobRequest.ProtoReflect.Descriptor instead.
 func (*FetchBlobRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{110}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{112}
 }
 
 func (x *FetchBlobRequest) GetId() string {
@@ -7609,7 +7737,7 @@ type ListBlobsRequest struct {
 
 func (x *ListBlobsRequest) Reset() {
 	*x = ListBlobsRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[111]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[113]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7621,7 +7749,7 @@ func (x *ListBlobsRequest) String() string {
 func (*ListBlobsRequest) ProtoMessage() {}
 
 func (x *ListBlobsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[111]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[113]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7634,7 +7762,7 @@ func (x *ListBlobsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBlobsRequest.ProtoReflect.Descriptor instead.
 func (*ListBlobsRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{111}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{113}
 }
 
 type ListBlobSourcesRequest struct {
@@ -7646,7 +7774,7 @@ type ListBlobSourcesRequest struct {
 
 func (x *ListBlobSourcesRequest) Reset() {
 	*x = ListBlobSourcesRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[112]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[114]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7658,7 +7786,7 @@ func (x *ListBlobSourcesRequest) String() string {
 func (*ListBlobSourcesRequest) ProtoMessage() {}
 
 func (x *ListBlobSourcesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[112]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[114]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7671,7 +7799,7 @@ func (x *ListBlobSourcesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBlobSourcesRequest.ProtoReflect.Descriptor instead.
 func (*ListBlobSourcesRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{112}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{114}
 }
 
 func (x *ListBlobSourcesRequest) GetId() string {
@@ -7690,7 +7818,7 @@ type GetTransferRequest struct {
 
 func (x *GetTransferRequest) Reset() {
 	*x = GetTransferRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[113]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[115]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7702,7 +7830,7 @@ func (x *GetTransferRequest) String() string {
 func (*GetTransferRequest) ProtoMessage() {}
 
 func (x *GetTransferRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[113]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[115]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7715,7 +7843,7 @@ func (x *GetTransferRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTransferRequest.ProtoReflect.Descriptor instead.
 func (*GetTransferRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{113}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{115}
 }
 
 func (x *GetTransferRequest) GetId() string {
@@ -7733,7 +7861,7 @@ type ListTransfersRequest struct {
 
 func (x *ListTransfersRequest) Reset() {
 	*x = ListTransfersRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[114]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[116]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7745,7 +7873,7 @@ func (x *ListTransfersRequest) String() string {
 func (*ListTransfersRequest) ProtoMessage() {}
 
 func (x *ListTransfersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[114]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[116]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7758,7 +7886,7 @@ func (x *ListTransfersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTransfersRequest.ProtoReflect.Descriptor instead.
 func (*ListTransfersRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{114}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{116}
 }
 
 type PublishManifestRequest struct {
@@ -7770,7 +7898,7 @@ type PublishManifestRequest struct {
 
 func (x *PublishManifestRequest) Reset() {
 	*x = PublishManifestRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[115]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[117]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7782,7 +7910,7 @@ func (x *PublishManifestRequest) String() string {
 func (*PublishManifestRequest) ProtoMessage() {}
 
 func (x *PublishManifestRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[115]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[117]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7795,7 +7923,7 @@ func (x *PublishManifestRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PublishManifestRequest.ProtoReflect.Descriptor instead.
 func (*PublishManifestRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{115}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{117}
 }
 
 func (x *PublishManifestRequest) GetManifest() *ManifestSnapshot {
@@ -7814,7 +7942,7 @@ type GetManifestRequest struct {
 
 func (x *GetManifestRequest) Reset() {
 	*x = GetManifestRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[116]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[118]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7826,7 +7954,7 @@ func (x *GetManifestRequest) String() string {
 func (*GetManifestRequest) ProtoMessage() {}
 
 func (x *GetManifestRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[116]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[118]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7839,7 +7967,7 @@ func (x *GetManifestRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetManifestRequest.ProtoReflect.Descriptor instead.
 func (*GetManifestRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{116}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{118}
 }
 
 func (x *GetManifestRequest) GetId() string {
@@ -7857,7 +7985,7 @@ type ListManifestsRequest struct {
 
 func (x *ListManifestsRequest) Reset() {
 	*x = ListManifestsRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[117]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[119]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7869,7 +7997,7 @@ func (x *ListManifestsRequest) String() string {
 func (*ListManifestsRequest) ProtoMessage() {}
 
 func (x *ListManifestsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[117]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[119]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7882,7 +8010,7 @@ func (x *ListManifestsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListManifestsRequest.ProtoReflect.Descriptor instead.
 func (*ListManifestsRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{117}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{119}
 }
 
 type RetainBlobRequest struct {
@@ -7895,7 +8023,7 @@ type RetainBlobRequest struct {
 
 func (x *RetainBlobRequest) Reset() {
 	*x = RetainBlobRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[118]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[120]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7907,7 +8035,7 @@ func (x *RetainBlobRequest) String() string {
 func (*RetainBlobRequest) ProtoMessage() {}
 
 func (x *RetainBlobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[118]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[120]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7920,7 +8048,7 @@ func (x *RetainBlobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RetainBlobRequest.ProtoReflect.Descriptor instead.
 func (*RetainBlobRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{118}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{120}
 }
 
 func (x *RetainBlobRequest) GetId() string {
@@ -7946,7 +8074,7 @@ type PinBlobRequest struct {
 
 func (x *PinBlobRequest) Reset() {
 	*x = PinBlobRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[119]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[121]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7958,7 +8086,7 @@ func (x *PinBlobRequest) String() string {
 func (*PinBlobRequest) ProtoMessage() {}
 
 func (x *PinBlobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[119]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[121]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7971,7 +8099,7 @@ func (x *PinBlobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PinBlobRequest.ProtoReflect.Descriptor instead.
 func (*PinBlobRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{119}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{121}
 }
 
 func (x *PinBlobRequest) GetId() string {
@@ -7990,7 +8118,7 @@ type DropBlobRequest struct {
 
 func (x *DropBlobRequest) Reset() {
 	*x = DropBlobRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[120]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[122]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8002,7 +8130,7 @@ func (x *DropBlobRequest) String() string {
 func (*DropBlobRequest) ProtoMessage() {}
 
 func (x *DropBlobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[120]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[122]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8015,7 +8143,7 @@ func (x *DropBlobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DropBlobRequest.ProtoReflect.Descriptor instead.
 func (*DropBlobRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{120}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{122}
 }
 
 func (x *DropBlobRequest) GetId() string {
@@ -8033,7 +8161,7 @@ type GetDataInventoryRequest struct {
 
 func (x *GetDataInventoryRequest) Reset() {
 	*x = GetDataInventoryRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[121]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[123]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8045,7 +8173,7 @@ func (x *GetDataInventoryRequest) String() string {
 func (*GetDataInventoryRequest) ProtoMessage() {}
 
 func (x *GetDataInventoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[121]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[123]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8058,7 +8186,7 @@ func (x *GetDataInventoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDataInventoryRequest.ProtoReflect.Descriptor instead.
 func (*GetDataInventoryRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{121}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{123}
 }
 
 type GetDiagnosticsRequest struct {
@@ -8069,7 +8197,7 @@ type GetDiagnosticsRequest struct {
 
 func (x *GetDiagnosticsRequest) Reset() {
 	*x = GetDiagnosticsRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[122]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[124]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8081,7 +8209,7 @@ func (x *GetDiagnosticsRequest) String() string {
 func (*GetDiagnosticsRequest) ProtoMessage() {}
 
 func (x *GetDiagnosticsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[122]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[124]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8094,7 +8222,7 @@ func (x *GetDiagnosticsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDiagnosticsRequest.ProtoReflect.Descriptor instead.
 func (*GetDiagnosticsRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{122}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{124}
 }
 
 type GetPendingOperationsRequest struct {
@@ -8105,7 +8233,7 @@ type GetPendingOperationsRequest struct {
 
 func (x *GetPendingOperationsRequest) Reset() {
 	*x = GetPendingOperationsRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[123]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[125]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8117,7 +8245,7 @@ func (x *GetPendingOperationsRequest) String() string {
 func (*GetPendingOperationsRequest) ProtoMessage() {}
 
 func (x *GetPendingOperationsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[123]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[125]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8130,7 +8258,7 @@ func (x *GetPendingOperationsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPendingOperationsRequest.ProtoReflect.Descriptor instead.
 func (*GetPendingOperationsRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{123}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{125}
 }
 
 type GetHealthSummaryRequest struct {
@@ -8141,7 +8269,7 @@ type GetHealthSummaryRequest struct {
 
 func (x *GetHealthSummaryRequest) Reset() {
 	*x = GetHealthSummaryRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[124]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[126]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8153,7 +8281,7 @@ func (x *GetHealthSummaryRequest) String() string {
 func (*GetHealthSummaryRequest) ProtoMessage() {}
 
 func (x *GetHealthSummaryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[124]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[126]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8166,7 +8294,7 @@ func (x *GetHealthSummaryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetHealthSummaryRequest.ProtoReflect.Descriptor instead.
 func (*GetHealthSummaryRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{124}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{126}
 }
 
 type ExplainFailureRequest struct {
@@ -8179,7 +8307,7 @@ type ExplainFailureRequest struct {
 
 func (x *ExplainFailureRequest) Reset() {
 	*x = ExplainFailureRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[125]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[127]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8191,7 +8319,7 @@ func (x *ExplainFailureRequest) String() string {
 func (*ExplainFailureRequest) ProtoMessage() {}
 
 func (x *ExplainFailureRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[125]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[127]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8204,7 +8332,7 @@ func (x *ExplainFailureRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExplainFailureRequest.ProtoReflect.Descriptor instead.
 func (*ExplainFailureRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{125}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{127}
 }
 
 func (x *ExplainFailureRequest) GetScope() string {
@@ -8231,7 +8359,7 @@ type ListRecentEventsRequest struct {
 
 func (x *ListRecentEventsRequest) Reset() {
 	*x = ListRecentEventsRequest{}
-	mi := &file_api_ardents_v1_types_proto_msgTypes[126]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[128]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8243,7 +8371,7 @@ func (x *ListRecentEventsRequest) String() string {
 func (*ListRecentEventsRequest) ProtoMessage() {}
 
 func (x *ListRecentEventsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_types_proto_msgTypes[126]
+	mi := &file_api_ardents_v1_types_proto_msgTypes[128]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8256,7 +8384,7 @@ func (x *ListRecentEventsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRecentEventsRequest.ProtoReflect.Descriptor instead.
 func (*ListRecentEventsRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{126}
+	return file_api_ardents_v1_types_proto_rawDescGZIP(), []int{128}
 }
 
 func (x *ListRecentEventsRequest) GetLimit() int32 {
@@ -8590,12 +8718,21 @@ const file_api_ardents_v1_types_proto_rawDesc = "" +
 	"\vlocal_bytes\x18\r \x01(\x03R\n" +
 	"localBytes\x12\x1f\n" +
 	"\vrelay_bytes\x18\x0e \x01(\x03R\n" +
-	"relayBytes\"\xdf\x01\n" +
+	"relayBytes\"Z\n" +
+	"\x16ReadinessCheckSnapshot\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
+	"\x05ready\x18\x02 \x01(\bR\x05ready\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\"}\n" +
+	"\x11ReadinessSnapshot\x12\x14\n" +
+	"\x05ready\x18\x01 \x01(\bR\x05ready\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\x12:\n" +
+	"\x06checks\x18\x03 \x03(\v2\".ardents.v1.ReadinessCheckSnapshotR\x06checks\"\x9c\x02\n" +
 	"\x13NodeRuntimeSnapshot\x12,\n" +
 	"\x04node\x18\x01 \x01(\v2\x18.ardents.v1.NodeSnapshotR\x04node\x12,\n" +
 	"\x04boot\x18\x02 \x01(\v2\x18.ardents.v1.BootSnapshotR\x04boot\x128\n" +
 	"\bidentity\x18\x03 \x01(\v2\x1c.ardents.v1.IdentitySnapshotR\bidentity\x122\n" +
-	"\x06health\x18\x04 \x01(\v2\x1a.ardents.v1.HealthSnapshotR\x06health\"\xa1\t\n" +
+	"\x06health\x18\x04 \x01(\v2\x1a.ardents.v1.HealthSnapshotR\x06health\x12;\n" +
+	"\treadiness\x18\x05 \x01(\v2\x1d.ardents.v1.ReadinessSnapshotR\treadiness\"\xa1\t\n" +
 	"\x15NetworkStatusSnapshot\x12\x14\n" +
 	"\x05state\x18\x01 \x01(\tR\x05state\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x16\n" +
@@ -8961,7 +9098,7 @@ func file_api_ardents_v1_types_proto_rawDescGZIP() []byte {
 	return file_api_ardents_v1_types_proto_rawDescData
 }
 
-var file_api_ardents_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 128)
+var file_api_ardents_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 130)
 var file_api_ardents_v1_types_proto_goTypes = []any{
 	(*Error)(nil),                              // 0: ardents.v1.Error
 	(*OperationStatus)(nil),                    // 1: ardents.v1.OperationStatus
@@ -8999,114 +9136,116 @@ var file_api_ardents_v1_types_proto_goTypes = []any{
 	(*BlobSnapshot)(nil),                       // 33: ardents.v1.BlobSnapshot
 	(*ManifestSnapshot)(nil),                   // 34: ardents.v1.ManifestSnapshot
 	(*DataInventorySnapshot)(nil),              // 35: ardents.v1.DataInventorySnapshot
-	(*NodeRuntimeSnapshot)(nil),                // 36: ardents.v1.NodeRuntimeSnapshot
-	(*NetworkStatusSnapshot)(nil),              // 37: ardents.v1.NetworkStatusSnapshot
-	(*PeerSnapshot)(nil),                       // 38: ardents.v1.PeerSnapshot
-	(*DiscoveryStatusSnapshot)(nil),            // 39: ardents.v1.DiscoveryStatusSnapshot
-	(*LocalPresenceSnapshot)(nil),              // 40: ardents.v1.LocalPresenceSnapshot
-	(*PublicationStatusSnapshot)(nil),          // 41: ardents.v1.PublicationStatusSnapshot
-	(*RouteCandidateSnapshot)(nil),             // 42: ardents.v1.RouteCandidateSnapshot
-	(*ServiceEndpointSnapshot)(nil),            // 43: ardents.v1.ServiceEndpointSnapshot
-	(*HostedServiceSnapshot)(nil),              // 44: ardents.v1.HostedServiceSnapshot
-	(*HostedServiceStatusSnapshot)(nil),        // 45: ardents.v1.HostedServiceStatusSnapshot
-	(*BlobSourceSnapshot)(nil),                 // 46: ardents.v1.BlobSourceSnapshot
-	(*TransferSnapshot)(nil),                   // 47: ardents.v1.TransferSnapshot
-	(*FailureExplanationSnapshot)(nil),         // 48: ardents.v1.FailureExplanationSnapshot
-	(*NodeStatusResponse)(nil),                 // 49: ardents.v1.NodeStatusResponse
-	(*NodeRuntimeResponse)(nil),                // 50: ardents.v1.NodeRuntimeResponse
-	(*EffectiveConfigurationSnapshot)(nil),     // 51: ardents.v1.EffectiveConfigurationSnapshot
-	(*ConfigurationReloadResult)(nil),          // 52: ardents.v1.ConfigurationReloadResult
-	(*EffectiveConfigurationResponse)(nil),     // 53: ardents.v1.EffectiveConfigurationResponse
-	(*ReloadConfigurationResponse)(nil),        // 54: ardents.v1.ReloadConfigurationResponse
-	(*NodeFeaturesResponse)(nil),               // 55: ardents.v1.NodeFeaturesResponse
-	(*NetworkStatusResponse)(nil),              // 56: ardents.v1.NetworkStatusResponse
-	(*DiscoveryStatusResponse)(nil),            // 57: ardents.v1.DiscoveryStatusResponse
-	(*LocalPresenceResponse)(nil),              // 58: ardents.v1.LocalPresenceResponse
-	(*RecordImportResponse)(nil),               // 59: ardents.v1.RecordImportResponse
-	(*WorkloadCommandResponse)(nil),            // 60: ardents.v1.WorkloadCommandResponse
-	(*ListRecordsResponse)(nil),                // 61: ardents.v1.ListRecordsResponse
-	(*ListPeersResponse)(nil),                  // 62: ardents.v1.ListPeersResponse
-	(*ListRouteCandidatesResponse)(nil),        // 63: ardents.v1.ListRouteCandidatesResponse
-	(*ListWorkloadsResponse)(nil),              // 64: ardents.v1.ListWorkloadsResponse
-	(*GetHostedServiceResponse)(nil),           // 65: ardents.v1.GetHostedServiceResponse
-	(*ListHostedServicesResponse)(nil),         // 66: ardents.v1.ListHostedServicesResponse
-	(*ServicePublicationStatusResponse)(nil),   // 67: ardents.v1.ServicePublicationStatusResponse
-	(*ListObjectsResponse)(nil),                // 68: ardents.v1.ListObjectsResponse
-	(*ListBlobsResponse)(nil),                  // 69: ardents.v1.ListBlobsResponse
-	(*ListBlobSourcesResponse)(nil),            // 70: ardents.v1.ListBlobSourcesResponse
-	(*GetTransferResponse)(nil),                // 71: ardents.v1.GetTransferResponse
-	(*ListTransfersResponse)(nil),              // 72: ardents.v1.ListTransfersResponse
-	(*ListManifestsResponse)(nil),              // 73: ardents.v1.ListManifestsResponse
-	(*DiagnosticsSnapshotResponse)(nil),        // 74: ardents.v1.DiagnosticsSnapshotResponse
-	(*PendingOperationsResponse)(nil),          // 75: ardents.v1.PendingOperationsResponse
-	(*HealthSummaryResponse)(nil),              // 76: ardents.v1.HealthSummaryResponse
-	(*FailureExplanationResponse)(nil),         // 77: ardents.v1.FailureExplanationResponse
-	(*ListEventsResponse)(nil),                 // 78: ardents.v1.ListEventsResponse
-	(*StartNodeRequest)(nil),                   // 79: ardents.v1.StartNodeRequest
-	(*StopNodeRequest)(nil),                    // 80: ardents.v1.StopNodeRequest
-	(*GetNodeStatusRequest)(nil),               // 81: ardents.v1.GetNodeStatusRequest
-	(*GetNodeFeaturesRequest)(nil),             // 82: ardents.v1.GetNodeFeaturesRequest
-	(*GetNodeRuntimeRequest)(nil),              // 83: ardents.v1.GetNodeRuntimeRequest
-	(*GetEffectiveConfigurationRequest)(nil),   // 84: ardents.v1.GetEffectiveConfigurationRequest
-	(*ReloadConfigurationRequest)(nil),         // 85: ardents.v1.ReloadConfigurationRequest
-	(*StreamNodeEventsRequest)(nil),            // 86: ardents.v1.StreamNodeEventsRequest
-	(*ResolveRecordRequest)(nil),               // 87: ardents.v1.ResolveRecordRequest
-	(*ResolveServiceRequest)(nil),              // 88: ardents.v1.ResolveServiceRequest
-	(*ListRecordsRequest)(nil),                 // 89: ardents.v1.ListRecordsRequest
-	(*GetNetworkStatusRequest)(nil),            // 90: ardents.v1.GetNetworkStatusRequest
-	(*GetDiscoveryStatusRequest)(nil),          // 91: ardents.v1.GetDiscoveryStatusRequest
-	(*GetLocalPresenceRequest)(nil),            // 92: ardents.v1.GetLocalPresenceRequest
-	(*ListPeersRequest)(nil),                   // 93: ardents.v1.ListPeersRequest
-	(*ListRouteCandidatesRequest)(nil),         // 94: ardents.v1.ListRouteCandidatesRequest
-	(*ImportRecordRequest)(nil),                // 95: ardents.v1.ImportRecordRequest
-	(*RegisterWorkloadRequest)(nil),            // 96: ardents.v1.RegisterWorkloadRequest
-	(*StartWorkloadRequest)(nil),               // 97: ardents.v1.StartWorkloadRequest
-	(*StopWorkloadRequest)(nil),                // 98: ardents.v1.StopWorkloadRequest
-	(*RestartWorkloadRequest)(nil),             // 99: ardents.v1.RestartWorkloadRequest
-	(*GetWorkloadStatusRequest)(nil),           // 100: ardents.v1.GetWorkloadStatusRequest
-	(*ListWorkloadsRequest)(nil),               // 101: ardents.v1.ListWorkloadsRequest
-	(*GetHostedServiceRequest)(nil),            // 102: ardents.v1.GetHostedServiceRequest
-	(*ListHostedServicesRequest)(nil),          // 103: ardents.v1.ListHostedServicesRequest
-	(*GetServicePublicationStatusRequest)(nil), // 104: ardents.v1.GetServicePublicationStatusRequest
-	(*PublishObjectRequest)(nil),               // 105: ardents.v1.PublishObjectRequest
-	(*GetObjectRequest)(nil),                   // 106: ardents.v1.GetObjectRequest
-	(*ListObjectsRequest)(nil),                 // 107: ardents.v1.ListObjectsRequest
-	(*PublishBlobRequest)(nil),                 // 108: ardents.v1.PublishBlobRequest
-	(*GetBlobRequest)(nil),                     // 109: ardents.v1.GetBlobRequest
-	(*FetchBlobRequest)(nil),                   // 110: ardents.v1.FetchBlobRequest
-	(*ListBlobsRequest)(nil),                   // 111: ardents.v1.ListBlobsRequest
-	(*ListBlobSourcesRequest)(nil),             // 112: ardents.v1.ListBlobSourcesRequest
-	(*GetTransferRequest)(nil),                 // 113: ardents.v1.GetTransferRequest
-	(*ListTransfersRequest)(nil),               // 114: ardents.v1.ListTransfersRequest
-	(*PublishManifestRequest)(nil),             // 115: ardents.v1.PublishManifestRequest
-	(*GetManifestRequest)(nil),                 // 116: ardents.v1.GetManifestRequest
-	(*ListManifestsRequest)(nil),               // 117: ardents.v1.ListManifestsRequest
-	(*RetainBlobRequest)(nil),                  // 118: ardents.v1.RetainBlobRequest
-	(*PinBlobRequest)(nil),                     // 119: ardents.v1.PinBlobRequest
-	(*DropBlobRequest)(nil),                    // 120: ardents.v1.DropBlobRequest
-	(*GetDataInventoryRequest)(nil),            // 121: ardents.v1.GetDataInventoryRequest
-	(*GetDiagnosticsRequest)(nil),              // 122: ardents.v1.GetDiagnosticsRequest
-	(*GetPendingOperationsRequest)(nil),        // 123: ardents.v1.GetPendingOperationsRequest
-	(*GetHealthSummaryRequest)(nil),            // 124: ardents.v1.GetHealthSummaryRequest
-	(*ExplainFailureRequest)(nil),              // 125: ardents.v1.ExplainFailureRequest
-	(*ListRecentEventsRequest)(nil),            // 126: ardents.v1.ListRecentEventsRequest
-	nil,                                        // 127: ardents.v1.NodeFeaturesSnapshot.FeaturesEntry
-	(*structpb.Struct)(nil),                    // 128: google.protobuf.Struct
-	(*timestamppb.Timestamp)(nil),              // 129: google.protobuf.Timestamp
+	(*ReadinessCheckSnapshot)(nil),             // 36: ardents.v1.ReadinessCheckSnapshot
+	(*ReadinessSnapshot)(nil),                  // 37: ardents.v1.ReadinessSnapshot
+	(*NodeRuntimeSnapshot)(nil),                // 38: ardents.v1.NodeRuntimeSnapshot
+	(*NetworkStatusSnapshot)(nil),              // 39: ardents.v1.NetworkStatusSnapshot
+	(*PeerSnapshot)(nil),                       // 40: ardents.v1.PeerSnapshot
+	(*DiscoveryStatusSnapshot)(nil),            // 41: ardents.v1.DiscoveryStatusSnapshot
+	(*LocalPresenceSnapshot)(nil),              // 42: ardents.v1.LocalPresenceSnapshot
+	(*PublicationStatusSnapshot)(nil),          // 43: ardents.v1.PublicationStatusSnapshot
+	(*RouteCandidateSnapshot)(nil),             // 44: ardents.v1.RouteCandidateSnapshot
+	(*ServiceEndpointSnapshot)(nil),            // 45: ardents.v1.ServiceEndpointSnapshot
+	(*HostedServiceSnapshot)(nil),              // 46: ardents.v1.HostedServiceSnapshot
+	(*HostedServiceStatusSnapshot)(nil),        // 47: ardents.v1.HostedServiceStatusSnapshot
+	(*BlobSourceSnapshot)(nil),                 // 48: ardents.v1.BlobSourceSnapshot
+	(*TransferSnapshot)(nil),                   // 49: ardents.v1.TransferSnapshot
+	(*FailureExplanationSnapshot)(nil),         // 50: ardents.v1.FailureExplanationSnapshot
+	(*NodeStatusResponse)(nil),                 // 51: ardents.v1.NodeStatusResponse
+	(*NodeRuntimeResponse)(nil),                // 52: ardents.v1.NodeRuntimeResponse
+	(*EffectiveConfigurationSnapshot)(nil),     // 53: ardents.v1.EffectiveConfigurationSnapshot
+	(*ConfigurationReloadResult)(nil),          // 54: ardents.v1.ConfigurationReloadResult
+	(*EffectiveConfigurationResponse)(nil),     // 55: ardents.v1.EffectiveConfigurationResponse
+	(*ReloadConfigurationResponse)(nil),        // 56: ardents.v1.ReloadConfigurationResponse
+	(*NodeFeaturesResponse)(nil),               // 57: ardents.v1.NodeFeaturesResponse
+	(*NetworkStatusResponse)(nil),              // 58: ardents.v1.NetworkStatusResponse
+	(*DiscoveryStatusResponse)(nil),            // 59: ardents.v1.DiscoveryStatusResponse
+	(*LocalPresenceResponse)(nil),              // 60: ardents.v1.LocalPresenceResponse
+	(*RecordImportResponse)(nil),               // 61: ardents.v1.RecordImportResponse
+	(*WorkloadCommandResponse)(nil),            // 62: ardents.v1.WorkloadCommandResponse
+	(*ListRecordsResponse)(nil),                // 63: ardents.v1.ListRecordsResponse
+	(*ListPeersResponse)(nil),                  // 64: ardents.v1.ListPeersResponse
+	(*ListRouteCandidatesResponse)(nil),        // 65: ardents.v1.ListRouteCandidatesResponse
+	(*ListWorkloadsResponse)(nil),              // 66: ardents.v1.ListWorkloadsResponse
+	(*GetHostedServiceResponse)(nil),           // 67: ardents.v1.GetHostedServiceResponse
+	(*ListHostedServicesResponse)(nil),         // 68: ardents.v1.ListHostedServicesResponse
+	(*ServicePublicationStatusResponse)(nil),   // 69: ardents.v1.ServicePublicationStatusResponse
+	(*ListObjectsResponse)(nil),                // 70: ardents.v1.ListObjectsResponse
+	(*ListBlobsResponse)(nil),                  // 71: ardents.v1.ListBlobsResponse
+	(*ListBlobSourcesResponse)(nil),            // 72: ardents.v1.ListBlobSourcesResponse
+	(*GetTransferResponse)(nil),                // 73: ardents.v1.GetTransferResponse
+	(*ListTransfersResponse)(nil),              // 74: ardents.v1.ListTransfersResponse
+	(*ListManifestsResponse)(nil),              // 75: ardents.v1.ListManifestsResponse
+	(*DiagnosticsSnapshotResponse)(nil),        // 76: ardents.v1.DiagnosticsSnapshotResponse
+	(*PendingOperationsResponse)(nil),          // 77: ardents.v1.PendingOperationsResponse
+	(*HealthSummaryResponse)(nil),              // 78: ardents.v1.HealthSummaryResponse
+	(*FailureExplanationResponse)(nil),         // 79: ardents.v1.FailureExplanationResponse
+	(*ListEventsResponse)(nil),                 // 80: ardents.v1.ListEventsResponse
+	(*StartNodeRequest)(nil),                   // 81: ardents.v1.StartNodeRequest
+	(*StopNodeRequest)(nil),                    // 82: ardents.v1.StopNodeRequest
+	(*GetNodeStatusRequest)(nil),               // 83: ardents.v1.GetNodeStatusRequest
+	(*GetNodeFeaturesRequest)(nil),             // 84: ardents.v1.GetNodeFeaturesRequest
+	(*GetNodeRuntimeRequest)(nil),              // 85: ardents.v1.GetNodeRuntimeRequest
+	(*GetEffectiveConfigurationRequest)(nil),   // 86: ardents.v1.GetEffectiveConfigurationRequest
+	(*ReloadConfigurationRequest)(nil),         // 87: ardents.v1.ReloadConfigurationRequest
+	(*StreamNodeEventsRequest)(nil),            // 88: ardents.v1.StreamNodeEventsRequest
+	(*ResolveRecordRequest)(nil),               // 89: ardents.v1.ResolveRecordRequest
+	(*ResolveServiceRequest)(nil),              // 90: ardents.v1.ResolveServiceRequest
+	(*ListRecordsRequest)(nil),                 // 91: ardents.v1.ListRecordsRequest
+	(*GetNetworkStatusRequest)(nil),            // 92: ardents.v1.GetNetworkStatusRequest
+	(*GetDiscoveryStatusRequest)(nil),          // 93: ardents.v1.GetDiscoveryStatusRequest
+	(*GetLocalPresenceRequest)(nil),            // 94: ardents.v1.GetLocalPresenceRequest
+	(*ListPeersRequest)(nil),                   // 95: ardents.v1.ListPeersRequest
+	(*ListRouteCandidatesRequest)(nil),         // 96: ardents.v1.ListRouteCandidatesRequest
+	(*ImportRecordRequest)(nil),                // 97: ardents.v1.ImportRecordRequest
+	(*RegisterWorkloadRequest)(nil),            // 98: ardents.v1.RegisterWorkloadRequest
+	(*StartWorkloadRequest)(nil),               // 99: ardents.v1.StartWorkloadRequest
+	(*StopWorkloadRequest)(nil),                // 100: ardents.v1.StopWorkloadRequest
+	(*RestartWorkloadRequest)(nil),             // 101: ardents.v1.RestartWorkloadRequest
+	(*GetWorkloadStatusRequest)(nil),           // 102: ardents.v1.GetWorkloadStatusRequest
+	(*ListWorkloadsRequest)(nil),               // 103: ardents.v1.ListWorkloadsRequest
+	(*GetHostedServiceRequest)(nil),            // 104: ardents.v1.GetHostedServiceRequest
+	(*ListHostedServicesRequest)(nil),          // 105: ardents.v1.ListHostedServicesRequest
+	(*GetServicePublicationStatusRequest)(nil), // 106: ardents.v1.GetServicePublicationStatusRequest
+	(*PublishObjectRequest)(nil),               // 107: ardents.v1.PublishObjectRequest
+	(*GetObjectRequest)(nil),                   // 108: ardents.v1.GetObjectRequest
+	(*ListObjectsRequest)(nil),                 // 109: ardents.v1.ListObjectsRequest
+	(*PublishBlobRequest)(nil),                 // 110: ardents.v1.PublishBlobRequest
+	(*GetBlobRequest)(nil),                     // 111: ardents.v1.GetBlobRequest
+	(*FetchBlobRequest)(nil),                   // 112: ardents.v1.FetchBlobRequest
+	(*ListBlobsRequest)(nil),                   // 113: ardents.v1.ListBlobsRequest
+	(*ListBlobSourcesRequest)(nil),             // 114: ardents.v1.ListBlobSourcesRequest
+	(*GetTransferRequest)(nil),                 // 115: ardents.v1.GetTransferRequest
+	(*ListTransfersRequest)(nil),               // 116: ardents.v1.ListTransfersRequest
+	(*PublishManifestRequest)(nil),             // 117: ardents.v1.PublishManifestRequest
+	(*GetManifestRequest)(nil),                 // 118: ardents.v1.GetManifestRequest
+	(*ListManifestsRequest)(nil),               // 119: ardents.v1.ListManifestsRequest
+	(*RetainBlobRequest)(nil),                  // 120: ardents.v1.RetainBlobRequest
+	(*PinBlobRequest)(nil),                     // 121: ardents.v1.PinBlobRequest
+	(*DropBlobRequest)(nil),                    // 122: ardents.v1.DropBlobRequest
+	(*GetDataInventoryRequest)(nil),            // 123: ardents.v1.GetDataInventoryRequest
+	(*GetDiagnosticsRequest)(nil),              // 124: ardents.v1.GetDiagnosticsRequest
+	(*GetPendingOperationsRequest)(nil),        // 125: ardents.v1.GetPendingOperationsRequest
+	(*GetHealthSummaryRequest)(nil),            // 126: ardents.v1.GetHealthSummaryRequest
+	(*ExplainFailureRequest)(nil),              // 127: ardents.v1.ExplainFailureRequest
+	(*ListRecentEventsRequest)(nil),            // 128: ardents.v1.ListRecentEventsRequest
+	nil,                                        // 129: ardents.v1.NodeFeaturesSnapshot.FeaturesEntry
+	(*structpb.Struct)(nil),                    // 130: google.protobuf.Struct
+	(*timestamppb.Timestamp)(nil),              // 131: google.protobuf.Timestamp
 }
 var file_api_ardents_v1_types_proto_depIdxs = []int32{
-	128, // 0: ardents.v1.Error.details:type_name -> google.protobuf.Struct
+	130, // 0: ardents.v1.Error.details:type_name -> google.protobuf.Struct
 	1,   // 1: ardents.v1.CommandAckResponse.status:type_name -> ardents.v1.OperationStatus
-	129, // 2: ardents.v1.EventEnvelope.time:type_name -> google.protobuf.Timestamp
-	128, // 3: ardents.v1.EventEnvelope.payload:type_name -> google.protobuf.Struct
+	131, // 2: ardents.v1.EventEnvelope.time:type_name -> google.protobuf.Timestamp
+	130, // 3: ardents.v1.EventEnvelope.payload:type_name -> google.protobuf.Struct
 	13,  // 4: ardents.v1.SubsystemHealthSnapshot.reason:type_name -> ardents.v1.ReasonSnapshot
-	129, // 5: ardents.v1.SubsystemHealthSnapshot.updated_at:type_name -> google.protobuf.Timestamp
+	131, // 5: ardents.v1.SubsystemHealthSnapshot.updated_at:type_name -> google.protobuf.Timestamp
 	13,  // 6: ardents.v1.HealthSnapshot.primary_reason:type_name -> ardents.v1.ReasonSnapshot
 	14,  // 7: ardents.v1.HealthSnapshot.subsystems:type_name -> ardents.v1.SubsystemHealthSnapshot
-	129, // 8: ardents.v1.HealthSnapshot.updated_at:type_name -> google.protobuf.Timestamp
-	129, // 9: ardents.v1.OperationSnapshot.started_at:type_name -> google.protobuf.Timestamp
-	129, // 10: ardents.v1.OperationSnapshot.updated_at:type_name -> google.protobuf.Timestamp
-	129, // 11: ardents.v1.OperationSnapshot.finished_at:type_name -> google.protobuf.Timestamp
+	131, // 8: ardents.v1.HealthSnapshot.updated_at:type_name -> google.protobuf.Timestamp
+	131, // 9: ardents.v1.OperationSnapshot.started_at:type_name -> google.protobuf.Timestamp
+	131, // 10: ardents.v1.OperationSnapshot.updated_at:type_name -> google.protobuf.Timestamp
+	131, // 11: ardents.v1.OperationSnapshot.finished_at:type_name -> google.protobuf.Timestamp
 	15,  // 12: ardents.v1.DiagSnapshot.health:type_name -> ardents.v1.HealthSnapshot
 	3,   // 13: ardents.v1.DiagSnapshot.recent_events:type_name -> ardents.v1.EventEnvelope
 	16,  // 14: ardents.v1.DiagSnapshot.pending_operations:type_name -> ardents.v1.OperationSnapshot
@@ -9124,11 +9263,11 @@ var file_api_ardents_v1_types_proto_depIdxs = []int32{
 	12,  // 26: ardents.v1.Snapshot.store:type_name -> ardents.v1.StoreSnapshot
 	17,  // 27: ardents.v1.Snapshot.diag:type_name -> ardents.v1.DiagSnapshot
 	7,   // 28: ardents.v1.Snapshot.transport:type_name -> ardents.v1.TransportSnapshot
-	127, // 29: ardents.v1.NodeFeaturesSnapshot.features:type_name -> ardents.v1.NodeFeaturesSnapshot.FeaturesEntry
+	129, // 29: ardents.v1.NodeFeaturesSnapshot.features:type_name -> ardents.v1.NodeFeaturesSnapshot.FeaturesEntry
 	20,  // 30: ardents.v1.DiscoveryRecord.node_facts:type_name -> ardents.v1.NodeDiscoveryFacts
 	21,  // 31: ardents.v1.DiscoveryRecord.service_facts:type_name -> ardents.v1.ServiceDiscoveryFacts
-	129, // 32: ardents.v1.DiscoveryRecord.issued_at_v1:type_name -> google.protobuf.Timestamp
-	129, // 33: ardents.v1.DiscoveryRecord.expires_at_v1:type_name -> google.protobuf.Timestamp
+	131, // 32: ardents.v1.DiscoveryRecord.issued_at_v1:type_name -> google.protobuf.Timestamp
+	131, // 33: ardents.v1.DiscoveryRecord.expires_at_v1:type_name -> google.protobuf.Timestamp
 	23,  // 34: ardents.v1.RouteSnapshot.selected:type_name -> ardents.v1.TransportTarget
 	22,  // 35: ardents.v1.DiscoveryResult.record:type_name -> ardents.v1.DiscoveryRecord
 	10,  // 36: ardents.v1.DiscoveryResult.trust:type_name -> ardents.v1.TrustSnapshot
@@ -9137,110 +9276,112 @@ var file_api_ardents_v1_types_proto_depIdxs = []int32{
 	25,  // 39: ardents.v1.ServiceResult.matches:type_name -> ardents.v1.DiscoveryResult
 	24,  // 40: ardents.v1.ServiceResult.route:type_name -> ardents.v1.RouteSnapshot
 	27,  // 41: ardents.v1.WorkloadSpecSnapshot.services:type_name -> ardents.v1.PublishedServiceSnapshot
-	129, // 42: ardents.v1.WorkloadInstanceSnapshot.started_at:type_name -> google.protobuf.Timestamp
-	129, // 43: ardents.v1.WorkloadInstanceSnapshot.finished_at:type_name -> google.protobuf.Timestamp
+	131, // 42: ardents.v1.WorkloadInstanceSnapshot.started_at:type_name -> google.protobuf.Timestamp
+	131, // 43: ardents.v1.WorkloadInstanceSnapshot.finished_at:type_name -> google.protobuf.Timestamp
 	28,  // 44: ardents.v1.WorkloadStatusSnapshot.spec:type_name -> ardents.v1.WorkloadSpecSnapshot
-	129, // 45: ardents.v1.WorkloadStatusSnapshot.last_transition_at:type_name -> google.protobuf.Timestamp
+	131, // 45: ardents.v1.WorkloadStatusSnapshot.last_transition_at:type_name -> google.protobuf.Timestamp
 	27,  // 46: ardents.v1.WorkloadStatusSnapshot.published_services:type_name -> ardents.v1.PublishedServiceSnapshot
 	29,  // 47: ardents.v1.WorkloadStatusSnapshot.instance:type_name -> ardents.v1.WorkloadInstanceSnapshot
-	129, // 48: ardents.v1.WorkloadStatusSnapshot.observed_at:type_name -> google.protobuf.Timestamp
-	128, // 49: ardents.v1.ObjectSnapshot.body:type_name -> google.protobuf.Struct
+	131, // 48: ardents.v1.WorkloadStatusSnapshot.observed_at:type_name -> google.protobuf.Timestamp
+	130, // 49: ardents.v1.ObjectSnapshot.body:type_name -> google.protobuf.Struct
 	31,  // 50: ardents.v1.ObjectSnapshot.blob_refs:type_name -> ardents.v1.RefSnapshot
-	129, // 51: ardents.v1.ObjectSnapshot.created_at:type_name -> google.protobuf.Timestamp
-	129, // 52: ardents.v1.BlobSnapshot.created_at:type_name -> google.protobuf.Timestamp
-	129, // 53: ardents.v1.BlobSnapshot.expires_at:type_name -> google.protobuf.Timestamp
+	131, // 51: ardents.v1.ObjectSnapshot.created_at:type_name -> google.protobuf.Timestamp
+	131, // 52: ardents.v1.BlobSnapshot.created_at:type_name -> google.protobuf.Timestamp
+	131, // 53: ardents.v1.BlobSnapshot.expires_at:type_name -> google.protobuf.Timestamp
 	31,  // 54: ardents.v1.ManifestSnapshot.refs:type_name -> ardents.v1.RefSnapshot
-	128, // 55: ardents.v1.ManifestSnapshot.metadata:type_name -> google.protobuf.Struct
-	129, // 56: ardents.v1.ManifestSnapshot.created_at:type_name -> google.protobuf.Timestamp
-	4,   // 57: ardents.v1.NodeRuntimeSnapshot.node:type_name -> ardents.v1.NodeSnapshot
-	5,   // 58: ardents.v1.NodeRuntimeSnapshot.boot:type_name -> ardents.v1.BootSnapshot
-	8,   // 59: ardents.v1.NodeRuntimeSnapshot.identity:type_name -> ardents.v1.IdentitySnapshot
-	15,  // 60: ardents.v1.NodeRuntimeSnapshot.health:type_name -> ardents.v1.HealthSnapshot
-	129, // 61: ardents.v1.NetworkStatusSnapshot.last_transition_at:type_name -> google.protobuf.Timestamp
-	129, // 62: ardents.v1.NetworkStatusSnapshot.reachability_observed_at:type_name -> google.protobuf.Timestamp
-	10,  // 63: ardents.v1.PeerSnapshot.trust:type_name -> ardents.v1.TrustSnapshot
-	129, // 64: ardents.v1.PeerSnapshot.last_seen_at:type_name -> google.protobuf.Timestamp
-	129, // 65: ardents.v1.DiscoveryStatusSnapshot.last_publish_at:type_name -> google.protobuf.Timestamp
-	129, // 66: ardents.v1.DiscoveryStatusSnapshot.last_refresh_at:type_name -> google.protobuf.Timestamp
-	129, // 67: ardents.v1.LocalPresenceSnapshot.published_at:type_name -> google.protobuf.Timestamp
-	129, // 68: ardents.v1.LocalPresenceSnapshot.expires_at:type_name -> google.protobuf.Timestamp
-	129, // 69: ardents.v1.PublicationStatusSnapshot.published_at:type_name -> google.protobuf.Timestamp
-	129, // 70: ardents.v1.PublicationStatusSnapshot.expires_at:type_name -> google.protobuf.Timestamp
-	129, // 71: ardents.v1.PublicationStatusSnapshot.withdrawn_at:type_name -> google.protobuf.Timestamp
-	43,  // 72: ardents.v1.HostedServiceSnapshot.endpoints:type_name -> ardents.v1.ServiceEndpointSnapshot
-	129, // 73: ardents.v1.HostedServiceSnapshot.last_probe_at:type_name -> google.protobuf.Timestamp
-	41,  // 74: ardents.v1.HostedServiceStatusSnapshot.publication:type_name -> ardents.v1.PublicationStatusSnapshot
-	129, // 75: ardents.v1.HostedServiceStatusSnapshot.last_transition_at:type_name -> google.protobuf.Timestamp
-	129, // 76: ardents.v1.HostedServiceStatusSnapshot.last_probe_at:type_name -> google.protobuf.Timestamp
-	10,  // 77: ardents.v1.BlobSourceSnapshot.trust:type_name -> ardents.v1.TrustSnapshot
-	129, // 78: ardents.v1.BlobSourceSnapshot.last_seen_at:type_name -> google.protobuf.Timestamp
-	129, // 79: ardents.v1.TransferSnapshot.started_at:type_name -> google.protobuf.Timestamp
-	129, // 80: ardents.v1.TransferSnapshot.updated_at:type_name -> google.protobuf.Timestamp
-	129, // 81: ardents.v1.TransferSnapshot.finished_at:type_name -> google.protobuf.Timestamp
-	13,  // 82: ardents.v1.FailureExplanationSnapshot.reason:type_name -> ardents.v1.ReasonSnapshot
-	1,   // 83: ardents.v1.NodeStatusResponse.status:type_name -> ardents.v1.OperationStatus
-	18,  // 84: ardents.v1.NodeStatusResponse.snapshot:type_name -> ardents.v1.Snapshot
-	19,  // 85: ardents.v1.NodeStatusResponse.features:type_name -> ardents.v1.NodeFeaturesSnapshot
-	1,   // 86: ardents.v1.NodeRuntimeResponse.status:type_name -> ardents.v1.OperationStatus
-	36,  // 87: ardents.v1.NodeRuntimeResponse.runtime:type_name -> ardents.v1.NodeRuntimeSnapshot
-	129, // 88: ardents.v1.EffectiveConfigurationSnapshot.loaded_at:type_name -> google.protobuf.Timestamp
-	128, // 89: ardents.v1.EffectiveConfigurationSnapshot.effective:type_name -> google.protobuf.Struct
-	1,   // 90: ardents.v1.EffectiveConfigurationResponse.status:type_name -> ardents.v1.OperationStatus
-	51,  // 91: ardents.v1.EffectiveConfigurationResponse.configuration:type_name -> ardents.v1.EffectiveConfigurationSnapshot
-	1,   // 92: ardents.v1.ReloadConfigurationResponse.status:type_name -> ardents.v1.OperationStatus
-	52,  // 93: ardents.v1.ReloadConfigurationResponse.result:type_name -> ardents.v1.ConfigurationReloadResult
-	51,  // 94: ardents.v1.ReloadConfigurationResponse.configuration:type_name -> ardents.v1.EffectiveConfigurationSnapshot
-	19,  // 95: ardents.v1.NodeFeaturesResponse.features:type_name -> ardents.v1.NodeFeaturesSnapshot
-	1,   // 96: ardents.v1.NetworkStatusResponse.status:type_name -> ardents.v1.OperationStatus
-	37,  // 97: ardents.v1.NetworkStatusResponse.network:type_name -> ardents.v1.NetworkStatusSnapshot
-	1,   // 98: ardents.v1.DiscoveryStatusResponse.status:type_name -> ardents.v1.OperationStatus
-	39,  // 99: ardents.v1.DiscoveryStatusResponse.discovery:type_name -> ardents.v1.DiscoveryStatusSnapshot
-	1,   // 100: ardents.v1.LocalPresenceResponse.status:type_name -> ardents.v1.OperationStatus
-	40,  // 101: ardents.v1.LocalPresenceResponse.presence:type_name -> ardents.v1.LocalPresenceSnapshot
-	1,   // 102: ardents.v1.RecordImportResponse.status:type_name -> ardents.v1.OperationStatus
-	1,   // 103: ardents.v1.WorkloadCommandResponse.status:type_name -> ardents.v1.OperationStatus
-	30,  // 104: ardents.v1.WorkloadCommandResponse.workload:type_name -> ardents.v1.WorkloadStatusSnapshot
-	1,   // 105: ardents.v1.ListRecordsResponse.status:type_name -> ardents.v1.OperationStatus
-	22,  // 106: ardents.v1.ListRecordsResponse.records:type_name -> ardents.v1.DiscoveryRecord
-	1,   // 107: ardents.v1.ListPeersResponse.status:type_name -> ardents.v1.OperationStatus
-	38,  // 108: ardents.v1.ListPeersResponse.peers:type_name -> ardents.v1.PeerSnapshot
-	1,   // 109: ardents.v1.ListRouteCandidatesResponse.status:type_name -> ardents.v1.OperationStatus
-	42,  // 110: ardents.v1.ListRouteCandidatesResponse.candidates:type_name -> ardents.v1.RouteCandidateSnapshot
-	24,  // 111: ardents.v1.ListRouteCandidatesResponse.route:type_name -> ardents.v1.RouteSnapshot
-	30,  // 112: ardents.v1.ListWorkloadsResponse.workloads:type_name -> ardents.v1.WorkloadStatusSnapshot
-	1,   // 113: ardents.v1.GetHostedServiceResponse.status:type_name -> ardents.v1.OperationStatus
-	45,  // 114: ardents.v1.GetHostedServiceResponse.service:type_name -> ardents.v1.HostedServiceStatusSnapshot
-	44,  // 115: ardents.v1.ListHostedServicesResponse.services:type_name -> ardents.v1.HostedServiceSnapshot
-	1,   // 116: ardents.v1.ServicePublicationStatusResponse.status:type_name -> ardents.v1.OperationStatus
-	41,  // 117: ardents.v1.ServicePublicationStatusResponse.publication:type_name -> ardents.v1.PublicationStatusSnapshot
-	32,  // 118: ardents.v1.ListObjectsResponse.objects:type_name -> ardents.v1.ObjectSnapshot
-	33,  // 119: ardents.v1.ListBlobsResponse.blobs:type_name -> ardents.v1.BlobSnapshot
-	46,  // 120: ardents.v1.ListBlobSourcesResponse.sources:type_name -> ardents.v1.BlobSourceSnapshot
-	1,   // 121: ardents.v1.GetTransferResponse.status:type_name -> ardents.v1.OperationStatus
-	47,  // 122: ardents.v1.GetTransferResponse.transfer:type_name -> ardents.v1.TransferSnapshot
-	47,  // 123: ardents.v1.ListTransfersResponse.transfers:type_name -> ardents.v1.TransferSnapshot
-	34,  // 124: ardents.v1.ListManifestsResponse.manifests:type_name -> ardents.v1.ManifestSnapshot
-	1,   // 125: ardents.v1.DiagnosticsSnapshotResponse.status:type_name -> ardents.v1.OperationStatus
-	17,  // 126: ardents.v1.DiagnosticsSnapshotResponse.diagnostics:type_name -> ardents.v1.DiagSnapshot
-	1,   // 127: ardents.v1.PendingOperationsResponse.status:type_name -> ardents.v1.OperationStatus
-	16,  // 128: ardents.v1.PendingOperationsResponse.operations:type_name -> ardents.v1.OperationSnapshot
-	1,   // 129: ardents.v1.HealthSummaryResponse.status:type_name -> ardents.v1.OperationStatus
-	15,  // 130: ardents.v1.HealthSummaryResponse.health:type_name -> ardents.v1.HealthSnapshot
-	1,   // 131: ardents.v1.FailureExplanationResponse.status:type_name -> ardents.v1.OperationStatus
-	48,  // 132: ardents.v1.FailureExplanationResponse.explanation:type_name -> ardents.v1.FailureExplanationSnapshot
-	1,   // 133: ardents.v1.ListEventsResponse.status:type_name -> ardents.v1.OperationStatus
-	3,   // 134: ardents.v1.ListEventsResponse.events:type_name -> ardents.v1.EventEnvelope
-	22,  // 135: ardents.v1.ImportRecordRequest.record:type_name -> ardents.v1.DiscoveryRecord
-	28,  // 136: ardents.v1.RegisterWorkloadRequest.spec:type_name -> ardents.v1.WorkloadSpecSnapshot
-	32,  // 137: ardents.v1.PublishObjectRequest.object:type_name -> ardents.v1.ObjectSnapshot
-	33,  // 138: ardents.v1.PublishBlobRequest.blob:type_name -> ardents.v1.BlobSnapshot
-	34,  // 139: ardents.v1.PublishManifestRequest.manifest:type_name -> ardents.v1.ManifestSnapshot
-	129, // 140: ardents.v1.RetainBlobRequest.expires_at:type_name -> google.protobuf.Timestamp
-	141, // [141:141] is the sub-list for method output_type
-	141, // [141:141] is the sub-list for method input_type
-	141, // [141:141] is the sub-list for extension type_name
-	141, // [141:141] is the sub-list for extension extendee
-	0,   // [0:141] is the sub-list for field type_name
+	130, // 55: ardents.v1.ManifestSnapshot.metadata:type_name -> google.protobuf.Struct
+	131, // 56: ardents.v1.ManifestSnapshot.created_at:type_name -> google.protobuf.Timestamp
+	36,  // 57: ardents.v1.ReadinessSnapshot.checks:type_name -> ardents.v1.ReadinessCheckSnapshot
+	4,   // 58: ardents.v1.NodeRuntimeSnapshot.node:type_name -> ardents.v1.NodeSnapshot
+	5,   // 59: ardents.v1.NodeRuntimeSnapshot.boot:type_name -> ardents.v1.BootSnapshot
+	8,   // 60: ardents.v1.NodeRuntimeSnapshot.identity:type_name -> ardents.v1.IdentitySnapshot
+	15,  // 61: ardents.v1.NodeRuntimeSnapshot.health:type_name -> ardents.v1.HealthSnapshot
+	37,  // 62: ardents.v1.NodeRuntimeSnapshot.readiness:type_name -> ardents.v1.ReadinessSnapshot
+	131, // 63: ardents.v1.NetworkStatusSnapshot.last_transition_at:type_name -> google.protobuf.Timestamp
+	131, // 64: ardents.v1.NetworkStatusSnapshot.reachability_observed_at:type_name -> google.protobuf.Timestamp
+	10,  // 65: ardents.v1.PeerSnapshot.trust:type_name -> ardents.v1.TrustSnapshot
+	131, // 66: ardents.v1.PeerSnapshot.last_seen_at:type_name -> google.protobuf.Timestamp
+	131, // 67: ardents.v1.DiscoveryStatusSnapshot.last_publish_at:type_name -> google.protobuf.Timestamp
+	131, // 68: ardents.v1.DiscoveryStatusSnapshot.last_refresh_at:type_name -> google.protobuf.Timestamp
+	131, // 69: ardents.v1.LocalPresenceSnapshot.published_at:type_name -> google.protobuf.Timestamp
+	131, // 70: ardents.v1.LocalPresenceSnapshot.expires_at:type_name -> google.protobuf.Timestamp
+	131, // 71: ardents.v1.PublicationStatusSnapshot.published_at:type_name -> google.protobuf.Timestamp
+	131, // 72: ardents.v1.PublicationStatusSnapshot.expires_at:type_name -> google.protobuf.Timestamp
+	131, // 73: ardents.v1.PublicationStatusSnapshot.withdrawn_at:type_name -> google.protobuf.Timestamp
+	45,  // 74: ardents.v1.HostedServiceSnapshot.endpoints:type_name -> ardents.v1.ServiceEndpointSnapshot
+	131, // 75: ardents.v1.HostedServiceSnapshot.last_probe_at:type_name -> google.protobuf.Timestamp
+	43,  // 76: ardents.v1.HostedServiceStatusSnapshot.publication:type_name -> ardents.v1.PublicationStatusSnapshot
+	131, // 77: ardents.v1.HostedServiceStatusSnapshot.last_transition_at:type_name -> google.protobuf.Timestamp
+	131, // 78: ardents.v1.HostedServiceStatusSnapshot.last_probe_at:type_name -> google.protobuf.Timestamp
+	10,  // 79: ardents.v1.BlobSourceSnapshot.trust:type_name -> ardents.v1.TrustSnapshot
+	131, // 80: ardents.v1.BlobSourceSnapshot.last_seen_at:type_name -> google.protobuf.Timestamp
+	131, // 81: ardents.v1.TransferSnapshot.started_at:type_name -> google.protobuf.Timestamp
+	131, // 82: ardents.v1.TransferSnapshot.updated_at:type_name -> google.protobuf.Timestamp
+	131, // 83: ardents.v1.TransferSnapshot.finished_at:type_name -> google.protobuf.Timestamp
+	13,  // 84: ardents.v1.FailureExplanationSnapshot.reason:type_name -> ardents.v1.ReasonSnapshot
+	1,   // 85: ardents.v1.NodeStatusResponse.status:type_name -> ardents.v1.OperationStatus
+	18,  // 86: ardents.v1.NodeStatusResponse.snapshot:type_name -> ardents.v1.Snapshot
+	19,  // 87: ardents.v1.NodeStatusResponse.features:type_name -> ardents.v1.NodeFeaturesSnapshot
+	1,   // 88: ardents.v1.NodeRuntimeResponse.status:type_name -> ardents.v1.OperationStatus
+	38,  // 89: ardents.v1.NodeRuntimeResponse.runtime:type_name -> ardents.v1.NodeRuntimeSnapshot
+	131, // 90: ardents.v1.EffectiveConfigurationSnapshot.loaded_at:type_name -> google.protobuf.Timestamp
+	130, // 91: ardents.v1.EffectiveConfigurationSnapshot.effective:type_name -> google.protobuf.Struct
+	1,   // 92: ardents.v1.EffectiveConfigurationResponse.status:type_name -> ardents.v1.OperationStatus
+	53,  // 93: ardents.v1.EffectiveConfigurationResponse.configuration:type_name -> ardents.v1.EffectiveConfigurationSnapshot
+	1,   // 94: ardents.v1.ReloadConfigurationResponse.status:type_name -> ardents.v1.OperationStatus
+	54,  // 95: ardents.v1.ReloadConfigurationResponse.result:type_name -> ardents.v1.ConfigurationReloadResult
+	53,  // 96: ardents.v1.ReloadConfigurationResponse.configuration:type_name -> ardents.v1.EffectiveConfigurationSnapshot
+	19,  // 97: ardents.v1.NodeFeaturesResponse.features:type_name -> ardents.v1.NodeFeaturesSnapshot
+	1,   // 98: ardents.v1.NetworkStatusResponse.status:type_name -> ardents.v1.OperationStatus
+	39,  // 99: ardents.v1.NetworkStatusResponse.network:type_name -> ardents.v1.NetworkStatusSnapshot
+	1,   // 100: ardents.v1.DiscoveryStatusResponse.status:type_name -> ardents.v1.OperationStatus
+	41,  // 101: ardents.v1.DiscoveryStatusResponse.discovery:type_name -> ardents.v1.DiscoveryStatusSnapshot
+	1,   // 102: ardents.v1.LocalPresenceResponse.status:type_name -> ardents.v1.OperationStatus
+	42,  // 103: ardents.v1.LocalPresenceResponse.presence:type_name -> ardents.v1.LocalPresenceSnapshot
+	1,   // 104: ardents.v1.RecordImportResponse.status:type_name -> ardents.v1.OperationStatus
+	1,   // 105: ardents.v1.WorkloadCommandResponse.status:type_name -> ardents.v1.OperationStatus
+	30,  // 106: ardents.v1.WorkloadCommandResponse.workload:type_name -> ardents.v1.WorkloadStatusSnapshot
+	1,   // 107: ardents.v1.ListRecordsResponse.status:type_name -> ardents.v1.OperationStatus
+	22,  // 108: ardents.v1.ListRecordsResponse.records:type_name -> ardents.v1.DiscoveryRecord
+	1,   // 109: ardents.v1.ListPeersResponse.status:type_name -> ardents.v1.OperationStatus
+	40,  // 110: ardents.v1.ListPeersResponse.peers:type_name -> ardents.v1.PeerSnapshot
+	1,   // 111: ardents.v1.ListRouteCandidatesResponse.status:type_name -> ardents.v1.OperationStatus
+	44,  // 112: ardents.v1.ListRouteCandidatesResponse.candidates:type_name -> ardents.v1.RouteCandidateSnapshot
+	24,  // 113: ardents.v1.ListRouteCandidatesResponse.route:type_name -> ardents.v1.RouteSnapshot
+	30,  // 114: ardents.v1.ListWorkloadsResponse.workloads:type_name -> ardents.v1.WorkloadStatusSnapshot
+	1,   // 115: ardents.v1.GetHostedServiceResponse.status:type_name -> ardents.v1.OperationStatus
+	47,  // 116: ardents.v1.GetHostedServiceResponse.service:type_name -> ardents.v1.HostedServiceStatusSnapshot
+	46,  // 117: ardents.v1.ListHostedServicesResponse.services:type_name -> ardents.v1.HostedServiceSnapshot
+	1,   // 118: ardents.v1.ServicePublicationStatusResponse.status:type_name -> ardents.v1.OperationStatus
+	43,  // 119: ardents.v1.ServicePublicationStatusResponse.publication:type_name -> ardents.v1.PublicationStatusSnapshot
+	32,  // 120: ardents.v1.ListObjectsResponse.objects:type_name -> ardents.v1.ObjectSnapshot
+	33,  // 121: ardents.v1.ListBlobsResponse.blobs:type_name -> ardents.v1.BlobSnapshot
+	48,  // 122: ardents.v1.ListBlobSourcesResponse.sources:type_name -> ardents.v1.BlobSourceSnapshot
+	1,   // 123: ardents.v1.GetTransferResponse.status:type_name -> ardents.v1.OperationStatus
+	49,  // 124: ardents.v1.GetTransferResponse.transfer:type_name -> ardents.v1.TransferSnapshot
+	49,  // 125: ardents.v1.ListTransfersResponse.transfers:type_name -> ardents.v1.TransferSnapshot
+	34,  // 126: ardents.v1.ListManifestsResponse.manifests:type_name -> ardents.v1.ManifestSnapshot
+	1,   // 127: ardents.v1.DiagnosticsSnapshotResponse.status:type_name -> ardents.v1.OperationStatus
+	17,  // 128: ardents.v1.DiagnosticsSnapshotResponse.diagnostics:type_name -> ardents.v1.DiagSnapshot
+	1,   // 129: ardents.v1.PendingOperationsResponse.status:type_name -> ardents.v1.OperationStatus
+	16,  // 130: ardents.v1.PendingOperationsResponse.operations:type_name -> ardents.v1.OperationSnapshot
+	1,   // 131: ardents.v1.HealthSummaryResponse.status:type_name -> ardents.v1.OperationStatus
+	15,  // 132: ardents.v1.HealthSummaryResponse.health:type_name -> ardents.v1.HealthSnapshot
+	1,   // 133: ardents.v1.FailureExplanationResponse.status:type_name -> ardents.v1.OperationStatus
+	50,  // 134: ardents.v1.FailureExplanationResponse.explanation:type_name -> ardents.v1.FailureExplanationSnapshot
+	1,   // 135: ardents.v1.ListEventsResponse.status:type_name -> ardents.v1.OperationStatus
+	3,   // 136: ardents.v1.ListEventsResponse.events:type_name -> ardents.v1.EventEnvelope
+	22,  // 137: ardents.v1.ImportRecordRequest.record:type_name -> ardents.v1.DiscoveryRecord
+	28,  // 138: ardents.v1.RegisterWorkloadRequest.spec:type_name -> ardents.v1.WorkloadSpecSnapshot
+	32,  // 139: ardents.v1.PublishObjectRequest.object:type_name -> ardents.v1.ObjectSnapshot
+	33,  // 140: ardents.v1.PublishBlobRequest.blob:type_name -> ardents.v1.BlobSnapshot
+	34,  // 141: ardents.v1.PublishManifestRequest.manifest:type_name -> ardents.v1.ManifestSnapshot
+	131, // 142: ardents.v1.RetainBlobRequest.expires_at:type_name -> google.protobuf.Timestamp
+	143, // [143:143] is the sub-list for method output_type
+	143, // [143:143] is the sub-list for method input_type
+	143, // [143:143] is the sub-list for extension type_name
+	143, // [143:143] is the sub-list for extension extendee
+	0,   // [0:143] is the sub-list for field type_name
 }
 
 func init() { file_api_ardents_v1_types_proto_init() }
@@ -9259,7 +9400,7 @@ func file_api_ardents_v1_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_ardents_v1_types_proto_rawDesc), len(file_api_ardents_v1_types_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   128,
+			NumMessages:   130,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

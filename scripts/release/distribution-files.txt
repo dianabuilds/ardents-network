@@ -5,6 +5,7 @@ deploy/docker/compose/docker-compose.multinode.yml|docker/docker-compose.multino
 deploy/docker/compose/docker-compose.production.yml|docker/docker-compose.production.yml
 ardents.ps1|ardents.ps1
 scripts/deploy/cluster.ps1|scripts/deploy/cluster.ps1
+scripts/deploy/composite-readiness.ps1|scripts/deploy/composite-readiness.ps1
 scripts/deploy/data.ps1|scripts/deploy/data.ps1
 scripts/deploy/rollout.ps1|scripts/deploy/rollout.ps1
 scripts/install/linux.sh|scripts/install/linux.sh

@@ -163,18 +163,30 @@ function global:docker {
             })
         } | ConvertTo-Json -Depth 6
     }
-    if ($arguments -contains "network" -and $arguments -contains "status") {
+    if ($arguments -contains "node" -and $arguments -contains "runtime") {
         $ready = -not (
             $service -eq $global:InjectedNode -and
             $global:InjectedBoundary -eq "readiness" -and
             $global:FakeNodeImages[$service] -eq $newImage
         )
         return [ordered]@{
-            network = [ordered]@{
-                state = if ($ready) { "ready" } else { "starting" }
-                joined = $ready
+            runtime = [ordered]@{
+                readiness = [ordered]@{
+                    ready = $ready
+                    reason = if ($ready) { "" } else { "network: injected rollout degradation" }
+                    checks = @(
+                        [ordered]@{ name = "protected_api"; ready = $true; reason = "" }
+                        [ordered]@{ name = "access_grant"; ready = $true; reason = "" }
+                        [ordered]@{ name = "network"; ready = $ready; reason = if ($ready) { "" } else { "injected rollout degradation" } }
+                        [ordered]@{ name = "diagnostics"; ready = $true; reason = "" }
+                        [ordered]@{ name = "identity"; ready = $true; reason = "" }
+                    )
+                }
             }
-        } | ConvertTo-Json -Depth 3
+        } | ConvertTo-Json -Depth 6
+    }
+    if ($arguments -contains "network" -and $arguments -contains "status") {
+        return [ordered]@{ network = [ordered]@{ state = "ready"; joined = $true } } | ConvertTo-Json -Depth 3
     }
 }
 

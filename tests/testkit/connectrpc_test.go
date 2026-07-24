@@ -46,5 +46,19 @@ func TestOperatorCLIFixtureUsesDeviceAuthenticatedUnixSession(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.Equal(t, fixture.NodePrincipal, response.Msg.GetRuntime().GetIdentity().GetPrincipal())
+	readiness := response.Msg.GetRuntime().GetReadiness()
+	require.NotNil(t, readiness)
+	require.Equal(t,
+		[]string{"protected_api", "access_grant", "network", "diagnostics", "identity"},
+		readinessCheckNames(readiness.GetChecks()),
+	)
 	require.NotEmpty(t, fixture.SignerFile)
+}
+
+func readinessCheckNames(checks []*ardentsv1.ReadinessCheckSnapshot) []string {
+	out := make([]string, 0, len(checks))
+	for _, check := range checks {
+		out = append(out, check.GetName())
+	}
+	return out
 }
