@@ -1,411 +1,465 @@
 # Capability and evidence register
 
-## Scope
-
-This register describes the product truth at the frozen stabilization baseline
-`main@75471a6c08bf0c8a130db65d64c7f37dc33f03b5`.
-
-It separates four maturity dimensions:
-
-- `I` — implemented in production code;
-- `R` — reachable through a supported caller interface;
-- `O` — operable through status, diagnostics and recovery behavior;
-- `Q` — qualified by the complete required evidence matrix for one exact
-  clean commit.
-
-`Q` is intentionally false for every capability until current-head Docker,
-native, multi-node, security and release evidence is complete.
-
-## Summary
-
-| Vertical | I | R | O | Q | Research class |
-|---|:---:|:---:|:---:|:---:|---|
-| Node lifecycle and Operator control | yes | yes | yes | no | R3 |
-| Principal identity and access | yes | yes | yes | no | R3 |
-| Application identity and Content | yes | partial | yes | no | R1/R3 |
-| Network foundation | yes | Operator | yes | no | R2/R3 |
-| Discovery | yes | Operator only | yes | no | R1 |
-| Content, transfer and replication | yes | mixed | yes | no | R1/R3 |
-| Workloads and hosted services | yes | Operator only | yes | no | R2/R3 |
-| Operations, deployment and release | yes | yes | yes | no | R3 |
-
-## 1. Node lifecycle and Operator control
-
-### User outcome
-
-An enrolled Operator can start, stop and inspect one Node, stream events and
-use CLI/TUI locally or through SSH stream-local forwarding.
-
-### Current interface
-
-- `NodeService`: start, stop, status, features, runtime and events;
-- `ardentsctl node`, `shell`, and `tui`;
-- protected Operator Unix socket;
-- SSH forwarding to the same Unix socket.
-
-### Implementation
-
-- composition and lifecycle: `internal/daemon`;
-- Operator handlers: `internal/localapi/node`;
-- CLI: `internal/cli/node`, `internal/cli/tui`;
-- identity-bound transport: `internal/cli/client`.
-
-### Evidence
-
-- default daemon, local API, CLI and session tests pass;
-- critical daemon lifecycle tests pass locally with `-race`;
-- historical integration/E2E reports cover restart, pending truth and terminal
-  operation flows.
-
-### Gaps
-
-- current clean Linux/Docker E2E is missing;
-- native systemd/SSH qualification is not current-head evidence;
-- CLI documentation is not yet a machine-readable procedure/action/smoke map.
-
-### Disposition
-
-Existing feature, no new product design required. Complete R3 qualification and
-an R1 Operator command smoke catalogue.
-
-## 2. Principal identity and access
-
-### User outcome
-
-A Principal creates root/device custody, enrolls on a Node, authenticates a
-short-lived session and receives finite grants or one-hop Delegation.
-
-### Current interface
-
-- Operator `IdentityService`;
-- Application `IdentityService`;
-- offline `ardentsctl identity principal` and `ardentsctl identity device`
-  commands;
-- online enrollment, grant, revocation, ticket and session commands;
-- Go SDK session, enrollment, identity and delegation adapters.
-
-### Implementation
-
-- identity and capability model: `internal/identity`;
-- sessions/grants/recovery: `internal/identity/access`;
-- shared client state machine: `internal/identity/sessionclient`;
-- Operator/Application interceptors and bindings.
-
-### Evidence
-
-- default identity, access, SDK and CLI tests pass;
-- identity access passes locally with `-race`;
-- recovery Credential, one-time ticket and session parity remediations have
-  deterministic tests;
-- Application process E2E exists in the tagged suite.
-
-### Gaps
-
-- full installation journey has not run against the Wave 1 commit;
-- production Channel Grant authority is a separate unresolved research area;
-- external/interoperability crypto vectors remain limited to repository-owned
-  implementations.
-
-### Disposition
-
-Core identity is an R3 qualification target. Application installation is an R1
-journey investigation. Channel authority remains R2.
-
-## 3. Application identity and Content
-
-### User outcome
-
-An Application enrolls as its own Principal, authenticates to the dedicated
-Application socket and puts/gets immutable Principal-owned content.
-
-### Current interface
-
-- Application `IdentityService`;
-- Application `ContentService.Put/Get`;
-- Go SDK `client`, `identity`, `content`, and typed errors.
-
-No Application discovery, messaging or hosting interface exists.
-
-### Implementation
-
-- admission and binding: `internal/applicationapi`;
-- owner-aware content adapter: `internal/applicationapi/content`;
-- public client adapters: `sdk/go`.
-
-### Evidence
-
-- Application admission/content/SDK tests pass;
-- dedicated Application process E2E and content fetch E2E exist;
-- owner-qualified Object/Manifest and owner-content binding tests pass.
-
-### Gaps
-
-- the complete ticket -> enrollment -> session -> remote `Put/Get` journey
-  needs one current-head acceptance scenario;
-- unary payload limits and large-content ergonomics need a user-facing contract;
-- SDK extraction/version/module-path decision is deferred.
-
-### Disposition
-
-Current slice is implemented but only partially qualified. The installation
-journey is R1; release evidence is R3.
-
-## 4. Network foundation
-
-### User outcome
-
-A Node joins a real Waku network, participates according to its profile and
-publishes/receives private product traffic without exposing readable meaning.
-
-### Current interface
-
-- Operator Network status, peers, routes and presence;
-- internal network contracts used by discovery, publication and transfer;
-- no public Application network interface.
-
-### Implementation
-
-- product contracts: `internal/network`;
-- Waku/libp2p adapter: `internal/network/waku`;
-- Relay, Store, Filter and Lightpush roles;
-- TCP/WSS supported profiles and explicit suppressed transports.
-
-### Evidence
-
-- Waku adapter tests pass locally with `-race`;
-- persistent Store retention and quota remediations pass;
-- historical network integration/E2E and multi-node reports exist.
-
-### Gaps
-
-- no current Docker/Linux multi-node evidence;
-- real multi-host churn, partition, hostile peer, WSS and reachability matrix is
-  not release-qualified;
-- NAT and production topology policy need DR-04.
-
-### Disposition
-
-Implementation is substantial. Runtime qualification is R3; supported
-multi-host topology remains R2.
-
-## 5. Discovery
-
-### User outcome
-
-A Node publishes signed Node/service facts, evaluates remote trust and resolves
-usable records, routes and service endpoints.
-
-### Current interface
-
-- Operator status, presence, records, resolve and route commands;
-- internal publication/discovery interfaces;
-- no Application discovery protocol or SDK package.
-
-### Implementation
-
-- records, merge, trust and resolution: `internal/discovery`;
-- network delivery: `internal/discovery/private_network.go`;
-- publication: `internal/publication`;
-- Operator projection: `internal/localapi/network`.
-
-### Evidence
-
-- default discovery, publication and trust tests pass;
-- discovery writer shutdown regression passes through daemon lifecycle evidence;
-- tagged integration/E2E discovery scenarios exist.
-
-### Gaps
-
-- Applications cannot resolve a service without administrative authority;
-- the Application admission interceptor and sealed-call channel must first be
-  generalized from owner-required Content resources to a closed registry that
-  also supports registered ownerless resources;
-- current multi-node publish/resolve evidence is pending.
-
-### Disposition
-
-The Application Discovery R1 packet is complete:
-`research/application-discovery.md`. It selects a bounded trusted
-`NetworkPublished` service locator, exact
-`application.discovery.resolve` / `service-type` authority, standard
-Delegation intersection and uniform privacy-safe errors. AD-01 through AD-04
-are ready for implementation in dependency order; AD-05 remains the
-qualification gate.
-
-## 6. Content, transfer and replication
-
-### User outcome
-
-An Operator manages Objects, Blobs and Manifests; an Application owns immutable
-content; Nodes fetch and retain encrypted content and maintain replica
-commitments.
-
-### Current interface
-
-- Operator Content, Retention and Transfer services;
-- CLI data inventory, objects, blobs, manifests, sources and transfers;
-- Application Content `Put/Get`;
-- internal replication/repair interfaces.
-
-### Implementation
-
-- content/catalog/payload: `internal/content`;
-- transfer protocol: `internal/transfer`;
-- placement and commitments: `internal/replication`;
-- private data envelopes: `internal/messaging`.
-
-### Evidence
-
-- content, messaging and transfer pass locally with `-race`;
-- owner-qualified identity/migration and multi-provider fetch regressions pass;
-- tagged content, transfer and replication integration/E2E scenarios exist.
-
-### Gaps
-
-- interruption/resume, partition and scale evidence is incomplete;
-- Application exposes content, not replication policy or transfer diagnostics;
-- large-object and streaming semantics are explicitly bounded/deferred;
-- quota and repair UX require product-level validation.
-
-### Disposition
-
-Existing implementation is an R3 qualification target. User-journey and
-large-content contract review is R1; scale/partition work is R2/R3.
-
-## 7. Workloads and hosted services
-
-### User outcome
-
-An Operator registers and controls a workload, observes readiness and publishes
-or withdraws an HTTP/HTTPS/TCP hosted-service endpoint backed by the running
-generation.
-
-### Current interface
-
-- Operator Workload service and CLI;
-- workload list/get/register/start/stop/restart;
-- hosted service and publication status;
-- no Application hosting interface.
-
-### Implementation
-
-- execution/registry/readiness: `internal/workload`;
-- Docker adapter: `internal/workload/docker`;
-- hosted-service truth: `internal/hosting`;
-- publication: `internal/publication`;
-- bounded ingress: `internal/ingressproxy`.
-
-### Evidence
-
-- workload and ingress packages pass locally with `-race`;
-- reset, idle/fairness and hung-Docker regressions pass;
-- historical workload/hosting integration and E2E reports cover publication
-  withdrawal and restart.
-
-### Gaps
-
-- no current Docker daemon is available for Wave 1 qualification;
-- Application hosting ownership, lease, readiness and drain are undefined;
-- remote service authentication and client journey are undefined;
-- soak, slow-client and production Docker failure evidence is incomplete.
-
-### Disposition
-
-Existing Operator/runtime path is R3. Application Hosting and direct service
-interaction require separate R2 research.
-
-## 8. Operations, deployment and release
-
-### User outcome
-
-An Operator diagnoses health, reloads configuration and performs supported
-backup, restore, upgrade and rollback with attributable release artifacts.
-
-### Current interface
-
-- Diagnostics, Configuration and Node runtime services;
-- CLI human/JSON/shell/TUI views;
-- loopback observability;
-- Compose lifecycle and native Linux installer;
-- release build/verify scripts.
-
-### Implementation
-
-- `internal/diagnostics`, `internal/config`, `internal/observability`;
-- `scripts/deploy`, `scripts/install`, `scripts/release`;
-- `.github/workflows/ci.yml`.
-
-### Evidence
-
-- default tests, static policy gates and critical race packages pass locally;
-- deployment remediation artifacts exist for transactional rollout;
-- current-head Docker, native, multi-host and independent release builds have
-  not run in this environment.
-
-### Gaps
-
-- five deployment/native audit rows remain `remediated_candidate`;
-- formatting requires fresh-checkout validation of the new LF contract;
-- current commit-bound vulnerability and release evidence is absent;
-- tagged catalog previously returned an empty false pass and is corrected in
-  Wave 1.
-
-### Disposition
-
-This is an R3 qualification program, not one implementation issue.
-
-## Cross-vertical findings
-
-### Reachability gap
-
-The Operator surface reaches almost every implemented domain. The Application
-surface reaches only identity and immutable content. Most apparent missing
-product features are therefore interface/user-journey gaps, not absent domain
-implementations.
-
-### Qualification gap
-
-All existing verticals have meaningful unit and historical tagged evidence.
-None has the complete current-head clean release matrix. Documentation must not
-collapse `implemented` into `qualified`.
-
-### Deep-module opportunities
-
-- Application Discovery can hide trust, route filtering and record projection
-  behind a small read-only interface.
-- Application Messaging must hide Waku, selectors, encryption, replay, Store
-  queries and retry.
-- Application Hosting should hide workload/hosting/publication orchestration
-  behind one lifecycle interface.
-
-## Wave 1 ready work
-
-### Completed during research and R0
-
-- W1-001: static catalog now includes `integration,e2e` tags and rejects an
-  empty result.
-- W0-001: Go LF checkout policy added through `.gitattributes` and validated in
-  a fresh Windows checkout with `core.autocrlf=true`.
-- Stabilization baseline frozen at
-  `75471a6c08bf0c8a130db65d64c7f37dc33f03b5`.
-- Tagged catalogue validated with 142 entries and fail-closed negative tests.
-- Applicable clean local/static snapshot retained in
-  `evidence/stabilization-baseline-75471a6.md`.
-
-### R0
-
-Completed. New gaps discovered by later qualification return to R0 only when
-they satisfy the ready-work criteria.
-
-### R1
-
-1. Completed: Application Discovery research packet and implementation slices.
-2. Application installation/content journey acceptance design.
-3. Operator procedure/action/smoke catalogue.
-4. Machine-readable capability/evidence catalogue derived from this register.
-
-### R2/R3
-
-Continue according to `global-feature-research-plan.md`; do not turn these
-directions into implementation issues until their research/qualification exit
-criteria are met.
+<!-- Generated by `go run ./tests/tooling/capabilitycatalog -generate`; edit `capabilities.json`, not this file. -->
+
+Reported source commit: `a2ecb12ff6b215e472bad2ce0aafd7f8a8700775`.
+
+| Capability | Domain | I | R | O | Q | Research |
+|---|---|:---:|:---:|:---:|:---:|---|
+| `application.discovery` | application | no | no | no | no | R1 |
+| `application.hosting` | workload-hosting | no | no | no | no | R2 |
+| `application.installation-content` | application | yes | yes | yes | no | R1 |
+| `application.messaging` | application | no | no | no | no | R2 |
+| `content.operator-lifecycle` | content-transfer | yes | yes | yes | no | R1 |
+| `deployment.kubernetes` | operations-release | no | no | no | no | Deferred |
+| `deployment.multi-host` | operations-release | partial | no | no | no | R2 |
+| `discovery.operator-resolution` | discovery | yes | yes | yes | no | R1 |
+| `hosting.operator-publication` | workload-hosting | yes | yes | partial | no | R3 |
+| `identity.principal-access` | identity | yes | yes | yes | no | R3 |
+| `network.quic-webtransport-webrtc` | network | no | no | no | no | Deferred |
+| `network.waku-foundation` | network | yes | partial | yes | no | R2 |
+| `node.lifecycle` | node | yes | partial | partial | no | R1 |
+| `operations.backup-upgrade-rollback` | operations-release | yes | yes | partial | no | R3 |
+| `operations.configuration-reload` | operations-release | yes | yes | yes | no | R3 |
+| `operations.diagnostics` | operations-release | yes | yes | partial | no | R1 |
+| `operations.native-installation` | operations-release | yes | yes | partial | no | R3 |
+| `operator.command-interface` | node | yes | partial | partial | no | R1 |
+| `realm.channel-grant-authority` | identity | partial | no | no | no | R2 |
+| `release.artifacts-provenance` | operations-release | yes | yes | partial | no | R3 |
+| `sdk.non-go-or-remote` | application | no | no | no | no | Deferred |
+| `service.direct-interaction` | workload-hosting | partial | no | no | no | R2 |
+| `transfer.replication` | content-transfer | yes | partial | yes | no | R2 |
+| `workload.lifecycle` | workload-hosting | yes | yes | partial | no | R3 |
+
+<!-- capability-status:begin application.discovery -->
+## `application.discovery`
+
+An authorized Application resolves a bounded trusted published service locator.
+
+- Domain: `application`; owner: Application Interface
+- Supported interfaces: `none-current` (none)
+- Implementation owners: `internal/applicationapi`, `internal/discovery`
+- Operability: No current Application surface
+- Evidence owner: Application Interface / QA
+- Required evidence gates: `static`, `security`, `tagged`, `release-candidate`
+- Status at `a2ecb12ff6b215e472bad2ce0aafd7f8a8700775`: I=no, R=no, O=no, Q=no
+- Research class: R1
+- ADRs: `docs/adr/0001-separate-application-interface.md`
+- Research: `docs/engineering/research/application-discovery.md`
+- Constraints: Bounded locator resolution selected; implementation is a separate stream
+- Unsupported: No public Application discovery protocol or SDK package exists
+<!-- capability-status:end application.discovery -->
+
+<!-- capability-status:begin application.hosting -->
+## `application.hosting`
+
+An Application manages hosted workload lifecycle through a supported Application contract.
+
+- Domain: `workload-hosting`; owner: Workload and Hosting
+- Supported interfaces: `none-current` (none)
+- Implementation owners: `internal/applicationapi`, `internal/hosting`
+- Operability: No current Application surface
+- Evidence owner: Application and Hosting / QA
+- Required evidence gates: `static`, `security`, `deployment`, `release-candidate`
+- Status at `a2ecb12ff6b215e472bad2ce0aafd7f8a8700775`: I=no, R=no, O=no, Q=no
+- Research class: R2
+- ADRs: `docs/adr/0001-separate-application-interface.md`
+- Constraints: A public contract and authorization model require a separate decision
+- Unsupported: No Application hosting interface exists
+<!-- capability-status:end application.hosting -->
+
+<!-- capability-status:begin application.installation-content -->
+## `application.installation-content`
+
+An Application enrolls as its own Principal, opens a session and puts and gets immutable content.
+
+- Domain: `application`; owner: Application Interface
+- Supported interfaces: `go-sdk-v1` (sdk): `sdk/go/client/enrollment.go`, `sdk/go/client/client.go`, `sdk/go/content/content.go`
+- Implementation owners: `internal/identity/access`, `internal/applicationapi`, `sdk/go`
+- Operability: protected ticket-file enrollment helper; typed SDK errors and revocation
+- Evidence owner: Application Interface / QA
+- Required evidence gates: `static`, `fast`, `application-process`, `security`, `release-candidate`
+- Status at `a2ecb12ff6b215e472bad2ce0aafd7f8a8700775`: I=yes, R=yes, O=yes, Q=no
+- Research class: R1
+- ADRs: `docs/adr/0001-separate-application-interface.md`, `docs/adr/0005-recoverable-one-time-ticket-handoff.md`
+- Research: `docs/engineering/research/application-installation-journey.md`
+- Constraints: Application Principal and protected ticket handoff are required
+- Unsupported: No production release qualification is implied
+<!-- capability-status:end application.installation-content -->
+
+<!-- capability-status:begin application.messaging -->
+## `application.messaging`
+
+An Application exchanges private product messages through a supported Application contract.
+
+- Domain: `application`; owner: Application Interface
+- Supported interfaces: `none-current` (none)
+- Implementation owners: `internal/applicationapi`, `internal/messaging`
+- Operability: No current Application surface
+- Evidence owner: Application Interface / QA
+- Required evidence gates: `static`, `security`, `tagged`, `release-candidate`
+- Status at `a2ecb12ff6b215e472bad2ce0aafd7f8a8700775`: I=no, R=no, O=no, Q=no
+- Research class: R2
+- ADRs: `docs/adr/0001-separate-application-interface.md`
+- Constraints: A public contract and security semantics require a separate decision
+- Unsupported: No Application messaging interface exists
+<!-- capability-status:end application.messaging -->
+
+<!-- capability-status:begin content.operator-lifecycle -->
+## `content.operator-lifecycle`
+
+An Operator stores, inspects, retains and removes Principal-owned immutable content.
+
+- Domain: `content-transfer`; owner: Content and Transfer
+- Supported interfaces: `operator-content-v1` (operator): `internal/localapi/protocol/content.pb.go`, `internal/cli/content`
+- Implementation owners: `internal/content`, `internal/localapi/content`
+- Operability: Operator content status, retention and removal
+- Evidence owner: Content / QA
+- Required evidence gates: `static`, `fast`, `tagged`, `release-candidate`
+- Status at `a2ecb12ff6b215e472bad2ce0aafd7f8a8700775`: I=yes, R=yes, O=yes, Q=no
+- Research class: R1
+- ADRs: `docs/adr/0004-owner-qualified-content-record-identity.md`
+- Research: `docs/engineering/research/operator-command-smoke.md`
+- Constraints: Content identity is owner-qualified
+- Unsupported: Release-scale retention evidence is absent
+<!-- capability-status:end content.operator-lifecycle -->
+
+<!-- capability-status:begin deployment.kubernetes -->
+## `deployment.kubernetes`
+
+An Operator deploys Ardents on Kubernetes through a supported distribution contract.
+
+- Domain: `operations-release`; owner: Operations and Release
+- Supported interfaces: `none-current` (none)
+- Implementation owners: `deploy`
+- Operability: No Kubernetes surface
+- Evidence owner: Operations / QA
+- Required evidence gates: `static`, `security`, `release-candidate`
+- Status at `a2ecb12ff6b215e472bad2ce0aafd7f8a8700775`: I=no, R=no, O=no, Q=no
+- Research class: Deferred
+- Constraints: Deferred product scope
+- Unsupported: No Kubernetes manifests or supported deployment procedure
+<!-- capability-status:end deployment.kubernetes -->
+
+<!-- capability-status:begin deployment.multi-host -->
+## `deployment.multi-host`
+
+An Operator deploys multiple Nodes across real hosts with defined topology and recovery behavior.
+
+- Domain: `operations-release`; owner: Operations and Release
+- Supported interfaces: `deployment-scripts` (artifact): `scripts/deploy/cluster.ps1`, `deploy/docker/compose/docker-compose.multinode.yml`
+- Implementation owners: `scripts/deploy`, `deploy/docker`
+- Operability: cluster deployment and multinode status
+- Evidence owner: Operations and Network / QA
+- Required evidence gates: `static`, `deployment`, `multinode`, `security`, `release-candidate`
+- Status at `a2ecb12ff6b215e472bad2ce0aafd7f8a8700775`: I=partial, R=no, O=no, Q=no
+- Research class: R2
+- Constraints: Production topology and NAT policy are unresolved
+- Unsupported: No supported real multi-host deployment contract
+<!-- capability-status:end deployment.multi-host -->
+
+<!-- capability-status:begin discovery.operator-resolution -->
+## `discovery.operator-resolution`
+
+An Operator publishes, inspects and resolves trusted Node and service facts.
+
+- Domain: `discovery`; owner: Discovery and Publication
+- Supported interfaces: `operator-network-v1` (operator): `internal/localapi/protocol/network.pb.go`, `internal/cli/network`
+- Implementation owners: `internal/discovery`, `internal/publication`
+- Operability: Operator records, resolve, routes and presence
+- Evidence owner: Discovery / QA
+- Required evidence gates: `static`, `fast`, `tagged`, `multinode`, `release-candidate`
+- Status at `a2ecb12ff6b215e472bad2ce0aafd7f8a8700775`: I=yes, R=yes, O=yes, Q=no
+- Research class: R1
+- Research: `docs/engineering/research/application-discovery.md`
+- Constraints: Public reachability is Operator-only
+- Unsupported: Application resolution is not yet implemented
+<!-- capability-status:end discovery.operator-resolution -->
+
+<!-- capability-status:begin hosting.operator-publication -->
+## `hosting.operator-publication`
+
+An Operator publishes and inspects a hosted service endpoint backed by workload readiness.
+
+- Domain: `workload-hosting`; owner: Workload and Hosting
+- Supported interfaces: `operator-workload-v1` (operator): `internal/localapi/protocol/workload.pb.go`
+- Implementation owners: `internal/hosting`, `internal/publication`, `internal/workload`
+- Operability: Operator service and workload status
+- Evidence owner: Hosting / QA
+- Required evidence gates: `static`, `fast`, `workload-integration`, `deployment`, `release-candidate`
+- Status at `a2ecb12ff6b215e472bad2ce0aafd7f8a8700775`: I=yes, R=yes, O=partial, Q=no
+- Research class: R3
+- ADRs: `docs/adr/0008-composite-rollout-readiness.md`
+- Constraints: Publication is gated by composite readiness
+- Unsupported: Application hosting control is absent
+<!-- capability-status:end hosting.operator-publication -->
+
+<!-- capability-status:begin identity.principal-access -->
+## `identity.principal-access`
+
+A Principal creates custody, enrolls, authenticates and receives finite grants or one-hop Delegation.
+
+- Domain: `identity`; owner: Identity and Access
+- Supported interfaces: `operator-identity-v1` (operator): `internal/localapi/protocol/identity.pb.go`; `go-sdk-identity-v1` (sdk): `sdk/go/identity`, `sdk/go/client`
+- Implementation owners: `internal/identity`, `internal/identity/access`
+- Operability: identity session and grant inspection; ticket, session, grant and device revocation
+- Evidence owner: Identity / QA
+- Required evidence gates: `static`, `fast`, `security`, `tagged`, `release-candidate`
+- Status at `a2ecb12ff6b215e472bad2ce0aafd7f8a8700775`: I=yes, R=yes, O=yes, Q=no
+- Research class: R3
+- ADRs: `docs/adr/0002-principal-centered-identity-and-access.md`, `docs/adr/0005-recoverable-one-time-ticket-handoff.md`
+- Research: `docs/engineering/research/application-installation-journey.md`
+- Constraints: Principal-only authorization and finite grants
+- Unsupported: No current complete release evidence matrix
+<!-- capability-status:end identity.principal-access -->
+
+<!-- capability-status:begin network.quic-webtransport-webrtc -->
+## `network.quic-webtransport-webrtc`
+
+A Node uses QUIC, WebTransport or WebRTC under a supported network profile.
+
+- Domain: `network`; owner: Network Foundation
+- Supported interfaces: `none-current` (none)
+- Implementation owners: `internal/network`
+- Operability: Transports are explicitly suppressed
+- Evidence owner: Network Foundation / QA
+- Required evidence gates: `static`, `network-foundation`, `multinode`, `security`, `release-candidate`
+- Status at `a2ecb12ff6b215e472bad2ce0aafd7f8a8700775`: I=no, R=no, O=no, Q=no
+- Research class: Deferred
+- Constraints: Deferred until a profile and topology decision
+- Unsupported: QUIC, WebTransport and WebRTC are not supported
+<!-- capability-status:end network.quic-webtransport-webrtc -->
+
+<!-- capability-status:begin network.waku-foundation -->
+## `network.waku-foundation`
+
+A Node joins the configured Waku network and carries private product traffic under its profile.
+
+- Domain: `network`; owner: Network Foundation
+- Supported interfaces: `operator-network-v1` (operator): `internal/localapi/protocol/network.pb.go`
+- Implementation owners: `internal/network`, `internal/network/waku`
+- Operability: Operator network status, peers, routes and presence
+- Evidence owner: Network Foundation / QA
+- Required evidence gates: `static`, `fast`, `network-foundation`, `multinode`, `security`, `release-candidate`
+- Status at `a2ecb12ff6b215e472bad2ce0aafd7f8a8700775`: I=yes, R=partial, O=yes, Q=no
+- Research class: R2
+- ADRs: `docs/adr/0003-authorize-before-durable-replay-admission.md`
+- Constraints: Operator-only public reachability
+- Unsupported: Current multi-host and adversarial qualification is absent
+<!-- capability-status:end network.waku-foundation -->
+
+<!-- capability-status:begin node.lifecycle -->
+## `node.lifecycle`
+
+An enrolled Operator starts, stops and inspects a Node through the protected Operator Interface.
+
+- Domain: `node`; owner: Node and Operator Interface
+- Supported interfaces: `operator-node-v1` (operator): `internal/localapi/protocol/node.pb.go`, `internal/cli/node`
+- Implementation owners: `internal/daemon`, `internal/localapi/node`
+- Operability: ardentsctl node status and events; daemon lifecycle diagnostics
+- Evidence owner: Node / QA
+- Required evidence gates: `static`, `fast`, `tagged`, `release-candidate`
+- Status at `a2ecb12ff6b215e472bad2ce0aafd7f8a8700775`: I=yes, R=partial, O=partial, Q=no
+- Research class: R1
+- Research: `docs/engineering/research/operator-command-smoke.md`
+- Constraints: Operator Principal and protected local transport are required
+- Unsupported: Current-head Linux and native qualification is absent
+<!-- capability-status:end node.lifecycle -->
+
+<!-- capability-status:begin operations.backup-upgrade-rollback -->
+## `operations.backup-upgrade-rollback`
+
+An Operator backs up state and performs an observable upgrade or rollback procedure.
+
+- Domain: `operations-release`; owner: Operations and Release
+- Supported interfaces: `operations-scripts` (artifact): `scripts/deploy/data.ps1`, `scripts/deploy/rollout.ps1`
+- Implementation owners: `scripts/deploy`, `internal/storage`
+- Operability: deployment journal, readiness and rollback scripts
+- Evidence owner: Operations / QA
+- Required evidence gates: `static`, `deployment`, `release-builds`, `release-candidate`
+- Status at `a2ecb12ff6b215e472bad2ce0aafd7f8a8700775`: I=yes, R=yes, O=partial, Q=no
+- Research class: R3
+- ADRs: `docs/adr/0006-transactional-compose-rollout-journal.md`, `docs/adr/0009-immutable-release-materials.md`
+- Constraints: Recovery depends on retained immutable release materials
+- Unsupported: No current clean end-to-end upgrade and rollback evidence
+<!-- capability-status:end operations.backup-upgrade-rollback -->
+
+<!-- capability-status:begin operations.configuration-reload -->
+## `operations.configuration-reload`
+
+An Operator validates and reloads supported configuration without silently accepting restart-only changes.
+
+- Domain: `operations-release`; owner: Operations and Release
+- Supported interfaces: `operator-configuration-v1` (operator): `internal/localapi/protocol/configuration.pb.go`, `internal/cli/configuration`
+- Implementation owners: `internal/config`, `internal/localapi/configuration`
+- Operability: configuration validate, diff and reload status
+- Evidence owner: Configuration / QA
+- Required evidence gates: `static`, `fast`, `deployment`, `release-candidate`
+- Status at `a2ecb12ff6b215e472bad2ce0aafd7f8a8700775`: I=yes, R=yes, O=yes, Q=no
+- Research class: R3
+- Research: `docs/engineering/research/operator-command-smoke.md`
+- Constraints: Restart-only fields remain explicit
+- Unsupported: No current canonical deployment qualification
+<!-- capability-status:end operations.configuration-reload -->
+
+<!-- capability-status:begin operations.diagnostics -->
+## `operations.diagnostics`
+
+An Operator inspects bounded health, operations and diagnostic snapshots.
+
+- Domain: `operations-release`; owner: Operations and Release
+- Supported interfaces: `operator-diagnostics-v1` (operator): `internal/localapi/protocol/diagnostics.pb.go`, `internal/cli/diagnostics`
+- Implementation owners: `internal/diagnostics`, `internal/localapi/diagnostics`
+- Operability: ardentsctl diagnostics and operation status
+- Evidence owner: Operations / QA
+- Required evidence gates: `static`, `fast`, `tagged`, `release-candidate`
+- Status at `a2ecb12ff6b215e472bad2ce0aafd7f8a8700775`: I=yes, R=yes, O=partial, Q=no
+- Research class: R1
+- Research: `docs/engineering/research/operator-command-smoke.md`
+- Constraints: Outputs remain bounded and privacy-safe
+- Unsupported: Not every diagnostic procedure has CLI smoke evidence
+<!-- capability-status:end operations.diagnostics -->
+
+<!-- capability-status:begin operations.native-installation -->
+## `operations.native-installation`
+
+An Operator installs and runs Ardents as a native Linux service.
+
+- Domain: `operations-release`; owner: Operations and Release
+- Supported interfaces: `linux-installer` (artifact): `scripts/install/linux.sh`, `deploy/systemd/ardentsd.service`
+- Implementation owners: `scripts/install`, `deploy/systemd`
+- Operability: systemd service status and installation smoke
+- Evidence owner: Operations / QA
+- Required evidence gates: `static`, `native-install`, `release-builds`, `release-candidate`
+- Status at `a2ecb12ff6b215e472bad2ce0aafd7f8a8700775`: I=yes, R=yes, O=partial, Q=no
+- Research class: R3
+- ADRs: `docs/adr/0009-immutable-release-materials.md`
+- Constraints: Linux and systemd environment required
+- Unsupported: Current-head native installation gate has not qualified a release
+<!-- capability-status:end operations.native-installation -->
+
+<!-- capability-status:begin operator.command-interface -->
+## `operator.command-interface`
+
+An Operator executes the documented command procedures with stable human, JSON and failure outcomes.
+
+- Domain: `node`; owner: Node and Operator Interface
+- Supported interfaces: `ardentsctl` (operator): `cmd/ardentsctl/main.go`, `internal/cli`
+- Implementation owners: `internal/cli`, `internal/localapi`
+- Operability: ardentsctl human and JSON output; process exit status
+- Evidence owner: Operator Interface / QA
+- Required evidence gates: `static`, `fast`, `tagged`, `release-candidate`
+- Status at `a2ecb12ff6b215e472bad2ce0aafd7f8a8700775`: I=yes, R=partial, O=partial, Q=no
+- Research class: R1
+- ADRs: `docs/adr/0002-principal-centered-identity-and-access.md`
+- Research: `docs/engineering/research/operator-command-smoke.md`
+- Constraints: Commands use the protected Operator Interface
+- Unsupported: Not every leaf command has procedure-level smoke or stable JSON evidence
+<!-- capability-status:end operator.command-interface -->
+
+<!-- capability-status:begin realm.channel-grant-authority -->
+## `realm.channel-grant-authority`
+
+A deployment authority issues and revokes production Channel Grants under an explicit trust boundary.
+
+- Domain: `identity`; owner: Identity and Access
+- Supported interfaces: `none-current` (none)
+- Implementation owners: `internal/provision`, `internal/messaging`
+- Operability: Deployment-owned partial authority only
+- Evidence owner: Identity and Security / QA
+- Required evidence gates: `static`, `security`, `deployment`, `release-candidate`
+- Status at `a2ecb12ff6b215e472bad2ce0aafd7f8a8700775`: I=partial, R=no, O=no, Q=no
+- Research class: R2
+- ADRs: `docs/adr/0002-principal-centered-identity-and-access.md`
+- Constraints: Production authority and rotation semantics require a decision
+- Unsupported: No supported production Channel Grant authority interface
+<!-- capability-status:end realm.channel-grant-authority -->
+
+<!-- capability-status:begin release.artifacts-provenance -->
+## `release.artifacts-provenance`
+
+A release reviewer verifies immutable build materials, artifact identity and provenance.
+
+- Domain: `operations-release`; owner: Operations and Release
+- Supported interfaces: `release-tooling` (artifact): `scripts/release/build.ps1`, `scripts/release/verify.ps1`, `scripts/release/materials.json`
+- Implementation owners: `scripts/release`, `.github/workflows/ci.yml`
+- Operability: release build, verification and retained artifact metadata
+- Evidence owner: Release
+- Required evidence gates: `static`, `security`, `release-builds`, `release-candidate`
+- Status at `a2ecb12ff6b215e472bad2ce0aafd7f8a8700775`: I=yes, R=yes, O=partial, Q=no
+- Research class: R3
+- ADRs: `docs/adr/0009-immutable-release-materials.md`
+- Constraints: Qualification is bound to one clean source commit and retained artifacts
+- Unsupported: No accepted production release exists
+<!-- capability-status:end release.artifacts-provenance -->
+
+<!-- capability-status:begin sdk.non-go-or-remote -->
+## `sdk.non-go-or-remote`
+
+An Application integrates through a supported non-Go or remote SDK transport.
+
+- Domain: `application`; owner: Application Interface
+- Supported interfaces: `none-current` (none)
+- Implementation owners: `sdk/go`, `internal/applicationapi`
+- Operability: No non-Go or remote SDK surface
+- Evidence owner: Application Interface / QA
+- Required evidence gates: `static`, `security`, `application-process`, `release-candidate`
+- Status at `a2ecb12ff6b215e472bad2ce0aafd7f8a8700775`: I=no, R=no, O=no, Q=no
+- Research class: Deferred
+- ADRs: `docs/adr/0001-separate-application-interface.md`
+- Constraints: Deferred module and transport decision
+- Unsupported: Only the local Go SDK is supported
+<!-- capability-status:end sdk.non-go-or-remote -->
+
+<!-- capability-status:begin service.direct-interaction -->
+## `service.direct-interaction`
+
+An Application invokes a discovered hosted service through a supported authenticated interaction contract.
+
+- Domain: `workload-hosting`; owner: Workload and Hosting
+- Supported interfaces: `none-current` (none)
+- Implementation owners: `internal/hosting`, `internal/ingressproxy`
+- Operability: No supported end-user interaction surface
+- Evidence owner: Hosting and Application / QA
+- Required evidence gates: `static`, `security`, `deployment`, `release-candidate`
+- Status at `a2ecb12ff6b215e472bad2ce0aafd7f8a8700775`: I=partial, R=no, O=no, Q=no
+- Research class: R2
+- Constraints: Interaction protocol and authentication semantics are undecided
+- Unsupported: No supported direct Application-to-service contract exists
+<!-- capability-status:end service.direct-interaction -->
+
+<!-- capability-status:begin transfer.replication -->
+## `transfer.replication`
+
+A Node fetches and repairs owner-qualified content across approved providers.
+
+- Domain: `content-transfer`; owner: Content and Transfer
+- Supported interfaces: `operator-transfer-v1` (operator): `internal/localapi/protocol/transfer.pb.go`
+- Implementation owners: `internal/transfer`, `internal/replication`
+- Operability: Operator transfer state and repair diagnostics
+- Evidence owner: Transfer and Replication / QA
+- Required evidence gates: `static`, `fast`, `tagged`, `multinode`, `release-candidate`
+- Status at `a2ecb12ff6b215e472bad2ce0aafd7f8a8700775`: I=yes, R=partial, O=yes, Q=no
+- Research class: R2
+- ADRs: `docs/adr/0004-owner-qualified-content-record-identity.md`, `docs/adr/0007-multi-provider-fetch-terminal-semantics.md`
+- Constraints: Provider selection preserves owner-qualified identity
+- Unsupported: Real multi-host repair qualification is absent
+<!-- capability-status:end transfer.replication -->
+
+<!-- capability-status:begin workload.lifecycle -->
+## `workload.lifecycle`
+
+An Operator declares and reconciles a workload with bounded readiness and recovery state.
+
+- Domain: `workload-hosting`; owner: Workload and Hosting
+- Supported interfaces: `operator-workload-v1` (operator): `internal/localapi/protocol/workload.pb.go`, `internal/cli/workload`
+- Implementation owners: `internal/workload`, `internal/localapi/workload`
+- Operability: Operator workload status and reconcile operations
+- Evidence owner: Workload / QA
+- Required evidence gates: `static`, `fast`, `workload-integration`, `deployment`, `release-candidate`
+- Status at `a2ecb12ff6b215e472bad2ce0aafd7f8a8700775`: I=yes, R=yes, O=partial, Q=no
+- Research class: R3
+- ADRs: `docs/adr/0006-transactional-compose-rollout-journal.md`, `docs/adr/0008-composite-rollout-readiness.md`
+- Constraints: Runtime and readiness depend on the selected executor
+- Unsupported: Current canonical deployment qualification is absent
+<!-- capability-status:end workload.lifecycle -->

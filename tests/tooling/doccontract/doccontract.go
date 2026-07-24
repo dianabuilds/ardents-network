@@ -68,7 +68,7 @@ func Validate(root string) error {
 		}
 	}
 
-	activePaths, err := activeMarkdownPaths(root)
+	activePaths, err := ActiveMarkdownPaths(root)
 	if err != nil {
 		violations = append(violations, err)
 	} else {
@@ -88,7 +88,9 @@ func Validate(root string) error {
 	return errors.Join(violations...)
 }
 
-func activeMarkdownPaths(root string) ([]string, error) {
+// ActiveMarkdownPaths returns the repository documents governed as current
+// product and operator documentation. Historical audit documents are excluded.
+func ActiveMarkdownPaths(root string) ([]string, error) {
 	paths := []string{"README.md"}
 	for _, relativeRoot := range []string{"docs", "deploy"} {
 		walkRoot := filepath.Join(root, relativeRoot)
