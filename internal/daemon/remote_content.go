@@ -88,12 +88,12 @@ func (r *remoteContent) FetchBlob(ctx context.Context, id string) (appdata.Blob,
 	return transfer.FetchBlob(ctx, r.transfer, id)
 }
 
-func (r *remoteContent) FetchChunked(ctx context.Context, rootID string) (appdata.ChunkFetchResult, error) {
-	result, err := transfer.FetchChunked(ctx, r.transfer, rootID, transfer.ChunkFetchOptions{})
+func (r *remoteContent) FetchChunked(ctx context.Context, owner identityprincipal.ID, rootID string) (appdata.ChunkFetchResult, error) {
+	result, err := transfer.FetchChunked(ctx, r.transfer, rootID, transfer.ChunkFetchOptions{Owner: owner})
 	if err != nil {
 		return appdata.ChunkFetchResult{}, err
 	}
-	root, ok := r.content.GetManifest(rootID)
+	root, ok := r.content.GetManifest(owner, rootID)
 	if !ok {
 		return appdata.ChunkFetchResult{}, fmt.Errorf("fetched root manifest is unavailable")
 	}

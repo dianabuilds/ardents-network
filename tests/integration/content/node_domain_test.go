@@ -60,7 +60,7 @@ func TestDataSubstrateObjectAndBlobPersistAcrossRestart(t *testing.T) {
 		Data: runtimeinfra.DataConfig{Dir: dir},
 	})
 
-	storedObject, ok := testkit.Content(second).GetObject(object.ID)
+	storedObject, ok := testkit.Content(second).GetObject(object.Owner, object.ID)
 	require.True(t, ok, "get object")
 	require.Falsef(t, storedObject.Body["text"] != "hello", "text = %v, want hello", storedObject.Body["text"])
 

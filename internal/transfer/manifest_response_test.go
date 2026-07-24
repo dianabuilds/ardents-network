@@ -1,6 +1,7 @@
 package transfer
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/base64"
@@ -29,27 +30,40 @@ func TestManifestResponseBindsCompleteManifestToTrustedSource(t *testing.T) {
 		Owner: owner, MediaType: "application/octet-stream", KeyID: "key-1", TotalPlaintextBytes: 2,
 	})
 	require.NoError(t, err)
-	request := blobFetchRequest{RequestID: "manifest-request", Requester: "requester", ResourceID: plan.Root.ID, ResourceKind: "manifest"}
+	request := blobFetchRequest{RequestID: "manifest-request", Requester: "requester", ResourceID: plan.Root.ID, ResourceKind: "manifest", Owner: owner.String()}
 	wire, err := marshalManifestResponse(principal, privateKey, request, plan.Root, nil)
 	require.NoError(t, err)
 	cfg := ExchangeConfig{Discovery: disc, Trust: trust}
-	received, source, err := acceptManifestResponse(cfg, plan.Root.ID, request.Requester, request.RequestID, wire)
+	received, source, err := acceptManifestResponse(cfg, owner, plan.Root.ID, request.Requester, request.RequestID, wire)
 	require.NoError(t, err)
 	require.Equal(t, principal, source)
 	require.Equal(t, plan.Root.ID, received.ID)
 	require.Equal(t, plan.Root.Refs, received.Refs)
 	require.NoError(t, chunking.ValidateManifest(received))
+	otherOwner, err := identityprincipal.FromEd25519PublicKey(bytes.Repeat([]byte{0x42}, ed25519.PublicKeySize))
+	require.NoError(t, err)
+	_, _, err = acceptManifestResponse(cfg, otherOwner, plan.Root.ID, request.Requester, request.RequestID, wire)
+	require.ErrorContains(t, err, "owner does not match")
 
 	var tampered blobFetchResponse
 	require.NoError(t, json.Unmarshal(wire, &tampered))
 	tampered.Manifest.Refs[0].ID = "attacker-selected-chunk"
 	wire, err = json.Marshal(tampered)
 	require.NoError(t, err)
-	_, _, err = acceptManifestResponse(cfg, plan.Root.ID, request.Requester, request.RequestID, wire)
+	_, _, err = acceptManifestResponse(cfg, owner, plan.Root.ID, request.Requester, request.RequestID, wire)
 	require.ErrorContains(t, err, "signature")
 }
 
 func TestManifestFromWireRejectsUntypedOwner(t *testing.T) {
 	_, err := manifestFromWire(manifestWire{ID: "manifest", Kind: "blob-set", Owner: "owner"})
+	require.ErrorContains(t, err, "owner is invalid")
+}
+
+func TestManifestRequestWithoutOwnerFailsClosed(t *testing.T) {
+	payload, err := json.Marshal(blobFetchRequest{
+		RequestID: "request", ResourceID: "root", ResourceKind: "manifest", Requester: "requester",
+	})
+	require.NoError(t, err)
+	_, err = decodeBlobRequest(payload)
 	require.ErrorContains(t, err, "owner is invalid")
 }

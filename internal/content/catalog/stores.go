@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"ardents/internal/identity/principal"
+	"encoding/base64"
 	"fmt"
 	"maps"
 	"sort"
@@ -107,10 +108,13 @@ func (s *ObjectStore) Load(items map[string]Object) {
 	}
 	s.Items = items
 }
-func (s *ObjectStore) Snapshot() map[string]Object  { return cloneObjects(s.Items) }
-func (s *ObjectStore) Get(id string) (Object, bool) { item, ok := s.Items[id]; return item, ok }
-func (s *ObjectStore) Put(item Object)              { s.Items[item.ID] = item }
-func (s *ObjectStore) Count() int                   { return len(s.Items) }
+func (s *ObjectStore) Snapshot() map[string]Object { return cloneObjects(s.Items) }
+func (s *ObjectStore) Get(owner principal.ID, id string) (Object, bool) {
+	item, ok := s.Items[RecordStorageKey(owner, id)]
+	return item, ok
+}
+func (s *ObjectStore) Put(item Object) { s.Items[RecordStorageKey(item.Owner, item.ID)] = item }
+func (s *ObjectStore) Count() int      { return len(s.Items) }
 
 type ManifestStore struct {
 	Items map[string]Manifest
@@ -123,11 +127,21 @@ func (s *ManifestStore) Load(items map[string]Manifest) {
 	}
 	s.Items = items
 }
-func (s *ManifestStore) Snapshot() map[string]Manifest  { return cloneManifests(s.Items) }
-func (s *ManifestStore) Get(id string) (Manifest, bool) { item, ok := s.Items[id]; return item, ok }
-func (s *ManifestStore) Put(item Manifest)              { s.Items[item.ID] = item }
-func (s *ManifestStore) Delete(id string)               { delete(s.Items, id) }
-func (s *ManifestStore) Count() int                     { return len(s.Items) }
+func (s *ManifestStore) Snapshot() map[string]Manifest { return cloneManifests(s.Items) }
+func (s *ManifestStore) Get(owner principal.ID, id string) (Manifest, bool) {
+	item, ok := s.Items[RecordStorageKey(owner, id)]
+	return item, ok
+}
+func (s *ManifestStore) Put(item Manifest) { s.Items[RecordStorageKey(item.Owner, item.ID)] = item }
+func (s *ManifestStore) Delete(owner principal.ID, id string) {
+	delete(s.Items, RecordStorageKey(owner, id))
+}
+func (s *ManifestStore) Count() int { return len(s.Items) }
+
+func RecordStorageKey(owner principal.ID, id string) string {
+	encode := base64.RawURLEncoding.EncodeToString
+	return encode([]byte(owner.String())) + "." + encode([]byte(id))
+}
 
 type SourceLedger struct {
 	ByBlob map[string][]BlobSourceRecord

@@ -346,11 +346,11 @@ func TestContentServiceExposesCohesiveLocalDomainFlow(t *testing.T) {
 	require.Equal(t, 1, inventory.Manifests)
 	require.Equal(t, 1, inventory.Blobs)
 
-	storedObject, ok := svc.GetObject(object.ID)
+	storedObject, ok := svc.GetObject(object.Owner, object.ID)
 	require.True(t, ok)
 	require.Equal(t, object.ID, storedObject.ID)
 
-	storedManifest, ok := svc.GetManifest(manifest.ID)
+	storedManifest, ok := svc.GetManifest(manifest.Owner, manifest.ID)
 	require.True(t, ok)
 	require.Equal(t, manifest.ID, storedManifest.ID)
 	require.Len(t, svc.ListBlobSources(blob.Reference.String()), 1)

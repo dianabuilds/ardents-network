@@ -2,6 +2,7 @@ package content
 
 import (
 	model "ardents/internal/content/catalog"
+	"ardents/internal/identity/principal"
 	"fmt"
 	"time"
 )
@@ -18,22 +19,23 @@ func (s *Service) PublishObject(object Object) (Object, error) {
 	return objectSnapshot(stored), s.saveLocked()
 }
 
-func (s *Service) GetObject(id string) (Object, bool) {
+func (s *Service) GetObject(owner principal.ID, id string) (Object, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	stored, ok := getObjectModel(&s.objects, id)
+	stored, ok := getObjectModel(&s.objects, owner, id)
 	return objectSnapshot(stored), ok
 }
 
-func (s *Service) ListObjects() []Object {
+func (s *Service) ListObjects(owner principal.ID) []Object {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	items := listObjectModels(&s.objects, sortedKeys[model.Object])
-	out := make([]Object, 0, len(items))
-	for _, item := range items {
-		out = append(out, objectSnapshot(item))
+	items := make([]Object, 0)
+	for _, item := range listObjectModels(&s.objects, sortedKeys[model.Object]) {
+		if item.Owner.Equal(owner) {
+			items = append(items, objectSnapshot(item))
+		}
 	}
-	return out
+	return items
 }
 
 func publishObjectModel(objects *model.ObjectStore, blobs *model.BlobStore, object model.Object, nextID func(string) string, now time.Time) (model.Object, error) {
@@ -61,8 +63,8 @@ func publishObjectModel(objects *model.ObjectStore, blobs *model.BlobStore, obje
 	return cloneObjectModel(object), nil
 }
 
-func getObjectModel(objects *model.ObjectStore, id string) (model.Object, bool) {
-	object, ok := objects.Get(id)
+func getObjectModel(objects *model.ObjectStore, owner principal.ID, id string) (model.Object, bool) {
+	object, ok := objects.Get(owner, id)
 	return cloneObjectModel(object), ok
 }
 

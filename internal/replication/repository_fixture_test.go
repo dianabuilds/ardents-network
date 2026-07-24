@@ -81,12 +81,16 @@ func (s *repositoryFixture) SetReplicaIntent(intent ReplicaIntent) (ReplicaInten
 	return s.repository.SetReplicaIntent(intent)
 }
 
-func (s *repositoryFixture) ReconcileAvailability(id string, now time.Time) (availability.ReconcileResult, error) {
-	return s.repository.ReconcileAvailability(id, now)
+func (s *repositoryFixture) ListReplicaIntents() []availability.ReplicaIntent {
+	return s.repository.ListReplicaIntents()
 }
 
-func (s *repositoryFixture) GetAvailability(id string) (availability.Snapshot, bool) {
-	return s.repository.GetAvailability(id)
+func (s *repositoryFixture) ReconcileAvailability(owner identityprincipal.ID, id string, now time.Time) (availability.ReconcileResult, error) {
+	return s.repository.ReconcileAvailability(owner, id, now)
+}
+
+func (s *repositoryFixture) GetAvailability(owner identityprincipal.ID, id string) (availability.Snapshot, bool) {
+	return s.repository.GetAvailability(owner, id)
 }
 
 func (s *repositoryFixture) RecordRepairFailure(id string, at time.Time, reason string) (availability.RepairRecord, error) {

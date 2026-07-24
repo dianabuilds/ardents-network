@@ -14,21 +14,32 @@ import (
 
 const replicaObservationFreshness = 15 * time.Minute
 
-func (r *Repository) GetAvailability(rootManifestID string) (availability.Snapshot, bool) {
+func (r *Repository) GetAvailability(owner identityprincipal.ID, rootManifestID string) (availability.Snapshot, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	snapshot, ok := r.availability.Snapshots[rootManifestID]
+	snapshot, ok := r.availability.Snapshots[catalog.RecordStorageKey(owner, rootManifestID)]
 	return snapshot, ok
 }
 
-func (r *Repository) ReconcileAvailability(rootManifestID string, now time.Time) (availability.ReconcileResult, error) {
+func (r *Repository) ReconcileAvailability(owner identityprincipal.ID, rootManifestID string, now time.Time) (availability.ReconcileResult, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	intent, ok := r.intentForRootLocked(rootManifestID)
-	if !ok {
+	var selected availability.ReplicaIntent
+	found := false
+	for _, intent := range r.availability.Intents {
+		if intent.RootManifestOwner.Equal(owner) && intent.RootManifestID == rootManifestID && (!found || intent.Version > selected.Version) {
+			selected, found = intent, true
+		}
+	}
+	if !found {
 		return availability.ReconcileResult{}, fmt.Errorf("replica intent not found")
 	}
-	blobIDs, err := r.resolveManifestBlobIDsLocked(rootManifestID)
+	return r.reconcileAvailabilityLocked(selected, now)
+}
+
+func (r *Repository) reconcileAvailabilityLocked(intent availability.ReplicaIntent, now time.Time) (availability.ReconcileResult, error) {
+	rootManifestID := intent.RootManifestID
+	blobIDs, err := r.resolveManifestBlobIDsLocked(intent.RootManifestOwner, rootManifestID)
 	if err != nil {
 		return availability.ReconcileResult{}, err
 	}
@@ -50,7 +61,7 @@ func (r *Repository) ReconcileAvailability(rootManifestID string, now time.Time)
 func (r *Repository) reconcileIntentLocked(intent availability.ReplicaIntent, references []catalog.ContentReference, now time.Time) availability.ReconcileResult {
 	placementState := r.placement.Snapshot()
 	snapshot := availability.Snapshot{
-		RootManifestID: intent.RootManifestID, IntentID: intent.ID, IntentVersion: intent.Version,
+		RootManifestOwner: intent.RootManifestOwner, RootManifestID: intent.RootManifestID, IntentID: intent.ID, IntentVersion: intent.Version,
 		DesiredCopies: intent.DesiredCopies, MinimumCopies: intent.MinimumCopies,
 		ValidCopies: intent.DesiredCopies, CurrentLeases: intent.DesiredCopies, ObservedAt: now,
 	}
@@ -77,7 +88,12 @@ func (r *Repository) reconcileIntentLocked(intent availability.ReplicaIntent, re
 	r.completeObsoleteRepairsLocked(intent, activeRepairIDs, now)
 	due := r.dueRepairsLocked(intent, activeRepairIDs, now)
 	snapshot.PendingRepairs, snapshot.State, snapshot.Reason = r.repairAvailabilityLocked(snapshot, activeRepairIDs)
-	r.availability.Snapshots[intent.RootManifestID] = snapshot
+	for key, current := range r.availability.Snapshots {
+		if current.RootManifestOwner.Equal(intent.RootManifestOwner) && current.RootManifestID == intent.RootManifestID {
+			delete(r.availability.Snapshots, key)
+		}
+	}
+	r.availability.Snapshots[catalog.RecordStorageKey(intent.RootManifestOwner, intent.RootManifestID)] = snapshot
 	return availability.ReconcileResult{Snapshot: snapshot, DueRepairs: due}
 }
 

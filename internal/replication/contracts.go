@@ -36,7 +36,7 @@ type DataService interface {
 	RenewReplicaCommitment(string, time.Time, time.Time) (placement.Commitment, error)
 	MarkReplicaCommitment(string, string, time.Time, string) (placement.Commitment, error)
 	ListReplicaIntents() []availability.ReplicaIntent
-	ReconcileAvailability(string, time.Time) (availability.ReconcileResult, error)
+	ReconcileAvailability(identityprincipal.ID, string, time.Time) (availability.ReconcileResult, error)
 	RecordRepairFailure(string, time.Time, string) (availability.RepairRecord, error)
 	ReplicaCapacity() placement.Capacity
 }

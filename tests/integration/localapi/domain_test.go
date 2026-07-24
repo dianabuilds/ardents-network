@@ -50,6 +50,69 @@ func TestConnectRPCExposesNodeAndDiagnostics(t *testing.T) {
 	require.NotEmpty(t, diag.Msg.GetDiagnostics().GetRecentEvents())
 }
 
+func TestContentObjectAndManifestAPIsIsolateSameIDAcrossPrincipals(t *testing.T) {
+	rt := testkit.StartRuntime(t, runtimeinfra.Config{
+		Name: "content-owner-qualified",
+		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
+	})
+	alice := testkit.NewArdentsClient(t, rt.Runtime)
+	bob := testkit.NewArdentsClient(t, rt.Runtime)
+	ctx := context.Background()
+
+	aliceObject, err := alice.PublishObject(ctx, testkit.AuthorizedRequest(&ardentsv1.PublishObjectRequest{
+		Object: &ardentsv1.ObjectSnapshot{Id: "shared", Type: "alice"},
+	}))
+	require.NoError(t, err)
+	_, err = bob.GetObject(ctx, testkit.AuthorizedRequest(&ardentsv1.GetObjectRequest{Id: "shared"}))
+	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
+	bobObject, err := bob.PublishObject(ctx, testkit.AuthorizedRequest(&ardentsv1.PublishObjectRequest{
+		Object: &ardentsv1.ObjectSnapshot{Id: "shared", Type: "bob"},
+	}))
+	require.NoError(t, err)
+	require.NotEqual(t, aliceObject.Msg.GetOwner(), bobObject.Msg.GetOwner())
+	aliceObject, err = alice.GetObject(ctx, testkit.AuthorizedRequest(&ardentsv1.GetObjectRequest{Id: "shared"}))
+	require.NoError(t, err)
+	require.Equal(t, "alice", aliceObject.Msg.GetType())
+	bobObject, err = bob.GetObject(ctx, testkit.AuthorizedRequest(&ardentsv1.GetObjectRequest{Id: "shared"}))
+	require.NoError(t, err)
+	require.Equal(t, "bob", bobObject.Msg.GetType())
+	aliceObjects, err := alice.ListObjects(ctx, testkit.AuthorizedRequest(&ardentsv1.ListObjectsRequest{}))
+	require.NoError(t, err)
+	require.Len(t, aliceObjects.Msg.GetObjects(), 1)
+	require.Equal(t, "alice", aliceObjects.Msg.GetObjects()[0].GetType())
+	bobObjects, err := bob.ListObjects(ctx, testkit.AuthorizedRequest(&ardentsv1.ListObjectsRequest{}))
+	require.NoError(t, err)
+	require.Len(t, bobObjects.Msg.GetObjects(), 1)
+	require.Equal(t, "bob", bobObjects.Msg.GetObjects()[0].GetType())
+
+	aliceManifest, err := alice.PublishManifest(ctx, testkit.AuthorizedRequest(&ardentsv1.PublishManifestRequest{
+		Manifest: &ardentsv1.ManifestSnapshot{Id: "shared", Kind: "blob-set"},
+	}))
+	require.NoError(t, err)
+	_, err = bob.GetManifest(ctx, testkit.AuthorizedRequest(&ardentsv1.GetManifestRequest{Id: "shared"}))
+	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
+	bobManifest, err := bob.PublishManifest(ctx, testkit.AuthorizedRequest(&ardentsv1.PublishManifestRequest{
+		Manifest: &ardentsv1.ManifestSnapshot{Id: "shared", Kind: "blob-set"},
+	}))
+	require.NoError(t, err)
+	require.NotEqual(t, aliceManifest.Msg.GetOwner(), bobManifest.Msg.GetOwner())
+	aliceManifest, err = alice.GetManifest(ctx, testkit.AuthorizedRequest(&ardentsv1.GetManifestRequest{Id: "shared"}))
+	require.NoError(t, err)
+	require.Equal(t, aliceManifest.Msg.GetOwner(), aliceObject.Msg.GetOwner())
+	bobManifest, err = bob.GetManifest(ctx, testkit.AuthorizedRequest(&ardentsv1.GetManifestRequest{Id: "shared"}))
+	require.NoError(t, err)
+	require.Equal(t, bobManifest.Msg.GetOwner(), bobObject.Msg.GetOwner())
+	aliceManifests, err := alice.ListManifests(ctx, testkit.AuthorizedRequest(&ardentsv1.ListManifestsRequest{}))
+	require.NoError(t, err)
+	require.Len(t, aliceManifests.Msg.GetManifests(), 1)
+	require.Equal(t, aliceManifest.Msg.GetOwner(), aliceManifests.Msg.GetManifests()[0].GetOwner())
+	bobManifests, err := bob.ListManifests(ctx, testkit.AuthorizedRequest(&ardentsv1.ListManifestsRequest{}))
+	require.NoError(t, err)
+	require.Len(t, bobManifests.Msg.GetManifests(), 1)
+	require.Equal(t, bobManifest.Msg.GetOwner(), bobManifests.Msg.GetManifests()[0].GetOwner())
+}
+
 func TestConnectRPCProjectsDegradedHostedServiceAndDiagnostics(t *testing.T) {
 	testkit.BeginScenario(t, testkit.Spec{
 		Layer:       testkit.LayerIntegration,
@@ -349,9 +412,6 @@ func TestConnectRPCDataRoundTripAndErrors(t *testing.T) {
 	require.EqualValues(t, 2, inventory.Msg.GetBlobs())
 	require.EqualValues(t, 1, inventory.Msg.GetLocalBlobs())
 
-	_, found := rt.Data.GetObject("missing")
-	require.False(t, found)
-
 	_, err = client.PinBlob(context.Background(), testkit.AuthorizedRequest(&ardentsv1.PinBlobRequest{
 		Id: "missing-blob",
 	}))
@@ -368,8 +428,6 @@ func TestConnectRPCDataRoundTripAndErrors(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
 
-	_, found = rt.Data.GetObject("missing")
-	require.False(t, found)
 }
 
 func TestConnectRPCMutationsPreserveConflictAndNotFoundCodes(t *testing.T) {

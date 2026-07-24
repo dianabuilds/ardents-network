@@ -2,6 +2,7 @@ package content
 
 import (
 	model "ardents/internal/content/catalog"
+	"ardents/internal/identity/principal"
 	"fmt"
 	"time"
 )
@@ -18,22 +19,23 @@ func (s *Service) PublishManifest(manifest Manifest) (Manifest, error) {
 	return manifestSnapshot(stored), s.saveLocked()
 }
 
-func (s *Service) GetManifest(id string) (Manifest, bool) {
+func (s *Service) GetManifest(owner principal.ID, id string) (Manifest, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	stored, ok := getManifestModel(&s.manifests, id)
+	stored, ok := getManifestModel(&s.manifests, owner, id)
 	return manifestSnapshot(stored), ok
 }
 
-func (s *Service) ListManifests() []Manifest {
+func (s *Service) ListManifests(owner principal.ID) []Manifest {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	items := listManifestModels(&s.manifests, sortedKeys[model.Manifest])
-	out := make([]Manifest, 0, len(items))
-	for _, item := range items {
-		out = append(out, manifestSnapshot(item))
+	items := make([]Manifest, 0)
+	for _, item := range listManifestModels(&s.manifests, sortedKeys[model.Manifest]) {
+		if item.Owner.Equal(owner) {
+			items = append(items, manifestSnapshot(item))
+		}
 	}
-	return out
+	return items
 }
 
 func publishManifestModel(manifests *model.ManifestStore, blobs *model.BlobStore, manifest model.Manifest, nextID func(string) string, now time.Time) (model.Manifest, error) {
@@ -59,7 +61,7 @@ func publishManifestModel(manifests *model.ManifestStore, blobs *model.BlobStore
 			}
 		}
 		if ref.Kind == "manifest" {
-			if _, ok := manifests.Get(ref.ID); !ok {
+			if _, ok := manifests.Get(manifest.Owner, ref.ID); !ok {
 				return model.Manifest{}, fmt.Errorf("manifest ref %q not found", ref.ID)
 			}
 		}
@@ -71,8 +73,8 @@ func publishManifestModel(manifests *model.ManifestStore, blobs *model.BlobStore
 	return cloneManifestModel(manifest), nil
 }
 
-func getManifestModel(manifests *model.ManifestStore, id string) (model.Manifest, bool) {
-	manifest, ok := manifests.Get(id)
+func getManifestModel(manifests *model.ManifestStore, owner principal.ID, id string) (model.Manifest, bool) {
+	manifest, ok := manifests.Get(owner, id)
 	return cloneManifestModel(manifest), ok
 }
 

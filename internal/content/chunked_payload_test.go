@@ -39,7 +39,7 @@ func TestStoreChunkedPayloadEncryptsChunksAndPublishesManifest(t *testing.T) {
 		reconstructed = append(reconstructed, chunk...)
 	}
 	require.Equal(t, plaintext, reconstructed)
-	stored, ok := service.GetManifest(result.Root.ID)
+	stored, ok := service.GetManifest(result.Root.Owner, result.Root.ID)
 	require.True(t, ok)
 	require.Equal(t, result.Root, stored)
 }
@@ -69,12 +69,13 @@ func TestStoreChunkedPayloadRollsBackOnLocalStoragePressure(t *testing.T) {
 	service := NewInDirWithConfig(t.TempDir(), Config{MaxLocalStorageBytes: 1024})
 	require.NoError(t, service.Load())
 	key := bytes.Repeat([]byte{0x52}, 32)
+	owner := contentTestOwner(0x34)
 	_, err := service.StoreChunkedPayload(context.Background(), ChunkedPayloadSpec{
-		Owner: contentTestOwner(0x34), MediaType: "application/octet-stream", KeyID: "key-1",
+		Owner: owner, MediaType: "application/octet-stream", KeyID: "key-1",
 	}, bytes.NewReader(bytes.Repeat([]byte("x"), PlaintextChunkSize)), key)
 	require.ErrorContains(t, err, "storage capacity")
 	require.Empty(t, service.ListBlobs())
-	require.Empty(t, service.ListManifests())
+	require.Empty(t, service.ListManifests(owner))
 }
 
 func TestStoreChunkedPayloadRollsBackOnPayloadWriteFailure(t *testing.T) {
@@ -84,12 +85,13 @@ func TestStoreChunkedPayloadRollsBackOnPayloadWriteFailure(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "blobs"), []byte("not a directory"), 0o600))
 
 	key := bytes.Repeat([]byte{0x54}, 32)
+	owner := contentTestOwner(0x34)
 	_, err := service.StoreChunkedPayload(context.Background(), ChunkedPayloadSpec{
-		Owner: contentTestOwner(0x34), MediaType: "application/octet-stream", KeyID: "key-1",
+		Owner: owner, MediaType: "application/octet-stream", KeyID: "key-1",
 	}, bytes.NewReader(bytes.Repeat([]byte("x"), PlaintextChunkSize)), key)
 	require.Error(t, err)
 	require.Empty(t, service.ListBlobs())
-	require.Empty(t, service.ListManifests())
+	require.Empty(t, service.ListManifests(owner))
 }
 
 func TestLoadRemovesUntrackedChunkFileLeftByInterruptedCheckpoint(t *testing.T) {
@@ -136,7 +138,7 @@ func TestStoreChunkedPayloadCancellationAndReadFailureRollback(t *testing.T) {
 	}, key)
 	require.ErrorContains(t, err, "injected read failure")
 	require.Empty(t, service.ListBlobs())
-	require.Empty(t, service.ListManifests())
+	require.Empty(t, service.ListManifests(spec.Owner))
 }
 
 type failingChunkReader struct {

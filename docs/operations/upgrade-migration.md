@@ -110,22 +110,33 @@ consistency group into an empty directory and running the matching released
 binary. A pre-release binary without the audit-outbox invariant is not a
 rollback target even if it happens to open a development database.
 
-### Content catalogue version 2
+### Content catalogue version 3
 
-The first-release `ardents.db` content snapshot has top-level `version: 2` and a
-required `blob_ownership` section with `version: 1`. Object and Manifest owner
-fields contain one canonical typed `p1_` Principal. Each Blob binding contains
-one canonical typed `p1_` owner, one content reference, and its creation time.
+The current `ardents.db` content snapshot has top-level `version: 3` and a
+required `blob_ownership` section with `version: 1`. Object and Manifest map
+keys encode the canonical `(Owner Principal, local ID)` tuple. Object and
+Manifest owner fields contain the same canonical typed `p1_` Principal.
+Nested Manifest references resolve only within the containing Manifest's
+Owner. Each Blob binding contains one canonical typed `p1_` owner, one content
+reference, and its creation time.
 Payloads and Blob metadata remain global and content-addressed; the owner is not
 encoded into the CID and identical bytes are not copied per Principal. Unknown
 versions, missing/malformed/untyped owners, duplicate `(owner, reference)`
 pairs, and bindings to missing Blob metadata fail startup closed.
 
-This is a greenfield first-release schema, so there is no importer for a
-pre-release version-1 snapshot, duplicate Blob `id`/`cid` fields, or state that
-lacks `blob_ownership`. Such state is rejected rather than assigned an inferred
-owner or content reference. Create fresh state or restore a complete
-same-version stopped-Node backup.
+Startup supports one upgrade edge, content schema v2 to v3. Preflight requires
+every legacy Object/Manifest map key to equal its embedded local ID, every
+embedded Owner to be valid, and every nested Manifest reference to resolve
+under the same Owner. The complete snapshot is validated before one atomic v3
+catalogue write. Payload cleanup and staging reconciliation are deliberately
+deferred until the next ordinary v3 startup, so a failed migration does not
+delete files required by the rollback source. Malformed keys, cross-owner
+references, and owner-qualified collisions fail closed without replacing the
+v2 snapshot.
+
+There is no importer for a version-1 snapshot, duplicate Blob `id`/`cid`
+fields, or state that lacks `blob_ownership`. Such state is rejected rather
+than assigned an inferred owner or content reference.
 
 Application Put writes, hashes, and fsyncs a private temporary payload, installs
 the content-addressed file atomically, and then commits Blob metadata plus the
@@ -142,11 +153,19 @@ the payload while another binding, Object/Manifest reference, pin, durable
 retention, relay retention, or staging fact remains; catalogue failure restores
 the binding and any staged payload removal.
 
-An older pre-PIA-014A binary does not understand this authority fact and is not
-a supported in-place rollback target. Stop the Node and restore the complete
-matching consistency-group backup before starting that binary. Never delete the
-`blob_ownership` section or copy `ardents.db` independently from the rest of the
-backup group to force rollback.
+Replication state upgrades from schema v2 to v3 in the same stopped-Node
+upgrade. Legacy root Manifest IDs acquire an Owner only when the migrated
+content catalogue has exactly one matching Manifest. Missing or ambiguous
+matches abort startup. Runtime intent, reconciliation, transfer, and repair APIs
+never use this inference path and always require `(Owner, Manifest ID)`.
+
+An older binary cannot read content or replication schema v3 and is not a
+supported in-place rollback target. Before upgrading, stop the Node and retain a
+verified full consistency-group backup plus the exact old immutable image. To
+roll back, stop the new binary, preserve the failed state for diagnosis,
+restore the complete pre-upgrade group into an empty state directory, verify
+its manifest, and only then start the old image. Never lower a version marker,
+delete `blob_ownership`, or restore only `ardents.db`.
 
 ### Node identity state version 1
 

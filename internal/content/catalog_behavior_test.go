@@ -44,7 +44,7 @@ func TestPublishObjectAndPersist(t *testing.T) {
 		require.NoErrorf(t, err, "restore load: %v", err)
 	}
 
-	items := restored.ListObjects()
+	items := restored.ListObjects(object.Owner)
 	require.Falsef(t, len(items) !=
 		1, "objects = %d, want 1", len(items))
 	require.Falsef(t, items[0].Body["text"] !=
@@ -323,7 +323,7 @@ func TestPublishManifestAndPersist(t *testing.T) {
 		require.NoErrorf(t, err, "restore load: %v", err)
 	}
 
-	items := restored.ListManifests()
+	items := restored.ListManifests(manifest.Owner)
 	require.Falsef(t, len(items) !=
 		1, "manifests = %d, want 1", len(items))
 	require.Falsef(t, items[0].Refs[0].ID !=
@@ -385,15 +385,16 @@ func TestBlobPartStateDegradesWhenLocalPayloadIsMissing(t *testing.T) {
 
 func TestObjectPartStateDegradesOnBrokenBlobRefsAfterLoad(t *testing.T) {
 	dir := t.TempDir()
+	owner := contentTestOwner(0x31)
 	persisted := persistedContent{
 		Version:       contentSchemaVersion,
 		BlobOwnership: persistedBlobOwnership{Version: blobOwnershipVersion, Bindings: []model.BlobOwnerBinding{}},
 		Sources:       map[string][]model.BlobSourceRecord{},
 		Objects: map[string]model.Object{
-			"obj-broken": {
+			model.RecordStorageKey(owner, "obj-broken"): {
 				ID:    "obj-broken",
 				Type:  "chat.message",
-				Owner: contentTestOwner(0x31),
+				Owner: owner,
 				BlobRefs: []model.Ref{{
 					Kind: "blob",
 					ID:   "blob-missing",
@@ -402,10 +403,10 @@ func TestObjectPartStateDegradesOnBrokenBlobRefsAfterLoad(t *testing.T) {
 		},
 		Blobs: map[string]Blob{},
 		Manifests: map[string]model.Manifest{
-			"manifest-broken": {
+			model.RecordStorageKey(owner, "manifest-broken"): {
 				ID:    "manifest-broken",
 				Kind:  "blob-set",
-				Owner: contentTestOwner(0x31),
+				Owner: owner,
 				Refs: []model.Ref{{
 					Kind: "blob",
 					ID:   "blob-missing-2",

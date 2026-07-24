@@ -12,6 +12,7 @@ import (
 type Record struct {
 	ID            string     `json:"id"`
 	Kind          string     `json:"kind,omitempty"`
+	ResourceOwner string     `json:"resource_owner,omitempty"`
 	ResourceID    string     `json:"resource_id,omitempty"`
 	Direction     string     `json:"direction,omitempty"`
 	State         string     `json:"state"`

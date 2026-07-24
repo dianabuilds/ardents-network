@@ -37,10 +37,10 @@ func TestEncryptedAvailabilitySurvivesPeerLossRepairAndOwnerPayloadLoss(t *testi
 	fixture := startAvailabilityFixture(t)
 	waitForRelayPeers(t, fixture.owner, 3)
 	root := publishAvailabilityManifest(t, fixture)
-	setDurableIntent(t, fixture.owner, root.ID, fixture.now)
+	setDurableIntent(t, fixture.owner, root, fixture.now)
 
 	reconcileAvailability(t, fixture.owner)
-	assertAvailability(t, fixture.owner, root.ID, "target-satisfied", 3)
+	assertAvailability(t, fixture.owner, root, "target-satisfied", 3)
 
 	ownerNode := fixture.owner
 	initial := activeRemoteCommitments(runtimeprocess.ReplicaPlacementStateForIntegrationTest(ownerNode))
@@ -54,7 +54,7 @@ func TestEncryptedAvailabilitySurvivesPeerLossRepairAndOwnerPayloadLoss(t *testi
 	require.Error(t, probeErr)
 	waitForRelayPeers(t, fixture.owner, 2)
 	reconcileAvailability(t, fixture.owner)
-	assertAvailability(t, fixture.owner, root.ID, "target-satisfied", 3)
+	assertAvailability(t, fixture.owner, root, "target-satisfied", 3)
 
 	repaired := activeRemoteCommitments(runtimeprocess.ReplicaPlacementStateForIntegrationTest(ownerNode))
 	require.Len(t, repaired, 2)
@@ -74,8 +74,8 @@ func TestEncryptedAvailabilitySurvivesPeerLossRepairAndOwnerPayloadLoss(t *testi
 	require.NoError(t, err)
 	require.Equal(t, fixture.plaintext, plaintext)
 	reconcileAvailability(t, fixture.owner)
-	assertAvailability(t, fixture.owner, root.ID, "target-satisfied", 3)
-	require.NotEmpty(t, fixture.owner.ListReplicaRepairs(root.ID))
+	assertAvailability(t, fixture.owner, root, "target-satisfied", 3)
+	require.NotEmpty(t, fixture.owner.ListReplicaRepairs(root.Owner, root.ID))
 	events, _ := testkit.Diagnostics(fixture.owner).ListRecentEvents(100, "")
 	require.True(t, containsDataEvent(events, "availability_observed"))
 	require.True(t, containsDataEvent(events, "replica_repaired"))
@@ -201,19 +201,19 @@ func publishAvailabilityManifest(t *testing.T, fixture availabilityFixture) appd
 	return root
 }
 
-func setDurableIntent(t *testing.T, owner *runtimeprocess.Node, rootID string, now time.Time) {
+func setDurableIntent(t *testing.T, owner *runtimeprocess.Node, root appdata.Manifest, now time.Time) {
 	t.Helper()
 	_, err := owner.SetReplicaIntent(availability.ReplicaIntent{
-		ID: "availability-e2e-intent", RootManifestID: rootID, Version: 1,
+		ID: "availability-e2e-intent", RootManifestOwner: root.Owner, RootManifestID: root.ID, Version: 1,
 		DesiredCopies: 3, MinimumCopies: 2, LeaseDuration: 24 * time.Hour,
 		RenewalHorizon: 8 * time.Hour, Retention: "durable", CreatedAt: now, UpdatedAt: now,
 	})
 	require.NoError(t, err)
 }
 
-func assertAvailability(t *testing.T, owner *runtimeprocess.Node, rootID, state string, valid int) {
+func assertAvailability(t *testing.T, owner *runtimeprocess.Node, root appdata.Manifest, state string, valid int) {
 	t.Helper()
-	snapshot, err := owner.GetAvailability(rootID)
+	snapshot, err := owner.GetAvailability(root.Owner, root.ID)
 	require.NoError(t, err)
 	require.Equal(t, state, snapshot.State)
 	require.Equal(t, valid, snapshot.ValidCopies)

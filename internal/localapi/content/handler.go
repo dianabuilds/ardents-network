@@ -5,17 +5,18 @@ import (
 	"time"
 
 	domain "ardents/internal/content"
+	"ardents/internal/identity/principal"
 )
 
 var ErrQueryRequired = errors.New("content query is required")
 
 type Reader interface {
-	GetObject(string) (domain.Object, bool)
-	ListObjects() []domain.Object
+	GetObject(principal.ID, string) (domain.Object, bool)
+	ListObjects(principal.ID) []domain.Object
 	GetBlob(string) (domain.Blob, bool)
 	ListBlobs() []domain.Blob
-	GetManifest(string) (domain.Manifest, bool)
-	ListManifests() []domain.Manifest
+	GetManifest(principal.ID, string) (domain.Manifest, bool)
+	ListManifests(principal.ID) []domain.Manifest
 	InventorySnapshot() domain.InventorySnapshot
 }
 

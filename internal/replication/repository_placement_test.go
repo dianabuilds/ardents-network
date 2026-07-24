@@ -18,6 +18,105 @@ func TestReplicaCapacityHasBoundedSafeDefault(t *testing.T) {
 	require.Equal(t, int64(1<<30), service.ReplicaCapacity().FreeBytes)
 }
 
+func TestReplicationSchemaV2MigratesManifestOwnerAndPersistsV3(t *testing.T) {
+	dir := t.TempDir()
+	service := newInDir(dir)
+	require.NoError(t, service.Service.Load())
+	owner := replicationTestPrincipal("legacy-owner")
+	root, err := service.PublishManifest(Manifest{ID: "legacy-root", Owner: owner, Kind: "blob-set"})
+	require.NoError(t, err)
+	now := time.Now().UTC().Truncate(time.Second)
+	deadline := now.Add(30 * time.Minute)
+	reference := replicationTestReference(t, "legacy-repair-reference")
+	require.NoError(t, storage.SaveJSON(storage.PathInDir(dir), "replication", "state", map[string]any{
+		"schema_version": legacyReplicationSchemaVersion,
+		"placement": map[string]any{
+			"reserved": 0, "used": 0, "reservations": map[string]any{}, "commitments": map[string]any{},
+		},
+		"availability": map[string]any{
+			"intents": map[string]any{"legacy-intent": map[string]any{
+				"id": "legacy-intent", "root_manifest_id": root.ID, "version": 1,
+				"desired_copies": 1, "minimum_copies": 1, "lease_duration": time.Hour,
+				"renewal_horizon": 10 * time.Minute, "created_at": now, "updated_at": now,
+			}},
+			"snapshots": map[string]any{},
+			"repairs": map[string]any{"legacy-repair-id": map[string]any{
+				"id": "legacy-repair-id", "intent_id": "legacy-intent", "intent_version": 1,
+				"root_manifest_id": root.ID, "content_reference": reference, "missing_ordinal": 0,
+				"state": "pending", "attempts": 3, "started_at": now, "loss_eligible_at": now,
+				"deadline_at": deadline, "next_attempt_at": now.Add(time.Minute),
+			}},
+		},
+	}))
+
+	require.NoError(t, service.repository.Load())
+	intents := service.ListReplicaIntents()
+	require.Len(t, intents, 1)
+	require.True(t, intents[0].RootManifestOwner.Equal(owner))
+	repairs := service.repository.ListReplicaRepairs(owner, root.ID)
+	require.Len(t, repairs, 1)
+	require.NotEqual(t, "legacy-repair-id", repairs[0].ID)
+	require.Equal(t, 3, repairs[0].Attempts)
+	require.Equal(t, deadline, repairs[0].DeadlineAt)
+
+	var persisted repositorySnapshot
+	found, err := storage.LoadJSONStrict(storage.PathInDir(dir), "replication", "state", &persisted)
+	require.NoError(t, err)
+	require.True(t, found)
+	require.Equal(t, replicationSchemaVersion, persisted.SchemaVersion)
+	require.True(t, persisted.Availability.Intents["legacy-intent"].RootManifestOwner.Equal(owner))
+	require.Contains(t, persisted.Availability.Repairs, repairs[0].ID)
+	require.NotContains(t, persisted.Availability.Repairs, "legacy-repair-id")
+}
+
+func TestReplicationSchemaV3RejectsOwnerlessIntent(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, storage.SaveJSON(storage.PathInDir(dir), "replication", "state", map[string]any{
+		"schema_version": replicationSchemaVersion,
+		"placement": map[string]any{
+			"reserved": 0, "used": 0, "reservations": map[string]any{}, "commitments": map[string]any{},
+		},
+		"availability": map[string]any{
+			"intents": map[string]any{"intent": map[string]any{
+				"id": "intent", "root_manifest_id": "root", "version": 1,
+				"desired_copies": 1, "minimum_copies": 1, "lease_duration": time.Hour,
+				"renewal_horizon": 10 * time.Minute, "created_at": time.Now().UTC(), "updated_at": time.Now().UTC(),
+			}},
+			"snapshots": map[string]any{}, "repairs": map[string]any{},
+		},
+	}))
+	require.ErrorContains(t, newInDir(dir).Load(), "owner-qualified identity is invalid")
+}
+
+func TestReplicationSchemaV3RejectsRepairNotBoundToCanonicalIntentIdentity(t *testing.T) {
+	dir := t.TempDir()
+	owner := replicationTestPrincipal("v3-repair-owner")
+	now := time.Now().UTC().Truncate(time.Second)
+	reference := replicationTestReference(t, "v3-repair-reference")
+	require.NoError(t, storage.SaveJSON(storage.PathInDir(dir), "replication", "state", map[string]any{
+		"schema_version": replicationSchemaVersion,
+		"placement": map[string]any{
+			"reserved": 0, "used": 0, "reservations": map[string]any{}, "commitments": map[string]any{},
+		},
+		"availability": map[string]any{
+			"intents": map[string]any{"intent": map[string]any{
+				"id": "intent", "root_manifest_owner": owner, "root_manifest_id": "root", "version": 1,
+				"desired_copies": 1, "minimum_copies": 1, "lease_duration": time.Hour,
+				"renewal_horizon": 10 * time.Minute, "created_at": now, "updated_at": now,
+			}},
+			"snapshots": map[string]any{},
+			"repairs": map[string]any{"noncanonical": map[string]any{
+				"id": "noncanonical", "intent_id": "intent", "intent_version": 1,
+				"root_manifest_owner": owner, "root_manifest_id": "root",
+				"content_reference": reference, "missing_ordinal": 0, "state": "pending",
+				"started_at": now, "loss_eligible_at": now, "deadline_at": now.Add(30 * time.Minute),
+				"next_attempt_at": now,
+			}},
+		},
+	}))
+	require.ErrorContains(t, newInDir(dir).Load(), "repair owner-qualified identity is invalid")
+}
+
 func TestReplicaReservationAndCommitmentPersistAcrossRestart(t *testing.T) {
 	dir := t.TempDir()
 	now := time.Now().UTC()

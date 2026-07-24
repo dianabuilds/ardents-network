@@ -38,20 +38,20 @@ func (n *Node) ReconcileDataAvailability(ctx context.Context) error {
 	return n.remoteData.Reconcile(ctx)
 }
 
-func (n *Node) GetAvailability(rootManifestID string) (availability.Snapshot, error) {
+func (n *Node) GetAvailability(owner principal.ID, rootManifestID string) (availability.Snapshot, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	snapshot, ok := n.replica.GetAvailability(rootManifestID)
+	snapshot, ok := n.replica.GetAvailability(owner, rootManifestID)
 	if !ok {
 		return availability.Snapshot{}, errors.New("data availability not found")
 	}
 	return snapshot, nil
 }
 
-func (n *Node) ListReplicaRepairs(rootManifestID string) []availability.RepairRecord {
+func (n *Node) ListReplicaRepairs(owner principal.ID, rootManifestID string) []availability.RepairRecord {
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	return n.replica.ListReplicaRepairs(rootManifestID)
+	return n.replica.ListReplicaRepairs(owner, rootManifestID)
 }
 
 func (n *Node) ObjectPart() appdata.PartSnapshot {
@@ -338,13 +338,16 @@ func (n *Node) FetchBlob(ctx context.Context, id string) (appdata.Blob, error) {
 	return blob, err
 }
 
-func (n *Node) FetchChunked(ctx context.Context, rootID string) (appdata.ChunkFetchResult, error) {
+func (n *Node) FetchChunked(ctx context.Context, owner principal.ID, rootID string) (appdata.ChunkFetchResult, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	if err := n.requireDataMutableLocked("data fetch chunked manifest"); err != nil {
 		return appdata.ChunkFetchResult{}, err
 	}
-	result, err := n.remoteData.FetchChunked(ctx, rootID)
+	if owner.String() == "" {
+		return appdata.ChunkFetchResult{}, fmt.Errorf("chunked manifest owner is required")
+	}
+	result, err := n.remoteData.FetchChunked(ctx, owner, rootID)
 	if err != nil {
 		n.handleDataPrivacyFailureLocked(err)
 	}

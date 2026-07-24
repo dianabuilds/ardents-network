@@ -14,11 +14,14 @@ import (
 )
 
 const defaultMaxReplicaRetentionBytes int64 = 1 << 30
+const replicationSchemaVersion uint32 = 3
+const legacyReplicationSchemaVersion uint32 = 2
 
 type ContentRepository interface {
 	GetBlob(string) (model.Blob, bool)
 	GetBlobPayload(string) ([]byte, error)
-	ReadTransferManifest(string) (model.Manifest, bool)
+	ReadTransferManifest(identityprincipal.ID, string) (model.Manifest, bool)
+	ResolveLegacyTransferManifestOwner(string) (identityprincipal.ID, bool)
 	RetainRelayBlob(model.Blob, []byte, time.Time) (model.Blob, error)
 	ExtendRelayRetention(string, time.Time) (model.Blob, error)
 }
@@ -93,12 +96,12 @@ func (r *Repository) Load() error {
 	if err != nil {
 		return err
 	}
-	if found && snapshot.SchemaVersion != 2 {
+	if found && snapshot.SchemaVersion != legacyReplicationSchemaVersion && snapshot.SchemaVersion != replicationSchemaVersion {
 		return fmt.Errorf("replication state schema is unsupported")
 	}
 	if !found {
 		snapshot = repositorySnapshot{
-			SchemaVersion: 2,
+			SchemaVersion: replicationSchemaVersion,
 			Placement: placement.State{
 				Reservations: map[string]placement.StoredReservation{},
 				Commitments:  map[string]placement.Commitment{},
@@ -114,14 +117,133 @@ func (r *Repository) Load() error {
 			return fmt.Errorf("replication repair Content Reference binding is invalid")
 		}
 	}
+	identityUpgraded := false
+	schemaUpgraded := snapshot.SchemaVersion == legacyReplicationSchemaVersion
+	if schemaUpgraded {
+		identityUpgraded, err = r.upgradeAvailabilityIdentity(&snapshot.Availability)
+		if err != nil {
+			return err
+		}
+		snapshot.SchemaVersion = replicationSchemaVersion
+	}
+	if err := validateAvailabilityIdentity(snapshot.Availability); err != nil {
+		return err
+	}
 	if err := r.placement.Restore(snapshot.Placement); err != nil {
 		return err
 	}
 	r.availability = snapshot.Availability
-	if !found {
+	if !found || schemaUpgraded || identityUpgraded {
 		return r.saveLocked()
 	}
 	return nil
+}
+
+func validateAvailabilityIdentity(state availability.State) error {
+	for key, intent := range state.Intents {
+		if key == "" || intent.ID != key || intent.RootManifestOwner.String() == "" || intent.RootManifestID == "" {
+			return fmt.Errorf("replication intent owner-qualified identity is invalid")
+		}
+	}
+	for key, snapshot := range state.Snapshots {
+		intent, ok := replicaIntentForRecord(state.Intents, snapshot.IntentID, snapshot.IntentVersion, snapshot.RootManifestID)
+		if snapshot.RootManifestOwner.String() == "" || snapshot.RootManifestID == "" ||
+			key != model.RecordStorageKey(snapshot.RootManifestOwner, snapshot.RootManifestID) ||
+			!ok || !snapshot.RootManifestOwner.Equal(intent.RootManifestOwner) {
+			return fmt.Errorf("replication snapshot owner-qualified identity is invalid")
+		}
+	}
+	for key, repair := range state.Repairs {
+		intent, ok := replicaIntentForRecord(state.Intents, repair.IntentID, repair.IntentVersion, repair.RootManifestID)
+		if repair.RootManifestOwner.String() == "" || repair.RootManifestID == "" || key != repair.ID ||
+			!ok || !repair.RootManifestOwner.Equal(intent.RootManifestOwner) ||
+			repair.ID != repairID(intent, repair.ContentReference, repair.MissingOrdinal) {
+			return fmt.Errorf("replication repair owner-qualified identity is invalid")
+		}
+	}
+	return nil
+}
+
+func (r *Repository) upgradeAvailabilityIdentity(state *availability.State) (bool, error) {
+	if state.Intents == nil || state.Snapshots == nil || state.Repairs == nil {
+		return false, nil
+	}
+	changed := false
+	for key, intent := range state.Intents {
+		legacyOwner, ok := r.content.ResolveLegacyTransferManifestOwner(intent.RootManifestID)
+		if !ok {
+			return false, fmt.Errorf("replication intent root owner cannot be migrated")
+		}
+		if intent.RootManifestOwner.String() == "" {
+			intent.RootManifestOwner = legacyOwner
+			state.Intents[key] = intent
+			changed = true
+		} else if !intent.RootManifestOwner.Equal(legacyOwner) {
+			return false, fmt.Errorf("replication intent root owner conflicts with migrated content")
+		}
+	}
+	snapshots := make(map[string]availability.Snapshot, len(state.Snapshots))
+	for _, snapshot := range state.Snapshots {
+		intent, ok := replicaIntentForRecord(state.Intents, snapshot.IntentID, snapshot.IntentVersion, snapshot.RootManifestID)
+		if !ok {
+			return false, fmt.Errorf("replication snapshot root owner cannot be migrated")
+		}
+		if snapshot.RootManifestOwner.String() == "" {
+			snapshot.RootManifestOwner = intent.RootManifestOwner
+			changed = true
+		} else if !snapshot.RootManifestOwner.Equal(intent.RootManifestOwner) {
+			return false, fmt.Errorf("replication snapshot root owner conflicts with intent")
+		}
+		key := model.RecordStorageKey(snapshot.RootManifestOwner, snapshot.RootManifestID)
+		if _, collision := snapshots[key]; collision {
+			return false, fmt.Errorf("owner-qualified replication snapshot collision")
+		}
+		snapshots[key] = snapshot
+	}
+	if len(snapshots) != len(state.Snapshots) {
+		changed = true
+	} else {
+		for key := range snapshots {
+			if _, ok := state.Snapshots[key]; !ok {
+				changed = true
+				break
+			}
+		}
+	}
+	state.Snapshots = snapshots
+	repairs := make(map[string]availability.RepairRecord, len(state.Repairs))
+	for _, repair := range state.Repairs {
+		intent, ok := replicaIntentForRecord(state.Intents, repair.IntentID, repair.IntentVersion, repair.RootManifestID)
+		if !ok {
+			return false, fmt.Errorf("replication repair root owner cannot be migrated")
+		}
+		if repair.RootManifestOwner.String() == "" {
+			repair.RootManifestOwner = intent.RootManifestOwner
+			changed = true
+		} else if !repair.RootManifestOwner.Equal(intent.RootManifestOwner) {
+			return false, fmt.Errorf("replication repair root owner conflicts with intent")
+		}
+		id := repairID(intent, repair.ContentReference, repair.MissingOrdinal)
+		if repair.ID != id {
+			repair.ID = id
+			changed = true
+		}
+		if _, collision := repairs[id]; collision {
+			return false, fmt.Errorf("owner-qualified replication repair collision")
+		}
+		repairs[id] = repair
+	}
+	state.Repairs = repairs
+	return changed, nil
+}
+
+func replicaIntentForRecord(intents map[string]availability.ReplicaIntent, intentID string, version uint64, rootID string) (availability.ReplicaIntent, bool) {
+	for _, intent := range intents {
+		if intent.ID == intentID && intent.Version == version && intent.RootManifestID == rootID && intent.RootManifestOwner.String() != "" {
+			return intent, true
+		}
+	}
+	return availability.ReplicaIntent{}, false
 }
 
 func (r *Repository) SetLocalNodePrincipal(principal identityprincipal.ID) {
@@ -133,7 +255,7 @@ func (r *Repository) SetLocalNodePrincipal(principal identityprincipal.ID) {
 
 func (r *Repository) saveLocked() error {
 	return storage.SaveJSON(r.path, "replication", "state", repositorySnapshot{
-		SchemaVersion: 2, Placement: r.placement.Snapshot(), Availability: r.availability,
+		SchemaVersion: replicationSchemaVersion, Placement: r.placement.Snapshot(), Availability: r.availability,
 	})
 }
 

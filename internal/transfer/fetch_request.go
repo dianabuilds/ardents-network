@@ -82,6 +82,11 @@ func decodeBlobRequest(payload []byte) (blobFetchRequest, error) {
 	if req.RequestID == "" || req.ResourceID == "" || req.Requester == "" {
 		return blobFetchRequest{}, fmt.Errorf("blob request is incomplete")
 	}
+	if req.ResourceKind == "manifest" {
+		if _, err := identityprincipal.Parse(req.Owner); err != nil {
+			return blobFetchRequest{}, fmt.Errorf("manifest request owner is invalid")
+		}
+	}
 	return req, nil
 }
 
@@ -90,14 +95,24 @@ func publishBlobFetchRequest(ctx context.Context, cfg ExchangeConfig, requestID,
 }
 
 func publishDataFetchRequest(ctx context.Context, cfg ExchangeConfig, requestID, resourceID, requester, resourceKind string) error {
+	return publishOwnedDataFetchRequest(ctx, cfg, requestID, resourceID, requester, resourceKind, "")
+}
+
+func publishOwnedDataFetchRequest(ctx context.Context, cfg ExchangeConfig, requestID, resourceID, requester, resourceKind, owner string) error {
 	if cfg.Identity == nil || cfg.Private == nil || cfg.PrivateKey == nil {
 		return fmt.Errorf("blob requester dependencies are unavailable")
+	}
+	if resourceKind == "manifest" {
+		if _, err := identityprincipal.Parse(owner); err != nil {
+			return fmt.Errorf("manifest request owner is invalid")
+		}
 	}
 
 	req := blobFetchRequest{
 		RequestID:    requestID,
 		ResourceID:   resourceID,
 		ResourceKind: resourceKind,
+		Owner:        owner,
 		Requester:    requester,
 		PublicKey:    cfg.Identity().PublicKey,
 	}
@@ -137,12 +152,14 @@ func canonicalBlobFetchRequest(req blobFetchRequest) ([]byte, error) {
 		RequestID    string `json:"request_id"`
 		ResourceID   string `json:"resource_id"`
 		ResourceKind string `json:"resource_kind,omitempty"`
+		Owner        string `json:"owner,omitempty"`
 		Requester    string `json:"requester"`
 		PublicKey    string `json:"public_key"`
 	}{
 		RequestID:    req.RequestID,
 		ResourceID:   req.ResourceID,
 		ResourceKind: req.ResourceKind,
+		Owner:        req.Owner,
 		Requester:    req.Requester,
 		PublicKey:    req.PublicKey,
 	})

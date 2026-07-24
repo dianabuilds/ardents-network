@@ -28,7 +28,7 @@ func TestAvailabilityFailureMatrixEndsInHonestTerminalLoss(t *testing.T) {
 	})
 	fixture := startAvailabilityFailureFixture(t)
 	root := publishFailureManifest(t, fixture)
-	setFailureIntent(t, fixture.owner, root.ID, fixture.now)
+	setFailureIntent(t, fixture.owner, root, fixture.now)
 	ownerNode := fixture.owner
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
@@ -40,7 +40,7 @@ func TestAvailabilityFailureMatrixEndsInHonestTerminalLoss(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, outcome.Decision.Denials, appreplication.ReplicaPlacementDenial{NodePrincipal: quotaPrincipal, Reason: appreplication.ReplicaReasonQuota})
 	require.NoError(t, fixture.owner.ReconcileDataAvailability(ctx))
-	assertAvailability(t, fixture.owner, root.ID, "target-satisfied", 2)
+	assertAvailability(t, fixture.owner, root, "target-satisfied", 2)
 
 	commitment := outcome.Commitments[0]
 	spare := fixture.healthySpare(commitment.TargetNode.String())
@@ -56,22 +56,22 @@ func TestAvailabilityFailureMatrixEndsInHonestTerminalLoss(t *testing.T) {
 	err = fixture.owner.ReconcileDataAvailability(ctx)
 	require.Error(t, err)
 	require.ErrorContains(t, err, appreplication.ReplicaReasonPermission)
-	unavailable, err := fixture.owner.GetAvailability(root.ID)
+	unavailable, err := fixture.owner.GetAvailability(root.Owner, root.ID)
 	require.NoError(t, err)
 	require.Equal(t, "unavailable", unavailable.State)
 	require.Zero(t, unavailable.ValidCopies)
 	require.Equal(t, 1, unavailable.CorruptCopies)
 	require.Equal(t, 2, unavailable.PendingRepairs)
 
-	advanceRepairsToTerminal(t, ownerNode, fixture.owner.ListReplicaRepairs(root.ID))
+	advanceRepairsToTerminal(t, ownerNode, fixture.owner.ListReplicaRepairs(root.Owner, root.ID))
 	require.NoError(t, fixture.owner.ReconcileDataAvailability(ctx))
-	lost, err := fixture.owner.GetAvailability(root.ID)
+	lost, err := fixture.owner.GetAvailability(root.Owner, root.ID)
 	require.NoError(t, err)
 	require.Equal(t, "lost", lost.State)
 	require.Zero(t, lost.ValidCopies)
 	require.Zero(t, lost.CurrentLeases)
 	require.Zero(t, lost.PendingRepairs)
-	for _, repair := range fixture.owner.ListReplicaRepairs(root.ID) {
+	for _, repair := range fixture.owner.ListReplicaRepairs(root.Owner, root.ID) {
 		require.Equal(t, "failed", repair.State)
 		require.Equal(t, 6, repair.PostLeaseAttempts)
 	}
@@ -158,10 +158,10 @@ func publishFailureManifest(t *testing.T, fixture availabilityFailureFixture) ap
 	return root
 }
 
-func setFailureIntent(t *testing.T, owner *runtimeprocess.Node, rootID string, now time.Time) {
+func setFailureIntent(t *testing.T, owner *runtimeprocess.Node, root appdata.Manifest, now time.Time) {
 	t.Helper()
 	_, err := owner.SetReplicaIntent(availability.ReplicaIntent{
-		ID: "availability-failure-intent", RootManifestID: rootID, Version: 1,
+		ID: "availability-failure-intent", RootManifestOwner: root.Owner, RootManifestID: root.ID, Version: 1,
 		DesiredCopies: 2, MinimumCopies: 1, LeaseDuration: 24 * time.Hour,
 		RenewalHorizon: 8 * time.Hour, Retention: "durable", CreatedAt: now, UpdatedAt: now,
 	})

@@ -11,6 +11,7 @@ import (
 	"ardents/internal/content"
 	model "ardents/internal/content/catalog"
 	"ardents/internal/discovery"
+	"ardents/internal/identity/principal"
 )
 
 func requestIdentity(prefix string) (string, error) {
@@ -58,7 +59,7 @@ type PolicyService interface {
 type DataExchange interface {
 	GetBlob(string) (model.Blob, bool)
 	GetBlobPayload(string) ([]byte, error)
-	ReadTransferManifest(string) (model.Manifest, bool)
+	ReadTransferManifest(principal.ID, string) (model.Manifest, bool)
 	StoreBlob(model.Blob, []byte) (model.Blob, error)
 	WriteTransferManifest(model.Manifest) (model.Manifest, error)
 	ObserveBlobSource(string, model.BlobSourceRecord) (model.BlobSourceRecord, error)
@@ -95,6 +96,7 @@ type blobFetchRequest struct {
 	RequestID    string `json:"request_id"`
 	ResourceID   string `json:"resource_id"`
 	ResourceKind string `json:"resource_kind,omitempty"`
+	Owner        string `json:"owner,omitempty"`
 	Requester    string `json:"requester"`
 	PublicKey    string `json:"public_key"`
 	Signature    string `json:"signature"`

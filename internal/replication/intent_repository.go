@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	model "ardents/internal/content/catalog"
+	identityprincipal "ardents/internal/identity/principal"
 	"ardents/internal/replication/availability"
 )
 
@@ -29,7 +30,7 @@ func (r *Repository) SetReplicaIntent(intent availability.ReplicaIntent) (availa
 }
 
 func (r *Repository) validateReplicaIntentLocked(intent availability.ReplicaIntent) error {
-	if intent.ID == "" || intent.RootManifestID == "" || intent.Version == 0 || intent.DesiredCopies <= 0 ||
+	if intent.ID == "" || intent.RootManifestOwner.String() == "" || intent.RootManifestID == "" || intent.Version == 0 || intent.DesiredCopies <= 0 ||
 		intent.MinimumCopies <= 0 || intent.MinimumCopies > intent.DesiredCopies || intent.LeaseDuration <= 0 ||
 		intent.RenewalHorizon <= 0 || intent.RenewalHorizon >= intent.LeaseDuration || intent.CreatedAt.IsZero() || intent.UpdatedAt.IsZero() {
 		return fmt.Errorf("replica intent is invalid")
@@ -37,26 +38,15 @@ func (r *Repository) validateReplicaIntentLocked(intent availability.ReplicaInte
 	if !intent.ExpiresAt.IsZero() && !intent.ExpiresAt.After(intent.UpdatedAt) {
 		return fmt.Errorf("replica intent expiry is invalid")
 	}
-	if _, ok := r.content.ReadTransferManifest(intent.RootManifestID); !ok {
+	if _, ok := r.content.ReadTransferManifest(intent.RootManifestOwner, intent.RootManifestID); !ok {
 		return fmt.Errorf("replica intent root manifest not found")
 	}
 	return nil
 }
 
-func (r *Repository) intentForRootLocked(rootManifestID string) (availability.ReplicaIntent, bool) {
-	var selected availability.ReplicaIntent
-	found := false
-	for _, intent := range r.availability.Intents {
-		if intent.RootManifestID == rootManifestID && (!found || intent.Version > selected.Version) {
-			selected, found = intent, true
-		}
-	}
-	return selected, found
-}
-
-func (r *Repository) resolveManifestBlobIDsLocked(rootID string) ([]string, error) {
+func (r *Repository) resolveManifestBlobIDsLocked(owner identityprincipal.ID, rootID string) ([]string, error) {
 	resolver := manifestBlobResolver{
-		repository: r, seenManifests: map[string]bool{}, active: map[string]bool{}, seenBlobs: map[string]bool{},
+		repository: r, owner: owner, seenManifests: map[string]bool{}, active: map[string]bool{}, seenBlobs: map[string]bool{},
 	}
 	if err := resolver.visit(rootID); err != nil {
 		return nil, err
@@ -69,6 +59,7 @@ func (r *Repository) resolveManifestBlobIDsLocked(rootID string) ([]string, erro
 
 type manifestBlobResolver struct {
 	repository            *Repository
+	owner                 identityprincipal.ID
 	seenManifests, active map[string]bool
 	seenBlobs             map[string]bool
 	blobs                 []string
@@ -81,7 +72,7 @@ func (r *manifestBlobResolver) visit(id string) error {
 	if r.seenManifests[id] {
 		return nil
 	}
-	manifest, ok := r.repository.content.ReadTransferManifest(id)
+	manifest, ok := r.repository.content.ReadTransferManifest(r.owner, id)
 	if !ok {
 		return fmt.Errorf("replica intent manifest %q not found", id)
 	}

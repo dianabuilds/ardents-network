@@ -77,14 +77,14 @@ func (s *Service) StoreChunkedPayload(
 	}
 	stored, err := s.storeChunkStream(ctx, spec, reader, key)
 	if err != nil {
-		return s.rollbackChunkedResult(err, stored.IDs, nil)
+		return s.rollbackChunkedResult(err, spec.Owner, stored.IDs, nil)
 	}
 	root, manifestIDs, err := s.publishChunkManifests(stored, spec)
 	if err != nil {
-		return s.rollbackChunkedResult(err, stored.IDs, manifestIDs)
+		return s.rollbackChunkedResult(err, spec.Owner, stored.IDs, manifestIDs)
 	}
 	if err := s.finalizeChunkedPayload(stored.IDs, root.Retention); err != nil {
-		return s.rollbackChunkedResult(err, stored.IDs, manifestIDs)
+		return s.rollbackChunkedResult(err, spec.Owner, stored.IDs, manifestIDs)
 	}
 	return ChunkedPayloadResult{Root: root, ChunkCount: stored.Count, TotalPlaintextBytes: stored.Total}, nil
 }
@@ -149,8 +149,8 @@ func (s *Service) publishChunkManifests(stored chunkStoreOutcome, spec ChunkedPa
 	return root, created, nil
 }
 
-func (s *Service) rollbackChunkedResult(cause error, blobIDs, manifestIDs []string) (ChunkedPayloadResult, error) {
-	return ChunkedPayloadResult{}, errors.Join(cause, s.rollbackChunkedPayload(blobIDs, manifestIDs))
+func (s *Service) rollbackChunkedResult(cause error, owner principal.ID, blobIDs, manifestIDs []string) (ChunkedPayloadResult, error) {
+	return ChunkedPayloadResult{}, errors.Join(cause, s.rollbackChunkedPayload(owner, blobIDs, manifestIDs))
 }
 
 func (s *Service) storeStagedChunk(blob Blob, plaintext, key []byte, keyID string) (Blob, error) {
@@ -185,12 +185,12 @@ func (s *Service) finalizeChunkedPayload(blobIDs []string, retention string) err
 	return s.saveLocked()
 }
 
-func (s *Service) rollbackChunkedPayload(blobIDs, manifestIDs []string) error {
+func (s *Service) rollbackChunkedPayload(owner principal.ID, blobIDs, manifestIDs []string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var rollbackErr error
 	for _, id := range manifestIDs {
-		s.manifests.Delete(id)
+		s.manifests.Delete(owner, id)
 	}
 	for _, id := range blobIDs {
 		err := os.Remove(s.payloadPath(id))

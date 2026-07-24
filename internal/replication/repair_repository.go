@@ -8,13 +8,14 @@ import (
 	"time"
 
 	"ardents/internal/content/catalog"
+	identityprincipal "ardents/internal/identity/principal"
 	"ardents/internal/replication/availability"
 )
 
 const maxRepairDuration = 30 * time.Minute
 
 func (r *Repository) ensureRepairLocked(intent availability.ReplicaIntent, reference catalog.ContentReference, ordinal int, now, leaseBarrier time.Time) availability.RepairRecord {
-	id := repairID(intent.Version, reference, ordinal)
+	id := repairID(intent, reference, ordinal)
 	repair, ok := r.availability.Repairs[id]
 	if !ok || repair.State == "completed" {
 		lossEligibleAt := now
@@ -22,7 +23,7 @@ func (r *Repository) ensureRepairLocked(intent availability.ReplicaIntent, refer
 			lossEligibleAt = leaseBarrier
 		}
 		repair = availability.RepairRecord{
-			ID: id, IntentID: intent.ID, IntentVersion: intent.Version, RootManifestID: intent.RootManifestID,
+			ID: id, IntentID: intent.ID, IntentVersion: intent.Version, RootManifestOwner: intent.RootManifestOwner, RootManifestID: intent.RootManifestID,
 			ContentReference: reference, MissingOrdinal: ordinal, State: "pending", StartedAt: now,
 			LossEligibleAt: lossEligibleAt, DeadlineAt: lossEligibleAt.Add(maxRepairDuration), NextAttemptAt: now,
 		}
@@ -98,12 +99,15 @@ func (r *Repository) RecordRepairFailure(repairID string, at time.Time, _ string
 	return repair, r.saveLocked()
 }
 
-func (r *Repository) ListReplicaRepairs(rootManifestID string) []availability.RepairRecord {
+func (r *Repository) ListReplicaRepairs(owner identityprincipal.ID, rootManifestID string) []availability.RepairRecord {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if owner.String() == "" {
+		return nil
+	}
 	out := make([]availability.RepairRecord, 0, len(r.availability.Repairs))
 	for _, repair := range r.availability.Repairs {
-		if rootManifestID == "" || repair.RootManifestID == rootManifestID {
+		if repair.RootManifestOwner.Equal(owner) && (rootManifestID == "" || repair.RootManifestID == rootManifestID) {
 			out = append(out, repair)
 		}
 	}
@@ -156,7 +160,7 @@ func availabilityState(snapshot availability.Snapshot, repairTerminal bool) (str
 	}
 }
 
-func repairID(intentVersion uint64, reference catalog.ContentReference, ordinal int) string {
-	sum := sha256.Sum256(fmt.Appendf(nil, "%d:%s:%d", intentVersion, reference.String(), ordinal))
+func repairID(intent availability.ReplicaIntent, reference catalog.ContentReference, ordinal int) string {
+	sum := sha256.Sum256(fmt.Appendf(nil, "%s:%s:%d:%s:%d", intent.RootManifestOwner.String(), intent.RootManifestID, intent.Version, reference.String(), ordinal))
 	return hex.EncodeToString(sum[:])
 }

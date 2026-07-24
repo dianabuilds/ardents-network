@@ -27,7 +27,7 @@ func TestFetchChunkedResumesVerifiedLocalChunks(t *testing.T) {
 	}, bytes.NewReader(bytes.Repeat([]byte("payload"), 10000)), key)
 	require.NoError(t, err)
 
-	result, err := transfer.FetchChunked(context.Background(), transfer.ExchangeConfig{Data: store, History: history}, stored.Root.ID, transfer.ChunkFetchOptions{Concurrency: 2})
+	result, err := transfer.FetchChunked(context.Background(), transfer.ExchangeConfig{Data: store, History: history}, stored.Root.ID, transfer.ChunkFetchOptions{Owner: stored.Root.Owner, Concurrency: 2})
 	require.NoError(t, err)
 	require.Equal(t, stored.ChunkCount, result.ChunkCount)
 	require.Equal(t, 0, result.FetchedCount)
@@ -54,7 +54,7 @@ func TestFetchChunkedCancellationIsTerminalAndKeepsChunks(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	_, err = transfer.FetchChunked(ctx, transfer.ExchangeConfig{Data: store, History: history}, stored.Root.ID, transfer.ChunkFetchOptions{})
+	_, err = transfer.FetchChunked(ctx, transfer.ExchangeConfig{Data: store, History: history}, stored.Root.ID, transfer.ChunkFetchOptions{Owner: stored.Root.Owner})
 	require.ErrorIs(t, err, context.Canceled)
 	require.Len(t, store.ListBlobs(), stored.ChunkCount)
 	transfers := history.List()

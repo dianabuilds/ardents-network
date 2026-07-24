@@ -1,6 +1,14 @@
 package catalog
 
-import "testing"
+import (
+	"bytes"
+	"crypto/ed25519"
+	"testing"
+
+	"ardents/internal/identity/principal"
+
+	"github.com/stretchr/testify/require"
+)
 
 func TestStoreSnapshotsDoNotAliasMutableState(t *testing.T) {
 	blobs := NewBlobStore()
@@ -16,17 +24,17 @@ func TestStoreSnapshotsDoNotAliasMutableState(t *testing.T) {
 
 	objects := NewObjectStore()
 	objects.Put(Object{ID: "object-1", Body: map[string]any{"nested": map[string]any{"value": "original"}}})
-	objects.Snapshot()["object-1"].Body["nested"].(map[string]any)["value"] = "changed"
-	storedObject, _ := objects.Get("object-1")
+	objects.Snapshot()[RecordStorageKey(principal.ID{}, "object-1")].Body["nested"].(map[string]any)["value"] = "changed"
+	storedObject, _ := objects.Get(principal.ID{}, "object-1")
 	if storedObject.Body["nested"].(map[string]any)["value"] != "original" {
 		t.Fatal("snapshot mutation changed object store")
 	}
 
 	manifests := NewManifestStore()
 	manifests.Put(Manifest{ID: "manifest-1", Refs: []Ref{{ID: "ref-1"}}})
-	snapshot := manifests.Snapshot()["manifest-1"]
+	snapshot := manifests.Snapshot()[RecordStorageKey(principal.ID{}, "manifest-1")]
 	snapshot.Refs[0].ID = "changed"
-	storedManifest, _ := manifests.Get("manifest-1")
+	storedManifest, _ := manifests.Get(principal.ID{}, "manifest-1")
 	if storedManifest.Refs[0].ID != "ref-1" {
 		t.Fatal("snapshot mutation changed manifest store")
 	}
@@ -37,4 +45,27 @@ func TestStoreSnapshotsDoNotAliasMutableState(t *testing.T) {
 	if sources.List("blob-1")[0].NodeID != "node-1" {
 		t.Fatal("snapshot mutation changed source ledger")
 	}
+}
+
+func TestManifestStoreDeleteIsOwnerQualified(t *testing.T) {
+	alice := storeTestOwner(t, 0x41)
+	bob := storeTestOwner(t, 0x42)
+	manifests := NewManifestStore()
+	manifests.Put(Manifest{ID: "shared", Owner: alice})
+	manifests.Put(Manifest{ID: "shared", Owner: bob})
+
+	manifests.Delete(alice, "shared")
+
+	_, aliceExists := manifests.Get(alice, "shared")
+	require.False(t, aliceExists)
+	_, bobExists := manifests.Get(bob, "shared")
+	require.True(t, bobExists)
+}
+
+func storeTestOwner(t *testing.T, marker byte) principal.ID {
+	t.Helper()
+	key := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{marker}, ed25519.SeedSize))
+	owner, err := principal.FromEd25519PublicKey(key.Public().(ed25519.PublicKey))
+	require.NoError(t, err)
+	return owner
 }

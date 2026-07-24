@@ -27,7 +27,7 @@ func prepareManifestResponseWire(cfg ExchangeConfig, source string, key ed25519.
 }
 
 func prepareManifestResponse(cfg ExchangeConfig, req blobFetchRequest) (model.Manifest, error) {
-	manifest, ok := cfg.Data.ReadTransferManifest(req.ResourceID)
+	manifest, ok := readTransferManifest(cfg.Data, req.Owner, req.ResourceID)
 	if !ok {
 		return model.Manifest{}, fmt.Errorf("manifest not found")
 	}
@@ -62,7 +62,7 @@ func marshalManifestResponse(source string, key ed25519.PrivateKey, req blobFetc
 	return json.Marshal(response)
 }
 
-func acceptManifestResponse(cfg ExchangeConfig, manifestID, requester, requestID string, payload []byte) (model.Manifest, string, error) {
+func acceptManifestResponse(cfg ExchangeConfig, owner principal.ID, manifestID, requester, requestID string, payload []byte) (model.Manifest, string, error) {
 	response, err := decodeManifestResponse(payload, manifestID, requester, requestID)
 	if err != nil {
 		return model.Manifest{}, "", err
@@ -85,7 +85,21 @@ func acceptManifestResponse(cfg ExchangeConfig, manifestID, requester, requestID
 	if err != nil {
 		return model.Manifest{}, response.Source, blobFetchCandidateError{err: err}
 	}
+	if !manifest.Owner.Equal(owner) {
+		return model.Manifest{}, response.Source, blobFetchCandidateError{err: fmt.Errorf("manifest response owner does not match request")}
+	}
 	return manifest, response.Source, nil
+}
+
+func readTransferManifest(data DataExchange, owner, id string) (model.Manifest, bool) {
+	if owner == "" {
+		return model.Manifest{}, false
+	}
+	parsed, err := principal.Parse(owner)
+	if err != nil {
+		return model.Manifest{}, false
+	}
+	return data.ReadTransferManifest(parsed, id)
 }
 
 func manifestWireFromSnapshot(in model.Manifest) manifestWire {

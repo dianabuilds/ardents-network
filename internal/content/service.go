@@ -94,6 +94,13 @@ func (s *Service) Load() error {
 			BlobOwnership: persistedBlobOwnership{Version: blobOwnershipVersion, Bindings: []catalog.BlobOwnerBinding{}},
 		}
 	}
+	migrated := false
+	if data.Version == legacyContentSchemaVersion {
+		if err := migrateContentV2ToV3(&data); err != nil {
+			return err
+		}
+		migrated = true
+	}
 	if data.Version != contentSchemaVersion {
 		return fmt.Errorf("unsupported content schema version")
 	}
@@ -141,6 +148,18 @@ func (s *Service) Load() error {
 	}
 	s.sources.Load(data.Sources)
 	s.manifests.Load(data.Manifests)
+	if migrated {
+		// Migration is one atomic catalogue rewrite. Reconciliation can persist
+		// and payload cleanup can delete files, so defer both until the next
+		// ordinary v3 load; a failed upgrade must leave the v2 rollback source
+		// and its payload directory untouched.
+		s.state = "ready"
+		if err := s.saveLocked(); err != nil {
+			return fmt.Errorf("persist migrated content catalogue: %w", err)
+		}
+		committed = true
+		return nil
+	}
 	if err := s.removeUntrackedPayloadsLocked(); err != nil {
 		return err
 	}
@@ -164,6 +183,16 @@ func validatePersistedContent(data persistedContent) error {
 			return fmt.Errorf("persisted Blob Content Reference binding is invalid")
 		}
 	}
+	for key, object := range data.Objects {
+		if object.Owner.String() == "" || object.ID == "" || key != catalog.RecordStorageKey(object.Owner, object.ID) {
+			return fmt.Errorf("persisted Object owner-qualified key binding is invalid")
+		}
+	}
+	for key, manifest := range data.Manifests {
+		if manifest.Owner.String() == "" || manifest.ID == "" || key != catalog.RecordStorageKey(manifest.Owner, manifest.ID) {
+			return fmt.Errorf("persisted Manifest owner-qualified key binding is invalid")
+		}
+	}
 	for key, records := range data.Sources {
 		reference, err := catalog.ParseContentReference(key)
 		if err != nil {
@@ -179,6 +208,47 @@ func validatePersistedContent(data persistedContent) error {
 	if err := owners.Load(data.BlobOwnership.Bindings, data.Blobs); err != nil {
 		return fmt.Errorf("persisted Blob ownership is invalid: %w", err)
 	}
+	return nil
+}
+
+func migrateContentV2ToV3(data *persistedContent) error {
+	objects := make(map[string]catalog.Object, len(data.Objects))
+	for _, legacyKey := range sortedKeys(data.Objects) {
+		object := data.Objects[legacyKey]
+		if object.Owner.String() == "" || object.ID == "" || legacyKey != object.ID {
+			return fmt.Errorf("legacy object identity is invalid")
+		}
+		key := catalog.RecordStorageKey(object.Owner, object.ID)
+		if _, exists := objects[key]; exists {
+			return fmt.Errorf("owner-qualified object collision")
+		}
+		objects[key] = object
+	}
+	manifests := make(map[string]catalog.Manifest, len(data.Manifests))
+	for _, legacyKey := range sortedKeys(data.Manifests) {
+		manifest := data.Manifests[legacyKey]
+		if manifest.Owner.String() == "" || manifest.ID == "" || legacyKey != manifest.ID {
+			return fmt.Errorf("legacy manifest identity is invalid")
+		}
+		key := catalog.RecordStorageKey(manifest.Owner, manifest.ID)
+		if _, exists := manifests[key]; exists {
+			return fmt.Errorf("owner-qualified manifest collision")
+		}
+		manifests[key] = manifest
+	}
+	for _, manifest := range manifests {
+		for _, ref := range manifest.Refs {
+			if ref.Kind != "manifest" {
+				continue
+			}
+			if _, exists := manifests[catalog.RecordStorageKey(manifest.Owner, ref.ID)]; !exists {
+				return fmt.Errorf("legacy manifest reference must resolve under the same owner")
+			}
+		}
+	}
+	data.Version = contentSchemaVersion
+	data.Objects = objects
+	data.Manifests = manifests
 	return nil
 }
 

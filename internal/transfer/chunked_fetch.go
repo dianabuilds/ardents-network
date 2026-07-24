@@ -7,9 +7,11 @@ import (
 
 	chunking "ardents/internal/content"
 	model "ardents/internal/content/catalog"
+	"ardents/internal/identity/principal"
 )
 
 type ChunkFetchOptions struct {
+	Owner           principal.ID
 	Concurrency     int
 	PerChunkTimeout time.Duration
 	BytesPerSecond  int64
@@ -24,15 +26,15 @@ type ChunkFetchResult struct {
 }
 
 func FetchChunked(ctx context.Context, cfg ExchangeConfig, rootID string, options ChunkFetchOptions) (ChunkFetchResult, error) {
-	if cfg.Data == nil || cfg.History == nil || rootID == "" {
+	if cfg.Data == nil || cfg.History == nil || rootID == "" || options.Owner.String() == "" {
 		return ChunkFetchResult{}, fmt.Errorf("chunked fetch dependencies are unavailable")
 	}
-	plan, err := loadChunkPlan(ctx, cfg, rootID)
+	plan, err := loadChunkPlan(ctx, cfg, options.Owner, rootID)
 	if err != nil {
 		return ChunkFetchResult{}, err
 	}
 	transfer, err := cfg.History.Start(Record{
-		Kind: "chunked_fetch", ResourceID: rootID, Direction: "inbound", State: "pending",
+		Kind: "chunked_fetch", ResourceOwner: options.Owner.String(), ResourceID: rootID, Direction: "inbound", State: "pending",
 		TotalBytes: encryptedPlanBytes(plan), Reason: "fetching bounded manifest chunks",
 	})
 	if err != nil {
@@ -70,11 +72,11 @@ func recordChunkFetchFailure(cfg ExchangeConfig, transferID, rootID string, caus
 	return err
 }
 
-func loadChunkPlan(ctx context.Context, cfg ExchangeConfig, rootID string) (chunking.ResolvedPlan, error) {
-	root, ok := validLocalManifest(cfg.Data, rootID)
+func loadChunkPlan(ctx context.Context, cfg ExchangeConfig, owner principal.ID, rootID string) (chunking.ResolvedPlan, error) {
+	root, ok := validLocalManifest(cfg.Data, owner, rootID)
 	if !ok {
 		var err error
-		root, err = FetchManifest(ctx, cfg, rootID)
+		root, err = FetchManifest(ctx, cfg, owner, rootID)
 		if err != nil {
 			return chunking.ResolvedPlan{}, err
 		}
@@ -82,10 +84,10 @@ func loadChunkPlan(ctx context.Context, cfg ExchangeConfig, rootID string) (chun
 	leaves := make(map[string]model.Manifest)
 	if root.Kind == "chunk-root" {
 		for _, ref := range root.Refs {
-			leaf, found := validLocalManifest(cfg.Data, ref.ID)
+			leaf, found := validLocalManifest(cfg.Data, root.Owner, ref.ID)
 			if !found {
 				var err error
-				leaf, err = FetchManifest(ctx, cfg, ref.ID)
+				leaf, err = FetchManifest(ctx, cfg, root.Owner, ref.ID)
 				if err != nil {
 					return chunking.ResolvedPlan{}, err
 				}
@@ -99,8 +101,8 @@ func loadChunkPlan(ctx context.Context, cfg ExchangeConfig, rootID string) (chun
 	})
 }
 
-func validLocalManifest(data DataExchange, id string) (model.Manifest, bool) {
-	manifest, ok := data.ReadTransferManifest(id)
+func validLocalManifest(data DataExchange, owner principal.ID, id string) (model.Manifest, bool) {
+	manifest, ok := data.ReadTransferManifest(owner, id)
 	if !ok || chunking.ValidateManifest(manifest) != nil {
 		return model.Manifest{}, false
 	}

@@ -53,7 +53,7 @@ func TestDataSubstrateFetchesAndResumesChunkedPayloadOverPrivateWaku(t *testing.
 	})
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	result, err := requester.FetchChunked(ctx, stored.Root.ID)
+	result, err := requester.FetchChunked(ctx, stored.Root.Owner, stored.Root.ID)
 	require.NoError(t, err)
 	require.Equal(t, stored.ChunkCount, result.ChunkCount)
 	require.Equal(t, stored.ChunkCount, result.FetchedCount)
@@ -69,7 +69,7 @@ func TestDataSubstrateFetchesAndResumesChunkedPayloadOverPrivateWaku(t *testing.
 	}
 	require.Equal(t, plaintext, reconstructed)
 
-	resumed, err := requester.FetchChunked(ctx, stored.Root.ID)
+	resumed, err := requester.FetchChunked(ctx, stored.Root.Owner, stored.Root.ID)
 	require.NoError(t, err)
 	require.Zero(t, resumed.FetchedCount)
 	require.Equal(t, stored.ChunkCount, resumed.ResumedCount)

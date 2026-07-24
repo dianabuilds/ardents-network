@@ -29,14 +29,14 @@ func TestReplicaIntentReconciliationPersistsRepairAndReachesTarget(t *testing.T)
 	require.NoError(t, err)
 
 	intent, err := service.SetReplicaIntent(ReplicaIntent{
-		ID: "intent-1", RootManifestID: root.ID, Version: 1,
+		ID: "intent-1", RootManifestOwner: root.Owner, RootManifestID: root.ID, Version: 1,
 		DesiredCopies: 2, MinimumCopies: 1, LeaseDuration: 24 * time.Hour,
 		RenewalHorizon: 8 * time.Hour, Retention: "durable", CreatedAt: now, UpdatedAt: now,
 	})
 	require.NoError(t, err)
 	require.Equal(t, uint64(1), intent.Version)
 
-	result, err := service.ReconcileAvailability(root.ID, now)
+	result, err := service.ReconcileAvailability(root.Owner, root.ID, now)
 	require.NoError(t, err)
 	require.Equal(t, "degraded", result.Snapshot.State)
 	require.Equal(t, 1, result.Snapshot.ValidCopies)
@@ -47,10 +47,10 @@ func TestReplicaIntentReconciliationPersistsRepairAndReachesTarget(t *testing.T)
 	reloaded := newInDir(dir)
 	require.NoError(t, reloaded.Load())
 	reloaded.SetLocalNodeID("owner-node")
-	persisted, ok := reloaded.GetAvailability(root.ID)
+	persisted, ok := reloaded.GetAvailability(root.Owner, root.ID)
 	require.True(t, ok)
 	require.Equal(t, "degraded", persisted.State)
-	persistedResult, err := reloaded.ReconcileAvailability(root.ID, now)
+	persistedResult, err := reloaded.ReconcileAvailability(root.Owner, root.ID, now)
 	require.NoError(t, err)
 	require.Equal(t, result.DueRepairs[0].ID, persistedResult.DueRepairs[0].ID)
 
@@ -61,11 +61,52 @@ func TestReplicaIntentReconciliationPersistsRepairAndReachesTarget(t *testing.T)
 	}, now)
 	require.NoError(t, err)
 
-	satisfied, err := reloaded.ReconcileAvailability(root.ID, now.Add(time.Minute))
+	satisfied, err := reloaded.ReconcileAvailability(root.Owner, root.ID, now.Add(time.Minute))
 	require.NoError(t, err)
 	require.Equal(t, "target-satisfied", satisfied.Snapshot.State)
 	require.Equal(t, 2, satisfied.Snapshot.ValidCopies)
 	require.Empty(t, satisfied.DueRepairs)
+}
+
+func TestReplicaIntentRootsAreOwnerQualified(t *testing.T) {
+	service := newInDir(t.TempDir())
+	require.NoError(t, service.Load())
+	now := time.Date(2026, 7, 24, 12, 0, 0, 0, time.UTC)
+	blob, err := service.StoreBlob(Blob{MediaType: "application/octet-stream"}, []byte("shared"))
+	require.NoError(t, err)
+	alice := replicationTestPrincipal("alice")
+	bob := replicationTestPrincipal("bob")
+
+	for index, owner := range []identityprincipal.ID{alice, bob} {
+		_, err := service.PublishManifest(Manifest{
+			ID: "root", Kind: "blob-set", Owner: owner,
+			Refs: []Ref{{Kind: "blob", ID: blob.Reference.String()}},
+		})
+		require.NoError(t, err)
+		_, err = service.SetReplicaIntent(ReplicaIntent{
+			ID: "intent-" + owner.String(), RootManifestOwner: owner, RootManifestID: "root", Version: uint64(index + 1),
+			DesiredCopies: 1, MinimumCopies: 1, LeaseDuration: time.Hour, RenewalHorizon: 30 * time.Minute,
+			CreatedAt: now, UpdatedAt: now,
+		})
+		require.NoError(t, err)
+	}
+	_, err = service.SetReplicaIntent(ReplicaIntent{
+		ID: "ownerless-intent", RootManifestID: "root", Version: 1,
+		DesiredCopies: 1, MinimumCopies: 1, LeaseDuration: time.Hour, RenewalHorizon: 30 * time.Minute,
+		CreatedAt: now, UpdatedAt: now,
+	})
+	require.ErrorContains(t, err, "replica intent is invalid")
+
+	reconciler := New(Config{Data: service, Now: func() time.Time { return now }})
+	require.NoError(t, reconciler.ReconcileOnce(t.Context()))
+	aliceResult, ok := service.repository.GetAvailability(alice, "root")
+	require.True(t, ok)
+	bobResult, ok := service.repository.GetAvailability(bob, "root")
+	require.True(t, ok)
+	require.True(t, aliceResult.RootManifestOwner.Equal(alice))
+	require.True(t, bobResult.RootManifestOwner.Equal(bob))
+	_, ok = service.repository.GetAvailability(identityprincipal.ID{}, "root")
+	require.False(t, ok, "empty-owner lookup must fail closed")
 }
 
 func TestReplicaRepairFailurePersistsTerminalLossAcrossRestart(t *testing.T) {
@@ -83,7 +124,7 @@ func TestReplicaRepairFailurePersistsTerminalLossAcrossRestart(t *testing.T) {
 	})
 	require.NoError(t, err)
 	_, err = service.SetReplicaIntent(ReplicaIntent{
-		ID: "intent-loss", RootManifestID: root.ID, Version: 1,
+		ID: "intent-loss", RootManifestOwner: root.Owner, RootManifestID: root.ID, Version: 1,
 		DesiredCopies: 1, MinimumCopies: 1, LeaseDuration: 24 * time.Hour,
 		RenewalHorizon: 8 * time.Hour, Retention: "durable", CreatedAt: now, UpdatedAt: now,
 	})
@@ -92,7 +133,7 @@ func TestReplicaRepairFailurePersistsTerminalLossAcrossRestart(t *testing.T) {
 
 	_, err = service.DropBlob(blob.Reference.String())
 	require.NoError(t, err)
-	result, err := service.ReconcileAvailability(root.ID, now)
+	result, err := service.ReconcileAvailability(root.Owner, root.ID, now)
 	require.NoError(t, err)
 	require.Equal(t, "unavailable", result.Snapshot.State)
 	require.Len(t, result.DueRepairs, 1)
@@ -108,7 +149,7 @@ func TestReplicaRepairFailurePersistsTerminalLossAcrossRestart(t *testing.T) {
 	reloaded := newInDir(dir)
 	require.NoError(t, reloaded.Load())
 	reloaded.SetLocalNodeID("owner-node")
-	lost, err := reloaded.ReconcileAvailability(root.ID, repair.LastAttemptAt)
+	lost, err := reloaded.ReconcileAvailability(root.Owner, root.ID, repair.LastAttemptAt)
 	require.NoError(t, err)
 	require.Equal(t, "lost", lost.Snapshot.State)
 	require.Equal(t, "bounded repair exhausted without a validated copy", lost.Snapshot.Reason)
@@ -131,12 +172,12 @@ func TestReplicaAvailabilityIgnoresFreshSourceWithoutCommitment(t *testing.T) {
 	root, err := service.PublishManifest(Manifest{Kind: "blob-set", Owner: replicationTestOwner(t), Refs: []Ref{{Kind: "blob", ID: blob.Reference.String()}}})
 	require.NoError(t, err)
 	_, err = service.SetReplicaIntent(ReplicaIntent{
-		ID: "intent-uncommitted", RootManifestID: root.ID, Version: 1, DesiredCopies: 1, MinimumCopies: 1,
+		ID: "intent-uncommitted", RootManifestOwner: root.Owner, RootManifestID: root.ID, Version: 1, DesiredCopies: 1, MinimumCopies: 1,
 		LeaseDuration: 24 * time.Hour, RenewalHorizon: 8 * time.Hour, CreatedAt: now, UpdatedAt: now,
 	})
 	require.NoError(t, err)
 
-	result, err := service.ReconcileAvailability(root.ID, now)
+	result, err := service.ReconcileAvailability(root.Owner, root.ID, now)
 	require.NoError(t, err)
 	require.Zero(t, result.Snapshot.ValidCopies)
 	require.Equal(t, "unavailable", result.Snapshot.State)
@@ -153,7 +194,7 @@ func TestReplicaAvailabilityDoesNotDeclareLossDuringCurrentLeasePartition(t *tes
 	root, err := service.PublishManifest(Manifest{Kind: "blob-set", Owner: replicationTestOwner(t), Refs: []Ref{{Kind: "blob", ID: blob.Reference.String()}}})
 	require.NoError(t, err)
 	_, err = service.SetReplicaIntent(ReplicaIntent{
-		ID: "intent-partition", RootManifestID: root.ID, Version: 1, DesiredCopies: 1, MinimumCopies: 1,
+		ID: "intent-partition", RootManifestOwner: root.Owner, RootManifestID: root.ID, Version: 1, DesiredCopies: 1, MinimumCopies: 1,
 		LeaseDuration: 24 * time.Hour, RenewalHorizon: 8 * time.Hour, CreatedAt: now, UpdatedAt: now,
 	})
 	require.NoError(t, err)
@@ -165,7 +206,7 @@ func TestReplicaAvailabilityDoesNotDeclareLossDuringCurrentLeasePartition(t *tes
 	}, now)
 	require.NoError(t, err)
 
-	result, err := service.ReconcileAvailability(root.ID, now)
+	result, err := service.ReconcileAvailability(root.Owner, root.ID, now)
 	require.NoError(t, err)
 	require.Equal(t, "unavailable", result.Snapshot.State)
 	require.Len(t, result.DueRepairs, 1)
@@ -178,11 +219,11 @@ func TestReplicaAvailabilityDoesNotDeclareLossDuringCurrentLeasePartition(t *tes
 	require.Equal(t, "pending", repair.State)
 	require.Equal(t, leaseExpiry.Add(30*time.Minute), repair.DeadlineAt)
 
-	partitioned, err := service.ReconcileAvailability(root.ID, repair.LastAttemptAt)
+	partitioned, err := service.ReconcileAvailability(root.Owner, root.ID, repair.LastAttemptAt)
 	require.NoError(t, err)
 	require.Equal(t, "unavailable", partitioned.Snapshot.State)
 	afterLease := leaseExpiry.Add(time.Second)
-	expired, err := service.ReconcileAvailability(root.ID, afterLease)
+	expired, err := service.ReconcileAvailability(root.Owner, root.ID, afterLease)
 	require.NoError(t, err)
 	require.Equal(t, "unavailable", expired.Snapshot.State)
 	require.Len(t, expired.DueRepairs, 1)
@@ -196,7 +237,7 @@ func TestReplicaAvailabilityDoesNotDeclareLossDuringCurrentLeasePartition(t *tes
 		require.NoError(t, err)
 	}
 	require.Equal(t, 6, repair.PostLeaseAttempts)
-	lost, err := service.ReconcileAvailability(root.ID, repair.LastAttemptAt)
+	lost, err := service.ReconcileAvailability(root.Owner, root.ID, repair.LastAttemptAt)
 	require.NoError(t, err)
 	require.Equal(t, "lost", lost.Snapshot.State)
 }
@@ -214,18 +255,18 @@ func TestReplicaRepairBecomesTerminalAtThirtyMinuteDeadline(t *testing.T) {
 	root, err := service.PublishManifest(Manifest{Kind: "blob-set", Owner: replicationTestOwner(t), Refs: []Ref{{Kind: "blob", ID: blob.Reference.String()}}})
 	require.NoError(t, err)
 	_, err = service.SetReplicaIntent(ReplicaIntent{
-		ID: "intent-deadline", RootManifestID: root.ID, Version: 1, DesiredCopies: 1, MinimumCopies: 1,
+		ID: "intent-deadline", RootManifestOwner: root.Owner, RootManifestID: root.ID, Version: 1, DesiredCopies: 1, MinimumCopies: 1,
 		LeaseDuration: 24 * time.Hour, RenewalHorizon: 8 * time.Hour, CreatedAt: now, UpdatedAt: now,
 	})
 	require.NoError(t, err)
 	_, err = service.DropBlob(blob.Reference.String())
 	require.NoError(t, err)
 
-	initial, err := service.ReconcileAvailability(root.ID, now)
+	initial, err := service.ReconcileAvailability(root.Owner, root.ID, now)
 	require.NoError(t, err)
 	require.Len(t, initial.DueRepairs, 1)
 	require.Equal(t, now.Add(30*time.Minute), initial.DueRepairs[0].DeadlineAt)
-	afterDeadline, err := service.ReconcileAvailability(root.ID, now.Add(30*time.Minute+time.Second))
+	afterDeadline, err := service.ReconcileAvailability(root.Owner, root.ID, now.Add(30*time.Minute+time.Second))
 	require.NoError(t, err)
 	require.Empty(t, afterDeadline.DueRepairs)
 	require.Equal(t, "lost", afterDeadline.Snapshot.State)
@@ -244,11 +285,11 @@ func TestReplicaAvailabilityNeverReportsLostWhileValidatedCopyRemains(t *testing
 	root, err := service.PublishManifest(Manifest{Kind: "blob-set", Owner: replicationTestOwner(t), Refs: []Ref{{Kind: "blob", ID: blob.Reference.String()}}})
 	require.NoError(t, err)
 	_, err = service.SetReplicaIntent(ReplicaIntent{
-		ID: "intent-partial", RootManifestID: root.ID, Version: 1, DesiredCopies: 2, MinimumCopies: 2,
+		ID: "intent-partial", RootManifestOwner: root.Owner, RootManifestID: root.ID, Version: 1, DesiredCopies: 2, MinimumCopies: 2,
 		LeaseDuration: 24 * time.Hour, RenewalHorizon: 8 * time.Hour, CreatedAt: now, UpdatedAt: now,
 	})
 	require.NoError(t, err)
-	result, err := service.ReconcileAvailability(root.ID, now)
+	result, err := service.ReconcileAvailability(root.Owner, root.ID, now)
 	require.NoError(t, err)
 	require.Len(t, result.DueRepairs, 1)
 	repair := result.DueRepairs[0]
@@ -257,7 +298,7 @@ func TestReplicaAvailabilityNeverReportsLostWhileValidatedCopyRemains(t *testing
 		require.NoError(t, err)
 	}
 
-	terminal, err := service.ReconcileAvailability(root.ID, repair.LastAttemptAt)
+	terminal, err := service.ReconcileAvailability(root.Owner, root.ID, repair.LastAttemptAt)
 	require.NoError(t, err)
 	require.Equal(t, 1, terminal.Snapshot.ValidCopies)
 	require.Equal(t, "degraded", terminal.Snapshot.State)
@@ -274,7 +315,7 @@ func TestReplicaAvailabilityTreatsExpiredLeaseAsUnavailable(t *testing.T) {
 	}, now)
 	require.NoError(t, err)
 
-	result, err := service.ReconcileAvailability(root.ID, now.Add(2*time.Minute))
+	result, err := service.ReconcileAvailability(root.Owner, root.ID, now.Add(2*time.Minute))
 	require.NoError(t, err)
 	require.Zero(t, result.Snapshot.ValidCopies)
 	require.Equal(t, 1, result.Snapshot.ExpiredCopies)
@@ -291,14 +332,14 @@ func TestReplicaAvailabilityRecoversAfterPartitionRejoin(t *testing.T) {
 	}
 	_, err := service.ObserveReplicaCommitment(commitment, now)
 	require.NoError(t, err)
-	partitioned, err := service.ReconcileAvailability(root.ID, now)
+	partitioned, err := service.ReconcileAvailability(root.Owner, root.ID, now)
 	require.NoError(t, err)
 	require.Equal(t, "unavailable", partitioned.Snapshot.State)
 
 	commitment.State, commitment.LastObservedAt = placement.CommitmentActive, now.Add(time.Minute)
 	_, err = service.ObserveReplicaCommitment(commitment, commitment.LastObservedAt)
 	require.NoError(t, err)
-	rejoined, err := service.ReconcileAvailability(root.ID, commitment.LastObservedAt)
+	rejoined, err := service.ReconcileAvailability(root.Owner, root.ID, commitment.LastObservedAt)
 	require.NoError(t, err)
 	require.Equal(t, "best-effort", rejoined.Snapshot.State)
 	require.Equal(t, 1, rejoined.Snapshot.ValidCopies)
@@ -318,7 +359,7 @@ func TestReplicaIntentUsesConfiguredCopyDefaults(t *testing.T) {
 	root, err := service.PublishManifest(Manifest{Kind: "blob-set", Owner: replicationTestOwner(t), Refs: []Ref{{Kind: "blob", ID: blob.Reference.String()}}})
 	require.NoError(t, err)
 	intent, err := service.SetReplicaIntent(ReplicaIntent{
-		ID: "intent-defaults", RootManifestID: root.ID, Version: 1,
+		ID: "intent-defaults", RootManifestOwner: root.Owner, RootManifestID: root.ID, Version: 1,
 		LeaseDuration: time.Hour, RenewalHorizon: 10 * time.Minute,
 		Retention: "replica", CreatedAt: now, UpdatedAt: now,
 	})
@@ -338,7 +379,7 @@ func remoteAvailabilityFixture(t *testing.T, now time.Time, suffix string) (*rep
 	root, err := service.PublishManifest(Manifest{Kind: "blob-set", Owner: replicationTestOwner(t), Refs: []Ref{{Kind: "blob", ID: blob.Reference.String()}}})
 	require.NoError(t, err)
 	_, err = service.SetReplicaIntent(ReplicaIntent{
-		ID: "intent-" + suffix, RootManifestID: root.ID, Version: 1, DesiredCopies: 1, MinimumCopies: 1,
+		ID: "intent-" + suffix, RootManifestOwner: root.Owner, RootManifestID: root.ID, Version: 1, DesiredCopies: 1, MinimumCopies: 1,
 		LeaseDuration: 24 * time.Hour, RenewalHorizon: 8 * time.Hour, CreatedAt: now, UpdatedAt: now,
 	})
 	require.NoError(t, err)

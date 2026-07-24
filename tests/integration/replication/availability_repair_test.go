@@ -65,7 +65,7 @@ func TestDataAvailabilityRepairsCorruptReplicaToDifferentWakuPeer(t *testing.T) 
 	require.NoError(t, err)
 	sourceNode := source
 	_, err = source.SetReplicaIntent(availability.ReplicaIntent{
-		ID: "repair-intent", RootManifestID: root.ID, Version: 1, DesiredCopies: 2, MinimumCopies: 1,
+		ID: "repair-intent", RootManifestOwner: root.Owner, RootManifestID: root.ID, Version: 1, DesiredCopies: 2, MinimumCopies: 1,
 		LeaseDuration: 24 * time.Hour, RenewalHorizon: 8 * time.Hour, Retention: "durable",
 		CreatedAt: now, UpdatedAt: now,
 	})
@@ -82,7 +82,7 @@ func TestDataAvailabilityRepairsCorruptReplicaToDifferentWakuPeer(t *testing.T) 
 	require.Equal(t, appreplication.ReplicaCommitmentCorrupt, corrupt.State)
 	require.NoError(t, source.ReconcileDataAvailability(ctx))
 
-	snapshot, err := source.GetAvailability(root.ID)
+	snapshot, err := source.GetAvailability(root.Owner, root.ID)
 	require.NoError(t, err)
 	require.Equal(t, "target-satisfied", snapshot.State)
 	require.Equal(t, 2, snapshot.ValidCopies)
@@ -95,7 +95,7 @@ func TestDataAvailabilityRepairsCorruptReplicaToDifferentWakuPeer(t *testing.T) 
 
 	updatedAt := time.Now().UTC()
 	_, err = source.SetReplicaIntent(availability.ReplicaIntent{
-		ID: "repair-intent", RootManifestID: root.ID, Version: 2, DesiredCopies: 2, MinimumCopies: 1,
+		ID: "repair-intent", RootManifestOwner: root.Owner, RootManifestID: root.ID, Version: 2, DesiredCopies: 2, MinimumCopies: 1,
 		LeaseDuration: 24 * time.Hour, RenewalHorizon: 8 * time.Hour, Retention: "durable",
 		CreatedAt: now, UpdatedAt: updatedAt,
 	})
@@ -110,7 +110,7 @@ func TestDataAvailabilityRepairsCorruptReplicaToDifferentWakuPeer(t *testing.T) 
 	lossCtx, lossCancel := context.WithTimeout(t.Context(), 20*time.Second)
 	defer lossCancel()
 	require.NoError(t, source.ReconcileDataAvailability(lossCtx))
-	snapshot, err = source.GetAvailability(root.ID)
+	snapshot, err = source.GetAvailability(root.Owner, root.ID)
 	require.NoError(t, err)
 	require.Equal(t, uint64(2), snapshot.IntentVersion)
 	require.Equal(t, "target-satisfied", snapshot.State)
@@ -122,7 +122,7 @@ func TestDataAvailabilityRepairsCorruptReplicaToDifferentWakuPeer(t *testing.T) 
 	require.True(t, ok)
 	require.True(t, retainedWhileOwnerOffline.Encrypted)
 	restarted := testkit.StartNode(t, sourceConfig)
-	persisted, err := restarted.GetAvailability(root.ID)
+	persisted, err := restarted.GetAvailability(root.Owner, root.ID)
 	require.NoError(t, err)
 	require.Equal(t, snapshot.IntentVersion, persisted.IntentVersion)
 	require.Equal(t, snapshot.State, persisted.State)

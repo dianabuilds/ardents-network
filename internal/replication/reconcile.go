@@ -75,7 +75,7 @@ func (s *Service) ReconcileOnce(ctx context.Context) error {
 	}
 	var due []availability.RepairRecord
 	for _, intent := range intents {
-		result, err := s.cfg.Data.ReconcileAvailability(intent.RootManifestID, now)
+		result, err := s.cfg.Data.ReconcileAvailability(intent.RootManifestOwner, intent.RootManifestID, now)
 		if err != nil {
 			failures = append(failures, err)
 			continue
@@ -84,7 +84,7 @@ func (s *Service) ReconcileOnce(ctx context.Context) error {
 	}
 	failures = append(failures, s.runDueRepairs(ctx, due)...)
 	for _, intent := range intents {
-		result, err := s.cfg.Data.ReconcileAvailability(intent.RootManifestID, s.cfg.Now().UTC())
+		result, err := s.cfg.Data.ReconcileAvailability(intent.RootManifestOwner, intent.RootManifestID, s.cfg.Now().UTC())
 		if err != nil {
 			failures = append(failures, err)
 			continue

@@ -79,3 +79,9 @@ _Avoid_: Generated RPC client, daemon
 **Content Reference**:
 An immutable identifier for content whose payload identity is verified by the Node.
 _Avoid_: File path, mutable object ID
+
+**Content Object**:
+A Principal-owned metadata record identified by its Owner Principal and an Object ID that is local to that owner.
+
+**Content Manifest**:
+A Principal-owned graph of content references identified by its Owner Principal and a Manifest ID that is local to that owner.
