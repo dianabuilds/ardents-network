@@ -47,7 +47,7 @@ func (i *interceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 			attempt := identityaccess.Attempt{SessionSecret: secret, Binding: binding}
 			return next(context.WithValue(ctx, attemptContextKey{}, attempt), request)
 		}
-		action, resource, err := deriveAttempt(binding, procedure, rule.action, request.Any())
+		action, resource, err := deriveAttempt(binding, procedure, rule.action, rule.resourceKind, request.Any())
 		if err != nil {
 			i.recordDenied(ctx, rule, identityaccess.DenialResourceTarget)
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid identity operation"))
@@ -128,7 +128,7 @@ func attemptFromContext(ctx context.Context) (identityaccess.Attempt, bool) {
 	return attempt, ok
 }
 
-func deriveAttempt(binding identityaccess.AuthenticationBinding, procedure, registeredAction string, message any) (identityaccess.Action, identityaccess.ResourceRef, error) {
+func deriveAttempt(binding identityaccess.AuthenticationBinding, procedure, registeredAction, registeredResourceKind string, message any) (identityaccess.Action, identityaccess.ResourceRef, error) {
 	var kind, id string
 	switch procedure {
 	case ardentsv1connect.IdentityServiceEnrollPrincipalProcedure:
@@ -195,6 +195,9 @@ func deriveAttempt(binding identityaccess.AuthenticationBinding, procedure, regi
 		}
 		kind, id = "principal", r.ApplicationPrincipalId
 	default:
+		return "", identityaccess.ResourceRef{}, identityaccess.ErrPermissionDenied
+	}
+	if kind != registeredResourceKind {
 		return "", identityaccess.ResourceRef{}, identityaccess.ErrPermissionDenied
 	}
 	parsed, err := identityaccess.ParseAction(identityprotocol.Interface_INTERFACE_OPERATOR, registeredAction)

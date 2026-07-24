@@ -2,29 +2,18 @@ package cli
 
 import (
 	"io"
+	"strings"
 
+	"ardents/internal/cli/catalog"
 	"ardents/internal/cli/output"
 )
-
-var groupDescriptions = map[string]string{
-	"node":        "node lifecycle, runtime status and events",
-	"network":     "network, discovery, peers and routes",
-	"workload":    "workload lifecycle and hosted services",
-	"data":        "objects, blobs, manifests and transfers",
-	"diagnostics": "health, failures, pending operations and events",
-	"config":      "effective operator configuration and atomic reload",
-	"identity":    "Principal custody, enrollment, sessions and access administration",
-	"shell":       "interactive terminal session over the current operator context",
-	"tui":         "optional fullscreen operator dashboard",
-	"version":     "binary version, commit, build date and target platform",
-}
 
 func renderRootUsage(w io.Writer) {
 	output.Writeln(w, "Usage: ardentsctl [global flags] <command> [subcommand]")
 	output.Writeln(w)
 	output.Writeln(w, "Commands:")
-	for _, name := range []string{"node", "network", "workload", "data", "diagnostics", "config", "identity", "shell", "tui", "version"} {
-		output.Writef(w, "  %-11s %s\n", name, groupDescriptions[name])
+	for _, group := range catalog.Groups() {
+		output.Writef(w, "  %-11s %s\n", group.Name, group.Summary)
 	}
 	output.Writeln(w)
 	output.Writeln(w, "Global flags:")
@@ -50,7 +39,30 @@ func renderRootUsage(w io.Writer) {
 	}
 }
 
-func renderGroupUsage(w io.Writer, group string) {
-	output.Writef(w, "Usage: ardentsctl [global flags] %s <subcommand>\n", group)
-	output.Writeln(w, groupDescriptions[group])
+func renderCatalogueUsage(w io.Writer, prefix []string) bool {
+	specs := catalog.Under(prefix)
+	if len(specs) == 0 {
+		return false
+	}
+	if spec, exact := catalog.Exact(prefix); exact && len(specs) == 1 {
+		output.Writef(w, "Usage: ardentsctl [global flags] %s\n", spec.Usage)
+		output.Writeln(w, spec.Summary)
+		output.Writef(w, "Output: %s\n", spec.Output)
+		return true
+	}
+	output.Writef(w, "Usage: ardentsctl [global flags] %s <subcommand>\n", strings.Join(prefix, " "))
+	if len(prefix) == 1 {
+		for _, group := range catalog.Groups() {
+			if group.Name == prefix[0] {
+				output.Writeln(w, group.Summary)
+				break
+			}
+		}
+	}
+	output.Writeln(w)
+	output.Writeln(w, "Commands:")
+	for _, spec := range specs {
+		output.Writef(w, "  %-72s %s\n", spec.Usage, spec.Summary)
+	}
+	return true
 }

@@ -83,6 +83,20 @@ ardentsctl frobnicate node
 	require.Contains(t, err.Error(), "unknown ardentsctl command")
 }
 
+func TestValidateUsesProductionCatalogueForNestedHelp(t *testing.T) {
+	root := canonicalFixture(t)
+	writeFixture(t, root, "README.md", `
+`+"```sh"+`
+ardentsctl network resolve help
+ardentsctl data objects help
+ardentsctl identity application-ticket help
+ardentsctl shell help
+`+"```"+`
+`)
+
+	require.NoError(t, Validate(root))
+}
+
 func TestValidateAllowsExplicitLegacyRejection(t *testing.T) {
 	root := canonicalFixture(t)
 	writeFixture(t, root, "docs/operations/operator-access-contract.md", `

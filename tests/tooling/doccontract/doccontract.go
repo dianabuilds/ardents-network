@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"ardents/internal/cli/catalog"
 )
 
 var requiredContractDocuments = []string{
@@ -45,27 +47,6 @@ var (
 	remediationBeforeMechanismPattern = regexp.MustCompile(`(?i)\b(?:delete|migrat\w*|remov\w*|replac\w*|retir\w*)\b`)
 	separateObservabilityPattern      = regexp.MustCompile(`(?i)\bscrape\s+token\b.*\bis\s+not\s+the\s+control\s+API\b`)
 )
-
-var commandGrammar = map[string]map[string]struct{}{
-	"config":      words("show", "reload"),
-	"data":        words("inventory", "objects", "blobs", "manifests", "transfers"),
-	"diagnostics": words("snapshot", "health", "pending", "explain", "events"),
-	"identity":    words("principal", "device", "enroll", "grant", "delegation", "application-ticket", "login", "status", "logout"),
-	"network":     words("status", "discovery", "presence", "peers", "routes", "resolve", "records"),
-	"node":        words("start", "stop", "status", "runtime", "features", "events"),
-	"shell":       nil,
-	"tui":         nil,
-	"version":     nil,
-	"workload":    words("list", "get", "register", "start", "stop", "restart", "services", "service", "publication"),
-}
-
-var identityCommandGrammar = map[string]map[string]struct{}{
-	"application-ticket": words("issue"),
-	"delegation":         words("issue", "revoke", "import-revocation"),
-	"device":             words("create", "show", "revoke"),
-	"grant":              words("list", "issue", "revoke"),
-	"principal":          words("create", "import", "show"),
-}
 
 var (
 	goCommands            = words("build", "clean", "env", "fmt", "generate", "install", "list", "mod", "run", "test", "tool", "version", "vet")
@@ -281,38 +262,26 @@ func validateArdentsctlCommand(relativePath string, line string, tokens []string
 	}
 
 	command := cleanToken(tokens[commandIndex])
-	subcommands, known := commandGrammar[command]
-	if !known {
+	if command == "help" {
+		return nil
+	}
+	args := make([]string, 0, len(tokens)-commandIndex)
+	for _, token := range tokens[commandIndex:] {
+		args = append(args, cleanToken(token))
+	}
+	if _, known := catalog.Match(args); known {
+		return nil
+	}
+	if args[len(args)-1] == "help" && len(catalog.Under(args[:len(args)-1])) > 0 {
+		return nil
+	}
+	if len(catalog.Under(args)) > 0 {
+		return nil
+	}
+	if len(catalog.Under([]string{command})) == 0 {
 		return []error{fmt.Errorf("%s: unknown ardentsctl command %q", relativePath, command)}
 	}
-	if subcommands == nil {
-		return nil
-	}
-	subcommandIndex := nextCommandToken(tokens, commandIndex+1)
-	if subcommandIndex < 0 {
-		return nil
-	}
-	subcommand := cleanToken(tokens[subcommandIndex])
-	if _, ok := subcommands[subcommand]; !ok {
-		return []error{fmt.Errorf("%s: unknown ardentsctl %s subcommand %q", relativePath, command, subcommand)}
-	}
-	if command != "identity" {
-		return nil
-	}
-
-	nested := identityCommandGrammar[subcommand]
-	if nested == nil {
-		return nil
-	}
-	nestedIndex := nextCommandToken(tokens, subcommandIndex+1)
-	if nestedIndex < 0 {
-		return nil
-	}
-	nestedCommand := cleanToken(tokens[nestedIndex])
-	if _, ok := nested[nestedCommand]; !ok {
-		return []error{fmt.Errorf("%s: unknown ardentsctl identity %s subcommand %q in %q", relativePath, subcommand, nestedCommand, strings.TrimSpace(line))}
-	}
-	return nil
+	return []error{fmt.Errorf("%s: unknown ardentsctl command path in %q", relativePath, strings.TrimSpace(line))}
 }
 
 func words(values ...string) map[string]struct{} {

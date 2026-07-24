@@ -30,10 +30,18 @@ func TestIdentityProcedureCatalogueIsExactAndClosed(t *testing.T) {
 	for procedure, rule := range procedureCatalog {
 		if rule.class == accessProtected {
 			require.NotEmpty(t, rule.action, procedure)
+			require.NotEmpty(t, rule.resourceKind, procedure)
 		}
+		exported, known := RuleForProcedure(procedure)
+		require.True(t, known, procedure)
+		require.Equal(t, rule.action, exported.Action, procedure)
+		require.Equal(t, rule.resourceKind, exported.ResourceKind, procedure)
+		require.Equal(t, rule.mutating, exported.Mutating, procedure)
 	}
 	require.Equal(t, accessSessionLifecycle, procedureCatalog[ardentsv1connect.IdentityServiceEndSessionProcedure].class)
 	_, known := procedureCatalog["/ardents.v1.IdentityService/Unknown"]
+	require.False(t, known)
+	_, known = RuleForProcedure("/ardents.v1.IdentityService/Unknown")
 	require.False(t, known)
 }
 

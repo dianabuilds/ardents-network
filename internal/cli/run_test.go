@@ -144,6 +144,88 @@ func TestRunReturnsFailureWhenOutputCannotBeWritten(t *testing.T) {
 	}
 }
 
+func TestHelpTreeIsReachableWithoutOperatorContext(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want []string
+	}{
+		{name: "root", args: []string{"--help"}, want: []string{"node", "network", "identity", "shell", "tui"}},
+		{name: "node group", args: []string{"node", "help"}, want: []string{"node start", "node events [--limit N]", "requires global --watch"}},
+		{name: "network group", args: []string{"network", "help"}, want: []string{"network resolve record --subject ID --kind KIND", "network records import --file FILE"}},
+		{name: "workload group", args: []string{"workload", "help"}, want: []string{"workload register --file FILE", "workload publication ID"}},
+		{name: "data group", args: []string{"data", "help"}, want: []string{"data objects publish --file FILE", "data transfers get ID"}},
+		{name: "diagnostics group", args: []string{"diagnostics", "help"}, want: []string{"diagnostics explain --scope S [--resource-id ID]"}},
+		{name: "config group", args: []string{"config", "help"}, want: []string{"config show", "config reload"}},
+		{name: "identity group", args: []string{"identity", "help"}, want: []string{"identity principal create [--signer-file PATH]", "identity grant issue"}},
+		{name: "shell leaf", args: []string{"shell", "help"}, want: []string{"Usage:", "shell"}},
+		{name: "tui leaf", args: []string{"tui", "help"}, want: []string{"Usage:", "tui"}},
+		{name: "network resolve nested", args: []string{"network", "resolve", "help"}, want: []string{"network resolve record --subject ID --kind KIND", "network resolve service --service ID"}},
+		{name: "network records nested", args: []string{"network", "records", "help"}, want: []string{"network records list", "network records import --file FILE"}},
+		{name: "data objects nested", args: []string{"data", "objects", "help"}, want: []string{"data objects list", "data objects get ID", "data objects publish --file FILE"}},
+		{name: "data blobs nested", args: []string{"data", "blobs", "help"}, want: []string{"data blobs retain --id ID --expires-at TIME"}},
+		{name: "data manifests nested", args: []string{"data", "manifests", "help"}, want: []string{"data manifests publish --file FILE"}},
+		{name: "data transfers nested", args: []string{"data", "transfers", "help"}, want: []string{"data transfers list", "data transfers get ID"}},
+		{name: "identity principal nested", args: []string{"identity", "principal", "help"}, want: []string{"identity principal import --from-file PATH"}},
+		{name: "identity device nested", args: []string{"identity", "device", "help"}, want: []string{"identity device revoke --principal ID --device-id ID"}},
+		{name: "identity grant nested", args: []string{"identity", "grant", "help"}, want: []string{"identity grant list --subject ID", "identity grant revoke --subject ID --grant-id ID"}},
+		{name: "identity delegation nested", args: []string{"identity", "delegation", "help"}, want: []string{"identity delegation import-revocation --revocation-file PATH"}},
+		{name: "identity application ticket nested", args: []string{"identity", "application-ticket", "help"}, want: []string{"identity application-ticket issue --principal ID"}},
+	}
+
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			code := runWithIO(context.Background(), testCase.args, strings.NewReader(""), &stdout, &stderr)
+			if code != 0 {
+				t.Fatalf("runWithIO(%v) code = %d, stderr = %q", testCase.args, code, stderr.String())
+			}
+			for _, want := range testCase.want {
+				if !strings.Contains(stdout.String(), want) {
+					t.Fatalf("runWithIO(%v) output missing %q:\n%s", testCase.args, want, stdout.String())
+				}
+			}
+		})
+	}
+}
+
+func TestUnknownHelpEntryFailsClosedBeforeContextResolution(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := runWithIO(context.Background(), []string{"network", "unknown", "help"}, strings.NewReader(""), &stdout, &stderr)
+	if code != 2 || !strings.Contains(stderr.String(), `unknown help path "network unknown"`) {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, stdout.String(), stderr.String())
+	}
+}
+
+func TestHelpTokenRemainsAvailableAsLeafPositionalArgument(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	if code, handled := renderHelpIfRequested([]string{"workload", "get", "help"}, &stdout, &stderr); handled || code != 0 {
+		t.Fatalf("leaf positional argument was intercepted: handled=%t code=%d stderr=%q", handled, code, stderr.String())
+	}
+}
+
+func TestIncompleteNestedCommandFailsClosedWithoutContextResolution(t *testing.T) {
+	for _, args := range [][]string{{"network", "resolve"}, {"data", "objects"}, {"identity", "grant"}} {
+		var stdout, stderr bytes.Buffer
+		code := runWithIO(context.Background(), args, strings.NewReader(""), &stdout, &stderr)
+		if code != 2 || !strings.Contains(stderr.String(), "Commands:") {
+			t.Fatalf("runWithIO(%v) code=%d stdout=%q stderr=%q", args, code, stdout.String(), stderr.String())
+		}
+	}
+}
+
+func TestHumanOnlyCommandsRejectJSONBeforeContextResolution(t *testing.T) {
+	for _, commandName := range []string{"shell", "tui"} {
+		t.Run(commandName, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			code := runWithIO(context.Background(), []string{"--output", "json", commandName}, strings.NewReader(""), &stdout, &stderr)
+			if code != 2 || !strings.Contains(stderr.String(), commandName+" does not support --output=json") {
+				t.Fatalf("code = %d, stdout = %q, stderr = %q", code, stdout.String(), stderr.String())
+			}
+		})
+	}
+}
+
 func TestProtectedCommandRejectsLegacyBearerEnvironment(t *testing.T) {
 	t.Setenv("ARDENTS_ADDR", "unix:///run/ardents/operator.sock")
 	t.Setenv("ARDENTS_SIGNER_FILE", "")

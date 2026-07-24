@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
+	"ardents/internal/cli/catalog"
 	configurationcmd "ardents/internal/cli/configuration"
 	contentcmd "ardents/internal/cli/content"
 	diagnosticscmd "ardents/internal/cli/diagnostics"
@@ -24,6 +26,10 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 
 func runWithIO(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	renderer := output.NewRenderer(stdout, stderr, false)
+	if err := catalog.ClosedError(); err != nil {
+		output.Writef(renderer.Err, "ardentsctl: invalid command catalogue: %v\n", err)
+		return 1
+	}
 	cfg, rest, help, err := parseRoot(args, renderer.Err)
 	if err != nil {
 		output.Writef(renderer.Err, "ardentsctl: %v\n", err)
@@ -44,14 +50,27 @@ func runWithIO(ctx context.Context, args []string, stdin io.Reader, stdout, stde
 }
 
 func dispatch(ctx context.Context, cfg configurationcmd.Config, rest []string, stdin io.Reader, stdout, stderr io.Writer) int {
-	if code, ok := renderGroupIfRequested(rest, stdout); ok {
+	if code, ok := renderHelpIfRequested(rest, stdout, stderr); ok {
 		return code
 	}
 	if rest[0] == "help" {
 		renderRootUsage(stdout)
 		return 0
 	}
-	if rest[0] == "version" {
+	spec, known := catalog.Match(rest)
+	if !known {
+		if catalog.HasDescendant(rest) {
+			renderCatalogueUsage(stderr, rest)
+			return 2
+		}
+		output.Writef(stderr, "ardentsctl: unknown command path %q\n", strings.Join(rest, " "))
+		return 2
+	}
+	if spec.Output == catalog.OutputHumanOnly && cfg.Output == "json" {
+		output.Writef(stderr, "ardentsctl: %s does not support --output=json\n", spec.Path[0])
+		return 2
+	}
+	if spec.ID == "version" {
 		return renderVersion(stdout, cfg.Output)
 	}
 	if rest[0] == "identity" && (len(rest) == 1 || rest[1] == "help" || rest[1] == "principal" || rest[1] == "device" && (len(rest) < 3 || rest[2] != "revoke")) {
@@ -116,28 +135,30 @@ func (a *app) dispatch(ctx context.Context, rest []string) int {
 	return code
 }
 
-func renderGroupIfRequested(rest []string, stdout io.Writer) (int, bool) {
-	if len(rest) == 0 {
+func renderHelpIfRequested(rest []string, stdout, stderr io.Writer) (int, bool) {
+	if len(rest) == 0 || rest[len(rest)-1] != "help" {
+		return 0, false
+	}
+	prefix := rest[:len(rest)-1]
+	if len(prefix) == 0 {
 		renderRootUsage(stdout)
 		return 0, true
 	}
-	if !isGroup(rest[0]) {
+	if catalog.HasDescendant(prefix) {
+		renderCatalogueUsage(stdout, prefix)
+		return 0, true
+	}
+	if _, exact := catalog.Exact(prefix); exact {
+		if len(prefix) == 1 {
+			renderCatalogueUsage(stdout, prefix)
+			return 0, true
+		}
+		// "help" can be a valid positional resource identifier. Only command
+		// tree prefixes and the singleton interactive leaves own help syntax.
 		return 0, false
 	}
-	if len(rest) > 1 && rest[1] != "help" {
-		return 0, false
-	}
-	renderGroupUsage(stdout, rest[0])
-	return 0, true
-}
-
-func isGroup(name string) bool {
-	switch name {
-	case "node", "network", "workload", "data", "diagnostics", "config", "identity", "tui":
-		return true
-	default:
-		return false
-	}
+	output.Writef(stderr, "ardentsctl: unknown help path %q\n", strings.Join(prefix, " "))
+	return 2, true
 }
 
 func parseRoot(args []string, stderr io.Writer) (configurationcmd.Config, []string, bool, error) {

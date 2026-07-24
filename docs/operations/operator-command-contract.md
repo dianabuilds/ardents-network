@@ -1,0 +1,101 @@
+# Operator Command Contract
+
+Status: OCS-01 implementation contract. This is not release qualification or a
+production-readiness claim.
+
+## Authoritative Metadata
+
+`internal/cli/catalog` is the single production-owned metadata catalogue for
+the Operator CLI. It contains exactly 68 leaf commands. The catalogue describes
+stable command ID and path, complete help syntax, Operator procedure, action,
+resource kind, mutation class, output family, SSH stream-local support and
+evidence owner. It does not dispatch commands; the existing domain command
+packages continue to own parsing and execution.
+
+Protected procedure values are generated Connect procedure constants. Contract
+tests join every protected entry to the exact server-owned rules in
+`internal/localapi/auth` or `internal/localapi/identity`. The same tests reject
+unknown procedures, sibling actions and resource/mutation mismatches. Parser
+contract tests probe every catalogue entry through its production parser.
+Runtime dispatch rejects a command path which is not present in the closed
+catalogue before resolving a Principal context or constructing a client.
+
+Offline Principal/device/Delegation custody commands use stable
+`offline.identity.*` procedure identifiers and declare neither an RPC/action
+nor SSH. Local and interactive surfaces use `local.*` and `interactive.*`
+identifiers. SSH support means only the existing OpenSSH stream-local forward
+to the protected Operator Unix socket; it does not describe TCP or a general
+remote transport.
+
+## Help Contract
+
+Root, group and nested help are projections of the closed catalogue. Help is
+selected before context resolution, signer loading and client construction, so
+the following forms require no Node, socket, SSH endpoint or network:
+
+```text
+ardentsctl --help
+ardentsctl node help
+ardentsctl network help
+ardentsctl network resolve help
+ardentsctl network records help
+ardentsctl data help
+ardentsctl data objects help
+ardentsctl data blobs help
+ardentsctl data manifests help
+ardentsctl data transfers help
+ardentsctl identity help
+ardentsctl identity principal help
+ardentsctl identity device help
+ardentsctl identity grant help
+ardentsctl identity delegation help
+ardentsctl identity application-ticket help
+ardentsctl shell help
+ardentsctl tui help
+```
+
+Unknown help prefixes fail with usage exit code 2. Group and nested output
+lists full leaf syntax, including required positional arguments and flags.
+
+## Output Families
+
+The catalogue freezes the existing successful payload families; it introduces
+no envelope:
+
+| Family | Identifier | Contract |
+|---|---|---|
+| protobuf JSON | `proto-json-v1` | deterministic `protojson` with `EmitUnpopulated`; existing protobuf field names and payload remain authoritative |
+| CLI-owned JSON | `cli-json-v1` | existing `encoding/json` projections for Identity and local build identity |
+| JSON Lines | `json-lines-v1` | one JSON document per Node event or watch update/notice |
+| interactive human | `human-only` | shell and TUI reject JSON before context, signer or transport work |
+
+Network status, diagnostics health and transfer list/get declare
+`json-lines-v1` as their conditional watch output while retaining
+`proto-json-v1` for one-shot JSON. API failures continue to use the common JSON
+error object on stderr and exit 1.
+
+## Fail-Closed Checks
+
+The catalogue validator and contract tests reject an empty catalogue,
+duplicate IDs or paths, missing/unreachable leaves, unknown output/access
+values, missing evidence/help metadata, invalid offline transport claims,
+incomplete protected metadata, procedures absent from the generated Operator
+surface, and server action/resource/mutation divergence. Human-only commands
+cannot be classified as protected JSON-capable commands.
+
+## OCS-02–OCS-05 Handoff
+
+OCS-01 provides metadata and contract gates only. The following procedure-level
+smoke slices remain separate:
+
+| Slice | Catalogue IDs now available | Count | Remaining evidence |
+|---|---|---:|---|
+| OCS-02 | `node.*`, `network.*`, `diagnostics.*` | 20 | real CLI/Operator RPC process smoke, response/outcome assertions and environment evidence |
+| OCS-03 | `workload.*` | 9 | workload/hosted-service lifecycle smoke; Docker-dependent rows stay explicitly tagged |
+| OCS-04 | `data.*` | 17 | Object/Blob/Manifest, retention and transfer lifecycle smoke, including asynchronous progress truth |
+| OCS-05 | `identity.device.revoke`, `identity.enroll`, `identity.grant.*`, `identity.delegation.import-revocation`, `identity.application-ticket.issue`, `identity.login`, `identity.status`, `identity.logout` | 10 | protected Identity administration/session process smoke, retry/reconciliation and redaction evidence |
+
+The remaining 12 entries are owned by OCS-01 contract evidence: two
+configuration commands, seven offline custody commands, shell, TUI and version.
+No OCS-02–OCS-05 process smoke or rejected-mutation outcome change is included
+in OCS-01.
