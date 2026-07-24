@@ -32,3 +32,9 @@ Follow `docs/operations/upgrade-migration.md` for image/config changes and
 `docs/operations/incident-response.md` for containment and recovery. Preserve diagnostics
 and state before intervention. Cleanup is an explicit deployment action and
 must never be used as an automatic repair policy.
+
+Compose rollout state is recorded in
+`<StateDir>/rollout-transaction.json`. Do not delete or edit this file during an
+incident. Re-run `upgrade` or `rollback` with the same project and state
+directory to resume compensation to the recorded fallback digest; after
+compensation completes, run the intended rollout command again.

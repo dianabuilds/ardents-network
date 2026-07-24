@@ -180,7 +180,7 @@ try {
     if ($positiveBackups.Count -ne 3) { throw "positive upgrade produced $($positiveBackups.Count) verified backups, want 3" }
     $firstRecreate = -1
     for ($index = 0; $index -lt $global:FakeDockerEvents.Count; $index++) {
-        if ($global:FakeDockerEvents[$index] -match "compose .* up .*--force-recreate") { $firstRecreate = $index; break }
+        if ($global:FakeDockerEvents[$index] -match "compose .* create .*--force-recreate") { $firstRecreate = $index; break }
     }
     if ($firstRecreate -lt 0) { throw "positive upgrade never reached node recreation" }
     $archivesBeforeMutation = @($global:FakeDockerEvents[0..($firstRecreate - 1)] | Where-Object { $_ -match "^run .* -czf " })
@@ -204,7 +204,7 @@ try {
     if ([string]::IsNullOrWhiteSpace($failure) -or $failure -notmatch "backup") {
         throw "injected backup failure did not fail the upgrade with a backup error"
     }
-    if ($global:FakeDockerEvents | Where-Object { $_ -match "compose .* up .*--force-recreate" }) {
+    if ($global:FakeDockerEvents | Where-Object { $_ -match "compose .* create .*--force-recreate" }) {
         throw "upgrade recreated a node after an injected backup failure"
     }
     if ($negativeBackups.Count -ne 1 -or $negativeBackups[0].node -ne "seed") {

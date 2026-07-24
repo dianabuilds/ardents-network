@@ -15,6 +15,7 @@ $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Set-Location $root
 $statePath = [IO.Path]::GetFullPath($StateDir)
 $manifestPath = Join-Path $statePath "cluster.json"
+$journalPath = Join-Path $statePath "rollout-transaction.json"
 $repositoryComposeFile = Join-Path $root "deploy/docker/compose/docker-compose.multinode.yml"
 $bundleComposeFile = Join-Path $root "docker/docker-compose.multinode.yml"
 $composeFile = if (Test-Path -LiteralPath $repositoryComposeFile) {
@@ -35,6 +36,35 @@ $operatorDevice = "/operator-identity/device.json"
 function Invoke-Compose([string[]]$Arguments) {
     & docker @composePrefix @Arguments
     if ($LASTEXITCODE -ne 0) { throw "docker compose failed: $($Arguments -join ' ')" }
+}
+
+function Write-AtomicJson([string]$Path, [object]$Value) {
+    $temporaryPath = "$Path.new"
+    $json = $Value | ConvertTo-Json -Depth 8
+    $encoding = [Text.UTF8Encoding]::new($false)
+    $stream = [IO.File]::Open(
+        $temporaryPath,
+        [IO.FileMode]::Create,
+        [IO.FileAccess]::Write,
+        [IO.FileShare]::None
+    )
+    try {
+        $writer = [IO.StreamWriter]::new($stream, $encoding)
+        try {
+            $writer.Write($json)
+            $writer.Flush()
+            $stream.Flush($true)
+        } finally {
+            $writer.Dispose()
+        }
+    } finally {
+        $stream.Dispose()
+    }
+    Move-Item -Force -LiteralPath $temporaryPath -Destination $Path
+}
+
+function Write-RolloutJournal([object]$Journal) {
+    Write-AtomicJson $journalPath $Journal
 }
 
 function Invoke-ArdJson([string]$Service, [string[]]$Arguments) {
@@ -71,7 +101,8 @@ function Set-Image([string]$Image) {
 }
 
 function Recreate-Service([string]$Service) {
-    Invoke-Compose @("up", "-d", "--no-deps", "--force-recreate", $Service)
+    Invoke-Compose @("create", "--no-deps", "--force-recreate", $Service)
+    Invoke-Compose @("start", $Service)
     Wait-Service $Service
 }
 
@@ -87,29 +118,114 @@ function Write-ClusterManifest([string]$Image, [string]$PreviousImage) {
         services = $services
         updated_at = [DateTime]::UtcNow.ToString("O")
     }
-    $updated | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 -LiteralPath $manifestPath
+    Write-AtomicJson $manifestPath $updated
 }
 
-function Invoke-RollingChange([string]$TargetImage, [string]$FallbackImage) {
+function New-RolloutJournal([string]$RolloutAction, [string]$TargetImage, [string]$FallbackImage) {
+    return [pscustomobject][ordered]@{
+        schema = "ardents.rollout-transaction/v1"
+        project = $Project
+        action = $RolloutAction
+        phase = "applying"
+        target_image = $TargetImage
+        fallback_image = $FallbackImage
+        started_at = [DateTime]::UtcNow.ToString("O")
+        failure = ""
+        nodes = @()
+    }
+}
+
+function Get-JournalNode([object]$Journal, [string]$Service) {
+    return $Journal.nodes | Where-Object { $_.service -eq $Service } | Select-Object -First 1
+}
+
+function Invoke-RolloutCompensation([object]$Journal) {
+    $Journal.phase = "compensating"
+    Write-RolloutJournal $Journal
+    Set-Image ([string]$Journal.fallback_image)
+    $rollbackErrors = [Collections.Generic.List[string]]::new()
+    $compensationNodes = @($Journal.nodes)
+    [array]::Reverse($compensationNodes)
+    foreach ($node in $compensationNodes) {
+        if ($node.status -eq "restored") { continue }
+        $node.status = "compensating"
+        $node.last_error = ""
+        Write-RolloutJournal $Journal
+        try {
+            Recreate-Service ([string]$node.service)
+            $node.status = "restored"
+            $node.restored_at = [DateTime]::UtcNow.ToString("O")
+            Write-RolloutJournal $Journal
+        } catch {
+            $message = "$($node.service): $($_.Exception.Message)"
+            $node.status = "rollback_failed"
+            $node.last_error = $message
+            Write-RolloutJournal $Journal
+            $rollbackErrors.Add($message)
+        }
+    }
+    if ($rollbackErrors.Count -eq 0) {
+        Remove-Item -Force -LiteralPath $journalPath
+    }
+    return @($rollbackErrors)
+}
+
+function Resume-PendingRollout {
+    if (-not (Test-Path -LiteralPath $journalPath)) { return $false }
+    $journal = Get-Content -Raw -LiteralPath $journalPath | ConvertFrom-Json
+    if ($journal.schema -ne "ardents.rollout-transaction/v1" -or $journal.project -ne $Project) {
+        throw "rollout transaction journal does not match the supported schema and project: $journalPath"
+    }
+    if ($journal.phase -eq "ready_to_commit" -and [string]$cluster.image -eq [string]$journal.target_image) {
+        Remove-Item -Force -LiteralPath $journalPath
+        Write-Host "Completed rollout transaction was already committed; cleared its journal"
+        return $true
+    }
+    $rollbackErrors = @(Invoke-RolloutCompensation $journal)
+    if ($rollbackErrors.Count -gt 0) {
+        throw "pending rollout compensation remains incomplete: $($rollbackErrors -join '; ')"
+    }
+    Write-Host "Pending rollout compensation completed at fallback image $($journal.fallback_image)"
+    return $true
+}
+
+function Invoke-RollingChange(
+    [string]$RolloutAction,
+    [string]$TargetImage,
+    [string]$FallbackImage
+) {
     Set-Image $TargetImage
-    $changed = [Collections.Generic.List[string]]::new()
+    $journal = New-RolloutJournal $RolloutAction $TargetImage $FallbackImage
+    Write-RolloutJournal $journal
     try {
         foreach ($service in $services) {
+            $journal.nodes += [pscustomobject][ordered]@{
+                service = $service
+                status = "mutation_pending"
+                last_error = ""
+                journaled_at = [DateTime]::UtcNow.ToString("O")
+                applied_at = ""
+                restored_at = ""
+            }
+            Write-RolloutJournal $journal
             Recreate-Service $service
-            $changed.Add($service)
+            $node = Get-JournalNode $journal $service
+            $node.status = "applied"
+            $node.applied_at = [DateTime]::UtcNow.ToString("O")
+            Write-RolloutJournal $journal
         }
     } catch {
         $changeError = $_.Exception.Message
-        Set-Image $FallbackImage
-        $rollbackErrors = [Collections.Generic.List[string]]::new()
-        foreach ($service in $changed) {
-            try { Recreate-Service $service } catch { $rollbackErrors.Add($_.Exception.Message) }
-        }
+        $journal.failure = $changeError
+        Write-RolloutJournal $journal
+        $rollbackErrors = @(Invoke-RolloutCompensation $journal)
         if ($rollbackErrors.Count -gt 0) {
             throw "image change failed: $changeError; automatic rollback also failed: $($rollbackErrors -join '; ')"
         }
         throw "image change failed and changed nodes were rolled back: $changeError"
     }
+    $journal.phase = "ready_to_commit"
+    Write-RolloutJournal $journal
 }
 
 function New-UpgradeBackups {
@@ -119,18 +235,22 @@ function New-UpgradeBackups {
     }
 }
 
+if (Resume-PendingRollout) { return }
+
 if ($Action -eq "upgrade") {
     if ([string]::IsNullOrWhiteSpace($NewImage)) { throw "-NewImage is required for upgrade" }
     $previous = [string]$cluster.image
     New-UpgradeBackups
-    Invoke-RollingChange $NewImage $previous
+    Invoke-RollingChange $Action $NewImage $previous
     Write-ClusterManifest $NewImage $previous
+    Remove-Item -Force -LiteralPath $journalPath
     Write-Host "Rolling upgrade accepted: $previous -> $NewImage"
 } else {
     $previous = [string]$cluster.previous_image
     if ([string]::IsNullOrWhiteSpace($previous)) { throw "cluster manifest has no previous image for rollback" }
     $current = [string]$cluster.image
-    Invoke-RollingChange $previous $current
+    Invoke-RollingChange $Action $previous $current
     Write-ClusterManifest $previous $current
+    Remove-Item -Force -LiteralPath $journalPath
     Write-Host "Rolling rollback accepted: $current -> $previous"
 }

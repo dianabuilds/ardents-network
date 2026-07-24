@@ -92,10 +92,13 @@ startup; orchestration never weakens privacy or accepts a degraded quick start.
   archive, then prove the same Ardents identity, Waku peer identity, and
   retained-state readiness before acceptance.
 - `upgrade`: take a verified backup, record the previous immutable image
-  reference, recreate nodes one at a time, and require readiness after each.
-- `rollback`: restore the previous image reference; restore data only when the
-  documented migration contract says the newer version changed persisted
-  format. Failed rollback remains operator-visible.
+  reference, durably journal each Node before recreation, recreate Nodes one at
+  a time, and require readiness after each. Any subsequent failure compensates
+  the current and all previously changed Nodes to one fallback digest.
+- `rollback`: restore the previous image reference through the same durable
+  transaction journal; restore data only when the documented migration contract
+  says the newer version changed persisted format. An interrupted or failed
+  compensation remains operator-visible and is resumed before another rollout.
 
 Live copying of `ardents.db`, Waku Store, or blob state is unsupported. Detailed
 consistency groups and failure rules remain canonical in

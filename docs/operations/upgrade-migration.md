@@ -41,13 +41,19 @@ immutable image digest until rollback acceptance.
    platform support.
 2. Stop one Node and create a verified consistency-group backup.
 3. Record the current image digest and cluster manifest.
-4. Recreate that Node with the new immutable image.
-5. Require protected local API readiness, canonical network readiness,
+4. Durably add that Node to the rollout transaction journal before recreation.
+5. Recreate and start that Node with the new immutable image.
+6. If recreation, start, or readiness fails, compensate the current Node and
+   every previously changed Node to the journal's single fallback digest.
+7. Require protected local API readiness, canonical network readiness,
    Diagnostics, and retained Principal/grant state before continuing.
-6. Repeat for remaining Nodes; do not upgrade all bootstrap Nodes together.
-7. Retain backups and the previous image until the observation window closes.
+8. Repeat for remaining Nodes; do not upgrade all bootstrap Nodes together.
+9. Retain backups and the previous image until the observation window closes.
 
 `./ardents.ps1 upgrade` automates the supported single-host Compose sequence.
+If a compensation attempt is interrupted, the next `upgrade` or `rollback`
+invocation with the same project and state directory finishes that compensation
+and exits; run the intended command again only after the journal is cleared.
 For a native systemd Node, use the release's documented
 `scripts/install/linux.sh upgrade` command when present.
 
