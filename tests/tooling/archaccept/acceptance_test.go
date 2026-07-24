@@ -2,6 +2,7 @@ package archaccept
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -140,6 +141,69 @@ func TestValidateRejectsAgentToolingOutsideAllowlist(t *testing.T) {
 	require.ErrorContains(t, err, ".agents/other/unsafe.md")
 }
 
+func TestValidateRejectsBroadenedAgentToolingAllowlist(t *testing.T) {
+	root := t.TempDir()
+	writeAgentToolingFixture(t, root)
+
+	err := errors.Join(validateAgentTooling(root, AgentToolingPolicy{
+		Root:            ".agents",
+		AllowedPrefixes: []string{".agents/"},
+	})...)
+	require.ErrorContains(t, err, "agent tooling policy must allow exactly")
+}
+
+func TestValidateRejectsMissingAgentToolingLock(t *testing.T) {
+	root := t.TempDir()
+	writeAgentToolingFixture(t, root)
+	require.NoError(t, os.Remove(filepath.Join(root, "skills-lock.json")))
+
+	err := errors.Join(validateAgentTooling(root, AgentToolingPolicy{
+		Root:            requiredAgentToolingRoot,
+		AllowedPrefixes: []string{requiredAgentToolingPrefix},
+	})...)
+	require.ErrorContains(t, err, "agent tooling skills lock")
+}
+
+func TestValidateRejectsMissingAgentToolingGovernanceDecision(t *testing.T) {
+	root := t.TempDir()
+	writeAgentToolingFixture(t, root)
+
+	err := errors.Join(validateAgentTooling(root, AgentToolingPolicy{
+		Root:            requiredAgentToolingRoot,
+		AllowedPrefixes: []string{requiredAgentToolingPrefix},
+	})...)
+	require.ErrorContains(t, err, "agent tooling governance decision")
+}
+
+func TestValidateRejectsAgentToolingContentDrift(t *testing.T) {
+	root := t.TempDir()
+	writeAgentToolingFixture(t, root)
+	writeFixture(t, root, requiredAgentToolingDecision, "# ADR 0010: Repository-local agent tooling\n\n- Status: Accepted\n\nKeep `.agents/skills/security-audit/` pinned by `skills-lock.json`.\n")
+	writeFixture(t, root, ".agents/skills/security-audit/SKILL.md", "changed without updating the lock\n")
+
+	err := errors.Join(validateAgentTooling(root, AgentToolingPolicy{
+		Root:            requiredAgentToolingRoot,
+		AllowedPrefixes: []string{requiredAgentToolingPrefix},
+	})...)
+	require.ErrorContains(t, err, "content hash does not match")
+}
+
+func TestValidateRejectsAgentToolingSymlink(t *testing.T) {
+	root := t.TempDir()
+	writeAgentToolingFixture(t, root)
+	writeFixture(t, root, requiredAgentToolingDecision, "# ADR 0010: Repository-local agent tooling\n\n- Status: Accepted\n\nKeep `.agents/skills/security-audit/` pinned by `skills-lock.json`.\n")
+	link := filepath.Join(root, ".agents", "skills", "security-audit", "linked.md")
+	if err := os.Symlink("SKILL.md", link); err != nil {
+		t.Skipf("symlink creation is unavailable: %v", err)
+	}
+
+	err := errors.Join(validateAgentTooling(root, AgentToolingPolicy{
+		Root:            requiredAgentToolingRoot,
+		AllowedPrefixes: []string{requiredAgentToolingPrefix},
+	})...)
+	require.ErrorContains(t, err, "unsupported non-regular skill entry")
+}
+
 func TestValidateRejectsPrivateProtocolBoundaryDrift(t *testing.T) {
 	root := architectureFixture(t)
 	writeFixture(t, root, "internal/messaging/protocol/private.pb.go", "// source: elsewhere/private.proto\npackage messagingprotocol\n")
@@ -192,7 +256,8 @@ func architectureFixture(t *testing.T) string {
 	writeFixture(t, root, "internal/small/doc.go", "// Package small owns the fixture. It does not own unrelated fixture behavior.\npackage small\n")
 	writeFixture(t, root, "internal/small/owner.go", "package small\n")
 	writeFixture(t, root, "internal/legacy/owner.go", "package legacy\n")
-	writeFixture(t, root, ".agents/skills/security-audit/SKILL.md", "approved\n")
+	writeAgentToolingFixture(t, root)
+	writeFixture(t, root, requiredAgentToolingDecision, "# ADR 0010: Repository-local agent tooling\n\n- Status: Accepted\n\nKeep `.agents/skills/security-audit/` pinned by `skills-lock.json`.\n")
 	writeFixture(t, root, "api/operator.proto", "syntax = \"proto3\";\nservice NodeService {}\n")
 	writeFixture(t, root, "api/application.proto", "syntax = \"proto3\";\nservice ContentService {}\n")
 	writeFixture(t, root, "internal/localapi/server_base.go", "package localapi\nfunc compose() { register(NewNodeServiceHandler()) }\n")
@@ -259,6 +324,23 @@ option go_package = "ardents/internal/messaging/protocol;messagingprotocol";
 	require.NoError(t, err)
 	writeFixture(t, root, "docs/engineering/architecture-acceptance.json", string(raw))
 	return root
+}
+
+func writeAgentToolingFixture(t *testing.T, root string) {
+	t.Helper()
+
+	writeFixture(t, root, ".agents/skills/security-audit/SKILL.md", "approved\n")
+	writeFixture(t, root, "skills-lock.json", `{
+  "version": 1,
+  "skills": {
+    "security-audit": {
+      "source": "cloudflare/security-audit-skill",
+      "sourceType": "github",
+      "skillPath": "skills/security-audit/SKILL.md",
+      "computedHash": "869eb59b69d5eaf138cd6600b5579ae41a6f7c9d703a00736b349cf564a09fd6"
+    }
+  }
+}`)
 }
 
 func writeFixture(t *testing.T, root string, relativePath string, contents string) {

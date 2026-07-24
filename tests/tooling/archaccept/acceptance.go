@@ -1,6 +1,7 @@
 package archaccept
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -26,6 +27,13 @@ var legacyPrivateProtocolPaths = []string{
 	"internal/messaging/private.proto",
 	"internal/messaging/private.pb.go",
 }
+
+const requiredAgentToolingRoot = ".agents"
+const requiredAgentToolingPrefix = ".agents/skills/security-audit/"
+const requiredAgentSkillName = "security-audit"
+const requiredAgentSkillSource = "cloudflare/security-audit-skill"
+const requiredAgentSkillPath = "skills/security-audit/SKILL.md"
+const requiredAgentToolingDecision = "docs/adr/0010-repository-local-agent-tooling.md"
 
 var requiredProductionRoots = []string{"api", "cmd", "internal", "scripts", "sdk/go"}
 
@@ -73,6 +81,18 @@ type CompositionTarget struct {
 type AgentToolingPolicy struct {
 	Root            string   `json:"root"`
 	AllowedPrefixes []string `json:"allowed_prefixes"`
+}
+
+type agentSkillsLock struct {
+	Version int                       `json:"version"`
+	Skills  map[string]agentSkillLock `json:"skills"`
+}
+
+type agentSkillLock struct {
+	Source       string `json:"source"`
+	SourceType   string `json:"sourceType"`
+	SkillPath    string `json:"skillPath"`
+	ComputedHash string `json:"computedHash"`
 }
 
 type PrivateProtocolPolicy struct {
@@ -481,8 +501,19 @@ func servicesInProto(path string) ([]string, error) {
 }
 
 func validateAgentTooling(root string, policy AgentToolingPolicy) []error {
-	if policy.Root == "" || len(policy.AllowedPrefixes) == 0 {
-		return []error{errors.New("agent tooling policy is incomplete")}
+	if policy.Root != requiredAgentToolingRoot ||
+		!slices.Equal(policy.AllowedPrefixes, []string{requiredAgentToolingPrefix}) {
+		return []error{fmt.Errorf(
+			"agent tooling policy must allow exactly %s under %s",
+			requiredAgentToolingPrefix,
+			requiredAgentToolingRoot,
+		)}
+	}
+	if err := validateAgentToolingLock(root); err != nil {
+		return []error{err}
+	}
+	if err := validateAgentToolingDecision(root); err != nil {
+		return []error{err}
 	}
 	agentRoot := filepath.Join(root, filepath.FromSlash(policy.Root))
 	var violations []error
@@ -514,6 +545,123 @@ func validateAgentTooling(root string, policy AgentToolingPolicy) []error {
 		violations = append(violations, fmt.Errorf("agent tooling root %s: %w", policy.Root, err))
 	}
 	return violations
+}
+
+var sha256Pattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
+
+func validateAgentToolingLock(root string) error {
+	lockPath := filepath.Join(root, "skills-lock.json")
+	raw, err := os.ReadFile(lockPath)
+	if err != nil {
+		return fmt.Errorf("agent tooling skills lock: %w", err)
+	}
+	var lock agentSkillsLock
+	if err := json.Unmarshal(raw, &lock); err != nil {
+		return fmt.Errorf("agent tooling skills lock: decode: %w", err)
+	}
+	if lock.Version != 1 || len(lock.Skills) != 1 {
+		return errors.New("agent tooling skills lock must contain exactly the security-audit skill at version 1")
+	}
+	skill, ok := lock.Skills[requiredAgentSkillName]
+	if !ok ||
+		skill.Source != requiredAgentSkillSource ||
+		skill.SourceType != "github" ||
+		skill.SkillPath != requiredAgentSkillPath ||
+		!sha256Pattern.MatchString(skill.ComputedHash) {
+		return errors.New("agent tooling skills lock does not match the approved security-audit source")
+	}
+	skillFile := filepath.Join(root, requiredAgentToolingRoot, filepath.FromSlash(skill.SkillPath))
+	if _, err := os.Stat(skillFile); err != nil {
+		return fmt.Errorf("agent tooling skills lock target: %w", err)
+	}
+	skillDirectory := filepath.Dir(skillFile)
+	computedHash, err := computeSkillFolderHash(skillDirectory)
+	if err != nil {
+		return fmt.Errorf("agent tooling skills lock content: %w", err)
+	}
+	if computedHash != skill.ComputedHash {
+		return fmt.Errorf(
+			"agent tooling skills lock content hash does not match: lock has %s, tree has %s",
+			skill.ComputedHash,
+			computedHash,
+		)
+	}
+	return nil
+}
+
+func computeSkillFolderHash(skillDirectory string) (string, error) {
+	// Match the skills CLI project-lock algorithm for its ASCII paths: order
+	// slash-normalized paths like localeCompare, then hash each path and raw bytes.
+	type skillFile struct {
+		path     string
+		relative string
+	}
+	var files []skillFile
+	err := filepath.WalkDir(skillDirectory, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() {
+			if path != skillDirectory && (entry.Name() == ".git" || entry.Name() == "node_modules") {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		if !entry.Type().IsRegular() {
+			return fmt.Errorf("unsupported non-regular skill entry %s", filepath.ToSlash(path))
+		}
+		relativePath, err := filepath.Rel(skillDirectory, path)
+		if err != nil {
+			return err
+		}
+		files = append(files, skillFile{
+			path:     path,
+			relative: filepath.ToSlash(relativePath),
+		})
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	slices.SortFunc(files, func(left skillFile, right skillFile) int {
+		leftFolded := strings.ToLower(left.relative)
+		rightFolded := strings.ToLower(right.relative)
+		if comparison := strings.Compare(leftFolded, rightFolded); comparison != 0 {
+			return comparison
+		}
+		return strings.Compare(left.relative, right.relative)
+	})
+	hash := sha256.New()
+	for _, file := range files {
+		contents, err := os.ReadFile(file.path)
+		if err != nil {
+			return "", err
+		}
+		_, _ = hash.Write([]byte(file.relative))
+		_, _ = hash.Write(contents)
+	}
+	return fmt.Sprintf("%x", hash.Sum(nil)), nil
+}
+
+func validateAgentToolingDecision(root string) error {
+	path := filepath.Join(root, filepath.FromSlash(requiredAgentToolingDecision))
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("agent tooling governance decision: %w", err)
+	}
+	decision := string(raw)
+	requiredStatements := []string{
+		"# ADR 0010:",
+		"- Status: Accepted",
+		"`.agents/skills/security-audit/`",
+		"`skills-lock.json`",
+	}
+	for _, statement := range requiredStatements {
+		if !strings.Contains(decision, statement) {
+			return fmt.Errorf("agent tooling governance decision is missing %q", statement)
+		}
+	}
+	return nil
 }
 
 func validatePrivateProtocol(root string, policy PrivateProtocolPolicy) []error {

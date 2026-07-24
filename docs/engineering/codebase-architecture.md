@@ -356,6 +356,9 @@ tracked `.gocache`, `.idea`, `var`, `boundary`, `proto`, `docker`, or
 metadata, build caches and runtime data are local artifacts, not source-tree
 architecture. Inactive fork snapshots are removed; active dependencies are
 resolved through `go.mod` unless a separately approved fork is actually used.
+This narrow development-tooling exception is governed by
+[ADR 0010](../adr/0010-repository-local-agent-tooling.md) and pinned by
+`skills-lock.json`; it is not shipped as Ardents runtime material.
 
 `docs/engineering/architecture-acceptance.json` is the machine-readable source
 for file ceilings, package-documentation exceptions, generated service
