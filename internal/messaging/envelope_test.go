@@ -217,6 +217,8 @@ func TestClassLifetimeRejectionDoesNotConsumeReplayAdmission(t *testing.T) {
 
 func TestInvalidSignaturesCannotExhaustReplayCapacity(t *testing.T) {
 	fixture := newEnvelopeFixture(t, true)
+	fixture.receiverResolved.Permissions = identityapi.CapabilitySubscribe
+	require.Zero(t, fixture.receiverResolved.Permissions&identityapi.CapabilityPublish)
 	ledger, err := NewDurableReplayLedger(fixture.replayPath, fixture.replayKey, 1, 1)
 	require.NoError(t, err)
 
