@@ -164,17 +164,36 @@ func ensureFirstOperatorBootstrapTicket(ctx context.Context, service *identityac
 	if strings.TrimSpace(socketPath) == "" {
 		return fmt.Errorf("protected Operator socket path is required")
 	}
-	ticket, err := service.IssueBootstrapTicket(ctx, node)
-	if errors.Is(err, identityaccess.ErrConflict) {
-		return nil
+	path := filepath.Join(filepath.Dir(socketPath), "operator-bootstrap-ticket")
+	if raw, found, err := storage.ReadStrictPrivateFileBounded(path, 128); err != nil {
+		return fmt.Errorf("read protected Bootstrap Ticket")
+	} else if found {
+		var ticket identityaccess.BootstrapTicket
+		decoded, decodeErr := base64.RawURLEncoding.DecodeString(string(raw))
+		if decodeErr == nil && len(decoded) == len(ticket) &&
+			base64.RawURLEncoding.EncodeToString(decoded) == string(raw) {
+			copy(ticket[:], decoded)
+			if err := service.MarkBootstrapTicketDelivered(ctx, node, ticket); err == nil {
+				return nil
+			} else if !errors.Is(err, identityaccess.ErrUnauthenticated) {
+				return err
+			}
+		}
 	}
+
+	ticket, err := service.PrepareBootstrapTicket(ctx, node)
 	if err != nil {
+		if errors.Is(err, identityaccess.ErrConflict) {
+			return nil
+		}
 		return err
 	}
-	path := filepath.Join(filepath.Dir(socketPath), "operator-bootstrap-ticket")
 	encoded := []byte(base64.RawURLEncoding.EncodeToString(ticket[:]))
 	if err := storage.AtomicWritePrivateFile(path, encoded); err != nil {
 		return fmt.Errorf("write protected Bootstrap Ticket")
+	}
+	if err := service.MarkBootstrapTicketDelivered(ctx, node, ticket); err != nil {
+		return fmt.Errorf("acknowledge protected Bootstrap Ticket delivery: %w", err)
 	}
 	slog.Info("first Operator bootstrap ticket ready", "path", path)
 	return nil

@@ -48,6 +48,10 @@ _Avoid_: Creating the Principal, global account registration
 A Node-local, single-use secret authorizing only initial enrollment; it is not a Principal or a normal session.
 _Avoid_: User, Operator identity, permanent API token
 
+**Ticket Handoff**:
+The lifecycle that keeps exactly one one-time enrollment secret authoritative while moving it from durable issuance to protected delivery and eventual use.
+_Avoid_: Token cache, plaintext recovery, permanent credential
+
 **Realm Attestation**:
 A purpose-scoped signed claim about a Principal, such as membership or vendor identity; it does not authenticate a call or grant Node authority by itself.
 _Avoid_: Access Grant, certificate login, global account

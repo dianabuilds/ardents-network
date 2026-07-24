@@ -115,7 +115,9 @@ No Session secret or ID, challenge, nonce, proof, raw Bootstrap/Application
 Enrollment Ticket, private key, or unredacted Delegation is persisted in
 `identity-access.db`, diagnostics, logs, or snapshots. In-memory Session lookup
 uses an HMAC. Only ticket digests are durable, because one-use and restart
-semantics require them. Signed/public Credentials and authority artifacts,
+semantics require them. Issued/delivered/acknowledged handoff state contains no
+plaintext; retry atomically replaces an unacknowledged digest, leaving at most
+one valid ticket. Signed/public Credentials and authority artifacts,
 enrollment/revocation metadata, command idempotency, and redacted audit-outbox
 facts are durable.
 

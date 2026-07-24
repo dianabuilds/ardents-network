@@ -69,6 +69,56 @@ func TestBootstrapTicketExpiryAndReissue(t *testing.T) {
 	require.NoError(t, consumeBootstrapForTest(f.ctx, f.database, f.nodeID, second, f.clock.Now()))
 }
 
+func TestBootstrapTicketRetryReissuesUndeliveredAuthority(t *testing.T) {
+	f := newServiceFixture(t)
+	f.service.bootstrapEnabled = true
+
+	first, err := f.service.PrepareBootstrapTicket(f.ctx, f.nodeID)
+	require.NoError(t, err)
+	second, err := f.service.PrepareBootstrapTicket(f.ctx, f.nodeID)
+	require.NoError(t, err)
+	require.NotEqual(t, first, second)
+
+	require.NoError(t, f.service.MarkBootstrapTicketDelivered(f.ctx, f.nodeID, second))
+	require.ErrorIs(t, consumeBootstrapForTest(f.ctx, f.database, f.nodeID, first, f.clock.Now()), ErrUnauthenticated)
+	require.NoError(t, consumeBootstrapForTest(f.ctx, f.database, f.nodeID, second, f.clock.Now()))
+}
+
+func TestBootstrapTicketDeliveredStateSurvivesRestartAndCanBeReacknowledged(t *testing.T) {
+	f := newServiceFixture(t)
+	f.service.bootstrapEnabled = true
+	ticket, err := f.service.PrepareBootstrapTicket(f.ctx, f.nodeID)
+	require.NoError(t, err)
+	require.NoError(t, f.service.MarkBootstrapTicketDelivered(f.ctx, f.nodeID, ticket))
+
+	restarted, err := NewService(Config{
+		Database: f.database, Clock: f.clock, Entropy: &sequentialEntropy{next: 90},
+		EnableBootstrapTickets: true,
+	})
+	require.NoError(t, err)
+	require.NoError(t, restarted.MarkBootstrapTicketDelivered(f.ctx, f.nodeID, ticket))
+	require.NoError(t, consumeBootstrapForTest(f.ctx, f.database, f.nodeID, ticket, f.clock.Now()))
+}
+
+func TestBootstrapTicketDeliveryCommitFailureCanBeReissued(t *testing.T) {
+	f := newServiceFixture(t)
+	f.service.bootstrapEnabled = true
+	wrapped := &failUpdateNumberDatabase{Database: f.database, failAt: 2}
+	f.service.grants.database = wrapped
+
+	first, err := f.service.PrepareBootstrapTicket(f.ctx, f.nodeID)
+	require.NoError(t, err)
+	require.ErrorIs(t, f.service.MarkBootstrapTicketDelivered(f.ctx, f.nodeID, first), ErrUnavailable)
+
+	f.service.grants.database = f.database
+	second, err := f.service.PrepareBootstrapTicket(f.ctx, f.nodeID)
+	require.NoError(t, err)
+	require.NotEqual(t, first, second)
+	require.NoError(t, f.service.MarkBootstrapTicketDelivered(f.ctx, f.nodeID, second))
+	require.ErrorIs(t, consumeBootstrapForTest(f.ctx, f.database, f.nodeID, first, f.clock.Now()), ErrUnauthenticated)
+	require.NoError(t, consumeBootstrapForTest(f.ctx, f.database, f.nodeID, second, f.clock.Now()))
+}
+
 func TestBootstrapTicketCannotBeIssuedAfterPrincipalEnrollment(t *testing.T) {
 	f := newServiceFixture(t)
 	f.service.bootstrapEnabled = true

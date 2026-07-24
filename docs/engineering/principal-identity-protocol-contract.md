@@ -95,6 +95,15 @@ exact boundary, and storage failure all fail closed. A transaction failure
 leaves the ticket active and writes no partial enrollment or grant; the
 ephemeral EnrollmentProof must be re-created after restart or a failed attempt.
 
+Ticket delivery follows ADR 0005. Durable records distinguish issued,
+delivered, and acknowledged authority; expiry is derived from the deadline.
+Retrying an unacknowledged issue atomically replaces its digest and invalidates
+the older plaintext. Bootstrap marks delivery only after the protected file is
+atomically installed. Application issuance marks delivery after the audit
+outbox flush and before returning the RPC result. Audit, transport, and client
+file failures are therefore retried by safe reissue without retaining plaintext
+or waiting for the old ticket to expire.
+
 The public SDK exposes a distinct typed `EnrollmentSigner` and an opaque,
 redacted `ApplicationEnrollmentTicket`. It validates the pinned Node, exact
 Application Audience, Unix profile, peer binding, purpose, timestamps,
@@ -148,12 +157,14 @@ revocation checks. Unknown actions/resources, corrupt records, and storage
 failures fail closed.
 
 The `identity-bootstrap-tickets-v1` bucket stores first-enrollment ticket
-records. Issuance returns one 32-byte secret once and persists only a
-domain-separated SHA-256 digest, canonical issue/expiry seconds, and an
-active/consumed state. There is at most one active ticket per unenrolled Node;
-it expires after exactly ten minutes and may then be replaced. Consumption
-commits with proof-bound enrollment and first-grant issuance in one transaction;
-replay and concurrent consumption fail after one winner.
+records. Issuance prepares one 32-byte secret and persists only a
+domain-separated SHA-256 digest, canonical issue/expiry seconds, and
+issued/delivered/acknowledged state. There is at most one authoritative digest
+per unenrolled Node. A protected-file retry may replace an unacknowledged digest
+before or after its exact ten-minute expiry; replacement atomically invalidates
+the older plaintext. Consumption acknowledges the delivered ticket and commits
+with proof-bound enrollment and first-grant issuance in one transaction; replay
+and concurrent consumption fail after one winner.
 
 For first Principal enrollment, the adapter supplies the current trusted
 `AuthenticationBinding` separately; it must equal the proof Challenge binding

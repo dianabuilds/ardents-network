@@ -2,8 +2,10 @@ package access
 
 import (
 	"bytes"
+	"context"
 	"crypto/ed25519"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -27,6 +29,25 @@ type applicationEnrollmentFixture struct {
 	appDevice    ed25519.PrivateKey
 	appPrincipal string
 	credential   []byte
+}
+
+type failUpdateNumberDatabase struct {
+	storage.Database
+	calls  atomic.Int32
+	failAt int32
+}
+
+func (d *failUpdateNumberDatabase) Update(ctx context.Context, callback func(storage.WriteTransaction) error) error {
+	call := d.calls.Add(1)
+	return d.Database.Update(ctx, func(tx storage.WriteTransaction) error {
+		if err := callback(tx); err != nil {
+			return err
+		}
+		if call == d.failAt {
+			return errors.New("injected delivery-state commit rollback")
+		}
+		return nil
+	})
 }
 
 func newApplicationEnrollmentFixture(t *testing.T) *applicationEnrollmentFixture {
@@ -127,6 +148,110 @@ func TestApplicationEnrollmentTicketIssueRejectsZeroEntropy(t *testing.T) {
 		Principal: f.appPrincipal, Actions: []Action{"application.content.get"},
 	})
 	require.ErrorIs(t, err, ErrInternal)
+}
+
+func TestApplicationEnrollmentTicketAuditFailureCanBeSafelyReissued(t *testing.T) {
+	f := newApplicationEnrollmentFixture(t)
+	first := bytes.Repeat([]byte{0x81}, identitycontract.ApplicationEnrollmentTicketBytes)
+	second := bytes.Repeat([]byte{0x82}, identitycontract.ApplicationEnrollmentTicketBytes)
+	f.service.entropy = bytes.NewReader(append(append([]byte(nil), first...), second...))
+	f.service.audit = failingDurableAudit{}
+	request := IssueApplicationEnrollmentTicketRequest{
+		Attempt:   f.command("application-ticket-retry-1", "identity.principal.enroll", "principal", f.appPrincipal).Attempt,
+		Principal: f.appPrincipal, Actions: []Action{"application.content.get"},
+	}
+
+	_, err := f.service.IssueApplicationEnrollmentTicket(f.ctx, request)
+	require.ErrorIs(t, err, ErrUnavailable)
+	require.NoError(t, f.database.View(f.ctx, func(tx storage.ReadTransaction) error {
+		for _, migration := range StorageSchema().Migrations {
+			for _, bucket := range migration.Buckets {
+				require.NoError(t, tx.ForEach(bucket, func(_, raw []byte) error {
+					require.NotContains(t, raw, first)
+					return nil
+				}))
+			}
+		}
+		return nil
+	}))
+
+	f.service.audit = recordingDurableAudit{events: &[]AuditEvent{}}
+	request.Attempt = f.command("application-ticket-retry-2", "identity.principal.enroll", "principal", f.appPrincipal).Attempt
+	result, err := f.service.IssueApplicationEnrollmentTicket(f.ctx, request)
+	require.NoError(t, err)
+	require.Equal(t, ApplicationEnrollmentTicket(second), result.Ticket)
+	f.service.entropy = &sequentialEntropy{next: 0x90}
+
+	var stale ApplicationEnrollmentTicket
+	copy(stale[:], first)
+	_, err = f.service.EnrollApplication(f.ctx, f.appBinding, f.enrollmentRequest(stale))
+	require.ErrorIs(t, err, ErrUnauthenticated)
+	_, err = f.service.EnrollApplication(f.ctx, f.appBinding, f.enrollmentRequest(result.Ticket))
+	require.NoError(t, err)
+}
+
+func TestApplicationEnrollmentTicketRPCResponseLossRetryInvalidatesDeliveredTicket(t *testing.T) {
+	f := newApplicationEnrollmentFixture(t)
+	first := f.issueTicket()
+	// The service completed and marked delivery, but the simulated RPC layer
+	// drops the response before the client can retain it.
+	second := f.issueTicket()
+	require.NotEqual(t, first.Ticket, second.Ticket)
+
+	_, err := f.service.EnrollApplication(f.ctx, f.appBinding, f.enrollmentRequest(first.Ticket))
+	require.ErrorIs(t, err, ErrUnauthenticated)
+	_, err = f.service.EnrollApplication(f.ctx, f.appBinding, f.enrollmentRequest(second.Ticket))
+	require.NoError(t, err)
+}
+
+func TestApplicationEnrollmentTicketDeliveryCommitFailureCanBeReissued(t *testing.T) {
+	f := newApplicationEnrollmentFixture(t)
+	first := bytes.Repeat([]byte{0x83}, identitycontract.ApplicationEnrollmentTicketBytes)
+	second := bytes.Repeat([]byte{0x84}, identitycontract.ApplicationEnrollmentTicketBytes)
+	f.service.entropy = bytes.NewReader(append(append([]byte(nil), first...), second...))
+	wrapped := &failUpdateNumberDatabase{Database: f.database, failAt: 3}
+	f.service.grants.database = wrapped
+	request := IssueApplicationEnrollmentTicketRequest{
+		Attempt:   f.command("application-ticket-delivery-1", "identity.principal.enroll", "principal", f.appPrincipal).Attempt,
+		Principal: f.appPrincipal, Actions: []Action{"application.content.get"},
+	}
+
+	_, err := f.service.IssueApplicationEnrollmentTicket(f.ctx, request)
+	require.ErrorIs(t, err, ErrUnavailable)
+
+	f.service.grants.database = f.database
+	request.Attempt = f.command("application-ticket-delivery-2", "identity.principal.enroll", "principal", f.appPrincipal).Attempt
+	result, err := f.service.IssueApplicationEnrollmentTicket(f.ctx, request)
+	require.NoError(t, err)
+	require.Equal(t, ApplicationEnrollmentTicket(second), result.Ticket)
+}
+
+func TestApplicationEnrollmentTicketIssuedStateSurvivesRestartAndReissues(t *testing.T) {
+	f := newApplicationEnrollmentFixture(t)
+	first := bytes.Repeat([]byte{0x85}, identitycontract.ApplicationEnrollmentTicketBytes)
+	f.service.entropy = bytes.NewReader(first)
+	f.service.audit = failingDurableAudit{}
+	request := IssueApplicationEnrollmentTicketRequest{
+		Attempt:   f.command("application-ticket-restart-1", "identity.principal.enroll", "principal", f.appPrincipal).Attempt,
+		Principal: f.appPrincipal, Actions: []Action{"application.content.get"},
+	}
+	_, err := f.service.IssueApplicationEnrollmentTicket(f.ctx, request)
+	require.ErrorIs(t, err, ErrUnavailable)
+
+	restarted, err := NewService(Config{
+		Database: f.database, Clock: f.clock, Entropy: &sequentialEntropy{next: 0xa0},
+		Audit:                       recordingDurableAudit{events: &[]AuditEvent{}},
+		EnableApplicationEnrollment: true, GrantIssuer: testAccessGrantIssuer{key: f.node},
+	})
+	require.NoError(t, err)
+	f.service = restarted
+	f.secret = f.sessionSecret()
+	second := bytes.Repeat([]byte{0x86}, identitycontract.ApplicationEnrollmentTicketBytes)
+	f.service.entropy = bytes.NewReader(second)
+	request.Attempt = f.command("application-ticket-restart-2", "identity.principal.enroll", "principal", f.appPrincipal).Attempt
+	result, err := f.service.IssueApplicationEnrollmentTicket(f.ctx, request)
+	require.NoError(t, err)
+	require.Equal(t, ApplicationEnrollmentTicket(second), result.Ticket)
 }
 
 func TestApplicationEnrollmentAtomicallyPersistsCredentialAndGrant(t *testing.T) {

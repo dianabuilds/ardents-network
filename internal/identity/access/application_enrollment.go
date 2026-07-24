@@ -21,9 +21,13 @@ import (
 )
 
 const (
-	applicationEnrollmentTicketRecordVersion byte = 1
-	applicationEnrollmentTicketActive        byte = 1
-	applicationEnrollmentTicketConsumed      byte = 2
+	applicationEnrollmentTicketRecordVersion  byte = 2
+	applicationEnrollmentTicketLegacyVersion  byte = 1
+	applicationEnrollmentTicketIssued         byte = 1
+	applicationEnrollmentTicketDelivered      byte = 2
+	applicationEnrollmentTicketAcknowledged   byte = 3
+	applicationEnrollmentTicketLegacyActive   byte = 1
+	applicationEnrollmentTicketLegacyConsumed byte = 2
 )
 
 var (
@@ -115,7 +119,7 @@ func (s *Service) IssueApplicationEnrollmentTicket(ctx context.Context, request 
 		return ApplicationEnrollmentTicketResult{}, ErrInternal
 	}
 	record := applicationEnrollmentTicketRecord{
-		state: applicationEnrollmentTicketActive, issuedAt: now,
+		state: applicationEnrollmentTicketIssued, issuedAt: now,
 		expiresAt: now.Add(identitycontract.ApplicationEnrollmentTicketLifetime), principal: request.Principal,
 		actions: append([]Action(nil), request.Actions...),
 		digest:  applicationEnrollmentTicketDigest(ticket),
@@ -126,7 +130,7 @@ func (s *Service) IssueApplicationEnrollmentTicket(ctx context.Context, request 
 	}
 	key := applicationEnrollmentTicketKey(request.Attempt.Binding.Audience.Node, request.Principal)
 	s.deviceMu.Lock()
-	defer s.deviceMu.Unlock()
+	auditReason := "application_enrollment_ticket_issued"
 	err = s.grants.database.Update(ctx, func(tx storage.WriteTransaction) error {
 		transactionNow := canonicalNow(s.clock.Now())
 		if transactionNow.Before(record.issuedAt) || !transactionNow.Before(record.expiresAt) {
@@ -148,15 +152,17 @@ func (s *Service) IssueApplicationEnrollmentTicket(ctx context.Context, request 
 			if decodeErr != nil {
 				return decodeErr
 			}
-			if prior.state == applicationEnrollmentTicketConsumed || transactionNow.Before(prior.expiresAt) {
+			if prior.state == applicationEnrollmentTicketAcknowledged {
 				return ErrConflict
 			}
+			auditReason = "application_enrollment_ticket_reissued"
 		}
 		if err := tx.Put(applicationEnrollmentTicketsBucket, key, raw); err != nil {
 			return err
 		}
-		return audit.commitSuccessfulMutation(tx, "application_enrollment_ticket_issued")
+		return audit.commitSuccessfulMutation(tx, auditReason)
 	})
+	s.deviceMu.Unlock()
 	if err != nil {
 		return ApplicationEnrollmentTicketResult{}, mapAdminError(err)
 	}
@@ -164,7 +170,45 @@ func (s *Service) IssueApplicationEnrollmentTicket(ctx context.Context, request 
 	if err := s.flushAuditOutbox(ctx); err != nil {
 		return ApplicationEnrollmentTicketResult{}, ErrUnavailable
 	}
+	if err := s.markApplicationEnrollmentTicketDelivered(ctx, request.Attempt.Binding.Audience.Node, request.Principal, ticket); err != nil {
+		return ApplicationEnrollmentTicketResult{}, err
+	}
 	return ApplicationEnrollmentTicketResult{Ticket: ticket, ExpiresAt: record.expiresAt}, nil
+}
+
+func (s *Service) markApplicationEnrollmentTicketDelivered(ctx context.Context, node, principal string, ticket ApplicationEnrollmentTicket) error {
+	now := canonicalNow(s.clock.Now())
+	s.deviceMu.Lock()
+	defer s.deviceMu.Unlock()
+	err := s.grants.database.Update(ctx, func(tx storage.WriteTransaction) error {
+		key := applicationEnrollmentTicketKey(node, principal)
+		raw, found, err := tx.Get(applicationEnrollmentTicketsBucket, key)
+		if err != nil {
+			return err
+		}
+		if !found {
+			return ErrUnauthenticated
+		}
+		record, err := decodeApplicationEnrollmentTicketRecord(raw)
+		if err != nil {
+			return err
+		}
+		actual := applicationEnrollmentTicketDigest(ticket)
+		if record.state == applicationEnrollmentTicketAcknowledged || now.Before(record.issuedAt) ||
+			!now.Before(record.expiresAt) || subtle.ConstantTimeCompare(actual[:], record.digest[:]) != 1 {
+			return ErrUnauthenticated
+		}
+		if record.state == applicationEnrollmentTicketDelivered {
+			return nil
+		}
+		record.state = applicationEnrollmentTicketDelivered
+		delivered, err := encodeApplicationEnrollmentTicketRecord(record)
+		if err != nil {
+			return err
+		}
+		return tx.Put(applicationEnrollmentTicketsBucket, key, delivered)
+	})
+	return mapAdminError(err)
 }
 
 func validateApplicationTicketIssueRequest(request IssueApplicationEnrollmentTicketRequest) error {
@@ -306,7 +350,8 @@ func applicationEnrollmentTicketDigest(ticket ApplicationEnrollmentTicket) [sha2
 }
 
 func encodeApplicationEnrollmentTicketRecord(record applicationEnrollmentTicketRecord) ([]byte, error) {
-	if record.state != applicationEnrollmentTicketActive && record.state != applicationEnrollmentTicketConsumed ||
+	if record.state != applicationEnrollmentTicketIssued && record.state != applicationEnrollmentTicketDelivered &&
+		record.state != applicationEnrollmentTicketAcknowledged ||
 		record.issuedAt.Nanosecond() != 0 || !record.expiresAt.Equal(record.issuedAt.Add(identitycontract.ApplicationEnrollmentTicketLifetime)) ||
 		len(record.principal) > 255 || validateApplicationTicketActions(record.actions) != nil {
 		return nil, errInvalid
@@ -332,7 +377,26 @@ func encodeApplicationEnrollmentTicketRecord(record applicationEnrollmentTicketR
 func decodeApplicationEnrollmentTicketRecord(raw []byte) (applicationEnrollmentTicketRecord, error) {
 	var result applicationEnrollmentTicketRecord
 	const fixed = 4 + 16 + sha256.Size + sha256.Size
-	if len(raw) < fixed || raw[0] != applicationEnrollmentTicketRecordVersion || raw[1] != applicationEnrollmentTicketActive && raw[1] != applicationEnrollmentTicketConsumed {
+	if len(raw) < fixed {
+		return result, fmt.Errorf("Application enrollment ticket record is corrupt")
+	}
+	state := raw[1]
+	switch raw[0] {
+	case applicationEnrollmentTicketRecordVersion:
+		if state != applicationEnrollmentTicketIssued && state != applicationEnrollmentTicketDelivered &&
+			state != applicationEnrollmentTicketAcknowledged {
+			return result, fmt.Errorf("Application enrollment ticket record is corrupt")
+		}
+	case applicationEnrollmentTicketLegacyVersion:
+		switch state {
+		case applicationEnrollmentTicketLegacyActive:
+			state = applicationEnrollmentTicketDelivered
+		case applicationEnrollmentTicketLegacyConsumed:
+			state = applicationEnrollmentTicketAcknowledged
+		default:
+			return result, fmt.Errorf("Application enrollment ticket record is corrupt")
+		}
+	default:
 		return result, fmt.Errorf("Application enrollment ticket record is corrupt")
 	}
 	payload, checksum := raw[:len(raw)-sha256.Size], raw[len(raw)-sha256.Size:]
@@ -369,7 +433,7 @@ func decodeApplicationEnrollmentTicketRecord(raw []byte) (applicationEnrollmentT
 	if offset != len(payload) {
 		return result, fmt.Errorf("Application enrollment ticket record is corrupt")
 	}
-	result.state, result.issuedAt, result.expiresAt, result.principal, result.actions = raw[1], issued, expires, principal, actions
+	result.state, result.issuedAt, result.expiresAt, result.principal, result.actions = state, issued, expires, principal, actions
 	if _, err := encodeApplicationEnrollmentTicketRecord(result); err != nil {
 		return applicationEnrollmentTicketRecord{}, fmt.Errorf("Application enrollment ticket record is corrupt")
 	}
@@ -401,10 +465,10 @@ func consumeApplicationEnrollmentTicket(tx storage.WriteTransaction, node, princ
 		return applicationEnrollmentTicketRecord{}, err
 	}
 	actual := applicationEnrollmentTicketDigest(ticket)
-	if record.state != applicationEnrollmentTicketActive || record.principal != principal || binding.Audience.Node != node || binding.Audience.Interface != identityprotocol.Interface_INTERFACE_APPLICATION || now.Before(record.issuedAt) || !now.Before(record.expiresAt) || subtle.ConstantTimeCompare(actual[:], record.digest[:]) != 1 {
+	if record.state != applicationEnrollmentTicketDelivered || record.principal != principal || binding.Audience.Node != node || binding.Audience.Interface != identityprotocol.Interface_INTERFACE_APPLICATION || now.Before(record.issuedAt) || !now.Before(record.expiresAt) || subtle.ConstantTimeCompare(actual[:], record.digest[:]) != 1 {
 		return applicationEnrollmentTicketRecord{}, ErrUnauthenticated
 	}
-	record.state = applicationEnrollmentTicketConsumed
+	record.state = applicationEnrollmentTicketAcknowledged
 	consumed, err := encodeApplicationEnrollmentTicketRecord(record)
 	if err != nil {
 		return applicationEnrollmentTicketRecord{}, err

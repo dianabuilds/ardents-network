@@ -15,10 +15,14 @@ import (
 )
 
 const (
-	bootstrapTicketRecordVersion byte = 1
-	bootstrapTicketActive        byte = 1
-	bootstrapTicketConsumed      byte = 2
-	bootstrapTicketRecordBytes        = 2 + 8 + 8 + sha256.Size
+	bootstrapTicketRecordVersion  byte = 2
+	bootstrapTicketLegacyVersion  byte = 1
+	bootstrapTicketIssued         byte = 1
+	bootstrapTicketDelivered      byte = 2
+	bootstrapTicketAcknowledged   byte = 3
+	bootstrapTicketLegacyActive   byte = 1
+	bootstrapTicketLegacyConsumed byte = 2
+	bootstrapTicketRecordBytes         = 2 + 8 + 8 + sha256.Size
 )
 
 var bootstrapTicketDomain = []byte("ardents:bootstrap-ticket:v1\x00")
@@ -35,6 +39,19 @@ func (BootstrapTicket) MarshalJSON() ([]byte, error) {
 }
 
 func (s *Service) IssueBootstrapTicket(ctx context.Context, node string) (BootstrapTicket, error) {
+	ticket, err := s.PrepareBootstrapTicket(ctx, node)
+	if err != nil {
+		return BootstrapTicket{}, err
+	}
+	if err := s.MarkBootstrapTicketDelivered(ctx, node, ticket); err != nil {
+		return BootstrapTicket{}, err
+	}
+	return ticket, nil
+}
+
+// PrepareBootstrapTicket durably makes a fresh digest authoritative without
+// claiming that the plaintext has reached its protected file.
+func (s *Service) PrepareBootstrapTicket(ctx context.Context, node string) (BootstrapTicket, error) {
 	if !s.bootstrapEnabled {
 		return BootstrapTicket{}, ErrFeatureDisabled
 	}
@@ -50,7 +67,7 @@ func (s *Service) IssueBootstrapTicket(ctx context.Context, node string) (Bootst
 		return BootstrapTicket{}, ErrInternal
 	}
 	digest := bootstrapTicketDigest(ticket)
-	record := encodeBootstrapTicketRecord(bootstrapTicketActive, now, now.Add(identitycontract.BootstrapTicketLifetime), digest)
+	record := encodeBootstrapTicketRecord(bootstrapTicketIssued, now, now.Add(identitycontract.BootstrapTicketLifetime), digest)
 	err := s.grants.database.Update(ctx, func(tx storage.WriteTransaction) error {
 		enrolled, err := nodeHasEnrollment(tx, node)
 		if err != nil {
@@ -68,9 +85,10 @@ func (s *Service) IssueBootstrapTicket(ctx context.Context, node string) (Bootst
 			if decodeErr != nil {
 				return decodeErr
 			}
-			if state == bootstrapTicketConsumed || now.Before(expires) {
+			if state == bootstrapTicketAcknowledged {
 				return ErrConflict
 			}
+			_ = expires // An expired or unacknowledged ticket is safely replaced.
 		}
 		return tx.Put(bootstrapTicketsBucket, []byte(node), record)
 	})
@@ -78,6 +96,41 @@ func (s *Service) IssueBootstrapTicket(ctx context.Context, node string) (Bootst
 		return BootstrapTicket{}, mapBootstrapStoreError(err)
 	}
 	return ticket, nil
+}
+
+// MarkBootstrapTicketDelivered idempotently binds protected-file delivery to
+// the currently authoritative digest.
+func (s *Service) MarkBootstrapTicketDelivered(ctx context.Context, node string, ticket BootstrapTicket) error {
+	if !s.bootstrapEnabled {
+		return ErrFeatureDisabled
+	}
+	if _, err := identityprincipal.Parse(node); err != nil {
+		return ErrInvalidArgument
+	}
+	now := canonicalNow(s.clock.Now())
+	err := s.grants.database.Update(ctx, func(tx storage.WriteTransaction) error {
+		raw, found, err := tx.Get(bootstrapTicketsBucket, []byte(node))
+		if err != nil {
+			return err
+		}
+		if !found {
+			return ErrUnauthenticated
+		}
+		state, issued, expires, expected, err := decodeBootstrapTicketRecord(raw)
+		if err != nil {
+			return err
+		}
+		actual := bootstrapTicketDigest(ticket)
+		if state == bootstrapTicketAcknowledged || now.Before(issued) || !now.Before(expires) ||
+			subtle.ConstantTimeCompare(actual[:], expected[:]) != 1 {
+			return ErrUnauthenticated
+		}
+		if state == bootstrapTicketDelivered {
+			return nil
+		}
+		return tx.Put(bootstrapTicketsBucket, []byte(node), encodeBootstrapTicketRecord(bootstrapTicketDelivered, issued, expires, expected))
+	})
+	return mapBootstrapStoreError(err)
 }
 
 func consumeBootstrapTicket(tx storage.WriteTransaction, node string, ticket BootstrapTicket, now time.Time) error {
@@ -100,10 +153,10 @@ func consumeBootstrapTicket(tx storage.WriteTransaction, node string, ticket Boo
 		return err
 	}
 	actual := bootstrapTicketDigest(ticket)
-	if state != bootstrapTicketActive || now.Before(issued) || !now.Before(expires) || subtle.ConstantTimeCompare(actual[:], expected[:]) != 1 {
+	if state != bootstrapTicketDelivered || now.Before(issued) || !now.Before(expires) || subtle.ConstantTimeCompare(actual[:], expected[:]) != 1 {
 		return ErrUnauthenticated
 	}
-	return tx.Put(bootstrapTicketsBucket, []byte(node), encodeBootstrapTicketRecord(bootstrapTicketConsumed, issued, expires, expected))
+	return tx.Put(bootstrapTicketsBucket, []byte(node), encodeBootstrapTicketRecord(bootstrapTicketAcknowledged, issued, expires, expected))
 }
 
 func nodeHasEnrollment(tx storage.ReadTransaction, node string) (bool, error) {
@@ -139,7 +192,25 @@ func encodeBootstrapTicketRecord(state byte, issued, expires time.Time, digest [
 
 func decodeBootstrapTicketRecord(record []byte) (byte, time.Time, time.Time, [sha256.Size]byte, error) {
 	var digest [sha256.Size]byte
-	if len(record) != bootstrapTicketRecordBytes || record[0] != bootstrapTicketRecordVersion || record[1] != bootstrapTicketActive && record[1] != bootstrapTicketConsumed {
+	if len(record) != bootstrapTicketRecordBytes {
+		return 0, time.Time{}, time.Time{}, digest, fmt.Errorf("Bootstrap Ticket record is corrupt")
+	}
+	state := record[1]
+	switch record[0] {
+	case bootstrapTicketRecordVersion:
+		if state != bootstrapTicketIssued && state != bootstrapTicketDelivered && state != bootstrapTicketAcknowledged {
+			return 0, time.Time{}, time.Time{}, digest, fmt.Errorf("Bootstrap Ticket record is corrupt")
+		}
+	case bootstrapTicketLegacyVersion:
+		switch state {
+		case bootstrapTicketLegacyActive:
+			state = bootstrapTicketDelivered
+		case bootstrapTicketLegacyConsumed:
+			state = bootstrapTicketAcknowledged
+		default:
+			return 0, time.Time{}, time.Time{}, digest, fmt.Errorf("Bootstrap Ticket record is corrupt")
+		}
+	default:
 		return 0, time.Time{}, time.Time{}, digest, fmt.Errorf("Bootstrap Ticket record is corrupt")
 	}
 	issued := time.Unix(int64(binary.BigEndian.Uint64(record[2:10])), 0).UTC()
@@ -148,7 +219,7 @@ func decodeBootstrapTicketRecord(record []byte) (byte, time.Time, time.Time, [sh
 	if issued.Unix() < identitycontract.LowerTimestampUnix || expires.Unix() >= identitycontract.UpperTimestampUnix || !expires.Equal(issued.Add(identitycontract.BootstrapTicketLifetime)) {
 		return 0, time.Time{}, time.Time{}, digest, fmt.Errorf("Bootstrap Ticket record is corrupt")
 	}
-	return record[1], issued, expires, digest, nil
+	return state, issued, expires, digest, nil
 }
 
 func mapBootstrapStoreError(err error) error {

@@ -195,6 +195,44 @@ func TestApplicationTicketIsWrittenOnlyToProtectedFile(t *testing.T) {
 	require.Contains(t, stdout.String(), `"protected_output":"`)
 }
 
+func TestApplicationTicketFileCreateFailureAllowsSafeRetry(t *testing.T) {
+	node, principal := principalForTest(t, 0x59), principalForTest(t, 0x5a)
+	first := bytes.Repeat([]byte{0xb1}, identitycontract.ApplicationEnrollmentTicketBytes)
+	second := bytes.Repeat([]byte{0xb2}, identitycontract.ApplicationEnrollmentTicketBytes)
+	calls := 0
+	service := &fakeIdentityClient{applicationTicket: func(*protocol.IssueApplicationEnrollmentTicketRequest) *protocol.IssueApplicationEnrollmentTicketResponse {
+		calls++
+		ticket := first
+		if calls > 1 {
+			ticket = second
+		}
+		return &protocol.IssueApplicationEnrollmentTicketResponse{
+			ApplicationEnrollmentTicket: append([]byte(nil), ticket...),
+			ExpiresAt:                   timestamppb.New(administrationNow.Add(identitycontract.ApplicationEnrollmentTicketLifetime)),
+		}
+	}}
+	command, stdout, stderr := newAdministrationCommand(true, "", &administrationSessions{node: node}, service)
+	parent := filepath.Join(t.TempDir(), "blocked-parent")
+	require.NoError(t, os.WriteFile(parent, []byte("not a directory"), 0o600))
+	path := filepath.Join(parent, "application-enrollment-ticket")
+	args := []string{"application-ticket", "issue", "--principal", principal, "--action", "application.content.get", "--out-file", path}
+
+	require.Equal(t, 1, command.Run(context.Background(), args))
+	require.Equal(t, 1, service.mutationCalls)
+	require.NotContains(t, stdout.String(), base64.RawURLEncoding.EncodeToString(first))
+	require.NotContains(t, stderr.String(), base64.RawURLEncoding.EncodeToString(first))
+
+	require.NoError(t, os.Remove(parent))
+	require.NoError(t, storage.EnsurePrivateDir(parent))
+	require.Zero(t, command.Run(context.Background(), args), stderr.String())
+	require.Equal(t, 2, service.mutationCalls)
+	raw, err := os.ReadFile(path)
+	require.NoError(t, err)
+	require.Equal(t, base64.RawURLEncoding.EncodeToString(second), string(raw))
+	require.NotContains(t, stdout.String(), base64.RawURLEncoding.EncodeToString(second))
+	require.NotContains(t, stderr.String(), base64.RawURLEncoding.EncodeToString(second))
+}
+
 func TestApplicationTicketRefusesExistingOutputWithoutOverwrite(t *testing.T) {
 	node, principal := principalForTest(t, 0x53), principalForTest(t, 0x54)
 	service := &fakeIdentityClient{applicationTicket: func(*protocol.IssueApplicationEnrollmentTicketRequest) *protocol.IssueApplicationEnrollmentTicketResponse {
