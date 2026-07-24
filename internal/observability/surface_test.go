@@ -39,7 +39,6 @@ func TestSurfaceProjectsCanonicalReadyMetricsWithoutResourceLabels(t *testing.T)
 		"status":"ready",
 		"state":"ready",
 		"health":"ready",
-		"node":"native-node",
 		"principal":"p1_native_node",
 		"build_identity":"`+buildinfo.Fingerprint()+`"
 	}`, ready.Body.String())
@@ -101,7 +100,6 @@ func TestReadyzBindsCompositeReadinessToNodeAndBuild(t *testing.T) {
 	require.Equal(t, http.StatusOK, ready.Code)
 	var response map[string]any
 	require.NoError(t, json.Unmarshal(ready.Body.Bytes(), &response))
-	require.Equal(t, "native-node", response["node"])
 	require.Equal(t, "p1_native_node", response["principal"])
 	require.Equal(t, buildinfo.Fingerprint(), response["build_identity"])
 }

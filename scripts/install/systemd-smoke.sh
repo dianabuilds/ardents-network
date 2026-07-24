@@ -14,7 +14,7 @@ application_dir=/var/lib/ardents-applications
 application_socket="$application_dir/application.sock"
 backup=/var/backups/ardents/manual-smoke.tar.gz
 restore_backup=/var/backups/ardents/restore-smoke.tar.gz
-alternate_observability_address=127.0.0.1:19090
+alternate_observability_address=localhost:19090
 decoy_pid=
 
 diagnose() {
@@ -137,6 +137,8 @@ wait_ready; version_is v0.2.0
 
 DECOY_PRINCIPAL="$node_principal" python3 -c '
 import os
+import threading
+import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 class Ready(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -151,7 +153,17 @@ class Ready(BaseHTTPRequestHandler):
         self.wfile.write(body.encode())
     def log_message(self, *_):
         pass
-HTTPServer(("127.0.0.1", 9090), Ready).serve_forever()
+default = HTTPServer(("127.0.0.1", 9090), Ready)
+threading.Thread(target=default.serve_forever, daemon=True).start()
+while True:
+    try:
+        alternate = HTTPServer(("127.0.0.1", 19090), Ready)
+        break
+    except OSError:
+        time.sleep(0.05)
+alternate.handle_request()
+alternate.server_close()
+default.shutdown()
 ' &
 decoy_pid=$!
 if "$installer" upgrade --source-dir "$bad_dir" --backup /var/backups/ardents/pre-bad.tar.gz; then

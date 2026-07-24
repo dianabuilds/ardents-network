@@ -78,8 +78,7 @@ func (s *Surface) ready(w http.ResponseWriter, _ *http.Request) {
 	}
 	writeProbe(w, status, probeResponse{
 		Status: result, State: state, Health: health,
-		Node: snapshot.Node.Name, Principal: snapshot.Identity.Principal,
-		BuildIdentity: buildinfo.Fingerprint(),
+		Principal: snapshot.Identity.Principal, BuildIdentity: buildinfo.Fingerprint(),
 	})
 }
 
@@ -87,7 +86,6 @@ type probeResponse struct {
 	Status        string `json:"status"`
 	State         string `json:"state,omitempty"`
 	Health        string `json:"health,omitempty"`
-	Node          string `json:"node,omitempty"`
 	Principal     string `json:"principal,omitempty"`
 	BuildIdentity string `json:"build_identity,omitempty"`
 }

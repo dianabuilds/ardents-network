@@ -101,8 +101,23 @@ config_string_value() {
 
 configured_observability_url() {
     address=$(config_string_value listen_address) || return 1
-    printf '%s\n' "$address" |
-        grep -E '^127(\.[0-9]{1,3}){3}:[0-9]{1,5}$|^\[::1\]:[0-9]{1,5}$' >/dev/null ||
+    case "$address" in
+        \[*\]:*)
+            host=${address#\[}; host=${host%%\]*}; port=${address##*:}
+            ;;
+        *:*)
+            host=${address%:*}; port=${address##*:}
+            ;;
+        *) return 1 ;;
+    esac
+    case "$port" in ''|*[!0-9]*) return 1 ;; esac
+    [ "$port" -ge 1 ] && [ "$port" -le 65535 ] || return 1
+    resolved=$(getent ahosts "$host") || return 1
+    [ -n "$resolved" ] || return 1
+    printf '%s\n' "$resolved" | awk '{ print $1 }' |
+        while IFS= read -r ip; do
+            case "$ip" in 127.*|::1) ;; *) exit 1 ;; esac
+        done ||
         return 1
     printf 'http://%s/readyz\n' "$address"
 }

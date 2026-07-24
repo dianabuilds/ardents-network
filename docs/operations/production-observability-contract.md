@@ -81,11 +81,13 @@ response bodies, raw unknown paths, or domain resource identifiers.
 ## Probe Semantics
 
 - `/healthz` returns HTTP 200 while the serving process is alive.
-- `/readyz` returns HTTP 200 only when canonical node readiness is true and
-  Diagnostics health is `ready`; initializing, stopped, degraded, and failed
+- `/readyz` returns HTTP 200 only when canonical composite readiness is true;
+  initializing, stopped, degraded, failed, network-unready, and identity-unready
   states return HTTP 503.
-- Probe bodies are bounded JSON with status, normalized lifecycle state, and
-  normalized health state only.
+- Readiness bodies are bounded JSON with status, normalized lifecycle and
+  health states, the public Node Principal, and an opaque fingerprint of the
+  serving binary's complete build identity. `/healthz` remains a status-only
+  liveness response.
 
 ## Acceptance
 
