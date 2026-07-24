@@ -17,12 +17,17 @@ checksum plus Ardents principal, device, and Waku peer identity. Deployment
 secrets are backed up separately; detailed groups and failure rules are in
 `docs/security/persistent-state-security.md`.
 
-## Rotation
+## Rotation And Revocation
 
-- API and observability token: replace secret and restart the corresponding
-  local boundary;
+- Operator device Credential: create a fresh finite device Credential from the
+  offline Principal root, verify it, then revoke the exact old Device ID;
+- Operator Access Grant: issue and verify the replacement grant before revoking
+  the exact old Grant ID;
+- observability scrape token: replace the monitoring secret and restart only
+  that read-only boundary;
 - WSS certificate/key: replace matching files together, then controlled restart;
-- capability: revoke old grant and perform a fresh private channel generation;
+- Channel Grant: revoke the old grant and perform a fresh channel
+  generation;
 - Ardents/Waku identity: no implicit `v1` rotation; use an explicit new-node
   migration and withdraw old publication.
 

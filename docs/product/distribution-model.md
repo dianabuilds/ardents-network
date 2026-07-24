@@ -5,7 +5,7 @@ Ardents has two public executable roles, independent of deployment mechanism.
 | Artifact | Role | Required where |
 | --- | --- | --- |
 | `ardentsd` | Node daemon, native bootstrap, network and optional workload control | Every node host |
-| `ardentsctl` | Operator CLI/TUI over the authenticated local control API | Operator workstation or node host |
+| `ardentsctl` | Operator CLI/TUI over the Principal-authenticated Operator Interface | Operator workstation or node host |
 | `ardents/node` image | Optional packaging of `ardentsd` and `ardentsctl` | Docker deployments only |
 | `ardents-ingress-proxy` image | Optional isolated forwarding adapter | Only Docker workloads that publish admitted ingress |
 
@@ -37,16 +37,19 @@ protocol or require an additional public executable.
 
 ## Bootstrap
 
-`ardentsd init` owns first-node initialization. It creates or restores the node
-identity, protected capability and replay state, an operator configuration, and
-an API token. Native paths default to the supplied data and secret directories;
-container provisioning explicitly maps those paths to the runtime mount points.
+`ardentsd init` owns first-node initialization. It creates or restores the Node
+identity, protected capability and replay state, the canonical Operator
+configuration, permission-protected Operator and Application Unix sockets, and
+the short-lived one-use Bootstrap Ticket for first-Operator enrollment. Native
+paths default to the supplied data and secret directories; container
+provisioning explicitly maps those paths to the runtime mount points.
 
 Remote operator access is provided by `ardentsctl --ssh`, using the system
-OpenSSH client to reach the daemon's loopback control API without exposing that
-API on the network. Same-host automation may use the private Unix socket emitted
-by `ardentsd init`. A public application SDK remains a separate delivery layer;
-it should build on versioned application protocols rather than introducing
+OpenSSH client to forward a private local stream socket directly to the
+permission-protected remote Operator Unix socket. No protected HTTP listener or
+TCP fallback is exposed. Same-host automation uses the Operator Unix socket
+emitted by `ardentsd init`. A public Application SDK remains a separate delivery
+layer; it builds on the versioned Application Interface rather than introducing
 another daemon-shaped binary.
 
 ## Release Channels And Verification

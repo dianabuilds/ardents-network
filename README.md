@@ -19,8 +19,10 @@ than hiding it behind a generic runtime facade.
   protection;
 - local workload control and hosted-service publication;
 - encrypted blob/manifest storage, replica commitments, repair, and fetch;
-- a loopback-only authenticated operator API, CLI/TUI, diagnostics, readiness,
-  structured logs, and bounded Prometheus metrics.
+- local Operator and Application Interfaces on separate
+  permission-protected Unix sockets, an Operator CLI/TUI, Diagnostics,
+  readiness, structured logs, and bounded Prometheus metrics on a separate
+  loopback monitoring listener.
 
 Ardents does not implement its own carrier network, silently fall back to
 plaintext, expose remote administrative HTTP, or treat an announced/cache copy
@@ -33,10 +35,12 @@ Private discovery and data exchange require an Identity-owned capability issued
 by a trusted realm authority. Possessing retained ciphertext, a network address,
 or another Principal's session secret does not grant that authority.
 
-The local API and observability listener bind to loopback only. Deployment
-secrets are separate from retained node state. Missing keys, partial restores,
-invalid capabilities, untrusted records, corrupt payloads, and failed runtime
-proofs fail closed and remain visible through Diagnostics.
+The protected Operator and Application interfaces use separate
+permission-protected Unix sockets. The observability listener is a distinct
+read-only loopback boundary. Deployment secrets are separate from retained
+node state. Missing keys, partial restores, invalid capabilities, untrusted
+records, corrupt payloads, and failed runtime proofs fail closed and remain
+visible through Diagnostics.
 
 Start with:
 
@@ -98,8 +102,8 @@ build identity requires the readiness-gated `upgrade` command. See the
 for upgrade and uninstall behavior.
 
 From an administrator workstation with an enrolled device Credential, a scoped
-Operator grant, and OpenSSH key/agent access, connect without exposing the
-control API:
+Operator grant, and OpenSSH key/agent access, connect directly to the protected
+Operator Interface without exposing it on a network listener:
 
 ```sh
 ardentsctl --ssh ops@node.example \

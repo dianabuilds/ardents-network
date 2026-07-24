@@ -42,24 +42,25 @@ It is responsible for:
 - canonical error projection;
 - diagnostics-compatible explainability.
 
-The v1 local-control security boundary is a single-admin, token-authenticated
-loopback surface:
+The `v1` local-control security boundary is the Principal-authenticated,
+grant-authorized Operator Interface on a permission-protected Unix socket:
 
-- plaintext binding is accepted only on IPv4/IPv6 loopback or `localhost`;
-- remote plaintext and wildcard binds fail during configuration, before the
-  node runtime starts;
-- remote TLS ingress is not currently a supported mode and must be designed as
-  an explicit secure profile rather than enabled with a bind-address override;
-- the local administrator receives an explicit domain capability set; wildcard
+- same-host clients connect directly to the configured Operator Unix socket;
+- remote `ardentsctl --ssh` access uses OpenSSH stream-local forwarding directly
+  to that socket, with host-key verification and no remote shell or TCP
+  fallback;
+- plaintext HTTP, loopback TCP, non-loopback TCP, wildcard binds, and
+  Application Sessions are not accepted for protected Operator calls;
+- a root-authorized finite device Credential authenticates the Principal and
+  produces a short-lived, Node/interface/transport-bound Operator Session;
+- current Access Grants provide explicit actions and resource scopes; wildcard
   authority is not used by the product assembly;
-- server-side tokens may come from one environment value or one regular secret
-  file, never both; Unix token files must deny group/other access;
 - request bodies, headers, header reads, unary execution, writes, and idle
   connections have finite limits; the node-event stream is explicitly exempt
   from unary execution and server write deadlines and remains bounded by its
-  authenticated client context;
+  authenticated Principal context;
 - authentication failures and mapped domain errors must not echo credentials,
-  raw authorization headers, payloads, or internal error strings.
+  Session secrets, payloads, or internal error strings.
 
 ### 2.2 Discovery Wire Contract
 
