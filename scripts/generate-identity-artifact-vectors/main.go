@@ -1,3 +1,5 @@
+// Package main generates deterministic identity artifact test vectors.
+// It does not own runtime identity validation or protocol policy.
 package main
 
 import (

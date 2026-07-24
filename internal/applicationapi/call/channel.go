@@ -1,5 +1,6 @@
 // Package call carries Application admission facts across the RPC adapter
 // without importing either wire protocol or the identity/access implementation.
+// It does not own admission decisions or transport handling.
 package call
 
 import (

@@ -1,3 +1,5 @@
+// Package main starts the hosted-service ingress proxy.
+// It does not own workload admission or readiness truth.
 package main
 
 import (

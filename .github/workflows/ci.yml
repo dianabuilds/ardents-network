@@ -67,7 +67,7 @@ jobs:
           ./tests/check-format.ps1
           go vet ./...
           New-Item -ItemType Directory -Force tests/.artifacts/reports/catalog | Out-Null
-          go test ./tests/tooling/testcatalog ./tests/tooling/audittrace -count=1
+          go test ./tests/tooling/testcatalog ./tests/tooling/audittrace ./tests/tooling/archaccept -count=1
           go run ./tests/tooling/testcatalog ./tests/... | Tee-Object tests/.artifacts/reports/catalog/validation.json
           if ($LASTEXITCODE -ne 0) { throw "scenario catalog validation failed" }
           go run ./tests/tooling/audittrace

@@ -1,3 +1,5 @@
+// Package applicationv1 contains generated Application protocol types and wire limits.
+// It does not own public SDK behavior or server-side Application policy.
 package applicationv1
 
 const (

@@ -1,5 +1,6 @@
 // Package identity adapts Principal identity access to the protected Operator
 // Unix-socket Connect surface. It accepts only the Operator session scheme.
+// It does not own durable identity state or Application admission.
 package identity
 
 import (

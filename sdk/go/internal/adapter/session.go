@@ -1,3 +1,5 @@
+// Package adapter maps public SDK operations to generated Application clients.
+// It does not own public SDK contracts or server-side behavior.
 package adapter
 
 import (

@@ -1,5 +1,6 @@
 // Package identitycontract is the single named owner of immutable version 1
 // identity protocol limits, domains, action names, and resource-kind contracts.
+// It does not own identity state, admission, or credential custody.
 package identitycontract
 
 import (

@@ -1,4 +1,5 @@
 // Package content adapts the public Application content protocol to the Content owner interface.
+// It does not own content lifecycle or Application admission.
 package content
 
 import (

@@ -1,4 +1,5 @@
 // Package client constructs a typed Ardents Application SDK client.
+// It does not own Application admission or server-side product state.
 package client
 
 import (

@@ -1,4 +1,5 @@
 // Package errors defines stable Application Interface failures.
+// It does not own transport error encoding or server-side policy.
 package errors
 
 import "fmt"

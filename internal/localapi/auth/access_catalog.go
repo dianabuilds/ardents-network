@@ -1,4 +1,5 @@
 // Package auth owns the frozen Operator action catalogue and canonical request mapping.
+// It does not own identity state or product authorization decisions.
 package auth
 
 import (

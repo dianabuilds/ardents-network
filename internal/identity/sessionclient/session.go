@@ -1,5 +1,6 @@
 // Package sessionclient owns the shared Principal-session client state machine,
 // response validation, and retry policy used by Operator CLI and public SDK.
+// It does not own credential custody or server-side session state.
 package sessionclient
 
 import (

@@ -1,4 +1,5 @@
 // Package content provides immutable content operations through an Ardents Node.
+// It does not own node-side content lifecycle or persistence.
 package content
 
 import "context"

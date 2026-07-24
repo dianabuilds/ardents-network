@@ -343,11 +343,23 @@ directories. Consumer-owned interfaces live beside the behaviour that consumes
 them; durable schemas live with their product owner; small value types live at
 the owner root.
 
-The target repository has no tracked `.agents`, `.gocache`, `.idea`, `var`,
-`boundary`, `proto`, `docker`, or `third_party` directory. Git metadata, IDE
+The target repository permits repository-local agent tooling only under the
+exact `.agents/skills/security-audit/` allowlist. Other `.agents` content and
+tracked `.gocache`, `.idea`, `var`, `boundary`, `proto`, `docker`, or
+`third_party` directories are outside the target tree. Git metadata, IDE
 metadata, build caches and runtime data are local artifacts, not source-tree
 architecture. Inactive fork snapshots are removed; active dependencies are
 resolved through `go.mod` unless a separately approved fork is actually used.
+
+`docs/engineering/architecture-acceptance.json` is the machine-readable source
+for file ceilings, package-documentation exceptions, generated service
+composition, the agent-tooling allowlist, and the temporary private-protocol
+boundary. `tests/tooling/archaccept` fails closed when the repository diverges
+from that policy.
+
+The policy discovers handwritten production Go packages from the explicit
+`api`, `cmd`, `internal`, `scripts`, and `sdk/go` roots. Test tooling under
+`tests` is outside the production package budget.
 
 ## 5. Ownership Of Every Top-Level Internal Directory
 
@@ -1006,26 +1018,32 @@ Completed structural replacements:
   validation depends only on owner contracts; Waku material/reachability checks
   and Docker execution-spec checks remain inside their adapters and are applied
   by composition/execution at the real seam.
-- contracted every handwritten production package to at most 12 files without
-  adding holding packages. This includes `daemon`, `content`, `diagnostics`,
-  `config`, `workload/execution`, and the Waku adapter; Waku files are grouped by
-  carrier protocol, discovery, limits, lifecycle, reachability, readiness and
-  WSS responsibility rather than by historical migration step.
-- replaced the single 48-method `ArdentsService` with eight generated bounded
-  services. The server registers them behind one local endpoint, while the CLI
-  client composes the generated clients once; authorization remains one
-  procedure catalogue. `localapi/transfer` now owns transfer RPC mapping instead
-  of mixing peer exchange into `localapi/content`.
+- established a default ceiling of 12 handwritten production files per package
+  without adding holding packages. Packages above that default have exact,
+  non-growing ceilings and reasons in the machine-readable acceptance policy;
+  an undeclared package or any growth beyond its ceiling fails the gate.
+- replaced the single 48-method `ArdentsService` with nine generated bounded
+  Operator services and two generated Application services. The Operator
+  services are registered behind one protected local endpoint; the Application
+  services remain on their distinct interface. Composition paths and proto
+  service counts are checked against the machine-readable acceptance policy.
+  `localapi/transfer` owns transfer RPC mapping instead of mixing peer exchange
+  into `localapi/content`.
 - regrouped integration and end-to-end suites by current owners. The former
   `data-substrate`, `network-foundation`, `network-privacy`,
   `local-control-surface` and `hosted-services` directory labels no longer
   determine test topology; scenario IDs remain stable compatibility evidence.
   Test executables now live under `tests/tooling`, not a second application
   root named `tests/cmd`.
-- added package-level responsibility contracts to every handwritten internal
-  package and explicit generated-package documentation. Each states both its
-  ownership and its non-responsibilities, making the source tree itself the
-  first navigation surface.
+- added package-level responsibility contracts to every handwritten production
+  package. New handwritten packages must add a package comment; any temporary
+  exception must be explicit in the machine-readable acceptance policy.
+  Generated-only packages are documented by their canonical proto source and
+  generation boundary.
+- retained `internal/messaging/private.proto` and its generated
+  `private.pb.go` as one explicit temporary private-protocol boundary owned by
+  ARD-028. The acceptance gate checks the exact source, output and `go_package`;
+  no second private generated location is implied or permitted.
 - inverted process-surface construction. `daemon` exposes neutral local API and
   operator-surface hooks; `cmd/ardentsd` selects the localapi and observability
   adapters. This removed the former daemon-to-adapter imports and allowed the

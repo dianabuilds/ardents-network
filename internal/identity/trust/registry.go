@@ -1,4 +1,5 @@
 // Package trust provides a closed, purpose-scoped registry of trusted Principals.
+// It does not own authentication sessions or product authorization.
 package trust
 
 import (

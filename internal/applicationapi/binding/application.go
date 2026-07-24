@@ -1,4 +1,5 @@
 // Package binding derives transport-owned Application identity bindings.
+// It does not own durable identity state or product authorization.
 package binding
 
 import (

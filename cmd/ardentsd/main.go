@@ -1,3 +1,5 @@
+// Package main starts the Ardents node daemon.
+// It does not own daemon lifecycle or product state.
 package main
 
 import (

@@ -1,5 +1,6 @@
 // Package identity verifies and creates the bounded, canonical identity
 // artifacts used by Ardents protocol version 1.
+// It does not own credential custody or server-side admission.
 package identity
 
 import (

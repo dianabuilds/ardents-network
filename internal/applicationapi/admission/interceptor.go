@@ -1,6 +1,7 @@
 // Package admission owns Principal-aware admission for protected Application
 // product calls. It is intentionally separate from the public wire handler so
 // internal and SDK identity protobuf registries never share a package graph.
+// It does not own identity state or product command behavior.
 package admission
 
 import (
