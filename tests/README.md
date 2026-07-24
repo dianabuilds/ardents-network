@@ -59,11 +59,12 @@ reporting semantics in workflow-specific scripts.
 | 1 | formatting | `powershell -NoProfile -File tests/check-format.ps1` | no handwritten Go file under `boundary`, `cmd`, `internal`, or `tests` is listed by `gofmt` |
 | 2 | static analysis | `go vet ./...` | process exits zero with no vet finding |
 | 3 | release source identity | `powershell -NoProfile -File tests/ci/release-source-identity-gate.ps1` | mismatched commits and dirty source fail before Docker; clean HEAD builds from an exported snapshot that excludes ignored files |
-| 4 | fast + import boundary | `powershell -NoProfile -File tests/run.ps1 fast -CoverageProfile tests/.artifacts/coverage/fast.out` | import guard and default `go test ./...` both exit zero; coverage is retained |
-| 5 | integration | `powershell -NoProfile -File tests/run.ps1 integration -ReportDir tests/.artifacts/reports/integration` | runner exits zero and summary reports zero failures |
-| 6 | E2E | `powershell -NoProfile -File tests/run.ps1 e2e -ReportDir tests/.artifacts/reports/e2e` | runner exits zero and summary reports zero failures |
-| 7 | reachable vulnerabilities | `powershell -NoProfile -File tests/ci/security-gate.ps1` | exact finding IDs and reachability agree with the active exception register; any drift fails |
-| 8 | vulnerability evidence | produced by the same security gate | pinned JSON, verbose output, and reconciliation JSON are retained under `tests/.artifacts/security` |
+| 4 | release materials policy | `powershell -NoProfile -File tests/ci/release-materials-policy-gate.ps1` | every release builder/runtime is digest-pinned, policy-bound, and independent rebuilds cannot share mutable caches |
+| 5 | fast + import boundary | `powershell -NoProfile -File tests/run.ps1 fast -CoverageProfile tests/.artifacts/coverage/fast.out` | import guard and default `go test ./...` both exit zero; coverage is retained |
+| 6 | integration | `powershell -NoProfile -File tests/run.ps1 integration -ReportDir tests/.artifacts/reports/integration` | runner exits zero and summary reports zero failures |
+| 7 | E2E | `powershell -NoProfile -File tests/run.ps1 e2e -ReportDir tests/.artifacts/reports/e2e` | runner exits zero and summary reports zero failures |
+| 8 | reachable vulnerabilities | `powershell -NoProfile -File tests/ci/security-gate.ps1` | exact finding IDs and reachability agree with the active exception register; any drift fails |
+| 9 | vulnerability evidence | produced by the same security gate | pinned JSON, verbose output, and reconciliation JSON are retained under `tests/.artifacts/security` |
 
 `tests/run.ps1 all -ReportDir tests/.artifacts/reports/all` is the release
 cross-check for tag interaction. It does not replace the separately attributable

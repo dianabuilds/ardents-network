@@ -4,19 +4,40 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$ExpectedVersion,
     [Parameter(Mandatory = $true)]
-    [string]$ExpectedCommit
+    [string]$ExpectedCommit,
+    [string]$ExpectedSourceDigest,
+    [string]$ExpectedMaterialsPolicyPath
 )
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $verifier = Join-Path $root "scripts/release/verify.ps1"
 $artifactPath = [IO.Path]::GetFullPath($ArtifactDir)
+function Invoke-Verifier([switch]$RequirePublishedImages, [string]$ExpectedImageNamespace) {
+    $parameters = @{
+        ArtifactDir = $artifactPath
+        ExpectedVersion = $ExpectedVersion
+        ExpectedCommit = $ExpectedCommit
+    }
+    if (-not [string]::IsNullOrWhiteSpace($ExpectedMaterialsPolicyPath)) {
+        $parameters.ExpectedMaterialsPolicyPath = $ExpectedMaterialsPolicyPath
+    }
+    if (-not [string]::IsNullOrWhiteSpace($ExpectedSourceDigest)) {
+        $parameters.ExpectedSourceDigest = $ExpectedSourceDigest
+    }
+    if ($RequirePublishedImages) {
+        $parameters.RequirePublishedImages = $true
+        $parameters.ExpectedImageNamespace = $ExpectedImageNamespace
+    }
+    & $verifier @parameters
+}
+
 function Assert-Rejected([string]$Case, [scriptblock]$Mutation, [scriptblock]$Restore) {
     try {
         & $Mutation
         $rejected = $false
         try {
-            & $verifier -ArtifactDir $artifactPath -ExpectedVersion $ExpectedVersion -ExpectedCommit $ExpectedCommit
+            Invoke-Verifier
         } catch {
             $rejected = $true
         }
@@ -60,7 +81,7 @@ function Assert-ManifestTamperRejected([string]$ManifestPath, [switch]$KeepOuter
     }
 }
 
-& $verifier -ArtifactDir $artifactPath -ExpectedVersion $ExpectedVersion -ExpectedCommit $ExpectedCommit
+Invoke-Verifier
 Assert-ManifestTamperRejected (Join-Path $artifactPath "SHA256SUMS")
 Assert-ManifestTamperRejected (Join-Path $artifactPath "ARTIFACTS.sha256") -KeepOuterValid
 
@@ -75,6 +96,54 @@ Assert-Rejected "provenance version mismatch" {
 } {
     [IO.File]::WriteAllBytes($provenancePath, $provenanceBytes)
     [IO.File]::WriteAllBytes((Join-Path $artifactPath "SHA256SUMS"), $checksumBytes)
+}
+
+function Assert-ProvenanceMaterialSubstitutionRejected([string]$Name) {
+    $provenanceBytes = [IO.File]::ReadAllBytes($provenancePath)
+    $checksumBytes = [IO.File]::ReadAllBytes((Join-Path $artifactPath "SHA256SUMS"))
+    Assert-Rejected "provenance material substitution: $Name" {
+        $document = Get-Content -Raw -LiteralPath $provenancePath | ConvertFrom-Json
+        $material = @($document.predicate.buildDefinition.resolvedDependencies | Where-Object name -ceq $Name)
+        if ($material.Count -ne 1) { throw "test material is missing: $Name" }
+        $material[0].digest.sha256 = "f" * 64
+        $document | ConvertTo-Json -Depth 20 | Set-Content -Encoding utf8 -LiteralPath $provenancePath
+        Set-OuterChecksum "provenance.unsigned.intoto.json"
+    } {
+        [IO.File]::WriteAllBytes($provenancePath, $provenanceBytes)
+        [IO.File]::WriteAllBytes((Join-Path $artifactPath "SHA256SUMS"), $checksumBytes)
+    }
+}
+
+Assert-ProvenanceMaterialSubstitutionRejected "source"
+Assert-ProvenanceMaterialSubstitutionRejected "image:go"
+Assert-ProvenanceMaterialSubstitutionRejected "image:debian"
+
+if ([string]::IsNullOrWhiteSpace($ExpectedMaterialsPolicyPath)) {
+    $policyPath = Join-Path $root "scripts/release/materials.json"
+    $policyBytes = [IO.File]::ReadAllBytes($policyPath)
+    $provenanceBytes = [IO.File]::ReadAllBytes($provenancePath)
+    $checksumBytes = [IO.File]::ReadAllBytes((Join-Path $artifactPath "SHA256SUMS"))
+    Assert-Rejected "worktree policy and provenance substitution" {
+        $replacementDigest = "f" * 64
+        $policy = Get-Content -Raw -LiteralPath $policyPath | ConvertFrom-Json
+        $base = @($policy.images | Where-Object name -ceq "debian")
+        if ($base.Count -ne 1) { throw "test base material is missing" }
+        $base[0].reference = $base[0].reference -replace 'sha256:[0-9a-f]{64}$', "sha256:$replacementDigest"
+        $base[0].digest.sha256 = $replacementDigest
+        $policy | ConvertTo-Json -Depth 20 | Set-Content -Encoding utf8 -LiteralPath $policyPath
+
+        $document = Get-Content -Raw -LiteralPath $provenancePath | ConvertFrom-Json
+        $material = @($document.predicate.buildDefinition.resolvedDependencies | Where-Object name -ceq "image:debian")
+        if ($material.Count -ne 1) { throw "test provenance base material is missing" }
+        $material[0].uri = $base[0].reference
+        $material[0].digest.sha256 = $replacementDigest
+        $document | ConvertTo-Json -Depth 20 | Set-Content -Encoding utf8 -LiteralPath $provenancePath
+        Set-OuterChecksum "provenance.unsigned.intoto.json"
+    } {
+        [IO.File]::WriteAllBytes($policyPath, $policyBytes)
+        [IO.File]::WriteAllBytes($provenancePath, $provenanceBytes)
+        [IO.File]::WriteAllBytes((Join-Path $artifactPath "SHA256SUMS"), $checksumBytes)
+    }
 }
 
 $sbomPath = Join-Path $artifactPath "sbom.cdx.json"
@@ -144,12 +213,10 @@ try {
     $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $publishedImagesPath).Hash.ToLowerInvariant()
     $lines.Add("$hash  published-images.json")
     [IO.File]::WriteAllLines($checksumPath, @($lines | Sort-Object), [Text.UTF8Encoding]::new($false))
-    & $verifier -ArtifactDir $artifactPath -ExpectedVersion $ExpectedVersion -ExpectedCommit $ExpectedCommit `
-        -RequirePublishedImages -ExpectedImageNamespace "ghcr.io/example"
+    Invoke-Verifier -RequirePublishedImages -ExpectedImageNamespace "ghcr.io/example"
     $wrongNamespaceRejected = $false
     try {
-        & $verifier -ArtifactDir $artifactPath -ExpectedVersion $ExpectedVersion -ExpectedCommit $ExpectedCommit `
-            -RequirePublishedImages -ExpectedImageNamespace "ghcr.io/not-example"
+        Invoke-Verifier -RequirePublishedImages -ExpectedImageNamespace "ghcr.io/not-example"
     } catch {
         $wrongNamespaceRejected = $true
     }
@@ -159,5 +226,5 @@ try {
     if (Test-Path -LiteralPath $publishedImagesPath) { Remove-Item -LiteralPath $publishedImagesPath -Force }
     [IO.File]::WriteAllBytes($checksumPath, $checksumBytes)
 }
-& $verifier -ArtifactDir $artifactPath -ExpectedVersion $ExpectedVersion -ExpectedCommit $ExpectedCommit
+Invoke-Verifier
 Write-Host "release-metadata-gate=passed"

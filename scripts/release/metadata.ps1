@@ -10,10 +10,15 @@ $commit = $env:ARDENTS_COMMIT
 $buildDate = $env:ARDENTS_BUILD_DATE
 $epoch = [long]$env:SOURCE_DATE_EPOCH
 $sourceDirty = [bool]::Parse($env:ARDENTS_SOURCE_DIRTY)
+$sourceSHA256 = $env:ARDENTS_SOURCE_SHA256
 $ingressProtocol = $env:ARDENTS_INGRESS_PROTOCOL
 if ([string]::IsNullOrWhiteSpace($version) -or [string]::IsNullOrWhiteSpace($commit) -or $epoch -le 0 -or
-    $ingressProtocol -notmatch '^[1-9][0-9]*$') {
+    $sourceSHA256 -notmatch '^[0-9a-f]{64}$' -or $ingressProtocol -notmatch '^[1-9][0-9]*$') {
     throw "release identity environment is incomplete"
+}
+$materials = Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot "materials.json") | ConvertFrom-Json
+if ($materials.schema_version -ne 1 -or $materials.platform -ne "linux/amd64") {
+    throw "release materials policy contract mismatch"
 }
 
 $modules = foreach ($line in Get-Content -LiteralPath (Join-Path $artifactPath "modules.tsv")) {
@@ -70,6 +75,28 @@ $subjects = foreach ($file in Get-ChildItem -LiteralPath $artifactPath -File | W
     }
 }
 
+$resolvedDependencies = [Collections.Generic.List[object]]::new()
+$resolvedDependencies.Add([ordered]@{
+    name = "source"
+    uri = "$($materials.source.uri)@$commit"
+    digest = [ordered]@{ sha256 = $sourceSHA256 }
+    annotations = [ordered]@{ kind = "source" }
+})
+foreach ($image in @($materials.images)) {
+    $resolvedDependencies.Add([ordered]@{
+        name = "image:$($image.name)"
+        uri = $image.reference
+        digest = [ordered]@{ sha256 = $image.digest.sha256 }
+        annotations = [ordered]@{
+            kind = $image.kind
+            version = if ($null -eq $image.version) { "" } else { [string]$image.version }
+            roles = @($image.roles)
+        }
+    })
+}
+
+$goBuilder = @($materials.images | Where-Object { @($_.roles) -contains "bundle_builder" })
+if ($goBuilder.Count -ne 1) { throw "release bundle builder material is ambiguous" }
 $provenance = [ordered]@{
     _type = "https://in-toto.io/Statement/v1"
     subject = @($subjects)
@@ -84,12 +111,10 @@ $provenance = [ordered]@{
                 source_dirty = $sourceDirty
                 targets = @("linux/amd64")
             }
-            resolvedDependencies = @($modules | ForEach-Object {
-                [ordered]@{ uri = $_.purl; digest = [ordered]@{} }
-            })
+            resolvedDependencies = @($resolvedDependencies)
         }
         runDetails = [ordered]@{
-            builder = [ordered]@{ id = "pkg:docker/golang@1.26-bookworm" }
+            builder = [ordered]@{ id = $goBuilder[0].reference }
             metadata = [ordered]@{ invocationId = "$commit-$epoch"; startedOn = $buildDate; finishedOn = $buildDate }
         }
     }

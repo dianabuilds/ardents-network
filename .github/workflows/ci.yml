@@ -70,6 +70,7 @@ jobs:
           go run ./tests/tooling/testcatalog ./tests/... | Tee-Object tests/.artifacts/reports/catalog/validation.json
           if ($LASTEXITCODE -ne 0) { throw "scenario catalog validation failed" }
           ./tests/ci/release-source-identity-gate.ps1
+          ./tests/ci/release-materials-policy-gate.ps1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -209,29 +210,61 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
-  release-candidate:
-    name: Reproducible release candidate
+  release-builds:
+    name: Independent release build (${{ matrix.rebuild }})
     if: startsWith(github.ref, 'refs/tags/v') || inputs.release_version != ''
     needs: [windows-interface, fast, tagged, failure-contract, security, deployment, native-install, multinode]
     runs-on: ubuntu-24.04
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        rebuild: [a, b]
     env:
       RELEASE_VERSION: ${{ inputs.release_version || github.ref_name }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
-      - name: Build twice and compare
+      - name: Build in clean runner and disposable caches
+        shell: pwsh
+        run: ./ardents.ps1 package $env:RELEASE_VERSION -OutputDir dist/repro
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: release-repro-${{ matrix.rebuild }}
+          path: dist/repro
+          retention-days: 1
+          if-no-files-found: error
+
+  release-candidate:
+    name: Reproducible release candidate
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.release_version != ''
+    needs: release-builds
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      RELEASE_VERSION: ${{ inputs.release_version || github.ref_name }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: release-repro-a
+          path: dist/repro-a
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: release-repro-b
+          path: dist/repro-b
+      - name: Compare and verify independent builds
         shell: pwsh
         run: |
-          ./ardents.ps1 package $env:RELEASE_VERSION -OutputDir dist/repro-a
-          ./ardents.ps1 package $env:RELEASE_VERSION -OutputDir dist/repro-b
           $difference = Compare-Object (Get-Content dist/repro-a/SHA256SUMS) (Get-Content dist/repro-b/SHA256SUMS)
           if ($difference) { throw "release artifacts are not reproducible: $($difference | Out-String)" }
           ./scripts/release/verify.ps1 -ArtifactDir dist/repro-a -ExpectedVersion $env:RELEASE_VERSION -ExpectedCommit $env:GITHUB_SHA -RequireClean
           ./tests/ci/release-metadata-gate.ps1 -ArtifactDir dist/repro-a -ExpectedVersion $env:RELEASE_VERSION -ExpectedCommit $env:GITHUB_SHA
           ./tests/ci/release-images-gate.ps1 -ArtifactDir dist/repro-a -ExpectedVersion $env:RELEASE_VERSION -ExpectedCommit $env:GITHUB_SHA
-          docker run --rm --mount type=bind,source=${PWD}/dist/repro-a,target=/release,readonly --mount type=bind,source=${PWD},target=/workspace,readonly debian:bookworm-slim /bin/sh /workspace/scripts/release/smoke.sh /release $env:RELEASE_VERSION $env:GITHUB_SHA
+          docker run --rm --mount type=bind,source=${PWD}/dist/repro-a,target=/release,readonly --mount type=bind,source=${PWD},target=/workspace,readonly docker.io/library/debian:bookworm-slim@sha256:63a496b5d3b99214b39f5ed70eb71a61e590a77979c79cbee4faf991f8c0783e /bin/sh /workspace/scripts/release/smoke.sh /release $env:RELEASE_VERSION $env:GITHUB_SHA
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: ardents-${{ env.RELEASE_VERSION }}

@@ -1,4 +1,4 @@
-FROM golang:1.26-bookworm AS build
+FROM docker.io/library/golang:1.26.5-bookworm@sha256:3f6236bd765f898a2a3c2946112b04097814c4529d44534674700cd07b9c6b4c AS build
 
 ARG GO_BUILD_PARALLELISM=2
 ARG ARDENTS_VERSION=dev
@@ -8,17 +8,15 @@ ARG ARDENTS_BUILD_DATE=unknown
 WORKDIR /workspace
 
 COPY go.mod go.sum ./
-RUN --mount=type=cache,target=/go/pkg/mod go mod download
+RUN go mod download
 
 COPY . .
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
-    export LDFLAGS="-s -w -X ardents/internal/buildinfo.Version=${ARDENTS_VERSION} -X ardents/internal/buildinfo.Commit=${ARDENTS_COMMIT} -X ardents/internal/buildinfo.BuildDate=${ARDENTS_BUILD_DATE}" && \
+RUN export LDFLAGS="-s -w -X ardents/internal/buildinfo.Version=${ARDENTS_VERSION} -X ardents/internal/buildinfo.Commit=${ARDENTS_COMMIT} -X ardents/internal/buildinfo.BuildDate=${ARDENTS_BUILD_DATE}" && \
     GOMAXPROCS=${GO_BUILD_PARALLELISM} go build -trimpath -buildvcs=false -p=${GO_BUILD_PARALLELISM} -ldflags "$LDFLAGS" -o /out/ardentsd ./cmd/ardentsd && \
     GOMAXPROCS=${GO_BUILD_PARALLELISM} go build -trimpath -buildvcs=false -p=${GO_BUILD_PARALLELISM} -ldflags "$LDFLAGS" -o /out/ardentsctl ./cmd/ardentsctl && \
     GOMAXPROCS=${GO_BUILD_PARALLELISM} go build -trimpath -buildvcs=false -p=${GO_BUILD_PARALLELISM} -ldflags "$LDFLAGS" -o /out/ard-store-probe ./tests/tooling/store-probe
 
-FROM debian:bookworm-slim
+FROM docker.io/library/debian:bookworm-slim@sha256:63a496b5d3b99214b39f5ed70eb71a61e590a77979c79cbee4faf991f8c0783e
 
 ARG ARDENTS_VERSION=dev
 ARG ARDENTS_COMMIT=unknown

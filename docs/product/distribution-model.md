@@ -80,3 +80,13 @@ also inventories its operating-system packages. Consumers must first verify
 with `gh attestation verify`. The `provenance.unsigned.intoto.json` file inside
 the release is useful offline metadata, but it is not by itself a signature and
 must not be treated as one.
+
+Release build materials are governed by `scripts/release/materials.json`.
+Builder, toolchain, runtime, metadata, test-runner, and smoke-verifier images
+are pinned to platform-specific immutable digests. Provenance binds the
+canonical `git archive` SHA-256 of the release commit and the exact policy image
+set. The offline verifier compares those descriptors with the policy stored in
+the exact expected Git commit rather than merely displaying them or trusting a
+dirty worktree. Release candidates are built on two independent hosted runners
+with disposable Go caches and no BuildKit layer reuse before their checksums
+are compared.

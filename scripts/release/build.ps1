@@ -51,10 +51,21 @@ $archivePath = Join-Path ([IO.Path]::GetTempPath()) "ardents-release-source-$run
 try {
     & git -c core.autocrlf=false archive --format=tar --output=$archivePath $Commit
     if ($LASTEXITCODE -ne 0) { throw "release source snapshot failed" }
+    $sourceDigest = (Get-FileHash -Algorithm SHA256 -LiteralPath $archivePath).Hash.ToLowerInvariant()
     & tar -xf $archivePath -C $snapshotPath
     if ($LASTEXITCODE -ne 0) { throw "release source snapshot extraction failed" }
 
     [IO.Directory]::CreateDirectory($outputPath) | Out-Null
+    $materials = Get-Content -Raw -LiteralPath (Join-Path $snapshotPath "scripts/release/materials.json") | ConvertFrom-Json
+    function Get-ReleaseImage([string]$Role) {
+        $matches = @($materials.images | Where-Object { @($_.roles) -contains $Role })
+        if ($matches.Count -ne 1 -or $matches[0].reference -notmatch '@sha256:[0-9a-f]{64}$') {
+            throw "release material role is not bound to one immutable image: $Role"
+        }
+        return [string]$matches[0].reference
+    }
+    $bundleBuilderImage = Get-ReleaseImage "bundle_builder"
+    $metadataBuilderImage = Get-ReleaseImage "metadata_builder"
     $buildDate = [DateTimeOffset]::FromUnixTimeSeconds($SourceDateEpoch).UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ")
     $ingressProtocol = (Get-Content -Raw -LiteralPath (Join-Path $snapshotPath "internal/ingressproxy/protocol_version.txt")).Trim()
     if ($ingressProtocol -notmatch '^[1-9][0-9]*$') { throw "ingress proxy protocol version is invalid" }
@@ -67,9 +78,9 @@ try {
         -e "ARDENTS_SOURCE_DIRTY=false" `
         --mount "type=bind,source=$snapshotPath,target=/workspace,readonly" `
         --mount "type=bind,source=$outputPath,target=/out" `
-        --mount source=ardents-go-build-cache,target=/root/.cache/go-build `
-        --mount source=ardents-go-mod-cache,target=/go/pkg/mod `
-        -w /workspace golang:1.26-bookworm /bin/sh scripts/release/bundle.sh
+        --mount "type=volume,target=/root/.cache/go-build" `
+        --mount "type=volume,target=/go/pkg/mod" `
+        -w /workspace $bundleBuilderImage /bin/sh scripts/release/bundle.sh
     if ($LASTEXITCODE -ne 0) { throw "Docker release build failed" }
 
     $imageTag = "ardents/node:$Version"
@@ -78,7 +89,7 @@ try {
     try {
         $env:BUILDX_GIT_INFO = "false"
         docker build `
-            --provenance=false `
+            --no-cache `
             --build-arg "ARDENTS_VERSION=$Version" `
             --build-arg "ARDENTS_COMMIT=$Commit" `
             --build-arg "ARDENTS_BUILD_DATE=$buildDate" `
@@ -86,7 +97,7 @@ try {
             -t $imageTag -f (Join-Path $snapshotPath "deploy/docker/images/node.Dockerfile") $snapshotPath
         if ($LASTEXITCODE -ne 0) { throw "Docker release image build failed" }
         docker build `
-            --provenance=false `
+            --no-cache `
             --build-arg "ARDENTS_VERSION=$Version" `
             --build-arg "ARDENTS_COMMIT=$Commit" `
             --build-arg "ARDENTS_BUILD_DATE=$buildDate" `
@@ -108,16 +119,19 @@ try {
         -e "ARDENTS_COMMIT=$Commit" `
         -e "ARDENTS_BUILD_DATE=$buildDate" `
         -e "SOURCE_DATE_EPOCH=$SourceDateEpoch" `
+        -e "ARDENTS_SOURCE_SHA256=$sourceDigest" `
         -e "ARDENTS_SOURCE_DIRTY=false" `
         -e "ARDENTS_INGRESS_PROTOCOL=$ingressProtocol" `
         --mount "type=bind,source=$snapshotPath,target=/workspace,readonly" `
         --mount "type=bind,source=$outputPath,target=/out" `
-        -w /workspace mcr.microsoft.com/powershell:7.5-debian-12 `
+        -w /workspace $metadataBuilderImage `
         pwsh -NoLogo -NoProfile -File scripts/release/metadata.ps1 -ArtifactDir /out
     if ($LASTEXITCODE -ne 0) { throw "release metadata generation failed" }
 
     & (Join-Path $snapshotPath "scripts/release/verify.ps1") `
-        -ArtifactDir $outputPath -ExpectedVersion $Version -ExpectedCommit $Commit -RequireClean
+        -ArtifactDir $outputPath -ExpectedVersion $Version -ExpectedCommit $Commit `
+        -ExpectedSourceDigest $sourceDigest `
+        -ExpectedMaterialsPolicyPath (Join-Path $snapshotPath "scripts/release/materials.json") -RequireClean
 
     Write-Host "Release artifacts created: $outputPath"
 } finally {

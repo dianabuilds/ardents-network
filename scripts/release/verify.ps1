@@ -5,6 +5,8 @@ param(
     [string]$ExpectedVersion,
     [Parameter(Mandatory = $true)]
     [string]$ExpectedCommit,
+    [string]$ExpectedSourceDigest,
+    [string]$ExpectedMaterialsPolicyPath,
     [switch]$RequireClean,
     [switch]$RequirePublishedImages,
     [string]$ExpectedImageNamespace
@@ -20,6 +22,35 @@ $provenancePath = Join-Path $artifactPath "provenance.unsigned.intoto.json"
 $sbomPath = Join-Path $artifactPath "sbom.cdx.json"
 $releaseManifestPath = Join-Path $artifactPath "release-manifest.json"
 $publishedImagesPath = Join-Path $artifactPath "published-images.json"
+
+if ($ExpectedSourceDigest -notmatch '^[0-9a-f]{64}$') {
+    $sourceArchive = Join-Path ([IO.Path]::GetTempPath()) "ardents-verify-source-$([guid]::NewGuid().ToString('N')).tar"
+    try {
+        & git -C $root -c core.autocrlf=false archive --format=tar --output=$sourceArchive $ExpectedCommit
+        if ($LASTEXITCODE -ne 0) { throw "expected release source snapshot is unavailable" }
+        $ExpectedSourceDigest = (Get-FileHash -Algorithm SHA256 -LiteralPath $sourceArchive).Hash.ToLowerInvariant()
+    } finally {
+        if (Test-Path -LiteralPath $sourceArchive) { Remove-Item -LiteralPath $sourceArchive -Force }
+    }
+}
+if ($ExpectedSourceDigest -notmatch '^[0-9a-f]{64}$') { throw "expected source digest is invalid" }
+if (Test-Path -LiteralPath (Join-Path $root ".git")) {
+    $policyLines = @(& git -C $root show "${ExpectedCommit}:scripts/release/materials.json" 2>$null)
+    if ($LASTEXITCODE -ne 0 -or $policyLines.Count -eq 0) {
+        throw "release materials policy is unavailable at expected commit"
+    }
+    $materialsJSON = $policyLines -join "`n"
+} else {
+    if ($ExpectedSourceDigest -notmatch '^[0-9a-f]{64}$' -or
+        -not (Test-Path -LiteralPath $ExpectedMaterialsPolicyPath -PathType Leaf)) {
+        throw "expected release materials policy is unavailable"
+    }
+    $materialsJSON = Get-Content -Raw -LiteralPath $ExpectedMaterialsPolicyPath
+}
+$materials = $materialsJSON | ConvertFrom-Json
+if ($materials.schema_version -ne 1 -or $materials.platform -ne "linux/amd64") {
+    throw "release materials policy contract mismatch"
+}
 
 foreach ($required in $checksumPath, $subjectChecksumPath, $provenancePath, $sbomPath, $releaseManifestPath) {
     if (-not (Test-Path -LiteralPath $required -PathType Leaf)) {
@@ -127,6 +158,44 @@ $build = $provenance.predicate.buildDefinition.externalParameters
 if ($build.version -ne $ExpectedVersion) { throw "provenance version mismatch" }
 if ($build.commit -ne $ExpectedCommit) { throw "provenance commit mismatch" }
 if ($RequireClean -and [bool]$build.source_dirty) { throw "release provenance reports a dirty source tree" }
+
+$dependencies = @($provenance.predicate.buildDefinition.resolvedDependencies)
+if ($dependencies.Count -ne @($materials.images).Count + 1) {
+    throw "provenance materials do not match release policy"
+}
+$dependencyNames = @($dependencies | ForEach-Object name)
+if (@($dependencyNames | Sort-Object -Unique).Count -ne $dependencyNames.Count) {
+    throw "provenance contains duplicate material names"
+}
+$sourceMaterial = @($dependencies | Where-Object name -ceq "source")
+if ($sourceMaterial.Count -ne 1 -or
+    $sourceMaterial[0].uri -cne "$($materials.source.uri)@$ExpectedCommit" -or
+    $sourceMaterial[0].digest.sha256 -cne $ExpectedSourceDigest -or
+    $sourceMaterial[0].annotations.kind -cne "source") {
+    throw "provenance source material mismatch"
+}
+foreach ($image in @($materials.images)) {
+    if ($image.reference -notmatch '@sha256:([0-9a-f]{64})$' -or
+        $image.digest.sha256 -cne $Matches[1]) {
+        throw "release materials policy contains a mutable image: $($image.name)"
+    }
+    $dependency = @($dependencies | Where-Object name -ceq "image:$($image.name)")
+    $expectedRoles = @($image.roles | Sort-Object)
+    $actualRoles = @($dependency[0].annotations.roles | Sort-Object)
+    if ($dependency.Count -ne 1 -or
+        $dependency[0].uri -cne $image.reference -or
+        $dependency[0].digest.sha256 -cne $image.digest.sha256 -or
+        $dependency[0].annotations.kind -cne $image.kind -or
+        $dependency[0].annotations.version -cne $(if ($null -eq $image.version) { "" } else { [string]$image.version }) -or
+        @($expectedRoles).Count -ne @($actualRoles).Count -or
+        @(Compare-Object $expectedRoles $actualRoles).Count -ne 0) {
+        throw "provenance image material mismatch: $($image.name)"
+    }
+}
+$builderMaterial = @($materials.images | Where-Object { @($_.roles) -contains "bundle_builder" })
+if ($builderMaterial.Count -ne 1 -or $provenance.predicate.runDetails.builder.id -cne $builderMaterial[0].reference) {
+    throw "provenance builder identity mismatch"
+}
 
 $subjectChecksums = [ordered]@{}
 foreach ($line in Get-Content -LiteralPath $subjectChecksumPath) {

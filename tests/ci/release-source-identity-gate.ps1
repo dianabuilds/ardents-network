@@ -70,6 +70,7 @@ try {
     [IO.Directory]::CreateDirectory($fixtureScriptDir) | Out-Null
     [IO.Directory]::CreateDirectory($fixtureProtocolDir) | Out-Null
     Copy-Item -LiteralPath (Join-Path $root "scripts/release/build.ps1") -Destination $buildScript
+    Copy-Item -LiteralPath (Join-Path $root "scripts/release/materials.json") -Destination $fixtureScriptDir
     [IO.File]::WriteAllText((Join-Path $fixtureProtocolDir "protocol_version.txt"), "1`n")
     [IO.File]::WriteAllText((Join-Path $fixtureRoot ".gitignore"), "ignored.go`n")
     Invoke-Git init
@@ -77,7 +78,7 @@ try {
     Invoke-Git config user.email "release-test@ardents.invalid"
 
     [IO.File]::WriteAllText((Join-Path $fixtureRoot "source.txt"), "source-a`n")
-    Invoke-Git add .gitignore source.txt scripts/release/build.ps1 internal/ingressproxy/protocol_version.txt
+    Invoke-Git add .gitignore source.txt scripts/release/build.ps1 scripts/release/materials.json internal/ingressproxy/protocol_version.txt
     Invoke-Git commit -m "source A"
     $commitA = (& git -C $fixtureRoot rev-parse HEAD).Trim()
 
