@@ -18,6 +18,7 @@ import (
 	identitycapability "ardents/internal/identity/capability"
 	identityprincipal "ardents/internal/identity/principal"
 	identitytrust "ardents/internal/identity/trust"
+	messagingprotocol "ardents/internal/messaging/protocol"
 
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/chacha20poly1305"
@@ -137,27 +138,27 @@ func TestPrivateEnvelopeRejectsInvalidInnerSignatureAndSenderGrant(t *testing.T)
 	fixture := newEnvelopeFixture(t, true)
 	sealed := fixture.seal(t, []byte("signed"))
 
-	badSignature := rewriteAuthenticatedInner(t, fixture, sealed, func(message *PrivateMessageV1) {
+	badSignature := rewriteAuthenticatedInner(t, fixture, sealed, func(message *messagingprotocol.PrivateMessageV1) {
 		message.Signature[0] ^= 1
 	})
 	requireEnvelopeCode(t, openWithFreshReplay(t, fixture, badSignature), CodeEnvelopeSignatureInvalid)
 
-	badPadding := rewriteAuthenticatedInner(t, fixture, sealed, func(message *PrivateMessageV1) {
+	badPadding := rewriteAuthenticatedInner(t, fixture, sealed, func(message *messagingprotocol.PrivateMessageV1) {
 		message.Padding[0] = 1
 	})
 	requireEnvelopeCode(t, openWithFreshReplay(t, fixture, badPadding), CodeEnvelopeMalformed)
 
-	badProtocol := rewriteAuthenticatedInner(t, fixture, sealed, func(message *PrivateMessageV1) {
+	badProtocol := rewriteAuthenticatedInner(t, fixture, sealed, func(message *messagingprotocol.PrivateMessageV1) {
 		message.ProtocolVersion = 2
 	})
 	requireEnvelopeCode(t, openWithFreshReplay(t, fixture, badProtocol), CodeEnvelopeMalformed)
 
-	badClass := rewriteAuthenticatedInner(t, fixture, sealed, func(message *PrivateMessageV1) {
+	badClass := rewriteAuthenticatedInner(t, fixture, sealed, func(message *messagingprotocol.PrivateMessageV1) {
 		message.MessageClass = 99
 	})
 	requireEnvelopeCode(t, openWithFreshReplay(t, fixture, badClass), CodeEnvelopeSenderUnauthorized)
 
-	badPrincipal := rewriteAuthenticatedInner(t, fixture, sealed, func(message *PrivateMessageV1) {
+	badPrincipal := rewriteAuthenticatedInner(t, fixture, sealed, func(message *messagingprotocol.PrivateMessageV1) {
 		message.SenderPrincipal = envelopeTestPrincipal(deterministicPrivate(0x44).Public().(ed25519.PublicKey))
 	})
 	requireEnvelopeCode(t, openWithFreshReplay(t, fixture, badPrincipal), CodeEnvelopeMalformed)
@@ -170,7 +171,7 @@ func TestPrivateEnvelopeRejectsInvalidInnerSignatureAndSenderGrant(t *testing.T)
 func TestInvalidSignatureDoesNotConsumeReplayAdmission(t *testing.T) {
 	fixture := newEnvelopeFixture(t, true)
 	sealed := fixture.seal(t, []byte("legitimate"))
-	invalid := rewriteAuthenticatedInner(t, fixture, sealed, func(message *PrivateMessageV1) {
+	invalid := rewriteAuthenticatedInner(t, fixture, sealed, func(message *messagingprotocol.PrivateMessageV1) {
 		message.Signature[0] ^= 1
 	})
 	request := fixture.openRequest(t, sealed)
@@ -227,7 +228,7 @@ func TestInvalidSignaturesCannotExhaustReplayCapacity(t *testing.T) {
 		sealRequest.Random = bytes.NewReader(bytes.Repeat([]byte{i}, 40))
 		sealed, sealErr := Seal(sealRequest)
 		require.NoError(t, sealErr)
-		invalid := rewriteAuthenticatedInner(t, fixture, sealed, func(message *PrivateMessageV1) {
+		invalid := rewriteAuthenticatedInner(t, fixture, sealed, func(message *messagingprotocol.PrivateMessageV1) {
 			message.Signature[0] ^= 1
 		})
 		request := fixture.openRequest(t, invalid)
@@ -476,7 +477,7 @@ func freshOpenRequest(t *testing.T, fixture envelopeFixture, sealed SealedEnvelo
 	return fixture.openRequest(t, sealed)
 }
 
-func rewriteAuthenticatedInner(t *testing.T, fixture envelopeFixture, sealed SealedEnvelope, mutate func(*PrivateMessageV1)) SealedEnvelope {
+func rewriteAuthenticatedInner(t *testing.T, fixture envelopeFixture, sealed SealedEnvelope, mutate func(*messagingprotocol.PrivateMessageV1)) SealedEnvelope {
 	t.Helper()
 	header, err := parseHeader(sealed.Payload)
 	require.NoError(t, err)
@@ -488,7 +489,7 @@ func rewriteAuthenticatedInner(t *testing.T, fixture envelopeFixture, sealed Sea
 	require.NoError(t, err)
 	inner, err := aead.Open(nil, header.Nonce[:], sealed.Payload[headerSize:], aad)
 	require.NoError(t, err)
-	message := &PrivateMessageV1{}
+	message := &messagingprotocol.PrivateMessageV1{}
 	require.NoError(t, proto.Unmarshal(inner, message))
 	mutate(message)
 	inner, err = proto.MarshalOptions{Deterministic: true}.Marshal(message)
@@ -513,7 +514,7 @@ func rewriteEnvelopeLifetime(t *testing.T, fixture envelopeFixture, sealed Seale
 	require.NoError(t, err)
 	inner, err := aead.Open(nil, header.Nonce[:], sealed.Payload[headerSize:], aad)
 	require.NoError(t, err)
-	message := &PrivateMessageV1{}
+	message := &messagingprotocol.PrivateMessageV1{}
 	require.NoError(t, proto.Unmarshal(inner, message))
 
 	header.ExpiresAt = time.Unix(header.IssuedAt, 0).Add(lifetime).Unix()

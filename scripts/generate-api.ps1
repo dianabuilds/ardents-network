@@ -18,6 +18,11 @@ foreach ($tool in $expectedVersions.Keys) {
 $operatorSources = @(Get-ChildItem api/ardents/v1 -Filter *.proto | ForEach-Object { $_.FullName.Substring($root.Length + 1).Replace('\','/') })
 $applicationSources = @(Get-ChildItem api/ardents/application/v1 -Filter *.proto | ForEach-Object { $_.FullName.Substring($root.Length + 1).Replace('\','/') })
 $artifactSource = "api/ardents/identity/v1/artifacts.proto"
+$privateProtocolSource = "api/ardents/private/v1/private.proto"
+$legacyPrivateProtocolPaths = @(
+    "internal/messaging/private.proto",
+    "internal/messaging/private.pb.go"
+)
 $applicationIdentitySource = "api/ardents/application/v1/identity.proto"
 $applicationContentSources = @($applicationSources | Where-Object { $_ -ne $applicationIdentitySource })
 $plannedIdentitySources = @("api/ardents/v1/identity.proto", "api/ardents/application/v1/identity.proto")
@@ -25,6 +30,10 @@ $plannedIdentitySources = @("api/ardents/v1/identity.proto", "api/ardents/applic
 $outputRoot = $root
 $temporaryRoot = $null
 try {
+    foreach ($legacyPath in $legacyPrivateProtocolPaths) {
+        if (Test-Path $legacyPath) { throw "legacy private protocol location must be removed: $legacyPath" }
+    }
+    if (-not (Test-Path $privateProtocolSource)) { throw "private messaging protocol source is missing: $privateProtocolSource" }
     if ($Check) {
         $temporaryRoot = Join-Path ([IO.Path]::GetTempPath()) ("ardents-api-" + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $temporaryRoot | Out-Null
@@ -51,6 +60,8 @@ try {
         & protoc --proto_path=$root --go_out=$outputRoot --go_opt=module=ardents --go_opt="Mapi/ardents/identity/v1/artifacts.proto=ardents/sdk/go/protocol/identityv1" $artifactSource
         if ($LASTEXITCODE -ne 0) { throw "SDK artifact generation failed" }
     }
+    & protoc --proto_path=$root --go_out=$outputRoot --go_opt=module=ardents $privateProtocolSource
+    if ($LASTEXITCODE -ne 0) { throw "private messaging protocol generation failed" }
 
     if ($Check) {
         $generated = @(Get-ChildItem $temporaryRoot -Recurse -File -Include *.pb.go,*.connect.go)

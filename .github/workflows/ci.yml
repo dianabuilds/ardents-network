@@ -112,7 +112,7 @@ jobs:
           go test -race
           ./internal/ingressproxy
           ./internal/network/waku
-          ./internal/messaging
+          ./internal/messaging/...
           ./internal/content
           ./internal/identity/access
           ./internal/daemon

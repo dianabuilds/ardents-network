@@ -138,9 +138,10 @@
     ]
   },
   "private_protocol": {
-    "proto": "internal/messaging/private.proto",
-    "generated": "internal/messaging/private.pb.go",
-    "go_package": "ardents/internal/messaging;messaging",
-    "exception_owner": "ARD-028"
+    "proto": "api/ardents/private/v1/private.proto",
+    "generated": "internal/messaging/protocol/private.pb.go",
+    "go_package": "ardents/internal/messaging/protocol;messagingprotocol",
+    "generator": "scripts/generate-api.ps1",
+    "owner": "ARD-028"
   }
 }

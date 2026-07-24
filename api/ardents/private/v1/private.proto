@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package ardents.private.v1;
 
-option go_package = "ardents/internal/messaging;messaging";
+option go_package = "ardents/internal/messaging/protocol;messagingprotocol";
 
 enum MessageClass {
   MESSAGE_CLASS_UNSPECIFIED = 0;

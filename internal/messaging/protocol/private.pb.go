@@ -2,9 +2,9 @@
 // versions:
 // 	protoc-gen-go v1.36.9
 // 	protoc        v6.33.4
-// source: internal/messaging/private.proto
+// source: api/ardents/private/v1/private.proto
 
-package messaging
+package messagingprotocol
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -63,11 +63,11 @@ func (x MessageClass) String() string {
 }
 
 func (MessageClass) Descriptor() protoreflect.EnumDescriptor {
-	return file_internal_messaging_private_proto_enumTypes[0].Descriptor()
+	return file_api_ardents_private_v1_private_proto_enumTypes[0].Descriptor()
 }
 
 func (MessageClass) Type() protoreflect.EnumType {
-	return &file_internal_messaging_private_proto_enumTypes[0]
+	return &file_api_ardents_private_v1_private_proto_enumTypes[0]
 }
 
 func (x MessageClass) Number() protoreflect.EnumNumber {
@@ -76,7 +76,7 @@ func (x MessageClass) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use MessageClass.Descriptor instead.
 func (MessageClass) EnumDescriptor() ([]byte, []int) {
-	return file_internal_messaging_private_proto_rawDescGZIP(), []int{0}
+	return file_api_ardents_private_v1_private_proto_rawDescGZIP(), []int{0}
 }
 
 type PrivateMessageV1 struct {
@@ -96,7 +96,7 @@ type PrivateMessageV1 struct {
 
 func (x *PrivateMessageV1) Reset() {
 	*x = PrivateMessageV1{}
-	mi := &file_internal_messaging_private_proto_msgTypes[0]
+	mi := &file_api_ardents_private_v1_private_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -108,7 +108,7 @@ func (x *PrivateMessageV1) String() string {
 func (*PrivateMessageV1) ProtoMessage() {}
 
 func (x *PrivateMessageV1) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_messaging_private_proto_msgTypes[0]
+	mi := &file_api_ardents_private_v1_private_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -121,7 +121,7 @@ func (x *PrivateMessageV1) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PrivateMessageV1.ProtoReflect.Descriptor instead.
 func (*PrivateMessageV1) Descriptor() ([]byte, []int) {
-	return file_internal_messaging_private_proto_rawDescGZIP(), []int{0}
+	return file_api_ardents_private_v1_private_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *PrivateMessageV1) GetProtocolVersion() uint32 {
@@ -187,11 +187,11 @@ func (x *PrivateMessageV1) GetPadding() []byte {
 	return nil
 }
 
-var File_internal_messaging_private_proto protoreflect.FileDescriptor
+var File_api_ardents_private_v1_private_proto protoreflect.FileDescriptor
 
-const file_internal_messaging_private_proto_rawDesc = "" +
+const file_api_ardents_private_v1_private_proto_rawDesc = "" +
 	"\n" +
-	" internal/messaging/private.proto\x12\x12ardents.private.v1\"\xf1\x02\n" +
+	"$api/ardents/private/v1/private.proto\x12\x12ardents.private.v1\"\xf1\x02\n" +
 	"\x10PrivateMessageV1\x12)\n" +
 	"\x10protocol_version\x18\x01 \x01(\rR\x0fprotocolVersion\x12E\n" +
 	"\rmessage_class\x18\x02 \x01(\x0e2 .ardents.private.v1.MessageClassR\fmessageClass\x12\x19\n" +
@@ -208,27 +208,27 @@ const file_internal_messaging_private_proto_rawDesc = "" +
 	"\x12BLOB_FETCH_REQUEST\x10\x02\x12\x17\n" +
 	"\x13BLOB_FETCH_RESPONSE\x10\x03\x12\x16\n" +
 	"\x12CAPABILITY_CONTROL\x10\x04\x12\x18\n" +
-	"\x14BLOB_REPLICA_CONTROL\x10\x05B&Z$ardents/internal/messaging;messagingb\x06proto3"
+	"\x14BLOB_REPLICA_CONTROL\x10\x05B7Z5ardents/internal/messaging/protocol;messagingprotocolb\x06proto3"
 
 var (
-	file_internal_messaging_private_proto_rawDescOnce sync.Once
-	file_internal_messaging_private_proto_rawDescData []byte
+	file_api_ardents_private_v1_private_proto_rawDescOnce sync.Once
+	file_api_ardents_private_v1_private_proto_rawDescData []byte
 )
 
-func file_internal_messaging_private_proto_rawDescGZIP() []byte {
-	file_internal_messaging_private_proto_rawDescOnce.Do(func() {
-		file_internal_messaging_private_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_internal_messaging_private_proto_rawDesc), len(file_internal_messaging_private_proto_rawDesc)))
+func file_api_ardents_private_v1_private_proto_rawDescGZIP() []byte {
+	file_api_ardents_private_v1_private_proto_rawDescOnce.Do(func() {
+		file_api_ardents_private_v1_private_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_api_ardents_private_v1_private_proto_rawDesc), len(file_api_ardents_private_v1_private_proto_rawDesc)))
 	})
-	return file_internal_messaging_private_proto_rawDescData
+	return file_api_ardents_private_v1_private_proto_rawDescData
 }
 
-var file_internal_messaging_private_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_internal_messaging_private_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_internal_messaging_private_proto_goTypes = []any{
+var file_api_ardents_private_v1_private_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_api_ardents_private_v1_private_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_api_ardents_private_v1_private_proto_goTypes = []any{
 	(MessageClass)(0),        // 0: ardents.private.v1.MessageClass
 	(*PrivateMessageV1)(nil), // 1: ardents.private.v1.PrivateMessageV1
 }
-var file_internal_messaging_private_proto_depIdxs = []int32{
+var file_api_ardents_private_v1_private_proto_depIdxs = []int32{
 	0, // 0: ardents.private.v1.PrivateMessageV1.message_class:type_name -> ardents.private.v1.MessageClass
 	1, // [1:1] is the sub-list for method output_type
 	1, // [1:1] is the sub-list for method input_type
@@ -237,27 +237,27 @@ var file_internal_messaging_private_proto_depIdxs = []int32{
 	0, // [0:1] is the sub-list for field type_name
 }
 
-func init() { file_internal_messaging_private_proto_init() }
-func file_internal_messaging_private_proto_init() {
-	if File_internal_messaging_private_proto != nil {
+func init() { file_api_ardents_private_v1_private_proto_init() }
+func file_api_ardents_private_v1_private_proto_init() {
+	if File_api_ardents_private_v1_private_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_messaging_private_proto_rawDesc), len(file_internal_messaging_private_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_ardents_private_v1_private_proto_rawDesc), len(file_api_ardents_private_v1_private_proto_rawDesc)),
 			NumEnums:      1,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_internal_messaging_private_proto_goTypes,
-		DependencyIndexes: file_internal_messaging_private_proto_depIdxs,
-		EnumInfos:         file_internal_messaging_private_proto_enumTypes,
-		MessageInfos:      file_internal_messaging_private_proto_msgTypes,
+		GoTypes:           file_api_ardents_private_v1_private_proto_goTypes,
+		DependencyIndexes: file_api_ardents_private_v1_private_proto_depIdxs,
+		EnumInfos:         file_api_ardents_private_v1_private_proto_enumTypes,
+		MessageInfos:      file_api_ardents_private_v1_private_proto_msgTypes,
 	}.Build()
-	File_internal_messaging_private_proto = out.File
-	file_internal_messaging_private_proto_goTypes = nil
-	file_internal_messaging_private_proto_depIdxs = nil
+	File_api_ardents_private_v1_private_proto = out.File
+	file_api_ardents_private_v1_private_proto_goTypes = nil
+	file_api_ardents_private_v1_private_proto_depIdxs = nil
 }

@@ -142,7 +142,7 @@ func TestValidateRejectsAgentToolingOutsideAllowlist(t *testing.T) {
 
 func TestValidateRejectsPrivateProtocolBoundaryDrift(t *testing.T) {
 	root := architectureFixture(t)
-	writeFixture(t, root, "internal/messaging/private.pb.go", "// source: elsewhere/private.proto\npackage messaging\n")
+	writeFixture(t, root, "internal/messaging/protocol/private.pb.go", "// source: elsewhere/private.proto\npackage messagingprotocol\n")
 
 	err := Validate(root)
 	require.ErrorContains(t, err, "private protocol")
@@ -151,11 +151,29 @@ func TestValidateRejectsPrivateProtocolBoundaryDrift(t *testing.T) {
 
 func TestValidateRejectsSecondPrivateGeneratedOutput(t *testing.T) {
 	root := architectureFixture(t)
-	writeFixture(t, root, "internal/messaging/private_copy.pb.go", "// source: internal/messaging/private.proto\npackage messaging\n")
+	writeFixture(t, root, "internal/elsewhere/private_copy.pb.go", "// source: api/ardents/private/v1/private.proto\npackage elsewhere\n")
 
 	err := Validate(root)
 	require.ErrorContains(t, err, "private protocol")
 	require.ErrorContains(t, err, "private_copy.pb.go")
+}
+
+func TestValidateRejectsLegacyPrivateProtocolLocation(t *testing.T) {
+	root := architectureFixture(t)
+	writeFixture(t, root, "internal/messaging/private.proto", "syntax = \"proto3\";\n")
+
+	err := Validate(root)
+	require.ErrorContains(t, err, "private protocol")
+	require.ErrorContains(t, err, "legacy location")
+}
+
+func TestValidateRejectsPrivateProtocolGeneratorDrift(t *testing.T) {
+	root := architectureFixture(t)
+	writeFixture(t, root, "scripts/generate-api.ps1", "Write-Host 'private protocol generation removed'\n")
+
+	err := Validate(root)
+	require.ErrorContains(t, err, "private protocol")
+	require.ErrorContains(t, err, "generator")
 }
 
 func TestRepositoryArchitectureAcceptance(t *testing.T) {
@@ -179,12 +197,15 @@ func architectureFixture(t *testing.T) string {
 	writeFixture(t, root, "api/application.proto", "syntax = \"proto3\";\nservice ContentService {}\n")
 	writeFixture(t, root, "internal/localapi/server_base.go", "package localapi\nfunc compose() { register(NewNodeServiceHandler()) }\n")
 	writeFixture(t, root, "internal/applicationapi/content/handler.go", "package content\nfunc compose() (string, Handler, error) { path, handler := NewContentServiceHandler(); return path, handler, nil }\n")
-	writeFixture(t, root, "internal/messaging/private.proto", `
+	writeFixture(t, root, "scripts/generate-api.ps1", `$privateProtocolSource = "api/ardents/private/v1/private.proto"
+& protoc --proto_path=$root --go_out=$outputRoot --go_opt=module=ardents $privateProtocolSource
+`)
+	writeFixture(t, root, "api/ardents/private/v1/private.proto", `
 syntax = "proto3";
 package ardents.private.v1;
-option go_package = "ardents/internal/messaging;messaging";
+option go_package = "ardents/internal/messaging/protocol;messagingprotocol";
 `)
-	writeFixture(t, root, "internal/messaging/private.pb.go", "// source: internal/messaging/private.proto\npackage messaging\n")
+	writeFixture(t, root, "internal/messaging/protocol/private.pb.go", "// source: api/ardents/private/v1/private.proto\npackage messagingprotocol\n")
 
 	manifest := Manifest{
 		Version:         1,
@@ -227,10 +248,11 @@ option go_package = "ardents/internal/messaging;messaging";
 			AllowedPrefixes: []string{".agents/skills/security-audit/"},
 		},
 		PrivateProtocol: PrivateProtocolPolicy{
-			Proto:          "internal/messaging/private.proto",
-			Generated:      "internal/messaging/private.pb.go",
-			GoPackage:      "ardents/internal/messaging;messaging",
-			ExceptionOwner: "ARD-028",
+			Proto:     canonicalPrivateProto,
+			Generated: canonicalPrivateGenerated,
+			GoPackage: canonicalPrivateGoPackage,
+			Generator: canonicalPrivateGenerator,
+			Owner:     "ARD-028",
 		},
 	}
 	raw, err := json.MarshalIndent(manifest, "", "  ")

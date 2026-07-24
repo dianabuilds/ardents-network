@@ -1,7 +1,5 @@
 package messaging
 
-//go:generate protoc --proto_path=../.. --go_out=../.. --go_opt=paths=source_relative ../../internal/messaging/private.proto
-
 import (
 	"crypto/ed25519"
 	"encoding/json"
@@ -9,15 +7,52 @@ import (
 	"time"
 
 	identityapi "ardents/internal/identity"
+	messagingprotocol "ardents/internal/messaging/protocol"
 )
 
 const (
-	MessageClassDiscoveryRecord    = MessageClass_DISCOVERY_RECORD
-	MessageClassBlobFetchRequest   = MessageClass_BLOB_FETCH_REQUEST
-	MessageClassBlobFetchResponse  = MessageClass_BLOB_FETCH_RESPONSE
-	MessageClassCapabilityControl  = MessageClass_CAPABILITY_CONTROL
-	MessageClassBlobReplicaControl = MessageClass_BLOB_REPLICA_CONTROL
+	MessageClassDiscoveryRecord MessageClass = iota + 1
+	MessageClassBlobFetchRequest
+	MessageClassBlobFetchResponse
+	MessageClassCapabilityControl
+	MessageClassBlobReplicaControl
 )
+
+type MessageClass uint8
+
+func messageClassToProtocol(class MessageClass) (messagingprotocol.MessageClass, bool) {
+	switch class {
+	case MessageClassDiscoveryRecord:
+		return messagingprotocol.MessageClass_DISCOVERY_RECORD, true
+	case MessageClassBlobFetchRequest:
+		return messagingprotocol.MessageClass_BLOB_FETCH_REQUEST, true
+	case MessageClassBlobFetchResponse:
+		return messagingprotocol.MessageClass_BLOB_FETCH_RESPONSE, true
+	case MessageClassCapabilityControl:
+		return messagingprotocol.MessageClass_CAPABILITY_CONTROL, true
+	case MessageClassBlobReplicaControl:
+		return messagingprotocol.MessageClass_BLOB_REPLICA_CONTROL, true
+	default:
+		return messagingprotocol.MessageClass_MESSAGE_CLASS_UNSPECIFIED, false
+	}
+}
+
+func messageClassFromProtocol(class messagingprotocol.MessageClass) (MessageClass, bool) {
+	switch class {
+	case messagingprotocol.MessageClass_DISCOVERY_RECORD:
+		return MessageClassDiscoveryRecord, true
+	case messagingprotocol.MessageClass_BLOB_FETCH_REQUEST:
+		return MessageClassBlobFetchRequest, true
+	case messagingprotocol.MessageClass_BLOB_FETCH_RESPONSE:
+		return MessageClassBlobFetchResponse, true
+	case messagingprotocol.MessageClass_CAPABILITY_CONTROL:
+		return MessageClassCapabilityControl, true
+	case messagingprotocol.MessageClass_BLOB_REPLICA_CONTROL:
+		return MessageClassBlobReplicaControl, true
+	default:
+		return 0, false
+	}
+}
 
 type SealRequest struct {
 	Capability     identityapi.ResolvedCapability

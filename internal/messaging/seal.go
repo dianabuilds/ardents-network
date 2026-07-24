@@ -8,6 +8,7 @@ import (
 
 	identityapi "ardents/internal/identity"
 	identityprincipal "ardents/internal/identity/principal"
+	messagingprotocol "ardents/internal/messaging/protocol"
 
 	"golang.org/x/crypto/chacha20poly1305"
 )
@@ -25,7 +26,10 @@ func Seal(request SealRequest) (SealedEnvelope, error) {
 	if err != nil {
 		return SealedEnvelope{}, err
 	}
-	message := newPrivateMessage(request, public)
+	message, err := newPrivateMessage(request, public)
+	if err != nil {
+		return SealedEnvelope{}, err
+	}
 	digest, err := signingDigest(header, message)
 	if err != nil {
 		return SealedEnvelope{}, err
@@ -91,15 +95,19 @@ func newEnvelopeHeader(request SealRequest, lifetime time.Duration) (envelopeHea
 	return header, nil
 }
 
-func newPrivateMessage(request SealRequest, public ed25519.PublicKey) *PrivateMessageV1 {
-	return &PrivateMessageV1{
-		ProtocolVersion: 1, MessageClass: request.Class,
+func newPrivateMessage(request SealRequest, public ed25519.PublicKey) (*messagingprotocol.PrivateMessageV1, error) {
+	class, ok := messageClassToProtocol(request.Class)
+	if !ok {
+		return nil, envelopeError(CodeEnvelopeMalformed, "private message class is invalid")
+	}
+	return &messagingprotocol.PrivateMessageV1{
+		ProtocolVersion: 1, MessageClass: class,
 		GrantId:         request.Capability.GrantID[:],
 		SenderPrincipal: request.Capability.Subject,
 		SenderPublicKey: append([]byte(nil), public...),
 		PayloadVersion:  request.PayloadVersion,
 		Payload:         append([]byte(nil), request.Payload...),
-	}
+	}, nil
 }
 
 func encryptPrivateMessage(material Material, header envelopeHeader, inner []byte) (SealedEnvelope, error) {

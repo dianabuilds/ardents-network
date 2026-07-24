@@ -89,7 +89,9 @@ Protocol source lives under `api/`. Operator protocol Go code lives under
 Application identity additionally has a generated-only Node adapter copy under
 `internal/applicationapi/protocol`; its explicit import mappings prevent
 server and SDK artifact descriptors from entering the same binary. Generated
-code is never mixed with handwritten handlers or product models.
+private-messaging wire types live under `internal/messaging/protocol` and are
+generated from `api/ardents/private/v1/private.proto`. Generated code is never
+mixed with handwritten handlers or product models.
 
 ## 4. Target Repository Topology
 
@@ -114,6 +116,8 @@ api/
   ardents/application/v1/
     content.proto
     identity.proto
+  ardents/private/v1/
+    private.proto
 
 cmd/
   ardentsctl/
@@ -190,6 +194,7 @@ internal/
     routing/
     waku/
   messaging/
+    protocol/
   discovery/
     records/
     resolution/
@@ -324,6 +329,7 @@ The nested directories have these exact responsibilities:
 | `network/routing` | current usable route facts; not discovery intake |
 | `network/waku` | the sole go-waku/libp2p implementation adapter |
 | `messaging` | private authenticated envelopes, opaque selectors, replay protection and messaging privacy status |
+| `messaging/protocol` | generated private-message wire types only; no envelope, authorization, replay, or domain behavior |
 | `discovery/records` | validated durable canonical kind-specific NodeFacts and ServiceFacts records |
 | `discovery/resolution` | freshness- and trust-aware record/service selection |
 | `discovery/trust` | generation-aware discovery publication trust and verification cache |
@@ -353,9 +359,9 @@ resolved through `go.mod` unless a separately approved fork is actually used.
 
 `docs/engineering/architecture-acceptance.json` is the machine-readable source
 for file ceilings, package-documentation exceptions, generated service
-composition, the agent-tooling allowlist, and the temporary private-protocol
-boundary. `tests/tooling/archaccept` fails closed when the repository diverges
-from that policy.
+composition, the agent-tooling allowlist, and the canonical private-protocol
+source, generator, output and Go package. `tests/tooling/archaccept` fails
+closed when the repository diverges from that policy.
 
 The policy discovers handwritten production Go packages from the explicit
 `api`, `cmd`, `internal`, `scripts`, and `sdk/go` roots. Test tooling under
@@ -1040,10 +1046,12 @@ Completed structural replacements:
   exception must be explicit in the machine-readable acceptance policy.
   Generated-only packages are documented by their canonical proto source and
   generation boundary.
-- retained `internal/messaging/private.proto` and its generated
-  `private.pb.go` as one explicit temporary private-protocol boundary owned by
-  ARD-028. The acceptance gate checks the exact source, output and `go_package`;
-  no second private generated location is implied or permitted.
+- moved the private-message source to
+  `api/ardents/private/v1/private.proto` and its generated Go representation to
+  the generated-only `internal/messaging/protocol` package. The handwritten
+  messaging domain owns its `MessageClass` and maps it explicitly at the wire
+  seam. The acceptance gate checks the exact source, generator, output and
+  `go_package`, rejects legacy locations, and permits no second generated copy.
 - inverted process-surface construction. `daemon` exposes neutral local API and
   operator-surface hooks; `cmd/ardentsd` selects the localapi and observability
   adapters. This removed the former daemon-to-adapter imports and allowed the

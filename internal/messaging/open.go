@@ -6,6 +6,7 @@ import (
 	"time"
 
 	identityapi "ardents/internal/identity"
+	messagingprotocol "ardents/internal/messaging/protocol"
 
 	"golang.org/x/crypto/chacha20poly1305"
 	"google.golang.org/protobuf/proto"
@@ -71,8 +72,8 @@ func admitAuthenticatedReplay(request OpenRequest, header envelopeHeader, now ti
 	})
 }
 
-func decodePrivateMessage(inner []byte) (*PrivateMessageV1, error) {
-	message := &PrivateMessageV1{}
+func decodePrivateMessage(inner []byte) (*messagingprotocol.PrivateMessageV1, error) {
+	message := &messagingprotocol.PrivateMessageV1{}
 	if err := (proto.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(inner, message); err != nil {
 		return nil, envelopeError(CodeEnvelopeMalformed, "private message cannot be decoded")
 	}
@@ -82,8 +83,11 @@ func decodePrivateMessage(inner []byte) (*PrivateMessageV1, error) {
 	return message, nil
 }
 
-func authorizePrivateMessage(request OpenRequest, header envelopeHeader, message *PrivateMessageV1, observedAt time.Time) (OpenedMessage, error) {
-	class := message.MessageClass
+func authorizePrivateMessage(request OpenRequest, header envelopeHeader, message *messagingprotocol.PrivateMessageV1, observedAt time.Time) (OpenedMessage, error) {
+	class, ok := messageClassFromProtocol(message.MessageClass)
+	if !ok {
+		return OpenedMessage{}, envelopeError(CodeEnvelopeSenderUnauthorized, "message class is not admitted by capability")
+	}
 	scope, classLifetime, ok := classProperties(class)
 	issuedAt := time.Unix(header.IssuedAt, 0).UTC()
 	expiresAt := time.Unix(header.ExpiresAt, 0).UTC()

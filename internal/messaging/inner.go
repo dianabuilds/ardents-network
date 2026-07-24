@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	identityprincipal "ardents/internal/identity/principal"
+	messagingprotocol "ardents/internal/messaging/protocol"
 
 	"google.golang.org/protobuf/proto"
 )
@@ -16,8 +17,8 @@ const signatureDomain = "ardents-private-message-signature/1"
 
 var paddingBuckets = [...]int{1024, 4096, 16384, 65536, 131072}
 
-func signingDigest(header envelopeHeader, message *PrivateMessageV1) ([]byte, error) {
-	unsigned := proto.Clone(message).(*PrivateMessageV1)
+func signingDigest(header envelopeHeader, message *messagingprotocol.PrivateMessageV1) ([]byte, error) {
+	unsigned := proto.Clone(message).(*messagingprotocol.PrivateMessageV1)
 	unsigned.Signature = nil
 	unsigned.Padding = nil
 	raw, err := proto.MarshalOptions{Deterministic: true}.Marshal(unsigned)
@@ -32,7 +33,7 @@ func signingDigest(header envelopeHeader, message *PrivateMessageV1) ([]byte, er
 	return digest.Sum(nil), nil
 }
 
-func marshalPadded(message *PrivateMessageV1) ([]byte, error) {
+func marshalPadded(message *messagingprotocol.PrivateMessageV1) ([]byte, error) {
 	message.Padding = nil
 	base, err := proto.MarshalOptions{Deterministic: true}.Marshal(message)
 	if err != nil {
@@ -74,7 +75,7 @@ func paddingForBucket(baseSize, bucket int) (int, bool) {
 	return 0, false
 }
 
-func validateDecodedInner(raw []byte, message *PrivateMessageV1) error {
+func validateDecodedInner(raw []byte, message *messagingprotocol.PrivateMessageV1) error {
 	if len(message.ProtoReflect().GetUnknown()) != 0 {
 		return fmt.Errorf("private message contains unknown fields")
 	}
@@ -96,7 +97,7 @@ func validateDecodedInner(raw []byte, message *PrivateMessageV1) error {
 	if !allZero(message.Padding) {
 		return fmt.Errorf("private message padding is invalid")
 	}
-	withoutPadding := proto.Clone(message).(*PrivateMessageV1)
+	withoutPadding := proto.Clone(message).(*messagingprotocol.PrivateMessageV1)
 	withoutPadding.Padding = nil
 	unpadded, err := proto.MarshalOptions{Deterministic: true}.Marshal(withoutPadding)
 	if err != nil || len(unpadded) > maximumInnerSize {

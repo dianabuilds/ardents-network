@@ -153,8 +153,26 @@
       "audit_id": "SEC-002",
       "issue": "ARD-008",
       "priority": "P1",
-      "critical_files": ["internal/messaging/open.go", "internal/messaging/replay.go"],
+      "critical_files": [
+        "internal/messaging/envelope_types.go",
+        "internal/messaging/inner.go",
+        "internal/messaging/open.go",
+        "internal/messaging/replay.go",
+        "internal/messaging/seal.go",
+        "internal/messaging/protocol/private.pb.go"
+      ],
       "evidence": [
+        {
+          "kind": "go_test",
+          "file": "internal/messaging/envelope_test.go",
+          "name": "TestPrivateEnvelopeRoundTripHidesProductSemantics",
+          "gate": "critical-lifecycle",
+          "covers": [
+            "internal/messaging/envelope_types.go",
+            "internal/messaging/inner.go",
+            "internal/messaging/seal.go"
+          ]
+        },
         {
           "kind": "go_test",
           "file": "internal/messaging/envelope_test.go",
@@ -168,6 +186,13 @@
           "name": "TestDurableReplayLedgerCapacityAndExpiryPruning",
           "gate": "critical-lifecycle",
           "covers": ["internal/messaging/replay.go"]
+        },
+        {
+          "kind": "go_test",
+          "file": "internal/messaging/private_protocol_compatibility_test.go",
+          "name": "TestPrivateMessageV1WireCompatibility",
+          "gate": "critical-lifecycle",
+          "covers": ["internal/messaging/protocol/private.pb.go"]
         }
       ]
     },
