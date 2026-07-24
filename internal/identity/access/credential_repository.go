@@ -44,7 +44,18 @@ func recordEnrollmentCredential(tx storage.WriteTransaction, key, raw []byte) er
 }
 
 func loadEnrollmentCredential(raw []byte, now time.Time) (*Artifact, error) {
-	credential, err := ParseAndVerifyKeyCredential(raw, now)
+	credential, err := loadEnrollmentCredentialIntegrity(raw)
+	if err != nil {
+		return nil, err
+	}
+	if enrollmentCredentialTemporalState(credential, now) != recoveryCredentialActive {
+		return nil, fmt.Errorf("enrollment Credential is not temporally eligible")
+	}
+	return credential, nil
+}
+
+func loadEnrollmentCredentialIntegrity(raw []byte) (*Artifact, error) {
+	credential, err := parseAndVerifyKeyCredentialIntegrity(raw)
 	if err != nil {
 		return nil, fmt.Errorf("enrollment Credential record is corrupt")
 	}
@@ -53,4 +64,25 @@ func loadEnrollmentCredential(raw []byte, now time.Time) (*Artifact, error) {
 		return nil, fmt.Errorf("enrollment Credential record is corrupt")
 	}
 	return credential, nil
+}
+
+type recoveryCredentialState uint8
+
+const (
+	recoveryCredentialUnknown recoveryCredentialState = iota
+	recoveryCredentialActive
+	recoveryCredentialNotYetValid
+	recoveryCredentialExpired
+	recoveryCredentialRevoked
+)
+
+func enrollmentCredentialTemporalState(credential *Artifact, now time.Time) recoveryCredentialState {
+	switch credentialTemporalEligibilityAt(credential.KeyCredentialPayload(), now) {
+	case temporalNotYetValid:
+		return recoveryCredentialNotYetValid
+	case temporalExpired:
+		return recoveryCredentialExpired
+	default:
+		return recoveryCredentialActive
+	}
 }

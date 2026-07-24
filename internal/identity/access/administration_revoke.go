@@ -212,7 +212,7 @@ func stableAdminDigest(domain string, parts ...[]byte) [sha256.Size]byte {
 	return digest
 }
 
-func hasRecoveryPath(tx storage.ReadTransaction, node string, now time.Time, excludedGrant, excludedSubject, excludedDevice string) (bool, error) {
+func hasRecoveryPath(tx storage.WriteTransaction, node string, now time.Time, excludedGrant, excludedSubject, excludedDevice string) (bool, error) {
 	found := false
 	err := tx.ForEach(grantsBucket, func(key, _ []byte) error {
 		if string(key) == excludedGrant {
@@ -261,34 +261,71 @@ func isRecoveryGrant(grant *Artifact, node string, now time.Time) bool {
 	return true
 }
 
-func subjectHasRecoveryDevice(tx storage.ReadTransaction, node, subject string, now time.Time, excludedSubject, excludedDevice string) (bool, error) {
+func subjectHasRecoveryDevice(tx storage.WriteTransaction, node, subject string, now time.Time, excludedSubject, excludedDevice string) (bool, error) {
 	prefix := tuple([]byte(node), []byte(subject))
 	found := false
+	expiredKeys := make([][]byte, 0)
 	err := tx.ForEach(enrollmentCredentialsBucket, func(key, raw []byte) error {
 		if !bytes.HasPrefix(key, prefix) {
 			return nil
 		}
-		credential, err := loadEnrollmentCredential(raw, now)
+		credential, state, err := inspectRecoveryCredential(tx, node, subject, key, raw, now)
 		if err != nil {
 			return err
 		}
 		payload := credential.KeyCredentialPayload()
-		expected := tuple([]byte(node), []byte(subject), []byte(payload.DeviceId), []byte(credential.ID()))
-		if !bytes.Equal(expected, key) || payload.Subject != subject {
-			return fmt.Errorf("enrollment Credential index is corrupt")
+		switch state {
+		case recoveryCredentialExpired:
+			expiredKeys = append(expiredKeys, append([]byte(nil), key...))
+			return nil
+		case recoveryCredentialNotYetValid, recoveryCredentialRevoked:
+			return nil
 		}
 		if subject == excludedSubject && payload.DeviceId == excludedDevice {
 			return nil
 		}
-		revocationKey, err := deviceRevocationKey(node, subject, payload.DeviceId)
-		if err != nil {
-			return err
-		}
-		revoked, err := deviceRevoked(tx, revocationKey)
-		if err == nil && !revoked {
-			found = true
-		}
-		return err
+		found = true
+		return nil
 	})
-	return found, err
+	if err != nil {
+		return false, err
+	}
+	for _, key := range expiredKeys {
+		if err := tx.Delete(enrollmentCredentialsBucket, key); err != nil {
+			return false, err
+		}
+	}
+	return found, nil
+}
+
+func inspectRecoveryCredential(
+	tx storage.ReadTransaction,
+	node, subject string,
+	key, raw []byte,
+	now time.Time,
+) (*Artifact, recoveryCredentialState, error) {
+	credential, err := loadEnrollmentCredentialIntegrity(raw)
+	if err != nil {
+		return nil, recoveryCredentialUnknown, err
+	}
+	payload := credential.KeyCredentialPayload()
+	expected := tuple([]byte(node), []byte(subject), []byte(payload.DeviceId), []byte(credential.ID()))
+	if !bytes.Equal(expected, key) || payload.Subject != subject {
+		return nil, recoveryCredentialUnknown, fmt.Errorf("enrollment Credential index is corrupt")
+	}
+	if state := enrollmentCredentialTemporalState(credential, now); state != recoveryCredentialActive {
+		return credential, state, nil
+	}
+	revocationKey, err := deviceRevocationKey(node, subject, payload.DeviceId)
+	if err != nil {
+		return nil, recoveryCredentialUnknown, err
+	}
+	revoked, err := deviceRevoked(tx, revocationKey)
+	if err != nil {
+		return nil, recoveryCredentialUnknown, err
+	}
+	if revoked {
+		return credential, recoveryCredentialRevoked, nil
+	}
+	return credential, recoveryCredentialActive, nil
 }

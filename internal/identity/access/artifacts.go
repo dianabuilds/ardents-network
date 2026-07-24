@@ -144,12 +144,23 @@ func SignKeyCredential(input *identityprotocol.KeyCredentialPayload, key ed25519
 }
 
 func ParseAndVerifyKeyCredential(raw []byte, now time.Time) (*Artifact, error) {
+	artifact, err := parseAndVerifyKeyCredentialIntegrity(raw)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateCredentialTemporal(artifact.KeyCredentialPayload(), now); err != nil {
+		return nil, err
+	}
+	return artifact, nil
+}
+
+func parseAndVerifyKeyCredentialIntegrity(raw []byte) (*Artifact, error) {
 	m := new(identityprotocol.KeyCredential)
 	if err := strictUnmarshal(raw, m, maxCredentialBytes); err != nil {
 		return nil, err
 	}
 	p := m.GetPayload()
-	if err := validateCredential(p, now); err != nil {
+	if err := validateCredentialIntegrity(p); err != nil {
 		return nil, err
 	}
 	return verifyEnvelope(raw, m.GetId(), m.GetSignature(), p, credentialDomain, "kc1_", ed25519.PublicKey(p.GetRootPublicKey()))
@@ -386,6 +397,13 @@ func hasUnknown(m proto.Message) bool {
 }
 
 func validateCredential(p *identityprotocol.KeyCredentialPayload, now time.Time) error {
+	if err := validateCredentialIntegrity(p); err != nil {
+		return err
+	}
+	return validateCredentialTemporal(p, now)
+}
+
+func validateCredentialIntegrity(p *identityprotocol.KeyCredentialPayload) error {
 	if p == nil || p.Version != identitycontract.Version || len(p.RootPublicKey) != ed25519.PublicKeySize || len(p.DevicePublicKey) != ed25519.PublicKeySize || bytes.Equal(p.RootPublicKey, p.DevicePublicKey) || len(p.Purposes) != 1 || p.Purposes[0] != identityprotocol.CredentialPurpose_CREDENTIAL_PURPOSE_AUTHENTICATE {
 		return errInvalid
 	}
@@ -397,7 +415,38 @@ func validateCredential(p *identityprotocol.KeyCredentialPayload, now time.Time)
 	if err != nil || device.String() != p.DeviceId {
 		return errInvalid
 	}
-	return validateInterval(p.NotBefore, p.NotAfter, maxCredentialLife, now)
+	return validateInterval(p.NotBefore, p.NotAfter, maxCredentialLife, time.Time{})
+}
+
+func validateCredentialTemporal(p *identityprotocol.KeyCredentialPayload, now time.Time) error {
+	if credentialTemporalEligibilityAt(p, now) != temporalEligible {
+		return errInvalid
+	}
+	return nil
+}
+
+type temporalEligibility uint8
+
+const (
+	temporalEligible temporalEligibility = iota
+	temporalNotYetValid
+	temporalExpired
+)
+
+func credentialTemporalEligibilityAt(p *identityprotocol.KeyCredentialPayload, now time.Time) temporalEligibility {
+	if now.IsZero() {
+		return temporalEligible
+	}
+	start := p.NotBefore.AsTime()
+	end := p.NotAfter.AsTime()
+	switch {
+	case now.Before(start.Add(-portableSkew)):
+		return temporalNotYetValid
+	case !now.Before(end.Add(portableSkew)):
+		return temporalExpired
+	default:
+		return temporalEligible
+	}
 }
 
 func validateGrant(p *identityprotocol.AccessGrantPayload, now time.Time) error {

@@ -194,6 +194,23 @@ snapshot. Lists require a mandatory Subject and return only verified non-secret
 metadata. Mutation successes and all protected denials produce redacted audit
 events; successful read-only lists do not produce mutation events.
 
+Recovery-path evaluation first verifies each retained enrolled Credential's
+canonical wire form, tuple index, root signature, and Principal/Device binding
+without applying the current clock. A structurally or cryptographically corrupt
+record makes the defensive mutation unavailable and rolls the transaction back.
+Only after integrity succeeds is the Credential classified as active,
+not-yet-valid, expired, or Device-revoked. Not-yet-valid and revoked Credentials
+do not form a recovery path. Expired Credentials are also ineligible, but they
+do not make the scan corrupt or hide another active recovery Device.
+
+Expired enrolled Credentials are compacted when an authorized Grant or Device
+revocation successfully commits a recovery-path evaluation. The deletion is in
+the same write transaction as the defensive mutation; a denied, unavailable, or
+corrupt operation rolls it back. Not-yet-valid and revoked records remain until
+their signed `NotAfter` plus portable clock skew has elapsed, after which the
+same policy compacts them. Durable Device revocation records are retained
+independently, so deleting an expired Credential cannot restore that DeviceID.
+
 ## Services, Paths, And Limits
 
 Both identity services use the method names `BeginAuthentication`,

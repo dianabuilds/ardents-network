@@ -201,6 +201,43 @@ func TestGrantRevocationPreservesLastRecoveryPath(t *testing.T) {
 	require.Equal(t, revocationID, replayed)
 }
 
+func TestGrantRevocationIgnoresExpiredCredentialWhenActiveRecoveryPathRemains(t *testing.T) {
+	f := newAdminFixture(t)
+	f.retainCredential(0xd3, f.clock.Now().Add(-2*time.Hour), f.clock.Now().Add(-time.Hour))
+	replacement, err := f.issue("replacement-with-expired-retained", initialOperatorRecoveryActions)
+	require.NoError(t, err)
+	require.NotEqual(t, f.initialGrant, replacement)
+
+	command := f.command("revoke-active-recovery-with-expired", "identity.grant.revoke", "access-grant", f.initialGrant)
+	revocationID, err := f.service.RevokeAccessGrant(f.ctx, RevokeGrantRequest{
+		Command: command, GrantID: f.initialGrant,
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, revocationID)
+}
+
+func TestGrantRevocationFailsClosedOnCorruptRecoveryCredential(t *testing.T) {
+	f := newAdminFixture(t)
+	_, key := f.retainCredential(0xd4, f.clock.Now().Add(-time.Minute), f.clock.Now().Add(time.Hour))
+	require.NoError(t, f.database.Update(f.ctx, func(tx storage.WriteTransaction) error {
+		raw, found, err := tx.Get(enrollmentCredentialsBucket, key)
+		if err != nil || !found {
+			return err
+		}
+		raw[len(raw)-1] ^= 0xff
+		return tx.Put(enrollmentCredentialsBucket, key, raw)
+	}))
+	replacement, err := f.issue("replacement-before-corruption", initialOperatorRecoveryActions)
+	require.NoError(t, err)
+	require.NotEqual(t, f.initialGrant, replacement)
+
+	command := f.command("revoke-with-corrupt-recovery", "identity.grant.revoke", "access-grant", f.initialGrant)
+	_, err = f.service.RevokeAccessGrant(f.ctx, RevokeGrantRequest{
+		Command: command, GrantID: f.initialGrant,
+	})
+	require.ErrorIs(t, err, ErrUnavailable)
+}
+
 func TestGrantRevocationRecapturesClockAfterWriterWait(t *testing.T) {
 	f := newAdminFixture(t)
 	actions := make([]Action, len(initialOperatorRecoveryActions))
@@ -283,6 +320,122 @@ func TestDeviceRevocationRequiresAnotherEnrolledRecoveryDevice(t *testing.T) {
 	require.NotEmpty(t, id)
 	_, err = f.service.AuthenticateSession(f.ctx, f.secret, f.binding)
 	require.ErrorIs(t, err, ErrUnauthenticated)
+}
+
+func TestDeviceRevocationCompactsExpiredCredentialAndUsesActiveRecoveryDevice(t *testing.T) {
+	f := newAdminFixture(t)
+	_, expiredKey := f.retainCredential(0xd1, f.clock.Now().Add(-2*time.Hour), f.clock.Now().Add(-time.Hour))
+	f.retainCredential(0xd2, f.clock.Now().Add(-time.Minute), f.clock.Now().Add(time.Hour))
+
+	deviceResourceID, err := DeviceResourceID(f.principal, f.deviceID)
+	require.NoError(t, err)
+	command := f.command("revoke-with-expired-retained", "identity.device.revoke", "device", deviceResourceID)
+	_, err = f.service.RevokeDevice(f.ctx, RevokeDeviceRequest{
+		Command: command, Subject: f.principal, DeviceID: f.deviceID,
+	})
+	require.NoError(t, err)
+
+	require.NoError(t, f.database.View(f.ctx, func(tx storage.ReadTransaction) error {
+		_, retained, readErr := tx.Get(enrollmentCredentialsBucket, expiredKey)
+		require.NoError(t, readErr)
+		require.False(t, retained, "expired credential must be compacted after recovery-path evaluation")
+		return nil
+	}))
+}
+
+func TestDeviceRevocationRecoveryCredentialStateMatrix(t *testing.T) {
+	type credentialFixtureState uint8
+	const (
+		fixtureActive credentialFixtureState = iota
+		fixtureExpired
+		fixtureNotYetValid
+		fixtureRevoked
+		fixtureCorrupt
+	)
+	testCases := []struct {
+		name       string
+		notBefore  time.Duration
+		notAfter   time.Duration
+		state      credentialFixtureState
+		wantErr    error
+		wantRetain bool
+	}{
+		{name: "active", notBefore: -time.Minute, notAfter: time.Hour, state: fixtureActive, wantRetain: true},
+		{name: "expired", notBefore: -2 * time.Hour, notAfter: -time.Hour, state: fixtureExpired, wantErr: ErrConflict, wantRetain: true},
+		{name: "not-yet-valid", notBefore: 10 * time.Minute, notAfter: time.Hour, state: fixtureNotYetValid, wantErr: ErrConflict, wantRetain: true},
+		{name: "revoked", notBefore: -time.Minute, notAfter: time.Hour, state: fixtureRevoked, wantErr: ErrConflict, wantRetain: true},
+		{name: "corrupt", notBefore: -time.Minute, notAfter: time.Hour, state: fixtureCorrupt, wantErr: ErrUnavailable, wantRetain: true},
+	}
+	for index, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			f := newAdminFixture(t)
+			deviceID, key := f.retainCredential(
+				byte(0xe0+index),
+				f.clock.Now().Add(testCase.notBefore),
+				f.clock.Now().Add(testCase.notAfter),
+			)
+			switch testCase.state {
+			case fixtureRevoked:
+				revocation, err := SignDeviceRevocation(&identityprotocol.DeviceRevocationPayload{
+					Version: 1, TargetId: deviceID, Issuer: f.nodeID,
+					Audience: &identityprotocol.Audience{
+						Node: f.nodeID, Interface: identityprotocol.Interface_INTERFACE_OPERATOR, ProtocolMajor: 1,
+					},
+					RevokedAt: timestamppb.New(f.clock.Now()), TargetDeviceId: deviceID, Subject: f.principal,
+				}, f.node, f.clock.Now())
+				require.NoError(t, err)
+				require.NoError(t, f.service.recordDeviceRevocation(f.ctx, revocation))
+			case fixtureCorrupt:
+				require.NoError(t, f.database.Update(f.ctx, func(tx storage.WriteTransaction) error {
+					raw, found, err := tx.Get(enrollmentCredentialsBucket, key)
+					if err != nil || !found {
+						return err
+					}
+					raw[len(raw)-1] ^= 0xff
+					return tx.Put(enrollmentCredentialsBucket, key, raw)
+				}))
+			}
+
+			resourceID, err := DeviceResourceID(f.principal, f.deviceID)
+			require.NoError(t, err)
+			command := f.command("state-"+testCase.name, "identity.device.revoke", "device", resourceID)
+			_, err = f.service.RevokeDevice(f.ctx, RevokeDeviceRequest{
+				Command: command, Subject: f.principal, DeviceID: f.deviceID,
+			})
+			if testCase.wantErr == nil {
+				require.NoError(t, err)
+			} else {
+				require.ErrorIs(t, err, testCase.wantErr)
+			}
+
+			require.NoError(t, f.database.View(f.ctx, func(tx storage.ReadTransaction) error {
+				_, retained, readErr := tx.Get(enrollmentCredentialsBucket, key)
+				require.NoError(t, readErr)
+				require.Equal(t, testCase.wantRetain, retained)
+				return nil
+			}))
+		})
+	}
+}
+
+func (f *adminFixture) retainCredential(seed byte, notBefore, notAfter time.Time) (string, []byte) {
+	f.t.Helper()
+	device := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{seed}, 32))
+	deviceID, err := identityprincipal.DeviceFromEd25519PublicKey(device.Public().(ed25519.PublicKey))
+	require.NoError(f.t, err)
+	credential, err := SignKeyCredential(&identityprotocol.KeyCredentialPayload{
+		Version: 1, Subject: f.principal, RootPublicKey: f.root.Public().(ed25519.PublicKey),
+		DeviceId: deviceID.String(), DevicePublicKey: device.Public().(ed25519.PublicKey),
+		Purposes:  []identityprotocol.CredentialPurpose{identityprotocol.CredentialPurpose_CREDENTIAL_PURPOSE_AUTHENTICATE},
+		NotBefore: timestamppb.New(notBefore), NotAfter: timestamppb.New(notAfter),
+	}, f.root)
+	require.NoError(f.t, err)
+	key, raw, err := prepareEnrollmentCredential(f.nodeID, f.principal, credential, time.Time{})
+	require.NoError(f.t, err)
+	require.NoError(f.t, f.database.Update(f.ctx, func(tx storage.WriteTransaction) error {
+		return recordEnrollmentCredential(tx, key, raw)
+	}))
+	return deviceID.String(), key
 }
 
 func TestDeviceRevocationReplayAfterClockAdvanceAndFilteredList(t *testing.T) {

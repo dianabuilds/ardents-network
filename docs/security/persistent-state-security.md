@@ -47,6 +47,18 @@ Audience, Actor, Effective, action, grant/delegation IDs, and correlation ID.
 They never contain a Session ID or secret, challenge, nonce, Credential bytes,
 ticket, proof, private key, request/response payload, or resource identifier.
 
+Retained enrollment Credentials use integrity-first recovery processing.
+Canonical decoding, tuple binding, Principal/Device derivation, and signature
+verification are independent of temporal eligibility. Corrupt records fail
+closed. Valid records are then distinguished as active, not-yet-valid, expired,
+or Device-revoked; only active and unrevoked records count as recovery Devices.
+An expired record never blocks discovery of another active recovery Device.
+After a successful authorized Grant or Device revocation, expired Credentials
+encountered by that recovery scan are deleted atomically with the mutation.
+Failed or denied mutations roll back compaction. Future and revoked Credentials
+remain until `NotAfter` plus portable clock skew expires; their separate durable
+Device revocation records are not compacted with Credential bytes.
+
 On Windows, Unix mode bits are not an ACL security boundary. The runtime
 protects private directories and files with a non-inherited DACL granting full
 access only to the current node service identity and Local System; directory
