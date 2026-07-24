@@ -20,6 +20,11 @@ Ardents. Его задача — не переписать существующ�
 `docs/engineering/evidence/stabilization-baseline-75471a6.md`; это не заменяет
 R3 qualification.
 
+Три оставшихся bounded R1-исследования Existing Product Truth выполнены
+2026-07-25 на
+`main@180decc1b03f94a6115b59a4046b4795308ec235`. Этот research baseline не
+заменяет frozen R0 evidence и не является production qualification.
+
 ## 2. Почему нужен отдельный исследовательский контур
 
 Наличие кода не означает, что возможность доступна пользователю. Для каждой
@@ -154,12 +159,25 @@ R3 qualification.
 2. **Application installation journey.**
    Проверить путь Operator ticket -> Application enrollment -> session ->
    `Content.Put/Get` как один поддерживаемый сценарий.
+   Исследование завершено в
+   `docs/engineering/research/application-installation-journey.md`: текущий
+   публичный путь подтверждён, выбраны protected Ticket Handoff и lifecycle
+   acceptance slices.
 3. **Operator command smoke.**
    Сопоставить каждую документированную CLI-команду с procedure, action,
    regression test и human/JSON outcome.
+   Исследование завершено в
+   `docs/engineering/research/operator-command-smoke.md`: каталогизированы 68
+   leaf-команд, выбран closed command contract и четыре procedure-level smoke
+   slices.
 4. **Feature/evidence catalogue.**
    Автоматизировать проверку, что продуктовая возможность имеет owner, interface,
    implementation и актуальное evidence.
+   Исследование завершено в
+   `docs/engineering/research/feature-evidence-catalogue.md`: будущим
+   единственным источником выбран strict JSON, а текущий Markdown register —
+   его генерируемой проекцией; определены fail-closed validation и
+   commit-bound qualification rules.
 
 R1-задача не переходит в реализацию, пока не назван внешний interface модуля и
 не показано, что сложность не протекает в Application SDK или CLI.
@@ -343,6 +361,11 @@ Tests должны проходить через тот же interface, что �
   Transfer/Replication, Workloads/Hosting и Operations;
 - для каждого отметить implemented/reachable/operable/qualified;
 - выделить gaps, не требующие нового product decision.
+
+Bounded R1 packets для Application installation, Operator command smoke и
+feature/evidence catalogue завершены на `main@180decc1b03f94a6115b59a4046b4795308ec235`.
+Их issue-декомпозиция ожидает отдельного подтверждения перед публикацией в
+локальный tracker.
 
 ### Wave 2 — Ready work
 
