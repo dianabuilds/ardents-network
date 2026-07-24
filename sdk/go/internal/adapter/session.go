@@ -12,6 +12,7 @@ import (
 	"time"
 
 	identitycontract "ardents/api/ardents/identity/v1"
+	"ardents/internal/identity/sessionclient"
 	sdkerrors "ardents/sdk/go/errors"
 	sdkidentity "ardents/sdk/go/identity"
 	applicationidentityv1 "ardents/sdk/go/protocol/applicationidentityv1"
@@ -138,7 +139,7 @@ func (m *SessionManager) authorization(ctx context.Context) (string, uint64, ses
 				return "", 0, sessionKey{}, ctx.Err()
 			case <-done:
 				if flight.err != nil {
-					if ctx.Err() == nil && (errors.Is(flight.err, context.Canceled) || errors.Is(flight.err, context.DeadlineExceeded)) {
+					if sessionclient.RetrySessionAuthentication(ctx, flight.err) {
 						continue
 					}
 					return "", 0, sessionKey{}, flight.err
@@ -173,49 +174,73 @@ func (m *SessionManager) authorization(ctx context.Context) (string, uint64, ses
 }
 
 func (m *SessionManager) login(ctx context.Context, key sessionKey) (cachedSession, error) {
-	begin, err := m.auth.BeginAuthentication(ctx, connect.NewRequest(&applicationidentityv1.BeginAuthenticationRequest{
-		PrincipalId: key.principal,
-		Purpose:     identityv1.ChallengePurpose_CHALLENGE_PURPOSE_SESSION,
-	}))
-	if err != nil {
-		return cachedSession{}, mapAuthenticationError(err)
+	handshake := sessionclient.SessionHandshake[
+		*applicationidentityv1.BeginAuthenticationResponse,
+		sdkidentity.Challenge,
+		*applicationidentityv1.CompleteAuthenticationResponse,
+		cachedSession,
+	]{
+		Now: m.now,
+		Begin: func(ctx context.Context) (*applicationidentityv1.BeginAuthenticationResponse, error) {
+			response, err := m.auth.BeginAuthentication(ctx, connect.NewRequest(&applicationidentityv1.BeginAuthenticationRequest{
+				PrincipalId: key.principal,
+				Purpose:     identityv1.ChallengePurpose_CHALLENGE_PURPOSE_SESSION,
+			}))
+			if err != nil {
+				return nil, mapAuthenticationError(err)
+			}
+			if response == nil {
+				return nil, invalidAuthenticationResponse()
+			}
+			return response.Msg, nil
+		},
+		AcceptChallenge: func(response *applicationidentityv1.BeginAuthenticationResponse, receivedAt time.Time) (sdkidentity.Challenge, error) {
+			if response == nil || messageHasUnknown(response.ProtoReflect()) {
+				return sdkidentity.Challenge{}, invalidAuthenticationResponse()
+			}
+			challenge, err := applicationChallenge(response.GetChallenge(), receivedAt)
+			if err != nil || challenge.Principal != key.principal ||
+				challenge.Binding.Audience.Node != key.node ||
+				challenge.Binding.Audience.Interface != sdkidentity.InterfaceApplication ||
+				challenge.Binding.Audience.ProtocolMajor != identitycontract.ProtocolMajor ||
+				challenge.Binding.TransportProfile != sdkidentity.TransportUnixLocalV1 ||
+				challenge.Purpose != sdkidentity.ChallengeSession {
+				return sdkidentity.Challenge{}, invalidAuthenticationResponse()
+			}
+			return challenge, nil
+		},
+		Complete: func(ctx context.Context, challenge sdkidentity.Challenge) (*applicationidentityv1.CompleteAuthenticationResponse, error) {
+			return m.completeAuthentication(ctx, key, challenge)
+		},
+		AcceptCompletion: acceptApplicationSessionCompletion,
 	}
-	if begin == nil || begin.Msg == nil || messageHasUnknown(begin.Msg.ProtoReflect()) {
-		return cachedSession{}, invalidAuthenticationResponse()
-	}
-	challenge, err := applicationChallenge(begin.Msg.GetChallenge(), m.now().UTC())
-	if err != nil || challenge.Principal != key.principal ||
-		challenge.Binding.Audience.Node != key.node ||
-		challenge.Binding.Audience.Interface != sdkidentity.InterfaceApplication ||
-		challenge.Binding.Audience.ProtocolMajor != identitycontract.ProtocolMajor ||
-		challenge.Binding.TransportProfile != sdkidentity.TransportUnixLocalV1 ||
-		challenge.Purpose != sdkidentity.ChallengeSession {
-		return cachedSession{}, invalidAuthenticationResponse()
-	}
+	return handshake.Run(ctx)
+}
 
+func (m *SessionManager) completeAuthentication(ctx context.Context, key sessionKey, challenge sdkidentity.Challenge) (*applicationidentityv1.CompleteAuthenticationResponse, error) {
 	credential, err := m.signer.Credential(ctx)
 	if err != nil {
-		return cachedSession{}, signerUnavailable(ctx)
+		return nil, signerUnavailable(ctx)
 	}
 	if credential == nil {
-		return cachedSession{}, invalidAuthenticationResponse()
+		return nil, invalidAuthenticationResponse()
 	}
 	parsed := credential.KeyCredential()
 	if parsed == nil || parsed.Subject != key.principal || len(parsed.RootPublicKey) != ed25519.PublicKeySize {
-		return cachedSession{}, invalidAuthenticationResponse()
+		return nil, invalidAuthenticationResponse()
 	}
 	credentialRaw, err := credential.MarshalBinary()
 	if err != nil {
-		return cachedSession{}, invalidAuthenticationResponse()
+		return nil, invalidAuthenticationResponse()
 	}
 	defer clear(credentialRaw)
 	signature, err := m.signer.SignAuthenticationChallenge(ctx, challenge)
 	if err != nil {
-		return cachedSession{}, signerUnavailable(ctx)
+		return nil, signerUnavailable(ctx)
 	}
 	defer clear(signature)
 	if len(signature) != ed25519.SignatureSize {
-		return cachedSession{}, invalidAuthenticationResponse()
+		return nil, invalidAuthenticationResponse()
 	}
 	completeRequest := &applicationidentityv1.CompleteAuthenticationRequest{
 		ChallengeId: append([]byte(nil), challenge.ID[:]...), PrincipalId: key.principal,
@@ -226,42 +251,37 @@ func (m *SessionManager) login(ctx context.Context, key sessionKey) (cachedSessi
 	clear(completeRequest.Credential)
 	clear(completeRequest.Signature)
 	if err != nil {
-		return cachedSession{}, mapAuthenticationError(err)
+		return nil, mapAuthenticationError(err)
 	}
 	if complete == nil {
-		return cachedSession{}, invalidAuthenticationResponse()
+		return nil, invalidAuthenticationResponse()
 	}
-	return validateCompleteResponse(complete.Msg, m.now().UTC())
+	return complete.Msg, nil
 }
 
 func applicationChallenge(wire *identityv1.ChallengeFields, now time.Time) (sdkidentity.Challenge, error) {
 	return applicationChallengeForPurpose(wire, now, sdkidentity.ChallengeSession)
 }
 
-func validateCompleteResponse(response *applicationidentityv1.CompleteAuthenticationResponse, now time.Time) (cachedSession, error) {
+func acceptApplicationSessionCompletion(response *applicationidentityv1.CompleteAuthenticationResponse, receivedAt time.Time) (cachedSession, error) {
 	if response != nil {
 		defer clear(response.SessionSecret)
 		defer clear(response.EnrollmentProof)
 	}
 	if response == nil || messageHasUnknown(response.ProtoReflect()) ||
-		len(response.SessionSecret) != identitycontract.SessionSecretBytes ||
-		len(response.EnrollmentProof) != 0 || !validSessionID(response.SessionId) ||
-		response.ExpiresAt == nil || !response.ExpiresAt.IsValid() || response.ExpiresAt.Nanos != 0 ||
-		response.ExpiresAt.Seconds < identitycontract.LowerTimestampUnix ||
-		response.ExpiresAt.Seconds >= identitycontract.UpperTimestampUnix {
+		response.ExpiresAt == nil || !response.ExpiresAt.IsValid() {
 		return cachedSession{}, invalidAuthenticationResponse()
 	}
 	expiresAt := response.ExpiresAt.AsTime()
-	if !now.Before(expiresAt) || expiresAt.After(now.Add(identitycontract.MaxSessionLifetime)) {
+	if !sessionclient.ValidSessionCompletion(sessionclient.SessionCompletion{
+		SessionSecret: response.SessionSecret, EnrollmentProof: response.EnrollmentProof,
+		SessionID: response.SessionId, ExpiresAt: expiresAt,
+	}, receivedAt) {
 		return cachedSession{}, invalidAuthenticationResponse()
 	}
 	var secret [identitycontract.SessionSecretBytes]byte
 	copy(secret[:], response.SessionSecret)
 	return cachedSession{secret: secret, expiresAt: expiresAt}, nil
-}
-
-func validSessionID(value string) bool {
-	return validDigestID(value, "s1_")
 }
 
 func validDigestID(value, prefix string) bool {

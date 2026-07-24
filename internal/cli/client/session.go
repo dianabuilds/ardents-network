@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"crypto/ed25519"
-	"encoding/base32"
 	"encoding/base64"
 	"errors"
 	"strings"
@@ -13,6 +12,7 @@ import (
 	identitycontract "ardents/api/ardents/identity/v1"
 	identityaccess "ardents/internal/identity/access"
 	identityprotocol "ardents/internal/identity/protocol"
+	"ardents/internal/identity/sessionclient"
 	ardentsv1 "ardents/internal/localapi/protocol"
 
 	"connectrpc.com/connect"
@@ -125,6 +125,9 @@ func (m *SessionManager) authorization(ctx context.Context) (string, uint64, err
 				return "", 0, ctx.Err()
 			case <-done:
 				if flight.err != nil {
+					if sessionclient.RetrySessionAuthentication(ctx, flight.err) {
+						continue
+					}
 					return "", 0, flight.err
 				}
 				continue
@@ -134,7 +137,7 @@ func (m *SessionManager) authorization(ctx context.Context) (string, uint64, err
 		m.flights[key] = flight
 		m.mu.Unlock()
 
-		entry, loginErr := m.login(ctx, key, now)
+		entry, loginErr := m.login(ctx, key)
 		m.mu.Lock()
 		if loginErr == nil && flight.epoch != m.epoch {
 			zeroSession(&entry)
@@ -156,74 +159,97 @@ func (m *SessionManager) authorization(ctx context.Context) (string, uint64, err
 	}
 }
 
-func (m *SessionManager) login(ctx context.Context, key SessionKey, now time.Time) (cachedSession, error) {
-	begin, err := m.auth.BeginAuthentication(ctx, connect.NewRequest(&ardentsv1.BeginAuthenticationRequest{
-		PrincipalId: key.SignerPrincipal,
-		Purpose:     identityprotocol.ChallengePurpose_CHALLENGE_PURPOSE_SESSION,
-	}))
-	if err != nil {
-		return cachedSession{}, err
+func (m *SessionManager) login(ctx context.Context, key SessionKey) (cachedSession, error) {
+	handshake := sessionclient.SessionHandshake[
+		*ardentsv1.BeginAuthenticationResponse,
+		identityaccess.Challenge,
+		*ardentsv1.CompleteAuthenticationResponse,
+		cachedSession,
+	]{
+		Now: m.now,
+		Begin: func(ctx context.Context) (*ardentsv1.BeginAuthenticationResponse, error) {
+			response, err := m.auth.BeginAuthentication(ctx, connect.NewRequest(&ardentsv1.BeginAuthenticationRequest{
+				PrincipalId: key.SignerPrincipal,
+				Purpose:     identityprotocol.ChallengePurpose_CHALLENGE_PURPOSE_SESSION,
+			}))
+			if err != nil {
+				return nil, err
+			}
+			if response == nil {
+				return nil, ErrInvalidAuthenticationResponse
+			}
+			return response.Msg, nil
+		},
+		AcceptChallenge: func(response *ardentsv1.BeginAuthenticationResponse, receivedAt time.Time) (identityaccess.Challenge, error) {
+			if response == nil || messageHasUnknown(response.ProtoReflect()) {
+				return identityaccess.Challenge{}, ErrInvalidAuthenticationResponse
+			}
+			challenge, err := identityaccess.ParseChallengeFields(response.GetChallenge())
+			if err != nil || challenge.Principal != key.SignerPrincipal || challenge.Binding.Audience.Node != key.NodePrincipal || challenge.Binding.Audience.Interface != key.Interface || challenge.Binding.Audience.ProtocolMajor != key.ProtocolMajor || challenge.Binding.TransportProfile != identityprotocol.TransportProfile_TRANSPORT_PROFILE_UNIX_LOCAL_V1 || challenge.Purpose != identityprotocol.ChallengePurpose_CHALLENGE_PURPOSE_SESSION || !sessionclient.ValidAuthenticationChallengeTimes(challenge.IssuedAt, challenge.ExpiresAt, receivedAt) || isZeroPeer(challenge.Binding.PeerBinding) {
+				return identityaccess.Challenge{}, ErrInvalidAuthenticationResponse
+			}
+			return challenge, nil
+		},
+		Complete: func(ctx context.Context, challenge identityaccess.Challenge) (*ardentsv1.CompleteAuthenticationResponse, error) {
+			return m.completeAuthentication(ctx, key, challenge)
+		},
+		AcceptCompletion: acceptOperatorSessionCompletion,
 	}
-	if begin == nil || begin.Msg == nil || messageHasUnknown(begin.Msg.ProtoReflect()) {
-		return cachedSession{}, ErrInvalidAuthenticationResponse
-	}
-	challenge, err := identityaccess.ParseChallengeFields(begin.Msg.GetChallenge())
-	if err != nil || challenge.Principal != key.SignerPrincipal || challenge.Binding.Audience.Node != key.NodePrincipal || challenge.Binding.Audience.Interface != key.Interface || challenge.Binding.Audience.ProtocolMajor != key.ProtocolMajor || challenge.Binding.TransportProfile != identityprotocol.TransportProfile_TRANSPORT_PROFILE_UNIX_LOCAL_V1 || challenge.Purpose != identityprotocol.ChallengePurpose_CHALLENGE_PURPOSE_SESSION || challenge.IssuedAt.After(now) || !now.Before(challenge.ExpiresAt) || isZeroPeer(challenge.Binding.PeerBinding) {
-		return cachedSession{}, ErrInvalidAuthenticationResponse
-	}
+	return handshake.Run(ctx)
+}
+
+func (m *SessionManager) completeAuthentication(ctx context.Context, key SessionKey, challenge identityaccess.Challenge) (*ardentsv1.CompleteAuthenticationResponse, error) {
 	credential, err := m.signer.Credential(ctx)
 	if err != nil {
-		return cachedSession{}, signerFailure(ctx)
+		return nil, signerFailure(ctx)
+	}
+	if credential == nil {
+		return nil, ErrInvalidAuthenticationResponse
 	}
 	payload := credential.KeyCredentialPayload()
 	if payload == nil || payload.Subject != key.SignerPrincipal || len(payload.RootPublicKey) != ed25519.PublicKeySize {
-		return cachedSession{}, ErrInvalidAuthenticationResponse
+		return nil, ErrInvalidAuthenticationResponse
 	}
 	credentialRaw, err := credential.MarshalBinary()
 	if err != nil {
-		return cachedSession{}, ErrInvalidAuthenticationResponse
+		return nil, ErrInvalidAuthenticationResponse
 	}
+	defer clear(credentialRaw)
 	signature, err := m.signer.SignAuthenticationChallenge(ctx, challenge)
 	if err != nil {
-		return cachedSession{}, signerFailure(ctx)
+		return nil, signerFailure(ctx)
 	}
+	defer clear(signature)
 	if len(signature) != ed25519.SignatureSize {
-		return cachedSession{}, ErrInvalidAuthenticationResponse
+		return nil, ErrInvalidAuthenticationResponse
 	}
 	complete, err := m.auth.CompleteAuthentication(ctx, connect.NewRequest(&ardentsv1.CompleteAuthenticationRequest{
 		ChallengeId: append([]byte(nil), challenge.ID[:]...), PrincipalId: key.SignerPrincipal,
 		RootPublicKey: append([]byte(nil), payload.RootPublicKey...), Credential: credentialRaw, Signature: append([]byte(nil), signature...),
 	}))
 	if err != nil {
-		return cachedSession{}, err
+		return nil, err
 	}
-	return validateCompleteResponse(complete.Msg, now)
+	if complete == nil {
+		return nil, ErrInvalidAuthenticationResponse
+	}
+	return complete.Msg, nil
 }
 
-func validateCompleteResponse(response *ardentsv1.CompleteAuthenticationResponse, now time.Time) (cachedSession, error) {
-	if response == nil || messageHasUnknown(response.ProtoReflect()) || len(response.SessionSecret) != identitycontract.SessionSecretBytes || len(response.EnrollmentProof) != 0 || !validSessionID(response.SessionId) || response.ExpiresAt == nil || !response.ExpiresAt.IsValid() || response.ExpiresAt.Nanos != 0 || response.ExpiresAt.Seconds < identitycontract.LowerTimestampUnix || response.ExpiresAt.Seconds >= identitycontract.UpperTimestampUnix {
+func acceptOperatorSessionCompletion(response *ardentsv1.CompleteAuthenticationResponse, receivedAt time.Time) (cachedSession, error) {
+	if response == nil || messageHasUnknown(response.ProtoReflect()) || response.ExpiresAt == nil || !response.ExpiresAt.IsValid() {
 		return cachedSession{}, ErrInvalidAuthenticationResponse
 	}
 	expiresAt := response.ExpiresAt.AsTime()
-	if !now.Before(expiresAt) || expiresAt.After(now.Add(identitycontract.MaxSessionLifetime)) {
+	if !sessionclient.ValidSessionCompletion(sessionclient.SessionCompletion{
+		SessionSecret: response.SessionSecret, EnrollmentProof: response.EnrollmentProof,
+		SessionID: response.SessionId, ExpiresAt: expiresAt,
+	}, receivedAt) {
 		return cachedSession{}, ErrInvalidAuthenticationResponse
 	}
 	var secret identityaccess.SessionSecret
 	copy(secret[:], response.SessionSecret)
 	return cachedSession{secret: secret, expiresAt: expiresAt}, nil
-}
-
-func validSessionID(value string) bool {
-	if len(value) != 55 || !strings.HasPrefix(value, "s1_") {
-		return false
-	}
-	suffix := value[3:]
-	if suffix != strings.ToLower(suffix) {
-		return false
-	}
-	encoding := base32.StdEncoding.WithPadding(base32.NoPadding)
-	raw, err := encoding.DecodeString(strings.ToUpper(suffix))
-	return err == nil && len(raw) == 32 && strings.ToLower(encoding.EncodeToString(raw)) == suffix
 }
 
 func isZeroPeer(peer [identitycontract.PeerBindingBytes]byte) bool {

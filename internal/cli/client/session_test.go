@@ -45,11 +45,15 @@ type sessionTestAuth struct {
 	node          string
 	principal     string
 	now           time.Time
+	completeAt    time.Time
+	completeHook  func()
 	beginCount    atomic.Int32
 	completeCount atomic.Int32
 	endCount      atomic.Int32
 	secretByte    byte
 	gate          chan struct{}
+	firstStarted  chan struct{}
+	releaseFirst  chan struct{}
 	beginErrAfter int32
 	beginErr      error
 	beginUnknown  bool
@@ -59,6 +63,11 @@ func (a *sessionTestAuth) BeginAuthentication(ctx context.Context, _ *connect.Re
 	count := a.beginCount.Add(1)
 	if a.beginErrAfter > 0 && count > a.beginErrAfter {
 		return nil, a.beginErr
+	}
+	if count == 1 && a.firstStarted != nil {
+		close(a.firstStarted)
+		<-a.releaseFirst
+		return nil, ctx.Err()
 	}
 	if a.gate != nil {
 		select {
@@ -96,11 +105,18 @@ func (a *sessionTestAuth) BeginAuthentication(ctx context.Context, _ *connect.Re
 
 func (a *sessionTestAuth) CompleteAuthentication(context.Context, *connect.Request[ardentsv1.CompleteAuthenticationRequest]) (*connect.Response[ardentsv1.CompleteAuthenticationResponse], error) {
 	n := a.completeCount.Add(1)
+	if a.completeHook != nil {
+		a.completeHook()
+	}
+	expiresAt := a.completeAt
+	if expiresAt.IsZero() {
+		expiresAt = a.now.Add(identitycontract.DefaultSessionLifetime)
+	}
 	secret := bytes.Repeat([]byte{a.secretByte + byte(n)}, identitycontract.SessionSecretBytes)
 	return connect.NewResponse(&ardentsv1.CompleteAuthenticationResponse{
 		SessionSecret: secret,
-		SessionId:     "s1_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-		ExpiresAt:     timestamppb.New(a.now.Add(identitycontract.DefaultSessionLifetime)),
+		SessionId:     "s1_aaaqeayeaudaocajbifqydiob4ibceqtcqkrmfyydenbwha5dypq",
+		ExpiresAt:     timestamppb.New(expiresAt),
 	}), nil
 }
 
@@ -257,6 +273,56 @@ func TestSessionManagerRejectsWrongAudienceAndSignerFailureWithoutPublishing(t *
 	require.Equal(t, SessionKey{}, manager.Status())
 }
 
+func TestSessionManagerRejectsCompletionExpiredWhileRPCWasInFlight(t *testing.T) {
+	signer := newSessionTestSigner(t)
+	node := sessionTestPrincipal(t, 0x31)
+	current := sessionTestNow
+	auth := &sessionTestAuth{
+		node: node, principal: signer.principal, now: sessionTestNow, secretByte: 1,
+		completeAt: sessionTestNow.Add(time.Second),
+		completeHook: func() {
+			current = sessionTestNow.Add(time.Second)
+		},
+	}
+	manager := NewSessionManager(auth, signer, node, func() time.Time { return current })
+
+	_, _, err := manager.authorization(context.Background())
+
+	require.ErrorIs(t, err, ErrInvalidAuthenticationResponse)
+	require.EqualValues(t, 1, auth.completeCount.Load())
+	require.Equal(t, SessionKey{}, manager.Status())
+}
+
+func TestSessionManagerLiveWaiterRetriesAfterLeaderCancellation(t *testing.T) {
+	signer := newSessionTestSigner(t)
+	node := sessionTestPrincipal(t, 0x31)
+	firstStarted := make(chan struct{})
+	releaseFirst := make(chan struct{})
+	auth := &sessionTestAuth{
+		node: node, principal: signer.principal, now: sessionTestNow, secretByte: 1,
+		firstStarted: firstStarted, releaseFirst: releaseFirst,
+	}
+	manager := NewSessionManager(auth, signer, node, func() time.Time { return sessionTestNow })
+	leaderContext, cancelLeader := context.WithCancel(context.Background())
+	leaderErr := make(chan error, 1)
+	go func() {
+		_, _, err := manager.authorization(leaderContext)
+		leaderErr <- err
+	}()
+	<-firstStarted
+	waiterErr := make(chan error, 1)
+	go func() {
+		_, _, err := manager.authorization(context.Background())
+		waiterErr <- err
+	}()
+	cancelLeader()
+	close(releaseFirst)
+
+	require.ErrorIs(t, <-leaderErr, context.Canceled)
+	require.NoError(t, <-waiterErr)
+	require.EqualValues(t, 2, auth.beginCount.Load())
+}
+
 func TestSessionInterceptorStopsAfterSecondUnauthenticatedAndFailedRevocationRefresh(t *testing.T) {
 	signer := newSessionTestSigner(t)
 	alpha := sessionTestPrincipal(t, 0x31)
@@ -286,29 +352,29 @@ func TestSessionInterceptorStopsAfterSecondUnauthenticatedAndFailedRevocationRef
 func TestValidateCompleteResponseRejectsExpiryBoundaryAndUnknownFields(t *testing.T) {
 	valid := &ardentsv1.CompleteAuthenticationResponse{
 		SessionSecret: bytes.Repeat([]byte{1}, identitycontract.SessionSecretBytes),
-		SessionId:     "s1_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		SessionId:     "s1_aaaqeayeaudaocajbifqydiob4ibceqtcqkrmfyydenbwha5dypq",
 		ExpiresAt:     timestamppb.New(sessionTestNow.Add(time.Minute)),
 	}
-	_, err := validateCompleteResponse(valid, sessionTestNow)
+	_, err := acceptOperatorSessionCompletion(valid, sessionTestNow)
 	require.NoError(t, err)
 
 	valid.ExpiresAt = timestamppb.New(sessionTestNow)
-	_, err = validateCompleteResponse(valid, sessionTestNow)
+	_, err = acceptOperatorSessionCompletion(valid, sessionTestNow)
 	require.ErrorIs(t, err, ErrInvalidAuthenticationResponse)
 	valid.ExpiresAt = timestamppb.New(sessionTestNow.Add(identitycontract.MaxSessionLifetime + time.Nanosecond))
-	_, err = validateCompleteResponse(valid, sessionTestNow)
+	_, err = acceptOperatorSessionCompletion(valid, sessionTestNow)
 	require.ErrorIs(t, err, ErrInvalidAuthenticationResponse)
 	valid.ExpiresAt = timestamppb.New(sessionTestNow.Add(time.Minute))
 	valid.ExpiresAt.Nanos = 1
-	_, err = validateCompleteResponse(valid, sessionTestNow)
+	_, err = acceptOperatorSessionCompletion(valid, sessionTestNow)
 	require.ErrorIs(t, err, ErrInvalidAuthenticationResponse)
 	valid.ExpiresAt = timestamppb.New(sessionTestNow.Add(time.Minute))
 	valid.SessionId = "s1_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab"
-	_, err = validateCompleteResponse(valid, sessionTestNow)
+	_, err = acceptOperatorSessionCompletion(valid, sessionTestNow)
 	require.ErrorIs(t, err, ErrInvalidAuthenticationResponse)
-	valid.SessionId = "s1_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	valid.SessionId = "s1_aaaqeayeaudaocajbifqydiob4ibceqtcqkrmfyydenbwha5dypq"
 	valid.ProtoReflect().SetUnknown([]byte{0x28, 0x01})
-	_, err = validateCompleteResponse(valid, sessionTestNow)
+	_, err = acceptOperatorSessionCompletion(valid, sessionTestNow)
 	require.ErrorIs(t, err, ErrInvalidAuthenticationResponse)
 }
 

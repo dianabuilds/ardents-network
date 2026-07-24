@@ -308,7 +308,7 @@ func TestCompleteAuthenticationRejectsMalformedSecretIDTimeAndEnrollmentProof(t 
 		t.Run(name, func(t *testing.T) {
 			response := proto.Clone(base).(*applicationidentityv1.CompleteAuthenticationResponse)
 			mutate(response)
-			_, err := validateCompleteResponse(response, now)
+			_, err := acceptApplicationSessionCompletion(response, now)
 			require.Error(t, err)
 		})
 	}
@@ -351,7 +351,7 @@ func TestInvalidCompleteAuthenticationClearsReturnedSecrets(t *testing.T) {
 	now := time.Unix(1_900_000_000, 0).UTC()
 	response := validComplete(now)
 	response.EnrollmentProof = bytes.Repeat([]byte{9}, 32)
-	_, err := validateCompleteResponse(response, now)
+	_, err := acceptApplicationSessionCompletion(response, now)
 	require.Error(t, err)
 	require.Equal(t, make([]byte, identitycontract.SessionSecretBytes), response.SessionSecret)
 	require.Equal(t, make([]byte, 32), response.EnrollmentProof)

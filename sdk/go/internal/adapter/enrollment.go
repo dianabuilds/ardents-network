@@ -8,6 +8,7 @@ import (
 	"time"
 
 	identitycontract "ardents/api/ardents/identity/v1"
+	"ardents/internal/identity/sessionclient"
 	sdkerrors "ardents/sdk/go/errors"
 	sdkidentity "ardents/sdk/go/identity"
 	applicationidentityv1 "ardents/sdk/go/protocol/applicationidentityv1"
@@ -175,7 +176,8 @@ func applicationChallengeForPurpose(wire *identityv1.ChallengeFields, now time.T
 	challenge.Binding.TransportProfile = sdkidentity.TransportUnixLocalV1
 	copy(challenge.Binding.PeerBinding[:], wire.Binding.PeerBinding)
 	challenge.Purpose, challenge.IssuedAt, challenge.ExpiresAt = purpose, wire.IssuedAt.AsTime(), wire.ExpiresAt.AsTime()
-	if sdkidentity.ValidateChallenge(challenge, now) != nil {
+	if sdkidentity.ValidateChallenge(challenge, challenge.IssuedAt) != nil ||
+		!sessionclient.ValidAuthenticationChallengeTimes(challenge.IssuedAt, challenge.ExpiresAt, now) {
 		return sdkidentity.Challenge{}, errors.New("invalid challenge")
 	}
 	return challenge, nil
