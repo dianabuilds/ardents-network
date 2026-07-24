@@ -98,3 +98,25 @@ func TestDaemonIdentityAccessShutdownDrainsBeforeReturning(t *testing.T) {
 	require.NoError(t, <-transactionDone)
 	require.NoError(t, <-shutdownDone)
 }
+
+func TestDaemonIdentityAccessShutdownHasBoundedTimeout(t *testing.T) {
+	database, err := storage.OpenIdentityAccess(context.Background(), t.TempDir(), storage.BaseIdentityAccessSchema())
+	require.NoError(t, err)
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	transactionDone := make(chan error, 1)
+	go func() {
+		transactionDone <- database.View(context.Background(), func(storage.ReadTransaction) error {
+			close(entered)
+			<-release
+			return nil
+		})
+	}()
+	<-entered
+
+	err = closeIdentityAccessWithBudget(database, 25*time.Millisecond)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	close(release)
+	require.NoError(t, <-transactionDone)
+	require.NoError(t, database.Close(context.Background()))
+}

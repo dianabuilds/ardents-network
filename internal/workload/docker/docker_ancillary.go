@@ -39,6 +39,8 @@ func decodeIngressLabel(encoded string) ([]execution.IngressBinding, error) {
 }
 
 func (e *Executor) ReconcileAncillary(ctx context.Context, current []execution.Instance) error {
+	ctx, cancel := e.controlContext(ctx)
+	defer cancel()
 	active := make(map[string]execution.Instance, len(current))
 	for _, instance := range current {
 		if !instance.Running {

@@ -78,6 +78,14 @@ startup; orchestration never weakens privacy or accepts a degraded quick start.
 
 ## Lifecycle And Persistence
 
+- `SIGTERM`: stop accepting API connections and cancel active request/stream
+  contexts immediately. API drain is bounded to 5 seconds; a missed deadline is
+  recorded as `API drain deadline exceeded` and remaining connections are
+  closed. Domain cleanup then receives a separate 19-second budget and identity
+  storage close receives 5 seconds. The combined 29-second process budget
+  remains below the packaged systemd
+  `TimeoutStopSec=30s`, and the process does not exit before domain cleanup
+  returns or its deadline expires.
 - `up`: generate missing local-only Principal and authority material, provision or reuse the
   stopped-node local realm, start the seed, discover its canonical endpoint,
   finalize peer configuration, start peers, and retain a sanitized manifest.

@@ -47,7 +47,9 @@ func (e *Executor) ensureIngressProxy(ctx context.Context, prepared execution.Pr
 		return dockerSafeError("create workload ingress proxy", err)
 	}
 	if _, err := e.client.ContainerStart(ctx, created.ID, client.ContainerStartOptions{}); err != nil {
-		_, cleanupErr := e.client.ContainerRemove(context.Background(), created.ID, client.ContainerRemoveOptions{Force: true})
+		cleanupCtx, cancel := e.controlContext(ctx)
+		defer cancel()
+		_, cleanupErr := e.client.ContainerRemove(cleanupCtx, created.ID, client.ContainerRemoveOptions{Force: true})
 		startErr := dockerSafeError("start workload ingress proxy", err)
 		if cleanupErr == nil {
 			return startErr

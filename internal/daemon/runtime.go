@@ -245,7 +245,7 @@ func (m *RuntimeManager) startupStateLoadLocked(ctx context.Context) bool {
 			m.state.Load,
 			func() error { return nil },
 			m.data.Load,
-			m.workloads.Load,
+			func() error { return m.workloads.LoadContext(ctx) },
 		)
 	})
 }
@@ -320,32 +320,59 @@ func (m *RuntimeManager) setTransportHealthLocked() {
 }
 
 func (m *RuntimeManager) StopLocked(ctx context.Context) error {
-	if m.life.State() == diagnostics.Stopped {
+	stop := m.beginStopLocked()
+	if stop.noop {
 		return nil
 	}
+	return stop.finishLocked(ctx, stop.runExternal(ctx))
+}
 
+type stopTransaction struct {
+	manager     *RuntimeManager
+	operationID string
+	noop        bool
+}
+
+func (m *RuntimeManager) beginStopLocked() stopTransaction {
+	if m.life.State() == diagnostics.Stopped {
+		return stopTransaction{manager: m, noop: true}
+	}
 	m.moveLifecycleLocked(diagnostics.Stopping)
 	m.publish("node.stopping", map[string]any{"id": m.cfgName, "state": diagnostics.Stopping})
 	op := m.diag.BeginOperation(ShutdownPhaseNode, "node", m.cfgName, true, "restart node")
 	m.diag.MarkRecoveringExcept(op.ID, "operation interrupted by shutdown")
+	return stopTransaction{manager: m, operationID: op.ID}
+}
 
-	if err := m.workloads.Shutdown(ctx); err != nil {
-		m.diag.FailOperation(op.ID, err.Error())
-		m.FailLocked("node.shutdown.workloads_failed", "workload", "workload shutdown failed", err.Error(), "node stop left workload execution uncertain", "operator")
+func (s stopTransaction) runExternal(ctx context.Context) error {
+	if s.noop {
+		return nil
+	}
+	return s.manager.workloads.Shutdown(ctx)
+}
+
+func (s stopTransaction) finishLocked(ctx context.Context, workloadErr error) error {
+	if s.noop {
+		return nil
+	}
+	m := s.manager
+	if workloadErr != nil {
+		m.diag.FailOperation(s.operationID, workloadErr.Error())
+		m.FailLocked("node.shutdown.workloads_failed", "workload", "workload shutdown failed", workloadErr.Error(), "node stop left workload execution uncertain", "operator")
 		return m.runtimeFailureLocked("stop")
 	}
 	if err := m.publication.WithdrawNetworkPublicationLocked(ctx); err != nil {
-		m.diag.FailOperation(op.ID, err.Error())
+		m.diag.FailOperation(s.operationID, err.Error())
 		m.FailLocked("node.shutdown.publication_failed", "discovery", "discovery shutdown publication failed", err.Error(), "stopped node may remain discoverable on the network", "operator")
 		return m.runtimeFailureLocked("stop")
 	}
 
 	if err := m.trans.Stop(ctx); err != nil {
-		m.diag.FailOperation(op.ID, err.Error())
+		m.diag.FailOperation(s.operationID, err.Error())
 		m.FailLocked("node.shutdown.failed", "node", "shutdown failed", err.Error(), "node safety is uncertain", "terminal")
 		return m.runtimeFailureLocked("stop")
 	}
-	m.diag.CompleteOperation(op.ID, "node shutdown completed")
+	m.diag.CompleteOperation(s.operationID, "node shutdown completed")
 	m.clearRuntimeHealthForStopLocked()
 	m.moveLifecycleLocked(diagnostics.Stopped)
 	m.publish("node.stopped", map[string]any{"id": m.cfgName, "state": diagnostics.Stopped})
@@ -452,6 +479,10 @@ func (m *RuntimeManager) RefreshDiscoveryPublicationLocked(ctx context.Context) 
 		m.recordDiscoveryRefreshFailureLocked(err)
 		return
 	}
+	m.refreshDiscoveryPublicationAfterObservationLocked(ctx)
+}
+
+func (m *RuntimeManager) refreshDiscoveryPublicationAfterObservationLocked(ctx context.Context) {
 	if err := m.publication.RefreshNetworkPublicationLocked(ctx); err != nil {
 		if networkprivacy.IsChannelGrantFailure(err) {
 			current := diagnostics.SubsystemReasonCode(m.diag.Health(), "discovery")

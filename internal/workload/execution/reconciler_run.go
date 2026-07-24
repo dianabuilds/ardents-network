@@ -7,14 +7,14 @@ import (
 	"time"
 )
 
-func (s *Service) reconcileLocked(ctx context.Context, item Status, now time.Time) (Status, bool, error) {
+func (s *Service) reconcileLocked(ctx context.Context, item Status, now time.Time, admission AdmissionFunc, statuses []Status) (Status, bool, error) {
 	item = NormalizeStatus(item)
 
 	if err := workloadregistry.ValidateSpec(item.Spec); err != nil {
 		return RejectAdmission(item, now, err), true, nil
 	}
-	if s.admission != nil {
-		if err := s.admission(item.Spec, SnapshotStatuses(s.items)); err != nil {
+	if admission != nil {
+		if err := admission(item.Spec, statuses); err != nil {
 			return RejectAdmission(item, now, err), true, nil
 		}
 	}

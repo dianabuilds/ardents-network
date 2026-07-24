@@ -66,7 +66,8 @@ func (n *Node) BlobPart() appdata.PartSnapshot {
 	return n.data.BlobPart()
 }
 
-func (n *Node) SyncDiagnostics(_ context.Context) error {
+func (n *Node) SyncDiagnostics(ctx context.Context) error {
+	n.refreshWorkloadObservation(ctx)
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	return n.queryService.SyncDiagnosticsLocked()
@@ -77,6 +78,12 @@ func (n *Node) DiagnosticsRecorder() *diagnostics.Recorder {
 }
 
 func (n *Node) GetNodeRuntime() RuntimeSnapshot {
+	n.mu.Lock()
+	refreshWorkloads := n.life.State() != diagnostics.Stopped
+	n.mu.Unlock()
+	if refreshWorkloads {
+		n.refreshWorkloadObservation(context.Background())
+	}
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	return n.queryService.NodeRuntimeSnapshotLocked()
@@ -187,15 +194,28 @@ func (n *Node) Start(ctx context.Context) error {
 }
 
 func (n *Node) Stop(ctx context.Context) error {
+	n.stopMu.Lock()
+	defer n.stopMu.Unlock()
+
 	n.mu.Lock()
-	defer n.mu.Unlock()
 	if n.refreshStop != nil {
 		n.refreshStop()
 		n.refreshStop = nil
 	}
-	err := n.runtimeMgr.StopProcessLocked(ctx, n.cancel)
+	stop := n.runtimeMgr.beginStopLocked()
+	cancel := n.cancel
+	n.mu.Unlock()
+
+	workloadErr := stop.runExternal(ctx)
+
+	n.mu.Lock()
+	err := stop.finishLocked(ctx, workloadErr)
 	n.cancel = nil
 	n.network = nil
+	n.mu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
 	return err
 }
 
@@ -213,12 +233,17 @@ func (n *Node) restartDiscoveryRefreshLocked() {
 }
 
 func (n *Node) refreshDiscoveryPublication(ctx context.Context) {
+	observationErr := n.workloadRuntime.SyncObserved(ctx)
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	if n.cancel == nil {
 		return
 	}
-	n.runtimeMgr.RefreshDiscoveryPublicationLocked(ctx)
+	if observationErr != nil {
+		n.runtimeMgr.recordDiscoveryRefreshFailureLocked(observationErr)
+		return
+	}
+	n.runtimeMgr.refreshDiscoveryPublicationAfterObservationLocked(ctx)
 }
 
 const (
@@ -266,10 +291,20 @@ func limitLocalAPIHandler(handler http.Handler, maxBodyBytes int64, timeout time
 }
 
 func (n *Node) Snapshot() SystemSnapshot {
+	n.refreshWorkloadObservation(context.Background())
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	n.runtimeMgr.SyncObservedTruthLocked()
 	return n.queryService.SnapshotLocked()
+}
+
+func (n *Node) refreshWorkloadObservation(ctx context.Context) {
+	if n.workloadRuntime == nil {
+		return
+	}
+	if err := n.workloadRuntime.SyncObserved(ctx); err != nil {
+		n.diag.RecordEvent("workload", "observed_sync_failed", n.cfg.Name, "workload observed state refresh failed", "workload.observed_sync_failed", map[string]any{"error": err.Error()})
+	}
 }
 
 func (n *Node) IdentitySnapshot() identity.Snapshot       { return n.Snapshot().Ident }

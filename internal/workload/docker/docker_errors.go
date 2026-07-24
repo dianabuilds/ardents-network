@@ -1,6 +1,8 @@
 package docker
 
 import (
+	"context"
+	"errors"
 	"fmt"
 
 	"github.com/containerd/errdefs"
@@ -9,6 +11,10 @@ import (
 func dockerSafeError(operation string, err error) error {
 	category := "runtime error"
 	switch {
+	case errors.Is(err, context.Canceled):
+		category = "cancelled"
+	case errors.Is(err, context.DeadlineExceeded):
+		category = "deadline exceeded"
 	case errdefs.IsNotFound(err):
 		category = "not found"
 	case errdefs.IsAlreadyExists(err), errdefs.IsConflict(err):

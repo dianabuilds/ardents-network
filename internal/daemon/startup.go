@@ -462,10 +462,15 @@ func (n *Node) handleBootstrapDialLocked(report transport.BootstrapDialReport) {
 }
 
 func (n *Node) onReachabilityChanged() {
+	observationErr := n.workloadRuntime.SyncObserved(context.Background())
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	if n.cancel == nil {
 		return
 	}
-	n.runtimeMgr.RefreshDiscoveryPublicationLocked(context.Background())
+	if observationErr != nil {
+		n.runtimeMgr.recordDiscoveryRefreshFailureLocked(observationErr)
+		return
+	}
+	n.runtimeMgr.refreshDiscoveryPublicationAfterObservationLocked(context.Background())
 }

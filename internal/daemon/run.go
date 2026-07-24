@@ -10,12 +10,14 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	"ardents/internal/buildinfo"
 	runtimeconfig "ardents/internal/config"
@@ -105,7 +107,12 @@ func Run(localAPI LocalAPIHandlerFactory, applicationAPI ApplicationAPIHandlerFa
 	if err := n.Start(ctx); err != nil {
 		return fmt.Errorf("start node: %w", err)
 	}
-	defer stopNode(n)
+	nodeCleanupAttempted := false
+	defer func() {
+		if !nodeCleanupAttempted {
+			returnErr = errors.Join(returnErr, stopNode(n))
+		}
+	}()
 	if err := configureApplicationIdentity(&process, identityAccess, applicationIdentityOptions{Enabled: cfg.ApplicationEnabled}); err != nil {
 		return fmt.Errorf("configure Application identity: %w", err)
 	}
@@ -151,7 +158,10 @@ func Run(localAPI LocalAPIHandlerFactory, applicationAPI ApplicationAPIHandlerFa
 	}
 	targets = append(targets, serveTarget{serve: observabilityServer.ListenAndServe})
 	slog.Info("ardentsd observability listening", "addr", observabilityServer.Addr)
-	if err := serveAndDrain(ctx, stop, servers, targets...); err != nil {
+	if err := serveDrainAndCleanup(ctx, stop, servers, func() error {
+		nodeCleanupAttempted = true
+		return stopNode(n)
+	}, targets...); err != nil {
 		return fmt.Errorf("serve daemon: %w", err)
 	}
 	return nil
@@ -214,10 +224,29 @@ func startupStateDirectory() (string, error) {
 	return doc.Node.DataDir, nil
 }
 
-func stopNode(n *Node) {
-	if err := n.Stop(context.Background()); err != nil {
-		log.Printf("stop node: %v", err)
+const (
+	domainCleanupTimeout   = 19 * time.Second
+	identityCleanupTimeout = 5 * time.Second
+)
+
+type nodeStopper interface {
+	Stop(context.Context) error
+}
+
+func stopNode(n nodeStopper) error {
+	if n == nil {
+		return nil
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), domainCleanupTimeout)
+	defer cancel()
+	if err := n.Stop(ctx); err != nil {
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			err = fmt.Errorf("domain cleanup deadline exceeded after %s: %w", domainCleanupTimeout, err)
+		}
+		log.Printf("stop node: %v", err)
+		return err
+	}
+	return nil
 }
 
 type serveTarget struct {
@@ -227,6 +256,8 @@ type serveTarget struct {
 type applicationIdentityOptions struct {
 	Enabled bool
 }
+
+const apiDrainTimeout = 5 * time.Second
 
 func newDaemonOwners(cfg Config, identityAccess *storage.Handle, applicationOptions ...applicationIdentityOptions) (Owners, error) {
 	owners := NewOwners(cfg)
@@ -348,13 +379,39 @@ func newProtectedOperatorHandler(process Owners, cfg runtimeConfig, factory Loca
 }
 
 func closeIdentityAccess(identityAccess *storage.Handle) error {
-	if err := identityAccess.Close(context.Background()); err != nil {
+	return closeIdentityAccessWithBudget(identityAccess, identityCleanupTimeout)
+}
+
+func closeIdentityAccessWithBudget(identityAccess *storage.Handle, budget time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), budget)
+	defer cancel()
+	if err := identityAccess.Close(ctx); err != nil {
 		return fmt.Errorf("close identity access database: %w", err)
 	}
 	return nil
 }
 
 func serveAndDrain(ctx context.Context, stop context.CancelFunc, servers []*http.Server, targets ...serveTarget) error {
+	return serveAndDrainWithBudget(ctx, stop, apiDrainTimeout, servers, targets...)
+}
+
+func serveDrainAndCleanup(
+	ctx context.Context,
+	stop context.CancelFunc,
+	servers []*http.Server,
+	cleanup func() error,
+	targets ...serveTarget,
+) error {
+	serveErr := serveAndDrain(ctx, stop, servers, targets...)
+	return errors.Join(serveErr, cleanup())
+}
+
+func serveAndDrainWithBudget(ctx context.Context, stop context.CancelFunc, budget time.Duration, servers []*http.Server, targets ...serveTarget) error {
+	for _, server := range servers {
+		if server != nil && server.BaseContext == nil {
+			server.BaseContext = func(net.Listener) context.Context { return ctx }
+		}
+	}
 	errorsChannel := make(chan error, len(targets))
 	for _, target := range targets {
 		go func(current serveTarget) {
@@ -375,14 +432,29 @@ func serveAndDrain(ctx context.Context, stop context.CancelFunc, servers []*http
 	}
 	stop()
 
+	if budget <= 0 {
+		budget = apiDrainTimeout
+	}
+	shutdownCtx, cancelShutdown := context.WithTimeout(context.Background(), budget)
+	defer cancelShutdown()
 	shutdownErrors := make(chan error, len(servers))
 	for _, server := range servers {
 		go func(current *http.Server) {
-			shutdownErrors <- current.Shutdown(context.Background())
+			shutdownErrors <- current.Shutdown(shutdownCtx)
 		}(server)
 	}
 	for range servers {
-		returnErr = errors.Join(returnErr, <-shutdownErrors)
+		if err := <-shutdownErrors; err != nil && !errors.Is(err, context.DeadlineExceeded) {
+			returnErr = errors.Join(returnErr, err)
+		}
+	}
+	if errors.Is(shutdownCtx.Err(), context.DeadlineExceeded) {
+		returnErr = errors.Join(returnErr, fmt.Errorf("API drain deadline exceeded after %s", budget))
+		for _, server := range servers {
+			if err := server.Close(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				returnErr = errors.Join(returnErr, fmt.Errorf("force close API server: %w", err))
+			}
+		}
 	}
 	for completed < len(targets) {
 		returnErr = errors.Join(returnErr, <-errorsChannel)

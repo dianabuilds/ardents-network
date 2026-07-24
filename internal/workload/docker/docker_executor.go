@@ -24,10 +24,11 @@ type ExecutorConfig struct {
 	IngressProxyImage   string
 	AllowInsecureRemote bool
 	StopTimeout         time.Duration
+	ControlPlaneTimeout time.Duration
 }
 
 type Executor struct {
-	client              *client.Client
+	client              engineClient
 	nodeID              string
 	trustedRuntime      string
 	untrustedRuntime    string
@@ -38,6 +39,7 @@ type Executor struct {
 	ingressNetworkName  string
 	ingressProxyImage   string
 	stopTimeout         time.Duration
+	controlPlaneTimeout time.Duration
 }
 
 func NewExecutor(cfg ExecutorConfig) (*Executor, error) {
@@ -64,14 +66,31 @@ func NewExecutor(cfg ExecutorConfig) (*Executor, error) {
 	if cfg.StopTimeout <= 0 {
 		cfg.StopTimeout = 10 * time.Second
 	}
+	if cfg.ControlPlaneTimeout <= 0 {
+		cfg.ControlPlaneTimeout = 10 * time.Second
+	}
 	return &Executor{
 		client: engine, nodeID: cfg.NodeID, trustedRuntime: cfg.TrustedRuntime,
 		untrustedRuntime: cfg.UntrustedRuntime, allowedRegistries: normalizedSet(cfg.AllowedRegistries),
 		allowedPolicyRefs: normalizedSet(cfg.AllowedPolicyRefs), allowedIngressHosts: normalizedSet(cfg.AllowedIngressHosts),
 		ingressBindAddress: strings.TrimSpace(cfg.IngressBindAddress), ingressNetworkName: dockerIngressNetworkName(cfg.NodeID),
 		ingressProxyImage: strings.TrimSpace(cfg.IngressProxyImage),
-		stopTimeout:       cfg.StopTimeout,
+		stopTimeout:       cfg.StopTimeout, controlPlaneTimeout: cfg.ControlPlaneTimeout,
 	}, nil
+}
+
+func (e *Executor) controlContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	timeout := e.controlPlaneTimeout
+	if timeout <= 0 {
+		timeout = 10 * time.Second
+	}
+	if deadline, ok := ctx.Deadline(); ok && time.Until(deadline) <= timeout {
+		return context.WithCancel(ctx)
+	}
+	return context.WithTimeout(ctx, timeout)
 }
 
 func (e *Executor) Prepare(_ context.Context, req execution.Request) (execution.PreparedWorkload, error) {
@@ -99,6 +118,8 @@ func (e *Executor) Prepare(_ context.Context, req execution.Request) (execution.
 }
 
 func (e *Executor) Start(ctx context.Context, prepared execution.PreparedWorkload) (execution.Instance, error) {
+	ctx, cancel := e.controlContext(ctx)
+	defer cancel()
 	spec, err := parseContainerSpec(prepared.Handle)
 	if err != nil {
 		return execution.Instance{}, err
@@ -130,15 +151,15 @@ func (e *Executor) startNew(ctx context.Context, spec containerSpec, prepared ex
 		return execution.Instance{}, dockerSafeError("create workload container", err)
 	}
 	if _, err := e.client.ContainerStart(ctx, created.ID, client.ContainerStartOptions{}); err != nil {
-		return e.failCreatedContainer(created.ID, dockerSafeError("start workload container", err))
+		return e.failCreatedContainer(ctx, created.ID, dockerSafeError("start workload container", err))
 	}
 	instance, err := e.inspectID(ctx, created.ID)
 	if err != nil {
-		return e.failCreatedContainer(created.ID, err)
+		return e.failCreatedContainer(ctx, created.ID, err)
 	}
 	if len(prepared.Ingress) > 0 {
 		if err := e.ensureIngressProxy(ctx, prepared, created.ID); err != nil {
-			return e.failCreatedContainer(created.ID, err)
+			return e.failCreatedContainer(ctx, created.ID, err)
 		}
 	}
 	return instance, nil

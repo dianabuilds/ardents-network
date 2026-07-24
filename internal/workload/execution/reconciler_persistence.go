@@ -24,14 +24,21 @@ func (s *Service) Snapshot() []Status {
 }
 
 func (s *Service) Restore(ctx context.Context, snapshot []Status) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	release, err := s.acquireOperation(ctx)
+	if err != nil {
+		return err
+	}
+	defer release()
 
 	target := make(map[string]Status, len(snapshot))
 	for _, item := range snapshot {
 		target[item.Spec.ID] = NormalizeStatus(CloneStatus(item))
 	}
-	for _, item := range s.items {
+	s.mu.Lock()
+	current := SnapshotStatuses(s.items)
+	admission := s.admission
+	s.mu.Unlock()
+	for _, item := range current {
 		targetItem, ok := target[item.Spec.ID]
 		if !item.Instance.Running {
 			continue
@@ -43,45 +50,48 @@ func (s *Service) Restore(ctx context.Context, snapshot []Status) error {
 			return err
 		}
 	}
-	s.items = target
 	now := time.Now().UTC()
-	for id, item := range s.items {
-		next, keep, err := s.reconcileLocked(ctx, item, now)
+	admissionStatuses := SnapshotStatuses(target)
+	for id, item := range target {
+		next, keep, err := s.reconcileLocked(ctx, item, now, admission, admissionStatuses)
 		if err != nil {
 			return err
 		}
 		if keep {
-			s.items[id] = next
+			target[id] = next
 			continue
 		}
-		delete(s.items, id)
+		delete(target, id)
 	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.items = target
 	s.state = "ready"
 	return s.saveLocked()
 }
 
-func (s *Service) recoverLoadedProcessesLocked() error {
+func (s *Service) recoverLoadedProcesses(ctx context.Context, items map[string]Status) (map[string]Status, error) {
 	now := time.Now().UTC()
-	for id, item := range s.items {
+	for id, item := range items {
 		if !item.Instance.Running {
 			continue
 		}
-		current, inspectErr := s.executor.Inspect(context.Background(), id)
+		current, inspectErr := s.executor.Inspect(ctx, id)
 		if inspectErr == nil && current.Running && current.Generation == item.Instance.Generation {
 			item.Instance = current
-			s.items[id] = recoveredRunning(item, now)
+			items[id] = recoveredRunning(item, now)
 			continue
 		}
 		if inspectNotFound(inspectErr) && ProcessMatchesConfig(item.Instance.PID, item.Spec.Config) {
-			s.items[id] = recoveredRunning(item, now)
+			items[id] = recoveredRunning(item, now)
 			continue
 		}
-		s.items[id] = recoveredStopped(item, current, inspectErr, now)
+		items[id] = recoveredStopped(item, current, inspectErr, now)
 	}
-	return nil
+	return items, nil
 }
 
-func (s *Service) reconcileRuntimeInventoryLocked() error {
+func (s *Service) reconcileRuntimeInventory(parent context.Context, items map[string]Status) error {
 	inventory, ok := s.executor.(Inventory)
 	if !ok {
 		return nil
@@ -90,14 +100,14 @@ func (s *Service) reconcileRuntimeInventoryLocked() error {
 	if !ok {
 		return fmt.Errorf("runtime inventory requires controlled removal support")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), runtimeInventoryTimeout)
+	ctx, cancel := context.WithTimeout(parent, runtimeInventoryTimeout)
 	defer cancel()
 	managed, err := inventory.Managed(ctx)
 	if err != nil {
 		return fmt.Errorf("list managed workload instances: %w", err)
 	}
 	for _, instance := range managed {
-		if s.isCurrentInstance(instance) {
+		if isCurrentInstance(items, instance) {
 			continue
 		}
 		if instance.Running {
@@ -109,16 +119,16 @@ func (s *Service) reconcileRuntimeInventoryLocked() error {
 			return fmt.Errorf("remove orphan workload %s: %w", instance.WorkloadID, err)
 		}
 	}
-	return s.reconcileAncillaryLocked(ctx)
+	return s.reconcileAncillary(ctx, items)
 }
 
-func (s *Service) reconcileAncillaryLocked(ctx context.Context) error {
+func (s *Service) reconcileAncillary(ctx context.Context, items map[string]Status) error {
 	reconciler, ok := s.executor.(AncillaryReconciler)
 	if !ok {
 		return nil
 	}
-	current := make([]Instance, 0, len(s.items))
-	for _, item := range s.items {
+	current := make([]Instance, 0, len(items))
+	for _, item := range items {
 		if item.Instance.WorkloadID != "" {
 			current = append(current, item.Instance)
 		}
@@ -129,8 +139,8 @@ func (s *Service) reconcileAncillaryLocked(ctx context.Context) error {
 	return nil
 }
 
-func (s *Service) isCurrentInstance(instance Instance) bool {
-	item, ok := s.items[instance.WorkloadID]
+func isCurrentInstance(items map[string]Status, instance Instance) bool {
+	item, ok := items[instance.WorkloadID]
 	return ok && item.Instance.Generation == instance.Generation &&
 		(item.Instance.RuntimeID == "" || item.Instance.RuntimeID == instance.RuntimeID)
 }

@@ -18,6 +18,8 @@ func toWorkloadStatusSnapshot(in workloadapi.StatusSnapshot) (*ardentsv1.Workloa
 		NeedsOperatorAction: in.NeedsOperatorAction,
 		RestartCount:        int32(in.RestartCount),
 		Instance:            toWorkloadInstanceSnapshot(in.Instance),
+		ObservationDegraded: in.ObservationDegraded,
+		ObservedAt:          ts(in.ObservedAt),
 	}
 	for _, item := range in.PublishedServices {
 		out.PublishedServices = append(out.PublishedServices, toPublishedServiceSnapshot(item))

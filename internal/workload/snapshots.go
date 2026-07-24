@@ -53,6 +53,8 @@ type StatusSnapshot struct {
 	RestartCount        int                        `json:"restart_count,omitempty"`
 	PublishedServices   []PublishedServiceSnapshot `json:"published_services,omitempty"`
 	Instance            InstanceSnapshot           `json:"instance"`
+	ObservedAt          time.Time                  `json:"observed_at"`
+	ObservationDegraded bool                       `json:"observation_degraded,omitempty"`
 }
 
 type StateSnapshot struct {

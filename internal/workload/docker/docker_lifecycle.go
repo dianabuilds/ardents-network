@@ -12,18 +12,20 @@ import (
 	"github.com/moby/moby/client"
 )
 
-func (e *Executor) failCreatedContainer(id string, cause error) (execution.Instance, error) {
+func (e *Executor) failCreatedContainer(ctx context.Context, id string, cause error) (execution.Instance, error) {
 	stopTimeout := e.stopTimeout
 	if stopTimeout <= 0 {
 		stopTimeout = 10 * time.Second
 	}
-	cleanupCtx, cancel := context.WithTimeout(context.Background(), stopTimeout+5*time.Second)
+	cleanupCtx, cancel := context.WithTimeout(ctx, stopTimeout+5*time.Second)
 	defer cancel()
 	cleanupErr := e.stopAndRemoveContainer(cleanupCtx, id)
 	return execution.Instance{}, errors.Join(cause, cleanupErr)
 }
 
 func (e *Executor) Inspect(ctx context.Context, workloadID string) (execution.Instance, error) {
+	ctx, cancel := e.controlContext(ctx)
+	defer cancel()
 	instances, err := e.list(ctx, workloadID)
 	if err != nil {
 		return execution.Instance{}, err
@@ -39,6 +41,8 @@ func (e *Executor) Inspect(ctx context.Context, workloadID string) (execution.In
 }
 
 func (e *Executor) Stop(ctx context.Context, instance execution.Instance) error {
+	ctx, cancel := e.controlContext(ctx)
+	defer cancel()
 	if err := e.stopAndRemoveIngressProxy(ctx, instance); err != nil {
 		return err
 	}
@@ -56,6 +60,8 @@ func (e *Executor) Stop(ctx context.Context, instance execution.Instance) error 
 }
 
 func (e *Executor) Remove(ctx context.Context, instance execution.Instance) error {
+	ctx, cancel := e.controlContext(ctx)
+	defer cancel()
 	if err := e.stopAndRemoveIngressProxy(ctx, instance); err != nil {
 		return err
 	}

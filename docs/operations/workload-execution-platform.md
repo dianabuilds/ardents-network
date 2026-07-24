@@ -181,6 +181,24 @@ operator-diagnosable without logging payload data.
 Docker daemon restart, Ardents daemon restart, and workload process restart are
 separate events and must remain distinguishable in diagnostics.
 
+## Control-Plane Availability Contract
+
+Every Docker control-plane operation inherits caller cancellation and has a
+finite adapter deadline (10 seconds by default); the earlier caller deadline
+wins. Runtime observation applies a tighter 2-second budget so an unavailable
+engine cannot indefinitely block workload API or metrics collection.
+
+External Docker I/O is performed without holding runtime or execution-state
+mutexes. Observation and shutdown take an in-memory snapshot, perform Docker
+calls, then conditionally apply results if the state has not changed. This keeps
+unrelated reads responsive while the engine is slow or hung.
+
+A successful observation is cached for at most 30 seconds. If a refresh fails
+within that window, API and metrics receive the cached snapshot explicitly
+marked `observation_degraded`, with `observed=degraded`, its `observed_at`
+timestamp, the Docker failure reason, and an operator-action flag. A stale or
+missing cache is an error and is never presented as current engine truth.
+
 ## Dependency And Alternative Decisions
 
 - **Moby client/API modules: accepted.** They are the maintained public Docker

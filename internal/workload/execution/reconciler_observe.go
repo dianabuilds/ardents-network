@@ -2,6 +2,7 @@ package execution
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"time"
@@ -9,46 +10,62 @@ import (
 
 func (s *Service) RefreshObserved(ctx context.Context) (bool, error) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	now := s.now().UTC()
+	workCopies, comparisonSnapshots := s.captureStatusesLocked()
+	ancillaryWaitErr := s.ancillaryBackoff.waitError(now)
+	ancillaryCurrent := make([]Instance, 0, len(s.items))
+	for _, item := range s.items {
+		if item.Instance.WorkloadID != "" && item.Instance.Running {
+			ancillaryCurrent = append(ancillaryCurrent, item.Instance)
+		}
+	}
+	s.mu.Unlock()
+
+	nextItems := make(map[string]Status, len(workCopies))
+	var observationErr error
+	for id, item := range workCopies {
+		next, err := s.observeSnapshot(ctx, item, now)
+		nextItems[id] = next
+		observationErr = errors.Join(observationErr, err)
+	}
+	var ancillaryErr error
+	reconciler, hasAncillary := s.executor.(AncillaryReconciler)
+	if hasAncillary {
+		if ancillaryWaitErr != nil {
+			ancillaryErr = ancillaryWaitErr
+		} else {
+			ancillaryErr = reconciler.ReconcileAncillary(ctx, ancillaryCurrent)
+		}
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	changed := false
-	for id, item := range s.items {
-		next := s.observeLocked(ctx, item, now)
-		if reflect.DeepEqual(item, next) {
+	for id := range workCopies {
+		current, found := s.items[id]
+		if !found || !reflect.DeepEqual(current, comparisonSnapshots[id]) {
+			continue
+		}
+		next := nextItems[id]
+		if reflect.DeepEqual(current, next) {
 			continue
 		}
 		s.items[id] = next
 		changed = true
 	}
-	if err := s.refreshAncillaryLocked(ctx, now); err != nil {
-		return changed, err
-	}
-	if !changed {
-		return false, nil
-	}
-	return true, s.saveLocked()
-}
-
-func (s *Service) refreshAncillaryLocked(ctx context.Context, now time.Time) error {
-	reconciler, ok := s.executor.(AncillaryReconciler)
-	if !ok {
-		return nil
-	}
-	if err := s.ancillaryBackoff.waitError(now); err != nil {
-		return err
-	}
-	current := make([]Instance, 0, len(s.items))
-	for _, item := range s.items {
-		if item.Instance.WorkloadID != "" && item.Instance.Running {
-			current = append(current, item.Instance)
+	if hasAncillary && ancillaryWaitErr == nil {
+		if ancillaryErr != nil {
+			ancillaryErr = s.ancillaryBackoff.fail(now, ancillaryErr)
+		} else {
+			s.ancillaryBackoff.reset()
 		}
 	}
-	if err := reconciler.ReconcileAncillary(ctx, current); err != nil {
-		return s.ancillaryBackoff.fail(now, err)
+	if changed {
+		if err := s.saveLocked(); err != nil {
+			return true, errors.Join(observationErr, ancillaryErr, err)
+		}
 	}
-	s.ancillaryBackoff.reset()
-	return nil
+	return changed, errors.Join(observationErr, ancillaryErr)
 }
 
 type ancillaryBackoff struct {
@@ -81,60 +98,77 @@ func (b *ancillaryBackoff) reset() {
 	*b = ancillaryBackoff{}
 }
 
-func (s *Service) observeLocked(ctx context.Context, item Status, now time.Time) Status {
+func (s *Service) observeSnapshot(ctx context.Context, item Status, now time.Time) (Status, error) {
 	item = NormalizeStatus(item)
 	if item.Instance.WorkloadID == "" {
-		return item
+		return item, nil
 	}
 	if !item.Instance.Running {
 		if item.Observed == ObservedRunning || item.Observed == ObservedPreparing {
-			return s.observedAfterUnexpectedExit(item, now)
+			return s.observedAfterUnexpectedExit(item, now), nil
 		}
-		return item
+		return item, nil
 	}
 
 	current, err := s.executor.Inspect(ctx, item.Spec.ID)
 	switch {
 	case err == nil && current.Running:
 		if next, ok := DegradedRunningAgainstDesired(item, current, now); ok {
-			return next
+			return next, nil
 		}
 		item.Instance = current
-		return MarkRunning(item, now)
+		return MarkRunning(item, now), nil
 	case inspectNotFound(err) && ProcessMatchesConfig(item.Instance.PID, item.Spec.Config):
 		if next, ok := DegradedRunningAgainstDesired(item, item.Instance, now); ok {
-			return next
+			return next, nil
 		}
-		return MarkRunning(item, now)
+		return MarkRunning(item, now), nil
 	case err != nil && !inspectNotFound(err):
 		item.Observed = ObservedDegraded
 		item.Reason = "inspect failed: " + err.Error()
 		item.NeedsOperatorAction = true
 		item.LastTransitionAt = now
 		item.PublishedServices = ServiceStatuses(item.Spec, false, item.Reason)
-		return item
+		return item, err
 	default:
 		if err == nil {
 			item.Instance = current
 		}
-		return s.observedAfterUnexpectedExit(item, now)
+		return s.observedAfterUnexpectedExit(item, now), nil
 	}
 }
 
 const nodeShutdownStopReason = "workload stopped by node shutdown"
 
 func (s *Service) StopAll(ctx context.Context) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	release, err := s.acquireOperation(ctx)
+	if err != nil {
+		return err
+	}
+	defer release()
 
-	now := time.Now().UTC()
+	s.mu.Lock()
+	now := s.now().UTC()
+	workCopies, comparisonSnapshots := s.captureStatusesLocked()
+	s.mu.Unlock()
+
 	var firstErr error
-	for id, item := range s.items {
-		next, err := s.stopForNodeShutdownLocked(ctx, item, now)
-		s.items[id] = NormalizeStatus(next)
+	nextItems := make(map[string]Status, len(workCopies))
+	for id, item := range workCopies {
+		next, err := s.stopForNodeShutdown(ctx, item, now)
+		nextItems[id] = NormalizeStatus(next)
 		if err != nil && firstErr == nil {
 			firstErr = err
 		}
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for id := range workCopies {
+		current, found := s.items[id]
+		if !found || !reflect.DeepEqual(current, comparisonSnapshots[id]) {
+			continue
+		}
+		s.items[id] = nextItems[id]
 	}
 	s.state = "ready"
 	if err := s.saveLocked(); err != nil {
@@ -146,7 +180,17 @@ func (s *Service) StopAll(ctx context.Context) error {
 	return firstErr
 }
 
-func (s *Service) stopForNodeShutdownLocked(ctx context.Context, item Status, now time.Time) (Status, error) {
+func (s *Service) captureStatusesLocked() (workCopies, comparisonSnapshots map[string]Status) {
+	workCopies = make(map[string]Status, len(s.items))
+	comparisonSnapshots = make(map[string]Status, len(s.items))
+	for id, item := range s.items {
+		comparisonSnapshots[id] = item
+		workCopies[id] = CloneStatus(item)
+	}
+	return workCopies, comparisonSnapshots
+}
+
+func (s *Service) stopForNodeShutdown(ctx context.Context, item Status, now time.Time) (Status, error) {
 	item = NormalizeStatus(item)
 	if item.Instance.WorkloadID != "" && item.Instance.Running {
 		item.Observed = ObservedStopping

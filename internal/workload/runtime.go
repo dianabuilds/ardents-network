@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"ardents/internal/workload/execution"
 	"ardents/internal/workload/registry"
@@ -34,29 +35,56 @@ type RuntimeHooks struct {
 }
 
 type RuntimeConfig struct {
-	Execution   *execution.Service
-	Policy      AdmissionPolicy
-	Publication PublicationPort
-	Guard       func(action string) error
-	Hooks       RuntimeHooks
+	Execution          *execution.Service
+	Policy             AdmissionPolicy
+	Publication        PublicationPort
+	Guard              func(action string) error
+	Hooks              RuntimeHooks
+	ObservationTimeout time.Duration
+	ObservationMaxAge  time.Duration
+	Clock              func() time.Time
 }
 
 type Runtime struct {
-	mu  sync.Mutex
-	cfg RuntimeConfig
+	mu            sync.Mutex
+	operationGate chan struct{}
+	cfg           RuntimeConfig
+	cache         []StatusSnapshot
+	cacheAt       time.Time
 }
 
-func NewRuntime(cfg RuntimeConfig) *Runtime { return &Runtime{cfg: cfg} }
+func NewRuntime(cfg RuntimeConfig) *Runtime {
+	if cfg.ObservationTimeout <= 0 {
+		cfg.ObservationTimeout = 2 * time.Second
+	}
+	if cfg.ObservationMaxAge <= 0 {
+		cfg.ObservationMaxAge = 30 * time.Second
+	}
+	if cfg.Clock == nil {
+		cfg.Clock = time.Now
+	}
+	return &Runtime{cfg: cfg, operationGate: make(chan struct{}, 1)}
+}
 
 func (r *Runtime) Load() error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return r.cfg.Execution.Load()
+	return r.LoadContext(context.Background())
+}
+
+func (r *Runtime) LoadContext(ctx context.Context) error {
+	if err := r.cfg.Execution.LoadContext(ctx); err != nil {
+		return err
+	}
+	now := r.cfg.Clock().UTC()
+	r.storeObservationCache(r.projectCurrent(now), now)
+	return nil
 }
 
 func (r *Runtime) SeedAndReconcile(ctx context.Context, specs []registry.Spec) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	release, err := r.acquireOperation(ctx)
+	if err != nil {
+		return err
+	}
+	defer release()
 	if err := r.cfg.Execution.Seed(specs); err != nil {
 		return err
 	}
@@ -64,35 +92,53 @@ func (r *Runtime) SeedAndReconcile(ctx context.Context, specs []registry.Spec) e
 }
 
 func (r *Runtime) List() ([]StatusSnapshot, error) {
+	now := r.cfg.Clock().UTC()
+	ctx, cancel := context.WithTimeout(context.Background(), r.cfg.ObservationTimeout)
+	err := r.syncObserved(ctx)
+	cancel()
+	if err == nil {
+		items := r.projectCurrent(now)
+		r.storeObservationCache(items, now)
+		return cloneStatusSnapshots(items), nil
+	}
 	r.mu.Lock()
-	defer r.mu.Unlock()
-	if err := r.syncObserved(context.Background()); err != nil {
-		return nil, err
+	cached, cachedAt := cloneStatusSnapshots(r.cache), r.cacheAt
+	maxAge := r.cfg.ObservationMaxAge
+	r.mu.Unlock()
+	age := now.Sub(cachedAt)
+	if cachedAt.IsZero() || age < 0 || age > maxAge {
+		return nil, fmt.Errorf("workload observation unavailable and cache is stale: %w", err)
 	}
-	items := r.cfg.Execution.List()
-	out := make([]StatusSnapshot, 0, len(items))
-	for _, item := range items {
-		out = append(out, ProjectStatus(r.cfg.Publication.ProjectStatus(item)))
+	reason := fmt.Sprintf("cached Docker observation from %s: %v", cachedAt.Format(time.RFC3339), err)
+	for index := range cached {
+		cached[index].Observed = execution.ObservedDegraded
+		cached[index].Reason = reason
+		cached[index].NeedsOperatorAction = true
+		cached[index].ObservationDegraded = true
+		cached[index].ObservedAt = cachedAt
 	}
-	return out, nil
+	return cached, nil
 }
 
 func (r *Runtime) Get(id string) (StatusSnapshot, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if err := r.syncObserved(context.Background()); err != nil {
+	items, err := r.List()
+	if err != nil {
 		return StatusSnapshot{}, err
 	}
-	item, ok := r.cfg.Execution.Get(id)
-	if !ok {
-		return StatusSnapshot{}, errors.New("workload not found")
+	for _, item := range items {
+		if item.Spec.ID == id {
+			return item, nil
+		}
 	}
-	return ProjectStatus(r.cfg.Publication.ProjectStatus(item)), nil
+	return StatusSnapshot{}, errors.New("workload not found")
 }
 
 func (r *Runtime) Register(ctx context.Context, spec SpecSnapshot) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	release, err := r.acquireOperation(ctx)
+	if err != nil {
+		return err
+	}
+	defer release()
 	if err := r.guard("workload register"); err != nil {
 		return err
 	}
@@ -111,8 +157,11 @@ func (r *Runtime) Register(ctx context.Context, spec SpecSnapshot) error {
 }
 
 func (r *Runtime) Start(ctx context.Context, id string) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	release, err := r.acquireOperation(ctx)
+	if err != nil {
+		return err
+	}
+	defer release()
 	if err := r.guard("workload start"); err != nil {
 		return err
 	}
@@ -120,8 +169,11 @@ func (r *Runtime) Start(ctx context.Context, id string) error {
 }
 
 func (r *Runtime) Stop(ctx context.Context, id string) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	release, err := r.acquireOperation(ctx)
+	if err != nil {
+		return err
+	}
+	defer release()
 	if err := r.guard("workload stop"); err != nil {
 		return err
 	}
@@ -129,8 +181,11 @@ func (r *Runtime) Stop(ctx context.Context, id string) error {
 }
 
 func (r *Runtime) Restart(ctx context.Context, id string) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	release, err := r.acquireOperation(ctx)
+	if err != nil {
+		return err
+	}
+	defer release()
 	if err := r.guard("workload restart"); err != nil {
 		return err
 	}
@@ -141,34 +196,47 @@ func (r *Runtime) Restart(ctx context.Context, id string) error {
 }
 
 func (r *Runtime) SyncObserved(ctx context.Context) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return r.syncObserved(ctx)
+	observationCtx, cancel := r.observationContext(ctx)
+	defer cancel()
+	return r.syncObserved(observationCtx)
+}
+
+func (r *Runtime) observationContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return context.WithTimeout(ctx, r.cfg.ObservationTimeout)
 }
 
 func (r *Runtime) syncObserved(ctx context.Context) error {
-	changed, err := r.cfg.Execution.RefreshObserved(ctx)
+	cfg := r.cfg
+	changed, err := cfg.Execution.RefreshObserved(ctx)
 	if err != nil {
 		r.refreshFailed(err)
-		return err
 	}
 	if changed {
 		r.stateChanged()
-		if err := r.cfg.Publication.SyncLocalDesired(); err != nil {
-			r.refreshFailed(err)
-			return err
+		if syncErr := cfg.Publication.SyncLocalDesired(); syncErr != nil {
+			r.refreshFailed(syncErr)
+			return errors.Join(err, syncErr)
 		}
 	}
-	if r.cfg.Hooks.RefreshSucceeded != nil {
-		r.cfg.Hooks.RefreshSucceeded()
+	if err != nil {
+		return err
+	}
+	if cfg.Hooks.RefreshSucceeded != nil {
+		cfg.Hooks.RefreshSucceeded()
 	}
 	r.evaluateHealth()
 	return nil
 }
 
 func (r *Runtime) Reconcile(ctx context.Context) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	release, err := r.acquireOperation(ctx)
+	if err != nil {
+		return err
+	}
+	defer release()
 	return r.reconcile(ctx)
 }
 
@@ -190,24 +258,80 @@ func (r *Runtime) reconcile(ctx context.Context) error {
 }
 
 func (r *Runtime) Shutdown(ctx context.Context) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if err := r.cfg.Execution.StopAll(ctx); err != nil {
-		if r.cfg.Hooks.ShutdownFailed != nil {
-			r.cfg.Hooks.ShutdownFailed(err)
+	release, err := r.acquireOperation(ctx)
+	if err != nil {
+		return err
+	}
+	defer release()
+
+	cfg := r.cfg
+	if err := cfg.Execution.StopAll(ctx); err != nil {
+		if cfg.Hooks.ShutdownFailed != nil {
+			cfg.Hooks.ShutdownFailed(err)
 		}
 		return err
 	}
 	r.stateChanged()
-	if err := r.cfg.Publication.SyncDesired(ctx); err != nil {
-		if handled := r.cfg.Publication.HandleError(err); handled != nil {
+	if err := cfg.Publication.SyncDesired(ctx); err != nil {
+		if handled := cfg.Publication.HandleError(err); handled != nil {
 			return fmt.Errorf("withdraw workload services: %w", handled)
 		}
 	}
-	if r.cfg.Hooks.ShutdownSucceeded != nil {
-		r.cfg.Hooks.ShutdownSucceeded()
+	if cfg.Hooks.ShutdownSucceeded != nil {
+		cfg.Hooks.ShutdownSucceeded()
 	}
 	return nil
+}
+
+func (r *Runtime) acquireOperation(ctx context.Context) (func(), error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	select {
+	case r.operationGate <- struct{}{}:
+		return func() { <-r.operationGate }, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+func (r *Runtime) projectCurrent(observedAt time.Time) []StatusSnapshot {
+	items := r.cfg.Execution.List()
+	out := make([]StatusSnapshot, 0, len(items))
+	for _, item := range items {
+		snapshot := ProjectStatus(r.cfg.Publication.ProjectStatus(item))
+		snapshot.ObservedAt = observedAt
+		out = append(out, snapshot)
+	}
+	return out
+}
+
+func (r *Runtime) storeObservationCache(items []StatusSnapshot, observedAt time.Time) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.cache = cloneStatusSnapshots(items)
+	r.cacheAt = observedAt
+}
+
+func cloneStatusSnapshots(items []StatusSnapshot) []StatusSnapshot {
+	out := make([]StatusSnapshot, len(items))
+	for index, item := range items {
+		out[index] = item
+		out[index].Spec.Services = clonePublishedServices(item.Spec.Services)
+		out[index].Spec.Requirements = append([]registry.WorkloadRequirement(nil), item.Spec.Requirements...)
+		out[index].PublishedServices = clonePublishedServices(item.PublishedServices)
+	}
+	return out
+}
+
+func clonePublishedServices(items []PublishedServiceSnapshot) []PublishedServiceSnapshot {
+	out := make([]PublishedServiceSnapshot, len(items))
+	for index, item := range items {
+		out[index] = item
+		out[index].Endpoints = append([]string(nil), item.Endpoints...)
+		out[index].ProbeEndpoints = append([]string(nil), item.ProbeEndpoints...)
+	}
+	return out
 }
 
 func (r *Runtime) mutateDesired(ctx context.Context, id, desired, action string) error {

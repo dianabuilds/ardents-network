@@ -417,7 +417,7 @@ func (r *QueryService) PeerSnapshotsLocked() []discovery.PeerSnapshot {
 
 func (r *QueryService) SyncDiagnosticsLocked() error {
 	r.runtime.SyncObservedTruthLocked()
-	return r.observed.SyncObserved(context.Background())
+	return nil
 }
 
 func (r *QueryService) SnapshotLocked() SystemSnapshot {
@@ -442,11 +442,6 @@ func (r *QueryService) NodeFeaturesSnapshotLocked() NodeFeaturesSnapshot {
 func (r *QueryService) syncObservedTruthLocked() {
 	if r.runtime != nil {
 		r.runtime.SyncObservedTruthLocked()
-	}
-	if r.observed != nil {
-		if err := r.observed.SyncObserved(context.Background()); err != nil {
-			r.diag.RecordEvent("workload", "observed_sync_failed", r.name, "workload observed state refresh failed", "workload.observed_sync_failed", map[string]any{"error": err.Error()})
-		}
 	}
 }
 

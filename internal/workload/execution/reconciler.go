@@ -3,6 +3,7 @@ package execution
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sort"
 	"sync"
 	"time"
@@ -13,6 +14,7 @@ import (
 
 type Service struct {
 	mu               sync.Mutex
+	operationGate    chan struct{}
 	path             string
 	state            string
 	executor         Executor
@@ -32,6 +34,7 @@ func New(path string, executor Executor) *Service {
 		state:         "new",
 		executor:      executor,
 		items:         map[string]Status{},
+		operationGate: make(chan struct{}, 1),
 		restartBudget: DefaultRestartBudget,
 		now:           time.Now,
 	}
@@ -52,41 +55,46 @@ func (s *Service) SetAdmission(fn AdmissionFunc) {
 }
 
 func (s *Service) Load() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	return s.LoadContext(context.Background())
+}
 
-	if s.path == "" {
-		s.state = "ready"
-		return s.reconcileRuntimeInventoryLocked()
-	}
-
-	var stored persistentState
-	found, err := db.LoadJSONStrict(s.path, "workload", "snapshot", &stored)
+func (s *Service) LoadContext(ctx context.Context) error {
+	release, err := s.acquireOperation(ctx)
 	if err != nil {
 		return err
 	}
-	if found {
-		items, validateErr := validatePersistentState(stored)
-		if validateErr != nil {
-			return validateErr
-		}
-		previousItems, previousState := s.items, s.state
-		s.items = items
-		s.state = "ready"
-		if err := s.recoverLoadedProcessesLocked(); err != nil {
-			s.items, s.state = previousItems, previousState
-			return err
-		}
-		if err := s.reconcileRuntimeInventoryLocked(); err != nil {
-			s.items, s.state = previousItems, previousState
-			return err
-		}
-		return nil
-	}
+	defer release()
 
-	s.items = map[string]Status{}
+	var loaded map[string]Status
+	if s.path == "" {
+		loaded = map[string]Status{}
+	} else {
+		var stored persistentState
+		found, loadErr := db.LoadJSONStrict(s.path, "workload", "snapshot", &stored)
+		if loadErr != nil {
+			return loadErr
+		}
+		if found {
+			loaded, loadErr = validatePersistentState(stored)
+			if loadErr != nil {
+				return loadErr
+			}
+		} else {
+			loaded = map[string]Status{}
+		}
+	}
+	loaded, err = s.recoverLoadedProcesses(ctx, loaded)
+	if err != nil {
+		return err
+	}
+	if err := s.reconcileRuntimeInventory(ctx, loaded); err != nil {
+		return err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.items = loaded
 	s.state = "ready"
-	return s.reconcileRuntimeInventoryLocked()
+	return nil
 }
 
 func validatePersistentState(stored persistentState) (map[string]Status, error) {
@@ -196,23 +204,56 @@ func (s *Service) SetDesired(id, desired string) error {
 }
 
 func (s *Service) Reconcile(ctx context.Context) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	release, err := s.acquireOperation(ctx)
+	if err != nil {
+		return err
+	}
+	defer release()
 
+	s.mu.Lock()
+	workCopies, comparisonSnapshots := s.captureStatusesLocked()
+	admission := s.admission
+	s.mu.Unlock()
 	now := time.Now().UTC()
-	for id, item := range s.items {
-		next, keep, err := s.reconcileLocked(ctx, item, now)
+	nextItems := make(map[string]Status, len(workCopies))
+	keepItems := make(map[string]bool, len(workCopies))
+	admissionStatuses := SnapshotStatuses(workCopies)
+	for id, item := range workCopies {
+		next, keep, err := s.reconcileLocked(ctx, item, now, admission, admissionStatuses)
 		if err != nil {
 			return err
 		}
-		if keep {
-			s.items[id] = next
+		nextItems[id] = next
+		keepItems[id] = keep
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for id := range workCopies {
+		current, found := s.items[id]
+		if !found || !reflect.DeepEqual(current, comparisonSnapshots[id]) {
 			continue
 		}
-		delete(s.items, id)
+		if keepItems[id] {
+			s.items[id] = nextItems[id]
+		} else {
+			delete(s.items, id)
+		}
 	}
 	s.state = "ready"
 	return s.saveLocked()
+}
+
+func (s *Service) acquireOperation(ctx context.Context) (func(), error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	select {
+	case s.operationGate <- struct{}{}:
+		return func() { <-s.operationGate }, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }
 
 func (s *Service) List() []Status {

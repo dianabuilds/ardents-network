@@ -2527,6 +2527,8 @@ type WorkloadStatusSnapshot struct {
 	RestartCount        int32                       `protobuf:"varint,6,opt,name=restart_count,json=restartCount,proto3" json:"restart_count,omitempty"`
 	PublishedServices   []*PublishedServiceSnapshot `protobuf:"bytes,7,rep,name=published_services,json=publishedServices,proto3" json:"published_services,omitempty"`
 	Instance            *WorkloadInstanceSnapshot   `protobuf:"bytes,8,opt,name=instance,proto3" json:"instance,omitempty"`
+	ObservationDegraded bool                        `protobuf:"varint,9,opt,name=observation_degraded,json=observationDegraded,proto3" json:"observation_degraded,omitempty"`
+	ObservedAt          *timestamppb.Timestamp      `protobuf:"bytes,10,opt,name=observed_at,json=observedAt,proto3" json:"observed_at,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -2613,6 +2615,20 @@ func (x *WorkloadStatusSnapshot) GetPublishedServices() []*PublishedServiceSnaps
 func (x *WorkloadStatusSnapshot) GetInstance() *WorkloadInstanceSnapshot {
 	if x != nil {
 		return x.Instance
+	}
+	return nil
+}
+
+func (x *WorkloadStatusSnapshot) GetObservationDegraded() bool {
+	if x != nil {
+		return x.ObservationDegraded
+	}
+	return false
+}
+
+func (x *WorkloadStatusSnapshot) GetObservedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ObservedAt
 	}
 	return nil
 }
@@ -8503,7 +8519,7 @@ const file_api_ardents_v1_types_proto_rawDesc = "" +
 	"\texit_code\x18\x06 \x01(\x05H\x00R\bexitCode\x88\x01\x01\x12\x16\n" +
 	"\x06reason\x18\a \x01(\tR\x06reasonB\f\n" +
 	"\n" +
-	"_exit_code\"\xbc\x03\n" +
+	"_exit_code\"\xac\x04\n" +
 	"\x16WorkloadStatusSnapshot\x124\n" +
 	"\x04spec\x18\x01 \x01(\v2 .ardents.v1.WorkloadSpecSnapshotR\x04spec\x12\x1a\n" +
 	"\bobserved\x18\x02 \x01(\tR\bobserved\x12\x16\n" +
@@ -8512,7 +8528,11 @@ const file_api_ardents_v1_types_proto_rawDesc = "" +
 	"\x15needs_operator_action\x18\x05 \x01(\bR\x13needsOperatorAction\x12#\n" +
 	"\rrestart_count\x18\x06 \x01(\x05R\frestartCount\x12S\n" +
 	"\x12published_services\x18\a \x03(\v2$.ardents.v1.PublishedServiceSnapshotR\x11publishedServices\x12@\n" +
-	"\binstance\x18\b \x01(\v2$.ardents.v1.WorkloadInstanceSnapshotR\binstance\"1\n" +
+	"\binstance\x18\b \x01(\v2$.ardents.v1.WorkloadInstanceSnapshotR\binstance\x121\n" +
+	"\x14observation_degraded\x18\t \x01(\bR\x13observationDegraded\x12;\n" +
+	"\vobserved_at\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"observedAt\"1\n" +
 	"\vRefSnapshot\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\tR\x02id\"\xe8\x01\n" +
@@ -9123,103 +9143,104 @@ var file_api_ardents_v1_types_proto_depIdxs = []int32{
 	129, // 45: ardents.v1.WorkloadStatusSnapshot.last_transition_at:type_name -> google.protobuf.Timestamp
 	27,  // 46: ardents.v1.WorkloadStatusSnapshot.published_services:type_name -> ardents.v1.PublishedServiceSnapshot
 	29,  // 47: ardents.v1.WorkloadStatusSnapshot.instance:type_name -> ardents.v1.WorkloadInstanceSnapshot
-	128, // 48: ardents.v1.ObjectSnapshot.body:type_name -> google.protobuf.Struct
-	31,  // 49: ardents.v1.ObjectSnapshot.blob_refs:type_name -> ardents.v1.RefSnapshot
-	129, // 50: ardents.v1.ObjectSnapshot.created_at:type_name -> google.protobuf.Timestamp
-	129, // 51: ardents.v1.BlobSnapshot.created_at:type_name -> google.protobuf.Timestamp
-	129, // 52: ardents.v1.BlobSnapshot.expires_at:type_name -> google.protobuf.Timestamp
-	31,  // 53: ardents.v1.ManifestSnapshot.refs:type_name -> ardents.v1.RefSnapshot
-	128, // 54: ardents.v1.ManifestSnapshot.metadata:type_name -> google.protobuf.Struct
-	129, // 55: ardents.v1.ManifestSnapshot.created_at:type_name -> google.protobuf.Timestamp
-	4,   // 56: ardents.v1.NodeRuntimeSnapshot.node:type_name -> ardents.v1.NodeSnapshot
-	5,   // 57: ardents.v1.NodeRuntimeSnapshot.boot:type_name -> ardents.v1.BootSnapshot
-	8,   // 58: ardents.v1.NodeRuntimeSnapshot.identity:type_name -> ardents.v1.IdentitySnapshot
-	15,  // 59: ardents.v1.NodeRuntimeSnapshot.health:type_name -> ardents.v1.HealthSnapshot
-	129, // 60: ardents.v1.NetworkStatusSnapshot.last_transition_at:type_name -> google.protobuf.Timestamp
-	129, // 61: ardents.v1.NetworkStatusSnapshot.reachability_observed_at:type_name -> google.protobuf.Timestamp
-	10,  // 62: ardents.v1.PeerSnapshot.trust:type_name -> ardents.v1.TrustSnapshot
-	129, // 63: ardents.v1.PeerSnapshot.last_seen_at:type_name -> google.protobuf.Timestamp
-	129, // 64: ardents.v1.DiscoveryStatusSnapshot.last_publish_at:type_name -> google.protobuf.Timestamp
-	129, // 65: ardents.v1.DiscoveryStatusSnapshot.last_refresh_at:type_name -> google.protobuf.Timestamp
-	129, // 66: ardents.v1.LocalPresenceSnapshot.published_at:type_name -> google.protobuf.Timestamp
-	129, // 67: ardents.v1.LocalPresenceSnapshot.expires_at:type_name -> google.protobuf.Timestamp
-	129, // 68: ardents.v1.PublicationStatusSnapshot.published_at:type_name -> google.protobuf.Timestamp
-	129, // 69: ardents.v1.PublicationStatusSnapshot.expires_at:type_name -> google.protobuf.Timestamp
-	129, // 70: ardents.v1.PublicationStatusSnapshot.withdrawn_at:type_name -> google.protobuf.Timestamp
-	43,  // 71: ardents.v1.HostedServiceSnapshot.endpoints:type_name -> ardents.v1.ServiceEndpointSnapshot
-	129, // 72: ardents.v1.HostedServiceSnapshot.last_probe_at:type_name -> google.protobuf.Timestamp
-	41,  // 73: ardents.v1.HostedServiceStatusSnapshot.publication:type_name -> ardents.v1.PublicationStatusSnapshot
-	129, // 74: ardents.v1.HostedServiceStatusSnapshot.last_transition_at:type_name -> google.protobuf.Timestamp
-	129, // 75: ardents.v1.HostedServiceStatusSnapshot.last_probe_at:type_name -> google.protobuf.Timestamp
-	10,  // 76: ardents.v1.BlobSourceSnapshot.trust:type_name -> ardents.v1.TrustSnapshot
-	129, // 77: ardents.v1.BlobSourceSnapshot.last_seen_at:type_name -> google.protobuf.Timestamp
-	129, // 78: ardents.v1.TransferSnapshot.started_at:type_name -> google.protobuf.Timestamp
-	129, // 79: ardents.v1.TransferSnapshot.updated_at:type_name -> google.protobuf.Timestamp
-	129, // 80: ardents.v1.TransferSnapshot.finished_at:type_name -> google.protobuf.Timestamp
-	13,  // 81: ardents.v1.FailureExplanationSnapshot.reason:type_name -> ardents.v1.ReasonSnapshot
-	1,   // 82: ardents.v1.NodeStatusResponse.status:type_name -> ardents.v1.OperationStatus
-	18,  // 83: ardents.v1.NodeStatusResponse.snapshot:type_name -> ardents.v1.Snapshot
-	19,  // 84: ardents.v1.NodeStatusResponse.features:type_name -> ardents.v1.NodeFeaturesSnapshot
-	1,   // 85: ardents.v1.NodeRuntimeResponse.status:type_name -> ardents.v1.OperationStatus
-	36,  // 86: ardents.v1.NodeRuntimeResponse.runtime:type_name -> ardents.v1.NodeRuntimeSnapshot
-	129, // 87: ardents.v1.EffectiveConfigurationSnapshot.loaded_at:type_name -> google.protobuf.Timestamp
-	128, // 88: ardents.v1.EffectiveConfigurationSnapshot.effective:type_name -> google.protobuf.Struct
-	1,   // 89: ardents.v1.EffectiveConfigurationResponse.status:type_name -> ardents.v1.OperationStatus
-	51,  // 90: ardents.v1.EffectiveConfigurationResponse.configuration:type_name -> ardents.v1.EffectiveConfigurationSnapshot
-	1,   // 91: ardents.v1.ReloadConfigurationResponse.status:type_name -> ardents.v1.OperationStatus
-	52,  // 92: ardents.v1.ReloadConfigurationResponse.result:type_name -> ardents.v1.ConfigurationReloadResult
-	51,  // 93: ardents.v1.ReloadConfigurationResponse.configuration:type_name -> ardents.v1.EffectiveConfigurationSnapshot
-	19,  // 94: ardents.v1.NodeFeaturesResponse.features:type_name -> ardents.v1.NodeFeaturesSnapshot
-	1,   // 95: ardents.v1.NetworkStatusResponse.status:type_name -> ardents.v1.OperationStatus
-	37,  // 96: ardents.v1.NetworkStatusResponse.network:type_name -> ardents.v1.NetworkStatusSnapshot
-	1,   // 97: ardents.v1.DiscoveryStatusResponse.status:type_name -> ardents.v1.OperationStatus
-	39,  // 98: ardents.v1.DiscoveryStatusResponse.discovery:type_name -> ardents.v1.DiscoveryStatusSnapshot
-	1,   // 99: ardents.v1.LocalPresenceResponse.status:type_name -> ardents.v1.OperationStatus
-	40,  // 100: ardents.v1.LocalPresenceResponse.presence:type_name -> ardents.v1.LocalPresenceSnapshot
-	1,   // 101: ardents.v1.RecordImportResponse.status:type_name -> ardents.v1.OperationStatus
-	1,   // 102: ardents.v1.WorkloadCommandResponse.status:type_name -> ardents.v1.OperationStatus
-	30,  // 103: ardents.v1.WorkloadCommandResponse.workload:type_name -> ardents.v1.WorkloadStatusSnapshot
-	1,   // 104: ardents.v1.ListRecordsResponse.status:type_name -> ardents.v1.OperationStatus
-	22,  // 105: ardents.v1.ListRecordsResponse.records:type_name -> ardents.v1.DiscoveryRecord
-	1,   // 106: ardents.v1.ListPeersResponse.status:type_name -> ardents.v1.OperationStatus
-	38,  // 107: ardents.v1.ListPeersResponse.peers:type_name -> ardents.v1.PeerSnapshot
-	1,   // 108: ardents.v1.ListRouteCandidatesResponse.status:type_name -> ardents.v1.OperationStatus
-	42,  // 109: ardents.v1.ListRouteCandidatesResponse.candidates:type_name -> ardents.v1.RouteCandidateSnapshot
-	24,  // 110: ardents.v1.ListRouteCandidatesResponse.route:type_name -> ardents.v1.RouteSnapshot
-	30,  // 111: ardents.v1.ListWorkloadsResponse.workloads:type_name -> ardents.v1.WorkloadStatusSnapshot
-	1,   // 112: ardents.v1.GetHostedServiceResponse.status:type_name -> ardents.v1.OperationStatus
-	45,  // 113: ardents.v1.GetHostedServiceResponse.service:type_name -> ardents.v1.HostedServiceStatusSnapshot
-	44,  // 114: ardents.v1.ListHostedServicesResponse.services:type_name -> ardents.v1.HostedServiceSnapshot
-	1,   // 115: ardents.v1.ServicePublicationStatusResponse.status:type_name -> ardents.v1.OperationStatus
-	41,  // 116: ardents.v1.ServicePublicationStatusResponse.publication:type_name -> ardents.v1.PublicationStatusSnapshot
-	32,  // 117: ardents.v1.ListObjectsResponse.objects:type_name -> ardents.v1.ObjectSnapshot
-	33,  // 118: ardents.v1.ListBlobsResponse.blobs:type_name -> ardents.v1.BlobSnapshot
-	46,  // 119: ardents.v1.ListBlobSourcesResponse.sources:type_name -> ardents.v1.BlobSourceSnapshot
-	1,   // 120: ardents.v1.GetTransferResponse.status:type_name -> ardents.v1.OperationStatus
-	47,  // 121: ardents.v1.GetTransferResponse.transfer:type_name -> ardents.v1.TransferSnapshot
-	47,  // 122: ardents.v1.ListTransfersResponse.transfers:type_name -> ardents.v1.TransferSnapshot
-	34,  // 123: ardents.v1.ListManifestsResponse.manifests:type_name -> ardents.v1.ManifestSnapshot
-	1,   // 124: ardents.v1.DiagnosticsSnapshotResponse.status:type_name -> ardents.v1.OperationStatus
-	17,  // 125: ardents.v1.DiagnosticsSnapshotResponse.diagnostics:type_name -> ardents.v1.DiagSnapshot
-	1,   // 126: ardents.v1.PendingOperationsResponse.status:type_name -> ardents.v1.OperationStatus
-	16,  // 127: ardents.v1.PendingOperationsResponse.operations:type_name -> ardents.v1.OperationSnapshot
-	1,   // 128: ardents.v1.HealthSummaryResponse.status:type_name -> ardents.v1.OperationStatus
-	15,  // 129: ardents.v1.HealthSummaryResponse.health:type_name -> ardents.v1.HealthSnapshot
-	1,   // 130: ardents.v1.FailureExplanationResponse.status:type_name -> ardents.v1.OperationStatus
-	48,  // 131: ardents.v1.FailureExplanationResponse.explanation:type_name -> ardents.v1.FailureExplanationSnapshot
-	1,   // 132: ardents.v1.ListEventsResponse.status:type_name -> ardents.v1.OperationStatus
-	3,   // 133: ardents.v1.ListEventsResponse.events:type_name -> ardents.v1.EventEnvelope
-	22,  // 134: ardents.v1.ImportRecordRequest.record:type_name -> ardents.v1.DiscoveryRecord
-	28,  // 135: ardents.v1.RegisterWorkloadRequest.spec:type_name -> ardents.v1.WorkloadSpecSnapshot
-	32,  // 136: ardents.v1.PublishObjectRequest.object:type_name -> ardents.v1.ObjectSnapshot
-	33,  // 137: ardents.v1.PublishBlobRequest.blob:type_name -> ardents.v1.BlobSnapshot
-	34,  // 138: ardents.v1.PublishManifestRequest.manifest:type_name -> ardents.v1.ManifestSnapshot
-	129, // 139: ardents.v1.RetainBlobRequest.expires_at:type_name -> google.protobuf.Timestamp
-	140, // [140:140] is the sub-list for method output_type
-	140, // [140:140] is the sub-list for method input_type
-	140, // [140:140] is the sub-list for extension type_name
-	140, // [140:140] is the sub-list for extension extendee
-	0,   // [0:140] is the sub-list for field type_name
+	129, // 48: ardents.v1.WorkloadStatusSnapshot.observed_at:type_name -> google.protobuf.Timestamp
+	128, // 49: ardents.v1.ObjectSnapshot.body:type_name -> google.protobuf.Struct
+	31,  // 50: ardents.v1.ObjectSnapshot.blob_refs:type_name -> ardents.v1.RefSnapshot
+	129, // 51: ardents.v1.ObjectSnapshot.created_at:type_name -> google.protobuf.Timestamp
+	129, // 52: ardents.v1.BlobSnapshot.created_at:type_name -> google.protobuf.Timestamp
+	129, // 53: ardents.v1.BlobSnapshot.expires_at:type_name -> google.protobuf.Timestamp
+	31,  // 54: ardents.v1.ManifestSnapshot.refs:type_name -> ardents.v1.RefSnapshot
+	128, // 55: ardents.v1.ManifestSnapshot.metadata:type_name -> google.protobuf.Struct
+	129, // 56: ardents.v1.ManifestSnapshot.created_at:type_name -> google.protobuf.Timestamp
+	4,   // 57: ardents.v1.NodeRuntimeSnapshot.node:type_name -> ardents.v1.NodeSnapshot
+	5,   // 58: ardents.v1.NodeRuntimeSnapshot.boot:type_name -> ardents.v1.BootSnapshot
+	8,   // 59: ardents.v1.NodeRuntimeSnapshot.identity:type_name -> ardents.v1.IdentitySnapshot
+	15,  // 60: ardents.v1.NodeRuntimeSnapshot.health:type_name -> ardents.v1.HealthSnapshot
+	129, // 61: ardents.v1.NetworkStatusSnapshot.last_transition_at:type_name -> google.protobuf.Timestamp
+	129, // 62: ardents.v1.NetworkStatusSnapshot.reachability_observed_at:type_name -> google.protobuf.Timestamp
+	10,  // 63: ardents.v1.PeerSnapshot.trust:type_name -> ardents.v1.TrustSnapshot
+	129, // 64: ardents.v1.PeerSnapshot.last_seen_at:type_name -> google.protobuf.Timestamp
+	129, // 65: ardents.v1.DiscoveryStatusSnapshot.last_publish_at:type_name -> google.protobuf.Timestamp
+	129, // 66: ardents.v1.DiscoveryStatusSnapshot.last_refresh_at:type_name -> google.protobuf.Timestamp
+	129, // 67: ardents.v1.LocalPresenceSnapshot.published_at:type_name -> google.protobuf.Timestamp
+	129, // 68: ardents.v1.LocalPresenceSnapshot.expires_at:type_name -> google.protobuf.Timestamp
+	129, // 69: ardents.v1.PublicationStatusSnapshot.published_at:type_name -> google.protobuf.Timestamp
+	129, // 70: ardents.v1.PublicationStatusSnapshot.expires_at:type_name -> google.protobuf.Timestamp
+	129, // 71: ardents.v1.PublicationStatusSnapshot.withdrawn_at:type_name -> google.protobuf.Timestamp
+	43,  // 72: ardents.v1.HostedServiceSnapshot.endpoints:type_name -> ardents.v1.ServiceEndpointSnapshot
+	129, // 73: ardents.v1.HostedServiceSnapshot.last_probe_at:type_name -> google.protobuf.Timestamp
+	41,  // 74: ardents.v1.HostedServiceStatusSnapshot.publication:type_name -> ardents.v1.PublicationStatusSnapshot
+	129, // 75: ardents.v1.HostedServiceStatusSnapshot.last_transition_at:type_name -> google.protobuf.Timestamp
+	129, // 76: ardents.v1.HostedServiceStatusSnapshot.last_probe_at:type_name -> google.protobuf.Timestamp
+	10,  // 77: ardents.v1.BlobSourceSnapshot.trust:type_name -> ardents.v1.TrustSnapshot
+	129, // 78: ardents.v1.BlobSourceSnapshot.last_seen_at:type_name -> google.protobuf.Timestamp
+	129, // 79: ardents.v1.TransferSnapshot.started_at:type_name -> google.protobuf.Timestamp
+	129, // 80: ardents.v1.TransferSnapshot.updated_at:type_name -> google.protobuf.Timestamp
+	129, // 81: ardents.v1.TransferSnapshot.finished_at:type_name -> google.protobuf.Timestamp
+	13,  // 82: ardents.v1.FailureExplanationSnapshot.reason:type_name -> ardents.v1.ReasonSnapshot
+	1,   // 83: ardents.v1.NodeStatusResponse.status:type_name -> ardents.v1.OperationStatus
+	18,  // 84: ardents.v1.NodeStatusResponse.snapshot:type_name -> ardents.v1.Snapshot
+	19,  // 85: ardents.v1.NodeStatusResponse.features:type_name -> ardents.v1.NodeFeaturesSnapshot
+	1,   // 86: ardents.v1.NodeRuntimeResponse.status:type_name -> ardents.v1.OperationStatus
+	36,  // 87: ardents.v1.NodeRuntimeResponse.runtime:type_name -> ardents.v1.NodeRuntimeSnapshot
+	129, // 88: ardents.v1.EffectiveConfigurationSnapshot.loaded_at:type_name -> google.protobuf.Timestamp
+	128, // 89: ardents.v1.EffectiveConfigurationSnapshot.effective:type_name -> google.protobuf.Struct
+	1,   // 90: ardents.v1.EffectiveConfigurationResponse.status:type_name -> ardents.v1.OperationStatus
+	51,  // 91: ardents.v1.EffectiveConfigurationResponse.configuration:type_name -> ardents.v1.EffectiveConfigurationSnapshot
+	1,   // 92: ardents.v1.ReloadConfigurationResponse.status:type_name -> ardents.v1.OperationStatus
+	52,  // 93: ardents.v1.ReloadConfigurationResponse.result:type_name -> ardents.v1.ConfigurationReloadResult
+	51,  // 94: ardents.v1.ReloadConfigurationResponse.configuration:type_name -> ardents.v1.EffectiveConfigurationSnapshot
+	19,  // 95: ardents.v1.NodeFeaturesResponse.features:type_name -> ardents.v1.NodeFeaturesSnapshot
+	1,   // 96: ardents.v1.NetworkStatusResponse.status:type_name -> ardents.v1.OperationStatus
+	37,  // 97: ardents.v1.NetworkStatusResponse.network:type_name -> ardents.v1.NetworkStatusSnapshot
+	1,   // 98: ardents.v1.DiscoveryStatusResponse.status:type_name -> ardents.v1.OperationStatus
+	39,  // 99: ardents.v1.DiscoveryStatusResponse.discovery:type_name -> ardents.v1.DiscoveryStatusSnapshot
+	1,   // 100: ardents.v1.LocalPresenceResponse.status:type_name -> ardents.v1.OperationStatus
+	40,  // 101: ardents.v1.LocalPresenceResponse.presence:type_name -> ardents.v1.LocalPresenceSnapshot
+	1,   // 102: ardents.v1.RecordImportResponse.status:type_name -> ardents.v1.OperationStatus
+	1,   // 103: ardents.v1.WorkloadCommandResponse.status:type_name -> ardents.v1.OperationStatus
+	30,  // 104: ardents.v1.WorkloadCommandResponse.workload:type_name -> ardents.v1.WorkloadStatusSnapshot
+	1,   // 105: ardents.v1.ListRecordsResponse.status:type_name -> ardents.v1.OperationStatus
+	22,  // 106: ardents.v1.ListRecordsResponse.records:type_name -> ardents.v1.DiscoveryRecord
+	1,   // 107: ardents.v1.ListPeersResponse.status:type_name -> ardents.v1.OperationStatus
+	38,  // 108: ardents.v1.ListPeersResponse.peers:type_name -> ardents.v1.PeerSnapshot
+	1,   // 109: ardents.v1.ListRouteCandidatesResponse.status:type_name -> ardents.v1.OperationStatus
+	42,  // 110: ardents.v1.ListRouteCandidatesResponse.candidates:type_name -> ardents.v1.RouteCandidateSnapshot
+	24,  // 111: ardents.v1.ListRouteCandidatesResponse.route:type_name -> ardents.v1.RouteSnapshot
+	30,  // 112: ardents.v1.ListWorkloadsResponse.workloads:type_name -> ardents.v1.WorkloadStatusSnapshot
+	1,   // 113: ardents.v1.GetHostedServiceResponse.status:type_name -> ardents.v1.OperationStatus
+	45,  // 114: ardents.v1.GetHostedServiceResponse.service:type_name -> ardents.v1.HostedServiceStatusSnapshot
+	44,  // 115: ardents.v1.ListHostedServicesResponse.services:type_name -> ardents.v1.HostedServiceSnapshot
+	1,   // 116: ardents.v1.ServicePublicationStatusResponse.status:type_name -> ardents.v1.OperationStatus
+	41,  // 117: ardents.v1.ServicePublicationStatusResponse.publication:type_name -> ardents.v1.PublicationStatusSnapshot
+	32,  // 118: ardents.v1.ListObjectsResponse.objects:type_name -> ardents.v1.ObjectSnapshot
+	33,  // 119: ardents.v1.ListBlobsResponse.blobs:type_name -> ardents.v1.BlobSnapshot
+	46,  // 120: ardents.v1.ListBlobSourcesResponse.sources:type_name -> ardents.v1.BlobSourceSnapshot
+	1,   // 121: ardents.v1.GetTransferResponse.status:type_name -> ardents.v1.OperationStatus
+	47,  // 122: ardents.v1.GetTransferResponse.transfer:type_name -> ardents.v1.TransferSnapshot
+	47,  // 123: ardents.v1.ListTransfersResponse.transfers:type_name -> ardents.v1.TransferSnapshot
+	34,  // 124: ardents.v1.ListManifestsResponse.manifests:type_name -> ardents.v1.ManifestSnapshot
+	1,   // 125: ardents.v1.DiagnosticsSnapshotResponse.status:type_name -> ardents.v1.OperationStatus
+	17,  // 126: ardents.v1.DiagnosticsSnapshotResponse.diagnostics:type_name -> ardents.v1.DiagSnapshot
+	1,   // 127: ardents.v1.PendingOperationsResponse.status:type_name -> ardents.v1.OperationStatus
+	16,  // 128: ardents.v1.PendingOperationsResponse.operations:type_name -> ardents.v1.OperationSnapshot
+	1,   // 129: ardents.v1.HealthSummaryResponse.status:type_name -> ardents.v1.OperationStatus
+	15,  // 130: ardents.v1.HealthSummaryResponse.health:type_name -> ardents.v1.HealthSnapshot
+	1,   // 131: ardents.v1.FailureExplanationResponse.status:type_name -> ardents.v1.OperationStatus
+	48,  // 132: ardents.v1.FailureExplanationResponse.explanation:type_name -> ardents.v1.FailureExplanationSnapshot
+	1,   // 133: ardents.v1.ListEventsResponse.status:type_name -> ardents.v1.OperationStatus
+	3,   // 134: ardents.v1.ListEventsResponse.events:type_name -> ardents.v1.EventEnvelope
+	22,  // 135: ardents.v1.ImportRecordRequest.record:type_name -> ardents.v1.DiscoveryRecord
+	28,  // 136: ardents.v1.RegisterWorkloadRequest.spec:type_name -> ardents.v1.WorkloadSpecSnapshot
+	32,  // 137: ardents.v1.PublishObjectRequest.object:type_name -> ardents.v1.ObjectSnapshot
+	33,  // 138: ardents.v1.PublishBlobRequest.blob:type_name -> ardents.v1.BlobSnapshot
+	34,  // 139: ardents.v1.PublishManifestRequest.manifest:type_name -> ardents.v1.ManifestSnapshot
+	129, // 140: ardents.v1.RetainBlobRequest.expires_at:type_name -> google.protobuf.Timestamp
+	141, // [141:141] is the sub-list for method output_type
+	141, // [141:141] is the sub-list for method input_type
+	141, // [141:141] is the sub-list for extension type_name
+	141, // [141:141] is the sub-list for extension extendee
+	0,   // [0:141] is the sub-list for field type_name
 }
 
 func init() { file_api_ardents_v1_types_proto_init() }

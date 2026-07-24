@@ -32,6 +32,8 @@ func (e *Executor) list(ctx context.Context, workloadID string) ([]execution.Ins
 }
 
 func (e *Executor) Managed(ctx context.Context) ([]execution.Instance, error) {
+	ctx, cancel := e.controlContext(ctx)
+	defer cancel()
 	return e.list(ctx, "")
 }
 

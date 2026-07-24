@@ -292,6 +292,8 @@ message WorkloadStatusSnapshot {
   int32 restart_count = 6;
   repeated PublishedServiceSnapshot published_services = 7;
   WorkloadInstanceSnapshot instance = 8;
+  bool observation_degraded = 9;
+  google.protobuf.Timestamp observed_at = 10;
 }
 
 message RefSnapshot {

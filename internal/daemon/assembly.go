@@ -593,6 +593,7 @@ type querySurface interface {
 
 type Node struct {
 	mu                sync.Mutex
+	stopMu            sync.Mutex
 	cfg               Config
 	life              *diagnostics.Machine
 	diag              *diagnostics.Recorder
