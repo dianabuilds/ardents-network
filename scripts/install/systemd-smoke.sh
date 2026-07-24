@@ -169,7 +169,9 @@ decoy_pid=$!
 if "$installer" upgrade --source-dir "$bad_dir" --backup /var/backups/ardents/pre-bad.tar.gz; then
     echo 'failing upgrade unexpectedly succeeded' >&2; exit 1
 fi
-kill "$decoy_pid"; wait "$decoy_pid" >/dev/null 2>&1 || true; decoy_pid=
+kill "$decoy_pid" >/dev/null 2>&1 || true
+wait "$decoy_pid" >/dev/null 2>&1 || true
+decoy_pid=
 systemctl is-active --quiet ardentsd.service
 wait_ready; version_is v0.2.0
 
