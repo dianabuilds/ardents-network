@@ -69,7 +69,9 @@ func publishManifestModel(manifests *model.ManifestStore, blobs *model.BlobStore
 	if manifest.CreatedAt.IsZero() {
 		manifest.CreatedAt = now.UTC()
 	}
-	manifests.Put(manifest)
+	if err := manifests.Put(manifest); err != nil {
+		return model.Manifest{}, err
+	}
 	return cloneManifestModel(manifest), nil
 }
 

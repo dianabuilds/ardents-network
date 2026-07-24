@@ -165,3 +165,25 @@ func TestContentSchemaV2MigrationRejectsCrossOwnerManifestReference(t *testing.T
 	require.NoError(t, readErr)
 	require.Equal(t, before, after)
 }
+
+func TestContentSchemaV3RejectsCrossOwnerManifestReference(t *testing.T) {
+	dir := t.TempDir()
+	alice := contentTestOwner(0x68)
+	bob := contentTestOwner(0x69)
+	data := persistedContent{
+		Version: contentSchemaVersion,
+		Objects: map[string]catalog.Object{},
+		Blobs:   map[string]catalog.Blob{},
+		Sources: map[string][]catalog.BlobSourceRecord{},
+		Manifests: map[string]catalog.Manifest{
+			catalog.RecordStorageKey(alice, "root"): {
+				ID: "root", Owner: alice, Kind: "blob-set",
+				Refs: []catalog.Ref{{Kind: "manifest", ID: "leaf"}},
+			},
+			catalog.RecordStorageKey(bob, "leaf"): {ID: "leaf", Owner: bob, Kind: "blob-set"},
+		},
+		BlobOwnership: persistedBlobOwnership{Version: blobOwnershipVersion, Bindings: []catalog.BlobOwnerBinding{}},
+	}
+	require.NoError(t, saveContent(contentPath(dir), data))
+	require.ErrorContains(t, NewInDir(dir).Load(), "same owner")
+}

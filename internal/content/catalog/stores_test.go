@@ -23,18 +23,19 @@ func TestStoreSnapshotsDoNotAliasMutableState(t *testing.T) {
 	}
 
 	objects := NewObjectStore()
-	objects.Put(Object{ID: "object-1", Body: map[string]any{"nested": map[string]any{"value": "original"}}})
-	objects.Snapshot()[RecordStorageKey(principal.ID{}, "object-1")].Body["nested"].(map[string]any)["value"] = "changed"
-	storedObject, _ := objects.Get(principal.ID{}, "object-1")
+	owner := storeTestOwner(t, 0x40)
+	require.NoError(t, objects.Put(Object{ID: "object-1", Owner: owner, Body: map[string]any{"nested": map[string]any{"value": "original"}}}))
+	objects.Snapshot()[RecordStorageKey(owner, "object-1")].Body["nested"].(map[string]any)["value"] = "changed"
+	storedObject, _ := objects.Get(owner, "object-1")
 	if storedObject.Body["nested"].(map[string]any)["value"] != "original" {
 		t.Fatal("snapshot mutation changed object store")
 	}
 
 	manifests := NewManifestStore()
-	manifests.Put(Manifest{ID: "manifest-1", Refs: []Ref{{ID: "ref-1"}}})
-	snapshot := manifests.Snapshot()[RecordStorageKey(principal.ID{}, "manifest-1")]
+	require.NoError(t, manifests.Put(Manifest{ID: "manifest-1", Owner: owner, Refs: []Ref{{ID: "ref-1"}}}))
+	snapshot := manifests.Snapshot()[RecordStorageKey(owner, "manifest-1")]
 	snapshot.Refs[0].ID = "changed"
-	storedManifest, _ := manifests.Get(principal.ID{}, "manifest-1")
+	storedManifest, _ := manifests.Get(owner, "manifest-1")
 	if storedManifest.Refs[0].ID != "ref-1" {
 		t.Fatal("snapshot mutation changed manifest store")
 	}
@@ -51,8 +52,8 @@ func TestManifestStoreDeleteIsOwnerQualified(t *testing.T) {
 	alice := storeTestOwner(t, 0x41)
 	bob := storeTestOwner(t, 0x42)
 	manifests := NewManifestStore()
-	manifests.Put(Manifest{ID: "shared", Owner: alice})
-	manifests.Put(Manifest{ID: "shared", Owner: bob})
+	require.NoError(t, manifests.Put(Manifest{ID: "shared", Owner: alice}))
+	require.NoError(t, manifests.Put(Manifest{ID: "shared", Owner: bob}))
 
 	manifests.Delete(alice, "shared")
 
@@ -60,6 +61,15 @@ func TestManifestStoreDeleteIsOwnerQualified(t *testing.T) {
 	require.False(t, aliceExists)
 	_, bobExists := manifests.Get(bob, "shared")
 	require.True(t, bobExists)
+}
+
+func TestOwnerQualifiedStoresRejectEmptyIdentity(t *testing.T) {
+	objects := NewObjectStore()
+	require.ErrorContains(t, objects.Put(Object{ID: "object"}), "identity is invalid")
+	require.ErrorContains(t, objects.Put(Object{Owner: storeTestOwner(t, 0x43)}), "identity is invalid")
+	manifests := NewManifestStore()
+	require.ErrorContains(t, manifests.Put(Manifest{ID: "manifest"}), "identity is invalid")
+	require.ErrorContains(t, manifests.Put(Manifest{Owner: storeTestOwner(t, 0x44)}), "identity is invalid")
 }
 
 func storeTestOwner(t *testing.T, marker byte) principal.ID {

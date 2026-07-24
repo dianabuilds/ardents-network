@@ -43,6 +43,10 @@ rollback source.
   blob ownership bindings remain owner-qualified separately.
 - Transfer and replication roots must carry a Manifest owner as well as its
   local ID.
+- The current Go SDK exposes Blob Put/Get only; it has no Object or Manifest
+  methods to migrate. Any future SDK Object/Manifest call must keep Owner
+  implicit from the authenticated Effective Principal, matching the protobuf
+  boundary, rather than accept a caller-selected Owner.
 - Replication schema v3 persists that owner on intents, snapshots, and repairs.
   Its v2 migration may resolve a legacy bare Manifest ID only when exactly one
   owner exists; this resolver is not available to runtime operations.

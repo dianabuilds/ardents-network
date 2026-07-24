@@ -113,8 +113,14 @@ func (s *ObjectStore) Get(owner principal.ID, id string) (Object, bool) {
 	item, ok := s.Items[RecordStorageKey(owner, id)]
 	return item, ok
 }
-func (s *ObjectStore) Put(item Object) { s.Items[RecordStorageKey(item.Owner, item.ID)] = item }
-func (s *ObjectStore) Count() int      { return len(s.Items) }
+func (s *ObjectStore) Put(item Object) error {
+	if item.Owner.String() == "" || item.ID == "" {
+		return fmt.Errorf("object owner-qualified identity is invalid")
+	}
+	s.Items[RecordStorageKey(item.Owner, item.ID)] = item
+	return nil
+}
+func (s *ObjectStore) Count() int { return len(s.Items) }
 
 type ManifestStore struct {
 	Items map[string]Manifest
@@ -132,7 +138,13 @@ func (s *ManifestStore) Get(owner principal.ID, id string) (Manifest, bool) {
 	item, ok := s.Items[RecordStorageKey(owner, id)]
 	return item, ok
 }
-func (s *ManifestStore) Put(item Manifest) { s.Items[RecordStorageKey(item.Owner, item.ID)] = item }
+func (s *ManifestStore) Put(item Manifest) error {
+	if item.Owner.String() == "" || item.ID == "" {
+		return fmt.Errorf("manifest owner-qualified identity is invalid")
+	}
+	s.Items[RecordStorageKey(item.Owner, item.ID)] = item
+	return nil
+}
 func (s *ManifestStore) Delete(owner principal.ID, id string) {
 	delete(s.Items, RecordStorageKey(owner, id))
 }

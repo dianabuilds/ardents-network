@@ -59,7 +59,9 @@ func publishObjectModel(objects *model.ObjectStore, blobs *model.BlobStore, obje
 	if object.CreatedAt.IsZero() {
 		object.CreatedAt = now.UTC()
 	}
-	objects.Put(object)
+	if err := objects.Put(object); err != nil {
+		return model.Object{}, err
+	}
 	return cloneObjectModel(object), nil
 }
 

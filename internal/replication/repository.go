@@ -154,10 +154,16 @@ func validateAvailabilityIdentity(state availability.State) error {
 		}
 	}
 	for key, repair := range state.Repairs {
-		intent, ok := replicaIntentForRecord(state.Intents, repair.IntentID, repair.IntentVersion, repair.RootManifestID)
+		intent, ok := state.Intents[repair.IntentID]
+		identity := availability.ReplicaIntent{
+			RootManifestOwner: repair.RootManifestOwner,
+			RootManifestID:    repair.RootManifestID,
+			Version:           repair.IntentVersion,
+		}
 		if repair.RootManifestOwner.String() == "" || repair.RootManifestID == "" || key != repair.ID ||
-			!ok || !repair.RootManifestOwner.Equal(intent.RootManifestOwner) ||
-			repair.ID != repairID(intent, repair.ContentReference, repair.MissingOrdinal) {
+			!ok || intent.RootManifestID != repair.RootManifestID || repair.IntentVersion > intent.Version ||
+			!repair.RootManifestOwner.Equal(intent.RootManifestOwner) ||
+			repair.ID != repairID(identity, repair.ContentReference, repair.MissingOrdinal) {
 			return fmt.Errorf("replication repair owner-qualified identity is invalid")
 		}
 	}
@@ -213,8 +219,8 @@ func (r *Repository) upgradeAvailabilityIdentity(state *availability.State) (boo
 	state.Snapshots = snapshots
 	repairs := make(map[string]availability.RepairRecord, len(state.Repairs))
 	for _, repair := range state.Repairs {
-		intent, ok := replicaIntentForRecord(state.Intents, repair.IntentID, repair.IntentVersion, repair.RootManifestID)
-		if !ok {
+		intent, ok := state.Intents[repair.IntentID]
+		if !ok || intent.RootManifestID != repair.RootManifestID || repair.IntentVersion > intent.Version {
 			return false, fmt.Errorf("replication repair root owner cannot be migrated")
 		}
 		if repair.RootManifestOwner.String() == "" {
@@ -223,7 +229,12 @@ func (r *Repository) upgradeAvailabilityIdentity(state *availability.State) (boo
 		} else if !repair.RootManifestOwner.Equal(intent.RootManifestOwner) {
 			return false, fmt.Errorf("replication repair root owner conflicts with intent")
 		}
-		id := repairID(intent, repair.ContentReference, repair.MissingOrdinal)
+		identity := availability.ReplicaIntent{
+			RootManifestOwner: repair.RootManifestOwner,
+			RootManifestID:    repair.RootManifestID,
+			Version:           repair.IntentVersion,
+		}
+		id := repairID(identity, repair.ContentReference, repair.MissingOrdinal)
 		if repair.ID != id {
 			repair.ID = id
 			changed = true

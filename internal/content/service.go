@@ -192,6 +192,14 @@ func validatePersistedContent(data persistedContent) error {
 		if manifest.Owner.String() == "" || manifest.ID == "" || key != catalog.RecordStorageKey(manifest.Owner, manifest.ID) {
 			return fmt.Errorf("persisted Manifest owner-qualified key binding is invalid")
 		}
+		for _, ref := range manifest.Refs {
+			if ref.Kind != "manifest" {
+				continue
+			}
+			if _, exists := data.Manifests[catalog.RecordStorageKey(manifest.Owner, ref.ID)]; !exists {
+				return fmt.Errorf("persisted Manifest reference must resolve under the same owner")
+			}
+		}
 	}
 	for key, records := range data.Sources {
 		reference, err := catalog.ParseContentReference(key)
