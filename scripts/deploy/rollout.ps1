@@ -133,14 +133,26 @@ function Write-RolloutJournal([object]$Journal) {
     Write-AtomicJson $journalPath $Journal
 }
 
-function Invoke-ArdJson([string]$Service, [string[]]$Arguments) {
+function Invoke-ArdJson([string]$Service, [string[]]$Arguments, [DateTime]$Deadline) {
     $principalProperty = $cluster.node_principals.PSObject.Properties[$Service]
     if ($null -eq $principalProperty -or [string]::IsNullOrWhiteSpace([string]$principalProperty.Value)) {
         throw "cluster manifest has no node Principal for $Service"
     }
-    $raw = & docker @composePrefix --profile tools run --rm --no-deps "$Service-operator" `
-        --output json --signer-file $operatorDevice --principal ([string]$principalProperty.Value) @Arguments
-    if ($LASTEXITCODE -ne 0) { throw "ardentsctl command failed for $Service" }
+    $dockerArguments = @($composePrefix) + @(
+        "--profile", "tools", "run", "--rm", "--no-deps", "$Service-operator",
+        "--output", "json", "--signer-file", $operatorDevice,
+        "--principal", [string]$principalProperty.Value
+    ) + @($Arguments)
+    $dockerCommand = Get-Command docker -ErrorAction Stop
+    if ($dockerCommand.CommandType -eq "Function") {
+        $raw = & docker @dockerArguments
+        if ($LASTEXITCODE -ne 0) { throw "ardentsctl command failed for $Service" }
+    } else {
+        $raw = Invoke-ArdentsBoundedProcess `
+            -FilePath $dockerCommand.Source `
+            -ArgumentList $dockerArguments `
+            -Deadline $Deadline
+    }
     return (($raw -join "`n") | ConvertFrom-Json)
 }
 
@@ -148,7 +160,10 @@ function Wait-Service([string]$Service) {
     Wait-ArdentsCompositeReadiness `
         -Service $Service `
         -TimeoutSeconds $TimeoutSeconds `
-        -Probe { param($target) Invoke-ArdJson $target @("node", "runtime") }
+        -Probe {
+            param($target, $deadline)
+            Invoke-ArdJson $target @("node", "runtime") $deadline
+        }
 }
 
 function Set-Image([string]$Image) {

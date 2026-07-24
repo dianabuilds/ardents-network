@@ -70,6 +70,24 @@ $cases = @(
     } "node runtime response has no composite readiness"
 )
 
+$blockingStartedAt = [DateTime]::UtcNow
+$blockingFailure = $null
+try {
+    Invoke-ArdentsBoundedProcess `
+        -FilePath ([Diagnostics.Process]::GetCurrentProcess().MainModule.FileName) `
+        -ArgumentList @("-NoProfile", "-NonInteractive", "-Command", "Start-Sleep -Seconds 30") `
+        -Deadline ([DateTime]::UtcNow.AddMilliseconds(250)) | Out-Null
+} catch {
+    $blockingFailure = $_.Exception.Message
+}
+$blockingElapsed = ([DateTime]::UtcNow - $blockingStartedAt).TotalSeconds
+if ($blockingFailure -notmatch "deadline exceeded") {
+    throw "blocking probe was not terminated by its deadline: $blockingFailure"
+}
+if ($blockingElapsed -ge 5) {
+    throw "blocking probe exceeded the bounded termination window: $blockingElapsed seconds"
+}
+
 $script:clock = [DateTime]::Parse("2026-07-24T00:00:00Z").ToUniversalTime()
 Wait-ArdentsCompositeReadiness `
     -Service "peer2" `
@@ -97,6 +115,8 @@ $evidence = [ordered]@{
     scenario = "SDE-004"
     result = "passed"
     bounded_timeout_seconds = 2
+    blocking_probe_elapsed_seconds = $blockingElapsed
+    blocking_probe_failure = $blockingFailure
     degradation_matrix = $cases
     healthy_composite_accepted = $true
 }
