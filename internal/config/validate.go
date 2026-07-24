@@ -116,8 +116,12 @@ func validatePrivacy(cfg PrivacyConfig, trust TrustConfig) error {
 	if cfg.Discovery.Reference == cfg.Data.Reference {
 		return fmt.Errorf("privacy discovery and data references must be distinct")
 	}
-	if cfg.Discovery.ReplayPath == cfg.Data.ReplayPath {
-		return fmt.Errorf("privacy discovery and data replay paths must be distinct")
+	sameStore, err := sameReplayStore(cfg.Discovery.ReplayPath, cfg.Data.ReplayPath)
+	if err != nil {
+		return fmt.Errorf("privacy replay path identity is unavailable: %w", err)
+	}
+	if sameStore {
+		return fmt.Errorf("privacy discovery and data replay paths resolve to the same physical store")
 	}
 	return nil
 }

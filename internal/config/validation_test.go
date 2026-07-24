@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"encoding/base64"
+	"os"
+	"path/filepath"
 	"testing"
 
 	identityprincipal "ardents/internal/identity/principal"
@@ -132,6 +134,74 @@ func TestValidateAcceptsCompletePrivateChannelReferences(t *testing.T) {
 		Data:      PrivacyChannelConfig{Reference: "data-ref", ReplayPath: "data-replay.db"},
 	}
 	require.NoError(t, Validate(doc))
+}
+
+func TestValidatePrivateReplayStoresByPhysicalIdentity(t *testing.T) {
+	t.Run("dot alias", func(t *testing.T) {
+		dir := t.TempDir()
+		path := filepath.Join(dir, "replay.db")
+		alias := dir + string(os.PathSeparator) + "." + string(os.PathSeparator) + "replay.db"
+		require.ErrorContains(t, Validate(privateReplayDocument(t, path, alias)), "same physical store")
+	})
+
+	t.Run("symlink directory alias", func(t *testing.T) {
+		dir := t.TempDir()
+		target := filepath.Join(dir, "target")
+		require.NoError(t, os.Mkdir(target, 0o700))
+		alias := filepath.Join(dir, "alias")
+		if err := os.Symlink(target, alias); err != nil {
+			t.Skipf("directory symlinks are unavailable: %v", err)
+		}
+		require.ErrorContains(t, Validate(privateReplayDocument(t,
+			filepath.Join(target, "replay.db"), filepath.Join(alias, "replay.db"))), "same physical store")
+	})
+
+	t.Run("dangling file symlink alias", func(t *testing.T) {
+		dir := t.TempDir()
+		target := filepath.Join(dir, "replay.db")
+		alias := filepath.Join(dir, "replay-alias.db")
+		if err := os.Symlink(target, alias); err != nil {
+			t.Skipf("file symlinks are unavailable: %v", err)
+		}
+		require.ErrorContains(t, Validate(privateReplayDocument(t, target, alias)), "same physical store")
+	})
+
+	t.Run("hard link alias", func(t *testing.T) {
+		dir := t.TempDir()
+		path := filepath.Join(dir, "replay.db")
+		alias := filepath.Join(dir, "replay-link.db")
+		require.NoError(t, os.WriteFile(path, []byte("existing"), 0o600))
+		if err := os.Link(path, alias); err != nil {
+			t.Skipf("hard links are unavailable: %v", err)
+		}
+		require.ErrorContains(t, Validate(privateReplayDocument(t, path, alias)), "same physical store")
+	})
+
+	t.Run("case-only alias is rejected portably", func(t *testing.T) {
+		dir := t.TempDir()
+		lower := filepath.Join(dir, "replay.db")
+		upper := filepath.Join(dir, "REPLAY.DB")
+		require.ErrorContains(t, Validate(privateReplayDocument(t, lower, upper)), "same physical store")
+	})
+
+	t.Run("different files", func(t *testing.T) {
+		dir := t.TempDir()
+		require.NoError(t, Validate(privateReplayDocument(t,
+			filepath.Join(dir, "discovery.db"), filepath.Join(dir, "data.db"))))
+	})
+}
+
+func privateReplayDocument(t *testing.T, discoveryPath, dataPath string) Document {
+	t.Helper()
+	doc := Defaults()
+	doc.Trust.Principals = []TrustedPrincipalConfig{trustedPrincipalConfig(t, "channel.issue")}
+	doc.Privacy = PrivacyConfig{
+		Required: true, ChannelGrantStore: "channel-grants.db", ChannelGrantStoreKeyFile: "channel-grants.key",
+		ReplayKeyFile: "replay.key", Subject: "p_subject",
+		Discovery: PrivacyChannelConfig{Reference: "discovery-ref", ReplayPath: discoveryPath},
+		Data:      PrivacyChannelConfig{Reference: "data-ref", ReplayPath: dataPath},
+	}
+	return doc
 }
 
 func TestValidatePurposeScopedTrustRejectsUnknownDuplicateAndMismatchedEntries(t *testing.T) {

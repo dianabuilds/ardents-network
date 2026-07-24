@@ -48,6 +48,23 @@ ledger cannot persist their admission. Callers must treat successful replay
 admission followed by a domain failure as an at-most-once terminal attempt and
 must not rely on transport redelivery for recovery.
 
-Canonical ownership of ledger files and protection against multiple
-same-file/path-alias ledger instances are separate concerns tracked by ARD-018;
-this decision neither weakens nor resolves them.
+## Replay store ownership amendment
+
+ARD-018 assigns each configured replay file to exactly one privacy-channel
+ledger in the process. Configuration validation compares physical path identity
+before either discovery or data channel is constructed:
+
+- relative and dot segments are resolved against the process working directory;
+- existing files are compared with the operating system's same-file identity,
+  covering hard links and file symlinks;
+- for a not-yet-created file, symlinks in the nearest existing ancestor are
+  resolved before the missing suffix is compared;
+- case-only path variants are rejected on every platform, including
+  case-sensitive filesystems, so a configuration remains safe if moved to a
+  casefold filesystem.
+
+Discovery and data replay paths that resolve to the same store are rejected.
+Genuinely different files remain independent stores. Each ledger continues to
+persist its own complete bounded snapshot, and restart must reload the admitted
+message IDs from both stores. This avoids introducing a shared multi-namespace
+transaction format or a persisted schema migration.

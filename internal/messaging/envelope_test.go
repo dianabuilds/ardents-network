@@ -348,6 +348,35 @@ func TestDurableReplayLedgerCapacityAndExpiryPruning(t *testing.T) {
 	require.NoError(t, ledger.Admit(second))
 }
 
+func TestDistinctReplayLedgersRememberEveryMessageAfterRestart(t *testing.T) {
+	dir := t.TempDir()
+	key := bytes.Repeat([]byte{0x91}, 32)
+	discoveryPath := filepath.Join(dir, "discovery-replay.db")
+	dataPath := filepath.Join(dir, "data-replay.db")
+	discoveryUse := ReplayUse{
+		CapabilityRef: "cap_discovery", Generation: 1, MessageID: testMessageID(1),
+		ExpiresAt: envelopeTestNow.Add(time.Hour), Now: envelopeTestNow,
+	}
+	dataUse := ReplayUse{
+		CapabilityRef: "cap_data", Generation: 1, MessageID: testMessageID(2),
+		ExpiresAt: envelopeTestNow.Add(time.Hour), Now: envelopeTestNow,
+	}
+
+	discovery, err := NewDurableReplayLedger(discoveryPath, key, 8, 16)
+	require.NoError(t, err)
+	data, err := NewDurableReplayLedger(dataPath, key, 8, 16)
+	require.NoError(t, err)
+	require.NoError(t, discovery.Admit(discoveryUse))
+	require.NoError(t, data.Admit(dataUse))
+
+	restoredDiscovery, err := NewDurableReplayLedger(discoveryPath, key, 8, 16)
+	require.NoError(t, err)
+	restoredData, err := NewDurableReplayLedger(dataPath, key, 8, 16)
+	require.NoError(t, err)
+	requireEnvelopeCode(t, restoredDiscovery.Admit(discoveryUse), CodeEnvelopeReplayed)
+	requireEnvelopeCode(t, restoredData.Admit(dataUse), CodeEnvelopeReplayed)
+}
+
 func TestDurableReplayLedgerRequiresPersistentPath(t *testing.T) {
 	_, err := NewDurableReplayLedger("", bytes.Repeat([]byte{0x91}, 32), 1, 2)
 	require.ErrorContains(t, err, "path is required")
