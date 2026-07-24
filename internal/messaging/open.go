@@ -20,14 +20,18 @@ func Open(request OpenRequest) (OpenedMessage, error) {
 	if err != nil {
 		return OpenedMessage{}, err
 	}
-	if err := admitAuthenticatedReplay(request, header, now); err != nil {
-		return OpenedMessage{}, err
-	}
 	message, err := decodePrivateMessage(inner)
 	if err != nil {
 		return OpenedMessage{}, err
 	}
-	return authorizePrivateMessage(request, header, message)
+	opened, err := authorizePrivateMessage(request, header, message, now)
+	if err != nil {
+		return OpenedMessage{}, err
+	}
+	if err := admitAuthenticatedReplay(request, header, now); err != nil {
+		return OpenedMessage{}, err
+	}
+	return opened, nil
 }
 
 func prepareOpen(request OpenRequest) (envelopeHeader, Material, time.Time, error) {
@@ -78,7 +82,7 @@ func decodePrivateMessage(inner []byte) (*PrivateMessageV1, error) {
 	return message, nil
 }
 
-func authorizePrivateMessage(request OpenRequest, header envelopeHeader, message *PrivateMessageV1) (OpenedMessage, error) {
+func authorizePrivateMessage(request OpenRequest, header envelopeHeader, message *PrivateMessageV1, observedAt time.Time) (OpenedMessage, error) {
 	class := message.MessageClass
 	scope, classLifetime, ok := classProperties(class)
 	issuedAt := time.Unix(header.IssuedAt, 0).UTC()
@@ -100,7 +104,7 @@ func authorizePrivateMessage(request OpenRequest, header envelopeHeader, message
 		GrantID: grantID, ChannelID: request.Capability.ChannelID,
 		Generation: header.Generation, Subject: message.SenderPrincipal,
 		Permission: identityapi.CapabilityPublish, Scope: scope, At: issuedAt,
-		ObservedAt: request.Now.UTC(),
+		ObservedAt: observedAt,
 	}); err != nil {
 		return OpenedMessage{}, envelopeError(CodeEnvelopeSenderUnauthorized, "sender capability is not authorized")
 	}

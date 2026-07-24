@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -164,6 +165,128 @@ func TestPrivateEnvelopeRejectsInvalidInnerSignatureAndSenderGrant(t *testing.T)
 	unauthorized := newEnvelopeFixture(t, false)
 	unauthorizedSealed := unauthorized.seal(t, []byte("unknown sender"))
 	requireEnvelopeCode(t, openWithFreshReplay(t, unauthorized, unauthorizedSealed), CodeEnvelopeSenderUnauthorized)
+}
+
+func TestInvalidSignatureDoesNotConsumeReplayAdmission(t *testing.T) {
+	fixture := newEnvelopeFixture(t, true)
+	sealed := fixture.seal(t, []byte("legitimate"))
+	invalid := rewriteAuthenticatedInner(t, fixture, sealed, func(message *PrivateMessageV1) {
+		message.Signature[0] ^= 1
+	})
+	request := fixture.openRequest(t, sealed)
+	invalidRequest := request
+	invalidRequest.Payload = invalid.Payload
+
+	_, err := Open(invalidRequest)
+	requireEnvelopeCode(t, err, CodeEnvelopeSignatureInvalid)
+
+	opened, err := Open(request)
+	require.NoError(t, err)
+	require.Equal(t, []byte("legitimate"), opened.Payload)
+}
+
+func TestUnauthorizedPublisherDoesNotConsumeReplayAdmission(t *testing.T) {
+	fixture := newEnvelopeFixture(t, false)
+	sealed := fixture.seal(t, []byte("authorized later"))
+	request := fixture.openRequest(t, sealed)
+
+	_, err := Open(request)
+	requireEnvelopeCode(t, err, CodeEnvelopeSenderUnauthorized)
+	require.NoError(t, fixture.receiverAuthority.ImportSenderGrant(fixture.senderGrant))
+
+	opened, err := Open(request)
+	require.NoError(t, err)
+	require.Equal(t, []byte("authorized later"), opened.Payload)
+}
+
+func TestClassLifetimeRejectionDoesNotConsumeReplayAdmission(t *testing.T) {
+	fixture := newEnvelopeFixture(t, true)
+	sealed := fixture.seal(t, []byte("short lived"))
+	longLived := rewriteEnvelopeLifetime(t, fixture, sealed, 30*24*time.Hour)
+	request := fixture.openRequest(t, sealed)
+	longRequest := request
+	longRequest.Payload = longLived.Payload
+
+	_, err := Open(longRequest)
+	requireEnvelopeCode(t, err, CodeEnvelopeSenderUnauthorized)
+
+	opened, err := Open(request)
+	require.NoError(t, err)
+	require.Equal(t, []byte("short lived"), opened.Payload)
+}
+
+func TestInvalidSignaturesCannotExhaustReplayCapacity(t *testing.T) {
+	fixture := newEnvelopeFixture(t, true)
+	ledger, err := NewDurableReplayLedger(fixture.replayPath, fixture.replayKey, 1, 1)
+	require.NoError(t, err)
+
+	for i := byte(1); i <= 4; i++ {
+		sealRequest := fixture.sealRequest([]byte("poison"))
+		sealRequest.Random = bytes.NewReader(bytes.Repeat([]byte{i}, 40))
+		sealed, sealErr := Seal(sealRequest)
+		require.NoError(t, sealErr)
+		invalid := rewriteAuthenticatedInner(t, fixture, sealed, func(message *PrivateMessageV1) {
+			message.Signature[0] ^= 1
+		})
+		request := fixture.openRequest(t, invalid)
+		request.Replay = ledger
+		_, openErr := Open(request)
+		requireEnvelopeCode(t, openErr, CodeEnvelopeSignatureInvalid)
+	}
+
+	validRequest := fixture.sealRequest([]byte("valid"))
+	validRequest.Random = bytes.NewReader(bytes.Repeat([]byte{0x7f}, 40))
+	valid, err := Seal(validRequest)
+	require.NoError(t, err)
+	request := fixture.openRequest(t, valid)
+	request.Replay = ledger
+	opened, err := Open(request)
+	require.NoError(t, err)
+	require.Equal(t, []byte("valid"), opened.Payload)
+}
+
+func TestConcurrentDuplicateDeliveryAdmitsExactlyOnce(t *testing.T) {
+	fixture := newEnvelopeFixture(t, true)
+	sealed := fixture.seal(t, []byte("once concurrently"))
+	request := fixture.openRequest(t, sealed)
+
+	const deliveries = 16
+	start := make(chan struct{})
+	results := make(chan error, deliveries)
+	var workers sync.WaitGroup
+	workers.Add(deliveries)
+	for range deliveries {
+		go func() {
+			defer workers.Done()
+			<-start
+			_, err := Open(request)
+			results <- err
+		}()
+	}
+	close(start)
+	workers.Wait()
+	close(results)
+
+	successes, replays := 0, 0
+	for err := range results {
+		switch CodeOf(err) {
+		case "":
+			require.NoError(t, err)
+			successes++
+		case CodeEnvelopeReplayed:
+			replays++
+		default:
+			require.NoError(t, err)
+		}
+	}
+	require.Equal(t, 1, successes)
+	require.Equal(t, deliveries-1, replays)
+
+	restored, err := NewDurableReplayLedger(fixture.replayPath, fixture.replayKey, 8, 16)
+	require.NoError(t, err)
+	request.Replay = restored
+	_, err = Open(request)
+	requireEnvelopeCode(t, err, CodeEnvelopeReplayed)
 }
 
 func TestSealRejectsNonCanonicalPrincipal(t *testing.T) {
@@ -345,6 +468,32 @@ func rewriteAuthenticatedInner(t *testing.T, fixture envelopeFixture, sealed Sea
 	require.NoError(t, err)
 	sealed.Payload = append(headerRaw, aead.Seal(nil, header.Nonce[:], inner, aad)...)
 	return sealed
+}
+
+func rewriteEnvelopeLifetime(t *testing.T, fixture envelopeFixture, sealed SealedEnvelope, lifetime time.Duration) SealedEnvelope {
+	t.Helper()
+	header, err := parseHeader(sealed.Payload)
+	require.NoError(t, err)
+	material, err := Derive(fixture.receiverResolved)
+	require.NoError(t, err)
+	aead, err := chacha20poly1305.NewX(material.EnvelopeKey())
+	require.NoError(t, err)
+	aad, err := associatedData(sealed.Payload[:headerSize], sealed.PubsubTopic, sealed.ContentTopic)
+	require.NoError(t, err)
+	inner, err := aead.Open(nil, header.Nonce[:], sealed.Payload[headerSize:], aad)
+	require.NoError(t, err)
+	message := &PrivateMessageV1{}
+	require.NoError(t, proto.Unmarshal(inner, message))
+
+	header.ExpiresAt = time.Unix(header.IssuedAt, 0).Add(lifetime).Unix()
+	digest, err := signingDigest(header, message)
+	require.NoError(t, err)
+	message.Signature = ed25519.Sign(fixture.senderPrivate, digest)
+	inner, err = marshalPadded(message)
+	require.NoError(t, err)
+	rewritten, err := encryptPrivateMessage(material, header, inner)
+	require.NoError(t, err)
+	return rewritten
 }
 
 func signedEnvelopeGrant(t *testing.T, issuer, subject ed25519.PrivateKey, secret identityapi.CapabilitySecret, channelID [16]byte, grantByte byte) identityapi.CapabilityGrant {

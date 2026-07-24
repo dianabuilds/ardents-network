@@ -342,10 +342,15 @@ requester, source, transfer, encryption, and retention truth.
 
 ### 7.3 Replay
 
-Authentication occurs before a message ID is admitted to the replay ledger so
-unauthenticated traffic cannot poison it. The durable replay key is a local
-digest of channel reference, generation, and message ID; raw selector and
-capability secrets are not stored.
+Both layers of authentication and the sender authorization decision occur
+before a message ID is admitted to the replay ledger. AEAD authentication proves
+possession of the channel generation secret, but it does not prove the claimed
+sender's Ed25519 signature or retained-grant `Publish` permission. Canonical
+inner decoding, message class/scope/lifetime validation, signature verification,
+and sender authorization therefore precede durable replay mutation so a
+Subscribe-only participant cannot poison replay capacity. The durable replay
+key is a local digest of channel reference, generation, and message ID; raw
+selector and capability secrets are not stored.
 
 The digest is an HMAC-SHA256 value under an HKDF-separated 32-byte local replay
 master key supplied independently from retained Waku data. The master key is
@@ -360,6 +365,14 @@ when a bound is reached it rejects new messages fail-closed and reports
 allowing replay. Store fetch and live Relay delivery share this ledger, so a
 retained duplicate is not re-applied after restart.
 
+Replay admission is atomic and durable before it reports success, and it occurs
+before delivery to the owning domain. Concurrent identical deliveries therefore
+produce at most one successful admission. A crash after admission but before
+domain processing can suppress redelivery, so this boundary provides
+at-most-once delivery rather than exactly-once domain application. The rationale
+and rejected alternatives are recorded in
+`docs/adr/0003-authorize-before-durable-replay-admission.md`.
+
 ## 8. Receive Order And Error Taxonomy
 
 Receive processing order is fixed:
@@ -369,10 +382,11 @@ Receive processing order is fixed:
 3. validate selector syntax, generation, lengths, and coarse time limits;
 4. resolve a local capability without exposing whether resolution succeeded;
 5. authenticate/decrypt with associated data;
-6. reject authenticated replay;
-7. decode bounded deterministic protobuf and padding;
-8. validate principal, identity signature, grant, scope, permission, validity,
-   and revocation;
+6. decode bounded deterministic protobuf and padding;
+7. validate message class, scope, lifetime, principal, identity signature,
+   retained sender grant, `Publish` permission, validity, and revocation;
+8. atomically admit the authenticated and authorized message to the durable
+   replay ledger, rejecting an existing admission;
 9. deliver to the owning domain and record terminal outcome.
 
 Stable internal reason codes:
