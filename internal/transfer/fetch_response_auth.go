@@ -12,15 +12,19 @@ import (
 )
 
 const (
-	blobFetchStatusOK    = "ok"
-	blobFetchStatusError = "error"
+	blobFetchResponseVersion = 2
+	blobFetchStatusOK        = "ok"
+	blobFetchStatusError     = "error"
 )
 
 func marshalBlobResponse(source string, key ed25519.PrivateKey, req blobFetchRequest, blob model.Blob, payload []byte) ([]byte, error) {
 	response := blobFetchResponse{
+		Version:      blobFetchResponseVersion,
 		RequestID:    req.RequestID,
 		Requester:    req.Requester,
+		ResourceID:   req.ResourceID,
 		ResourceKind: req.ResourceKind,
+		Owner:        req.Owner,
 		Status:       blobFetchStatusOK,
 		Blob:         &blob,
 		Payload:      base64.StdEncoding.EncodeToString(payload),
@@ -36,9 +40,12 @@ func marshalBlobResponse(source string, key ed25519.PrivateKey, req blobFetchReq
 
 func marshalBlobErrorResponse(source string, key ed25519.PrivateKey, req blobFetchRequest, err error) ([]byte, error) {
 	response := blobFetchResponse{
+		Version:      blobFetchResponseVersion,
 		RequestID:    req.RequestID,
 		Requester:    req.Requester,
+		ResourceID:   req.ResourceID,
 		ResourceKind: req.ResourceKind,
+		Owner:        req.Owner,
 		Status:       blobFetchStatusError,
 		Error:        err.Error(),
 		Source:       source,
@@ -53,9 +60,12 @@ func marshalBlobErrorResponse(source string, key ed25519.PrivateKey, req blobFet
 
 func canonicalBlobFetchResponse(response blobFetchResponse) ([]byte, error) {
 	return json.Marshal(struct {
+		Version      uint32        `json:"version"`
 		RequestID    string        `json:"request_id"`
 		Requester    string        `json:"requester"`
+		ResourceID   string        `json:"resource_id"`
 		ResourceKind string        `json:"resource_kind,omitempty"`
+		Owner        string        `json:"owner,omitempty"`
 		Status       string        `json:"status,omitempty"`
 		Error        string        `json:"error,omitempty"`
 		Blob         *model.Blob   `json:"blob,omitempty"`
@@ -63,9 +73,12 @@ func canonicalBlobFetchResponse(response blobFetchResponse) ([]byte, error) {
 		Payload      string        `json:"payload"`
 		Source       string        `json:"source"`
 	}{
+		Version:      response.Version,
 		RequestID:    response.RequestID,
 		Requester:    response.Requester,
+		ResourceID:   response.ResourceID,
 		ResourceKind: response.ResourceKind,
+		Owner:        response.Owner,
 		Status:       response.Status,
 		Error:        response.Error,
 		Blob:         response.Blob,

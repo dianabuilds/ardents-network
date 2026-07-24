@@ -25,6 +25,7 @@ type fetchTestData struct {
 	History
 	blobs     map[string]model.Blob
 	transfers map[string]Record
+	completed int
 }
 
 func newFetchTestData() *fetchTestData {
@@ -60,6 +61,14 @@ func (d *fetchTestData) Start(record Record) (Record, error) {
 func (d *fetchTestData) Fail(id, peer, reason string) (Record, error) {
 	record := d.transfers[id]
 	record.State, record.Peer, record.Reason = "failed", peer, reason
+	d.transfers[id] = record
+	return record, nil
+}
+
+func (d *fetchTestData) Complete(id, peer string, totalBytes int64, reason string) (Record, error) {
+	d.completed++
+	record := d.transfers[id]
+	record.State, record.Peer, record.TotalBytes, record.Reason = "completed", peer, totalBytes, reason
 	d.transfers[id] = record
 	return record, nil
 }
@@ -139,7 +148,7 @@ func TestBlobFetchWireRejectsObsoleteContentIdentityFields(t *testing.T) {
 	}
 }
 
-func TestAcceptBlobResponseReturnsSignedTerminalError(t *testing.T) {
+func TestAcceptBlobResponseReturnsSignedCandidateError(t *testing.T) {
 	publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)
 	require.NoErrorf(t, err, "generate key: %v", err)
 
@@ -175,7 +184,7 @@ func TestAcceptBlobResponseReturnsSignedTerminalError(t *testing.T) {
 		_, _, _, err := acceptBlobResponse(cfg, blobID, requester, requestID, wire)
 		require.Falsef(t, err == nil || err.
 			Error() !=
-			"plaintext blob re-serve is not allowed", "error = %v, want signed terminal denial", err)
+			"plaintext blob re-serve is not allowed", "error = %v, want signed candidate denial", err)
 	}
 	{
 
@@ -294,4 +303,168 @@ func TestAwaitBlobFetchResponseReturnsCandidateRejectionInsteadOfTimeout(t *test
 		Error() !=
 		"remote source is not trusted", "error = %v, want explicit remote trust rejection", err)
 
+}
+
+func TestBlobFetchCandidateErrorDoesNotCancelLaterHonestSuccess(t *testing.T) {
+	maliciousPublic, maliciousPrivate, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	honestPublic, honestPrivate, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	outsiderPublic, outsiderPrivate, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	maliciousEncoded := base64.StdEncoding.EncodeToString(maliciousPublic)
+	honestEncoded := base64.StdEncoding.EncodeToString(honestPublic)
+	outsiderEncoded := base64.StdEncoding.EncodeToString(outsiderPublic)
+	maliciousID, err := identityprincipal.FromPublicKey(maliciousEncoded)
+	require.NoError(t, err)
+	honestID, err := identityprincipal.FromPublicKey(honestEncoded)
+	require.NoError(t, err)
+	outsiderID, err := identityprincipal.FromPublicKey(outsiderEncoded)
+	require.NoError(t, err)
+
+	disc := discovery.New("")
+	require.NoError(t, publishTransferTestNode(disc, maliciousID, maliciousEncoded, maliciousPrivate))
+	require.NoError(t, publishTransferTestNode(disc, honestID, honestEncoded, honestPrivate))
+	registry, err := identitytrust.NewRegistry([]identitytrust.Entry{
+		{Principal: maliciousID, PublicKey: maliciousPublic, Purposes: []identitytrust.Purpose{identitytrust.PurposeDiscoveryPublish}},
+		{Principal: honestID, PublicKey: honestPublic, Purposes: []identitytrust.Purpose{identitytrust.PurposeDiscoveryPublish}},
+	})
+	require.NoError(t, err)
+
+	requestID := "req-racing-candidates"
+	requester := "p_requester"
+	raw := []byte("honest payload")
+	blobID := transferTestContentReference(t, string(raw)).String()
+	request := blobFetchRequest{RequestID: requestID, ResourceID: blobID, Requester: requester}
+	maliciousError, err := marshalBlobErrorResponse(maliciousID, maliciousPrivate, request, errors.New("malicious rejection"))
+	require.NoError(t, err)
+	honestSuccess, err := marshalBlobResponse(honestID, honestPrivate, request, model.Blob{
+		Reference: transferTestContentReference(t, string(raw)),
+		MediaType: "application/octet-stream",
+	}, raw)
+	require.NoError(t, err)
+	var spoofedHonestSource blobFetchResponse
+	require.NoError(t, json.Unmarshal(honestSuccess, &spoofedHonestSource))
+	spoofedHonestSource.Signature = base64.StdEncoding.EncodeToString(make([]byte, ed25519.SignatureSize))
+	spoofedHonestWire, err := json.Marshal(spoofedHonestSource)
+	require.NoError(t, err)
+	maliciousLateSuccess, err := marshalBlobResponse(maliciousID, maliciousPrivate, request, model.Blob{
+		Reference: transferTestContentReference(t, string(raw)),
+		MediaType: "application/octet-stream",
+	}, raw)
+	require.NoError(t, err)
+	outsiderSuccess, err := marshalBlobResponse(outsiderID, outsiderPrivate, request, model.Blob{
+		Reference: transferTestContentReference(t, string(raw)),
+		MediaType: "application/octet-stream",
+	}, raw)
+	require.NoError(t, err)
+	responses := make(chan []byte, 6)
+	responses <- maliciousError
+	responses <- spoofedHonestWire
+	responses <- maliciousLateSuccess
+	responses <- outsiderSuccess
+	responses <- honestSuccess
+	responses <- honestSuccess
+	store := newFetchTestData()
+	transfer, err := store.Start(Record{
+		ID: requestID, Kind: "blob_fetch", ResourceID: blobID, Direction: "inbound", State: "pending",
+	})
+	require.NoError(t, err)
+
+	fetched, err := awaitBlobFetchResponse(context.Background(), ExchangeConfig{
+		Discovery: disc, Trust: discovery.NewTrustEvaluator(registry), Data: store, History: store,
+	}, transfer.ID, blobID, requester, requestID, responses, trustedFetchCandidates(ExchangeConfig{
+		Discovery: disc, Trust: discovery.NewTrustEvaluator(registry),
+	}, requester))
+	require.NoError(t, err)
+	require.Equal(t, blobID, fetched.Reference.String())
+	require.Equal(t, "completed", store.transfers[transfer.ID].State)
+	require.Equal(t, honestID, store.transfers[transfer.ID].Peer)
+	require.Equal(t, 1, store.completed, "first accepted success must complete the transfer exactly once")
+}
+
+func TestBlobFetchErrorIsBoundToRequestedResource(t *testing.T) {
+	publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	encoded := base64.StdEncoding.EncodeToString(publicKey)
+	source, err := identityprincipal.FromPublicKey(encoded)
+	require.NoError(t, err)
+	disc := discovery.New("")
+	require.NoError(t, publishTransferTestNode(disc, source, encoded, privateKey))
+
+	request := blobFetchRequest{
+		RequestID: "req-bound-error", ResourceID: transferTestContentReference(t, "requested-a").String(), Requester: "p_requester",
+	}
+	wire, err := marshalBlobErrorResponse(source, privateKey, request, errors.New("candidate denied resource A"))
+	require.NoError(t, err)
+	_, _, _, err = acceptBlobResponse(ExchangeConfig{
+		Discovery: disc, Trust: discovery.NewTrustEvaluator(transferTrustRegistry(t, encoded)), Data: newFetchTestData(),
+	}, transferTestContentReference(t, "requested-b").String(), request.Requester, request.RequestID, wire)
+	require.ErrorContains(t, err, "does not match request")
+}
+
+func TestBlobFetchFailsAfterAllCandidatesReject(t *testing.T) {
+	firstPublic, firstPrivate, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	secondPublic, secondPrivate, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	firstEncoded := base64.StdEncoding.EncodeToString(firstPublic)
+	secondEncoded := base64.StdEncoding.EncodeToString(secondPublic)
+	firstID, err := identityprincipal.FromPublicKey(firstEncoded)
+	require.NoError(t, err)
+	secondID, err := identityprincipal.FromPublicKey(secondEncoded)
+	require.NoError(t, err)
+	disc := discovery.New("")
+	require.NoError(t, publishTransferTestNode(disc, firstID, firstEncoded, firstPrivate))
+	require.NoError(t, publishTransferTestNode(disc, secondID, secondEncoded, secondPrivate))
+	registry, err := identitytrust.NewRegistry([]identitytrust.Entry{
+		{Principal: firstID, PublicKey: firstPublic, Purposes: []identitytrust.Purpose{identitytrust.PurposeDiscoveryPublish}},
+		{Principal: secondID, PublicKey: secondPublic, Purposes: []identitytrust.Purpose{identitytrust.PurposeDiscoveryPublish}},
+	})
+	require.NoError(t, err)
+
+	requestID := "req-exhausted"
+	requester := "p_requester"
+	blobID := transferTestContentReference(t, "exhausted").String()
+	request := blobFetchRequest{RequestID: requestID, ResourceID: blobID, Requester: requester}
+	firstError, err := marshalBlobErrorResponse(firstID, firstPrivate, request, errors.New("first rejected"))
+	require.NoError(t, err)
+	secondError, err := marshalBlobErrorResponse(secondID, secondPrivate, request, errors.New("second rejected"))
+	require.NoError(t, err)
+	responses := make(chan []byte, 2)
+	responses <- firstError
+	responses <- secondError
+	store := newFetchTestData()
+	transfer, err := store.Start(Record{
+		ID: requestID, Kind: "blob_fetch", ResourceID: blobID, Direction: "inbound", State: "pending",
+	})
+	require.NoError(t, err)
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	_, err = awaitBlobFetchResponse(ctx, ExchangeConfig{
+		Discovery: disc, Trust: discovery.NewTrustEvaluator(registry), Data: store, History: store,
+	}, transfer.ID, blobID, requester, requestID, responses, trustedFetchCandidates(ExchangeConfig{
+		Discovery: disc, Trust: discovery.NewTrustEvaluator(registry),
+	}, requester))
+	require.ErrorContains(t, err, "all 2 fetch candidates failed")
+	require.ErrorContains(t, err, firstID)
+	require.ErrorContains(t, err, secondID)
+	require.Equal(t, "failed", store.transfers[transfer.ID].State)
+}
+
+func TestBlobFetchDeadlineReportsCandidateProgress(t *testing.T) {
+	store := newFetchTestData()
+	transfer, err := store.Start(Record{
+		ID: "req-deadline", Kind: "blob_fetch", ResourceID: "blob-deadline", Direction: "inbound", State: "pending",
+	})
+	require.NoError(t, err)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+
+	_, err = awaitBlobFetchResponse(ctx, ExchangeConfig{History: store}, transfer.ID, transfer.ResourceID, "requester", transfer.ID,
+		make(chan []byte), fetchCandidateSet{"candidate-a": {}, "candidate-b": {}})
+	require.ErrorContains(t, err, "fetch deadline exceeded after 0 of 2 candidates failed")
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.Equal(t, "failed", store.transfers[transfer.ID].State)
 }

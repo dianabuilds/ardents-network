@@ -9,6 +9,7 @@ import (
 	"maps"
 
 	model "ardents/internal/content/catalog"
+	"ardents/internal/discovery"
 	"ardents/internal/identity/principal"
 	"ardents/internal/storage"
 )
@@ -51,8 +52,10 @@ func marshalManifestResponse(source string, key ed25519.PrivateKey, req blobFetc
 		value = new(manifestWireFromSnapshot(manifest))
 	}
 	response := blobFetchResponse{
+		Version:   blobFetchResponseVersion,
 		RequestID: req.RequestID, Requester: req.Requester,
-		ResourceKind: "manifest", Status: status, Error: detail, Manifest: value, Source: source,
+		ResourceID: req.ResourceID, ResourceKind: "manifest", Owner: req.Owner,
+		Status: status, Error: detail, Manifest: value, Source: source,
 	}
 	signed, err := canonicalBlobFetchResponse(response)
 	if err != nil {
@@ -62,24 +65,33 @@ func marshalManifestResponse(source string, key ed25519.PrivateKey, req blobFetc
 	return json.Marshal(response)
 }
 
-func acceptManifestResponse(cfg ExchangeConfig, owner principal.ID, manifestID, requester, requestID string, payload []byte) (model.Manifest, string, error) {
-	response, err := decodeManifestResponse(payload, manifestID, requester, requestID)
+func acceptManifestResponse(cfg ExchangeConfig, owner principal.ID, manifestID, requester, requestID string, payload []byte, trackers ...*fetchCandidateTracker) (model.Manifest, string, error) {
+	response, err := decodeManifestResponse(payload, owner, manifestID, requester, requestID)
 	if err != nil {
 		return model.Manifest{}, "", err
 	}
-	entry, outcome, ok := cfg.Discovery.Resolve(response.Source, "node")
-	if !ok || outcome != "found" {
-		return model.Manifest{}, response.Source, blobFetchCandidateError{err: fmt.Errorf("remote source is undiscoverable")}
+	var record discovery.Record
+	if len(trackers) > 0 && trackers[0] != nil {
+		candidate, ok := trackers[0].candidate(response.Source)
+		if !ok {
+			return model.Manifest{}, response.Source, fetchResponseIgnoredError{err: fmt.Errorf("manifest response source has no active request candidacy")}
+		}
+		record = candidate.record
+	} else {
+		entry, outcome, ok := cfg.Discovery.Resolve(response.Source, "node")
+		if !ok || outcome != "found" {
+			return model.Manifest{}, response.Source, blobFetchCandidateError{err: fmt.Errorf("remote source is undiscoverable")}
+		}
+		if trustResult := cfg.Trust.Evaluate(entry.Record); !trustResult.Usable {
+			return model.Manifest{}, response.Source, blobFetchCandidateError{err: fmt.Errorf("remote source is not trusted")}
+		}
+		record = entry.Record
 	}
-	trustResult := cfg.Trust.Evaluate(entry.Record)
-	if !trustResult.Usable {
-		return model.Manifest{}, response.Source, blobFetchCandidateError{err: fmt.Errorf("remote source is not trusted")}
-	}
-	if err := verifyBlobResponder(response, entry.Record); err != nil {
-		return model.Manifest{}, response.Source, blobFetchCandidateError{err: err}
+	if err := verifyBlobResponder(response, record); err != nil {
+		return model.Manifest{}, response.Source, fetchResponseIgnoredError{err: err}
 	}
 	if response.Status == blobFetchStatusError {
-		return model.Manifest{}, response.Source, blobFetchTerminalError{err: errors.New(response.Error)}
+		return model.Manifest{}, response.Source, blobFetchCandidateError{err: errors.New(response.Error)}
 	}
 	manifest, err := manifestFromWire(*response.Manifest)
 	if err != nil {
@@ -136,12 +148,15 @@ func cloneMetadata(in map[string]any) map[string]any {
 	return out
 }
 
-func decodeManifestResponse(payload []byte, manifestID, requester, requestID string) (blobFetchResponse, error) {
+func decodeManifestResponse(payload []byte, owner principal.ID, manifestID, requester, requestID string) (blobFetchResponse, error) {
 	var response blobFetchResponse
 	if err := storage.DecodeJSONStrict(payload, &response); err != nil {
 		return blobFetchResponse{}, err
 	}
-	if response.RequestID != requestID || response.Requester != requester || response.ResourceKind != "manifest" || response.Source == "" {
+	if response.Version != blobFetchResponseVersion ||
+		response.RequestID != requestID || response.Requester != requester ||
+		response.ResourceID != manifestID || response.ResourceKind != "manifest" ||
+		response.Owner != owner.String() || response.Source == "" {
 		return blobFetchResponse{}, fmt.Errorf("manifest response does not match request")
 	}
 	if response.Status == blobFetchStatusOK {

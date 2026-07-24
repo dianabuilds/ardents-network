@@ -90,6 +90,7 @@ type ExchangeConfig struct {
 	Publish      func(string, map[string]any)
 	PolicyDenied func(string, string, error)
 	Private      *PrivateExchange
+	FetchTimeout time.Duration
 }
 
 type blobFetchRequest struct {
@@ -103,9 +104,12 @@ type blobFetchRequest struct {
 }
 
 type blobFetchResponse struct {
+	Version      uint32        `json:"version"`
 	RequestID    string        `json:"request_id"`
 	Requester    string        `json:"requester"`
+	ResourceID   string        `json:"resource_id"`
 	ResourceKind string        `json:"resource_kind,omitempty"`
+	Owner        string        `json:"owner,omitempty"`
 	Status       string        `json:"status,omitempty"`
 	Error        string        `json:"error,omitempty"`
 	Blob         *model.Blob   `json:"blob,omitempty"`

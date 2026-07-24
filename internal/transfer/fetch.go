@@ -25,6 +25,8 @@ func FetchBlob(ctx context.Context, cfg ExchangeConfig, blobID string) (model.Bl
 	if cfg.Identity == nil || cfg.Private == nil || cfg.Data == nil || cfg.History == nil {
 		return model.Blob{}, fmt.Errorf("blob fetch dependencies are unavailable")
 	}
+	ctx, cancel := boundedFetchContext(ctx, cfg.FetchTimeout)
+	defer cancel()
 	requestID, err := requestIdentity("blob-fetch")
 	if err != nil {
 		return model.Blob{}, err
@@ -47,10 +49,14 @@ func FetchBlob(ctx context.Context, cfg ExchangeConfig, blobID string) (model.Bl
 		return model.Blob{}, failTransfer(cfg.History, transfer.ID, "", err)
 	}
 	defer unregister()
+	candidates := trustedFetchCandidates(cfg, requester)
+	if len(candidates) == 0 {
+		return model.Blob{}, failTransfer(cfg.History, transfer.ID, "", fmt.Errorf("no trusted fetch candidates available"))
+	}
 	if err := publishBlobFetchRequest(ctx, cfg, requestID, blobID, requester); err != nil {
 		return model.Blob{}, failTransfer(cfg.History, transfer.ID, "", err)
 	}
-	return awaitBlobFetchResponse(ctx, cfg, transfer.ID, blobID, requester, requestID, responses)
+	return awaitBlobFetchResponse(ctx, cfg, transfer.ID, blobID, requester, requestID, responses, candidates)
 }
 
 func serveBlobRequests(ctx context.Context, cfg ExchangeConfig, reqs <-chan []byte) {

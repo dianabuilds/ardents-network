@@ -9,15 +9,7 @@ import (
 	"fmt"
 )
 
-type blobFetchTerminalError struct {
-	err error
-}
-
-func (e blobFetchTerminalError) Error() string {
-	return e.err.Error()
-}
-
-func acceptBlobResponse(cfg ExchangeConfig, blobID, requester, requestID string, payload []byte) (model.Blob, string, int64, error) {
+func acceptBlobResponse(cfg ExchangeConfig, blobID, requester, requestID string, payload []byte, trackers ...*fetchCandidateTracker) (model.Blob, string, int64, error) {
 	if cfg.Discovery == nil || cfg.Trust == nil || cfg.Data == nil {
 		return model.Blob{}, "", 0, fmt.Errorf("blob response dependencies are unavailable")
 	}
@@ -26,23 +18,34 @@ func acceptBlobResponse(cfg ExchangeConfig, blobID, requester, requestID string,
 	if err != nil {
 		return model.Blob{}, "", 0, err
 	}
-	entry, outcome, ok := cfg.Discovery.Resolve(response.Source, "node")
-	if !ok || outcome != "found" {
-		return model.Blob{}, response.Source, 0, blobFetchCandidateError{err: fmt.Errorf("remote source is undiscoverable")}
+	var record discovery.Record
+	var trustResult discovery.TrustResult
+	if len(trackers) > 0 && trackers[0] != nil {
+		candidate, ok := trackers[0].candidate(response.Source)
+		if !ok {
+			return model.Blob{}, response.Source, 0, fetchResponseIgnoredError{err: fmt.Errorf("blob response source has no active request candidacy")}
+		}
+		record, trustResult = candidate.record, candidate.trust
+	} else {
+		entry, outcome, ok := cfg.Discovery.Resolve(response.Source, "node")
+		if !ok || outcome != "found" {
+			return model.Blob{}, response.Source, 0, blobFetchCandidateError{err: fmt.Errorf("remote source is undiscoverable")}
+		}
+		record = entry.Record
+		trustResult = cfg.Trust.Evaluate(entry.Record)
+		if !trustResult.Usable {
+			return model.Blob{}, response.Source, 0, blobFetchCandidateError{err: fmt.Errorf("remote source is not trusted")}
+		}
 	}
-	trustResult := cfg.Trust.Evaluate(entry.Record)
-	if !trustResult.Usable {
-		return model.Blob{}, response.Source, 0, blobFetchCandidateError{err: fmt.Errorf("remote source is not trusted")}
-	}
-	if err := verifyBlobResponder(response, entry.Record); err != nil {
-		return model.Blob{}, response.Source, 0, blobFetchCandidateError{err: err}
+	if err := verifyBlobResponder(response, record); err != nil {
+		return model.Blob{}, response.Source, 0, fetchResponseIgnoredError{err: err}
 	}
 	if response.Status == blobFetchStatusError {
 		detail := response.Error
 		if detail == "" {
 			detail = "blob fetch rejected"
 		}
-		return model.Blob{}, response.Source, 0, blobFetchTerminalError{err: errors.New(detail)}
+		return model.Blob{}, response.Source, 0, blobFetchCandidateError{err: errors.New(detail)}
 	}
 	return storeAcceptedBlobResponse(cfg, response, trustResult)
 }
@@ -74,7 +77,7 @@ func storeAcceptedBlobResponse(cfg ExchangeConfig, response blobFetchResponse, t
 		cfg.Publish("data.blob_fetched", map[string]any{"reference": stored.Reference.String(), "source": response.Source})
 	}
 	if cfg.RecordEvent != nil {
-		cfg.RecordEvent("data", "blob_fetched", stored.Reference.String(), "blob fetched from trusted peer", "", map[string]any{"source": response.Source})
+		cfg.RecordEvent("data", "blob_fetched", stored.Reference.String(), "blob fetched from trusted node", "", map[string]any{"source": response.Source})
 	}
 	return stored, response.Source, int64(len(raw)), nil
 }
@@ -84,7 +87,9 @@ func decodeBlobResponse(payload []byte, blobID, requester, requestID string) (bl
 	if err := storage.DecodeJSONStrict(payload, &response); err != nil {
 		return blobFetchResponse{}, err
 	}
-	if response.RequestID != requestID || response.Requester != requester || response.Source == "" {
+	if response.Version != blobFetchResponseVersion ||
+		response.RequestID != requestID || response.Requester != requester || response.ResourceID != blobID ||
+		(response.ResourceKind != "" && response.ResourceKind != "blob") || response.Owner != "" || response.Source == "" {
 		return blobFetchResponse{}, fmt.Errorf("blob response does not match request")
 	}
 	if response.Status == "" {
