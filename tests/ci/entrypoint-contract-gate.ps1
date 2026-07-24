@@ -95,6 +95,13 @@ $workflowCatalogTargets = @(
 Assert-OnlyCanonicalTargets $workflowCatalogTargets @($catalogCommand) `
     "CI does not use the canonical testcatalog contract" `
     "CI uses an unsupported testcatalog entrypoint"
+$canonicalCatalogValidation = 'go run ./tests/tooling/testcatalog -tags "integration e2e" ./tests/...'
+if (-not $workflow.Contains($canonicalCatalogValidation)) {
+    throw "CI scenario catalog validation must include integration and e2e build tags"
+}
+if ($workflow -notmatch 'scenario catalog validation returned no entries') {
+    throw "CI scenario catalog validation does not reject an empty catalog"
+}
 if ($workflow -notmatch '(?m)^\s*\./tests/ci/entrypoint-contract-gate-test\.ps1(?:\s|$)') {
     throw "CI does not enforce the canonical entrypoint contract"
 }

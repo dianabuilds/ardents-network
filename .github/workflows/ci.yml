@@ -68,8 +68,10 @@ jobs:
           go vet ./...
           New-Item -ItemType Directory -Force tests/.artifacts/reports/catalog | Out-Null
           go test ./tests/tooling/testcatalog ./tests/tooling/audittrace ./tests/tooling/archaccept -count=1
-          go run ./tests/tooling/testcatalog ./tests/... | Tee-Object tests/.artifacts/reports/catalog/validation.json
+          go run ./tests/tooling/testcatalog -tags "integration e2e" ./tests/... | Tee-Object tests/.artifacts/reports/catalog/validation.json
           if ($LASTEXITCODE -ne 0) { throw "scenario catalog validation failed" }
+          $catalogEntries = @(Get-Content -Raw tests/.artifacts/reports/catalog/validation.json | ConvertFrom-Json)
+          if ($catalogEntries.Count -eq 0) { throw "scenario catalog validation returned no entries" }
           go run ./tests/tooling/audittrace
           ./tests/ci/entrypoint-contract-gate-test.ps1
           ./tests/ci/release-source-identity-gate.ps1

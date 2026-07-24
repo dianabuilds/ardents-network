@@ -22,3 +22,20 @@
   Go cache volumes. For normal cached runs, report/bound the two Ardents cache
   volumes with `scripts/clean-docker-cache.ps1`; never run a broad Docker prune
   automatically.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and PRDs are local Markdown files under `.scratch/<feature>/`. See
+`docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The tracker uses `needs-triage`, `needs-info`, `ready-for-agent`,
+`ready-for-human`, and `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+The repository uses a single context rooted at `CONTEXT.md`, with shared
+decisions under `docs/adr/`. See `docs/agents/domain.md`.

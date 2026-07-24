@@ -33,6 +33,25 @@ func TestAuditTraceRejectsMissingP1Finding(t *testing.T) {
 	require.ErrorContains(t, err, "P1 finding SEC-002 is missing")
 }
 
+func TestLoadBacklogReadsCurrentRemediationLedger(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "ledger.md")
+	writeFixture(t, root, "ledger.md", `
+| Finding | Priority | Remediation commit(s) | Evidence | Status |
+|---|---|---|---|---|
+| CI-001 / ARD-001 | P1 | abc1234 | static | locally_verified |
+| CLI-001 / ARD-022 | P2 | def5678 | parity | locally_verified |
+`)
+
+	findings, err := loadBacklog(path)
+
+	require.NoError(t, err)
+	require.Equal(t, []backlogFinding{
+		{AuditID: "CI-001", Issue: "ARD-001", Priority: "P1"},
+		{AuditID: "CLI-001", Issue: "ARD-022", Priority: "P2"},
+	}, findings)
+}
+
 func TestAuditTraceRejectsMissingGoTestSymbol(t *testing.T) {
 	root := t.TempDir()
 	writeFixture(t, root, "backlog.md", "| REL-001 | ARD-007 | EPIC-02 | P1 |\n")

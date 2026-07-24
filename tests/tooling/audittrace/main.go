@@ -53,6 +53,7 @@ type backlogFinding struct {
 }
 
 var backlogRow = regexp.MustCompile(`(?m)^\|\s*([A-Z]+-\d+)\s*\|\s*(ARD-\d+)\s*\|\s*[^|]+\|\s*(P[12])\s*\|`)
+var remediationLedgerRow = regexp.MustCompile(`(?m)^\|\s*([A-Z]+-\d+)\s*/\s*(ARD-\d+)\s*\|\s*(P[12])\s*\|`)
 var repositoryScriptReference = regexp.MustCompile(`(?:\./|/release/v[0-9]+/)?((?:tests|scripts)/[A-Za-z0-9_./-]+\.(?:ps1|sh))`)
 
 func main() {
@@ -67,7 +68,7 @@ func run(args []string, stdout, _ io.Writer) error {
 	flags.SetOutput(io.Discard)
 	root := flags.String("root", ".", "repository root")
 	manifestPath := flags.String("manifest", "tests/ci/audit-test-traceability.json", "traceability manifest")
-	backlogPath := flags.String("backlog", "docs/audit/2026-07-23/09-jira-remediation-backlog.md", "audit backlog")
+	backlogPath := flags.String("backlog", "docs/engineering/current-remediation-ledger.md", "current remediation ledger")
 	workflowPath := flags.String("workflow", ".github/workflows/ci.yml", "CI workflow")
 	base := flags.String("base", "", "optional Git base for critical-file diff coverage")
 	if err := flags.Parse(args); err != nil {
@@ -118,10 +119,15 @@ func loadManifest(path string) (traceManifest, error) {
 func loadBacklog(path string) ([]backlogFinding, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("read audit backlog: %w", err)
+		return nil, fmt.Errorf("read remediation ledger: %w", err)
 	}
-	matches := backlogRow.FindAllStringSubmatch(string(data), -1)
-	findings := make([]backlogFinding, 0, len(matches))
+	ledgerMatches := remediationLedgerRow.FindAllStringSubmatch(string(data), -1)
+	legacyMatches := backlogRow.FindAllStringSubmatch(string(data), -1)
+	findings := make([]backlogFinding, 0, len(ledgerMatches)+len(legacyMatches))
+	for _, match := range ledgerMatches {
+		findings = append(findings, backlogFinding{AuditID: match[1], Issue: match[2], Priority: match[3]})
+	}
+	matches := legacyMatches
 	for _, match := range matches {
 		findings = append(findings, backlogFinding{AuditID: match[1], Issue: match[2], Priority: match[3]})
 	}

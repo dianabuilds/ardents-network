@@ -47,7 +47,7 @@ function Write-ValidFixture {
     [IO.File]::WriteAllText((Join-Path $fixtureRoot "tests/run.ps1"), '$args = @("run", "./tests/tooling/testcatalog")')
     [IO.File]::WriteAllText(
         (Join-Path $fixtureRoot ".github/workflows/ci.yml"),
-        "run: |`n  go run ./tests/tooling/testcatalog ./tests/...`n  ./tests/ci/entrypoint-contract-gate-test.ps1`n"
+        "run: |`n  go run ./tests/tooling/testcatalog -tags `"integration e2e`" ./tests/...`n  if (`$catalogEntries.Count -eq 0) { throw `"scenario catalog validation returned no entries`" }`n  ./tests/ci/entrypoint-contract-gate-test.ps1`n"
     )
 }
 
@@ -91,6 +91,20 @@ try {
         "  go run ./tests/tooling/testcatalog-missing ./tests/...`n"
     )
     Invoke-Gate $fixtureRoot "CI uses an unsupported testcatalog entrypoint"
+    Write-ValidFixture
+
+    [IO.File]::WriteAllText(
+        (Join-Path $fixtureRoot ".github/workflows/ci.yml"),
+        "run: |`n  go run ./tests/tooling/testcatalog ./tests/...`n  if (`$catalogEntries.Count -eq 0) { throw `"scenario catalog validation returned no entries`" }`n  ./tests/ci/entrypoint-contract-gate-test.ps1`n"
+    )
+    Invoke-Gate $fixtureRoot "CI scenario catalog validation must include integration and e2e build tags"
+    Write-ValidFixture
+
+    [IO.File]::WriteAllText(
+        (Join-Path $fixtureRoot ".github/workflows/ci.yml"),
+        "run: |`n  go run ./tests/tooling/testcatalog -tags `"integration e2e`" ./tests/...`n  ./tests/ci/entrypoint-contract-gate-test.ps1`n"
+    )
+    Invoke-Gate $fixtureRoot "CI scenario catalog validation does not reject an empty catalog"
     Write-ValidFixture
 
     $legacyBackup = "cluster" + "-data.ps1"

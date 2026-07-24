@@ -37,7 +37,7 @@
           "kind": "ci_contract",
           "file": ".github/workflows/ci.yml",
           "name": "canonical scenario catalog invocation",
-          "match": "go run ./tests/tooling/testcatalog ./tests/...",
+          "match": "go run ./tests/tooling/testcatalog -tags \"integration e2e\" ./tests/...",
           "gate": "static",
           "covers": [".github/workflows/ci.yml"]
         },
