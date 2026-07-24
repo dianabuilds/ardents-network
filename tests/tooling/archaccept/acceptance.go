@@ -34,6 +34,38 @@ const requiredAgentSkillName = "security-audit"
 const requiredAgentSkillSource = "cloudflare/security-audit-skill"
 const requiredAgentSkillPath = "skills/security-audit/SKILL.md"
 const requiredAgentToolingDecision = "docs/adr/0010-repository-local-agent-tooling.md"
+const requiredArchitectureDocument = "docs/engineering/codebase-architecture.md"
+
+var normativeArchitectureRoots = []string{
+	"docs/engineering",
+	"docs/adr",
+}
+
+var staleArchitectureAssertions = []struct {
+	name    string
+	pattern *regexp.Regexp
+}{
+	{
+		name:    "obsolete eight-service count",
+		pattern: regexp.MustCompile(`\b(?:eight|8) generated bounded(?: operator)? services\b`),
+	},
+	{
+		name:    "unconditional 12-file package budget",
+		pattern: regexp.MustCompile(`\b(?:every|all) handwritten (?:production )?packages?\b.{0,60}(?:≤\s*12|<=\s*12|(?:no more than|at most|maximum(?: of)?) 12(?: production go)? files?)`),
+	},
+	{
+		name:    "blanket tracked .agents prohibition",
+		pattern: regexp.MustCompile(`(?:tracked \.agents (?:directories|content) (?:are|is) (?:outside|prohibited|forbidden)|must not track \.agents)`),
+	},
+}
+
+var requiredArchitectureFacts = []string{
+	"default ceiling of 12 handwritten production files per package",
+	"packages above that default have exact, non-growing ceilings and reasons in the machine-readable acceptance policy",
+	"package-level responsibility contracts to every handwritten production package",
+	"any temporary exception must be explicit in the machine-readable acceptance policy",
+	"target repository permits repository-local agent tooling only under the exact .agents/skills/security-audit/ allowlist",
+}
 
 var requiredProductionRoots = []string{"api", "cmd", "internal", "scripts", "sdk/go"}
 
@@ -129,7 +161,86 @@ func Validate(root string) error {
 	violations = append(violations, validateServiceSurface(root, "application", manifest.Services.Application)...)
 	violations = append(violations, validateAgentTooling(root, manifest.AgentTooling)...)
 	violations = append(violations, validatePrivateProtocol(root, manifest.PrivateProtocol)...)
+	violations = append(violations, validateArchitectureDocuments(root, manifest.Services)...)
 	return errors.Join(violations...)
+}
+
+func validateArchitectureDocuments(root string, services ServicePolicy) []error {
+	var violations []error
+	for _, documentRoot := range normativeArchitectureRoots {
+		path := filepath.Join(root, filepath.FromSlash(documentRoot))
+		walkErr := filepath.WalkDir(path, func(path string, entry fs.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if entry.IsDir() || (filepath.Ext(entry.Name()) != ".md" && filepath.Ext(entry.Name()) != ".json") {
+				return nil
+			}
+			raw, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			normalized := normalizeArchitectureText(string(raw))
+			for _, assertion := range staleArchitectureAssertions {
+				if assertion.pattern.MatchString(normalized) {
+					relative, relErr := filepath.Rel(root, path)
+					if relErr != nil {
+						return relErr
+					}
+					violations = append(violations, fmt.Errorf(
+						"architecture document %s contains stale assertion %q",
+						filepath.ToSlash(relative),
+						assertion.name,
+					))
+				}
+			}
+			return nil
+		})
+		if walkErr != nil {
+			violations = append(violations, fmt.Errorf("architecture document scan %s: %w", documentRoot, walkErr))
+		}
+	}
+
+	raw, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(requiredArchitectureDocument)))
+	if err != nil {
+		violations = append(violations, fmt.Errorf("architecture document %s: %w", requiredArchitectureDocument, err))
+		return violations
+	}
+	normalized := normalizeArchitectureText(string(raw))
+	operator, operatorErrors := discoverServices(root, "operator", services.Operator)
+	application, applicationErrors := discoverServices(root, "application", services.Application)
+	violations = append(violations, operatorErrors...)
+	violations = append(violations, applicationErrors...)
+	requiredFacts := append([]string{
+		fmt.Sprintf(
+			"%d generated bounded operator %s and %d generated application %s",
+			len(operator),
+			serviceNoun(len(operator)),
+			len(application),
+			serviceNoun(len(application)),
+		),
+	}, requiredArchitectureFacts...)
+	for _, fact := range requiredFacts {
+		if !strings.Contains(normalized, fact) {
+			violations = append(violations, fmt.Errorf(
+				"architecture document is missing current fact %q",
+				fact,
+			))
+		}
+	}
+	return violations
+}
+
+func normalizeArchitectureText(value string) string {
+	value = strings.ReplaceAll(value, "`", "")
+	return strings.ToLower(strings.Join(strings.Fields(value), " "))
+}
+
+func serviceNoun(count int) string {
+	if count == 1 {
+		return "service"
+	}
+	return "services"
 }
 
 func loadManifest(root string) (Manifest, error) {
@@ -323,8 +434,34 @@ func validatePackageDocumentation(policy PackageDocumentationPolicy, packages ma
 var servicePattern = regexp.MustCompile(`(?m)^\s*service\s+([A-Za-z][A-Za-z0-9_]*)\s*\{`)
 
 func validateServiceSurface(root string, name string, surface ServiceSurface) []error {
-	var violations []error
+	discovered, violations := discoverServices(root, name, surface)
+	for service := range discovered {
+		target, ok := surface.Composition[service]
+		if !ok {
+			violations = append(violations, fmt.Errorf("service contract %s: undeclared service %s", name, service))
+			continue
+		}
+		compositionFile := filepath.Join(root, filepath.FromSlash(target.Path))
+		registered, err := hasServiceRegistration(compositionFile, target, "New"+service+"Handler")
+		if err != nil {
+			violations = append(violations, fmt.Errorf("service contract %s: composition %s for %s: %w", name, target.Path, service, err))
+			continue
+		}
+		if !registered {
+			violations = append(violations, fmt.Errorf("service contract %s: composition %s does not register %s", name, target.Path, service))
+		}
+	}
+	for service := range surface.Composition {
+		if _, ok := discovered[service]; !ok {
+			violations = append(violations, fmt.Errorf("service contract %s: stale composition entry %s", name, service))
+		}
+	}
+	return violations
+}
+
+func discoverServices(root string, name string, surface ServiceSurface) (map[string]struct{}, []error) {
 	discovered := make(map[string]struct{})
+	var violations []error
 	for _, protoRoot := range surface.ProtoRoots {
 		path := filepath.Join(root, filepath.FromSlash(protoRoot))
 		info, err := os.Stat(path)
@@ -363,29 +500,7 @@ func validateServiceSurface(root string, name string, surface ServiceSurface) []
 			violations = append(violations, fmt.Errorf("service contract %s: scan %s: %w", name, protoRoot, walkErr))
 		}
 	}
-
-	for service := range discovered {
-		target, ok := surface.Composition[service]
-		if !ok {
-			violations = append(violations, fmt.Errorf("service contract %s: undeclared service %s", name, service))
-			continue
-		}
-		compositionFile := filepath.Join(root, filepath.FromSlash(target.Path))
-		registered, err := hasServiceRegistration(compositionFile, target, "New"+service+"Handler")
-		if err != nil {
-			violations = append(violations, fmt.Errorf("service contract %s: composition %s for %s: %w", name, target.Path, service, err))
-			continue
-		}
-		if !registered {
-			violations = append(violations, fmt.Errorf("service contract %s: composition %s does not register %s", name, target.Path, service))
-		}
-	}
-	for service := range surface.Composition {
-		if _, ok := discovered[service]; !ok {
-			violations = append(violations, fmt.Errorf("service contract %s: stale composition entry %s", name, service))
-		}
-	}
-	return violations
+	return discovered, violations
 }
 
 func hasServiceRegistration(path string, target CompositionTarget, constructorName string) (bool, error) {

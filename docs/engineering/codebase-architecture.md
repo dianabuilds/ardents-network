@@ -1031,8 +1031,8 @@ Completed structural replacements:
   without adding holding packages. Packages above that default have exact,
   non-growing ceilings and reasons in the machine-readable acceptance policy;
   an undeclared package or any growth beyond its ceiling fails the gate.
-- replaced the single 48-method `ArdentsService` with nine generated bounded
-  Operator services and two generated Application services. The Operator
+- replaced the single 48-method `ArdentsService` with 9 generated bounded
+  Operator services and 2 generated Application services. The Operator
   services are registered behind one protected local endpoint; the Application
   services remain on their distinct interface. Composition paths and proto
   service counts are checked against the machine-readable acceptance policy.

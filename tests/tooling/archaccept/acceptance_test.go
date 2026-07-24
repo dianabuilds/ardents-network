@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -101,6 +102,78 @@ func TestValidateRejectsPackageCommentWithOnlyNonResponsibility(t *testing.T) {
 	err := Validate(root)
 	require.ErrorContains(t, err, "package documentation")
 	require.ErrorContains(t, err, "responsibility and explicit non-responsibility")
+}
+
+func TestValidateRejectsStaleArchitectureAssertion(t *testing.T) {
+	testCases := []struct {
+		name      string
+		path      string
+		assertion string
+		want      string
+	}{
+		{
+			name:      "service count variant in primary document",
+			path:      requiredArchitectureDocument,
+			assertion: "eight generated bounded Operator services",
+			want:      "obsolete eight-service count",
+		},
+		{
+			name:      "service count in another normative document",
+			path:      "docs/engineering/engineering-constraints.md",
+			assertion: "8 generated bounded services",
+			want:      "obsolete eight-service count",
+		},
+		{
+			name:      "unconditional package budget",
+			path:      requiredArchitectureDocument,
+			assertion: "every handwritten package must contain no more than 12 production Go files",
+			want:      "unconditional 12-file package budget",
+		},
+		{
+			name:      "symbolic unconditional package budget",
+			path:      "docs/engineering/engineering-constraints.md",
+			assertion: "all handwritten packages have budget ≤12",
+			want:      "unconditional 12-file package budget",
+		},
+		{
+			name:      "blanket agent tooling prohibition",
+			path:      "docs/adr/legacy-agent-policy.md",
+			assertion: "tracked `.agents` directories are outside the target tree",
+			want:      "blanket tracked .agents prohibition",
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			root := architectureFixture(t)
+			content := testCase.assertion
+			if testCase.path == requiredArchitectureDocument {
+				content = architectureDocumentFixture + "\n" + content
+			}
+			writeFixture(t, root, testCase.path, content+"\n")
+
+			err := Validate(root)
+			require.ErrorContains(t, err, "architecture document")
+			require.ErrorContains(t, err, testCase.want)
+		})
+	}
+}
+
+func TestValidateRejectsMissingCurrentArchitectureFact(t *testing.T) {
+	root := architectureFixture(t)
+	writeFixture(
+		t,
+		root,
+		requiredArchitectureDocument,
+		strings.ReplaceAll(
+			architectureDocumentFixture,
+			"1 generated bounded Operator service and 1 generated Application service",
+			"generated services",
+		),
+	)
+
+	err := Validate(root)
+	require.ErrorContains(t, err, "architecture document")
+	require.ErrorContains(t, err, "1 generated bounded operator service")
 }
 
 func TestValidateRejectsServiceAndCompositionDrift(t *testing.T) {
@@ -258,6 +331,7 @@ func architectureFixture(t *testing.T) string {
 	writeFixture(t, root, "internal/legacy/owner.go", "package legacy\n")
 	writeAgentToolingFixture(t, root)
 	writeFixture(t, root, requiredAgentToolingDecision, "# ADR 0010: Repository-local agent tooling\n\n- Status: Accepted\n\nKeep `.agents/skills/security-audit/` pinned by `skills-lock.json`.\n")
+	writeFixture(t, root, requiredArchitectureDocument, architectureDocumentFixture)
 	writeFixture(t, root, "api/operator.proto", "syntax = \"proto3\";\nservice NodeService {}\n")
 	writeFixture(t, root, "api/application.proto", "syntax = \"proto3\";\nservice ContentService {}\n")
 	writeFixture(t, root, "internal/localapi/server_base.go", "package localapi\nfunc compose() { register(NewNodeServiceHandler()) }\n")
@@ -281,7 +355,7 @@ option go_package = "ardents/internal/messaging/protocol;messagingprotocol";
 		},
 		PackageDocumentation: PackageDocumentationPolicy{
 			Grandfathered: map[string]string{
-				"internal/legacy":                 "existing package; documentation tracked by ARD-029",
+				"internal/legacy":                 "explicit package-documentation exception fixture",
 				"internal/localapi":               "composition fixture",
 				"internal/applicationapi/content": "composition fixture",
 			},
@@ -325,6 +399,17 @@ option go_package = "ardents/internal/messaging/protocol;messagingprotocol";
 	writeFixture(t, root, "docs/engineering/architecture-acceptance.json", string(raw))
 	return root
 }
+
+const architectureDocumentFixture = `
+# Current architecture
+
+The runtime has 1 generated bounded Operator service and 1 generated Application service.
+There is a default ceiling of 12 handwritten production files per package.
+Packages above that default have exact, non-growing ceilings and reasons in the machine-readable acceptance policy.
+The target has package-level responsibility contracts to every handwritten production package.
+Any temporary exception must be explicit in the machine-readable acceptance policy.
+The target repository permits repository-local agent tooling only under the exact .agents/skills/security-audit/ allowlist.
+`
 
 func writeAgentToolingFixture(t *testing.T, root string) {
 	t.Helper()
