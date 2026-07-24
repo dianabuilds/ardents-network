@@ -29,6 +29,8 @@ $common = @{
     TimeoutSeconds = $TimeoutSeconds
 }
 try {
+    & ./tests/ci/deployment-upgrade-backup-gate.ps1 `
+        -ReportDir (Join-Path $ReportDir "upgrade-backup")
     & ./tests/resource-snapshot.ps1 -Label before-ci-deployment `
         -OutputPath (Join-Path $reportPath "resources-before.json")
     $up = $common.Clone()

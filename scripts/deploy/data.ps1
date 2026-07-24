@@ -18,7 +18,15 @@ $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Set-Location $root
 $statePath = [IO.Path]::GetFullPath($StateDir)
 $manifestPath = Join-Path $statePath "cluster.json"
-$composeFile = Join-Path $root "deploy/docker/compose/docker-compose.multinode.yml"
+$repositoryComposeFile = Join-Path $root "deploy/docker/compose/docker-compose.multinode.yml"
+$bundleComposeFile = Join-Path $root "docker/docker-compose.multinode.yml"
+$composeFile = if (Test-Path -LiteralPath $repositoryComposeFile) {
+    $repositoryComposeFile
+} elseif (Test-Path -LiteralPath $bundleComposeFile) {
+    $bundleComposeFile
+} else {
+    throw "multinode Compose file is missing from the repository or distribution bundle"
+}
 $composePrefix = @("compose", "-p", $Project, "-f", $composeFile)
 
 if (-not (Test-Path -LiteralPath $manifestPath)) {
@@ -108,6 +116,8 @@ function Invoke-Backup {
         $volume = Get-DataVolume
         & docker run --rm --mount "source=$volume,target=/data,readonly" --mount "type=bind,source=$archiveDir,target=/backup" --entrypoint /bin/tar $image -czf "/backup/$([IO.Path]::GetFileName($archivePath))" -C /data .
         if ($LASTEXITCODE -ne 0) { throw "backup archive creation failed" }
+        & docker run --rm --mount "type=bind,source=$archiveDir,target=/backup,readonly" --entrypoint /bin/tar $image -tzf "/backup/$([IO.Path]::GetFileName($archivePath))" | Out-Null
+        if (-not $?) { throw "backup archive verification failed" }
         $sidecar = [ordered]@{
             schema = "ardents.backup/v1"
             node = $Node

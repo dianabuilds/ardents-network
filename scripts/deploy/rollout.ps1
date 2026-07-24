@@ -15,7 +15,15 @@ $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Set-Location $root
 $statePath = [IO.Path]::GetFullPath($StateDir)
 $manifestPath = Join-Path $statePath "cluster.json"
-$composeFile = Join-Path $root "deploy/docker/compose/docker-compose.multinode.yml"
+$repositoryComposeFile = Join-Path $root "deploy/docker/compose/docker-compose.multinode.yml"
+$bundleComposeFile = Join-Path $root "docker/docker-compose.multinode.yml"
+$composeFile = if (Test-Path -LiteralPath $repositoryComposeFile) {
+    $repositoryComposeFile
+} elseif (Test-Path -LiteralPath $bundleComposeFile) {
+    $bundleComposeFile
+} else {
+    throw "multinode Compose file is missing from the repository or distribution bundle"
+}
 $composePrefix = @("compose", "-p", $Project, "-f", $composeFile)
 $services = @("seed", "peer2", "peer3")
 
@@ -106,7 +114,7 @@ function Invoke-RollingChange([string]$TargetImage, [string]$FallbackImage) {
 
 function New-UpgradeBackups {
     foreach ($service in $services) {
-        & (Join-Path $PSScriptRoot "cluster-data.ps1") backup -Node $service -StateDir $statePath -Project $Project -TimeoutSeconds $TimeoutSeconds
+        & (Join-Path $PSScriptRoot "data.ps1") backup -Node $service -StateDir $statePath -Project $Project -TimeoutSeconds $TimeoutSeconds
         if ($LASTEXITCODE -ne 0) { throw "pre-upgrade backup failed for $service" }
     }
 }
