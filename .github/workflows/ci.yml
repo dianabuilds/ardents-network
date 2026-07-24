@@ -69,6 +69,7 @@ jobs:
           New-Item -ItemType Directory -Force tests/.artifacts/reports/catalog | Out-Null
           go run ./tests/tooling/testcatalog ./tests/... | Tee-Object tests/.artifacts/reports/catalog/validation.json
           if ($LASTEXITCODE -ne 0) { throw "scenario catalog validation failed" }
+          ./tests/ci/entrypoint-contract-gate-test.ps1
           ./tests/ci/release-source-identity-gate.ps1
           ./tests/ci/release-materials-policy-gate.ps1
       - uses: actions/upload-artifact@v4
