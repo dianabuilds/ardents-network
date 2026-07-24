@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -15,6 +16,8 @@ import (
 	"time"
 
 	"ardents/sdk/go/client"
+	"ardents/sdk/go/content"
+	sdkerrors "ardents/sdk/go/errors"
 	sdkidentity "ardents/sdk/go/identity"
 )
 
@@ -52,6 +55,34 @@ func main() {
 			os.Exit(2)
 		}
 		enroll(os.Args[2], os.Args[3], os.Args[4], os.Args[5], os.Args[6])
+	case "device":
+		if len(os.Args) != 3 {
+			usage()
+			os.Exit(2)
+		}
+		showDevice(os.Args[2])
+	case "put":
+		if len(os.Args) != 6 {
+			usage()
+			os.Exit(2)
+		}
+		put(os.Args[2], os.Args[3], os.Args[4], os.Args[5])
+	case "get":
+		if len(os.Args) != 8 {
+			usage()
+			os.Exit(2)
+		}
+		get(os.Args[2], os.Args[3], os.Args[4], content.Reference{Kind: os.Args[5], ID: os.Args[6]}, os.Args[7])
+	case "observe-revocation":
+		if len(os.Args) != 11 {
+			usage()
+			os.Exit(2)
+		}
+		observeRevocation(
+			os.Args[2], os.Args[3], os.Args[4],
+			content.Reference{Kind: os.Args[5], ID: os.Args[6]},
+			os.Args[7], os.Args[8], os.Args[9], os.Args[10],
+		)
 	case "use":
 		if len(os.Args) != 5 {
 			usage()
@@ -65,7 +96,7 @@ func main() {
 }
 
 func usage() {
-	_, _ = fmt.Fprintln(os.Stderr, "usage: application-probe <create IDENTITY_FILE ROOT_FILE|enroll SOCKET NODE_PRINCIPAL TICKET_FILE IDENTITY_FILE ROOT_FILE|use SOCKET NODE_PRINCIPAL IDENTITY_FILE>")
+	_, _ = fmt.Fprintln(os.Stderr, "usage: application-probe <create|device|enroll|put|get|observe-revocation|use> ...")
 }
 
 func createIdentity(identityPath, rootPath string) {
@@ -121,17 +152,8 @@ func enroll(socket, nodePrincipal, ticketPath, identityPath, rootPath string) {
 		fail(err)
 	}
 	defer clear(signer.root)
-	encoded, err := readPrivateFile(ticketPath)
-	if err != nil {
-		fail(fmt.Errorf("Application enrollment ticket is unavailable"))
-	}
-	defer clear(encoded)
-	ticket, err := client.ParseApplicationEnrollmentTicket(strings.TrimSpace(string(encoded)))
-	if err != nil {
-		fail(err)
-	}
-	result, err := client.EnrollApplication(context.Background(), client.EnrollmentConfig{
-		SocketPath: socket, NodePrincipal: nodePrincipal, Ticket: ticket, Signer: signer,
+	result, err := client.EnrollApplicationFromFile(context.Background(), client.EnrollmentFileConfig{
+		SocketPath: socket, NodePrincipal: nodePrincipal, TicketPath: ticketPath, Signer: signer,
 	})
 	if err != nil {
 		fail(err)
@@ -139,21 +161,97 @@ func enroll(socket, nodePrincipal, ticketPath, identityPath, rootPath string) {
 	if result.Principal != signer.principal {
 		fail(fmt.Errorf("unexpected enrolled Principal"))
 	}
+	writeJSON(struct {
+		Principal    string `json:"principal"`
+		CredentialID string `json:"credential_id"`
+		GrantID      string `json:"grant_id"`
+	}{
+		Principal: result.Principal, CredentialID: result.CredentialID, GrantID: result.GrantID,
+	})
 }
 
-func use(socket, nodePrincipal, identityPath string) {
+func showDevice(identityPath string) {
 	signer, err := loadSessionSigner(identityPath)
 	if err != nil {
 		fail(err)
 	}
 	defer clear(signer.device)
+	payload := signer.credential.KeyCredential()
+	if payload == nil {
+		fail(fmt.Errorf("Application identity file is invalid"))
+	}
+	_, _ = fmt.Fprintln(os.Stdout, payload.DeviceID)
+}
+
+func use(socket, nodePrincipal, identityPath string) {
+	application, signer := openApplication(socket, nodePrincipal, identityPath)
+	defer clear(signer.device)
+	putGet(application)
+}
+
+func put(socket, nodePrincipal, identityPath, payload string) {
+	application, signer := openApplication(socket, nodePrincipal, identityPath)
+	defer clear(signer.device)
+	reference, err := application.Content.Put(context.Background(), []byte(payload))
+	if err != nil {
+		fail(err)
+	}
+	writeJSON(reference)
+}
+
+func get(socket, nodePrincipal, identityPath string, reference content.Reference, expected string) {
+	application, signer := openApplication(socket, nodePrincipal, identityPath)
+	defer clear(signer.device)
+	payload, err := application.Content.Get(context.Background(), reference)
+	if err != nil {
+		fail(err)
+	}
+	if string(payload) != expected {
+		fail(fmt.Errorf("unexpected content payload"))
+	}
+}
+
+func observeRevocation(
+	socket, nodePrincipal, identityPath string,
+	reference content.Reference,
+	grantReady, grantContinue, deviceReady, deviceContinue string,
+) {
+	application, signer := openApplication(socket, nodePrincipal, identityPath)
+	defer clear(signer.device)
+	if _, err := application.Content.Get(context.Background(), reference); err != nil {
+		fail(err)
+	}
+	writeSignal(grantReady)
+	waitForSignal(grantContinue)
+	grantCode := errorCode(application.Content.Get(context.Background(), reference))
+	if grantCode != sdkerrors.Forbidden {
+		fail(fmt.Errorf("grant revocation returned %q", grantCode))
+	}
+	writeSignal(deviceReady)
+	waitForSignal(deviceContinue)
+	deviceCode := errorCode(application.Content.Get(context.Background(), reference))
+	if deviceCode != sdkerrors.Unauthenticated {
+		fail(fmt.Errorf("device revocation returned %q", deviceCode))
+	}
+	writeJSON(struct {
+		Grant  sdkerrors.Code `json:"grant"`
+		Device sdkerrors.Code `json:"device"`
+	}{Grant: grantCode, Device: deviceCode})
+}
+
+func openApplication(socket, nodePrincipal, identityPath string) (*client.Client, *sessionSigner) {
+	signer, err := loadSessionSigner(identityPath)
+	if err != nil {
+		fail(err)
+	}
 	application, err := client.New(client.Config{
 		SocketPath: socket, NodePrincipal: nodePrincipal, Signer: signer,
 	})
 	if err != nil {
+		clear(signer.device)
 		fail(err)
 	}
-	putGet(application)
+	return application, signer
 }
 
 func (s *sessionSigner) SignEnrollmentChallenge(_ context.Context, challenge sdkidentity.Challenge) ([]byte, error) {
@@ -274,6 +372,40 @@ func putGet(application *client.Client) {
 	}
 	if string(payload) != "native application probe" {
 		fail(fmt.Errorf("unexpected content payload"))
+	}
+}
+
+func errorCode(_ []byte, err error) sdkerrors.Code {
+	if err == nil {
+		return ""
+	}
+	var applicationErr *sdkerrors.Error
+	if !errors.As(err, &applicationErr) {
+		fail(err)
+	}
+	return applicationErr.Code
+}
+
+func writeSignal(path string) {
+	if err := os.WriteFile(path, []byte("ready"), 0o600); err != nil {
+		fail(fmt.Errorf("lifecycle signal is unavailable"))
+	}
+}
+
+func waitForSignal(path string) {
+	deadline := time.Now().Add(15 * time.Second)
+	for time.Now().Before(deadline) {
+		if info, err := os.Stat(path); err == nil && info.Mode().IsRegular() {
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	fail(fmt.Errorf("lifecycle signal was not received"))
+}
+
+func writeJSON(value any) {
+	if err := json.NewEncoder(os.Stdout).Encode(value); err != nil {
+		fail(fmt.Errorf("probe output failed"))
 	}
 }
 

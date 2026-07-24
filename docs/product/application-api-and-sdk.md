@@ -50,12 +50,27 @@ Application actions, then creates a ten-minute one-use Application Enrollment
 Ticket. The ticket is written only to a newly created protected file and is
 never printed.
 
-The Application supplies the ticket and a typed `EnrollmentSigner` to
-`client.EnrollApplication`. Enrollment proves root possession, records the
-canonical root binding and device Credential, consumes the ticket, and commits
-the initial Node-signed Application Access Grant atomically. A failed
-transaction leaves no partial enrollment and does not consume the durable
-ticket record.
+For the supported same-host handoff, the Application supplies the protected
+ticket path and a typed `EnrollmentSigner` to
+`client.EnrollApplicationFromFile`. The helper accepts only an absolute,
+private, regular file containing the exact canonical ticket, proves root
+possession through the existing Application Interface, and removes the same
+file only after validating the committed response. A pre-commit failure retains
+the file for retry. `EnrollmentFileCleanupError` returns the committed
+`EnrollmentResult` when enrollment succeeds but safe cleanup does not; callers
+must not repeat enrollment. Its `TicketFileState` is `retained` when the exact
+file remains at `TicketPath`, `retired` when plaintext removal completed but
+durability confirmation failed, and `unknown` when a concurrent path change or
+filesystem failure prevents a safe assertion. Only the `retained` state permits
+manual removal at the original path; `unknown` requires filesystem
+investigation and must not trigger automatic path deletion.
+
+`client.ParseApplicationEnrollmentTicket` and `client.EnrollApplication`
+remain available for an embedding Application whose protected delivery
+mechanism is not a file. Enrollment records the canonical root binding and
+device Credential, consumes the ticket, and commits the initial Node-signed
+Application Access Grant atomically. A failed transaction leaves no partial
+enrollment and does not consume the durable ticket record.
 
 The ticket is not a Principal, Credential, session, grant, owner, or normal
 authentication mechanism. Only its domain-separated digest is durable.

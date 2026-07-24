@@ -316,6 +316,36 @@ func TestGrantListRejectsUnknownActionAndCrossNodeScope(t *testing.T) {
 	}
 }
 
+func TestGrantRevokeAcceptsApplicationEnrollmentGrantFromSupportedOperatorProcedure(t *testing.T) {
+	node, subject := principalForTest(t, 0x61), principalForTest(t, 0x62)
+	grantID := artifactID(identitycontract.AccessGrantPrefix)
+	revocationID := artifactID(identitycontract.AccessGrantRevocationPrefix)
+	service := &fakeIdentityClient{
+		list: func(request *protocol.ListAccessGrantsRequest) *protocol.ListAccessGrantsResponse {
+			require.Equal(t, subject, request.SubjectPrincipalId)
+			return &protocol.ListAccessGrantsResponse{Grants: []*protocol.AccessGrantMetadata{{
+				Id: grantID, SubjectPrincipalId: subject,
+				Actions:   []string{"application.content.get", "application.content.put"},
+				Scope:     &identityprotocol.ResourceScope{Scope: &identityprotocol.ResourceScope_Node{Node: &identityprotocol.NodeScope{}}},
+				NotBefore: timestamp(administrationNow), NotAfter: timestamp(administrationNow.Add(time.Hour)),
+			}}}
+		},
+		revoke: func(request *protocol.RevokeAccessGrantRequest) *protocol.RevokeAccessGrantResponse {
+			require.Equal(t, grantID, request.GrantId)
+			return &protocol.RevokeAccessGrantResponse{RevocationId: revocationID}
+		},
+	}
+	command, stdout, stderr := newAdministrationCommand(true, "", &administrationSessions{node: node}, service)
+
+	require.Zero(t, command.Run(context.Background(), []string{
+		"grant", "revoke", "--subject", subject, "--grant-id", grantID, "--yes",
+	}))
+	require.Equal(t, 1, service.mutationCalls)
+	require.Contains(t, stdout.String(), `"actions":["application.content.get","application.content.put"]`)
+	require.Contains(t, stdout.String(), revocationID)
+	require.Empty(t, stderr.String())
+}
+
 func TestDeviceRevokeRequiresCanonicalInputAndConsent(t *testing.T) {
 	node, subject := principalForTest(t, 8), principalForTest(t, 9)
 	devicePrivate := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{10}, ed25519.SeedSize))

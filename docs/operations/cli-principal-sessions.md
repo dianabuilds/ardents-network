@@ -43,11 +43,35 @@ ardentsctl ... identity application-ticket issue \
 ```
 
 The ticket expires after ten minutes, is one-use, and is consumed only by
-`EnrollApplication` on the protected Application Unix listener. It authorizes
-no other method and is not a normal Credential or Session. The SDK requires a
-typed Application `EnrollmentSigner` while leaving root/device custody with
-the embedding Application. Owner-aware admission remains mandatory: knowledge
-of a CID is never authorization to read.
+`client.EnrollApplicationFromFile` on the protected Application Unix listener.
+The SDK helper validates the exact private file, retains it after any
+pre-commit failure, and removes it only after a validated successful response.
+If it returns `EnrollmentFileCleanupError`, enrollment is committed: securely
+remove `TicketPath` only when `TicketFileState` is `retained`, take no removal
+action when it is `retired`, and investigate the protected directory without
+automatic path deletion when it is `unknown`. Never retry enrollment after any
+of these post-commit outcomes. Applications with a different protected
+delivery mechanism may use the lower-level
+`ParseApplicationEnrollmentTicket` and `EnrollApplication` operations.
+
+The ticket authorizes no other method and is not a normal Credential or
+Session. The SDK requires a typed Application `EnrollmentSigner` while leaving
+root/device custody with the embedding Application. Owner-aware admission
+remains mandatory: knowledge of a CID is never authorization to read.
+
+If delivery or enrollment fails before a validated commit, keep the current
+protected file and retry with a fresh proof. Issuing a replacement ticket makes
+every older file stale immediately; securely remove stale files after the
+expected enrollment rejection. After a Node or Application restart, reload the
+Application-owned finite device Credential and authenticate a new memory-only
+Session. Durable enrollment, grants, owner bindings, and Content remain on the
+Node.
+
+To remove only product authority, list the Application Principal's grants and
+revoke the exact initial Application grant. A live authenticated Session then
+receives the stable SDK `forbidden` outcome on Content calls. To invalidate
+authentication, revoke the Application's exact device ID; the live Session is
+rejected and the SDK's single refresh attempt returns `unauthenticated`.
 
 ## Grants And Device Revocation
 

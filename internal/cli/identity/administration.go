@@ -655,13 +655,17 @@ func parseGrantView(item *protocol.AccessGrantMetadata, node, subject string) (g
 	if len(actions) == 0 || !sort.StringsAreSorted(actions) {
 		return grantView{}, errInvalidIdentityResponse
 	}
+	actionSurface := identityprotocol.Interface_INTERFACE_OPERATOR
+	if _, err := identityaccess.ParseAction(actionSurface, actions[0]); err != nil {
+		actionSurface = identityprotocol.Interface_INTERFACE_APPLICATION
+	}
 	for index, action := range actions {
-		if _, err := identityaccess.ParseAction(identityprotocol.Interface_INTERFACE_OPERATOR, action); err != nil || index > 0 && action == actions[index-1] {
+		if _, err := identityaccess.ParseAction(actionSurface, action); err != nil || index > 0 && action == actions[index-1] {
 			return grantView{}, errInvalidIdentityResponse
 		}
 	}
 	scope, err := identityaccess.ParseResourceScope(item.Scope, node)
-	if err != nil || scope.Kind == identityaccess.ScopePrincipalOwned {
+	if err != nil {
 		return grantView{}, errInvalidIdentityResponse
 	}
 	view := grantView{ID: item.Id, Subject: subject, TargetNode: node, Actions: actions, NotBefore: notBefore.UTC().Format(time.RFC3339), NotAfter: notAfter.UTC().Format(time.RFC3339), Revoked: item.Revoked}

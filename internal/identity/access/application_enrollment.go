@@ -9,6 +9,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"sort"
+	"sync/atomic"
 	"time"
 
 	identitycontract "ardents/api/ardents/identity/v1"
@@ -31,9 +32,19 @@ const (
 )
 
 var (
-	applicationEnrollmentTicketDomain       = []byte("ardents:application-enrollment-ticket:v1\x00")
-	applicationEnrollmentTicketRecordDomain = []byte("ardents:application-enrollment-ticket-record:v1\x00")
+	applicationEnrollmentTicketDomain         = []byte("ardents:application-enrollment-ticket:v1\x00")
+	applicationEnrollmentTicketRecordDomain   = []byte("ardents:application-enrollment-ticket-record:v1\x00")
+	applicationEnrollmentTransactionFaultMode string
+	applicationEnrollmentTransactionFaultUsed atomic.Bool
 )
+
+func applicationEnrollmentTransactionFault() error {
+	if applicationEnrollmentTransactionFaultMode != "once" ||
+		!applicationEnrollmentTransactionFaultUsed.CompareAndSwap(false, true) {
+		return nil
+	}
+	return fmt.Errorf("injected Application enrollment transaction failure")
+}
 
 type ApplicationEnrollmentTicket [identitycontract.ApplicationEnrollmentTicketBytes]byte
 
@@ -274,6 +285,9 @@ func (s *Service) EnrollApplication(ctx context.Context, currentBinding Authenti
 		ticketRecord, consumeErr := consumeApplicationEnrollmentTicket(tx, node.String(), principal.String(), request.Ticket, currentBinding, transactionNow)
 		if consumeErr != nil {
 			return consumeErr
+		}
+		if faultErr := applicationEnrollmentTransactionFault(); faultErr != nil {
+			return faultErr
 		}
 		payload := &identityprotocol.AccessGrantPayload{
 			Version: identitycontract.Version, Issuer: node.String(), Subject: principal.String(), Audience: protocolAudience(currentBinding.Audience),

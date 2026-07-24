@@ -28,13 +28,24 @@ type applicationIdentityFile struct {
 	DevicePrivateKey string `json:"device_private_key"`
 }
 
+type applicationContentReference struct {
+	Kind string `json:"kind"`
+	ID   string `json:"id"`
+}
+
+type daemonProcess struct {
+	command *exec.Cmd
+	exited  chan error
+	output  *os.File
+}
+
 func TestApplicationUsesDedicatedPrincipalInterface(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Application process e2e requires Unix domain sockets")
 	}
 	scenario := testkit.BeginScenario(t, testkit.Spec{
 		Layer: testkit.LayerE2E, Domain: "application-interface", ScenarioID: "APP-001", Suite: "e2e",
-		Tags: []string{"e2e", "application-interface", "security", "process"}, Speed: "fast", Environment: "linux-container",
+		Tags: []string{"e2e", "application-interface", "security", "process", "retry", "restart", "revocation"}, Speed: "fast", Environment: "linux-container",
 	})
 	dir := t.TempDir()
 	authorityDir := filepath.Join(dir, "authority")
@@ -48,8 +59,11 @@ func TestApplicationUsesDedicatedPrincipalInterface(t *testing.T) {
 	bootstrapTicket := filepath.Join(secretDir, "operator-bootstrap-ticket")
 	observabilityAddress := reserveAddress(t)
 	transportAddress := reserveAddress(t)
+	configPath := filepath.Join(secretDir, "operator.json")
+	logPath := filepath.Join(dir, "ardentsd.log")
 
 	daemonBinary := filepath.Join(dir, "ardentsd")
+	faultDaemonBinary := filepath.Join(dir, "ardentsd-enrollment-fault")
 	cliBinary := filepath.Join(dir, "ardentsctl")
 	probeBinary := filepath.Join(dir, "application-probe")
 	root := repositoryRoot(t)
@@ -62,8 +76,20 @@ func TestApplicationUsesDedicatedPrincipalInterface(t *testing.T) {
 		raw, err := build.CombinedOutput()
 		require.NoError(t, err, string(raw))
 	}
+	buildFaultDaemon := exec.Command("go", "build",
+		"-ldflags", "-X ardents/internal/identity/access.applicationEnrollmentTransactionFaultMode=once",
+		"-o", faultDaemonBinary, filepath.Join(root, "cmd", "ardentsd"),
+	)
+	raw, err := buildFaultDaemon.CombinedOutput()
+	require.NoError(t, err, string(raw))
 
 	var nodePrincipal string
+	var daemon *daemonProcess
+	t.Cleanup(func() {
+		if daemon != nil {
+			daemon.stop()
+		}
+	})
 	scenario.Precondition("provision and start the real Principal-only daemon", func(t *testing.T) {
 		raw := run(t, daemonBinary, "init",
 			"--authority-dir", authorityDir,
@@ -75,25 +101,12 @@ func TestApplicationUsesDedicatedPrincipalInterface(t *testing.T) {
 			"--runtime-secret-dir", secretDir,
 		)
 		nodePrincipal = extractNodePrincipal(t, raw)
-		configPath := filepath.Join(secretDir, "operator.json")
 		setObservabilityAddress(t, configPath, observabilityAddress)
 		require.NoError(t, os.MkdirAll(filepath.Dir(applicationSocket), 0o700))
-
-		command := exec.Command(daemonBinary)
-		command.Env = append(os.Environ(), "ARDENTS_CONFIG_FILE="+configPath)
-		logPath := filepath.Join(dir, "ardentsd.log")
-		output, err := os.Create(logPath)
-		require.NoError(t, err)
-		command.Stdout = output
-		command.Stderr = output
-		t.Cleanup(func() { _ = output.Close() })
-		exited := make(chan error, 1)
-		require.NoError(t, command.Start())
-		go func() { exited <- command.Wait() }()
-		t.Cleanup(func() { stopProcess(command) })
-		require.NoError(t, waitForHTTP("http://"+observabilityAddress+"/healthz", exited), readLog(logPath))
-		require.NoError(t, waitForPath(operatorSocket, exited), readLog(logPath))
-		require.NoError(t, waitForPath(applicationSocket, exited), readLog(logPath))
+		daemon = startDaemon(t, daemonBinary, configPath, logPath)
+		require.NoError(t, waitForHTTP("http://"+observabilityAddress+"/healthz", daemon.exited), readLog(logPath))
+		require.NoError(t, waitForPath(operatorSocket, daemon.exited), readLog(logPath))
+		require.NoError(t, waitForPath(applicationSocket, daemon.exited), readLog(logPath))
 		require.FileExists(t, bootstrapTicket)
 	})
 
@@ -122,19 +135,97 @@ func TestApplicationUsesDedicatedPrincipalInterface(t *testing.T) {
 	appRootPath := filepath.Join(identityDir, "application-root.json")
 	appPrincipal := strings.TrimSpace(string(run(t, probeBinary, "create", appIdentityPath, appRootPath)))
 	require.Regexp(t, `^p1_[a-z2-7]{52}$`, appPrincipal)
+	appDeviceID := strings.TrimSpace(string(run(t, probeBinary, "device", appIdentityPath)))
+	require.Regexp(t, `^d1_[a-z2-7]{52}$`, appDeviceID)
+	staleTicketPath := filepath.Join(identityDir, "stale-application-enrollment-ticket")
 	ticketPath := filepath.Join(identityDir, "application-enrollment-ticket")
-	scenario.Step("enroll the Application Principal through its dedicated listener", func(t *testing.T) {
+	var applicationGrantID string
+	scenario.Step("replace a stale ticket and safely retry the current ticket after a pre-commit Node failure", func(t *testing.T) {
+		run(t, cliBinary,
+			"--addr", "unix://"+operatorSocket, "--principal", nodePrincipal, "--signer-file", operatorDevice,
+			"--output", "json", "identity", "application-ticket", "issue",
+			"--principal", appPrincipal,
+			"--action", "application.content.put", "--action", "application.content.get",
+			"--out-file", staleTicketPath, "--yes")
 		run(t, cliBinary,
 			"--addr", "unix://"+operatorSocket, "--principal", nodePrincipal, "--signer-file", operatorDevice,
 			"--output", "json", "identity", "application-ticket", "issue",
 			"--principal", appPrincipal,
 			"--action", "application.content.put", "--action", "application.content.get",
 			"--out-file", ticketPath, "--yes")
-		run(t, probeBinary, "enroll", applicationSocket, nodePrincipal, ticketPath, appIdentityPath, appRootPath)
+		staleFailure := runError(t, probeBinary, "enroll", applicationSocket, nodePrincipal, staleTicketPath, appIdentityPath, appRootPath)
+		require.NotContains(t, string(staleFailure), appPrincipal)
+		require.FileExists(t, staleTicketPath)
+
+		daemon.stop()
+		daemon = nil
+		daemon = startDaemon(t, faultDaemonBinary, configPath, logPath)
+		require.NoError(t, waitForHTTP("http://"+observabilityAddress+"/healthz", daemon.exited), readLog(logPath))
+		require.NoError(t, waitForPath(operatorSocket, daemon.exited), readLog(logPath))
+		require.NoError(t, waitForPath(applicationSocket, daemon.exited), readLog(logPath))
+		runError(t, probeBinary, "enroll", applicationSocket, nodePrincipal, ticketPath, appIdentityPath, appRootPath)
+		require.FileExists(t, ticketPath)
+
+		var enrollment struct {
+			GrantID string `json:"grant_id"`
+		}
+		require.NoError(t, json.Unmarshal(run(t, probeBinary, "enroll", applicationSocket, nodePrincipal, ticketPath, appIdentityPath, appRootPath), &enrollment))
+		applicationGrantID = enrollment.GrantID
+		require.Regexp(t, `^ag1_[a-z2-7]{52}$`, applicationGrantID)
+		require.NoFileExists(t, ticketPath)
 	})
 
 	scenario.Step("put and get content with an Application Principal session", func(t *testing.T) {
 		run(t, probeBinary, "use", applicationSocket, nodePrincipal, appIdentityPath)
+	})
+
+	var durableReference applicationContentReference
+	scenario.Step("reauthenticate after Application and Node restart and get existing content", func(t *testing.T) {
+		require.NoError(t, json.Unmarshal(run(t, probeBinary, "put", applicationSocket, nodePrincipal, appIdentityPath, "durable application payload"), &durableReference))
+		require.NotEmpty(t, durableReference.Kind)
+		require.NotEmpty(t, durableReference.ID)
+
+		daemon.stop()
+		daemon = nil
+		daemon = startDaemon(t, daemonBinary, configPath, logPath)
+		require.NoError(t, waitForHTTP("http://"+observabilityAddress+"/healthz", daemon.exited), readLog(logPath))
+		require.NoError(t, waitForPath(operatorSocket, daemon.exited), readLog(logPath))
+		require.NoError(t, waitForPath(applicationSocket, daemon.exited), readLog(logPath))
+		run(t, probeBinary, "get", applicationSocket, nodePrincipal, appIdentityPath, durableReference.Kind, durableReference.ID, "durable application payload")
+	})
+
+	scenario.Step("distinguish live-session grant revocation from device revocation", func(t *testing.T) {
+		grantReady := filepath.Join(dir, "grant-ready")
+		grantContinue := filepath.Join(dir, "grant-continue")
+		deviceReady := filepath.Join(dir, "device-ready")
+		deviceContinue := filepath.Join(dir, "device-continue")
+		command := exec.Command(probeBinary, "observe-revocation",
+			applicationSocket, nodePrincipal, appIdentityPath,
+			durableReference.Kind, durableReference.ID,
+			grantReady, grantContinue, deviceReady, deviceContinue)
+		raw := &strings.Builder{}
+		command.Stdout = raw
+		command.Stderr = raw
+		require.NoError(t, command.Start())
+		probeExited := make(chan error, 1)
+		go func() { probeExited <- command.Wait() }()
+		require.NoError(t, waitForRegularFile(grantReady, probeExited), raw.String())
+
+		run(t, cliBinary,
+			"--addr", "unix://"+operatorSocket, "--principal", nodePrincipal, "--signer-file", operatorDevice,
+			"--output", "json", "identity", "grant", "revoke",
+			"--subject", appPrincipal, "--grant-id", applicationGrantID, "--yes")
+		signal(t, grantContinue)
+		require.NoError(t, waitForRegularFile(deviceReady, probeExited), raw.String())
+
+		run(t, cliBinary,
+			"--addr", "unix://"+operatorSocket, "--principal", nodePrincipal, "--signer-file", operatorDevice,
+			"--output", "json", "identity", "device", "revoke",
+			"--principal", appPrincipal, "--device-id", appDeviceID, "--yes")
+		signal(t, deviceContinue)
+		require.NoError(t, <-probeExited, raw.String())
+		require.Contains(t, raw.String(), `"grant":"forbidden"`)
+		require.Contains(t, raw.String(), `"device":"unauthenticated"`)
 	})
 
 	scenario.Assert("an Operator credential cannot establish an Application session without an Application grant", func(t *testing.T) {
@@ -216,6 +307,61 @@ func run(t *testing.T, binary string, args ...string) []byte {
 	return raw
 }
 
+func runError(t *testing.T, binary string, args ...string) []byte {
+	t.Helper()
+	command := exec.Command(binary, args...)
+	raw, err := command.CombinedOutput()
+	require.Error(t, err, string(raw))
+	return raw
+}
+
+func startDaemon(t *testing.T, binary, configPath, logPath string) *daemonProcess {
+	t.Helper()
+	command := exec.Command(binary)
+	command.Env = append(os.Environ(), "ARDENTS_CONFIG_FILE="+configPath)
+	output, err := os.OpenFile(logPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o600)
+	require.NoError(t, err)
+	command.Stdout = output
+	command.Stderr = output
+	exited := make(chan error, 1)
+	require.NoError(t, command.Start())
+	go func() { exited <- command.Wait() }()
+	return &daemonProcess{command: command, exited: exited, output: output}
+}
+
+func (p *daemonProcess) stop() {
+	if p == nil || p.command == nil {
+		return
+	}
+	if p.command.ProcessState == nil || !p.command.ProcessState.Exited() {
+		_ = p.command.Process.Kill()
+		<-p.exited
+	}
+	_ = p.output.Close()
+	p.command = nil
+}
+
+func signal(t *testing.T, path string) {
+	t.Helper()
+	require.NoError(t, os.WriteFile(path, []byte("continue"), 0o600))
+}
+
+func waitForRegularFile(path string, exited <-chan error) error {
+	deadline := time.Now().Add(15 * time.Second)
+	for time.Now().Before(deadline) {
+		select {
+		case processErr := <-exited:
+			return fmt.Errorf("Application probe exited before lifecycle signal: %w", processErr)
+		default:
+		}
+		if info, err := os.Stat(path); err == nil && info.Mode().IsRegular() {
+			return nil
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return fmt.Errorf("Application probe lifecycle signal was not created")
+}
+
 func waitForPath(path string, exited <-chan error) error {
 	deadline := time.Now().Add(15 * time.Second)
 	for time.Now().Before(deadline) {
@@ -274,13 +420,4 @@ func readLog(path string) string {
 		return "daemon log unavailable"
 	}
 	return string(raw)
-}
-
-func stopProcess(command *exec.Cmd) {
-	if command.ProcessState != nil && command.ProcessState.Exited() {
-		return
-	}
-	if command.Process != nil {
-		_ = command.Process.Kill()
-	}
 }
