@@ -67,8 +67,10 @@ jobs:
           ./tests/check-format.ps1
           go vet ./...
           New-Item -ItemType Directory -Force tests/.artifacts/reports/catalog | Out-Null
+          go test ./tests/tooling/testcatalog ./tests/tooling/audittrace -count=1
           go run ./tests/tooling/testcatalog ./tests/... | Tee-Object tests/.artifacts/reports/catalog/validation.json
           if ($LASTEXITCODE -ne 0) { throw "scenario catalog validation failed" }
+          go run ./tests/tooling/audittrace
           ./tests/ci/entrypoint-contract-gate-test.ps1
           ./tests/ci/release-source-identity-gate.ps1
           ./tests/ci/release-materials-policy-gate.ps1
@@ -80,9 +82,48 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
+  critical-lifecycle:
+    name: Critical diff, race, and lifecycle contracts
+    needs: static
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      AUDIT_DIFF_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Verify audit traceability and critical-file diff coverage
+        shell: pwsh
+        run: |
+          $base = $env:AUDIT_DIFF_BASE
+          if ([string]::IsNullOrWhiteSpace($base) -or $base -match '^0+$') {
+            $base = git rev-parse HEAD^
+            if ($LASTEXITCODE -ne 0) { throw "critical-file diff base is unavailable" }
+          }
+          go run ./tests/tooling/audittrace -base $base
+      - name: Run critical race and lifecycle contracts
+        shell: pwsh
+        run: >-
+          go test -race
+          ./internal/ingressproxy
+          ./internal/network/waku
+          ./internal/messaging
+          ./internal/content
+          ./internal/identity/access
+          ./internal/daemon
+          ./internal/workload/...
+          ./internal/transfer
+          ./internal/config
+          -count=1
+
   fast:
     name: Fast Docker/Linux suite
-    needs: static
+    needs: [static, critical-lifecycle]
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -101,7 +142,7 @@ jobs:
 
   tagged:
     name: ${{ matrix.suite }} Docker/Linux suite
-    needs: static
+    needs: [static, critical-lifecycle]
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     strategy:

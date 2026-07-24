@@ -60,11 +60,13 @@ reporting semantics in workflow-specific scripts.
 | 2 | static analysis | `go vet ./...` | process exits zero with no vet finding |
 | 3 | release source identity | `powershell -NoProfile -File tests/ci/release-source-identity-gate.ps1` | mismatched commits and dirty source fail before Docker; clean HEAD builds from an exported snapshot that excludes ignored files |
 | 4 | release materials policy | `powershell -NoProfile -File tests/ci/release-materials-policy-gate.ps1` | every release builder/runtime is digest-pinned, policy-bound, and independent rebuilds cannot share mutable caches |
-| 5 | fast + import boundary | `powershell -NoProfile -File tests/run.ps1 fast -CoverageProfile tests/.artifacts/coverage/fast.out` | import guard and default `go test ./...` both exit zero; coverage is retained |
-| 6 | integration | `powershell -NoProfile -File tests/run.ps1 integration -ReportDir tests/.artifacts/reports/integration` | runner exits zero and summary reports zero failures |
-| 7 | E2E | `powershell -NoProfile -File tests/run.ps1 e2e -ReportDir tests/.artifacts/reports/e2e` | runner exits zero and summary reports zero failures |
-| 8 | reachable vulnerabilities | `powershell -NoProfile -File tests/ci/security-gate.ps1` | exact finding IDs and reachability agree with the active exception register; any drift fails |
-| 9 | vulnerability evidence | produced by the same security gate | pinned JSON, verbose output, and reconciliation JSON are retained under `tests/.artifacts/security` |
+| 5 | audit traceability | `go run ./tests/tooling/audittrace` | every audit P1 has existing critical files, exact deterministic evidence, and a declared CI gate |
+| 6 | critical diff + lifecycle race | `go run ./tests/tooling/audittrace -base <merge-base>` followed by the `critical-lifecycle` CI job | changed critical files remain mapped; ingress, replay, Waku, identity, stream, Docker, content, transfer, and configuration contracts pass under `-race` |
+| 7 | fast + import boundary | `powershell -NoProfile -File tests/run.ps1 fast -CoverageProfile tests/.artifacts/coverage/fast.out` | import guard and default `go test ./...` both exit zero; coverage is retained |
+| 8 | integration | `powershell -NoProfile -File tests/run.ps1 integration -ReportDir tests/.artifacts/reports/integration` | runner exits zero and summary reports zero failures |
+| 9 | E2E | `powershell -NoProfile -File tests/run.ps1 e2e -ReportDir tests/.artifacts/reports/e2e` | runner exits zero and summary reports zero failures |
+| 10 | reachable vulnerabilities | `powershell -NoProfile -File tests/ci/security-gate.ps1` | exact finding IDs and reachability agree with the active exception register; any drift fails |
+| 11 | vulnerability evidence | produced by the same security gate | pinned JSON, verbose output, and reconciliation JSON are retained under `tests/.artifacts/security` |
 
 `tests/run.ps1 all -ReportDir tests/.artifacts/reports/all` is the release
 cross-check for tag interaction. It does not replace the separately attributable
@@ -81,7 +83,17 @@ processes, and vulnerability drift cannot be converted into a successful job
 by wrapper logic. The security gate permits only the exact IDs and reachability
 documented in `docs/security/security-exceptions.md`; disappearance also fails until the
 stale exception is deliberately removed. Earlier findings were Phase 1
-stabilization work, not an implicit waiver of gates 7–8.
+stabilization work, not an implicit waiver of gates 9–10.
+
+`tests/ci/audit-test-traceability.json` is the executable audit-to-test matrix.
+The verifier derives the required P1 set from the remediation backlog instead
+of trusting a duplicated list. It resolves every referenced file and Go test
+symbol, proves that the owning CI job selects the Go package or transitively
+executes the contract script, and rejects a changed file in any declared
+critical package or script area unless deterministic evidence covers that
+exact file. The `critical-lifecycle` job is a dependency of both the fast and
+tagged suites, so release work cannot bypass its selected race and lifecycle
+contracts.
 
 Selection flags for tagged suites:
 
