@@ -90,12 +90,40 @@ smoke slices remain separate:
 
 | Slice | Catalogue IDs now available | Count | Remaining evidence |
 |---|---|---:|---|
-| OCS-02 | `node.*`, `network.*`, `diagnostics.*` | 20 | real CLI/Operator RPC process smoke, response/outcome assertions and environment evidence |
+| OCS-02 | `node.*`, `network.*`, `diagnostics.*` | 20 | implemented by the tagged terminal Node/restart, Network/Discovery and exact-admission scenarios; release qualification remains separate |
 | OCS-03 | `workload.*` | 9 | workload/hosted-service lifecycle smoke; Docker-dependent rows stay explicitly tagged |
 | OCS-04 | `data.*` | 17 | Object/Blob/Manifest, retention and transfer lifecycle smoke, including asynchronous progress truth |
 | OCS-05 | `identity.device.revoke`, `identity.enroll`, `identity.grant.*`, `identity.delegation.import-revocation`, `identity.application-ticket.issue`, `identity.login`, `identity.status`, `identity.logout` | 10 | protected Identity administration/session process smoke, retry/reconciliation and redaction evidence |
 
 The remaining 12 entries are owned by OCS-01 contract evidence: two
 configuration commands, seven offline custody commands, shell, TUI and version.
-No OCS-02–OCS-05 process smoke or rejected-mutation outcome change is included
-in OCS-01.
+OCS-03–OCS-05 process smoke remains separate.
+
+## OCS-02 Procedure Evidence
+
+The `ocs-02` tagged terminal scenarios exercise all 20 Node, Network and
+Diagnostics catalogue entries through the real CLI parser, Principal session,
+generated Operator client and protected server admission:
+
+- Node lifecycle covers start, stop, status, runtime, features and JSON Lines
+  events, including restart-retained pending recovery truth.
+- Network/Discovery covers status, discovery, presence, peers, routes, records
+  list/import, both record kinds and service resolution.
+- Diagnostics covers snapshot, health, pending, explain and recent events.
+- A restricted grant fixture admits `network.status` and rejects its
+  `network.discovery` sibling with the structured permission error.
+
+Human and protobuf JSON projections are asserted in the procedure. A valid,
+older signed discovery record returns its full rejected response while the CLI
+returns exit 1 in both modes. The shared Session interceptor test separately
+proves that an `Unauthenticated` response refreshes exactly once and that
+`PermissionDenied` is not retried. The restart procedure re-reads durable
+pending truth with a newly constructed one-shot CLI client; Session-cache
+continuity belongs to persistent shell/TUI clients rather than separate CLI
+processes.
+
+The Operator test socket remains Unix stream-local transport. Its disposable
+path is allocated directly under the system temporary directory so it fits the
+platform `sockaddr_un` limit on Windows as well as Linux, and cleanup removes it
+after each fixture. This evidence is an implementation smoke, not release
+qualification or a production-readiness claim.

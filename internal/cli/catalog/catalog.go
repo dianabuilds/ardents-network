@@ -1,5 +1,5 @@
 // Package catalog owns the closed Operator CLI command metadata contract.
-// It describes commands and help; execution remains owned by the command packages.
+// It does not dispatch commands; execution remains owned by the command packages.
 package catalog
 
 import (

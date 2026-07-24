@@ -193,6 +193,21 @@ func (r Renderer) Status(status *protocol.OperationStatus) {
 	r.KV("accepted", fmt.Sprint(status.GetAccepted()))
 }
 
+// MutationOutcome translates an already-rendered synchronous mutation status
+// into the CLI exit contract. The response remains on stdout for
+// reconciliation; rejection is additionally summarized on stderr.
+func (r Renderer) MutationOutcome(status *protocol.OperationStatus) int {
+	if status != nil && status.GetAccepted() {
+		return 0
+	}
+	state, reason := "missing", "response did not include operation status"
+	if status != nil {
+		state = status.GetState()
+		reason = status.GetReason()
+	}
+	return r.Failure(fmt.Errorf("mutation response rejected: state=%s reason=%s", state, reason))
+}
+
 func (r Renderer) CSV(key string, values []string) {
 	if len(values) > 0 {
 		r.KV(key, strings.Join(values, ", "))

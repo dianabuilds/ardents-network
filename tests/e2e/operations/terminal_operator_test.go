@@ -5,6 +5,9 @@ package operations_e2e_test
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,11 +21,15 @@ import (
 
 	identitycontract "ardents/api/ardents/identity/v1"
 	"ardents/internal/cli"
+	"ardents/internal/cli/catalog"
 	cliclient "ardents/internal/cli/client"
 	appdata "ardents/internal/content"
 	runtimeinfra "ardents/internal/daemon"
 	runtimeprocess "ardents/internal/daemon"
 	discoveryapi "ardents/internal/discovery"
+	discoveryrecords "ardents/internal/discovery/records"
+	identityaccess "ardents/internal/identity/access"
+	identityprincipal "ardents/internal/identity/principal"
 	"ardents/internal/localapi/protocol"
 	transport "ardents/internal/network"
 	"ardents/tests/testkit"
@@ -54,7 +61,7 @@ func TestTerminalNodeRuntimeLifecycleAcrossRestartPreservesPendingTruth(t *testi
 		Domain:      "network-operator-terminal",
 		ScenarioID:  "NRE-001",
 		Suite:       "e2e",
-		Tags:        []string{"e2e", "network-operator-terminal", "node", "diagnostics"},
+		Tags:        []string{"e2e", "network-operator-terminal", "node", "diagnostics", "ocs-02"},
 		Speed:       "default",
 		Environment: "local",
 	})
@@ -82,6 +89,7 @@ func TestTerminalNodeRuntimeLifecycleAcrossRestartPreservesPendingTruth(t *testi
 		require.Contains(t, status.stdout, "node status")
 		require.Contains(t, status.stdout, "state: ready")
 		require.Contains(t, status.stdout, "ready: true")
+		requireProtoJSONFields(t, firstTerminal.run(t, context.Background(), "--output", "json", "node", "status"), "status", "snapshot", "features")
 
 		directPending := testkit.Diagnostics(first).PendingOperations()
 		require.NotEmpty(t, directPending, "direct diagnostics must retain recovery truth before terminal projection")
@@ -90,6 +98,50 @@ func TestTerminalNodeRuntimeLifecycleAcrossRestartPreservesPendingTruth(t *testi
 		require.Contains(t, pending.stdout, "operation: op-1")
 		require.Contains(t, pending.stdout, "  state: recovering")
 		require.Contains(t, pending.stdout, "  recovery_action: restart node")
+
+		runtime := firstTerminal.run(t, context.Background(), "node", "runtime")
+		require.Contains(t, runtime.stdout, "node runtime")
+		require.Contains(t, runtime.stdout, "state: ready")
+		require.Contains(t, runtime.stdout, "principal: "+firstTerminal.nodePrincipal)
+		requireProtoJSONFields(t, firstTerminal.run(t, context.Background(), "--output", "json", "node", "runtime"), "status", "runtime")
+
+		features := firstTerminal.run(t, context.Background(), "--output", "json", "node", "features")
+		var featureResponse ardentsv1.NodeFeaturesResponse
+		require.NoErrorf(t, protojson.Unmarshal([]byte(features.stdout), &featureResponse), "stdout=%s", features.stdout)
+		require.NotEmpty(t, featureResponse.GetFeatures().GetVersion())
+		require.NotEmpty(t, featureResponse.GetFeatures().GetServices())
+		featuresHuman := firstTerminal.run(t, context.Background(), "node", "features")
+		require.Contains(t, featuresHuman.stdout, "node features")
+		require.Contains(t, featuresHuman.stdout, "version:")
+
+		snapshot := firstTerminal.run(t, context.Background(), "--output", "json", "diagnostics", "snapshot")
+		var diagnosticResponse ardentsv1.DiagnosticsSnapshotResponse
+		require.NoErrorf(t, protojson.Unmarshal([]byte(snapshot.stdout), &diagnosticResponse), "stdout=%s", snapshot.stdout)
+		require.True(t, diagnosticResponse.GetStatus().GetAccepted())
+		require.NotEmpty(t, diagnosticResponse.GetDiagnostics().GetPendingOperations())
+		snapshotHuman := firstTerminal.run(t, context.Background(), "diagnostics", "snapshot")
+		require.Contains(t, snapshotHuman.stdout, "diagnostics snapshot")
+		require.Contains(t, snapshotHuman.stdout, "pending_operations:")
+
+		health := firstTerminal.run(t, context.Background(), "diagnostics", "health")
+		require.Contains(t, health.stdout, "diagnostics health")
+		require.Contains(t, health.stdout, "state:")
+		requireProtoJSONFields(t, firstTerminal.run(t, context.Background(), "--output", "json", "diagnostics", "health"), "status", "health")
+
+		requireProtoJSONFields(t, firstTerminal.run(t, context.Background(), "--output", "json", "diagnostics", "pending"), "status", "operations")
+
+		explain := firstTerminal.run(t, context.Background(), "diagnostics", "explain", "--scope", "workload", "--resource-id", "workloads")
+		require.Contains(t, explain.stdout, "diagnostics explain")
+		require.Contains(t, explain.stdout, "resource_id: workloads")
+		requireProtoJSONFields(t, firstTerminal.run(t, context.Background(), "--output", "json", "diagnostics", "explain", "--scope", "workload", "--resource-id", "workloads"), "status", "explanation")
+
+		events := firstTerminal.run(t, context.Background(), "--output", "json", "diagnostics", "events", "--limit", "5")
+		var eventResponse ardentsv1.ListEventsResponse
+		require.NoErrorf(t, protojson.Unmarshal([]byte(events.stdout), &eventResponse), "stdout=%s", events.stdout)
+		require.True(t, eventResponse.GetStatus().GetAccepted())
+		require.NotEmpty(t, eventResponse.GetEvents())
+		eventsHuman := firstTerminal.run(t, context.Background(), "diagnostics", "events", "--limit", "5")
+		require.Contains(t, eventsHuman.stdout, "diagnostics events")
 	})
 
 	scenario.Step("terminal stop persists shutdown terminal fate", func(t *testing.T) {
@@ -132,7 +184,7 @@ func TestTerminalNetworkSurfaceLifecycle(t *testing.T) {
 		Domain:      "network-operator-terminal",
 		ScenarioID:  "E2E-NET-SURFACE-001",
 		Suite:       "e2e",
-		Tags:        []string{"e2e", "network-operator-terminal", "network", "discovery"},
+		Tags:        []string{"e2e", "network-operator-terminal", "network", "discovery", "ocs-02"},
 		Speed:       "default",
 		Environment: "local",
 	})
@@ -172,11 +224,14 @@ func TestTerminalNetworkSurfaceLifecycle(t *testing.T) {
 	}).Runtime
 	t.Cleanup(func() { _ = sut.Stop(context.Background()) })
 	terminal := newTerminalHarness(t, sut)
+	var importedNodeSubject, importedServiceID string
 
 	scenario.Precondition("operator starts node through terminal", func(t *testing.T) {
-		start := terminal.run(t, context.Background(), "node", "start")
-		require.Contains(t, start.stdout, "node start")
-		require.Contains(t, start.stdout, "status: completed")
+		start := terminal.run(t, context.Background(), "--output", "json", "node", "start")
+		var response ardentsv1.CommandAckResponse
+		require.NoErrorf(t, protojson.Unmarshal([]byte(start.stdout), &response), "stdout=%s", start.stdout)
+		require.True(t, response.GetStatus().GetAccepted())
+		require.Equal(t, "completed", response.GetStatus().GetState())
 	})
 
 	scenario.Step("terminal shows node, network and discovery readiness", func(t *testing.T) {
@@ -188,37 +243,97 @@ func TestTerminalNetworkSurfaceLifecycle(t *testing.T) {
 		require.Contains(t, network.stdout, "network status")
 		require.Contains(t, network.stdout, "state: ready")
 		require.Contains(t, network.stdout, "profile:")
+		requireProtoJSONFields(t, terminal.run(t, context.Background(), "--output", "json", "network", "status"), "status", "network")
 
 		discovery := terminal.run(t, context.Background(), "network", "discovery")
 		require.Contains(t, discovery.stdout, "network discovery")
 		require.Contains(t, discovery.stdout, "state: ready")
+		requireProtoJSONFields(t, terminal.run(t, context.Background(), "--output", "json", "network", "discovery"), "status", "discovery")
+
+		presence := terminal.run(t, context.Background(), "--output", "json", "network", "presence")
+		var presenceResponse ardentsv1.LocalPresenceResponse
+		require.NoErrorf(t, protojson.Unmarshal([]byte(presence.stdout), &presenceResponse), "stdout=%s", presence.stdout)
+		require.True(t, presenceResponse.GetStatus().GetAccepted())
+		require.NotEmpty(t, presenceResponse.GetPresence().GetState())
+		presenceHuman := terminal.run(t, context.Background(), "network", "presence")
+		require.Contains(t, presenceHuman.stdout, "network presence")
+		require.Contains(t, presenceHuman.stdout, "state:")
+
+		peers := terminal.run(t, context.Background(), "network", "peers")
+		require.Contains(t, peers.stdout, "network peers")
+		requireProtoJSONFields(t, terminal.run(t, context.Background(), "--output", "json", "network", "peers"), "status", "peers")
+
+		recordList := terminal.run(t, context.Background(), "network", "records", "list")
+		require.Contains(t, recordList.stdout, "network records")
 	})
 
-	scenario.Step("terminal events and route inspection stay truthful before and after discovery import", func(t *testing.T) {
+	scenario.Step("terminal imports records through CLI and classifies a stale record as rejected", func(t *testing.T) {
 		beforeRoutes := terminal.run(t, context.Background(), "network", "routes", "--service", "echo")
 		require.Contains(t, beforeRoutes.stdout, "outcome: not_found")
-
-		watchCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		eventCh := make(chan terminalResult, 1)
-		go func() {
-			eventCh <- terminal.run(t, watchCtx, "--watch", "node", "events", "--limit", "1")
-		}()
 
 		records, err := remote.ListRecords()
 		require.NoError(t, err)
 		require.NotEmpty(t, records)
 		for _, record := range records {
 			record.Source = "bootstrap"
-			_, err := terminal.service().ImportRecord(context.Background(), testkit.AuthorizedRequest(&ardentsv1.ImportRecordRequest{
-				Record: toProtoDiscoveryRecord(record),
-			}))
-			require.NoError(t, err)
+			if record.Node != nil {
+				importedNodeSubject = record.Node.Principal
+			}
+			if record.Service != nil {
+				importedServiceID = record.Service.ID
+			}
+			recordFile := writeProtoJSON(t, toProtoDiscoveryRecord(record))
+			imported := terminal.run(t, context.Background(), "--output", "json", "network", "records", "import", "--file", recordFile)
+			requireProtoJSONFields(t, imported, "status")
 		}
+		require.NotEmpty(t, importedNodeSubject)
+		require.NotEmpty(t, importedServiceID)
 
-		events := <-eventCh
-		require.Contains(t, events.stdout, "[discovery/imported]")
+		fresh, signer := terminalSignedNodeRecord(t, []string{"tcp://fresh"})
+		freshFile := writeProtoJSON(t, toProtoDiscoveryRecord(fresh))
+		events := captureTerminalNodeEvent(t, terminal, []string{"--output", "json", "--watch", "node", "events", "--limit", "1"}, func() {
+			terminal.run(t, context.Background(), "network", "records", "import", "--file", freshFile)
+		})
+		var event map[string]any
+		require.NoErrorf(t, json.Unmarshal(bytes.TrimSpace([]byte(events.stdout)), &event), "stdout=%s", events.stdout)
+		require.Equal(t, "discovery", event["domain"])
+		require.Equal(t, "imported", event["type"])
 
+		humanFresh, _ := terminalSignedNodeRecord(t, []string{"tcp://human"})
+		humanFreshFile := writeProtoJSON(t, toProtoDiscoveryRecord(humanFresh))
+		humanEvents := captureTerminalNodeEvent(t, terminal, []string{"--watch", "node", "events", "--limit", "1"}, func() {
+			terminal.run(t, context.Background(), "network", "records", "import", "--file", humanFreshFile)
+		})
+		require.Contains(t, humanEvents.stdout, "[discovery/imported]")
+
+		stale := fresh
+		staleNode := *fresh.Node
+		staleNode.Endpoints = []string{"tcp://older"}
+		stale.Node = &staleNode
+		stale.IssuedAt = fresh.IssuedAt.Add(-time.Minute)
+		signTerminalDiscoveryRecord(t, &stale, signer)
+		staleFile := writeProtoJSON(t, toProtoDiscoveryRecord(stale))
+
+		rejected := terminal.runOutcome(t, context.Background(), "--output", "json", "network", "records", "import", "--file", staleFile)
+		require.Equal(t, 1, rejected.code)
+		var rejectedResponse ardentsv1.RecordImportResponse
+		require.NoErrorf(t, protojson.Unmarshal([]byte(rejected.stdout), &rejectedResponse), "stdout=%s", rejected.stdout)
+		require.False(t, rejectedResponse.GetStatus().GetAccepted())
+		var rejectedError map[string]any
+		require.NoError(t, json.Unmarshal([]byte(rejected.stderr), &rejectedError))
+		require.Contains(t, rejectedError["message"], "mutation response rejected")
+
+		humanRejected := terminal.runOutcome(t, context.Background(), "network", "records", "import", "--file", staleFile)
+		require.Equal(t, 1, humanRejected.code)
+		require.Contains(t, humanRejected.stdout, "network records import")
+		require.Contains(t, humanRejected.stdout, "status: rejected")
+		require.Contains(t, humanRejected.stdout, "reason:")
+		require.Contains(t, humanRejected.stdout, "accepted: false")
+		require.Contains(t, humanRejected.stderr, "message: mutation response rejected")
+
+	})
+
+	scenario.Step("terminal resolves imported records and routes without domain shortcuts", func(t *testing.T) {
 		testkit.WaitForCondition(t, 10*time.Second, "terminal network routes become usable after import", func() (bool, string) {
 			routes := terminal.run(t, context.Background(), "network", "routes", "--service", "echo")
 			if !bytes.Contains([]byte(routes.stdout), []byte("candidate:")) {
@@ -233,6 +348,23 @@ func TestTerminalNetworkSurfaceLifecycle(t *testing.T) {
 		afterRoutes := terminal.run(t, context.Background(), "network", "routes", "--service", "echo")
 		require.Contains(t, afterRoutes.stdout, "candidate:")
 		require.NotContains(t, afterRoutes.stdout, "outcome: not_found")
+		requireProtoJSONFields(t, terminal.run(t, context.Background(), "--output", "json", "network", "routes", "--service", "echo"), "status", "candidates", "route")
+
+		listed := terminal.run(t, context.Background(), "--output", "json", "network", "records", "list")
+		requireProtoJSONFields(t, listed, "status", "records")
+
+		resolvedNode := terminal.run(t, context.Background(), "network", "resolve", "record", "--subject", importedNodeSubject, "--kind", "node")
+		require.Contains(t, resolvedNode.stdout, "network resolve record")
+		require.Contains(t, resolvedNode.stdout, "subject: "+importedNodeSubject)
+
+		resolvedService := terminal.run(t, context.Background(), "--output", "json", "network", "resolve", "record", "--subject", importedServiceID, "--kind", "service")
+		requireProtoJSONFields(t, resolvedService, "record", "outcome")
+
+		service := terminal.run(t, context.Background(), "network", "resolve", "service", "--service", importedServiceID)
+		require.Contains(t, service.stdout, "network resolve service")
+		require.Contains(t, service.stdout, "service: "+importedServiceID)
+		requireProtoJSONFields(t, terminal.run(t, context.Background(), "--output", "json", "network", "resolve", "service", "--service", importedServiceID), "service", "outcome", "matches", "route")
+
 		response, err := http.Get(remoteEndpoint)
 		require.NoError(t, err)
 		defer func() { require.NoError(t, response.Body.Close()) }()
@@ -240,15 +372,55 @@ func TestTerminalNetworkSurfaceLifecycle(t *testing.T) {
 	})
 
 	scenario.Assert("terminal shows shutdown truth without false ready state", func(t *testing.T) {
-		stop := terminal.run(t, context.Background(), "node", "stop")
-		require.Contains(t, stop.stdout, "node stop")
-		require.Contains(t, stop.stdout, "status: completed")
+		stop := terminal.run(t, context.Background(), "--output", "json", "node", "stop")
+		var response ardentsv1.CommandAckResponse
+		require.NoErrorf(t, protojson.Unmarshal([]byte(stop.stdout), &response), "stdout=%s", stop.stdout)
+		require.True(t, response.GetStatus().GetAccepted())
+		require.Equal(t, "completed", response.GetStatus().GetState())
 
 		status := terminal.run(t, context.Background(), "node", "status")
 		require.Contains(t, status.stdout, "state: stopped")
 
 		network := terminal.run(t, context.Background(), "network", "status")
 		require.Contains(t, network.stdout, "state: stopped")
+	})
+}
+
+func TestTerminalOperatorAdmissionRejectsSiblingAction(t *testing.T) {
+	testkit.ConfigureLoopbackTransport(t)
+	scenario := testkit.BeginScenario(t, testkit.Spec{
+		Layer:       testkit.LayerE2E,
+		Domain:      "network-operator-terminal",
+		ScenarioID:  "OCS-02-ADMISSION-001",
+		Suite:       "e2e",
+		Tags:        []string{"e2e", "network-operator-terminal", "ocs-02", "security"},
+		Speed:       "fast",
+		Environment: "local",
+	})
+
+	runtime := testkit.NewRuntime(t, runtimeinfra.Config{
+		Name: "terminal-ocs02-admission",
+		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
+	}).Runtime
+	t.Cleanup(func() { _ = runtime.Stop(context.Background()) })
+	fixture := testkit.NewOperatorCLIFixtureWithActions(t, runtime, catalogueActions(t,
+		"node.start", "node.runtime", "network.status",
+	))
+	terminal := newTerminalHarnessFromFixture(t, fixture)
+
+	scenario.Precondition("the exact granted Node and Network procedures succeed", func(t *testing.T) {
+		terminal.run(t, context.Background(), "node", "start")
+		status := terminal.run(t, context.Background(), "--output", "json", "network", "status")
+		requireProtoJSONFields(t, status, "status", "network")
+	})
+	scenario.Assert("a sibling discovery action is denied without fallback", func(t *testing.T) {
+		denied := terminal.runOutcome(t, context.Background(), "--output", "json", "network", "discovery")
+		require.Equal(t, 1, denied.code)
+		require.Empty(t, denied.stdout)
+		var failure map[string]any
+		require.NoError(t, json.Unmarshal([]byte(denied.stderr), &failure))
+		require.Equal(t, "permission_denied", failure["code"])
 	})
 }
 
@@ -393,8 +565,6 @@ func TestTerminalServiceAndDataSurfaceReadiness(t *testing.T) {
 }
 
 type terminalHarness struct {
-	addr          string
-	signerFile    string
 	nodePrincipal string
 	client        cliclient.Service
 	authPacer     *terminalAuthPacer
@@ -416,8 +586,15 @@ type terminalResult struct {
 func newTerminalHarness(t *testing.T, runtime *runtimeprocess.Node) terminalHarness {
 	t.Helper()
 	fixture := testkit.NewOperatorCLIFixture(t, runtime)
+	return newTerminalHarnessFromFixture(t, fixture)
+}
+
+func newTerminalHarnessFromFixture(t *testing.T, fixture testkit.OperatorCLIFixture) terminalHarness {
+	t.Helper()
+	t.Setenv("ARDENTS_ADDR", fixture.Addr)
+	t.Setenv("ARDENTS_SIGNER_FILE", fixture.SignerFile)
+	t.Setenv("ARDENTS_EXPECTED_PRINCIPAL", fixture.NodePrincipal)
 	return terminalHarness{
-		addr: fixture.Addr, signerFile: fixture.SignerFile,
 		nodePrincipal: fixture.NodePrincipal, client: fixture.Client,
 		// Fixture provisioning performs enrollment-proof and session Begin
 		// calls against the same in-process Unix source before CLI commands.
@@ -427,19 +604,48 @@ func newTerminalHarness(t *testing.T, runtime *runtimeprocess.Node) terminalHarn
 
 func (h terminalHarness) run(t *testing.T, ctx context.Context, args ...string) terminalResult {
 	t.Helper()
+	result := h.runOutcome(t, ctx, args...)
+	require.Equalf(t, 0, result.code, "stderr=%s", result.stderr)
+	require.Empty(t, result.stderr)
+	return result
+}
+
+func (h terminalHarness) runOutcome(t *testing.T, ctx context.Context, args ...string) terminalResult {
+	t.Helper()
 	h.authPacer.wait()
+	return h.runOutcomeUnpaced(ctx, args...)
+}
 
-	t.Setenv("ARDENTS_ADDR", h.addr)
-	t.Setenv("ARDENTS_SIGNER_FILE", h.signerFile)
-	t.Setenv("ARDENTS_EXPECTED_PRINCIPAL", h.nodePrincipal)
-
+func (h terminalHarness) runOutcomeUnpaced(ctx context.Context, args ...string) terminalResult {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	code := cli.Run(ctx, args, &stdout, &stderr)
-	require.Equalf(t, 0, code, "stderr=%s", stderr.String())
-	require.Empty(t, stderr.String())
-
 	return terminalResult{stdout: stdout.String(), stderr: stderr.String(), code: code}
+}
+
+func captureTerminalNodeEvent(t *testing.T, terminal terminalHarness, args []string, trigger func()) terminalResult {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	ready := make(chan struct{})
+	result := make(chan terminalResult, 1)
+	go func() {
+		terminal.authPacer.wait()
+		close(ready)
+		result <- terminal.runOutcomeUnpaced(ctx, args...)
+	}()
+	<-ready
+	time.Sleep(time.Second)
+	trigger()
+	select {
+	case event := <-result:
+		require.Equalf(t, 0, event.code, "stderr=%s", event.stderr)
+		require.Empty(t, event.stderr)
+		return event
+	case <-ctx.Done():
+		require.FailNow(t, "terminal event stream did not finish", "%v", ctx.Err())
+		return terminalResult{}
+	}
 }
 
 func (h terminalHarness) service() cliclient.Service {
@@ -497,6 +703,35 @@ func writeProtoJSON(t *testing.T, msg proto.Message) string {
 	path := filepath.Join(t.TempDir(), "input.json")
 	require.NoError(t, os.WriteFile(path, data, 0o644))
 	return path
+}
+
+func requireProtoJSONFields(t *testing.T, result terminalResult, fields ...string) map[string]any {
+	t.Helper()
+	var decoded map[string]any
+	require.NoErrorf(t, json.Unmarshal([]byte(result.stdout), &decoded), "stdout=%s", result.stdout)
+	for _, field := range fields {
+		require.Contains(t, decoded, field)
+	}
+	return decoded
+}
+
+func catalogueActions(t *testing.T, ids ...string) []identityaccess.Action {
+	t.Helper()
+	actions := make([]identityaccess.Action, len(ids))
+	for index, id := range ids {
+		var spec catalog.CommandSpec
+		var ok bool
+		for _, candidate := range catalog.Commands() {
+			if candidate.ID == id {
+				spec, ok = candidate, true
+				break
+			}
+		}
+		require.Truef(t, ok, "unknown command catalogue ID %q", id)
+		require.NotEmptyf(t, spec.Action, "command %q has no protected action", id)
+		actions[index] = identityaccess.Action(spec.Action)
+	}
+	return actions
 }
 
 func terminalReadyConfig(t *testing.T, port int) string {
@@ -559,6 +794,31 @@ func toProtoDiscoveryRecord(record discoveryapi.CatalogRecordSnapshot) *ardentsv
 		}}
 	}
 	return out
+}
+
+func terminalSignedNodeRecord(t *testing.T, endpoints []string) (discoveryapi.CatalogRecordSnapshot, ed25519.PrivateKey) {
+	t.Helper()
+	public, private, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	publicKey := base64.StdEncoding.EncodeToString(public)
+	principal, err := identityprincipal.FromPublicKey(publicKey)
+	require.NoError(t, err)
+	record := discoveryapi.CatalogRecordSnapshot{
+		Version: discoveryrecords.Version,
+		Node: &discoveryapi.CatalogNodeFactsSnapshot{
+			Principal: principal, PublicKey: publicKey, Endpoints: append([]string(nil), endpoints...),
+		},
+		IssuedAt: time.Now().UTC(), ExpiresAt: time.Now().UTC().Add(time.Hour),
+	}
+	signTerminalDiscoveryRecord(t, &record, private)
+	return record, private
+}
+
+func signTerminalDiscoveryRecord(t *testing.T, record *discoveryapi.CatalogRecordSnapshot, private ed25519.PrivateKey) {
+	t.Helper()
+	payload, err := discoveryapi.Canonical(discoveryapi.RecordFromSnapshot(*record))
+	require.NoError(t, err)
+	record.Signature = base64.StdEncoding.EncodeToString(ed25519.Sign(private, payload))
 }
 
 func timestampProto(value time.Time) *timestamppb.Timestamp {

@@ -57,11 +57,11 @@ func (a *Command) nodeStart(ctx context.Context) int {
 	}
 	if a.ctx.Renderer.JSON {
 		output.JSON(a.ctx.Renderer.Out, resp.Msg)
-		return 0
+		return a.ctx.Renderer.MutationOutcome(resp.Msg.GetStatus())
 	}
 	output.Header(a.ctx.Renderer.Out, "node start")
 	output.Status(a.ctx.Renderer.Out, resp.Msg.GetStatus())
-	return 0
+	return a.ctx.Renderer.MutationOutcome(resp.Msg.GetStatus())
 }
 
 func (a *Command) nodeStop(ctx context.Context) int {
@@ -73,11 +73,11 @@ func (a *Command) nodeStop(ctx context.Context) int {
 	}
 	if a.ctx.Renderer.JSON {
 		output.JSON(a.ctx.Renderer.Out, resp.Msg)
-		return 0
+		return a.ctx.Renderer.MutationOutcome(resp.Msg.GetStatus())
 	}
 	output.Header(a.ctx.Renderer.Out, "node stop")
 	output.Status(a.ctx.Renderer.Out, resp.Msg.GetStatus())
-	return 0
+	return a.ctx.Renderer.MutationOutcome(resp.Msg.GetStatus())
 }
 
 func (a *Command) nodeStatus(ctx context.Context) int {

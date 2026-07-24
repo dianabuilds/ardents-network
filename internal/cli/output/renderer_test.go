@@ -82,3 +82,42 @@ func TestJSONFailureUsesCommonErrorObjectOnStderr(t *testing.T) {
 		t.Fatalf("unexpected failure object: %#v", decoded)
 	}
 }
+
+func TestMutationOutcomeRejectsUnacceptedStatusWithoutReplacingResponse(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		status *protocol.OperationStatus
+		code   int
+	}{
+		{name: "accepted", status: &protocol.OperationStatus{State: "completed", Accepted: true}, code: 0},
+		{name: "rejected", status: &protocol.OperationStatus{State: "rejected", Reason: "already started"}, code: 1},
+		{name: "missing status", code: 1},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			renderer := NewRenderer(&stdout, &stderr, true)
+			renderer.Message(&protocol.CommandAckResponse{Status: test.status})
+
+			if code := renderer.MutationOutcome(test.status); code != test.code {
+				t.Fatalf("code = %d, want %d", code, test.code)
+			}
+			var response map[string]any
+			if err := json.Unmarshal(stdout.Bytes(), &response); err != nil {
+				t.Fatalf("response is not preserved as proto JSON: %v: %s", err, stdout.String())
+			}
+			if test.code == 0 {
+				if stderr.Len() != 0 {
+					t.Fatalf("accepted mutation stderr = %q", stderr.String())
+				}
+				return
+			}
+			var failure map[string]any
+			if err := json.Unmarshal(stderr.Bytes(), &failure); err != nil {
+				t.Fatalf("rejection is not the common JSON error object: %v: %s", err, stderr.String())
+			}
+			if !strings.Contains(failure["message"].(string), "mutation response rejected") {
+				t.Fatalf("unexpected rejection message: %#v", failure)
+			}
+		})
+	}
+}

@@ -169,11 +169,11 @@ func (a *Command) importRecord(ctx context.Context, args []string) int {
 	}
 	if a.ctx.Renderer.JSON {
 		output.JSON(a.ctx.Renderer.Out, resp.Msg)
-		return 0
+		return a.ctx.Renderer.MutationOutcome(resp.Msg.GetStatus())
 	}
 	output.Header(a.ctx.Renderer.Out, "network records import")
 	output.Status(a.ctx.Renderer.Out, resp.Msg.GetStatus())
-	return 0
+	return a.ctx.Renderer.MutationOutcome(resp.Msg.GetStatus())
 }
 
 func loadDiscoveryRecord(input io.Reader, path string) (*ardentsv1.DiscoveryRecord, error) {

@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"testing"
 	"time"
@@ -234,16 +233,16 @@ func NewOperatorCLIFixture(t *testing.T, nodeRuntime *runtimeprocess.Node) Opera
 
 func NewOperatorCLIFixtureWithActions(t *testing.T, nodeRuntime *runtimeprocess.Node, actions []identityaccess.Action) OperatorCLIFixture {
 	t.Helper()
-	if runtime.GOOS == "windows" {
-		t.Skip("Principal-only CLI runtime tests require Unix-domain sockets")
-	}
 	material := newOperatorPrincipalMaterialWithActions(t, actions)
 	deps := ConnectDependencies(nodeRuntime)
 	deps.Node = principalBoundRuntime{Node: nodeRuntime, principal: material.node}
 	_, handler, err := rpcadapter.NewProtectedHandler(deps, material.service, material.node, material.peer, material.source)
 	require.NoError(t, err)
 
-	socketPath := filepath.Join(t.TempDir(), "operator.sock")
+	socketDir, err := os.MkdirTemp("", "ardents-operator-")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, os.RemoveAll(socketDir)) })
+	socketPath := filepath.Join(socketDir, "operator.sock")
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
 	require.NoError(t, os.Chmod(socketPath, 0o600))
