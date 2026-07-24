@@ -92,13 +92,39 @@ esac
 service_active() { systemctl is-active --quiet ardentsd.service; }
 require_stopped() { ! service_active || fail "stop ardentsd.service before $1"; }
 
+config_string_value() {
+    key=$1
+    values=$(sed -n 's/^[[:space:]]*"'"$key"'":[[:space:]]*"\([^"]*\)"[,]*[[:space:]]*$/\1/p' "$config_path")
+    [ "$(printf '%s\n' "$values" | sed '/^$/d' | wc -l)" -eq 1 ] || return 1
+    printf '%s\n' "$values"
+}
+
+configured_observability_url() {
+    address=$(config_string_value listen_address) || return 1
+    printf '%s\n' "$address" |
+        grep -E '^127(\.[0-9]{1,3}){3}:[0-9]{1,5}$|^\[::1\]:[0-9]{1,5}$' >/dev/null ||
+        return 1
+    printf 'http://%s/readyz\n' "$address"
+}
+
+installed_build_identity() {
+    identity=$("$bin_dir/ardentsd" --version) || return 1
+    printf '%s' "$identity" | sha256sum | cut -d' ' -f1
+}
+
 wait_ready() {
+    readiness_url=$(configured_observability_url) || return 1
+    expected_principal=$(config_string_value subject) || return 1
+    expected_build_identity=$(installed_build_identity) || return 1
     attempt=0
     while [ "$attempt" -lt 150 ]; do
-        if [ -S "$socket_path" ] && curl --fail --silent --show-error \
-            http://127.0.0.1:9090/readyz 2>/dev/null |
-            grep -E '"status":[[:space:]]*"ready"' >/dev/null; then
-            return 0
+        if [ -S "$socket_path" ]; then
+            response=$(curl --fail --silent --show-error "$readiness_url" 2>/dev/null) || response=
+            if printf '%s' "$response" | grep -F '"status":"ready"' >/dev/null &&
+                printf '%s' "$response" | grep -F '"principal":"'"$expected_principal"'"' >/dev/null &&
+                printf '%s' "$response" | grep -F '"build_identity":"'"$expected_build_identity"'"' >/dev/null; then
+                return 0
+            fi
         fi
         attempt=$((attempt + 1)); sleep 0.1
     done

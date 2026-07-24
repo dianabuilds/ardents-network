@@ -1,6 +1,9 @@
 package buildinfo
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"runtime"
 	"testing"
 
@@ -19,4 +22,12 @@ func TestCurrentIncludesRuntimeAndInjectedIdentity(t *testing.T) {
 	require.Equal(t, runtime.Version(), info.GoVersion)
 	require.NotEmpty(t, info.OS)
 	require.NotEmpty(t, info.Arch)
+}
+
+func TestFingerprintMatchesVersionJSON(t *testing.T) {
+	encoded, err := json.Marshal(Current())
+	require.NoError(t, err)
+	sum := sha256.Sum256(encoded)
+
+	require.Equal(t, hex.EncodeToString(sum[:]), Fingerprint())
 }

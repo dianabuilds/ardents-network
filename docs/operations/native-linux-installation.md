@@ -142,10 +142,15 @@ sudo ./scripts/install/linux.sh upgrade
 
 The installer requires matching daemon/CLI build identities, stops an active
 Node, creates a consistency-group backup, retains the prior binary pair, and
-starts the candidate. Success requires the local observability `/readyz`
-endpoint to report ready. This endpoint is a read-only health boundary, not an
-Operator credential. A failed candidate is stopped and the previous healthy
-pair is restored automatically; the command still exits non-zero.
+starts the candidate. Success requires the `/readyz` endpoint from the
+installed operator configuration's effective loopback
+`observability.listen_address` to report composite readiness for the retained
+Node Principal and the exact candidate build fingerprint. The installer never
+substitutes the default `127.0.0.1:9090` when another address is configured, so
+an unrelated healthy service on the default port cannot accept a candidate.
+This endpoint is a read-only health boundary, not an Operator credential. A
+failed candidate is stopped and the previous healthy pair is restored
+automatically; the command still exits non-zero.
 
 One prior binary pair is retained for explicit rollback:
 

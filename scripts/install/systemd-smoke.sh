@@ -14,12 +14,21 @@ application_dir=/var/lib/ardents-applications
 application_socket="$application_dir/application.sock"
 backup=/var/backups/ardents/manual-smoke.tar.gz
 restore_backup=/var/backups/ardents/restore-smoke.tar.gz
+alternate_observability_address=127.0.0.1:19090
+decoy_pid=
 
 diagnose() {
     systemctl status ardentsd.service --no-pager >&2 || true
     journalctl -u ardentsd.service --no-pager -n 100 >&2 || true
 }
-trap diagnose HUP INT TERM
+cleanup() {
+    if [ -n "$decoy_pid" ]; then
+        kill "$decoy_pid" >/dev/null 2>&1 || true
+        wait "$decoy_pid" >/dev/null 2>&1 || true
+    fi
+}
+trap 'cleanup; diagnose' HUP INT TERM
+trap cleanup EXIT
 
 wait_ready() {
     attempt=0
@@ -35,8 +44,8 @@ wait_ready() {
 wait_infra() {
     attempt=0
     until [ -S "$socket_path" ] && [ -f "$bootstrap_ticket" ] &&
-        curl --fail --silent http://127.0.0.1:9090/readyz |
-        grep -E '"status":[[:space:]]*"ready"' >/dev/null; do
+        curl --fail --silent http://127.0.0.1:9090/healthz |
+        grep -E '"status":[[:space:]]*"alive"' >/dev/null; do
         attempt=$((attempt + 1))
         [ "$attempt" -lt 150 ] || { diagnose; return 1; }
         sleep 0.1
@@ -75,6 +84,14 @@ test "$(stat -c '%G' "$application_dir")" = ardents-apps
 test "$(stat -c '%G' "$application_socket")" = ardents-apps
 test ! -e "$application_dir/application-token"
 test ! -e /var/lib/ardents/secrets/api-token
+
+systemctl stop ardentsd.service
+sed -i 's/"listen_address": "127.0.0.1:9090"/"listen_address": "'"$alternate_observability_address"'"/' "$config_file"
+grep -F '"listen_address": "'"$alternate_observability_address"'"' "$config_file" >/dev/null
+systemctl start ardentsd.service
+wait_ready
+curl --fail --silent "http://$alternate_observability_address/readyz" |
+    grep -E '"status":[[:space:]]*"ready"' >/dev/null
 
 systemctl stop ardentsd.service
 /usr/local/bin/ardentsd init --authority-dir /var/lib/ardents-authority --node-dir /var/lib/ardents \
@@ -118,9 +135,29 @@ fi
 systemctl is-active --quiet ardentsd.service
 wait_ready; version_is v0.2.0
 
+DECOY_PRINCIPAL="$node_principal" python3 -c '
+import os
+from http.server import BaseHTTPRequestHandler, HTTPServer
+class Ready(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        body = (
+            "{\"status\":\"ready\",\"state\":\"ready\",\"health\":\"ready\","
+            "\"principal\":\"%s\",\"build_identity\":\"%s\"}"
+            % (os.environ["DECOY_PRINCIPAL"], "0" * 64)
+        )
+        self.wfile.write(body.encode())
+    def log_message(self, *_):
+        pass
+HTTPServer(("127.0.0.1", 9090), Ready).serve_forever()
+' &
+decoy_pid=$!
 if "$installer" upgrade --source-dir "$bad_dir" --backup /var/backups/ardents/pre-bad.tar.gz; then
     echo 'failing upgrade unexpectedly succeeded' >&2; exit 1
 fi
+kill "$decoy_pid"; wait "$decoy_pid" >/dev/null 2>&1 || true; decoy_pid=
 systemctl is-active --quiet ardentsd.service
 wait_ready; version_is v0.2.0
 

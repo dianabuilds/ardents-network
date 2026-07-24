@@ -1,6 +1,7 @@
 package observability
 
 import (
+	"ardents/internal/buildinfo"
 	"crypto/subtle"
 	"encoding/json"
 	"log/slog"
@@ -71,17 +72,24 @@ func (s *Surface) ready(w http.ResponseWriter, _ *http.Request) {
 	health := healthState(snapshot.Health.State)
 	status := http.StatusServiceUnavailable
 	result := "not_ready"
-	if snapshot.Node.Ready && health == "ready" {
+	if snapshot.Readiness.Ready {
 		status = http.StatusOK
 		result = "ready"
 	}
-	writeProbe(w, status, probeResponse{Status: result, State: state, Health: health})
+	writeProbe(w, status, probeResponse{
+		Status: result, State: state, Health: health,
+		Node: snapshot.Node.Name, Principal: snapshot.Identity.Principal,
+		BuildIdentity: buildinfo.Fingerprint(),
+	})
 }
 
 type probeResponse struct {
-	Status string `json:"status"`
-	State  string `json:"state,omitempty"`
-	Health string `json:"health,omitempty"`
+	Status        string `json:"status"`
+	State         string `json:"state,omitempty"`
+	Health        string `json:"health,omitempty"`
+	Node          string `json:"node,omitempty"`
+	Principal     string `json:"principal,omitempty"`
+	BuildIdentity string `json:"build_identity,omitempty"`
 }
 
 func writeProbe(w http.ResponseWriter, status int, response probeResponse) {

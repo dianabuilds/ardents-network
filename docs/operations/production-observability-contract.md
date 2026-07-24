@@ -10,7 +10,9 @@ domain persistence directly.
 The daemon exposes a dedicated HTTP listener with three fixed routes:
 
 - `/healthz` proves that the daemon process can serve requests;
-- `/readyz` projects canonical node lifecycle and Diagnostics health;
+- `/readyz` projects canonical composite readiness and returns the public Node
+  Principal plus an opaque build fingerprint so native rollout can bind
+  acceptance to the configured daemon instance and candidate version;
 - `/metrics` exports bounded Prometheus metrics.
 
 The listener defaults to `127.0.0.1:9090` and accepts loopback addresses only.

@@ -2,6 +2,7 @@ package observability
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
@@ -9,11 +10,13 @@ import (
 	"testing"
 	"time"
 
+	"ardents/internal/buildinfo"
 	appdata "ardents/internal/content"
 	daemonruntime "ardents/internal/daemon"
 	diagapi "ardents/internal/diagnostics"
 	"ardents/internal/discovery"
 	"ardents/internal/hosting"
+	"ardents/internal/identity"
 	"ardents/internal/network"
 	"ardents/internal/transfer"
 	workloadapi "ardents/internal/workload"
@@ -32,7 +35,14 @@ func TestSurfaceProjectsCanonicalReadyMetricsWithoutResourceLabels(t *testing.T)
 	surface.Handler().ServeHTTP(ready, request)
 	require.Equal(t, http.StatusOK, ready.Code)
 	require.Equal(t, "operator-check-1", ready.Header().Get(correlationHeader))
-	require.JSONEq(t, `{"status":"ready","state":"ready","health":"ready"}`, ready.Body.String())
+	require.JSONEq(t, `{
+		"status":"ready",
+		"state":"ready",
+		"health":"ready",
+		"node":"native-node",
+		"principal":"p1_native_node",
+		"build_identity":"`+buildinfo.Fingerprint()+`"
+	}`, ready.Body.String())
 
 	metrics := scrape(t, surface, "")
 	require.Contains(t, metrics, `ardents_node_ready 1`)
@@ -55,6 +65,7 @@ func TestSurfaceCorrelatesDegradedReadinessAndFailureMetrics(t *testing.T) {
 	source.runtime.Node.Ready = false
 	source.runtime.Node.State = "degraded"
 	source.runtime.Health.State = "degraded"
+	source.runtime.Readiness.Ready = false
 	surface, err := NewSurface(testDependencies(source), "scrape-secret")
 	require.NoError(t, err)
 
@@ -70,6 +81,29 @@ func TestSurfaceCorrelatesDegradedReadinessAndFailureMetrics(t *testing.T) {
 	metrics := scrape(t, surface, "scrape-secret")
 	require.Contains(t, metrics, `ardents_node_health{state="degraded"} 1`)
 	require.Contains(t, metrics, `ardents_privacy_failures_window{category="other",domain="data"} 1`)
+}
+
+func TestReadyzBindsCompositeReadinessToNodeAndBuild(t *testing.T) {
+	source := populatedSource()
+	source.runtime.Readiness.Ready = false
+	source.runtime.Readiness.Reason = "network: relay unavailable"
+	surface, err := NewSurface(testDependencies(source), "")
+	require.NoError(t, err)
+
+	notReady := httptest.NewRecorder()
+	surface.Handler().ServeHTTP(notReady, httptest.NewRequest(http.MethodGet, "/readyz", nil))
+	require.Equal(t, http.StatusServiceUnavailable, notReady.Code)
+
+	source.runtime.Readiness.Ready = true
+	source.runtime.Readiness.Reason = ""
+	ready := httptest.NewRecorder()
+	surface.Handler().ServeHTTP(ready, httptest.NewRequest(http.MethodGet, "/readyz", nil))
+	require.Equal(t, http.StatusOK, ready.Code)
+	var response map[string]any
+	require.NoError(t, json.Unmarshal(ready.Body.Bytes(), &response))
+	require.Equal(t, "native-node", response["node"])
+	require.Equal(t, "p1_native_node", response["principal"])
+	require.Equal(t, buildinfo.Fingerprint(), response["build_identity"])
 }
 
 func TestRequestLogUsesNormalizedRouteAndSafeCorrelation(t *testing.T) {
@@ -131,7 +165,12 @@ type fakeSource struct {
 
 func populatedSource() *fakeSource {
 	return &fakeSource{
-		runtime: daemonruntime.RuntimeSnapshot{Node: daemonruntime.NodeSnapshot{State: "ready", Ready: true}, Health: diagapi.HealthSnapshot{State: "ready"}},
+		runtime: daemonruntime.RuntimeSnapshot{
+			Node:      daemonruntime.NodeSnapshot{Name: "native-node", State: "ready", Ready: true},
+			Identity:  identity.Snapshot{State: "ready", Principal: "p1_native_node", PublicKey: "node-public-key"},
+			Health:    diagapi.HealthSnapshot{State: "ready"},
+			Readiness: daemonruntime.ReadinessSnapshot{Ready: true},
+		},
 		network: network.StatusSnapshot{
 			ActiveFeatures:        []network.TransportFeature{network.TransportFeatureRelay, network.TransportFeatureStore},
 			RateLimitedOperations: 2, StoreEnabled: true, StoreMessages: 90,
