@@ -28,6 +28,71 @@ $composeFile = if (Test-Path -LiteralPath $repositoryComposeFile) {
 $composePrefix = @("compose", "-p", $Project, "-f", $composeFile)
 $services = @("seed", "peer2", "peer3")
 
+if (-not ("Ardents.RolloutDurableFile" -as [type])) {
+    Add-Type -TypeDefinition @"
+using System;
+using System.ComponentModel;
+using System.IO;
+using System.Runtime.InteropServices;
+
+namespace Ardents {
+    public static class RolloutDurableFile {
+        private const int MoveFileReplaceExisting = 0x1;
+        private const int MoveFileWriteThrough = 0x8;
+        private const int OpenReadOnly = 0;
+        private const int OpenDirectory = 0x10000;
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern bool MoveFileEx(
+            string existingName,
+            string newName,
+            int flags
+        );
+
+        [DllImport("libc", SetLastError = true)]
+        private static extern int open(string path, int flags);
+
+        [DllImport("libc", SetLastError = true)]
+        private static extern int fsync(int descriptor);
+
+        [DllImport("libc", SetLastError = true)]
+        private static extern int close(int descriptor);
+
+        public static void Replace(string source, string destination) {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+                if (!MoveFileEx(
+                    source,
+                    destination,
+                    MoveFileReplaceExisting | MoveFileWriteThrough
+                )) {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+                return;
+            }
+
+            if (File.Exists(destination)) {
+                File.Replace(source, destination, null);
+            } else {
+                File.Move(source, destination);
+            }
+            string directory = Path.GetDirectoryName(destination);
+            int descriptor = open(directory, OpenReadOnly | OpenDirectory);
+            if (descriptor < 0) {
+                throw new Win32Exception(Marshal.GetLastWin32Error());
+            }
+            try {
+                if (fsync(descriptor) != 0) {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+            } finally {
+                close(descriptor);
+            }
+        }
+    }
+}
+"@
+}
+
 if (-not (Test-Path -LiteralPath $manifestPath)) { throw "cluster manifest is missing" }
 $cluster = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
 $env:ARDENTS_BOOTSTRAP_PEER = [string]$cluster.bootstrap_endpoint
@@ -60,7 +125,7 @@ function Write-AtomicJson([string]$Path, [object]$Value) {
     } finally {
         $stream.Dispose()
     }
-    Move-Item -Force -LiteralPath $temporaryPath -Destination $Path
+    [Ardents.RolloutDurableFile]::Replace($temporaryPath, $Path)
 }
 
 function Write-RolloutJournal([object]$Journal) {
@@ -100,9 +165,17 @@ function Set-Image([string]$Image) {
     $env:ARDENTS_DOCKER_IMAGE = $Image
 }
 
-function Recreate-Service([string]$Service) {
+function Create-Service([string]$Service) {
     Invoke-Compose @("create", "--no-deps", "--force-recreate", $Service)
+}
+
+function Start-Service([string]$Service) {
     Invoke-Compose @("start", $Service)
+}
+
+function Recreate-Service([string]$Service) {
+    Create-Service $Service
+    Start-Service $Service
     Wait-Service $Service
 }
 
@@ -208,8 +281,14 @@ function Invoke-RollingChange(
                 restored_at = ""
             }
             Write-RolloutJournal $journal
-            Recreate-Service $service
             $node = Get-JournalNode $journal $service
+            Create-Service $service
+            $node.status = "recreated"
+            Write-RolloutJournal $journal
+            Start-Service $service
+            $node.status = "started"
+            Write-RolloutJournal $journal
+            Wait-Service $service
             $node.status = "applied"
             $node.applied_at = [DateTime]::UtcNow.ToString("O")
             Write-RolloutJournal $journal

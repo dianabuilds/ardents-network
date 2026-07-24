@@ -21,7 +21,9 @@ state.
 
 Before the first destructive step for a Node, the orchestrator writes and
 flushes its `mutation_pending` entry through an atomic same-directory rename.
-Recreation, start, and readiness are distinct boundaries. A Node becomes
+The rename uses write-through semantics on Windows and an explicit parent
+directory `fsync` on Linux. Recreation, start, and readiness are distinct
+boundaries recorded as `recreated`, `started`, and `applied`. A Node becomes
 `applied` only after readiness succeeds. The transaction becomes
 `ready_to_commit` only after every Node is applied.
 

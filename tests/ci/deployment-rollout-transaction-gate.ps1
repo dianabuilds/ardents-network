@@ -241,6 +241,74 @@ function Invoke-MutationFailureScenario([string]$Boundary, [string]$Node) {
     }
 }
 
+function Invoke-InterruptedRecoveryScenario(
+    [string]$Boundary,
+    [string]$Phase,
+    [string]$NodeStatus,
+    [string]$NodeImage
+) {
+    $statePath = Join-Path $testRoot "interrupted-$Boundary"
+    Write-ClusterFixture $statePath
+    $global:CurrentStatePath = $statePath
+    $global:FakeDockerEvents.Clear()
+    $global:JournalObservations.Clear()
+    $global:InjectedBoundary = ""
+    $global:InjectedNode = ""
+    $global:InjectedCompensationNode = ""
+    $global:CompensationFailuresRemaining = 0
+    $global:FakeNodeImages.seed = $NodeImage
+    $journalPath = Join-Path $statePath "rollout-transaction.json"
+    [ordered]@{
+        schema = "ardents.rollout-transaction/v1"
+        project = "ardents-rollout-test"
+        action = "upgrade"
+        phase = $Phase
+        target_image = $newImage
+        fallback_image = $oldImage
+        started_at = "2026-07-24T00:00:00Z"
+        failure = ""
+        nodes = @([ordered]@{
+            service = "seed"
+            status = $NodeStatus
+            last_error = ""
+            journaled_at = "2026-07-24T00:00:00Z"
+            applied_at = ""
+            restored_at = ""
+        })
+    } | ConvertTo-Json -Depth 8 | Set-Content -Encoding utf8 -LiteralPath $journalPath
+
+    & (Join-Path $root "scripts/deploy/rollout.ps1") upgrade `
+        -StateDir $statePath `
+        -Project "ardents-rollout-test" `
+        -TimeoutSeconds 10 `
+        -NewImage $newImage
+
+    if (Test-Path -LiteralPath $journalPath) {
+        throw "interruption after $Boundary did not clear its completed compensation journal"
+    }
+    foreach ($service in @("seed", "peer2", "peer3")) {
+        if ($global:FakeNodeImages[$service] -ne $oldImage) {
+            throw "interruption after $Boundary left $service on $($global:FakeNodeImages[$service]); want $oldImage"
+        }
+    }
+    $manifest = Get-Content -Raw -LiteralPath (Join-Path $statePath "cluster.json") | ConvertFrom-Json
+    if ($manifest.image -ne $oldImage) {
+        throw "interruption after $Boundary changed the cluster manifest"
+    }
+
+    return [ordered]@{
+        boundary = $Boundary
+        recovered_from_status = $NodeStatus
+        initial_node_image = $NodeImage
+        final_node_images = [ordered]@{
+            seed = $global:FakeNodeImages.seed
+            peer2 = $global:FakeNodeImages.peer2
+            peer3 = $global:FakeNodeImages.peer3
+        }
+        events = @($global:FakeDockerEvents)
+    }
+}
+
 try {
     $matrix = [Collections.Generic.List[object]]::new()
     foreach ($boundary in @("recreate", "start", "readiness")) {
@@ -294,8 +362,16 @@ try {
         throw "resumed compensation changed the cluster manifest"
     }
 
+    $interruptionMatrix = [Collections.Generic.List[object]]::new()
+    $interruptionMatrix.Add((Invoke-InterruptedRecoveryScenario "recreate" "applying" "mutation_pending" $newImage))
+    $interruptionMatrix.Add((Invoke-InterruptedRecoveryScenario "start" "applying" "recreated" $newImage))
+    $interruptionMatrix.Add((Invoke-InterruptedRecoveryScenario "readiness" "applying" "started" $newImage))
+    $interruptionMatrix.Add((Invoke-InterruptedRecoveryScenario "fallback-mutation" "compensating" "compensating" $oldImage))
+
     $matrix | ConvertTo-Json -Depth 8 |
         Set-Content -Encoding utf8 -LiteralPath (Join-Path $reportPath "mutation-matrix.json")
+    $interruptionMatrix | ConvertTo-Json -Depth 8 |
+        Set-Content -Encoding utf8 -LiteralPath (Join-Path $reportPath "interruption-matrix.json")
     [ordered]@{
         first_failure = $firstFailure
         node_images = $global:FakeNodeImages
@@ -305,10 +381,11 @@ try {
     @(
         "deployment-rollout-transaction-gate=passed"
         "matrix_cases=$($matrix.Count)"
+        "interruption_cases=$($interruptionMatrix.Count)"
         "resumed_compensation=true"
     ) |
         Set-Content -Encoding utf8 -LiteralPath (Join-Path $reportPath "passed.txt")
-    Write-Host "deployment-rollout-transaction-gate=passed matrix_cases=$($matrix.Count) resumed_compensation=true"
+    Write-Host "deployment-rollout-transaction-gate=passed matrix_cases=$($matrix.Count) interruption_cases=$($interruptionMatrix.Count) resumed_compensation=true"
 }
 finally {
     Remove-Item Function:\global:docker -ErrorAction SilentlyContinue
