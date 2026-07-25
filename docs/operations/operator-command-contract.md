@@ -91,7 +91,7 @@ smoke slices remain separate:
 | Slice | Catalogue IDs now available | Count | Remaining evidence |
 |---|---|---:|---|
 | OCS-02 | `node.*`, `network.*`, `diagnostics.*` | 20 | implemented by the tagged terminal Node/restart, Network/Discovery and exact-admission scenarios; release qualification remains separate |
-| OCS-03 | `workload.*` | 9 | workload/hosted-service lifecycle smoke; Docker-dependent rows stay explicitly tagged |
+| OCS-03 | `workload.*` | 9 | implemented by the tagged terminal workload lifecycle with local process execution; Docker qualification remains R3 |
 | OCS-04 | `data.*` | 17 | Object/Blob/Manifest, retention and transfer lifecycle smoke, including asynchronous progress truth |
 | OCS-05 | `identity.device.revoke`, `identity.enroll`, `identity.grant.*`, `identity.delegation.import-revocation`, `identity.application-ticket.issue`, `identity.login`, `identity.status`, `identity.logout` | 10 | protected Identity administration/session process smoke, retry/reconciliation and redaction evidence |
 
@@ -127,3 +127,29 @@ path is allocated directly under the system temporary directory so it fits the
 platform `sockaddr_un` limit on Windows as well as Linux, and cleanup removes it
 after each fixture. This evidence is an implementation smoke, not release
 qualification or a production-readiness claim.
+
+## OCS-03 Procedure Evidence
+
+The `ocs-03` tagged terminal scenario exercises all nine workload catalogue
+entries with catalogue-derived exact grants through CLI parsing, the generated
+Operator client and protected admission. It registers and inventories
+workloads, starts/stops/restarts the local process executor, and queries the
+hosted-service and publication projections in human and protobuf JSON modes.
+
+Hosted-service readiness and network publication are asserted independently:
+the same running workload exposes a ready `LocalOnly` service whose publication
+remains false, alongside a ready and published `NetworkPublished` service.
+Both distinct projections are checked in human and protobuf JSON modes.
+
+The current workload server maps domain mutation failures to structured
+Operator API errors rather than returning `accepted=false`. The process smoke
+therefore proves a missing-workload failure exits 1 without fabricated stdout,
+while the workload renderer contract test injects the generated
+`WorkloadCommandResponse` rejection shape and proves its complete human/JSON
+response is preserved with exit 1. This records both supported failure forms
+without claiming that the server currently emits a synchronous rejected
+response.
+
+The scenario is tagged `environment=local` and uses the repository's real local
+process executor. It does not simulate Docker and does not qualify Docker
+execution. Docker-dependent workload evidence remains an R3 runner concern.

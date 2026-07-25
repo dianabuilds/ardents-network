@@ -111,12 +111,12 @@ func (a *Command) workloadRegister(ctx context.Context, args []string) int {
 	}
 	if a.ctx.Renderer.JSON {
 		output.JSON(a.ctx.Renderer.Out, resp.Msg)
-		return 0
+		return a.ctx.Renderer.MutationOutcome(resp.Msg.GetStatus())
 	}
 	output.Header(a.ctx.Renderer.Out, "workload register")
 	output.Status(a.ctx.Renderer.Out, resp.Msg.GetStatus())
 	printWorkloadSummary(a.ctx.Renderer.Out, resp.Msg.GetWorkload())
-	return 0
+	return a.ctx.Renderer.MutationOutcome(resp.Msg.GetStatus())
 }
 
 func (a *Command) workloadMutate(ctx context.Context, action string, args []string) int {
@@ -153,12 +153,12 @@ func (a *Command) workloadMutate(ctx context.Context, action string, args []stri
 func renderWorkloadCommand(a *Command, title string, msg *ardentsv1.WorkloadCommandResponse) int {
 	if a.ctx.Renderer.JSON {
 		output.JSON(a.ctx.Renderer.Out, msg)
-		return 0
+		return a.ctx.Renderer.MutationOutcome(msg.GetStatus())
 	}
 	output.Header(a.ctx.Renderer.Out, title)
 	output.Status(a.ctx.Renderer.Out, msg.GetStatus())
 	printWorkloadSummary(a.ctx.Renderer.Out, msg.GetWorkload())
-	return 0
+	return a.ctx.Renderer.MutationOutcome(msg.GetStatus())
 }
 
 func printWorkloadSummary(w io.Writer, item *ardentsv1.WorkloadStatusSnapshot) {

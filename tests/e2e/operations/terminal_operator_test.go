@@ -424,6 +424,164 @@ func TestTerminalOperatorAdmissionRejectsSiblingAction(t *testing.T) {
 	})
 }
 
+func TestTerminalWorkloadProcedureLifecycle(t *testing.T) {
+	testkit.ConfigureLoopbackTransport(t)
+	scenario := testkit.BeginScenario(t, testkit.Spec{
+		Layer:       testkit.LayerE2E,
+		Domain:      "network-operator-terminal",
+		ScenarioID:  "OCS-03-WORKLOAD-001",
+		Suite:       "e2e",
+		Tags:        []string{"e2e", "network-operator-terminal", "workload", "ocs-03"},
+		Speed:       "default",
+		Environment: "local",
+	})
+
+	runtime := testkit.NewRuntime(t, runtimeinfra.Config{
+		Name: "terminal-ocs03-workload", NodeProfile: transport.NodeProfileServiceNode,
+		Boot:      runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
+		Transport: runtimeinfra.TransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: transport.ReachabilityPrivateLAN},
+		Data:      runtimeinfra.DataConfig{Dir: t.TempDir()},
+		Privacy:   testkit.NewDiscoveryPrivacyFixture(t, time.Now().UTC().Truncate(time.Second)).Sender,
+	}).Runtime
+	t.Cleanup(func() { _ = runtime.Stop(context.Background()) })
+	fixture := testkit.NewOperatorCLIFixtureWithActions(t, runtime, catalogueActions(t,
+		// Every online CLI invocation performs this identity preflight before
+		// dispatching its workload RPC.
+		"node.start", "node.runtime",
+		"workload.list", "workload.get", "workload.register", "workload.start", "workload.stop",
+		"workload.restart", "workload.services", "workload.service", "workload.publication",
+	))
+	terminal := newTerminalHarnessFromFixture(t, fixture)
+
+	servicePort := reserveTerminalPort(t)
+	serviceID := "svc.ocs03.echo"
+	localServiceID := "svc.ocs03.local"
+	workloadID := "work.ocs03.echo"
+	specFile := writeProtoJSON(t, &ardentsv1.WorkloadSpecSnapshot{
+		Id: workloadID, Kind: "service", Owner: "node", Config: terminalReadyConfig(t, servicePort), Desired: "present",
+		Services: []*ardentsv1.PublishedServiceSnapshot{
+			{
+				Id: serviceID, Type: "echo", Owner: "node", Mode: "NetworkPublished",
+				Endpoints:      []string{terminalAdvertisedEndpoint(t, servicePort)},
+				ProbeEndpoints: []string{fmt.Sprintf("http://127.0.0.1:%d/ready", servicePort)},
+			},
+			{
+				Id: localServiceID, Type: "echo-local", Owner: "node", Mode: "LocalOnly",
+				Endpoints:      []string{fmt.Sprintf("http://127.0.0.1:%d", servicePort)},
+				ProbeEndpoints: []string{fmt.Sprintf("http://127.0.0.1:%d/ready", servicePort)},
+			},
+		},
+	})
+	idleFile := writeProtoJSON(t, &ardentsv1.WorkloadSpecSnapshot{
+		Id: "work.ocs03.idle", Kind: "worker", Owner: "node",
+		Config: terminalReadyConfig(t, reserveTerminalPort(t)), Desired: "present",
+	})
+
+	scenario.Precondition("operator starts the Node and registers workloads through exact CLI actions", func(t *testing.T) {
+		terminal.run(t, context.Background(), "node", "start")
+		registered := terminal.run(t, context.Background(), "workload", "register", "--file", specFile)
+		require.Contains(t, registered.stdout, "workload register")
+		require.Contains(t, registered.stdout, "workload: "+workloadID)
+
+		idle := terminal.run(t, context.Background(), "--output", "json", "workload", "register", "--file", idleFile)
+		var response ardentsv1.WorkloadCommandResponse
+		require.NoErrorf(t, protojson.Unmarshal([]byte(idle.stdout), &response), "stdout=%s", idle.stdout)
+		require.True(t, response.GetStatus().GetAccepted())
+		require.Equal(t, "work.ocs03.idle", response.GetWorkload().GetSpec().GetId())
+	})
+
+	scenario.Step("inventory and exact workload queries preserve human and JSON truth", func(t *testing.T) {
+		list := terminal.run(t, context.Background(), "workload", "list")
+		require.Contains(t, list.stdout, "workload: "+workloadID)
+		require.Contains(t, list.stdout, "workload: work.ocs03.idle")
+		var listResponse ardentsv1.ListWorkloadsResponse
+		listJSON := terminal.run(t, context.Background(), "--output", "json", "workload", "list")
+		require.NoErrorf(t, protojson.Unmarshal([]byte(listJSON.stdout), &listResponse), "stdout=%s", listJSON.stdout)
+		require.Len(t, listResponse.GetWorkloads(), 2)
+
+		get := terminal.run(t, context.Background(), "workload", "get", workloadID)
+		require.Contains(t, get.stdout, "workload get")
+		require.Contains(t, get.stdout, "workload: "+workloadID)
+		var getResponse ardentsv1.WorkloadStatusSnapshot
+		getJSON := terminal.run(t, context.Background(), "--output", "json", "workload", "get", workloadID)
+		require.NoErrorf(t, protojson.Unmarshal([]byte(getJSON.stdout), &getResponse), "stdout=%s", getJSON.stdout)
+		require.Equal(t, workloadID, getResponse.GetSpec().GetId())
+	})
+
+	scenario.Step("CLI start exposes readiness separately from publication", func(t *testing.T) {
+		started := terminal.run(t, context.Background(), "workload", "start", workloadID)
+		require.Contains(t, started.stdout, "workload start")
+		require.Contains(t, started.stdout, "accepted: true")
+
+		service, publication := waitForTerminalServiceState(t, terminal, serviceID, true, true, "ready and published")
+		require.True(t, service.GetReady())
+		require.Equal(t, "local", service.GetRuntimeBacking())
+		require.True(t, publication.GetPublished())
+
+		services := terminal.run(t, context.Background(), "workload", "services")
+		require.Contains(t, services.stdout, "service: "+serviceID)
+		var servicesResponse ardentsv1.ListHostedServicesResponse
+		servicesJSON := terminal.run(t, context.Background(), "--output", "json", "workload", "services")
+		require.NoErrorf(t, protojson.Unmarshal([]byte(servicesJSON.stdout), &servicesResponse), "stdout=%s", servicesJSON.stdout)
+		require.Len(t, servicesResponse.GetServices(), 2)
+
+		serviceHuman := terminal.run(t, context.Background(), "workload", "service", serviceID)
+		require.Contains(t, serviceHuman.stdout, "ready: true")
+		publicationHuman := terminal.run(t, context.Background(), "workload", "publication", serviceID)
+		require.Contains(t, publicationHuman.stdout, "published: true")
+
+		localService, localPublication := waitForTerminalServiceState(t, terminal, localServiceID, true, false, "ready but unpublished")
+		require.True(t, localService.GetReady())
+		require.False(t, localService.GetPublished())
+		require.False(t, localPublication.GetPublished())
+		require.Contains(t, localPublication.GetReason(), "not network-published")
+
+		localServiceHuman := terminal.run(t, context.Background(), "workload", "service", localServiceID)
+		require.Contains(t, localServiceHuman.stdout, "ready: true")
+		require.Contains(t, localServiceHuman.stdout, "published: false")
+		localPublicationHuman := terminal.run(t, context.Background(), "workload", "publication", localServiceID)
+		require.Contains(t, localPublicationHuman.stdout, "published: false")
+		require.Contains(t, localPublicationHuman.stdout, "service mode is not network-published")
+	})
+
+	scenario.Step("restart and stop use CLI outcomes and withdraw publication", func(t *testing.T) {
+		restarted := terminal.run(t, context.Background(), "--output", "json", "workload", "restart", workloadID)
+		var restartResponse ardentsv1.WorkloadCommandResponse
+		require.NoErrorf(t, protojson.Unmarshal([]byte(restarted.stdout), &restartResponse), "stdout=%s", restarted.stdout)
+		require.True(t, restartResponse.GetStatus().GetAccepted())
+		require.Equal(t, "running", restartResponse.GetWorkload().GetObserved())
+
+		restartHuman := terminal.run(t, context.Background(), "workload", "restart", workloadID)
+		require.Contains(t, restartHuman.stdout, "workload restart")
+		require.Contains(t, restartHuman.stdout, "accepted: true")
+
+		stopped := terminal.run(t, context.Background(), "--output", "json", "workload", "stop", workloadID)
+		var stopResponse ardentsv1.WorkloadCommandResponse
+		require.NoErrorf(t, protojson.Unmarshal([]byte(stopped.stdout), &stopResponse), "stdout=%s", stopped.stdout)
+		require.True(t, stopResponse.GetStatus().GetAccepted())
+
+		service, publication := waitForTerminalServiceState(t, terminal, serviceID, false, false, "unready and unpublished")
+		require.False(t, service.GetReady())
+		require.False(t, publication.GetPublished())
+
+		started := terminal.run(t, context.Background(), "--output", "json", "workload", "start", workloadID)
+		var startResponse ardentsv1.WorkloadCommandResponse
+		require.NoErrorf(t, protojson.Unmarshal([]byte(started.stdout), &startResponse), "stdout=%s", started.stdout)
+		require.True(t, startResponse.GetStatus().GetAccepted())
+		terminal.run(t, context.Background(), "workload", "stop", workloadID)
+	})
+
+	scenario.Degraded("a non-accepted workload mutation is structured and nonzero", func(t *testing.T) {
+		rejected := terminal.runOutcome(t, context.Background(), "--output", "json", "workload", "start", "work.missing")
+		require.Equal(t, 1, rejected.code)
+		require.Empty(t, rejected.stdout)
+		var failure map[string]any
+		require.NoError(t, json.Unmarshal([]byte(rejected.stderr), &failure))
+		require.Equal(t, "not_found", failure["code"])
+		require.Equal(t, "workload.start", failure["operation"])
+	})
+}
+
 func TestTerminalServiceAndDataSurfaceReadiness(t *testing.T) {
 	testkit.ConfigureLoopbackTransport(t)
 	scenario := testkit.BeginScenario(t, testkit.Spec{
@@ -713,6 +871,29 @@ func requireProtoJSONFields(t *testing.T, result terminalResult, fields ...strin
 		require.Contains(t, decoded, field)
 	}
 	return decoded
+}
+
+func waitForTerminalServiceState(
+	t *testing.T,
+	terminal terminalHarness,
+	serviceID string,
+	expectedReady bool,
+	expectedPublished bool,
+	description string,
+) (*ardentsv1.HostedServiceStatusSnapshot, *ardentsv1.PublicationStatusSnapshot) {
+	t.Helper()
+	var service ardentsv1.GetHostedServiceResponse
+	var publication ardentsv1.ServicePublicationStatusResponse
+	testkit.WaitForCondition(t, 45*time.Second, "terminal service becomes "+description, func() (bool, string) {
+		serviceResult := terminal.run(t, context.Background(), "--output", "json", "workload", "service", serviceID)
+		require.NoError(t, protojson.Unmarshal([]byte(serviceResult.stdout), &service))
+		publicationResult := terminal.run(t, context.Background(), "--output", "json", "workload", "publication", serviceID)
+		require.NoError(t, protojson.Unmarshal([]byte(publicationResult.stdout), &publication))
+		currentService, currentPublication := service.GetService(), publication.GetPublication()
+		return currentService.GetReady() == expectedReady && currentPublication.GetPublished() == expectedPublished,
+			fmt.Sprintf("ready=%t backing=%q published=%t", currentService.GetReady(), currentService.GetRuntimeBacking(), currentPublication.GetPublished())
+	})
+	return service.GetService(), publication.GetPublication()
 }
 
 func catalogueActions(t *testing.T, ids ...string) []identityaccess.Action {
