@@ -160,10 +160,11 @@ An Operator deploys multiple Nodes across real hosts with defined topology and r
 - Required evidence gates: `static`, `deployment`, `multinode`, `security`, `release-candidate`
 - Status at `8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c`: I=partial, R=no, O=no, Q=no
 - Research class: R2
-- Research: `docs/engineering/research/wave3-research-charter.md`
+- ADRs: `docs/adr/0013-bounded-multi-host-reachability.md`
+- Research: `docs/engineering/research/multi-host-reachability.md`
 - Backlog: `.scratch/wave3-deep-research/issues/04-dr04-multi-host-reachability.md`
-- Constraints: Production topology and NAT policy are unresolved
-- Unsupported: No supported real multi-host deployment contract
+- Constraints: Accepted research selects exactly three operator-owned Linux amd64 hosts, separately qualified private-LAN and public-direct variants, at least two bootstrap/Store Nodes, one designated DR-03 authority slot, and bounded workstation-side topology operations; ADR-0013 acceptance and implementation are pending
+- Unsupported: No supported real multi-host deployment contract; arbitrary node counts, automatic NAT traversal, schedulers, Kubernetes, and remote Operator/Application APIs remain unsupported
 <!-- capability-status:end deployment.multi-host -->
 
 <!-- capability-status:begin discovery.operator-resolution -->
