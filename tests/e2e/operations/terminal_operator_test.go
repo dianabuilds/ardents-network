@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -33,6 +34,7 @@ import (
 	identityprincipal "ardents/internal/identity/principal"
 	"ardents/internal/localapi/protocol"
 	transport "ardents/internal/network"
+	"ardents/internal/storage"
 	"ardents/tests/testkit"
 
 	"github.com/stretchr/testify/require"
@@ -829,6 +831,222 @@ func TestTerminalContentRetentionAndTransferProcedure(t *testing.T) {
 	})
 }
 
+func TestTerminalPrincipalAccessAdministrationProcedure(t *testing.T) {
+	testkit.ConfigureLoopbackTransport(t)
+	scenario := testkit.BeginScenario(t, testkit.Spec{
+		Layer:       testkit.LayerE2E,
+		Domain:      "network-operator-terminal",
+		ScenarioID:  "OCS-05-IDENTITY-001",
+		Suite:       "e2e",
+		Tags:        []string{"e2e", "network-operator-terminal", "identity", "session", "ocs-05"},
+		Speed:       "default",
+		Environment: "local",
+	})
+
+	runtime := testkit.NewRuntime(t, runtimeinfra.Config{
+		Name: "terminal-ocs05-identity",
+		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
+		Data: runtimeinfra.DataConfig{Dir: t.TempDir()},
+	}).Runtime
+	t.Cleanup(func() { _ = runtime.Stop(context.Background()) })
+	fixture := testkit.NewOperatorCLIFixtureWithActions(t, runtime, catalogueActions(t,
+		// node.runtime is required only by the persistent shell preflight.
+		"node.runtime",
+		"identity.enroll", "identity.grant.list", "identity.grant.issue",
+		"identity.grant.revoke", "identity.device.revoke",
+	))
+	terminal := newTerminalHarnessFromFixture(t, fixture)
+
+	identityDir := t.TempDir()
+	require.NoError(t, storage.EnsurePrivateDir(identityDir))
+	laterRoot := filepath.Join(identityDir, "later-root.json")
+	laterDevice := filepath.Join(identityDir, "later-device.json")
+	appRoot := filepath.Join(identityDir, "application-root.json")
+	var laterPrincipal, laterDeviceID, applicationPrincipal string
+
+	scenario.Precondition("offline custody creates public enrollment material without leaking protected paths", func(t *testing.T) {
+		principal := terminal.run(t, context.Background(), "--output", "json", "identity", "principal", "create", "--signer-file", laterRoot)
+		var principalView map[string]any
+		require.NoError(t, json.Unmarshal([]byte(principal.stdout), &principalView))
+		laterPrincipal, _ = principalView["principal"].(string)
+		require.NotEmpty(t, laterPrincipal)
+		require.NotContains(t, principal.stdout, laterRoot)
+
+		device := terminal.run(t, context.Background(), "--output", "json", "identity", "device", "create",
+			"--root-signer-file", laterRoot, "--signer-file", laterDevice, "--valid-for", "1h")
+		var deviceView map[string]any
+		require.NoError(t, json.Unmarshal([]byte(device.stdout), &deviceView))
+		laterDeviceID, _ = deviceView["device_id"].(string)
+		require.NotEmpty(t, laterDeviceID)
+		require.NotContains(t, device.stdout, laterRoot)
+		require.NotContains(t, device.stdout, laterDevice)
+
+		app := terminal.run(t, context.Background(), "--output", "json", "identity", "principal", "create", "--signer-file", appRoot)
+		var appView map[string]any
+		require.NoError(t, json.Unmarshal([]byte(app.stdout), &appView))
+		applicationPrincipal, _ = appView["principal"].(string)
+		require.NotEmpty(t, applicationPrincipal)
+	})
+
+	scenario.Step("later Principal enrollment and grant administration preserve explicit request IDs", func(t *testing.T) {
+		const enrollmentRequest = "ocs05-enroll-001"
+		enrolled := terminal.run(t, context.Background(), "--output", "json", "identity", "enroll",
+			"--root-signer-file", laterRoot, "--device-signer-file", laterDevice, "--request-id", enrollmentRequest)
+		var enrollment map[string]any
+		require.NoError(t, json.Unmarshal([]byte(enrolled.stdout), &enrollment))
+		require.Equal(t, laterPrincipal, enrollment["principal"])
+		require.Equal(t, "administrator", enrollment["mode"])
+		require.Equal(t, enrollmentRequest, enrollment["request_id"])
+		require.NotContains(t, enrolled.stdout, laterRoot)
+		require.NotContains(t, enrolled.stdout, laterDevice)
+
+		const issueRequest = "ocs05-grant-issue-001"
+		issued := terminal.run(t, context.Background(), "--output", "json", "identity", "grant", "issue",
+			"--subject", laterPrincipal, "--action", "node.status", "--scope", "node",
+			"--valid-for", "1h", "--request-id", issueRequest)
+		var issue map[string]any
+		require.NoError(t, json.Unmarshal([]byte(issued.stdout), &issue))
+		require.Equal(t, "grant_issue", issue["operation"])
+		require.Equal(t, issueRequest, issue["request_id"])
+		grantID, _ := issue["result_id"].(string)
+		require.NotEmpty(t, grantID)
+
+		list := terminal.run(t, context.Background(), "identity", "grant", "list", "--subject", laterPrincipal)
+		require.Contains(t, list.stdout, "id: "+grantID)
+		require.Contains(t, list.stdout, "actions: node.status")
+		listJSON := terminal.run(t, context.Background(), "--output", "json", "identity", "grant", "list", "--subject", laterPrincipal)
+		var grants struct {
+			Grants []struct {
+				ID string `json:"id"`
+			} `json:"grants"`
+		}
+		require.NoError(t, json.Unmarshal([]byte(listJSON.stdout), &grants))
+		require.NotEmpty(t, grants.Grants)
+
+		const revokeRequest = "ocs05-grant-revoke-001"
+		revoked := terminal.run(t, context.Background(), "identity", "grant", "revoke",
+			"--subject", laterPrincipal, "--grant-id", grantID, "--request-id", revokeRequest, "--yes")
+		require.Contains(t, revoked.stdout, "request_id: "+revokeRequest)
+		require.Contains(t, revoked.stdout, "result_id: ar1_")
+
+		afterRevoke := terminal.run(t, context.Background(), "--output", "json", "identity", "grant", "list", "--subject", laterPrincipal)
+		var reconciled struct {
+			Grants []struct {
+				ID      string `json:"id"`
+				Revoked bool   `json:"revoked"`
+			} `json:"grants"`
+		}
+		require.NoError(t, json.Unmarshal([]byte(afterRevoke.stdout), &reconciled))
+		var foundRevoked bool
+		for _, grant := range reconciled.Grants {
+			if grant.ID == grantID {
+				foundRevoked = grant.Revoked
+			}
+		}
+		require.True(t, foundRevoked, "revoked grant %s must remain reconcilable in grant list", grantID)
+	})
+
+	scenario.Step("Application ticket and Delegation revocation keep protected artifacts out of terminal output", func(t *testing.T) {
+		ticketPath := filepath.Join(identityDir, "application-ticket")
+		ticket := terminal.run(t, context.Background(), "--output", "json", "identity", "application-ticket", "issue",
+			"--principal", applicationPrincipal, "--action", "application.content.get", "--out-file", ticketPath)
+		require.FileExists(t, ticketPath)
+		ticketSecret, err := os.ReadFile(ticketPath)
+		require.NoError(t, err)
+		require.NotEmpty(t, ticketSecret)
+		require.NotContains(t, ticket.stdout, string(ticketSecret))
+		require.NotContains(t, ticket.stderr, string(ticketSecret))
+		var ticketView map[string]any
+		require.NoError(t, json.Unmarshal([]byte(ticket.stdout), &ticketView))
+		require.Equal(t, "application_enrollment_ticket_issue", ticketView["operation"])
+		require.Equal(t, ticketPath, ticketView["protected_output"])
+
+		delegationPath := filepath.Join(identityDir, "delegation")
+		revocationPath := filepath.Join(identityDir, "delegation-revocation")
+		delegation := terminal.run(t, context.Background(), "--output", "json", "identity", "delegation", "issue",
+			"--application", applicationPrincipal, "--action", "application.content.get",
+			"--scope", "principal-owned", "--out-file", delegationPath, "--signer-file", fixture.SignerFile, "--yes")
+		delegationRaw, err := os.ReadFile(delegationPath)
+		require.NoError(t, err)
+		require.NotContains(t, delegation.stdout, string(delegationRaw))
+		require.NotContains(t, delegation.stdout, fixture.SignerFile)
+
+		revocation := terminal.run(t, context.Background(), "--output", "json", "identity", "delegation", "revoke",
+			"--delegation-file", delegationPath, "--out-file", revocationPath, "--signer-file", fixture.SignerFile, "--yes")
+		revocationRaw, err := os.ReadFile(revocationPath)
+		require.NoError(t, err)
+		require.NotContains(t, revocation.stdout, string(revocationRaw))
+		require.NotContains(t, revocation.stdout, delegationPath)
+		require.NotContains(t, revocation.stdout, fixture.SignerFile)
+
+		imported := terminal.run(t, context.Background(), "--output", "json", "identity", "delegation", "import-revocation",
+			"--revocation-file", revocationPath)
+		require.NotContains(t, imported.stdout, string(revocationRaw))
+		require.NotContains(t, imported.stdout, revocationPath)
+		var importedView map[string]any
+		require.NoError(t, json.Unmarshal([]byte(imported.stdout), &importedView))
+		require.Equal(t, "delegation_revocation_import", importedView["operation"])
+		require.NotEmpty(t, importedView["revocation_id"])
+	})
+
+	scenario.Step("device revocation is reconcilable and Session commands retain one-shot and live-shell truth", func(t *testing.T) {
+		const deviceRequest = "ocs05-device-revoke-001"
+		revoked := terminal.run(t, context.Background(), "--output", "json", "identity", "device", "revoke",
+			"--principal", laterPrincipal, "--device-id", laterDeviceID, "--request-id", deviceRequest)
+		var deviceMutation map[string]any
+		require.NoError(t, json.Unmarshal([]byte(revoked.stdout), &deviceMutation))
+		require.Equal(t, "device_revoke", deviceMutation["operation"])
+		require.Equal(t, deviceRequest, deviceMutation["request_id"])
+		require.NotEmpty(t, deviceMutation["result_id"])
+
+		revokedLogin := terminal.runOutcome(t, context.Background(), "--signer-file", laterDevice, "--output", "json", "identity", "login")
+		require.Equal(t, 1, revokedLogin.code)
+		require.Empty(t, revokedLogin.stdout)
+		var revokedFailure map[string]any
+		require.NoError(t, json.Unmarshal([]byte(revokedLogin.stderr), &revokedFailure))
+		require.Equal(t, "unauthenticated", revokedFailure["code"])
+		require.NotContains(t, revokedLogin.stderr, laterDevice)
+
+		login := terminal.run(t, context.Background(), "--output", "json", "identity", "login")
+		var loginView map[string]any
+		require.NoError(t, json.Unmarshal([]byte(login.stdout), &loginView))
+		require.Equal(t, "authenticated", loginView["status"])
+		require.NotContains(t, login.stdout, "session_secret")
+		status := terminal.run(t, context.Background(), "--output", "json", "identity", "status")
+		require.JSONEq(t, `{"status":"not_authenticated"}`, status.stdout)
+		logout := terminal.run(t, context.Background(), "--output", "json", "identity", "logout")
+		require.JSONEq(t, `{"status":"not_authenticated"}`, logout.stdout)
+
+		shell := terminal.runInput(t, context.Background(), strings.Join([]string{
+			"identity login",
+			"identity status",
+			"identity logout",
+			"identity status",
+			"exit",
+			"",
+		}, "\n"), "shell")
+		require.Equalf(t, 0, shell.code, "stderr=%s", shell.stderr)
+		require.Empty(t, shell.stderr)
+		require.Contains(t, shell.stdout, "status: authenticated")
+		require.Contains(t, shell.stdout, "status: not_authenticated")
+		require.NotContains(t, shell.stdout, "session_secret")
+		require.NotContains(t, shell.stdout, fixture.SignerFile)
+	})
+
+	scenario.Degraded("an invalid administrative target retains its request ID in structured failure output", func(t *testing.T) {
+		const requestID = "ocs05-invalid-target-001"
+		rejected := terminal.runOutcome(t, context.Background(), "--output", "json", "identity", "grant", "issue",
+			"--subject", applicationPrincipal, "--action", "node.start", "--scope", "node",
+			"--request-id", requestID)
+		require.Equal(t, 1, rejected.code)
+		require.Empty(t, rejected.stdout)
+		var failure map[string]any
+		require.NoError(t, json.Unmarshal([]byte(rejected.stderr), &failure))
+		require.Equal(t, "invalid_argument", failure["code"])
+		require.Contains(t, failure["message"], requestID)
+	})
+}
+
 func TestTerminalServiceAndDataSurfaceReadiness(t *testing.T) {
 	testkit.ConfigureLoopbackTransport(t)
 	scenario := testkit.BeginScenario(t, testkit.Spec{
@@ -1025,6 +1243,15 @@ func (h terminalHarness) runOutcomeUnpaced(ctx context.Context, args ...string) 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	code := cli.Run(ctx, args, &stdout, &stderr)
+	return terminalResult{stdout: stdout.String(), stderr: stderr.String(), code: code}
+}
+
+func (h terminalHarness) runInput(t *testing.T, ctx context.Context, input string, args ...string) terminalResult {
+	t.Helper()
+	h.authPacer.wait()
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := cli.RunWithIOForTest(ctx, args, strings.NewReader(input), &stdout, &stderr)
 	return terminalResult{stdout: stdout.String(), stderr: stderr.String(), code: code}
 }
 

@@ -137,7 +137,7 @@ func (*administrationSessions) Login(context.Context) (client.SessionKey, error)
 	return client.SessionKey{}, nil
 }
 func (*administrationSessions) SessionStatus() client.SessionKey { return client.SessionKey{} }
-func (*administrationSessions) Logout()                          {}
+func (*administrationSessions) Logout() error                    { return nil }
 func (s *administrationSessions) PublicIdentityService() (ardentsv1connect.IdentityServiceClient, error) {
 	return s.public, nil
 }

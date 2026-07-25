@@ -320,9 +320,9 @@ func (m *SessionManager) Status() SessionKey {
 	return m.active
 }
 
-func (m *SessionManager) Logout() {
+func (m *SessionManager) Logout() error {
 	if m == nil {
-		return
+		return nil
 	}
 	m.mu.Lock()
 	m.epoch++
@@ -336,12 +336,16 @@ func (m *SessionManager) Logout() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
+	var logoutErr error
 	for index := range secrets {
 		request := connect.NewRequest(&ardentsv1.EndSessionRequest{})
 		request.Header().Set("Authorization", operatorSessionScheme+" "+base64.RawURLEncoding.EncodeToString(secrets[index][:]))
-		_, _ = m.auth.EndSession(ctx, request)
+		if _, err := m.auth.EndSession(ctx, request); err != nil {
+			logoutErr = errors.Join(logoutErr, err)
+		}
 		clear(secrets[index][:])
 	}
+	return logoutErr
 }
 
 func zeroSession(entry *cachedSession) {

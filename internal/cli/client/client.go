@@ -158,19 +158,20 @@ func (c *Client) SessionStatus() SessionKey {
 	return c.sessions.Status()
 }
 
-func (c *Client) Logout() {
+func (c *Client) Logout() error {
 	if c != nil && c.sessions != nil {
-		c.sessions.Logout()
+		return c.sessions.Logout()
 	}
+	return nil
 }
 
 func (c *Client) Close() error {
 	if c == nil {
 		return nil
 	}
-	c.Logout()
+	logoutErr := c.Logout()
 	if c.close != nil {
-		return c.close()
+		return errors.Join(logoutErr, c.close())
 	}
-	return nil
+	return logoutErr
 }

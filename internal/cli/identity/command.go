@@ -13,6 +13,8 @@ import (
 	"ardents/internal/cli/client"
 	"ardents/internal/cli/output"
 	"ardents/internal/localapi/protocol/ardentsv1connect"
+
+	"connectrpc.com/connect"
 )
 
 type Command struct {
@@ -28,7 +30,7 @@ type Command struct {
 type sessionClient interface {
 	Login(context.Context) (client.SessionKey, error)
 	SessionStatus() client.SessionKey
-	Logout()
+	Logout() error
 	PublicIdentityService() (ardentsv1connect.IdentityServiceClient, error)
 	ProtectedIdentityService() (ardentsv1connect.IdentityServiceClient, error)
 	TargetNodePrincipal() string
@@ -111,8 +113,19 @@ func (c Command) runLogout(args []string) int {
 	if c.sessions == nil {
 		return c.Renderer.Failure(errors.New("Principal session mode is not configured"))
 	}
-	c.sessions.Logout()
+	if err := c.sessions.Logout(); err != nil {
+		return c.Renderer.Failure(logoutFailure(err))
+	}
 	return c.renderSession("not_authenticated", client.SessionKey{})
+}
+
+func logoutFailure(err error) error {
+	message := fmt.Sprintf("local Session cleared; server invalidation unconfirmed: %v", err)
+	var connectErr *connect.Error
+	if errors.As(err, &connectErr) {
+		return connect.NewError(connectErr.Code(), errors.New(message))
+	}
+	return errors.New(message)
 }
 
 func (c Command) renderSession(status string, key client.SessionKey) int {

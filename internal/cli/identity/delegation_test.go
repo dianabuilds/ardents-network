@@ -29,7 +29,7 @@ func (s delegationSessions) Login(context.Context) (client.SessionKey, error) {
 	return client.SessionKey{}, nil
 }
 func (s delegationSessions) SessionStatus() client.SessionKey { return client.SessionKey{} }
-func (s delegationSessions) Logout()                          {}
+func (s delegationSessions) Logout() error                    { return nil }
 func (s delegationSessions) PublicIdentityService() (ardentsv1connect.IdentityServiceClient, error) {
 	return nil, nil
 }

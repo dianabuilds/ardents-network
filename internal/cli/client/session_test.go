@@ -56,6 +56,7 @@ type sessionTestAuth struct {
 	releaseFirst  chan struct{}
 	beginErrAfter int32
 	beginErr      error
+	endErr        error
 	beginUnknown  bool
 }
 
@@ -124,6 +125,9 @@ func (a *sessionTestAuth) EndSession(_ context.Context, request *connect.Request
 	a.endCount.Add(1)
 	if !strings.HasPrefix(request.Header().Get("Authorization"), operatorSessionScheme+" ") {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing session"))
+	}
+	if a.endErr != nil {
+		return nil, a.endErr
 	}
 	return connect.NewResponse(&ardentsv1.EndSessionResponse{}), nil
 }
@@ -236,12 +240,12 @@ func TestSessionManagersKeepAlphaAndBetaSecretsIsolated(t *testing.T) {
 	require.Equal(t, alphaNode, alpha.Status().NodePrincipal)
 	require.Equal(t, betaNode, beta.Status().NodePrincipal)
 
-	alpha.Logout()
+	require.NoError(t, alpha.Logout())
 	require.Equal(t, SessionKey{}, alpha.Status())
 	require.NotEqual(t, SessionKey{}, beta.Status())
 }
 
-func TestSessionManagerLogoutEndsServerSessionBeforeZeroingLocalSecret(t *testing.T) {
+func TestSessionManagerLogoutClearsLocalCacheBeforeEndingServerSession(t *testing.T) {
 	signer := newSessionTestSigner(t)
 	alpha := sessionTestPrincipal(t, 0x31)
 	auth := &sessionTestAuth{node: alpha, principal: signer.principal, now: sessionTestNow, secretByte: 0x10}
@@ -249,9 +253,56 @@ func TestSessionManagerLogoutEndsServerSessionBeforeZeroingLocalSecret(t *testin
 
 	_, _, err := manager.authorization(context.Background())
 	require.NoError(t, err)
-	manager.Logout()
+	require.NoError(t, manager.Logout())
 
 	require.EqualValues(t, 1, auth.endCount.Load())
+	require.Equal(t, SessionKey{}, manager.Status())
+}
+
+func TestSessionManagerLogoutClearsLocalSecretWhenServerInvalidationFails(t *testing.T) {
+	signer := newSessionTestSigner(t)
+	alpha := sessionTestPrincipal(t, 0x31)
+	auth := &sessionTestAuth{
+		node: alpha, principal: signer.principal, now: sessionTestNow, secretByte: 0x10,
+		endErr: connect.NewError(connect.CodeUnavailable, errors.New("server offline")),
+	}
+	manager := NewSessionManager(auth, signer, alpha, func() time.Time { return sessionTestNow })
+
+	_, _, err := manager.authorization(context.Background())
+	require.NoError(t, err)
+	err = manager.Logout()
+
+	require.Equal(t, connect.CodeUnavailable, connect.CodeOf(err))
+	require.EqualValues(t, 1, auth.endCount.Load())
+	require.Equal(t, SessionKey{}, manager.Status())
+	manager.mu.Lock()
+	require.Empty(t, manager.entries)
+	manager.mu.Unlock()
+}
+
+func TestClientCloseClosesTransportAndReturnsLogoutAndCloseFailures(t *testing.T) {
+	signer := newSessionTestSigner(t)
+	alpha := sessionTestPrincipal(t, 0x31)
+	logoutErr := errors.New("server invalidation failed")
+	closeErr := errors.New("transport close failed")
+	auth := &sessionTestAuth{
+		node: alpha, principal: signer.principal, now: sessionTestNow, secretByte: 0x10,
+		endErr: logoutErr,
+	}
+	manager := NewSessionManager(auth, signer, alpha, func() time.Time { return sessionTestNow })
+	_, _, err := manager.authorization(context.Background())
+	require.NoError(t, err)
+	closeCalls := 0
+	client := &Client{sessions: manager, close: func() error {
+		closeCalls++
+		return closeErr
+	}}
+
+	err = client.Close()
+
+	require.ErrorIs(t, err, logoutErr)
+	require.ErrorIs(t, err, closeErr)
+	require.Equal(t, 1, closeCalls)
 	require.Equal(t, SessionKey{}, manager.Status())
 }
 
@@ -340,7 +391,7 @@ func TestSessionInterceptorStopsAfterSecondUnauthenticatedAndFailedRevocationRef
 
 	auth.beginErrAfter = auth.beginCount.Load()
 	auth.beginErr = connect.NewError(connect.CodeUnauthenticated, errors.New("revoked"))
-	manager.Logout()
+	require.NoError(t, manager.Logout())
 	_, err = interceptor.WrapUnary(func(context.Context, connect.AnyRequest) (connect.AnyResponse, error) {
 		t.Fatal("protected operation reached after revoked device failed authentication")
 		return nil, nil
@@ -417,7 +468,7 @@ func TestLogoutRacingLoginPreventsLateSessionPublication(t *testing.T) {
 		result <- err
 	}()
 	require.Eventually(t, func() bool { return auth.beginCount.Load() == 1 }, time.Second, time.Millisecond)
-	manager.Logout()
+	require.NoError(t, manager.Logout())
 	close(gate)
 	require.ErrorIs(t, <-result, ErrSessionInvalidated)
 	require.Equal(t, SessionKey{}, manager.Status())

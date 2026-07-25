@@ -158,8 +158,8 @@ func TestSameAliceUsesIndependentAlphaBetaGrantsSessionsAndCaches(t *testing.T) 
 		beta.node,
 		func() time.Time { return now },
 	)
-	t.Cleanup(alphaManager.Logout)
-	t.Cleanup(betaManager.Logout)
+	t.Cleanup(func() { require.NoError(t, alphaManager.Logout()) })
+	t.Cleanup(func() { require.NoError(t, betaManager.Logout()) })
 
 	alphaHeader, _, err := alphaManager.authorization(ctx)
 	require.NoError(t, err)

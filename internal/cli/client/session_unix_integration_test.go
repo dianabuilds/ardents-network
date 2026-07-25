@@ -30,6 +30,10 @@ func (h unixIdentityHandler) CompleteAuthentication(ctx context.Context, request
 	return h.auth.CompleteAuthentication(ctx, request)
 }
 
+func (h unixIdentityHandler) EndSession(ctx context.Context, request *connect.Request[ardentsv1.EndSessionRequest]) (*connect.Response[ardentsv1.EndSessionResponse], error) {
+	return h.auth.EndSession(ctx, request)
+}
+
 type unixNodeHandler struct {
 	ardentsv1connect.UnimplementedNodeServiceHandler
 	mu             sync.Mutex

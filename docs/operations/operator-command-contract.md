@@ -93,7 +93,7 @@ smoke slices remain separate:
 | OCS-02 | `node.*`, `network.*`, `diagnostics.*` | 20 | implemented by the tagged terminal Node/restart, Network/Discovery and exact-admission scenarios; release qualification remains separate |
 | OCS-03 | `workload.*` | 9 | implemented by the tagged terminal workload lifecycle with local process execution; Docker qualification remains R3 |
 | OCS-04 | `data.*` | 17 | implemented by the tagged terminal content/retention/private-transfer lifecycle; release multi-node qualification remains R3 |
-| OCS-05 | `identity.device.revoke`, `identity.enroll`, `identity.grant.*`, `identity.delegation.import-revocation`, `identity.application-ticket.issue`, `identity.login`, `identity.status`, `identity.logout` | 10 | protected Identity administration/session process smoke, retry/reconciliation and redaction evidence |
+| OCS-05 | `identity.device.revoke`, `identity.enroll`, `identity.grant.*`, `identity.delegation.import-revocation`, `identity.application-ticket.issue`, `identity.login`, `identity.status`, `identity.logout` | 10 | implemented by the tagged Principal administration/session procedure plus focused retry/logout contracts |
 
 The remaining 12 entries are owned by OCS-01 contract evidence: two
 configuration commands, seven offline custody commands, shell, TUI and version.
@@ -182,3 +182,41 @@ This is local multi-runtime evidence inside one tagged test process, not
 release qualification.
 Canonical cross-runner/network qualification remains R3; no production
 readiness claim follows from the local pass.
+
+## OCS-05 Procedure Evidence
+
+The `ocs-05` tagged terminal scenario exercises the ten Identity procedure IDs
+listed above through the real root parser, shared Principal client, generated
+Identity RPCs and server-owned admission catalogue. Later enrollment, grant
+list/issue/revoke, device revoke, Application ticket issuance and an invalid
+administrative target use catalogue-derived exact actions. Every
+administrative mutation that accepts an idempotency key asserts its explicit
+request ID in the success or structured failure output.
+
+Protected signer paths and artifact bytes are absent from enrollment,
+Delegation and import output. Application ticket and Delegation material is
+written only to the requested protected output files; the intentionally public
+`protected_output` handoff path remains visible while the file content does
+not. The existing focused Identity retry matrix proves one replay only for an
+ambiguous transport failure with the same protobuf request/request ID, and no
+replay for permission denial or local failure.
+
+Grant revocation is reconciled through the subsequent protected grant list, and
+the revoked device is rejected by a new public authentication exchange. The
+tagged process proves Delegation revocation import and its stable revocation ID;
+`TestDelegationRevocationIsIdempotentPermanentAcrossRestartAndConcurrentAdmit`
+in the Identity access package separately proves that the imported artifact
+immediately and durably rejects delegated admission.
+
+One-shot `identity login/status/logout` preserves the existing CLI-owned JSON
+payloads. A tagged shell invocation uses one live client to prove authenticated
+status, confirmed logout and process-local cleanup without exposing Session
+secrets. If `EndSession` fails, the Session manager still zeroes and removes
+local secrets; logout now returns exit 1 with the common error object stating
+that local cleanup completed while server invalidation is unconfirmed.
+
+All online Identity entries continue to use the shared Operator transport.
+The transport contract tests assert OpenSSH stream-local forwarding to the
+remote Operator Unix socket, readiness/cleanup and redacted failures; no
+general TCP/HTTP remote transport is introduced. This local tagged scenario
+does not claim an external SSH-host qualification run.

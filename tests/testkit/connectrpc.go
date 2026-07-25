@@ -81,6 +81,14 @@ func (i testNodeGrantIssuer) IssueAccessGrant(payload *identityprotocol.AccessGr
 	return identityaccess.SignAccessGrant(payload, i.key)
 }
 
+func (i testNodeGrantIssuer) IssueAccessGrantRevocation(payload *identityprotocol.AccessGrantRevocationPayload, grant *identityaccess.Artifact) (*identityaccess.Artifact, error) {
+	return identityaccess.SignAccessGrantRevocation(payload, i.key, payload.GetRevokedAt().AsTime(), grant)
+}
+
+func (i testNodeGrantIssuer) IssueDeviceRevocation(payload *identityprotocol.DeviceRevocationPayload) (*identityaccess.Artifact, error) {
+	return identityaccess.SignDeviceRevocation(payload, i.key, payload.GetRevokedAt().AsTime())
+}
+
 func newOperatorPrincipalAccess(t *testing.T) (*identityaccess.Service, string, identityaccess.SessionSecret, [32]byte, identityaccess.SourceKey) {
 	t.Helper()
 	fixture := newOperatorPrincipalMaterial(t)
