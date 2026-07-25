@@ -21,7 +21,7 @@ Status vocabulary:
 |---|---|---|---|---|---|---|
 | W3-D001 | Production realm and Channel Grant authority | DR-03 | pending | — | — | DR-01, DR-04 |
 | W3-D002 | Application Messaging addressing and delivery model | DR-01 | pending | — | — | Messaging implementation |
-| W3-D003 | Application hosting ownership and lifecycle | DR-02 | pending | — | — | DR-05, Hosting implementation |
+| W3-D003 | Application hosting ownership and lifecycle | DR-02 | proposed | One owner-qualified leased Hosted Service over an immutable Operator-approved managed-workload profile; the profile pins service type, Hosting owns durable intent/profile revisions, and workload/readiness/ingress/publication remain derived | Proposed ADR-0012 | DR-05, Hosting implementation |
 | W3-D004 | First-release multi-host topology and reachability | DR-04 | pending | — | — | DR-06 |
 | W3-D005 | Direct service boundary and authentication | DR-05 | pending | — | — | Direct interaction implementation or defer |
 | W3-D006 | New Application features in first-release scope | Wave 3 synthesis | pending | — | — | DR-06 |

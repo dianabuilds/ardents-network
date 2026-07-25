@@ -167,8 +167,8 @@
       "implementation_owners": ["internal/applicationapi", "internal/hosting"], "operability_surfaces": ["No current Application surface"],
       "evidence_owner": "Application and Hosting / QA", "required_evidence_gates": ["static", "security", "deployment", "release-candidate"],
       "status": {"implemented": "no", "reachable": "no", "operable": "no", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
-      "research_class": "R2", "adrs": ["docs/adr/0001-separate-application-interface.md"], "research_packets": ["docs/engineering/research/wave3-research-charter.md"], "backlog": [".scratch/wave3-deep-research/issues/03-dr02-application-hosting.md"],
-      "constraints": ["A public contract and authorization model require a separate decision"], "unsupported_behavior": ["No Application hosting interface exists"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
+      "research_class": "R2", "adrs": ["docs/adr/0001-separate-application-interface.md", "docs/adr/0012-lease-application-hosting-through-approved-profiles.md"], "research_packets": ["docs/engineering/research/application-hosting.md"], "backlog": [".scratch/wave3-deep-research/issues/03-dr02-application-hosting.md"],
+      "constraints": ["Accepted research selects an owner-qualified leased Hosted Service over immutable Operator-approved profile revisions; ADR-0012 acceptance and implementation are pending"], "unsupported_behavior": ["No Application hosting interface exists; arbitrary endpoint registration and delegated Hosting are not supported"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
     {
       "id": "service.direct-interaction",

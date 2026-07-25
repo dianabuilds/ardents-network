@@ -63,11 +63,11 @@ An Application manages hosted workload lifecycle through a supported Application
 - Required evidence gates: `static`, `security`, `deployment`, `release-candidate`
 - Status at `8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c`: I=no, R=no, O=no, Q=no
 - Research class: R2
-- ADRs: `docs/adr/0001-separate-application-interface.md`
-- Research: `docs/engineering/research/wave3-research-charter.md`
+- ADRs: `docs/adr/0001-separate-application-interface.md`, `docs/adr/0012-lease-application-hosting-through-approved-profiles.md`
+- Research: `docs/engineering/research/application-hosting.md`
 - Backlog: `.scratch/wave3-deep-research/issues/03-dr02-application-hosting.md`
-- Constraints: A public contract and authorization model require a separate decision
-- Unsupported: No Application hosting interface exists
+- Constraints: Accepted research selects an owner-qualified leased Hosted Service over immutable Operator-approved profile revisions; ADR-0012 acceptance and implementation are pending
+- Unsupported: No Application hosting interface exists; arbitrary endpoint registration and delegated Hosting are not supported
 <!-- capability-status:end application.hosting -->
 
 <!-- capability-status:begin application.installation-content -->
