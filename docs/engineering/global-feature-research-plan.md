@@ -394,6 +394,11 @@ register и локальный backlog `.scratch/wave3-deep-research/`. Перв
 параллельная волна — DR-03, DR-02 и DR-04; DR-01 зависит от DR-03, DR-05 — от
 DR-02.
 
+Frozen product baseline Wave 3 —
+`main@8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c`; подготовительный
+documentation/governance revision —
+`main@e1e5299bf3b83cb534605811c032eeb2fe1bdd0c`.
+
 ### Wave 4 — Scope and release decision
 
 - выбрать функции первого release;

@@ -17,6 +17,9 @@ The frozen Wave 3 product baseline is
 `main@8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c`, the final post-R1 product
 commit.
 
+The Wave 3 documentation/governance preparation revision is
+`main@e1e5299bf3b83cb534605811c032eeb2fe1bdd0c`.
+
 W3-00 reconciles R1 tracker bookkeeping, canonical capability truth, the global
 plan, and this research program in a later documentation/governance commit.
 Research packets bind product claims to the frozen product commit rather than

@@ -38,6 +38,9 @@ commit. W3-00 records the later documentation/governance preparation commit,
 but research facts continue to identify this one product snapshot so a
 documentation-only self-reference cannot move the assessed source.
 
+Wave 3 preparation revision:
+`main@e1e5299bf3b83cb534605811c032eeb2fe1bdd0c`.
+
 ## In scope
 
 - DR-01 Application Messaging.
