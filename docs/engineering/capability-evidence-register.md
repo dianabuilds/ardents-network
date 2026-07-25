@@ -103,11 +103,11 @@ An Application exchanges private product messages through a supported Applicatio
 - Required evidence gates: `static`, `security`, `tagged`, `release-candidate`
 - Status at `8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c`: I=no, R=no, O=no, Q=no
 - Research class: R2
-- ADRs: `docs/adr/0001-separate-application-interface.md`
-- Research: `docs/engineering/research/wave3-research-charter.md`
+- ADRs: `docs/adr/0001-separate-application-interface.md`, `docs/adr/0015-authority-backed-bounded-application-conversations.md`
+- Research: `docs/engineering/research/application-messaging.md`
 - Backlog: `.scratch/wave3-deep-research/issues/05-dr01-application-messaging.md`
-- Constraints: A public contract and security semantics require a separate decision
-- Unsupported: No Application messaging interface exists
+- Constraints: Accepted research selects opaque authority-backed conversations with Operator-owned membership, durable local send acceptance, recipient-local cursor order, at-least-once delivery, and Content References for large data; ADR-0011/ADR-0015 acceptance and implementation are pending
+- Unsupported: No Application Messaging interface exists; arbitrary topics, caller-selected recipients, exactly-once effects, global ordering, read receipts, federation, and Waku internals are unsupported
 <!-- capability-status:end application.messaging -->
 
 <!-- capability-status:begin content.operator-lifecycle -->

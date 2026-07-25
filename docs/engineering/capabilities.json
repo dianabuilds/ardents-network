@@ -90,8 +90,8 @@
       "implementation_owners": ["internal/applicationapi", "internal/messaging"], "operability_surfaces": ["No current Application surface"],
       "evidence_owner": "Application Interface / QA", "required_evidence_gates": ["static", "security", "tagged", "release-candidate"],
       "status": {"implemented": "no", "reachable": "no", "operable": "no", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
-      "research_class": "R2", "adrs": ["docs/adr/0001-separate-application-interface.md"], "research_packets": ["docs/engineering/research/wave3-research-charter.md"], "backlog": [".scratch/wave3-deep-research/issues/05-dr01-application-messaging.md"],
-      "constraints": ["A public contract and security semantics require a separate decision"], "unsupported_behavior": ["No Application messaging interface exists"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
+      "research_class": "R2", "adrs": ["docs/adr/0001-separate-application-interface.md", "docs/adr/0015-authority-backed-bounded-application-conversations.md"], "research_packets": ["docs/engineering/research/application-messaging.md"], "backlog": [".scratch/wave3-deep-research/issues/05-dr01-application-messaging.md"],
+      "constraints": ["Accepted research selects opaque authority-backed conversations with Operator-owned membership, durable local send acceptance, recipient-local cursor order, at-least-once delivery, and Content References for large data; ADR-0011/ADR-0015 acceptance and implementation are pending"], "unsupported_behavior": ["No Application Messaging interface exists; arbitrary topics, caller-selected recipients, exactly-once effects, global ordering, read receipts, federation, and Waku internals are unsupported"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
     {
       "id": "network.waku-foundation",
