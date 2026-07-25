@@ -92,7 +92,7 @@ smoke slices remain separate:
 |---|---|---:|---|
 | OCS-02 | `node.*`, `network.*`, `diagnostics.*` | 20 | implemented by the tagged terminal Node/restart, Network/Discovery and exact-admission scenarios; release qualification remains separate |
 | OCS-03 | `workload.*` | 9 | implemented by the tagged terminal workload lifecycle with local process execution; Docker qualification remains R3 |
-| OCS-04 | `data.*` | 17 | Object/Blob/Manifest, retention and transfer lifecycle smoke, including asynchronous progress truth |
+| OCS-04 | `data.*` | 17 | implemented by the tagged terminal content/retention/private-transfer lifecycle; release multi-node qualification remains R3 |
 | OCS-05 | `identity.device.revoke`, `identity.enroll`, `identity.grant.*`, `identity.delegation.import-revocation`, `identity.application-ticket.issue`, `identity.login`, `identity.status`, `identity.logout` | 10 | protected Identity administration/session process smoke, retry/reconciliation and redaction evidence |
 
 The remaining 12 entries are owned by OCS-01 contract evidence: two
@@ -153,3 +153,32 @@ response.
 The scenario is tagged `environment=local` and uses the repository's real local
 process executor. It does not simulate Docker and does not qualify Docker
 execution. Docker-dependent workload evidence remains an R3 runner concern.
+
+## OCS-04 Procedure Evidence
+
+The `ocs-04` tagged terminal scenario exercises all 17 `data.*` catalogue
+entries with catalogue-derived actions through CLI parsing, generated Content,
+Retention and Transfer clients, and protected server admission. Data authority
+uses signed exact-resource grants for the owner-bound Object/Manifest/Blob and
+the ownerless transfer/collection/inventory tuples resolved at admission.
+
+File-backed protobuf JSON inputs publish a Blob payload, an owned Object and an
+owned Manifest. Their list/get procedures, inventory, retain/pin/drop
+transitions and an ungranted sibling-Object denial are asserted in human and
+protobuf JSON modes. Exact grants bind the authenticated Principal to each
+owner-required content tuple; the server assigns the same authenticated owner
+to the Object and Manifest inputs, which omit owner.
+
+Two real local Node runtimes exercise private Blob exchange. `data blobs fetch`
+reports the fetched Blob's `available-local` state and does not label that
+response as a completed transfer. Terminal completion/state truth is read
+separately from `data transfers list/get`, preserving the existing wire
+payloads and directing automation to the transfer procedures. Because the
+current `FetchBlob` RPC blocks until the private exchange completes, this
+scenario proves terminal transfer state rather than claiming observation of an
+in-flight progress transition.
+
+This is local multi-runtime evidence inside one tagged test process, not
+release qualification.
+Canonical cross-runner/network qualification remains R3; no production
+readiness claim follows from the local pass.

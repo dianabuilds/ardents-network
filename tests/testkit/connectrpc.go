@@ -11,6 +11,8 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -88,11 +90,15 @@ func newOperatorPrincipalAccess(t *testing.T) (*identityaccess.Service, string, 
 type operatorPrincipalMaterial struct {
 	service    *identityaccess.Service
 	node       string
+	principal  string
 	session    identityaccess.SessionSecret
+	binding    identityaccess.AuthenticationBinding
 	peer       [32]byte
 	source     identityaccess.SourceKey
 	signerFile string
 }
+
+var operatorGrantSequence atomic.Uint64
 
 func newOperatorPrincipalMaterial(t *testing.T) operatorPrincipalMaterial {
 	t.Helper()
@@ -188,32 +194,47 @@ func newOperatorPrincipalMaterialWithActions(t *testing.T, grantedActions []iden
 	require.NoError(t, err)
 	require.NotNil(t, authenticated.SessionSecret)
 
+	material := operatorPrincipalMaterial{
+		service: service, node: node.String(), principal: rootInfo.Principal,
+		session: *authenticated.SessionSecret, binding: binding,
+		peer: peer, source: source, signerFile: devicePath,
+	}
+	issueOperatorGrant(t, material, grantedActions, identityaccess.ResourceScope{
+		Kind: identityaccess.ScopeNode, Exact: identityaccess.ResourceRef{Node: node.String()},
+	}, now)
+	return material
+}
+
+func issueOperatorGrant(
+	t *testing.T,
+	material operatorPrincipalMaterial,
+	grantedActions []identityaccess.Action,
+	scope identityaccess.ResourceScope,
+	now time.Time,
+) {
+	t.Helper()
 	actions := append([]identityaccess.Action(nil), grantedActions...)
 	sort.Slice(actions, func(left, right int) bool { return actions[left] < actions[right] })
 	proposal := identityaccess.GrantProposal{
-		Subject: rootInfo.Principal, Actions: actions,
-		Scope:     identityaccess.ResourceScope{Kind: identityaccess.ScopeNode, Exact: identityaccess.ResourceRef{Node: node.String()}},
+		Subject: material.principal, Actions: actions, Scope: scope,
 		NotBefore: now, NotAfter: now.Add(time.Hour),
 	}
-	proposalID, err := identityaccess.GrantProposalResourceID(node.String(), binding.Audience, proposal)
+	proposalID, err := identityaccess.GrantProposalResourceID(material.node, material.binding.Audience, proposal)
 	require.NoError(t, err)
-	resource, err := identityaccess.NewResourceRef(node.String(), identityaccess.ResourceOwner{}, "grant-proposal", proposalID)
+	resource, err := identityaccess.NewResourceRef(material.node, identityaccess.ResourceOwner{}, "grant-proposal", proposalID)
 	require.NoError(t, err)
-	_, err = service.IssueAccessGrant(ctx, identityaccess.IssueGrantRequest{
+	requestID := "testkit-operator-grant-" + strconv.FormatUint(operatorGrantSequence.Add(1), 10)
+	_, err = material.service.IssueAccessGrant(context.Background(), identityaccess.IssueGrantRequest{
 		Command: identityaccess.AdminCommand{
-			RequestID: "testkit-operator-product-grant",
+			RequestID: requestID,
 			Attempt: identityaccess.Attempt{
-				SessionSecret: *authenticated.SessionSecret, Binding: binding,
+				SessionSecret: material.session, Binding: material.binding,
 				Action: "identity.grant.issue", Resource: resource,
 			},
 		},
 		Proposal: proposal,
 	})
 	require.NoError(t, err)
-	return operatorPrincipalMaterial{
-		service: service, node: node.String(),
-		session: *authenticated.SessionSecret, peer: peer, source: source, signerFile: devicePath,
-	}
 }
 
 // OperatorCLIFixture exposes a Principal-only Operator endpoint over a real
@@ -223,7 +244,32 @@ type OperatorCLIFixture struct {
 	Addr          string
 	SignerFile    string
 	NodePrincipal string
+	Principal     string
 	Client        cliclient.Service
+	material      operatorPrincipalMaterial
+}
+
+// GrantExact adds a test-only Operator grant for one canonical resource tuple.
+// ownerPrincipal selects the fixture Principal for owner-bound resource kinds.
+func (f OperatorCLIFixture) GrantExact(
+	t *testing.T,
+	actions []identityaccess.Action,
+	kind identityaccess.ResourceKind,
+	id string,
+	ownerPrincipal bool,
+) {
+	t.Helper()
+	owner := identityaccess.ResourceOwner{}
+	var err error
+	if ownerPrincipal {
+		owner, err = identityaccess.ParseResourceOwner(f.Principal)
+		require.NoError(t, err)
+	}
+	resource, err := identityaccess.NewResourceRef(f.NodePrincipal, owner, string(kind), id)
+	require.NoError(t, err)
+	issueOperatorGrant(t, f.material, actions, identityaccess.ResourceScope{
+		Kind: identityaccess.ScopeExact, Exact: resource,
+	}, time.Now().UTC().Truncate(time.Second))
 }
 
 func NewOperatorCLIFixture(t *testing.T, nodeRuntime *runtimeprocess.Node) OperatorCLIFixture {
@@ -266,7 +312,8 @@ func NewOperatorCLIFixtureWithActions(t *testing.T, nodeRuntime *runtimeprocess.
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, client.Close()) })
 	return OperatorCLIFixture{
-		Addr: addr, SignerFile: material.signerFile, NodePrincipal: material.node, Client: client.Service(),
+		Addr: addr, SignerFile: material.signerFile, NodePrincipal: material.node,
+		Principal: material.principal, Client: client.Service(), material: material,
 	}
 }
 

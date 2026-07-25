@@ -24,6 +24,7 @@ import (
 	"ardents/internal/cli/catalog"
 	cliclient "ardents/internal/cli/client"
 	appdata "ardents/internal/content"
+	contentpayload "ardents/internal/content/payload"
 	runtimeinfra "ardents/internal/daemon"
 	runtimeprocess "ardents/internal/daemon"
 	discoveryapi "ardents/internal/discovery"
@@ -579,6 +580,252 @@ func TestTerminalWorkloadProcedureLifecycle(t *testing.T) {
 		require.NoError(t, json.Unmarshal([]byte(rejected.stderr), &failure))
 		require.Equal(t, "not_found", failure["code"])
 		require.Equal(t, "workload.start", failure["operation"])
+	})
+}
+
+func TestTerminalContentRetentionAndTransferProcedure(t *testing.T) {
+	testkit.ConfigureLoopbackTransport(t)
+	scenario := testkit.BeginScenario(t, testkit.Spec{
+		Layer:       testkit.LayerE2E,
+		Domain:      "network-operator-terminal",
+		ScenarioID:  "OCS-04-DATA-001",
+		Suite:       "e2e",
+		Tags:        []string{"e2e", "network-operator-terminal", "data", "transfer", "ocs-04"},
+		Speed:       "default",
+		Environment: "local",
+	})
+
+	sourceDir := t.TempDir()
+	sourceStore := appdata.NewInDir(sourceDir)
+	require.NoError(t, sourceStore.Load())
+	key := []byte("0123456789abcdef0123456789abcdef")
+	remoteHuman, err := sourceStore.StoreEncryptedBlob(
+		appdata.Blob{MediaType: "application/octet-stream"},
+		[]byte("ocs-04 human remote payload"),
+		key,
+		"",
+	)
+	require.NoError(t, err)
+	remoteJSON, err := sourceStore.StoreEncryptedBlob(
+		appdata.Blob{MediaType: "application/octet-stream"},
+		[]byte("ocs-04 json remote payload"),
+		key,
+		"",
+	)
+	require.NoError(t, err)
+
+	privacy := testkit.NewDiscoveryPrivacyFixture(t, time.Now().UTC().Truncate(time.Second))
+	source := testkit.NewRuntime(t, runtimeinfra.Config{
+		Name: "terminal-ocs04-source",
+		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
+		Data: runtimeinfra.DataConfig{Dir: sourceDir}, Privacy: privacy.Sender,
+	}).Node
+	require.NoError(t, source.Start(context.Background()))
+	t.Cleanup(func() { _ = source.Stop(context.Background()) })
+	records, err := source.ListRecords()
+	require.NoError(t, err)
+	require.NotEmpty(t, records)
+	require.NotNil(t, records[0].Node)
+
+	target := testkit.NewRuntime(t, runtimeinfra.Config{
+		Name:  "terminal-ocs04-target",
+		Boot:  runtimeinfra.BootConfig{Sources: append([]string(nil), records[0].Node.Endpoints...)},
+		Trust: runtimeinfra.TrustConfig{Registry: testkit.DiscoveryTrustRegistry(t, source.Snapshot().Ident.PublicKey)},
+		Data:  runtimeinfra.DataConfig{Dir: t.TempDir()}, Privacy: privacy.Receiver,
+	}).Runtime
+	t.Cleanup(func() { _ = target.Stop(context.Background()) })
+	fixture := testkit.NewOperatorCLIFixtureWithActions(t, target, catalogueActions(t,
+		// node.start is the process precondition and node.runtime is the online
+		// CLI identity preflight. Data authority is exact-resource only below.
+		"node.start", "node.runtime",
+	))
+	terminal := newTerminalHarnessFromFixture(t, fixture)
+
+	localPayload := []byte("ocs-04 local payload")
+	_, localReference, err := contentpayload.DeriveIdentity(localPayload)
+	require.NoError(t, err)
+	var localBlob ardentsv1.BlobSnapshot
+	const objectID = "obj.ocs04"
+	const manifestID = "manifest.ocs04"
+	fixture.GrantExact(t, catalogueActions(t, "data.inventory"), "content-inventory", "", false)
+	fixture.GrantExact(t, catalogueActions(t, "data.objects.list"), "content-object-collection", "", false)
+	fixture.GrantExact(t, catalogueActions(t, "data.objects.get", "data.objects.publish"), "content-object", objectID, true)
+	fixture.GrantExact(t, catalogueActions(t, "data.blobs.list"), "content-blob-collection", "", false)
+	fixture.GrantExact(t, catalogueActions(t,
+		"data.blobs.get", "data.blobs.publish", "data.blobs.retain", "data.blobs.pin", "data.blobs.drop",
+	), "content-blob", localReference.String(), true)
+	fixture.GrantExact(t, catalogueActions(t, "data.blobs.fetch", "data.blobs.sources"), "content-blob", remoteHuman.Reference.String(), true)
+	fixture.GrantExact(t, catalogueActions(t, "data.blobs.fetch"), "content-blob", remoteJSON.Reference.String(), true)
+	fixture.GrantExact(t, catalogueActions(t, "data.manifests.list"), "content-manifest-collection", "", false)
+	fixture.GrantExact(t, catalogueActions(t, "data.manifests.get", "data.manifests.publish"), "content-manifest", manifestID, true)
+	fixture.GrantExact(t, catalogueActions(t, "data.transfers.list"), "transfer-collection", "", false)
+
+	scenario.Precondition("operator starts the target and publishes file-backed Blob, Object and Manifest inputs", func(t *testing.T) {
+		terminal.run(t, context.Background(), "node", "start")
+
+		blobFile := writeProtoJSON(t, &ardentsv1.BlobSnapshot{
+			MediaType: "text/plain",
+			Payload:   localPayload,
+		})
+		blobJSON := terminal.run(t, context.Background(), "--output", "json", "data", "blobs", "publish", "--file", blobFile)
+		require.NoErrorf(t, protojson.Unmarshal([]byte(blobJSON.stdout), &localBlob), "stdout=%s", blobJSON.stdout)
+		require.NotEmpty(t, localBlob.GetReference())
+		require.Equal(t, "available-local", localBlob.GetState())
+		blobHuman := terminal.run(t, context.Background(), "data", "blobs", "publish", "--file", blobFile)
+		require.Contains(t, blobHuman.stdout, "data blob publish")
+		require.Contains(t, blobHuman.stdout, "blob: "+localBlob.GetReference())
+
+		objectFile := writeProtoJSON(t, &ardentsv1.ObjectSnapshot{
+			Id: objectID, Type: "document",
+			BlobRefs: []*ardentsv1.RefSnapshot{{Kind: "blob", Id: localBlob.GetReference()}},
+		})
+		objectHuman := terminal.run(t, context.Background(), "data", "objects", "publish", "--file", objectFile)
+		require.Contains(t, objectHuman.stdout, "data object publish")
+		require.Contains(t, objectHuman.stdout, "id: "+objectID)
+		var object ardentsv1.ObjectSnapshot
+		objectJSON := terminal.run(t, context.Background(), "--output", "json", "data", "objects", "publish", "--file", objectFile)
+		require.NoErrorf(t, protojson.Unmarshal([]byte(objectJSON.stdout), &object), "stdout=%s", objectJSON.stdout)
+		require.Equal(t, objectID, object.GetId())
+		require.NotEmpty(t, object.GetOwner())
+
+		manifestFile := writeProtoJSON(t, &ardentsv1.ManifestSnapshot{
+			Id: manifestID, Kind: "blob-set",
+			Refs: []*ardentsv1.RefSnapshot{{Kind: "blob", Id: localBlob.GetReference()}},
+		})
+		manifestHuman := terminal.run(t, context.Background(), "data", "manifests", "publish", "--file", manifestFile)
+		require.Contains(t, manifestHuman.stdout, "data manifest publish")
+		require.Contains(t, manifestHuman.stdout, "id: "+manifestID)
+		var manifest ardentsv1.ManifestSnapshot
+		manifestJSON := terminal.run(t, context.Background(), "--output", "json", "data", "manifests", "publish", "--file", manifestFile)
+		require.NoErrorf(t, protojson.Unmarshal([]byte(manifestJSON.stdout), &manifest), "stdout=%s", manifestJSON.stdout)
+		require.Equal(t, manifestID, manifest.GetId())
+		require.Equal(t, object.GetOwner(), manifest.GetOwner())
+	})
+
+	scenario.Step("catalogue list/get and inventory preserve owner and content truth in human and JSON modes", func(t *testing.T) {
+		objects := terminal.run(t, context.Background(), "data", "objects", "list")
+		require.Contains(t, objects.stdout, "object: "+objectID)
+		var objectList ardentsv1.ListObjectsResponse
+		objectsJSON := terminal.run(t, context.Background(), "--output", "json", "data", "objects", "list")
+		require.NoErrorf(t, protojson.Unmarshal([]byte(objectsJSON.stdout), &objectList), "stdout=%s", objectsJSON.stdout)
+		require.Len(t, objectList.GetObjects(), 1)
+
+		object := terminal.run(t, context.Background(), "data", "objects", "get", objectID)
+		require.Contains(t, object.stdout, "id: "+objectID)
+		var objectSnapshot ardentsv1.ObjectSnapshot
+		objectJSON := terminal.run(t, context.Background(), "--output", "json", "data", "objects", "get", objectID)
+		require.NoErrorf(t, protojson.Unmarshal([]byte(objectJSON.stdout), &objectSnapshot), "stdout=%s", objectJSON.stdout)
+		require.Equal(t, objectID, objectSnapshot.GetId())
+
+		blobs := terminal.run(t, context.Background(), "data", "blobs", "list")
+		require.Contains(t, blobs.stdout, "blob: "+localBlob.GetReference())
+		var blobList ardentsv1.ListBlobsResponse
+		blobsJSON := terminal.run(t, context.Background(), "--output", "json", "data", "blobs", "list")
+		require.NoErrorf(t, protojson.Unmarshal([]byte(blobsJSON.stdout), &blobList), "stdout=%s", blobsJSON.stdout)
+		require.NotEmpty(t, blobList.GetBlobs())
+
+		blob := terminal.run(t, context.Background(), "data", "blobs", "get", localBlob.GetReference())
+		require.Contains(t, blob.stdout, "state: available-local")
+		var blobSnapshot ardentsv1.BlobSnapshot
+		blobJSON := terminal.run(t, context.Background(), "--output", "json", "data", "blobs", "get", localBlob.GetReference())
+		require.NoErrorf(t, protojson.Unmarshal([]byte(blobJSON.stdout), &blobSnapshot), "stdout=%s", blobJSON.stdout)
+		require.Equal(t, localBlob.GetReference(), blobSnapshot.GetReference())
+
+		manifests := terminal.run(t, context.Background(), "data", "manifests", "list")
+		require.Contains(t, manifests.stdout, "manifest: "+manifestID)
+		var manifestList ardentsv1.ListManifestsResponse
+		manifestsJSON := terminal.run(t, context.Background(), "--output", "json", "data", "manifests", "list")
+		require.NoErrorf(t, protojson.Unmarshal([]byte(manifestsJSON.stdout), &manifestList), "stdout=%s", manifestsJSON.stdout)
+		require.Len(t, manifestList.GetManifests(), 1)
+
+		manifest := terminal.run(t, context.Background(), "data", "manifests", "get", manifestID)
+		require.Contains(t, manifest.stdout, "id: "+manifestID)
+		var manifestSnapshot ardentsv1.ManifestSnapshot
+		manifestJSON := terminal.run(t, context.Background(), "--output", "json", "data", "manifests", "get", manifestID)
+		require.NoErrorf(t, protojson.Unmarshal([]byte(manifestJSON.stdout), &manifestSnapshot), "stdout=%s", manifestJSON.stdout)
+		require.Equal(t, manifestID, manifestSnapshot.GetId())
+
+		inventory := terminal.run(t, context.Background(), "data", "inventory")
+		require.Contains(t, inventory.stdout, "objects: 1")
+		require.Contains(t, inventory.stdout, "manifests: 1")
+		var inventorySnapshot ardentsv1.DataInventorySnapshot
+		inventoryJSON := terminal.run(t, context.Background(), "--output", "json", "data", "inventory")
+		require.NoErrorf(t, protojson.Unmarshal([]byte(inventoryJSON.stdout), &inventorySnapshot), "stdout=%s", inventoryJSON.stdout)
+		require.EqualValues(t, 1, inventorySnapshot.GetObjects())
+		require.EqualValues(t, 1, inventorySnapshot.GetManifests())
+	})
+
+	scenario.Step("retention mutations expose exact state without changing the protobuf JSON family", func(t *testing.T) {
+		expiresAt := time.Now().UTC().Add(time.Hour).Truncate(time.Second).Format(time.RFC3339)
+		retained := terminal.run(t, context.Background(), "data", "blobs", "retain", "--id", localBlob.GetReference(), "--expires-at", expiresAt)
+		require.Contains(t, retained.stdout, "retention: temporary")
+		var retainedSnapshot ardentsv1.BlobSnapshot
+		retainedJSON := terminal.run(t, context.Background(), "--output", "json", "data", "blobs", "retain", "--id", localBlob.GetReference(), "--expires-at", expiresAt)
+		require.NoErrorf(t, protojson.Unmarshal([]byte(retainedJSON.stdout), &retainedSnapshot), "stdout=%s", retainedJSON.stdout)
+		require.Equal(t, "retained-temporary", retainedSnapshot.GetState())
+
+		pinned := terminal.run(t, context.Background(), "data", "blobs", "pin", localBlob.GetReference())
+		require.Contains(t, pinned.stdout, "retention: pinned")
+		var pinnedSnapshot ardentsv1.BlobSnapshot
+		pinnedJSON := terminal.run(t, context.Background(), "--output", "json", "data", "blobs", "pin", localBlob.GetReference())
+		require.NoErrorf(t, protojson.Unmarshal([]byte(pinnedJSON.stdout), &pinnedSnapshot), "stdout=%s", pinnedJSON.stdout)
+		require.Equal(t, "pinned", pinnedSnapshot.GetState())
+
+		dropped := terminal.run(t, context.Background(), "data", "blobs", "drop", localBlob.GetReference())
+		require.Contains(t, dropped.stdout, "state: deleted")
+		blobFile := writeProtoJSON(t, &ardentsv1.BlobSnapshot{MediaType: "text/plain", Payload: localPayload})
+		terminal.run(t, context.Background(), "data", "blobs", "publish", "--file", blobFile)
+		var droppedSnapshot ardentsv1.BlobSnapshot
+		droppedJSON := terminal.run(t, context.Background(), "--output", "json", "data", "blobs", "drop", localBlob.GetReference())
+		require.NoErrorf(t, protojson.Unmarshal([]byte(droppedJSON.stdout), &droppedSnapshot), "stdout=%s", droppedJSON.stdout)
+		require.Equal(t, "deleted", droppedSnapshot.GetState())
+	})
+
+	scenario.Step("private fetch keeps Blob success distinct from transfer completion and exposes progress queries", func(t *testing.T) {
+		fetchHuman := terminal.run(t, context.Background(), "data", "blobs", "fetch", remoteHuman.Reference.String())
+		require.Contains(t, fetchHuman.stdout, "data blob fetch")
+		require.Contains(t, fetchHuman.stdout, "state: available-local")
+		require.NotContains(t, fetchHuman.stdout, "completed")
+
+		fetchJSON := terminal.run(t, context.Background(), "--output", "json", "data", "blobs", "fetch", remoteJSON.Reference.String())
+		var fetched ardentsv1.BlobSnapshot
+		require.NoErrorf(t, protojson.Unmarshal([]byte(fetchJSON.stdout), &fetched), "stdout=%s", fetchJSON.stdout)
+		require.Equal(t, "available-local", fetched.GetState())
+		require.Equal(t, remoteJSON.Reference.String(), fetched.GetReference())
+
+		sources := terminal.run(t, context.Background(), "data", "blobs", "sources", remoteHuman.Reference.String())
+		require.Contains(t, sources.stdout, "data blob sources")
+		require.Contains(t, sources.stdout, "usable: true")
+		var sourceList ardentsv1.ListBlobSourcesResponse
+		sourcesJSON := terminal.run(t, context.Background(), "--output", "json", "data", "blobs", "sources", remoteHuman.Reference.String())
+		require.NoErrorf(t, protojson.Unmarshal([]byte(sourcesJSON.stdout), &sourceList), "stdout=%s", sourcesJSON.stdout)
+		require.NotEmpty(t, sourceList.GetSources())
+
+		transfers := terminal.run(t, context.Background(), "data", "transfers", "list")
+		require.Contains(t, transfers.stdout, "state: completed")
+		var transferList ardentsv1.ListTransfersResponse
+		transfersJSON := terminal.run(t, context.Background(), "--output", "json", "data", "transfers", "list")
+		require.NoErrorf(t, protojson.Unmarshal([]byte(transfersJSON.stdout), &transferList), "stdout=%s", transfersJSON.stdout)
+		transfer := findTransferByResource(t, transferList.GetTransfers(), remoteHuman.Reference.String())
+		require.Equal(t, "completed", transfer.GetState())
+		fixture.GrantExact(t, catalogueActions(t, "data.transfers.get"), "transfer", transfer.GetId(), false)
+
+		transferHuman := terminal.run(t, context.Background(), "data", "transfers", "get", transfer.GetId())
+		require.Contains(t, transferHuman.stdout, "transfer: "+transfer.GetId())
+		require.Contains(t, transferHuman.stdout, "state: completed")
+		var transferResponse ardentsv1.GetTransferResponse
+		transferJSON := terminal.run(t, context.Background(), "--output", "json", "data", "transfers", "get", transfer.GetId())
+		require.NoErrorf(t, protojson.Unmarshal([]byte(transferJSON.stdout), &transferResponse), "stdout=%s", transferJSON.stdout)
+		require.Equal(t, transfer.GetId(), transferResponse.GetTransfer().GetId())
+	})
+
+	scenario.Degraded("an ungranted sibling resource fails closed before content lookup", func(t *testing.T) {
+		missing := terminal.runOutcome(t, context.Background(), "--output", "json", "data", "objects", "get", "obj.missing")
+		require.Equal(t, 1, missing.code)
+		require.Empty(t, missing.stdout)
+		var failure map[string]any
+		require.NoError(t, json.Unmarshal([]byte(missing.stderr), &failure))
+		require.Equal(t, "permission_denied", failure["code"])
 	})
 }
 
