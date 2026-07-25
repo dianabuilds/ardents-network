@@ -1,6 +1,6 @@
 # Wave 3 Deep Research
 
-Status: ready-for-research
+Status: completed
 
 ## Outcome
 

@@ -79,8 +79,8 @@
       "implementation_owners": ["internal/applicationapi", "internal/discovery"], "operability_surfaces": ["No current Application surface"],
       "evidence_owner": "Application Interface / QA", "required_evidence_gates": ["static", "security", "tagged", "release-candidate"],
       "status": {"implemented": "no", "reachable": "no", "operable": "no", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
-      "research_class": "R1", "adrs": ["docs/adr/0001-separate-application-interface.md"], "research_packets": ["docs/engineering/research/application-discovery.md"], "backlog": [],
-      "constraints": ["Bounded locator resolution selected; implementation is a separate stream"], "unsupported_behavior": ["No public Application discovery protocol or SDK package exists"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
+      "research_class": "R1", "adrs": ["docs/adr/0001-separate-application-interface.md"], "research_packets": ["docs/engineering/research/application-discovery.md", "docs/engineering/research/wave3-synthesis.md"], "backlog": [],
+      "constraints": ["Bounded locator resolution selected; implementation is a separate post-stabilization stream and is excluded from the independent stabilization release"], "unsupported_behavior": ["No public Application discovery protocol or SDK package exists"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
     {
       "id": "application.messaging",
@@ -90,8 +90,8 @@
       "implementation_owners": ["internal/applicationapi", "internal/messaging"], "operability_surfaces": ["No current Application surface"],
       "evidence_owner": "Application Interface / QA", "required_evidence_gates": ["static", "security", "tagged", "release-candidate"],
       "status": {"implemented": "no", "reachable": "no", "operable": "no", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
-      "research_class": "R2", "adrs": ["docs/adr/0001-separate-application-interface.md", "docs/adr/0015-authority-backed-bounded-application-conversations.md"], "research_packets": ["docs/engineering/research/application-messaging.md"], "backlog": [".scratch/wave3-deep-research/issues/05-dr01-application-messaging.md"],
-      "constraints": ["Accepted research selects opaque authority-backed conversations with Operator-owned membership, durable local send acceptance, recipient-local cursor order, at-least-once delivery, and Content References for large data; ADR-0011/ADR-0015 acceptance and implementation are pending"], "unsupported_behavior": ["No Application Messaging interface exists; arbitrary topics, caller-selected recipients, exactly-once effects, global ordering, read receipts, federation, and Waku internals are unsupported"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
+      "research_class": "R2", "adrs": ["docs/adr/0001-separate-application-interface.md", "docs/adr/0015-authority-backed-bounded-application-conversations.md"], "research_packets": ["docs/engineering/research/application-messaging.md", "docs/engineering/research/wave3-synthesis.md"], "backlog": [".scratch/wave3-deep-research/issues/05-dr01-application-messaging.md"],
+      "constraints": ["Accepted research selects opaque authority-backed conversations with Operator-owned membership, durable local send acceptance, recipient-local cursor order, at-least-once delivery, and Content References for large data; it is excluded from the independent stabilization release, and ADR-0011/ADR-0015 acceptance and implementation are pending"], "unsupported_behavior": ["No Application Messaging interface exists; arbitrary topics, caller-selected recipients, exactly-once effects, global ordering, read receipts, federation, and Waku internals are unsupported"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
     {
       "id": "network.waku-foundation",
@@ -167,8 +167,8 @@
       "implementation_owners": ["internal/applicationapi", "internal/hosting"], "operability_surfaces": ["No current Application surface"],
       "evidence_owner": "Application and Hosting / QA", "required_evidence_gates": ["static", "security", "deployment", "release-candidate"],
       "status": {"implemented": "no", "reachable": "no", "operable": "no", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
-      "research_class": "R2", "adrs": ["docs/adr/0001-separate-application-interface.md", "docs/adr/0012-lease-application-hosting-through-approved-profiles.md"], "research_packets": ["docs/engineering/research/application-hosting.md"], "backlog": [".scratch/wave3-deep-research/issues/03-dr02-application-hosting.md"],
-      "constraints": ["Accepted research selects an owner-qualified leased Hosted Service over immutable Operator-approved profile revisions; ADR-0012 acceptance and implementation are pending"], "unsupported_behavior": ["No Application hosting interface exists; arbitrary endpoint registration and delegated Hosting are not supported"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
+      "research_class": "R2", "adrs": ["docs/adr/0001-separate-application-interface.md", "docs/adr/0012-lease-application-hosting-through-approved-profiles.md"], "research_packets": ["docs/engineering/research/application-hosting.md", "docs/engineering/research/wave3-synthesis.md"], "backlog": [".scratch/wave3-deep-research/issues/03-dr02-application-hosting.md"],
+      "constraints": ["Accepted research selects an owner-qualified leased Hosted Service over immutable Operator-approved profile revisions; it is excluded from the independent stabilization release, and ADR-0012 acceptance and implementation are pending"], "unsupported_behavior": ["No Application hosting interface exists; arbitrary endpoint registration and delegated Hosting are not supported"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
     {
       "id": "service.direct-interaction",
@@ -178,8 +178,8 @@
       "implementation_owners": ["internal/hosting", "internal/ingressproxy"], "operability_surfaces": ["No supported end-user interaction surface"],
       "evidence_owner": "Hosting and Application / QA", "required_evidence_gates": ["static", "security", "deployment", "release-candidate"],
       "status": {"implemented": "partial", "reachable": "no", "operable": "no", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
-      "research_class": "R2", "adrs": ["docs/adr/0014-end-direct-service-interaction-at-discovery.md"], "research_packets": ["docs/engineering/research/direct-service-interaction.md"], "backlog": [".scratch/wave3-deep-research/issues/06-dr05-direct-service-interaction.md"],
-      "constraints": ["Accepted research ends Ardents v1 responsibility after authenticated, authorized, privacy-filtered Discovery resolution; ADR-0014 acceptance and Discovery implementation are pending"], "unsupported_behavior": ["No Ardents Direct Service adapter, proxy, service credential, Access-Grant translation, generic retry, or Application-owned HTTPS Hosting contract is supported in v1"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
+      "research_class": "R2", "adrs": ["docs/adr/0014-end-direct-service-interaction-at-discovery.md"], "research_packets": ["docs/engineering/research/direct-service-interaction.md", "docs/engineering/research/wave3-synthesis.md"], "backlog": [".scratch/wave3-deep-research/issues/06-dr05-direct-service-interaction.md"],
+      "constraints": ["Accepted research ends Ardents v1 responsibility after authenticated, authorized, privacy-filtered Discovery resolution; the capability is excluded from the independent stabilization release, ADR-0014 acceptance and Discovery implementation are pending, and no Direct Service adapter is planned"], "unsupported_behavior": ["No Ardents Direct Service adapter, proxy, service credential, Access-Grant translation, generic retry, or Application-owned HTTPS Hosting contract is supported in v1"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
     {
       "id": "operations.diagnostics",
@@ -244,8 +244,8 @@
       "implementation_owners": ["internal/provision", "internal/messaging"], "operability_surfaces": ["Deployment-owned partial authority only"],
       "evidence_owner": "Identity and Security / QA", "required_evidence_gates": ["static", "security", "deployment", "release-candidate"],
       "status": {"implemented": "partial", "reachable": "no", "operable": "no", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
-      "research_class": "R2", "adrs": ["docs/adr/0002-principal-centered-identity-and-access.md", "docs/adr/0011-single-authority-channel-grant-lifecycle.md"], "research_packets": ["docs/engineering/research/channel-grant-authority.md"], "backlog": [".scratch/wave3-deep-research/issues/02-dr03-channel-grant-authority.md"],
-      "constraints": ["Accepted research selects one deployment-owned Realm Authority Principal, fresh generation per membership change, explicit member fencing, and an independent monotonic checkpoint trust root; ADR-0011 acceptance and implementation are pending"], "unsupported_behavior": ["No supported production Channel Grant authority interface; federation and MLS are not supported in v1"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
+      "research_class": "R2", "adrs": ["docs/adr/0002-principal-centered-identity-and-access.md", "docs/adr/0011-single-authority-channel-grant-lifecycle.md"], "research_packets": ["docs/engineering/research/channel-grant-authority.md", "docs/engineering/research/wave3-synthesis.md"], "backlog": [".scratch/wave3-deep-research/issues/02-dr03-channel-grant-authority.md"],
+      "constraints": ["Accepted research selects one deployment-owned Realm Authority Principal, fresh generation per membership change, explicit member fencing, and an independent monotonic checkpoint trust root; it is excluded from the independent stabilization release, and ADR-0011 acceptance and implementation are pending"], "unsupported_behavior": ["No supported production Channel Grant authority interface; federation and MLS are not supported in v1"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
     {
       "id": "deployment.multi-host",
@@ -255,8 +255,8 @@
       "implementation_owners": ["scripts/deploy", "deploy/docker"], "operability_surfaces": ["cluster deployment and multinode status"],
       "evidence_owner": "Operations and Network / QA", "required_evidence_gates": ["static", "deployment", "multinode", "security", "release-candidate"],
       "status": {"implemented": "partial", "reachable": "no", "operable": "no", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
-      "research_class": "R2", "adrs": ["docs/adr/0013-bounded-multi-host-reachability.md"], "research_packets": ["docs/engineering/research/multi-host-reachability.md"], "backlog": [".scratch/wave3-deep-research/issues/04-dr04-multi-host-reachability.md"],
-      "constraints": ["Accepted research selects exactly three operator-owned Linux amd64 hosts, separately qualified private-LAN and public-direct variants, at least two bootstrap/Store Nodes, one designated DR-03 authority slot, and bounded workstation-side topology operations; ADR-0013 acceptance and implementation are pending"], "unsupported_behavior": ["No supported real multi-host deployment contract; arbitrary node counts, automatic NAT traversal, schedulers, Kubernetes, and remote Operator/Application APIs remain unsupported"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
+      "research_class": "R2", "adrs": ["docs/adr/0013-bounded-multi-host-reachability.md"], "research_packets": ["docs/engineering/research/multi-host-reachability.md", "docs/engineering/research/wave3-synthesis.md"], "backlog": [".scratch/wave3-deep-research/issues/04-dr04-multi-host-reachability.md"],
+      "constraints": ["Accepted research selects exactly three operator-owned Linux amd64 hosts, separately qualified private-LAN and public-direct variants, at least two bootstrap/Store Nodes, one designated DR-03 authority slot, and bounded workstation-side topology operations for the first release that claims multi-host support; it is excluded from the independent stabilization release, and ADR-0013 acceptance and implementation are pending"], "unsupported_behavior": ["No supported real multi-host deployment contract; arbitrary node counts, automatic NAT traversal, schedulers, Kubernetes, and remote Operator/Application APIs remain unsupported"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
     {
       "id": "deployment.kubernetes",

@@ -399,12 +399,24 @@ Frozen product baseline Wave 3 —
 documentation/governance revision —
 `main@e1e5299bf3b83cb534605811c032eeb2fe1bdd0c`.
 
+Wave 3 research is complete in
+`docs/engineering/research/wave3-synthesis.md`. DR-01 through DR-05 have
+accepted research recommendations and Proposed ADR-0011 through ADR-0015.
+The synthesis keeps all new Application, authority, Direct Service, and real
+multi-host capabilities outside the independent stabilization release; no
+capability has been promoted to `Q=yes`.
+
 ### Wave 4 — Scope and release decision
 
 - выбрать функции первого release;
 - отделить post-v1 исследования;
 - выполнить DR-06 qualification на выбранном scope;
 - создать финальный dependency-ordered implementation/release backlog.
+
+The scope decision is now proposed by the Wave 3 synthesis: DR-06 first
+qualifies exactly the fifteen existing stabilization capabilities and twelve
+declared environments. Wave 3 feature implementation proceeds independently
+on the dependency graph recorded by the synthesis.
 
 ## 12. Результат подготовительного этапа
 

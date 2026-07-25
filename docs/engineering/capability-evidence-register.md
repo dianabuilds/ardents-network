@@ -45,8 +45,8 @@ An authorized Application resolves a bounded trusted published service locator.
 - Status at `8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c`: I=no, R=no, O=no, Q=no
 - Research class: R1
 - ADRs: `docs/adr/0001-separate-application-interface.md`
-- Research: `docs/engineering/research/application-discovery.md`
-- Constraints: Bounded locator resolution selected; implementation is a separate stream
+- Research: `docs/engineering/research/application-discovery.md`, `docs/engineering/research/wave3-synthesis.md`
+- Constraints: Bounded locator resolution selected; implementation is a separate post-stabilization stream and is excluded from the independent stabilization release
 - Unsupported: No public Application discovery protocol or SDK package exists
 <!-- capability-status:end application.discovery -->
 
@@ -64,9 +64,9 @@ An Application manages hosted workload lifecycle through a supported Application
 - Status at `8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c`: I=no, R=no, O=no, Q=no
 - Research class: R2
 - ADRs: `docs/adr/0001-separate-application-interface.md`, `docs/adr/0012-lease-application-hosting-through-approved-profiles.md`
-- Research: `docs/engineering/research/application-hosting.md`
+- Research: `docs/engineering/research/application-hosting.md`, `docs/engineering/research/wave3-synthesis.md`
 - Backlog: `.scratch/wave3-deep-research/issues/03-dr02-application-hosting.md`
-- Constraints: Accepted research selects an owner-qualified leased Hosted Service over immutable Operator-approved profile revisions; ADR-0012 acceptance and implementation are pending
+- Constraints: Accepted research selects an owner-qualified leased Hosted Service over immutable Operator-approved profile revisions; it is excluded from the independent stabilization release, and ADR-0012 acceptance and implementation are pending
 - Unsupported: No Application hosting interface exists; arbitrary endpoint registration and delegated Hosting are not supported
 <!-- capability-status:end application.hosting -->
 
@@ -104,9 +104,9 @@ An Application exchanges private product messages through a supported Applicatio
 - Status at `8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c`: I=no, R=no, O=no, Q=no
 - Research class: R2
 - ADRs: `docs/adr/0001-separate-application-interface.md`, `docs/adr/0015-authority-backed-bounded-application-conversations.md`
-- Research: `docs/engineering/research/application-messaging.md`
+- Research: `docs/engineering/research/application-messaging.md`, `docs/engineering/research/wave3-synthesis.md`
 - Backlog: `.scratch/wave3-deep-research/issues/05-dr01-application-messaging.md`
-- Constraints: Accepted research selects opaque authority-backed conversations with Operator-owned membership, durable local send acceptance, recipient-local cursor order, at-least-once delivery, and Content References for large data; ADR-0011/ADR-0015 acceptance and implementation are pending
+- Constraints: Accepted research selects opaque authority-backed conversations with Operator-owned membership, durable local send acceptance, recipient-local cursor order, at-least-once delivery, and Content References for large data; it is excluded from the independent stabilization release, and ADR-0011/ADR-0015 acceptance and implementation are pending
 - Unsupported: No Application Messaging interface exists; arbitrary topics, caller-selected recipients, exactly-once effects, global ordering, read receipts, federation, and Waku internals are unsupported
 <!-- capability-status:end application.messaging -->
 
@@ -161,9 +161,9 @@ An Operator deploys multiple Nodes across real hosts with defined topology and r
 - Status at `8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c`: I=partial, R=no, O=no, Q=no
 - Research class: R2
 - ADRs: `docs/adr/0013-bounded-multi-host-reachability.md`
-- Research: `docs/engineering/research/multi-host-reachability.md`
+- Research: `docs/engineering/research/multi-host-reachability.md`, `docs/engineering/research/wave3-synthesis.md`
 - Backlog: `.scratch/wave3-deep-research/issues/04-dr04-multi-host-reachability.md`
-- Constraints: Accepted research selects exactly three operator-owned Linux amd64 hosts, separately qualified private-LAN and public-direct variants, at least two bootstrap/Store Nodes, one designated DR-03 authority slot, and bounded workstation-side topology operations; ADR-0013 acceptance and implementation are pending
+- Constraints: Accepted research selects exactly three operator-owned Linux amd64 hosts, separately qualified private-LAN and public-direct variants, at least two bootstrap/Store Nodes, one designated DR-03 authority slot, and bounded workstation-side topology operations for the first release that claims multi-host support; it is excluded from the independent stabilization release, and ADR-0013 acceptance and implementation are pending
 - Unsupported: No supported real multi-host deployment contract; arbitrary node counts, automatic NAT traversal, schedulers, Kubernetes, and remote Operator/Application APIs remain unsupported
 <!-- capability-status:end deployment.multi-host -->
 
@@ -385,9 +385,9 @@ A deployment authority issues and revokes production Channel Grants under an exp
 - Status at `8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c`: I=partial, R=no, O=no, Q=no
 - Research class: R2
 - ADRs: `docs/adr/0002-principal-centered-identity-and-access.md`, `docs/adr/0011-single-authority-channel-grant-lifecycle.md`
-- Research: `docs/engineering/research/channel-grant-authority.md`
+- Research: `docs/engineering/research/channel-grant-authority.md`, `docs/engineering/research/wave3-synthesis.md`
 - Backlog: `.scratch/wave3-deep-research/issues/02-dr03-channel-grant-authority.md`
-- Constraints: Accepted research selects one deployment-owned Realm Authority Principal, fresh generation per membership change, explicit member fencing, and an independent monotonic checkpoint trust root; ADR-0011 acceptance and implementation are pending
+- Constraints: Accepted research selects one deployment-owned Realm Authority Principal, fresh generation per membership change, explicit member fencing, and an independent monotonic checkpoint trust root; it is excluded from the independent stabilization release, and ADR-0011 acceptance and implementation are pending
 - Unsupported: No supported production Channel Grant authority interface; federation and MLS are not supported in v1
 <!-- capability-status:end realm.channel-grant-authority -->
 
@@ -441,9 +441,9 @@ An Application invokes a discovered hosted service through a supported authentic
 - Status at `8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c`: I=partial, R=no, O=no, Q=no
 - Research class: R2
 - ADRs: `docs/adr/0014-end-direct-service-interaction-at-discovery.md`
-- Research: `docs/engineering/research/direct-service-interaction.md`
+- Research: `docs/engineering/research/direct-service-interaction.md`, `docs/engineering/research/wave3-synthesis.md`
 - Backlog: `.scratch/wave3-deep-research/issues/06-dr05-direct-service-interaction.md`
-- Constraints: Accepted research ends Ardents v1 responsibility after authenticated, authorized, privacy-filtered Discovery resolution; ADR-0014 acceptance and Discovery implementation are pending
+- Constraints: Accepted research ends Ardents v1 responsibility after authenticated, authorized, privacy-filtered Discovery resolution; the capability is excluded from the independent stabilization release, ADR-0014 acceptance and Discovery implementation are pending, and no Direct Service adapter is planned
 - Unsupported: No Ardents Direct Service adapter, proxy, service credential, Access-Grant translation, generic retry, or Application-owned HTTPS Hosting contract is supported in v1
 <!-- capability-status:end service.direct-interaction -->
 
