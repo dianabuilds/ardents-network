@@ -440,10 +440,11 @@ An Application invokes a discovered hosted service through a supported authentic
 - Required evidence gates: `static`, `security`, `deployment`, `release-candidate`
 - Status at `8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c`: I=partial, R=no, O=no, Q=no
 - Research class: R2
-- Research: `docs/engineering/research/wave3-research-charter.md`
+- ADRs: `docs/adr/0014-end-direct-service-interaction-at-discovery.md`
+- Research: `docs/engineering/research/direct-service-interaction.md`
 - Backlog: `.scratch/wave3-deep-research/issues/06-dr05-direct-service-interaction.md`
-- Constraints: Interaction protocol and authentication semantics are undecided
-- Unsupported: No supported direct Application-to-service contract exists
+- Constraints: Accepted research ends Ardents v1 responsibility after authenticated, authorized, privacy-filtered Discovery resolution; ADR-0014 acceptance and Discovery implementation are pending
+- Unsupported: No Ardents Direct Service adapter, proxy, service credential, Access-Grant translation, generic retry, or Application-owned HTTPS Hosting contract is supported in v1
 <!-- capability-status:end service.direct-interaction -->
 
 <!-- capability-status:begin transfer.replication -->

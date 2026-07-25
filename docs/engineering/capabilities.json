@@ -178,8 +178,8 @@
       "implementation_owners": ["internal/hosting", "internal/ingressproxy"], "operability_surfaces": ["No supported end-user interaction surface"],
       "evidence_owner": "Hosting and Application / QA", "required_evidence_gates": ["static", "security", "deployment", "release-candidate"],
       "status": {"implemented": "partial", "reachable": "no", "operable": "no", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
-      "research_class": "R2", "adrs": [], "research_packets": ["docs/engineering/research/wave3-research-charter.md"], "backlog": [".scratch/wave3-deep-research/issues/06-dr05-direct-service-interaction.md"],
-      "constraints": ["Interaction protocol and authentication semantics are undecided"], "unsupported_behavior": ["No supported direct Application-to-service contract exists"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
+      "research_class": "R2", "adrs": ["docs/adr/0014-end-direct-service-interaction-at-discovery.md"], "research_packets": ["docs/engineering/research/direct-service-interaction.md"], "backlog": [".scratch/wave3-deep-research/issues/06-dr05-direct-service-interaction.md"],
+      "constraints": ["Accepted research ends Ardents v1 responsibility after authenticated, authorized, privacy-filtered Discovery resolution; ADR-0014 acceptance and Discovery implementation are pending"], "unsupported_behavior": ["No Ardents Direct Service adapter, proxy, service credential, Access-Grant translation, generic retry, or Application-owned HTTPS Hosting contract is supported in v1"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
     {
       "id": "operations.diagnostics",
