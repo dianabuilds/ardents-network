@@ -167,29 +167,32 @@ vertical slice whose detailed acceptance criteria live in its source packet.
 
 ### Tranche 1 — independent Application locator
 
-1. AD-01 freezes Application Discovery action/resource admission.
+1. AD-01 deepens protected Application admission without changing Content
+   behavior.
 2. AD-02 resolves one trusted service end to end.
 3. AD-03 proves privacy, unsafe-target filtering, bounds and no side effects.
-4. AD-04 adds SDK/documentation and lifecycle convergence.
-5. AD-05 remains its later matching-commit qualification gate.
+4. AD-04 proves exact grants, one-hop Delegation and Actor/Effective
+   attribution.
+5. AD-05 proves lifecycle convergence and matching-commit qualification.
 
 ### Tranche 2A — production authority foundation
 
-1. CGA-01 freezes realm/authority contracts and exact Operator actions.
-2. CGA-02 persists authority ledger and immutable checkpoint head.
-3. CGA-03 delivers recipient-bound generation bundles.
-4. CGA-04 activates fresh generations from approved member attestations.
-5. CGA-05 revokes/removes/fences without false instantaneous claims.
+1. CGA-01 creates and inspects one production Realm Authority.
+2. CGA-02 delivers and acknowledges one recipient-bound initial generation.
+3. CGA-03 rotates a channel and attests activation across hosts.
+4. CGA-04 adds/removes membership with revocation and fencing.
+5. CGA-05 renews grants and preserves strict channel-class separation.
 6. CGA-06 restores/migrates against the independent anti-rollback root.
 7. CGA-07 qualifies the authority lifecycle.
 
 ### Tranche 2B — local Hosted Service foundation
 
-1. AH-01 freezes Hosted Service/profile-revision contracts.
-2. AH-02 persists owner-qualified leased intent and profile archive.
-3. AH-03 realizes managed workload/readiness/ingress/publication lifecycle.
-4. AH-04 recovers, drains, revokes, and migrates without stale publication.
-5. AH-05 qualifies supported local/network modes after topology evidence.
+1. AH-01 persists an owner-qualified Hosted Service aggregate and immutable
+   profile revision.
+2. AH-02 drives one managed workload to readiness from archived profile truth.
+3. AH-03 publishes and withdraws through the same leased lifecycle.
+4. AH-04 closes Operator recovery, revocation and migration.
+5. AH-05 qualifies the supported Hosting journey after topology evidence.
 
 Tranches 2A and 2B may run in parallel after their ADRs.
 
@@ -221,7 +224,8 @@ AM-02 consumes CGA activation; AM-05 consumes DR-04 restore/fencing behavior.
 ### Tranche 3C — discovery-only service handoff
 
 1. DSI-01 freezes the discovery-only documentation/contract.
-2. DSI-02 qualifies locator-to-Application HTTP/TCP handoff after AD-01–AD-04.
+2. DSI-02 proves a bounded locator-to-Application HTTP/TCP tracer after
+   AD-01–AD-04.
 3. DSI-03 proves existing Operator-published HTTPS locator semantics after the
    supported topology exists.
 4. DSI-04 qualifies the exact handoff, not a Direct Service adapter.
