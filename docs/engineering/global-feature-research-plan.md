@@ -25,6 +25,11 @@ R3 qualification.
 `main@180decc1b03f94a6115b59a4046b4795308ec235`. Этот research baseline не
 заменяет frozen R0 evidence и не является production qualification.
 
+Их выбранные AIJ, OCS и FEC slices реализованы последовательностью до
+`main@8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c`. Canonical capability
+assessment привязан к этому post-R1 source commit; все capability сохраняют
+`Q=no`.
+
 ## 2. Почему нужен отдельный исследовательский контур
 
 Наличие кода не означает, что возможность доступна пользователю. Для каждой
@@ -364,14 +369,16 @@ Tests должны проходить через тот же interface, что �
 
 Bounded R1 packets для Application installation, Operator command smoke и
 feature/evidence catalogue завершены на `main@180decc1b03f94a6115b59a4046b4795308ec235`.
-Их issue-декомпозиция ожидает отдельного подтверждения перед публикацией в
-локальный tracker.
+AIJ-01/02, OCS-01–05 и FEC-001/002 реализованы и записаны как закрытые задачи в
+локальном tracker. Их последний product commit —
+`main@8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c`.
 
 ### Wave 2 — Ready work
 
-- взять подтверждённые R0;
-- завершить R1 spikes;
-- выпустить независимо реализуемые вертикальные issues.
+- R0 baseline и локальный/static evidence snapshot завершены;
+- bounded R1 spikes и выбранные AIJ/OCS/FEC implementation slices завершены;
+- Application Discovery AD-01–AD-04 остаются отдельным готовым implementation
+  stream, AD-05 — его R3 qualification gate.
 
 ### Wave 3 — Deep research
 
@@ -380,6 +387,12 @@ feature/evidence catalogue завершены на `main@180decc1b03f94a6115b59a
 - DR-03 Channel Grant authority;
 - DR-04 Multi-host/reachability;
 - DR-05 Direct service interaction.
+
+Wave 3 использует
+`docs/engineering/research/wave3-research-charter.md`, integrator-owned decision
+register и локальный backlog `.scratch/wave3-deep-research/`. Первая безопасная
+параллельная волна — DR-03, DR-02 и DR-04; DR-01 зависит от DR-03, DR-05 — от
+DR-02.
 
 ### Wave 4 — Scope and release decision
 

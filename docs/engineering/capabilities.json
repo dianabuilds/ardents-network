@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "reported_source_commit": "a2ecb12ff6b215e472bad2ce0aafd7f8a8700775",
+  "reported_source_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c",
   "domains": [
     {"id": "application", "owner": "Application Interface", "required": true},
     {"id": "content-transfer", "owner": "Content and Transfer", "required": true},
@@ -34,8 +34,8 @@
       "supported_interfaces": [{"id": "operator-node-v1", "kind": "operator", "contracts": ["internal/localapi/protocol/node.pb.go", "internal/cli/node"]}],
       "implementation_owners": ["internal/daemon", "internal/localapi/node"], "operability_surfaces": ["ardentsctl node status and events", "daemon lifecycle diagnostics"],
       "evidence_owner": "Node / QA", "required_evidence_gates": ["static", "fast", "tagged", "release-candidate"],
-      "status": {"implemented": "yes", "reachable": "partial", "operable": "partial", "qualified": "no", "at_commit": "a2ecb12ff6b215e472bad2ce0aafd7f8a8700775", "qualification_snapshot": ""},
-      "research_class": "R1", "adrs": [], "research_packets": ["docs/engineering/research/operator-command-smoke.md"], "backlog": [],
+      "status": {"implemented": "yes", "reachable": "yes", "operable": "yes", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
+      "research_class": "R3", "adrs": [], "research_packets": ["docs/engineering/research/operator-command-smoke.md"], "backlog": [".scratch/r1-existing-product-truth/issues/06-ocs-node-network-diagnostics.md"],
       "constraints": ["Operator Principal and protected local transport are required"], "unsupported_behavior": ["Current-head Linux and native qualification is absent"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
     {
@@ -45,9 +45,9 @@
       "supported_interfaces": [{"id": "ardentsctl", "kind": "operator", "contracts": ["cmd/ardentsctl/main.go", "internal/cli"]}],
       "implementation_owners": ["internal/cli", "internal/localapi"], "operability_surfaces": ["ardentsctl human and JSON output", "process exit status"],
       "evidence_owner": "Operator Interface / QA", "required_evidence_gates": ["static", "fast", "tagged", "release-candidate"],
-      "status": {"implemented": "yes", "reachable": "partial", "operable": "partial", "qualified": "no", "at_commit": "a2ecb12ff6b215e472bad2ce0aafd7f8a8700775", "qualification_snapshot": ""},
-      "research_class": "R1", "adrs": ["docs/adr/0002-principal-centered-identity-and-access.md"], "research_packets": ["docs/engineering/research/operator-command-smoke.md"], "backlog": [],
-      "constraints": ["Commands use the protected Operator Interface"], "unsupported_behavior": ["Not every leaf command has procedure-level smoke or stable JSON evidence"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
+      "status": {"implemented": "yes", "reachable": "yes", "operable": "yes", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
+      "research_class": "R3", "adrs": ["docs/adr/0002-principal-centered-identity-and-access.md"], "research_packets": ["docs/engineering/research/operator-command-smoke.md"], "backlog": [".scratch/r1-existing-product-truth/issues/05-ocs-command-contract.md"],
+      "constraints": ["Commands use the protected Operator Interface"], "unsupported_behavior": ["Current canonical Linux, Docker, native, and release qualification is absent"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
     {
       "id": "identity.principal-access",
@@ -56,7 +56,7 @@
       "supported_interfaces": [{"id": "operator-identity-v1", "kind": "operator", "contracts": ["internal/localapi/protocol/identity.pb.go"]}, {"id": "go-sdk-identity-v1", "kind": "sdk", "contracts": ["sdk/go/identity", "sdk/go/client"]}],
       "implementation_owners": ["internal/identity", "internal/identity/access"], "operability_surfaces": ["identity session and grant inspection", "ticket, session, grant and device revocation"],
       "evidence_owner": "Identity / QA", "required_evidence_gates": ["static", "fast", "security", "tagged", "release-candidate"],
-      "status": {"implemented": "yes", "reachable": "yes", "operable": "yes", "qualified": "no", "at_commit": "a2ecb12ff6b215e472bad2ce0aafd7f8a8700775", "qualification_snapshot": ""},
+      "status": {"implemented": "yes", "reachable": "yes", "operable": "yes", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
       "research_class": "R3", "adrs": ["docs/adr/0002-principal-centered-identity-and-access.md", "docs/adr/0005-recoverable-one-time-ticket-handoff.md"], "research_packets": ["docs/engineering/research/application-installation-journey.md"], "backlog": [],
       "constraints": ["Principal-only authorization and finite grants"], "unsupported_behavior": ["No current complete release evidence matrix"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
@@ -67,8 +67,8 @@
       "supported_interfaces": [{"id": "go-sdk-v1", "kind": "sdk", "contracts": ["sdk/go/client/enrollment.go", "sdk/go/client/client.go", "sdk/go/content/content.go"]}],
       "implementation_owners": ["internal/identity/access", "internal/applicationapi", "sdk/go"], "operability_surfaces": ["protected ticket-file enrollment helper", "typed SDK errors and revocation"],
       "evidence_owner": "Application Interface / QA", "required_evidence_gates": ["static", "fast", "application-process", "security", "release-candidate"],
-      "status": {"implemented": "yes", "reachable": "yes", "operable": "yes", "qualified": "no", "at_commit": "a2ecb12ff6b215e472bad2ce0aafd7f8a8700775", "qualification_snapshot": ""},
-      "research_class": "R1", "adrs": ["docs/adr/0001-separate-application-interface.md", "docs/adr/0005-recoverable-one-time-ticket-handoff.md"], "research_packets": ["docs/engineering/research/application-installation-journey.md"], "backlog": [],
+      "status": {"implemented": "yes", "reachable": "yes", "operable": "yes", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
+      "research_class": "R3", "adrs": ["docs/adr/0001-separate-application-interface.md", "docs/adr/0005-recoverable-one-time-ticket-handoff.md"], "research_packets": ["docs/engineering/research/application-installation-journey.md"], "backlog": [".scratch/r1-existing-product-truth/issues/03-aij-protected-ticket-handoff.md", ".scratch/r1-existing-product-truth/issues/04-aij-installation-recovery-revocation.md"],
       "constraints": ["Application Principal and protected ticket handoff are required"], "unsupported_behavior": ["No production release qualification is implied"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
     {
@@ -78,7 +78,7 @@
       "supported_interfaces": [{"id": "none-current", "kind": "none", "contracts": []}],
       "implementation_owners": ["internal/applicationapi", "internal/discovery"], "operability_surfaces": ["No current Application surface"],
       "evidence_owner": "Application Interface / QA", "required_evidence_gates": ["static", "security", "tagged", "release-candidate"],
-      "status": {"implemented": "no", "reachable": "no", "operable": "no", "qualified": "no", "at_commit": "a2ecb12ff6b215e472bad2ce0aafd7f8a8700775", "qualification_snapshot": ""},
+      "status": {"implemented": "no", "reachable": "no", "operable": "no", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
       "research_class": "R1", "adrs": ["docs/adr/0001-separate-application-interface.md"], "research_packets": ["docs/engineering/research/application-discovery.md"], "backlog": [],
       "constraints": ["Bounded locator resolution selected; implementation is a separate stream"], "unsupported_behavior": ["No public Application discovery protocol or SDK package exists"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
@@ -89,8 +89,8 @@
       "supported_interfaces": [{"id": "none-current", "kind": "none", "contracts": []}],
       "implementation_owners": ["internal/applicationapi", "internal/messaging"], "operability_surfaces": ["No current Application surface"],
       "evidence_owner": "Application Interface / QA", "required_evidence_gates": ["static", "security", "tagged", "release-candidate"],
-      "status": {"implemented": "no", "reachable": "no", "operable": "no", "qualified": "no", "at_commit": "a2ecb12ff6b215e472bad2ce0aafd7f8a8700775", "qualification_snapshot": ""},
-      "research_class": "R2", "adrs": ["docs/adr/0001-separate-application-interface.md"], "research_packets": [], "backlog": [],
+      "status": {"implemented": "no", "reachable": "no", "operable": "no", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
+      "research_class": "R2", "adrs": ["docs/adr/0001-separate-application-interface.md"], "research_packets": ["docs/engineering/research/wave3-research-charter.md"], "backlog": [".scratch/wave3-deep-research/issues/05-dr01-application-messaging.md"],
       "constraints": ["A public contract and security semantics require a separate decision"], "unsupported_behavior": ["No Application messaging interface exists"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
     {
@@ -100,7 +100,7 @@
       "supported_interfaces": [{"id": "operator-network-v1", "kind": "operator", "contracts": ["internal/localapi/protocol/network.pb.go"]}],
       "implementation_owners": ["internal/network", "internal/network/waku"], "operability_surfaces": ["Operator network status, peers, routes and presence"],
       "evidence_owner": "Network Foundation / QA", "required_evidence_gates": ["static", "fast", "network-foundation", "multinode", "security", "release-candidate"],
-      "status": {"implemented": "yes", "reachable": "partial", "operable": "yes", "qualified": "no", "at_commit": "a2ecb12ff6b215e472bad2ce0aafd7f8a8700775", "qualification_snapshot": ""},
+      "status": {"implemented": "yes", "reachable": "partial", "operable": "yes", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
       "research_class": "R2", "adrs": ["docs/adr/0003-authorize-before-durable-replay-admission.md"], "research_packets": [], "backlog": [],
       "constraints": ["Operator-only public reachability"], "unsupported_behavior": ["Current multi-host and adversarial qualification is absent"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
@@ -111,8 +111,8 @@
       "supported_interfaces": [{"id": "operator-network-v1", "kind": "operator", "contracts": ["internal/localapi/protocol/network.pb.go", "internal/cli/network"]}],
       "implementation_owners": ["internal/discovery", "internal/publication"], "operability_surfaces": ["Operator records, resolve, routes and presence"],
       "evidence_owner": "Discovery / QA", "required_evidence_gates": ["static", "fast", "tagged", "multinode", "release-candidate"],
-      "status": {"implemented": "yes", "reachable": "yes", "operable": "yes", "qualified": "no", "at_commit": "a2ecb12ff6b215e472bad2ce0aafd7f8a8700775", "qualification_snapshot": ""},
-      "research_class": "R1", "adrs": [], "research_packets": ["docs/engineering/research/application-discovery.md"], "backlog": [],
+      "status": {"implemented": "yes", "reachable": "yes", "operable": "yes", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
+      "research_class": "R3", "adrs": [], "research_packets": ["docs/engineering/research/application-discovery.md"], "backlog": [".scratch/r1-existing-product-truth/issues/06-ocs-node-network-diagnostics.md"],
       "constraints": ["Public reachability is Operator-only"], "unsupported_behavior": ["Application resolution is not yet implemented"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
     {
@@ -122,8 +122,8 @@
       "supported_interfaces": [{"id": "operator-content-v1", "kind": "operator", "contracts": ["internal/localapi/protocol/content.pb.go", "internal/cli/content"]}],
       "implementation_owners": ["internal/content", "internal/localapi/content"], "operability_surfaces": ["Operator content status, retention and removal"],
       "evidence_owner": "Content / QA", "required_evidence_gates": ["static", "fast", "tagged", "release-candidate"],
-      "status": {"implemented": "yes", "reachable": "yes", "operable": "yes", "qualified": "no", "at_commit": "a2ecb12ff6b215e472bad2ce0aafd7f8a8700775", "qualification_snapshot": ""},
-      "research_class": "R1", "adrs": ["docs/adr/0004-owner-qualified-content-record-identity.md"], "research_packets": ["docs/engineering/research/operator-command-smoke.md"], "backlog": [],
+      "status": {"implemented": "yes", "reachable": "yes", "operable": "yes", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
+      "research_class": "R3", "adrs": ["docs/adr/0004-owner-qualified-content-record-identity.md"], "research_packets": ["docs/engineering/research/operator-command-smoke.md"], "backlog": [".scratch/r1-existing-product-truth/issues/08-ocs-content-transfer.md"],
       "constraints": ["Content identity is owner-qualified"], "unsupported_behavior": ["Release-scale retention evidence is absent"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
     {
@@ -133,7 +133,7 @@
       "supported_interfaces": [{"id": "operator-transfer-v1", "kind": "operator", "contracts": ["internal/localapi/protocol/transfer.pb.go"]}],
       "implementation_owners": ["internal/transfer", "internal/replication"], "operability_surfaces": ["Operator transfer state and repair diagnostics"],
       "evidence_owner": "Transfer and Replication / QA", "required_evidence_gates": ["static", "fast", "tagged", "multinode", "release-candidate"],
-      "status": {"implemented": "yes", "reachable": "partial", "operable": "yes", "qualified": "no", "at_commit": "a2ecb12ff6b215e472bad2ce0aafd7f8a8700775", "qualification_snapshot": ""},
+      "status": {"implemented": "yes", "reachable": "partial", "operable": "yes", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
       "research_class": "R2", "adrs": ["docs/adr/0004-owner-qualified-content-record-identity.md", "docs/adr/0007-multi-provider-fetch-terminal-semantics.md"], "research_packets": [], "backlog": [],
       "constraints": ["Provider selection preserves owner-qualified identity"], "unsupported_behavior": ["Real multi-host repair qualification is absent"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
@@ -144,8 +144,8 @@
       "supported_interfaces": [{"id": "operator-workload-v1", "kind": "operator", "contracts": ["internal/localapi/protocol/workload.pb.go", "internal/cli/workload"]}],
       "implementation_owners": ["internal/workload", "internal/localapi/workload"], "operability_surfaces": ["Operator workload status and reconcile operations"],
       "evidence_owner": "Workload / QA", "required_evidence_gates": ["static", "fast", "workload-integration", "deployment", "release-candidate"],
-      "status": {"implemented": "yes", "reachable": "yes", "operable": "partial", "qualified": "no", "at_commit": "a2ecb12ff6b215e472bad2ce0aafd7f8a8700775", "qualification_snapshot": ""},
-      "research_class": "R3", "adrs": ["docs/adr/0006-transactional-compose-rollout-journal.md", "docs/adr/0008-composite-rollout-readiness.md"], "research_packets": [], "backlog": [],
+      "status": {"implemented": "yes", "reachable": "yes", "operable": "yes", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
+      "research_class": "R3", "adrs": ["docs/adr/0006-transactional-compose-rollout-journal.md", "docs/adr/0008-composite-rollout-readiness.md"], "research_packets": [], "backlog": [".scratch/r1-existing-product-truth/issues/07-ocs-workload-hosting.md"],
       "constraints": ["Runtime and readiness depend on the selected executor"], "unsupported_behavior": ["Current canonical deployment qualification is absent"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
     {
@@ -155,8 +155,8 @@
       "supported_interfaces": [{"id": "operator-workload-v1", "kind": "operator", "contracts": ["internal/localapi/protocol/workload.pb.go"]}],
       "implementation_owners": ["internal/hosting", "internal/publication", "internal/workload"], "operability_surfaces": ["Operator service and workload status"],
       "evidence_owner": "Hosting / QA", "required_evidence_gates": ["static", "fast", "workload-integration", "deployment", "release-candidate"],
-      "status": {"implemented": "yes", "reachable": "yes", "operable": "partial", "qualified": "no", "at_commit": "a2ecb12ff6b215e472bad2ce0aafd7f8a8700775", "qualification_snapshot": ""},
-      "research_class": "R3", "adrs": ["docs/adr/0008-composite-rollout-readiness.md"], "research_packets": [], "backlog": [],
+      "status": {"implemented": "yes", "reachable": "yes", "operable": "yes", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
+      "research_class": "R3", "adrs": ["docs/adr/0008-composite-rollout-readiness.md"], "research_packets": [], "backlog": [".scratch/r1-existing-product-truth/issues/07-ocs-workload-hosting.md"],
       "constraints": ["Publication is gated by composite readiness"], "unsupported_behavior": ["Application hosting control is absent"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
     {
@@ -166,8 +166,8 @@
       "supported_interfaces": [{"id": "none-current", "kind": "none", "contracts": []}],
       "implementation_owners": ["internal/applicationapi", "internal/hosting"], "operability_surfaces": ["No current Application surface"],
       "evidence_owner": "Application and Hosting / QA", "required_evidence_gates": ["static", "security", "deployment", "release-candidate"],
-      "status": {"implemented": "no", "reachable": "no", "operable": "no", "qualified": "no", "at_commit": "a2ecb12ff6b215e472bad2ce0aafd7f8a8700775", "qualification_snapshot": ""},
-      "research_class": "R2", "adrs": ["docs/adr/0001-separate-application-interface.md"], "research_packets": [], "backlog": [],
+      "status": {"implemented": "no", "reachable": "no", "operable": "no", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
+      "research_class": "R2", "adrs": ["docs/adr/0001-separate-application-interface.md"], "research_packets": ["docs/engineering/research/wave3-research-charter.md"], "backlog": [".scratch/wave3-deep-research/issues/03-dr02-application-hosting.md"],
       "constraints": ["A public contract and authorization model require a separate decision"], "unsupported_behavior": ["No Application hosting interface exists"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
     {
@@ -177,8 +177,8 @@
       "supported_interfaces": [{"id": "none-current", "kind": "none", "contracts": []}],
       "implementation_owners": ["internal/hosting", "internal/ingressproxy"], "operability_surfaces": ["No supported end-user interaction surface"],
       "evidence_owner": "Hosting and Application / QA", "required_evidence_gates": ["static", "security", "deployment", "release-candidate"],
-      "status": {"implemented": "partial", "reachable": "no", "operable": "no", "qualified": "no", "at_commit": "a2ecb12ff6b215e472bad2ce0aafd7f8a8700775", "qualification_snapshot": ""},
-      "research_class": "R2", "adrs": [], "research_packets": [], "backlog": [],
+      "status": {"implemented": "partial", "reachable": "no", "operable": "no", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
+      "research_class": "R2", "adrs": [], "research_packets": ["docs/engineering/research/wave3-research-charter.md"], "backlog": [".scratch/wave3-deep-research/issues/06-dr05-direct-service-interaction.md"],
       "constraints": ["Interaction protocol and authentication semantics are undecided"], "unsupported_behavior": ["No supported direct Application-to-service contract exists"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
     {
@@ -188,9 +188,9 @@
       "supported_interfaces": [{"id": "operator-diagnostics-v1", "kind": "operator", "contracts": ["internal/localapi/protocol/diagnostics.pb.go", "internal/cli/diagnostics"]}],
       "implementation_owners": ["internal/diagnostics", "internal/localapi/diagnostics"], "operability_surfaces": ["ardentsctl diagnostics and operation status"],
       "evidence_owner": "Operations / QA", "required_evidence_gates": ["static", "fast", "tagged", "release-candidate"],
-      "status": {"implemented": "yes", "reachable": "yes", "operable": "partial", "qualified": "no", "at_commit": "a2ecb12ff6b215e472bad2ce0aafd7f8a8700775", "qualification_snapshot": ""},
-      "research_class": "R1", "adrs": [], "research_packets": ["docs/engineering/research/operator-command-smoke.md"], "backlog": [],
-      "constraints": ["Outputs remain bounded and privacy-safe"], "unsupported_behavior": ["Not every diagnostic procedure has CLI smoke evidence"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
+      "status": {"implemented": "yes", "reachable": "yes", "operable": "yes", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
+      "research_class": "R3", "adrs": [], "research_packets": ["docs/engineering/research/operator-command-smoke.md"], "backlog": [".scratch/r1-existing-product-truth/issues/06-ocs-node-network-diagnostics.md"],
+      "constraints": ["Outputs remain bounded and privacy-safe"], "unsupported_behavior": ["Current load, cardinality, Linux, and release qualification is absent"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
     {
       "id": "operations.configuration-reload",
@@ -199,7 +199,7 @@
       "supported_interfaces": [{"id": "operator-configuration-v1", "kind": "operator", "contracts": ["internal/localapi/protocol/configuration.pb.go", "internal/cli/configuration"]}],
       "implementation_owners": ["internal/config", "internal/localapi/configuration"], "operability_surfaces": ["configuration validate, diff and reload status"],
       "evidence_owner": "Configuration / QA", "required_evidence_gates": ["static", "fast", "deployment", "release-candidate"],
-      "status": {"implemented": "yes", "reachable": "yes", "operable": "yes", "qualified": "no", "at_commit": "a2ecb12ff6b215e472bad2ce0aafd7f8a8700775", "qualification_snapshot": ""},
+      "status": {"implemented": "yes", "reachable": "yes", "operable": "yes", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
       "research_class": "R3", "adrs": [], "research_packets": ["docs/engineering/research/operator-command-smoke.md"], "backlog": [],
       "constraints": ["Restart-only fields remain explicit"], "unsupported_behavior": ["No current canonical deployment qualification"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
@@ -210,7 +210,7 @@
       "supported_interfaces": [{"id": "operations-scripts", "kind": "artifact", "contracts": ["scripts/deploy/data.ps1", "scripts/deploy/rollout.ps1"]}],
       "implementation_owners": ["scripts/deploy", "internal/storage"], "operability_surfaces": ["deployment journal, readiness and rollback scripts"],
       "evidence_owner": "Operations / QA", "required_evidence_gates": ["static", "deployment", "release-builds", "release-candidate"],
-      "status": {"implemented": "yes", "reachable": "yes", "operable": "partial", "qualified": "no", "at_commit": "a2ecb12ff6b215e472bad2ce0aafd7f8a8700775", "qualification_snapshot": ""},
+      "status": {"implemented": "yes", "reachable": "yes", "operable": "partial", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
       "research_class": "R3", "adrs": ["docs/adr/0006-transactional-compose-rollout-journal.md", "docs/adr/0009-immutable-release-materials.md"], "research_packets": [], "backlog": [],
       "constraints": ["Recovery depends on retained immutable release materials"], "unsupported_behavior": ["No current clean end-to-end upgrade and rollback evidence"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
@@ -221,7 +221,7 @@
       "supported_interfaces": [{"id": "linux-installer", "kind": "artifact", "contracts": ["scripts/install/linux.sh", "deploy/systemd/ardentsd.service"]}],
       "implementation_owners": ["scripts/install", "deploy/systemd"], "operability_surfaces": ["systemd service status and installation smoke"],
       "evidence_owner": "Operations / QA", "required_evidence_gates": ["static", "native-install", "release-builds", "release-candidate"],
-      "status": {"implemented": "yes", "reachable": "yes", "operable": "partial", "qualified": "no", "at_commit": "a2ecb12ff6b215e472bad2ce0aafd7f8a8700775", "qualification_snapshot": ""},
+      "status": {"implemented": "yes", "reachable": "yes", "operable": "partial", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
       "research_class": "R3", "adrs": ["docs/adr/0009-immutable-release-materials.md"], "research_packets": [], "backlog": [],
       "constraints": ["Linux and systemd environment required"], "unsupported_behavior": ["Current-head native installation gate has not qualified a release"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
@@ -232,7 +232,7 @@
       "supported_interfaces": [{"id": "release-tooling", "kind": "artifact", "contracts": ["scripts/release/build.ps1", "scripts/release/verify.ps1", "scripts/release/materials.json"]}],
       "implementation_owners": ["scripts/release", ".github/workflows/ci.yml"], "operability_surfaces": ["release build, verification and retained artifact metadata"],
       "evidence_owner": "Release", "required_evidence_gates": ["static", "security", "release-builds", "release-candidate"],
-      "status": {"implemented": "yes", "reachable": "yes", "operable": "partial", "qualified": "no", "at_commit": "a2ecb12ff6b215e472bad2ce0aafd7f8a8700775", "qualification_snapshot": ""},
+      "status": {"implemented": "yes", "reachable": "yes", "operable": "partial", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
       "research_class": "R3", "adrs": ["docs/adr/0009-immutable-release-materials.md"], "research_packets": [], "backlog": [],
       "constraints": ["Qualification is bound to one clean source commit and retained artifacts"], "unsupported_behavior": ["No accepted production release exists"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
@@ -243,8 +243,8 @@
       "supported_interfaces": [{"id": "none-current", "kind": "none", "contracts": []}],
       "implementation_owners": ["internal/provision", "internal/messaging"], "operability_surfaces": ["Deployment-owned partial authority only"],
       "evidence_owner": "Identity and Security / QA", "required_evidence_gates": ["static", "security", "deployment", "release-candidate"],
-      "status": {"implemented": "partial", "reachable": "no", "operable": "no", "qualified": "no", "at_commit": "a2ecb12ff6b215e472bad2ce0aafd7f8a8700775", "qualification_snapshot": ""},
-      "research_class": "R2", "adrs": ["docs/adr/0002-principal-centered-identity-and-access.md"], "research_packets": [], "backlog": [],
+      "status": {"implemented": "partial", "reachable": "no", "operable": "no", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
+      "research_class": "R2", "adrs": ["docs/adr/0002-principal-centered-identity-and-access.md"], "research_packets": ["docs/engineering/research/wave3-research-charter.md"], "backlog": [".scratch/wave3-deep-research/issues/02-dr03-channel-grant-authority.md"],
       "constraints": ["Production authority and rotation semantics require a decision"], "unsupported_behavior": ["No supported production Channel Grant authority interface"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
     {
@@ -254,8 +254,8 @@
       "supported_interfaces": [{"id": "deployment-scripts", "kind": "artifact", "contracts": ["scripts/deploy/cluster.ps1", "deploy/docker/compose/docker-compose.multinode.yml"]}],
       "implementation_owners": ["scripts/deploy", "deploy/docker"], "operability_surfaces": ["cluster deployment and multinode status"],
       "evidence_owner": "Operations and Network / QA", "required_evidence_gates": ["static", "deployment", "multinode", "security", "release-candidate"],
-      "status": {"implemented": "partial", "reachable": "no", "operable": "no", "qualified": "no", "at_commit": "a2ecb12ff6b215e472bad2ce0aafd7f8a8700775", "qualification_snapshot": ""},
-      "research_class": "R2", "adrs": [], "research_packets": [], "backlog": [],
+      "status": {"implemented": "partial", "reachable": "no", "operable": "no", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
+      "research_class": "R2", "adrs": [], "research_packets": ["docs/engineering/research/wave3-research-charter.md"], "backlog": [".scratch/wave3-deep-research/issues/04-dr04-multi-host-reachability.md"],
       "constraints": ["Production topology and NAT policy are unresolved"], "unsupported_behavior": ["No supported real multi-host deployment contract"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
     {
@@ -265,7 +265,7 @@
       "supported_interfaces": [{"id": "none-current", "kind": "none", "contracts": []}],
       "implementation_owners": ["deploy"], "operability_surfaces": ["No Kubernetes surface"],
       "evidence_owner": "Operations / QA", "required_evidence_gates": ["static", "security", "release-candidate"],
-      "status": {"implemented": "no", "reachable": "no", "operable": "no", "qualified": "no", "at_commit": "a2ecb12ff6b215e472bad2ce0aafd7f8a8700775", "qualification_snapshot": ""},
+      "status": {"implemented": "no", "reachable": "no", "operable": "no", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
       "research_class": "Deferred", "adrs": [], "research_packets": [], "backlog": [],
       "constraints": ["Deferred product scope"], "unsupported_behavior": ["No Kubernetes manifests or supported deployment procedure"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
@@ -276,7 +276,7 @@
       "supported_interfaces": [{"id": "none-current", "kind": "none", "contracts": []}],
       "implementation_owners": ["internal/network"], "operability_surfaces": ["Transports are explicitly suppressed"],
       "evidence_owner": "Network Foundation / QA", "required_evidence_gates": ["static", "network-foundation", "multinode", "security", "release-candidate"],
-      "status": {"implemented": "no", "reachable": "no", "operable": "no", "qualified": "no", "at_commit": "a2ecb12ff6b215e472bad2ce0aafd7f8a8700775", "qualification_snapshot": ""},
+      "status": {"implemented": "no", "reachable": "no", "operable": "no", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
       "research_class": "Deferred", "adrs": [], "research_packets": [], "backlog": [],
       "constraints": ["Deferred until a profile and topology decision"], "unsupported_behavior": ["QUIC, WebTransport and WebRTC are not supported"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     },
@@ -287,7 +287,7 @@
       "supported_interfaces": [{"id": "none-current", "kind": "none", "contracts": []}],
       "implementation_owners": ["sdk/go", "internal/applicationapi"], "operability_surfaces": ["No non-Go or remote SDK surface"],
       "evidence_owner": "Application Interface / QA", "required_evidence_gates": ["static", "security", "application-process", "release-candidate"],
-      "status": {"implemented": "no", "reachable": "no", "operable": "no", "qualified": "no", "at_commit": "a2ecb12ff6b215e472bad2ce0aafd7f8a8700775", "qualification_snapshot": ""},
+      "status": {"implemented": "no", "reachable": "no", "operable": "no", "qualified": "no", "at_commit": "8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c", "qualification_snapshot": ""},
       "research_class": "Deferred", "adrs": ["docs/adr/0001-separate-application-interface.md"], "research_packets": [], "backlog": [],
       "constraints": ["Deferred module and transport decision"], "unsupported_behavior": ["Only the local Go SDK is supported"], "active_documents": ["docs/engineering/capability-evidence-register.md"]
     }
