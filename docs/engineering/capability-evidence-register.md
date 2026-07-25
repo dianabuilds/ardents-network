@@ -383,11 +383,11 @@ A deployment authority issues and revokes production Channel Grants under an exp
 - Required evidence gates: `static`, `security`, `deployment`, `release-candidate`
 - Status at `8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c`: I=partial, R=no, O=no, Q=no
 - Research class: R2
-- ADRs: `docs/adr/0002-principal-centered-identity-and-access.md`
-- Research: `docs/engineering/research/wave3-research-charter.md`
+- ADRs: `docs/adr/0002-principal-centered-identity-and-access.md`, `docs/adr/0011-single-authority-channel-grant-lifecycle.md`
+- Research: `docs/engineering/research/channel-grant-authority.md`
 - Backlog: `.scratch/wave3-deep-research/issues/02-dr03-channel-grant-authority.md`
-- Constraints: Production authority and rotation semantics require a decision
-- Unsupported: No supported production Channel Grant authority interface
+- Constraints: Accepted research selects one deployment-owned Realm Authority Principal, fresh generation per membership change, explicit member fencing, and an independent monotonic checkpoint trust root; ADR-0011 acceptance and implementation are pending
+- Unsupported: No supported production Channel Grant authority interface; federation and MLS are not supported in v1
 <!-- capability-status:end realm.channel-grant-authority -->
 
 <!-- capability-status:begin release.artifacts-provenance -->

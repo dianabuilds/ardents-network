@@ -19,7 +19,7 @@ Status vocabulary:
 
 | ID | Decision | Owner packet | Status | Selected direction | ADR | Downstream |
 |---|---|---|---|---|---|---|
-| W3-D001 | Production realm and Channel Grant authority | DR-03 | pending | — | — | DR-01, DR-04 |
+| W3-D001 | Production realm and Channel Grant authority | DR-03 | proposed | One non-federated realm has one deployment-owned Realm Authority Principal on a designated authority Node; Operator-only HPKE bundles and approved-host attestations drive fresh-generation cutover, suspect members are fenced, and same-realm recovery depends on an independent monotonic checkpoint repository | Proposed ADR-0011 | DR-01, DR-04 |
 | W3-D002 | Application Messaging addressing and delivery model | DR-01 | pending | — | — | Messaging implementation |
 | W3-D003 | Application hosting ownership and lifecycle | DR-02 | proposed | One owner-qualified leased Hosted Service over an immutable Operator-approved managed-workload profile; the profile pins service type, Hosting owns durable intent/profile revisions, and workload/readiness/ingress/publication remain derived | Proposed ADR-0012 | DR-05, Hosting implementation |
 | W3-D004 | First-release multi-host topology and reachability | DR-04 | pending | — | — | DR-06 |
