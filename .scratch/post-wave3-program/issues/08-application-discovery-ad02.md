@@ -1,7 +1,7 @@
 # PW3-08: AD-02 Resolve a Trusted Service End to End
 
 Status: ready-for-human
-State: open
+State: closed
 Labels: ready-for-human
 Research class: R1 bounded implementation
 
@@ -265,3 +265,8 @@ with any qualification claim.
   - `tests/.artifacts/reports/application-process-ad02/raw/TestApplicationUsesDedicatedPrincipalInterface-1785073540657688460.json`;
   - `tests/.artifacts/resources/20260726-134439-22684-before.json`;
   - `tests/.artifacts/resources/20260726-134439-22684-after.json`.
+- 2026-07-26 maintainer disposition: accepted after remediation commit
+  `04241ab` closed the topology and commit-bound APP-001 evidence findings.
+  Repeat Standards and Spec reviews reported no actionable findings. AD-03 may
+  consume the accepted implementation at `baec800` plus its reviewed
+  documentation/evidence remediation.

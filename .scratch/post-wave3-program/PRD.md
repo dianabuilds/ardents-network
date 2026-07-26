@@ -104,10 +104,12 @@ implementation slices and commits.
 
 - AD-01 was accepted after commit-bound APP-001 evidence and independent
   specification/standards reviews.
-- AD-02 `Resolve a Trusted Service End to End` is published as
-  `issues/08-application-discovery-ad02.md` and is the next serial Application
-  implementation slice.
-- DR-06 remains independently `ready-for-agent`.
+- AD-02 `Resolve a Trusted Service End to End` is closed after implementation,
+  remediation, commit-bound APP-001 evidence, and clean repeat reviews.
+- AD-03 `Close Projection, Privacy, and Abuse Boundaries` is published as
+  `issues/09-application-discovery-ad03.md` and becomes the next serial
+  Application implementation slice;
+- DR-06 remains independently `ready-for-agent`;
 - Authority and Hosting implementation remain gated on explicit maintainer
   disposition of ADR-0011 and ADR-0012 respectively.
 
