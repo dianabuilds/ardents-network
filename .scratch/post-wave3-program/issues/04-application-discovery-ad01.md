@@ -1,7 +1,7 @@
 # PW3-04: AD-01 Deepen Protected Application Admission
 
 Status: ready-for-human
-State: open
+State: closed
 Labels: ready-for-human
 Research class: R1 bounded implementation
 
@@ -244,6 +244,10 @@ AH-01 to consume.
 
 - This issue follows the source packet name and boundary: AD-01 is the
   protected Application admission seam.
+- 2026-07-26 maintainer disposition: accepted after successful commit-bound
+  APP-001 evidence and two independent post-fix reviews with no actionable
+  findings. AD-02 may now consume the admission seam at
+  `e2c55d8becc7aa89179dac9bf09ec91c4e71c5b6`.
 - 2026-07-26 implementation evidence from
   `main@4b866abf4efe8b5c06376092baf485bd387106f3`:
   - the sealed, composition-time registry is complete against the generated

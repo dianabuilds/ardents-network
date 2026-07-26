@@ -100,6 +100,17 @@ Later CGA, MR, AM, AD, AH, and DSI files are published only when their direct
 predecessor is accepted. Qualification slices remain separate from
 implementation slices and commits.
 
+## Progress checkpoint — 2026-07-26
+
+- AD-01 was accepted after commit-bound APP-001 evidence and independent
+  specification/standards reviews.
+- AD-02 `Resolve a Trusted Service End to End` is published as
+  `issues/08-application-discovery-ad02.md` and is the next serial Application
+  implementation slice.
+- DR-06 remains independently `ready-for-agent`.
+- Authority and Hosting implementation remain gated on explicit maintainer
+  disposition of ADR-0011 and ADR-0012 respectively.
+
 ## Stream ownership
 
 - The integrator alone edits this PRD, the Wave 3 decision register, the
