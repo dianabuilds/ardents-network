@@ -18,6 +18,14 @@ func (s *Service) FindService(serviceType string) []Entry {
 	return discoveryresolution.FindService(s.records, serviceType, time.Now().UTC())
 }
 
+func (s *Service) FindServiceBounded(serviceType string, recordLimit, endpointLimit int) ([]Entry, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return discoveryresolution.FindServiceBounded(
+		s.records, serviceType, time.Now().UTC(), recordLimit, endpointLimit,
+	)
+}
+
 func (s *Service) Count(kind string) int {
 	s.mu.Lock()
 	defer s.mu.Unlock()

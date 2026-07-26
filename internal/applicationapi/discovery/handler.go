@@ -7,8 +7,9 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 
-	identitycontract "ardents/api/ardents/identity/v1"
 	applicationerror "ardents/internal/applicationapi/applicationerror"
 	applicationcall "ardents/internal/applicationapi/call"
 	identityaccess "ardents/internal/identity/access"
@@ -45,8 +46,34 @@ func NewHTTPHandler(locator ServiceLocator, extractor applicationcall.Extractor,
 		connect.WithReadMaxBytes(applicationv1.MaxUnaryMessageBytes),
 		connect.WithSendMaxBytes(applicationv1.MaxUnaryMessageBytes),
 		connect.WithInterceptors(interceptors...),
+		connect.WithCodec(strictJSONCodec{name: "json"}),
+		connect.WithCodec(strictJSONCodec{name: "json; charset=utf-8"}),
 	)
 	return path, httpHandler, nil
+}
+
+type strictJSONCodec struct {
+	name string
+}
+
+func (c strictJSONCodec) Name() string {
+	return c.name
+}
+
+func (strictJSONCodec) Marshal(message any) ([]byte, error) {
+	protoMessage, ok := message.(proto.Message)
+	if !ok {
+		return nil, fmt.Errorf("strict JSON codec requires a protobuf message, got %T", message)
+	}
+	return protojson.MarshalOptions{}.Marshal(protoMessage)
+}
+
+func (strictJSONCodec) Unmarshal(data []byte, message any) error {
+	protoMessage, ok := message.(proto.Message)
+	if !ok {
+		return fmt.Errorf("strict JSON codec requires a protobuf message, got %T", message)
+	}
+	return protojson.UnmarshalOptions{DiscardUnknown: false}.Unmarshal(data, protoMessage)
 }
 
 func (h *Handler) Resolve(ctx context.Context, request *connect.Request[applicationv1.ResolveServiceRequest]) (*connect.Response[applicationv1.ResolveServiceResponse], error) {
@@ -66,17 +93,14 @@ func (h *Handler) Resolve(ctx context.Context, request *connect.Request[applicat
 	if err != nil {
 		return nil, mapLocatorError(err)
 	}
+	if !validTargetSet(query, targets) {
+		return nil, mapLocatorError(ErrInternal)
+	}
 	responseTargets := make([]*applicationv1.ResolvedServiceTarget, 0, len(targets))
 	for _, item := range targets {
-		if item.ServiceID == "" || item.Endpoint == "" || item.Scheme == "" {
-			return nil, mapLocatorError(ErrInternal)
-		}
 		responseTargets = append(responseTargets, &applicationv1.ResolvedServiceTarget{
 			ServiceId: item.ServiceID, Endpoint: item.Endpoint, Scheme: item.Scheme,
 		})
-	}
-	if !identitycontract.ValidApplicationDiscoveryTargetCount(len(responseTargets)) {
-		return nil, mapLocatorError(ErrInternal)
 	}
 	return connect.NewResponse(&applicationv1.ResolveServiceResponse{Targets: responseTargets}), nil
 }

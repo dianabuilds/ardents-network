@@ -543,20 +543,25 @@ func (n *Node) configureLocalServicesLocked() {
 	})
 }
 
+type DiscoveryRoutePolicy interface {
+	AllowRouteUse(network.Candidate) error
+}
+
 type Owners struct {
-	Node              *Node
-	IdentityAccess    storage.Database
-	PrincipalAccess   *identityaccess.Service
-	Content           *content.Service
-	ContentCommands   *content.Commands
-	Discovery         *discovery.Service
-	DiscoveryTrust    *discovery.TrustEvaluator
-	DiscoveryCommands *discovery.Commands
-	Transfers         *transfer.Journal
-	Workloads         *workload.Runtime
-	Hosting           *hosting.Service
-	Diagnostics       *diagnostics.Query
-	Events            *diagnostics.Recorder
+	Node                 *Node
+	IdentityAccess       storage.Database
+	PrincipalAccess      *identityaccess.Service
+	Content              *content.Service
+	ContentCommands      *content.Commands
+	Discovery            *discovery.Service
+	DiscoveryTrust       *discovery.TrustEvaluator
+	DiscoveryRoutePolicy DiscoveryRoutePolicy
+	DiscoveryCommands    *discovery.Commands
+	Transfers            *transfer.Journal
+	Workloads            *workload.Runtime
+	Hosting              *hosting.Service
+	Diagnostics          *diagnostics.Query
+	Events               *diagnostics.Recorder
 }
 
 func NewOwners(cfg Config) Owners {
@@ -580,8 +585,9 @@ func ownersFor(node *Node) Owners {
 	})
 	return Owners{
 		Node: node, Content: node.data, ContentCommands: node.dataCommands,
-		Discovery: node.disco, DiscoveryTrust: node.trust, DiscoveryCommands: node.discoveryCommands,
-		Transfers: node.transfers, Workloads: node.workloadRuntime, Hosting: node.hosting,
+		Discovery: node.disco, DiscoveryTrust: node.trust, DiscoveryRoutePolicy: node.policy,
+		DiscoveryCommands: node.discoveryCommands,
+		Transfers:         node.transfers, Workloads: node.workloadRuntime, Hosting: node.hosting,
 		Diagnostics: query, Events: node.diag,
 	}
 }

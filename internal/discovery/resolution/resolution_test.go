@@ -28,6 +28,33 @@ func TestFindServiceSkipsExpiredEntries(t *testing.T) {
 	require.Equal(t, "svc.echo.fresh", got[0].Record.RecordID())
 }
 
+func TestFindServiceBoundedFailsClosedBeforeReturningOversizedTruth(t *testing.T) {
+	now := time.Now().UTC()
+	t.Run("catalog", func(t *testing.T) {
+		entries := []discoveryrecord.Entry{
+			{Record: serviceRecord("svc.echo.a", "echo", []string{"tcp://a"}, now.Add(time.Hour))},
+			{Record: serviceRecord("svc.echo.b", "echo", []string{"tcp://b"}, now.Add(time.Hour))},
+		}
+
+		got, overflow := FindServiceBounded(entries, "echo", now, 1, 8)
+
+		require.True(t, overflow)
+		require.Nil(t, got)
+	})
+	t.Run("matching endpoints", func(t *testing.T) {
+		entries := []discoveryrecord.Entry{
+			{Record: serviceRecord(
+				"svc.echo", "echo", []string{"tcp://a", "tcp://b"}, now.Add(time.Hour),
+			)},
+		}
+
+		got, overflow := FindServiceBounded(entries, "echo", now, 8, 1)
+
+		require.True(t, overflow)
+		require.Nil(t, got)
+	})
+}
+
 func TestResolutionUsesExactValidityBoundaries(t *testing.T) {
 	now := time.Now().UTC()
 	atExpiry := serviceRecord("svc.expiry", "echo", []string{"tcp://expiry"}, now)

@@ -1,7 +1,7 @@
 # PW3-09: AD-03 Close Projection, Privacy, and Abuse Boundaries
 
 Status: ready-for-agent
-State: open
+State: closed
 Labels: ready-for-agent
 Research class: R1 bounded security implementation
 
@@ -141,30 +141,30 @@ lifecycle integration and qualification.
 
 ## Acceptance criteria
 
-- [ ] Accepted schemes are validated as one to three unique v1 direct schemes
+- [x] Accepted schemes are validated as one to three unique v1 direct schemes
   and preserve caller preference.
-- [ ] Only fresh, non-withdrawn, trusted `NetworkPublished` records are
+- [x] Only fresh, non-withdrawn, trusted `NetworkPublished` records are
   eligible.
-- [ ] Only credential-free, fragment-free direct endpoints with an explicit
+- [x] Only credential-free, fragment-free direct endpoints with an explicit
   port and literal non-unspecified, non-loopback IP are projected.
-- [ ] Private and link-local literal addresses remain eligible only when
+- [x] Private and link-local literal addresses remain eligible only when
   current trust and route policy allow them.
-- [ ] DNS, Unix, Waku, relay, multiaddr, QUIC, WebRTC, malformed, loopback,
+- [x] DNS, Unix, Waku, relay, multiaddr, QUIC, WebRTC, malformed, loopback,
   unspecified, credential-bearing, and unsupported endpoints fail closed.
-- [ ] Current route policy is applied without leaking its denial reason.
-- [ ] Results sort by scheme preference, service ID, and endpoint bytes.
-- [ ] Exact `(service_id, endpoint)` duplicates are removed and the response is
+- [x] Current route policy is applied without leaking its denial reason.
+- [x] Results sort by scheme preference, service ID, and endpoint bytes.
+- [x] Exact `(service_id, endpoint)` duplicates are removed and the response is
   capped at eight.
-- [ ] Absent, expired, withdrawn, wrong-mode, untrusted, unsafe,
+- [x] Absent, expired, withdrawn, wrong-mode, untrusted, unsafe,
   policy-denied, and scheme-mismatched cases are externally identical
   `NotFound`.
-- [ ] Resolve performs no observation, refresh, probe, fetch, dial, or other
+- [x] Resolve performs no observation, refresh, probe, fetch, dial, or other
   synchronous external side effect.
-- [ ] SDK response validation rejects malformed, duplicate, unsorted,
+- [x] SDK response validation rejects malformed, duplicate, unsorted,
   unsupported, or over-cap server responses as `Internal`.
-- [ ] Existing AD-02 happy path, Content behavior, and APP-001 remain
+- [x] Existing AD-02 happy path, Content behavior, and APP-001 remain
   unchanged.
-- [ ] No exact-grant/Delegation expansion and no capability qualification is
+- [x] No exact-grant/Delegation expansion and no capability qualification is
   included.
 
 ## Required tests and evidence
@@ -243,3 +243,91 @@ for AD-04. It does not exit with exact-grant/Delegation or qualification work.
   change.
 - The implementing agent must re-check HEAD, branch, origin, worktree, and
   retained APP-001 evidence before editing.
+- Implementation began from the exact clean checkpoint
+  `main@6d37f15c03679c397fbe5f5908a16006a50d99aa`, with
+  `origin=https://github.com/dianabuilds/ardents-network.git`, on
+  `codex/ad-03-projection-privacy`. All Go commands used the external
+  task-specific cache
+  `C:\Users\vitek\AppData\Local\Temp\ardents-ad03-gocache`.
+- TDD evidence retained from the implementation:
+  - endpoint eligibility red
+    `go test ./internal/applicationapi/discovery -run TestLocatorProjectsOnlyEligibleDirectEndpoints -count=1`,
+    `2026-07-26T14:05:23.7315677Z..14:06:38.6409176Z`, exit 1; green
+    `2026-07-26T14:07:08.4909266Z..14:07:13.2300740Z`, exit 0;
+  - deterministic ordering/dedup/cap red
+    `TestLocatorOrdersDeduplicatesAndCapsTargets`,
+    `2026-07-26T14:08:02.8888737Z..14:08:07.4791059Z`, exit 1; green with
+    endpoint matrix `2026-07-26T14:08:51.7227984Z..14:08:56.6438423Z`,
+    exit 0;
+  - current route-policy filtering red
+    `2026-07-26T14:10:09.1092134Z..14:10:13.8524561Z`, exit 1; green
+    `2026-07-26T14:11:45.9398930Z..14:11:51.6406807Z`, exit 0;
+  - strict SDK response validation red
+    `2026-07-26T14:14:01.6770066Z..14:14:04.3430340Z`, exit 1; green
+    `2026-07-26T14:14:52.8605090Z..14:14:55.0721289Z`, exit 0;
+  - handler target-set invariant red
+    `2026-07-26T14:15:27.5791056Z..14:15:32.5975975Z`, exit 1; green
+    `2026-07-26T14:16:14.8886573Z..14:16:19.6470795Z`, exit 0;
+  - bounded projection work red
+    `go test ./internal/applicationapi/discovery -run TestLocatorRejectsProjectionWorkBeyondItsFixedBudget -count=1`,
+    `2026-07-26T14:48:41.1616306Z..14:48:45.9845747Z`, exit 1; green
+    `2026-07-26T14:49:30.8561029Z..14:49:37.0460448Z`, exit 0;
+  - unknown JSON request rejection red
+    `go test ./internal/applicationapi/discovery -run TestDiscoveryRejectsUnknownJSONFieldBeforeAdmissionOrLocator -count=1`,
+    `2026-07-26T15:09:31.5037126Z..15:09:36.2060314Z`, exit 1; green
+    `2026-07-26T15:11:30.1787454Z..15:11:35.7317017Z`, exit 0;
+  - SDK lossy-JSON defense red
+    `go test ./sdk/go/internal/adapter -run 'TestDiscoveryAdapterRejectsInvalidResponses/JSON_option' -count=1`,
+    `2026-07-26T15:12:00.7200489Z..15:12:02.7699595Z`, exit 1; green
+    `2026-07-26T15:12:22.1809742Z..15:12:24.3315107Z`, exit 0.
+- Final focused changed-package command
+  `go test ./internal/discovery/... ./internal/applicationapi/discovery ./sdk/go/internal/adapter ./sdk/go/discovery ./cmd/ardentsd ./internal/daemon -count=1`
+  passed `2026-07-26T15:12:46.4287761Z..15:13:15.5804732Z`.
+- Final repository gates:
+  - scoped `go vet ./internal/applicationapi/discovery ./internal/discovery/... ./sdk/go/internal/adapter ./cmd/ardentsd ./internal/daemon`,
+    `2026-07-26T15:18:25.3267786Z..15:18:26.8402882Z`, exit 0;
+  - `powershell -NoProfile -File scripts/generate-api.ps1 -Check`,
+    `2026-07-26T15:18:34.2831496Z..15:18:35.5779762Z`, exit 0;
+  - `go test ./tests/tooling/... -count=1`,
+    `2026-07-26T15:18:43.5755691Z..15:18:47.2209828Z`, exit 0;
+  - `go run ./tests/tooling/capabilitycatalog -check`,
+    `2026-07-26T15:18:52.6006359Z..15:18:53.8216148Z`, exit 0,
+    `24 capabilities, 8 domains, 0 qualified`;
+  - full `go test ./... -count=1`,
+    `2026-07-26T15:19:03.0436043Z..15:19:53.8903864Z`, exit 0;
+  - `git diff --check`, exit 0.
+- Canonical APP-001 passed on the pre-review implementation candidate
+  (`2026-07-26T14:30:17.4677359Z..14:31:22.0355924Z`) and again on the final
+  remediated candidate
+  (`2026-07-26T15:20:06.1862598Z..15:21:22.8861387Z`). Final artifacts:
+  `tests/.artifacts/reports/application-process-ad03-final/summary.json`
+  SHA-256 `E52CB7B5840750D81326D3BE4D135DB838B3034C06245292305C5EEDE54E1B23`;
+  `junit.xml`
+  `E57CAB7C6DE766B4262E770D5645CDE590AFEAF8D32CC16AA0BABBE124BFDCFC`;
+  raw JSON
+  `5BC9BAD808BDD03BA33F08A9B84D798CD5790168115FE8FE789C6DC6FC0CDDE4`;
+  before/after resource snapshots
+  `D25D85FB57D4F3106E09170EE13888DC23A53281F476F12790DFECE427B37155`
+  and
+  `BBAB387B1E2E7DF6247766D72852EC5867CA10F7DE8FD70AA1AC3753B7CB7834`.
+  The canonical runner removed its temporary test binary.
+- Independent reviews completed against the full uncommitted candidate.
+  Initial Standards review found restart-incompatible retained-state caps and
+  duplicated lifecycle filtering; initial Spec review additionally found the
+  global intake cap out of AD-03 scope and lossy Connect JSON unknown-field
+  decoding. Remediation removed every discovery intake/schema-v2 change,
+  shared one lifecycle predicate, installed strict server JSON codecs, and
+  pinned SDK Discovery to unknown-preserving protobuf. Repeat Standards and
+  Spec reviews reported no actionable findings.
+- Focused security review found one low-severity pre-projection work-amplification
+  path. The bounded maintained-truth query now refuses request traversal above
+  64 retained records and 256 matching endpoints, and locator preflight occurs
+  before trust/policy work. Independent security revalidation reported no
+  actionable finding or bypass. Scoped `govulncheck` passed with no reachable
+  vulnerability (`2026-07-26T14:58:44.7827473Z..14:58:49.9611249Z`).
+- AD-03 adds no projection-owned durable state. Restart continues to load the
+  same maintained discovery truth and current trust/policy; oversized legacy
+  truth loads unchanged and the Application projection fails closed without
+  request-time scanning. This is implementation evidence only:
+  `application.discovery` remains `Q=no`; qualification and exact
+  grant/Delegation work remain AD-05 and AD-04 respectively.
