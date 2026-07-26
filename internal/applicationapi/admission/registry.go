@@ -12,6 +12,7 @@ import (
 // admission. Authentication, Delegation, access invocation, audit recording,
 // and sealed-call injection remain admission-owned.
 type ProcedureRule struct {
+	Procedure     string
 	Action        string
 	ResourceKind  identityaccess.ResourceKind
 	OwnerRequired bool
@@ -21,90 +22,66 @@ type ProcedureRule struct {
 	MapTargetErr  func(error) error
 }
 
-// ProcedureContract is the composition-owned declaration of one required
-// protected procedure. It is kept separate from its implementation so missing,
-// extra, or action/classification-mismatched rules fail closed.
-type ProcedureContract struct {
-	Procedure     string
-	Action        string
-	ResourceKind  identityaccess.ResourceKind
-	OwnerRequired bool
-	Mutating      bool
-}
-
-type ProcedureRegistration struct {
-	Procedure string
-	Rule      ProcedureRule
-}
-
-type Registry interface {
-	Lookup(procedure string) (ProcedureRule, bool)
-	closedProcedureRegistry()
-}
-
-type procedureRegistry struct {
+// Registry is the immutable, composition-time view of every protected
+// Application procedure. It exposes lookup only and has no runtime
+// registration path.
+type Registry struct {
 	rules map[string]ProcedureRule
 }
 
 // NewRegistry closes an exact procedure set at composition time. The returned
 // registry exposes lookup only; it has no runtime registration path.
-func NewRegistry(contracts []ProcedureContract, registrations []ProcedureRegistration) (Registry, error) {
-	if len(contracts) == 0 {
+func NewRegistry(requiredProcedures []string, ruleset []ProcedureRule) (*Registry, error) {
+	if len(requiredProcedures) == 0 {
 		return nil, fmt.Errorf("protected Application procedure contracts are required")
 	}
-	if len(contracts) > identitycontract.MaxActions || len(registrations) > identitycontract.MaxActions {
+	if len(requiredProcedures) > identitycontract.MaxActions || len(ruleset) > identitycontract.MaxActions {
 		return nil, fmt.Errorf("protected Application procedure registry exceeds its bound")
 	}
 
-	required := make(map[string]ProcedureContract, len(contracts))
-	for _, contract := range contracts {
-		resource, registeredResource := identitycontract.LookupResourceKind(string(contract.ResourceKind))
-		if !validProcedure(contract.Procedure) ||
-			!identitycontract.IsRegisteredAction(identitycontract.InterfaceApplication, contract.Action) ||
-			!registeredResource || resource.OwnerRequired != contract.OwnerRequired {
+	required := make(map[string]struct{}, len(requiredProcedures))
+	for _, procedure := range requiredProcedures {
+		if !validProcedure(procedure) {
 			return nil, fmt.Errorf("protected Application procedure contract is invalid")
 		}
-		if _, duplicate := required[contract.Procedure]; duplicate {
+		if _, duplicate := required[procedure]; duplicate {
 			return nil, fmt.Errorf("protected Application procedure contract is duplicated")
 		}
-		required[contract.Procedure] = contract
+		required[procedure] = struct{}{}
 	}
 
-	rules := make(map[string]ProcedureRule, len(registrations))
-	for _, registration := range registrations {
-		contract, requiredProcedure := required[registration.Procedure]
+	rules := make(map[string]ProcedureRule, len(ruleset))
+	for _, rule := range ruleset {
+		_, requiredProcedure := required[rule.Procedure]
 		if !requiredProcedure {
 			return nil, fmt.Errorf("protected Application procedure registration is not declared")
 		}
-		if _, duplicate := rules[registration.Procedure]; duplicate {
+		if _, duplicate := rules[rule.Procedure]; duplicate {
 			return nil, fmt.Errorf("protected Application procedure registration is duplicated")
 		}
-		rule := registration.Rule
+		action, registeredAction := identitycontract.LookupApplicationAction(rule.Action)
 		resource, registeredResource := identitycontract.LookupResourceKind(string(rule.ResourceKind))
 		if rule.Resolve == nil || rule.Finalize == nil || rule.MapTargetErr == nil ||
-			!identitycontract.IsRegisteredAction(identitycontract.InterfaceApplication, rule.Action) ||
+			!registeredAction || action.Mutating != rule.Mutating ||
 			!registeredResource || resource.OwnerRequired != rule.OwnerRequired ||
-			rule.Action != contract.Action || rule.ResourceKind != contract.ResourceKind ||
-			rule.OwnerRequired != contract.OwnerRequired || rule.Mutating != contract.Mutating {
+			!validProcedure(rule.Procedure) {
 			return nil, fmt.Errorf("protected Application procedure rule is invalid")
 		}
-		rules[registration.Procedure] = rule
+		rules[rule.Procedure] = rule
 	}
 	if len(rules) != len(required) {
 		return nil, fmt.Errorf("protected Application procedure registry is incomplete")
 	}
-	return &procedureRegistry{rules: rules}, nil
+	return &Registry{rules: rules}, nil
 }
 
-func (r *procedureRegistry) Lookup(procedure string) (ProcedureRule, bool) {
+func (r *Registry) Lookup(procedure string) (ProcedureRule, bool) {
 	if r == nil {
 		return ProcedureRule{}, false
 	}
 	rule, ok := r.rules[procedure]
 	return rule, ok
 }
-
-func (*procedureRegistry) closedProcedureRegistry() {}
 
 func validProcedure(procedure string) bool {
 	if len(procedure) < 4 || len(procedure) > 512 || procedure[0] != '/' ||

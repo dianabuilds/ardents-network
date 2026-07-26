@@ -66,3 +66,16 @@ func TestOperatorNodeFeaturesActionHasNoCapabilitiesAlias(t *testing.T) {
 	require.False(t, IsRegisteredAction(InterfaceOperator, "node.capabilities"))
 	require.False(t, IsRegisteredAction(InterfaceApplication, "node.features"))
 }
+
+func TestApplicationActionContractsOwnMutationClassification(t *testing.T) {
+	put, ok := LookupApplicationAction("application.content.put")
+	require.True(t, ok)
+	require.True(t, put.Mutating)
+
+	get, ok := LookupApplicationAction("application.content.get")
+	require.True(t, ok)
+	require.False(t, get.Mutating)
+
+	_, ok = LookupApplicationAction("application.content.unknown")
+	require.False(t, ok)
+}

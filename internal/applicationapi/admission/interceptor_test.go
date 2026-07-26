@@ -448,20 +448,15 @@ func TestRegisteredOwnerlessRuleInjectsOnlyAnEmptyOwner(t *testing.T) {
 		return identityaccess.NewResourceRef(audience.Node, identityaccess.ResourceOwner{}, string(target.Kind), target.ID)
 	}
 	registry, err := NewRegistry(
-		[]applicationadmission.ProcedureContract{{
+		[]string{procedure},
+		[]applicationadmission.ProcedureRule{{
 			Procedure: procedure, Action: "application.content.get",
-			ResourceKind: "node", OwnerRequired: false, Mutating: false,
-		}},
-		[]applicationadmission.ProcedureRegistration{{
-			Procedure: procedure,
-			Rule: applicationadmission.ProcedureRule{
-				Action: "application.content.get", ResourceKind: "node", OwnerRequired: false,
-				Resolve: func(any) (identityaccess.ResourceTarget, error) {
-					return identityaccess.ResourceTarget{Kind: "node"}, nil
-				},
-				Finalize:     finalizeOwnerless,
-				MapTargetErr: func(err error) error { return err },
+			ResourceKind: "node", OwnerRequired: false,
+			Resolve: func(any) (identityaccess.ResourceTarget, error) {
+				return identityaccess.ResourceTarget{Kind: "node"}, nil
 			},
+			Finalize:     finalizeOwnerless,
+			MapTargetErr: func(err error) error { return err },
 		}},
 	)
 	require.NoError(t, err)
@@ -501,26 +496,21 @@ func TestRegisteredOwnerlessRuleInjectsOnlyAnEmptyOwner(t *testing.T) {
 	require.True(t, dispatched)
 
 	ownerViolatingRegistry, err := NewRegistry(
-		[]applicationadmission.ProcedureContract{{
+		[]string{procedure},
+		[]applicationadmission.ProcedureRule{{
 			Procedure: procedure, Action: "application.content.get",
-			ResourceKind: "node", OwnerRequired: false, Mutating: false,
-		}},
-		[]applicationadmission.ProcedureRegistration{{
-			Procedure: procedure,
-			Rule: applicationadmission.ProcedureRule{
-				Action: "application.content.get", ResourceKind: "node", OwnerRequired: false,
-				Resolve: func(any) (identityaccess.ResourceTarget, error) {
-					return identityaccess.ResourceTarget{Kind: "node"}, nil
-				},
-				Finalize: func(target identityaccess.ResourceTarget, audience identityaccess.Audience, _, effective string) (identityaccess.ResourceRef, error) {
-					owner, parseErr := identityaccess.ParseResourceOwner(effective)
-					require.NoError(t, parseErr)
-					return identityaccess.ResourceRef{
-						Node: audience.Node, Owner: owner, Kind: target.Kind, ID: target.ID,
-					}, nil
-				},
-				MapTargetErr: func(err error) error { return err },
+			ResourceKind: "node", OwnerRequired: false,
+			Resolve: func(any) (identityaccess.ResourceTarget, error) {
+				return identityaccess.ResourceTarget{Kind: "node"}, nil
 			},
+			Finalize: func(target identityaccess.ResourceTarget, audience identityaccess.Audience, _, effective string) (identityaccess.ResourceRef, error) {
+				owner, parseErr := identityaccess.ParseResourceOwner(effective)
+				require.NoError(t, parseErr)
+				return identityaccess.ResourceRef{
+					Node: audience.Node, Owner: owner, Kind: target.Kind, ID: target.ID,
+				}, nil
+			},
+			MapTargetErr: func(err error) error { return err },
 		}},
 	)
 	require.NoError(t, err)

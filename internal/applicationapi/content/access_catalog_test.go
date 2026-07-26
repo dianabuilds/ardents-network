@@ -72,13 +72,19 @@ func TestApplicationContentRulesComposeAsOneCompleteClosedSet(t *testing.T) {
 	_, err = applicationadmission.NewRegistry(contracts, append(registrations, registrations[0]))
 	require.Error(t, err)
 
-	for _, contract := range contracts {
-		rule, ok := registry.Lookup(contract.Procedure)
+	for index, procedure := range contracts {
+		rule, ok := registry.Lookup(procedure)
 		require.True(t, ok)
-		require.Equal(t, contract.Action, rule.Action)
-		require.Equal(t, contract.ResourceKind, rule.ResourceKind)
-		require.Equal(t, contract.OwnerRequired, rule.OwnerRequired)
-		require.Equal(t, contract.Mutating, rule.Mutating)
+		expected := registrations[index]
+		require.Equal(t, procedure, expected.Procedure)
+		require.Equal(t, expected.Procedure, rule.Procedure)
+		require.Equal(t, expected.Action, rule.Action)
+		require.Equal(t, expected.ResourceKind, rule.ResourceKind)
+		require.Equal(t, expected.OwnerRequired, rule.OwnerRequired)
+		require.Equal(t, expected.Mutating, rule.Mutating)
+		require.NotNil(t, rule.Resolve)
+		require.NotNil(t, rule.Finalize)
+		require.NotNil(t, rule.MapTargetErr)
 	}
 }
 

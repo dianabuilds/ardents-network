@@ -54,17 +54,17 @@ func ProtectedProcedures() []string {
 	return procedures
 }
 
-func ProtectedProcedureSet() ([]applicationadmission.ProcedureContract, []applicationadmission.ProcedureRegistration, error) {
+func ProtectedProcedureSet() ([]string, []applicationadmission.ProcedureRule, error) {
 	service := applicationv1.File_api_ardents_application_v1_content_proto.Services().ByName("ContentService")
 	return protectedProcedureSet(service, procedureAccess)
 }
 
-func protectedProcedureSet(service protoreflect.ServiceDescriptor, catalogue map[string]ProcedureRule) ([]applicationadmission.ProcedureContract, []applicationadmission.ProcedureRegistration, error) {
+func protectedProcedureSet(service protoreflect.ServiceDescriptor, catalogue map[string]ProcedureRule) ([]string, []applicationadmission.ProcedureRule, error) {
 	if service == nil || len(catalogue) != service.Methods().Len() {
 		return nil, nil, fmt.Errorf("application Content procedure registration is incomplete")
 	}
-	contracts := make([]applicationadmission.ProcedureContract, 0, service.Methods().Len())
-	registrations := make([]applicationadmission.ProcedureRegistration, 0, service.Methods().Len())
+	required := make([]string, 0, service.Methods().Len())
+	rules := make([]applicationadmission.ProcedureRule, 0, service.Methods().Len())
 	for index := 0; index < service.Methods().Len(); index++ {
 		method := service.Methods().Get(index)
 		procedure := "/" + string(service.FullName()) + "/" + string(method.Name())
@@ -72,29 +72,21 @@ func protectedProcedureSet(service protoreflect.ServiceDescriptor, catalogue map
 		if !registered {
 			return nil, nil, fmt.Errorf("application Content procedure registration is incomplete")
 		}
-		contracts = append(contracts, applicationadmission.ProcedureContract{
+		required = append(required, procedure)
+		rules = append(rules, applicationadmission.ProcedureRule{
 			Procedure:     procedure,
 			Action:        rule.Action,
 			ResourceKind:  identityaccess.ResourceKind(rule.ResourceKind),
 			OwnerRequired: rule.OwnerRequired,
 			Mutating:      rule.Mutating,
-		})
-		registrations = append(registrations, applicationadmission.ProcedureRegistration{
-			Procedure: procedure,
-			Rule: applicationadmission.ProcedureRule{
-				Action:        rule.Action,
-				ResourceKind:  identityaccess.ResourceKind(rule.ResourceKind),
-				OwnerRequired: rule.OwnerRequired,
-				Mutating:      rule.Mutating,
-				Resolve:       resolveProcedure(procedure),
-				Finalize:      finalizeOwnedResource(rule.ResourceKind),
-				MapTargetErr: func(err error) error {
-					return mapTargetError(rule.Action, err)
-				},
+			Resolve:       resolveProcedure(procedure),
+			Finalize:      finalizeOwnedResource(rule.ResourceKind),
+			MapTargetErr: func(err error) error {
+				return mapTargetError(rule.Action, err)
 			},
 		})
 	}
-	return contracts, registrations, nil
+	return required, rules, nil
 }
 
 func resolveProcedure(procedure string) func(any) (identityaccess.ResourceTarget, error) {

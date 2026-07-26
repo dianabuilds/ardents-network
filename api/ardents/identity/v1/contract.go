@@ -112,7 +112,7 @@ func IsRegisteredAction(surface Interface, action string) bool {
 		return false
 	}
 	if surface == InterfaceApplication {
-		_, ok := applicationActions[action]
+		_, ok := LookupApplicationAction(action)
 		return ok
 	}
 	if surface == InterfaceOperator {
@@ -120,6 +120,22 @@ func IsRegisteredAction(surface Interface, action string) bool {
 		return ok
 	}
 	return false
+}
+
+// ApplicationActionContract is the immutable admission classification for one
+// registered Application action. Product procedure rules still own their
+// classification, while composition validates it against this independent
+// action contract.
+type ApplicationActionContract struct {
+	Mutating bool
+}
+
+func LookupApplicationAction(action string) (ApplicationActionContract, bool) {
+	if !ValidActionSyntax(action) {
+		return ApplicationActionContract{}, false
+	}
+	contract, ok := applicationActions[action]
+	return contract, ok
 }
 
 func ValidActionCount(count int) bool { return count > 0 && count <= MaxActions }
@@ -164,7 +180,10 @@ func set(values ...string) map[string]struct{} {
 	return m
 }
 
-var applicationActions = set("application.content.put", "application.content.get")
+var applicationActions = map[string]ApplicationActionContract{
+	"application.content.put": {Mutating: true},
+	"application.content.get": {},
+}
 var operatorActions = set(
 	"node.start", "node.stop", "node.status", "node.features", "node.runtime", "node.events", "config.effective", "config.reload", "transport.network_status", "transport.route_candidates",
 	"discovery.status", "discovery.local_presence", "discovery.peers", "discovery.list_records", "discovery.resolve_record", "discovery.resolve_service", "discovery.import",

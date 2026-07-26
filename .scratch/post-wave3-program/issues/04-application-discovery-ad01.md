@@ -1,8 +1,8 @@
 # PW3-04: AD-01 Deepen Protected Application Admission
 
-Status: ready-for-human
+Status: needs-info
 State: open
-Labels: ready-for-human
+Labels: needs-info
 Research class: R1 bounded implementation
 
 ## Parent
@@ -129,7 +129,7 @@ wire message, handler, or SDK surface.
 
 ## Acceptance criteria
 
-- [x] A closed registry interface supplies complete procedure rules at
+- [x] A closed registry supplies complete procedure rules at
   composition.
 - [x] Duplicate procedures, nil/invalid functions, invalid action/mutation
   combinations, and missing required Content procedures fail closed.
@@ -245,7 +245,7 @@ AH-01 to consume.
 - This issue follows the source packet name and boundary: AD-01 is the
   protected Application admission seam.
 - 2026-07-26 implementation evidence from
-  `main@2205bcc8542c16d4dc8abd95df970c546d5855ac`:
+  `main@4b866abf4efe8b5c06376092baf485bd387106f3`:
   - the sealed, composition-time registry is complete against the generated
     `ContentService` descriptor and rejects duplicate, unknown, incomplete,
     nil, action/classification-mismatched, resource-kind-mismatched, and
@@ -273,3 +273,22 @@ AH-01 to consume.
     unchecked for Linux/CI confirmation;
   - capability catalogue remains 24 capabilities, 8 domains, 0 qualified.
     No Discovery, Hosting, capability-status, or Q changes were made.
+- 2026-07-26 remediation review and implementation:
+  - replaced the one-implementation admission `Registry` interface with one
+    concrete immutable registry;
+  - reduced the composition contract to an independently derived required
+    procedure-name set plus one product-owned rule per procedure;
+  - added immutable Application action contracts so composition rejects both
+    `application.content.get` marked mutating and
+    `application.content.put` marked non-mutating even when the supplied rule
+    is internally self-consistent;
+  - the new regression cases failed before the fix and pass afterward;
+  - Application API, SDK, daemon, Identity contract, vet, tooling,
+    capability-catalogue, API-generation, and whitespace checks pass using an
+    external task-specific `GOCACHE`;
+  - the canonical APP-001 runner was attempted both inside and outside the
+    sandbox, but the Docker Desktop Linux engine pipe does not exist. The
+    protected-process acceptance criterion therefore remains unchecked and
+    this issue remains `needs-info`;
+  - capability truth remains 24 capabilities, 8 domains, 0 qualified, and no
+    Discovery or Hosting surface was added.

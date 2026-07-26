@@ -45,7 +45,7 @@ type Config struct {
 	FallbackPeer   [32]byte
 	FallbackSource identityaccess.SourceKey
 	Injector       applicationcall.Injector
-	Registry       Registry
+	Registry       *Registry
 }
 
 type interceptor struct{ config Config }
