@@ -221,10 +221,22 @@ func issueOperatorGrant(
 	now time.Time,
 ) {
 	t.Helper()
+	issueGrantFor(t, material, material.principal, grantedActions, scope, now)
+}
+
+func issueGrantFor(
+	t *testing.T,
+	material operatorPrincipalMaterial,
+	subject string,
+	grantedActions []identityaccess.Action,
+	scope identityaccess.ResourceScope,
+	now time.Time,
+) {
+	t.Helper()
 	actions := append([]identityaccess.Action(nil), grantedActions...)
 	sort.Slice(actions, func(left, right int) bool { return actions[left] < actions[right] })
 	proposal := identityaccess.GrantProposal{
-		Subject: material.principal, Actions: actions, Scope: scope,
+		Subject: subject, Actions: actions, Scope: scope,
 		NotBefore: now, NotAfter: now.Add(time.Hour),
 	}
 	proposalID, err := identityaccess.GrantProposalResourceID(material.node, material.binding.Audience, proposal)
@@ -346,12 +358,14 @@ type ApplicationPrincipalAccess struct {
 	Session   identityaccess.SessionSecret
 	Peer      [32]byte
 	Source    identityaccess.SourceKey
+	operator  operatorPrincipalMaterial
 }
 
 func NewApplicationPrincipalAccess(t *testing.T, actions []identityaccess.Action) ApplicationPrincipalAccess {
 	t.Helper()
 	ctx := context.Background()
-	service, node, operatorSession, operatorPeer, _ := newOperatorPrincipalAccess(t)
+	operator := newOperatorPrincipalMaterial(t)
+	service, node := operator.service, operator.node
 	now := time.Now().UTC().Truncate(time.Second)
 	_, root, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
@@ -373,12 +387,12 @@ func NewApplicationPrincipalAccess(t *testing.T, actions []identityaccess.Action
 
 	operatorBinding := identityaccess.AuthenticationBinding{
 		Audience:         identityaccess.Audience{Node: node, Interface: identityprotocol.Interface_INTERFACE_OPERATOR, ProtocolMajor: identitycontract.ProtocolMajor},
-		TransportProfile: identityprotocol.TransportProfile_TRANSPORT_PROFILE_UNIX_LOCAL_V1, PeerBinding: operatorPeer,
+		TransportProfile: identityprotocol.TransportProfile_TRANSPORT_PROFILE_UNIX_LOCAL_V1, PeerBinding: operator.peer,
 	}
 	resource, err := identityaccess.NewResourceRef(node, identityaccess.ResourceOwner{}, "principal", principal.String())
 	require.NoError(t, err)
 	ticket, err := service.IssueApplicationEnrollmentTicket(ctx, identityaccess.IssueApplicationEnrollmentTicketRequest{
-		Attempt:   identityaccess.Attempt{SessionSecret: operatorSession, Binding: operatorBinding, Action: "identity.principal.enroll", Resource: resource},
+		Attempt:   identityaccess.Attempt{SessionSecret: operator.session, Binding: operatorBinding, Action: "identity.principal.enroll", Resource: resource},
 		Principal: principal.String(), Actions: append([]identityaccess.Action(nil), actions...),
 	})
 	require.NoError(t, err)
@@ -429,8 +443,76 @@ func NewApplicationPrincipalAccess(t *testing.T, actions []identityaccess.Action
 	require.NotNil(t, authenticated.SessionSecret)
 	return ApplicationPrincipalAccess{
 		Service: service, Node: node, Principal: principal.String(), Session: *authenticated.SessionSecret,
-		Peer: peer, Source: source,
+		Peer: peer, Source: source, operator: operator,
 	}
+}
+
+// GrantExact adds a test-only finite grant for this Application Principal.
+func (f ApplicationPrincipalAccess) GrantExact(
+	t *testing.T,
+	actions []identityaccess.Action,
+	kind identityaccess.ResourceKind,
+	id string,
+) {
+	t.Helper()
+	resource, err := identityaccess.NewResourceRef(f.Node, identityaccess.ResourceOwner{}, string(kind), id)
+	require.NoError(t, err)
+	issueGrantFor(t, f.operator, f.Principal, actions, identityaccess.ResourceScope{
+		Kind: identityaccess.ScopeExact, Exact: resource,
+	}, time.Now().UTC().Truncate(time.Second))
+}
+
+// DelegateExactFromOperator creates a test-only one-hop Delegation from the
+// enrolled Operator Principal and gives that Principal the matching current
+// grant. The authenticated Application's own grant remains independent.
+func (f ApplicationPrincipalAccess) DelegateExactFromOperator(
+	t *testing.T,
+	actions []identityaccess.Action,
+	kind identityaccess.ResourceKind,
+	id string,
+) *identityaccess.Artifact {
+	t.Helper()
+	resource, err := identityaccess.NewResourceRef(f.Node, identityaccess.ResourceOwner{}, string(kind), id)
+	require.NoError(t, err)
+	return f.delegateFromOperator(t, actions, identityaccess.ResourceScope{
+		Kind: identityaccess.ScopeExact, Exact: resource,
+	})
+}
+
+// DelegateNodeFromOperator creates the corresponding Node-scoped fixture.
+func (f ApplicationPrincipalAccess) DelegateNodeFromOperator(
+	t *testing.T,
+	actions []identityaccess.Action,
+) *identityaccess.Artifact {
+	t.Helper()
+	return f.delegateFromOperator(t, actions, identityaccess.ResourceScope{
+		Kind: identityaccess.ScopeNode, Exact: identityaccess.ResourceRef{Node: f.Node},
+	})
+}
+
+func (f ApplicationPrincipalAccess) delegateFromOperator(
+	t *testing.T,
+	actions []identityaccess.Action,
+	scope identityaccess.ResourceScope,
+) *identityaccess.Artifact {
+	t.Helper()
+	now := time.Now().UTC().Truncate(time.Second)
+	issueGrantFor(t, f.operator, f.operator.principal, actions, scope, now)
+	signer, err := cliidentity.OpenDeviceFileSigner(f.operator.signerFile)
+	require.NoError(t, err)
+	sorted := append([]identityaccess.Action(nil), actions...)
+	sort.Slice(sorted, func(left, right int) bool { return sorted[left] < sorted[right] })
+	delegation, err := signer.SignDelegation(context.Background(), cliidentity.DelegationSpec{
+		Delegatee: f.Principal,
+		Audience: identityaccess.Audience{
+			Node: f.Node, Interface: identityprotocol.Interface_INTERFACE_APPLICATION,
+			ProtocolMajor: identitycontract.ProtocolMajor,
+		},
+		Actions: sorted, Scope: scope,
+		NotBefore: now, NotAfter: now.Add(15 * time.Minute),
+	}, now)
+	require.NoError(t, err)
+	return delegation
 }
 
 var testOperatorActions = []identityaccess.Action{

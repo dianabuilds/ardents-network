@@ -61,6 +61,36 @@ func TestDelegationProposalDisplaysExactCanonicalConsentAndCreatesOpaqueArtifact
 	require.NotContains(t, artifact.String(), artifact.Delegation().CredentialID)
 }
 
+func TestDelegationProposalSupportsExactOwnerlessDiscoveryScope(t *testing.T) {
+	now := time.Unix(1_900_000_000, 0).UTC()
+	delegator, credential, device := delegationIdentity(t, now, 27, 28)
+	application, _, _ := delegationIdentity(t, now, 29, 30)
+	node, _, _ := delegationIdentity(t, now, 31, 32)
+	scope := sdkidentity.ResourceScope{Kind: sdkidentity.ScopeExact, Resource: sdkidentity.ResourceRef{
+		Node: node, Kind: "service-type", CanonicalID: "echo",
+	}}
+	proposal, err := NewDelegationProposal(DelegationRequest{
+		DelegatorPrincipal: delegator, ApplicationPrincipal: application, NodePrincipal: node,
+		Actions: []string{"application.discovery.resolve"}, Scope: scope,
+		NotBefore: now, NotAfter: now.Add(15 * time.Minute),
+	})
+	require.NoError(t, err)
+	require.Contains(t, proposal.ConsentText(), `Actions:
+- application.discovery.resolve`)
+	require.Contains(t, proposal.ConsentText(), `owner=""`)
+	require.Contains(t, proposal.ConsentText(), `kind="service-type"`)
+	require.Contains(t, proposal.ConsentText(), `id="echo"`)
+
+	artifact, err := CreateDelegation(context.Background(), proposal, delegationSignerFunc(
+		func(_ context.Context, received DelegationProposal) (*sdkidentity.Artifact, error) {
+			return sdkidentity.SignDelegation(received.Spec(credential), device, now)
+		},
+	))
+	require.NoError(t, err)
+	require.Equal(t, []string{"application.discovery.resolve"}, artifact.Delegation().Actions)
+	require.Equal(t, scope, artifact.Delegation().Scope)
+}
+
 func TestDelegationProposalRejectsNoncanonicalOrOverbroadConsent(t *testing.T) {
 	now := time.Unix(1_900_000_000, 0).UTC()
 	delegator, _, _ := delegationIdentity(t, now, 31, 32)

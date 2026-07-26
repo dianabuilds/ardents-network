@@ -210,28 +210,69 @@ func DeviceResourceID(subject, deviceID string) (string, error) {
 	return lowerASCII(sessionIDEncoding.EncodeToString(hash.Sum(nil))), nil
 }
 
-func grantProposalPayload(node string, audience Audience, proposal GrantProposal) (*identityprotocol.AccessGrantPayload, error) {
-	if _, err := identityprincipal.Parse(proposal.Subject); err != nil || audience.Node != node || audience.Interface != identityprotocol.Interface_INTERFACE_OPERATOR || audience.ProtocolMajor != identitycontract.ProtocolMajor {
+// GrantAudienceForActions derives the single protected interface on which all
+// proposed actions are registered. The Operator command remains the authority
+// for issuance; this audience identifies the grant being issued.
+func GrantAudienceForActions(node string, actions []Action) (Audience, error) {
+	if _, err := identityprincipal.Parse(node); err != nil || len(actions) == 0 || len(actions) > identitycontract.MaxActions {
+		return Audience{}, ErrInvalidArgument
+	}
+	var surface identityprotocol.Interface
+	for index, action := range actions {
+		if index > 0 && actions[index-1] >= action {
+			return Audience{}, ErrInvalidArgument
+		}
+		actionSurface := identityprotocol.Interface_INTERFACE_UNSPECIFIED
+		for _, candidate := range []identityprotocol.Interface{
+			identityprotocol.Interface_INTERFACE_OPERATOR,
+			identityprotocol.Interface_INTERFACE_APPLICATION,
+		} {
+			if parsed, err := ParseAction(candidate, string(action)); err == nil && parsed == action {
+				if actionSurface != identityprotocol.Interface_INTERFACE_UNSPECIFIED {
+					return Audience{}, ErrInvalidArgument
+				}
+				actionSurface = candidate
+			}
+		}
+		if actionSurface == identityprotocol.Interface_INTERFACE_UNSPECIFIED ||
+			surface != identityprotocol.Interface_INTERFACE_UNSPECIFIED && surface != actionSurface {
+			return Audience{}, ErrInvalidArgument
+		}
+		surface = actionSurface
+	}
+	return Audience{Node: node, Interface: surface, ProtocolMajor: identitycontract.ProtocolMajor}, nil
+}
+
+func grantProposalPayload(node string, administrativeAudience Audience, proposal GrantProposal) (*identityprotocol.AccessGrantPayload, error) {
+	if _, err := identityprincipal.Parse(proposal.Subject); err != nil ||
+		administrativeAudience.Node != node ||
+		administrativeAudience.Interface != identityprotocol.Interface_INTERFACE_OPERATOR ||
+		administrativeAudience.ProtocolMajor != identitycontract.ProtocolMajor ||
+		proposal.Scope.Kind == ScopePrincipalOwned {
+		return nil, errInvalid
+	}
+	grantAudience, err := GrantAudienceForActions(node, proposal.Actions)
+	if err != nil {
 		return nil, errInvalid
 	}
 	actions := make([]string, len(proposal.Actions))
 	for index, action := range proposal.Actions {
-		parsed, err := ParseAction(audience.Interface, string(action))
+		parsed, err := ParseAction(grantAudience.Interface, string(action))
 		if err != nil {
 			return nil, errInvalid
 		}
 		actions[index] = string(parsed)
 	}
-	scope, err := scopeToProtocol(proposal.Scope, audience)
+	scope, err := scopeToProtocol(proposal.Scope, grantAudience)
 	if err != nil {
 		return nil, errInvalid
 	}
 	for _, action := range proposal.Actions {
-		if !registeredActionAllowsScope(audience.Interface, action, proposal.Scope.Kind) {
+		if !registeredActionAllowsScope(grantAudience.Interface, action, proposal.Scope.Kind) {
 			return nil, errInvalid
 		}
 	}
-	return &identityprotocol.AccessGrantPayload{Version: identitycontract.Version, Issuer: node, Subject: proposal.Subject, Audience: protocolAudience(audience), Actions: actions, Scope: scope, NotBefore: timestamppb.New(proposal.NotBefore), NotAfter: timestamppb.New(proposal.NotAfter)}, nil
+	return &identityprotocol.AccessGrantPayload{Version: identitycontract.Version, Issuer: node, Subject: proposal.Subject, Audience: protocolAudience(grantAudience), Actions: actions, Scope: scope, NotBefore: timestamppb.New(proposal.NotBefore), NotAfter: timestamppb.New(proposal.NotAfter)}, nil
 }
 
 func scopeToProtocol(scope ResourceScope, audience Audience) (*identityprotocol.ResourceScope, error) {
@@ -247,10 +288,15 @@ func scopeToProtocol(scope ResourceScope, audience Audience) (*identityprotocol.
 		}
 		return &identityprotocol.ResourceScope{Scope: &identityprotocol.ResourceScope_PrincipalOwned{PrincipalOwned: &identityprotocol.PrincipalOwnedScope{Owner: scope.Owner.String()}}}, nil
 	case ScopeExact:
-		if !scope.Matches(scope.Exact, audience) {
+		r, err := NewResourceRef(
+			scope.Exact.Node,
+			scope.Exact.Owner,
+			string(scope.Exact.Kind),
+			scope.Exact.ID,
+		)
+		if err != nil || r != scope.Exact || r.Node != audience.Node {
 			return nil, errInvalid
 		}
-		r := scope.Exact
 		return &identityprotocol.ResourceScope{Scope: &identityprotocol.ResourceScope_Exact{Exact: &identityprotocol.ExactScope{Resource: &identityprotocol.ResourceRef{Node: r.Node, Owner: r.Owner.String(), Kind: string(r.Kind), CanonicalId: r.ID}}}}, nil
 	default:
 		return nil, errInvalid

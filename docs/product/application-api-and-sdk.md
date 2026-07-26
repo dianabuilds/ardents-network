@@ -134,6 +134,62 @@ Version 1 uses bounded unary payloads. Streaming content is a later additive
 interface and must not silently change the ordering, limits, or retry semantics
 of unary `Put` and `Get`.
 
+## Discovery And Exact Delegation
+
+Discovery projects already-maintained, currently trusted and route-allowed
+direct endpoints. It does not refresh discovery, probe, fetch or dial a target:
+
+```go
+targets, err := app.Discovery.Resolve(ctx, discovery.Query{
+    ServiceType:     "echo",
+    AcceptedSchemes: []discovery.Scheme{discovery.SchemeHTTPS},
+})
+```
+
+The action is exactly `application.discovery.resolve`. Authority targets the
+ownerless resource `service-type("echo")`; accepted schemes narrow the
+projection but are not authority. A Node grant permits every service type on
+that Node. An exact grant permits only its canonical service type, and a
+sibling type fails as `forbidden` before catalogue lookup. Authorized
+projection misses retain the uniform `not_found` result.
+
+To present delegated authority, the delegating Principal reviews and signs the
+same Node or exact scope, then the Application pins the resulting opaque
+artifact in its client configuration:
+
+```go
+scope := identity.ResourceScope{
+    Kind: identity.ScopeExact,
+    Resource: identity.ResourceRef{
+        Node:        expectedNodePrincipal,
+        Kind:        "service-type",
+        CanonicalID: "echo",
+    },
+}
+proposal, err := client.NewDelegationProposal(client.DelegationRequest{
+    DelegatorPrincipal:   delegatorPrincipal,
+    ApplicationPrincipal: applicationPrincipal,
+    NodePrincipal:        expectedNodePrincipal,
+    Actions:              []string{"application.discovery.resolve"},
+    Scope:                scope,
+    NotBefore:            now,
+    NotAfter:             now.Add(15 * time.Minute),
+})
+delegation, err := client.CreateDelegation(ctx, proposal, delegationSigner)
+app, err := client.New(client.Config{
+    SocketPath:    "/var/lib/ardents-applications/application.sock",
+    NodePrincipal: expectedNodePrincipal,
+    Signer:        applicationSigner,
+    Delegation:    delegation,
+})
+```
+
+The Application grant, Delegator grant, Delegation action, Application
+audience and Node/exact scope must all match on every call. Delegation cannot
+widen either current grant. `Actor` remains the authenticated Application,
+`Effective` becomes the Delegator, and the ownerless Discovery response is
+otherwise identical to a direct response.
+
 ## Installation And Socket Access
 
 The native installer creates the `ardents-apps` system group and the protected

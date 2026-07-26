@@ -106,16 +106,7 @@ func TestDelegationAttachmentRejectsWrongKindNodeAndExpiredArtifact(t *testing.T
 
 func testDelegation(t *testing.T, now time.Time, node, application string) *sdkidentity.Artifact {
 	t.Helper()
-	root := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{81}, ed25519.SeedSize))
-	device := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{82}, ed25519.SeedSize))
-	delegator := digestID("p1_", "ardents:principal:v1\x00", root.Public().(ed25519.PublicKey))
-	credential, err := sdkidentity.SignKeyCredential(sdkidentity.KeyCredentialSpec{
-		Subject: delegator, RootPublicKey: root.Public().(ed25519.PublicKey),
-		DeviceID:        digestID("d1_", "ardents:device:v1\x00", device.Public().(ed25519.PublicKey)),
-		DevicePublicKey: device.Public().(ed25519.PublicKey), Purposes: []sdkidentity.CredentialPurpose{sdkidentity.PurposeAuthenticate},
-		NotBefore: now.Add(-time.Hour), NotAfter: now.Add(time.Hour),
-	}, root)
-	require.NoError(t, err)
+	delegator, credential, device := testDelegationIdentity(t, now)
 	owner, err := sdkidentity.PrincipalOwner(delegator)
 	require.NoError(t, err)
 	artifact, err := sdkidentity.SignDelegation(sdkidentity.DelegationSpec{
@@ -127,6 +118,37 @@ func testDelegation(t *testing.T, now time.Time, node, application string) *sdki
 	}, device, now)
 	require.NoError(t, err)
 	return artifact
+}
+
+func testDiscoveryDelegation(t *testing.T, now time.Time, node, application, serviceType string) *sdkidentity.Artifact {
+	t.Helper()
+	delegator, credential, device := testDelegationIdentity(t, now)
+	artifact, err := sdkidentity.SignDelegation(sdkidentity.DelegationSpec{
+		Delegator: delegator, Delegatee: application,
+		Audience: sdkidentity.Audience{Node: node, Interface: sdkidentity.InterfaceApplication, ProtocolMajor: identitycontract.ProtocolMajor},
+		Actions:  []string{"application.discovery.resolve"},
+		Scope: sdkidentity.ResourceScope{Kind: sdkidentity.ScopeExact, Resource: sdkidentity.ResourceRef{
+			Node: node, Kind: "service-type", CanonicalID: serviceType,
+		}},
+		NotBefore: now, NotAfter: now.Add(15 * time.Minute), Credential: credential,
+	}, device, now)
+	require.NoError(t, err)
+	return artifact
+}
+
+func testDelegationIdentity(t *testing.T, now time.Time) (string, *sdkidentity.Artifact, ed25519.PrivateKey) {
+	t.Helper()
+	root := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{81}, ed25519.SeedSize))
+	device := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{82}, ed25519.SeedSize))
+	delegator := digestID("p1_", "ardents:principal:v1\x00", root.Public().(ed25519.PublicKey))
+	credential, err := sdkidentity.SignKeyCredential(sdkidentity.KeyCredentialSpec{
+		Subject: delegator, RootPublicKey: root.Public().(ed25519.PublicKey),
+		DeviceID:        digestID("d1_", "ardents:device:v1\x00", device.Public().(ed25519.PublicKey)),
+		DevicePublicKey: device.Public().(ed25519.PublicKey), Purposes: []sdkidentity.CredentialPurpose{sdkidentity.PurposeAuthenticate},
+		NotBefore: now.Add(-time.Hour), NotAfter: now.Add(time.Hour),
+	}, root)
+	require.NoError(t, err)
+	return delegator, credential, device
 }
 
 func TestApplicationDelegationErrorNeverContainsEncodedArtifact(t *testing.T) {

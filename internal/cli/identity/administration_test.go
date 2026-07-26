@@ -277,6 +277,36 @@ func TestGrantIssueIsCanonicalDeterministicAndNoninteractiveInJSON(t *testing.T)
 	require.Empty(t, stderr.String())
 }
 
+func TestGrantIssueSupportsExactApplicationDiscoveryGrant(t *testing.T) {
+	node, subject := principalForTest(t, 0x71), principalForTest(t, 0x72)
+	service := &fakeIdentityClient{issue: func(request *protocol.IssueAccessGrantRequest) *protocol.IssueAccessGrantResponse {
+		require.Equal(t, subject, request.Proposal.SubjectPrincipalId)
+		require.Equal(t, []string{"application.discovery.resolve"}, request.Proposal.Actions)
+		exact, ok := request.Proposal.Scope.Scope.(*identityprotocol.ResourceScope_Exact)
+		require.True(t, ok)
+		require.Equal(t, &identityprotocol.ResourceRef{
+			Node: node, Kind: "service-type", CanonicalId: "echo",
+		}, exact.Exact.Resource)
+		return &protocol.IssueAccessGrantResponse{GrantId: artifactID(identitycontract.AccessGrantPrefix)}
+	}}
+	command, stdout, stderr := newAdministrationCommand(true, "", &administrationSessions{node: node}, service)
+
+	code := command.Run(context.Background(), []string{
+		"grant", "issue",
+		"--subject", subject,
+		"--action", "application.discovery.resolve",
+		"--scope", "exact",
+		"--resource-kind", "service-type",
+		"--resource-id", "echo",
+	})
+
+	require.Zero(t, code)
+	require.Equal(t, 1, service.mutationCalls)
+	require.Contains(t, stdout.String(), `"resource_kind":"service-type"`)
+	require.Contains(t, stdout.String(), `"resource_id":"echo"`)
+	require.Empty(t, stderr.String())
+}
+
 func TestGrantIssueHumanConsentDenialDisplaysExactMutationAndMakesNoCall(t *testing.T) {
 	node, subject := principalForTest(t, 3), principalForTest(t, 4)
 	service := &fakeIdentityClient{issue: func(*protocol.IssueAccessGrantRequest) *protocol.IssueAccessGrantResponse {

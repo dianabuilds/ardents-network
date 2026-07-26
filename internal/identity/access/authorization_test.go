@@ -90,6 +90,97 @@ func TestAdmitDirectGrantReturnsSealedActorEffectiveFacts(t *testing.T) {
 	require.False(t, (AuthorizedCall{}).IsAdmitted())
 }
 
+func TestAdmitTargetAppliesNodeAndExactDiscoveryGrantScopes(t *testing.T) {
+	tests := []struct {
+		name        string
+		scope       func(string) *identityprotocol.ResourceScope
+		serviceType string
+		wantDenied  bool
+	}{
+		{
+			name: "node scope",
+			scope: func(string) *identityprotocol.ResourceScope {
+				return nodeScope()
+			},
+			serviceType: "echo",
+		},
+		{
+			name: "matching exact service type",
+			scope: func(node string) *identityprotocol.ResourceScope {
+				resource, err := NewResourceRef(node, ResourceOwner{}, "service-type", "echo")
+				require.NoError(t, err)
+				return exactScope(resource)
+			},
+			serviceType: "echo",
+		},
+		{
+			name: "sibling exact service type",
+			scope: func(node string) *identityprotocol.ResourceScope {
+				resource, err := NewResourceRef(node, ResourceOwner{}, "service-type", "echo")
+				require.NoError(t, err)
+				return exactScope(resource)
+			},
+			serviceType: "chat",
+			wantDenied:  true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			f := newServiceFixture(t)
+			f.binding.Audience.Interface = identityprotocol.Interface_INTERFACE_APPLICATION
+			secret := f.sessionSecret()
+			f.grant([]string{"application.discovery.resolve"}, test.scope(f.nodeID))
+
+			call, err := f.service.AdmitTarget(f.ctx, TargetAttempt{
+				SessionSecret: secret,
+				Binding:       f.binding,
+				Action:        "application.discovery.resolve",
+				Target:        ResourceTarget{Kind: "service-type", ID: test.serviceType},
+				Finalize: func(target ResourceTarget, audience Audience, _, _ string) (ResourceRef, error) {
+					return NewResourceRef(audience.Node, ResourceOwner{}, string(target.Kind), target.ID)
+				},
+			})
+
+			if test.wantDenied {
+				require.ErrorIs(t, err, ErrPermissionDenied)
+				require.False(t, call.IsAdmitted())
+				return
+			}
+			require.NoError(t, err)
+			require.True(t, call.IsAdmitted())
+			require.Equal(t, f.principal, call.Actor())
+			require.Equal(t, call.Actor(), call.Effective())
+			require.Equal(t, ResourceRef{
+				Node: f.nodeID, Kind: "service-type", ID: test.serviceType,
+			}, call.Resource())
+		})
+	}
+}
+
+func TestAdmitTargetRejectsCrossNodeDiscoveryResource(t *testing.T) {
+	f := newServiceFixture(t)
+	f.binding.Audience.Interface = identityprotocol.Interface_INTERFACE_APPLICATION
+	secret := f.sessionSecret()
+	f.grant([]string{"application.discovery.resolve"}, nodeScope())
+	otherKey := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x69}, 32))
+	otherNode, err := identityprincipal.FromEd25519PublicKey(otherKey.Public().(ed25519.PublicKey))
+	require.NoError(t, err)
+
+	call, err := f.service.AdmitTarget(f.ctx, TargetAttempt{
+		SessionSecret: secret,
+		Binding:       f.binding,
+		Action:        "application.discovery.resolve",
+		Target:        ResourceTarget{Kind: "service-type", ID: "echo"},
+		Finalize: func(target ResourceTarget, _ Audience, _, _ string) (ResourceRef, error) {
+			return NewResourceRef(otherNode.String(), ResourceOwner{}, string(target.Kind), target.ID)
+		},
+	})
+
+	require.ErrorIs(t, err, ErrInvalidArgument)
+	require.False(t, call.IsAdmitted())
+}
+
 func TestAuditRecordsDenialAndSuccessfulMutationButNotReadAdmission(t *testing.T) {
 	f := newServiceFixture(t)
 	secret := f.sessionSecret()
@@ -467,6 +558,166 @@ func TestAdmitOneHopDelegationRequiresAllAuthorityLegsAndAttenuatesAction(t *tes
 	f.attempt.Action = "application.content.put"
 	_, err = f.serviceFixture.service.AdmitTarget(f.serviceFixture.ctx, f.attempt)
 	require.ErrorIs(t, err, ErrPermissionDenied)
+}
+
+func TestAdmitDiscoveryDelegationIntersectsEveryAuthorityLeg(t *testing.T) {
+	type testCase struct {
+		name              string
+		actorScope        string
+		effectiveScope    string
+		delegationScope   string
+		delegationActions []string
+		delegationNode    string
+		delegatee         string
+		expired           bool
+		revoked           bool
+		want              error
+	}
+	tests := []testCase{
+		{name: "node scopes", actorScope: "node", effectiveScope: "node", delegationScope: "node"},
+		{name: "exact scopes", actorScope: "echo", effectiveScope: "echo", delegationScope: "echo"},
+		{name: "missing Application grant", effectiveScope: "node", delegationScope: "node", want: ErrPermissionDenied},
+		{name: "Application sibling grant", actorScope: "chat", effectiveScope: "node", delegationScope: "node", want: ErrPermissionDenied},
+		{name: "missing Effective grant", actorScope: "node", delegationScope: "node", want: ErrPermissionDenied},
+		{name: "Effective sibling grant", actorScope: "node", effectiveScope: "chat", delegationScope: "node", want: ErrPermissionDenied},
+		{name: "Delegation sibling scope", actorScope: "node", effectiveScope: "node", delegationScope: "chat", want: ErrPermissionDenied},
+		{
+			name: "Delegation wrong action", actorScope: "node", effectiveScope: "node", delegationScope: "node",
+			delegationActions: []string{"application.content.get"}, want: ErrPermissionDenied,
+		},
+		{name: "Delegation wrong Node", actorScope: "node", effectiveScope: "node", delegationScope: "node", delegationNode: "other", want: ErrUnauthenticated},
+		{name: "Delegation wrong delegatee", actorScope: "node", effectiveScope: "node", delegationScope: "node", delegatee: "other", want: ErrUnauthenticated},
+		{name: "expired Delegation", actorScope: "node", effectiveScope: "node", delegationScope: "node", expired: true, want: ErrUnauthenticated},
+		{name: "revoked Delegation", actorScope: "node", effectiveScope: "node", delegationScope: "node", revoked: true, want: ErrUnauthenticated},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			f := newDelegatedAdmissionFixture(t, false, false, []string{"application.content.get"})
+			echo, err := NewResourceRef(f.serviceFixture.nodeID, ResourceOwner{}, "service-type", "echo")
+			require.NoError(t, err)
+			chat, err := NewResourceRef(f.serviceFixture.nodeID, ResourceOwner{}, "service-type", "chat")
+			require.NoError(t, err)
+			scope := func(name string) *identityprotocol.ResourceScope {
+				switch name {
+				case "node":
+					return nodeScope()
+				case "echo":
+					return exactScope(echo)
+				case "chat":
+					return exactScope(chat)
+				default:
+					return nil
+				}
+			}
+			if test.actorScope != "" {
+				f.serviceFixture.grantFor(f.serviceFixture.principal, []string{"application.discovery.resolve"}, scope(test.actorScope))
+			}
+			if test.effectiveScope != "" {
+				f.serviceFixture.grantFor(f.alice, []string{"application.discovery.resolve"}, scope(test.effectiveScope))
+			}
+			actions := test.delegationActions
+			if len(actions) == 0 {
+				actions = []string{"application.discovery.resolve"}
+			}
+			audience := protocolAudience(f.serviceFixture.binding.Audience)
+			if test.delegationNode == "other" {
+				audience.Node = f.alice
+			}
+			delegatee := f.serviceFixture.principal
+			if test.delegatee == "other" {
+				delegatee = f.serviceFixture.nodeID
+			}
+			notBefore := f.serviceFixture.clock.Now().Add(-time.Minute)
+			notAfter := f.serviceFixture.clock.Now().Add(time.Hour)
+			signedAt := f.serviceFixture.clock.Now()
+			if test.expired {
+				notBefore = f.serviceFixture.clock.Now().Add(-50 * time.Minute)
+				notAfter = f.serviceFixture.clock.Now().Add(-40 * time.Minute)
+				signedAt = f.serviceFixture.clock.Now().Add(-45 * time.Minute)
+			}
+			delegation, err := SignDelegation(&identityprotocol.DelegationPayload{
+				Version: 1, Delegator: f.alice, Delegatee: delegatee,
+				Audience: audience, Actions: actions, Scope: scope(test.delegationScope),
+				NotBefore: timestamppb.New(notBefore), NotAfter: timestamppb.New(notAfter),
+				Credential: f.credential,
+			}, f.aliceDevice, signedAt)
+			require.NoError(t, err)
+			raw, err := delegation.MarshalBinary()
+			require.NoError(t, err)
+			if test.revoked {
+				revocation, signErr := SignDelegationRevocation(&identityprotocol.DelegationRevocationPayload{
+					Version: 1, TargetId: delegation.ID(), Issuer: f.alice,
+					Audience: audience, RevokedAt: timestamppb.New(f.serviceFixture.clock.Now()),
+					Delegator: f.alice, Delegatee: delegatee, Credential: f.credential,
+				}, f.aliceDevice, f.serviceFixture.clock.Now())
+				require.NoError(t, signErr)
+				revocationRaw, marshalErr := revocation.MarshalBinary()
+				require.NoError(t, marshalErr)
+				require.NoError(t, f.serviceFixture.service.ImportDelegationRevocation(f.serviceFixture.ctx, revocationRaw))
+			}
+			attempt := TargetAttempt{
+				SessionSecret: f.secret, Binding: f.serviceFixture.binding,
+				Action: "application.discovery.resolve", Delegation: raw,
+				Target: ResourceTarget{Kind: "service-type", ID: "echo"},
+				Finalize: func(target ResourceTarget, audience Audience, _, _ string) (ResourceRef, error) {
+					return NewResourceRef(audience.Node, ResourceOwner{}, string(target.Kind), target.ID)
+				},
+			}
+
+			call, err := f.serviceFixture.service.AdmitTarget(f.serviceFixture.ctx, attempt)
+			if test.want != nil {
+				require.ErrorIs(t, err, test.want)
+				require.False(t, call.IsAdmitted())
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, f.serviceFixture.principal, call.Actor())
+			require.Equal(t, f.alice, call.Effective())
+			require.True(t, call.Resource().Owner.IsNone())
+			require.Equal(t, echo, call.Resource())
+			require.Len(t, call.GrantIDs(), 2)
+			require.Equal(t, delegation.ID(), call.DelegationID())
+		})
+	}
+}
+
+func TestDeniedDiscoveryDelegationAuditRetainsActorEffectiveAndProvenance(t *testing.T) {
+	f := newDelegatedAdmissionFixture(t, false, false, []string{"application.content.get"})
+	f.serviceFixture.grantFor(f.serviceFixture.principal, []string{"application.discovery.resolve"}, nodeScope())
+	f.serviceFixture.grantFor(f.alice, []string{"application.discovery.resolve"}, nodeScope())
+	delegation, err := SignDelegation(&identityprotocol.DelegationPayload{
+		Version: 1, Delegator: f.alice, Delegatee: f.serviceFixture.principal,
+		Audience: protocolAudience(f.serviceFixture.binding.Audience),
+		Actions:  []string{"application.content.get"}, Scope: nodeScope(),
+		NotBefore:  timestamppb.New(f.serviceFixture.clock.Now().Add(-time.Minute)),
+		NotAfter:   timestamppb.New(f.serviceFixture.clock.Now().Add(time.Hour)),
+		Credential: f.credential,
+	}, f.aliceDevice, f.serviceFixture.clock.Now())
+	require.NoError(t, err)
+	raw, err := delegation.MarshalBinary()
+	require.NoError(t, err)
+	var events []AuditEvent
+	f.serviceFixture.service.audit = AuditSinkFunc(func(event AuditEvent) { events = append(events, event) })
+
+	_, err = f.serviceFixture.service.AdmitTarget(f.serviceFixture.ctx, TargetAttempt{
+		SessionSecret: f.secret, Binding: f.serviceFixture.binding,
+		Action: "application.discovery.resolve", Delegation: raw,
+		Target: ResourceTarget{Kind: "service-type", ID: "echo"},
+		Finalize: func(target ResourceTarget, audience Audience, _, _ string) (ResourceRef, error) {
+			return NewResourceRef(audience.Node, ResourceOwner{}, string(target.Kind), target.ID)
+		},
+	})
+
+	require.ErrorIs(t, err, ErrPermissionDenied)
+	require.NotEmpty(t, events)
+	denied := events[len(events)-1]
+	require.Equal(t, "denied", denied.Outcome)
+	require.Equal(t, f.serviceFixture.principal, denied.Actor)
+	require.Equal(t, f.alice, denied.Effective)
+	require.Equal(t, Action("application.discovery.resolve"), denied.Action)
+	require.Equal(t, delegation.ID(), denied.DelegationID)
+	require.Len(t, denied.GrantIDs, 1, "the matched Application grant remains safe audit provenance")
 }
 
 func TestDelegatedDenialAuditRetainsSafeActorEffectiveAndAuthorityProvenance(t *testing.T) {

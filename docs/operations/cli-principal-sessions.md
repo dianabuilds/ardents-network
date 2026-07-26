@@ -82,7 +82,9 @@ ardentsctl ... identity grant list --subject p1_<alice>
 ```
 
 Issue a Node-wide grant, or an exact resource grant, with repeatable registered
-Operator actions:
+actions from one protected interface. The administrative call remains on the
+Operator Interface; the closed action catalogue deterministically selects the
+audience of the grant being issued:
 
 ```text
 ardentsctl ... identity grant issue --subject p1_<alice> \
@@ -91,7 +93,16 @@ ardentsctl ... identity grant issue --subject p1_<alice> \
 ardentsctl ... identity grant issue --subject p1_<alice> \
   --action workload.status --scope exact \
   --resource-kind workload --resource-id workload_123
+
+ardentsctl ... identity grant issue --subject p1_<application> \
+  --action application.discovery.resolve --scope exact \
+  --resource-kind service-type --resource-id echo --valid-for 24h
 ```
+
+Do not mix Operator and Application actions in one proposal. The exact
+`service-type` resource is ownerless; omit `--resource-owner`. A Node-scoped
+Application Discovery grant can be issued by omitting `--scope exact` and the
+resource flags.
 
 Revoke only after loading and displaying the exact active grant:
 
@@ -111,9 +122,9 @@ Unavailable/Internal/Unknown result is retried exactly once with the same
 request and ID; denial, invalid input, conflict, capacity, cancellation and
 deadline results are not retried. Reuse the displayed `--request-id` to
 reconcile a mutation after an interrupted invocation.
-Grant validity defaults to 30 days and cannot exceed 365 days. Operator grants
-accept only `node` or `exact` scope; Principal-owned scope remains an Application
-surface concept.
+Grant validity defaults to 30 days and cannot exceed 365 days. Grants issued
+through this Operator procedure accept only `node` or `exact` scope;
+Principal-owned scope remains an Application enrollment/Delegation concept.
 
 ## Local Operator Login
 

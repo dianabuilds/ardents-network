@@ -451,7 +451,7 @@ func (c Command) runGrantIssue(ctx context.Context, args []string) int {
 	var actions stringList
 	validity, yes := defaultGrantTTL, false
 	flags.StringVar(&subject, "subject", "", "enrolled Principal")
-	flags.Var(&actions, "action", "exact Operator action (repeatable)")
+	flags.Var(&actions, "action", "registered action from one interface (repeatable)")
 	flags.StringVar(&scopeName, "scope", "node", "node or exact")
 	flags.StringVar(&kind, "resource-kind", "", "exact ResourceKind")
 	flags.StringVar(&resourceID, "resource-id", "", "exact canonical resource ID")
@@ -506,13 +506,21 @@ func (c Command) grantProposal(subject string, actions []string, scopeName, kind
 	sorted := append([]string(nil), actions...)
 	sort.Strings(sorted)
 	for index, value := range sorted {
-		if _, err := identityaccess.ParseAction(identityprotocol.Interface_INTERFACE_OPERATOR, value); err != nil || index > 0 && value == sorted[index-1] {
+		if index > 0 && value == sorted[index-1] {
 			return nil, grantView{}, errors.New("--action values must be known and unique")
 		}
 	}
 	node := c.sessions.TargetNodePrincipal()
 	if _, err := identityprincipal.Parse(node); err != nil {
 		return nil, grantView{}, errAdministrationUnavailable
+	}
+	domainActions := make([]identityaccess.Action, len(sorted))
+	for index := range sorted {
+		domainActions[index] = identityaccess.Action(sorted[index])
+	}
+	grantAudience, err := identityaccess.GrantAudienceForActions(node, domainActions)
+	if err != nil {
+		return nil, grantView{}, errors.New("--action values must be known, unique, and belong to one interface")
 	}
 	var domainScope identityaccess.ResourceScope
 	switch scopeName {
@@ -545,9 +553,9 @@ func (c Command) grantProposal(subject string, actions []string, scopeName, kind
 	if !notAfter.After(notBefore) {
 		return nil, grantView{}, errors.New("--valid-for is outside the supported grant lifetime")
 	}
-	wireScope, err := identityaccess.ResourceScopeFields(domainScope, identityaccess.Audience{Node: node, Interface: identityprotocol.Interface_INTERFACE_OPERATOR, ProtocolMajor: identitycontract.ProtocolMajor})
+	wireScope, err := identityaccess.ResourceScopeFields(domainScope, grantAudience)
 	if err != nil {
-		return nil, grantView{}, errors.New("scope is not allowed on the Operator interface")
+		return nil, grantView{}, errors.New("scope is not allowed for the selected actions")
 	}
 	view := grantView{Subject: subject, TargetNode: node, Actions: sorted, Scope: scopeName, ResourceKind: kind, ResourceID: resourceID, ResourceOwner: owner, NotBefore: notBefore.Format(time.RFC3339), NotAfter: notAfter.Format(time.RFC3339)}
 	return &protocol.AccessGrantProposal{SubjectPrincipalId: subject, Actions: sorted, Scope: wireScope, NotBefore: timestamppb.New(notBefore), NotAfter: timestamppb.New(notAfter)}, view, nil

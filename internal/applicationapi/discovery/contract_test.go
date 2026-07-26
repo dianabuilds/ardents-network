@@ -65,6 +65,77 @@ func TestDiscoveryAdmissionDenialDoesNotInvokeLocator(t *testing.T) {
 	require.Equal(t, applicationv1.ErrorCode_ERROR_CODE_FORBIDDEN, discoveryApplicationError(t, err).GetCode())
 }
 
+func TestDiscoveryExactGrantCannotResolveSiblingServiceType(t *testing.T) {
+	locator := &locatorStub{targets: []applicationdiscovery.Target{{
+		ServiceID: "svc.echo", Endpoint: "https://10.20.30.40:8443", Scheme: "https",
+	}}}
+	client := newExactGrantDiscoveryClient(t, locator, "echo")
+
+	response, err := client.Resolve(context.Background(), connect.NewRequest(&applicationv1.ResolveServiceRequest{
+		ServiceType: "echo", AcceptedSchemes: []string{"https"},
+	}))
+	require.NoError(t, err)
+	require.Len(t, response.Msg.GetTargets(), 1)
+	require.Equal(t, 1, locator.calls)
+
+	_, err = client.Resolve(context.Background(), connect.NewRequest(&applicationv1.ResolveServiceRequest{
+		ServiceType: "chat", AcceptedSchemes: []string{"https"},
+	}))
+	require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
+	require.Equal(t, applicationv1.ErrorCode_ERROR_CODE_FORBIDDEN, discoveryApplicationError(t, err).GetCode())
+	require.Equal(t, 1, locator.calls, "sibling authority denial must precede catalogue lookup")
+}
+
+func TestDiscoveryNodeAndExactDelegationMatchDirectResponse(t *testing.T) {
+	for _, scope := range []string{"node", "exact"} {
+		t.Run(scope, func(t *testing.T) {
+			locator := &locatorStub{targets: []applicationdiscovery.Target{{
+				ServiceID: "svc.echo", Endpoint: "https://10.20.30.40:8443", Scheme: "https",
+			}}}
+			var fixture testkit.ApplicationPrincipalAccess
+			var delegation *identityaccess.Artifact
+			if scope == "node" {
+				fixture = testkit.NewApplicationPrincipalAccess(t, []identityaccess.Action{
+					applicationdiscovery.ActionResolve,
+				})
+				delegation = fixture.DelegateNodeFromOperator(t, []identityaccess.Action{
+					applicationdiscovery.ActionResolve,
+				})
+			} else {
+				fixture = testkit.NewApplicationPrincipalAccess(t, []identityaccess.Action{
+					"application.content.get",
+				})
+				fixture.GrantExact(t, []identityaccess.Action{
+					applicationdiscovery.ActionResolve,
+				}, "service-type", "echo")
+				delegation = fixture.DelegateExactFromOperator(t, []identityaccess.Action{
+					applicationdiscovery.ActionResolve,
+				}, "service-type", "echo")
+			}
+			direct := newDiscoveryClientForAccess(t, locator, fixture, true)
+			delegated := newDiscoveryClientForAccessAndDelegation(t, locator, fixture, delegation)
+			request := &applicationv1.ResolveServiceRequest{
+				ServiceType: "echo", AcceptedSchemes: []string{"https"},
+			}
+
+			directResponse, err := direct.Resolve(context.Background(), connect.NewRequest(request))
+			require.NoError(t, err)
+			delegatedResponse, err := delegated.Resolve(context.Background(), connect.NewRequest(request))
+			require.NoError(t, err)
+			require.Equal(t, directResponse.Msg.GetTargets(), delegatedResponse.Msg.GetTargets())
+			require.Equal(t, 2, locator.calls)
+
+			if scope == "exact" {
+				_, err = delegated.Resolve(context.Background(), connect.NewRequest(&applicationv1.ResolveServiceRequest{
+					ServiceType: "chat", AcceptedSchemes: []string{"https"},
+				}))
+				require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
+				require.Equal(t, 2, locator.calls, "Delegation scope denial must precede catalogue lookup")
+			}
+		})
+	}
+}
+
 func TestDiscoveryMissingSessionIsTypedUnauthenticatedBeforeLocator(t *testing.T) {
 	locator := &locatorStub{}
 	client := newDiscoveryClient(t, locator, []identityaccess.Action{applicationdiscovery.ActionResolve}, false)
@@ -294,6 +365,27 @@ func newAdmittedDiscoveryClient(t *testing.T, locator applicationdiscovery.Servi
 func newDiscoveryClient(t *testing.T, locator applicationdiscovery.ServiceLocator, actions []identityaccess.Action, withSession bool) applicationv1connect.DiscoveryServiceClient {
 	t.Helper()
 	fixture := testkit.NewApplicationPrincipalAccess(t, actions)
+	return newDiscoveryClientForAccess(t, locator, fixture, withSession)
+}
+
+func newExactGrantDiscoveryClient(t *testing.T, locator applicationdiscovery.ServiceLocator, serviceType string) applicationv1connect.DiscoveryServiceClient {
+	t.Helper()
+	fixture := testkit.NewApplicationPrincipalAccess(t, []identityaccess.Action{"application.content.get"})
+	fixture.GrantExact(t, []identityaccess.Action{applicationdiscovery.ActionResolve}, "service-type", serviceType)
+	return newDiscoveryClientForAccess(t, locator, fixture, true)
+}
+
+func newDiscoveryClientForAccess(t *testing.T, locator applicationdiscovery.ServiceLocator, fixture testkit.ApplicationPrincipalAccess, withSession bool) applicationv1connect.DiscoveryServiceClient {
+	return newDiscoveryClientForAccessAndOptionalDelegation(t, locator, fixture, withSession, nil)
+}
+
+func newDiscoveryClientForAccessAndDelegation(t *testing.T, locator applicationdiscovery.ServiceLocator, fixture testkit.ApplicationPrincipalAccess, delegation *identityaccess.Artifact) applicationv1connect.DiscoveryServiceClient {
+	t.Helper()
+	return newDiscoveryClientForAccessAndOptionalDelegation(t, locator, fixture, true, delegation)
+}
+
+func newDiscoveryClientForAccessAndOptionalDelegation(t *testing.T, locator applicationdiscovery.ServiceLocator, fixture testkit.ApplicationPrincipalAccess, withSession bool, delegation *identityaccess.Artifact) applicationv1connect.DiscoveryServiceClient {
+	t.Helper()
 	injector, extractor := applicationcall.NewChannel()
 	contracts, registrations, err := applicationdiscovery.ProtectedProcedureSet()
 	require.NoError(t, err)
@@ -316,7 +408,13 @@ func newDiscoveryClient(t *testing.T, locator applicationdiscovery.ServiceLocato
 	}
 	if withSession {
 		authorization := "ArdentsApplicationSession " + base64.RawURLEncoding.EncodeToString(fixture.Session[:])
-		options = append(options, connect.WithInterceptors(discoverySessionHeader{authorization: authorization}))
+		headers := discoverySessionHeader{authorization: authorization}
+		if delegation != nil {
+			raw, marshalErr := delegation.MarshalBinary()
+			require.NoError(t, marshalErr)
+			headers.delegation = base64.RawURLEncoding.EncodeToString(raw)
+		}
+		options = append(options, connect.WithInterceptors(headers))
 	}
 	return applicationv1connect.NewDiscoveryServiceClient(server.Client(), server.URL, options...)
 }
@@ -332,11 +430,17 @@ func (l *locatorStub) Resolve(applicationdiscovery.Query) ([]applicationdiscover
 	return append([]applicationdiscovery.Target(nil), l.targets...), l.err
 }
 
-type discoverySessionHeader struct{ authorization string }
+type discoverySessionHeader struct {
+	authorization string
+	delegation    string
+}
 
 func (i discoverySessionHeader) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 	return func(ctx context.Context, request connect.AnyRequest) (connect.AnyResponse, error) {
 		request.Header().Set("Authorization", i.authorization)
+		if i.delegation != "" {
+			request.Header().Set("Ardents-Delegation", i.delegation)
+		}
 		return next(ctx, request)
 	}
 }

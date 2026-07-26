@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	identitycontract "ardents/api/ardents/identity/v1"
 	identityprincipal "ardents/internal/identity/principal"
 	identityprotocol "ardents/internal/identity/protocol"
 	"ardents/internal/storage"
@@ -114,6 +115,107 @@ func TestIssueAccessGrantIsAuthorizedAtomicAndIdempotent(t *testing.T) {
 		return loadErr
 	}))
 	require.Equal(t, []string{"node.status"}, grant.AccessGrantPayload().Actions)
+}
+
+func TestIssueAccessGrantDerivesApplicationAudienceFromDiscoveryAction(t *testing.T) {
+	f := newAdminFixture(t)
+	resource, err := NewResourceRef(f.nodeID, ResourceOwner{}, "service-type", "echo")
+	require.NoError(t, err)
+	proposal := GrantProposal{
+		Subject:   f.principal,
+		Actions:   []Action{"application.discovery.resolve"},
+		Scope:     ResourceScope{Kind: ScopeExact, Exact: resource},
+		NotBefore: f.clock.Now(),
+		NotAfter:  f.clock.Now().Add(time.Hour),
+	}
+	payload, err := grantProposalPayload(f.nodeID, f.binding.Audience, proposal)
+	require.NoError(t, err)
+	require.Equal(t, identityprotocol.Interface_INTERFACE_APPLICATION, payload.Audience.Interface)
+	proposalID, err := grantProposalID(payload)
+	require.NoError(t, err)
+
+	id, err := f.service.IssueAccessGrant(f.ctx, IssueGrantRequest{
+		Command:  f.command("issue-application-discovery", "identity.grant.issue", "grant-proposal", proposalID),
+		Proposal: proposal,
+	})
+	require.NoError(t, err)
+
+	var grant *Artifact
+	require.NoError(t, f.database.View(f.ctx, func(tx storage.ReadTransaction) error {
+		var loadErr error
+		grant, loadErr = loadGrant(tx, id, f.clock.Now())
+		return loadErr
+	}))
+	require.Equal(t, identityprotocol.Interface_INTERFACE_APPLICATION, grant.AccessGrantPayload().Audience.Interface)
+	require.Equal(t, exactScope(resource), grant.AccessGrantPayload().Scope)
+}
+
+func TestGrantAudienceForActionsRejectsCrossInterfaceAndUnknownSets(t *testing.T) {
+	f := newAdminFixture(t)
+	tests := []struct {
+		name    string
+		actions []Action
+		want    identityprotocol.Interface
+	}{
+		{name: "Operator", actions: []Action{"node.status"}, want: identityprotocol.Interface_INTERFACE_OPERATOR},
+		{name: "Application", actions: []Action{"application.discovery.resolve"}, want: identityprotocol.Interface_INTERFACE_APPLICATION},
+		{name: "mixed", actions: []Action{"application.discovery.resolve", "node.status"}},
+		{name: "unknown", actions: []Action{"application.discovery.unknown"}},
+		{name: "duplicate", actions: []Action{"node.status", "node.status"}},
+		{name: "unsorted", actions: []Action{"node.stop", "node.start"}},
+		{name: "empty"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			audience, err := GrantAudienceForActions(f.nodeID, test.actions)
+			if test.want == identityprotocol.Interface_INTERFACE_UNSPECIFIED {
+				require.ErrorIs(t, err, ErrInvalidArgument)
+				require.Equal(t, Audience{}, audience)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, Audience{
+				Node: f.nodeID, Interface: test.want, ProtocolMajor: identitycontract.ProtocolMajor,
+			}, audience)
+		})
+	}
+}
+
+func TestOperatorIssuanceRejectsApplicationPrincipalOwnedScope(t *testing.T) {
+	f := newAdminFixture(t)
+	proposal := GrantProposal{
+		Subject: f.principal,
+		Actions: []Action{"application.discovery.resolve"},
+		Scope: ResourceScope{
+			Kind: ScopePrincipalOwned, Owner: mustResourceOwner(t, f.principal),
+		},
+		NotBefore: f.clock.Now(),
+		NotAfter:  f.clock.Now().Add(time.Hour),
+	}
+
+	_, err := grantProposalPayload(f.nodeID, f.binding.Audience, proposal)
+
+	require.ErrorIs(t, err, errInvalid)
+}
+
+func TestGrantProposalRejectsCrossNodeExactScopeBeforeSigning(t *testing.T) {
+	f := newAdminFixture(t)
+	otherKey := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x6a}, ed25519.SeedSize))
+	otherNode, err := identityprincipal.FromEd25519PublicKey(otherKey.Public().(ed25519.PublicKey))
+	require.NoError(t, err)
+	resource, err := NewResourceRef(otherNode.String(), ResourceOwner{}, "service-type", "echo")
+	require.NoError(t, err)
+	proposal := GrantProposal{
+		Subject:   f.principal,
+		Actions:   []Action{"application.discovery.resolve"},
+		Scope:     ResourceScope{Kind: ScopeExact, Exact: resource},
+		NotBefore: f.clock.Now(),
+		NotAfter:  f.clock.Now().Add(time.Hour),
+	}
+
+	_, err = grantProposalPayload(f.nodeID, f.binding.Audience, proposal)
+
+	require.ErrorIs(t, err, errInvalid)
 }
 
 func TestIssueAccessGrantRejectsProposalSubstitution(t *testing.T) {

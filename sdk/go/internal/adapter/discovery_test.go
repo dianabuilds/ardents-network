@@ -2,6 +2,7 @@ package adapter
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -154,6 +155,52 @@ func TestDiscoveryAdapterNeverRefreshesSessionAfterForbiddenOrNotFound(t *testin
 			require.Equal(t, int32(1), begins.Load())
 		})
 	}
+}
+
+func TestDiscoveryAdapterPresentsCanonicalDelegationAndPreservesForbidden(t *testing.T) {
+	now := time.Unix(1_900_000_000, 0).UTC()
+	node, signer := testIdentity(t, now)
+	manager := testSessionManager(successfulAuthentication(node, signer.principal, now, new(atomic.Int32)), signer, node, now)
+	delegation := testDiscoveryDelegation(t, now, node, signer.principal, "echo")
+	raw, err := delegation.MarshalBinary()
+	require.NoError(t, err)
+	interceptor, err := NewSessionInterceptorWithDelegation(manager, delegation)
+	require.NoError(t, err)
+	var calls atomic.Int32
+	path, handler := applicationv1connect.NewDiscoveryServiceHandler(discoveryHandlerFunc(
+		func(_ context.Context, request *connect.Request[applicationv1.ResolveServiceRequest]) (*connect.Response[applicationv1.ResolveServiceResponse], error) {
+			calls.Add(1)
+			values := request.Header().Values(applicationDelegationHeader)
+			require.Len(t, values, 1)
+			presented, decodeErr := base64.RawURLEncoding.Strict().DecodeString(values[0])
+			require.NoError(t, decodeErr)
+			require.Equal(t, raw, presented)
+			remote := connect.NewError(connect.CodePermissionDenied, errors.New("redacted"))
+			detail, detailErr := connect.NewErrorDetail(&applicationv1.ApplicationError{
+				Code:      applicationv1.ErrorCode_ERROR_CODE_FORBIDDEN,
+				Operation: "application.discovery.resolve",
+				Message:   "application action is forbidden",
+			})
+			require.NoError(t, detailErr)
+			remote.AddDetail(detail)
+			return nil, remote
+		},
+	))
+	mux := http.NewServeMux()
+	mux.Handle(path, handler)
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+
+	_, err = NewDiscovery(server.Client(), server.URL, connect.WithInterceptors(interceptor)).Resolve(
+		context.Background(),
+		discovery.Query{ServiceType: "echo", AcceptedSchemes: []discovery.Scheme{discovery.SchemeHTTPS}},
+	)
+
+	var sdkErr *sdkerrors.Error
+	require.ErrorAs(t, err, &sdkErr)
+	require.Equal(t, sdkerrors.Forbidden, sdkErr.Code)
+	require.Equal(t, "application.discovery.resolve", sdkErr.Operation)
+	require.Equal(t, int32(1), calls.Load())
 }
 
 func TestDiscoveryAdapterRejectsInvalidResponses(t *testing.T) {
