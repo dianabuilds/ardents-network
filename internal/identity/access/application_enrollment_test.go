@@ -280,6 +280,26 @@ func TestApplicationEnrollmentAtomicallyPersistsCredentialAndGrant(t *testing.T)
 
 }
 
+func TestOperatorCanListApplicationGrantForRevocation(t *testing.T) {
+	f := newApplicationEnrollmentFixture(t)
+	ticket := f.issueTicket()
+	result, err := f.service.EnrollApplication(f.ctx, f.appBinding, f.enrollmentRequest(ticket.Ticket))
+	require.NoError(t, err)
+
+	resource, err := NewResourceRef(f.nodeID, ResourceOwner{}, "grant-collection", f.appPrincipal)
+	require.NoError(t, err)
+	grants, err := f.service.ListAccessGrants(f.ctx, Attempt{
+		SessionSecret: f.secret,
+		Binding:       f.binding,
+		Action:        "identity.grant.list",
+		Resource:      resource,
+	}, f.appPrincipal)
+	require.NoError(t, err)
+	require.Len(t, grants, 1)
+	require.Equal(t, result.GrantID, grants[0].ID)
+	require.Equal(t, f.appBinding.Audience, grants[0].Audience)
+}
+
 func TestApplicationEnrollmentTicketIsOneUseUnderConcurrencyAndBoundToAudience(t *testing.T) {
 	f := newApplicationEnrollmentFixture(t)
 	ticket := f.issueTicket()

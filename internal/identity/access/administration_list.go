@@ -56,7 +56,8 @@ func (s *Service) ListAccessGrants(ctx context.Context, attempt Attempt, subject
 				return err
 			}
 			payload := grant.AccessGrantPayload()
-			if payload.Subject != subject || audienceFromProtocol(payload.Audience) != attempt.Binding.Audience {
+			audience := audienceFromProtocol(payload.Audience)
+			if payload.Subject != subject || audience.Node != attempt.Binding.Audience.Node {
 				return nil
 			}
 			scope, err := scopeFromPayload(payload.Scope, payload.Audience.Node)
@@ -71,7 +72,7 @@ func (s *Service) ListAccessGrants(ctx context.Context, attempt Attempt, subject
 			for index := range payload.Actions {
 				actions[index] = Action(payload.Actions[index])
 			}
-			result = append(result, GrantMetadata{ID: grant.ID(), Subject: subject, Audience: attempt.Binding.Audience, Actions: actions, Scope: scope, NotBefore: payload.NotBefore.AsTime(), NotAfter: payload.NotAfter.AsTime(), Revoked: revoked})
+			result = append(result, GrantMetadata{ID: grant.ID(), Subject: subject, Audience: audience, Actions: actions, Scope: scope, NotBefore: payload.NotBefore.AsTime(), NotAfter: payload.NotAfter.AsTime(), Revoked: revoked})
 			return nil
 		})
 	})
