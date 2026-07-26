@@ -245,14 +245,17 @@ internal/
     binding/
     call/
     content/
+    discovery/
     principal/
     protocol/
       applicationv1/
+    requestvalidation/
 
 sdk/
   go/
     client/
     content/
+    discovery/
     errors/
     internal/
     protocol/

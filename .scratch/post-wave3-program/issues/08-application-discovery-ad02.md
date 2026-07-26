@@ -245,3 +245,23 @@ with any qualification claim.
   all actionable findings. The remaining human checkpoint is review of the
   single logical implementation commit; AD-03 privacy/abuse scope remains
   deliberately open.
+- 2026-07-26 integrator review of
+  `baec800a283edfe7976fdcd3008adec94ed6099a` found and remediated two
+  documentation/evidence gaps:
+  - the exhaustive target topology now lists
+    `internal/applicationapi/discovery`,
+    `internal/applicationapi/requestvalidation`, and `sdk/go/discovery`;
+  - commit-bound APP-001 evidence was captured with
+    `.\ardents.ps1 test e2e -Domain application-interface -Scenario APP-001
+    -ReportDir tests/.artifacts/reports/application-process-ad02`.
+- APP-001 ran in the Docker Desktop Linux container from
+  `2026-07-26T13:44:53.107724231Z` through
+  `2026-07-26T13:45:40.65510479Z` on Windows `10.0.26200.0`, PowerShell
+  `5.1.26100.8875`, Docker client `29.1.3`; all seven precondition, step, and
+  assertion records passed without a skip (`1 passed`, `0 failed`).
+  Retained evidence:
+  - `tests/.artifacts/reports/application-process-ad02/summary.json`;
+  - `tests/.artifacts/reports/application-process-ad02/junit.xml`;
+  - `tests/.artifacts/reports/application-process-ad02/raw/TestApplicationUsesDedicatedPrincipalInterface-1785073540657688460.json`;
+  - `tests/.artifacts/resources/20260726-134439-22684-before.json`;
+  - `tests/.artifacts/resources/20260726-134439-22684-after.json`.
