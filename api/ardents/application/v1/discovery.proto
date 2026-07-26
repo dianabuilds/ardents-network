@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package ardents.application.v1;
+
+option go_package = "ardents/sdk/go/protocol/applicationv1;applicationv1";
+
+service DiscoveryService {
+  rpc Resolve(ResolveServiceRequest) returns (ResolveServiceResponse);
+}
+
+message ResolveServiceRequest {
+  string service_type = 1;
+  repeated string accepted_schemes = 2;
+}
+
+message ResolvedServiceTarget {
+  string service_id = 1;
+  string endpoint = 2;
+  string scheme = 3;
+}
+
+message ResolveServiceResponse {
+  repeated ResolvedServiceTarget targets = 1;
+}

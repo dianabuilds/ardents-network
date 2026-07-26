@@ -460,6 +460,7 @@ listed; unknown scope/resource/action values deny.
 | ListRecentEvents | `diagnostics.recent_events` | read | `event-collection`; C validates cursor/limit, F audience Node | node, exact |
 | Application Put | `application.content.put` | write | `content-owner`; C validates bounded payload, F owner=Effective and audience Node | principal-owned |
 | Application Get | `application.content.get` | read | `owned-content`; C strict ContentReference, F owner=Effective and audience Node | principal-owned, exact |
+| Application Discovery Resolve | `application.discovery.resolve` | read | `service-type`; C validates bounded canonical service type and one to three unique direct schemes, F audience Node with no owner | node, exact |
 | EnrollPrincipal | `identity.principal.enroll` | write | `principal`; C strict PrincipalID plus proof, F audience Node | exact |
 | IssueApplicationEnrollmentTicket | `identity.principal.enroll` | write | `principal`; C strict prospective Application Principal and closed Application action subset, F audience Node | exact |
 | RevokeDevice | `identity.device.revoke` | write | `device`; C strict PrincipalID+DeviceID and binding proof, F audience Node | exact |

@@ -11,6 +11,7 @@ import (
 	applicationadmission "ardents/internal/applicationapi/admission"
 	applicationcall "ardents/internal/applicationapi/call"
 	applicationcontent "ardents/internal/applicationapi/content"
+	applicationdiscovery "ardents/internal/applicationapi/discovery"
 	applicationprincipal "ardents/internal/applicationapi/principal"
 	contentdomain "ardents/internal/content"
 	"ardents/internal/daemon"
@@ -38,10 +39,16 @@ func newApplicationAPIHandler(process daemon.Owners, cfg daemon.ApplicationAPICo
 	if !cfg.Protected {
 		return "", nil, fmt.Errorf("Application Interface requires the protected Principal socket")
 	}
-	contracts, registrations, err := applicationcontent.ProtectedProcedureSet()
+	contentContracts, contentRegistrations, err := applicationcontent.ProtectedProcedureSet()
 	if err != nil {
 		return "", nil, fmt.Errorf("compose protected Application procedures: %w", err)
 	}
+	discoveryContracts, discoveryRegistrations, err := applicationdiscovery.ProtectedProcedureSet()
+	if err != nil {
+		return "", nil, fmt.Errorf("compose protected Application procedures: %w", err)
+	}
+	contracts := append(append([]string(nil), contentContracts...), discoveryContracts...)
+	registrations := append(append([]applicationadmission.ProcedureRule(nil), contentRegistrations...), discoveryRegistrations...)
 	registry, err := applicationadmission.NewRegistry(contracts, registrations)
 	if err != nil {
 		return "", nil, fmt.Errorf("compose protected Application procedures: %w", err)
@@ -58,12 +65,25 @@ func newApplicationAPIHandler(process daemon.Owners, cfg daemon.ApplicationAPICo
 	if err != nil {
 		return contentPath, contentHandler, err
 	}
+	truth, err := applicationdiscovery.NewMaintainedTruth(process.Discovery, process.DiscoveryTrust)
+	if err != nil {
+		return "", nil, err
+	}
+	locator, err := applicationdiscovery.NewLocator(truth)
+	if err != nil {
+		return "", nil, err
+	}
+	discoveryPath, discoveryHandler, err := applicationdiscovery.NewHTTPHandler(locator, extractor, interceptor)
+	if err != nil {
+		return discoveryPath, discoveryHandler, err
+	}
 	identityPath, identityHandler, err := applicationprincipal.NewHandler(process.PrincipalAccess, cfg.TargetID, cfg.PeerBinding, cfg.Source)
 	if err != nil {
 		return "", nil, err
 	}
 	mux := http.NewServeMux()
 	mux.Handle(contentPath, contentHandler)
+	mux.Handle(discoveryPath, discoveryHandler)
 	mux.Handle(identityPath, identityHandler)
 	return contentPath, mux, nil
 }

@@ -424,9 +424,16 @@ The policy discovers handwritten production Go packages from the explicit
   binding from the protected listener and OS peer.
 - `applicationapi/call` carries the sealed admitted Application call across the
   adapter boundary without exposing a constructor for Actor or Effective.
+- `applicationapi/discovery` projects maintained Discovery records and current
+  trust into the bounded Application locator response; it does not reuse
+  Operator diagnostics or trigger observation, refresh, probing, fetching, or
+  dialing.
 - `applicationapi/principal` is the protected Application Unix-socket adapter
   for typed Principal authentication, session termination, and one-use
   Application enrollment. It owns no durable identity state.
+- `applicationapi/requestvalidation` performs shared structural protobuf
+  unknown-field rejection; product adapters still own semantic request
+  validation and resource canonicalization.
 - `applicationapi/protocol/applicationv1` is the generated-only Node copy of
   the Application identity service. The public SDK copy is
   `sdk/go/protocol/applicationidentityv1`; both come from the same proto source
@@ -1036,7 +1043,7 @@ Completed structural replacements:
   non-growing ceilings and reasons in the machine-readable acceptance policy;
   an undeclared package or any growth beyond its ceiling fails the gate.
 - replaced the single 48-method `ArdentsService` with 9 generated bounded
-  Operator services and 2 generated Application services. The Operator
+  Operator services and 3 generated Application services. The Operator
   services are registered behind one protected local endpoint; the Application
   services remain on their distinct interface. Composition paths and proto
   service counts are checked against the machine-readable acceptance policy.

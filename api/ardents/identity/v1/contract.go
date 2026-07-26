@@ -10,21 +10,25 @@ import (
 )
 
 const (
-	Version                            uint32 = 1
-	ProtocolMajor                      uint32 = 1
-	PortableClockSkew                         = 120 * time.Second
-	MaxCredentialLifetime                     = 365 * 24 * time.Hour
-	MaxGrantLifetime                          = 365 * 24 * time.Hour
-	MaxDelegationLifetime                     = 24 * time.Hour
-	MaxKeyCredentialBytes                     = 4 << 10
-	MaxArtifactBytes                          = 16 << 10
-	MaxActions                                = 64
-	MaxActionBytes                            = 128
-	MaxResourceKindBytes                      = 32
-	MaxCanonicalResourceIDBytes               = 512
-	MaxOperatorPublishBlobPayloadBytes        = 1 << 20
-	LowerTimestampUnix                 int64  = 1577836800 // 2020-01-01T00:00:00Z
-	UpperTimestampUnix                 int64  = 4102444800 // 2100-01-01T00:00:00Z, exclusive
+	Version                                uint32 = 1
+	ProtocolMajor                          uint32 = 1
+	PortableClockSkew                             = 120 * time.Second
+	MaxCredentialLifetime                         = 365 * 24 * time.Hour
+	MaxGrantLifetime                              = 365 * 24 * time.Hour
+	MaxDelegationLifetime                         = 24 * time.Hour
+	MaxKeyCredentialBytes                         = 4 << 10
+	MaxArtifactBytes                              = 16 << 10
+	MaxActions                                    = 64
+	MaxActionBytes                                = 128
+	MaxResourceKindBytes                          = 32
+	MaxCanonicalResourceIDBytes                   = 512
+	MaxOperatorPublishBlobPayloadBytes            = 1 << 20
+	MinApplicationDiscoveryAcceptedSchemes        = 1
+	MaxApplicationDiscoveryAcceptedSchemes        = 3
+	MinApplicationDiscoveryTargets                = 1
+	MaxApplicationDiscoveryTargets                = 8
+	LowerTimestampUnix                     int64  = 1577836800 // 2020-01-01T00:00:00Z
+	UpperTimestampUnix                     int64  = 4102444800 // 2100-01-01T00:00:00Z, exclusive
 
 	KeyCredentialDomain           = "ardents:key-credential:v1\x00"
 	AccessGrantDomain             = "ardents:access-grant:v1\x00"
@@ -40,6 +44,10 @@ const (
 	DeviceRevocationPrefix        = "dv1_"
 	AccessGrantRevocationPrefix   = "ar1_"
 	DelegationRevocationPrefix    = "dr1_"
+
+	ApplicationDiscoverySchemeHTTPS = "https"
+	ApplicationDiscoverySchemeHTTP  = "http"
+	ApplicationDiscoverySchemeTCP   = "tcp"
 )
 
 // EncodeApplicationEnrollmentTicket returns the single canonical text form
@@ -158,6 +166,20 @@ func ValidCanonicalResourceIDSize(size int) bool {
 }
 func ValidKeyCredentialSize(size int) bool { return size > 0 && size <= MaxKeyCredentialBytes }
 func ValidArtifactSize(size int) bool      { return size > 0 && size <= MaxArtifactBytes }
+func ValidApplicationDiscoverySchemeCount(count int) bool {
+	return count >= MinApplicationDiscoveryAcceptedSchemes && count <= MaxApplicationDiscoveryAcceptedSchemes
+}
+func ValidApplicationDiscoveryTargetCount(count int) bool {
+	return count >= MinApplicationDiscoveryTargets && count <= MaxApplicationDiscoveryTargets
+}
+func IsApplicationDiscoveryScheme(value string) bool {
+	switch value {
+	case ApplicationDiscoverySchemeHTTPS, ApplicationDiscoverySchemeHTTP, ApplicationDiscoverySchemeTCP:
+		return true
+	default:
+		return false
+	}
+}
 
 type ResourceContract struct {
 	AllowEmptyID  bool
@@ -181,8 +203,9 @@ func set(values ...string) map[string]struct{} {
 }
 
 var applicationActions = map[string]ApplicationActionContract{
-	"application.content.put": {Mutating: true},
-	"application.content.get": {},
+	"application.content.put":       {Mutating: true},
+	"application.content.get":       {},
+	"application.discovery.resolve": {},
 }
 var operatorActions = set(
 	"node.start", "node.stop", "node.status", "node.features", "node.runtime", "node.events", "config.effective", "config.reload", "transport.network_status", "transport.route_candidates",
@@ -197,5 +220,6 @@ var resourceKinds = map[string]ResourceContract{
 	"service-collection": {true, false}, "content-object": {false, true}, "content-object-collection": {true, false}, "content-blob": {false, true}, "content-blob-collection": {true, false},
 	"transfer": {false, false}, "transfer-collection": {true, false}, "content-manifest": {false, true}, "content-manifest-collection": {true, false}, "content-inventory": {true, false},
 	"diagnostics": {true, false}, "operation-collection": {true, false}, "diagnostic-subject": {false, false}, "event-collection": {true, false}, "content-owner": {true, true}, "owned-content": {false, true},
-	"principal": {false, false}, "device": {false, false}, "device-revocation-collection": {true, false}, "grant-proposal": {false, false}, "access-grant": {false, false}, "grant-collection": {true, false},
+	"service-type": {false, false},
+	"principal":    {false, false}, "device": {false, false}, "device-revocation-collection": {true, false}, "grant-proposal": {false, false}, "access-grant": {false, false}, "grant-collection": {true, false},
 }

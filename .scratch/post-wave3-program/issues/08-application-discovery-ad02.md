@@ -1,8 +1,8 @@
 # PW3-08: AD-02 Resolve a Trusted Service End to End
 
-Status: ready-for-agent
+Status: ready-for-human
 State: open
-Labels: ready-for-agent
+Labels: ready-for-human
 Research class: R1 bounded implementation
 
 ## Parent
@@ -140,26 +140,26 @@ deduplication/cap, and adversarial negative matrices.
 
 ## Acceptance criteria
 
-- [ ] `application.discovery.resolve` and ownerless `service-type` are
+- [x] `application.discovery.resolve` and ownerless `service-type` are
   registered in the canonical Application identity contracts.
-- [ ] Additive Discovery protobuf messages and service generate cleanly.
-- [ ] The procedure is registered through AD-01 without a Discovery switch or
+- [x] Additive Discovery protobuf messages and service generate cleanly.
+- [x] The procedure is registered through AD-01 without a Discovery switch or
   reverse dependency in admission.
-- [ ] A real admitted Application call resolves one fresh trusted
+- [x] A real admitted Application call resolves one fresh trusted
   `NetworkPublished` direct endpoint.
-- [ ] The public response contains only service ID, endpoint, and scheme.
-- [ ] Resolve reads maintained discovery truth and performs no refresh, probe,
+- [x] The public response contains only service ID, endpoint, and scheme.
+- [x] Resolve reads maintained discovery truth and performs no refresh, probe,
   fetch, observation, or dial.
-- [ ] Missing action/grant fails before locator invocation.
-- [ ] Unknown fields and malformed service type/scheme input fail before
+- [x] Missing action/grant fails before locator invocation.
+- [x] Unknown fields and malformed service type/scheme input fail before
   locator behavior.
-- [ ] Stable typed public errors are preserved through generated protocol,
+- [x] Stable typed public errors are preserved through generated protocol,
   adapter, SDK, and one-time session refresh behavior.
-- [ ] SDK domain types do not expose or alias protobuf messages.
-- [ ] Existing Content Application behavior and APP-001 remain unchanged.
-- [ ] Operator and Application Discovery packages, handlers, and response
+- [x] SDK domain types do not expose or alias protobuf messages.
+- [x] Existing Content Application behavior and APP-001 remain unchanged.
+- [x] Operator and Application Discovery packages, handlers, and response
   models remain separate.
-- [ ] No capability is promoted and no `Q=yes` claim is made.
+- [x] No capability is promoted and no `Q=yes` claim is made.
 
 ## Required tests and evidence
 
@@ -236,3 +236,12 @@ with any qualification claim.
   `origin/main@2205bcc8542c16d4dc8abd95df970c546d5855ac`.
 - The implementing agent must re-check HEAD, branch, origin, and worktree
   before editing and must preserve unrelated user changes.
+- Implementation completed from `main@794b58c4123766d38c0b8b4975292c715b7d113f`
+  with an external task-specific Go build cache.
+- Red/green evidence was retained for identity, wire shape, maintained-truth
+  locator, admitted Application contract, SDK, daemon ownership, architecture,
+  and review-remediation tests.
+- The final diff passed independent Standards and Spec review after resolving
+  all actionable findings. The remaining human checkpoint is review of the
+  single logical implementation commit; AD-03 privacy/abuse scope remains
+  deliberately open.

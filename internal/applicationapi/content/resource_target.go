@@ -3,12 +3,12 @@ package content
 import (
 	"errors"
 
+	requestvalidation "ardents/internal/applicationapi/requestvalidation"
 	contentapi "ardents/internal/content"
 	applicationv1 "ardents/sdk/go/protocol/applicationv1"
 	applicationv1connect "ardents/sdk/go/protocol/applicationv1/applicationv1connect"
 
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 var (
@@ -28,7 +28,7 @@ func CanonicalizeResource(procedure string, message any) (ResourceTarget, error)
 	}
 
 	request, ok := message.(proto.Message)
-	if !ok || request == nil || !request.ProtoReflect().IsValid() || hasUnknownFields(request.ProtoReflect()) {
+	if !ok || request == nil || !request.ProtoReflect().IsValid() || requestvalidation.HasUnknownFields(request) {
 		return ResourceTarget{}, ErrInvalidResourceTarget
 	}
 
@@ -55,29 +55,4 @@ func CanonicalizeResource(procedure string, message any) (ResourceTarget, error)
 	default:
 		return ResourceTarget{}, ErrUnknownProcedure
 	}
-}
-
-func hasUnknownFields(message protoreflect.Message) bool {
-	if !message.IsValid() || len(message.GetUnknown()) != 0 {
-		return true
-	}
-	unknown := false
-	message.Range(func(field protoreflect.FieldDescriptor, value protoreflect.Value) bool {
-		switch {
-		case field.IsMap() && field.MapValue().Kind() == protoreflect.MessageKind:
-			value.Map().Range(func(_ protoreflect.MapKey, entry protoreflect.Value) bool {
-				unknown = hasUnknownFields(entry.Message())
-				return !unknown
-			})
-		case field.IsList() && field.Kind() == protoreflect.MessageKind:
-			list := value.List()
-			for index := 0; index < list.Len() && !unknown; index++ {
-				unknown = hasUnknownFields(list.Get(index).Message())
-			}
-		case field.Kind() == protoreflect.MessageKind || field.Kind() == protoreflect.GroupKind:
-			unknown = hasUnknownFields(value.Message())
-		}
-		return !unknown
-	})
-	return unknown
 }

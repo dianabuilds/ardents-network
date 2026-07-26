@@ -3,8 +3,10 @@ package client
 import (
 	"context"
 	"path/filepath"
+	"reflect"
 	"testing"
 
+	"ardents/sdk/go/discovery"
 	"ardents/sdk/go/identity"
 
 	"github.com/stretchr/testify/require"
@@ -26,6 +28,12 @@ func TestClientRejectsNoncanonicalNodePrincipalBeforeTransportSetup(t *testing.T
 		})
 		require.ErrorContains(t, err, "canonical Node Principal")
 	}
+}
+
+func TestClientExposesTypedDiscoveryService(t *testing.T) {
+	field, ok := reflect.TypeFor[Client]().FieldByName("Discovery")
+	require.True(t, ok)
+	require.Equal(t, reflect.TypeFor[discovery.Service](), field.Type)
 }
 
 const canonicalNodePrincipal = "p1_755gnz2wffu3osamddsj7ggiasqtwnwomsooe5mxh2yipr2urmwq"

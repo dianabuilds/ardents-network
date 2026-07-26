@@ -123,6 +123,11 @@
           "function": "NewHTTPHandler",
           "mode": "returned_handler"
         },
+        "DiscoveryService": {
+          "path": "internal/applicationapi/discovery/handler.go",
+          "function": "NewHTTPHandler",
+          "mode": "returned_handler"
+        },
         "IdentityService": {
           "path": "internal/applicationapi/principal/handler.go",
           "function": "NewHandler",

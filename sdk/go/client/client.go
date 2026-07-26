@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"ardents/sdk/go/content"
+	"ardents/sdk/go/discovery"
 	sdkidentity "ardents/sdk/go/identity"
 	"ardents/sdk/go/internal/adapter"
 
@@ -27,8 +28,9 @@ type Config struct {
 }
 
 type Client struct {
-	Content content.Service
-	Session SessionProvider
+	Content   content.Service
+	Discovery discovery.Service
+	Session   SessionProvider
 }
 
 func New(config Config) (*Client, error) {
@@ -57,8 +59,9 @@ func New(config Config) (*Client, error) {
 		}
 	}
 	return &Client{
-		Content: adapter.NewContent(httpClient, endpoint, connect.WithInterceptors(interceptor)),
-		Session: &sessionProvider{manager: manager},
+		Content:   adapter.NewContent(httpClient, endpoint, connect.WithInterceptors(interceptor)),
+		Discovery: adapter.NewDiscovery(httpClient, endpoint, connect.WithInterceptors(interceptor)),
+		Session:   &sessionProvider{manager: manager},
 	}, nil
 }
 

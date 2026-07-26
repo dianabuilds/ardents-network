@@ -549,6 +549,8 @@ type Owners struct {
 	PrincipalAccess   *identityaccess.Service
 	Content           *content.Service
 	ContentCommands   *content.Commands
+	Discovery         *discovery.Service
+	DiscoveryTrust    *discovery.TrustEvaluator
 	DiscoveryCommands *discovery.Commands
 	Transfers         *transfer.Journal
 	Workloads         *workload.Runtime
@@ -576,7 +578,12 @@ func ownersFor(node *Node) Owners {
 		}
 		return &diagnostics.ServiceStatus{Published: status.Published, Reason: status.Reason}, true
 	})
-	return Owners{Node: node, Content: node.data, ContentCommands: node.dataCommands, DiscoveryCommands: node.discoveryCommands, Transfers: node.transfers, Workloads: node.workloadRuntime, Hosting: node.hosting, Diagnostics: query, Events: node.diag}
+	return Owners{
+		Node: node, Content: node.data, ContentCommands: node.dataCommands,
+		Discovery: node.disco, DiscoveryTrust: node.trust, DiscoveryCommands: node.discoveryCommands,
+		Transfers: node.transfers, Workloads: node.workloadRuntime, Hosting: node.hosting,
+		Diagnostics: query, Events: node.diag,
+	}
 }
 
 type querySurface interface {

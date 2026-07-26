@@ -53,6 +53,24 @@ func TestVersionOneNumericalBoundaries(t *testing.T) {
 	if !ValidArtifactSize(16<<10) || ValidArtifactSize((16<<10)+1) {
 		t.Fatal("artifact size boundary")
 	}
+	if !ValidApplicationDiscoverySchemeCount(1) || !ValidApplicationDiscoverySchemeCount(3) ||
+		ValidApplicationDiscoverySchemeCount(0) || ValidApplicationDiscoverySchemeCount(4) {
+		t.Fatal("Application Discovery scheme count boundary")
+	}
+	if !ValidApplicationDiscoveryTargetCount(1) || !ValidApplicationDiscoveryTargetCount(8) ||
+		ValidApplicationDiscoveryTargetCount(0) || ValidApplicationDiscoveryTargetCount(9) {
+		t.Fatal("Application Discovery target count boundary")
+	}
+	for _, scheme := range []string{
+		ApplicationDiscoverySchemeHTTPS, ApplicationDiscoverySchemeHTTP, ApplicationDiscoverySchemeTCP,
+	} {
+		if !IsApplicationDiscoveryScheme(scheme) {
+			t.Fatal("Application Discovery direct scheme catalogue")
+		}
+	}
+	if IsApplicationDiscoveryScheme("waku") {
+		t.Fatal("Application Discovery unknown scheme")
+	}
 	if time.Unix(LowerTimestampUnix, 0).UTC() != time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC) {
 		t.Fatal("lower timestamp")
 	}
@@ -78,4 +96,17 @@ func TestApplicationActionContractsOwnMutationClassification(t *testing.T) {
 
 	_, ok = LookupApplicationAction("application.content.unknown")
 	require.False(t, ok)
+}
+
+func TestApplicationDiscoveryIdentityContractsAreExactAndOwnerless(t *testing.T) {
+	resolve, ok := LookupApplicationAction("application.discovery.resolve")
+	require.True(t, ok)
+	require.False(t, resolve.Mutating)
+	require.True(t, IsRegisteredAction(InterfaceApplication, "application.discovery.resolve"))
+	require.False(t, IsRegisteredAction(InterfaceOperator, "application.discovery.resolve"))
+
+	serviceType, ok := LookupResourceKind("service-type")
+	require.True(t, ok)
+	require.False(t, serviceType.AllowEmptyID)
+	require.False(t, serviceType.OwnerRequired)
 }
