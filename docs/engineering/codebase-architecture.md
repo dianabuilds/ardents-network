@@ -241,6 +241,7 @@ internal/
   ingressproxy/
   applicationapi/
     admission/
+    applicationerror/
     binding/
     call/
     content/
@@ -416,6 +417,9 @@ The policy discovers handwritten production Go packages from the explicit
   protected Application product calls. It derives the Application Audience,
   admits exact actions/resources, and propagates sealed Actor/Effective facts;
   it owns no product state.
+- `applicationapi/applicationerror` constructs the shared structured error
+  detail used by protected Application services; product modules retain their
+  own error-classification policy.
 - `applicationapi/binding` derives the server-owned Application transport
   binding from the protected listener and OS peer.
 - `applicationapi/call` carries the sealed admitted Application call across the

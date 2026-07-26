@@ -1,4 +1,4 @@
-package admission
+package admission_test
 
 import (
 	"bytes"
@@ -13,6 +13,7 @@ import (
 	"time"
 
 	identitycontract "ardents/api/ardents/identity/v1"
+	applicationadmission "ardents/internal/applicationapi/admission"
 	applicationcall "ardents/internal/applicationapi/call"
 	applicationcontent "ardents/internal/applicationapi/content"
 	contentdomain "ardents/internal/content"
@@ -29,6 +30,14 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+const applicationDelegationHeader = "Ardents-Delegation"
+
+type Admitter = applicationadmission.Admitter
+type Config = applicationadmission.Config
+
+var NewInterceptor = applicationadmission.NewInterceptor
+var NewRegistry = applicationadmission.NewRegistry
 
 type testClock struct{ now time.Time }
 
@@ -374,6 +383,8 @@ func TestPrincipalContentAdmissionUsesRealAccessServiceAndPropagatesActorEffecti
 	require.Equal(t, int32(2), admitter.calls.Load())
 	require.Len(t, admitter.mutations, 1)
 	require.Equal(t, identityaccess.Action("application.content.put"), admitter.mutations[0].Action())
+	require.Len(t, admitter.mutations[0].GrantIDs(), 1)
+	require.Empty(t, admitter.mutations[0].DelegationID())
 	require.NotEmpty(t, store.calls)
 	for _, admitted := range store.calls {
 		require.True(t, admitted.IsPrincipal())
@@ -418,12 +429,128 @@ func TestDelegatedContentAdmissionUsesRealAccessServiceAndClearsPresentation(t *
 	require.Equal(t, int32(1), admitter.calls.Load())
 	require.Len(t, admitter.presented, len(raw))
 	require.Equal(t, make([]byte, len(raw)), admitter.presented, "decoded Delegation must be cleared immediately after Admit")
+	require.Len(t, admitter.mutations, 1)
+	require.Len(t, admitter.mutations[0].GrantIDs(), 2, "Actor and Effective grants must intersect")
+	require.NotEmpty(t, admitter.mutations[0].DelegationID())
 	require.NotEmpty(t, store.calls)
 	for _, admitted := range store.calls {
 		require.Equal(t, fixture.appPrincipal, admitted.Actor())
 		require.Equal(t, alice, admitted.Effective())
 		require.Equal(t, alice, admitted.ResourceOwner().String())
 	}
+}
+
+func TestRegisteredOwnerlessRuleInjectsOnlyAnEmptyOwner(t *testing.T) {
+	fixture := newRealApplicationFixture(t, []identityaccess.Action{"application.content.get"})
+	const procedure = "/ardents.application.v1.TestOwnerlessService/Read"
+
+	finalizeOwnerless := func(target identityaccess.ResourceTarget, audience identityaccess.Audience, _, _ string) (identityaccess.ResourceRef, error) {
+		return identityaccess.NewResourceRef(audience.Node, identityaccess.ResourceOwner{}, string(target.Kind), target.ID)
+	}
+	registry, err := NewRegistry(
+		[]applicationadmission.ProcedureContract{{
+			Procedure: procedure, Action: "application.content.get",
+			ResourceKind: "node", OwnerRequired: false, Mutating: false,
+		}},
+		[]applicationadmission.ProcedureRegistration{{
+			Procedure: procedure,
+			Rule: applicationadmission.ProcedureRule{
+				Action: "application.content.get", ResourceKind: "node", OwnerRequired: false,
+				Resolve: func(any) (identityaccess.ResourceTarget, error) {
+					return identityaccess.ResourceTarget{Kind: "node"}, nil
+				},
+				Finalize:     finalizeOwnerless,
+				MapTargetErr: func(err error) error { return err },
+			},
+		}},
+	)
+	require.NoError(t, err)
+
+	injector, extractor := applicationcall.NewChannel()
+	interceptor, err := NewInterceptor(Config{
+		Access: fixture.service, Node: fixture.nodeID, FallbackPeer: fixture.peer,
+		FallbackSource: fixture.source, Injector: injector, Registry: registry,
+	})
+	require.NoError(t, err)
+	dispatched := false
+	handler := connect.NewUnaryHandler(
+		procedure,
+		func(ctx context.Context, _ *connect.Request[applicationv1.GetContentRequest]) (*connect.Response[applicationv1.GetContentResponse], error) {
+			dispatched = true
+			call, admitted := extractor.Extract(ctx)
+			require.True(t, admitted)
+			require.Equal(t, fixture.appPrincipal, call.Actor())
+			require.Equal(t, fixture.appPrincipal, call.Effective())
+			require.Equal(t, "node", call.ResourceKind())
+			require.True(t, call.ResourceOwner().IsNone())
+			return connect.NewResponse(&applicationv1.GetContentResponse{}), nil
+		},
+		connect.WithInterceptors(interceptor),
+	)
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+	client := connect.NewClient[applicationv1.GetContentRequest, applicationv1.GetContentResponse](
+		server.Client(), server.URL+procedure,
+	)
+	request := connect.NewRequest(&applicationv1.GetContentRequest{})
+	request.Header().Set("Authorization", "ArdentsApplicationSession "+base64.RawURLEncoding.EncodeToString(fixture.secret[:]))
+
+	_, err = client.CallUnary(context.Background(), request)
+
+	require.NoError(t, err)
+	require.True(t, dispatched)
+
+	ownerViolatingRegistry, err := NewRegistry(
+		[]applicationadmission.ProcedureContract{{
+			Procedure: procedure, Action: "application.content.get",
+			ResourceKind: "node", OwnerRequired: false, Mutating: false,
+		}},
+		[]applicationadmission.ProcedureRegistration{{
+			Procedure: procedure,
+			Rule: applicationadmission.ProcedureRule{
+				Action: "application.content.get", ResourceKind: "node", OwnerRequired: false,
+				Resolve: func(any) (identityaccess.ResourceTarget, error) {
+					return identityaccess.ResourceTarget{Kind: "node"}, nil
+				},
+				Finalize: func(target identityaccess.ResourceTarget, audience identityaccess.Audience, _, effective string) (identityaccess.ResourceRef, error) {
+					owner, parseErr := identityaccess.ParseResourceOwner(effective)
+					require.NoError(t, parseErr)
+					return identityaccess.ResourceRef{
+						Node: audience.Node, Owner: owner, Kind: target.Kind, ID: target.ID,
+					}, nil
+				},
+				MapTargetErr: func(err error) error { return err },
+			},
+		}},
+	)
+	require.NoError(t, err)
+	badInjector, _ := applicationcall.NewChannel()
+	badInterceptor, err := NewInterceptor(Config{
+		Access: fixture.service, Node: fixture.nodeID, FallbackPeer: fixture.peer,
+		FallbackSource: fixture.source, Injector: badInjector, Registry: ownerViolatingRegistry,
+	})
+	require.NoError(t, err)
+	ownerViolatingDispatched := false
+	badHandler := connect.NewUnaryHandler(
+		procedure,
+		func(context.Context, *connect.Request[applicationv1.GetContentRequest]) (*connect.Response[applicationv1.GetContentResponse], error) {
+			ownerViolatingDispatched = true
+			return connect.NewResponse(&applicationv1.GetContentResponse{}), nil
+		},
+		connect.WithInterceptors(badInterceptor),
+	)
+	badServer := httptest.NewServer(badHandler)
+	t.Cleanup(badServer.Close)
+	badClient := connect.NewClient[applicationv1.GetContentRequest, applicationv1.GetContentResponse](
+		badServer.Client(), badServer.URL+procedure,
+	)
+	badRequest := connect.NewRequest(&applicationv1.GetContentRequest{})
+	badRequest.Header().Set("Authorization", "ArdentsApplicationSession "+base64.RawURLEncoding.EncodeToString(fixture.secret[:]))
+
+	_, err = badClient.CallUnary(context.Background(), badRequest)
+
+	require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
+	require.False(t, ownerViolatingDispatched, "owner shape mismatch must fail before handler dispatch")
 }
 
 func TestDelegatedContentOwnershipUsesEffectiveAndDoesNotEnumerateSiblingBinding(t *testing.T) {
@@ -486,38 +613,6 @@ func TestDelegatedContentOwnershipUsesEffectiveAndDoesNotEnumerateSiblingBinding
 	appOwner, err := identityprincipal.Parse(fixture.appPrincipal)
 	require.NoError(t, err)
 	require.False(t, store.service.HasBlobOwner(appOwner, reference.GetId()))
-}
-
-func TestDelegationPresentationBoundsMultiplicityAndCanonicalEncoding(t *testing.T) {
-	raw := bytes.Repeat([]byte{0xa5}, 32)
-	encoded := base64.RawURLEncoding.EncodeToString(raw)
-
-	parsed, err := parseDelegation(http.Header{"ardents-delegation": []string{encoded}})
-	require.NoError(t, err)
-	require.Equal(t, raw, parsed)
-	clear(parsed)
-
-	for name, header := range map[string]http.Header{
-		"empty":               {applicationDelegationHeader: []string{""}},
-		"padded":              {applicationDelegationHeader: []string{encoded + "="}},
-		"whitespace":          {applicationDelegationHeader: []string{" " + encoded}},
-		"invalid alphabet":    {applicationDelegationHeader: []string{"opaque-secret-proof!"}},
-		"noncanonical bits":   {applicationDelegationHeader: []string{"AB"}},
-		"duplicate values":    {applicationDelegationHeader: []string{encoded, encoded}},
-		"case-fold duplicate": {applicationDelegationHeader: []string{encoded}, "ardents-delegation": []string{encoded}},
-		"encoded oversized":   {applicationDelegationHeader: []string{strings.Repeat("A", base64.RawURLEncoding.EncodedLen(identitycontract.MaxArtifactBytes)+1)}},
-	} {
-		t.Run(name, func(t *testing.T) {
-			presentation, parseErr := parseDelegation(header)
-			require.ErrorIs(t, parseErr, identityaccess.ErrUnauthenticated)
-			require.Nil(t, presentation)
-		})
-	}
-
-	tooLarge := bytes.Repeat([]byte{0x5a}, identitycontract.MaxArtifactBytes+1)
-	presentation, err := parseDelegation(http.Header{applicationDelegationHeader: []string{base64.RawURLEncoding.EncodeToString(tooLarge)}})
-	require.ErrorIs(t, err, identityaccess.ErrUnauthenticated)
-	require.Nil(t, presentation)
 }
 
 func TestDelegationPresentationFailuresAreRedactedAndNeverReachAdmit(t *testing.T) {
@@ -607,12 +702,75 @@ func TestPrincipalAdmissionFailsClosedBeforeMutationAndNeverFallsBack(t *testing
 
 }
 
+func TestUnknownProtectedProcedureReturnsStableErrorWithoutAdmissionOrInjection(t *testing.T) {
+	fixture := newRealApplicationFixture(t, []identityaccess.Action{"application.content.get"})
+	contracts, registrations, setErr := applicationcontent.ProtectedProcedureSet()
+	require.NoError(t, setErr)
+	registry, err := NewRegistry(contracts, registrations)
+	require.NoError(t, err)
+	injector, _ := applicationcall.NewChannel()
+	admitter := &countingAdmitter{service: fixture.service}
+	interceptor, err := NewInterceptor(Config{
+		Access: admitter, Node: fixture.nodeID, FallbackPeer: fixture.peer,
+		FallbackSource: fixture.source, Injector: injector, Registry: registry,
+	})
+	require.NoError(t, err)
+
+	const procedure = "/ardents.application.v1.TestService/Unknown"
+	dispatched := false
+	handler := connect.NewUnaryHandler(
+		procedure,
+		func(context.Context, *connect.Request[applicationv1.GetContentRequest]) (*connect.Response[applicationv1.GetContentResponse], error) {
+			dispatched = true
+			return connect.NewResponse(&applicationv1.GetContentResponse{}), nil
+		},
+		connect.WithInterceptors(interceptor),
+	)
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+	client := connect.NewClient[applicationv1.GetContentRequest, applicationv1.GetContentResponse](
+		server.Client(),
+		server.URL+procedure,
+	)
+
+	_, err = client.CallUnary(context.Background(), connect.NewRequest(&applicationv1.GetContentRequest{}))
+
+	require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
+	require.False(t, dispatched)
+	require.Zero(t, admitter.calls.Load())
+	require.Len(t, admitter.denials, 1)
+	require.Equal(t, identityaccess.DenialActionUnregistered, admitter.denials[0].reason)
+	detail := applicationErrorDetail(t, err)
+	require.Equal(t, applicationv1.ErrorCode_ERROR_CODE_FORBIDDEN, detail.GetCode())
+	require.Equal(t, "application.content", detail.GetOperation())
+	require.Equal(t, "application action is forbidden", detail.GetMessage())
+}
+
+func applicationErrorDetail(t *testing.T, err error) *applicationv1.ApplicationError {
+	t.Helper()
+	var connectErr *connect.Error
+	require.ErrorAs(t, err, &connectErr)
+	for _, raw := range connectErr.Details() {
+		value, detailErr := raw.Value()
+		require.NoError(t, detailErr)
+		if detail, ok := value.(*applicationv1.ApplicationError); ok {
+			return detail
+		}
+	}
+	require.FailNow(t, "connect error has no ApplicationError detail")
+	return nil
+}
+
 func principalContentClient(t *testing.T, fixture *realApplicationFixture, admitter Admitter, store applicationcontent.Store) applicationv1connect.ContentServiceClient {
 	t.Helper()
 	injector, extractor := applicationcall.NewChannel()
+	contracts, registrations, setErr := applicationcontent.ProtectedProcedureSet()
+	require.NoError(t, setErr)
+	registry, err := NewRegistry(contracts, registrations)
+	require.NoError(t, err)
 	interceptor, err := NewInterceptor(Config{
 		Access: admitter, Node: fixture.nodeID,
-		FallbackPeer: fixture.peer, FallbackSource: fixture.source, Injector: injector,
+		FallbackPeer: fixture.peer, FallbackSource: fixture.source, Injector: injector, Registry: registry,
 	})
 	require.NoError(t, err)
 	path, handler, err := applicationcontent.NewHTTPHandler(store, extractor, interceptor)

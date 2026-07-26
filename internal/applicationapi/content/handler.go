@@ -3,6 +3,7 @@
 package content
 
 import (
+	applicationerror "ardents/internal/applicationapi/applicationerror"
 	applicationcall "ardents/internal/applicationapi/call"
 	appcontent "ardents/internal/content"
 	applicationv1 "ardents/sdk/go/protocol/applicationv1"
@@ -123,7 +124,7 @@ func (h *Handler) Get(ctx context.Context, req *connect.Request[applicationv1.Ge
 		return nil, contentTooLarge(ActionGet)
 	}
 	if err := appcontent.VerifyBlobPayload(blob, payload); err != nil {
-		return nil, protocolError(applicationv1.ErrorCode_ERROR_CODE_INTEGRITY_FAILED, ActionGet, "content integrity verification failed", false, connect.CodeDataLoss)
+		return nil, applicationerror.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_INTEGRITY_FAILED, ActionGet, "content integrity verification failed", false, connect.CodeDataLoss)
 	}
 	return connect.NewResponse(&applicationv1.GetContentResponse{
 		Payload: append([]byte(nil), payload...), Size: blob.Size, MediaType: blob.MediaType,
@@ -133,12 +134,12 @@ func (h *Handler) Get(ctx context.Context, req *connect.Request[applicationv1.Ge
 func (h *Handler) admittedCall(ctx context.Context, action string, target ResourceTarget) (applicationcall.Call, error) {
 	admitted, ok := h.extractor.Extract(ctx)
 	if !ok || admitted.Action() != action {
-		return applicationcall.Call{}, protocolError(applicationv1.ErrorCode_ERROR_CODE_UNAUTHENTICATED, action, "application authentication required", false, connect.CodeUnauthenticated)
+		return applicationcall.Call{}, applicationerror.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_UNAUTHENTICATED, action, "application authentication required", false, connect.CodeUnauthenticated)
 	}
 	if !admitted.IsPrincipal() || admitted.ResourceNode() != admitted.Node() ||
 		admitted.ResourceOwner().String() != admitted.Effective() || admitted.ResourceKind() != target.Kind ||
 		admitted.ResourceID() != target.ID {
-		return applicationcall.Call{}, protocolError(applicationv1.ErrorCode_ERROR_CODE_FORBIDDEN, action, "application action is forbidden", false, connect.CodePermissionDenied)
+		return applicationcall.Call{}, applicationerror.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_FORBIDDEN, action, "application action is forbidden", false, connect.CodePermissionDenied)
 	}
 	return admitted, nil
 }
@@ -147,37 +148,22 @@ func mapTargetError(operation string, err error) error {
 	if errors.Is(err, ErrPayloadTooLarge) {
 		return contentTooLarge(operation)
 	}
-	return protocolError(applicationv1.ErrorCode_ERROR_CODE_INVALID_ARGUMENT, operation, "invalid application content request", false, connect.CodeInvalidArgument)
+	return applicationerror.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_INVALID_ARGUMENT, operation, "invalid application content request", false, connect.CodeInvalidArgument)
 }
 
 func contentTooLarge(operation string) error {
-	return protocolError(applicationv1.ErrorCode_ERROR_CODE_RESOURCE_EXHAUSTED, operation, "content payload exceeds the unary limit", false, connect.CodeResourceExhausted)
+	return applicationerror.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_RESOURCE_EXHAUSTED, operation, "content payload exceeds the unary limit", false, connect.CodeResourceExhausted)
 }
 
 func mapStoreError(operation string, err error, retryable bool) error {
 	switch {
 	case errors.Is(err, appcontent.ErrBlobNotFound):
-		return protocolError(applicationv1.ErrorCode_ERROR_CODE_NOT_FOUND, operation, "content not found", false, connect.CodeNotFound)
+		return applicationerror.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_NOT_FOUND, operation, "content not found", false, connect.CodeNotFound)
 	case errors.Is(err, appcontent.ErrStoreUnavailable):
-		return protocolError(applicationv1.ErrorCode_ERROR_CODE_UNAVAILABLE, operation, "content is unavailable", true, connect.CodeUnavailable)
+		return applicationerror.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_UNAVAILABLE, operation, "content is unavailable", true, connect.CodeUnavailable)
 	case errors.Is(err, appcontent.ErrBlobIntegrity):
-		return protocolError(applicationv1.ErrorCode_ERROR_CODE_INTEGRITY_FAILED, operation, "content integrity verification failed", false, connect.CodeDataLoss)
+		return applicationerror.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_INTEGRITY_FAILED, operation, "content integrity verification failed", false, connect.CodeDataLoss)
 	default:
-		return protocolError(applicationv1.ErrorCode_ERROR_CODE_INTERNAL, operation, "content operation failed", retryable, connect.CodeInternal)
+		return applicationerror.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_INTERNAL, operation, "content operation failed", retryable, connect.CodeInternal)
 	}
-}
-
-func ProtocolError(code applicationv1.ErrorCode, operation, message string, retryable bool, connectCode connect.Code) error {
-	result := connect.NewError(connectCode, errors.New(message))
-	detail, err := connect.NewErrorDetail(&applicationv1.ApplicationError{
-		Code: code, Operation: operation, Message: message, Retryable: retryable,
-	})
-	if err == nil {
-		result.AddDetail(detail)
-	}
-	return result
-}
-
-func protocolError(code applicationv1.ErrorCode, operation, message string, retryable bool, connectCode connect.Code) error {
-	return ProtocolError(code, operation, message, retryable, connectCode)
 }

@@ -13,12 +13,11 @@ import (
 	"strings"
 
 	identitycontract "ardents/api/ardents/identity/v1"
+	applicationerror "ardents/internal/applicationapi/applicationerror"
 	applicationbinding "ardents/internal/applicationapi/binding"
 	applicationcall "ardents/internal/applicationapi/call"
-	applicationcontent "ardents/internal/applicationapi/content"
 	identityaccess "ardents/internal/identity/access"
 	identityprincipal "ardents/internal/identity/principal"
-	identityprotocol "ardents/internal/identity/protocol"
 	applicationv1 "ardents/sdk/go/protocol/applicationv1"
 
 	"connectrpc.com/connect"
@@ -46,12 +45,13 @@ type Config struct {
 	FallbackPeer   [32]byte
 	FallbackSource identityaccess.SourceKey
 	Injector       applicationcall.Injector
+	Registry       Registry
 }
 
 type interceptor struct{ config Config }
 
 func NewInterceptor(config Config) (connect.Interceptor, error) {
-	if config.Access == nil || !config.Injector.Valid() ||
+	if config.Access == nil || !config.Injector.Valid() || config.Registry == nil ||
 		config.FallbackPeer == [32]byte{} || config.FallbackSource == (identityaccess.SourceKey{}) {
 		return nil, fmt.Errorf("protected Application admission dependencies are required")
 	}
@@ -63,15 +63,18 @@ func NewInterceptor(config Config) (connect.Interceptor, error) {
 
 func (i *interceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 	return func(ctx context.Context, request connect.AnyRequest) (connect.AnyResponse, error) {
-		rule, err := applicationcontent.RuleForProcedure(request.Spec().Procedure)
-		if err != nil {
+		rule, registered := i.config.Registry.Lookup(request.Spec().Procedure)
+		if !registered {
 			i.recordDenied(ctx, "", identityaccess.DenialActionUnregistered)
-			return nil, applicationcontent.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_FORBIDDEN, "application.content", "application action is forbidden", false, connect.CodePermissionDenied)
+			return nil, applicationerror.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_FORBIDDEN, "application.content", "application action is forbidden", false, connect.CodePermissionDenied)
 		}
-		target, err := applicationcontent.CanonicalizeResource(request.Spec().Procedure, request.Any())
-		if err != nil {
+		target, err := rule.Resolve(request.Any())
+		if err != nil || target.Kind != rule.ResourceKind {
 			i.recordDenied(ctx, rule.Action, identityaccess.DenialResourceTarget)
-			return nil, targetError(rule.Action, err)
+			if err == nil {
+				err = identityaccess.ErrInvalidResourceTarget
+			}
+			return nil, rule.MapTargetErr(err)
 		}
 		delegation, err := parseDelegation(request.Header())
 		if err != nil {
@@ -93,7 +96,7 @@ func (i *interceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 	}
 }
 
-func (i *interceptor) admitPrincipal(ctx context.Context, request connect.AnyRequest, next connect.UnaryFunc, rule applicationcontent.ProcedureRule, target applicationcontent.ResourceTarget, delegation []byte) (connect.AnyResponse, error) {
+func (i *interceptor) admitPrincipal(ctx context.Context, request connect.AnyRequest, next connect.UnaryFunc, rule ProcedureRule, target identityaccess.ResourceTarget, delegation []byte) (connect.AnyResponse, error) {
 	secret, err := parseSession(request.Header())
 	if err != nil {
 		i.recordDenied(ctx, rule.Action, identityaccess.DenialSessionPresentation)
@@ -101,26 +104,28 @@ func (i *interceptor) admitPrincipal(ctx context.Context, request connect.AnyReq
 	}
 	binding, _ := applicationbinding.Application(ctx, i.config.Node, i.config.FallbackPeer, i.config.FallbackSource)
 	action, err := identityaccess.ParseAction(binding.Audience.Interface, rule.Action)
-	if err != nil || target.Kind != rule.ResourceKind {
+	if err != nil {
 		i.recordDenied(ctx, rule.Action, identityaccess.DenialResourceTarget)
-		return nil, applicationcontent.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_FORBIDDEN, rule.Action, "application action is forbidden", false, connect.CodePermissionDenied)
+		return nil, applicationerror.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_FORBIDDEN, rule.Action, "application action is forbidden", false, connect.CodePermissionDenied)
 	}
 	admitted, err := i.config.Access.AdmitTarget(ctx, identityaccess.TargetAttempt{
 		SessionSecret: secret,
 		Binding:       binding,
 		Action:        action,
-		Target: identityaccess.ResourceTarget{
-			Kind: identityaccess.ResourceKind(target.Kind), ID: target.ID,
-		},
-		Finalize:   finalizeTarget,
-		Delegation: delegation,
+		Target:        target,
+		Finalize:      rule.Finalize,
+		Delegation:    delegation,
 	})
 	clear(delegation)
 	if err != nil {
 		return nil, principalError(rule.Action, err)
 	}
 	ctx = identityaccess.ContextWithAuthorizedCall(ctx, admitted)
-	ctx = i.config.Injector.WithAuthorizedCall(ctx, admitted)
+	ctx, injected := i.config.Injector.WithAuthorizedCall(ctx, admitted, rule.ResourceKind, rule.OwnerRequired)
+	if !injected {
+		i.recordDenied(ctx, rule.Action, identityaccess.DenialResourceTarget)
+		return nil, applicationerror.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_FORBIDDEN, rule.Action, "application action is forbidden", false, connect.CodePermissionDenied)
+	}
 	response, dispatchErr := next(ctx, request)
 	if dispatchErr == nil && rule.Mutating {
 		if recorder, ok := i.config.Access.(successfulMutationRecorder); ok {
@@ -211,26 +216,8 @@ func parseSession(header http.Header) (identityaccess.SessionSecret, error) {
 	return secret, nil
 }
 
-func finalizeTarget(target identityaccess.ResourceTarget, audience identityaccess.Audience, _, effective string) (identityaccess.ResourceRef, error) {
-	if audience.Interface != identityprotocol.Interface_INTERFACE_APPLICATION || effective == "" {
-		return identityaccess.ResourceRef{}, identityaccess.ErrInvalidArgument
-	}
-	owner, err := identityaccess.ParseResourceOwner(effective)
-	if err != nil || owner.IsNone() {
-		return identityaccess.ResourceRef{}, identityaccess.ErrInvalidArgument
-	}
-	return identityaccess.NewResourceRef(audience.Node, owner, string(target.Kind), target.ID)
-}
-
-func targetError(operation string, err error) error {
-	if errors.Is(err, applicationcontent.ErrPayloadTooLarge) {
-		return applicationcontent.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_RESOURCE_EXHAUSTED, operation, "content payload exceeds the unary limit", false, connect.CodeResourceExhausted)
-	}
-	return applicationcontent.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_INVALID_ARGUMENT, operation, "invalid application content request", false, connect.CodeInvalidArgument)
-}
-
 func authenticationError(operation string) error {
-	return applicationcontent.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_UNAUTHENTICATED, operation, "application authentication required", false, connect.CodeUnauthenticated)
+	return applicationerror.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_UNAUTHENTICATED, operation, "application authentication required", false, connect.CodeUnauthenticated)
 }
 
 func principalError(operation string, err error) error {
@@ -238,8 +225,8 @@ func principalError(operation string, err error) error {
 	case errors.Is(err, identityaccess.ErrUnauthenticated):
 		return authenticationError(operation)
 	case errors.Is(err, identityaccess.ErrPermissionDenied), errors.Is(err, identityaccess.ErrInvalidArgument), errors.Is(err, identityaccess.ErrInvalidResourceTarget):
-		return applicationcontent.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_FORBIDDEN, operation, "application action is forbidden", false, connect.CodePermissionDenied)
+		return applicationerror.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_FORBIDDEN, operation, "application action is forbidden", false, connect.CodePermissionDenied)
 	default:
-		return applicationcontent.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_UNAVAILABLE, operation, "application authorization unavailable", true, connect.CodeUnavailable)
+		return applicationerror.ProtocolError(applicationv1.ErrorCode_ERROR_CODE_UNAVAILABLE, operation, "application authorization unavailable", true, connect.CodeUnavailable)
 	}
 }

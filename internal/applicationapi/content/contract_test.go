@@ -143,7 +143,8 @@ func TestContentHandlerRejectsMissingAndUnsealedAdmission(t *testing.T) {
 	require.Empty(t, store.blobs)
 
 	injector, _ := applicationcall.NewChannel()
-	ctx := injector.WithAuthorizedCall(context.Background(), identityaccess.AuthorizedCall{})
+	ctx, injected := injector.WithAuthorizedCall(context.Background(), identityaccess.AuthorizedCall{}, "content-owner", true)
+	require.False(t, injected)
 	_, err = handler.Put(ctx, request)
 	require.Equal(t, connect.CodeUnauthenticated, connect.CodeOf(err))
 	require.Empty(t, store.blobs)
@@ -158,8 +159,13 @@ func newPrincipalContentClient(t *testing.T, store applicationcontent.Store) app
 func newPrincipalContentClientWithAccess(t *testing.T, store applicationcontent.Store, fixture testkit.ApplicationPrincipalAccess) applicationv1connect.ContentServiceClient {
 	t.Helper()
 	injector, extractor := applicationcall.NewChannel()
+	contracts, registrations, err := applicationcontent.ProtectedProcedureSet()
+	require.NoError(t, err)
+	registry, err := applicationadmission.NewRegistry(contracts, registrations)
+	require.NoError(t, err)
 	interceptor, err := applicationadmission.NewInterceptor(applicationadmission.Config{
 		Access: fixture.Service, Node: fixture.Node, FallbackPeer: fixture.Peer, FallbackSource: fixture.Source, Injector: injector,
+		Registry: registry,
 	})
 	require.NoError(t, err)
 	path, handler, err := applicationcontent.NewHTTPHandler(store, extractor, interceptor)

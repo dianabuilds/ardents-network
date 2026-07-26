@@ -38,10 +38,18 @@ func newApplicationAPIHandler(process daemon.Owners, cfg daemon.ApplicationAPICo
 	if !cfg.Protected {
 		return "", nil, fmt.Errorf("Application Interface requires the protected Principal socket")
 	}
+	contracts, registrations, err := applicationcontent.ProtectedProcedureSet()
+	if err != nil {
+		return "", nil, fmt.Errorf("compose protected Application procedures: %w", err)
+	}
+	registry, err := applicationadmission.NewRegistry(contracts, registrations)
+	if err != nil {
+		return "", nil, fmt.Errorf("compose protected Application procedures: %w", err)
+	}
 	injector, extractor := applicationcall.NewChannel()
 	interceptor, err := applicationadmission.NewInterceptor(applicationadmission.Config{
 		Access: process.PrincipalAccess, Node: cfg.TargetID,
-		FallbackPeer: cfg.PeerBinding, FallbackSource: cfg.Source, Injector: injector,
+		FallbackPeer: cfg.PeerBinding, FallbackSource: cfg.Source, Injector: injector, Registry: registry,
 	})
 	if err != nil {
 		return "", nil, err

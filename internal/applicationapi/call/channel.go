@@ -6,6 +6,7 @@ package call
 import (
 	"context"
 
+	identitycontract "ardents/api/ardents/identity/v1"
 	identityaccess "ardents/internal/identity/access"
 )
 
@@ -18,14 +19,16 @@ type Injector struct{ channel *channelKey }
 type Extractor struct{ channel *channelKey }
 
 type principalFacts struct {
-	Actor, Effective         string
-	Node                     string
-	Interface                int32
-	ProtocolMajor            uint32
-	Action                   string
-	ResourceNode             string
-	ResourceOwner            identityaccess.ResourceOwner
-	ResourceKind, ResourceID string
+	Actor, Effective              string
+	Node                          string
+	Interface                     int32
+	ProtocolMajor                 uint32
+	Action                        string
+	ResourceNode                  string
+	ResourceOwner                 identityaccess.ResourceOwner
+	ResourceKind, ResourceID      string
+	ExpectedResourceKind          string
+	ExpectedResourceOwnerRequired bool
 }
 
 type Call struct {
@@ -44,9 +47,13 @@ func (e Extractor) Valid() bool { return e.channel != nil }
 
 // WithAuthorizedCall accepts only the sealed result of identity/access Admit.
 // Callers cannot manufacture Actor or Effective through a public field mapper.
-func (i Injector) WithAuthorizedCall(ctx context.Context, admitted identityaccess.AuthorizedCall) context.Context {
+func (i Injector) WithAuthorizedCall(ctx context.Context, admitted identityaccess.AuthorizedCall, expectedKind identityaccess.ResourceKind, ownerRequired bool) (context.Context, bool) {
 	if ctx == nil || !i.Valid() || !admitted.IsAdmitted() {
-		return ctx
+		return ctx, false
+	}
+	contract, registered := identitycontract.LookupResourceKind(string(expectedKind))
+	if !registered || contract.OwnerRequired != ownerRequired {
+		return ctx, false
 	}
 	audience := admitted.Audience()
 	resource := admitted.Resource()
@@ -55,12 +62,13 @@ func (i Injector) WithAuthorizedCall(ctx context.Context, admitted identityacces
 		Interface: int32(audience.Interface), ProtocolMajor: audience.ProtocolMajor,
 		Action: string(admitted.Action()), ResourceNode: resource.Node, ResourceOwner: resource.Owner,
 		ResourceKind: string(resource.Kind), ResourceID: resource.ID,
+		ExpectedResourceKind: string(expectedKind), ExpectedResourceOwnerRequired: ownerRequired,
 	}
 	if !validPrincipal(facts) {
-		return ctx
+		return ctx, false
 	}
 	copy := facts
-	return context.WithValue(ctx, contextKey{channel: i.channel}, Call{principal: &copy})
+	return context.WithValue(ctx, contextKey{channel: i.channel}, Call{principal: &copy}), true
 }
 
 func (e Extractor) Extract(ctx context.Context) (Call, bool) {
@@ -75,8 +83,22 @@ func (e Extractor) Extract(ctx context.Context) (Call, bool) {
 }
 
 func validPrincipal(f principalFacts) bool {
-	return f.Actor != "" && f.Effective != "" && f.Node != "" && f.Action != "" &&
-		f.ResourceNode == f.Node && f.ResourceKind != "" && f.ResourceOwner.String() == f.Effective
+	if f.Actor == "" || f.Effective == "" || f.Node == "" || f.Action == "" ||
+		f.ResourceNode != f.Node || f.ResourceKind == "" ||
+		f.ResourceKind != f.ExpectedResourceKind {
+		return false
+	}
+	contract, registered := identitycontract.LookupResourceKind(f.ExpectedResourceKind)
+	if !registered {
+		return false
+	}
+	if contract.OwnerRequired != f.ExpectedResourceOwnerRequired {
+		return false
+	}
+	if f.ExpectedResourceOwnerRequired {
+		return !f.ResourceOwner.IsNone() && f.ResourceOwner.String() == f.Effective
+	}
+	return f.ResourceOwner.IsNone()
 }
 
 func (c Call) clone() Call {

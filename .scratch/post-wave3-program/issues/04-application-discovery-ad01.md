@@ -1,8 +1,8 @@
 # PW3-04: AD-01 Deepen Protected Application Admission
 
-Status: ready-for-agent
+Status: ready-for-human
 State: open
-Labels: ready-for-agent
+Labels: ready-for-human
 Research class: R1 bounded implementation
 
 ## Parent
@@ -129,30 +129,30 @@ wire message, handler, or SDK surface.
 
 ## Acceptance criteria
 
-- [ ] A closed registry interface supplies complete procedure rules at
+- [x] A closed registry interface supplies complete procedure rules at
   composition.
-- [ ] Duplicate procedures, nil/invalid functions, invalid action/mutation
+- [x] Duplicate procedures, nil/invalid functions, invalid action/mutation
   combinations, and missing required Content procedures fail closed.
-- [ ] Admission no longer imports Content-specific action/resource/error
+- [x] Admission no longer imports Content-specific action/resource/error
   catalogues.
-- [ ] Existing Content procedures are registered through the new seam.
-- [ ] Owner-required Content resources still require owner exactly equal to
+- [x] Existing Content procedures are registered through the new seam.
+- [x] Owner-required Content resources still require owner exactly equal to
   Effective Principal.
-- [ ] A test-only registered ownerless resource requires an empty owner and
+- [x] A test-only registered ownerless resource requires an empty owner and
   injects correctly.
-- [ ] Unknown resource kinds and owner-shape mismatches are rejected before
+- [x] Unknown resource kinds and owner-shape mismatches are rejected before
   sealed-call injection.
-- [ ] Direct and delegated Content calls preserve Actor/Effective attribution
+- [x] Direct and delegated Content calls preserve Actor/Effective attribution
   and grant intersection.
-- [ ] Mutating Content success/denial audit semantics are unchanged; reads do
+- [x] Mutating Content success/denial audit semantics are unchanged; reads do
   not become successful-mutation audit events.
-- [ ] Shared Application error declarations preserve fully-qualified protobuf
+- [x] Shared Application error declarations preserve fully-qualified protobuf
   names and field numbers.
-- [ ] SDK typed errors and the one-time session-refresh rule are unchanged.
+- [x] SDK typed errors and the one-time session-refresh rule are unchanged.
 - [ ] Existing protected-socket Application Identity/Content journey passes
   without Discovery fixtures.
-- [ ] Operator and Application handlers/packages remain separate.
-- [ ] No Discovery public type, procedure, action, resource, handler, or SDK
+- [x] Operator and Application handlers/packages remain separate.
+- [x] No Discovery public type, procedure, action, resource, handler, or SDK
   symbol is introduced.
 
 ## Required tests and evidence
@@ -244,3 +244,32 @@ AH-01 to consume.
 
 - This issue follows the source packet name and boundary: AD-01 is the
   protected Application admission seam.
+- 2026-07-26 implementation evidence from
+  `main@2205bcc8542c16d4dc8abd95df970c546d5855ac`:
+  - the sealed, composition-time registry is complete against the generated
+    `ContentService` descriptor and rejects duplicate, unknown, incomplete,
+    nil, action/classification-mismatched, resource-kind-mismatched, and
+    owner-contract-mismatched registrations;
+  - Content Put/Get own their resolver, finalizer, target-error mapping, and
+    mutation classification; direct/delegated regression tests preserve
+    Actor/Effective, grant intersection, and mutation/read audit behavior;
+  - a test-only ownerless `node` rule traverses real Application session
+    admission and sealed-call injection with an empty owner; a deliberately
+    owner-violating finalizer is rejected before handler dispatch;
+  - shared `ardents.application.v1.ErrorCode` and
+    `ardents.application.v1.ApplicationError` declarations retain their fully
+    qualified names and field numbers; SDK typed-error mapping and the existing
+    single-refresh tests pass;
+  - `go test ./internal/applicationapi/... -count=1`, `go test ./sdk/go/...
+    -count=1`, `go test ./tests/tooling/... -count=1`, `go run
+    ./tests/tooling/capabilitycatalog -check`, `go test ./cmd/ardentsd
+    -count=1`, `go vet ./internal/applicationapi/... ./sdk/go/...
+    ./cmd/ardentsd`, `scripts/generate-api.ps1 -Check`, and `git diff --check`
+    passed using external `GOCACHE=C:\Users\vitek\AppData\Local\Temp\ardents-go-build-cache`;
+  - `go test -v -tags=e2e ./tests/e2e/applicationapi -count=1` completed with
+    PASS but skipped `TestApplicationUsesDedicatedPrincipalInterface` because
+    the Windows environment has no Unix domain socket runner. Docker daemon
+    and WSL were unavailable, so the protected-process acceptance box remains
+    unchecked for Linux/CI confirmation;
+  - capability catalogue remains 24 capabilities, 8 domains, 0 qualified.
+    No Discovery, Hosting, capability-status, or Q changes were made.
