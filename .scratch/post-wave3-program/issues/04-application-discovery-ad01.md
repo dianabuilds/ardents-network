@@ -1,8 +1,8 @@
 # PW3-04: AD-01 Deepen Protected Application Admission
 
-Status: needs-info
+Status: ready-for-human
 State: open
-Labels: needs-info
+Labels: ready-for-human
 Research class: R1 bounded implementation
 
 ## Parent
@@ -149,7 +149,7 @@ wire message, handler, or SDK surface.
 - [x] Shared Application error declarations preserve fully-qualified protobuf
   names and field numbers.
 - [x] SDK typed errors and the one-time session-refresh rule are unchanged.
-- [ ] Existing protected-socket Application Identity/Content journey passes
+- [x] Existing protected-socket Application Identity/Content journey passes
   without Discovery fixtures.
 - [x] Operator and Application handlers/packages remain separate.
 - [x] No Discovery public type, procedure, action, resource, handler, or SDK
@@ -286,9 +286,44 @@ AH-01 to consume.
   - Application API, SDK, daemon, Identity contract, vet, tooling,
     capability-catalogue, API-generation, and whitespace checks pass using an
     external task-specific `GOCACHE`;
-  - the canonical APP-001 runner was attempted both inside and outside the
-    sandbox, but the Docker Desktop Linux engine pipe does not exist. The
-    protected-process acceptance criterion therefore remains unchecked and
-    this issue remains `needs-info`;
+  - the first canonical APP-001 attempts were blocked because the Docker
+    Desktop Linux engine pipe did not exist. Docker Desktop was subsequently
+    started and the real Linux-container scenario exposed a functional
+    regression at grant revocation: the Operator grant-list preflight filtered
+    out the Application-audience grant and returned `active Access Grant was
+    not found`;
+  - exact outside-sandbox blocker evidence: source
+    `d02f8cac7bf6fd1f0a41a4d24c51e00672939833`, start
+    `2026-07-26T14:37:53.2463659+03:00`, end
+    `2026-07-26T14:37:56.2222350+03:00`, Windows
+    `10.0.26200.0`/`windows-amd64`, PowerShell `5.1.26100.8875`, Docker client
+    `29.1.3` with context `desktop-linux`; `docker version` and
+    `.\ardents.ps1 test e2e -Domain application-interface -Scenario APP-001
+    -ReportDir tests/.artifacts/reports/application-process` failed because
+    `//./pipe/dockerDesktopLinuxEngine` was not found. The runner exited `1`
+    at container inspection before selecting or executing APP-001, so no
+    Application-process JSON/JUnit report was generated; the retained
+    pre-run environment snapshot is
+    `tests/.artifacts/resources/20260726-113753-42228-before.json`;
+  - root cause was fixed in
+    `e2c55d8becc7aa89179dac9bf09ec91c4e71c5b6`: the Operator list remains
+    subject- and Node-scoped but now returns grants for both registered
+    interfaces with each grant's actual Audience. The regression test
+    `TestOperatorCanListApplicationGrantForRevocation` failed with zero
+    results before the fix and passes afterward;
+  - commit-bound Application-process evidence: source
+    `e2c55d8becc7aa89179dac9bf09ec91c4e71c5b6`,
+    `.\ardents.ps1 test e2e -Domain application-interface -Scenario APP-001
+    -ReportDir tests/.artifacts/reports/application-process` ran the real
+    `linux-container` scenario from `2026-07-26T11:57:23.161063669Z` through
+    `2026-07-26T11:58:12.873544073Z` and passed all seven precondition, step,
+    and assertion records without a skip. Retained evidence:
+    `tests/.artifacts/reports/application-process/summary.json`,
+    `tests/.artifacts/reports/application-process/junit.xml`,
+    `tests/.artifacts/reports/application-process/raw/TestApplicationUsesDedicatedPrincipalInterface-1785067092875457668.json`,
+    `tests/.artifacts/resources/20260726-115710-33952-before.json`, and
+    `tests/.artifacts/resources/20260726-115710-33952-after.json`;
+  - `go test ./... -count=1`, scoped Identity/Local API/CLI vet, and
+    `git diff --check` pass with the external task-specific Go cache;
   - capability truth remains 24 capabilities, 8 domains, 0 qualified, and no
     Discovery or Hosting surface was added.
