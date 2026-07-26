@@ -661,17 +661,30 @@ func cloneStrings(in []string) []string {
 }
 
 func replaceTrustWithLocalPrincipal(trust *discovery.TrustEvaluator, configured *identitytrust.Registry, rawPrincipal, encodedPublic string) error {
+	replacement, err := trustRegistryWithLocalPrincipal(configured, rawPrincipal, encodedPublic)
+	if err != nil {
+		return err
+	}
+	trust.ReplaceRegistry(replacement)
+	return nil
+}
+
+func trustRegistryWithLocalPrincipal(
+	configured *identitytrust.Registry,
+	rawPrincipal string,
+	encodedPublic string,
+) (*identitytrust.Registry, error) {
 	principalID, err := identityprincipal.Parse(rawPrincipal)
 	if err != nil {
-		return fmt.Errorf("local Principal is invalid")
+		return nil, fmt.Errorf("local Principal is invalid")
 	}
 	public, err := base64.StdEncoding.DecodeString(encodedPublic)
 	if err != nil || len(public) != ed25519.PublicKeySize || base64.StdEncoding.EncodeToString(public) != encodedPublic {
-		return fmt.Errorf("local Principal public key is invalid")
+		return nil, fmt.Errorf("local Principal public key is invalid")
 	}
 	derived, err := identityprincipal.FromEd25519PublicKey(ed25519.PublicKey(public))
 	if err != nil || !derived.Equal(principalID) {
-		return fmt.Errorf("local Principal public key does not match")
+		return nil, fmt.Errorf("local Principal public key does not match")
 	}
 	var entries []identitytrust.Entry
 	if configured != nil {
@@ -695,10 +708,9 @@ func replaceTrustWithLocalPrincipal(trust *discovery.TrustEvaluator, configured 
 	}
 	replacement, err := identitytrust.NewRegistry(entries)
 	if err != nil {
-		return fmt.Errorf("local Principal trust is invalid: %w", err)
+		return nil, fmt.Errorf("local Principal trust is invalid: %w", err)
 	}
-	trust.ReplaceRegistry(replacement)
-	return nil
+	return replacement, nil
 }
 
 func configureLocalServices(

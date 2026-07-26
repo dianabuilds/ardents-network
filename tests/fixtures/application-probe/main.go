@@ -17,6 +17,7 @@ import (
 
 	"ardents/sdk/go/client"
 	"ardents/sdk/go/content"
+	"ardents/sdk/go/discovery"
 	sdkerrors "ardents/sdk/go/errors"
 	sdkidentity "ardents/sdk/go/identity"
 )
@@ -73,6 +74,12 @@ func main() {
 			os.Exit(2)
 		}
 		get(os.Args[2], os.Args[3], os.Args[4], content.Reference{Kind: os.Args[5], ID: os.Args[6]}, os.Args[7])
+	case "discover":
+		if len(os.Args) != 7 {
+			usage()
+			os.Exit(2)
+		}
+		discover(os.Args[2], os.Args[3], os.Args[4], os.Args[5], os.Args[6])
 	case "observe-revocation":
 		if len(os.Args) != 11 {
 			usage()
@@ -96,7 +103,7 @@ func main() {
 }
 
 func usage() {
-	_, _ = fmt.Fprintln(os.Stderr, "usage: application-probe <create|device|enroll|put|get|observe-revocation|use> ...")
+	_, _ = fmt.Fprintln(os.Stderr, "usage: application-probe <create|device|enroll|put|get|discover|observe-revocation|use> ...")
 }
 
 func createIdentity(identityPath, rootPath string) {
@@ -209,6 +216,18 @@ func get(socket, nodePrincipal, identityPath string, reference content.Reference
 	if string(payload) != expected {
 		fail(fmt.Errorf("unexpected content payload"))
 	}
+}
+
+func discover(socket, nodePrincipal, identityPath, serviceType, scheme string) {
+	application, signer := openApplication(socket, nodePrincipal, identityPath)
+	defer clear(signer.device)
+	targets, err := application.Discovery.Resolve(context.Background(), discovery.Query{
+		ServiceType: serviceType, AcceptedSchemes: []discovery.Scheme{discovery.Scheme(scheme)},
+	})
+	if err != nil {
+		fail(err)
+	}
+	writeJSON(targets)
 }
 
 func observeRevocation(

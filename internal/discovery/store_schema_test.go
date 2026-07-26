@@ -50,14 +50,129 @@ func TestSnapshotV2RoundTripsNodeAndServiceRecords(t *testing.T) {
 func TestSnapshotV2RetainsCanonicalBootstrapProvenance(t *testing.T) {
 	dir := t.TempDir()
 	node, _ := schemaNodeRecord(t, 1, time.Now().UTC())
+	trusted := schemaTrustRegistry(t, node)
 	require.NoError(t, SaveSnapshot(PathInDir(dir), Snapshot{
 		SchemaVersion: 2,
 		Records:       []Entry{{Record: node, Source: discoveryrecord.Bootstrap, SeenAt: time.Now().UTC(), Evidence: schemaEvidence(t, node)}},
 		State:         "ready",
 	}))
-	store := NewInDir(dir)
+	store := NewInDirWithTrust(dir, NewTrustEvaluator(trusted))
 	require.NoError(t, store.Load())
 	require.Equal(t, discoveryrecord.Bootstrap, store.Entries()[0].Source)
+}
+
+func TestImportRejectsUntrustedBootstrapRecordWithoutPersistence(t *testing.T) {
+	dir := t.TempDir()
+	node, _ := schemaNodeRecord(t, 1, time.Now().UTC())
+	store := NewInDir(dir)
+
+	result, err := store.Import(node, discoveryrecord.Bootstrap)
+
+	require.NoError(t, err)
+	require.False(t, result.Applied)
+	require.Equal(t, "rejected_untrusted", result.Outcome)
+	require.Empty(t, store.Entries())
+	reloaded := NewInDir(dir)
+	require.NoError(t, reloaded.Load())
+	require.Empty(t, reloaded.Entries())
+}
+
+func TestLoadDropsRetainedUntrustedBootstrapRecord(t *testing.T) {
+	dir := t.TempDir()
+	node, _ := schemaNodeRecord(t, 1, time.Now().UTC())
+	require.NoError(t, SaveSnapshot(PathInDir(dir), Snapshot{
+		SchemaVersion: 2,
+		Records: []Entry{{
+			Record: node, Source: discoveryrecord.Bootstrap,
+			SeenAt: time.Now().UTC(), Evidence: schemaEvidence(t, node),
+		}},
+		State: "ready",
+	}))
+
+	store := NewInDir(dir)
+	require.NoError(t, store.Load())
+	require.Empty(t, store.Entries())
+
+	var persisted Snapshot
+	found, err := LoadSnapshot(PathInDir(dir), &persisted)
+	require.NoError(t, err)
+	require.True(t, found)
+	require.Empty(t, persisted.Records)
+}
+
+func TestLoadRejectsMalformedUntrustedBootstrapBeforeCompaction(t *testing.T) {
+	node, _ := schemaNodeRecord(t, 1, time.Now().UTC())
+	valid := Entry{
+		Record: node, Source: discoveryrecord.Bootstrap,
+		SeenAt: time.Now().UTC(), Evidence: schemaEvidence(t, node),
+	}
+	tests := map[string][]Entry{
+		"missing seen time": {{Record: node, Source: discoveryrecord.Bootstrap, Evidence: schemaEvidence(t, node)}},
+		"duplicate record":  {valid, valid},
+	}
+	for name, entries := range tests {
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+			require.NoError(t, SaveSnapshot(PathInDir(dir), Snapshot{
+				SchemaVersion: 2, Records: entries, State: "ready",
+			}))
+
+			require.Error(t, NewInDir(dir).Load())
+		})
+	}
+}
+
+func TestApplyTrustRegistryDropsRevokedBootstrapRecordsAndPersistsCompaction(t *testing.T) {
+	dir := t.TempDir()
+	node, _ := schemaNodeRecord(t, 1, time.Now().UTC())
+	trusted := schemaTrustRegistry(t, node)
+	evaluator := NewTrustEvaluator(trusted)
+	store := NewInDirWithTrust(dir, evaluator)
+	result, err := store.Import(node, discoveryrecord.Bootstrap)
+	require.NoError(t, err)
+	require.True(t, result.Applied)
+	empty, err := identitytrust.NewRegistry(nil)
+	require.NoError(t, err)
+
+	require.NoError(t, store.ApplyTrustRegistry(empty))
+	require.Empty(t, store.Entries())
+	require.False(t, evaluator.Evaluate(node).Trusted)
+
+	reloaded := NewInDir(dir)
+	require.NoError(t, reloaded.Load())
+	require.Empty(t, reloaded.Entries())
+}
+
+func TestApplyTrustRegistryPublishesNothingBeforeCompactionPersistence(t *testing.T) {
+	dir := t.TempDir()
+	node, _ := schemaNodeRecord(t, 1, time.Now().UTC())
+	trusted := schemaTrustRegistry(t, node)
+	evaluator := NewTrustEvaluator(trusted)
+	store := NewInDirWithTrust(dir, evaluator)
+	result, err := store.Import(node, discoveryrecord.Bootstrap)
+	require.NoError(t, err)
+	require.True(t, result.Applied)
+	before := store.Entries()
+	empty, err := identitytrust.NewRegistry(nil)
+	require.NoError(t, err)
+	persistStarted := make(chan struct{})
+	releasePersist := make(chan struct{})
+	store.persist = func(string, any) error {
+		close(persistStarted)
+		<-releasePersist
+		return errors.New("injected persistence failure")
+	}
+	applyResult := make(chan error, 1)
+	go func() {
+		applyResult <- store.ApplyTrustRegistry(empty)
+	}()
+	<-persistStarted
+
+	require.True(t, evaluator.Evaluate(node).Trusted)
+	close(releasePersist)
+	require.ErrorContains(t, <-applyResult, "persist refreshed discovery trust")
+	require.True(t, evaluator.Evaluate(node).Trusted)
+	require.Equal(t, before, store.Entries())
 }
 
 func TestLoadRetainsExpiredSignedRecordButDoesNotRouteIt(t *testing.T) {

@@ -16,6 +16,12 @@ func (s *Service) Import(record Record, source string) (ImportResult, error) {
 	if !trustResult.Valid {
 		return ImportResult{}, errors.New(trustResult.Reason)
 	}
+	if source == discoveryintake.Bootstrap && !trustResult.Trusted {
+		return ImportResult{
+			Outcome: "rejected_untrusted",
+			Reason:  "bootstrap publisher is not trusted",
+		}, nil
+	}
 	updatedRecords, result, err := discoveryintake.ImportVerified(s.records, record, source, now, evidence)
 	if err != nil {
 		return ImportResult{}, err

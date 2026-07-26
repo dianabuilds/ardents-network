@@ -87,7 +87,7 @@ func TestSyncDiscoveryTrustDiagnosticsKeepsNodeReadyForUntrustedCatalogEntry(t *
 
 	record := signedTrustRecord(t)
 	disco := discovery.New("")
-	_, err := disco.Import(record, "bootstrap")
+	_, err := disco.Import(record, discoveryrecord.Imported)
 	require.NoError(t, err)
 
 	ctl := &RuntimeManager{

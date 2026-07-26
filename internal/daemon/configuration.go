@@ -3,6 +3,7 @@ package daemon
 import (
 	runtimeconfig "ardents/internal/config"
 	"ardents/internal/diagnostics"
+	"ardents/internal/discovery"
 	"ardents/internal/identity"
 	identitycapability "ardents/internal/identity/capability"
 	identitykeyring "ardents/internal/identity/keyring"
@@ -23,6 +24,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"time"
@@ -309,26 +311,97 @@ func (n *Node) recordConfigRollbackFailureLocked(detail string) {
 }
 
 type nodeConfigApplier struct {
-	node *Node
+	node                 *Node
+	trustTransaction     *discovery.TrustTransaction
+	discoveryTrustChange bool
 }
 
-func (*nodeConfigApplier) Prepare(context.Context, runtimeconfig.Document, runtimeconfig.Document) error {
+func (a *nodeConfigApplier) Prepare(
+	_ context.Context,
+	previous runtimeconfig.Document,
+	next runtimeconfig.Document,
+) error {
+	a.trustTransaction = nil
+	a.discoveryTrustChange = !reflect.DeepEqual(previous.Trust, next.Trust)
 	return nil
 }
 
-func (a *nodeConfigApplier) Apply(_ context.Context, _ runtimeconfig.Document, next runtimeconfig.Document) error {
-	a.node.applyOperatorDocument(next)
+func (a *nodeConfigApplier) Apply(
+	_ context.Context,
+	_ runtimeconfig.Document,
+	next runtimeconfig.Document,
+) error {
+	configuredTrust, effectiveTrust, err := a.node.operatorDiscoveryTrust(next)
+	if err != nil {
+		return err
+	}
+	a.node.mu.Lock()
+	if a.discoveryTrustChange {
+		a.trustTransaction, err = a.node.disco.BeginTrustRegistry(effectiveTrust)
+		if err != nil {
+			a.node.mu.Unlock()
+			return err
+		}
+	}
+	a.node.commitOperatorDocumentLocked(next, configuredTrust)
+	a.node.mu.Unlock()
 	return nil
 }
 
 func (a *nodeConfigApplier) Rollback(_ context.Context, previous runtimeconfig.Document) error {
-	a.node.applyOperatorDocument(previous)
+	configuredTrust, effectiveTrust, err := a.node.operatorDiscoveryTrust(previous)
+	if err != nil {
+		return err
+	}
+	if a.trustTransaction != nil {
+		if err := a.trustTransaction.Rollback(effectiveTrust); err != nil {
+			return fmt.Errorf("restore discovery trust and truth: %w", err)
+		}
+	}
+	a.node.mu.Lock()
+	defer a.node.mu.Unlock()
+	a.node.commitOperatorDocumentLocked(previous, configuredTrust)
+	a.trustTransaction = nil
 	return nil
 }
 
-func (n *Node) applyOperatorDocument(doc runtimeconfig.Document) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
+func (a *nodeConfigApplier) Commit(context.Context) {
+	if a.trustTransaction != nil {
+		a.trustTransaction.Commit()
+	}
+	a.trustTransaction = nil
+}
+
+func (n *Node) operatorDiscoveryTrust(
+	doc runtimeconfig.Document,
+) (*identitytrust.Registry, *identitytrust.Registry, error) {
+	configuredTrust, err := operatorTrustRegistry(doc.Trust)
+	if err != nil {
+		return nil, nil, err
+	}
+	local := n.ident.NodeSummary()
+	if local.Principal == "" {
+		return configuredTrust, configuredTrust, nil
+	}
+	effectiveTrust, err := trustRegistryWithLocalPrincipal(
+		configuredTrust,
+		local.Principal,
+		local.PublicKey,
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+	return configuredTrust, effectiveTrust, nil
+}
+
+func (n *Node) commitOperatorDocumentLocked(
+	doc runtimeconfig.Document,
+	configuredTrust *identitytrust.Registry,
+) {
+	n.cfg.Trust.Registry = configuredTrust
+	if n.runtimeMgr != nil {
+		n.runtimeMgr.configuredTrust = configuredTrust
+	}
 	policy := policyConfigFromOperator(doc.Policy)
 	n.cfg.Policy = policy
 	n.policyLive.Reconfigure(runtimePolicyConfig(policy))

@@ -2,11 +2,17 @@ package config
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
 	"testing"
+
+	identityprincipal "ardents/internal/identity/principal"
+	identitytrust "ardents/internal/identity/trust"
 
 	"github.com/stretchr/testify/require"
 )
@@ -16,6 +22,7 @@ type recordingApplier struct {
 	failApply    bool
 	failRollback bool
 	rollbacks    int
+	commits      int
 }
 
 func (a *recordingApplier) Prepare(context.Context, Document, Document) error { return nil }
@@ -37,6 +44,10 @@ func (a *recordingApplier) Rollback(_ context.Context, previous Document) error 
 	return nil
 }
 
+func (a *recordingApplier) Commit(context.Context) {
+	a.commits++
+}
+
 func TestManagerAppliesReloadablePolicyAndRedactsEffectiveSnapshot(t *testing.T) {
 	doc := Defaults()
 	doc.Network.PrivateKeyPath = filepath.Join(t.TempDir(), "private-key")
@@ -51,6 +62,7 @@ func TestManagerAppliesReloadablePolicyAndRedactsEffectiveSnapshot(t *testing.T)
 	require.Equal(t, OutcomeApplied, result.Outcome)
 	require.Equal(t, uint64(2), result.ActiveGeneration)
 	require.True(t, applier.active.Policy.DisableServicePublication)
+	require.Equal(t, 1, applier.commits)
 
 	snapshot := manager.Snapshot()
 	raw, err := json.Marshal(snapshot.Effective)
@@ -98,6 +110,56 @@ func TestManagerKeepsRestartCandidateSeparateFromActive(t *testing.T) {
 	require.Contains(t, result.RestartRequired, "node.profile")
 	require.Equal(t, "service_node", applier.active.Node.Profile)
 	require.Equal(t, uint64(1), result.ActiveGeneration)
+}
+
+func TestManagerReloadsDiscoveryOnlyTrustButKeepsOtherTrustRestartRequired(t *testing.T) {
+	t.Run("discovery only", func(t *testing.T) {
+		doc := Defaults()
+		path := writeDocument(t, doc)
+		applier := &recordingApplier{active: doc}
+		manager, err := NewManager(path, doc, applier)
+		require.NoError(t, err)
+
+		doc.Trust.Principals = []TrustedPrincipalConfig{managerTrustedPrincipal(
+			t, identitytrust.PurposeDiscoveryPublish,
+		)}
+		writeDocumentAt(t, path, doc)
+		result := manager.Reload(context.Background())
+
+		require.Equal(t, OutcomeApplied, result.Outcome)
+		require.Equal(t, doc.Trust, applier.active.Trust)
+	})
+
+	t.Run("channel issuer", func(t *testing.T) {
+		doc := Defaults()
+		path := writeDocument(t, doc)
+		applier := &recordingApplier{active: doc}
+		manager, err := NewManager(path, doc, applier)
+		require.NoError(t, err)
+
+		doc.Trust.Principals = []TrustedPrincipalConfig{managerTrustedPrincipal(
+			t, identitytrust.PurposeChannelIssue,
+		)}
+		writeDocumentAt(t, path, doc)
+		result := manager.Reload(context.Background())
+
+		require.Equal(t, OutcomeRestartRequired, result.Outcome)
+		require.Contains(t, result.RestartRequired, "trust.principals")
+		require.Empty(t, applier.active.Trust.Principals)
+	})
+}
+
+func managerTrustedPrincipal(t *testing.T, purpose identitytrust.Purpose) TrustedPrincipalConfig {
+	t.Helper()
+	public, _, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	principal, err := identityprincipal.FromEd25519PublicKey(public)
+	require.NoError(t, err)
+	return TrustedPrincipalConfig{
+		Principal: principal.String(),
+		PublicKey: base64.StdEncoding.EncodeToString(public),
+		Purposes:  []identitytrust.Purpose{purpose},
+	}
 }
 
 func TestManagerClearsPendingRestartWhenSourceReturnsToActiveConfiguration(t *testing.T) {
@@ -216,6 +278,8 @@ func TestManagerRollsBackWhenAnyApplierFails(t *testing.T) {
 	require.Equal(t, OutcomeRolledBack, result.Outcome)
 	require.False(t, first.active.Policy.DisableServicePublication)
 	require.Equal(t, 1, first.rollbacks)
+	require.Zero(t, first.commits)
+	require.Zero(t, second.commits)
 	require.Equal(t, uint64(1), result.ActiveGeneration)
 }
 

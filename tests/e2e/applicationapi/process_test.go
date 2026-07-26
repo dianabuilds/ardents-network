@@ -4,6 +4,7 @@ package applicationapie2e_test
 
 import (
 	"crypto/ed25519"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -18,6 +19,10 @@ import (
 	"testing"
 	"time"
 
+	discoveryapi "ardents/internal/discovery"
+	discoveryrecord "ardents/internal/discovery/records"
+	identityprincipal "ardents/internal/identity/principal"
+	identitytrust "ardents/internal/identity/trust"
 	"ardents/tests/testkit"
 
 	"github.com/stretchr/testify/require"
@@ -33,6 +38,12 @@ type applicationContentReference struct {
 	ID   string `json:"id"`
 }
 
+type applicationDiscoveryTarget struct {
+	ServiceID string `json:"ServiceID"`
+	Endpoint  string `json:"Endpoint"`
+	Scheme    string `json:"Scheme"`
+}
+
 type daemonProcess struct {
 	command *exec.Cmd
 	exited  chan error
@@ -45,7 +56,7 @@ func TestApplicationUsesDedicatedPrincipalInterface(t *testing.T) {
 	}
 	scenario := testkit.BeginScenario(t, testkit.Spec{
 		Layer: testkit.LayerE2E, Domain: "application-interface", ScenarioID: "APP-001", Suite: "e2e",
-		Tags: []string{"e2e", "application-interface", "security", "process", "retry", "restart", "revocation"}, Speed: "fast", Environment: "linux-container",
+		Tags: []string{"e2e", "application-interface", "application-discovery", "security", "process", "retry", "restart", "revocation"}, Speed: "fast", Environment: "linux-container",
 	})
 	dir := t.TempDir()
 	authorityDir := filepath.Join(dir, "authority")
@@ -61,6 +72,7 @@ func TestApplicationUsesDedicatedPrincipalInterface(t *testing.T) {
 	transportAddress := reserveAddress(t)
 	configPath := filepath.Join(secretDir, "operator.json")
 	logPath := filepath.Join(dir, "ardentsd.log")
+	discoveryRecord, discoveryPublisher, discoveryPublic := signedApplicationDiscoveryRecord(t)
 
 	daemonBinary := filepath.Join(dir, "ardentsd")
 	faultDaemonBinary := filepath.Join(dir, "ardentsd-enrollment-fault")
@@ -102,6 +114,8 @@ func TestApplicationUsesDedicatedPrincipalInterface(t *testing.T) {
 		)
 		nodePrincipal = extractNodePrincipal(t, raw)
 		setObservabilityAddress(t, configPath, observabilityAddress)
+		setDiscoveryTrust(t, configPath, discoveryPublisher, discoveryPublic)
+		seedImportedDiscoveryRecord(t, nodeDir, discoveryRecord, discoveryPublisher, discoveryPublic)
 		require.NoError(t, os.MkdirAll(filepath.Dir(applicationSocket), 0o700))
 		daemon = startDaemon(t, daemonBinary, configPath, logPath)
 		require.NoError(t, waitForHTTP("http://"+observabilityAddress+"/healthz", daemon.exited), readLog(logPath))
@@ -173,6 +187,31 @@ func TestApplicationUsesDedicatedPrincipalInterface(t *testing.T) {
 		applicationGrantID = enrollment.GrantID
 		require.Regexp(t, `^ag1_[a-z2-7]{52}$`, applicationGrantID)
 		require.NoFileExists(t, ticketPath)
+	})
+
+	scenario.Step("resolve a trusted imported service through the protected Application socket", func(t *testing.T) {
+		discoveryIdentityPath := filepath.Join(identityDir, "discovery-application-identity.json")
+		discoveryRootPath := filepath.Join(identityDir, "discovery-application-root.json")
+		discoveryPrincipal := strings.TrimSpace(string(run(t, probeBinary,
+			"create", discoveryIdentityPath, discoveryRootPath)))
+		discoveryTicketPath := filepath.Join(identityDir, "discovery-application-enrollment-ticket")
+		run(t, cliBinary,
+			"--addr", "unix://"+operatorSocket, "--principal", nodePrincipal, "--signer-file", operatorDevice,
+			"--output", "json", "identity", "application-ticket", "issue",
+			"--principal", discoveryPrincipal, "--action", "application.discovery.resolve",
+			"--out-file", discoveryTicketPath, "--yes")
+		run(t, probeBinary, "enroll", applicationSocket, nodePrincipal, discoveryTicketPath,
+			discoveryIdentityPath, discoveryRootPath)
+		var targets []applicationDiscoveryTarget
+		require.NoError(t, json.Unmarshal(run(t, probeBinary, "discover",
+			applicationSocket, nodePrincipal, discoveryIdentityPath, "echo", "https"), &targets))
+		require.Equal(t, []applicationDiscoveryTarget{{
+			ServiceID: "svc.remote.echo",
+			Endpoint:  "https://10.20.30.40:8443",
+			Scheme:    "https",
+		}}, targets)
+		require.NotContains(t, string(run(t, probeBinary, "discover",
+			applicationSocket, nodePrincipal, discoveryIdentityPath, "echo", "https")), operatorPrincipal)
 	})
 
 	scenario.Step("put and get content with an Application Principal session", func(t *testing.T) {
@@ -276,6 +315,79 @@ func writeApplicationIdentity(t *testing.T, path, credential string, device ed25
 	raw, err := json.Marshal(applicationIdentityFile{
 		Credential: credential, DevicePrivateKey: base64.RawURLEncoding.EncodeToString(device),
 	})
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(path, raw, 0o600))
+}
+
+func signedApplicationDiscoveryRecord(t *testing.T) (discoveryapi.Record, string, string) {
+	t.Helper()
+	public, private, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	principal, err := identityprincipal.FromEd25519PublicKey(public)
+	require.NoError(t, err)
+	encodedPublic := base64.StdEncoding.EncodeToString(public)
+	now := time.Now().UTC().Truncate(time.Second).Add(-time.Second)
+	record := discoveryapi.Record{
+		Version: discoveryrecord.Version,
+		Service: &discoveryrecord.ServiceFacts{
+			ID:            "svc.remote.echo",
+			Type:          "echo",
+			NodePrincipal: principal,
+			Workload:      "work.remote.echo",
+			Mode:          "NetworkPublished",
+			PublicKey:     encodedPublic,
+			Endpoints:     []string{"https://10.20.30.40:8443"},
+		},
+		IssuedAt:  now,
+		ExpiresAt: now.Add(time.Hour),
+	}
+	payload, err := discoveryapi.Canonical(record)
+	require.NoError(t, err)
+	signature := base64.StdEncoding.EncodeToString(ed25519.Sign(private, payload))
+	clear(private)
+	record.Signature = signature
+	return record, principal.String(), encodedPublic
+}
+
+func seedImportedDiscoveryRecord(
+	t *testing.T,
+	dir string,
+	record discoveryapi.Record,
+	principal string,
+	encodedPublic string,
+) {
+	t.Helper()
+	public, err := base64.StdEncoding.DecodeString(encodedPublic)
+	require.NoError(t, err)
+	registry, err := identitytrust.NewRegistry([]identitytrust.Entry{{
+		Principal: principal,
+		PublicKey: ed25519.PublicKey(public),
+		Purposes:  []identitytrust.Purpose{identitytrust.PurposeDiscoveryPublish},
+	}})
+	require.NoError(t, err)
+	trust := discoveryapi.NewTrustEvaluator(registry)
+	store := discoveryapi.NewInDirWithTrust(dir, trust)
+	result, err := store.Import(record, discoveryrecord.Imported)
+	require.NoError(t, err)
+	require.True(t, result.Applied)
+}
+
+func setDiscoveryTrust(t *testing.T, path, principal, publicKey string) {
+	t.Helper()
+	raw, err := os.ReadFile(path)
+	require.NoError(t, err)
+	var document map[string]any
+	require.NoError(t, json.Unmarshal(raw, &document))
+	trust, ok := document["trust"].(map[string]any)
+	require.True(t, ok)
+	principals, ok := trust["principals"].([]any)
+	require.True(t, ok)
+	trust["principals"] = append(principals, map[string]any{
+		"principal":  principal,
+		"public_key": publicKey,
+		"purposes":   []string{"discovery.publish"},
+	})
+	raw, err = json.Marshal(document)
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(path, raw, 0o600))
 }

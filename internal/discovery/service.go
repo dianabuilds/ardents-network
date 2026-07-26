@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	discoveryrecord "ardents/internal/discovery/records"
+	identitytrust "ardents/internal/identity/trust"
 )
 
 func (s *Service) Load() error {
@@ -31,9 +32,9 @@ func (s *Service) Load() error {
 	if err != nil {
 		return fmt.Errorf("persisted discovery snapshot is invalid: %w", err)
 	}
-	refreshEvidence := false
+	refreshEvidence := len(validated) != len(persisted.Records)
 	for index := range validated {
-		if validated[index].Evidence != persisted.Records[index].Evidence {
+		if index >= len(persisted.Records) || validated[index].Evidence != persisted.Records[index].Evidence {
 			refreshEvidence = true
 			break
 		}
@@ -51,7 +52,131 @@ func (s *Service) Load() error {
 	return nil
 }
 
+func (s *Service) ApplyTrustRegistry(registry *identitytrust.Registry) error {
+	transaction, err := s.BeginTrustRegistry(registry)
+	if err != nil {
+		return err
+	}
+	transaction.Commit()
+	return nil
+}
+
+// TrustTransaction keeps Discovery mutations serialized until the surrounding
+// configuration transaction either commits or restores the prior truth.
+type TrustTransaction struct {
+	service         *Service
+	registry        *identitytrust.Registry
+	previousRecords []Entry
+	previousState   string
+	previousReason  string
+	active          bool
+}
+
+// BeginTrustRegistry persists candidate trust effects without publishing the
+// candidate registry. The caller must finish the transaction.
+func (s *Service) BeginTrustRegistry(
+	registry *identitytrust.Registry,
+) (*TrustTransaction, error) {
+	s.mu.Lock()
+	transaction := &TrustTransaction{
+		service:         s,
+		registry:        registry,
+		previousRecords: CloneEntries(s.records),
+		previousState:   s.state,
+		previousReason:  s.reason,
+		active:          true,
+	}
+	if err := s.applyTrustRegistryLocked(registry, s.records, s.state, s.reason); err != nil {
+		transaction.finish()
+		return nil, err
+	}
+	return transaction, nil
+}
+
+func (t *TrustTransaction) Commit() {
+	if t == nil || !t.active {
+		return
+	}
+	t.service.trust.ReplaceRegistry(t.registry)
+	t.finish()
+}
+
+func (t *TrustTransaction) Rollback(
+	registry *identitytrust.Registry,
+) error {
+	if t == nil || !t.active {
+		return fmt.Errorf("discovery trust transaction is not active")
+	}
+	defer t.finish()
+	candidate := Snapshot{
+		SchemaVersion: 2,
+		Records:       CloneEntries(t.previousRecords),
+		State:         t.previousState,
+		Reason:        t.previousReason,
+	}
+	if candidate.State == "" {
+		candidate.State = "ready"
+	}
+	if err := validateSnapshotState(candidate); err != nil {
+		return err
+	}
+	if err := t.service.applyTrustRegistryLocked(
+		registry,
+		candidate.Records,
+		candidate.State,
+		candidate.Reason,
+	); err != nil {
+		return err
+	}
+	t.service.trust.ReplaceRegistry(registry)
+	return nil
+}
+
+func (t *TrustTransaction) finish() {
+	if !t.active {
+		return
+	}
+	t.active = false
+	t.service.mu.Unlock()
+}
+
+func (s *Service) applyTrustRegistryLocked(
+	registry *identitytrust.Registry,
+	records []Entry,
+	state string,
+	reason string,
+) error {
+	candidateTrust := NewTrustEvaluator(registry)
+	validated, err := s.validateSnapshotEntriesWithTrust(records, false, candidateTrust)
+	if err != nil {
+		return fmt.Errorf("refresh discovery trust: %w", err)
+	}
+	if s.path != "" {
+		refreshed := Snapshot{
+			SchemaVersion: 2,
+			Records:       CloneEntries(validated),
+			State:         state,
+			Reason:        reason,
+		}
+		if err := s.persist(s.path, refreshed); err != nil {
+			return fmt.Errorf("persist refreshed discovery trust: %w", err)
+		}
+	}
+	s.records = validated
+	s.state = state
+	s.reason = reason
+	return nil
+}
+
 func (s *Service) validateSnapshotEntries(entries []Entry, persisted bool) ([]Entry, error) {
+	return s.validateSnapshotEntriesWithTrust(entries, persisted, s.trust)
+}
+
+func (s *Service) validateSnapshotEntriesWithTrust(
+	entries []Entry,
+	persisted bool,
+	trust *TrustEvaluator,
+) ([]Entry, error) {
 	seenID := make(map[string]struct{}, len(entries))
 	seenSubject := make(map[string]struct{}, len(entries))
 	validated := make([]Entry, 0, len(entries))
@@ -61,7 +186,7 @@ func (s *Service) validateSnapshotEntries(entries []Entry, persisted bool) ([]En
 				return nil, fmt.Errorf("record evidence is invalid: %w", err)
 			}
 		}
-		freshEvidence, err := s.trust.VerifyRetained(entry.Record)
+		freshEvidence, err := trust.VerifyRetained(entry.Record)
 		if err != nil {
 			return nil, fmt.Errorf("record is invalid: %w", err)
 		}
@@ -79,6 +204,9 @@ func (s *Service) validateSnapshotEntries(entries []Entry, persisted bool) ([]En
 			return nil, fmt.Errorf("record subject is duplicated")
 		}
 		seenID[id], seenSubject[subjectKey] = struct{}{}, struct{}{}
+		if entry.Source == discoveryrecord.Bootstrap && !freshEvidence.Trusted {
+			continue
+		}
 		entry.Record = entry.Record.Clone()
 		entry.Evidence = freshEvidence
 		validated = append(validated, entry)

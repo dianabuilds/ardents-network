@@ -96,7 +96,8 @@ applied to the running process:
 - Waku Store `store_max_messages`, `store_max_age_seconds`, and
   `store_max_bytes` retention limits;
 - privacy channel identity/scope/material references.
-- purpose-scoped trusted-Principal definitions.
+- purpose-scoped trusted-Principal definitions, except a change whose complete
+  non-Discovery trust projection is unchanged.
 
 The effective snapshot remains the running version and lists the changed paths
 as `restart_required`. A restart re-validates the complete candidate before
@@ -107,6 +108,8 @@ partial startup.
 The first `v1` reloadable set is intentionally bounded:
 
 - Policy deny/allow rules and TTL ceilings;
+- `discovery.publish` trusted-Principal definitions when no other
+  purpose-scoped trust projection changes;
 - logging level;
 - diagnostics retention/detail bounds;
 - discovery refresh interval;
