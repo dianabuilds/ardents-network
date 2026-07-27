@@ -1,8 +1,8 @@
 # PW3-05: CGA-01 create and inspect a production realm authority
 
-Status: ready-for-agent
+Status: ready-for-human
 State: open
-Labels: ready-for-agent
+Labels: ready-for-human
 Research class: R0 implementation with security review
 
 ## Parent
@@ -136,27 +136,27 @@ change membership, activate a channel, or qualify the capability.
 
 ## Acceptance criteria
 
-- [ ] Realm creation and reopen are reachable only through the protected
+- [x] Realm creation and reopen are reachable only through the protected
       Operator Interface with exact action/resource admission.
-- [ ] No equivalent Application Interface procedure exists.
-- [ ] Duplicate same request returns the original result; changed request
+- [x] No equivalent Application Interface procedure exists.
+- [x] Duplicate same request returns the original result; changed request
       content under the same idempotency identity conflicts.
-- [ ] One durable realm/epoch/sequence and audit-chain genesis survives
+- [x] One durable realm/epoch/sequence and audit-chain genesis survives
       restart.
-- [ ] The signer seam proves the active Realm Authority Principal binding
+- [x] The signer seam proves the active Realm Authority Principal binding
       without storing the signing key in the authority database.
-- [ ] Repository create-if-absent and exact compare-and-append contracts reject
+- [x] Repository create-if-absent and exact compare-and-append contracts reject
       overwrite, skip, fork, stale expected sequence, and blind put.
-- [ ] Corrupt state, key/Principal mismatch, head mismatch, unsupported schema,
+- [x] Corrupt state, key/Principal mismatch, head mismatch, unsupported schema,
       or unavailable independent head fail closed.
-- [ ] `Inspect`, logs, metrics, audit, CLI JSON, backups, and test artifacts
+- [x] `Inspect`, logs, metrics, audit, CLI JSON, backups, and test artifacts
       contain no secret, selector, plaintext grant, receipt key, private
       endpoint, or unbounded Principal label.
-- [ ] All declared bounds and stable error classes have positive and negative
+- [x] All declared bounds and stable error classes have positive and negative
       tests.
-- [ ] Crash injection at each persistence/repository boundary deterministically
+- [x] Crash injection at each persistence/repository boundary deterministically
       resumes or fails closed.
-- [ ] Documentation states that this is an implementation slice, not
+- [x] Documentation states that this is an implementation slice, not
       qualification.
 
 ## Required tests and evidence
@@ -220,3 +220,56 @@ remain open.
   `ready-for-agent`. No implementation, capability promotion, qualification or
   push is implied by this triage transition. Acceptance governance commit:
   `2030d35f1df0a11f8d701ea12e19537a6b4d1c69`.
+- 2026-07-28 CGA-01 implementation handoff:
+  - exact starting commit:
+    `21715a2280ce998f524fc7cdad21af31421d4ee7`;
+  - exact logical implementation commit:
+    `3551a1e5f486d34711416cacfe21fc420d393c46`;
+  - implemented the protected Operator-only create/reopen and redacted inspect
+    tracer bullet, protocol-owned exact access metadata, Product Policy on
+    initial and idempotent admission, one encrypted transactional authority
+    ledger, separately provisioned store key and external signer, immutable
+    retained audit chain plus delivery outbox, stable idempotency result,
+    signed genesis checkpoint, and restart reconciliation;
+  - the production checkpoint adapter now requires a pre-provisioned,
+    independently administered deletion-protected/WORM repository and
+    provisioning assertion, never creates a missing root, has no local
+    fallback, and rejects symlink roots, realm directories, overwrite, skip,
+    fork, stale expected sequence, and blind put;
+  - Inspect/CLI expose only the bounded redacted v1 projection, including
+    generation `0`, authority sequence, genesis-operation deadline, phase,
+    readiness/reason, and counts. No Application Authority service or secret
+    route exists;
+  - exact validation on the implementation commit:
+    - `go test ./... -count=1`;
+    - `go test -race ./internal/authority ./internal/localapi/authority
+      ./internal/daemon ./internal/observability ./internal/cli/authority
+      ./internal/cli/catalog -count=1`;
+    - `go test -tags=integration ./tests/integration/localapi -run
+      'TestRealmAuthority' -count=1`;
+    - `go test ./tests/tooling/doccontract ./tests/tooling/archaccept
+      -count=1`;
+    - `go run ./tests/tooling/capabilitycatalog -check`;
+    - `scripts/generate-api.ps1 -Check`;
+    - `git diff --check
+      21715a2280ce998f524fc7cdad21af31421d4ee7..3551a1e5f486d34711416cacfe21fc420d393c46`;
+  - retained development evidence is the real-store/crash/restart integration
+    suite in `tests/integration/localapi/authority_test.go`, unit/contract and
+    security-negative suites under `internal/authority` and
+    `internal/localapi/authority`, the canonical checkpoint vector at
+    `internal/authority/testdata/checkpoint-genesis-v1.json`, the operations
+    contract at `docs/security/realm-authority-cga01.md`, and the separate
+    governance proposal at
+    `docs/engineering/realm-authority-cga01-capability-proposal.md`;
+  - independent fixed-range Spec and Standards reviews reported no actionable
+    P0-P3 findings after remediation;
+  - known limits are deliberate: CGA-01 has no generation delivery/receipts,
+    rotation/activation, membership mutation, revocation/fencing, renewal,
+    same-realm restore/migration, multi-host placement, or qualification.
+    Storage-enforced WORM retention and independent credentials remain a
+    deployment prerequisite, not something a local process can manufacture;
+  - canonical `docs/engineering/capabilities.json` and the evidence register
+    are unchanged. Catalogue validation remains `24 capabilities, 8 domains,
+    0 qualified`; there is no canonical I/R/O/Q change and `Q` remains `no`;
+  - CGA-02 through CGA-07 were not started. No production deployment was
+    changed and nothing was pushed.
