@@ -35,11 +35,36 @@ the authority Node Principal, every member Principal, Waku Peer ID, and
 transport identity.
 
 The authority is reachable only through exact procedures on the protected
-Operator Interface. Existing Actor/Effective Principal, Access Grant,
-one-hop Delegation, Product Policy, idempotency and audit rules apply.
-Recovery and authority-key rotation are non-delegable policy actions. The
-Application Interface exposes no authority procedure and no channel secret,
-selector, Waku operation or authority topology.
+Operator Interface. Existing Actor/Effective Principal, Access Grant, Product
+Policy, idempotency and audit rules apply. Version 1 accepts only a directly
+authenticated Operator Principal for authority procedures: `Actor` equals
+`Effective`, and Delegation is rejected as Operator call authority, consistent
+with ADR-0002's Principal-to-Application-only Delegation and interface-bound
+admission contract. Audit retains both Actor and Effective attribution even
+though they are equal. A future delegated authority procedure requires a new
+identity/access decision and Application/Operator interface review.
+
+The authority action catalogue is:
+
+| Action | Resource | Delegation |
+|---|---|---|
+| `realm.channel.membership.change` | exact `realm/<RealmID>/channel/<ChannelID>` | rejected; direct Operator only |
+| `realm.channel.generation.rotate` | exact `realm/<RealmID>/channel/<ChannelID>` | rejected; direct Operator only |
+| `realm.channel.delivery.issue` | exact `realm/<RealmID>/operation/<OperationID>/delivery/<DeliveryID>` | rejected; direct Operator only |
+| `realm.channel.delivery.acknowledge` | exact `realm/<RealmID>/operation/<OperationID>/delivery/<DeliveryID>` | rejected; direct Operator only |
+| `realm.channel.activation.commit` | exact `realm/<RealmID>/operation/<OperationID>` | rejected; direct Operator only |
+| `realm.channel.audit.read` | exact `realm/<RealmID>` or `realm/<RealmID>/channel/<ChannelID>` | rejected; direct Operator only |
+| `realm.channel.recovery.execute` | exact `realm/<RealmID>` | rejected; non-delegable in Product Policy |
+| `realm.authority.rotate` | exact `realm/<RealmID>` | rejected; non-delegable in Product Policy |
+
+This direct-only column supersedes the provisional one-hop Delegation column in
+the linked research packet; it does not change that packet's action names or
+resource separation. Admission intersects the authenticated Operator's current
+Access Grants, exact action/resource and Product Policy before mutation or
+secret-bearing output. Sibling actions and parent, child or wildcard resources
+do not imply authority. The Application Interface exposes no authority
+procedure and no channel secret, selector, Waku operation, authority topology or
+authority cryptographic material.
 
 The first release has one active authority Principal and one realm per
 authority instance. It has no federation, transitive trust, threshold authority
@@ -61,6 +86,14 @@ removed current grant. Routine rotation also creates a fresh secret and next
 generation without changing membership. A new member receives no old
 generation. A removed member cannot receive the new generation, but Ardents
 does not claim to erase old ciphertext or secrets it already held.
+
+Renewal uses new grant IDs, a fresh random channel secret and the next
+generation without changing membership. The renewed subject grant, complete
+bounded sender-grant snapshot, revocations, installed/active receipt
+attestations and activation checkpoint advance through the same durable
+delivery, activation and external-checkpoint operation. The prior grant remains
+authoritative only until its expiry or the new generation activates, whichever
+comes first; no same-generation sender-snapshot update is supported.
 
 After activation, publishers use only the current generation. Subscribers may
 keep the immediately previous generation receive-only for the existing bounded

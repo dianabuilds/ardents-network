@@ -191,3 +191,112 @@ and CGA-01 may be triaged for implementation. If returned or rejected, all
 dependent implementation and ADR acceptance remain blocked.
 
 ## Comments
+
+### Architecture and security review — 2026-07-27
+
+- Reviewer: Codex `/root`, lead review-agent for PW3-02.
+- Reviewed source: exact commit
+  `67d7cd7f665c395c2a14612564cd22a07b648453` on `main`; the starting
+  worktree was clean and `HEAD` matched the expected commit.
+- Outcome: `returned with blockers`.
+
+#### Findings
+
+- P0: none.
+- P1 — the authority admission contract is not implementably unambiguous.
+  `docs/adr/0011-single-authority-channel-grant-lifecycle.md:37-40` refers to
+  exact procedures and existing Actor/Effective, Access Grant and one-hop
+  Delegation rules, but does not record the authority-specific
+  action/resource/delegation catalogue. The selected packet contains eight
+  distinct rows at
+  `docs/engineering/research/channel-grant-authority.md:426-439`, yet its
+  ordinary one-hop rows also need reconciliation with ADR-0002's
+  Principal-to-Application-only Delegation rule at
+  `docs/adr/0002-principal-centered-identity-and-access.md:5-7` and the
+  Operator/Application interface separation. Minimal correction: put all
+  eight exact actions and resources in ADR-0011; explicitly choose a compatible
+  admission rule for each ordinary action (direct-only `Actor == Effective`,
+  or a separately approved identity/access change for the intended one-hop
+  path); retain non-delegable recovery and authority rotation; and state the
+  resulting Actor/Effective intersection and dual-attribution audit rule.
+- P2 — renewal is not bound to a fresh generation.
+  `docs/adr/0011-single-authority-channel-grant-lifecycle.md:58-68,164-166`
+  requires fresh generations for membership changes and routine rotation, but
+  gives renewal only a timing bound. The selected packet requires new grant IDs
+  and a new generation so the complete bounded sender snapshot and receipt
+  attestation advance together at
+  `docs/engineering/research/channel-grant-authority.md:551-553`. Minimal
+  correction: add that invariant to ADR-0011 and route renewal through the same
+  durable installation/activation/checkpoint operation. This is a
+  specification-completeness blocker; the stronger claim of a current runtime
+  exploit was rejected because activation/readiness already fails stale
+  members closed.
+
+No other P0-P2 finding survived adversarial validation. In particular, the ADR
+preserves the single deployment-owned authority Principal, separates the
+authority Node/Waku/transport identities, keeps recovery and authority rotation
+non-delegable, excludes the Application authority surface and secret material,
+keeps authority/member/checkpoint ownership non-competing, makes receipt MACs
+trusted-host protocol attestations only, fences suspect or partitioned members,
+uses pre-commit abort and post-commit roll-forward, requires independent exact
+freshness for same-realm restore, creates a new realm on lost or ambiguous
+freshness, preserves every finite v1 bound, forbids mixed authority management,
+requires full stopped-backup downgrade, and leaves federation, MLS and
+threshold authority unsupported.
+
+#### Checks
+
+- `git status --short --branch` — clean starting tree on
+  `main...origin/main`.
+- `git rev-parse HEAD` —
+  `67d7cd7f665c395c2a14612564cd22a07b648453`.
+- `git diff --check` — passed.
+- `go test ./tests/tooling/doccontract ./tests/tooling/archaccept -count=1` —
+  passed.
+- `go run ./tests/tooling/capabilitycatalog -check` — passed:
+  `24 capabilities, 8 domains, 0 qualified`.
+- `realm.channel-grant-authority` remains
+  `I=partial, R=no, O=no, Q=no`; no capability status changed.
+
+ADR-0011 remains `Proposed`. Research acceptance is not ADR acceptance. This
+review package may be given to the maintainer for blocker disposition, but the
+ADR is not ready to be presented for acceptance until the two corrections are
+made and re-reviewed. CGA-01 remains blocked, and this review authorizes no
+production implementation, capability promotion, or push.
+
+### Blocker remediation and follow-up review — 2026-07-27
+
+Both blockers were corrected in the uncommitted working tree based on
+`main@67d7cd7f665c395c2a14612564cd22a07b648453`:
+
+- The P1 authority admission gap is closed at
+  `docs/adr/0011-single-authority-channel-grant-lifecycle.md:37-67`.
+  ADR-0011 now records all eight exact actions and canonical resources,
+  requires direct Operator admission with `Actor == Effective`, rejects
+  Delegation as Operator call authority, retains Actor/Effective audit
+  attribution, and keeps recovery and authority rotation non-delegable. This
+  direct-only v1 decision is compatible with ADR-0002 and explicitly supersedes
+  the provisional one-hop column in the research packet. Any future delegated
+  authority call requires a new identity/access and interface decision.
+- The P2 renewal gap is closed at
+  `docs/adr/0011-single-authority-channel-grant-lifecycle.md:90-96`.
+  Renewal now uses new grant IDs, a fresh secret and next generation, and
+  advances the complete sender snapshot, receipts, activation checkpoint and
+  external checkpoint through one durable operation. Same-generation
+  sender-snapshot updates are unsupported.
+
+Follow-up outcome: `review-ready`. The two required corrections are represented
+without a remaining P0-P2 finding, and the technical packet is ready for a
+separate explicit maintainer decision.
+
+Post-remediation checks passed:
+
+- `git diff --check`;
+- `go test ./tests/tooling/doccontract ./tests/tooling/archaccept -count=1`;
+- `go run ./tests/tooling/capabilitycatalog -check`:
+  `24 capabilities, 8 domains, 0 qualified`.
+
+ADR-0011 remains `Proposed`; `realm.channel-grant-authority` remains
+`I=partial, R=no, O=no, Q=no`. Follow-up `review-ready` does not accept the ADR,
+authorize CGA-01, promote a capability, or authorize a push. CGA-01 remains
+blocked until the maintainer explicitly accepts ADR-0011.
