@@ -366,3 +366,7 @@ The corrected packet is ready for maintainer re-review, not implicitly
 accepted. ADR-0011 remains `Proposed`; `realm.channel-grant-authority` remains
 `I=partial, R=no, O=no, Q=no`; CGA-01 remains blocked until explicit maintainer
 acceptance. No production code or capability projection was changed.
+
+Commit-bound remediation source:
+`34bccdeef830fde0cd17d99dec14c9bc4cd8929c`. The exact ADR remediation diff is
+`74aee897277b27212d99d250de423e9e1e4a0ce6..34bccdeef830fde0cd17d99dec14c9bc4cd8929c`.
