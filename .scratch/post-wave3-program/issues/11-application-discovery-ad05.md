@@ -1,8 +1,8 @@
 # PW3-11: AD-05 Lifecycle and Qualification Evidence
 
-Status: ready-for-agent
+Status: ready-for-human
 State: open
-Labels: ready-for-agent
+Labels: ready-for-human
 Research class: R3 qualification
 
 ## Parent
@@ -290,3 +290,22 @@ not replaced by local evidence.
     tests passed after remediation
     (`2026-07-26T22:12:14Z..22:12:21Z`), and the concurrent transaction tests
     also passed under the race detector.
+- Post-review remediation on `2026-07-27` produced clean implementation
+  checkpoint `441545ed6e553325b874530cced73d19e205a93f`:
+  - retained Discovery truth rejects a new 65th record, while projection
+    budgets count only eligible matching records and endpoints; the confirmed
+    trusted-publisher persistent denial path is closed;
+  - route-policy deny and restore evidence now uses the production
+    `Node.ReloadConfig` path before the next admitted Application `Resolve`;
+  - Discovery-purpose trust classification moved from generic configuration
+    into daemon composition, and the Application Discovery consumer retains
+    ownership of the route-policy interface;
+  - full Go, scoped vet, API generation, architecture, audit-trace,
+    test-catalogue, capability-catalogue, and focused vulnerability gates
+    passed; independent Standards and Spec reviews found no issue;
+  - Docker/Linux `APP-DISC-001` passed 5/5 and protected-socket `APP-001`
+    passed using disposable caches. Retained hashes and exact commands are in
+    `docs/engineering/evidence/application-discovery-441545e.md`.
+- The issue remains open and moves to `ready-for-human`: a canonical tagged or
+  workflow-dispatched Linux `release-candidate` run is still required before
+  a qualification snapshot may set `application.discovery` to `Q=yes`.
