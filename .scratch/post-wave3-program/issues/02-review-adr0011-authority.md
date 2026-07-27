@@ -370,3 +370,36 @@ acceptance. No production code or capability projection was changed.
 Commit-bound remediation source:
 `34bccdeef830fde0cd17d99dec14c9bc4cd8929c`. The exact ADR remediation diff is
 `74aee897277b27212d99d250de423e9e1e4a0ce6..34bccdeef830fde0cd17d99dec14c9bc4cd8929c`.
+
+### Commit-bound P2 re-review — 2026-07-27
+
+- Reviewer: Codex `/root`, lead review-agent for PW3-02.
+- Reviewed ADR source:
+  `34bccdeef830fde0cd17d99dec14c9bc4cd8929c`.
+- Exact remediation comparison:
+  `74aee897277b27212d99d250de423e9e1e4a0ce6..34bccdeef830fde0cd17d99dec14c9bc4cd8929c`.
+- Outcome: `review-ready`.
+- Findings: P0 none, P1 none, P2 none.
+
+The re-review confirms that:
+
+- ordinary retry and restart reuse the original request, operation and delivery
+  identities and exact persisted sealed-envelope bytes;
+- ordinary retry does not reseal, replace the receipt key or allocate another
+  delivery identity;
+- explicit reissue alone may replace delivery identity/envelope bytes, retains
+  request and operation IDs, increments delivery retry generation, atomically
+  persists the replacement and invalidates the prior receipt verifier before
+  acknowledgement.
+
+Commit-bound and repository checks passed:
+
+- `git diff --check` for the exact remediation comparison above;
+- `go test ./tests/tooling/doccontract ./tests/tooling/archaccept -count=1`;
+- `go run ./tests/tooling/capabilitycatalog -check`:
+  `24 capabilities, 8 domains, 0 qualified`.
+
+This `review-ready` result authorizes transfer of the corrected ADR packet to a
+separate maintainer decision only. ADR-0011 remains `Proposed`;
+`realm.channel-grant-authority` remains `I=partial, R=no, O=no, Q=no`; CGA-01
+remains blocked until explicit maintainer acceptance.
