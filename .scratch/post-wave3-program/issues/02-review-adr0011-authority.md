@@ -300,3 +300,40 @@ ADR-0011 remains `Proposed`; `realm.channel-grant-authority` remains
 `I=partial, R=no, O=no, Q=no`. Follow-up `review-ready` does not accept the ADR,
 authorize CGA-01, promote a capability, or authorize a push. CGA-01 remains
 blocked until the maintainer explicitly accepts ADR-0011.
+
+### Maintainer disposition — 2026-07-27
+
+- Maintainer decision-agent: Codex `/root`.
+- Reviewed source: remediation commit
+  `20e87867799bf160bde59107555bc1df6f5db906`, whose exact reviewed diff is
+  `67d7cd7f665c395c2a14612564cd22a07b648453..20e87867799bf160bde59107555bc1df6f5db906`.
+- Outcome: `returned with blockers`.
+
+#### Finding
+
+- P0: none.
+- P1: none.
+- P2 — restart and delivery retry identity remain underspecified.
+  `docs/adr/0011-single-authority-channel-grant-lifecycle.md:128-133` preserves
+  one request/operation identity and the durable phase, but does not preserve
+  the original delivery identity and envelope bytes. The required restart
+  contract at
+  `.scratch/post-wave3-program/issues/02-review-adr0011-authority.md:112-113`
+  and the selected DR-03 packet at
+  `docs/engineering/research/channel-grant-authority.md:523-527` require normal
+  retry/restart to reuse the original request, operation, delivery ID and
+  envelope bytes. Only explicit reissue may increment the delivery retry
+  generation and invalidate the prior receipt verifier while retaining the
+  operation identity. Without that rule, delivery deduplication and receipt
+  verification across restart are not decision-complete.
+
+Minimal correction: add the original request, operation, delivery ID and
+envelope-byte reuse invariant to ADR-0011; state that explicit reissue alone
+increments delivery retry generation, invalidates the old receipt verifier and
+retains the operation ID. Then rerun the maintainer review and required gates.
+
+ADR-0011 remains `Proposed`. `realm.channel-grant-authority` remains
+`I=partial, R=no, O=no, Q=no`; no `I`, `R`, `O` or `Q` projection changes.
+CGA-01 remains `needs-info` and blocked; its implementation triage is not
+authorized. No production implementation or push is authorized by this
+disposition.
