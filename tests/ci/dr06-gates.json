@@ -1,0 +1,388 @@
+{
+  "schema_version": 1,
+  "gates": [
+    {
+      "id": "windows-interface",
+      "workflow_job_id": "windows-interface",
+      "workflow_job_name": "Windows orchestration contract",
+      "workflow_job_name_template": "Windows orchestration contract",
+      "command": "PowerShell parse of ardents.ps1 and scripts/tests *.ps1; ./ardents.ps1 help",
+      "workflow_command_fragment": "./ardents.ps1 help",
+      "environment": "GitHub-hosted Windows Server 2025",
+      "environment_output_path": "tests/.artifacts/prerequisites/windows-interface/environment.json",
+      "material_names": [],
+      "attempt_artifacts": ["windows-interface-evidence-{run_id}-{attempt}/environment.json"],
+      "dependencies": [],
+      "capability_claims": [],
+      "required_artifacts": [
+        "windows-interface-evidence-{run_id}-{attempt}/help.txt",
+        "windows-interface-evidence-{run_id}-{attempt}/environment.json"
+      ]
+    },
+    {
+      "id": "static",
+      "workflow_job_id": "static",
+      "workflow_job_name": "Format, vet, and scenario catalog",
+      "workflow_job_name_template": "Format, vet, and scenario catalog",
+      "command": "./scripts/generate-api.ps1 -Check; ./tests/check-format.ps1; go vet ./...; go test ./tests/tooling/testcatalog ./tests/tooling/audittrace ./tests/tooling/archaccept ./tests/tooling/capabilitycatalog ./tests/tooling/dr06contract -count=1; go run ./tests/tooling/testcatalog -tags \"integration e2e\" ./tests/...; go run ./tests/tooling/capabilitycatalog -check; go run ./tests/tooling/audittrace; go run ./tests/tooling/dr06contract; ./tests/ci/create-dr06-evidence-index-test.ps1; ./tests/ci/confirm-dr06-retention-test.ps1; ./tests/ci/entrypoint-contract-gate-test.ps1; ./tests/ci/release-source-identity-gate.ps1; ./tests/ci/release-materials-policy-gate.ps1",
+      "workflow_command_fragment": "go run ./tests/tooling/dr06contract",
+      "environment": "GitHub-hosted Ubuntu 24.04",
+      "environment_output_path": "tests/.artifacts/reports/catalog/environment.json",
+      "material_names": [],
+      "attempt_artifacts": ["catalog-validation-evidence-{run_id}-{attempt}/environment.json"],
+      "dependencies": [],
+      "capability_claims": [
+        "node.lifecycle", "operator.command-interface", "identity.principal-access",
+        "application.installation-content", "network.waku-foundation",
+        "discovery.operator-resolution", "content.operator-lifecycle",
+        "transfer.replication", "workload.lifecycle", "hosting.operator-publication",
+        "operations.diagnostics", "operations.configuration-reload",
+        "operations.backup-upgrade-rollback", "operations.native-installation",
+        "release.artifacts-provenance"
+      ],
+      "required_artifacts": [
+        "catalog-validation-evidence-{run_id}-{attempt}/validation.json",
+        "catalog-validation-evidence-{run_id}-{attempt}/capabilities.txt",
+        "catalog-validation-evidence-{run_id}-{attempt}/dr06-contract.txt"
+      ]
+    },
+    {
+      "id": "critical-lifecycle",
+      "workflow_job_id": "critical-lifecycle",
+      "workflow_job_name": "Critical diff, race, and lifecycle contracts",
+      "workflow_job_name_template": "Critical diff, race, and lifecycle contracts",
+      "command": "go run ./tests/tooling/audittrace -base $AUDIT_DIFF_BASE; go test -race ./internal/ingressproxy ./internal/network/waku ./internal/messaging/... ./internal/content ./internal/identity/access ./internal/daemon ./internal/workload/... ./internal/transfer ./internal/config -count=1",
+      "workflow_command_fragment": "go test -race",
+      "environment": "GitHub-hosted Ubuntu 24.04",
+      "environment_output_path": "tests/.artifacts/prerequisites/critical-lifecycle/environment.json",
+      "material_names": [],
+      "attempt_artifacts": ["critical-lifecycle-evidence-{run_id}-{attempt}/environment.json"],
+      "dependencies": ["static"],
+      "capability_claims": [],
+      "required_artifacts": [
+        "critical-lifecycle-evidence-{run_id}-{attempt}/audittrace.txt",
+        "critical-lifecycle-evidence-{run_id}-{attempt}/race.txt"
+      ]
+    },
+    {
+      "id": "fast",
+      "workflow_job_id": "fast",
+      "workflow_job_name": "Fast Docker/Linux suite",
+      "workflow_job_name_template": "Fast Docker/Linux suite",
+      "command": "./ardents.ps1 test fast -RebuildContainer -CoverageProfile tests/.artifacts/coverage/fast.out",
+      "workflow_command_fragment": "./ardents.ps1 test fast -RebuildContainer -CoverageProfile tests/.artifacts/coverage/fast.out",
+      "environment": "GitHub-hosted Ubuntu 24.04 orchestrating the Linux test container",
+      "environment_output_path": "tests/.artifacts/dr06-environment/fast/environment.json",
+      "material_names": ["go", "powershell"],
+      "attempt_artifacts": ["fast-evidence-{run_id}-{attempt}/dr06-environment/fast/environment.json"],
+      "dependencies": ["static", "critical-lifecycle"],
+      "capability_claims": [
+        "node.lifecycle", "operator.command-interface", "identity.principal-access",
+        "application.installation-content", "network.waku-foundation",
+        "discovery.operator-resolution", "content.operator-lifecycle",
+        "transfer.replication", "workload.lifecycle", "hosting.operator-publication",
+        "operations.diagnostics", "operations.configuration-reload"
+      ],
+      "required_artifacts": [
+        "fast-evidence-{run_id}-{attempt}/coverage/fast.out",
+        "fast-evidence-{run_id}-{attempt}/resources/*.json"
+      ]
+    },
+    {
+      "id": "tagged-integration",
+      "workflow_job_id": "tagged",
+      "workflow_job_name": "integration Docker/Linux suite",
+      "workflow_job_name_template": "${{ matrix.suite }} Docker/Linux suite",
+      "command": "./ardents.ps1 test integration -ReportDir tests/.artifacts/reports/integration",
+      "workflow_command_fragment": "./ardents.ps1 test ${{ matrix.suite }} -ReportDir tests/.artifacts/reports/${{ matrix.suite }}",
+      "environment": "GitHub-hosted Ubuntu 24.04 orchestrating the Linux test container",
+      "environment_output_path": "tests/.artifacts/dr06-environment/tagged-integration/environment.json",
+      "material_names": ["go", "powershell"],
+      "attempt_artifacts": ["integration-evidence-{run_id}-{attempt}/dr06-environment/tagged-integration/environment.json"],
+      "dependencies": ["static", "critical-lifecycle"],
+      "capability_claims": [
+        "node.lifecycle", "operator.command-interface", "identity.principal-access",
+        "discovery.operator-resolution", "content.operator-lifecycle",
+        "transfer.replication", "operations.diagnostics"
+      ],
+      "required_artifacts": [
+        "integration-evidence-{run_id}-{attempt}/reports/integration/summary.json",
+        "integration-evidence-{run_id}-{attempt}/reports/integration/junit.xml",
+        "integration-evidence-{run_id}-{attempt}/reports/integration/raw/*.json",
+        "integration-evidence-{run_id}-{attempt}/resources/*.json"
+      ]
+    },
+    {
+      "id": "tagged-e2e",
+      "workflow_job_id": "tagged",
+      "workflow_job_name": "e2e Docker/Linux suite",
+      "workflow_job_name_template": "${{ matrix.suite }} Docker/Linux suite",
+      "command": "./ardents.ps1 test e2e -ReportDir tests/.artifacts/reports/e2e",
+      "workflow_command_fragment": "./ardents.ps1 test ${{ matrix.suite }} -ReportDir tests/.artifacts/reports/${{ matrix.suite }}",
+      "environment": "GitHub-hosted Ubuntu 24.04 orchestrating the Linux test container",
+      "environment_output_path": "tests/.artifacts/dr06-environment/tagged-e2e/environment.json",
+      "material_names": ["go", "powershell"],
+      "attempt_artifacts": ["e2e-evidence-{run_id}-{attempt}/dr06-environment/tagged-e2e/environment.json"],
+      "dependencies": ["static", "critical-lifecycle"],
+      "capability_claims": [
+        "node.lifecycle", "operator.command-interface", "identity.principal-access",
+        "discovery.operator-resolution", "content.operator-lifecycle",
+        "transfer.replication", "operations.diagnostics"
+      ],
+      "required_artifacts": [
+        "e2e-evidence-{run_id}-{attempt}/reports/e2e/summary.json",
+        "e2e-evidence-{run_id}-{attempt}/reports/e2e/junit.xml",
+        "e2e-evidence-{run_id}-{attempt}/reports/e2e/raw/*.json",
+        "e2e-evidence-{run_id}-{attempt}/resources/*.json"
+      ]
+    },
+    {
+      "id": "application-process",
+      "workflow_job_id": "focused-tagged",
+      "workflow_job_name": "application-process focused evidence",
+      "workflow_job_name_template": "${{ matrix.gate }} focused evidence",
+      "command": "./ardents.ps1 test e2e -Domain application-interface -Scenario APP-001 -ReportDir tests/.artifacts/reports/application-process",
+      "workflow_command_fragment": "./ardents.ps1 test ${{ matrix.suite }} -Domain ${{ matrix.domain }} -Scenario ${{ matrix.scenario }} -ReportDir tests/.artifacts/reports/${{ matrix.gate }}",
+      "environment": "GitHub-hosted Ubuntu 24.04 orchestrating the Linux test container and Unix-socket fixture",
+      "environment_output_path": "tests/.artifacts/dr06-environment/application-process/environment.json",
+      "material_names": ["go", "powershell"],
+      "attempt_artifacts": ["application-process-evidence-{run_id}-{attempt}/dr06-environment/application-process/environment.json"],
+      "dependencies": ["static", "critical-lifecycle"],
+      "capability_claims": ["application.installation-content"],
+      "required_artifacts": [
+        "application-process-evidence-{run_id}-{attempt}/reports/application-process/summary.json",
+        "application-process-evidence-{run_id}-{attempt}/reports/application-process/junit.xml",
+        "application-process-evidence-{run_id}-{attempt}/reports/application-process/raw/*.json",
+        "application-process-evidence-{run_id}-{attempt}/resources/*.json"
+      ]
+    },
+    {
+      "id": "network-foundation",
+      "workflow_job_id": "focused-tagged",
+      "workflow_job_name": "network-foundation focused evidence",
+      "workflow_job_name_template": "${{ matrix.gate }} focused evidence",
+      "command": "./ardents.ps1 test integration -Domain network-foundation -Scenario NFI-001 -ReportDir tests/.artifacts/reports/network-foundation",
+      "workflow_command_fragment": "./ardents.ps1 test ${{ matrix.suite }} -Domain ${{ matrix.domain }} -Scenario ${{ matrix.scenario }} -ReportDir tests/.artifacts/reports/${{ matrix.gate }}",
+      "environment": "GitHub-hosted Ubuntu 24.04 orchestrating the canonical local Linux Waku fixture",
+      "environment_output_path": "tests/.artifacts/dr06-environment/network-foundation/environment.json",
+      "material_names": ["go", "powershell"],
+      "attempt_artifacts": ["network-foundation-evidence-{run_id}-{attempt}/dr06-environment/network-foundation/environment.json"],
+      "dependencies": ["static", "critical-lifecycle"],
+      "capability_claims": ["network.waku-foundation"],
+      "required_artifacts": [
+        "network-foundation-evidence-{run_id}-{attempt}/reports/network-foundation/summary.json",
+        "network-foundation-evidence-{run_id}-{attempt}/reports/network-foundation/junit.xml",
+        "network-foundation-evidence-{run_id}-{attempt}/reports/network-foundation/raw/*.json",
+        "network-foundation-evidence-{run_id}-{attempt}/resources/*.json"
+      ]
+    },
+    {
+      "id": "workload-integration",
+      "workflow_job_id": "focused-tagged",
+      "workflow_job_name": "workload-integration focused evidence",
+      "workflow_job_name_template": "${{ matrix.gate }} focused evidence",
+      "command": "./ardents.ps1 test integration -Domain workload -Scenario WKI-001 -ReportDir tests/.artifacts/reports/workload-integration",
+      "workflow_command_fragment": "./ardents.ps1 test ${{ matrix.suite }} -Domain ${{ matrix.domain }} -Scenario ${{ matrix.scenario }} -ReportDir tests/.artifacts/reports/${{ matrix.gate }}",
+      "environment": "GitHub-hosted Ubuntu 24.04 orchestrating the canonical local Linux workload fixture",
+      "environment_output_path": "tests/.artifacts/dr06-environment/workload-integration/environment.json",
+      "material_names": ["go", "powershell"],
+      "attempt_artifacts": ["workload-integration-evidence-{run_id}-{attempt}/dr06-environment/workload-integration/environment.json"],
+      "dependencies": ["static", "critical-lifecycle"],
+      "capability_claims": ["workload.lifecycle", "hosting.operator-publication"],
+      "required_artifacts": [
+        "workload-integration-evidence-{run_id}-{attempt}/reports/workload-integration/summary.json",
+        "workload-integration-evidence-{run_id}-{attempt}/reports/workload-integration/junit.xml",
+        "workload-integration-evidence-{run_id}-{attempt}/reports/workload-integration/raw/*.json",
+        "workload-integration-evidence-{run_id}-{attempt}/resources/*.json"
+      ]
+    },
+    {
+      "id": "failure-contract",
+      "workflow_job_id": "failure-contract",
+      "workflow_job_name": "Deliberate failure evidence",
+      "workflow_job_name_template": "Deliberate failure evidence",
+      "command": "./tests/ci/verify-failure-evidence.ps1",
+      "workflow_command_fragment": "./tests/ci/verify-failure-evidence.ps1",
+      "environment": "GitHub-hosted Ubuntu 24.04 orchestrating the Linux test container",
+      "environment_output_path": "tests/.artifacts/dr06-environment/failure-contract/environment.json",
+      "material_names": ["go", "powershell"],
+      "attempt_artifacts": ["deliberate-failure-evidence-{run_id}-{attempt}/dr06-environment/failure-contract/environment.json"],
+      "dependencies": ["static"],
+      "capability_claims": [],
+      "required_artifacts": [
+        "deliberate-failure-evidence-{run_id}-{attempt}/reports/ci-deliberate-failure/summary.json",
+        "deliberate-failure-evidence-{run_id}-{attempt}/reports/ci-deliberate-failure/junit.xml",
+        "deliberate-failure-evidence-{run_id}-{attempt}/reports/ci-deliberate-failure/raw/*.json",
+        "deliberate-failure-evidence-{run_id}-{attempt}/reports/ci-deliberate-failure/verification.json"
+      ]
+    },
+    {
+      "id": "security",
+      "workflow_job_id": "security",
+      "workflow_job_name": "Vulnerability reconciliation",
+      "workflow_job_name_template": "Vulnerability reconciliation",
+      "command": "./tests/ci/security-gate.ps1",
+      "workflow_command_fragment": "./tests/ci/security-gate.ps1",
+      "environment": "GitHub-hosted Ubuntu 24.04 with Docker and pinned govulncheck",
+      "environment_output_path": "tests/.artifacts/security/environment.json",
+      "material_names": ["go"],
+      "attempt_artifacts": ["security-evidence-{run_id}-{attempt}/environment.json"],
+      "dependencies": ["static"],
+      "capability_claims": [
+        "identity.principal-access", "application.installation-content",
+        "network.waku-foundation", "release.artifacts-provenance"
+      ],
+      "required_artifacts": [
+        "security-evidence-{run_id}-{attempt}/govulncheck.jsonl",
+        "security-evidence-{run_id}-{attempt}/govulncheck.verbose.txt",
+        "security-evidence-{run_id}-{attempt}/reconciliation.json"
+      ]
+    },
+    {
+      "id": "deployment",
+      "workflow_job_id": "deployment",
+      "workflow_job_name": "Product-ready Docker cluster",
+      "workflow_job_name_template": "Product-ready Docker cluster",
+      "command": "./tests/ci/deployment-gate.ps1 -Build",
+      "workflow_command_fragment": "./tests/ci/deployment-gate.ps1 -Build",
+      "environment": "GitHub-hosted Ubuntu 24.04 Docker/Compose runner",
+      "environment_output_path": "tests/.artifacts/deployment/environment.json",
+      "material_names": ["go", "debian"],
+      "attempt_artifacts": ["deployment-evidence-{run_id}-{attempt}/environment.json"],
+      "dependencies": ["static"],
+      "capability_claims": [
+        "workload.lifecycle", "hosting.operator-publication",
+        "operations.configuration-reload", "operations.backup-upgrade-rollback"
+      ],
+      "required_artifacts": [
+        "deployment-evidence-{run_id}-{attempt}/status.json",
+        "deployment-evidence-{run_id}-{attempt}/resources-before.json",
+        "deployment-evidence-{run_id}-{attempt}/resources-after.json",
+        "deployment-evidence-{run_id}-{attempt}/upgrade-backup/*",
+        "deployment-evidence-{run_id}-{attempt}/rollout-transaction/*",
+        "deployment-evidence-{run_id}-{attempt}/composite-readiness/*"
+      ]
+    },
+    {
+      "id": "native-install",
+      "workflow_job_id": "native-install",
+      "workflow_job_name": "Privileged systemd acceptance container",
+      "workflow_job_name_template": "Privileged systemd acceptance container",
+      "command": "./tests/ci/native-install-gate.ps1",
+      "workflow_command_fragment": "./tests/ci/native-install-gate.ps1",
+      "environment": "GitHub-hosted Ubuntu 24.04 running a privileged systemd acceptance container; acceptance for the native-host claim requires the recorded maintainer decision",
+      "environment_output_path": "tests/.artifacts/native-install/preflight-environment.json",
+      "material_names": ["go", "debian"],
+      "attempt_artifacts": ["native-install-evidence-{run_id}-{attempt}/preflight-environment.json"],
+      "dependencies": ["static"],
+      "capability_claims": ["operations.native-installation"],
+      "required_artifacts": [
+        "native-install-evidence-{run_id}-{attempt}/passed.txt",
+        "native-install-evidence-{run_id}-{attempt}/lifecycle.log",
+        "native-install-evidence-{run_id}-{attempt}/systemd.log",
+        "native-install-evidence-{run_id}-{attempt}/environment.json",
+        "native-install-evidence-{run_id}-{attempt}/SHA256SUMS"
+      ]
+    },
+    {
+      "id": "multinode",
+      "workflow_job_id": "multinode",
+      "workflow_job_name": "Segmented multi-node topology",
+      "workflow_job_name_template": "Segmented multi-node topology",
+      "command": "./tests/ci/multihost-gate.ps1 -BuildMode Always -ReportDir tests/.artifacts/reports/multihost",
+      "workflow_command_fragment": "./tests/ci/multihost-gate.ps1 -BuildMode Always -ReportDir tests/.artifacts/reports/multihost",
+      "environment": "GitHub-hosted Ubuntu 24.04 segmented Docker QA topology",
+      "environment_output_path": "tests/.artifacts/reports/multihost/environment.json",
+      "material_names": ["go", "debian"],
+      "attempt_artifacts": ["multihost-evidence-{run_id}-{attempt}/environment.json"],
+      "dependencies": ["static"],
+      "capability_claims": [
+        "network.waku-foundation", "discovery.operator-resolution",
+        "transfer.replication"
+      ],
+      "required_artifacts": [
+        "multihost-evidence-{run_id}-{attempt}/summary.json",
+        "multihost-evidence-{run_id}-{attempt}/snapshots.json",
+        "multihost-evidence-{run_id}-{attempt}/versions.json",
+        "multihost-evidence-{run_id}-{attempt}/compose.log"
+      ]
+    },
+    {
+      "id": "release-build-a",
+      "workflow_job_id": "release-builds",
+      "workflow_job_name": "Independent release build (a)",
+      "workflow_job_name_template": "Independent release build (${{ matrix.rebuild }})",
+      "command": "./ardents.ps1 package $env:RELEASE_VERSION -OutputDir dist/repro",
+      "workflow_command_fragment": "./ardents.ps1 package $env:RELEASE_VERSION -OutputDir dist/repro",
+      "environment": "Independent clean GitHub-hosted Ubuntu 24.04 runner with disposable anonymous Go caches and no-cache image builds",
+      "environment_output_path": "tests/.artifacts/release-build-a/environment.json",
+      "material_names": ["go", "debian", "powershell"],
+      "attempt_artifacts": ["release-repro-a-{run_id}-{attempt}/_dr06-evidence/environment.json"],
+      "dependencies": ["windows-interface", "fast", "tagged", "focused-tagged", "failure-contract", "security", "deployment", "native-install", "multinode"],
+      "capability_claims": [
+        "operations.backup-upgrade-rollback", "operations.native-installation",
+        "release.artifacts-provenance"
+      ],
+      "required_artifacts": [
+        "release-repro-a-{run_id}-{attempt}/SHA256SUMS",
+        "release-repro-a-{run_id}-{attempt}/ARTIFACTS.sha256",
+        "release-repro-a-{run_id}-{attempt}/provenance.unsigned.intoto.json",
+        "release-repro-a-{run_id}-{attempt}/release-manifest.json",
+        "release-repro-a-{run_id}-{attempt}/sbom.cdx.json"
+      ]
+    },
+    {
+      "id": "release-build-b",
+      "workflow_job_id": "release-builds",
+      "workflow_job_name": "Independent release build (b)",
+      "workflow_job_name_template": "Independent release build (${{ matrix.rebuild }})",
+      "command": "./ardents.ps1 package $env:RELEASE_VERSION -OutputDir dist/repro",
+      "workflow_command_fragment": "./ardents.ps1 package $env:RELEASE_VERSION -OutputDir dist/repro",
+      "environment": "Independent clean GitHub-hosted Ubuntu 24.04 runner with disposable anonymous Go caches and no-cache image builds",
+      "environment_output_path": "tests/.artifacts/release-build-b/environment.json",
+      "material_names": ["go", "debian", "powershell"],
+      "attempt_artifacts": ["release-repro-b-{run_id}-{attempt}/_dr06-evidence/environment.json"],
+      "dependencies": ["windows-interface", "fast", "tagged", "focused-tagged", "failure-contract", "security", "deployment", "native-install", "multinode"],
+      "capability_claims": [
+        "operations.backup-upgrade-rollback", "operations.native-installation",
+        "release.artifacts-provenance"
+      ],
+      "required_artifacts": [
+        "release-repro-b-{run_id}-{attempt}/SHA256SUMS",
+        "release-repro-b-{run_id}-{attempt}/ARTIFACTS.sha256",
+        "release-repro-b-{run_id}-{attempt}/provenance.unsigned.intoto.json",
+        "release-repro-b-{run_id}-{attempt}/release-manifest.json",
+        "release-repro-b-{run_id}-{attempt}/sbom.cdx.json"
+      ]
+    },
+    {
+      "id": "release-candidate",
+      "workflow_job_id": "release-candidate",
+      "workflow_job_name": "Reproducible release candidate",
+      "workflow_job_name_template": "Reproducible release candidate",
+      "command": "./scripts/release/verify.ps1 -ArtifactDir dist/repro-a -ExpectedVersion $env:RELEASE_VERSION -ExpectedCommit $env:GITHUB_SHA -RequireClean; ./scripts/release/verify.ps1 -ArtifactDir dist/repro-b -ExpectedVersion $env:RELEASE_VERSION -ExpectedCommit $env:GITHUB_SHA -RequireClean; compare the exact A/B file sets and every Get-FileHash SHA256; ./tests/ci/release-metadata-gate.ps1 -ArtifactDir dist/repro-a -ExpectedVersion $env:RELEASE_VERSION -ExpectedCommit $env:GITHUB_SHA; ./tests/ci/release-images-gate.ps1 -ArtifactDir dist/repro-a -ExpectedVersion $env:RELEASE_VERSION -ExpectedCommit $env:GITHUB_SHA; pinned Debian scripts/release/smoke.sh",
+      "workflow_command_fragment": "./scripts/release/verify.ps1 -ArtifactDir dist/repro-b -ExpectedVersion $env:RELEASE_VERSION -ExpectedCommit $env:GITHUB_SHA -RequireClean",
+      "environment": "Clean GitHub-hosted Ubuntu 24.04 release verifier with pinned Debian smoke image",
+      "environment_output_path": "tests/.artifacts/release-candidate/environment.json",
+      "material_names": ["debian"],
+      "attempt_artifacts": ["release-candidate-evidence-{run_id}-{attempt}/environment.json"],
+      "dependencies": ["release-builds"],
+      "capability_claims": [
+        "node.lifecycle", "operator.command-interface", "identity.principal-access",
+        "application.installation-content", "network.waku-foundation",
+        "discovery.operator-resolution", "content.operator-lifecycle",
+        "transfer.replication", "workload.lifecycle", "hosting.operator-publication",
+        "operations.diagnostics", "operations.configuration-reload",
+        "operations.backup-upgrade-rollback", "operations.native-installation",
+        "release.artifacts-provenance"
+      ],
+      "required_artifacts": [
+        "ardents-{release_version}-{run_id}-{attempt}/SHA256SUMS",
+        "ardents-{release_version}-{run_id}-{attempt}/ARTIFACTS.sha256",
+        "ardents-{release_version}-{run_id}-{attempt}/provenance.unsigned.intoto.json",
+        "ardents-{release_version}-{run_id}-{attempt}/release-manifest.json",
+        "ardents-{release_version}-{run_id}-{attempt}/sbom.cdx.json"
+      ]
+    }
+  ]
+}

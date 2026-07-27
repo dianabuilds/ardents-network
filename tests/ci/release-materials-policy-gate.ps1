@@ -77,6 +77,18 @@ foreach ($entry in $dockerfileRoles.GetEnumerator()) {
     }
 }
 
+$gateMaterialConsumers = [ordered]@{
+    "tests/ci/security-gate.ps1" = Get-RoleReference "test_runner_go"
+    "tests/ci/native-install-gate.ps1" = Get-RoleReference "test_runner_go"
+    "tests/fixtures/native-systemd.Dockerfile" = "FROM $(Get-RoleReference "node_runtime")"
+}
+foreach ($entry in $gateMaterialConsumers.GetEnumerator()) {
+    $consumer = Get-Content -Raw -LiteralPath (Join-Path $root $entry.Key)
+    if (-not $consumer.Contains([string]$entry.Value)) {
+        throw "DR-06 gate material consumers differ from release material policy: $($entry.Key)"
+    }
+}
+
 $nodeDockerfile = Get-Content -Raw -LiteralPath (Join-Path $root "deploy/docker/images/node.Dockerfile")
 $wrongRuntime = $nodeDockerfile.Replace(
     (Get-RoleReference "node_runtime"),

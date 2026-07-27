@@ -240,7 +240,7 @@ DR-06 evaluates exactly the fifteen listed capabilities and these environments:
 | Gate | Required environment | Scope |
 |---|---|---|
 | `static` | clean Ubuntu runner | format, vet, architecture, docs, catalogue and traceability |
-| `fast` | clean Windows runner | canonical fast/unit suite |
+| `fast` | GitHub-hosted Ubuntu 24.04 orchestrating the Linux test container | canonical fast/unit suite |
 | `tagged` | Linux container | retained tagged integration scenarios |
 | `application-process` | Linux container | existing Application Identity/Content process journey |
 | `network-foundation` | local canonical network fixture | current Waku foundation contract |

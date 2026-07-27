@@ -19,7 +19,7 @@ $mounts = @(
     "--mount", "type=bind,source=$reportPath,target=/out",
     "--mount", "type=volume,source=ardents-go-mod-cache,target=/go/pkg/mod",
     "--mount", "type=volume,source=ardents-go-build-cache,target=/root/.cache/go-build",
-    "-w", "/workspace", "golang:1.26-bookworm", "/bin/sh", "-c"
+    "-w", "/workspace", "docker.io/library/golang:1.26.5-bookworm@sha256:3f6236bd765f898a2a3c2946112b04097814c4529d44534674700cd07b9c6b4c", "/bin/sh", "-c"
 )
 
 & docker @mounts "go run $scanner -format json ./... > /out/govulncheck.jsonl"

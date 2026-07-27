@@ -13,7 +13,7 @@
   ],
   "evidence_gates": [
     {"id": "static", "owner": "Engineering / QA", "kind": "ci_job", "ci_job": "static", "required_environment": "ubuntu-latest", "release_gate": false},
-    {"id": "fast", "owner": "Engineering / QA", "kind": "ci_job", "ci_job": "fast", "required_environment": "windows-latest", "release_gate": false},
+    {"id": "fast", "owner": "Engineering / QA", "kind": "ci_job", "ci_job": "fast", "required_environment": "linux-container", "release_gate": false},
     {"id": "tagged", "owner": "Engineering / QA", "kind": "ci_job", "ci_job": "tagged", "required_environment": "linux-container", "release_gate": false},
     {"id": "application-process", "owner": "Application Interface / QA", "kind": "tagged_scenario", "ci_job": "tagged", "scenario_id": "APP-001", "required_environment": "linux-container", "release_gate": false},
     {"id": "application-discovery-lifecycle", "owner": "Application Interface / QA", "kind": "tagged_scenario", "ci_job": "tagged", "scenario_id": "APP-DISC-001", "required_environment": "local", "release_gate": false},

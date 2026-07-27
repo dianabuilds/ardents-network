@@ -11,14 +11,33 @@ on:
         description: Optional vX.Y.Z release candidate version
         required: false
         type: string
+      durable_evidence_uri:
+        description: Required with release_version; non-secret immutable destination/authority reference for supported-lifetime evidence
+        required: false
+        type: string
+      native_install_contract:
+        description: Required with release_version; explicit maintainer disposition of the executable native-install environment
+        required: false
+        default: unresolved
+        type: choice
+        options:
+          - unresolved
+          - privileged-systemd-container
 
 permissions:
+  actions: read
   contents: read
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: >-
+    ci-${{ github.workflow }}-${{
+      inputs.release_version != '' &&
+      format('qualification-{0}-{1}', github.sha, inputs.release_version) ||
+      (startsWith(github.ref, 'refs/tags/v') && format('release-{0}', github.ref) || github.ref)
+    }}
   # Version publication is recoverable but not atomic across both OCI images.
-  # Never cancel it between promotions; ordinary branch CI remains replaceable.
-  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+  # Never cancel release or qualification attempts; ordinary branch CI remains
+  # replaceable. Attempt-qualified artifact names preserve rerun history.
+  cancel-in-progress: ${{ !(startsWith(github.ref, 'refs/tags/v') || inputs.release_version != '') }}
 
 jobs:
   windows-interface:
@@ -27,16 +46,28 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - name: Capture gate environment
+        shell: pwsh
+        run: ./tests/ci/capture-dr06-environment.ps1 -Gate windows-interface
       - name: Parse supported PowerShell surfaces
         shell: pwsh
         run: |
+          New-Item -ItemType Directory -Force tests/.artifacts/prerequisites/windows-interface | Out-Null
           $files = @('ardents.ps1') + @(Get-ChildItem scripts,tests -Recurse -Filter '*.ps1' | ForEach-Object FullName)
           foreach ($file in $files) {
             $errors = $null
             [void][System.Management.Automation.Language.Parser]::ParseFile($file, [ref]$null, [ref]$errors)
             if ($errors.Count) { throw "$file contains PowerShell syntax errors: $($errors.Message -join '; ')" }
           }
-          ./ardents.ps1 help
+          ./ardents.ps1 help | Tee-Object tests/.artifacts/prerequisites/windows-interface/help.txt
+          if ($LASTEXITCODE -ne 0) { throw "repository help contract failed" }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-interface-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: tests/.artifacts/prerequisites/windows-interface
+          retention-days: 90
+          if-no-files-found: error
 
   static:
     name: Format, vet, and scenario catalog
@@ -48,6 +79,9 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      - name: Capture gate environment
+        shell: pwsh
+        run: ./tests/ci/capture-dr06-environment.ps1 -Gate static
       - name: Install pinned Application API generators
         shell: bash
         run: |
@@ -62,12 +96,27 @@ jobs:
           go install connectrpc.com/connect/cmd/protoc-gen-connect-go@v1.19.1
       - name: Canonical static gates
         shell: pwsh
+        env:
+          DR06_RELEASE_VERSION: ${{ inputs.release_version }}
+          DR06_DURABLE_EVIDENCE_URI: ${{ inputs.durable_evidence_uri }}
+          DR06_NATIVE_INSTALL_CONTRACT: ${{ inputs.native_install_contract }}
         run: |
+          if ($env:DR06_RELEASE_VERSION) {
+            if ($env:DR06_RELEASE_VERSION -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$') {
+              throw 'release_version must be an exact vX.Y.Z release-candidate identity'
+            }
+            if ([string]::IsNullOrWhiteSpace($env:DR06_DURABLE_EVIDENCE_URI)) {
+              throw 'durable_evidence_uri is required for a DR-06 qualification dispatch'
+            }
+            if ($env:DR06_NATIVE_INSTALL_CONTRACT -ne 'privileged-systemd-container') {
+              throw 'native_install_contract requires an explicit maintainer disposition'
+            }
+          }
           ./scripts/generate-api.ps1 -Check
           ./tests/check-format.ps1
           go vet ./...
           New-Item -ItemType Directory -Force tests/.artifacts/reports/catalog | Out-Null
-          go test ./tests/tooling/testcatalog ./tests/tooling/audittrace ./tests/tooling/archaccept ./tests/tooling/capabilitycatalog -count=1
+          go test ./tests/tooling/testcatalog ./tests/tooling/audittrace ./tests/tooling/archaccept ./tests/tooling/capabilitycatalog ./tests/tooling/dr06contract -count=1
           go run ./tests/tooling/testcatalog -tags "integration e2e" ./tests/... | Tee-Object tests/.artifacts/reports/catalog/validation.json
           if ($LASTEXITCODE -ne 0) { throw "scenario catalog validation failed" }
           $catalogEntries = @(Get-Content -Raw tests/.artifacts/reports/catalog/validation.json | ConvertFrom-Json)
@@ -75,15 +124,20 @@ jobs:
           go run ./tests/tooling/capabilitycatalog -check | Tee-Object tests/.artifacts/reports/catalog/capabilities.txt
           if ($LASTEXITCODE -ne 0) { throw "capability catalogue validation failed" }
           go run ./tests/tooling/audittrace
+          go run ./tests/tooling/dr06contract | Tee-Object tests/.artifacts/reports/catalog/dr06-contract.txt
+          if ($LASTEXITCODE -ne 0) { throw "DR-06 workflow contract validation failed" }
+          ./tests/ci/capture-dr06-environment-test.ps1
+          ./tests/ci/create-dr06-evidence-index-test.ps1
+          ./tests/ci/confirm-dr06-retention-test.ps1
           ./tests/ci/entrypoint-contract-gate-test.ps1
           ./tests/ci/release-source-identity-gate.ps1
           ./tests/ci/release-materials-policy-gate.ps1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: catalog-validation
+          name: catalog-validation-evidence-${{ github.run_id }}-${{ github.run_attempt }}
           path: tests/.artifacts/reports/catalog
-          retention-days: 30
+          retention-days: 90
           if-no-files-found: error
 
   critical-lifecycle:
@@ -101,29 +155,44 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      - name: Capture gate environment
+        shell: pwsh
+        run: ./tests/ci/capture-dr06-environment.ps1 -Gate critical-lifecycle
       - name: Verify audit traceability and critical-file diff coverage
         shell: pwsh
         run: |
+          New-Item -ItemType Directory -Force tests/.artifacts/prerequisites/critical-lifecycle | Out-Null
           $base = $env:AUDIT_DIFF_BASE
           if ([string]::IsNullOrWhiteSpace($base) -or $base -match '^0+$') {
             $base = git rev-parse HEAD^
             if ($LASTEXITCODE -ne 0) { throw "critical-file diff base is unavailable" }
           }
-          go run ./tests/tooling/audittrace -base $base
+          go run ./tests/tooling/audittrace -base $base 2>&1 |
+            Tee-Object tests/.artifacts/prerequisites/critical-lifecycle/audittrace.txt
+          if ($LASTEXITCODE -ne 0) { throw "critical audit traceability failed" }
       - name: Run critical race and lifecycle contracts
         shell: pwsh
-        run: >-
-          go test -race
-          ./internal/ingressproxy
-          ./internal/network/waku
-          ./internal/messaging/...
-          ./internal/content
-          ./internal/identity/access
-          ./internal/daemon
-          ./internal/workload/...
-          ./internal/transfer
-          ./internal/config
-          -count=1
+        run: |
+          go test -race `
+            ./internal/ingressproxy `
+            ./internal/network/waku `
+            ./internal/messaging/... `
+            ./internal/content `
+            ./internal/identity/access `
+            ./internal/daemon `
+            ./internal/workload/... `
+            ./internal/transfer `
+            ./internal/config `
+            -count=1 2>&1 |
+            Tee-Object tests/.artifacts/prerequisites/critical-lifecycle/race.txt
+          if ($LASTEXITCODE -ne 0) { throw "critical race/lifecycle contracts failed" }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: critical-lifecycle-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: tests/.artifacts/prerequisites/critical-lifecycle
+          retention-days: 90
+          if-no-files-found: error
 
   fast:
     name: Fast Docker/Linux suite
@@ -132,16 +201,20 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+      - name: Capture gate environment
+        shell: pwsh
+        run: ./tests/ci/capture-dr06-environment.ps1 -Gate fast
       - shell: pwsh
         run: ./ardents.ps1 test fast -RebuildContainer -CoverageProfile tests/.artifacts/coverage/fast.out
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: fast-evidence
+          name: fast-evidence-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             tests/.artifacts/coverage
             tests/.artifacts/resources
-          retention-days: 30
+            tests/.artifacts/dr06-environment/fast
+          retention-days: 90
           if-no-files-found: error
 
   tagged:
@@ -155,16 +228,60 @@ jobs:
         suite: [integration, e2e]
     steps:
       - uses: actions/checkout@v4
+      - name: Capture gate environment
+        shell: pwsh
+        run: ./tests/ci/capture-dr06-environment.ps1 -Gate tagged-${{ matrix.suite }}
       - shell: pwsh
         run: ./ardents.ps1 test ${{ matrix.suite }} -ReportDir tests/.artifacts/reports/${{ matrix.suite }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ${{ matrix.suite }}-evidence
+          name: ${{ matrix.suite }}-evidence-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             tests/.artifacts/reports/${{ matrix.suite }}
             tests/.artifacts/resources
-          retention-days: 30
+            tests/.artifacts/dr06-environment/tagged-${{ matrix.suite }}
+          retention-days: 90
+          if-no-files-found: error
+
+  focused-tagged:
+    name: ${{ matrix.gate }} focused evidence
+    needs: [static, critical-lifecycle]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - gate: application-process
+            suite: e2e
+            domain: application-interface
+            scenario: APP-001
+          - gate: network-foundation
+            suite: integration
+            domain: network-foundation
+            scenario: NFI-001
+          - gate: workload-integration
+            suite: integration
+            domain: workload
+            scenario: WKI-001
+    steps:
+      - uses: actions/checkout@v4
+      - name: Capture gate environment
+        shell: pwsh
+        run: ./tests/ci/capture-dr06-environment.ps1 -Gate ${{ matrix.gate }}
+      - name: Canonical focused tagged selection
+        shell: pwsh
+        run: ./ardents.ps1 test ${{ matrix.suite }} -Domain ${{ matrix.domain }} -Scenario ${{ matrix.scenario }} -ReportDir tests/.artifacts/reports/${{ matrix.gate }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ matrix.gate }}-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            tests/.artifacts/reports/${{ matrix.gate }}
+            tests/.artifacts/resources
+            tests/.artifacts/dr06-environment/${{ matrix.gate }}
+          retention-days: 90
           if-no-files-found: error
 
   failure-contract:
@@ -174,16 +291,20 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - name: Capture gate environment
+        shell: pwsh
+        run: ./tests/ci/capture-dr06-environment.ps1 -Gate failure-contract
       - shell: pwsh
         run: ./tests/ci/verify-failure-evidence.ps1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: deliberate-failure-evidence
+          name: deliberate-failure-evidence-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             tests/.artifacts/reports/ci-deliberate-failure
             tests/.artifacts/resources
-          retention-days: 30
+            tests/.artifacts/dr06-environment/failure-contract
+          retention-days: 90
           if-no-files-found: error
 
   security:
@@ -193,14 +314,17 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - name: Capture gate environment
+        shell: pwsh
+        run: ./tests/ci/capture-dr06-environment.ps1 -Gate security
       - shell: pwsh
         run: ./tests/ci/security-gate.ps1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: security-evidence
+          name: security-evidence-${{ github.run_id }}-${{ github.run_attempt }}
           path: tests/.artifacts/security
-          retention-days: 30
+          retention-days: 90
           if-no-files-found: error
 
   deployment:
@@ -210,33 +334,39 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - name: Capture gate environment
+        shell: pwsh
+        run: ./tests/ci/capture-dr06-environment.ps1 -Gate deployment
       - name: Canonical deployment gate
         shell: pwsh
         run: ./tests/ci/deployment-gate.ps1 -Build
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: deployment-evidence
+          name: deployment-evidence-${{ github.run_id }}-${{ github.run_attempt }}
           path: tests/.artifacts/deployment
-          retention-days: 30
+          retention-days: 90
           if-no-files-found: error
 
   native-install:
-    name: Native systemd installation
+    name: Privileged systemd acceptance container
     needs: static
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - name: Capture gate environment
+        shell: pwsh
+        run: ./tests/ci/capture-dr06-environment.ps1 -Gate native-install
       - name: Native install, upgrade, rollback, backup, restore, and uninstall gate
         shell: pwsh
         run: ./tests/ci/native-install-gate.ps1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: native-install-evidence
+          name: native-install-evidence-${{ github.run_id }}-${{ github.run_attempt }}
           path: tests/.artifacts/native-install
-          retention-days: 30
+          retention-days: 90
           if-no-files-found: error
 
   multinode:
@@ -246,20 +376,23 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+      - name: Capture gate environment
+        shell: pwsh
+        run: ./tests/ci/capture-dr06-environment.ps1 -Gate multinode
       - shell: pwsh
         run: ./tests/ci/multihost-gate.ps1 -BuildMode Always -ReportDir tests/.artifacts/reports/multihost
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: multihost-evidence
+          name: multihost-evidence-${{ github.run_id }}-${{ github.run_attempt }}
           path: tests/.artifacts/reports/multihost
-          retention-days: 30
+          retention-days: 90
           if-no-files-found: error
 
   release-builds:
     name: Independent release build (${{ matrix.rebuild }})
     if: startsWith(github.ref, 'refs/tags/v') || inputs.release_version != ''
-    needs: [windows-interface, fast, tagged, failure-contract, security, deployment, native-install, multinode]
+    needs: [windows-interface, fast, tagged, focused-tagged, failure-contract, security, deployment, native-install, multinode]
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     strategy:
@@ -272,14 +405,32 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
+      - name: Capture release-build environment
+        shell: pwsh
+        run: ./tests/ci/capture-dr06-environment.ps1 -Gate release-build-${{ matrix.rebuild }}
       - name: Build in clean runner and disposable caches
         shell: pwsh
-        run: ./ardents.ps1 package $env:RELEASE_VERSION -OutputDir dist/repro
+        run: |
+          $buildError = $null
+          try {
+            ./ardents.ps1 package $env:RELEASE_VERSION -OutputDir dist/repro 2>&1 |
+              Tee-Object tests/.artifacts/release-build-${{ matrix.rebuild }}/build.log
+            if ($LASTEXITCODE -ne 0) { throw "release build ${{ matrix.rebuild }} failed" }
+          } catch {
+            $buildError = $_
+          } finally {
+            if (-not (Test-Path -LiteralPath dist/repro)) {
+              New-Item -ItemType Directory -Force dist/repro | Out-Null
+            }
+            Copy-Item tests/.artifacts/release-build-${{ matrix.rebuild }} dist/repro/_dr06-evidence -Recurse
+          }
+          if ($null -ne $buildError) { throw $buildError }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
         with:
-          name: release-repro-${{ matrix.rebuild }}
+          name: release-repro-${{ matrix.rebuild }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: dist/repro
-          retention-days: 1
+          retention-days: 90
           if-no-files-found: error
 
   release-candidate:
@@ -296,25 +447,134 @@ jobs:
           fetch-depth: 0
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: release-repro-a
-          path: dist/repro-a
+          pattern: release-repro-a-${{ github.run_id }}-*
+          path: dist/repro-a-attempts
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: release-repro-b
-          path: dist/repro-b
+          pattern: release-repro-b-${{ github.run_id }}-*
+          path: dist/repro-b-attempts
+      - name: Select latest retained release-build attempts
+        shell: pwsh
+        run: |
+          foreach ($rebuild in 'a','b') {
+            $attemptRoot = "dist/repro-$rebuild-attempts"
+            $attempts = @(Get-ChildItem -LiteralPath $attemptRoot -Directory | ForEach-Object {
+              if ($_.Name -notmatch '-([0-9]+)$') { throw "release-build artifact has no attempt identity: $($_.Name)" }
+              [pscustomobject]@{ attempt = [int]$Matches[1]; directory = $_ }
+            } | Sort-Object attempt)
+            if ($attempts.Count -eq 0) { throw "release build $rebuild has no retained attempt" }
+            $selected = $attempts[-1].directory
+            $destination = "dist/repro-$rebuild"
+            New-Item -ItemType Directory -Force $destination | Out-Null
+            Copy-Item (Join-Path $selected.FullName '*') $destination -Recurse
+            $gateEvidence = Join-Path $destination '_dr06-evidence'
+            if (-not (Test-Path -LiteralPath $gateEvidence -PathType Container)) {
+              throw "release build $rebuild has no DR-06 environment evidence"
+            }
+            Remove-Item -LiteralPath $gateEvidence -Recurse -Force
+            Write-Host "release-build-$rebuild-attempt=$($attempts[-1].attempt)"
+          }
+      - name: Capture release-candidate environment
+        shell: pwsh
+        run: ./tests/ci/capture-dr06-environment.ps1 -Gate release-candidate
       - name: Compare and verify independent builds
         shell: pwsh
         run: |
-          $difference = Compare-Object (Get-Content dist/repro-a/SHA256SUMS) (Get-Content dist/repro-b/SHA256SUMS)
-          if ($difference) { throw "release artifacts are not reproducible: $($difference | Out-String)" }
-          ./scripts/release/verify.ps1 -ArtifactDir dist/repro-a -ExpectedVersion $env:RELEASE_VERSION -ExpectedCommit $env:GITHUB_SHA -RequireClean
-          ./tests/ci/release-metadata-gate.ps1 -ArtifactDir dist/repro-a -ExpectedVersion $env:RELEASE_VERSION -ExpectedCommit $env:GITHUB_SHA
-          ./tests/ci/release-images-gate.ps1 -ArtifactDir dist/repro-a -ExpectedVersion $env:RELEASE_VERSION -ExpectedCommit $env:GITHUB_SHA
-          docker run --rm --mount type=bind,source=${PWD}/dist/repro-a,target=/release,readonly --mount type=bind,source=${PWD},target=/workspace,readonly docker.io/library/debian:bookworm-slim@sha256:63a496b5d3b99214b39f5ed70eb71a61e590a77979c79cbee4faf991f8c0783e /bin/sh /workspace/scripts/release/smoke.sh /release $env:RELEASE_VERSION $env:GITHUB_SHA
+          & {
+            ./scripts/release/verify.ps1 -ArtifactDir dist/repro-a -ExpectedVersion $env:RELEASE_VERSION -ExpectedCommit $env:GITHUB_SHA -RequireClean
+            ./scripts/release/verify.ps1 -ArtifactDir dist/repro-b -ExpectedVersion $env:RELEASE_VERSION -ExpectedCommit $env:GITHUB_SHA -RequireClean
+            $filesA = @(Get-ChildItem -LiteralPath dist/repro-a -File | Sort-Object Name)
+            $filesB = @(Get-ChildItem -LiteralPath dist/repro-b -File | Sort-Object Name)
+            $difference = @(Compare-Object @($filesA.Name) @($filesB.Name))
+            if ($difference.Count -ne 0) { throw "release build payload sets differ: $($difference | Out-String)" }
+            foreach ($file in $filesA) {
+              $hashA = (Get-FileHash -Algorithm SHA256 -LiteralPath $file.FullName).Hash
+              $hashB = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path dist/repro-b $file.Name)).Hash
+              if ($hashA -ne $hashB) { throw "release artifact is not reproducible: $($file.Name)" }
+            }
+            ./tests/ci/release-metadata-gate.ps1 -ArtifactDir dist/repro-a -ExpectedVersion $env:RELEASE_VERSION -ExpectedCommit $env:GITHUB_SHA
+            ./tests/ci/release-images-gate.ps1 -ArtifactDir dist/repro-a -ExpectedVersion $env:RELEASE_VERSION -ExpectedCommit $env:GITHUB_SHA
+            docker run --rm --mount type=bind,source=${PWD}/dist/repro-a,target=/release,readonly --mount type=bind,source=${PWD},target=/workspace,readonly docker.io/library/debian:bookworm-slim@sha256:63a496b5d3b99214b39f5ed70eb71a61e590a77979c79cbee4faf991f8c0783e /bin/sh /workspace/scripts/release/smoke.sh /release $env:RELEASE_VERSION $env:GITHUB_SHA
+            if ($LASTEXITCODE -ne 0) { throw "release smoke failed" }
+          } 2>&1 | Tee-Object tests/.artifacts/release-candidate/verification.log
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: ardents-${{ env.RELEASE_VERSION }}
+          name: ardents-${{ env.RELEASE_VERSION }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: dist/repro-a
+          retention-days: 90
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: release-candidate-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: tests/.artifacts/release-candidate
+          retention-days: 90
+          if-no-files-found: error
+
+  qualification-index:
+    name: Commit-bound DR-06 evidence index
+    if: inputs.release_version != ''
+    needs: release-candidate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      contents: read
+    env:
+      RELEASE_VERSION: ${{ inputs.release_version }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: '*-${{ github.run_id }}-*'
+          path: tests/.artifacts/dr06-download
+      - name: Exclude prior aggregate packets from retry input
+        shell: pwsh
+        run: |
+          Get-ChildItem tests/.artifacts/dr06-download -Directory -Filter 'dr06-qualification-index-*' |
+            Remove-Item -Recurse -Force
+      - name: Capture complete workflow attempt history
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $metadata = 'tests/.artifacts/dr06-job-metadata'
+          New-Item -ItemType Directory -Force $metadata | Out-Null
+          for ($attempt = 1; $attempt -le [int]$env:GITHUB_RUN_ATTEMPT; $attempt++) {
+            $document = gh api "repos/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID/attempts/$attempt/jobs?per_page=100"
+            if ($LASTEXITCODE -ne 0) { throw "workflow job metadata download failed for attempt $attempt" }
+            $document | Set-Content -Encoding utf8 "$metadata/jobs-attempt-$attempt.json"
+            if ($attempt -lt [int]$env:GITHUB_RUN_ATTEMPT) {
+              gh run view $env:GITHUB_RUN_ID --attempt $attempt --log |
+                Set-Content -Encoding utf8 "tests/.artifacts/dr06-download/workflow-attempt-$attempt.log"
+              if ($LASTEXITCODE -ne 0) { throw "workflow log download failed for attempt $attempt" }
+            }
+          }
+      - name: Create commit-bound evidence index
+        shell: pwsh
+        env:
+          DR06_DURABLE_EVIDENCE_URI: ${{ inputs.durable_evidence_uri }}
+          DR06_NATIVE_INSTALL_CONTRACT: ${{ inputs.native_install_contract }}
+        run: |
+          ./tests/ci/create-dr06-evidence-index.ps1 `
+            -EvidenceRoot tests/.artifacts/dr06-download `
+            -JobMetadataRoot tests/.artifacts/dr06-job-metadata `
+            -OutputPath tests/.artifacts/dr06-index/qualification-index.json `
+            -ReleaseVersion $env:RELEASE_VERSION `
+            -ExpectedCommit $env:GITHUB_SHA `
+            -RunID $env:GITHUB_RUN_ID `
+            -RunAttempt ([int]$env:GITHUB_RUN_ATTEMPT) `
+            -DurableEvidenceURI $env:DR06_DURABLE_EVIDENCE_URI `
+            -NativeInstallContract $env:DR06_NATIVE_INSTALL_CONTRACT
+          Copy-Item tests/.artifacts/dr06-job-metadata tests/.artifacts/dr06-index/job-metadata -Recurse
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: dr06-qualification-index-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            tests/.artifacts/dr06-index
+            tests/.artifacts/dr06-download
           retention-days: 90
           if-no-files-found: error
 
@@ -338,7 +598,7 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: ardents-${{ github.ref_name }}
+          name: ardents-${{ github.ref_name }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: dist/release
       - name: Verify downloaded release payload
         shell: pwsh

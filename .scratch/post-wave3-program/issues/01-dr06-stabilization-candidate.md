@@ -1,8 +1,8 @@
 # DR-06: Qualify the existing stabilization candidate
 
-Status: ready-for-agent
+Status: ready-for-human
 State: open
-Labels: ready-for-agent
+Labels: ready-for-human
 Class: R3 qualification program
 
 ## Parent
@@ -91,22 +91,6 @@ such a change.
   candidate; current 1-day, 30-day, and 90-day workflow retention is
   insufficient as a final release record.
 
-### Gate dependency order
-
-```text
-static -> critical-lifecycle -> fast/tagged
-static -> security/deployment/native-install/multinode
-windows-interface + failure-contract + all required gates
-  -> independent release-builds A and B
-  -> release-candidate verification
-  -> aggregate capability decision
-```
-
-The `application-process`, `network-foundation`, and
-`workload-integration` claims are focused tagged selections. They must remain
-independently attributable even if CI executes them inside the complete tagged
-suites.
-
 ## Authority and state ownership
 
 - The Release owner owns the qualification run, aggregate evidence index,
@@ -136,18 +120,44 @@ no failed scenario. Missing or unpublished evidence is a failure.
 
 | Gate | Exact command or runner | Required environment | Retained evidence | Owner | Capability claims |
 |---|---|---|---|---|---|
-| `static` | `.github/workflows/ci.yml` job `static`: `./scripts/generate-api.ps1 -Check`; `./tests/check-format.ps1`; `go vet ./...`; tooling tests; tagged catalogue generation; `go run ./tests/tooling/capabilitycatalog -check`; `go run ./tests/tooling/audittrace`; entrypoint, source-identity, and materials-policy gates | Clean Ubuntu 24.04, `go.mod` toolchain, pinned generators | Catalogue JSON/text plus a commit/environment/command/timing manifest and hashes | Engineering / QA | All fifteen |
-| `fast` | `./ardents.ps1 test fast -RebuildContainer -CoverageProfile tests/.artifacts/coverage/fast.out` | Resolved canonical host contract plus clean Linux Docker test runtime | Coverage, resource snapshots, environment manifest, console result and hashes | Engineering / QA | `node.lifecycle`, `operator.command-interface`, `identity.principal-access`, `application.installation-content`, `network.waku-foundation`, `discovery.operator-resolution`, `content.operator-lifecycle`, `transfer.replication`, `workload.lifecycle`, `hosting.operator-publication`, `operations.diagnostics`, `operations.configuration-reload` |
-| `tagged` | `./ardents.ps1 test integration -ReportDir tests/.artifacts/reports/integration`; `./ardents.ps1 test e2e -ReportDir tests/.artifacts/reports/e2e` | Clean Ubuntu host and Linux test container | Raw per-test JSON, `summary.json`, `junit.xml`, resource snapshots, environment manifest and hashes for both suites | Engineering / QA | `node.lifecycle`, `operator.command-interface`, `identity.principal-access`, `discovery.operator-resolution`, `content.operator-lifecycle`, `transfer.replication`, `operations.diagnostics` |
+| `static` | `.github/workflows/ci.yml` job `static`: `./scripts/generate-api.ps1 -Check`; `./tests/check-format.ps1`; `go vet ./...`; tooling tests; tagged catalogue generation; `go run ./tests/tooling/capabilitycatalog -check`; `go run ./tests/tooling/audittrace`; `go run ./tests/tooling/dr06contract`; entrypoint, source-identity, and materials-policy gates | GitHub-hosted Ubuntu 24.04, `go.mod` toolchain, pinned generators | Catalogue JSON/text, DR-06 contract result, per-attempt environment/toolchain/material manifest, GitHub job timing/runner identity and indexed hashes | Engineering / QA | All fifteen |
+| `critical-lifecycle` | `go run ./tests/tooling/audittrace -base <event-base>`; critical package `go test -race ... -count=1` selection in job `critical-lifecycle` | GitHub-hosted Ubuntu 24.04 with the `go.mod` toolchain | Audittrace and race console captures plus GitHub job timing/runner identity and indexed hashes | Engineering / QA | Prerequisite for `fast`, `tagged`, APP-001, NFI-001 and WKI-001 |
+| `windows-interface` | Parse `ardents.ps1` and every supported `scripts/tests` PowerShell surface; `./ardents.ps1 help` | GitHub-hosted Windows Server 2025 | Help output, OS/PowerShell/source/run identity and indexed hashes | Engineering / QA | Release-build prerequisite; no Linux runtime claim |
+| `fast` | `./ardents.ps1 test fast -RebuildContainer -CoverageProfile tests/.artifacts/coverage/fast.out` | GitHub-hosted Ubuntu 24.04 orchestration with a clean Linux Docker test runtime; Windows is not the test runtime | Coverage, resource snapshots, GitHub job environment/timing and indexed hashes | Engineering / QA | `node.lifecycle`, `operator.command-interface`, `identity.principal-access`, `application.installation-content`, `network.waku-foundation`, `discovery.operator-resolution`, `content.operator-lifecycle`, `transfer.replication`, `workload.lifecycle`, `hosting.operator-publication`, `operations.diagnostics`, `operations.configuration-reload` |
+| `tagged` | `./ardents.ps1 test integration -ReportDir tests/.artifacts/reports/integration`; `./ardents.ps1 test e2e -ReportDir tests/.artifacts/reports/e2e` | GitHub-hosted Ubuntu 24.04 orchestration with the Linux test container | Raw per-test JSON, `summary.json`, `junit.xml`, resource snapshots, per-attempt environment/toolchain/material manifest, GitHub job timing/runner identity and indexed hashes for both suites | Engineering / QA | `node.lifecycle`, `operator.command-interface`, `identity.principal-access`, `discovery.operator-resolution`, `content.operator-lifecycle`, `transfer.replication`, `operations.diagnostics` |
+| `failure-contract` | `./tests/ci/verify-failure-evidence.ps1` | GitHub-hosted Ubuntu 24.04 orchestration with the Linux test container | Deliberate raw failure, summary, JUnit, verification record, resources, job timing/runner identity and indexed hashes | Engineering / QA | Release-build prerequisite proving failures remain failures and retain evidence |
 | `application-process` | `./ardents.ps1 test e2e -Domain application-interface -Scenario APP-001 -ReportDir tests/.artifacts/reports/application-process` | Linux container with Unix-domain-socket Application fixture | Focused raw JSON, summary, JUnit, selector identity and hashes | Application Interface / QA | `application.installation-content` |
 | `network-foundation` | `./ardents.ps1 test integration -Domain network-foundation -Scenario NFI-001 -ReportDir tests/.artifacts/reports/network-foundation` | Canonical local Linux Waku fixture | Focused raw JSON, summary, JUnit, selector identity and hashes | Network Foundation / QA | `network.waku-foundation` |
 | `workload-integration` | `./ardents.ps1 test integration -Domain workload -Scenario WKI-001 -ReportDir tests/.artifacts/reports/workload-integration` | Canonical local Linux workload fixture | Focused raw JSON, summary, JUnit, selector identity and hashes | Workload and Hosting / QA | `workload.lifecycle`, `hosting.operator-publication` |
 | `security` | `./tests/ci/security-gate.ps1` | Clean Ubuntu hostile-input runner with Docker and pinned vulnerability tooling | `govulncheck.jsonl`, verbose output, `reconciliation.json`, environment manifest and hashes | Security / QA | `identity.principal-access`, `application.installation-content`, `network.waku-foundation`, `release.artifacts-provenance` |
 | `deployment` | `./tests/ci/deployment-gate.ps1 -Build` | Clean Linux Docker/Compose runner | Upgrade/backup, rollout transaction, composite readiness, three-Node status, logs, manifest and hashes | Operations / QA | `workload.lifecycle`, `hosting.operator-publication`, `operations.configuration-reload`, `operations.backup-upgrade-rollback` |
-| `native-install` | `./tests/ci/native-install-gate.ps1` | Resolved supported Linux systemd environment | Native lifecycle evidence, systemd logs, pass marker, environment manifest and hashes | Operations / QA | `operations.native-installation` |
+| `native-install` | `./tests/ci/native-install-gate.ps1` | Executable truth: GitHub-hosted Ubuntu 24.04 running a privileged systemd acceptance container; adequacy for the native-host claim is a required maintainer decision | Native lifecycle output, systemd logs, pass marker, environment manifest and `SHA256SUMS` | Operations / QA | `operations.native-installation` |
 | `multinode` | `./tests/ci/multihost-gate.ps1 -BuildMode Always -ReportDir tests/.artifacts/reports/multihost` | Canonical segmented Linux multinode QA environment | Versions, summary, snapshots, Compose logs, optional stability samples, manifest and hashes | Network and Operations / QA | `network.waku-foundation`, `discovery.operator-resolution`, `transfer.replication` |
-| `release-builds` | Two independent jobs, each running `./ardents.ps1 package $env:RELEASE_VERSION -OutputDir dist/repro` | Clean immutable Ubuntu runners with independent disposable caches | Complete `release-repro-a` and `release-repro-b`, source/toolchain/base identity and hashes | Release | `operations.backup-upgrade-rollback`, `operations.native-installation`, `release.artifacts-provenance` |
-| `release-candidate` | Existing CI block: compare A/B `SHA256SUMS`; `./scripts/release/verify.ps1`; release metadata and image gates; pinned Debian smoke | Canonical clean Linux release environment | Verified final payload plus aggregate upstream evidence index and hashes retained for the supported lifetime | Release | All fifteen |
+| `release-builds` | Two independent matrix jobs, each running `./ardents.ps1 package $env:RELEASE_VERSION -OutputDir dist/repro` | Separate clean GitHub-hosted Ubuntu 24.04 runners with independent anonymous Go caches and no-cache image builds | Complete attempt-qualified `release-repro-a` and `release-repro-b`, source/toolchain/base identity and hashes, staged 90 days pending durable handoff | Release | `operations.backup-upgrade-rollback`, `operations.native-installation`, `release.artifacts-provenance` |
+| `release-candidate` | Verify A; verify B; compare every payload file hash; run release metadata and image gates plus pinned Debian smoke; then create the commit-bound DR-06 index | Clean GitHub-hosted Ubuntu 24.04 release verifier | Verified final payload plus all upstream artifact hashes, job start/end times, runner labels, commands, dependencies and complete attempt history; staging is 90 days and acceptance waits for supported-lifetime durable handoff | Release | All fifteen |
+
+The machine-readable command/claim/artifact contract is
+`tests/ci/dr06-gates.json`. The remaining execution properties are:
+
+| Gate | Owning workflow/job | Dependencies | Retention | Local reproduction | Available on this preflight commit |
+|---|---|---|---|---|---|
+| `windows-interface` | `ci.yml` / `windows-interface` | none | 90-day attempt-qualified staging; supported-lifetime export required | Yes on the current Windows host | Mechanically yes; not run as qualification |
+| `static` | `ci.yml` / `static` | none | same | Yes with repository toolchain | Yes; generated-register, format, audittrace and DR-06 contract checks pass on the integration commit |
+| `critical-lifecycle` | `ci.yml` / `critical-lifecycle` | `static` | same | Windows Go is diagnostic only; canonical run is hosted Ubuntu | Hosted runner only after `static` passes |
+| `fast` | `ci.yml` / `fast` | `static`, `critical-lifecycle` | same | Requires Docker daemon and Linux test container | Not local: Docker daemon unavailable; hosted job exists |
+| `tagged-integration` | `ci.yml` / `tagged` (`integration`) | `static`, `critical-lifecycle` | same | Requires Docker daemon and Linux test container | Not local; hosted job exists |
+| `tagged-e2e` | `ci.yml` / `tagged` (`e2e`) | `static`, `critical-lifecycle` | same | Requires Docker daemon and Linux test container | Not local; hosted job exists |
+| `application-process` / APP-001 | `ci.yml` / `focused-tagged` | `static`, `critical-lifecycle` | same | Same plus Unix-socket fixture | Not local; hosted job exists |
+| `network-foundation` / NFI-001 | `ci.yml` / `focused-tagged` | `static`, `critical-lifecycle` | same | Same plus canonical Waku fixture | Not local; hosted job exists |
+| `workload-integration` / WKI-001 | `ci.yml` / `focused-tagged` | `static`, `critical-lifecycle` | same | Same plus workload fixture | Not local; hosted job exists |
+| `failure-contract` | `ci.yml` / `failure-contract` | `static` | same, including failed evidence | Requires Docker daemon and Linux test container | Not local; hosted job exists |
+| `security` | `ci.yml` / `security` | `static` | same | Requires Docker and pinned scanner download | Not local; hosted job exists |
+| `deployment` | `ci.yml` / `deployment` | `static` | same | Requires Docker/Compose | Not local; hosted job exists |
+| `native-install` | `ci.yml` / `native-install` | `static` | same | Requires Docker privileged mode; real-host equivalence is not local-substitutable | Mechanically hosted; qualification adequacy is a human gate |
+| `multinode` | `ci.yml` / `multinode` | `static` | same | Requires Docker segmented topology | Not local; hosted job exists |
+| `release-build-a` | `ci.yml` / `release-builds` (`a`) | all prerequisite jobs | same | Requires clean source, Docker, immutable materials and an exact version | Unavailable until blockers, version and runner authority are resolved |
+| `release-build-b` | `ci.yml` / `release-builds` (`b`) | all prerequisite jobs | same | Same, on a separate runner/cache | Unavailable until the same human gates |
+| `release-candidate` | `ci.yml` / `release-candidate`, then `qualification-index` | A and B | same; durable read-back is verified by `confirm-dr06-retention.ps1` | No local substitute for hosted attempt metadata and independent builds | Unavailable until every blocker/human gate is resolved |
 
 ## Retry and failure policy
 
@@ -157,6 +167,9 @@ no failed scenario. Missing or unpublished evidence is a failure.
 - If infrastructure or a suspected flake requires another attempt, both
   attempts, their `run_id`/`run_attempt`, logs, artifacts, and classification
   are retained.
+- The commit-bound index validates the environment manifest for every executed
+  success/failure gate attempt and the complete workflow log for every earlier
+  failed attempt; either omission fails the retry packet.
 - A flake must be reproduced or remediated before acceptance. The affected
   gate then runs again from a clean environment on the same source commit.
 - A changed source commit invalidates every earlier gate for the new aggregate.
@@ -291,3 +304,85 @@ This issue closes only when one of these outcomes is recorded:
    capability remains `Q=no`, and no production release claim is made.
 
 Passing only the locally available preparation checks is not an exit.
+
+## Comments
+
+### Stabilization preflight disposition — 2026-07-27
+
+The executable preflight was inspected from clean
+`main@b0b0f951bd06e8ffae47f28669cd350681102839`, equal to `origin/main`.
+That commit has a pre-existing static blocker:
+`go run ./tests/tooling/capabilitycatalog -check` reports that the generated
+capability register differs from its canonical JSON source. The integrator must
+regenerate/review that projection; this issue does not edit aggregate
+capability truth.
+
+The workflow contract now records the actual execution environments and keeps
+every artifact name distinct by GitHub `run_id` and `run_attempt`. A
+workflow-dispatched qualification requires:
+
+1. an exact `release_version`;
+2. a non-empty `durable_evidence_uri` naming the Release-owner-approved
+   immutable destination/authority;
+3. explicit selection of `privileged-systemd-container` for
+   `native_install_contract`.
+
+The third input is a maintainer disposition, not a technical assertion that a
+privileged container is identical to a real booted Linux host. If that
+equivalence is rejected, the workflow must be changed to an authorized
+self-hosted real systemd runner before qualification.
+
+GitHub's 90-day artifact retention is staging only. The generated
+commit-bound index remains `qualification_accepted=false`; the Release owner
+must export every success/failure attempt to the named durable destination,
+verify the index hashes after handoff, classify any retry, and then make the
+claim-by-claim decision. No `Q` value changes in this preflight.
+
+The next qualification source commit is necessarily later than the inspected
+baseline because the preflight contracts changed. It must be selected only
+after the integrator resolves the catalogue projection/environment patch and
+the resulting tree is clean.
+
+#### Gate dependency order
+
+```text
+static -> critical-lifecycle -> fast/tagged
+static -> security/deployment/native-install/multinode
+windows-interface + failure-contract + all required gates
+  -> independent release-builds A and B
+  -> release-candidate verification
+  -> aggregate capability decision
+```
+
+The `application-process`, `network-foundation`, and
+`workload-integration` claims are focused tagged selections. They must remain
+independently attributable even if CI executes them inside the complete tagged
+suites.
+
+### Integrator-owned patch disposition
+
+Integrator authorization was received on 2026-07-27 through the repository
+task: eliminate the identified blockers and integrate the result into `main`.
+This explicitly authorized the canonical `fast` environment and EOL changes
+that the original preflight scope had reserved for the integrator.
+
+Applied in the DR-06 integration commit:
+
+1. `docs/engineering/capability-evidence-register.md` is fixed to LF in
+   `.gitattributes`, regenerated, and verified;
+2. the canonical `fast` gate now uses `linux-container`;
+3. the Wave 3 synthesis records the GitHub-hosted Ubuntu runner orchestrating
+   the Linux test container;
+4. repository Go files were normalized to the existing `*.go text eol=lf`
+   contract and the format gate passes.
+
+The remaining maintainer decision is intentionally not inferred:
+
+1. either accept the executable container contract by adding
+   `privileged-systemd-container` to the capabilitycatalog environment
+   allowlist, changing the canonical `native-install` gate to that value, and
+   changing the synthesis row to the same exact wording; or preserve
+   `linux-systemd` and replace the hosted container job with an authorized
+   self-hosted real systemd runner/gate;
+2. rerun `capabilitycatalog -check` on the selected hosted Linux runner before
+   qualification.

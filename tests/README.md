@@ -7,6 +7,8 @@ Execution model:
 
 - `tests/run.ps1` always executes suites inside the Linux test container;
 - Windows is a host orchestration surface, not a test runtime;
+- the Linux test container is the canonical `fast` runtime on every supported
+  host, including the GitHub-hosted Ubuntu runner used by CI;
 - the fast suite executes `go test ./...` inside that container;
 - `integration` tests are opt-in via `-tags integration`;
 - `e2e` tests are opt-in via `-tags e2e`;
@@ -74,10 +76,11 @@ cross-check for tag interaction. It does not replace the separately attributable
 integration and E2E jobs.
 
 All commands are run from the repository root with the `go.mod` toolchain. A
-managed environment that cannot write the default Go cache may point `GOCACHE`
-at a writable workspace directory. A source snapshot without valid Git metadata
-may set `GOFLAGS=-buildvcs=false`; the job must record either normalization in
-its retained environment evidence.
+managed environment that cannot write the configured external Go cache may
+point `GOCACHE` at a task-specific system temporary directory, never inside
+the repository. A source snapshot without valid Git
+metadata may set `GOFLAGS=-buildvcs=false`; the job must record either
+normalization in its retained environment evidence.
 
 The matrix is fail-closed: warnings, missing summary/JUnit files, non-zero child
 processes, and vulnerability drift cannot be converted into a successful job
@@ -127,6 +130,40 @@ Artifact publication and storage rules:
   supported lifetime of that release
 - a job that cannot publish its required failure or release artifacts is itself
   failed; a later retry must not erase the earlier failure evidence
+
+DR-06 retention and environment contract:
+
+- Linux test container is the canonical `fast` runtime; Windows supplies only
+  the separately retained `windows-interface` orchestration prerequisite.
+- The current `native-install` job runs a privileged systemd acceptance
+  container on a GitHub-hosted Ubuntu runner. That is the executable CI truth,
+  but it does not become equivalent to a real Linux systemd host unless a
+  maintainer explicitly accepts that environment for the native-installation
+  claim.
+- Every DR-06 workflow artifact name includes the GitHub `run_id` and
+  `run_attempt`. A rerun therefore cannot replace an earlier artifact by name.
+- Every actually executed gate attempt emits an `environment.json` manifest
+  before its canonical command. The manifest binds the source SHA, declared
+  environment, runner image identity, Go/PowerShell/Docker versions, workflow
+  and gate-contract hashes, and immutable release/test base materials.
+- Before indexing a retry, CI downloads the complete workflow log for every
+  earlier attempt. The index rejects any failed attempt without that log or
+  any executed gate attempt without its environment manifest.
+- GitHub Actions provides 90-day staging retention for the candidate packet.
+  Before Release-owner acceptance, every success and failure attempt must be
+  exported to the approved immutable destination and retained for the supported
+  lifetime of the candidate. The commit-bound index records that destination;
+  an upload to workflow staging alone is not durable release evidence.
+- After exporting and reading the packet back from that destination, run
+  `powershell -NoProfile -File tests/ci/confirm-dr06-retention.ps1
+  -IndexPath <restored-packet>/dr06-index/qualification-index.json
+  -EvidenceRoot <restored-packet>/dr06-download
+  -DurableEvidenceURI <approved-reference> -ReceiptPath <receipt.json>`.
+  The verifier checks every indexed size and SHA-256 and emits a non-accepting
+  receipt for Release-owner review; a receipt never sets `Q=yes`.
+- A same-run retry remains visible in the index. An earlier failure requires an
+  explicit Release-owner disposition and a clean rerun policy; a later green
+  job never silently replaces it.
 
 Release and review use cases:
 

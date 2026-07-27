@@ -387,14 +387,26 @@
       "audit_id": "SUP-001",
       "issue": "ARD-019",
       "priority": "P1",
-      "critical_files": ["scripts/release/materials.json", "scripts/release/build.ps1", "scripts/release/verify.ps1"],
+      "critical_files": [
+        "scripts/release/materials.json",
+        "scripts/release/build.ps1",
+        "scripts/release/verify.ps1",
+        "tests/ci/security-gate.ps1",
+        "tests/ci/release-materials-policy-gate.ps1"
+      ],
       "evidence": [{
         "kind": "ci_contract",
         "file": "tests/ci/release-materials-policy-gate.ps1",
         "name": "immutable materials and independent cache policy",
-        "match": "release builds do not isolate mutable build caches",
+        "match": "DR-06 gate material consumers differ from release material policy",
         "gate": "static",
-        "covers": ["scripts/release/materials.json", "scripts/release/build.ps1", "scripts/release/verify.ps1"]
+        "covers": [
+          "scripts/release/materials.json",
+          "scripts/release/build.ps1",
+          "scripts/release/verify.ps1",
+          "tests/ci/security-gate.ps1",
+          "tests/ci/release-materials-policy-gate.ps1"
+        ]
       }]
     },
     {
