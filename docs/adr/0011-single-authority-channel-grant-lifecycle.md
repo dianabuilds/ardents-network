@@ -127,10 +127,21 @@ unapproved member must be fenced even when its receipt MAC verifies.
 
 An authority operation progresses durably through request, preparation,
 delivery, installation, activation commit, activation, external checkpoint
-retention and completion. It may abort only before activation commit. Retry
-uses one request/operation identity; restart resumes the durable phase. Failure
-to retain a post-activation checkpoint leaves the operation active but
-incomplete and blocks another security mutation; it never rolls back.
+retention and completion. It persists the original request ID and operation ID
+plus, for each delivery, the delivery ID, canonical sealed envelope bytes and
+digest, receipt verifier and delivery retry generation. It may abort only before
+activation commit.
+
+Ordinary retry and restart resume the durable phase with the original request,
+operation and delivery IDs and resend the exact stored envelope bytes; they do
+not reseal the bundle, mint a new receipt key or allocate a replacement delivery
+identity. Explicit reissue is the only transition that may replace a delivery
+identity or envelope bytes. It retains the request and operation IDs, increments
+the delivery retry generation, atomically persists the replacement delivery
+record and invalidates the prior receipt verifier before the replacement can be
+acknowledged. Failure to retain a post-activation checkpoint leaves the
+operation active but incomplete and blocks another security mutation; it never
+rolls back.
 
 Removal cannot be instantaneous across a partition. The authority reports a
 membership change complete only after every surviving approved member host has

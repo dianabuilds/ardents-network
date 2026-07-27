@@ -337,3 +337,32 @@ ADR-0011 remains `Proposed`. `realm.channel-grant-authority` remains
 CGA-01 remains `needs-info` and blocked; its implementation triage is not
 authorized. No production implementation or push is authorized by this
 disposition.
+
+### P2 delivery-retry remediation — 2026-07-27
+
+The maintainer P2 is corrected in the uncommitted working tree based on
+`main@74aee897277b27212d99d250de423e9e1e4a0ce6`.
+
+`docs/adr/0011-single-authority-channel-grant-lifecycle.md:128-146` now:
+
+- persists the original request ID, operation ID, delivery ID, canonical sealed
+  envelope bytes/digest, receipt verifier and delivery retry generation;
+- requires ordinary retry and restart to reuse the original request,
+  operation and delivery IDs and exact stored envelope bytes without resealing,
+  minting another receipt key or allocating a replacement delivery identity;
+- makes explicit reissue the only transition allowed to replace a delivery
+  identity or envelope bytes, while retaining request/operation IDs,
+  incrementing delivery retry generation, atomically persisting the replacement
+  record and invalidating the previous receipt verifier.
+
+Post-remediation checks passed:
+
+- `git diff --check`;
+- `go test ./tests/tooling/doccontract ./tests/tooling/archaccept -count=1`;
+- `go run ./tests/tooling/capabilitycatalog -check`:
+  `24 capabilities, 8 domains, 0 qualified`.
+
+The corrected packet is ready for maintainer re-review, not implicitly
+accepted. ADR-0011 remains `Proposed`; `realm.channel-grant-authority` remains
+`I=partial, R=no, O=no, Q=no`; CGA-01 remains blocked until explicit maintainer
+acceptance. No production code or capability projection was changed.
