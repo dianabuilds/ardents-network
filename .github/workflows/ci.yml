@@ -45,7 +45,7 @@ jobs:
     runs-on: windows-2025
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: Capture gate environment
         shell: pwsh
         run: ./tests/ci/capture-dr06-environment.ps1 -Gate windows-interface
@@ -61,7 +61,7 @@ jobs:
           }
           ./ardents.ps1 help | Tee-Object tests/.artifacts/prerequisites/windows-interface/help.txt
           if ($LASTEXITCODE -ne 0) { throw "repository help contract failed" }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: windows-interface-evidence-${{ github.run_id }}-${{ github.run_attempt }}
@@ -74,8 +74,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32
         with:
           go-version-file: go.mod
           cache: true
@@ -132,7 +132,7 @@ jobs:
           ./tests/ci/entrypoint-contract-gate-test.ps1
           ./tests/ci/release-source-identity-gate.ps1
           ./tests/ci/release-materials-policy-gate.ps1
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: catalog-validation-evidence-${{ github.run_id }}-${{ github.run_attempt }}
@@ -148,10 +148,10 @@ jobs:
     env:
       AUDIT_DIFF_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32
         with:
           go-version-file: go.mod
           cache: true
@@ -186,7 +186,7 @@ jobs:
             -count=1 2>&1 |
             Tee-Object tests/.artifacts/prerequisites/critical-lifecycle/race.txt
           if ($LASTEXITCODE -ne 0) { throw "critical race/lifecycle contracts failed" }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: critical-lifecycle-evidence-${{ github.run_id }}-${{ github.run_attempt }}
@@ -200,13 +200,13 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: Capture gate environment
         shell: pwsh
         run: ./tests/ci/capture-dr06-environment.ps1 -Gate fast
       - shell: pwsh
         run: ./ardents.ps1 test fast -RebuildContainer -CoverageProfile tests/.artifacts/coverage/fast.out
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: fast-evidence-${{ github.run_id }}-${{ github.run_attempt }}
@@ -227,13 +227,13 @@ jobs:
       matrix:
         suite: [integration, e2e]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: Capture gate environment
         shell: pwsh
         run: ./tests/ci/capture-dr06-environment.ps1 -Gate tagged-${{ matrix.suite }}
       - shell: pwsh
         run: ./ardents.ps1 test ${{ matrix.suite }} -ReportDir tests/.artifacts/reports/${{ matrix.suite }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: ${{ matrix.suite }}-evidence-${{ github.run_id }}-${{ github.run_attempt }}
@@ -266,14 +266,14 @@ jobs:
             domain: workload
             scenario: WKI-001
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: Capture gate environment
         shell: pwsh
         run: ./tests/ci/capture-dr06-environment.ps1 -Gate ${{ matrix.gate }}
       - name: Canonical focused tagged selection
         shell: pwsh
         run: ./ardents.ps1 test ${{ matrix.suite }} -Domain ${{ matrix.domain }} -Scenario ${{ matrix.scenario }} -ReportDir tests/.artifacts/reports/${{ matrix.gate }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: ${{ matrix.gate }}-evidence-${{ github.run_id }}-${{ github.run_attempt }}
@@ -290,13 +290,13 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: Capture gate environment
         shell: pwsh
         run: ./tests/ci/capture-dr06-environment.ps1 -Gate failure-contract
       - shell: pwsh
         run: ./tests/ci/verify-failure-evidence.ps1
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: deliberate-failure-evidence-${{ github.run_id }}-${{ github.run_attempt }}
@@ -313,13 +313,13 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: Capture gate environment
         shell: pwsh
         run: ./tests/ci/capture-dr06-environment.ps1 -Gate security
       - shell: pwsh
         run: ./tests/ci/security-gate.ps1
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: security-evidence-${{ github.run_id }}-${{ github.run_attempt }}
@@ -333,14 +333,14 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: Capture gate environment
         shell: pwsh
         run: ./tests/ci/capture-dr06-environment.ps1 -Gate deployment
       - name: Canonical deployment gate
         shell: pwsh
         run: ./tests/ci/deployment-gate.ps1 -Build
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: deployment-evidence-${{ github.run_id }}-${{ github.run_attempt }}
@@ -354,14 +354,14 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: Capture gate environment
         shell: pwsh
         run: ./tests/ci/capture-dr06-environment.ps1 -Gate native-install
       - name: Native install, upgrade, rollback, backup, restore, and uninstall gate
         shell: pwsh
         run: ./tests/ci/native-install-gate.ps1
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: native-install-evidence-${{ github.run_id }}-${{ github.run_attempt }}
@@ -375,13 +375,13 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: Capture gate environment
         shell: pwsh
         run: ./tests/ci/capture-dr06-environment.ps1 -Gate multinode
       - shell: pwsh
         run: ./tests/ci/multihost-gate.ps1 -BuildMode Always -ReportDir tests/.artifacts/reports/multihost
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: multihost-evidence-${{ github.run_id }}-${{ github.run_attempt }}
@@ -513,8 +513,8 @@ jobs:
 
   qualification-index:
     name: Commit-bound DR-06 evidence index
-    if: inputs.release_version != ''
-    needs: release-candidate
+    if: ${{ always() && inputs.release_version != '' }}
+    needs: [windows-interface, static, critical-lifecycle, fast, tagged, focused-tagged, failure-contract, security, deployment, native-install, multinode, release-builds, release-candidate]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -527,15 +527,20 @@ jobs:
         with:
           fetch-depth: 0
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        id: download-evidence
+        continue-on-error: true
         with:
           pattern: '*-${{ github.run_id }}-*'
           path: tests/.artifacts/dr06-download
       - name: Exclude prior aggregate packets from retry input
+        if: steps.download-evidence.outcome == 'success'
         shell: pwsh
         run: |
           Get-ChildItem tests/.artifacts/dr06-download -Directory -Filter 'dr06-qualification-index-*' |
             Remove-Item -Recurse -Force
       - name: Capture complete workflow attempt history
+        id: capture-metadata
+        continue-on-error: true
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -553,12 +558,43 @@ jobs:
             }
           }
       - name: Create commit-bound evidence index
+        id: create-index
+        if: always()
+        continue-on-error: true
         shell: pwsh
         env:
           DR06_DURABLE_EVIDENCE_URI: ${{ inputs.durable_evidence_uri }}
           DR06_NATIVE_INSTALL_CONTRACT: ${{ inputs.native_install_contract }}
         run: |
-          ./tests/ci/create-dr06-evidence-index.ps1 `
+          New-Item -ItemType Directory -Force tests/.artifacts/dr06-download,tests/.artifacts/dr06-job-metadata | Out-Null
+          try {
+            ./tests/ci/create-dr06-evidence-index.ps1 `
+              -EvidenceRoot tests/.artifacts/dr06-download `
+              -JobMetadataRoot tests/.artifacts/dr06-job-metadata `
+              -OutputPath tests/.artifacts/dr06-index/qualification-index.json `
+              -ReleaseVersion $env:RELEASE_VERSION `
+              -ExpectedCommit $env:GITHUB_SHA `
+              -RunID $env:GITHUB_RUN_ID `
+              -RunAttempt ([int]$env:GITHUB_RUN_ATTEMPT) `
+              -DurableEvidenceURI $env:DR06_DURABLE_EVIDENCE_URI `
+              -NativeInstallContract $env:DR06_NATIVE_INSTALL_CONTRACT
+          } catch {
+            New-Item -ItemType Directory -Force tests/.artifacts/dr06-index | Out-Null
+            $_ | Out-String | Set-Content -Encoding utf8 tests/.artifacts/dr06-index/index-validation-error.txt
+            throw
+          } finally {
+            if (Test-Path tests/.artifacts/dr06-job-metadata) {
+              Copy-Item tests/.artifacts/dr06-job-metadata tests/.artifacts/dr06-index/job-metadata -Recurse -Force
+            }
+          }
+      - name: Create rejected aggregate when qualification cannot pass
+        if: ${{ always() && steps.create-index.outcome != 'success' }}
+        shell: pwsh
+        env:
+          DR06_DURABLE_EVIDENCE_URI: ${{ inputs.durable_evidence_uri }}
+          DR06_NATIVE_INSTALL_CONTRACT: ${{ inputs.native_install_contract }}
+        run: |
+          ./tests/ci/create-dr06-rejection-index.ps1 `
             -EvidenceRoot tests/.artifacts/dr06-download `
             -JobMetadataRoot tests/.artifacts/dr06-job-metadata `
             -OutputPath tests/.artifacts/dr06-index/qualification-index.json `
@@ -567,9 +603,10 @@ jobs:
             -RunID $env:GITHUB_RUN_ID `
             -RunAttempt ([int]$env:GITHUB_RUN_ATTEMPT) `
             -DurableEvidenceURI $env:DR06_DURABLE_EVIDENCE_URI `
-            -NativeInstallContract $env:DR06_NATIVE_INSTALL_CONTRACT
-          Copy-Item tests/.artifacts/dr06-job-metadata tests/.artifacts/dr06-index/job-metadata -Recurse
+            -NativeInstallContract $env:DR06_NATIVE_INSTALL_CONTRACT `
+            -ValidationErrorPath tests/.artifacts/dr06-index/index-validation-error.txt
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
         with:
           name: dr06-qualification-index-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -577,10 +614,16 @@ jobs:
             tests/.artifacts/dr06-download
           retention-days: 90
           if-no-files-found: error
+      - name: Keep rejected qualification runs failed
+        if: ${{ always() && steps.create-index.outcome != 'success' }}
+        shell: pwsh
+        run: throw "DR-06 qualification rejected; inspect the retained aggregate index"
 
   publish-release:
     name: Publish signed release
-    if: startsWith(github.ref, 'refs/tags/v')
+    # DR-06 workflow_dispatch runs never publish, including a dispatch made
+    # from a tag ref. The pre-existing push-tag release path remains separate.
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     needs: release-candidate
     runs-on: ubuntu-24.04
     timeout-minutes: 30

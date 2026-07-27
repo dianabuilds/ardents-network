@@ -63,6 +63,13 @@ func run(root string) error {
 	if err := validate(workflow, contract, readme, nativeGate); err != nil {
 		return err
 	}
+	capabilities, err := os.ReadFile(filepath.Join(root, "docs", "engineering", "capabilities.json"))
+	if err != nil {
+		return fmt.Errorf("read capability catalogue: %w", err)
+	}
+	if err := validateCapabilityGateOwnership(contract, capabilities); err != nil {
+		return err
+	}
 	return validatePinnedGateMaterials(root)
 }
 
@@ -119,6 +126,9 @@ func validate(workflow, contractJSON, readme, nativeGate []byte) error {
 
 	jobs, err := mappingPath(root, "jobs")
 	if err != nil {
+		return err
+	}
+	if err := validateQualificationControlPlane(jobs, workflow); err != nil {
 		return err
 	}
 	seenIDs := map[string]struct{}{}
@@ -225,6 +235,121 @@ func validate(workflow, contractJSON, readme, nativeGate []byte) error {
 		}
 	}
 	return nil
+}
+
+func validateQualificationControlPlane(jobs *yaml.Node, workflow []byte) error {
+	for _, line := range strings.Split(string(workflow), "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "uses:") && !strings.HasPrefix(line, "- uses:") {
+			continue
+		}
+		reference := strings.TrimSpace(strings.TrimPrefix(strings.TrimPrefix(line, "- "), "uses:"))
+		parts := strings.Split(reference, "@")
+		if len(parts) != 2 || len(parts[1]) != 40 {
+			return fmt.Errorf("workflow action is not pinned to an immutable commit: %s", reference)
+		}
+		for _, character := range parts[1] {
+			if !strings.ContainsRune("0123456789abcdef", character) {
+				return fmt.Errorf("workflow action is not pinned to an immutable commit: %s", reference)
+			}
+		}
+	}
+
+	indexJob, ok := mappingValue(jobs, "qualification-index")
+	if !ok || indexJob.Kind != yaml.MappingNode {
+		return errors.New("qualification-index job is missing")
+	}
+	indexIf, err := scalarValue(indexJob, "if")
+	if err != nil || !strings.Contains(indexIf, "always()") ||
+		!strings.Contains(indexIf, "inputs.release_version != ''") {
+		return errors.New("qualification-index must run for failed qualification dependencies")
+	}
+	needs, err := workflowNeeds(indexJob)
+	if err != nil {
+		return fmt.Errorf("qualification-index needs: %w", err)
+	}
+	requiredNeeds := []string{
+		"windows-interface", "static", "critical-lifecycle", "fast", "tagged",
+		"focused-tagged", "failure-contract", "security", "deployment",
+		"native-install", "multinode", "release-builds", "release-candidate",
+	}
+	if !equalStrings(needs, requiredNeeds) {
+		return fmt.Errorf("qualification-index needs %v, contract requires %v", needs, requiredNeeds)
+	}
+	indexText := string(workflow)
+	for _, fragment := range []string{
+		"create-dr06-rejection-index.ps1",
+		"always() && steps.create-index.outcome != 'success'",
+		"Keep rejected qualification runs failed",
+		"if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')",
+	} {
+		if !strings.Contains(indexText, fragment) {
+			return fmt.Errorf("qualification control plane is missing %q", fragment)
+		}
+	}
+	return nil
+}
+
+func validateCapabilityGateOwnership(contractJSON, capabilitiesJSON []byte) error {
+	var contract contractDocument
+	if err := json.Unmarshal(contractJSON, &contract); err != nil {
+		return fmt.Errorf("parse DR-06 gate contract for ownership: %w", err)
+	}
+	var catalogue struct {
+		EvidenceGates []struct {
+			ID                  string `json:"id"`
+			CIJob               string `json:"ci_job"`
+			ScenarioID          string `json:"scenario_id"`
+			RequiredEnvironment string `json:"required_environment"`
+		} `json:"evidence_gates"`
+	}
+	if err := json.Unmarshal(capabilitiesJSON, &catalogue); err != nil {
+		return fmt.Errorf("parse capability catalogue for ownership: %w", err)
+	}
+	byID := make(map[string]gateContract, len(contract.Gates))
+	for _, gate := range contract.Gates {
+		byID[gate.ID] = gate
+	}
+	for _, evidenceGate := range catalogue.EvidenceGates {
+		gate, exists := byID[evidenceGate.ID]
+		if !exists {
+			continue
+		}
+		if evidenceGate.CIJob != gate.WorkflowJobID {
+			return fmt.Errorf(
+				"capability gate %s is owned by CI job %s, DR-06 contract uses %s",
+				evidenceGate.ID, evidenceGate.CIJob, gate.WorkflowJobID,
+			)
+		}
+		if evidenceGate.ScenarioID != "" &&
+			!strings.Contains(gate.Command, "-Scenario "+evidenceGate.ScenarioID) {
+			return fmt.Errorf(
+				"capability gate %s scenario %s is absent from the DR-06 command",
+				evidenceGate.ID, evidenceGate.ScenarioID,
+			)
+		}
+		if evidenceGate.ScenarioID != "" &&
+			!gateEnvironmentMatchesCatalogue(gate.Environment, evidenceGate.RequiredEnvironment) {
+			return fmt.Errorf(
+				"capability gate %s environment %q does not match DR-06 environment %q",
+				evidenceGate.ID, evidenceGate.RequiredEnvironment, gate.Environment,
+			)
+		}
+	}
+	return nil
+}
+
+func gateEnvironmentMatchesCatalogue(description, required string) bool {
+	description = strings.ToLower(description)
+	switch required {
+	case "linux-container":
+		return strings.Contains(description, "linux test container") ||
+			strings.Contains(description, "linux container")
+	case "local":
+		return strings.Contains(description, "local linux")
+	default:
+		return strings.Contains(description, strings.ToLower(required))
+	}
 }
 
 func validatePinnedGateMaterials(root string) error {

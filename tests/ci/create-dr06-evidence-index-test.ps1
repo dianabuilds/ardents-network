@@ -133,7 +133,7 @@ try {
     try {
         Invoke-Index -Attempt 1
     } catch {
-        $missingRejected = $_.Exception.Message -like "*gate evidence is missing*"
+        $missingRejected = $_.Exception.Message -like "*evidence is missing*"
     }
     if (-not $missingRejected) {
         throw "DR-06 index accepted a packet with missing required gate evidence"

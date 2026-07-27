@@ -148,7 +148,16 @@ DR-06 retention and environment contract:
   and gate-contract hashes, and immutable release/test base materials.
 - Before indexing a retry, CI downloads the complete workflow log for every
   earlier attempt. The index rejects any failed attempt without that log or
-  any executed gate attempt without its environment manifest.
+  without its complete declared attempt evidence: environment identity, raw
+  results, summary, JUnit, resource captures, and gate-specific outputs.
+- Every third-party Action in the qualification workflow is pinned to an exact
+  commit. Mutable major-version tags are not part of commit-bound evidence.
+- `qualification-index` runs after the whole DAG even when a dependency fails
+  or is skipped. A strict validation failure produces and uploads a
+  commit-bound `status=rejected` aggregate before the workflow remains failed.
+- A DR-06 `workflow_dispatch` never publishes a release, including when it is
+  dispatched from a tag ref. The existing push-tag release path remains a
+  separate Release-owner operation outside this qualification program.
 - GitHub Actions provides 90-day staging retention for the candidate packet.
   Before Release-owner acceptance, every success and failure attempt must be
   exported to the approved immutable destination and retained for the supported

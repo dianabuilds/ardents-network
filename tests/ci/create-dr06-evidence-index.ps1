@@ -197,7 +197,15 @@ foreach ($contract in $gateContracts) {
             continue
         }
         $matchedPaths = [Collections.Generic.List[string]]::new()
-        foreach ($template in @($contract.attempt_artifacts)) {
+        $attemptTemplates = @(
+            @($contract.attempt_artifacts) +
+            @($contract.required_artifacts) |
+            Sort-Object -Unique
+        )
+        $environmentPatterns = @($contract.attempt_artifacts | ForEach-Object {
+            Expand-ArtifactTemplate ([string]$_) ([int]$gateAttempt.attempt)
+        })
+        foreach ($template in $attemptTemplates) {
             $pattern = Expand-ArtifactTemplate ([string]$template) ([int]$gateAttempt.attempt)
             $matches = @($artifactFiles | Where-Object { $_.path -like $pattern })
             if ($matches.Count -eq 0) {
@@ -210,8 +218,8 @@ foreach ($contract in $gateContracts) {
             }
         }
         foreach ($path in $matchedPaths) {
-            if (-not $path.EndsWith("/environment.json", [StringComparison]::OrdinalIgnoreCase) -and
-                -not $path.EndsWith("environment.json", [StringComparison]::OrdinalIgnoreCase)) {
+            $isContractEnvironment = @($environmentPatterns | Where-Object { $path -like $_ }).Count -gt 0
+            if (-not $isContractEnvironment) {
                 continue
             }
             $manifest = Get-Content -Raw -LiteralPath $artifactPathByRelative[$path] | ConvertFrom-Json
