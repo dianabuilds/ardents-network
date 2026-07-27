@@ -7,7 +7,8 @@
 - Frozen product baseline:
   `8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c`
 - Inputs: accepted DR-01 through DR-05 research recommendations
-- Decision state: ADR-0011 through ADR-0015 remain Proposed
+- Decision state: ADR-0011 is Accepted; ADR-0012 through ADR-0015 remain
+  Proposed
 
 Wave 3 is research-complete. The five selected designs form one compatible
 model, but none is implemented or qualified at the frozen product baseline.
@@ -95,11 +96,11 @@ ADR-0012 leased Application Hosting
 ADR-0001..0010 remain accepted fixed inputs.
 ```
 
-ADR-0011 and ADR-0012 may be reviewed in parallel. ADR-0013 and ADR-0015 may be
-accepted only after reviewers accept their ADR-0011 dependency. ADR-0014 may
-be accepted only after ADR-0012 and the existing Application Discovery
-boundary remain compatible. ADR acceptance authorizes a design, not
-implementation or qualification.
+ADR-0011 was accepted on 2026-07-27. Its ADR-0013 and ADR-0015 review gate is
+satisfied, subject to their compatibility rechecks against the accepted
+authority text. ADR-0012 remains Proposed; ADR-0014 may be accepted only after
+ADR-0012 and the existing Application Discovery boundary remain compatible.
+ADR acceptance authorizes a design, not implementation or qualification.
 
 ## Release-scope decision
 
@@ -144,8 +145,8 @@ The first expansion may implement Application Discovery independently because
 its AD-01 through AD-04 stream does not require the Wave 3 authority or Hosting
 designs. Direct-service scope remains discovery-only even then.
 
-The authority/multi-host/messaging expansion requires ADR-0011 first and must
-not claim production private-realm messaging until the authority, fencing,
+The authority/multi-host/messaging expansion consumes accepted ADR-0011 and
+must not claim production private-realm messaging until the authority, fencing,
 checkpoint, restore, and three-host evidence align on one commit.
 
 Application Hosting may proceed after ADR-0012 independently of Messaging.
@@ -160,8 +161,9 @@ vertical slice whose detailed acceptance criteria live in its source packet.
 
 ### Tranche 0 — decisions and independent release
 
-1. Review/accept ADR-0011 and ADR-0012 in parallel.
-2. Review ADR-0013 and ADR-0015 after ADR-0011; review ADR-0014 after ADR-0012.
+1. ADR-0011 is accepted; review/accept ADR-0012 independently.
+2. Review ADR-0013 and ADR-0015 against accepted ADR-0011; review ADR-0014
+   after ADR-0012.
 3. Run the independent stabilization DR-06 matrix below without waiting for
    any Wave 3 implementation.
 

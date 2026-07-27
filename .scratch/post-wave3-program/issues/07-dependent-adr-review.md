@@ -1,8 +1,8 @@
 # PW3-07: Review dependent ADR-0013, ADR-0014, and ADR-0015
 
-Status: needs-info
+Status: ready-for-agent
 State: open
-Labels: needs-info
+Labels: ready-for-agent
 Research class: dependent decision review
 
 ## Parent
@@ -374,3 +374,10 @@ implementation stream blocked without blocking an independently ready stream.
 No implementation or qualification is claimed by closing this issue.
 
 ## Comments
+
+- 2026-07-27 partial dependency transition: ADR-0011 was explicitly accepted
+  from source `34bccdeef830fde0cd17d99dec14c9bc4cd8929c`. ADR-0013 and ADR-0015
+  review gates are therefore open for their required compatibility rechecks.
+  ADR-0014 remains independently blocked by Proposed ADR-0012 and its
+  Application Discovery compatibility gate. This transition authorizes review
+  only, not MR, AM or DSI implementation or capability promotion.

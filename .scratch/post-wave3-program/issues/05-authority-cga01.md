@@ -1,8 +1,8 @@
 # PW3-05: CGA-01 create and inspect a production realm authority
 
-Status: needs-info
+Status: ready-for-agent
 State: open
-Labels: needs-info
+Labels: ready-for-agent
 Research class: R0 implementation with security review
 
 ## Parent
@@ -70,9 +70,9 @@ change membership, activate a channel, or qualify the capability.
 
 ## Dependencies and admission gate
 
-- Blocked by PW3-02 and explicit maintainer acceptance of ADR-0011.
-- Until that decision exists this issue remains `needs-info` and no production
-  implementation should begin.
+- PW3-02 is closed and ADR-0011 has explicit maintainer acceptance.
+- This issue is `ready-for-agent`; implementation still requires deliberate
+  assignment and must preserve the accepted ADR boundary.
 - Accepted ADR-0001, ADR-0002, ADR-0003, and existing Identity/Access,
   idempotency, audit-outbox, and protected Operator Interface contracts are
   fixed dependencies.
@@ -212,3 +212,10 @@ must already be accepted. Capability qualification and downstream CGA slices
 remain open.
 
 ## Comments
+
+- 2026-07-27 governance transition: ADR-0011 was explicitly accepted from
+  source `34bccdeef830fde0cd17d99dec14c9bc4cd8929c` after commit-bound review
+  evidence `cb9cdb0903594885cb44090876be9659f7781b4d`. PW3-02 is closed, so the
+  ADR admission gate is satisfied and CGA-01 moves from `needs-info` to
+  `ready-for-agent`. No implementation, capability promotion, qualification or
+  push is implied by this triage transition.

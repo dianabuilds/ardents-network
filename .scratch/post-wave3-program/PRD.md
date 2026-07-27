@@ -110,8 +110,8 @@ implementation slices and commits.
   `issues/09-application-discovery-ad03.md` and becomes the next serial
   Application implementation slice;
 - DR-06 remains independently `ready-for-agent`;
-- Authority and Hosting implementation remain gated on explicit maintainer
-  disposition of ADR-0011 and ADR-0012 respectively.
+- ADR-0011 is accepted and CGA-01 is ready for implementation triage; Hosting
+  implementation remains gated on explicit maintainer disposition of ADR-0012.
 
 ## Stream ownership
 

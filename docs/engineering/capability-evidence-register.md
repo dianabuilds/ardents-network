@@ -107,7 +107,7 @@ An Application exchanges private product messages through a supported Applicatio
 - ADRs: `docs/adr/0001-separate-application-interface.md`, `docs/adr/0015-authority-backed-bounded-application-conversations.md`
 - Research: `docs/engineering/research/application-messaging.md`, `docs/engineering/research/wave3-synthesis.md`
 - Backlog: `.scratch/wave3-deep-research/issues/05-dr01-application-messaging.md`
-- Constraints: Accepted research selects opaque authority-backed conversations with Operator-owned membership, durable local send acceptance, recipient-local cursor order, at-least-once delivery, and Content References for large data; it is excluded from the independent stabilization release, and ADR-0011/ADR-0015 acceptance and implementation are pending
+- Constraints: Accepted ADR-0011 supplies the authority dependency for opaque authority-backed conversations with Operator-owned membership, durable local send acceptance, recipient-local cursor order, at-least-once delivery, and Content References for large data; the capability is excluded from the independent stabilization release, while ADR-0015 acceptance and authority/Messaging implementation remain pending
 - Unsupported: No Application Messaging interface exists; arbitrary topics, caller-selected recipients, exactly-once effects, global ordering, read receipts, federation, and Waku internals are unsupported
 <!-- capability-status:end application.messaging -->
 
@@ -388,7 +388,7 @@ A deployment authority issues and revokes production Channel Grants under an exp
 - ADRs: `docs/adr/0002-principal-centered-identity-and-access.md`, `docs/adr/0011-single-authority-channel-grant-lifecycle.md`
 - Research: `docs/engineering/research/channel-grant-authority.md`, `docs/engineering/research/wave3-synthesis.md`
 - Backlog: `.scratch/wave3-deep-research/issues/02-dr03-channel-grant-authority.md`
-- Constraints: Accepted research selects one deployment-owned Realm Authority Principal, fresh generation per membership change, explicit member fencing, and an independent monotonic checkpoint trust root; it is excluded from the independent stabilization release, and ADR-0011 acceptance and implementation are pending
+- Constraints: Accepted ADR-0011 selects one deployment-owned Realm Authority Principal, fresh generation per membership change and renewal, explicit member fencing, and an independent monotonic checkpoint trust root; the capability is excluded from the independent stabilization release, and production implementation and qualification remain pending
 - Unsupported: No supported production Channel Grant authority interface; federation and MLS are not supported in v1
 <!-- capability-status:end realm.channel-grant-authority -->
 

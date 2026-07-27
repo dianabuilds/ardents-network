@@ -2,7 +2,7 @@
 
 ## Metadata
 
-- Status: accepted research recommendation; ADR-0011 remains Proposed
+- Status: accepted research recommendation; ADR-0011 accepted on 2026-07-27
 - Research class: R2 deep research
 - Decision owner: Identity and Security
 - Research owner: Wave 3 DR-03
@@ -13,7 +13,7 @@
 - Blocking research: none
 - Downstream consumers: DR-01 Application Messaging, DR-04 private
   multi-host reachability assumptions, DR-06 qualification
-- Proposed decision: `docs/adr/0011-single-authority-channel-grant-lifecycle.md`
+- Accepted decision: `docs/adr/0011-single-authority-channel-grant-lifecycle.md`
 
 ## Answer first
 

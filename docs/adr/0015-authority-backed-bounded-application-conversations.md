@@ -19,7 +19,7 @@ membership races. Addressing each recipient mailbox directly would hide fewer
 transport details but would still force every caller to reconstruct group
 membership, fan-out, idempotency, and revocation.
 
-Proposed ADR-0011 selects one deployment-owned Realm Authority Principal,
+Accepted ADR-0011 selects one deployment-owned Realm Authority Principal,
 fresh Channel Grant generations on membership change, survivor activation
 attestations, explicit fencing, and an independent monotonic checkpoint trust
 root. Application Messaging must consume that authority rather than duplicate

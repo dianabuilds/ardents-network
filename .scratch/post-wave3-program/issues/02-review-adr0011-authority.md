@@ -1,7 +1,7 @@
 # PW3-02: Review ADR-0011 single-authority Channel Grant lifecycle
 
 Status: ready-for-human
-State: open
+State: closed
 Labels: ready-for-human
 Research class: decision review
 
@@ -403,3 +403,18 @@ This `review-ready` result authorizes transfer of the corrected ADR packet to a
 separate maintainer decision only. ADR-0011 remains `Proposed`;
 `realm.channel-grant-authority` remains `I=partial, R=no, O=no, Q=no`; CGA-01
 remains blocked until explicit maintainer acceptance.
+
+### Maintainer acceptance — 2026-07-27
+
+- Maintainer verdict: `accepted`.
+- Accepted ADR source:
+  `34bccdeef830fde0cd17d99dec14c9bc4cd8929c`.
+- Review evidence:
+  `cb9cdb0903594885cb44090876be9659f7781b4d`.
+- Findings at acceptance: P0 none, P1 none, P2 none.
+
+The maintainer explicitly accepted ADR-0011 after the commit-bound P2 re-review.
+This closes PW3-02 and authorizes the separate governance projections in the
+acceptance commit. It does not implement or qualify the authority, change any
+`I`, `R`, `O` or `Q` value, or start CGA-01. CGA-01 is eligible for
+`ready-for-agent` triage only.

@@ -1,6 +1,6 @@
 # ADR 0011: Single-authority Channel Grant lifecycle
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-25
 - Decision owners: Identity, Security, Operations
 - Research: `docs/engineering/research/channel-grant-authority.md`

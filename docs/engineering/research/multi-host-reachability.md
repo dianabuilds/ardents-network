@@ -628,14 +628,13 @@ DR-04 returns to research rather than inventing or overriding Channel Grant
 authority.
 
 The present design has been checked against the current DR-03 packet and
-Proposed ADR-0011: its designated authority Node, exact Operator-only realm
+accepted ADR-0011: its designated authority Node, exact Operator-only realm
 procedures, survivor `active` receipts, explicit deployment fencing evidence,
 roll-forward generation activation, distinct authority consistency group,
 external immutable compare-and-append checkpoint repository, same-realm
 restore freshness rule, and authority-first migration order are all preserved.
-Acceptance still records the dependency until ADR-0011/DR-03 is accepted; this
-is a decision-state dependency, not an unresolved topology, state, wire or
-migration question.
+The ADR-0011 decision-state dependency is satisfied; ADR-0013 still requires its
+own explicit review and acceptance.
 
 ## Decision-register proposals
 

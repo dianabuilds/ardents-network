@@ -10,8 +10,7 @@
 - Frozen baseline commit:
   `8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c`
 - Parent program: `.scratch/wave3-deep-research/PRD.md`
-- Blocking research: accepted DR-03 research recommendation; ADR-0011 remains
-  Proposed
+- Blocking research: none; ADR-0011 is accepted and ADR-0015 remains Proposed
 - Downstream consumers: Application Messaging implementation and DR-06
 
 ## Answer first
@@ -114,7 +113,7 @@ remain behind the module boundary.
 | authorization precedes replay admission | ADR-0003; `internal/messaging/open.go`, `replay.go` | replay/authorization tests | implemented primitive |
 | Channel Grant loss/revocation fails closed | `internal/messaging/channel.go`, `status.go` | channel/status tests | partial local implementation |
 | Content objects are immutable and owner-qualified | ADR-0004; Application Content contract | Content unit/contract tests | implemented and reachable |
-| production authority lifecycle exists | DR-03 and Proposed ADR-0011 | research only | not implemented or qualified |
+| production authority lifecycle exists | DR-03 and accepted ADR-0011 | accepted design only | not implemented or qualified |
 
 Historical or local primitive evidence does not qualify the new Messaging
 surface.
