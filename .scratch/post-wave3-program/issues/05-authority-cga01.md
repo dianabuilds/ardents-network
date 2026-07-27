@@ -218,4 +218,5 @@ remain open.
   evidence `cb9cdb0903594885cb44090876be9659f7781b4d`. PW3-02 is closed, so the
   ADR admission gate is satisfied and CGA-01 moves from `needs-info` to
   `ready-for-agent`. No implementation, capability promotion, qualification or
-  push is implied by this triage transition.
+  push is implied by this triage transition. Acceptance governance commit:
+  `2030d35f1df0a11f8d701ea12e19537a6b4d1c69`.

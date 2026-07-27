@@ -380,4 +380,5 @@ No implementation or qualification is claimed by closing this issue.
   review gates are therefore open for their required compatibility rechecks.
   ADR-0014 remains independently blocked by Proposed ADR-0012 and its
   Application Discovery compatibility gate. This transition authorizes review
-  only, not MR, AM or DSI implementation or capability promotion.
+  only, not MR, AM or DSI implementation or capability promotion. Acceptance
+  governance commit: `2030d35f1df0a11f8d701ea12e19537a6b4d1c69`.

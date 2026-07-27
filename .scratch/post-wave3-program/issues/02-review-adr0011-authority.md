@@ -418,3 +418,6 @@ This closes PW3-02 and authorizes the separate governance projections in the
 acceptance commit. It does not implement or qualify the authority, change any
 `I`, `R`, `O` or `Q` value, or start CGA-01. CGA-01 is eligible for
 `ready-for-agent` triage only.
+
+Acceptance governance commit:
+`2030d35f1df0a11f8d701ea12e19537a6b4d1c69`.
