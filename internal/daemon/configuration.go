@@ -261,9 +261,40 @@ func (n *Node) initOperatorConfig() {
 	if n.cfg.OperatorConfig == nil {
 		return
 	}
+	if err := n.cfg.OperatorConfig.RegisterTrustChangeClassifier(discoveryOnlyTrustChange); err != nil {
+		panic(fmt.Sprintf("register trust change classifier: %v", err))
+	}
 	if err := n.cfg.OperatorConfig.RegisterApplier(&nodeConfigApplier{node: n}); err != nil {
 		panic(fmt.Sprintf("register node configuration applier: %v", err))
 	}
+}
+
+func discoveryOnlyTrustChange(active, candidate runtimeconfig.TrustConfig) bool {
+	if reflect.DeepEqual(active, candidate) {
+		return false
+	}
+	return reflect.DeepEqual(nonDiscoveryTrust(active), nonDiscoveryTrust(candidate))
+}
+
+func nonDiscoveryTrust(config runtimeconfig.TrustConfig) runtimeconfig.TrustConfig {
+	projected := runtimeconfig.TrustConfig{
+		Principals: make([]runtimeconfig.TrustedPrincipalConfig, 0, len(config.Principals)),
+	}
+	for _, principal := range config.Principals {
+		entry := runtimeconfig.TrustedPrincipalConfig{
+			Principal: principal.Principal,
+			PublicKey: principal.PublicKey,
+		}
+		for _, purpose := range principal.Purposes {
+			if purpose != identitytrust.PurposeDiscoveryPublish {
+				entry.Purposes = append(entry.Purposes, purpose)
+			}
+		}
+		if len(entry.Purposes) > 0 {
+			projected.Principals = append(projected.Principals, entry)
+		}
+	}
+	return projected
 }
 
 func (n *Node) GetEffectiveConfig() runtimeconfig.EffectiveSnapshot {

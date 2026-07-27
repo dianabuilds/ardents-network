@@ -8,12 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"reflect"
 	"strings"
 	"sync"
 	"time"
-
-	identitytrust "ardents/internal/identity/trust"
 )
 
 type Manager struct {
@@ -29,6 +26,7 @@ type Manager struct {
 	appliers            []Applier
 	validators          []Validator
 	resolver            Resolver
+	trustClassifier     TrustChangeClassifier
 }
 
 func (m *Manager) RegisterResolver(resolver Resolver) error {
@@ -51,6 +49,19 @@ func (m *Manager) RegisterValidator(validator Validator) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.validators = append(m.validators, validator)
+	return nil
+}
+
+func (m *Manager) RegisterTrustChangeClassifier(classifier TrustChangeClassifier) error {
+	if classifier == nil {
+		return fmt.Errorf("trust change classifier is required")
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.trustClassifier != nil {
+		return fmt.Errorf("trust change classifier is already registered")
+	}
+	m.trustClassifier = classifier
 	return nil
 }
 
@@ -131,6 +142,7 @@ type TransactionCommitter interface {
 
 type Validator func(Document) error
 type Resolver func(Document) (Document, error)
+type TrustChangeClassifier func(TrustConfig, TrustConfig) bool
 
 type Service interface {
 	GetEffectiveConfig() EffectiveSnapshot
@@ -157,14 +169,14 @@ type EffectiveSnapshot struct {
 	LastReload          ReloadResult   `json:"last_reload"`
 }
 
-func classifyChanges(paths []string, discoveryTrustReloadable bool) (immutable, restart, reloadable []string) {
+func classifyChanges(paths []string, trustReloadable bool) (immutable, restart, reloadable []string) {
 	for _, path := range paths {
 		switch {
 		case hasPathPrefix(path, "node.name", "node.data_dir", "network.private_key_path",
 			"privacy.channel_grant_store", "privacy.channel_grant_store_key_file", "privacy.replay_key_file",
 			"privacy.discovery.replay_path", "privacy.data.replay_path"):
 			immutable = append(immutable, path)
-		case hasPathPrefix(path, "trust") && discoveryTrustReloadable,
+		case hasPathPrefix(path, "trust") && trustReloadable,
 			hasPathPrefix(path, "policy", "logging.level", "diagnostics", "network.discovery_refresh_seconds"):
 			reloadable = append(reloadable, path)
 		default:
@@ -183,9 +195,9 @@ func hasPathPrefix(path string, prefixes ...string) bool {
 	return false
 }
 
-func applyReloadableChanges(active, candidate Document, discoveryTrustReloadable bool) Document {
+func applyReloadableChanges(active, candidate Document, trustReloadable bool) Document {
 	next := active
-	if discoveryTrustReloadable {
+	if trustReloadable {
 		next.Trust = candidate.Trust
 	}
 	next.Policy = candidate.Policy
@@ -193,29 +205,6 @@ func applyReloadableChanges(active, candidate Document, discoveryTrustReloadable
 	next.Diagnostics = candidate.Diagnostics
 	next.Network.DiscoveryRefreshSeconds = candidate.Network.DiscoveryRefreshSeconds
 	return next
-}
-
-func discoveryOnlyTrustChange(active, candidate TrustConfig) bool {
-	if reflect.DeepEqual(active, candidate) {
-		return false
-	}
-	return reflect.DeepEqual(nonDiscoveryTrust(active), nonDiscoveryTrust(candidate))
-}
-
-func nonDiscoveryTrust(config TrustConfig) TrustConfig {
-	projected := TrustConfig{Principals: make([]TrustedPrincipalConfig, 0, len(config.Principals))}
-	for _, principal := range config.Principals {
-		entry := TrustedPrincipalConfig{Principal: principal.Principal, PublicKey: principal.PublicKey}
-		for _, purpose := range principal.Purposes {
-			if purpose != identitytrust.PurposeDiscoveryPublish {
-				entry.Purposes = append(entry.Purposes, purpose)
-			}
-		}
-		if len(entry.Purposes) > 0 {
-			projected.Principals = append(projected.Principals, entry)
-		}
-	}
-	return projected
 }
 
 func safeReason(err error) string {
@@ -263,8 +252,8 @@ func (m *Manager) Reload(ctx context.Context) ReloadResult {
 		return m.recordResult(ReloadResult{Outcome: OutcomeUnchanged})
 	}
 	effectiveChanges := changedPaths(m.active, candidate)
-	discoveryTrustReloadable := discoveryOnlyTrustChange(m.active.Trust, candidate.Trust)
-	immutable, restart, reloadable := classifyChanges(effectiveChanges, discoveryTrustReloadable)
+	trustReloadable := m.trustClassifier != nil && m.trustClassifier(m.active.Trust, candidate.Trust)
+	immutable, restart, reloadable := classifyChanges(effectiveChanges, trustReloadable)
 	if len(immutable) > 0 {
 		return m.recordResult(ReloadResult{Outcome: OutcomeRejectedImmutable, Immutable: immutable})
 	}
@@ -274,7 +263,7 @@ func (m *Manager) Reload(ctx context.Context) ReloadResult {
 		m.pendingRestart = nil
 		return m.recordResult(ReloadResult{Outcome: OutcomeUnchanged})
 	}
-	next := applyReloadableChanges(m.active, candidate, discoveryTrustReloadable)
+	next := applyReloadableChanges(m.active, candidate, trustReloadable)
 	if len(reloadable) > 0 {
 		if result, failed := m.commitReloadable(ctx, next); failed {
 			return m.recordResult(result)

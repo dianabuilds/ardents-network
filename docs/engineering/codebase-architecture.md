@@ -429,9 +429,10 @@ The policy discovers handwritten production Go packages from the explicit
   adapter boundary without exposing a constructor for Actor or Effective.
 - `applicationapi/discovery` projects maintained Discovery records, current
   trust, and current route policy into the bounded Application locator
-  response; its request work fails closed above 64 retained records or 256
-  matching endpoints, and it does not reuse Operator diagnostics or trigger
-  observation, refresh, probing, fetching, or dialing.
+  response; retained truth rejects a new 65th record, matching projection
+  fails closed above 64 eligible records or 256 matching endpoints, and the
+  adapter does not reuse Operator diagnostics or trigger observation, refresh,
+  probing, fetching, or dialing.
 - `applicationapi/principal` is the protected Application Unix-socket adapter
   for typed Principal authentication, session termination, and one-use
   Application enrollment. It owns no durable identity state.

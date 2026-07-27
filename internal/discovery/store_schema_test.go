@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -75,6 +76,34 @@ func TestImportRejectsUntrustedBootstrapRecordWithoutPersistence(t *testing.T) {
 	reloaded := NewInDir(dir)
 	require.NoError(t, reloaded.Load())
 	require.Empty(t, reloaded.Entries())
+}
+
+func TestImportRejectsNewRecordBeyondRetainedTruthBound(t *testing.T) {
+	now := time.Now().UTC()
+	node, key := schemaNodeRecord(t, 1, now)
+	store := NewInDirWithTrust(t.TempDir(), NewTrustEvaluator(schemaTrustRegistry(t, node)))
+	for index := 0; index < 64; index++ {
+		record := schemaServiceRecord(t, key, node.Node.Principal, now)
+		record.Service.ID = discoveryrecord.ServiceID(fmt.Sprintf("svc.echo.%02d", index))
+		record.Service.Workload = discoveryrecord.WorkloadID(fmt.Sprintf("work.echo.%02d", index))
+		schemaSignRecord(t, &record, key)
+
+		result, err := store.Import(record, discoveryrecord.Bootstrap)
+
+		require.NoError(t, err)
+		require.True(t, result.Applied)
+	}
+	overflow := schemaServiceRecord(t, key, node.Node.Principal, now)
+	overflow.Service.ID = "svc.echo.overflow"
+	overflow.Service.Workload = "work.echo.overflow"
+	schemaSignRecord(t, &overflow, key)
+
+	result, err := store.Import(overflow, discoveryrecord.Bootstrap)
+
+	require.NoError(t, err)
+	require.False(t, result.Applied)
+	require.Equal(t, "rejected_capacity", result.Outcome)
+	require.Len(t, store.Entries(), 64)
 }
 
 func TestLoadDropsRetainedUntrustedBootstrapRecord(t *testing.T) {

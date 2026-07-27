@@ -7,7 +7,7 @@ import (
 )
 
 func FindService(entries []discoveryrecord.Entry, serviceType string, now time.Time) []discoveryrecord.Entry {
-	out, _ := findService(entries, serviceType, now, 0)
+	out, _ := findService(entries, serviceType, now, 0, 0)
 	return out
 }
 
@@ -15,6 +15,7 @@ func findService(
 	entries []discoveryrecord.Entry,
 	serviceType string,
 	now time.Time,
+	recordLimit int,
 	endpointLimit int,
 ) ([]discoveryrecord.Entry, bool) {
 	out := make([]discoveryrecord.Entry, 0)
@@ -22,6 +23,9 @@ func findService(
 	for _, item := range entries {
 		if !eligibleService(item.Record, serviceType, now) {
 			continue
+		}
+		if recordLimit > 0 && len(out) >= recordLimit {
+			return nil, true
 		}
 		if endpointLimit > 0 {
 			endpoints := item.Record.EndpointList()
@@ -42,10 +46,10 @@ func FindServiceBounded(
 	recordLimit int,
 	endpointLimit int,
 ) ([]discoveryrecord.Entry, bool) {
-	if recordLimit < 1 || endpointLimit < 1 || len(entries) > recordLimit {
+	if recordLimit < 1 || endpointLimit < 1 {
 		return nil, true
 	}
-	return findService(entries, serviceType, now, endpointLimit)
+	return findService(entries, serviceType, now, recordLimit, endpointLimit)
 }
 
 func eligibleService(record discoveryrecord.Record, serviceType string, now time.Time) bool {

@@ -141,7 +141,7 @@ func TestApplicationDiscoveryAppliesTrustReloadOnNextResolve(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, imported.Applied)
 	truth, err := applicationdiscovery.NewMaintainedTruth(
-		owners.Discovery, owners.DiscoveryTrust, owners.DiscoveryRoutePolicy,
+		owners.Discovery, owners.DiscoveryTrust, owners.RoutePolicy,
 	)
 	require.NoError(t, err)
 	locator, err := applicationdiscovery.NewLocator(truth)
@@ -157,15 +157,28 @@ func TestApplicationDiscoveryAppliesTrustReloadOnNextResolve(t *testing.T) {
 	_, err = resolve()
 	require.NoError(t, err)
 
-	for index := 0; index <= 64; index++ {
+	for index := 0; index < 63; index++ {
 		pressure := record.Clone()
 		pressure.Service.ID = discoveryrecord.ServiceID(fmt.Sprintf("svc.revoked.%02d", index))
 		pressure.Service.Workload = discoveryrecord.WorkloadID(fmt.Sprintf("work.revoked.%02d", index))
+		pressure.Service.Type = "noise"
 		signApplicationDiscoveryRecord(t, &pressure, publisher)
 		result, importErr := owners.Discovery.Import(pressure, discoveryrecord.Bootstrap)
 		require.NoError(t, importErr)
 		require.True(t, result.Applied)
 	}
+	overflow := record.Clone()
+	overflow.Service.ID = "svc.revoked.overflow"
+	overflow.Service.Workload = "work.revoked.overflow"
+	overflow.Service.Type = "noise"
+	signApplicationDiscoveryRecord(t, &overflow, publisher)
+	result, importErr := owners.Discovery.Import(overflow, discoveryrecord.Bootstrap)
+	require.NoError(t, importErr)
+	require.False(t, result.Applied)
+	require.Equal(t, "rejected_capacity", result.Outcome)
+	response, err := resolve()
+	require.NoError(t, err)
+	require.Len(t, response.Msg.GetTargets(), 1)
 
 	doc.Trust.Principals = nil
 	writeApplicationDiscoveryOperatorDocument(t, configPath, doc)
@@ -179,7 +192,7 @@ func TestApplicationDiscoveryAppliesTrustReloadOnNextResolve(t *testing.T) {
 	writeApplicationDiscoveryOperatorDocument(t, configPath, doc)
 	reload = node.ReloadConfig(context.Background())
 	require.Equal(t, runtimeconfig.OutcomeApplied, reload.Outcome)
-	response, err := resolve()
+	response, err = resolve()
 	require.NoError(t, err)
 	require.Len(t, response.Msg.GetTargets(), 1)
 }
@@ -205,23 +218,66 @@ func TestApplicationDiscoveryAppliesRoutePolicyReloadOnNextResolve(t *testing.T)
 		Speed:       "default",
 		Environment: "local",
 	})
-	fixture := newApplicationDiscoveryLifecycleFixture(t)
+	now := time.Now().UTC().Truncate(time.Second)
+	record, publisher := signedImportedServiceRecord(t, now.Add(-time.Second), []string{
+		"https://10.20.30.40:8443",
+	})
+	trustedRegistry, err := identitytrust.NewRegistry([]identitytrust.Entry{{
+		Principal: record.Service.NodePrincipal.String(),
+		PublicKey: publisher.Public().(ed25519.PublicKey),
+		Purposes:  []identitytrust.Purpose{identitytrust.PurposeDiscoveryPublish},
+	}})
+	require.NoError(t, err)
+	doc := runtimeconfig.Defaults()
+	doc.Trust.Principals = []runtimeconfig.TrustedPrincipalConfig{{
+		Principal: record.Service.NodePrincipal.String(),
+		PublicKey: base64.StdEncoding.EncodeToString(publisher.Public().(ed25519.PublicKey)),
+		Purposes:  []identitytrust.Purpose{identitytrust.PurposeDiscoveryPublish},
+	}}
+	configPath := filepath.Join(t.TempDir(), "ardents.json")
+	writeApplicationDiscoveryOperatorDocument(t, configPath, doc)
+	manager, err := runtimeconfig.NewManager(configPath, doc)
+	require.NoError(t, err)
+	node := runtimeinfra.NewNode(runtimeinfra.Config{
+		Name:           "application-discovery-policy-reload",
+		Data:           runtimeinfra.DataConfig{Dir: t.TempDir()},
+		Trust:          runtimeinfra.TrustConfig{Registry: trustedRegistry},
+		OperatorConfig: manager,
+	})
+	owners, ok := runtimeinfra.OwnersFor(node)
+	require.True(t, ok)
+	imported, err := owners.Discovery.Import(record, discoveryrecord.Imported)
+	require.NoError(t, err)
+	require.True(t, imported.Applied)
+	truth, err := applicationdiscovery.NewMaintainedTruth(
+		owners.Discovery, owners.DiscoveryTrust, owners.RoutePolicy,
+	)
+	require.NoError(t, err)
+	locator, err := applicationdiscovery.NewLocator(truth)
+	require.NoError(t, err)
+	client := newDiscoveryClient(t, locator, []identityaccess.Action{applicationdiscovery.ActionResolve}, true)
 	resolve := func() (*connect.Response[applicationv1.ResolveServiceResponse], error) {
-		return fixture.client.Resolve(context.Background(), connect.NewRequest(
+		return client.Resolve(context.Background(), connect.NewRequest(
 			&applicationv1.ResolveServiceRequest{
 				ServiceType: "echo", AcceptedSchemes: []string{"https"},
 			},
 		))
 	}
-	_, err := resolve()
+	_, err = resolve()
 	require.NoError(t, err)
 
-	fixture.policy.Reconfigure(routepolicy.Config{DeniedRouteSchemes: []string{"https"}})
+	doc.Policy.DeniedRouteSchemes = []string{"https"}
+	writeApplicationDiscoveryOperatorDocument(t, configPath, doc)
+	reload := node.ReloadConfig(context.Background())
+	require.Equal(t, runtimeconfig.OutcomeApplied, reload.Outcome)
 	_, err = resolve()
 	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
 	require.Equal(t, applicationv1.ErrorCode_ERROR_CODE_NOT_FOUND, discoveryApplicationError(t, err).GetCode())
 
-	fixture.policy.Reconfigure(routepolicy.Config{})
+	doc.Policy.DeniedRouteSchemes = nil
+	writeApplicationDiscoveryOperatorDocument(t, configPath, doc)
+	reload = node.ReloadConfig(context.Background())
+	require.Equal(t, runtimeconfig.OutcomeApplied, reload.Outcome)
 	response, err := resolve()
 	require.NoError(t, err)
 	require.Len(t, response.Msg.GetTargets(), 1)

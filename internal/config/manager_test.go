@@ -113,12 +113,34 @@ func TestManagerKeepsRestartCandidateSeparateFromActive(t *testing.T) {
 }
 
 func TestManagerReloadsDiscoveryOnlyTrustButKeepsOtherTrustRestartRequired(t *testing.T) {
+	t.Run("unclassified trust change", func(t *testing.T) {
+		doc := Defaults()
+		path := writeDocument(t, doc)
+		applier := &recordingApplier{active: doc}
+		manager, err := NewManager(path, doc, applier)
+		require.NoError(t, err)
+
+		doc.Trust.Principals = []TrustedPrincipalConfig{managerTrustedPrincipal(
+			t, identitytrust.PurposeDiscoveryPublish,
+		)}
+		writeDocumentAt(t, path, doc)
+		result := manager.Reload(context.Background())
+
+		require.Equal(t, OutcomeRestartRequired, result.Outcome)
+		require.Empty(t, applier.active.Trust.Principals)
+	})
+
 	t.Run("discovery only", func(t *testing.T) {
 		doc := Defaults()
 		path := writeDocument(t, doc)
 		applier := &recordingApplier{active: doc}
 		manager, err := NewManager(path, doc, applier)
 		require.NoError(t, err)
+		require.NoError(t, manager.RegisterTrustChangeClassifier(func(_, candidate TrustConfig) bool {
+			return len(candidate.Principals) == 1 &&
+				len(candidate.Principals[0].Purposes) == 1 &&
+				candidate.Principals[0].Purposes[0] == identitytrust.PurposeDiscoveryPublish
+		}))
 
 		doc.Trust.Principals = []TrustedPrincipalConfig{managerTrustedPrincipal(
 			t, identitytrust.PurposeDiscoveryPublish,

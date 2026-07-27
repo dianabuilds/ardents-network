@@ -66,7 +66,7 @@ func newApplicationAPIHandler(process daemon.Owners, cfg daemon.ApplicationAPICo
 		return contentPath, contentHandler, err
 	}
 	truth, err := applicationdiscovery.NewMaintainedTruth(
-		process.Discovery, process.DiscoveryTrust, process.DiscoveryRoutePolicy,
+		process.Discovery, process.DiscoveryTrust, process.RoutePolicy,
 	)
 	if err != nil {
 		return "", nil, err

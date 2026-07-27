@@ -7,6 +7,8 @@ import (
 	discoveryintake "ardents/internal/discovery/records"
 )
 
+const maxRetainedRecords = 64
+
 func (s *Service) Import(record Record, source string) (ImportResult, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -25,6 +27,12 @@ func (s *Service) Import(record Record, source string) (ImportResult, error) {
 	updatedRecords, result, err := discoveryintake.ImportVerified(s.records, record, source, now, evidence)
 	if err != nil {
 		return ImportResult{}, err
+	}
+	if len(updatedRecords) > maxRetainedRecords {
+		return ImportResult{
+			Outcome: "rejected_capacity",
+			Reason:  "retained discovery truth reached its record limit",
+		}, nil
 	}
 	previousRecords, previousState, previousReason := s.records, s.state, s.reason
 	s.records = updatedRecords

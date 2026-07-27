@@ -1,6 +1,7 @@
 package resolution
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -53,6 +54,31 @@ func TestFindServiceBoundedFailsClosedBeforeReturningOversizedTruth(t *testing.T
 		require.True(t, overflow)
 		require.Nil(t, got)
 	})
+}
+
+func TestFindServiceBoundedIgnoresUnrelatedRetainedTruth(t *testing.T) {
+	now := time.Now().UTC()
+	entries := make([]discoveryrecord.Entry, 0, 66)
+	for index := 0; index < 65; index++ {
+		entries = append(entries, discoveryrecord.Entry{Record: serviceRecord(
+			fmt.Sprintf("svc.noise.%02d", index),
+			"noise",
+			[]string{"tcp://noise"},
+			now.Add(time.Hour),
+		)})
+	}
+	entries = append(entries, discoveryrecord.Entry{Record: serviceRecord(
+		"svc.echo",
+		"echo",
+		[]string{"tcp://echo"},
+		now.Add(time.Hour),
+	)})
+
+	got, overflow := FindServiceBounded(entries, "echo", now, 1, 8)
+
+	require.False(t, overflow)
+	require.Len(t, got, 1)
+	require.Equal(t, "svc.echo", got[0].Record.RecordID())
 }
 
 func TestResolutionUsesExactValidityBoundaries(t *testing.T) {
