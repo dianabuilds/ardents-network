@@ -11,6 +11,8 @@ type descriptors struct {
 	workloads, workloadLimits, workloadRestarts, workloadOOM   *prometheus.Desc
 	hostedServices, storageItems, storageBytes, transfers      *prometheus.Desc
 	repairs, policyDenials, pendingOperations, subsystemHealth *prometheus.Desc
+	authorityState, authorityPhase, authorityAuditOutbox       *prometheus.Desc
+	authorityMembers, authorityChannels, authorityOperations   *prometheus.Desc
 	collectionErrors                                           *prometheus.Desc
 }
 
@@ -41,6 +43,12 @@ func newDescriptors() descriptors {
 		policyDenials:          metric("policy_denials_window", "Policy denials in the bounded Diagnostics window.", "action"),
 		pendingOperations:      metric("pending_operations", "Pending operations grouped by domain and state.", "domain", "state"),
 		subsystemHealth:        metric("subsystem_health", "Diagnostics subsystem health grouped by bounded domain and state.", "domain", "state"),
+		authorityState:         metric("realm_authority_readiness", "Current Realm Authority readiness and bounded reason.", "state", "reason"),
+		authorityPhase:         metric("realm_authority_phase", "Current Realm Authority lifecycle phase.", "phase"),
+		authorityAuditOutbox:   metric("realm_authority_audit_outbox_depth", "Pending durable Realm Authority audit records."),
+		authorityMembers:       metric("realm_authority_members", "Current Realm Authority member count."),
+		authorityChannels:      metric("realm_authority_channels", "Current Realm Authority channel count."),
+		authorityOperations:    metric("realm_authority_pending_operations", "Current pending Realm Authority operation count."),
 		collectionErrors:       metric("collection_errors", "Snapshot collection errors by bounded domain.", "domain"),
 	}
 }
@@ -57,6 +65,8 @@ func (d descriptors) describe(out chan<- *prometheus.Desc) {
 		d.workloads, d.workloadLimits, d.workloadRestarts, d.workloadOOM,
 		d.hostedServices, d.storageItems, d.storageBytes, d.transfers,
 		d.repairs, d.policyDenials, d.pendingOperations, d.subsystemHealth,
+		d.authorityState, d.authorityPhase, d.authorityAuditOutbox,
+		d.authorityMembers, d.authorityChannels, d.authorityOperations,
 		d.collectionErrors,
 	}
 	for _, item := range items {

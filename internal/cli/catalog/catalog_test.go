@@ -11,7 +11,7 @@ import (
 func TestClosedCatalogueContainsExactlyCurrentLeafCommands(t *testing.T) {
 	specs := catalog.Commands()
 
-	require.Len(t, specs, 68)
+	require.Len(t, specs, 70)
 	require.NoError(t, catalog.Validate(specs, nil))
 
 	ids := make(map[string]struct{}, len(specs))
@@ -80,16 +80,16 @@ func TestValidatorFailsClosedForInvalidCatalogue(t *testing.T) {
 			return specs[:1]
 		},
 		"offline command with RPC": func(specs []catalog.CommandSpec) []catalog.CommandSpec {
-			specs[48].Procedure = valid[0].Procedure
-			return specs[48:49]
+			specs[50].Procedure = valid[0].Procedure
+			return specs[50:51]
 		},
 		"offline command with action": func(specs []catalog.CommandSpec) []catalog.CommandSpec {
-			specs[48].Action = "node.status"
-			return specs[48:49]
+			specs[50].Action = "node.status"
+			return specs[50:51]
 		},
 		"offline command with SSH": func(specs []catalog.CommandSpec) []catalog.CommandSpec {
-			specs[48].SSH = true
-			return specs[48:49]
+			specs[50].SSH = true
+			return specs[50:51]
 		},
 		"unknown procedure": func(specs []catalog.CommandSpec) []catalog.CommandSpec {
 			specs[0].Procedure = "/ardents.v1.NodeService/Unknown"
@@ -156,6 +156,7 @@ func TestCatalogueContainsResearchPacketLeafPaths(t *testing.T) {
 		"data transfers list", "data transfers get",
 		"diagnostics snapshot", "diagnostics health", "diagnostics pending", "diagnostics explain", "diagnostics events",
 		"config show", "config reload",
+		"authority create", "authority inspect",
 		"identity principal create", "identity principal import", "identity principal show",
 		"identity device create", "identity device show", "identity device revoke",
 		"identity enroll", "identity grant list", "identity grant issue", "identity grant revoke",
@@ -213,6 +214,7 @@ func TestEvidenceOwnershipHandoffCoversEveryLeaf(t *testing.T) {
 		counts[spec.EvidenceOwner]++
 	}
 	require.Equal(t, map[string]int{
+		"CGA-01": 2,
 		"OCS-01": 12,
 		"OCS-02": 20,
 		"OCS-03": 9,

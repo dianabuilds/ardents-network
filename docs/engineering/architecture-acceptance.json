@@ -16,9 +16,9 @@
         "owner": "ARD-023"
       },
       "internal/daemon": {
-        "max": 18,
-        "reason": "composition, lifecycle, readiness, and process-level recovery remain colocated until a responsibility-preserving split is approved",
-        "owner": "ARD-023"
+        "max": 19,
+        "reason": "composition, lifecycle, readiness, process-level recovery, and Realm Authority adapter wiring remain colocated until a responsibility-preserving split is approved",
+        "owner": "PW3-05"
       },
       "internal/discovery": {
         "max": 13,
@@ -66,6 +66,11 @@
         "api/ardents/v1"
       ],
       "composition": {
+        "AuthorityService": {
+          "path": "internal/localapi/server_base.go",
+          "function": "NewPrincipalHandler",
+          "mode": "register_argument"
+        },
         "ConfigurationService": {
           "path": "internal/localapi/server_base.go",
           "function": "NewPrincipalHandler",

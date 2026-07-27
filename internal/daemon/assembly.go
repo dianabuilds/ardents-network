@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"ardents/internal/authority"
 	"ardents/internal/content"
 	"ardents/internal/diagnostics"
 	"ardents/internal/discovery"
@@ -214,6 +215,7 @@ func runtimePolicyConfig(cfg PolicyConfig) apppolicy.Config {
 		DisableUntrustedRouteUse:        cfg.DisableUntrustedRouteUse,
 		DeniedRouteSchemes:              cloneStrings(cfg.DeniedRouteSchemes),
 		DisablePrivateChannelGrantUse:   cfg.DisablePrivateChannelGrantUse,
+		DisableRealmAuthorityCreation:   cfg.DisableRealmAuthorityCreation,
 		DeniedChannelGrantScopes:        cloneStrings(cfg.DeniedChannelGrantScopes),
 		DisableLocalBlobRetention:       cfg.DisableLocalBlobRetention,
 		DisableRelayBlobRetention:       cfg.DisableRelayBlobRetention,
@@ -545,6 +547,7 @@ func (n *Node) configureLocalServicesLocked() {
 
 type Owners struct {
 	Node              *Node
+	Authority         *authority.Service
 	IdentityAccess    storage.Database
 	PrincipalAccess   *identityaccess.Service
 	Content           *content.Service
@@ -580,7 +583,7 @@ func ownersFor(node *Node) Owners {
 		return &diagnostics.ServiceStatus{Published: status.Published, Reason: status.Reason}, true
 	})
 	return Owners{
-		Node: node, Content: node.data, ContentCommands: node.dataCommands,
+		Node: node, Authority: node.authority, Content: node.data, ContentCommands: node.dataCommands,
 		Discovery: node.disco, DiscoveryTrust: node.trust, RoutePolicy: node.policyLive,
 		DiscoveryCommands: node.discoveryCommands,
 		Transfers:         node.transfers, Workloads: node.workloadRuntime, Hosting: node.hosting,
@@ -621,6 +624,7 @@ type Node struct {
 	route              *noderoute.State
 	policy             apppolicy.Policy
 	policyLive         *apppolicy.Service
+	authority          *authority.Service
 	data               *content.Service
 	dataCommands       *content.Commands
 	replica            *replication.Repository

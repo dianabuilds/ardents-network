@@ -24,6 +24,7 @@ import (
 	identityprincipal "ardents/internal/identity/principal"
 	identityprotocol "ardents/internal/identity/protocol"
 	rpcadapter "ardents/internal/localapi"
+	localauthority "ardents/internal/localapi/authority"
 	"ardents/internal/storage"
 
 	"connectrpc.com/connect"
@@ -58,6 +59,7 @@ func ConnectDependencies(runtime *runtimeprocess.Node) rpcadapter.Dependencies {
 		DataFetch:        runtime,
 		Configuration:    runtime,
 		Audit:            owners.Events,
+		Authority:        owners.Authority,
 	}
 }
 
@@ -301,6 +303,28 @@ func NewOperatorCLIFixtureWithActions(t *testing.T, nodeRuntime *runtimeprocess.
 	t.Helper()
 	material := newOperatorPrincipalMaterialWithActions(t, actions)
 	deps := ConnectDependencies(nodeRuntime)
+	return newOperatorCLIFixture(t, nodeRuntime, material, deps)
+}
+
+// NewAuthorityOperatorCLIFixture grants only the exact configured authority
+// instance create resource. Callers add the exact random RealmID inspect grant
+// after genesis through GrantExact.
+func NewAuthorityOperatorCLIFixture(t *testing.T, nodeRuntime *runtimeprocess.Node, service localauthority.Service) OperatorCLIFixture {
+	t.Helper()
+	material := newOperatorPrincipalMaterialWithActions(t, []identityaccess.Action{"node.status"})
+	issueOperatorGrant(t, material, []identityaccess.Action{"realm.authority.create"}, identityaccess.ResourceScope{
+		Kind: identityaccess.ScopeExact,
+		Exact: identityaccess.ResourceRef{
+			Node: material.node, Kind: "realm-authority-instance", ID: "primary",
+		},
+	}, time.Now().UTC().Truncate(time.Second))
+	deps := ConnectDependencies(nodeRuntime)
+	deps.Authority = service
+	return newOperatorCLIFixture(t, nodeRuntime, material, deps)
+}
+
+func newOperatorCLIFixture(t *testing.T, nodeRuntime *runtimeprocess.Node, material operatorPrincipalMaterial, deps rpcadapter.Dependencies) OperatorCLIFixture {
+	t.Helper()
 	deps.Node = principalBoundRuntime{Node: nodeRuntime, principal: material.node}
 	_, handler, err := rpcadapter.NewProtectedHandler(deps, material.service, material.node, material.peer, material.source)
 	require.NoError(t, err)

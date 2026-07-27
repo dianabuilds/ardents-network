@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package ardents.v1;
+
+option go_package = "ardents/internal/localapi/protocol;ardentsv1";
+
+import "api/ardents/v1/types.proto";
+import "api/ardents/v1/access.proto";
+import "google/protobuf/timestamp.proto";
+
+// AuthorityService is available only on the protected Operator Interface.
+// The Application Interface deliberately has no equivalent service.
+service AuthorityService {
+  rpc CreateRealmAuthority(CreateRealmAuthorityRequest) returns (CreateRealmAuthorityResponse) {
+    option (operator_access) = {
+      action: "realm.authority.create"
+      domain: "authority"
+      resource_kind: "realm-authority-instance"
+      mutating: true
+    };
+  }
+  rpc InspectRealmAuthority(InspectRealmAuthorityRequest) returns (InspectRealmAuthorityResponse) {
+    option (operator_access) = {
+      action: "realm.channel.audit.read"
+      domain: "authority"
+      resource_kind: "realm"
+    };
+  }
+}
+
+message CreateRealmAuthorityRequest {
+  uint32 version = 1;
+  string request_id = 2;
+  string realm_class = 3;
+}
+
+message InspectRealmAuthorityRequest {
+  uint32 version = 1;
+  string realm_id = 2;
+}
+
+message AuthorityStatusSnapshot {
+  uint32 version = 1;
+  uint32 schema_version = 2;
+  string realm_id = 3;
+  string realm_class = 4;
+  uint64 authority_epoch = 5;
+  uint64 authority_sequence = 6;
+  string checkpoint_digest = 7;
+  string phase = 8;
+  string readiness = 9;
+  string reason = 10;
+  uint32 member_count = 11;
+  uint32 channel_count = 12;
+  uint32 pending_operation_count = 13;
+  uint32 audit_outbox_depth = 14;
+  uint32 current_generation = 15;
+  google.protobuf.Timestamp operation_deadline = 16;
+}
+
+message CreateRealmAuthorityResponse {
+  OperationStatus status = 1;
+  AuthorityStatusSnapshot authority = 2;
+  string operation_id = 3;
+}
+
+message InspectRealmAuthorityResponse {
+  OperationStatus status = 1;
+  AuthorityStatusSnapshot authority = 2;
+}

@@ -18,6 +18,10 @@ Diagnostics documents; their domain ownership remains unchanged.
 | Replay-digest master key | deployment secret supplied to Network privacy replay storage | secret | exactly 32 bytes, HKDF-separated before use, never stored in `ardents.db`, and required for stable replay identity across restart |
 | Ardents identity record and product state | `<data-dir>/ardents.db` | private retained state | bbolt transaction, `0600`; contains the public identity record, never the identity private key |
 | Principal access state | `<data-dir>/identity-access.db` | private security state | signed/public Credentials and grants, enrollment/revocation metadata, idempotency/audit-outbox records, and ticket digests; never private keys, raw tickets, proofs, or Session secrets |
+| Realm Authority ledger | configured external `authority.store_path` | private security state | encrypted bbolt ledger containing the one-Realm genesis transaction, immutable audit record, audit outbox, idempotency result, and signed checkpoint reference; its parent directory must be pre-provisioned and must not traverse symlinks |
+| Realm Authority store key | configured external `authority.store_key_file` | secret | standard-base64 encoded 32-byte key in a protected regular non-symlink file; separately provisioned and never stored in the authority ledger |
+| Realm Authority signer | configured external `authority.signer_file` | secret | protected regular non-symlink Ed25519 signer file, separately administered and never copied into the authority ledger or checkpoint repository |
+| Realm Authority checkpoint repository | configured external `authority.checkpoint_repository_path` | independent monotonic security state | pre-provisioned deletion-protected/WORM storage, outside Node and authority custody; contains signed freshness evidence only and requires the independent provisioning assertion before the daemon will admit it |
 | First-Operator Bootstrap Ticket | beside the protected Operator Unix socket until consumed | secret | random, ten-minute, one-use enrollment input; commit-to-file failure atomically reissues the digest on retry, and the protected file is deleted after successful provisioning |
 | Application Enrollment Ticket | Operator-selected protected output file until consumed by one Application installation | secret | random, ten-minute, one-use input bound to the Application Principal and initial actions; audit/RPC/file failure permits digest-only reissue, never argv/stdout and never accepted on the Operator Interface |
 | Operator/Application signers | client/Application protected key store | secret | generated and owned by that Principal; the root normally remains offline and the device signer performs routine typed authentication |
@@ -89,6 +93,16 @@ The following items form consistency groups and must not be restored partially:
    replay-digest master key. Losing either side fails closed and must not reset
    replay protection while retained private envelopes remain eligible.
 
+The CGA-01 Realm Authority is deliberately excluded from these supported
+same-realm restore groups. Do not co-back up or co-restore its encrypted ledger,
+store key, signer, and independent checkpoint repository as if they were an
+ordinary Node archive. In particular, the checkpoint repository must remain in
+an independently administered deletion-protected/WORM fault domain and must
+not be copied into the authority archive. Loss, rollback, mismatch, or partial
+restore of any authority truth enters `recovery_required`; CGA-01 has no repair,
+regeneration, or same-realm restore command. A reviewed restore and migration
+protocol belongs to CGA-06.
+
 The `ardents.db` `replication/state` record is strict schema version 2. Replica
 reservations persist `node_principal` and commitments persist `target_node` as
 canonical `p1_` identifiers, and reservations/commitments carry one strict
@@ -128,6 +142,9 @@ Session secrets must be rejected after restore.
 - A corrupt diagnostics ledger follows the documented diagnostics recovery
   path and must be operator-visible; it never justifies resetting product
   state.
+- A missing, rolled-back, forked, corrupt, or non-independent Realm Authority
+  checkpoint head, or a signer/store mismatch, is a continuity failure. The
+  runtime must not create a replacement key, head, sequence, or Realm.
 - Missing or corrupt blob bytes make that blob unavailable locally and trigger
   explicit repair/fetch behavior; metadata alone is not availability.
 - Missing payload/capability keys make encrypted bytes unreadable. Retention

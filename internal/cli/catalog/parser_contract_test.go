@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	authoritycmd "ardents/internal/cli/authority"
 	"ardents/internal/cli/catalog"
 	"ardents/internal/cli/client"
 	commandctx "ardents/internal/cli/command"
@@ -74,6 +75,8 @@ func runProductionParser(t *testing.T, group string, command commandctx.Context,
 		}
 	}()
 	switch group {
+	case "authority":
+		authoritycmd.New(command).Run(context.Background(), args)
 	case "node":
 		nodecmd.New(command).Run(context.Background(), args)
 	case "network":
@@ -135,6 +138,7 @@ func productionParserPaths(t *testing.T) []string {
 	})
 	addFlat("diagnostics", filepath.Join("..", "diagnostics", "command.go"), "Run")
 	addFlat("config", filepath.Join("..", "configuration", "command.go"), "Run")
+	addFlat("authority", filepath.Join("..", "authority", "command.go"), "Run")
 	addParserTree(t, &paths, "identity", filepath.Join("..", "identity"), "command.go", "Run", map[string]parserBranch{
 		"principal":          {file: "command.go", function: "runPrincipal"},
 		"device":             {file: "command.go", function: "runDevice"},

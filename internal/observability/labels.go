@@ -1,6 +1,7 @@
 package observability
 
 import (
+	authorityapi "ardents/internal/authority"
 	diagapi "ardents/internal/diagnostics"
 	"ardents/internal/discovery"
 	"ardents/internal/network"
@@ -153,5 +154,38 @@ func policyAction(payload map[string]any) string {
 		return "channel_grant"
 	default:
 		return "other"
+	}
+}
+func authorityReadiness(value string) string {
+	switch value {
+	case authorityapi.ReadinessReady, authorityapi.ReadinessUnavailable,
+		authorityapi.ReadinessDegraded, authorityapi.ReadinessRecoveryRequired:
+		return value
+	default:
+		return "unknown"
+	}
+}
+
+func authorityPhase(value string) string {
+	switch value {
+	case authorityapi.PhaseUninitialized, authorityapi.PhaseCheckpointing,
+		authorityapi.PhaseReady, authorityapi.PhaseRecoveryRequired:
+		return value
+	default:
+		return "unknown"
+	}
+}
+
+func authorityReason(value string) string {
+	switch value {
+	case authorityapi.ReasonNone, authorityapi.ReasonUninitialized,
+		authorityapi.ReasonStoreUnavailable, authorityapi.ReasonSignerUnavailable,
+		authorityapi.ReasonSignerMismatch, authorityapi.ReasonRepositoryUnavailable,
+		authorityapi.ReasonAuditUnavailable,
+		authorityapi.ReasonCheckpointMissing, authorityapi.ReasonCheckpointMismatch,
+		authorityapi.ReasonPersistedStateInvalid:
+		return value
+	default:
+		return "unknown"
 	}
 }

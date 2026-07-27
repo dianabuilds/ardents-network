@@ -149,6 +149,7 @@ func newLocalAPIHandler(process daemon.Owners, cfg daemon.LocalAPIConfig) (strin
 		Diagnostics: process.Diagnostics, Workload: process.Workloads, Hosting: process.Hosting,
 		Content: process.Content, Sources: process.Content, Transfers: process.Transfers,
 		Data: process.ContentCommands, DataFetch: runtime, Configuration: runtime, Audit: process.Events,
+		Authority: process.Authority,
 	}
 	if !cfg.Protected {
 		return "", nil, fmt.Errorf("Operator Interface requires the protected Principal socket")
@@ -160,5 +161,6 @@ func newOperatorSurface(process daemon.Owners, token string) (daemon.OperatorSur
 	return observability.NewSurface(observability.Dependencies{
 		Runtime: process.Node, Diagnostics: process.Diagnostics, Workloads: process.Workloads,
 		Hosting: process.Hosting, Data: process.Content, Transfers: process.Transfers,
+		Authority: process.Authority,
 	}, token)
 }

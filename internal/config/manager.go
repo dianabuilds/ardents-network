@@ -173,6 +173,7 @@ func classifyChanges(paths []string, trustReloadable bool) (immutable, restart, 
 	for _, path := range paths {
 		switch {
 		case hasPathPrefix(path, "node.name", "node.data_dir", "network.private_key_path",
+			"authority",
 			"privacy.channel_grant_store", "privacy.channel_grant_store_key_file", "privacy.replay_key_file",
 			"privacy.discovery.replay_path", "privacy.data.replay_path"):
 			immutable = append(immutable, path)

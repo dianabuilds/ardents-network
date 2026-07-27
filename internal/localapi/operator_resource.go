@@ -5,6 +5,7 @@ import (
 
 	identityaccess "ardents/internal/identity/access"
 	localauth "ardents/internal/localapi/auth"
+	authorityhandler "ardents/internal/localapi/authority"
 	contenthandler "ardents/internal/localapi/content"
 	diagnosticshandler "ardents/internal/localapi/diagnostics"
 	networkhandler "ardents/internal/localapi/network"
@@ -19,6 +20,8 @@ func CanonicalizeOperatorResource(procedure string, message any) (identityaccess
 	}
 	kind := identityaccess.ResourceKind(rule.ResourceKind)
 	switch {
+	case strings.HasPrefix(procedure, "/ardents.v1.AuthorityService/"):
+		return authorityhandler.CanonicalizeResource(procedure, message, string(kind))
 	case strings.HasPrefix(procedure, "/ardents.v1.NetworkService/"):
 		return networkhandler.CanonicalizeResource(procedure, message, kind)
 	case strings.HasPrefix(procedure, "/ardents.v1.DiagnosticsService/"):

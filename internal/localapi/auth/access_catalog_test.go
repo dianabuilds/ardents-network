@@ -12,6 +12,7 @@ import (
 
 func TestProcedureAccessCatalogCoversEveryRPCExactlyOnce(t *testing.T) {
 	services := []protoreflect.ServiceDescriptor{
+		ardentsv1.File_api_ardents_v1_authority_proto.Services().Get(0),
 		ardentsv1.File_api_ardents_v1_node_proto.Services().Get(0),
 		ardentsv1.File_api_ardents_v1_configuration_proto.Services().Get(0),
 		ardentsv1.File_api_ardents_v1_network_proto.Services().Get(0),
@@ -36,7 +37,7 @@ func TestProcedureAccessCatalogCoversEveryRPCExactlyOnce(t *testing.T) {
 			require.True(t, ok, procedure)
 			require.NotEmpty(t, rule.Action, procedure)
 			require.NotEmpty(t, rule.Domain, procedure)
-			if service.Name() == "NodeService" || service.Name() == "ConfigurationService" || service.Name() == "NetworkService" || service.Name() == "WorkloadService" || service.Name() == "ContentService" || service.Name() == "TransferService" || service.Name() == "RetentionService" || service.Name() == "DiagnosticsService" {
+			if service.Name() == "AuthorityService" || service.Name() == "NodeService" || service.Name() == "ConfigurationService" || service.Name() == "NetworkService" || service.Name() == "WorkloadService" || service.Name() == "ContentService" || service.Name() == "TransferService" || service.Name() == "RetentionService" || service.Name() == "DiagnosticsService" {
 				require.NotEmpty(t, rule.ResourceKind, procedure)
 			}
 			prior, duplicate := actions[rule.Action]
@@ -57,11 +58,13 @@ func TestNodeFeaturesActionIsExactAndOldActionIsAbsent(t *testing.T) {
 
 func TestProcedureMutationClassificationIsServerOwned(t *testing.T) {
 	for procedure, want := range map[string]bool{
-		"/ardents.v1.NodeService/StartNode":               true,
-		"/ardents.v1.NodeService/GetNodeStatus":           false,
-		"/ardents.v1.DiagnosticsService/ListRecentEvents": false,
-		"/ardents.v1.ContentService/PublishBlob":          true,
-		"/ardents.v1.ContentService/GetBlob":              false,
+		"/ardents.v1.AuthorityService/CreateRealmAuthority":  true,
+		"/ardents.v1.AuthorityService/InspectRealmAuthority": false,
+		"/ardents.v1.NodeService/StartNode":                  true,
+		"/ardents.v1.NodeService/GetNodeStatus":              false,
+		"/ardents.v1.DiagnosticsService/ListRecentEvents":    false,
+		"/ardents.v1.ContentService/PublishBlob":             true,
+		"/ardents.v1.ContentService/GetBlob":                 false,
 	} {
 		rule, ok := RuleForProcedure(procedure)
 		require.True(t, ok, procedure)

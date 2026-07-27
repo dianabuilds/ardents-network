@@ -4,9 +4,16 @@ package auth
 
 import (
 	"errors"
+	"fmt"
 	"sort"
 
+	protocol "ardents/internal/localapi/protocol"
 	"ardents/internal/localapi/protocol/ardentsv1connect"
+
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
+	"google.golang.org/protobuf/types/descriptorpb"
 )
 
 var ErrUnknownProcedure = errors.New("operator procedure is not registered")
@@ -67,6 +74,43 @@ var procedureAccess = map[string]Rule{
 	ardentsv1connect.DiagnosticsServiceGetHealthSummaryProcedure:            resourceAction("diagnostics.health_summary", "diagnostics", "diagnostics"),
 	ardentsv1connect.DiagnosticsServiceExplainFailureProcedure:              resourceAction("diagnostics.explain_failure", "diagnostics", "diagnostic-subject"),
 	ardentsv1connect.DiagnosticsServiceListRecentEventsProcedure:            resourceAction("diagnostics.recent_events", "diagnostics", "event-collection"),
+}
+
+func init() {
+	if err := registerProtocolAccess("ardents.v1.AuthorityService"); err != nil {
+		panic(err)
+	}
+}
+
+func registerProtocolAccess(serviceName protoreflect.FullName) error {
+	descriptor, err := protoregistry.GlobalFiles.FindDescriptorByName(serviceName)
+	if err != nil {
+		return fmt.Errorf("load Operator access service %s: %w", serviceName, err)
+	}
+	service, ok := descriptor.(protoreflect.ServiceDescriptor)
+	if !ok {
+		return fmt.Errorf("Operator access descriptor %s is not a service", serviceName)
+	}
+	for index := 0; index < service.Methods().Len(); index++ {
+		method := service.Methods().Get(index)
+		options, ok := method.Options().(*descriptorpb.MethodOptions)
+		if !ok || !proto.HasExtension(options, protocol.E_OperatorAccess) {
+			return fmt.Errorf("Operator procedure %s.%s has no access metadata", serviceName, method.Name())
+		}
+		access, ok := proto.GetExtension(options, protocol.E_OperatorAccess).(*protocol.OperatorAccess)
+		if !ok || access.GetAction() == "" || access.GetDomain() == "" || access.GetResourceKind() == "" {
+			return fmt.Errorf("Operator procedure %s.%s has invalid access metadata", serviceName, method.Name())
+		}
+		procedure := "/" + string(service.FullName()) + "/" + string(method.Name())
+		if _, duplicate := procedureAccess[procedure]; duplicate {
+			return fmt.Errorf("Operator procedure %s has duplicate access metadata", procedure)
+		}
+		procedureAccess[procedure] = Rule{
+			Action: access.GetAction(), Domain: access.GetDomain(),
+			ResourceKind: access.GetResourceKind(), Mutating: access.GetMutating(),
+		}
+	}
+	return nil
 }
 
 func resourceAction(name, domain, kind string) Rule {

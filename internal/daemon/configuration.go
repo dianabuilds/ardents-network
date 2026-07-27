@@ -36,6 +36,7 @@ type runtimeConfig struct {
 	ObservabilityToken    string
 	ApplicationEnabled    bool
 	ApplicationSocketPath string
+	Authority             runtimeconfig.AuthorityConfig
 	Node                  Config
 }
 
@@ -181,6 +182,7 @@ type PolicyConfig struct {
 	DisableUntrustedRouteUse        bool
 	DeniedRouteSchemes              []string
 	DisablePrivateChannelGrantUse   bool
+	DisableRealmAuthorityCreation   bool
 	DeniedChannelGrantScopes        []string
 	DisableLocalBlobRetention       bool
 	DisableRelayBlobRetention       bool
@@ -237,6 +239,7 @@ func policyConfigFromOperator(in runtimeconfig.PolicyConfig) PolicyConfig {
 		DisableUntrustedRouteUse:        in.DisableUntrustedRouteUse,
 		DeniedRouteSchemes:              cloneStrings(in.DeniedRouteSchemes),
 		DisablePrivateChannelGrantUse:   in.DisablePrivateChannelGrantUse,
+		DisableRealmAuthorityCreation:   in.DisableRealmAuthorityCreation,
 		DeniedChannelGrantScopes:        cloneStrings(in.DeniedChannelGrantScopes),
 		DisableLocalBlobRetention:       in.DisableLocalBlobRetention,
 		DisableRelayBlobRetention:       in.DisableRelayBlobRetention,
@@ -500,6 +503,7 @@ func runtimeConfigFromDocument(doc runtimeconfig.Document) (runtimeConfig, error
 		ObservabilityToken:    observabilityToken,
 		ApplicationEnabled:    doc.ApplicationInterface.Enabled,
 		ApplicationSocketPath: doc.ApplicationInterface.SocketPath,
+		Authority:             doc.Authority,
 		Node:                  operatorNodeConfig(doc, data, executor, trustedPrincipals),
 	}
 	privacy, dataPrivacy, policyService, err := operatorPrivacyChannels(doc, cfg.Node.Policy, trustedPrincipals)
@@ -631,6 +635,7 @@ func operatorPolicyConfig(doc runtimeconfig.Document) PolicyConfig {
 		DisableUntrustedRouteUse:        in.DisableUntrustedRouteUse,
 		DeniedRouteSchemes:              cloneStrings(in.DeniedRouteSchemes),
 		DisablePrivateChannelGrantUse:   in.DisablePrivateChannelGrantUse,
+		DisableRealmAuthorityCreation:   in.DisableRealmAuthorityCreation,
 		DeniedChannelGrantScopes:        cloneStrings(in.DeniedChannelGrantScopes),
 		DisableLocalBlobRetention:       in.DisableLocalBlobRetention,
 		DisableRelayBlobRetention:       in.DisableRelayBlobRetention,

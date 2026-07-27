@@ -39,6 +39,7 @@ type Client struct {
 
 type Service interface {
 	ardentsv1connect.NodeServiceClient
+	ardentsv1connect.AuthorityServiceClient
 	ardentsv1connect.ConfigurationServiceClient
 	ardentsv1connect.NetworkServiceClient
 	ardentsv1connect.WorkloadServiceClient
@@ -50,6 +51,7 @@ type Service interface {
 
 type services struct {
 	ardentsv1connect.NodeServiceClient
+	ardentsv1connect.AuthorityServiceClient
 	ardentsv1connect.ConfigurationServiceClient
 	ardentsv1connect.NetworkServiceClient
 	ardentsv1connect.WorkloadServiceClient
@@ -107,6 +109,7 @@ func (c *Client) TargetNodePrincipal() string {
 func NewService(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) Service {
 	return services{
 		NodeServiceClient:          ardentsv1connect.NewNodeServiceClient(httpClient, baseURL, opts...),
+		AuthorityServiceClient:     ardentsv1connect.NewAuthorityServiceClient(httpClient, baseURL, opts...),
 		ConfigurationServiceClient: ardentsv1connect.NewConfigurationServiceClient(httpClient, baseURL, opts...),
 		NetworkServiceClient:       ardentsv1connect.NewNetworkServiceClient(httpClient, baseURL, opts...),
 		WorkloadServiceClient:      ardentsv1connect.NewWorkloadServiceClient(httpClient, baseURL, opts...),

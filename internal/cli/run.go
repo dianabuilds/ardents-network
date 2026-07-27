@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	authoritycmd "ardents/internal/cli/authority"
 	"ardents/internal/cli/catalog"
 	configurationcmd "ardents/internal/cli/configuration"
 	contentcmd "ardents/internal/cli/content"
@@ -106,6 +107,8 @@ func dispatch(ctx context.Context, cfg configurationcmd.Config, rest []string, s
 func (a *app) dispatch(ctx context.Context, rest []string) int {
 	var code int
 	switch rest[0] {
+	case "authority":
+		code = authoritycmd.New(a.command()).Run(ctx, rest[1:])
 	case "node":
 		code = nodecmd.New(a.command()).Run(ctx, rest[1:])
 	case "network":

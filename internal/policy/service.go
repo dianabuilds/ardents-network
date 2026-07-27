@@ -139,6 +139,17 @@ func (s *Service) AllowCapabilityUse(use identityapi.CapabilityUse) error {
 	return s.applyDecisionLocked(result)
 }
 
+// AllowRealmAuthorityCreation is the Product Policy gate for the sole v1
+// authority-instance genesis mutation.
+func (s *Service) AllowRealmAuthorityCreation() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.cfg.DisableRealmAuthorityCreation {
+		return nil
+	}
+	return s.applyDecisionLocked(Deny("policy_realm_authority_denied", "Realm Authority creation is disabled by policy"))
+}
+
 func (s *Service) Snapshot() Snapshot {
 	return Snapshot{State: s.State(), Reason: s.Reason()}
 }

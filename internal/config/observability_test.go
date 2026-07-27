@@ -24,3 +24,18 @@ func TestEffectiveObservabilityTokenReferenceIsRedacted(t *testing.T) {
 	require.Contains(t, string(raw), `"observability":{"listen_address":"127.0.0.1:9090","token_file":"configured"}`)
 	require.NotContains(t, string(raw), "private/scrape-token")
 }
+
+func TestEffectiveAuthoritySecretAndRepositoryReferencesAreRedacted(t *testing.T) {
+	doc := Defaults()
+	doc.Authority = AuthorityConfig{
+		Enabled: true, StorePath: "/private/authority.db",
+		StoreKeyFile: "/private/store.key", SignerFile: "/private/signer.json",
+		CheckpointRepositoryPath: "/independent/checkpoints",
+	}
+	raw, err := json.Marshal(redactDocument(doc))
+	require.NoError(t, err)
+	require.NotContains(t, string(raw), "/private/")
+	require.NotContains(t, string(raw), "/independent/")
+	require.Contains(t, string(raw), `"authority"`)
+	require.Contains(t, string(raw), `"signer_file":"configured"`)
+}

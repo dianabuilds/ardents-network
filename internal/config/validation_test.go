@@ -78,6 +78,44 @@ func validApplicationInterface() ApplicationInterfaceConfig {
 	return ApplicationInterfaceConfig{Enabled: true, SocketPath: "/run/ardents/application.sock"}
 }
 
+func TestValidateAuthorityRequiresSeparateExplicitProductionInputs(t *testing.T) {
+	dir := t.TempDir()
+	valid := func() Document {
+		doc := Defaults()
+		doc.Node.DataDir = filepath.Join(dir, "node")
+		doc.Authority = AuthorityConfig{
+			Enabled:                  true,
+			StorePath:                filepath.Join(dir, "authority", "realm-authority.db"),
+			StoreKeyFile:             filepath.Join(dir, "authority-secrets", "store.key"),
+			SignerFile:               filepath.Join(dir, "authority-secrets", "signer.json"),
+			CheckpointRepositoryPath: filepath.Join(dir, "independent-checkpoints"),
+		}
+		return doc
+	}
+	require.NoError(t, Validate(valid()))
+
+	for name, mutate := range map[string]func(*Document){
+		"disabled material": func(doc *Document) {
+			doc.Authority.Enabled = false
+		},
+		"missing signer": func(doc *Document) {
+			doc.Authority.SignerFile = ""
+		},
+		"checkpoint under node state": func(doc *Document) {
+			doc.Authority.CheckpointRepositoryPath = filepath.Join(doc.Node.DataDir, "checkpoints")
+		},
+		"checkpoint contains store": func(doc *Document) {
+			doc.Authority.StorePath = filepath.Join(doc.Authority.CheckpointRepositoryPath, "authority.db")
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			doc := valid()
+			mutate(&doc)
+			require.Error(t, Validate(doc))
+		})
+	}
+}
+
 func TestValidateAcceptsCompleteServiceNode(t *testing.T) {
 	doc := Defaults()
 	doc.Node.Name = "node-a"

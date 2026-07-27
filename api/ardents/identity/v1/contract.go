@@ -213,6 +213,7 @@ var operatorActions = set(
 	"workload.register", "workload.start", "workload.stop", "workload.restart", "workload.status", "workload.list", "workload.hosted_service", "workload.service_publication", "workload.hosted_services",
 	"data.publish_object", "data.get_object", "data.list_objects", "data.publish_blob", "data.get_blob", "data.fetch_blob", "data.retain_blob", "data.pin_blob", "data.drop_blob", "data.blob_sources", "data.list_blobs", "data.get_transfer", "data.list_transfers", "data.publish_manifest", "data.get_manifest", "data.list_manifests", "data.inventory",
 	"diagnostics.snapshot", "diagnostics.health_summary", "diagnostics.pending_operations", "diagnostics.explain_failure", "diagnostics.recent_events",
+	"realm.authority.create", "realm.channel.audit.read",
 	"identity.principal.enroll", "identity.device.revoke", "identity.device-revocations.list", "identity.grant.issue", "identity.grant.revoke", "identity.grant.list")
 var resourceKinds = map[string]ResourceContract{
 	"node": {true, false}, "configuration": {true, false}, "network": {true, false}, "discovery-status": {true, false}, "local-presence": {true, false}, "peer-collection": {true, false},
@@ -220,6 +221,7 @@ var resourceKinds = map[string]ResourceContract{
 	"service-collection": {true, false}, "content-object": {false, true}, "content-object-collection": {true, false}, "content-blob": {false, true}, "content-blob-collection": {true, false},
 	"transfer": {false, false}, "transfer-collection": {true, false}, "content-manifest": {false, true}, "content-manifest-collection": {true, false}, "content-inventory": {true, false},
 	"diagnostics": {true, false}, "operation-collection": {true, false}, "diagnostic-subject": {false, false}, "event-collection": {true, false}, "content-owner": {true, true}, "owned-content": {false, true},
-	"service-type": {false, false},
-	"principal":    {false, false}, "device": {false, false}, "device-revocation-collection": {true, false}, "grant-proposal": {false, false}, "access-grant": {false, false}, "grant-collection": {true, false},
+	"service-type":             {false, false},
+	"realm-authority-instance": {false, false}, "realm": {false, false},
+	"principal": {false, false}, "device": {false, false}, "device-revocation-collection": {true, false}, "grant-proposal": {false, false}, "access-grant": {false, false}, "grant-collection": {true, false},
 }

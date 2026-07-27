@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	authorityapi "ardents/internal/authority"
 	"ardents/internal/buildinfo"
 	appdata "ardents/internal/content"
 	daemonruntime "ardents/internal/daemon"
@@ -132,6 +133,26 @@ func TestBoundedLabelsPreserveCanonicalLifecycleAndWorkloadVocabulary(t *testing
 	require.Equal(t, "other", workloadState("resource-id-not-a-state"))
 }
 
+func TestAuthorityMetricsAreBoundedAndExcludeAuthorityIdentifiers(t *testing.T) {
+	source := populatedSource()
+	deps := testDependencies(source)
+	deps.Authority = fakeAuthority{status: authorityapi.Status{
+		Version: authorityapi.ContractVersion, SchemaVersion: authorityapi.SchemaVersion,
+		RealmID:          "r1_0123456789abcdef0123456789abcdef",
+		CheckpointDigest: "ac1_secret_checkpoint", Phase: authorityapi.PhaseReady,
+		Readiness: authorityapi.ReadinessDegraded, Reason: authorityapi.ReasonAuditUnavailable,
+		MemberCount: 3, ChannelCount: 2, PendingOperationCount: 1, AuditOutboxDepth: 1,
+	}}
+	surface, err := NewSurface(deps, "")
+	require.NoError(t, err)
+	metrics := scrape(t, surface, "")
+	require.Contains(t, metrics, `ardents_realm_authority_readiness{reason="authority_audit_unavailable",state="degraded"} 1`)
+	require.Contains(t, metrics, `ardents_realm_authority_phase{phase="ready"} 1`)
+	require.Contains(t, metrics, `ardents_realm_authority_audit_outbox_depth 1`)
+	require.NotContains(t, metrics, "r1_0123456789abcdef0123456789abcdef")
+	require.NotContains(t, metrics, "ac1_secret_checkpoint")
+}
+
 func scrape(t *testing.T, surface *Surface, token string) string {
 	t.Helper()
 	recorder := httptest.NewRecorder()
@@ -203,3 +224,7 @@ func (s *fakeSource) ListHostedServices() ([]hosting.ServiceSnapshot, error) {
 }
 func (s *fakeSource) InventorySnapshot() appdata.InventorySnapshot { return s.inventory }
 func (s *fakeSource) List() []transfer.Record                      { return s.transfers }
+
+type fakeAuthority struct{ status authorityapi.Status }
+
+func (a fakeAuthority) Readiness() authorityapi.Status { return a.status }

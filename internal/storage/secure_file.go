@@ -42,6 +42,21 @@ func ValidatePrivateDir(dir string) error {
 	return validatePrivateDirectory(dir, info)
 }
 
+// ValidateStrictPrivateFile verifies an existing private regular file without
+// opening it or changing its permissions. Callers that hand the path to a
+// database library use this to fail closed before the library can follow a
+// symlink or repair an exposed file.
+func ValidateStrictPrivateFile(path string) error {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return err
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("private state must be a regular file")
+	}
+	return validateStrictPrivateFile(path, info)
+}
+
 func ensurePrivateCreateDir(dir string) error {
 	if dir == "" {
 		dir = "."

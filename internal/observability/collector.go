@@ -3,6 +3,7 @@
 package observability
 
 import (
+	authorityapi "ardents/internal/authority"
 	appdata "ardents/internal/content"
 	daemonruntime "ardents/internal/daemon"
 	diagapi "ardents/internal/diagnostics"
@@ -41,6 +42,10 @@ type TransferSource interface {
 	List() []transfer.Record
 }
 
+type AuthoritySource interface {
+	Readiness() authorityapi.Status
+}
+
 type Dependencies struct {
 	Runtime     RuntimeSource
 	Diagnostics DiagnosticsSource
@@ -48,6 +53,7 @@ type Dependencies struct {
 	Hosting     HostingSource
 	Data        DataSource
 	Transfers   TransferSource
+	Authority   AuthoritySource
 }
 
 type Collector struct {
@@ -71,9 +77,23 @@ func (c *Collector) Collect(out chan<- prometheus.Metric) {
 	c.collectNetwork(out, networkStatus)
 	c.collectPeers(out, c.deps.Runtime.ListPeers())
 	c.collectDiagnostics(out, diagnostics)
+	c.collectAuthority(out)
 	c.collectWorkloads(out)
 	c.collectServices(out)
 	c.collectData(out)
+}
+
+func (c *Collector) collectAuthority(out chan<- prometheus.Metric) {
+	if c.deps.Authority == nil {
+		return
+	}
+	status := c.deps.Authority.Readiness()
+	gauge(out, c.desc.authorityState, 1, authorityReadiness(status.Readiness), authorityReason(status.Reason))
+	gauge(out, c.desc.authorityPhase, 1, authorityPhase(status.Phase))
+	gauge(out, c.desc.authorityAuditOutbox, float64(status.AuditOutboxDepth))
+	gauge(out, c.desc.authorityMembers, float64(status.MemberCount))
+	gauge(out, c.desc.authorityChannels, float64(status.ChannelCount))
+	gauge(out, c.desc.authorityOperations, float64(status.PendingOperationCount))
 }
 
 func gauge(out chan<- prometheus.Metric, desc *prometheus.Desc, value float64, labels ...string) {

@@ -6,6 +6,7 @@ import (
 	runtimeconfig "ardents/internal/config"
 	diagapi "ardents/internal/diagnostics"
 	identityaccess "ardents/internal/identity/access"
+	authorityhandler "ardents/internal/localapi/authority"
 	configurationapi "ardents/internal/localapi/configuration"
 	contenthandler "ardents/internal/localapi/content"
 	diagnosticshandler "ardents/internal/localapi/diagnostics"
@@ -34,6 +35,7 @@ type Dependencies struct {
 	DataFetch        transferhandler.Fetcher
 	Configuration    runtimeconfig.Service
 	Audit            diagapi.EventWriter
+	Authority        authorityhandler.Service
 }
 
 func NewPrincipalHandler(deps Dependencies, access *identityaccess.Service, node string, peer [32]byte, source identityaccess.SourceKey) (http.Handler, error) {
@@ -49,6 +51,7 @@ func NewPrincipalHandler(deps Dependencies, access *identityaccess.Service, node
 	mux := http.NewServeMux()
 	register := func(path string, handler http.Handler) { mux.Handle(path, handler) }
 	register(ardentsv1connect.NewNodeServiceHandler(server, option))
+	register(ardentsv1connect.NewAuthorityServiceHandler(server, option))
 	register(ardentsv1connect.NewConfigurationServiceHandler(server, option))
 	register(ardentsv1connect.NewNetworkServiceHandler(server, option))
 	register(ardentsv1connect.NewDiagnosticsServiceHandler(server, option))
@@ -60,6 +63,7 @@ func NewPrincipalHandler(deps Dependencies, access *identityaccess.Service, node
 }
 
 type Server struct {
+	*authorityhandler.AuthorityEndpoint
 	*contenthandler.QueryHandler
 	*configurationapi.Controller
 	*diagnosticshandler.Endpoint
@@ -70,17 +74,22 @@ type Server struct {
 }
 
 func newOperatorServer(deps Dependencies) (*Server, error) {
+	authorityAPI, err := authorityhandler.NewHandler(deps.Authority)
+	if err != nil {
+		return nil, err
+	}
 	contentAPI, err := contenthandler.NewHandler(deps.Content, deps.Data)
 	if err != nil {
 		return nil, err
 	}
 	return &Server{
-		QueryHandler:   contentAPI,
-		Controller:     configurationapi.NewHandler(deps.Configuration),
-		Endpoint:       diagnosticshandler.NewHandler(deps.Diagnostics),
-		API:            networkhandler.NewHandler(deps.Discovery, deps.DiscoveryRecords, deps.Network),
-		RuntimeHandler: nodehandler.NewHandler(deps.Node),
-		Handler:        transferhandler.NewHandler(deps.Sources, deps.Transfers, deps.DataFetch),
-		Service:        workloadhandler.NewHandler(deps.Workload, deps.Hosting),
+		AuthorityEndpoint: authorityAPI,
+		QueryHandler:      contentAPI,
+		Controller:        configurationapi.NewHandler(deps.Configuration),
+		Endpoint:          diagnosticshandler.NewHandler(deps.Diagnostics),
+		API:               networkhandler.NewHandler(deps.Discovery, deps.DiscoveryRecords, deps.Network),
+		RuntimeHandler:    nodehandler.NewHandler(deps.Node),
+		Handler:           transferhandler.NewHandler(deps.Sources, deps.Transfers, deps.DataFetch),
+		Service:           workloadhandler.NewHandler(deps.Workload, deps.Hosting),
 	}, nil
 }

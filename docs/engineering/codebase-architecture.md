@@ -173,6 +173,7 @@ docs/
     reference-invariants.md
 
 internal/
+  authority/
   daemon/
   buildinfo/
   config/
@@ -217,6 +218,7 @@ internal/
     protocol/
       ardentsv1connect/
     auth/
+    authority/
     identity/
     rpc/
     node/
@@ -227,6 +229,7 @@ internal/
     diagnostics/
     configuration/
   cli/
+    authority/
     client/
     command/
     output/
@@ -347,11 +350,13 @@ The nested directories have these exact responsibilities:
 | `workload/docker` | the sole Docker Engine implementation adapter |
 | `hosting` | operator-facing hosted-service inventory combining workload backing, readiness and publication truth |
 
-There are deliberately no target `api`, `model`, `state`, `contracts`,
-`projection`, `authority`, `controller`, `helpers`, or nested `internal`
-directories. Consumer-owned interfaces live beside the behaviour that consumes
-them; durable schemas live with their product owner; small value types live at
-the owner root.
+There are deliberately no generic feature-level `api`, `model`, `state`,
+`contracts`, `projection`, `controller`, `helpers`, or nested `internal`
+directories. `internal/authority` is the explicit single-Realm Channel Grant
+Authority product owner accepted by ADR-0011 and PW3-05, not a generic
+technical-category package. Consumer-owned interfaces live beside the
+behaviour that consumes them; durable schemas live with their product owner;
+small value types live at the owner root.
 
 The target repository permits repository-local agent tooling only under the
 exact `.agents/skills/security-audit/` allowlist. Other `.agents` content and
@@ -378,6 +383,7 @@ The policy discovers handwritten production Go packages from the explicit
 
 | Directory | Owns | Explicitly does not own |
 |---|---|---|
+| `authority` | one-Realm authority genesis ledger, external-signer continuity, monotonic checkpoint contract and redacted authority status | Operator authentication, Product Policy, signer custody, repository administration, generation delivery, membership, restore or qualification |
 | `daemon` | construction, startup order, shutdown rollback, cross-module process lifecycle | product state machines, RPC mapping, CLI presentation |
 | `buildinfo` | immutable build and version identity | runtime health, configuration, release orchestration |
 | `config` | decode, defaults, validation, source precedence, change classification | applying product changes, environment-specific startup logic |
@@ -682,6 +688,7 @@ The monolithic proto file is split by operator responsibility. Each protocol
 service remains versioned under `ardents.v1`:
 
 - `NodeService`: lifecycle, identity and aggregate node status;
+- `AuthorityService`: protected single-Realm authority genesis and bounded inspection;
 - `ConfigurationService`: effective configuration and reload;
 - `NetworkService`: participation, peers, routes and discovery;
 - `ContentService`: local objects, blobs, manifests and inventory;
@@ -1047,7 +1054,7 @@ Completed structural replacements:
   without adding holding packages. Packages above that default have exact,
   non-growing ceilings and reasons in the machine-readable acceptance policy;
   an undeclared package or any growth beyond its ceiling fails the gate.
-- replaced the single 48-method `ArdentsService` with 9 generated bounded
+- replaced the single 48-method `ArdentsService` with 10 generated bounded
   Operator services and 3 generated Application services. The Operator
   services are registered behind one protected local endpoint; the Application
   services remain on their distinct interface. Composition paths and proto

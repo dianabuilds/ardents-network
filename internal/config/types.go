@@ -13,6 +13,7 @@ type Document struct {
 	Node                 NodeConfig                 `json:"node"`
 	API                  APIConfig                  `json:"api"`
 	ApplicationInterface ApplicationInterfaceConfig `json:"application_interface"`
+	Authority            AuthorityConfig            `json:"authority"`
 	Trust                TrustConfig                `json:"trust"`
 	Network              NetworkConfig              `json:"network"`
 	Privacy              PrivacyConfig              `json:"privacy"`
@@ -38,6 +39,14 @@ type TrustedPrincipalConfig struct {
 type ApplicationInterfaceConfig struct {
 	Enabled    bool   `json:"enabled"`
 	SocketPath string `json:"socket_path,omitempty"`
+}
+
+type AuthorityConfig struct {
+	Enabled                  bool   `json:"enabled"`
+	StorePath                string `json:"store_path"`
+	StoreKeyFile             string `json:"store_key_file"`
+	SignerFile               string `json:"signer_file"`
+	CheckpointRepositoryPath string `json:"checkpoint_repository_path"`
 }
 
 type NodeConfig struct {
@@ -147,6 +156,7 @@ type PolicyConfig struct {
 	DisableUntrustedRouteUse        bool                                   `json:"disable_untrusted_route_use"`
 	DeniedRouteSchemes              []string                               `json:"denied_route_schemes"`
 	DisablePrivateChannelGrantUse   bool                                   `json:"disable_private_channel_grant_use"`
+	DisableRealmAuthorityCreation   bool                                   `json:"disable_realm_authority_creation"`
 	DeniedChannelGrantScopes        []string                               `json:"denied_channel_grant_scopes"`
 	DisableLocalBlobRetention       bool                                   `json:"disable_local_blob_retention"`
 	DisableRelayBlobRetention       bool                                   `json:"disable_relay_blob_retention"`

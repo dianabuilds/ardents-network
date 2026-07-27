@@ -33,6 +33,9 @@ func Validate(doc Document) error {
 	if err := validateApplicationInterface(doc.ApplicationInterface); err != nil {
 		return err
 	}
+	if err := validateAuthority(doc.Authority, doc.Node.DataDir); err != nil {
+		return err
+	}
 	if doc.ApplicationInterface.Enabled {
 		if doc.ApplicationInterface.SocketPath == doc.API.SocketPath {
 			return fmt.Errorf("application_interface.socket_path must differ from api.socket_path")
@@ -57,6 +60,64 @@ func Validate(doc Document) error {
 		return err
 	}
 	return validateObservability(doc)
+}
+
+func validateAuthority(cfg AuthorityConfig, nodeDataDir string) error {
+	values := []struct {
+		name, value string
+	}{
+		{"authority.store_path", cfg.StorePath},
+		{"authority.store_key_file", cfg.StoreKeyFile},
+		{"authority.signer_file", cfg.SignerFile},
+		{"authority.checkpoint_repository_path", cfg.CheckpointRepositoryPath},
+	}
+	if !cfg.Enabled {
+		for _, field := range values {
+			if field.value != "" {
+				return fmt.Errorf("%s requires authority.enabled=true", field.name)
+			}
+		}
+		return nil
+	}
+	for _, field := range values {
+		if strings.TrimSpace(field.value) == "" {
+			return fmt.Errorf("%s is required when authority.enabled=true", field.name)
+		}
+		if !filepath.IsAbs(field.value) {
+			return fmt.Errorf("%s must be absolute", field.name)
+		}
+	}
+	clean := make(map[string]string, len(values))
+	for _, field := range values {
+		clean[field.name] = filepath.Clean(field.value)
+	}
+	if clean["authority.store_path"] == clean["authority.store_key_file"] ||
+		clean["authority.store_path"] == clean["authority.signer_file"] ||
+		clean["authority.store_key_file"] == clean["authority.signer_file"] {
+		return fmt.Errorf("authority store and signer inputs must be distinct")
+	}
+	checkpoint := clean["authority.checkpoint_repository_path"]
+	for _, protected := range []struct {
+		name, path string
+	}{
+		{"node.data_dir", filepath.Clean(nodeDataDir)},
+		{"authority.store_path", clean["authority.store_path"]},
+		{"authority.store_key_file", clean["authority.store_key_file"]},
+		{"authority.signer_file", clean["authority.signer_file"]},
+	} {
+		if pathContains(protected.path, checkpoint) || pathContains(checkpoint, protected.path) {
+			return fmt.Errorf("authority.checkpoint_repository_path must be outside %s", protected.name)
+		}
+	}
+	return nil
+}
+
+func pathContains(parent, child string) bool {
+	relative, err := filepath.Rel(parent, child)
+	if err != nil || relative == "." {
+		return err == nil
+	}
+	return relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
 }
 
 func validateApplicationInterface(cfg ApplicationInterfaceConfig) error {

@@ -62,11 +62,12 @@ type ProcedureRule struct {
 type ProcedureResolver func(string) (ProcedureRule, bool)
 
 const (
-	ownerContract = "OCS-01"
-	ownerNND      = "OCS-02"
-	ownerWorkload = "OCS-03"
-	ownerData     = "OCS-04"
-	ownerIdentity = "OCS-05"
+	ownerContract  = "OCS-01"
+	ownerNND       = "OCS-02"
+	ownerWorkload  = "OCS-03"
+	ownerData      = "OCS-04"
+	ownerIdentity  = "OCS-05"
+	ownerAuthority = "CGA-01"
 )
 
 var groups = []GroupSpec{
@@ -76,6 +77,7 @@ var groups = []GroupSpec{
 	{Name: "data", Summary: "objects, blobs, manifests and transfers"},
 	{Name: "diagnostics", Summary: "health, failures, pending operations and events"},
 	{Name: "config", Summary: "effective Operator configuration and atomic reload"},
+	{Name: "authority", Summary: "single-Realm Channel Grant Authority genesis and inspection"},
 	{Name: "identity", Summary: "Principal custody, enrollment, sessions and access administration"},
 	{Name: "shell", Summary: "interactive terminal session over the current Operator context"},
 	{Name: "tui", Summary: "optional fullscreen Operator dashboard"},
@@ -136,6 +138,9 @@ var commands = []CommandSpec{
 
 	protected("config.show", []string{"config", "show"}, "", "show effective configuration", ardentsv1connect.ConfigurationServiceGetEffectiveConfigurationProcedure, "config.effective", "configuration", false, OutputProtoJSON, ownerContract),
 	protected("config.reload", []string{"config", "reload"}, "", "reload configuration atomically", ardentsv1connect.ConfigurationServiceReloadConfigurationProcedure, "config.reload", "configuration", true, OutputProtoJSON, ownerContract),
+
+	protected("authority.create", []string{"authority", "create"}, "--request-id ID", "create or reopen the single Realm Authority", ardentsv1connect.AuthorityServiceCreateRealmAuthorityProcedure, "realm.authority.create", "realm-authority-instance", true, OutputProtoJSON, ownerAuthority),
+	protected("authority.inspect", []string{"authority", "inspect"}, "--realm-id ID", "show bounded Realm Authority readiness", ardentsv1connect.AuthorityServiceInspectRealmAuthorityProcedure, "realm.channel.audit.read", "realm", false, OutputProtoJSON, ownerAuthority),
 
 	offline("identity.principal.create", []string{"identity", "principal", "create"}, "[--signer-file PATH]", "create an offline Principal root", "offline.identity.principal.create", OutputCLIJSON),
 	offline("identity.principal.import", []string{"identity", "principal", "import"}, "--from-file PATH [--signer-file PATH]", "import a protected Principal root", "offline.identity.principal.import", OutputCLIJSON),

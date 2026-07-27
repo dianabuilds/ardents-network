@@ -116,6 +116,12 @@ func Run(localAPI LocalAPIHandlerFactory, applicationAPI ApplicationAPIHandlerFa
 	if err := configureApplicationIdentity(&process, identityAccess, applicationIdentityOptions{Enabled: cfg.ApplicationEnabled}); err != nil {
 		return fmt.Errorf("configure Application identity: %w", err)
 	}
+	authorityStore := configureRealmAuthority(&process, cfg.Authority)
+	if authorityStore != nil {
+		defer func() {
+			returnErr = errors.Join(returnErr, authorityStore.Close())
+		}()
+	}
 	if err := ensureFirstOperatorBootstrapTicket(ctx, process.PrincipalAccess, n.GetNodeRuntime().Identity.Principal, cfg.SocketPath); err != nil {
 		return fmt.Errorf("prepare first Operator bootstrap: %w", err)
 	}
