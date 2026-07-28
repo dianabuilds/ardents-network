@@ -464,6 +464,46 @@ func TestMembershipFenceCannotCompleteAfterOperationBoundsExpire(t *testing.T) {
 	)
 }
 
+func TestMembershipFenceReplayRemainsIdempotentAfterOperationBoundsExpire(t *testing.T) {
+	ctx := context.Background()
+	fixture := newServiceFixture(t)
+	fixture.service.random = cryptorand.Reader
+	realmID, channelID, operationID, target := prepareRemovalAwaitingFence(
+		t, ctx, fixture,
+	)
+	command := Command{
+		Actor: "operator", Effective: "operator",
+		Action: ActionChangeMembership, ResourceKind: ResourceKindChannel,
+		ResourceID: ChannelResource(realmID, channelID),
+	}
+	evidence := validFenceEvidence(
+		realmID, operationID, target, "operator", fixture.clock(),
+	)
+	request := FenceEvidenceRequest{
+		Version: ContractVersion, RealmID: realmID, ChannelID: channelID,
+		OperationID: operationID, Evidence: evidence,
+	}
+	completed, err := fixture.service.SubmitDeploymentFenceEvidence(
+		ctx, command, request,
+	)
+	require.NoError(t, err)
+	rotation := fixture.store.state.Rotations[len(fixture.store.state.Rotations)-1]
+	fixture.clock = func() time.Time { return rotation.Deadline }
+	fixture.service.clock = fixture.clock
+
+	replayed, err := fixture.service.SubmitDeploymentFenceEvidence(
+		ctx, command, request,
+	)
+	require.NoError(t, err)
+	require.Equal(t, completed, replayed)
+	require.Len(
+		t,
+		fixture.store.state.Rotations[len(fixture.store.state.Rotations)-1].
+			FenceEvidence,
+		1,
+	)
+}
+
 func TestMembershipChangeResumesAtBothCheckpointCrashBoundaries(t *testing.T) {
 	for _, boundary := range []CrashBoundary{
 		CrashAfterLedgerCommit,

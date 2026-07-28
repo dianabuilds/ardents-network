@@ -121,6 +121,15 @@ func (s *Service) SubmitDeploymentFenceEvidence(
 		rotation.Phase != DeliveryPhaseCompleted {
 		return FenceEvidenceResult{}, ErrConflict
 	}
+	for _, retained := range rotation.FenceEvidence {
+		if retained.TargetPrincipal != request.Evidence.TargetPrincipal {
+			continue
+		}
+		if !equalFenceEvidence(retained, request.Evidence) {
+			return FenceEvidenceResult{}, ErrConflict
+		}
+		return fenceEvidenceResult(state, rotation, retained), nil
+	}
 	now := s.clock().UTC().Truncate(time.Second)
 	if !now.Before(rotation.Deadline) || !now.Before(rotation.DrainDeadline) {
 		return FenceEvidenceResult{}, ErrInvalidArgument
@@ -132,16 +141,6 @@ func (s *Service) SubmitDeploymentFenceEvidence(
 	}
 	if !fenceTargetAllowed(state, rotation, request.Evidence.TargetPrincipal) {
 		return FenceEvidenceResult{}, ErrPermissionDenied
-	}
-	digest := deploymentFenceEvidenceDigest(request.Evidence)
-	for _, retained := range rotation.FenceEvidence {
-		if retained.TargetPrincipal != request.Evidence.TargetPrincipal {
-			continue
-		}
-		if deploymentFenceEvidenceDigest(retained) != digest {
-			return FenceEvidenceResult{}, ErrConflict
-		}
-		return fenceEvidenceResult(state, rotation, retained), nil
 	}
 	if rotation.Phase == DeliveryPhaseCompleted {
 		return FenceEvidenceResult{}, ErrConflict
@@ -170,6 +169,27 @@ func (s *Service) SubmitDeploymentFenceEvidence(
 		return FenceEvidenceResult{}, err
 	}
 	return fenceEvidenceResult(state, state.Rotations[rotationIndex], request.Evidence), nil
+}
+
+func equalFenceEvidence(left, right DeploymentFenceEvidence) bool {
+	if left.Version != right.Version ||
+		left.RealmID != right.RealmID ||
+		left.OperationID != right.OperationID ||
+		left.TargetPrincipal != right.TargetPrincipal ||
+		left.ManifestDigest != right.ManifestDigest ||
+		left.RequestID != right.RequestID ||
+		left.Reason != right.Reason ||
+		!left.ObservedAt.Equal(right.ObservedAt) ||
+		left.ClockSkewSecond != right.ClockSkewSecond ||
+		len(left.Controls) != len(right.Controls) {
+		return false
+	}
+	for index := range left.Controls {
+		if left.Controls[index] != right.Controls[index] {
+			return false
+		}
+	}
+	return true
 }
 
 func validMembershipChangeInput(change MembershipChangeKind, target string) bool {
