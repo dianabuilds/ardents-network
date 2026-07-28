@@ -59,7 +59,7 @@ DR-06 stabilization preparation ------------------------------------> DR-06
 ADR-0011 review
   -> maintainer acceptance
   -> CGA-01..06
-       +-> ADR-0013 review -> MR-01..07
+       +-> ADR-0013 review -> MR-01..08
        +-> ADR-0015 review -> AM-01..05
   -> Authority + Multi-host + Messaging qualification
 
@@ -123,6 +123,18 @@ implementation slices and commits.
   `realm.channel-grant-authority` remain `Q=no`.
 - ADR-0015 remains a separate ready review. ADR-0014 remains gated by
   ADR-0012; neither was bundled into the ADR-0013 disposition.
+
+## Combined review and admission checkpoint — 2026-07-28
+
+- ADR-0015 was returned with explicit restore-freshness, rebind/close cutover
+  and Content Reference terminology blockers. It remains Proposed and AM-01 is
+  not admitted.
+- MR-01 passed its post-ADR-0013 admission audit and is published as PW3-18.
+  This admits only bounded manifest compilation/validation, not host access,
+  topology mutation, implementation assignment or qualification.
+- CGA-07 was re-audited and remains `needs-info` because its dedicated DR-06
+  scope, release candidate, real-host/WORM/backup/release environments and
+  evidence destination are still undeclared.
 
 ## Stream ownership
 

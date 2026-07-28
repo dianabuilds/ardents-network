@@ -75,3 +75,13 @@ feature behavior.
     remain undeclared;
   - CGA-07 therefore remains `needs-info`; `Q=no`. No qualification attempt,
     deployment change, capability promotion or push was made.
+- 2026-07-28 combined-stage admission re-audit at
+  `main@68e80808b11fedbbf00ac1cfd2d9874bb74b039c`:
+  - accepted CGA-06 and ADR-0013 dependencies remain satisfied and unchanged;
+  - no dedicated CGA-07 DR-06 scope, exact release-candidate version,
+    authorized real three-host Linux environment, independently administered
+    WORM repository, separate authority-backup failure domain, release runners
+    or supported-lifetime evidence destination has appeared;
+  - admission remains `needs-info`; local Windows/tooling and Docker multinode
+    results are not substitutes. No qualification command was started and
+    `realm.channel-grant-authority` remains `Q=no`.
