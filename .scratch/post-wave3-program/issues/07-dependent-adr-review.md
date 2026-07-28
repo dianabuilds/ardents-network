@@ -277,18 +277,18 @@ before the first implementation slice is accepted.
 
 ### ADR-0015 review
 
-- [ ] The Application interface exposes only the five bounded product
+- [x] The Application interface exposes only the five bounded product
       operations and exact action/resource admission.
 - [ ] Operator membership and DR-03 authority boundaries remain intact.
-- [ ] Durable acceptance, Node receipt, Application acknowledgement,
+- [x] Durable acceptance, Node receipt, Application acknowledgement,
       idempotency, ordering, retry, expiry, and terminal outcomes are not
       conflated.
-- [ ] Content References do not grant fetch authority or cause send-time fetch.
+- [x] Content References do not grant fetch authority or cause send-time fetch.
 - [ ] Restore/restart cannot resurrect stale membership or silently lose
       accepted messages.
-- [ ] Remaining finite implementation-profile constants are a named gate
+- [x] Remaining finite implementation-profile constants are a named gate
       before AM implementation acceptance.
-- [ ] Exactly-once, global/causal ordering, read receipt, arbitrary topic,
+- [x] Exactly-once, global/causal ordering, read receipt, arbitrary topic,
       caller recipients, federation, and public Waku controls remain rejected.
 - [ ] Maintainer records an independent ADR-0015 review outcome.
 
@@ -457,3 +457,62 @@ No implementation or qualification is claimed by closing this issue.
     or change either affected capability from `Q=no`;
   - PW3-07 remains open and returns to `ready-for-agent` only for the separate
     ADR-0015 review. ADR-0014 remains gated by ADR-0012 and is not bundled.
+- 2026-07-28 ADR-0015 compatibility review:
+  - outcome: `returned with blockers`;
+  - reviewed source: clean
+    `main@68e80808b11fedbbf00ac1cfd2d9874bb74b039c`; accepted Authority
+    implementation `1136def860f30bc452e1b5352c537cbd44a163f6`;
+    maintainer acceptance
+    `3775f46c5f35c0077306a14e8688156b6ff47f75`;
+  - source comparison covered ADR-0015 line by line against accepted
+    ADR-0011, ADR-0002, ADR-0003, ADR-0004, the DR-01/DR-03 packets, Wave 3
+    synthesis, CGA-04 through CGA-06 security contracts, and the accepted
+    implementation in `internal/authority`, `internal/channeldelivery`,
+    `internal/identity/capability`, `internal/messaging` and `internal/policy`;
+  - compatible boundaries: the Application surface is limited to five bounded
+    product operations with exact resources and optional one-hop
+    Principal-to-Application Delegation. Conversation lifecycle remains
+    direct-Operator-only. Messaging owns conversations, idempotency,
+    message/inbox/outbox/subscription/cursor/receipt/retry truth; Authority
+    alone owns Application-channel grants, generations, revocation, survivor
+    activation, fencing acceptance and checkpoint truth;
+  - compatible delivery semantics: send success is durable local outbox
+    acceptance, recipient Node receipt follows authorized durable inbox
+    admission, and Application acknowledgement records consumption only.
+    Recipient-local order, at-least-once transport, finite TTL/backpressure,
+    bounded retry and terminal expiry/revocation/fencing remain distinct;
+  - compatible implemented seam: CGA-05 admits `channel.application` only
+    through a separate Product Policy class gate, gives every channel
+    independent ID/secret/generation/membership/replay/audit truth, and owns no
+    conversation identity, recipient selection, group policy or message
+    semantics. CGA-04/CGA-06 preserve fencing, exact-head restore and
+    dual-signed authority-transition behavior for that generic channel;
+  - blocker 1 — Messaging restore freshness: the proposed restore contract
+    compares Messaging state only with the latest Authority checkpoint.
+    Accepted sends, inbox entries, cursors and acknowledgements do not advance
+    that Authority head, so an older Messaging backup can match the same head
+    while silently losing accepted messages or consumption truth. The decision
+    needs a Messaging-owned monotonic freshness/backup proof, or another exact
+    retained mechanism that detects same-authority-head rollback and fails
+    closed;
+  - blocker 2 — rebind and close cutover: ADR-0015 separates delivery-Node
+    rebind and conversation close from membership change but requires a fresh
+    Authority generation only for membership changes. It does not state how a
+    rebind excludes or fences the old delivery Node before the new binding is
+    current, nor how close terminates renewal/use of the Application channel.
+    The accepted Authority has rotation/membership/fencing actions but no
+    conversation-close action. The decision must bind rebind and close to
+    exact existing Authority transitions or explicitly return for an Authority
+    contract change; stale restore must not resurrect either state;
+  - blocker 3 — Content Reference identity: ADR-0015 calls Content References
+    `owner-qualified under ADR-0004`, but ADR-0004 and `CONTEXT.md` define them
+    as globally content-addressed immutable identifiers. Owner qualification
+    applies to Content Object/Manifest identity and authorization bindings.
+    The ADR must use the canonical term while retaining its correct rule that
+    a reference grants no fetch authority and causes no send-time fetch;
+  - finite inbox/outbox, byte, receipt-retention, retry/backoff/deadline,
+    query-page and audit-retention constants remain an explicit AM-01 gate
+    before implementation acceptance; they are not caller-controlled;
+  - governance guard: ADR-0015 remains `Proposed`; W3-D002 remains `proposed`;
+    AM-01 is not admitted, `application.messaging` remains `Q=no`, and no
+    Messaging implementation, qualification, deployment or push is authorized.
