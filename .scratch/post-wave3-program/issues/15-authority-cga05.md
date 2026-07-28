@@ -1,7 +1,7 @@
 # PW3-15: CGA-05 renew grants and separate channel classes
 
 Status: ready-for-human
-State: open
+State: closed
 Labels: ready-for-human
 Research class: R0 lifecycle implementation with security review
 
@@ -112,3 +112,6 @@ IDs/secrets/generations/membership/replay/audit and policy admission.
   `c8f87f69ff27a14902a628822b49bab60fa0dd38` after the commit-bound handoff
   and clean repeat Standards/Spec reviews. CGA-06 may consume this commit;
   later qualification remains governed by its own matching-commit gates.
+- 2026-07-28 tracker closure: closed after that explicit acceptance. Canonical
+  triage remains `ready-for-human`; this closure changes no capability or
+  qualification state.

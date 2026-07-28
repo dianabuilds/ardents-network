@@ -1,7 +1,7 @@
 # PW3-16: CGA-06 restore, recover and migrate authority truth
 
 Status: ready-for-human
-State: open
+State: closed
 Labels: ready-for-human
 Research class: R1 migration/recovery with security review
 
@@ -124,3 +124,6 @@ one.
   and clean repeat Standards/Spec reviews. CGA-07 may consume this commit;
   qualification and any `Q` change remain governed by CGA-07's complete
   matching-commit gates.
+- 2026-07-28 tracker closure: closed after that explicit acceptance. Canonical
+  triage remains `ready-for-human`; this closure changes no capability or
+  qualification state.
