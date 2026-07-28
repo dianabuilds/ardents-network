@@ -78,9 +78,11 @@ across later strictly monotonic rotations while the channel-keyed record tracks
 only the latest checkpoint.
 
 Every transition checks audit-log and audit-outbox capacity before signing or
-mutating. Rotation additionally checks operation and rotation-record capacity.
-An exact full bound returns resource exhaustion without persisting an
-over-limit ledger.
+mutating. Before creating pending state, rotation reserves the full
+`2 * member_count + 2` audit capacity required for rotate, all installed
+receipts, activation commit and all active receipts. Rotation also checks
+operation and rotation-record capacity. Insufficient completion capacity
+returns resource exhaustion without stranding a pending generation.
 
 ## Disclosure and qualification
 

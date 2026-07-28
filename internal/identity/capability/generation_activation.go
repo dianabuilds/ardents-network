@@ -85,12 +85,8 @@ func (s *Service) ActivateGeneration(
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	now := s.clock().UTC().Truncate(time.Second)
-	if err := validateGenerationActivation(activation, true); err != nil {
-		return GenerationDeliveryReceipt{}, capabilityError(CodeInvalid, err.Error())
-	}
-	issuer, ok := s.trustedIssuer(activation.AuthorityPrincipal)
-	if !ok || VerifyGenerationActivation(activation, issuer) != nil {
-		return GenerationDeliveryReceipt{}, capabilityError(CodeIssuerUntrusted, "generation activation issuer is not trusted")
+	if err := s.validateTrustedGenerationActivation(activation); err != nil {
+		return GenerationDeliveryReceipt{}, err
 	}
 	channelKey := generationChannelKey(activation.ChannelID)
 	if retained, exists := s.ledger.ActivatedOperations[activation.OperationID]; exists {
@@ -178,12 +174,8 @@ func (s *Service) ConfirmGenerationRuntimeAdoption(
 ) (GenerationDeliveryReceipt, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if err := validateGenerationActivation(activation, true); err != nil {
-		return GenerationDeliveryReceipt{}, capabilityError(CodeInvalid, err.Error())
-	}
-	issuer, ok := s.trustedIssuer(activation.AuthorityPrincipal)
-	if !ok || VerifyGenerationActivation(activation, issuer) != nil {
-		return GenerationDeliveryReceipt{}, capabilityError(CodeIssuerUntrusted, "generation activation issuer is not trusted")
+	if err := s.validateTrustedGenerationActivation(activation); err != nil {
+		return GenerationDeliveryReceipt{}, err
 	}
 	retained, exists := s.ledger.ActivatedOperations[activation.OperationID]
 	if !exists || !activationsEqual(retained.Activation, activation) {
@@ -207,6 +199,17 @@ func (s *Service) ConfirmGenerationRuntimeAdoption(
 	}
 	s.ledger = next
 	return latest.Receipt.restore(), nil
+}
+
+func (s *Service) validateTrustedGenerationActivation(activation GenerationActivation) error {
+	if err := validateGenerationActivation(activation, true); err != nil {
+		return capabilityError(CodeInvalid, err.Error())
+	}
+	issuer, ok := s.trustedIssuer(activation.AuthorityPrincipal)
+	if !ok || VerifyGenerationActivation(activation, issuer) != nil {
+		return capabilityError(CodeIssuerUntrusted, "generation activation issuer is not trusted")
+	}
+	return nil
 }
 
 func (s *Service) GenerationReadiness(channelID [16]byte) GenerationReadiness {

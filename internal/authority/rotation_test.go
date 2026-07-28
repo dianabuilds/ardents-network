@@ -210,17 +210,30 @@ func TestRotationAndCheckpointTransitionsRejectExactLedgerBounds(t *testing.T) {
 	below := Ledger{
 		Operations:  make([]OperationRecord, MaxOperations-1),
 		Rotations:   make([]RotationRecord, MaxOperations-1),
-		AuditLog:    make([]AuditRecord, MaxAuditRecords-1),
-		AuditOutbox: make([]AuditRecord, MaxAuditOutboxRecords-1),
+		AuditLog:    make([]AuditRecord, MaxAuditRecords-4),
+		AuditOutbox: make([]AuditRecord, MaxAuditOutboxRecords-4),
 	}
-	require.NoError(t, rotationCapacity(below))
+	require.NoError(t, rotationCapacity(below, 1))
 
 	atOperations := below
 	atOperations.Operations = make([]OperationRecord, MaxOperations)
-	require.ErrorIs(t, rotationCapacity(atOperations), ErrResourceExhausted)
+	require.ErrorIs(t, rotationCapacity(atOperations, 1), ErrResourceExhausted)
 	atRotations := below
 	atRotations.Rotations = make([]RotationRecord, MaxOperations)
-	require.ErrorIs(t, rotationCapacity(atRotations), ErrResourceExhausted)
+	require.ErrorIs(t, rotationCapacity(atRotations, 1), ErrResourceExhausted)
+	insufficientCompletionAudit := below
+	insufficientCompletionAudit.AuditLog = make([]AuditRecord, MaxAuditRecords-3)
+	require.ErrorIs(t, rotationCapacity(insufficientCompletionAudit, 1), ErrResourceExhausted)
+	insufficientCompletionOutbox := below
+	insufficientCompletionOutbox.AuditOutbox = make([]AuditRecord, MaxAuditOutboxRecords-3)
+	require.ErrorIs(t, rotationCapacity(insufficientCompletionOutbox, 1), ErrResourceExhausted)
+	manyMembers := Ledger{
+		AuditLog: make([]AuditRecord, MaxAuditRecords-(2*MaxMembersPerChannel+2)),
+		AuditOutbox: make(
+			[]AuditRecord, MaxAuditOutboxRecords-(2*MaxMembersPerChannel+2),
+		),
+	}
+	require.NoError(t, rotationCapacity(manyMembers, MaxMembersPerChannel))
 	atAudit := below
 	atAudit.AuditLog = make([]AuditRecord, MaxAuditRecords)
 	require.ErrorIs(t, checkpointTransitionCapacity(atAudit), ErrResourceExhausted)
