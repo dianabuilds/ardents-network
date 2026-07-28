@@ -45,6 +45,7 @@ const (
 	ActionCommitActivation      = "realm.channel.activation.commit"
 	ActionAcknowledgeActivation = "realm.channel.activation.acknowledge"
 	ActionVerifyRestore         = "realm.authority.restore.verify"
+	ActionPlanTransition        = "realm.authority.transition.plan"
 
 	ResourceKindAuthorityInstance  = "realm-authority-instance"
 	ResourceKindRealm              = "realm"
