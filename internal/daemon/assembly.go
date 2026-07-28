@@ -217,6 +217,7 @@ func runtimePolicyConfig(cfg PolicyConfig) apppolicy.Config {
 		DeniedRouteSchemes:              cloneStrings(cfg.DeniedRouteSchemes),
 		DisablePrivateChannelGrantUse:   cfg.DisablePrivateChannelGrantUse,
 		DisableRealmAuthorityCreation:   cfg.DisableRealmAuthorityCreation,
+		DisableRealmAuthorityRecovery:   cfg.DisableRealmAuthorityRecovery,
 		DisableRealmChannelDelivery:     cfg.DisableRealmChannelDelivery,
 		DisableRealmChannelRotation:     cfg.DisableRealmChannelRotation,
 		DisableRealmChannelMembership:   cfg.DisableRealmChannelMembership,

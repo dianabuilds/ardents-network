@@ -158,6 +158,7 @@ type PolicyConfig struct {
 	DeniedRouteSchemes              []string                               `json:"denied_route_schemes"`
 	DisablePrivateChannelGrantUse   bool                                   `json:"disable_private_channel_grant_use"`
 	DisableRealmAuthorityCreation   bool                                   `json:"disable_realm_authority_creation"`
+	DisableRealmAuthorityRecovery   bool                                   `json:"disable_realm_authority_recovery"`
 	DisableRealmChannelDelivery     bool                                   `json:"disable_realm_channel_delivery"`
 	DisableRealmChannelRotation     bool                                   `json:"disable_realm_channel_rotation"`
 	DisableRealmChannelMembership   bool                                   `json:"disable_realm_channel_membership"`

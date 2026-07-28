@@ -148,3 +148,10 @@ func (p realmAuthorityPolicy) AdmitChannelClass(
 	}
 	return p.service.AllowRealmChannelClass(class)
 }
+
+func (p realmAuthorityPolicy) AdmitAuthorityRecovery(_ context.Context, _ domain.Command) error {
+	if p.service == nil {
+		return domain.ErrUnavailable
+	}
+	return p.service.AllowRealmAuthorityRecovery()
+}

@@ -152,6 +152,9 @@ func (s *Service) rotateChannelLocked(
 	command Command,
 	request RotationRequest,
 ) (RotationResult, error) {
+	if err := s.mutationFence(); err != nil {
+		return RotationResult{}, err
+	}
 	if err := validateRotationRequest(request); err != nil {
 		return RotationResult{}, err
 	}
@@ -459,6 +462,9 @@ func (s *Service) CommitChannelActivation(
 	if request.Version != ContractVersion {
 		return ActivationCommitResult{}, ErrUnsupportedVersion
 	}
+	if err := s.mutationFence(); err != nil {
+		return ActivationCommitResult{}, err
+	}
 	if !ValidRealmID(request.RealmID) || !operationIDPattern.MatchString(request.OperationID) ||
 		command.Actor == "" || command.Actor != command.Effective ||
 		command.Action != ActionCommitActivation ||
@@ -574,6 +580,9 @@ func (s *Service) AcknowledgeChannelActivation(
 	defer s.mu.Unlock()
 	if request.Version != ContractVersion {
 		return ActivationAcknowledgeResult{}, ErrUnsupportedVersion
+	}
+	if err := s.mutationFence(); err != nil {
+		return ActivationAcknowledgeResult{}, err
 	}
 	if !request.ApprovedHost {
 		return ActivationAcknowledgeResult{}, ErrPermissionDenied

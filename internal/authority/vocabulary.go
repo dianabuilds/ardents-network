@@ -44,6 +44,7 @@ const (
 	ActionChangeMembership      = "realm.channel.membership.change"
 	ActionCommitActivation      = "realm.channel.activation.commit"
 	ActionAcknowledgeActivation = "realm.channel.activation.acknowledge"
+	ActionVerifyRestore         = "realm.authority.restore.verify"
 
 	ResourceKindAuthorityInstance  = "realm-authority-instance"
 	ResourceKindRealm              = "realm"
@@ -56,6 +57,7 @@ const (
 	PhaseCheckpointing                                    = "checkpointing"
 	PhaseReady                                            = "ready"
 	PhaseRecoveryRequired                                 = "recovery_required"
+	PhaseRecoveryOnly                                     = "recovery_only"
 	DeliveryPhaseIssued                                   = "issued"
 	DeliveryPhaseInstalled                                = "installed"
 	DeliveryPhaseDelivering                               = "delivering"
@@ -72,20 +74,21 @@ const (
 	ReadinessDegraded                                     = "degraded"
 	ReadinessRecoveryRequired                             = "recovery_required"
 
-	ReasonNone                   = ""
-	ReasonUninitialized          = "authority_uninitialized"
-	ReasonStoreUnavailable       = "authority_store_unavailable"
-	ReasonSignerUnavailable      = "authority_signer_unavailable"
-	ReasonSignerMismatch         = "authority_signer_mismatch"
-	ReasonRepositoryUnavailable  = "checkpoint_repository_unavailable"
-	ReasonAuditUnavailable       = "authority_audit_unavailable"
-	ReasonCheckpointMissing      = "checkpoint_head_missing"
-	ReasonCheckpointMismatch     = "checkpoint_head_mismatch"
-	ReasonPersistedStateInvalid  = "authority_state_invalid"
-	ReasonDeliveryPending        = "authority_delivery_pending"
-	ReasonChannelGrantPending    = identityapi.ChannelGrantReasonPending
-	ReasonChannelGrantRenewalDue = identityapi.ChannelGrantReasonRenewalDue
-	ReasonChannelGrantExpired    = identityapi.ChannelGrantReasonExpired
+	ReasonNone                        = ""
+	ReasonUninitialized               = "authority_uninitialized"
+	ReasonStoreUnavailable            = "authority_store_unavailable"
+	ReasonSignerUnavailable           = "authority_signer_unavailable"
+	ReasonSignerMismatch              = "authority_signer_mismatch"
+	ReasonRepositoryUnavailable       = "checkpoint_repository_unavailable"
+	ReasonAuditUnavailable            = "authority_audit_unavailable"
+	ReasonCheckpointMissing           = "checkpoint_head_missing"
+	ReasonCheckpointMismatch          = "checkpoint_head_mismatch"
+	ReasonPersistedStateInvalid       = "authority_state_invalid"
+	ReasonDeliveryPending             = "authority_delivery_pending"
+	ReasonChannelGrantPending         = identityapi.ChannelGrantReasonPending
+	ReasonChannelGrantRenewalDue      = identityapi.ChannelGrantReasonRenewalDue
+	ReasonChannelGrantExpired         = identityapi.ChannelGrantReasonExpired
+	ReasonRestoreVerificationRequired = "authority_restore_verification_required"
 )
 
 var (

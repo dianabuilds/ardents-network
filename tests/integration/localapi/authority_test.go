@@ -708,6 +708,9 @@ func (integrationAuthorityPolicy) AdmitChannelMembership(context.Context, domain
 func (integrationAuthorityPolicy) AdmitChannelClass(context.Context, domain.Command, identityapi.CapabilityScope) error {
 	return nil
 }
+func (integrationAuthorityPolicy) AdmitAuthorityRecovery(context.Context, domain.Command) error {
+	return nil
+}
 
 type integrationCapabilityPolicy struct{}
 

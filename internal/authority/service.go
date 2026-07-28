@@ -35,34 +35,37 @@ const (
 )
 
 type Config struct {
-	Store      Store
-	Signer     Signer
-	Repository CheckpointRepository
-	Random     io.Reader
-	Clock      func() time.Time
-	Policy     ProductPolicy
-	Audit      AuditSink
-	Crash      func(CrashBoundary) error
+	Store        Store
+	Signer       Signer
+	Repository   CheckpointRepository
+	Random       io.Reader
+	Clock        func() time.Time
+	Policy       ProductPolicy
+	Audit        AuditSink
+	Crash        func(CrashBoundary) error
+	RecoveryOnly bool
 }
 
 type Service struct {
-	mu         sync.Mutex
-	store      Store
-	signer     Signer
-	repository CheckpointRepository
-	random     io.Reader
-	clock      func() time.Time
-	policy     ProductPolicy
-	audit      AuditSink
-	crash      func(CrashBoundary) error
-	status     Status
+	mu           sync.Mutex
+	store        Store
+	signer       Signer
+	repository   CheckpointRepository
+	random       io.Reader
+	clock        func() time.Time
+	policy       ProductPolicy
+	audit        AuditSink
+	crash        func(CrashBoundary) error
+	status       Status
+	recoveryOnly bool
 }
 
 func New(config Config) *Service {
 	service := &Service{
 		store: config.Store, signer: config.Signer, repository: config.Repository,
 		random: config.Random, clock: config.Clock, policy: config.Policy, crash: config.Crash,
-		audit: config.Audit,
+		audit:        config.Audit,
+		recoveryOnly: config.RecoveryOnly,
 		status: Status{
 			Version: ContractVersion, SchemaVersion: SchemaVersion,
 			Phase: PhaseUninitialized, Readiness: ReadinessUnavailable, Reason: ReasonUninitialized,
@@ -77,7 +80,11 @@ func New(config Config) *Service {
 	if service.crash == nil {
 		service.crash = func(CrashBoundary) error { return nil }
 	}
-	service.reconcile(context.Background())
+	if service.recoveryOnly {
+		service.reconcileRecoveryOnly(context.Background())
+	} else {
+		service.reconcile(context.Background())
+	}
 	return service
 }
 
@@ -94,6 +101,9 @@ func (s *Service) CreateOrReopen(ctx context.Context, command Command, request C
 		return CreateResult{}, err
 	}
 	if err := validateCreateCommand(command); err != nil {
+		return CreateResult{}, err
+	}
+	if err := s.mutationFence(); err != nil {
 		return CreateResult{}, err
 	}
 	if s.store == nil || s.signer == nil || s.repository == nil || s.policy == nil {
@@ -477,4 +487,21 @@ func (s *Service) setRecovery(base Status, reason string) {
 	}
 	base.Phase, base.Readiness, base.Reason = PhaseRecoveryRequired, ReadinessRecoveryRequired, reason
 	s.status = base
+}
+
+func (s *Service) mutationFence() error {
+	if s.recoveryOnly || s.status.Readiness == ReadinessRecoveryRequired {
+		return ErrRecoveryRequired
+	}
+	return nil
+}
+
+func (s *Service) applyRecoveryOnlyStatus() {
+	if !s.recoveryOnly || s.status.RealmID == "" ||
+		s.status.Readiness != ReadinessReady {
+		return
+	}
+	s.status.Phase = PhaseRecoveryOnly
+	s.status.Readiness = ReadinessDegraded
+	s.status.Reason = ReasonRestoreVerificationRequired
 }

@@ -185,6 +185,7 @@ type PolicyConfig struct {
 	DeniedRouteSchemes              []string
 	DisablePrivateChannelGrantUse   bool
 	DisableRealmAuthorityCreation   bool
+	DisableRealmAuthorityRecovery   bool
 	DisableRealmChannelDelivery     bool
 	DisableRealmChannelRotation     bool
 	DisableRealmChannelMembership   bool
@@ -245,6 +246,7 @@ func policyConfigFromOperator(in runtimeconfig.PolicyConfig) PolicyConfig {
 		DeniedRouteSchemes:              cloneStrings(in.DeniedRouteSchemes),
 		DisablePrivateChannelGrantUse:   in.DisablePrivateChannelGrantUse,
 		DisableRealmAuthorityCreation:   in.DisableRealmAuthorityCreation,
+		DisableRealmAuthorityRecovery:   in.DisableRealmAuthorityRecovery,
 		DisableRealmChannelDelivery:     in.DisableRealmChannelDelivery,
 		DisableRealmChannelRotation:     in.DisableRealmChannelRotation,
 		DisableRealmChannelMembership:   in.DisableRealmChannelMembership,
@@ -647,6 +649,7 @@ func operatorPolicyConfig(doc runtimeconfig.Document) PolicyConfig {
 		DeniedRouteSchemes:              cloneStrings(in.DeniedRouteSchemes),
 		DisablePrivateChannelGrantUse:   in.DisablePrivateChannelGrantUse,
 		DisableRealmAuthorityCreation:   in.DisableRealmAuthorityCreation,
+		DisableRealmAuthorityRecovery:   in.DisableRealmAuthorityRecovery,
 		DisableRealmChannelDelivery:     in.DisableRealmChannelDelivery,
 		DisableRealmChannelRotation:     in.DisableRealmChannelRotation,
 		DisableRealmChannelMembership:   in.DisableRealmChannelMembership,

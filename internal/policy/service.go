@@ -162,6 +162,20 @@ func (s *Service) AllowRealmAuthorityCreation() error {
 	return s.applyDecisionLocked(Deny("policy_realm_authority_denied", "Realm Authority creation is disabled by policy"))
 }
 
+// AllowRealmAuthorityRecovery gates explicit recovery-only verification. The
+// authority service still performs all cryptographic and persistence checks.
+func (s *Service) AllowRealmAuthorityRecovery() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.cfg.DisableRealmAuthorityRecovery {
+		return nil
+	}
+	return s.applyDecisionLocked(Deny(
+		"policy_realm_authority_recovery_denied",
+		"Realm Authority recovery is disabled by policy",
+	))
+}
+
 // AllowRealmChannelDelivery is the Product Policy gate for recipient-bound
 // generation issue and acknowledgement mutations.
 func (s *Service) AllowRealmChannelDelivery() error {

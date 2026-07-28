@@ -80,6 +80,9 @@ func (s *Service) SubmitDeploymentFenceEvidence(
 	if request.Version != ContractVersion {
 		return FenceEvidenceResult{}, ErrUnsupportedVersion
 	}
+	if err := s.mutationFence(); err != nil {
+		return FenceEvidenceResult{}, err
+	}
 	if !ValidRealmID(request.RealmID) || zeroFixedID(request.ChannelID) ||
 		!operationIDPattern.MatchString(request.OperationID) ||
 		command.Actor == "" || command.Actor != command.Effective ||

@@ -41,6 +41,7 @@ type ProductPolicy interface {
 	AdmitChannelRotation(context.Context, Command) error
 	AdmitChannelMembership(context.Context, Command) error
 	AdmitChannelClass(context.Context, Command, identityapi.CapabilityScope) error
+	AdmitAuthorityRecovery(context.Context, Command) error
 }
 
 type InitialGenerationRequest struct {

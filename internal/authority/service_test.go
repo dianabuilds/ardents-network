@@ -433,6 +433,7 @@ func (allowPolicy) AdmitChannelMembership(context.Context, Command) error { retu
 func (allowPolicy) AdmitChannelClass(context.Context, Command, identityapi.CapabilityScope) error {
 	return nil
 }
+func (allowPolicy) AdmitAuthorityRecovery(context.Context, Command) error { return nil }
 
 type denyPolicy struct{}
 
@@ -449,6 +450,9 @@ func (denyPolicy) AdmitChannelMembership(context.Context, Command) error {
 	return errors.New("denied")
 }
 func (denyPolicy) AdmitChannelClass(context.Context, Command, identityapi.CapabilityScope) error {
+	return errors.New("denied")
+}
+func (denyPolicy) AdmitAuthorityRecovery(context.Context, Command) error {
 	return errors.New("denied")
 }
 

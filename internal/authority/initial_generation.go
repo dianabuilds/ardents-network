@@ -42,6 +42,9 @@ func (s *Service) IssueInitialGeneration(
 	if err := validateInitialGenerationCommand(command, request); err != nil {
 		return InitialGenerationResult{}, err
 	}
+	if err := s.mutationFence(); err != nil {
+		return InitialGenerationResult{}, err
+	}
 	if s.store == nil || s.signer == nil || s.repository == nil || s.policy == nil {
 		return InitialGenerationResult{}, ErrUnavailable
 	}
@@ -218,6 +221,9 @@ func (s *Service) AcknowledgeInitialGeneration(
 	defer s.mu.Unlock()
 	if request.Version != ContractVersion {
 		return InitialGenerationAcknowledgeResult{}, ErrUnsupportedVersion
+	}
+	if err := s.mutationFence(); err != nil {
+		return InitialGenerationAcknowledgeResult{}, err
 	}
 	if !ValidRealmID(request.RealmID) ||
 		command.Actor == "" || command.Actor != command.Effective ||
