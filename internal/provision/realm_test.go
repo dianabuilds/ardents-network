@@ -14,6 +14,7 @@ func TestAuthorityProvisionsDistinctNodesIdempotently(t *testing.T) {
 	root := t.TempDir()
 	authority, err := OpenOrCreate(filepath.Join(root, "authority"))
 	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, authority.Close()) })
 	now := time.Date(2026, 7, 20, 12, 0, 0, 0, time.UTC)
 	admission := apppolicy.New(apppolicy.Config{})
 

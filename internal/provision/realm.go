@@ -29,6 +29,7 @@ type Authority struct {
 	state authorityState
 	key   ed25519.PrivateKey
 	path  string
+	lock  *storage.StateDirLock
 }
 
 type NodeOptions struct {
@@ -80,7 +81,8 @@ type grantState struct {
 }
 
 func OpenOrCreate(dir string) (*Authority, error) {
-	if err := ensurePrivateDir(dir); err != nil {
+	lock, err := storage.AcquireStateDirLock(dir)
+	if err != nil {
 		return nil, err
 	}
 	path := filepath.Join(dir, "authority.json")
@@ -92,16 +94,27 @@ func OpenOrCreate(dir string) (*Authority, error) {
 		}
 	}
 	if err != nil {
+		_ = lock.Close()
 		return nil, fmt.Errorf("local realm authority is unavailable or invalid")
 	}
 	key, err := validateAuthority(state)
 	if err != nil {
+		_ = lock.Close()
 		return nil, fmt.Errorf("local realm authority is unavailable or invalid")
 	}
 	if state.Members == nil {
 		state.Members = make(map[string]nodeState)
 	}
-	return &Authority{state: state, key: key, path: path}, nil
+	return &Authority{state: state, key: key, path: path, lock: lock}, nil
+}
+
+func (a *Authority) Close() error {
+	if a == nil || a.lock == nil {
+		return nil
+	}
+	err := a.lock.Close()
+	a.lock = nil
+	return err
 }
 
 func (a *Authority) ProvisionNode(options NodeOptions, admission identityapi.CapabilityAdmission) (NodeProvision, error) {

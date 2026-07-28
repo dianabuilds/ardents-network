@@ -535,6 +535,7 @@ type memoryRepository struct {
 	head        SignedCheckpoint
 	found       bool
 	err         error
+	appendErr   error
 	createCalls int
 }
 
@@ -558,6 +559,9 @@ func (r *memoryRepository) CreateIfAbsent(_ context.Context, next SignedCheckpoi
 }
 
 func (r *memoryRepository) CompareAndAppend(_ context.Context, realmID string, expected uint64, next SignedCheckpoint) (SignedCheckpoint, error) {
+	if r.appendErr != nil {
+		return SignedCheckpoint{}, r.appendErr
+	}
 	if r.err != nil {
 		return SignedCheckpoint{}, r.err
 	}

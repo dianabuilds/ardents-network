@@ -9,8 +9,10 @@ import (
 	"encoding/json"
 	"errors"
 	"sort"
+	"strings"
 	"time"
 
+	identitycapability "ardents/internal/identity/capability"
 	identityprincipal "ardents/internal/identity/principal"
 )
 
@@ -18,6 +20,7 @@ const authorityTransitionDomain = "ardents:realm-authority-transition:v1\x00"
 
 type PlanAuthorityTransitionRequest struct {
 	Version           uint32 `json:"version"`
+	RequestID         string `json:"request_id"`
 	RealmID           string `json:"realm_id"`
 	AuthoritySequence uint64 `json:"authority_sequence"`
 	CheckpointDigest  string `json:"checkpoint_digest"`
@@ -83,9 +86,34 @@ func (s *Service) PlanAuthorityTransition(
 		s.setUnavailable(ReasonStoreUnavailable)
 		return AuthorityTransition{}, ErrUnavailable
 	}
-	if err := validateLedger(state); err != nil || state.Phase != PhaseReady {
+	if err := validateLedger(state); err != nil {
 		s.setRecovery(statusFromLedger(state), ReasonPersistedStateInvalid)
 		return AuthorityTransition{}, ErrRecoveryRequired
+	}
+	if state.Phase == PhaseCheckpointing && state.Transition != nil {
+		proof := state.Transition.Proof
+		toPrincipal, toPublic, identityErr := signerIdentity(ctx, next)
+		if identityErr != nil ||
+			request.RealmID != proof.RealmID ||
+			request.RequestID != state.Transition.RequestID ||
+			request.AuthoritySequence != proof.AuthoritySequence ||
+			request.CheckpointDigest != proof.CheckpointDigest ||
+			toPrincipal != proof.ToAuthorityPrincipal ||
+			!toPublic.Equal(ed25519.PublicKey(proof.ToAuthorityPublicKey)) {
+			return AuthorityTransition{}, ErrConflict
+		}
+		s.signer, s.transitionSigner = next, next
+		if err := s.reconcileLoaded(ctx, &state); err != nil {
+			return AuthorityTransition{}, err
+		}
+		return proof, nil
+	}
+	if state.Phase != PhaseReady {
+		s.setRecovery(statusFromLedger(state), ReasonPersistedStateInvalid)
+		return AuthorityTransition{}, ErrRecoveryRequired
+	}
+	if state.Transition != nil {
+		return AuthorityTransition{}, ErrConflict
 	}
 	if state.RealmID != request.RealmID ||
 		state.AuthoritySequence != request.AuthoritySequence ||
@@ -155,6 +183,9 @@ func (s *Service) PlanAuthorityTransition(
 	if err := checkpointTransitionCapacity(state); err != nil {
 		return AuthorityTransition{}, err
 	}
+	if len(state.Operations) >= MaxOperations {
+		return AuthorityTransition{}, ErrResourceExhausted
+	}
 	operationID := "rao1_" + hex.EncodeToString(digest[:16])
 	auditIDSum := sha256.Sum256(append(
 		[]byte("ardents:authority-transition-audit:v1\x00"), digest...,
@@ -199,25 +230,38 @@ func (s *Service) PlanAuthorityTransition(
 		PhaseCheckpointing, ReadinessDegraded, ReasonCheckpointMissing
 	state.AuditLog = append(state.AuditLog, audit)
 	state.AuditOutbox = append(state.AuditOutbox, audit)
+	state.Operations = append(state.Operations, OperationRecord{
+		Version: ContractVersion, ID: operationID, RequestID: request.RequestID,
+		Kind: "authority_transition", Phase: PhaseCheckpointing,
+		CreatedAt: transition.CreatedAt,
+		Deadline:  transition.CreatedAt.Add(MaxOperationLifetime),
+	})
 	state.Transition = &AuthorityTransitionRecord{
-		Version: ContractVersion, Proof: transition,
+		Version: ContractVersion, RequestID: request.RequestID,
+		OperationID: operationID, Proof: transition,
 		RequiredRotationChannelIDs: required,
 	}
 	if err := s.store.Save(ctx, expectedRevision, state); err != nil {
 		s.setUnavailable(ReasonStoreUnavailable)
 		return AuthorityTransition{}, ErrUnavailable
 	}
+	s.signer, s.transitionSigner = next, next
 	s.status = statusFromLedger(state)
 	if _, err := s.repository.CompareAndAppend(
 		ctx, state.RealmID, previousSequence, checkpoint,
 	); err != nil {
-		s.markRecovery(ctx, &state, ReasonCheckpointMismatch)
-		return AuthorityTransition{}, ErrRecoveryRequired
+		if errors.Is(err, ErrConflict) || errors.Is(err, ErrCorruptState) {
+			s.markRecovery(ctx, &state, ReasonCheckpointMismatch)
+			return AuthorityTransition{}, ErrRecoveryRequired
+		}
+		s.status.Readiness, s.status.Reason =
+			ReadinessUnavailable, ReasonRepositoryUnavailable
+		return AuthorityTransition{}, ErrUnavailable
 	}
-	s.signer = next
 	expectedRevision = state.Revision
 	state.Revision++
 	state.Phase, state.Readiness, state.Reason = PhaseReady, ReadinessReady, ReasonNone
+	setOperationPhase(&state, operationID, PhaseReady)
 	if err := s.store.Save(ctx, expectedRevision, state); err != nil {
 		s.setUnavailable(ReasonStoreUnavailable)
 		return AuthorityTransition{}, ErrUnavailable
@@ -294,6 +338,9 @@ func authorityTransitionDigest(transition AuthorityTransition) ([]byte, error) {
 }
 
 func signerIdentity(ctx context.Context, signer Signer) (string, ed25519.PublicKey, error) {
+	if signer == nil {
+		return "", nil, ErrUnavailable
+	}
 	principal, err := signer.Principal(ctx)
 	if err != nil {
 		return "", nil, err
@@ -313,7 +360,9 @@ func validatePlanAuthorityTransitionRequest(request PlanAuthorityTransitionReque
 	if request.Version != ContractVersion {
 		return ErrUnsupportedVersion
 	}
-	if !ValidRealmID(request.RealmID) || request.AuthoritySequence == 0 ||
+	if len(request.RequestID) == 0 || len(request.RequestID) > MaxRequestIDBytes ||
+		strings.TrimSpace(request.RequestID) != request.RequestID ||
+		!ValidRealmID(request.RealmID) || request.AuthoritySequence == 0 ||
 		!digestPattern.MatchString(request.CheckpointDigest) {
 		return ErrInvalidArgument
 	}
@@ -339,6 +388,8 @@ func validateAuthorityTransitionRecord(state Ledger) error {
 		return nil
 	}
 	if record.Version != ContractVersion ||
+		len(record.RequestID) == 0 || len(record.RequestID) > MaxRequestIDBytes ||
+		!operationIDPattern.MatchString(record.OperationID) ||
 		ValidateAuthorityTransition(record.Proof) != nil ||
 		record.Proof.RealmID != state.RealmID ||
 		record.Proof.ToAuthorityPrincipal != state.AuthorityPrincipal ||
@@ -347,6 +398,12 @@ func validateAuthorityTransitionRecord(state Ledger) error {
 		record.Proof.AuthoritySequence >= state.AuthoritySequence ||
 		len(record.RequiredRotationChannelIDs) != len(state.Channels) ||
 		len(record.RotatedChannelIDs) > len(record.RequiredRotationChannelIDs) {
+		return ErrCorruptState
+	}
+	operationIndex := transitionOperationIndex(state, record.OperationID)
+	if operationIndex < 0 ||
+		state.Operations[operationIndex].Kind != "authority_transition" ||
+		state.Operations[operationIndex].RequestID != record.RequestID {
 		return ErrCorruptState
 	}
 	required := make(map[[16]byte]struct{}, len(record.RequiredRotationChannelIDs))
@@ -373,6 +430,15 @@ func validateAuthorityTransitionRecord(state Ledger) error {
 		}
 	}
 	return nil
+}
+
+func transitionOperationIndex(state Ledger, operationID string) int {
+	for index := range state.Operations {
+		if state.Operations[index].ID == operationID {
+			return index
+		}
+	}
+	return -1
 }
 
 func authorityTransitionPending(record *AuthorityTransitionRecord) bool {
@@ -416,4 +482,28 @@ func cloneAuthorityTransitionValue(value AuthorityTransition) AuthorityTransitio
 	value.FromSignature = append([]byte(nil), value.FromSignature...)
 	value.ToSignature = append([]byte(nil), value.ToSignature...)
 	return value
+}
+
+// AdoptMemberAuthorityTransition verifies the dual-signed authority proof and
+// atomically teaches a member capability service to accept the successor for
+// the required post-transition channel rotations.
+func AdoptMemberAuthorityTransition(
+	member *identitycapability.Service,
+	transition AuthorityTransition,
+) error {
+	if member == nil {
+		return ErrInvalidArgument
+	}
+	if err := ValidateAuthorityTransition(transition); err != nil {
+		return err
+	}
+	if err := member.AdoptChannelIssuerTransition(
+		transition.FromAuthorityPrincipal,
+		ed25519.PublicKey(transition.FromAuthorityPublicKey),
+		transition.ToAuthorityPrincipal,
+		ed25519.PublicKey(transition.ToAuthorityPublicKey),
+	); err != nil {
+		return ErrPermissionDenied
+	}
+	return nil
 }

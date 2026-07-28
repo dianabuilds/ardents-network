@@ -26,7 +26,7 @@ func TestPlanAuthorityTransitionIsDualSignedAndExact(t *testing.T) {
 		ctx,
 		planTransitionCommand(genesis.RealmID),
 		PlanAuthorityTransitionRequest{
-			Version: ContractVersion, RealmID: genesis.RealmID,
+			Version: ContractVersion, RequestID: "transition-1", RealmID: genesis.RealmID,
 			AuthoritySequence: genesis.AuthoritySequence,
 			CheckpointDigest:  genesis.CheckpointDigest,
 		},
@@ -92,7 +92,7 @@ func TestAuthorityTransitionAdvancesRepositoryAndRequiresEveryChannelRotation(t 
 	proof, err := service.PlanAuthorityTransition(
 		ctx, planTransitionCommand(migrated.RealmID),
 		PlanAuthorityTransitionRequest{
-			Version: ContractVersion, RealmID: migrated.RealmID,
+			Version: ContractVersion, RequestID: "transition-with-channels", RealmID: migrated.RealmID,
 			AuthoritySequence: beforeSequence, CheckpointDigest: beforeDigest,
 		},
 		next,
@@ -106,13 +106,7 @@ func TestAuthorityTransitionAdvancesRepositoryAndRequiresEveryChannelRotation(t 
 	require.Equal(t, PhaseAuthorityTransitionRotationRequired, service.Readiness().Phase)
 	require.Len(t, store.state.Transition.RequiredRotationChannelIDs, 2)
 
-	newTrust, err := identitytrust.NewRegistry([]identitytrust.Entry{{
-		Principal: next.principal,
-		PublicKey: next.private.Public().(ed25519.PublicKey),
-		Purposes:  []identitytrust.Purpose{identitytrust.PurposeChannelIssue},
-	}})
-	require.NoError(t, err)
-	member.ReplaceTrustRegistry(newTrust)
+	require.NoError(t, AdoptMemberAuthorityTransition(member, proof))
 	service.random = bytes.NewReader(transitionTestRandom(0x60))
 	for index, channelID := range channelIDs {
 		completeMigrationChannelRotation(
@@ -150,7 +144,7 @@ func TestAuthorityTransitionRejectsEveryExactnessAndSignatureChange(t *testing.T
 		ctx,
 		planTransitionCommand(genesis.RealmID),
 		PlanAuthorityTransitionRequest{
-			Version: ContractVersion, RealmID: genesis.RealmID,
+			Version: ContractVersion, RequestID: "transition-tamper", RealmID: genesis.RealmID,
 			AuthoritySequence: genesis.AuthoritySequence,
 			CheckpointDigest:  genesis.CheckpointDigest,
 		},
@@ -216,7 +210,7 @@ func TestPlanAuthorityTransitionFailsClosedWithoutOldSignerOrExactHead(t *testin
 				ctx,
 				planTransitionCommand(genesis.RealmID),
 				PlanAuthorityTransitionRequest{
-					Version: ContractVersion, RealmID: genesis.RealmID,
+					Version: ContractVersion, RequestID: "transition-failure", RealmID: genesis.RealmID,
 					AuthoritySequence: genesis.AuthoritySequence,
 					CheckpointDigest:  genesis.CheckpointDigest,
 				},
@@ -225,6 +219,45 @@ func TestPlanAuthorityTransitionFailsClosedWithoutOldSignerOrExactHead(t *testin
 			require.ErrorIs(t, err, test.want)
 		})
 	}
+}
+
+func TestAuthorityTransitionRollsForwardAfterRepositoryOutageAndRestart(t *testing.T) {
+	ctx := context.Background()
+	fixture := newServiceFixture(t)
+	genesis, err := fixture.service.CreateOrReopen(
+		ctx, fixture.createCommand(),
+		CreateRequest{
+			Version: ContractVersion, RequestID: "transition-resume-genesis",
+			RealmClass: RealmClassProduction,
+		},
+	)
+	require.NoError(t, err)
+	next := newTestSigner(t, 0x77)
+	fixture.repository.appendErr = ErrUnavailable
+	proof, err := fixture.service.PlanAuthorityTransition(
+		ctx, planTransitionCommand(genesis.RealmID),
+		PlanAuthorityTransitionRequest{
+			Version: ContractVersion, RequestID: "transition-resume", RealmID: genesis.RealmID,
+			AuthoritySequence: genesis.AuthoritySequence,
+			CheckpointDigest:  genesis.CheckpointDigest,
+		},
+		next,
+	)
+	require.ErrorIs(t, err, ErrUnavailable)
+	require.Equal(t, AuthorityTransition{}, proof)
+	require.Equal(t, PhaseCheckpointing, fixture.store.state.Phase)
+	require.Equal(t, next.principal, fixture.store.state.AuthorityPrincipal)
+
+	fixture.repository.appendErr = nil
+	restarted := New(Config{
+		Store: fixture.store, Signer: fixture.signer, SuccessorSigner: next,
+		Repository: fixture.repository, Policy: allowPolicy{}, Clock: fixture.clock,
+	})
+	require.Equal(t, PhaseReady, restarted.Readiness().Phase)
+	require.Equal(t, ReadinessReady, restarted.Readiness().Readiness)
+	require.Equal(t, uint64(2), fixture.repository.head.AuthorityEpoch)
+	require.Equal(t, fixture.store.state.Checkpoint, fixture.repository.head)
+	require.NoError(t, validateLedger(fixture.store.state))
 }
 
 func TestLostRepositoryRecoveryCreatesDifferentRealmInsteadOfRepairingOld(t *testing.T) {

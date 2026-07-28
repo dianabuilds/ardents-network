@@ -133,6 +133,12 @@ func validateLedger(state Ledger) error {
 				operation.Phase != PhaseRecoveryRequired {
 				return corruptLedger("rotation operation")
 			}
+		case "authority_transition":
+			if operation.Phase != PhaseCheckpointing &&
+				operation.Phase != PhaseReady &&
+				operation.Phase != PhaseRecoveryRequired {
+				return corruptLedger("authority transition operation")
+			}
 		default:
 			return corruptLedger("operation kind")
 		}

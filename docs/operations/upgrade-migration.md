@@ -126,6 +126,14 @@ each repository compare-and-append, and retain both terminal operation and
 checkpoint results. Do not enable production multi-host operation until
 readiness is `ready`.
 
+For a planned authority transition, preprovision the successor signer before
+the dual-signed operation and distribute the proof through
+`AdoptMemberAuthorityTransition` before successor-signed channel delivery.
+Keep the successor available as `SuccessorSigner` until its checkpoint is
+visible in the independent repository. A temporary repository outage is
+resumed with the same exact request or by restart; never start a different
+transition or discard the locally committed checkpoint.
+
 Downgrade stops the new software and restores the complete verified
 pre-migration backup with the exact old binary. Do not edit the new schema,
 copy individual grants, reattach the shared old manager or run old and new

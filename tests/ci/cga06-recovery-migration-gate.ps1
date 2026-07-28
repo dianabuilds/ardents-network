@@ -6,21 +6,38 @@ param(
 
 $ErrorActionPreference = "Stop"
 $resolvedOutput = [System.IO.Path]::GetFullPath($OutputDir)
+$repositoryRoot = (& git rev-parse --show-toplevel).Trim()
+$headCommit = (& git rev-parse HEAD).Trim()
+if ($LASTEXITCODE -ne 0) {
+    throw "resolve evidence repository failed"
+}
+$repositoryRoot = [System.IO.Path]::GetFullPath($repositoryRoot)
+if ($resolvedOutput.StartsWith(
+    $repositoryRoot + [System.IO.Path]::DirectorySeparatorChar,
+    [System.StringComparison]::OrdinalIgnoreCase
+)) {
+    throw "CGA-06 evidence output must be outside the source worktree"
+}
+$dirty = @(& git status --porcelain=v1 --untracked-files=all)
+if ($LASTEXITCODE -ne 0 -or $dirty.Count -ne 0) {
+    throw "CGA-06 evidence requires a clean Git worktree"
+}
+if ([string]::IsNullOrWhiteSpace($Commit)) {
+    $Commit = $headCommit
+}
+if ($Commit -notmatch '^[0-9a-f]{40}$' -or $Commit -ne $headCommit) {
+    throw "CGA-06 evidence commit must equal the full checked-out HEAD"
+}
+& git cat-file -e ($Commit + "^{commit}")
+if ($LASTEXITCODE -ne 0) {
+    throw "CGA-06 evidence commit does not resolve to a commit object"
+}
 if (Test-Path -LiteralPath $resolvedOutput) {
     if ((Get-ChildItem -LiteralPath $resolvedOutput -Force | Measure-Object).Count -ne 0) {
         throw "CGA-06 evidence output directory must be empty"
     }
 } else {
     New-Item -ItemType Directory -Path $resolvedOutput | Out-Null
-}
-if ([string]::IsNullOrWhiteSpace($Commit)) {
-    $Commit = (& git rev-parse HEAD).Trim()
-    if ($LASTEXITCODE -ne 0) {
-        throw "resolve evidence commit failed"
-    }
-}
-if ($Commit -notmatch '^[0-9a-f]{40}$') {
-    throw "CGA-06 evidence commit must be a full Git object ID"
 }
 
 $gates = @(
@@ -39,7 +56,7 @@ $gates = @(
         Name = "downgrade"
         Package = "./internal/authority|./internal/provision"
         Packages = @("./internal/authority", "./internal/provision")
-        Run = 'TestMigrateLocalV2RejectsUnknownDowngrade|TestBuildLocalV2MigrationEvidenceRejects'
+        Run = 'TestMigrateLocalV2RejectsUnknownDowngrade|TestBuildLocalV2MigrationEvidenceRejects|TestLocalV2DowngradeRestoresCompleteStoppedBackup'
     }
 )
 

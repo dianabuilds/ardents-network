@@ -263,6 +263,66 @@ func (s *Service) ReplaceTrustRegistry(registry *identitytrust.Registry) {
 	s.mu.Unlock()
 }
 
+// AdoptChannelIssuerTransition atomically extends channel-issuer trust from an
+// already trusted predecessor to its successor. The authority owner must
+// validate the dual-signed transition proof before calling this boundary.
+func (s *Service) AdoptChannelIssuerTransition(
+	fromPrincipal string,
+	fromPublic ed25519.PublicKey,
+	toPrincipal string,
+	toPublic ed25519.PublicKey,
+) error {
+	fromID, err := identityprincipal.Parse(fromPrincipal)
+	if err != nil {
+		return capabilityError(CodeInvalid, "authority predecessor is invalid")
+	}
+	toID, err := identityprincipal.Parse(toPrincipal)
+	if err != nil || fromID.Equal(toID) {
+		return capabilityError(CodeInvalid, "authority successor is invalid")
+	}
+	derived, err := identityprincipal.FromEd25519PublicKey(toPublic)
+	if err != nil || !derived.Equal(toID) {
+		return capabilityError(CodeInvalid, "authority successor key does not match")
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	current, ok := s.trust.Lookup(identitytrust.PurposeChannelIssue, fromID)
+	if !ok || !current.Equal(fromPublic) {
+		return capabilityError(CodeIssuerUntrusted, "authority predecessor is not trusted")
+	}
+	snapshot := s.trust.Snapshot()
+	foundSuccessor := false
+	for index := range snapshot.Entries {
+		entry := &snapshot.Entries[index]
+		if entry.Principal != toPrincipal {
+			continue
+		}
+		if !entry.PublicKey.Equal(toPublic) {
+			return capabilityError(CodeInvalid, "authority successor trust conflicts")
+		}
+		foundSuccessor = true
+		hasPurpose := false
+		for _, purpose := range entry.Purposes {
+			hasPurpose = hasPurpose || purpose == identitytrust.PurposeChannelIssue
+		}
+		if !hasPurpose {
+			entry.Purposes = append(entry.Purposes, identitytrust.PurposeChannelIssue)
+		}
+	}
+	if !foundSuccessor {
+		snapshot.Entries = append(snapshot.Entries, identitytrust.Entry{
+			Principal: toPrincipal, PublicKey: append(ed25519.PublicKey(nil), toPublic...),
+			Purposes: []identitytrust.Purpose{identitytrust.PurposeChannelIssue},
+		})
+	}
+	next, err := identitytrust.NewRegistry(snapshot.Entries)
+	if err != nil {
+		return capabilityError(CodeInvalid, "authority successor trust is invalid")
+	}
+	s.trust = next
+	return nil
+}
+
 func (s *Service) trustedIssuer(raw string) (ed25519.PublicKey, bool) {
 	principalID, err := identityprincipal.Parse(raw)
 	if err != nil {

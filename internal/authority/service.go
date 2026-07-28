@@ -44,6 +44,9 @@ type Config struct {
 	Audit        AuditSink
 	Crash        func(CrashBoundary) error
 	RecoveryOnly bool
+	// SuccessorSigner is preprovisioned independently and is used only to
+	// roll forward an already committed dual-signed authority transition.
+	SuccessorSigner Signer
 }
 
 type Service struct {
@@ -60,14 +63,16 @@ type Service struct {
 	recoveryOnly      bool
 	migrationPending  bool
 	transitionPending bool
+	transitionSigner  Signer
 }
 
 func New(config Config) *Service {
 	service := &Service{
 		store: config.Store, signer: config.Signer, repository: config.Repository,
 		random: config.Random, clock: config.Clock, policy: config.Policy, crash: config.Crash,
-		audit:        config.Audit,
-		recoveryOnly: config.RecoveryOnly,
+		audit:            config.Audit,
+		recoveryOnly:     config.RecoveryOnly,
+		transitionSigner: config.SuccessorSigner,
 		status: Status{
 			Version: ContractVersion, SchemaVersion: SchemaVersion,
 			Phase: PhaseUninitialized, Readiness: ReadinessUnavailable, Reason: ReasonUninitialized,
@@ -285,8 +290,16 @@ func (s *Service) reconcile(ctx context.Context) {
 	}
 	s.status = statusFromLedger(state)
 	if principal != state.AuthorityPrincipal || !ed25519.PublicKey(publicKey).Equal(ed25519.PublicKey(state.AuthorityPublicKey)) {
-		s.setRecovery(statusFromLedger(state), ReasonSignerMismatch)
-		return
+		successorPrincipal, successorPublic, successorErr := signerIdentity(
+			ctx, s.transitionSigner,
+		)
+		if successorErr != nil || successorPrincipal != state.AuthorityPrincipal ||
+			!successorPublic.Equal(ed25519.PublicKey(state.AuthorityPublicKey)) ||
+			state.Transition == nil {
+			s.setRecovery(statusFromLedger(state), ReasonSignerMismatch)
+			return
+		}
+		s.signer = s.transitionSigner
 	}
 	_ = s.reconcileLoaded(ctx, &state)
 }
@@ -352,6 +365,9 @@ func (s *Service) reconcileLoaded(ctx context.Context, state *Ledger) error {
 			state.Operations[0].Phase = PhaseReady
 			state.Idempotency[0].Result.Phase = PhaseReady
 		}
+		if state.Transition != nil {
+			setOperationPhase(state, state.Transition.OperationID, PhaseReady)
+		}
 		if err := s.store.Save(ctx, expected, *state); err != nil {
 			s.setUnavailable(ReasonStoreUnavailable)
 			return ErrUnavailable
@@ -360,6 +376,7 @@ func (s *Service) reconcileLoaded(ctx context.Context, state *Ledger) error {
 	s.status = statusFromLedger(*state)
 	s.flushAudit(ctx, state)
 	s.applyMigrationStatus(*state)
+	s.applyTransitionStatus(*state)
 	return nil
 }
 

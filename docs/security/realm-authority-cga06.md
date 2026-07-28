@@ -62,16 +62,30 @@ to the successor Principal and adjacent epoch; the successor signs that
 checkpoint, which embeds both signatures and the exact predecessor binding.
 The authority then remains degraded and admits only one fresh rotation for
 each channel present at transition. Readiness becomes ready only after every
-required channel completes. Lost-key recovery cannot manufacture the required
-old signature and must create a new Realm.
+required channel completes. Members call the production
+`AdoptMemberAuthorityTransition` boundary, which verifies both signatures,
+requires the predecessor to be their current trusted channel issuer, and
+atomically adds the successor before accepting successor-signed deliveries.
+
+The successor signer is provisioned before transition and may be supplied as
+`SuccessorSigner` during restart. If repository storage is temporarily
+unavailable after the successor checkpoint is committed locally, the ledger
+stays in checkpointing state; it is neither rewritten nor marked corrupt.
+Retry with the same exact request or restart with the preprovisioned successor
+rolls the same checkpoint forward idempotently. A conflicting or corrupt
+repository CAS still enters recovery-required. Lost-key recovery cannot
+manufacture the required old signature and must create a new Realm.
 
 ## Local-v2 migration
 
 The importer is a stopped maintenance boundary. The production adapter holds
-the old manager's OS state-directory lock through commit, observes that the
-shared authority path is absent, reads the retained protected authority/Node
-files, decrypts every Node capability store with its protected key, and hashes
-those actual inputs into the fence evidence. Its strict JSON decoders
+the old manager's shared OS state-directory lock through commit, observes that
+the shared authority path is absent, reads the retained protected
+authority/Node files, decrypts every Node capability store with its protected
+key, and hashes those actual inputs into the fence evidence. Legacy
+`OpenOrCreate` holds that same lock for its whole management lifetime,
+so a running or restarted old manager cannot recreate authority state while
+migration evidence is active. Its strict JSON decoders
 accept only `ardents.local-realm/v2` authority state and
 `ardents.local-realm-node/v2` member state and reject unknown fields, trailing
 values and every other version. Before writing an empty new store it requires:

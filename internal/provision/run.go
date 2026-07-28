@@ -35,6 +35,7 @@ func run(args []string, stdout io.Writer, clock func() time.Time) error {
 	if err != nil {
 		return err
 	}
+	defer func() { _ = authority.Close() }()
 	provisioned, err := authority.ProvisionNode(NodeOptions{
 		DataDir: configured.nodeDir, SecretDir: configured.secretDir, Clock: clock,
 	}, apppolicy.New(apppolicy.Config{}))

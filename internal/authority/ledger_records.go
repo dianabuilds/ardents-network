@@ -189,6 +189,8 @@ type MigrationRecord struct {
 
 type AuthorityTransitionRecord struct {
 	Version                    uint32              `json:"version"`
+	RequestID                  string              `json:"request_id"`
+	OperationID                string              `json:"operation_id"`
 	Proof                      AuthorityTransition `json:"proof"`
 	RequiredRotationChannelIDs [][16]byte          `json:"required_rotation_channel_ids"`
 	RotatedChannelIDs          [][16]byte          `json:"rotated_channel_ids,omitempty"`

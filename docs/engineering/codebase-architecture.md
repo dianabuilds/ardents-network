@@ -944,7 +944,9 @@ Completed structural replacements:
   product Policy. Durable Node key access belongs to `keyring`; Node identity
   creation/restoration sits behind the root `identity.Service` seam.
   Local-realm provisioning lives behind the explicit `ardentsd init` mode and
-  composes identity and capability through `internal/provision`, avoiding both
+  composes identity and capability through `internal/provision`; that package
+  also owns the stopped local-v2 protected-state reader and shared-manager
+  fencing adapter, while `authority` alone decides migration truth. This avoids both
   a reverse import cycle, a false reusable identity subdomain, and a separate
   deployment binary.
 - collapsed `policy/decision`, `policy/evaluation`, `policy/policyset`,
