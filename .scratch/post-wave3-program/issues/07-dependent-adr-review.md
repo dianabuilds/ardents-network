@@ -1,8 +1,8 @@
 # PW3-07: Review dependent ADR-0013, ADR-0014, and ADR-0015
 
-Status: ready-for-agent
+Status: ready-for-human
 State: open
-Labels: ready-for-agent
+Labels: ready-for-human
 Research class: dependent decision review
 
 ## Parent
@@ -261,17 +261,17 @@ before the first implementation slice is accepted.
 
 ### ADR-0013 review
 
-- [ ] The support matrix is finite and does not turn QA Compose topology into
+- [x] The support matrix is finite and does not turn QA Compose topology into
       production real-host evidence.
-- [ ] Private-LAN and public-direct claims have distinct truthful admission and
+- [x] Private-LAN and public-direct claims have distinct truthful admission and
       withdrawal rules.
-- [ ] Coordinator, SSH, signer, session, Node, authority, and checkpoint state
+- [x] Coordinator, SSH, signer, session, Node, authority, and checkpoint state
       ownership are unambiguous.
-- [ ] Fence/rejoin semantics preserve accepted ADR-0011 authority ownership
+- [x] Fence/rejoin semantics preserve accepted ADR-0011 authority ownership
       and do not create a second membership authority.
-- [ ] Restart, compensation, recovery, backup/restore, clock, rollout,
+- [x] Restart, compensation, recovery, backup/restore, clock, rollout,
       migration, and downgrade behavior fail closed.
-- [ ] Unsupported node counts, schedulers, automatic NAT traversal, remote
+- [x] Unsupported node counts, schedulers, automatic NAT traversal, remote
       APIs, and suppressed transports remain explicit.
 - [ ] Maintainer records an independent ADR-0013 review outcome.
 
@@ -382,3 +382,66 @@ No implementation or qualification is claimed by closing this issue.
   Application Discovery compatibility gate. This transition authorizes review
   only, not MR, AM or DSI implementation or capability promotion. Acceptance
   governance commit: `2030d35f1df0a11f8d701ea12e19537a6b4d1c69`.
+- 2026-07-28 ADR-0013 compatibility review:
+  - outcome: `review-ready`; no actionable compatibility blockers found;
+  - reviewed source: clean `main@da39106ce695977c03594a296674229852ea53da`;
+    accepted Authority implementation
+    `1136def860f30bc452e1b5352c537cbd44a163f6`; maintainer acceptance
+    `3775f46c5f35c0077306a14e8688156b6ff47f75`;
+  - source comparison covered ADR-0013 line by line against accepted ADR-0011,
+    the DR-03/DR-04 packets, Wave 3 synthesis/register, the CGA-04 and CGA-06
+    security contracts, and the accepted implementation in
+    `internal/authority`, `internal/channeldelivery`,
+    `internal/identity/capability`, `internal/localapi`, `internal/config` and
+    `internal/provision`;
+  - authority boundary: ADR-0013 consumes exactly one designated authority
+    slot and one non-federated Realm Authority. Deployment owns manifest,
+    rollout/fence journals and enforced isolation evidence; the Authority
+    remains sole owner of membership, generation, revocation, activation,
+    fencing acceptance and checkpoint truth. The coordinator has no Principal,
+    and SSH transport grants no Ardents authority;
+  - control and state ownership: protected Operator access reaches the
+    authority and every member through host-key-pinned workstation-side
+    forwarding. Operator signer and per-Node sessions remain workstation-owned;
+    Node runtime/identity/Waku/Store/capability state remains host-local; the
+    authority group, independent repository, backups and coordinator journal
+    are not merged;
+  - fencing boundary: the accepted implementation requires direct
+    Actor-equals-Effective membership authority, exact Realm/channel/operation
+    binding, fresh `DeploymentFenceEvidence/v1`, at most 30 seconds asserted
+    skew, and the `target_ingress_blocked`, `discovery_withdrawn` and
+    `peer_id_denied` controls. Removal completes only with the target fenced
+    and every survivor either approved-host active or explicitly fenced.
+    ADR-0013's terminal `fenced`, `recovery_required` and fresh rejoin rules
+    preserve those fail-closed conditions;
+  - topology and reachability: the decision is limited to exactly three
+    operator-owned Linux amd64 hosts, with private-LAN cross-host probe truth
+    distinct from AutoNAT-gated public-direct truth. Static recovery,
+    Store/bootstrap diversity, one-address bounds and real-host qualification
+    remain explicit; Docker multinode/local Windows evidence is not promoted;
+  - checkpoint, backup and time: the implementation reads the complete
+    immutable predecessor chain, performs exact compare-and-append, caps it at
+    65,536 heads and admits production only with the preprovisioned WORM
+    assertion. Configuration keeps that repository outside Node, authority
+    store/key and signer paths. ADR-0013 separately places the authority group,
+    independent repository and authority backup inputs, and preserves the
+    30-second skew/60-second validity-margin fail-closed contract;
+  - restart, restore and transition: topology journals precede mutation,
+    block overlapping rollout and drive reverse compensation. Accepted CGA-06
+    recovery-only startup verifies the exact ledger, signer and unique
+    repository head without repair. Planned authority transition remains the
+    accepted dual-signed, adjacent-epoch, exact-CAS operation with fresh
+    rotation of every channel and predecessor retirement; topology coordination
+    does not redefine it. Ordinary compatible rollout is authority-host-last,
+    while authority schema/protocol migration is authority-first with stopped
+    members. Local-v2 migration, complete stopped-backup downgrade, stale
+    restore, repository rollback/fork and identity/generation mismatch all fail
+    closed;
+  - unsupported boundary: other node counts, mixed/extra public addresses,
+    schedulers, Kubernetes/Swarm, automatic NAT traversal, Circuit Relay,
+    QUIC, WebTransport/WebRTC, remote Operator/Application APIs and a
+    long-running controller remain outside the decision;
+  - governance guard: ADR-0013 remains `Proposed`; this review does not accept
+    it, update W3-D004, admit MR-01/CGA-07, execute qualification, or change
+    `realm.channel-grant-authority` or `deployment.multi-host` from `Q=no`.
+    Explicit maintainer disposition is still required.
