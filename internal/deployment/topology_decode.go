@@ -13,8 +13,6 @@ type ValidationError string
 
 func (err ValidationError) Error() string { return string(err) }
 
-type validationError = ValidationError
-
 func decodeTopology(raw []byte) (topologyManifest, error) {
 	if len(raw) > MaxTopologyBytes {
 		return topologyManifest{}, ValidationError("topology_manifest_too_large")
@@ -48,14 +46,18 @@ func rejectDuplicateTopologyFields(raw []byte) error {
 		if errors.Is(err, errDuplicateTopologyField) {
 			return ValidationError("topology_duplicate_field")
 		}
+		if errors.Is(err, errNonCanonicalTopologyField) {
+			return ValidationError("topology_unknown_field")
+		}
 		return ValidationError("topology_invalid_json")
 	}
 	return nil
 }
 
 var (
-	errDuplicateTopologyField = errors.New("duplicate topology field")
-	errForbiddenTopologyField = errors.New("forbidden topology field")
+	errDuplicateTopologyField    = errors.New("duplicate topology field")
+	errForbiddenTopologyField    = errors.New("forbidden topology field")
+	errNonCanonicalTopologyField = errors.New("non-canonical topology field")
 )
 
 func scanTopologyValue(decoder *json.Decoder) error {
@@ -81,6 +83,9 @@ func scanTopologyValue(decoder *json.Decoder) error {
 			}
 			if forbiddenTopologyField(name) {
 				return errForbiddenTopologyField
+			}
+			if name != strings.ToLower(name) {
+				return errNonCanonicalTopologyField
 			}
 			if _, duplicate := seen[name]; duplicate {
 				return errDuplicateTopologyField

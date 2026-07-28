@@ -3,8 +3,11 @@ package deployment
 import (
 	"bytes"
 	"encoding/json"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -51,6 +54,21 @@ func TestCompileRejectsNonCanonicalManifestEnvelopeWithStableErrors(t *testing.T
 			name: "duplicate field",
 			raw:  bytes.Replace(valid, []byte(`"mode": "private_lan"`), []byte(`"mode": "private_lan", "mode": "private_lan"`), 1),
 			code: "topology_duplicate_field",
+		},
+		{
+			name: "case folded field alias",
+			raw:  bytes.Replace(valid, []byte(`"api_version"`), []byte(`"API_VERSION"`), 1),
+			code: "topology_unknown_field",
+		},
+		{
+			name: "case folded duplicate bypass",
+			raw: bytes.Replace(
+				valid,
+				[]byte(`"api_version": "ardents.topology/v1"`),
+				[]byte(`"api_version": "ardents.topology/v1", "API_VERSION": "ardents.topology/v1"`),
+				1,
+			),
+			code: "topology_unknown_field",
 		},
 		{
 			name: "trailing value",
@@ -371,6 +389,40 @@ func TestCompileRejectsMixedUnsafeOrUnprovableIngress(t *testing.T) {
 			code: "topology_public_address_required",
 		},
 		{
+			name: "cgnat is not public ingress",
+			raw:  publicDirect,
+			mutate: func(root map[string]any) {
+				topologyNode(root, 2)["ingress"].(map[string]any)["address"] = "/ip4/100.64.0.12/tcp/60000"
+			},
+			code: "topology_public_address_required",
+		},
+		{
+			name: "documentation range is not public ingress",
+			raw:  publicDirect,
+			mutate: func(root map[string]any) {
+				topologyNode(root, 2)["ingress"].(map[string]any)["address"] = "/ip4/198.51.100.12/tcp/60000"
+			},
+			code: "topology_public_address_required",
+		},
+		{
+			name: "reserved dns name is not public ingress",
+			raw:  publicDirect,
+			mutate: func(root map[string]any) {
+				ingress := topologyNode(root, 1)["ingress"].(map[string]any)
+				ingress["address"] = "/dns4/node-a.example/tcp/443/wss"
+				ingress["certificate_identity"] = "node-a.example"
+			},
+			code: "topology_public_address_required",
+		},
+		{
+			name: "zero tcp port",
+			raw:  publicDirect,
+			mutate: func(root map[string]any) {
+				topologyNode(root, 2)["ingress"].(map[string]any)["address"] = "/ip4/1.1.1.1/tcp/0"
+			},
+			code: "topology_unsupported_ingress_address",
+		},
+		{
 			name: "at least two public ingress nodes",
 			raw:  publicDirect,
 			mutate: func(root map[string]any) {
@@ -408,7 +460,7 @@ func TestCompileRejectsMixedUnsafeOrUnprovableIngress(t *testing.T) {
 			code: "topology_wss_certificate_required",
 		},
 		{
-			name: "wss identity must match literal ip",
+			name: "wss identity must match advertised dns name",
 			raw:  publicDirect,
 			mutate: func(root map[string]any) {
 				topologyNode(root, 1)["ingress"].(map[string]any)["certificate_identity"] = "node-a.example"
@@ -547,7 +599,7 @@ func TestCompileCanonicalizesInputOrderAndRedactsProtectedTopology(t *testing.T)
 	for _, protected := range []string{
 		"10.23.0.", "p1_", "12D3Koo", "ssh-node-", "host-pin-",
 		"node-state-", "authority-state-", "operator-primary",
-		"registry.example", "sha256:",
+		"registry.example", "sha256:", "node-a.ardents.net", "1.1.1.1",
 	} {
 		require.NotContains(t, string(presentation), protected)
 	}
@@ -569,6 +621,38 @@ func TestCompileDoesNotDereferenceManifestAliasesOrNetworkRoots(t *testing.T) {
 
 	_, err := Compile(isolated)
 	require.NoError(t, err)
+}
+
+func TestCompilerProductionDependencyClosureHasNoSideEffectAdapters(t *testing.T) {
+	allowedImports := map[string]struct{}{
+		"bytes": {}, "encoding/json": {}, "errors": {}, "io": {},
+		"net/netip": {}, "regexp": {}, "sort": {}, "strconv": {}, "strings": {},
+		"ardents/internal/identity/principal":  {},
+		"github.com/distribution/reference":    {},
+		"github.com/multiformats/go-multiaddr": {},
+		"github.com/multiformats/go-multihash": {},
+	}
+	files, err := filepath.Glob("*.go")
+	require.NoError(t, err)
+	for _, path := range files {
+		if strings.HasSuffix(path, "_test.go") {
+			continue
+		}
+		parsed, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.ImportsOnly)
+		require.NoError(t, err)
+		for _, imported := range parsed.Imports {
+			name, err := strconv.Unquote(imported.Path.Value)
+			require.NoError(t, err)
+			_, allowed := allowedImports[name]
+			require.Truef(
+				t,
+				allowed,
+				"%s imports %q; production dependency closure must contain no SSH, dial, DNS, PKI, signer, repository, host-mutation, or process adapter",
+				path,
+				name,
+			)
+		}
+	}
 }
 
 func readTopologyFixture(t *testing.T, name string) []byte {

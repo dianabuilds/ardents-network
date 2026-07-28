@@ -491,6 +491,7 @@ flowchart TD
     publication[publication]
     authority[authority]
     channeldelivery[channeldelivery]
+    deployment[deployment]
     provision[provision]
     daemon[daemon]
 
@@ -533,6 +534,7 @@ flowchart TD
     authority --> storage
     channeldelivery --> authority
     channeldelivery --> identity
+    deployment --> identity
     provision --> authority
     provision --> config
     provision --> identity
@@ -567,6 +569,9 @@ Additional rules:
 - feature modules define small event/decision callbacks or interfaces at their
   seams; `diagnostics` and `policy` satisfy them without reversing ownership;
 - `storage` never imports a product module;
+- `deployment` may consume the canonical Principal parser from `identity`, but
+  remains a pure manifest compiler and imports no runtime, network, host-access,
+  signer, repository, PKI, or process adapter;
 - adapter packages depend inward on the interface they implement;
 - only `daemon` may construct the complete process;
 - `localapi`, `applicationapi`, and `observability` may read multiple module

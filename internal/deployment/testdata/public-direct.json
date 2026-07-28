@@ -92,9 +92,9 @@
       },
       "ingress": {
         "kind": "public",
-        "address": "/ip4/203.0.113.11/tcp/443/wss",
+        "address": "/dns4/node-a.ardents.net/tcp/443/wss",
         "certificate_ref": "wss-certificate-node-a",
-        "certificate_identity": "203.0.113.11"
+        "certificate_identity": "node-a.ardents.net"
       },
       "static_recovery_peers": [
         "node-c",
@@ -126,7 +126,7 @@
       },
       "ingress": {
         "kind": "public",
-        "address": "/ip4/198.51.100.12/tcp/60000",
+        "address": "/ip4/1.1.1.1/tcp/60000",
         "certificate_ref": "",
         "certificate_identity": ""
       },

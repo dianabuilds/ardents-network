@@ -3,12 +3,14 @@ package deployment
 import (
 	"net/netip"
 	"regexp"
+	"strconv"
+	"strings"
 
 	identityprincipal "ardents/internal/identity/principal"
 
 	"github.com/distribution/reference"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/multiformats/go-multihash"
 )
 
 const (
@@ -26,14 +28,24 @@ var (
 	signedDNSRootPattern = regexp.MustCompile(
 		`^enrtree://[A-Z2-7]{53}@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$`,
 	)
+	dnsNamePattern = regexp.MustCompile(
+		`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$`,
+	)
 )
+
+type ingressAddress struct {
+	ip       netip.Addr
+	identity string
+	dns      bool
+	wss      bool
+}
 
 func validateTopology(manifest topologyManifest) error {
 	if manifest.APIVersion != TopologyVersion {
 		return ValidationError("topology_unsupported_version")
 	}
 	if len(manifest.Nodes) != exactTopologyNodeCount {
-		return validationError("topology_exactly_three_nodes_required")
+		return ValidationError("topology_exactly_three_nodes_required")
 	}
 	if err := validateTopologyNodes(manifest.Nodes); err != nil {
 		return err
@@ -55,51 +67,69 @@ func validateTopologyNodes(nodes []nodeSpec) error {
 	peerIDs := make(map[string]struct{}, len(nodes))
 	for _, node := range nodes {
 		if !slotPattern.MatchString(node.Slot) {
-			return validationError("topology_invalid_node_slot")
+			return ValidationError("topology_invalid_node_slot")
 		}
 		if !rememberUnique(slots, node.Slot) {
-			return validationError("topology_duplicate_node_slot")
+			return ValidationError("topology_duplicate_node_slot")
 		}
 		if node.Profile != "service_node" {
-			return validationError("topology_unsupported_node_profile")
+			return ValidationError("topology_unsupported_node_profile")
 		}
 		if node.Host.OS != "linux" || node.Host.Arch != "amd64" {
-			return validationError("topology_unsupported_platform")
+			return ValidationError("topology_unsupported_platform")
 		}
 		if node.Host.Ownership != "operator" {
-			return validationError("topology_unsupported_host_ownership")
+			return ValidationError("topology_unsupported_host_ownership")
 		}
 		if !aliasPattern.MatchString(node.Host.SSHAlias) ||
 			!aliasPattern.MatchString(node.Host.HostKeyPinRef) ||
 			!aliasPattern.MatchString(node.NodeStateRef) {
-			return validationError("topology_unsafe_reference")
+			return ValidationError("topology_unsafe_reference")
 		}
 		if !rememberUnique(sshAliases, node.Host.SSHAlias) {
-			return validationError("topology_duplicate_ssh_alias")
+			return ValidationError("topology_duplicate_ssh_alias")
 		}
 		if node.Host.FailureDomain.Class != "host" ||
 			!aliasPattern.MatchString(node.Host.FailureDomain.ID) {
-			return validationError("topology_invalid_host_failure_domain")
+			return ValidationError("topology_invalid_host_failure_domain")
 		}
 		if !rememberUnique(hostDomains, node.Host.FailureDomain.ID) {
-			return validationError("topology_duplicate_host_failure_domain")
+			return ValidationError("topology_duplicate_host_failure_domain")
 		}
 		principal, err := identityprincipal.Parse(node.ExpectedNodePrincipal)
 		if err != nil || principal.String() != node.ExpectedNodePrincipal {
-			return validationError("topology_invalid_node_principal")
+			return ValidationError("topology_invalid_node_principal")
 		}
 		if !rememberUnique(principals, node.ExpectedNodePrincipal) {
-			return validationError("topology_duplicate_node_principal")
+			return ValidationError("topology_duplicate_node_principal")
 		}
-		peerID, err := peer.Decode(node.ExpectedWakuPeerID)
-		if err != nil || peerID.String() != node.ExpectedWakuPeerID {
-			return validationError("topology_invalid_waku_peer_id")
+		if !validWakuPeerID(node.ExpectedWakuPeerID) {
+			return ValidationError("topology_invalid_waku_peer_id")
 		}
 		if !rememberUnique(peerIDs, node.ExpectedWakuPeerID) {
-			return validationError("topology_duplicate_waku_peer_id")
+			return ValidationError("topology_duplicate_waku_peer_id")
 		}
 	}
 	return nil
+}
+
+func validWakuPeerID(value string) bool {
+	peerID, err := multihash.FromB58String(value)
+	if err != nil || peerID.B58String() != value {
+		return false
+	}
+	decoded, err := multihash.Decode(peerID)
+	if err != nil {
+		return false
+	}
+	switch decoded.Code {
+	case multihash.IDENTITY:
+		return len(decoded.Digest) > 0 && len(decoded.Digest) <= 42
+	case multihash.SHA2_256:
+		return len(decoded.Digest) == 32
+	default:
+		return false
+	}
 }
 
 func validateRecoveryAndProviders(nodes []nodeSpec) error {
@@ -110,32 +140,32 @@ func validateRecoveryAndProviders(nodes []nodeSpec) error {
 	providers := 0
 	for _, node := range nodes {
 		if len(node.StaticRecoveryPeers) < minimumRecoveryPeerCount {
-			return validationError("topology_insufficient_static_peers")
+			return ValidationError("topology_insufficient_static_peers")
 		}
 		peers := make(map[string]struct{}, len(node.StaticRecoveryPeers))
 		for _, candidate := range node.StaticRecoveryPeers {
 			if candidate == node.Slot {
-				return validationError("topology_static_peer_self")
+				return ValidationError("topology_static_peer_self")
 			}
 			if _, found := slots[candidate]; !found {
-				return validationError("topology_unknown_static_peer")
+				return ValidationError("topology_unknown_static_peer")
 			}
 			if !rememberUnique(peers, candidate) {
-				return validationError("topology_duplicate_static_peer")
+				return ValidationError("topology_duplicate_static_peer")
 			}
 		}
 		switch {
 		case node.Store.Persistent && !validStoreRetention(node.Store.RetentionClass):
-			return validationError("topology_unsupported_store_retention")
+			return ValidationError("topology_unsupported_store_retention")
 		case !node.Store.Persistent && node.Store.RetentionClass != "":
-			return validationError("topology_invalid_store_retention")
+			return ValidationError("topology_invalid_store_retention")
 		}
 		if node.Bootstrap && node.Store.Persistent {
 			providers++
 		}
 	}
 	if providers < 2 {
-		return validationError("topology_insufficient_bootstrap_store_providers")
+		return ValidationError("topology_insufficient_bootstrap_store_providers")
 	}
 	return nil
 }
@@ -153,21 +183,21 @@ func validateModeAndIngress(manifest topologyManifest) error {
 	switch manifest.Mode {
 	case "private_lan", "public_direct":
 	default:
-		return validationError("topology_unsupported_mode")
+		return ValidationError("topology_unsupported_mode")
 	}
 	if manifest.TransportProfile != "tcp_only" && manifest.TransportProfile != "tcp_wss" {
-		return validationError("topology_unsupported_transport_profile")
+		return ValidationError("topology_unsupported_transport_profile")
 	}
 	if len(manifest.SignedDNSRoots) > maxSignedDNSRoots {
-		return validationError("topology_too_many_signed_dns_roots")
+		return ValidationError("topology_too_many_signed_dns_roots")
 	}
 	dnsRoots := make(map[string]struct{}, len(manifest.SignedDNSRoots))
 	for _, root := range manifest.SignedDNSRoots {
 		if len(root) > 256 || !signedDNSRootPattern.MatchString(root) {
-			return validationError("topology_invalid_signed_dns_root")
+			return ValidationError("topology_invalid_signed_dns_root")
 		}
 		if !rememberUnique(dnsRoots, root) {
-			return validationError("topology_duplicate_signed_dns_root")
+			return ValidationError("topology_duplicate_signed_dns_root")
 		}
 	}
 	addresses := make(map[string]struct{}, len(manifest.Nodes))
@@ -176,78 +206,99 @@ func validateModeAndIngress(manifest topologyManifest) error {
 		switch manifest.Mode {
 		case "private_lan":
 			if node.Ingress.Kind != "private_lan" {
-				return validationError("topology_ingress_mode_mismatch")
+				return ValidationError("topology_ingress_mode_mismatch")
 			}
 		case "public_direct":
 			if node.Ingress.Kind != "public" && node.Ingress.Kind != "outbound_only" {
-				return validationError("topology_ingress_mode_mismatch")
+				return ValidationError("topology_ingress_mode_mismatch")
 			}
 		}
 		if node.Ingress.Kind == "outbound_only" {
 			if node.Ingress.Address != "" || node.Ingress.CertificateRef != "" ||
 				node.Ingress.CertificateIdentity != "" {
-				return validationError("topology_invalid_outbound_only_ingress")
+				return ValidationError("topology_invalid_outbound_only_ingress")
 			}
 			continue
 		}
-		ip, wss, ok := parseIngressAddress(node.Ingress.Address)
+		address, ok := parseIngressAddress(node.Ingress.Address)
 		if !ok {
-			return validationError("topology_unsupported_ingress_address")
+			return ValidationError("topology_unsupported_ingress_address")
 		}
 		if !rememberUnique(addresses, node.Ingress.Address) {
-			return validationError("topology_duplicate_ingress_address")
+			return ValidationError("topology_duplicate_ingress_address")
 		}
-		if node.Ingress.Kind == "private_lan" && !admissiblePrivateAddress(ip) {
-			return validationError("topology_private_address_required")
+		if node.Ingress.Kind == "private_lan" &&
+			(address.dns || !admissiblePrivateAddress(address.ip)) {
+			return ValidationError("topology_private_address_required")
 		}
 		if node.Ingress.Kind == "public" {
-			if !admissiblePublicAddress(ip) {
-				return validationError("topology_public_address_required")
+			if (!address.dns && !admissiblePublicAddress(address.ip)) ||
+				(address.dns && !admissiblePublicDNSName(address.identity)) {
+				return ValidationError("topology_public_address_required")
 			}
 			publicIngress++
 		}
-		if wss && manifest.TransportProfile == "tcp_only" {
-			return validationError("topology_transport_profile_mismatch")
+		if address.wss && manifest.TransportProfile == "tcp_only" {
+			return ValidationError("topology_transport_profile_mismatch")
 		}
-		if err := validateCertificateBinding(node.Ingress, ip, wss); err != nil {
+		if err := validateCertificateBinding(node.Ingress, address); err != nil {
 			return err
 		}
 	}
 	if manifest.Mode == "public_direct" && publicIngress < 2 {
-		return validationError("topology_insufficient_public_ingress")
+		return ValidationError("topology_insufficient_public_ingress")
 	}
 	return nil
 }
 
-func parseIngressAddress(value string) (netip.Addr, bool, bool) {
+func parseIngressAddress(value string) (ingressAddress, bool) {
 	if len(value) == 0 || len(value) > 256 {
-		return netip.Addr{}, false, false
+		return ingressAddress{}, false
 	}
 	address, err := multiaddr.NewMultiaddr(value)
 	if err != nil || address.String() != value {
-		return netip.Addr{}, false, false
+		return ingressAddress{}, false
 	}
 	protocols := address.Protocols()
 	if len(protocols) != 2 && len(protocols) != 3 {
-		return netip.Addr{}, false, false
+		return ingressAddress{}, false
 	}
-	if (protocols[0].Code != multiaddr.P_IP4 && protocols[0].Code != multiaddr.P_IP6) ||
-		protocols[1].Code != multiaddr.P_TCP {
-		return netip.Addr{}, false, false
+	switch protocols[0].Code {
+	case multiaddr.P_IP4, multiaddr.P_IP6, multiaddr.P_DNS, multiaddr.P_DNS4, multiaddr.P_DNS6:
+	default:
+		return ingressAddress{}, false
+	}
+	if protocols[1].Code != multiaddr.P_TCP {
+		return ingressAddress{}, false
 	}
 	wss := len(protocols) == 3
 	if wss && protocols[2].Code != multiaddr.P_WSS {
-		return netip.Addr{}, false, false
+		return ingressAddress{}, false
 	}
-	rawIP, err := address.ValueForProtocol(protocols[0].Code)
+	rawPort, err := address.ValueForProtocol(multiaddr.P_TCP)
 	if err != nil {
-		return netip.Addr{}, false, false
+		return ingressAddress{}, false
 	}
-	ip, err := netip.ParseAddr(rawIP)
-	if err != nil || !ip.IsValid() {
-		return netip.Addr{}, false, false
+	port, err := strconv.ParseUint(rawPort, 10, 16)
+	if err != nil || port == 0 {
+		return ingressAddress{}, false
 	}
-	return ip.Unmap(), wss, true
+	rawIdentity, err := address.ValueForProtocol(protocols[0].Code)
+	if err != nil {
+		return ingressAddress{}, false
+	}
+	result := ingressAddress{identity: rawIdentity, wss: wss}
+	if protocols[0].Code == multiaddr.P_IP4 || protocols[0].Code == multiaddr.P_IP6 {
+		result.ip, err = netip.ParseAddr(rawIdentity)
+		if err != nil || !result.ip.IsValid() {
+			return ingressAddress{}, false
+		}
+		result.ip = result.ip.Unmap()
+		result.identity = result.ip.String()
+		return result, true
+	}
+	result.dns = true
+	return result, true
 }
 
 func admissiblePrivateAddress(ip netip.Addr) bool {
@@ -256,29 +307,71 @@ func admissiblePrivateAddress(ip netip.Addr) bool {
 }
 
 func admissiblePublicAddress(ip netip.Addr) bool {
-	return ip.IsGlobalUnicast() && !ip.IsPrivate() && !ip.IsLoopback() &&
-		!ip.IsUnspecified() && !ip.IsMulticast() && !ip.IsLinkLocalUnicast()
+	if !ip.IsGlobalUnicast() || ip.IsPrivate() || ip.IsLoopback() ||
+		ip.IsUnspecified() || ip.IsMulticast() || ip.IsLinkLocalUnicast() {
+		return false
+	}
+	for _, reserved := range reservedPublicAddressPrefixes {
+		if reserved.Contains(ip) {
+			return false
+		}
+	}
+	return true
 }
 
-func validateCertificateBinding(ingress ingressSpec, ip netip.Addr, wss bool) error {
-	if !wss {
+var reservedPublicAddressPrefixes = []netip.Prefix{
+	netip.MustParsePrefix("0.0.0.0/8"),
+	netip.MustParsePrefix("100.64.0.0/10"),
+	netip.MustParsePrefix("192.0.0.0/24"),
+	netip.MustParsePrefix("192.0.2.0/24"),
+	netip.MustParsePrefix("192.88.99.0/24"),
+	netip.MustParsePrefix("198.18.0.0/15"),
+	netip.MustParsePrefix("198.51.100.0/24"),
+	netip.MustParsePrefix("203.0.113.0/24"),
+	netip.MustParsePrefix("240.0.0.0/4"),
+	netip.MustParsePrefix("64:ff9b::/96"),
+	netip.MustParsePrefix("64:ff9b:1::/48"),
+	netip.MustParsePrefix("100::/64"),
+	netip.MustParsePrefix("2001::/23"),
+	netip.MustParsePrefix("2001:db8::/32"),
+	netip.MustParsePrefix("2002::/16"),
+	netip.MustParsePrefix("3fff::/20"),
+}
+
+func admissiblePublicDNSName(value string) bool {
+	if len(value) > 253 || value != strings.ToLower(value) ||
+		!dnsNamePattern.MatchString(value) {
+		return false
+	}
+	for _, suffix := range []string{
+		".example", ".invalid", ".localhost", ".local", ".test",
+	} {
+		if value == strings.TrimPrefix(suffix, ".") || strings.HasSuffix(value, suffix) {
+			return false
+		}
+	}
+	return true
+}
+
+func validateCertificateBinding(ingress ingressSpec, address ingressAddress) error {
+	if !address.wss {
 		if ingress.CertificateRef != "" || ingress.CertificateIdentity != "" {
-			return validationError("topology_unexpected_certificate_reference")
+			return ValidationError("topology_unexpected_certificate_reference")
 		}
 		return nil
 	}
 	if !aliasPattern.MatchString(ingress.CertificateRef) || ingress.CertificateIdentity == "" {
-		return validationError("topology_wss_certificate_required")
+		return ValidationError("topology_wss_certificate_required")
 	}
-	if ingress.CertificateIdentity != ip.String() {
-		return validationError("topology_wss_certificate_identity_mismatch")
+	if ingress.CertificateIdentity != address.identity {
+		return ValidationError("topology_wss_certificate_identity_mismatch")
 	}
 	return nil
 }
 
 func validateAuthorityAndMaterial(manifest topologyManifest) error {
 	if !aliasPattern.MatchString(manifest.OperatorSignerAlias) {
-		return validationError("topology_unsafe_reference")
+		return ValidationError("topology_unsafe_reference")
 	}
 	var authorityNode *nodeSpec
 	for index := range manifest.Nodes {
@@ -288,37 +381,37 @@ func validateAuthorityAndMaterial(manifest topologyManifest) error {
 		}
 	}
 	if authorityNode == nil {
-		return validationError("topology_invalid_authority_slot")
+		return ValidationError("topology_invalid_authority_slot")
 	}
 	if manifest.Authority.FailureDomain.Class != "host" ||
 		!aliasPattern.MatchString(manifest.Authority.FailureDomain.ID) ||
 		manifest.Authority.FailureDomain != authorityNode.Host.FailureDomain {
-		return validationError("topology_authority_failure_domain_mismatch")
+		return ValidationError("topology_authority_failure_domain_mismatch")
 	}
 	if manifest.Authority.BackupFailureDomain.Class != "backup" ||
 		!aliasPattern.MatchString(manifest.Authority.BackupFailureDomain.ID) {
-		return validationError("topology_invalid_authority_backup_domain")
+		return ValidationError("topology_invalid_authority_backup_domain")
 	}
 	if manifest.CheckpointRepository.FailureDomain.Class != "external_repository" ||
 		!aliasPattern.MatchString(manifest.CheckpointRepository.FailureDomain.ID) {
-		return validationError("topology_invalid_checkpoint_domain")
+		return ValidationError("topology_invalid_checkpoint_domain")
 	}
 	if !manifest.CheckpointRepository.ImmutableHistory {
-		return validationError("topology_checkpoint_immutable_history_required")
+		return ValidationError("topology_checkpoint_immutable_history_required")
 	}
 	if manifest.CheckpointRepository.MaxHeads != checkpointHeadCapacity {
-		return validationError("topology_checkpoint_capacity_mismatch")
+		return ValidationError("topology_checkpoint_capacity_mismatch")
 	}
 	if manifest.Clock.MaxSkewSeconds != maxClockSkewSeconds ||
 		manifest.Clock.AuthoritySafetyMarginSeconds != authorityMarginSeconds {
-		return validationError("topology_clock_contract_mismatch")
+		return ValidationError("topology_clock_contract_mismatch")
 	}
 	if err := validateOwnedReferences(manifest); err != nil {
 		return err
 	}
 	for _, node := range manifest.Nodes {
 		if !validImmutableImage(node.Image) {
-			return validationError("topology_immutable_image_required")
+			return ValidationError("topology_immutable_image_required")
 		}
 	}
 	return nil
@@ -336,10 +429,10 @@ func validateOwnedReferences(manifest topologyManifest) error {
 	}
 	for _, value := range values {
 		if !aliasPattern.MatchString(value) {
-			return validationError("topology_unsafe_reference")
+			return ValidationError("topology_unsafe_reference")
 		}
 		if !rememberUnique(references, value) {
-			return validationError("topology_state_reference_collision")
+			return ValidationError("topology_state_reference_collision")
 		}
 	}
 	return nil

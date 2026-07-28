@@ -8,9 +8,10 @@ or one stable redacted `ValidationError`.
 
 ## Frozen v1 shape
 
-The document is UTF-8 JSON no larger than 256 KiB. Decoding rejects duplicate
-or unknown fields, trailing values, malformed JSON, and every version other
-than `ardents.topology/v1`.
+The document is UTF-8 JSON no larger than 256 KiB. Field names are exact
+lowercase schema names; decoding rejects case-folded aliases, duplicate or
+unknown fields, trailing values, malformed JSON, and every version other than
+`ardents.topology/v1`.
 
 The top-level contract contains:
 
@@ -55,18 +56,20 @@ per Node. The compiled plan marks it `private_probe_required`; it never reports
 public reachability. Publication remains blocked until a later slice records a
 bounded cross-host probe.
 
-`public_direct` requires at least two Nodes with exactly one canonical literal
-public IP TCP or WSS multiaddr. A Node without explicit inbound routing is
+`public_direct` requires at least two Nodes with exactly one canonical public
+IP or DNS TCP/WSS multiaddr. DNS identities are lowercase bounded FQDNs and are
+admitted syntactically without resolution. A Node without explicit inbound routing is
 `outbound_only` and has no address or certificate fields. Public plans are
 `public_autonat_required`; they do not report public reachability. WSS is valid
 only under `tcp_wss` and requires an opaque certificate reference whose
-declared identity equals the literal advertised IP. Certificate acquisition
-and verification remain later Operator/PKI work.
+declared DNS-ID or exact IP-ID equals the advertised identity. Certificate
+acquisition and verification remain later Operator/PKI work.
 
 Loopback, unspecified, link-local, multicast, cross-scope, duplicate,
-non-literal, UDP, QUIC, Circuit Relay, DNS-address, `/p2p`, and mixed-mode
-addresses are rejected. The compiler never mutates a router, firewall, DNS
-provider, certificate service, or runtime.
+zero-port, CGNAT, protocol-reserved, documentation/special-use, ambiguous DNS,
+UDP, QUIC, Circuit Relay, `/p2p`, and mixed-mode addresses are rejected. The
+compiler never resolves DNS or mutates a router, firewall, DNS provider,
+certificate service, or runtime.
 
 ## Redacted plan
 
