@@ -1,6 +1,6 @@
-// Package channeldelivery owns recipient-Node initial-generation preparation
-// and installation. It does not own Authority truth, Operator authentication,
-// Product Policy, or the HPKE implementation.
+// Package channeldelivery owns recipient-Node generation preparation,
+// installation and live-runtime activation. It does not own Authority truth,
+// Operator authentication, Product Policy, or the HPKE implementation.
 package channeldelivery
 
 import (
@@ -38,8 +38,13 @@ type PrepareRequest struct {
 type Service struct {
 	capabilities *identitycapability.Service
 	identityKey  ed25519.PrivateKey
+	activation   ActivationRuntime
 	clock        func() time.Time
 	subject      string
+}
+
+type ActivationRuntime interface {
+	RefreshPrivateSubscriptions(context.Context) error
 }
 
 func New(
@@ -60,6 +65,12 @@ func New(
 		clock:        clock,
 		subject:      subject,
 	}, nil
+}
+
+func (s *Service) BindActivationRuntime(runtime ActivationRuntime) {
+	if s != nil {
+		s.activation = runtime
+	}
 }
 
 func (s *Service) Prepare(
@@ -108,7 +119,7 @@ func (s *Service) Install(
 }
 
 func (s *Service) Activate(
-	_ context.Context,
+	ctx context.Context,
 	command Command,
 	version uint32,
 	activation identitycapability.GenerationActivation,
@@ -122,6 +133,11 @@ func (s *Service) Activate(
 	receipt, err := s.capabilities.ActivateGeneration(activation)
 	if err != nil {
 		return identitycapability.GenerationDeliveryReceipt{}, ErrInvalidArgument
+	}
+	if s.activation != nil {
+		if err := s.activation.RefreshPrivateSubscriptions(ctx); err != nil {
+			return identitycapability.GenerationDeliveryReceipt{}, ErrUnavailable
+		}
 	}
 	return receipt, nil
 }

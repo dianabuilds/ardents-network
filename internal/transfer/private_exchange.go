@@ -12,9 +12,13 @@ import (
 const privateExchangeQueueSize = 32
 
 type PrivateExchange struct {
+	refreshMu       sync.Mutex
 	mu              sync.Mutex
 	channel         *networkprivacy.Channel
 	carrier         networkprivacy.LiveCarrier
+	runContext      context.Context
+	runCancel       context.CancelFunc
+	receiveCancel   context.CancelFunc
 	generation      uint64
 	waiters         map[string]chan []byte
 	replicaWaiters  map[string]chan ReplicaControlMessage
@@ -37,20 +41,69 @@ func (e *PrivateExchange) Start(ctx context.Context) error {
 	if e == nil || e.channel == nil || e.carrier == nil {
 		return networkprivacy.ChannelGrantUnavailable()
 	}
+	e.mu.Lock()
+	if e.runContext != nil {
+		e.mu.Unlock()
+		return fmt.Errorf("private exchange is already started")
+	}
+	e.runContext, e.runCancel = context.WithCancel(ctx)
+	e.mu.Unlock()
+	if err := e.RefreshPrivateSubscriptions(ctx); err != nil {
+		e.mu.Lock()
+		e.runCancel()
+		e.runContext, e.runCancel = nil, nil
+		e.mu.Unlock()
+		return err
+	}
+	return nil
+}
+
+// RefreshPrivateSubscriptions atomically adopts the channel's current and
+// receive-only previous topics. Existing subscriptions remain live if any new
+// subscription cannot be established.
+func (e *PrivateExchange) RefreshPrivateSubscriptions(_ context.Context) error {
+	if e == nil || e.carrier == nil {
+		return networkprivacy.ChannelGrantUnavailable()
+	}
+	e.refreshMu.Lock()
+	defer e.refreshMu.Unlock()
+	e.mu.Lock()
+	runContext := e.runContext
+	e.mu.Unlock()
+	if runContext == nil {
+		return nil
+	}
+	if e.channel == nil {
+		return networkprivacy.ChannelGrantUnavailable()
+	}
+	if err := runContext.Err(); err != nil {
+		return err
+	}
 	topics, err := e.channel.ContentTopics()
 	if err != nil {
 		return err
 	}
+	receiveContext, cancel := context.WithCancel(runContext)
+	subscriptions := make([]<-chan networkprivacy.SealedEnvelope, 0, len(topics))
+	for _, topic := range topics {
+		envelopes, subscribeErr := e.carrier.SubscribePrivateEnvelopes(receiveContext, topic)
+		if subscribeErr != nil {
+			cancel()
+			return subscribeErr
+		}
+		subscriptions = append(subscriptions, envelopes)
+	}
 	e.mu.Lock()
+	previousCancel := e.receiveCancel
+	e.receiveCancel = cancel
 	e.generation++
 	generation := e.generation
 	e.mu.Unlock()
-	for _, topic := range topics {
-		envelopes, subscribeErr := e.carrier.SubscribePrivateEnvelopes(ctx, topic)
-		if subscribeErr != nil {
-			return subscribeErr
-		}
-		go e.receive(ctx, generation, envelopes)
+	if previousCancel != nil {
+		previousCancel()
+	}
+	for _, envelopes := range subscriptions {
+		go e.receive(receiveContext, generation, envelopes)
 	}
 	return nil
 }

@@ -172,16 +172,6 @@ type CapabilityResolver interface {
 	ResolveCapability(CapabilityUse) (ResolvedCapability, error)
 }
 
-type CapabilityGenerationResolver interface {
-	ResolveCapabilityGeneration(CapabilityUse, uint32) (ResolvedCapability, error)
-	AvailableCapabilityGenerations(
-		CapabilityRef,
-		string,
-		CapabilityScope,
-		time.Time,
-	) []uint32
-}
-
 type CapabilityAdmission interface {
 	AllowCapabilityUse(CapabilityUse) error
 }

@@ -182,15 +182,20 @@ func (s *Service) RotateChannel(
 		currentByPrincipal[grant.SubjectPrincipal] = grant
 	}
 	now := s.clock().UTC().Truncate(time.Second)
+	seenAttestations := make(map[string]struct{}, len(attestations))
 	for _, attestation := range attestations {
 		if identitycapability.VerifyDeliveryAttestation(attestation, now) != nil {
 			return RotationResult{}, ErrInvalidArgument
 		}
+		if _, duplicate := seenAttestations[attestation.SubjectPrincipal]; duplicate {
+			return RotationResult{}, ErrInvalidArgument
+		}
+		seenAttestations[attestation.SubjectPrincipal] = struct{}{}
 		if _, ok := currentByPrincipal[attestation.SubjectPrincipal]; !ok {
 			return RotationResult{}, ErrPermissionDenied
 		}
 	}
-	if len(currentByPrincipal) != len(attestations) {
+	if len(currentByPrincipal) != len(seenAttestations) {
 		return RotationResult{}, ErrConflict
 	}
 	principal, publicKey, err := s.signerBinding(ctx)

@@ -105,6 +105,17 @@ func TestAuthorityRotatesAndCompletesOneApprovedMemberGeneration(t *testing.T) {
 		genesis.RealmID, rotated.OperationID, rotated.Deliveries[0].DeliveryID,
 	)
 	require.True(t, valid)
+	policyDenied := New(Config{
+		Store: fixture.store, Signer: fixture.signer, Repository: fixture.repository,
+		Random: cryptorand.Reader, Clock: fixture.clock, Policy: denyPolicy{},
+	})
+	_, err = policyDenied.AcknowledgeInitialGeneration(ctx, Command{
+		Actor: "operator", Effective: "operator", Action: ActionAcknowledgeDelivery,
+		ResourceKind: ResourceKindGenerationDelivery, ResourceID: deliveryResource,
+	}, InitialGenerationAcknowledgeRequest{
+		Version: ContractVersion, RealmID: genesis.RealmID, Receipt: pendingReceipt,
+	})
+	require.ErrorIs(t, err, ErrPermissionDenied)
 	_, err = fixture.service.AcknowledgeInitialGeneration(ctx, Command{
 		Actor: "operator", Effective: "operator", Action: ActionAcknowledgeDelivery,
 		ResourceKind: ResourceKindGenerationDelivery, ResourceID: deliveryResource,
@@ -184,9 +195,9 @@ func TestProductPolicyDeniesChannelRotationBeforeSecretGeneration(t *testing.T) 
 		ResourceKind: ResourceKindChannel, ResourceID: ChannelResource(genesis.RealmID, channelID),
 	}, RotationRequest{
 		Version: ContractVersion, RequestID: "rotation-policy-denied", RealmID: genesis.RealmID,
-		ChannelID: channelID,
+		ChannelID:             channelID,
 		RecipientAttestations: []identityapi.CapabilityDeliveryAttestation{{Version: 1}},
-		ValidFor: time.Hour, DrainFor: time.Minute,
+		ValidFor:              time.Hour, DrainFor: time.Minute,
 	})
 	require.ErrorIs(t, err, ErrPermissionDenied)
 	require.Len(t, fixture.store.state.AuditLog, 1)

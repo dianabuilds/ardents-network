@@ -13,6 +13,7 @@ import (
 )
 
 const generationActivationDomain = "ardents:generation-activation:v1\x00"
+const maximumRetainedActivationOperations = 4096
 
 type GenerationActivation struct {
 	Version            uint32                      `json:"version"`
@@ -92,11 +93,18 @@ func (s *Service) ActivateGeneration(
 		return GenerationDeliveryReceipt{}, capabilityError(CodeIssuerUntrusted, "generation activation issuer is not trusted")
 	}
 	channelKey := generationChannelKey(activation.ChannelID)
-	if retained, exists := s.ledger.ActivatedGenerations[channelKey]; exists {
+	if retained, exists := s.ledger.ActivatedOperations[activation.OperationID]; exists {
 		if !activationsEqual(retained.Activation, activation) {
 			return GenerationDeliveryReceipt{}, capabilityError(CodeInvalid, "generation activation conflicts with retained checkpoint")
 		}
 		return retained.Receipt.restore(), nil
+	}
+	if latest, exists := s.ledger.ActivatedGenerations[channelKey]; exists &&
+		activation.Generation <= latest.Activation.Generation {
+		return GenerationDeliveryReceipt{}, capabilityError(CodeInvalid, "generation activation is not monotonic")
+	}
+	if len(s.ledger.ActivatedOperations) >= maximumRetainedActivationOperations {
+		return GenerationDeliveryReceipt{}, capabilityError(CodeUnavailable, "generation activation history is full")
 	}
 	pending, exists := s.ledger.PendingGenerations[channelKey]
 	if !exists || pending.ChannelID != activation.ChannelID ||
@@ -151,6 +159,7 @@ func (s *Service) ActivateGeneration(
 		Activation: activation,
 		Receipt:    persistDeliveryReceipt(active, pending.ExpiresAt),
 	}
+	next.ActivatedOperations[activation.OperationID] = next.ActivatedGenerations[channelKey]
 	if err := s.store.save(next); err != nil {
 		return GenerationDeliveryReceipt{}, err
 	}

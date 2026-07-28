@@ -158,6 +158,57 @@ func TestPendingGenerationRequiresSignedActivationBeforeItBecomesReady(t *testin
 		Permission: identityapi.CapabilityPublish, Scope: current.Scope, At: now,
 	}, 1)
 	require.Error(t, err)
+
+	third := next
+	third.Generation = 3
+	third.GrantID = fixedID(0xc6)
+	third.Secret, _ = identityapi.NewCapabilitySecret(bytes.Repeat([]byte{0xc7}, 32))
+	third, err = SignGrant(third, issuerPrivate)
+	require.NoError(t, err)
+	thirdBundle := GenerationBundle{
+		Version: 1, RealmID: bundle.RealmID,
+		AuthorityPrincipal: bundle.AuthorityPrincipal, AuthorityEpoch: 1,
+		AuthoritySequence: 7,
+		OperationID:       "rao1_30112233445566778899aabbccddeeff",
+		DeliveryID:        "rad1_30112233445566778899aabbccddeeff",
+		ChannelID:         third.ChannelID, ChannelClass: third.Scope, Generation: 3,
+		RecipientPrincipal: third.SubjectPrincipal,
+		DeliveryKeyDigest:  DeliveryPublicKeyDigest(attestation.DeliveryPublicKey),
+		SubjectGrant:       third, SenderGrants: []identityapi.CapabilityGrant{third},
+		ActivationPhase: DeliveryPhaseInstalled, DrainDeadline: now.Add(20 * time.Minute),
+		ExpiresAt: now.Add(time.Hour), ReceiptKey: bytes.Repeat([]byte{0xc8}, 32),
+	}
+	thirdSealed, err := SealGenerationBundleForRecipient(
+		thirdBundle, attestation, now,
+		func(message []byte) ([]byte, error) {
+			return ed25519.Sign(issuerPrivate, message), nil
+		},
+	)
+	require.NoError(t, err)
+	_, err = reopened.InstallGenerationDelivery(thirdSealed)
+	require.NoError(t, err)
+	thirdActivation, err := SignGenerationActivationWith(GenerationActivation{
+		Version: 1, RealmID: thirdBundle.RealmID,
+		AuthorityPrincipal: thirdBundle.AuthorityPrincipal,
+		AuthorityEpoch:     1, AuthoritySequence: 9, OperationID: thirdBundle.OperationID,
+		ChannelID: thirdBundle.ChannelID, ChannelClass: thirdBundle.ChannelClass,
+		PreviousGeneration: 2, Generation: 3, EffectiveAt: now,
+		DrainDeadline:    thirdBundle.DrainDeadline,
+		CheckpointDigest: "ac1_2ae66f80a93c4216bd9e07d3517eb44ad2ca1c5f873eaab607da3f3f238481d3",
+	}, func(message []byte) ([]byte, error) {
+		return ed25519.Sign(issuerPrivate, message), nil
+	})
+	require.NoError(t, err)
+	thirdActive, err := reopened.ActivateGeneration(thirdActivation)
+	require.NoError(t, err)
+	require.Equal(t, uint32(3), thirdActive.Generation)
+	readiness = reopened.GenerationReadiness(third.ChannelID)
+	require.True(t, readiness.Ready)
+	require.Equal(t, uint32(3), readiness.CurrentGeneration)
+	require.Equal(t, uint32(2), readiness.PreviousGeneration)
+	firstReplay, err := reopened.ActivateGeneration(activation)
+	require.NoError(t, err)
+	require.Equal(t, active, firstReplay)
 }
 
 func resolvedCapabilityForTest(

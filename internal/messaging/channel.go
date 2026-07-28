@@ -32,6 +32,16 @@ type Channel struct {
 	clock      func() time.Time
 }
 
+type capabilityGenerationResolver interface {
+	ResolveCapabilityGeneration(identityapi.CapabilityUse, uint32) (identityapi.ResolvedCapability, error)
+	AvailableCapabilityGenerations(
+		identityapi.CapabilityRef,
+		string,
+		identityapi.CapabilityScope,
+		time.Time,
+	) []uint32
+}
+
 func NewChannel(cfg ChannelConfig) (*Channel, error) {
 	if cfg.Resolver == nil || cfg.Authorizer == nil || cfg.Replay == nil ||
 		cfg.Reference == "" || cfg.Subject == "" || cfg.Scope == "" || cfg.Signer == nil {
@@ -109,7 +119,7 @@ func (c *Channel) receiveContentTopics(
 ) ([]string, error) {
 	now := c.clock().UTC().Truncate(time.Second)
 	generations := []uint32{0}
-	if resolver, ok := c.resolver.(identityapi.CapabilityGenerationResolver); ok {
+	if resolver, ok := c.resolver.(capabilityGenerationResolver); ok {
 		generations = resolver.AvailableCapabilityGenerations(
 			c.reference, c.subject, c.scope, now,
 		)
@@ -160,7 +170,7 @@ func (c *Channel) resolveGeneration(
 	generation uint32,
 ) (identityapi.ResolvedCapability, time.Time, error) {
 	now := c.clock().UTC().Truncate(time.Second)
-	if resolver, ok := c.resolver.(identityapi.CapabilityGenerationResolver); ok {
+	if resolver, ok := c.resolver.(capabilityGenerationResolver); ok {
 		resolved, err := resolver.ResolveCapabilityGeneration(identityapi.CapabilityUse{
 			Ref: c.reference, Subject: c.subject, Permission: permission,
 			Scope: c.scope, At: now,

@@ -36,6 +36,7 @@ type ledger struct {
 	PendingGenerations   map[string]persistedPendingGeneration   `json:"pending_generations,omitempty"`
 	PreviousGenerations  map[string]persistedPreviousGeneration  `json:"previous_generations,omitempty"`
 	ActivatedGenerations map[string]persistedActivatedGeneration `json:"activated_generations,omitempty"`
+	ActivatedOperations  map[string]persistedActivatedGeneration `json:"activated_operations,omitempty"`
 }
 
 func newStore(path string, key []byte) (*Store, error) {
@@ -115,6 +116,7 @@ func emptyLedger() ledger {
 		PendingGenerations:   map[string]persistedPendingGeneration{},
 		PreviousGenerations:  map[string]persistedPreviousGeneration{},
 		ActivatedGenerations: map[string]persistedActivatedGeneration{},
+		ActivatedOperations:  map[string]persistedActivatedGeneration{},
 	}
 }
 
@@ -139,5 +141,8 @@ func normalizeLedger(stored *ledger) {
 	}
 	if stored.ActivatedGenerations == nil {
 		stored.ActivatedGenerations = map[string]persistedActivatedGeneration{}
+	}
+	if stored.ActivatedOperations == nil {
+		stored.ActivatedOperations = map[string]persistedActivatedGeneration{}
 	}
 }

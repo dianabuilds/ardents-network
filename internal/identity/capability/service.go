@@ -219,6 +219,11 @@ func cloneLedger(source ledger) ledger {
 		activated.Receipt.MAC = append([]byte(nil), activated.Receipt.MAC...)
 		out.ActivatedGenerations[key] = activated
 	}
+	for key, activated := range source.ActivatedOperations {
+		activated.Activation.Signature = append([]byte(nil), activated.Activation.Signature...)
+		activated.Receipt.MAC = append([]byte(nil), activated.Receipt.MAC...)
+		out.ActivatedOperations[key] = activated
+	}
 	return out
 }
 

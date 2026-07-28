@@ -213,9 +213,6 @@ func (s *Service) AcknowledgeInitialGeneration(
 	if s.store == nil || s.signer == nil || s.repository == nil || s.policy == nil {
 		return InitialGenerationAcknowledgeResult{}, ErrUnavailable
 	}
-	if err := s.policy.AdmitInitialGeneration(ctx, command); err != nil {
-		return InitialGenerationAcknowledgeResult{}, ErrPermissionDenied
-	}
 	state, found, err := s.store.Load(ctx)
 	if err != nil || !found {
 		return InitialGenerationAcknowledgeResult{}, ErrUnavailable
@@ -247,6 +244,21 @@ func (s *Service) AcknowledgeInitialGeneration(
 		state.RealmID, delivery.OperationID, delivery.DeliveryID,
 	)
 	if command.ResourceID != resource {
+		return InitialGenerationAcknowledgeResult{}, ErrPermissionDenied
+	}
+	rotationDelivery := false
+	for _, rotation := range state.Rotations {
+		if containsDeliveryID(rotation.DeliveryIDs, delivery.DeliveryID) {
+			rotationDelivery = true
+			break
+		}
+	}
+	if rotationDelivery {
+		err = s.policy.AdmitChannelRotation(ctx, command)
+	} else {
+		err = s.policy.AdmitInitialGeneration(ctx, command)
+	}
+	if err != nil {
 		return InitialGenerationAcknowledgeResult{}, ErrPermissionDenied
 	}
 	if delivery.Phase == DeliveryPhaseInstalled {

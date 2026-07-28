@@ -110,15 +110,36 @@ func (c *Command) rotateChannel(ctx context.Context, args []string) int {
 }
 
 func (c *Command) installRotation(ctx context.Context, args []string) int {
-	rotation, rotationPath, receiptPath, code := c.rotationAndOutputArgs("authority rotation install", args)
-	if code >= 0 {
-		return code
+	fs := flag.NewFlagSet("authority rotation install", flag.ContinueOnError)
+	fs.SetOutput(c.ctx.Renderer.Err)
+	var rotationPath, receiptPath, recipient string
+	fs.StringVar(&rotationPath, "rotation-file", "", "protected rotation file")
+	fs.StringVar(&recipient, "recipient", "", "local member Principal when the rotation has multiple deliveries")
+	fs.StringVar(&receiptPath, "out-file", "", "new protected installed receipt file")
+	if err := fs.Parse(args); err != nil {
+		return c.ctx.Failure(err)
+	}
+	if !filepath.IsAbs(rotationPath) || !filepath.IsAbs(receiptPath) || fs.NArg() != 0 {
+		return c.ctx.Failure(flag.ErrHelp)
+	}
+	rotation := &protocol.RotateChannelResponse{}
+	if err := readProtectedProto(rotationPath, rotation); err != nil {
+		return c.ctx.Failure(err)
 	}
 	var sealed *protocol.SealedGenerationDelivery
-	if len(rotation.GetDeliveries()) == 1 {
+	switch {
+	case recipient == "" && len(rotation.GetDeliveries()) == 1:
 		sealed = rotation.GetDeliveries()[0].GetSealed()
-	} else {
-		return c.ctx.Failure(fmt.Errorf("rotation contains multiple deliveries; install on a member-specific artifact"))
+	case recipient != "":
+		for _, delivery := range rotation.GetDeliveries() {
+			if delivery.GetRecipientPrincipal() == recipient {
+				sealed = delivery.GetSealed()
+				break
+			}
+		}
+	}
+	if sealed == nil {
+		return c.ctx.Failure(fmt.Errorf("rotation has no unique delivery for the requested member"))
 	}
 	callCtx, cancel := c.ctx.Call(ctx)
 	defer cancel()
@@ -137,7 +158,6 @@ func (c *Command) installRotation(ctx context.Context, args []string) int {
 		"delivery_id": response.Msg.GetReceipt().GetDeliveryId(), "artifact": receiptPath,
 		"phase": "installed", "operation_id": rotation.GetOperationId(), "realm_id": rotation.GetRealmId(),
 	})
-	_ = rotationPath
 	return c.ctx.Renderer.MutationOutcome(response.Msg.GetStatus())
 }
 
@@ -232,11 +252,23 @@ func (c *Command) activateRotation(ctx context.Context, args []string) int {
 }
 
 func (c *Command) acknowledgeRotationActive(ctx context.Context, args []string) int {
-	rotation, _, receipt, receiptPath, code := c.rotationAndReceiptArgs(
-		"authority rotation acknowledge-active", args,
-	)
+	fs, rotationPath := c.rotationArtifactFlagSet("authority rotation acknowledge-active")
+	var receiptPath, disposition string
+	fs.StringVar(&receiptPath, "receipt-file", "", "protected member receipt file")
+	fs.StringVar(&disposition, "host-disposition", "", "deployment-owned disposition; must be approved")
+	if err := fs.Parse(args); err != nil {
+		return c.ctx.Failure(err)
+	}
+	if disposition != "approved" || !filepath.IsAbs(receiptPath) || fs.NArg() != 0 {
+		return c.ctx.Failure(flag.ErrHelp)
+	}
+	rotation, code := c.loadRotationArtifact(*rotationPath)
 	if code >= 0 {
 		return code
+	}
+	receipt := &protocol.GenerationDeliveryReceipt{}
+	if err := readProtectedProto(receiptPath, receipt); err != nil {
+		return c.ctx.Failure(err)
 	}
 	callCtx, cancel := c.ctx.Call(ctx)
 	defer cancel()
@@ -260,43 +292,58 @@ func (c *Command) acknowledgeRotationActive(ctx context.Context, args []string) 
 }
 
 func (c *Command) rotationAndOutputArgs(name string, args []string) (*protocol.RotateChannelResponse, string, string, int) {
-	fs := flag.NewFlagSet(name, flag.ContinueOnError)
-	fs.SetOutput(c.ctx.Renderer.Err)
-	var rotationPath, outPath string
-	fs.StringVar(&rotationPath, "rotation-file", "", "protected rotation file")
+	fs, rotationPath := c.rotationArtifactFlagSet(name)
+	var outPath string
 	fs.StringVar(&outPath, "out-file", "", "new protected output file")
 	if err := fs.Parse(args); err != nil {
 		return nil, "", "", c.ctx.Failure(err)
 	}
-	if !filepath.IsAbs(rotationPath) || !filepath.IsAbs(outPath) || fs.NArg() != 0 {
+	if !filepath.IsAbs(outPath) || fs.NArg() != 0 {
 		return nil, "", "", c.ctx.Failure(flag.ErrHelp)
 	}
-	rotation := &protocol.RotateChannelResponse{}
-	if err := readProtectedProto(rotationPath, rotation); err != nil {
-		return nil, "", "", c.ctx.Failure(err)
+	rotation, code := c.loadRotationArtifact(*rotationPath)
+	if code >= 0 {
+		return nil, "", "", code
 	}
-	return rotation, rotationPath, outPath, -1
+	return rotation, *rotationPath, outPath, -1
 }
 
 func (c *Command) rotationAndReceiptArgs(name string, args []string) (*protocol.RotateChannelResponse, string, *protocol.GenerationDeliveryReceipt, string, int) {
-	fs := flag.NewFlagSet(name, flag.ContinueOnError)
-	fs.SetOutput(c.ctx.Renderer.Err)
-	var rotationPath, receiptPath string
-	fs.StringVar(&rotationPath, "rotation-file", "", "protected rotation file")
+	fs, rotationPath := c.rotationArtifactFlagSet(name)
+	var receiptPath string
 	fs.StringVar(&receiptPath, "receipt-file", "", "protected member receipt file")
 	if err := fs.Parse(args); err != nil {
 		return nil, "", nil, "", c.ctx.Failure(err)
 	}
-	if !filepath.IsAbs(rotationPath) || !filepath.IsAbs(receiptPath) || fs.NArg() != 0 {
+	if !filepath.IsAbs(receiptPath) || fs.NArg() != 0 {
 		return nil, "", nil, "", c.ctx.Failure(flag.ErrHelp)
 	}
-	rotation := &protocol.RotateChannelResponse{}
-	receipt := &protocol.GenerationDeliveryReceipt{}
-	if err := readProtectedProto(rotationPath, rotation); err != nil {
-		return nil, "", nil, "", c.ctx.Failure(err)
+	rotation, code := c.loadRotationArtifact(*rotationPath)
+	if code >= 0 {
+		return nil, "", nil, "", code
 	}
+	receipt := &protocol.GenerationDeliveryReceipt{}
 	if err := readProtectedProto(receiptPath, receipt); err != nil {
 		return nil, "", nil, "", c.ctx.Failure(err)
 	}
-	return rotation, rotationPath, receipt, receiptPath, -1
+	return rotation, *rotationPath, receipt, receiptPath, -1
+}
+
+func (c *Command) rotationArtifactFlagSet(name string) (*flag.FlagSet, *string) {
+	fs := flag.NewFlagSet(name, flag.ContinueOnError)
+	fs.SetOutput(c.ctx.Renderer.Err)
+	var rotationPath string
+	fs.StringVar(&rotationPath, "rotation-file", "", "protected rotation file")
+	return fs, &rotationPath
+}
+
+func (c *Command) loadRotationArtifact(path string) (*protocol.RotateChannelResponse, int) {
+	if !filepath.IsAbs(path) {
+		return nil, c.ctx.Failure(flag.ErrHelp)
+	}
+	rotation := &protocol.RotateChannelResponse{}
+	if err := readProtectedProto(path, rotation); err != nil {
+		return nil, c.ctx.Failure(err)
+	}
+	return rotation, -1
 }

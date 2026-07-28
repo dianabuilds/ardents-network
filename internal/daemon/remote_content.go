@@ -21,6 +21,7 @@ type remoteContent struct {
 	transfer          transfer.ExchangeConfig
 	replicationConfig replication.Config
 	replication       *replication.Service
+	private           *transfer.PrivateExchange
 }
 
 func newRemoteContent(cfg ownerAssemblyConfig) *remoteContent {
@@ -53,11 +54,19 @@ func newRemoteContent(cfg ownerAssemblyConfig) *remoteContent {
 	return &remoteContent{
 		content:  cfg.Data,
 		transfer: transferConfig,
+		private:  exchange,
 		replicationConfig: replication.Config{
 			Data: cfg.Replica, Policy: cfg.Policy, Discovery: cfg.Discovery, Trust: cfg.Trust,
 			Exchange: exchange, RecordEvent: recordEvent, Identity: identity, PrivateKey: cfg.GetPrivate,
 		},
 	}
+}
+
+func (r *remoteContent) RefreshPrivateSubscriptions(ctx context.Context) error {
+	if r == nil || r.private == nil {
+		return nil
+	}
+	return r.private.RefreshPrivateSubscriptions(ctx)
 }
 
 func (r *remoteContent) SetLocalNodePrincipal(principal identityprincipal.ID) {

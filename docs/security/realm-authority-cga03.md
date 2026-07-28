@@ -36,7 +36,10 @@ After activation, publish resolves only the new generation. The immediately
 previous grant may resolve only subscribe or Store-fetch use and only before
 the drain deadline. Discovery and private transfer subscribe to both bounded
 topics during that interval while every new envelope is sealed with the
-current generation.
+current generation. A running transfer exchange atomically establishes the new
+current/previous subscriptions before the member RPC releases its active
+receipt; failed resubscription retains the old live subscription and returns a
+retryable failure.
 
 The Authority ledger retains explicit versioned current, pending and one
 previous grant snapshot. Drain is capped by both the requested limit and the
@@ -51,6 +54,8 @@ timestamps and deadlines. A valid MAC still proves only possession.
 
 `approved_host=true` is therefore an explicit deployment-owned disposition, not
 cryptographic fencing evidence. Without it, active acknowledgement is denied.
+The CLI requires the explicit `--host-disposition approved` input and never
+synthesizes approval from receipt possession.
 CGA-04 must supply supported fencing evidence for suspect, noncompliant or
 removed members; CGA-03 does not claim that a receipt can replace fencing.
 
@@ -66,7 +71,9 @@ If activation state reached the Authority ledger before checkpoint publication,
 recovery rolls forward and publishes that retained checkpoint. It never
 restores the old current generation or decreases Authority sequence. Member
 activation likewise commits before returning and replays the identical active
-receipt after restart.
+receipt after restart. Operation-keyed activation history preserves retries
+across later strictly monotonic rotations while the channel-keyed record tracks
+only the latest checkpoint.
 
 ## Disclosure and qualification
 
