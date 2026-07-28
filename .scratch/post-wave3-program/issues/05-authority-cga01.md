@@ -1,7 +1,7 @@
 # PW3-05: CGA-01 create and inspect a production realm authority
 
 Status: ready-for-human
-State: open
+State: closed
 Labels: ready-for-human
 Research class: R0 implementation with security review
 
@@ -273,3 +273,9 @@ remain open.
     0 qualified`; there is no canonical I/R/O/Q change and `Q` remains `no`;
   - CGA-02 through CGA-07 were not started. No production deployment was
     changed and nothing was pushed.
+- 2026-07-28 maintainer disposition: accepted after the commit-bound handoff
+  and clean repeat Spec/Standards reviews. The instruction to proceed with
+  CGA-02 through CGA-07 admits publication of the canonical successor slices.
+  CGA-02 may consume implementation commit
+  `3551a1e5f486d34711416cacfe21fc420d393c46`; later slices remain governed by
+  their own predecessor and external gates.
