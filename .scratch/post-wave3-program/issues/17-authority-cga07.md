@@ -42,3 +42,25 @@ feature behavior.
 
 - Published as a blocked qualification slice. `Q` remains `no` until every
   acceptance criterion is satisfied on one matching commit.
+- 2026-07-28 admission audit after CGA-06 acceptance:
+  - the maintainer explicitly accepted CGA-06 implementation commit
+    `1136def860f30bc452e1b5352c537cbd44a163f6`;
+  - DR-04's compatibility recheck says the implemented authority lifecycle is
+    compatible with the selected three-host topology, but ADR-0013 remains
+    `Proposed` and has no explicit maintainer disposition;
+  - the currently declared DR-06 stabilization scope explicitly excludes
+    `realm.channel-grant-authority`, ADR-0013 real-host support and the
+    production three-host topology. It cannot be reused as CGA-07 scope;
+  - no exact authority release-candidate version, dedicated three-host Linux
+    private-LAN environment, independent checkpoint/WORM repository,
+    separately retained authority backup failure domain, release runners or
+    supported-lifetime evidence destination has been declared for this issue;
+  - the canonical authority acceptance matrix requires unit, contract,
+    integration, adversarial three-real-host E2E, security, deployment,
+    backup/restore, migration/downgrade and release evidence on one exact clean
+    commit. Docker multinode and local Windows evidence are not substitutes;
+  - admission therefore remains `needs-info`; `Q=no`. Continuing requires an
+    explicit DR-04/ADR-0013 compatibility disposition and a separately
+    declared CGA-07 DR-06 scope, release-candidate version and authorized
+    environments. No qualification attempt, deployment change or push was
+    made.
