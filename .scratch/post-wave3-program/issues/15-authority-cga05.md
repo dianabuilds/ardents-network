@@ -1,8 +1,8 @@
 # PW3-15: CGA-05 renew grants and separate channel classes
 
-Status: needs-info
+Status: ready-for-agent
 State: open
-Labels: needs-info
+Labels: ready-for-agent
 Research class: R0 lifecycle implementation with security review
 
 ## Parent
@@ -41,3 +41,13 @@ IDs/secrets/generations/membership/replay/audit and policy admission.
 
 - Published as a blocked canonical slice. Application Messaging remains
   outside Authority ownership.
+- 2026-07-28 predecessor and research gates satisfied:
+  - the maintainer explicitly accepted CGA-04 implementation commit
+    `cfbbacd2dcf9044c98f4d132c1d5b90743e030d7`;
+  - the accepted DR-01 research result defines Operator-owned conversation
+    creation/membership and consumes a generic `channel.application` authority
+    lifecycle without assigning conversation identity, group policy or message
+    semantics to Authority;
+  - ADR-0015 remains Proposed. Admitting CGA-05 neither accepts that ADR nor
+    implements Application Messaging, qualification, deployment change or
+    push.

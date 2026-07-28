@@ -1,7 +1,7 @@
 # PW3-14: CGA-04 change membership with revocation and fencing
 
 Status: ready-for-human
-State: open
+State: closed
 Labels: ready-for-human
 Research class: R1 adversarial multi-host E2E
 
@@ -99,3 +99,7 @@ truthful under success, partition, timeout and malicious old traffic.
   - ADR-0013 remains Proposed. CGA-05 remains gated on explicit maintainer
     acceptance of the exact CGA-04 implementation tip. No production
     deployment was changed and nothing was pushed.
+- 2026-07-28 maintainer disposition: accepted exact implementation commit
+  `cfbbacd2dcf9044c98f4d132c1d5b90743e030d7` after the commit-bound handoff
+  and clean repeat Standards/Spec reviews. CGA-05 may consume this commit;
+  later slices remain governed by their own predecessor gates.
