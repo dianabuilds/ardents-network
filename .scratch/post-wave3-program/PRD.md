@@ -136,6 +136,21 @@ implementation slices and commits.
   scope, release candidate, real-host/WORM/backup/release environments and
   evidence destination are still undeclared.
 
+## ADR-0015 disposition — 2026-07-29
+
+- ADR-0015 now defines an independent monotonic Messaging checkpoint that
+  detects rollback even when the Authority head is unchanged.
+- Delivery-Node rebind maps to the existing same-membership Authority
+  generation rotation; close maps to a checkpointed Messaging tombstone,
+  stopped renewal and bounded grant/drain expiry without inventing an
+  Authority close action.
+- Content References use their canonical globally content-addressed identity;
+  owner qualification remains on Content Objects, Content Manifests and
+  authorization bindings.
+- The maintainer accepted the corrected ADR-0015 and W3-D002. This accepts the
+  design only; `application.messaging` remains `Q=no` and AM implementation
+  still requires separate admission.
+
 ## Stream ownership
 
 - The integrator alone edits this PRD, the Wave 3 decision register, the

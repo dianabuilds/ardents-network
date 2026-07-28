@@ -1,8 +1,8 @@
 # PW3-07: Review dependent ADR-0013, ADR-0014, and ADR-0015
 
-Status: ready-for-agent
+Status: needs-info
 State: open
-Labels: ready-for-agent
+Labels: needs-info
 Research class: dependent decision review
 
 ## Parent
@@ -279,18 +279,18 @@ before the first implementation slice is accepted.
 
 - [x] The Application interface exposes only the five bounded product
       operations and exact action/resource admission.
-- [ ] Operator membership and DR-03 authority boundaries remain intact.
+- [x] Operator membership and DR-03 authority boundaries remain intact.
 - [x] Durable acceptance, Node receipt, Application acknowledgement,
       idempotency, ordering, retry, expiry, and terminal outcomes are not
       conflated.
 - [x] Content References do not grant fetch authority or cause send-time fetch.
-- [ ] Restore/restart cannot resurrect stale membership or silently lose
+- [x] Restore/restart cannot resurrect stale membership or silently lose
       accepted messages.
 - [x] Remaining finite implementation-profile constants are a named gate
       before AM implementation acceptance.
 - [x] Exactly-once, global/causal ordering, read receipt, arbitrary topic,
       caller recipients, federation, and public Waku controls remain rejected.
-- [ ] Maintainer records an independent ADR-0015 review outcome.
+- [x] Maintainer records an independent ADR-0015 review outcome.
 
 ### ADR-0014 review
 
@@ -516,3 +516,32 @@ No implementation or qualification is claimed by closing this issue.
   - governance guard: ADR-0015 remains `Proposed`; W3-D002 remains `proposed`;
     AM-01 is not admitted, `application.messaging` remains `Q=no`, and no
     Messaging implementation, qualification, deployment or push is authorized.
+- 2026-07-29 ADR-0015 blocker resolution and maintainer disposition:
+  - verdict: `accepted`;
+  - restore freshness is now independent of Authority-only movement. Every
+    externally acknowledged Messaging mutation and lifecycle/delivery cutover
+    advances a per-Node `MessagingStateCheckpoint/v1` hash chain through exact
+    compare-and-append in a repository outside the stopped-Node backup fault
+    domain. Same-Realm restore must equal both the unique Messaging head and
+    the unique Authority head, so a backup cannot lose accepted message,
+    cursor or acknowledgement truth while matching an unchanged Authority
+    checkpoint;
+  - delivery-Node rebind now maps exactly to the existing
+    `realm.channel.generation.rotate` action with unchanged Principal
+    membership and the replacement delivery-key attestation. The new binding
+    is current only after Authority activation/checkpoint retention and
+    approved-host active receipts; a suspect old host is deployment-fenced
+    before activation;
+  - close now maps to a retained Messaging `closing` tombstone, immediate
+    denial of new send/replay admission, stopped renewal, terminalization of
+    undelivered work, per-delivery-Node checkpoint/fencing convergence and
+    bounded expiry of current/previous grants and drains. It intentionally adds
+    no unsupported `realm.channel.close` action;
+  - Content References are now described by the ADR-0004/`CONTEXT.md`
+    canonical global content-addressed identity. Owner qualification remains
+    on Content Objects, Content Manifests and authorization bindings;
+  - W3-D002 and ADR-0015 are accepted as design decisions. AM implementation
+    is not admitted by this issue, the finite Messaging profile remains an
+    AM-01 acceptance gate, and `application.messaging` remains `Q=no`;
+  - PW3-07 remains open as `needs-info` because the only unfinished review,
+    ADR-0014, is still gated by explicit ADR-0012 acceptance.

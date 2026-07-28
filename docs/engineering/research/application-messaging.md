@@ -2,7 +2,7 @@
 
 ## Metadata
 
-- Status: accepted research recommendation; ADR-0015 remains Proposed
+- Status: accepted research recommendation; ADR-0015 Accepted
 - Research class: R2 deep research
 - Decision owner: Application Interface / Identity and Security / Messaging
 - Research owner: Wave 3 DR-01
@@ -10,7 +10,7 @@
 - Frozen baseline commit:
   `8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c`
 - Parent program: `.scratch/wave3-deep-research/PRD.md`
-- Blocking research: none; ADR-0011 is accepted and ADR-0015 remains Proposed
+- Blocking research: none; ADR-0011 and ADR-0015 are accepted
 - Downstream consumers: Application Messaging implementation and DR-06
 
 ## Answer first
@@ -23,10 +23,13 @@ providers, Store queries, encryption, replay, or retry.
 
 Conversation creation, membership change, delivery-Node rebinding, and closure
 are Operator-only in v1 and consume the single-authority DR-03 lifecycle. Each
-membership change activates a fresh Application-channel generation. Send
-success means durable local outbox acceptance; recipient delivery is
-at-least-once until durable inbox admission, receipt, expiry, revocation, or
-fencing. No receipt claims that an Application or person processed a message.
+membership change activates a fresh Application-channel generation; rebind
+uses a same-membership generation rotation and close suppresses renewal until
+the last valid generation expires. Send success means durable local outbox
+acceptance retained against a separate monotonic Messaging checkpoint;
+recipient delivery is at-least-once until durable inbox admission, receipt,
+expiry, revocation, or fencing. No receipt claims that an Application or person
+processed a message.
 
 This adds a new persisted conversation/inbox/outbox aggregate and a versioned
 Application-message wire class. The cost is justified because topic- or
@@ -232,13 +235,31 @@ Operator-only procedures create/close a conversation and change/rebind its
 members. A conversation has two to thirty-two members, at most one active
 delivery Node per member, and a monotonically increasing membership version.
 
+Rebind increments a separate Messaging binding version and calls the accepted
+DR-03 `realm.channel.generation.rotate` action with unchanged Principal
+membership and the target Principal's new delivery-key attestation. The old
+Node receives no new generation. The binding changes only after the Authority
+activation checkpoint and approved-host active receipts are retained; the
+immediately previous generation remains receive-only for the exact signed
+drain. A suspect old host is deployment-fenced before activation.
+
+Close first retains a monotonic Messaging `closing` tombstone, returns the
+pending state, denies local new sends/replay admission, terminalizes
+undelivered work, and stops Channel Grant renewal. Every approved active
+delivery Node must checkpoint that tombstone or be deployment-fenced; a
+partitioned Node is not counted as closed. Already admitted inbox entries
+remain receive/acknowledge-only for bounded retention. The conversation becomes
+`closed` after that convergence, accepted outbox work is terminal, and
+current/previous grants and drains expire. DR-03 gains no conversation-close
+action.
+
 ### Internal seam and state machine
 
 The `ConversationMessaging` module owns conversation projection, idempotency,
 immutable message rows, per-recipient outbox/inbox entries, subscriptions,
 cursors, receipt projection, expiry, bounded retry scheduling, backup checks,
-and redacted diagnostics. It calls DR-03 for authority lifecycle and an
-internal carrier port for transport.
+redacted diagnostics, and its own monotonic checkpoint stream. It calls DR-03
+for authority lifecycle and an internal carrier port for transport.
 
 ```text
 conversation: proposed -> authority_pending -> active -> rotating -> active
@@ -268,6 +289,12 @@ issuance, generation activation, revocation, survivor attestations, fencing,
 and checkpoint truth. Audit records request ID, Actor, Effective, resource,
 membership version, stable outcome, counts and digests, never payload,
 selector, Channel Grant or Content locator.
+
+Membership change maps to `realm.channel.membership.change`; delivery-Node
+rebind maps to `realm.channel.generation.rotate`. Close maps to a
+Messaging-owned monotonic tombstone, refusal to request renewal, and expiry of
+the accepted DR-03 grants/drain windows. No Messaging procedure fabricates a
+DR-03 action or checkpoint.
 
 ## Delivery and data semantics
 
@@ -305,14 +332,33 @@ audit retention in versioned profiles before implementation acceptance.
 | membership removal | old generation stops; pending removed recipient becomes revoked | checkpoint and recipient state | no stale retry | complete DR-03 cutover/fence |
 | authority unavailable | send/change fails or pending traffic continues only within valid grants | last accepted checkpoint | no mutation retry loop | restore authority/repository |
 | expiry | partial/expired delivery projection | terminal row retained | no | none |
-| complete restart | cursors and accepted truth reload | consistency group | deterministic resume | restore full group |
-| stale/partial restore | Messaging unavailable/recovery-required | restored copy preserved | fail closed | restore matching group/checkpoint |
+| complete restart | cursors and accepted truth reload | consistency group plus both checkpoint heads | deterministic resume | restore full group |
+| stale/partial restore | Messaging unavailable/recovery-required | restored copy and repository truth preserved | fail closed | restore exact group matching both heads |
 | incompatible upgrade | preflight/start failure | old schema preserved | no in-place downgrade | restore backup/fallback image |
 
-Messaging persistence, replay state, and the authority checkpoint reference
-form a stopped-Node consistency contract. Same-realm restore must not precede
-the latest independent DR-03 head. Migration from the frozen baseline creates
-an empty versioned Messaging store only after ADR-0011 authority genesis;
+Messaging persistence, replay state, and both checkpoint references form a
+stopped-Node consistency contract. Each Node owns one independently retained
+hash-chained `MessagingStateCheckpoint/v1` stream binding Node Principal,
+Messaging sequence/state digest, software/schema/profile, Realm, the exact
+accepted DR-03 head, and predecessor digest. Every externally acknowledged
+Messaging mutation, recipient receipt, Application acknowledgement,
+binding/lifecycle cutover, and terminal delivery transition succeeds only
+after exact compare-and-append. An interrupted append resumes the same prepared
+successor and is never acknowledged optimistically.
+
+The Messaging checkpoint repository is outside the stopped-Node backup fault
+domain and supplies one unique head per Node, immutable predecessor history,
+create-if-absent only for empty genesis, and no overwrite/repair path. Its
+finite capacity is frozen in AM-01 and exhaustion fails writes closed. Restore
+reads the Messaging and DR-03 repositories first and admits the same Node/Realm
+only when the complete stopped backup equals both unique heads. Thus an older
+Messaging backup cannot match a still-current Authority head and silently lose
+accepted messages or cursor/acknowledgement truth. The Messaging repository is
+freshness evidence only: it is neither membership authority nor message
+storage.
+
+Migration from the frozen baseline creates an empty versioned Messaging store
+and its create-if-absent genesis head only after ADR-0011 authority genesis;
 there is no legacy Application message data to import. Mixed Nodes may carry
 the new class only inside a release-declared compatibility window.
 
@@ -358,8 +404,9 @@ Application Messaging contract ready.
   subscription, receipt, expiry, and audit state.
 - **Configuration:** only versioned finite quota/retention profiles; no caller
   selector or transport configuration.
-- **Backup/restore:** complete Messaging group plus latest DR-03 checkpoint
-  comparison; partial or stale restore fails closed.
+- **Backup/restore:** complete Messaging group plus exact independent
+  Messaging and DR-03 heads; same-Authority-head rollback, partial restore,
+  fork, ambiguity, or repository unavailability fails closed.
 - **Rollout:** authority and compatible member support precede activation;
   ordinary mixed generation is bounded and declared.
 - **Downgrade:** no in-place schema downgrade; restore complete stopped backup.
@@ -400,7 +447,7 @@ slice is accepted.
 
 ## Recommendation
 
-Write ADR before implementation.
+Implement only from accepted ADR-0015 and its frozen AM-01 profile.
 
 ## Vertically sliced implementation issues
 
@@ -411,7 +458,7 @@ Write ADR before implementation.
   resource binding and negative corpus with no Waku fields.
 - Acceptance: contract/security tests cover auth, Delegation, privacy and
   bounds.
-- Blocked by: accepted ADR-0011 and ADR-0015.
+- Blocked by: none; ADR-0011 and ADR-0015 are accepted.
 - Research class: R0.
 
 ### AM-02 — Create and rotate a conversation
@@ -446,8 +493,8 @@ Write ADR before implementation.
 
 - User story: an Operator restores without resurrecting stale membership or
   losing accepted messages silently.
-- Behavior: consistency-group backup, checkpoint comparison, retry recovery,
-  version migration and fail-closed downgrade.
+- Behavior: consistency-group backup, exact Messaging/Authority dual-head
+  comparison, retry recovery, version migration and fail-closed downgrade.
 - Acceptance: every crash point, stale/partial restore, authority outage and
   mixed-generation negatives.
 - Blocked by: AM-02 through AM-04 and DR-04 authority/topology recovery.

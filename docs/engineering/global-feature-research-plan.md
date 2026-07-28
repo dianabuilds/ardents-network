@@ -401,8 +401,8 @@ documentation/governance revision —
 
 Wave 3 research is complete in
 `docs/engineering/research/wave3-synthesis.md`. DR-01 through DR-05 have
-accepted research recommendations; ADR-0011 is Accepted, while ADR-0012 through
-ADR-0015 remain Proposed.
+accepted research recommendations; ADR-0011, ADR-0013 and ADR-0015 are
+Accepted, while ADR-0012 and ADR-0014 remain Proposed.
 The synthesis keeps all new Application, authority, Direct Service, and real
 multi-host capabilities outside the independent stabilization release; no
 capability has been promoted to `Q=yes`.

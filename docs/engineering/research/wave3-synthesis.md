@@ -7,8 +7,8 @@
 - Frozen product baseline:
   `8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c`
 - Inputs: accepted DR-01 through DR-05 research recommendations
-- Decision state: ADR-0011 and ADR-0013 are Accepted; ADR-0012, ADR-0014 and
-  ADR-0015 remain Proposed
+- Decision state: ADR-0011, ADR-0013 and ADR-0015 are Accepted; ADR-0012 and
+  ADR-0014 remain Proposed
 
 Wave 3 is research-complete. The five selected designs form one compatible
 model, but none is implemented or qualified at the frozen product baseline.
@@ -98,10 +98,11 @@ ADR-0001..0010 remain accepted fixed inputs.
 
 ADR-0011 was accepted on 2026-07-27. ADR-0013 passed its compatibility recheck
 against the accepted Authority implementation and was explicitly accepted on
-2026-07-28. ADR-0015 remains independently ready for its compatibility review.
-ADR-0012 remains Proposed; ADR-0014 may be accepted only after ADR-0012 and the
-existing Application Discovery boundary remain compatible. ADR acceptance
-authorizes a design, not implementation or qualification.
+2026-07-28. ADR-0015 resolved its restore-freshness, rebind/close cutover and
+Content Reference terminology blockers and was explicitly accepted on
+2026-07-29. ADR-0012 remains Proposed; ADR-0014 may be accepted only after
+ADR-0012 and the existing Application Discovery boundary remain compatible.
+ADR acceptance authorizes a design, not implementation or qualification.
 
 ## Release-scope decision
 
