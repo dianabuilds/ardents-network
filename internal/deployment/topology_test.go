@@ -104,6 +104,42 @@ func TestCompileRejectsNonCanonicalManifestEnvelopeWithStableErrors(t *testing.T
 	}
 }
 
+func TestCompileRejectsNullScalarsAndNonCanonicalIntegers(t *testing.T) {
+	privateLAN := readTopologyFixture(t, "private-lan.json")
+	publicDirect := readTopologyFixture(t, "public-direct.json")
+	tests := []struct {
+		name string
+		raw  []byte
+	}{
+		{
+			name: "null boolean",
+			raw:  bytes.Replace(privateLAN, []byte(`"bootstrap": false`), []byte(`"bootstrap": null`), 1),
+		},
+		{
+			name: "null string",
+			raw:  bytes.Replace(publicDirect, []byte(`"address": ""`), []byte(`"address": null`), 1),
+		},
+		{
+			name: "null reference",
+			raw:  bytes.Replace(publicDirect, []byte(`"certificate_ref": ""`), []byte(`"certificate_ref": null`), 1),
+		},
+		{
+			name: "exponent integer",
+			raw:  bytes.Replace(privateLAN, []byte(`"max_skew_seconds": 30`), []byte(`"max_skew_seconds": 3e1`), 1),
+		},
+		{
+			name: "decimal integer",
+			raw:  bytes.Replace(privateLAN, []byte(`"max_skew_seconds": 30`), []byte(`"max_skew_seconds": 30.0`), 1),
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := Compile(tc.raw)
+			require.EqualError(t, err, "topology_invalid_json")
+		})
+	}
+}
+
 func TestCompileRejectsUnsupportedHostsAndDuplicateIdentityBindings(t *testing.T) {
 	valid := readTopologyFixture(t, "private-lan.json")
 	tests := []struct {

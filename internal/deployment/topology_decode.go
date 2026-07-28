@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -71,10 +72,7 @@ func scanTopologyValue(decoder *json.Decoder, expected reflect.Type) error {
 	}
 	delim, composite := token.(json.Delim)
 	if !composite {
-		if expected != nil &&
-			(expected.Kind() == reflect.Struct ||
-				expected.Kind() == reflect.Slice ||
-				expected.Kind() == reflect.Array) {
+		if !exactScalarToken(token, expected) {
 			return ValidationError("topology_invalid_json")
 		}
 		return nil
@@ -125,6 +123,29 @@ func scanTopologyValue(decoder *json.Decoder, expected reflect.Type) error {
 	}
 	_, err = decoder.Token()
 	return err
+}
+
+func exactScalarToken(token any, expected reflect.Type) bool {
+	if token == nil || expected == nil {
+		return false
+	}
+	switch expected.Kind() {
+	case reflect.String:
+		_, ok := token.(string)
+		return ok
+	case reflect.Bool:
+		_, ok := token.(bool)
+		return ok
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		number, ok := token.(json.Number)
+		if !ok {
+			return false
+		}
+		value, err := number.Int64()
+		return err == nil && number.String() == strconv.FormatInt(value, 10)
+	default:
+		return false
+	}
 }
 
 func exactJSONFields(value reflect.Type) map[string]reflect.Type {
