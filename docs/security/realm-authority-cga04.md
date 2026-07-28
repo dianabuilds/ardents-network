@@ -106,6 +106,8 @@ removal.
 - at most 256 Realm/channel members and at most 257 retained evidence targets
   for the single in-flight membership operation;
 - no more than sixteen controls per evidence object;
+- control kinds are at most 64 bytes and bound Operator/target Principal
+  identifiers are at most 128 bytes;
 - evidence reason at most 128 bytes and request ID at most 128 bytes;
 - operation lifetime at most 24 hours and previous-generation drain at most
   30 days;

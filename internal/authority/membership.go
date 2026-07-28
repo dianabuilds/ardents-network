@@ -16,6 +16,8 @@ import (
 const (
 	MaxDeploymentFenceControls = 16
 	MaxDeploymentFenceReason   = 128
+	MaxFenceControlKindBytes   = 64
+	MaxFencePrincipalBytes     = 128
 	MaxDeploymentClockSkew     = 30
 	MaxFenceEvidenceAge        = 5 * time.Minute
 )
@@ -306,6 +308,7 @@ func validateDeploymentFenceEvidence(
 		evidence.OperationID != operationID ||
 		strings.TrimSpace(evidence.TargetPrincipal) != evidence.TargetPrincipal ||
 		evidence.TargetPrincipal == "" ||
+		len(evidence.TargetPrincipal) > MaxFencePrincipalBytes ||
 		!fenceDigestPattern.MatchString(evidence.ManifestDigest) ||
 		len(evidence.RequestID) == 0 || len(evidence.RequestID) > MaxRequestIDBytes ||
 		strings.TrimSpace(evidence.RequestID) != evidence.RequestID ||
@@ -325,7 +328,10 @@ func validateDeploymentFenceEvidence(
 	}
 	seen := make(map[string]struct{}, len(evidence.Controls))
 	for _, control := range evidence.Controls {
-		if control.Actor != actor || !fenceDigestPattern.MatchString(control.ReceiptDigest) {
+		if control.Actor != actor || len(control.Actor) > MaxFencePrincipalBytes ||
+			strings.TrimSpace(control.Kind) != control.Kind || control.Kind == "" ||
+			len(control.Kind) > MaxFenceControlKindBytes ||
+			!fenceDigestPattern.MatchString(control.ReceiptDigest) {
 			return ErrPermissionDenied
 		}
 		if _, duplicate := seen[control.Kind]; duplicate {

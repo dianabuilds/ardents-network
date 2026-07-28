@@ -149,6 +149,16 @@ func TestChannelMembershipAddRemoveAndFenceAcrossThreeProtectedHosts(t *testing.
 	}
 	require.Equal(t, uint32(2), memberB.capabilities.GenerationReadiness(channel).CurrentGeneration)
 	require.Zero(t, memberB.capabilities.GenerationReadiness(channel).PreviousGeneration)
+	authorityState, found, err := store.Load(ctx)
+	require.NoError(t, err)
+	require.True(t, found)
+	var removedGrant identityapi.CapabilityGrant
+	for _, record := range authorityState.Channels[0].CurrentGrants {
+		if record.SubjectPrincipal == memberB.principal {
+			removedGrant = restoreIntegrationGrant(t, record)
+		}
+	}
+	require.Equal(t, memberB.principal, removedGrant.SubjectPrincipal)
 
 	removed, err := authorityHost.Client.ChangeChannelMembership(
 		ctx, connect.NewRequest(&protocol.ChangeChannelMembershipRequest{
@@ -181,6 +191,14 @@ func TestChannelMembershipAddRemoveAndFenceAcrossThreeProtectedHosts(t *testing.
 		t, ctx, authorityHost, realmID, removed.Msg.GetOperationId(), activeA, true,
 	)
 	require.Equal(t, domain.DeliveryPhaseActivationCommitted, pending.Msg.GetPhase())
+	require.Error(t, memberA.capabilities.AuthorizeCapabilitySender(
+		identityapi.CapabilitySenderUse{
+			GrantID: removedGrant.GrantID, ChannelID: removedGrant.ChannelID,
+			Generation: removedGrant.Generation, Subject: memberB.principal,
+			Permission: identityapi.CapabilityPublish, Scope: removedGrant.Scope,
+			At: now, ObservedAt: now,
+		},
+	), "stale removed traffic must fail before replay admission")
 
 	authorityHost.GrantExact(
 		t, []identityaccess.Action{domain.ActionSubmitFenceEvidence},
@@ -208,6 +226,44 @@ func TestChannelMembershipAddRemoveAndFenceAcrossThreeProtectedHosts(t *testing.
 	require.NoError(t, err)
 	require.Equal(t, domain.DeliveryPhaseCompleted, completed.Msg.GetPhase())
 	require.NotEmpty(t, completed.Msg.GetEvidenceDigest())
+
+	rejoined, err := authorityHost.Client.ChangeChannelMembership(
+		ctx, connect.NewRequest(&protocol.ChangeChannelMembershipRequest{
+			Version: domain.ContractVersion, RequestId: "membership-integration-rejoin",
+			RealmId: realmID, ChannelId: channelID, Change: domain.MembershipChangeAdd,
+			TargetPrincipal: memberB.principal,
+			RecipientAttestations: []*protocol.GenerationDeliveryAttestation{
+				attestationA, attestationB,
+			},
+			ValidForSeconds: uint64(time.Hour / time.Second),
+			DrainForSeconds: uint64((15 * time.Minute) / time.Second),
+		}),
+	)
+	require.NoError(t, err)
+	require.Equal(t, uint32(4), rejoined.Msg.GetPendingGeneration())
+	installMembershipRotationDeliveries(
+		t, ctx, authorityHost, realmID, rejoined.Msg,
+		map[string]*protectedMembershipMember{
+			memberA.principal: memberA, memberB.principal: memberB,
+		},
+	)
+	rejoinActivation := commitProtectedMembership(
+		t, ctx, authorityHost, realmID, rejoined.Msg.GetOperationId(),
+	)
+	for _, member := range []*protectedMembershipMember{memberA, memberB} {
+		active := activateProtectedMembership(
+			t, ctx, member, realmID, rejoined.Msg.GetOperationId(),
+			rejoinActivation.Msg.GetActivation(),
+		)
+		acknowledgeProtectedMembership(
+			t, ctx, authorityHost, realmID, rejoined.Msg.GetOperationId(), active, true,
+		)
+	}
+	require.Equal(
+		t, uint32(4),
+		memberB.capabilities.GenerationReadiness(channel).CurrentGeneration,
+	)
+	require.Zero(t, memberB.capabilities.GenerationReadiness(channel).PreviousGeneration)
 }
 
 type protectedMembershipMember struct {
@@ -420,5 +476,23 @@ func protectedFenceEvidence(
 			{Kind: "discovery_withdrawn", Actor: actor, ReceiptDigest: digest},
 			{Kind: "peer_id_denied", Actor: actor, ReceiptDigest: digest},
 		},
+	}
+}
+
+func restoreIntegrationGrant(
+	t *testing.T,
+	record domain.CapabilityGrantRecord,
+) identityapi.CapabilityGrant {
+	t.Helper()
+	secret, ok := identityapi.NewCapabilitySecret(record.Secret)
+	require.True(t, ok)
+	return identityapi.CapabilityGrant{
+		Version: record.Version, ChannelID: record.ChannelID,
+		Generation: record.Generation, Secret: secret, GrantID: record.GrantID,
+		IssuerPrincipal:  record.IssuerPrincipal,
+		SubjectPrincipal: record.SubjectPrincipal,
+		Permissions:      record.Permissions, Scope: record.Scope,
+		NotBefore: record.NotBefore, NotAfter: record.NotAfter,
+		Signature: append([]byte(nil), record.Signature...),
 	}
 }
