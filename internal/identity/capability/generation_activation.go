@@ -15,12 +15,6 @@ import (
 const generationActivationDomain = "ardents:generation-activation:v1\x00"
 const maximumRetainedActivationOperations = 4096
 
-const (
-	GenerationReasonGrantExpired = "channel_grant_expired"
-	GenerationReasonPending      = "channel_grant_pending"
-	GenerationReasonNotAdopted   = "channel_generation_not_adopted"
-)
-
 type GenerationActivation struct {
 	Version            uint32                      `json:"version"`
 	RealmID            string                      `json:"realm_id"`
@@ -250,14 +244,14 @@ func (s *Service) GenerationReadiness(channelID [16]byte) GenerationReadiness {
 		if now.Before(current.NotAfter) {
 			status.Ready = true
 		} else {
-			status.Reason = GenerationReasonGrantExpired
+			status.Reason = identityapi.ChannelGrantReasonExpired
 		}
 	}
 	channelKey := generationChannelKey(channelID)
 	if pending, exists := s.ledger.PendingGenerations[channelKey]; exists {
 		status.PendingGeneration = pending.Generation
 		status.Ready = false
-		status.Reason = GenerationReasonPending
+		status.Reason = identityapi.ChannelGrantReasonPending
 	}
 	if previous, exists := s.ledger.PreviousGenerations[channelKey]; exists &&
 		now.Before(previous.DrainDeadline) {
@@ -268,7 +262,7 @@ func (s *Service) GenerationReadiness(channelID [16]byte) GenerationReadiness {
 		status.CheckpointDigest = activated.Activation.CheckpointDigest
 		if !activated.RuntimeAdopted {
 			status.Ready = false
-			status.Reason = GenerationReasonNotAdopted
+			status.Reason = identityapi.ChannelGrantReasonNotAdopted
 		}
 	}
 	return status

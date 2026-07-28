@@ -32,6 +32,13 @@ const (
 	CapabilityControl        CapabilityScope = "realm.capability_control"
 )
 
+const (
+	ChannelGrantReasonPending    = "channel_grant_pending"
+	ChannelGrantReasonRenewalDue = "channel_grant_renewal_due"
+	ChannelGrantReasonExpired    = "channel_grant_expired"
+	ChannelGrantReasonNotAdopted = "channel_generation_not_adopted"
+)
+
 type CapabilitySecret struct {
 	raw [32]byte
 }

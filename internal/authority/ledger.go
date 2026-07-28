@@ -361,7 +361,6 @@ func validateRotationRecord(state Ledger, rotation RotationRecord) error {
 		len(rotation.PayloadHash) != sha256.Size*2 ||
 		!operationIDPattern.MatchString(rotation.OperationID) ||
 		zeroFixedID(rotation.ChannelID) ||
-		!validChannelClass(identityapi.CapabilityScope(rotation.ChannelClass)) ||
 		rotation.PreviousGeneration == 0 ||
 		rotation.PendingGeneration != rotation.PreviousGeneration+1 ||
 		rotation.PrepareSequence == 0 ||
@@ -379,7 +378,7 @@ func validateRotationRecord(state Ledger, rotation RotationRecord) error {
 		return ErrCorruptState
 	}
 	channelIndex := channelRecordIndex(state, rotation.ChannelID)
-	if channelIndex < 0 || state.Channels[channelIndex].Class != rotation.ChannelClass {
+	if channelIndex < 0 {
 		return ErrCorruptState
 	}
 	if err := validateMembershipChangeRecord(rotation); err != nil {
@@ -450,7 +449,7 @@ func validateRotationRecord(state Ledger, rotation RotationRecord) error {
 		if index < 0 ||
 			state.InitialGenerationDeliveries[index].OperationID != rotation.OperationID ||
 			string(state.InitialGenerationDeliveries[index].Sealed.Binding.ChannelClass) !=
-				rotation.ChannelClass {
+				state.Channels[channelIndex].Class {
 			return ErrCorruptState
 		}
 	}

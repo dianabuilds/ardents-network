@@ -102,7 +102,6 @@ type RotationRecord struct {
 	PayloadHash        string                                  `json:"payload_hash"`
 	OperationID        string                                  `json:"operation_id"`
 	ChannelID          [16]byte                                `json:"channel_id"`
-	ChannelClass       string                                  `json:"channel_class"`
 	PreviousGeneration uint32                                  `json:"previous_generation"`
 	PendingGeneration  uint32                                  `json:"pending_generation"`
 	PrepareSequence    uint64                                  `json:"prepare_sequence"`

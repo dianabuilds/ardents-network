@@ -32,7 +32,7 @@ func TestPrivateEnvelopeRoundTripHidesProductSemantics(t *testing.T) {
 	payload := []byte("service=private-api blob=QmSecret request=req-42")
 	sealed := fixture.seal(t, payload)
 	digest := sha256.Sum256(sealed.Payload)
-	require.Equal(t, "b2ffdf681e1a3fa12371ecc7ff284363b1911c3db74e28f35f18a465ce9d5295", hex.EncodeToString(digest[:]))
+	require.Equal(t, "9d83ba33133e73837998daaaa0a806c6dca80b6e0225fe3bb8c20626043e113c", hex.EncodeToString(digest[:]))
 
 	require.NotContains(t, sealed.ContentTopic, "service")
 	require.NotContains(t, sealed.Payload, payload)
@@ -225,6 +225,8 @@ func TestCrossChannelAndCrossScopeUseFailBeforeReplayAdmission(t *testing.T) {
 		wrongChannel.Capability.ChannelID = testID(0xa2)
 		_, err := Open(wrongChannel)
 		requireEnvelopeCode(t, err, CodeEnvelopeAuthentication)
+		_, _, _, err = prepareOpen(wrongChannel)
+		requireEnvelopeCode(t, err, CodeEnvelopeAuthentication)
 
 		opened, err := Open(request)
 		require.NoError(t, err)
@@ -237,7 +239,9 @@ func TestCrossChannelAndCrossScopeUseFailBeforeReplayAdmission(t *testing.T) {
 		wrongScope := request
 		wrongScope.Capability.Scope = identityapi.CapabilityDataExchange
 		_, err := Open(wrongScope)
-		requireEnvelopeCode(t, err, CodeEnvelopeSenderUnauthorized)
+		requireEnvelopeCode(t, err, CodeEnvelopeAuthentication)
+		_, _, _, err = prepareOpen(wrongScope)
+		requireEnvelopeCode(t, err, CodeEnvelopeAuthentication)
 
 		opened, err := Open(request)
 		require.NoError(t, err)

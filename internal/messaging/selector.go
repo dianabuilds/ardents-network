@@ -32,7 +32,8 @@ func (m Material) EnvelopeKey() []byte {
 }
 
 func Derive(resolved identityapi.ResolvedCapability) (Material, error) {
-	if resolved.Generation == 0 || !resolved.Secret.Valid() || zeroID(resolved.ChannelID) {
+	if resolved.Generation == 0 || !resolved.Secret.Valid() || zeroID(resolved.ChannelID) ||
+		resolved.Scope == "" {
 		return Material{}, fmt.Errorf("resolved capability material is invalid")
 	}
 	generationKey, err := deriveGenerationKey(resolved)
@@ -62,7 +63,7 @@ func deriveGenerationKey(resolved identityapi.ResolvedCapability) ([]byte, error
 	salt := sha256.Sum256(saltInput)
 	generation := make([]byte, 4)
 	binary.BigEndian.PutUint32(generation, resolved.Generation)
-	info := frame([]byte("generation-key"), generation)
+	info := frame([]byte("generation-key"), generation, []byte(resolved.Scope))
 	return hkdf.Key(sha256.New, resolved.Secret.Bytes(), salt[:], string(info), 32)
 }
 

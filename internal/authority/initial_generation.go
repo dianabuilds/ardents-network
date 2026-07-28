@@ -89,13 +89,9 @@ func (s *Service) IssueInitialGeneration(
 		}
 		return initialGenerationResult(state, *record), nil
 	}
-	newMember := true
-	for _, member := range state.Members {
-		if member.Principal == request.RecipientAttestation.SubjectPrincipal {
-			newMember = false
-			break
-		}
-	}
+	newMember := !realmContainsMember(
+		state, request.RecipientAttestation.SubjectPrincipal,
+	)
 	if len(state.Channels) >= MaxActiveChannels ||
 		len(state.InitialGenerationDeliveries) >= MaxOperations ||
 		(newMember && len(state.Members) >= MaxRealmMembers) ||

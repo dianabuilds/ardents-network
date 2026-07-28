@@ -165,7 +165,7 @@ func (s *Service) SubmitDeploymentFenceEvidence(
 		command, rotation.OperationID, state.AuditHead, now,
 	)
 	audit.TargetPrincipal = request.Evidence.TargetPrincipal
-	audit.ChannelClass = rotation.ChannelClass
+	audit.ChannelClass = state.Channels[channelIndex].Class
 	audit.Generation = rotation.PendingGeneration
 	audit.Hash = auditHash(audit)
 	err = s.commitCheckpointTransition(ctx, &state, audit, now, func(next *Ledger, checkpoint SignedCheckpoint) error {
@@ -356,6 +356,15 @@ func applyMembershipTruth(
 			state.Members = append(state.Members[:index], state.Members[index+1:]...)
 		}
 	}
+}
+
+func realmContainsMember(state Ledger, principal string) bool {
+	for _, member := range state.Members {
+		if member.Principal == principal {
+			return true
+		}
+	}
+	return false
 }
 
 func validateDeploymentFenceEvidence(

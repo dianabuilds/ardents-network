@@ -8,6 +8,8 @@ import (
 	"errors"
 	"regexp"
 	"time"
+
+	identityapi "ardents/internal/identity"
 )
 
 type MembershipChangeKind string
@@ -81,9 +83,9 @@ const (
 	ReasonCheckpointMismatch     = "checkpoint_head_mismatch"
 	ReasonPersistedStateInvalid  = "authority_state_invalid"
 	ReasonDeliveryPending        = "authority_delivery_pending"
-	ReasonChannelGrantPending    = "channel_grant_pending"
-	ReasonChannelGrantRenewalDue = "channel_grant_renewal_due"
-	ReasonChannelGrantExpired    = "channel_grant_expired"
+	ReasonChannelGrantPending    = identityapi.ChannelGrantReasonPending
+	ReasonChannelGrantRenewalDue = identityapi.ChannelGrantReasonRenewalDue
+	ReasonChannelGrantExpired    = identityapi.ChannelGrantReasonExpired
 )
 
 var (

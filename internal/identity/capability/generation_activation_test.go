@@ -291,7 +291,7 @@ func TestGenerationReadinessExpiresOnlyTheAffectedChannel(t *testing.T) {
 
 	expiredStatus := member.GenerationReadiness(expired.ChannelID)
 	require.False(t, expiredStatus.Ready)
-	require.Equal(t, GenerationReasonGrantExpired, expiredStatus.Reason)
+	require.Equal(t, identityapi.ChannelGrantReasonExpired, expiredStatus.Reason)
 	require.Equal(t, uint32(1), expiredStatus.CurrentGeneration)
 	healthyStatus := member.GenerationReadiness(healthy.ChannelID)
 	require.True(t, healthyStatus.Ready)

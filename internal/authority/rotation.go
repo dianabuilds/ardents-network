@@ -230,7 +230,8 @@ func (s *Service) rotateChannelLocked(
 		return RotationResult{}, ErrConflict
 	}
 	if request.MembershipChange == MembershipChangeAdd &&
-		len(state.Members) >= MaxRealmMembers {
+		len(state.Members) >= MaxRealmMembers &&
+		!realmContainsMember(state, request.TargetPrincipal) {
 		return RotationResult{}, ErrResourceExhausted
 	}
 	attestations := append([]identityapi.CapabilityDeliveryAttestation(nil), request.RecipientAttestations...)
@@ -417,7 +418,7 @@ func (s *Service) rotateChannelLocked(
 		membership := membershipChangeRecord(state, request)
 		next.Rotations = append(next.Rotations, RotationRecord{
 			Version: ContractVersion, RequestID: request.RequestID, PayloadHash: payloadHash,
-			OperationID: operationID, ChannelID: request.ChannelID, ChannelClass: channel.Class,
+			OperationID: operationID, ChannelID: request.ChannelID,
 			PreviousGeneration: channel.CurrentGeneration, PendingGeneration: pendingGeneration,
 			PrepareSequence: checkpoint.AuthoritySequence,
 			Phase:           DeliveryPhaseDelivering, DeliveryIDs: deliveryIDs,
@@ -488,15 +489,18 @@ func (s *Service) CommitChannelActivation(
 		return ActivationCommitResult{}, ErrInvalidArgument
 	}
 	rotation := state.Rotations[rotationIndex]
+	channelIndex := channelRecordIndex(state, rotation.ChannelID)
+	if channelIndex < 0 {
+		return ActivationCommitResult{}, ErrRecoveryRequired
+	}
+	channelClass := identityapi.CapabilityScope(state.Channels[channelIndex].Class)
 	if rotation.MembershipChange.Version != 0 {
 		err = s.policy.AdmitChannelMembership(ctx, command)
 	} else {
 		err = s.policy.AdmitChannelRotation(ctx, command)
 	}
 	if err == nil {
-		err = s.policy.AdmitChannelClass(
-			ctx, command, identityapi.CapabilityScope(rotation.ChannelClass),
-		)
+		err = s.policy.AdmitChannelClass(ctx, command, channelClass)
 	}
 	if err != nil {
 		return ActivationCommitResult{}, ErrPermissionDenied
@@ -512,15 +516,11 @@ func (s *Service) CommitChannelActivation(
 	if !now.Before(rotation.Deadline) || !now.Before(rotation.DrainDeadline) {
 		return ActivationCommitResult{}, ErrInvalidArgument
 	}
-	channelIndex := channelRecordIndex(state, rotation.ChannelID)
-	if channelIndex < 0 {
-		return ActivationCommitResult{}, ErrRecoveryRequired
-	}
 	audit := newDeliveryAudit(
 		rotationAuditID(command.Action, rotation.OperationID),
 		command, rotation.OperationID, state.AuditHead, now,
 	)
-	audit.ChannelClass = rotation.ChannelClass
+	audit.ChannelClass = string(channelClass)
 	audit.Generation = rotation.PendingGeneration
 	audit.Hash = auditHash(audit)
 	err = s.commitCheckpointTransition(ctx, &state, audit, now, func(next *Ledger, checkpoint SignedCheckpoint) error {
@@ -608,15 +608,18 @@ func (s *Service) AcknowledgeChannelActivation(
 		return ActivationAcknowledgeResult{}, ErrInvalidArgument
 	}
 	rotation := state.Rotations[rotationIndex]
+	channelIndex := channelRecordIndex(state, rotation.ChannelID)
+	if channelIndex < 0 {
+		return ActivationAcknowledgeResult{}, ErrRecoveryRequired
+	}
+	channelClass := identityapi.CapabilityScope(state.Channels[channelIndex].Class)
 	if rotation.MembershipChange.Version != 0 {
 		err = s.policy.AdmitChannelMembership(ctx, command)
 	} else {
 		err = s.policy.AdmitChannelRotation(ctx, command)
 	}
 	if err == nil {
-		err = s.policy.AdmitChannelClass(
-			ctx, command, identityapi.CapabilityScope(rotation.ChannelClass),
-		)
+		err = s.policy.AdmitChannelClass(ctx, command, channelClass)
 	}
 	if err != nil {
 		return ActivationAcknowledgeResult{}, ErrPermissionDenied
@@ -667,7 +670,7 @@ func (s *Service) AcknowledgeChannelActivation(
 		rotationAuditID(command.Action+"-active", delivery.DeliveryID),
 		command, rotation.OperationID, state.AuditHead, now,
 	)
-	audit.ChannelClass = rotation.ChannelClass
+	audit.ChannelClass = string(channelClass)
 	audit.Generation = rotation.PendingGeneration
 	audit.Hash = auditHash(audit)
 	err = s.commitCheckpointTransition(ctx, &state, audit, now, func(next *Ledger, checkpoint SignedCheckpoint) error {
@@ -716,7 +719,7 @@ func rotationPayloadHash(request RotationRequest) string {
 		DrainFor         int64
 		MembershipChange MembershipChangeKind
 		TargetPrincipal  string
-		Renewal          bool
+		Renewal          bool `json:"Renewal,omitempty"`
 	}{
 		request.Version, request.RealmID, request.ChannelID,
 		request.RecipientAttestations, int64(request.ValidFor / time.Second),
@@ -763,9 +766,17 @@ func rotationResult(state Ledger, rotation RotationRecord) RotationResult {
 		PreviousGeneration: rotation.PreviousGeneration, PendingGeneration: rotation.PendingGeneration,
 		Phase: rotation.Phase, Deliveries: deliveries,
 		MembershipChange: rotation.MembershipChange,
-		ChannelClass:     identityapi.CapabilityScope(rotation.ChannelClass),
+		ChannelClass:     rotationChannelClass(state, rotation),
 		Renewal:          rotation.Renewal,
 	}
+}
+
+func rotationChannelClass(state Ledger, rotation RotationRecord) identityapi.CapabilityScope {
+	index := channelRecordIndex(state, rotation.ChannelID)
+	if index < 0 {
+		return ""
+	}
+	return identityapi.CapabilityScope(state.Channels[index].Class)
 }
 
 func activationCommitResult(state Ledger, rotation RotationRecord) ActivationCommitResult {

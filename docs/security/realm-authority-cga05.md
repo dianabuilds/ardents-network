@@ -57,7 +57,7 @@ invalid duration or exhausted ledger/audit capacity fails closed.
 ## Readiness and expiry
 
 The protected Operator `InspectChannel` procedure uses
-`realm.authority.inspect` on the exact channel resource. It returns only
+`realm.channel.audit.read` on the exact channel resource. It returns only
 redacted class, generations, member count, grant expiry, renew-by timestamp and
 stable readiness/reason values:
 
