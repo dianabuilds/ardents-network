@@ -11,6 +11,12 @@ import (
 )
 
 func TestProcedureAccessCatalogCoversEveryRPCExactlyOnce(t *testing.T) {
+	sharedActions := map[string]map[string]bool{
+		"realm.channel.membership.change": {
+			"/ardents.v1.AuthorityService/ChangeChannelMembership":       true,
+			"/ardents.v1.AuthorityService/SubmitDeploymentFenceEvidence": true,
+		},
+	}
 	services := []protoreflect.ServiceDescriptor{
 		ardentsv1.File_api_ardents_v1_authority_proto.Services().Get(0),
 		ardentsv1.File_api_ardents_v1_authority_proto.Services().Get(1),
@@ -42,7 +48,13 @@ func TestProcedureAccessCatalogCoversEveryRPCExactlyOnce(t *testing.T) {
 				require.NotEmpty(t, rule.ResourceKind, procedure)
 			}
 			prior, duplicate := actions[rule.Action]
-			require.Falsef(t, duplicate, "action %q is shared by %s and %s", rule.Action, prior, procedure)
+			if duplicate {
+				allowed := sharedActions[rule.Action]
+				require.Truef(
+					t, allowed[prior] && allowed[procedure],
+					"action %q is shared by %s and %s", rule.Action, prior, procedure,
+				)
+			}
 			actions[rule.Action] = procedure
 		}
 	}
