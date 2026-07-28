@@ -156,8 +156,9 @@ func (s *Service) ActivateGeneration(
 	}
 	delete(next.PendingGenerations, channelKey)
 	next.ActivatedGenerations[channelKey] = persistedActivatedGeneration{
-		Activation: activation,
-		Receipt:    persistDeliveryReceipt(active, pending.ExpiresAt),
+		Activation:     activation,
+		Receipt:        persistDeliveryReceipt(active, pending.ExpiresAt),
+		RuntimeAdopted: false,
 	}
 	next.ActivatedOperations[activation.OperationID] = next.ActivatedGenerations[channelKey]
 	if err := s.store.save(next); err != nil {
@@ -170,6 +171,42 @@ func (s *Service) ActivateGeneration(
 	}
 	s.ledger = next
 	return active, nil
+}
+
+func (s *Service) ConfirmGenerationRuntimeAdoption(
+	activation GenerationActivation,
+) (GenerationDeliveryReceipt, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := validateGenerationActivation(activation, true); err != nil {
+		return GenerationDeliveryReceipt{}, capabilityError(CodeInvalid, err.Error())
+	}
+	issuer, ok := s.trustedIssuer(activation.AuthorityPrincipal)
+	if !ok || VerifyGenerationActivation(activation, issuer) != nil {
+		return GenerationDeliveryReceipt{}, capabilityError(CodeIssuerUntrusted, "generation activation issuer is not trusted")
+	}
+	retained, exists := s.ledger.ActivatedOperations[activation.OperationID]
+	if !exists || !activationsEqual(retained.Activation, activation) {
+		return GenerationDeliveryReceipt{}, capabilityError(CodeInvalid, "generation activation is not committed")
+	}
+	channelKey := generationChannelKey(activation.ChannelID)
+	latest, exists := s.ledger.ActivatedGenerations[channelKey]
+	if !exists || !activationsEqual(latest.Activation, activation) {
+		return GenerationDeliveryReceipt{}, capabilityError(CodeInvalid, "generation activation is not current")
+	}
+	if latest.RuntimeAdopted {
+		return latest.Receipt.restore(), nil
+	}
+	next := cloneLedger(s.ledger)
+	latest.RuntimeAdopted = true
+	retained.RuntimeAdopted = true
+	next.ActivatedGenerations[channelKey] = latest
+	next.ActivatedOperations[activation.OperationID] = retained
+	if err := s.store.save(next); err != nil {
+		return GenerationDeliveryReceipt{}, capabilityError(CodeUnavailable, "generation runtime adoption commit failed")
+	}
+	s.ledger = next
+	return latest.Receipt.restore(), nil
 }
 
 func (s *Service) GenerationReadiness(channelID [16]byte) GenerationReadiness {
@@ -194,6 +231,9 @@ func (s *Service) GenerationReadiness(channelID [16]byte) GenerationReadiness {
 	}
 	if activated, exists := s.ledger.ActivatedGenerations[channelKey]; exists {
 		status.CheckpointDigest = activated.Activation.CheckpointDigest
+		if !activated.RuntimeAdopted {
+			status.Ready = false
+		}
 	}
 	return status
 }

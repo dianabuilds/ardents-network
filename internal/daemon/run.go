@@ -103,7 +103,7 @@ func Run(localAPI LocalAPIHandlerFactory, applicationAPI ApplicationAPIHandlerFa
 		return fmt.Errorf("construct identity access service: %w", err)
 	}
 	if cfg.ChannelDelivery != nil {
-		cfg.ChannelDelivery.BindActivationRuntime(process.Node.remoteData)
+		cfg.ChannelDelivery.BindActivationRuntime(process.Node.remoteData.private)
 	}
 	process.ChannelDelivery = cfg.ChannelDelivery
 	n := process.Node

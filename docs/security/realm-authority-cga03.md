@@ -39,7 +39,9 @@ topics during that interval while every new envelope is sealed with the
 current generation. A running transfer exchange atomically establishes the new
 current/previous subscriptions before the member RPC releases its active
 receipt; failed resubscription retains the old live subscription and returns a
-retryable failure.
+retryable failure. The durable activation remains explicitly
+`runtime_adopted=false`, so member readiness stays false until a successful
+retry commits runtime adoption.
 
 The Authority ledger retains explicit versioned current, pending and one
 previous grant snapshot. Drain is capped by both the requested limit and the
@@ -74,6 +76,11 @@ activation likewise commits before returning and replays the identical active
 receipt after restart. Operation-keyed activation history preserves retries
 across later strictly monotonic rotations while the channel-keyed record tracks
 only the latest checkpoint.
+
+Every transition checks audit-log and audit-outbox capacity before signing or
+mutating. Rotation additionally checks operation and rotation-record capacity.
+An exact full bound returns resource exhaustion without persisting an
+over-limit ledger.
 
 ## Disclosure and qualification
 

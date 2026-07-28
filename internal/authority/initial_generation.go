@@ -330,6 +330,9 @@ func (s *Service) commitCheckpointTransition(
 	now time.Time,
 	mutate func(*Ledger, SignedCheckpoint) error,
 ) error {
+	if err := checkpointTransitionCapacity(*state); err != nil {
+		return err
+	}
 	previousSequence, previousDigest := state.AuthoritySequence, state.Checkpoint.Digest
 	checkpoint, err := SignCheckpoint(ctx, s.signer, Checkpoint{
 		Version: ContractVersion, SchemaVersion: SchemaVersion,
@@ -385,6 +388,14 @@ func (s *Service) commitCheckpointTransition(
 	}
 	s.status = statusFromLedger(*state)
 	s.flushAudit(ctx, state)
+	return nil
+}
+
+func checkpointTransitionCapacity(state Ledger) error {
+	if len(state.AuditLog) >= MaxAuditRecords ||
+		len(state.AuditOutbox) >= MaxAuditOutboxRecords {
+		return ErrResourceExhausted
+	}
 	return nil
 }
 

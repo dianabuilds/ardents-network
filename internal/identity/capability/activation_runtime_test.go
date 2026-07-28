@@ -135,12 +135,14 @@ func TestActiveReceiptWaitsForLiveExchangeGenerationSubscriptions(t *testing.T) 
 	require.ErrorIs(t, err, channeldelivery.ErrUnavailable)
 	require.Equal(t, initialTopics, carrier.snapshot(),
 		"failed adoption must retain the original live subscription")
+	require.False(t, member.GenerationReadiness(current.ChannelID).Ready)
 	active, err := delivery.Activate(
 		context.Background(), channeldelivery.Command{Actor: "operator", Effective: "operator"},
 		channeldelivery.ContractVersion, activation,
 	)
 	require.NoError(t, err)
 	require.Equal(t, identitycapability.DeliveryPhaseActive, active.Phase)
+	require.True(t, member.GenerationReadiness(current.ChannelID).Ready)
 	topics := carrier.snapshot()
 	require.Len(t, topics, 3)
 	require.Contains(t, topics[1:], initialTopics[0])

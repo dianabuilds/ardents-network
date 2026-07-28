@@ -110,21 +110,19 @@ func (c *Command) rotateChannel(ctx context.Context, args []string) int {
 }
 
 func (c *Command) installRotation(ctx context.Context, args []string) int {
-	fs := flag.NewFlagSet("authority rotation install", flag.ContinueOnError)
-	fs.SetOutput(c.ctx.Renderer.Err)
-	var rotationPath, receiptPath, recipient string
-	fs.StringVar(&rotationPath, "rotation-file", "", "protected rotation file")
+	fs, rotationPath := c.rotationArtifactFlagSet("authority rotation install")
+	var receiptPath, recipient string
 	fs.StringVar(&recipient, "recipient", "", "local member Principal when the rotation has multiple deliveries")
 	fs.StringVar(&receiptPath, "out-file", "", "new protected installed receipt file")
 	if err := fs.Parse(args); err != nil {
 		return c.ctx.Failure(err)
 	}
-	if !filepath.IsAbs(rotationPath) || !filepath.IsAbs(receiptPath) || fs.NArg() != 0 {
+	if !filepath.IsAbs(receiptPath) || fs.NArg() != 0 {
 		return c.ctx.Failure(flag.ErrHelp)
 	}
-	rotation := &protocol.RotateChannelResponse{}
-	if err := readProtectedProto(rotationPath, rotation); err != nil {
-		return c.ctx.Failure(err)
+	rotation, code := c.loadRotationArtifact(*rotationPath)
+	if code >= 0 {
+		return code
 	}
 	var sealed *protocol.SealedGenerationDelivery
 	switch {

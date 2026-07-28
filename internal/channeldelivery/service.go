@@ -130,7 +130,7 @@ func (s *Service) Activate(
 	if command.Actor == "" || command.Actor != command.Effective {
 		return identitycapability.GenerationDeliveryReceipt{}, ErrPermissionDenied
 	}
-	receipt, err := s.capabilities.ActivateGeneration(activation)
+	_, err := s.capabilities.ActivateGeneration(activation)
 	if err != nil {
 		return identitycapability.GenerationDeliveryReceipt{}, ErrInvalidArgument
 	}
@@ -138,6 +138,10 @@ func (s *Service) Activate(
 		if err := s.activation.RefreshPrivateSubscriptions(ctx); err != nil {
 			return identitycapability.GenerationDeliveryReceipt{}, ErrUnavailable
 		}
+	}
+	receipt, err := s.capabilities.ConfirmGenerationRuntimeAdoption(activation)
+	if err != nil {
+		return identitycapability.GenerationDeliveryReceipt{}, ErrUnavailable
 	}
 	return receipt, nil
 }

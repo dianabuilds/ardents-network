@@ -163,6 +163,9 @@ func (s *Service) RotateChannel(
 	if channel.PendingGenerationCount != 0 || incompleteRotationForChannel(state, request.ChannelID) {
 		return RotationResult{}, ErrConflict
 	}
+	if err := rotationCapacity(state); err != nil {
+		return RotationResult{}, err
+	}
 	currentGrants := channelCurrentGrants(channel)
 	if len(currentGrants) == 0 ||
 		len(currentGrants) != len(request.RecipientAttestations) ||
@@ -325,6 +328,13 @@ func (s *Service) RotateChannel(
 		return RotationResult{}, err
 	}
 	return rotationResult(state, state.Rotations[len(state.Rotations)-1]), nil
+}
+
+func rotationCapacity(state Ledger) error {
+	if len(state.Operations) >= MaxOperations || len(state.Rotations) >= MaxOperations {
+		return ErrResourceExhausted
+	}
+	return checkpointTransitionCapacity(state)
 }
 
 func (s *Service) CommitChannelActivation(

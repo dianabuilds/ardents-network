@@ -133,6 +133,8 @@ func TestAuthorityRotatesAndCompletesOneApprovedMemberGeneration(t *testing.T) {
 	require.Equal(t, uint32(2), committed.Activation.Generation)
 	active, err := member.ActivateGeneration(committed.Activation)
 	require.NoError(t, err)
+	active, err = member.ConfirmGenerationRuntimeAdoption(committed.Activation)
+	require.NoError(t, err)
 	_, err = fixture.service.AcknowledgeChannelActivation(ctx, Command{
 		Actor: "operator", Effective: "operator", Action: ActionAcknowledgeActivation,
 		ResourceKind: ResourceKindGenerationDelivery, ResourceID: deliveryResource,
@@ -202,6 +204,49 @@ func TestProductPolicyDeniesChannelRotationBeforeSecretGeneration(t *testing.T) 
 	require.ErrorIs(t, err, ErrPermissionDenied)
 	require.Len(t, fixture.store.state.AuditLog, 1)
 	require.Empty(t, fixture.store.state.Rotations)
+}
+
+func TestRotationAndCheckpointTransitionsRejectExactLedgerBounds(t *testing.T) {
+	below := Ledger{
+		Operations:  make([]OperationRecord, MaxOperations-1),
+		Rotations:   make([]RotationRecord, MaxOperations-1),
+		AuditLog:    make([]AuditRecord, MaxAuditRecords-1),
+		AuditOutbox: make([]AuditRecord, MaxAuditOutboxRecords-1),
+	}
+	require.NoError(t, rotationCapacity(below))
+
+	atOperations := below
+	atOperations.Operations = make([]OperationRecord, MaxOperations)
+	require.ErrorIs(t, rotationCapacity(atOperations), ErrResourceExhausted)
+	atRotations := below
+	atRotations.Rotations = make([]RotationRecord, MaxOperations)
+	require.ErrorIs(t, rotationCapacity(atRotations), ErrResourceExhausted)
+	atAudit := below
+	atAudit.AuditLog = make([]AuditRecord, MaxAuditRecords)
+	require.ErrorIs(t, checkpointTransitionCapacity(atAudit), ErrResourceExhausted)
+	atOutbox := below
+	atOutbox.AuditOutbox = make([]AuditRecord, MaxAuditOutboxRecords)
+	require.ErrorIs(t, checkpointTransitionCapacity(atOutbox), ErrResourceExhausted)
+
+	fixture := newServiceFixture(t)
+	genesis, err := fixture.service.CreateOrReopen(
+		context.Background(), fixture.createCommand(),
+		CreateRequest{Version: ContractVersion, RequestID: "bounded-genesis", RealmClass: RealmClassProduction},
+	)
+	require.NoError(t, err)
+	state := fixture.store.state
+	state.AuditLog = make([]AuditRecord, MaxAuditRecords)
+	mutated := false
+	err = fixture.service.commitCheckpointTransition(
+		context.Background(), &state, AuditRecord{}, fixture.clock(),
+		func(*Ledger, SignedCheckpoint) error {
+			mutated = true
+			return nil
+		},
+	)
+	require.ErrorIs(t, err, ErrResourceExhausted)
+	require.False(t, mutated)
+	require.Equal(t, genesis.AuthoritySequence, fixture.store.state.AuthoritySequence)
 }
 
 func runRotationCrashCase(t *testing.T, crashStage string, boundary CrashBoundary) {
@@ -337,6 +382,8 @@ func runRotationCrashCase(t *testing.T, crashStage string, boundary CrashBoundar
 		return callErr
 	})
 	active, err := member.ActivateGeneration(committed.Activation)
+	require.NoError(t, err)
+	active, err = member.ConfirmGenerationRuntimeAdoption(committed.Activation)
 	require.NoError(t, err)
 	activeCommand := Command{
 		Actor: "operator", Effective: "operator", Action: ActionAcknowledgeActivation,

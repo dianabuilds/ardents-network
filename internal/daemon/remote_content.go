@@ -62,13 +62,6 @@ func newRemoteContent(cfg ownerAssemblyConfig) *remoteContent {
 	}
 }
 
-func (r *remoteContent) RefreshPrivateSubscriptions(ctx context.Context) error {
-	if r == nil || r.private == nil {
-		return nil
-	}
-	return r.private.RefreshPrivateSubscriptions(ctx)
-}
-
 func (r *remoteContent) SetLocalNodePrincipal(principal identityprincipal.ID) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

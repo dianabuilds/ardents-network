@@ -80,8 +80,9 @@ type persistedPreviousGeneration struct {
 }
 
 type persistedActivatedGeneration struct {
-	Activation GenerationActivation     `json:"activation"`
-	Receipt    persistedDeliveryReceipt `json:"receipt"`
+	Activation     GenerationActivation     `json:"activation"`
+	Receipt        persistedDeliveryReceipt `json:"receipt"`
+	RuntimeAdopted bool                     `json:"runtime_adopted"`
 }
 
 func persistGrant(grant identityapi.CapabilityGrant) persistedGrant {
