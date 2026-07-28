@@ -83,7 +83,7 @@ func compileChecks(ingress ingressSpec) []string {
 	case "public":
 		checks = append(checks, "public_autonat_required")
 	}
-	if ingress.CertificateRef != "" {
+	if ingress.CertificateRef != nil {
 		checks = append(checks, "wss_certificate_identity_required")
 	}
 	return checks

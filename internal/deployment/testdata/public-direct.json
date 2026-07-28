@@ -57,10 +57,7 @@
         "retention_class": ""
       },
       "ingress": {
-        "kind": "outbound_only",
-        "address": "",
-        "certificate_ref": "",
-        "certificate_identity": ""
+        "kind": "outbound_only"
       },
       "static_recovery_peers": [
         "node-b",
@@ -126,9 +123,7 @@
       },
       "ingress": {
         "kind": "public",
-        "address": "/ip4/1.1.1.1/tcp/60000",
-        "certificate_ref": "",
-        "certificate_identity": ""
+        "address": "/ip4/1.1.1.1/tcp/60000"
       },
       "static_recovery_peers": [
         "node-a",

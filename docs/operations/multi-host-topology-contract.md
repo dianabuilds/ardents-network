@@ -11,7 +11,12 @@ or one stable redacted `ValidationError`.
 The document is UTF-8 JSON no larger than 256 KiB. Field names are exact
 lowercase schema names; decoding rejects case-folded aliases, duplicate or
 unknown fields, trailing values, malformed JSON, and every version other than
-`ardents.topology/v1`.
+`ardents.topology/v1`. Every declared field is required except the three
+variant-dependent ingress fields: `address`, `certificate_ref`, and
+`certificate_identity`. An inbound TCP ingress contains `address` only; WSS
+contains all three; `outbound_only` contains none. Missing required fields,
+JSON `null`, noncanonical integer spellings, and inapplicable optional fields
+fail closed.
 
 The top-level contract contains:
 
@@ -61,7 +66,7 @@ IP or DNS TCP/WSS multiaddr. DNS identities are lowercase bounded FQDNs and are
 admitted syntactically without resolution. The v1 denylist freezes the IANA
 special-use registry at 2026-05-22, collapses its ARPA subtrees to all of
 `.arpa`, and also rejects `.internal`. A Node without explicit inbound routing
-is `outbound_only` and has no address or certificate fields. Public plans are
+is `outbound_only` and omits address and certificate fields. Public plans are
 `public_autonat_required`; they do not report public reachability. WSS is valid
 only under `tcp_wss` and requires an opaque certificate reference whose
 declared DNS-ID or exact IP-ID equals the advertised identity. Certificate

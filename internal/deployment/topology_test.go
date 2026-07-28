@@ -56,8 +56,8 @@ func TestCompileAcceptsCompleteModeTransportAndCertificateIdentityMatrix(t *test
 				root["transport_profile"] = "tcp_only"
 				ingress := topologyNode(root, 1)["ingress"].(map[string]any)
 				ingress["address"] = "/dns4/node-a.ardents.net/tcp/60000"
-				ingress["certificate_ref"] = ""
-				ingress["certificate_identity"] = ""
+				delete(ingress, "certificate_ref")
+				delete(ingress, "certificate_identity")
 			},
 			wantTransport: "tcp_only",
 		},
@@ -181,15 +181,21 @@ func TestCompileRejectsNullScalarsAndNonCanonicalIntegers(t *testing.T) {
 	}{
 		{
 			name: "null boolean",
-			raw:  bytes.Replace(privateLAN, []byte(`"bootstrap": false`), []byte(`"bootstrap": null`), 1),
+			raw: mutateTopology(t, privateLAN, func(root map[string]any) {
+				topologyNode(root, 0)["bootstrap"] = nil
+			}),
 		},
 		{
 			name: "null string",
-			raw:  bytes.Replace(publicDirect, []byte(`"address": ""`), []byte(`"address": null`), 1),
+			raw: mutateTopology(t, publicDirect, func(root map[string]any) {
+				topologyNode(root, 1)["ingress"].(map[string]any)["address"] = nil
+			}),
 		},
 		{
 			name: "null reference",
-			raw:  bytes.Replace(publicDirect, []byte(`"certificate_ref": ""`), []byte(`"certificate_ref": null`), 1),
+			raw: mutateTopology(t, publicDirect, func(root map[string]any) {
+				topologyNode(root, 1)["ingress"].(map[string]any)["certificate_ref"] = nil
+			}),
 		},
 		{
 			name: "exponent integer",
@@ -204,6 +210,45 @@ func TestCompileRejectsNullScalarsAndNonCanonicalIntegers(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := Compile(tc.raw)
 			require.EqualError(t, err, "topology_invalid_json")
+		})
+	}
+}
+
+func TestCompileRejectsMissingRequiredFields(t *testing.T) {
+	valid := readTopologyFixture(t, "private-lan.json")
+	tests := []struct {
+		name   string
+		mutate func(map[string]any)
+	}{
+		{
+			name: "top level signed dns roots",
+			mutate: func(root map[string]any) {
+				delete(root, "signed_dns_roots")
+			},
+		},
+		{
+			name: "zero valued bootstrap",
+			mutate: func(root map[string]any) {
+				delete(topologyNode(root, 0), "bootstrap")
+			},
+		},
+		{
+			name: "nonprovider store",
+			mutate: func(root map[string]any) {
+				delete(topologyNode(root, 0), "store")
+			},
+		},
+		{
+			name: "nested host ownership",
+			mutate: func(root map[string]any) {
+				delete(topologyHost(root, 0), "ownership")
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := Compile(mutateTopology(t, valid, tc.mutate))
+			require.EqualError(t, err, "topology_missing_field")
 		})
 	}
 }
@@ -574,10 +619,7 @@ func TestCompileRejectsMixedUnsafeOrUnprovableIngress(t *testing.T) {
 			name: "at least two public ingress nodes",
 			raw:  publicDirect,
 			mutate: func(root map[string]any) {
-				topologyNode(root, 2)["ingress"] = map[string]any{
-					"kind": "outbound_only", "address": "",
-					"certificate_ref": "", "certificate_identity": "",
-				}
+				topologyNode(root, 2)["ingress"] = map[string]any{"kind": "outbound_only"}
 			},
 			code: "topology_insufficient_public_ingress",
 		},
@@ -602,8 +644,8 @@ func TestCompileRejectsMixedUnsafeOrUnprovableIngress(t *testing.T) {
 			raw:  publicDirect,
 			mutate: func(root map[string]any) {
 				ingress := topologyNode(root, 1)["ingress"].(map[string]any)
-				ingress["certificate_ref"] = ""
-				ingress["certificate_identity"] = ""
+				delete(ingress, "certificate_ref")
+				delete(ingress, "certificate_identity")
 			},
 			code: "topology_wss_certificate_required",
 		},

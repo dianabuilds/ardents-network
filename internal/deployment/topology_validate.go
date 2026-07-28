@@ -220,17 +220,20 @@ func validateModeAndIngress(manifest topologyManifest) error {
 			}
 		}
 		if node.Ingress.Kind == "outbound_only" {
-			if node.Ingress.Address != "" || node.Ingress.CertificateRef != "" ||
-				node.Ingress.CertificateIdentity != "" {
+			if node.Ingress.Address != nil || node.Ingress.CertificateRef != nil ||
+				node.Ingress.CertificateIdentity != nil {
 				return ValidationError("topology_invalid_outbound_only_ingress")
 			}
 			continue
 		}
-		address, ok := parseIngressAddress(node.Ingress.Address)
+		if node.Ingress.Address == nil {
+			return ValidationError("topology_ingress_address_required")
+		}
+		address, ok := parseIngressAddress(*node.Ingress.Address)
 		if !ok {
 			return ValidationError("topology_unsupported_ingress_address")
 		}
-		if !rememberUnique(addresses, node.Ingress.Address) {
+		if !rememberUnique(addresses, *node.Ingress.Address) {
 			return ValidationError("topology_duplicate_ingress_address")
 		}
 		if node.Ingress.Kind == "private_lan" &&
@@ -362,15 +365,17 @@ func admissiblePublicDNSName(value string) bool {
 
 func validateCertificateBinding(ingress ingressSpec, address ingressAddress) error {
 	if !address.wss {
-		if ingress.CertificateRef != "" || ingress.CertificateIdentity != "" {
+		if ingress.CertificateRef != nil || ingress.CertificateIdentity != nil {
 			return ValidationError("topology_unexpected_certificate_reference")
 		}
 		return nil
 	}
-	if !aliasPattern.MatchString(ingress.CertificateRef) || ingress.CertificateIdentity == "" {
+	if ingress.CertificateRef == nil || ingress.CertificateIdentity == nil ||
+		!aliasPattern.MatchString(*ingress.CertificateRef) ||
+		*ingress.CertificateIdentity == "" {
 		return ValidationError("topology_wss_certificate_required")
 	}
-	if ingress.CertificateIdentity != address.identity {
+	if *ingress.CertificateIdentity != address.identity {
 		return ValidationError("topology_wss_certificate_identity_mismatch")
 	}
 	return nil

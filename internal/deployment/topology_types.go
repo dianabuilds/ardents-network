@@ -73,10 +73,10 @@ type storeSpec struct {
 }
 
 type ingressSpec struct {
-	Kind                string `json:"kind"`
-	Address             string `json:"address"`
-	CertificateRef      string `json:"certificate_ref"`
-	CertificateIdentity string `json:"certificate_identity"`
+	Kind                string  `json:"kind"`
+	Address             *string `json:"address"`
+	CertificateRef      *string `json:"certificate_ref"`
+	CertificateIdentity *string `json:"certificate_identity"`
 }
 
 // Plan is the ordinary redacted projection of one admitted topology.

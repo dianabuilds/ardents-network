@@ -51,6 +51,10 @@ func rejectDuplicateTopologyFields(raw []byte) error {
 		if errors.Is(err, errNonCanonicalTopologyField) {
 			return ValidationError("topology_unknown_field")
 		}
+		var validation ValidationError
+		if errors.As(err, &validation) {
+			return validation
+		}
 		return ValidationError("topology_invalid_json")
 	}
 	return nil
@@ -108,6 +112,11 @@ func scanTopologyValue(decoder *json.Decoder, expected reflect.Type) error {
 				return err
 			}
 		}
+		for name := range fields {
+			if _, found := seen[name]; !found && !optionalTopologyField(expected, name) {
+				return ValidationError("topology_missing_field")
+			}
+		}
 	case '[':
 		if expected == nil ||
 			(expected.Kind() != reflect.Slice && expected.Kind() != reflect.Array) {
@@ -158,6 +167,18 @@ func exactJSONFields(value reflect.Type) map[string]reflect.Type {
 		}
 	}
 	return fields
+}
+
+func optionalTopologyField(owner reflect.Type, name string) bool {
+	if owner != reflect.TypeOf(ingressSpec{}) {
+		return false
+	}
+	switch name {
+	case "address", "certificate_ref", "certificate_identity":
+		return true
+	default:
+		return false
+	}
 }
 
 func forbiddenTopologyField(name string) bool {
