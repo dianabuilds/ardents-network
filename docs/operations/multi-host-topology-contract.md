@@ -58,8 +58,10 @@ bounded cross-host probe.
 
 `public_direct` requires at least two Nodes with exactly one canonical public
 IP or DNS TCP/WSS multiaddr. DNS identities are lowercase bounded FQDNs and are
-admitted syntactically without resolution. A Node without explicit inbound routing is
-`outbound_only` and has no address or certificate fields. Public plans are
+admitted syntactically without resolution. The v1 denylist freezes the IANA
+special-use registry at 2026-05-22, collapses its ARPA subtrees to all of
+`.arpa`, and also rejects `.internal`. A Node without explicit inbound routing
+is `outbound_only` and has no address or certificate fields. Public plans are
 `public_autonat_required`; they do not report public reachability. WSS is valid
 only under `tcp_wss` and requires an opaque certificate reference whose
 declared DNS-ID or exact IP-ID equals the advertised identity. Certificate

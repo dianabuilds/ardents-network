@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"reflect"
 	"strings"
 )
 
@@ -39,7 +40,7 @@ func decodeTopology(raw []byte) (topologyManifest, error) {
 func rejectDuplicateTopologyFields(raw []byte) error {
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.UseNumber()
-	if err := scanTopologyValue(decoder); err != nil {
+	if err := scanTopologyValue(decoder, reflect.TypeOf(topologyManifest{})); err != nil {
 		if errors.Is(err, errForbiddenTopologyField) {
 			return ValidationError("topology_forbidden_secret_field")
 		}
@@ -60,17 +61,30 @@ var (
 	errNonCanonicalTopologyField = errors.New("non-canonical topology field")
 )
 
-func scanTopologyValue(decoder *json.Decoder) error {
+func scanTopologyValue(decoder *json.Decoder, expected reflect.Type) error {
 	token, err := decoder.Token()
 	if err != nil {
 		return err
 	}
+	for expected != nil && expected.Kind() == reflect.Pointer {
+		expected = expected.Elem()
+	}
 	delim, composite := token.(json.Delim)
 	if !composite {
+		if expected != nil &&
+			(expected.Kind() == reflect.Struct ||
+				expected.Kind() == reflect.Slice ||
+				expected.Kind() == reflect.Array) {
+			return ValidationError("topology_invalid_json")
+		}
 		return nil
 	}
 	switch delim {
 	case '{':
+		if expected == nil || expected.Kind() != reflect.Struct {
+			return ValidationError("topology_invalid_json")
+		}
+		fields := exactJSONFields(expected)
 		seen := make(map[string]struct{})
 		for decoder.More() {
 			token, err = decoder.Token()
@@ -84,20 +98,25 @@ func scanTopologyValue(decoder *json.Decoder) error {
 			if forbiddenTopologyField(name) {
 				return errForbiddenTopologyField
 			}
-			if name != strings.ToLower(name) {
+			fieldType, exact := fields[name]
+			if !exact {
 				return errNonCanonicalTopologyField
 			}
 			if _, duplicate := seen[name]; duplicate {
 				return errDuplicateTopologyField
 			}
 			seen[name] = struct{}{}
-			if err := scanTopologyValue(decoder); err != nil {
+			if err := scanTopologyValue(decoder, fieldType); err != nil {
 				return err
 			}
 		}
 	case '[':
+		if expected == nil ||
+			(expected.Kind() != reflect.Slice && expected.Kind() != reflect.Array) {
+			return ValidationError("topology_invalid_json")
+		}
 		for decoder.More() {
-			if err := scanTopologyValue(decoder); err != nil {
+			if err := scanTopologyValue(decoder, expected.Elem()); err != nil {
 				return err
 			}
 		}
@@ -106,6 +125,18 @@ func scanTopologyValue(decoder *json.Decoder) error {
 	}
 	_, err = decoder.Token()
 	return err
+}
+
+func exactJSONFields(value reflect.Type) map[string]reflect.Type {
+	fields := make(map[string]reflect.Type, value.NumField())
+	for index := 0; index < value.NumField(); index++ {
+		field := value.Field(index)
+		name := strings.Split(field.Tag.Get("json"), ",")[0]
+		if name != "" && name != "-" {
+			fields[name] = field.Type
+		}
+	}
+	return fields
 }
 
 func forbiddenTopologyField(name string) bool {

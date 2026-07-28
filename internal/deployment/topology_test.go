@@ -71,6 +71,11 @@ func TestCompileRejectsNonCanonicalManifestEnvelopeWithStableErrors(t *testing.T
 			code: "topology_unknown_field",
 		},
 		{
+			name: "unicode case folded field alias",
+			raw:  bytes.Replace(valid, []byte(`"host": {`), []byte(`"hoſt": {`), 1),
+			code: "topology_unknown_field",
+		},
+		{
 			name: "trailing value",
 			raw:  append(append([]byte(nil), valid...), []byte("\n{}")...),
 			code: "topology_trailing_value",
@@ -415,6 +420,36 @@ func TestCompileRejectsMixedUnsafeOrUnprovableIngress(t *testing.T) {
 			code: "topology_public_address_required",
 		},
 		{
+			name: "special use onion name is not public ingress",
+			raw:  publicDirect,
+			mutate: func(root map[string]any) {
+				ingress := topologyNode(root, 1)["ingress"].(map[string]any)
+				ingress["address"] = "/dns4/node-a.onion/tcp/443/wss"
+				ingress["certificate_identity"] = "node-a.onion"
+			},
+			code: "topology_public_address_required",
+		},
+		{
+			name: "special use alt name is not public ingress",
+			raw:  publicDirect,
+			mutate: func(root map[string]any) {
+				ingress := topologyNode(root, 1)["ingress"].(map[string]any)
+				ingress["address"] = "/dns4/node-a.alt/tcp/443/wss"
+				ingress["certificate_identity"] = "node-a.alt"
+			},
+			code: "topology_public_address_required",
+		},
+		{
+			name: "special use arpa subtree is not public ingress",
+			raw:  publicDirect,
+			mutate: func(root map[string]any) {
+				ingress := topologyNode(root, 1)["ingress"].(map[string]any)
+				ingress["address"] = "/dns4/node-a.home.arpa/tcp/443/wss"
+				ingress["certificate_identity"] = "node-a.home.arpa"
+			},
+			code: "topology_public_address_required",
+		},
+		{
 			name: "zero tcp port",
 			raw:  publicDirect,
 			mutate: func(root map[string]any) {
@@ -626,7 +661,7 @@ func TestCompileDoesNotDereferenceManifestAliasesOrNetworkRoots(t *testing.T) {
 func TestCompilerProductionDependencyClosureHasNoSideEffectAdapters(t *testing.T) {
 	allowedImports := map[string]struct{}{
 		"bytes": {}, "encoding/json": {}, "errors": {}, "io": {},
-		"net/netip": {}, "regexp": {}, "sort": {}, "strconv": {}, "strings": {},
+		"net/netip": {}, "reflect": {}, "regexp": {}, "sort": {}, "strconv": {}, "strings": {},
 		"ardents/internal/identity/principal":  {},
 		"github.com/distribution/reference":    {},
 		"github.com/multiformats/go-multiaddr": {},

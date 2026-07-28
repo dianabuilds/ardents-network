@@ -31,6 +31,12 @@ var (
 	dnsNamePattern = regexp.MustCompile(
 		`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$`,
 	)
+	// Frozen for ardents.topology/v1 from the IANA Special-Use Domain Names
+	// registry. Denying all of arpa also covers its registered subdomains.
+	specialUseDNSSuffixes = []string{
+		"alt", "arpa", "example", "example.com", "example.net", "example.org",
+		"internal", "invalid", "local", "localhost", "onion", "test",
+	}
 )
 
 type ingressAddress struct {
@@ -343,10 +349,8 @@ func admissiblePublicDNSName(value string) bool {
 		!dnsNamePattern.MatchString(value) {
 		return false
 	}
-	for _, suffix := range []string{
-		".example", ".invalid", ".localhost", ".local", ".test",
-	} {
-		if value == strings.TrimPrefix(suffix, ".") || strings.HasSuffix(value, suffix) {
+	for _, suffix := range specialUseDNSSuffixes {
+		if value == suffix || strings.HasSuffix(value, "."+suffix) {
 			return false
 		}
 	}
