@@ -46,6 +46,8 @@ const (
 	ActionAcknowledgeActivation = "realm.channel.activation.acknowledge"
 	ActionVerifyRestore         = "realm.channel.recovery.execute"
 	ActionPlanTransition        = "realm.authority.rotate"
+	ActionAdoptTransition       = "realm.authority.transition.adopt"
+	ActionFinalizeTransition    = "realm.authority.transition.finalize"
 	ActionMigrateLocalV2        = "realm.authority.migrate.local_v2"
 
 	ResourceKindAuthorityInstance  = "realm-authority-instance"

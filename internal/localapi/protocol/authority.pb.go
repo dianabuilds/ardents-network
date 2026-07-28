@@ -3696,18 +3696,18 @@ const file_api_ardents_v1_authority_proto_rawDesc = "" +
 	"\x17ChangeChannelMembership\x12*.ardents.v1.ChangeChannelMembershipRequest\x1a!.ardents.v1.RotateChannelResponse\"A\xc2\xf3\x18=\n" +
 	"\x1frealm.channel.membership.change\x12\tauthority\x1a\rrealm-channel \x01\x12\xc7\x01\n" +
 	"\x1dSubmitDeploymentFenceEvidence\x120.ardents.v1.SubmitDeploymentFenceEvidenceRequest\x1a1.ardents.v1.SubmitDeploymentFenceEvidenceResponse\"A\xc2\xf3\x18=\n" +
-	"\x1frealm.channel.membership.change\x12\tauthority\x1a\rrealm-channel \x012\xa6\a\n" +
+	"\x1frealm.channel.membership.change\x12\tauthority\x1a\rrealm-channel \x012\xbd\a\n" +
 	"\x16ChannelDeliveryService\x12\xb6\x01\n" +
 	"\x19PrepareGenerationDelivery\x12,.ardents.v1.PrepareGenerationDeliveryRequest\x1a-.ardents.v1.PrepareGenerationDeliveryResponse\"<\xc2\xf3\x188\n" +
 	"\x1erealm.channel.delivery.prepare\x12\tauthority\x1a\tprincipal \x01\x12\xc3\x01\n" +
 	"\x19InstallGenerationDelivery\x12,.ardents.v1.InstallGenerationDeliveryRequest\x1a-.ardents.v1.InstallGenerationDeliveryResponse\"I\xc2\xf3\x18E\n" +
 	"\x1erealm.channel.delivery.install\x12\tauthority\x1a\x16realm-channel-delivery \x01\x12\xb2\x01\n" +
 	"\x12ActivateGeneration\x12%.ardents.v1.ActivateGenerationRequest\x1a&.ardents.v1.ActivateGenerationResponse\"M\xc2\xf3\x18I\n" +
-	"!realm.channel.generation.activate\x12\tauthority\x1a\x17realm-channel-operation \x01\x12\xa7\x01\n" +
-	"\x18AdoptAuthorityTransition\x12+.ardents.v1.AdoptAuthorityTransitionRequest\x1a,.ardents.v1.AuthorityTrustTransitionResponse\"0\xc2\xf3\x18,\n" +
-	"\x16realm.authority.rotate\x12\tauthority\x1a\x05realm \x01\x12\xad\x01\n" +
-	"\x1bFinalizeAuthorityTransition\x12..ardents.v1.FinalizeAuthorityTransitionRequest\x1a,.ardents.v1.AuthorityTrustTransitionResponse\"0\xc2\xf3\x18,\n" +
-	"\x16realm.authority.rotate\x12\tauthority\x1a\x05realm \x01B.Z,ardents/internal/localapi/protocol;ardentsv1b\x06proto3"
+	"!realm.channel.generation.activate\x12\tauthority\x1a\x17realm-channel-operation \x01\x12\xb1\x01\n" +
+	"\x18AdoptAuthorityTransition\x12+.ardents.v1.AdoptAuthorityTransitionRequest\x1a,.ardents.v1.AuthorityTrustTransitionResponse\":\xc2\xf3\x186\n" +
+	" realm.authority.transition.adopt\x12\tauthority\x1a\x05realm \x01\x12\xba\x01\n" +
+	"\x1bFinalizeAuthorityTransition\x12..ardents.v1.FinalizeAuthorityTransitionRequest\x1a,.ardents.v1.AuthorityTrustTransitionResponse\"=\xc2\xf3\x189\n" +
+	"#realm.authority.transition.finalize\x12\tauthority\x1a\x05realm \x01B.Z,ardents/internal/localapi/protocol;ardentsv1b\x06proto3"
 
 var (
 	file_api_ardents_v1_authority_proto_rawDescOnce sync.Once

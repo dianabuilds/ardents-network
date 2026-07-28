@@ -60,8 +60,8 @@ func TestAuthorityProceduresHaveExactDirectOperatorContracts(t *testing.T) {
 		ardentsv1connect.ChannelDeliveryServicePrepareGenerationDeliveryProcedure:   "realm.channel.delivery.prepare",
 		ardentsv1connect.ChannelDeliveryServiceInstallGenerationDeliveryProcedure:   "realm.channel.delivery.install",
 		ardentsv1connect.ChannelDeliveryServiceActivateGenerationProcedure:          "realm.channel.generation.activate",
-		ardentsv1connect.ChannelDeliveryServiceAdoptAuthorityTransitionProcedure:    domain.ActionPlanTransition,
-		ardentsv1connect.ChannelDeliveryServiceFinalizeAuthorityTransitionProcedure: domain.ActionPlanTransition,
+		ardentsv1connect.ChannelDeliveryServiceAdoptAuthorityTransitionProcedure:    domain.ActionAdoptTransition,
+		ardentsv1connect.ChannelDeliveryServiceFinalizeAuthorityTransitionProcedure: domain.ActionFinalizeTransition,
 	} {
 		rule, registered := localauth.RuleForProcedure(procedure)
 		require.True(t, registered, procedure)

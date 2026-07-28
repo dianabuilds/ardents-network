@@ -532,6 +532,7 @@ flowchart TD
     channeldelivery --> authority
     channeldelivery --> identity
     provision --> authority
+    provision --> config
     provision --> identity
     provision --> policy
     provision --> storage

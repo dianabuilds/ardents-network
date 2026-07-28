@@ -56,6 +56,8 @@ The authority action catalogue is:
 | `realm.channel.audit.read` | exact `realm/<RealmID>` or `realm/<RealmID>/channel/<ChannelID>` | rejected; direct Operator only |
 | `realm.channel.recovery.execute` | exact `realm/<RealmID>` | rejected; non-delegable in Product Policy |
 | `realm.authority.rotate` | exact `realm/<RealmID>` | rejected; non-delegable in Product Policy |
+| `realm.authority.transition.adopt` | exact `realm/<RealmID>` on a recipient member | rejected; direct Operator only |
+| `realm.authority.transition.finalize` | exact `realm/<RealmID>` on a recipient member | rejected; direct Operator only |
 | `realm.authority.migrate.local_v2` | exact `realm-authority-instance/primary` before a Realm ID exists | rejected; stopped direct Operator only |
 
 This direct-only column supersedes the provisional one-hop Delegation column in

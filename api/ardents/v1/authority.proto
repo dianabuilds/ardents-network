@@ -136,7 +136,7 @@ service ChannelDeliveryService {
   }
   rpc AdoptAuthorityTransition(AdoptAuthorityTransitionRequest) returns (AuthorityTrustTransitionResponse) {
     option (operator_access) = {
-      action: "realm.authority.rotate"
+      action: "realm.authority.transition.adopt"
       domain: "authority"
       resource_kind: "realm"
       mutating: true
@@ -144,7 +144,7 @@ service ChannelDeliveryService {
   }
   rpc FinalizeAuthorityTransition(FinalizeAuthorityTransitionRequest) returns (AuthorityTrustTransitionResponse) {
     option (operator_access) = {
-      action: "realm.authority.rotate"
+      action: "realm.authority.transition.finalize"
       domain: "authority"
       resource_kind: "realm"
       mutating: true
