@@ -64,3 +64,14 @@ feature behavior.
     declared CGA-07 DR-06 scope, release-candidate version and authorized
     environments. No qualification attempt, deployment change or push was
     made.
+- 2026-07-28 partial blocker resolution after ADR-0013 disposition:
+  - the maintainer explicitly accepted ADR-0013 source
+    `da39106ce695977c03594a296674229852ea53da` after the commit-bound
+    compatibility review in
+    `7fa4169ea3105b463be8b08bf362a3bb2fb82808`;
+  - this satisfies only the accepted DR-04/ADR-0013 compatibility dependency.
+    The dedicated CGA-07 DR-06 scope, release-candidate version, authorized
+    three-real-host/WORM/backup/release environments and evidence destination
+    remain undeclared;
+  - CGA-07 therefore remains `needs-info`; `Q=no`. No qualification attempt,
+    deployment change, capability promotion or push was made.

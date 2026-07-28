@@ -1,6 +1,6 @@
 # ADR 0013: Bounded multi-host reachability
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-25
 - Decision owners: Network Foundation, Deployment, Operations, Release
 - Research source: `docs/engineering/research/multi-host-reachability.md`

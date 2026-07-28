@@ -2,7 +2,7 @@
 
 ## Metadata
 
-- Status: accepted research recommendation; ADR-0013 remains Proposed
+- Status: accepted research recommendation; ADR-0013 accepted on 2026-07-28
 - Research class: R2 deep research
 - Decision owner: Network Foundation, Deployment, Operations, Release
 - Research owner: Wave 3 DR-04
@@ -633,8 +633,10 @@ procedures, survivor `active` receipts, explicit deployment fencing evidence,
 roll-forward generation activation, distinct authority consistency group,
 external immutable compare-and-append checkpoint repository, same-realm
 restore freshness rule, and authority-first migration order are all preserved.
-The ADR-0011 decision-state dependency is satisfied; ADR-0013 still requires its
-own explicit review and acceptance.
+The ADR-0011 decision-state dependency was satisfied before the compatibility
+review. ADR-0013 was explicitly accepted on 2026-07-28 after that review found
+no blockers. Acceptance authorizes the design only; MR admission,
+implementation and qualification remain separate governance stages.
 
 ## Decision-register proposals
 

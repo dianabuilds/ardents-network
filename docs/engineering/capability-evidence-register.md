@@ -164,7 +164,7 @@ An Operator deploys multiple Nodes across real hosts with defined topology and r
 - ADRs: `docs/adr/0013-bounded-multi-host-reachability.md`
 - Research: `docs/engineering/research/multi-host-reachability.md`, `docs/engineering/research/wave3-synthesis.md`
 - Backlog: `.scratch/wave3-deep-research/issues/04-dr04-multi-host-reachability.md`
-- Constraints: Accepted research selects exactly three operator-owned Linux amd64 hosts, separately qualified private-LAN and public-direct variants, at least two bootstrap/Store Nodes, one designated DR-03 authority slot, and bounded workstation-side topology operations for the first release that claims multi-host support; it is excluded from the independent stabilization release, and ADR-0013 acceptance and implementation are pending
+- Constraints: Accepted ADR-0013 selects exactly three operator-owned Linux amd64 hosts, separately qualified private-LAN and public-direct variants, at least two bootstrap/Store Nodes, one designated Authority slot, and bounded workstation-side topology operations for the first release that claims multi-host support; the capability is excluded from the independent stabilization release, and implementation and matching-commit qualification remain pending
 - Unsupported: No supported real multi-host deployment contract; arbitrary node counts, automatic NAT traversal, schedulers, Kubernetes, and remote Operator/Application APIs remain unsupported
 <!-- capability-status:end deployment.multi-host -->
 

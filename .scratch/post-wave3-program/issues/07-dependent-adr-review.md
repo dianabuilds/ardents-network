@@ -1,8 +1,8 @@
 # PW3-07: Review dependent ADR-0013, ADR-0014, and ADR-0015
 
-Status: ready-for-human
+Status: ready-for-agent
 State: open
-Labels: ready-for-human
+Labels: ready-for-agent
 Research class: dependent decision review
 
 ## Parent
@@ -273,7 +273,7 @@ before the first implementation slice is accepted.
       migration, and downgrade behavior fail closed.
 - [x] Unsupported node counts, schedulers, automatic NAT traversal, remote
       APIs, and suppressed transports remain explicit.
-- [ ] Maintainer records an independent ADR-0013 review outcome.
+- [x] Maintainer records an independent ADR-0013 review outcome.
 
 ### ADR-0015 review
 
@@ -445,3 +445,15 @@ No implementation or qualification is claimed by closing this issue.
     it, update W3-D004, admit MR-01/CGA-07, execute qualification, or change
     `realm.channel-grant-authority` or `deployment.multi-host` from `Q=no`.
     Explicit maintainer disposition is still required.
+- 2026-07-28 ADR-0013 maintainer disposition:
+  - verdict: `accepted`;
+  - accepted ADR source:
+    `da39106ce695977c03594a296674229852ea53da`;
+  - review evidence:
+    `7fa4169ea3105b463be8b08bf362a3bb2fb82808`;
+  - findings at acceptance: no actionable compatibility blockers;
+  - this acceptance authorizes the bounded multi-host design only. It does not
+    publish or admit MR-01, admit CGA-07, execute qualification, deploy, push
+    or change either affected capability from `Q=no`;
+  - PW3-07 remains open and returns to `ready-for-agent` only for the separate
+    ADR-0015 review. ADR-0014 remains gated by ADR-0012 and is not bundled.

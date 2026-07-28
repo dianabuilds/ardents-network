@@ -113,6 +113,17 @@ implementation slices and commits.
 - ADR-0011 is accepted and CGA-01 is ready for implementation triage; Hosting
   implementation remains gated on explicit maintainer disposition of ADR-0012.
 
+## Governance checkpoint — 2026-07-28
+
+- ADR-0013 was explicitly accepted after a compatibility review against the
+  accepted Authority design and CGA-01 through CGA-06 implementation found no
+  blockers.
+- W3-D004 is accepted as a design decision only. MR-01 is not published or
+  admitted, CGA-07 remains `needs-info`, and `deployment.multi-host` and
+  `realm.channel-grant-authority` remain `Q=no`.
+- ADR-0015 remains a separate ready review. ADR-0014 remains gated by
+  ADR-0012; neither was bundled into the ADR-0013 disposition.
+
 ## Stream ownership
 
 - The integrator alone edits this PRD, the Wave 3 decision register, the

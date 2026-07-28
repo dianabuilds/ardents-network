@@ -7,8 +7,8 @@
 - Frozen product baseline:
   `8b9f8ad87fb78fccd7a73d445f2d72dbf2e51b4c`
 - Inputs: accepted DR-01 through DR-05 research recommendations
-- Decision state: ADR-0011 is Accepted; ADR-0012 through ADR-0015 remain
-  Proposed
+- Decision state: ADR-0011 and ADR-0013 are Accepted; ADR-0012, ADR-0014 and
+  ADR-0015 remain Proposed
 
 Wave 3 is research-complete. The five selected designs form one compatible
 model, but none is implemented or qualified at the frozen product baseline.
@@ -96,11 +96,12 @@ ADR-0012 leased Application Hosting
 ADR-0001..0010 remain accepted fixed inputs.
 ```
 
-ADR-0011 was accepted on 2026-07-27. Its ADR-0013 and ADR-0015 review gate is
-satisfied, subject to their compatibility rechecks against the accepted
-authority text. ADR-0012 remains Proposed; ADR-0014 may be accepted only after
-ADR-0012 and the existing Application Discovery boundary remain compatible.
-ADR acceptance authorizes a design, not implementation or qualification.
+ADR-0011 was accepted on 2026-07-27. ADR-0013 passed its compatibility recheck
+against the accepted Authority implementation and was explicitly accepted on
+2026-07-28. ADR-0015 remains independently ready for its compatibility review.
+ADR-0012 remains Proposed; ADR-0014 may be accepted only after ADR-0012 and the
+existing Application Discovery boundary remain compatible. ADR acceptance
+authorizes a design, not implementation or qualification.
 
 ## Release-scope decision
 
@@ -162,8 +163,8 @@ vertical slice whose detailed acceptance criteria live in its source packet.
 ### Tranche 0 — decisions and independent release
 
 1. ADR-0011 is accepted; review/accept ADR-0012 independently.
-2. Review ADR-0013 and ADR-0015 against accepted ADR-0011; review ADR-0014
-   after ADR-0012.
+2. ADR-0013 is accepted after review against accepted ADR-0011; review
+   ADR-0015 independently against ADR-0011, and ADR-0014 after ADR-0012.
 3. Run the independent stabilization DR-06 matrix below without waiting for
    any Wave 3 implementation.
 
