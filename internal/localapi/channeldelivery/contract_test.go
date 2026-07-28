@@ -85,3 +85,29 @@ func TestCanonicalMemberActivationResourceIsOperationBound(t *testing.T) {
 	)
 	require.Error(t, err)
 }
+
+func TestCanonicalAuthorityTrustTransitionResourceIsExactRealm(t *testing.T) {
+	realmID := "r1_00112233445566778899aabbccddeeff"
+	for _, test := range []struct {
+		procedure string
+		request   any
+	}{
+		{
+			ardentsv1connect.ChannelDeliveryServiceAdoptAuthorityTransitionProcedure,
+			&protocol.AdoptAuthorityTransitionRequest{
+				Version: 1, RealmId: realmID, TransitionJson: []byte(`{}`),
+			},
+		},
+		{
+			ardentsv1connect.ChannelDeliveryServiceFinalizeAuthorityTransitionProcedure,
+			&protocol.FinalizeAuthorityTransitionRequest{
+				Version: 1, RealmId: realmID, TransitionRecordJson: []byte(`{}`),
+			},
+		},
+	} {
+		target, err := CanonicalizeResource(test.procedure, test.request, "realm")
+		require.NoError(t, err)
+		require.Equal(t, realmID, target.ID)
+		require.Equal(t, "realm", string(target.Kind))
+	}
+}

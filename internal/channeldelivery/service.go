@@ -77,9 +77,15 @@ func (s *Service) BindActivationRuntime(runtime ActivationRuntime) {
 
 func (s *Service) AdoptAuthorityTransition(
 	command Command,
+	version uint32,
+	realmID string,
 	transition authoritydomain.AuthorityTransition,
 ) error {
-	if command.Actor == "" || command.Actor != command.Effective {
+	if version != ContractVersion {
+		return ErrUnsupportedVersion
+	}
+	if command.Actor == "" || command.Actor != command.Effective ||
+		transition.RealmID != realmID {
 		return ErrPermissionDenied
 	}
 	if err := authoritydomain.AdoptMemberAuthorityTransition(
@@ -92,9 +98,15 @@ func (s *Service) AdoptAuthorityTransition(
 
 func (s *Service) FinalizeAuthorityTransition(
 	command Command,
+	version uint32,
+	realmID string,
 	record authoritydomain.AuthorityTransitionRecord,
 ) error {
-	if command.Actor == "" || command.Actor != command.Effective {
+	if version != ContractVersion {
+		return ErrUnsupportedVersion
+	}
+	if command.Actor == "" || command.Actor != command.Effective ||
+		record.Proof.RealmID != realmID {
 		return ErrPermissionDenied
 	}
 	if err := authoritydomain.FinalizeMemberAuthorityTransition(

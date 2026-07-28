@@ -5,11 +5,13 @@ import (
 	"errors"
 	"time"
 
+	authoritydomain "ardents/internal/authority"
 	domain "ardents/internal/channeldelivery"
 	identityapi "ardents/internal/identity"
 	identitycapability "ardents/internal/identity/capability"
 	protocol "ardents/internal/localapi/protocol"
 	"ardents/internal/localapi/rpc"
+	"ardents/internal/storage"
 
 	"connectrpc.com/connect"
 )
@@ -18,6 +20,62 @@ type Service interface {
 	Prepare(context.Context, domain.Command, domain.PrepareRequest) (identityapi.CapabilityDeliveryAttestation, error)
 	Install(context.Context, domain.Command, uint32, identitycapability.SealedGenerationDelivery) (identitycapability.GenerationDeliveryReceipt, error)
 	Activate(context.Context, domain.Command, uint32, identitycapability.GenerationActivation) (identitycapability.GenerationDeliveryReceipt, error)
+	AdoptAuthorityTransition(domain.Command, uint32, string, authoritydomain.AuthorityTransition) error
+	FinalizeAuthorityTransition(domain.Command, uint32, string, authoritydomain.AuthorityTransitionRecord) error
+}
+
+const maximumAuthorityTransitionArtifactBytes = 64 << 10
+
+func (h *ChannelDeliveryEndpoint) AdoptAuthorityTransition(
+	ctx context.Context,
+	request *connect.Request[protocol.AdoptAuthorityTransitionRequest],
+) (*connect.Response[protocol.AuthorityTrustTransitionResponse], error) {
+	return rpc.RespondContext(ctx, func(call rpc.Call) (*protocol.AuthorityTrustTransitionResponse, *rpc.Error) {
+		command, ok := commandFromCall(call)
+		raw := request.Msg.GetTransitionJson()
+		if h.service == nil || !ok || len(raw) == 0 ||
+			len(raw) > maximumAuthorityTransitionArtifactBytes {
+			return nil, deliveryError("adopt_authority_transition", domain.ErrInvalidArgument)
+		}
+		var transition authoritydomain.AuthorityTransition
+		if storage.DecodeJSONStrict(raw, &transition) != nil {
+			return nil, deliveryError("adopt_authority_transition", domain.ErrInvalidArgument)
+		}
+		if err := h.service.AdoptAuthorityTransition(
+			command, request.Msg.GetVersion(), request.Msg.GetRealmId(), transition,
+		); err != nil {
+			return nil, deliveryError("adopt_authority_transition", err)
+		}
+		return &protocol.AuthorityTrustTransitionResponse{
+			Status: &protocol.OperationStatus{State: "adopted", Accepted: true},
+		}, nil
+	})
+}
+
+func (h *ChannelDeliveryEndpoint) FinalizeAuthorityTransition(
+	ctx context.Context,
+	request *connect.Request[protocol.FinalizeAuthorityTransitionRequest],
+) (*connect.Response[protocol.AuthorityTrustTransitionResponse], error) {
+	return rpc.RespondContext(ctx, func(call rpc.Call) (*protocol.AuthorityTrustTransitionResponse, *rpc.Error) {
+		command, ok := commandFromCall(call)
+		raw := request.Msg.GetTransitionRecordJson()
+		if h.service == nil || !ok || len(raw) == 0 ||
+			len(raw) > maximumAuthorityTransitionArtifactBytes {
+			return nil, deliveryError("finalize_authority_transition", domain.ErrInvalidArgument)
+		}
+		var record authoritydomain.AuthorityTransitionRecord
+		if storage.DecodeJSONStrict(raw, &record) != nil {
+			return nil, deliveryError("finalize_authority_transition", domain.ErrInvalidArgument)
+		}
+		if err := h.service.FinalizeAuthorityTransition(
+			command, request.Msg.GetVersion(), request.Msg.GetRealmId(), record,
+		); err != nil {
+			return nil, deliveryError("finalize_authority_transition", err)
+		}
+		return &protocol.AuthorityTrustTransitionResponse{
+			Status: &protocol.OperationStatus{State: "finalized", Accepted: true},
+		}, nil
+	})
 }
 
 func (h *ChannelDeliveryEndpoint) ActivateGeneration(ctx context.Context, request *connect.Request[protocol.ActivateGenerationRequest]) (*connect.Response[protocol.ActivateGenerationResponse], error) {

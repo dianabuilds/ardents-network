@@ -487,6 +487,9 @@ flowchart TD
     workload[workload]
     hosting[hosting]
     publication[publication]
+    authority[authority]
+    channeldelivery[channeldelivery]
+    provision[provision]
     daemon[daemon]
 
     identity --> storage
@@ -524,7 +527,17 @@ flowchart TD
     publication --> messaging
     publication --> identity
     publication --> diagnostics
+    authority --> identity
+    authority --> storage
+    channeldelivery --> authority
+    channeldelivery --> identity
+    provision --> authority
+    provision --> identity
+    provision --> policy
+    provision --> storage
     daemon --> buildinfo
+    daemon --> authority
+    daemon --> channeldelivery
     daemon --> config
     daemon --> diagnostics
     daemon --> identity

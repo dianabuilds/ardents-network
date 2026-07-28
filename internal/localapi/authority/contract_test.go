@@ -49,17 +49,19 @@ func TestAuthorityProceduresHaveExactDirectOperatorContracts(t *testing.T) {
 	require.False(t, identitycontract.IsRegisteredAction(identitycontract.InterfaceApplication, domain.ActionVerifyRestore))
 
 	for procedure, action := range map[string]string{
-		ardentsv1connect.AuthorityServiceIssueInitialGenerationProcedure:          domain.ActionIssueDelivery,
-		ardentsv1connect.AuthorityServiceAcknowledgeInitialGenerationProcedure:    domain.ActionAcknowledgeDelivery,
-		ardentsv1connect.AuthorityServiceRotateChannelProcedure:                   domain.ActionRotateGeneration,
-		ardentsv1connect.AuthorityServiceRenewChannelGrantsProcedure:              domain.ActionRotateGeneration,
-		ardentsv1connect.AuthorityServiceCommitChannelActivationProcedure:         domain.ActionCommitActivation,
-		ardentsv1connect.AuthorityServiceAcknowledgeChannelActivationProcedure:    domain.ActionAcknowledgeActivation,
-		ardentsv1connect.AuthorityServiceChangeChannelMembershipProcedure:         domain.ActionChangeMembership,
-		ardentsv1connect.AuthorityServiceSubmitDeploymentFenceEvidenceProcedure:   domain.ActionChangeMembership,
-		ardentsv1connect.ChannelDeliveryServicePrepareGenerationDeliveryProcedure: "realm.channel.delivery.prepare",
-		ardentsv1connect.ChannelDeliveryServiceInstallGenerationDeliveryProcedure: "realm.channel.delivery.install",
-		ardentsv1connect.ChannelDeliveryServiceActivateGenerationProcedure:        "realm.channel.generation.activate",
+		ardentsv1connect.AuthorityServiceIssueInitialGenerationProcedure:            domain.ActionIssueDelivery,
+		ardentsv1connect.AuthorityServiceAcknowledgeInitialGenerationProcedure:      domain.ActionAcknowledgeDelivery,
+		ardentsv1connect.AuthorityServiceRotateChannelProcedure:                     domain.ActionRotateGeneration,
+		ardentsv1connect.AuthorityServiceRenewChannelGrantsProcedure:                domain.ActionRotateGeneration,
+		ardentsv1connect.AuthorityServiceCommitChannelActivationProcedure:           domain.ActionCommitActivation,
+		ardentsv1connect.AuthorityServiceAcknowledgeChannelActivationProcedure:      domain.ActionAcknowledgeActivation,
+		ardentsv1connect.AuthorityServiceChangeChannelMembershipProcedure:           domain.ActionChangeMembership,
+		ardentsv1connect.AuthorityServiceSubmitDeploymentFenceEvidenceProcedure:     domain.ActionChangeMembership,
+		ardentsv1connect.ChannelDeliveryServicePrepareGenerationDeliveryProcedure:   "realm.channel.delivery.prepare",
+		ardentsv1connect.ChannelDeliveryServiceInstallGenerationDeliveryProcedure:   "realm.channel.delivery.install",
+		ardentsv1connect.ChannelDeliveryServiceActivateGenerationProcedure:          "realm.channel.generation.activate",
+		ardentsv1connect.ChannelDeliveryServiceAdoptAuthorityTransitionProcedure:    domain.ActionPlanTransition,
+		ardentsv1connect.ChannelDeliveryServiceFinalizeAuthorityTransitionProcedure: domain.ActionPlanTransition,
 	} {
 		rule, registered := localauth.RuleForProcedure(procedure)
 		require.True(t, registered, procedure)

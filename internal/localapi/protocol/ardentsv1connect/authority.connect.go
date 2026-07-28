@@ -80,6 +80,12 @@ const (
 	// ChannelDeliveryServiceActivateGenerationProcedure is the fully-qualified name of the
 	// ChannelDeliveryService's ActivateGeneration RPC.
 	ChannelDeliveryServiceActivateGenerationProcedure = "/ardents.v1.ChannelDeliveryService/ActivateGeneration"
+	// ChannelDeliveryServiceAdoptAuthorityTransitionProcedure is the fully-qualified name of the
+	// ChannelDeliveryService's AdoptAuthorityTransition RPC.
+	ChannelDeliveryServiceAdoptAuthorityTransitionProcedure = "/ardents.v1.ChannelDeliveryService/AdoptAuthorityTransition"
+	// ChannelDeliveryServiceFinalizeAuthorityTransitionProcedure is the fully-qualified name of the
+	// ChannelDeliveryService's FinalizeAuthorityTransition RPC.
+	ChannelDeliveryServiceFinalizeAuthorityTransitionProcedure = "/ardents.v1.ChannelDeliveryService/FinalizeAuthorityTransition"
 )
 
 // AuthorityServiceClient is a client for the ardents.v1.AuthorityService service.
@@ -443,6 +449,8 @@ type ChannelDeliveryServiceClient interface {
 	PrepareGenerationDelivery(context.Context, *connect.Request[protocol.PrepareGenerationDeliveryRequest]) (*connect.Response[protocol.PrepareGenerationDeliveryResponse], error)
 	InstallGenerationDelivery(context.Context, *connect.Request[protocol.InstallGenerationDeliveryRequest]) (*connect.Response[protocol.InstallGenerationDeliveryResponse], error)
 	ActivateGeneration(context.Context, *connect.Request[protocol.ActivateGenerationRequest]) (*connect.Response[protocol.ActivateGenerationResponse], error)
+	AdoptAuthorityTransition(context.Context, *connect.Request[protocol.AdoptAuthorityTransitionRequest]) (*connect.Response[protocol.AuthorityTrustTransitionResponse], error)
+	FinalizeAuthorityTransition(context.Context, *connect.Request[protocol.FinalizeAuthorityTransitionRequest]) (*connect.Response[protocol.AuthorityTrustTransitionResponse], error)
 }
 
 // NewChannelDeliveryServiceClient constructs a client for the ardents.v1.ChannelDeliveryService
@@ -474,14 +482,28 @@ func NewChannelDeliveryServiceClient(httpClient connect.HTTPClient, baseURL stri
 			connect.WithSchema(channelDeliveryServiceMethods.ByName("ActivateGeneration")),
 			connect.WithClientOptions(opts...),
 		),
+		adoptAuthorityTransition: connect.NewClient[protocol.AdoptAuthorityTransitionRequest, protocol.AuthorityTrustTransitionResponse](
+			httpClient,
+			baseURL+ChannelDeliveryServiceAdoptAuthorityTransitionProcedure,
+			connect.WithSchema(channelDeliveryServiceMethods.ByName("AdoptAuthorityTransition")),
+			connect.WithClientOptions(opts...),
+		),
+		finalizeAuthorityTransition: connect.NewClient[protocol.FinalizeAuthorityTransitionRequest, protocol.AuthorityTrustTransitionResponse](
+			httpClient,
+			baseURL+ChannelDeliveryServiceFinalizeAuthorityTransitionProcedure,
+			connect.WithSchema(channelDeliveryServiceMethods.ByName("FinalizeAuthorityTransition")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // channelDeliveryServiceClient implements ChannelDeliveryServiceClient.
 type channelDeliveryServiceClient struct {
-	prepareGenerationDelivery *connect.Client[protocol.PrepareGenerationDeliveryRequest, protocol.PrepareGenerationDeliveryResponse]
-	installGenerationDelivery *connect.Client[protocol.InstallGenerationDeliveryRequest, protocol.InstallGenerationDeliveryResponse]
-	activateGeneration        *connect.Client[protocol.ActivateGenerationRequest, protocol.ActivateGenerationResponse]
+	prepareGenerationDelivery   *connect.Client[protocol.PrepareGenerationDeliveryRequest, protocol.PrepareGenerationDeliveryResponse]
+	installGenerationDelivery   *connect.Client[protocol.InstallGenerationDeliveryRequest, protocol.InstallGenerationDeliveryResponse]
+	activateGeneration          *connect.Client[protocol.ActivateGenerationRequest, protocol.ActivateGenerationResponse]
+	adoptAuthorityTransition    *connect.Client[protocol.AdoptAuthorityTransitionRequest, protocol.AuthorityTrustTransitionResponse]
+	finalizeAuthorityTransition *connect.Client[protocol.FinalizeAuthorityTransitionRequest, protocol.AuthorityTrustTransitionResponse]
 }
 
 // PrepareGenerationDelivery calls ardents.v1.ChannelDeliveryService.PrepareGenerationDelivery.
@@ -499,12 +521,24 @@ func (c *channelDeliveryServiceClient) ActivateGeneration(ctx context.Context, r
 	return c.activateGeneration.CallUnary(ctx, req)
 }
 
+// AdoptAuthorityTransition calls ardents.v1.ChannelDeliveryService.AdoptAuthorityTransition.
+func (c *channelDeliveryServiceClient) AdoptAuthorityTransition(ctx context.Context, req *connect.Request[protocol.AdoptAuthorityTransitionRequest]) (*connect.Response[protocol.AuthorityTrustTransitionResponse], error) {
+	return c.adoptAuthorityTransition.CallUnary(ctx, req)
+}
+
+// FinalizeAuthorityTransition calls ardents.v1.ChannelDeliveryService.FinalizeAuthorityTransition.
+func (c *channelDeliveryServiceClient) FinalizeAuthorityTransition(ctx context.Context, req *connect.Request[protocol.FinalizeAuthorityTransitionRequest]) (*connect.Response[protocol.AuthorityTrustTransitionResponse], error) {
+	return c.finalizeAuthorityTransition.CallUnary(ctx, req)
+}
+
 // ChannelDeliveryServiceHandler is an implementation of the ardents.v1.ChannelDeliveryService
 // service.
 type ChannelDeliveryServiceHandler interface {
 	PrepareGenerationDelivery(context.Context, *connect.Request[protocol.PrepareGenerationDeliveryRequest]) (*connect.Response[protocol.PrepareGenerationDeliveryResponse], error)
 	InstallGenerationDelivery(context.Context, *connect.Request[protocol.InstallGenerationDeliveryRequest]) (*connect.Response[protocol.InstallGenerationDeliveryResponse], error)
 	ActivateGeneration(context.Context, *connect.Request[protocol.ActivateGenerationRequest]) (*connect.Response[protocol.ActivateGenerationResponse], error)
+	AdoptAuthorityTransition(context.Context, *connect.Request[protocol.AdoptAuthorityTransitionRequest]) (*connect.Response[protocol.AuthorityTrustTransitionResponse], error)
+	FinalizeAuthorityTransition(context.Context, *connect.Request[protocol.FinalizeAuthorityTransitionRequest]) (*connect.Response[protocol.AuthorityTrustTransitionResponse], error)
 }
 
 // NewChannelDeliveryServiceHandler builds an HTTP handler from the service implementation. It
@@ -532,6 +566,18 @@ func NewChannelDeliveryServiceHandler(svc ChannelDeliveryServiceHandler, opts ..
 		connect.WithSchema(channelDeliveryServiceMethods.ByName("ActivateGeneration")),
 		connect.WithHandlerOptions(opts...),
 	)
+	channelDeliveryServiceAdoptAuthorityTransitionHandler := connect.NewUnaryHandler(
+		ChannelDeliveryServiceAdoptAuthorityTransitionProcedure,
+		svc.AdoptAuthorityTransition,
+		connect.WithSchema(channelDeliveryServiceMethods.ByName("AdoptAuthorityTransition")),
+		connect.WithHandlerOptions(opts...),
+	)
+	channelDeliveryServiceFinalizeAuthorityTransitionHandler := connect.NewUnaryHandler(
+		ChannelDeliveryServiceFinalizeAuthorityTransitionProcedure,
+		svc.FinalizeAuthorityTransition,
+		connect.WithSchema(channelDeliveryServiceMethods.ByName("FinalizeAuthorityTransition")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/ardents.v1.ChannelDeliveryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ChannelDeliveryServicePrepareGenerationDeliveryProcedure:
@@ -540,6 +586,10 @@ func NewChannelDeliveryServiceHandler(svc ChannelDeliveryServiceHandler, opts ..
 			channelDeliveryServiceInstallGenerationDeliveryHandler.ServeHTTP(w, r)
 		case ChannelDeliveryServiceActivateGenerationProcedure:
 			channelDeliveryServiceActivateGenerationHandler.ServeHTTP(w, r)
+		case ChannelDeliveryServiceAdoptAuthorityTransitionProcedure:
+			channelDeliveryServiceAdoptAuthorityTransitionHandler.ServeHTTP(w, r)
+		case ChannelDeliveryServiceFinalizeAuthorityTransitionProcedure:
+			channelDeliveryServiceFinalizeAuthorityTransitionHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -559,4 +609,12 @@ func (UnimplementedChannelDeliveryServiceHandler) InstallGenerationDelivery(cont
 
 func (UnimplementedChannelDeliveryServiceHandler) ActivateGeneration(context.Context, *connect.Request[protocol.ActivateGenerationRequest]) (*connect.Response[protocol.ActivateGenerationResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.ChannelDeliveryService.ActivateGeneration is not implemented"))
+}
+
+func (UnimplementedChannelDeliveryServiceHandler) AdoptAuthorityTransition(context.Context, *connect.Request[protocol.AdoptAuthorityTransitionRequest]) (*connect.Response[protocol.AuthorityTrustTransitionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.ChannelDeliveryService.AdoptAuthorityTransition is not implemented"))
+}
+
+func (UnimplementedChannelDeliveryServiceHandler) FinalizeAuthorityTransition(context.Context, *connect.Request[protocol.FinalizeAuthorityTransitionRequest]) (*connect.Response[protocol.AuthorityTrustTransitionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.ChannelDeliveryService.FinalizeAuthorityTransition is not implemented"))
 }

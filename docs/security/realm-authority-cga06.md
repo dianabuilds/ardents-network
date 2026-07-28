@@ -68,7 +68,10 @@ both signatures, requires the predecessor to be their current trusted channel
 issuer, and durably adds the successor in the encrypted capability store before
 accepting successor-signed deliveries. Once authority truth records every
 required channel complete, `FinalizeAuthorityTransition` durably retires the
-predecessor's channel-issuance purpose. Both states survive restart.
+predecessor's channel-issuance purpose. Finalization accepts only the
+successor-signed completion artifact bound to the terminal checkpoint and the
+exact sorted required/rotated Channel IDs; caller-edited completion lists fail
+closed. Both states survive restart.
 
 The successor signer is provisioned before transition as protected
 `authority.successor_signer_file`; daemon composition supplies it through the

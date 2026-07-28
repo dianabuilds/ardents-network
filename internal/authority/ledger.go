@@ -279,6 +279,17 @@ func cloneLedger(state Ledger) Ledger {
 		transition.RotatedChannelIDs = append(
 			[][16]byte(nil), transition.RotatedChannelIDs...,
 		)
+		if transition.Completion != nil {
+			completion := *transition.Completion
+			completion.RequiredRotationChannelIDs = append(
+				[][16]byte(nil), completion.RequiredRotationChannelIDs...,
+			)
+			completion.RotatedChannelIDs = append(
+				[][16]byte(nil), completion.RotatedChannelIDs...,
+			)
+			completion.Signature = append([]byte(nil), completion.Signature...)
+			transition.Completion = &completion
+		}
 		state.Transition = &transition
 	}
 	return state

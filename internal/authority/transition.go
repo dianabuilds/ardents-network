@@ -16,7 +16,10 @@ import (
 	identityprincipal "ardents/internal/identity/principal"
 )
 
-const authorityTransitionDomain = "ardents:realm-authority-transition:v1\x00"
+const (
+	authorityTransitionDomain           = "ardents:realm-authority-transition:v1\x00"
+	authorityTransitionCompletionDomain = "ardents:realm-authority-transition-completion:v1\x00"
+)
 
 type PlanAuthorityTransitionRequest struct {
 	Version           uint32 `json:"version"`
@@ -54,6 +57,33 @@ type authorityTransitionBody struct {
 	AuthoritySequence      uint64    `json:"authority_sequence"`
 	CheckpointDigest       string    `json:"checkpoint_digest"`
 	CreatedAt              time.Time `json:"created_at"`
+}
+
+type AuthorityTransitionCompletion struct {
+	Version                    uint32     `json:"version"`
+	RealmID                    string     `json:"realm_id"`
+	TransitionDigest           string     `json:"transition_digest"`
+	AuthorityPrincipal         string     `json:"authority_principal"`
+	AuthorityEpoch             uint64     `json:"authority_epoch"`
+	AuthoritySequence          uint64     `json:"authority_sequence"`
+	CheckpointDigest           string     `json:"checkpoint_digest"`
+	RequiredRotationChannelIDs [][16]byte `json:"required_rotation_channel_ids"`
+	RotatedChannelIDs          [][16]byte `json:"rotated_channel_ids"`
+	CompletedAt                time.Time  `json:"completed_at"`
+	Signature                  []byte     `json:"signature"`
+}
+
+type authorityTransitionCompletionBody struct {
+	Version                    uint32     `json:"version"`
+	RealmID                    string     `json:"realm_id"`
+	TransitionDigest           string     `json:"transition_digest"`
+	AuthorityPrincipal         string     `json:"authority_principal"`
+	AuthorityEpoch             uint64     `json:"authority_epoch"`
+	AuthoritySequence          uint64     `json:"authority_sequence"`
+	CheckpointDigest           string     `json:"checkpoint_digest"`
+	RequiredRotationChannelIDs [][16]byte `json:"required_rotation_channel_ids"`
+	RotatedChannelIDs          [][16]byte `json:"rotated_channel_ids"`
+	CompletedAt                time.Time  `json:"completed_at"`
 }
 
 func (s *Service) PlanAuthorityTransition(
@@ -342,6 +372,114 @@ func authorityTransitionDigest(transition AuthorityTransition) ([]byte, error) {
 	return sum[:], nil
 }
 
+func signAuthorityTransitionCompletion(
+	ctx context.Context,
+	signer Signer,
+	record AuthorityTransitionRecord,
+	checkpoint SignedCheckpoint,
+	completedAt time.Time,
+) (AuthorityTransitionCompletion, error) {
+	transitionDigest, err := authorityTransitionDigest(record.Proof)
+	if err != nil {
+		return AuthorityTransitionCompletion{}, err
+	}
+	completion := AuthorityTransitionCompletion{
+		Version: ContractVersion, RealmID: record.Proof.RealmID,
+		TransitionDigest:   "sha256:" + hex.EncodeToString(transitionDigest),
+		AuthorityPrincipal: record.Proof.ToAuthorityPrincipal,
+		AuthorityEpoch:     record.Proof.ToAuthorityEpoch,
+		AuthoritySequence:  checkpoint.AuthoritySequence,
+		CheckpointDigest:   checkpoint.Digest,
+		RequiredRotationChannelIDs: append(
+			[][16]byte(nil), record.RequiredRotationChannelIDs...,
+		),
+		RotatedChannelIDs: append(
+			[][16]byte(nil), record.RotatedChannelIDs...,
+		),
+		CompletedAt: completedAt,
+	}
+	digest, err := authorityTransitionCompletionDigest(completion)
+	if err != nil {
+		return AuthorityTransitionCompletion{}, err
+	}
+	completion.Signature, err = signer.Sign(ctx, digest)
+	if err != nil {
+		return AuthorityTransitionCompletion{}, ErrUnavailable
+	}
+	if err := ValidateAuthorityTransitionCompletion(record.Proof, completion); err != nil {
+		return AuthorityTransitionCompletion{}, err
+	}
+	return completion, nil
+}
+
+func ValidateAuthorityTransitionCompletion(
+	transition AuthorityTransition,
+	completion AuthorityTransitionCompletion,
+) error {
+	if ValidateAuthorityTransition(transition) != nil ||
+		completion.Version != ContractVersion ||
+		completion.RealmID != transition.RealmID ||
+		completion.AuthorityPrincipal != transition.ToAuthorityPrincipal ||
+		completion.AuthorityEpoch != transition.ToAuthorityEpoch ||
+		completion.AuthoritySequence <= transition.AuthoritySequence ||
+		!digestPattern.MatchString(completion.CheckpointDigest) ||
+		!sha256Pattern.MatchString(completion.TransitionDigest) ||
+		!canonicalSecond(completion.CompletedAt) ||
+		len(completion.RequiredRotationChannelIDs) == 0 ||
+		len(completion.RequiredRotationChannelIDs) != len(completion.RotatedChannelIDs) ||
+		len(completion.Signature) != ed25519.SignatureSize {
+		return ErrInvalidArgument
+	}
+	transitionDigest, err := authorityTransitionDigest(transition)
+	if err != nil ||
+		completion.TransitionDigest != "sha256:"+hex.EncodeToString(transitionDigest) {
+		return ErrInvalidArgument
+	}
+	for index := range completion.RequiredRotationChannelIDs {
+		if zeroFixedID(completion.RequiredRotationChannelIDs[index]) ||
+			completion.RequiredRotationChannelIDs[index] != completion.RotatedChannelIDs[index] ||
+			(index > 0 && bytes.Compare(
+				completion.RequiredRotationChannelIDs[index-1][:],
+				completion.RequiredRotationChannelIDs[index][:],
+			) >= 0) {
+			return ErrInvalidArgument
+		}
+	}
+	digest, err := authorityTransitionCompletionDigest(completion)
+	if err != nil ||
+		!ed25519.Verify(
+			ed25519.PublicKey(transition.ToAuthorityPublicKey),
+			digest, completion.Signature,
+		) {
+		return ErrPermissionDenied
+	}
+	return nil
+}
+
+func authorityTransitionCompletionDigest(
+	completion AuthorityTransitionCompletion,
+) ([]byte, error) {
+	body := authorityTransitionCompletionBody{
+		Version: completion.Version, RealmID: completion.RealmID,
+		TransitionDigest:           completion.TransitionDigest,
+		AuthorityPrincipal:         completion.AuthorityPrincipal,
+		AuthorityEpoch:             completion.AuthorityEpoch,
+		AuthoritySequence:          completion.AuthoritySequence,
+		CheckpointDigest:           completion.CheckpointDigest,
+		RequiredRotationChannelIDs: completion.RequiredRotationChannelIDs,
+		RotatedChannelIDs:          completion.RotatedChannelIDs,
+		CompletedAt:                completion.CompletedAt,
+	}
+	raw, err := json.Marshal(body)
+	if err != nil {
+		return nil, ErrInvalidArgument
+	}
+	sum := sha256.Sum256(append(
+		[]byte(authorityTransitionCompletionDomain), raw...,
+	))
+	return sum[:], nil
+}
+
 func signerIdentity(ctx context.Context, signer Signer) (string, ed25519.PublicKey, error) {
 	if signer == nil {
 		return "", nil, ErrUnavailable
@@ -434,7 +572,40 @@ func validateAuthorityTransitionRecord(state Ledger) error {
 			return ErrCorruptState
 		}
 	}
+	if authorityTransitionPending(record) {
+		if record.Completion != nil {
+			return ErrCorruptState
+		}
+	} else if len(record.RequiredRotationChannelIDs) > 0 {
+		if record.Completion == nil ||
+			ValidateAuthorityTransitionCompletion(
+				record.Proof, *record.Completion,
+			) != nil ||
+			record.Completion.AuthoritySequence > state.AuthoritySequence ||
+			!equalChannelIDSlices(
+				record.RequiredRotationChannelIDs,
+				record.Completion.RequiredRotationChannelIDs,
+			) ||
+			!equalChannelIDSlices(
+				record.RotatedChannelIDs,
+				record.Completion.RotatedChannelIDs,
+			) {
+			return ErrCorruptState
+		}
+	}
 	return nil
+}
+
+func equalChannelIDSlices(left, right [][16]byte) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for index := range left {
+		if left[index] != right[index] {
+			return false
+		}
+	}
+	return true
 }
 
 func transitionOperationIndex(state Ledger, operationID string) int {
@@ -470,15 +641,32 @@ func authorityTransitionRotationAllowed(
 	return required
 }
 
-func completeAuthorityTransitionRotation(state *Ledger, channelID [16]byte) {
+func completeAuthorityTransitionRotation(
+	ctx context.Context,
+	signer Signer,
+	state *Ledger,
+	channelID [16]byte,
+	checkpoint SignedCheckpoint,
+	completedAt time.Time,
+) error {
 	if state.Transition == nil ||
 		!authorityTransitionRotationAllowed(state.Transition, channelID) {
-		return
+		return nil
 	}
 	state.Transition.RotatedChannelIDs = append(
 		state.Transition.RotatedChannelIDs, channelID,
 	)
 	sortChannelIDs(state.Transition.RotatedChannelIDs)
+	if !authorityTransitionPending(state.Transition) {
+		completion, err := signAuthorityTransitionCompletion(
+			ctx, signer, *state.Transition, checkpoint, completedAt,
+		)
+		if err != nil {
+			return err
+		}
+		state.Transition.Completion = &completion
+	}
+	return nil
 }
 
 func cloneAuthorityTransitionValue(value AuthorityTransition) AuthorityTransition {
@@ -520,7 +708,18 @@ func FinalizeMemberAuthorityTransition(
 	record AuthorityTransitionRecord,
 ) error {
 	if member == nil || authorityTransitionPending(&record) ||
-		ValidateAuthorityTransition(record.Proof) != nil {
+		record.Completion == nil ||
+		ValidateAuthorityTransitionCompletion(
+			record.Proof, *record.Completion,
+		) != nil ||
+		!equalChannelIDSlices(
+			record.RequiredRotationChannelIDs,
+			record.Completion.RequiredRotationChannelIDs,
+		) ||
+		!equalChannelIDSlices(
+			record.RotatedChannelIDs,
+			record.Completion.RotatedChannelIDs,
+		) {
 		return ErrInvalidArgument
 	}
 	if err := member.FinalizeChannelIssuerTransition(

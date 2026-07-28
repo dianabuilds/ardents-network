@@ -134,6 +134,38 @@ service ChannelDeliveryService {
       mutating: true
     };
   }
+  rpc AdoptAuthorityTransition(AdoptAuthorityTransitionRequest) returns (AuthorityTrustTransitionResponse) {
+    option (operator_access) = {
+      action: "realm.authority.rotate"
+      domain: "authority"
+      resource_kind: "realm"
+      mutating: true
+    };
+  }
+  rpc FinalizeAuthorityTransition(FinalizeAuthorityTransitionRequest) returns (AuthorityTrustTransitionResponse) {
+    option (operator_access) = {
+      action: "realm.authority.rotate"
+      domain: "authority"
+      resource_kind: "realm"
+      mutating: true
+    };
+  }
+}
+
+message AdoptAuthorityTransitionRequest {
+  uint32 version = 1;
+  string realm_id = 2;
+  bytes transition_json = 3;
+}
+
+message FinalizeAuthorityTransitionRequest {
+  uint32 version = 1;
+  string realm_id = 2;
+  bytes transition_record_json = 3;
+}
+
+message AuthorityTrustTransitionResponse {
+  OperationStatus status = 1;
 }
 
 message CreateRealmAuthorityRequest {

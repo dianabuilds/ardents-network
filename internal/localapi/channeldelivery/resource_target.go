@@ -61,6 +61,28 @@ func CanonicalizeResource(procedure string, message any, kind string) (identitya
 			Kind: identityaccess.ResourceKind(kind),
 			ID:   resource,
 		}, nil
+	case ardentsv1connect.ChannelDeliveryServiceAdoptAuthorityTransitionProcedure:
+		request, ok := message.(*protocol.AdoptAuthorityTransitionRequest)
+		if !ok || len(request.ProtoReflect().GetUnknown()) != 0 ||
+			!domain.ValidRealmID(request.GetRealmId()) ||
+			len(request.GetTransitionJson()) == 0 ||
+			len(request.GetTransitionJson()) > maximumAuthorityTransitionArtifactBytes {
+			return identityaccess.ResourceTarget{}, ErrInvalidResourceTarget
+		}
+		return identityaccess.ResourceTarget{
+			Kind: identityaccess.ResourceKind(kind), ID: request.GetRealmId(),
+		}, nil
+	case ardentsv1connect.ChannelDeliveryServiceFinalizeAuthorityTransitionProcedure:
+		request, ok := message.(*protocol.FinalizeAuthorityTransitionRequest)
+		if !ok || len(request.ProtoReflect().GetUnknown()) != 0 ||
+			!domain.ValidRealmID(request.GetRealmId()) ||
+			len(request.GetTransitionRecordJson()) == 0 ||
+			len(request.GetTransitionRecordJson()) > maximumAuthorityTransitionArtifactBytes {
+			return identityaccess.ResourceTarget{}, ErrInvalidResourceTarget
+		}
+		return identityaccess.ResourceTarget{
+			Kind: identityaccess.ResourceKind(kind), ID: request.GetRealmId(),
+		}, nil
 	default:
 		return identityaccess.ResourceTarget{}, ErrInvalidResourceTarget
 	}

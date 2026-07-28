@@ -137,7 +137,12 @@ func TestAuthorityTransitionAdvancesRepositoryAndRequiresEveryChannelRotation(t 
 	require.Equal(t, PhaseReady, service.Readiness().Phase)
 	require.Equal(t, ReadinessReady, service.Readiness().Readiness)
 	require.Len(t, store.state.Transition.RotatedChannelIDs, 2)
+	require.NotNil(t, store.state.Transition.Completion)
 	require.NoError(t, validateLedger(store.state))
+	tamperedCompletion := *store.state.Transition
+	tamperedCompletion.RequiredRotationChannelIDs = nil
+	tamperedCompletion.RotatedChannelIDs = nil
+	require.Error(t, FinalizeMemberAuthorityTransition(member, tamperedCompletion))
 	require.NoError(t, FinalizeMemberAuthorityTransition(
 		member, *store.state.Transition,
 	))
