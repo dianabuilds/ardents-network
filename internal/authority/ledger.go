@@ -47,6 +47,16 @@ func validateLedger(state Ledger) error {
 		len(state.AuditOutbox) > MaxAuditOutboxRecords {
 		return corruptLedger("container bounds")
 	}
+	memberPrincipals := make(map[string]struct{}, len(state.Members))
+	for _, member := range state.Members {
+		if member.Version != ContractVersion || member.Principal == "" {
+			return corruptLedger("member")
+		}
+		if _, duplicate := memberPrincipals[member.Principal]; duplicate {
+			return corruptLedger("duplicate member")
+		}
+		memberPrincipals[member.Principal] = struct{}{}
+	}
 	for _, channel := range state.Channels {
 		if channel.MemberCount > MaxMembersPerChannel ||
 			channel.PendingGenerationCount > MaxPendingGenerations ||
@@ -62,11 +72,17 @@ func validateLedger(state Ledger) error {
 			) != nil {
 			return corruptLedger("channel grant")
 		}
+		for _, stored := range current {
+			if _, ok := memberPrincipals[stored.SubjectPrincipal]; !ok {
+				return corruptLedger("channel member")
+			}
+		}
 		if channel.PendingGenerationCount == 0 {
 			if len(channel.PendingGrants) != 0 {
 				return corruptLedger("pending channel grant")
 			}
-		} else if len(channel.PendingGrants) != int(channel.MemberCount) ||
+		} else if len(channel.PendingGrants) == 0 ||
+			len(channel.PendingGrants) > MaxMembersPerChannel ||
 			validateChannelGrantSet(
 				channel, channel.PendingGrants, channel.CurrentGeneration+1,
 				ed25519.PublicKey(state.AuthorityPublicKey),
@@ -78,18 +94,14 @@ func validateLedger(state Ledger) error {
 				return corruptLedger("previous channel grant")
 			}
 		} else if channel.CurrentGeneration < 2 ||
-			len(channel.PreviousGrants) != int(channel.MemberCount) ||
+			len(channel.PreviousGrants) == 0 ||
+			len(channel.PreviousGrants) > MaxMembersPerChannel ||
 			!canonicalSecond(channel.PreviousDrainDeadline) ||
 			validateChannelGrantSet(
 				channel, channel.PreviousGrants, channel.CurrentGeneration-1,
 				ed25519.PublicKey(state.AuthorityPublicKey),
 			) != nil {
 			return corruptLedger("previous channel grant")
-		}
-	}
-	for _, member := range state.Members {
-		if member.Version != ContractVersion || member.Principal == "" {
-			return corruptLedger("member")
 		}
 	}
 	for _, operation := range state.Operations {
@@ -106,7 +118,7 @@ func validateLedger(state Ledger) error {
 				operation.Phase != PhaseRecoveryRequired {
 				return corruptLedger("genesis operation")
 			}
-		case "channel_rotation":
+		case "channel_rotation", "channel_membership":
 			if operation.Phase != DeliveryPhaseDelivering &&
 				operation.Phase != DeliveryPhaseInstalled &&
 				operation.Phase != DeliveryPhaseActivationCommitted &&
@@ -213,6 +225,14 @@ func cloneLedger(state Ledger) Ledger {
 	state.Rotations = append([]RotationRecord(nil), state.Rotations...)
 	for index := range state.Rotations {
 		state.Rotations[index].DeliveryIDs = append([]string(nil), state.Rotations[index].DeliveryIDs...)
+		state.Rotations[index].FenceEvidence = append(
+			[]DeploymentFenceEvidence(nil), state.Rotations[index].FenceEvidence...,
+		)
+		for evidenceIndex := range state.Rotations[index].FenceEvidence {
+			state.Rotations[index].FenceEvidence[evidenceIndex] = cloneFenceEvidence(
+				state.Rotations[index].FenceEvidence[evidenceIndex],
+			)
+		}
 		state.Rotations[index].Activation.Signature = append(
 			[]byte(nil), state.Rotations[index].Activation.Signature...,
 		)
@@ -244,7 +264,7 @@ func validateAuditRecord(record AuditRecord, previousHash string) error {
 			!validGenerationDeliveryResource(record.ResourceID) {
 			return ErrCorruptState
 		}
-	case ActionRotateGeneration:
+	case ActionRotateGeneration, ActionChangeMembership, ActionSubmitFenceEvidence:
 		if record.ResourceKind != ResourceKindChannel ||
 			!validChannelResource(record.ResourceID) {
 			return ErrCorruptState
@@ -343,6 +363,27 @@ func validateRotationRecord(state Ledger, rotation RotationRecord) error {
 	if _, err := hex.DecodeString(rotation.PayloadHash); err != nil {
 		return ErrCorruptState
 	}
+	if err := validateMembershipChangeRecord(rotation); err != nil {
+		return err
+	}
+	if len(rotation.FenceEvidence) > MaxMembersPerChannel+1 {
+		return ErrCorruptState
+	}
+	fenced := make(map[string]struct{}, len(rotation.FenceEvidence))
+	for _, evidence := range rotation.FenceEvidence {
+		if evidence.RealmID != state.RealmID ||
+			evidence.OperationID != rotation.OperationID ||
+			validateStoredFenceEvidence(evidence) != nil {
+			return ErrCorruptState
+		}
+		if !fenceTargetAllowed(state, rotation, evidence.TargetPrincipal) {
+			return ErrCorruptState
+		}
+		if _, duplicate := fenced[evidence.TargetPrincipal]; duplicate {
+			return ErrCorruptState
+		}
+		fenced[evidence.TargetPrincipal] = struct{}{}
+	}
 	switch rotation.Phase {
 	case DeliveryPhaseDelivering, DeliveryPhaseInstalled:
 		if len(rotation.Activation.Signature) != 0 || rotation.CompletionSequence != 0 {
@@ -387,6 +428,45 @@ func validateRotationRecord(state Ledger, rotation RotationRecord) error {
 		if index < 0 || state.InitialGenerationDeliveries[index].OperationID != rotation.OperationID {
 			return ErrCorruptState
 		}
+	}
+	if rotation.Phase == DeliveryPhaseCompleted &&
+		!membershipCompletionSatisfied(state, rotation) {
+		return ErrCorruptState
+	}
+	return nil
+}
+
+func validateMembershipChangeRecord(rotation RotationRecord) error {
+	change := rotation.MembershipChange
+	if change.Version == 0 {
+		if change != (MembershipChangeRecord{}) || len(rotation.FenceEvidence) != 0 {
+			return ErrCorruptState
+		}
+		return nil
+	}
+	if change.Version != ContractVersion ||
+		(change.Kind != MembershipChangeAdd && change.Kind != MembershipChangeRemove) ||
+		change.TargetPrincipal == "" ||
+		change.MembershipVersion != rotation.PrepareSequence {
+		return ErrCorruptState
+	}
+	if change.Kind == MembershipChangeAdd {
+		if change.PriorState != MemberStateRemoved ||
+			change.PendingState != MemberStateCandidate ||
+			change.TerminalState != MemberStateActive {
+			return ErrCorruptState
+		}
+	} else if change.PriorState != MemberStateActive ||
+		change.PendingState != MemberStateSuspended ||
+		change.TerminalState != MemberStateRemoved {
+		return ErrCorruptState
+	}
+	expectedState := change.PendingState
+	if rotation.Phase == DeliveryPhaseCompleted {
+		expectedState = change.TerminalState
+	}
+	if change.State != expectedState {
+		return ErrCorruptState
 	}
 	return nil
 }

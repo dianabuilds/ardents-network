@@ -66,6 +66,22 @@ service AuthorityService {
       mutating: true
     };
   }
+  rpc ChangeChannelMembership(ChangeChannelMembershipRequest) returns (RotateChannelResponse) {
+    option (operator_access) = {
+      action: "realm.channel.membership.change"
+      domain: "authority"
+      resource_kind: "realm-channel"
+      mutating: true
+    };
+  }
+  rpc SubmitDeploymentFenceEvidence(SubmitDeploymentFenceEvidenceRequest) returns (SubmitDeploymentFenceEvidenceResponse) {
+    option (operator_access) = {
+      action: "realm.channel.membership.fence"
+      domain: "authority"
+      resource_kind: "realm-channel"
+      mutating: true
+    };
+  }
 }
 
 // ChannelDeliveryService is owned by the recipient member Node and is
@@ -289,6 +305,59 @@ message RotateChannelResponse {
   uint32 pending_generation = 7;
   string phase = 8;
   repeated RotationDelivery deliveries = 9;
+  string membership_change = 10;
+  string target_principal = 11;
+  uint64 membership_version = 12;
+  string member_state = 13;
+}
+
+message ChangeChannelMembershipRequest {
+  uint32 version = 1;
+  string request_id = 2;
+  string realm_id = 3;
+  bytes channel_id = 4;
+  string change = 5;
+  string target_principal = 6;
+  repeated GenerationDeliveryAttestation recipient_attestations = 7;
+  uint64 valid_for_seconds = 8;
+  uint64 drain_for_seconds = 9;
+}
+
+message DeploymentFenceControl {
+  string kind = 1;
+  string actor = 2;
+  string receipt_digest = 3;
+}
+
+message DeploymentFenceEvidence {
+  uint32 version = 1;
+  string realm_id = 2;
+  string operation_id = 3;
+  string target_principal = 4;
+  string manifest_digest = 5;
+  string request_id = 6;
+  string reason = 7;
+  google.protobuf.Timestamp observed_at = 8;
+  int64 clock_skew_seconds = 9;
+  repeated DeploymentFenceControl controls = 10;
+}
+
+message SubmitDeploymentFenceEvidenceRequest {
+  uint32 version = 1;
+  string realm_id = 2;
+  bytes channel_id = 3;
+  string operation_id = 4;
+  DeploymentFenceEvidence evidence = 5;
+}
+
+message SubmitDeploymentFenceEvidenceResponse {
+  OperationStatus status = 1;
+  string realm_id = 2;
+  string operation_id = 3;
+  uint64 authority_sequence = 4;
+  string phase = 5;
+  string target_principal = 6;
+  string evidence_digest = 7;
 }
 
 message CommitChannelActivationRequest {

@@ -21,6 +21,8 @@ type Service interface {
 	RotateChannel(context.Context, domain.Command, domain.RotationRequest) (domain.RotationResult, error)
 	CommitChannelActivation(context.Context, domain.Command, domain.ActivationCommitRequest) (domain.ActivationCommitResult, error)
 	AcknowledgeChannelActivation(context.Context, domain.Command, domain.ActivationAcknowledgeRequest) (domain.ActivationAcknowledgeResult, error)
+	ChangeChannelMembership(context.Context, domain.Command, domain.MembershipChangeRequest) (domain.RotationResult, error)
+	SubmitDeploymentFenceEvidence(context.Context, domain.Command, domain.FenceEvidenceRequest) (domain.FenceEvidenceResult, error)
 	Readiness() domain.Status
 }
 
@@ -60,21 +62,87 @@ func (h *AuthorityEndpoint) RotateChannel(ctx context.Context, request *connect.
 		if err != nil {
 			return nil, authorityError("rotate_channel", err)
 		}
-		deliveries := make([]*protocol.RotationDelivery, 0, len(result.Deliveries))
-		for _, delivery := range result.Deliveries {
-			deliveries = append(deliveries, &protocol.RotationDelivery{
-				DeliveryId:         delivery.DeliveryID,
-				RecipientPrincipal: delivery.RecipientPrincipal,
-				Sealed:             sealedToWire(delivery.Sealed),
-			})
+		return rotationToWire(result), nil
+	})
+}
+
+func (h *AuthorityEndpoint) ChangeChannelMembership(ctx context.Context, request *connect.Request[protocol.ChangeChannelMembershipRequest]) (*connect.Response[protocol.RotateChannelResponse], error) {
+	return rpc.RespondContext(ctx, func(call rpc.Call) (*protocol.RotateChannelResponse, *rpc.Error) {
+		if h.service == nil {
+			return nil, authorityError("change_channel_membership", domain.ErrUnavailable)
 		}
-		return &protocol.RotateChannelResponse{
+		command, ok := authorityCommand(call)
+		if !ok {
+			return nil, authorityError("change_channel_membership", domain.ErrPermissionDenied)
+		}
+		channelID, err := fixedID(request.Msg.GetChannelId())
+		if err != nil || len(request.Msg.GetRecipientAttestations()) == 0 ||
+			len(request.Msg.GetRecipientAttestations()) > domain.MaxMembersPerChannel ||
+			request.Msg.GetValidForSeconds() > uint64((30*24*time.Hour)/time.Second) ||
+			request.Msg.GetDrainForSeconds() > uint64(domain.MaximumPreviousGenerationDrain/time.Second) {
+			return nil, authorityError("change_channel_membership", domain.ErrInvalidArgument)
+		}
+		attestations := make([]identityapi.CapabilityDeliveryAttestation, 0, len(request.Msg.GetRecipientAttestations()))
+		for _, wire := range request.Msg.GetRecipientAttestations() {
+			attestation, mapErr := attestationFromWire(wire)
+			if mapErr != nil {
+				return nil, authorityError("change_channel_membership", domain.ErrInvalidArgument)
+			}
+			attestations = append(attestations, attestation)
+		}
+		mutationContext, cancel := rpc.MutationContext(ctx)
+		defer cancel()
+		result, err := h.service.ChangeChannelMembership(
+			mutationContext, command, domain.MembershipChangeRequest{
+				Version: request.Msg.GetVersion(), RequestID: request.Msg.GetRequestId(),
+				RealmID: request.Msg.GetRealmId(), ChannelID: channelID,
+				Change: request.Msg.GetChange(), TargetPrincipal: request.Msg.GetTargetPrincipal(),
+				RecipientAttestations: attestations,
+				ValidFor:              time.Duration(request.Msg.GetValidForSeconds()) * time.Second,
+				DrainFor:              time.Duration(request.Msg.GetDrainForSeconds()) * time.Second,
+			},
+		)
+		if err != nil {
+			return nil, authorityError("change_channel_membership", err)
+		}
+		return rotationToWire(result), nil
+	})
+}
+
+func (h *AuthorityEndpoint) SubmitDeploymentFenceEvidence(ctx context.Context, request *connect.Request[protocol.SubmitDeploymentFenceEvidenceRequest]) (*connect.Response[protocol.SubmitDeploymentFenceEvidenceResponse], error) {
+	return rpc.RespondContext(ctx, func(call rpc.Call) (*protocol.SubmitDeploymentFenceEvidenceResponse, *rpc.Error) {
+		if h.service == nil {
+			return nil, authorityError("submit_deployment_fence_evidence", domain.ErrUnavailable)
+		}
+		command, ok := authorityCommand(call)
+		if !ok {
+			return nil, authorityError("submit_deployment_fence_evidence", domain.ErrPermissionDenied)
+		}
+		channelID, err := fixedID(request.Msg.GetChannelId())
+		if err != nil {
+			return nil, authorityError("submit_deployment_fence_evidence", domain.ErrInvalidArgument)
+		}
+		evidence, err := fenceEvidenceFromWire(request.Msg.GetEvidence())
+		if err != nil {
+			return nil, authorityError("submit_deployment_fence_evidence", domain.ErrInvalidArgument)
+		}
+		mutationContext, cancel := rpc.MutationContext(ctx)
+		defer cancel()
+		result, err := h.service.SubmitDeploymentFenceEvidence(
+			mutationContext, command, domain.FenceEvidenceRequest{
+				Version: request.Msg.GetVersion(), RealmID: request.Msg.GetRealmId(),
+				ChannelID: channelID, OperationID: request.Msg.GetOperationId(),
+				Evidence: evidence,
+			},
+		)
+		if err != nil {
+			return nil, authorityError("submit_deployment_fence_evidence", err)
+		}
+		return &protocol.SubmitDeploymentFenceEvidenceResponse{
 			Status:  &protocol.OperationStatus{State: result.Phase, Accepted: true},
 			RealmId: result.RealmID, OperationId: result.OperationID,
-			AuthoritySequence: result.AuthoritySequence, ChannelId: result.ChannelID[:],
-			PreviousGeneration: result.PreviousGeneration,
-			PendingGeneration:  result.PendingGeneration, Phase: result.Phase,
-			Deliveries: deliveries,
+			AuthoritySequence: result.AuthoritySequence, Phase: result.Phase,
+			TargetPrincipal: result.TargetPrincipal, EvidenceDigest: result.EvidenceDigest,
 		}, nil
 	})
 }

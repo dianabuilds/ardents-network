@@ -85,6 +85,49 @@ func CanonicalizeResource(procedure string, message any, kind string) (identitya
 			Kind: identityaccess.ResourceKind(kind),
 			ID:   domain.ChannelResource(request.GetRealmId(), channelID),
 		}, nil
+	case ardentsv1connect.AuthorityServiceChangeChannelMembershipProcedure:
+		request, ok := message.(*protocol.ChangeChannelMembershipRequest)
+		if !ok || len(request.ProtoReflect().GetUnknown()) != 0 ||
+			len(request.GetRequestId()) == 0 ||
+			len(request.GetRequestId()) > domain.MaxRequestIDBytes ||
+			!domain.ValidRealmID(request.GetRealmId()) ||
+			len(request.GetChannelId()) != 16 ||
+			len(request.GetRecipientAttestations()) == 0 ||
+			len(request.GetRecipientAttestations()) > domain.MaxMembersPerChannel {
+			return identityaccess.ResourceTarget{}, ErrInvalidResourceTarget
+		}
+		for _, attestation := range request.GetRecipientAttestations() {
+			if attestation == nil || len(attestation.ProtoReflect().GetUnknown()) != 0 {
+				return identityaccess.ResourceTarget{}, ErrInvalidResourceTarget
+			}
+		}
+		var channelID [16]byte
+		copy(channelID[:], request.GetChannelId())
+		return identityaccess.ResourceTarget{
+			Kind: identityaccess.ResourceKind(kind),
+			ID:   domain.ChannelResource(request.GetRealmId(), channelID),
+		}, nil
+	case ardentsv1connect.AuthorityServiceSubmitDeploymentFenceEvidenceProcedure:
+		request, ok := message.(*protocol.SubmitDeploymentFenceEvidenceRequest)
+		if !ok || len(request.ProtoReflect().GetUnknown()) != 0 ||
+			!domain.ValidRealmID(request.GetRealmId()) ||
+			len(request.GetChannelId()) != 16 || request.GetEvidence() == nil ||
+			len(request.GetEvidence().ProtoReflect().GetUnknown()) != 0 ||
+			len(request.GetEvidence().GetControls()) == 0 ||
+			len(request.GetEvidence().GetControls()) > domain.MaxDeploymentFenceControls {
+			return identityaccess.ResourceTarget{}, ErrInvalidResourceTarget
+		}
+		for _, control := range request.GetEvidence().GetControls() {
+			if control == nil || len(control.ProtoReflect().GetUnknown()) != 0 {
+				return identityaccess.ResourceTarget{}, ErrInvalidResourceTarget
+			}
+		}
+		var channelID [16]byte
+		copy(channelID[:], request.GetChannelId())
+		return identityaccess.ResourceTarget{
+			Kind: identityaccess.ResourceKind(kind),
+			ID:   domain.ChannelResource(request.GetRealmId(), channelID),
+		}, nil
 	case ardentsv1connect.AuthorityServiceCommitChannelActivationProcedure:
 		request, ok := message.(*protocol.CommitChannelActivationRequest)
 		if !ok || len(request.ProtoReflect().GetUnknown()) != 0 {

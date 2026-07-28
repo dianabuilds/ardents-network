@@ -62,14 +62,15 @@ type ProcedureRule struct {
 type ProcedureResolver func(string) (ProcedureRule, bool)
 
 const (
-	ownerContract          = "OCS-01"
-	ownerNND               = "OCS-02"
-	ownerWorkload          = "OCS-03"
-	ownerData              = "OCS-04"
-	ownerIdentity          = "OCS-05"
-	ownerAuthority         = "CGA-01"
-	ownerAuthorityDelivery = "CGA-02"
-	ownerAuthorityRotation = "CGA-03"
+	ownerContract            = "OCS-01"
+	ownerNND                 = "OCS-02"
+	ownerWorkload            = "OCS-03"
+	ownerData                = "OCS-04"
+	ownerIdentity            = "OCS-05"
+	ownerAuthority           = "CGA-01"
+	ownerAuthorityDelivery   = "CGA-02"
+	ownerAuthorityRotation   = "CGA-03"
+	ownerAuthorityMembership = "CGA-04"
 )
 
 var groups = []GroupSpec{
@@ -153,6 +154,8 @@ var commands = []CommandSpec{
 	protected("authority.rotation.commit", []string{"authority", "rotation", "commit"}, "--rotation-file FILE --out-file FILE", "commit the signed generation activation", ardentsv1connect.AuthorityServiceCommitChannelActivationProcedure, "realm.channel.activation.commit", "realm-channel-operation", true, OutputProtoJSON, ownerAuthorityRotation),
 	protected("authority.rotation.activate", []string{"authority", "rotation", "activate"}, "--activation-file FILE --out-file FILE", "activate a committed generation on a member", ardentsv1connect.ChannelDeliveryServiceActivateGenerationProcedure, "realm.channel.generation.activate", "realm-channel-operation", true, OutputProtoJSON, ownerAuthorityRotation),
 	protected("authority.rotation.acknowledge-active", []string{"authority", "rotation", "acknowledge-active"}, "--rotation-file FILE --receipt-file FILE --host-disposition approved", "record deployment-approved host activation", ardentsv1connect.AuthorityServiceAcknowledgeChannelActivationProcedure, "realm.channel.activation.acknowledge", "realm-channel-delivery", true, OutputProtoJSON, ownerAuthorityRotation),
+	protected("authority.membership.change", []string{"authority", "membership", "change"}, "--realm-id ID --request-id ID --channel-id HEX --change add|remove --target-principal ID --attestation-file FILE --valid-for DURATION --drain-for DURATION --out-file FILE", "change channel membership with a fresh generation", ardentsv1connect.AuthorityServiceChangeChannelMembershipProcedure, "realm.channel.membership.change", "realm-channel", true, OutputProtoJSON, ownerAuthorityMembership),
+	protected("authority.membership.fence", []string{"authority", "membership", "fence"}, "--realm-id ID --channel-id HEX --operation-id ID --evidence-file FILE", "submit bounded deployment fencing evidence", ardentsv1connect.AuthorityServiceSubmitDeploymentFenceEvidenceProcedure, "realm.channel.membership.fence", "realm-channel", true, OutputProtoJSON, ownerAuthorityMembership),
 
 	offline("identity.principal.create", []string{"identity", "principal", "create"}, "[--signer-file PATH]", "create an offline Principal root", "offline.identity.principal.create", OutputCLIJSON),
 	offline("identity.principal.import", []string{"identity", "principal", "import"}, "--from-file PATH [--signer-file PATH]", "import a protected Principal root", "offline.identity.principal.import", OutputCLIJSON),

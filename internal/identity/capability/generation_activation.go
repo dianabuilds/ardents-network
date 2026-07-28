@@ -121,8 +121,17 @@ func (s *Service) ActivateGeneration(
 	if !now.Before(activation.DrainDeadline) || !now.Before(pending.ExpiresAt) {
 		return GenerationDeliveryReceipt{}, capabilityError(CodeExpired, "generation activation is expired")
 	}
-	current, ok := s.ledger.Grants[pending.CurrentReference]
-	if !ok || current.ChannelID != activation.ChannelID ||
+	current, hasCurrent := s.ledger.Grants[pending.CurrentReference]
+	if pending.Candidate {
+		if pending.CurrentReference == "" && hasCurrent {
+			return GenerationDeliveryReceipt{}, capabilityError(CodeInvalid, "candidate generation has an unexpected predecessor")
+		}
+		if pending.CurrentReference != "" &&
+			(!hasCurrent || current.ChannelID != activation.ChannelID ||
+				current.SubjectPrincipal != pending.RecipientPrincipal) {
+			return GenerationDeliveryReceipt{}, capabilityError(CodeInvalid, "candidate predecessor binding is invalid")
+		}
+	} else if !hasCurrent || current.ChannelID != activation.ChannelID ||
 		current.Generation != activation.PreviousGeneration {
 		return GenerationDeliveryReceipt{}, capabilityError(CodeInvalid, "current generation does not match activation predecessor")
 	}
@@ -139,11 +148,17 @@ func (s *Service) ActivateGeneration(
 		return GenerationDeliveryReceipt{}, capabilityError(CodeInvalid, "active receipt creation failed")
 	}
 	next := cloneLedger(s.ledger)
-	next.PreviousGenerations[channelKey] = persistedPreviousGeneration{
-		Reference: pending.CurrentReference, Grant: current,
-		DrainDeadline: activation.DrainDeadline,
+	if !pending.Candidate {
+		next.PreviousGenerations[channelKey] = persistedPreviousGeneration{
+			Reference: pending.CurrentReference, Grant: current,
+			DrainDeadline: activation.DrainDeadline,
+		}
 	}
-	next.Grants[pending.CurrentReference] = pending.SubjectGrant
+	reference := pending.CurrentReference
+	if pending.Candidate && reference == "" {
+		reference = string(s.reference(mustRestoreGrant(pending.SubjectGrant)))
+	}
+	next.Grants[reference] = pending.SubjectGrant
 	for _, sender := range pending.SenderGrants {
 		next.SenderGrants[grantIDKey(sender.GrantID)] = sender
 	}

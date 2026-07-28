@@ -602,6 +602,9 @@ func (integrationAuthorityPolicy) AdmitInitialGeneration(context.Context, domain
 func (integrationAuthorityPolicy) AdmitChannelRotation(context.Context, domain.Command) error {
 	return nil
 }
+func (integrationAuthorityPolicy) AdmitChannelMembership(context.Context, domain.Command) error {
+	return nil
+}
 
 type integrationCapabilityPolicy struct{}
 

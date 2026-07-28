@@ -173,6 +173,18 @@ func (s *Service) AllowRealmChannelRotation() error {
 	))
 }
 
+func (s *Service) AllowRealmChannelMembership() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.cfg.DisableRealmChannelMembership {
+		return nil
+	}
+	return s.applyDecisionLocked(Deny(
+		"policy_realm_channel_membership_denied",
+		"Realm channel membership change is disabled by policy",
+	))
+}
+
 func (s *Service) Snapshot() Snapshot {
 	return Snapshot{State: s.State(), Reason: s.Reason()}
 }

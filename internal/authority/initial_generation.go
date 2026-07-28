@@ -247,13 +247,17 @@ func (s *Service) AcknowledgeInitialGeneration(
 		return InitialGenerationAcknowledgeResult{}, ErrPermissionDenied
 	}
 	rotationDelivery := false
+	membershipDelivery := false
 	for _, rotation := range state.Rotations {
 		if containsDeliveryID(rotation.DeliveryIDs, delivery.DeliveryID) {
 			rotationDelivery = true
+			membershipDelivery = rotation.MembershipChange.Version != 0
 			break
 		}
 	}
-	if rotationDelivery {
+	if membershipDelivery {
+		err = s.policy.AdmitChannelMembership(ctx, command)
+	} else if rotationDelivery {
 		err = s.policy.AdmitChannelRotation(ctx, command)
 	} else {
 		err = s.policy.AdmitInitialGeneration(ctx, command)

@@ -3,6 +3,7 @@ package authority
 import (
 	"fmt"
 
+	domain "ardents/internal/authority"
 	identityapi "ardents/internal/identity"
 	identitycapability "ardents/internal/identity/capability"
 	protocol "ardents/internal/localapi/protocol"
@@ -86,4 +87,52 @@ func activationToWire(
 		CheckpointDigest: value.CheckpointDigest,
 		Signature:        append([]byte(nil), value.Signature...),
 	}
+}
+
+func rotationToWire(result domain.RotationResult) *protocol.RotateChannelResponse {
+	deliveries := make([]*protocol.RotationDelivery, 0, len(result.Deliveries))
+	for _, delivery := range result.Deliveries {
+		deliveries = append(deliveries, &protocol.RotationDelivery{
+			DeliveryId: delivery.DeliveryID, RecipientPrincipal: delivery.RecipientPrincipal,
+			Sealed: sealedToWire(delivery.Sealed),
+		})
+	}
+	return &protocol.RotateChannelResponse{
+		Status:  &protocol.OperationStatus{State: result.Phase, Accepted: true},
+		RealmId: result.RealmID, OperationId: result.OperationID,
+		AuthoritySequence: result.AuthoritySequence, ChannelId: result.ChannelID[:],
+		PreviousGeneration: result.PreviousGeneration,
+		PendingGeneration:  result.PendingGeneration, Phase: result.Phase,
+		Deliveries:        deliveries,
+		MembershipChange:  result.MembershipChange.Kind,
+		TargetPrincipal:   result.MembershipChange.TargetPrincipal,
+		MembershipVersion: result.MembershipChange.MembershipVersion,
+		MemberState:       result.MembershipChange.State,
+	}
+}
+
+func fenceEvidenceFromWire(value *protocol.DeploymentFenceEvidence) (domain.DeploymentFenceEvidence, error) {
+	if value == nil || value.GetObservedAt() == nil ||
+		value.GetObservedAt().CheckValid() != nil ||
+		len(value.GetControls()) == 0 ||
+		len(value.GetControls()) > domain.MaxDeploymentFenceControls {
+		return domain.DeploymentFenceEvidence{}, fmt.Errorf("deployment fence evidence is invalid")
+	}
+	controls := make([]domain.DeploymentFenceControl, 0, len(value.GetControls()))
+	for _, control := range value.GetControls() {
+		if control == nil || len(control.ProtoReflect().GetUnknown()) != 0 {
+			return domain.DeploymentFenceEvidence{}, fmt.Errorf("deployment fence control is invalid")
+		}
+		controls = append(controls, domain.DeploymentFenceControl{
+			Kind: control.GetKind(), Actor: control.GetActor(),
+			ReceiptDigest: control.GetReceiptDigest(),
+		})
+	}
+	return domain.DeploymentFenceEvidence{
+		Version: value.GetVersion(), RealmID: value.GetRealmId(),
+		OperationID: value.GetOperationId(), TargetPrincipal: value.GetTargetPrincipal(),
+		ManifestDigest: value.GetManifestDigest(), RequestID: value.GetRequestId(),
+		Reason: value.GetReason(), ObservedAt: rpc.Time(value.GetObservedAt()),
+		ClockSkewSecond: value.GetClockSkewSeconds(), Controls: controls,
+	}, nil
 }

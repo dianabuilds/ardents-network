@@ -53,6 +53,8 @@ type RotationRequest struct {
 	RecipientAttestations []identityapi.CapabilityDeliveryAttestation
 	ValidFor              time.Duration
 	DrainFor              time.Duration
+	MembershipChange      string
+	TargetPrincipal       string
 }
 
 type RotationDelivery struct {
@@ -71,6 +73,7 @@ type RotationResult struct {
 	PendingGeneration  uint32
 	Phase              string
 	Deliveries         []RotationDelivery
+	MembershipChange   MembershipChangeRecord
 }
 
 type ActivationCommitRequest struct {
@@ -114,11 +117,23 @@ func (s *Service) RotateChannel(
 ) (RotationResult, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	return s.rotateChannelLocked(ctx, command, request)
+}
+
+func (s *Service) rotateChannelLocked(
+	ctx context.Context,
+	command Command,
+	request RotationRequest,
+) (RotationResult, error) {
 	if err := validateRotationRequest(request); err != nil {
 		return RotationResult{}, err
 	}
+	expectedAction := ActionRotateGeneration
+	if request.MembershipChange != "" {
+		expectedAction = ActionChangeMembership
+	}
 	if command.Actor == "" || command.Actor != command.Effective ||
-		command.Action != ActionRotateGeneration ||
+		command.Action != expectedAction ||
 		command.ResourceKind != ResourceKindChannel ||
 		command.ResourceID != ChannelResource(request.RealmID, request.ChannelID) {
 		return RotationResult{}, ErrPermissionDenied
@@ -126,7 +141,13 @@ func (s *Service) RotateChannel(
 	if s.store == nil || s.signer == nil || s.repository == nil || s.policy == nil {
 		return RotationResult{}, ErrUnavailable
 	}
-	if err := s.policy.AdmitChannelRotation(ctx, command); err != nil {
+	var policyErr error
+	if request.MembershipChange == "" {
+		policyErr = s.policy.AdmitChannelRotation(ctx, command)
+	} else {
+		policyErr = s.policy.AdmitChannelMembership(ctx, command)
+	}
+	if policyErr != nil {
 		return RotationResult{}, ErrPermissionDenied
 	}
 	state, found, err := s.store.Load(ctx)
@@ -163,14 +184,22 @@ func (s *Service) RotateChannel(
 	if channel.PendingGenerationCount != 0 || incompleteRotationForChannel(state, request.ChannelID) {
 		return RotationResult{}, ErrConflict
 	}
-	if err := rotationCapacity(state, len(request.RecipientAttestations)); err != nil {
-		return RotationResult{}, err
+	var capacityErr error
+	if request.MembershipChange == "" {
+		capacityErr = rotationCapacity(state, len(request.RecipientAttestations))
+	} else {
+		capacityErr = membershipCapacity(state, len(request.RecipientAttestations))
+	}
+	if capacityErr != nil {
+		return RotationResult{}, capacityErr
 	}
 	currentGrants := channelCurrentGrants(channel)
-	if len(currentGrants) == 0 ||
-		len(currentGrants) != len(request.RecipientAttestations) ||
-		len(currentGrants) != int(channel.MemberCount) {
+	if len(currentGrants) == 0 || len(currentGrants) != int(channel.MemberCount) {
 		return RotationResult{}, ErrConflict
+	}
+	if request.MembershipChange == MembershipChangeAdd &&
+		len(state.Members) >= MaxRealmMembers {
+		return RotationResult{}, ErrResourceExhausted
 	}
 	attestations := append([]identityapi.CapabilityDeliveryAttestation(nil), request.RecipientAttestations...)
 	sort.Slice(attestations, func(left, right int) bool {
@@ -194,11 +223,15 @@ func (s *Service) RotateChannel(
 			return RotationResult{}, ErrInvalidArgument
 		}
 		seenAttestations[attestation.SubjectPrincipal] = struct{}{}
-		if _, ok := currentByPrincipal[attestation.SubjectPrincipal]; !ok {
+		_, currentMember := currentByPrincipal[attestation.SubjectPrincipal]
+		if request.MembershipChange == "" && !currentMember {
 			return RotationResult{}, ErrPermissionDenied
 		}
 	}
-	if len(currentByPrincipal) != len(seenAttestations) {
+	if !validMembershipRecipients(
+		request.MembershipChange, request.TargetPrincipal,
+		currentByPrincipal, seenAttestations,
+	) {
 		return RotationResult{}, ErrConflict
 	}
 	principal, publicKey, err := s.signerBinding(ctx)
@@ -229,8 +262,17 @@ func (s *Service) RotateChannel(
 	nextSequence := state.AuthoritySequence + 1
 	pendingGrants := make([]CapabilityGrantRecord, 0, len(attestations))
 	pendingByPrincipal := make(map[string]identityapi.CapabilityGrant, len(attestations))
+	template := currentGrants[0]
 	for _, attestation := range attestations {
-		current := currentByPrincipal[attestation.SubjectPrincipal]
+		current, currentMember := currentByPrincipal[attestation.SubjectPrincipal]
+		if !currentMember {
+			restored, restoreOK := template.restore()
+			if !restoreOK {
+				return RotationResult{}, ErrRecoveryRequired
+			}
+			current = restored
+			current.SubjectPrincipal = attestation.SubjectPrincipal
+		}
 		grantID, err := s.randomFixedID()
 		if err != nil {
 			return RotationResult{}, ErrUnavailable
@@ -254,6 +296,21 @@ func (s *Service) RotateChannel(
 	for _, attestation := range attestations {
 		senderSnapshot = append(senderSnapshot, pendingByPrincipal[attestation.SubjectPrincipal])
 	}
+	revocations := []identityapi.CapabilityRevocation{}
+	if request.MembershipChange == MembershipChangeRemove {
+		removed := currentByPrincipal[request.TargetPrincipal]
+		revocation, signErr := identitycapability.SignRevocationWith(
+			identityapi.CapabilityRevocation{
+				Version: ContractVersion, GrantID: removed.GrantID,
+				IssuerPrincipal: state.AuthorityPrincipal, RevokedAt: now,
+			},
+			func(message []byte) ([]byte, error) { return s.signer.Sign(ctx, message) },
+		)
+		if signErr != nil {
+			return RotationResult{}, ErrUnavailable
+		}
+		revocations = append(revocations, revocation)
+	}
 	deliveries := make([]InitialGenerationDeliveryRecord, 0, len(attestations))
 	for _, attestation := range attestations {
 		grant := pendingByPrincipal[attestation.SubjectPrincipal]
@@ -274,9 +331,11 @@ func (s *Service) RotateChannel(
 			Generation: pendingGeneration, RecipientPrincipal: attestation.SubjectPrincipal,
 			DeliveryKeyDigest: identitycapability.DeliveryPublicKeyDigest(attestation.DeliveryPublicKey),
 			SubjectGrant:      grant, SenderGrants: append([]identityapi.CapabilityGrant(nil), senderSnapshot...),
-			Revocations:     []identityapi.CapabilityRevocation{},
+			Revocations:     append([]identityapi.CapabilityRevocation(nil), revocations...),
 			ActivationPhase: identitycapability.DeliveryPhaseInstalled,
-			DrainDeadline:   drainDeadline, ExpiresAt: expiresAt,
+			Candidate: request.MembershipChange == MembershipChangeAdd &&
+				attestation.SubjectPrincipal == request.TargetPrincipal,
+			DrainDeadline: drainDeadline, ExpiresAt: expiresAt,
 			ReceiptKey: append([]byte(nil), receiptKey...),
 		}
 		sealed, err := identitycapability.SealGenerationBundleForRecipient(
@@ -309,6 +368,7 @@ func (s *Service) RotateChannel(
 			deliveryIDs[index] = deliveries[index].DeliveryID
 		}
 		next.InitialGenerationDeliveries = append(next.InitialGenerationDeliveries, deliveries...)
+		membership := membershipChangeRecord(state, request)
 		next.Rotations = append(next.Rotations, RotationRecord{
 			Version: ContractVersion, RequestID: request.RequestID, PayloadHash: payloadHash,
 			OperationID: operationID, ChannelID: request.ChannelID,
@@ -316,10 +376,11 @@ func (s *Service) RotateChannel(
 			PrepareSequence: checkpoint.AuthoritySequence,
 			Phase:           DeliveryPhaseDelivering, DeliveryIDs: deliveryIDs,
 			CreatedAt: now, Deadline: now.Add(MaxOperationLifetime), DrainDeadline: drainDeadline,
+			MembershipChange: membership,
 		})
 		next.Operations = append(next.Operations, OperationRecord{
 			Version: ContractVersion, ID: operationID, RequestID: request.RequestID,
-			Kind: "channel_rotation", Phase: DeliveryPhaseDelivering,
+			Kind: operationKind(request), Phase: DeliveryPhaseDelivering,
 			CreatedAt: now, Deadline: now.Add(MaxOperationLifetime),
 		})
 		return nil
@@ -361,9 +422,6 @@ func (s *Service) CommitChannelActivation(
 	if s.store == nil || s.signer == nil || s.repository == nil || s.policy == nil {
 		return ActivationCommitResult{}, ErrUnavailable
 	}
-	if err := s.policy.AdmitChannelRotation(ctx, command); err != nil {
-		return ActivationCommitResult{}, ErrPermissionDenied
-	}
 	state, found, err := s.store.Load(ctx)
 	if err != nil || !found {
 		return ActivationCommitResult{}, ErrUnavailable
@@ -384,6 +442,14 @@ func (s *Service) CommitChannelActivation(
 		return ActivationCommitResult{}, ErrInvalidArgument
 	}
 	rotation := state.Rotations[rotationIndex]
+	if rotation.MembershipChange.Version != 0 {
+		err = s.policy.AdmitChannelMembership(ctx, command)
+	} else {
+		err = s.policy.AdmitChannelRotation(ctx, command)
+	}
+	if err != nil {
+		return ActivationCommitResult{}, ErrPermissionDenied
+	}
 	if rotation.Phase == DeliveryPhaseActivationCommitted || rotation.Phase == DeliveryPhaseCompleted {
 		return activationCommitResult(state, rotation), nil
 	}
@@ -426,11 +492,13 @@ func (s *Service) CommitChannelActivation(
 		channel.PreviousDrainDeadline = rotation.DrainDeadline
 		channel.CurrentGrants = cloneGrantRecords(channel.PendingGrants)
 		channel.Grant = channel.CurrentGrants[0]
+		channel.MemberCount = uint32(len(channel.CurrentGrants))
 		channel.CurrentGeneration = rotation.PendingGeneration
 		channel.PendingGrants = nil
 		channel.PendingGenerationCount = 0
 		next.Rotations[rotationIndex].Phase = DeliveryPhaseActivationCommitted
 		next.Rotations[rotationIndex].Activation = activation
+		applyMembershipTruth(next, next.Rotations[rotationIndex].MembershipChange)
 		setOperationPhase(next, rotation.OperationID, DeliveryPhaseActivationCommitted)
 		return nil
 	})
@@ -463,9 +531,6 @@ func (s *Service) AcknowledgeChannelActivation(
 	if s.store == nil || s.signer == nil || s.repository == nil || s.policy == nil {
 		return ActivationAcknowledgeResult{}, ErrUnavailable
 	}
-	if err := s.policy.AdmitChannelRotation(ctx, command); err != nil {
-		return ActivationAcknowledgeResult{}, ErrPermissionDenied
-	}
 	state, found, err := s.store.Load(ctx)
 	if err != nil || !found {
 		return ActivationAcknowledgeResult{}, ErrUnavailable
@@ -486,6 +551,14 @@ func (s *Service) AcknowledgeChannelActivation(
 		return ActivationAcknowledgeResult{}, ErrInvalidArgument
 	}
 	rotation := state.Rotations[rotationIndex]
+	if rotation.MembershipChange.Version != 0 {
+		err = s.policy.AdmitChannelMembership(ctx, command)
+	} else {
+		err = s.policy.AdmitChannelRotation(ctx, command)
+	}
+	if err != nil {
+		return ActivationAcknowledgeResult{}, ErrPermissionDenied
+	}
 	deliveryIndex := deliveryRecordIndex(state, request.Receipt.DeliveryID)
 	if deliveryIndex < 0 || !containsDeliveryID(rotation.DeliveryIDs, request.Receipt.DeliveryID) {
 		return ActivationAcknowledgeResult{}, ErrInvalidArgument
@@ -534,10 +607,10 @@ func (s *Service) AcknowledgeChannelActivation(
 	)
 	err = s.commitCheckpointTransition(ctx, &state, audit, now, func(next *Ledger, checkpoint SignedCheckpoint) error {
 		next.InitialGenerationDeliveries[deliveryIndex].ActiveReceipt = request.Receipt
-		if rotationActiveReceiptsComplete(*next, next.Rotations[rotationIndex]) {
-			next.Rotations[rotationIndex].Phase = DeliveryPhaseCompleted
-			next.Rotations[rotationIndex].CompletionSequence = checkpoint.AuthoritySequence
-			setOperationPhase(next, rotation.OperationID, DeliveryPhaseCompleted)
+		if membershipCompletionSatisfied(*next, next.Rotations[rotationIndex]) {
+			completeMembershipRotation(
+				next, &next.Rotations[rotationIndex], checkpoint.AuthoritySequence,
+			)
 		}
 		return nil
 	})
@@ -559,7 +632,8 @@ func validateRotationRequest(request RotationRequest) error {
 		request.ValidFor <= 0 || request.ValidFor > maximumInitialGenerationValidity ||
 		request.ValidFor%time.Second != 0 ||
 		request.DrainFor <= 0 || request.DrainFor > MaximumPreviousGenerationDrain ||
-		request.DrainFor%time.Second != 0 {
+		request.DrainFor%time.Second != 0 ||
+		!validMembershipChangeInput(request.MembershipChange, request.TargetPrincipal) {
 		return ErrInvalidArgument
 	}
 	return nil
@@ -567,16 +641,18 @@ func validateRotationRequest(request RotationRequest) error {
 
 func rotationPayloadHash(request RotationRequest) string {
 	raw, _ := json.Marshal(struct {
-		Version      uint32
-		RealmID      string
-		ChannelID    [16]byte
-		Attestations []identityapi.CapabilityDeliveryAttestation
-		ValidFor     int64
-		DrainFor     int64
+		Version          uint32
+		RealmID          string
+		ChannelID        [16]byte
+		Attestations     []identityapi.CapabilityDeliveryAttestation
+		ValidFor         int64
+		DrainFor         int64
+		MembershipChange string
+		TargetPrincipal  string
 	}{
 		request.Version, request.RealmID, request.ChannelID,
 		request.RecipientAttestations, int64(request.ValidFor / time.Second),
-		int64(request.DrainFor / time.Second),
+		int64(request.DrainFor / time.Second), request.MembershipChange, request.TargetPrincipal,
 	})
 	sum := sha256.Sum256(raw)
 	return hex.EncodeToString(sum[:])
@@ -617,6 +693,7 @@ func rotationResult(state Ledger, rotation RotationRecord) RotationResult {
 		AuthoritySequence: rotation.PrepareSequence, ChannelID: rotation.ChannelID,
 		PreviousGeneration: rotation.PreviousGeneration, PendingGeneration: rotation.PendingGeneration,
 		Phase: rotation.Phase, Deliveries: deliveries,
+		MembershipChange: rotation.MembershipChange,
 	}
 }
 

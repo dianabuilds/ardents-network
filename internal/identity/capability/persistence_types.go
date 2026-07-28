@@ -65,6 +65,7 @@ type persistedPendingGeneration struct {
 	RecipientPrincipal string                      `json:"recipient_principal"`
 	DeliveryKeyDigest  string                      `json:"delivery_key_digest"`
 	CurrentReference   string                      `json:"current_reference"`
+	Candidate          bool                        `json:"candidate,omitempty"`
 	SubjectGrant       persistedGrant              `json:"subject_grant"`
 	SenderGrants       []persistedGrant            `json:"sender_grants"`
 	Revocations        []persistedRevocation       `json:"revocations"`

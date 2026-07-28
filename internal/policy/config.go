@@ -20,6 +20,7 @@ type Config struct {
 	DisableRealmAuthorityCreation   bool
 	DisableRealmChannelDelivery     bool
 	DisableRealmChannelRotation     bool
+	DisableRealmChannelMembership   bool
 	DeniedChannelGrantScopes        []string
 	DisableLocalBlobRetention       bool
 	DisableRelayBlobRetention       bool

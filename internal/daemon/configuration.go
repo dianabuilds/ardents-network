@@ -187,6 +187,7 @@ type PolicyConfig struct {
 	DisableRealmAuthorityCreation   bool
 	DisableRealmChannelDelivery     bool
 	DisableRealmChannelRotation     bool
+	DisableRealmChannelMembership   bool
 	DeniedChannelGrantScopes        []string
 	DisableLocalBlobRetention       bool
 	DisableRelayBlobRetention       bool
@@ -246,6 +247,7 @@ func policyConfigFromOperator(in runtimeconfig.PolicyConfig) PolicyConfig {
 		DisableRealmAuthorityCreation:   in.DisableRealmAuthorityCreation,
 		DisableRealmChannelDelivery:     in.DisableRealmChannelDelivery,
 		DisableRealmChannelRotation:     in.DisableRealmChannelRotation,
+		DisableRealmChannelMembership:   in.DisableRealmChannelMembership,
 		DeniedChannelGrantScopes:        cloneStrings(in.DeniedChannelGrantScopes),
 		DisableLocalBlobRetention:       in.DisableLocalBlobRetention,
 		DisableRelayBlobRetention:       in.DisableRelayBlobRetention,
@@ -647,6 +649,7 @@ func operatorPolicyConfig(doc runtimeconfig.Document) PolicyConfig {
 		DisableRealmAuthorityCreation:   in.DisableRealmAuthorityCreation,
 		DisableRealmChannelDelivery:     in.DisableRealmChannelDelivery,
 		DisableRealmChannelRotation:     in.DisableRealmChannelRotation,
+		DisableRealmChannelMembership:   in.DisableRealmChannelMembership,
 		DeniedChannelGrantScopes:        cloneStrings(in.DeniedChannelGrantScopes),
 		DisableLocalBlobRetention:       in.DisableLocalBlobRetention,
 		DisableRelayBlobRetention:       in.DisableRelayBlobRetention,

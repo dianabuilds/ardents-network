@@ -428,6 +428,7 @@ type allowPolicy struct{}
 func (allowPolicy) AdmitRealmGenesis(context.Context, Command) error      { return nil }
 func (allowPolicy) AdmitInitialGeneration(context.Context, Command) error { return nil }
 func (allowPolicy) AdmitChannelRotation(context.Context, Command) error   { return nil }
+func (allowPolicy) AdmitChannelMembership(context.Context, Command) error { return nil }
 
 type denyPolicy struct{}
 
@@ -438,6 +439,9 @@ func (denyPolicy) AdmitInitialGeneration(context.Context, Command) error {
 	return errors.New("denied")
 }
 func (denyPolicy) AdmitChannelRotation(context.Context, Command) error {
+	return errors.New("denied")
+}
+func (denyPolicy) AdmitChannelMembership(context.Context, Command) error {
 	return errors.New("denied")
 }
 

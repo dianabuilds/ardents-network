@@ -109,6 +109,38 @@ type RotationRecord struct {
 	CreatedAt          time.Time                               `json:"created_at"`
 	Deadline           time.Time                               `json:"deadline"`
 	DrainDeadline      time.Time                               `json:"drain_deadline"`
+	MembershipChange   MembershipChangeRecord                  `json:"membership_change,omitempty"`
+	FenceEvidence      []DeploymentFenceEvidence               `json:"fence_evidence,omitempty"`
+}
+
+type MembershipChangeRecord struct {
+	Version           uint32 `json:"version,omitempty"`
+	Kind              string `json:"kind,omitempty"`
+	TargetPrincipal   string `json:"target_principal,omitempty"`
+	MembershipVersion uint64 `json:"membership_version,omitempty"`
+	PriorState        string `json:"prior_state,omitempty"`
+	PendingState      string `json:"pending_state,omitempty"`
+	TerminalState     string `json:"terminal_state,omitempty"`
+	State             string `json:"state,omitempty"`
+}
+
+type DeploymentFenceControl struct {
+	Kind          string `json:"kind"`
+	Actor         string `json:"actor"`
+	ReceiptDigest string `json:"receipt_digest"`
+}
+
+type DeploymentFenceEvidence struct {
+	Version         uint32                   `json:"version"`
+	RealmID         string                   `json:"realm_id"`
+	OperationID     string                   `json:"operation_id"`
+	TargetPrincipal string                   `json:"target_principal"`
+	ManifestDigest  string                   `json:"manifest_digest"`
+	RequestID       string                   `json:"request_id"`
+	Reason          string                   `json:"reason"`
+	ObservedAt      time.Time                `json:"observed_at"`
+	ClockSkewSecond int64                    `json:"clock_skew_seconds"`
+	Controls        []DeploymentFenceControl `json:"controls"`
 }
 
 type Ledger struct {

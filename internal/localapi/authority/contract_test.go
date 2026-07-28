@@ -38,6 +38,8 @@ func TestAuthorityProceduresHaveExactDirectOperatorContracts(t *testing.T) {
 		ardentsv1connect.AuthorityServiceRotateChannelProcedure:                   domain.ActionRotateGeneration,
 		ardentsv1connect.AuthorityServiceCommitChannelActivationProcedure:         domain.ActionCommitActivation,
 		ardentsv1connect.AuthorityServiceAcknowledgeChannelActivationProcedure:    domain.ActionAcknowledgeActivation,
+		ardentsv1connect.AuthorityServiceChangeChannelMembershipProcedure:         domain.ActionChangeMembership,
+		ardentsv1connect.AuthorityServiceSubmitDeploymentFenceEvidenceProcedure:   domain.ActionSubmitFenceEvidence,
 		ardentsv1connect.ChannelDeliveryServicePrepareGenerationDeliveryProcedure: "realm.channel.delivery.prepare",
 		ardentsv1connect.ChannelDeliveryServiceInstallGenerationDeliveryProcedure: "realm.channel.delivery.install",
 		ardentsv1connect.ChannelDeliveryServiceActivateGenerationProcedure:        "realm.channel.generation.activate",
@@ -69,6 +71,33 @@ func TestCanonicalRotationResourcesAreExactAndBounded(t *testing.T) {
 	require.NoError(t, err)
 	var channel [16]byte
 	copy(channel[:], channelID)
+	require.Equal(t, domain.ChannelResource(realmID, channel), target.ID)
+
+	target, err = CanonicalizeResource(
+		ardentsv1connect.AuthorityServiceChangeChannelMembershipProcedure,
+		&protocol.ChangeChannelMembershipRequest{
+			Version: 1, RequestId: "membership-001", RealmId: realmID,
+			ChannelId: channelID, Change: domain.MembershipChangeAdd,
+			TargetPrincipal:       "p1_target",
+			RecipientAttestations: []*protocol.GenerationDeliveryAttestation{{}},
+		},
+		domain.ResourceKindChannel,
+	)
+	require.NoError(t, err)
+	require.Equal(t, domain.ChannelResource(realmID, channel), target.ID)
+
+	target, err = CanonicalizeResource(
+		ardentsv1connect.AuthorityServiceSubmitDeploymentFenceEvidenceProcedure,
+		&protocol.SubmitDeploymentFenceEvidenceRequest{
+			Version: 1, RealmId: realmID, OperationId: operationID,
+			ChannelId: channelID,
+			Evidence: &protocol.DeploymentFenceEvidence{
+				Controls: []*protocol.DeploymentFenceControl{{}},
+			},
+		},
+		domain.ResourceKindChannel,
+	)
+	require.NoError(t, err)
 	require.Equal(t, domain.ChannelResource(realmID, channel), target.ID)
 
 	target, err = CanonicalizeResource(

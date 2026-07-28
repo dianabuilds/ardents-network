@@ -11,7 +11,7 @@ import (
 func TestClosedCatalogueContainsExactlyCurrentLeafCommands(t *testing.T) {
 	specs := catalog.Commands()
 
-	require.Len(t, specs, 80)
+	require.Len(t, specs, 82)
 	require.NoError(t, catalog.Validate(specs, nil))
 
 	ids := make(map[string]struct{}, len(specs))
@@ -162,6 +162,7 @@ func TestCatalogueContainsResearchPacketLeafPaths(t *testing.T) {
 		"authority rotation rotate", "authority rotation install",
 		"authority rotation acknowledge-installed", "authority rotation commit",
 		"authority rotation activate", "authority rotation acknowledge-active",
+		"authority membership change", "authority membership fence",
 		"identity principal create", "identity principal import", "identity principal show",
 		"identity device create", "identity device show", "identity device revoke",
 		"identity enroll", "identity grant list", "identity grant issue", "identity grant revoke",
@@ -222,6 +223,7 @@ func TestEvidenceOwnershipHandoffCoversEveryLeaf(t *testing.T) {
 		"CGA-01": 2,
 		"CGA-02": 4,
 		"CGA-03": 6,
+		"CGA-04": 2,
 		"OCS-01": 12,
 		"OCS-02": 20,
 		"OCS-03": 9,

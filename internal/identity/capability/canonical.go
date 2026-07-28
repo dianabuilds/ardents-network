@@ -43,11 +43,25 @@ func SignRevocation(rev identityapi.CapabilityRevocation, private ed25519.Privat
 	if len(private) != ed25519.PrivateKeySize {
 		return identityapi.CapabilityRevocation{}, fmt.Errorf("issuer private key is invalid")
 	}
+	return SignRevocationWith(rev, func(message []byte) ([]byte, error) {
+		return ed25519.Sign(private, message), nil
+	})
+}
+
+// SignRevocationWith signs a canonical revocation through an external signer
+// seam so the Realm Authority never needs private key bytes.
+func SignRevocationWith(rev identityapi.CapabilityRevocation, sign func([]byte) ([]byte, error)) (identityapi.CapabilityRevocation, error) {
+	if sign == nil {
+		return identityapi.CapabilityRevocation{}, fmt.Errorf("issuer signer is required")
+	}
 	raw, err := canonicalRevocation(rev)
 	if err != nil {
 		return identityapi.CapabilityRevocation{}, err
 	}
-	rev.Signature = ed25519.Sign(private, digest(revocationSignatureDomain, raw))
+	rev.Signature, err = sign(digest(revocationSignatureDomain, raw))
+	if err != nil || len(rev.Signature) != ed25519.SignatureSize {
+		return identityapi.CapabilityRevocation{}, fmt.Errorf("issuer signing failed")
+	}
 	return rev, nil
 }
 

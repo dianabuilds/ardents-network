@@ -131,3 +131,10 @@ func (p realmAuthorityPolicy) AdmitChannelRotation(_ context.Context, _ domain.C
 	}
 	return p.service.AllowRealmChannelRotation()
 }
+
+func (p realmAuthorityPolicy) AdmitChannelMembership(_ context.Context, _ domain.Command) error {
+	if p.service == nil {
+		return domain.ErrUnavailable
+	}
+	return p.service.AllowRealmChannelMembership()
+}

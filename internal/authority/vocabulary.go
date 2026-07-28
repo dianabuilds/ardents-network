@@ -1,7 +1,7 @@
 // Package authority owns the single-Realm Channel Grant Authority ledger,
 // monotonic checkpoint contract, and bounded redacted status projection.
 // It does not own Operator authentication, Product Policy, signer custody,
-// checkpoint-repository administration, deployment fencing, or membership.
+// checkpoint-repository administration, or deployment isolation execution.
 package authority
 
 import (
@@ -35,8 +35,10 @@ const (
 	ActionIssueDelivery         = "realm.channel.delivery.issue"
 	ActionAcknowledgeDelivery   = "realm.channel.delivery.acknowledge"
 	ActionRotateGeneration      = "realm.channel.generation.rotate"
+	ActionChangeMembership      = "realm.channel.membership.change"
 	ActionCommitActivation      = "realm.channel.activation.commit"
 	ActionAcknowledgeActivation = "realm.channel.activation.acknowledge"
+	ActionSubmitFenceEvidence   = "realm.channel.membership.fence"
 
 	ResourceKindAuthorityInstance  = "realm-authority-instance"
 	ResourceKindRealm              = "realm"
@@ -54,6 +56,12 @@ const (
 	DeliveryPhaseDelivering          = "delivering"
 	DeliveryPhaseActivationCommitted = "activation_committed"
 	DeliveryPhaseCompleted           = "completed"
+	MemberStateCandidate             = "candidate"
+	MemberStateActive                = "active"
+	MemberStateSuspended             = "suspended"
+	MemberStateRemoved               = "removed"
+	MembershipChangeAdd              = "add"
+	MembershipChangeRemove           = "remove"
 	ReadinessReady                   = "ready"
 	ReadinessUnavailable             = "unavailable"
 	ReadinessDegraded                = "degraded"

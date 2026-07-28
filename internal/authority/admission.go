@@ -39,6 +39,7 @@ type ProductPolicy interface {
 	AdmitRealmGenesis(context.Context, Command) error
 	AdmitInitialGeneration(context.Context, Command) error
 	AdmitChannelRotation(context.Context, Command) error
+	AdmitChannelMembership(context.Context, Command) error
 }
 
 type InitialGenerationRequest struct {

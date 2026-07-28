@@ -56,6 +56,12 @@ const (
 	// AuthorityServiceAcknowledgeChannelActivationProcedure is the fully-qualified name of the
 	// AuthorityService's AcknowledgeChannelActivation RPC.
 	AuthorityServiceAcknowledgeChannelActivationProcedure = "/ardents.v1.AuthorityService/AcknowledgeChannelActivation"
+	// AuthorityServiceChangeChannelMembershipProcedure is the fully-qualified name of the
+	// AuthorityService's ChangeChannelMembership RPC.
+	AuthorityServiceChangeChannelMembershipProcedure = "/ardents.v1.AuthorityService/ChangeChannelMembership"
+	// AuthorityServiceSubmitDeploymentFenceEvidenceProcedure is the fully-qualified name of the
+	// AuthorityService's SubmitDeploymentFenceEvidence RPC.
+	AuthorityServiceSubmitDeploymentFenceEvidenceProcedure = "/ardents.v1.AuthorityService/SubmitDeploymentFenceEvidence"
 	// ChannelDeliveryServicePrepareGenerationDeliveryProcedure is the fully-qualified name of the
 	// ChannelDeliveryService's PrepareGenerationDelivery RPC.
 	ChannelDeliveryServicePrepareGenerationDeliveryProcedure = "/ardents.v1.ChannelDeliveryService/PrepareGenerationDelivery"
@@ -76,6 +82,8 @@ type AuthorityServiceClient interface {
 	RotateChannel(context.Context, *connect.Request[protocol.RotateChannelRequest]) (*connect.Response[protocol.RotateChannelResponse], error)
 	CommitChannelActivation(context.Context, *connect.Request[protocol.CommitChannelActivationRequest]) (*connect.Response[protocol.CommitChannelActivationResponse], error)
 	AcknowledgeChannelActivation(context.Context, *connect.Request[protocol.AcknowledgeChannelActivationRequest]) (*connect.Response[protocol.AcknowledgeChannelActivationResponse], error)
+	ChangeChannelMembership(context.Context, *connect.Request[protocol.ChangeChannelMembershipRequest]) (*connect.Response[protocol.RotateChannelResponse], error)
+	SubmitDeploymentFenceEvidence(context.Context, *connect.Request[protocol.SubmitDeploymentFenceEvidenceRequest]) (*connect.Response[protocol.SubmitDeploymentFenceEvidenceResponse], error)
 }
 
 // NewAuthorityServiceClient constructs a client for the ardents.v1.AuthorityService service. By
@@ -131,18 +139,32 @@ func NewAuthorityServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(authorityServiceMethods.ByName("AcknowledgeChannelActivation")),
 			connect.WithClientOptions(opts...),
 		),
+		changeChannelMembership: connect.NewClient[protocol.ChangeChannelMembershipRequest, protocol.RotateChannelResponse](
+			httpClient,
+			baseURL+AuthorityServiceChangeChannelMembershipProcedure,
+			connect.WithSchema(authorityServiceMethods.ByName("ChangeChannelMembership")),
+			connect.WithClientOptions(opts...),
+		),
+		submitDeploymentFenceEvidence: connect.NewClient[protocol.SubmitDeploymentFenceEvidenceRequest, protocol.SubmitDeploymentFenceEvidenceResponse](
+			httpClient,
+			baseURL+AuthorityServiceSubmitDeploymentFenceEvidenceProcedure,
+			connect.WithSchema(authorityServiceMethods.ByName("SubmitDeploymentFenceEvidence")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // authorityServiceClient implements AuthorityServiceClient.
 type authorityServiceClient struct {
-	createRealmAuthority         *connect.Client[protocol.CreateRealmAuthorityRequest, protocol.CreateRealmAuthorityResponse]
-	inspectRealmAuthority        *connect.Client[protocol.InspectRealmAuthorityRequest, protocol.InspectRealmAuthorityResponse]
-	issueInitialGeneration       *connect.Client[protocol.IssueInitialGenerationRequest, protocol.IssueInitialGenerationResponse]
-	acknowledgeInitialGeneration *connect.Client[protocol.AcknowledgeInitialGenerationRequest, protocol.AcknowledgeInitialGenerationResponse]
-	rotateChannel                *connect.Client[protocol.RotateChannelRequest, protocol.RotateChannelResponse]
-	commitChannelActivation      *connect.Client[protocol.CommitChannelActivationRequest, protocol.CommitChannelActivationResponse]
-	acknowledgeChannelActivation *connect.Client[protocol.AcknowledgeChannelActivationRequest, protocol.AcknowledgeChannelActivationResponse]
+	createRealmAuthority          *connect.Client[protocol.CreateRealmAuthorityRequest, protocol.CreateRealmAuthorityResponse]
+	inspectRealmAuthority         *connect.Client[protocol.InspectRealmAuthorityRequest, protocol.InspectRealmAuthorityResponse]
+	issueInitialGeneration        *connect.Client[protocol.IssueInitialGenerationRequest, protocol.IssueInitialGenerationResponse]
+	acknowledgeInitialGeneration  *connect.Client[protocol.AcknowledgeInitialGenerationRequest, protocol.AcknowledgeInitialGenerationResponse]
+	rotateChannel                 *connect.Client[protocol.RotateChannelRequest, protocol.RotateChannelResponse]
+	commitChannelActivation       *connect.Client[protocol.CommitChannelActivationRequest, protocol.CommitChannelActivationResponse]
+	acknowledgeChannelActivation  *connect.Client[protocol.AcknowledgeChannelActivationRequest, protocol.AcknowledgeChannelActivationResponse]
+	changeChannelMembership       *connect.Client[protocol.ChangeChannelMembershipRequest, protocol.RotateChannelResponse]
+	submitDeploymentFenceEvidence *connect.Client[protocol.SubmitDeploymentFenceEvidenceRequest, protocol.SubmitDeploymentFenceEvidenceResponse]
 }
 
 // CreateRealmAuthority calls ardents.v1.AuthorityService.CreateRealmAuthority.
@@ -180,6 +202,16 @@ func (c *authorityServiceClient) AcknowledgeChannelActivation(ctx context.Contex
 	return c.acknowledgeChannelActivation.CallUnary(ctx, req)
 }
 
+// ChangeChannelMembership calls ardents.v1.AuthorityService.ChangeChannelMembership.
+func (c *authorityServiceClient) ChangeChannelMembership(ctx context.Context, req *connect.Request[protocol.ChangeChannelMembershipRequest]) (*connect.Response[protocol.RotateChannelResponse], error) {
+	return c.changeChannelMembership.CallUnary(ctx, req)
+}
+
+// SubmitDeploymentFenceEvidence calls ardents.v1.AuthorityService.SubmitDeploymentFenceEvidence.
+func (c *authorityServiceClient) SubmitDeploymentFenceEvidence(ctx context.Context, req *connect.Request[protocol.SubmitDeploymentFenceEvidenceRequest]) (*connect.Response[protocol.SubmitDeploymentFenceEvidenceResponse], error) {
+	return c.submitDeploymentFenceEvidence.CallUnary(ctx, req)
+}
+
 // AuthorityServiceHandler is an implementation of the ardents.v1.AuthorityService service.
 type AuthorityServiceHandler interface {
 	CreateRealmAuthority(context.Context, *connect.Request[protocol.CreateRealmAuthorityRequest]) (*connect.Response[protocol.CreateRealmAuthorityResponse], error)
@@ -189,6 +221,8 @@ type AuthorityServiceHandler interface {
 	RotateChannel(context.Context, *connect.Request[protocol.RotateChannelRequest]) (*connect.Response[protocol.RotateChannelResponse], error)
 	CommitChannelActivation(context.Context, *connect.Request[protocol.CommitChannelActivationRequest]) (*connect.Response[protocol.CommitChannelActivationResponse], error)
 	AcknowledgeChannelActivation(context.Context, *connect.Request[protocol.AcknowledgeChannelActivationRequest]) (*connect.Response[protocol.AcknowledgeChannelActivationResponse], error)
+	ChangeChannelMembership(context.Context, *connect.Request[protocol.ChangeChannelMembershipRequest]) (*connect.Response[protocol.RotateChannelResponse], error)
+	SubmitDeploymentFenceEvidence(context.Context, *connect.Request[protocol.SubmitDeploymentFenceEvidenceRequest]) (*connect.Response[protocol.SubmitDeploymentFenceEvidenceResponse], error)
 }
 
 // NewAuthorityServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -240,6 +274,18 @@ func NewAuthorityServiceHandler(svc AuthorityServiceHandler, opts ...connect.Han
 		connect.WithSchema(authorityServiceMethods.ByName("AcknowledgeChannelActivation")),
 		connect.WithHandlerOptions(opts...),
 	)
+	authorityServiceChangeChannelMembershipHandler := connect.NewUnaryHandler(
+		AuthorityServiceChangeChannelMembershipProcedure,
+		svc.ChangeChannelMembership,
+		connect.WithSchema(authorityServiceMethods.ByName("ChangeChannelMembership")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authorityServiceSubmitDeploymentFenceEvidenceHandler := connect.NewUnaryHandler(
+		AuthorityServiceSubmitDeploymentFenceEvidenceProcedure,
+		svc.SubmitDeploymentFenceEvidence,
+		connect.WithSchema(authorityServiceMethods.ByName("SubmitDeploymentFenceEvidence")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/ardents.v1.AuthorityService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AuthorityServiceCreateRealmAuthorityProcedure:
@@ -256,6 +302,10 @@ func NewAuthorityServiceHandler(svc AuthorityServiceHandler, opts ...connect.Han
 			authorityServiceCommitChannelActivationHandler.ServeHTTP(w, r)
 		case AuthorityServiceAcknowledgeChannelActivationProcedure:
 			authorityServiceAcknowledgeChannelActivationHandler.ServeHTTP(w, r)
+		case AuthorityServiceChangeChannelMembershipProcedure:
+			authorityServiceChangeChannelMembershipHandler.ServeHTTP(w, r)
+		case AuthorityServiceSubmitDeploymentFenceEvidenceProcedure:
+			authorityServiceSubmitDeploymentFenceEvidenceHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -291,6 +341,14 @@ func (UnimplementedAuthorityServiceHandler) CommitChannelActivation(context.Cont
 
 func (UnimplementedAuthorityServiceHandler) AcknowledgeChannelActivation(context.Context, *connect.Request[protocol.AcknowledgeChannelActivationRequest]) (*connect.Response[protocol.AcknowledgeChannelActivationResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.AuthorityService.AcknowledgeChannelActivation is not implemented"))
+}
+
+func (UnimplementedAuthorityServiceHandler) ChangeChannelMembership(context.Context, *connect.Request[protocol.ChangeChannelMembershipRequest]) (*connect.Response[protocol.RotateChannelResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.AuthorityService.ChangeChannelMembership is not implemented"))
+}
+
+func (UnimplementedAuthorityServiceHandler) SubmitDeploymentFenceEvidence(context.Context, *connect.Request[protocol.SubmitDeploymentFenceEvidenceRequest]) (*connect.Response[protocol.SubmitDeploymentFenceEvidenceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.AuthorityService.SubmitDeploymentFenceEvidence is not implemented"))
 }
 
 // ChannelDeliveryServiceClient is a client for the ardents.v1.ChannelDeliveryService service.

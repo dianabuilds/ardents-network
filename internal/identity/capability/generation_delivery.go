@@ -54,6 +54,7 @@ type GenerationBundle struct {
 	SenderGrants       []identityapi.CapabilityGrant
 	Revocations        []identityapi.CapabilityRevocation
 	ActivationPhase    string
+	Candidate          bool
 	DrainDeadline      time.Time
 	ExpiresAt          time.Time
 	ReceiptKey         []byte
@@ -127,6 +128,7 @@ type generationBundleRecord struct {
 	SenderGrants       []persistedGrant            `json:"sender_grants"`
 	Revocations        []persistedRevocation       `json:"revocations"`
 	ActivationPhase    string                      `json:"activation_phase"`
+	Candidate          bool                        `json:"candidate,omitempty"`
 	DrainDeadline      time.Time                   `json:"drain_deadline"`
 	ExpiresAt          time.Time                   `json:"expires_at"`
 	ReceiptKey         []byte                      `json:"receipt_key"`
@@ -255,7 +257,7 @@ func (s *Service) InstallGenerationDelivery(sealed SealedGenerationDelivery) (Ge
 	currentRef, currentGrant, hasCurrent := currentSubjectGrant(
 		next, record.ChannelID, s.localPrincipal,
 	)
-	if hasCurrent {
+	if hasCurrent && !record.Candidate {
 		if record.Generation != currentGrant.Generation+1 {
 			return GenerationDeliveryReceipt{}, capabilityError(CodeInvalid, "generation is not the expected successor")
 		}
@@ -275,20 +277,43 @@ func (s *Service) InstallGenerationDelivery(sealed SealedGenerationDelivery) (Ge
 			CurrentReference:   currentRef, SubjectGrant: record.SubjectGrant,
 			SenderGrants:  append([]persistedGrant(nil), record.SenderGrants...),
 			Revocations:   append([]persistedRevocation(nil), record.Revocations...),
+			Candidate:     record.Candidate,
 			ReceiptKey:    append([]byte(nil), record.ReceiptKey...),
 			DrainDeadline: record.DrainDeadline, ExpiresAt: record.ExpiresAt,
 		}
 	} else {
-		if record.Generation != 1 {
+		if record.Generation != 1 && !record.Candidate {
 			return GenerationDeliveryReceipt{}, capabilityError(CodeInvalid, "initial generation is missing")
 		}
-		ref := s.reference(mustRestoreGrant(record.SubjectGrant))
-		next.Grants[string(ref)] = record.SubjectGrant
-		for _, sender := range record.SenderGrants {
-			next.SenderGrants[grantIDKey(sender.GrantID)] = sender
-		}
-		for _, revocation := range record.Revocations {
-			next.Revocations[grantIDKey(revocation.GrantID)] = revocation
+		if record.Candidate {
+			channelKey := generationChannelKey(record.ChannelID)
+			if _, exists := next.PendingGenerations[channelKey]; exists {
+				return GenerationDeliveryReceipt{}, capabilityError(CodeInvalid, "one pending generation already exists")
+			}
+			next.PendingGenerations[channelKey] = persistedPendingGeneration{
+				Version: record.Version, RealmID: record.RealmID,
+				AuthorityPrincipal: record.AuthorityPrincipal,
+				AuthorityEpoch:     record.AuthorityEpoch, AuthoritySequence: record.AuthoritySequence,
+				OperationID: record.OperationID, DeliveryID: record.DeliveryID,
+				EnvelopeDigest: sealed.EnvelopeDigest, ChannelID: record.ChannelID,
+				ChannelClass: record.ChannelClass, Generation: record.Generation,
+				RecipientPrincipal: record.RecipientPrincipal,
+				DeliveryKeyDigest:  record.DeliveryKeyDigest, Candidate: true,
+				CurrentReference: currentRef, SubjectGrant: record.SubjectGrant,
+				SenderGrants:  append([]persistedGrant(nil), record.SenderGrants...),
+				Revocations:   append([]persistedRevocation(nil), record.Revocations...),
+				ReceiptKey:    append([]byte(nil), record.ReceiptKey...),
+				DrainDeadline: record.DrainDeadline, ExpiresAt: record.ExpiresAt,
+			}
+		} else {
+			ref := s.reference(mustRestoreGrant(record.SubjectGrant))
+			next.Grants[string(ref)] = record.SubjectGrant
+			for _, sender := range record.SenderGrants {
+				next.SenderGrants[grantIDKey(sender.GrantID)] = sender
+			}
+			for _, revocation := range record.Revocations {
+				next.Revocations[grantIDKey(revocation.GrantID)] = revocation
+			}
 		}
 	}
 	next.InstalledDeliveries[record.DeliveryID] = persistDeliveryReceipt(receipt, record.ExpiresAt)
@@ -422,6 +447,7 @@ func persistGenerationBundle(bundle GenerationBundle) generationBundleRecord {
 		DeliveryKeyDigest:  bundle.DeliveryKeyDigest,
 		SubjectGrant:       persistGrant(bundle.SubjectGrant), SenderGrants: senders,
 		Revocations: revocations, ActivationPhase: bundle.ActivationPhase,
+		Candidate:     bundle.Candidate,
 		DrainDeadline: bundle.DrainDeadline, ExpiresAt: bundle.ExpiresAt,
 		ReceiptKey:         append([]byte(nil), bundle.ReceiptKey...),
 		AuthoritySignature: append([]byte(nil), bundle.AuthoritySignature...),

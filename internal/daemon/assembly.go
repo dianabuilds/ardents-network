@@ -219,6 +219,7 @@ func runtimePolicyConfig(cfg PolicyConfig) apppolicy.Config {
 		DisableRealmAuthorityCreation:   cfg.DisableRealmAuthorityCreation,
 		DisableRealmChannelDelivery:     cfg.DisableRealmChannelDelivery,
 		DisableRealmChannelRotation:     cfg.DisableRealmChannelRotation,
+		DisableRealmChannelMembership:   cfg.DisableRealmChannelMembership,
 		DeniedChannelGrantScopes:        cloneStrings(cfg.DeniedChannelGrantScopes),
 		DisableLocalBlobRetention:       cfg.DisableLocalBlobRetention,
 		DisableRelayBlobRetention:       cfg.DisableRelayBlobRetention,
