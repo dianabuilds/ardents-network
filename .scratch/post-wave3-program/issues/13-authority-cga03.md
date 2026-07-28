@@ -1,8 +1,8 @@
 # PW3-13: CGA-03 rotate a channel and attest activation
 
-Status: needs-info
+Status: ready-for-agent
 State: open
-Labels: needs-info
+Labels: ready-for-agent
 Research class: R1 multi-host lifecycle with security review
 
 ## Parent
@@ -41,3 +41,8 @@ receive-only for a bounded drain. Restarts resume the same phase and operation.
 
 - Published as the canonical successor slice. It remains `needs-info` until
   CGA-02 is accepted.
+- 2026-07-28 predecessor gate satisfied: the maintainer explicitly accepted
+  CGA-02 implementation commit
+  `693ac7cb0e88661dccce8a97482ae14d53a5afd9`. CGA-03 is admitted for
+  implementation; no CGA-04 behavior, qualification, deployment change or push
+  is implied.

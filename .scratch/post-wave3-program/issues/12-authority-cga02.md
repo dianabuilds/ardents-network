@@ -1,7 +1,7 @@
 # PW3-12: CGA-02 deliver and acknowledge one initial generation
 
 Status: ready-for-human
-State: open
+State: closed
 Labels: ready-for-human
 Research class: R0/R1 cryptographic integration with security review
 
@@ -120,3 +120,7 @@ or qualification.
     remains `no`;
   - CGA-03 remains gated on explicit acceptance of this exact implementation
     commit. No production deployment was changed and nothing was pushed.
+- 2026-07-28 maintainer disposition: accepted exact implementation commit
+  `693ac7cb0e88661dccce8a97482ae14d53a5afd9` after the commit-bound handoff
+  and clean repeat Standards/Spec reviews. CGA-03 may consume this commit;
+  later slices remain governed by their own predecessor gates.
