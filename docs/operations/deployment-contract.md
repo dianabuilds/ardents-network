@@ -13,6 +13,12 @@ adapter, not a runtime prerequisite. Multi-host scheduling and Kubernetes
 packaging remain outside this target until a separate support contract and
 acceptance environment exist.
 
+The versioned
+[multi-host topology manifest contract](multi-host-topology-contract.md)
+validates and redacts the accepted exact-three-host design without touching a
+host. That pure MR-01 compiler does not broaden this supported deployment
+target or qualify multi-host operation.
+
 Two supported profiles and one qualification profile are versioned:
 
 - `native` (qualification): one node installed as the unprivileged `ardents` system service,

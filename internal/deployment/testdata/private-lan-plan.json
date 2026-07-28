@@ -1,0 +1,80 @@
+{
+  "api_version": "ardents.topology.plan/v1",
+  "mode": "private_lan",
+  "transport_profile": "tcp_only",
+  "signed_dns_root_count": 0,
+  "authority": {
+    "slot": "node-a",
+    "separate_consistency_group": true,
+    "independent_backup": true,
+    "independent_checkpoint_repository": true,
+    "checkpoint_max_heads": 65536,
+    "max_clock_skew_seconds": 30,
+    "authority_safety_margin_seconds": 60
+  },
+  "hosts": [
+    {
+      "slot": "node-a",
+      "role": "authority",
+      "profile": "service_node",
+      "transport_profile": "tcp_only",
+      "ingress": "private_probe_required",
+      "bootstrap": true,
+      "persistent_store": true,
+      "store_retention_class": "bounded_7d",
+      "static_recovery_peers": [
+        "node-b",
+        "node-c"
+      ],
+      "checks": [
+        "clock_sync_required",
+        "host_key_pin_required",
+        "identity_binding_required",
+        "image_digest_required",
+        "private_cross_host_probe_required"
+      ]
+    },
+    {
+      "slot": "node-b",
+      "role": "member",
+      "profile": "service_node",
+      "transport_profile": "tcp_only",
+      "ingress": "private_probe_required",
+      "bootstrap": true,
+      "persistent_store": true,
+      "store_retention_class": "bounded_7d",
+      "static_recovery_peers": [
+        "node-a",
+        "node-c"
+      ],
+      "checks": [
+        "clock_sync_required",
+        "host_key_pin_required",
+        "identity_binding_required",
+        "image_digest_required",
+        "private_cross_host_probe_required"
+      ]
+    },
+    {
+      "slot": "node-c",
+      "role": "member",
+      "profile": "service_node",
+      "transport_profile": "tcp_only",
+      "ingress": "private_probe_required",
+      "bootstrap": false,
+      "persistent_store": false,
+      "store_retention_class": "",
+      "static_recovery_peers": [
+        "node-a",
+        "node-b"
+      ],
+      "checks": [
+        "clock_sync_required",
+        "host_key_pin_required",
+        "identity_binding_required",
+        "image_digest_required",
+        "private_cross_host_probe_required"
+      ]
+    }
+  ]
+}

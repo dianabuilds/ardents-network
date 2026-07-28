@@ -1,0 +1,80 @@
+{
+  "api_version": "ardents.topology.plan/v1",
+  "mode": "public_direct",
+  "transport_profile": "tcp_wss",
+  "signed_dns_root_count": 1,
+  "authority": {
+    "slot": "node-a",
+    "separate_consistency_group": true,
+    "independent_backup": true,
+    "independent_checkpoint_repository": true,
+    "checkpoint_max_heads": 65536,
+    "max_clock_skew_seconds": 30,
+    "authority_safety_margin_seconds": 60
+  },
+  "hosts": [
+    {
+      "slot": "node-a",
+      "role": "authority",
+      "profile": "service_node",
+      "transport_profile": "tcp_wss",
+      "ingress": "public_autonat_required",
+      "bootstrap": true,
+      "persistent_store": true,
+      "store_retention_class": "bounded_7d",
+      "static_recovery_peers": [
+        "node-b",
+        "node-c"
+      ],
+      "checks": [
+        "clock_sync_required",
+        "host_key_pin_required",
+        "identity_binding_required",
+        "image_digest_required",
+        "public_autonat_required",
+        "wss_certificate_identity_required"
+      ]
+    },
+    {
+      "slot": "node-b",
+      "role": "member",
+      "profile": "service_node",
+      "transport_profile": "tcp_wss",
+      "ingress": "public_autonat_required",
+      "bootstrap": true,
+      "persistent_store": true,
+      "store_retention_class": "bounded_7d",
+      "static_recovery_peers": [
+        "node-a",
+        "node-c"
+      ],
+      "checks": [
+        "clock_sync_required",
+        "host_key_pin_required",
+        "identity_binding_required",
+        "image_digest_required",
+        "public_autonat_required"
+      ]
+    },
+    {
+      "slot": "node-c",
+      "role": "member",
+      "profile": "service_node",
+      "transport_profile": "tcp_wss",
+      "ingress": "outbound_only",
+      "bootstrap": false,
+      "persistent_store": false,
+      "store_retention_class": "",
+      "static_recovery_peers": [
+        "node-a",
+        "node-b"
+      ],
+      "checks": [
+        "clock_sync_required",
+        "host_key_pin_required",
+        "identity_binding_required",
+        "image_digest_required"
+      ]
+    }
+  ]
+}

@@ -176,6 +176,7 @@ internal/
   authority/
   channeldelivery/
   daemon/
+  deployment/
   buildinfo/
   config/
   identity/
@@ -388,6 +389,7 @@ The policy discovers handwritten production Go packages from the explicit
 | `authority` | one-Realm authority ledger, class-specific initial-generation issue/acknowledgement, fresh-generation rotation/activation and bounded renewal, channel membership/revocation truth, bounded deployment-fencing evidence acceptance, exact same-Realm restore verification, stopped legacy-migration truth, dual-signed authority transition, external-signer continuity, monotonic checkpoint contract and redacted realm/channel status | Operator authentication, Product Policy, conversation identity or messaging semantics, signer custody, repository administration, archive creation/extraction, member-local installation, deployment isolation execution or qualification |
 | `channeldelivery` | member-local delivery-key attestation, atomic generation install, signed-checkpoint activation orchestration and durable dual-signed authority-trust adoption/finalization | Authority truth, Operator authentication, HPKE implementation, deployment fencing or Product Policy |
 | `daemon` | construction, startup order, shutdown rollback, cross-module process lifecycle | product state machines, RPC mapping, CLI presentation |
+| `deployment` | strict bounded multi-host topology manifest admission and deterministic redacted host-local plan compilation | SSH, signer/session use, host or network mutation, Authority/repository operations, rollout/fence journals, runtime status or reachability qualification |
 | `buildinfo` | immutable build and version identity | runtime health, configuration, release orchestration |
 | `config` | decode, defaults, validation, source precedence, change classification | applying product changes, environment-specific startup logic |
 | `identity` | node identity, key continuity, principals, capabilities, authentication facts | network transport, general policy decisions, operator RPC auth |
