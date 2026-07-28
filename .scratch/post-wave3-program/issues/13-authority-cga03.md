@@ -1,7 +1,7 @@
 # PW3-13: CGA-03 rotate a channel and attest activation
 
 Status: ready-for-human
-State: open
+State: closed
 Labels: ready-for-human
 Research class: R1 multi-host lifecycle with security review
 
@@ -100,3 +100,7 @@ receive-only for a bounded drain. Restarts resume the same phase and operation.
   - CGA-04 remains gated on explicit maintainer acceptance of the exact
     implementation tip. No production deployment was changed and nothing was
     pushed.
+- 2026-07-28 maintainer disposition: accepted exact implementation commit
+  `34dafff129e4dc26fe42932946df566e0295c84d` after the commit-bound handoff
+  and clean repeat Standards/Spec reviews. CGA-04 may consume this commit;
+  later slices remain governed by their own predecessor gates.

@@ -1,8 +1,8 @@
 # PW3-14: CGA-04 change membership with revocation and fencing
 
-Status: needs-info
+Status: ready-for-agent
 State: open
-Labels: needs-info
+Labels: ready-for-agent
 Research class: R1 adversarial multi-host E2E
 
 ## Parent
@@ -42,3 +42,12 @@ truthful under success, partition, timeout and malicious old traffic.
 
 - Published as a blocked canonical slice. The Authority owns terminal
   membership truth; Deployment owns host isolation evidence.
+- 2026-07-28 predecessor and boundary gates satisfied:
+  - the maintainer explicitly accepted CGA-03 implementation commit
+    `34dafff129e4dc26fe42932946df566e0295c84d`;
+  - the accepted DR-04 research result defines the bounded, versioned
+    `DeploymentFenceEvidence/v1` seam and supported fencing procedure consumed
+    by this Authority slice;
+  - ADR-0013 remains Proposed. Admitting CGA-04 neither accepts that ADR nor
+    claims MR implementation, real-host deployment fencing, qualification,
+    production deployment change or push.
