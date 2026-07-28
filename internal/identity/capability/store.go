@@ -28,11 +28,14 @@ type sealedLedger struct {
 }
 
 type ledger struct {
-	Grants              map[string]persistedGrant           `json:"grants"`
-	SenderGrants        map[string]persistedGrant           `json:"sender_grants"`
-	Revocations         map[string]persistedRevocation      `json:"revocations"`
-	DeliveryPrivateKey  []byte                              `json:"delivery_private_key,omitempty"`
-	InstalledDeliveries map[string]persistedDeliveryReceipt `json:"installed_deliveries,omitempty"`
+	Grants               map[string]persistedGrant               `json:"grants"`
+	SenderGrants         map[string]persistedGrant               `json:"sender_grants"`
+	Revocations          map[string]persistedRevocation          `json:"revocations"`
+	DeliveryPrivateKey   []byte                                  `json:"delivery_private_key,omitempty"`
+	InstalledDeliveries  map[string]persistedDeliveryReceipt     `json:"installed_deliveries,omitempty"`
+	PendingGenerations   map[string]persistedPendingGeneration   `json:"pending_generations,omitempty"`
+	PreviousGenerations  map[string]persistedPreviousGeneration  `json:"previous_generations,omitempty"`
+	ActivatedGenerations map[string]persistedActivatedGeneration `json:"activated_generations,omitempty"`
 }
 
 func newStore(path string, key []byte) (*Store, error) {
@@ -105,10 +108,13 @@ func (s *Store) open(sealed sealedLedger) ([]byte, error) {
 
 func emptyLedger() ledger {
 	return ledger{
-		Grants:              map[string]persistedGrant{},
-		SenderGrants:        map[string]persistedGrant{},
-		Revocations:         map[string]persistedRevocation{},
-		InstalledDeliveries: map[string]persistedDeliveryReceipt{},
+		Grants:               map[string]persistedGrant{},
+		SenderGrants:         map[string]persistedGrant{},
+		Revocations:          map[string]persistedRevocation{},
+		InstalledDeliveries:  map[string]persistedDeliveryReceipt{},
+		PendingGenerations:   map[string]persistedPendingGeneration{},
+		PreviousGenerations:  map[string]persistedPreviousGeneration{},
+		ActivatedGenerations: map[string]persistedActivatedGeneration{},
 	}
 }
 
@@ -124,5 +130,14 @@ func normalizeLedger(stored *ledger) {
 	}
 	if stored.InstalledDeliveries == nil {
 		stored.InstalledDeliveries = map[string]persistedDeliveryReceipt{}
+	}
+	if stored.PendingGenerations == nil {
+		stored.PendingGenerations = map[string]persistedPendingGeneration{}
+	}
+	if stored.PreviousGenerations == nil {
+		stored.PreviousGenerations = map[string]persistedPreviousGeneration{}
+	}
+	if stored.ActivatedGenerations == nil {
+		stored.ActivatedGenerations = map[string]persistedActivatedGeneration{}
 	}
 }

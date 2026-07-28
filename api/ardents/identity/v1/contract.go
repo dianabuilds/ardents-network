@@ -216,6 +216,8 @@ var operatorActions = set(
 	"realm.authority.create", "realm.channel.audit.read",
 	"realm.channel.delivery.issue", "realm.channel.delivery.acknowledge",
 	"realm.channel.delivery.prepare", "realm.channel.delivery.install",
+	"realm.channel.generation.rotate", "realm.channel.activation.commit",
+	"realm.channel.generation.activate", "realm.channel.activation.acknowledge",
 	"identity.principal.enroll", "identity.device.revoke", "identity.device-revocations.list", "identity.grant.issue", "identity.grant.revoke", "identity.grant.list")
 var resourceKinds = map[string]ResourceContract{
 	"node": {true, false}, "configuration": {true, false}, "network": {true, false}, "discovery-status": {true, false}, "local-presence": {true, false}, "peer-collection": {true, false},
@@ -225,6 +227,8 @@ var resourceKinds = map[string]ResourceContract{
 	"diagnostics": {true, false}, "operation-collection": {true, false}, "diagnostic-subject": {false, false}, "event-collection": {true, false}, "content-owner": {true, true}, "owned-content": {false, true},
 	"service-type":             {false, false},
 	"realm-authority-instance": {false, false}, "realm": {false, false},
-	"realm-channel-delivery": {false, false},
-	"principal":              {false, false}, "device": {false, false}, "device-revocation-collection": {true, false}, "grant-proposal": {false, false}, "access-grant": {false, false}, "grant-collection": {true, false},
+	"realm-channel-delivery":  {false, false},
+	"realm-channel":           {false, false},
+	"realm-channel-operation": {false, false},
+	"principal":               {false, false}, "device": {false, false}, "device-revocation-collection": {true, false}, "grant-proposal": {false, false}, "access-grant": {false, false}, "grant-collection": {true, false},
 }

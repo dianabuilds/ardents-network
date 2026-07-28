@@ -164,14 +164,15 @@ func (s *Service) IssueInitialGeneration(
 	audit := newDeliveryAudit(
 		deliveryAuditID(command.Action, deliveryID), command, operationID, state.AuditHead, now,
 	)
-	err = s.commitCheckpointTransition(ctx, &state, audit, now, func(next *Ledger) {
+	err = s.commitCheckpointTransition(ctx, &state, audit, now, func(next *Ledger, _ SignedCheckpoint) error {
 		next.Members = append(next.Members, MemberRecord{
 			Version: ContractVersion, Principal: request.RecipientAttestation.SubjectPrincipal,
 		})
 		next.Channels = append(next.Channels, ChannelRecord{
 			Version: ContractVersion, ID: channelID, Class: string(request.ChannelClass),
 			MemberCount: 1, CurrentGeneration: 1, OutstandingDeliveryCount: 1,
-			Grant: capabilityGrantRecord(grant),
+			Grant:         capabilityGrantRecord(grant),
+			CurrentGrants: []CapabilityGrantRecord{capabilityGrantRecord(grant)},
 		})
 		next.InitialGenerationDeliveries = append(
 			next.InitialGenerationDeliveries,
@@ -184,6 +185,7 @@ func (s *Service) IssueInitialGeneration(
 				CreatedAt: now, Deadline: now.Add(MaxOperationLifetime),
 			},
 		)
+		return nil
 	})
 	if err != nil {
 		return InitialGenerationResult{}, err
@@ -280,10 +282,28 @@ func (s *Service) AcknowledgeInitialGeneration(
 		deliveryAuditID(command.Action, delivery.DeliveryID),
 		command, delivery.OperationID, state.AuditHead, now,
 	)
-	err = s.commitCheckpointTransition(ctx, &state, audit, now, func(next *Ledger) {
+	err = s.commitCheckpointTransition(ctx, &state, audit, now, func(next *Ledger, _ SignedCheckpoint) error {
 		next.InitialGenerationDeliveries[index].Phase = DeliveryPhaseInstalled
 		next.InitialGenerationDeliveries[index].Receipt = request.Receipt
-		next.Channels[0].OutstandingDeliveryCount = 0
+		for channelIndex := range next.Channels {
+			if next.Channels[channelIndex].ID == delivery.ChannelID &&
+				next.Channels[channelIndex].OutstandingDeliveryCount > 0 {
+				next.Channels[channelIndex].OutstandingDeliveryCount--
+				break
+			}
+		}
+		for rotationIndex := range next.Rotations {
+			rotation := &next.Rotations[rotationIndex]
+			if !containsDeliveryID(rotation.DeliveryIDs, delivery.DeliveryID) {
+				continue
+			}
+			if rotationDeliveriesAtPhase(*next, *rotation, DeliveryPhaseInstalled) {
+				rotation.Phase = DeliveryPhaseInstalled
+				setOperationPhase(next, rotation.OperationID, DeliveryPhaseInstalled)
+			}
+			break
+		}
+		return nil
 	})
 	if err != nil {
 		return InitialGenerationAcknowledgeResult{}, err
@@ -296,7 +316,7 @@ func (s *Service) commitCheckpointTransition(
 	state *Ledger,
 	audit AuditRecord,
 	now time.Time,
-	mutate func(*Ledger),
+	mutate func(*Ledger, SignedCheckpoint) error,
 ) error {
 	previousSequence, previousDigest := state.AuthoritySequence, state.Checkpoint.Digest
 	checkpoint, err := SignCheckpoint(ctx, s.signer, Checkpoint{
@@ -318,7 +338,9 @@ func (s *Service) commitCheckpointTransition(
 	state.Phase, state.Readiness, state.Reason =
 		PhaseCheckpointing, ReadinessDegraded, ReasonCheckpointMissing
 	state.AuditHead, state.Checkpoint = audit.Hash, checkpoint
-	mutate(state)
+	if err := mutate(state, checkpoint); err != nil {
+		return err
+	}
 	state.AuditLog = append(state.AuditLog, audit)
 	state.AuditOutbox = append(state.AuditOutbox, audit)
 	if err := s.store.Save(ctx, expectedRevision, *state); err != nil {

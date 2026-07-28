@@ -67,3 +67,31 @@ func fixedID(value []byte) ([16]byte, error) {
 	copy(result[:], value)
 	return result, nil
 }
+
+func activationFromWire(
+	value *protocol.GenerationActivation,
+) (identitycapability.GenerationActivation, error) {
+	if value == nil || value.GetEffectiveAt() == nil || value.GetDrainDeadline() == nil ||
+		value.GetEffectiveAt().CheckValid() != nil ||
+		value.GetDrainDeadline().CheckValid() != nil {
+		return identitycapability.GenerationActivation{}, fmt.Errorf("generation activation is invalid")
+	}
+	channelID, err := fixedID(value.GetChannelId())
+	if err != nil {
+		return identitycapability.GenerationActivation{}, err
+	}
+	return identitycapability.GenerationActivation{
+		Version: value.GetVersion(), RealmID: value.GetRealmId(),
+		AuthorityPrincipal: value.GetAuthorityPrincipal(),
+		AuthorityEpoch:     value.GetAuthorityEpoch(),
+		AuthoritySequence:  value.GetAuthoritySequence(),
+		OperationID:        value.GetOperationId(), ChannelID: channelID,
+		ChannelClass:       identityapi.CapabilityScope(value.GetChannelClass()),
+		PreviousGeneration: value.GetPreviousGeneration(),
+		Generation:         value.GetGeneration(),
+		EffectiveAt:        rpc.Time(value.GetEffectiveAt()),
+		DrainDeadline:      rpc.Time(value.GetDrainDeadline()),
+		CheckpointDigest:   value.GetCheckpointDigest(),
+		Signature:          append([]byte(nil), value.GetSignature()...),
+	}, nil
+}

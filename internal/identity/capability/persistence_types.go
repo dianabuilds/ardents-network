@@ -50,6 +50,40 @@ type persistedDeliveryReceipt struct {
 	MAC                []byte                      `json:"mac"`
 }
 
+type persistedPendingGeneration struct {
+	Version            uint32                      `json:"version"`
+	RealmID            string                      `json:"realm_id"`
+	AuthorityPrincipal string                      `json:"authority_principal"`
+	AuthorityEpoch     uint64                      `json:"authority_epoch"`
+	AuthoritySequence  uint64                      `json:"authority_sequence"`
+	OperationID        string                      `json:"operation_id"`
+	DeliveryID         string                      `json:"delivery_id"`
+	EnvelopeDigest     string                      `json:"envelope_digest"`
+	ChannelID          [16]byte                    `json:"channel_id"`
+	ChannelClass       identityapi.CapabilityScope `json:"channel_class"`
+	Generation         uint32                      `json:"generation"`
+	RecipientPrincipal string                      `json:"recipient_principal"`
+	DeliveryKeyDigest  string                      `json:"delivery_key_digest"`
+	CurrentReference   string                      `json:"current_reference"`
+	SubjectGrant       persistedGrant              `json:"subject_grant"`
+	SenderGrants       []persistedGrant            `json:"sender_grants"`
+	Revocations        []persistedRevocation       `json:"revocations"`
+	ReceiptKey         []byte                      `json:"receipt_key"`
+	DrainDeadline      time.Time                   `json:"drain_deadline"`
+	ExpiresAt          time.Time                   `json:"expires_at"`
+}
+
+type persistedPreviousGeneration struct {
+	Reference     string         `json:"reference"`
+	Grant         persistedGrant `json:"grant"`
+	DrainDeadline time.Time      `json:"drain_deadline"`
+}
+
+type persistedActivatedGeneration struct {
+	Activation GenerationActivation     `json:"activation"`
+	Receipt    persistedDeliveryReceipt `json:"receipt"`
+}
+
 func persistGrant(grant identityapi.CapabilityGrant) persistedGrant {
 	return persistedGrant{
 		Version: grant.Version, ChannelID: grant.ChannelID,

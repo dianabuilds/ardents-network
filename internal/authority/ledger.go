@@ -54,13 +54,37 @@ func validateLedger(state Ledger) error {
 			channel.OutstandingDeliveryCount > MaxOutstandingDeliveries*channel.MemberCount {
 			return corruptLedger("channel bounds")
 		}
-		grant, ok := channel.Grant.restore()
-		if !ok || channel.ID != grant.ChannelID ||
-			channel.Class != string(grant.Scope) ||
-			channel.CurrentGeneration != grant.Generation ||
-			channel.MemberCount == 0 ||
-			identitycapability.VerifyGrant(grant, ed25519.PublicKey(state.AuthorityPublicKey)) != nil {
+		current := channelCurrentGrants(channel)
+		if channel.MemberCount == 0 || len(current) != int(channel.MemberCount) ||
+			validateChannelGrantSet(
+				channel, current, channel.CurrentGeneration,
+				ed25519.PublicKey(state.AuthorityPublicKey),
+			) != nil {
 			return corruptLedger("channel grant")
+		}
+		if channel.PendingGenerationCount == 0 {
+			if len(channel.PendingGrants) != 0 {
+				return corruptLedger("pending channel grant")
+			}
+		} else if len(channel.PendingGrants) != int(channel.MemberCount) ||
+			validateChannelGrantSet(
+				channel, channel.PendingGrants, channel.CurrentGeneration+1,
+				ed25519.PublicKey(state.AuthorityPublicKey),
+			) != nil {
+			return corruptLedger("pending channel grant")
+		}
+		if channel.PreviousReceiveGenerationCount == 0 {
+			if len(channel.PreviousGrants) != 0 || !channel.PreviousDrainDeadline.IsZero() {
+				return corruptLedger("previous channel grant")
+			}
+		} else if channel.CurrentGeneration < 2 ||
+			len(channel.PreviousGrants) != int(channel.MemberCount) ||
+			!canonicalSecond(channel.PreviousDrainDeadline) ||
+			validateChannelGrantSet(
+				channel, channel.PreviousGrants, channel.CurrentGeneration-1,
+				ed25519.PublicKey(state.AuthorityPublicKey),
+			) != nil {
+			return corruptLedger("previous channel grant")
 		}
 	}
 	for _, member := range state.Members {
@@ -71,11 +95,27 @@ func validateLedger(state Ledger) error {
 	for _, operation := range state.Operations {
 		if operation.Version != ContractVersion || !operationIDPattern.MatchString(operation.ID) ||
 			len(operation.RequestID) == 0 || len(operation.RequestID) > MaxRequestIDBytes ||
-			operation.Kind != "realm_genesis" || !canonicalSecond(operation.CreatedAt) ||
+			!canonicalSecond(operation.CreatedAt) ||
 			!canonicalSecond(operation.Deadline) || !operation.Deadline.After(operation.CreatedAt) ||
-			operation.Deadline.Sub(operation.CreatedAt) > MaxOperationLifetime ||
-			(operation.Phase != PhaseCheckpointing && operation.Phase != PhaseReady && operation.Phase != PhaseRecoveryRequired) {
+			operation.Deadline.Sub(operation.CreatedAt) > MaxOperationLifetime {
 			return corruptLedger("genesis operation")
+		}
+		switch operation.Kind {
+		case "realm_genesis":
+			if operation.Phase != PhaseCheckpointing && operation.Phase != PhaseReady &&
+				operation.Phase != PhaseRecoveryRequired {
+				return corruptLedger("genesis operation")
+			}
+		case "channel_rotation":
+			if operation.Phase != DeliveryPhaseDelivering &&
+				operation.Phase != DeliveryPhaseInstalled &&
+				operation.Phase != DeliveryPhaseActivationCommitted &&
+				operation.Phase != DeliveryPhaseCompleted &&
+				operation.Phase != PhaseRecoveryRequired {
+				return corruptLedger("rotation operation")
+			}
+		default:
+			return corruptLedger("operation kind")
 		}
 	}
 	for _, record := range state.Idempotency {
@@ -99,6 +139,11 @@ func validateLedger(state Ledger) error {
 	for _, delivery := range state.InitialGenerationDeliveries {
 		if err := validateInitialGenerationDeliveryRecord(state, delivery); err != nil {
 			return corruptLedger("initial generation delivery")
+		}
+	}
+	for _, rotation := range state.Rotations {
+		if err := validateRotationRecord(state, rotation); err != nil {
+			return corruptLedger("rotation")
 		}
 	}
 	if state.AuthoritySequence == 1 && len(state.InitialGenerationDeliveries) != 0 {
@@ -147,6 +192,9 @@ func cloneLedger(state Ledger) Ledger {
 	for index := range state.Channels {
 		state.Channels[index].Grant.Secret = append([]byte(nil), state.Channels[index].Grant.Secret...)
 		state.Channels[index].Grant.Signature = append([]byte(nil), state.Channels[index].Grant.Signature...)
+		state.Channels[index].CurrentGrants = cloneGrantRecords(state.Channels[index].CurrentGrants)
+		state.Channels[index].PendingGrants = cloneGrantRecords(state.Channels[index].PendingGrants)
+		state.Channels[index].PreviousGrants = cloneGrantRecords(state.Channels[index].PreviousGrants)
 	}
 	state.Operations = append([]OperationRecord(nil), state.Operations...)
 	state.Idempotency = append([]IdempotencyRecord(nil), state.Idempotency...)
@@ -160,6 +208,14 @@ func cloneLedger(state Ledger) Ledger {
 		record.ReceiptKey = append([]byte(nil), record.ReceiptKey...)
 		record.Sealed.Envelope = append([]byte(nil), record.Sealed.Envelope...)
 		record.Receipt.MAC = append([]byte(nil), record.Receipt.MAC...)
+		record.ActiveReceipt.MAC = append([]byte(nil), record.ActiveReceipt.MAC...)
+	}
+	state.Rotations = append([]RotationRecord(nil), state.Rotations...)
+	for index := range state.Rotations {
+		state.Rotations[index].DeliveryIDs = append([]string(nil), state.Rotations[index].DeliveryIDs...)
+		state.Rotations[index].Activation.Signature = append(
+			[]byte(nil), state.Rotations[index].Activation.Signature...,
+		)
 	}
 	return state
 }
@@ -183,9 +239,19 @@ func validateAuditRecord(record AuditRecord, previousHash string) error {
 			record.ResourceID != PrimaryAuthorityInstance {
 			return ErrCorruptState
 		}
-	case ActionIssueDelivery, ActionAcknowledgeDelivery:
+	case ActionIssueDelivery, ActionAcknowledgeDelivery, ActionAcknowledgeActivation:
 		if record.ResourceKind != ResourceKindGenerationDelivery ||
 			!validGenerationDeliveryResource(record.ResourceID) {
+			return ErrCorruptState
+		}
+	case ActionRotateGeneration:
+		if record.ResourceKind != ResourceKindChannel ||
+			!validChannelResource(record.ResourceID) {
+			return ErrCorruptState
+		}
+	case ActionCommitActivation:
+		if record.ResourceKind != ResourceKindOperation ||
+			!validOperationResource(record.ResourceID) {
 			return ErrCorruptState
 		}
 	default:
@@ -220,6 +286,107 @@ func validateInitialGenerationDeliveryRecord(state Ledger, record InitialGenerat
 		}
 	} else if len(record.Receipt.MAC) != 0 {
 		return ErrCorruptState
+	}
+	if len(record.ActiveReceipt.MAC) != 0 {
+		if record.ActiveReceipt.Phase != identitycapability.DeliveryPhaseActive ||
+			identitycapability.VerifyGenerationDeliveryReceipt(
+				record.ActiveReceipt, record.ReceiptKey,
+			) != nil {
+			return ErrCorruptState
+		}
+	}
+	return nil
+}
+
+func validateChannelGrantSet(
+	channel ChannelRecord,
+	records []CapabilityGrantRecord,
+	generation uint32,
+	authorityPublic ed25519.PublicKey,
+) error {
+	seen := make(map[string]struct{}, len(records))
+	for _, record := range records {
+		grant, ok := record.restore()
+		if !ok || channel.ID != grant.ChannelID ||
+			channel.Class != string(grant.Scope) ||
+			generation != grant.Generation ||
+			identitycapability.VerifyGrant(grant, authorityPublic) != nil {
+			return ErrCorruptState
+		}
+		if _, duplicate := seen[grant.SubjectPrincipal]; duplicate {
+			return ErrCorruptState
+		}
+		seen[grant.SubjectPrincipal] = struct{}{}
+	}
+	return nil
+}
+
+func validateRotationRecord(state Ledger, rotation RotationRecord) error {
+	if rotation.Version != ContractVersion ||
+		len(rotation.RequestID) == 0 || len(rotation.RequestID) > MaxRequestIDBytes ||
+		len(rotation.PayloadHash) != sha256.Size*2 ||
+		!operationIDPattern.MatchString(rotation.OperationID) ||
+		zeroFixedID(rotation.ChannelID) ||
+		rotation.PreviousGeneration == 0 ||
+		rotation.PendingGeneration != rotation.PreviousGeneration+1 ||
+		rotation.PrepareSequence == 0 ||
+		rotation.PrepareSequence > state.AuthoritySequence ||
+		len(rotation.DeliveryIDs) == 0 ||
+		len(rotation.DeliveryIDs) > MaxMembersPerChannel ||
+		!canonicalSecond(rotation.CreatedAt) || !canonicalSecond(rotation.Deadline) ||
+		!canonicalSecond(rotation.DrainDeadline) ||
+		!rotation.Deadline.After(rotation.CreatedAt) ||
+		!rotation.DrainDeadline.After(rotation.CreatedAt) ||
+		rotation.Deadline.Sub(rotation.CreatedAt) > MaxOperationLifetime {
+		return ErrCorruptState
+	}
+	if _, err := hex.DecodeString(rotation.PayloadHash); err != nil {
+		return ErrCorruptState
+	}
+	switch rotation.Phase {
+	case DeliveryPhaseDelivering, DeliveryPhaseInstalled:
+		if len(rotation.Activation.Signature) != 0 || rotation.CompletionSequence != 0 {
+			return ErrCorruptState
+		}
+	case DeliveryPhaseActivationCommitted:
+		if identitycapability.VerifyGenerationActivation(
+			rotation.Activation, ed25519.PublicKey(state.AuthorityPublicKey),
+		) != nil ||
+			rotation.Activation.OperationID != rotation.OperationID ||
+			rotation.Activation.ChannelID != rotation.ChannelID ||
+			rotation.Activation.Generation != rotation.PendingGeneration ||
+			rotation.Activation.PreviousGeneration != rotation.PreviousGeneration ||
+			rotation.CompletionSequence != 0 {
+			return ErrCorruptState
+		}
+	case DeliveryPhaseCompleted:
+		if identitycapability.VerifyGenerationActivation(
+			rotation.Activation, ed25519.PublicKey(state.AuthorityPublicKey),
+		) != nil ||
+			rotation.Activation.OperationID != rotation.OperationID ||
+			rotation.Activation.ChannelID != rotation.ChannelID ||
+			rotation.Activation.Generation != rotation.PendingGeneration ||
+			rotation.Activation.PreviousGeneration != rotation.PreviousGeneration ||
+			rotation.CompletionSequence <= rotation.Activation.AuthoritySequence ||
+			rotation.CompletionSequence > state.AuthoritySequence {
+			return ErrCorruptState
+		}
+	default:
+		return ErrCorruptState
+	}
+	seen := make(map[string]struct{}, len(rotation.DeliveryIDs))
+	for _, deliveryID := range rotation.DeliveryIDs {
+		if !deliveryIDPattern.MatchString(deliveryID) {
+			return ErrCorruptState
+		}
+		if _, duplicate := seen[deliveryID]; duplicate {
+			return ErrCorruptState
+		}
+		seen[deliveryID] = struct{}{}
+		index := deliveryRecordIndex(state, deliveryID)
+		if index < 0 || state.InitialGenerationDeliveries[index].OperationID != rotation.OperationID {
+			return ErrCorruptState
+		}
 	}
 	return nil
 }

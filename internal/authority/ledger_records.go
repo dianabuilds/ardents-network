@@ -45,15 +45,19 @@ type MemberRecord struct {
 }
 
 type ChannelRecord struct {
-	Version                        uint32                `json:"version"`
-	ID                             [16]byte              `json:"id,omitempty"`
-	Class                          string                `json:"class"`
-	MemberCount                    uint32                `json:"member_count"`
-	CurrentGeneration              uint32                `json:"current_generation"`
-	PendingGenerationCount         uint32                `json:"pending_generation_count"`
-	PreviousReceiveGenerationCount uint32                `json:"previous_receive_generation_count"`
-	OutstandingDeliveryCount       uint32                `json:"outstanding_delivery_count"`
-	Grant                          CapabilityGrantRecord `json:"grant,omitempty"`
+	Version                        uint32                  `json:"version"`
+	ID                             [16]byte                `json:"id,omitempty"`
+	Class                          string                  `json:"class"`
+	MemberCount                    uint32                  `json:"member_count"`
+	CurrentGeneration              uint32                  `json:"current_generation"`
+	PendingGenerationCount         uint32                  `json:"pending_generation_count"`
+	PreviousReceiveGenerationCount uint32                  `json:"previous_receive_generation_count"`
+	OutstandingDeliveryCount       uint32                  `json:"outstanding_delivery_count"`
+	Grant                          CapabilityGrantRecord   `json:"grant,omitempty"`
+	CurrentGrants                  []CapabilityGrantRecord `json:"current_grants,omitempty"`
+	PendingGrants                  []CapabilityGrantRecord `json:"pending_grants,omitempty"`
+	PreviousGrants                 []CapabilityGrantRecord `json:"previous_grants,omitempty"`
+	PreviousDrainDeadline          time.Time               `json:"previous_drain_deadline,omitempty"`
 }
 
 type CapabilityGrantRecord struct {
@@ -84,8 +88,27 @@ type InitialGenerationDeliveryRecord struct {
 	ReceiptKey         []byte                                       `json:"receipt_key"`
 	Sealed             identitycapability.SealedGenerationDelivery  `json:"sealed"`
 	Receipt            identitycapability.GenerationDeliveryReceipt `json:"receipt,omitempty"`
+	ActiveReceipt      identitycapability.GenerationDeliveryReceipt `json:"active_receipt,omitempty"`
 	CreatedAt          time.Time                                    `json:"created_at"`
 	Deadline           time.Time                                    `json:"deadline"`
+}
+
+type RotationRecord struct {
+	Version            uint32                                  `json:"version"`
+	RequestID          string                                  `json:"request_id"`
+	PayloadHash        string                                  `json:"payload_hash"`
+	OperationID        string                                  `json:"operation_id"`
+	ChannelID          [16]byte                                `json:"channel_id"`
+	PreviousGeneration uint32                                  `json:"previous_generation"`
+	PendingGeneration  uint32                                  `json:"pending_generation"`
+	PrepareSequence    uint64                                  `json:"prepare_sequence"`
+	CompletionSequence uint64                                  `json:"completion_sequence,omitempty"`
+	Phase              string                                  `json:"phase"`
+	DeliveryIDs        []string                                `json:"delivery_ids"`
+	Activation         identitycapability.GenerationActivation `json:"activation,omitempty"`
+	CreatedAt          time.Time                               `json:"created_at"`
+	Deadline           time.Time                               `json:"deadline"`
+	DrainDeadline      time.Time                               `json:"drain_deadline"`
 }
 
 type Ledger struct {
@@ -111,6 +134,7 @@ type Ledger struct {
 	AuditLog                    []AuditRecord                     `json:"audit_log"`
 	AuditOutbox                 []AuditRecord                     `json:"audit_outbox"`
 	InitialGenerationDeliveries []InitialGenerationDeliveryRecord `json:"initial_generation_deliveries,omitempty"`
+	Rotations                   []RotationRecord                  `json:"rotations,omitempty"`
 }
 
 func capabilityGrantRecord(grant identityapi.CapabilityGrant) CapabilityGrantRecord {

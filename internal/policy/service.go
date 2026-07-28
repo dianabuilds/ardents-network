@@ -161,6 +161,18 @@ func (s *Service) AllowRealmChannelDelivery() error {
 	return s.applyDecisionLocked(Deny("policy_realm_channel_delivery_denied", "Realm channel delivery is disabled by policy"))
 }
 
+func (s *Service) AllowRealmChannelRotation() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.cfg.DisableRealmChannelRotation {
+		return nil
+	}
+	return s.applyDecisionLocked(Deny(
+		"policy_realm_channel_rotation_denied",
+		"Realm channel rotation is disabled by policy",
+	))
+}
+
 func (s *Service) Snapshot() Snapshot {
 	return Snapshot{State: s.State(), Reason: s.Reason()}
 }

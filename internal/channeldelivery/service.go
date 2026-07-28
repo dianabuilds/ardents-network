@@ -106,3 +106,22 @@ func (s *Service) Install(
 	}
 	return receipt, nil
 }
+
+func (s *Service) Activate(
+	_ context.Context,
+	command Command,
+	version uint32,
+	activation identitycapability.GenerationActivation,
+) (identitycapability.GenerationDeliveryReceipt, error) {
+	if version != ContractVersion {
+		return identitycapability.GenerationDeliveryReceipt{}, ErrUnsupportedVersion
+	}
+	if command.Actor == "" || command.Actor != command.Effective {
+		return identitycapability.GenerationDeliveryReceipt{}, ErrPermissionDenied
+	}
+	receipt, err := s.capabilities.ActivateGeneration(activation)
+	if err != nil {
+		return identitycapability.GenerationDeliveryReceipt{}, ErrInvalidArgument
+	}
+	return receipt, nil
+}

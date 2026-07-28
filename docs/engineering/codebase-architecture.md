@@ -385,8 +385,8 @@ The policy discovers handwritten production Go packages from the explicit
 
 | Directory | Owns | Explicitly does not own |
 |---|---|---|
-| `authority` | one-Realm authority ledger, initial-generation issue/acknowledgement, external-signer continuity, monotonic checkpoint contract and redacted authority status | Operator authentication, Product Policy, signer custody, repository administration, member-local installation, rotation, membership, restore or qualification |
-| `channeldelivery` | member-local delivery-key attestation and atomic generation-install orchestration | Authority truth, Operator authentication, HPKE implementation or Product Policy |
+| `authority` | one-Realm authority ledger, initial-generation issue/acknowledgement, fresh-generation rotation/activation, external-signer continuity, monotonic checkpoint contract and redacted authority status | Operator authentication, Product Policy, signer custody, repository administration, member-local installation, deployment fencing, membership, restore or qualification |
+| `channeldelivery` | member-local delivery-key attestation, atomic generation install and signed-checkpoint activation orchestration | Authority truth, Operator authentication, HPKE implementation, deployment fencing or Product Policy |
 | `daemon` | construction, startup order, shutdown rollback, cross-module process lifecycle | product state machines, RPC mapping, CLI presentation |
 | `buildinfo` | immutable build and version identity | runtime health, configuration, release orchestration |
 | `config` | decode, defaults, validation, source precedence, change classification | applying product changes, environment-specific startup logic |
@@ -691,7 +691,7 @@ The monolithic proto file is split by operator responsibility. Each protocol
 service remains versioned under `ardents.v1`:
 
 - `NodeService`: lifecycle, identity and aggregate node status;
-- `AuthorityService`: protected single-Realm authority genesis, initial-generation issue/acknowledgement and bounded inspection;
+- `AuthorityService`: protected single-Realm authority genesis, initial-generation issue/acknowledgement, channel rotation/activation and bounded inspection;
 - `ChannelDeliveryService`: protected member-Node delivery-key preparation and atomic generation installation;
 - `ConfigurationService`: effective configuration and reload;
 - `NetworkService`: participation, peers, routes and discovery;

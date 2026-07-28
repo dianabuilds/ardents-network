@@ -17,6 +17,32 @@ import (
 type Service interface {
 	Prepare(context.Context, domain.Command, domain.PrepareRequest) (identityapi.CapabilityDeliveryAttestation, error)
 	Install(context.Context, domain.Command, uint32, identitycapability.SealedGenerationDelivery) (identitycapability.GenerationDeliveryReceipt, error)
+	Activate(context.Context, domain.Command, uint32, identitycapability.GenerationActivation) (identitycapability.GenerationDeliveryReceipt, error)
+}
+
+func (h *ChannelDeliveryEndpoint) ActivateGeneration(ctx context.Context, request *connect.Request[protocol.ActivateGenerationRequest]) (*connect.Response[protocol.ActivateGenerationResponse], error) {
+	return rpc.RespondContext(ctx, func(call rpc.Call) (*protocol.ActivateGenerationResponse, *rpc.Error) {
+		command, ok := commandFromCall(call)
+		if h.service == nil || !ok {
+			return nil, deliveryError("activate", domain.ErrUnavailable)
+		}
+		activation, err := activationFromWire(request.Msg.GetActivation())
+		if err != nil {
+			return nil, deliveryError("activate", domain.ErrInvalidArgument)
+		}
+		mutationContext, cancel := rpc.MutationContext(ctx)
+		defer cancel()
+		receipt, err := h.service.Activate(
+			mutationContext, command, request.Msg.GetVersion(), activation,
+		)
+		if err != nil {
+			return nil, deliveryError("activate", err)
+		}
+		return &protocol.ActivateGenerationResponse{
+			Status:  &protocol.OperationStatus{State: receipt.Phase, Accepted: true},
+			Receipt: receiptToWire(receipt),
+		}, nil
+	})
 }
 
 type ChannelDeliveryEndpoint struct{ service Service }

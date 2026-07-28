@@ -19,7 +19,7 @@ func FetchPrivateRecords(ctx context.Context, endpoints []string, channel *netwo
 	if channel == nil || carrier == nil {
 		return PrivateFetchResult{Reason: networkprivacy.CodeChannelGrantMissing}, nil
 	}
-	contentTopic, err := channel.StoreContentTopic()
+	contentTopics, err := channel.StoreContentTopics()
 	if err != nil {
 		reason := networkprivacy.CodeOf(err)
 		if reason == "" {
@@ -27,9 +27,13 @@ func FetchPrivateRecords(ctx context.Context, endpoints []string, channel *netwo
 		}
 		return PrivateFetchResult{Reason: reason}, nil
 	}
-	envelopes, err := carrier.FetchPrivateEnvelopes(ctx, endpoints, contentTopic)
-	if err != nil {
-		return PrivateFetchResult{}, err
+	var envelopes []networkprivacy.SealedEnvelope
+	for _, contentTopic := range contentTopics {
+		fetched, fetchErr := carrier.FetchPrivateEnvelopes(ctx, endpoints, contentTopic)
+		if fetchErr != nil {
+			return PrivateFetchResult{}, fetchErr
+		}
+		envelopes = append(envelopes, fetched...)
 	}
 	return decodePrivateRecords(envelopes, channel), nil
 }

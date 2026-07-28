@@ -159,6 +159,7 @@ type PolicyConfig struct {
 	DisablePrivateChannelGrantUse   bool                                   `json:"disable_private_channel_grant_use"`
 	DisableRealmAuthorityCreation   bool                                   `json:"disable_realm_authority_creation"`
 	DisableRealmChannelDelivery     bool                                   `json:"disable_realm_channel_delivery"`
+	DisableRealmChannelRotation     bool                                   `json:"disable_realm_channel_rotation"`
 	DeniedChannelGrantScopes        []string                               `json:"denied_channel_grant_scopes"`
 	DisableLocalBlobRetention       bool                                   `json:"disable_local_blob_retention"`
 	DisableRelayBlobRetention       bool                                   `json:"disable_relay_blob_retention"`

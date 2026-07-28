@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/ed25519"
+	cryptorand "crypto/rand"
 	"encoding/json"
 	"errors"
 	"path/filepath"
@@ -276,6 +277,248 @@ func TestInitialGenerationDeliveryThroughProtectedOperatorInterface(t *testing.T
 	require.Equal(t, uint32(1), authorityService.Readiness().CurrentGeneration)
 }
 
+func TestChannelRotationActivationAcrossProtectedAuthorityAndMemberHosts(t *testing.T) {
+	testkit.BeginScenario(t, testkit.Spec{
+		Layer: testkit.LayerIntegration, Domain: "realm-authority", ScenarioID: "CGA-03",
+		Suite: "integration", Tags: []string{"integration", "authority", "security", "rotation", "multi-host"},
+		Speed: "fast", Environment: "local",
+	})
+	ctx := context.Background()
+	root := t.TempDir()
+	now := time.Now().UTC().Truncate(time.Second)
+	clock := func() time.Time { return now }
+	storePath := filepath.Join(root, "authority", "realm-authority.db")
+	checkpointPath := filepath.Join(root, "independent-checkpoints")
+	require.NoError(t, storage.EnsurePrivateDir(filepath.Dir(storePath)))
+	require.NoError(t, storage.EnsurePrivateDir(checkpointPath))
+	store, err := domain.OpenFileStore(
+		ctx, storePath, bytes.Repeat([]byte{0xb1}, domain.AuthorityStoreKeyBytes),
+	)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, store.Close()) })
+	repository, err := domain.NewFileCheckpointRepository(checkpointPath)
+	require.NoError(t, err)
+	authoritySigner := integrationAuthoritySigner(t, 0xb2)
+	authorityService := domain.New(domain.Config{
+		Store: store, Signer: authoritySigner, Repository: repository,
+		Random: cryptorand.Reader, Clock: clock, Policy: integrationAuthorityPolicy{},
+	})
+
+	memberPrivate := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0xb5}, ed25519.SeedSize))
+	memberPrincipal, err := identityprincipal.FromEd25519PublicKey(
+		memberPrivate.Public().(ed25519.PublicKey),
+	)
+	require.NoError(t, err)
+	trust, err := identitytrust.NewRegistry([]identitytrust.Entry{{
+		Principal: authoritySigner.principal,
+		PublicKey: authoritySigner.private.Public().(ed25519.PublicKey),
+		Purposes:  []identitytrust.Purpose{identitytrust.PurposeChannelIssue},
+	}})
+	require.NoError(t, err)
+	memberCapabilities, err := identitycapability.NewService(
+		filepath.Join(root, "member", "capabilities.db"),
+		bytes.Repeat([]byte{0xb6}, 32), memberPrincipal.String(), trust,
+		integrationCapabilityPolicy{}, clock,
+	)
+	require.NoError(t, err)
+	memberDelivery, err := channeldelivery.New(
+		memberCapabilities, memberPrivate, memberPrincipal.String(), clock,
+	)
+	require.NoError(t, err)
+
+	authorityRuntime := testkit.StartRuntime(t, runtimeinfra.Config{
+		Name: "rotation-authority-host",
+		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
+		Data: runtimeinfra.DataConfig{Dir: filepath.Join(root, "authority-node")},
+	}).Runtime
+	memberRuntime := testkit.StartRuntime(t, runtimeinfra.Config{
+		Name: "rotation-member-host",
+		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
+		Data: runtimeinfra.DataConfig{Dir: filepath.Join(root, "member-node")},
+	}).Runtime
+	authorityHost := testkit.NewAuthorityDeliveryOperatorCLIFixture(
+		t, authorityRuntime, authorityService, nil,
+	)
+	memberHost := testkit.NewAuthorityDeliveryOperatorCLIFixture(
+		t, memberRuntime, nil, memberDelivery,
+	)
+	created, err := authorityHost.Client.CreateRealmAuthority(
+		ctx, connect.NewRequest(&protocol.CreateRealmAuthorityRequest{
+			Version: domain.ContractVersion, RequestId: "rotation-genesis",
+			RealmClass: domain.RealmClassProduction,
+		}),
+	)
+	require.NoError(t, err)
+	realmID := created.Msg.GetAuthority().GetRealmId()
+
+	memberHost.GrantExact(
+		t, []identityaccess.Action{"realm.channel.delivery.prepare"},
+		identityaccess.ResourceKind("principal"), memberPrincipal.String(), false,
+	)
+	prepared, err := memberHost.Client.PrepareGenerationDelivery(
+		ctx, connect.NewRequest(&protocol.PrepareGenerationDeliveryRequest{
+			Version: channeldelivery.ContractVersion, SubjectPrincipal: memberPrincipal.String(),
+			ValidForSeconds: uint64(time.Hour / time.Second),
+		}),
+	)
+	require.NoError(t, err)
+	initialResource := domain.InitialGenerationDeliveryResource(realmID, "rotation-initial")
+	authorityHost.GrantExact(
+		t, []identityaccess.Action{domain.ActionIssueDelivery},
+		domain.ResourceKindGenerationDelivery, initialResource, false,
+	)
+	issued, err := authorityHost.Client.IssueInitialGeneration(
+		ctx, connect.NewRequest(&protocol.IssueInitialGenerationRequest{
+			Version: domain.ContractVersion, RequestId: "rotation-initial", RealmId: realmID,
+			ChannelClass: string(identityapi.CapabilityRealmDiscovery),
+			Permissions: uint32(identityapi.CapabilityPublish | identityapi.CapabilitySubscribe |
+				identityapi.CapabilityStoreFetch),
+			RecipientAttestation: prepared.Msg.GetAttestation(),
+			ValidForSeconds:      uint64(time.Hour / time.Second),
+		}),
+	)
+	require.NoError(t, err)
+	initialDeliveryResource, valid := domain.GenerationDeliveryResource(
+		realmID, issued.Msg.GetOperationId(), issued.Msg.GetDeliveryId(),
+	)
+	require.True(t, valid)
+	memberHost.GrantExact(
+		t, []identityaccess.Action{"realm.channel.delivery.install"},
+		domain.ResourceKindGenerationDelivery, initialDeliveryResource, false,
+	)
+	installed, err := memberHost.Client.InstallGenerationDelivery(
+		ctx, connect.NewRequest(&protocol.InstallGenerationDeliveryRequest{
+			Version: channeldelivery.ContractVersion, Sealed: issued.Msg.GetSealed(),
+		}),
+	)
+	require.NoError(t, err)
+	authorityHost.GrantExact(
+		t, []identityaccess.Action{domain.ActionAcknowledgeDelivery},
+		domain.ResourceKindGenerationDelivery, initialDeliveryResource, false,
+	)
+	_, err = authorityHost.Client.AcknowledgeInitialGeneration(
+		ctx, connect.NewRequest(&protocol.AcknowledgeInitialGenerationRequest{
+			Version: domain.ContractVersion, RealmId: realmID,
+			OperationId: issued.Msg.GetOperationId(), Receipt: installed.Msg.GetReceipt(),
+		}),
+	)
+	require.NoError(t, err)
+
+	channelID := issued.Msg.GetChannelId()
+	var channel [16]byte
+	copy(channel[:], channelID)
+	channelResource := domain.ChannelResource(realmID, channel)
+	authorityHost.GrantExact(
+		t, []identityaccess.Action{domain.ActionRotateGeneration},
+		domain.ResourceKindChannel, channelResource, false,
+	)
+	rotated, err := authorityHost.Client.RotateChannel(
+		ctx, connect.NewRequest(&protocol.RotateChannelRequest{
+			Version: domain.ContractVersion, RequestId: "rotation-001", RealmId: realmID,
+			ChannelId: channelID,
+			RecipientAttestations: []*protocol.GenerationDeliveryAttestation{
+				prepared.Msg.GetAttestation(),
+			},
+			ValidForSeconds: uint64(time.Hour / time.Second),
+			DrainForSeconds: uint64((15 * time.Minute) / time.Second),
+		}),
+	)
+	require.NoError(t, err)
+	require.Equal(t, uint32(1), rotated.Msg.GetPreviousGeneration())
+	require.Equal(t, uint32(2), rotated.Msg.GetPendingGeneration())
+	require.Len(t, rotated.Msg.GetDeliveries(), 1)
+	require.True(t, memberCapabilities.GenerationReadiness(channel).Ready)
+
+	rotationDelivery := rotated.Msg.GetDeliveries()[0]
+	rotationDeliveryResource, valid := domain.GenerationDeliveryResource(
+		realmID, rotated.Msg.GetOperationId(), rotationDelivery.GetDeliveryId(),
+	)
+	require.True(t, valid)
+	memberHost.GrantExact(
+		t, []identityaccess.Action{"realm.channel.delivery.install"},
+		domain.ResourceKindGenerationDelivery, rotationDeliveryResource, false,
+	)
+	pending, err := memberHost.Client.InstallGenerationDelivery(
+		ctx, connect.NewRequest(&protocol.InstallGenerationDeliveryRequest{
+			Version: channeldelivery.ContractVersion, Sealed: rotationDelivery.GetSealed(),
+		}),
+	)
+	require.NoError(t, err)
+	require.False(t, memberCapabilities.GenerationReadiness(channel).Ready)
+	require.Equal(t, uint32(2), memberCapabilities.GenerationReadiness(channel).PendingGeneration)
+	authorityHost.GrantExact(
+		t, []identityaccess.Action{domain.ActionAcknowledgeDelivery},
+		domain.ResourceKindGenerationDelivery, rotationDeliveryResource, false,
+	)
+	_, err = authorityHost.Client.AcknowledgeInitialGeneration(
+		ctx, connect.NewRequest(&protocol.AcknowledgeInitialGenerationRequest{
+			Version: domain.ContractVersion, RealmId: realmID,
+			OperationId: rotated.Msg.GetOperationId(), Receipt: pending.Msg.GetReceipt(),
+		}),
+	)
+	require.NoError(t, err)
+
+	operationResource := domain.OperationResource(realmID, rotated.Msg.GetOperationId())
+	authorityHost.GrantExact(
+		t, []identityaccess.Action{domain.ActionCommitActivation},
+		domain.ResourceKindOperation, operationResource, false,
+	)
+	committed, err := authorityHost.Client.CommitChannelActivation(
+		ctx, connect.NewRequest(&protocol.CommitChannelActivationRequest{
+			Version: domain.ContractVersion, RealmId: realmID,
+			OperationId: rotated.Msg.GetOperationId(),
+		}),
+	)
+	require.NoError(t, err)
+	require.False(t, memberCapabilities.GenerationReadiness(channel).Ready)
+	memberHost.GrantExact(
+		t, []identityaccess.Action{"realm.channel.generation.activate"},
+		domain.ResourceKindOperation, operationResource, false,
+	)
+	active, err := memberHost.Client.ActivateGeneration(
+		ctx, connect.NewRequest(&protocol.ActivateGenerationRequest{
+			Version: domain.ContractVersion, Activation: committed.Msg.GetActivation(),
+		}),
+	)
+	require.NoError(t, err)
+	readiness := memberCapabilities.GenerationReadiness(channel)
+	require.True(t, readiness.Ready)
+	require.Equal(t, uint32(2), readiness.CurrentGeneration)
+	require.Equal(t, uint32(1), readiness.PreviousGeneration)
+
+	_, err = authorityHost.Client.AcknowledgeChannelActivation(
+		ctx, connect.NewRequest(&protocol.AcknowledgeChannelActivationRequest{
+			Version: domain.ContractVersion, RealmId: realmID,
+			OperationId: rotated.Msg.GetOperationId(), ApprovedHost: true,
+			Receipt: active.Msg.GetReceipt(),
+		}),
+	)
+	require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
+	authorityHost.GrantExact(
+		t, []identityaccess.Action{domain.ActionAcknowledgeActivation},
+		domain.ResourceKindGenerationDelivery, rotationDeliveryResource, false,
+	)
+	_, err = authorityHost.Client.AcknowledgeChannelActivation(
+		ctx, connect.NewRequest(&protocol.AcknowledgeChannelActivationRequest{
+			Version: domain.ContractVersion, RealmId: realmID,
+			OperationId: rotated.Msg.GetOperationId(), ApprovedHost: false,
+			Receipt: active.Msg.GetReceipt(),
+		}),
+	)
+	require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
+	completed, err := authorityHost.Client.AcknowledgeChannelActivation(
+		ctx, connect.NewRequest(&protocol.AcknowledgeChannelActivationRequest{
+			Version: domain.ContractVersion, RealmId: realmID,
+			OperationId: rotated.Msg.GetOperationId(), ApprovedHost: true,
+			Receipt: active.Msg.GetReceipt(),
+		}),
+	)
+	require.NoError(t, err)
+	require.Equal(t, domain.DeliveryPhaseCompleted, completed.Msg.GetPhase())
+	require.Equal(t, uint32(2), completed.Msg.GetCurrentGeneration())
+	require.Equal(t, uint32(1), completed.Msg.GetPreviousGeneration())
+}
+
 func TestRealmAuthorityCrashBoundariesResumeRealPersistence(t *testing.T) {
 	for _, boundary := range []domain.CrashBoundary{
 		domain.CrashAfterLedgerCommit,
@@ -354,6 +597,9 @@ func (integrationAuthorityPolicy) AdmitRealmGenesis(context.Context, domain.Comm
 	return nil
 }
 func (integrationAuthorityPolicy) AdmitInitialGeneration(context.Context, domain.Command) error {
+	return nil
+}
+func (integrationAuthorityPolicy) AdmitChannelRotation(context.Context, domain.Command) error {
 	return nil
 }
 

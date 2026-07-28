@@ -56,6 +56,10 @@ func (s *Service) AuthorizeCapabilitySender(use identityapi.CapabilitySenderUse)
 	if observedAt.IsZero() {
 		observedAt = s.clock().UTC()
 	}
+	if previous, ok := s.ledger.PreviousGenerations[generationChannelKey(grant.ChannelID)]; ok && previous.Grant.Generation == grant.Generation &&
+		!observedAt.Before(previous.DrainDeadline) {
+		return capabilityError(CodeExpired, "previous sender generation drain has ended")
+	}
 	if rev, ok := s.ledger.Revocations[grantIDKey(grant.GrantID)]; ok &&
 		!observedAt.Before(rev.RevokedAt) {
 		return capabilityError(CodeRevoked, "sender capability is revoked at receive time")

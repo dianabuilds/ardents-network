@@ -37,11 +37,7 @@ func (e *PrivateExchange) Start(ctx context.Context) error {
 	if e == nil || e.channel == nil || e.carrier == nil {
 		return networkprivacy.ChannelGrantUnavailable()
 	}
-	topic, err := e.channel.ContentTopic()
-	if err != nil {
-		return err
-	}
-	envelopes, err := e.carrier.SubscribePrivateEnvelopes(ctx, topic)
+	topics, err := e.channel.ContentTopics()
 	if err != nil {
 		return err
 	}
@@ -49,7 +45,13 @@ func (e *PrivateExchange) Start(ctx context.Context) error {
 	e.generation++
 	generation := e.generation
 	e.mu.Unlock()
-	go e.receive(ctx, generation, envelopes)
+	for _, topic := range topics {
+		envelopes, subscribeErr := e.carrier.SubscribePrivateEnvelopes(ctx, topic)
+		if subscribeErr != nil {
+			return subscribeErr
+		}
+		go e.receive(ctx, generation, envelopes)
+	}
 	return nil
 }
 

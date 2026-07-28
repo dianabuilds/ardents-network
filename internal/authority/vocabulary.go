@@ -1,7 +1,7 @@
 // Package authority owns the single-Realm Channel Grant Authority ledger,
 // monotonic checkpoint contract, and bounded redacted status projection.
 // It does not own Operator authentication, Product Policy, signer custody,
-// checkpoint-repository administration, or later Channel Grant generations.
+// checkpoint-repository administration, deployment fencing, or membership.
 package authority
 
 import (
@@ -30,26 +30,34 @@ const (
 	RealmClassProduction = "production"
 	MaxOperationLifetime = 24 * time.Hour
 
-	ActionCreate              = "realm.authority.create"
-	ActionInspect             = "realm.channel.audit.read"
-	ActionIssueDelivery       = "realm.channel.delivery.issue"
-	ActionAcknowledgeDelivery = "realm.channel.delivery.acknowledge"
+	ActionCreate                = "realm.authority.create"
+	ActionInspect               = "realm.channel.audit.read"
+	ActionIssueDelivery         = "realm.channel.delivery.issue"
+	ActionAcknowledgeDelivery   = "realm.channel.delivery.acknowledge"
+	ActionRotateGeneration      = "realm.channel.generation.rotate"
+	ActionCommitActivation      = "realm.channel.activation.commit"
+	ActionAcknowledgeActivation = "realm.channel.activation.acknowledge"
 
 	ResourceKindAuthorityInstance  = "realm-authority-instance"
 	ResourceKindRealm              = "realm"
 	ResourceKindGenerationDelivery = "realm-channel-delivery"
+	ResourceKindChannel            = "realm-channel"
+	ResourceKindOperation          = "realm-channel-operation"
 	PrimaryAuthorityInstance       = "primary"
 
-	PhaseUninitialized        = "uninitialized"
-	PhaseCheckpointing        = "checkpointing"
-	PhaseReady                = "ready"
-	PhaseRecoveryRequired     = "recovery_required"
-	DeliveryPhaseIssued       = "issued"
-	DeliveryPhaseInstalled    = "installed"
-	ReadinessReady            = "ready"
-	ReadinessUnavailable      = "unavailable"
-	ReadinessDegraded         = "degraded"
-	ReadinessRecoveryRequired = "recovery_required"
+	PhaseUninitialized               = "uninitialized"
+	PhaseCheckpointing               = "checkpointing"
+	PhaseReady                       = "ready"
+	PhaseRecoveryRequired            = "recovery_required"
+	DeliveryPhaseIssued              = "issued"
+	DeliveryPhaseInstalled           = "installed"
+	DeliveryPhaseDelivering          = "delivering"
+	DeliveryPhaseActivationCommitted = "activation_committed"
+	DeliveryPhaseCompleted           = "completed"
+	ReadinessReady                   = "ready"
+	ReadinessUnavailable             = "unavailable"
+	ReadinessDegraded                = "degraded"
+	ReadinessRecoveryRequired        = "recovery_required"
 
 	ReasonNone                  = ""
 	ReasonUninitialized         = "authority_uninitialized"

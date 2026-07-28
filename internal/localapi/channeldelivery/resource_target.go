@@ -43,6 +43,24 @@ func CanonicalizeResource(procedure string, message any, kind string) (identitya
 		return identityaccess.ResourceTarget{
 			Kind: identityaccess.ResourceKind(kind), ID: resource,
 		}, nil
+	case ardentsv1connect.ChannelDeliveryServiceActivateGenerationProcedure:
+		request, ok := message.(*protocol.ActivateGenerationRequest)
+		if !ok || len(request.ProtoReflect().GetUnknown()) != 0 ||
+			request.GetActivation() == nil ||
+			len(request.GetActivation().ProtoReflect().GetUnknown()) != 0 {
+			return identityaccess.ResourceTarget{}, ErrInvalidResourceTarget
+		}
+		activation := request.GetActivation()
+		resource := domain.OperationResource(
+			activation.GetRealmId(), activation.GetOperationId(),
+		)
+		if !domain.ValidOperationResource(resource) {
+			return identityaccess.ResourceTarget{}, ErrInvalidResourceTarget
+		}
+		return identityaccess.ResourceTarget{
+			Kind: identityaccess.ResourceKind(kind),
+			ID:   resource,
+		}, nil
 	default:
 		return identityaccess.ResourceTarget{}, ErrInvalidResourceTarget
 	}

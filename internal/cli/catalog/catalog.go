@@ -69,6 +69,7 @@ const (
 	ownerIdentity          = "OCS-05"
 	ownerAuthority         = "CGA-01"
 	ownerAuthorityDelivery = "CGA-02"
+	ownerAuthorityRotation = "CGA-03"
 )
 
 var groups = []GroupSpec{
@@ -146,6 +147,12 @@ var commands = []CommandSpec{
 	protected("authority.delivery.issue", []string{"authority", "delivery", "issue"}, "--realm-id ID --request-id ID --channel-class CLASS --permissions N --valid-for DURATION --attestation-file FILE --out-file FILE", "issue one recipient-bound initial generation", ardentsv1connect.AuthorityServiceIssueInitialGenerationProcedure, "realm.channel.delivery.issue", "realm-channel-delivery", true, OutputProtoJSON, ownerAuthorityDelivery),
 	protected("authority.delivery.install", []string{"authority", "delivery", "install"}, "--delivery-file FILE --out-file FILE", "atomically install a sealed initial generation", ardentsv1connect.ChannelDeliveryServiceInstallGenerationDeliveryProcedure, "realm.channel.delivery.install", "realm-channel-delivery", true, OutputProtoJSON, ownerAuthorityDelivery),
 	protected("authority.delivery.acknowledge", []string{"authority", "delivery", "acknowledge"}, "--delivery-file FILE --receipt-file FILE", "acknowledge one installed initial generation", ardentsv1connect.AuthorityServiceAcknowledgeInitialGenerationProcedure, "realm.channel.delivery.acknowledge", "realm-channel-delivery", true, OutputProtoJSON, ownerAuthorityDelivery),
+	protected("authority.rotation.rotate", []string{"authority", "rotation", "rotate"}, "--realm-id ID --request-id ID --channel-id HEX --attestation-file FILE --valid-for DURATION --drain-for DURATION --out-file FILE", "create and seal one fresh pending generation", ardentsv1connect.AuthorityServiceRotateChannelProcedure, "realm.channel.generation.rotate", "realm-channel", true, OutputProtoJSON, ownerAuthorityRotation),
+	protected("authority.rotation.install", []string{"authority", "rotation", "install"}, "--rotation-file FILE --out-file FILE", "install a sealed pending generation", ardentsv1connect.ChannelDeliveryServiceInstallGenerationDeliveryProcedure, "realm.channel.delivery.install", "realm-channel-delivery", true, OutputProtoJSON, ownerAuthorityRotation),
+	protected("authority.rotation.acknowledge-installed", []string{"authority", "rotation", "acknowledge-installed"}, "--rotation-file FILE --receipt-file FILE", "acknowledge pending-generation installation", ardentsv1connect.AuthorityServiceAcknowledgeInitialGenerationProcedure, "realm.channel.delivery.acknowledge", "realm-channel-delivery", true, OutputProtoJSON, ownerAuthorityRotation),
+	protected("authority.rotation.commit", []string{"authority", "rotation", "commit"}, "--rotation-file FILE --out-file FILE", "commit the signed generation activation", ardentsv1connect.AuthorityServiceCommitChannelActivationProcedure, "realm.channel.activation.commit", "realm-channel-operation", true, OutputProtoJSON, ownerAuthorityRotation),
+	protected("authority.rotation.activate", []string{"authority", "rotation", "activate"}, "--activation-file FILE --out-file FILE", "activate a committed generation on a member", ardentsv1connect.ChannelDeliveryServiceActivateGenerationProcedure, "realm.channel.generation.activate", "realm-channel-operation", true, OutputProtoJSON, ownerAuthorityRotation),
+	protected("authority.rotation.acknowledge-active", []string{"authority", "rotation", "acknowledge-active"}, "--rotation-file FILE --receipt-file FILE", "record approved-host activation", ardentsv1connect.AuthorityServiceAcknowledgeChannelActivationProcedure, "realm.channel.activation.acknowledge", "realm-channel-delivery", true, OutputProtoJSON, ownerAuthorityRotation),
 
 	offline("identity.principal.create", []string{"identity", "principal", "create"}, "[--signer-file PATH]", "create an offline Principal root", "offline.identity.principal.create", OutputCLIJSON),
 	offline("identity.principal.import", []string{"identity", "principal", "import"}, "--from-file PATH [--signer-file PATH]", "import a protected Principal root", "offline.identity.principal.import", OutputCLIJSON),

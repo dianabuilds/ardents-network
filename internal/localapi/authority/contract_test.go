@@ -35,8 +35,12 @@ func TestAuthorityProceduresHaveExactDirectOperatorContracts(t *testing.T) {
 	for procedure, action := range map[string]string{
 		ardentsv1connect.AuthorityServiceIssueInitialGenerationProcedure:          domain.ActionIssueDelivery,
 		ardentsv1connect.AuthorityServiceAcknowledgeInitialGenerationProcedure:    domain.ActionAcknowledgeDelivery,
+		ardentsv1connect.AuthorityServiceRotateChannelProcedure:                   domain.ActionRotateGeneration,
+		ardentsv1connect.AuthorityServiceCommitChannelActivationProcedure:         domain.ActionCommitActivation,
+		ardentsv1connect.AuthorityServiceAcknowledgeChannelActivationProcedure:    domain.ActionAcknowledgeActivation,
 		ardentsv1connect.ChannelDeliveryServicePrepareGenerationDeliveryProcedure: "realm.channel.delivery.prepare",
 		ardentsv1connect.ChannelDeliveryServiceInstallGenerationDeliveryProcedure: "realm.channel.delivery.install",
+		ardentsv1connect.ChannelDeliveryServiceActivateGenerationProcedure:        "realm.channel.generation.activate",
 	} {
 		rule, registered := localauth.RuleForProcedure(procedure)
 		require.True(t, registered, procedure)
@@ -45,6 +49,62 @@ func TestAuthorityProceduresHaveExactDirectOperatorContracts(t *testing.T) {
 		require.True(t, identitycontract.IsRegisteredAction(identitycontract.InterfaceOperator, action))
 		require.False(t, identitycontract.IsRegisteredAction(identitycontract.InterfaceApplication, action))
 	}
+}
+
+func TestCanonicalRotationResourcesAreExactAndBounded(t *testing.T) {
+	realmID := "r1_00112233445566778899aabbccddeeff"
+	operationID := "rao1_00112233445566778899aabbccddeeff"
+	deliveryID := "rad1_00112233445566778899aabbccddeeff"
+	channelID := []byte("0123456789abcdef")
+
+	target, err := CanonicalizeResource(
+		ardentsv1connect.AuthorityServiceRotateChannelProcedure,
+		&protocol.RotateChannelRequest{
+			Version: 1, RequestId: "rotation-001", RealmId: realmID,
+			ChannelId:             channelID,
+			RecipientAttestations: []*protocol.GenerationDeliveryAttestation{{}},
+		},
+		domain.ResourceKindChannel,
+	)
+	require.NoError(t, err)
+	var channel [16]byte
+	copy(channel[:], channelID)
+	require.Equal(t, domain.ChannelResource(realmID, channel), target.ID)
+
+	target, err = CanonicalizeResource(
+		ardentsv1connect.AuthorityServiceCommitChannelActivationProcedure,
+		&protocol.CommitChannelActivationRequest{
+			Version: 1, RealmId: realmID, OperationId: operationID,
+		},
+		domain.ResourceKindOperation,
+	)
+	require.NoError(t, err)
+	require.Equal(t, domain.OperationResource(realmID, operationID), target.ID)
+
+	target, err = CanonicalizeResource(
+		ardentsv1connect.AuthorityServiceAcknowledgeChannelActivationProcedure,
+		&protocol.AcknowledgeChannelActivationRequest{
+			Version: 1, RealmId: realmID, OperationId: operationID,
+			Receipt: &protocol.GenerationDeliveryReceipt{DeliveryId: deliveryID},
+		},
+		domain.ResourceKindGenerationDelivery,
+	)
+	require.NoError(t, err)
+	expected, valid := domain.GenerationDeliveryResource(realmID, operationID, deliveryID)
+	require.True(t, valid)
+	require.Equal(t, expected, target.ID)
+
+	unknown := &protocol.GenerationDeliveryAttestation{}
+	unknown.ProtoReflect().SetUnknown([]byte{0x98, 0x06, 0x01})
+	_, err = CanonicalizeResource(
+		ardentsv1connect.AuthorityServiceRotateChannelProcedure,
+		&protocol.RotateChannelRequest{
+			Version: 1, RequestId: "rotation-001", RealmId: realmID,
+			ChannelId: channelID, RecipientAttestations: []*protocol.GenerationDeliveryAttestation{unknown},
+		},
+		domain.ResourceKindChannel,
+	)
+	require.Error(t, err)
 }
 
 func TestCanonicalAuthorityResourcesAreExactAndBounded(t *testing.T) {

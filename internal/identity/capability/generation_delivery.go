@@ -29,11 +29,12 @@ const (
 )
 
 var (
-	generationRealmPattern     = regexp.MustCompile(`^r1_[0-9a-f]{32}$`)
-	generationOperationPattern = regexp.MustCompile(`^rao1_[0-9a-f]{32}$`)
-	generationDeliveryPattern  = regexp.MustCompile(`^rad1_[0-9a-f]{32}$`)
-	generationDigestPattern    = regexp.MustCompile(`^ade1_[0-9a-f]{64}$`)
-	generationKeyDigestPattern = regexp.MustCompile(`^adk1_[0-9a-f]{64}$`)
+	generationRealmPattern            = regexp.MustCompile(`^r1_[0-9a-f]{32}$`)
+	generationOperationPattern        = regexp.MustCompile(`^rao1_[0-9a-f]{32}$`)
+	generationDeliveryPattern         = regexp.MustCompile(`^rad1_[0-9a-f]{32}$`)
+	generationDigestPattern           = regexp.MustCompile(`^ade1_[0-9a-f]{64}$`)
+	generationKeyDigestPattern        = regexp.MustCompile(`^adk1_[0-9a-f]{64}$`)
+	generationCheckpointDigestPattern = regexp.MustCompile(`^ac1_[0-9a-f]{64}$`)
 )
 
 type GenerationBundle struct {
@@ -251,13 +252,44 @@ func (s *Service) InstallGenerationDelivery(sealed SealedGenerationDelivery) (Ge
 		return GenerationDeliveryReceipt{}, capabilityError(CodeInvalid, "generation delivery receipt creation failed")
 	}
 	next := cloneLedger(s.ledger)
-	ref := s.reference(mustRestoreGrant(record.SubjectGrant))
-	next.Grants[string(ref)] = record.SubjectGrant
-	for _, sender := range record.SenderGrants {
-		next.SenderGrants[grantIDKey(sender.GrantID)] = sender
-	}
-	for _, revocation := range record.Revocations {
-		next.Revocations[grantIDKey(revocation.GrantID)] = revocation
+	currentRef, currentGrant, hasCurrent := currentSubjectGrant(
+		next, record.ChannelID, s.localPrincipal,
+	)
+	if hasCurrent {
+		if record.Generation != currentGrant.Generation+1 {
+			return GenerationDeliveryReceipt{}, capabilityError(CodeInvalid, "generation is not the expected successor")
+		}
+		channelKey := generationChannelKey(record.ChannelID)
+		if _, exists := next.PendingGenerations[channelKey]; exists {
+			return GenerationDeliveryReceipt{}, capabilityError(CodeInvalid, "one pending generation already exists")
+		}
+		next.PendingGenerations[channelKey] = persistedPendingGeneration{
+			Version: record.Version, RealmID: record.RealmID,
+			AuthorityPrincipal: record.AuthorityPrincipal,
+			AuthorityEpoch:     record.AuthorityEpoch, AuthoritySequence: record.AuthoritySequence,
+			OperationID: record.OperationID, DeliveryID: record.DeliveryID,
+			EnvelopeDigest: sealed.EnvelopeDigest, ChannelID: record.ChannelID,
+			ChannelClass: record.ChannelClass, Generation: record.Generation,
+			RecipientPrincipal: record.RecipientPrincipal,
+			DeliveryKeyDigest:  record.DeliveryKeyDigest,
+			CurrentReference:   currentRef, SubjectGrant: record.SubjectGrant,
+			SenderGrants:  append([]persistedGrant(nil), record.SenderGrants...),
+			Revocations:   append([]persistedRevocation(nil), record.Revocations...),
+			ReceiptKey:    append([]byte(nil), record.ReceiptKey...),
+			DrainDeadline: record.DrainDeadline, ExpiresAt: record.ExpiresAt,
+		}
+	} else {
+		if record.Generation != 1 {
+			return GenerationDeliveryReceipt{}, capabilityError(CodeInvalid, "initial generation is missing")
+		}
+		ref := s.reference(mustRestoreGrant(record.SubjectGrant))
+		next.Grants[string(ref)] = record.SubjectGrant
+		for _, sender := range record.SenderGrants {
+			next.SenderGrants[grantIDKey(sender.GrantID)] = sender
+		}
+		for _, revocation := range record.Revocations {
+			next.Revocations[grantIDKey(revocation.GrantID)] = revocation
+		}
 	}
 	next.InstalledDeliveries[record.DeliveryID] = persistDeliveryReceipt(receipt, record.ExpiresAt)
 	if err := s.store.save(next); err != nil {
@@ -308,14 +340,14 @@ func (s *Service) validateGenerationBundle(record generationBundleRecord, at tim
 		seen[grant.GrantID] = struct{}{}
 		subjectPresent = subjectPresent || grant.GrantID == subject.GrantID
 		if err := s.validateSenderGrantConflict(grant); err != nil {
-			return err
+			return fmt.Errorf("generation sender conflict: %w", err)
 		}
 	}
 	if !subjectPresent {
 		return fmt.Errorf("generation sender snapshot omits subject")
 	}
 	if err := s.rejectConflictingGrant(s.reference(subject), subject); err != nil {
-		return err
+		return fmt.Errorf("generation subject conflict: %w", err)
 	}
 	for _, stored := range record.Revocations {
 		revocation := stored.restore()
@@ -324,7 +356,7 @@ func (s *Service) validateGenerationBundle(record generationBundleRecord, at tim
 			return fmt.Errorf("generation revocation snapshot is invalid")
 		}
 		if err := s.checkRevocationIssuer(revocation); err != nil {
-			return err
+			return fmt.Errorf("generation revocation conflict: %w", err)
 		}
 	}
 	return nil
@@ -510,4 +542,25 @@ func canonicalDeliverySecond(value time.Time) bool {
 func mustRestoreGrant(stored persistedGrant) identityapi.CapabilityGrant {
 	grant, _ := stored.restore()
 	return grant
+}
+
+func generationChannelKey(channelID [16]byte) string {
+	return hex.EncodeToString(channelID[:])
+}
+
+func currentSubjectGrant(
+	stored ledger,
+	channelID [16]byte,
+	subject string,
+) (string, identityapi.CapabilityGrant, bool) {
+	for ref, persisted := range stored.Grants {
+		if persisted.ChannelID != channelID || persisted.SubjectPrincipal != subject {
+			continue
+		}
+		grant, err := persisted.restore()
+		if err == nil {
+			return ref, grant, true
+		}
+	}
+	return "", identityapi.CapabilityGrant{}, false
 }

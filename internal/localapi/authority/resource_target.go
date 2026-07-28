@@ -62,6 +62,59 @@ func CanonicalizeResource(procedure string, message any, kind string) (identitya
 		return identityaccess.ResourceTarget{
 			Kind: identityaccess.ResourceKind(kind), ID: resource,
 		}, nil
+	case ardentsv1connect.AuthorityServiceRotateChannelProcedure:
+		request, ok := message.(*protocol.RotateChannelRequest)
+		if !ok || len(request.ProtoReflect().GetUnknown()) != 0 ||
+			len(request.GetRequestId()) == 0 ||
+			len(request.GetRequestId()) > domain.MaxRequestIDBytes ||
+			!domain.ValidRealmID(request.GetRealmId()) ||
+			len(request.GetChannelId()) != 16 ||
+			len(request.GetRecipientAttestations()) == 0 ||
+			len(request.GetRecipientAttestations()) > domain.MaxMembersPerChannel {
+			return identityaccess.ResourceTarget{}, ErrInvalidResourceTarget
+		}
+		for _, attestation := range request.GetRecipientAttestations() {
+			if attestation == nil ||
+				len(attestation.ProtoReflect().GetUnknown()) != 0 {
+				return identityaccess.ResourceTarget{}, ErrInvalidResourceTarget
+			}
+		}
+		var channelID [16]byte
+		copy(channelID[:], request.GetChannelId())
+		return identityaccess.ResourceTarget{
+			Kind: identityaccess.ResourceKind(kind),
+			ID:   domain.ChannelResource(request.GetRealmId(), channelID),
+		}, nil
+	case ardentsv1connect.AuthorityServiceCommitChannelActivationProcedure:
+		request, ok := message.(*protocol.CommitChannelActivationRequest)
+		if !ok || len(request.ProtoReflect().GetUnknown()) != 0 {
+			return identityaccess.ResourceTarget{}, ErrInvalidResourceTarget
+		}
+		resource := domain.OperationResource(request.GetRealmId(), request.GetOperationId())
+		if !domain.ValidOperationResource(resource) {
+			return identityaccess.ResourceTarget{}, ErrInvalidResourceTarget
+		}
+		return identityaccess.ResourceTarget{
+			Kind: identityaccess.ResourceKind(kind),
+			ID:   resource,
+		}, nil
+	case ardentsv1connect.AuthorityServiceAcknowledgeChannelActivationProcedure:
+		request, ok := message.(*protocol.AcknowledgeChannelActivationRequest)
+		if !ok || len(request.ProtoReflect().GetUnknown()) != 0 ||
+			request.GetReceipt() == nil ||
+			len(request.GetReceipt().ProtoReflect().GetUnknown()) != 0 {
+			return identityaccess.ResourceTarget{}, ErrInvalidResourceTarget
+		}
+		resource, valid := domain.GenerationDeliveryResource(
+			request.GetRealmId(), request.GetOperationId(),
+			request.GetReceipt().GetDeliveryId(),
+		)
+		if !valid {
+			return identityaccess.ResourceTarget{}, ErrInvalidResourceTarget
+		}
+		return identityaccess.ResourceTarget{
+			Kind: identityaccess.ResourceKind(kind), ID: resource,
+		}, nil
 	default:
 		return identityaccess.ResourceTarget{}, ErrInvalidResourceTarget
 	}

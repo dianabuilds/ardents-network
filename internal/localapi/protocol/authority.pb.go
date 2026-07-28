@@ -1418,6 +1418,838 @@ func (x *InstallGenerationDeliveryResponse) GetReceipt() *GenerationDeliveryRece
 	return nil
 }
 
+type GenerationActivation struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Version            uint32                 `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
+	RealmId            string                 `protobuf:"bytes,2,opt,name=realm_id,json=realmId,proto3" json:"realm_id,omitempty"`
+	AuthorityPrincipal string                 `protobuf:"bytes,3,opt,name=authority_principal,json=authorityPrincipal,proto3" json:"authority_principal,omitempty"`
+	AuthorityEpoch     uint64                 `protobuf:"varint,4,opt,name=authority_epoch,json=authorityEpoch,proto3" json:"authority_epoch,omitempty"`
+	AuthoritySequence  uint64                 `protobuf:"varint,5,opt,name=authority_sequence,json=authoritySequence,proto3" json:"authority_sequence,omitempty"`
+	OperationId        string                 `protobuf:"bytes,6,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
+	ChannelId          []byte                 `protobuf:"bytes,7,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	ChannelClass       string                 `protobuf:"bytes,8,opt,name=channel_class,json=channelClass,proto3" json:"channel_class,omitempty"`
+	PreviousGeneration uint32                 `protobuf:"varint,9,opt,name=previous_generation,json=previousGeneration,proto3" json:"previous_generation,omitempty"`
+	Generation         uint32                 `protobuf:"varint,10,opt,name=generation,proto3" json:"generation,omitempty"`
+	EffectiveAt        *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=effective_at,json=effectiveAt,proto3" json:"effective_at,omitempty"`
+	DrainDeadline      *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=drain_deadline,json=drainDeadline,proto3" json:"drain_deadline,omitempty"`
+	CheckpointDigest   string                 `protobuf:"bytes,13,opt,name=checkpoint_digest,json=checkpointDigest,proto3" json:"checkpoint_digest,omitempty"`
+	Signature          []byte                 `protobuf:"bytes,14,opt,name=signature,proto3" json:"signature,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *GenerationActivation) Reset() {
+	*x = GenerationActivation{}
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GenerationActivation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GenerationActivation) ProtoMessage() {}
+
+func (x *GenerationActivation) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GenerationActivation.ProtoReflect.Descriptor instead.
+func (*GenerationActivation) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *GenerationActivation) GetVersion() uint32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *GenerationActivation) GetRealmId() string {
+	if x != nil {
+		return x.RealmId
+	}
+	return ""
+}
+
+func (x *GenerationActivation) GetAuthorityPrincipal() string {
+	if x != nil {
+		return x.AuthorityPrincipal
+	}
+	return ""
+}
+
+func (x *GenerationActivation) GetAuthorityEpoch() uint64 {
+	if x != nil {
+		return x.AuthorityEpoch
+	}
+	return 0
+}
+
+func (x *GenerationActivation) GetAuthoritySequence() uint64 {
+	if x != nil {
+		return x.AuthoritySequence
+	}
+	return 0
+}
+
+func (x *GenerationActivation) GetOperationId() string {
+	if x != nil {
+		return x.OperationId
+	}
+	return ""
+}
+
+func (x *GenerationActivation) GetChannelId() []byte {
+	if x != nil {
+		return x.ChannelId
+	}
+	return nil
+}
+
+func (x *GenerationActivation) GetChannelClass() string {
+	if x != nil {
+		return x.ChannelClass
+	}
+	return ""
+}
+
+func (x *GenerationActivation) GetPreviousGeneration() uint32 {
+	if x != nil {
+		return x.PreviousGeneration
+	}
+	return 0
+}
+
+func (x *GenerationActivation) GetGeneration() uint32 {
+	if x != nil {
+		return x.Generation
+	}
+	return 0
+}
+
+func (x *GenerationActivation) GetEffectiveAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.EffectiveAt
+	}
+	return nil
+}
+
+func (x *GenerationActivation) GetDrainDeadline() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DrainDeadline
+	}
+	return nil
+}
+
+func (x *GenerationActivation) GetCheckpointDigest() string {
+	if x != nil {
+		return x.CheckpointDigest
+	}
+	return ""
+}
+
+func (x *GenerationActivation) GetSignature() []byte {
+	if x != nil {
+		return x.Signature
+	}
+	return nil
+}
+
+type RotationDelivery struct {
+	state              protoimpl.MessageState    `protogen:"open.v1"`
+	DeliveryId         string                    `protobuf:"bytes,1,opt,name=delivery_id,json=deliveryId,proto3" json:"delivery_id,omitempty"`
+	RecipientPrincipal string                    `protobuf:"bytes,2,opt,name=recipient_principal,json=recipientPrincipal,proto3" json:"recipient_principal,omitempty"`
+	Sealed             *SealedGenerationDelivery `protobuf:"bytes,3,opt,name=sealed,proto3" json:"sealed,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *RotationDelivery) Reset() {
+	*x = RotationDelivery{}
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RotationDelivery) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RotationDelivery) ProtoMessage() {}
+
+func (x *RotationDelivery) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RotationDelivery.ProtoReflect.Descriptor instead.
+func (*RotationDelivery) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *RotationDelivery) GetDeliveryId() string {
+	if x != nil {
+		return x.DeliveryId
+	}
+	return ""
+}
+
+func (x *RotationDelivery) GetRecipientPrincipal() string {
+	if x != nil {
+		return x.RecipientPrincipal
+	}
+	return ""
+}
+
+func (x *RotationDelivery) GetSealed() *SealedGenerationDelivery {
+	if x != nil {
+		return x.Sealed
+	}
+	return nil
+}
+
+type RotateChannelRequest struct {
+	state                 protoimpl.MessageState           `protogen:"open.v1"`
+	Version               uint32                           `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
+	RequestId             string                           `protobuf:"bytes,2,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	RealmId               string                           `protobuf:"bytes,3,opt,name=realm_id,json=realmId,proto3" json:"realm_id,omitempty"`
+	ChannelId             []byte                           `protobuf:"bytes,4,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	RecipientAttestations []*GenerationDeliveryAttestation `protobuf:"bytes,5,rep,name=recipient_attestations,json=recipientAttestations,proto3" json:"recipient_attestations,omitempty"`
+	ValidForSeconds       uint64                           `protobuf:"varint,6,opt,name=valid_for_seconds,json=validForSeconds,proto3" json:"valid_for_seconds,omitempty"`
+	DrainForSeconds       uint64                           `protobuf:"varint,7,opt,name=drain_for_seconds,json=drainForSeconds,proto3" json:"drain_for_seconds,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *RotateChannelRequest) Reset() {
+	*x = RotateChannelRequest{}
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RotateChannelRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RotateChannelRequest) ProtoMessage() {}
+
+func (x *RotateChannelRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RotateChannelRequest.ProtoReflect.Descriptor instead.
+func (*RotateChannelRequest) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *RotateChannelRequest) GetVersion() uint32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *RotateChannelRequest) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *RotateChannelRequest) GetRealmId() string {
+	if x != nil {
+		return x.RealmId
+	}
+	return ""
+}
+
+func (x *RotateChannelRequest) GetChannelId() []byte {
+	if x != nil {
+		return x.ChannelId
+	}
+	return nil
+}
+
+func (x *RotateChannelRequest) GetRecipientAttestations() []*GenerationDeliveryAttestation {
+	if x != nil {
+		return x.RecipientAttestations
+	}
+	return nil
+}
+
+func (x *RotateChannelRequest) GetValidForSeconds() uint64 {
+	if x != nil {
+		return x.ValidForSeconds
+	}
+	return 0
+}
+
+func (x *RotateChannelRequest) GetDrainForSeconds() uint64 {
+	if x != nil {
+		return x.DrainForSeconds
+	}
+	return 0
+}
+
+type RotateChannelResponse struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Status             *OperationStatus       `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	RealmId            string                 `protobuf:"bytes,2,opt,name=realm_id,json=realmId,proto3" json:"realm_id,omitempty"`
+	OperationId        string                 `protobuf:"bytes,3,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
+	AuthoritySequence  uint64                 `protobuf:"varint,4,opt,name=authority_sequence,json=authoritySequence,proto3" json:"authority_sequence,omitempty"`
+	ChannelId          []byte                 `protobuf:"bytes,5,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	PreviousGeneration uint32                 `protobuf:"varint,6,opt,name=previous_generation,json=previousGeneration,proto3" json:"previous_generation,omitempty"`
+	PendingGeneration  uint32                 `protobuf:"varint,7,opt,name=pending_generation,json=pendingGeneration,proto3" json:"pending_generation,omitempty"`
+	Phase              string                 `protobuf:"bytes,8,opt,name=phase,proto3" json:"phase,omitempty"`
+	Deliveries         []*RotationDelivery    `protobuf:"bytes,9,rep,name=deliveries,proto3" json:"deliveries,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *RotateChannelResponse) Reset() {
+	*x = RotateChannelResponse{}
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RotateChannelResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RotateChannelResponse) ProtoMessage() {}
+
+func (x *RotateChannelResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RotateChannelResponse.ProtoReflect.Descriptor instead.
+func (*RotateChannelResponse) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *RotateChannelResponse) GetStatus() *OperationStatus {
+	if x != nil {
+		return x.Status
+	}
+	return nil
+}
+
+func (x *RotateChannelResponse) GetRealmId() string {
+	if x != nil {
+		return x.RealmId
+	}
+	return ""
+}
+
+func (x *RotateChannelResponse) GetOperationId() string {
+	if x != nil {
+		return x.OperationId
+	}
+	return ""
+}
+
+func (x *RotateChannelResponse) GetAuthoritySequence() uint64 {
+	if x != nil {
+		return x.AuthoritySequence
+	}
+	return 0
+}
+
+func (x *RotateChannelResponse) GetChannelId() []byte {
+	if x != nil {
+		return x.ChannelId
+	}
+	return nil
+}
+
+func (x *RotateChannelResponse) GetPreviousGeneration() uint32 {
+	if x != nil {
+		return x.PreviousGeneration
+	}
+	return 0
+}
+
+func (x *RotateChannelResponse) GetPendingGeneration() uint32 {
+	if x != nil {
+		return x.PendingGeneration
+	}
+	return 0
+}
+
+func (x *RotateChannelResponse) GetPhase() string {
+	if x != nil {
+		return x.Phase
+	}
+	return ""
+}
+
+func (x *RotateChannelResponse) GetDeliveries() []*RotationDelivery {
+	if x != nil {
+		return x.Deliveries
+	}
+	return nil
+}
+
+type CommitChannelActivationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Version       uint32                 `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
+	RealmId       string                 `protobuf:"bytes,2,opt,name=realm_id,json=realmId,proto3" json:"realm_id,omitempty"`
+	OperationId   string                 `protobuf:"bytes,3,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CommitChannelActivationRequest) Reset() {
+	*x = CommitChannelActivationRequest{}
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CommitChannelActivationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CommitChannelActivationRequest) ProtoMessage() {}
+
+func (x *CommitChannelActivationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CommitChannelActivationRequest.ProtoReflect.Descriptor instead.
+func (*CommitChannelActivationRequest) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *CommitChannelActivationRequest) GetVersion() uint32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *CommitChannelActivationRequest) GetRealmId() string {
+	if x != nil {
+		return x.RealmId
+	}
+	return ""
+}
+
+func (x *CommitChannelActivationRequest) GetOperationId() string {
+	if x != nil {
+		return x.OperationId
+	}
+	return ""
+}
+
+type CommitChannelActivationResponse struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Status            *OperationStatus       `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	RealmId           string                 `protobuf:"bytes,2,opt,name=realm_id,json=realmId,proto3" json:"realm_id,omitempty"`
+	OperationId       string                 `protobuf:"bytes,3,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
+	AuthoritySequence uint64                 `protobuf:"varint,4,opt,name=authority_sequence,json=authoritySequence,proto3" json:"authority_sequence,omitempty"`
+	Phase             string                 `protobuf:"bytes,5,opt,name=phase,proto3" json:"phase,omitempty"`
+	Activation        *GenerationActivation  `protobuf:"bytes,6,opt,name=activation,proto3" json:"activation,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *CommitChannelActivationResponse) Reset() {
+	*x = CommitChannelActivationResponse{}
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CommitChannelActivationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CommitChannelActivationResponse) ProtoMessage() {}
+
+func (x *CommitChannelActivationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CommitChannelActivationResponse.ProtoReflect.Descriptor instead.
+func (*CommitChannelActivationResponse) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *CommitChannelActivationResponse) GetStatus() *OperationStatus {
+	if x != nil {
+		return x.Status
+	}
+	return nil
+}
+
+func (x *CommitChannelActivationResponse) GetRealmId() string {
+	if x != nil {
+		return x.RealmId
+	}
+	return ""
+}
+
+func (x *CommitChannelActivationResponse) GetOperationId() string {
+	if x != nil {
+		return x.OperationId
+	}
+	return ""
+}
+
+func (x *CommitChannelActivationResponse) GetAuthoritySequence() uint64 {
+	if x != nil {
+		return x.AuthoritySequence
+	}
+	return 0
+}
+
+func (x *CommitChannelActivationResponse) GetPhase() string {
+	if x != nil {
+		return x.Phase
+	}
+	return ""
+}
+
+func (x *CommitChannelActivationResponse) GetActivation() *GenerationActivation {
+	if x != nil {
+		return x.Activation
+	}
+	return nil
+}
+
+type ActivateGenerationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Version       uint32                 `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
+	Activation    *GenerationActivation  `protobuf:"bytes,2,opt,name=activation,proto3" json:"activation,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ActivateGenerationRequest) Reset() {
+	*x = ActivateGenerationRequest{}
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ActivateGenerationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ActivateGenerationRequest) ProtoMessage() {}
+
+func (x *ActivateGenerationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ActivateGenerationRequest.ProtoReflect.Descriptor instead.
+func (*ActivateGenerationRequest) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *ActivateGenerationRequest) GetVersion() uint32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *ActivateGenerationRequest) GetActivation() *GenerationActivation {
+	if x != nil {
+		return x.Activation
+	}
+	return nil
+}
+
+type ActivateGenerationResponse struct {
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	Status        *OperationStatus           `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	Receipt       *GenerationDeliveryReceipt `protobuf:"bytes,2,opt,name=receipt,proto3" json:"receipt,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ActivateGenerationResponse) Reset() {
+	*x = ActivateGenerationResponse{}
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ActivateGenerationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ActivateGenerationResponse) ProtoMessage() {}
+
+func (x *ActivateGenerationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ActivateGenerationResponse.ProtoReflect.Descriptor instead.
+func (*ActivateGenerationResponse) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *ActivateGenerationResponse) GetStatus() *OperationStatus {
+	if x != nil {
+		return x.Status
+	}
+	return nil
+}
+
+func (x *ActivateGenerationResponse) GetReceipt() *GenerationDeliveryReceipt {
+	if x != nil {
+		return x.Receipt
+	}
+	return nil
+}
+
+type AcknowledgeChannelActivationRequest struct {
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	Version       uint32                     `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
+	RealmId       string                     `protobuf:"bytes,2,opt,name=realm_id,json=realmId,proto3" json:"realm_id,omitempty"`
+	OperationId   string                     `protobuf:"bytes,3,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
+	ApprovedHost  bool                       `protobuf:"varint,4,opt,name=approved_host,json=approvedHost,proto3" json:"approved_host,omitempty"`
+	Receipt       *GenerationDeliveryReceipt `protobuf:"bytes,5,opt,name=receipt,proto3" json:"receipt,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AcknowledgeChannelActivationRequest) Reset() {
+	*x = AcknowledgeChannelActivationRequest{}
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AcknowledgeChannelActivationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AcknowledgeChannelActivationRequest) ProtoMessage() {}
+
+func (x *AcknowledgeChannelActivationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AcknowledgeChannelActivationRequest.ProtoReflect.Descriptor instead.
+func (*AcknowledgeChannelActivationRequest) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *AcknowledgeChannelActivationRequest) GetVersion() uint32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *AcknowledgeChannelActivationRequest) GetRealmId() string {
+	if x != nil {
+		return x.RealmId
+	}
+	return ""
+}
+
+func (x *AcknowledgeChannelActivationRequest) GetOperationId() string {
+	if x != nil {
+		return x.OperationId
+	}
+	return ""
+}
+
+func (x *AcknowledgeChannelActivationRequest) GetApprovedHost() bool {
+	if x != nil {
+		return x.ApprovedHost
+	}
+	return false
+}
+
+func (x *AcknowledgeChannelActivationRequest) GetReceipt() *GenerationDeliveryReceipt {
+	if x != nil {
+		return x.Receipt
+	}
+	return nil
+}
+
+type AcknowledgeChannelActivationResponse struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Status             *OperationStatus       `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	RealmId            string                 `protobuf:"bytes,2,opt,name=realm_id,json=realmId,proto3" json:"realm_id,omitempty"`
+	OperationId        string                 `protobuf:"bytes,3,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
+	AuthoritySequence  uint64                 `protobuf:"varint,4,opt,name=authority_sequence,json=authoritySequence,proto3" json:"authority_sequence,omitempty"`
+	Phase              string                 `protobuf:"bytes,5,opt,name=phase,proto3" json:"phase,omitempty"`
+	CurrentGeneration  uint32                 `protobuf:"varint,6,opt,name=current_generation,json=currentGeneration,proto3" json:"current_generation,omitempty"`
+	PreviousGeneration uint32                 `protobuf:"varint,7,opt,name=previous_generation,json=previousGeneration,proto3" json:"previous_generation,omitempty"`
+	DrainDeadline      *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=drain_deadline,json=drainDeadline,proto3" json:"drain_deadline,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *AcknowledgeChannelActivationResponse) Reset() {
+	*x = AcknowledgeChannelActivationResponse{}
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AcknowledgeChannelActivationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AcknowledgeChannelActivationResponse) ProtoMessage() {}
+
+func (x *AcknowledgeChannelActivationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AcknowledgeChannelActivationResponse.ProtoReflect.Descriptor instead.
+func (*AcknowledgeChannelActivationResponse) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *AcknowledgeChannelActivationResponse) GetStatus() *OperationStatus {
+	if x != nil {
+		return x.Status
+	}
+	return nil
+}
+
+func (x *AcknowledgeChannelActivationResponse) GetRealmId() string {
+	if x != nil {
+		return x.RealmId
+	}
+	return ""
+}
+
+func (x *AcknowledgeChannelActivationResponse) GetOperationId() string {
+	if x != nil {
+		return x.OperationId
+	}
+	return ""
+}
+
+func (x *AcknowledgeChannelActivationResponse) GetAuthoritySequence() uint64 {
+	if x != nil {
+		return x.AuthoritySequence
+	}
+	return 0
+}
+
+func (x *AcknowledgeChannelActivationResponse) GetPhase() string {
+	if x != nil {
+		return x.Phase
+	}
+	return ""
+}
+
+func (x *AcknowledgeChannelActivationResponse) GetCurrentGeneration() uint32 {
+	if x != nil {
+		return x.CurrentGeneration
+	}
+	return 0
+}
+
+func (x *AcknowledgeChannelActivationResponse) GetPreviousGeneration() uint32 {
+	if x != nil {
+		return x.PreviousGeneration
+	}
+	return 0
+}
+
+func (x *AcknowledgeChannelActivationResponse) GetDrainDeadline() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DrainDeadline
+	}
+	return nil
+}
+
 var File_api_ardents_v1_authority_proto protoreflect.FileDescriptor
 
 const file_api_ardents_v1_authority_proto_rawDesc = "" +
@@ -1561,7 +2393,91 @@ const file_api_ardents_v1_authority_proto_rawDesc = "" +
 	"\x06sealed\x18\x02 \x01(\v2$.ardents.v1.SealedGenerationDeliveryR\x06sealed\"\x99\x01\n" +
 	"!InstallGenerationDeliveryResponse\x123\n" +
 	"\x06status\x18\x01 \x01(\v2\x1b.ardents.v1.OperationStatusR\x06status\x12?\n" +
-	"\areceipt\x18\x02 \x01(\v2%.ardents.v1.GenerationDeliveryReceiptR\areceipt2\xf2\x05\n" +
+	"\areceipt\x18\x02 \x01(\v2%.ardents.v1.GenerationDeliveryReceiptR\areceipt\"\xd9\x04\n" +
+	"\x14GenerationActivation\x12\x18\n" +
+	"\aversion\x18\x01 \x01(\rR\aversion\x12\x19\n" +
+	"\brealm_id\x18\x02 \x01(\tR\arealmId\x12/\n" +
+	"\x13authority_principal\x18\x03 \x01(\tR\x12authorityPrincipal\x12'\n" +
+	"\x0fauthority_epoch\x18\x04 \x01(\x04R\x0eauthorityEpoch\x12-\n" +
+	"\x12authority_sequence\x18\x05 \x01(\x04R\x11authoritySequence\x12!\n" +
+	"\foperation_id\x18\x06 \x01(\tR\voperationId\x12\x1d\n" +
+	"\n" +
+	"channel_id\x18\a \x01(\fR\tchannelId\x12#\n" +
+	"\rchannel_class\x18\b \x01(\tR\fchannelClass\x12/\n" +
+	"\x13previous_generation\x18\t \x01(\rR\x12previousGeneration\x12\x1e\n" +
+	"\n" +
+	"generation\x18\n" +
+	" \x01(\rR\n" +
+	"generation\x12=\n" +
+	"\feffective_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\veffectiveAt\x12A\n" +
+	"\x0edrain_deadline\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\rdrainDeadline\x12+\n" +
+	"\x11checkpoint_digest\x18\r \x01(\tR\x10checkpointDigest\x12\x1c\n" +
+	"\tsignature\x18\x0e \x01(\fR\tsignature\"\xa2\x01\n" +
+	"\x10RotationDelivery\x12\x1f\n" +
+	"\vdelivery_id\x18\x01 \x01(\tR\n" +
+	"deliveryId\x12/\n" +
+	"\x13recipient_principal\x18\x02 \x01(\tR\x12recipientPrincipal\x12<\n" +
+	"\x06sealed\x18\x03 \x01(\v2$.ardents.v1.SealedGenerationDeliveryR\x06sealed\"\xc3\x02\n" +
+	"\x14RotateChannelRequest\x12\x18\n" +
+	"\aversion\x18\x01 \x01(\rR\aversion\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x02 \x01(\tR\trequestId\x12\x19\n" +
+	"\brealm_id\x18\x03 \x01(\tR\arealmId\x12\x1d\n" +
+	"\n" +
+	"channel_id\x18\x04 \x01(\fR\tchannelId\x12`\n" +
+	"\x16recipient_attestations\x18\x05 \x03(\v2).ardents.v1.GenerationDeliveryAttestationR\x15recipientAttestations\x12*\n" +
+	"\x11valid_for_seconds\x18\x06 \x01(\x04R\x0fvalidForSeconds\x12*\n" +
+	"\x11drain_for_seconds\x18\a \x01(\x04R\x0fdrainForSeconds\"\x8c\x03\n" +
+	"\x15RotateChannelResponse\x123\n" +
+	"\x06status\x18\x01 \x01(\v2\x1b.ardents.v1.OperationStatusR\x06status\x12\x19\n" +
+	"\brealm_id\x18\x02 \x01(\tR\arealmId\x12!\n" +
+	"\foperation_id\x18\x03 \x01(\tR\voperationId\x12-\n" +
+	"\x12authority_sequence\x18\x04 \x01(\x04R\x11authoritySequence\x12\x1d\n" +
+	"\n" +
+	"channel_id\x18\x05 \x01(\fR\tchannelId\x12/\n" +
+	"\x13previous_generation\x18\x06 \x01(\rR\x12previousGeneration\x12-\n" +
+	"\x12pending_generation\x18\a \x01(\rR\x11pendingGeneration\x12\x14\n" +
+	"\x05phase\x18\b \x01(\tR\x05phase\x12<\n" +
+	"\n" +
+	"deliveries\x18\t \x03(\v2\x1c.ardents.v1.RotationDeliveryR\n" +
+	"deliveries\"x\n" +
+	"\x1eCommitChannelActivationRequest\x12\x18\n" +
+	"\aversion\x18\x01 \x01(\rR\aversion\x12\x19\n" +
+	"\brealm_id\x18\x02 \x01(\tR\arealmId\x12!\n" +
+	"\foperation_id\x18\x03 \x01(\tR\voperationId\"\x9b\x02\n" +
+	"\x1fCommitChannelActivationResponse\x123\n" +
+	"\x06status\x18\x01 \x01(\v2\x1b.ardents.v1.OperationStatusR\x06status\x12\x19\n" +
+	"\brealm_id\x18\x02 \x01(\tR\arealmId\x12!\n" +
+	"\foperation_id\x18\x03 \x01(\tR\voperationId\x12-\n" +
+	"\x12authority_sequence\x18\x04 \x01(\x04R\x11authoritySequence\x12\x14\n" +
+	"\x05phase\x18\x05 \x01(\tR\x05phase\x12@\n" +
+	"\n" +
+	"activation\x18\x06 \x01(\v2 .ardents.v1.GenerationActivationR\n" +
+	"activation\"w\n" +
+	"\x19ActivateGenerationRequest\x12\x18\n" +
+	"\aversion\x18\x01 \x01(\rR\aversion\x12@\n" +
+	"\n" +
+	"activation\x18\x02 \x01(\v2 .ardents.v1.GenerationActivationR\n" +
+	"activation\"\x92\x01\n" +
+	"\x1aActivateGenerationResponse\x123\n" +
+	"\x06status\x18\x01 \x01(\v2\x1b.ardents.v1.OperationStatusR\x06status\x12?\n" +
+	"\areceipt\x18\x02 \x01(\v2%.ardents.v1.GenerationDeliveryReceiptR\areceipt\"\xe3\x01\n" +
+	"#AcknowledgeChannelActivationRequest\x12\x18\n" +
+	"\aversion\x18\x01 \x01(\rR\aversion\x12\x19\n" +
+	"\brealm_id\x18\x02 \x01(\tR\arealmId\x12!\n" +
+	"\foperation_id\x18\x03 \x01(\tR\voperationId\x12#\n" +
+	"\rapproved_host\x18\x04 \x01(\bR\fapprovedHost\x12?\n" +
+	"\areceipt\x18\x05 \x01(\v2%.ardents.v1.GenerationDeliveryReceiptR\areceipt\"\x81\x03\n" +
+	"$AcknowledgeChannelActivationResponse\x123\n" +
+	"\x06status\x18\x01 \x01(\v2\x1b.ardents.v1.OperationStatusR\x06status\x12\x19\n" +
+	"\brealm_id\x18\x02 \x01(\tR\arealmId\x12!\n" +
+	"\foperation_id\x18\x03 \x01(\tR\voperationId\x12-\n" +
+	"\x12authority_sequence\x18\x04 \x01(\x04R\x11authoritySequence\x12\x14\n" +
+	"\x05phase\x18\x05 \x01(\tR\x05phase\x12-\n" +
+	"\x12current_generation\x18\x06 \x01(\rR\x11currentGeneration\x12/\n" +
+	"\x13previous_generation\x18\a \x01(\rR\x12previousGeneration\x12A\n" +
+	"\x0edrain_deadline\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\rdrainDeadline2\xa3\n" +
+	"\n" +
 	"\x10AuthorityService\x12\xae\x01\n" +
 	"\x14CreateRealmAuthority\x12'.ardents.v1.CreateRealmAuthorityRequest\x1a(.ardents.v1.CreateRealmAuthorityResponse\"C\xc2\xf3\x18?\n" +
 	"\x16realm.authority.create\x12\tauthority\x1a\x18realm-authority-instance \x01\x12\x9e\x01\n" +
@@ -1570,12 +2486,20 @@ const file_api_ardents_v1_authority_proto_rawDesc = "" +
 	"\x16IssueInitialGeneration\x12).ardents.v1.IssueInitialGenerationRequest\x1a*.ardents.v1.IssueInitialGenerationResponse\"G\xc2\xf3\x18C\n" +
 	"\x1crealm.channel.delivery.issue\x12\tauthority\x1a\x16realm-channel-delivery \x01\x12\xd0\x01\n" +
 	"\x1cAcknowledgeInitialGeneration\x12/.ardents.v1.AcknowledgeInitialGenerationRequest\x1a0.ardents.v1.AcknowledgeInitialGenerationResponse\"M\xc2\xf3\x18I\n" +
-	"\"realm.channel.delivery.acknowledge\x12\tauthority\x1a\x16realm-channel-delivery \x012\x97\x03\n" +
+	"\"realm.channel.delivery.acknowledge\x12\tauthority\x1a\x16realm-channel-delivery \x01\x12\x97\x01\n" +
+	"\rRotateChannel\x12 .ardents.v1.RotateChannelRequest\x1a!.ardents.v1.RotateChannelResponse\"A\xc2\xf3\x18=\n" +
+	"\x1frealm.channel.generation.rotate\x12\tauthority\x1a\rrealm-channel \x01\x12\xbf\x01\n" +
+	"\x17CommitChannelActivation\x12*.ardents.v1.CommitChannelActivationRequest\x1a+.ardents.v1.CommitChannelActivationResponse\"K\xc2\xf3\x18G\n" +
+	"\x1frealm.channel.activation.commit\x12\tauthority\x1a\x17realm-channel-operation \x01\x12\xd2\x01\n" +
+	"\x1cAcknowledgeChannelActivation\x12/.ardents.v1.AcknowledgeChannelActivationRequest\x1a0.ardents.v1.AcknowledgeChannelActivationResponse\"O\xc2\xf3\x18K\n" +
+	"$realm.channel.activation.acknowledge\x12\tauthority\x1a\x16realm-channel-delivery \x012\xcc\x04\n" +
 	"\x16ChannelDeliveryService\x12\xb6\x01\n" +
 	"\x19PrepareGenerationDelivery\x12,.ardents.v1.PrepareGenerationDeliveryRequest\x1a-.ardents.v1.PrepareGenerationDeliveryResponse\"<\xc2\xf3\x188\n" +
 	"\x1erealm.channel.delivery.prepare\x12\tauthority\x1a\tprincipal \x01\x12\xc3\x01\n" +
 	"\x19InstallGenerationDelivery\x12,.ardents.v1.InstallGenerationDeliveryRequest\x1a-.ardents.v1.InstallGenerationDeliveryResponse\"I\xc2\xf3\x18E\n" +
-	"\x1erealm.channel.delivery.install\x12\tauthority\x1a\x16realm-channel-delivery \x01B.Z,ardents/internal/localapi/protocol;ardentsv1b\x06proto3"
+	"\x1erealm.channel.delivery.install\x12\tauthority\x1a\x16realm-channel-delivery \x01\x12\xb2\x01\n" +
+	"\x12ActivateGeneration\x12%.ardents.v1.ActivateGenerationRequest\x1a&.ardents.v1.ActivateGenerationResponse\"M\xc2\xf3\x18I\n" +
+	"!realm.channel.generation.activate\x12\tauthority\x1a\x17realm-channel-operation \x01B.Z,ardents/internal/localapi/protocol;ardentsv1b\x06proto3"
 
 var (
 	file_api_ardents_v1_authority_proto_rawDescOnce sync.Once
@@ -1589,7 +2513,7 @@ func file_api_ardents_v1_authority_proto_rawDescGZIP() []byte {
 	return file_api_ardents_v1_authority_proto_rawDescData
 }
 
-var file_api_ardents_v1_authority_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_api_ardents_v1_authority_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
 var file_api_ardents_v1_authority_proto_goTypes = []any{
 	(*CreateRealmAuthorityRequest)(nil),          // 0: ardents.v1.CreateRealmAuthorityRequest
 	(*InspectRealmAuthorityRequest)(nil),         // 1: ardents.v1.InspectRealmAuthorityRequest
@@ -1608,47 +2532,79 @@ var file_api_ardents_v1_authority_proto_goTypes = []any{
 	(*PrepareGenerationDeliveryResponse)(nil),    // 14: ardents.v1.PrepareGenerationDeliveryResponse
 	(*InstallGenerationDeliveryRequest)(nil),     // 15: ardents.v1.InstallGenerationDeliveryRequest
 	(*InstallGenerationDeliveryResponse)(nil),    // 16: ardents.v1.InstallGenerationDeliveryResponse
-	(*timestamppb.Timestamp)(nil),                // 17: google.protobuf.Timestamp
-	(*OperationStatus)(nil),                      // 18: ardents.v1.OperationStatus
+	(*GenerationActivation)(nil),                 // 17: ardents.v1.GenerationActivation
+	(*RotationDelivery)(nil),                     // 18: ardents.v1.RotationDelivery
+	(*RotateChannelRequest)(nil),                 // 19: ardents.v1.RotateChannelRequest
+	(*RotateChannelResponse)(nil),                // 20: ardents.v1.RotateChannelResponse
+	(*CommitChannelActivationRequest)(nil),       // 21: ardents.v1.CommitChannelActivationRequest
+	(*CommitChannelActivationResponse)(nil),      // 22: ardents.v1.CommitChannelActivationResponse
+	(*ActivateGenerationRequest)(nil),            // 23: ardents.v1.ActivateGenerationRequest
+	(*ActivateGenerationResponse)(nil),           // 24: ardents.v1.ActivateGenerationResponse
+	(*AcknowledgeChannelActivationRequest)(nil),  // 25: ardents.v1.AcknowledgeChannelActivationRequest
+	(*AcknowledgeChannelActivationResponse)(nil), // 26: ardents.v1.AcknowledgeChannelActivationResponse
+	(*timestamppb.Timestamp)(nil),                // 27: google.protobuf.Timestamp
+	(*OperationStatus)(nil),                      // 28: ardents.v1.OperationStatus
 }
 var file_api_ardents_v1_authority_proto_depIdxs = []int32{
-	17, // 0: ardents.v1.AuthorityStatusSnapshot.operation_deadline:type_name -> google.protobuf.Timestamp
-	18, // 1: ardents.v1.CreateRealmAuthorityResponse.status:type_name -> ardents.v1.OperationStatus
+	27, // 0: ardents.v1.AuthorityStatusSnapshot.operation_deadline:type_name -> google.protobuf.Timestamp
+	28, // 1: ardents.v1.CreateRealmAuthorityResponse.status:type_name -> ardents.v1.OperationStatus
 	2,  // 2: ardents.v1.CreateRealmAuthorityResponse.authority:type_name -> ardents.v1.AuthorityStatusSnapshot
-	18, // 3: ardents.v1.InspectRealmAuthorityResponse.status:type_name -> ardents.v1.OperationStatus
+	28, // 3: ardents.v1.InspectRealmAuthorityResponse.status:type_name -> ardents.v1.OperationStatus
 	2,  // 4: ardents.v1.InspectRealmAuthorityResponse.authority:type_name -> ardents.v1.AuthorityStatusSnapshot
-	17, // 5: ardents.v1.GenerationDeliveryAttestation.not_before:type_name -> google.protobuf.Timestamp
-	17, // 6: ardents.v1.GenerationDeliveryAttestation.not_after:type_name -> google.protobuf.Timestamp
-	17, // 7: ardents.v1.GenerationDeliveryBinding.expires_at:type_name -> google.protobuf.Timestamp
+	27, // 5: ardents.v1.GenerationDeliveryAttestation.not_before:type_name -> google.protobuf.Timestamp
+	27, // 6: ardents.v1.GenerationDeliveryAttestation.not_after:type_name -> google.protobuf.Timestamp
+	27, // 7: ardents.v1.GenerationDeliveryBinding.expires_at:type_name -> google.protobuf.Timestamp
 	6,  // 8: ardents.v1.SealedGenerationDelivery.binding:type_name -> ardents.v1.GenerationDeliveryBinding
-	17, // 9: ardents.v1.GenerationDeliveryReceipt.created_at:type_name -> google.protobuf.Timestamp
+	27, // 9: ardents.v1.GenerationDeliveryReceipt.created_at:type_name -> google.protobuf.Timestamp
 	5,  // 10: ardents.v1.IssueInitialGenerationRequest.recipient_attestation:type_name -> ardents.v1.GenerationDeliveryAttestation
-	18, // 11: ardents.v1.IssueInitialGenerationResponse.status:type_name -> ardents.v1.OperationStatus
+	28, // 11: ardents.v1.IssueInitialGenerationResponse.status:type_name -> ardents.v1.OperationStatus
 	7,  // 12: ardents.v1.IssueInitialGenerationResponse.sealed:type_name -> ardents.v1.SealedGenerationDelivery
 	8,  // 13: ardents.v1.AcknowledgeInitialGenerationRequest.receipt:type_name -> ardents.v1.GenerationDeliveryReceipt
-	18, // 14: ardents.v1.AcknowledgeInitialGenerationResponse.status:type_name -> ardents.v1.OperationStatus
-	18, // 15: ardents.v1.PrepareGenerationDeliveryResponse.status:type_name -> ardents.v1.OperationStatus
+	28, // 14: ardents.v1.AcknowledgeInitialGenerationResponse.status:type_name -> ardents.v1.OperationStatus
+	28, // 15: ardents.v1.PrepareGenerationDeliveryResponse.status:type_name -> ardents.v1.OperationStatus
 	5,  // 16: ardents.v1.PrepareGenerationDeliveryResponse.attestation:type_name -> ardents.v1.GenerationDeliveryAttestation
 	7,  // 17: ardents.v1.InstallGenerationDeliveryRequest.sealed:type_name -> ardents.v1.SealedGenerationDelivery
-	18, // 18: ardents.v1.InstallGenerationDeliveryResponse.status:type_name -> ardents.v1.OperationStatus
+	28, // 18: ardents.v1.InstallGenerationDeliveryResponse.status:type_name -> ardents.v1.OperationStatus
 	8,  // 19: ardents.v1.InstallGenerationDeliveryResponse.receipt:type_name -> ardents.v1.GenerationDeliveryReceipt
-	0,  // 20: ardents.v1.AuthorityService.CreateRealmAuthority:input_type -> ardents.v1.CreateRealmAuthorityRequest
-	1,  // 21: ardents.v1.AuthorityService.InspectRealmAuthority:input_type -> ardents.v1.InspectRealmAuthorityRequest
-	9,  // 22: ardents.v1.AuthorityService.IssueInitialGeneration:input_type -> ardents.v1.IssueInitialGenerationRequest
-	11, // 23: ardents.v1.AuthorityService.AcknowledgeInitialGeneration:input_type -> ardents.v1.AcknowledgeInitialGenerationRequest
-	13, // 24: ardents.v1.ChannelDeliveryService.PrepareGenerationDelivery:input_type -> ardents.v1.PrepareGenerationDeliveryRequest
-	15, // 25: ardents.v1.ChannelDeliveryService.InstallGenerationDelivery:input_type -> ardents.v1.InstallGenerationDeliveryRequest
-	3,  // 26: ardents.v1.AuthorityService.CreateRealmAuthority:output_type -> ardents.v1.CreateRealmAuthorityResponse
-	4,  // 27: ardents.v1.AuthorityService.InspectRealmAuthority:output_type -> ardents.v1.InspectRealmAuthorityResponse
-	10, // 28: ardents.v1.AuthorityService.IssueInitialGeneration:output_type -> ardents.v1.IssueInitialGenerationResponse
-	12, // 29: ardents.v1.AuthorityService.AcknowledgeInitialGeneration:output_type -> ardents.v1.AcknowledgeInitialGenerationResponse
-	14, // 30: ardents.v1.ChannelDeliveryService.PrepareGenerationDelivery:output_type -> ardents.v1.PrepareGenerationDeliveryResponse
-	16, // 31: ardents.v1.ChannelDeliveryService.InstallGenerationDelivery:output_type -> ardents.v1.InstallGenerationDeliveryResponse
-	26, // [26:32] is the sub-list for method output_type
-	20, // [20:26] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	27, // 20: ardents.v1.GenerationActivation.effective_at:type_name -> google.protobuf.Timestamp
+	27, // 21: ardents.v1.GenerationActivation.drain_deadline:type_name -> google.protobuf.Timestamp
+	7,  // 22: ardents.v1.RotationDelivery.sealed:type_name -> ardents.v1.SealedGenerationDelivery
+	5,  // 23: ardents.v1.RotateChannelRequest.recipient_attestations:type_name -> ardents.v1.GenerationDeliveryAttestation
+	28, // 24: ardents.v1.RotateChannelResponse.status:type_name -> ardents.v1.OperationStatus
+	18, // 25: ardents.v1.RotateChannelResponse.deliveries:type_name -> ardents.v1.RotationDelivery
+	28, // 26: ardents.v1.CommitChannelActivationResponse.status:type_name -> ardents.v1.OperationStatus
+	17, // 27: ardents.v1.CommitChannelActivationResponse.activation:type_name -> ardents.v1.GenerationActivation
+	17, // 28: ardents.v1.ActivateGenerationRequest.activation:type_name -> ardents.v1.GenerationActivation
+	28, // 29: ardents.v1.ActivateGenerationResponse.status:type_name -> ardents.v1.OperationStatus
+	8,  // 30: ardents.v1.ActivateGenerationResponse.receipt:type_name -> ardents.v1.GenerationDeliveryReceipt
+	8,  // 31: ardents.v1.AcknowledgeChannelActivationRequest.receipt:type_name -> ardents.v1.GenerationDeliveryReceipt
+	28, // 32: ardents.v1.AcknowledgeChannelActivationResponse.status:type_name -> ardents.v1.OperationStatus
+	27, // 33: ardents.v1.AcknowledgeChannelActivationResponse.drain_deadline:type_name -> google.protobuf.Timestamp
+	0,  // 34: ardents.v1.AuthorityService.CreateRealmAuthority:input_type -> ardents.v1.CreateRealmAuthorityRequest
+	1,  // 35: ardents.v1.AuthorityService.InspectRealmAuthority:input_type -> ardents.v1.InspectRealmAuthorityRequest
+	9,  // 36: ardents.v1.AuthorityService.IssueInitialGeneration:input_type -> ardents.v1.IssueInitialGenerationRequest
+	11, // 37: ardents.v1.AuthorityService.AcknowledgeInitialGeneration:input_type -> ardents.v1.AcknowledgeInitialGenerationRequest
+	19, // 38: ardents.v1.AuthorityService.RotateChannel:input_type -> ardents.v1.RotateChannelRequest
+	21, // 39: ardents.v1.AuthorityService.CommitChannelActivation:input_type -> ardents.v1.CommitChannelActivationRequest
+	25, // 40: ardents.v1.AuthorityService.AcknowledgeChannelActivation:input_type -> ardents.v1.AcknowledgeChannelActivationRequest
+	13, // 41: ardents.v1.ChannelDeliveryService.PrepareGenerationDelivery:input_type -> ardents.v1.PrepareGenerationDeliveryRequest
+	15, // 42: ardents.v1.ChannelDeliveryService.InstallGenerationDelivery:input_type -> ardents.v1.InstallGenerationDeliveryRequest
+	23, // 43: ardents.v1.ChannelDeliveryService.ActivateGeneration:input_type -> ardents.v1.ActivateGenerationRequest
+	3,  // 44: ardents.v1.AuthorityService.CreateRealmAuthority:output_type -> ardents.v1.CreateRealmAuthorityResponse
+	4,  // 45: ardents.v1.AuthorityService.InspectRealmAuthority:output_type -> ardents.v1.InspectRealmAuthorityResponse
+	10, // 46: ardents.v1.AuthorityService.IssueInitialGeneration:output_type -> ardents.v1.IssueInitialGenerationResponse
+	12, // 47: ardents.v1.AuthorityService.AcknowledgeInitialGeneration:output_type -> ardents.v1.AcknowledgeInitialGenerationResponse
+	20, // 48: ardents.v1.AuthorityService.RotateChannel:output_type -> ardents.v1.RotateChannelResponse
+	22, // 49: ardents.v1.AuthorityService.CommitChannelActivation:output_type -> ardents.v1.CommitChannelActivationResponse
+	26, // 50: ardents.v1.AuthorityService.AcknowledgeChannelActivation:output_type -> ardents.v1.AcknowledgeChannelActivationResponse
+	14, // 51: ardents.v1.ChannelDeliveryService.PrepareGenerationDelivery:output_type -> ardents.v1.PrepareGenerationDeliveryResponse
+	16, // 52: ardents.v1.ChannelDeliveryService.InstallGenerationDelivery:output_type -> ardents.v1.InstallGenerationDeliveryResponse
+	24, // 53: ardents.v1.ChannelDeliveryService.ActivateGeneration:output_type -> ardents.v1.ActivateGenerationResponse
+	44, // [44:54] is the sub-list for method output_type
+	34, // [34:44] is the sub-list for method input_type
+	34, // [34:34] is the sub-list for extension type_name
+	34, // [34:34] is the sub-list for extension extendee
+	0,  // [0:34] is the sub-list for field type_name
 }
 
 func init() { file_api_ardents_v1_authority_proto_init() }
@@ -1664,7 +2620,7 @@ func file_api_ardents_v1_authority_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_ardents_v1_authority_proto_rawDesc), len(file_api_ardents_v1_authority_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   17,
+			NumMessages:   27,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

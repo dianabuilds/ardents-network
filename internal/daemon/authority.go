@@ -124,3 +124,10 @@ func (p realmAuthorityPolicy) AdmitInitialGeneration(_ context.Context, _ domain
 	}
 	return p.service.AllowRealmChannelDelivery()
 }
+
+func (p realmAuthorityPolicy) AdmitChannelRotation(_ context.Context, _ domain.Command) error {
+	if p.service == nil {
+		return domain.ErrUnavailable
+	}
+	return p.service.AllowRealmChannelRotation()
+}

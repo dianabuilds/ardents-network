@@ -70,3 +70,20 @@ func fixedID(value []byte) ([16]byte, error) {
 	copy(result[:], value)
 	return result, nil
 }
+
+func activationToWire(
+	value identitycapability.GenerationActivation,
+) *protocol.GenerationActivation {
+	return &protocol.GenerationActivation{
+		Version: value.Version, RealmId: value.RealmID,
+		AuthorityPrincipal: value.AuthorityPrincipal,
+		AuthorityEpoch:     value.AuthorityEpoch, AuthoritySequence: value.AuthoritySequence,
+		OperationId: value.OperationID, ChannelId: value.ChannelID[:],
+		ChannelClass:       string(value.ChannelClass),
+		PreviousGeneration: value.PreviousGeneration, Generation: value.Generation,
+		EffectiveAt:      rpc.Timestamp(value.EffectiveAt),
+		DrainDeadline:    rpc.Timestamp(value.DrainDeadline),
+		CheckpointDigest: value.CheckpointDigest,
+		Signature:        append([]byte(nil), value.Signature...),
+	}
+}

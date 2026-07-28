@@ -140,6 +140,7 @@ func productionParserPaths(t *testing.T) []string {
 	addFlat("config", filepath.Join("..", "configuration", "command.go"), "Run")
 	addParserTree(t, &paths, "authority", filepath.Join("..", "authority"), "command.go", "Run", map[string]parserBranch{
 		"delivery": {file: "delivery.go", function: "delivery"},
+		"rotation": {file: "rotation.go", function: "rotation"},
 	})
 	addParserTree(t, &paths, "identity", filepath.Join("..", "identity"), "command.go", "Run", map[string]parserBranch{
 		"principal":          {file: "command.go", function: "runPrincipal"},

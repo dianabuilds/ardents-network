@@ -55,6 +55,14 @@ func (c *Channel) StoreContentTopic() (string, error) {
 	return c.contentTopic(identityapi.CapabilityStoreFetch)
 }
 
+func (c *Channel) ContentTopics() ([]string, error) {
+	return c.receiveContentTopics(identityapi.CapabilitySubscribe)
+}
+
+func (c *Channel) StoreContentTopics() ([]string, error) {
+	return c.receiveContentTopics(identityapi.CapabilityStoreFetch)
+}
+
 func (c *Channel) contentTopic(permission identityapi.CapabilityPermission) (string, error) {
 	resolved, _, err := c.resolve(permission)
 	if err != nil {
@@ -79,7 +87,13 @@ func (c *Channel) Seal(class MessageClass, payloadVersion uint32, payload []byte
 }
 
 func (c *Channel) Open(envelope SealedEnvelope) (OpenedMessage, error) {
-	resolved, now, err := c.resolve(identityapi.CapabilitySubscribe)
+	header, err := parseHeader(envelope.Payload)
+	if err != nil {
+		return OpenedMessage{}, err
+	}
+	resolved, now, err := c.resolveGeneration(
+		identityapi.CapabilitySubscribe, header.Generation,
+	)
 	if err != nil {
 		return OpenedMessage{}, err
 	}
@@ -90,6 +104,45 @@ func (c *Channel) Open(envelope SealedEnvelope) (OpenedMessage, error) {
 	})
 }
 
+func (c *Channel) receiveContentTopics(
+	permission identityapi.CapabilityPermission,
+) ([]string, error) {
+	now := c.clock().UTC().Truncate(time.Second)
+	generations := []uint32{0}
+	if resolver, ok := c.resolver.(identityapi.CapabilityGenerationResolver); ok {
+		generations = resolver.AvailableCapabilityGenerations(
+			c.reference, c.subject, c.scope, now,
+		)
+	}
+	topics := make([]string, 0, len(generations))
+	seen := make(map[string]struct{}, len(generations))
+	for _, generation := range generations {
+		var resolved identityapi.ResolvedCapability
+		var err error
+		if generation == 0 {
+			resolved, _, err = c.resolve(permission)
+		} else {
+			resolved, _, err = c.resolveGeneration(permission, generation)
+		}
+		if err != nil {
+			return nil, err
+		}
+		material, err := Derive(resolved)
+		if err != nil {
+			return nil, envelopeError(CodeChannelGrantMissing, "private channel material is unavailable")
+		}
+		if _, duplicate := seen[material.ContentTopic]; duplicate {
+			continue
+		}
+		seen[material.ContentTopic] = struct{}{}
+		topics = append(topics, material.ContentTopic)
+	}
+	if len(topics) == 0 {
+		return nil, envelopeError(CodeChannelGrantMissing, "private channel material is unavailable")
+	}
+	return topics, nil
+}
+
 func (c *Channel) resolve(permission identityapi.CapabilityPermission) (identityapi.ResolvedCapability, time.Time, error) {
 	now := c.clock().UTC().Truncate(time.Second)
 	resolved, err := c.resolver.ResolveCapability(identityapi.CapabilityUse{
@@ -98,6 +151,26 @@ func (c *Channel) resolve(permission identityapi.CapabilityPermission) (identity
 	})
 	if err != nil {
 		return identityapi.ResolvedCapability{}, now, err
+	}
+	return resolved, now, nil
+}
+
+func (c *Channel) resolveGeneration(
+	permission identityapi.CapabilityPermission,
+	generation uint32,
+) (identityapi.ResolvedCapability, time.Time, error) {
+	now := c.clock().UTC().Truncate(time.Second)
+	if resolver, ok := c.resolver.(identityapi.CapabilityGenerationResolver); ok {
+		resolved, err := resolver.ResolveCapabilityGeneration(identityapi.CapabilityUse{
+			Ref: c.reference, Subject: c.subject, Permission: permission,
+			Scope: c.scope, At: now,
+		}, generation)
+		return resolved, now, err
+	}
+	resolved, _, err := c.resolve(permission)
+	if err != nil || resolved.Generation != generation {
+		return identityapi.ResolvedCapability{}, now,
+			envelopeError(CodeChannelGrantMissing, "private channel generation is unavailable")
 	}
 	return resolved, now, nil
 }

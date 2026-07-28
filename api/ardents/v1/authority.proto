@@ -42,6 +42,30 @@ service AuthorityService {
       mutating: true
     };
   }
+  rpc RotateChannel(RotateChannelRequest) returns (RotateChannelResponse) {
+    option (operator_access) = {
+      action: "realm.channel.generation.rotate"
+      domain: "authority"
+      resource_kind: "realm-channel"
+      mutating: true
+    };
+  }
+  rpc CommitChannelActivation(CommitChannelActivationRequest) returns (CommitChannelActivationResponse) {
+    option (operator_access) = {
+      action: "realm.channel.activation.commit"
+      domain: "authority"
+      resource_kind: "realm-channel-operation"
+      mutating: true
+    };
+  }
+  rpc AcknowledgeChannelActivation(AcknowledgeChannelActivationRequest) returns (AcknowledgeChannelActivationResponse) {
+    option (operator_access) = {
+      action: "realm.channel.activation.acknowledge"
+      domain: "authority"
+      resource_kind: "realm-channel-delivery"
+      mutating: true
+    };
+  }
 }
 
 // ChannelDeliveryService is owned by the recipient member Node and is
@@ -60,6 +84,14 @@ service ChannelDeliveryService {
       action: "realm.channel.delivery.install"
       domain: "authority"
       resource_kind: "realm-channel-delivery"
+      mutating: true
+    };
+  }
+  rpc ActivateGeneration(ActivateGenerationRequest) returns (ActivateGenerationResponse) {
+    option (operator_access) = {
+      action: "realm.channel.generation.activate"
+      domain: "authority"
+      resource_kind: "realm-channel-operation"
       mutating: true
     };
   }
@@ -212,4 +244,93 @@ message InstallGenerationDeliveryRequest {
 message InstallGenerationDeliveryResponse {
   OperationStatus status = 1;
   GenerationDeliveryReceipt receipt = 2;
+}
+
+message GenerationActivation {
+  uint32 version = 1;
+  string realm_id = 2;
+  string authority_principal = 3;
+  uint64 authority_epoch = 4;
+  uint64 authority_sequence = 5;
+  string operation_id = 6;
+  bytes channel_id = 7;
+  string channel_class = 8;
+  uint32 previous_generation = 9;
+  uint32 generation = 10;
+  google.protobuf.Timestamp effective_at = 11;
+  google.protobuf.Timestamp drain_deadline = 12;
+  string checkpoint_digest = 13;
+  bytes signature = 14;
+}
+
+message RotationDelivery {
+  string delivery_id = 1;
+  string recipient_principal = 2;
+  SealedGenerationDelivery sealed = 3;
+}
+
+message RotateChannelRequest {
+  uint32 version = 1;
+  string request_id = 2;
+  string realm_id = 3;
+  bytes channel_id = 4;
+  repeated GenerationDeliveryAttestation recipient_attestations = 5;
+  uint64 valid_for_seconds = 6;
+  uint64 drain_for_seconds = 7;
+}
+
+message RotateChannelResponse {
+  OperationStatus status = 1;
+  string realm_id = 2;
+  string operation_id = 3;
+  uint64 authority_sequence = 4;
+  bytes channel_id = 5;
+  uint32 previous_generation = 6;
+  uint32 pending_generation = 7;
+  string phase = 8;
+  repeated RotationDelivery deliveries = 9;
+}
+
+message CommitChannelActivationRequest {
+  uint32 version = 1;
+  string realm_id = 2;
+  string operation_id = 3;
+}
+
+message CommitChannelActivationResponse {
+  OperationStatus status = 1;
+  string realm_id = 2;
+  string operation_id = 3;
+  uint64 authority_sequence = 4;
+  string phase = 5;
+  GenerationActivation activation = 6;
+}
+
+message ActivateGenerationRequest {
+  uint32 version = 1;
+  GenerationActivation activation = 2;
+}
+
+message ActivateGenerationResponse {
+  OperationStatus status = 1;
+  GenerationDeliveryReceipt receipt = 2;
+}
+
+message AcknowledgeChannelActivationRequest {
+  uint32 version = 1;
+  string realm_id = 2;
+  string operation_id = 3;
+  bool approved_host = 4;
+  GenerationDeliveryReceipt receipt = 5;
+}
+
+message AcknowledgeChannelActivationResponse {
+  OperationStatus status = 1;
+  string realm_id = 2;
+  string operation_id = 3;
+  uint64 authority_sequence = 4;
+  string phase = 5;
+  uint32 current_generation = 6;
+  uint32 previous_generation = 7;
+  google.protobuf.Timestamp drain_deadline = 8;
 }

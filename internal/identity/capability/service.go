@@ -20,15 +20,16 @@ import (
 )
 
 type Service struct {
-	mu                 sync.Mutex
-	store              *Store
-	ledger             ledger
-	refKey             [32]byte
-	clock              func() time.Time
-	trust              *identitytrust.Registry
-	localPrincipal     string
-	admission          identityapi.CapabilityAdmission
-	installAfterCommit func() error
+	mu                    sync.Mutex
+	store                 *Store
+	ledger                ledger
+	refKey                [32]byte
+	clock                 func() time.Time
+	trust                 *identitytrust.Registry
+	localPrincipal        string
+	admission             identityapi.CapabilityAdmission
+	installAfterCommit    func() error
+	activationAfterCommit func() error
 }
 
 type Status struct {
@@ -206,6 +207,18 @@ func cloneLedger(source ledger) ledger {
 	maps.Copy(out.SenderGrants, source.SenderGrants)
 	maps.Copy(out.Revocations, source.Revocations)
 	maps.Copy(out.InstalledDeliveries, source.InstalledDeliveries)
+	for key, pending := range source.PendingGenerations {
+		pending.SenderGrants = append([]persistedGrant(nil), pending.SenderGrants...)
+		pending.Revocations = append([]persistedRevocation(nil), pending.Revocations...)
+		pending.ReceiptKey = append([]byte(nil), pending.ReceiptKey...)
+		out.PendingGenerations[key] = pending
+	}
+	maps.Copy(out.PreviousGenerations, source.PreviousGenerations)
+	for key, activated := range source.ActivatedGenerations {
+		activated.Activation.Signature = append([]byte(nil), activated.Activation.Signature...)
+		activated.Receipt.MAC = append([]byte(nil), activated.Receipt.MAC...)
+		out.ActivatedGenerations[key] = activated
+	}
 	return out
 }
 

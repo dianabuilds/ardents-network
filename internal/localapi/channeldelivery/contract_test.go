@@ -59,3 +59,29 @@ func TestCanonicalMemberDeliveryResourcesAreRequestBoundAndBounded(t *testing.T)
 	)
 	require.Error(t, err)
 }
+
+func TestCanonicalMemberActivationResourceIsOperationBound(t *testing.T) {
+	realmID := "r1_00112233445566778899aabbccddeeff"
+	operationID := "rao1_00112233445566778899aabbccddeeff"
+	target, err := CanonicalizeResource(
+		ardentsv1connect.ChannelDeliveryServiceActivateGenerationProcedure,
+		&protocol.ActivateGenerationRequest{
+			Version: 1,
+			Activation: &protocol.GenerationActivation{
+				RealmId: realmID, OperationId: operationID,
+			},
+		},
+		domain.ResourceKindOperation,
+	)
+	require.NoError(t, err)
+	require.Equal(t, domain.OperationResource(realmID, operationID), target.ID)
+
+	unknown := &protocol.GenerationActivation{RealmId: realmID, OperationId: operationID}
+	unknown.ProtoReflect().SetUnknown([]byte{0x98, 0x06, 0x01})
+	_, err = CanonicalizeResource(
+		ardentsv1connect.ChannelDeliveryServiceActivateGenerationProcedure,
+		&protocol.ActivateGenerationRequest{Version: 1, Activation: unknown},
+		domain.ResourceKindOperation,
+	)
+	require.Error(t, err)
+}

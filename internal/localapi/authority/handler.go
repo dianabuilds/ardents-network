@@ -18,7 +18,130 @@ type Service interface {
 	Inspect(context.Context, domain.Command, domain.InspectRequest) (domain.Status, error)
 	IssueInitialGeneration(context.Context, domain.Command, domain.InitialGenerationRequest) (domain.InitialGenerationResult, error)
 	AcknowledgeInitialGeneration(context.Context, domain.Command, domain.InitialGenerationAcknowledgeRequest) (domain.InitialGenerationAcknowledgeResult, error)
+	RotateChannel(context.Context, domain.Command, domain.RotationRequest) (domain.RotationResult, error)
+	CommitChannelActivation(context.Context, domain.Command, domain.ActivationCommitRequest) (domain.ActivationCommitResult, error)
+	AcknowledgeChannelActivation(context.Context, domain.Command, domain.ActivationAcknowledgeRequest) (domain.ActivationAcknowledgeResult, error)
 	Readiness() domain.Status
+}
+
+func (h *AuthorityEndpoint) RotateChannel(ctx context.Context, request *connect.Request[protocol.RotateChannelRequest]) (*connect.Response[protocol.RotateChannelResponse], error) {
+	return rpc.RespondContext(ctx, func(call rpc.Call) (*protocol.RotateChannelResponse, *rpc.Error) {
+		if h.service == nil {
+			return nil, authorityError("rotate_channel", domain.ErrUnavailable)
+		}
+		command, ok := authorityCommand(call)
+		if !ok {
+			return nil, authorityError("rotate_channel", domain.ErrPermissionDenied)
+		}
+		channelID, err := fixedID(request.Msg.GetChannelId())
+		if err != nil || len(request.Msg.GetRecipientAttestations()) == 0 ||
+			len(request.Msg.GetRecipientAttestations()) > domain.MaxMembersPerChannel ||
+			request.Msg.GetValidForSeconds() > uint64((30*24*time.Hour)/time.Second) ||
+			request.Msg.GetDrainForSeconds() > uint64(domain.MaximumPreviousGenerationDrain/time.Second) {
+			return nil, authorityError("rotate_channel", domain.ErrInvalidArgument)
+		}
+		attestations := make([]identityapi.CapabilityDeliveryAttestation, 0, len(request.Msg.GetRecipientAttestations()))
+		for _, wire := range request.Msg.GetRecipientAttestations() {
+			attestation, mapErr := attestationFromWire(wire)
+			if mapErr != nil {
+				return nil, authorityError("rotate_channel", domain.ErrInvalidArgument)
+			}
+			attestations = append(attestations, attestation)
+		}
+		mutationContext, cancel := rpc.MutationContext(ctx)
+		defer cancel()
+		result, err := h.service.RotateChannel(mutationContext, command, domain.RotationRequest{
+			Version: request.Msg.GetVersion(), RequestID: request.Msg.GetRequestId(),
+			RealmID: request.Msg.GetRealmId(), ChannelID: channelID,
+			RecipientAttestations: attestations,
+			ValidFor:              time.Duration(request.Msg.GetValidForSeconds()) * time.Second,
+			DrainFor:              time.Duration(request.Msg.GetDrainForSeconds()) * time.Second,
+		})
+		if err != nil {
+			return nil, authorityError("rotate_channel", err)
+		}
+		deliveries := make([]*protocol.RotationDelivery, 0, len(result.Deliveries))
+		for _, delivery := range result.Deliveries {
+			deliveries = append(deliveries, &protocol.RotationDelivery{
+				DeliveryId:         delivery.DeliveryID,
+				RecipientPrincipal: delivery.RecipientPrincipal,
+				Sealed:             sealedToWire(delivery.Sealed),
+			})
+		}
+		return &protocol.RotateChannelResponse{
+			Status:  &protocol.OperationStatus{State: result.Phase, Accepted: true},
+			RealmId: result.RealmID, OperationId: result.OperationID,
+			AuthoritySequence: result.AuthoritySequence, ChannelId: result.ChannelID[:],
+			PreviousGeneration: result.PreviousGeneration,
+			PendingGeneration:  result.PendingGeneration, Phase: result.Phase,
+			Deliveries: deliveries,
+		}, nil
+	})
+}
+
+func (h *AuthorityEndpoint) CommitChannelActivation(ctx context.Context, request *connect.Request[protocol.CommitChannelActivationRequest]) (*connect.Response[protocol.CommitChannelActivationResponse], error) {
+	return rpc.RespondContext(ctx, func(call rpc.Call) (*protocol.CommitChannelActivationResponse, *rpc.Error) {
+		if h.service == nil {
+			return nil, authorityError("commit_channel_activation", domain.ErrUnavailable)
+		}
+		command, ok := authorityCommand(call)
+		if !ok {
+			return nil, authorityError("commit_channel_activation", domain.ErrPermissionDenied)
+		}
+		mutationContext, cancel := rpc.MutationContext(ctx)
+		defer cancel()
+		result, err := h.service.CommitChannelActivation(
+			mutationContext, command, domain.ActivationCommitRequest{
+				Version: request.Msg.GetVersion(), RealmID: request.Msg.GetRealmId(),
+				OperationID: request.Msg.GetOperationId(),
+			},
+		)
+		if err != nil {
+			return nil, authorityError("commit_channel_activation", err)
+		}
+		return &protocol.CommitChannelActivationResponse{
+			Status:  &protocol.OperationStatus{State: result.Phase, Accepted: true},
+			RealmId: result.RealmID, OperationId: result.OperationID,
+			AuthoritySequence: result.AuthoritySequence, Phase: result.Phase,
+			Activation: activationToWire(result.Activation),
+		}, nil
+	})
+}
+
+func (h *AuthorityEndpoint) AcknowledgeChannelActivation(ctx context.Context, request *connect.Request[protocol.AcknowledgeChannelActivationRequest]) (*connect.Response[protocol.AcknowledgeChannelActivationResponse], error) {
+	return rpc.RespondContext(ctx, func(call rpc.Call) (*protocol.AcknowledgeChannelActivationResponse, *rpc.Error) {
+		if h.service == nil {
+			return nil, authorityError("acknowledge_channel_activation", domain.ErrUnavailable)
+		}
+		command, ok := authorityCommand(call)
+		if !ok {
+			return nil, authorityError("acknowledge_channel_activation", domain.ErrPermissionDenied)
+		}
+		receipt, err := receiptFromWire(request.Msg.GetReceipt())
+		if err != nil {
+			return nil, authorityError("acknowledge_channel_activation", domain.ErrInvalidArgument)
+		}
+		mutationContext, cancel := rpc.MutationContext(ctx)
+		defer cancel()
+		result, err := h.service.AcknowledgeChannelActivation(
+			mutationContext, command, domain.ActivationAcknowledgeRequest{
+				Version: request.Msg.GetVersion(), RealmID: request.Msg.GetRealmId(),
+				OperationID:  request.Msg.GetOperationId(),
+				ApprovedHost: request.Msg.GetApprovedHost(), Receipt: receipt,
+			},
+		)
+		if err != nil {
+			return nil, authorityError("acknowledge_channel_activation", err)
+		}
+		return &protocol.AcknowledgeChannelActivationResponse{
+			Status:  &protocol.OperationStatus{State: result.Phase, Accepted: true},
+			RealmId: result.RealmID, OperationId: result.OperationID,
+			AuthoritySequence: result.AuthoritySequence, Phase: result.Phase,
+			CurrentGeneration:  result.CurrentGeneration,
+			PreviousGeneration: result.PreviousGeneration,
+			DrainDeadline:      rpc.Timestamp(result.DrainDeadline),
+		}, nil
+	})
 }
 
 func (h *AuthorityEndpoint) IssueInitialGeneration(ctx context.Context, request *connect.Request[protocol.IssueInitialGenerationRequest]) (*connect.Response[protocol.IssueInitialGenerationResponse], error) {

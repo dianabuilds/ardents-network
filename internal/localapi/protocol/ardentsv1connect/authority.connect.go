@@ -47,12 +47,24 @@ const (
 	// AuthorityServiceAcknowledgeInitialGenerationProcedure is the fully-qualified name of the
 	// AuthorityService's AcknowledgeInitialGeneration RPC.
 	AuthorityServiceAcknowledgeInitialGenerationProcedure = "/ardents.v1.AuthorityService/AcknowledgeInitialGeneration"
+	// AuthorityServiceRotateChannelProcedure is the fully-qualified name of the AuthorityService's
+	// RotateChannel RPC.
+	AuthorityServiceRotateChannelProcedure = "/ardents.v1.AuthorityService/RotateChannel"
+	// AuthorityServiceCommitChannelActivationProcedure is the fully-qualified name of the
+	// AuthorityService's CommitChannelActivation RPC.
+	AuthorityServiceCommitChannelActivationProcedure = "/ardents.v1.AuthorityService/CommitChannelActivation"
+	// AuthorityServiceAcknowledgeChannelActivationProcedure is the fully-qualified name of the
+	// AuthorityService's AcknowledgeChannelActivation RPC.
+	AuthorityServiceAcknowledgeChannelActivationProcedure = "/ardents.v1.AuthorityService/AcknowledgeChannelActivation"
 	// ChannelDeliveryServicePrepareGenerationDeliveryProcedure is the fully-qualified name of the
 	// ChannelDeliveryService's PrepareGenerationDelivery RPC.
 	ChannelDeliveryServicePrepareGenerationDeliveryProcedure = "/ardents.v1.ChannelDeliveryService/PrepareGenerationDelivery"
 	// ChannelDeliveryServiceInstallGenerationDeliveryProcedure is the fully-qualified name of the
 	// ChannelDeliveryService's InstallGenerationDelivery RPC.
 	ChannelDeliveryServiceInstallGenerationDeliveryProcedure = "/ardents.v1.ChannelDeliveryService/InstallGenerationDelivery"
+	// ChannelDeliveryServiceActivateGenerationProcedure is the fully-qualified name of the
+	// ChannelDeliveryService's ActivateGeneration RPC.
+	ChannelDeliveryServiceActivateGenerationProcedure = "/ardents.v1.ChannelDeliveryService/ActivateGeneration"
 )
 
 // AuthorityServiceClient is a client for the ardents.v1.AuthorityService service.
@@ -61,6 +73,9 @@ type AuthorityServiceClient interface {
 	InspectRealmAuthority(context.Context, *connect.Request[protocol.InspectRealmAuthorityRequest]) (*connect.Response[protocol.InspectRealmAuthorityResponse], error)
 	IssueInitialGeneration(context.Context, *connect.Request[protocol.IssueInitialGenerationRequest]) (*connect.Response[protocol.IssueInitialGenerationResponse], error)
 	AcknowledgeInitialGeneration(context.Context, *connect.Request[protocol.AcknowledgeInitialGenerationRequest]) (*connect.Response[protocol.AcknowledgeInitialGenerationResponse], error)
+	RotateChannel(context.Context, *connect.Request[protocol.RotateChannelRequest]) (*connect.Response[protocol.RotateChannelResponse], error)
+	CommitChannelActivation(context.Context, *connect.Request[protocol.CommitChannelActivationRequest]) (*connect.Response[protocol.CommitChannelActivationResponse], error)
+	AcknowledgeChannelActivation(context.Context, *connect.Request[protocol.AcknowledgeChannelActivationRequest]) (*connect.Response[protocol.AcknowledgeChannelActivationResponse], error)
 }
 
 // NewAuthorityServiceClient constructs a client for the ardents.v1.AuthorityService service. By
@@ -98,6 +113,24 @@ func NewAuthorityServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(authorityServiceMethods.ByName("AcknowledgeInitialGeneration")),
 			connect.WithClientOptions(opts...),
 		),
+		rotateChannel: connect.NewClient[protocol.RotateChannelRequest, protocol.RotateChannelResponse](
+			httpClient,
+			baseURL+AuthorityServiceRotateChannelProcedure,
+			connect.WithSchema(authorityServiceMethods.ByName("RotateChannel")),
+			connect.WithClientOptions(opts...),
+		),
+		commitChannelActivation: connect.NewClient[protocol.CommitChannelActivationRequest, protocol.CommitChannelActivationResponse](
+			httpClient,
+			baseURL+AuthorityServiceCommitChannelActivationProcedure,
+			connect.WithSchema(authorityServiceMethods.ByName("CommitChannelActivation")),
+			connect.WithClientOptions(opts...),
+		),
+		acknowledgeChannelActivation: connect.NewClient[protocol.AcknowledgeChannelActivationRequest, protocol.AcknowledgeChannelActivationResponse](
+			httpClient,
+			baseURL+AuthorityServiceAcknowledgeChannelActivationProcedure,
+			connect.WithSchema(authorityServiceMethods.ByName("AcknowledgeChannelActivation")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -107,6 +140,9 @@ type authorityServiceClient struct {
 	inspectRealmAuthority        *connect.Client[protocol.InspectRealmAuthorityRequest, protocol.InspectRealmAuthorityResponse]
 	issueInitialGeneration       *connect.Client[protocol.IssueInitialGenerationRequest, protocol.IssueInitialGenerationResponse]
 	acknowledgeInitialGeneration *connect.Client[protocol.AcknowledgeInitialGenerationRequest, protocol.AcknowledgeInitialGenerationResponse]
+	rotateChannel                *connect.Client[protocol.RotateChannelRequest, protocol.RotateChannelResponse]
+	commitChannelActivation      *connect.Client[protocol.CommitChannelActivationRequest, protocol.CommitChannelActivationResponse]
+	acknowledgeChannelActivation *connect.Client[protocol.AcknowledgeChannelActivationRequest, protocol.AcknowledgeChannelActivationResponse]
 }
 
 // CreateRealmAuthority calls ardents.v1.AuthorityService.CreateRealmAuthority.
@@ -129,12 +165,30 @@ func (c *authorityServiceClient) AcknowledgeInitialGeneration(ctx context.Contex
 	return c.acknowledgeInitialGeneration.CallUnary(ctx, req)
 }
 
+// RotateChannel calls ardents.v1.AuthorityService.RotateChannel.
+func (c *authorityServiceClient) RotateChannel(ctx context.Context, req *connect.Request[protocol.RotateChannelRequest]) (*connect.Response[protocol.RotateChannelResponse], error) {
+	return c.rotateChannel.CallUnary(ctx, req)
+}
+
+// CommitChannelActivation calls ardents.v1.AuthorityService.CommitChannelActivation.
+func (c *authorityServiceClient) CommitChannelActivation(ctx context.Context, req *connect.Request[protocol.CommitChannelActivationRequest]) (*connect.Response[protocol.CommitChannelActivationResponse], error) {
+	return c.commitChannelActivation.CallUnary(ctx, req)
+}
+
+// AcknowledgeChannelActivation calls ardents.v1.AuthorityService.AcknowledgeChannelActivation.
+func (c *authorityServiceClient) AcknowledgeChannelActivation(ctx context.Context, req *connect.Request[protocol.AcknowledgeChannelActivationRequest]) (*connect.Response[protocol.AcknowledgeChannelActivationResponse], error) {
+	return c.acknowledgeChannelActivation.CallUnary(ctx, req)
+}
+
 // AuthorityServiceHandler is an implementation of the ardents.v1.AuthorityService service.
 type AuthorityServiceHandler interface {
 	CreateRealmAuthority(context.Context, *connect.Request[protocol.CreateRealmAuthorityRequest]) (*connect.Response[protocol.CreateRealmAuthorityResponse], error)
 	InspectRealmAuthority(context.Context, *connect.Request[protocol.InspectRealmAuthorityRequest]) (*connect.Response[protocol.InspectRealmAuthorityResponse], error)
 	IssueInitialGeneration(context.Context, *connect.Request[protocol.IssueInitialGenerationRequest]) (*connect.Response[protocol.IssueInitialGenerationResponse], error)
 	AcknowledgeInitialGeneration(context.Context, *connect.Request[protocol.AcknowledgeInitialGenerationRequest]) (*connect.Response[protocol.AcknowledgeInitialGenerationResponse], error)
+	RotateChannel(context.Context, *connect.Request[protocol.RotateChannelRequest]) (*connect.Response[protocol.RotateChannelResponse], error)
+	CommitChannelActivation(context.Context, *connect.Request[protocol.CommitChannelActivationRequest]) (*connect.Response[protocol.CommitChannelActivationResponse], error)
+	AcknowledgeChannelActivation(context.Context, *connect.Request[protocol.AcknowledgeChannelActivationRequest]) (*connect.Response[protocol.AcknowledgeChannelActivationResponse], error)
 }
 
 // NewAuthorityServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -168,6 +222,24 @@ func NewAuthorityServiceHandler(svc AuthorityServiceHandler, opts ...connect.Han
 		connect.WithSchema(authorityServiceMethods.ByName("AcknowledgeInitialGeneration")),
 		connect.WithHandlerOptions(opts...),
 	)
+	authorityServiceRotateChannelHandler := connect.NewUnaryHandler(
+		AuthorityServiceRotateChannelProcedure,
+		svc.RotateChannel,
+		connect.WithSchema(authorityServiceMethods.ByName("RotateChannel")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authorityServiceCommitChannelActivationHandler := connect.NewUnaryHandler(
+		AuthorityServiceCommitChannelActivationProcedure,
+		svc.CommitChannelActivation,
+		connect.WithSchema(authorityServiceMethods.ByName("CommitChannelActivation")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authorityServiceAcknowledgeChannelActivationHandler := connect.NewUnaryHandler(
+		AuthorityServiceAcknowledgeChannelActivationProcedure,
+		svc.AcknowledgeChannelActivation,
+		connect.WithSchema(authorityServiceMethods.ByName("AcknowledgeChannelActivation")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/ardents.v1.AuthorityService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AuthorityServiceCreateRealmAuthorityProcedure:
@@ -178,6 +250,12 @@ func NewAuthorityServiceHandler(svc AuthorityServiceHandler, opts ...connect.Han
 			authorityServiceIssueInitialGenerationHandler.ServeHTTP(w, r)
 		case AuthorityServiceAcknowledgeInitialGenerationProcedure:
 			authorityServiceAcknowledgeInitialGenerationHandler.ServeHTTP(w, r)
+		case AuthorityServiceRotateChannelProcedure:
+			authorityServiceRotateChannelHandler.ServeHTTP(w, r)
+		case AuthorityServiceCommitChannelActivationProcedure:
+			authorityServiceCommitChannelActivationHandler.ServeHTTP(w, r)
+		case AuthorityServiceAcknowledgeChannelActivationProcedure:
+			authorityServiceAcknowledgeChannelActivationHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -203,10 +281,23 @@ func (UnimplementedAuthorityServiceHandler) AcknowledgeInitialGeneration(context
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.AuthorityService.AcknowledgeInitialGeneration is not implemented"))
 }
 
+func (UnimplementedAuthorityServiceHandler) RotateChannel(context.Context, *connect.Request[protocol.RotateChannelRequest]) (*connect.Response[protocol.RotateChannelResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.AuthorityService.RotateChannel is not implemented"))
+}
+
+func (UnimplementedAuthorityServiceHandler) CommitChannelActivation(context.Context, *connect.Request[protocol.CommitChannelActivationRequest]) (*connect.Response[protocol.CommitChannelActivationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.AuthorityService.CommitChannelActivation is not implemented"))
+}
+
+func (UnimplementedAuthorityServiceHandler) AcknowledgeChannelActivation(context.Context, *connect.Request[protocol.AcknowledgeChannelActivationRequest]) (*connect.Response[protocol.AcknowledgeChannelActivationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.AuthorityService.AcknowledgeChannelActivation is not implemented"))
+}
+
 // ChannelDeliveryServiceClient is a client for the ardents.v1.ChannelDeliveryService service.
 type ChannelDeliveryServiceClient interface {
 	PrepareGenerationDelivery(context.Context, *connect.Request[protocol.PrepareGenerationDeliveryRequest]) (*connect.Response[protocol.PrepareGenerationDeliveryResponse], error)
 	InstallGenerationDelivery(context.Context, *connect.Request[protocol.InstallGenerationDeliveryRequest]) (*connect.Response[protocol.InstallGenerationDeliveryResponse], error)
+	ActivateGeneration(context.Context, *connect.Request[protocol.ActivateGenerationRequest]) (*connect.Response[protocol.ActivateGenerationResponse], error)
 }
 
 // NewChannelDeliveryServiceClient constructs a client for the ardents.v1.ChannelDeliveryService
@@ -232,6 +323,12 @@ func NewChannelDeliveryServiceClient(httpClient connect.HTTPClient, baseURL stri
 			connect.WithSchema(channelDeliveryServiceMethods.ByName("InstallGenerationDelivery")),
 			connect.WithClientOptions(opts...),
 		),
+		activateGeneration: connect.NewClient[protocol.ActivateGenerationRequest, protocol.ActivateGenerationResponse](
+			httpClient,
+			baseURL+ChannelDeliveryServiceActivateGenerationProcedure,
+			connect.WithSchema(channelDeliveryServiceMethods.ByName("ActivateGeneration")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -239,6 +336,7 @@ func NewChannelDeliveryServiceClient(httpClient connect.HTTPClient, baseURL stri
 type channelDeliveryServiceClient struct {
 	prepareGenerationDelivery *connect.Client[protocol.PrepareGenerationDeliveryRequest, protocol.PrepareGenerationDeliveryResponse]
 	installGenerationDelivery *connect.Client[protocol.InstallGenerationDeliveryRequest, protocol.InstallGenerationDeliveryResponse]
+	activateGeneration        *connect.Client[protocol.ActivateGenerationRequest, protocol.ActivateGenerationResponse]
 }
 
 // PrepareGenerationDelivery calls ardents.v1.ChannelDeliveryService.PrepareGenerationDelivery.
@@ -251,11 +349,17 @@ func (c *channelDeliveryServiceClient) InstallGenerationDelivery(ctx context.Con
 	return c.installGenerationDelivery.CallUnary(ctx, req)
 }
 
+// ActivateGeneration calls ardents.v1.ChannelDeliveryService.ActivateGeneration.
+func (c *channelDeliveryServiceClient) ActivateGeneration(ctx context.Context, req *connect.Request[protocol.ActivateGenerationRequest]) (*connect.Response[protocol.ActivateGenerationResponse], error) {
+	return c.activateGeneration.CallUnary(ctx, req)
+}
+
 // ChannelDeliveryServiceHandler is an implementation of the ardents.v1.ChannelDeliveryService
 // service.
 type ChannelDeliveryServiceHandler interface {
 	PrepareGenerationDelivery(context.Context, *connect.Request[protocol.PrepareGenerationDeliveryRequest]) (*connect.Response[protocol.PrepareGenerationDeliveryResponse], error)
 	InstallGenerationDelivery(context.Context, *connect.Request[protocol.InstallGenerationDeliveryRequest]) (*connect.Response[protocol.InstallGenerationDeliveryResponse], error)
+	ActivateGeneration(context.Context, *connect.Request[protocol.ActivateGenerationRequest]) (*connect.Response[protocol.ActivateGenerationResponse], error)
 }
 
 // NewChannelDeliveryServiceHandler builds an HTTP handler from the service implementation. It
@@ -277,12 +381,20 @@ func NewChannelDeliveryServiceHandler(svc ChannelDeliveryServiceHandler, opts ..
 		connect.WithSchema(channelDeliveryServiceMethods.ByName("InstallGenerationDelivery")),
 		connect.WithHandlerOptions(opts...),
 	)
+	channelDeliveryServiceActivateGenerationHandler := connect.NewUnaryHandler(
+		ChannelDeliveryServiceActivateGenerationProcedure,
+		svc.ActivateGeneration,
+		connect.WithSchema(channelDeliveryServiceMethods.ByName("ActivateGeneration")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/ardents.v1.ChannelDeliveryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ChannelDeliveryServicePrepareGenerationDeliveryProcedure:
 			channelDeliveryServicePrepareGenerationDeliveryHandler.ServeHTTP(w, r)
 		case ChannelDeliveryServiceInstallGenerationDeliveryProcedure:
 			channelDeliveryServiceInstallGenerationDeliveryHandler.ServeHTTP(w, r)
+		case ChannelDeliveryServiceActivateGenerationProcedure:
+			channelDeliveryServiceActivateGenerationHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -298,4 +410,8 @@ func (UnimplementedChannelDeliveryServiceHandler) PrepareGenerationDelivery(cont
 
 func (UnimplementedChannelDeliveryServiceHandler) InstallGenerationDelivery(context.Context, *connect.Request[protocol.InstallGenerationDeliveryRequest]) (*connect.Response[protocol.InstallGenerationDeliveryResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.ChannelDeliveryService.InstallGenerationDelivery is not implemented"))
+}
+
+func (UnimplementedChannelDeliveryServiceHandler) ActivateGeneration(context.Context, *connect.Request[protocol.ActivateGenerationRequest]) (*connect.Response[protocol.ActivateGenerationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.ChannelDeliveryService.ActivateGeneration is not implemented"))
 }
