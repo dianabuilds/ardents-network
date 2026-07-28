@@ -179,7 +179,7 @@ func TestAuthorityAddsThenRemovesMemberWithFreshGenerationRevocationAndFence(t *
 	_, err = fixture.service.SubmitDeploymentFenceEvidence(
 		ctx, Command{
 			Actor: "operator", Effective: "operator",
-			Action: ActionSubmitFenceEvidence, ResourceKind: ResourceKindChannel,
+			Action: ActionChangeMembership, ResourceKind: ResourceKindChannel,
 			ResourceID: ChannelResource(genesis.RealmID, initial.ChannelID),
 		},
 		FenceEvidenceRequest{
@@ -192,7 +192,7 @@ func TestAuthorityAddsThenRemovesMemberWithFreshGenerationRevocationAndFence(t *
 	fenced, err := fixture.service.SubmitDeploymentFenceEvidence(
 		ctx, Command{
 			Actor: "operator", Effective: "operator",
-			Action: ActionSubmitFenceEvidence, ResourceKind: ResourceKindChannel,
+			Action: ActionChangeMembership, ResourceKind: ResourceKindChannel,
 			ResourceID: ChannelResource(genesis.RealmID, initial.ChannelID),
 		},
 		FenceEvidenceRequest{
@@ -206,7 +206,7 @@ func TestAuthorityAddsThenRemovesMemberWithFreshGenerationRevocationAndFence(t *
 	fenceReplay, err := fixture.service.SubmitDeploymentFenceEvidence(
 		ctx, Command{
 			Actor: "operator", Effective: "operator",
-			Action: ActionSubmitFenceEvidence, ResourceKind: ResourceKindChannel,
+			Action: ActionChangeMembership, ResourceKind: ResourceKindChannel,
 			ResourceID: ChannelResource(genesis.RealmID, initial.ChannelID),
 		},
 		FenceEvidenceRequest{
@@ -274,6 +274,9 @@ func TestAuthorityAddsThenRemovesMemberWithFreshGenerationRevocationAndFence(t *
 	for _, audit := range fixture.store.state.AuditLog {
 		require.Equal(t, "operator", audit.Actor)
 		require.Equal(t, audit.Actor, audit.Effective)
+		if audit.Action == ActionChangeMembership {
+			require.NotEmpty(t, audit.TargetPrincipal)
+		}
 	}
 }
 
@@ -390,7 +393,7 @@ func TestMembershipFenceResumesAtBothCheckpointCrashBoundaries(t *testing.T) {
 			})
 			command := Command{
 				Actor: "operator", Effective: "operator",
-				Action: ActionSubmitFenceEvidence, ResourceKind: ResourceKindChannel,
+				Action: ActionChangeMembership, ResourceKind: ResourceKindChannel,
 				ResourceID: ChannelResource(realmID, channelID),
 			}
 			request := FenceEvidenceRequest{
@@ -420,6 +423,45 @@ func TestMembershipFenceResumesAtBothCheckpointCrashBoundaries(t *testing.T) {
 			require.Len(t, rotation.FenceEvidence, 1)
 		})
 	}
+}
+
+func TestMembershipFenceCannotCompleteAfterOperationBoundsExpire(t *testing.T) {
+	ctx := context.Background()
+	fixture := newServiceFixture(t)
+	fixture.service.random = cryptorand.Reader
+	realmID, channelID, operationID, target := prepareRemovalAwaitingFence(
+		t, ctx, fixture,
+	)
+	rotation := fixture.store.state.Rotations[len(fixture.store.state.Rotations)-1]
+	expiredAt := rotation.DrainDeadline
+	fixture.clock = func() time.Time { return expiredAt }
+	fixture.service.clock = fixture.clock
+	evidence := validFenceEvidence(
+		realmID, operationID, target, "operator", fixture.clock(),
+	)
+
+	_, err := fixture.service.SubmitDeploymentFenceEvidence(
+		ctx,
+		Command{
+			Actor: "operator", Effective: "operator",
+			Action: ActionChangeMembership, ResourceKind: ResourceKindChannel,
+			ResourceID: ChannelResource(realmID, channelID),
+		},
+		FenceEvidenceRequest{
+			Version: ContractVersion, RealmID: realmID, ChannelID: channelID,
+			OperationID: operationID, Evidence: evidence,
+		},
+	)
+	require.ErrorIs(t, err, ErrInvalidArgument)
+	require.Equal(
+		t, DeliveryPhaseActivationCommitted,
+		fixture.store.state.Rotations[len(fixture.store.state.Rotations)-1].Phase,
+	)
+	require.Empty(
+		t,
+		fixture.store.state.Rotations[len(fixture.store.state.Rotations)-1].
+			FenceEvidence,
+	)
 }
 
 func TestMembershipChangeResumesAtBothCheckpointCrashBoundaries(t *testing.T) {

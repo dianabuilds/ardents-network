@@ -153,6 +153,11 @@ func (s *Service) ActivateGeneration(
 			Reference: pending.CurrentReference, Grant: current,
 			DrainDeadline: activation.DrainDeadline,
 		}
+	} else {
+		// A candidate may be rejoining after missing one or more generations.
+		// Never carry a receive-only predecessor from its former membership
+		// into the new grant lifecycle.
+		delete(next.PreviousGenerations, channelKey)
 	}
 	reference := pending.CurrentReference
 	if pending.Candidate && reference == "" {

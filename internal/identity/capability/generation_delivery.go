@@ -265,22 +265,9 @@ func (s *Service) InstallGenerationDelivery(sealed SealedGenerationDelivery) (Ge
 		if _, exists := next.PendingGenerations[channelKey]; exists {
 			return GenerationDeliveryReceipt{}, capabilityError(CodeInvalid, "one pending generation already exists")
 		}
-		next.PendingGenerations[channelKey] = persistedPendingGeneration{
-			Version: record.Version, RealmID: record.RealmID,
-			AuthorityPrincipal: record.AuthorityPrincipal,
-			AuthorityEpoch:     record.AuthorityEpoch, AuthoritySequence: record.AuthoritySequence,
-			OperationID: record.OperationID, DeliveryID: record.DeliveryID,
-			EnvelopeDigest: sealed.EnvelopeDigest, ChannelID: record.ChannelID,
-			ChannelClass: record.ChannelClass, Generation: record.Generation,
-			RecipientPrincipal: record.RecipientPrincipal,
-			DeliveryKeyDigest:  record.DeliveryKeyDigest,
-			CurrentReference:   currentRef, SubjectGrant: record.SubjectGrant,
-			SenderGrants:  append([]persistedGrant(nil), record.SenderGrants...),
-			Revocations:   append([]persistedRevocation(nil), record.Revocations...),
-			Candidate:     record.Candidate,
-			ReceiptKey:    append([]byte(nil), record.ReceiptKey...),
-			DrainDeadline: record.DrainDeadline, ExpiresAt: record.ExpiresAt,
-		}
+		next.PendingGenerations[channelKey] = pendingGenerationFromRecord(
+			record, sealed.EnvelopeDigest, currentRef,
+		)
 	} else {
 		if record.Generation != 1 && !record.Candidate {
 			return GenerationDeliveryReceipt{}, capabilityError(CodeInvalid, "initial generation is missing")
@@ -290,21 +277,9 @@ func (s *Service) InstallGenerationDelivery(sealed SealedGenerationDelivery) (Ge
 			if _, exists := next.PendingGenerations[channelKey]; exists {
 				return GenerationDeliveryReceipt{}, capabilityError(CodeInvalid, "one pending generation already exists")
 			}
-			next.PendingGenerations[channelKey] = persistedPendingGeneration{
-				Version: record.Version, RealmID: record.RealmID,
-				AuthorityPrincipal: record.AuthorityPrincipal,
-				AuthorityEpoch:     record.AuthorityEpoch, AuthoritySequence: record.AuthoritySequence,
-				OperationID: record.OperationID, DeliveryID: record.DeliveryID,
-				EnvelopeDigest: sealed.EnvelopeDigest, ChannelID: record.ChannelID,
-				ChannelClass: record.ChannelClass, Generation: record.Generation,
-				RecipientPrincipal: record.RecipientPrincipal,
-				DeliveryKeyDigest:  record.DeliveryKeyDigest, Candidate: true,
-				CurrentReference: currentRef, SubjectGrant: record.SubjectGrant,
-				SenderGrants:  append([]persistedGrant(nil), record.SenderGrants...),
-				Revocations:   append([]persistedRevocation(nil), record.Revocations...),
-				ReceiptKey:    append([]byte(nil), record.ReceiptKey...),
-				DrainDeadline: record.DrainDeadline, ExpiresAt: record.ExpiresAt,
-			}
+			next.PendingGenerations[channelKey] = pendingGenerationFromRecord(
+				record, sealed.EnvelopeDigest, currentRef,
+			)
 		} else {
 			ref := s.reference(mustRestoreGrant(record.SubjectGrant))
 			next.Grants[string(ref)] = record.SubjectGrant
@@ -327,6 +302,28 @@ func (s *Service) InstallGenerationDelivery(sealed SealedGenerationDelivery) (Ge
 	}
 	s.ledger = next
 	return receipt, nil
+}
+
+func pendingGenerationFromRecord(
+	record generationBundleRecord,
+	envelopeDigest, currentReference string,
+) persistedPendingGeneration {
+	return persistedPendingGeneration{
+		Version: record.Version, RealmID: record.RealmID,
+		AuthorityPrincipal: record.AuthorityPrincipal,
+		AuthorityEpoch:     record.AuthorityEpoch, AuthoritySequence: record.AuthoritySequence,
+		OperationID: record.OperationID, DeliveryID: record.DeliveryID,
+		EnvelopeDigest: envelopeDigest, ChannelID: record.ChannelID,
+		ChannelClass: record.ChannelClass, Generation: record.Generation,
+		RecipientPrincipal: record.RecipientPrincipal,
+		DeliveryKeyDigest:  record.DeliveryKeyDigest,
+		CurrentReference:   currentReference, SubjectGrant: record.SubjectGrant,
+		SenderGrants:  append([]persistedGrant(nil), record.SenderGrants...),
+		Revocations:   append([]persistedRevocation(nil), record.Revocations...),
+		Candidate:     record.Candidate,
+		ReceiptKey:    append([]byte(nil), record.ReceiptKey...),
+		DrainDeadline: record.DrainDeadline, ExpiresAt: record.ExpiresAt,
+	}
 }
 
 func (s *Service) validateGenerationBundle(record generationBundleRecord, at time.Time) error {

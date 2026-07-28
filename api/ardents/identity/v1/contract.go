@@ -218,7 +218,7 @@ var operatorActions = set(
 	"realm.channel.delivery.prepare", "realm.channel.delivery.install",
 	"realm.channel.generation.rotate", "realm.channel.activation.commit",
 	"realm.channel.generation.activate", "realm.channel.activation.acknowledge",
-	"realm.channel.membership.change", "realm.channel.membership.fence",
+	"realm.channel.membership.change",
 	"identity.principal.enroll", "identity.device.revoke", "identity.device-revocations.list", "identity.grant.issue", "identity.grant.revoke", "identity.grant.list")
 var resourceKinds = map[string]ResourceContract{
 	"node": {true, false}, "configuration": {true, false}, "network": {true, false}, "discovery-status": {true, false}, "local-presence": {true, false}, "peer-collection": {true, false},

@@ -96,7 +96,8 @@ func (h *AuthorityEndpoint) ChangeChannelMembership(ctx context.Context, request
 			mutationContext, command, domain.MembershipChangeRequest{
 				Version: request.Msg.GetVersion(), RequestID: request.Msg.GetRequestId(),
 				RealmID: request.Msg.GetRealmId(), ChannelID: channelID,
-				Change: request.Msg.GetChange(), TargetPrincipal: request.Msg.GetTargetPrincipal(),
+				Change:                domain.MembershipChangeKind(request.Msg.GetChange()),
+				TargetPrincipal:       request.Msg.GetTargetPrincipal(),
 				RecipientAttestations: attestations,
 				ValidFor:              time.Duration(request.Msg.GetValidForSeconds()) * time.Second,
 				DrainFor:              time.Duration(request.Msg.GetDrainForSeconds()) * time.Second,

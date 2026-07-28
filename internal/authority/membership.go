@@ -29,7 +29,7 @@ type MembershipChangeRequest struct {
 	RequestID             string
 	RealmID               string
 	ChannelID             [16]byte
-	Change                string
+	Change                MembershipChangeKind
 	TargetPrincipal       string
 	RecipientAttestations []identityapi.CapabilityDeliveryAttestation
 	ValidFor              time.Duration
@@ -83,7 +83,7 @@ func (s *Service) SubmitDeploymentFenceEvidence(
 	if !ValidRealmID(request.RealmID) || zeroFixedID(request.ChannelID) ||
 		!operationIDPattern.MatchString(request.OperationID) ||
 		command.Actor == "" || command.Actor != command.Effective ||
-		command.Action != ActionSubmitFenceEvidence ||
+		command.Action != ActionChangeMembership ||
 		command.ResourceKind != ResourceKindChannel ||
 		command.ResourceID != ChannelResource(request.RealmID, request.ChannelID) {
 		return FenceEvidenceResult{}, ErrPermissionDenied
@@ -122,6 +122,9 @@ func (s *Service) SubmitDeploymentFenceEvidence(
 		return FenceEvidenceResult{}, ErrConflict
 	}
 	now := s.clock().UTC().Truncate(time.Second)
+	if !now.Before(rotation.Deadline) || !now.Before(rotation.DrainDeadline) {
+		return FenceEvidenceResult{}, ErrInvalidArgument
+	}
 	if err := validateDeploymentFenceEvidence(
 		request.Evidence, state.RealmID, rotation.OperationID, command.Actor, now,
 	); err != nil {
@@ -153,6 +156,8 @@ func (s *Service) SubmitDeploymentFenceEvidence(
 		),
 		command, rotation.OperationID, state.AuditHead, now,
 	)
+	audit.TargetPrincipal = request.Evidence.TargetPrincipal
+	audit.Hash = auditHash(audit)
 	err = s.commitCheckpointTransition(ctx, &state, audit, now, func(next *Ledger, checkpoint SignedCheckpoint) error {
 		record := &next.Rotations[rotationIndex]
 		record.FenceEvidence = append(record.FenceEvidence, cloneFenceEvidence(request.Evidence))
@@ -167,7 +172,7 @@ func (s *Service) SubmitDeploymentFenceEvidence(
 	return fenceEvidenceResult(state, state.Rotations[rotationIndex], request.Evidence), nil
 }
 
-func validMembershipChangeInput(change, target string) bool {
+func validMembershipChangeInput(change MembershipChangeKind, target string) bool {
 	switch change {
 	case "":
 		return target == ""
@@ -190,7 +195,8 @@ func membershipCapacity(state Ledger, recipientCount int) error {
 }
 
 func validMembershipRecipients(
-	change, target string,
+	change MembershipChangeKind,
+	target string,
 	current map[string]identityapi.CapabilityGrant,
 	recipients map[string]struct{},
 ) bool {

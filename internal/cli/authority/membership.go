@@ -54,7 +54,8 @@ func (c *Command) changeMembership(ctx context.Context, args []string) int {
 	channelRaw, err := hex.DecodeString(channelHex)
 	if err != nil || len(channelRaw) != 16 || hex.EncodeToString(channelRaw) != channelHex ||
 		requestID == "" || realmID == "" || target == "" ||
-		(change != domain.MembershipChangeAdd && change != domain.MembershipChangeRemove) ||
+		(change != string(domain.MembershipChangeAdd) &&
+			change != string(domain.MembershipChangeRemove)) ||
 		len(attestationPaths) == 0 ||
 		validFor <= 0 || validFor > 30*24*time.Hour || validFor%time.Second != 0 ||
 		drainFor <= 0 || drainFor > domain.MaximumPreviousGenerationDrain ||

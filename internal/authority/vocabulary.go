@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+type MembershipChangeKind string
+
 const (
 	ContractVersion uint32 = 1
 	SchemaVersion   uint32 = 1
@@ -38,7 +40,6 @@ const (
 	ActionChangeMembership      = "realm.channel.membership.change"
 	ActionCommitActivation      = "realm.channel.activation.commit"
 	ActionAcknowledgeActivation = "realm.channel.activation.acknowledge"
-	ActionSubmitFenceEvidence   = "realm.channel.membership.fence"
 
 	ResourceKindAuthorityInstance  = "realm-authority-instance"
 	ResourceKindRealm              = "realm"
@@ -47,25 +48,25 @@ const (
 	ResourceKindOperation          = "realm-channel-operation"
 	PrimaryAuthorityInstance       = "primary"
 
-	PhaseUninitialized               = "uninitialized"
-	PhaseCheckpointing               = "checkpointing"
-	PhaseReady                       = "ready"
-	PhaseRecoveryRequired            = "recovery_required"
-	DeliveryPhaseIssued              = "issued"
-	DeliveryPhaseInstalled           = "installed"
-	DeliveryPhaseDelivering          = "delivering"
-	DeliveryPhaseActivationCommitted = "activation_committed"
-	DeliveryPhaseCompleted           = "completed"
-	MemberStateCandidate             = "candidate"
-	MemberStateActive                = "active"
-	MemberStateSuspended             = "suspended"
-	MemberStateRemoved               = "removed"
-	MembershipChangeAdd              = "add"
-	MembershipChangeRemove           = "remove"
-	ReadinessReady                   = "ready"
-	ReadinessUnavailable             = "unavailable"
-	ReadinessDegraded                = "degraded"
-	ReadinessRecoveryRequired        = "recovery_required"
+	PhaseUninitialized                                    = "uninitialized"
+	PhaseCheckpointing                                    = "checkpointing"
+	PhaseReady                                            = "ready"
+	PhaseRecoveryRequired                                 = "recovery_required"
+	DeliveryPhaseIssued                                   = "issued"
+	DeliveryPhaseInstalled                                = "installed"
+	DeliveryPhaseDelivering                               = "delivering"
+	DeliveryPhaseActivationCommitted                      = "activation_committed"
+	DeliveryPhaseCompleted                                = "completed"
+	MemberStateCandidate                                  = "candidate"
+	MemberStateActive                                     = "active"
+	MemberStateSuspended                                  = "suspended"
+	MemberStateRemoved                                    = "removed"
+	MembershipChangeAdd              MembershipChangeKind = "add"
+	MembershipChangeRemove           MembershipChangeKind = "remove"
+	ReadinessReady                                        = "ready"
+	ReadinessUnavailable                                  = "unavailable"
+	ReadinessDegraded                                     = "degraded"
+	ReadinessRecoveryRequired                             = "recovery_required"
 
 	ReasonNone                  = ""
 	ReasonUninitialized         = "authority_uninitialized"

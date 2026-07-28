@@ -39,7 +39,7 @@ func TestAuthorityProceduresHaveExactDirectOperatorContracts(t *testing.T) {
 		ardentsv1connect.AuthorityServiceCommitChannelActivationProcedure:         domain.ActionCommitActivation,
 		ardentsv1connect.AuthorityServiceAcknowledgeChannelActivationProcedure:    domain.ActionAcknowledgeActivation,
 		ardentsv1connect.AuthorityServiceChangeChannelMembershipProcedure:         domain.ActionChangeMembership,
-		ardentsv1connect.AuthorityServiceSubmitDeploymentFenceEvidenceProcedure:   domain.ActionSubmitFenceEvidence,
+		ardentsv1connect.AuthorityServiceSubmitDeploymentFenceEvidenceProcedure:   domain.ActionChangeMembership,
 		ardentsv1connect.ChannelDeliveryServicePrepareGenerationDeliveryProcedure: "realm.channel.delivery.prepare",
 		ardentsv1connect.ChannelDeliveryServiceInstallGenerationDeliveryProcedure: "realm.channel.delivery.install",
 		ardentsv1connect.ChannelDeliveryServiceActivateGenerationProcedure:        "realm.channel.generation.activate",
@@ -77,7 +77,7 @@ func TestCanonicalRotationResourcesAreExactAndBounded(t *testing.T) {
 		ardentsv1connect.AuthorityServiceChangeChannelMembershipProcedure,
 		&protocol.ChangeChannelMembershipRequest{
 			Version: 1, RequestId: "membership-001", RealmId: realmID,
-			ChannelId: channelID, Change: domain.MembershipChangeAdd,
+			ChannelId: channelID, Change: string(domain.MembershipChangeAdd),
 			TargetPrincipal:       "p1_target",
 			RecipientAttestations: []*protocol.GenerationDeliveryAttestation{{}},
 		},

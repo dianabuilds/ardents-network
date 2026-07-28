@@ -53,7 +53,7 @@ type RotationRequest struct {
 	RecipientAttestations []identityapi.CapabilityDeliveryAttestation
 	ValidFor              time.Duration
 	DrainFor              time.Duration
-	MembershipChange      string
+	MembershipChange      MembershipChangeKind
 	TargetPrincipal       string
 }
 
@@ -358,6 +358,10 @@ func (s *Service) rotateChannelLocked(
 	audit := newDeliveryAudit(
 		rotationAuditID(command.Action, operationID), command, operationID, state.AuditHead, now,
 	)
+	if request.MembershipChange != "" {
+		audit.TargetPrincipal = request.TargetPrincipal
+		audit.Hash = auditHash(audit)
+	}
 	err = s.commitCheckpointTransition(ctx, &state, audit, now, func(next *Ledger, checkpoint SignedCheckpoint) error {
 		channel := &next.Channels[channelIndex]
 		channel.PendingGenerationCount = 1
@@ -647,7 +651,7 @@ func rotationPayloadHash(request RotationRequest) string {
 		Attestations     []identityapi.CapabilityDeliveryAttestation
 		ValidFor         int64
 		DrainFor         int64
-		MembershipChange string
+		MembershipChange MembershipChangeKind
 		TargetPrincipal  string
 	}{
 		request.Version, request.RealmID, request.ChannelID,

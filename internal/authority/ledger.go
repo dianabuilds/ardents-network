@@ -253,6 +253,10 @@ func validateAuditRecord(record AuditRecord, previousHash string) error {
 		record.Hash != auditHash(record) {
 		return ErrCorruptState
 	}
+	membershipAudit := record.Action == ActionChangeMembership
+	if membershipAudit != (record.TargetPrincipal != "") {
+		return ErrCorruptState
+	}
 	switch record.Action {
 	case ActionCreate:
 		if record.ResourceKind != ResourceKindAuthorityInstance ||
@@ -264,7 +268,7 @@ func validateAuditRecord(record AuditRecord, previousHash string) error {
 			!validGenerationDeliveryResource(record.ResourceID) {
 			return ErrCorruptState
 		}
-	case ActionRotateGeneration, ActionChangeMembership, ActionSubmitFenceEvidence:
+	case ActionRotateGeneration, ActionChangeMembership:
 		if record.ResourceKind != ResourceKindChannel ||
 			!validChannelResource(record.ResourceID) {
 			return ErrCorruptState

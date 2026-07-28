@@ -18,18 +18,19 @@ type OperationRecord struct {
 }
 
 type AuditRecord struct {
-	Version      uint32    `json:"version"`
-	ID           string    `json:"id"`
-	Actor        string    `json:"actor"`
-	Effective    string    `json:"effective"`
-	Action       string    `json:"action"`
-	ResourceKind string    `json:"resource_kind"`
-	ResourceID   string    `json:"resource_id"`
-	OperationID  string    `json:"operation_id"`
-	Outcome      string    `json:"outcome"`
-	PreviousHash string    `json:"previous_hash,omitempty"`
-	Hash         string    `json:"hash"`
-	CreatedAt    time.Time `json:"created_at"`
+	Version         uint32    `json:"version"`
+	ID              string    `json:"id"`
+	Actor           string    `json:"actor"`
+	Effective       string    `json:"effective"`
+	Action          string    `json:"action"`
+	ResourceKind    string    `json:"resource_kind"`
+	ResourceID      string    `json:"resource_id"`
+	OperationID     string    `json:"operation_id"`
+	TargetPrincipal string    `json:"target_principal,omitempty"`
+	Outcome         string    `json:"outcome"`
+	PreviousHash    string    `json:"previous_hash,omitempty"`
+	Hash            string    `json:"hash"`
+	CreatedAt       time.Time `json:"created_at"`
 }
 
 type IdempotencyRecord struct {
@@ -114,14 +115,14 @@ type RotationRecord struct {
 }
 
 type MembershipChangeRecord struct {
-	Version           uint32 `json:"version,omitempty"`
-	Kind              string `json:"kind,omitempty"`
-	TargetPrincipal   string `json:"target_principal,omitempty"`
-	MembershipVersion uint64 `json:"membership_version,omitempty"`
-	PriorState        string `json:"prior_state,omitempty"`
-	PendingState      string `json:"pending_state,omitempty"`
-	TerminalState     string `json:"terminal_state,omitempty"`
-	State             string `json:"state,omitempty"`
+	Version           uint32               `json:"version,omitempty"`
+	Kind              MembershipChangeKind `json:"kind,omitempty"`
+	TargetPrincipal   string               `json:"target_principal,omitempty"`
+	MembershipVersion uint64               `json:"membership_version,omitempty"`
+	PriorState        string               `json:"prior_state,omitempty"`
+	PendingState      string               `json:"pending_state,omitempty"`
+	TerminalState     string               `json:"terminal_state,omitempty"`
+	State             string               `json:"state,omitempty"`
 }
 
 type DeploymentFenceControl struct {

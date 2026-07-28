@@ -214,6 +214,56 @@ func TestPendingGenerationRequiresSignedActivationBeforeItBecomesReady(t *testin
 	firstReplay, err := reopened.ActivateGeneration(activation)
 	require.NoError(t, err)
 	require.Equal(t, active, firstReplay)
+
+	rejoined := third
+	rejoined.Generation = 5
+	rejoined.GrantID = fixedID(0xc9)
+	rejoined.Secret, _ = identityapi.NewCapabilitySecret(bytes.Repeat([]byte{0xca}, 32))
+	rejoined, err = SignGrant(rejoined, issuerPrivate)
+	require.NoError(t, err)
+	rejoinBundle := GenerationBundle{
+		Version: 1, RealmID: bundle.RealmID,
+		AuthorityPrincipal: bundle.AuthorityPrincipal, AuthorityEpoch: 1,
+		AuthoritySequence: 10,
+		OperationID:       "rao1_40112233445566778899aabbccddeeff",
+		DeliveryID:        "rad1_40112233445566778899aabbccddeeff",
+		ChannelID:         rejoined.ChannelID, ChannelClass: rejoined.Scope, Generation: 5,
+		RecipientPrincipal: rejoined.SubjectPrincipal,
+		DeliveryKeyDigest:  DeliveryPublicKeyDigest(attestation.DeliveryPublicKey),
+		SubjectGrant:       rejoined, SenderGrants: []identityapi.CapabilityGrant{rejoined},
+		ActivationPhase: DeliveryPhaseInstalled, Candidate: true,
+		DrainDeadline: now.Add(25 * time.Minute), ExpiresAt: now.Add(time.Hour),
+		ReceiptKey: bytes.Repeat([]byte{0xcb}, 32),
+	}
+	rejoinSealed, err := SealGenerationBundleForRecipient(
+		rejoinBundle, attestation, now,
+		func(message []byte) ([]byte, error) {
+			return ed25519.Sign(issuerPrivate, message), nil
+		},
+	)
+	require.NoError(t, err)
+	_, err = reopened.InstallGenerationDelivery(rejoinSealed)
+	require.NoError(t, err)
+	rejoinActivation, err := SignGenerationActivationWith(GenerationActivation{
+		Version: 1, RealmID: rejoinBundle.RealmID,
+		AuthorityPrincipal: rejoinBundle.AuthorityPrincipal,
+		AuthorityEpoch:     1, AuthoritySequence: 11,
+		OperationID: rejoinBundle.OperationID, ChannelID: rejoinBundle.ChannelID,
+		ChannelClass: rejoinBundle.ChannelClass, PreviousGeneration: 4, Generation: 5,
+		EffectiveAt: now, DrainDeadline: rejoinBundle.DrainDeadline,
+		CheckpointDigest: "ac1_3ae66f80a93c4216bd9e07d3517eb44ad2ca1c5f873eaab607da3f3f238481d3",
+	}, func(message []byte) ([]byte, error) {
+		return ed25519.Sign(issuerPrivate, message), nil
+	})
+	require.NoError(t, err)
+	_, err = reopened.ActivateGeneration(rejoinActivation)
+	require.NoError(t, err)
+	_, err = reopened.ConfirmGenerationRuntimeAdoption(rejoinActivation)
+	require.NoError(t, err)
+	readiness = reopened.GenerationReadiness(rejoined.ChannelID)
+	require.Equal(t, uint32(5), readiness.CurrentGeneration)
+	require.Zero(t, readiness.PreviousGeneration,
+		"a rejoining candidate must not retain an obsolete receive-only generation")
 }
 
 func resolvedCapabilityForTest(

@@ -3010,7 +3010,7 @@ const file_api_ardents_v1_authority_proto_rawDesc = "" +
 	"\x05phase\x18\x05 \x01(\tR\x05phase\x12-\n" +
 	"\x12current_generation\x18\x06 \x01(\rR\x11currentGeneration\x12/\n" +
 	"\x13previous_generation\x18\a \x01(\rR\x12previousGeneration\x12A\n" +
-	"\x0edrain_deadline\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\rdrainDeadline2\x9a\r\n" +
+	"\x0edrain_deadline\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\rdrainDeadline2\x9b\r\n" +
 	"\x10AuthorityService\x12\xae\x01\n" +
 	"\x14CreateRealmAuthority\x12'.ardents.v1.CreateRealmAuthorityRequest\x1a(.ardents.v1.CreateRealmAuthorityResponse\"C\xc2\xf3\x18?\n" +
 	"\x16realm.authority.create\x12\tauthority\x1a\x18realm-authority-instance \x01\x12\x9e\x01\n" +
@@ -3027,9 +3027,9 @@ const file_api_ardents_v1_authority_proto_rawDesc = "" +
 	"\x1cAcknowledgeChannelActivation\x12/.ardents.v1.AcknowledgeChannelActivationRequest\x1a0.ardents.v1.AcknowledgeChannelActivationResponse\"O\xc2\xf3\x18K\n" +
 	"$realm.channel.activation.acknowledge\x12\tauthority\x1a\x16realm-channel-delivery \x01\x12\xab\x01\n" +
 	"\x17ChangeChannelMembership\x12*.ardents.v1.ChangeChannelMembershipRequest\x1a!.ardents.v1.RotateChannelResponse\"A\xc2\xf3\x18=\n" +
-	"\x1frealm.channel.membership.change\x12\tauthority\x1a\rrealm-channel \x01\x12\xc6\x01\n" +
-	"\x1dSubmitDeploymentFenceEvidence\x120.ardents.v1.SubmitDeploymentFenceEvidenceRequest\x1a1.ardents.v1.SubmitDeploymentFenceEvidenceResponse\"@\xc2\xf3\x18<\n" +
-	"\x1erealm.channel.membership.fence\x12\tauthority\x1a\rrealm-channel \x012\xcc\x04\n" +
+	"\x1frealm.channel.membership.change\x12\tauthority\x1a\rrealm-channel \x01\x12\xc7\x01\n" +
+	"\x1dSubmitDeploymentFenceEvidence\x120.ardents.v1.SubmitDeploymentFenceEvidenceRequest\x1a1.ardents.v1.SubmitDeploymentFenceEvidenceResponse\"A\xc2\xf3\x18=\n" +
+	"\x1frealm.channel.membership.change\x12\tauthority\x1a\rrealm-channel \x012\xcc\x04\n" +
 	"\x16ChannelDeliveryService\x12\xb6\x01\n" +
 	"\x19PrepareGenerationDelivery\x12,.ardents.v1.PrepareGenerationDeliveryRequest\x1a-.ardents.v1.PrepareGenerationDeliveryResponse\"<\xc2\xf3\x188\n" +
 	"\x1erealm.channel.delivery.prepare\x12\tauthority\x1a\tprincipal \x01\x12\xc3\x01\n" +

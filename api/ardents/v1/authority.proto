@@ -76,7 +76,7 @@ service AuthorityService {
   }
   rpc SubmitDeploymentFenceEvidence(SubmitDeploymentFenceEvidenceRequest) returns (SubmitDeploymentFenceEvidenceResponse) {
     option (operator_access) = {
-      action: "realm.channel.membership.fence"
+      action: "realm.channel.membership.change"
       domain: "authority"
       resource_kind: "realm-channel"
       mutating: true

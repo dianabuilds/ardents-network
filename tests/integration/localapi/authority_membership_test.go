@@ -115,7 +115,8 @@ func TestChannelMembershipAddRemoveAndFenceAcrossThreeProtectedHosts(t *testing.
 	added, err := authorityHost.Client.ChangeChannelMembership(
 		ctx, connect.NewRequest(&protocol.ChangeChannelMembershipRequest{
 			Version: domain.ContractVersion, RequestId: "membership-integration-add",
-			RealmId: realmID, ChannelId: channelID, Change: domain.MembershipChangeAdd,
+			RealmId: realmID, ChannelId: channelID,
+			Change:          string(domain.MembershipChangeAdd),
 			TargetPrincipal: memberB.principal,
 			RecipientAttestations: []*protocol.GenerationDeliveryAttestation{
 				attestationA, attestationB,
@@ -163,7 +164,8 @@ func TestChannelMembershipAddRemoveAndFenceAcrossThreeProtectedHosts(t *testing.
 	removed, err := authorityHost.Client.ChangeChannelMembership(
 		ctx, connect.NewRequest(&protocol.ChangeChannelMembershipRequest{
 			Version: domain.ContractVersion, RequestId: "membership-integration-remove",
-			RealmId: realmID, ChannelId: channelID, Change: domain.MembershipChangeRemove,
+			RealmId: realmID, ChannelId: channelID,
+			Change:          string(domain.MembershipChangeRemove),
 			TargetPrincipal: memberB.principal,
 			RecipientAttestations: []*protocol.GenerationDeliveryAttestation{
 				attestationA,
@@ -187,6 +189,26 @@ func TestChannelMembershipAddRemoveAndFenceAcrossThreeProtectedHosts(t *testing.
 		removeActivation.Msg.GetActivation(),
 	)
 	removeReceipts[memberA.principal] = activeA
+	activeResource, valid := domain.GenerationDeliveryResource(
+		realmID, removed.Msg.GetOperationId(), activeA.GetDeliveryId(),
+	)
+	require.True(t, valid)
+	authorityHost.GrantExact(
+		t, []identityaccess.Action{domain.ActionAcknowledgeActivation},
+		domain.ResourceKindGenerationDelivery, activeResource, false,
+	)
+	forgedReceipt := proto.Clone(activeA).(*protocol.GenerationDeliveryReceipt)
+	forgedReceipt.Mac = append([]byte(nil), forgedReceipt.GetMac()...)
+	require.NotEmpty(t, forgedReceipt.Mac)
+	forgedReceipt.Mac[0] ^= 0xff
+	_, err = authorityHost.Client.AcknowledgeChannelActivation(
+		ctx, connect.NewRequest(&protocol.AcknowledgeChannelActivationRequest{
+			Version: domain.ContractVersion, RealmId: realmID,
+			OperationId: removed.Msg.GetOperationId(), ApprovedHost: true,
+			Receipt: forgedReceipt,
+		}),
+	)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 	pending := acknowledgeProtectedMembership(
 		t, ctx, authorityHost, realmID, removed.Msg.GetOperationId(), activeA, true,
 	)
@@ -201,7 +223,7 @@ func TestChannelMembershipAddRemoveAndFenceAcrossThreeProtectedHosts(t *testing.
 	), "stale removed traffic must fail before replay admission")
 
 	authorityHost.GrantExact(
-		t, []identityaccess.Action{domain.ActionSubmitFenceEvidence},
+		t, []identityaccess.Action{domain.ActionChangeMembership},
 		domain.ResourceKindChannel, channelResource, false,
 	)
 	evidence := protectedFenceEvidence(
@@ -230,7 +252,8 @@ func TestChannelMembershipAddRemoveAndFenceAcrossThreeProtectedHosts(t *testing.
 	rejoined, err := authorityHost.Client.ChangeChannelMembership(
 		ctx, connect.NewRequest(&protocol.ChangeChannelMembershipRequest{
 			Version: domain.ContractVersion, RequestId: "membership-integration-rejoin",
-			RealmId: realmID, ChannelId: channelID, Change: domain.MembershipChangeAdd,
+			RealmId: realmID, ChannelId: channelID,
+			Change:          string(domain.MembershipChangeAdd),
 			TargetPrincipal: memberB.principal,
 			RecipientAttestations: []*protocol.GenerationDeliveryAttestation{
 				attestationA, attestationB,

@@ -13,8 +13,8 @@ Application Interface exposes neither:
 - `ChangeChannelMembership` uses
   `realm.channel.membership.change` on the exact
   `realm/<RealmID>/channel/<ChannelID>` resource;
-- `SubmitDeploymentFenceEvidence` uses
-  `realm.channel.membership.fence` on the same exact channel resource.
+- `SubmitDeploymentFenceEvidence` uses the accepted
+  `realm.channel.membership.change` action on the same exact channel resource.
 
 Both require a directly authenticated Operator Principal with
 `Actor == Effective`; Delegation, sibling actions, parent resources and

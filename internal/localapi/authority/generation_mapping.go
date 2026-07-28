@@ -104,7 +104,7 @@ func rotationToWire(result domain.RotationResult) *protocol.RotateChannelRespons
 		PreviousGeneration: result.PreviousGeneration,
 		PendingGeneration:  result.PendingGeneration, Phase: result.Phase,
 		Deliveries:        deliveries,
-		MembershipChange:  result.MembershipChange.Kind,
+		MembershipChange:  string(result.MembershipChange.Kind),
 		TargetPrincipal:   result.MembershipChange.TargetPrincipal,
 		MembershipVersion: result.MembershipChange.MembershipVersion,
 		MemberState:       result.MembershipChange.State,
