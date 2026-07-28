@@ -47,6 +47,7 @@ type AuthorityConfig struct {
 	StorePath                string `json:"store_path"`
 	StoreKeyFile             string `json:"store_key_file"`
 	SignerFile               string `json:"signer_file"`
+	SuccessorSignerFile      string `json:"successor_signer_file,omitempty"`
 	CheckpointRepositoryPath string `json:"checkpoint_repository_path"`
 }
 

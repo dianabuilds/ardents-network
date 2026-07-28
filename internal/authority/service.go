@@ -44,9 +44,6 @@ type Config struct {
 	Audit        AuditSink
 	Crash        func(CrashBoundary) error
 	RecoveryOnly bool
-	// SuccessorSigner is preprovisioned independently and is used only to
-	// roll forward an already committed dual-signed authority transition.
-	SuccessorSigner Signer
 }
 
 type Service struct {
@@ -72,7 +69,7 @@ func New(config Config) *Service {
 		random: config.Random, clock: config.Clock, policy: config.Policy, crash: config.Crash,
 		audit:            config.Audit,
 		recoveryOnly:     config.RecoveryOnly,
-		transitionSigner: config.SuccessorSigner,
+		transitionSigner: successorSigner(config.Signer),
 		status: Status{
 			Version: ContractVersion, SchemaVersion: SchemaVersion,
 			Phase: PhaseUninitialized, Readiness: ReadinessUnavailable, Reason: ReasonUninitialized,

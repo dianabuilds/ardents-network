@@ -71,11 +71,21 @@ func validateAuthority(cfg AuthorityConfig, nodeDataDir string) error {
 		{"authority.signer_file", cfg.SignerFile},
 		{"authority.checkpoint_repository_path", cfg.CheckpointRepositoryPath},
 	}
+	optionalValues := []struct {
+		name, value string
+	}{
+		{"authority.successor_signer_file", cfg.SuccessorSignerFile},
+	}
 	if !cfg.Enabled {
 		if cfg.RecoveryOnly {
 			return fmt.Errorf("authority.recovery_only requires authority.enabled=true")
 		}
 		for _, field := range values {
+			if field.value != "" {
+				return fmt.Errorf("%s requires authority.enabled=true", field.name)
+			}
+		}
+		for _, field := range optionalValues {
 			if field.value != "" {
 				return fmt.Errorf("%s requires authority.enabled=true", field.name)
 			}
@@ -90,13 +100,26 @@ func validateAuthority(cfg AuthorityConfig, nodeDataDir string) error {
 			return fmt.Errorf("%s must be absolute", field.name)
 		}
 	}
+	for _, field := range optionalValues {
+		if strings.TrimSpace(field.value) == "" {
+			continue
+		}
+		if !filepath.IsAbs(field.value) {
+			return fmt.Errorf("%s must be absolute", field.name)
+		}
+		values = append(values, field)
+	}
 	clean := make(map[string]string, len(values))
 	for _, field := range values {
 		clean[field.name] = filepath.Clean(field.value)
 	}
 	if clean["authority.store_path"] == clean["authority.store_key_file"] ||
 		clean["authority.store_path"] == clean["authority.signer_file"] ||
-		clean["authority.store_key_file"] == clean["authority.signer_file"] {
+		clean["authority.store_key_file"] == clean["authority.signer_file"] ||
+		(clean["authority.successor_signer_file"] != "" &&
+			(clean["authority.successor_signer_file"] == clean["authority.store_path"] ||
+				clean["authority.successor_signer_file"] == clean["authority.store_key_file"] ||
+				clean["authority.successor_signer_file"] == clean["authority.signer_file"])) {
 		return fmt.Errorf("authority store and signer inputs must be distinct")
 	}
 	checkpoint := clean["authority.checkpoint_repository_path"]
@@ -107,7 +130,11 @@ func validateAuthority(cfg AuthorityConfig, nodeDataDir string) error {
 		{"authority.store_path", clean["authority.store_path"]},
 		{"authority.store_key_file", clean["authority.store_key_file"]},
 		{"authority.signer_file", clean["authority.signer_file"]},
+		{"authority.successor_signer_file", clean["authority.successor_signer_file"]},
 	} {
+		if protected.path == "" {
+			continue
+		}
 		if pathContains(protected.path, checkpoint) || pathContains(checkpoint, protected.path) {
 			return fmt.Errorf("authority.checkpoint_repository_path must be outside %s", protected.name)
 		}

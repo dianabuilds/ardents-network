@@ -83,7 +83,7 @@ func redactDocument(doc Document) map[string]any {
 	for _, field := range []string{"channel_grant_store", "channel_grant_store_key_file", "replay_key_file", "subject"} {
 		redactMapValue(out, "privacy", field)
 	}
-	for _, field := range []string{"store_path", "store_key_file", "signer_file", "checkpoint_repository_path"} {
+	for _, field := range []string{"store_path", "store_key_file", "signer_file", "successor_signer_file", "checkpoint_repository_path"} {
 		redactMapValue(out, "authority", field)
 	}
 	redactTrustedPrincipalKeys(out)

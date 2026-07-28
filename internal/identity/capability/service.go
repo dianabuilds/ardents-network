@@ -69,6 +69,9 @@ func NewService(path string, storeKey []byte, localPrincipal string, trust *iden
 		return nil, err
 	}
 	copy(service.refKey[:], refKey)
+	if err := service.restoreIssuerTransitions(); err != nil {
+		return nil, err
+	}
 	return service, nil
 }
 
@@ -251,6 +254,14 @@ func cloneLedger(source ledger) ledger {
 		activated.Receipt.MAC = append([]byte(nil), activated.Receipt.MAC...)
 		out.ActivatedOperations[key] = activated
 	}
+	out.IssuerTransitions = make(
+		[]persistedIssuerTransition, len(source.IssuerTransitions),
+	)
+	for index, transition := range source.IssuerTransitions {
+		transition.FromPublic = append([]byte(nil), transition.FromPublic...)
+		transition.ToPublic = append([]byte(nil), transition.ToPublic...)
+		out.IssuerTransitions[index] = transition
+	}
 	return out
 }
 
@@ -290,37 +301,183 @@ func (s *Service) AdoptChannelIssuerTransition(
 	if !ok || !current.Equal(fromPublic) {
 		return capabilityError(CodeIssuerUntrusted, "authority predecessor is not trusted")
 	}
-	snapshot := s.trust.Snapshot()
-	foundSuccessor := false
-	for index := range snapshot.Entries {
-		entry := &snapshot.Entries[index]
-		if entry.Principal != toPrincipal {
-			continue
-		}
-		if !entry.PublicKey.Equal(toPublic) {
-			return capabilityError(CodeInvalid, "authority successor trust conflicts")
-		}
-		foundSuccessor = true
-		hasPurpose := false
-		for _, purpose := range entry.Purposes {
-			hasPurpose = hasPurpose || purpose == identitytrust.PurposeChannelIssue
-		}
-		if !hasPurpose {
-			entry.Purposes = append(entry.Purposes, identitytrust.PurposeChannelIssue)
+	record := persistedIssuerTransition{
+		FromPrincipal: fromPrincipal, FromPublic: append([]byte(nil), fromPublic...),
+		ToPrincipal: toPrincipal, ToPublic: append([]byte(nil), toPublic...),
+	}
+	for _, retained := range s.ledger.IssuerTransitions {
+		if retained.FromPrincipal == fromPrincipal &&
+			retained.ToPrincipal == toPrincipal &&
+			ed25519.PublicKey(retained.FromPublic).Equal(fromPublic) &&
+			ed25519.PublicKey(retained.ToPublic).Equal(toPublic) {
+			return nil
 		}
 	}
-	if !foundSuccessor {
-		snapshot.Entries = append(snapshot.Entries, identitytrust.Entry{
-			Principal: toPrincipal, PublicKey: append(ed25519.PublicKey(nil), toPublic...),
-			Purposes: []identitytrust.Purpose{identitytrust.PurposeChannelIssue},
-		})
-	}
-	next, err := identitytrust.NewRegistry(snapshot.Entries)
+	nextTrust, err := applyIssuerTransitionTrust(s.trust, record)
 	if err != nil {
 		return capabilityError(CodeInvalid, "authority successor trust is invalid")
 	}
-	s.trust = next
+	nextLedger := cloneLedger(s.ledger)
+	nextLedger.IssuerTransitions = append(nextLedger.IssuerTransitions, record)
+	if err := s.store.save(nextLedger); err != nil {
+		return err
+	}
+	s.ledger, s.trust = nextLedger, nextTrust
 	return nil
+}
+
+// FinalizeChannelIssuerTransition durably retires the predecessor's channel
+// issuance purpose after authority truth proves every channel was rotated.
+func (s *Service) FinalizeChannelIssuerTransition(
+	fromPrincipal, toPrincipal string,
+) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	index := -1
+	for candidate := range s.ledger.IssuerTransitions {
+		record := s.ledger.IssuerTransitions[candidate]
+		if record.FromPrincipal == fromPrincipal && record.ToPrincipal == toPrincipal {
+			index = candidate
+			break
+		}
+	}
+	if index < 0 {
+		return capabilityError(CodeMissing, "authority transition is not adopted")
+	}
+	if s.ledger.IssuerTransitions[index].Completed {
+		return nil
+	}
+	nextTrust, err := retireIssuerTrust(s.trust, fromPrincipal, toPrincipal)
+	if err != nil {
+		return capabilityError(CodeInvalid, "authority transition trust cannot be finalized")
+	}
+	nextLedger := cloneLedger(s.ledger)
+	nextLedger.IssuerTransitions[index].Completed = true
+	if err := s.store.save(nextLedger); err != nil {
+		return err
+	}
+	s.ledger, s.trust = nextLedger, nextTrust
+	return nil
+}
+
+func (s *Service) restoreIssuerTransitions() error {
+	trust := s.trust
+	for _, transition := range s.ledger.IssuerTransitions {
+		next, err := applyIssuerTransitionTrust(trust, transition)
+		if err != nil {
+			return capabilityError(CodeInvalid, "persisted authority transition is invalid")
+		}
+		trust = next
+		if transition.Completed {
+			trust, err = retireIssuerTrust(
+				trust, transition.FromPrincipal, transition.ToPrincipal,
+			)
+			if err != nil {
+				return capabilityError(CodeInvalid, "persisted authority transition completion is invalid")
+			}
+		}
+	}
+	s.trust = trust
+	return nil
+}
+
+func applyIssuerTransitionTrust(
+	current *identitytrust.Registry,
+	transition persistedIssuerTransition,
+) (*identitytrust.Registry, error) {
+	fromID, err := identityprincipal.Parse(transition.FromPrincipal)
+	if err != nil {
+		return nil, err
+	}
+	fromPublic, ok := current.Lookup(identitytrust.PurposeChannelIssue, fromID)
+	toID, err := identityprincipal.Parse(transition.ToPrincipal)
+	if err != nil {
+		return nil, err
+	}
+	derived, err := identityprincipal.FromEd25519PublicKey(
+		ed25519.PublicKey(transition.ToPublic),
+	)
+	if err != nil || !derived.Equal(toID) || derived.Equal(fromID) {
+		return nil, fmt.Errorf("authority successor is invalid")
+	}
+	toPublic, toTrusted := current.Lookup(identitytrust.PurposeChannelIssue, toID)
+	predecessorTrusted := ok &&
+		fromPublic.Equal(ed25519.PublicKey(transition.FromPublic))
+	successorTrusted := toTrusted &&
+		toPublic.Equal(ed25519.PublicKey(transition.ToPublic))
+	if !predecessorTrusted && !(transition.Completed && successorTrusted) {
+		return nil, fmt.Errorf("authority predecessor is not trusted")
+	}
+	snapshot := current.Snapshot()
+	found := false
+	for index := range snapshot.Entries {
+		entry := &snapshot.Entries[index]
+		if entry.Principal != transition.ToPrincipal {
+			continue
+		}
+		if !entry.PublicKey.Equal(ed25519.PublicKey(transition.ToPublic)) {
+			return nil, fmt.Errorf("authority successor conflicts")
+		}
+		found = true
+		if !containsTrustPurpose(entry.Purposes, identitytrust.PurposeChannelIssue) {
+			entry.Purposes = append(entry.Purposes, identitytrust.PurposeChannelIssue)
+		}
+	}
+	if !found {
+		snapshot.Entries = append(snapshot.Entries, identitytrust.Entry{
+			Principal: transition.ToPrincipal,
+			PublicKey: append(ed25519.PublicKey(nil), transition.ToPublic...),
+			Purposes:  []identitytrust.Purpose{identitytrust.PurposeChannelIssue},
+		})
+	}
+	return identitytrust.NewRegistry(snapshot.Entries)
+}
+
+func retireIssuerTrust(
+	current *identitytrust.Registry,
+	fromPrincipal, toPrincipal string,
+) (*identitytrust.Registry, error) {
+	snapshot := current.Snapshot()
+	successor := false
+	for index := range snapshot.Entries {
+		entry := &snapshot.Entries[index]
+		if entry.Principal == toPrincipal {
+			successor = containsTrustPurpose(
+				entry.Purposes, identitytrust.PurposeChannelIssue,
+			)
+		}
+		if entry.Principal == fromPrincipal {
+			purposes := entry.Purposes[:0]
+			for _, purpose := range entry.Purposes {
+				if purpose != identitytrust.PurposeChannelIssue {
+					purposes = append(purposes, purpose)
+				}
+			}
+			entry.Purposes = purposes
+		}
+	}
+	if !successor {
+		return nil, fmt.Errorf("authority successor is not trusted")
+	}
+	entries := snapshot.Entries[:0]
+	for _, entry := range snapshot.Entries {
+		if len(entry.Purposes) > 0 {
+			entries = append(entries, entry)
+		}
+	}
+	return identitytrust.NewRegistry(entries)
+}
+
+func containsTrustPurpose(
+	purposes []identitytrust.Purpose,
+	target identitytrust.Purpose,
+) bool {
+	for _, purpose := range purposes {
+		if purpose == target {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Service) trustedIssuer(raw string) (ed25519.PublicKey, bool) {

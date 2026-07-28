@@ -71,9 +71,6 @@ func (s *Service) PlanAuthorityTransition(
 	if err := validatePlanAuthorityTransitionCommand(command, request.RealmID); err != nil {
 		return AuthorityTransition{}, err
 	}
-	if err := s.mutationFence(); err != nil {
-		return AuthorityTransition{}, err
-	}
 	if s.store == nil || s.signer == nil || s.repository == nil || s.policy == nil || next == nil {
 		return AuthorityTransition{}, ErrUnavailable
 	}
@@ -90,7 +87,8 @@ func (s *Service) PlanAuthorityTransition(
 		s.setRecovery(statusFromLedger(state), ReasonPersistedStateInvalid)
 		return AuthorityTransition{}, ErrRecoveryRequired
 	}
-	if state.Phase == PhaseCheckpointing && state.Transition != nil {
+	if state.Transition != nil &&
+		request.RequestID == state.Transition.RequestID {
 		proof := state.Transition.Proof
 		toPrincipal, toPublic, identityErr := signerIdentity(ctx, next)
 		if identityErr != nil ||
@@ -102,9 +100,13 @@ func (s *Service) PlanAuthorityTransition(
 			!toPublic.Equal(ed25519.PublicKey(proof.ToAuthorityPublicKey)) {
 			return AuthorityTransition{}, ErrConflict
 		}
-		s.signer, s.transitionSigner = next, next
-		if err := s.reconcileLoaded(ctx, &state); err != nil {
-			return AuthorityTransition{}, err
+		if state.Phase == PhaseCheckpointing {
+			s.signer, s.transitionSigner = next, next
+			if err := s.reconcileLoaded(ctx, &state); err != nil {
+				return AuthorityTransition{}, err
+			}
+		} else if state.Phase != PhaseReady {
+			return AuthorityTransition{}, ErrRecoveryRequired
 		}
 		return proof, nil
 	}
@@ -114,6 +116,9 @@ func (s *Service) PlanAuthorityTransition(
 	}
 	if state.Transition != nil {
 		return AuthorityTransition{}, ErrConflict
+	}
+	if err := s.mutationFence(); err != nil {
+		return AuthorityTransition{}, err
 	}
 	if state.RealmID != request.RealmID ||
 		state.AuthoritySequence != request.AuthoritySequence ||
@@ -502,6 +507,25 @@ func AdoptMemberAuthorityTransition(
 		ed25519.PublicKey(transition.FromAuthorityPublicKey),
 		transition.ToAuthorityPrincipal,
 		ed25519.PublicKey(transition.ToAuthorityPublicKey),
+	); err != nil {
+		return ErrPermissionDenied
+	}
+	return nil
+}
+
+// FinalizeMemberAuthorityTransition retires predecessor issuance trust only
+// after the durable authority record proves every required channel completed.
+func FinalizeMemberAuthorityTransition(
+	member *identitycapability.Service,
+	record AuthorityTransitionRecord,
+) error {
+	if member == nil || authorityTransitionPending(&record) ||
+		ValidateAuthorityTransition(record.Proof) != nil {
+		return ErrInvalidArgument
+	}
+	if err := member.FinalizeChannelIssuerTransition(
+		record.Proof.FromAuthorityPrincipal,
+		record.Proof.ToAuthorityPrincipal,
 	); err != nil {
 		return ErrPermissionDenied
 	}

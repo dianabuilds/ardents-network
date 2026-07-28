@@ -35,10 +35,19 @@ func configureRealmAuthority(owners *Owners, config runtimeconfig.AuthorityConfi
 	if err != nil {
 		return unavailable()
 	}
-	signer, err := domain.NewFileSigner(config.SignerFile)
+	fileSigner, err := domain.NewFileSigner(config.SignerFile)
 	if err != nil {
 		_ = store.Close()
 		return unavailable()
+	}
+	var signer domain.Signer = fileSigner
+	if config.SuccessorSignerFile != "" {
+		successor, successorErr := domain.NewFileSigner(config.SuccessorSignerFile)
+		if successorErr != nil {
+			_ = store.Close()
+			return unavailable()
+		}
+		signer = domain.WithSuccessorSigner(signer, successor)
 	}
 	repository, err := domain.NewWORMFileCheckpointRepository(config.CheckpointRepositoryPath)
 	if err != nil {

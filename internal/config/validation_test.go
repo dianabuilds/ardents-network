@@ -93,6 +93,10 @@ func TestValidateAuthorityRequiresSeparateExplicitProductionInputs(t *testing.T)
 		return doc
 	}
 	require.NoError(t, Validate(valid()))
+	withSuccessor := valid()
+	withSuccessor.Authority.SuccessorSignerFile =
+		filepath.Join(dir, "authority-secrets", "successor-signer.json")
+	require.NoError(t, Validate(withSuccessor))
 
 	for name, mutate := range map[string]func(*Document){
 		"disabled material": func(doc *Document) {
@@ -108,6 +112,9 @@ func TestValidateAuthorityRequiresSeparateExplicitProductionInputs(t *testing.T)
 		},
 		"missing signer": func(doc *Document) {
 			doc.Authority.SignerFile = ""
+		},
+		"successor equals current signer": func(doc *Document) {
+			doc.Authority.SuccessorSignerFile = doc.Authority.SignerFile
 		},
 		"checkpoint under node state": func(doc *Document) {
 			doc.Authority.CheckpointRepositoryPath = filepath.Join(doc.Node.DataDir, "checkpoints")

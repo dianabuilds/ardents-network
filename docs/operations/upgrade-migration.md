@@ -128,11 +128,15 @@ readiness is `ready`.
 
 For a planned authority transition, preprovision the successor signer before
 the dual-signed operation and distribute the proof through
-`AdoptMemberAuthorityTransition` before successor-signed channel delivery.
-Keep the successor available as `SuccessorSigner` until its checkpoint is
+`ChannelDeliveryService.AdoptAuthorityTransition` before successor-signed
+channel delivery. Set protected `authority.successor_signer_file` and keep the
+successor available through `WithSuccessorSigner` until its checkpoint is
 visible in the independent repository. A temporary repository outage is
 resumed with the same exact request or by restart; never start a different
 transition or discard the locally committed checkpoint.
+After every required channel is terminal, call
+`ChannelDeliveryService.FinalizeAuthorityTransition` on each member and retain
+its durable result before removing predecessor issuer trust.
 
 Downgrade stops the new software and restores the complete verified
 pre-migration backup with the exact old binary. Do not edit the new schema,

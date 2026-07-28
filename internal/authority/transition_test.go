@@ -48,6 +48,19 @@ func TestPlanAuthorityTransitionIsDualSignedAndExact(t *testing.T) {
 	require.Equal(t, &transition, fixture.store.state.Checkpoint.AuthorityTransition)
 	require.NotNil(t, fixture.store.state.Transition)
 	require.NoError(t, validateLedger(fixture.store.state))
+	committed := cloneLedger(fixture.store.state)
+	replayed, err := fixture.service.PlanAuthorityTransition(
+		ctx, planTransitionCommand(genesis.RealmID),
+		PlanAuthorityTransitionRequest{
+			Version: ContractVersion, RequestID: "transition-1", RealmID: genesis.RealmID,
+			AuthoritySequence: genesis.AuthoritySequence,
+			CheckpointDigest:  genesis.CheckpointDigest,
+		},
+		next,
+	)
+	require.NoError(t, err)
+	require.Equal(t, transition, replayed)
+	require.Equal(t, committed, fixture.store.state)
 }
 
 func TestAuthorityTransitionAdvancesRepositoryAndRequiresEveryChannelRotation(t *testing.T) {
@@ -64,8 +77,10 @@ func TestAuthorityTransitionAdvancesRepositoryAndRequiresEveryChannelRotation(t 
 		Purposes:  []identitytrust.Purpose{identitytrust.PurposeChannelIssue},
 	}})
 	require.NoError(t, err)
+	memberPath := t.TempDir() + "/member.db"
+	memberKey := bytes.Repeat([]byte{0x93}, 32)
 	member, err := identitycapability.NewService(
-		t.TempDir()+"/member.db", bytes.Repeat([]byte{0x93}, 32),
+		memberPath, memberKey,
 		legacy.memberPrincipal, oldTrust, authorityCapabilityPolicy{}, legacy.clock,
 	)
 	require.NoError(t, err)
@@ -123,6 +138,18 @@ func TestAuthorityTransitionAdvancesRepositoryAndRequiresEveryChannelRotation(t 
 	require.Equal(t, ReadinessReady, service.Readiness().Readiness)
 	require.Len(t, store.state.Transition.RotatedChannelIDs, 2)
 	require.NoError(t, validateLedger(store.state))
+	require.NoError(t, FinalizeMemberAuthorityTransition(
+		member, *store.state.Transition,
+	))
+	restartedMember, err := identitycapability.NewService(
+		memberPath, memberKey, legacy.memberPrincipal,
+		oldTrust, authorityCapabilityPolicy{}, legacy.clock,
+	)
+	require.NoError(t, err)
+	_, err = restartedMember.ReceiverGrantSnapshot()
+	require.NoError(t, err, "successor trust must survive restart after predecessor retirement")
+	_, err = restartedMember.ImportGrant(legacy.request.Members[0].ReceiverGrants[0])
+	require.Error(t, err, "predecessor channel issuance trust must remain retired")
 }
 
 func transitionTestRandom(offset byte) []byte {
@@ -250,7 +277,7 @@ func TestAuthorityTransitionRollsForwardAfterRepositoryOutageAndRestart(t *testi
 
 	fixture.repository.appendErr = nil
 	restarted := New(Config{
-		Store: fixture.store, Signer: fixture.signer, SuccessorSigner: next,
+		Store: fixture.store, Signer: WithSuccessorSigner(fixture.signer, next),
 		Repository: fixture.repository, Policy: allowPolicy{}, Clock: fixture.clock,
 	})
 	require.Equal(t, PhaseReady, restarted.Readiness().Phase)

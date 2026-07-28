@@ -37,6 +37,15 @@ type ledger struct {
 	PreviousGenerations  map[string]persistedPreviousGeneration  `json:"previous_generations,omitempty"`
 	ActivatedGenerations map[string]persistedActivatedGeneration `json:"activated_generations,omitempty"`
 	ActivatedOperations  map[string]persistedActivatedGeneration `json:"activated_operations,omitempty"`
+	IssuerTransitions    []persistedIssuerTransition             `json:"issuer_transitions,omitempty"`
+}
+
+type persistedIssuerTransition struct {
+	FromPrincipal string `json:"from_principal"`
+	FromPublic    []byte `json:"from_public"`
+	ToPrincipal   string `json:"to_principal"`
+	ToPublic      []byte `json:"to_public"`
+	Completed     bool   `json:"completed"`
 }
 
 func newStore(path string, key []byte) (*Store, error) {

@@ -1,9 +1,11 @@
 // Package channeldelivery owns recipient-Node generation preparation,
-// installation and live-runtime activation. It does not own Authority truth,
+// installation, live-runtime activation, and durable adoption/finalization of
+// dual-signed authority issuer trust. It does not own Authority truth,
 // Operator authentication, Product Policy, or the HPKE implementation.
 package channeldelivery
 
 import (
+	authoritydomain "ardents/internal/authority"
 	"context"
 	"crypto/ed25519"
 	"errors"
@@ -71,6 +73,36 @@ func (s *Service) BindActivationRuntime(runtime ActivationRuntime) {
 	if s != nil {
 		s.activation = runtime
 	}
+}
+
+func (s *Service) AdoptAuthorityTransition(
+	command Command,
+	transition authoritydomain.AuthorityTransition,
+) error {
+	if command.Actor == "" || command.Actor != command.Effective {
+		return ErrPermissionDenied
+	}
+	if err := authoritydomain.AdoptMemberAuthorityTransition(
+		s.capabilities, transition,
+	); err != nil {
+		return ErrPermissionDenied
+	}
+	return nil
+}
+
+func (s *Service) FinalizeAuthorityTransition(
+	command Command,
+	record authoritydomain.AuthorityTransitionRecord,
+) error {
+	if command.Actor == "" || command.Actor != command.Effective {
+		return ErrPermissionDenied
+	}
+	if err := authoritydomain.FinalizeMemberAuthorityTransition(
+		s.capabilities, record,
+	); err != nil {
+		return ErrPermissionDenied
+	}
+	return nil
 }
 
 func (s *Service) Prepare(

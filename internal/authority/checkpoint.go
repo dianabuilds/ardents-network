@@ -20,6 +20,34 @@ type Signer interface {
 	Sign(context.Context, []byte) ([]byte, error)
 }
 
+type successorSignerProvider interface {
+	SuccessorSigner() Signer
+}
+
+type signerContinuity struct {
+	Signer
+	successor Signer
+}
+
+func (s signerContinuity) SuccessorSigner() Signer { return s.successor }
+
+// WithSuccessorSigner keeps current and preprovisioned successor custody behind
+// one cohesive continuity seam consumed by the authority service.
+func WithSuccessorSigner(current, successor Signer) Signer {
+	if current == nil {
+		return nil
+	}
+	return signerContinuity{Signer: current, successor: successor}
+}
+
+func successorSigner(signer Signer) Signer {
+	provider, ok := signer.(successorSignerProvider)
+	if !ok {
+		return nil
+	}
+	return provider.SuccessorSigner()
+}
+
 type Checkpoint struct {
 	Version             uint32               `json:"version"`
 	SchemaVersion       uint32               `json:"schema_version"`

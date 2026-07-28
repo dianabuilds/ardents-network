@@ -63,12 +63,17 @@ checkpoint, which embeds both signatures and the exact predecessor binding.
 The authority then remains degraded and admits only one fresh rotation for
 each channel present at transition. Readiness becomes ready only after every
 required channel completes. Members call the production
-`AdoptMemberAuthorityTransition` boundary, which verifies both signatures,
-requires the predecessor to be their current trusted channel issuer, and
-atomically adds the successor before accepting successor-signed deliveries.
+`ChannelDeliveryService.AdoptAuthorityTransition` boundary, which verifies
+both signatures, requires the predecessor to be their current trusted channel
+issuer, and durably adds the successor in the encrypted capability store before
+accepting successor-signed deliveries. Once authority truth records every
+required channel complete, `FinalizeAuthorityTransition` durably retires the
+predecessor's channel-issuance purpose. Both states survive restart.
 
-The successor signer is provisioned before transition and may be supplied as
-`SuccessorSigner` during restart. If repository storage is temporarily
+The successor signer is provisioned before transition as protected
+`authority.successor_signer_file`; daemon composition supplies it through the
+single `WithSuccessorSigner` continuity seam during restart. If repository
+storage is temporarily
 unavailable after the successor checkpoint is committed locally, the ledger
 stays in checkpointing state; it is neither rewritten nor marked corrupt.
 Retry with the same exact request or restart with the preprovisioned successor
