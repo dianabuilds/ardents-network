@@ -14,8 +14,8 @@ func TestDeriveSelectorDeterministicVector(t *testing.T) {
 	resolved := fixedResolvedCapability(t, 7)
 	material, err := Derive(resolved)
 	require.NoError(t, err)
-	require.Equal(t, "/ardents/1/5joa5wrvnczptvpubccgtl4ioivjepag/proto", material.ContentTopic)
-	require.Equal(t, "341dad401b90b6e140aff5af77a0fcbcc945af7f75718031f32dde4244c69038", stringHex(material.EnvelopeKey()))
+	require.Equal(t, "/ardents/1/kaciboigy5ukazbvbf2ohtalvbpupr6k/proto", material.ContentTopic)
+	require.Equal(t, "f7592a38caf0e765d4707203a93c1af07fcd3e4ddde3c421cb5451d1e56d1971", stringHex(material.EnvelopeKey()))
 }
 
 func TestDeriveSelectorInteroperatesAndRotates(t *testing.T) {
@@ -77,7 +77,6 @@ func fixedResolvedCapability(t *testing.T, generation uint32) identityapi.Resolv
 	}
 	return identityapi.ResolvedCapability{
 		ChannelID: channelID, Generation: generation, Secret: secret,
-		Scope: identityapi.CapabilityRealmDiscovery,
 	}
 }
 

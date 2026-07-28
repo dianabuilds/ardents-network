@@ -238,6 +238,7 @@ func (s *Service) GenerationReadiness(channelID [16]byte) GenerationReadiness {
 	defer s.mu.Unlock()
 	now := s.clock().UTC().Truncate(time.Second)
 	status := GenerationReadiness{ChannelID: channelID}
+	expired := false
 	_, current, ok := currentSubjectGrant(s.ledger, channelID, s.localPrincipal)
 	if ok {
 		status.CurrentGeneration = current.Generation
@@ -245,13 +246,16 @@ func (s *Service) GenerationReadiness(channelID [16]byte) GenerationReadiness {
 			status.Ready = true
 		} else {
 			status.Reason = identityapi.ChannelGrantReasonExpired
+			expired = true
 		}
 	}
 	channelKey := generationChannelKey(channelID)
 	if pending, exists := s.ledger.PendingGenerations[channelKey]; exists {
 		status.PendingGeneration = pending.Generation
 		status.Ready = false
-		status.Reason = identityapi.ChannelGrantReasonPending
+		if !expired {
+			status.Reason = identityapi.ChannelGrantReasonPending
+		}
 	}
 	if previous, exists := s.ledger.PreviousGenerations[channelKey]; exists &&
 		now.Before(previous.DrainDeadline) {
@@ -260,7 +264,8 @@ func (s *Service) GenerationReadiness(channelID [16]byte) GenerationReadiness {
 	}
 	if activated, exists := s.ledger.ActivatedGenerations[channelKey]; exists {
 		status.CheckpointDigest = activated.Activation.CheckpointDigest
-		if !activated.RuntimeAdopted {
+		if !activated.RuntimeAdopted && !expired &&
+			status.Reason != identityapi.ChannelGrantReasonPending {
 			status.Ready = false
 			status.Reason = identityapi.ChannelGrantReasonNotAdopted
 		}

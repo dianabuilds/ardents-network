@@ -61,6 +61,12 @@ func TestPendingGenerationRequiresSignedActivationBeforeItBecomesReady(t *testin
 	require.False(t, readiness.Ready)
 	require.Equal(t, uint32(1), readiness.CurrentGeneration)
 	require.Equal(t, uint32(2), readiness.PendingGeneration)
+	now = current.NotAfter
+	expiredPending := member.GenerationReadiness(next.ChannelID)
+	require.False(t, expiredPending.Ready)
+	require.Equal(t, identityapi.ChannelGrantReasonExpired, expiredPending.Reason)
+	require.Equal(t, uint32(2), expiredPending.PendingGeneration)
+	now = capabilityTestNow
 	resolved, err := member.ResolveCapability(validUse(stableRef, current))
 	require.NoError(t, err)
 	require.Equal(t, uint32(1), resolved.Generation)

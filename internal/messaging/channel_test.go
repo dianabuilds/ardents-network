@@ -47,6 +47,28 @@ func TestChannelFailsClosedWhenChannelGrantResolutionIsRevoked(t *testing.T) {
 	require.Equal(t, "privacy.channel_grant.revoked", CodeOf(err))
 }
 
+func TestChannelRejectsCrossScopeBeforeEnvelopeAndReplayAdmission(t *testing.T) {
+	fixture := newEnvelopeFixture(t, true)
+	sealed := fixture.seal(t, []byte("scope-bound"))
+	sealed.Payload = append([]byte(nil), sealed.Payload...)
+	sealed.Payload[len(sealed.Payload)-1] ^= 1
+	resolver := &scopeRejectingResolver{resolved: fixture.receiverResolved}
+	replay := &countingReplayLedger{}
+	channel, err := NewChannel(ChannelConfig{
+		Resolver: resolver, Authorizer: fixture.receiverAuthority, Replay: replay,
+		Reference: fixture.receiverResolved.Ref, Subject: fixture.receiverResolved.Subject,
+		Scope:  identityapi.CapabilityDataExchange,
+		Signer: func() ed25519.PrivateKey { return fixture.senderPrivate },
+		Clock:  func() time.Time { return envelopeTestNow },
+	})
+	require.NoError(t, err)
+
+	_, err = channel.Open(sealed)
+	require.Equal(t, CodeChannelGrantMissing, CodeOf(err))
+	require.Equal(t, 1, resolver.calls)
+	require.Zero(t, replay.calls)
+}
+
 type channelResolver struct {
 	resolved    identityapi.ResolvedCapability
 	err         error
@@ -59,6 +81,30 @@ func (r *channelResolver) ResolveCapability(use identityapi.CapabilityUse) (iden
 		return identityapi.ResolvedCapability{}, r.err
 	}
 	return r.resolved, nil
+}
+
+type scopeRejectingResolver struct {
+	resolved identityapi.ResolvedCapability
+	calls    int
+}
+
+func (r *scopeRejectingResolver) ResolveCapability(
+	use identityapi.CapabilityUse,
+) (identityapi.ResolvedCapability, error) {
+	r.calls++
+	if use.Scope != r.resolved.Scope {
+		return identityapi.ResolvedCapability{}, channelFailure{
+			code: "privacy.channel_grant.scope_denied",
+		}
+	}
+	return r.resolved, nil
+}
+
+type countingReplayLedger struct{ calls int }
+
+func (r *countingReplayLedger) Admit(ReplayUse) error {
+	r.calls++
+	return nil
 }
 
 type channelFailure struct{ code string }

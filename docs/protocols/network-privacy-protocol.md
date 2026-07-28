@@ -188,7 +188,7 @@ For a channel capability:
 generation_key = HKDF-SHA256(
   input_key_material = channel_secret,
   salt = SHA-256("ardents-private/1" || channel_id),
-  info = frame("generation-key", uint32(generation), channel_scope),
+  info = "generation-key" || uint32(generation),
   length = 32)
 
 selector_key = HKDF-SHA256(
@@ -218,10 +218,7 @@ topic is exactly:
 The token is 32 characters. No owner, principal, operation, service, blob,
 request ID, message class, or capability ID may be appended. Filter and
 Lightpush use this same complete opaque content topic. Selector derivation is
-deterministic only for an authorized holder of the current channel secret and
-is domain-separated by the exact Channel Grant scope. Presenting a sibling
-scope or channel therefore fails opaque-topic admission before envelope
-decryption or replay admission.
+deterministic only for an authorized holder of the current channel secret.
 
 ## 5. Outer Envelope
 
