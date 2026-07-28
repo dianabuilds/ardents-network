@@ -1,8 +1,8 @@
 # PW3-16: CGA-06 restore, recover and migrate authority truth
 
-Status: needs-info
+Status: ready-for-agent
 State: open
-Labels: needs-info
+Labels: ready-for-agent
 Research class: R1 migration/recovery with security review
 
 ## Parent
@@ -44,3 +44,16 @@ one.
 
 - Published as a blocked canonical slice. CGA-01's fail-closed no-restore rule
   remains authoritative until this issue is accepted.
+- 2026-07-28 predecessor and deployment seams satisfied:
+  - the maintainer explicitly accepted CGA-05 implementation commit
+    `c8f87f69ff27a14902a628822b49bab60fa0dd38`;
+  - the stopped native backup/restore path already archives the separately
+    protected authority directory into an empty stopped target and verifies an
+    immutable archive/manifest digest;
+  - the configured production checkpoint adapter requires a preprovisioned
+    independent WORM assertion, immutable predecessor files, unique head and
+    exact compare-and-append, while configuration rejects repository placement
+    inside authority/store/signer fault domains;
+  - CGA-06 owns the missing same-realm restore verification, recovery-only
+    fence, transition and local-v2 import protocol. Admitting this slice does
+    not qualify those deployment procedures, change `Q`, deploy or push.

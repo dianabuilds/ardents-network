@@ -108,3 +108,7 @@ IDs/secrets/generations/membership/replay/audit and policy admission.
   - ADR-0015 remains Proposed. CGA-06 remains gated on explicit maintainer
     acceptance of the exact CGA-05 implementation tip. No production
     deployment was changed and nothing was pushed.
+- 2026-07-28 maintainer disposition: accepted exact implementation commit
+  `c8f87f69ff27a14902a628822b49bab60fa0dd38` after the commit-bound handoff
+  and clean repeat Standards/Spec reviews. CGA-06 may consume this commit;
+  later qualification remains governed by its own matching-commit gates.
