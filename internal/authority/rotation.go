@@ -689,6 +689,7 @@ func (s *Service) AcknowledgeChannelActivation(
 				next, &next.Rotations[rotationIndex], checkpoint.AuthoritySequence,
 			)
 			completeMigrationRotation(next, rotation.ChannelID)
+			completeAuthorityTransitionRotation(next, rotation.ChannelID)
 		}
 		return nil
 	})
@@ -696,6 +697,7 @@ func (s *Service) AcknowledgeChannelActivation(
 		return ActivationAcknowledgeResult{}, err
 	}
 	s.applyMigrationStatus(state)
+	s.applyTransitionStatus(state)
 	return activationAcknowledgeResult(state, state.Rotations[rotationIndex]), nil
 }
 

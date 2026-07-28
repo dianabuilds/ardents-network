@@ -21,16 +21,17 @@ type Signer interface {
 }
 
 type Checkpoint struct {
-	Version            uint32    `json:"version"`
-	SchemaVersion      uint32    `json:"schema_version"`
-	RealmID            string    `json:"realm_id"`
-	AuthorityPrincipal string    `json:"authority_principal"`
-	AuthorityPublicKey []byte    `json:"authority_public_key"`
-	AuthorityEpoch     uint64    `json:"authority_epoch"`
-	AuthoritySequence  uint64    `json:"authority_sequence"`
-	PreviousDigest     string    `json:"previous_digest,omitempty"`
-	AuditHead          string    `json:"audit_head"`
-	CreatedAt          time.Time `json:"created_at"`
+	Version             uint32               `json:"version"`
+	SchemaVersion       uint32               `json:"schema_version"`
+	RealmID             string               `json:"realm_id"`
+	AuthorityPrincipal  string               `json:"authority_principal"`
+	AuthorityPublicKey  []byte               `json:"authority_public_key"`
+	AuthorityEpoch      uint64               `json:"authority_epoch"`
+	AuthoritySequence   uint64               `json:"authority_sequence"`
+	PreviousDigest      string               `json:"previous_digest,omitempty"`
+	AuditHead           string               `json:"audit_head"`
+	CreatedAt           time.Time            `json:"created_at"`
+	AuthorityTransition *AuthorityTransition `json:"authority_transition,omitempty"`
 }
 
 type SignedCheckpoint struct {
@@ -89,6 +90,18 @@ func ValidateCheckpoint(checkpoint SignedCheckpoint) error {
 	principal, err := identityprincipal.FromEd25519PublicKey(ed25519.PublicKey(checkpoint.AuthorityPublicKey))
 	if err != nil || principal.String() != checkpoint.AuthorityPrincipal {
 		return ErrCorruptState
+	}
+	if checkpoint.AuthorityTransition != nil {
+		transition := *checkpoint.AuthorityTransition
+		if ValidateAuthorityTransition(transition) != nil ||
+			transition.RealmID != checkpoint.RealmID ||
+			transition.ToAuthorityPrincipal != checkpoint.AuthorityPrincipal ||
+			!equalBytes(transition.ToAuthorityPublicKey, checkpoint.AuthorityPublicKey) ||
+			transition.ToAuthorityEpoch != checkpoint.AuthorityEpoch ||
+			transition.AuthoritySequence+1 != checkpoint.AuthoritySequence ||
+			transition.CheckpointDigest != checkpoint.PreviousDigest {
+			return ErrCorruptState
+		}
 	}
 	message, err := checkpointMessage(checkpoint.Checkpoint)
 	if err != nil {

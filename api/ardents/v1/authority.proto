@@ -28,7 +28,7 @@ service AuthorityService {
   }
   rpc VerifyRestoredAuthority(VerifyRestoredAuthorityRequest) returns (VerifyRestoredAuthorityResponse) {
     option (operator_access) = {
-      action: "realm.authority.restore.verify"
+      action: "realm.channel.recovery.execute"
       domain: "authority"
       resource_kind: "realm"
       mutating: true

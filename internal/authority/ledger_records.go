@@ -173,6 +173,7 @@ type Ledger struct {
 	InitialGenerationDeliveries []InitialGenerationDeliveryRecord `json:"initial_generation_deliveries,omitempty"`
 	Rotations                   []RotationRecord                  `json:"rotations,omitempty"`
 	Migration                   *MigrationRecord                  `json:"migration,omitempty"`
+	Transition                  *AuthorityTransitionRecord        `json:"authority_transition,omitempty"`
 }
 
 type MigrationRecord struct {
@@ -184,6 +185,13 @@ type MigrationRecord struct {
 	CommitEvidenceDigest       string     `json:"commit_evidence_digest"`
 	RequiredRotationChannelIDs [][16]byte `json:"required_rotation_channel_ids"`
 	RotatedChannelIDs          [][16]byte `json:"rotated_channel_ids,omitempty"`
+}
+
+type AuthorityTransitionRecord struct {
+	Version                    uint32              `json:"version"`
+	Proof                      AuthorityTransition `json:"proof"`
+	RequiredRotationChannelIDs [][16]byte          `json:"required_rotation_channel_ids"`
+	RotatedChannelIDs          [][16]byte          `json:"rotated_channel_ids,omitempty"`
 }
 
 func capabilityGrantRecord(grant identityapi.CapabilityGrant) CapabilityGrantRecord {

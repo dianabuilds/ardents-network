@@ -106,8 +106,7 @@ func (r *FileCheckpointRepository) CompareAndAppend(ctx context.Context, realmID
 	}
 	if !found || expected != head.AuthoritySequence || next.RealmID != realmID ||
 		next.AuthoritySequence != expected+1 || next.PreviousDigest != head.Digest ||
-		next.AuthorityPrincipal != head.AuthorityPrincipal ||
-		!equalBytes(next.AuthorityPublicKey, head.AuthorityPublicKey) {
+		!validCheckpointAuthoritySuccessor(head, next) {
 		return SignedCheckpoint{}, ErrConflict
 	}
 	if expected >= MaxCheckpointRecords {
@@ -123,6 +122,28 @@ func (r *FileCheckpointRepository) CompareAndAppend(ctx context.Context, realmID
 		return SignedCheckpoint{}, err
 	}
 	return next, nil
+}
+
+func validCheckpointAuthoritySuccessor(head, next SignedCheckpoint) bool {
+	if next.AuthorityPrincipal == head.AuthorityPrincipal &&
+		equalBytes(next.AuthorityPublicKey, head.AuthorityPublicKey) {
+		return next.AuthorityEpoch == head.AuthorityEpoch &&
+			next.AuthorityTransition == nil
+	}
+	if next.AuthorityTransition == nil {
+		return false
+	}
+	transition := *next.AuthorityTransition
+	return ValidateAuthorityTransition(transition) == nil &&
+		transition.RealmID == head.RealmID &&
+		transition.FromAuthorityPrincipal == head.AuthorityPrincipal &&
+		equalBytes(transition.FromAuthorityPublicKey, head.AuthorityPublicKey) &&
+		transition.FromAuthorityEpoch == head.AuthorityEpoch &&
+		transition.AuthoritySequence == head.AuthoritySequence &&
+		transition.CheckpointDigest == head.Digest &&
+		transition.ToAuthorityPrincipal == next.AuthorityPrincipal &&
+		equalBytes(transition.ToAuthorityPublicKey, next.AuthorityPublicKey) &&
+		transition.ToAuthorityEpoch == next.AuthorityEpoch
 }
 
 func (r *FileCheckpointRepository) readHead(ctx context.Context, realmID string) (SignedCheckpoint, bool, error) {
@@ -171,7 +192,8 @@ func (r *FileCheckpointRepository) readHead(ctx context.Context, realmID string)
 		}
 		if checkpoint.AuthoritySequence != previous+1 ||
 			entry.Name() != fmt.Sprintf("%020d.json", checkpoint.AuthoritySequence) ||
-			(previous > 0 && checkpoint.PreviousDigest != previousDigest) {
+			(previous > 0 && (checkpoint.PreviousDigest != previousDigest ||
+				!validCheckpointAuthoritySuccessor(latest, checkpoint))) {
 			return SignedCheckpoint{}, false, ErrCorruptState
 		}
 		latest, found = checkpoint, true

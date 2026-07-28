@@ -109,7 +109,12 @@ new Realm with new member enrollment.
 Migration is fully stopped. Retain complete pre-migration authority and Node
 backups, reconcile every `ardents.local-realm-node/v2` record and protected
 receiver grant against the one `ardents.local-realm/v2` authority, remove the
-shared old-manager path, and record its fencing evidence digest. Unknown
+shared old-manager path, and record its fencing evidence digest. Use
+`provision.BuildLocalV2MigrationEvidence` while the new authority store is
+empty; keep the returned evidence handle open through `MigrateLocalV2` so its
+OS state-directory lock proves exclusive stopped-manager ownership. The
+adapter reads and authenticates the protected Node capability databases rather
+than accepting an operator-authored grant list. Unknown
 fields/versions, a missing or extra member, any grant mismatch, signer
 mismatch or occupied new repository head aborts before the new store is
 created.
@@ -125,6 +130,12 @@ Downgrade stops the new software and restores the complete verified
 pre-migration backup with the exact old binary. Do not edit the new schema,
 copy individual grants, reattach the shared old manager or run old and new
 managers together.
+
+For deterministic local evidence, run
+`tests/ci/cga06-recovery-migration-gate.ps1 -OutputDir PATH` from a clean
+matching commit. Retain its JSONL files and `manifest.json`; the manifest binds
+all three drill hashes to the full commit and records that qualification
+remains unchanged. CGA-07 still owns real-host and release qualification.
 
 ## Persisted-Schema Upgrade
 

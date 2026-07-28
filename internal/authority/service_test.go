@@ -565,6 +565,7 @@ func (r *memoryRepository) CompareAndAppend(_ context.Context, realmID string, e
 		r.head.AuthoritySequence != expected ||
 		next.AuthoritySequence != expected+1 ||
 		next.PreviousDigest != r.head.Digest ||
+		!validCheckpointAuthoritySuccessor(r.head, next) ||
 		ValidateCheckpoint(next) != nil {
 		return SignedCheckpoint{}, ErrConflict
 	}

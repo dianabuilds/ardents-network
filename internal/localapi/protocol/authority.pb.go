@@ -3504,7 +3504,7 @@ const file_api_ardents_v1_authority_proto_rawDesc = "" +
 	"\x15InspectRealmAuthority\x12(.ardents.v1.InspectRealmAuthorityRequest\x1a).ardents.v1.InspectRealmAuthorityResponse\"0\xc2\xf3\x18,\n" +
 	"\x18realm.channel.audit.read\x12\tauthority\x1a\x05realm\x12\xac\x01\n" +
 	"\x17VerifyRestoredAuthority\x12*.ardents.v1.VerifyRestoredAuthorityRequest\x1a+.ardents.v1.VerifyRestoredAuthorityResponse\"8\xc2\xf3\x184\n" +
-	"\x1erealm.authority.restore.verify\x12\tauthority\x1a\x05realm \x01\x12\x91\x01\n" +
+	"\x1erealm.channel.recovery.execute\x12\tauthority\x1a\x05realm \x01\x12\x91\x01\n" +
 	"\x0eInspectChannel\x12!.ardents.v1.InspectChannelRequest\x1a\".ardents.v1.InspectChannelResponse\"8\xc2\xf3\x184\n" +
 	"\x18realm.channel.audit.read\x12\tauthority\x1a\rrealm-channel\x12\xb8\x01\n" +
 	"\x16IssueInitialGeneration\x12).ardents.v1.IssueInitialGenerationRequest\x1a*.ardents.v1.IssueInitialGenerationResponse\"G\xc2\xf3\x18C\n" +

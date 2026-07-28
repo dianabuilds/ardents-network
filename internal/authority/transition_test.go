@@ -7,6 +7,9 @@ import (
 	"testing"
 	"time"
 
+	identitycapability "ardents/internal/identity/capability"
+	identitytrust "ardents/internal/identity/trust"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -17,8 +20,6 @@ func TestPlanAuthorityTransitionIsDualSignedAndExact(t *testing.T) {
 		Version: ContractVersion, RequestID: "transition-genesis", RealmClass: RealmClassProduction,
 	})
 	require.NoError(t, err)
-	beforeState := cloneLedger(fixture.store.state)
-	beforeHead := fixture.repository.head
 	next := newTestSigner(t, 0x72)
 
 	transition, err := fixture.service.PlanAuthorityTransition(
@@ -40,8 +41,102 @@ func TestPlanAuthorityTransitionIsDualSignedAndExact(t *testing.T) {
 	require.Equal(t, genesis.AuthoritySequence, transition.AuthoritySequence)
 	require.Equal(t, genesis.CheckpointDigest, transition.CheckpointDigest)
 	require.NoError(t, ValidateAuthorityTransition(transition))
-	require.Equal(t, beforeState, fixture.store.state)
-	require.Equal(t, beforeHead, fixture.repository.head)
+	require.Equal(t, uint64(2), fixture.store.state.AuthorityEpoch)
+	require.Equal(t, uint64(2), fixture.store.state.AuthoritySequence)
+	require.Equal(t, next.principal, fixture.store.state.AuthorityPrincipal)
+	require.Equal(t, fixture.store.state.Checkpoint, fixture.repository.head)
+	require.Equal(t, &transition, fixture.store.state.Checkpoint.AuthorityTransition)
+	require.NotNil(t, fixture.store.state.Transition)
+	require.NoError(t, validateLedger(fixture.store.state))
+}
+
+func TestAuthorityTransitionAdvancesRepositoryAndRequiresEveryChannelRotation(t *testing.T) {
+	ctx := context.Background()
+	legacy := newLocalV2TestInput(t)
+	service, store, repository := newLocalV2MigrationService(legacy)
+	migrated, err := service.MigrateLocalV2(
+		ctx, migrateLocalV2Command(), legacy.request,
+	)
+	require.NoError(t, err)
+	oldTrust, err := identitytrust.NewRegistry([]identitytrust.Entry{{
+		Principal: legacy.signer.principal,
+		PublicKey: legacy.signer.private.Public().(ed25519.PublicKey),
+		Purposes:  []identitytrust.Purpose{identitytrust.PurposeChannelIssue},
+	}})
+	require.NoError(t, err)
+	member, err := identitycapability.NewService(
+		t.TempDir()+"/member.db", bytes.Repeat([]byte{0x93}, 32),
+		legacy.memberPrincipal, oldTrust, authorityCapabilityPolicy{}, legacy.clock,
+	)
+	require.NoError(t, err)
+	for _, grant := range legacy.request.Members[0].ReceiverGrants {
+		_, err = member.ImportGrant(grant)
+		require.NoError(t, err)
+	}
+	attestation, err := member.AttestDeliveryPublicKey(
+		legacy.memberPrivate, legacy.clock().Add(time.Hour),
+	)
+	require.NoError(t, err)
+	service.random = bytes.NewReader(transitionTestRandom(0x20))
+	channelIDs := [][16]byte{migrated.DiscoveryChannelID, migrated.DataChannelID}
+	for index, channelID := range channelIDs {
+		completeMigrationChannelRotation(
+			t, ctx, service, member, attestation, migrated.RealmID,
+			channelID, "pre-transition-"+string(rune('1'+index)),
+		)
+	}
+
+	next := newTestSigner(t, 0x95)
+	beforeSequence := store.state.AuthoritySequence
+	beforeDigest := store.state.Checkpoint.Digest
+	proof, err := service.PlanAuthorityTransition(
+		ctx, planTransitionCommand(migrated.RealmID),
+		PlanAuthorityTransitionRequest{
+			Version: ContractVersion, RealmID: migrated.RealmID,
+			AuthoritySequence: beforeSequence, CheckpointDigest: beforeDigest,
+		},
+		next,
+	)
+	require.NoError(t, err)
+	require.Equal(t, beforeSequence+1, store.state.AuthoritySequence)
+	require.Equal(t, uint64(2), store.state.AuthorityEpoch)
+	require.Equal(t, store.state.Checkpoint, repository.head)
+	require.Equal(t, &proof, repository.head.AuthorityTransition)
+	require.True(t, service.transitionPending)
+	require.Equal(t, PhaseAuthorityTransitionRotationRequired, service.Readiness().Phase)
+	require.Len(t, store.state.Transition.RequiredRotationChannelIDs, 2)
+
+	newTrust, err := identitytrust.NewRegistry([]identitytrust.Entry{{
+		Principal: next.principal,
+		PublicKey: next.private.Public().(ed25519.PublicKey),
+		Purposes:  []identitytrust.Purpose{identitytrust.PurposeChannelIssue},
+	}})
+	require.NoError(t, err)
+	member.ReplaceTrustRegistry(newTrust)
+	service.random = bytes.NewReader(transitionTestRandom(0x60))
+	for index, channelID := range channelIDs {
+		completeMigrationChannelRotation(
+			t, ctx, service, member, attestation, migrated.RealmID,
+			channelID, "post-transition-"+string(rune('1'+index)),
+		)
+		if index == 0 {
+			require.True(t, service.transitionPending)
+			require.Equal(t, PhaseAuthorityTransitionRotationRequired, service.Readiness().Phase)
+		}
+	}
+	require.False(t, service.transitionPending)
+	require.Equal(t, PhaseReady, service.Readiness().Phase)
+	require.Equal(t, ReadinessReady, service.Readiness().Readiness)
+	require.Len(t, store.state.Transition.RotatedChannelIDs, 2)
+	require.NoError(t, validateLedger(store.state))
+}
+
+func transitionTestRandom(offset byte) []byte {
+	raw := make([]byte, 4096)
+	for index := range raw {
+		raw[index] = byte((index+int(offset))%251 + 1)
+	}
+	return raw
 }
 
 func TestAuthorityTransitionRejectsEveryExactnessAndSignatureChange(t *testing.T) {

@@ -14,7 +14,7 @@ import (
 func validateLedger(state Ledger) error {
 	if state.Version != ContractVersion || state.SchemaVersion != SchemaVersion ||
 		state.Revision == 0 || !ValidRealmID(state.RealmID) ||
-		state.RealmClass != RealmClassProduction || state.AuthorityEpoch != 1 ||
+		state.RealmClass != RealmClassProduction || state.AuthorityEpoch == 0 ||
 		state.AuthoritySequence == 0 || state.AuthorityPrincipal == "" ||
 		len(state.AuthorityPublicKey) != 32 || !digestPattern.MatchString(state.AuditHead) {
 		return corruptLedger("header")
@@ -76,9 +76,8 @@ func validateLedger(state Ledger) error {
 		}
 		current := channelCurrentGrants(channel)
 		if channel.MemberCount == 0 || len(current) != int(channel.MemberCount) ||
-			validateChannelGrantSet(
-				channel, current, channel.CurrentGeneration,
-				ed25519.PublicKey(state.AuthorityPublicKey),
+			validateChannelGrantSetForLedger(
+				state, channel, current, channel.CurrentGeneration,
 			) != nil {
 			return corruptLedger("channel grant")
 		}
@@ -93,9 +92,8 @@ func validateLedger(state Ledger) error {
 			}
 		} else if len(channel.PendingGrants) == 0 ||
 			len(channel.PendingGrants) > MaxMembersPerChannel ||
-			validateChannelGrantSet(
-				channel, channel.PendingGrants, channel.CurrentGeneration+1,
-				ed25519.PublicKey(state.AuthorityPublicKey),
+			validateChannelGrantSetForLedger(
+				state, channel, channel.PendingGrants, channel.CurrentGeneration+1,
 			) != nil {
 			return corruptLedger("pending channel grant")
 		}
@@ -107,9 +105,8 @@ func validateLedger(state Ledger) error {
 			len(channel.PreviousGrants) == 0 ||
 			len(channel.PreviousGrants) > MaxMembersPerChannel ||
 			!canonicalSecond(channel.PreviousDrainDeadline) ||
-			validateChannelGrantSet(
-				channel, channel.PreviousGrants, channel.CurrentGeneration-1,
-				ed25519.PublicKey(state.AuthorityPublicKey),
+			validateChannelGrantSetForLedger(
+				state, channel, channel.PreviousGrants, channel.CurrentGeneration-1,
 			) != nil {
 			return corruptLedger("previous channel grant")
 		}
@@ -148,7 +145,7 @@ func validateLedger(state Ledger) error {
 		if record.Version != ContractVersion || len(record.RequestID) == 0 ||
 			len(record.RequestID) > MaxRequestIDBytes || len(record.PayloadHash) != sha256.Size*2 ||
 			record.Result.Version != ContractVersion || record.Result.RealmID != state.RealmID ||
-			record.Result.AuthorityEpoch != state.AuthorityEpoch ||
+			record.Result.AuthorityEpoch != 1 ||
 			record.Result.AuthoritySequence != 1 ||
 			record.Result.CheckpointDigest != genesisDigest ||
 			!operationIDPattern.MatchString(record.Result.OperationID) {
@@ -170,6 +167,9 @@ func validateLedger(state Ledger) error {
 	}
 	if err := validateMigrationRecord(state); err != nil {
 		return corruptLedger("migration")
+	}
+	if err := validateAuthorityTransitionRecord(state); err != nil {
+		return corruptLedger("authority transition")
 	}
 	if state.AuthoritySequence == 1 && len(state.InitialGenerationDeliveries) != 0 {
 		return corruptLedger("sequence one deliveries")
@@ -212,6 +212,10 @@ func cloneLedger(state Ledger) Ledger {
 	state.AuthorityPublicKey = append([]byte(nil), state.AuthorityPublicKey...)
 	state.Checkpoint.AuthorityPublicKey = append([]byte(nil), state.Checkpoint.AuthorityPublicKey...)
 	state.Checkpoint.Signature = append([]byte(nil), state.Checkpoint.Signature...)
+	if state.Checkpoint.AuthorityTransition != nil {
+		transition := cloneAuthorityTransitionValue(*state.Checkpoint.AuthorityTransition)
+		state.Checkpoint.AuthorityTransition = &transition
+	}
 	state.Members = append([]MemberRecord(nil), state.Members...)
 	state.Channels = append([]ChannelRecord(nil), state.Channels...)
 	for index := range state.Channels {
@@ -260,6 +264,17 @@ func cloneLedger(state Ledger) Ledger {
 		)
 		state.Migration = &migration
 	}
+	if state.Transition != nil {
+		transition := *state.Transition
+		transition.Proof = cloneAuthorityTransitionValue(transition.Proof)
+		transition.RequiredRotationChannelIDs = append(
+			[][16]byte(nil), transition.RequiredRotationChannelIDs...,
+		)
+		transition.RotatedChannelIDs = append(
+			[][16]byte(nil), transition.RotatedChannelIDs...,
+		)
+		state.Transition = &transition
+	}
 	return state
 }
 
@@ -303,6 +318,11 @@ func validateAuditRecord(record AuditRecord, previousHash string) error {
 	case ActionCommitActivation:
 		if record.ResourceKind != ResourceKindOperation ||
 			!validOperationResource(record.ResourceID) {
+			return ErrCorruptState
+		}
+	case ActionPlanTransition:
+		if record.ResourceKind != ResourceKindRealm ||
+			!ValidRealmID(record.ResourceID) {
 			return ErrCorruptState
 		}
 	default:
@@ -372,6 +392,38 @@ func validateChannelGrantSet(
 	return nil
 }
 
+func validateChannelGrantSetForLedger(
+	state Ledger,
+	channel ChannelRecord,
+	records []CapabilityGrantRecord,
+	generation uint32,
+) error {
+	if len(records) == 0 {
+		return ErrCorruptState
+	}
+	public, ok := authorityPublicForPrincipal(state, records[0].IssuerPrincipal)
+	if !ok {
+		return ErrCorruptState
+	}
+	for _, record := range records {
+		if record.IssuerPrincipal != records[0].IssuerPrincipal {
+			return ErrCorruptState
+		}
+	}
+	return validateChannelGrantSet(channel, records, generation, public)
+}
+
+func authorityPublicForPrincipal(state Ledger, principal string) (ed25519.PublicKey, bool) {
+	if principal == state.AuthorityPrincipal {
+		return ed25519.PublicKey(state.AuthorityPublicKey), true
+	}
+	if state.Transition != nil &&
+		principal == state.Transition.Proof.FromAuthorityPrincipal {
+		return ed25519.PublicKey(state.Transition.Proof.FromAuthorityPublicKey), true
+	}
+	return nil, false
+}
+
 func validateRotationRecord(state Ledger, rotation RotationRecord) error {
 	if rotation.Version != ContractVersion ||
 		len(rotation.RequestID) == 0 || len(rotation.RequestID) > MaxRequestIDBytes ||
@@ -428,8 +480,14 @@ func validateRotationRecord(state Ledger, rotation RotationRecord) error {
 			return ErrCorruptState
 		}
 	case DeliveryPhaseActivationCommitted:
+		activationPublic, ok := authorityPublicForPrincipal(
+			state, rotation.Activation.AuthorityPrincipal,
+		)
+		if !ok {
+			return ErrCorruptState
+		}
 		if identitycapability.VerifyGenerationActivation(
-			rotation.Activation, ed25519.PublicKey(state.AuthorityPublicKey),
+			rotation.Activation, activationPublic,
 		) != nil ||
 			rotation.Activation.OperationID != rotation.OperationID ||
 			rotation.Activation.ChannelID != rotation.ChannelID ||
@@ -439,8 +497,14 @@ func validateRotationRecord(state Ledger, rotation RotationRecord) error {
 			return ErrCorruptState
 		}
 	case DeliveryPhaseCompleted:
+		activationPublic, ok := authorityPublicForPrincipal(
+			state, rotation.Activation.AuthorityPrincipal,
+		)
+		if !ok {
+			return ErrCorruptState
+		}
 		if identitycapability.VerifyGenerationActivation(
-			rotation.Activation, ed25519.PublicKey(state.AuthorityPublicKey),
+			rotation.Activation, activationPublic,
 		) != nil ||
 			rotation.Activation.OperationID != rotation.OperationID ||
 			rotation.Activation.ChannelID != rotation.ChannelID ||

@@ -1,7 +1,7 @@
 # Realm Authority CGA-06 restore, transition and migration contract
 
-CGA-06 adds a narrow same-Realm restore proof, a dual-signed planned
-transition artifact and a stopped `ardents.local-realm/v2` importer. It does
+CGA-06 adds a narrow same-Realm restore proof, a dual-signed authority
+transition and a stopped `ardents.local-realm/v2` importer. It does
 not permit repository repair, lost-key recovery under the old Realm ID,
 in-place downgrade, mixed old/new management, deployment qualification or a
 change to `realm.channel-grant-authority` qualification.
@@ -33,7 +33,7 @@ authenticated history, not freshness evidence.
 
 While recovery-only is active, create, issue, acknowledge, rotate, renew,
 membership, fence and activation mutations return recovery-required. The
-protected `realm.authority.restore.verify` operation requires direct Operator
+protected `realm.channel.recovery.execute` operation requires direct Operator
 authority on the exact Realm and an exact sequence/digest acknowledgement.
 Successful verification changes only process-local admission state. The
 operator then stops the daemon, removes `recovery_only` from the reviewed
@@ -48,23 +48,30 @@ history from the archive.
 
 ## Planned signer transition
 
-`PlanAuthorityTransition` produces a versioned transition body bound to the
+`PlanAuthorityTransition` commits a versioned transition body bound to the
 exact current Realm ID, old and new authority Principals/public keys, adjacent
 epochs, current authority sequence, current checkpoint digest and canonical
 creation second. The old and new signers both sign the same domain-separated
 digest. Any field or either signature change invalidates the artifact.
 
-Planning first revalidates the live ledger, retained old signer and exact
+The operation first revalidates the live ledger, retained old signer and exact
 repository head. It is denied by Product Policy and fails closed when either
 signer is unavailable, the proposed signer equals the old signer or repository
-truth is not exact. The artifact authorizes a separately scheduled trust and
-channel-rotation maintenance procedure; it does not by itself switch the live
-ledger key. Lost-key recovery cannot manufacture the required old signature
-and must create a new Realm.
+truth is not exact. It atomically advances the ledger and repository checkpoint
+to the successor Principal and adjacent epoch; the successor signs that
+checkpoint, which embeds both signatures and the exact predecessor binding.
+The authority then remains degraded and admits only one fresh rotation for
+each channel present at transition. Readiness becomes ready only after every
+required channel completes. Lost-key recovery cannot manufacture the required
+old signature and must create a new Realm.
 
 ## Local-v2 migration
 
-The importer is a stopped maintenance boundary. Its strict JSON decoders
+The importer is a stopped maintenance boundary. The production adapter holds
+the old manager's OS state-directory lock through commit, observes that the
+shared authority path is absent, reads the retained protected authority/Node
+files, decrypts every Node capability store with its protected key, and hashes
+those actual inputs into the fence evidence. Its strict JSON decoders
 accept only `ardents.local-realm/v2` authority state and
 `ardents.local-realm-node/v2` member state and reject unknown fields, trailing
 values and every other version. Before writing an empty new store it requires:
@@ -109,7 +116,9 @@ evidence digest, both rotation operation/checkpoint results and proof that the
 shared old-manager path is absent. Evidence must contain no private key,
 channel secret, envelope, receipt key or member capability payload.
 
-Unit and protected-interface evidence proves the fail-closed paths and exact
-contracts. Real-host backup, WORM administration, multi-host fencing,
-migration/downgrade and release qualification remain CGA-07 work.
+The runnable `tests/ci/cga06-recovery-migration-gate.ps1` drill retains
+commit-bound JSON test streams and a SHA-256 manifest for restore, migration
+and downgrade gates. Unit, adapter and protected-interface evidence proves the
+fail-closed paths and exact contracts. Real-host backup, WORM administration,
+multi-host fencing and release qualification remain CGA-07 work.
 `realm.channel-grant-authority` therefore remains `Q=no`.

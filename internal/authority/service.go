@@ -47,18 +47,19 @@ type Config struct {
 }
 
 type Service struct {
-	mu               sync.Mutex
-	store            Store
-	signer           Signer
-	repository       CheckpointRepository
-	random           io.Reader
-	clock            func() time.Time
-	policy           ProductPolicy
-	audit            AuditSink
-	crash            func(CrashBoundary) error
-	status           Status
-	recoveryOnly     bool
-	migrationPending bool
+	mu                sync.Mutex
+	store             Store
+	signer            Signer
+	repository        CheckpointRepository
+	random            io.Reader
+	clock             func() time.Time
+	policy            ProductPolicy
+	audit             AuditSink
+	crash             func(CrashBoundary) error
+	status            Status
+	recoveryOnly      bool
+	migrationPending  bool
+	transitionPending bool
 }
 
 func New(config Config) *Service {
@@ -110,9 +111,6 @@ func (s *Service) CreateOrReopen(ctx context.Context, command Command, request C
 	}
 	if s.store == nil || s.signer == nil || s.repository == nil || s.policy == nil {
 		return CreateResult{}, ErrUnavailable
-	}
-	if s.status.Readiness == ReadinessRecoveryRequired {
-		return CreateResult{}, ErrRecoveryRequired
 	}
 	if err := s.policy.AdmitRealmGenesis(ctx, command); err != nil {
 		return CreateResult{}, ErrPermissionDenied
@@ -493,7 +491,7 @@ func (s *Service) setRecovery(base Status, reason string) {
 }
 
 func (s *Service) mutationFence() error {
-	if s.recoveryOnly || s.migrationPending ||
+	if s.recoveryOnly || s.migrationPending || s.transitionPending ||
 		s.status.Readiness == ReadinessRecoveryRequired {
 		return ErrRecoveryRequired
 	}
@@ -528,6 +526,7 @@ func (s *Service) refreshMigrationStatus(ctx context.Context) {
 		return
 	}
 	s.applyMigrationStatus(state)
+	s.applyTransitionStatus(state)
 }
 
 func (s *Service) applyMigrationStatus(state Ledger) {
@@ -538,4 +537,14 @@ func (s *Service) applyMigrationStatus(state Ledger) {
 	s.status.Phase = PhaseMigrationRotationRequired
 	s.status.Readiness = ReadinessDegraded
 	s.status.Reason = ReasonMigrationRotationRequired
+}
+
+func (s *Service) applyTransitionStatus(state Ledger) {
+	s.transitionPending = authorityTransitionPending(state.Transition)
+	if !s.transitionPending || s.status.Readiness != ReadinessReady {
+		return
+	}
+	s.status.Phase = PhaseAuthorityTransitionRotationRequired
+	s.status.Readiness = ReadinessDegraded
+	s.status.Reason = ReasonAuthorityTransitionRotationRequired
 }

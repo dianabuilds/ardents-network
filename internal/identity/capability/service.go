@@ -179,6 +179,33 @@ func (s *Service) Statuses(at time.Time) []Status {
 	return out
 }
 
+// ReceiverGrantSnapshot returns a verified, detached view of grants retained
+// for the local receiver. It is intentionally read-only and is used by the
+// stopped local-v2 migration adapter; callers never receive store internals.
+func (s *Service) ReceiverGrantSnapshot() ([]identityapi.CapabilityGrant, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	refs := make([]string, 0, len(s.ledger.Grants))
+	for ref := range s.ledger.Grants {
+		refs = append(refs, ref)
+	}
+	sort.Strings(refs)
+	grants := make([]identityapi.CapabilityGrant, 0, len(refs))
+	for _, ref := range refs {
+		grant, err := s.ledger.Grants[ref].restore()
+		if err != nil || grant.SubjectPrincipal != s.localPrincipal {
+			return nil, capabilityError(CodeInvalid, "capability store contains an invalid receiver grant")
+		}
+		issuer, ok := s.trustedIssuer(grant.IssuerPrincipal)
+		if !ok || validateGrant(grant, issuer) != nil {
+			return nil, capabilityError(CodeInvalid, "capability store contains an unverifiable receiver grant")
+		}
+		grant.Signature = append([]byte(nil), grant.Signature...)
+		grants = append(grants, grant)
+	}
+	return grants, nil
+}
+
 func (s *Service) reference(grant identityapi.CapabilityGrant) identityapi.CapabilityRef {
 	mac := hmac.New(sha256.New, s.refKey[:])
 	mac.Write([]byte("ardents-capability-ref/1"))

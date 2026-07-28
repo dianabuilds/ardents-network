@@ -558,7 +558,7 @@ func (s *Service) rotationMutationFence(
 	if s.recoveryOnly || s.status.Readiness == ReadinessRecoveryRequired {
 		return ErrRecoveryRequired
 	}
-	if !s.migrationPending {
+	if !s.migrationPending && !s.transitionPending {
 		return nil
 	}
 	if command.Action != ActionRotateGeneration ||
@@ -566,8 +566,15 @@ func (s *Service) rotationMutationFence(
 		return ErrRecoveryRequired
 	}
 	state, found, err := s.store.Load(ctx)
-	if err != nil || !found || validateMigrationRecord(state) != nil ||
+	if err != nil || !found || validateLedger(state) != nil {
+		return ErrRecoveryRequired
+	}
+	if s.migrationPending &&
 		!migrationRotationAllowed(state.Migration, request.ChannelID) {
+		return ErrRecoveryRequired
+	}
+	if s.transitionPending &&
+		!authorityTransitionRotationAllowed(state.Transition, request.ChannelID) {
 		return ErrRecoveryRequired
 	}
 	return nil

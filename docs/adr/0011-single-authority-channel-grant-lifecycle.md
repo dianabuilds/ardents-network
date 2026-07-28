@@ -56,6 +56,7 @@ The authority action catalogue is:
 | `realm.channel.audit.read` | exact `realm/<RealmID>` or `realm/<RealmID>/channel/<ChannelID>` | rejected; direct Operator only |
 | `realm.channel.recovery.execute` | exact `realm/<RealmID>` | rejected; non-delegable in Product Policy |
 | `realm.authority.rotate` | exact `realm/<RealmID>` | rejected; non-delegable in Product Policy |
+| `realm.authority.migrate.local_v2` | exact `realm-authority-instance/primary` before a Realm ID exists | rejected; stopped direct Operator only |
 
 This direct-only column supersedes the provisional one-hop Delegation column in
 the linked research packet; it does not change that packet's action names or
@@ -70,8 +71,13 @@ The first release has one active authority Principal and one realm per
 authority instance. It has no federation, transitive trust, threshold authority
 or Ardents-operated public issuer. Planned authority rotation requires a
 predecessor- and successor-signed transition, increments authority epoch and
-rotates all channels. Loss of the old authority key creates a new realm rather
-than silently assigning a successor.
+appends the successor-signed checkpoint through repository CAS. The authority
+stays degraded and admits only fresh rotations for the channels present at the
+transition; readiness returns only after every such channel completes. Loss of
+the old authority key creates a new realm rather than silently assigning a
+successor. CGA-06 adds the stopped local-v2 migration action because its exact
+resource must exist before the importer generates a Realm ID; it grants no
+ongoing authority over the resulting Realm.
 
 ### Channel separation and membership
 

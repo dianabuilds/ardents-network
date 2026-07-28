@@ -1,11 +1,14 @@
 package authority
 
 import (
+	"bytes"
 	"context"
 	"crypto/ed25519"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"sort"
 	"time"
 
 	identityprincipal "ardents/internal/identity/principal"
@@ -149,7 +152,86 @@ func (s *Service) PlanAuthorityTransition(
 	if err := ValidateAuthorityTransition(transition); err != nil {
 		return AuthorityTransition{}, err
 	}
+	if err := checkpointTransitionCapacity(state); err != nil {
+		return AuthorityTransition{}, err
+	}
+	operationID := "rao1_" + hex.EncodeToString(digest[:16])
+	auditIDSum := sha256.Sum256(append(
+		[]byte("ardents:authority-transition-audit:v1\x00"), digest...,
+	))
+	auditID := "raa1_" + hex.EncodeToString(auditIDSum[:16])
+	audit := AuditRecord{
+		Version: ContractVersion, ID: auditID,
+		Actor: command.Actor, Effective: command.Effective,
+		Action: command.Action, ResourceKind: command.ResourceKind,
+		ResourceID: command.ResourceID, OperationID: operationID,
+		Outcome: "accepted", PreviousHash: state.AuditHead, CreatedAt: transition.CreatedAt,
+	}
+	audit.Hash = auditHash(audit)
+	checkpoint, err := SignCheckpoint(ctx, next, Checkpoint{
+		Version: ContractVersion, SchemaVersion: SchemaVersion,
+		RealmID:            state.RealmID,
+		AuthorityPrincipal: transition.ToAuthorityPrincipal,
+		AuthorityPublicKey: append([]byte(nil), transition.ToAuthorityPublicKey...),
+		AuthorityEpoch:     transition.ToAuthorityEpoch,
+		AuthoritySequence:  state.AuthoritySequence + 1,
+		PreviousDigest:     state.Checkpoint.Digest,
+		AuditHead:          audit.Hash, CreatedAt: transition.CreatedAt,
+		AuthorityTransition: &transition,
+	})
+	if err != nil {
+		return AuthorityTransition{}, ErrUnavailable
+	}
+	required := make([][16]byte, 0, len(state.Channels))
+	for _, channel := range state.Channels {
+		required = append(required, channel.ID)
+	}
+	sortChannelIDs(required)
+	previousSequence := state.AuthoritySequence
+	expectedRevision := state.Revision
+	state.Revision++
+	state.AuthorityPrincipal = transition.ToAuthorityPrincipal
+	state.AuthorityPublicKey = append([]byte(nil), transition.ToAuthorityPublicKey...)
+	state.AuthorityEpoch = transition.ToAuthorityEpoch
+	state.AuthoritySequence = checkpoint.AuthoritySequence
+	state.AuditHead, state.Checkpoint = audit.Hash, checkpoint
+	state.Phase, state.Readiness, state.Reason =
+		PhaseCheckpointing, ReadinessDegraded, ReasonCheckpointMissing
+	state.AuditLog = append(state.AuditLog, audit)
+	state.AuditOutbox = append(state.AuditOutbox, audit)
+	state.Transition = &AuthorityTransitionRecord{
+		Version: ContractVersion, Proof: transition,
+		RequiredRotationChannelIDs: required,
+	}
+	if err := s.store.Save(ctx, expectedRevision, state); err != nil {
+		s.setUnavailable(ReasonStoreUnavailable)
+		return AuthorityTransition{}, ErrUnavailable
+	}
+	s.status = statusFromLedger(state)
+	if _, err := s.repository.CompareAndAppend(
+		ctx, state.RealmID, previousSequence, checkpoint,
+	); err != nil {
+		s.markRecovery(ctx, &state, ReasonCheckpointMismatch)
+		return AuthorityTransition{}, ErrRecoveryRequired
+	}
+	s.signer = next
+	expectedRevision = state.Revision
+	state.Revision++
+	state.Phase, state.Readiness, state.Reason = PhaseReady, ReadinessReady, ReasonNone
+	if err := s.store.Save(ctx, expectedRevision, state); err != nil {
+		s.setUnavailable(ReasonStoreUnavailable)
+		return AuthorityTransition{}, ErrUnavailable
+	}
+	s.status = statusFromLedger(state)
+	s.flushAudit(ctx, &state)
+	s.applyTransitionStatus(state)
 	return transition, nil
+}
+
+func sortChannelIDs(ids [][16]byte) {
+	sort.Slice(ids, func(i, j int) bool {
+		return bytes.Compare(ids[i][:], ids[j][:]) < 0
+	})
 }
 
 func ValidateAuthorityTransition(transition AuthorityTransition) error {
@@ -246,4 +328,92 @@ func validatePlanAuthorityTransitionCommand(command Command, realmID string) err
 		return ErrPermissionDenied
 	}
 	return nil
+}
+
+func validateAuthorityTransitionRecord(state Ledger) error {
+	record := state.Transition
+	if record == nil {
+		if state.AuthorityEpoch != 1 {
+			return ErrCorruptState
+		}
+		return nil
+	}
+	if record.Version != ContractVersion ||
+		ValidateAuthorityTransition(record.Proof) != nil ||
+		record.Proof.RealmID != state.RealmID ||
+		record.Proof.ToAuthorityPrincipal != state.AuthorityPrincipal ||
+		!equalBytes(record.Proof.ToAuthorityPublicKey, state.AuthorityPublicKey) ||
+		record.Proof.ToAuthorityEpoch != state.AuthorityEpoch ||
+		record.Proof.AuthoritySequence >= state.AuthoritySequence ||
+		len(record.RequiredRotationChannelIDs) != len(state.Channels) ||
+		len(record.RotatedChannelIDs) > len(record.RequiredRotationChannelIDs) {
+		return ErrCorruptState
+	}
+	required := make(map[[16]byte]struct{}, len(record.RequiredRotationChannelIDs))
+	for index, channelID := range record.RequiredRotationChannelIDs {
+		if zeroFixedID(channelID) ||
+			(index > 0 && bytes.Compare(
+				record.RequiredRotationChannelIDs[index-1][:], channelID[:],
+			) >= 0) {
+			return ErrCorruptState
+		}
+		required[channelID] = struct{}{}
+	}
+	for _, channel := range state.Channels {
+		if _, ok := required[channel.ID]; !ok {
+			return ErrCorruptState
+		}
+	}
+	for index, channelID := range record.RotatedChannelIDs {
+		if _, ok := required[channelID]; !ok ||
+			(index > 0 && bytes.Compare(
+				record.RotatedChannelIDs[index-1][:], channelID[:],
+			) >= 0) {
+			return ErrCorruptState
+		}
+	}
+	return nil
+}
+
+func authorityTransitionPending(record *AuthorityTransitionRecord) bool {
+	return record != nil &&
+		len(record.RotatedChannelIDs) < len(record.RequiredRotationChannelIDs)
+}
+
+func authorityTransitionRotationAllowed(
+	record *AuthorityTransitionRecord,
+	channelID [16]byte,
+) bool {
+	if record == nil {
+		return false
+	}
+	required := false
+	for _, candidate := range record.RequiredRotationChannelIDs {
+		required = required || candidate == channelID
+	}
+	for _, completed := range record.RotatedChannelIDs {
+		if completed == channelID {
+			return false
+		}
+	}
+	return required
+}
+
+func completeAuthorityTransitionRotation(state *Ledger, channelID [16]byte) {
+	if state.Transition == nil ||
+		!authorityTransitionRotationAllowed(state.Transition, channelID) {
+		return
+	}
+	state.Transition.RotatedChannelIDs = append(
+		state.Transition.RotatedChannelIDs, channelID,
+	)
+	sortChannelIDs(state.Transition.RotatedChannelIDs)
+}
+
+func cloneAuthorityTransitionValue(value AuthorityTransition) AuthorityTransition {
+	value.FromAuthorityPublicKey = append([]byte(nil), value.FromAuthorityPublicKey...)
+	value.ToAuthorityPublicKey = append([]byte(nil), value.ToAuthorityPublicKey...)
+	value.FromSignature = append([]byte(nil), value.FromSignature...)
+	value.ToSignature = append([]byte(nil), value.ToSignature...)
+	return value
 }

@@ -48,9 +48,6 @@ func (s *Service) IssueInitialGeneration(
 	if s.store == nil || s.signer == nil || s.repository == nil || s.policy == nil {
 		return InitialGenerationResult{}, ErrUnavailable
 	}
-	if s.status.Readiness == ReadinessRecoveryRequired {
-		return InitialGenerationResult{}, ErrRecoveryRequired
-	}
 	if err := s.policy.AdmitInitialGeneration(ctx, command); err != nil {
 		return InitialGenerationResult{}, ErrPermissionDenied
 	}
@@ -421,6 +418,7 @@ func (s *Service) commitCheckpointTransition(
 	s.status = statusFromLedger(*state)
 	s.flushAudit(ctx, state)
 	s.applyMigrationStatus(*state)
+	s.applyTransitionStatus(*state)
 	return nil
 }
 
