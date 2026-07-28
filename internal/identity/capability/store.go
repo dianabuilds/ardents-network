@@ -28,10 +28,11 @@ type sealedLedger struct {
 }
 
 type ledger struct {
-	Grants             map[string]persistedGrant      `json:"grants"`
-	SenderGrants       map[string]persistedGrant      `json:"sender_grants"`
-	Revocations        map[string]persistedRevocation `json:"revocations"`
-	DeliveryPrivateKey []byte                         `json:"delivery_private_key,omitempty"`
+	Grants              map[string]persistedGrant           `json:"grants"`
+	SenderGrants        map[string]persistedGrant           `json:"sender_grants"`
+	Revocations         map[string]persistedRevocation      `json:"revocations"`
+	DeliveryPrivateKey  []byte                              `json:"delivery_private_key,omitempty"`
+	InstalledDeliveries map[string]persistedDeliveryReceipt `json:"installed_deliveries,omitempty"`
 }
 
 func newStore(path string, key []byte) (*Store, error) {
@@ -60,6 +61,7 @@ func (s *Store) load() (ledger, error) {
 	if err != nil {
 		return ledger{}, fmt.Errorf("capability store authentication failed")
 	}
+	defer clear(plain)
 	var stored ledger
 	if err := json.Unmarshal(plain, &stored); err != nil {
 		return ledger{}, fmt.Errorf("capability store decode failed")
@@ -73,6 +75,7 @@ func (s *Store) save(stored ledger) error {
 	if err != nil {
 		return err
 	}
+	defer clear(plain)
 	aead, err := chacha20poly1305.NewX(s.key[:])
 	if err != nil {
 		return err
@@ -102,9 +105,10 @@ func (s *Store) open(sealed sealedLedger) ([]byte, error) {
 
 func emptyLedger() ledger {
 	return ledger{
-		Grants:       map[string]persistedGrant{},
-		SenderGrants: map[string]persistedGrant{},
-		Revocations:  map[string]persistedRevocation{},
+		Grants:              map[string]persistedGrant{},
+		SenderGrants:        map[string]persistedGrant{},
+		Revocations:         map[string]persistedRevocation{},
+		InstalledDeliveries: map[string]persistedDeliveryReceipt{},
 	}
 }
 
@@ -117,5 +121,8 @@ func normalizeLedger(stored *ledger) {
 	}
 	if stored.Revocations == nil {
 		stored.Revocations = map[string]persistedRevocation{}
+	}
+	if stored.InstalledDeliveries == nil {
+		stored.InstalledDeliveries = map[string]persistedDeliveryReceipt{}
 	}
 }

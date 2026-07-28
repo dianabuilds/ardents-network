@@ -174,6 +174,7 @@ docs/
 
 internal/
   authority/
+  channeldelivery/
   daemon/
   buildinfo/
   config/
@@ -219,6 +220,7 @@ internal/
       ardentsv1connect/
     auth/
     authority/
+    channeldelivery/
     identity/
     rpc/
     node/
@@ -383,7 +385,8 @@ The policy discovers handwritten production Go packages from the explicit
 
 | Directory | Owns | Explicitly does not own |
 |---|---|---|
-| `authority` | one-Realm authority genesis ledger, external-signer continuity, monotonic checkpoint contract and redacted authority status | Operator authentication, Product Policy, signer custody, repository administration, generation delivery, membership, restore or qualification |
+| `authority` | one-Realm authority ledger, initial-generation issue/acknowledgement, external-signer continuity, monotonic checkpoint contract and redacted authority status | Operator authentication, Product Policy, signer custody, repository administration, member-local installation, rotation, membership, restore or qualification |
+| `channeldelivery` | member-local delivery-key attestation and atomic generation-install orchestration | Authority truth, Operator authentication, HPKE implementation or Product Policy |
 | `daemon` | construction, startup order, shutdown rollback, cross-module process lifecycle | product state machines, RPC mapping, CLI presentation |
 | `buildinfo` | immutable build and version identity | runtime health, configuration, release orchestration |
 | `config` | decode, defaults, validation, source precedence, change classification | applying product changes, environment-specific startup logic |
@@ -688,7 +691,8 @@ The monolithic proto file is split by operator responsibility. Each protocol
 service remains versioned under `ardents.v1`:
 
 - `NodeService`: lifecycle, identity and aggregate node status;
-- `AuthorityService`: protected single-Realm authority genesis and bounded inspection;
+- `AuthorityService`: protected single-Realm authority genesis, initial-generation issue/acknowledgement and bounded inspection;
+- `ChannelDeliveryService`: protected member-Node delivery-key preparation and atomic generation installation;
 - `ConfigurationService`: effective configuration and reload;
 - `NetworkService`: participation, peers, routes and discovery;
 - `ContentService`: local objects, blobs, manifests and inventory;
@@ -1054,7 +1058,7 @@ Completed structural replacements:
   without adding holding packages. Packages above that default have exact,
   non-growing ceilings and reasons in the machine-readable acceptance policy;
   an undeclared package or any growth beyond its ceiling fails the gate.
-- replaced the single 48-method `ArdentsService` with 10 generated bounded
+- replaced the single 48-method `ArdentsService` with 11 generated bounded
   Operator services and 3 generated Application services. The Operator
   services are registered behind one protected local endpoint; the Application
   services remain on their distinct interface. Composition paths and proto

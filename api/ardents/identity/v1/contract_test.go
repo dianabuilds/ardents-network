@@ -110,3 +110,19 @@ func TestApplicationDiscoveryIdentityContractsAreExactAndOwnerless(t *testing.T)
 	require.False(t, serviceType.AllowEmptyID)
 	require.False(t, serviceType.OwnerRequired)
 }
+
+func TestRealmChannelDeliveryIdentityContractIsOperatorOnlyAndOwnerless(t *testing.T) {
+	for _, action := range []string{
+		"realm.channel.delivery.prepare",
+		"realm.channel.delivery.issue",
+		"realm.channel.delivery.install",
+		"realm.channel.delivery.acknowledge",
+	} {
+		require.True(t, IsRegisteredAction(InterfaceOperator, action))
+		require.False(t, IsRegisteredAction(InterfaceApplication, action))
+	}
+	delivery, ok := LookupResourceKind("realm-channel-delivery")
+	require.True(t, ok)
+	require.False(t, delivery.AllowEmptyID)
+	require.False(t, delivery.OwnerRequired)
+}

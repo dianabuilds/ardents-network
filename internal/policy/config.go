@@ -18,6 +18,7 @@ type Config struct {
 	DeniedRouteSchemes              []string
 	DisablePrivateChannelGrantUse   bool
 	DisableRealmAuthorityCreation   bool
+	DisableRealmChannelDelivery     bool
 	DeniedChannelGrantScopes        []string
 	DisableLocalBlobRetention       bool
 	DisableRelayBlobRetention       bool

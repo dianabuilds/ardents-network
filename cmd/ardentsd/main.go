@@ -149,7 +149,8 @@ func newLocalAPIHandler(process daemon.Owners, cfg daemon.LocalAPIConfig) (strin
 		Diagnostics: process.Diagnostics, Workload: process.Workloads, Hosting: process.Hosting,
 		Content: process.Content, Sources: process.Content, Transfers: process.Transfers,
 		Data: process.ContentCommands, DataFetch: runtime, Configuration: runtime, Audit: process.Events,
-		Authority: process.Authority,
+		Authority:       process.Authority,
+		ChannelDelivery: process.ChannelDelivery,
 	}
 	if !cfg.Protected {
 		return "", nil, fmt.Errorf("Operator Interface requires the protected Principal socket")

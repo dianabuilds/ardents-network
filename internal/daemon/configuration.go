@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"ardents/internal/channeldelivery"
 	runtimeconfig "ardents/internal/config"
 	"ardents/internal/diagnostics"
 	"ardents/internal/discovery"
@@ -37,6 +38,7 @@ type runtimeConfig struct {
 	ApplicationEnabled    bool
 	ApplicationSocketPath string
 	Authority             runtimeconfig.AuthorityConfig
+	ChannelDelivery       *channeldelivery.Service
 	Node                  Config
 }
 
@@ -183,6 +185,7 @@ type PolicyConfig struct {
 	DeniedRouteSchemes              []string
 	DisablePrivateChannelGrantUse   bool
 	DisableRealmAuthorityCreation   bool
+	DisableRealmChannelDelivery     bool
 	DeniedChannelGrantScopes        []string
 	DisableLocalBlobRetention       bool
 	DisableRelayBlobRetention       bool
@@ -240,6 +243,7 @@ func policyConfigFromOperator(in runtimeconfig.PolicyConfig) PolicyConfig {
 		DeniedRouteSchemes:              cloneStrings(in.DeniedRouteSchemes),
 		DisablePrivateChannelGrantUse:   in.DisablePrivateChannelGrantUse,
 		DisableRealmAuthorityCreation:   in.DisableRealmAuthorityCreation,
+		DisableRealmChannelDelivery:     in.DisableRealmChannelDelivery,
 		DeniedChannelGrantScopes:        cloneStrings(in.DeniedChannelGrantScopes),
 		DisableLocalBlobRetention:       in.DisableLocalBlobRetention,
 		DisableRelayBlobRetention:       in.DisableRelayBlobRetention,
@@ -506,13 +510,16 @@ func runtimeConfigFromDocument(doc runtimeconfig.Document) (runtimeConfig, error
 		Authority:             doc.Authority,
 		Node:                  operatorNodeConfig(doc, data, executor, trustedPrincipals),
 	}
-	privacy, dataPrivacy, policyService, err := operatorPrivacyChannels(doc, cfg.Node.Policy, trustedPrincipals)
+	privacy, dataPrivacy, policyService, channelDelivery, err := operatorPrivacyChannels(
+		doc, cfg.Node.Policy, trustedPrincipals,
+	)
 	if err != nil {
 		return runtimeConfig{}, err
 	}
 	cfg.Node.Privacy = privacy
 	cfg.Node.DataPrivacy = dataPrivacy
 	cfg.Node.PolicyService = policyService
+	cfg.ChannelDelivery = channelDelivery
 	if err := ValidateConfig(cfg.Node); err != nil {
 		return runtimeConfig{}, err
 	}
@@ -636,6 +643,7 @@ func operatorPolicyConfig(doc runtimeconfig.Document) PolicyConfig {
 		DeniedRouteSchemes:              cloneStrings(in.DeniedRouteSchemes),
 		DisablePrivateChannelGrantUse:   in.DisablePrivateChannelGrantUse,
 		DisableRealmAuthorityCreation:   in.DisableRealmAuthorityCreation,
+		DisableRealmChannelDelivery:     in.DisableRealmChannelDelivery,
 		DeniedChannelGrantScopes:        cloneStrings(in.DeniedChannelGrantScopes),
 		DisableLocalBlobRetention:       in.DisableLocalBlobRetention,
 		DisableRelayBlobRetention:       in.DisableRelayBlobRetention,
@@ -729,50 +737,61 @@ func operatorPrivacyChannels(
 	doc runtimeconfig.Document,
 	policyConfig PolicyConfig,
 	trustedPrincipals *identitytrust.Registry,
-) (*networkprivacy.Channel, *networkprivacy.Channel, *apppolicy.Service, error) {
+) (
+	*networkprivacy.Channel,
+	*networkprivacy.Channel,
+	*apppolicy.Service,
+	*channeldelivery.Service,
+	error,
+) {
 	policyService := apppolicy.New(runtimePolicyConfig(policyConfig))
-	if !doc.Privacy.Required {
-		return nil, nil, policyService, nil
+	if !doc.Privacy.Required && !doc.Privacy.DeliveryEnabled {
+		return nil, nil, policyService, nil, nil
 	}
-	private, storeKey, replayKey, err := operatorPrivacyInputs(doc)
+	private, storeKey, err := operatorDeliveryInputs(doc)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	Workloads, err := identitycapability.NewService(
 		doc.Privacy.ChannelGrantStore, storeKey, doc.Privacy.Subject, trustedPrincipals, policyService, time.Now,
 	)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("protected privacy channel grant store is unavailable or invalid")
+		return nil, nil, nil, nil, fmt.Errorf("protected privacy channel grant store is unavailable or invalid")
+	}
+	delivery, err := channeldelivery.New(Workloads, private, doc.Privacy.Subject, time.Now)
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("configure member channel delivery: %w", err)
+	}
+	if !doc.Privacy.Required {
+		return nil, nil, policyService, delivery, nil
+	}
+	replayKey, err := readProtectedKey(doc.Privacy.ReplayKeyFile, "privacy replay key file")
+	if err != nil {
+		return nil, nil, nil, nil, err
 	}
 	discovery, err := buildOperatorPrivacyChannel(Workloads, private, replayKey, doc.Privacy.Subject,
 		doc.Privacy.Discovery, identity.CapabilityRealmDiscovery)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("configure discovery privacy channel: %w", err)
+		return nil, nil, nil, nil, fmt.Errorf("configure discovery privacy channel: %w", err)
 	}
 	data, err := buildOperatorPrivacyChannel(Workloads, private, replayKey, doc.Privacy.Subject,
 		doc.Privacy.Data, identity.CapabilityDataExchange)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("configure data privacy channel: %w", err)
+		return nil, nil, nil, nil, fmt.Errorf("configure data privacy channel: %w", err)
 	}
-	return discovery, data, policyService, nil
+	return discovery, data, policyService, delivery, nil
 }
 
-func operatorPrivacyInputs(doc runtimeconfig.Document) (
-	ed25519.PrivateKey, []byte, []byte, error,
-) {
+func operatorDeliveryInputs(doc runtimeconfig.Document) (ed25519.PrivateKey, []byte, error) {
 	private, err := operatorIdentityPrivate(doc.Node.DataDir, doc.Privacy.Subject)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 	storeKey, err := readProtectedKey(doc.Privacy.ChannelGrantStoreKeyFile, "privacy channel-grant-store key file")
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
-	replayKey, err := readProtectedKey(doc.Privacy.ReplayKeyFile, "privacy replay key file")
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	return private, storeKey, replayKey, nil
+	return private, storeKey, nil
 }
 
 func buildOperatorPrivacyChannel(

@@ -10,6 +10,7 @@ const (
 	CodeScopeDenied     = "privacy.channel_grant.scope_denied"
 	CodeIssuerUntrusted = "privacy.channel_grant.issuer_untrusted"
 	CodeInvalid         = "privacy.channel_grant.invalid"
+	CodeUnavailable     = "privacy.channel_grant.unavailable"
 )
 
 type Error struct {

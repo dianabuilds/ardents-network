@@ -62,12 +62,13 @@ type ProcedureRule struct {
 type ProcedureResolver func(string) (ProcedureRule, bool)
 
 const (
-	ownerContract  = "OCS-01"
-	ownerNND       = "OCS-02"
-	ownerWorkload  = "OCS-03"
-	ownerData      = "OCS-04"
-	ownerIdentity  = "OCS-05"
-	ownerAuthority = "CGA-01"
+	ownerContract          = "OCS-01"
+	ownerNND               = "OCS-02"
+	ownerWorkload          = "OCS-03"
+	ownerData              = "OCS-04"
+	ownerIdentity          = "OCS-05"
+	ownerAuthority         = "CGA-01"
+	ownerAuthorityDelivery = "CGA-02"
 )
 
 var groups = []GroupSpec{
@@ -141,6 +142,10 @@ var commands = []CommandSpec{
 
 	protected("authority.create", []string{"authority", "create"}, "--request-id ID", "create or reopen the single Realm Authority", ardentsv1connect.AuthorityServiceCreateRealmAuthorityProcedure, "realm.authority.create", "realm-authority-instance", true, OutputProtoJSON, ownerAuthority),
 	protected("authority.inspect", []string{"authority", "inspect"}, "--realm-id ID", "show bounded Realm Authority readiness", ardentsv1connect.AuthorityServiceInspectRealmAuthorityProcedure, "realm.channel.audit.read", "realm", false, OutputProtoJSON, ownerAuthority),
+	protected("authority.delivery.prepare", []string{"authority", "delivery", "prepare"}, "--subject ID --valid-for DURATION --out-file FILE", "prepare a recipient delivery-key attestation", ardentsv1connect.ChannelDeliveryServicePrepareGenerationDeliveryProcedure, "realm.channel.delivery.prepare", "principal", true, OutputProtoJSON, ownerAuthorityDelivery),
+	protected("authority.delivery.issue", []string{"authority", "delivery", "issue"}, "--realm-id ID --request-id ID --channel-class CLASS --permissions N --valid-for DURATION --attestation-file FILE --out-file FILE", "issue one recipient-bound initial generation", ardentsv1connect.AuthorityServiceIssueInitialGenerationProcedure, "realm.channel.delivery.issue", "realm-channel-delivery", true, OutputProtoJSON, ownerAuthorityDelivery),
+	protected("authority.delivery.install", []string{"authority", "delivery", "install"}, "--delivery-file FILE --out-file FILE", "atomically install a sealed initial generation", ardentsv1connect.ChannelDeliveryServiceInstallGenerationDeliveryProcedure, "realm.channel.delivery.install", "realm-channel-delivery", true, OutputProtoJSON, ownerAuthorityDelivery),
+	protected("authority.delivery.acknowledge", []string{"authority", "delivery", "acknowledge"}, "--delivery-file FILE --receipt-file FILE", "acknowledge one installed initial generation", ardentsv1connect.AuthorityServiceAcknowledgeInitialGenerationProcedure, "realm.channel.delivery.acknowledge", "realm-channel-delivery", true, OutputProtoJSON, ownerAuthorityDelivery),
 
 	offline("identity.principal.create", []string{"identity", "principal", "create"}, "[--signer-file PATH]", "create an offline Principal root", "offline.identity.principal.create", OutputCLIJSON),
 	offline("identity.principal.import", []string{"identity", "principal", "import"}, "--from-file PATH [--signer-file PATH]", "import a protected Principal root", "offline.identity.principal.import", OutputCLIJSON),

@@ -425,11 +425,15 @@ func (f *serviceFixture) inspectCommand(realmID string) Command {
 
 type allowPolicy struct{}
 
-func (allowPolicy) AdmitRealmGenesis(context.Context, Command) error { return nil }
+func (allowPolicy) AdmitRealmGenesis(context.Context, Command) error      { return nil }
+func (allowPolicy) AdmitInitialGeneration(context.Context, Command) error { return nil }
 
 type denyPolicy struct{}
 
 func (denyPolicy) AdmitRealmGenesis(context.Context, Command) error {
+	return errors.New("denied")
+}
+func (denyPolicy) AdmitInitialGeneration(context.Context, Command) error {
 	return errors.New("denied")
 }
 
@@ -534,6 +538,17 @@ func (r *memoryRepository) CreateIfAbsent(_ context.Context, next SignedCheckpoi
 	return next, nil
 }
 
-func (r *memoryRepository) CompareAndAppend(context.Context, string, uint64, SignedCheckpoint) (SignedCheckpoint, error) {
-	return SignedCheckpoint{}, errors.New("not implemented by genesis fixture")
+func (r *memoryRepository) CompareAndAppend(_ context.Context, realmID string, expected uint64, next SignedCheckpoint) (SignedCheckpoint, error) {
+	if r.err != nil {
+		return SignedCheckpoint{}, r.err
+	}
+	if !r.found || r.head.RealmID != realmID ||
+		r.head.AuthoritySequence != expected ||
+		next.AuthoritySequence != expected+1 ||
+		next.PreviousDigest != r.head.Digest ||
+		ValidateCheckpoint(next) != nil {
+		return SignedCheckpoint{}, ErrConflict
+	}
+	r.head = next
+	return next, nil
 }

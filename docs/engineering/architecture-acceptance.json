@@ -71,6 +71,11 @@
           "function": "NewPrincipalHandler",
           "mode": "register_argument"
         },
+        "ChannelDeliveryService": {
+          "path": "internal/localapi/server_base.go",
+          "function": "NewPrincipalHandler",
+          "mode": "register_argument"
+        },
         "ConfigurationService": {
           "path": "internal/localapi/server_base.go",
           "function": "NewPrincipalHandler",

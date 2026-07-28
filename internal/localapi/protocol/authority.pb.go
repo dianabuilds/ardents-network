@@ -410,6 +410,1014 @@ func (x *InspectRealmAuthorityResponse) GetAuthority() *AuthorityStatusSnapshot 
 	return nil
 }
 
+type GenerationDeliveryAttestation struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Version           uint32                 `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
+	SubjectPrincipal  string                 `protobuf:"bytes,2,opt,name=subject_principal,json=subjectPrincipal,proto3" json:"subject_principal,omitempty"`
+	DeliveryPublicKey []byte                 `protobuf:"bytes,3,opt,name=delivery_public_key,json=deliveryPublicKey,proto3" json:"delivery_public_key,omitempty"`
+	NotBefore         *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=not_before,json=notBefore,proto3" json:"not_before,omitempty"`
+	NotAfter          *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=not_after,json=notAfter,proto3" json:"not_after,omitempty"`
+	Signature         []byte                 `protobuf:"bytes,6,opt,name=signature,proto3" json:"signature,omitempty"`
+	IdentityPublicKey []byte                 `protobuf:"bytes,7,opt,name=identity_public_key,json=identityPublicKey,proto3" json:"identity_public_key,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *GenerationDeliveryAttestation) Reset() {
+	*x = GenerationDeliveryAttestation{}
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GenerationDeliveryAttestation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GenerationDeliveryAttestation) ProtoMessage() {}
+
+func (x *GenerationDeliveryAttestation) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GenerationDeliveryAttestation.ProtoReflect.Descriptor instead.
+func (*GenerationDeliveryAttestation) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *GenerationDeliveryAttestation) GetVersion() uint32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *GenerationDeliveryAttestation) GetSubjectPrincipal() string {
+	if x != nil {
+		return x.SubjectPrincipal
+	}
+	return ""
+}
+
+func (x *GenerationDeliveryAttestation) GetDeliveryPublicKey() []byte {
+	if x != nil {
+		return x.DeliveryPublicKey
+	}
+	return nil
+}
+
+func (x *GenerationDeliveryAttestation) GetNotBefore() *timestamppb.Timestamp {
+	if x != nil {
+		return x.NotBefore
+	}
+	return nil
+}
+
+func (x *GenerationDeliveryAttestation) GetNotAfter() *timestamppb.Timestamp {
+	if x != nil {
+		return x.NotAfter
+	}
+	return nil
+}
+
+func (x *GenerationDeliveryAttestation) GetSignature() []byte {
+	if x != nil {
+		return x.Signature
+	}
+	return nil
+}
+
+func (x *GenerationDeliveryAttestation) GetIdentityPublicKey() []byte {
+	if x != nil {
+		return x.IdentityPublicKey
+	}
+	return nil
+}
+
+type GenerationDeliveryBinding struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Version            uint32                 `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
+	RealmId            string                 `protobuf:"bytes,2,opt,name=realm_id,json=realmId,proto3" json:"realm_id,omitempty"`
+	AuthorityPrincipal string                 `protobuf:"bytes,3,opt,name=authority_principal,json=authorityPrincipal,proto3" json:"authority_principal,omitempty"`
+	AuthorityEpoch     uint64                 `protobuf:"varint,4,opt,name=authority_epoch,json=authorityEpoch,proto3" json:"authority_epoch,omitempty"`
+	AuthoritySequence  uint64                 `protobuf:"varint,5,opt,name=authority_sequence,json=authoritySequence,proto3" json:"authority_sequence,omitempty"`
+	DeliveryId         string                 `protobuf:"bytes,6,opt,name=delivery_id,json=deliveryId,proto3" json:"delivery_id,omitempty"`
+	ChannelId          []byte                 `protobuf:"bytes,7,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	ChannelClass       string                 `protobuf:"bytes,8,opt,name=channel_class,json=channelClass,proto3" json:"channel_class,omitempty"`
+	Generation         uint32                 `protobuf:"varint,9,opt,name=generation,proto3" json:"generation,omitempty"`
+	RecipientPrincipal string                 `protobuf:"bytes,10,opt,name=recipient_principal,json=recipientPrincipal,proto3" json:"recipient_principal,omitempty"`
+	ExpiresAt          *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	DeliveryKeyDigest  string                 `protobuf:"bytes,12,opt,name=delivery_key_digest,json=deliveryKeyDigest,proto3" json:"delivery_key_digest,omitempty"`
+	OperationId        string                 `protobuf:"bytes,13,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *GenerationDeliveryBinding) Reset() {
+	*x = GenerationDeliveryBinding{}
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GenerationDeliveryBinding) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GenerationDeliveryBinding) ProtoMessage() {}
+
+func (x *GenerationDeliveryBinding) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GenerationDeliveryBinding.ProtoReflect.Descriptor instead.
+func (*GenerationDeliveryBinding) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *GenerationDeliveryBinding) GetVersion() uint32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *GenerationDeliveryBinding) GetRealmId() string {
+	if x != nil {
+		return x.RealmId
+	}
+	return ""
+}
+
+func (x *GenerationDeliveryBinding) GetAuthorityPrincipal() string {
+	if x != nil {
+		return x.AuthorityPrincipal
+	}
+	return ""
+}
+
+func (x *GenerationDeliveryBinding) GetAuthorityEpoch() uint64 {
+	if x != nil {
+		return x.AuthorityEpoch
+	}
+	return 0
+}
+
+func (x *GenerationDeliveryBinding) GetAuthoritySequence() uint64 {
+	if x != nil {
+		return x.AuthoritySequence
+	}
+	return 0
+}
+
+func (x *GenerationDeliveryBinding) GetDeliveryId() string {
+	if x != nil {
+		return x.DeliveryId
+	}
+	return ""
+}
+
+func (x *GenerationDeliveryBinding) GetChannelId() []byte {
+	if x != nil {
+		return x.ChannelId
+	}
+	return nil
+}
+
+func (x *GenerationDeliveryBinding) GetChannelClass() string {
+	if x != nil {
+		return x.ChannelClass
+	}
+	return ""
+}
+
+func (x *GenerationDeliveryBinding) GetGeneration() uint32 {
+	if x != nil {
+		return x.Generation
+	}
+	return 0
+}
+
+func (x *GenerationDeliveryBinding) GetRecipientPrincipal() string {
+	if x != nil {
+		return x.RecipientPrincipal
+	}
+	return ""
+}
+
+func (x *GenerationDeliveryBinding) GetExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return nil
+}
+
+func (x *GenerationDeliveryBinding) GetDeliveryKeyDigest() string {
+	if x != nil {
+		return x.DeliveryKeyDigest
+	}
+	return ""
+}
+
+func (x *GenerationDeliveryBinding) GetOperationId() string {
+	if x != nil {
+		return x.OperationId
+	}
+	return ""
+}
+
+type SealedGenerationDelivery struct {
+	state          protoimpl.MessageState     `protogen:"open.v1"`
+	Binding        *GenerationDeliveryBinding `protobuf:"bytes,1,opt,name=binding,proto3" json:"binding,omitempty"`
+	Envelope       []byte                     `protobuf:"bytes,2,opt,name=envelope,proto3" json:"envelope,omitempty"`
+	EnvelopeDigest string                     `protobuf:"bytes,3,opt,name=envelope_digest,json=envelopeDigest,proto3" json:"envelope_digest,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *SealedGenerationDelivery) Reset() {
+	*x = SealedGenerationDelivery{}
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SealedGenerationDelivery) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SealedGenerationDelivery) ProtoMessage() {}
+
+func (x *SealedGenerationDelivery) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SealedGenerationDelivery.ProtoReflect.Descriptor instead.
+func (*SealedGenerationDelivery) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *SealedGenerationDelivery) GetBinding() *GenerationDeliveryBinding {
+	if x != nil {
+		return x.Binding
+	}
+	return nil
+}
+
+func (x *SealedGenerationDelivery) GetEnvelope() []byte {
+	if x != nil {
+		return x.Envelope
+	}
+	return nil
+}
+
+func (x *SealedGenerationDelivery) GetEnvelopeDigest() string {
+	if x != nil {
+		return x.EnvelopeDigest
+	}
+	return ""
+}
+
+type GenerationDeliveryReceipt struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Version            uint32                 `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
+	DeliveryId         string                 `protobuf:"bytes,2,opt,name=delivery_id,json=deliveryId,proto3" json:"delivery_id,omitempty"`
+	EnvelopeDigest     string                 `protobuf:"bytes,3,opt,name=envelope_digest,json=envelopeDigest,proto3" json:"envelope_digest,omitempty"`
+	AuthoritySequence  uint64                 `protobuf:"varint,4,opt,name=authority_sequence,json=authoritySequence,proto3" json:"authority_sequence,omitempty"`
+	ChannelId          []byte                 `protobuf:"bytes,5,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	Generation         uint32                 `protobuf:"varint,6,opt,name=generation,proto3" json:"generation,omitempty"`
+	RecipientPrincipal string                 `protobuf:"bytes,7,opt,name=recipient_principal,json=recipientPrincipal,proto3" json:"recipient_principal,omitempty"`
+	Phase              string                 `protobuf:"bytes,8,opt,name=phase,proto3" json:"phase,omitempty"`
+	CreatedAt          *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	Mac                []byte                 `protobuf:"bytes,10,opt,name=mac,proto3" json:"mac,omitempty"`
+	RealmId            string                 `protobuf:"bytes,11,opt,name=realm_id,json=realmId,proto3" json:"realm_id,omitempty"`
+	AuthorityPrincipal string                 `protobuf:"bytes,12,opt,name=authority_principal,json=authorityPrincipal,proto3" json:"authority_principal,omitempty"`
+	AuthorityEpoch     uint64                 `protobuf:"varint,13,opt,name=authority_epoch,json=authorityEpoch,proto3" json:"authority_epoch,omitempty"`
+	OperationId        string                 `protobuf:"bytes,14,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
+	ChannelClass       string                 `protobuf:"bytes,15,opt,name=channel_class,json=channelClass,proto3" json:"channel_class,omitempty"`
+	DeliveryKeyDigest  string                 `protobuf:"bytes,16,opt,name=delivery_key_digest,json=deliveryKeyDigest,proto3" json:"delivery_key_digest,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *GenerationDeliveryReceipt) Reset() {
+	*x = GenerationDeliveryReceipt{}
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GenerationDeliveryReceipt) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GenerationDeliveryReceipt) ProtoMessage() {}
+
+func (x *GenerationDeliveryReceipt) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GenerationDeliveryReceipt.ProtoReflect.Descriptor instead.
+func (*GenerationDeliveryReceipt) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *GenerationDeliveryReceipt) GetVersion() uint32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *GenerationDeliveryReceipt) GetDeliveryId() string {
+	if x != nil {
+		return x.DeliveryId
+	}
+	return ""
+}
+
+func (x *GenerationDeliveryReceipt) GetEnvelopeDigest() string {
+	if x != nil {
+		return x.EnvelopeDigest
+	}
+	return ""
+}
+
+func (x *GenerationDeliveryReceipt) GetAuthoritySequence() uint64 {
+	if x != nil {
+		return x.AuthoritySequence
+	}
+	return 0
+}
+
+func (x *GenerationDeliveryReceipt) GetChannelId() []byte {
+	if x != nil {
+		return x.ChannelId
+	}
+	return nil
+}
+
+func (x *GenerationDeliveryReceipt) GetGeneration() uint32 {
+	if x != nil {
+		return x.Generation
+	}
+	return 0
+}
+
+func (x *GenerationDeliveryReceipt) GetRecipientPrincipal() string {
+	if x != nil {
+		return x.RecipientPrincipal
+	}
+	return ""
+}
+
+func (x *GenerationDeliveryReceipt) GetPhase() string {
+	if x != nil {
+		return x.Phase
+	}
+	return ""
+}
+
+func (x *GenerationDeliveryReceipt) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *GenerationDeliveryReceipt) GetMac() []byte {
+	if x != nil {
+		return x.Mac
+	}
+	return nil
+}
+
+func (x *GenerationDeliveryReceipt) GetRealmId() string {
+	if x != nil {
+		return x.RealmId
+	}
+	return ""
+}
+
+func (x *GenerationDeliveryReceipt) GetAuthorityPrincipal() string {
+	if x != nil {
+		return x.AuthorityPrincipal
+	}
+	return ""
+}
+
+func (x *GenerationDeliveryReceipt) GetAuthorityEpoch() uint64 {
+	if x != nil {
+		return x.AuthorityEpoch
+	}
+	return 0
+}
+
+func (x *GenerationDeliveryReceipt) GetOperationId() string {
+	if x != nil {
+		return x.OperationId
+	}
+	return ""
+}
+
+func (x *GenerationDeliveryReceipt) GetChannelClass() string {
+	if x != nil {
+		return x.ChannelClass
+	}
+	return ""
+}
+
+func (x *GenerationDeliveryReceipt) GetDeliveryKeyDigest() string {
+	if x != nil {
+		return x.DeliveryKeyDigest
+	}
+	return ""
+}
+
+type IssueInitialGenerationRequest struct {
+	state                protoimpl.MessageState         `protogen:"open.v1"`
+	Version              uint32                         `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
+	RequestId            string                         `protobuf:"bytes,2,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	RealmId              string                         `protobuf:"bytes,3,opt,name=realm_id,json=realmId,proto3" json:"realm_id,omitempty"`
+	ChannelClass         string                         `protobuf:"bytes,4,opt,name=channel_class,json=channelClass,proto3" json:"channel_class,omitempty"`
+	Permissions          uint32                         `protobuf:"varint,5,opt,name=permissions,proto3" json:"permissions,omitempty"`
+	RecipientAttestation *GenerationDeliveryAttestation `protobuf:"bytes,6,opt,name=recipient_attestation,json=recipientAttestation,proto3" json:"recipient_attestation,omitempty"`
+	ValidForSeconds      uint64                         `protobuf:"varint,7,opt,name=valid_for_seconds,json=validForSeconds,proto3" json:"valid_for_seconds,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *IssueInitialGenerationRequest) Reset() {
+	*x = IssueInitialGenerationRequest{}
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *IssueInitialGenerationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*IssueInitialGenerationRequest) ProtoMessage() {}
+
+func (x *IssueInitialGenerationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use IssueInitialGenerationRequest.ProtoReflect.Descriptor instead.
+func (*IssueInitialGenerationRequest) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *IssueInitialGenerationRequest) GetVersion() uint32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *IssueInitialGenerationRequest) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *IssueInitialGenerationRequest) GetRealmId() string {
+	if x != nil {
+		return x.RealmId
+	}
+	return ""
+}
+
+func (x *IssueInitialGenerationRequest) GetChannelClass() string {
+	if x != nil {
+		return x.ChannelClass
+	}
+	return ""
+}
+
+func (x *IssueInitialGenerationRequest) GetPermissions() uint32 {
+	if x != nil {
+		return x.Permissions
+	}
+	return 0
+}
+
+func (x *IssueInitialGenerationRequest) GetRecipientAttestation() *GenerationDeliveryAttestation {
+	if x != nil {
+		return x.RecipientAttestation
+	}
+	return nil
+}
+
+func (x *IssueInitialGenerationRequest) GetValidForSeconds() uint64 {
+	if x != nil {
+		return x.ValidForSeconds
+	}
+	return 0
+}
+
+type IssueInitialGenerationResponse struct {
+	state             protoimpl.MessageState    `protogen:"open.v1"`
+	Status            *OperationStatus          `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	RealmId           string                    `protobuf:"bytes,2,opt,name=realm_id,json=realmId,proto3" json:"realm_id,omitempty"`
+	OperationId       string                    `protobuf:"bytes,3,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
+	DeliveryId        string                    `protobuf:"bytes,4,opt,name=delivery_id,json=deliveryId,proto3" json:"delivery_id,omitempty"`
+	AuthoritySequence uint64                    `protobuf:"varint,5,opt,name=authority_sequence,json=authoritySequence,proto3" json:"authority_sequence,omitempty"`
+	ChannelId         []byte                    `protobuf:"bytes,6,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	Generation        uint32                    `protobuf:"varint,7,opt,name=generation,proto3" json:"generation,omitempty"`
+	Sealed            *SealedGenerationDelivery `protobuf:"bytes,8,opt,name=sealed,proto3" json:"sealed,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *IssueInitialGenerationResponse) Reset() {
+	*x = IssueInitialGenerationResponse{}
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *IssueInitialGenerationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*IssueInitialGenerationResponse) ProtoMessage() {}
+
+func (x *IssueInitialGenerationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use IssueInitialGenerationResponse.ProtoReflect.Descriptor instead.
+func (*IssueInitialGenerationResponse) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *IssueInitialGenerationResponse) GetStatus() *OperationStatus {
+	if x != nil {
+		return x.Status
+	}
+	return nil
+}
+
+func (x *IssueInitialGenerationResponse) GetRealmId() string {
+	if x != nil {
+		return x.RealmId
+	}
+	return ""
+}
+
+func (x *IssueInitialGenerationResponse) GetOperationId() string {
+	if x != nil {
+		return x.OperationId
+	}
+	return ""
+}
+
+func (x *IssueInitialGenerationResponse) GetDeliveryId() string {
+	if x != nil {
+		return x.DeliveryId
+	}
+	return ""
+}
+
+func (x *IssueInitialGenerationResponse) GetAuthoritySequence() uint64 {
+	if x != nil {
+		return x.AuthoritySequence
+	}
+	return 0
+}
+
+func (x *IssueInitialGenerationResponse) GetChannelId() []byte {
+	if x != nil {
+		return x.ChannelId
+	}
+	return nil
+}
+
+func (x *IssueInitialGenerationResponse) GetGeneration() uint32 {
+	if x != nil {
+		return x.Generation
+	}
+	return 0
+}
+
+func (x *IssueInitialGenerationResponse) GetSealed() *SealedGenerationDelivery {
+	if x != nil {
+		return x.Sealed
+	}
+	return nil
+}
+
+type AcknowledgeInitialGenerationRequest struct {
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	Version       uint32                     `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
+	RealmId       string                     `protobuf:"bytes,2,opt,name=realm_id,json=realmId,proto3" json:"realm_id,omitempty"`
+	Receipt       *GenerationDeliveryReceipt `protobuf:"bytes,3,opt,name=receipt,proto3" json:"receipt,omitempty"`
+	OperationId   string                     `protobuf:"bytes,4,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AcknowledgeInitialGenerationRequest) Reset() {
+	*x = AcknowledgeInitialGenerationRequest{}
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AcknowledgeInitialGenerationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AcknowledgeInitialGenerationRequest) ProtoMessage() {}
+
+func (x *AcknowledgeInitialGenerationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AcknowledgeInitialGenerationRequest.ProtoReflect.Descriptor instead.
+func (*AcknowledgeInitialGenerationRequest) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *AcknowledgeInitialGenerationRequest) GetVersion() uint32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *AcknowledgeInitialGenerationRequest) GetRealmId() string {
+	if x != nil {
+		return x.RealmId
+	}
+	return ""
+}
+
+func (x *AcknowledgeInitialGenerationRequest) GetReceipt() *GenerationDeliveryReceipt {
+	if x != nil {
+		return x.Receipt
+	}
+	return nil
+}
+
+func (x *AcknowledgeInitialGenerationRequest) GetOperationId() string {
+	if x != nil {
+		return x.OperationId
+	}
+	return ""
+}
+
+type AcknowledgeInitialGenerationResponse struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Status            *OperationStatus       `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	RealmId           string                 `protobuf:"bytes,2,opt,name=realm_id,json=realmId,proto3" json:"realm_id,omitempty"`
+	DeliveryId        string                 `protobuf:"bytes,3,opt,name=delivery_id,json=deliveryId,proto3" json:"delivery_id,omitempty"`
+	AuthoritySequence uint64                 `protobuf:"varint,4,opt,name=authority_sequence,json=authoritySequence,proto3" json:"authority_sequence,omitempty"`
+	Phase             string                 `protobuf:"bytes,5,opt,name=phase,proto3" json:"phase,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *AcknowledgeInitialGenerationResponse) Reset() {
+	*x = AcknowledgeInitialGenerationResponse{}
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AcknowledgeInitialGenerationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AcknowledgeInitialGenerationResponse) ProtoMessage() {}
+
+func (x *AcknowledgeInitialGenerationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AcknowledgeInitialGenerationResponse.ProtoReflect.Descriptor instead.
+func (*AcknowledgeInitialGenerationResponse) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *AcknowledgeInitialGenerationResponse) GetStatus() *OperationStatus {
+	if x != nil {
+		return x.Status
+	}
+	return nil
+}
+
+func (x *AcknowledgeInitialGenerationResponse) GetRealmId() string {
+	if x != nil {
+		return x.RealmId
+	}
+	return ""
+}
+
+func (x *AcknowledgeInitialGenerationResponse) GetDeliveryId() string {
+	if x != nil {
+		return x.DeliveryId
+	}
+	return ""
+}
+
+func (x *AcknowledgeInitialGenerationResponse) GetAuthoritySequence() uint64 {
+	if x != nil {
+		return x.AuthoritySequence
+	}
+	return 0
+}
+
+func (x *AcknowledgeInitialGenerationResponse) GetPhase() string {
+	if x != nil {
+		return x.Phase
+	}
+	return ""
+}
+
+type PrepareGenerationDeliveryRequest struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Version          uint32                 `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
+	SubjectPrincipal string                 `protobuf:"bytes,2,opt,name=subject_principal,json=subjectPrincipal,proto3" json:"subject_principal,omitempty"`
+	ValidForSeconds  uint64                 `protobuf:"varint,3,opt,name=valid_for_seconds,json=validForSeconds,proto3" json:"valid_for_seconds,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *PrepareGenerationDeliveryRequest) Reset() {
+	*x = PrepareGenerationDeliveryRequest{}
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PrepareGenerationDeliveryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PrepareGenerationDeliveryRequest) ProtoMessage() {}
+
+func (x *PrepareGenerationDeliveryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PrepareGenerationDeliveryRequest.ProtoReflect.Descriptor instead.
+func (*PrepareGenerationDeliveryRequest) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *PrepareGenerationDeliveryRequest) GetVersion() uint32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *PrepareGenerationDeliveryRequest) GetSubjectPrincipal() string {
+	if x != nil {
+		return x.SubjectPrincipal
+	}
+	return ""
+}
+
+func (x *PrepareGenerationDeliveryRequest) GetValidForSeconds() uint64 {
+	if x != nil {
+		return x.ValidForSeconds
+	}
+	return 0
+}
+
+type PrepareGenerationDeliveryResponse struct {
+	state         protoimpl.MessageState         `protogen:"open.v1"`
+	Status        *OperationStatus               `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	Attestation   *GenerationDeliveryAttestation `protobuf:"bytes,2,opt,name=attestation,proto3" json:"attestation,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PrepareGenerationDeliveryResponse) Reset() {
+	*x = PrepareGenerationDeliveryResponse{}
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PrepareGenerationDeliveryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PrepareGenerationDeliveryResponse) ProtoMessage() {}
+
+func (x *PrepareGenerationDeliveryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PrepareGenerationDeliveryResponse.ProtoReflect.Descriptor instead.
+func (*PrepareGenerationDeliveryResponse) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *PrepareGenerationDeliveryResponse) GetStatus() *OperationStatus {
+	if x != nil {
+		return x.Status
+	}
+	return nil
+}
+
+func (x *PrepareGenerationDeliveryResponse) GetAttestation() *GenerationDeliveryAttestation {
+	if x != nil {
+		return x.Attestation
+	}
+	return nil
+}
+
+type InstallGenerationDeliveryRequest struct {
+	state         protoimpl.MessageState    `protogen:"open.v1"`
+	Version       uint32                    `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
+	Sealed        *SealedGenerationDelivery `protobuf:"bytes,2,opt,name=sealed,proto3" json:"sealed,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InstallGenerationDeliveryRequest) Reset() {
+	*x = InstallGenerationDeliveryRequest{}
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InstallGenerationDeliveryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InstallGenerationDeliveryRequest) ProtoMessage() {}
+
+func (x *InstallGenerationDeliveryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InstallGenerationDeliveryRequest.ProtoReflect.Descriptor instead.
+func (*InstallGenerationDeliveryRequest) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *InstallGenerationDeliveryRequest) GetVersion() uint32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *InstallGenerationDeliveryRequest) GetSealed() *SealedGenerationDelivery {
+	if x != nil {
+		return x.Sealed
+	}
+	return nil
+}
+
+type InstallGenerationDeliveryResponse struct {
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	Status        *OperationStatus           `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	Receipt       *GenerationDeliveryReceipt `protobuf:"bytes,2,opt,name=receipt,proto3" json:"receipt,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InstallGenerationDeliveryResponse) Reset() {
+	*x = InstallGenerationDeliveryResponse{}
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InstallGenerationDeliveryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InstallGenerationDeliveryResponse) ProtoMessage() {}
+
+func (x *InstallGenerationDeliveryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InstallGenerationDeliveryResponse.ProtoReflect.Descriptor instead.
+func (*InstallGenerationDeliveryResponse) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *InstallGenerationDeliveryResponse) GetStatus() *OperationStatus {
+	if x != nil {
+		return x.Status
+	}
+	return nil
+}
+
+func (x *InstallGenerationDeliveryResponse) GetReceipt() *GenerationDeliveryReceipt {
+	if x != nil {
+		return x.Receipt
+	}
+	return nil
+}
+
 var File_api_ardents_v1_authority_proto protoreflect.FileDescriptor
 
 const file_api_ardents_v1_authority_proto_rawDesc = "" +
@@ -450,12 +1458,124 @@ const file_api_ardents_v1_authority_proto_rawDesc = "" +
 	"\foperation_id\x18\x03 \x01(\tR\voperationId\"\x97\x01\n" +
 	"\x1dInspectRealmAuthorityResponse\x123\n" +
 	"\x06status\x18\x01 \x01(\v2\x1b.ardents.v1.OperationStatusR\x06status\x12A\n" +
-	"\tauthority\x18\x02 \x01(\v2#.ardents.v1.AuthorityStatusSnapshotR\tauthority2\xe4\x02\n" +
+	"\tauthority\x18\x02 \x01(\v2#.ardents.v1.AuthorityStatusSnapshotR\tauthority\"\xd8\x02\n" +
+	"\x1dGenerationDeliveryAttestation\x12\x18\n" +
+	"\aversion\x18\x01 \x01(\rR\aversion\x12+\n" +
+	"\x11subject_principal\x18\x02 \x01(\tR\x10subjectPrincipal\x12.\n" +
+	"\x13delivery_public_key\x18\x03 \x01(\fR\x11deliveryPublicKey\x129\n" +
+	"\n" +
+	"not_before\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tnotBefore\x127\n" +
+	"\tnot_after\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\bnotAfter\x12\x1c\n" +
+	"\tsignature\x18\x06 \x01(\fR\tsignature\x12.\n" +
+	"\x13identity_public_key\x18\a \x01(\fR\x11identityPublicKey\"\x9d\x04\n" +
+	"\x19GenerationDeliveryBinding\x12\x18\n" +
+	"\aversion\x18\x01 \x01(\rR\aversion\x12\x19\n" +
+	"\brealm_id\x18\x02 \x01(\tR\arealmId\x12/\n" +
+	"\x13authority_principal\x18\x03 \x01(\tR\x12authorityPrincipal\x12'\n" +
+	"\x0fauthority_epoch\x18\x04 \x01(\x04R\x0eauthorityEpoch\x12-\n" +
+	"\x12authority_sequence\x18\x05 \x01(\x04R\x11authoritySequence\x12\x1f\n" +
+	"\vdelivery_id\x18\x06 \x01(\tR\n" +
+	"deliveryId\x12\x1d\n" +
+	"\n" +
+	"channel_id\x18\a \x01(\fR\tchannelId\x12#\n" +
+	"\rchannel_class\x18\b \x01(\tR\fchannelClass\x12\x1e\n" +
+	"\n" +
+	"generation\x18\t \x01(\rR\n" +
+	"generation\x12/\n" +
+	"\x13recipient_principal\x18\n" +
+	" \x01(\tR\x12recipientPrincipal\x129\n" +
+	"\n" +
+	"expires_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12.\n" +
+	"\x13delivery_key_digest\x18\f \x01(\tR\x11deliveryKeyDigest\x12!\n" +
+	"\foperation_id\x18\r \x01(\tR\voperationId\"\xa0\x01\n" +
+	"\x18SealedGenerationDelivery\x12?\n" +
+	"\abinding\x18\x01 \x01(\v2%.ardents.v1.GenerationDeliveryBindingR\abinding\x12\x1a\n" +
+	"\benvelope\x18\x02 \x01(\fR\benvelope\x12'\n" +
+	"\x0fenvelope_digest\x18\x03 \x01(\tR\x0eenvelopeDigest\"\xee\x04\n" +
+	"\x19GenerationDeliveryReceipt\x12\x18\n" +
+	"\aversion\x18\x01 \x01(\rR\aversion\x12\x1f\n" +
+	"\vdelivery_id\x18\x02 \x01(\tR\n" +
+	"deliveryId\x12'\n" +
+	"\x0fenvelope_digest\x18\x03 \x01(\tR\x0eenvelopeDigest\x12-\n" +
+	"\x12authority_sequence\x18\x04 \x01(\x04R\x11authoritySequence\x12\x1d\n" +
+	"\n" +
+	"channel_id\x18\x05 \x01(\fR\tchannelId\x12\x1e\n" +
+	"\n" +
+	"generation\x18\x06 \x01(\rR\n" +
+	"generation\x12/\n" +
+	"\x13recipient_principal\x18\a \x01(\tR\x12recipientPrincipal\x12\x14\n" +
+	"\x05phase\x18\b \x01(\tR\x05phase\x129\n" +
+	"\n" +
+	"created_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x10\n" +
+	"\x03mac\x18\n" +
+	" \x01(\fR\x03mac\x12\x19\n" +
+	"\brealm_id\x18\v \x01(\tR\arealmId\x12/\n" +
+	"\x13authority_principal\x18\f \x01(\tR\x12authorityPrincipal\x12'\n" +
+	"\x0fauthority_epoch\x18\r \x01(\x04R\x0eauthorityEpoch\x12!\n" +
+	"\foperation_id\x18\x0e \x01(\tR\voperationId\x12#\n" +
+	"\rchannel_class\x18\x0f \x01(\tR\fchannelClass\x12.\n" +
+	"\x13delivery_key_digest\x18\x10 \x01(\tR\x11deliveryKeyDigest\"\xc6\x02\n" +
+	"\x1dIssueInitialGenerationRequest\x12\x18\n" +
+	"\aversion\x18\x01 \x01(\rR\aversion\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x02 \x01(\tR\trequestId\x12\x19\n" +
+	"\brealm_id\x18\x03 \x01(\tR\arealmId\x12#\n" +
+	"\rchannel_class\x18\x04 \x01(\tR\fchannelClass\x12 \n" +
+	"\vpermissions\x18\x05 \x01(\rR\vpermissions\x12^\n" +
+	"\x15recipient_attestation\x18\x06 \x01(\v2).ardents.v1.GenerationDeliveryAttestationR\x14recipientAttestation\x12*\n" +
+	"\x11valid_for_seconds\x18\a \x01(\x04R\x0fvalidForSeconds\"\xe0\x02\n" +
+	"\x1eIssueInitialGenerationResponse\x123\n" +
+	"\x06status\x18\x01 \x01(\v2\x1b.ardents.v1.OperationStatusR\x06status\x12\x19\n" +
+	"\brealm_id\x18\x02 \x01(\tR\arealmId\x12!\n" +
+	"\foperation_id\x18\x03 \x01(\tR\voperationId\x12\x1f\n" +
+	"\vdelivery_id\x18\x04 \x01(\tR\n" +
+	"deliveryId\x12-\n" +
+	"\x12authority_sequence\x18\x05 \x01(\x04R\x11authoritySequence\x12\x1d\n" +
+	"\n" +
+	"channel_id\x18\x06 \x01(\fR\tchannelId\x12\x1e\n" +
+	"\n" +
+	"generation\x18\a \x01(\rR\n" +
+	"generation\x12<\n" +
+	"\x06sealed\x18\b \x01(\v2$.ardents.v1.SealedGenerationDeliveryR\x06sealed\"\xbe\x01\n" +
+	"#AcknowledgeInitialGenerationRequest\x12\x18\n" +
+	"\aversion\x18\x01 \x01(\rR\aversion\x12\x19\n" +
+	"\brealm_id\x18\x02 \x01(\tR\arealmId\x12?\n" +
+	"\areceipt\x18\x03 \x01(\v2%.ardents.v1.GenerationDeliveryReceiptR\areceipt\x12!\n" +
+	"\foperation_id\x18\x04 \x01(\tR\voperationId\"\xdc\x01\n" +
+	"$AcknowledgeInitialGenerationResponse\x123\n" +
+	"\x06status\x18\x01 \x01(\v2\x1b.ardents.v1.OperationStatusR\x06status\x12\x19\n" +
+	"\brealm_id\x18\x02 \x01(\tR\arealmId\x12\x1f\n" +
+	"\vdelivery_id\x18\x03 \x01(\tR\n" +
+	"deliveryId\x12-\n" +
+	"\x12authority_sequence\x18\x04 \x01(\x04R\x11authoritySequence\x12\x14\n" +
+	"\x05phase\x18\x05 \x01(\tR\x05phase\"\x95\x01\n" +
+	" PrepareGenerationDeliveryRequest\x12\x18\n" +
+	"\aversion\x18\x01 \x01(\rR\aversion\x12+\n" +
+	"\x11subject_principal\x18\x02 \x01(\tR\x10subjectPrincipal\x12*\n" +
+	"\x11valid_for_seconds\x18\x03 \x01(\x04R\x0fvalidForSeconds\"\xa5\x01\n" +
+	"!PrepareGenerationDeliveryResponse\x123\n" +
+	"\x06status\x18\x01 \x01(\v2\x1b.ardents.v1.OperationStatusR\x06status\x12K\n" +
+	"\vattestation\x18\x02 \x01(\v2).ardents.v1.GenerationDeliveryAttestationR\vattestation\"z\n" +
+	" InstallGenerationDeliveryRequest\x12\x18\n" +
+	"\aversion\x18\x01 \x01(\rR\aversion\x12<\n" +
+	"\x06sealed\x18\x02 \x01(\v2$.ardents.v1.SealedGenerationDeliveryR\x06sealed\"\x99\x01\n" +
+	"!InstallGenerationDeliveryResponse\x123\n" +
+	"\x06status\x18\x01 \x01(\v2\x1b.ardents.v1.OperationStatusR\x06status\x12?\n" +
+	"\areceipt\x18\x02 \x01(\v2%.ardents.v1.GenerationDeliveryReceiptR\areceipt2\xf2\x05\n" +
 	"\x10AuthorityService\x12\xae\x01\n" +
 	"\x14CreateRealmAuthority\x12'.ardents.v1.CreateRealmAuthorityRequest\x1a(.ardents.v1.CreateRealmAuthorityResponse\"C\xc2\xf3\x18?\n" +
 	"\x16realm.authority.create\x12\tauthority\x1a\x18realm-authority-instance \x01\x12\x9e\x01\n" +
 	"\x15InspectRealmAuthority\x12(.ardents.v1.InspectRealmAuthorityRequest\x1a).ardents.v1.InspectRealmAuthorityResponse\"0\xc2\xf3\x18,\n" +
-	"\x18realm.channel.audit.read\x12\tauthority\x1a\x05realmB.Z,ardents/internal/localapi/protocol;ardentsv1b\x06proto3"
+	"\x18realm.channel.audit.read\x12\tauthority\x1a\x05realm\x12\xb8\x01\n" +
+	"\x16IssueInitialGeneration\x12).ardents.v1.IssueInitialGenerationRequest\x1a*.ardents.v1.IssueInitialGenerationResponse\"G\xc2\xf3\x18C\n" +
+	"\x1crealm.channel.delivery.issue\x12\tauthority\x1a\x16realm-channel-delivery \x01\x12\xd0\x01\n" +
+	"\x1cAcknowledgeInitialGeneration\x12/.ardents.v1.AcknowledgeInitialGenerationRequest\x1a0.ardents.v1.AcknowledgeInitialGenerationResponse\"M\xc2\xf3\x18I\n" +
+	"\"realm.channel.delivery.acknowledge\x12\tauthority\x1a\x16realm-channel-delivery \x012\x97\x03\n" +
+	"\x16ChannelDeliveryService\x12\xb6\x01\n" +
+	"\x19PrepareGenerationDelivery\x12,.ardents.v1.PrepareGenerationDeliveryRequest\x1a-.ardents.v1.PrepareGenerationDeliveryResponse\"<\xc2\xf3\x188\n" +
+	"\x1erealm.channel.delivery.prepare\x12\tauthority\x1a\tprincipal \x01\x12\xc3\x01\n" +
+	"\x19InstallGenerationDelivery\x12,.ardents.v1.InstallGenerationDeliveryRequest\x1a-.ardents.v1.InstallGenerationDeliveryResponse\"I\xc2\xf3\x18E\n" +
+	"\x1erealm.channel.delivery.install\x12\tauthority\x1a\x16realm-channel-delivery \x01B.Z,ardents/internal/localapi/protocol;ardentsv1b\x06proto3"
 
 var (
 	file_api_ardents_v1_authority_proto_rawDescOnce sync.Once
@@ -469,31 +1589,66 @@ func file_api_ardents_v1_authority_proto_rawDescGZIP() []byte {
 	return file_api_ardents_v1_authority_proto_rawDescData
 }
 
-var file_api_ardents_v1_authority_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_api_ardents_v1_authority_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_api_ardents_v1_authority_proto_goTypes = []any{
-	(*CreateRealmAuthorityRequest)(nil),   // 0: ardents.v1.CreateRealmAuthorityRequest
-	(*InspectRealmAuthorityRequest)(nil),  // 1: ardents.v1.InspectRealmAuthorityRequest
-	(*AuthorityStatusSnapshot)(nil),       // 2: ardents.v1.AuthorityStatusSnapshot
-	(*CreateRealmAuthorityResponse)(nil),  // 3: ardents.v1.CreateRealmAuthorityResponse
-	(*InspectRealmAuthorityResponse)(nil), // 4: ardents.v1.InspectRealmAuthorityResponse
-	(*timestamppb.Timestamp)(nil),         // 5: google.protobuf.Timestamp
-	(*OperationStatus)(nil),               // 6: ardents.v1.OperationStatus
+	(*CreateRealmAuthorityRequest)(nil),          // 0: ardents.v1.CreateRealmAuthorityRequest
+	(*InspectRealmAuthorityRequest)(nil),         // 1: ardents.v1.InspectRealmAuthorityRequest
+	(*AuthorityStatusSnapshot)(nil),              // 2: ardents.v1.AuthorityStatusSnapshot
+	(*CreateRealmAuthorityResponse)(nil),         // 3: ardents.v1.CreateRealmAuthorityResponse
+	(*InspectRealmAuthorityResponse)(nil),        // 4: ardents.v1.InspectRealmAuthorityResponse
+	(*GenerationDeliveryAttestation)(nil),        // 5: ardents.v1.GenerationDeliveryAttestation
+	(*GenerationDeliveryBinding)(nil),            // 6: ardents.v1.GenerationDeliveryBinding
+	(*SealedGenerationDelivery)(nil),             // 7: ardents.v1.SealedGenerationDelivery
+	(*GenerationDeliveryReceipt)(nil),            // 8: ardents.v1.GenerationDeliveryReceipt
+	(*IssueInitialGenerationRequest)(nil),        // 9: ardents.v1.IssueInitialGenerationRequest
+	(*IssueInitialGenerationResponse)(nil),       // 10: ardents.v1.IssueInitialGenerationResponse
+	(*AcknowledgeInitialGenerationRequest)(nil),  // 11: ardents.v1.AcknowledgeInitialGenerationRequest
+	(*AcknowledgeInitialGenerationResponse)(nil), // 12: ardents.v1.AcknowledgeInitialGenerationResponse
+	(*PrepareGenerationDeliveryRequest)(nil),     // 13: ardents.v1.PrepareGenerationDeliveryRequest
+	(*PrepareGenerationDeliveryResponse)(nil),    // 14: ardents.v1.PrepareGenerationDeliveryResponse
+	(*InstallGenerationDeliveryRequest)(nil),     // 15: ardents.v1.InstallGenerationDeliveryRequest
+	(*InstallGenerationDeliveryResponse)(nil),    // 16: ardents.v1.InstallGenerationDeliveryResponse
+	(*timestamppb.Timestamp)(nil),                // 17: google.protobuf.Timestamp
+	(*OperationStatus)(nil),                      // 18: ardents.v1.OperationStatus
 }
 var file_api_ardents_v1_authority_proto_depIdxs = []int32{
-	5, // 0: ardents.v1.AuthorityStatusSnapshot.operation_deadline:type_name -> google.protobuf.Timestamp
-	6, // 1: ardents.v1.CreateRealmAuthorityResponse.status:type_name -> ardents.v1.OperationStatus
-	2, // 2: ardents.v1.CreateRealmAuthorityResponse.authority:type_name -> ardents.v1.AuthorityStatusSnapshot
-	6, // 3: ardents.v1.InspectRealmAuthorityResponse.status:type_name -> ardents.v1.OperationStatus
-	2, // 4: ardents.v1.InspectRealmAuthorityResponse.authority:type_name -> ardents.v1.AuthorityStatusSnapshot
-	0, // 5: ardents.v1.AuthorityService.CreateRealmAuthority:input_type -> ardents.v1.CreateRealmAuthorityRequest
-	1, // 6: ardents.v1.AuthorityService.InspectRealmAuthority:input_type -> ardents.v1.InspectRealmAuthorityRequest
-	3, // 7: ardents.v1.AuthorityService.CreateRealmAuthority:output_type -> ardents.v1.CreateRealmAuthorityResponse
-	4, // 8: ardents.v1.AuthorityService.InspectRealmAuthority:output_type -> ardents.v1.InspectRealmAuthorityResponse
-	7, // [7:9] is the sub-list for method output_type
-	5, // [5:7] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	17, // 0: ardents.v1.AuthorityStatusSnapshot.operation_deadline:type_name -> google.protobuf.Timestamp
+	18, // 1: ardents.v1.CreateRealmAuthorityResponse.status:type_name -> ardents.v1.OperationStatus
+	2,  // 2: ardents.v1.CreateRealmAuthorityResponse.authority:type_name -> ardents.v1.AuthorityStatusSnapshot
+	18, // 3: ardents.v1.InspectRealmAuthorityResponse.status:type_name -> ardents.v1.OperationStatus
+	2,  // 4: ardents.v1.InspectRealmAuthorityResponse.authority:type_name -> ardents.v1.AuthorityStatusSnapshot
+	17, // 5: ardents.v1.GenerationDeliveryAttestation.not_before:type_name -> google.protobuf.Timestamp
+	17, // 6: ardents.v1.GenerationDeliveryAttestation.not_after:type_name -> google.protobuf.Timestamp
+	17, // 7: ardents.v1.GenerationDeliveryBinding.expires_at:type_name -> google.protobuf.Timestamp
+	6,  // 8: ardents.v1.SealedGenerationDelivery.binding:type_name -> ardents.v1.GenerationDeliveryBinding
+	17, // 9: ardents.v1.GenerationDeliveryReceipt.created_at:type_name -> google.protobuf.Timestamp
+	5,  // 10: ardents.v1.IssueInitialGenerationRequest.recipient_attestation:type_name -> ardents.v1.GenerationDeliveryAttestation
+	18, // 11: ardents.v1.IssueInitialGenerationResponse.status:type_name -> ardents.v1.OperationStatus
+	7,  // 12: ardents.v1.IssueInitialGenerationResponse.sealed:type_name -> ardents.v1.SealedGenerationDelivery
+	8,  // 13: ardents.v1.AcknowledgeInitialGenerationRequest.receipt:type_name -> ardents.v1.GenerationDeliveryReceipt
+	18, // 14: ardents.v1.AcknowledgeInitialGenerationResponse.status:type_name -> ardents.v1.OperationStatus
+	18, // 15: ardents.v1.PrepareGenerationDeliveryResponse.status:type_name -> ardents.v1.OperationStatus
+	5,  // 16: ardents.v1.PrepareGenerationDeliveryResponse.attestation:type_name -> ardents.v1.GenerationDeliveryAttestation
+	7,  // 17: ardents.v1.InstallGenerationDeliveryRequest.sealed:type_name -> ardents.v1.SealedGenerationDelivery
+	18, // 18: ardents.v1.InstallGenerationDeliveryResponse.status:type_name -> ardents.v1.OperationStatus
+	8,  // 19: ardents.v1.InstallGenerationDeliveryResponse.receipt:type_name -> ardents.v1.GenerationDeliveryReceipt
+	0,  // 20: ardents.v1.AuthorityService.CreateRealmAuthority:input_type -> ardents.v1.CreateRealmAuthorityRequest
+	1,  // 21: ardents.v1.AuthorityService.InspectRealmAuthority:input_type -> ardents.v1.InspectRealmAuthorityRequest
+	9,  // 22: ardents.v1.AuthorityService.IssueInitialGeneration:input_type -> ardents.v1.IssueInitialGenerationRequest
+	11, // 23: ardents.v1.AuthorityService.AcknowledgeInitialGeneration:input_type -> ardents.v1.AcknowledgeInitialGenerationRequest
+	13, // 24: ardents.v1.ChannelDeliveryService.PrepareGenerationDelivery:input_type -> ardents.v1.PrepareGenerationDeliveryRequest
+	15, // 25: ardents.v1.ChannelDeliveryService.InstallGenerationDelivery:input_type -> ardents.v1.InstallGenerationDeliveryRequest
+	3,  // 26: ardents.v1.AuthorityService.CreateRealmAuthority:output_type -> ardents.v1.CreateRealmAuthorityResponse
+	4,  // 27: ardents.v1.AuthorityService.InspectRealmAuthority:output_type -> ardents.v1.InspectRealmAuthorityResponse
+	10, // 28: ardents.v1.AuthorityService.IssueInitialGeneration:output_type -> ardents.v1.IssueInitialGenerationResponse
+	12, // 29: ardents.v1.AuthorityService.AcknowledgeInitialGeneration:output_type -> ardents.v1.AcknowledgeInitialGenerationResponse
+	14, // 30: ardents.v1.ChannelDeliveryService.PrepareGenerationDelivery:output_type -> ardents.v1.PrepareGenerationDeliveryResponse
+	16, // 31: ardents.v1.ChannelDeliveryService.InstallGenerationDelivery:output_type -> ardents.v1.InstallGenerationDeliveryResponse
+	26, // [26:32] is the sub-list for method output_type
+	20, // [20:26] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_api_ardents_v1_authority_proto_init() }
@@ -509,9 +1664,9 @@ func file_api_ardents_v1_authority_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_ardents_v1_authority_proto_rawDesc), len(file_api_ardents_v1_authority_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   17,
 			NumExtensions: 0,
-			NumServices:   1,
+			NumServices:   2,
 		},
 		GoTypes:           file_api_ardents_v1_authority_proto_goTypes,
 		DependencyIndexes: file_api_ardents_v1_authority_proto_depIdxs,

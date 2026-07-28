@@ -33,6 +33,35 @@ func CanonicalizeResource(procedure string, message any, kind string) (identitya
 		return identityaccess.ResourceTarget{
 			Kind: identityaccess.ResourceKind(kind), ID: request.GetRealmId(),
 		}, nil
+	case ardentsv1connect.AuthorityServiceIssueInitialGenerationProcedure:
+		request, ok := message.(*protocol.IssueInitialGenerationRequest)
+		if !ok || len(request.ProtoReflect().GetUnknown()) != 0 ||
+			request.GetRecipientAttestation() == nil ||
+			len(request.GetRecipientAttestation().ProtoReflect().GetUnknown()) != 0 ||
+			len(request.GetRequestId()) == 0 ||
+			len(request.GetRequestId()) > domain.MaxRequestIDBytes ||
+			!domain.ValidRealmID(request.GetRealmId()) {
+			return identityaccess.ResourceTarget{}, ErrInvalidResourceTarget
+		}
+		return identityaccess.ResourceTarget{
+			Kind: identityaccess.ResourceKind(kind),
+			ID:   domain.InitialGenerationDeliveryResource(request.GetRealmId(), request.GetRequestId()),
+		}, nil
+	case ardentsv1connect.AuthorityServiceAcknowledgeInitialGenerationProcedure:
+		request, ok := message.(*protocol.AcknowledgeInitialGenerationRequest)
+		if !ok || len(request.ProtoReflect().GetUnknown()) != 0 || request.GetReceipt() == nil ||
+			len(request.GetReceipt().ProtoReflect().GetUnknown()) != 0 {
+			return identityaccess.ResourceTarget{}, ErrInvalidResourceTarget
+		}
+		resource, valid := domain.GenerationDeliveryResource(
+			request.GetRealmId(), request.GetOperationId(), request.GetReceipt().GetDeliveryId(),
+		)
+		if !valid {
+			return identityaccess.ResourceTarget{}, ErrInvalidResourceTarget
+		}
+		return identityaccess.ResourceTarget{
+			Kind: identityaccess.ResourceKind(kind), ID: resource,
+		}, nil
 	default:
 		return identityaccess.ResourceTarget{}, ErrInvalidResourceTarget
 	}

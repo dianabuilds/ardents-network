@@ -17,11 +17,25 @@ func SignGrant(grant identityapi.CapabilityGrant, private ed25519.PrivateKey) (i
 	if len(private) != ed25519.PrivateKeySize {
 		return identityapi.CapabilityGrant{}, fmt.Errorf("issuer private key is invalid")
 	}
+	return SignGrantWith(grant, func(message []byte) ([]byte, error) {
+		return ed25519.Sign(private, message), nil
+	})
+}
+
+// SignGrantWith signs the canonical Channel Grant digest through an external
+// signer seam so an authority does not need access to private key bytes.
+func SignGrantWith(grant identityapi.CapabilityGrant, sign func([]byte) ([]byte, error)) (identityapi.CapabilityGrant, error) {
+	if sign == nil {
+		return identityapi.CapabilityGrant{}, fmt.Errorf("issuer signer is required")
+	}
 	raw, err := canonicalGrant(grant)
 	if err != nil {
 		return identityapi.CapabilityGrant{}, err
 	}
-	grant.Signature = ed25519.Sign(private, digest(grantSignatureDomain, raw))
+	grant.Signature, err = sign(digest(grantSignatureDomain, raw))
+	if err != nil || len(grant.Signature) != ed25519.SignatureSize {
+		return identityapi.CapabilityGrant{}, fmt.Errorf("issuer signing failed")
+	}
 	return grant, nil
 }
 

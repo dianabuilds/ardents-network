@@ -15,6 +15,7 @@ func TestProtectedMuxRoutesIdentityAndAllProductCalls(t *testing.T) {
 	handler := newProtectedMux("/ardents.v1.IdentityService/", identity, principal)
 	for _, path := range []string{
 		"/ardents.v1.AuthorityService/InspectRealmAuthority",
+		"/ardents.v1.ChannelDeliveryService/PrepareGenerationDelivery",
 		"/ardents.v1.NodeService/GetNodeStatus",
 		"/ardents.v1.ConfigurationService/GetEffectiveConfiguration",
 		"/ardents.v1.NetworkService/GetNetworkStatus",
@@ -28,7 +29,7 @@ func TestProtectedMuxRoutesIdentityAndAllProductCalls(t *testing.T) {
 		request.Header.Set("Authorization", "ArdentsOperatorSession invalid-but-no-fallback")
 		handler.ServeHTTP(httptest.NewRecorder(), request)
 	}
-	require.Equal(t, 9, principalCalls)
+	require.Equal(t, 10, principalCalls)
 	require.Zero(t, identityCalls)
 
 	request := httptest.NewRequest(http.MethodPost, "/ardents.v1.IdentityService/BeginSession", nil)

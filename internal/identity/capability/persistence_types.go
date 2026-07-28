@@ -30,6 +30,26 @@ type persistedRevocation struct {
 	Signature       []byte    `json:"signature"`
 }
 
+type persistedDeliveryReceipt struct {
+	Version            uint32                      `json:"version"`
+	RealmID            string                      `json:"realm_id"`
+	AuthorityPrincipal string                      `json:"authority_principal"`
+	AuthorityEpoch     uint64                      `json:"authority_epoch"`
+	OperationID        string                      `json:"operation_id"`
+	DeliveryID         string                      `json:"delivery_id"`
+	EnvelopeDigest     string                      `json:"envelope_digest"`
+	AuthoritySequence  uint64                      `json:"authority_sequence"`
+	ChannelID          [16]byte                    `json:"channel_id"`
+	ChannelClass       identityapi.CapabilityScope `json:"channel_class"`
+	Generation         uint32                      `json:"generation"`
+	RecipientPrincipal string                      `json:"recipient_principal"`
+	DeliveryKeyDigest  string                      `json:"delivery_key_digest"`
+	Phase              string                      `json:"phase"`
+	CreatedAt          time.Time                   `json:"created_at"`
+	ExpiresAt          time.Time                   `json:"expires_at"`
+	MAC                []byte                      `json:"mac"`
+}
+
 func persistGrant(grant identityapi.CapabilityGrant) persistedGrant {
 	return persistedGrant{
 		Version: grant.Version, ChannelID: grant.ChannelID,
@@ -61,5 +81,43 @@ func persistRevocation(rev identityapi.CapabilityRevocation) persistedRevocation
 		Version: rev.Version, GrantID: rev.GrantID,
 		IssuerPrincipal: rev.IssuerPrincipal, RevokedAt: rev.RevokedAt,
 		Signature: append([]byte(nil), rev.Signature...),
+	}
+}
+
+func (stored persistedRevocation) restore() identityapi.CapabilityRevocation {
+	return identityapi.CapabilityRevocation{
+		Version: stored.Version, GrantID: stored.GrantID,
+		IssuerPrincipal: stored.IssuerPrincipal, RevokedAt: stored.RevokedAt,
+		Signature: append([]byte(nil), stored.Signature...),
+	}
+}
+
+func persistDeliveryReceipt(
+	receipt GenerationDeliveryReceipt,
+	expiresAt time.Time,
+) persistedDeliveryReceipt {
+	return persistedDeliveryReceipt{
+		Version: receipt.Version, RealmID: receipt.RealmID,
+		AuthorityPrincipal: receipt.AuthorityPrincipal, AuthorityEpoch: receipt.AuthorityEpoch,
+		OperationID: receipt.OperationID, DeliveryID: receipt.DeliveryID,
+		EnvelopeDigest: receipt.EnvelopeDigest, AuthoritySequence: receipt.AuthoritySequence,
+		ChannelID: receipt.ChannelID, ChannelClass: receipt.ChannelClass,
+		Generation: receipt.Generation, RecipientPrincipal: receipt.RecipientPrincipal,
+		DeliveryKeyDigest: receipt.DeliveryKeyDigest, Phase: receipt.Phase,
+		CreatedAt: receipt.CreatedAt, ExpiresAt: expiresAt,
+		MAC: append([]byte(nil), receipt.MAC...),
+	}
+}
+
+func (stored persistedDeliveryReceipt) restore() GenerationDeliveryReceipt {
+	return GenerationDeliveryReceipt{
+		Version: stored.Version, RealmID: stored.RealmID,
+		AuthorityPrincipal: stored.AuthorityPrincipal, AuthorityEpoch: stored.AuthorityEpoch,
+		OperationID: stored.OperationID, DeliveryID: stored.DeliveryID,
+		EnvelopeDigest: stored.EnvelopeDigest, AuthoritySequence: stored.AuthoritySequence,
+		ChannelID: stored.ChannelID, ChannelClass: stored.ChannelClass,
+		Generation: stored.Generation, RecipientPrincipal: stored.RecipientPrincipal,
+		DeliveryKeyDigest: stored.DeliveryKeyDigest, Phase: stored.Phase,
+		CreatedAt: stored.CreatedAt, MAC: append([]byte(nil), stored.MAC...),
 	}
 }

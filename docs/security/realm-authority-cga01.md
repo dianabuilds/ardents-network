@@ -139,7 +139,7 @@ repository, daemon composition, redacted CLI/metrics, and real-store
 crash/restart tests. The canonical checkpoint serialization vector is
 `internal/authority/testdata/checkpoint-genesis-v1.json`.
 
-CGA-02 through CGA-07 have not started. This slice does not deliver an HPKE
-generation or receipt, rotate/activate, change membership, revoke/fence,
-renew, restore/migrate, provide Application Messaging, place a multi-host
-authority, federate, use MLS/threshold authority, or establish qualification.
+This document remains the CGA-01 genesis contract. CGA-02 initial-generation
+delivery is specified separately in `realm-authority-cga02.md`; later
+rotation/activation, membership, fencing, renewal, restore and qualification
+remain outside this document.

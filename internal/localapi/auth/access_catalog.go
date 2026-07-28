@@ -80,6 +80,9 @@ func init() {
 	if err := registerProtocolAccess("ardents.v1.AuthorityService"); err != nil {
 		panic(err)
 	}
+	if err := registerProtocolAccess("ardents.v1.ChannelDeliveryService"); err != nil {
+		panic(err)
+	}
 }
 
 func registerProtocolAccess(serviceName protoreflect.FullName) error {

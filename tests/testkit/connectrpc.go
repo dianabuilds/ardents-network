@@ -25,6 +25,7 @@ import (
 	identityprotocol "ardents/internal/identity/protocol"
 	rpcadapter "ardents/internal/localapi"
 	localauthority "ardents/internal/localapi/authority"
+	localchanneldelivery "ardents/internal/localapi/channeldelivery"
 	"ardents/internal/storage"
 
 	"connectrpc.com/connect"
@@ -310,6 +311,17 @@ func NewOperatorCLIFixtureWithActions(t *testing.T, nodeRuntime *runtimeprocess.
 // instance create resource. Callers add the exact random RealmID inspect grant
 // after genesis through GrantExact.
 func NewAuthorityOperatorCLIFixture(t *testing.T, nodeRuntime *runtimeprocess.Node, service localauthority.Service) OperatorCLIFixture {
+	return NewAuthorityDeliveryOperatorCLIFixture(t, nodeRuntime, service, nil)
+}
+
+// NewAuthorityDeliveryOperatorCLIFixture exposes both halves of the protected
+// initial-generation handoff while retaining the exact-resource grant model.
+func NewAuthorityDeliveryOperatorCLIFixture(
+	t *testing.T,
+	nodeRuntime *runtimeprocess.Node,
+	authority localauthority.Service,
+	delivery localchanneldelivery.Service,
+) OperatorCLIFixture {
 	t.Helper()
 	material := newOperatorPrincipalMaterialWithActions(t, []identityaccess.Action{"node.status"})
 	issueOperatorGrant(t, material, []identityaccess.Action{"realm.authority.create"}, identityaccess.ResourceScope{
@@ -319,7 +331,8 @@ func NewAuthorityOperatorCLIFixture(t *testing.T, nodeRuntime *runtimeprocess.No
 		},
 	}, time.Now().UTC().Truncate(time.Second))
 	deps := ConnectDependencies(nodeRuntime)
-	deps.Authority = service
+	deps.Authority = authority
+	deps.ChannelDelivery = delivery
 	return newOperatorCLIFixture(t, nodeRuntime, material, deps)
 }
 

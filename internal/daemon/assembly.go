@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"ardents/internal/authority"
+	"ardents/internal/channeldelivery"
 	"ardents/internal/content"
 	"ardents/internal/diagnostics"
 	"ardents/internal/discovery"
@@ -216,6 +217,7 @@ func runtimePolicyConfig(cfg PolicyConfig) apppolicy.Config {
 		DeniedRouteSchemes:              cloneStrings(cfg.DeniedRouteSchemes),
 		DisablePrivateChannelGrantUse:   cfg.DisablePrivateChannelGrantUse,
 		DisableRealmAuthorityCreation:   cfg.DisableRealmAuthorityCreation,
+		DisableRealmChannelDelivery:     cfg.DisableRealmChannelDelivery,
 		DeniedChannelGrantScopes:        cloneStrings(cfg.DeniedChannelGrantScopes),
 		DisableLocalBlobRetention:       cfg.DisableLocalBlobRetention,
 		DisableRelayBlobRetention:       cfg.DisableRelayBlobRetention,
@@ -548,6 +550,7 @@ func (n *Node) configureLocalServicesLocked() {
 type Owners struct {
 	Node              *Node
 	Authority         *authority.Service
+	ChannelDelivery   *channeldelivery.Service
 	IdentityAccess    storage.Database
 	PrincipalAccess   *identityaccess.Service
 	Content           *content.Service

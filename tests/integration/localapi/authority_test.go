@@ -13,9 +13,13 @@ import (
 	"time"
 
 	domain "ardents/internal/authority"
+	"ardents/internal/channeldelivery"
 	runtimeinfra "ardents/internal/daemon"
+	identityapi "ardents/internal/identity"
 	identityaccess "ardents/internal/identity/access"
+	identitycapability "ardents/internal/identity/capability"
 	identityprincipal "ardents/internal/identity/principal"
+	identitytrust "ardents/internal/identity/trust"
 	protocol "ardents/internal/localapi/protocol"
 	"ardents/internal/storage"
 	"ardents/tests/testkit"
@@ -141,6 +145,137 @@ func TestRealmAuthorityGenesisInspectAndRestartThroughProtectedOperatorInterface
 	require.Equal(t, create.Msg.GetAuthority().GetCheckpointDigest(), replayed.Msg.GetAuthority().GetCheckpointDigest())
 }
 
+func TestInitialGenerationDeliveryThroughProtectedOperatorInterface(t *testing.T) {
+	testkit.BeginScenario(t, testkit.Spec{
+		Layer: testkit.LayerIntegration, Domain: "realm-authority", ScenarioID: "CGA-02",
+		Suite: "integration", Tags: []string{"integration", "authority", "security", "delivery"},
+		Speed: "fast", Environment: "local",
+	})
+	ctx := context.Background()
+	root := t.TempDir()
+	now := time.Now().UTC().Truncate(time.Second)
+	clock := func() time.Time { return now }
+	storePath := filepath.Join(root, "authority", "realm-authority.db")
+	checkpointPath := filepath.Join(root, "independent-checkpoints")
+	require.NoError(t, storage.EnsurePrivateDir(filepath.Dir(storePath)))
+	require.NoError(t, storage.EnsurePrivateDir(checkpointPath))
+	store, err := domain.OpenFileStore(
+		ctx, storePath, bytes.Repeat([]byte{0xa1}, domain.AuthorityStoreKeyBytes),
+	)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, store.Close()) })
+	repository, err := domain.NewFileCheckpointRepository(checkpointPath)
+	require.NoError(t, err)
+	authoritySigner := integrationAuthoritySigner(t, 0xa2)
+	authorityService := domain.New(domain.Config{
+		Store: store, Signer: authoritySigner, Repository: repository,
+		Random: bytes.NewReader(bytes.Repeat([]byte{0xa3}, 2048)),
+		Clock:  clock, Policy: integrationAuthorityPolicy{},
+	})
+
+	memberPrivate := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0xa4}, ed25519.SeedSize))
+	memberPrincipal, err := identityprincipal.FromEd25519PublicKey(
+		memberPrivate.Public().(ed25519.PublicKey),
+	)
+	require.NoError(t, err)
+	trust, err := identitytrust.NewRegistry([]identitytrust.Entry{{
+		Principal: authoritySigner.principal,
+		PublicKey: authoritySigner.private.Public().(ed25519.PublicKey),
+		Purposes:  []identitytrust.Purpose{identitytrust.PurposeChannelIssue},
+	}})
+	require.NoError(t, err)
+	memberCapabilities, err := identitycapability.NewService(
+		filepath.Join(root, "member", "capabilities.db"),
+		bytes.Repeat([]byte{0xa5}, 32), memberPrincipal.String(), trust,
+		integrationCapabilityPolicy{}, clock,
+	)
+	require.NoError(t, err)
+	memberDelivery, err := channeldelivery.New(
+		memberCapabilities, memberPrivate, memberPrincipal.String(), clock,
+	)
+	require.NoError(t, err)
+
+	runtime := testkit.StartRuntime(t, runtimeinfra.Config{
+		Name: "authority-delivery-node",
+		Boot: runtimeinfra.BootConfig{Sources: []string{"local://bootstrap"}},
+		Data: runtimeinfra.DataConfig{Dir: filepath.Join(root, "node")},
+	}).Runtime
+	fixture := testkit.NewAuthorityDeliveryOperatorCLIFixture(
+		t, runtime, authorityService, memberDelivery,
+	)
+	create, err := fixture.Client.CreateRealmAuthority(
+		ctx, connect.NewRequest(&protocol.CreateRealmAuthorityRequest{
+			Version: domain.ContractVersion, RequestId: "delivery-genesis-001",
+			RealmClass: domain.RealmClassProduction,
+		}),
+	)
+	require.NoError(t, err)
+	realmID := create.Msg.GetAuthority().GetRealmId()
+
+	fixture.GrantExact(
+		t, []identityaccess.Action{"realm.channel.delivery.prepare"},
+		identityaccess.ResourceKind("principal"), memberPrincipal.String(), false,
+	)
+	prepared, err := fixture.Client.PrepareGenerationDelivery(
+		ctx, connect.NewRequest(&protocol.PrepareGenerationDeliveryRequest{
+			Version: channeldelivery.ContractVersion, SubjectPrincipal: memberPrincipal.String(),
+			ValidForSeconds: uint64(time.Hour / time.Second),
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, prepared.Msg.GetAttestation())
+
+	requestID := "initial-delivery-001"
+	initialResource := domain.InitialGenerationDeliveryResource(realmID, requestID)
+	fixture.GrantExact(
+		t, []identityaccess.Action{domain.ActionIssueDelivery},
+		domain.ResourceKindGenerationDelivery, initialResource, false,
+	)
+	issued, err := fixture.Client.IssueInitialGeneration(
+		ctx, connect.NewRequest(&protocol.IssueInitialGenerationRequest{
+			Version: domain.ContractVersion, RequestId: requestID, RealmId: realmID,
+			ChannelClass: string(identityapi.CapabilityRealmDiscovery),
+			Permissions: uint32(identityapi.CapabilityPublish | identityapi.CapabilitySubscribe |
+				identityapi.CapabilityStoreFetch),
+			RecipientAttestation: prepared.Msg.GetAttestation(),
+			ValidForSeconds:      uint64(time.Hour / time.Second),
+		}),
+	)
+	require.NoError(t, err)
+	require.Equal(t, uint64(2), issued.Msg.GetAuthoritySequence())
+	require.Equal(t, uint32(1), issued.Msg.GetGeneration())
+
+	deliveryResource, valid := domain.GenerationDeliveryResource(
+		realmID, issued.Msg.GetOperationId(), issued.Msg.GetDeliveryId(),
+	)
+	require.True(t, valid)
+	fixture.GrantExact(
+		t, []identityaccess.Action{
+			"realm.channel.delivery.install",
+			domain.ActionAcknowledgeDelivery,
+		},
+		domain.ResourceKindGenerationDelivery, deliveryResource, false,
+	)
+	installed, err := fixture.Client.InstallGenerationDelivery(
+		ctx, connect.NewRequest(&protocol.InstallGenerationDeliveryRequest{
+			Version: channeldelivery.ContractVersion, Sealed: issued.Msg.GetSealed(),
+		}),
+	)
+	require.NoError(t, err)
+	require.Equal(t, "installed", installed.Msg.GetReceipt().GetPhase())
+
+	acknowledged, err := fixture.Client.AcknowledgeInitialGeneration(
+		ctx, connect.NewRequest(&protocol.AcknowledgeInitialGenerationRequest{
+			Version: domain.ContractVersion, RealmId: realmID,
+			OperationId: issued.Msg.GetOperationId(), Receipt: installed.Msg.GetReceipt(),
+		}),
+	)
+	require.NoError(t, err)
+	require.Equal(t, uint64(3), acknowledged.Msg.GetAuthoritySequence())
+	require.Equal(t, domain.DeliveryPhaseInstalled, acknowledged.Msg.GetPhase())
+	require.Equal(t, uint32(1), authorityService.Readiness().CurrentGeneration)
+}
+
 func TestRealmAuthorityCrashBoundariesResumeRealPersistence(t *testing.T) {
 	for _, boundary := range []domain.CrashBoundary{
 		domain.CrashAfterLedgerCommit,
@@ -216,6 +351,15 @@ func TestRealmAuthorityCrashBoundariesResumeRealPersistence(t *testing.T) {
 type integrationAuthorityPolicy struct{}
 
 func (integrationAuthorityPolicy) AdmitRealmGenesis(context.Context, domain.Command) error {
+	return nil
+}
+func (integrationAuthorityPolicy) AdmitInitialGeneration(context.Context, domain.Command) error {
+	return nil
+}
+
+type integrationCapabilityPolicy struct{}
+
+func (integrationCapabilityPolicy) AllowCapabilityUse(identityapi.CapabilityUse) error {
 	return nil
 }
 

@@ -13,6 +13,7 @@ import (
 func TestProcedureAccessCatalogCoversEveryRPCExactlyOnce(t *testing.T) {
 	services := []protoreflect.ServiceDescriptor{
 		ardentsv1.File_api_ardents_v1_authority_proto.Services().Get(0),
+		ardentsv1.File_api_ardents_v1_authority_proto.Services().Get(1),
 		ardentsv1.File_api_ardents_v1_node_proto.Services().Get(0),
 		ardentsv1.File_api_ardents_v1_configuration_proto.Services().Get(0),
 		ardentsv1.File_api_ardents_v1_network_proto.Services().Get(0),
@@ -37,7 +38,7 @@ func TestProcedureAccessCatalogCoversEveryRPCExactlyOnce(t *testing.T) {
 			require.True(t, ok, procedure)
 			require.NotEmpty(t, rule.Action, procedure)
 			require.NotEmpty(t, rule.Domain, procedure)
-			if service.Name() == "AuthorityService" || service.Name() == "NodeService" || service.Name() == "ConfigurationService" || service.Name() == "NetworkService" || service.Name() == "WorkloadService" || service.Name() == "ContentService" || service.Name() == "TransferService" || service.Name() == "RetentionService" || service.Name() == "DiagnosticsService" {
+			if service.Name() == "AuthorityService" || service.Name() == "ChannelDeliveryService" || service.Name() == "NodeService" || service.Name() == "ConfigurationService" || service.Name() == "NetworkService" || service.Name() == "WorkloadService" || service.Name() == "ContentService" || service.Name() == "TransferService" || service.Name() == "RetentionService" || service.Name() == "DiagnosticsService" {
 				require.NotEmpty(t, rule.ResourceKind, procedure)
 			}
 			prior, duplicate := actions[rule.Action]

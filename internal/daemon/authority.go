@@ -85,9 +85,18 @@ func (a realmAuthorityAudit) RecordAuthorityAudit(_ context.Context, record doma
 	if a.events == nil {
 		return domain.ErrUnavailable
 	}
+	eventType, message := "realm_authority_mutation", "Realm Authority mutation accepted"
+	switch record.Action {
+	case domain.ActionCreate:
+		eventType, message = "realm_authority_genesis", "Realm Authority genesis accepted"
+	case domain.ActionIssueDelivery:
+		eventType, message = "realm_authority_delivery_issued", "Realm Authority delivery accepted"
+	case domain.ActionAcknowledgeDelivery:
+		eventType, message = "realm_authority_delivery_acknowledged", "Realm Authority delivery acknowledgement accepted"
+	}
 	_, err := a.events.RecordEventCommandDurable(diagapi.RecordEventCommand{
-		Domain: "realm_authority", Type: "realm_authority_genesis",
-		Resource: "primary", Message: "Realm Authority genesis accepted",
+		Domain: "realm_authority", Type: eventType,
+		Resource: "primary", Message: message,
 		Payload: map[string]any{
 			"version": record.Version, "audit_id": record.ID,
 			"actor": record.Actor, "effective": record.Effective,
@@ -107,4 +116,11 @@ func (p realmAuthorityPolicy) AdmitRealmGenesis(_ context.Context, _ domain.Comm
 		return domain.ErrUnavailable
 	}
 	return p.service.AllowRealmAuthorityCreation()
+}
+
+func (p realmAuthorityPolicy) AdmitInitialGeneration(_ context.Context, _ domain.Command) error {
+	if p.service == nil {
+		return domain.ErrUnavailable
+	}
+	return p.service.AllowRealmChannelDelivery()
 }

@@ -185,7 +185,7 @@ func (s *Service) CreateOrReopen(ctx context.Context, command Command, request C
 		AuthorityPrincipal: principal, AuthorityPublicKey: publicKey,
 		AuthorityEpoch: 1, AuthoritySequence: 1,
 		Phase: PhaseCheckpointing, Readiness: ReadinessDegraded, Reason: ReasonCheckpointMissing,
-		AuditHead: audit.Hash, Checkpoint: checkpoint,
+		AuditHead: audit.Hash, GenesisCheckpointDigest: checkpoint.Digest, Checkpoint: checkpoint,
 		Members: []MemberRecord{}, Channels: []ChannelRecord{},
 		Operations: []OperationRecord{{
 			Version: ContractVersion, ID: operationID, RequestID: request.RequestID,
@@ -296,22 +296,32 @@ func (s *Service) reconcileLoaded(ctx context.Context, state *Ledger) error {
 		s.status.Readiness, s.status.Reason = ReadinessUnavailable, ReasonRepositoryUnavailable
 		return ErrUnavailable
 	}
-	if !found && state.Phase == PhaseCheckpointing {
-		head, err = s.repository.CreateIfAbsent(ctx, state.Checkpoint)
+	if state.Phase == PhaseCheckpointing {
+		switch {
+		case !found && state.Checkpoint.AuthoritySequence == 1:
+			head, err = s.repository.CreateIfAbsent(ctx, state.Checkpoint)
+		case found && checkpointsEqual(head, state.Checkpoint):
+			err = nil
+		case found && state.Checkpoint.AuthoritySequence > 1 &&
+			head.AuthoritySequence+1 == state.Checkpoint.AuthoritySequence &&
+			head.Digest == state.Checkpoint.PreviousDigest:
+			head, err = s.repository.CompareAndAppend(
+				ctx, state.RealmID, head.AuthoritySequence, state.Checkpoint,
+			)
+		default:
+			s.markRecovery(ctx, state, ReasonCheckpointMismatch)
+			return ErrRecoveryRequired
+		}
 		if err != nil {
-			if !errors.Is(err, ErrConflict) {
-				s.status = statusFromLedger(*state)
-				s.status.Readiness, s.status.Reason = ReadinessUnavailable, ReasonRepositoryUnavailable
-				return ErrUnavailable
-			}
-			head, found, err = s.repository.ReadHead(ctx, state.RealmID)
-			if err != nil || !found {
+			if errors.Is(err, ErrConflict) || errors.Is(err, ErrCorruptState) {
 				s.markRecovery(ctx, state, ReasonCheckpointMismatch)
 				return ErrRecoveryRequired
 			}
-		} else {
-			found = true
+			s.status = statusFromLedger(*state)
+			s.status.Readiness, s.status.Reason = ReadinessUnavailable, ReasonRepositoryUnavailable
+			return ErrUnavailable
 		}
+		found = true
 	}
 	if !found {
 		s.markRecovery(ctx, state, ReasonCheckpointMissing)
@@ -328,8 +338,10 @@ func (s *Service) reconcileLoaded(ctx context.Context, state *Ledger) error {
 		expected := state.Revision
 		state.Revision++
 		state.Phase, state.Readiness, state.Reason = PhaseReady, ReadinessReady, ReasonNone
-		state.Operations[0].Phase = PhaseReady
-		state.Idempotency[0].Result.Phase = PhaseReady
+		if state.AuthoritySequence == 1 {
+			state.Operations[0].Phase = PhaseReady
+			state.Idempotency[0].Result.Phase = PhaseReady
+		}
 		if err := s.store.Save(ctx, expected, *state); err != nil {
 			s.setUnavailable(ReasonStoreUnavailable)
 			return ErrUnavailable
@@ -437,6 +449,12 @@ func statusFromLedger(state Ledger) Status {
 			pending++
 		}
 	}
+	currentGeneration := uint32(0)
+	for _, channel := range state.Channels {
+		if channel.CurrentGeneration > currentGeneration {
+			currentGeneration = channel.CurrentGeneration
+		}
+	}
 	return Status{
 		Version: ContractVersion, SchemaVersion: SchemaVersion,
 		RealmID: state.RealmID, RealmClass: state.RealmClass,
@@ -445,7 +463,7 @@ func statusFromLedger(state Ledger) Status {
 		Readiness: state.Readiness, Reason: state.Reason,
 		MemberCount: uint32(len(state.Members)), ChannelCount: uint32(len(state.Channels)),
 		PendingOperationCount: pending, AuditOutboxDepth: uint32(len(state.AuditOutbox)),
-		CurrentGeneration: 0, OperationDeadline: state.Operations[0].Deadline,
+		CurrentGeneration: currentGeneration, OperationDeadline: state.Operations[0].Deadline,
 	}
 }
 

@@ -40,6 +40,7 @@ type Client struct {
 type Service interface {
 	ardentsv1connect.NodeServiceClient
 	ardentsv1connect.AuthorityServiceClient
+	ardentsv1connect.ChannelDeliveryServiceClient
 	ardentsv1connect.ConfigurationServiceClient
 	ardentsv1connect.NetworkServiceClient
 	ardentsv1connect.WorkloadServiceClient
@@ -52,6 +53,7 @@ type Service interface {
 type services struct {
 	ardentsv1connect.NodeServiceClient
 	ardentsv1connect.AuthorityServiceClient
+	ardentsv1connect.ChannelDeliveryServiceClient
 	ardentsv1connect.ConfigurationServiceClient
 	ardentsv1connect.NetworkServiceClient
 	ardentsv1connect.WorkloadServiceClient
@@ -108,15 +110,16 @@ func (c *Client) TargetNodePrincipal() string {
 
 func NewService(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) Service {
 	return services{
-		NodeServiceClient:          ardentsv1connect.NewNodeServiceClient(httpClient, baseURL, opts...),
-		AuthorityServiceClient:     ardentsv1connect.NewAuthorityServiceClient(httpClient, baseURL, opts...),
-		ConfigurationServiceClient: ardentsv1connect.NewConfigurationServiceClient(httpClient, baseURL, opts...),
-		NetworkServiceClient:       ardentsv1connect.NewNetworkServiceClient(httpClient, baseURL, opts...),
-		WorkloadServiceClient:      ardentsv1connect.NewWorkloadServiceClient(httpClient, baseURL, opts...),
-		ContentServiceClient:       ardentsv1connect.NewContentServiceClient(httpClient, baseURL, opts...),
-		TransferServiceClient:      ardentsv1connect.NewTransferServiceClient(httpClient, baseURL, opts...),
-		RetentionServiceClient:     ardentsv1connect.NewRetentionServiceClient(httpClient, baseURL, opts...),
-		DiagnosticsServiceClient:   ardentsv1connect.NewDiagnosticsServiceClient(httpClient, baseURL, opts...),
+		NodeServiceClient:            ardentsv1connect.NewNodeServiceClient(httpClient, baseURL, opts...),
+		AuthorityServiceClient:       ardentsv1connect.NewAuthorityServiceClient(httpClient, baseURL, opts...),
+		ChannelDeliveryServiceClient: ardentsv1connect.NewChannelDeliveryServiceClient(httpClient, baseURL, opts...),
+		ConfigurationServiceClient:   ardentsv1connect.NewConfigurationServiceClient(httpClient, baseURL, opts...),
+		NetworkServiceClient:         ardentsv1connect.NewNetworkServiceClient(httpClient, baseURL, opts...),
+		WorkloadServiceClient:        ardentsv1connect.NewWorkloadServiceClient(httpClient, baseURL, opts...),
+		ContentServiceClient:         ardentsv1connect.NewContentServiceClient(httpClient, baseURL, opts...),
+		TransferServiceClient:        ardentsv1connect.NewTransferServiceClient(httpClient, baseURL, opts...),
+		RetentionServiceClient:       ardentsv1connect.NewRetentionServiceClient(httpClient, baseURL, opts...),
+		DiagnosticsServiceClient:     ardentsv1connect.NewDiagnosticsServiceClient(httpClient, baseURL, opts...),
 	}
 }
 

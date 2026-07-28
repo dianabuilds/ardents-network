@@ -3,8 +3,10 @@ package authority
 import (
 	"context"
 	"errors"
+	"time"
 
 	domain "ardents/internal/authority"
+	identityapi "ardents/internal/identity"
 	protocol "ardents/internal/localapi/protocol"
 	"ardents/internal/localapi/rpc"
 
@@ -14,7 +16,75 @@ import (
 type Service interface {
 	CreateOrReopen(context.Context, domain.Command, domain.CreateRequest) (domain.CreateResult, error)
 	Inspect(context.Context, domain.Command, domain.InspectRequest) (domain.Status, error)
+	IssueInitialGeneration(context.Context, domain.Command, domain.InitialGenerationRequest) (domain.InitialGenerationResult, error)
+	AcknowledgeInitialGeneration(context.Context, domain.Command, domain.InitialGenerationAcknowledgeRequest) (domain.InitialGenerationAcknowledgeResult, error)
 	Readiness() domain.Status
+}
+
+func (h *AuthorityEndpoint) IssueInitialGeneration(ctx context.Context, request *connect.Request[protocol.IssueInitialGenerationRequest]) (*connect.Response[protocol.IssueInitialGenerationResponse], error) {
+	return rpc.RespondContext(ctx, func(call rpc.Call) (*protocol.IssueInitialGenerationResponse, *rpc.Error) {
+		if h.service == nil {
+			return nil, authorityError("issue_initial_generation", domain.ErrUnavailable)
+		}
+		command, ok := authorityCommand(call)
+		if !ok {
+			return nil, authorityError("issue_initial_generation", domain.ErrPermissionDenied)
+		}
+		attestation, err := attestationFromWire(request.Msg.GetRecipientAttestation())
+		if err != nil || request.Msg.GetValidForSeconds() > uint64((30*24*time.Hour)/time.Second) {
+			return nil, authorityError("issue_initial_generation", domain.ErrInvalidArgument)
+		}
+		mutationContext, cancel := rpc.MutationContext(ctx)
+		defer cancel()
+		result, err := h.service.IssueInitialGeneration(mutationContext, command, domain.InitialGenerationRequest{
+			Version: request.Msg.GetVersion(), RequestID: request.Msg.GetRequestId(),
+			RealmID:              request.Msg.GetRealmId(),
+			ChannelClass:         identityapi.CapabilityScope(request.Msg.GetChannelClass()),
+			Permissions:          identityapi.CapabilityPermission(request.Msg.GetPermissions()),
+			RecipientAttestation: attestation,
+			ValidFor:             time.Duration(request.Msg.GetValidForSeconds()) * time.Second,
+		})
+		if err != nil {
+			return nil, authorityError("issue_initial_generation", err)
+		}
+		return &protocol.IssueInitialGenerationResponse{
+			Status:  &protocol.OperationStatus{State: domain.DeliveryPhaseIssued, Accepted: true},
+			RealmId: result.RealmID, OperationId: result.OperationID, DeliveryId: result.DeliveryID,
+			AuthoritySequence: result.AuthoritySequence, ChannelId: result.ChannelID[:],
+			Generation: result.Generation, Sealed: sealedToWire(result.Sealed),
+		}, nil
+	})
+}
+
+func (h *AuthorityEndpoint) AcknowledgeInitialGeneration(ctx context.Context, request *connect.Request[protocol.AcknowledgeInitialGenerationRequest]) (*connect.Response[protocol.AcknowledgeInitialGenerationResponse], error) {
+	return rpc.RespondContext(ctx, func(call rpc.Call) (*protocol.AcknowledgeInitialGenerationResponse, *rpc.Error) {
+		if h.service == nil {
+			return nil, authorityError("acknowledge_initial_generation", domain.ErrUnavailable)
+		}
+		command, ok := authorityCommand(call)
+		if !ok {
+			return nil, authorityError("acknowledge_initial_generation", domain.ErrPermissionDenied)
+		}
+		receipt, err := receiptFromWire(request.Msg.GetReceipt())
+		if err != nil {
+			return nil, authorityError("acknowledge_initial_generation", domain.ErrInvalidArgument)
+		}
+		mutationContext, cancel := rpc.MutationContext(ctx)
+		defer cancel()
+		result, err := h.service.AcknowledgeInitialGeneration(
+			mutationContext, command, domain.InitialGenerationAcknowledgeRequest{
+				Version: request.Msg.GetVersion(), RealmID: request.Msg.GetRealmId(), Receipt: receipt,
+			},
+		)
+		if err != nil {
+			return nil, authorityError("acknowledge_initial_generation", err)
+		}
+		return &protocol.AcknowledgeInitialGenerationResponse{
+			Status:  &protocol.OperationStatus{State: result.Phase, Accepted: true},
+			RealmId: result.RealmID, DeliveryId: result.DeliveryID,
+			AuthoritySequence: result.AuthoritySequence, Phase: result.Phase,
+		}, nil
+	})
 }
 
 type AuthorityEndpoint struct{ service Service }

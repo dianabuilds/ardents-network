@@ -23,6 +23,8 @@ const _ = connect.IsAtLeastVersion1_13_0
 const (
 	// AuthorityServiceName is the fully-qualified name of the AuthorityService service.
 	AuthorityServiceName = "ardents.v1.AuthorityService"
+	// ChannelDeliveryServiceName is the fully-qualified name of the ChannelDeliveryService service.
+	ChannelDeliveryServiceName = "ardents.v1.ChannelDeliveryService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -39,12 +41,26 @@ const (
 	// AuthorityServiceInspectRealmAuthorityProcedure is the fully-qualified name of the
 	// AuthorityService's InspectRealmAuthority RPC.
 	AuthorityServiceInspectRealmAuthorityProcedure = "/ardents.v1.AuthorityService/InspectRealmAuthority"
+	// AuthorityServiceIssueInitialGenerationProcedure is the fully-qualified name of the
+	// AuthorityService's IssueInitialGeneration RPC.
+	AuthorityServiceIssueInitialGenerationProcedure = "/ardents.v1.AuthorityService/IssueInitialGeneration"
+	// AuthorityServiceAcknowledgeInitialGenerationProcedure is the fully-qualified name of the
+	// AuthorityService's AcknowledgeInitialGeneration RPC.
+	AuthorityServiceAcknowledgeInitialGenerationProcedure = "/ardents.v1.AuthorityService/AcknowledgeInitialGeneration"
+	// ChannelDeliveryServicePrepareGenerationDeliveryProcedure is the fully-qualified name of the
+	// ChannelDeliveryService's PrepareGenerationDelivery RPC.
+	ChannelDeliveryServicePrepareGenerationDeliveryProcedure = "/ardents.v1.ChannelDeliveryService/PrepareGenerationDelivery"
+	// ChannelDeliveryServiceInstallGenerationDeliveryProcedure is the fully-qualified name of the
+	// ChannelDeliveryService's InstallGenerationDelivery RPC.
+	ChannelDeliveryServiceInstallGenerationDeliveryProcedure = "/ardents.v1.ChannelDeliveryService/InstallGenerationDelivery"
 )
 
 // AuthorityServiceClient is a client for the ardents.v1.AuthorityService service.
 type AuthorityServiceClient interface {
 	CreateRealmAuthority(context.Context, *connect.Request[protocol.CreateRealmAuthorityRequest]) (*connect.Response[protocol.CreateRealmAuthorityResponse], error)
 	InspectRealmAuthority(context.Context, *connect.Request[protocol.InspectRealmAuthorityRequest]) (*connect.Response[protocol.InspectRealmAuthorityResponse], error)
+	IssueInitialGeneration(context.Context, *connect.Request[protocol.IssueInitialGenerationRequest]) (*connect.Response[protocol.IssueInitialGenerationResponse], error)
+	AcknowledgeInitialGeneration(context.Context, *connect.Request[protocol.AcknowledgeInitialGenerationRequest]) (*connect.Response[protocol.AcknowledgeInitialGenerationResponse], error)
 }
 
 // NewAuthorityServiceClient constructs a client for the ardents.v1.AuthorityService service. By
@@ -70,13 +86,27 @@ func NewAuthorityServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(authorityServiceMethods.ByName("InspectRealmAuthority")),
 			connect.WithClientOptions(opts...),
 		),
+		issueInitialGeneration: connect.NewClient[protocol.IssueInitialGenerationRequest, protocol.IssueInitialGenerationResponse](
+			httpClient,
+			baseURL+AuthorityServiceIssueInitialGenerationProcedure,
+			connect.WithSchema(authorityServiceMethods.ByName("IssueInitialGeneration")),
+			connect.WithClientOptions(opts...),
+		),
+		acknowledgeInitialGeneration: connect.NewClient[protocol.AcknowledgeInitialGenerationRequest, protocol.AcknowledgeInitialGenerationResponse](
+			httpClient,
+			baseURL+AuthorityServiceAcknowledgeInitialGenerationProcedure,
+			connect.WithSchema(authorityServiceMethods.ByName("AcknowledgeInitialGeneration")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // authorityServiceClient implements AuthorityServiceClient.
 type authorityServiceClient struct {
-	createRealmAuthority  *connect.Client[protocol.CreateRealmAuthorityRequest, protocol.CreateRealmAuthorityResponse]
-	inspectRealmAuthority *connect.Client[protocol.InspectRealmAuthorityRequest, protocol.InspectRealmAuthorityResponse]
+	createRealmAuthority         *connect.Client[protocol.CreateRealmAuthorityRequest, protocol.CreateRealmAuthorityResponse]
+	inspectRealmAuthority        *connect.Client[protocol.InspectRealmAuthorityRequest, protocol.InspectRealmAuthorityResponse]
+	issueInitialGeneration       *connect.Client[protocol.IssueInitialGenerationRequest, protocol.IssueInitialGenerationResponse]
+	acknowledgeInitialGeneration *connect.Client[protocol.AcknowledgeInitialGenerationRequest, protocol.AcknowledgeInitialGenerationResponse]
 }
 
 // CreateRealmAuthority calls ardents.v1.AuthorityService.CreateRealmAuthority.
@@ -89,10 +119,22 @@ func (c *authorityServiceClient) InspectRealmAuthority(ctx context.Context, req 
 	return c.inspectRealmAuthority.CallUnary(ctx, req)
 }
 
+// IssueInitialGeneration calls ardents.v1.AuthorityService.IssueInitialGeneration.
+func (c *authorityServiceClient) IssueInitialGeneration(ctx context.Context, req *connect.Request[protocol.IssueInitialGenerationRequest]) (*connect.Response[protocol.IssueInitialGenerationResponse], error) {
+	return c.issueInitialGeneration.CallUnary(ctx, req)
+}
+
+// AcknowledgeInitialGeneration calls ardents.v1.AuthorityService.AcknowledgeInitialGeneration.
+func (c *authorityServiceClient) AcknowledgeInitialGeneration(ctx context.Context, req *connect.Request[protocol.AcknowledgeInitialGenerationRequest]) (*connect.Response[protocol.AcknowledgeInitialGenerationResponse], error) {
+	return c.acknowledgeInitialGeneration.CallUnary(ctx, req)
+}
+
 // AuthorityServiceHandler is an implementation of the ardents.v1.AuthorityService service.
 type AuthorityServiceHandler interface {
 	CreateRealmAuthority(context.Context, *connect.Request[protocol.CreateRealmAuthorityRequest]) (*connect.Response[protocol.CreateRealmAuthorityResponse], error)
 	InspectRealmAuthority(context.Context, *connect.Request[protocol.InspectRealmAuthorityRequest]) (*connect.Response[protocol.InspectRealmAuthorityResponse], error)
+	IssueInitialGeneration(context.Context, *connect.Request[protocol.IssueInitialGenerationRequest]) (*connect.Response[protocol.IssueInitialGenerationResponse], error)
+	AcknowledgeInitialGeneration(context.Context, *connect.Request[protocol.AcknowledgeInitialGenerationRequest]) (*connect.Response[protocol.AcknowledgeInitialGenerationResponse], error)
 }
 
 // NewAuthorityServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -114,12 +156,28 @@ func NewAuthorityServiceHandler(svc AuthorityServiceHandler, opts ...connect.Han
 		connect.WithSchema(authorityServiceMethods.ByName("InspectRealmAuthority")),
 		connect.WithHandlerOptions(opts...),
 	)
+	authorityServiceIssueInitialGenerationHandler := connect.NewUnaryHandler(
+		AuthorityServiceIssueInitialGenerationProcedure,
+		svc.IssueInitialGeneration,
+		connect.WithSchema(authorityServiceMethods.ByName("IssueInitialGeneration")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authorityServiceAcknowledgeInitialGenerationHandler := connect.NewUnaryHandler(
+		AuthorityServiceAcknowledgeInitialGenerationProcedure,
+		svc.AcknowledgeInitialGeneration,
+		connect.WithSchema(authorityServiceMethods.ByName("AcknowledgeInitialGeneration")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/ardents.v1.AuthorityService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AuthorityServiceCreateRealmAuthorityProcedure:
 			authorityServiceCreateRealmAuthorityHandler.ServeHTTP(w, r)
 		case AuthorityServiceInspectRealmAuthorityProcedure:
 			authorityServiceInspectRealmAuthorityHandler.ServeHTTP(w, r)
+		case AuthorityServiceIssueInitialGenerationProcedure:
+			authorityServiceIssueInitialGenerationHandler.ServeHTTP(w, r)
+		case AuthorityServiceAcknowledgeInitialGenerationProcedure:
+			authorityServiceAcknowledgeInitialGenerationHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -135,4 +193,109 @@ func (UnimplementedAuthorityServiceHandler) CreateRealmAuthority(context.Context
 
 func (UnimplementedAuthorityServiceHandler) InspectRealmAuthority(context.Context, *connect.Request[protocol.InspectRealmAuthorityRequest]) (*connect.Response[protocol.InspectRealmAuthorityResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.AuthorityService.InspectRealmAuthority is not implemented"))
+}
+
+func (UnimplementedAuthorityServiceHandler) IssueInitialGeneration(context.Context, *connect.Request[protocol.IssueInitialGenerationRequest]) (*connect.Response[protocol.IssueInitialGenerationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.AuthorityService.IssueInitialGeneration is not implemented"))
+}
+
+func (UnimplementedAuthorityServiceHandler) AcknowledgeInitialGeneration(context.Context, *connect.Request[protocol.AcknowledgeInitialGenerationRequest]) (*connect.Response[protocol.AcknowledgeInitialGenerationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.AuthorityService.AcknowledgeInitialGeneration is not implemented"))
+}
+
+// ChannelDeliveryServiceClient is a client for the ardents.v1.ChannelDeliveryService service.
+type ChannelDeliveryServiceClient interface {
+	PrepareGenerationDelivery(context.Context, *connect.Request[protocol.PrepareGenerationDeliveryRequest]) (*connect.Response[protocol.PrepareGenerationDeliveryResponse], error)
+	InstallGenerationDelivery(context.Context, *connect.Request[protocol.InstallGenerationDeliveryRequest]) (*connect.Response[protocol.InstallGenerationDeliveryResponse], error)
+}
+
+// NewChannelDeliveryServiceClient constructs a client for the ardents.v1.ChannelDeliveryService
+// service. By default, it uses the Connect protocol with the binary Protobuf Codec, asks for
+// gzipped responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply
+// the connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewChannelDeliveryServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) ChannelDeliveryServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	channelDeliveryServiceMethods := protocol.File_api_ardents_v1_authority_proto.Services().ByName("ChannelDeliveryService").Methods()
+	return &channelDeliveryServiceClient{
+		prepareGenerationDelivery: connect.NewClient[protocol.PrepareGenerationDeliveryRequest, protocol.PrepareGenerationDeliveryResponse](
+			httpClient,
+			baseURL+ChannelDeliveryServicePrepareGenerationDeliveryProcedure,
+			connect.WithSchema(channelDeliveryServiceMethods.ByName("PrepareGenerationDelivery")),
+			connect.WithClientOptions(opts...),
+		),
+		installGenerationDelivery: connect.NewClient[protocol.InstallGenerationDeliveryRequest, protocol.InstallGenerationDeliveryResponse](
+			httpClient,
+			baseURL+ChannelDeliveryServiceInstallGenerationDeliveryProcedure,
+			connect.WithSchema(channelDeliveryServiceMethods.ByName("InstallGenerationDelivery")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// channelDeliveryServiceClient implements ChannelDeliveryServiceClient.
+type channelDeliveryServiceClient struct {
+	prepareGenerationDelivery *connect.Client[protocol.PrepareGenerationDeliveryRequest, protocol.PrepareGenerationDeliveryResponse]
+	installGenerationDelivery *connect.Client[protocol.InstallGenerationDeliveryRequest, protocol.InstallGenerationDeliveryResponse]
+}
+
+// PrepareGenerationDelivery calls ardents.v1.ChannelDeliveryService.PrepareGenerationDelivery.
+func (c *channelDeliveryServiceClient) PrepareGenerationDelivery(ctx context.Context, req *connect.Request[protocol.PrepareGenerationDeliveryRequest]) (*connect.Response[protocol.PrepareGenerationDeliveryResponse], error) {
+	return c.prepareGenerationDelivery.CallUnary(ctx, req)
+}
+
+// InstallGenerationDelivery calls ardents.v1.ChannelDeliveryService.InstallGenerationDelivery.
+func (c *channelDeliveryServiceClient) InstallGenerationDelivery(ctx context.Context, req *connect.Request[protocol.InstallGenerationDeliveryRequest]) (*connect.Response[protocol.InstallGenerationDeliveryResponse], error) {
+	return c.installGenerationDelivery.CallUnary(ctx, req)
+}
+
+// ChannelDeliveryServiceHandler is an implementation of the ardents.v1.ChannelDeliveryService
+// service.
+type ChannelDeliveryServiceHandler interface {
+	PrepareGenerationDelivery(context.Context, *connect.Request[protocol.PrepareGenerationDeliveryRequest]) (*connect.Response[protocol.PrepareGenerationDeliveryResponse], error)
+	InstallGenerationDelivery(context.Context, *connect.Request[protocol.InstallGenerationDeliveryRequest]) (*connect.Response[protocol.InstallGenerationDeliveryResponse], error)
+}
+
+// NewChannelDeliveryServiceHandler builds an HTTP handler from the service implementation. It
+// returns the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewChannelDeliveryServiceHandler(svc ChannelDeliveryServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	channelDeliveryServiceMethods := protocol.File_api_ardents_v1_authority_proto.Services().ByName("ChannelDeliveryService").Methods()
+	channelDeliveryServicePrepareGenerationDeliveryHandler := connect.NewUnaryHandler(
+		ChannelDeliveryServicePrepareGenerationDeliveryProcedure,
+		svc.PrepareGenerationDelivery,
+		connect.WithSchema(channelDeliveryServiceMethods.ByName("PrepareGenerationDelivery")),
+		connect.WithHandlerOptions(opts...),
+	)
+	channelDeliveryServiceInstallGenerationDeliveryHandler := connect.NewUnaryHandler(
+		ChannelDeliveryServiceInstallGenerationDeliveryProcedure,
+		svc.InstallGenerationDelivery,
+		connect.WithSchema(channelDeliveryServiceMethods.ByName("InstallGenerationDelivery")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/ardents.v1.ChannelDeliveryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case ChannelDeliveryServicePrepareGenerationDeliveryProcedure:
+			channelDeliveryServicePrepareGenerationDeliveryHandler.ServeHTTP(w, r)
+		case ChannelDeliveryServiceInstallGenerationDeliveryProcedure:
+			channelDeliveryServiceInstallGenerationDeliveryHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedChannelDeliveryServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedChannelDeliveryServiceHandler struct{}
+
+func (UnimplementedChannelDeliveryServiceHandler) PrepareGenerationDelivery(context.Context, *connect.Request[protocol.PrepareGenerationDeliveryRequest]) (*connect.Response[protocol.PrepareGenerationDeliveryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.ChannelDeliveryService.PrepareGenerationDelivery is not implemented"))
+}
+
+func (UnimplementedChannelDeliveryServiceHandler) InstallGenerationDelivery(context.Context, *connect.Request[protocol.InstallGenerationDeliveryRequest]) (*connect.Response[protocol.InstallGenerationDeliveryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.ChannelDeliveryService.InstallGenerationDelivery is not implemented"))
 }

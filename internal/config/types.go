@@ -61,6 +61,7 @@ type APIConfig struct {
 
 type PrivacyConfig struct {
 	Required                 bool                 `json:"required"`
+	DeliveryEnabled          bool                 `json:"delivery_enabled"`
 	ChannelGrantStore        string               `json:"channel_grant_store"`
 	ChannelGrantStoreKeyFile string               `json:"channel_grant_store_key_file"`
 	ReplayKeyFile            string               `json:"replay_key_file"`
@@ -157,6 +158,7 @@ type PolicyConfig struct {
 	DeniedRouteSchemes              []string                               `json:"denied_route_schemes"`
 	DisablePrivateChannelGrantUse   bool                                   `json:"disable_private_channel_grant_use"`
 	DisableRealmAuthorityCreation   bool                                   `json:"disable_realm_authority_creation"`
+	DisableRealmChannelDelivery     bool                                   `json:"disable_realm_channel_delivery"`
 	DeniedChannelGrantScopes        []string                               `json:"denied_channel_grant_scopes"`
 	DisableLocalBlobRetention       bool                                   `json:"disable_local_blob_retention"`
 	DisableRelayBlobRetention       bool                                   `json:"disable_relay_blob_retention"`

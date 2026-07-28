@@ -150,6 +150,17 @@ func (s *Service) AllowRealmAuthorityCreation() error {
 	return s.applyDecisionLocked(Deny("policy_realm_authority_denied", "Realm Authority creation is disabled by policy"))
 }
 
+// AllowRealmChannelDelivery is the Product Policy gate for recipient-bound
+// generation issue and acknowledgement mutations.
+func (s *Service) AllowRealmChannelDelivery() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.cfg.DisableRealmChannelDelivery {
+		return nil
+	}
+	return s.applyDecisionLocked(Deny("policy_realm_channel_delivery_denied", "Realm channel delivery is disabled by policy"))
+}
+
 func (s *Service) Snapshot() Snapshot {
 	return Snapshot{State: s.State(), Reason: s.Reason()}
 }

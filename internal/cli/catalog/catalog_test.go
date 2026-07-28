@@ -11,7 +11,7 @@ import (
 func TestClosedCatalogueContainsExactlyCurrentLeafCommands(t *testing.T) {
 	specs := catalog.Commands()
 
-	require.Len(t, specs, 70)
+	require.Len(t, specs, 74)
 	require.NoError(t, catalog.Validate(specs, nil))
 
 	ids := make(map[string]struct{}, len(specs))
@@ -157,6 +157,8 @@ func TestCatalogueContainsResearchPacketLeafPaths(t *testing.T) {
 		"diagnostics snapshot", "diagnostics health", "diagnostics pending", "diagnostics explain", "diagnostics events",
 		"config show", "config reload",
 		"authority create", "authority inspect",
+		"authority delivery prepare", "authority delivery issue",
+		"authority delivery install", "authority delivery acknowledge",
 		"identity principal create", "identity principal import", "identity principal show",
 		"identity device create", "identity device show", "identity device revoke",
 		"identity enroll", "identity grant list", "identity grant issue", "identity grant revoke",
@@ -215,6 +217,7 @@ func TestEvidenceOwnershipHandoffCoversEveryLeaf(t *testing.T) {
 	}
 	require.Equal(t, map[string]int{
 		"CGA-01": 2,
+		"CGA-02": 4,
 		"OCS-01": 12,
 		"OCS-02": 20,
 		"OCS-03": 9,

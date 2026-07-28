@@ -35,6 +35,11 @@ func validateGrant(grant identityapi.CapabilityGrant, issuerPublic ed25519.Publi
 	return verifyGrantSignature(grant, issuerPublic)
 }
 
+// VerifyGrant validates the complete versioned grant and issuer signature.
+func VerifyGrant(grant identityapi.CapabilityGrant, issuerPublic ed25519.PublicKey) error {
+	return validateGrant(grant, issuerPublic)
+}
+
 func validateRevocation(rev identityapi.CapabilityRevocation, issuerPublic ed25519.PublicKey) error {
 	if rev.Version != 1 || zeroID(rev.GrantID) || rev.RevokedAt.IsZero() ||
 		rev.RevokedAt.Nanosecond() != 0 {

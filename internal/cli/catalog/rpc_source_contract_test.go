@@ -48,6 +48,8 @@ func productionHandler(t *testing.T, path []string) (string, string) {
 		return directory, handler
 	}
 	switch group + " " + path[1] {
+	case "authority delivery":
+		return directory, calledFunctionForToken(t, directory, "delivery.go", handler, path[2])
 	case "network resolve", "network records":
 		return directory, calledFunctionForToken(t, directory, "records.go", handler, path[2])
 	case "data objects":

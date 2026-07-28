@@ -30,17 +30,22 @@ const (
 	RealmClassProduction = "production"
 	MaxOperationLifetime = 24 * time.Hour
 
-	ActionCreate  = "realm.authority.create"
-	ActionInspect = "realm.channel.audit.read"
+	ActionCreate              = "realm.authority.create"
+	ActionInspect             = "realm.channel.audit.read"
+	ActionIssueDelivery       = "realm.channel.delivery.issue"
+	ActionAcknowledgeDelivery = "realm.channel.delivery.acknowledge"
 
-	ResourceKindAuthorityInstance = "realm-authority-instance"
-	ResourceKindRealm             = "realm"
-	PrimaryAuthorityInstance      = "primary"
+	ResourceKindAuthorityInstance  = "realm-authority-instance"
+	ResourceKindRealm              = "realm"
+	ResourceKindGenerationDelivery = "realm-channel-delivery"
+	PrimaryAuthorityInstance       = "primary"
 
 	PhaseUninitialized        = "uninitialized"
 	PhaseCheckpointing        = "checkpointing"
 	PhaseReady                = "ready"
 	PhaseRecoveryRequired     = "recovery_required"
+	DeliveryPhaseIssued       = "issued"
+	DeliveryPhaseInstalled    = "installed"
 	ReadinessReady            = "ready"
 	ReadinessUnavailable      = "unavailable"
 	ReadinessDegraded         = "degraded"
@@ -56,6 +61,7 @@ const (
 	ReasonCheckpointMissing     = "checkpoint_head_missing"
 	ReasonCheckpointMismatch    = "checkpoint_head_mismatch"
 	ReasonPersistedStateInvalid = "authority_state_invalid"
+	ReasonDeliveryPending       = "authority_delivery_pending"
 )
 
 var (
@@ -73,6 +79,7 @@ var (
 	realmIDPattern     = regexp.MustCompile(`^r1_[0-9a-f]{32}$`)
 	operationIDPattern = regexp.MustCompile(`^rao1_[0-9a-f]{32}$`)
 	auditIDPattern     = regexp.MustCompile(`^raa1_[0-9a-f]{32}$`)
+	deliveryIDPattern  = regexp.MustCompile(`^rad1_[0-9a-f]{32}$`)
 	digestPattern      = regexp.MustCompile(`^(ac1|aa1)_[0-9a-f]{64}$`)
 )
 

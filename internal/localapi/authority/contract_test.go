@@ -31,6 +31,20 @@ func TestAuthorityProceduresHaveExactDirectOperatorContracts(t *testing.T) {
 	require.True(t, identitycontract.IsRegisteredAction(identitycontract.InterfaceOperator, domain.ActionInspect))
 	require.False(t, identitycontract.IsRegisteredAction(identitycontract.InterfaceApplication, domain.ActionCreate))
 	require.False(t, identitycontract.IsRegisteredAction(identitycontract.InterfaceApplication, domain.ActionInspect))
+
+	for procedure, action := range map[string]string{
+		ardentsv1connect.AuthorityServiceIssueInitialGenerationProcedure:          domain.ActionIssueDelivery,
+		ardentsv1connect.AuthorityServiceAcknowledgeInitialGenerationProcedure:    domain.ActionAcknowledgeDelivery,
+		ardentsv1connect.ChannelDeliveryServicePrepareGenerationDeliveryProcedure: "realm.channel.delivery.prepare",
+		ardentsv1connect.ChannelDeliveryServiceInstallGenerationDeliveryProcedure: "realm.channel.delivery.install",
+	} {
+		rule, registered := localauth.RuleForProcedure(procedure)
+		require.True(t, registered, procedure)
+		require.Equal(t, action, rule.Action)
+		require.True(t, rule.Mutating)
+		require.True(t, identitycontract.IsRegisteredAction(identitycontract.InterfaceOperator, action))
+		require.False(t, identitycontract.IsRegisteredAction(identitycontract.InterfaceApplication, action))
+	}
 }
 
 func TestCanonicalAuthorityResourcesAreExactAndBounded(t *testing.T) {
@@ -77,4 +91,50 @@ func TestApplicationProtocolHasNoAuthorityService(t *testing.T) {
 		protoreflect.FullName("ardents.application.v1.AuthorityService"),
 	)
 	require.ErrorIs(t, err, protoregistry.NotFound)
+	_, err = protoregistry.GlobalFiles.FindDescriptorByName(
+		protoreflect.FullName("ardents.application.v1.ChannelDeliveryService"),
+	)
+	require.ErrorIs(t, err, protoregistry.NotFound)
+}
+
+func TestCanonicalInitialGenerationResourcesAreExactAndRejectNestedUnknownFields(t *testing.T) {
+	realmID := "r1_00112233445566778899aabbccddeeff"
+	requestID := "delivery-001"
+	target, err := CanonicalizeResource(
+		ardentsv1connect.AuthorityServiceIssueInitialGenerationProcedure,
+		&protocol.IssueInitialGenerationRequest{
+			Version: domain.ContractVersion, RealmId: realmID, RequestId: requestID,
+			RecipientAttestation: &protocol.GenerationDeliveryAttestation{},
+		},
+		domain.ResourceKindGenerationDelivery,
+	)
+	require.NoError(t, err)
+	require.Equal(t, domain.InitialGenerationDeliveryResource(realmID, requestID), target.ID)
+
+	operationID := "rao1_00112233445566778899aabbccddeeff"
+	deliveryID := "rad1_00112233445566778899aabbccddeeff"
+	target, err = CanonicalizeResource(
+		ardentsv1connect.AuthorityServiceAcknowledgeInitialGenerationProcedure,
+		&protocol.AcknowledgeInitialGenerationRequest{
+			Version: domain.ContractVersion, RealmId: realmID, OperationId: operationID,
+			Receipt: &protocol.GenerationDeliveryReceipt{DeliveryId: deliveryID},
+		},
+		domain.ResourceKindGenerationDelivery,
+	)
+	require.NoError(t, err)
+	expected, valid := domain.GenerationDeliveryResource(realmID, operationID, deliveryID)
+	require.True(t, valid)
+	require.Equal(t, expected, target.ID)
+
+	unknown := &protocol.GenerationDeliveryAttestation{}
+	unknown.ProtoReflect().SetUnknown([]byte{0x98, 0x06, 0x01})
+	_, err = CanonicalizeResource(
+		ardentsv1connect.AuthorityServiceIssueInitialGenerationProcedure,
+		&protocol.IssueInitialGenerationRequest{
+			Version: domain.ContractVersion, RealmId: realmID, RequestId: requestID,
+			RecipientAttestation: unknown,
+		},
+		domain.ResourceKindGenerationDelivery,
+	)
+	require.Error(t, err)
 }

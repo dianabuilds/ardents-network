@@ -30,6 +30,8 @@ func (c *Command) Run(ctx context.Context, args []string) int {
 		return c.create(ctx, args[1:])
 	case "inspect":
 		return c.inspect(ctx, args[1:])
+	case "delivery":
+		return c.delivery(ctx, args[1:])
 	default:
 		output.Writef(c.ctx.Renderer.Err, "ardentsctl authority: unknown subcommand %q\n", args[0])
 		renderUsage(c.ctx.Renderer.Err)
@@ -38,7 +40,7 @@ func (c *Command) Run(ctx context.Context, args []string) int {
 }
 
 func renderUsage(writer io.Writer) {
-	output.Writeln(writer, "Usage: ardentsctl [global flags] authority <create|inspect>")
+	output.Writeln(writer, "Usage: ardentsctl [global flags] authority <create|inspect|delivery>")
 }
 
 func (c *Command) create(ctx context.Context, args []string) int {

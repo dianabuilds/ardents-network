@@ -26,6 +26,43 @@ service AuthorityService {
       resource_kind: "realm"
     };
   }
+  rpc IssueInitialGeneration(IssueInitialGenerationRequest) returns (IssueInitialGenerationResponse) {
+    option (operator_access) = {
+      action: "realm.channel.delivery.issue"
+      domain: "authority"
+      resource_kind: "realm-channel-delivery"
+      mutating: true
+    };
+  }
+  rpc AcknowledgeInitialGeneration(AcknowledgeInitialGenerationRequest) returns (AcknowledgeInitialGenerationResponse) {
+    option (operator_access) = {
+      action: "realm.channel.delivery.acknowledge"
+      domain: "authority"
+      resource_kind: "realm-channel-delivery"
+      mutating: true
+    };
+  }
+}
+
+// ChannelDeliveryService is owned by the recipient member Node and is
+// available only on its protected Operator Interface.
+service ChannelDeliveryService {
+  rpc PrepareGenerationDelivery(PrepareGenerationDeliveryRequest) returns (PrepareGenerationDeliveryResponse) {
+    option (operator_access) = {
+      action: "realm.channel.delivery.prepare"
+      domain: "authority"
+      resource_kind: "principal"
+      mutating: true
+    };
+  }
+  rpc InstallGenerationDelivery(InstallGenerationDeliveryRequest) returns (InstallGenerationDeliveryResponse) {
+    option (operator_access) = {
+      action: "realm.channel.delivery.install"
+      domain: "authority"
+      resource_kind: "realm-channel-delivery"
+      mutating: true
+    };
+  }
 }
 
 message CreateRealmAuthorityRequest {
@@ -67,4 +104,112 @@ message CreateRealmAuthorityResponse {
 message InspectRealmAuthorityResponse {
   OperationStatus status = 1;
   AuthorityStatusSnapshot authority = 2;
+}
+
+message GenerationDeliveryAttestation {
+  uint32 version = 1;
+  string subject_principal = 2;
+  bytes delivery_public_key = 3;
+  google.protobuf.Timestamp not_before = 4;
+  google.protobuf.Timestamp not_after = 5;
+  bytes signature = 6;
+  bytes identity_public_key = 7;
+}
+
+message GenerationDeliveryBinding {
+  uint32 version = 1;
+  string realm_id = 2;
+  string authority_principal = 3;
+  uint64 authority_epoch = 4;
+  uint64 authority_sequence = 5;
+  string delivery_id = 6;
+  bytes channel_id = 7;
+  string channel_class = 8;
+  uint32 generation = 9;
+  string recipient_principal = 10;
+  google.protobuf.Timestamp expires_at = 11;
+  string delivery_key_digest = 12;
+  string operation_id = 13;
+}
+
+message SealedGenerationDelivery {
+  GenerationDeliveryBinding binding = 1;
+  bytes envelope = 2;
+  string envelope_digest = 3;
+}
+
+message GenerationDeliveryReceipt {
+  uint32 version = 1;
+  string delivery_id = 2;
+  string envelope_digest = 3;
+  uint64 authority_sequence = 4;
+  bytes channel_id = 5;
+  uint32 generation = 6;
+  string recipient_principal = 7;
+  string phase = 8;
+  google.protobuf.Timestamp created_at = 9;
+  bytes mac = 10;
+  string realm_id = 11;
+  string authority_principal = 12;
+  uint64 authority_epoch = 13;
+  string operation_id = 14;
+  string channel_class = 15;
+  string delivery_key_digest = 16;
+}
+
+message IssueInitialGenerationRequest {
+  uint32 version = 1;
+  string request_id = 2;
+  string realm_id = 3;
+  string channel_class = 4;
+  uint32 permissions = 5;
+  GenerationDeliveryAttestation recipient_attestation = 6;
+  uint64 valid_for_seconds = 7;
+}
+
+message IssueInitialGenerationResponse {
+  OperationStatus status = 1;
+  string realm_id = 2;
+  string operation_id = 3;
+  string delivery_id = 4;
+  uint64 authority_sequence = 5;
+  bytes channel_id = 6;
+  uint32 generation = 7;
+  SealedGenerationDelivery sealed = 8;
+}
+
+message AcknowledgeInitialGenerationRequest {
+  uint32 version = 1;
+  string realm_id = 2;
+  GenerationDeliveryReceipt receipt = 3;
+  string operation_id = 4;
+}
+
+message AcknowledgeInitialGenerationResponse {
+  OperationStatus status = 1;
+  string realm_id = 2;
+  string delivery_id = 3;
+  uint64 authority_sequence = 4;
+  string phase = 5;
+}
+
+message PrepareGenerationDeliveryRequest {
+  uint32 version = 1;
+  string subject_principal = 2;
+  uint64 valid_for_seconds = 3;
+}
+
+message PrepareGenerationDeliveryResponse {
+  OperationStatus status = 1;
+  GenerationDeliveryAttestation attestation = 2;
+}
+
+message InstallGenerationDeliveryRequest {
+  uint32 version = 1;
+  SealedGenerationDelivery sealed = 2;
+}
+
+message InstallGenerationDeliveryResponse {
+  OperationStatus status = 1;
+  GenerationDeliveryReceipt receipt = 2;
 }

@@ -301,7 +301,17 @@ func trustedPrincipalConfig(t *testing.T, purposes ...identitytrust.Purpose) Tru
 func TestValidateRejectsDormantPrivacyMaterial(t *testing.T) {
 	doc := Defaults()
 	doc.Privacy.Subject = "p_subject"
-	require.ErrorContains(t, Validate(doc), "privacy.required=true")
+	require.ErrorContains(t, Validate(doc), "privacy.delivery_enabled=true")
+}
+
+func TestValidateAcceptsDeliveryOnlyPrivacyBootstrap(t *testing.T) {
+	doc := Defaults()
+	doc.Trust.Principals = []TrustedPrincipalConfig{trustedPrincipalConfig(t, "channel.issue")}
+	doc.Privacy = PrivacyConfig{
+		DeliveryEnabled: true, ChannelGrantStore: "channel-grants.db",
+		ChannelGrantStoreKeyFile: "channel-grants.key", Subject: "p_subject",
+	}
+	require.NoError(t, Validate(doc))
 }
 
 func TestValidateRejectsRelativeAPISocketPath(t *testing.T) {

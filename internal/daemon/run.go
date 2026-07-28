@@ -102,6 +102,7 @@ func Run(localAPI LocalAPIHandlerFactory, applicationAPI ApplicationAPIHandlerFa
 	if err != nil {
 		return fmt.Errorf("construct identity access service: %w", err)
 	}
+	process.ChannelDelivery = cfg.ChannelDelivery
 	n := process.Node
 
 	if err := n.Start(ctx); err != nil {

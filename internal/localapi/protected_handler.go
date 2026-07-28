@@ -30,6 +30,7 @@ func newProtectedMux(identityPath string, identity, principal http.Handler) http
 	mux.Handle(identityPath, identity)
 	mux.Handle("/ardents.v1.NodeService/", principal)
 	mux.Handle("/ardents.v1.AuthorityService/", principal)
+	mux.Handle("/ardents.v1.ChannelDeliveryService/", principal)
 	mux.Handle("/ardents.v1.ConfigurationService/", principal)
 	mux.Handle("/ardents.v1.NetworkService/", principal)
 	mux.Handle("/ardents.v1.DiagnosticsService/", principal)

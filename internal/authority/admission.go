@@ -2,6 +2,13 @@ package authority
 
 import "context"
 
+import (
+	"time"
+
+	identityapi "ardents/internal/identity"
+	identitycapability "ardents/internal/identity/capability"
+)
+
 type Command struct {
 	Actor, Effective                 string
 	Action, ResourceKind, ResourceID string
@@ -30,4 +37,40 @@ type InspectRequest struct {
 
 type ProductPolicy interface {
 	AdmitRealmGenesis(context.Context, Command) error
+	AdmitInitialGeneration(context.Context, Command) error
+}
+
+type InitialGenerationRequest struct {
+	Version              uint32
+	RequestID            string
+	RealmID              string
+	ChannelClass         identityapi.CapabilityScope
+	Permissions          identityapi.CapabilityPermission
+	RecipientAttestation identityapi.CapabilityDeliveryAttestation
+	ValidFor             time.Duration
+}
+
+type InitialGenerationResult struct {
+	Version           uint32
+	RealmID           string
+	OperationID       string
+	DeliveryID        string
+	AuthoritySequence uint64
+	ChannelID         [16]byte
+	Generation        uint32
+	Sealed            identitycapability.SealedGenerationDelivery
+}
+
+type InitialGenerationAcknowledgeRequest struct {
+	Version uint32
+	RealmID string
+	Receipt identitycapability.GenerationDeliveryReceipt
+}
+
+type InitialGenerationAcknowledgeResult struct {
+	Version           uint32
+	RealmID           string
+	DeliveryID        string
+	AuthoritySequence uint64
+	Phase             string
 }

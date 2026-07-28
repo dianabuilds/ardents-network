@@ -145,22 +145,38 @@ func validateSocketPath(field, value string) error {
 }
 
 func validatePrivacy(cfg PrivacyConfig, trust TrustConfig) error {
-	if !cfg.Required {
+	if !cfg.Required && !cfg.DeliveryEnabled {
 		if cfg.ChannelGrantStore != "" || cfg.ChannelGrantStoreKeyFile != "" || cfg.ReplayKeyFile != "" ||
 			cfg.Subject != "" || cfg.Discovery.Reference != "" ||
 			cfg.Discovery.ReplayPath != "" || cfg.Data.Reference != "" || cfg.Data.ReplayPath != "" {
-			return fmt.Errorf("privacy material requires privacy.required=true")
+			return fmt.Errorf("privacy material requires privacy.required=true or privacy.delivery_enabled=true")
 		}
+		return nil
+	}
+	deliveryRequired := []struct {
+		path  string
+		value string
+	}{
+		{"privacy.channel_grant_store", cfg.ChannelGrantStore},
+		{"privacy.channel_grant_store_key_file", cfg.ChannelGrantStoreKeyFile},
+		{"privacy.subject", cfg.Subject},
+	}
+	for _, field := range deliveryRequired {
+		if strings.TrimSpace(field.value) == "" {
+			return fmt.Errorf("%s is required when privacy delivery is enabled", field.path)
+		}
+	}
+	if !trustHasPurpose(trust, identitytrust.PurposeChannelIssue) {
+		return fmt.Errorf("trust.principals requires at least one channel.issue purpose when privacy delivery is enabled")
+	}
+	if !cfg.Required {
 		return nil
 	}
 	required := []struct {
 		path  string
 		value string
 	}{
-		{"privacy.channel_grant_store", cfg.ChannelGrantStore},
-		{"privacy.channel_grant_store_key_file", cfg.ChannelGrantStoreKeyFile},
 		{"privacy.replay_key_file", cfg.ReplayKeyFile},
-		{"privacy.subject", cfg.Subject},
 		{"privacy.discovery.reference", cfg.Discovery.Reference},
 		{"privacy.discovery.replay_path", cfg.Discovery.ReplayPath},
 		{"privacy.data.reference", cfg.Data.Reference},
@@ -170,9 +186,6 @@ func validatePrivacy(cfg PrivacyConfig, trust TrustConfig) error {
 		if strings.TrimSpace(field.value) == "" {
 			return fmt.Errorf("%s is required when privacy.required=true", field.path)
 		}
-	}
-	if !trustHasPurpose(trust, identitytrust.PurposeChannelIssue) {
-		return fmt.Errorf("trust.principals requires at least one channel.issue purpose when privacy.required=true")
 	}
 	if cfg.Discovery.Reference == cfg.Data.Reference {
 		return fmt.Errorf("privacy discovery and data references must be distinct")
