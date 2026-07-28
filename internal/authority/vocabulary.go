@@ -29,8 +29,10 @@ const (
 	MaxCheckpointRecords          = 4096
 	MaxRequestIDBytes             = 128
 
-	RealmClassProduction = "production"
-	MaxOperationLifetime = 24 * time.Hour
+	RealmClassProduction  = "production"
+	MaxOperationLifetime  = 24 * time.Hour
+	GrantValidity         = 30 * 24 * time.Hour
+	GrantRenewalThreshold = 24 * time.Hour
 
 	ActionCreate                = "realm.authority.create"
 	ActionInspect               = "realm.channel.audit.read"
@@ -68,17 +70,20 @@ const (
 	ReadinessDegraded                                     = "degraded"
 	ReadinessRecoveryRequired                             = "recovery_required"
 
-	ReasonNone                  = ""
-	ReasonUninitialized         = "authority_uninitialized"
-	ReasonStoreUnavailable      = "authority_store_unavailable"
-	ReasonSignerUnavailable     = "authority_signer_unavailable"
-	ReasonSignerMismatch        = "authority_signer_mismatch"
-	ReasonRepositoryUnavailable = "checkpoint_repository_unavailable"
-	ReasonAuditUnavailable      = "authority_audit_unavailable"
-	ReasonCheckpointMissing     = "checkpoint_head_missing"
-	ReasonCheckpointMismatch    = "checkpoint_head_mismatch"
-	ReasonPersistedStateInvalid = "authority_state_invalid"
-	ReasonDeliveryPending       = "authority_delivery_pending"
+	ReasonNone                   = ""
+	ReasonUninitialized          = "authority_uninitialized"
+	ReasonStoreUnavailable       = "authority_store_unavailable"
+	ReasonSignerUnavailable      = "authority_signer_unavailable"
+	ReasonSignerMismatch         = "authority_signer_mismatch"
+	ReasonRepositoryUnavailable  = "checkpoint_repository_unavailable"
+	ReasonAuditUnavailable       = "authority_audit_unavailable"
+	ReasonCheckpointMissing      = "checkpoint_head_missing"
+	ReasonCheckpointMismatch     = "checkpoint_head_mismatch"
+	ReasonPersistedStateInvalid  = "authority_state_invalid"
+	ReasonDeliveryPending        = "authority_delivery_pending"
+	ReasonChannelGrantPending    = "channel_grant_pending"
+	ReasonChannelGrantRenewalDue = "channel_grant_renewal_due"
+	ReasonChannelGrantExpired    = "channel_grant_expired"
 )
 
 var (

@@ -51,6 +51,9 @@ func (s *Service) IssueInitialGeneration(
 	if err := s.policy.AdmitInitialGeneration(ctx, command); err != nil {
 		return InitialGenerationResult{}, ErrPermissionDenied
 	}
+	if err := s.policy.AdmitChannelClass(ctx, command, request.ChannelClass); err != nil {
+		return InitialGenerationResult{}, ErrPermissionDenied
+	}
 	now := s.clock().UTC().Truncate(time.Second)
 	if err := identitycapability.VerifyDeliveryAttestation(request.RecipientAttestation, now); err != nil {
 		return InitialGenerationResult{}, ErrInvalidArgument
@@ -70,6 +73,11 @@ func (s *Service) IssueInitialGeneration(
 	if state.RealmID != request.RealmID {
 		return InitialGenerationResult{}, ErrPermissionDenied
 	}
+	if state.Phase == PhaseCheckpointing {
+		if err := s.reconcileLoaded(ctx, &state); err != nil {
+			return InitialGenerationResult{}, err
+		}
+	}
 	payloadHash := initialGenerationPayloadHash(request)
 	for index := range state.InitialGenerationDeliveries {
 		record := &state.InitialGenerationDeliveries[index]
@@ -79,16 +87,21 @@ func (s *Service) IssueInitialGeneration(
 		if record.PayloadHash != payloadHash {
 			return InitialGenerationResult{}, ErrConflict
 		}
-		if state.Phase == PhaseCheckpointing {
-			if err := s.reconcileLoaded(ctx, &state); err != nil {
-				return InitialGenerationResult{}, err
-			}
-		}
 		return initialGenerationResult(state, *record), nil
 	}
-	if len(state.Channels) != 0 || len(state.Members) != 0 ||
-		len(state.InitialGenerationDeliveries) >= MaxOperations {
-		return InitialGenerationResult{}, ErrConflict
+	newMember := true
+	for _, member := range state.Members {
+		if member.Principal == request.RecipientAttestation.SubjectPrincipal {
+			newMember = false
+			break
+		}
+	}
+	if len(state.Channels) >= MaxActiveChannels ||
+		len(state.InitialGenerationDeliveries) >= MaxOperations ||
+		(newMember && len(state.Members) >= MaxRealmMembers) ||
+		len(state.AuditLog) >= MaxAuditRecords ||
+		len(state.AuditOutbox) >= MaxAuditOutboxRecords {
+		return InitialGenerationResult{}, ErrResourceExhausted
 	}
 	principal, publicKey, err := s.signerBinding(ctx)
 	if err != nil || principal != state.AuthorityPrincipal ||
@@ -164,10 +177,15 @@ func (s *Service) IssueInitialGeneration(
 	audit := newDeliveryAudit(
 		deliveryAuditID(command.Action, deliveryID), command, operationID, state.AuditHead, now,
 	)
+	audit.ChannelClass = string(request.ChannelClass)
+	audit.Generation = 1
+	audit.Hash = auditHash(audit)
 	err = s.commitCheckpointTransition(ctx, &state, audit, now, func(next *Ledger, _ SignedCheckpoint) error {
-		next.Members = append(next.Members, MemberRecord{
-			Version: ContractVersion, Principal: request.RecipientAttestation.SubjectPrincipal,
-		})
+		if newMember {
+			next.Members = append(next.Members, MemberRecord{
+				Version: ContractVersion, Principal: request.RecipientAttestation.SubjectPrincipal,
+			})
+		}
 		next.Channels = append(next.Channels, ChannelRecord{
 			Version: ContractVersion, ID: channelID, Class: string(request.ChannelClass),
 			MemberCount: 1, CurrentGeneration: 1, OutstandingDeliveryCount: 1,
@@ -190,7 +208,9 @@ func (s *Service) IssueInitialGeneration(
 	if err != nil {
 		return InitialGenerationResult{}, err
 	}
-	return initialGenerationResult(state, state.InitialGenerationDeliveries[0]), nil
+	return initialGenerationResult(
+		state, state.InitialGenerationDeliveries[len(state.InitialGenerationDeliveries)-1],
+	), nil
 }
 
 func (s *Service) AcknowledgeInitialGeneration(
@@ -262,6 +282,9 @@ func (s *Service) AcknowledgeInitialGeneration(
 	} else {
 		err = s.policy.AdmitInitialGeneration(ctx, command)
 	}
+	if err == nil {
+		err = s.policy.AdmitChannelClass(ctx, command, delivery.Sealed.Binding.ChannelClass)
+	}
 	if err != nil {
 		return InitialGenerationAcknowledgeResult{}, ErrPermissionDenied
 	}
@@ -298,6 +321,9 @@ func (s *Service) AcknowledgeInitialGeneration(
 		deliveryAuditID(command.Action, delivery.DeliveryID),
 		command, delivery.OperationID, state.AuditHead, now,
 	)
+	audit.ChannelClass = string(delivery.Sealed.Binding.ChannelClass)
+	audit.Generation = delivery.Sealed.Binding.Generation
+	audit.Hash = auditHash(audit)
 	err = s.commitCheckpointTransition(ctx, &state, audit, now, func(next *Ledger, _ SignedCheckpoint) error {
 		next.InitialGenerationDeliveries[index].Phase = DeliveryPhaseInstalled
 		next.InitialGenerationDeliveries[index].Receipt = request.Receipt
@@ -416,13 +442,20 @@ func validateInitialGenerationRequest(request InitialGenerationRequest) error {
 		request.Permissions&^identityapi.CapabilityKnownPermissions != 0 {
 		return ErrInvalidArgument
 	}
-	switch request.ChannelClass {
-	case identityapi.CapabilityRealmDiscovery, identityapi.CapabilityDataExchange,
-		identityapi.CapabilityApplication, identityapi.CapabilityControl:
-	default:
+	if !validChannelClass(request.ChannelClass) {
 		return ErrInvalidArgument
 	}
 	return nil
+}
+
+func validChannelClass(class identityapi.CapabilityScope) bool {
+	switch class {
+	case identityapi.CapabilityRealmDiscovery, identityapi.CapabilityDataExchange,
+		identityapi.CapabilityApplication, identityapi.CapabilityControl:
+		return true
+	default:
+		return false
+	}
 }
 
 func validateInitialGenerationCommand(command Command, request InitialGenerationRequest) error {

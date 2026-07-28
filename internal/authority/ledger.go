@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	identityapi "ardents/internal/identity"
 	identitycapability "ardents/internal/identity/capability"
 )
 
@@ -57,7 +58,16 @@ func validateLedger(state Ledger) error {
 		}
 		memberPrincipals[member.Principal] = struct{}{}
 	}
+	channelIDs := make(map[[16]byte]struct{}, len(state.Channels))
 	for _, channel := range state.Channels {
+		if zeroFixedID(channel.ID) ||
+			!validChannelClass(identityapi.CapabilityScope(channel.Class)) {
+			return corruptLedger("channel identity")
+		}
+		if _, duplicate := channelIDs[channel.ID]; duplicate {
+			return corruptLedger("duplicate channel")
+		}
+		channelIDs[channel.ID] = struct{}{}
 		if channel.MemberCount > MaxMembersPerChannel ||
 			channel.PendingGenerationCount > MaxPendingGenerations ||
 			channel.PreviousReceiveGenerationCount > MaxPreviousReceiveGenerations ||
@@ -118,7 +128,7 @@ func validateLedger(state Ledger) error {
 				operation.Phase != PhaseRecoveryRequired {
 				return corruptLedger("genesis operation")
 			}
-		case "channel_rotation", "channel_membership":
+		case "channel_rotation", "channel_membership", "channel_renewal":
 			if operation.Phase != DeliveryPhaseDelivering &&
 				operation.Phase != DeliveryPhaseInstalled &&
 				operation.Phase != DeliveryPhaseActivationCommitted &&
@@ -351,6 +361,7 @@ func validateRotationRecord(state Ledger, rotation RotationRecord) error {
 		len(rotation.PayloadHash) != sha256.Size*2 ||
 		!operationIDPattern.MatchString(rotation.OperationID) ||
 		zeroFixedID(rotation.ChannelID) ||
+		!validChannelClass(identityapi.CapabilityScope(rotation.ChannelClass)) ||
 		rotation.PreviousGeneration == 0 ||
 		rotation.PendingGeneration != rotation.PreviousGeneration+1 ||
 		rotation.PrepareSequence == 0 ||
@@ -367,8 +378,15 @@ func validateRotationRecord(state Ledger, rotation RotationRecord) error {
 	if _, err := hex.DecodeString(rotation.PayloadHash); err != nil {
 		return ErrCorruptState
 	}
+	channelIndex := channelRecordIndex(state, rotation.ChannelID)
+	if channelIndex < 0 || state.Channels[channelIndex].Class != rotation.ChannelClass {
+		return ErrCorruptState
+	}
 	if err := validateMembershipChangeRecord(rotation); err != nil {
 		return err
+	}
+	if rotation.Renewal && rotation.MembershipChange.Version != 0 {
+		return ErrCorruptState
 	}
 	if len(rotation.FenceEvidence) > MaxMembersPerChannel+1 {
 		return ErrCorruptState
@@ -429,7 +447,10 @@ func validateRotationRecord(state Ledger, rotation RotationRecord) error {
 		}
 		seen[deliveryID] = struct{}{}
 		index := deliveryRecordIndex(state, deliveryID)
-		if index < 0 || state.InitialGenerationDeliveries[index].OperationID != rotation.OperationID {
+		if index < 0 ||
+			state.InitialGenerationDeliveries[index].OperationID != rotation.OperationID ||
+			string(state.InitialGenerationDeliveries[index].Sealed.Binding.ChannelClass) !=
+				rotation.ChannelClass {
 			return ErrCorruptState
 		}
 	}

@@ -216,6 +216,35 @@ func TestClassLifetimeRejectionDoesNotConsumeReplayAdmission(t *testing.T) {
 	require.Equal(t, []byte("short lived"), opened.Payload)
 }
 
+func TestCrossChannelAndCrossScopeUseFailBeforeReplayAdmission(t *testing.T) {
+	t.Run("channel", func(t *testing.T) {
+		fixture := newEnvelopeFixture(t, true)
+		sealed := fixture.seal(t, []byte("channel-bound"))
+		request := fixture.openRequest(t, sealed)
+		wrongChannel := request
+		wrongChannel.Capability.ChannelID = testID(0xa2)
+		_, err := Open(wrongChannel)
+		requireEnvelopeCode(t, err, CodeEnvelopeAuthentication)
+
+		opened, err := Open(request)
+		require.NoError(t, err)
+		require.Equal(t, []byte("channel-bound"), opened.Payload)
+	})
+	t.Run("scope", func(t *testing.T) {
+		fixture := newEnvelopeFixture(t, true)
+		sealed := fixture.seal(t, []byte("scope-bound"))
+		request := fixture.openRequest(t, sealed)
+		wrongScope := request
+		wrongScope.Capability.Scope = identityapi.CapabilityDataExchange
+		_, err := Open(wrongScope)
+		requireEnvelopeCode(t, err, CodeEnvelopeSenderUnauthorized)
+
+		opened, err := Open(request)
+		require.NoError(t, err)
+		require.Equal(t, []byte("scope-bound"), opened.Payload)
+	})
+}
+
 func TestInvalidSignaturesCannotExhaustReplayCapacity(t *testing.T) {
 	fixture := newEnvelopeFixture(t, true)
 	fixture.receiverResolved.Permissions = identityapi.CapabilitySubscribe

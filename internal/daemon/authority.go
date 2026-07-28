@@ -9,6 +9,7 @@ import (
 	domain "ardents/internal/authority"
 	runtimeconfig "ardents/internal/config"
 	diagapi "ardents/internal/diagnostics"
+	identityapi "ardents/internal/identity"
 	apppolicy "ardents/internal/policy"
 	"ardents/internal/storage"
 )
@@ -137,4 +138,13 @@ func (p realmAuthorityPolicy) AdmitChannelMembership(_ context.Context, _ domain
 		return domain.ErrUnavailable
 	}
 	return p.service.AllowRealmChannelMembership()
+}
+
+func (p realmAuthorityPolicy) AdmitChannelClass(
+	_ context.Context, _ domain.Command, class identityapi.CapabilityScope,
+) error {
+	if p.service == nil {
+		return domain.ErrUnavailable
+	}
+	return p.service.AllowRealmChannelClass(class)
 }

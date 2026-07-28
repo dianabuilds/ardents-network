@@ -134,6 +134,182 @@ func (x *InspectRealmAuthorityRequest) GetRealmId() string {
 	return ""
 }
 
+type InspectChannelRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Version       uint32                 `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
+	RealmId       string                 `protobuf:"bytes,2,opt,name=realm_id,json=realmId,proto3" json:"realm_id,omitempty"`
+	ChannelId     []byte                 `protobuf:"bytes,3,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InspectChannelRequest) Reset() {
+	*x = InspectChannelRequest{}
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InspectChannelRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InspectChannelRequest) ProtoMessage() {}
+
+func (x *InspectChannelRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InspectChannelRequest.ProtoReflect.Descriptor instead.
+func (*InspectChannelRequest) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *InspectChannelRequest) GetVersion() uint32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *InspectChannelRequest) GetRealmId() string {
+	if x != nil {
+		return x.RealmId
+	}
+	return ""
+}
+
+func (x *InspectChannelRequest) GetChannelId() []byte {
+	if x != nil {
+		return x.ChannelId
+	}
+	return nil
+}
+
+type ChannelStatusSnapshot struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Version           uint32                 `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
+	RealmId           string                 `protobuf:"bytes,2,opt,name=realm_id,json=realmId,proto3" json:"realm_id,omitempty"`
+	ChannelClass      string                 `protobuf:"bytes,3,opt,name=channel_class,json=channelClass,proto3" json:"channel_class,omitempty"`
+	CurrentGeneration uint32                 `protobuf:"varint,4,opt,name=current_generation,json=currentGeneration,proto3" json:"current_generation,omitempty"`
+	MemberCount       uint32                 `protobuf:"varint,5,opt,name=member_count,json=memberCount,proto3" json:"member_count,omitempty"`
+	Readiness         string                 `protobuf:"bytes,6,opt,name=readiness,proto3" json:"readiness,omitempty"`
+	Reason            string                 `protobuf:"bytes,7,opt,name=reason,proto3" json:"reason,omitempty"`
+	GrantNotAfter     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=grant_not_after,json=grantNotAfter,proto3" json:"grant_not_after,omitempty"`
+	RenewBy           *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=renew_by,json=renewBy,proto3" json:"renew_by,omitempty"`
+	PendingGeneration uint32                 `protobuf:"varint,10,opt,name=pending_generation,json=pendingGeneration,proto3" json:"pending_generation,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *ChannelStatusSnapshot) Reset() {
+	*x = ChannelStatusSnapshot{}
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChannelStatusSnapshot) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChannelStatusSnapshot) ProtoMessage() {}
+
+func (x *ChannelStatusSnapshot) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChannelStatusSnapshot.ProtoReflect.Descriptor instead.
+func (*ChannelStatusSnapshot) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ChannelStatusSnapshot) GetVersion() uint32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *ChannelStatusSnapshot) GetRealmId() string {
+	if x != nil {
+		return x.RealmId
+	}
+	return ""
+}
+
+func (x *ChannelStatusSnapshot) GetChannelClass() string {
+	if x != nil {
+		return x.ChannelClass
+	}
+	return ""
+}
+
+func (x *ChannelStatusSnapshot) GetCurrentGeneration() uint32 {
+	if x != nil {
+		return x.CurrentGeneration
+	}
+	return 0
+}
+
+func (x *ChannelStatusSnapshot) GetMemberCount() uint32 {
+	if x != nil {
+		return x.MemberCount
+	}
+	return 0
+}
+
+func (x *ChannelStatusSnapshot) GetReadiness() string {
+	if x != nil {
+		return x.Readiness
+	}
+	return ""
+}
+
+func (x *ChannelStatusSnapshot) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *ChannelStatusSnapshot) GetGrantNotAfter() *timestamppb.Timestamp {
+	if x != nil {
+		return x.GrantNotAfter
+	}
+	return nil
+}
+
+func (x *ChannelStatusSnapshot) GetRenewBy() *timestamppb.Timestamp {
+	if x != nil {
+		return x.RenewBy
+	}
+	return nil
+}
+
+func (x *ChannelStatusSnapshot) GetPendingGeneration() uint32 {
+	if x != nil {
+		return x.PendingGeneration
+	}
+	return 0
+}
+
 type AuthorityStatusSnapshot struct {
 	state                 protoimpl.MessageState `protogen:"open.v1"`
 	Version               uint32                 `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
@@ -158,7 +334,7 @@ type AuthorityStatusSnapshot struct {
 
 func (x *AuthorityStatusSnapshot) Reset() {
 	*x = AuthorityStatusSnapshot{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[2]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -170,7 +346,7 @@ func (x *AuthorityStatusSnapshot) String() string {
 func (*AuthorityStatusSnapshot) ProtoMessage() {}
 
 func (x *AuthorityStatusSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[2]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -183,7 +359,7 @@ func (x *AuthorityStatusSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuthorityStatusSnapshot.ProtoReflect.Descriptor instead.
 func (*AuthorityStatusSnapshot) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{2}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *AuthorityStatusSnapshot) GetVersion() uint32 {
@@ -309,7 +485,7 @@ type CreateRealmAuthorityResponse struct {
 
 func (x *CreateRealmAuthorityResponse) Reset() {
 	*x = CreateRealmAuthorityResponse{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[3]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -321,7 +497,7 @@ func (x *CreateRealmAuthorityResponse) String() string {
 func (*CreateRealmAuthorityResponse) ProtoMessage() {}
 
 func (x *CreateRealmAuthorityResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[3]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -334,7 +510,7 @@ func (x *CreateRealmAuthorityResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateRealmAuthorityResponse.ProtoReflect.Descriptor instead.
 func (*CreateRealmAuthorityResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{3}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *CreateRealmAuthorityResponse) GetStatus() *OperationStatus {
@@ -368,7 +544,7 @@ type InspectRealmAuthorityResponse struct {
 
 func (x *InspectRealmAuthorityResponse) Reset() {
 	*x = InspectRealmAuthorityResponse{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[4]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -380,7 +556,7 @@ func (x *InspectRealmAuthorityResponse) String() string {
 func (*InspectRealmAuthorityResponse) ProtoMessage() {}
 
 func (x *InspectRealmAuthorityResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[4]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -393,7 +569,7 @@ func (x *InspectRealmAuthorityResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InspectRealmAuthorityResponse.ProtoReflect.Descriptor instead.
 func (*InspectRealmAuthorityResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{4}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *InspectRealmAuthorityResponse) GetStatus() *OperationStatus {
@@ -406,6 +582,58 @@ func (x *InspectRealmAuthorityResponse) GetStatus() *OperationStatus {
 func (x *InspectRealmAuthorityResponse) GetAuthority() *AuthorityStatusSnapshot {
 	if x != nil {
 		return x.Authority
+	}
+	return nil
+}
+
+type InspectChannelResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Status        *OperationStatus       `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	Channel       *ChannelStatusSnapshot `protobuf:"bytes,2,opt,name=channel,proto3" json:"channel,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InspectChannelResponse) Reset() {
+	*x = InspectChannelResponse{}
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InspectChannelResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InspectChannelResponse) ProtoMessage() {}
+
+func (x *InspectChannelResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InspectChannelResponse.ProtoReflect.Descriptor instead.
+func (*InspectChannelResponse) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *InspectChannelResponse) GetStatus() *OperationStatus {
+	if x != nil {
+		return x.Status
+	}
+	return nil
+}
+
+func (x *InspectChannelResponse) GetChannel() *ChannelStatusSnapshot {
+	if x != nil {
+		return x.Channel
 	}
 	return nil
 }
@@ -425,7 +653,7 @@ type GenerationDeliveryAttestation struct {
 
 func (x *GenerationDeliveryAttestation) Reset() {
 	*x = GenerationDeliveryAttestation{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[5]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -437,7 +665,7 @@ func (x *GenerationDeliveryAttestation) String() string {
 func (*GenerationDeliveryAttestation) ProtoMessage() {}
 
 func (x *GenerationDeliveryAttestation) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[5]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -450,7 +678,7 @@ func (x *GenerationDeliveryAttestation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GenerationDeliveryAttestation.ProtoReflect.Descriptor instead.
 func (*GenerationDeliveryAttestation) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{5}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GenerationDeliveryAttestation) GetVersion() uint32 {
@@ -523,7 +751,7 @@ type GenerationDeliveryBinding struct {
 
 func (x *GenerationDeliveryBinding) Reset() {
 	*x = GenerationDeliveryBinding{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[6]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -535,7 +763,7 @@ func (x *GenerationDeliveryBinding) String() string {
 func (*GenerationDeliveryBinding) ProtoMessage() {}
 
 func (x *GenerationDeliveryBinding) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[6]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -548,7 +776,7 @@ func (x *GenerationDeliveryBinding) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GenerationDeliveryBinding.ProtoReflect.Descriptor instead.
 func (*GenerationDeliveryBinding) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{6}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GenerationDeliveryBinding) GetVersion() uint32 {
@@ -653,7 +881,7 @@ type SealedGenerationDelivery struct {
 
 func (x *SealedGenerationDelivery) Reset() {
 	*x = SealedGenerationDelivery{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[7]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -665,7 +893,7 @@ func (x *SealedGenerationDelivery) String() string {
 func (*SealedGenerationDelivery) ProtoMessage() {}
 
 func (x *SealedGenerationDelivery) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[7]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -678,7 +906,7 @@ func (x *SealedGenerationDelivery) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SealedGenerationDelivery.ProtoReflect.Descriptor instead.
 func (*SealedGenerationDelivery) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{7}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *SealedGenerationDelivery) GetBinding() *GenerationDeliveryBinding {
@@ -726,7 +954,7 @@ type GenerationDeliveryReceipt struct {
 
 func (x *GenerationDeliveryReceipt) Reset() {
 	*x = GenerationDeliveryReceipt{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[8]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -738,7 +966,7 @@ func (x *GenerationDeliveryReceipt) String() string {
 func (*GenerationDeliveryReceipt) ProtoMessage() {}
 
 func (x *GenerationDeliveryReceipt) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[8]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -751,7 +979,7 @@ func (x *GenerationDeliveryReceipt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GenerationDeliveryReceipt.ProtoReflect.Descriptor instead.
 func (*GenerationDeliveryReceipt) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{8}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GenerationDeliveryReceipt) GetVersion() uint32 {
@@ -881,7 +1109,7 @@ type IssueInitialGenerationRequest struct {
 
 func (x *IssueInitialGenerationRequest) Reset() {
 	*x = IssueInitialGenerationRequest{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[9]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -893,7 +1121,7 @@ func (x *IssueInitialGenerationRequest) String() string {
 func (*IssueInitialGenerationRequest) ProtoMessage() {}
 
 func (x *IssueInitialGenerationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[9]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -906,7 +1134,7 @@ func (x *IssueInitialGenerationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IssueInitialGenerationRequest.ProtoReflect.Descriptor instead.
 func (*IssueInitialGenerationRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{9}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *IssueInitialGenerationRequest) GetVersion() uint32 {
@@ -974,7 +1202,7 @@ type IssueInitialGenerationResponse struct {
 
 func (x *IssueInitialGenerationResponse) Reset() {
 	*x = IssueInitialGenerationResponse{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[10]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -986,7 +1214,7 @@ func (x *IssueInitialGenerationResponse) String() string {
 func (*IssueInitialGenerationResponse) ProtoMessage() {}
 
 func (x *IssueInitialGenerationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[10]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -999,7 +1227,7 @@ func (x *IssueInitialGenerationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IssueInitialGenerationResponse.ProtoReflect.Descriptor instead.
 func (*IssueInitialGenerationResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{10}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *IssueInitialGenerationResponse) GetStatus() *OperationStatus {
@@ -1070,7 +1298,7 @@ type AcknowledgeInitialGenerationRequest struct {
 
 func (x *AcknowledgeInitialGenerationRequest) Reset() {
 	*x = AcknowledgeInitialGenerationRequest{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[11]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1082,7 +1310,7 @@ func (x *AcknowledgeInitialGenerationRequest) String() string {
 func (*AcknowledgeInitialGenerationRequest) ProtoMessage() {}
 
 func (x *AcknowledgeInitialGenerationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[11]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1095,7 +1323,7 @@ func (x *AcknowledgeInitialGenerationRequest) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use AcknowledgeInitialGenerationRequest.ProtoReflect.Descriptor instead.
 func (*AcknowledgeInitialGenerationRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{11}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *AcknowledgeInitialGenerationRequest) GetVersion() uint32 {
@@ -1139,7 +1367,7 @@ type AcknowledgeInitialGenerationResponse struct {
 
 func (x *AcknowledgeInitialGenerationResponse) Reset() {
 	*x = AcknowledgeInitialGenerationResponse{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[12]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1151,7 +1379,7 @@ func (x *AcknowledgeInitialGenerationResponse) String() string {
 func (*AcknowledgeInitialGenerationResponse) ProtoMessage() {}
 
 func (x *AcknowledgeInitialGenerationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[12]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1164,7 +1392,7 @@ func (x *AcknowledgeInitialGenerationResponse) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use AcknowledgeInitialGenerationResponse.ProtoReflect.Descriptor instead.
 func (*AcknowledgeInitialGenerationResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{12}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *AcknowledgeInitialGenerationResponse) GetStatus() *OperationStatus {
@@ -1213,7 +1441,7 @@ type PrepareGenerationDeliveryRequest struct {
 
 func (x *PrepareGenerationDeliveryRequest) Reset() {
 	*x = PrepareGenerationDeliveryRequest{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[13]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1225,7 +1453,7 @@ func (x *PrepareGenerationDeliveryRequest) String() string {
 func (*PrepareGenerationDeliveryRequest) ProtoMessage() {}
 
 func (x *PrepareGenerationDeliveryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[13]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1238,7 +1466,7 @@ func (x *PrepareGenerationDeliveryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PrepareGenerationDeliveryRequest.ProtoReflect.Descriptor instead.
 func (*PrepareGenerationDeliveryRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{13}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *PrepareGenerationDeliveryRequest) GetVersion() uint32 {
@@ -1272,7 +1500,7 @@ type PrepareGenerationDeliveryResponse struct {
 
 func (x *PrepareGenerationDeliveryResponse) Reset() {
 	*x = PrepareGenerationDeliveryResponse{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[14]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1284,7 +1512,7 @@ func (x *PrepareGenerationDeliveryResponse) String() string {
 func (*PrepareGenerationDeliveryResponse) ProtoMessage() {}
 
 func (x *PrepareGenerationDeliveryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[14]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1297,7 +1525,7 @@ func (x *PrepareGenerationDeliveryResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use PrepareGenerationDeliveryResponse.ProtoReflect.Descriptor instead.
 func (*PrepareGenerationDeliveryResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{14}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *PrepareGenerationDeliveryResponse) GetStatus() *OperationStatus {
@@ -1324,7 +1552,7 @@ type InstallGenerationDeliveryRequest struct {
 
 func (x *InstallGenerationDeliveryRequest) Reset() {
 	*x = InstallGenerationDeliveryRequest{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[15]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1336,7 +1564,7 @@ func (x *InstallGenerationDeliveryRequest) String() string {
 func (*InstallGenerationDeliveryRequest) ProtoMessage() {}
 
 func (x *InstallGenerationDeliveryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[15]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1349,7 +1577,7 @@ func (x *InstallGenerationDeliveryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InstallGenerationDeliveryRequest.ProtoReflect.Descriptor instead.
 func (*InstallGenerationDeliveryRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{15}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *InstallGenerationDeliveryRequest) GetVersion() uint32 {
@@ -1376,7 +1604,7 @@ type InstallGenerationDeliveryResponse struct {
 
 func (x *InstallGenerationDeliveryResponse) Reset() {
 	*x = InstallGenerationDeliveryResponse{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[16]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1388,7 +1616,7 @@ func (x *InstallGenerationDeliveryResponse) String() string {
 func (*InstallGenerationDeliveryResponse) ProtoMessage() {}
 
 func (x *InstallGenerationDeliveryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[16]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1401,7 +1629,7 @@ func (x *InstallGenerationDeliveryResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use InstallGenerationDeliveryResponse.ProtoReflect.Descriptor instead.
 func (*InstallGenerationDeliveryResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{16}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *InstallGenerationDeliveryResponse) GetStatus() *OperationStatus {
@@ -1440,7 +1668,7 @@ type GenerationActivation struct {
 
 func (x *GenerationActivation) Reset() {
 	*x = GenerationActivation{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[17]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1452,7 +1680,7 @@ func (x *GenerationActivation) String() string {
 func (*GenerationActivation) ProtoMessage() {}
 
 func (x *GenerationActivation) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[17]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1465,7 +1693,7 @@ func (x *GenerationActivation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GenerationActivation.ProtoReflect.Descriptor instead.
 func (*GenerationActivation) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{17}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *GenerationActivation) GetVersion() uint32 {
@@ -1577,7 +1805,7 @@ type RotationDelivery struct {
 
 func (x *RotationDelivery) Reset() {
 	*x = RotationDelivery{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[18]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1589,7 +1817,7 @@ func (x *RotationDelivery) String() string {
 func (*RotationDelivery) ProtoMessage() {}
 
 func (x *RotationDelivery) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[18]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1602,7 +1830,7 @@ func (x *RotationDelivery) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RotationDelivery.ProtoReflect.Descriptor instead.
 func (*RotationDelivery) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{18}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *RotationDelivery) GetDeliveryId() string {
@@ -1641,7 +1869,7 @@ type RotateChannelRequest struct {
 
 func (x *RotateChannelRequest) Reset() {
 	*x = RotateChannelRequest{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[19]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1653,7 +1881,7 @@ func (x *RotateChannelRequest) String() string {
 func (*RotateChannelRequest) ProtoMessage() {}
 
 func (x *RotateChannelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[19]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1666,7 +1894,7 @@ func (x *RotateChannelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RotateChannelRequest.ProtoReflect.Descriptor instead.
 func (*RotateChannelRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{19}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *RotateChannelRequest) GetVersion() uint32 {
@@ -1718,6 +1946,90 @@ func (x *RotateChannelRequest) GetDrainForSeconds() uint64 {
 	return 0
 }
 
+type RenewChannelGrantsRequest struct {
+	state                 protoimpl.MessageState           `protogen:"open.v1"`
+	Version               uint32                           `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
+	RequestId             string                           `protobuf:"bytes,2,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	RealmId               string                           `protobuf:"bytes,3,opt,name=realm_id,json=realmId,proto3" json:"realm_id,omitempty"`
+	ChannelId             []byte                           `protobuf:"bytes,4,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	RecipientAttestations []*GenerationDeliveryAttestation `protobuf:"bytes,5,rep,name=recipient_attestations,json=recipientAttestations,proto3" json:"recipient_attestations,omitempty"`
+	DrainForSeconds       uint64                           `protobuf:"varint,6,opt,name=drain_for_seconds,json=drainForSeconds,proto3" json:"drain_for_seconds,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *RenewChannelGrantsRequest) Reset() {
+	*x = RenewChannelGrantsRequest{}
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RenewChannelGrantsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RenewChannelGrantsRequest) ProtoMessage() {}
+
+func (x *RenewChannelGrantsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RenewChannelGrantsRequest.ProtoReflect.Descriptor instead.
+func (*RenewChannelGrantsRequest) Descriptor() ([]byte, []int) {
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *RenewChannelGrantsRequest) GetVersion() uint32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *RenewChannelGrantsRequest) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *RenewChannelGrantsRequest) GetRealmId() string {
+	if x != nil {
+		return x.RealmId
+	}
+	return ""
+}
+
+func (x *RenewChannelGrantsRequest) GetChannelId() []byte {
+	if x != nil {
+		return x.ChannelId
+	}
+	return nil
+}
+
+func (x *RenewChannelGrantsRequest) GetRecipientAttestations() []*GenerationDeliveryAttestation {
+	if x != nil {
+		return x.RecipientAttestations
+	}
+	return nil
+}
+
+func (x *RenewChannelGrantsRequest) GetDrainForSeconds() uint64 {
+	if x != nil {
+		return x.DrainForSeconds
+	}
+	return 0
+}
+
 type RotateChannelResponse struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	Status             *OperationStatus       `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
@@ -1733,13 +2045,15 @@ type RotateChannelResponse struct {
 	TargetPrincipal    string                 `protobuf:"bytes,11,opt,name=target_principal,json=targetPrincipal,proto3" json:"target_principal,omitempty"`
 	MembershipVersion  uint64                 `protobuf:"varint,12,opt,name=membership_version,json=membershipVersion,proto3" json:"membership_version,omitempty"`
 	MemberState        string                 `protobuf:"bytes,13,opt,name=member_state,json=memberState,proto3" json:"member_state,omitempty"`
+	ChannelClass       string                 `protobuf:"bytes,14,opt,name=channel_class,json=channelClass,proto3" json:"channel_class,omitempty"`
+	Renewal            bool                   `protobuf:"varint,15,opt,name=renewal,proto3" json:"renewal,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
 
 func (x *RotateChannelResponse) Reset() {
 	*x = RotateChannelResponse{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[20]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1751,7 +2065,7 @@ func (x *RotateChannelResponse) String() string {
 func (*RotateChannelResponse) ProtoMessage() {}
 
 func (x *RotateChannelResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[20]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1764,7 +2078,7 @@ func (x *RotateChannelResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RotateChannelResponse.ProtoReflect.Descriptor instead.
 func (*RotateChannelResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{20}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *RotateChannelResponse) GetStatus() *OperationStatus {
@@ -1858,6 +2172,20 @@ func (x *RotateChannelResponse) GetMemberState() string {
 	return ""
 }
 
+func (x *RotateChannelResponse) GetChannelClass() string {
+	if x != nil {
+		return x.ChannelClass
+	}
+	return ""
+}
+
+func (x *RotateChannelResponse) GetRenewal() bool {
+	if x != nil {
+		return x.Renewal
+	}
+	return false
+}
+
 type ChangeChannelMembershipRequest struct {
 	state                 protoimpl.MessageState           `protogen:"open.v1"`
 	Version               uint32                           `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
@@ -1875,7 +2203,7 @@ type ChangeChannelMembershipRequest struct {
 
 func (x *ChangeChannelMembershipRequest) Reset() {
 	*x = ChangeChannelMembershipRequest{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[21]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1887,7 +2215,7 @@ func (x *ChangeChannelMembershipRequest) String() string {
 func (*ChangeChannelMembershipRequest) ProtoMessage() {}
 
 func (x *ChangeChannelMembershipRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[21]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1900,7 +2228,7 @@ func (x *ChangeChannelMembershipRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChangeChannelMembershipRequest.ProtoReflect.Descriptor instead.
 func (*ChangeChannelMembershipRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{21}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ChangeChannelMembershipRequest) GetVersion() uint32 {
@@ -1977,7 +2305,7 @@ type DeploymentFenceControl struct {
 
 func (x *DeploymentFenceControl) Reset() {
 	*x = DeploymentFenceControl{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[22]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1989,7 +2317,7 @@ func (x *DeploymentFenceControl) String() string {
 func (*DeploymentFenceControl) ProtoMessage() {}
 
 func (x *DeploymentFenceControl) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[22]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2002,7 +2330,7 @@ func (x *DeploymentFenceControl) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeploymentFenceControl.ProtoReflect.Descriptor instead.
 func (*DeploymentFenceControl) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{22}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *DeploymentFenceControl) GetKind() string {
@@ -2044,7 +2372,7 @@ type DeploymentFenceEvidence struct {
 
 func (x *DeploymentFenceEvidence) Reset() {
 	*x = DeploymentFenceEvidence{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[23]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2056,7 +2384,7 @@ func (x *DeploymentFenceEvidence) String() string {
 func (*DeploymentFenceEvidence) ProtoMessage() {}
 
 func (x *DeploymentFenceEvidence) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[23]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2069,7 +2397,7 @@ func (x *DeploymentFenceEvidence) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeploymentFenceEvidence.ProtoReflect.Descriptor instead.
 func (*DeploymentFenceEvidence) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{23}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *DeploymentFenceEvidence) GetVersion() uint32 {
@@ -2155,7 +2483,7 @@ type SubmitDeploymentFenceEvidenceRequest struct {
 
 func (x *SubmitDeploymentFenceEvidenceRequest) Reset() {
 	*x = SubmitDeploymentFenceEvidenceRequest{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[24]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2167,7 +2495,7 @@ func (x *SubmitDeploymentFenceEvidenceRequest) String() string {
 func (*SubmitDeploymentFenceEvidenceRequest) ProtoMessage() {}
 
 func (x *SubmitDeploymentFenceEvidenceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[24]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2180,7 +2508,7 @@ func (x *SubmitDeploymentFenceEvidenceRequest) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use SubmitDeploymentFenceEvidenceRequest.ProtoReflect.Descriptor instead.
 func (*SubmitDeploymentFenceEvidenceRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{24}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *SubmitDeploymentFenceEvidenceRequest) GetVersion() uint32 {
@@ -2233,7 +2561,7 @@ type SubmitDeploymentFenceEvidenceResponse struct {
 
 func (x *SubmitDeploymentFenceEvidenceResponse) Reset() {
 	*x = SubmitDeploymentFenceEvidenceResponse{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[25]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2245,7 +2573,7 @@ func (x *SubmitDeploymentFenceEvidenceResponse) String() string {
 func (*SubmitDeploymentFenceEvidenceResponse) ProtoMessage() {}
 
 func (x *SubmitDeploymentFenceEvidenceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[25]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2258,7 +2586,7 @@ func (x *SubmitDeploymentFenceEvidenceResponse) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use SubmitDeploymentFenceEvidenceResponse.ProtoReflect.Descriptor instead.
 func (*SubmitDeploymentFenceEvidenceResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{25}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *SubmitDeploymentFenceEvidenceResponse) GetStatus() *OperationStatus {
@@ -2321,7 +2649,7 @@ type CommitChannelActivationRequest struct {
 
 func (x *CommitChannelActivationRequest) Reset() {
 	*x = CommitChannelActivationRequest{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[26]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2333,7 +2661,7 @@ func (x *CommitChannelActivationRequest) String() string {
 func (*CommitChannelActivationRequest) ProtoMessage() {}
 
 func (x *CommitChannelActivationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[26]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2346,7 +2674,7 @@ func (x *CommitChannelActivationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CommitChannelActivationRequest.ProtoReflect.Descriptor instead.
 func (*CommitChannelActivationRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{26}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *CommitChannelActivationRequest) GetVersion() uint32 {
@@ -2384,7 +2712,7 @@ type CommitChannelActivationResponse struct {
 
 func (x *CommitChannelActivationResponse) Reset() {
 	*x = CommitChannelActivationResponse{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[27]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2396,7 +2724,7 @@ func (x *CommitChannelActivationResponse) String() string {
 func (*CommitChannelActivationResponse) ProtoMessage() {}
 
 func (x *CommitChannelActivationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[27]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2409,7 +2737,7 @@ func (x *CommitChannelActivationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CommitChannelActivationResponse.ProtoReflect.Descriptor instead.
 func (*CommitChannelActivationResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{27}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *CommitChannelActivationResponse) GetStatus() *OperationStatus {
@@ -2464,7 +2792,7 @@ type ActivateGenerationRequest struct {
 
 func (x *ActivateGenerationRequest) Reset() {
 	*x = ActivateGenerationRequest{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[28]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2476,7 +2804,7 @@ func (x *ActivateGenerationRequest) String() string {
 func (*ActivateGenerationRequest) ProtoMessage() {}
 
 func (x *ActivateGenerationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[28]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2489,7 +2817,7 @@ func (x *ActivateGenerationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ActivateGenerationRequest.ProtoReflect.Descriptor instead.
 func (*ActivateGenerationRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{28}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *ActivateGenerationRequest) GetVersion() uint32 {
@@ -2516,7 +2844,7 @@ type ActivateGenerationResponse struct {
 
 func (x *ActivateGenerationResponse) Reset() {
 	*x = ActivateGenerationResponse{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[29]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2528,7 +2856,7 @@ func (x *ActivateGenerationResponse) String() string {
 func (*ActivateGenerationResponse) ProtoMessage() {}
 
 func (x *ActivateGenerationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[29]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2541,7 +2869,7 @@ func (x *ActivateGenerationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ActivateGenerationResponse.ProtoReflect.Descriptor instead.
 func (*ActivateGenerationResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{29}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *ActivateGenerationResponse) GetStatus() *OperationStatus {
@@ -2571,7 +2899,7 @@ type AcknowledgeChannelActivationRequest struct {
 
 func (x *AcknowledgeChannelActivationRequest) Reset() {
 	*x = AcknowledgeChannelActivationRequest{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[30]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2583,7 +2911,7 @@ func (x *AcknowledgeChannelActivationRequest) String() string {
 func (*AcknowledgeChannelActivationRequest) ProtoMessage() {}
 
 func (x *AcknowledgeChannelActivationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[30]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2596,7 +2924,7 @@ func (x *AcknowledgeChannelActivationRequest) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use AcknowledgeChannelActivationRequest.ProtoReflect.Descriptor instead.
 func (*AcknowledgeChannelActivationRequest) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{30}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *AcknowledgeChannelActivationRequest) GetVersion() uint32 {
@@ -2650,7 +2978,7 @@ type AcknowledgeChannelActivationResponse struct {
 
 func (x *AcknowledgeChannelActivationResponse) Reset() {
 	*x = AcknowledgeChannelActivationResponse{}
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[31]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2662,7 +2990,7 @@ func (x *AcknowledgeChannelActivationResponse) String() string {
 func (*AcknowledgeChannelActivationResponse) ProtoMessage() {}
 
 func (x *AcknowledgeChannelActivationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_ardents_v1_authority_proto_msgTypes[31]
+	mi := &file_api_ardents_v1_authority_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2675,7 +3003,7 @@ func (x *AcknowledgeChannelActivationResponse) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use AcknowledgeChannelActivationResponse.ProtoReflect.Descriptor instead.
 func (*AcknowledgeChannelActivationResponse) Descriptor() ([]byte, []int) {
-	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{31}
+	return file_api_ardents_v1_authority_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *AcknowledgeChannelActivationResponse) GetStatus() *OperationStatus {
@@ -2748,7 +3076,24 @@ const file_api_ardents_v1_authority_proto_rawDesc = "" +
 	"realmClass\"S\n" +
 	"\x1cInspectRealmAuthorityRequest\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\rR\aversion\x12\x19\n" +
-	"\brealm_id\x18\x02 \x01(\tR\arealmId\"\x8f\x05\n" +
+	"\brealm_id\x18\x02 \x01(\tR\arealmId\"k\n" +
+	"\x15InspectChannelRequest\x12\x18\n" +
+	"\aversion\x18\x01 \x01(\rR\aversion\x12\x19\n" +
+	"\brealm_id\x18\x02 \x01(\tR\arealmId\x12\x1d\n" +
+	"\n" +
+	"channel_id\x18\x03 \x01(\fR\tchannelId\"\xa3\x03\n" +
+	"\x15ChannelStatusSnapshot\x12\x18\n" +
+	"\aversion\x18\x01 \x01(\rR\aversion\x12\x19\n" +
+	"\brealm_id\x18\x02 \x01(\tR\arealmId\x12#\n" +
+	"\rchannel_class\x18\x03 \x01(\tR\fchannelClass\x12-\n" +
+	"\x12current_generation\x18\x04 \x01(\rR\x11currentGeneration\x12!\n" +
+	"\fmember_count\x18\x05 \x01(\rR\vmemberCount\x12\x1c\n" +
+	"\treadiness\x18\x06 \x01(\tR\treadiness\x12\x16\n" +
+	"\x06reason\x18\a \x01(\tR\x06reason\x12B\n" +
+	"\x0fgrant_not_after\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\rgrantNotAfter\x125\n" +
+	"\brenew_by\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\arenewBy\x12-\n" +
+	"\x12pending_generation\x18\n" +
+	" \x01(\rR\x11pendingGeneration\"\x8f\x05\n" +
 	"\x17AuthorityStatusSnapshot\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\rR\aversion\x12%\n" +
 	"\x0eschema_version\x18\x02 \x01(\rR\rschemaVersion\x12\x19\n" +
@@ -2774,7 +3119,10 @@ const file_api_ardents_v1_authority_proto_rawDesc = "" +
 	"\foperation_id\x18\x03 \x01(\tR\voperationId\"\x97\x01\n" +
 	"\x1dInspectRealmAuthorityResponse\x123\n" +
 	"\x06status\x18\x01 \x01(\v2\x1b.ardents.v1.OperationStatusR\x06status\x12A\n" +
-	"\tauthority\x18\x02 \x01(\v2#.ardents.v1.AuthorityStatusSnapshotR\tauthority\"\xd8\x02\n" +
+	"\tauthority\x18\x02 \x01(\v2#.ardents.v1.AuthorityStatusSnapshotR\tauthority\"\x8a\x01\n" +
+	"\x16InspectChannelResponse\x123\n" +
+	"\x06status\x18\x01 \x01(\v2\x1b.ardents.v1.OperationStatusR\x06status\x12;\n" +
+	"\achannel\x18\x02 \x01(\v2!.ardents.v1.ChannelStatusSnapshotR\achannel\"\xd8\x02\n" +
 	"\x1dGenerationDeliveryAttestation\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\rR\aversion\x12+\n" +
 	"\x11subject_principal\x18\x02 \x01(\tR\x10subjectPrincipal\x12.\n" +
@@ -2911,7 +3259,16 @@ const file_api_ardents_v1_authority_proto_rawDesc = "" +
 	"channel_id\x18\x04 \x01(\fR\tchannelId\x12`\n" +
 	"\x16recipient_attestations\x18\x05 \x03(\v2).ardents.v1.GenerationDeliveryAttestationR\x15recipientAttestations\x12*\n" +
 	"\x11valid_for_seconds\x18\x06 \x01(\x04R\x0fvalidForSeconds\x12*\n" +
-	"\x11drain_for_seconds\x18\a \x01(\x04R\x0fdrainForSeconds\"\xb6\x04\n" +
+	"\x11drain_for_seconds\x18\a \x01(\x04R\x0fdrainForSeconds\"\x9c\x02\n" +
+	"\x19RenewChannelGrantsRequest\x12\x18\n" +
+	"\aversion\x18\x01 \x01(\rR\aversion\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x02 \x01(\tR\trequestId\x12\x19\n" +
+	"\brealm_id\x18\x03 \x01(\tR\arealmId\x12\x1d\n" +
+	"\n" +
+	"channel_id\x18\x04 \x01(\fR\tchannelId\x12`\n" +
+	"\x16recipient_attestations\x18\x05 \x03(\v2).ardents.v1.GenerationDeliveryAttestationR\x15recipientAttestations\x12*\n" +
+	"\x11drain_for_seconds\x18\x06 \x01(\x04R\x0fdrainForSeconds\"\xf5\x04\n" +
 	"\x15RotateChannelResponse\x123\n" +
 	"\x06status\x18\x01 \x01(\v2\x1b.ardents.v1.OperationStatusR\x06status\x12\x19\n" +
 	"\brealm_id\x18\x02 \x01(\tR\arealmId\x12!\n" +
@@ -2929,7 +3286,9 @@ const file_api_ardents_v1_authority_proto_rawDesc = "" +
 	" \x01(\tR\x10membershipChange\x12)\n" +
 	"\x10target_principal\x18\v \x01(\tR\x0ftargetPrincipal\x12-\n" +
 	"\x12membership_version\x18\f \x01(\x04R\x11membershipVersion\x12!\n" +
-	"\fmember_state\x18\r \x01(\tR\vmemberState\"\x90\x03\n" +
+	"\fmember_state\x18\r \x01(\tR\vmemberState\x12#\n" +
+	"\rchannel_class\x18\x0e \x01(\tR\fchannelClass\x12\x18\n" +
+	"\arenewal\x18\x0f \x01(\bR\arenewal\"\x90\x03\n" +
 	"\x1eChangeChannelMembershipRequest\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\rR\aversion\x12\x1d\n" +
 	"\n" +
@@ -3010,17 +3369,21 @@ const file_api_ardents_v1_authority_proto_rawDesc = "" +
 	"\x05phase\x18\x05 \x01(\tR\x05phase\x12-\n" +
 	"\x12current_generation\x18\x06 \x01(\rR\x11currentGeneration\x12/\n" +
 	"\x13previous_generation\x18\a \x01(\rR\x12previousGeneration\x12A\n" +
-	"\x0edrain_deadline\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\rdrainDeadline2\x9b\r\n" +
+	"\x0edrain_deadline\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\rdrainDeadline2\xd3\x0f\n" +
 	"\x10AuthorityService\x12\xae\x01\n" +
 	"\x14CreateRealmAuthority\x12'.ardents.v1.CreateRealmAuthorityRequest\x1a(.ardents.v1.CreateRealmAuthorityResponse\"C\xc2\xf3\x18?\n" +
 	"\x16realm.authority.create\x12\tauthority\x1a\x18realm-authority-instance \x01\x12\x9e\x01\n" +
 	"\x15InspectRealmAuthority\x12(.ardents.v1.InspectRealmAuthorityRequest\x1a).ardents.v1.InspectRealmAuthorityResponse\"0\xc2\xf3\x18,\n" +
-	"\x18realm.channel.audit.read\x12\tauthority\x1a\x05realm\x12\xb8\x01\n" +
+	"\x18realm.channel.audit.read\x12\tauthority\x1a\x05realm\x12\x91\x01\n" +
+	"\x0eInspectChannel\x12!.ardents.v1.InspectChannelRequest\x1a\".ardents.v1.InspectChannelResponse\"8\xc2\xf3\x184\n" +
+	"\x18realm.channel.audit.read\x12\tauthority\x1a\rrealm-channel\x12\xb8\x01\n" +
 	"\x16IssueInitialGeneration\x12).ardents.v1.IssueInitialGenerationRequest\x1a*.ardents.v1.IssueInitialGenerationResponse\"G\xc2\xf3\x18C\n" +
 	"\x1crealm.channel.delivery.issue\x12\tauthority\x1a\x16realm-channel-delivery \x01\x12\xd0\x01\n" +
 	"\x1cAcknowledgeInitialGeneration\x12/.ardents.v1.AcknowledgeInitialGenerationRequest\x1a0.ardents.v1.AcknowledgeInitialGenerationResponse\"M\xc2\xf3\x18I\n" +
 	"\"realm.channel.delivery.acknowledge\x12\tauthority\x1a\x16realm-channel-delivery \x01\x12\x97\x01\n" +
 	"\rRotateChannel\x12 .ardents.v1.RotateChannelRequest\x1a!.ardents.v1.RotateChannelResponse\"A\xc2\xf3\x18=\n" +
+	"\x1frealm.channel.generation.rotate\x12\tauthority\x1a\rrealm-channel \x01\x12\xa1\x01\n" +
+	"\x12RenewChannelGrants\x12%.ardents.v1.RenewChannelGrantsRequest\x1a!.ardents.v1.RotateChannelResponse\"A\xc2\xf3\x18=\n" +
 	"\x1frealm.channel.generation.rotate\x12\tauthority\x1a\rrealm-channel \x01\x12\xbf\x01\n" +
 	"\x17CommitChannelActivation\x12*.ardents.v1.CommitChannelActivationRequest\x1a+.ardents.v1.CommitChannelActivationResponse\"K\xc2\xf3\x18G\n" +
 	"\x1frealm.channel.activation.commit\x12\tauthority\x1a\x17realm-channel-operation \x01\x12\xd2\x01\n" +
@@ -3050,112 +3413,125 @@ func file_api_ardents_v1_authority_proto_rawDescGZIP() []byte {
 	return file_api_ardents_v1_authority_proto_rawDescData
 }
 
-var file_api_ardents_v1_authority_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
+var file_api_ardents_v1_authority_proto_msgTypes = make([]protoimpl.MessageInfo, 36)
 var file_api_ardents_v1_authority_proto_goTypes = []any{
 	(*CreateRealmAuthorityRequest)(nil),           // 0: ardents.v1.CreateRealmAuthorityRequest
 	(*InspectRealmAuthorityRequest)(nil),          // 1: ardents.v1.InspectRealmAuthorityRequest
-	(*AuthorityStatusSnapshot)(nil),               // 2: ardents.v1.AuthorityStatusSnapshot
-	(*CreateRealmAuthorityResponse)(nil),          // 3: ardents.v1.CreateRealmAuthorityResponse
-	(*InspectRealmAuthorityResponse)(nil),         // 4: ardents.v1.InspectRealmAuthorityResponse
-	(*GenerationDeliveryAttestation)(nil),         // 5: ardents.v1.GenerationDeliveryAttestation
-	(*GenerationDeliveryBinding)(nil),             // 6: ardents.v1.GenerationDeliveryBinding
-	(*SealedGenerationDelivery)(nil),              // 7: ardents.v1.SealedGenerationDelivery
-	(*GenerationDeliveryReceipt)(nil),             // 8: ardents.v1.GenerationDeliveryReceipt
-	(*IssueInitialGenerationRequest)(nil),         // 9: ardents.v1.IssueInitialGenerationRequest
-	(*IssueInitialGenerationResponse)(nil),        // 10: ardents.v1.IssueInitialGenerationResponse
-	(*AcknowledgeInitialGenerationRequest)(nil),   // 11: ardents.v1.AcknowledgeInitialGenerationRequest
-	(*AcknowledgeInitialGenerationResponse)(nil),  // 12: ardents.v1.AcknowledgeInitialGenerationResponse
-	(*PrepareGenerationDeliveryRequest)(nil),      // 13: ardents.v1.PrepareGenerationDeliveryRequest
-	(*PrepareGenerationDeliveryResponse)(nil),     // 14: ardents.v1.PrepareGenerationDeliveryResponse
-	(*InstallGenerationDeliveryRequest)(nil),      // 15: ardents.v1.InstallGenerationDeliveryRequest
-	(*InstallGenerationDeliveryResponse)(nil),     // 16: ardents.v1.InstallGenerationDeliveryResponse
-	(*GenerationActivation)(nil),                  // 17: ardents.v1.GenerationActivation
-	(*RotationDelivery)(nil),                      // 18: ardents.v1.RotationDelivery
-	(*RotateChannelRequest)(nil),                  // 19: ardents.v1.RotateChannelRequest
-	(*RotateChannelResponse)(nil),                 // 20: ardents.v1.RotateChannelResponse
-	(*ChangeChannelMembershipRequest)(nil),        // 21: ardents.v1.ChangeChannelMembershipRequest
-	(*DeploymentFenceControl)(nil),                // 22: ardents.v1.DeploymentFenceControl
-	(*DeploymentFenceEvidence)(nil),               // 23: ardents.v1.DeploymentFenceEvidence
-	(*SubmitDeploymentFenceEvidenceRequest)(nil),  // 24: ardents.v1.SubmitDeploymentFenceEvidenceRequest
-	(*SubmitDeploymentFenceEvidenceResponse)(nil), // 25: ardents.v1.SubmitDeploymentFenceEvidenceResponse
-	(*CommitChannelActivationRequest)(nil),        // 26: ardents.v1.CommitChannelActivationRequest
-	(*CommitChannelActivationResponse)(nil),       // 27: ardents.v1.CommitChannelActivationResponse
-	(*ActivateGenerationRequest)(nil),             // 28: ardents.v1.ActivateGenerationRequest
-	(*ActivateGenerationResponse)(nil),            // 29: ardents.v1.ActivateGenerationResponse
-	(*AcknowledgeChannelActivationRequest)(nil),   // 30: ardents.v1.AcknowledgeChannelActivationRequest
-	(*AcknowledgeChannelActivationResponse)(nil),  // 31: ardents.v1.AcknowledgeChannelActivationResponse
-	(*timestamppb.Timestamp)(nil),                 // 32: google.protobuf.Timestamp
-	(*OperationStatus)(nil),                       // 33: ardents.v1.OperationStatus
+	(*InspectChannelRequest)(nil),                 // 2: ardents.v1.InspectChannelRequest
+	(*ChannelStatusSnapshot)(nil),                 // 3: ardents.v1.ChannelStatusSnapshot
+	(*AuthorityStatusSnapshot)(nil),               // 4: ardents.v1.AuthorityStatusSnapshot
+	(*CreateRealmAuthorityResponse)(nil),          // 5: ardents.v1.CreateRealmAuthorityResponse
+	(*InspectRealmAuthorityResponse)(nil),         // 6: ardents.v1.InspectRealmAuthorityResponse
+	(*InspectChannelResponse)(nil),                // 7: ardents.v1.InspectChannelResponse
+	(*GenerationDeliveryAttestation)(nil),         // 8: ardents.v1.GenerationDeliveryAttestation
+	(*GenerationDeliveryBinding)(nil),             // 9: ardents.v1.GenerationDeliveryBinding
+	(*SealedGenerationDelivery)(nil),              // 10: ardents.v1.SealedGenerationDelivery
+	(*GenerationDeliveryReceipt)(nil),             // 11: ardents.v1.GenerationDeliveryReceipt
+	(*IssueInitialGenerationRequest)(nil),         // 12: ardents.v1.IssueInitialGenerationRequest
+	(*IssueInitialGenerationResponse)(nil),        // 13: ardents.v1.IssueInitialGenerationResponse
+	(*AcknowledgeInitialGenerationRequest)(nil),   // 14: ardents.v1.AcknowledgeInitialGenerationRequest
+	(*AcknowledgeInitialGenerationResponse)(nil),  // 15: ardents.v1.AcknowledgeInitialGenerationResponse
+	(*PrepareGenerationDeliveryRequest)(nil),      // 16: ardents.v1.PrepareGenerationDeliveryRequest
+	(*PrepareGenerationDeliveryResponse)(nil),     // 17: ardents.v1.PrepareGenerationDeliveryResponse
+	(*InstallGenerationDeliveryRequest)(nil),      // 18: ardents.v1.InstallGenerationDeliveryRequest
+	(*InstallGenerationDeliveryResponse)(nil),     // 19: ardents.v1.InstallGenerationDeliveryResponse
+	(*GenerationActivation)(nil),                  // 20: ardents.v1.GenerationActivation
+	(*RotationDelivery)(nil),                      // 21: ardents.v1.RotationDelivery
+	(*RotateChannelRequest)(nil),                  // 22: ardents.v1.RotateChannelRequest
+	(*RenewChannelGrantsRequest)(nil),             // 23: ardents.v1.RenewChannelGrantsRequest
+	(*RotateChannelResponse)(nil),                 // 24: ardents.v1.RotateChannelResponse
+	(*ChangeChannelMembershipRequest)(nil),        // 25: ardents.v1.ChangeChannelMembershipRequest
+	(*DeploymentFenceControl)(nil),                // 26: ardents.v1.DeploymentFenceControl
+	(*DeploymentFenceEvidence)(nil),               // 27: ardents.v1.DeploymentFenceEvidence
+	(*SubmitDeploymentFenceEvidenceRequest)(nil),  // 28: ardents.v1.SubmitDeploymentFenceEvidenceRequest
+	(*SubmitDeploymentFenceEvidenceResponse)(nil), // 29: ardents.v1.SubmitDeploymentFenceEvidenceResponse
+	(*CommitChannelActivationRequest)(nil),        // 30: ardents.v1.CommitChannelActivationRequest
+	(*CommitChannelActivationResponse)(nil),       // 31: ardents.v1.CommitChannelActivationResponse
+	(*ActivateGenerationRequest)(nil),             // 32: ardents.v1.ActivateGenerationRequest
+	(*ActivateGenerationResponse)(nil),            // 33: ardents.v1.ActivateGenerationResponse
+	(*AcknowledgeChannelActivationRequest)(nil),   // 34: ardents.v1.AcknowledgeChannelActivationRequest
+	(*AcknowledgeChannelActivationResponse)(nil),  // 35: ardents.v1.AcknowledgeChannelActivationResponse
+	(*timestamppb.Timestamp)(nil),                 // 36: google.protobuf.Timestamp
+	(*OperationStatus)(nil),                       // 37: ardents.v1.OperationStatus
 }
 var file_api_ardents_v1_authority_proto_depIdxs = []int32{
-	32, // 0: ardents.v1.AuthorityStatusSnapshot.operation_deadline:type_name -> google.protobuf.Timestamp
-	33, // 1: ardents.v1.CreateRealmAuthorityResponse.status:type_name -> ardents.v1.OperationStatus
-	2,  // 2: ardents.v1.CreateRealmAuthorityResponse.authority:type_name -> ardents.v1.AuthorityStatusSnapshot
-	33, // 3: ardents.v1.InspectRealmAuthorityResponse.status:type_name -> ardents.v1.OperationStatus
-	2,  // 4: ardents.v1.InspectRealmAuthorityResponse.authority:type_name -> ardents.v1.AuthorityStatusSnapshot
-	32, // 5: ardents.v1.GenerationDeliveryAttestation.not_before:type_name -> google.protobuf.Timestamp
-	32, // 6: ardents.v1.GenerationDeliveryAttestation.not_after:type_name -> google.protobuf.Timestamp
-	32, // 7: ardents.v1.GenerationDeliveryBinding.expires_at:type_name -> google.protobuf.Timestamp
-	6,  // 8: ardents.v1.SealedGenerationDelivery.binding:type_name -> ardents.v1.GenerationDeliveryBinding
-	32, // 9: ardents.v1.GenerationDeliveryReceipt.created_at:type_name -> google.protobuf.Timestamp
-	5,  // 10: ardents.v1.IssueInitialGenerationRequest.recipient_attestation:type_name -> ardents.v1.GenerationDeliveryAttestation
-	33, // 11: ardents.v1.IssueInitialGenerationResponse.status:type_name -> ardents.v1.OperationStatus
-	7,  // 12: ardents.v1.IssueInitialGenerationResponse.sealed:type_name -> ardents.v1.SealedGenerationDelivery
-	8,  // 13: ardents.v1.AcknowledgeInitialGenerationRequest.receipt:type_name -> ardents.v1.GenerationDeliveryReceipt
-	33, // 14: ardents.v1.AcknowledgeInitialGenerationResponse.status:type_name -> ardents.v1.OperationStatus
-	33, // 15: ardents.v1.PrepareGenerationDeliveryResponse.status:type_name -> ardents.v1.OperationStatus
-	5,  // 16: ardents.v1.PrepareGenerationDeliveryResponse.attestation:type_name -> ardents.v1.GenerationDeliveryAttestation
-	7,  // 17: ardents.v1.InstallGenerationDeliveryRequest.sealed:type_name -> ardents.v1.SealedGenerationDelivery
-	33, // 18: ardents.v1.InstallGenerationDeliveryResponse.status:type_name -> ardents.v1.OperationStatus
-	8,  // 19: ardents.v1.InstallGenerationDeliveryResponse.receipt:type_name -> ardents.v1.GenerationDeliveryReceipt
-	32, // 20: ardents.v1.GenerationActivation.effective_at:type_name -> google.protobuf.Timestamp
-	32, // 21: ardents.v1.GenerationActivation.drain_deadline:type_name -> google.protobuf.Timestamp
-	7,  // 22: ardents.v1.RotationDelivery.sealed:type_name -> ardents.v1.SealedGenerationDelivery
-	5,  // 23: ardents.v1.RotateChannelRequest.recipient_attestations:type_name -> ardents.v1.GenerationDeliveryAttestation
-	33, // 24: ardents.v1.RotateChannelResponse.status:type_name -> ardents.v1.OperationStatus
-	18, // 25: ardents.v1.RotateChannelResponse.deliveries:type_name -> ardents.v1.RotationDelivery
-	5,  // 26: ardents.v1.ChangeChannelMembershipRequest.recipient_attestations:type_name -> ardents.v1.GenerationDeliveryAttestation
-	32, // 27: ardents.v1.DeploymentFenceEvidence.observed_at:type_name -> google.protobuf.Timestamp
-	22, // 28: ardents.v1.DeploymentFenceEvidence.controls:type_name -> ardents.v1.DeploymentFenceControl
-	23, // 29: ardents.v1.SubmitDeploymentFenceEvidenceRequest.evidence:type_name -> ardents.v1.DeploymentFenceEvidence
-	33, // 30: ardents.v1.SubmitDeploymentFenceEvidenceResponse.status:type_name -> ardents.v1.OperationStatus
-	33, // 31: ardents.v1.CommitChannelActivationResponse.status:type_name -> ardents.v1.OperationStatus
-	17, // 32: ardents.v1.CommitChannelActivationResponse.activation:type_name -> ardents.v1.GenerationActivation
-	17, // 33: ardents.v1.ActivateGenerationRequest.activation:type_name -> ardents.v1.GenerationActivation
-	33, // 34: ardents.v1.ActivateGenerationResponse.status:type_name -> ardents.v1.OperationStatus
-	8,  // 35: ardents.v1.ActivateGenerationResponse.receipt:type_name -> ardents.v1.GenerationDeliveryReceipt
-	8,  // 36: ardents.v1.AcknowledgeChannelActivationRequest.receipt:type_name -> ardents.v1.GenerationDeliveryReceipt
-	33, // 37: ardents.v1.AcknowledgeChannelActivationResponse.status:type_name -> ardents.v1.OperationStatus
-	32, // 38: ardents.v1.AcknowledgeChannelActivationResponse.drain_deadline:type_name -> google.protobuf.Timestamp
-	0,  // 39: ardents.v1.AuthorityService.CreateRealmAuthority:input_type -> ardents.v1.CreateRealmAuthorityRequest
-	1,  // 40: ardents.v1.AuthorityService.InspectRealmAuthority:input_type -> ardents.v1.InspectRealmAuthorityRequest
-	9,  // 41: ardents.v1.AuthorityService.IssueInitialGeneration:input_type -> ardents.v1.IssueInitialGenerationRequest
-	11, // 42: ardents.v1.AuthorityService.AcknowledgeInitialGeneration:input_type -> ardents.v1.AcknowledgeInitialGenerationRequest
-	19, // 43: ardents.v1.AuthorityService.RotateChannel:input_type -> ardents.v1.RotateChannelRequest
-	26, // 44: ardents.v1.AuthorityService.CommitChannelActivation:input_type -> ardents.v1.CommitChannelActivationRequest
-	30, // 45: ardents.v1.AuthorityService.AcknowledgeChannelActivation:input_type -> ardents.v1.AcknowledgeChannelActivationRequest
-	21, // 46: ardents.v1.AuthorityService.ChangeChannelMembership:input_type -> ardents.v1.ChangeChannelMembershipRequest
-	24, // 47: ardents.v1.AuthorityService.SubmitDeploymentFenceEvidence:input_type -> ardents.v1.SubmitDeploymentFenceEvidenceRequest
-	13, // 48: ardents.v1.ChannelDeliveryService.PrepareGenerationDelivery:input_type -> ardents.v1.PrepareGenerationDeliveryRequest
-	15, // 49: ardents.v1.ChannelDeliveryService.InstallGenerationDelivery:input_type -> ardents.v1.InstallGenerationDeliveryRequest
-	28, // 50: ardents.v1.ChannelDeliveryService.ActivateGeneration:input_type -> ardents.v1.ActivateGenerationRequest
-	3,  // 51: ardents.v1.AuthorityService.CreateRealmAuthority:output_type -> ardents.v1.CreateRealmAuthorityResponse
-	4,  // 52: ardents.v1.AuthorityService.InspectRealmAuthority:output_type -> ardents.v1.InspectRealmAuthorityResponse
-	10, // 53: ardents.v1.AuthorityService.IssueInitialGeneration:output_type -> ardents.v1.IssueInitialGenerationResponse
-	12, // 54: ardents.v1.AuthorityService.AcknowledgeInitialGeneration:output_type -> ardents.v1.AcknowledgeInitialGenerationResponse
-	20, // 55: ardents.v1.AuthorityService.RotateChannel:output_type -> ardents.v1.RotateChannelResponse
-	27, // 56: ardents.v1.AuthorityService.CommitChannelActivation:output_type -> ardents.v1.CommitChannelActivationResponse
-	31, // 57: ardents.v1.AuthorityService.AcknowledgeChannelActivation:output_type -> ardents.v1.AcknowledgeChannelActivationResponse
-	20, // 58: ardents.v1.AuthorityService.ChangeChannelMembership:output_type -> ardents.v1.RotateChannelResponse
-	25, // 59: ardents.v1.AuthorityService.SubmitDeploymentFenceEvidence:output_type -> ardents.v1.SubmitDeploymentFenceEvidenceResponse
-	14, // 60: ardents.v1.ChannelDeliveryService.PrepareGenerationDelivery:output_type -> ardents.v1.PrepareGenerationDeliveryResponse
-	16, // 61: ardents.v1.ChannelDeliveryService.InstallGenerationDelivery:output_type -> ardents.v1.InstallGenerationDeliveryResponse
-	29, // 62: ardents.v1.ChannelDeliveryService.ActivateGeneration:output_type -> ardents.v1.ActivateGenerationResponse
-	51, // [51:63] is the sub-list for method output_type
-	39, // [39:51] is the sub-list for method input_type
-	39, // [39:39] is the sub-list for extension type_name
-	39, // [39:39] is the sub-list for extension extendee
-	0,  // [0:39] is the sub-list for field type_name
+	36, // 0: ardents.v1.ChannelStatusSnapshot.grant_not_after:type_name -> google.protobuf.Timestamp
+	36, // 1: ardents.v1.ChannelStatusSnapshot.renew_by:type_name -> google.protobuf.Timestamp
+	36, // 2: ardents.v1.AuthorityStatusSnapshot.operation_deadline:type_name -> google.protobuf.Timestamp
+	37, // 3: ardents.v1.CreateRealmAuthorityResponse.status:type_name -> ardents.v1.OperationStatus
+	4,  // 4: ardents.v1.CreateRealmAuthorityResponse.authority:type_name -> ardents.v1.AuthorityStatusSnapshot
+	37, // 5: ardents.v1.InspectRealmAuthorityResponse.status:type_name -> ardents.v1.OperationStatus
+	4,  // 6: ardents.v1.InspectRealmAuthorityResponse.authority:type_name -> ardents.v1.AuthorityStatusSnapshot
+	37, // 7: ardents.v1.InspectChannelResponse.status:type_name -> ardents.v1.OperationStatus
+	3,  // 8: ardents.v1.InspectChannelResponse.channel:type_name -> ardents.v1.ChannelStatusSnapshot
+	36, // 9: ardents.v1.GenerationDeliveryAttestation.not_before:type_name -> google.protobuf.Timestamp
+	36, // 10: ardents.v1.GenerationDeliveryAttestation.not_after:type_name -> google.protobuf.Timestamp
+	36, // 11: ardents.v1.GenerationDeliveryBinding.expires_at:type_name -> google.protobuf.Timestamp
+	9,  // 12: ardents.v1.SealedGenerationDelivery.binding:type_name -> ardents.v1.GenerationDeliveryBinding
+	36, // 13: ardents.v1.GenerationDeliveryReceipt.created_at:type_name -> google.protobuf.Timestamp
+	8,  // 14: ardents.v1.IssueInitialGenerationRequest.recipient_attestation:type_name -> ardents.v1.GenerationDeliveryAttestation
+	37, // 15: ardents.v1.IssueInitialGenerationResponse.status:type_name -> ardents.v1.OperationStatus
+	10, // 16: ardents.v1.IssueInitialGenerationResponse.sealed:type_name -> ardents.v1.SealedGenerationDelivery
+	11, // 17: ardents.v1.AcknowledgeInitialGenerationRequest.receipt:type_name -> ardents.v1.GenerationDeliveryReceipt
+	37, // 18: ardents.v1.AcknowledgeInitialGenerationResponse.status:type_name -> ardents.v1.OperationStatus
+	37, // 19: ardents.v1.PrepareGenerationDeliveryResponse.status:type_name -> ardents.v1.OperationStatus
+	8,  // 20: ardents.v1.PrepareGenerationDeliveryResponse.attestation:type_name -> ardents.v1.GenerationDeliveryAttestation
+	10, // 21: ardents.v1.InstallGenerationDeliveryRequest.sealed:type_name -> ardents.v1.SealedGenerationDelivery
+	37, // 22: ardents.v1.InstallGenerationDeliveryResponse.status:type_name -> ardents.v1.OperationStatus
+	11, // 23: ardents.v1.InstallGenerationDeliveryResponse.receipt:type_name -> ardents.v1.GenerationDeliveryReceipt
+	36, // 24: ardents.v1.GenerationActivation.effective_at:type_name -> google.protobuf.Timestamp
+	36, // 25: ardents.v1.GenerationActivation.drain_deadline:type_name -> google.protobuf.Timestamp
+	10, // 26: ardents.v1.RotationDelivery.sealed:type_name -> ardents.v1.SealedGenerationDelivery
+	8,  // 27: ardents.v1.RotateChannelRequest.recipient_attestations:type_name -> ardents.v1.GenerationDeliveryAttestation
+	8,  // 28: ardents.v1.RenewChannelGrantsRequest.recipient_attestations:type_name -> ardents.v1.GenerationDeliveryAttestation
+	37, // 29: ardents.v1.RotateChannelResponse.status:type_name -> ardents.v1.OperationStatus
+	21, // 30: ardents.v1.RotateChannelResponse.deliveries:type_name -> ardents.v1.RotationDelivery
+	8,  // 31: ardents.v1.ChangeChannelMembershipRequest.recipient_attestations:type_name -> ardents.v1.GenerationDeliveryAttestation
+	36, // 32: ardents.v1.DeploymentFenceEvidence.observed_at:type_name -> google.protobuf.Timestamp
+	26, // 33: ardents.v1.DeploymentFenceEvidence.controls:type_name -> ardents.v1.DeploymentFenceControl
+	27, // 34: ardents.v1.SubmitDeploymentFenceEvidenceRequest.evidence:type_name -> ardents.v1.DeploymentFenceEvidence
+	37, // 35: ardents.v1.SubmitDeploymentFenceEvidenceResponse.status:type_name -> ardents.v1.OperationStatus
+	37, // 36: ardents.v1.CommitChannelActivationResponse.status:type_name -> ardents.v1.OperationStatus
+	20, // 37: ardents.v1.CommitChannelActivationResponse.activation:type_name -> ardents.v1.GenerationActivation
+	20, // 38: ardents.v1.ActivateGenerationRequest.activation:type_name -> ardents.v1.GenerationActivation
+	37, // 39: ardents.v1.ActivateGenerationResponse.status:type_name -> ardents.v1.OperationStatus
+	11, // 40: ardents.v1.ActivateGenerationResponse.receipt:type_name -> ardents.v1.GenerationDeliveryReceipt
+	11, // 41: ardents.v1.AcknowledgeChannelActivationRequest.receipt:type_name -> ardents.v1.GenerationDeliveryReceipt
+	37, // 42: ardents.v1.AcknowledgeChannelActivationResponse.status:type_name -> ardents.v1.OperationStatus
+	36, // 43: ardents.v1.AcknowledgeChannelActivationResponse.drain_deadline:type_name -> google.protobuf.Timestamp
+	0,  // 44: ardents.v1.AuthorityService.CreateRealmAuthority:input_type -> ardents.v1.CreateRealmAuthorityRequest
+	1,  // 45: ardents.v1.AuthorityService.InspectRealmAuthority:input_type -> ardents.v1.InspectRealmAuthorityRequest
+	2,  // 46: ardents.v1.AuthorityService.InspectChannel:input_type -> ardents.v1.InspectChannelRequest
+	12, // 47: ardents.v1.AuthorityService.IssueInitialGeneration:input_type -> ardents.v1.IssueInitialGenerationRequest
+	14, // 48: ardents.v1.AuthorityService.AcknowledgeInitialGeneration:input_type -> ardents.v1.AcknowledgeInitialGenerationRequest
+	22, // 49: ardents.v1.AuthorityService.RotateChannel:input_type -> ardents.v1.RotateChannelRequest
+	23, // 50: ardents.v1.AuthorityService.RenewChannelGrants:input_type -> ardents.v1.RenewChannelGrantsRequest
+	30, // 51: ardents.v1.AuthorityService.CommitChannelActivation:input_type -> ardents.v1.CommitChannelActivationRequest
+	34, // 52: ardents.v1.AuthorityService.AcknowledgeChannelActivation:input_type -> ardents.v1.AcknowledgeChannelActivationRequest
+	25, // 53: ardents.v1.AuthorityService.ChangeChannelMembership:input_type -> ardents.v1.ChangeChannelMembershipRequest
+	28, // 54: ardents.v1.AuthorityService.SubmitDeploymentFenceEvidence:input_type -> ardents.v1.SubmitDeploymentFenceEvidenceRequest
+	16, // 55: ardents.v1.ChannelDeliveryService.PrepareGenerationDelivery:input_type -> ardents.v1.PrepareGenerationDeliveryRequest
+	18, // 56: ardents.v1.ChannelDeliveryService.InstallGenerationDelivery:input_type -> ardents.v1.InstallGenerationDeliveryRequest
+	32, // 57: ardents.v1.ChannelDeliveryService.ActivateGeneration:input_type -> ardents.v1.ActivateGenerationRequest
+	5,  // 58: ardents.v1.AuthorityService.CreateRealmAuthority:output_type -> ardents.v1.CreateRealmAuthorityResponse
+	6,  // 59: ardents.v1.AuthorityService.InspectRealmAuthority:output_type -> ardents.v1.InspectRealmAuthorityResponse
+	7,  // 60: ardents.v1.AuthorityService.InspectChannel:output_type -> ardents.v1.InspectChannelResponse
+	13, // 61: ardents.v1.AuthorityService.IssueInitialGeneration:output_type -> ardents.v1.IssueInitialGenerationResponse
+	15, // 62: ardents.v1.AuthorityService.AcknowledgeInitialGeneration:output_type -> ardents.v1.AcknowledgeInitialGenerationResponse
+	24, // 63: ardents.v1.AuthorityService.RotateChannel:output_type -> ardents.v1.RotateChannelResponse
+	24, // 64: ardents.v1.AuthorityService.RenewChannelGrants:output_type -> ardents.v1.RotateChannelResponse
+	31, // 65: ardents.v1.AuthorityService.CommitChannelActivation:output_type -> ardents.v1.CommitChannelActivationResponse
+	35, // 66: ardents.v1.AuthorityService.AcknowledgeChannelActivation:output_type -> ardents.v1.AcknowledgeChannelActivationResponse
+	24, // 67: ardents.v1.AuthorityService.ChangeChannelMembership:output_type -> ardents.v1.RotateChannelResponse
+	29, // 68: ardents.v1.AuthorityService.SubmitDeploymentFenceEvidence:output_type -> ardents.v1.SubmitDeploymentFenceEvidenceResponse
+	17, // 69: ardents.v1.ChannelDeliveryService.PrepareGenerationDelivery:output_type -> ardents.v1.PrepareGenerationDeliveryResponse
+	19, // 70: ardents.v1.ChannelDeliveryService.InstallGenerationDelivery:output_type -> ardents.v1.InstallGenerationDeliveryResponse
+	33, // 71: ardents.v1.ChannelDeliveryService.ActivateGeneration:output_type -> ardents.v1.ActivateGenerationResponse
+	58, // [58:72] is the sub-list for method output_type
+	44, // [44:58] is the sub-list for method input_type
+	44, // [44:44] is the sub-list for extension type_name
+	44, // [44:44] is the sub-list for extension extendee
+	0,  // [0:44] is the sub-list for field type_name
 }
 
 func init() { file_api_ardents_v1_authority_proto_init() }
@@ -3171,7 +3547,7 @@ func file_api_ardents_v1_authority_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_ardents_v1_authority_proto_rawDesc), len(file_api_ardents_v1_authority_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   32,
+			NumMessages:   36,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

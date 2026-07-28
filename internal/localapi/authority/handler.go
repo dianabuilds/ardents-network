@@ -16,9 +16,11 @@ import (
 type Service interface {
 	CreateOrReopen(context.Context, domain.Command, domain.CreateRequest) (domain.CreateResult, error)
 	Inspect(context.Context, domain.Command, domain.InspectRequest) (domain.Status, error)
+	InspectChannel(context.Context, domain.Command, domain.InspectChannelRequest) (domain.ChannelStatus, error)
 	IssueInitialGeneration(context.Context, domain.Command, domain.InitialGenerationRequest) (domain.InitialGenerationResult, error)
 	AcknowledgeInitialGeneration(context.Context, domain.Command, domain.InitialGenerationAcknowledgeRequest) (domain.InitialGenerationAcknowledgeResult, error)
 	RotateChannel(context.Context, domain.Command, domain.RotationRequest) (domain.RotationResult, error)
+	RenewChannelGrants(context.Context, domain.Command, domain.RenewalRequest) (domain.RotationResult, error)
 	CommitChannelActivation(context.Context, domain.Command, domain.ActivationCommitRequest) (domain.ActivationCommitResult, error)
 	AcknowledgeChannelActivation(context.Context, domain.Command, domain.ActivationAcknowledgeRequest) (domain.ActivationAcknowledgeResult, error)
 	ChangeChannelMembership(context.Context, domain.Command, domain.MembershipChangeRequest) (domain.RotationResult, error)
@@ -61,6 +63,54 @@ func (h *AuthorityEndpoint) RotateChannel(ctx context.Context, request *connect.
 		})
 		if err != nil {
 			return nil, authorityError("rotate_channel", err)
+		}
+		return rotationToWire(result), nil
+	})
+}
+
+func (h *AuthorityEndpoint) RenewChannelGrants(
+	ctx context.Context,
+	request *connect.Request[protocol.RenewChannelGrantsRequest],
+) (*connect.Response[protocol.RotateChannelResponse], error) {
+	return rpc.RespondContext(ctx, func(call rpc.Call) (*protocol.RotateChannelResponse, *rpc.Error) {
+		if h.service == nil {
+			return nil, authorityError("renew_channel_grants", domain.ErrUnavailable)
+		}
+		command, ok := authorityCommand(call)
+		if !ok {
+			return nil, authorityError("renew_channel_grants", domain.ErrPermissionDenied)
+		}
+		channelID, err := fixedID(request.Msg.GetChannelId())
+		if err != nil || len(request.Msg.GetRecipientAttestations()) == 0 ||
+			len(request.Msg.GetRecipientAttestations()) > domain.MaxMembersPerChannel ||
+			request.Msg.GetDrainForSeconds() >
+				uint64(domain.MaximumPreviousGenerationDrain/time.Second) {
+			return nil, authorityError("renew_channel_grants", domain.ErrInvalidArgument)
+		}
+		attestations := make(
+			[]identityapi.CapabilityDeliveryAttestation,
+			0, len(request.Msg.GetRecipientAttestations()),
+		)
+		for _, wire := range request.Msg.GetRecipientAttestations() {
+			attestation, mapErr := attestationFromWire(wire)
+			if mapErr != nil {
+				return nil, authorityError("renew_channel_grants", domain.ErrInvalidArgument)
+			}
+			attestations = append(attestations, attestation)
+		}
+		mutationContext, cancel := rpc.MutationContext(ctx)
+		defer cancel()
+		result, err := h.service.RenewChannelGrants(
+			mutationContext, command,
+			domain.RenewalRequest{
+				Version: request.Msg.GetVersion(), RequestID: request.Msg.GetRequestId(),
+				RealmID: request.Msg.GetRealmId(), ChannelID: channelID,
+				RecipientAttestations: attestations,
+				DrainFor:              time.Duration(request.Msg.GetDrainForSeconds()) * time.Second,
+			},
+		)
+		if err != nil {
+			return nil, authorityError("renew_channel_grants", err)
 		}
 		return rotationToWire(result), nil
 	})
@@ -329,6 +379,50 @@ func (h *AuthorityEndpoint) InspectRealmAuthority(ctx context.Context, request *
 		}
 		return &protocol.InspectRealmAuthorityResponse{
 			Status: operationStatus(status), Authority: mapStatus(status),
+		}, nil
+	})
+}
+
+func (h *AuthorityEndpoint) InspectChannel(
+	ctx context.Context,
+	request *connect.Request[protocol.InspectChannelRequest],
+) (*connect.Response[protocol.InspectChannelResponse], error) {
+	return rpc.RespondContext(ctx, func(call rpc.Call) (*protocol.InspectChannelResponse, *rpc.Error) {
+		if h.service == nil {
+			return nil, authorityError("inspect_channel", domain.ErrUnavailable)
+		}
+		command, ok := authorityCommand(call)
+		if !ok {
+			return nil, authorityError("inspect_channel", domain.ErrPermissionDenied)
+		}
+		channelID, err := fixedID(request.Msg.GetChannelId())
+		if err != nil {
+			return nil, authorityError("inspect_channel", domain.ErrInvalidArgument)
+		}
+		status, err := h.service.InspectChannel(
+			ctx, command,
+			domain.InspectChannelRequest{
+				Version: request.Msg.GetVersion(), RealmID: request.Msg.GetRealmId(),
+				ChannelID: channelID,
+			},
+		)
+		if err != nil {
+			return nil, authorityError("inspect_channel", err)
+		}
+		return &protocol.InspectChannelResponse{
+			Status: &protocol.OperationStatus{
+				State: status.Readiness, Reason: status.Reason,
+				Accepted: status.Readiness == domain.ReadinessReady,
+			},
+			Channel: &protocol.ChannelStatusSnapshot{
+				Version: status.Version, RealmId: status.RealmID,
+				ChannelClass:      string(status.ChannelClass),
+				CurrentGeneration: status.CurrentGeneration,
+				MemberCount:       status.MemberCount, Readiness: status.Readiness,
+				Reason: status.Reason, GrantNotAfter: rpc.Timestamp(status.GrantNotAfter),
+				RenewBy:           rpc.Timestamp(status.RenewBy),
+				PendingGeneration: status.PendingGeneration,
+			},
 		}, nil
 	})
 }

@@ -139,6 +139,18 @@ func (s *Service) AllowCapabilityUse(use identityapi.CapabilityUse) error {
 	return s.applyDecisionLocked(result)
 }
 
+func (s *Service) AllowRealmChannelClass(scope identityapi.CapabilityScope) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !ContainsNormalized(s.cfg.DeniedChannelGrantScopes, string(scope)) {
+		return nil
+	}
+	return s.applyDecisionLocked(Deny(
+		"policy_realm_channel_class_denied",
+		"Realm channel class is denied by policy",
+	))
+}
+
 // AllowRealmAuthorityCreation is the Product Policy gate for the sole v1
 // authority-instance genesis mutation.
 func (s *Service) AllowRealmAuthorityCreation() error {

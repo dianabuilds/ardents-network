@@ -15,6 +15,12 @@ import (
 const generationActivationDomain = "ardents:generation-activation:v1\x00"
 const maximumRetainedActivationOperations = 4096
 
+const (
+	GenerationReasonGrantExpired = "channel_grant_expired"
+	GenerationReasonPending      = "channel_grant_pending"
+	GenerationReasonNotAdopted   = "channel_generation_not_adopted"
+)
+
 type GenerationActivation struct {
 	Version            uint32                      `json:"version"`
 	RealmID            string                      `json:"realm_id"`
@@ -40,6 +46,7 @@ type GenerationReadiness struct {
 	PreviousDrainUntil time.Time
 	CheckpointDigest   string
 	Ready              bool
+	Reason             string
 }
 
 func SignGenerationActivationWith(
@@ -240,12 +247,17 @@ func (s *Service) GenerationReadiness(channelID [16]byte) GenerationReadiness {
 	_, current, ok := currentSubjectGrant(s.ledger, channelID, s.localPrincipal)
 	if ok {
 		status.CurrentGeneration = current.Generation
-		status.Ready = true
+		if now.Before(current.NotAfter) {
+			status.Ready = true
+		} else {
+			status.Reason = GenerationReasonGrantExpired
+		}
 	}
 	channelKey := generationChannelKey(channelID)
 	if pending, exists := s.ledger.PendingGenerations[channelKey]; exists {
 		status.PendingGeneration = pending.Generation
 		status.Ready = false
+		status.Reason = GenerationReasonPending
 	}
 	if previous, exists := s.ledger.PreviousGenerations[channelKey]; exists &&
 		now.Before(previous.DrainDeadline) {
@@ -256,6 +268,7 @@ func (s *Service) GenerationReadiness(channelID [16]byte) GenerationReadiness {
 		status.CheckpointDigest = activated.Activation.CheckpointDigest
 		if !activated.RuntimeAdopted {
 			status.Ready = false
+			status.Reason = GenerationReasonNotAdopted
 		}
 	}
 	return status

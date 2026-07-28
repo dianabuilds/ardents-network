@@ -27,6 +27,8 @@ type AuditRecord struct {
 	ResourceID      string    `json:"resource_id"`
 	OperationID     string    `json:"operation_id"`
 	TargetPrincipal string    `json:"target_principal,omitempty"`
+	ChannelClass    string    `json:"channel_class,omitempty"`
+	Generation      uint32    `json:"generation,omitempty"`
 	Outcome         string    `json:"outcome"`
 	PreviousHash    string    `json:"previous_hash,omitempty"`
 	Hash            string    `json:"hash"`
@@ -100,6 +102,7 @@ type RotationRecord struct {
 	PayloadHash        string                                  `json:"payload_hash"`
 	OperationID        string                                  `json:"operation_id"`
 	ChannelID          [16]byte                                `json:"channel_id"`
+	ChannelClass       string                                  `json:"channel_class"`
 	PreviousGeneration uint32                                  `json:"previous_generation"`
 	PendingGeneration  uint32                                  `json:"pending_generation"`
 	PrepareSequence    uint64                                  `json:"prepare_sequence"`
@@ -112,6 +115,7 @@ type RotationRecord struct {
 	DrainDeadline      time.Time                               `json:"drain_deadline"`
 	MembershipChange   MembershipChangeRecord                  `json:"membership_change,omitempty"`
 	FenceEvidence      []DeploymentFenceEvidence               `json:"fence_evidence,omitempty"`
+	Renewal            bool                                    `json:"renewal,omitempty"`
 }
 
 type MembershipChangeRecord struct {

@@ -16,3 +16,11 @@ func TestCheckChannelGrantUseEnforcesDisableAndScopeRules(t *testing.T) {
 		DeniedChannelGrantScopes: []string{"REALM.DISCOVERY"},
 	}, use).Allowed)
 }
+
+func TestRealmAuthorityChannelClassAdmissionUsesExactScopePolicy(t *testing.T) {
+	service := New(Config{
+		DeniedChannelGrantScopes: []string{string(identityapi.CapabilityApplication)},
+	})
+	require.NoError(t, service.AllowRealmChannelClass(identityapi.CapabilityRealmDiscovery))
+	require.Error(t, service.AllowRealmChannelClass(identityapi.CapabilityApplication))
+}

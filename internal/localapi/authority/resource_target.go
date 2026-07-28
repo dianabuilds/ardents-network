@@ -33,6 +33,19 @@ func CanonicalizeResource(procedure string, message any, kind string) (identitya
 		return identityaccess.ResourceTarget{
 			Kind: identityaccess.ResourceKind(kind), ID: request.GetRealmId(),
 		}, nil
+	case ardentsv1connect.AuthorityServiceInspectChannelProcedure:
+		request, ok := message.(*protocol.InspectChannelRequest)
+		if !ok || len(request.ProtoReflect().GetUnknown()) != 0 ||
+			!domain.ValidRealmID(request.GetRealmId()) ||
+			len(request.GetChannelId()) != 16 {
+			return identityaccess.ResourceTarget{}, ErrInvalidResourceTarget
+		}
+		var channelID [16]byte
+		copy(channelID[:], request.GetChannelId())
+		return identityaccess.ResourceTarget{
+			Kind: identityaccess.ResourceKind(kind),
+			ID:   domain.ChannelResource(request.GetRealmId(), channelID),
+		}, nil
 	case ardentsv1connect.AuthorityServiceIssueInitialGenerationProcedure:
 		request, ok := message.(*protocol.IssueInitialGenerationRequest)
 		if !ok || len(request.ProtoReflect().GetUnknown()) != 0 ||
@@ -64,6 +77,29 @@ func CanonicalizeResource(procedure string, message any, kind string) (identitya
 		}, nil
 	case ardentsv1connect.AuthorityServiceRotateChannelProcedure:
 		request, ok := message.(*protocol.RotateChannelRequest)
+		if !ok || len(request.ProtoReflect().GetUnknown()) != 0 ||
+			len(request.GetRequestId()) == 0 ||
+			len(request.GetRequestId()) > domain.MaxRequestIDBytes ||
+			!domain.ValidRealmID(request.GetRealmId()) ||
+			len(request.GetChannelId()) != 16 ||
+			len(request.GetRecipientAttestations()) == 0 ||
+			len(request.GetRecipientAttestations()) > domain.MaxMembersPerChannel {
+			return identityaccess.ResourceTarget{}, ErrInvalidResourceTarget
+		}
+		for _, attestation := range request.GetRecipientAttestations() {
+			if attestation == nil ||
+				len(attestation.ProtoReflect().GetUnknown()) != 0 {
+				return identityaccess.ResourceTarget{}, ErrInvalidResourceTarget
+			}
+		}
+		var channelID [16]byte
+		copy(channelID[:], request.GetChannelId())
+		return identityaccess.ResourceTarget{
+			Kind: identityaccess.ResourceKind(kind),
+			ID:   domain.ChannelResource(request.GetRealmId(), channelID),
+		}, nil
+	case ardentsv1connect.AuthorityServiceRenewChannelGrantsProcedure:
+		request, ok := message.(*protocol.RenewChannelGrantsRequest)
 		if !ok || len(request.ProtoReflect().GetUnknown()) != 0 ||
 			len(request.GetRequestId()) == 0 ||
 			len(request.GetRequestId()) > domain.MaxRequestIDBytes ||

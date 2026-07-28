@@ -517,6 +517,106 @@ func TestChannelRotationActivationAcrossProtectedAuthorityAndMemberHosts(t *test
 	require.Equal(t, domain.DeliveryPhaseCompleted, completed.Msg.GetPhase())
 	require.Equal(t, uint32(2), completed.Msg.GetCurrentGeneration())
 	require.Equal(t, uint32(1), completed.Msg.GetPreviousGeneration())
+
+	authorityHost.GrantExact(
+		t, []identityaccess.Action{domain.ActionInspect},
+		domain.ResourceKindChannel, channelResource, false,
+	)
+	channelStatus, err := authorityHost.Client.InspectChannel(
+		ctx, connect.NewRequest(&protocol.InspectChannelRequest{
+			Version: domain.ContractVersion, RealmId: realmID, ChannelId: channelID,
+		}),
+	)
+	require.NoError(t, err)
+	require.Equal(
+		t, string(identityapi.CapabilityRealmDiscovery),
+		channelStatus.Msg.GetChannel().GetChannelClass(),
+	)
+	require.Equal(t, domain.ReasonChannelGrantRenewalDue, channelStatus.Msg.GetChannel().GetReason())
+
+	renewed, err := authorityHost.Client.RenewChannelGrants(
+		ctx, connect.NewRequest(&protocol.RenewChannelGrantsRequest{
+			Version: domain.ContractVersion, RequestId: "renewal-integration-001",
+			RealmId: realmID, ChannelId: channelID,
+			RecipientAttestations: []*protocol.GenerationDeliveryAttestation{
+				prepared.Msg.GetAttestation(),
+			},
+			DrainForSeconds: uint64((15 * time.Minute) / time.Second),
+		}),
+	)
+	require.NoError(t, err)
+	require.True(t, renewed.Msg.GetRenewal())
+	require.Equal(
+		t, string(identityapi.CapabilityRealmDiscovery), renewed.Msg.GetChannelClass(),
+	)
+	require.Equal(t, uint32(3), renewed.Msg.GetPendingGeneration())
+	require.Len(t, renewed.Msg.GetDeliveries(), 1)
+	renewalDelivery := renewed.Msg.GetDeliveries()[0]
+	renewalDeliveryResource, valid := domain.GenerationDeliveryResource(
+		realmID, renewed.Msg.GetOperationId(), renewalDelivery.GetDeliveryId(),
+	)
+	require.True(t, valid)
+	memberHost.GrantExact(
+		t, []identityaccess.Action{"realm.channel.delivery.install"},
+		domain.ResourceKindGenerationDelivery, renewalDeliveryResource, false,
+	)
+	renewalPending, err := memberHost.Client.InstallGenerationDelivery(
+		ctx, connect.NewRequest(&protocol.InstallGenerationDeliveryRequest{
+			Version: channeldelivery.ContractVersion, Sealed: renewalDelivery.GetSealed(),
+		}),
+	)
+	require.NoError(t, err)
+	require.False(t, memberCapabilities.GenerationReadiness(channel).Ready)
+	require.Equal(t, uint32(3), memberCapabilities.GenerationReadiness(channel).PendingGeneration)
+	authorityHost.GrantExact(
+		t, []identityaccess.Action{domain.ActionAcknowledgeDelivery},
+		domain.ResourceKindGenerationDelivery, renewalDeliveryResource, false,
+	)
+	_, err = authorityHost.Client.AcknowledgeInitialGeneration(
+		ctx, connect.NewRequest(&protocol.AcknowledgeInitialGenerationRequest{
+			Version: domain.ContractVersion, RealmId: realmID,
+			OperationId: renewed.Msg.GetOperationId(), Receipt: renewalPending.Msg.GetReceipt(),
+		}),
+	)
+	require.NoError(t, err)
+	renewalOperationResource := domain.OperationResource(realmID, renewed.Msg.GetOperationId())
+	authorityHost.GrantExact(
+		t, []identityaccess.Action{domain.ActionCommitActivation},
+		domain.ResourceKindOperation, renewalOperationResource, false,
+	)
+	renewalCommitted, err := authorityHost.Client.CommitChannelActivation(
+		ctx, connect.NewRequest(&protocol.CommitChannelActivationRequest{
+			Version: domain.ContractVersion, RealmId: realmID,
+			OperationId: renewed.Msg.GetOperationId(),
+		}),
+	)
+	require.NoError(t, err)
+	memberHost.GrantExact(
+		t, []identityaccess.Action{"realm.channel.generation.activate"},
+		domain.ResourceKindOperation, renewalOperationResource, false,
+	)
+	renewalActive, err := memberHost.Client.ActivateGeneration(
+		ctx, connect.NewRequest(&protocol.ActivateGenerationRequest{
+			Version: domain.ContractVersion, Activation: renewalCommitted.Msg.GetActivation(),
+		}),
+	)
+	require.NoError(t, err)
+	require.True(t, memberCapabilities.GenerationReadiness(channel).Ready)
+	require.Equal(t, uint32(3), memberCapabilities.GenerationReadiness(channel).CurrentGeneration)
+	authorityHost.GrantExact(
+		t, []identityaccess.Action{domain.ActionAcknowledgeActivation},
+		domain.ResourceKindGenerationDelivery, renewalDeliveryResource, false,
+	)
+	renewalCompleted, err := authorityHost.Client.AcknowledgeChannelActivation(
+		ctx, connect.NewRequest(&protocol.AcknowledgeChannelActivationRequest{
+			Version: domain.ContractVersion, RealmId: realmID,
+			OperationId: renewed.Msg.GetOperationId(), ApprovedHost: true,
+			Receipt: renewalActive.Msg.GetReceipt(),
+		}),
+	)
+	require.NoError(t, err)
+	require.Equal(t, domain.DeliveryPhaseCompleted, renewalCompleted.Msg.GetPhase())
+	require.Equal(t, uint32(3), renewalCompleted.Msg.GetCurrentGeneration())
 }
 
 func TestRealmAuthorityCrashBoundariesResumeRealPersistence(t *testing.T) {
@@ -603,6 +703,9 @@ func (integrationAuthorityPolicy) AdmitChannelRotation(context.Context, domain.C
 	return nil
 }
 func (integrationAuthorityPolicy) AdmitChannelMembership(context.Context, domain.Command) error {
+	return nil
+}
+func (integrationAuthorityPolicy) AdmitChannelClass(context.Context, domain.Command, identityapi.CapabilityScope) error {
 	return nil
 }
 

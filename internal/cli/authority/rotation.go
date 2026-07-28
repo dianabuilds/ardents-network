@@ -17,12 +17,14 @@ import (
 
 func (c *Command) rotation(ctx context.Context, args []string) int {
 	if len(args) == 0 || args[0] == "help" {
-		output.Writeln(c.ctx.Renderer.Out, "Usage: ardentsctl authority rotation <rotate|install|acknowledge-installed|commit|activate|acknowledge-active>")
+		output.Writeln(c.ctx.Renderer.Out, "Usage: ardentsctl authority rotation <rotate|renew|install|acknowledge-installed|commit|activate|acknowledge-active>")
 		return 0
 	}
 	switch args[0] {
 	case "rotate":
 		return c.rotateChannel(ctx, args[1:])
+	case "renew":
+		return c.renewChannel(ctx, args[1:])
 	case "install":
 		return c.installRotation(ctx, args[1:])
 	case "acknowledge-installed":
@@ -36,6 +38,66 @@ func (c *Command) rotation(ctx context.Context, args []string) int {
 	default:
 		return c.ctx.Failure(flag.ErrHelp)
 	}
+}
+
+func (c *Command) renewChannel(ctx context.Context, args []string) int {
+	fs := flag.NewFlagSet("authority rotation renew", flag.ContinueOnError)
+	fs.SetOutput(c.ctx.Renderer.Err)
+	var requestID, realmID, channelHex, outPath string
+	var attestationPaths repeatedPaths
+	var drainFor time.Duration
+	fs.StringVar(&requestID, "request-id", "", "stable renewal request identity")
+	fs.StringVar(&realmID, "realm-id", "", "exact Realm identifier")
+	fs.StringVar(&channelHex, "channel-id", "", "32 lowercase hexadecimal characters")
+	fs.Var(&attestationPaths, "attestation-file", "protected member attestation file; repeat per member")
+	fs.DurationVar(&drainFor, "drain-for", 15*time.Minute, "previous-generation receive drain")
+	fs.StringVar(&outPath, "out-file", "", "new protected renewal file")
+	if err := fs.Parse(args); err != nil {
+		return c.ctx.Failure(err)
+	}
+	channelRaw, err := hex.DecodeString(channelHex)
+	if err != nil || len(channelRaw) != 16 || hex.EncodeToString(channelRaw) != channelHex ||
+		requestID == "" || realmID == "" || len(attestationPaths) == 0 ||
+		drainFor <= 0 || drainFor > domain.MaximumPreviousGenerationDrain ||
+		drainFor%time.Second != 0 || !filepath.IsAbs(outPath) || fs.NArg() != 0 {
+		return c.ctx.Failure(flag.ErrHelp)
+	}
+	attestations := make([]*protocol.GenerationDeliveryAttestation, 0, len(attestationPaths))
+	for _, path := range attestationPaths {
+		if !filepath.IsAbs(path) {
+			return c.ctx.Failure(flag.ErrHelp)
+		}
+		attestation := &protocol.GenerationDeliveryAttestation{}
+		if err := readProtectedProto(path, attestation); err != nil {
+			return c.ctx.Failure(err)
+		}
+		attestations = append(attestations, attestation)
+	}
+	callCtx, cancel := c.ctx.Call(ctx)
+	defer cancel()
+	response, err := c.ctx.Client.Service().RenewChannelGrants(
+		callCtx, client.Request(&protocol.RenewChannelGrantsRequest{
+			Version: domain.ContractVersion, RequestId: requestID, RealmId: realmID,
+			ChannelId: channelRaw, RecipientAttestations: attestations,
+			DrainForSeconds: uint64(drainFor / time.Second),
+		}),
+	)
+	if err != nil {
+		return c.ctx.Failure(err)
+	}
+	if err := writeProtectedProto(outPath, response.Msg); err != nil {
+		return c.ctx.Failure(err)
+	}
+	for _, path := range attestationPaths {
+		if err := os.Remove(path); err != nil {
+			return c.ctx.Failure(fmt.Errorf("remove consumed attestation: %w", err))
+		}
+	}
+	renderDeliveryMetadata(c, response.Msg.GetStatus(), map[string]string{
+		"realm_id": response.Msg.GetRealmId(), "operation_id": response.Msg.GetOperationId(),
+		"phase": response.Msg.GetPhase(), "artifact": outPath,
+	})
+	return c.ctx.Renderer.MutationOutcome(response.Msg.GetStatus())
 }
 
 type repeatedPaths []string

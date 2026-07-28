@@ -26,6 +26,13 @@ func TestAuthorityProceduresHaveExactDirectOperatorContracts(t *testing.T) {
 	require.Equal(t, domain.ActionInspect, inspect.Action)
 	require.Equal(t, domain.ResourceKindRealm, inspect.ResourceKind)
 	require.False(t, inspect.Mutating)
+	inspectChannel, ok := localauth.RuleForProcedure(
+		ardentsv1connect.AuthorityServiceInspectChannelProcedure,
+	)
+	require.True(t, ok)
+	require.Equal(t, domain.ActionInspect, inspectChannel.Action)
+	require.Equal(t, domain.ResourceKindChannel, inspectChannel.ResourceKind)
+	require.False(t, inspectChannel.Mutating)
 
 	require.True(t, identitycontract.IsRegisteredAction(identitycontract.InterfaceOperator, domain.ActionCreate))
 	require.True(t, identitycontract.IsRegisteredAction(identitycontract.InterfaceOperator, domain.ActionInspect))
@@ -36,6 +43,7 @@ func TestAuthorityProceduresHaveExactDirectOperatorContracts(t *testing.T) {
 		ardentsv1connect.AuthorityServiceIssueInitialGenerationProcedure:          domain.ActionIssueDelivery,
 		ardentsv1connect.AuthorityServiceAcknowledgeInitialGenerationProcedure:    domain.ActionAcknowledgeDelivery,
 		ardentsv1connect.AuthorityServiceRotateChannelProcedure:                   domain.ActionRotateGeneration,
+		ardentsv1connect.AuthorityServiceRenewChannelGrantsProcedure:              domain.ActionRotateGeneration,
 		ardentsv1connect.AuthorityServiceCommitChannelActivationProcedure:         domain.ActionCommitActivation,
 		ardentsv1connect.AuthorityServiceAcknowledgeChannelActivationProcedure:    domain.ActionAcknowledgeActivation,
 		ardentsv1connect.AuthorityServiceChangeChannelMembershipProcedure:         domain.ActionChangeMembership,
@@ -71,6 +79,18 @@ func TestCanonicalRotationResourcesAreExactAndBounded(t *testing.T) {
 	require.NoError(t, err)
 	var channel [16]byte
 	copy(channel[:], channelID)
+	require.Equal(t, domain.ChannelResource(realmID, channel), target.ID)
+
+	target, err = CanonicalizeResource(
+		ardentsv1connect.AuthorityServiceRenewChannelGrantsProcedure,
+		&protocol.RenewChannelGrantsRequest{
+			Version: 1, RequestId: "renewal-001", RealmId: realmID,
+			ChannelId:             channelID,
+			RecipientAttestations: []*protocol.GenerationDeliveryAttestation{{}},
+		},
+		domain.ResourceKindChannel,
+	)
+	require.NoError(t, err)
 	require.Equal(t, domain.ChannelResource(realmID, channel), target.ID)
 
 	target, err = CanonicalizeResource(
@@ -148,6 +168,17 @@ func TestCanonicalAuthorityResourcesAreExactAndBounded(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, domain.ResourceKindAuthorityInstance, string(target.Kind))
 	require.Equal(t, domain.PrimaryAuthorityInstance, target.ID)
+
+	channelID := []byte("0123456789abcdef")
+	target, err = CanonicalizeResource(
+		ardentsv1connect.AuthorityServiceInspectChannelProcedure,
+		&protocol.InspectChannelRequest{
+			Version: domain.ContractVersion,
+			RealmId: "r1_00112233445566778899aabbccddeeff", ChannelId: channelID,
+		},
+		domain.ResourceKindChannel,
+	)
+	require.NoError(t, err)
 
 	realmID := "r1_00112233445566778899aabbccddeeff"
 	target, err = CanonicalizeResource(

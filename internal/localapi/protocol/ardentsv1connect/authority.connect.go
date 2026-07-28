@@ -41,6 +41,9 @@ const (
 	// AuthorityServiceInspectRealmAuthorityProcedure is the fully-qualified name of the
 	// AuthorityService's InspectRealmAuthority RPC.
 	AuthorityServiceInspectRealmAuthorityProcedure = "/ardents.v1.AuthorityService/InspectRealmAuthority"
+	// AuthorityServiceInspectChannelProcedure is the fully-qualified name of the AuthorityService's
+	// InspectChannel RPC.
+	AuthorityServiceInspectChannelProcedure = "/ardents.v1.AuthorityService/InspectChannel"
 	// AuthorityServiceIssueInitialGenerationProcedure is the fully-qualified name of the
 	// AuthorityService's IssueInitialGeneration RPC.
 	AuthorityServiceIssueInitialGenerationProcedure = "/ardents.v1.AuthorityService/IssueInitialGeneration"
@@ -50,6 +53,9 @@ const (
 	// AuthorityServiceRotateChannelProcedure is the fully-qualified name of the AuthorityService's
 	// RotateChannel RPC.
 	AuthorityServiceRotateChannelProcedure = "/ardents.v1.AuthorityService/RotateChannel"
+	// AuthorityServiceRenewChannelGrantsProcedure is the fully-qualified name of the AuthorityService's
+	// RenewChannelGrants RPC.
+	AuthorityServiceRenewChannelGrantsProcedure = "/ardents.v1.AuthorityService/RenewChannelGrants"
 	// AuthorityServiceCommitChannelActivationProcedure is the fully-qualified name of the
 	// AuthorityService's CommitChannelActivation RPC.
 	AuthorityServiceCommitChannelActivationProcedure = "/ardents.v1.AuthorityService/CommitChannelActivation"
@@ -77,9 +83,11 @@ const (
 type AuthorityServiceClient interface {
 	CreateRealmAuthority(context.Context, *connect.Request[protocol.CreateRealmAuthorityRequest]) (*connect.Response[protocol.CreateRealmAuthorityResponse], error)
 	InspectRealmAuthority(context.Context, *connect.Request[protocol.InspectRealmAuthorityRequest]) (*connect.Response[protocol.InspectRealmAuthorityResponse], error)
+	InspectChannel(context.Context, *connect.Request[protocol.InspectChannelRequest]) (*connect.Response[protocol.InspectChannelResponse], error)
 	IssueInitialGeneration(context.Context, *connect.Request[protocol.IssueInitialGenerationRequest]) (*connect.Response[protocol.IssueInitialGenerationResponse], error)
 	AcknowledgeInitialGeneration(context.Context, *connect.Request[protocol.AcknowledgeInitialGenerationRequest]) (*connect.Response[protocol.AcknowledgeInitialGenerationResponse], error)
 	RotateChannel(context.Context, *connect.Request[protocol.RotateChannelRequest]) (*connect.Response[protocol.RotateChannelResponse], error)
+	RenewChannelGrants(context.Context, *connect.Request[protocol.RenewChannelGrantsRequest]) (*connect.Response[protocol.RotateChannelResponse], error)
 	CommitChannelActivation(context.Context, *connect.Request[protocol.CommitChannelActivationRequest]) (*connect.Response[protocol.CommitChannelActivationResponse], error)
 	AcknowledgeChannelActivation(context.Context, *connect.Request[protocol.AcknowledgeChannelActivationRequest]) (*connect.Response[protocol.AcknowledgeChannelActivationResponse], error)
 	ChangeChannelMembership(context.Context, *connect.Request[protocol.ChangeChannelMembershipRequest]) (*connect.Response[protocol.RotateChannelResponse], error)
@@ -109,6 +117,12 @@ func NewAuthorityServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(authorityServiceMethods.ByName("InspectRealmAuthority")),
 			connect.WithClientOptions(opts...),
 		),
+		inspectChannel: connect.NewClient[protocol.InspectChannelRequest, protocol.InspectChannelResponse](
+			httpClient,
+			baseURL+AuthorityServiceInspectChannelProcedure,
+			connect.WithSchema(authorityServiceMethods.ByName("InspectChannel")),
+			connect.WithClientOptions(opts...),
+		),
 		issueInitialGeneration: connect.NewClient[protocol.IssueInitialGenerationRequest, protocol.IssueInitialGenerationResponse](
 			httpClient,
 			baseURL+AuthorityServiceIssueInitialGenerationProcedure,
@@ -125,6 +139,12 @@ func NewAuthorityServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			httpClient,
 			baseURL+AuthorityServiceRotateChannelProcedure,
 			connect.WithSchema(authorityServiceMethods.ByName("RotateChannel")),
+			connect.WithClientOptions(opts...),
+		),
+		renewChannelGrants: connect.NewClient[protocol.RenewChannelGrantsRequest, protocol.RotateChannelResponse](
+			httpClient,
+			baseURL+AuthorityServiceRenewChannelGrantsProcedure,
+			connect.WithSchema(authorityServiceMethods.ByName("RenewChannelGrants")),
 			connect.WithClientOptions(opts...),
 		),
 		commitChannelActivation: connect.NewClient[protocol.CommitChannelActivationRequest, protocol.CommitChannelActivationResponse](
@@ -158,9 +178,11 @@ func NewAuthorityServiceClient(httpClient connect.HTTPClient, baseURL string, op
 type authorityServiceClient struct {
 	createRealmAuthority          *connect.Client[protocol.CreateRealmAuthorityRequest, protocol.CreateRealmAuthorityResponse]
 	inspectRealmAuthority         *connect.Client[protocol.InspectRealmAuthorityRequest, protocol.InspectRealmAuthorityResponse]
+	inspectChannel                *connect.Client[protocol.InspectChannelRequest, protocol.InspectChannelResponse]
 	issueInitialGeneration        *connect.Client[protocol.IssueInitialGenerationRequest, protocol.IssueInitialGenerationResponse]
 	acknowledgeInitialGeneration  *connect.Client[protocol.AcknowledgeInitialGenerationRequest, protocol.AcknowledgeInitialGenerationResponse]
 	rotateChannel                 *connect.Client[protocol.RotateChannelRequest, protocol.RotateChannelResponse]
+	renewChannelGrants            *connect.Client[protocol.RenewChannelGrantsRequest, protocol.RotateChannelResponse]
 	commitChannelActivation       *connect.Client[protocol.CommitChannelActivationRequest, protocol.CommitChannelActivationResponse]
 	acknowledgeChannelActivation  *connect.Client[protocol.AcknowledgeChannelActivationRequest, protocol.AcknowledgeChannelActivationResponse]
 	changeChannelMembership       *connect.Client[protocol.ChangeChannelMembershipRequest, protocol.RotateChannelResponse]
@@ -177,6 +199,11 @@ func (c *authorityServiceClient) InspectRealmAuthority(ctx context.Context, req 
 	return c.inspectRealmAuthority.CallUnary(ctx, req)
 }
 
+// InspectChannel calls ardents.v1.AuthorityService.InspectChannel.
+func (c *authorityServiceClient) InspectChannel(ctx context.Context, req *connect.Request[protocol.InspectChannelRequest]) (*connect.Response[protocol.InspectChannelResponse], error) {
+	return c.inspectChannel.CallUnary(ctx, req)
+}
+
 // IssueInitialGeneration calls ardents.v1.AuthorityService.IssueInitialGeneration.
 func (c *authorityServiceClient) IssueInitialGeneration(ctx context.Context, req *connect.Request[protocol.IssueInitialGenerationRequest]) (*connect.Response[protocol.IssueInitialGenerationResponse], error) {
 	return c.issueInitialGeneration.CallUnary(ctx, req)
@@ -190,6 +217,11 @@ func (c *authorityServiceClient) AcknowledgeInitialGeneration(ctx context.Contex
 // RotateChannel calls ardents.v1.AuthorityService.RotateChannel.
 func (c *authorityServiceClient) RotateChannel(ctx context.Context, req *connect.Request[protocol.RotateChannelRequest]) (*connect.Response[protocol.RotateChannelResponse], error) {
 	return c.rotateChannel.CallUnary(ctx, req)
+}
+
+// RenewChannelGrants calls ardents.v1.AuthorityService.RenewChannelGrants.
+func (c *authorityServiceClient) RenewChannelGrants(ctx context.Context, req *connect.Request[protocol.RenewChannelGrantsRequest]) (*connect.Response[protocol.RotateChannelResponse], error) {
+	return c.renewChannelGrants.CallUnary(ctx, req)
 }
 
 // CommitChannelActivation calls ardents.v1.AuthorityService.CommitChannelActivation.
@@ -216,9 +248,11 @@ func (c *authorityServiceClient) SubmitDeploymentFenceEvidence(ctx context.Conte
 type AuthorityServiceHandler interface {
 	CreateRealmAuthority(context.Context, *connect.Request[protocol.CreateRealmAuthorityRequest]) (*connect.Response[protocol.CreateRealmAuthorityResponse], error)
 	InspectRealmAuthority(context.Context, *connect.Request[protocol.InspectRealmAuthorityRequest]) (*connect.Response[protocol.InspectRealmAuthorityResponse], error)
+	InspectChannel(context.Context, *connect.Request[protocol.InspectChannelRequest]) (*connect.Response[protocol.InspectChannelResponse], error)
 	IssueInitialGeneration(context.Context, *connect.Request[protocol.IssueInitialGenerationRequest]) (*connect.Response[protocol.IssueInitialGenerationResponse], error)
 	AcknowledgeInitialGeneration(context.Context, *connect.Request[protocol.AcknowledgeInitialGenerationRequest]) (*connect.Response[protocol.AcknowledgeInitialGenerationResponse], error)
 	RotateChannel(context.Context, *connect.Request[protocol.RotateChannelRequest]) (*connect.Response[protocol.RotateChannelResponse], error)
+	RenewChannelGrants(context.Context, *connect.Request[protocol.RenewChannelGrantsRequest]) (*connect.Response[protocol.RotateChannelResponse], error)
 	CommitChannelActivation(context.Context, *connect.Request[protocol.CommitChannelActivationRequest]) (*connect.Response[protocol.CommitChannelActivationResponse], error)
 	AcknowledgeChannelActivation(context.Context, *connect.Request[protocol.AcknowledgeChannelActivationRequest]) (*connect.Response[protocol.AcknowledgeChannelActivationResponse], error)
 	ChangeChannelMembership(context.Context, *connect.Request[protocol.ChangeChannelMembershipRequest]) (*connect.Response[protocol.RotateChannelResponse], error)
@@ -244,6 +278,12 @@ func NewAuthorityServiceHandler(svc AuthorityServiceHandler, opts ...connect.Han
 		connect.WithSchema(authorityServiceMethods.ByName("InspectRealmAuthority")),
 		connect.WithHandlerOptions(opts...),
 	)
+	authorityServiceInspectChannelHandler := connect.NewUnaryHandler(
+		AuthorityServiceInspectChannelProcedure,
+		svc.InspectChannel,
+		connect.WithSchema(authorityServiceMethods.ByName("InspectChannel")),
+		connect.WithHandlerOptions(opts...),
+	)
 	authorityServiceIssueInitialGenerationHandler := connect.NewUnaryHandler(
 		AuthorityServiceIssueInitialGenerationProcedure,
 		svc.IssueInitialGeneration,
@@ -260,6 +300,12 @@ func NewAuthorityServiceHandler(svc AuthorityServiceHandler, opts ...connect.Han
 		AuthorityServiceRotateChannelProcedure,
 		svc.RotateChannel,
 		connect.WithSchema(authorityServiceMethods.ByName("RotateChannel")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authorityServiceRenewChannelGrantsHandler := connect.NewUnaryHandler(
+		AuthorityServiceRenewChannelGrantsProcedure,
+		svc.RenewChannelGrants,
+		connect.WithSchema(authorityServiceMethods.ByName("RenewChannelGrants")),
 		connect.WithHandlerOptions(opts...),
 	)
 	authorityServiceCommitChannelActivationHandler := connect.NewUnaryHandler(
@@ -292,12 +338,16 @@ func NewAuthorityServiceHandler(svc AuthorityServiceHandler, opts ...connect.Han
 			authorityServiceCreateRealmAuthorityHandler.ServeHTTP(w, r)
 		case AuthorityServiceInspectRealmAuthorityProcedure:
 			authorityServiceInspectRealmAuthorityHandler.ServeHTTP(w, r)
+		case AuthorityServiceInspectChannelProcedure:
+			authorityServiceInspectChannelHandler.ServeHTTP(w, r)
 		case AuthorityServiceIssueInitialGenerationProcedure:
 			authorityServiceIssueInitialGenerationHandler.ServeHTTP(w, r)
 		case AuthorityServiceAcknowledgeInitialGenerationProcedure:
 			authorityServiceAcknowledgeInitialGenerationHandler.ServeHTTP(w, r)
 		case AuthorityServiceRotateChannelProcedure:
 			authorityServiceRotateChannelHandler.ServeHTTP(w, r)
+		case AuthorityServiceRenewChannelGrantsProcedure:
+			authorityServiceRenewChannelGrantsHandler.ServeHTTP(w, r)
 		case AuthorityServiceCommitChannelActivationProcedure:
 			authorityServiceCommitChannelActivationHandler.ServeHTTP(w, r)
 		case AuthorityServiceAcknowledgeChannelActivationProcedure:
@@ -323,6 +373,10 @@ func (UnimplementedAuthorityServiceHandler) InspectRealmAuthority(context.Contex
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.AuthorityService.InspectRealmAuthority is not implemented"))
 }
 
+func (UnimplementedAuthorityServiceHandler) InspectChannel(context.Context, *connect.Request[protocol.InspectChannelRequest]) (*connect.Response[protocol.InspectChannelResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.AuthorityService.InspectChannel is not implemented"))
+}
+
 func (UnimplementedAuthorityServiceHandler) IssueInitialGeneration(context.Context, *connect.Request[protocol.IssueInitialGenerationRequest]) (*connect.Response[protocol.IssueInitialGenerationResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.AuthorityService.IssueInitialGeneration is not implemented"))
 }
@@ -333,6 +387,10 @@ func (UnimplementedAuthorityServiceHandler) AcknowledgeInitialGeneration(context
 
 func (UnimplementedAuthorityServiceHandler) RotateChannel(context.Context, *connect.Request[protocol.RotateChannelRequest]) (*connect.Response[protocol.RotateChannelResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.AuthorityService.RotateChannel is not implemented"))
+}
+
+func (UnimplementedAuthorityServiceHandler) RenewChannelGrants(context.Context, *connect.Request[protocol.RenewChannelGrantsRequest]) (*connect.Response[protocol.RotateChannelResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.AuthorityService.RenewChannelGrants is not implemented"))
 }
 
 func (UnimplementedAuthorityServiceHandler) CommitChannelActivation(context.Context, *connect.Request[protocol.CommitChannelActivationRequest]) (*connect.Response[protocol.CommitChannelActivationResponse], error) {

@@ -26,6 +26,13 @@ service AuthorityService {
       resource_kind: "realm"
     };
   }
+  rpc InspectChannel(InspectChannelRequest) returns (InspectChannelResponse) {
+    option (operator_access) = {
+      action: "realm.channel.audit.read"
+      domain: "authority"
+      resource_kind: "realm-channel"
+    };
+  }
   rpc IssueInitialGeneration(IssueInitialGenerationRequest) returns (IssueInitialGenerationResponse) {
     option (operator_access) = {
       action: "realm.channel.delivery.issue"
@@ -43,6 +50,14 @@ service AuthorityService {
     };
   }
   rpc RotateChannel(RotateChannelRequest) returns (RotateChannelResponse) {
+    option (operator_access) = {
+      action: "realm.channel.generation.rotate"
+      domain: "authority"
+      resource_kind: "realm-channel"
+      mutating: true
+    };
+  }
+  rpc RenewChannelGrants(RenewChannelGrantsRequest) returns (RotateChannelResponse) {
     option (operator_access) = {
       action: "realm.channel.generation.rotate"
       domain: "authority"
@@ -124,6 +139,25 @@ message InspectRealmAuthorityRequest {
   string realm_id = 2;
 }
 
+message InspectChannelRequest {
+  uint32 version = 1;
+  string realm_id = 2;
+  bytes channel_id = 3;
+}
+
+message ChannelStatusSnapshot {
+  uint32 version = 1;
+  string realm_id = 2;
+  string channel_class = 3;
+  uint32 current_generation = 4;
+  uint32 member_count = 5;
+  string readiness = 6;
+  string reason = 7;
+  google.protobuf.Timestamp grant_not_after = 8;
+  google.protobuf.Timestamp renew_by = 9;
+  uint32 pending_generation = 10;
+}
+
 message AuthorityStatusSnapshot {
   uint32 version = 1;
   uint32 schema_version = 2;
@@ -152,6 +186,11 @@ message CreateRealmAuthorityResponse {
 message InspectRealmAuthorityResponse {
   OperationStatus status = 1;
   AuthorityStatusSnapshot authority = 2;
+}
+
+message InspectChannelResponse {
+  OperationStatus status = 1;
+  ChannelStatusSnapshot channel = 2;
 }
 
 message GenerationDeliveryAttestation {
@@ -295,6 +334,15 @@ message RotateChannelRequest {
   uint64 drain_for_seconds = 7;
 }
 
+message RenewChannelGrantsRequest {
+  uint32 version = 1;
+  string request_id = 2;
+  string realm_id = 3;
+  bytes channel_id = 4;
+  repeated GenerationDeliveryAttestation recipient_attestations = 5;
+  uint64 drain_for_seconds = 6;
+}
+
 message RotateChannelResponse {
   OperationStatus status = 1;
   string realm_id = 2;
@@ -309,6 +357,8 @@ message RotateChannelResponse {
   string target_principal = 11;
   uint64 membership_version = 12;
   string member_state = 13;
+  string channel_class = 14;
+  bool renewal = 15;
 }
 
 message ChangeChannelMembershipRequest {

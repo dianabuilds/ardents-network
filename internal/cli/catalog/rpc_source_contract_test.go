@@ -48,6 +48,8 @@ func productionHandler(t *testing.T, path []string) (string, string) {
 		return directory, handler
 	}
 	switch group + " " + path[1] {
+	case "authority channel":
+		return directory, calledFunctionForToken(t, directory, "command.go", handler, path[2])
 	case "authority delivery":
 		return directory, calledFunctionForToken(t, directory, "delivery.go", handler, path[2])
 	case "authority rotation":

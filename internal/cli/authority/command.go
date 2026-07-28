@@ -4,6 +4,7 @@ package authority
 
 import (
 	"context"
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"io"
@@ -30,6 +31,8 @@ func (c *Command) Run(ctx context.Context, args []string) int {
 		return c.create(ctx, args[1:])
 	case "inspect":
 		return c.inspect(ctx, args[1:])
+	case "channel":
+		return c.channel(ctx, args[1:])
 	case "delivery":
 		return c.delivery(ctx, args[1:])
 	case "rotation":
@@ -44,7 +47,48 @@ func (c *Command) Run(ctx context.Context, args []string) int {
 }
 
 func renderUsage(writer io.Writer) {
-	output.Writeln(writer, "Usage: ardentsctl [global flags] authority <create|inspect|delivery|rotation|membership>")
+	output.Writeln(writer, "Usage: ardentsctl [global flags] authority <create|inspect|channel|delivery|rotation|membership>")
+}
+
+func (c *Command) channel(ctx context.Context, args []string) int {
+	if len(args) == 0 || args[0] == "help" {
+		output.Writeln(c.ctx.Renderer.Out, "Usage: ardentsctl authority channel inspect")
+		return 0
+	}
+	switch args[0] {
+	case "inspect":
+		return c.inspectChannel(ctx, args[1:])
+	default:
+		return c.ctx.Failure(flag.ErrHelp)
+	}
+}
+
+func (c *Command) inspectChannel(ctx context.Context, args []string) int {
+	fs := flag.NewFlagSet("authority channel inspect", flag.ContinueOnError)
+	fs.SetOutput(c.ctx.Renderer.Err)
+	var realmID, channelHex string
+	fs.StringVar(&realmID, "realm-id", "", "exact Realm identifier")
+	fs.StringVar(&channelHex, "channel-id", "", "32 lowercase hexadecimal characters")
+	if err := fs.Parse(args); err != nil {
+		return c.ctx.Failure(err)
+	}
+	channelID, err := hex.DecodeString(channelHex)
+	if err != nil || len(channelID) != 16 || hex.EncodeToString(channelID) != channelHex ||
+		realmID == "" || fs.NArg() != 0 {
+		return c.ctx.Failure(flag.ErrHelp)
+	}
+	callCtx, cancel := c.ctx.Call(ctx)
+	defer cancel()
+	response, err := c.ctx.Client.Service().InspectChannel(
+		callCtx, client.Request(&ardentsv1.InspectChannelRequest{
+			Version: authority.ContractVersion, RealmId: realmID, ChannelId: channelID,
+		}),
+	)
+	if err != nil {
+		return c.ctx.Failure(err)
+	}
+	output.JSON(c.ctx.Renderer.Out, response.Msg)
+	return 0
 }
 
 func (c *Command) create(ctx context.Context, args []string) int {

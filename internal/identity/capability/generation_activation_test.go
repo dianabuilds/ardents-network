@@ -266,6 +266,39 @@ func TestPendingGenerationRequiresSignedActivationBeforeItBecomesReady(t *testin
 		"a rejoining candidate must not retain an obsolete receive-only generation")
 }
 
+func TestGenerationReadinessExpiresOnlyTheAffectedChannel(t *testing.T) {
+	now := capabilityTestNow
+	expired, issuerPublic, issuerPrivate := signedTestGrant(t, 1)
+	expired.NotAfter = now
+	expired, err := SignGrant(expired, issuerPrivate)
+	require.NoError(t, err)
+	healthy := expired
+	healthy.ChannelID = fixedID(0x72)
+	healthy.GrantID = fixedID(0x73)
+	healthy.NotAfter = now.Add(time.Hour)
+	healthy, err = SignGrant(healthy, issuerPrivate)
+	require.NoError(t, err)
+	member, err := NewService(
+		filepath.Join(t.TempDir(), "member-capabilities.db"), bytes.Repeat([]byte{0x74}, 32),
+		expired.SubjectPrincipal, trustedIssuer(issuerPublic),
+		allowCapabilityAdmission{}, func() time.Time { return now },
+	)
+	require.NoError(t, err)
+	_, err = member.ImportGrant(expired)
+	require.NoError(t, err)
+	_, err = member.ImportGrant(healthy)
+	require.NoError(t, err)
+
+	expiredStatus := member.GenerationReadiness(expired.ChannelID)
+	require.False(t, expiredStatus.Ready)
+	require.Equal(t, GenerationReasonGrantExpired, expiredStatus.Reason)
+	require.Equal(t, uint32(1), expiredStatus.CurrentGeneration)
+	healthyStatus := member.GenerationReadiness(healthy.ChannelID)
+	require.True(t, healthyStatus.Ready)
+	require.Empty(t, healthyStatus.Reason)
+	require.Equal(t, uint32(1), healthyStatus.CurrentGeneration)
+}
+
 func resolvedCapabilityForTest(
 	ref identityapi.CapabilityRef,
 	grant identityapi.CapabilityGrant,

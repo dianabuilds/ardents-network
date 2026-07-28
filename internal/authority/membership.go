@@ -104,6 +104,15 @@ func (s *Service) SubmitDeploymentFenceEvidence(
 	if state.RealmID != request.RealmID {
 		return FenceEvidenceResult{}, ErrPermissionDenied
 	}
+	channelIndex := channelRecordIndex(state, request.ChannelID)
+	if channelIndex < 0 {
+		return FenceEvidenceResult{}, ErrInvalidArgument
+	}
+	if err := s.policy.AdmitChannelClass(
+		ctx, command, identityapi.CapabilityScope(state.Channels[channelIndex].Class),
+	); err != nil {
+		return FenceEvidenceResult{}, ErrPermissionDenied
+	}
 	if state.Phase == PhaseCheckpointing {
 		if err := s.reconcileLoaded(ctx, &state); err != nil {
 			return FenceEvidenceResult{}, err
@@ -156,6 +165,8 @@ func (s *Service) SubmitDeploymentFenceEvidence(
 		command, rotation.OperationID, state.AuditHead, now,
 	)
 	audit.TargetPrincipal = request.Evidence.TargetPrincipal
+	audit.ChannelClass = rotation.ChannelClass
+	audit.Generation = rotation.PendingGeneration
 	audit.Hash = auditHash(audit)
 	err = s.commitCheckpointTransition(ctx, &state, audit, now, func(next *Ledger, checkpoint SignedCheckpoint) error {
 		record := &next.Rotations[rotationIndex]
@@ -294,10 +305,17 @@ func operationKind(request RotationRequest) string {
 	if request.MembershipChange != "" {
 		return "channel_membership"
 	}
+	if request.Renewal {
+		return "channel_renewal"
+	}
 	return "channel_rotation"
 }
 
-func applyMembershipTruth(state *Ledger, change MembershipChangeRecord) {
+func applyMembershipTruth(
+	state *Ledger,
+	channelID [16]byte,
+	change MembershipChangeRecord,
+) {
 	if change.Version == 0 {
 		return
 	}
@@ -319,7 +337,22 @@ func applyMembershipTruth(state *Ledger, change MembershipChangeRecord) {
 			})
 		}
 	case MembershipChangeRemove:
-		if index >= 0 {
+		retainedBySiblingChannel := false
+		for _, channel := range state.Channels {
+			if channel.ID == channelID {
+				continue
+			}
+			for _, grant := range channelCurrentGrants(channel) {
+				if grant.SubjectPrincipal == change.TargetPrincipal {
+					retainedBySiblingChannel = true
+					break
+				}
+			}
+			if retainedBySiblingChannel {
+				break
+			}
+		}
+		if index >= 0 && !retainedBySiblingChannel {
 			state.Members = append(state.Members[:index], state.Members[index+1:]...)
 		}
 	}

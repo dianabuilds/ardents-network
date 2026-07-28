@@ -12,6 +12,14 @@ import (
 
 func TestProcedureAccessCatalogCoversEveryRPCExactlyOnce(t *testing.T) {
 	sharedActions := map[string]map[string]bool{
+		"realm.channel.audit.read": {
+			"/ardents.v1.AuthorityService/InspectRealmAuthority": true,
+			"/ardents.v1.AuthorityService/InspectChannel":        true,
+		},
+		"realm.channel.generation.rotate": {
+			"/ardents.v1.AuthorityService/RotateChannel":      true,
+			"/ardents.v1.AuthorityService/RenewChannelGrants": true,
+		},
 		"realm.channel.membership.change": {
 			"/ardents.v1.AuthorityService/ChangeChannelMembership":       true,
 			"/ardents.v1.AuthorityService/SubmitDeploymentFenceEvidence": true,

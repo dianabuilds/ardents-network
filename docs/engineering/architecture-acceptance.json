@@ -11,9 +11,9 @@
     "default_max": 12,
     "exceptions": {
       "internal/authority": {
-        "max": 14,
-        "reason": "the single transactional Realm Authority owner keeps genesis, delivery, rotation, membership, fencing-evidence acceptance, checkpoint, audit, restart, and recovery invariants together",
-        "owner": "PW3-14"
+        "max": 15,
+        "reason": "the single transactional Realm Authority owner keeps genesis, class-specific delivery, rotation, renewal, membership, fencing-evidence acceptance, channel readiness, checkpoint, audit, restart, and recovery invariants together",
+        "owner": "PW3-15"
       },
       "internal/content": {
         "max": 13,
