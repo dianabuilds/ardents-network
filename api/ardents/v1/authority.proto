@@ -26,6 +26,14 @@ service AuthorityService {
       resource_kind: "realm"
     };
   }
+  rpc VerifyRestoredAuthority(VerifyRestoredAuthorityRequest) returns (VerifyRestoredAuthorityResponse) {
+    option (operator_access) = {
+      action: "realm.authority.restore.verify"
+      domain: "authority"
+      resource_kind: "realm"
+      mutating: true
+    };
+  }
   rpc InspectChannel(InspectChannelRequest) returns (InspectChannelResponse) {
     option (operator_access) = {
       action: "realm.channel.audit.read"
@@ -139,6 +147,13 @@ message InspectRealmAuthorityRequest {
   string realm_id = 2;
 }
 
+message VerifyRestoredAuthorityRequest {
+  uint32 version = 1;
+  string realm_id = 2;
+  uint64 authority_sequence = 3;
+  string checkpoint_digest = 4;
+}
+
 message InspectChannelRequest {
   uint32 version = 1;
   string realm_id = 2;
@@ -184,6 +199,11 @@ message CreateRealmAuthorityResponse {
 }
 
 message InspectRealmAuthorityResponse {
+  OperationStatus status = 1;
+  AuthorityStatusSnapshot authority = 2;
+}
+
+message VerifyRestoredAuthorityResponse {
   OperationStatus status = 1;
   AuthorityStatusSnapshot authority = 2;
 }

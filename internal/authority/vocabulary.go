@@ -46,6 +46,7 @@ const (
 	ActionAcknowledgeActivation = "realm.channel.activation.acknowledge"
 	ActionVerifyRestore         = "realm.authority.restore.verify"
 	ActionPlanTransition        = "realm.authority.transition.plan"
+	ActionMigrateLocalV2        = "realm.authority.migrate.local_v2"
 
 	ResourceKindAuthorityInstance  = "realm-authority-instance"
 	ResourceKindRealm              = "realm"
@@ -59,6 +60,7 @@ const (
 	PhaseReady                                            = "ready"
 	PhaseRecoveryRequired                                 = "recovery_required"
 	PhaseRecoveryOnly                                     = "recovery_only"
+	PhaseMigrationRotationRequired                        = "migration_rotation_required"
 	DeliveryPhaseIssued                                   = "issued"
 	DeliveryPhaseInstalled                                = "installed"
 	DeliveryPhaseDelivering                               = "delivering"
@@ -90,6 +92,7 @@ const (
 	ReasonChannelGrantRenewalDue      = identityapi.ChannelGrantReasonRenewalDue
 	ReasonChannelGrantExpired         = identityapi.ChannelGrantReasonExpired
 	ReasonRestoreVerificationRequired = "authority_restore_verification_required"
+	ReasonMigrationRotationRequired   = "authority_migration_rotation_required"
 )
 
 var (
@@ -109,6 +112,7 @@ var (
 	auditIDPattern     = regexp.MustCompile(`^raa1_[0-9a-f]{32}$`)
 	deliveryIDPattern  = regexp.MustCompile(`^rad1_[0-9a-f]{32}$`)
 	digestPattern      = regexp.MustCompile(`^(ac1|aa1)_[0-9a-f]{64}$`)
+	sha256Pattern      = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
 )
 
 func ValidRealmID(value string) bool { return realmIDPattern.MatchString(value) }

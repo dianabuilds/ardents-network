@@ -213,7 +213,7 @@ var operatorActions = set(
 	"workload.register", "workload.start", "workload.stop", "workload.restart", "workload.status", "workload.list", "workload.hosted_service", "workload.service_publication", "workload.hosted_services",
 	"data.publish_object", "data.get_object", "data.list_objects", "data.publish_blob", "data.get_blob", "data.fetch_blob", "data.retain_blob", "data.pin_blob", "data.drop_blob", "data.blob_sources", "data.list_blobs", "data.get_transfer", "data.list_transfers", "data.publish_manifest", "data.get_manifest", "data.list_manifests", "data.inventory",
 	"diagnostics.snapshot", "diagnostics.health_summary", "diagnostics.pending_operations", "diagnostics.explain_failure", "diagnostics.recent_events",
-	"realm.authority.create", "realm.channel.audit.read",
+	"realm.authority.create", "realm.authority.restore.verify", "realm.channel.audit.read",
 	"realm.channel.delivery.issue", "realm.channel.delivery.acknowledge",
 	"realm.channel.delivery.prepare", "realm.channel.delivery.install",
 	"realm.channel.generation.rotate", "realm.channel.activation.commit",

@@ -222,7 +222,7 @@ func (s *Service) AcknowledgeInitialGeneration(
 	if request.Version != ContractVersion {
 		return InitialGenerationAcknowledgeResult{}, ErrUnsupportedVersion
 	}
-	if err := s.mutationFence(); err != nil {
+	if err := s.continuationMutationFence(); err != nil {
 		return InitialGenerationAcknowledgeResult{}, err
 	}
 	if !ValidRealmID(request.RealmID) ||
@@ -420,6 +420,7 @@ func (s *Service) commitCheckpointTransition(
 	}
 	s.status = statusFromLedger(*state)
 	s.flushAudit(ctx, state)
+	s.applyMigrationStatus(*state)
 	return nil
 }
 

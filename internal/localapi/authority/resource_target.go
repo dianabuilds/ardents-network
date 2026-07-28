@@ -33,6 +33,16 @@ func CanonicalizeResource(procedure string, message any, kind string) (identitya
 		return identityaccess.ResourceTarget{
 			Kind: identityaccess.ResourceKind(kind), ID: request.GetRealmId(),
 		}, nil
+	case ardentsv1connect.AuthorityServiceVerifyRestoredAuthorityProcedure:
+		request, ok := message.(*protocol.VerifyRestoredAuthorityRequest)
+		if !ok || len(request.ProtoReflect().GetUnknown()) != 0 ||
+			!domain.ValidRealmID(request.GetRealmId()) ||
+			request.GetAuthoritySequence() == 0 {
+			return identityaccess.ResourceTarget{}, ErrInvalidResourceTarget
+		}
+		return identityaccess.ResourceTarget{
+			Kind: identityaccess.ResourceKind(kind), ID: request.GetRealmId(),
+		}, nil
 	case ardentsv1connect.AuthorityServiceInspectChannelProcedure:
 		request, ok := message.(*protocol.InspectChannelRequest)
 		if !ok || len(request.ProtoReflect().GetUnknown()) != 0 ||

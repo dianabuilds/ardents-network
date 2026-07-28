@@ -43,6 +43,7 @@ type ApplicationInterfaceConfig struct {
 
 type AuthorityConfig struct {
 	Enabled                  bool   `json:"enabled"`
+	RecoveryOnly             bool   `json:"recovery_only"`
 	StorePath                string `json:"store_path"`
 	StoreKeyFile             string `json:"store_key_file"`
 	SignerFile               string `json:"signer_file"`

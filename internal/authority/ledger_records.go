@@ -29,6 +29,7 @@ type AuditRecord struct {
 	TargetPrincipal string    `json:"target_principal,omitempty"`
 	ChannelClass    string    `json:"channel_class,omitempty"`
 	Generation      uint32    `json:"generation,omitempty"`
+	EvidenceDigest  string    `json:"evidence_digest,omitempty"`
 	Outcome         string    `json:"outcome"`
 	PreviousHash    string    `json:"previous_hash,omitempty"`
 	Hash            string    `json:"hash"`
@@ -171,6 +172,18 @@ type Ledger struct {
 	AuditOutbox                 []AuditRecord                     `json:"audit_outbox"`
 	InitialGenerationDeliveries []InitialGenerationDeliveryRecord `json:"initial_generation_deliveries,omitempty"`
 	Rotations                   []RotationRecord                  `json:"rotations,omitempty"`
+	Migration                   *MigrationRecord                  `json:"migration,omitempty"`
+}
+
+type MigrationRecord struct {
+	Version                    uint32     `json:"version"`
+	SourceVersion              string     `json:"source_version"`
+	RequestID                  string     `json:"request_id"`
+	PayloadHash                string     `json:"payload_hash"`
+	OldManagerFenceDigest      string     `json:"old_manager_fence_digest"`
+	CommitEvidenceDigest       string     `json:"commit_evidence_digest"`
+	RequiredRotationChannelIDs [][16]byte `json:"required_rotation_channel_ids"`
+	RotatedChannelIDs          [][16]byte `json:"rotated_channel_ids,omitempty"`
 }
 
 func capabilityGrantRecord(grant identityapi.CapabilityGrant) CapabilityGrantRecord {

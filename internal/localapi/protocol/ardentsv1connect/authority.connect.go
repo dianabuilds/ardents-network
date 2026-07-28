@@ -41,6 +41,9 @@ const (
 	// AuthorityServiceInspectRealmAuthorityProcedure is the fully-qualified name of the
 	// AuthorityService's InspectRealmAuthority RPC.
 	AuthorityServiceInspectRealmAuthorityProcedure = "/ardents.v1.AuthorityService/InspectRealmAuthority"
+	// AuthorityServiceVerifyRestoredAuthorityProcedure is the fully-qualified name of the
+	// AuthorityService's VerifyRestoredAuthority RPC.
+	AuthorityServiceVerifyRestoredAuthorityProcedure = "/ardents.v1.AuthorityService/VerifyRestoredAuthority"
 	// AuthorityServiceInspectChannelProcedure is the fully-qualified name of the AuthorityService's
 	// InspectChannel RPC.
 	AuthorityServiceInspectChannelProcedure = "/ardents.v1.AuthorityService/InspectChannel"
@@ -83,6 +86,7 @@ const (
 type AuthorityServiceClient interface {
 	CreateRealmAuthority(context.Context, *connect.Request[protocol.CreateRealmAuthorityRequest]) (*connect.Response[protocol.CreateRealmAuthorityResponse], error)
 	InspectRealmAuthority(context.Context, *connect.Request[protocol.InspectRealmAuthorityRequest]) (*connect.Response[protocol.InspectRealmAuthorityResponse], error)
+	VerifyRestoredAuthority(context.Context, *connect.Request[protocol.VerifyRestoredAuthorityRequest]) (*connect.Response[protocol.VerifyRestoredAuthorityResponse], error)
 	InspectChannel(context.Context, *connect.Request[protocol.InspectChannelRequest]) (*connect.Response[protocol.InspectChannelResponse], error)
 	IssueInitialGeneration(context.Context, *connect.Request[protocol.IssueInitialGenerationRequest]) (*connect.Response[protocol.IssueInitialGenerationResponse], error)
 	AcknowledgeInitialGeneration(context.Context, *connect.Request[protocol.AcknowledgeInitialGenerationRequest]) (*connect.Response[protocol.AcknowledgeInitialGenerationResponse], error)
@@ -115,6 +119,12 @@ func NewAuthorityServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			httpClient,
 			baseURL+AuthorityServiceInspectRealmAuthorityProcedure,
 			connect.WithSchema(authorityServiceMethods.ByName("InspectRealmAuthority")),
+			connect.WithClientOptions(opts...),
+		),
+		verifyRestoredAuthority: connect.NewClient[protocol.VerifyRestoredAuthorityRequest, protocol.VerifyRestoredAuthorityResponse](
+			httpClient,
+			baseURL+AuthorityServiceVerifyRestoredAuthorityProcedure,
+			connect.WithSchema(authorityServiceMethods.ByName("VerifyRestoredAuthority")),
 			connect.WithClientOptions(opts...),
 		),
 		inspectChannel: connect.NewClient[protocol.InspectChannelRequest, protocol.InspectChannelResponse](
@@ -178,6 +188,7 @@ func NewAuthorityServiceClient(httpClient connect.HTTPClient, baseURL string, op
 type authorityServiceClient struct {
 	createRealmAuthority          *connect.Client[protocol.CreateRealmAuthorityRequest, protocol.CreateRealmAuthorityResponse]
 	inspectRealmAuthority         *connect.Client[protocol.InspectRealmAuthorityRequest, protocol.InspectRealmAuthorityResponse]
+	verifyRestoredAuthority       *connect.Client[protocol.VerifyRestoredAuthorityRequest, protocol.VerifyRestoredAuthorityResponse]
 	inspectChannel                *connect.Client[protocol.InspectChannelRequest, protocol.InspectChannelResponse]
 	issueInitialGeneration        *connect.Client[protocol.IssueInitialGenerationRequest, protocol.IssueInitialGenerationResponse]
 	acknowledgeInitialGeneration  *connect.Client[protocol.AcknowledgeInitialGenerationRequest, protocol.AcknowledgeInitialGenerationResponse]
@@ -197,6 +208,11 @@ func (c *authorityServiceClient) CreateRealmAuthority(ctx context.Context, req *
 // InspectRealmAuthority calls ardents.v1.AuthorityService.InspectRealmAuthority.
 func (c *authorityServiceClient) InspectRealmAuthority(ctx context.Context, req *connect.Request[protocol.InspectRealmAuthorityRequest]) (*connect.Response[protocol.InspectRealmAuthorityResponse], error) {
 	return c.inspectRealmAuthority.CallUnary(ctx, req)
+}
+
+// VerifyRestoredAuthority calls ardents.v1.AuthorityService.VerifyRestoredAuthority.
+func (c *authorityServiceClient) VerifyRestoredAuthority(ctx context.Context, req *connect.Request[protocol.VerifyRestoredAuthorityRequest]) (*connect.Response[protocol.VerifyRestoredAuthorityResponse], error) {
+	return c.verifyRestoredAuthority.CallUnary(ctx, req)
 }
 
 // InspectChannel calls ardents.v1.AuthorityService.InspectChannel.
@@ -248,6 +264,7 @@ func (c *authorityServiceClient) SubmitDeploymentFenceEvidence(ctx context.Conte
 type AuthorityServiceHandler interface {
 	CreateRealmAuthority(context.Context, *connect.Request[protocol.CreateRealmAuthorityRequest]) (*connect.Response[protocol.CreateRealmAuthorityResponse], error)
 	InspectRealmAuthority(context.Context, *connect.Request[protocol.InspectRealmAuthorityRequest]) (*connect.Response[protocol.InspectRealmAuthorityResponse], error)
+	VerifyRestoredAuthority(context.Context, *connect.Request[protocol.VerifyRestoredAuthorityRequest]) (*connect.Response[protocol.VerifyRestoredAuthorityResponse], error)
 	InspectChannel(context.Context, *connect.Request[protocol.InspectChannelRequest]) (*connect.Response[protocol.InspectChannelResponse], error)
 	IssueInitialGeneration(context.Context, *connect.Request[protocol.IssueInitialGenerationRequest]) (*connect.Response[protocol.IssueInitialGenerationResponse], error)
 	AcknowledgeInitialGeneration(context.Context, *connect.Request[protocol.AcknowledgeInitialGenerationRequest]) (*connect.Response[protocol.AcknowledgeInitialGenerationResponse], error)
@@ -276,6 +293,12 @@ func NewAuthorityServiceHandler(svc AuthorityServiceHandler, opts ...connect.Han
 		AuthorityServiceInspectRealmAuthorityProcedure,
 		svc.InspectRealmAuthority,
 		connect.WithSchema(authorityServiceMethods.ByName("InspectRealmAuthority")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authorityServiceVerifyRestoredAuthorityHandler := connect.NewUnaryHandler(
+		AuthorityServiceVerifyRestoredAuthorityProcedure,
+		svc.VerifyRestoredAuthority,
+		connect.WithSchema(authorityServiceMethods.ByName("VerifyRestoredAuthority")),
 		connect.WithHandlerOptions(opts...),
 	)
 	authorityServiceInspectChannelHandler := connect.NewUnaryHandler(
@@ -338,6 +361,8 @@ func NewAuthorityServiceHandler(svc AuthorityServiceHandler, opts ...connect.Han
 			authorityServiceCreateRealmAuthorityHandler.ServeHTTP(w, r)
 		case AuthorityServiceInspectRealmAuthorityProcedure:
 			authorityServiceInspectRealmAuthorityHandler.ServeHTTP(w, r)
+		case AuthorityServiceVerifyRestoredAuthorityProcedure:
+			authorityServiceVerifyRestoredAuthorityHandler.ServeHTTP(w, r)
 		case AuthorityServiceInspectChannelProcedure:
 			authorityServiceInspectChannelHandler.ServeHTTP(w, r)
 		case AuthorityServiceIssueInitialGenerationProcedure:
@@ -371,6 +396,10 @@ func (UnimplementedAuthorityServiceHandler) CreateRealmAuthority(context.Context
 
 func (UnimplementedAuthorityServiceHandler) InspectRealmAuthority(context.Context, *connect.Request[protocol.InspectRealmAuthorityRequest]) (*connect.Response[protocol.InspectRealmAuthorityResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.AuthorityService.InspectRealmAuthority is not implemented"))
+}
+
+func (UnimplementedAuthorityServiceHandler) VerifyRestoredAuthority(context.Context, *connect.Request[protocol.VerifyRestoredAuthorityRequest]) (*connect.Response[protocol.VerifyRestoredAuthorityResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ardents.v1.AuthorityService.VerifyRestoredAuthority is not implemented"))
 }
 
 func (UnimplementedAuthorityServiceHandler) InspectChannel(context.Context, *connect.Request[protocol.InspectChannelRequest]) (*connect.Response[protocol.InspectChannelResponse], error) {

@@ -56,6 +56,8 @@ func productionHandler(t *testing.T, path []string) (string, string) {
 		return directory, calledFunctionForToken(t, directory, "rotation.go", handler, path[2])
 	case "authority membership":
 		return directory, calledFunctionForToken(t, directory, "membership.go", handler, path[2])
+	case "authority recovery":
+		return directory, calledFunctionForToken(t, directory, "command.go", handler, path[2])
 	case "network resolve", "network records":
 		return directory, calledFunctionForToken(t, directory, "records.go", handler, path[2])
 	case "data objects":

@@ -15,6 +15,7 @@ import (
 
 type Service interface {
 	CreateOrReopen(context.Context, domain.Command, domain.CreateRequest) (domain.CreateResult, error)
+	VerifyRestoredAuthority(context.Context, domain.Command, domain.VerifyRestoreRequest) (domain.VerifyRestoreResult, error)
 	Inspect(context.Context, domain.Command, domain.InspectRequest) (domain.Status, error)
 	InspectChannel(context.Context, domain.Command, domain.InspectChannelRequest) (domain.ChannelStatus, error)
 	IssueInitialGeneration(context.Context, domain.Command, domain.InitialGenerationRequest) (domain.InitialGenerationResult, error)
@@ -358,6 +359,38 @@ func (h *AuthorityEndpoint) CreateRealmAuthority(ctx context.Context, request *c
 			Status:      operationStatus(status),
 			Authority:   mapStatus(status),
 			OperationId: result.OperationID,
+		}, nil
+	})
+}
+
+func (h *AuthorityEndpoint) VerifyRestoredAuthority(
+	ctx context.Context,
+	request *connect.Request[protocol.VerifyRestoredAuthorityRequest],
+) (*connect.Response[protocol.VerifyRestoredAuthorityResponse], error) {
+	return rpc.RespondContext(ctx, func(call rpc.Call) (*protocol.VerifyRestoredAuthorityResponse, *rpc.Error) {
+		if h.service == nil {
+			return nil, authorityError("verify_restore", domain.ErrUnavailable)
+		}
+		command, ok := authorityCommand(call)
+		if !ok {
+			return nil, authorityError("verify_restore", domain.ErrPermissionDenied)
+		}
+		mutationContext, cancel := rpc.MutationContext(ctx)
+		defer cancel()
+		_, err := h.service.VerifyRestoredAuthority(
+			mutationContext, command,
+			domain.VerifyRestoreRequest{
+				Version: request.Msg.GetVersion(), RealmID: request.Msg.GetRealmId(),
+				AuthoritySequence: request.Msg.GetAuthoritySequence(),
+				CheckpointDigest:  request.Msg.GetCheckpointDigest(),
+			},
+		)
+		if err != nil {
+			return nil, authorityError("verify_restore", err)
+		}
+		status := h.service.Readiness()
+		return &protocol.VerifyRestoredAuthorityResponse{
+			Status: operationStatus(status), Authority: mapStatus(status),
 		}, nil
 	})
 }

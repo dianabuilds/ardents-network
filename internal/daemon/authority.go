@@ -51,7 +51,7 @@ func configureRealmAuthority(owners *Owners, config runtimeconfig.AuthorityConfi
 	}
 	owners.Authority = domain.New(domain.Config{
 		Store: store, Signer: signer, Repository: repository, Policy: policy,
-		Audit: audit,
+		Audit: audit, RecoveryOnly: config.RecoveryOnly,
 	})
 	if owners.Node != nil {
 		owners.Node.authority = owners.Authority

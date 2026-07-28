@@ -72,6 +72,7 @@ const (
 	ownerAuthorityRotation   = "CGA-03"
 	ownerAuthorityMembership = "CGA-04"
 	ownerAuthorityRenewal    = "CGA-05"
+	ownerAuthorityRecovery   = "CGA-06"
 )
 
 var groups = []GroupSpec{
@@ -145,6 +146,7 @@ var commands = []CommandSpec{
 
 	protected("authority.create", []string{"authority", "create"}, "--request-id ID", "create or reopen the single Realm Authority", ardentsv1connect.AuthorityServiceCreateRealmAuthorityProcedure, "realm.authority.create", "realm-authority-instance", true, OutputProtoJSON, ownerAuthority),
 	protected("authority.inspect", []string{"authority", "inspect"}, "--realm-id ID", "show bounded Realm Authority readiness", ardentsv1connect.AuthorityServiceInspectRealmAuthorityProcedure, "realm.channel.audit.read", "realm", false, OutputProtoJSON, ownerAuthority),
+	protected("authority.recovery.verify", []string{"authority", "recovery", "verify"}, "--realm-id ID --authority-sequence N --checkpoint-digest DIGEST", "verify an exact recovery-only restore against the independent head", ardentsv1connect.AuthorityServiceVerifyRestoredAuthorityProcedure, "realm.authority.restore.verify", "realm", true, OutputProtoJSON, ownerAuthorityRecovery),
 	protected("authority.channel.inspect", []string{"authority", "channel", "inspect"}, "--realm-id ID --channel-id HEX", "show one redacted channel lifecycle status", ardentsv1connect.AuthorityServiceInspectChannelProcedure, "realm.channel.audit.read", "realm-channel", false, OutputProtoJSON, ownerAuthorityRenewal),
 	protected("authority.delivery.prepare", []string{"authority", "delivery", "prepare"}, "--subject ID --valid-for DURATION --out-file FILE", "prepare a recipient delivery-key attestation", ardentsv1connect.ChannelDeliveryServicePrepareGenerationDeliveryProcedure, "realm.channel.delivery.prepare", "principal", true, OutputProtoJSON, ownerAuthorityDelivery),
 	protected("authority.delivery.issue", []string{"authority", "delivery", "issue"}, "--realm-id ID --request-id ID --channel-class CLASS --permissions N --valid-for DURATION --attestation-file FILE --out-file FILE", "issue one recipient-bound initial generation", ardentsv1connect.AuthorityServiceIssueInitialGenerationProcedure, "realm.channel.delivery.issue", "realm-channel-delivery", true, OutputProtoJSON, ownerAuthorityDelivery),

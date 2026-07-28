@@ -98,6 +98,14 @@ func TestValidateAuthorityRequiresSeparateExplicitProductionInputs(t *testing.T)
 		"disabled material": func(doc *Document) {
 			doc.Authority.Enabled = false
 		},
+		"disabled recovery mode": func(doc *Document) {
+			doc.Authority.Enabled = false
+			doc.Authority.StorePath = ""
+			doc.Authority.StoreKeyFile = ""
+			doc.Authority.SignerFile = ""
+			doc.Authority.CheckpointRepositoryPath = ""
+			doc.Authority.RecoveryOnly = true
+		},
 		"missing signer": func(doc *Document) {
 			doc.Authority.SignerFile = ""
 		},

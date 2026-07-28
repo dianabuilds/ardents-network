@@ -152,7 +152,7 @@ func (s *Service) rotateChannelLocked(
 	command Command,
 	request RotationRequest,
 ) (RotationResult, error) {
-	if err := s.mutationFence(); err != nil {
+	if err := s.rotationMutationFence(ctx, command, request); err != nil {
 		return RotationResult{}, err
 	}
 	if err := validateRotationRequest(request); err != nil {
@@ -462,7 +462,7 @@ func (s *Service) CommitChannelActivation(
 	if request.Version != ContractVersion {
 		return ActivationCommitResult{}, ErrUnsupportedVersion
 	}
-	if err := s.mutationFence(); err != nil {
+	if err := s.continuationMutationFence(); err != nil {
 		return ActivationCommitResult{}, err
 	}
 	if !ValidRealmID(request.RealmID) || !operationIDPattern.MatchString(request.OperationID) ||
@@ -581,7 +581,7 @@ func (s *Service) AcknowledgeChannelActivation(
 	if request.Version != ContractVersion {
 		return ActivationAcknowledgeResult{}, ErrUnsupportedVersion
 	}
-	if err := s.mutationFence(); err != nil {
+	if err := s.continuationMutationFence(); err != nil {
 		return ActivationAcknowledgeResult{}, err
 	}
 	if !request.ApprovedHost {
@@ -688,12 +688,14 @@ func (s *Service) AcknowledgeChannelActivation(
 			completeMembershipRotation(
 				next, &next.Rotations[rotationIndex], checkpoint.AuthoritySequence,
 			)
+			completeMigrationRotation(next, rotation.ChannelID)
 		}
 		return nil
 	})
 	if err != nil {
 		return ActivationAcknowledgeResult{}, err
 	}
+	s.applyMigrationStatus(state)
 	return activationAcknowledgeResult(state, state.Rotations[rotationIndex]), nil
 }
 

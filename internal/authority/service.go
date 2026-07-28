@@ -47,17 +47,18 @@ type Config struct {
 }
 
 type Service struct {
-	mu           sync.Mutex
-	store        Store
-	signer       Signer
-	repository   CheckpointRepository
-	random       io.Reader
-	clock        func() time.Time
-	policy       ProductPolicy
-	audit        AuditSink
-	crash        func(CrashBoundary) error
-	status       Status
-	recoveryOnly bool
+	mu               sync.Mutex
+	store            Store
+	signer           Signer
+	repository       CheckpointRepository
+	random           io.Reader
+	clock            func() time.Time
+	policy           ProductPolicy
+	audit            AuditSink
+	crash            func(CrashBoundary) error
+	status           Status
+	recoveryOnly     bool
+	migrationPending bool
 }
 
 func New(config Config) *Service {
@@ -85,6 +86,7 @@ func New(config Config) *Service {
 	} else {
 		service.reconcile(context.Background())
 	}
+	service.refreshMigrationStatus(context.Background())
 	return service
 }
 
@@ -359,6 +361,7 @@ func (s *Service) reconcileLoaded(ctx context.Context, state *Ledger) error {
 	}
 	s.status = statusFromLedger(*state)
 	s.flushAudit(ctx, state)
+	s.applyMigrationStatus(*state)
 	return nil
 }
 
@@ -490,6 +493,14 @@ func (s *Service) setRecovery(base Status, reason string) {
 }
 
 func (s *Service) mutationFence() error {
+	if s.recoveryOnly || s.migrationPending ||
+		s.status.Readiness == ReadinessRecoveryRequired {
+		return ErrRecoveryRequired
+	}
+	return nil
+}
+
+func (s *Service) continuationMutationFence() error {
 	if s.recoveryOnly || s.status.Readiness == ReadinessRecoveryRequired {
 		return ErrRecoveryRequired
 	}
@@ -504,4 +515,27 @@ func (s *Service) applyRecoveryOnlyStatus() {
 	s.status.Phase = PhaseRecoveryOnly
 	s.status.Readiness = ReadinessDegraded
 	s.status.Reason = ReasonRestoreVerificationRequired
+}
+
+func (s *Service) refreshMigrationStatus(ctx context.Context) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.store == nil || s.status.Readiness == ReadinessRecoveryRequired {
+		return
+	}
+	state, found, err := s.store.Load(ctx)
+	if err != nil || !found || validateLedger(state) != nil {
+		return
+	}
+	s.applyMigrationStatus(state)
+}
+
+func (s *Service) applyMigrationStatus(state Ledger) {
+	s.migrationPending = migrationPending(state.Migration)
+	if !s.migrationPending || s.status.Readiness != ReadinessReady {
+		return
+	}
+	s.status.Phase = PhaseMigrationRotationRequired
+	s.status.Readiness = ReadinessDegraded
+	s.status.Reason = ReasonMigrationRotationRequired
 }

@@ -33,11 +33,20 @@ func TestAuthorityProceduresHaveExactDirectOperatorContracts(t *testing.T) {
 	require.Equal(t, domain.ActionInspect, inspectChannel.Action)
 	require.Equal(t, domain.ResourceKindChannel, inspectChannel.ResourceKind)
 	require.False(t, inspectChannel.Mutating)
+	verifyRestore, ok := localauth.RuleForProcedure(
+		ardentsv1connect.AuthorityServiceVerifyRestoredAuthorityProcedure,
+	)
+	require.True(t, ok)
+	require.Equal(t, domain.ActionVerifyRestore, verifyRestore.Action)
+	require.Equal(t, domain.ResourceKindRealm, verifyRestore.ResourceKind)
+	require.True(t, verifyRestore.Mutating)
 
 	require.True(t, identitycontract.IsRegisteredAction(identitycontract.InterfaceOperator, domain.ActionCreate))
 	require.True(t, identitycontract.IsRegisteredAction(identitycontract.InterfaceOperator, domain.ActionInspect))
+	require.True(t, identitycontract.IsRegisteredAction(identitycontract.InterfaceOperator, domain.ActionVerifyRestore))
 	require.False(t, identitycontract.IsRegisteredAction(identitycontract.InterfaceApplication, domain.ActionCreate))
 	require.False(t, identitycontract.IsRegisteredAction(identitycontract.InterfaceApplication, domain.ActionInspect))
+	require.False(t, identitycontract.IsRegisteredAction(identitycontract.InterfaceApplication, domain.ActionVerifyRestore))
 
 	for procedure, action := range map[string]string{
 		ardentsv1connect.AuthorityServiceIssueInitialGenerationProcedure:          domain.ActionIssueDelivery,

@@ -168,6 +168,9 @@ func validateLedger(state Ledger) error {
 			return corruptLedger("rotation")
 		}
 	}
+	if err := validateMigrationRecord(state); err != nil {
+		return corruptLedger("migration")
+	}
 	if state.AuthoritySequence == 1 && len(state.InitialGenerationDeliveries) != 0 {
 		return corruptLedger("sequence one deliveries")
 	}
@@ -247,6 +250,16 @@ func cloneLedger(state Ledger) Ledger {
 			[]byte(nil), state.Rotations[index].Activation.Signature...,
 		)
 	}
+	if state.Migration != nil {
+		migration := *state.Migration
+		migration.RequiredRotationChannelIDs = append(
+			[][16]byte(nil), migration.RequiredRotationChannelIDs...,
+		)
+		migration.RotatedChannelIDs = append(
+			[][16]byte(nil), migration.RotatedChannelIDs...,
+		)
+		state.Migration = &migration
+	}
 	return state
 }
 
@@ -267,8 +280,12 @@ func validateAuditRecord(record AuditRecord, previousHash string) error {
 	if membershipAudit != (record.TargetPrincipal != "") {
 		return ErrCorruptState
 	}
+	migrationAudit := record.Action == ActionMigrateLocalV2
+	if migrationAudit != sha256Pattern.MatchString(record.EvidenceDigest) {
+		return ErrCorruptState
+	}
 	switch record.Action {
-	case ActionCreate:
+	case ActionCreate, ActionMigrateLocalV2:
 		if record.ResourceKind != ResourceKindAuthorityInstance ||
 			record.ResourceID != PrimaryAuthorityInstance {
 			return ErrCorruptState

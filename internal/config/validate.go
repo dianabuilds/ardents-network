@@ -72,6 +72,9 @@ func validateAuthority(cfg AuthorityConfig, nodeDataDir string) error {
 		{"authority.checkpoint_repository_path", cfg.CheckpointRepositoryPath},
 	}
 	if !cfg.Enabled {
+		if cfg.RecoveryOnly {
+			return fmt.Errorf("authority.recovery_only requires authority.enabled=true")
+		}
 		for _, field := range values {
 			if field.value != "" {
 				return fmt.Errorf("%s requires authority.enabled=true", field.name)

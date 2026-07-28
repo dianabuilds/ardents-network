@@ -39,6 +39,8 @@ func (c *Command) Run(ctx context.Context, args []string) int {
 		return c.rotation(ctx, args[1:])
 	case "membership":
 		return c.membership(ctx, args[1:])
+	case "recovery":
+		return c.recovery(ctx, args[1:])
 	default:
 		output.Writef(c.ctx.Renderer.Err, "ardentsctl authority: unknown subcommand %q\n", args[0])
 		renderUsage(c.ctx.Renderer.Err)
@@ -47,7 +49,57 @@ func (c *Command) Run(ctx context.Context, args []string) int {
 }
 
 func renderUsage(writer io.Writer) {
-	output.Writeln(writer, "Usage: ardentsctl [global flags] authority <create|inspect|channel|delivery|rotation|membership>")
+	output.Writeln(writer, "Usage: ardentsctl [global flags] authority <create|inspect|channel|delivery|rotation|membership|recovery>")
+}
+
+func (c *Command) recovery(ctx context.Context, args []string) int {
+	if len(args) == 0 || args[0] == "help" {
+		output.Writeln(c.ctx.Renderer.Out, "Usage: ardentsctl authority recovery verify")
+		return 0
+	}
+	switch args[0] {
+	case "verify":
+		return c.verifyRestore(ctx, args[1:])
+	default:
+		return c.ctx.Failure(flag.ErrHelp)
+	}
+}
+
+func (c *Command) verifyRestore(ctx context.Context, args []string) int {
+	fs := flag.NewFlagSet("authority recovery verify", flag.ContinueOnError)
+	fs.SetOutput(c.ctx.Renderer.Err)
+	var realmID, checkpointDigest string
+	var sequence uint64
+	fs.StringVar(&realmID, "realm-id", "", "exact Realm identifier")
+	fs.Uint64Var(&sequence, "authority-sequence", 0, "exact restored authority sequence")
+	fs.StringVar(&checkpointDigest, "checkpoint-digest", "", "exact restored checkpoint digest")
+	if err := fs.Parse(args); err != nil {
+		return c.ctx.Failure(err)
+	}
+	if !authority.ValidRealmID(realmID) || sequence == 0 ||
+		checkpointDigest == "" || fs.NArg() != 0 {
+		return c.ctx.Failure(flag.ErrHelp)
+	}
+	callCtx, cancel := c.ctx.Call(ctx)
+	defer cancel()
+	response, err := c.ctx.Client.Service().VerifyRestoredAuthority(
+		callCtx,
+		client.Request(&ardentsv1.VerifyRestoredAuthorityRequest{
+			Version: authority.ContractVersion, RealmId: realmID,
+			AuthoritySequence: sequence, CheckpointDigest: checkpointDigest,
+		}),
+	)
+	if err != nil {
+		return c.ctx.Failure(err)
+	}
+	if c.ctx.Renderer.JSON {
+		output.JSON(c.ctx.Renderer.Out, response.Msg)
+		return c.ctx.Renderer.MutationOutcome(response.Msg.GetStatus())
+	}
+	output.Header(c.ctx.Renderer.Out, "authority recovery verify")
+	output.Status(c.ctx.Renderer.Out, response.Msg.GetStatus())
+	renderStatus(c.ctx.Renderer.Out, response.Msg.GetAuthority())
+	return c.ctx.Renderer.MutationOutcome(response.Msg.GetStatus())
 }
 
 func (c *Command) channel(ctx context.Context, args []string) int {
