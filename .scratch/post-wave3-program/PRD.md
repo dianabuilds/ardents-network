@@ -151,6 +151,17 @@ implementation slices and commits.
   design only; `application.messaging` remains `Q=no` and AM implementation
   still requires separate admission.
 
+## MR-01 implementation checkpoint — 2026-07-29
+
+- PW3-18 implements the pure bounded `ardents.topology/v1` compiler through
+  exact tip `c981cc5a6409f9827d470fa95fb16be01107dd80`.
+- Full local, race, tooling, catalogue and diff checks pass; repeat independent
+  Standards and Spec reviews report no actionable findings.
+- PW3-18 is `ready-for-human`. No host, network, signer, Authority, repository,
+  runtime or production state was touched; nothing was pushed or deployed.
+  `deployment.multi-host` remains `Q=no`, and MR-02 remains unadmitted pending
+  explicit maintainer acceptance of MR-01.
+
 ## Stream ownership
 
 - The integrator alone edits this PRD, the Wave 3 decision register, the

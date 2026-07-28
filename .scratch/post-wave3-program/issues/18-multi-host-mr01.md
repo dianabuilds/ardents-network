@@ -1,8 +1,8 @@
 # PW3-18: MR-01 compile and validate a three-host topology
 
-Status: ready-for-agent
+Status: ready-for-human
 State: open
-Labels: ready-for-agent
+Labels: ready-for-human
 Research class: R0 versioned deployment contract
 
 ## Parent
@@ -170,22 +170,22 @@ schema versions when incompatible; they may not broaden ADR-0013.
 
 ## Acceptance criteria
 
-- [ ] Strict versioned decoding and every declared size/cardinality bound fail
+- [x] Strict versioned decoding and every declared size/cardinality bound fail
       closed with stable errors.
-- [ ] Exactly-three-host, profile, mode, address, peer, Store/bootstrap,
+- [x] Exactly-three-host, profile, mode, address, peer, Store/bootstrap,
       Authority, repository, clock and immutable-image invariants are complete.
-- [ ] Private-LAN and public-direct plans remain distinct and cannot claim
+- [x] Private-LAN and public-direct plans remain distinct and cannot claim
       runtime reachability without their later mode-specific evidence.
-- [ ] Deterministic host-local plans are identical for canonical-equivalent
+- [x] Deterministic host-local plans are identical for canonical-equivalent
       input and contain no secret or unredacted protected identifier.
-- [ ] Unknown fields, mixed/unsupported topology, duplicate identities,
+- [x] Unknown fields, mixed/unsupported topology, duplicate identities,
       unsafe address/path/reference input and failure-domain collapse are
       rejected before plan output.
-- [ ] Parser/compiler failure has no host, network, DNS, PKI, Authority,
+- [x] Parser/compiler failure has no host, network, DNS, PKI, Authority,
       repository, Node or journal side effect.
-- [ ] Contract/golden/negative tests cover supported and unsupported topology
+- [x] Contract/golden/negative tests cover supported and unsupported topology
       boundaries on Linux and Windows tooling runners.
-- [ ] Architecture/documentation/capability checks pass and
+- [x] Architecture/documentation/capability checks pass and
       `deployment.multi-host` remains `Q=no`.
 
 ## Required tests and evidence
@@ -249,3 +249,35 @@ states that no host was touched and `Q=no`.
   - outcome: `ready-for-agent`. This publishes the issue only; no implementation
     assignment, host mutation, qualification, capability promotion, deployment
     or push occurred.
+- 2026-07-29 implementation handoff:
+  - accepted design baseline:
+    `223028ed42449406c387ce83efad545bbd9a65f8`;
+  - implementation commit:
+    `e9f9a31170589e56f5be121937868e2dfe280bb5`;
+  - review remediation commits:
+    `4ceb33aa74884b78699d3e73b9ede95b3f776f85`,
+    `38d2765ad145f4d18cd36c2b85edaefe9456b4fa`,
+    `6025e9c44d59c8e86e8e94a58920491ff941dcd2`,
+    `bc52342a6c91ab86da98f3b4eaeed0b4646ef99d`, and
+    `c981cc5a6409f9827d470fa95fb16be01107dd80`;
+  - `internal/deployment.Compile` performs bounded local-only admission of the
+    exact required/optional `ardents.topology/v1` schema and returns a
+    deterministic redacted `ardents.topology.plan/v1` value or stable error;
+  - golden and negative corpus covers three-host identity/recovery/Authority
+    invariants, private/public TCP/WSS modes, DNS-ID and exact IP-ID, strict
+    fields/scalars, special-use and mapped-address rejection, redaction,
+    determinism, and a production dependency-closure purity guard;
+  - exact final-head evidence passed:
+    `go test ./internal/deployment -count=1`,
+    `go test -race ./internal/deployment -count=1`,
+    `go vet ./internal/deployment`, `go test ./... -count=1`,
+    `go test ./tests/tooling/... -count=1`,
+    `go run ./tests/tooling/capabilitycatalog -check`, and
+    `git diff --check 223028e...HEAD`;
+  - repeat independent Standards and Spec reviews both returned `PASS` with no
+    actionable findings on the exact implementation tip;
+  - no SSH, signer, DNS resolution, PKI, repository, Authority, process,
+    runtime, host, rollout, deployment, or production state was touched.
+    Nothing was pushed or deployed. `deployment.multi-host` remains `Q=no`;
+  - outcome: `ready-for-human`. MR-02 is not admitted by this handoff; explicit
+    maintainer acceptance of the exact MR-01 implementation remains required.
