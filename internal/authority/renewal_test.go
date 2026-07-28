@@ -61,6 +61,7 @@ func TestAuthorityCreatesStrictlySeparatedChannelClasses(t *testing.T) {
 	ids := map[[16]byte]struct{}{}
 	secrets := map[string]struct{}{}
 	selectors := map[string]struct{}{}
+	envelopeKeys := map[string]struct{}{}
 	replay, err := messaging.NewDurableReplayLedger(
 		filepath.Join(t.TempDir(), "class-replay.db"), bytes.Repeat([]byte{0x99}, 32),
 		8, 32,
@@ -89,6 +90,10 @@ func TestAuthorityCreatesStrictlySeparatedChannelClasses(t *testing.T) {
 		_, duplicateSelector := selectors[material.ContentTopic]
 		require.False(t, duplicateSelector)
 		selectors[material.ContentTopic] = struct{}{}
+		envelopeKey := string(material.EnvelopeKey())
+		_, duplicateKey := envelopeKeys[envelopeKey]
+		require.False(t, duplicateKey)
+		envelopeKeys[envelopeKey] = struct{}{}
 		require.NoError(t, replay.Admit(messaging.ReplayUse{
 			CapabilityRef: ref, Generation: 1, MessageID: [16]byte{0x01},
 			ExpiresAt: fixture.clock().Add(time.Hour), Now: fixture.clock(),
@@ -112,6 +117,22 @@ func TestAuthorityCreatesStrictlySeparatedChannelClasses(t *testing.T) {
 	for _, audit := range fixture.store.state.AuditLog[1:] {
 		require.NotEmpty(t, audit.ChannelClass)
 		require.Equal(t, uint32(1), audit.Generation)
+	}
+	rotated, err := fixture.service.RotateChannel(
+		ctx, renewalCommand(genesis.RealmID, results[0].ChannelID),
+		RotationRequest{
+			Version: ContractVersion, RequestID: "class-separation-rotate-discovery",
+			RealmID: genesis.RealmID, ChannelID: results[0].ChannelID,
+			RecipientAttestations: []identityapi.CapabilityDeliveryAttestation{attestation},
+			ValidFor:              time.Hour, DrainFor: 15 * time.Minute,
+		},
+	)
+	require.NoError(t, err)
+	require.Equal(t, uint32(2), rotated.PendingGeneration)
+	require.Equal(t, uint32(1), fixture.store.state.Channels[0].PendingGenerationCount)
+	for _, sibling := range fixture.store.state.Channels[1:] {
+		require.Equal(t, uint32(1), sibling.CurrentGeneration)
+		require.Zero(t, sibling.PendingGenerationCount)
 	}
 }
 
