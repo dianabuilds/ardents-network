@@ -299,6 +299,9 @@ func parseIngressAddress(value string) (ingressAddress, bool) {
 		if err != nil || !result.ip.IsValid() {
 			return ingressAddress{}, false
 		}
+		if protocols[0].Code == multiaddr.P_IP6 && result.ip.Is4In6() {
+			return ingressAddress{}, false
+		}
 		result.ip = result.ip.Unmap()
 		result.identity = result.ip.String()
 		return result, true

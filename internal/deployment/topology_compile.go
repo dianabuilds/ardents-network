@@ -82,9 +82,9 @@ func compileChecks(ingress ingressSpec) []string {
 		checks = append(checks, "private_cross_host_probe_required")
 	case "public":
 		checks = append(checks, "public_autonat_required")
-		if ingress.CertificateRef != "" {
-			checks = append(checks, "wss_certificate_identity_required")
-		}
+	}
+	if ingress.CertificateRef != "" {
+		checks = append(checks, "wss_certificate_identity_required")
 	}
 	return checks
 }

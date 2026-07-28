@@ -7,6 +7,7 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -36,6 +37,73 @@ func TestCompilePublicDirectTopologyKeepsEvidenceRequirementsDistinct(t *testing
 	require.NoError(t, err)
 	expected := readTopologyFixture(t, "public-direct-plan.json")
 	require.JSONEq(t, string(expected), string(actual))
+}
+
+func TestCompileAcceptsCompleteModeTransportAndCertificateIdentityMatrix(t *testing.T) {
+	privateLAN := readTopologyFixture(t, "private-lan.json")
+	publicDirect := readTopologyFixture(t, "public-direct.json")
+	tests := []struct {
+		name               string
+		raw                []byte
+		mutate             func(map[string]any)
+		wantTransport      string
+		wantCertificateRun bool
+	}{
+		{
+			name: "public direct tcp only",
+			raw:  publicDirect,
+			mutate: func(root map[string]any) {
+				root["transport_profile"] = "tcp_only"
+				ingress := topologyNode(root, 1)["ingress"].(map[string]any)
+				ingress["address"] = "/dns4/node-a.ardents.net/tcp/60000"
+				ingress["certificate_ref"] = ""
+				ingress["certificate_identity"] = ""
+			},
+			wantTransport: "tcp_only",
+		},
+		{
+			name: "private lan wss exact ip id",
+			raw:  privateLAN,
+			mutate: func(root map[string]any) {
+				root["transport_profile"] = "tcp_wss"
+				for index := range root["nodes"].([]any) {
+					ingress := topologyNode(root, index)["ingress"].(map[string]any)
+					address := ingress["address"].(string)
+					ip := strings.Split(address, "/")[2]
+					ingress["address"] = address + "/wss"
+					ingress["certificate_ref"] = "wss-certificate-" + topologyNode(root, index)["slot"].(string)
+					ingress["certificate_identity"] = ip
+				}
+			},
+			wantTransport:      "tcp_wss",
+			wantCertificateRun: true,
+		},
+		{
+			name: "public direct wss exact ip id",
+			raw:  publicDirect,
+			mutate: func(root map[string]any) {
+				ingress := topologyNode(root, 1)["ingress"].(map[string]any)
+				ingress["address"] = "/ip4/8.8.8.8/tcp/443/wss"
+				ingress["certificate_identity"] = "8.8.8.8"
+			},
+			wantTransport:      "tcp_wss",
+			wantCertificateRun: true,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			plan, err := Compile(mutateTopology(t, tc.raw, tc.mutate))
+			require.NoError(t, err)
+			require.Equal(t, tc.wantTransport, plan.TransportProfile)
+			foundCertificateCheck := false
+			for _, host := range plan.Hosts {
+				if slices.Contains(host.Checks, "wss_certificate_identity_required") {
+					foundCertificateCheck = true
+				}
+			}
+			require.Equal(t, tc.wantCertificateRun, foundCertificateCheck)
+		})
+	}
 }
 
 func TestCompileRejectsNonCanonicalManifestEnvelopeWithStableErrors(t *testing.T) {
@@ -490,6 +558,15 @@ func TestCompileRejectsMixedUnsafeOrUnprovableIngress(t *testing.T) {
 			raw:  publicDirect,
 			mutate: func(root map[string]any) {
 				topologyNode(root, 2)["ingress"].(map[string]any)["address"] = "/ip4/1.1.1.1/tcp/0"
+			},
+			code: "topology_unsupported_ingress_address",
+		},
+		{
+			name: "ipv4 mapped ipv6 address",
+			raw:  publicDirect,
+			mutate: func(root map[string]any) {
+				topologyNode(root, 2)["ingress"].(map[string]any)["address"] =
+					"/ip6/::ffff:101:101/tcp/60000"
 			},
 			code: "topology_unsupported_ingress_address",
 		},
