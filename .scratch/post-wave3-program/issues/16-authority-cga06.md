@@ -119,3 +119,8 @@ one.
   - CGA-07 remains gated on explicit maintainer acceptance of the exact
     CGA-06 implementation tip. No production deployment was changed and
     nothing was pushed.
+- 2026-07-28 maintainer disposition: accepted exact implementation commit
+  `1136def860f30bc452e1b5352c537cbd44a163f6` after the commit-bound handoff
+  and clean repeat Standards/Spec reviews. CGA-07 may consume this commit;
+  qualification and any `Q` change remain governed by CGA-07's complete
+  matching-commit gates.
