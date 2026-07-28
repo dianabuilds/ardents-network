@@ -227,6 +227,31 @@ func TestAuthorityAddsThenRemovesMemberWithFreshGenerationRevocationAndFence(t *
 		fixture.store.state.Rotations[len(fixture.store.state.Rotations)-1].
 			MembershipChange.State,
 	)
+	beforeRestore := cloneLedger(fixture.store.state)
+	beforeRestoreHead := fixture.repository.head
+	restored := New(Config{
+		Store: fixture.store, Signer: fixture.signer, Repository: fixture.repository,
+		Clock: fixture.clock, Policy: allowPolicy{}, RecoveryOnly: true,
+	})
+	require.Equal(t, beforeRestore.AuthoritySequence, restored.Readiness().AuthoritySequence)
+	require.Equal(t, PhaseRecoveryOnly, restored.Readiness().Phase)
+	_, err = restored.VerifyRestoredAuthority(
+		ctx, verifyRestoreCommand(genesis.RealmID),
+		VerifyRestoreRequest{
+			Version: ContractVersion, RealmID: genesis.RealmID,
+			AuthoritySequence: beforeRestore.AuthoritySequence,
+			CheckpointDigest:  beforeRestore.Checkpoint.Digest,
+		},
+	)
+	require.NoError(t, err)
+	require.Equal(t, beforeRestore, fixture.store.state)
+	require.Equal(t, beforeRestoreHead, fixture.repository.head)
+	require.Equal(
+		t, MemberStateRemoved,
+		fixture.store.state.Rotations[len(fixture.store.state.Rotations)-1].
+			MembershipChange.State,
+	)
+	fixture.service = restored
 
 	rejoined, err := fixture.service.ChangeChannelMembership(
 		ctx, membershipCommand(genesis.RealmID, initial.ChannelID),

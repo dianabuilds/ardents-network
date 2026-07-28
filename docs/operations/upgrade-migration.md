@@ -75,6 +75,57 @@ Backups and manifests contain no session secret, raw Bootstrap/Application
 Enrollment Ticket, private key, proof, or channel secret. Key files remain part
 of the protected consistency group and retain their platform permissions.
 
+### Realm Authority recovery-only restore
+
+The native stopped backup includes the protected authority archive but never
+the independently configured checkpoint repository. Before accepting a
+backup, retain its immutable archive/manifest hashes and a redacted authority
+status showing the same sequence/digest as the repository head.
+
+Restore only into empty stopped targets:
+
+1. run `scripts/install/linux.sh restore --archive PATH`; the service remains
+   stopped after archive, path and per-component digest verification;
+2. set `authority.recovery_only` to `true` in the reviewed configuration;
+3. start the matching commit and inspect the exact Realm status;
+4. require `recovery_only/degraded` with
+   `authority_restore_verification_required`; any signer, store, schema,
+   predecessor or head failure stops this procedure;
+5. run
+   `ardentsctl authority recovery verify --realm-id ID --authority-sequence N --checkpoint-digest DIGEST`
+   using the exact redacted values from that startup;
+6. retain the JSON response, archive/manifest digests, repository history/head
+   evidence and binary commit together;
+7. stop the daemon, set `authority.recovery_only` to `false`, restart and
+   require the same ready sequence/digest.
+
+Never copy the repository into the restore target, recreate its marker/head,
+lower a sequence or retry against a different digest. If the unique latest
+head or old signer cannot be proved, leave the old Realm stopped and create a
+new Realm with new member enrollment.
+
+### Local realm v2 migration and downgrade
+
+Migration is fully stopped. Retain complete pre-migration authority and Node
+backups, reconcile every `ardents.local-realm-node/v2` record and protected
+receiver grant against the one `ardents.local-realm/v2` authority, remove the
+shared old-manager path, and record its fencing evidence digest. Unknown
+fields/versions, a missing or extra member, any grant mismatch, signer
+mismatch or occupied new repository head aborts before the new store is
+created.
+
+After import, the new authority remains
+`authority_migration_rotation_required`. Complete fresh discovery and data
+delivery/activation workflows for every member (or reviewed fencing), require
+each repository compare-and-append, and retain both terminal operation and
+checkpoint results. Do not enable production multi-host operation until
+readiness is `ready`.
+
+Downgrade stops the new software and restores the complete verified
+pre-migration backup with the exact old binary. Do not edit the new schema,
+copy individual grants, reattach the shared old manager or run old and new
+managers together.
+
 ## Persisted-Schema Upgrade
 
 Released schema changes are versioned, transactional, and fail closed on

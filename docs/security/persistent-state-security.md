@@ -93,15 +93,15 @@ The following items form consistency groups and must not be restored partially:
    replay-digest master key. Losing either side fails closed and must not reset
    replay protection while retained private envelopes remain eligible.
 
-The CGA-01 Realm Authority is deliberately excluded from these supported
-same-realm restore groups. Do not co-back up or co-restore its encrypted ledger,
-store key, signer, and independent checkpoint repository as if they were an
-ordinary Node archive. In particular, the checkpoint repository must remain in
-an independently administered deletion-protected/WORM fault domain and must
-not be copied into the authority archive. Loss, rollback, mismatch, or partial
-restore of any authority truth enters `recovery_required`; CGA-01 has no repair,
-regeneration, or same-realm restore command. A reviewed restore and migration
-protocol belongs to CGA-06.
+The Realm Authority is not an ordinary Node restore group. Its encrypted
+ledger, store key, signer and configuration form a stopped archive, while the
+checkpoint repository remains in an independently administered
+deletion-protected/WORM fault domain and is never copied into that archive.
+CGA-06 permits same-Realm resume only through explicit recovery-only startup
+and exact verification of signer, audit, sequence, digest and the repository's
+complete unique history. Loss, rollback, mismatch, ambiguity or partial truth
+still enters `recovery_required`; restore never repairs or recreates a head,
+key or sequence. See `realm-authority-cga06.md`.
 
 The `ardents.db` `replication/state` record is strict schema version 2. Replica
 reservations persist `node_principal` and commitments persist `target_node` as

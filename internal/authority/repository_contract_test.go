@@ -75,6 +75,50 @@ func TestFileCheckpointRepositoryRejectsStaleSkipForkAndBlindReplacement(t *test
 	}
 }
 
+func TestFileCheckpointRepositoryReadRejectsRollbackAndAmbiguousHistory(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		corrupt func(*testing.T, string, string)
+	}{
+		{
+			name: "rolled back predecessor",
+			corrupt: func(t *testing.T, root, realmID string) {
+				require.NoError(t, os.Remove(filepath.Join(root, realmID, "00000000000000000001.json")))
+			},
+		},
+		{
+			name: "ambiguous extra head",
+			corrupt: func(t *testing.T, root, realmID string) {
+				raw, err := os.ReadFile(filepath.Join(root, realmID, "00000000000000000002.json"))
+				require.NoError(t, err)
+				require.NoError(t, storage.AtomicCreatePrivateFile(
+					filepath.Join(root, realmID, "fork.json"), raw,
+				))
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := context.Background()
+			root := t.TempDir()
+			require.NoError(t, storage.EnsurePrivateDir(root))
+			repository, err := NewFileCheckpointRepository(root)
+			require.NoError(t, err)
+			signer := newTestSigner(t, 0x59)
+			realmID := "r1_00112233445566778899aabbccddeeff"
+			genesis := signedCheckpointFixture(t, signer, realmID, 1, "")
+			_, err = repository.CreateIfAbsent(ctx, genesis)
+			require.NoError(t, err)
+			next := signedCheckpointFixture(t, signer, realmID, 2, genesis.Digest)
+			_, err = repository.CompareAndAppend(ctx, realmID, 1, next)
+			require.NoError(t, err)
+
+			test.corrupt(t, root, realmID)
+			_, _, err = repository.ReadHead(ctx, realmID)
+			require.ErrorIs(t, err, ErrCorruptState)
+		})
+	}
+}
+
 func TestCheckpointValidationRejectsMalformedDigestAndSignature(t *testing.T) {
 	signer := newTestSigner(t, 0x57)
 	checkpoint := signedCheckpointFixture(t, signer, "r1_00112233445566778899aabbccddeeff", 1, "")
