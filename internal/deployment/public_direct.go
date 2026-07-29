@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"sort"
 	"time"
@@ -164,16 +165,17 @@ func (coordinator PublicDirectCoordinator) Reconcile(
 	targets := publicDirectTargets(manifest, raw)
 	operationContext, cancelOperation := context.WithTimeout(ctx, maxPublicDirectOperationTime)
 	defer cancelOperation()
-	now := time.Now().UTC()
-	if coordinator.Now != nil {
-		now = coordinator.Now().UTC()
-	}
 	result := PublicDirectResult{
 		APIVersion: PublicDirectResultVersion,
 		Outcome:    PublicDirectOutcomeRecoveryRequired,
 	}
 
 	// All public preflight checks finish before the first host mutation.
+	type checkedPreflight struct {
+		target      PublicDirectPreflightTarget
+		observation PublicDirectPreflightObservation
+	}
+	preflights := make([]checkedPreflight, 0, len(targets))
 	for _, target := range targets {
 		if target.Plan.Ingress != "public_autonat_required" {
 			continue
@@ -191,12 +193,27 @@ func (coordinator PublicDirectCoordinator) Reconcile(
 		if observeErr != nil {
 			return publicDirectFailure(result, PublicDirectReasonPreflightUnavailable)
 		}
-		if !validPublicDirectPreflight(now, request, observation) {
+		if !validPublicDirectPreflight(coordinator.nowUTC(), request, observation) {
 			return publicDirectFailure(result, PublicDirectReasonPreflightInvalid)
 		}
 		if !observation.RouteReady || !observation.FirewallReady ||
 			request.CertificateRef != "" && !observation.CertificateReady {
 			return publicDirectFailure(result, PublicDirectReasonPreflightDenied)
+		}
+		preflights = append(preflights, checkedPreflight{
+			target: request, observation: observation,
+		})
+	}
+	// Sequential preflight can consume most of the evidence lifetime. Recheck
+	// every observation against one instant immediately before the first apply.
+	applyAt := coordinator.nowUTC()
+	for _, checked := range preflights {
+		if !validPublicDirectPreflight(
+			applyAt,
+			checked.target,
+			checked.observation,
+		) {
+			return publicDirectFailure(result, PublicDirectReasonPreflightInvalid)
 		}
 	}
 
@@ -268,16 +285,47 @@ func publicDirectTargets(
 		if node.Ingress.CertificateIdentity != nil {
 			target.CertificateIdentity = *node.Ingress.CertificateIdentity
 		}
-		configHash := sha256.Sum256([]byte(manifestDigest + "\x00" + node.Slot))
-		target.ConfigurationDigest = hex.EncodeToString(configHash[:])
 		sort.Strings(target.StaticRecoveryPeers)
 		sort.Strings(target.SignedDNSRoots)
+		target.ConfigurationDigest = publicDirectConfigurationDigest(target)
 		targets = append(targets, target)
 	}
 	sort.Slice(targets, func(left, right int) bool {
 		return targets[left].Slot < targets[right].Slot
 	})
 	return targets
+}
+
+func publicDirectConfigurationDigest(target PublicDirectHostTarget) string {
+	// Deliberately exclude ManifestDigest and protected access references:
+	// unrelated manifest edits must not force a restart on every host.
+	value := struct {
+		Plan                HostPlan `json:"plan"`
+		Address             string   `json:"address"`
+		CertificateRef      string   `json:"certificate_ref"`
+		CertificateIdentity string   `json:"certificate_identity"`
+		StaticRecoveryPeers []string `json:"static_recovery_peers"`
+		SignedDNSRoots      []string `json:"signed_dns_roots"`
+	}{
+		Plan: target.Plan, Address: target.Address,
+		CertificateRef:      target.CertificateRef,
+		CertificateIdentity: target.CertificateIdentity,
+		StaticRecoveryPeers: target.StaticRecoveryPeers,
+		SignedDNSRoots:      target.SignedDNSRoots,
+	}
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		panic("public-direct configuration digest uses only JSON-safe values")
+	}
+	digest := sha256.Sum256(encoded)
+	return hex.EncodeToString(digest[:])
+}
+
+func (coordinator PublicDirectCoordinator) nowUTC() time.Time {
+	if coordinator.Now != nil {
+		return coordinator.Now().UTC()
+	}
+	return time.Now().UTC()
 }
 
 func validPublicDirectPreflight(

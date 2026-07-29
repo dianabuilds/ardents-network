@@ -1,6 +1,7 @@
 package deployment
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"strings"
@@ -155,9 +156,7 @@ func TestPublicDirectCoordinatorRequiresCertificateReadinessOnlyForWSS(t *testin
 func TestPublicDirectCoordinatorAcceptsControlledRotationOnly(t *testing.T) {
 	raw := readTopologyFixture(t, "public-direct.json")
 	now := time.Date(2026, 7, 29, 15, 0, 0, 0, time.UTC)
-	hosts := &publicDirectHostsFake{
-		previous: map[string]string{"node-a": strings.Repeat("a", 64)},
-	}
+	hosts := &publicDirectHostsFake{}
 	coordinator := PublicDirectCoordinator{
 		Preflight:   &publicDirectPreflightFake{now: now},
 		Hosts:       hosts,
@@ -167,8 +166,41 @@ func TestPublicDirectCoordinatorAcceptsControlledRotationOnly(t *testing.T) {
 
 	result, err := coordinator.Reconcile(context.Background(), raw)
 	require.NoError(t, err)
+	require.Zero(t, result.RestartedNodes)
+	require.Equal(t, []PublicDirectApplyAction{
+		PublicDirectApplyInstalled,
+		PublicDirectApplyInstalled,
+		PublicDirectApplyInstalled,
+	}, publicDirectActions(hosts.observations))
+
+	result, err = coordinator.Reconcile(context.Background(), raw)
+	require.NoError(t, err)
+	require.Zero(t, result.RestartedNodes)
+	require.Equal(t, []PublicDirectApplyAction{
+		PublicDirectApplyUnchanged,
+		PublicDirectApplyUnchanged,
+		PublicDirectApplyUnchanged,
+	}, publicDirectActions(hosts.observations[3:]))
+
+	rotated := bytes.ReplaceAll(
+		raw,
+		[]byte("node-a.ardents.net"),
+		[]byte("node-a2.ardents.net"),
+	)
+	rotated = bytes.Replace(
+		rotated,
+		[]byte("wss-certificate-node-a"),
+		[]byte("wss-certificate-node-a2"),
+		1,
+	)
+	result, err = coordinator.Reconcile(context.Background(), rotated)
+	require.NoError(t, err)
 	require.Equal(t, 1, result.RestartedNodes)
-	require.Equal(t, PublicDirectApplyRestarted, hosts.observations[0].Action)
+	require.Equal(t, []PublicDirectApplyAction{
+		PublicDirectApplyRestarted,
+		PublicDirectApplyUnchanged,
+		PublicDirectApplyUnchanged,
+	}, publicDirectActions(hosts.observations[6:]))
 
 	hosts = &publicDirectHostsFake{
 		previous:      map[string]string{"node-a": strings.Repeat("a", 64)},
@@ -178,6 +210,41 @@ func TestPublicDirectCoordinatorAcceptsControlledRotationOnly(t *testing.T) {
 	result, err = coordinator.Reconcile(context.Background(), raw)
 	require.Error(t, err)
 	require.Equal(t, PublicDirectReasonApplyInvalid, result.Reason)
+}
+
+func TestPublicDirectCoordinatorRechecksFreshnessBeforeFirstMutation(t *testing.T) {
+	raw := readTopologyFixture(t, "public-direct.json")
+	now := time.Date(2026, 7, 29, 15, 0, 0, 0, time.UTC)
+	calls := 0
+	hosts := &publicDirectHostsFake{}
+	coordinator := PublicDirectCoordinator{
+		Preflight:   &publicDirectPreflightFake{now: now},
+		Hosts:       hosts,
+		Status:      &publicDirectStatusFake{},
+		StepTimeout: time.Second,
+		Now: func() time.Time {
+			calls++
+			if calls >= 3 {
+				return now.Add(publicDirectPreflightMaxAge + time.Second)
+			}
+			return now
+		},
+	}
+
+	result, err := coordinator.Reconcile(context.Background(), raw)
+	require.Error(t, err)
+	require.Equal(t, PublicDirectReasonPreflightInvalid, result.Reason)
+	require.Empty(t, hosts.targets)
+}
+
+func publicDirectActions(
+	observations []PublicDirectApplyObservation,
+) []PublicDirectApplyAction {
+	out := make([]PublicDirectApplyAction, 0, len(observations))
+	for _, observation := range observations {
+		out = append(out, observation.Action)
+	}
+	return out
 }
 
 func TestPublicDirectCoordinatorFailsClosedOnApplyOrStatusAmbiguity(t *testing.T) {
