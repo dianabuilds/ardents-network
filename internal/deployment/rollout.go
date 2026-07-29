@@ -599,15 +599,27 @@ func (coordinator RolloutCoordinator) commitPrepared(
 		CompatibilityDigest: transaction.CompatibilityDigest,
 		Manifest:            append([]byte(nil), request.Manifest...),
 	}
-	observation, commitErr := runForwardRolloutEffect(
-		coordinator,
-		ctx,
-		transaction.StartedAt,
-		transaction.Deadline,
-		func(effectCtx context.Context) (RolloutCommitObservation, error) {
-			return coordinator.Committer.Commit(effectCtx, target)
-		},
-	)
+	var observation RolloutCommitObservation
+	var commitErr error
+	if transaction.ChangeKind == AuthorityChangeMigration {
+		observation, commitErr = runRecoveryRolloutEffect(
+			coordinator,
+			ctx,
+			func(effectCtx context.Context) (RolloutCommitObservation, error) {
+				return coordinator.Committer.Commit(effectCtx, target)
+			},
+		)
+	} else {
+		observation, commitErr = runForwardRolloutEffect(
+			coordinator,
+			ctx,
+			transaction.StartedAt,
+			transaction.Deadline,
+			func(effectCtx context.Context) (RolloutCommitObservation, error) {
+				return coordinator.Committer.Commit(effectCtx, target)
+			},
+		)
+	}
 	if commitErr != nil || !validRolloutCommit(observation, target, true) {
 		observed, statusErr := runRecoveryRolloutEffect(
 			coordinator,

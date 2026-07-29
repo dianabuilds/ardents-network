@@ -392,7 +392,7 @@ func TestRolloutCoordinatorNeverCompensatesPastMigrationActivation(t *testing.T)
 	require.Empty(t, hosts.compensationSlots())
 }
 
-func TestRolloutCoordinatorRetriesDurableMigrationReadyToCommit(t *testing.T) {
+func TestRolloutCoordinatorRetriesExpiredMigrationReadyToCommit(t *testing.T) {
 	raw := readTopologyFixture(t, "public-direct.json")
 	request := validRolloutRequest(t, raw, AuthorityChangeMigration, true)
 	manifest, targets, order, compatibilityDigest, err := validateRolloutRequest(request)
@@ -425,7 +425,7 @@ func TestRolloutCoordinatorRetriesDurableMigrationReadyToCommit(t *testing.T) {
 		Journal: journal, Preflight: &rolloutPreflightFake{},
 		Hosts: hosts, Authority: &rolloutAuthorityFake{},
 		Committer: committer,
-		Clock:     func() time.Time { return request.StartedAt.Add(time.Minute) },
+		Clock:     func() time.Time { return request.Deadline.Add(time.Minute) },
 	}
 
 	status, err := coordinator.Rollout(context.Background(), request)
