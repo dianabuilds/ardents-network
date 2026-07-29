@@ -366,6 +366,26 @@ implementation slices and commits.
   evidence remain MR-08 R3. Admission changes no capability qualification;
   `deployment.multi-host` remains `Q=no`.
 
+## MR-06 implementation acceptance checkpoint — 2026-07-29
+
+- PW3-24 is accepted and closed at exact implementation tip `d05fa68`; its
+  logical implementation range is `f167e8e..d05fa68`.
+- The R0 coordinator completes exact fresh route/firewall/certificate
+  preflight before mutation, applies all three deterministic host plans, and
+  validates only exact closed install/unchanged/restart outcomes plus protected
+  running-configuration status.
+- Address, certificate reference and validated non-secret certificate-material
+  generation changes restart only the affected host. The new runtime starts
+  with reachability withheld until fresh AutoNAT `Public`; `Private`,
+  `Unknown`, stream loss and stop withdraw it.
+- Final independent Spec and Standards reviews pass. The retained security
+  audit confirmed and remediated one Medium same-reference WSS rotation defect;
+  Phase 6 found no remaining exploitable vulnerability.
+- Full, race, tagged integration, tooling, architecture, catalogue,
+  API-generation, vet, vulnerability and diff gates pass. Production adapters
+  and real WAN/PKI evidence remain MR-08 R3; `deployment.multi-host` remains
+  `Q=no`.
+
 ## Stream ownership
 
 - The integrator alone edits this PRD, the Wave 3 decision register, the

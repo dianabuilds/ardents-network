@@ -1,8 +1,8 @@
 # PW3-24: MR-06 admit verified public-direct endpoints
 
-Status: ready-for-agent
-State: open
-Labels: ready-for-agent
+Status: ready-for-human
+State: closed
+Labels: ready-for-human
 Research class: R0 implementation plus deferred R3 three-host qualification
 
 ## Parent
@@ -48,8 +48,9 @@ or substitute an AutoNAT observation.
 - Protected preflight is required for every public target before any host
   mutation. Its observation must exactly echo digest, slot, address and
   certificate binding, report route and firewall readiness, and be fresh.
-  WSS additionally requires certificate readiness. TCP has no certificate
-  input and cannot gain one through preflight.
+  WSS additionally requires certificate readiness and a canonical non-secret
+  digest of the validated certificate-material generation. TCP has no
+  certificate input and cannot gain one through preflight.
 - Preflight is an operator-input check only. It never claims external
   reachability, publishes an endpoint, mutates a router, or weakens the
   runtime's AutoNAT gate.
@@ -65,7 +66,8 @@ or substitute an AutoNAT observation.
 - Final protected status is required. Public Nodes are ready only under
   `public_direct/public/reachable`; the outbound-only Node is ready only under
   `outbound_only/outbound_only/not-reachable`. Required Store and immutable
-  image checks remain inherited from MR-02.
+  image checks remain inherited from MR-02. The status observation also binds
+  every slot to the exact running configuration generation.
 - `Private`, `Unknown`, observation stream loss, service stop, address change,
   and restart withdraw public endpoints. Only a fresh `Public` observation in
   the current process may republish the currently admitted address.
@@ -94,22 +96,22 @@ not introduce a second reachability source.
 
 ## Acceptance criteria
 
-- [ ] Invalid mode, unbound/stale preflight, unsafe certificate binding, and
+- [x] Invalid mode, unbound/stale preflight, unsafe certificate binding, and
       missing adapters fail before host apply.
-- [ ] Both public targets pass exact fresh route/firewall preflight; WSS also
+- [x] Both public targets pass exact fresh route/firewall preflight; WSS also
       passes exact certificate preflight.
-- [ ] All three host plans apply deterministically and only closed, exactly
+- [x] All three host plans apply deterministically and only closed, exactly
       bound apply observations are accepted.
-- [ ] Address/certificate rotation is represented by a controlled restart and
+- [x] Address/certificate rotation is represented by a controlled restart and
       never inherits old reachability.
-- [ ] Runtime tests cover `Public`, `Private`, `Unknown`, observation loss,
+- [x] Runtime tests cover `Public`, `Private`, `Unknown`, observation loss,
       withdrawal and fresh recovery without opening Windows firewall prompts.
-- [ ] Final status distinguishes public and outbound-only truth and requires
+- [x] Final status distinguishes public and outbound-only truth and requires
       immutable image and Store readiness.
-- [ ] Focused, full, race, tooling, architecture, capability, API-generation,
+- [x] Focused, full, race, tooling, architecture, capability, API-generation,
       vet, vulnerability and diff checks pass.
-- [ ] Independent Spec, Standards and Security review findings are resolved.
-- [ ] `deployment.multi-host` remains `Q=no`.
+- [x] Independent Spec, Standards and Security review findings are resolved.
+- [x] `deployment.multi-host` remains `Q=no`.
 
 ## Out of scope
 
@@ -142,3 +144,27 @@ truth, without duplicating it or claiming R3 evidence.
 
 Admission authorizes repository implementation and local verification only.
 It changes no production state or capability qualification.
+
+## Implementation acceptance
+
+- Exact implementation tip: `d05fa68`; logical range:
+  `f167e8e..d05fa68`.
+- Deterministic reconciliation completes all exact fresh public preflight
+  before applying three host-local plans. Same-manifest replay is unchanged;
+  TCP address, WSS reference, or WSS material-generation changes restart only
+  the affected host.
+- Waku remains the sole reachability source. Existing integration evidence
+  covers publication only after `Public`, withdrawal on `Private`/`Unknown`
+  and stream loss, and fresh proof after restart.
+- Independent final Spec and Standards reviews pass.
+- Retained security audit `evidence/mr06-security/run-1` confirmed and
+  remediated a Medium same-reference certificate-rotation defect. Independent
+  Phase 6 found no remaining exploitable vulnerability; `findings.json` is an
+  empty schema-valid list at the target commit.
+- Focused, full, race, tagged integration, tooling, architecture, catalogue,
+  API-generation, vet, vulnerability and diff gates pass.
+- No production adapter, real host, WAN, router/firewall, PKI, deployment,
+  push or R3 qualification occurred. `deployment.multi-host` remains `Q=no`.
+
+The maintainer's standing instruction treats the completed MR decision as
+accepted; PW3-24 is therefore closed.
