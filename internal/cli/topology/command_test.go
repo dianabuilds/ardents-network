@@ -28,7 +28,7 @@ type fakeFactory struct {
 func (factory *fakeFactory) Open(cfg configurationcmd.Config) (openedClient, error) {
 	factory.opened = append(factory.opened, cfg.ExpectedNode)
 	calls := fakeProtectedCalls{node: cfg.ExpectedNode, principal: cfg.ExpectedPrincipal, image: imageForNode(cfg.ExpectedNode)}
-	return openedClient{calls: calls, close: func() error {
+	return openedClient{calls: calls, close: func(context.Context) error {
 		factory.closed = append(factory.closed, cfg.ExpectedNode)
 		return nil
 	}}, nil
@@ -85,13 +85,18 @@ func (calls fakeProtectedCalls) GetNodeFeatures(context.Context, *connect.Reques
 type fixedFactory struct {
 	calls   protectedCalls
 	openErr error
+	close   func(context.Context) error
 }
 
 func (factory fixedFactory) Open(configurationcmd.Config) (openedClient, error) {
 	if factory.openErr != nil {
 		return openedClient{}, factory.openErr
 	}
-	return openedClient{calls: factory.calls, close: func() error { return nil }}, nil
+	closeClient := factory.close
+	if closeClient == nil {
+		closeClient = func(context.Context) error { return nil }
+	}
+	return openedClient{calls: factory.calls, close: closeClient}, nil
 }
 
 func TestCommandUsesThreeSeparateManifestBoundContextsAndRedactsJSON(t *testing.T) {
@@ -344,6 +349,30 @@ func TestProbeMapsEveryStableFailureClass(t *testing.T) {
 			require.EqualError(t, err, string(test.want))
 		})
 	}
+}
+
+func TestProbeCloseCannotOutliveNodeDeadline(t *testing.T) {
+	contextFile := writeTopologyContexts(t)
+	factory := fixedFactory{
+		calls: fakeProtectedCalls{
+			node:      "node-a",
+			principal: "p1_euydwrsrlrtxe7misopktnf7zlk6b27waegboirnhbbu4wlen55a",
+			image:     imageForNode("node-a"),
+		},
+		close: func(ctx context.Context) error {
+			<-ctx.Done()
+			return ctx.Err()
+		},
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+	defer cancel()
+	started := time.Now()
+	_, err := (Probe{
+		Base:    configurationcmd.Config{ContextFile: contextFile, Timeout: time.Second},
+		Factory: factory,
+	}).Observe(ctx, topologyTarget("host-pin-a"))
+	require.EqualError(t, err, string(deployment.ProbeTunnelTimeout))
+	require.Less(t, time.Since(started), 250*time.Millisecond)
 }
 
 func writeTopologyContexts(t *testing.T) string {

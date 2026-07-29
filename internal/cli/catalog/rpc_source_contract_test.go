@@ -21,7 +21,7 @@ func TestProtectedCatalogueProceduresAreCalledByTheirProductionHandlers(t *testi
 		t.Run(spec.ID, func(t *testing.T) {
 			directory, handler := productionHandler(t, spec.Path)
 			calls := handlerCalls(t, directory, handler, spec.Path[len(spec.Path)-1])
-			for _, procedure := range append([]string{spec.Procedure}, spec.SecondaryProcedures...) {
+			for _, procedure := range catalog.Procedures(spec) {
 				method := procedure[strings.LastIndex(procedure, "/")+1:]
 				if _, ok := calls[method]; !ok {
 					t.Fatalf("handler %s does not call declared procedure %s; calls=%v", handler, procedure, calls)
@@ -42,6 +42,9 @@ func productionHandler(t *testing.T, path []string) (string, string) {
 	}
 	if group == "config" {
 		directory = filepath.Join("..", "configuration")
+	}
+	if group == "topology" {
+		return directory, "Observe"
 	}
 	handler := calledFunctionForToken(t, directory, file, "Run", path[1])
 	if len(path) == 2 {

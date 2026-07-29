@@ -32,6 +32,29 @@ func TestClosedCatalogueContainsExactlyCurrentLeafCommands(t *testing.T) {
 	}
 }
 
+func TestTopologyStatusDeclaresEveryProtectedAggregateProcedure(t *testing.T) {
+	var topology catalog.CommandSpec
+	topologyIndex := -1
+	for index, spec := range catalog.Commands() {
+		if spec.ID == "topology.status" {
+			topology = spec
+			topologyIndex = index
+			break
+		}
+	}
+	require.NotEqual(t, -1, topologyIndex)
+	require.Equal(t, catalog.AccessProtected, topology.Access)
+	require.True(t, topology.SSH)
+	require.Empty(t, topology.Procedure)
+	require.Len(t, topology.ProcedureRequirements, 3)
+	require.Len(t, catalog.Procedures(topology), 3)
+
+	first := catalog.Commands()
+	first[topologyIndex].ProcedureRequirements[0].Action = "mutated"
+	second := catalog.Commands()
+	require.NotEqual(t, "mutated", second[topologyIndex].ProcedureRequirements[0].Action)
+}
+
 func TestValidatorFailsClosedForInvalidCatalogue(t *testing.T) {
 	valid := catalog.Commands()
 	require.NotEmpty(t, valid)

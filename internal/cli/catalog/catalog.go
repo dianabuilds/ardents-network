@@ -31,20 +31,30 @@ const (
 )
 
 type CommandSpec struct {
-	ID                  string
-	Path                []string
-	Usage               string
-	Summary             string
-	Procedure           string
-	SecondaryProcedures []string
-	Action              string
-	ResourceKind        string
-	Mutating            bool
-	Output              OutputShape
-	WatchOutput         OutputShape
-	SSH                 bool
-	EvidenceOwner       string
-	Access              AccessClass
+	ID                    string
+	Path                  []string
+	Usage                 string
+	Summary               string
+	Procedure             string
+	SecondaryProcedures   []string
+	ProcedureRequirements []ProcedureRequirement
+	Action                string
+	ResourceKind          string
+	Mutating              bool
+	Output                OutputShape
+	WatchOutput           OutputShape
+	SSH                   bool
+	EvidenceOwner         string
+	Access                AccessClass
+}
+
+// ProcedureRequirement declares one exact protected call made by an aggregate
+// command whose constituent procedures have different access metadata.
+type ProcedureRequirement struct {
+	Procedure    string
+	Action       string
+	ResourceKind string
+	Mutating     bool
 }
 
 type GroupSpec struct {
@@ -108,7 +118,19 @@ var commands = []CommandSpec{
 	protected("network.records.list", []string{"network", "records", "list"}, "", "list signed discovery records", ardentsv1connect.NetworkServiceListRecordsProcedure, "discovery.list_records", "discovery-record-collection", false, OutputProtoJSON, ownerNND),
 	protected("network.records.import", []string{"network", "records", "import"}, "--file FILE", "import a signed discovery record", ardentsv1connect.NetworkServiceImportRecordProcedure, "discovery.import", "discovery-record", true, OutputProtoJSON, ownerNND),
 
-	local("topology.status", []string{"topology", "status"}, "--manifest FILE", "show bounded three-Node deployment truth", "local.topology.status", OutputCLIJSON, true, ownerContract),
+	protectedAggregate(
+		"topology.status",
+		[]string{"topology", "status"},
+		"--manifest FILE",
+		"show bounded three-Node deployment truth",
+		[]ProcedureRequirement{
+			{Procedure: ardentsv1connect.NodeServiceGetNodeRuntimeProcedure, Action: "node.runtime", ResourceKind: "node"},
+			{Procedure: ardentsv1connect.NetworkServiceGetNetworkStatusProcedure, Action: "transport.network_status", ResourceKind: "network"},
+			{Procedure: ardentsv1connect.NodeServiceGetNodeFeaturesProcedure, Action: "node.features", ResourceKind: "node"},
+		},
+		OutputCLIJSON,
+		ownerContract,
+	),
 
 	protected("workload.list", []string{"workload", "list"}, "", "list workloads", ardentsv1connect.WorkloadServiceListWorkloadsProcedure, "workload.list", "workload-collection", false, OutputProtoJSON, ownerWorkload),
 	protected("workload.get", []string{"workload", "get"}, "ID", "show one workload", ardentsv1connect.WorkloadServiceGetWorkloadStatusProcedure, "workload.status", "workload", false, OutputProtoJSON, ownerWorkload),
@@ -192,6 +214,21 @@ var closedError = validateClosed()
 
 func protected(id string, path []string, usage, summary, procedure, action, resource string, mutating bool, shape OutputShape, owner string) CommandSpec {
 	return CommandSpec{ID: id, Path: path, Usage: usageText(path, usage), Summary: summary, Procedure: procedure, Action: action, ResourceKind: resource, Mutating: mutating, Output: shape, SSH: true, EvidenceOwner: owner, Access: AccessProtected}
+}
+
+func protectedAggregate(
+	id string,
+	path []string,
+	usage, summary string,
+	requirements []ProcedureRequirement,
+	shape OutputShape,
+	owner string,
+) CommandSpec {
+	return CommandSpec{
+		ID: id, Path: path, Usage: usageText(path, usage), Summary: summary,
+		ProcedureRequirements: append([]ProcedureRequirement(nil), requirements...),
+		Output:                shape, SSH: true, EvidenceOwner: owner, Access: AccessProtected,
+	}
 }
 
 func offline(id string, path []string, usage, summary, procedure string, shape OutputShape) CommandSpec {
@@ -282,8 +319,15 @@ func Validate(specs []CommandSpec, resolve ProcedureResolver) error {
 		}
 		switch spec.Access {
 		case AccessProtected:
-			if spec.Procedure == "" || spec.Action == "" || spec.ResourceKind == "" {
-				return fmt.Errorf("protected command %q has incomplete access metadata", spec.ID)
+			if len(spec.ProcedureRequirements) == 0 {
+				if spec.Procedure == "" || spec.Action == "" || spec.ResourceKind == "" {
+					return fmt.Errorf("protected command %q has incomplete access metadata", spec.ID)
+				}
+			} else if spec.Procedure != "" || len(spec.SecondaryProcedures) != 0 ||
+				spec.Action != "" || spec.ResourceKind != "" || spec.Mutating {
+				return fmt.Errorf("protected aggregate %q mixes aggregate and singular access metadata", spec.ID)
+			} else if err := validateProcedureRequirements(spec); err != nil {
+				return err
 			}
 			if !spec.SSH {
 				return fmt.Errorf("protected command %q has no SSH stream-local support", spec.ID)
@@ -308,6 +352,21 @@ func Validate(specs []CommandSpec, resolve ProcedureResolver) error {
 			return fmt.Errorf("command %q has unknown access class %q", spec.ID, spec.Access)
 		}
 		if resolve != nil {
+			if len(spec.ProcedureRequirements) > 0 {
+				for _, requirement := range spec.ProcedureRequirements {
+					rule, ok := resolve(requirement.Procedure)
+					if !ok {
+						return fmt.Errorf("command %q procedure %q is not on the Operator surface", spec.ID, requirement.Procedure)
+					}
+					if rule.Access != AccessProtected ||
+						rule.Action != requirement.Action ||
+						rule.ResourceKind != requirement.ResourceKind ||
+						rule.Mutating != requirement.Mutating {
+						return fmt.Errorf("command %q metadata does not match procedure %q", spec.ID, requirement.Procedure)
+					}
+				}
+				continue
+			}
 			procedures := append([]string{spec.Procedure}, spec.SecondaryProcedures...)
 			for _, procedure := range procedures {
 				if strings.HasPrefix(procedure, "offline.") || strings.HasPrefix(procedure, "local.") || strings.HasPrefix(procedure, "interactive.") {
@@ -324,6 +383,32 @@ func Validate(specs []CommandSpec, resolve ProcedureResolver) error {
 		}
 	}
 	return nil
+}
+
+func validateProcedureRequirements(spec CommandSpec) error {
+	seen := make(map[string]struct{}, len(spec.ProcedureRequirements))
+	for _, requirement := range spec.ProcedureRequirements {
+		if requirement.Procedure == "" || requirement.Action == "" || requirement.ResourceKind == "" {
+			return fmt.Errorf("protected aggregate %q has incomplete procedure metadata", spec.ID)
+		}
+		if _, duplicate := seen[requirement.Procedure]; duplicate {
+			return fmt.Errorf("protected aggregate %q repeats procedure %q", spec.ID, requirement.Procedure)
+		}
+		seen[requirement.Procedure] = struct{}{}
+	}
+	return nil
+}
+
+// Procedures returns every procedure a command declares it may call.
+func Procedures(spec CommandSpec) []string {
+	if len(spec.ProcedureRequirements) > 0 {
+		result := make([]string, 0, len(spec.ProcedureRequirements))
+		for _, requirement := range spec.ProcedureRequirements {
+			result = append(result, requirement.Procedure)
+		}
+		return result
+	}
+	return append([]string{spec.Procedure}, spec.SecondaryProcedures...)
 }
 
 func ValidateReachability(specs []CommandSpec, reachablePaths []string) error {
@@ -444,6 +529,7 @@ func validateClosed() error {
 func cloneSpec(spec CommandSpec) CommandSpec {
 	spec.Path = append([]string(nil), spec.Path...)
 	spec.SecondaryProcedures = append([]string(nil), spec.SecondaryProcedures...)
+	spec.ProcedureRequirements = append([]ProcedureRequirement(nil), spec.ProcedureRequirements...)
 	return spec
 }
 

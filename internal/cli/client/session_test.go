@@ -57,6 +57,7 @@ type sessionTestAuth struct {
 	beginErrAfter int32
 	beginErr      error
 	endErr        error
+	endHook       func(context.Context) error
 	beginUnknown  bool
 }
 
@@ -121,13 +122,18 @@ func (a *sessionTestAuth) CompleteAuthentication(context.Context, *connect.Reque
 	}), nil
 }
 
-func (a *sessionTestAuth) EndSession(_ context.Context, request *connect.Request[ardentsv1.EndSessionRequest]) (*connect.Response[ardentsv1.EndSessionResponse], error) {
+func (a *sessionTestAuth) EndSession(ctx context.Context, request *connect.Request[ardentsv1.EndSessionRequest]) (*connect.Response[ardentsv1.EndSessionResponse], error) {
 	a.endCount.Add(1)
 	if !strings.HasPrefix(request.Header().Get("Authorization"), operatorSessionScheme+" ") {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing session"))
 	}
 	if a.endErr != nil {
 		return nil, a.endErr
+	}
+	if a.endHook != nil {
+		if err := a.endHook(ctx); err != nil {
+			return nil, err
+		}
 	}
 	return connect.NewResponse(&ardentsv1.EndSessionResponse{}), nil
 }
@@ -302,6 +308,36 @@ func TestClientCloseClosesTransportAndReturnsLogoutAndCloseFailures(t *testing.T
 
 	require.ErrorIs(t, err, logoutErr)
 	require.ErrorIs(t, err, closeErr)
+	require.Equal(t, 1, closeCalls)
+	require.Equal(t, SessionKey{}, manager.Status())
+}
+
+func TestClientCloseContextCannotOutliveCallerDeadline(t *testing.T) {
+	signer := newSessionTestSigner(t)
+	alpha := sessionTestPrincipal(t, 0x31)
+	auth := &sessionTestAuth{
+		node: alpha, principal: signer.principal, now: sessionTestNow, secretByte: 0x10,
+		endHook: func(ctx context.Context) error {
+			<-ctx.Done()
+			return ctx.Err()
+		},
+	}
+	manager := NewSessionManager(auth, signer, alpha, func() time.Time { return sessionTestNow })
+	_, _, err := manager.authorization(context.Background())
+	require.NoError(t, err)
+	closeCalls := 0
+	client := &Client{sessions: manager, close: func() error {
+		closeCalls++
+		return nil
+	}}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+	defer cancel()
+	started := time.Now()
+
+	err = client.CloseContext(ctx)
+
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.Less(t, time.Since(started), 250*time.Millisecond)
 	require.Equal(t, 1, closeCalls)
 	require.Equal(t, SessionKey{}, manager.Status())
 }

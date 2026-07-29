@@ -6,11 +6,12 @@ production-readiness claim.
 ## Authoritative Metadata
 
 `internal/cli/catalog` is the single production-owned metadata catalogue for
-the Operator CLI. It contains exactly 68 leaf commands. The catalogue describes
-stable command ID and path, complete help syntax, Operator procedure, action,
-resource kind, mutation class, output family, SSH stream-local support and
-evidence owner. It does not dispatch commands; the existing domain command
-packages continue to own parsing and execution.
+the Operator CLI. It contains exactly 86 leaf commands. The catalogue describes
+stable command ID and path, complete help syntax, exact Operator procedure
+requirements with their actions, resource kinds and mutation classes, output
+family, SSH stream-local support and evidence owner. It does not dispatch
+commands; the existing domain command packages continue to own parsing and
+execution.
 
 Protected procedure values are generated Connect procedure constants. Contract
 tests join every protected entry to the exact server-owned rules in
@@ -19,6 +20,9 @@ unknown procedures, sibling actions and resource/mutation mismatches. Parser
 contract tests probe every catalogue entry through its production parser.
 Runtime dispatch rejects a command path which is not present in the closed
 catalogue before resolving a Principal context or constructing a client.
+Protected aggregate commands declare every constituent procedure separately;
+`topology status` therefore carries the exact runtime, Network status and Node
+features requirements instead of masquerading as a local-only command.
 
 Offline Principal/device/Delegation custody commands use stable
 `offline.identity.*` procedure identifiers and declare neither an RPC/action

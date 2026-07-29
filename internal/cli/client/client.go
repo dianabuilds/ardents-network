@@ -169,17 +169,27 @@ func (c *Client) SessionStatus() SessionKey {
 }
 
 func (c *Client) Logout() error {
+	return c.LogoutContext(context.Background())
+}
+
+// LogoutContext clears local sessions and bounds remote invalidation by ctx.
+func (c *Client) LogoutContext(ctx context.Context) error {
 	if c != nil && c.sessions != nil {
-		return c.sessions.Logout()
+		return c.sessions.LogoutContext(ctx)
 	}
 	return nil
 }
 
 func (c *Client) Close() error {
+	return c.CloseContext(context.Background())
+}
+
+// CloseContext closes sessions and transport without exceeding ctx.
+func (c *Client) CloseContext(ctx context.Context) error {
 	if c == nil {
 		return nil
 	}
-	logoutErr := c.Logout()
+	logoutErr := c.LogoutContext(ctx)
 	if c.close != nil {
 		return errors.Join(logoutErr, c.close())
 	}

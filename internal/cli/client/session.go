@@ -321,6 +321,12 @@ func (m *SessionManager) Status() SessionKey {
 }
 
 func (m *SessionManager) Logout() error {
+	return m.LogoutContext(context.Background())
+}
+
+// LogoutContext clears all local session material before attempting bounded
+// server invalidation under the caller's remaining operation budget.
+func (m *SessionManager) LogoutContext(parent context.Context) error {
 	if m == nil {
 		return nil
 	}
@@ -334,7 +340,10 @@ func (m *SessionManager) Logout() error {
 	m.active = SessionKey{}
 	m.mu.Unlock()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	if parent == nil {
+		parent = context.Background()
+	}
+	ctx, cancel := context.WithTimeout(parent, 2*time.Second)
 	defer cancel()
 	var logoutErr error
 	for index := range secrets {

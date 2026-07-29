@@ -24,7 +24,7 @@ type protectedCalls interface {
 
 type openedClient struct {
 	calls protectedCalls
-	close func() error
+	close func(context.Context) error
 }
 
 type clientFactory interface {
@@ -48,7 +48,7 @@ func (operatorClientFactory) Open(cfg configurationcmd.Config) (openedClient, er
 	if err != nil {
 		return openedClient{}, classifyProbeError(err)
 	}
-	return openedClient{calls: opened.Service(), close: opened.Close}, nil
+	return openedClient{calls: opened.Service(), close: opened.CloseContext}, nil
 }
 
 // Probe opens a separate pin-validated SSH/session boundary for every Node.
@@ -57,7 +57,10 @@ type Probe struct {
 	Factory clientFactory
 }
 
-func (probe Probe) Observe(ctx context.Context, target deployment.NodeStatusTarget) (deployment.NodeObservation, error) {
+func (probe Probe) Observe(
+	ctx context.Context,
+	target deployment.NodeStatusTarget,
+) (observation deployment.NodeObservation, observeErr error) {
 	resolved, err := probe.Base.ResolveTopologyContext(target.SSHAlias)
 	if err != nil {
 		return deployment.NodeObservation{}, deployment.ProbeError(deployment.ProbeTunnelFailure)
@@ -84,7 +87,12 @@ func (probe Probe) Observe(ctx context.Context, target deployment.NodeStatusTarg
 	if opened.calls == nil || opened.close == nil {
 		return deployment.NodeObservation{}, deployment.ProbeError(deployment.ProbeRemoteInvalidResponse)
 	}
-	defer opened.close()
+	defer func() {
+		if closeErr := opened.close(ctx); observeErr == nil && closeErr != nil {
+			observation = deployment.NodeObservation{}
+			observeErr = classifyProbeError(closeErr)
+		}
+	}()
 
 	runtimeResponse, err := opened.calls.GetNodeRuntime(ctx, client.Request(&protocol.GetNodeRuntimeRequest{}))
 	if err != nil {
