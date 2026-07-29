@@ -37,11 +37,17 @@ helper, and never copies signer or Session material to a host.
 
 ## Observed truth
 
-For each Node, the adapter makes at most these three protected calls:
+For each Node, the adapter makes at most these three protected
+product-observation calls:
 
 1. `NodeService.GetNodeRuntime`;
 2. `NetworkService.GetNetworkStatus`;
 3. `NodeService.GetNodeFeatures`.
+
+After the observation, the adapter makes one bounded
+`IdentityService.EndSession` session-lifecycle call. That cleanup is not a
+product observation and does not extend either the per-Node or aggregate
+deadline.
 
 The aggregate checks exact Node name and Principal, ADR-0008 composite
 readiness, topology-compatible joined/reachability state, declared persistent
