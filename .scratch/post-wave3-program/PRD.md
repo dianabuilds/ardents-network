@@ -162,8 +162,8 @@ implementation slices and commits.
   `deployment.multi-host` remains `Q=no`.
 - The maintainer accepted exact MR-01 implementation tip
   `c981cc5a6409f9827d470fa95fb16be01107dd80` and closed PW3-18. MR-02 is
-  eligible for a separate admission audit but remains unpublished,
-  unassigned, and unstarted.
+  admitted as PW3-19 for the bounded protected three-Node status slice.
+  Admission starts no host mutation or qualification; `Q=no`.
 
 ## Stream ownership
 
