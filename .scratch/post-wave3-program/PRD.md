@@ -351,6 +351,21 @@ implementation slices and commits.
 - Production host/proof adapters and real three-host evidence remain MR-08 R3.
   No capability is promoted; `deployment.multi-host` remains `Q=no`.
 
+## MR-06 admission checkpoint — 2026-07-29
+
+- PW3-24 admits the R0 public-direct reconciliation slice after accepted
+  MR-05.
+- Existing Waku AutoNAT remains the only owner of public reachability truth.
+  Deployment adds exact route/firewall/certificate preflight, deterministic
+  three-host apply, controlled-restart reporting for address/certificate
+  changes, and final protected status validation.
+- Preflight cannot publish an endpoint or substitute for fresh AutoNAT
+  `Public`. `Private`, `Unknown`, stream loss, stop and restart continue to
+  withdraw the address.
+- Production host, router/firewall, PKI and WAN adapters and real dialback
+  evidence remain MR-08 R3. Admission changes no capability qualification;
+  `deployment.multi-host` remains `Q=no`.
+
 ## Stream ownership
 
 - The integrator alone edits this PRD, the Wave 3 decision register, the
