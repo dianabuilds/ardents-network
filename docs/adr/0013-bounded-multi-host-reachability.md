@@ -159,16 +159,16 @@ backup/restore, and mixed-generation rollout.
   deployment, fencing/rejoin, authority restore, upgrade, recovery and release
   evidence is accepted.
 
-## Proposed compatibility amendment — 2026-07-29
+## Accepted compatibility amendment — 2026-07-29
 
-Status: Proposed; explicit maintainer acceptance required.
+Status: Accepted by explicit maintainer decision on 2026-07-29.
 
 The accepted Rejoin ordering above is incompatible with accepted CGA-04.
 Membership add requires the target's fresh pending delivery to be installed
 before activation commit, and activation commit itself makes the fresh
-membership and generation current before any active receipt. If accepted,
-this amendment replaces only the Rejoin ordering in the preceding decision;
-the terminal Fence Transaction and removal checkpoint remain immutable.
+membership and generation current before any active receipt. This amendment
+replaces only the Rejoin ordering in the preceding decision; the terminal
+Fence Transaction and removal checkpoint remain immutable.
 
 `recover --rejoin` creates a separate durable Rejoin Transaction linked to the
 terminal Fence Transaction and removal checkpoint. The target first starts in

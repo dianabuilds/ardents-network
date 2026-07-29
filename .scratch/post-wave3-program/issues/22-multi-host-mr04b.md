@@ -1,8 +1,8 @@
 # PW3-22: MR-04b rejoin one fenced Node through fresh Authority truth
 
-Status: needs-info
+Status: ready-for-agent
 State: open
-Labels: needs-info
+Labels: ready-for-agent
 Research class: R1 local-substitutable recovery injection plus deferred R3 host qualification
 
 ## Parent
@@ -13,11 +13,10 @@ Research class: R1 local-substitutable recovery injection plus deferred R3 host 
 
 `../../../docs/engineering/research/multi-host-reachability.md`, the Rejoin
 portion of `MR-04 — Fence and rejoin one Node truthfully`, under accepted
-`../../../docs/adr/0013-bounded-multi-host-reachability.md` plus its proposed
+`../../../docs/adr/0013-bounded-multi-host-reachability.md` plus its accepted
 2026-07-29 compatibility amendment, accepted DR-03/CGA-04 membership-add
 semantics, and accepted MR-04a fencing tip
-`fa942e9f52ea7ae2fc4ddf9db81322fd72732c09`. The amendment requires explicit
-maintainer acceptance before this issue can become `ready-for-agent`.
+`fa942e9f52ea7ae2fc4ddf9db81322fd72732c09`.
 
 ## User story
 
@@ -53,7 +52,7 @@ claim real host recovery.
 
 ## Frozen MR-04b contract
 
-- The proposed Rejoin Transaction is not an inverse fence operation. The accepted
+- The Rejoin Transaction is not an inverse fence operation. The accepted
   `topology-fence-transaction/v1` remains immutable and terminal `fenced`.
   A separate `topology-rejoin-transaction/v1` links the exact manifest digest,
   target slot, expected Principal/Waku hashes, fence request/evidence digest,
@@ -171,9 +170,8 @@ a second membership ledger, fake production support, or a remote shell.
 
 - [ ] Invalid manifest, Actor, request, target, prior fence, or removal binding
       causes no Authority, restoration, or target mutation.
-- [ ] If the amendment is accepted, the Rejoin Transaction is durable before
-      the first Authority or configuration mutation; the terminal Fence
-      Transaction is never changed.
+- [ ] The Rejoin Transaction is durable before the first Authority or
+      configuration mutation; the terminal Fence Transaction is never changed.
 - [ ] Rejoin requires a distinct membership-add operation, strictly newer
       generation, repository-persisted prepare/activation/completion
       checkpoints, fresh recipient attestations, and fresh deliveries installed
@@ -263,3 +261,7 @@ a second membership ledger, fake production support, or a remote shell.
     `ready-for-agent` or implementation. No real host, network, Authority,
     repository, production state, qualification, capability promotion, push,
     or deployment occurred.
+  - the maintainer explicitly accepted the 2026-07-29 ADR-0013 compatibility
+    amendment; the Rejoin ordering is now canonical and PW3-22 is
+    `ready-for-agent`. This transition authorizes only the bounded R1
+    implementation and changes no capability qualification.

@@ -108,6 +108,12 @@ identity/clock/readiness checks. Rejoin never reverses removal or reuses old
 Channel Grants.
 _Avoid_: Unfence, restore old grant, rollback removal
 
+**Rejoin Transaction**:
+A Deployment-owned durable, monotonic record of fresh re-admission for one
+previously fenced Node. It links to, but never rewrites, the terminal Fence
+Transaction and removal checkpoint.
+_Avoid_: Unfence transaction, fence rollback, grant restoration
+
 **Application Interface**:
 The versioned, capability-scoped interface through which Applications use a Node.
 _Avoid_: Operator API, remote admin API

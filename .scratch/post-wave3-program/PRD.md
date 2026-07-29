@@ -291,6 +291,17 @@ implementation slices and commits.
 - This review changes no capability qualification; `deployment.multi-host`
   remains `Q=no`.
 
+## MR-04b amendment acceptance checkpoint — 2026-07-29
+
+- The maintainer explicitly accepted the dated ADR-0013 compatibility
+  amendment and its phase-truthful Rejoin ordering.
+- PW3-22 moves from `needs-info` to `ready-for-agent`; its six public TDD seams
+  are the pre-agreed implementation boundary.
+- This decision authorizes bounded R1 implementation only. Real host,
+  networking, production adapter, deployment, and matching-commit
+  qualification claims remain deferred to R3; `deployment.multi-host`
+  remains `Q=no`.
+
 ## Stream ownership
 
 - The integrator alone edits this PRD, the Wave 3 decision register, the

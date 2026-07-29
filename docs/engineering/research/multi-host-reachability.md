@@ -438,15 +438,15 @@ acknowledge before the deadline, the terminal outcome is
 `recovery_required`, never `fenced`. A surviving partition cannot
 independently complete removal.
 
-Fencing is monotonic. Subject to acceptance of the proposed 2026-07-29
-ADR-0013 compatibility amendment, `recover --rejoin <slot>` cannot erase the
-old removal or reuse old Channel Grants. The target first starts in deployment
-quarantine while the accepted ingress/discovery withdrawal and survivor peer
-deny remain enforced, then passes exact identity/image/clock checks without a
-joined claim. All three recipients provide fresh delivery-key attestations,
-then install and acknowledge their exact fresh pending deliveries through
-recipient-bound protected paths. Only then may Authority commit the fresh
-activation checkpoint.
+Fencing is monotonic. Under the accepted 2026-07-29 ADR-0013 compatibility
+amendment, `recover --rejoin <slot>` cannot erase the old removal or reuse old
+Channel Grants. The target first starts in deployment quarantine while the
+accepted ingress/discovery withdrawal and survivor peer deny remain enforced,
+then passes exact identity/image/clock checks without a joined claim. All three
+recipients provide fresh delivery-key attestations, then install and
+acknowledge their exact fresh pending deliveries through recipient-bound
+protected paths. Only then may Authority commit the fresh activation
+checkpoint.
 
 Before activation commit, the old removal remains current. From activation
 commit onward, the fresh membership and generation are current but incomplete
@@ -463,8 +463,7 @@ activation commit onward re-enforces isolation and resumes the same fresh but
 incomplete membership; the target is neither `fenced` nor `rejoined`.
 Ambiguous target acknowledgement is re-isolated and reconciled idempotently.
 No old removal, implicit cancellation, or invented compensating membership
-change is used. This ordering remains proposed until the ADR amendment is
-explicitly accepted.
+change is used.
 
 ### Availability and recovery rules
 
@@ -536,7 +535,7 @@ This requirement is not a proposed DR-03 decision.
 | rollout interruption | new operation refused | journal is authoritative | resume compensation first | run `recover`, then retry rollout |
 | target unreachable during fence | may still become `fenced` after enforced isolation evidence, authority checkpoint and both survivor active receipts | fence journal, deployment evidence and signed checkpoint | target is not retried as authority | repair or securely destroy target; old membership cannot rejoin |
 | authority/checkpoint/clock/survivor failure during fence | `recovery_required`, never removal success | partial fence journal retained | resume from recorded phase after dependency recovery | restore authority group/repository/clock/quorum |
-| rejoin requested | before activation commit the old removal remains current; from activation commit onward fresh membership is current but incomplete and the target remains deployment-isolated | both checkpoints and journal retained | no reuse of prior grants; report neither `fenced` nor `rejoined` after commit | resume the same operation and complete the proposed Rejoin ordering |
+| rejoin requested | before activation commit the old removal remains current; from activation commit onward fresh membership is current but incomplete and the target remains deployment-isolated | both checkpoints and journal retained | no reuse of prior grants; report neither `fenced` nor `rejoined` after commit | resume the same operation and complete the accepted Rejoin ordering |
 | incompatible persisted schema | preflight/start fails | old group preserved | no in-place downgrade | restore exact backup and fallback image |
 | DR-03 revocation/rotation | topology cannot override denial | DR-03 authority store is authoritative | per accepted DR-03 only | follow DR-03 recovery workflow |
 
@@ -737,11 +736,10 @@ Write ADR before implementation.
 ### MR-04 — Fence and rejoin one Node truthfully
 
 Delivery is tracked as two dependency-ordered implementation slices:
-MR-04a establishes the terminal fencing transaction. MR-04b would establish a
-separate linked Rejoin Transaction if the proposed 2026-07-29 ADR-0013
-compatibility amendment is accepted. Neither partial slice alone is the
-complete MR-04 behavior or production qualification, and MR-04b remains
-blocked on that explicit decision.
+MR-04a establishes the terminal fencing transaction and MR-04b establishes a
+separate linked Rejoin Transaction under the accepted 2026-07-29 ADR-0013
+compatibility amendment. Neither partial slice alone is the complete MR-04
+behavior or production qualification.
 
 - **User story:** an Operator can complete removal even when the target is
   unreachable, and cannot silently resurrect its old authority.
