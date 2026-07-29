@@ -489,7 +489,9 @@ func completeMembershipRotation(state *Ledger, rotation *RotationRecord, sequenc
 	setOperationPhase(state, rotation.OperationID, DeliveryPhaseCompleted)
 }
 
-func deploymentFenceEvidenceDigest(evidence DeploymentFenceEvidence) string {
+// DeploymentFenceEvidenceDigest returns the canonical digest bound into the
+// accepted Authority result and checkpoint audit.
+func DeploymentFenceEvidenceDigest(evidence DeploymentFenceEvidence) string {
 	copy := cloneFenceEvidence(evidence)
 	sort.Slice(copy.Controls, func(i, j int) bool {
 		return copy.Controls[i].Kind < copy.Controls[j].Kind
@@ -517,6 +519,6 @@ func fenceEvidenceResult(
 		Version: ContractVersion, RealmID: state.RealmID,
 		OperationID: rotation.OperationID, AuthoritySequence: sequence,
 		Phase: rotation.Phase, TargetPrincipal: evidence.TargetPrincipal,
-		EvidenceDigest: deploymentFenceEvidenceDigest(evidence),
+		EvidenceDigest: DeploymentFenceEvidenceDigest(evidence),
 	}
 }

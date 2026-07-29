@@ -316,10 +316,10 @@ func TestFenceCoordinatorRequiresExactTwoSurvivorReceipts(t *testing.T) {
 		Authority: &fakeFenceAuthority{
 			operationID: "rao1_00112233445566778899aabbccddeeff",
 			result: FenceAuthorityResult{
-				OperationID:     "rao1_00112233445566778899aabbccddeeff",
-				TargetPrincipal: "p1_euydwrsrlrtxe7misopktnf7zlk6b27waegboirnhbbu4wlen55a",
-				EvidenceDigest:  fenceDigest('9'), EvidenceAccepted: true,
-				Generation: 4, CheckpointDigest: fenceDigest('d'),
+				OperationID:      "rao1_00112233445566778899aabbccddeeff",
+				TargetPrincipal:  "p1_euydwrsrlrtxe7misopktnf7zlk6b27waegboirnhbbu4wlen55a",
+				EvidenceAccepted: true,
+				Generation:       4, CheckpointDigest: fenceDigest('d'),
 				RepositoryPersisted: true,
 				SurvivorReceipts:    map[string]string{"node-b": fenceDigest('e')},
 			},
@@ -335,6 +335,31 @@ func TestFenceCoordinatorRequiresExactTwoSurvivorReceipts(t *testing.T) {
 	require.Equal(t, FenceOutcomeRecoveryRequired, status.Outcome)
 	require.Equal(t, FenceFailureSurvivorMismatch, status.Reason)
 	require.Equal(t, FencePhaseRecoveryRequired, store.current.Phase)
+	require.Equal(t, FencePhaseAuthorityPending, store.current.ResumeFrom)
+}
+
+func TestFenceCoordinatorRejectsAuthorityDigestForDifferentEvidence(t *testing.T) {
+	raw := fenceManifest(t)
+	now := time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC)
+	request := FenceRequest{
+		Manifest: raw, TargetSlot: "node-a", Reason: FenceReasonMembershipRemoved,
+		Actor:     "p1_euydwrsrlrtxe7misopktnf7zlk6b27waegboirnhbbu4wlen55a",
+		RequestID: "fence-node-a-evidence-digest",
+		StartedAt: now, Deadline: now.Add(5 * time.Minute),
+	}
+	operationID := "rao1_00112233445566778899aabbccddeeff"
+	result := validFenceAuthorityResultFor(operationID, request.Actor)
+	result.EvidenceDigest = fenceDigest('9')
+	store := &memoryFenceJournal{}
+	status, err := (FenceCoordinator{
+		Journal:   store,
+		Isolation: &fakeFenceIsolation{controls: validFenceControls(request.Actor)},
+		Authority: &fakeFenceAuthority{operationID: operationID, result: result},
+		Clock:     func() time.Time { return now },
+	}).Fence(context.Background(), request)
+	require.NoError(t, err)
+	require.Equal(t, FenceOutcomeRecoveryRequired, status.Outcome)
+	require.Equal(t, FenceFailureCheckpointMismatch, status.Reason)
 	require.Equal(t, FencePhaseAuthorityPending, store.current.ResumeFrom)
 }
 
@@ -375,8 +400,8 @@ func validFenceAuthorityResultFor(
 ) FenceAuthorityResult {
 	return FenceAuthorityResult{
 		OperationID: operationID, TargetPrincipal: targetPrincipal,
-		EvidenceDigest: fenceDigest('9'), EvidenceAccepted: true,
-		Generation: 4, CheckpointDigest: fenceDigest('d'),
+		EvidenceAccepted: true,
+		Generation:       4, CheckpointDigest: fenceDigest('d'),
 		RepositoryPersisted: true,
 		SurvivorReceipts: map[string]string{
 			"node-b": fenceDigest('e'), "node-c": fenceDigest('f'),
@@ -412,7 +437,7 @@ func fenceTransactionAtPhase(
 		}
 	}
 	if fencePhaseOrder(phase) >= fencePhaseOrder(FencePhaseCheckpointPersisted) {
-		transaction.EvidenceDigest = fenceDigest('9')
+		transaction.EvidenceDigest = deploymentFenceEvidenceDigest(*transaction.Evidence)
 		transaction.AuthorityGeneration = 4
 		transaction.CheckpointDigest = fenceDigest('d')
 		transaction.RepositoryPersisted = true
@@ -506,5 +531,9 @@ func (fake *fakeFenceAuthority) CompleteRemoval(
 ) (FenceAuthorityResult, error) {
 	fake.completeCalls++
 	fake.lastEvidence = evidence
-	return fake.result, fake.completeErr
+	result := fake.result
+	if result.EvidenceDigest == "" {
+		result.EvidenceDigest = deploymentFenceEvidenceDigest(evidence)
+	}
+	return result, fake.completeErr
 }

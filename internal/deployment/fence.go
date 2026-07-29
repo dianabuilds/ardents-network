@@ -392,7 +392,8 @@ func (coordinator FenceCoordinator) Fence(
 			}
 			if !validFenceAuthorityResult(result, *transaction.Evidence, target.Slot, manifest) {
 				reason := FenceFailureCheckpointMismatch
-				if hasDurableAuthorityCheckpoint(result) {
+				if validAuthorityEvidenceAcceptance(result, *transaction.Evidence) &&
+					hasDurableAuthorityCheckpoint(result) {
 					reason = FenceFailureSurvivorMismatch
 				}
 				return coordinator.fail(ctx, &transaction, FencePhaseAuthorityPending, reason)
@@ -623,10 +624,7 @@ func validFenceAuthorityResult(
 	targetSlot string,
 	manifest topologyManifest,
 ) bool {
-	if result.OperationID != evidence.OperationID ||
-		result.TargetPrincipal != evidence.TargetPrincipal ||
-		!result.EvidenceAccepted ||
-		!fenceDigestPattern.MatchString(result.EvidenceDigest) ||
+	if !validAuthorityEvidenceAcceptance(result, evidence) ||
 		!hasDurableAuthorityCheckpoint(result) ||
 		len(result.SurvivorReceipts) != exactTopologyNodeCount-1 {
 		return false
@@ -641,6 +639,33 @@ func validFenceAuthorityResult(
 		}
 	}
 	return true
+}
+
+func validAuthorityEvidenceAcceptance(
+	result FenceAuthorityResult,
+	evidence DeploymentFenceEvidence,
+) bool {
+	return result.OperationID == evidence.OperationID &&
+		result.TargetPrincipal == evidence.TargetPrincipal &&
+		result.EvidenceAccepted &&
+		result.EvidenceDigest == deploymentFenceEvidenceDigest(evidence)
+}
+
+func deploymentFenceEvidenceDigest(evidence DeploymentFenceEvidence) string {
+	controls := make([]authority.DeploymentFenceControl, 0, len(evidence.Controls))
+	for _, control := range evidence.Controls {
+		controls = append(controls, authority.DeploymentFenceControl{
+			Kind: string(control.Kind), Actor: control.Actor,
+			ReceiptDigest: control.ReceiptDigest,
+		})
+	}
+	return authority.DeploymentFenceEvidenceDigest(authority.DeploymentFenceEvidence{
+		Version: evidence.Version, RealmID: evidence.RealmID,
+		OperationID: evidence.OperationID, TargetPrincipal: evidence.TargetPrincipal,
+		ManifestDigest: evidence.ManifestDigest, RequestID: evidence.RequestID,
+		Reason: string(evidence.Reason), ObservedAt: evidence.ObservedAt,
+		ClockSkewSecond: evidence.ClockSkewSecond, Controls: controls,
+	})
 }
 
 func sameFenceBinding(
