@@ -141,6 +141,7 @@ func TestConstrainedClientRejectsPeerWithoutRequiredProviderProtocols(t *testing
 		client = networkwaku.New(networkapi.Config{
 			NodeProfile: networkapi.NodeProfileConstrainedClient,
 			Profile:     networkapi.ProfileTCPOnly, ReachabilityMode: networkapi.ReachabilityOutboundOnly,
+			BindAddress: "127.0.0.1",
 		})
 		client.SetBootstrapNodes(incomplete.Endpoints())
 		require.NoError(t, client.Start(ctx))
