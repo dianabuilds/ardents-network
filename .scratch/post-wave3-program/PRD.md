@@ -334,6 +334,23 @@ implementation slices and commits.
   three-host evidence remain R3. Admission changes no capability
   qualification; `deployment.multi-host` remains `Q=no`.
 
+## MR-05 implementation acceptance checkpoint — 2026-07-29
+
+- PW3-23 is accepted and closed at exact implementation tip `3e4b6c6`;
+  its logical implementation range is `4512baf..3e4b6c6`.
+- Waku accepts one admissible private literal translated-host address only
+  under canonical manifest/target/two-source scope and withholds it until a
+  fresh exact cross-host proof. Withdrawal is monotonic, ambiguity is
+  compensated, and expiry notifies discovery publication.
+- The deterministic R0 coordinator reapplies all three exact plans, probes and
+  protected status for formation and local-substitutable recovery. Static
+  peers remain the floor, DNS remains additive and Store gaps remain explicit.
+- Independent Spec and Standards reviews pass. Full, race, tooling,
+  architecture, capability, API-generation, vet and vulnerability gates pass.
+  The retained MR-05 security audit reports no confirmed vulnerability.
+- Production host/proof adapters and real three-host evidence remain MR-08 R3.
+  No capability is promoted; `deployment.multi-host` remains `Q=no`.
+
 ## Stream ownership
 
 - The integrator alone edits this PRD, the Wave 3 decision register, the

@@ -1,8 +1,8 @@
 # PW3-23: MR-05 form and recover the private-LAN topology
 
-Status: ready-for-agent
-State: open
-Labels: ready-for-agent
+Status: ready-for-human
+State: closed
+Labels: ready-for-human
 Research class: R0 implementation plus deferred R3 three-host qualification
 
 ## Parent
@@ -102,20 +102,20 @@ a second topology, membership, reachability, DNS, or Store authority.
 
 ## Acceptance criteria
 
-- [ ] Runtime validation accepts exactly one valid private literal TCP
+- [x] Runtime validation accepts exactly one valid private literal TCP
       translated-host address and rejects all unsafe/cross-scope variants.
-- [ ] Private endpoints are withheld before proof, published only after fresh
+- [x] Private endpoints are withheld before proof, published only after fresh
       exact different-host proof, and withdrawn on failure or expiry.
-- [ ] Public-direct AutoNAT gating, outbound-only, local-only, WSS identity,
+- [x] Public-direct AutoNAT gating, outbound-only, local-only, WSS identity,
       and ordinary service publication behavior do not regress.
-- [ ] Coordinator formation is deterministic, bounded, redacted, and requires
+- [x] Coordinator formation is deterministic, bounded, redacted, and requires
       all three exact plans, cross-host probes, proof installation, and status.
-- [ ] Restart, bootstrap loss/recovery, segment partition/rejoin, peer churn,
+- [x] Restart, bootstrap loss/recovery, segment partition/rejoin, peer churn,
       DNS outage/replacement, and retained Store fetch/gap semantics have
       local-substitutable failure-injection evidence.
-- [ ] Focused, full, race, tooling, architecture, capability, API-generation,
+- [x] Focused, full, race, tooling, architecture, capability, API-generation,
       vet, vulnerability, and diff checks pass.
-- [ ] `deployment.multi-host` remains `Q=no`.
+- [x] `deployment.multi-host` remains `Q=no`.
 
 ## Out of scope
 
@@ -137,7 +137,7 @@ a second topology, membership, reachability, DNS, or Store authority.
 - focused package and race tests;
 - `go test ./... -count=1`;
 - `go test ./tests/tooling/... -count=1`;
-- `go run ./tests/tooling/architecturecheck`;
+- `go test ./tests/tooling/archaccept -count=1`;
 - `go run ./tests/tooling/capabilitycatalog -check`;
 - `scripts/generate-api.ps1 -Check`;
 - `go vet ./...`;
@@ -165,3 +165,25 @@ a second topology, membership, reachability, DNS, or Store authority.
     shape, failure-domain diversity, and deterministic redacted plans;
   - no production multi-host host adapter exists. This slice therefore freezes
     consumer-owned R0 seams and defers any real-host support claim to MR-08.
+
+- 2026-07-29 implementation acceptance:
+  - exact runtime/coordinator implementation tip is `3e4b6c6`; the logical
+    implementation range is `4512baf..3e4b6c6`;
+  - exact private address, canonical manifest digest, target and two-source
+    scope are required before startup. Proof freshness and monotonic ordering
+    prevent cross-target/source/address replay and old-success resurrection;
+  - failed or ambiguous proof application requires confirmed withdrawal;
+    stop/start, failure and expiry withdraw publication and notify discovery;
+  - one centralized profile-aware default keeps service Nodes
+    `outbound_only`; ordinary daemon configuration cannot self-assert protected
+    private-LAN scope before production adapter composition;
+  - local-substitutable reconciliation covers restart, bootstrap loss,
+    partition/rejoin, churn, DNS outage/replacement and bounded Store
+    retained/gap outcomes without treating Store as authority;
+  - independent final Spec and Standards reviews pass;
+  - retained security audit `evidence/mr05-security/run-1` found no exploitable
+    vulnerability and its empty `findings.json` passes the audit schema;
+  - full, focused race, tooling, architecture, catalogue, API generation, vet,
+    vulnerability and diff gates pass;
+  - no production adapter, real host, routing, DNS, Store, deployment, push or
+    R3 qualification occurred. `deployment.multi-host` remains `Q=no`.
