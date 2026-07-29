@@ -315,6 +315,47 @@ func TestRejoinAuthorizationIntersectionUsesExactExistingOwners(t *testing.T) {
 	}
 }
 
+func TestRejoinCoordinatorRejectsTamperedPersistedRecipientState(t *testing.T) {
+	request := validRejoinRequest(t)
+	store := &memoryRejoinJournal{}
+	authority := &fakeRejoinAuthority{
+		operationID: "rao1_11223344556677889900aabbccddeeff",
+		generation:  request.Fence.AuthorityGeneration + 1,
+	}
+	coordinator := RejoinCoordinator{
+		Journal: store, Restoration: &fakeRejoinRestoration{},
+		Members: &fakeRejoinMembers{}, Authority: authority,
+		Readiness: &fakeRejoinReadiness{},
+		Clock:     func() time.Time { return request.StartedAt },
+	}
+	_, err := coordinator.Rejoin(context.Background(), request)
+	require.NoError(t, err)
+
+	tampered := cloneRejoinTransaction(*store.current)
+	for principal, delivery := range tampered.Deliveries {
+		delete(tampered.Deliveries, principal)
+		tampered.Deliveries["p1_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"] = delivery
+		break
+	}
+	store.current = &tampered
+	restoration := &fakeRejoinRestoration{}
+	members := &fakeRejoinMembers{}
+	authority = &fakeRejoinAuthority{}
+	readiness := &fakeRejoinReadiness{}
+
+	_, err = (RejoinCoordinator{
+		Journal: store, Restoration: restoration, Members: members,
+		Authority: authority, Readiness: readiness,
+		Clock: func() time.Time { return request.StartedAt },
+	}).Rejoin(context.Background(), request)
+
+	require.ErrorIs(t, err, ErrRejoinJournalBinding)
+	require.Zero(t, restoration.preflightCalls)
+	require.Zero(t, members.attestCalls)
+	require.Zero(t, authority.prepareCalls)
+	require.Zero(t, readiness.verifyCalls)
+}
+
 func validRejoinRequest(t *testing.T) RejoinRequest {
 	t.Helper()
 	raw := fenceManifest(t)

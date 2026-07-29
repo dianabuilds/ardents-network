@@ -330,6 +330,9 @@ func (coordinator RejoinCoordinator) Rejoin(
 	if err := ValidateRejoinTransaction(transaction); err != nil {
 		return RejoinStatus{}, err
 	}
+	if !validRejoinPersistedState(transaction, target) {
+		return RejoinStatus{}, ErrRejoinJournalBinding
+	}
 	if transaction.Phase == RejoinPhaseRejoined {
 		return rejoinStatus(transaction), nil
 	}
@@ -872,6 +875,37 @@ func validRecipientDigests(values map[string]string, expected []string) bool {
 		}
 	}
 	return true
+}
+
+func validRejoinPersistedState(
+	transaction RejoinTransaction,
+	target RejoinTarget,
+) bool {
+	if transaction.Attestations != nil &&
+		!validRejoinAttestations(transaction.Attestations, target) {
+		return false
+	}
+	if transaction.Deliveries != nil &&
+		!validRejoinPreparation(RejoinPreparation{
+			OperationID: transaction.OperationID, Generation: transaction.Generation,
+			Deliveries:          transaction.Deliveries,
+			CheckpointDigest:    transaction.PrepareCheckpointDigest,
+			RepositoryPersisted: transaction.RepositoryPersisted,
+		}, target) {
+		return false
+	}
+	if transaction.DeliveryReceipts != nil &&
+		!validRecipientDigests(
+			transaction.DeliveryReceipts, target.RecipientPrincipals,
+		) {
+		return false
+	}
+	if transaction.SurvivorReceipts != nil &&
+		!validRecipientDigests(transaction.SurvivorReceipts, target.SurvivorSlots) {
+		return false
+	}
+	return transaction.TargetReceipt == "" ||
+		fenceDigestPattern.MatchString(transaction.TargetReceipt)
 }
 
 // ValidateRejoinTransaction rejects unknown, incomplete, or contradictory
