@@ -422,7 +422,7 @@ func validateAuthorityAndMaterial(manifest topologyManifest) error {
 		return err
 	}
 	for _, node := range manifest.Nodes {
-		if !validImmutableImage(node.Image) {
+		if !runtimeimage.ValidReference(node.Image) {
 			return ValidationError("topology_immutable_image_required")
 		}
 	}
@@ -448,10 +448,6 @@ func validateOwnedReferences(manifest topologyManifest) error {
 		}
 	}
 	return nil
-}
-
-func validImmutableImage(value string) bool {
-	return runtimeimage.ValidReference(value)
 }
 
 func rememberUnique(seen map[string]struct{}, value string) bool {

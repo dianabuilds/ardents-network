@@ -95,7 +95,6 @@ type NodeStatusTarget struct {
 	OperatorSignerAlias   string
 	ExpectedNodePrincipal string
 	ExpectedImage         string
-	ExpectedMode          string
 	ExpectedIngress       string
 	PersistentStore       bool
 }
@@ -200,8 +199,8 @@ func statusTargets(manifest topologyManifest) []NodeStatusTarget {
 			SSHAlias: node.Host.SSHAlias, HostKeyPinRef: node.Host.HostKeyPinRef,
 			OperatorSignerAlias:   manifest.OperatorSignerAlias,
 			ExpectedNodePrincipal: node.ExpectedNodePrincipal,
-			ExpectedImage:         node.Image, ExpectedMode: manifest.Mode,
-			ExpectedIngress: node.Ingress.Kind, PersistentStore: node.Store.Persistent,
+			ExpectedImage:         node.Image,
+			ExpectedIngress:       node.Ingress.Kind, PersistentStore: node.Store.Persistent,
 		})
 	}
 	sort.Slice(targets, func(left, right int) bool {

@@ -55,7 +55,6 @@ type AbuseSnapshot struct {
 	BannedProviders         int
 	StoreEnabled            bool
 	StoreState              string
-	StoreReason             string
 	StoreMessages           int
 	StoreCapacityMessages   int
 	StoreCapacityBytes      int64

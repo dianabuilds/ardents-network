@@ -208,7 +208,6 @@ func (s *Service) populateStorePressureLocked(snapshot *network.AbuseSnapshot) {
 		snapshot.State = "failed"
 		snapshot.Reason = "Waku Store pressure cannot be measured"
 		snapshot.StoreState = "failed"
-		snapshot.StoreReason = snapshot.Reason
 		return
 	}
 	snapshot.StoreMessages = count
@@ -220,7 +219,6 @@ func (s *Service) populateStorePressureLocked(snapshot *network.AbuseSnapshot) {
 			snapshot.State = "degraded"
 			snapshot.Reason = "Waku Store retention capacity is under pressure"
 			snapshot.StoreState = "degraded"
-			snapshot.StoreReason = snapshot.Reason
 		}
 		return
 	}
@@ -229,7 +227,6 @@ func (s *Service) populateStorePressureLocked(snapshot *network.AbuseSnapshot) {
 		snapshot.State = "failed"
 		snapshot.Reason = "Waku Store file pressure cannot be measured"
 		snapshot.StoreState = "failed"
-		snapshot.StoreReason = snapshot.Reason
 		return
 	}
 	snapshot.StoreFileBytes = disk.total
@@ -242,10 +239,9 @@ func (s *Service) populateStorePressureLocked(snapshot *network.AbuseSnapshot) {
 	}
 	if snapshot.StoreUsageRatio >= storePressureDegradedRatio {
 		snapshot.StoreState = "degraded"
-		snapshot.StoreReason = "Waku Store retention capacity is under pressure"
 		if snapshot.State != "failed" {
 			snapshot.State = "degraded"
-			snapshot.Reason = snapshot.StoreReason
+			snapshot.Reason = "Waku Store retention capacity is under pressure"
 		}
 	}
 }

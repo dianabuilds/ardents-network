@@ -120,6 +120,34 @@ func TestResolveTopologyContextUsesExactStoredBindingsWithoutEnvironmentOverride
 		cfg.SignerAlias != "operator-a" || cfg.HostKeyPinRef != "pin-a" {
 		t.Fatalf("resolved topology context = %+v", cfg)
 	}
+	if cfg.SSHKnownHosts != filepath.Join(filepath.Dir(contextFile), "pins", "host-a") {
+		t.Fatalf("SSHKnownHosts = %q, want context-relative absolute path", cfg.SSHKnownHosts)
+	}
+}
+
+func TestResolveTopologyContextMakesLocalFilesContextRelative(t *testing.T) {
+	principal := configTestPrincipal(t)
+	dir := t.TempDir()
+	contextFile := filepath.Join(dir, "contexts.json")
+	raw := fmt.Sprintf(`{"contexts":{"host-a":{
+		"addr":"unix:///run/ardents/operator.sock",
+		"ssh":"operator@host-a",
+		"ssh_identity":"keys/operator",
+		"ssh_known_hosts":"pins/host-a",
+		"ssh_operator_socket":"/run/ardents/operator.sock",
+		"signer_file":"signers/operator.json",
+		"signer_alias":"operator-a",
+		"host_key_pin_ref":"pin-a",
+		"expected_node":"node-a",
+		"expected_principal":%q
+	}}}`, principal)
+	require.NoError(t, os.WriteFile(contextFile, []byte(raw), 0o600))
+
+	cfg, err := (Config{ContextFile: contextFile}).ResolveTopologyContext("host-a")
+	require.NoError(t, err)
+	require.Equal(t, filepath.Join(dir, "keys", "operator"), cfg.SSHIdentity)
+	require.Equal(t, filepath.Join(dir, "pins", "host-a"), cfg.SSHKnownHosts)
+	require.Equal(t, filepath.Join(dir, "signers", "operator.json"), cfg.SignerFile)
 }
 
 func TestResolveTopologyContextRequiresPinSignerAndIdentityBindings(t *testing.T) {

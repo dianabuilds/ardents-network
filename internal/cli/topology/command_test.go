@@ -35,12 +35,22 @@ func (factory *fakeFactory) Open(cfg configurationcmd.Config) (openedClient, err
 }
 
 type fakeProtectedCalls struct {
-	node      string
-	principal string
-	image     string
+	node       string
+	principal  string
+	image      string
+	runtimeErr error
+	networkErr error
+	featureErr error
+	malformed  bool
 }
 
 func (calls fakeProtectedCalls) GetNodeRuntime(context.Context, *connect.Request[protocol.GetNodeRuntimeRequest]) (*connect.Response[protocol.NodeRuntimeResponse], error) {
+	if calls.runtimeErr != nil {
+		return nil, calls.runtimeErr
+	}
+	if calls.malformed {
+		return nil, nil
+	}
 	return connect.NewResponse(&protocol.NodeRuntimeResponse{Runtime: &protocol.NodeRuntimeSnapshot{
 		Node: &protocol.NodeSnapshot{Name: calls.node}, Identity: &protocol.IdentitySnapshot{Principal: calls.principal},
 		Readiness: &protocol.ReadinessSnapshot{Ready: true},
@@ -48,6 +58,9 @@ func (calls fakeProtectedCalls) GetNodeRuntime(context.Context, *connect.Request
 }
 
 func (calls fakeProtectedCalls) GetNetworkStatus(context.Context, *connect.Request[protocol.GetNetworkStatusRequest]) (*connect.Response[protocol.NetworkStatusResponse], error) {
+	if calls.networkErr != nil {
+		return nil, calls.networkErr
+	}
 	network := &protocol.NetworkStatusSnapshot{
 		Joined: true, StoreEnabled: true, StoreState: "ready",
 		ReachabilityMode: "public_direct", ReachabilityState: "public", Reachable: true,
@@ -63,7 +76,22 @@ func (calls fakeProtectedCalls) GetNetworkStatus(context.Context, *connect.Reque
 }
 
 func (calls fakeProtectedCalls) GetNodeFeatures(context.Context, *connect.Request[protocol.GetNodeFeaturesRequest]) (*connect.Response[protocol.NodeFeaturesResponse], error) {
+	if calls.featureErr != nil {
+		return nil, calls.featureErr
+	}
 	return connect.NewResponse(&protocol.NodeFeaturesResponse{Features: &protocol.NodeFeaturesSnapshot{ImageReference: calls.image}}), nil
+}
+
+type fixedFactory struct {
+	calls   protectedCalls
+	openErr error
+}
+
+func (factory fixedFactory) Open(configurationcmd.Config) (openedClient, error) {
+	if factory.openErr != nil {
+		return openedClient{}, factory.openErr
+	}
+	return openedClient{calls: factory.calls, close: func() error { return nil }}, nil
 }
 
 func TestCommandUsesThreeSeparateManifestBoundContextsAndRedactsJSON(t *testing.T) {
@@ -195,14 +223,125 @@ func TestClassifyProbeErrorPreservesTunnelAndRemoteFailureClasses(t *testing.T) 
 			want: deployment.ProbeError(deployment.ProbeTunnelTimeout),
 		},
 		{
+			name: "local signer",
+			err:  deployment.ProbeError(deployment.ProbeLocalSignerUnavailable),
+			want: deployment.ProbeError(deployment.ProbeLocalSignerUnavailable),
+		},
+		{
+			name: "remote unauthenticated",
+			err:  connect.NewError(connect.CodeUnauthenticated, errors.New("session")),
+			want: deployment.ProbeError(deployment.ProbeRemoteUnauthenticated),
+		},
+		{
+			name: "remote denied",
+			err:  connect.NewError(connect.CodePermissionDenied, errors.New("denied")),
+			want: deployment.ProbeError(deployment.ProbeRemoteDenied),
+		},
+		{
 			name: "remote unavailable",
 			err:  connect.NewError(connect.CodeUnavailable, errors.New("offline")),
 			want: deployment.ProbeError(deployment.ProbeNodeUnavailable),
+		},
+		{
+			name: "invalid response",
+			err:  errors.New("malformed response"),
+			want: deployment.ProbeError(deployment.ProbeRemoteInvalidResponse),
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			require.EqualError(t, classifyProbeError(test.err), test.want.Error())
+		})
+	}
+}
+
+func TestProbeMapsEveryStableFailureClass(t *testing.T) {
+	contextFile := writeTopologyContexts(t)
+	validCalls := func() fakeProtectedCalls {
+		return fakeProtectedCalls{
+			node:      "node-a",
+			principal: "p1_euydwrsrlrtxe7misopktnf7zlk6b27waegboirnhbbu4wlen55a",
+			image:     imageForNode("node-a"),
+		}
+	}
+	tests := []struct {
+		name    string
+		factory fixedFactory
+		mutate  func(*deployment.NodeStatusTarget)
+		want    deployment.ProbeErrorCode
+	}{
+		{
+			name:    "host key mismatch",
+			factory: fixedFactory{calls: validCalls()},
+			mutate: func(target *deployment.NodeStatusTarget) {
+				target.HostKeyPinRef = "different-pin"
+			},
+			want: deployment.ProbeHostKeyMismatch,
+		},
+		{
+			name:    "tunnel timeout",
+			factory: fixedFactory{openErr: client.ErrSSHTunnelTimeout},
+			want:    deployment.ProbeTunnelTimeout,
+		},
+		{
+			name:    "tunnel failure",
+			factory: fixedFactory{openErr: client.ErrSSHTunnelFailure},
+			want:    deployment.ProbeTunnelFailure,
+		},
+		{
+			name:    "local signer unavailable",
+			factory: fixedFactory{openErr: deployment.ProbeError(deployment.ProbeLocalSignerUnavailable)},
+			want:    deployment.ProbeLocalSignerUnavailable,
+		},
+		{
+			name: "remote unauthenticated",
+			factory: fixedFactory{calls: func() fakeProtectedCalls {
+				calls := validCalls()
+				calls.runtimeErr = connect.NewError(connect.CodeUnauthenticated, errors.New("session"))
+				return calls
+			}()},
+			want: deployment.ProbeRemoteUnauthenticated,
+		},
+		{
+			name: "remote denied",
+			factory: fixedFactory{calls: func() fakeProtectedCalls {
+				calls := validCalls()
+				calls.networkErr = connect.NewError(connect.CodePermissionDenied, errors.New("denied"))
+				return calls
+			}()},
+			want: deployment.ProbeRemoteDenied,
+		},
+		{
+			name: "node unavailable",
+			factory: fixedFactory{calls: func() fakeProtectedCalls {
+				calls := validCalls()
+				calls.featureErr = connect.NewError(connect.CodeUnavailable, errors.New("offline"))
+				return calls
+			}()},
+			want: deployment.ProbeNodeUnavailable,
+		},
+		{
+			name: "remote invalid response",
+			factory: fixedFactory{calls: func() fakeProtectedCalls {
+				calls := validCalls()
+				calls.malformed = true
+				return calls
+			}()},
+			want: deployment.ProbeRemoteInvalidResponse,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			target := topologyTarget("host-pin-a")
+			if test.mutate != nil {
+				test.mutate(&target)
+			}
+			probe := Probe{
+				Base:    configurationcmd.Config{ContextFile: contextFile, Timeout: time.Second},
+				Factory: test.factory,
+			}
+			_, err := probe.Observe(context.Background(), target)
+			require.EqualError(t, err, string(test.want))
 		})
 	}
 }

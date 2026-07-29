@@ -114,6 +114,10 @@ func (c Config) ResolveTopologyContext(name string) (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	contextPath, err := c.contextFilePath()
+	if err != nil {
+		return Config{}, err
+	}
 	resolved := DefaultConfig()
 	resolved.ContextFile = c.ContextFile
 	resolved.ContextName = name
@@ -124,6 +128,9 @@ func (c Config) ResolveTopologyContext(name string) (Config, error) {
 		resolved.Timeout = c.Timeout
 	}
 	resolved.applyStored(stored)
+	resolved.SSHIdentity = resolveContextLocalPath(contextPath, resolved.SSHIdentity)
+	resolved.SSHKnownHosts = resolveContextLocalPath(contextPath, resolved.SSHKnownHosts)
+	resolved.SignerFile = resolveContextLocalPath(contextPath, resolved.SignerFile)
 	if strings.TrimSpace(resolved.SSH) == "" ||
 		strings.TrimSpace(resolved.SSHKnownHosts) == "" ||
 		strings.TrimSpace(resolved.SSHOperatorSocket) == "" {
@@ -142,6 +149,18 @@ func (c Config) ResolveTopologyContext(name string) (Config, error) {
 		return Config{}, err
 	}
 	return resolved, nil
+}
+
+func resolveContextLocalPath(contextPath, value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" || filepath.IsAbs(value) {
+		return value
+	}
+	absoluteContextPath, err := filepath.Abs(contextPath)
+	if err != nil {
+		return value
+	}
+	return filepath.Clean(filepath.Join(filepath.Dir(absoluteContextPath), value))
 }
 
 func (c *Config) resolveContextName() (string, error) {
