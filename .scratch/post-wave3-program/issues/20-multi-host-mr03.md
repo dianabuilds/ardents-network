@@ -1,7 +1,7 @@
 # PW3-20: MR-03 place and recover Authority Checkpoint truth
 
 Status: ready-for-human
-State: open
+State: closed
 Labels: ready-for-human
 Research class: R0 local-substitutable implementation plus deferred R3 recovery evidence
 
@@ -184,3 +184,9 @@ ambiguous repository into a fresh Realm under the old Realm ID.
     pass;
   - outcome: `ready-for-human`. No real host, WORM administration, deployment,
     production state, qualification, capability promotion or push occurred.
+- 2026-07-29 maintainer disposition:
+  - the maintainer explicitly accepted exact MR-03 implementation tip
+    `e4b8fff08abb3e5ffe4a17a41a1fbc0499849017`;
+  - PW3-20 is closed without changing its canonical `ready-for-human` status;
+    acceptance does not qualify `deployment.multi-host`, and `Q` remains
+    `no`.

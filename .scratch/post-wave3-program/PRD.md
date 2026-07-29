@@ -216,6 +216,10 @@ implementation slices and commits.
 - No real host, WORM administration, deployment, production state,
   qualification, capability promotion or push occurred.
   `deployment.multi-host` remains `Q=no`.
+- The maintainer accepted exact MR-03 implementation tip
+  `e4b8fff08abb3e5ffe4a17a41a1fbc0499849017` and closed PW3-20. This
+  acceptance admits MR-04 dependency review but does not itself admit host
+  fencing, rejoin, qualification or any capability change.
 
 ## Stream ownership
 
