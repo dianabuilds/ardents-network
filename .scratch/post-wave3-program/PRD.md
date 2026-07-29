@@ -239,6 +239,28 @@ implementation slices and commits.
   qualification remain later slices. Admission changes no capability
   qualification; `deployment.multi-host` remains `Q=no`.
 
+## MR-04 implementation checkpoint — 2026-07-29
+
+- PW3-21 is `ready-for-human` at exact implementation tip
+  `fa942e9f52ea7ae2fc4ddf9db81322fd72732c09`; its logical implementation
+  range is `5ba408f..fa942e9`.
+- The R1 coordinator and strict journal implement crash-resumable fencing
+  through durable isolation evidence, exact Authority evidence acceptance,
+  checkpoint persistence, and both survivor acknowledgements.
+- The security audit confirmed and corrected a HIGH pre-remediation Authority
+  authorization/evidence-provenance defect. Final exact Node authorization,
+  fail-closed receipt verification, signed verification provenance,
+  duplicate-safe one-to-one checkpoint/audit/evidence cross-binding,
+  removed-target-only fencing, and independent survivor receipts passed
+  regression review; no confirmed finding remains.
+- Full, race, tooling, architecture, capability, API-generation, vet and
+  vulnerability checks pass. No production host adapter or receipt verifier
+  is composed in R1, so fresh production fence evidence remains unavailable
+  until R3 rather than being accepted without proof.
+- No real host, network, Authority, repository, production state, deployment,
+  qualification, capability promotion, or push occurred.
+  `deployment.multi-host` remains `Q=no`.
+
 ## Stream ownership
 
 - The integrator alone edits this PRD, the Wave 3 decision register, the

@@ -1,8 +1,8 @@
 # PW3-21: MR-04 fence one Node with crash-resumable evidence
 
-Status: ready-for-agent
+Status: ready-for-human
 State: open
-Labels: ready-for-agent
+Labels: ready-for-human
 Research class: R1 local-substitutable failure injection plus deferred R3 host qualification
 
 ## Parent
@@ -75,7 +75,11 @@ matching-commit real-host R3 evidence in MR-08 before any support claim.
   secret, signer, key, session, host, socket, address, or credential.
 - The Authority adapter consumes the existing DR-03/CGA-04 contract. It alone
   owns membership operation IDs, generation, signed checkpoint persistence,
-  active-receipt semantics, and final evidence acceptance.
+  active-receipt semantics, and final evidence acceptance. Fresh evidence is
+  accepted only after the exact `topology.node.fence` action/resource check
+  and a configured receipt verifier succeeds; the signed ledger records that
+  verification. R1 production composition intentionally has no verifier and
+  therefore fails closed until the R3 adapter exists.
 - `fenced` requires an exact non-zero Authority generation, durable checkpoint
   digest, repository persistence, and active receipts from exactly the two
   manifest survivors. Authority/repository/skew/identity/receipt mismatch or
@@ -99,26 +103,26 @@ matching-commit real-host R3 evidence in MR-08 before any support claim.
 
 ## Acceptance criteria
 
-- [ ] Invalid manifest, target, Actor, request, reason, or journal binding
+- [x] Invalid manifest, target, Actor, request, reason, or journal binding
       causes no adapter mutation.
-- [ ] The first journal record is durable before isolation starts.
-- [ ] Every crash boundary resumes deterministically without repeating a
+- [x] The first journal record is durable before isolation starts.
+- [x] Every crash boundary resumes deterministically without repeating a
       completed irreversible step.
-- [ ] Missing, duplicate, forged, oversized, or malformed receipts fail
+- [x] Missing, duplicate, forged, oversized, or malformed receipts fail
       closed and never reach Authority.
-- [ ] Target unavailability is compatible with fencing when the required
+- [x] Target unavailability is compatible with fencing when the required
       deployment controls, Authority checkpoint, and both survivor receipts
       remain provable.
-- [ ] Authority/repository/skew or either survivor failure yields
+- [x] Authority/repository/skew or either survivor failure yields
       `recovery_required`, never `fenced`.
-- [ ] Raw expected Principal/Waku identifiers appear only in protected evidence
+- [x] Raw expected Principal/Waku identifiers appear only in protected evidence
       where the accepted Authority binding requires them; the core transaction
       binding uses hashes. Grants, secrets, signer/session data, host details,
       and raw adapter errors appear in neither journal nor ordinary output,
       while checkpoint values never appear in ordinary output.
-- [ ] Restart, contract, failure-injection, security-negative, race, full,
+- [x] Restart, contract, failure-injection, security-negative, race, full,
       tooling, architecture, capability, and API-generation checks pass.
-- [ ] `deployment.multi-host` remains `Q=no`.
+- [x] `deployment.multi-host` remains `Q=no`.
 
 ## Out of scope
 
@@ -171,3 +175,27 @@ matching-commit real-host R3 evidence in MR-08 before any support claim.
   - outcome: `ready-for-agent`. No real host, network, Authority, repository,
     production state, qualification, capability promotion, push, or deployment
     occurred.
+- 2026-07-29 implementation handoff:
+  - the logical MR-04 implementation range is `5ba408f..fa942e9`, with exact
+    implementation tip `fa942e9f52ea7ae2fc4ddf9db81322fd72732c09`;
+  - the coordinator and strict private journal persist every monotonic phase,
+    clock/control subprogress, immutable replay binding, exact Authority
+    evidence digest, checkpoint truth, and both survivor acknowledgements;
+  - the security audit confirmed a HIGH defect in the pre-remediation
+    Authority path: the broader membership action could admit self-asserted
+    receipt digests and substitute fencing for a survivor active receipt.
+    Commits `ddfc7e6`, `24325ee`, `607098b`, and `fa942e9` close it with exact
+    Node authorization, a fail-closed `DeploymentFenceVerifier`, signed
+    versioned verification provenance, duplicate-safe one-to-one
+    checkpoint/audit/evidence cross-binding, removed-target-only fencing, and
+    independent survivor active receipts;
+  - final independent Spec, Standards, and security regression reviews report
+    PASS. The retained final `findings.json` is empty and schema-valid;
+  - `go test ./... -count=1`, focused race tests, `go vet ./...`,
+    `govulncheck ./...`, API generation, capability catalogue, audit
+    traceability, import guard, and `git diff --check` pass;
+  - outcome: `ready-for-human`. R1 introduces no production isolation or
+    receipt-verifier adapter, so the daemon rejects fresh fence evidence until
+    R3 composition. No real host, network, Authority, repository, production
+    state, qualification, capability promotion, push, or deployment occurred.
+    `deployment.multi-host` remains `Q=no`.
