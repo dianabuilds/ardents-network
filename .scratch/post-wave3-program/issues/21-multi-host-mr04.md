@@ -104,9 +104,11 @@ matching-commit real-host R3 evidence in MR-08 before any support claim.
       remain provable.
 - [ ] Authority/repository/skew or either survivor failure yields
       `recovery_required`, never `fenced`.
-- [ ] Old Principal/Waku identifiers, grants, secrets, signer/session data,
-      host details, checkpoint values, and raw adapter errors do not appear in
-      ordinary output or persisted journal.
+- [ ] Raw expected Principal/Waku identifiers appear only in protected evidence
+      where the accepted Authority binding requires them; the core transaction
+      binding uses hashes. Grants, secrets, signer/session data, host details,
+      and raw adapter errors appear in neither journal nor ordinary output,
+      while checkpoint values never appear in ordinary output.
 - [ ] Restart, contract, failure-injection, security-negative, race, full,
       tooling, architecture, capability, and API-generation checks pass.
 - [ ] `deployment.multi-host` remains `Q=no`.

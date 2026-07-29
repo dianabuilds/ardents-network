@@ -98,6 +98,11 @@ func TestApplicationActionContractsOwnMutationClassification(t *testing.T) {
 	require.False(t, ok)
 }
 
+func TestTopologyFenceIsAnOperatorOnlyAction(t *testing.T) {
+	require.True(t, IsRegisteredAction(InterfaceOperator, "topology.node.fence"))
+	require.False(t, IsRegisteredAction(InterfaceApplication, "topology.node.fence"))
+}
+
 func TestApplicationDiscoveryIdentityContractsAreExactAndOwnerless(t *testing.T) {
 	resolve, ok := LookupApplicationAction("application.discovery.resolve")
 	require.True(t, ok)
