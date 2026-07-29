@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"runtime"
 	"testing"
 	"time"
 
@@ -21,6 +22,9 @@ import (
 
 //goland:noinspection ALL
 func TestPublishedServiceResolvesAndConnectsAcrossRealWakuNodes(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("private-interface service reachability is an integration Linux acceptance scenario")
+	}
 	testkit.BeginScenario(t, testkit.Spec{Layer: testkit.LayerIntegration, Domain: "hosted-services", ScenarioID: "HSI-002",
 		Suite: "integration", Tags: []string{"integration", "hosted-services", "publication", "waku"},
 		Speed: "slow", Environment: "linux-container"})
@@ -29,7 +33,7 @@ func TestPublishedServiceResolvesAndConnectsAcrossRealWakuNodes(t *testing.T) {
 	host := privateContainerIPv4(t)
 	port := reservePort(t)
 	advertised := "http://" + net.JoinHostPort(host, fmt.Sprint(port)) + "/ready"
-	probe := fmt.Sprintf("http://127.0.0.1:%d/ready", port)
+	probe := fmt.Sprintf("http://%s:%d/ready", host, port)
 
 	remote := testkit.StartNode(t, runtimeprocess.Config{
 		Name: "published-service-remote", NodeProfile: networkapi.NodeProfileServiceNode,
@@ -37,7 +41,7 @@ func TestPublishedServiceResolvesAndConnectsAcrossRealWakuNodes(t *testing.T) {
 		Transport: runtimeprocess.TransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: networkapi.ReachabilityPrivateLAN},
 		Data:      runtimeprocess.DataConfig{Dir: t.TempDir()}, Privacy: privacy.Sender, DiscoveryRefreshInterval: 50 * time.Millisecond,
 		Workload: []runtimeprocess.WorkloadConfig{{ID: "work.published", Kind: "service", Owner: "node", Desired: "running",
-			Config: readinessHelperConfig(t, fmt.Sprintf("127.0.0.1:%d", port)), Services: []runtimeprocess.ServiceConfig{{
+			Config: readinessHelperConfig(t, fmt.Sprintf("%s:%d", host, port)), Services: []runtimeprocess.ServiceConfig{{
 				ID: "svc.published", Type: "http", Mode: "NetworkPublished",
 				Endpoints: []string{advertised}, ProbeEndpoints: []string{probe},
 			}}}},

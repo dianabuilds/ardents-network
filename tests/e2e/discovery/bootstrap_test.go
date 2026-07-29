@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"runtime"
 	"testing"
 	"time"
 
@@ -36,6 +37,9 @@ func TestDiscoveryReadyHelper(t *testing.T) {
 }
 
 func TestDiscoveryBootstrapsFromPeerTransport(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("private-interface service reachability is an e2e Linux acceptance scenario")
+	}
 	testkit.BeginScenario(t, testkit.Spec{
 		Layer: testkit.LayerE2E, Domain: "discovery", ScenarioID: "DKE-001", Suite: "e2e",
 		Tags: []string{"integration", "e2e", "discovery"}, Speed: "default", Environment: "linux-container",
@@ -64,6 +68,9 @@ func TestDiscoveryBootstrapsFromPeerTransport(t *testing.T) {
 }
 
 func TestDiscoveryBootstrapDropsWithdrawnRemoteService(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("private-interface service reachability is an e2e Linux acceptance scenario")
+	}
 	testkit.BeginScenario(t, testkit.Spec{
 		Layer: testkit.LayerE2E, Domain: "discovery", ScenarioID: "DKE-001", Suite: "e2e",
 		Tags: []string{"integration", "e2e", "discovery"}, Speed: "default", Environment: "linux-container",
@@ -90,10 +97,10 @@ func discoveryServiceConfig(t *testing.T, name, dir string, privacy *networkpriv
 		Transport: runtimeinfra.TransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: networkapi.ReachabilityPrivateLAN},
 		Data:      runtimeinfra.DataConfig{Dir: dir}, Privacy: privacy, DiscoveryRefreshInterval: 50 * time.Millisecond,
 		Workload: []runtimeinfra.WorkloadConfig{{ID: workloadID, Kind: "service", Owner: "node",
-			Config: discoveryReadyConfig(t, port), Desired: "running", Services: []runtimeinfra.ServiceConfig{{
+			Config: discoveryReadyConfig(t, host, port), Desired: "running", Services: []runtimeinfra.ServiceConfig{{
 				ID: serviceID, Type: "echo", Mode: "NetworkPublished",
 				Endpoints:      []string{fmt.Sprintf("http://%s:%d/ready", host, port)},
-				ProbeEndpoints: []string{fmt.Sprintf("http://127.0.0.1:%d/ready", port)},
+				ProbeEndpoints: []string{fmt.Sprintf("http://%s:%d/ready", host, port)},
 			}}}},
 	}
 }
@@ -106,12 +113,12 @@ func discoveryClientConfig(t *testing.T, name, dir string, privacy *networkpriva
 		Data:      runtimeinfra.DataConfig{Dir: dir}, Privacy: privacy, DiscoveryRefreshInterval: 50 * time.Millisecond}
 }
 
-func discoveryReadyConfig(t *testing.T, port int) string {
+func discoveryReadyConfig(t *testing.T, host string, port int) string {
 	t.Helper()
 	executable, err := os.Executable()
 	require.NoError(t, err)
 	raw, err := json.Marshal(map[string]any{"command": executable, "args": []string{"-test.run=TestDiscoveryReadyHelper"},
-		"env": map[string]string{"ARDENTS_DISCOVERY_READY_HELPER": "1", "ARDENTS_DISCOVERY_READY_ADDRESS": fmt.Sprintf("127.0.0.1:%d", port)}})
+		"env": map[string]string{"ARDENTS_DISCOVERY_READY_HELPER": "1", "ARDENTS_DISCOVERY_READY_ADDRESS": fmt.Sprintf("%s:%d", host, port)}})
 	require.NoError(t, err)
 	return string(raw)
 }
