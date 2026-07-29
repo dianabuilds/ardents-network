@@ -4,12 +4,14 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
 	"sort"
 	"time"
 
+	"ardents/internal/authority"
 	identityprincipal "ardents/internal/identity/principal"
 )
 
@@ -18,13 +20,6 @@ const (
 	DeploymentFenceEvidenceVersion uint32 = 1
 	FenceStatusVersion                    = "ardents.topology.fence-status/v1"
 	ActionTopologyNodeFence               = "topology.node.fence"
-
-	FenceReasonMembershipRemoved = "membership_removed"
-
-	FenceControlTargetStopped        = "target_stopped"
-	FenceControlTargetIngressBlocked = "target_ingress_blocked"
-	FenceControlDiscoveryWithdrawn   = "discovery_withdrawn"
-	FenceControlPeerIDDenied         = "peer_id_denied"
 
 	maxFenceDuration = 30 * time.Minute
 
@@ -43,6 +38,17 @@ var (
 )
 
 type FencePhase string
+type FenceReason string
+type FenceControlKind string
+
+const (
+	FenceReasonMembershipRemoved FenceReason = "membership_removed"
+
+	FenceControlTargetStopped        FenceControlKind = "target_stopped"
+	FenceControlTargetIngressBlocked FenceControlKind = "target_ingress_blocked"
+	FenceControlDiscoveryWithdrawn   FenceControlKind = "discovery_withdrawn"
+	FenceControlPeerIDDenied         FenceControlKind = "peer_id_denied"
+)
 
 const (
 	FencePhaseRequested           FencePhase = "requested"
@@ -87,7 +93,7 @@ func (err FenceDependencyError) Error() string { return string(err) }
 type FenceRequest struct {
 	Manifest   []byte
 	TargetSlot string
-	Reason     string
+	Reason     FenceReason
 	Actor      string
 	RequestID  string
 	StartedAt  time.Time
@@ -117,9 +123,9 @@ func (status FenceStatus) String() string {
 // FenceControlReceipt is protected attributable proof of one isolation
 // control. ReceiptDigest is retained, but never included in FenceStatus.
 type FenceControlReceipt struct {
-	Kind          string `json:"kind"`
-	Actor         string `json:"actor"`
-	ReceiptDigest string `json:"receipt_digest"`
+	Kind          FenceControlKind `json:"kind"`
+	Actor         string           `json:"actor"`
+	ReceiptDigest string           `json:"receipt_digest"`
 }
 
 // DeploymentFenceEvidence is the protected deployment evidence consumed by
@@ -131,7 +137,7 @@ type DeploymentFenceEvidence struct {
 	TargetPrincipal string                `json:"target_principal"`
 	ManifestDigest  string                `json:"manifest_digest"`
 	RequestID       string                `json:"request_id"`
-	Reason          string                `json:"reason"`
+	Reason          FenceReason           `json:"reason"`
 	ObservedAt      time.Time             `json:"observed_at"`
 	ClockSkewSecond int64                 `json:"clock_skew_seconds"`
 	Controls        []FenceControlReceipt `json:"controls"`
@@ -149,7 +155,7 @@ type FenceTransaction struct {
 	ExpectedWakuPeerIDHash string                   `json:"expected_waku_peer_id_hash"`
 	Actor                  string                   `json:"actor"`
 	RequestID              string                   `json:"request_id"`
-	Reason                 string                   `json:"reason"`
+	Reason                 FenceReason              `json:"reason"`
 	StartedAt              time.Time                `json:"started_at"`
 	Deadline               time.Time                `json:"deadline"`
 	Phase                  FencePhase               `json:"phase"`
@@ -157,6 +163,10 @@ type FenceTransaction struct {
 	FailureReason          FenceFailureReason       `json:"failure_reason,omitempty"`
 	OperationID            string                   `json:"operation_id,omitempty"`
 	Evidence               *DeploymentFenceEvidence `json:"evidence,omitempty"`
+	IsolationControls      []FenceControlReceipt    `json:"isolation_controls,omitempty"`
+	ClockObservedAt        time.Time                `json:"clock_observed_at,omitempty"`
+	ClockSkewSecond        int64                    `json:"clock_skew_seconds,omitempty"`
+	EvidenceDigest         string                   `json:"evidence_digest,omitempty"`
 	AuthorityGeneration    uint32                   `json:"authority_generation,omitempty"`
 	CheckpointDigest       string                   `json:"checkpoint_digest,omitempty"`
 	RepositoryPersisted    bool                     `json:"repository_persisted,omitempty"`
@@ -171,7 +181,7 @@ type FenceTarget struct {
 	SurvivorSlots      []string
 	Actor              string
 	RequestID          string
-	Reason             string
+	Reason             FenceReason
 	ManifestDigest     string
 	RealmID            string
 	StartedAt          time.Time
@@ -188,12 +198,16 @@ type FenceAuthorityRequest struct {
 	RealmID         string
 	TargetPrincipal string
 	RequestID       string
-	Reason          string
+	Reason          FenceReason
 	ManifestDigest  string
 	SurvivorSlots   []string
 }
 
 type FenceAuthorityResult struct {
+	OperationID         string
+	TargetPrincipal     string
+	EvidenceDigest      string
+	EvidenceAccepted    bool
 	Generation          uint32
 	CheckpointDigest    string
 	RepositoryPersisted bool
@@ -205,13 +219,25 @@ type FenceJournalStore interface {
 	Save(context.Context, uint64, FenceTransaction) error
 }
 
+type FenceClockResult struct {
+	ObservedAt      time.Time
+	ClockSkewSecond int64
+}
+
 type FenceIsolation interface {
-	Preflight(context.Context, FenceTarget) error
+	// Preflight returns the attributable bounded clock result stored in
+	// DeploymentFenceEvidence.
+	Preflight(context.Context, FenceTarget) (FenceClockResult, error)
+	// Enforce must be idempotent for the immutable target RequestID. A retry
+	// after ambiguous coordinator failure must return the same enforced truth.
 	Enforce(context.Context, FenceTarget) ([]FenceControlReceipt, error)
 }
 
 type FenceAuthority interface {
+	// PrepareRemoval must be idempotent for RealmID and RequestID and return the
+	// same Authority-owned operation identity after ambiguous completion.
 	PrepareRemoval(context.Context, FenceAuthorityRequest) (string, error)
+	// CompleteRemoval consumes the same evidence idempotently.
 	CompleteRemoval(context.Context, DeploymentFenceEvidence) (FenceAuthorityResult, error)
 }
 
@@ -246,11 +272,16 @@ func (coordinator FenceCoordinator) Fence(
 		if err := persistFence(ctx, coordinator.Journal, &transaction); err != nil {
 			return FenceStatus{}, err
 		}
-	} else if !sameFenceBinding(transaction, request, target) {
+	} else if !sameFenceBinding(transaction, request, manifest, target) {
 		return FenceStatus{}, ErrFenceJournalBinding
 	}
 	if err := ValidateFenceTransaction(transaction); err != nil {
 		return FenceStatus{}, err
+	}
+	if transaction.Evidence != nil {
+		if err := validateFenceEvidence(*transaction.Evidence, request, manifest, target); err != nil {
+			return FenceStatus{}, ErrFenceJournalBinding
+		}
 	}
 	if transaction.Phase == FencePhaseFenced {
 		return fenceStatus(transaction), nil
@@ -276,26 +307,43 @@ func (coordinator FenceCoordinator) Fence(
 		}
 		switch transaction.Phase {
 		case FencePhaseRequested:
-			if err := coordinator.Isolation.Preflight(ctx, protectedTarget); err != nil {
+			clockResult, err := coordinator.Isolation.Preflight(ctx, protectedTarget)
+			if err != nil {
 				return coordinator.fail(
 					ctx, &transaction, FencePhaseRequested,
 					dependencyFenceReason(err, FenceFailureClockUnavailable),
 				)
 			}
+			if !validFenceClockResult(clockResult, transaction) {
+				return coordinator.fail(
+					ctx, &transaction, FencePhaseRequested, FenceFailureClockSkew,
+				)
+			}
+			transaction.ClockObservedAt = clockResult.ObservedAt.UTC()
+			transaction.ClockSkewSecond = clockResult.ClockSkewSecond
 			transaction.Phase = FencePhaseIsolationPending
 			if err := persistFence(ctx, coordinator.Journal, &transaction); err != nil {
 				return FenceStatus{}, err
 			}
 		case FencePhaseIsolationPending:
-			controls, err := coordinator.Isolation.Enforce(ctx, protectedTarget)
-			if err != nil {
-				return coordinator.fail(
-					ctx, &transaction, FencePhaseIsolationPending,
-					dependencyFenceReason(err, FenceFailureIsolationUnavailable),
-				)
-			}
-			if err := validateFenceControls(controls, request.Actor); err != nil {
-				return coordinator.fail(ctx, &transaction, FencePhaseIsolationPending, FenceFailureInvalidEvidence)
+			if len(transaction.IsolationControls) == 0 {
+				controls, err := coordinator.Isolation.Enforce(ctx, protectedTarget)
+				if err != nil {
+					return coordinator.fail(
+						ctx, &transaction, FencePhaseIsolationPending,
+						dependencyFenceReason(err, FenceFailureIsolationUnavailable),
+					)
+				}
+				if err := validateFenceControls(controls, request.Actor); err != nil {
+					return coordinator.fail(
+						ctx, &transaction, FencePhaseIsolationPending,
+						FenceFailureInvalidEvidence,
+					)
+				}
+				transaction.IsolationControls = append([]FenceControlReceipt(nil), controls...)
+				if err := persistFence(ctx, coordinator.Journal, &transaction); err != nil {
+					return FenceStatus{}, err
+				}
 			}
 			operationID, err := coordinator.Authority.PrepareRemoval(
 				ctx, authorityFenceRequest(protectedTarget),
@@ -315,8 +363,9 @@ func (coordinator FenceCoordinator) Fence(
 				RealmID: manifest.Authority.RealmID, OperationID: operationID,
 				TargetPrincipal: target.ExpectedNodePrincipal,
 				ManifestDigest:  transaction.ManifestDigest, RequestID: request.RequestID,
-				Reason: request.Reason, ObservedAt: observedAt,
-				Controls: append([]FenceControlReceipt(nil), controls...),
+				Reason: request.Reason, ObservedAt: transaction.ClockObservedAt,
+				ClockSkewSecond: transaction.ClockSkewSecond,
+				Controls:        append([]FenceControlReceipt(nil), transaction.IsolationControls...),
 			}
 			if err := validateFenceEvidence(*transaction.Evidence, request, manifest, target); err != nil {
 				return coordinator.fail(ctx, &transaction, FencePhaseIsolationPending, FenceFailureInvalidEvidence)
@@ -341,13 +390,14 @@ func (coordinator FenceCoordinator) Fence(
 					dependencyFenceReason(err, FenceFailureAuthorityUnavailable),
 				)
 			}
-			if !validFenceAuthorityResult(result, target.Slot, manifest) {
+			if !validFenceAuthorityResult(result, *transaction.Evidence, target.Slot, manifest) {
 				reason := FenceFailureCheckpointMismatch
-				if validCheckpointPart(result) {
+				if hasDurableAuthorityCheckpoint(result) {
 					reason = FenceFailureSurvivorMismatch
 				}
 				return coordinator.fail(ctx, &transaction, FencePhaseAuthorityPending, reason)
 			}
+			transaction.EvidenceDigest = result.EvidenceDigest
 			transaction.AuthorityGeneration = result.Generation
 			transaction.CheckpointDigest = result.CheckpointDigest
 			transaction.RepositoryPersisted = result.RepositoryPersisted
@@ -358,11 +408,15 @@ func (coordinator FenceCoordinator) Fence(
 			}
 		case FencePhaseCheckpointPersisted:
 			if !validFenceAuthorityResult(FenceAuthorityResult{
+				OperationID:         transaction.OperationID,
+				TargetPrincipal:     transaction.Evidence.TargetPrincipal,
+				EvidenceDigest:      transaction.EvidenceDigest,
+				EvidenceAccepted:    true,
 				Generation:          transaction.AuthorityGeneration,
 				CheckpointDigest:    transaction.CheckpointDigest,
 				RepositoryPersisted: transaction.RepositoryPersisted,
 				SurvivorReceipts:    transaction.SurvivorReceipts,
-			}, target.Slot, manifest) {
+			}, *transaction.Evidence, target.Slot, manifest) {
 				return FenceStatus{}, ErrFenceJournalInvalid
 			}
 			transaction.Phase = FencePhasePeersAcknowledged
@@ -441,7 +495,7 @@ func newFenceTransaction(
 		return FenceTransaction{}, ValidationError("topology_fence_target_unknown")
 	}
 	return FenceTransaction{
-		Version: FenceTransactionVersion, ManifestDigest: hashFenceValue(request.Manifest),
+		Version: FenceTransactionVersion, ManifestDigest: canonicalFenceManifestDigest(manifest),
 		TargetSlot:             request.TargetSlot,
 		ExpectedPrincipalHash:  hashFenceValue([]byte(target.ExpectedNodePrincipal)),
 		ExpectedWakuPeerIDHash: hashFenceValue([]byte(target.ExpectedWakuPeerID)),
@@ -488,12 +542,12 @@ func validateFenceControls(controls []FenceControlReceipt, actor string) error {
 	if len(controls) < 3 || len(controls) > 4 {
 		return ErrFenceJournalInvalid
 	}
-	required := map[string]bool{
+	required := map[FenceControlKind]bool{
 		FenceControlTargetIngressBlocked: false,
 		FenceControlDiscoveryWithdrawn:   false,
 		FenceControlPeerIDDenied:         false,
 	}
-	seen := make(map[string]struct{}, len(controls))
+	seen := make(map[FenceControlKind]struct{}, len(controls))
 	for _, control := range controls {
 		if control.Actor != actor || !fenceDigestPattern.MatchString(control.ReceiptDigest) {
 			return ErrFenceJournalInvalid
@@ -518,6 +572,22 @@ func validateFenceControls(controls []FenceControlReceipt, actor string) error {
 	return nil
 }
 
+func sameFenceControls(left, right []FenceControlReceipt) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	leftByKind := make(map[FenceControlKind]FenceControlReceipt, len(left))
+	for _, control := range left {
+		leftByKind[control.Kind] = control
+	}
+	for _, control := range right {
+		if leftByKind[control.Kind] != control {
+			return false
+		}
+	}
+	return true
+}
+
 func validateFenceEvidence(
 	evidence DeploymentFenceEvidence,
 	request FenceRequest,
@@ -528,7 +598,7 @@ func validateFenceEvidence(
 		evidence.RealmID != manifest.Authority.RealmID ||
 		!fenceOperationPattern.MatchString(evidence.OperationID) ||
 		evidence.TargetPrincipal != target.ExpectedNodePrincipal ||
-		evidence.ManifestDigest != hashFenceValue(request.Manifest) ||
+		evidence.ManifestDigest != canonicalFenceManifestDigest(manifest) ||
 		evidence.RequestID != request.RequestID ||
 		evidence.Reason != request.Reason ||
 		evidence.ObservedAt.IsZero() || evidence.ObservedAt.Nanosecond() != 0 ||
@@ -541,7 +611,7 @@ func validateFenceEvidence(
 	return validateFenceControls(evidence.Controls, request.Actor)
 }
 
-func validCheckpointPart(result FenceAuthorityResult) bool {
+func hasDurableAuthorityCheckpoint(result FenceAuthorityResult) bool {
 	return result.Generation > 0 &&
 		fenceDigestPattern.MatchString(result.CheckpointDigest) &&
 		result.RepositoryPersisted
@@ -549,10 +619,15 @@ func validCheckpointPart(result FenceAuthorityResult) bool {
 
 func validFenceAuthorityResult(
 	result FenceAuthorityResult,
+	evidence DeploymentFenceEvidence,
 	targetSlot string,
 	manifest topologyManifest,
 ) bool {
-	if !validCheckpointPart(result) ||
+	if result.OperationID != evidence.OperationID ||
+		result.TargetPrincipal != evidence.TargetPrincipal ||
+		!result.EvidenceAccepted ||
+		!fenceDigestPattern.MatchString(result.EvidenceDigest) ||
+		!hasDurableAuthorityCheckpoint(result) ||
 		len(result.SurvivorReceipts) != exactTopologyNodeCount-1 {
 		return false
 	}
@@ -571,10 +646,11 @@ func validFenceAuthorityResult(
 func sameFenceBinding(
 	transaction FenceTransaction,
 	request FenceRequest,
+	manifest topologyManifest,
 	target nodeSpec,
 ) bool {
 	return transaction.Version == FenceTransactionVersion &&
-		transaction.ManifestDigest == hashFenceValue(request.Manifest) &&
+		transaction.ManifestDigest == canonicalFenceManifestDigest(manifest) &&
 		transaction.TargetSlot == request.TargetSlot &&
 		transaction.ExpectedPrincipalHash == hashFenceValue([]byte(target.ExpectedNodePrincipal)) &&
 		transaction.ExpectedWakuPeerIDHash == hashFenceValue([]byte(target.ExpectedWakuPeerID)) &&
@@ -604,30 +680,72 @@ func ValidateFenceTransaction(transaction FenceTransaction) error {
 		return ErrFenceJournalInvalid
 	}
 	if transaction.Evidence != nil {
-		if transaction.OperationID != transaction.Evidence.OperationID ||
+		evidencePrincipal, principalErr := identityprincipal.Parse(
+			transaction.Evidence.TargetPrincipal,
+		)
+		if transaction.Evidence.Version != DeploymentFenceEvidenceVersion ||
+			!authority.ValidRealmID(transaction.Evidence.RealmID) ||
+			principalErr != nil ||
+			evidencePrincipal.String() != transaction.Evidence.TargetPrincipal ||
+			hashFenceValue([]byte(transaction.Evidence.TargetPrincipal)) !=
+				transaction.ExpectedPrincipalHash ||
+			transaction.OperationID != transaction.Evidence.OperationID ||
 			!fenceOperationPattern.MatchString(transaction.OperationID) ||
 			transaction.Evidence.ManifestDigest != transaction.ManifestDigest ||
 			transaction.Evidence.RequestID != transaction.RequestID ||
 			transaction.Evidence.Reason != transaction.Reason ||
+			!transaction.Evidence.ObservedAt.Equal(transaction.ClockObservedAt) ||
+			transaction.Evidence.ClockSkewSecond != transaction.ClockSkewSecond ||
 			validateFenceControls(transaction.Evidence.Controls, transaction.Actor) != nil {
 			return ErrFenceJournalInvalid
 		}
 	}
+	clockRequired := transaction.Phase != FencePhaseRequested &&
+		!(transaction.Phase == FencePhaseRecoveryRequired &&
+			transaction.ResumeFrom == FencePhaseRequested)
+	if clockRequired && !validFenceClockResult(FenceClockResult{
+		ObservedAt: transaction.ClockObservedAt, ClockSkewSecond: transaction.ClockSkewSecond,
+	}, transaction) {
+		return ErrFenceJournalInvalid
+	}
+	if len(transaction.IsolationControls) != 0 {
+		if validateFenceControls(transaction.IsolationControls, transaction.Actor) != nil {
+			return ErrFenceJournalInvalid
+		}
+	}
+	if transaction.Evidence != nil &&
+		!sameFenceControls(transaction.IsolationControls, transaction.Evidence.Controls) {
+		return ErrFenceJournalInvalid
+	}
 	switch transaction.Phase {
-	case FencePhaseRequested, FencePhaseIsolationPending:
+	case FencePhaseRequested:
+		if transaction.OperationID != "" || transaction.Evidence != nil ||
+			len(transaction.IsolationControls) != 0 ||
+			!transaction.ClockObservedAt.IsZero() || transaction.ClockSkewSecond != 0 ||
+			transaction.AuthorityGeneration != 0 || transaction.CheckpointDigest != "" ||
+			transaction.EvidenceDigest != "" || transaction.RepositoryPersisted ||
+			len(transaction.SurvivorReceipts) != 0 {
+			return ErrFenceJournalInvalid
+		}
+	case FencePhaseIsolationPending:
 		if transaction.OperationID != "" || transaction.Evidence != nil ||
 			transaction.AuthorityGeneration != 0 || transaction.CheckpointDigest != "" ||
-			transaction.RepositoryPersisted || len(transaction.SurvivorReceipts) != 0 {
+			transaction.EvidenceDigest != "" || transaction.RepositoryPersisted ||
+			len(transaction.SurvivorReceipts) != 0 {
 			return ErrFenceJournalInvalid
 		}
 	case FencePhaseEvidencePersisted, FencePhaseAuthorityPending:
 		if transaction.Evidence == nil || transaction.OperationID == "" ||
+			len(transaction.IsolationControls) == 0 ||
 			transaction.AuthorityGeneration != 0 || transaction.CheckpointDigest != "" ||
-			transaction.RepositoryPersisted || len(transaction.SurvivorReceipts) != 0 {
+			transaction.EvidenceDigest != "" || transaction.RepositoryPersisted ||
+			len(transaction.SurvivorReceipts) != 0 {
 			return ErrFenceJournalInvalid
 		}
 	case FencePhaseCheckpointPersisted, FencePhasePeersAcknowledged, FencePhaseFenced:
 		if transaction.Evidence == nil || transaction.OperationID == "" ||
+			len(transaction.IsolationControls) == 0 ||
+			!fenceDigestPattern.MatchString(transaction.EvidenceDigest) ||
 			transaction.AuthorityGeneration == 0 ||
 			!fenceDigestPattern.MatchString(transaction.CheckpointDigest) ||
 			!transaction.RepositoryPersisted ||
@@ -699,6 +817,18 @@ func dependencyFenceReason(
 	return fallback
 }
 
+func validFenceClockResult(
+	result FenceClockResult,
+	transaction FenceTransaction,
+) bool {
+	observedAt := result.ObservedAt.UTC()
+	return !observedAt.IsZero() && observedAt.Nanosecond() == 0 &&
+		!observedAt.Before(transaction.StartedAt) &&
+		!observedAt.After(transaction.Deadline) &&
+		result.ClockSkewSecond >= -maxClockSkewSeconds &&
+		result.ClockSkewSecond <= maxClockSkewSeconds
+}
+
 func persistFence(
 	ctx context.Context,
 	store FenceJournalStore,
@@ -734,12 +864,38 @@ func hashFenceValue(value []byte) string {
 	return "sha256:" + hex.EncodeToString(digest[:])
 }
 
+func canonicalFenceManifestDigest(manifest topologyManifest) string {
+	canonical := manifest
+	canonical.SignedDNSRoots = append([]string(nil), manifest.SignedDNSRoots...)
+	sort.Strings(canonical.SignedDNSRoots)
+	canonical.Nodes = append([]nodeSpec(nil), manifest.Nodes...)
+	for index := range canonical.Nodes {
+		canonical.Nodes[index].StaticRecoveryPeers = append(
+			[]string(nil),
+			canonical.Nodes[index].StaticRecoveryPeers...,
+		)
+		sort.Strings(canonical.Nodes[index].StaticRecoveryPeers)
+	}
+	sort.Slice(canonical.Nodes, func(left, right int) bool {
+		return canonical.Nodes[left].Slot < canonical.Nodes[right].Slot
+	})
+	raw, err := json.Marshal(canonical)
+	if err != nil {
+		return ""
+	}
+	return hashFenceValue(raw)
+}
+
 func cloneFenceTransaction(transaction FenceTransaction) FenceTransaction {
 	if transaction.Evidence != nil {
 		evidence := *transaction.Evidence
 		evidence.Controls = append([]FenceControlReceipt(nil), evidence.Controls...)
 		transaction.Evidence = &evidence
 	}
+	transaction.IsolationControls = append(
+		[]FenceControlReceipt(nil),
+		transaction.IsolationControls...,
+	)
 	transaction.SurvivorReceipts = cloneStringMap(transaction.SurvivorReceipts)
 	return transaction
 }
@@ -799,6 +955,11 @@ func ValidFenceTransactionTransition(before, after FenceTransaction) bool {
 	}
 	if after.Phase == FencePhaseRecoveryRequired {
 		return after.ResumeFrom == before.Phase
+	}
+	if before.Phase == FencePhaseIsolationPending &&
+		after.Phase == FencePhaseIsolationPending {
+		return len(before.IsolationControls) == 0 &&
+			len(after.IsolationControls) >= 3
 	}
 	return fencePhaseOrder(after.Phase) == fencePhaseOrder(before.Phase)+1
 }

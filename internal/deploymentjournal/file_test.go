@@ -43,18 +43,29 @@ func TestFenceFileRoundTripRejectsUnknownAndBindingOverwrite(t *testing.T) {
 	next := transaction
 	next.Revision = 2
 	next.Phase = deployment.FencePhaseIsolationPending
+	next.ClockObservedAt = now
+	next.ClockSkewSecond = 7
 	require.NoError(t, store.Save(context.Background(), transaction.Revision, next))
 	loaded, found, err = store.Load(context.Background())
 	require.NoError(t, err)
 	require.True(t, found)
 	require.Equal(t, next, loaded)
 
-	other := next
-	other.Revision = 3
+	withControls := next
+	withControls.Revision = 3
+	withControls.IsolationControls = []deployment.FenceControlReceipt{
+		{Kind: deployment.FenceControlTargetIngressBlocked, Actor: transaction.Actor, ReceiptDigest: digest('d')},
+		{Kind: deployment.FenceControlDiscoveryWithdrawn, Actor: transaction.Actor, ReceiptDigest: digest('e')},
+		{Kind: deployment.FenceControlPeerIDDenied, Actor: transaction.Actor, ReceiptDigest: digest('f')},
+	}
+	require.NoError(t, store.Save(context.Background(), next.Revision, withControls))
+
+	other := withControls
+	other.Revision = 4
 	other.TargetSlot = "node-b"
 	require.ErrorIs(
 		t,
-		store.Save(context.Background(), next.Revision, other),
+		store.Save(context.Background(), withControls.Revision, other),
 		deployment.ErrFenceJournalBinding,
 	)
 

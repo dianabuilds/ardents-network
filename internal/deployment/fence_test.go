@@ -19,15 +19,11 @@ func TestFenceCoordinatorPersistsEveryMonotonicBoundary(t *testing.T) {
 	}
 	authority := &fakeFenceAuthority{
 		operationID: "rao1_00112233445566778899aabbccddeeff",
-		result: FenceAuthorityResult{
-			Generation: 4, CheckpointDigest: fenceDigest('d'),
-			RepositoryPersisted: true,
-			SurvivorReceipts: map[string]string{
-				"node-b": fenceDigest('e'),
-				"node-c": fenceDigest('f'),
-			},
-		},
 	}
+	authority.result = validFenceAuthorityResultFor(
+		authority.operationID,
+		"p1_euydwrsrlrtxe7misopktnf7zlk6b27waegboirnhbbu4wlen55a",
+	)
 	status, err := (FenceCoordinator{
 		Journal: store, Isolation: isolation, Authority: authority,
 		Clock: func() time.Time { return now },
@@ -43,6 +39,7 @@ func TestFenceCoordinatorPersistsEveryMonotonicBoundary(t *testing.T) {
 	require.Equal(t, 2, status.SurvivorCount)
 	require.Equal(t, []FencePhase{
 		FencePhaseRequested, FencePhaseIsolationPending,
+		FencePhaseIsolationPending,
 		FencePhaseEvidencePersisted, FencePhaseAuthorityPending,
 		FencePhaseCheckpointPersisted, FencePhasePeersAcknowledged,
 		FencePhaseFenced,
@@ -70,23 +67,25 @@ func TestFenceCoordinatorResumesWithoutRepeatingIsolation(t *testing.T) {
 	require.NoError(t, err)
 	transaction.Revision = 3
 	transaction.Phase = FencePhaseEvidencePersisted
+	transaction.ClockObservedAt = now
+	transaction.ClockSkewSecond = 7
 	transaction.OperationID = "rao1_00112233445566778899aabbccddeeff"
+	transaction.IsolationControls = validFenceControls(request.Actor)
 	transaction.Evidence = &DeploymentFenceEvidence{
 		Version: DeploymentFenceEvidenceVersion, RealmID: "r1_00112233445566778899aabbccddeeff",
 		OperationID:     transaction.OperationID,
 		TargetPrincipal: request.Actor, ManifestDigest: transaction.ManifestDigest,
 		RequestID: request.RequestID, Reason: request.Reason, ObservedAt: now,
-		Controls: validFenceControls(request.Actor),
+		ClockSkewSecond: 7,
+		Controls:        validFenceControls(request.Actor),
 	}
 	store := &memoryFenceJournal{current: &transaction}
 	isolation := &fakeFenceIsolation{}
 	authority := &fakeFenceAuthority{
-		result: FenceAuthorityResult{
-			Generation: 5, CheckpointDigest: fenceDigest('a'), RepositoryPersisted: true,
-			SurvivorReceipts: map[string]string{
-				"node-b": fenceDigest('b'), "node-c": fenceDigest('c'),
-			},
-		},
+		result: validFenceAuthorityResultFor(
+			transaction.OperationID,
+			request.Actor,
+		),
 	}
 	status, err := (FenceCoordinator{
 		Journal: store, Isolation: isolation, Authority: authority,
@@ -128,17 +127,14 @@ func TestFenceCoordinatorResumesFromEveryDurablePhase(t *testing.T) {
 			isolation := &fakeFenceIsolation{controls: validFenceControls(request.Actor)}
 			authority := &fakeFenceAuthority{
 				operationID: transaction.OperationID,
-				result: FenceAuthorityResult{
-					Generation: 4, CheckpointDigest: fenceDigest('d'),
-					RepositoryPersisted: true,
-					SurvivorReceipts: map[string]string{
-						"node-b": fenceDigest('e'), "node-c": fenceDigest('f'),
-					},
-				},
 			}
 			if authority.operationID == "" {
 				authority.operationID = "rao1_00112233445566778899aabbccddeeff"
 			}
+			authority.result = validFenceAuthorityResultFor(
+				authority.operationID,
+				request.Actor,
+			)
 			status, err := (FenceCoordinator{
 				Journal: store, Isolation: isolation, Authority: authority,
 				Clock: func() time.Time { return now },
@@ -206,6 +202,108 @@ func TestFenceCoordinatorRejectsInvalidEvidenceBeforeAuthority(t *testing.T) {
 	require.Equal(t, FencePhaseIsolationPending, store.current.ResumeFrom)
 }
 
+func TestFenceCoordinatorRejectsTamperedPersistedEvidenceBeforeAuthority(t *testing.T) {
+	raw := fenceManifest(t)
+	now := time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC)
+	request := FenceRequest{
+		Manifest: raw, TargetSlot: "node-a", Reason: FenceReasonMembershipRemoved,
+		Actor:     "p1_euydwrsrlrtxe7misopktnf7zlk6b27waegboirnhbbu4wlen55a",
+		RequestID: "fence-node-a-tampered-evidence",
+		StartedAt: now, Deadline: now.Add(5 * time.Minute),
+	}
+	transaction := fenceTransactionAtPhase(t, request, FencePhaseAuthorityPending)
+	transaction.Evidence.TargetPrincipal =
+		"p1_n55ilee3u2y3zr6s3xuph7qjcqpsunkajnlgc3dxqkgzri5oxhca"
+	store := &memoryFenceJournal{current: &transaction}
+	authority := &fakeFenceAuthority{}
+	_, err := (FenceCoordinator{
+		Journal: store, Isolation: &fakeFenceIsolation{}, Authority: authority,
+		Clock: func() time.Time { return now },
+	}).Fence(context.Background(), request)
+	require.ErrorIs(t, err, ErrFenceJournalInvalid)
+	require.Zero(t, authority.completeCalls)
+}
+
+func TestFenceCoordinatorPersistsMeasuredSkewAndRejectsOverLimit(t *testing.T) {
+	raw := fenceManifest(t)
+	now := time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC)
+	request := FenceRequest{
+		Manifest: raw, TargetSlot: "node-a", Reason: FenceReasonMembershipRemoved,
+		Actor:     "p1_euydwrsrlrtxe7misopktnf7zlk6b27waegboirnhbbu4wlen55a",
+		RequestID: "fence-node-a-clock-skew",
+		StartedAt: now, Deadline: now.Add(5 * time.Minute),
+	}
+	store := &memoryFenceJournal{}
+	isolation := &fakeFenceIsolation{
+		clockResult: FenceClockResult{ObservedAt: now, ClockSkewSecond: 31},
+		controls:    validFenceControls(request.Actor),
+	}
+	status, err := (FenceCoordinator{
+		Journal: store, Isolation: isolation, Authority: &fakeFenceAuthority{},
+		Clock: func() time.Time { return now },
+	}).Fence(context.Background(), request)
+	require.NoError(t, err)
+	require.Equal(t, FenceOutcomeRecoveryRequired, status.Outcome)
+	require.Equal(t, FenceFailureClockSkew, status.Reason)
+	require.Zero(t, isolation.enforceCalls)
+}
+
+func TestFenceCoordinatorRetriesAmbiguousPrepareWithoutRepeatingDurableIsolation(t *testing.T) {
+	raw := fenceManifest(t)
+	now := time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC)
+	request := FenceRequest{
+		Manifest: raw, TargetSlot: "node-a", Reason: FenceReasonMembershipRemoved,
+		Actor:     "p1_euydwrsrlrtxe7misopktnf7zlk6b27waegboirnhbbu4wlen55a",
+		RequestID: "fence-node-a-ambiguous-prepare",
+		StartedAt: now, Deadline: now.Add(5 * time.Minute),
+	}
+	store := &memoryFenceJournal{}
+	isolation := &fakeFenceIsolation{controls: validFenceControls(request.Actor)}
+	authority := &fakeFenceAuthority{
+		operationID: "rao1_00112233445566778899aabbccddeeff",
+		prepareErr:  FenceDependencyError(FenceFailureAuthorityUnavailable),
+	}
+	status, err := (FenceCoordinator{
+		Journal: store, Isolation: isolation, Authority: authority,
+		Clock: func() time.Time { return now },
+	}).Fence(context.Background(), request)
+	require.NoError(t, err)
+	require.Equal(t, FenceOutcomeRecoveryRequired, status.Outcome)
+	require.Equal(t, 1, isolation.enforceCalls)
+	require.NotEmpty(t, store.current.IsolationControls)
+
+	authority.prepareErr = nil
+	authority.result = validFenceAuthorityResultFor(
+		authority.operationID,
+		request.Actor,
+	)
+	status, err = (FenceCoordinator{
+		Journal: store, Isolation: isolation, Authority: authority,
+		Clock: func() time.Time { return now },
+	}).Fence(context.Background(), request)
+	require.NoError(t, err)
+	require.Equal(t, FenceOutcomeFenced, status.Outcome)
+	require.Equal(t, 1, isolation.enforceCalls)
+	require.Equal(t, 2, authority.prepareCalls)
+	require.Equal(t, 1, authority.completeCalls)
+}
+
+func TestCanonicalFenceManifestDigestIgnoresSetAndNodeOrder(t *testing.T) {
+	raw := fenceManifest(t)
+	reordered := mutateTopology(t, raw, func(root map[string]any) {
+		nodes := root["nodes"].([]any)
+		root["nodes"] = []any{nodes[2], nodes[0], nodes[1]}
+		for _, value := range root["nodes"].([]any) {
+			node := value.(map[string]any)
+			peers := node["static_recovery_peers"].([]any)
+			node["static_recovery_peers"] = []any{peers[1], peers[0]}
+		}
+	})
+	left := mustFenceManifest(t, raw)
+	right := mustFenceManifest(t, reordered)
+	require.Equal(t, canonicalFenceManifestDigest(left), canonicalFenceManifestDigest(right))
+}
+
 func TestFenceCoordinatorRequiresExactTwoSurvivorReceipts(t *testing.T) {
 	raw := fenceManifest(t)
 	now := time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC)
@@ -218,6 +316,9 @@ func TestFenceCoordinatorRequiresExactTwoSurvivorReceipts(t *testing.T) {
 		Authority: &fakeFenceAuthority{
 			operationID: "rao1_00112233445566778899aabbccddeeff",
 			result: FenceAuthorityResult{
+				OperationID:     "rao1_00112233445566778899aabbccddeeff",
+				TargetPrincipal: "p1_euydwrsrlrtxe7misopktnf7zlk6b27waegboirnhbbu4wlen55a",
+				EvidenceDigest:  fenceDigest('9'), EvidenceAccepted: true,
 				Generation: 4, CheckpointDigest: fenceDigest('d'),
 				RepositoryPersisted: true,
 				SurvivorReceipts:    map[string]string{"node-b": fenceDigest('e')},
@@ -268,6 +369,21 @@ func validFenceControls(actor string) []FenceControlReceipt {
 	}
 }
 
+func validFenceAuthorityResultFor(
+	operationID string,
+	targetPrincipal string,
+) FenceAuthorityResult {
+	return FenceAuthorityResult{
+		OperationID: operationID, TargetPrincipal: targetPrincipal,
+		EvidenceDigest: fenceDigest('9'), EvidenceAccepted: true,
+		Generation: 4, CheckpointDigest: fenceDigest('d'),
+		RepositoryPersisted: true,
+		SurvivorReceipts: map[string]string{
+			"node-b": fenceDigest('e'), "node-c": fenceDigest('f'),
+		},
+	}
+}
+
 func fenceTransactionAtPhase(
 	t *testing.T,
 	request FenceRequest,
@@ -279,17 +395,24 @@ func fenceTransactionAtPhase(
 	require.NoError(t, err)
 	transaction.Revision = uint64(fencePhaseOrder(phase))
 	transaction.Phase = phase
+	if fencePhaseOrder(phase) >= fencePhaseOrder(FencePhaseIsolationPending) {
+		transaction.ClockObservedAt = request.StartedAt
+		transaction.ClockSkewSecond = 7
+	}
 	if fencePhaseOrder(phase) >= fencePhaseOrder(FencePhaseEvidencePersisted) {
 		transaction.OperationID = "rao1_00112233445566778899aabbccddeeff"
+		transaction.IsolationControls = validFenceControls(request.Actor)
 		transaction.Evidence = &DeploymentFenceEvidence{
 			Version: DeploymentFenceEvidenceVersion,
 			RealmID: manifest.Authority.RealmID, OperationID: transaction.OperationID,
 			TargetPrincipal: request.Actor, ManifestDigest: transaction.ManifestDigest,
 			RequestID: request.RequestID, Reason: request.Reason, ObservedAt: request.StartedAt,
-			Controls: validFenceControls(request.Actor),
+			ClockSkewSecond: 7,
+			Controls:        validFenceControls(request.Actor),
 		}
 	}
 	if fencePhaseOrder(phase) >= fencePhaseOrder(FencePhaseCheckpointPersisted) {
+		transaction.EvidenceDigest = fenceDigest('9')
 		transaction.AuthorityGeneration = 4
 		transaction.CheckpointDigest = fenceDigest('d')
 		transaction.RepositoryPersisted = true
@@ -333,15 +456,23 @@ func (store *memoryFenceJournal) Save(
 
 type fakeFenceIsolation struct {
 	controls       []FenceControlReceipt
+	clockResult    FenceClockResult
 	preflightErr   error
 	enforceErr     error
 	preflightCalls int
 	enforceCalls   int
 }
 
-func (fake *fakeFenceIsolation) Preflight(context.Context, FenceTarget) error {
+func (fake *fakeFenceIsolation) Preflight(
+	_ context.Context,
+	target FenceTarget,
+) (FenceClockResult, error) {
 	fake.preflightCalls++
-	return fake.preflightErr
+	result := fake.clockResult
+	if result.ObservedAt.IsZero() {
+		result.ObservedAt = target.StartedAt
+	}
+	return result, fake.preflightErr
 }
 
 func (fake *fakeFenceIsolation) Enforce(context.Context, FenceTarget) ([]FenceControlReceipt, error) {

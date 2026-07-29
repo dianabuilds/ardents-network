@@ -60,6 +60,11 @@ matching-commit real-host R3 evidence in MR-08 before any support claim.
   authority_pending -> checkpoint_persisted -> peers_acknowledged -> fenced`.
   Any stable failure becomes `recovery_required`; a repeated invocation may
   resume from its recorded safe boundary but may never skip one.
+- Clock/skew truth and validated isolation receipts are durable progress inside
+  `isolation_pending`. The isolation and Authority prepare adapters are
+  idempotent for the immutable request ID, so an ambiguous process loss before
+  the next journal write may repeat a call but never repeat its irreversible
+  effect.
 - Isolation evidence requires unique attributable receipts for
   `target_ingress_blocked`, `discovery_withdrawn`, and `peer_id_denied`.
   `target_stopped` may be present when the target is reachable, but target
@@ -75,8 +80,10 @@ matching-commit real-host R3 evidence in MR-08 before any support claim.
   digest, repository persistence, and active receipts from exactly the two
   manifest survivors. Authority/repository/skew/identity/receipt mismatch or
   unavailable dependencies remains `recovery_required`.
-- Replaying the same manifest/target/Actor/request is idempotent. Any binding
-  mismatch against an existing journal fails closed before control mutation.
+- Replaying the same canonical manifest/target/Actor/request is idempotent.
+  Manifest object, Node, signed-root, and static-peer ordering cannot change
+  its digest. Any semantic binding mismatch against an existing journal fails
+  closed before control mutation.
 - Ordinary status returns only version, target slot, phase, outcome, stable
   reason, and bounded counts. Protected bindings remain journal/adapter
   internals and are never rendered as ordinary output.
