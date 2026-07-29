@@ -386,6 +386,20 @@ implementation slices and commits.
   and real WAN/PKI evidence remain MR-08 R3; `deployment.multi-host` remains
   `Q=no`.
 
+## MR-07 admission checkpoint — 2026-07-29
+
+- PW3-25 admits the R1 crash-resumable topology rollout coordinator after
+  accepted MR-03 through MR-06 and ADR-0006/0008/0009.
+- The slice owns a strict `topology-rollout-transaction/v1`, one-at-a-time
+  authority-last/authority-first order, exact composite readiness, reverse
+  compensation, explicit complete-data-restore policy and commit ambiguity
+  recovery.
+- DR-03 retains Authority migration activation truth; Nodes retain runtime and
+  consistency-group ownership. Production adapters and real mixed-version,
+  backup/restore and release evidence remain MR-08 R3.
+- Admission changes no capability qualification; `deployment.multi-host`
+  remains `Q=no`.
+
 ## Stream ownership
 
 - The integrator alone edits this PRD, the Wave 3 decision register, the
