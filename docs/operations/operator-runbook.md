@@ -17,6 +17,13 @@ checksum plus Ardents principal, device, and Waku peer identity. Deployment
 secrets are backed up separately; detailed groups and failure rules are in
 `docs/security/persistent-state-security.md`.
 
+For a reviewed three-Node topology, complete the stopped Realm Authority
+restore steps in `docs/operations/upgrade-migration.md`, then run
+`ardentsctl topology recover --manifest FILE`. This command only proves clock,
+context and exact latest Checkpoint truth through the protected Authority
+boundary; it does not extract archives, edit configuration, restart services,
+or administer the Checkpoint Repository.
+
 ## Rotation And Revocation
 
 - Operator device Credential: create a fresh finite device Credential from the

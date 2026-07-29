@@ -27,25 +27,29 @@ const (
 )
 
 type Config struct {
-	Addr              string
-	SSH               string
-	SSHPort           int
-	SSHIdentity       string
-	SSHKnownHosts     string
-	SSHOperatorSocket string
-	SignerFile        string
-	SignerAlias       string
-	HostKeyPinRef     string
-	ContextName       string
-	ContextFile       string
-	ExpectedNode      string
-	ExpectedPrincipal string
-	ExpectedPublicKey string
-	ScopeHints        []string
-	Output            string
-	Watch             bool
-	Interval          time.Duration
-	Timeout           time.Duration
+	Addr                    string
+	SSH                     string
+	SSHPort                 int
+	SSHIdentity             string
+	SSHKnownHosts           string
+	SSHOperatorSocket       string
+	SignerFile              string
+	SignerAlias             string
+	HostKeyPinRef           string
+	ContextName             string
+	ContextFile             string
+	ExpectedNode            string
+	ExpectedPrincipal       string
+	ExpectedPublicKey       string
+	ExpectedRealm           string
+	AuthorityStateRef       string
+	AuthorityBackupRef      string
+	CheckpointRepositoryRef string
+	ScopeHints              []string
+	Output                  string
+	Watch                   bool
+	Interval                time.Duration
+	Timeout                 time.Duration
 }
 
 type ContextFile struct {
@@ -54,20 +58,24 @@ type ContextFile struct {
 }
 
 type StoredContext struct {
-	Addr              string   `json:"addr,omitempty"`
-	SSH               string   `json:"ssh,omitempty"`
-	SSHPort           int      `json:"ssh_port,omitempty"`
-	SSHIdentity       string   `json:"ssh_identity,omitempty"`
-	SSHKnownHosts     string   `json:"ssh_known_hosts,omitempty"`
-	SSHOperatorSocket string   `json:"ssh_operator_socket,omitempty"`
-	SignerFile        string   `json:"signer_file,omitempty"`
-	SignerAlias       string   `json:"signer_alias,omitempty"`
-	HostKeyPinRef     string   `json:"host_key_pin_ref,omitempty"`
-	ExpectedNode      string   `json:"expected_node,omitempty"`
-	ExpectedPrincipal string   `json:"expected_principal,omitempty"`
-	ExpectedPublicKey string   `json:"expected_public_key,omitempty"`
-	ScopeHints        []string `json:"scope_hints,omitempty"`
-	Timeout           string   `json:"timeout,omitempty"`
+	Addr                    string   `json:"addr,omitempty"`
+	SSH                     string   `json:"ssh,omitempty"`
+	SSHPort                 int      `json:"ssh_port,omitempty"`
+	SSHIdentity             string   `json:"ssh_identity,omitempty"`
+	SSHKnownHosts           string   `json:"ssh_known_hosts,omitempty"`
+	SSHOperatorSocket       string   `json:"ssh_operator_socket,omitempty"`
+	SignerFile              string   `json:"signer_file,omitempty"`
+	SignerAlias             string   `json:"signer_alias,omitempty"`
+	HostKeyPinRef           string   `json:"host_key_pin_ref,omitempty"`
+	ExpectedNode            string   `json:"expected_node,omitempty"`
+	ExpectedPrincipal       string   `json:"expected_principal,omitempty"`
+	ExpectedPublicKey       string   `json:"expected_public_key,omitempty"`
+	ExpectedRealm           string   `json:"expected_realm,omitempty"`
+	AuthorityStateRef       string   `json:"authority_state_ref,omitempty"`
+	AuthorityBackupRef      string   `json:"authority_backup_ref,omitempty"`
+	CheckpointRepositoryRef string   `json:"checkpoint_repository_ref,omitempty"`
+	ScopeHints              []string `json:"scope_hints,omitempty"`
+	Timeout                 string   `json:"timeout,omitempty"`
 }
 
 func DefaultConfig() Config {
@@ -300,6 +308,18 @@ func (c *Config) applyStored(stored StoredContext) {
 	}
 	if c.ExpectedPublicKey == "" {
 		c.ExpectedPublicKey = stored.ExpectedPublicKey
+	}
+	if c.ExpectedRealm == "" {
+		c.ExpectedRealm = stored.ExpectedRealm
+	}
+	if c.AuthorityStateRef == "" {
+		c.AuthorityStateRef = stored.AuthorityStateRef
+	}
+	if c.AuthorityBackupRef == "" {
+		c.AuthorityBackupRef = stored.AuthorityBackupRef
+	}
+	if c.CheckpointRepositoryRef == "" {
+		c.CheckpointRepositoryRef = stored.CheckpointRepositoryRef
 	}
 	if len(c.ScopeHints) == 0 {
 		c.ScopeHints = append([]string(nil), stored.ScopeHints...)

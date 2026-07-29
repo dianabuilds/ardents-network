@@ -18,6 +18,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type fakeFactory struct {
@@ -27,7 +28,21 @@ type fakeFactory struct {
 
 func (factory *fakeFactory) Open(cfg configurationcmd.Config) (openedClient, error) {
 	factory.opened = append(factory.opened, cfg.ExpectedNode)
-	calls := fakeProtectedCalls{node: cfg.ExpectedNode, principal: cfg.ExpectedPrincipal, image: imageForNode(cfg.ExpectedNode)}
+	calls := fakeProtectedCalls{
+		node: cfg.ExpectedNode, principal: cfg.ExpectedPrincipal,
+		image: imageForNode(cfg.ExpectedNode), observedAt: time.Now().UTC(),
+		authority: &protocol.AuthorityStatusSnapshot{
+			Version: 1, RealmId: cfg.ExpectedRealm, AuthoritySequence: 42,
+			CheckpointDigest: "ac1_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+			Phase:            "recovery_only", Readiness: "degraded",
+			Reason: "authority_restore_verification_required",
+		},
+		verified: &protocol.AuthorityStatusSnapshot{
+			Version: 1, RealmId: cfg.ExpectedRealm, AuthoritySequence: 42,
+			CheckpointDigest: "ac1_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+			Phase:            "ready", Readiness: "ready",
+		},
+	}
 	return openedClient{calls: calls, close: func(context.Context) error {
 		factory.closed = append(factory.closed, cfg.ExpectedNode)
 		return nil
@@ -42,6 +57,9 @@ type fakeProtectedCalls struct {
 	networkErr error
 	featureErr error
 	malformed  bool
+	observedAt time.Time
+	authority  *protocol.AuthorityStatusSnapshot
+	verified   *protocol.AuthorityStatusSnapshot
 }
 
 func (calls fakeProtectedCalls) GetNodeRuntime(context.Context, *connect.Request[protocol.GetNodeRuntimeRequest]) (*connect.Response[protocol.NodeRuntimeResponse], error) {
@@ -51,10 +69,13 @@ func (calls fakeProtectedCalls) GetNodeRuntime(context.Context, *connect.Request
 	if calls.malformed {
 		return nil, nil
 	}
-	return connect.NewResponse(&protocol.NodeRuntimeResponse{Runtime: &protocol.NodeRuntimeSnapshot{
-		Node: &protocol.NodeSnapshot{Name: calls.node}, Identity: &protocol.IdentitySnapshot{Principal: calls.principal},
-		Readiness: &protocol.ReadinessSnapshot{Ready: true},
-	}}), nil
+	return connect.NewResponse(&protocol.NodeRuntimeResponse{
+		Runtime: &protocol.NodeRuntimeSnapshot{
+			Node: &protocol.NodeSnapshot{Name: calls.node}, Identity: &protocol.IdentitySnapshot{Principal: calls.principal},
+			Readiness: &protocol.ReadinessSnapshot{Ready: true},
+		},
+		ObservedAt: timestamppb.New(calls.observedAt),
+	}), nil
 }
 
 func (calls fakeProtectedCalls) GetNetworkStatus(context.Context, *connect.Request[protocol.GetNetworkStatusRequest]) (*connect.Response[protocol.NetworkStatusResponse], error) {
@@ -80,6 +101,20 @@ func (calls fakeProtectedCalls) GetNodeFeatures(context.Context, *connect.Reques
 		return nil, calls.featureErr
 	}
 	return connect.NewResponse(&protocol.NodeFeaturesResponse{Features: &protocol.NodeFeaturesSnapshot{ImageReference: calls.image}}), nil
+}
+
+func (calls fakeProtectedCalls) InspectRealmAuthority(
+	context.Context,
+	*connect.Request[protocol.InspectRealmAuthorityRequest],
+) (*connect.Response[protocol.InspectRealmAuthorityResponse], error) {
+	return connect.NewResponse(&protocol.InspectRealmAuthorityResponse{Authority: calls.authority}), nil
+}
+
+func (calls fakeProtectedCalls) VerifyRestoredAuthority(
+	context.Context,
+	*connect.Request[protocol.VerifyRestoredAuthorityRequest],
+) (*connect.Response[protocol.VerifyRestoredAuthorityResponse], error) {
+	return connect.NewResponse(&protocol.VerifyRestoredAuthorityResponse{Authority: calls.verified}), nil
 }
 
 type fixedFactory struct {
@@ -117,6 +152,87 @@ func TestCommandUsesThreeSeparateManifestBoundContextsAndRedactsJSON(t *testing.
 	require.Equal(t, "ready", result["outcome"])
 	for _, secret := range []string{"operator@", "host-pin-", "operator-primary", "p1_", "registry.example", "sha256:"} {
 		require.NotContains(t, stdout.String()+stderr.String(), secret)
+	}
+}
+
+func TestRecoverCommandVerifiesManifestBoundAuthorityWithoutIdentifierLeaks(t *testing.T) {
+	manifestPath := filepath.Join("..", "..", "deployment", "testdata", "public-direct.json")
+	contextFile := writeTopologyContexts(t)
+	factory := &fakeFactory{}
+	var stdout, stderr bytes.Buffer
+
+	code := (Command{
+		Base: configurationcmd.Config{ContextFile: contextFile, Output: "json", Timeout: time.Second},
+		Out:  &stdout, Err: &stderr, Factory: factory,
+	}).Run(context.Background(), []string{"recover", "--manifest", manifestPath})
+
+	require.Zero(t, code, stderr.String())
+	require.Equal(t, []string{"node-b", "node-c", "node-a"}, factory.opened)
+	require.ElementsMatch(t, factory.opened, factory.closed)
+	var status deployment.AuthorityRecoveryStatus
+	require.NoError(t, json.Unmarshal(stdout.Bytes(), &status))
+	require.Equal(t, deployment.AuthorityRecoveryOutcomeVerified, status.Outcome)
+	for _, protected := range []string{
+		recoveryRealmIDForCLI, "ac1_", "authority-state-primary",
+		"authority-backup-primary", "authority-checkpoints-primary", "operator@",
+	} {
+		require.NotContains(t, stdout.String()+stderr.String(), protected)
+	}
+}
+
+func TestRecoveryProbeRejectsAuthorityContextMismatchBeforeOpeningClient(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(*configurationcmd.StoredContext)
+	}{
+		{
+			name: "realm",
+			mutate: func(stored *configurationcmd.StoredContext) {
+				stored.ExpectedRealm = "r1_bad"
+			},
+		},
+		{
+			name: "authority state reference",
+			mutate: func(stored *configurationcmd.StoredContext) {
+				stored.AuthorityStateRef = "other-state"
+			},
+		},
+		{
+			name: "authority backup reference",
+			mutate: func(stored *configurationcmd.StoredContext) {
+				stored.AuthorityBackupRef = "other-backup"
+			},
+		},
+		{
+			name: "checkpoint repository reference",
+			mutate: func(stored *configurationcmd.StoredContext) {
+				stored.CheckpointRepositoryRef = "other-repository"
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			contextFile := writeTopologyContexts(t)
+			raw, err := os.ReadFile(contextFile)
+			require.NoError(t, err)
+			var contexts configurationcmd.ContextFile
+			require.NoError(t, json.Unmarshal(raw, &contexts))
+			stored := contexts.Contexts["ssh-node-a"]
+			test.mutate(&stored)
+			contexts.Contexts["ssh-node-a"] = stored
+			raw, err = json.Marshal(contexts)
+			require.NoError(t, err)
+			require.NoError(t, os.WriteFile(contextFile, raw, 0o600))
+			factory := &fakeFactory{}
+
+			_, err = (RecoveryProbe{
+				Base:    configurationcmd.Config{ContextFile: contextFile, Timeout: time.Second},
+				Factory: factory,
+			}).Open(context.Background(), recoveryTarget())
+
+			require.EqualError(t, err, string(deployment.ProbeRemoteInvalidResponse))
+			require.Empty(t, factory.opened)
+		})
 	}
 }
 
@@ -260,6 +376,30 @@ func TestClassifyProbeErrorPreservesTunnelAndRemoteFailureClasses(t *testing.T) 
 	}
 }
 
+func TestClassifyAuthorityRecoveryErrorUsesStableStructuredReason(t *testing.T) {
+	connectErr := connect.NewError(
+		connect.CodeFailedPrecondition,
+		errors.New("protected checkpoint path and operator detail"),
+	)
+	detail, err := connect.NewErrorDetail(&protocol.Error{
+		Code: "authority_not_ready", Category: "authority",
+		Message: "protected checkpoint path and operator detail",
+		Domain:  "authority", Operation: "verify_restored_authority",
+		Reason: "authority_recovery_required",
+	})
+	require.NoError(t, err)
+	connectErr.AddDetail(detail)
+
+	got := classifyAuthorityRecoveryError(connectErr)
+
+	require.EqualError(
+		t,
+		got,
+		string(deployment.AuthorityRecoveryReasonCheckpointMismatch),
+	)
+	require.NotContains(t, got.Error(), "protected checkpoint")
+}
+
 func TestProbeMapsEveryStableFailureClass(t *testing.T) {
 	contextFile := writeTopologyContexts(t)
 	validCalls := func() fakeProtectedCalls {
@@ -381,7 +521,15 @@ func writeTopologyContexts(t *testing.T) string {
 	require.NoError(t, err)
 	var manifest struct {
 		OperatorSignerAlias string `json:"operator_signer_alias"`
-		Nodes               []struct {
+		Authority           struct {
+			Slot      string `json:"slot"`
+			StateRef  string `json:"state_ref"`
+			BackupRef string `json:"backup_ref"`
+		} `json:"authority"`
+		CheckpointRepository struct {
+			Reference string `json:"reference"`
+		} `json:"checkpoint_repository"`
+		Nodes []struct {
 			Slot string `json:"slot"`
 			Host struct {
 				SSHAlias      string `json:"ssh_alias"`
@@ -393,12 +541,19 @@ func writeTopologyContexts(t *testing.T) string {
 	require.NoError(t, json.Unmarshal(raw, &manifest))
 	contexts := configurationcmd.ContextFile{Contexts: map[string]configurationcmd.StoredContext{}}
 	for _, node := range manifest.Nodes {
-		contexts.Contexts[node.Host.SSHAlias] = configurationcmd.StoredContext{
+		stored := configurationcmd.StoredContext{
 			Addr: "unix:///run/ardents/operator.sock", SSH: "operator@" + node.Slot,
 			SSHKnownHosts: "pins/" + node.Slot, SSHOperatorSocket: "/run/ardents/operator.sock",
 			SignerFile: "signers/operator.json", SignerAlias: manifest.OperatorSignerAlias,
 			HostKeyPinRef: node.Host.HostKeyPinRef, ExpectedNode: node.Slot, ExpectedPrincipal: node.Principal,
 		}
+		if node.Slot == manifest.Authority.Slot {
+			stored.ExpectedRealm = recoveryRealmIDForCLI
+			stored.AuthorityStateRef = manifest.Authority.StateRef
+			stored.AuthorityBackupRef = manifest.Authority.BackupRef
+			stored.CheckpointRepositoryRef = manifest.CheckpointRepository.Reference
+		}
+		contexts.Contexts[node.Host.SSHAlias] = stored
 	}
 	encoded, err := json.Marshal(contexts)
 	require.NoError(t, err)
@@ -407,11 +562,24 @@ func writeTopologyContexts(t *testing.T) string {
 	return path
 }
 
+const recoveryRealmIDForCLI = "r1_00112233445566778899aabbccddeeff"
+
 func topologyTarget(pin string) deployment.NodeStatusTarget {
 	return deployment.NodeStatusTarget{
 		Slot: "node-a", SSHAlias: "ssh-node-a", HostKeyPinRef: pin,
 		OperatorSignerAlias:   "operator-primary",
 		ExpectedNodePrincipal: "p1_euydwrsrlrtxe7misopktnf7zlk6b27waegboirnhbbu4wlen55a",
+	}
+}
+
+func recoveryTarget() deployment.AuthorityRecoveryTarget {
+	return deployment.AuthorityRecoveryTarget{
+		Slot: "node-a", Role: "authority", SSHAlias: "ssh-node-a",
+		HostKeyPinRef: "host-pin-a", OperatorSignerAlias: "operator-primary",
+		ExpectedNodePrincipal:   "p1_euydwrsrlrtxe7misopktnf7zlk6b27waegboirnhbbu4wlen55a",
+		AuthorityStateRef:       "authority-state-primary",
+		AuthorityBackupRef:      "authority-backup-primary",
+		CheckpointRepositoryRef: "authority-checkpoints-primary",
 	}
 }
 

@@ -6,7 +6,7 @@ production-readiness claim.
 ## Authoritative Metadata
 
 `internal/cli/catalog` is the single production-owned metadata catalogue for
-the Operator CLI. It contains exactly 86 leaf commands. The catalogue describes
+the Operator CLI. It contains exactly 87 leaf commands. The catalogue describes
 stable command ID and path, complete help syntax, exact Operator procedure
 requirements with their actions, resource kinds and mutation classes, output
 family, SSH stream-local support and evidence owner. It does not dispatch
@@ -25,6 +25,10 @@ Protected aggregate commands declare every constituent procedure separately;
 features and bounded session-termination requirements instead of masquerading
 as a local-only command. The first three are the complete protected product
 observation budget; `EndSession` is a session-lifecycle cleanup call.
+`topology recover` separately declares authenticated Node clock observations,
+Authority inspection, conditional exact restore verification and bounded
+session termination. It never presents those calls as repository
+administration.
 
 Offline Principal/device/Delegation custody commands use stable
 `offline.identity.*` procedure identifiers and declare neither an RPC/action

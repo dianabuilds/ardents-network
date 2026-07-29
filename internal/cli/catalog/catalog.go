@@ -133,6 +133,20 @@ var commands = []CommandSpec{
 		OutputCLIJSON,
 		ownerContract,
 	),
+	protectedAggregate(
+		"topology.recover",
+		[]string{"topology", "recover"},
+		"--manifest FILE",
+		"verify designated Authority recovery against immutable checkpoint truth",
+		[]ProcedureRequirement{
+			{Procedure: ardentsv1connect.NodeServiceGetNodeRuntimeProcedure, Access: AccessProtected, Action: "node.runtime", ResourceKind: "node"},
+			{Procedure: ardentsv1connect.AuthorityServiceInspectRealmAuthorityProcedure, Access: AccessProtected, Action: "realm.channel.audit.read", ResourceKind: "realm"},
+			{Procedure: ardentsv1connect.AuthorityServiceVerifyRestoredAuthorityProcedure, Access: AccessProtected, Action: "realm.channel.recovery.execute", ResourceKind: "realm", Mutating: true},
+			{Procedure: ardentsv1connect.IdentityServiceEndSessionProcedure, Access: AccessSessionLifecycle, Mutating: true},
+		},
+		OutputCLIJSON,
+		ownerAuthorityRecovery,
+	),
 
 	protected("workload.list", []string{"workload", "list"}, "", "list workloads", ardentsv1connect.WorkloadServiceListWorkloadsProcedure, "workload.list", "workload-collection", false, OutputProtoJSON, ownerWorkload),
 	protected("workload.get", []string{"workload", "get"}, "ID", "show one workload", ardentsv1connect.WorkloadServiceGetWorkloadStatusProcedure, "workload.status", "workload", false, OutputProtoJSON, ownerWorkload),

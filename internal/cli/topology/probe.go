@@ -1,6 +1,7 @@
-// Package topology owns the bounded multi-host status command and its
-// protected-call adapters. It does not own topology admission, Node truth, or
-// Operator authentication policy.
+// Package topology owns bounded multi-host status and Authority recovery
+// commands plus their protected-call adapters. It does not own topology
+// admission, Node/Authority truth, repository administration, or Operator
+// authentication policy.
 package topology
 
 import (
@@ -20,6 +21,8 @@ type protectedCalls interface {
 	GetNodeRuntime(context.Context, *connect.Request[protocol.GetNodeRuntimeRequest]) (*connect.Response[protocol.NodeRuntimeResponse], error)
 	GetNetworkStatus(context.Context, *connect.Request[protocol.GetNetworkStatusRequest]) (*connect.Response[protocol.NetworkStatusResponse], error)
 	GetNodeFeatures(context.Context, *connect.Request[protocol.GetNodeFeaturesRequest]) (*connect.Response[protocol.NodeFeaturesResponse], error)
+	InspectRealmAuthority(context.Context, *connect.Request[protocol.InspectRealmAuthorityRequest]) (*connect.Response[protocol.InspectRealmAuthorityResponse], error)
+	VerifyRestoredAuthority(context.Context, *connect.Request[protocol.VerifyRestoredAuthorityRequest]) (*connect.Response[protocol.VerifyRestoredAuthorityResponse], error)
 }
 
 type openedClient struct {

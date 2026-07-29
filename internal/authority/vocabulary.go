@@ -28,7 +28,7 @@ const (
 	MaxAuditRecords               = 4096
 	MaxAuditOutboxRecords         = 4096
 	MaxIdempotencyRecords         = 4096
-	MaxCheckpointRecords          = 4096
+	MaxCheckpointRecords          = 65_536
 	MaxRequestIDBytes             = 128
 
 	RealmClassProduction  = "production"
@@ -120,3 +120,7 @@ var (
 )
 
 func ValidRealmID(value string) bool { return realmIDPattern.MatchString(value) }
+
+// ValidCheckpointDigest reports whether value is one canonical signed
+// Authority Checkpoint or audit-head digest.
+func ValidCheckpointDigest(value string) bool { return digestPattern.MatchString(value) }

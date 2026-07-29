@@ -131,7 +131,7 @@ func productionParserPaths(t *testing.T) []string {
 		"resolve": {file: "records.go", function: "resolve"},
 		"records": {file: "records.go", function: "records"},
 	})
-	paths = append(paths, "topology status")
+	paths = append(paths, "topology status", "topology recover")
 	addFlat("workload", filepath.Join("..", "workload", "command.go"), "Run")
 	addParserTree(t, &paths, "data", filepath.Join("..", "content"), "command_data.go", "Run", map[string]parserBranch{
 		"objects":   {file: "command_data_catalog.go", function: "run"},

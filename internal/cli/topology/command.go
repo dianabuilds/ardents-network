@@ -23,15 +23,27 @@ type Command struct {
 }
 
 func (command Command) Run(ctx context.Context, args []string) int {
-	if len(args) == 0 || args[0] != "status" {
-		fmt.Fprintln(command.Err, "usage: topology status --manifest FILE")
+	if len(args) == 0 {
+		fmt.Fprintln(command.Err, "usage: topology <status|recover> --manifest FILE")
 		return 2
 	}
+	switch args[0] {
+	case "status":
+		return command.runStatus(ctx, args[1:])
+	case "recover":
+		return command.runRecover(ctx, args[1:])
+	default:
+		fmt.Fprintln(command.Err, "usage: topology <status|recover> --manifest FILE")
+		return 2
+	}
+}
+
+func (command Command) runStatus(ctx context.Context, args []string) int {
 	flags := flag.NewFlagSet("topology status", flag.ContinueOnError)
 	flags.SetOutput(command.Err)
 	var manifestPath string
 	flags.StringVar(&manifestPath, "manifest", "", "reviewed topology manifest")
-	if err := flags.Parse(args[1:]); err != nil || manifestPath == "" || flags.NArg() != 0 {
+	if err := flags.Parse(args); err != nil || manifestPath == "" || flags.NArg() != 0 {
 		if err == nil {
 			fmt.Fprintln(command.Err, "usage: topology status --manifest FILE")
 		}
@@ -61,6 +73,49 @@ func (command Command) Run(ctx context.Context, args []string) int {
 		}
 	}
 	if status.Outcome == deployment.TopologyOutcomeReady {
+		return 0
+	}
+	return 1
+}
+
+func (command Command) runRecover(ctx context.Context, args []string) int {
+	flags := flag.NewFlagSet("topology recover", flag.ContinueOnError)
+	flags.SetOutput(command.Err)
+	var manifestPath string
+	flags.StringVar(&manifestPath, "manifest", "", "reviewed topology manifest")
+	if err := flags.Parse(args); err != nil || manifestPath == "" || flags.NArg() != 0 {
+		if err == nil {
+			fmt.Fprintln(command.Err, "usage: topology recover --manifest FILE")
+		}
+		return 2
+	}
+	raw, err := readBoundedFile(manifestPath)
+	if err != nil {
+		fmt.Fprintln(command.Err, "ardentsctl: topology manifest is unavailable")
+		return 2
+	}
+	status, err := (deployment.AuthorityRecoveryInspector{
+		Probe: RecoveryProbe{Base: command.Base, Factory: command.Factory},
+	}).Recover(ctx, raw)
+	if err != nil {
+		fmt.Fprintf(command.Err, "ardentsctl: invalid topology manifest: %v\n", err)
+		return 2
+	}
+	if command.Base.Output == "json" {
+		if err := output.JSONValue(command.Out, status); err != nil {
+			fmt.Fprintln(command.Err, "ardentsctl: topology recovery output failed")
+			return 1
+		}
+	} else if _, err := fmt.Fprintf(
+		command.Out,
+		"topology authority recovery\nslot: %s\noutcome: %s\nreadiness: %s\nphase: %s\nreason: %s\n",
+		status.Slot, status.Outcome, status.Readiness, status.Phase, status.Reason,
+	); err != nil {
+		fmt.Fprintln(command.Err, "ardentsctl: topology recovery output failed")
+		return 1
+	}
+	if status.Outcome == deployment.AuthorityRecoveryOutcomeAlreadyReady ||
+		status.Outcome == deployment.AuthorityRecoveryOutcomeVerified {
 		return 0
 	}
 	return 1

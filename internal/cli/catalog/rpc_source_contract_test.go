@@ -21,13 +21,24 @@ func TestProtectedCatalogueProceduresAreCalledByTheirProductionHandlers(t *testi
 		t.Run(spec.ID, func(t *testing.T) {
 			directory, handler := productionHandler(t, spec.Path)
 			calls := handlerCalls(t, directory, handler, spec.Path[len(spec.Path)-1])
-			if spec.ID == "topology.status" {
+			if spec.ID == "topology.status" || spec.ID == "topology.recover" {
 				sessionSource, err := os.ReadFile(filepath.Join("..", "client", "session.go"))
 				if err != nil {
 					t.Fatal(err)
 				}
 				if strings.Contains(string(sessionSource), ".EndSession(") {
 					calls["EndSession"] = struct{}{}
+				}
+			}
+			if spec.ID == "topology.recover" {
+				recoverySource, err := os.ReadFile(filepath.Join("..", "topology", "recovery_probe.go"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				for _, method := range []string{"InspectRealmAuthority", "VerifyRestoredAuthority"} {
+					if strings.Contains(string(recoverySource), "."+method+"(") {
+						calls[method] = struct{}{}
+					}
 				}
 			}
 			for _, procedure := range catalog.Procedures(spec) {
@@ -53,6 +64,9 @@ func productionHandler(t *testing.T, path []string) (string, string) {
 		directory = filepath.Join("..", "configuration")
 	}
 	if group == "topology" {
+		if len(path) > 1 && path[1] == "recover" {
+			return directory, "ObserveClock"
+		}
 		return directory, "Observe"
 	}
 	handler := calledFunctionForToken(t, directory, file, "Run", path[1])

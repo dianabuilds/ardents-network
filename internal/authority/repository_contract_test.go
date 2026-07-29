@@ -10,10 +10,20 @@ import (
 	"testing"
 	"time"
 
+	"ardents/internal/deployment"
 	"ardents/internal/storage"
 
 	"github.com/stretchr/testify/require"
 )
+
+func TestCheckpointRepositoryCapacityMatchesAdmittedTopologyContract(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "deployment", "testdata", "public-direct.json"))
+	require.NoError(t, err)
+	plan, err := deployment.Compile(raw)
+	require.NoError(t, err)
+
+	require.Equal(t, plan.Authority.CheckpointMaxHeads, MaxCheckpointRecords)
+}
 
 func TestFileCheckpointRepositoryCreateReadAndExactCompareAppend(t *testing.T) {
 	ctx := context.Background()

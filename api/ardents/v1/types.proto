@@ -568,6 +568,7 @@ message NodeStatusResponse {
 message NodeRuntimeResponse {
   OperationStatus status = 1;
   NodeRuntimeSnapshot runtime = 2;
+  google.protobuf.Timestamp observed_at = 3;
 }
 
 message EffectiveConfigurationSnapshot {

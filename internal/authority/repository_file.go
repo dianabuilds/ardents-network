@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"sync"
 
 	"ardents/internal/storage"
@@ -161,16 +163,27 @@ func (r *FileCheckpointRepository) readHead(ctx context.Context, realmID string)
 	} else if !errors.Is(statErr, os.ErrNotExist) {
 		return SignedCheckpoint{}, false, ErrUnavailable
 	}
-	entries, err := os.ReadDir(dir)
+	handle, err := os.Open(dir)
 	if errors.Is(err, os.ErrNotExist) {
 		return SignedCheckpoint{}, false, nil
 	}
 	if err != nil {
 		return SignedCheckpoint{}, false, ErrUnavailable
 	}
+	entries, readErr := handle.ReadDir(MaxCheckpointRecords + 1)
+	closeErr := handle.Close()
+	if readErr != nil && !errors.Is(readErr, io.EOF) {
+		return SignedCheckpoint{}, false, ErrUnavailable
+	}
+	if closeErr != nil {
+		return SignedCheckpoint{}, false, ErrUnavailable
+	}
 	if len(entries) > MaxCheckpointRecords {
 		return SignedCheckpoint{}, false, ErrCorruptState
 	}
+	sort.Slice(entries, func(left, right int) bool {
+		return entries[left].Name() < entries[right].Name()
+	})
 	var latest SignedCheckpoint
 	var found bool
 	var previous uint64
