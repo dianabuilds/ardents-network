@@ -72,6 +72,22 @@ _Avoid_: Principal, Node ID
 The local administrative interface used by Operators to control and inspect a Node.
 _Avoid_: Public API, Application Interface
 
+**Realm Authority**:
+The single designated Principal and consistency group that owns Realm
+membership, Channel generation, revocation, and signed checkpoint truth.
+_Avoid_: Cluster controller, deployment coordinator, second membership source
+
+**Authority Checkpoint**:
+The signed, strictly monotonic Realm Authority head that binds accepted
+membership, generation, revocation, and audit truth at one authority sequence.
+_Avoid_: Backup marker, Node state, deployment journal
+
+**Checkpoint Repository**:
+The independently administered immutable history of accepted Authority
+Checkpoints used to prove freshness and reject rollback; it is evidence, not a
+second writable Realm Authority.
+_Avoid_: Authority backup, mutable mirror, repair source
+
 **Application Interface**:
 The versioned, capability-scoped interface through which Applications use a Node.
 _Avoid_: Operator API, remote admin API

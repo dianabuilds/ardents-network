@@ -186,6 +186,21 @@ implementation slices and commits.
   `97fed1b68d8b2a21cbf1ba44aae0b027d48ef4e3` and closed PW3-19. This
   acceptance does not admit MR-03 by itself and does not change `Q=no`.
 
+## MR-03 admission checkpoint — 2026-07-29
+
+- The maintainer accepted MR-02 and closed PW3-19 in governance commit
+  `5979e9b`.
+- PW3-20 admits the local-substitutable protected Authority recovery
+  coordination slice. Accepted DR-03/CGA-06 remains the only owner of the
+  Authority ledger, signed checkpoint and immutable repository truth.
+- MR-03 may bind the reviewed topology to protected Authority context, enforce
+  authenticated clock preflight, acknowledge an exact recovery-only
+  sequence/digest and project Authority-last versus Authority-first order. It
+  may not administer repository history or perform host lifecycle mutation.
+- Real independent backup/WORM and three-host recovery evidence remains R3.
+  Admission changes no capability qualification; `deployment.multi-host`
+  remains `Q=no`.
+
 ## Stream ownership
 
 - The integrator alone edits this PRD, the Wave 3 decision register, the
