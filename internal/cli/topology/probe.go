@@ -48,7 +48,7 @@ func (operatorClientFactory) Open(cfg configurationcmd.Config) (openedClient, er
 	if err != nil {
 		return openedClient{}, classifyProbeError(err)
 	}
-	return openedClient{calls: opened.Service(), close: opened.CloseContext}, nil
+	return openedClient{calls: opened.Service(), close: opened.CloseLocalContext}, nil
 }
 
 // Probe opens a separate pin-validated SSH/session boundary for every Node.

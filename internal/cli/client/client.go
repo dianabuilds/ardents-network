@@ -198,3 +198,22 @@ func (c *Client) CloseContext(ctx context.Context) error {
 	}
 	return logoutErr
 }
+
+// CloseLocalContext discards process-local sessions and closes the transport
+// without making a session-lifecycle RPC. It is reserved for bounded aggregate
+// readers whose protected-call budget excludes EndSession.
+func (c *Client) CloseLocalContext(ctx context.Context) error {
+	if c == nil {
+		return nil
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if c.sessions != nil {
+		c.sessions.Discard()
+	}
+	if c.close != nil {
+		return c.close(ctx)
+	}
+	return nil
+}

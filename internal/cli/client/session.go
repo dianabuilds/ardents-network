@@ -330,15 +330,8 @@ func (m *SessionManager) LogoutContext(parent context.Context) error {
 	if m == nil {
 		return nil
 	}
-	m.mu.Lock()
-	m.epoch++
-	secrets := make([]identityaccess.SessionSecret, 0, len(m.entries))
-	for key, entry := range m.entries {
-		secrets = append(secrets, entry.secret)
-		m.zeroAndDelete(key, entry)
-	}
-	m.active = SessionKey{}
-	m.mu.Unlock()
+	secrets := m.takeSecrets()
+	defer clearSessionSecrets(secrets)
 
 	if parent == nil {
 		parent = context.Background()
@@ -352,9 +345,36 @@ func (m *SessionManager) LogoutContext(parent context.Context) error {
 		if _, err := m.auth.EndSession(ctx, request); err != nil {
 			logoutErr = errors.Join(logoutErr, err)
 		}
-		clear(secrets[index][:])
 	}
 	return logoutErr
+}
+
+// Discard clears local session material without making a lifecycle RPC.
+func (m *SessionManager) Discard() {
+	clearSessionSecrets(m.takeSecrets())
+}
+
+func (m *SessionManager) takeSecrets() []identityaccess.SessionSecret {
+	if m == nil {
+		return nil
+	}
+	m.mu.Lock()
+	m.epoch++
+	secrets := make([]identityaccess.SessionSecret, 0, len(m.entries))
+	for key, entry := range m.entries {
+		secrets = append(secrets, entry.secret)
+		m.zeroAndDelete(key, entry)
+	}
+	m.active = SessionKey{}
+	m.mu.Unlock()
+
+	return secrets
+}
+
+func clearSessionSecrets(secrets []identityaccess.SessionSecret) {
+	for index := range secrets {
+		clear(secrets[index][:])
+	}
 }
 
 func zeroSession(entry *cachedSession) {
