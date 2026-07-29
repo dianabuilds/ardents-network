@@ -209,6 +209,44 @@ func TestAuthorityAddsThenRemovesMemberWithFreshGenerationRevocationAndFence(t *
 	require.Equal(t, ActionFenceNode, fenceAudit.Action)
 	require.Equal(t, fenced.EvidenceDigest, fenceAudit.EvidenceDigest)
 	require.Equal(t, fenceAudit.Hash, fixture.store.state.Checkpoint.AuditHead)
+	auditByID := make(map[string]AuditRecord, len(fixture.store.state.AuditLog))
+	for _, audit := range fixture.store.state.AuditLog {
+		auditByID[audit.ID] = audit
+	}
+	require.NoError(t, validateFenceEvidenceAuditBindings(
+		fixture.store.state,
+		auditByID,
+	))
+
+	substituted := cloneLedger(fixture.store.state)
+	substituted.Rotations[len(substituted.Rotations)-1].
+		FenceEvidence[0].RequestID = "substituted-after-verification"
+	require.ErrorIs(t, validateFenceEvidenceAuditBindings(
+		substituted,
+		auditByID,
+	), ErrCorruptState)
+	require.ErrorIs(t, validateLedger(substituted), ErrCorruptState)
+
+	legacyAuditByID := make(map[string]AuditRecord, len(auditByID))
+	for auditID, audit := range auditByID {
+		if audit.Action != ActionFenceNode {
+			legacyAuditByID[auditID] = audit
+			continue
+		}
+		audit.Action = ActionChangeMembership
+		audit.ResourceKind = ResourceKindChannel
+		audit.ResourceID = ChannelResource(genesis.RealmID, initial.ChannelID)
+		audit.EvidenceDigest = ""
+		audit.ID = rotationAuditID(
+			ActionChangeMembership,
+			removed.OperationID+"\x00"+principalB,
+		)
+		legacyAuditByID[audit.ID] = audit
+	}
+	require.ErrorIs(t, validateFenceEvidenceAuditBindings(
+		fixture.store.state,
+		legacyAuditByID,
+	), ErrCorruptState)
 	fenceReplay, err := fixture.service.SubmitDeploymentFenceEvidence(
 		ctx, fenceEvidenceCommand(principalB),
 		FenceEvidenceRequest{

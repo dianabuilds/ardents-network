@@ -201,11 +201,56 @@ func validateLedger(state Ledger) error {
 			return corruptLedger("audit outbox")
 		}
 	}
+	if err := validateFenceEvidenceAuditBindings(state, auditByID); err != nil {
+		return corruptLedger("fence evidence audit binding")
+	}
 	if err := ValidateCheckpoint(state.Checkpoint); err != nil ||
 		state.Checkpoint.RealmID != state.RealmID ||
 		state.Checkpoint.AuthoritySequence != state.AuthoritySequence ||
 		state.Checkpoint.Digest == "" {
 		return corruptLedger("checkpoint")
+	}
+	return nil
+}
+
+func validateFenceEvidenceAuditBindings(
+	state Ledger,
+	auditByID map[string]AuditRecord,
+) error {
+	bound := make(map[string]struct{})
+	for _, rotation := range state.Rotations {
+		channelIndex := channelRecordIndex(state, rotation.ChannelID)
+		if channelIndex < 0 {
+			return ErrCorruptState
+		}
+		for _, evidence := range rotation.FenceEvidence {
+			auditID := rotationAuditID(
+				ActionFenceNode,
+				rotation.OperationID+"\x00"+evidence.TargetPrincipal,
+			)
+			audit, ok := auditByID[auditID]
+			if !ok ||
+				audit.Action != ActionFenceNode ||
+				audit.OperationID != rotation.OperationID ||
+				audit.TargetPrincipal != evidence.TargetPrincipal ||
+				audit.Actor != evidence.Controls[0].Actor ||
+				audit.ResourceKind != ResourceKindNode ||
+				audit.ResourceID != FenceNodeResource(evidence.TargetPrincipal) ||
+				audit.ChannelClass != state.Channels[channelIndex].Class ||
+				audit.Generation != rotation.PendingGeneration ||
+				audit.EvidenceDigest != DeploymentFenceEvidenceDigest(evidence) {
+				return ErrCorruptState
+			}
+			bound[auditID] = struct{}{}
+		}
+	}
+	for auditID, audit := range auditByID {
+		if audit.Action != ActionFenceNode {
+			continue
+		}
+		if _, ok := bound[auditID]; !ok {
+			return ErrCorruptState
+		}
 	}
 	return nil
 }
