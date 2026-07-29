@@ -260,6 +260,11 @@ implementation slices and commits.
 - No real host, network, Authority, repository, production state, deployment,
   qualification, capability promotion, or push occurred.
   `deployment.multi-host` remains `Q=no`.
+- The maintainer accepted exact MR-04 fencing implementation tip
+  `fa942e9f52ea7ae2fc4ddf9db81322fd72732c09` and closed PW3-21. This accepts
+  the bounded R1 fencing transaction only. The canonical MR-04 `Rejoin`
+  behavior remains unimplemented and must be admitted separately before MR-05;
+  `deployment.multi-host` remains `Q=no`.
 
 ## Stream ownership
 

@@ -1,7 +1,7 @@
 # PW3-21: MR-04 fence one Node with crash-resumable evidence
 
 Status: ready-for-human
-State: open
+State: closed
 Labels: ready-for-human
 Research class: R1 local-substitutable failure injection plus deferred R3 host qualification
 
@@ -199,3 +199,10 @@ matching-commit real-host R3 evidence in MR-08 before any support claim.
     R3 composition. No real host, network, Authority, repository, production
     state, qualification, capability promotion, push, or deployment occurred.
     `deployment.multi-host` remains `Q=no`.
+- 2026-07-29 maintainer disposition:
+  - the maintainer explicitly accepted exact MR-04 fencing implementation tip
+    `fa942e9f52ea7ae2fc4ddf9db81322fd72732c09`;
+  - PW3-21 is closed without changing its canonical `ready-for-human` status;
+    this accepts the bounded R1 fencing slice only. It does not accept
+    `recover --rejoin`, production isolation adapters, private-LAN formation,
+    qualification, or any capability promotion. `Q` remains `no`.
