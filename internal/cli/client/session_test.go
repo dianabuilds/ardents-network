@@ -342,31 +342,6 @@ func TestClientCloseContextCannotOutliveCallerDeadline(t *testing.T) {
 	require.Equal(t, SessionKey{}, manager.Status())
 }
 
-func TestClientCloseLocalContextDiscardsSessionWithoutLifecycleCall(t *testing.T) {
-	signer := newSessionTestSigner(t)
-	alpha := sessionTestPrincipal(t, 0x31)
-	auth := &sessionTestAuth{
-		node: alpha, principal: signer.principal, now: sessionTestNow, secretByte: 0x10,
-	}
-	manager := NewSessionManager(auth, signer, alpha, func() time.Time { return sessionTestNow })
-	_, _, err := manager.authorization(context.Background())
-	require.NoError(t, err)
-	closeCalls := 0
-	client := &Client{sessions: manager, close: func(context.Context) error {
-		closeCalls++
-		return nil
-	}}
-
-	require.NoError(t, client.CloseLocalContext(context.Background()))
-
-	require.Zero(t, auth.endCount.Load())
-	require.Equal(t, 1, closeCalls)
-	require.Equal(t, SessionKey{}, manager.Status())
-	manager.mu.Lock()
-	require.Empty(t, manager.entries)
-	manager.mu.Unlock()
-}
-
 func TestSessionManagerRejectsWrongAudienceAndSignerFailureWithoutPublishing(t *testing.T) {
 	signer := newSessionTestSigner(t)
 	alpha := sessionTestPrincipal(t, 0x31)

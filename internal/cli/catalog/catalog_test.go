@@ -46,8 +46,8 @@ func TestTopologyStatusDeclaresEveryProtectedAggregateProcedure(t *testing.T) {
 	require.Equal(t, catalog.AccessProtected, topology.Access)
 	require.True(t, topology.SSH)
 	require.Empty(t, topology.Procedure)
-	require.Len(t, topology.ProcedureRequirements, 3)
-	require.Len(t, catalog.Procedures(topology), 3)
+	require.Len(t, topology.ProcedureRequirements, 4)
+	require.Len(t, catalog.Procedures(topology), 4)
 
 	first := catalog.Commands()
 	first[topologyIndex].ProcedureRequirements[0].Action = "mutated"

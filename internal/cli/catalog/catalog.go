@@ -52,6 +52,7 @@ type CommandSpec struct {
 // command whose constituent procedures have different access metadata.
 type ProcedureRequirement struct {
 	Procedure    string
+	Access       AccessClass
 	Action       string
 	ResourceKind string
 	Mutating     bool
@@ -124,9 +125,10 @@ var commands = []CommandSpec{
 		"--manifest FILE",
 		"show bounded three-Node deployment truth",
 		[]ProcedureRequirement{
-			{Procedure: ardentsv1connect.NodeServiceGetNodeRuntimeProcedure, Action: "node.runtime", ResourceKind: "node"},
-			{Procedure: ardentsv1connect.NetworkServiceGetNetworkStatusProcedure, Action: "transport.network_status", ResourceKind: "network"},
-			{Procedure: ardentsv1connect.NodeServiceGetNodeFeaturesProcedure, Action: "node.features", ResourceKind: "node"},
+			{Procedure: ardentsv1connect.NodeServiceGetNodeRuntimeProcedure, Access: AccessProtected, Action: "node.runtime", ResourceKind: "node"},
+			{Procedure: ardentsv1connect.NetworkServiceGetNetworkStatusProcedure, Access: AccessProtected, Action: "transport.network_status", ResourceKind: "network"},
+			{Procedure: ardentsv1connect.NodeServiceGetNodeFeaturesProcedure, Access: AccessProtected, Action: "node.features", ResourceKind: "node"},
+			{Procedure: ardentsv1connect.IdentityServiceEndSessionProcedure, Access: AccessSessionLifecycle, Mutating: true},
 		},
 		OutputCLIJSON,
 		ownerContract,
@@ -358,7 +360,7 @@ func Validate(specs []CommandSpec, resolve ProcedureResolver) error {
 					if !ok {
 						return fmt.Errorf("command %q procedure %q is not on the Operator surface", spec.ID, requirement.Procedure)
 					}
-					if rule.Access != AccessProtected ||
+					if rule.Access != requirement.Access ||
 						rule.Action != requirement.Action ||
 						rule.ResourceKind != requirement.ResourceKind ||
 						rule.Mutating != requirement.Mutating {
@@ -388,8 +390,20 @@ func Validate(specs []CommandSpec, resolve ProcedureResolver) error {
 func validateProcedureRequirements(spec CommandSpec) error {
 	seen := make(map[string]struct{}, len(spec.ProcedureRequirements))
 	for _, requirement := range spec.ProcedureRequirements {
-		if requirement.Procedure == "" || requirement.Action == "" || requirement.ResourceKind == "" {
+		if requirement.Procedure == "" {
 			return fmt.Errorf("protected aggregate %q has incomplete procedure metadata", spec.ID)
+		}
+		switch requirement.Access {
+		case AccessProtected:
+			if requirement.Action == "" || requirement.ResourceKind == "" {
+				return fmt.Errorf("protected aggregate %q has incomplete protected procedure metadata", spec.ID)
+			}
+		case AccessPublicBounded, AccessSessionLifecycle:
+			if requirement.Action != "" || requirement.ResourceKind != "" {
+				return fmt.Errorf("protected aggregate %q has invalid lifecycle procedure metadata", spec.ID)
+			}
+		default:
+			return fmt.Errorf("protected aggregate %q has invalid procedure access %q", spec.ID, requirement.Access)
 		}
 		if _, duplicate := seen[requirement.Procedure]; duplicate {
 			return fmt.Errorf("protected aggregate %q repeats procedure %q", spec.ID, requirement.Procedure)

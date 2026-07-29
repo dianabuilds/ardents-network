@@ -93,7 +93,8 @@ digests.
 
 - exactly three rows sorted by stable Node slot;
 - stable strings are drawn from closed vocabularies or capped at 128 bytes;
-- no more than three protected calls per Node;
+- no more than three protected product-observation calls per Node; bounded
+  `EndSession` is a separate session-lifecycle cleanup call;
 - no retry except the existing one-refresh Operator Session rule;
 - ordinary output contains slot, role, observation outcome, readiness,
   joined/reachability/Store/image states, and one stable reason code only;

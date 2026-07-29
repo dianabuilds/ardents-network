@@ -349,11 +349,6 @@ func (m *SessionManager) LogoutContext(parent context.Context) error {
 	return logoutErr
 }
 
-// Discard clears local session material without making a lifecycle RPC.
-func (m *SessionManager) Discard() {
-	clearSessionSecrets(m.takeSecrets())
-}
-
 func (m *SessionManager) takeSecrets() []identityaccess.SessionSecret {
 	if m == nil {
 		return nil

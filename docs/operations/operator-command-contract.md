@@ -21,8 +21,10 @@ contract tests probe every catalogue entry through its production parser.
 Runtime dispatch rejects a command path which is not present in the closed
 catalogue before resolving a Principal context or constructing a client.
 Protected aggregate commands declare every constituent procedure separately;
-`topology status` therefore carries the exact runtime, Network status and Node
-features requirements instead of masquerading as a local-only command.
+`topology status` therefore carries the exact runtime, Network status, Node
+features and bounded session-termination requirements instead of masquerading
+as a local-only command. The first three are the complete protected product
+observation budget; `EndSession` is a session-lifecycle cleanup call.
 
 Offline Principal/device/Delegation custody commands use stable
 `offline.identity.*` procedure identifiers and declare neither an RPC/action
