@@ -3,6 +3,7 @@
 package network_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -103,12 +104,13 @@ func TestConstrainedClientCapabilitiesReachCanonicalStatus(t *testing.T) {
 		Data: runtimeprocess.DataConfig{Dir: t.TempDir()},
 		Transport: runtimeprocess.TransportConfig{
 			Profile: networkapi.ProfileTCPOnly, ReachabilityMode: networkapi.ReachabilityOutboundOnly,
+			BindAddress: "127.0.0.1",
 		},
 	})
 
 	scenario.Step("start the constrained product runtime against a full provider", func(t *testing.T) {
 		require.NoError(t, client.Start(t.Context()))
-		t.Cleanup(func() { require.NoError(t, client.Stop(t.Context())) })
+		t.Cleanup(func() { require.NoError(t, client.Stop(context.Background())) })
 	})
 
 	scenario.Assert("canonical status reports observed client capabilities and no inbound claim", func(t *testing.T) {
@@ -145,7 +147,7 @@ func TestConstrainedClientRejectsPeerWithoutRequiredProviderProtocols(t *testing
 		})
 		client.SetBootstrapNodes(incomplete.Endpoints())
 		require.NoError(t, client.Start(ctx))
-		t.Cleanup(func() { require.NoError(t, client.Stop(ctx)) })
+		t.Cleanup(func() { require.NoError(t, client.Stop(context.Background())) })
 		require.False(t, client.BootstrapStatus().Joined)
 		require.Equal(t, "degraded", client.State())
 		require.Contains(t, client.Reason(), "do not provide required Filter, Lightpush, and Store protocols")
