@@ -428,6 +428,22 @@ implementation slices and commits.
   evidence remain MR-08 R3. No capability is promoted;
   `deployment.multi-host` remains `Q=no`.
 
+## MR-08 admission re-audit — 2026-07-29
+
+- PW3-26 is published as `needs-info`. Accepted MR-03 through MR-07 and DR-03
+  compatibility satisfy its implementation/design dependencies.
+- The current clean workspace has no declared release version/matrix,
+  authorized exact-three-host private-LAN/public-direct context bundles,
+  production mutating adapter composition, independent WORM/checkpoint and
+  Node/Authority backup failure domains, hostile-client/WAN/PKI lab,
+  independent release runner or evidence destination.
+- Only one configured SSH host entry is visible and no prior MR-08 artifact or
+  environment binding exists. Local Docker and the known single remote host
+  cannot substitute for the frozen real-host matrix.
+- No qualification attempt or remote mutation was started. PW3-26 remains
+  open, `deployment.multi-host` remains `Q=no`, and the exact protected unblock
+  declaration is recorded in the issue and admission report.
+
 ## Stabilization boundary
 
 Independent DR-06 stabilization covers exactly:
