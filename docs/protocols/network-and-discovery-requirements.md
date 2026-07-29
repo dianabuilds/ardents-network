@@ -266,6 +266,12 @@ The supported `v1` reachability modes are:
 - `public_direct` for operator-managed public ingress with explicit advertised
   TCP or WSS addresses.
 
+In `private_lan`, exactly one configured private literal translated-host TCP
+address remains withheld until a bounded successful probe from a different
+manifest host. Listener bind, an outbound connection, same-host probing, DNS,
+or configuration alone is insufficient. A failed or expired observation
+withdraws the endpoint and cannot be promoted into a public claim.
+
 In `public_direct`, configured addresses remain withheld until libp2p AutoNAT
 peer dialback reports `Public`. A later `Private` or `Unknown` observation must
 withdraw those addresses and expose an explicit degraded reason through the

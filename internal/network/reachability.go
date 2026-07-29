@@ -2,6 +2,14 @@ package network
 
 import "time"
 
+const (
+	// PrivateLANProbeMaxAge bounds how long one cross-host dial observation may
+	// keep a translated-host LAN endpoint publishable.
+	PrivateLANProbeMaxAge = 2 * time.Minute
+	// PrivateLANProbeFutureSkew permits only the accepted bounded clock error.
+	PrivateLANProbeFutureSkew = 30 * time.Second
+)
+
 type ReachabilityMode string
 
 const (
@@ -17,6 +25,22 @@ type ReachabilitySnapshot struct {
 	Reason     string
 	Reachable  bool
 	ObservedAt time.Time
+}
+
+// PrivateLANProbe is protected, source-attributable deployment evidence. It
+// establishes LAN scope only and must not be copied into ordinary status.
+type PrivateLANProbe struct {
+	SourceSlot string
+	TargetSlot string
+	Address    string
+	ObservedAt time.Time
+	Success    bool
+}
+
+// PrivateLANReachability is the optional transport boundary used by the
+// private-LAN deployment adapter without widening the general Service API.
+type PrivateLANReachability interface {
+	ApplyPrivateLANProbe(PrivateLANProbe) error
 }
 
 func NormalizeReachabilityMode(mode ReachabilityMode) ReachabilityMode {

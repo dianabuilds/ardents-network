@@ -97,7 +97,10 @@ Reachability is independent from `joined` and is reported with an explicit mode,
 state, reason, and observation time. Supported modes are:
 
 - `local_only`: loopback-only `local_development` listener;
-- `private_lan`: LAN-scoped `service_node` listener without a public claim;
+- `private_lan`: LAN-scoped `service_node` listener with exactly one private
+  literal translated-host TCP address; the address is withheld until a fresh
+  bounded probe from a different topology host and never creates a public
+  claim;
 - `outbound_only`: joins and uses Waku but publishes no inbound node endpoint;
 - `public_direct`: deployment-managed public ingress whose explicit addresses
   remain unpublished until libp2p AutoNAT peer dialback reports `Public`.
@@ -133,10 +136,12 @@ Operator input:
   newline-separated signed `enrtree://` roots for `service_node`;
 - `ARDENTS_DNS_DISCOVERY_NAMESERVER`: optional DNS resolver IP address used only
   with signed DNS roots; hostnames and address-plus-port values are rejected.
-- `ARDENTS_REACHABILITY_MODE`: `private_lan` (service default), `outbound_only`,
-  `public_direct`, or `local_only` for `local_development`;
-- `ARDENTS_ADVERTISE_ADDRESSES`: at most four public TCP/WSS multiaddrs without
-  `/p2p` identity suffixes; required only by `public_direct`.
+- `ARDENTS_REACHABILITY_MODE`: `outbound_only` (safe service default),
+  `private_lan`, `public_direct`, or `local_only` for `local_development`;
+- `ARDENTS_ADVERTISE_ADDRESSES`: exactly one TCP/WSS multiaddr without a
+  `/p2p` identity suffix for inbound modes: a private literal translated-host
+  address for `private_lan`, or a public IP/DNS address for `public_direct`.
+  Other modes reject configured advertisements.
 
 Signed DNS results are transport-filtered, deduplicated, and capped at 128
 addresses. A refresh replaces the prior in-memory result; disappeared or failed

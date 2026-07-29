@@ -16,7 +16,7 @@ import (
 	wakuNode "github.com/waku-org/go-waku/waku/v2/node"
 )
 
-const maxAdvertiseAddresses = 4
+const maxAdvertiseAddresses = 1
 
 func initialReachability(mode network.ReachabilityMode) network.ReachabilitySnapshot {
 	mode = network.NormalizeReachabilityMode(mode)
@@ -32,8 +32,14 @@ func initialReachability(mode network.ReachabilityMode) network.ReachabilitySnap
 
 func (s *Service) ReachabilitySnapshot() network.ReachabilitySnapshot {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.reachability
+	changed := s.expirePrivateLANProbeLocked(timeNowUTC())
+	snapshot := s.reachability
+	observer := s.reachabilityObs
+	s.mu.Unlock()
+	if changed && observer != nil {
+		go observer()
+	}
+	return snapshot
 }
 
 func (s *Service) SetReachabilityObserver(observer func()) {
@@ -50,11 +56,20 @@ func validateReachabilityConfig(cfg network.Config) error {
 	if len(cfg.AdvertiseAddresses) > maxAdvertiseAddresses {
 		return fmt.Errorf("reachability accepts at most %d advertised addresses", maxAdvertiseAddresses)
 	}
-	if mode != network.ReachabilityPublicDirect && len(cfg.AdvertiseAddresses) > 0 {
+	if mode == network.ReachabilityPrivateLAN &&
+		network.NormalizeNodeProfile(cfg.NodeProfile) == network.NodeProfileServiceNode &&
+		len(cfg.AdvertiseAddresses) != 1 {
+		return fmt.Errorf("reachability mode %q requires exactly one private advertised address", mode)
+	}
+	if mode != network.ReachabilityPublicDirect && mode != network.ReachabilityPrivateLAN &&
+		len(cfg.AdvertiseAddresses) > 0 {
 		return fmt.Errorf("reachability mode %q does not accept public advertised addresses", mode)
 	}
 	if mode == network.ReachabilityPublicDirect && len(cfg.AdvertiseAddresses) == 0 {
 		return fmt.Errorf("reachability mode %q requires at least one public advertised address", mode)
+	}
+	if mode == network.ReachabilityPublicDirect && len(cfg.AdvertiseAddresses) > 1 {
+		return fmt.Errorf("reachability mode %q requires exactly one public advertised address", mode)
 	}
 	seen := make(map[string]struct{}, len(cfg.AdvertiseAddresses))
 	for _, raw := range cfg.AdvertiseAddresses {
@@ -62,13 +77,20 @@ func validateReachabilityConfig(cfg network.Config) error {
 		parsed, err := ma.NewMultiaddr(address)
 		if err != nil || !strings.Contains(address, "/tcp/") || strings.Contains(address, "/p2p/") ||
 			strings.Contains(address, "/p2p-circuit") {
-			return fmt.Errorf("public advertised address must be a TCP multiaddr without a peer ID")
+			return fmt.Errorf("advertised address must be a TCP multiaddr without a peer ID")
 		}
-		if !publicMultiaddrHost(parsed) {
-			return fmt.Errorf("public advertised address must use a public IP or DNS name")
+		switch mode {
+		case network.ReachabilityPrivateLAN:
+			if !privateLiteralMultiaddrHost(parsed) {
+				return fmt.Errorf("private advertised address must use a private literal IP")
+			}
+		case network.ReachabilityPublicDirect:
+			if !publicMultiaddrHost(parsed) {
+				return fmt.Errorf("public advertised address must use a public IP or DNS name")
+			}
 		}
 		if !allowedDiscoveredAddress(address, network.NormalizeProfile(cfg.Profile)) {
-			return fmt.Errorf("public advertised address is incompatible with the active transport profile")
+			return fmt.Errorf("advertised address is incompatible with the active transport profile")
 		}
 		if isSecureWebsocketEndpoint(address) && !matchesWSSAdvertisement(parsed, cfg) {
 			return fmt.Errorf("public secure websocket address must match the configured certificate host and port")
@@ -86,6 +108,18 @@ func matchesWSSAdvertisement(address ma.Multiaddr, cfg network.Config) bool {
 	port, err := address.ValueForProtocol(ma.P_TCP)
 	return err == nil && strings.EqualFold(host, strings.TrimSpace(cfg.WSSAdvertiseAddress)) &&
 		port == fmt.Sprintf("%d", cfg.WSSPort)
+}
+
+func privateLiteralMultiaddrHost(address ma.Multiaddr) bool {
+	for _, protocol := range []int{ma.P_IP4, ma.P_IP6} {
+		raw, err := address.ValueForProtocol(protocol)
+		if err == nil {
+			ip := net.ParseIP(raw)
+			return ip != nil && ip.IsPrivate() && !ip.IsUnspecified() &&
+				!ip.IsLoopback()
+		}
+	}
+	return false
 }
 
 func multiaddrHost(address ma.Multiaddr) string {
@@ -127,16 +161,100 @@ func (s *Service) markBoundReachabilityLocked() {
 	switch s.reachability.Mode {
 	case network.ReachabilityLocalOnly:
 		s.setReachabilityLocked("local", "local listener is active", true, timeNowUTC())
-	case network.ReachabilityPrivateLAN:
-		s.setReachabilityLocked("lan", "LAN listener is active; public ingress is not claimed", true, timeNowUTC())
 	}
 }
 
 func (s *Service) publishableEndpointsLocked() []string {
-	if s.reachability.Mode == network.ReachabilityPublicDirect && !s.reachability.Reachable {
+	s.expirePrivateLANProbeLocked(timeNowUTC())
+	if (s.reachability.Mode == network.ReachabilityPublicDirect ||
+		s.reachability.Mode == network.ReachabilityPrivateLAN) &&
+		len(s.cfg.AdvertiseAddresses) > 0 && !s.reachability.Reachable {
 		return nil
 	}
 	return s.endpoints
+}
+
+// ApplyPrivateLANProbe admits or withdraws the exact translated-host endpoint
+// after one bounded observation from a distinct topology slot.
+func (s *Service) ApplyPrivateLANProbe(probe network.PrivateLANProbe) error {
+	now := timeNowUTC()
+	s.mu.Lock()
+	if s.reachability.Mode != network.ReachabilityPrivateLAN {
+		s.mu.Unlock()
+		return fmt.Errorf("private LAN probe is incompatible with reachability mode")
+	}
+	if strings.TrimSpace(probe.SourceSlot) == "" ||
+		strings.TrimSpace(probe.TargetSlot) == "" ||
+		!validPrivateLANProbeSlot(probe.SourceSlot) ||
+		!validPrivateLANProbeSlot(probe.TargetSlot) ||
+		probe.SourceSlot == probe.TargetSlot {
+		s.mu.Unlock()
+		return fmt.Errorf("private LAN probe requires distinct source and target slots")
+	}
+	if len(s.cfg.AdvertiseAddresses) != 1 ||
+		strings.TrimSpace(probe.Address) != strings.TrimSpace(s.cfg.AdvertiseAddresses[0]) {
+		s.mu.Unlock()
+		return fmt.Errorf("private LAN probe address does not match configured advertisement")
+	}
+	observedAt := probe.ObservedAt.UTC()
+	if observedAt.IsZero() || observedAt.Before(now.Add(-network.PrivateLANProbeMaxAge)) ||
+		observedAt.After(now.Add(network.PrivateLANProbeFutureSkew)) {
+		s.mu.Unlock()
+		return fmt.Errorf("private LAN probe observation is outside the freshness window")
+	}
+	if probe.Success {
+		s.privateLANProbeUntil = observedAt.Add(network.PrivateLANProbeMaxAge)
+		s.setReachabilityLocked(
+			"lan",
+			"cross-host LAN probe succeeded; public ingress is not claimed",
+			true,
+			observedAt,
+		)
+	} else {
+		s.privateLANProbeUntil = time.Time{}
+		s.setReachabilityLocked(
+			"unknown",
+			"cross-host LAN probe failed",
+			false,
+			observedAt,
+		)
+	}
+	s.reconcileRuntimeLocked(now)
+	observer := s.reachabilityObs
+	s.mu.Unlock()
+	if observer != nil {
+		go observer()
+	}
+	return nil
+}
+
+func validPrivateLANProbeSlot(value string) bool {
+	if len(value) < 1 || len(value) > 32 || value[0] < 'a' || value[0] > 'z' {
+		return false
+	}
+	for index := 1; index < len(value); index++ {
+		current := value[index]
+		if (current < 'a' || current > 'z') &&
+			(current < '0' || current > '9') && current != '-' {
+			return false
+		}
+	}
+	return true
+}
+
+func (s *Service) expirePrivateLANProbeLocked(now time.Time) bool {
+	if s.reachability.Mode != network.ReachabilityPrivateLAN ||
+		s.privateLANProbeUntil.IsZero() || now.Before(s.privateLANProbeUntil) {
+		return false
+	}
+	s.privateLANProbeUntil = time.Time{}
+	s.setReachabilityLocked(
+		"unknown",
+		"cross-host LAN probe expired",
+		false,
+		now,
+	)
+	return true
 }
 
 func reachabilityLibP2POptions(cfg network.Config) ([]libp2p.Option, error) {
@@ -163,6 +281,7 @@ func reachabilityLibP2POptions(cfg network.Config) ([]libp2p.Option, error) {
 
 func (s *Service) startReachabilityObservationLocked(node *wakuNode.WakuNode) error {
 	s.reachability = initialReachability(s.cfg.ReachabilityMode)
+	s.privateLANProbeUntil = time.Time{}
 	if s.reachability.Mode != network.ReachabilityPublicDirect {
 		return nil
 	}
@@ -193,7 +312,8 @@ func publishedEndpoints(node *wakuNode.WakuNode, cfg network.Config) []string {
 	if mode == network.ReachabilityOutboundOnly {
 		return nil
 	}
-	if mode == network.ReachabilityPublicDirect {
+	if mode == network.ReachabilityPublicDirect ||
+		mode == network.ReachabilityPrivateLAN && len(cfg.AdvertiseAddresses) > 0 {
 		addresses := make([]ma.Multiaddr, 0, len(cfg.AdvertiseAddresses))
 		for _, raw := range cfg.AdvertiseAddresses {
 			address, err := ma.NewMultiaddr(strings.TrimSpace(raw))

@@ -112,6 +112,7 @@ func (s *Service) Stop(_ context.Context) error {
 	s.dnsDiscoveryError = ""
 	s.lastDNSRefresh = time.Time{}
 	s.reachability = initialReachability(s.cfg.ReachabilityMode)
+	s.privateLANProbeUntil = time.Time{}
 	s.activeMode = network.ModeSteady
 	s.switchReason = network.SwitchReasonStopped
 	s.switchAuto = false

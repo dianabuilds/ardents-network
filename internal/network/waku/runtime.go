@@ -122,11 +122,16 @@ func (s *Service) handleRuntimeTick(ctx context.Context) bool {
 		s.mu.Unlock()
 		return false
 	}
+	reachabilityChanged := s.expirePrivateLANProbeLocked(now)
 	s.reconcileRuntimeLocked(now)
 	restartMode := s.modeRestartPending
 	refreshDNS := s.shouldRefreshDNSLocked(now)
 	retryBootstrap := s.shouldRetryBootstrapLocked(now)
+	observer := s.reachabilityObs
 	s.mu.Unlock()
+	if reachabilityChanged && observer != nil {
+		go observer()
+	}
 	if restartMode {
 		return s.restartForActiveMode(ctx)
 	}

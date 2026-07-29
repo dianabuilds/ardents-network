@@ -161,6 +161,7 @@ type Service struct {
 	lastDNSRefresh       time.Time
 	dnsDiscovery         dnsPeerDiscovery
 	reachability         network.ReachabilitySnapshot
+	privateLANProbeUntil time.Time
 	reachabilityEvents   libp2pevent.Subscription
 	reachabilityObs      func()
 	bootstrapObs         func(network.BootstrapDialReport)

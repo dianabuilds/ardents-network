@@ -97,6 +97,27 @@ func TestPublicDirectRequiresExplicitPublicAddress(t *testing.T) {
 	require.ErrorContains(t, err, "requires at least one public advertised address")
 }
 
+func TestPrivateLANServiceRequiresExplicitTranslatedHostAddress(t *testing.T) {
+	err := ValidateConfig(Config{
+		NodeProfile: networkapi.NodeProfileServiceNode,
+		Transport: TransportConfig{
+			BindAddress:      "0.0.0.0",
+			ReachabilityMode: networkapi.ReachabilityPrivateLAN,
+		},
+	})
+	require.ErrorContains(t, err, "requires exactly one private advertised address")
+
+	err = ValidateConfig(Config{
+		NodeProfile: networkapi.NodeProfileServiceNode,
+		Transport: TransportConfig{
+			BindAddress:        "0.0.0.0",
+			ReachabilityMode:   networkapi.ReachabilityPrivateLAN,
+			AdvertiseAddresses: []string{"/ip4/10.23.0.11/tcp/60000"},
+		},
+	})
+	require.NoError(t, err)
+}
+
 func TestBrowserReachabilityModeIsRejected(t *testing.T) {
 	err := ValidateConfig(Config{
 		NodeProfile: networkapi.NodeProfileServiceNode,

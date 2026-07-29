@@ -17,7 +17,7 @@ func Defaults() Document {
 		API:        APIConfig{SocketPath: "/run/ardents/control.sock"},
 		Network: NetworkConfig{
 			TransportProfile: "tcp_only", BindAddress: "0.0.0.0",
-			StorePath: "var/ardents/waku-store.db", ReachabilityMode: "private_lan",
+			StorePath: "var/ardents/waku-store.db", ReachabilityMode: "outbound_only",
 			DiscoveryRefreshSeconds: 30,
 			Limits: NetworkLimits{
 				MaxMessageBytes: 143360, MaxPeerConnections: 64, MaxConnectionsPerIP: 4,

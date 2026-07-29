@@ -19,6 +19,7 @@ func TestDecodeAppliesVersionedDefaults(t *testing.T) {
 	require.Equal(t, "var/node-a/waku-store.db", filepath.ToSlash(doc.Network.StorePath))
 	require.Equal(t, "service_node", doc.Node.Profile)
 	require.Equal(t, "tcp_only", doc.Network.TransportProfile)
+	require.Equal(t, "outbound_only", doc.Network.ReachabilityMode)
 	require.Equal(t, 100000, doc.Network.Limits.StoreMaxMessages)
 	require.Equal(t, 7*24*60*60, doc.Network.Limits.StoreMaxAgeSeconds)
 	require.Equal(t, int64(2<<30), doc.Network.Limits.StoreMaxBytes)
