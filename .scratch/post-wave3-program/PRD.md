@@ -302,6 +302,23 @@ implementation slices and commits.
   qualification claims remain deferred to R3; `deployment.multi-host`
   remains `Q=no`.
 
+## MR-04b implementation acceptance checkpoint — 2026-07-29
+
+- Exact implementation tip
+  `94e291f7ccfe2539536d6f5525cf9fdafa3ec729` is accepted and PW3-22 is closed.
+- The bounded R1 slice provides a strict Rejoin Transaction, six
+  consumer-owned seams, exact terminal Fence/removal/channel binding,
+  all-recipient fresh delivery before activation, phase-truthful recovery,
+  mandatory isolation before ambiguous resume, three-host clock validation,
+  Authority safety margin, and redacted status.
+- Independent Standards and Spec reviews pass after correction of the
+  removal-channel binding, isolation gate, pre-persistence ambiguity window,
+  and production journal backtrack.
+- Full tests, focused race, vet, tooling, capability catalogue, API generation,
+  diff checks, and vulnerability checks pass. This completes bounded MR-04
+  behavior but does not supply real host adapters or R3 qualification;
+  `deployment.multi-host` remains `Q=no`.
+
 ## Stream ownership
 
 - The integrator alone edits this PRD, the Wave 3 decision register, the

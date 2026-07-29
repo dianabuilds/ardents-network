@@ -1,8 +1,8 @@
 # PW3-22: MR-04b rejoin one fenced Node through fresh Authority truth
 
-Status: ready-for-agent
-State: open
-Labels: ready-for-agent
+Status: ready-for-human
+State: closed
+Labels: ready-for-human
 Research class: R1 local-substitutable recovery injection plus deferred R3 host qualification
 
 ## Parent
@@ -168,32 +168,32 @@ a second membership ledger, fake production support, or a remote shell.
 
 ## Acceptance criteria
 
-- [ ] Invalid manifest, Actor, request, target, prior fence, or removal binding
+- [x] Invalid manifest, Actor, request, target, prior fence, or removal binding
       causes no Authority, restoration, or target mutation.
-- [ ] The Rejoin Transaction is durable before the first Authority or
+- [x] The Rejoin Transaction is durable before the first Authority or
       configuration mutation; the terminal Fence Transaction is never changed.
-- [ ] Rejoin requires a distinct membership-add operation, strictly newer
+- [x] Rejoin requires a distinct membership-add operation, strictly newer
       generation, repository-persisted prepare/activation/completion
       checkpoints, fresh recipient attestations, and fresh deliveries installed
       on all three Nodes; the target prepares/installs while quarantined and
       exactly two survivor active receipts precede restoration.
-- [ ] Old grants, prior receipts, fence evidence, or the removal checkpoint can
+- [x] Old grants, prior receipts, fence evidence, or the removal checkpoint can
       never satisfy fresh target authority or terminal readiness.
-- [ ] Crash and ambiguous-call recovery is deterministic at every phase and
+- [x] Crash and ambiguous-call recovery is deterministic at every phase and
       never repeats a completed irreversible effect.
-- [ ] Before activation commit, failure re-establishes isolation while the old
+- [x] Before activation commit, failure re-establishes isolation while the old
       removal remains current and the same add resumes.
-- [ ] From activation commit onward, restoration/start/readiness failure
+- [x] From activation commit onward, restoration/start/readiness failure
       re-establishes isolation while fresh membership remains current but
       incomplete. Ambiguous target acknowledgement is re-isolated and
       reconciled without falsely reporting `fenced` or `rejoined`.
-- [ ] Target Principal, Waku identity, image, clock, joined truth, composite
+- [x] Target Principal, Waku identity, image, clock, joined truth, composite
       readiness, target active receipt, and final Authority result must all
       match the admitted manifest and fresh generation.
-- [ ] Journal and ordinary status preserve the protected-data boundary.
-- [ ] Contract, restart, compensation, security-negative, full, race, tooling,
+- [x] Journal and ordinary status preserve the protected-data boundary.
+- [x] Contract, restart, compensation, security-negative, full, race, tooling,
       architecture, capability, and API-generation checks pass.
-- [ ] `deployment.multi-host` remains `Q=no`.
+- [x] `deployment.multi-host` remains `Q=no`.
 
 ## Out of scope
 
@@ -265,3 +265,16 @@ a second membership ledger, fake production support, or a remote shell.
     amendment; the Rejoin ordering is now canonical and PW3-22 is
     `ready-for-agent`. This transition authorizes only the bounded R1
     implementation and changes no capability qualification.
+  - bounded MR-04b implementation is accepted at exact tip
+    `94e291f7ccfe2539536d6f5525cf9fdafa3ec729`. It adds the six consumer-owned
+    seams, strict `topology-rejoin-transaction/v1` persistence, all-recipient
+    fresh delivery, phase-truthful isolation recovery, exact removal-channel
+    binding, all-host clock and Authority-margin validation, and bounded
+    ordinary status;
+  - independent Standards and Spec reviews pass after all findings were fixed.
+    Focused and full tests, focused race, vet, tooling, capability catalogue,
+    API generation, diff checks, and `govulncheck` pass;
+  - outcome: accepted and closed. This is R1 coordination evidence only; no
+    production host/network adapter, real three-host qualification, capability
+    promotion, push, or deployment occurred. `deployment.multi-host` remains
+    `Q=no`.
