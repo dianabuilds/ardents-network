@@ -145,9 +145,9 @@ type RejoinFinalResult struct {
 }
 
 type RejoinPreflightResult struct {
-	ObservedAt      time.Time
-	ClockSkewSecond int64
-	Isolated        bool
+	HostObservedAt    map[string]time.Time
+	AuthorityNotAfter time.Time
+	Isolated          bool
 }
 
 type RejoinTargetObservation struct {
@@ -193,6 +193,7 @@ type RejoinTransaction struct {
 	FailureReason              RejoinFailureReason          `json:"failure_reason,omitempty"`
 	ClockObservedAt            time.Time                    `json:"clock_observed_at,omitempty"`
 	ClockSkewSecond            int64                        `json:"clock_skew_seconds,omitempty"`
+	IsolationConfirmed         bool                         `json:"isolation_confirmed,omitempty"`
 	TargetObserved             bool                         `json:"target_observed,omitempty"`
 	Attestations               map[string]RejoinAttestation `json:"attestations,omitempty"`
 	OperationID                string                       `json:"operation_id,omitempty"`
@@ -336,9 +337,29 @@ func (coordinator RejoinCoordinator) Rejoin(
 	if transaction.Phase == RejoinPhaseRejoined {
 		return rejoinStatus(transaction), nil
 	}
+	if found && transaction.Phase == RejoinPhaseTargetAcknowledgementPending {
+		return coordinator.fail(
+			ctx, &transaction, target, RejoinPhaseRestorationPending,
+			RejoinFailureTargetReceiptMismatch,
+		)
+	}
 	if transaction.Phase == RejoinPhaseRecoveryRequired {
 		if !resumableRejoinPhase(transaction.ResumeFrom) {
 			return RejoinStatus{}, ErrRejoinJournalInvalid
+		}
+		if err := coordinator.Restoration.Reisolate(ctx, target); err != nil {
+			transaction.IsolationConfirmed = false
+			transaction.FailureReason = dependencyRejoinReason(
+				err, RejoinFailureIsolationUnavailable,
+			)
+			if err := persistRejoin(ctx, coordinator.Journal, &transaction); err != nil {
+				return RejoinStatus{}, err
+			}
+			return rejoinStatus(transaction), nil
+		}
+		transaction.IsolationConfirmed = true
+		if err := persistRejoin(ctx, coordinator.Journal, &transaction); err != nil {
+			return RejoinStatus{}, err
 		}
 		transaction.Phase = transaction.ResumeFrom
 		transaction.ResumeFrom = ""
@@ -365,14 +386,18 @@ func (coordinator RejoinCoordinator) Rejoin(
 					dependencyRejoinReason(err, RejoinFailureIsolationUnavailable),
 				)
 			}
-			if !validRejoinPreflight(result, request, manifest) {
+			observedAt, clockSkew, valid := validRejoinPreflight(
+				result, request, manifest,
+			)
+			if !valid {
 				return coordinator.fail(
 					ctx, &transaction, target, RejoinPhaseRequested,
 					RejoinFailureClockSkew,
 				)
 			}
-			transaction.ClockObservedAt = result.ObservedAt.UTC()
-			transaction.ClockSkewSecond = result.ClockSkewSecond
+			transaction.ClockObservedAt = observedAt
+			transaction.ClockSkewSecond = clockSkew
+			transaction.IsolationConfirmed = true
 			transaction.Phase = RejoinPhasePreflightPersisted
 			if err := persistRejoin(ctx, coordinator.Journal, &transaction); err != nil {
 				return RejoinStatus{}, err
@@ -394,7 +419,9 @@ func (coordinator RejoinCoordinator) Rejoin(
 			}
 			transaction.TargetObserved = true
 			transaction.Phase = RejoinPhaseTargetQuarantined
-			if err := persistRejoin(ctx, coordinator.Journal, &transaction); err != nil {
+			if err := coordinator.persistAfterEffect(
+				ctx, &transaction, target,
+			); err != nil {
 				return RejoinStatus{}, err
 			}
 
@@ -414,7 +441,9 @@ func (coordinator RejoinCoordinator) Rejoin(
 			}
 			transaction.Attestations = cloneRejoinAttestations(attestations)
 			transaction.Phase = RejoinPhaseAttestationsPrepared
-			if err := persistRejoin(ctx, coordinator.Journal, &transaction); err != nil {
+			if err := coordinator.persistAfterEffect(
+				ctx, &transaction, target,
+			); err != nil {
 				return RejoinStatus{}, err
 			}
 
@@ -446,7 +475,9 @@ func (coordinator RejoinCoordinator) Rejoin(
 			transaction.PrepareCheckpointDigest = preparation.CheckpointDigest
 			transaction.RepositoryPersisted = preparation.RepositoryPersisted
 			transaction.Phase = RejoinPhaseDeliveriesPrepared
-			if err := persistRejoin(ctx, coordinator.Journal, &transaction); err != nil {
+			if err := coordinator.persistAfterEffect(
+				ctx, &transaction, target,
+			); err != nil {
 				return RejoinStatus{}, err
 			}
 
@@ -468,7 +499,9 @@ func (coordinator RejoinCoordinator) Rejoin(
 			}
 			transaction.DeliveryReceipts = cloneStringMap(receipts)
 			transaction.Phase = RejoinPhaseDeliveriesInstalled
-			if err := persistRejoin(ctx, coordinator.Journal, &transaction); err != nil {
+			if err := coordinator.persistAfterEffect(
+				ctx, &transaction, target,
+			); err != nil {
 				return RejoinStatus{}, err
 			}
 
@@ -491,7 +524,9 @@ func (coordinator RejoinCoordinator) Rejoin(
 			transaction.ActivationCheckpointDigest = result.CheckpointDigest
 			transaction.RepositoryPersisted = result.RepositoryPersisted
 			transaction.Phase = RejoinPhaseActivationCommitted
-			if err := persistRejoin(ctx, coordinator.Journal, &transaction); err != nil {
+			if err := coordinator.persistAfterEffect(
+				ctx, &transaction, target,
+			); err != nil {
 				return RejoinStatus{}, err
 			}
 
@@ -522,7 +557,9 @@ func (coordinator RejoinCoordinator) Rejoin(
 			}
 			transaction.SurvivorReceipts = cloneStringMap(receipts)
 			transaction.Phase = RejoinPhaseSurvivorsAcknowledged
-			if err := persistRejoin(ctx, coordinator.Journal, &transaction); err != nil {
+			if err := coordinator.persistAfterEffect(
+				ctx, &transaction, target,
+			); err != nil {
 				return RejoinStatus{}, err
 			}
 
@@ -541,7 +578,10 @@ func (coordinator RejoinCoordinator) Rejoin(
 					)
 				}
 				transaction.RestorationApplied = true
-				if err := persistRejoin(ctx, coordinator.Journal, &transaction); err != nil {
+				transaction.IsolationConfirmed = false
+				if err := coordinator.persistAfterEffect(
+					ctx, &transaction, target,
+				); err != nil {
 					return RejoinStatus{}, err
 				}
 			}
@@ -562,7 +602,9 @@ func (coordinator RejoinCoordinator) Rejoin(
 			}
 			transaction.ReadinessVerified = true
 			transaction.Phase = RejoinPhaseReadinessVerified
-			if err := persistRejoin(ctx, coordinator.Journal, &transaction); err != nil {
+			if err := coordinator.persistAfterEffect(
+				ctx, &transaction, target,
+			); err != nil {
 				return RejoinStatus{}, err
 			}
 
@@ -607,7 +649,9 @@ func (coordinator RejoinCoordinator) Rejoin(
 			transaction.FinalCheckpointDigest = result.CheckpointDigest
 			transaction.RepositoryPersisted = result.RepositoryPersisted
 			transaction.Phase = RejoinPhaseCheckpointPersisted
-			if err := persistRejoin(ctx, coordinator.Journal, &transaction); err != nil {
+			if err := coordinator.persistAfterEffect(
+				ctx, &transaction, target,
+			); err != nil {
 				return RejoinStatus{}, err
 			}
 
@@ -633,20 +677,36 @@ func (coordinator RejoinCoordinator) fail(
 	resume RejoinPhase,
 	reason RejoinFailureReason,
 ) (RejoinStatus, error) {
+	isolationConfirmed := false
 	if rejoinPhaseOrder(resume) >= rejoinPhaseOrder(RejoinPhasePreflightPersisted) {
 		if err := coordinator.Restoration.Reisolate(ctx, target); err != nil {
 			reason = dependencyRejoinReason(err, RejoinFailureIsolationUnavailable)
+		} else {
+			isolationConfirmed = true
 		}
 	}
 	transaction.Phase = RejoinPhaseRecoveryRequired
 	transaction.ResumeFrom = resume
 	transaction.FailureReason = reason
+	transaction.IsolationConfirmed = isolationConfirmed
 	transaction.RestorationApplied = false
 	transaction.ReadinessVerified = false
 	if err := persistRejoin(ctx, coordinator.Journal, transaction); err != nil {
 		return RejoinStatus{}, err
 	}
 	return rejoinStatus(*transaction), nil
+}
+
+func (coordinator RejoinCoordinator) persistAfterEffect(
+	ctx context.Context,
+	transaction *RejoinTransaction,
+	target RejoinTarget,
+) error {
+	if err := persistRejoin(ctx, coordinator.Journal, transaction); err != nil {
+		_ = coordinator.Restoration.Reisolate(ctx, target)
+		return err
+	}
+	return nil
 }
 
 func validateRejoinRequest(
@@ -689,6 +749,7 @@ func validateRejoinRequest(
 		request.Fence.Phase != FencePhaseFenced ||
 		request.Fence.TargetSlot != request.TargetSlot ||
 		request.Fence.ManifestDigest != canonicalFenceManifestDigest(manifest) ||
+		request.Fence.AuthorityChannelID != request.ChannelID ||
 		request.Fence.ExpectedPrincipalHash != hashFenceValue([]byte(target.ExpectedNodePrincipal)) ||
 		request.Fence.ExpectedWakuPeerIDHash != hashFenceValue([]byte(target.ExpectedWakuPeerID)) ||
 		request.Fence.OperationID == "" || request.Fence.EvidenceDigest == "" ||
@@ -760,15 +821,36 @@ func validRejoinPreflight(
 	result RejoinPreflightResult,
 	request RejoinRequest,
 	manifest topologyManifest,
-) bool {
-	skew := result.ClockSkewSecond
-	if skew < 0 {
-		skew = -skew
+) (time.Time, int64, bool) {
+	if !result.Isolated || len(result.HostObservedAt) != len(manifest.Nodes) ||
+		result.AuthorityNotAfter.IsZero() {
+		return time.Time{}, 0, false
 	}
-	return result.Isolated && !result.ObservedAt.IsZero() &&
-		!result.ObservedAt.Before(request.StartedAt) &&
-		!result.ObservedAt.After(request.Deadline) &&
-		skew <= int64(manifest.Clock.MaxSkewSeconds)
+	var earliest, latest time.Time
+	for _, node := range manifest.Nodes {
+		observedAt, ok := result.HostObservedAt[node.Slot]
+		observedAt = observedAt.UTC()
+		if !ok || observedAt.IsZero() || observedAt.Nanosecond() != 0 ||
+			observedAt.Before(request.StartedAt) ||
+			observedAt.After(request.Deadline) {
+			return time.Time{}, 0, false
+		}
+		if earliest.IsZero() || observedAt.Before(earliest) {
+			earliest = observedAt
+		}
+		if latest.IsZero() || observedAt.After(latest) {
+			latest = observedAt
+		}
+	}
+	skew := int64(latest.Sub(earliest) / time.Second)
+	margin := time.Duration(
+		manifest.Clock.AuthoritySafetyMarginSeconds,
+	) * time.Second
+	if skew > int64(manifest.Clock.MaxSkewSeconds) ||
+		result.AuthorityNotAfter.UTC().Before(latest.Add(margin)) {
+		return time.Time{}, 0, false
+	}
+	return latest, skew, true
 }
 
 func validRejoinTargetObservation(
@@ -951,6 +1033,17 @@ func ValidateRejoinTransaction(transaction RejoinTransaction) error {
 	}
 	if order >= rejoinPhaseOrder(RejoinPhasePreflightPersisted) &&
 		transaction.ClockObservedAt.IsZero() {
+		return ErrRejoinJournalInvalid
+	}
+	if transaction.Phase != RejoinPhaseRecoveryRequired &&
+		order >= rejoinPhaseOrder(RejoinPhasePreflightPersisted) &&
+		order <= rejoinPhaseOrder(RejoinPhaseSurvivorsAcknowledged) &&
+		!transaction.IsolationConfirmed {
+		return ErrRejoinJournalInvalid
+	}
+	if transaction.Phase != RejoinPhaseRecoveryRequired &&
+		order >= rejoinPhaseOrder(RejoinPhaseReadinessVerified) &&
+		transaction.IsolationConfirmed {
 		return ErrRejoinJournalInvalid
 	}
 	if order >= rejoinPhaseOrder(RejoinPhaseTargetQuarantined) &&
@@ -1141,13 +1234,19 @@ func validRejoinPhaseTransition(
 	next RejoinTransaction,
 ) bool {
 	if next.Phase == RejoinPhaseRecoveryRequired {
+		if previous.Phase == RejoinPhaseRecoveryRequired {
+			return next.ResumeFrom == previous.ResumeFrom &&
+				next.FailureReason != "" &&
+				(!previous.IsolationConfirmed || next.IsolationConfirmed)
+		}
 		return next.ResumeFrom == previous.Phase && next.FailureReason != "" &&
 			previous.Phase != RejoinPhaseRejoined &&
 			previous.Phase != RejoinPhaseRecoveryRequired
 	}
 	if previous.Phase == RejoinPhaseRecoveryRequired {
 		return next.Phase == previous.ResumeFrom &&
-			next.ResumeFrom == "" && next.FailureReason == ""
+			next.ResumeFrom == "" && next.FailureReason == "" &&
+			previous.IsolationConfirmed
 	}
 	if previous.Phase == RejoinPhaseRestorationPending &&
 		next.Phase == RejoinPhaseRestorationPending {

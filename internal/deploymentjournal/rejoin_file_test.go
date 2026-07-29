@@ -51,6 +51,7 @@ func TestRejoinFileRoundTripRejectsUnknownAndBindingOverwrite(t *testing.T) {
 	next.Phase = deployment.RejoinPhasePreflightPersisted
 	next.ClockObservedAt = now
 	next.ClockSkewSecond = 7
+	next.IsolationConfirmed = true
 	require.NoError(t, store.Save(context.Background(), transaction.Revision, next))
 
 	other := next

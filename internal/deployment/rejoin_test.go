@@ -88,6 +88,16 @@ func TestRejoinCoordinatorRejectsFenceBindingBeforeMutation(t *testing.T) {
 	require.Zero(t, members.attestCalls)
 	require.Zero(t, authority.prepareCalls)
 	require.Zero(t, readiness.verifyCalls)
+
+	request = validRejoinRequest(t)
+	request.ChannelID = "ffeeddccbbaa00998877665544332211"
+	_, err = (RejoinCoordinator{
+		Journal: store, Restoration: restoration, Members: members,
+		Authority: authority, Readiness: readiness,
+		Clock: func() time.Time { return request.StartedAt },
+	}).Rejoin(context.Background(), request)
+	require.ErrorIs(t, err, ErrRejoinJournalBinding)
+	require.Nil(t, store.current)
 }
 
 func TestRejoinCoordinatorPreservesPhaseTruthAcrossActivationCommit(t *testing.T) {
@@ -216,6 +226,10 @@ func TestRejoinCoordinatorResumesAfterEveryDurableBoundary(t *testing.T) {
 			require.ErrorIs(t, err, errRejoinCrash)
 			status, err := coordinator.Rejoin(context.Background(), request)
 			require.NoError(t, err)
+			if status.Outcome == RejoinOutcomeRecoveryRequired {
+				status, err = coordinator.Rejoin(context.Background(), request)
+				require.NoError(t, err)
+			}
 			require.Equal(t, RejoinOutcomeRejoined, status.Outcome)
 			require.Equal(t, RejoinPhaseRejoined, status.Phase)
 		})
@@ -356,6 +370,122 @@ func TestRejoinCoordinatorRejectsTamperedPersistedRecipientState(t *testing.T) {
 	require.Zero(t, readiness.verifyCalls)
 }
 
+func TestRejoinCoordinatorRequiresAllHostClocksAndAuthorityMargin(t *testing.T) {
+	request := validRejoinRequest(t)
+	tests := []struct {
+		name      string
+		preflight RejoinPreflightResult
+	}{
+		{
+			name: "missing manifest host clock",
+			preflight: RejoinPreflightResult{
+				Isolated: true,
+				HostObservedAt: map[string]time.Time{
+					"node-a": request.StartedAt,
+					"node-b": request.StartedAt.Add(5 * time.Second),
+				},
+				AuthorityNotAfter: request.StartedAt.Add(5 * time.Minute),
+			},
+		},
+		{
+			name: "authority margin too short",
+			preflight: RejoinPreflightResult{
+				Isolated: true,
+				HostObservedAt: map[string]time.Time{
+					"node-a": request.StartedAt,
+					"node-b": request.StartedAt.Add(5 * time.Second),
+					"node-c": request.StartedAt.Add(10 * time.Second),
+				},
+				AuthorityNotAfter: request.StartedAt.Add(69 * time.Second),
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			restoration := &fakeRejoinRestoration{preflightResult: &test.preflight}
+			status, err := (RejoinCoordinator{
+				Journal: &memoryRejoinJournal{}, Restoration: restoration,
+				Members: &fakeRejoinMembers{}, Authority: &fakeRejoinAuthority{},
+				Readiness: &fakeRejoinReadiness{},
+				Clock:     func() time.Time { return request.StartedAt },
+			}).Rejoin(context.Background(), request)
+			require.NoError(t, err)
+			require.Equal(t, RejoinOutcomeRecoveryRequired, status.Outcome)
+			require.Equal(t, RejoinFailureClockSkew, status.Reason)
+			require.Zero(t, restoration.startCalls)
+		})
+	}
+}
+
+func TestRejoinRecoveryWaitsForConfirmedIsolation(t *testing.T) {
+	request := validRejoinRequest(t)
+	store := &memoryRejoinJournal{}
+	restoration := &fakeRejoinRestoration{
+		reisolateErr: RejoinDependencyError(RejoinFailureIsolationUnavailable),
+	}
+	members := &fakeRejoinMembers{
+		survivorErr: RejoinDependencyError(RejoinFailureSurvivorUnavailable),
+	}
+	authority := &fakeRejoinAuthority{
+		operationID: "rao1_11223344556677889900aabbccddeeff",
+		generation:  request.Fence.AuthorityGeneration + 1,
+	}
+	coordinator := RejoinCoordinator{
+		Journal: store, Restoration: restoration, Members: members,
+		Authority: authority, Readiness: &fakeRejoinReadiness{},
+		Clock: func() time.Time { return request.StartedAt },
+	}
+
+	status, err := coordinator.Rejoin(context.Background(), request)
+	require.NoError(t, err)
+	require.Equal(t, RejoinOutcomeRecoveryRequired, status.Outcome)
+	require.Equal(t, RejoinFailureIsolationUnavailable, status.Reason)
+	require.False(t, store.current.IsolationConfirmed)
+	require.Equal(t, 1, members.survivorCalls)
+
+	members.survivorErr = nil
+	status, err = coordinator.Rejoin(context.Background(), request)
+	require.NoError(t, err)
+	require.Equal(t, RejoinOutcomeRecoveryRequired, status.Outcome)
+	require.Equal(t, 1, members.survivorCalls)
+	require.Zero(t, restoration.restoreCalls)
+
+	restoration.reisolateErr = nil
+	status, err = coordinator.Rejoin(context.Background(), request)
+	require.NoError(t, err)
+	require.Equal(t, RejoinOutcomeRejoined, status.Outcome)
+	require.Equal(t, 2, members.survivorCalls)
+	require.Equal(t, 1, restoration.restoreCalls)
+}
+
+func TestRejoinCoordinatorReisolatesAfterPrePersistenceJournalFailure(t *testing.T) {
+	for _, failAfter := range []int{11, 14} {
+		t.Run(rejoinPhaseName(failAfter), func(t *testing.T) {
+			request := validRejoinRequest(t)
+			base := &memoryRejoinJournal{}
+			store := &prePersistenceCrashJournal{
+				base: base, failAfter: failAfter,
+			}
+			restoration := &fakeRejoinRestoration{}
+			authority := &fakeRejoinAuthority{
+				operationID: "rao1_11223344556677889900aabbccddeeff",
+				generation:  request.Fence.AuthorityGeneration + 1,
+			}
+
+			_, err := (RejoinCoordinator{
+				Journal: store, Restoration: restoration,
+				Members: &fakeRejoinMembers{}, Authority: authority,
+				Readiness: &fakeRejoinReadiness{},
+				Clock:     func() time.Time { return request.StartedAt },
+			}).Rejoin(context.Background(), request)
+
+			require.ErrorIs(t, err, errRejoinCrash)
+			require.Equal(t, 1, restoration.reisolateCalls)
+			require.NotEqual(t, RejoinPhaseRejoined, base.current.Phase)
+		})
+	}
+}
+
 func validRejoinRequest(t *testing.T) RejoinRequest {
 	t.Helper()
 	raw := fenceManifest(t)
@@ -415,6 +545,30 @@ type crashingRejoinJournal struct {
 	failed    bool
 }
 
+type prePersistenceCrashJournal struct {
+	base      *memoryRejoinJournal
+	failAfter int
+	saves     int
+}
+
+func (store *prePersistenceCrashJournal) Load(
+	ctx context.Context,
+) (RejoinTransaction, bool, error) {
+	return store.base.Load(ctx)
+}
+
+func (store *prePersistenceCrashJournal) Save(
+	ctx context.Context,
+	expectedRevision uint64,
+	transaction RejoinTransaction,
+) error {
+	store.saves++
+	if store.saves == store.failAfter {
+		return errRejoinCrash
+	}
+	return store.base.Save(ctx, expectedRevision, transaction)
+}
+
 func (store *crashingRejoinJournal) Load(
 	ctx context.Context,
 ) (RejoinTransaction, bool, error) {
@@ -453,10 +607,12 @@ func rejoinPhaseName(index int) string {
 func (phase RejoinPhase) String() string { return string(phase) }
 
 type fakeRejoinRestoration struct {
-	preflightCalls int
-	startCalls     int
-	restoreCalls   int
-	reisolateCalls int
+	preflightCalls  int
+	startCalls      int
+	restoreCalls    int
+	reisolateCalls  int
+	preflightResult *RejoinPreflightResult
+	reisolateErr    error
 }
 
 func (fake *fakeRejoinRestoration) Preflight(
@@ -464,8 +620,17 @@ func (fake *fakeRejoinRestoration) Preflight(
 	target RejoinTarget,
 ) (RejoinPreflightResult, error) {
 	fake.preflightCalls++
+	if fake.preflightResult != nil {
+		return *fake.preflightResult, nil
+	}
 	return RejoinPreflightResult{
-		ObservedAt: target.StartedAt, ClockSkewSecond: 7, Isolated: true,
+		Isolated: true,
+		HostObservedAt: map[string]time.Time{
+			"node-a": target.StartedAt,
+			"node-b": target.StartedAt.Add(5 * time.Second),
+			"node-c": target.StartedAt.Add(7 * time.Second),
+		},
+		AuthorityNotAfter: target.StartedAt.Add(5 * time.Minute),
 	}, nil
 }
 
@@ -488,7 +653,7 @@ func (fake *fakeRejoinRestoration) Restore(context.Context, RejoinTarget) error 
 
 func (fake *fakeRejoinRestoration) Reisolate(context.Context, RejoinTarget) error {
 	fake.reisolateCalls++
-	return nil
+	return fake.reisolateErr
 }
 
 type fakeRejoinMembers struct {

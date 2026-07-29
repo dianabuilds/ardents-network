@@ -167,6 +167,7 @@ type FenceTransaction struct {
 	ClockObservedAt        time.Time                `json:"clock_observed_at,omitempty"`
 	ClockSkewSecond        int64                    `json:"clock_skew_seconds,omitempty"`
 	EvidenceDigest         string                   `json:"evidence_digest,omitempty"`
+	AuthorityChannelID     string                   `json:"authority_channel_id,omitempty"`
 	AuthorityGeneration    uint32                   `json:"authority_generation,omitempty"`
 	CheckpointDigest       string                   `json:"checkpoint_digest,omitempty"`
 	RepositoryPersisted    bool                     `json:"repository_persisted,omitempty"`
@@ -208,6 +209,7 @@ type FenceAuthorityResult struct {
 	TargetPrincipal     string
 	EvidenceDigest      string
 	EvidenceAccepted    bool
+	ChannelID           string
 	Generation          uint32
 	CheckpointDigest    string
 	RepositoryPersisted bool
@@ -399,6 +401,7 @@ func (coordinator FenceCoordinator) Fence(
 				return coordinator.fail(ctx, &transaction, FencePhaseAuthorityPending, reason)
 			}
 			transaction.EvidenceDigest = result.EvidenceDigest
+			transaction.AuthorityChannelID = result.ChannelID
 			transaction.AuthorityGeneration = result.Generation
 			transaction.CheckpointDigest = result.CheckpointDigest
 			transaction.RepositoryPersisted = result.RepositoryPersisted
@@ -413,6 +416,7 @@ func (coordinator FenceCoordinator) Fence(
 				TargetPrincipal:     transaction.Evidence.TargetPrincipal,
 				EvidenceDigest:      transaction.EvidenceDigest,
 				EvidenceAccepted:    true,
+				ChannelID:           transaction.AuthorityChannelID,
 				Generation:          transaction.AuthorityGeneration,
 				CheckpointDigest:    transaction.CheckpointDigest,
 				RepositoryPersisted: transaction.RepositoryPersisted,
@@ -626,6 +630,7 @@ func validFenceAuthorityResult(
 ) bool {
 	if !validAuthorityEvidenceAcceptance(result, evidence) ||
 		!hasDurableAuthorityCheckpoint(result) ||
+		!validFenceChannelID(result.ChannelID) ||
 		len(result.SurvivorReceipts) != exactTopologyNodeCount-1 {
 		return false
 	}
@@ -649,6 +654,14 @@ func validAuthorityEvidenceAcceptance(
 		result.TargetPrincipal == evidence.TargetPrincipal &&
 		result.EvidenceAccepted &&
 		result.EvidenceDigest == deploymentFenceEvidenceDigest(evidence)
+}
+
+func validFenceChannelID(value string) bool {
+	if len(value) != 32 {
+		return false
+	}
+	_, err := hex.DecodeString(value)
+	return err == nil
 }
 
 func deploymentFenceEvidenceDigest(evidence DeploymentFenceEvidence) string {
@@ -747,6 +760,7 @@ func ValidateFenceTransaction(transaction FenceTransaction) error {
 		if transaction.OperationID != "" || transaction.Evidence != nil ||
 			len(transaction.IsolationControls) != 0 ||
 			!transaction.ClockObservedAt.IsZero() || transaction.ClockSkewSecond != 0 ||
+			transaction.AuthorityChannelID != "" ||
 			transaction.AuthorityGeneration != 0 || transaction.CheckpointDigest != "" ||
 			transaction.EvidenceDigest != "" || transaction.RepositoryPersisted ||
 			len(transaction.SurvivorReceipts) != 0 {
@@ -754,6 +768,7 @@ func ValidateFenceTransaction(transaction FenceTransaction) error {
 		}
 	case FencePhaseIsolationPending:
 		if transaction.OperationID != "" || transaction.Evidence != nil ||
+			transaction.AuthorityChannelID != "" ||
 			transaction.AuthorityGeneration != 0 || transaction.CheckpointDigest != "" ||
 			transaction.EvidenceDigest != "" || transaction.RepositoryPersisted ||
 			len(transaction.SurvivorReceipts) != 0 {
@@ -762,6 +777,7 @@ func ValidateFenceTransaction(transaction FenceTransaction) error {
 	case FencePhaseEvidencePersisted, FencePhaseAuthorityPending:
 		if transaction.Evidence == nil || transaction.OperationID == "" ||
 			len(transaction.IsolationControls) == 0 ||
+			transaction.AuthorityChannelID != "" ||
 			transaction.AuthorityGeneration != 0 || transaction.CheckpointDigest != "" ||
 			transaction.EvidenceDigest != "" || transaction.RepositoryPersisted ||
 			len(transaction.SurvivorReceipts) != 0 {
@@ -771,6 +787,7 @@ func ValidateFenceTransaction(transaction FenceTransaction) error {
 		if transaction.Evidence == nil || transaction.OperationID == "" ||
 			len(transaction.IsolationControls) == 0 ||
 			!fenceDigestPattern.MatchString(transaction.EvidenceDigest) ||
+			!validFenceChannelID(transaction.AuthorityChannelID) ||
 			transaction.AuthorityGeneration == 0 ||
 			!fenceDigestPattern.MatchString(transaction.CheckpointDigest) ||
 			!transaction.RepositoryPersisted ||

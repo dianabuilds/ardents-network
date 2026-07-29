@@ -401,6 +401,7 @@ func validFenceAuthorityResultFor(
 	return FenceAuthorityResult{
 		OperationID: operationID, TargetPrincipal: targetPrincipal,
 		EvidenceAccepted: true,
+		ChannelID:        "00112233445566778899aabbccddeeff",
 		Generation:       4, CheckpointDigest: fenceDigest('d'),
 		RepositoryPersisted: true,
 		SurvivorReceipts: map[string]string{
@@ -438,6 +439,7 @@ func fenceTransactionAtPhase(
 	}
 	if fencePhaseOrder(phase) >= fencePhaseOrder(FencePhaseCheckpointPersisted) {
 		transaction.EvidenceDigest = deploymentFenceEvidenceDigest(*transaction.Evidence)
+		transaction.AuthorityChannelID = "00112233445566778899aabbccddeeff"
 		transaction.AuthorityGeneration = 4
 		transaction.CheckpointDigest = fenceDigest('d')
 		transaction.RepositoryPersisted = true
