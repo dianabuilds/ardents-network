@@ -164,7 +164,7 @@ func readyHelperConfig(t *testing.T, port int) string {
 		"command": executable,
 		"args":    []string{"-test.run=TestWorkloadReadyHelper"},
 		"env": map[string]string{"ARDENTS_E2E_READY_HELPER": "1",
-			"ARDENTS_E2E_READY_ADDRESS": fmt.Sprintf("0.0.0.0:%d", port)},
+			"ARDENTS_E2E_READY_ADDRESS": fmt.Sprintf("127.0.0.1:%d", port)},
 	})
 	require.NoError(t, err)
 	return string(raw)

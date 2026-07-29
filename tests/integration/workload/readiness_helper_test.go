@@ -32,14 +32,14 @@ func workloadReadyFixture(t *testing.T) (string, string, string) {
 	executable, err := os.Executable()
 	require.NoError(t, err)
 	raw, err := json.Marshal(map[string]any{"command": executable, "args": []string{"-test.run=TestWorkloadIntegrationReadyHelper"},
-		"env": map[string]string{"ARDENTS_WORKLOAD_INTEGRATION_HELPER": "1", "ARDENTS_WORKLOAD_INTEGRATION_ADDRESS": fmt.Sprintf("0.0.0.0:%d", port)}})
+		"env": map[string]string{"ARDENTS_WORKLOAD_INTEGRATION_HELPER": "1", "ARDENTS_WORKLOAD_INTEGRATION_ADDRESS": fmt.Sprintf("127.0.0.1:%d", port)}})
 	require.NoError(t, err)
 	return string(raw), workloadAdvertisedEndpoint(t, port), fmt.Sprintf("http://127.0.0.1:%d/ready", port)
 }
 
 func startGenerationReadyServer(t *testing.T, generation func() int64) (string, string) {
 	t.Helper()
-	listener, err := net.Listen("tcp", "0.0.0.0:0")
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	port := listener.Addr().(*net.TCPAddr).Port
 	server := &http.Server{Handler: generationHandler(func() string { return strconv.FormatInt(generation(), 10) })}

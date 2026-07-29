@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"runtime"
 	"testing"
 )
 
@@ -32,6 +33,9 @@ func (h ReadinessHelper) Run() {
 
 func (h ReadinessHelper) Fixture(t testing.TB) (string, string, string) {
 	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("cross-container readiness listener requires a non-loopback host bind; run the acceptance test on Linux")
+	}
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("allocate readiness port: %v", err)

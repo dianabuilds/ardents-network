@@ -336,7 +336,7 @@ func surfaceReadyConfig(t *testing.T, port int) string {
 	executable, err := os.Executable()
 	require.NoError(t, err)
 	raw, err := json.Marshal(map[string]any{"command": executable, "args": []string{"-test.run=TestSurfaceReadyHelper"},
-		"env": map[string]string{"ARDENTS_SURFACE_READY_HELPER": "1", "ARDENTS_SURFACE_READY_ADDRESS": fmt.Sprintf("0.0.0.0:%d", port)}})
+		"env": map[string]string{"ARDENTS_SURFACE_READY_HELPER": "1", "ARDENTS_SURFACE_READY_ADDRESS": fmt.Sprintf("127.0.0.1:%d", port)}})
 	require.NoError(t, err)
 	return string(raw)
 }

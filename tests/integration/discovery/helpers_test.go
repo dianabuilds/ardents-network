@@ -46,7 +46,7 @@ func readyServiceFixture(t *testing.T) (string, string, string) {
 	executable, err := os.Executable()
 	require.NoError(t, err)
 	raw, err := json.Marshal(map[string]any{"command": executable, "args": []string{"-test.run=TestDiscoveryIntegrationReadyHelper"},
-		"env": map[string]string{"ARDENTS_DISCOVERY_INTEGRATION_HELPER": "1", "ARDENTS_DISCOVERY_INTEGRATION_ADDRESS": fmt.Sprintf("0.0.0.0:%d", port)}})
+		"env": map[string]string{"ARDENTS_DISCOVERY_INTEGRATION_HELPER": "1", "ARDENTS_DISCOVERY_INTEGRATION_ADDRESS": fmt.Sprintf("127.0.0.1:%d", port)}})
 	require.NoError(t, err)
 	for _, address := range mustInterfaceAddresses(t) {
 		if address.To4() != nil && address.IsPrivate() && !address.IsLoopback() {

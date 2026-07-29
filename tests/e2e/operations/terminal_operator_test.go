@@ -1394,7 +1394,7 @@ func terminalReadyConfig(t *testing.T, port int) string {
 	executable, err := os.Executable()
 	require.NoError(t, err)
 	raw, err := json.Marshal(map[string]any{"command": executable, "args": []string{"-test.run=TestTerminalReadyHelper"},
-		"env": map[string]string{"ARDENTS_TERMINAL_READY_HELPER": "1", "ARDENTS_TERMINAL_READY_ADDRESS": fmt.Sprintf("0.0.0.0:%d", port)}})
+		"env": map[string]string{"ARDENTS_TERMINAL_READY_HELPER": "1", "ARDENTS_TERMINAL_READY_ADDRESS": fmt.Sprintf("127.0.0.1:%d", port)}})
 	require.NoError(t, err)
 	return string(raw)
 }

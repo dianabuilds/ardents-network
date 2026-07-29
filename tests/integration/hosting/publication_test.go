@@ -37,7 +37,7 @@ func TestPublishedServiceResolvesAndConnectsAcrossRealWakuNodes(t *testing.T) {
 		Transport: runtimeprocess.TransportConfig{BindAddress: "127.0.0.1", ReachabilityMode: networkapi.ReachabilityPrivateLAN},
 		Data:      runtimeprocess.DataConfig{Dir: t.TempDir()}, Privacy: privacy.Sender, DiscoveryRefreshInterval: 50 * time.Millisecond,
 		Workload: []runtimeprocess.WorkloadConfig{{ID: "work.published", Kind: "service", Owner: "node", Desired: "running",
-			Config: readinessHelperConfig(t, fmt.Sprintf("0.0.0.0:%d", port)), Services: []runtimeprocess.ServiceConfig{{
+			Config: readinessHelperConfig(t, fmt.Sprintf("127.0.0.1:%d", port)), Services: []runtimeprocess.ServiceConfig{{
 				ID: "svc.published", Type: "http", Mode: "NetworkPublished",
 				Endpoints: []string{advertised}, ProbeEndpoints: []string{probe},
 			}}}},
@@ -112,7 +112,7 @@ func privateContainerIPv4(t *testing.T) string {
 
 func reservePort(t *testing.T) int {
 	t.Helper()
-	listener, err := net.Listen("tcp", "0.0.0.0:0")
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	defer func() { require.NoError(t, listener.Close()) }()
 	return listener.Addr().(*net.TCPAddr).Port

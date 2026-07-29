@@ -3,6 +3,7 @@
 package network_test
 
 import (
+	"runtime"
 	"testing"
 	"time"
 
@@ -14,6 +15,9 @@ import (
 )
 
 func TestPublicReachabilityGatesAndWithdrawsNodeAdvertisement(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("public-direct wildcard bind is qualified on Linux, not by a Windows test binary")
+	}
 	scenario := testkit.BeginScenario(t, testkit.Spec{
 		Layer:       testkit.LayerIntegration,
 		Domain:      "network-foundation",

@@ -11,7 +11,7 @@ import (
 )
 
 func TestTransportProfilePayloadLockedClonesReducedFeatures(t *testing.T) {
-	svc := networkwaku.New()
+	svc := networkwaku.New(network.Config{BindAddress: "127.0.0.1"})
 	svc.SetBootstrapNodes([]string{"local://bootstrap"})
 	require.NoError(t, svc.Start(context.Background()))
 	t.Cleanup(func() { require.NoError(t, svc.Stop(context.Background())) })
