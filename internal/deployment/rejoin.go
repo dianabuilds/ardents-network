@@ -337,6 +337,16 @@ func (coordinator RejoinCoordinator) Rejoin(
 	if transaction.Phase == RejoinPhaseRejoined {
 		return rejoinStatus(transaction), nil
 	}
+	if found && transaction.Phase == RejoinPhaseRestorationPending &&
+		!transaction.RestorationApplied {
+		if err := coordinator.Restoration.Reisolate(ctx, target); err != nil {
+			return coordinator.fail(
+				ctx, &transaction, target, RejoinPhaseRestorationPending,
+				dependencyRejoinReason(err, RejoinFailureIsolationUnavailable),
+			)
+		}
+		transaction.IsolationConfirmed = true
+	}
 	if found && transaction.Phase == RejoinPhaseTargetAcknowledgementPending {
 		return coordinator.fail(
 			ctx, &transaction, target, RejoinPhaseRestorationPending,
@@ -1239,7 +1249,11 @@ func validRejoinPhaseTransition(
 				next.FailureReason != "" &&
 				(!previous.IsolationConfirmed || next.IsolationConfirmed)
 		}
-		return next.ResumeFrom == previous.Phase && next.FailureReason != "" &&
+		resumeMatches := next.ResumeFrom == previous.Phase
+		if previous.Phase == RejoinPhaseTargetAcknowledgementPending {
+			resumeMatches = next.ResumeFrom == RejoinPhaseRestorationPending
+		}
+		return resumeMatches && next.FailureReason != "" &&
 			previous.Phase != RejoinPhaseRejoined &&
 			previous.Phase != RejoinPhaseRecoveryRequired
 	}

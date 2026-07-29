@@ -992,6 +992,10 @@ func fencePhaseOrder(phase FencePhase) int {
 // ValidFenceTransactionTransition reports whether one compare-and-save update
 // is the next monotonic durable boundary.
 func ValidFenceTransactionTransition(before, after FenceTransaction) bool {
+	if before.AuthorityChannelID != "" &&
+		before.AuthorityChannelID != after.AuthorityChannelID {
+		return false
+	}
 	if before.Phase == FencePhaseRecoveryRequired {
 		return after.Phase == before.ResumeFrom
 	}

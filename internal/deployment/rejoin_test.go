@@ -486,6 +486,41 @@ func TestRejoinCoordinatorReisolatesAfterPrePersistenceJournalFailure(t *testing
 	}
 }
 
+func TestRejoinCoordinatorDoesNotRepeatAmbiguousRestoreBeforeIsolation(t *testing.T) {
+	request := validRejoinRequest(t)
+	base := &memoryRejoinJournal{}
+	store := &prePersistenceCrashJournal{base: base, failAfter: 11}
+	restoration := &fakeRejoinRestoration{
+		reisolateErr: RejoinDependencyError(RejoinFailureIsolationUnavailable),
+	}
+	authority := &fakeRejoinAuthority{
+		operationID: "rao1_11223344556677889900aabbccddeeff",
+		generation:  request.Fence.AuthorityGeneration + 1,
+	}
+	coordinator := RejoinCoordinator{
+		Journal: store, Restoration: restoration,
+		Members: &fakeRejoinMembers{}, Authority: authority,
+		Readiness: &fakeRejoinReadiness{},
+		Clock:     func() time.Time { return request.StartedAt },
+	}
+
+	_, err := coordinator.Rejoin(context.Background(), request)
+	require.ErrorIs(t, err, errRejoinCrash)
+	require.Equal(t, 1, restoration.restoreCalls)
+
+	status, err := coordinator.Rejoin(context.Background(), request)
+	require.NoError(t, err)
+	require.Equal(t, RejoinOutcomeRecoveryRequired, status.Outcome)
+	require.Equal(t, RejoinFailureIsolationUnavailable, status.Reason)
+	require.Equal(t, 1, restoration.restoreCalls)
+
+	restoration.reisolateErr = nil
+	status, err = coordinator.Rejoin(context.Background(), request)
+	require.NoError(t, err)
+	require.Equal(t, RejoinOutcomeRejoined, status.Outcome)
+	require.Equal(t, 2, restoration.restoreCalls)
+}
+
 func validRejoinRequest(t *testing.T) RejoinRequest {
 	t.Helper()
 	raw := fenceManifest(t)
