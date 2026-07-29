@@ -158,3 +158,41 @@ backup/restore, and mixed-generation rollout.
 - Capability `Q` remains `no` until matching-commit LAN, WAN, security,
   deployment, fencing/rejoin, authority restore, upgrade, recovery and release
   evidence is accepted.
+
+## Proposed compatibility amendment — 2026-07-29
+
+Status: Proposed; explicit maintainer acceptance required.
+
+The accepted Rejoin ordering above is incompatible with accepted CGA-04.
+Membership add requires the target's fresh pending delivery to be installed
+before activation commit, and activation commit itself makes the fresh
+membership and generation current before any active receipt. If accepted,
+this amendment replaces only the Rejoin ordering in the preceding decision;
+the terminal Fence Transaction and removal checkpoint remain immutable.
+
+`recover --rejoin` creates a separate durable Rejoin Transaction linked to the
+terminal Fence Transaction and removal checkpoint. The target first starts in
+deployment quarantine while ingress/discovery withdrawal and survivor peer
+denial remain enforced. It must match the exact identity and immutable image,
+pass the bounded-clock check, and make no joined claim. All three recipients
+then provide fresh delivery-key attestations and install and acknowledge their
+recipient-bound fresh pending deliveries for one fresh membership-add
+operation.
+
+Only after all three pending deliveries are installed may Authority commit the
+fresh activation checkpoint. From that commit onward the fresh membership and
+generation are current but Rejoin is incomplete and the target remains
+deployment-isolated. Both survivors must return valid active receipts before
+Deployment restores ingress, discovery/static publication, and peer allowance.
+The target then activates only the fresh generation, passes identity, clock,
+joined, and composite-readiness checks, and returns the final active receipt
+needed to complete the fresh membership checkpoint and mark the Rejoin
+Transaction `rejoined`.
+
+Failure before activation commit re-enforces isolation, leaves the old removal
+current, and resumes the same operation. Failure from activation commit onward
+re-enforces isolation and resumes the same fresh but incomplete membership;
+the target is neither `fenced` nor `rejoined`. An ambiguous target receipt is
+re-isolated and reconciled idempotently. Rejoin never reuses the old removal,
+implicitly cancels an accepted operation, or invents a compensating membership
+change.

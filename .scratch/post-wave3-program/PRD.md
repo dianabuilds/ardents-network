@@ -266,6 +266,31 @@ implementation slices and commits.
   behavior remains unimplemented and must be admitted separately before MR-05;
   `deployment.multi-host` remains `Q=no`.
 
+## MR-04b admission review checkpoint — 2026-07-29
+
+- PW3-22 reviews the remaining R1 Rejoin portion of canonical MR-04 after exact
+  MR-04a acceptance.
+- The accepted terminal Fence Transaction and removal checkpoint remain
+  immutable.
+- Independent Spec review found the accepted ADR-0013 Rejoin ordering
+  incompatible with accepted CGA-04: the target's fresh pending delivery must
+  be installed before activation commit, while that commit already makes the
+  fresh membership and generation current before active receipts.
+- A dated compatibility amendment proposes a separate linked Rejoin
+  Transaction with phase-truthful recovery. The review is returned with
+  blockers and PW3-22 remains `needs-info` until the maintainer explicitly
+  accepts that amendment.
+- Accepted CGA-04 remains the only owner of membership add, generation,
+  checkpoint repository, delivery and active-receipt truth. Rejoin introduces
+  no second membership source and cannot reuse an old grant, receipt, or
+  removal checkpoint.
+- Production restoration/start/SSH/Authority adapters and real three-host
+  evidence remain R3. Proposed PW3-22 is R1 consumer-owned coordination and
+  compensation only; MR-05 remains blocked until the amendment and slice are
+  accepted.
+- This review changes no capability qualification; `deployment.multi-host`
+  remains `Q=no`.
+
 ## Stream ownership
 
 - The integrator alone edits this PRD, the Wave 3 decision register, the
