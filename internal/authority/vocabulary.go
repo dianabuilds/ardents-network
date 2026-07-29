@@ -89,6 +89,10 @@ const (
 	ReasonAuditUnavailable                    = "authority_audit_unavailable"
 	ReasonCheckpointMissing                   = "checkpoint_head_missing"
 	ReasonCheckpointMismatch                  = "checkpoint_head_mismatch"
+	ReasonCheckpointHistoryPartial            = "checkpoint_history_partial"
+	ReasonCheckpointHistoryFork               = "checkpoint_history_fork"
+	ReasonAuthorityRollback                   = "authority_rollback_detected"
+	ReasonAuthorityGenerationMismatch         = "authority_generation_mismatch"
 	ReasonPersistedStateInvalid               = "authority_state_invalid"
 	ReasonDeliveryPending                     = "authority_delivery_pending"
 	ReasonChannelGrantPending                 = identityapi.ChannelGrantReasonPending
@@ -100,14 +104,23 @@ const (
 )
 
 var (
-	ErrInvalidArgument    = errors.New("authority invalid argument")
-	ErrUnsupportedVersion = errors.New("authority unsupported version")
-	ErrPermissionDenied   = errors.New("authority permission denied")
-	ErrConflict           = errors.New("authority conflict")
-	ErrResourceExhausted  = errors.New("authority resource exhausted")
-	ErrUnavailable        = errors.New("authority unavailable")
-	ErrRecoveryRequired   = errors.New("authority recovery required")
-	ErrCorruptState       = errors.New("authority state is corrupt")
+	ErrInvalidArgument          = errors.New("authority invalid argument")
+	ErrUnsupportedVersion       = errors.New("authority unsupported version")
+	ErrPermissionDenied         = errors.New("authority permission denied")
+	ErrConflict                 = errors.New("authority conflict")
+	ErrResourceExhausted        = errors.New("authority resource exhausted")
+	ErrUnavailable              = errors.New("authority unavailable")
+	ErrRecoveryRequired         = errors.New("authority recovery required")
+	ErrCorruptState             = errors.New("authority state is corrupt")
+	ErrCheckpointHistoryPartial = errors.Join(
+		ErrCorruptState, errors.New("checkpoint history is partial"),
+	)
+	ErrCheckpointHistoryFork = errors.Join(
+		ErrCorruptState, errors.New("checkpoint history is forked"),
+	)
+	ErrAuthorityGenerationMismatch = errors.Join(
+		ErrCorruptState, errors.New("authority generation is mismatched"),
+	)
 )
 
 var (

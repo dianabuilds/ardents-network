@@ -575,10 +575,11 @@ Additional rules:
 - feature modules define small event/decision callbacks or interfaces at their
   seams; `diagnostics` and `policy` satisfy them without reversing ownership;
 - `storage` never imports a product module;
-- `deployment` may consume the canonical Principal parser from `identity`, and
-  may coordinate bounded topology observations only through its abstract
-  `NodeStatusProbe`; it imports no runtime, network, host-access, signer,
-  repository, PKI, or process adapter;
+- `deployment` may consume the canonical Principal parser from `identity` and
+  the canonical Realm-ID validator from `authority`; it may coordinate bounded
+  topology observations only through its abstract `NodeStatusProbe` and
+  `AuthorityRecoveryProbe` seams; it imports no runtime, network, host-access,
+  signer, repository, PKI, or process adapter;
 - adapter packages depend inward on the interface they implement;
 - only `daemon` may construct the complete process;
 - `localapi`, `applicationapi`, and `observability` may read multiple module
@@ -629,8 +630,9 @@ cmd/ardentsctl
   -> one owning module, or daemon for a true cross-module node command
 ```
 
-That is the ordinary single-Node flow. MR-02 has one explicit protected
-aggregate exception because no remote aggregate control API exists:
+That is the ordinary single-Node flow. MR-02 and MR-03 have two explicit
+protected aggregate exceptions because no remote aggregate control or
+Authority recovery API exists:
 
 ```text
 cmd/ardentsctl
@@ -641,11 +643,21 @@ cmd/ardentsctl
   -> deployment's bounded redacted projection
 ```
 
-Outside that seam, the CLI never manipulates internal product types. The
-topology command consumes only deployment's admitted manifest/status types;
-its adapter converts protected protobuf snapshots into `NodeObservation` and
-does not interpret deployment policy. Other commands, shell, watch, and TUI
-reuse the same operator-facing client models instead of independently
+```text
+cmd/ardentsctl
+  -> cli/topology command + protected Authority recovery adapter
+  -> deployment.AuthorityRecoveryInspector over AuthorityRecoveryProbe
+  -> three separate cli/client instances for authenticated clock observations
+  -> exact designated-Authority inspect/verify calls on the retained client
+  -> deployment's bounded redacted recovery projection
+```
+
+Outside those seams, the CLI never manipulates internal product types. The
+topology command consumes only deployment's admitted manifest/status/recovery
+types; its adapters convert protected protobuf snapshots into
+`NodeObservation`, `ClockObservation`, and `AuthorityObservation` without
+interpreting deployment or Authority policy. Other commands, shell, watch, and
+TUI reuse the same operator-facing client models instead of independently
 interpreting protobuf state.
 
 The local API is split into focused protocol services. There is no omnibus

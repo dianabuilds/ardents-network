@@ -386,7 +386,9 @@ func (h *AuthorityEndpoint) VerifyRestoredAuthority(
 			},
 		)
 		if err != nil {
-			return nil, authorityError("verify_restore", err)
+			return nil, authorityRecoveryError(
+				"verify_restore", err, h.service.Readiness().Reason,
+			)
 		}
 		status := h.service.Readiness()
 		return &protocol.VerifyRestoredAuthorityResponse{
@@ -517,4 +519,23 @@ func authorityError(operation string, err error) *rpc.Error {
 		Domain: "authority", Operation: operation, Reason: code, Retryable: retryable,
 		Details: map[string]any{},
 	}
+}
+
+func authorityRecoveryError(operation string, err error, reason string) *rpc.Error {
+	result := authorityError(operation, err)
+	if !errors.Is(err, domain.ErrRecoveryRequired) {
+		return result
+	}
+	switch reason {
+	case domain.ReasonCheckpointMissing,
+		domain.ReasonCheckpointMismatch,
+		domain.ReasonCheckpointHistoryPartial,
+		domain.ReasonCheckpointHistoryFork,
+		domain.ReasonAuthorityRollback,
+		domain.ReasonAuthorityGenerationMismatch,
+		domain.ReasonPersistedStateInvalid,
+		domain.ReasonSignerMismatch:
+		result.Reason = reason
+	}
+	return result
 }

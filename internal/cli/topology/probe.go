@@ -64,31 +64,28 @@ func (probe Probe) Observe(
 	ctx context.Context,
 	target deployment.NodeStatusTarget,
 ) (observation deployment.NodeObservation, observeErr error) {
-	resolved, err := probe.Base.ResolveTopologyContext(target.SSHAlias)
+	opened, err := openTopologyClient(
+		probe.Base,
+		probe.Factory,
+		target.SSHAlias,
+		deployment.ProbeError(deployment.ProbeTunnelFailure),
+		func(resolved configurationcmd.Config) error {
+			switch {
+			case resolved.ContextName != target.SSHAlias ||
+				resolved.HostKeyPinRef != target.HostKeyPinRef:
+				return deployment.ProbeError(deployment.ProbeHostKeyMismatch)
+			case resolved.SignerAlias != target.OperatorSignerAlias:
+				return deployment.ProbeError(deployment.ProbeLocalSignerUnavailable)
+			case resolved.ExpectedNode != target.Slot ||
+				resolved.ExpectedPrincipal != target.ExpectedNodePrincipal:
+				return deployment.ProbeError(deployment.ProbeRemoteInvalidResponse)
+			default:
+				return nil
+			}
+		},
+	)
 	if err != nil {
-		return deployment.NodeObservation{}, deployment.ProbeError(deployment.ProbeTunnelFailure)
-	}
-	if resolved.ContextName != target.SSHAlias ||
-		resolved.HostKeyPinRef != target.HostKeyPinRef {
-		return deployment.NodeObservation{}, deployment.ProbeError(deployment.ProbeHostKeyMismatch)
-	}
-	if resolved.SignerAlias != target.OperatorSignerAlias {
-		return deployment.NodeObservation{}, deployment.ProbeError(deployment.ProbeLocalSignerUnavailable)
-	}
-	if resolved.ExpectedNode != target.Slot ||
-		resolved.ExpectedPrincipal != target.ExpectedNodePrincipal {
-		return deployment.NodeObservation{}, deployment.ProbeError(deployment.ProbeRemoteInvalidResponse)
-	}
-	factory := probe.Factory
-	if factory == nil {
-		factory = operatorClientFactory{}
-	}
-	opened, err := factory.Open(resolved)
-	if err != nil {
-		return deployment.NodeObservation{}, classifyProbeError(err)
-	}
-	if opened.calls == nil || opened.close == nil {
-		return deployment.NodeObservation{}, deployment.ProbeError(deployment.ProbeRemoteInvalidResponse)
+		return deployment.NodeObservation{}, err
 	}
 	defer func() {
 		if closeErr := opened.close(ctx); observeErr == nil && closeErr != nil {
@@ -129,6 +126,33 @@ func (probe Probe) Observe(
 		StoreEnabled: network.GetStoreEnabled(), StoreState: network.GetStoreState(),
 		ImageReference: features.GetImageReference(),
 	}, nil
+}
+
+func openTopologyClient(
+	base configurationcmd.Config,
+	factory clientFactory,
+	sshAlias string,
+	resolveError error,
+	validate func(configurationcmd.Config) error,
+) (openedClient, error) {
+	resolved, err := base.ResolveTopologyContext(sshAlias)
+	if err != nil {
+		return openedClient{}, resolveError
+	}
+	if err := validate(resolved); err != nil {
+		return openedClient{}, err
+	}
+	if factory == nil {
+		factory = operatorClientFactory{}
+	}
+	opened, err := factory.Open(resolved)
+	if err != nil {
+		return openedClient{}, classifyProbeError(err)
+	}
+	if opened.calls == nil || opened.close == nil {
+		return openedClient{}, deployment.ProbeError(deployment.ProbeRemoteInvalidResponse)
+	}
+	return opened, nil
 }
 
 func classifyProbeError(err error) error {

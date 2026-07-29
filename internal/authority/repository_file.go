@@ -203,11 +203,20 @@ func (r *FileCheckpointRepository) readHead(ctx context.Context, realmID string)
 			ValidateCheckpoint(checkpoint) != nil || checkpoint.RealmID != realmID {
 			return SignedCheckpoint{}, false, ErrCorruptState
 		}
-		if checkpoint.AuthoritySequence != previous+1 ||
-			entry.Name() != fmt.Sprintf("%020d.json", checkpoint.AuthoritySequence) ||
-			(previous > 0 && (checkpoint.PreviousDigest != previousDigest ||
-				!validCheckpointAuthoritySuccessor(latest, checkpoint))) {
+		if checkpoint.AuthoritySequence > previous+1 {
+			return SignedCheckpoint{}, false, ErrCheckpointHistoryPartial
+		}
+		if checkpoint.AuthoritySequence <= previous {
+			return SignedCheckpoint{}, false, ErrCheckpointHistoryFork
+		}
+		if entry.Name() != fmt.Sprintf("%020d.json", checkpoint.AuthoritySequence) {
 			return SignedCheckpoint{}, false, ErrCorruptState
+		}
+		if previous > 0 && checkpoint.PreviousDigest != previousDigest {
+			return SignedCheckpoint{}, false, ErrCheckpointHistoryFork
+		}
+		if previous > 0 && !validCheckpointAuthoritySuccessor(latest, checkpoint) {
+			return SignedCheckpoint{}, false, ErrAuthorityGenerationMismatch
 		}
 		latest, found = checkpoint, true
 		previous, previousDigest = checkpoint.AuthoritySequence, checkpoint.Digest

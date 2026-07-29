@@ -31,6 +31,7 @@ type failureDomain struct {
 
 type authoritySpec struct {
 	Slot                string        `json:"slot"`
+	RealmID             string        `json:"realm_id"`
 	StateRef            string        `json:"state_ref"`
 	FailureDomain       failureDomain `json:"failure_domain"`
 	BackupRef           string        `json:"backup_ref"`

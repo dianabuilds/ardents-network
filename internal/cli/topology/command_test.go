@@ -188,7 +188,7 @@ func TestRecoveryProbeRejectsAuthorityContextMismatchBeforeOpeningClient(t *test
 		{
 			name: "realm",
 			mutate: func(stored *configurationcmd.StoredContext) {
-				stored.ExpectedRealm = "r1_bad"
+				stored.ExpectedRealm = "r1_11112233445566778899aabbccddeeff"
 			},
 		},
 		{
@@ -230,7 +230,7 @@ func TestRecoveryProbeRejectsAuthorityContextMismatchBeforeOpeningClient(t *test
 				Factory: factory,
 			}).Open(context.Background(), recoveryTarget())
 
-			require.EqualError(t, err, string(deployment.ProbeRemoteInvalidResponse))
+			require.EqualError(t, err, string(deployment.AuthorityRecoveryReasonContextMismatch))
 			require.Empty(t, factory.opened)
 		})
 	}
@@ -398,6 +398,24 @@ func TestClassifyAuthorityRecoveryErrorUsesStableStructuredReason(t *testing.T) 
 		string(deployment.AuthorityRecoveryReasonCheckpointMismatch),
 	)
 	require.NotContains(t, got.Error(), "protected checkpoint")
+
+	forkErr := connect.NewError(
+		connect.CodeFailedPrecondition,
+		errors.New("different protected detail"),
+	)
+	forkDetail, err := connect.NewErrorDetail(&protocol.Error{
+		Code: "authority_not_ready", Category: "authority",
+		Message: "different protected detail",
+		Domain:  "authority", Operation: "verify_restored_authority",
+		Reason: "checkpoint_history_fork",
+	})
+	require.NoError(t, err)
+	forkErr.AddDetail(forkDetail)
+	require.EqualError(
+		t,
+		classifyAuthorityRecoveryError(forkErr),
+		string(deployment.AuthorityRecoveryReasonFork),
+	)
 }
 
 func TestProbeMapsEveryStableFailureClass(t *testing.T) {
@@ -577,6 +595,7 @@ func recoveryTarget() deployment.AuthorityRecoveryTarget {
 		Slot: "node-a", Role: "authority", SSHAlias: "ssh-node-a",
 		HostKeyPinRef: "host-pin-a", OperatorSignerAlias: "operator-primary",
 		ExpectedNodePrincipal:   "p1_euydwrsrlrtxe7misopktnf7zlk6b27waegboirnhbbu4wlen55a",
+		ExpectedRealmID:         recoveryRealmIDForCLI,
 		AuthorityStateRef:       "authority-state-primary",
 		AuthorityBackupRef:      "authority-backup-primary",
 		CheckpointRepositoryRef: "authority-checkpoints-primary",

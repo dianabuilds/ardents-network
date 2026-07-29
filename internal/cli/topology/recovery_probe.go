@@ -24,43 +24,39 @@ func (probe RecoveryProbe) Open(
 	_ context.Context,
 	target deployment.AuthorityRecoveryTarget,
 ) (deployment.AuthorityRecoveryNode, error) {
-	resolved, err := probe.Base.ResolveTopologyContext(target.SSHAlias)
+	contextMismatch := deployment.AuthorityRecoveryProbeError(
+		deployment.AuthorityRecoveryReasonContextMismatch,
+	)
+	opened, err := openTopologyClient(
+		probe.Base,
+		probe.Factory,
+		target.SSHAlias,
+		contextMismatch,
+		func(resolved configurationcmd.Config) error {
+			if resolved.ContextName != target.SSHAlias ||
+				resolved.HostKeyPinRef != target.HostKeyPinRef ||
+				resolved.SignerAlias != target.OperatorSignerAlias ||
+				resolved.ExpectedNode != target.Slot ||
+				resolved.ExpectedPrincipal != target.ExpectedNodePrincipal {
+				return contextMismatch
+			}
+			if target.Role == "authority" &&
+				(!authority.ValidRealmID(target.ExpectedRealmID) ||
+					resolved.ExpectedRealm != target.ExpectedRealmID ||
+					resolved.AuthorityStateRef != target.AuthorityStateRef ||
+					resolved.AuthorityBackupRef != target.AuthorityBackupRef ||
+					resolved.CheckpointRepositoryRef != target.CheckpointRepositoryRef) {
+				return contextMismatch
+			}
+			return nil
+		},
+	)
 	if err != nil {
-		return nil, deployment.ProbeError(deployment.ProbeTunnelFailure)
-	}
-	if resolved.ContextName != target.SSHAlias ||
-		resolved.HostKeyPinRef != target.HostKeyPinRef {
-		return nil, deployment.ProbeError(deployment.ProbeHostKeyMismatch)
-	}
-	if resolved.SignerAlias != target.OperatorSignerAlias {
-		return nil, deployment.ProbeError(deployment.ProbeLocalSignerUnavailable)
-	}
-	if resolved.ExpectedNode != target.Slot ||
-		resolved.ExpectedPrincipal != target.ExpectedNodePrincipal {
-		return nil, deployment.ProbeError(deployment.ProbeRemoteInvalidResponse)
-	}
-	if target.Role == "authority" {
-		if !authority.ValidRealmID(resolved.ExpectedRealm) ||
-			resolved.AuthorityStateRef != target.AuthorityStateRef ||
-			resolved.AuthorityBackupRef != target.AuthorityBackupRef ||
-			resolved.CheckpointRepositoryRef != target.CheckpointRepositoryRef {
-			return nil, deployment.ProbeError(deployment.ProbeRemoteInvalidResponse)
-		}
-	}
-	factory := probe.Factory
-	if factory == nil {
-		factory = operatorClientFactory{}
-	}
-	opened, err := factory.Open(resolved)
-	if err != nil {
-		return nil, classifyProbeError(err)
-	}
-	if opened.calls == nil || opened.close == nil {
-		return nil, deployment.ProbeError(deployment.ProbeRemoteInvalidResponse)
+		return nil, err
 	}
 	return &recoveryNode{
 		calls: opened.calls, close: opened.close, target: target,
-		expectedRealm: resolved.ExpectedRealm,
+		expectedRealm: target.ExpectedRealmID,
 	}, nil
 }
 
@@ -186,6 +182,38 @@ func classifyAuthorityRecoveryError(err error) error {
 			case "authority_forbidden":
 				return deployment.AuthorityRecoveryProbeError(
 					deployment.AuthorityRecoveryReasonAuthorityDenied,
+				)
+			case "checkpoint_head_missing":
+				return deployment.AuthorityRecoveryProbeError(
+					deployment.AuthorityRecoveryReasonCheckpointMissing,
+				)
+			case "checkpoint_head_mismatch":
+				return deployment.AuthorityRecoveryProbeError(
+					deployment.AuthorityRecoveryReasonCheckpointHeadMismatch,
+				)
+			case "checkpoint_history_partial":
+				return deployment.AuthorityRecoveryProbeError(
+					deployment.AuthorityRecoveryReasonHistoryPartial,
+				)
+			case "authority_rollback_detected":
+				return deployment.AuthorityRecoveryProbeError(
+					deployment.AuthorityRecoveryReasonRollback,
+				)
+			case "checkpoint_history_fork":
+				return deployment.AuthorityRecoveryProbeError(
+					deployment.AuthorityRecoveryReasonFork,
+				)
+			case "authority_generation_mismatch":
+				return deployment.AuthorityRecoveryProbeError(
+					deployment.AuthorityRecoveryReasonGenerationMismatch,
+				)
+			case "authority_state_invalid":
+				return deployment.AuthorityRecoveryProbeError(
+					deployment.AuthorityRecoveryReasonPersistedStateInvalid,
+				)
+			case "authority_signer_mismatch":
+				return deployment.AuthorityRecoveryProbeError(
+					deployment.AuthorityRecoveryReasonSignerMismatch,
 				)
 			case "authority_recovery_required", "authority_conflict":
 				return deployment.AuthorityRecoveryProbeError(

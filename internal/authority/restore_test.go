@@ -93,7 +93,35 @@ func TestRecoveryOnlyStartupNeverRepairsMissingOrMismatchedRepositoryHead(t *tes
 			arrange: func(f *serviceFixture) {
 				f.repository.head.Digest = "ac1_" + string(bytes.Repeat([]byte{'0'}, 64))
 			},
-			wantReason: ReasonCheckpointMismatch,
+			wantReason: ReasonCheckpointHistoryFork,
+		},
+		{
+			name: "partial history",
+			arrange: func(f *serviceFixture) {
+				f.repository.err = ErrCheckpointHistoryPartial
+			},
+			wantReason: ReasonCheckpointHistoryPartial,
+		},
+		{
+			name: "forked history",
+			arrange: func(f *serviceFixture) {
+				f.repository.err = ErrCheckpointHistoryFork
+			},
+			wantReason: ReasonCheckpointHistoryFork,
+		},
+		{
+			name: "generation mismatch",
+			arrange: func(f *serviceFixture) {
+				f.repository.err = ErrAuthorityGenerationMismatch
+			},
+			wantReason: ReasonAuthorityGenerationMismatch,
+		},
+		{
+			name: "restored ledger rollback",
+			arrange: func(f *serviceFixture) {
+				f.repository.head.AuthoritySequence++
+			},
+			wantReason: ReasonAuthorityRollback,
 		},
 	}
 

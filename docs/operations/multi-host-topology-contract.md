@@ -25,7 +25,8 @@ The top-level contract contains:
 - an opaque workstation Operator signer alias;
 - exact clock bounds of 30 seconds maximum skew and 60 seconds Authority
   validity margin;
-- one Authority slot with distinct opaque state and backup references;
+- one Authority slot with one canonical Realm ID and distinct opaque state and
+  backup references;
 - one external checkpoint-repository reference with immutable history and
   exactly 65,536 retained-head capacity;
 - zero through four signed `enrtree://<key>@<fqdn>` roots;

@@ -18,6 +18,7 @@ const (
 
 	AuthorityRecoveryReasonClockUnavailable       AuthorityRecoveryReason = "clock_unavailable"
 	AuthorityRecoveryReasonClockSkew              AuthorityRecoveryReason = "clock_skew_exceeded"
+	AuthorityRecoveryReasonContextMismatch        AuthorityRecoveryReason = "context_binding_mismatch"
 	AuthorityRecoveryReasonAuthorityUnavailable   AuthorityRecoveryReason = "authority_unavailable"
 	AuthorityRecoveryReasonAuthorityDenied        AuthorityRecoveryReason = "authority_denied"
 	AuthorityRecoveryReasonAuthorityInvalid       AuthorityRecoveryReason = "authority_invalid_response"
@@ -28,6 +29,10 @@ const (
 	AuthorityRecoveryReasonCheckpointHeadMismatch AuthorityRecoveryReason = "checkpoint_head_mismatch"
 	AuthorityRecoveryReasonPersistedStateInvalid  AuthorityRecoveryReason = "authority_state_invalid"
 	AuthorityRecoveryReasonSignerMismatch         AuthorityRecoveryReason = "authority_signer_mismatch"
+	AuthorityRecoveryReasonHistoryPartial         AuthorityRecoveryReason = "checkpoint_history_partial"
+	AuthorityRecoveryReasonRollback               AuthorityRecoveryReason = "authority_rollback_detected"
+	AuthorityRecoveryReasonFork                   AuthorityRecoveryReason = "checkpoint_history_fork"
+	AuthorityRecoveryReasonGenerationMismatch     AuthorityRecoveryReason = "authority_generation_mismatch"
 
 	AuthorityChangeCompatible AuthorityChangeKind = "compatible_release"
 	AuthorityChangeMigration  AuthorityChangeKind = "authority_migration"
@@ -69,6 +74,7 @@ type AuthorityRecoveryTarget struct {
 	HostKeyPinRef                string
 	OperatorSignerAlias          string
 	ExpectedNodePrincipal        string
+	ExpectedRealmID              string
 	AuthorityStateRef            string
 	AuthorityBackupRef           string
 	CheckpointRepositoryRef      string
@@ -251,6 +257,7 @@ func authorityRecoveryTargets(manifest topologyManifest) []AuthorityRecoveryTarg
 		}
 		if node.Slot == manifest.Authority.Slot {
 			target.Role = "authority"
+			target.ExpectedRealmID = manifest.Authority.RealmID
 			target.AuthorityStateRef = manifest.Authority.StateRef
 			target.AuthorityBackupRef = manifest.Authority.BackupRef
 			target.CheckpointRepositoryRef = manifest.CheckpointRepository.Reference
@@ -320,7 +327,11 @@ func recoveryReason(err error) AuthorityRecoveryReason {
 	}
 	var authorityErr AuthorityRecoveryProbeError
 	if errors.As(err, &authorityErr) {
-		return AuthorityRecoveryReason(authorityErr)
+		reason := AuthorityRecoveryReason(authorityErr)
+		if validAuthorityRecoveryReason(reason) {
+			return reason
+		}
+		return AuthorityRecoveryReasonAuthorityInvalid
 	}
 	var probeErr ProbeError
 	if !asProbeError(err, &probeErr) {
@@ -331,8 +342,12 @@ func recoveryReason(err error) AuthorityRecoveryReason {
 		return AuthorityRecoveryReasonAuthorityDenied
 	case ProbeRemoteInvalidResponse:
 		return AuthorityRecoveryReasonAuthorityInvalid
-	default:
+	case ProbeHostKeyMismatch, ProbeTunnelTimeout, ProbeTunnelFailure,
+		ProbeLocalSignerUnavailable, ProbeRemoteUnauthenticated,
+		ProbeNodeUnavailable:
 		return AuthorityRecoveryReason(string(probeErr))
+	default:
+		return AuthorityRecoveryReasonAuthorityInvalid
 	}
 }
 
@@ -348,8 +363,41 @@ func authorityStateReason(reason string) AuthorityRecoveryReason {
 		return AuthorityRecoveryReasonPersistedStateInvalid
 	case string(AuthorityRecoveryReasonSignerMismatch):
 		return AuthorityRecoveryReasonSignerMismatch
+	case string(AuthorityRecoveryReasonHistoryPartial):
+		return AuthorityRecoveryReasonHistoryPartial
+	case string(AuthorityRecoveryReasonRollback):
+		return AuthorityRecoveryReasonRollback
+	case string(AuthorityRecoveryReasonFork):
+		return AuthorityRecoveryReasonFork
+	case string(AuthorityRecoveryReasonGenerationMismatch):
+		return AuthorityRecoveryReasonGenerationMismatch
 	default:
 		return AuthorityRecoveryReasonAuthorityState
+	}
+}
+
+func validAuthorityRecoveryReason(reason AuthorityRecoveryReason) bool {
+	switch reason {
+	case AuthorityRecoveryReasonClockUnavailable,
+		AuthorityRecoveryReasonClockSkew,
+		AuthorityRecoveryReasonContextMismatch,
+		AuthorityRecoveryReasonAuthorityUnavailable,
+		AuthorityRecoveryReasonAuthorityDenied,
+		AuthorityRecoveryReasonAuthorityInvalid,
+		AuthorityRecoveryReasonAuthorityState,
+		AuthorityRecoveryReasonCheckpointMismatch,
+		AuthorityRecoveryReasonRepositoryUnavailable,
+		AuthorityRecoveryReasonCheckpointMissing,
+		AuthorityRecoveryReasonCheckpointHeadMismatch,
+		AuthorityRecoveryReasonPersistedStateInvalid,
+		AuthorityRecoveryReasonSignerMismatch,
+		AuthorityRecoveryReasonHistoryPartial,
+		AuthorityRecoveryReasonRollback,
+		AuthorityRecoveryReasonFork,
+		AuthorityRecoveryReasonGenerationMismatch:
+		return true
+	default:
+		return false
 	}
 }
 

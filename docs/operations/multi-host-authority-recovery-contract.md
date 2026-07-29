@@ -20,7 +20,7 @@ contract. Invalid input opens no connection. Each manifest Node selects the
 same SSH host-key-pinned, signer-bound topology context used by `topology
 status`. The designated Authority context additionally contains:
 
-- the exact expected Realm ID;
+- the exact manifest-owned expected Realm ID;
 - the manifest Authority state reference;
 - the manifest Authority backup reference;
 - the manifest Checkpoint Repository reference.
@@ -61,8 +61,10 @@ checkpoint digest without accepting operator-edited values. The existing
 Authority service verifies the strict ledger, signer binding, complete
 immutable repository predecessor chain and unique latest head. The response
 must preserve the exact Realm/sequence/digest tuple and become `ready/ready`.
-Any mismatch, repository loss/rollback/fork, signer loss, corrupt state,
-protected denial, timeout or ambiguity returns `recovery_required`.
+Partial repository history, repository rollback, forked history, Authority
+generation mismatch, repository loss, signer loss, corrupt state, protected
+denial, timeout and ambiguity remain distinct stable redacted failure classes
+and return `recovery_required`.
 
 The command never creates, appends, repairs, resets, truncates, prunes, copies
 or reconstructs Authority or repository truth. The immutable repository

@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"ardents/internal/authority"
 	identityprincipal "ardents/internal/identity/principal"
 	"ardents/internal/runtimeimage"
 
@@ -384,6 +385,9 @@ func validateCertificateBinding(ingress ingressSpec, address ingressAddress) err
 func validateAuthorityAndMaterial(manifest topologyManifest) error {
 	if !aliasPattern.MatchString(manifest.OperatorSignerAlias) {
 		return ValidationError("topology_unsafe_reference")
+	}
+	if !authority.ValidRealmID(manifest.Authority.RealmID) {
+		return ValidationError("topology_invalid_authority_realm")
 	}
 	var authorityNode *nodeSpec
 	for index := range manifest.Nodes {

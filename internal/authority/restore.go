@@ -136,7 +136,17 @@ func (s *Service) readExactRestore(ctx context.Context) (Ledger, error) {
 
 	head, found, err := s.repository.ReadHead(ctx, state.RealmID)
 	if err != nil {
-		if errors.Is(err, ErrCorruptState) || errors.Is(err, ErrUnsupportedVersion) {
+		switch {
+		case errors.Is(err, ErrCheckpointHistoryPartial):
+			s.setRecovery(statusFromLedger(state), ReasonCheckpointHistoryPartial)
+			return Ledger{}, ErrRecoveryRequired
+		case errors.Is(err, ErrCheckpointHistoryFork):
+			s.setRecovery(statusFromLedger(state), ReasonCheckpointHistoryFork)
+			return Ledger{}, ErrRecoveryRequired
+		case errors.Is(err, ErrAuthorityGenerationMismatch):
+			s.setRecovery(statusFromLedger(state), ReasonAuthorityGenerationMismatch)
+			return Ledger{}, ErrRecoveryRequired
+		case errors.Is(err, ErrCorruptState), errors.Is(err, ErrUnsupportedVersion):
 			s.setRecovery(statusFromLedger(state), ReasonCheckpointMismatch)
 			return Ledger{}, ErrRecoveryRequired
 		}
@@ -149,7 +159,18 @@ func (s *Service) readExactRestore(ctx context.Context) (Ledger, error) {
 		return Ledger{}, ErrRecoveryRequired
 	}
 	if !checkpointsEqual(head, state.Checkpoint) {
-		s.setRecovery(statusFromLedger(state), ReasonCheckpointMismatch)
+		switch {
+		case head.AuthoritySequence > state.Checkpoint.AuthoritySequence:
+			s.setRecovery(statusFromLedger(state), ReasonAuthorityRollback)
+		case head.AuthoritySequence < state.Checkpoint.AuthoritySequence:
+			s.setRecovery(statusFromLedger(state), ReasonCheckpointHistoryPartial)
+		case head.AuthorityEpoch != state.Checkpoint.AuthorityEpoch ||
+			head.AuthorityPrincipal != state.Checkpoint.AuthorityPrincipal ||
+			!equalBytes(head.AuthorityPublicKey, state.Checkpoint.AuthorityPublicKey):
+			s.setRecovery(statusFromLedger(state), ReasonAuthorityGenerationMismatch)
+		default:
+			s.setRecovery(statusFromLedger(state), ReasonCheckpointHistoryFork)
+		}
 		return Ledger{}, ErrRecoveryRequired
 	}
 	return state, nil

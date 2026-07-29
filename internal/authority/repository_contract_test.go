@@ -10,20 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"ardents/internal/deployment"
 	"ardents/internal/storage"
 
 	"github.com/stretchr/testify/require"
 )
-
-func TestCheckpointRepositoryCapacityMatchesAdmittedTopologyContract(t *testing.T) {
-	raw, err := os.ReadFile(filepath.Join("..", "deployment", "testdata", "public-direct.json"))
-	require.NoError(t, err)
-	plan, err := deployment.Compile(raw)
-	require.NoError(t, err)
-
-	require.Equal(t, plan.Authority.CheckpointMaxHeads, MaxCheckpointRecords)
-}
 
 func TestFileCheckpointRepositoryCreateReadAndExactCompareAppend(t *testing.T) {
 	ctx := context.Background()
@@ -89,12 +79,14 @@ func TestFileCheckpointRepositoryReadRejectsRollbackAndAmbiguousHistory(t *testi
 	for _, test := range []struct {
 		name    string
 		corrupt func(*testing.T, string, string)
+		want    error
 	}{
 		{
 			name: "rolled back predecessor",
 			corrupt: func(t *testing.T, root, realmID string) {
 				require.NoError(t, os.Remove(filepath.Join(root, realmID, "00000000000000000001.json")))
 			},
+			want: ErrCheckpointHistoryPartial,
 		},
 		{
 			name: "ambiguous extra head",
@@ -105,6 +97,7 @@ func TestFileCheckpointRepositoryReadRejectsRollbackAndAmbiguousHistory(t *testi
 					filepath.Join(root, realmID, "fork.json"), raw,
 				))
 			},
+			want: ErrCheckpointHistoryFork,
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -125,6 +118,7 @@ func TestFileCheckpointRepositoryReadRejectsRollbackAndAmbiguousHistory(t *testi
 			test.corrupt(t, root, realmID)
 			_, _, err = repository.ReadHead(ctx, realmID)
 			require.ErrorIs(t, err, ErrCorruptState)
+			require.ErrorIs(t, err, test.want)
 		})
 	}
 }

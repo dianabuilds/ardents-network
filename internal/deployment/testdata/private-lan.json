@@ -9,6 +9,7 @@
   },
   "authority": {
     "slot": "node-a",
+    "realm_id": "r1_00112233445566778899aabbccddeeff",
     "state_ref": "authority-state-primary",
     "failure_domain": {
       "class": "host",

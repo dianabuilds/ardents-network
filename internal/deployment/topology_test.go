@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 
+	"ardents/internal/authority"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,6 +27,14 @@ func TestCompilePrivateLANTopologyProducesDeterministicRedactedPlans(t *testing.
 	require.NoError(t, err)
 	expected := readTopologyFixture(t, "private-lan-plan.json")
 	require.JSONEq(t, string(expected), string(actual))
+}
+
+func TestCheckpointRepositoryCapacityMatchesAuthorityContract(t *testing.T) {
+	raw := readTopologyFixture(t, "public-direct.json")
+	plan, err := Compile(raw)
+	require.NoError(t, err)
+
+	require.Equal(t, authority.MaxCheckpointRecords, plan.Authority.CheckpointMaxHeads)
 }
 
 func TestCompilePublicDirectTopologyKeepsEvidenceRequirementsDistinct(t *testing.T) {
@@ -412,6 +422,13 @@ func TestCompileRejectsInvalidRecoveryAuthorityAndImmutableMaterial(t *testing.T
 				root["authority"].(map[string]any)["slot"] = "node-unknown"
 			},
 			code: "topology_invalid_authority_slot",
+		},
+		{
+			name: "invalid authority realm",
+			mutate: func(root map[string]any) {
+				root["authority"].(map[string]any)["realm_id"] = "r1_bad"
+			},
+			code: "topology_invalid_authority_realm",
 		},
 		{
 			name: "authority host domain mismatch",
@@ -818,6 +835,7 @@ func TestCompilerProductionDependencyClosureHasNoSideEffectAdapters(t *testing.T
 		"bytes": {}, "context": {}, "encoding/json": {}, "errors": {}, "io": {},
 		"net/netip": {}, "reflect": {}, "regexp": {}, "sort": {}, "strconv": {}, "strings": {},
 		"time":                                 {},
+		"ardents/internal/authority":           {},
 		"ardents/internal/identity/principal":  {},
 		"ardents/internal/runtimeimage":        {},
 		"github.com/multiformats/go-multiaddr": {},

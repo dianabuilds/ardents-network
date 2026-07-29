@@ -209,6 +209,10 @@ func TestAuthorityRecoveryPreservesStableAuthorityFailureOwnership(t *testing.T)
 		{"checkpoint_head_mismatch", AuthorityRecoveryReasonCheckpointHeadMismatch},
 		{"authority_state_invalid", AuthorityRecoveryReasonPersistedStateInvalid},
 		{"authority_signer_mismatch", AuthorityRecoveryReasonSignerMismatch},
+		{"checkpoint_history_partial", AuthorityRecoveryReasonHistoryPartial},
+		{"authority_rollback_detected", AuthorityRecoveryReasonRollback},
+		{"checkpoint_history_fork", AuthorityRecoveryReasonFork},
+		{"authority_generation_mismatch", AuthorityRecoveryReasonGenerationMismatch},
 	}
 	for _, test := range tests {
 		t.Run(test.remote, func(t *testing.T) {
@@ -228,6 +232,19 @@ func TestAuthorityRecoveryPreservesStableAuthorityFailureOwnership(t *testing.T)
 			require.Equal(t, test.want, status.Reason)
 		})
 	}
+}
+
+func TestAuthorityRecoveryRejectsAdapterDefinedReasonVocabulary(t *testing.T) {
+	require.Equal(
+		t,
+		AuthorityRecoveryReasonAuthorityInvalid,
+		recoveryReason(AuthorityRecoveryProbeError("operator@example /secret/path")),
+	)
+	require.Equal(
+		t,
+		AuthorityRecoveryReasonAuthorityInvalid,
+		recoveryReason(ProbeError("operator@example /secret/path")),
+	)
 }
 
 func TestAuthorityRolloutOrderKeepsAuthorityLastOrFirst(t *testing.T) {
