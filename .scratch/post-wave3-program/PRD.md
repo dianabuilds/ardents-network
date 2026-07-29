@@ -159,8 +159,11 @@ implementation slices and commits.
   Standards and Spec reviews report no actionable findings.
 - PW3-18 is `ready-for-human`. No host, network, signer, Authority, repository,
   runtime or production state was touched; nothing was pushed or deployed.
-  `deployment.multi-host` remains `Q=no`, and MR-02 remains unadmitted pending
-  explicit maintainer acceptance of MR-01.
+  `deployment.multi-host` remains `Q=no`.
+- The maintainer accepted exact MR-01 implementation tip
+  `c981cc5a6409f9827d470fa95fb16be01107dd80` and closed PW3-18. MR-02 is
+  eligible for a separate admission audit but remains unpublished,
+  unassigned, and unstarted.
 
 ## Stream ownership
 
