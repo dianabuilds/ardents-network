@@ -231,9 +231,16 @@ func TestPrivateLANReportsScopedListenerWithoutPublicClaim(t *testing.T) {
 	require.NoError(t, svc.ApplyPrivateLANProbe(
 		scopedProbe("node-c", "node-a", address, now.Add(2*time.Second), true),
 	))
+	expired := make(chan struct{}, 1)
+	svc.SetReachabilityObserver(func() { expired <- struct{}{} })
 	now = now.Add(2*time.Second + network.PrivateLANProbeMaxAge + time.Second)
-	require.Equal(t, "unknown", svc.ReachabilitySnapshot().State)
 	require.Empty(t, svc.Endpoints())
+	select {
+	case <-expired:
+	case <-time.After(time.Second):
+		t.Fatal("private LAN expiry did not notify the reachability observer")
+	}
+	require.Equal(t, "unknown", svc.ReachabilitySnapshot().State)
 }
 
 func TestPublicWSSAdvertisementMustMatchCertificateHostAndPort(t *testing.T) {

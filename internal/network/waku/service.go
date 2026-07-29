@@ -228,8 +228,14 @@ func (s *Service) Reason() string {
 
 func (s *Service) Endpoints() []string {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	return cloneStrings(s.publishableEndpointsLocked())
+	changed := s.expirePrivateLANProbeLocked(timeNowUTC())
+	endpoints := cloneStrings(s.publishableEndpointsLocked())
+	observer := s.reachabilityObs
+	s.mu.Unlock()
+	if changed && observer != nil {
+		go observer()
+	}
+	return endpoints
 }
 
 func (s *Service) PeerCount() int {

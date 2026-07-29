@@ -208,7 +208,6 @@ func (s *Service) markBoundReachabilityLocked() {
 }
 
 func (s *Service) publishableEndpointsLocked() []string {
-	s.expirePrivateLANProbeLocked(timeNowUTC())
 	if (s.reachability.Mode == network.ReachabilityPublicDirect ||
 		s.reachability.Mode == network.ReachabilityPrivateLAN) &&
 		len(s.cfg.AdvertiseAddresses) > 0 && !s.reachability.Reachable {
