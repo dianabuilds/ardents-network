@@ -165,6 +165,24 @@ implementation slices and commits.
   admitted as PW3-19 for the bounded protected three-Node status slice.
   Admission starts no host mutation or qualification; `Q=no`.
 
+## MR-02 implementation checkpoint — 2026-07-29
+
+- PW3-19 implements the bounded protected three-Node status slice through
+  exact implementation tip `97fed1b68d8b2a21cbf1ba44aae0b027d48ef4e3`.
+- Full local, race, tooling, tagged-compilation and capability checks pass.
+  Independent Spec, Standards and Security re-reviews report PASS; retained
+  security findings are empty.
+- The security review's intermediate session-capacity finding was corrected
+  with one bounded `EndSession` lifecycle cleanup per Node, outside the three
+  protected product-observation calls and inside the same deadlines.
+- The verified tree includes Windows listener hardening through `9572d40`.
+  Local test listeners bind loopback; Linux-only private-interface acceptance
+  scenarios skip on Windows, avoiding recurring Windows Firewall prompts
+  without weakening their Linux evidence.
+- PW3-19 is `ready-for-human`. No real host, network, signer, Authority,
+  production state, qualification, capability promotion, push or deployment
+  occurred. `deployment.multi-host` remains `Q=no`.
+
 ## Stream ownership
 
 - The integrator alone edits this PRD, the Wave 3 decision register, the

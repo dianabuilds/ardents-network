@@ -1,8 +1,8 @@
 # PW3-19: MR-02 inspect three Nodes through pinned host-local control
 
-Status: ready-for-agent
+Status: ready-for-human
 State: open
-Labels: ready-for-agent
+Labels: ready-for-human
 Research class: R0 local-substitutable protected status
 
 ## Parent
@@ -114,21 +114,21 @@ digests.
 
 ## Acceptance criteria
 
-- [ ] Exact three-context resolution binds SSH alias, host-key pin, signer
+- [x] Exact three-context resolution binds SSH alias, host-key pin, signer
       alias, Node slot and Node Principal before any protected observation.
-- [ ] Three independent per-Node clients use stream-local SSH forwarding only;
+- [x] Three independent per-Node clients use stream-local SSH forwarding only;
       no remote command/helper and no signer/session leaves the workstation.
-- [ ] Composite readiness, reachability, Store and image truth are projected
+- [x] Composite readiness, reachability, Store and image truth are projected
       without protected identifiers.
-- [ ] `Unauthenticated` receives one refresh only; denial, unavailable,
+- [x] `Unauthenticated` receives one refresh only; denial, unavailable,
       pin/tunnel failure and timeout do not refresh.
-- [ ] Host mismatch, tunnel timeout/failure, remote denial, unavailable Node,
+- [x] Host mismatch, tunnel timeout/failure, remote denial, unavailable Node,
       invalid response and partial result remain distinct stable outcomes.
-- [ ] Full/degraded/partial aggregation is deterministic, bounded and fail
+- [x] Full/degraded/partial aggregation is deterministic, bounded and fail
       closed.
-- [ ] Contract, security-negative and adapter tests cover redaction, context
+- [x] Contract, security-negative and adapter tests cover redaction, context
       mismatch, cross-Node session separation and all stable failure classes.
-- [ ] Full/tooling/architecture/capability checks pass and
+- [x] Full/tooling/architecture/capability checks pass and
       `deployment.multi-host` remains `Q=no`.
 
 ## Required evidence
@@ -175,3 +175,23 @@ host or production state was touched.
     R0 local-substitutable slice;
   - outcome: `ready-for-agent`. No host, deployment, qualification, capability
     promotion or push occurred.
+- 2026-07-29 implementation handoff:
+  - the logical MR-02 implementation range is `f1402d1..97fed1b`, with exact
+    implementation tip `97fed1b68d8b2a21cbf1ba44aae0b027d48ef4e3`;
+  - each admitted Node uses an isolated strict-host-key SSH stream-local
+    client and Operator Session manager, three bounded protected product
+    observations, and one bounded `EndSession` lifecycle cleanup call;
+  - the security audit first exposed retained remote sessions as a bounded
+    capacity risk; the implementation now closes each session within the same
+    per-Node/aggregate deadlines. The final security, Spec and Standards
+    re-reviews all report PASS, and retained findings are empty;
+  - `go test ./... -count=1`, `go vet ./...`, all tooling tests, selected race
+    tests, tagged integration/e2e compilation, the full integration network
+    suite, capability-catalog validation and `git diff --check` pass;
+  - the verified tree also includes Windows test hardening through `9572d40`:
+    ordinary local listeners bind loopback, while acceptance scenarios that
+    require a private interface bind that exact interface on Linux and skip on
+    Windows. The full default Windows suite completed without a Firewall
+    prompt;
+  - outcome: `ready-for-human`. No real host, deployment, production state,
+    qualification, capability promotion or push occurred.
