@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"strings"
 	"sync"
+	"text/tabwriter"
 	"time"
 
 	protocol "ardents/internal/localapi/protocol"
@@ -137,6 +138,30 @@ func JSONLine(writer io.Writer, message proto.Message) error {
 	}
 	_, err = fmt.Fprintln(writer, string(data))
 	return err
+}
+
+// JSONValue renders a non-protobuf CLI projection with the shared JSON shape.
+func JSONValue(writer io.Writer, value any) error {
+	data, err := json.MarshalIndent(value, "", "  ")
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintln(writer, string(data))
+	return err
+}
+
+// Table renders product-projected strings with shared tabular mechanics.
+func Table(writer io.Writer, headers []string, rows [][]string) error {
+	table := tabwriter.NewWriter(writer, 0, 4, 2, ' ', 0)
+	if _, err := fmt.Fprintln(table, strings.Join(headers, "\t")); err != nil {
+		return err
+	}
+	for _, row := range rows {
+		if _, err := fmt.Fprintln(table, strings.Join(row, "\t")); err != nil {
+			return err
+		}
+	}
+	return table.Flush()
 }
 
 func ConsumeEvents(renderer Renderer, stream *connect.ServerStreamForClient[protocol.EventEnvelope], limit int) int {

@@ -131,6 +131,10 @@ func classifyProbeError(err error) error {
 	switch {
 	case errors.Is(err, client.ErrSSHHostKeyMismatch):
 		return deployment.ProbeError(deployment.ProbeHostKeyMismatch)
+	case errors.Is(err, client.ErrSSHTunnelTimeout):
+		return deployment.ProbeError(deployment.ProbeTunnelTimeout)
+	case errors.Is(err, client.ErrSSHTunnelFailure):
+		return deployment.ProbeError(deployment.ProbeTunnelFailure)
 	case errors.Is(err, context.DeadlineExceeded), errors.Is(err, context.Canceled):
 		return deployment.ProbeError(deployment.ProbeTunnelTimeout)
 	}
@@ -139,7 +143,9 @@ func classifyProbeError(err error) error {
 		return deployment.ProbeError(deployment.ProbeRemoteUnauthenticated)
 	case connect.CodePermissionDenied:
 		return deployment.ProbeError(deployment.ProbeRemoteDenied)
-	case connect.CodeUnavailable, connect.CodeDeadlineExceeded:
+	case connect.CodeDeadlineExceeded:
+		return deployment.ProbeError(deployment.ProbeTunnelTimeout)
+	case connect.CodeUnavailable:
 		return deployment.ProbeError(deployment.ProbeNodeUnavailable)
 	default:
 		return deployment.ProbeError(deployment.ProbeRemoteInvalidResponse)

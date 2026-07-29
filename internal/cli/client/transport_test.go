@@ -61,6 +61,7 @@ func TestSSHStreamLocalStartFailureDoesNotMakeCloseHang(t *testing.T) {
 	tunnel := newSSHStreamLocalTransport(Config{SSH: "ops@alpha", SSHPort: 22, SSHOperatorSocket: "/run/ardents/operator.sock"})
 	err := tunnel.ensureStarted(context.Background())
 	require.ErrorContains(t, err, "start SSH")
+	require.ErrorIs(t, err, ErrSSHTunnelFailure)
 	done := make(chan error, 1)
 	go func() { done <- tunnel.Close() }()
 	select {
@@ -83,6 +84,7 @@ func TestSSHStreamLocalCloseBeforeDialPreventsLateStart(t *testing.T) {
 	require.NoError(t, tunnel.Close())
 	err := tunnel.ensureStarted(context.Background())
 	require.ErrorContains(t, err, "closed")
+	require.ErrorIs(t, err, ErrSSHTunnelFailure)
 	require.False(t, started)
 	require.Empty(t, tunnel.tempDir)
 }
@@ -100,6 +102,7 @@ func TestSSHStreamLocalTunnelEarlyExitIsRedactedAndCleansUp(t *testing.T) {
 	defer cancel()
 	err := tunnel.ensureStarted(ctx)
 	require.ErrorContains(t, err, "exited before readiness")
+	require.ErrorIs(t, err, ErrSSHTunnelFailure)
 	require.NotContains(t, err.Error(), "/secret/remote/operator.sock")
 	require.NoError(t, tunnel.Close())
 }
@@ -120,6 +123,22 @@ func TestSSHStreamLocalClassifiesHostKeyMismatchWithoutLeakingStderr(t *testing.
 	require.NoError(t, tunnel.Close())
 }
 
+func TestSSHStreamLocalClassifiesReadinessTimeout(t *testing.T) {
+	original := newSSHCommand
+	t.Cleanup(func() { newSSHCommand = original })
+	newSSHCommand = func([]string) *exec.Cmd {
+		command := exec.Command(os.Args[0], "-test.run=TestSSHStreamLocalHelperProcess", "--")
+		command.Env = append(os.Environ(), "ARDENTS_SSH_HELPER=hang")
+		return command
+	}
+	tunnel := newSSHStreamLocalTransport(Config{SSH: "ops@alpha", SSHPort: 22, SSHOperatorSocket: "/run/ardents/operator.sock"})
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+	defer cancel()
+	err := tunnel.ensureStarted(ctx)
+	require.ErrorIs(t, err, ErrSSHTunnelTimeout)
+	require.NoError(t, tunnel.Close())
+}
+
 func TestSSHStreamLocalHelperProcess(t *testing.T) {
 	switch os.Getenv("ARDENTS_SSH_HELPER") {
 	case "":
@@ -129,6 +148,10 @@ func TestSSHStreamLocalHelperProcess(t *testing.T) {
 	case "host-key-mismatch":
 		_, _ = os.Stderr.WriteString("WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED! secret-host\n")
 		os.Exit(255)
+	case "hang":
+		for {
+			time.Sleep(time.Hour)
+		}
 	case "ready":
 		listener, err := net.Listen("unix", "operator.sock")
 		if err != nil {

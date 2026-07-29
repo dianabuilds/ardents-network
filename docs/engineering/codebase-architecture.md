@@ -179,6 +179,7 @@ internal/
   deployment/
   buildinfo/
   config/
+  runtimeimage/
   identity/
     access/
     capability/
@@ -242,6 +243,7 @@ internal/
     workload/
     diagnostics/
     configuration/
+    topology/
     tui/
   observability/
   ingressproxy/
@@ -392,6 +394,7 @@ The policy discovers handwritten production Go packages from the explicit
 | `deployment` | strict bounded multi-host topology manifest admission, deterministic redacted host-local plan compilation and pure bounded status projection | SSH, signer/session adapters, host or network mutation, Authority/repository operations, rollout/fence journals or real-host qualification |
 | `buildinfo` | immutable build and version identity | runtime health, configuration, release orchestration |
 | `config` | decode, defaults, validation, source precedence, change classification | applying product changes, environment-specific startup logic |
+| `runtimeimage` | canonical validation of immutable runtime image-reference identity | image pulling, execution, rollout, registry access or provenance |
 | `identity` | node identity, key continuity, principals, capabilities, authentication facts | network transport, general policy decisions, operator RPC auth |
 | `policy` | allow/deny decisions and stable denial reasons | workload execution, publication, retention, transport operations |
 | `storage` | secure durable primitives, transactions, file permissions, backup-safe persistence operations | product schemas and product lifecycle decisions |
@@ -480,6 +483,7 @@ flowchart TD
     identity[identity]
     policy[policy]
     config[config]
+    runtimeimage[runtimeimage]
     network[network]
     messaging[messaging]
     discovery[discovery]
@@ -501,6 +505,7 @@ flowchart TD
     messaging --> identity
     messaging --> storage
     config --> network
+    config --> runtimeimage
     policy --> content
     policy --> identity
     policy --> network
@@ -535,6 +540,7 @@ flowchart TD
     channeldelivery --> authority
     channeldelivery --> identity
     deployment --> identity
+    deployment --> runtimeimage
     provision --> authority
     provision --> config
     provision --> identity

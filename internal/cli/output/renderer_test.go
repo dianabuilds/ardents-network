@@ -68,6 +68,32 @@ func TestJSONLinesV1WritesOneValidDocumentPerEvent(t *testing.T) {
 	}
 }
 
+func TestJSONValueAndTableRenderSharedNonProtoOutput(t *testing.T) {
+	var jsonOutput bytes.Buffer
+	if err := JSONValue(&jsonOutput, struct {
+		State string `json:"state"`
+	}{State: "ready"}); err != nil {
+		t.Fatal(err)
+	}
+	var decoded map[string]any
+	if err := json.Unmarshal(jsonOutput.Bytes(), &decoded); err != nil {
+		t.Fatalf("non-proto JSON is invalid: %v: %s", err, jsonOutput.String())
+	}
+	if decoded["state"] != "ready" {
+		t.Fatalf("unexpected non-proto JSON: %#v", decoded)
+	}
+
+	var tableOutput bytes.Buffer
+	if err := Table(&tableOutput, []string{"NODE", "STATE"}, [][]string{{"node-a", "ready"}}); err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{"NODE", "STATE", "node-a", "ready"} {
+		if !strings.Contains(tableOutput.String(), expected) {
+			t.Fatalf("missing %q in table output %q", expected, tableOutput.String())
+		}
+	}
+}
+
 func TestJSONFailureUsesCommonErrorObjectOnStderr(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := NewRenderer(&stdout, &stderr, true).Failure(connect.NewError(connect.CodeUnavailable, errors.New("offline")))

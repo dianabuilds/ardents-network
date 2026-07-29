@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"ardents/internal/cli/client"
 	configurationcmd "ardents/internal/cli/configuration"
 	"ardents/internal/deployment"
 	protocol "ardents/internal/localapi/protocol"
@@ -85,13 +87,78 @@ func TestCommandUsesThreeSeparateManifestBoundContextsAndRedactsJSON(t *testing.
 	}
 }
 
-func TestProbeRejectsManifestToContextPinMismatchBeforeOpeningClient(t *testing.T) {
+func TestProbeRejectsManifestToContextBindingMismatchBeforeOpeningClient(t *testing.T) {
 	contextFile := writeTopologyContexts(t)
-	factory := &fakeFactory{}
-	probe := Probe{Base: configurationcmd.Config{ContextFile: contextFile, Timeout: time.Second}, Factory: factory}
-	_, err := probe.Observe(context.Background(), topologyTarget("different-pin"))
-	require.ErrorContains(t, err, "host_key_mismatch")
-	require.Empty(t, factory.opened)
+	tests := []struct {
+		name   string
+		mutate func(*deployment.NodeStatusTarget)
+		reason deployment.ProbeErrorCode
+	}{
+		{
+			name: "pin",
+			mutate: func(target *deployment.NodeStatusTarget) {
+				target.HostKeyPinRef = "different-pin"
+			},
+			reason: deployment.ProbeHostKeyMismatch,
+		},
+		{
+			name: "signer alias",
+			mutate: func(target *deployment.NodeStatusTarget) {
+				target.OperatorSignerAlias = "different-signer"
+			},
+			reason: deployment.ProbeLocalSignerUnavailable,
+		},
+		{
+			name: "node slot",
+			mutate: func(target *deployment.NodeStatusTarget) {
+				target.Slot = "node-z"
+			},
+			reason: deployment.ProbeRemoteInvalidResponse,
+		},
+		{
+			name: "principal",
+			mutate: func(target *deployment.NodeStatusTarget) {
+				target.ExpectedNodePrincipal = "p1_jjkwa23wqggjpivnxdb45wpe575akea3eyytyr2slvuhg7ujsspq"
+			},
+			reason: deployment.ProbeRemoteInvalidResponse,
+		},
+		{
+			name: "missing SSH alias",
+			mutate: func(target *deployment.NodeStatusTarget) {
+				target.SSHAlias = "missing-context"
+			},
+			reason: deployment.ProbeTunnelFailure,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			factory := &fakeFactory{}
+			probe := Probe{
+				Base:    configurationcmd.Config{ContextFile: contextFile, Timeout: time.Second},
+				Factory: factory,
+			}
+			target := topologyTarget("host-pin-a")
+			test.mutate(&target)
+			_, err := probe.Observe(context.Background(), target)
+			require.EqualError(t, err, string(test.reason))
+			require.Empty(t, factory.opened)
+		})
+	}
+}
+
+func TestCommandHumanOutputIncludesReadinessAndJoinedTruth(t *testing.T) {
+	manifestPath := filepath.Join("..", "..", "deployment", "testdata", "public-direct.json")
+	contextFile := writeTopologyContexts(t)
+	var stdout, stderr bytes.Buffer
+	code := (Command{
+		Base: configurationcmd.Config{ContextFile: contextFile, Timeout: time.Second},
+		Out:  &stdout, Err: &stderr, Factory: &fakeFactory{},
+	}).Run(context.Background(), []string{"status", "--manifest", manifestPath})
+	require.Zero(t, code, stderr.String())
+	require.Contains(t, stdout.String(), "READINESS")
+	require.Contains(t, stdout.String(), "JOINED")
+	require.Contains(t, stdout.String(), "node-a")
+	require.Contains(t, stdout.String(), "true")
 }
 
 func TestCommandRejectsNonRegularManifestWithoutPathLeak(t *testing.T) {
@@ -104,6 +171,40 @@ func TestCommandRejectsNonRegularManifestWithoutPathLeak(t *testing.T) {
 	require.Equal(t, 2, code)
 	require.Empty(t, stdout.String())
 	require.NotContains(t, stderr.String(), path)
+}
+
+func TestClassifyProbeErrorPreservesTunnelAndRemoteFailureClasses(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want deployment.ProbeError
+	}{
+		{
+			name: "host key mismatch",
+			err:  client.ErrSSHHostKeyMismatch,
+			want: deployment.ProbeError(deployment.ProbeHostKeyMismatch),
+		},
+		{
+			name: "tunnel failure through connect",
+			err:  connect.NewError(connect.CodeUnavailable, client.ErrSSHTunnelFailure),
+			want: deployment.ProbeError(deployment.ProbeTunnelFailure),
+		},
+		{
+			name: "deadline through connect",
+			err:  connect.NewError(connect.CodeDeadlineExceeded, errors.New("deadline")),
+			want: deployment.ProbeError(deployment.ProbeTunnelTimeout),
+		},
+		{
+			name: "remote unavailable",
+			err:  connect.NewError(connect.CodeUnavailable, errors.New("offline")),
+			want: deployment.ProbeError(deployment.ProbeNodeUnavailable),
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			require.EqualError(t, classifyProbeError(test.err), test.want.Error())
+		})
+	}
 }
 
 func writeTopologyContexts(t *testing.T) string {

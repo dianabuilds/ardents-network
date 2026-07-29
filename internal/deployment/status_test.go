@@ -77,7 +77,7 @@ func TestStatusInspectorRetainsDistinctPartialFailureClassesAndContinues(t *test
 			require.Equal(t, TopologyOutcomePartial, status.Outcome)
 			require.Len(t, status.Nodes, 3)
 			require.Equal(t, NodeObservationUnavailable, status.Nodes[1].Observation)
-			require.Equal(t, string(code), status.Nodes[1].Reason)
+			require.Equal(t, StatusReason(code), status.Nodes[1].Reason)
 			require.False(t, status.Nodes[1].Ready)
 			require.Equal(t, []string{"node-a", "node-b", "node-c"}, probe.slots())
 		})
@@ -89,7 +89,7 @@ func TestStatusInspectorDegradesObservedIdentityImageReadinessReachabilityAndSto
 	tests := []struct {
 		name   string
 		mutate func(map[string]NodeObservation)
-		reason string
+		reason StatusReason
 	}{
 		{
 			name: "node identity mismatch",
@@ -98,7 +98,7 @@ func TestStatusInspectorDegradesObservedIdentityImageReadinessReachabilityAndSto
 				item.NodePrincipal = observations["node-b"].NodePrincipal
 				observations["node-a"] = item
 			},
-			reason: "node_identity_mismatch",
+			reason: StatusReasonNodeIdentityMismatch,
 		},
 		{
 			name: "image mismatch",
@@ -107,7 +107,7 @@ func TestStatusInspectorDegradesObservedIdentityImageReadinessReachabilityAndSto
 				item.ImageReference = "registry.example/ardents/node@sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
 				observations["node-a"] = item
 			},
-			reason: "image_mismatch",
+			reason: StatusReasonImageMismatch,
 		},
 		{
 			name: "image unverified",
@@ -116,7 +116,7 @@ func TestStatusInspectorDegradesObservedIdentityImageReadinessReachabilityAndSto
 				item.ImageReference = ""
 				observations["node-a"] = item
 			},
-			reason: "image_unverified",
+			reason: StatusReasonImageUnverified,
 		},
 		{
 			name: "composite readiness degraded",
@@ -126,7 +126,7 @@ func TestStatusInspectorDegradesObservedIdentityImageReadinessReachabilityAndSto
 				item.RuntimeReason = "network"
 				observations["node-a"] = item
 			},
-			reason: "composite_readiness_degraded",
+			reason: StatusReasonCompositeReadinessDegraded,
 		},
 		{
 			name: "public reachability unavailable",
@@ -136,7 +136,7 @@ func TestStatusInspectorDegradesObservedIdentityImageReadinessReachabilityAndSto
 				item.Reachable = false
 				observations["node-a"] = item
 			},
-			reason: "public_reachability_unverified",
+			reason: StatusReasonPublicReachabilityUnverified,
 		},
 		{
 			name: "persistent store unavailable",
@@ -145,7 +145,7 @@ func TestStatusInspectorDegradesObservedIdentityImageReadinessReachabilityAndSto
 				item.StoreEnabled = false
 				observations["node-a"] = item
 			},
-			reason: "persistent_store_unavailable",
+			reason: StatusReasonPersistentStoreUnavailable,
 		},
 	}
 	for _, tc := range tests {
@@ -180,7 +180,7 @@ func TestStatusInspectorValidatesManifestBeforeObservationAndBoundsEachNode(t *t
 	}).Inspect(context.Background(), raw)
 	require.NoError(t, err)
 	require.Equal(t, TopologyOutcomePartial, status.Outcome)
-	require.Equal(t, string(ProbeTunnelTimeout), status.Nodes[1].Reason)
+	require.Equal(t, StatusReason(ProbeTunnelTimeout), status.Nodes[1].Reason)
 	require.Equal(t, []string{"node-a", "node-b", "node-c"}, blocking.slots())
 }
 

@@ -14,26 +14,52 @@ const (
 	// TopologyStatusVersion identifies the bounded ordinary MR-02 projection.
 	TopologyStatusVersion = "ardents.topology.status/v1"
 
-	TopologyOutcomeReady    = "ready"
-	TopologyOutcomeDegraded = "degraded"
-	TopologyOutcomePartial  = "partial"
+	TopologyOutcomeReady    TopologyOutcome = "ready"
+	TopologyOutcomeDegraded TopologyOutcome = "degraded"
+	TopologyOutcomePartial  TopologyOutcome = "partial"
 
-	NodeObservationComplete    = "complete"
-	NodeObservationUnavailable = "unavailable"
+	NodeObservationComplete    NodeObservationState = "complete"
+	NodeObservationUnavailable NodeObservationState = "unavailable"
 
-	NodeTruthReady       = "ready"
-	NodeTruthDegraded    = "degraded"
-	NodeTruthUnavailable = "unavailable"
-	NodeTruthNotRequired = "not_required"
+	NodeTruthReady       NodeTruth = "ready"
+	NodeTruthDegraded    NodeTruth = "degraded"
+	NodeTruthUnavailable NodeTruth = "unavailable"
+	NodeTruthNotRequired NodeTruth = "not_required"
 
-	NodeImageMatch      = "match"
-	NodeImageMismatch   = "mismatch"
-	NodeImageUnverified = "unverified"
+	NodeImageMatch      NodeImageState = "match"
+	NodeImageMismatch   NodeImageState = "mismatch"
+	NodeImageUnverified NodeImageState = "unverified"
+
+	StatusReasonNodeIdentityMismatch          StatusReason = "node_identity_mismatch"
+	StatusReasonImageUnverified               StatusReason = "image_unverified"
+	StatusReasonImageMismatch                 StatusReason = "image_mismatch"
+	StatusReasonCompositeReadinessDegraded    StatusReason = "composite_readiness_degraded"
+	StatusReasonNetworkNotJoined              StatusReason = "network_not_joined"
+	StatusReasonPublicReachabilityUnverified  StatusReason = "public_reachability_unverified"
+	StatusReasonPrivateReachabilityUnverified StatusReason = "private_reachability_unverified"
+	StatusReasonOutboundReachabilityMismatch  StatusReason = "outbound_reachability_mismatch"
+	StatusReasonPersistentStoreUnavailable    StatusReason = "persistent_store_unavailable"
+	StatusReasonPersistentStoreDegraded       StatusReason = "persistent_store_degraded"
 
 	defaultNodeStatusTimeout = 10 * time.Second
 	maxTopologyStatusTimeout = 30 * time.Second
 	maxObservationString     = 512
 )
+
+// TopologyOutcome is the closed aggregate health vocabulary.
+type TopologyOutcome string
+
+// NodeObservationState is the closed observation-completeness vocabulary.
+type NodeObservationState string
+
+// NodeTruth is the closed readiness, reachability, and Store vocabulary.
+type NodeTruth string
+
+// NodeImageState is the closed expected-image comparison vocabulary.
+type NodeImageState string
+
+// StatusReason is the closed redacted reason vocabulary.
+type StatusReason string
 
 // ProbeErrorCode is one closed local/remote failure class owned by MR-02.
 type ProbeErrorCode string
@@ -91,23 +117,23 @@ type NodeObservation struct {
 
 // TopologyStatus is the deterministic redacted MR-02 aggregate.
 type TopologyStatus struct {
-	APIVersion string       `json:"api_version"`
-	Outcome    string       `json:"outcome"`
-	Nodes      []NodeStatus `json:"nodes"`
+	APIVersion string          `json:"api_version"`
+	Outcome    TopologyOutcome `json:"outcome"`
+	Nodes      []NodeStatus    `json:"nodes"`
 }
 
 // NodeStatus exposes stable slot-scoped truth only.
 type NodeStatus struct {
-	Slot         string `json:"slot"`
-	Role         string `json:"role"`
-	Observation  string `json:"observation"`
-	Ready        bool   `json:"ready"`
-	Readiness    string `json:"readiness"`
-	Joined       bool   `json:"joined"`
-	Reachability string `json:"reachability"`
-	Store        string `json:"store"`
-	Image        string `json:"image"`
-	Reason       string `json:"reason,omitempty"`
+	Slot         string               `json:"slot"`
+	Role         string               `json:"role"`
+	Observation  NodeObservationState `json:"observation"`
+	Ready        bool                 `json:"ready"`
+	Readiness    NodeTruth            `json:"readiness"`
+	Joined       bool                 `json:"joined"`
+	Reachability NodeTruth            `json:"reachability"`
+	Store        NodeTruth            `json:"store"`
+	Image        NodeImageState       `json:"image"`
+	Reason       StatusReason         `json:"reason,omitempty"`
 }
 
 // StatusInspector validates one topology before querying exactly three Nodes.
@@ -194,15 +220,15 @@ func unavailableNodeStatus(target NodeStatusTarget, err error) NodeStatus {
 	}
 }
 
-func probeReason(err error) string {
+func probeReason(err error) StatusReason {
 	if errors.Is(err, context.DeadlineExceeded) {
-		return string(ProbeTunnelTimeout)
+		return StatusReason(ProbeTunnelTimeout)
 	}
 	var probeErr ProbeError
 	if errors.As(err, &probeErr) && validProbeErrorCode(ProbeErrorCode(probeErr)) {
-		return probeErr.Error()
+		return StatusReason(probeErr)
 	}
-	return string(ProbeRemoteInvalidResponse)
+	return StatusReason(ProbeRemoteInvalidResponse)
 }
 
 func validProbeErrorCode(code ProbeErrorCode) bool {
@@ -231,21 +257,21 @@ func projectNodeStatus(target NodeStatusTarget, observation NodeObservation) Nod
 		status.Reachability = NodeTruthUnavailable
 		status.Store = NodeTruthUnavailable
 		status.Image = NodeImageUnverified
-		status.Reason = string(ProbeRemoteInvalidResponse)
+		status.Reason = StatusReason(ProbeRemoteInvalidResponse)
 		return status
 	}
 	principal, principalErr := identityprincipal.Parse(observation.NodePrincipal)
 	if observation.NodeName != target.Slot || principalErr != nil ||
 		principal.String() != target.ExpectedNodePrincipal {
 		status.Ready = false
-		status.Reason = "node_identity_mismatch"
+		status.Reason = StatusReasonNodeIdentityMismatch
 	}
 	switch observation.ImageReference {
 	case "":
 		status.Ready = false
 		status.Image = NodeImageUnverified
 		if status.Reason == "" {
-			status.Reason = "image_unverified"
+			status.Reason = StatusReasonImageUnverified
 		}
 	case target.ExpectedImage:
 		status.Image = NodeImageMatch
@@ -253,21 +279,21 @@ func projectNodeStatus(target NodeStatusTarget, observation NodeObservation) Nod
 		status.Ready = false
 		status.Image = NodeImageMismatch
 		if status.Reason == "" {
-			status.Reason = "image_mismatch"
+			status.Reason = StatusReasonImageMismatch
 		}
 	}
 	if !observation.RuntimeReady {
 		status.Ready = false
 		status.Readiness = NodeTruthDegraded
 		if status.Reason == "" {
-			status.Reason = "composite_readiness_degraded"
+			status.Reason = StatusReasonCompositeReadinessDegraded
 		}
 	}
 	if !observation.Joined {
 		status.Ready = false
 		status.Reachability = NodeTruthDegraded
 		if status.Reason == "" {
-			status.Reason = "network_not_joined"
+			status.Reason = StatusReasonNetworkNotJoined
 		}
 	} else if !reachabilityReady(target, observation) {
 		status.Ready = false
@@ -281,9 +307,9 @@ func projectNodeStatus(target NodeStatusTarget, observation NodeObservation) Nod
 		status.Ready = false
 		if status.Reason == "" {
 			if !observation.StoreEnabled {
-				status.Reason = "persistent_store_unavailable"
+				status.Reason = StatusReasonPersistentStoreUnavailable
 			} else {
-				status.Reason = "persistent_store_degraded"
+				status.Reason = StatusReasonPersistentStoreDegraded
 			}
 		}
 	}
@@ -324,18 +350,18 @@ func reachabilityReady(target NodeStatusTarget, value NodeObservation) bool {
 	}
 }
 
-func reachabilityReason(target NodeStatusTarget) string {
+func reachabilityReason(target NodeStatusTarget) StatusReason {
 	switch target.ExpectedIngress {
 	case "public":
-		return "public_reachability_unverified"
+		return StatusReasonPublicReachabilityUnverified
 	case "private_lan":
-		return "private_reachability_unverified"
+		return StatusReasonPrivateReachabilityUnverified
 	default:
-		return "outbound_reachability_mismatch"
+		return StatusReasonOutboundReachabilityMismatch
 	}
 }
 
-func storeTruth(target NodeStatusTarget, value NodeObservation) string {
+func storeTruth(target NodeStatusTarget, value NodeObservation) NodeTruth {
 	if !target.PersistentStore {
 		if value.StoreEnabled {
 			return NodeTruthDegraded

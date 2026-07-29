@@ -819,7 +819,7 @@ func TestCompilerProductionDependencyClosureHasNoSideEffectAdapters(t *testing.T
 		"net/netip": {}, "reflect": {}, "regexp": {}, "sort": {}, "strconv": {}, "strings": {},
 		"time":                                 {},
 		"ardents/internal/identity/principal":  {},
-		"github.com/distribution/reference":    {},
+		"ardents/internal/runtimeimage":        {},
 		"github.com/multiformats/go-multiaddr": {},
 		"github.com/multiformats/go-multihash": {},
 	}

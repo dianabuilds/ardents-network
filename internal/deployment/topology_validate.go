@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	identityprincipal "ardents/internal/identity/principal"
+	"ardents/internal/runtimeimage"
 
-	"github.com/distribution/reference"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multihash"
 )
@@ -451,15 +451,7 @@ func validateOwnedReferences(manifest topologyManifest) error {
 }
 
 func validImmutableImage(value string) bool {
-	if len(value) == 0 || len(value) > 512 {
-		return false
-	}
-	named, err := reference.ParseNormalizedNamed(value)
-	if err != nil || named.String() != value {
-		return false
-	}
-	digested, ok := named.(reference.Digested)
-	return ok && digested.Digest().Algorithm().String() == "sha256"
+	return runtimeimage.ValidReference(value)
 }
 
 func rememberUnique(seen map[string]struct{}, value string) bool {

@@ -7,7 +7,6 @@ import (
 	"net"
 	"net/url"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -15,10 +14,9 @@ import (
 
 	identitytrust "ardents/internal/identity/trust"
 	networkapi "ardents/internal/network"
+	"ardents/internal/runtimeimage"
 	workloadregistry "ardents/internal/workload/registry"
 )
-
-var immutableImageReferencePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._/-]*@sha256:[0-9a-f]{64}$`)
 
 func Validate(doc Document) error {
 	if doc.APIVersion != Version {
@@ -31,7 +29,7 @@ func Validate(doc Document) error {
 		return fmt.Errorf("node.data_dir is required")
 	}
 	if image := strings.TrimSpace(doc.Node.ImageReference); image != "" &&
-		!immutableImageReferencePattern.MatchString(image) {
+		!runtimeimage.ValidReference(image) {
 		return fmt.Errorf("node.image_reference must be an immutable canonical sha256 image reference")
 	}
 	if err := validateAPI(doc.API); err != nil {

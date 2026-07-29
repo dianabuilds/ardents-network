@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -26,6 +27,14 @@ var newSSHCommand = func(arguments []string) *exec.Cmd { return exec.Command("ss
 // ErrSSHHostKeyMismatch is the stable transport classification for an
 // OpenSSH host-key pin rejection. It never contains host or pin material.
 var ErrSSHHostKeyMismatch = errors.New("SSH host key mismatch")
+
+// ErrSSHTunnelFailure is the stable transport classification for a local
+// OpenSSH forwarding failure. It never contains target or socket material.
+var ErrSSHTunnelFailure = errors.New("SSH tunnel failure")
+
+// ErrSSHTunnelTimeout is the stable transport classification for a local
+// OpenSSH forwarding timeout. It never contains target or socket material.
+var ErrSSHTunnelTimeout = errors.New("SSH tunnel timeout")
 
 const (
 	transportUnix transportKind = iota
@@ -91,14 +100,18 @@ func (t *sshStreamLocalTransport) dialContext(ctx context.Context, _, _ string) 
 	if err := t.ensureStarted(ctx); err != nil {
 		return nil, err
 	}
-	return (&net.Dialer{}).DialContext(ctx, "unix", t.socket)
+	connection, err := (&net.Dialer{}).DialContext(ctx, "unix", t.socket)
+	if err != nil {
+		return nil, fmt.Errorf("%w: local forwarding socket unavailable", ErrSSHTunnelFailure)
+	}
+	return connection, nil
 }
 
 func (t *sshStreamLocalTransport) ensureStarted(ctx context.Context) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.closed {
-		return errors.New("SSH stream-local forwarding is closed")
+		return fmt.Errorf("%w: SSH stream-local forwarding is closed", ErrSSHTunnelFailure)
 	}
 	if t.started {
 		return t.startErr
@@ -106,12 +119,12 @@ func (t *sshStreamLocalTransport) ensureStarted(ctx context.Context) error {
 	t.started = true
 	dir, err := os.MkdirTemp("", "ardents-ssh-")
 	if err != nil {
-		t.startErr = errors.New("create SSH forwarding state")
+		t.startErr = fmt.Errorf("%w: create SSH forwarding state", ErrSSHTunnelFailure)
 		return t.startErr
 	}
 	if err := storage.EnsurePrivateDir(dir); err != nil {
 		_ = os.RemoveAll(dir)
-		t.startErr = errors.New("protect SSH forwarding state")
+		t.startErr = fmt.Errorf("%w: protect SSH forwarding state", ErrSSHTunnelFailure)
 		return t.startErr
 	}
 	t.tempDir = dir
@@ -124,7 +137,7 @@ func (t *sshStreamLocalTransport) ensureStarted(ctx context.Context) error {
 	command.Stderr = stderr
 	t.command = command
 	if err := command.Start(); err != nil {
-		t.startErr = errors.New("start SSH stream-local forwarding")
+		t.startErr = fmt.Errorf("%w: start SSH stream-local forwarding", ErrSSHTunnelFailure)
 		_ = os.RemoveAll(dir)
 		return t.startErr
 	}
@@ -140,13 +153,13 @@ func (t *sshStreamLocalTransport) ensureStarted(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			t.stopLocked()
-			t.startErr = ctx.Err()
+			t.startErr = fmt.Errorf("%w: %v", ErrSSHTunnelTimeout, ctx.Err())
 			return t.startErr
 		case <-t.done:
 			if isSSHHostKeyMismatch(stderr.String()) {
 				t.startErr = ErrSSHHostKeyMismatch
 			} else {
-				t.startErr = errors.New("SSH stream-local forwarding exited before readiness")
+				t.startErr = fmt.Errorf("%w: SSH stream-local forwarding exited before readiness", ErrSSHTunnelFailure)
 			}
 			_ = os.RemoveAll(dir)
 			return t.startErr

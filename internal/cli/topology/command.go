@@ -2,14 +2,13 @@ package topology
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"os"
-	"text/tabwriter"
 
 	configurationcmd "ardents/internal/cli/configuration"
+	"ardents/internal/cli/output"
 	"ardents/internal/deployment"
 )
 
@@ -51,14 +50,15 @@ func (command Command) Run(ctx context.Context, args []string) int {
 		return 2
 	}
 	if command.Base.Output == "json" {
-		encoded, marshalErr := json.MarshalIndent(status, "", "  ")
-		if marshalErr != nil {
+		if err := output.JSONValue(command.Out, status); err != nil {
 			fmt.Fprintln(command.Err, "ardentsctl: topology status output failed")
 			return 1
 		}
-		fmt.Fprintln(command.Out, string(encoded))
 	} else {
-		renderHuman(command.Out, status)
+		if err := renderHuman(command.Out, status); err != nil {
+			fmt.Fprintln(command.Err, "ardentsctl: topology status output failed")
+			return 1
+		}
 	}
 	if status.Outcome == deployment.TopologyOutcomeReady {
 		return 0
@@ -83,14 +83,20 @@ func readBoundedFile(path string) ([]byte, error) {
 	return raw, nil
 }
 
-func renderHuman(out io.Writer, status deployment.TopologyStatus) {
-	fmt.Fprintf(out, "topology: %s\n", status.Outcome)
-	table := tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)
-	fmt.Fprintln(table, "NODE\tROLE\tOBSERVATION\tREADY\tREACHABILITY\tSTORE\tIMAGE\tREASON")
-	for _, node := range status.Nodes {
-		fmt.Fprintf(table, "%s\t%s\t%s\t%t\t%s\t%s\t%s\t%s\n",
-			node.Slot, node.Role, node.Observation, node.Ready,
-			node.Reachability, node.Store, node.Image, node.Reason)
+func renderHuman(out io.Writer, status deployment.TopologyStatus) error {
+	if _, err := fmt.Fprintf(out, "topology: %s\n", status.Outcome); err != nil {
+		return err
 	}
-	_ = table.Flush()
+	rows := make([][]string, 0, len(status.Nodes))
+	for _, node := range status.Nodes {
+		rows = append(rows, []string{
+			node.Slot, node.Role, string(node.Observation), fmt.Sprint(node.Ready),
+			string(node.Readiness), fmt.Sprint(node.Joined), string(node.Reachability),
+			string(node.Store), string(node.Image), string(node.Reason),
+		})
+	}
+	return output.Table(out,
+		[]string{"NODE", "ROLE", "OBSERVATION", "READY", "READINESS", "JOINED", "REACHABILITY", "STORE", "IMAGE", "REASON"},
+		rows,
+	)
 }
