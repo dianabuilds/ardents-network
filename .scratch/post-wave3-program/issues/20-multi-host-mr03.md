@@ -1,8 +1,8 @@
 # PW3-20: MR-03 place and recover Authority Checkpoint truth
 
-Status: ready-for-agent
+Status: ready-for-human
 State: open
-Labels: ready-for-agent
+Labels: ready-for-human
 Research class: R0 local-substitutable implementation plus deferred R3 recovery evidence
 
 ## Parent
@@ -92,22 +92,22 @@ ambiguous repository into a fresh Realm under the old Realm ID.
 
 ## Acceptance criteria
 
-- [ ] Exact Authority slot/context/reference/Realm binding occurs before
+- [x] Exact Authority slot/context/reference/Realm binding occurs before
       Authority inspection or recovery verification.
-- [ ] Authenticated observations from all three Nodes conservatively enforce
+- [x] Authenticated observations from all three Nodes conservatively enforce
       the 30-second skew bound; missing or excessive skew fails closed.
-- [ ] An already-ready Authority is a bounded no-op and never calls recovery.
-- [ ] Recovery-only verification acknowledges the exact observed Realm,
+- [x] An already-ready Authority is a bounded no-op and never calls recovery.
+- [x] Recovery-only verification acknowledges the exact observed Realm,
       sequence and digest and rejects any changed response.
-- [ ] Partial, rollback, fork, repository loss, generation mismatch and
+- [x] Partial, rollback, fork, repository loss, generation mismatch and
       protected denial remain distinct redacted failure classes.
-- [ ] Authority Checkpoint retention remains exactly 65,536 immutable heads;
+- [x] Authority Checkpoint retention remains exactly 65,536 immutable heads;
       exhaustion blocks mutation and neither Deployment nor recovery prunes it.
-- [ ] Ordinary-compatible and Authority-migration order projections are
+- [x] Ordinary-compatible and Authority-migration order projections are
       deterministic, serial and Authority-last/Authority-first respectively.
-- [ ] Unit, contract, adapter, security-negative and restart evidence pass
+- [x] Unit, contract, adapter, security-negative and restart evidence pass
       without real-host, WORM-administration or qualification claims.
-- [ ] Full/tooling/architecture/capability checks pass and
+- [x] Full/tooling/architecture/capability checks pass and
       `deployment.multi-host` remains `Q=no`.
 
 ## Out of scope
@@ -161,3 +161,26 @@ ambiguous repository into a fresh Realm under the old Realm ID.
     does not create a second Authority or repository administration path;
   - outcome: `ready-for-agent`. No real host, archive, repository, signer,
     deployment, qualification, capability promotion or push occurred.
+- 2026-07-29 implementation handoff:
+  - the logical MR-03 implementation range is `1dd3c89..e4b8fff`, with exact
+    implementation tip `e4b8fff08abb3e5ffe4a17a41a1fbc0499849017`;
+  - `ardentsctl topology recover --manifest FILE` now strictly admits the
+    complete manifest before opening three isolated protected clients, proves
+    bounded authenticated clock skew, and either reports `already_ready` or
+    acknowledges the exact Authority-observed Realm/sequence/digest tuple;
+  - the manifest owns the canonical Realm binding. Local context/reference
+    mismatch remains Deployment-owned, while partial history, rollback, fork,
+    generation mismatch, repository/signer/store loss and denial retain
+    distinct closed redacted Authority ownership through RPC and CLI;
+  - Authority remains the only owner of the 65,536-head immutable checkpoint
+    contract. Recovery performs no repository administration, archive work,
+    service lifecycle mutation or real-host action;
+  - independent Spec and Standards re-reviews report PASS. Focused security
+    audit run 2 found no confirmed exploitable vulnerability; retained
+    `findings.json` is empty and schema-valid;
+  - `go test ./... -count=1`, `go vet ./...`, all tooling tests, selected race
+    tests, tagged integration/e2e compilation, capability-catalog validation,
+    API generation validation, `govulncheck ./...` and `git diff --check`
+    pass;
+  - outcome: `ready-for-human`. No real host, WORM administration, deployment,
+    production state, qualification, capability promotion or push occurred.

@@ -201,6 +201,22 @@ implementation slices and commits.
   Admission changes no capability qualification; `deployment.multi-host`
   remains `Q=no`.
 
+## MR-03 implementation checkpoint — 2026-07-29
+
+- PW3-20 is `ready-for-human` at exact implementation tip
+  `e4b8fff08abb3e5ffe4a17a41a1fbc0499849017`; its logical implementation range
+  is `1dd3c89..e4b8fff`.
+- Strict manifest-owned Realm/context/reference binding, three authenticated
+  clock observations, exact same-Realm Authority verification and pure
+  Authority-last/Authority-first order projection are implemented.
+- Final independent Spec and Standards reviews pass. Focused security audit
+  run 2 retained no confirmed vulnerability.
+- Full, tooling, architecture, capability, race, tagged compile, API generation,
+  vet and vulnerability checks pass.
+- No real host, WORM administration, deployment, production state,
+  qualification, capability promotion or push occurred.
+  `deployment.multi-host` remains `Q=no`.
+
 ## Stream ownership
 
 - The integrator alone edits this PRD, the Wave 3 decision register, the
