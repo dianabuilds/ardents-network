@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
-	"slices"
 	"sort"
 	"time"
 
@@ -958,7 +957,7 @@ func validRolloutReadiness(
 		value.WakuPeerID == target.ExpectedWakuPeerID &&
 		value.CompositeReady && value.Joined && value.ReachabilityReady &&
 		(!target.PersistentStore || value.StoreReady) &&
-		slices.Equal(value.ProviderSlots, target.RequiredProviderSlots)
+		sameStringSequence(value.ProviderSlots, target.RequiredProviderSlots)
 }
 
 func validRolloutActivation(
@@ -1248,7 +1247,19 @@ func SameRolloutTransactionBinding(left, right RolloutTransaction) bool {
 		left.RestoreData == right.RestoreData &&
 		left.StartedAt.Equal(right.StartedAt) &&
 		left.Deadline.Equal(right.Deadline) &&
-		slices.Equal(left.Order, right.Order)
+		sameStringSequence(left.Order, right.Order)
+}
+
+func sameStringSequence(left, right []string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for index := range left {
+		if left[index] != right[index] {
+			return false
+		}
+	}
+	return true
 }
 
 func ValidRolloutTransactionTransition(
