@@ -108,6 +108,11 @@ func TestPublicDirectCoordinatorRejectsUnboundOrStalePreflight(t *testing.T) {
 				value.CertificateRef = "different-certificate"
 			}
 		}},
+		{name: "certificate material digest", mutate: func(value *PublicDirectPreflightObservation) {
+			if value.CertificateRef != "" {
+				value.CertificateMaterialDigest = "not-a-digest"
+			}
+		}},
 		{name: "stale", mutate: func(value *PublicDirectPreflightObservation) {
 			value.ObservedAt = now.Add(-publicDirectPreflightMaxAge - time.Second)
 		}},
@@ -239,6 +244,35 @@ func TestPublicDirectCoordinatorAcceptsControlledRotationOnly(t *testing.T) {
 		})
 	}
 
+	t.Run("certificate material behind stable reference", func(t *testing.T) {
+		material := strings.Repeat("e", 64)
+		preflight := &publicDirectPreflightFake{
+			now:                now,
+			certificateDigests: map[string]string{"node-a": material},
+		}
+		rotationHosts := &publicDirectHostsFake{}
+		rotationCoordinator := coordinator
+		rotationCoordinator.Preflight = preflight
+		rotationCoordinator.Hosts = rotationHosts
+		_, err := rotationCoordinator.Reconcile(context.Background(), raw)
+		require.NoError(t, err)
+
+		preflight.certificateDigests["node-a"] = strings.Repeat("f", 64)
+		result, err := rotationCoordinator.Reconcile(context.Background(), raw)
+		require.NoError(t, err)
+		require.Equal(t, 1, result.RestartedNodes)
+		require.Equal(t, []PublicDirectApplyAction{
+			PublicDirectApplyRestarted,
+			PublicDirectApplyUnchanged,
+			PublicDirectApplyUnchanged,
+		}, publicDirectActions(rotationHosts.observations[3:]))
+		require.NotEqual(
+			t,
+			rotationHosts.targets[0].ConfigurationDigest,
+			rotationHosts.targets[3].ConfigurationDigest,
+		)
+	})
+
 	hosts = &publicDirectHostsFake{
 		previous:      map[string]string{"node-a": strings.Repeat("a", 64)},
 		invalidAction: true,
@@ -304,6 +338,33 @@ func TestPublicDirectCoordinatorFailsClosedOnApplyOrStatusAmbiguity(t *testing.T
 		status := &publicDirectStatusFake{
 			status: readyPublicDirectStatus(),
 			digest: strings.Repeat("d", 64),
+		}
+		coordinator := PublicDirectCoordinator{
+			Preflight: &publicDirectPreflightFake{now: now},
+			Hosts:     &publicDirectHostsFake{}, Status: status,
+			StepTimeout: time.Second, Now: func() time.Time { return now },
+		}
+		result, err := coordinator.Reconcile(context.Background(), raw)
+		require.Error(t, err)
+		require.Equal(t, PublicDirectReasonStatusDegraded, result.Reason)
+	})
+	t.Run("runtime configuration generation", func(t *testing.T) {
+		status := &publicDirectStatusFake{
+			status: readyPublicDirectStatus(),
+			configurations: []PublicDirectConfigurationObservation{
+				{
+					Slot:                "node-a",
+					ConfigurationDigest: strings.Repeat("a", 64),
+				},
+				{
+					Slot:                "node-b",
+					ConfigurationDigest: strings.Repeat("b", 64),
+				},
+				{
+					Slot:                "node-c",
+					ConfigurationDigest: strings.Repeat("c", 64),
+				},
+			},
 		}
 		coordinator := PublicDirectCoordinator{
 			Preflight: &publicDirectPreflightFake{now: now},
@@ -390,10 +451,11 @@ func readyPublicDirectStatus() TopologyStatus {
 }
 
 type publicDirectPreflightFake struct {
-	now            time.Time
-	targets        []PublicDirectPreflightTarget
-	mutate         func(*PublicDirectPreflightObservation)
-	waitForContext bool
+	now                time.Time
+	targets            []PublicDirectPreflightTarget
+	mutate             func(*PublicDirectPreflightObservation)
+	waitForContext     bool
+	certificateDigests map[string]string
 }
 
 func (fake *publicDirectPreflightFake) Observe(
@@ -413,6 +475,12 @@ func (fake *publicDirectPreflightFake) Observe(
 		RouteReady:          true, FirewallReady: true,
 		CertificateReady: target.CertificateRef != "",
 		ObservedAt:       fake.now,
+	}
+	if target.CertificateRef != "" {
+		value.CertificateMaterialDigest = strings.Repeat("e", 64)
+		if configured := fake.certificateDigests[target.Slot]; configured != "" {
+			value.CertificateMaterialDigest = configured
+		}
 	}
 	if fake.mutate != nil {
 		fake.mutate(&value)
@@ -484,10 +552,11 @@ func (fake *publicDirectHostsFake) slots() []string {
 }
 
 type publicDirectStatusFake struct {
-	status TopologyStatus
-	digest string
-	err    error
-	calls  int
+	status         TopologyStatus
+	digest         string
+	configurations []PublicDirectConfigurationObservation
+	err            error
+	calls          int
 }
 
 func (fake *publicDirectStatusFake) Observe(
@@ -502,8 +571,16 @@ func (fake *publicDirectStatusFake) Observe(
 	if digest == "" {
 		digest = target.ManifestDigest
 	}
+	configurations := fake.configurations
+	if configurations == nil {
+		configurations = target.Configurations
+	}
 	return PublicDirectStatusObservation{
 		ManifestDigest: digest,
 		Status:         fake.status,
+		Configurations: append(
+			[]PublicDirectConfigurationObservation(nil),
+			configurations...,
+		),
 	}, nil
 }

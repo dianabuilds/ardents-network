@@ -70,25 +70,30 @@ type PublicDirectPreflightObservation struct {
 	Address             string
 	CertificateRef      string
 	CertificateIdentity string
-	RouteReady          bool
-	FirewallReady       bool
-	CertificateReady    bool
-	ObservedAt          time.Time
+	// CertificateMaterialDigest is a lowercase SHA-256 digest of the validated
+	// non-secret certificate deployment generation (leaf/chain, public key
+	// binding and CA bundle), never of private-key bytes.
+	CertificateMaterialDigest string
+	RouteReady                bool
+	FirewallReady             bool
+	CertificateReady          bool
+	ObservedAt                time.Time
 }
 
 // PublicDirectHostTarget is protected host-local desired state.
 type PublicDirectHostTarget struct {
-	ManifestDigest      string
-	ConfigurationDigest string
-	Slot                string
-	SSHAlias            string
-	HostKeyPinRef       string
-	Address             string
-	CertificateRef      string
-	CertificateIdentity string
-	Plan                HostPlan
-	StaticRecoveryPeers []string
-	SignedDNSRoots      []string
+	ManifestDigest            string
+	ConfigurationDigest       string
+	Slot                      string
+	SSHAlias                  string
+	HostKeyPinRef             string
+	Address                   string
+	CertificateRef            string
+	CertificateIdentity       string
+	CertificateMaterialDigest string
+	Plan                      HostPlan
+	StaticRecoveryPeers       []string
+	SignedDNSRoots            []string
 }
 
 // PublicDirectApplyObservation binds one idempotent apply outcome to exact
@@ -106,6 +111,13 @@ type PublicDirectApplyObservation struct {
 type PublicDirectStatusTarget struct {
 	ManifestDigest string
 	Manifest       []byte
+	Configurations []PublicDirectConfigurationObservation
+}
+
+// PublicDirectConfigurationObservation is protected runtime generation truth.
+type PublicDirectConfigurationObservation struct {
+	Slot                string
+	ConfigurationDigest string
 }
 
 // PublicDirectStatusObservation binds the existing MR-02 status projection to
@@ -113,6 +125,7 @@ type PublicDirectStatusTarget struct {
 type PublicDirectStatusObservation struct {
 	ManifestDigest string
 	Status         TopologyStatus
+	Configurations []PublicDirectConfigurationObservation
 }
 
 type PublicDirectPreflight interface {
@@ -176,7 +189,8 @@ func (coordinator PublicDirectCoordinator) Reconcile(
 		observation PublicDirectPreflightObservation
 	}
 	preflights := make([]checkedPreflight, 0, len(targets))
-	for _, target := range targets {
+	for index := range targets {
+		target := targets[index]
 		if target.Plan.Ingress != "public_autonat_required" {
 			continue
 		}
@@ -200,6 +214,10 @@ func (coordinator PublicDirectCoordinator) Reconcile(
 			request.CertificateRef != "" && !observation.CertificateReady {
 			return publicDirectFailure(result, PublicDirectReasonPreflightDenied)
 		}
+		targets[index].CertificateMaterialDigest =
+			observation.CertificateMaterialDigest
+		targets[index].ConfigurationDigest =
+			publicDirectConfigurationDigest(targets[index])
 		preflights = append(preflights, checkedPreflight{
 			target: request, observation: observation,
 		})
@@ -235,6 +253,7 @@ func (coordinator PublicDirectCoordinator) Reconcile(
 	statusTarget := PublicDirectStatusTarget{
 		ManifestDigest: targets[0].ManifestDigest,
 		Manifest:       append([]byte(nil), raw...),
+		Configurations: publicDirectConfigurations(targets),
 	}
 	step, cancel := context.WithTimeout(operationContext, timeout)
 	observation, observeErr := coordinator.Status.Observe(step, statusTarget)
@@ -300,18 +319,20 @@ func publicDirectConfigurationDigest(target PublicDirectHostTarget) string {
 	// Deliberately exclude ManifestDigest and protected access references:
 	// unrelated manifest edits must not force a restart on every host.
 	value := struct {
-		Plan                HostPlan `json:"plan"`
-		Address             string   `json:"address"`
-		CertificateRef      string   `json:"certificate_ref"`
-		CertificateIdentity string   `json:"certificate_identity"`
-		StaticRecoveryPeers []string `json:"static_recovery_peers"`
-		SignedDNSRoots      []string `json:"signed_dns_roots"`
+		Plan                      HostPlan `json:"plan"`
+		Address                   string   `json:"address"`
+		CertificateRef            string   `json:"certificate_ref"`
+		CertificateIdentity       string   `json:"certificate_identity"`
+		CertificateMaterialDigest string   `json:"certificate_material_digest"`
+		StaticRecoveryPeers       []string `json:"static_recovery_peers"`
+		SignedDNSRoots            []string `json:"signed_dns_roots"`
 	}{
 		Plan: target.Plan, Address: target.Address,
-		CertificateRef:      target.CertificateRef,
-		CertificateIdentity: target.CertificateIdentity,
-		StaticRecoveryPeers: target.StaticRecoveryPeers,
-		SignedDNSRoots:      target.SignedDNSRoots,
+		CertificateRef:            target.CertificateRef,
+		CertificateIdentity:       target.CertificateIdentity,
+		CertificateMaterialDigest: target.CertificateMaterialDigest,
+		StaticRecoveryPeers:       target.StaticRecoveryPeers,
+		SignedDNSRoots:            target.SignedDNSRoots,
 	}
 	encoded, err := json.Marshal(value)
 	if err != nil {
@@ -319,6 +340,18 @@ func publicDirectConfigurationDigest(target PublicDirectHostTarget) string {
 	}
 	digest := sha256.Sum256(encoded)
 	return hex.EncodeToString(digest[:])
+}
+
+func publicDirectConfigurations(
+	targets []PublicDirectHostTarget,
+) []PublicDirectConfigurationObservation {
+	out := make([]PublicDirectConfigurationObservation, 0, len(targets))
+	for _, target := range targets {
+		out = append(out, PublicDirectConfigurationObservation{
+			Slot: target.Slot, ConfigurationDigest: target.ConfigurationDigest,
+		})
+	}
+	return out
 }
 
 func (coordinator PublicDirectCoordinator) nowUTC() time.Time {
@@ -344,8 +377,12 @@ func validPublicDirectPreflight(
 		observedAt.After(now.Add(publicDirectPreflightFutureSkew)) {
 		return false
 	}
-	// TCP preflight cannot introduce a certificate claim.
-	return target.CertificateRef != "" || !observation.CertificateReady
+	if target.CertificateRef == "" {
+		// TCP preflight cannot introduce a certificate claim.
+		return !observation.CertificateReady &&
+			observation.CertificateMaterialDigest == ""
+	}
+	return validSHA256Digest(observation.CertificateMaterialDigest)
 }
 
 func validPublicDirectApply(
@@ -389,14 +426,18 @@ func validPublicDirectStatus(
 		observation.ManifestDigest != targets[0].ManifestDigest ||
 		status.APIVersion != TopologyStatusVersion ||
 		status.Outcome != TopologyOutcomeReady ||
-		len(status.Nodes) != exactTopologyNodeCount {
+		len(status.Nodes) != exactTopologyNodeCount ||
+		len(observation.Configurations) != exactTopologyNodeCount {
 		return 0, 0, false
 	}
 	publicReady := 0
 	outboundReady := 0
 	for index, node := range status.Nodes {
 		target := targets[index]
+		configuration := observation.Configurations[index]
 		if node.Slot != target.Slot || node.Role != target.Plan.Role ||
+			configuration.Slot != target.Slot ||
+			configuration.ConfigurationDigest != target.ConfigurationDigest ||
 			!node.Ready || node.Observation != NodeObservationComplete ||
 			node.Readiness != NodeTruthReady || !node.Joined ||
 			node.Reachability != NodeTruthReady ||
