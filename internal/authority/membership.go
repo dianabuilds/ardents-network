@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"regexp"
 	"sort"
 	"strings"
@@ -86,9 +87,9 @@ func (s *Service) SubmitDeploymentFenceEvidence(
 	if !ValidRealmID(request.RealmID) || zeroFixedID(request.ChannelID) ||
 		!operationIDPattern.MatchString(request.OperationID) ||
 		command.Actor == "" || command.Actor != command.Effective ||
-		command.Action != ActionChangeMembership ||
-		command.ResourceKind != ResourceKindChannel ||
-		command.ResourceID != ChannelResource(request.RealmID, request.ChannelID) {
+		command.Action != ActionFenceNode ||
+		command.ResourceKind != ResourceKindNode ||
+		command.ResourceID != FenceNodeResource(request.Evidence.TargetPrincipal) {
 		return FenceEvidenceResult{}, ErrPermissionDenied
 	}
 	if s.store == nil || s.signer == nil || s.repository == nil || s.policy == nil {
@@ -154,6 +155,19 @@ func (s *Service) SubmitDeploymentFenceEvidence(
 	if !fenceTargetAllowed(state, rotation, request.Evidence.TargetPrincipal) {
 		return FenceEvidenceResult{}, ErrPermissionDenied
 	}
+	if s.fenceVerifier == nil {
+		return FenceEvidenceResult{}, ErrUnavailable
+	}
+	if err := s.fenceVerifier.VerifyDeploymentFenceEvidence(
+		ctx,
+		command,
+		cloneFenceEvidence(request.Evidence),
+	); err != nil {
+		if errors.Is(err, ErrUnavailable) {
+			return FenceEvidenceResult{}, ErrUnavailable
+		}
+		return FenceEvidenceResult{}, ErrPermissionDenied
+	}
 	if rotation.Phase == DeliveryPhaseCompleted {
 		return FenceEvidenceResult{}, ErrConflict
 	}
@@ -171,9 +185,11 @@ func (s *Service) SubmitDeploymentFenceEvidence(
 	audit.ChannelClass = state.Channels[channelIndex].Class
 	audit.Generation = rotation.PendingGeneration
 	audit.Hash = auditHash(audit)
+	verifiedEvidence := cloneFenceEvidence(request.Evidence)
+	verifiedEvidence.ReceiptsVerified = true
 	err = s.commitCheckpointTransition(ctx, &state, audit, now, func(next *Ledger, checkpoint SignedCheckpoint) error {
 		record := &next.Rotations[rotationIndex]
-		record.FenceEvidence = append(record.FenceEvidence, cloneFenceEvidence(request.Evidence))
+		record.FenceEvidence = append(record.FenceEvidence, verifiedEvidence)
 		if membershipCompletionSatisfied(*next, *record) {
 			completeMembershipRotation(next, record, checkpoint.AuthoritySequence)
 		}
@@ -385,6 +401,7 @@ func validateDeploymentFenceEvidence(
 		strings.TrimSpace(evidence.RequestID) != evidence.RequestID ||
 		len(evidence.Reason) == 0 || len(evidence.Reason) > MaxDeploymentFenceReason ||
 		strings.TrimSpace(evidence.Reason) != evidence.Reason ||
+		evidence.ReceiptsVerified ||
 		!canonicalSecond(evidence.ObservedAt) ||
 		evidence.ObservedAt.After(now) || now.Sub(evidence.ObservedAt) > MaxFenceEvidenceAge ||
 		evidence.ClockSkewSecond < -MaxDeploymentClockSkew ||
@@ -422,9 +439,10 @@ func validateDeploymentFenceEvidence(
 }
 
 func validateStoredFenceEvidence(evidence DeploymentFenceEvidence) error {
-	if len(evidence.Controls) == 0 {
+	if !evidence.ReceiptsVerified || len(evidence.Controls) == 0 {
 		return ErrCorruptState
 	}
+	evidence.ReceiptsVerified = false
 	return validateDeploymentFenceEvidence(
 		evidence, evidence.RealmID, evidence.OperationID,
 		evidence.Controls[0].Actor, evidence.ObservedAt,
@@ -432,21 +450,8 @@ func validateStoredFenceEvidence(evidence DeploymentFenceEvidence) error {
 }
 
 func fenceTargetAllowed(state Ledger, rotation RotationRecord, target string) bool {
-	if rotation.MembershipChange.Kind == MembershipChangeAdd &&
-		target == rotation.MembershipChange.TargetPrincipal {
-		return false
-	}
-	if rotation.MembershipChange.Kind == MembershipChangeRemove &&
-		target == rotation.MembershipChange.TargetPrincipal {
-		return true
-	}
-	for _, deliveryID := range rotation.DeliveryIDs {
-		index := deliveryRecordIndex(state, deliveryID)
-		if index >= 0 && state.InitialGenerationDeliveries[index].RecipientPrincipal == target {
-			return true
-		}
-	}
-	return false
+	return rotation.MembershipChange.Kind == MembershipChangeRemove &&
+		target == rotation.MembershipChange.TargetPrincipal
 }
 
 func membershipCompletionSatisfied(state Ledger, rotation RotationRecord) bool {
@@ -463,8 +468,7 @@ func membershipCompletionSatisfied(state Ledger, rotation RotationRecord) bool {
 			return false
 		}
 		delivery := state.InitialGenerationDeliveries[index]
-		if delivery.ActiveReceipt.Phase != "active" &&
-			!rotationHasFence(rotation, delivery.RecipientPrincipal) {
+		if delivery.ActiveReceipt.Phase != "active" {
 			return false
 		}
 	}
@@ -493,6 +497,7 @@ func completeMembershipRotation(state *Ledger, rotation *RotationRecord, sequenc
 // accepted Authority result and checkpoint audit.
 func DeploymentFenceEvidenceDigest(evidence DeploymentFenceEvidence) string {
 	copy := cloneFenceEvidence(evidence)
+	copy.ReceiptsVerified = false
 	sort.Slice(copy.Controls, func(i, j int) bool {
 		return copy.Controls[i].Kind < copy.Controls[j].Kind
 	})

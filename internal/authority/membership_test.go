@@ -178,9 +178,8 @@ func TestAuthorityAddsThenRemovesMemberWithFreshGenerationRevocationAndFence(t *
 	forged.Controls[0].Actor = "unapproved-operator"
 	_, err = fixture.service.SubmitDeploymentFenceEvidence(
 		ctx, Command{
-			Actor: "operator", Effective: "operator",
-			Action: ActionChangeMembership, ResourceKind: ResourceKindChannel,
-			ResourceID: ChannelResource(genesis.RealmID, initial.ChannelID),
+			Actor: "operator", Effective: "operator", Action: ActionFenceNode,
+			ResourceKind: ResourceKindNode, ResourceID: FenceNodeResource(principalB),
 		},
 		FenceEvidenceRequest{
 			Version: ContractVersion, RealmID: genesis.RealmID,
@@ -190,11 +189,7 @@ func TestAuthorityAddsThenRemovesMemberWithFreshGenerationRevocationAndFence(t *
 	)
 	require.ErrorIs(t, err, ErrPermissionDenied)
 	fenced, err := fixture.service.SubmitDeploymentFenceEvidence(
-		ctx, Command{
-			Actor: "operator", Effective: "operator",
-			Action: ActionChangeMembership, ResourceKind: ResourceKindChannel,
-			ResourceID: ChannelResource(genesis.RealmID, initial.ChannelID),
-		},
+		ctx, fenceEvidenceCommand(principalB),
 		FenceEvidenceRequest{
 			Version: ContractVersion, RealmID: genesis.RealmID,
 			ChannelID: initial.ChannelID, OperationID: removed.OperationID,
@@ -203,12 +198,13 @@ func TestAuthorityAddsThenRemovesMemberWithFreshGenerationRevocationAndFence(t *
 	)
 	require.NoError(t, err)
 	require.Equal(t, DeliveryPhaseCompleted, fenced.Phase)
+	require.True(
+		t,
+		fixture.store.state.Rotations[len(fixture.store.state.Rotations)-1].
+			FenceEvidence[0].ReceiptsVerified,
+	)
 	fenceReplay, err := fixture.service.SubmitDeploymentFenceEvidence(
-		ctx, Command{
-			Actor: "operator", Effective: "operator",
-			Action: ActionChangeMembership, ResourceKind: ResourceKindChannel,
-			ResourceID: ChannelResource(genesis.RealmID, initial.ChannelID),
-		},
+		ctx, fenceEvidenceCommand(principalB),
 		FenceEvidenceRequest{
 			Version: ContractVersion, RealmID: genesis.RealmID,
 			ChannelID: initial.ChannelID, OperationID: removed.OperationID,
@@ -232,6 +228,7 @@ func TestAuthorityAddsThenRemovesMemberWithFreshGenerationRevocationAndFence(t *
 	restored := New(Config{
 		Store: fixture.store, Signer: fixture.signer, Repository: fixture.repository,
 		Clock: fixture.clock, Policy: allowPolicy{}, RecoveryOnly: true,
+		FenceVerifier: allowFenceVerifier{},
 	})
 	require.Equal(t, beforeRestore.AuthoritySequence, restored.Readiness().AuthoritySequence)
 	require.Equal(t, PhaseRecoveryOnly, restored.Readiness().Phase)
@@ -335,6 +332,75 @@ func TestDeploymentFenceEvidenceRejectsMissingControlsStaleClockAndWrongBinding(
 	require.ErrorIs(t, validateDeploymentFenceEvidence(
 		valid, realmID, "rao1_ffeeddccbbaa99887766554433221100", "operator", now,
 	), ErrInvalidArgument)
+
+	require.ErrorIs(t, validateStoredFenceEvidence(valid), ErrCorruptState)
+	verified := valid
+	verified.ReceiptsVerified = true
+	require.NoError(t, validateStoredFenceEvidence(verified))
+}
+
+func TestDeploymentFenceEvidenceRequiresExactFenceActionAndReceiptVerifier(t *testing.T) {
+	ctx := context.Background()
+	fixture := newServiceFixture(t)
+	fixture.service.random = cryptorand.Reader
+	realmID, channelID, operationID, target := prepareRemovalAwaitingFence(
+		t, ctx, fixture,
+	)
+	evidence := validFenceEvidence(
+		realmID, operationID, target, "operator", fixture.clock(),
+	)
+	request := FenceEvidenceRequest{
+		Version: ContractVersion, RealmID: realmID, ChannelID: channelID,
+		OperationID: operationID, Evidence: evidence,
+	}
+
+	_, err := fixture.service.SubmitDeploymentFenceEvidence(
+		ctx, membershipCommand(realmID, channelID), request,
+	)
+	require.ErrorIs(t, err, ErrPermissionDenied)
+
+	fixture.service = New(Config{
+		Store: fixture.store, Signer: fixture.signer, Repository: fixture.repository,
+		Random: cryptorand.Reader, Clock: fixture.clock, Policy: allowPolicy{},
+	})
+	_, err = fixture.service.SubmitDeploymentFenceEvidence(
+		ctx, fenceEvidenceCommand(target), request,
+	)
+	require.ErrorIs(t, err, ErrUnavailable)
+	require.Empty(
+		t,
+		fixture.store.state.Rotations[len(fixture.store.state.Rotations)-1].
+			FenceEvidence,
+	)
+
+	fixture.service = New(Config{
+		Store: fixture.store, Signer: fixture.signer, Repository: fixture.repository,
+		Random: cryptorand.Reader, Clock: fixture.clock, Policy: allowPolicy{},
+		FenceVerifier: denyFenceVerifier{},
+	})
+	_, err = fixture.service.SubmitDeploymentFenceEvidence(
+		ctx, fenceEvidenceCommand(target), request,
+	)
+	require.ErrorIs(t, err, ErrPermissionDenied)
+	require.Empty(
+		t,
+		fixture.store.state.Rotations[len(fixture.store.state.Rotations)-1].
+			FenceEvidence,
+	)
+
+	rotation := fixture.store.state.Rotations[len(fixture.store.state.Rotations)-1]
+	survivorIndex := deliveryRecordIndex(fixture.store.state, rotation.DeliveryIDs[0])
+	require.GreaterOrEqual(t, survivorIndex, 0)
+	survivor := fixture.store.state.InitialGenerationDeliveries[survivorIndex].
+		RecipientPrincipal
+	survivorEvidence := validFenceEvidence(
+		realmID, operationID, survivor, "operator", fixture.clock(),
+	)
+	request.Evidence = survivorEvidence
+	_, err = fixture.service.SubmitDeploymentFenceEvidence(
+		ctx, fenceEvidenceCommand(survivor), request,
+	)
+	require.ErrorIs(t, err, ErrPermissionDenied)
 }
 
 func TestMembershipCapacityReservesTargetFenceCompletion(t *testing.T) {
@@ -371,6 +437,7 @@ func TestProductPolicyDeniesMembershipBeforeGenerationMutation(t *testing.T) {
 	denied := New(Config{
 		Store: fixture.store, Signer: fixture.signer, Repository: fixture.repository,
 		Random: cryptorand.Reader, Clock: fixture.clock, Policy: denyPolicy{},
+		FenceVerifier: allowFenceVerifier{},
 	})
 	_, err = denied.ChangeChannelMembership(
 		ctx, membershipCommand(genesis.RealmID, initial.ChannelID),
@@ -408,6 +475,7 @@ func TestMembershipFenceResumesAtBothCheckpointCrashBoundaries(t *testing.T) {
 				Store: fixture.store, Signer: fixture.signer,
 				Repository: fixture.repository, Random: cryptorand.Reader,
 				Clock: fixture.clock, Policy: allowPolicy{},
+				FenceVerifier: allowFenceVerifier{},
 				Crash: func(at CrashBoundary) error {
 					if armed && at == boundary {
 						armed = false
@@ -416,11 +484,7 @@ func TestMembershipFenceResumesAtBothCheckpointCrashBoundaries(t *testing.T) {
 					return nil
 				},
 			})
-			command := Command{
-				Actor: "operator", Effective: "operator",
-				Action: ActionChangeMembership, ResourceKind: ResourceKindChannel,
-				ResourceID: ChannelResource(realmID, channelID),
-			}
+			command := fenceEvidenceCommand(target)
 			request := FenceEvidenceRequest{
 				Version: ContractVersion, RealmID: realmID, ChannelID: channelID,
 				OperationID: operationID, Evidence: evidence,
@@ -467,11 +531,7 @@ func TestMembershipFenceCannotCompleteAfterOperationBoundsExpire(t *testing.T) {
 
 	_, err := fixture.service.SubmitDeploymentFenceEvidence(
 		ctx,
-		Command{
-			Actor: "operator", Effective: "operator",
-			Action: ActionChangeMembership, ResourceKind: ResourceKindChannel,
-			ResourceID: ChannelResource(realmID, channelID),
-		},
+		fenceEvidenceCommand(target),
 		FenceEvidenceRequest{
 			Version: ContractVersion, RealmID: realmID, ChannelID: channelID,
 			OperationID: operationID, Evidence: evidence,
@@ -496,11 +556,7 @@ func TestMembershipFenceReplayRemainsIdempotentAfterOperationBoundsExpire(t *tes
 	realmID, channelID, operationID, target := prepareRemovalAwaitingFence(
 		t, ctx, fixture,
 	)
-	command := Command{
-		Actor: "operator", Effective: "operator",
-		Action: ActionChangeMembership, ResourceKind: ResourceKindChannel,
-		ResourceID: ChannelResource(realmID, channelID),
-	}
+	command := fenceEvidenceCommand(target)
 	evidence := validFenceEvidence(
 		realmID, operationID, target, "operator", fixture.clock(),
 	)
@@ -565,6 +621,7 @@ func TestMembershipChangeResumesAtBothCheckpointCrashBoundaries(t *testing.T) {
 				Store: fixture.store, Signer: fixture.signer,
 				Repository: fixture.repository, Random: cryptorand.Reader,
 				Clock: fixture.clock, Policy: allowPolicy{},
+				FenceVerifier: allowFenceVerifier{},
 				Crash: func(at CrashBoundary) error {
 					if armed && at == boundary {
 						armed = false
@@ -759,6 +816,13 @@ func membershipCommand(realmID string, channelID [16]byte) Command {
 	}
 }
 
+func fenceEvidenceCommand(target string) Command {
+	return Command{
+		Actor: "operator", Effective: "operator", Action: ActionFenceNode,
+		ResourceKind: ResourceKindNode, ResourceID: FenceNodeResource(target),
+	}
+}
+
 func installMembershipDeliveries(
 	t *testing.T,
 	ctx context.Context,
@@ -864,5 +928,6 @@ func restartMembershipAuthority(fixture *serviceFixture) {
 	fixture.service = New(Config{
 		Store: fixture.store, Signer: fixture.signer, Repository: fixture.repository,
 		Random: cryptorand.Reader, Clock: fixture.clock, Policy: allowPolicy{},
+		FenceVerifier: allowFenceVerifier{},
 	})
 }

@@ -42,6 +42,7 @@ const (
 	ActionAcknowledgeDelivery   = "realm.channel.delivery.acknowledge"
 	ActionRotateGeneration      = "realm.channel.generation.rotate"
 	ActionChangeMembership      = "realm.channel.membership.change"
+	ActionFenceNode             = "topology.node.fence"
 	ActionCommitActivation      = "realm.channel.activation.commit"
 	ActionAcknowledgeActivation = "realm.channel.activation.acknowledge"
 	ActionVerifyRestore         = "realm.channel.recovery.execute"
@@ -54,6 +55,7 @@ const (
 	ResourceKindRealm              = "realm"
 	ResourceKindGenerationDelivery = "realm-channel-delivery"
 	ResourceKindChannel            = "realm-channel"
+	ResourceKindNode               = "node"
 	ResourceKindOperation          = "realm-channel-operation"
 	PrimaryAuthorityInstance       = "primary"
 
@@ -102,6 +104,10 @@ const (
 	ReasonMigrationRotationRequired           = "authority_migration_rotation_required"
 	ReasonAuthorityTransitionRotationRequired = "authority_transition_rotation_required"
 )
+
+func FenceNodeResource(principal string) string {
+	return "node:" + principal
+}
 
 var (
 	ErrInvalidArgument          = errors.New("authority invalid argument")

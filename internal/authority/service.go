@@ -35,15 +35,16 @@ const (
 )
 
 type Config struct {
-	Store        Store
-	Signer       Signer
-	Repository   CheckpointRepository
-	Random       io.Reader
-	Clock        func() time.Time
-	Policy       ProductPolicy
-	Audit        AuditSink
-	Crash        func(CrashBoundary) error
-	RecoveryOnly bool
+	Store         Store
+	Signer        Signer
+	Repository    CheckpointRepository
+	Random        io.Reader
+	Clock         func() time.Time
+	Policy        ProductPolicy
+	FenceVerifier DeploymentFenceVerifier
+	Audit         AuditSink
+	Crash         func(CrashBoundary) error
+	RecoveryOnly  bool
 }
 
 type Service struct {
@@ -54,6 +55,7 @@ type Service struct {
 	random            io.Reader
 	clock             func() time.Time
 	policy            ProductPolicy
+	fenceVerifier     DeploymentFenceVerifier
 	audit             AuditSink
 	crash             func(CrashBoundary) error
 	status            Status
@@ -66,7 +68,8 @@ type Service struct {
 func New(config Config) *Service {
 	service := &Service{
 		store: config.Store, signer: config.Signer, repository: config.Repository,
-		random: config.Random, clock: config.Clock, policy: config.Policy, crash: config.Crash,
+		random: config.Random, clock: config.Clock, policy: config.Policy,
+		fenceVerifier: config.FenceVerifier, crash: config.Crash,
 		audit:            config.Audit,
 		recoveryOnly:     config.RecoveryOnly,
 		transitionSigner: successorSigner(config.Signer),

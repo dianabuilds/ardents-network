@@ -7,6 +7,7 @@ import (
 
 	domain "ardents/internal/authority"
 	identityaccess "ardents/internal/identity/access"
+	identityprincipal "ardents/internal/identity/principal"
 	protocol "ardents/internal/localapi/protocol"
 	"ardents/internal/localapi/protocol/ardentsv1connect"
 )
@@ -163,16 +164,21 @@ func CanonicalizeResource(procedure string, message any, kind string) (identitya
 			len(request.GetEvidence().GetControls()) > domain.MaxDeploymentFenceControls {
 			return identityaccess.ResourceTarget{}, ErrInvalidResourceTarget
 		}
+		targetPrincipal, err := identityprincipal.Parse(
+			request.GetEvidence().GetTargetPrincipal(),
+		)
+		if err != nil ||
+			targetPrincipal.String() != request.GetEvidence().GetTargetPrincipal() {
+			return identityaccess.ResourceTarget{}, ErrInvalidResourceTarget
+		}
 		for _, control := range request.GetEvidence().GetControls() {
 			if control == nil || len(control.ProtoReflect().GetUnknown()) != 0 {
 				return identityaccess.ResourceTarget{}, ErrInvalidResourceTarget
 			}
 		}
-		var channelID [16]byte
-		copy(channelID[:], request.GetChannelId())
 		return identityaccess.ResourceTarget{
 			Kind: identityaccess.ResourceKind(kind),
-			ID:   domain.ChannelResource(request.GetRealmId(), channelID),
+			ID:   domain.FenceNodeResource(request.GetEvidence().GetTargetPrincipal()),
 		}, nil
 	case ardentsv1connect.AuthorityServiceCommitChannelActivationProcedure:
 		request, ok := message.(*protocol.CommitChannelActivationRequest)

@@ -1,8 +1,7 @@
 package authority
 
-import "context"
-
 import (
+	"context"
 	"time"
 
 	identityapi "ardents/internal/identity"
@@ -42,6 +41,17 @@ type ProductPolicy interface {
 	AdmitChannelMembership(context.Context, Command) error
 	AdmitChannelClass(context.Context, Command, identityapi.CapabilityScope) error
 	AdmitAuthorityRecovery(context.Context, Command) error
+}
+
+// DeploymentFenceVerifier authenticates the protected control receipts that
+// DeploymentFenceEvidence summarizes. Authority validates evidence shape and
+// binding but must not treat caller-supplied digests as enforcement proof.
+type DeploymentFenceVerifier interface {
+	VerifyDeploymentFenceEvidence(
+		context.Context,
+		Command,
+		DeploymentFenceEvidence,
+	) error
 }
 
 type InitialGenerationRequest struct {

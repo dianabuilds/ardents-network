@@ -56,7 +56,7 @@ func TestAuthorityProceduresHaveExactDirectOperatorContracts(t *testing.T) {
 		ardentsv1connect.AuthorityServiceCommitChannelActivationProcedure:           domain.ActionCommitActivation,
 		ardentsv1connect.AuthorityServiceAcknowledgeChannelActivationProcedure:      domain.ActionAcknowledgeActivation,
 		ardentsv1connect.AuthorityServiceChangeChannelMembershipProcedure:           domain.ActionChangeMembership,
-		ardentsv1connect.AuthorityServiceSubmitDeploymentFenceEvidenceProcedure:     domain.ActionChangeMembership,
+		ardentsv1connect.AuthorityServiceSubmitDeploymentFenceEvidenceProcedure:     domain.ActionFenceNode,
 		ardentsv1connect.ChannelDeliveryServicePrepareGenerationDeliveryProcedure:   "realm.channel.delivery.prepare",
 		ardentsv1connect.ChannelDeliveryServiceInstallGenerationDeliveryProcedure:   "realm.channel.delivery.install",
 		ardentsv1connect.ChannelDeliveryServiceActivateGenerationProcedure:          "realm.channel.generation.activate",
@@ -123,13 +123,20 @@ func TestCanonicalRotationResourcesAreExactAndBounded(t *testing.T) {
 			Version: 1, RealmId: realmID, OperationId: operationID,
 			ChannelId: channelID,
 			Evidence: &protocol.DeploymentFenceEvidence{
-				Controls: []*protocol.DeploymentFenceControl{{}},
+				TargetPrincipal: "p1_euydwrsrlrtxe7misopktnf7zlk6b27waegboirnhbbu4wlen55a",
+				Controls:        []*protocol.DeploymentFenceControl{{}},
 			},
 		},
-		domain.ResourceKindChannel,
+		domain.ResourceKindNode,
 	)
 	require.NoError(t, err)
-	require.Equal(t, domain.ChannelResource(realmID, channel), target.ID)
+	require.Equal(
+		t,
+		domain.FenceNodeResource(
+			"p1_euydwrsrlrtxe7misopktnf7zlk6b27waegboirnhbbu4wlen55a",
+		),
+		target.ID,
+	)
 
 	target, err = CanonicalizeResource(
 		ardentsv1connect.AuthorityServiceCommitChannelActivationProcedure,

@@ -398,6 +398,7 @@ func newServiceFixture(t *testing.T) *serviceFixture {
 	f.service = New(Config{
 		Store: f.store, Signer: signer, Repository: f.repository,
 		Random: bytes.NewReader(seed), Clock: clock, Policy: allowPolicy{},
+		FenceVerifier: allowFenceVerifier{},
 	})
 	return f
 }
@@ -407,6 +408,7 @@ func (f *serviceFixture) restart(t *testing.T) *Service {
 	return New(Config{
 		Store: f.store, Signer: f.signer, Repository: f.repository,
 		Random: bytes.NewReader(f.randomSeed), Clock: f.clock, Policy: allowPolicy{},
+		FenceVerifier: allowFenceVerifier{},
 	})
 }
 
@@ -425,6 +427,26 @@ func (f *serviceFixture) inspectCommand(realmID string) Command {
 }
 
 type allowPolicy struct{}
+
+type allowFenceVerifier struct{}
+
+func (allowFenceVerifier) VerifyDeploymentFenceEvidence(
+	context.Context,
+	Command,
+	DeploymentFenceEvidence,
+) error {
+	return nil
+}
+
+type denyFenceVerifier struct{}
+
+func (denyFenceVerifier) VerifyDeploymentFenceEvidence(
+	context.Context,
+	Command,
+	DeploymentFenceEvidence,
+) error {
+	return errors.New("receipt authentication failed")
+}
 
 func (allowPolicy) AdmitRealmGenesis(context.Context, Command) error      { return nil }
 func (allowPolicy) AdmitInitialGeneration(context.Context, Command) error { return nil }

@@ -136,16 +136,17 @@ type DeploymentFenceControl struct {
 }
 
 type DeploymentFenceEvidence struct {
-	Version         uint32                   `json:"version"`
-	RealmID         string                   `json:"realm_id"`
-	OperationID     string                   `json:"operation_id"`
-	TargetPrincipal string                   `json:"target_principal"`
-	ManifestDigest  string                   `json:"manifest_digest"`
-	RequestID       string                   `json:"request_id"`
-	Reason          string                   `json:"reason"`
-	ObservedAt      time.Time                `json:"observed_at"`
-	ClockSkewSecond int64                    `json:"clock_skew_seconds"`
-	Controls        []DeploymentFenceControl `json:"controls"`
+	Version          uint32                   `json:"version"`
+	RealmID          string                   `json:"realm_id"`
+	OperationID      string                   `json:"operation_id"`
+	TargetPrincipal  string                   `json:"target_principal"`
+	ManifestDigest   string                   `json:"manifest_digest"`
+	RequestID        string                   `json:"request_id"`
+	Reason           string                   `json:"reason"`
+	ObservedAt       time.Time                `json:"observed_at"`
+	ClockSkewSecond  int64                    `json:"clock_skew_seconds"`
+	ReceiptsVerified bool                     `json:"receipts_verified"`
+	Controls         []DeploymentFenceControl `json:"controls"`
 }
 
 type Ledger struct {
