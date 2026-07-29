@@ -221,6 +221,24 @@ implementation slices and commits.
   acceptance admits MR-04 dependency review but does not itself admit host
   fencing, rejoin, qualification or any capability change.
 
+## MR-04 admission checkpoint — 2026-07-29
+
+- PW3-21 admits the R1 local-substitutable crash-resumable fencing coordinator
+  after exact MR-03 acceptance and accepted CGA-04 dependency review.
+- Deployment owns only the strict durable Fence Transaction, attributable
+  isolation evidence, phase coordination, replay binding, and redacted
+  outcome. Realm Authority remains the sole owner of membership removal,
+  generation, signed checkpoint, immutable repository, and survivor active
+  receipt truth.
+- The current tree has protected Node stop and CGA-04 Authority seams, but no
+  complete accepted production seam for deployment ingress, DNS/static usable
+  sets, and Waku peer deny. MR-04 therefore uses explicit consumer-owned
+  adapters and failure injection; it may not use a remote shell or claim real
+  host isolation.
+- `recover --rejoin`, production adapters, and matching-commit three-host
+  qualification remain later slices. Admission changes no capability
+  qualification; `deployment.multi-host` remains `Q=no`.
+
 ## Stream ownership
 
 - The integrator alone edits this PRD, the Wave 3 decision register, the

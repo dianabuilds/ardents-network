@@ -88,6 +88,26 @@ Checkpoints used to prove freshness and reject rollback; it is evidence, not a
 second writable Realm Authority.
 _Avoid_: Authority backup, mutable mirror, repair source
 
+**Fence Transaction**:
+A Deployment-owned durable, monotonic record of one requested Node isolation
+and removal workflow. It records attributable controls and progress but is not
+Realm membership truth.
+_Avoid_: Ban record, membership decision, Authority checkpoint
+
+**Deployment Fence Evidence**:
+Bounded attributable proof that the required host and network isolation
+controls were enforced for one exact Node, manifest, and request. Realm
+Authority may accept this evidence, but the evidence is not removal truth or an
+Authority Checkpoint.
+_Avoid_: Membership record, revocation checkpoint, deployment decision
+
+**Rejoin**:
+Restoration of a previously removed Node through fresh accepted Realm
+membership and generation truth, survivor acknowledgement, and new
+identity/clock/readiness checks. Rejoin never reverses removal or reuses old
+Channel Grants.
+_Avoid_: Unfence, restore old grant, rollback removal
+
 **Application Interface**:
 The versioned, capability-scoped interface through which Applications use a Node.
 _Avoid_: Operator API, remote admin API
