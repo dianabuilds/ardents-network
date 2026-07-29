@@ -319,6 +319,21 @@ implementation slices and commits.
   behavior but does not supply real host adapters or R3 qualification;
   `deployment.multi-host` remains `Q=no`.
 
+## MR-05 admission checkpoint — 2026-07-29
+
+- PW3-23 admits the R0 private-LAN runtime and reconciliation slice after
+  accepted MR-03 and complete MR-04.
+- Waku must accept exactly one private literal translated-host TCP address but
+  withhold it until fresh exact proof from a different manifest host. Listener
+  bind alone remains insufficient and creates no public claim.
+- A deterministic consumer-owned coordinator reapplies the same three
+  host-local plans, cross-host probes, proof installation and protected status
+  checks for formation and recovery. Static peers remain the recovery floor;
+  signed DNS is additive and Store gaps remain explicit.
+- Production SSH/service-manager/firewall/router/DNS/host adapters and real
+  three-host evidence remain R3. Admission changes no capability
+  qualification; `deployment.multi-host` remains `Q=no`.
+
 ## Stream ownership
 
 - The integrator alone edits this PRD, the Wave 3 decision register, the
