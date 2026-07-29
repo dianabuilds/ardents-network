@@ -241,6 +241,9 @@ func validateFenceEvidenceAuditBindings(
 				audit.EvidenceDigest != DeploymentFenceEvidenceDigest(evidence) {
 				return ErrCorruptState
 			}
+			if _, duplicate := bound[auditID]; duplicate {
+				return ErrCorruptState
+			}
 			bound[auditID] = struct{}{}
 		}
 	}

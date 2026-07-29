@@ -218,6 +218,17 @@ func TestAuthorityAddsThenRemovesMemberWithFreshGenerationRevocationAndFence(t *
 		auditByID,
 	))
 
+	duplicated := cloneLedger(fixture.store.state)
+	duplicated.Rotations = append(
+		duplicated.Rotations,
+		duplicated.Rotations[len(duplicated.Rotations)-1],
+	)
+	require.ErrorIs(t, validateFenceEvidenceAuditBindings(
+		duplicated,
+		auditByID,
+	), ErrCorruptState)
+	require.ErrorIs(t, validateLedger(duplicated), ErrCorruptState)
+
 	substituted := cloneLedger(fixture.store.state)
 	substituted.Rotations[len(substituted.Rotations)-1].
 		FenceEvidence[0].RequestID = "substituted-after-verification"
