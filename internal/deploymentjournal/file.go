@@ -38,6 +38,39 @@ type RolloutFile struct {
 	Path string
 }
 
+type rolloutFileLease struct {
+	lock *storage.PrivateFileLock
+}
+
+func (lease *rolloutFileLease) Release() error {
+	if lease == nil || lease.lock == nil {
+		return nil
+	}
+	err := lease.lock.Close()
+	lease.lock = nil
+	if err != nil {
+		return deployment.ErrRolloutJournalInvalid
+	}
+	return nil
+}
+
+func (store RolloutFile) AcquireOperation(
+	_ context.Context,
+) (deployment.RolloutJournalLease, error) {
+	path := strings.TrimSpace(store.Path)
+	if path == "" {
+		return nil, deployment.ErrRolloutJournalInvalid
+	}
+	lock, err := storage.AcquirePrivateFileLock(path + ".operation.lock")
+	if errors.Is(err, storage.ErrPrivateFileLockUnavailable) {
+		return nil, deployment.ErrRolloutJournalConflict
+	}
+	if err != nil {
+		return nil, deployment.ErrRolloutJournalInvalid
+	}
+	return &rolloutFileLease{lock: lock}, nil
+}
+
 func (store FenceFile) Load(_ context.Context) (deployment.FenceTransaction, bool, error) {
 	path := strings.TrimSpace(store.Path)
 	if path == "" {
@@ -216,7 +249,7 @@ func (store RolloutFile) acquireLock() (*storage.PrivateFileLock, error) {
 	if path == "" {
 		return nil, deployment.ErrRolloutJournalInvalid
 	}
-	lock, err := storage.AcquirePrivateFileLock(path + ".lock")
+	lock, err := storage.AcquirePrivateFileLock(path + ".revision.lock")
 	if errors.Is(err, storage.ErrPrivateFileLockUnavailable) {
 		return nil, deployment.ErrRolloutJournalConflict
 	}

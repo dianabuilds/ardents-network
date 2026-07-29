@@ -26,8 +26,8 @@ func AcquirePrivateFileLock(path string) (*PrivateFileLock, error) {
 		return nil, fmt.Errorf("private file lock path is required")
 	}
 	dir := filepath.Dir(path)
-	if err := EnsurePrivateDir(dir); err != nil {
-		return nil, fmt.Errorf("prepare private file lock directory: %w", err)
+	if err := ValidatePrivateDir(dir); err != nil {
+		return nil, fmt.Errorf("validate private file lock directory: %w", err)
 	}
 	if _, err := os.Lstat(path); errors.Is(err, os.ErrNotExist) {
 		if createErr := AtomicCreatePrivateFile(path, nil); createErr != nil {

@@ -7,11 +7,15 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"syscall"
 )
 
 func validatePrivateFile(_ string, info os.FileInfo) error {
 	if info.Mode().Perm()&0o077 != 0 {
 		return fmt.Errorf("private state permissions allow group or other access")
+	}
+	if !ownedByCurrentUser(info) {
+		return fmt.Errorf("private state is not owned by the current user")
 	}
 	return nil
 }
@@ -24,7 +28,15 @@ func validatePrivateDirectory(_ string, info os.FileInfo) error {
 	if info.Mode().Perm()&0o077 != 0 {
 		return fmt.Errorf("private state directory permissions allow group or other access")
 	}
+	if !ownedByCurrentUser(info) {
+		return fmt.Errorf("private state directory is not owned by the current user")
+	}
 	return nil
+}
+
+func ownedByCurrentUser(info os.FileInfo) bool {
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	return ok && stat.Uid == uint32(os.Geteuid())
 }
 
 func protectPrivatePath(_ string, _ bool) error { return nil }

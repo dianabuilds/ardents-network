@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -177,6 +178,110 @@ func TestRolloutCoordinatorBoundsForwardAndRecoveryEffects(t *testing.T) {
 	})
 }
 
+func TestRolloutCoordinatorOperationLeasePreventsOverlappingEffects(t *testing.T) {
+	raw := readTopologyFixture(t, "private-lan.json")
+	request := validRolloutRequest(t, raw, AuthorityChangeCompatible, false)
+	journal := &rolloutJournalFake{}
+	hosts := newRolloutHostsFake()
+	hosts.blockForwardRecreate = true
+	hosts.forwardRecreateEntered = make(chan struct{}, 1)
+	coordinator := RolloutCoordinator{
+		Journal: journal, Preflight: &rolloutPreflightFake{},
+		Hosts: hosts, Authority: &rolloutAuthorityFake{},
+		Committer:     &rolloutCommitterFake{},
+		Clock:         func() time.Time { return request.StartedAt.Add(time.Minute) },
+		EffectTimeout: 100 * time.Millisecond,
+	}
+	firstCtx, cancelFirst := context.WithCancel(context.Background())
+	firstDone := make(chan error, 1)
+	go func() {
+		_, err := coordinator.Rollout(firstCtx, request)
+		firstDone <- err
+	}()
+	<-hosts.forwardRecreateEntered
+
+	_, err := coordinator.Rollout(context.Background(), request)
+	require.ErrorIs(t, err, ErrRolloutJournalConflict)
+	cancelFirst()
+	require.NoError(t, <-firstDone)
+	require.Equal(t, []string{"node-b"}, hosts.compensationSlots())
+}
+
+func TestRolloutCoordinatorResumesEveryCompensationCheckpoint(t *testing.T) {
+	raw := readTopologyFixture(t, "private-lan.json")
+	request := validRolloutRequest(t, raw, AuthorityChangeCompatible, false)
+	manifest, targets, order, compatibilityDigest, err := validateRolloutRequest(request)
+	require.NoError(t, err)
+	bySlot := rolloutTargetsBySlot(targets)
+
+	for _, phase := range []RolloutNodePhase{
+		RolloutNodeCompensating,
+		RolloutNodeFallbackRecreated,
+		RolloutNodeFallbackStartPending,
+		RolloutNodeFallbackStarted,
+	} {
+		t.Run(string(phase), func(t *testing.T) {
+			transaction := newRolloutTransaction(
+				request,
+				manifest,
+				order,
+				compatibilityDigest,
+			)
+			target := bySlot[order[0]]
+			transaction.Revision = 5
+			transaction.Phase = RolloutPhaseCompensating
+			transaction.FailureReason = RolloutReasonInterrupted
+			transaction.Nodes = []RolloutNodeTransaction{{
+				Slot: target.Slot, TargetImage: target.TargetImage,
+				FallbackImage: target.FallbackImage, Phase: phase,
+			}}
+			journal := &rolloutJournalFake{
+				transaction: transaction,
+				found:       true,
+			}
+			hosts := newRolloutHostsFake()
+			coordinator := RolloutCoordinator{
+				Journal: journal, Preflight: &rolloutPreflightFake{},
+				Hosts: hosts, Authority: &rolloutAuthorityFake{},
+				Committer: &rolloutCommitterFake{},
+				Clock:     func() time.Time { return request.StartedAt.Add(time.Minute) },
+			}
+
+			status, err := coordinator.Rollout(context.Background(), request)
+			require.NoError(t, err)
+			require.Equal(t, RolloutOutcomeRecovered, status.Outcome)
+			require.Equal(t, RolloutPhaseCompensated, status.Phase)
+			require.True(t, journal.cleared)
+		})
+	}
+}
+
+func TestRolloutCoordinatorClearsDurableCompensatedTerminalOnResume(t *testing.T) {
+	raw := readTopologyFixture(t, "private-lan.json")
+	request := validRolloutRequest(t, raw, AuthorityChangeCompatible, false)
+	journal := &rolloutJournalFake{failClearAt: 1}
+	hosts := newRolloutHostsFake()
+	hosts.failReadiness["node-b"] = errors.New("forward readiness failed")
+	coordinator := RolloutCoordinator{
+		Journal: journal, Preflight: &rolloutPreflightFake{},
+		Hosts: hosts, Authority: &rolloutAuthorityFake{},
+		Committer: &rolloutCommitterFake{},
+		Clock:     func() time.Time { return request.StartedAt.Add(time.Minute) },
+	}
+
+	_, err := coordinator.Rollout(context.Background(), request)
+	require.ErrorIs(t, err, ErrRolloutJournalConflict)
+	require.True(t, journal.found)
+	require.Equal(t, RolloutPhaseCompensated, journal.transaction.Phase)
+	compensationCount := len(hosts.compensationSlots())
+
+	status, err := coordinator.Rollout(context.Background(), request)
+	require.NoError(t, err)
+	require.Equal(t, RolloutOutcomeRecovered, status.Outcome)
+	require.Equal(t, compensationCount, len(hosts.compensationSlots()))
+	require.True(t, journal.cleared)
+}
+
 func TestRolloutCoordinatorUsesAuthorityFirstMigrationAndActivation(t *testing.T) {
 	raw := readTopologyFixture(t, "public-direct.json")
 	request := validRolloutRequest(t, raw, AuthorityChangeMigration, true)
@@ -285,6 +390,51 @@ func TestRolloutCoordinatorNeverCompensatesPastMigrationActivation(t *testing.T)
 	require.Equal(t, RolloutOutcomeReady, second.Outcome)
 	require.Equal(t, forwardCount, len(hosts.forwardSlots()))
 	require.Empty(t, hosts.compensationSlots())
+}
+
+func TestRolloutCoordinatorRetriesDurableMigrationReadyToCommit(t *testing.T) {
+	raw := readTopologyFixture(t, "public-direct.json")
+	request := validRolloutRequest(t, raw, AuthorityChangeMigration, true)
+	manifest, targets, order, compatibilityDigest, err := validateRolloutRequest(request)
+	require.NoError(t, err)
+	bySlot := rolloutTargetsBySlot(targets)
+	transaction := newRolloutTransaction(
+		request,
+		manifest,
+		order,
+		compatibilityDigest,
+	)
+	transaction.Revision = 20
+	transaction.Phase = RolloutPhaseReadyToCommit
+	for _, slot := range order {
+		target := bySlot[slot]
+		transaction.Nodes = append(transaction.Nodes, RolloutNodeTransaction{
+			Slot: target.Slot, TargetImage: target.TargetImage,
+			FallbackImage: target.FallbackImage, Phase: RolloutNodeApplied,
+		})
+	}
+	transaction.AuthorityGeneration = 2
+	transaction.CheckpointDigest = "sha256:" +
+		"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+	transaction.RepositoryPersisted = true
+	transaction.ActiveReceiptCount = 3
+	journal := &rolloutJournalFake{transaction: transaction, found: true}
+	hosts := newRolloutHostsFake()
+	committer := &rolloutCommitterFake{}
+	coordinator := RolloutCoordinator{
+		Journal: journal, Preflight: &rolloutPreflightFake{},
+		Hosts: hosts, Authority: &rolloutAuthorityFake{},
+		Committer: committer,
+		Clock:     func() time.Time { return request.StartedAt.Add(time.Minute) },
+	}
+
+	status, err := coordinator.Rollout(context.Background(), request)
+	require.NoError(t, err)
+	require.Equal(t, RolloutOutcomeReady, status.Outcome)
+	require.True(t, committer.committed)
+	require.Empty(t, hosts.forwardSlots())
+	require.Empty(t, hosts.compensationSlots())
+	require.True(t, journal.cleared)
 }
 
 func TestRolloutTransactionRejectsImpossibleTerminalTruth(t *testing.T) {
@@ -543,6 +693,35 @@ type rolloutJournalFake struct {
 	persistedBeforeEveryEffect bool
 	saveCalls                  int
 	failSaveAt                 int
+	clearCalls                 int
+	failClearAt                int
+	operationHeld              bool
+	operationMu                sync.Mutex
+}
+
+func (fake *rolloutJournalFake) AcquireOperation(
+	context.Context,
+) (RolloutJournalLease, error) {
+	fake.operationMu.Lock()
+	defer fake.operationMu.Unlock()
+	if fake.operationHeld {
+		return nil, ErrRolloutJournalConflict
+	}
+	fake.operationHeld = true
+	return rolloutJournalLeaseFake{release: func() {
+		fake.operationMu.Lock()
+		defer fake.operationMu.Unlock()
+		fake.operationHeld = false
+	}}, nil
+}
+
+type rolloutJournalLeaseFake struct {
+	release func()
+}
+
+func (fake rolloutJournalLeaseFake) Release() error {
+	fake.release()
+	return nil
 }
 
 func (fake *rolloutJournalFake) Load(context.Context) (RolloutTransaction, bool, error) {
@@ -576,6 +755,10 @@ func (fake *rolloutJournalFake) Clear(
 	_ context.Context,
 	expected RolloutTransaction,
 ) error {
+	fake.clearCalls++
+	if fake.failClearAt > 0 && fake.clearCalls == fake.failClearAt {
+		return ErrRolloutJournalConflict
+	}
 	if !fake.found || fake.transaction.Revision != expected.Revision {
 		return ErrRolloutJournalConflict
 	}
@@ -642,6 +825,7 @@ type rolloutHostsFake struct {
 	failCompensationReadiness map[string]error
 	blockForwardRecreate      bool
 	blockCompensationRecreate bool
+	forwardRecreateEntered    chan struct{}
 	inFlight                  int
 	maxInFlight               int
 }
@@ -680,6 +864,9 @@ func (fake *rolloutHostsFake) Recreate(
 		}
 	} else {
 		if fake.blockForwardRecreate {
+			if fake.forwardRecreateEntered != nil {
+				fake.forwardRecreateEntered <- struct{}{}
+			}
 			<-ctx.Done()
 			return RolloutHostObservation{}, ctx.Err()
 		}

@@ -182,6 +182,72 @@ func TestRolloutFileRejectsConcurrentRevisionAndRebinding(t *testing.T) {
 	)
 }
 
+func TestRolloutFileOperationLeaseExcludesOverlappingCoordinator(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "topology-rollout.json")
+	require.NoError(t, storage.EnsurePrivateDir(filepath.Dir(path)))
+	store := RolloutFile{Path: path}
+
+	first, err := store.AcquireOperation(context.Background())
+	require.NoError(t, err)
+	_, err = store.AcquireOperation(context.Background())
+	require.ErrorIs(t, err, deployment.ErrRolloutJournalConflict)
+	require.NoError(t, first.Release())
+
+	second, err := store.AcquireOperation(context.Background())
+	require.NoError(t, err)
+	require.NoError(t, second.Release())
+}
+
+func TestRolloutCoordinatorPersistsCompensationFailureWithRolloutFile(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "deployment", "testdata", "private-lan.json"))
+	require.NoError(t, err)
+	started := time.Date(2026, 7, 29, 16, 0, 0, 0, time.UTC)
+	request := deployment.RolloutRequest{
+		Manifest: raw, RequestID: "rollout-file-coordinator",
+		Compatibility: deployment.RolloutCompatibility{
+			Kind:                        deployment.AuthorityChangeCompatible,
+			FromVersion:                 "1.0.0",
+			ToVersion:                   "1.1.0",
+			MixedGenerationAllowed:      true,
+			AuthorityActivationRequired: false,
+			CompleteDataRestoreRequired: false,
+			MaterialsPolicyDigest: "sha256:" +
+				"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+		},
+		FallbackImages: map[string]string{
+			"node-a": rolloutFallbackImage(),
+			"node-b": rolloutFallbackImage(),
+			"node-c": rolloutFallbackImage(),
+		},
+		StartedAt: started,
+		Deadline:  started.Add(20 * time.Minute),
+	}
+	path := filepath.Join(t.TempDir(), "topology-rollout.json")
+	require.NoError(t, storage.EnsurePrivateDir(filepath.Dir(path)))
+	store := RolloutFile{Path: path}
+	coordinator := deployment.RolloutCoordinator{
+		Journal:   store,
+		Preflight: rolloutFilePreflight{},
+		Hosts:     rolloutFileFailingCompensationHosts{},
+		Authority: rolloutFileUnusedAuthority{},
+		Committer: rolloutFileUnusedCommitter{},
+		Clock:     func() time.Time { return started.Add(time.Minute) },
+	}
+
+	status, err := coordinator.Rollout(context.Background(), request)
+	require.NoError(t, err)
+	require.Equal(t, deployment.RolloutOutcomeRecoveryRequired, status.Outcome)
+	require.Equal(t, deployment.RolloutReasonCompensationFailed, status.Reason)
+
+	transaction, found, err := store.Load(context.Background())
+	require.NoError(t, err)
+	require.True(t, found)
+	require.Equal(t, deployment.RolloutPhaseRecoveryRequired, transaction.Phase)
+	require.Equal(t, deployment.RolloutPhaseCompensating, transaction.ResumeFrom)
+	require.Len(t, transaction.Nodes, 1)
+	require.Equal(t, deployment.RolloutNodeRollbackFailed, transaction.Nodes[0].Phase)
+}
+
 func TestRolloutFileRejectsCrossProcessRevisionRace(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "topology-rollout.json")
 	require.NoError(t, storage.EnsurePrivateDir(filepath.Dir(path)))
@@ -334,4 +400,106 @@ func validMigrationRolloutTransaction() deployment.RolloutTransaction {
 	value.RepositoryPersisted = true
 	value.ActiveReceiptCount = 3
 	return value
+}
+
+type rolloutFilePreflight struct{}
+
+func (rolloutFilePreflight) Verify(
+	_ context.Context,
+	target deployment.RolloutPreflightTarget,
+) (deployment.RolloutPreflightObservation, error) {
+	nodes := make([]deployment.RolloutNodePreflight, 0, len(target.Nodes))
+	for _, node := range target.Nodes {
+		nodes = append(nodes, deployment.RolloutNodePreflight{
+			Slot: node.Slot, NodePrincipal: node.ExpectedNodePrincipal,
+			WakuPeerID: node.ExpectedWakuPeerID, Image: node.FallbackImage,
+			CompositeReady: true, Joined: true, ReachabilityReady: true,
+			StoreReady: true, BackupVerified: true,
+		})
+	}
+	return deployment.RolloutPreflightObservation{
+		ManifestDigest: target.ManifestDigest, RequestID: target.RequestID,
+		CompatibilityDigest:     target.CompatibilityDigest,
+		ClockObservedAt:         target.StartedAt.Add(time.Minute),
+		AuthorityBackupVerified: true,
+		RepositoryHeadDigest: "sha256:" +
+			"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+		RepositoryHeadVerified: true,
+		MaterialsPolicyDigest:  target.MaterialsPolicyDigest,
+		MaterialsVerified:      true,
+		Nodes:                  nodes,
+	}, nil
+}
+
+type rolloutFileFailingCompensationHosts struct{}
+
+func (rolloutFileFailingCompensationHosts) Recreate(
+	_ context.Context,
+	target deployment.RolloutHostTarget,
+	change deployment.RolloutHostChange,
+) (deployment.RolloutHostObservation, error) {
+	if change.Compensating {
+		return deployment.RolloutHostObservation{}, errors.New("fallback unavailable")
+	}
+	return rolloutFileHostObservation(target, change), nil
+}
+
+func (rolloutFileFailingCompensationHosts) Start(
+	_ context.Context,
+	target deployment.RolloutHostTarget,
+	change deployment.RolloutHostChange,
+) (deployment.RolloutHostObservation, error) {
+	return rolloutFileHostObservation(target, change), nil
+}
+
+func (rolloutFileFailingCompensationHosts) Readiness(
+	_ context.Context,
+	_ deployment.RolloutHostTarget,
+	_ deployment.RolloutHostChange,
+) (deployment.RolloutReadinessObservation, error) {
+	return deployment.RolloutReadinessObservation{}, errors.New("readiness unavailable")
+}
+
+func rolloutFileHostObservation(
+	target deployment.RolloutHostTarget,
+	change deployment.RolloutHostChange,
+) deployment.RolloutHostObservation {
+	return deployment.RolloutHostObservation{
+		ManifestDigest: target.ManifestDigest, RequestID: target.RequestID,
+		CompatibilityDigest: target.CompatibilityDigest,
+		Slot:                target.Slot, Image: change.Image,
+		IdentityPreserved: true,
+	}
+}
+
+type rolloutFileUnusedAuthority struct{}
+
+func (rolloutFileUnusedAuthority) Status(
+	context.Context,
+	deployment.RolloutAuthorityTarget,
+) (deployment.RolloutAuthorityObservation, error) {
+	return deployment.RolloutAuthorityObservation{}, errors.New("unused authority")
+}
+
+func (rolloutFileUnusedAuthority) Activate(
+	context.Context,
+	deployment.RolloutAuthorityTarget,
+) (deployment.RolloutAuthorityObservation, error) {
+	return deployment.RolloutAuthorityObservation{}, errors.New("unused authority")
+}
+
+type rolloutFileUnusedCommitter struct{}
+
+func (rolloutFileUnusedCommitter) Status(
+	context.Context,
+	deployment.RolloutCommitTarget,
+) (deployment.RolloutCommitObservation, error) {
+	return deployment.RolloutCommitObservation{}, errors.New("unused committer")
+}
+
+func (rolloutFileUnusedCommitter) Commit(
+	context.Context,
+	deployment.RolloutCommitTarget,
+) (deployment.RolloutCommitObservation, error) {
+	return deployment.RolloutCommitObservation{}, errors.New("unused committer")
 }

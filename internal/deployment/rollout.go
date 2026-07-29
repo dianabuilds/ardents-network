@@ -267,7 +267,12 @@ type RolloutCommitObservation struct {
 	Committed           bool
 }
 
+type RolloutJournalLease interface {
+	Release() error
+}
+
 type RolloutJournalStore interface {
+	AcquireOperation(context.Context) (RolloutJournalLease, error)
 	Load(context.Context) (RolloutTransaction, bool, error)
 	Save(context.Context, uint64, RolloutTransaction) error
 	Clear(context.Context, RolloutTransaction) error
@@ -306,7 +311,7 @@ type RolloutCoordinator struct {
 func (coordinator RolloutCoordinator) Rollout(
 	ctx context.Context,
 	request RolloutRequest,
-) (RolloutStatus, error) {
+) (status RolloutStatus, returnErr error) {
 	manifest, targets, order, compatibilityDigest, err :=
 		validateRolloutRequest(request)
 	if err != nil {
@@ -319,6 +324,15 @@ func (coordinator RolloutCoordinator) Rollout(
 		coordinator.EffectTimeout > maxRolloutEffectTimeout {
 		return RolloutStatus{}, ValidationError("topology_rollout_dependencies_required")
 	}
+	lease, err := coordinator.Journal.AcquireOperation(ctx)
+	if err != nil {
+		return RolloutStatus{}, err
+	}
+	defer func() {
+		if err := lease.Release(); err != nil {
+			returnErr = errors.Join(returnErr, err)
+		}
+	}()
 	transaction, found, err := coordinator.Journal.Load(ctx)
 	if err != nil {
 		return RolloutStatus{}, err
@@ -570,6 +584,15 @@ func (coordinator RolloutCoordinator) commit(
 	if err := persistRollout(ctx, coordinator.Journal, transaction); err != nil {
 		return RolloutStatus{}, err
 	}
+	return coordinator.commitPrepared(ctx, request, targets, transaction)
+}
+
+func (coordinator RolloutCoordinator) commitPrepared(
+	ctx context.Context,
+	request RolloutRequest,
+	targets []RolloutHostTarget,
+	transaction *RolloutTransaction,
+) (RolloutStatus, error) {
 	target := RolloutCommitTarget{
 		ManifestDigest:      transaction.ManifestDigest,
 		RequestID:           transaction.RequestID,
@@ -638,6 +661,13 @@ func (coordinator RolloutCoordinator) resume(
 ) (RolloutStatus, error) {
 	if transaction.Phase == RolloutPhaseCommitted {
 		status := rolloutStatus(*transaction, RolloutOutcomeReady)
+		if err := coordinator.Journal.Clear(ctx, *transaction); err != nil {
+			return RolloutStatus{}, err
+		}
+		return status, nil
+	}
+	if transaction.Phase == RolloutPhaseCompensated {
+		status := rolloutStatus(*transaction, RolloutOutcomeRecovered)
 		if err := coordinator.Journal.Clear(ctx, *transaction); err != nil {
 			return RolloutStatus{}, err
 		}
@@ -732,13 +762,24 @@ func (coordinator RolloutCoordinator) resume(
 		}
 		if err == nil && validRolloutCommit(observation, target, false) {
 			if transaction.ChangeKind == AuthorityChangeMigration {
-				transaction.Phase = RolloutPhaseActivated
-				transaction.ResumeFrom = ""
-				transaction.FailureReason = ""
-				if err := persistRollout(ctx, coordinator.Journal, transaction); err != nil {
-					return RolloutStatus{}, err
+				if transaction.Phase == RolloutPhaseRecoveryRequired {
+					transaction.Phase = RolloutPhaseReadyToCommit
+					transaction.ResumeFrom = ""
+					transaction.FailureReason = ""
+					if err := persistRollout(
+						ctx,
+						coordinator.Journal,
+						transaction,
+					); err != nil {
+						return RolloutStatus{}, err
+					}
 				}
-				return coordinator.commit(ctx, request, targets, transaction)
+				return coordinator.commitPrepared(
+					ctx,
+					request,
+					targets,
+					transaction,
+				)
 			}
 			if transaction.FailureReason == "" {
 				transaction.FailureReason = RolloutReasonInterrupted
@@ -828,55 +869,72 @@ func (coordinator RolloutCoordinator) compensate(
 			Image: node.FallbackImage, Compensating: true,
 			RestoreData: transaction.RestoreData,
 		}
-		node.Phase = RolloutNodeCompensating
-		if err := persistRollout(ctx, coordinator.Journal, transaction); err != nil {
-			return RolloutStatus{}, err
-		}
-		observation, err := runRecoveryRolloutEffect(
-			coordinator,
-			ctx,
-			func(effectCtx context.Context) (RolloutHostObservation, error) {
-				return coordinator.Hosts.Recreate(effectCtx, target, change)
-			},
-		)
-		if err != nil || !validRolloutHostObservation(observation, target, change) {
-			return coordinator.compensationFailed(ctx, transaction, node)
-		}
-		node.Phase = RolloutNodeFallbackRecreated
-		if err := persistRollout(ctx, coordinator.Journal, transaction); err != nil {
-			return RolloutStatus{}, err
-		}
-		node.Phase = RolloutNodeFallbackStartPending
-		if err := persistRollout(ctx, coordinator.Journal, transaction); err != nil {
-			return RolloutStatus{}, err
-		}
-		observation, err = runRecoveryRolloutEffect(
-			coordinator,
-			ctx,
-			func(effectCtx context.Context) (RolloutHostObservation, error) {
-				return coordinator.Hosts.Start(effectCtx, target, change)
-			},
-		)
-		if err != nil || !validRolloutHostObservation(observation, target, change) {
-			return coordinator.compensationFailed(ctx, transaction, node)
-		}
-		node.Phase = RolloutNodeFallbackStarted
-		if err := persistRollout(ctx, coordinator.Journal, transaction); err != nil {
-			return RolloutStatus{}, err
-		}
-		ready, err := runRecoveryRolloutEffect(
-			coordinator,
-			ctx,
-			func(effectCtx context.Context) (RolloutReadinessObservation, error) {
-				return coordinator.Hosts.Readiness(effectCtx, target, change)
-			},
-		)
-		if err != nil || !validRolloutReadiness(ready, target, change) {
-			return coordinator.compensationFailed(ctx, transaction, node)
-		}
-		node.Phase = RolloutNodeRestored
-		if err := persistRollout(ctx, coordinator.Journal, transaction); err != nil {
-			return RolloutStatus{}, err
+		switch node.Phase {
+		case RolloutNodeMutationPending, RolloutNodeRecreated,
+			RolloutNodeStartPending, RolloutNodeStarted, RolloutNodeApplied,
+			RolloutNodeRollbackFailed:
+			node.Phase = RolloutNodeCompensating
+			if err := persistRollout(ctx, coordinator.Journal, transaction); err != nil {
+				return RolloutStatus{}, err
+			}
+			fallthrough
+		case RolloutNodeCompensating:
+			observation, err := runRecoveryRolloutEffect(
+				coordinator,
+				ctx,
+				func(effectCtx context.Context) (RolloutHostObservation, error) {
+					return coordinator.Hosts.Recreate(effectCtx, target, change)
+				},
+			)
+			if err != nil ||
+				!validRolloutHostObservation(observation, target, change) {
+				return coordinator.compensationFailed(ctx, transaction, node)
+			}
+			node.Phase = RolloutNodeFallbackRecreated
+			if err := persistRollout(ctx, coordinator.Journal, transaction); err != nil {
+				return RolloutStatus{}, err
+			}
+			fallthrough
+		case RolloutNodeFallbackRecreated:
+			node.Phase = RolloutNodeFallbackStartPending
+			if err := persistRollout(ctx, coordinator.Journal, transaction); err != nil {
+				return RolloutStatus{}, err
+			}
+			fallthrough
+		case RolloutNodeFallbackStartPending:
+			observation, err := runRecoveryRolloutEffect(
+				coordinator,
+				ctx,
+				func(effectCtx context.Context) (RolloutHostObservation, error) {
+					return coordinator.Hosts.Start(effectCtx, target, change)
+				},
+			)
+			if err != nil ||
+				!validRolloutHostObservation(observation, target, change) {
+				return coordinator.compensationFailed(ctx, transaction, node)
+			}
+			node.Phase = RolloutNodeFallbackStarted
+			if err := persistRollout(ctx, coordinator.Journal, transaction); err != nil {
+				return RolloutStatus{}, err
+			}
+			fallthrough
+		case RolloutNodeFallbackStarted:
+			ready, err := runRecoveryRolloutEffect(
+				coordinator,
+				ctx,
+				func(effectCtx context.Context) (RolloutReadinessObservation, error) {
+					return coordinator.Hosts.Readiness(effectCtx, target, change)
+				},
+			)
+			if err != nil || !validRolloutReadiness(ready, target, change) {
+				return coordinator.compensationFailed(ctx, transaction, node)
+			}
+			node.Phase = RolloutNodeRestored
+			if err := persistRollout(ctx, coordinator.Journal, transaction); err != nil {
+				return RolloutStatus{}, err
+			}
+		default:
+			return RolloutStatus{}, ErrRolloutJournalInvalid
 		}
 	}
 	transaction.Phase = RolloutPhaseCompensated
@@ -901,6 +959,9 @@ func (coordinator RolloutCoordinator) compensationFailed(
 	node *RolloutNodeTransaction,
 ) (RolloutStatus, error) {
 	node.Phase = RolloutNodeRollbackFailed
+	if err := persistRollout(ctx, coordinator.Journal, transaction); err != nil {
+		return RolloutStatus{}, err
+	}
 	transaction.Phase = RolloutPhaseRecoveryRequired
 	transaction.ResumeFrom = RolloutPhaseCompensating
 	transaction.FailureReason = RolloutReasonCompensationFailed
@@ -1544,6 +1605,7 @@ func validRolloutPhaseTransition(before, after RolloutPhase) bool {
 	case RolloutPhaseRecoveryRequired:
 		return after == RolloutPhaseCompensating ||
 			after == RolloutPhaseRecoveryRequired ||
+			after == RolloutPhaseReadyToCommit ||
 			after == RolloutPhaseCommitted ||
 			after == RolloutPhaseActivated
 	default:
