@@ -96,27 +96,29 @@ type workloadSync interface {
 }
 
 type QueryService struct {
-	name        string
-	nodeProfile network.NodeProfile
-	boot        *BootStatus
-	life        *diagnostics.Machine
-	diag        *diagnostics.Recorder
-	ident       identity.Service
-	trust       *discovery.TrustEvaluator
-	disco       *discovery.Service
-	trans       network.Service
-	privacy     *networkprivacy.Channel
-	dataPrivacy *networkprivacy.Channel
-	route       *noderoute.State
-	policy      apppolicy.Policy
-	data        dataProjectionReader
-	workload    *execution.Service
-	runtime     runtimeSync
-	observed    workloadSync
+	name           string
+	imageReference string
+	nodeProfile    network.NodeProfile
+	boot           *BootStatus
+	life           *diagnostics.Machine
+	diag           *diagnostics.Recorder
+	ident          identity.Service
+	trust          *discovery.TrustEvaluator
+	disco          *discovery.Service
+	trans          network.Service
+	privacy        *networkprivacy.Channel
+	dataPrivacy    *networkprivacy.Channel
+	route          *noderoute.State
+	policy         apppolicy.Policy
+	data           dataProjectionReader
+	workload       *execution.Service
+	runtime        runtimeSync
+	observed       workloadSync
 }
 
 func newQueryService(
 	name string,
+	imageReference string,
 	nodeProfile network.NodeProfile,
 	boot *BootStatus,
 	life *diagnostics.Machine,
@@ -133,21 +135,22 @@ func newQueryService(
 	workloadSvc *execution.Service,
 ) *QueryService {
 	return &QueryService{
-		name:        name,
-		nodeProfile: nodeProfile,
-		boot:        boot,
-		life:        life,
-		diag:        diag,
-		ident:       ident,
-		trust:       trustSvc,
-		disco:       disco,
-		trans:       trans,
-		privacy:     privacy,
-		dataPrivacy: dataPrivacy,
-		route:       route,
-		policy:      policySvc,
-		data:        dataSvc,
-		workload:    workloadSvc,
+		name:           name,
+		imageReference: imageReference,
+		nodeProfile:    nodeProfile,
+		boot:           boot,
+		life:           life,
+		diag:           diag,
+		ident:          ident,
+		trust:          trustSvc,
+		disco:          disco,
+		trans:          trans,
+		privacy:        privacy,
+		dataPrivacy:    dataPrivacy,
+		route:          route,
+		policy:         policySvc,
+		data:           dataSvc,
+		workload:       workloadSvc,
 	}
 }
 
@@ -443,9 +446,10 @@ func (r *QueryService) DiagnosticsSnapshotLocked() diagnostics.DiagSnapshot {
 func (r *QueryService) NodeFeaturesSnapshotLocked() NodeFeaturesSnapshot {
 	features := r.NodeFeatures()
 	return NodeFeaturesSnapshot{
-		Version:  features.Version,
-		Services: cloneStrings(features.Services),
-		Features: cloneBoolMap(features.Features),
+		Version:        features.Version,
+		Services:       cloneStrings(features.Services),
+		Features:       cloneBoolMap(features.Features),
+		ImageReference: r.imageReference,
 	}
 }
 

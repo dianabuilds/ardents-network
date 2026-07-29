@@ -3,6 +3,7 @@ package configuration
 import (
 	"bytes"
 	"crypto/ed25519"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -84,6 +85,62 @@ func TestConfigResolvePrincipalFromContextFile(t *testing.T) {
 	if cfg.Timeout != 4*time.Second {
 		t.Fatalf("Timeout = %v", cfg.Timeout)
 	}
+}
+
+func TestResolveTopologyContextUsesExactStoredBindingsWithoutEnvironmentOverrides(t *testing.T) {
+	principal := configTestPrincipal(t)
+	contextFile := filepath.Join(t.TempDir(), "contexts.json")
+	signerFile := filepath.Join(t.TempDir(), "device.json")
+	raw := fmt.Sprintf(`{
+		"contexts": {
+			"host-a": {
+				"addr": "unix:///run/ardents/operator.sock",
+				"ssh": "operator@host-a",
+				"ssh_known_hosts": "pins/host-a",
+				"ssh_operator_socket": "/run/ardents/operator.sock",
+				"signer_file": %q,
+				"signer_alias": "operator-a",
+				"host_key_pin_ref": "pin-a",
+				"expected_node": "node-a",
+				"expected_principal": %q
+			}
+		}
+	}`, filepath.ToSlash(signerFile), principal)
+	if err := os.WriteFile(contextFile, []byte(raw), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ARDENTS_SSH", "attacker@override")
+	t.Setenv("ARDENTS_SIGNER_FILE", "override.json")
+
+	cfg, err := (Config{ContextFile: contextFile, Output: "json", Timeout: time.Second}).ResolveTopologyContext("host-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.SSH != "operator@host-a" || cfg.SignerFile != filepath.ToSlash(signerFile) ||
+		cfg.SignerAlias != "operator-a" || cfg.HostKeyPinRef != "pin-a" {
+		t.Fatalf("resolved topology context = %+v", cfg)
+	}
+}
+
+func TestResolveTopologyContextRequiresPinSignerAndIdentityBindings(t *testing.T) {
+	contextFile := filepath.Join(t.TempDir(), "contexts.json")
+	if err := os.WriteFile(contextFile, []byte(`{"contexts":{"host-a":{"ssh":"operator@host-a"}}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := (Config{ContextFile: contextFile}).ResolveTopologyContext("host-a")
+	if err == nil {
+		t.Fatal("ResolveTopologyContext() error = nil")
+	}
+}
+
+func TestContextFileMustBeRegularAndBounded(t *testing.T) {
+	_, err := (Config{ContextFile: t.TempDir()}).ResolveTopologyContext("host-a")
+	require.ErrorContains(t, err, "regular file")
+
+	path := filepath.Join(t.TempDir(), "contexts.json")
+	require.NoError(t, os.WriteFile(path, bytes.Repeat([]byte{' '}, maxContextsBytes+1), 0o600))
+	_, err = (Config{ContextFile: path}).ResolveTopologyContext("host-a")
+	require.ErrorContains(t, err, "size limit")
 }
 
 func TestConfigResolveRequiresPrincipalAuthentication(t *testing.T) {

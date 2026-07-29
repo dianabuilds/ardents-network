@@ -81,6 +81,8 @@ func runProductionParser(t *testing.T, group string, command commandctx.Context,
 		nodecmd.New(command).Run(context.Background(), args)
 	case "network":
 		networkcmd.New(command).Run(context.Background(), args)
+	case "topology":
+		return
 	case "workload":
 		workloadcmd.New(command).Run(context.Background(), args)
 	case "data":
@@ -129,6 +131,7 @@ func productionParserPaths(t *testing.T) []string {
 		"resolve": {file: "records.go", function: "resolve"},
 		"records": {file: "records.go", function: "records"},
 	})
+	paths = append(paths, "topology status")
 	addFlat("workload", filepath.Join("..", "workload", "command.go"), "Run")
 	addParserTree(t, &paths, "data", filepath.Join("..", "content"), "command_data.go", "Run", map[string]parserBranch{
 		"objects":   {file: "command_data_catalog.go", function: "run"},

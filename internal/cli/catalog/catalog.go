@@ -78,6 +78,7 @@ const (
 var groups = []GroupSpec{
 	{Name: "node", Summary: "node lifecycle, runtime status and events"},
 	{Name: "network", Summary: "network, discovery, peers and routes"},
+	{Name: "topology", Summary: "bounded multi-host deployment status"},
 	{Name: "workload", Summary: "workload lifecycle and hosted services"},
 	{Name: "data", Summary: "objects, blobs, manifests and transfers"},
 	{Name: "diagnostics", Summary: "health, failures, pending operations and events"},
@@ -106,6 +107,8 @@ var commands = []CommandSpec{
 	protected("network.resolve.service", []string{"network", "resolve", "service"}, "--service ID", "resolve one service", ardentsv1connect.NetworkServiceResolveServiceProcedure, "discovery.resolve_service", "service", false, OutputProtoJSON, ownerNND),
 	protected("network.records.list", []string{"network", "records", "list"}, "", "list signed discovery records", ardentsv1connect.NetworkServiceListRecordsProcedure, "discovery.list_records", "discovery-record-collection", false, OutputProtoJSON, ownerNND),
 	protected("network.records.import", []string{"network", "records", "import"}, "--file FILE", "import a signed discovery record", ardentsv1connect.NetworkServiceImportRecordProcedure, "discovery.import", "discovery-record", true, OutputProtoJSON, ownerNND),
+
+	local("topology.status", []string{"topology", "status"}, "--manifest FILE", "show bounded three-Node deployment truth", "local.topology.status", OutputCLIJSON, true, ownerContract),
 
 	protected("workload.list", []string{"workload", "list"}, "", "list workloads", ardentsv1connect.WorkloadServiceListWorkloadsProcedure, "workload.list", "workload-collection", false, OutputProtoJSON, ownerWorkload),
 	protected("workload.get", []string{"workload", "get"}, "ID", "show one workload", ardentsv1connect.WorkloadServiceGetWorkloadStatusProcedure, "workload.status", "workload", false, OutputProtoJSON, ownerWorkload),

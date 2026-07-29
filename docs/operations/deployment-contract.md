@@ -19,6 +19,12 @@ validates and redacts the accepted exact-three-host design without touching a
 host. That pure MR-01 compiler does not broaden this supported deployment
 target or qualify multi-host operation.
 
+The read-only
+[multi-host status contract](multi-host-status-contract.md) adds bounded
+pin-validated inspection of the exact three admitted Nodes through their
+host-local Operator sockets. It does not broaden the supported deployment
+target, mutate a host, or qualify multi-host operation.
+
 Two supported profiles and one qualification profile are versioned:
 
 - `native` (qualification): one node installed as the unprivileged `ardents` system service,

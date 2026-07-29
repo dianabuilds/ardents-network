@@ -1540,12 +1540,13 @@ func (x *Snapshot) GetTransport() *TransportSnapshot {
 }
 
 type NodeFeaturesSnapshot struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Version       string                 `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
-	Services      []string               `protobuf:"bytes,2,rep,name=services,proto3" json:"services,omitempty"`
-	Features      map[string]bool        `protobuf:"bytes,3,rep,name=features,proto3" json:"features,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Version        string                 `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
+	Services       []string               `protobuf:"bytes,2,rep,name=services,proto3" json:"services,omitempty"`
+	Features       map[string]bool        `protobuf:"bytes,3,rep,name=features,proto3" json:"features,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	ImageReference string                 `protobuf:"bytes,4,opt,name=image_reference,json=imageReference,proto3" json:"image_reference,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *NodeFeaturesSnapshot) Reset() {
@@ -1597,6 +1598,13 @@ func (x *NodeFeaturesSnapshot) GetFeatures() map[string]bool {
 		return x.Features
 	}
 	return nil
+}
+
+func (x *NodeFeaturesSnapshot) GetImageReference() string {
+	if x != nil {
+		return x.ImageReference
+	}
+	return ""
 }
 
 type NodeDiscoveryFacts struct {
@@ -3380,6 +3388,13 @@ type NetworkStatusSnapshot struct {
 	BannedProviders         int32                  `protobuf:"varint,25,opt,name=banned_providers,json=bannedProviders,proto3" json:"banned_providers,omitempty"`
 	ReducedFeatures         []string               `protobuf:"bytes,26,rep,name=reduced_features,json=reducedFeatures,proto3" json:"reduced_features,omitempty"`
 	ActiveFeatures          []string               `protobuf:"bytes,27,rep,name=active_features,json=activeFeatures,proto3" json:"active_features,omitempty"`
+	StoreEnabled            bool                   `protobuf:"varint,28,opt,name=store_enabled,json=storeEnabled,proto3" json:"store_enabled,omitempty"`
+	StoreState              string                 `protobuf:"bytes,29,opt,name=store_state,json=storeState,proto3" json:"store_state,omitempty"`
+	StoreMessages           int32                  `protobuf:"varint,30,opt,name=store_messages,json=storeMessages,proto3" json:"store_messages,omitempty"`
+	StoreCapacityMessages   int32                  `protobuf:"varint,31,opt,name=store_capacity_messages,json=storeCapacityMessages,proto3" json:"store_capacity_messages,omitempty"`
+	StoreCapacityBytes      int64                  `protobuf:"varint,32,opt,name=store_capacity_bytes,json=storeCapacityBytes,proto3" json:"store_capacity_bytes,omitempty"`
+	StoreFileBytes          int64                  `protobuf:"varint,33,opt,name=store_file_bytes,json=storeFileBytes,proto3" json:"store_file_bytes,omitempty"`
+	StoreUsageRatio         float64                `protobuf:"fixed64,34,opt,name=store_usage_ratio,json=storeUsageRatio,proto3" json:"store_usage_ratio,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -3587,6 +3602,55 @@ func (x *NetworkStatusSnapshot) GetActiveFeatures() []string {
 		return x.ActiveFeatures
 	}
 	return nil
+}
+
+func (x *NetworkStatusSnapshot) GetStoreEnabled() bool {
+	if x != nil {
+		return x.StoreEnabled
+	}
+	return false
+}
+
+func (x *NetworkStatusSnapshot) GetStoreState() string {
+	if x != nil {
+		return x.StoreState
+	}
+	return ""
+}
+
+func (x *NetworkStatusSnapshot) GetStoreMessages() int32 {
+	if x != nil {
+		return x.StoreMessages
+	}
+	return 0
+}
+
+func (x *NetworkStatusSnapshot) GetStoreCapacityMessages() int32 {
+	if x != nil {
+		return x.StoreCapacityMessages
+	}
+	return 0
+}
+
+func (x *NetworkStatusSnapshot) GetStoreCapacityBytes() int64 {
+	if x != nil {
+		return x.StoreCapacityBytes
+	}
+	return 0
+}
+
+func (x *NetworkStatusSnapshot) GetStoreFileBytes() int64 {
+	if x != nil {
+		return x.StoreFileBytes
+	}
+	return 0
+}
+
+func (x *NetworkStatusSnapshot) GetStoreUsageRatio() float64 {
+	if x != nil {
+		return x.StoreUsageRatio
+	}
+	return 0
 }
 
 type PeerSnapshot struct {
@@ -8541,11 +8605,12 @@ const file_api_ardents_v1_types_proto_rawDesc = "" +
 	"\bworkload\x18\v \x01(\v2!.ardents.v1.WorkloadStateSnapshotR\bworkload\x12/\n" +
 	"\x05store\x18\f \x01(\v2\x19.ardents.v1.StoreSnapshotR\x05store\x12,\n" +
 	"\x04diag\x18\r \x01(\v2\x18.ardents.v1.DiagSnapshotR\x04diag\x12;\n" +
-	"\ttransport\x18\x0e \x01(\v2\x1d.ardents.v1.TransportSnapshotR\ttransport\"\xd5\x01\n" +
+	"\ttransport\x18\x0e \x01(\v2\x1d.ardents.v1.TransportSnapshotR\ttransport\"\xfe\x01\n" +
 	"\x14NodeFeaturesSnapshot\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\tR\aversion\x12\x1a\n" +
 	"\bservices\x18\x02 \x03(\tR\bservices\x12J\n" +
-	"\bfeatures\x18\x03 \x03(\v2..ardents.v1.NodeFeaturesSnapshot.FeaturesEntryR\bfeatures\x1a;\n" +
+	"\bfeatures\x18\x03 \x03(\v2..ardents.v1.NodeFeaturesSnapshot.FeaturesEntryR\bfeatures\x12'\n" +
+	"\x0fimage_reference\x18\x04 \x01(\tR\x0eimageReference\x1a;\n" +
 	"\rFeaturesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\bR\x05value:\x028\x01\"o\n" +
@@ -8732,7 +8797,7 @@ const file_api_ardents_v1_types_proto_rawDesc = "" +
 	"\x04boot\x18\x02 \x01(\v2\x18.ardents.v1.BootSnapshotR\x04boot\x128\n" +
 	"\bidentity\x18\x03 \x01(\v2\x1c.ardents.v1.IdentitySnapshotR\bidentity\x122\n" +
 	"\x06health\x18\x04 \x01(\v2\x1a.ardents.v1.HealthSnapshotR\x06health\x12;\n" +
-	"\treadiness\x18\x05 \x01(\v2\x1d.ardents.v1.ReadinessSnapshotR\treadiness\"\xa1\t\n" +
+	"\treadiness\x18\x05 \x01(\v2\x1d.ardents.v1.ReadinessSnapshotR\treadiness\"\xce\v\n" +
 	"\x15NetworkStatusSnapshot\x12\x14\n" +
 	"\x05state\x18\x01 \x01(\tR\x05state\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x16\n" +
@@ -8761,7 +8826,15 @@ const file_api_ardents_v1_types_proto_rawDesc = "" +
 	"\x12oversized_messages\x18\x18 \x01(\x04R\x11oversizedMessages\x12)\n" +
 	"\x10banned_providers\x18\x19 \x01(\x05R\x0fbannedProviders\x12)\n" +
 	"\x10reduced_features\x18\x1a \x03(\tR\x0freducedFeatures\x12'\n" +
-	"\x0factive_features\x18\x1b \x03(\tR\x0eactiveFeaturesJ\x04\b\a\x10\bJ\x04\b\x13\x10\x14R\x14reduced_capabilitiesR\x13active_capabilities\"\xaf\x02\n" +
+	"\x0factive_features\x18\x1b \x03(\tR\x0eactiveFeatures\x12#\n" +
+	"\rstore_enabled\x18\x1c \x01(\bR\fstoreEnabled\x12\x1f\n" +
+	"\vstore_state\x18\x1d \x01(\tR\n" +
+	"storeState\x12%\n" +
+	"\x0estore_messages\x18\x1e \x01(\x05R\rstoreMessages\x126\n" +
+	"\x17store_capacity_messages\x18\x1f \x01(\x05R\x15storeCapacityMessages\x120\n" +
+	"\x14store_capacity_bytes\x18  \x01(\x03R\x12storeCapacityBytes\x12(\n" +
+	"\x10store_file_bytes\x18! \x01(\x03R\x0estoreFileBytes\x12*\n" +
+	"\x11store_usage_ratio\x18\" \x01(\x01R\x0fstoreUsageRatioJ\x04\b\a\x10\bJ\x04\b\x13\x10\x14R\x14reduced_capabilitiesR\x13active_capabilities\"\xaf\x02\n" +
 	"\fPeerSnapshot\x12\x17\n" +
 	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12\x1c\n" +
 	"\taddresses\x18\x03 \x03(\tR\taddresses\x12/\n" +

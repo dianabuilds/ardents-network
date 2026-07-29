@@ -33,6 +33,7 @@ type StatusSnapshot struct {
 	OversizedMessages       uint64
 	BannedProviders         int
 	StoreEnabled            bool
+	StoreState              string
 	StoreMessages           int
 	StoreCapacityMessages   int
 	StoreCapacityBytes      int64
@@ -57,7 +58,7 @@ func ProjectStatus(nodeProfile NodeProfile, state, reason string, joined bool, p
 		ActiveFeatures:  append([]TransportFeature(nil), profile.ActiveFeatures...), AbuseState: abuse.State, AbuseReason: abuse.Reason,
 		RateLimitedOperations: abuse.RateLimitedOperations, BackpressuredOperations: abuse.BackpressuredOperations,
 		OversizedMessages: abuse.OversizedMessages, BannedProviders: abuse.BannedProviders,
-		StoreEnabled: abuse.StoreEnabled, StoreMessages: abuse.StoreMessages,
+		StoreEnabled: abuse.StoreEnabled, StoreState: abuse.StoreState, StoreMessages: abuse.StoreMessages,
 		StoreCapacityMessages: abuse.StoreCapacityMessages, StoreFileBytes: abuse.StoreFileBytes,
 		StoreCapacityBytes: abuse.StoreCapacityBytes,
 		StoreUsageRatio:    abuse.StoreUsageRatio, LastTransitionAt: lastTransitionAt,

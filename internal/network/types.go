@@ -54,6 +54,8 @@ type AbuseSnapshot struct {
 	OversizedMessages       uint64
 	BannedProviders         int
 	StoreEnabled            bool
+	StoreState              string
+	StoreReason             string
 	StoreMessages           int
 	StoreCapacityMessages   int
 	StoreCapacityBytes      int64

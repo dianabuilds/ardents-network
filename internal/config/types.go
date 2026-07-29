@@ -52,9 +52,10 @@ type AuthorityConfig struct {
 }
 
 type NodeConfig struct {
-	Name    string `json:"name"`
-	Profile string `json:"profile"`
-	DataDir string `json:"data_dir"`
+	Name           string `json:"name"`
+	Profile        string `json:"profile"`
+	DataDir        string `json:"data_dir"`
+	ImageReference string `json:"image_reference,omitempty"`
 }
 
 type APIConfig struct {

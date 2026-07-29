@@ -123,6 +123,7 @@ func TestMessageProviderHardByteQuotaIncludesWAL(t *testing.T) {
 	require.LessOrEqual(t, used, quota)
 	pressure := svc.AbuseSnapshot()
 	require.Equal(t, "degraded", pressure.State)
+	require.Equal(t, "degraded", pressure.StoreState)
 	require.GreaterOrEqual(t, pressure.StoreUsageRatio, storePressureDegradedRatio)
 	svc.state = "ready"
 	require.Equal(t, network.HealthStateDegraded, svc.ProfileSnapshot().Health)

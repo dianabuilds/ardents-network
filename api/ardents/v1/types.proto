@@ -178,6 +178,7 @@ message NodeFeaturesSnapshot {
   string version = 1;
   repeated string services = 2;
   map<string, bool> features = 3;
+  string image_reference = 4;
 }
 
 message NodeDiscoveryFacts {
@@ -405,6 +406,13 @@ message NetworkStatusSnapshot {
   int32 banned_providers = 25;
   repeated string reduced_features = 26;
   repeated string active_features = 27;
+  bool store_enabled = 28;
+  string store_state = 29;
+  int32 store_messages = 30;
+  int32 store_capacity_messages = 31;
+  int64 store_capacity_bytes = 32;
+  int64 store_file_bytes = 33;
+  double store_usage_ratio = 34;
 }
 
 message PeerSnapshot {

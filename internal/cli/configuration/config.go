@@ -23,6 +23,7 @@ const (
 	defaultOutput    = "human"
 	defaultTimeout   = 10 * time.Second
 	contextsFileName = "contexts.json"
+	maxContextsBytes = 1 << 20
 )
 
 type Config struct {
@@ -33,6 +34,8 @@ type Config struct {
 	SSHKnownHosts     string
 	SSHOperatorSocket string
 	SignerFile        string
+	SignerAlias       string
+	HostKeyPinRef     string
 	ContextName       string
 	ContextFile       string
 	ExpectedNode      string
@@ -58,6 +61,8 @@ type StoredContext struct {
 	SSHKnownHosts     string   `json:"ssh_known_hosts,omitempty"`
 	SSHOperatorSocket string   `json:"ssh_operator_socket,omitempty"`
 	SignerFile        string   `json:"signer_file,omitempty"`
+	SignerAlias       string   `json:"signer_alias,omitempty"`
+	HostKeyPinRef     string   `json:"host_key_pin_ref,omitempty"`
 	ExpectedNode      string   `json:"expected_node,omitempty"`
 	ExpectedPrincipal string   `json:"expected_principal,omitempty"`
 	ExpectedPublicKey string   `json:"expected_public_key,omitempty"`
@@ -94,6 +99,51 @@ func (c *Config) Resolve() error {
 	return nil
 }
 
+// ResolveTopologyContext resolves one manifest-selected context without
+// process environment transport overrides. This keeps the manifest aliases
+// bound to the reviewed SSH pin and signer records.
+func (c Config) ResolveTopologyContext(name string) (Config, error) {
+	if err := runtimeconfig.RejectObsoleteCredentialEnvironment(); err != nil {
+		return Config{}, err
+	}
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return Config{}, errors.New("topology context name is required")
+	}
+	stored, err := c.loadContext(name)
+	if err != nil {
+		return Config{}, err
+	}
+	resolved := DefaultConfig()
+	resolved.ContextFile = c.ContextFile
+	resolved.ContextName = name
+	if c.Output != "" {
+		resolved.Output = c.Output
+	}
+	if c.Timeout > 0 {
+		resolved.Timeout = c.Timeout
+	}
+	resolved.applyStored(stored)
+	if strings.TrimSpace(resolved.SSH) == "" ||
+		strings.TrimSpace(resolved.SSHKnownHosts) == "" ||
+		strings.TrimSpace(resolved.SSHOperatorSocket) == "" {
+		return Config{}, errors.New("topology context requires SSH target, known_hosts, and Operator socket")
+	}
+	if strings.TrimSpace(resolved.SignerFile) == "" ||
+		strings.TrimSpace(resolved.SignerAlias) == "" ||
+		strings.TrimSpace(resolved.HostKeyPinRef) == "" {
+		return Config{}, errors.New("topology context requires signer alias and host-key pin reference")
+	}
+	if strings.TrimSpace(resolved.ExpectedNode) == "" ||
+		strings.TrimSpace(resolved.ExpectedPrincipal) == "" {
+		return Config{}, errors.New("topology context requires expected Node identity")
+	}
+	if err := resolved.validateAndNormalize(); err != nil {
+		return Config{}, err
+	}
+	return resolved, nil
+}
+
 func (c *Config) resolveContextName() (string, error) {
 	if c.ContextName != "" {
 		return c.ContextName, nil
@@ -105,7 +155,7 @@ func (c *Config) resolveContextName() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	data, err := os.ReadFile(path)
+	data, err := readContextFile(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return "", nil
 	}
@@ -127,7 +177,7 @@ func (c *Config) loadContext(name string) (StoredContext, error) {
 	if err != nil {
 		return StoredContext{}, err
 	}
-	data, err := os.ReadFile(path)
+	data, err := readContextFile(path)
 	if err != nil {
 		return StoredContext{}, fmt.Errorf("read contexts file: %w", err)
 	}
@@ -156,6 +206,29 @@ func decodeContextFile(data []byte) (ContextFile, error) {
 		return ContextFile{}, err
 	}
 	return store, nil
+}
+
+func readContextFile(path string) ([]byte, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, errors.New("contexts file must be a regular file")
+	}
+	data, err := io.ReadAll(io.LimitReader(file, maxContextsBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(data) > maxContextsBytes {
+		return nil, errors.New("contexts file exceeds size limit")
+	}
+	return data, nil
 }
 
 func (c *Config) contextFilePath() (string, error) {
@@ -193,6 +266,12 @@ func (c *Config) applyStored(stored StoredContext) {
 	}
 	if c.SignerFile == "" {
 		c.SignerFile = stored.SignerFile
+	}
+	if c.SignerAlias == "" {
+		c.SignerAlias = stored.SignerAlias
+	}
+	if c.HostKeyPinRef == "" {
+		c.HostKeyPinRef = stored.HostKeyPinRef
 	}
 	if c.ExpectedPrincipal == "" {
 		c.ExpectedPrincipal = stored.ExpectedPrincipal

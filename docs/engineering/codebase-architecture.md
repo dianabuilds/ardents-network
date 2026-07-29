@@ -389,7 +389,7 @@ The policy discovers handwritten production Go packages from the explicit
 | `authority` | one-Realm authority ledger, class-specific initial-generation issue/acknowledgement, fresh-generation rotation/activation and bounded renewal, channel membership/revocation truth, bounded deployment-fencing evidence acceptance, exact same-Realm restore verification, stopped legacy-migration truth, dual-signed authority transition, external-signer continuity, monotonic checkpoint contract and redacted realm/channel status | Operator authentication, Product Policy, conversation identity or messaging semantics, signer custody, repository administration, archive creation/extraction, member-local installation, deployment isolation execution or qualification |
 | `channeldelivery` | member-local delivery-key attestation, atomic generation install, signed-checkpoint activation orchestration and durable dual-signed authority-trust adoption/finalization | Authority truth, Operator authentication, HPKE implementation, deployment fencing or Product Policy |
 | `daemon` | construction, startup order, shutdown rollback, cross-module process lifecycle | product state machines, RPC mapping, CLI presentation |
-| `deployment` | strict bounded multi-host topology manifest admission and deterministic redacted host-local plan compilation | SSH, signer/session use, host or network mutation, Authority/repository operations, rollout/fence journals, runtime status or reachability qualification |
+| `deployment` | strict bounded multi-host topology manifest admission, deterministic redacted host-local plan compilation and pure bounded status projection | SSH, signer/session adapters, host or network mutation, Authority/repository operations, rollout/fence journals or real-host qualification |
 | `buildinfo` | immutable build and version identity | runtime health, configuration, release orchestration |
 | `config` | decode, defaults, validation, source precedence, change classification | applying product changes, environment-specific startup logic |
 | `identity` | node identity, key continuity, principals, capabilities, authentication facts | network transport, general policy decisions, operator RPC auth |
@@ -407,7 +407,7 @@ The policy discovers handwritten production Go packages from the explicit
 | `publication` | creation, refresh, withdrawal and retry of local node/service advertisements | workload execution, discovery intake, Waku lifecycle |
 | `localapi` | authenticated local-control protocol server and protocol-specific mapping | product decisions, module state, CLI rendering |
 | `applicationapi` | authenticated Application Interface adapters and protocol mapping | product decisions, content state, Operator authority, public SDK ergonomics |
-| `cli` | operator command model, remote client use, human/JSON presentation, shell and TUI UX | product state transitions, RPC server behaviour |
+| `cli` | operator command model, pin-validated host-local remote client use, bounded multi-host status orchestration, human/JSON presentation, shell and TUI UX | product state transitions, RPC server behaviour, topology admission policy or real-host qualification |
 | `observability` | Prometheus/HTTP exposure of already-owned runtime evidence | creating product health truth or diagnostics history |
 | `ingressproxy` | generation-bound forwarding for admitted hosted-service ingress | workload admission, readiness, publication |
 

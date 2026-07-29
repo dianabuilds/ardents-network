@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/url"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -17,6 +18,8 @@ import (
 	workloadregistry "ardents/internal/workload/registry"
 )
 
+var immutableImageReferencePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._/-]*@sha256:[0-9a-f]{64}$`)
+
 func Validate(doc Document) error {
 	if doc.APIVersion != Version {
 		return fmt.Errorf("unsupported api_version %q: expected %q", doc.APIVersion, Version)
@@ -26,6 +29,10 @@ func Validate(doc Document) error {
 	}
 	if strings.TrimSpace(doc.Node.DataDir) == "" {
 		return fmt.Errorf("node.data_dir is required")
+	}
+	if image := strings.TrimSpace(doc.Node.ImageReference); image != "" &&
+		!immutableImageReferencePattern.MatchString(image) {
+		return fmt.Errorf("node.image_reference must be an immutable canonical sha256 image reference")
 	}
 	if err := validateAPI(doc.API); err != nil {
 		return err

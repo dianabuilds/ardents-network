@@ -33,6 +33,9 @@ func networkStatus(in domain.StatusSnapshot) (*protocol.NetworkStatusSnapshot, e
 		AbuseReason: in.AbuseReason, RateLimitedOperations: in.RateLimitedOperations,
 		BackpressuredOperations: in.BackpressuredOperations, OversizedMessages: in.OversizedMessages,
 		BannedProviders: int32(in.BannedProviders),
+		StoreEnabled:    in.StoreEnabled, StoreState: in.StoreState, StoreMessages: int32(in.StoreMessages),
+		StoreCapacityMessages: int32(in.StoreCapacityMessages), StoreCapacityBytes: in.StoreCapacityBytes,
+		StoreFileBytes: in.StoreFileBytes, StoreUsageRatio: in.StoreUsageRatio,
 	}, nil
 }
 

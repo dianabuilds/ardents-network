@@ -23,7 +23,8 @@ func TestSSHStreamLocalArgumentsUseProtectedSocketAndNeverLegacyW(t *testing.T) 
 	}
 	arguments := sshStreamLocalArguments(cfg, "operator.sock")
 	require.Equal(t, []string{
-		"-N", "-T", "-o", "BatchMode=yes", "-o", "ExitOnForwardFailure=yes", "-p", "2222",
+		"-F", "none", "-N", "-T", "-o", "BatchMode=yes", "-o", "ExitOnForwardFailure=yes",
+		"-o", "GlobalKnownHostsFile=none", "-p", "2222",
 		"-o", "IdentitiesOnly=yes", "-i", "identity-file",
 		"-o", "StrictHostKeyChecking=yes", "-o", "UserKnownHostsFile=known-hosts-file",
 		"-L", "operator.sock:/var/lib/ardents/secrets/control.sock", "ops@alpha.example",
@@ -103,19 +104,40 @@ func TestSSHStreamLocalTunnelEarlyExitIsRedactedAndCleansUp(t *testing.T) {
 	require.NoError(t, tunnel.Close())
 }
 
+func TestSSHStreamLocalClassifiesHostKeyMismatchWithoutLeakingStderr(t *testing.T) {
+	original := newSSHCommand
+	t.Cleanup(func() { newSSHCommand = original })
+	newSSHCommand = func([]string) *exec.Cmd {
+		command := exec.Command(os.Args[0], "-test.run=TestSSHStreamLocalHelperProcess", "--")
+		command.Env = append(os.Environ(), "ARDENTS_SSH_HELPER=host-key-mismatch")
+		return command
+	}
+	tunnel := newSSHStreamLocalTransport(Config{SSH: "ops@alpha", SSHPort: 22, SSHOperatorSocket: "/secret/operator.sock"})
+	err := tunnel.ensureStarted(context.Background())
+	require.ErrorIs(t, err, ErrSSHHostKeyMismatch)
+	require.NotContains(t, err.Error(), "alpha")
+	require.NotContains(t, err.Error(), "/secret")
+	require.NoError(t, tunnel.Close())
+}
+
 func TestSSHStreamLocalHelperProcess(t *testing.T) {
 	switch os.Getenv("ARDENTS_SSH_HELPER") {
 	case "":
 		return
 	case "exit":
 		os.Exit(3)
+	case "host-key-mismatch":
+		_, _ = os.Stderr.WriteString("WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED! secret-host\n")
+		os.Exit(255)
 	case "ready":
 		listener, err := net.Listen("unix", "operator.sock")
 		if err != nil {
 			os.Exit(4)
 		}
 		defer listener.Close()
-		select {}
+		for {
+			time.Sleep(time.Hour)
+		}
 	default:
 		os.Exit(5)
 	}

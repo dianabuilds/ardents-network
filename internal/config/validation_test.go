@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	identityprincipal "ardents/internal/identity/principal"
@@ -134,8 +135,15 @@ func TestValidateAuthorityRequiresSeparateExplicitProductionInputs(t *testing.T)
 func TestValidateAcceptsCompleteServiceNode(t *testing.T) {
 	doc := Defaults()
 	doc.Node.Name = "node-a"
+	doc.Node.ImageReference = "registry.example/ardents/node@sha256:" + strings.Repeat("a", 64)
 	doc.Network.BootstrapPeers = []string{"/ip4/10.0.0.2/tcp/60000/p2p/peer"}
 	require.NoError(t, Validate(doc))
+}
+
+func TestValidateRejectsMutableNodeImageReference(t *testing.T) {
+	doc := Defaults()
+	doc.Node.ImageReference = "registry.example/ardents/node:latest"
+	require.ErrorContains(t, Validate(doc), "node.image_reference")
 }
 
 func TestValidateRequiresFiniteWakuStoreRetentionForPersistentProfiles(t *testing.T) {

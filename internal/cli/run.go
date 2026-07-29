@@ -17,6 +17,7 @@ import (
 	networkcmd "ardents/internal/cli/network"
 	nodecmd "ardents/internal/cli/node"
 	"ardents/internal/cli/output"
+	topologycmd "ardents/internal/cli/topology"
 	tuicmd "ardents/internal/cli/tui"
 	workloadcmd "ardents/internal/cli/workload"
 )
@@ -73,6 +74,13 @@ func dispatch(ctx context.Context, cfg configurationcmd.Config, rest []string, s
 	}
 	if spec.ID == "version" {
 		return renderVersion(stdout, cfg.Output)
+	}
+	if rest[0] == "topology" {
+		if cfg.Output != "human" && cfg.Output != "json" {
+			output.Writef(stderr, "ardentsctl: unsupported output %q\n", cfg.Output)
+			return 2
+		}
+		return (topologycmd.Command{Base: cfg, Out: stdout, Err: stderr}).Run(ctx, rest[1:])
 	}
 	if rest[0] == "identity" && (len(rest) == 1 || rest[1] == "help" || rest[1] == "principal" || rest[1] == "device" && (len(rest) < 3 || rest[2] != "revoke")) {
 		if cfg.Output != "human" && cfg.Output != "json" {

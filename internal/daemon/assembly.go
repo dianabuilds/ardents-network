@@ -35,33 +35,34 @@ import (
 )
 
 type ownerAssemblyConfig struct {
-	NodeName      string
-	NodeProfile   network.NodeProfile
-	BootSources   []string
-	Workloads     []registry.Spec
-	Life          *diagnostics.Machine
-	Diag          *diagnostics.Recorder
-	State         *identity.Store
-	Keys          identity.KeyStore
-	Boot          *BootStatus
-	Identity      identity.Service
-	Trust         *discovery.TrustEvaluator
-	TrustRegistry *identitytrust.Registry
-	Discovery     *discovery.Service
-	Transport     network.Service
-	Privacy       *networkprivacy.Channel
-	DataPrivacy   *networkprivacy.Channel
-	Route         *noderoute.State
-	Policy        apppolicy.Policy
-	Data          *content.Service
-	Replica       *replication.Repository
-	Transfer      *transfer.Journal
-	Hosting       *registry.Registry
-	Workload      *execution.Service
-	GetPrivate    func() ed25519.PrivateKey
-	SetPrivate    func(ed25519.PrivateKey)
-	Publish       func(string, map[string]any)
-	Lock          sync.Locker
+	NodeName       string
+	ImageReference string
+	NodeProfile    network.NodeProfile
+	BootSources    []string
+	Workloads      []registry.Spec
+	Life           *diagnostics.Machine
+	Diag           *diagnostics.Recorder
+	State          *identity.Store
+	Keys           identity.KeyStore
+	Boot           *BootStatus
+	Identity       identity.Service
+	Trust          *discovery.TrustEvaluator
+	TrustRegistry  *identitytrust.Registry
+	Discovery      *discovery.Service
+	Transport      network.Service
+	Privacy        *networkprivacy.Channel
+	DataPrivacy    *networkprivacy.Channel
+	Route          *noderoute.State
+	Policy         apppolicy.Policy
+	Data           *content.Service
+	Replica        *replication.Repository
+	Transfer       *transfer.Journal
+	Hosting        *registry.Registry
+	Workload       *execution.Service
+	GetPrivate     func() ed25519.PrivateKey
+	SetPrivate     func(ed25519.PrivateKey)
+	Publish        func(string, map[string]any)
+	Lock           sync.Locker
 }
 
 type ownerCollaborators struct {
@@ -127,6 +128,7 @@ func newWorkloadRuntimeOwner(cfg ownerAssemblyConfig, publicationMgr publication
 func newReader(cfg ownerAssemblyConfig) *QueryService {
 	return newQueryService(
 		cfg.NodeName,
+		cfg.ImageReference,
 		cfg.NodeProfile,
 		cfg.Boot,
 		cfg.Life,
@@ -453,33 +455,34 @@ func (n *Node) initOwnerCollaboratorsLocked() {
 
 func runtimeAssemblyConfig(n *Node) ownerAssemblyConfig {
 	return ownerAssemblyConfig{
-		NodeName:      n.cfg.Name,
-		NodeProfile:   n.cfg.NodeProfile,
-		BootSources:   cloneStrings(n.cfg.Boot.Sources),
-		Workloads:     runtimeWorkloadSpecs(n.cfg.Workload),
-		Life:          n.life,
-		Diag:          n.diag,
-		State:         n.state,
-		Keys:          n.keys,
-		Boot:          n.boot,
-		Identity:      n.ident,
-		Trust:         n.trust,
-		TrustRegistry: n.cfg.Trust.Registry,
-		Discovery:     n.disco,
-		Transport:     n.trans,
-		Privacy:       n.privacy,
-		DataPrivacy:   n.dataPrivacy,
-		Route:         n.route,
-		Policy:        n.policy,
-		Data:          n.data,
-		Replica:       n.replica,
-		Transfer:      n.transfers,
-		Hosting:       n.srv,
-		Workload:      n.workload,
-		GetPrivate:    func() ed25519.PrivateKey { return n.private },
-		SetPrivate:    func(key ed25519.PrivateKey) { n.private = key },
-		Publish:       n.publishLocked,
-		Lock:          &n.mu,
+		NodeName:       n.cfg.Name,
+		ImageReference: n.cfg.ImageReference,
+		NodeProfile:    n.cfg.NodeProfile,
+		BootSources:    cloneStrings(n.cfg.Boot.Sources),
+		Workloads:      runtimeWorkloadSpecs(n.cfg.Workload),
+		Life:           n.life,
+		Diag:           n.diag,
+		State:          n.state,
+		Keys:           n.keys,
+		Boot:           n.boot,
+		Identity:       n.ident,
+		Trust:          n.trust,
+		TrustRegistry:  n.cfg.Trust.Registry,
+		Discovery:      n.disco,
+		Transport:      n.trans,
+		Privacy:        n.privacy,
+		DataPrivacy:    n.dataPrivacy,
+		Route:          n.route,
+		Policy:         n.policy,
+		Data:           n.data,
+		Replica:        n.replica,
+		Transfer:       n.transfers,
+		Hosting:        n.srv,
+		Workload:       n.workload,
+		GetPrivate:     func() ed25519.PrivateKey { return n.private },
+		SetPrivate:     func(key ed25519.PrivateKey) { n.private = key },
+		Publish:        n.publishLocked,
+		Lock:           &n.mu,
 	}
 }
 
@@ -744,9 +747,10 @@ func configureLocalServices(
 }
 
 type NodeFeaturesSnapshot struct {
-	Version  string
-	Services []string
-	Features map[string]bool
+	Version        string
+	Services       []string
+	Features       map[string]bool
+	ImageReference string
 }
 
 type Event struct {

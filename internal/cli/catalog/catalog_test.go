@@ -11,7 +11,7 @@ import (
 func TestClosedCatalogueContainsExactlyCurrentLeafCommands(t *testing.T) {
 	specs := catalog.Commands()
 
-	require.Len(t, specs, 85)
+	require.Len(t, specs, 86)
 	require.NoError(t, catalog.Validate(specs, nil))
 
 	ids := make(map[string]struct{}, len(specs))
@@ -154,6 +154,7 @@ func TestCatalogueContainsResearchPacketLeafPaths(t *testing.T) {
 		"data blobs retain", "data blobs pin", "data blobs drop",
 		"data manifests list", "data manifests get", "data manifests publish",
 		"data transfers list", "data transfers get",
+		"topology status",
 		"diagnostics snapshot", "diagnostics health", "diagnostics pending", "diagnostics explain", "diagnostics events",
 		"config show", "config reload",
 		"authority create", "authority inspect", "authority recovery verify", "authority channel inspect",
@@ -201,7 +202,7 @@ func TestOutputFamiliesRemainCompatibleWithCurrentRenderers(t *testing.T) {
 			require.Equal(t, catalog.OutputHumanOnly, spec.Output, path)
 		case path == "node events":
 			require.Equal(t, catalog.OutputJSONLines, spec.Output, path)
-		case spec.Path[0] == "identity" || path == "version":
+		case spec.Path[0] == "identity" || path == "version" || path == "topology status":
 			require.Equal(t, catalog.OutputCLIJSON, spec.Output, path)
 		default:
 			require.Equal(t, catalog.OutputProtoJSON, spec.Output, path)
@@ -226,7 +227,7 @@ func TestEvidenceOwnershipHandoffCoversEveryLeaf(t *testing.T) {
 		"CGA-04": 2,
 		"CGA-05": 2,
 		"CGA-06": 1,
-		"OCS-01": 12,
+		"OCS-01": 13,
 		"OCS-02": 20,
 		"OCS-03": 9,
 		"OCS-04": 17,

@@ -815,8 +815,9 @@ func TestCompileDoesNotDereferenceManifestAliasesOrNetworkRoots(t *testing.T) {
 
 func TestCompilerProductionDependencyClosureHasNoSideEffectAdapters(t *testing.T) {
 	allowedImports := map[string]struct{}{
-		"bytes": {}, "encoding/json": {}, "errors": {}, "io": {},
+		"bytes": {}, "context": {}, "encoding/json": {}, "errors": {}, "io": {},
 		"net/netip": {}, "reflect": {}, "regexp": {}, "sort": {}, "strconv": {}, "strings": {},
+		"time":                                 {},
 		"ardents/internal/identity/principal":  {},
 		"github.com/distribution/reference":    {},
 		"github.com/multiformats/go-multiaddr": {},

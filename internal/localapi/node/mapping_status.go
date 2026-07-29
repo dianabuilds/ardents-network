@@ -14,10 +14,13 @@ func statusProto(state, reason string, accepted bool) *ardentsv1.OperationStatus
 }
 
 func toNodeFeaturesSnapshot(in daemonruntime.NodeFeaturesSnapshot) *ardentsv1.NodeFeaturesSnapshot {
-	if in.Version == "" && len(in.Services) == 0 && len(in.Features) == 0 {
+	if in.Version == "" && len(in.Services) == 0 && len(in.Features) == 0 && in.ImageReference == "" {
 		return nil
 	}
-	return &ardentsv1.NodeFeaturesSnapshot{Version: in.Version, Services: append([]string(nil), in.Services...), Features: cloneBoolMap(in.Features)}
+	return &ardentsv1.NodeFeaturesSnapshot{
+		Version: in.Version, Services: append([]string(nil), in.Services...),
+		Features: cloneBoolMap(in.Features), ImageReference: in.ImageReference,
+	}
 }
 
 func toPartSnapshot(in daemonruntime.PartSnapshot) *ardentsv1.PartSnapshot {

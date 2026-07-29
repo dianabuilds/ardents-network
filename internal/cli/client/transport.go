@@ -23,6 +23,10 @@ type transportKind uint8
 
 var newSSHCommand = func(arguments []string) *exec.Cmd { return exec.Command("ssh", arguments...) }
 
+// ErrSSHHostKeyMismatch is the stable transport classification for an
+// OpenSSH host-key pin rejection. It never contains host or pin material.
+var ErrSSHHostKeyMismatch = errors.New("SSH host key mismatch")
+
 const (
 	transportUnix transportKind = iota
 	transportSSHStreamLocal
@@ -116,7 +120,8 @@ func (t *sshStreamLocalTransport) ensureStarted(ctx context.Context) error {
 	command := newSSHCommand(arguments)
 	command.Dir = dir
 	command.Stdout = io.Discard
-	command.Stderr = &boundedBuffer{limit: 4096}
+	stderr := &boundedBuffer{limit: 4096}
+	command.Stderr = stderr
 	t.command = command
 	if err := command.Start(); err != nil {
 		t.startErr = errors.New("start SSH stream-local forwarding")
@@ -138,7 +143,11 @@ func (t *sshStreamLocalTransport) ensureStarted(ctx context.Context) error {
 			t.startErr = ctx.Err()
 			return t.startErr
 		case <-t.done:
-			t.startErr = errors.New("SSH stream-local forwarding exited before readiness")
+			if isSSHHostKeyMismatch(stderr.String()) {
+				t.startErr = ErrSSHHostKeyMismatch
+			} else {
+				t.startErr = errors.New("SSH stream-local forwarding exited before readiness")
+			}
 			_ = os.RemoveAll(dir)
 			return t.startErr
 		case <-ticker.C:
@@ -150,8 +159,20 @@ func (t *sshStreamLocalTransport) ensureStarted(ctx context.Context) error {
 	}
 }
 
+func isSSHHostKeyMismatch(stderr string) bool {
+	stderr = strings.ToLower(stderr)
+	return strings.Contains(stderr, "remote host identification has changed") ||
+		strings.Contains(stderr, "host key verification failed") ||
+		strings.Contains(stderr, "offending ") && strings.Contains(stderr, "host key")
+}
+
 func sshStreamLocalArguments(cfg Config, localSocket string) []string {
-	arguments := []string{"-N", "-T", "-o", "BatchMode=yes", "-o", "ExitOnForwardFailure=yes", "-p", strconv.Itoa(cfg.SSHPort)}
+	arguments := []string{
+		"-F", "none", "-N", "-T",
+		"-o", "BatchMode=yes", "-o", "ExitOnForwardFailure=yes",
+		"-o", "GlobalKnownHostsFile=none",
+		"-p", strconv.Itoa(cfg.SSHPort),
+	}
 	if cfg.SSHIdentity != "" {
 		arguments = append(arguments, "-o", "IdentitiesOnly=yes", "-i", cfg.SSHIdentity)
 	}
@@ -207,4 +228,10 @@ func (b *boundedBuffer) Write(value []byte) (int, error) {
 		b.data = append(b.data, value[:remaining]...)
 	}
 	return len(value), nil
+}
+
+func (b *boundedBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return string(b.data)
 }

@@ -14,6 +14,8 @@ import (
 	"connectrpc.com/connect"
 )
 
+const maxOperatorResponseBytes = 4 << 20
+
 type Config struct {
 	BaseURL           string
 	SSH               string
@@ -79,11 +81,13 @@ func New(cfg Config) (*Client, error) {
 			expectedPrincipal: cfg.ExpectedPrincipal, scopes: append([]string(nil), cfg.Scopes...),
 		},
 	}
-	rawIdentity := ardentsv1connect.NewIdentityServiceClient(httpClient, baseURL)
+	rawIdentity := ardentsv1connect.NewIdentityServiceClient(httpClient, baseURL, connect.WithReadMaxBytes(maxOperatorResponseBytes))
 	sessions := NewSessionManager(rawIdentity, cfg.Signer, cfg.ExpectedPrincipal, time.Now)
 	interceptor := newSessionInterceptor(sessions)
-	service := NewService(httpClient, baseURL, connect.WithInterceptors(interceptor))
-	protectedIdentity := ardentsv1connect.NewIdentityServiceClient(httpClient, baseURL, connect.WithInterceptors(interceptor))
+	service := NewService(httpClient, baseURL, connect.WithInterceptors(interceptor), connect.WithReadMaxBytes(maxOperatorResponseBytes))
+	protectedIdentity := ardentsv1connect.NewIdentityServiceClient(
+		httpClient, baseURL, connect.WithInterceptors(interceptor), connect.WithReadMaxBytes(maxOperatorResponseBytes),
+	)
 	return &Client{service: service, sessions: sessions, close: closeTransport, identityPublic: rawIdentity, identityProtected: protectedIdentity, targetNode: cfg.ExpectedPrincipal}, nil
 }
 

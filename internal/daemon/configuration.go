@@ -120,6 +120,7 @@ func isLoopbackBind(address string) bool {
 
 type Config struct {
 	Name                     string
+	ImageReference           string
 	NodeProfile              networkapi.NodeProfile
 	Boot                     BootConfig
 	Data                     DataConfig
@@ -542,7 +543,7 @@ func normalizeOperatorDocumentPaths(doc runtimeconfig.Document) runtimeconfig.Do
 
 func operatorNodeConfig(doc runtimeconfig.Document, data DataConfig, executor workloadcontroller.Executor, trustedPrincipals *identitytrust.Registry) Config {
 	return Config{
-		Name: doc.Node.Name, NodeProfile: networkapi.NodeProfile(doc.Node.Profile),
+		Name: doc.Node.Name, ImageReference: doc.Node.ImageReference, NodeProfile: networkapi.NodeProfile(doc.Node.Profile),
 		Boot:  BootConfig{Sources: cloneStrings(doc.Network.BootstrapPeers)},
 		Trust: TrustConfig{Registry: trustedPrincipals},
 		Data:  data, Transport: operatorTransportConfig(doc.Network),
