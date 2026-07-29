@@ -33,9 +33,12 @@ func TestReachabilityConfigRequiresPublicCompatibleAddresses(t *testing.T) {
 
 func TestReachabilityConfigRequiresOnePrivateLiteralTranslatedHostAddress(t *testing.T) {
 	base := network.Config{
-		NodeProfile:      network.NodeProfileServiceNode,
-		Profile:          network.ProfileTCPOnly,
-		ReachabilityMode: network.ReachabilityPrivateLAN,
+		NodeProfile:              network.NodeProfileServiceNode,
+		Profile:                  network.ProfileTCPOnly,
+		ReachabilityMode:         network.ReachabilityPrivateLAN,
+		PrivateLANManifestDigest: strings.Repeat("a", 64),
+		PrivateLANTargetSlot:     "node-a",
+		PrivateLANSourceSlots:    []string{"node-b", "node-c"},
 	}
 	require.ErrorContains(t, validateReachabilityConfig(base), "requires exactly one")
 
@@ -47,12 +50,41 @@ func TestReachabilityConfigRequiresOnePrivateLiteralTranslatedHostAddress(t *tes
 		{"/ip4/127.0.0.1/tcp/61000"},
 		{"/ip4/0.0.0.0/tcp/61000"},
 		{"/ip4/203.0.113.10/tcp/61000"},
+		{"/ip6/::ffff:a17:b0b/tcp/61000"},
+		{"/ip6/fe80::1/tcp/61000"},
 		{"/dns4/node-a.internal/tcp/61000"},
 		{"/ip4/10.23.0.11/tcp/61000/p2p-circuit"},
 		{"/ip4/10.23.0.11/udp/61000"},
 	} {
 		base.AdvertiseAddresses = invalid
 		require.Error(t, validateReachabilityConfig(base), invalid)
+	}
+}
+
+func TestReachabilityConfigRequiresExactPrivateLANProofScope(t *testing.T) {
+	valid := network.Config{
+		NodeProfile:              network.NodeProfileServiceNode,
+		Profile:                  network.ProfileTCPOnly,
+		ReachabilityMode:         network.ReachabilityPrivateLAN,
+		AdvertiseAddresses:       []string{"/ip4/10.23.0.11/tcp/61000"},
+		PrivateLANManifestDigest: strings.Repeat("a", 64),
+		PrivateLANTargetSlot:     "node-a",
+		PrivateLANSourceSlots:    []string{"node-b", "node-c"},
+	}
+	require.NoError(t, validateReachabilityConfig(valid))
+	for _, mutate := range []func(*network.Config){
+		func(cfg *network.Config) { cfg.PrivateLANManifestDigest = "" },
+		func(cfg *network.Config) { cfg.PrivateLANManifestDigest = strings.Repeat("A", 64) },
+		func(cfg *network.Config) { cfg.PrivateLANTargetSlot = "" },
+		func(cfg *network.Config) { cfg.PrivateLANSourceSlots = []string{"node-b"} },
+		func(cfg *network.Config) { cfg.PrivateLANSourceSlots = []string{"node-b", "node-b"} },
+		func(cfg *network.Config) { cfg.PrivateLANSourceSlots = []string{"node-a", "node-b"} },
+		func(cfg *network.Config) { cfg.PrivateLANSourceSlots = []string{"NODE-B", "node-c"} },
+	} {
+		cfg := valid
+		cfg.PrivateLANSourceSlots = append([]string(nil), valid.PrivateLANSourceSlots...)
+		mutate(&cfg)
+		require.ErrorContains(t, validateReachabilityConfig(cfg), "admitted topology scope")
 	}
 }
 
@@ -188,6 +220,13 @@ func TestPrivateLANReportsScopedListenerWithoutPublicClaim(t *testing.T) {
 	))
 	require.False(t, svc.ReachabilitySnapshot().Reachable)
 	require.Empty(t, svc.Endpoints())
+	require.Error(t, svc.ApplyPrivateLANProbe(
+		scopedProbe("node-b", "node-a", address, now, true),
+	))
+	require.Error(t, svc.ApplyPrivateLANProbe(
+		scopedProbe("node-b", "node-a", address, now.Add(time.Second), true),
+	))
+	require.Empty(t, svc.Endpoints(), "failure dominates equal-time success")
 
 	require.NoError(t, svc.ApplyPrivateLANProbe(
 		scopedProbe("node-c", "node-a", address, now.Add(2*time.Second), true),

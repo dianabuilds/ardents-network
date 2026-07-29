@@ -271,6 +271,9 @@ address remains withheld until a bounded successful probe from a different
 manifest host. Listener bind, an outbound connection, same-host probing, DNS,
 or configuration alone is insufficient. A failed or expired observation
 withdraws the endpoint and cannot be promoted into a public claim.
+The runtime also requires the protected topology adapter to bind the exact
+manifest digest, target slot, and two allowed source slots before startup;
+ordinary daemon configuration cannot self-assert this scope.
 
 In `public_direct`, configured addresses remain withheld until libp2p AutoNAT
 peer dialback reports `Public`. A later `Private` or `Unknown` observation must

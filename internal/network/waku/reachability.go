@@ -3,8 +3,11 @@ package waku
 import (
 	"ardents/internal/network"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"net"
+	"net/netip"
 	"strings"
 	"time"
 
@@ -76,6 +79,9 @@ func validateReachabilityConfig(cfg network.Config) error {
 	if mode == network.ReachabilityPrivateLAN && len(cfg.AdvertiseAddresses) != 1 {
 		return fmt.Errorf("reachability mode %q requires exactly one private advertised address", mode)
 	}
+	if mode == network.ReachabilityPrivateLAN && !validPrivateLANScope(cfg) {
+		return fmt.Errorf("reachability mode %q requires an exact admitted topology scope", mode)
+	}
 	if mode != network.ReachabilityPublicDirect && mode != network.ReachabilityPrivateLAN &&
 		len(cfg.AdvertiseAddresses) > 0 {
 		return fmt.Errorf("reachability mode %q does not accept public advertised addresses", mode)
@@ -118,6 +124,27 @@ func validateReachabilityConfig(cfg network.Config) error {
 	return nil
 }
 
+func validPrivateLANScope(cfg network.Config) bool {
+	digest := strings.TrimSpace(cfg.PrivateLANManifestDigest)
+	decoded, err := hex.DecodeString(digest)
+	if err != nil || len(decoded) != sha256.Size || hex.EncodeToString(decoded) != digest ||
+		!validPrivateLANProbeSlot(cfg.PrivateLANTargetSlot) ||
+		len(cfg.PrivateLANSourceSlots) != 2 {
+		return false
+	}
+	seen := make(map[string]struct{}, len(cfg.PrivateLANSourceSlots))
+	for _, source := range cfg.PrivateLANSourceSlots {
+		if !validPrivateLANProbeSlot(source) || source == cfg.PrivateLANTargetSlot {
+			return false
+		}
+		if _, exists := seen[source]; exists {
+			return false
+		}
+		seen[source] = struct{}{}
+	}
+	return true
+}
+
 func matchesWSSAdvertisement(address ma.Multiaddr, cfg network.Config) bool {
 	host := multiaddrHost(address)
 	port, err := address.ValueForProtocol(ma.P_TCP)
@@ -129,9 +156,10 @@ func privateLiteralMultiaddrHost(address ma.Multiaddr) bool {
 	for _, protocol := range []int{ma.P_IP4, ma.P_IP6} {
 		raw, err := address.ValueForProtocol(protocol)
 		if err == nil {
-			ip := net.ParseIP(raw)
-			return ip != nil && ip.IsPrivate() && !ip.IsUnspecified() &&
-				!ip.IsLoopback()
+			ip, parseErr := netip.ParseAddr(raw)
+			return parseErr == nil && !ip.Is4In6() && ip.IsPrivate() &&
+				!ip.IsUnspecified() && !ip.IsLoopback() &&
+				!ip.IsMulticast() && !ip.IsLinkLocalUnicast()
 		}
 	}
 	return false
@@ -225,6 +253,17 @@ func (s *Service) ApplyPrivateLANProbe(probe network.PrivateLANProbe) error {
 		return fmt.Errorf("private LAN probe observation is outside the freshness window")
 	}
 	if probe.Success {
+		if observedAt.Before(s.privateLANProbeAt) ||
+			observedAt.Equal(s.privateLANProbeAt) && !s.privateLANProbeOK {
+			s.mu.Unlock()
+			return fmt.Errorf("private LAN probe success is older than withdrawal truth")
+		}
+		if observedAt.Equal(s.privateLANProbeAt) && s.privateLANProbeOK {
+			s.mu.Unlock()
+			return nil
+		}
+		s.privateLANProbeAt = observedAt
+		s.privateLANProbeOK = true
 		s.privateLANProbeUntil = observedAt.Add(network.PrivateLANProbeMaxAge)
 		s.setReachabilityLocked(
 			"lan",
@@ -233,6 +272,10 @@ func (s *Service) ApplyPrivateLANProbe(probe network.PrivateLANProbe) error {
 			observedAt,
 		)
 	} else {
+		if observedAt.After(s.privateLANProbeAt) {
+			s.privateLANProbeAt = observedAt
+		}
+		s.privateLANProbeOK = false
 		s.privateLANProbeUntil = time.Time{}
 		s.setReachabilityLocked(
 			"unknown",
@@ -282,6 +325,7 @@ func (s *Service) expirePrivateLANProbeLocked(now time.Time) bool {
 		return false
 	}
 	s.privateLANProbeUntil = time.Time{}
+	s.privateLANProbeOK = false
 	s.setReachabilityLocked(
 		"unknown",
 		"cross-host LAN probe expired",
@@ -316,6 +360,8 @@ func reachabilityLibP2POptions(cfg network.Config) ([]libp2p.Option, error) {
 func (s *Service) startReachabilityObservationLocked(node *wakuNode.WakuNode) error {
 	s.reachability = initialReachability(s.cfg.ReachabilityMode)
 	s.privateLANProbeUntil = time.Time{}
+	s.privateLANProbeAt = time.Time{}
+	s.privateLANProbeOK = false
 	if s.reachability.Mode != network.ReachabilityPublicDirect {
 		return nil
 	}

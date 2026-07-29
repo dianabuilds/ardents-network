@@ -97,7 +97,7 @@ func TestPublicDirectRequiresExplicitPublicAddress(t *testing.T) {
 	require.ErrorContains(t, err, "requires at least one public advertised address")
 }
 
-func TestPrivateLANServiceRequiresExplicitTranslatedHostAddress(t *testing.T) {
+func TestPrivateLANServiceRequiresTopologyAdapterBinding(t *testing.T) {
 	err := ValidateConfig(Config{
 		NodeProfile: networkapi.NodeProfileServiceNode,
 		Transport: TransportConfig{
@@ -115,7 +115,7 @@ func TestPrivateLANServiceRequiresExplicitTranslatedHostAddress(t *testing.T) {
 			AdvertiseAddresses: []string{"/ip4/10.23.0.11/tcp/60000"},
 		},
 	})
-	require.NoError(t, err)
+	require.ErrorContains(t, err, "requires an exact admitted topology scope")
 }
 
 func TestBrowserReachabilityModeIsRejected(t *testing.T) {

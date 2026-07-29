@@ -143,6 +143,13 @@ Operator input:
   address for `private_lan`, or a public IP/DNS address for `public_direct`.
   Other modes reject configured advertisements.
 
+`private_lan` additionally requires the protected host-local topology adapter
+to bind the exact manifest digest, target slot, and both other manifest source
+slots before transport startup. Those fields are not free-form
+`ardents.config/v1` input. Until that production adapter is composed, selecting
+`private_lan` through the ordinary daemon configuration fails closed; the safe
+service default remains `outbound_only`.
+
 Signed DNS results are transport-filtered, deduplicated, and capped at 128
 addresses. A refresh replaces the prior in-memory result; disappeared or failed
 DNS knowledge is removed and its connections are closed unless the same address
