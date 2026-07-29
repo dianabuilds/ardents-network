@@ -18,6 +18,8 @@ const (
 	ContractVersion uint32 = 1
 	SchemaVersion   uint32 = 1
 
+	DeploymentFenceVerificationVersion uint32 = 1
+
 	MaxRealmMembers               = 256
 	MaxActiveChannels             = 1024
 	MaxMembersPerChannel          = 256

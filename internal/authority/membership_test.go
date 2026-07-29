@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	cryptorand "crypto/rand"
+	"encoding/json"
 	"errors"
 	"path/filepath"
 	"testing"
@@ -198,11 +199,16 @@ func TestAuthorityAddsThenRemovesMemberWithFreshGenerationRevocationAndFence(t *
 	)
 	require.NoError(t, err)
 	require.Equal(t, DeliveryPhaseCompleted, fenced.Phase)
-	require.True(
+	require.Equal(
 		t,
+		DeploymentFenceVerificationVersion,
 		fixture.store.state.Rotations[len(fixture.store.state.Rotations)-1].
-			FenceEvidence[0].ReceiptsVerified,
+			FenceEvidence[0].VerificationVersion,
 	)
+	fenceAudit := fixture.store.state.AuditLog[len(fixture.store.state.AuditLog)-1]
+	require.Equal(t, ActionFenceNode, fenceAudit.Action)
+	require.Equal(t, fenced.EvidenceDigest, fenceAudit.EvidenceDigest)
+	require.Equal(t, fenceAudit.Hash, fixture.store.state.Checkpoint.AuditHead)
 	fenceReplay, err := fixture.service.SubmitDeploymentFenceEvidence(
 		ctx, fenceEvidenceCommand(principalB),
 		FenceEvidenceRequest{
@@ -334,8 +340,16 @@ func TestDeploymentFenceEvidenceRejectsMissingControlsStaleClockAndWrongBinding(
 	), ErrInvalidArgument)
 
 	require.ErrorIs(t, validateStoredFenceEvidence(valid), ErrCorruptState)
+	legacyRaw, err := json.Marshal(valid)
+	require.NoError(t, err)
+	require.NotContains(t, string(legacyRaw), "verification_version")
+	var legacy DeploymentFenceEvidence
+	require.NoError(t, json.Unmarshal(legacyRaw, &legacy))
+	require.Zero(t, legacy.VerificationVersion)
+	require.ErrorIs(t, validateStoredFenceEvidence(legacy), ErrCorruptState)
+
 	verified := valid
-	verified.ReceiptsVerified = true
+	verified.VerificationVersion = DeploymentFenceVerificationVersion
 	require.NoError(t, validateStoredFenceEvidence(verified))
 }
 

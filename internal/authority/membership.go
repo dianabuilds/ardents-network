@@ -184,9 +184,10 @@ func (s *Service) SubmitDeploymentFenceEvidence(
 	audit.TargetPrincipal = request.Evidence.TargetPrincipal
 	audit.ChannelClass = state.Channels[channelIndex].Class
 	audit.Generation = rotation.PendingGeneration
+	audit.EvidenceDigest = DeploymentFenceEvidenceDigest(request.Evidence)
 	audit.Hash = auditHash(audit)
 	verifiedEvidence := cloneFenceEvidence(request.Evidence)
-	verifiedEvidence.ReceiptsVerified = true
+	verifiedEvidence.VerificationVersion = DeploymentFenceVerificationVersion
 	err = s.commitCheckpointTransition(ctx, &state, audit, now, func(next *Ledger, checkpoint SignedCheckpoint) error {
 		record := &next.Rotations[rotationIndex]
 		record.FenceEvidence = append(record.FenceEvidence, verifiedEvidence)
@@ -401,7 +402,7 @@ func validateDeploymentFenceEvidence(
 		strings.TrimSpace(evidence.RequestID) != evidence.RequestID ||
 		len(evidence.Reason) == 0 || len(evidence.Reason) > MaxDeploymentFenceReason ||
 		strings.TrimSpace(evidence.Reason) != evidence.Reason ||
-		evidence.ReceiptsVerified ||
+		evidence.VerificationVersion != 0 ||
 		!canonicalSecond(evidence.ObservedAt) ||
 		evidence.ObservedAt.After(now) || now.Sub(evidence.ObservedAt) > MaxFenceEvidenceAge ||
 		evidence.ClockSkewSecond < -MaxDeploymentClockSkew ||
@@ -439,10 +440,14 @@ func validateDeploymentFenceEvidence(
 }
 
 func validateStoredFenceEvidence(evidence DeploymentFenceEvidence) error {
-	if !evidence.ReceiptsVerified || len(evidence.Controls) == 0 {
+	// Evidence accepted before receipt authentication provenance was introduced
+	// cannot be promoted implicitly. Keep the ledger schema readable, but force
+	// an explicit recovery disposition for that untrusted record.
+	if evidence.VerificationVersion != DeploymentFenceVerificationVersion ||
+		len(evidence.Controls) == 0 {
 		return ErrCorruptState
 	}
-	evidence.ReceiptsVerified = false
+	evidence.VerificationVersion = 0
 	return validateDeploymentFenceEvidence(
 		evidence, evidence.RealmID, evidence.OperationID,
 		evidence.Controls[0].Actor, evidence.ObservedAt,
@@ -497,7 +502,7 @@ func completeMembershipRotation(state *Ledger, rotation *RotationRecord, sequenc
 // accepted Authority result and checkpoint audit.
 func DeploymentFenceEvidenceDigest(evidence DeploymentFenceEvidence) string {
 	copy := cloneFenceEvidence(evidence)
-	copy.ReceiptsVerified = false
+	copy.VerificationVersion = 0
 	sort.Slice(copy.Controls, func(i, j int) bool {
 		return copy.Controls[i].Kind < copy.Controls[j].Kind
 	})

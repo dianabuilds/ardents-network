@@ -308,14 +308,24 @@ func validateAuditRecord(record AuditRecord, previousHash string) error {
 		record.Hash != auditHash(record) {
 		return ErrCorruptState
 	}
-	membershipAudit := record.Action == ActionChangeMembership ||
+	targetPrincipalAudit := record.Action == ActionChangeMembership ||
 		record.Action == ActionFenceNode
-	if membershipAudit != (record.TargetPrincipal != "") {
+	if targetPrincipalAudit != (record.TargetPrincipal != "") {
 		return ErrCorruptState
 	}
-	migrationAudit := record.Action == ActionMigrateLocalV2
-	if migrationAudit != sha256Pattern.MatchString(record.EvidenceDigest) {
-		return ErrCorruptState
+	switch record.Action {
+	case ActionMigrateLocalV2:
+		if !sha256Pattern.MatchString(record.EvidenceDigest) {
+			return ErrCorruptState
+		}
+	case ActionFenceNode:
+		if !fenceDigestPattern.MatchString(record.EvidenceDigest) {
+			return ErrCorruptState
+		}
+	default:
+		if record.EvidenceDigest != "" {
+			return ErrCorruptState
+		}
 	}
 	switch record.Action {
 	case ActionCreate, ActionMigrateLocalV2:
