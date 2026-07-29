@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"runtime"
 	"testing"
 	"time"
 
@@ -126,12 +127,14 @@ func TestWorkloadHostedServiceObservedExitWithdrawsPublicationAndDegradesDiagnos
 //goland:noinspection ALL
 func workloadLifecycleConfig(t *testing.T, dir string) runtimeinfra.Config {
 	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("private-interface service reachability is an e2e Linux acceptance scenario")
+	}
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	port := listener.Addr().(*net.TCPAddr).Port
 	require.NoError(t, listener.Close())
 	host := privateContainerIPv4(t)
-	probe := fmt.Sprintf("http://127.0.0.1:%d/ready", port)
 	advertised := fmt.Sprintf("http://%s:%d/ready", host, port)
 	privacy := testkit.NewDiscoveryPrivacyFixture(t, time.Now().UTC().Truncate(time.Second))
 	return runtimeinfra.Config{
@@ -144,19 +147,19 @@ func workloadLifecycleConfig(t *testing.T, dir string) runtimeinfra.Config {
 			ID:      "work.echo",
 			Kind:    "service",
 			Owner:   "node",
-			Config:  readyHelperConfig(t, port),
+			Config:  readyHelperConfig(t, host, port),
 			Desired: "running",
 			Services: []runtimeinfra.ServiceConfig{{
 				ID:        "svc.work.echo",
 				Type:      "echo",
 				Mode:      "NetworkPublished",
-				Endpoints: []string{advertised}, ProbeEndpoints: []string{probe},
+				Endpoints: []string{advertised}, ProbeEndpoints: []string{advertised},
 			}},
 		}},
 	}
 }
 
-func readyHelperConfig(t *testing.T, port int) string {
+func readyHelperConfig(t *testing.T, host string, port int) string {
 	t.Helper()
 	executable, err := os.Executable()
 	require.NoError(t, err)
@@ -164,7 +167,7 @@ func readyHelperConfig(t *testing.T, port int) string {
 		"command": executable,
 		"args":    []string{"-test.run=TestWorkloadReadyHelper"},
 		"env": map[string]string{"ARDENTS_E2E_READY_HELPER": "1",
-			"ARDENTS_E2E_READY_ADDRESS": fmt.Sprintf("127.0.0.1:%d", port)},
+			"ARDENTS_E2E_READY_ADDRESS": fmt.Sprintf("%s:%d", host, port)},
 	})
 	require.NoError(t, err)
 	return string(raw)

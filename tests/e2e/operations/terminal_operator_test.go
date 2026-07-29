@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -211,7 +212,7 @@ func TestTerminalNetworkSurfaceLifecycle(t *testing.T) {
 				Type:           "echo",
 				Mode:           "NetworkPublished",
 				Endpoints:      []string{remoteEndpoint},
-				ProbeEndpoints: []string{fmt.Sprintf("http://127.0.0.1:%d/ready", remotePort)},
+				ProbeEndpoints: []string{remoteEndpoint},
 			}},
 		}},
 	}).Node
@@ -457,6 +458,7 @@ func TestTerminalWorkloadProcedureLifecycle(t *testing.T) {
 	terminal := newTerminalHarnessFromFixture(t, fixture)
 
 	servicePort := reserveTerminalPort(t)
+	serviceEndpoint := terminalAdvertisedEndpoint(t, servicePort)
 	serviceID := "svc.ocs03.echo"
 	localServiceID := "svc.ocs03.local"
 	workloadID := "work.ocs03.echo"
@@ -465,13 +467,13 @@ func TestTerminalWorkloadProcedureLifecycle(t *testing.T) {
 		Services: []*ardentsv1.PublishedServiceSnapshot{
 			{
 				Id: serviceID, Type: "echo", Owner: "node", Mode: "NetworkPublished",
-				Endpoints:      []string{terminalAdvertisedEndpoint(t, servicePort)},
-				ProbeEndpoints: []string{fmt.Sprintf("http://127.0.0.1:%d/ready", servicePort)},
+				Endpoints:      []string{serviceEndpoint},
+				ProbeEndpoints: []string{serviceEndpoint},
 			},
 			{
 				Id: localServiceID, Type: "echo-local", Owner: "node", Mode: "LocalOnly",
-				Endpoints:      []string{fmt.Sprintf("http://127.0.0.1:%d", servicePort)},
-				ProbeEndpoints: []string{fmt.Sprintf("http://127.0.0.1:%d/ready", servicePort)},
+				Endpoints:      []string{strings.TrimSuffix(serviceEndpoint, "/ready")},
+				ProbeEndpoints: []string{serviceEndpoint},
 			},
 		},
 	})
@@ -1104,7 +1106,7 @@ func TestTerminalServiceAndDataSurfaceReadiness(t *testing.T) {
 			Owner:          "node",
 			Mode:           "NetworkPublished",
 			Endpoints:      []string{serviceEndpoint},
-			ProbeEndpoints: []string{fmt.Sprintf("http://127.0.0.1:%d/ready", servicePort)},
+			ProbeEndpoints: []string{serviceEndpoint},
 		}},
 	})
 
@@ -1394,7 +1396,7 @@ func terminalReadyConfig(t *testing.T, port int) string {
 	executable, err := os.Executable()
 	require.NoError(t, err)
 	raw, err := json.Marshal(map[string]any{"command": executable, "args": []string{"-test.run=TestTerminalReadyHelper"},
-		"env": map[string]string{"ARDENTS_TERMINAL_READY_HELPER": "1", "ARDENTS_TERMINAL_READY_ADDRESS": fmt.Sprintf("127.0.0.1:%d", port)}})
+		"env": map[string]string{"ARDENTS_TERMINAL_READY_HELPER": "1", "ARDENTS_TERMINAL_READY_ADDRESS": fmt.Sprintf("%s:%d", terminalPrivateIPv4(t), port)}})
 	require.NoError(t, err)
 	return string(raw)
 }
@@ -1410,12 +1412,20 @@ func reserveTerminalPort(t *testing.T) int {
 //goland:noinspection ALL
 func terminalAdvertisedEndpoint(t *testing.T, port int) string {
 	t.Helper()
+	return fmt.Sprintf("http://%s:%d/ready", terminalPrivateIPv4(t), port)
+}
+
+func terminalPrivateIPv4(t *testing.T) string {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("private-interface service reachability is an e2e Linux acceptance scenario")
+	}
 	addresses, err := net.InterfaceAddrs()
 	require.NoError(t, err)
 	for _, address := range addresses {
 		ip, _, parseErr := net.ParseCIDR(address.String())
 		if parseErr == nil && ip.To4() != nil && ip.IsPrivate() && !ip.IsLoopback() {
-			return fmt.Sprintf("http://%s:%d/ready", ip.String(), port)
+			return ip.String()
 		}
 	}
 	t.Fatal("Linux test container has no private IPv4 address")
