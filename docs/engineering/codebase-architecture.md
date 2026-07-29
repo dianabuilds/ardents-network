@@ -539,6 +539,7 @@ flowchart TD
     authority --> storage
     channeldelivery --> authority
     channeldelivery --> identity
+    deployment --> authority
     deployment --> identity
     deployment --> runtimeimage
     provision --> authority

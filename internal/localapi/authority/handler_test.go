@@ -10,6 +10,9 @@ import (
 
 func TestAuthorityRecoveryErrorPreservesOnlyStableAuthorityReason(t *testing.T) {
 	for _, reason := range []string{
+		domain.ReasonRepositoryUnavailable,
+		domain.ReasonSignerUnavailable,
+		domain.ReasonStoreUnavailable,
 		domain.ReasonCheckpointMissing,
 		domain.ReasonCheckpointMismatch,
 		domain.ReasonCheckpointHistoryPartial,
@@ -20,9 +23,13 @@ func TestAuthorityRecoveryErrorPreservesOnlyStableAuthorityReason(t *testing.T) 
 		domain.ReasonSignerMismatch,
 	} {
 		t.Run(reason, func(t *testing.T) {
-			got := authorityRecoveryError(
-				"verify_restore", domain.ErrRecoveryRequired, reason,
-			)
+			domainError := domain.ErrRecoveryRequired
+			if reason == domain.ReasonRepositoryUnavailable ||
+				reason == domain.ReasonSignerUnavailable ||
+				reason == domain.ReasonStoreUnavailable {
+				domainError = domain.ErrUnavailable
+			}
+			got := authorityRecoveryError("verify_restore", domainError, reason)
 			require.Equal(t, reason, got.Reason)
 		})
 	}

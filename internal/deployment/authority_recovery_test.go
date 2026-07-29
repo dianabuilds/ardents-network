@@ -209,6 +209,8 @@ func TestAuthorityRecoveryPreservesStableAuthorityFailureOwnership(t *testing.T)
 		{"checkpoint_head_mismatch", AuthorityRecoveryReasonCheckpointHeadMismatch},
 		{"authority_state_invalid", AuthorityRecoveryReasonPersistedStateInvalid},
 		{"authority_signer_mismatch", AuthorityRecoveryReasonSignerMismatch},
+		{"authority_signer_unavailable", AuthorityRecoveryReasonSignerUnavailable},
+		{"authority_store_unavailable", AuthorityRecoveryReasonStoreUnavailable},
 		{"checkpoint_history_partial", AuthorityRecoveryReasonHistoryPartial},
 		{"authority_rollback_detected", AuthorityRecoveryReasonRollback},
 		{"checkpoint_history_fork", AuthorityRecoveryReasonFork},

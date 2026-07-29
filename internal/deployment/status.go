@@ -80,7 +80,7 @@ type ProbeError ProbeErrorCode
 
 func (err ProbeError) Error() string { return string(err) }
 
-// NodeStatusProbe is the only host-access boundary consumed by deployment.
+// NodeStatusProbe is deployment's bounded host-access boundary for status.
 type NodeStatusProbe interface {
 	Observe(context.Context, NodeStatusTarget) (NodeObservation, error)
 }

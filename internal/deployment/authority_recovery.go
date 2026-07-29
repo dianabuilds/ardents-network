@@ -29,6 +29,8 @@ const (
 	AuthorityRecoveryReasonCheckpointHeadMismatch AuthorityRecoveryReason = "checkpoint_head_mismatch"
 	AuthorityRecoveryReasonPersistedStateInvalid  AuthorityRecoveryReason = "authority_state_invalid"
 	AuthorityRecoveryReasonSignerMismatch         AuthorityRecoveryReason = "authority_signer_mismatch"
+	AuthorityRecoveryReasonSignerUnavailable      AuthorityRecoveryReason = "authority_signer_unavailable"
+	AuthorityRecoveryReasonStoreUnavailable       AuthorityRecoveryReason = "authority_store_unavailable"
 	AuthorityRecoveryReasonHistoryPartial         AuthorityRecoveryReason = "checkpoint_history_partial"
 	AuthorityRecoveryReasonRollback               AuthorityRecoveryReason = "authority_rollback_detected"
 	AuthorityRecoveryReasonFork                   AuthorityRecoveryReason = "checkpoint_history_fork"
@@ -363,6 +365,10 @@ func authorityStateReason(reason string) AuthorityRecoveryReason {
 		return AuthorityRecoveryReasonPersistedStateInvalid
 	case string(AuthorityRecoveryReasonSignerMismatch):
 		return AuthorityRecoveryReasonSignerMismatch
+	case string(AuthorityRecoveryReasonSignerUnavailable):
+		return AuthorityRecoveryReasonSignerUnavailable
+	case string(AuthorityRecoveryReasonStoreUnavailable):
+		return AuthorityRecoveryReasonStoreUnavailable
 	case string(AuthorityRecoveryReasonHistoryPartial):
 		return AuthorityRecoveryReasonHistoryPartial
 	case string(AuthorityRecoveryReasonRollback):
@@ -391,6 +397,8 @@ func validAuthorityRecoveryReason(reason AuthorityRecoveryReason) bool {
 		AuthorityRecoveryReasonCheckpointHeadMismatch,
 		AuthorityRecoveryReasonPersistedStateInvalid,
 		AuthorityRecoveryReasonSignerMismatch,
+		AuthorityRecoveryReasonSignerUnavailable,
+		AuthorityRecoveryReasonStoreUnavailable,
 		AuthorityRecoveryReasonHistoryPartial,
 		AuthorityRecoveryReasonRollback,
 		AuthorityRecoveryReasonFork,

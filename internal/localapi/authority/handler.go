@@ -523,11 +523,15 @@ func authorityError(operation string, err error) *rpc.Error {
 
 func authorityRecoveryError(operation string, err error, reason string) *rpc.Error {
 	result := authorityError(operation, err)
-	if !errors.Is(err, domain.ErrRecoveryRequired) {
+	if !errors.Is(err, domain.ErrRecoveryRequired) &&
+		!errors.Is(err, domain.ErrUnavailable) {
 		return result
 	}
 	switch reason {
-	case domain.ReasonCheckpointMissing,
+	case domain.ReasonRepositoryUnavailable,
+		domain.ReasonSignerUnavailable,
+		domain.ReasonStoreUnavailable,
+		domain.ReasonCheckpointMissing,
 		domain.ReasonCheckpointMismatch,
 		domain.ReasonCheckpointHistoryPartial,
 		domain.ReasonCheckpointHistoryFork,

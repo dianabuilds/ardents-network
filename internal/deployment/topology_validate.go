@@ -16,7 +16,6 @@ import (
 
 const (
 	exactTopologyNodeCount   = 3
-	checkpointHeadCapacity   = 65_536
 	maxClockSkewSeconds      = 30
 	authorityMarginSeconds   = 60
 	minimumRecoveryPeerCount = 2
@@ -415,7 +414,7 @@ func validateAuthorityAndMaterial(manifest topologyManifest) error {
 	if !manifest.CheckpointRepository.ImmutableHistory {
 		return ValidationError("topology_checkpoint_immutable_history_required")
 	}
-	if manifest.CheckpointRepository.MaxHeads != checkpointHeadCapacity {
+	if manifest.CheckpointRepository.MaxHeads != authority.MaxCheckpointRecords {
 		return ValidationError("topology_checkpoint_capacity_mismatch")
 	}
 	if manifest.Clock.MaxSkewSeconds != maxClockSkewSeconds ||

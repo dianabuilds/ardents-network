@@ -416,6 +416,24 @@ func TestClassifyAuthorityRecoveryErrorUsesStableStructuredReason(t *testing.T) 
 		classifyAuthorityRecoveryError(forkErr),
 		string(deployment.AuthorityRecoveryReasonFork),
 	)
+
+	repositoryErr := connect.NewError(
+		connect.CodeUnavailable,
+		errors.New("protected repository locator"),
+	)
+	repositoryDetail, err := connect.NewErrorDetail(&protocol.Error{
+		Code: "authority_unavailable", Category: "unavailable",
+		Message: "Realm Authority request failed",
+		Domain:  "authority", Operation: "verify_restored_authority",
+		Reason: "checkpoint_repository_unavailable",
+	})
+	require.NoError(t, err)
+	repositoryErr.AddDetail(repositoryDetail)
+	require.EqualError(
+		t,
+		classifyAuthorityRecoveryError(repositoryErr),
+		string(deployment.AuthorityRecoveryReasonRepositoryUnavailable),
+	)
 }
 
 func TestProbeMapsEveryStableFailureClass(t *testing.T) {

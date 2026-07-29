@@ -187,6 +187,18 @@ func classifyAuthorityRecoveryError(err error) error {
 				return deployment.AuthorityRecoveryProbeError(
 					deployment.AuthorityRecoveryReasonCheckpointMissing,
 				)
+			case "checkpoint_repository_unavailable":
+				return deployment.AuthorityRecoveryProbeError(
+					deployment.AuthorityRecoveryReasonRepositoryUnavailable,
+				)
+			case "authority_signer_unavailable":
+				return deployment.AuthorityRecoveryProbeError(
+					deployment.AuthorityRecoveryReasonSignerUnavailable,
+				)
+			case "authority_store_unavailable":
+				return deployment.AuthorityRecoveryProbeError(
+					deployment.AuthorityRecoveryReasonStoreUnavailable,
+				)
 			case "checkpoint_head_mismatch":
 				return deployment.AuthorityRecoveryProbeError(
 					deployment.AuthorityRecoveryReasonCheckpointHeadMismatch,
