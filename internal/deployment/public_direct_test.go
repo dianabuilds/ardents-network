@@ -182,25 +182,62 @@ func TestPublicDirectCoordinatorAcceptsControlledRotationOnly(t *testing.T) {
 		PublicDirectApplyUnchanged,
 	}, publicDirectActions(hosts.observations[3:]))
 
-	rotated := bytes.ReplaceAll(
-		raw,
-		[]byte("node-a.ardents.net"),
-		[]byte("node-a2.ardents.net"),
-	)
-	rotated = bytes.Replace(
-		rotated,
-		[]byte("wss-certificate-node-a"),
-		[]byte("wss-certificate-node-a2"),
-		1,
-	)
-	result, err = coordinator.Reconcile(context.Background(), rotated)
-	require.NoError(t, err)
-	require.Equal(t, 1, result.RestartedNodes)
-	require.Equal(t, []PublicDirectApplyAction{
-		PublicDirectApplyRestarted,
-		PublicDirectApplyUnchanged,
-		PublicDirectApplyUnchanged,
-	}, publicDirectActions(hosts.observations[6:]))
+	for _, test := range []struct {
+		name    string
+		rotate  func([]byte) []byte
+		actions []PublicDirectApplyAction
+	}{
+		{
+			name: "tcp address",
+			rotate: func(value []byte) []byte {
+				return bytes.Replace(
+					value,
+					[]byte("/ip4/1.1.1.1/tcp/60000"),
+					[]byte("/ip4/8.8.8.8/tcp/60000"),
+					1,
+				)
+			},
+			actions: []PublicDirectApplyAction{
+				PublicDirectApplyUnchanged,
+				PublicDirectApplyRestarted,
+				PublicDirectApplyUnchanged,
+			},
+		},
+		{
+			name: "certificate reference",
+			rotate: func(value []byte) []byte {
+				return bytes.Replace(
+					value,
+					[]byte("wss-certificate-node-a"),
+					[]byte("wss-certificate-node-a2"),
+					1,
+				)
+			},
+			actions: []PublicDirectApplyAction{
+				PublicDirectApplyRestarted,
+				PublicDirectApplyUnchanged,
+				PublicDirectApplyUnchanged,
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			rotationHosts := &publicDirectHostsFake{}
+			rotationCoordinator := coordinator
+			rotationCoordinator.Hosts = rotationHosts
+			_, err := rotationCoordinator.Reconcile(context.Background(), raw)
+			require.NoError(t, err)
+
+			result, err := rotationCoordinator.Reconcile(
+				context.Background(),
+				test.rotate(raw),
+			)
+			require.NoError(t, err)
+			require.Equal(t, 1, result.RestartedNodes)
+			require.Equal(t, test.actions, publicDirectActions(
+				rotationHosts.observations[3:],
+			))
+		})
+	}
 
 	hosts = &publicDirectHostsFake{
 		previous:      map[string]string{"node-a": strings.Repeat("a", 64)},
