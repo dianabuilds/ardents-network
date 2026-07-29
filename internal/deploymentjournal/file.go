@@ -9,8 +9,11 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
+	"sync"
 
 	"ardents/internal/deployment"
 	"ardents/internal/storage"
@@ -28,6 +31,15 @@ type FenceFile struct {
 type RejoinFile struct {
 	Path string
 }
+
+// RolloutFile persists one protected topology rollout transaction. The
+// process-wide mutex makes the optimistic revision check and replacement one
+// critical section for all in-process coordinators.
+type RolloutFile struct {
+	Path string
+}
+
+var rolloutFileMu sync.Mutex
 
 func (store FenceFile) Load(_ context.Context) (deployment.FenceTransaction, bool, error) {
 	path := strings.TrimSpace(store.Path)
@@ -187,6 +199,131 @@ func decodeRejoinTransaction(raw []byte) (deployment.RejoinTransaction, error) {
 	}
 	if err := deployment.ValidateRejoinTransaction(transaction); err != nil {
 		return deployment.RejoinTransaction{}, err
+	}
+	return transaction, nil
+}
+
+func (store RolloutFile) Load(
+	_ context.Context,
+) (deployment.RolloutTransaction, bool, error) {
+	rolloutFileMu.Lock()
+	defer rolloutFileMu.Unlock()
+	return store.loadUnlocked()
+}
+
+func (store RolloutFile) loadUnlocked() (deployment.RolloutTransaction, bool, error) {
+	path := strings.TrimSpace(store.Path)
+	if path == "" {
+		return deployment.RolloutTransaction{}, false, deployment.ErrRolloutJournalInvalid
+	}
+	raw, found, err := storage.ReadStrictPrivateFileBounded(
+		path,
+		deployment.MaxRolloutJournalBytes,
+	)
+	if err != nil {
+		return deployment.RolloutTransaction{}, false, deployment.ErrRolloutJournalInvalid
+	}
+	if !found {
+		return deployment.RolloutTransaction{}, false, nil
+	}
+	transaction, err := decodeRolloutTransaction(raw)
+	if err != nil {
+		return deployment.RolloutTransaction{}, false, err
+	}
+	return transaction, true, nil
+}
+
+func (store RolloutFile) Save(
+	_ context.Context,
+	expectedRevision uint64,
+	transaction deployment.RolloutTransaction,
+) error {
+	rolloutFileMu.Lock()
+	defer rolloutFileMu.Unlock()
+	path := strings.TrimSpace(store.Path)
+	if path == "" || transaction.Revision != expectedRevision+1 {
+		return deployment.ErrRolloutJournalInvalid
+	}
+	existing, found, err := store.loadUnlocked()
+	if err != nil {
+		return err
+	}
+	if found {
+		if existing.Revision != expectedRevision {
+			return deployment.ErrRolloutJournalConflict
+		}
+		if !deployment.SameRolloutTransactionBinding(existing, transaction) {
+			return deployment.ErrRolloutJournalBinding
+		}
+		if !deployment.ValidRolloutTransactionTransition(existing, transaction) {
+			return deployment.ErrRolloutJournalConflict
+		}
+	} else if expectedRevision != 0 ||
+		transaction.Phase != deployment.RolloutPhasePreflighted {
+		return deployment.ErrRolloutJournalConflict
+	}
+	if err := deployment.ValidateRolloutTransaction(transaction); err != nil {
+		return err
+	}
+	raw, err := json.Marshal(transaction)
+	if err != nil || len(raw) > deployment.MaxRolloutJournalBytes {
+		return deployment.ErrRolloutJournalInvalid
+	}
+	if err := storage.ValidatePrivateDir(filepath.Dir(path)); err != nil {
+		return deployment.ErrRolloutJournalInvalid
+	}
+	if err := storage.AtomicWritePrivateFile(path, raw); err != nil {
+		return deployment.ErrRolloutJournalInvalid
+	}
+	return nil
+}
+
+func (store RolloutFile) Clear(
+	_ context.Context,
+	expected deployment.RolloutTransaction,
+) error {
+	rolloutFileMu.Lock()
+	defer rolloutFileMu.Unlock()
+	path := strings.TrimSpace(store.Path)
+	if path == "" ||
+		(expected.Phase != deployment.RolloutPhaseCommitted &&
+			expected.Phase != deployment.RolloutPhaseCompensated) {
+		return deployment.ErrRolloutJournalInvalid
+	}
+	existing, found, err := store.loadUnlocked()
+	if err != nil {
+		return err
+	}
+	if !found || existing.Revision != expected.Revision {
+		return deployment.ErrRolloutJournalConflict
+	}
+	if !deployment.SameRolloutTransactionBinding(existing, expected) {
+		return deployment.ErrRolloutJournalBinding
+	}
+	if !reflect.DeepEqual(existing, expected) {
+		return deployment.ErrRolloutJournalConflict
+	}
+	if err := os.Remove(path); err != nil {
+		return deployment.ErrRolloutJournalInvalid
+	}
+	return nil
+}
+
+func decodeRolloutTransaction(
+	raw []byte,
+) (deployment.RolloutTransaction, error) {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	var transaction deployment.RolloutTransaction
+	if err := decoder.Decode(&transaction); err != nil {
+		return deployment.RolloutTransaction{}, deployment.ErrRolloutJournalInvalid
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
+		return deployment.RolloutTransaction{}, deployment.ErrRolloutJournalInvalid
+	}
+	if err := deployment.ValidateRolloutTransaction(transaction); err != nil {
+		return deployment.RolloutTransaction{}, err
 	}
 	return transaction, nil
 }
