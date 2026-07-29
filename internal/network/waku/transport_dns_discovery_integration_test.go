@@ -25,12 +25,14 @@ import (
 func TestSignedDNSColdStartAndPeerRestartRecovery(t *testing.T) {
 	port := reserveTCPPort(t)
 	keyPath := filepath.Join(t.TempDir(), "remote-waku-key.json")
-	remote := New(network.Config{ListenPort: port, PrivateKeyPath: keyPath})
+	remote := New(network.Config{
+		BindAddress: "127.0.0.1", ListenPort: port, PrivateKeyPath: keyPath,
+	})
 	require.NoError(t, remote.Start(t.Context()))
 	t.Cleanup(func() { _ = remote.Stop(context.Background()) })
 
 	url, resolver := signedTreeForTransport(t, keyPath, remote.Endpoints()[0])
-	local := New(network.Config{DNSDiscoveryURLs: []string{url}})
+	local := New(network.Config{BindAddress: "127.0.0.1", DNSDiscoveryURLs: []string{url}})
 	local.dnsDiscovery = wakuDNSPeerDiscovery{resolver: resolver}
 	deadStatic := strings.Replace(remote.Endpoints()[0], "/tcp/"+strconv.Itoa(port)+"/", "/tcp/1/", 1)
 	local.SetBootstrapNodes([]string{deadStatic})
@@ -58,7 +60,9 @@ func TestSignedDNSReplenishesToRelayPeerTarget(t *testing.T) {
 	peers := make([]dnsTreePeer, 0, desiredRelayPeers)
 	for index := 0; index < desiredRelayPeers; index++ {
 		keyPath := filepath.Join(t.TempDir(), "remote-waku-key.json")
-		remote := New(network.Config{ListenPort: reserveTCPPort(t), PrivateKeyPath: keyPath})
+		remote := New(network.Config{
+			BindAddress: "127.0.0.1", ListenPort: reserveTCPPort(t), PrivateKeyPath: keyPath,
+		})
 		require.NoError(t, remote.Start(t.Context()))
 		remotes = append(remotes, remote)
 		peers = append(peers, dnsTreePeer{keyPath: keyPath, endpoint: remote.Endpoints()[0]})
@@ -70,7 +74,7 @@ func TestSignedDNSReplenishesToRelayPeerTarget(t *testing.T) {
 	})
 
 	url, resolver := signedTreeForTransports(t, peers)
-	local := New(network.Config{DNSDiscoveryURLs: []string{url}})
+	local := New(network.Config{BindAddress: "127.0.0.1", DNSDiscoveryURLs: []string{url}})
 	local.dnsDiscovery = wakuDNSPeerDiscovery{resolver: resolver}
 	require.NoError(t, local.Start(t.Context()))
 	t.Cleanup(func() { _ = local.Stop(context.Background()) })

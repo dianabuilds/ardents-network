@@ -38,7 +38,7 @@ func TestLibP2POptionsForDefinitionSupportsTCPWSS(t *testing.T) {
 
 func TestTransportStartUsesConfiguredListenPort(t *testing.T) {
 	port := reserveTCPPort(t)
-	svc := New(network.Config{ListenPort: port})
+	svc := New(network.Config{BindAddress: "127.0.0.1", ListenPort: port})
 	require.NoError(t, svc.Start(t.Context()))
 	t.Cleanup(func() {
 		require.NoError(t, svc.Stop(t.Context()))
