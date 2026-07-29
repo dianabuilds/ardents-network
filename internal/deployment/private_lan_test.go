@@ -38,6 +38,8 @@ func TestPrivateLANCoordinatorFormsDeterministicCrossHostTopology(t *testing.T) 
 	}, hosts.probeRoutes())
 	for _, target := range hosts.applied {
 		require.Len(t, target.StaticRecoveryPeers, 2)
+		require.Len(t, target.AllowedProbeSources, 2)
+		require.NotContains(t, target.AllowedProbeSources, target.Slot)
 		require.Equal(t, "private_probe_required", target.Plan.Ingress)
 		require.NotEmpty(t, target.ManifestDigest)
 	}
@@ -50,6 +52,48 @@ func TestPrivateLANCoordinatorFormsDeterministicCrossHostTopology(t *testing.T) 
 	} {
 		require.NotContains(t, string(encoded), protected)
 	}
+}
+
+func TestPrivateLANCoordinatorRequiresConfirmedWithdrawalAfterProbeFailure(t *testing.T) {
+	raw := readTopologyFixture(t, "private-lan.json")
+	now := time.Date(2026, 7, 29, 13, 0, 0, 0, time.UTC)
+	hosts := &privateLANHostsFake{failureProbeErr: errors.New("withdraw unavailable")}
+	coordinator := PrivateLANCoordinator{
+		Hosts: hosts,
+		Dialer: &privateLANDialerFake{
+			observedAt: now,
+			failures:   map[string]error{"node-a": errors.New("dial failed")},
+		},
+		Status: &privateLANStatusFake{}, StepTimeout: time.Second,
+		Now: func() time.Time { return now },
+	}
+
+	result, err := coordinator.Reconcile(context.Background(), raw)
+	require.Error(t, err)
+	require.Equal(t, PrivateLANReasonProofApplyFailed, result.Reason)
+	require.Len(t, hosts.probes, 1)
+	require.False(t, hosts.probes[0].Success)
+}
+
+func TestPrivateLANCoordinatorCompensatesAmbiguousSuccessfulProof(t *testing.T) {
+	raw := readTopologyFixture(t, "private-lan.json")
+	now := time.Date(2026, 7, 29, 13, 0, 0, 0, time.UTC)
+	hosts := &privateLANHostsFake{successProbeErr: errors.New("lost response")}
+	coordinator := PrivateLANCoordinator{
+		Hosts:  hosts,
+		Dialer: &privateLANDialerFake{observedAt: now},
+		Status: &privateLANStatusFake{}, StepTimeout: time.Second,
+		Now: func() time.Time { return now },
+	}
+
+	result, err := coordinator.Reconcile(context.Background(), raw)
+	require.Error(t, err)
+	require.Equal(t, PrivateLANReasonProofApplyFailed, result.Reason)
+	require.Len(t, hosts.probes, 2)
+	require.True(t, hosts.probes[0].Success)
+	require.False(t, hosts.probes[1].Success)
+	require.Equal(t, hosts.probes[0].ManifestDigest, hosts.probes[1].ManifestDigest)
+	require.Equal(t, hosts.probes[0].TargetSlot, hosts.probes[1].TargetSlot)
 }
 
 func TestPrivateLANCoordinatorRejectsBeforeMutationAndFailsClosed(t *testing.T) {
@@ -197,8 +241,10 @@ func readyPrivateLANObservation(retained, gaps int) PrivateLANObservation {
 }
 
 type privateLANHostsFake struct {
-	applied []PrivateLANHostTarget
-	probes  []PrivateLANProof
+	applied         []PrivateLANHostTarget
+	probes          []PrivateLANProof
+	successProbeErr error
+	failureProbeErr error
 }
 
 func (fake *privateLANHostsFake) Apply(
@@ -215,7 +261,10 @@ func (fake *privateLANHostsFake) ApplyProbe(
 	probe PrivateLANProof,
 ) error {
 	fake.probes = append(fake.probes, probe)
-	return nil
+	if probe.Success {
+		return fake.successProbeErr
+	}
+	return fake.failureProbeErr
 }
 
 func (fake *privateLANHostsFake) appliedSlots() []string {

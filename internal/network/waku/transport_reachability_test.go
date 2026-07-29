@@ -3,6 +3,7 @@ package waku
 import (
 	"ardents/internal/network"
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -11,7 +12,10 @@ import (
 )
 
 func TestReachabilityConfigRequiresPublicCompatibleAddresses(t *testing.T) {
-	base := network.Config{Profile: network.ProfileTCPOnly, ReachabilityMode: network.ReachabilityPublicDirect}
+	base := network.Config{
+		NodeProfile: network.NodeProfileServiceNode,
+		Profile:     network.ProfileTCPOnly, ReachabilityMode: network.ReachabilityPublicDirect,
+	}
 	require.ErrorContains(t, validateReachabilityConfig(base), "requires at least one")
 
 	base.AdvertiseAddresses = []string{"/ip4/127.0.0.1/tcp/61000"}
@@ -52,8 +56,22 @@ func TestReachabilityConfigRequiresOnePrivateLiteralTranslatedHostAddress(t *tes
 	}
 }
 
+func TestReachabilityConfigRejectsProfileModeMismatch(t *testing.T) {
+	require.Error(t, validateReachabilityConfig(network.Config{
+		NodeProfile: network.NodeProfileLocalDevelopment,
+		Profile:     network.ProfileTCPOnly, ReachabilityMode: network.ReachabilityPrivateLAN,
+		AdvertiseAddresses: []string{"/ip4/10.23.0.11/tcp/61000"},
+	}))
+	require.Error(t, validateReachabilityConfig(network.Config{
+		NodeProfile: network.NodeProfileConstrainedClient,
+		Profile:     network.ProfileTCPOnly, ReachabilityMode: network.ReachabilityPrivateLAN,
+		AdvertiseAddresses: []string{"/ip4/10.23.0.11/tcp/61000"},
+	}))
+}
+
 func TestPublicDirectWithholdsAndWithdrawsUnverifiedEndpoints(t *testing.T) {
 	svc := New(network.Config{
+		NodeProfile:        network.NodeProfileServiceNode,
 		StorePath:          t.TempDir() + "/waku-store.db",
 		PrivateKeyPath:     t.TempDir() + "/waku-key.json",
 		BindAddress:        "127.0.0.1",
@@ -80,6 +98,7 @@ func TestPublicDirectWithholdsAndWithdrawsUnverifiedEndpoints(t *testing.T) {
 
 func TestOutboundOnlyNeverPublishesBoundEndpoints(t *testing.T) {
 	svc := New(network.Config{
+		NodeProfile:      network.NodeProfileConstrainedClient,
 		StorePath:        t.TempDir() + "/waku-store.db",
 		PrivateKeyPath:   t.TempDir() + "/waku-key.json",
 		BindAddress:      "127.0.0.1",
@@ -98,13 +117,18 @@ func TestPrivateLANReportsScopedListenerWithoutPublicClaim(t *testing.T) {
 	timeNowUTC = func() time.Time { return now }
 	t.Cleanup(func() { timeNowUTC = previous })
 
+	digest := strings.Repeat("a", 64)
 	svc := New(network.Config{
-		StorePath:          t.TempDir() + "/waku-store.db",
-		PrivateKeyPath:     t.TempDir() + "/waku-key.json",
-		BindAddress:        "127.0.0.1",
-		Profile:            network.ProfileTCPOnly,
-		ReachabilityMode:   network.ReachabilityPrivateLAN,
-		AdvertiseAddresses: []string{"/ip4/10.23.0.11/tcp/61000"},
+		NodeProfile:              network.NodeProfileServiceNode,
+		StorePath:                t.TempDir() + "/waku-store.db",
+		PrivateKeyPath:           t.TempDir() + "/waku-key.json",
+		BindAddress:              "127.0.0.1",
+		Profile:                  network.ProfileTCPOnly,
+		ReachabilityMode:         network.ReachabilityPrivateLAN,
+		AdvertiseAddresses:       []string{"/ip4/10.23.0.11/tcp/61000"},
+		PrivateLANManifestDigest: digest,
+		PrivateLANTargetSlot:     "node-a",
+		PrivateLANSourceSlots:    []string{"node-b", "node-c"},
 	})
 	require.NoError(t, svc.Start(context.Background()))
 	t.Cleanup(func() { require.NoError(t, svc.Stop(context.Background())) })
@@ -115,31 +139,43 @@ func TestPrivateLANReportsScopedListenerWithoutPublicClaim(t *testing.T) {
 	require.Empty(t, svc.Endpoints())
 
 	address := "/ip4/10.23.0.11/tcp/61000"
-	require.Error(t, svc.ApplyPrivateLANProbe(network.PrivateLANProbe{
-		SourceSlot: "node-a", TargetSlot: "node-a", Address: address,
-		ObservedAt: now, Success: true,
-	}))
-	require.Error(t, svc.ApplyPrivateLANProbe(network.PrivateLANProbe{
-		SourceSlot: "NODE-B", TargetSlot: "node-a", Address: address,
-		ObservedAt: now, Success: true,
-	}))
-	require.Error(t, svc.ApplyPrivateLANProbe(network.PrivateLANProbe{
-		SourceSlot: "node-b", TargetSlot: "node-a",
-		Address: "/ip4/10.23.0.99/tcp/61000", ObservedAt: now, Success: true,
-	}))
-	require.Error(t, svc.ApplyPrivateLANProbe(network.PrivateLANProbe{
-		SourceSlot: "node-b", TargetSlot: "node-a", Address: address,
-		ObservedAt: now.Add(-network.PrivateLANProbeMaxAge - time.Second), Success: true,
-	}))
-	require.Error(t, svc.ApplyPrivateLANProbe(network.PrivateLANProbe{
-		SourceSlot: "node-b", TargetSlot: "node-a", Address: address,
-		ObservedAt: now.Add(network.PrivateLANProbeFutureSkew + time.Second), Success: true,
-	}))
+	scopedProbe := func(source, target, advertised string, at time.Time, success bool) network.PrivateLANProbe {
+		return network.PrivateLANProbe{
+			ManifestDigest: digest,
+			SourceSlot:     source, TargetSlot: target, Address: advertised,
+			ObservedAt: at, Success: success,
+		}
+	}
+	require.Error(t, svc.ApplyPrivateLANProbe(
+		scopedProbe("node-a", "node-a", address, now, true),
+	))
+	require.Error(t, svc.ApplyPrivateLANProbe(
+		scopedProbe("NODE-B", "node-a", address, now, true),
+	))
+	require.Error(t, svc.ApplyPrivateLANProbe(
+		scopedProbe("node-x", "node-a", address, now, true),
+	))
+	require.Error(t, svc.ApplyPrivateLANProbe(
+		scopedProbe("node-b", "node-c", address, now, true),
+	))
+	wrongDigest := scopedProbe("node-b", "node-a", address, now, true)
+	wrongDigest.ManifestDigest = strings.Repeat("b", 64)
+	require.Error(t, svc.ApplyPrivateLANProbe(wrongDigest))
+	require.Error(t, svc.ApplyPrivateLANProbe(
+		scopedProbe("node-b", "node-a", "/ip4/10.23.0.99/tcp/61000", now, true),
+	))
+	require.Error(t, svc.ApplyPrivateLANProbe(scopedProbe(
+		"node-b", "node-a", address,
+		now.Add(-network.PrivateLANProbeMaxAge-time.Second), true,
+	)))
+	require.Error(t, svc.ApplyPrivateLANProbe(scopedProbe(
+		"node-b", "node-a", address,
+		now.Add(network.PrivateLANProbeFutureSkew+time.Second), true,
+	)))
 
-	require.NoError(t, svc.ApplyPrivateLANProbe(network.PrivateLANProbe{
-		SourceSlot: "node-b", TargetSlot: "node-a", Address: address,
-		ObservedAt: now, Success: true,
-	}))
+	require.NoError(t, svc.ApplyPrivateLANProbe(
+		scopedProbe("node-b", "node-a", address, now, true),
+	))
 	snapshot = svc.ReachabilitySnapshot()
 	require.True(t, snapshot.Reachable)
 	require.Equal(t, "lan", snapshot.State)
@@ -147,17 +183,15 @@ func TestPrivateLANReportsScopedListenerWithoutPublicClaim(t *testing.T) {
 	require.Len(t, svc.Endpoints(), 1)
 	require.Contains(t, svc.Endpoints()[0], address)
 
-	require.NoError(t, svc.ApplyPrivateLANProbe(network.PrivateLANProbe{
-		SourceSlot: "node-b", TargetSlot: "node-a", Address: address,
-		ObservedAt: now.Add(time.Second), Success: false,
-	}))
+	require.NoError(t, svc.ApplyPrivateLANProbe(
+		scopedProbe("node-b", "node-a", address, now.Add(time.Second), false),
+	))
 	require.False(t, svc.ReachabilitySnapshot().Reachable)
 	require.Empty(t, svc.Endpoints())
 
-	require.NoError(t, svc.ApplyPrivateLANProbe(network.PrivateLANProbe{
-		SourceSlot: "node-c", TargetSlot: "node-a", Address: address,
-		ObservedAt: now.Add(2 * time.Second), Success: true,
-	}))
+	require.NoError(t, svc.ApplyPrivateLANProbe(
+		scopedProbe("node-c", "node-a", address, now.Add(2*time.Second), true),
+	))
 	now = now.Add(2*time.Second + network.PrivateLANProbeMaxAge + time.Second)
 	require.Equal(t, "unknown", svc.ReachabilitySnapshot().State)
 	require.Empty(t, svc.Endpoints())
@@ -165,6 +199,7 @@ func TestPrivateLANReportsScopedListenerWithoutPublicClaim(t *testing.T) {
 
 func TestPublicWSSAdvertisementMustMatchCertificateHostAndPort(t *testing.T) {
 	cfg := network.Config{
+		NodeProfile:         network.NodeProfileServiceNode,
 		Profile:             network.ProfileTCPWSS,
 		ReachabilityMode:    network.ReachabilityPublicDirect,
 		WSSPort:             443,

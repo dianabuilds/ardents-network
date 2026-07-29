@@ -35,7 +35,7 @@ func TestFullNodeDoesNotExposeFilterClientOperation(t *testing.T) {
 		NodeProfile: network.NodeProfileServiceNode,
 		StorePath:   filepath.Join(dir, "store.db"), PrivateKeyPath: filepath.Join(dir, "key.json"),
 		BindAddress: "127.0.0.1", Profile: network.ProfileTCPOnly,
-		ReachabilityMode: network.ReachabilityLocalOnly,
+		ReachabilityMode: network.ReachabilityOutboundOnly,
 	})
 	require.NoError(t, svc.Start(context.Background()))
 	t.Cleanup(func() { require.NoError(t, svc.Stop(context.Background())) })

@@ -195,11 +195,15 @@ func New(cfg ...network.Config) *Service {
 	}
 	svc.cfg.DNSDiscoveryURLs = cloneStrings(svc.cfg.DNSDiscoveryURLs)
 	svc.cfg.AdvertiseAddresses = cloneStrings(svc.cfg.AdvertiseAddresses)
-	svc.cfg.ReachabilityMode = network.NormalizeReachabilityMode(svc.cfg.ReachabilityMode)
+	svc.cfg.PrivateLANSourceSlots = cloneStrings(svc.cfg.PrivateLANSourceSlots)
+	svc.cfg.NodeProfile = network.NormalizeNodeProfile(svc.cfg.NodeProfile)
+	svc.cfg.ReachabilityMode = network.ReachabilityModeForProfile(
+		svc.cfg.ReachabilityMode,
+		svc.cfg.NodeProfile,
+	)
 	svc.reachability = initialReachability(svc.cfg.ReachabilityMode)
 	svc.dnsDiscovery = wakuDNSPeerDiscovery{}
 	svc.cfg.Profile = network.NormalizeProfile(svc.cfg.Profile)
-	svc.cfg.NodeProfile = network.NormalizeNodeProfile(svc.cfg.NodeProfile)
 	svc.activeProfile = svc.cfg.Profile
 	svc.activeMode = network.ModeSteady
 	svc.controller = network.NewModeController(network.DefaultSelectionPolicy())

@@ -55,6 +55,7 @@ type PrivateLANHostTarget struct {
 	Plan                HostPlan
 	StaticRecoveryPeers []string
 	SignedDNSRoots      []string
+	AllowedProbeSources []string
 }
 
 // PrivateLANProbeTarget is the protected different-host dial request.
@@ -69,11 +70,12 @@ type PrivateLANProbeTarget struct {
 // PrivateLANProof is protected deployment evidence passed to the host-local
 // adapter. The adapter may translate it to the runtime's proof type.
 type PrivateLANProof struct {
-	SourceSlot string
-	TargetSlot string
-	Address    string
-	ObservedAt time.Time
-	Success    bool
+	ManifestDigest string
+	SourceSlot     string
+	TargetSlot     string
+	Address        string
+	ObservedAt     time.Time
+	Success        bool
 }
 
 // PrivateLANObservation combines the existing bounded status projection with
@@ -161,15 +163,19 @@ func (coordinator PrivateLANCoordinator) Reconcile(
 		observedAt, probeErr := coordinator.Dialer.Probe(step, probeTarget)
 		cancel()
 		probe := PrivateLANProof{
-			SourceSlot: source.Slot, TargetSlot: target.Slot,
+			ManifestDigest: target.ManifestDigest,
+			SourceSlot:     source.Slot, TargetSlot: target.Slot,
 			Address: target.Address, ObservedAt: observedAt.UTC(),
 			Success: probeErr == nil,
 		}
 		if probeErr != nil {
 			probe.ObservedAt = now
 			withdraw, withdrawCancel := context.WithTimeout(operationContext, timeout)
-			_ = coordinator.Hosts.ApplyProbe(withdraw, target, probe)
+			withdrawErr := coordinator.Hosts.ApplyProbe(withdraw, target, probe)
 			withdrawCancel()
+			if withdrawErr != nil {
+				return privateLANFailure(result, PrivateLANReasonProofApplyFailed)
+			}
 			return privateLANFailure(result, PrivateLANReasonProbeFailed)
 		}
 		if !validPrivateLANProbeTime(now, observedAt) {
@@ -179,6 +185,14 @@ func (coordinator PrivateLANCoordinator) Reconcile(
 		applyErr := coordinator.Hosts.ApplyProbe(step, target, probe)
 		cancel()
 		if applyErr != nil {
+			probe.Success = false
+			probe.ObservedAt = now
+			withdraw, withdrawCancel := context.WithTimeout(operationContext, timeout)
+			withdrawErr := coordinator.Hosts.ApplyProbe(withdraw, target, probe)
+			withdrawCancel()
+			if withdrawErr != nil {
+				return privateLANFailure(result, PrivateLANReasonProofApplyFailed)
+			}
 			return privateLANFailure(result, PrivateLANReasonProofApplyFailed)
 		}
 	}
@@ -223,6 +237,15 @@ func privateLANTargets(manifest topologyManifest, raw []byte) []PrivateLANHostTa
 	for index := range targets {
 		sort.Strings(targets[index].StaticRecoveryPeers)
 		sort.Strings(targets[index].SignedDNSRoots)
+		for _, candidate := range targets {
+			if candidate.Slot != targets[index].Slot {
+				targets[index].AllowedProbeSources = append(
+					targets[index].AllowedProbeSources,
+					candidate.Slot,
+				)
+			}
+		}
+		sort.Strings(targets[index].AllowedProbeSources)
 	}
 	return targets
 }

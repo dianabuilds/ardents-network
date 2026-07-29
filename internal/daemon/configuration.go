@@ -87,14 +87,7 @@ func ValidateConfig(cfg Config) error {
 }
 
 func validateParticipationReachability(cfg Config, nodeProfile networkapi.NodeProfile) (networkapi.ReachabilityMode, error) {
-	mode := cfg.Transport.ReachabilityMode
-	if mode == "" {
-		if nodeProfile == networkapi.NodeProfileLocalDevelopment {
-			mode = networkapi.ReachabilityLocalOnly
-		} else {
-			mode = networkapi.ReachabilityPrivateLAN
-		}
-	}
+	mode := networkapi.ReachabilityModeForProfile(cfg.Transport.ReachabilityMode, nodeProfile)
 	if nodeProfile == networkapi.NodeProfileLocalDevelopment && mode != networkapi.ReachabilityLocalOnly {
 		return mode, fmt.Errorf("network participation configuration: node profile %q requires reachability mode %q", nodeProfile, networkapi.ReachabilityLocalOnly)
 	}

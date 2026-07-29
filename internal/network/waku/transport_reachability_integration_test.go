@@ -57,6 +57,7 @@ func TestPublicAddressChangeRequiresRestartAndFreshObservation(t *testing.T) {
 func startPublicReachabilityNode(t *testing.T, dir, address string) *Service {
 	t.Helper()
 	svc := New(network.Config{
+		NodeProfile:        network.NodeProfileServiceNode,
 		StorePath:          filepath.Join(dir, "waku-store.db"),
 		PrivateKeyPath:     filepath.Join(dir, "waku-key.json"),
 		BindAddress:        "127.0.0.1",

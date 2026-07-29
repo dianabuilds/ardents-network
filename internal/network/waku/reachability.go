@@ -49,16 +49,31 @@ func (s *Service) SetReachabilityObserver(observer func()) {
 }
 
 func validateReachabilityConfig(cfg network.Config) error {
-	mode := network.NormalizeReachabilityMode(cfg.ReachabilityMode)
+	nodeProfile := network.NormalizeNodeProfile(cfg.NodeProfile)
+	mode := network.ReachabilityModeForProfile(cfg.ReachabilityMode, nodeProfile)
 	if !network.ValidReachabilityMode(mode) {
 		return fmt.Errorf("unsupported reachability mode %q", mode)
+	}
+	switch nodeProfile {
+	case network.NodeProfileLocalDevelopment:
+		if mode != network.ReachabilityLocalOnly {
+			return fmt.Errorf("node profile %q requires reachability mode %q", nodeProfile, network.ReachabilityLocalOnly)
+		}
+	case network.NodeProfileConstrainedClient:
+		if mode != network.ReachabilityOutboundOnly {
+			return fmt.Errorf("node profile %q requires reachability mode %q", nodeProfile, network.ReachabilityOutboundOnly)
+		}
+	case network.NodeProfileServiceNode:
+		if mode == network.ReachabilityLocalOnly {
+			return fmt.Errorf("node profile %q does not allow reachability mode %q", nodeProfile, mode)
+		}
+	default:
+		return fmt.Errorf("unsupported node profile %q", nodeProfile)
 	}
 	if len(cfg.AdvertiseAddresses) > maxAdvertiseAddresses {
 		return fmt.Errorf("reachability accepts at most %d advertised addresses", maxAdvertiseAddresses)
 	}
-	if mode == network.ReachabilityPrivateLAN &&
-		network.NormalizeNodeProfile(cfg.NodeProfile) == network.NodeProfileServiceNode &&
-		len(cfg.AdvertiseAddresses) != 1 {
+	if mode == network.ReachabilityPrivateLAN && len(cfg.AdvertiseAddresses) != 1 {
 		return fmt.Errorf("reachability mode %q requires exactly one private advertised address", mode)
 	}
 	if mode != network.ReachabilityPublicDirect && mode != network.ReachabilityPrivateLAN &&
@@ -191,6 +206,13 @@ func (s *Service) ApplyPrivateLANProbe(probe network.PrivateLANProbe) error {
 		s.mu.Unlock()
 		return fmt.Errorf("private LAN probe requires distinct source and target slots")
 	}
+	if len(probe.ManifestDigest) != 64 ||
+		probe.ManifestDigest != s.cfg.PrivateLANManifestDigest ||
+		probe.TargetSlot != s.cfg.PrivateLANTargetSlot ||
+		!privateLANProbeSourceAllowed(probe.SourceSlot, s.cfg.PrivateLANSourceSlots) {
+		s.mu.Unlock()
+		return fmt.Errorf("private LAN probe is outside the admitted topology scope")
+	}
 	if len(s.cfg.AdvertiseAddresses) != 1 ||
 		strings.TrimSpace(probe.Address) != strings.TrimSpace(s.cfg.AdvertiseAddresses[0]) {
 		s.mu.Unlock()
@@ -226,6 +248,18 @@ func (s *Service) ApplyPrivateLANProbe(probe network.PrivateLANProbe) error {
 		go observer()
 	}
 	return nil
+}
+
+func privateLANProbeSourceAllowed(source string, allowed []string) bool {
+	if len(allowed) != 2 {
+		return false
+	}
+	for _, candidate := range allowed {
+		if candidate == source {
+			return true
+		}
+	}
+	return false
 }
 
 func validPrivateLANProbeSlot(value string) bool {

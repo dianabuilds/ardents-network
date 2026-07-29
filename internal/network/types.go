@@ -8,22 +8,25 @@ import (
 const BindAddressEnv = "ARDENTS_TRANSPORT_BIND_ADDRESS"
 
 type Config struct {
-	NodeProfile            NodeProfile
-	StorePath              string
-	PrivateKeyPath         string
-	BindAddress            string
-	ListenPort             int
-	Profile                Profile
-	WSSPort                int
-	WSSCertPath            string
-	WSSKeyPath             string
-	WSSCAPath              string
-	WSSAdvertiseAddress    string
-	DNSDiscoveryURLs       []string
-	DNSDiscoveryNameServer string
-	ReachabilityMode       ReachabilityMode
-	AdvertiseAddresses     []string
-	Limits                 Limits
+	NodeProfile              NodeProfile
+	StorePath                string
+	PrivateKeyPath           string
+	BindAddress              string
+	ListenPort               int
+	Profile                  Profile
+	WSSPort                  int
+	WSSCertPath              string
+	WSSKeyPath               string
+	WSSCAPath                string
+	WSSAdvertiseAddress      string
+	DNSDiscoveryURLs         []string
+	DNSDiscoveryNameServer   string
+	ReachabilityMode         ReachabilityMode
+	AdvertiseAddresses       []string
+	PrivateLANManifestDigest string
+	PrivateLANTargetSlot     string
+	PrivateLANSourceSlots    []string
+	Limits                   Limits
 }
 
 type Limits struct {

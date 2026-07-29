@@ -496,13 +496,10 @@ func normalizedConfig(cfg Config) Config {
 		cfg.Transport.BindAddress = "127.0.0.1"
 	}
 	if cfg.Transport.ReachabilityMode == "" {
-		if cfg.NodeProfile == network.NodeProfileLocalDevelopment {
-			cfg.Transport.ReachabilityMode = network.ReachabilityLocalOnly
-		} else if cfg.NodeProfile == network.NodeProfileConstrainedClient {
-			cfg.Transport.ReachabilityMode = network.ReachabilityOutboundOnly
-		} else {
-			cfg.Transport.ReachabilityMode = network.ReachabilityPrivateLAN
-		}
+		cfg.Transport.ReachabilityMode = network.ReachabilityModeForProfile(
+			cfg.Transport.ReachabilityMode,
+			cfg.NodeProfile,
+		)
 	}
 	return cfg
 }

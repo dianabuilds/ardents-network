@@ -30,11 +30,12 @@ type ReachabilitySnapshot struct {
 // PrivateLANProbe is protected, source-attributable deployment evidence. It
 // establishes LAN scope only and must not be copied into ordinary status.
 type PrivateLANProbe struct {
-	SourceSlot string
-	TargetSlot string
-	Address    string
-	ObservedAt time.Time
-	Success    bool
+	ManifestDigest string
+	SourceSlot     string
+	TargetSlot     string
+	Address        string
+	ObservedAt     time.Time
+	Success        bool
 }
 
 // PrivateLANReachability is the optional transport boundary used by the
@@ -45,9 +46,23 @@ type PrivateLANReachability interface {
 
 func NormalizeReachabilityMode(mode ReachabilityMode) ReachabilityMode {
 	if mode == "" {
-		return ReachabilityPrivateLAN
+		return ReachabilityOutboundOnly
 	}
 	return mode
+}
+
+// ReachabilityModeForProfile applies the one safe default consistently at
+// config, daemon, and transport boundaries.
+func ReachabilityModeForProfile(mode ReachabilityMode, profile NodeProfile) ReachabilityMode {
+	if mode != "" {
+		return mode
+	}
+	switch NormalizeNodeProfile(profile) {
+	case NodeProfileLocalDevelopment:
+		return ReachabilityLocalOnly
+	default:
+		return ReachabilityOutboundOnly
+	}
 }
 
 func ValidReachabilityMode(mode ReachabilityMode) bool {
