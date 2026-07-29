@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
-	"sync"
 
 	"ardents/internal/deployment"
 	"ardents/internal/storage"
@@ -32,14 +31,12 @@ type RejoinFile struct {
 	Path string
 }
 
-// RolloutFile persists one protected topology rollout transaction. The
-// process-wide mutex makes the optimistic revision check and replacement one
-// critical section for all in-process coordinators.
+// RolloutFile persists one protected topology rollout transaction. Its
+// companion OS lock makes each optimistic revision check and replacement one
+// critical section across independent coordinator processes.
 type RolloutFile struct {
 	Path string
 }
-
-var rolloutFileMu sync.Mutex
 
 func (store FenceFile) Load(_ context.Context) (deployment.FenceTransaction, bool, error) {
 	path := strings.TrimSpace(store.Path)
@@ -206,9 +203,27 @@ func decodeRejoinTransaction(raw []byte) (deployment.RejoinTransaction, error) {
 func (store RolloutFile) Load(
 	_ context.Context,
 ) (deployment.RolloutTransaction, bool, error) {
-	rolloutFileMu.Lock()
-	defer rolloutFileMu.Unlock()
+	lock, err := store.acquireLock()
+	if err != nil {
+		return deployment.RolloutTransaction{}, false, err
+	}
+	defer lock.Close()
 	return store.loadUnlocked()
+}
+
+func (store RolloutFile) acquireLock() (*storage.PrivateFileLock, error) {
+	path := strings.TrimSpace(store.Path)
+	if path == "" {
+		return nil, deployment.ErrRolloutJournalInvalid
+	}
+	lock, err := storage.AcquirePrivateFileLock(path + ".lock")
+	if errors.Is(err, storage.ErrPrivateFileLockUnavailable) {
+		return nil, deployment.ErrRolloutJournalConflict
+	}
+	if err != nil {
+		return nil, deployment.ErrRolloutJournalInvalid
+	}
+	return lock, nil
 }
 
 func (store RolloutFile) loadUnlocked() (deployment.RolloutTransaction, bool, error) {
@@ -238,8 +253,11 @@ func (store RolloutFile) Save(
 	expectedRevision uint64,
 	transaction deployment.RolloutTransaction,
 ) error {
-	rolloutFileMu.Lock()
-	defer rolloutFileMu.Unlock()
+	lock, err := store.acquireLock()
+	if err != nil {
+		return err
+	}
+	defer lock.Close()
 	path := strings.TrimSpace(store.Path)
 	if path == "" || transaction.Revision != expectedRevision+1 {
 		return deployment.ErrRolloutJournalInvalid
@@ -282,8 +300,11 @@ func (store RolloutFile) Clear(
 	_ context.Context,
 	expected deployment.RolloutTransaction,
 ) error {
-	rolloutFileMu.Lock()
-	defer rolloutFileMu.Unlock()
+	lock, err := store.acquireLock()
+	if err != nil {
+		return err
+	}
+	defer lock.Close()
 	path := strings.TrimSpace(store.Path)
 	if path == "" ||
 		(expected.Phase != deployment.RolloutPhaseCommitted &&

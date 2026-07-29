@@ -63,6 +63,7 @@ const (
 	RolloutReasonInterrupted           RolloutFailureReason = "interrupted_rollout"
 
 	maxRolloutDuration         = 30 * time.Minute
+	maxRolloutEffectTimeout    = 10 * time.Second
 	rolloutPreflightMaxAge     = 2 * time.Minute
 	rolloutPreflightFutureSkew = 30 * time.Second
 )
@@ -293,12 +294,13 @@ type RolloutCommitter interface {
 }
 
 type RolloutCoordinator struct {
-	Journal   RolloutJournalStore
-	Preflight RolloutPreflight
-	Hosts     RolloutHosts
-	Authority RolloutAuthority
-	Committer RolloutCommitter
-	Clock     func() time.Time
+	Journal       RolloutJournalStore
+	Preflight     RolloutPreflight
+	Hosts         RolloutHosts
+	Authority     RolloutAuthority
+	Committer     RolloutCommitter
+	Clock         func() time.Time
+	EffectTimeout time.Duration
 }
 
 func (coordinator RolloutCoordinator) Rollout(
@@ -312,7 +314,9 @@ func (coordinator RolloutCoordinator) Rollout(
 	}
 	if coordinator.Journal == nil || coordinator.Preflight == nil ||
 		coordinator.Hosts == nil || coordinator.Authority == nil ||
-		coordinator.Committer == nil || coordinator.Clock == nil {
+		coordinator.Committer == nil || coordinator.Clock == nil ||
+		coordinator.EffectTimeout < 0 ||
+		coordinator.EffectTimeout > maxRolloutEffectTimeout {
 		return RolloutStatus{}, ValidationError("topology_rollout_dependencies_required")
 	}
 	transaction, found, err := coordinator.Journal.Load(ctx)
@@ -342,8 +346,19 @@ func (coordinator RolloutCoordinator) Rollout(
 		StartedAt:             request.StartedAt, Deadline: request.Deadline,
 		Nodes: cloneRolloutTargets(targets),
 	}
-	observation, preflightErr := coordinator.Preflight.Verify(ctx, preflightTarget)
+	observation, preflightErr := runForwardRolloutEffect(
+		coordinator,
+		ctx,
+		request.StartedAt,
+		request.Deadline,
+		func(effectCtx context.Context) (RolloutPreflightObservation, error) {
+			return coordinator.Preflight.Verify(effectCtx, preflightTarget)
+		},
+	)
 	if preflightErr != nil {
+		if errors.Is(preflightErr, context.DeadlineExceeded) {
+			return rolloutPreJournalFailure(RolloutReasonDeadlineExceeded), nil
+		}
 		return rolloutPreJournalFailure(RolloutReasonPreflightUnavailable), nil
 	}
 	if !validRolloutPreflight(
@@ -395,10 +410,22 @@ func (coordinator RolloutCoordinator) apply(
 			return RolloutStatus{}, err
 		}
 		index := len(transaction.Nodes) - 1
-		observation, err := coordinator.Hosts.Recreate(ctx, target, change)
+		observation, err := runForwardRolloutEffect(
+			coordinator,
+			ctx,
+			transaction.StartedAt,
+			transaction.Deadline,
+			func(effectCtx context.Context) (RolloutHostObservation, error) {
+				return coordinator.Hosts.Recreate(effectCtx, target, change)
+			},
+		)
 		if err != nil {
+			reason := RolloutReasonRecreateUnavailable
+			if errors.Is(err, context.DeadlineExceeded) {
+				reason = RolloutReasonDeadlineExceeded
+			}
 			return coordinator.failAndCompensate(
-				ctx, targets, transaction, RolloutReasonRecreateUnavailable, false,
+				ctx, targets, transaction, reason, false,
 			)
 		}
 		if !validRolloutHostObservation(observation, target, change) {
@@ -414,10 +441,22 @@ func (coordinator RolloutCoordinator) apply(
 		if err := persistRollout(ctx, coordinator.Journal, transaction); err != nil {
 			return RolloutStatus{}, err
 		}
-		observation, err = coordinator.Hosts.Start(ctx, target, change)
+		observation, err = runForwardRolloutEffect(
+			coordinator,
+			ctx,
+			transaction.StartedAt,
+			transaction.Deadline,
+			func(effectCtx context.Context) (RolloutHostObservation, error) {
+				return coordinator.Hosts.Start(effectCtx, target, change)
+			},
+		)
 		if err != nil {
+			reason := RolloutReasonStartUnavailable
+			if errors.Is(err, context.DeadlineExceeded) {
+				reason = RolloutReasonDeadlineExceeded
+			}
 			return coordinator.failAndCompensate(
-				ctx, targets, transaction, RolloutReasonStartUnavailable, false,
+				ctx, targets, transaction, reason, false,
 			)
 		}
 		if !validRolloutHostObservation(observation, target, change) {
@@ -429,10 +468,22 @@ func (coordinator RolloutCoordinator) apply(
 		if err := persistRollout(ctx, coordinator.Journal, transaction); err != nil {
 			return RolloutStatus{}, err
 		}
-		ready, err := coordinator.Hosts.Readiness(ctx, target, change)
+		ready, err := runForwardRolloutEffect(
+			coordinator,
+			ctx,
+			transaction.StartedAt,
+			transaction.Deadline,
+			func(effectCtx context.Context) (RolloutReadinessObservation, error) {
+				return coordinator.Hosts.Readiness(effectCtx, target, change)
+			},
+		)
 		if err != nil {
+			reason := RolloutReasonReadinessUnavailable
+			if errors.Is(err, context.DeadlineExceeded) {
+				reason = RolloutReasonDeadlineExceeded
+			}
 			return coordinator.failAndCompensate(
-				ctx, targets, transaction, RolloutReasonReadinessUnavailable, false,
+				ctx, targets, transaction, reason, false,
 			)
 		}
 		if !validRolloutReadiness(ready, target, change) {
@@ -458,10 +509,24 @@ func (coordinator RolloutCoordinator) apply(
 			RealmID:             manifest.Authority.RealmID,
 			Order:               append([]string(nil), transaction.Order...),
 		}
-		observation, err := coordinator.Authority.Activate(ctx, target)
+		observation, err := runForwardRolloutEffect(
+			coordinator,
+			ctx,
+			transaction.StartedAt,
+			transaction.Deadline,
+			func(effectCtx context.Context) (RolloutAuthorityObservation, error) {
+				return coordinator.Authority.Activate(effectCtx, target)
+			},
+		)
 		if err != nil ||
 			!validRolloutActivation(observation, target, transaction.Order, true) {
-			observed, statusErr := coordinator.Authority.Status(ctx, target)
+			observed, statusErr := runRecoveryRolloutEffect(
+				coordinator,
+				ctx,
+				func(effectCtx context.Context) (RolloutAuthorityObservation, error) {
+					return coordinator.Authority.Status(effectCtx, target)
+				},
+			)
 			switch {
 			case statusErr == nil &&
 				validRolloutActivation(observed, target, transaction.Order, true):
@@ -471,6 +536,9 @@ func (coordinator RolloutCoordinator) apply(
 				reason := RolloutReasonActivationInvalid
 				if err != nil {
 					reason = RolloutReasonActivationUnavailable
+				}
+				if errors.Is(err, context.DeadlineExceeded) {
+					reason = RolloutReasonDeadlineExceeded
 				}
 				return coordinator.failAndCompensate(
 					ctx, targets, transaction, reason, false,
@@ -508,9 +576,23 @@ func (coordinator RolloutCoordinator) commit(
 		CompatibilityDigest: transaction.CompatibilityDigest,
 		Manifest:            append([]byte(nil), request.Manifest...),
 	}
-	observation, commitErr := coordinator.Committer.Commit(ctx, target)
+	observation, commitErr := runForwardRolloutEffect(
+		coordinator,
+		ctx,
+		transaction.StartedAt,
+		transaction.Deadline,
+		func(effectCtx context.Context) (RolloutCommitObservation, error) {
+			return coordinator.Committer.Commit(effectCtx, target)
+		},
+	)
 	if commitErr != nil || !validRolloutCommit(observation, target, true) {
-		observed, statusErr := coordinator.Committer.Status(ctx, target)
+		observed, statusErr := runRecoveryRolloutEffect(
+			coordinator,
+			ctx,
+			func(effectCtx context.Context) (RolloutCommitObservation, error) {
+				return coordinator.Committer.Status(effectCtx, target)
+			},
+		)
 		switch {
 		case statusErr == nil && validRolloutCommit(observed, target, true):
 			observation = observed
@@ -519,6 +601,9 @@ func (coordinator RolloutCoordinator) commit(
 			reason := RolloutReasonCommitInvalid
 			if commitErr != nil {
 				reason = RolloutReasonCommitUnavailable
+			}
+			if errors.Is(commitErr, context.DeadlineExceeded) {
+				reason = RolloutReasonDeadlineExceeded
 			}
 			return coordinator.failAndCompensate(
 				ctx, targets, transaction, reason, false,
@@ -558,6 +643,21 @@ func (coordinator RolloutCoordinator) resume(
 		}
 		return status, nil
 	}
+	if len(transaction.Nodes) == 0 &&
+		(transaction.Phase == RolloutPhasePreflighted ||
+			transaction.Phase == RolloutPhaseApplying) {
+		transaction.Phase = RolloutPhaseCompensated
+		transaction.ResumeFrom = ""
+		transaction.FailureReason = RolloutReasonInterrupted
+		if err := persistRollout(ctx, coordinator.Journal, transaction); err != nil {
+			return RolloutStatus{}, err
+		}
+		status := rolloutStatus(*transaction, RolloutOutcomeRecovered)
+		if err := coordinator.Journal.Clear(ctx, *transaction); err != nil {
+			return RolloutStatus{}, err
+		}
+		return status, nil
+	}
 	if transaction.Phase == RolloutPhaseActivated {
 		return coordinator.commit(ctx, request, targets, transaction)
 	}
@@ -571,7 +671,13 @@ func (coordinator RolloutCoordinator) resume(
 			RealmID:             manifest.Authority.RealmID,
 			Order:               append([]string(nil), transaction.Order...),
 		}
-		observation, err := coordinator.Authority.Status(ctx, target)
+		observation, err := runRecoveryRolloutEffect(
+			coordinator,
+			ctx,
+			func(effectCtx context.Context) (RolloutAuthorityObservation, error) {
+				return coordinator.Authority.Status(effectCtx, target)
+			},
+		)
 		switch {
 		case err == nil &&
 			validRolloutActivation(observation, target, transaction.Order, true):
@@ -604,7 +710,13 @@ func (coordinator RolloutCoordinator) resume(
 			CompatibilityDigest: transaction.CompatibilityDigest,
 			Manifest:            append([]byte(nil), request.Manifest...),
 		}
-		observation, err := coordinator.Committer.Status(ctx, target)
+		observation, err := runRecoveryRolloutEffect(
+			coordinator,
+			ctx,
+			func(effectCtx context.Context) (RolloutCommitObservation, error) {
+				return coordinator.Committer.Status(effectCtx, target)
+			},
+		)
 		if err == nil && validRolloutCommit(observation, target, true) {
 			transaction.Phase = RolloutPhaseCommitted
 			transaction.ResumeFrom = ""
@@ -720,7 +832,13 @@ func (coordinator RolloutCoordinator) compensate(
 		if err := persistRollout(ctx, coordinator.Journal, transaction); err != nil {
 			return RolloutStatus{}, err
 		}
-		observation, err := coordinator.Hosts.Recreate(ctx, target, change)
+		observation, err := runRecoveryRolloutEffect(
+			coordinator,
+			ctx,
+			func(effectCtx context.Context) (RolloutHostObservation, error) {
+				return coordinator.Hosts.Recreate(effectCtx, target, change)
+			},
+		)
 		if err != nil || !validRolloutHostObservation(observation, target, change) {
 			return coordinator.compensationFailed(ctx, transaction, node)
 		}
@@ -732,7 +850,13 @@ func (coordinator RolloutCoordinator) compensate(
 		if err := persistRollout(ctx, coordinator.Journal, transaction); err != nil {
 			return RolloutStatus{}, err
 		}
-		observation, err = coordinator.Hosts.Start(ctx, target, change)
+		observation, err = runRecoveryRolloutEffect(
+			coordinator,
+			ctx,
+			func(effectCtx context.Context) (RolloutHostObservation, error) {
+				return coordinator.Hosts.Start(effectCtx, target, change)
+			},
+		)
 		if err != nil || !validRolloutHostObservation(observation, target, change) {
 			return coordinator.compensationFailed(ctx, transaction, node)
 		}
@@ -740,7 +864,13 @@ func (coordinator RolloutCoordinator) compensate(
 		if err := persistRollout(ctx, coordinator.Journal, transaction); err != nil {
 			return RolloutStatus{}, err
 		}
-		ready, err := coordinator.Hosts.Readiness(ctx, target, change)
+		ready, err := runRecoveryRolloutEffect(
+			coordinator,
+			ctx,
+			func(effectCtx context.Context) (RolloutReadinessObservation, error) {
+				return coordinator.Hosts.Readiness(effectCtx, target, change)
+			},
+		)
 		if err != nil || !validRolloutReadiness(ready, target, change) {
 			return coordinator.compensationFailed(ctx, transaction, node)
 		}
@@ -783,6 +913,60 @@ func (coordinator RolloutCoordinator) compensationFailed(
 func (coordinator RolloutCoordinator) withinDeadline(transaction *RolloutTransaction) bool {
 	now := coordinator.Clock().UTC()
 	return !now.Before(transaction.StartedAt) && !now.After(transaction.Deadline)
+}
+
+func (coordinator RolloutCoordinator) effectTimeout() time.Duration {
+	if coordinator.EffectTimeout > 0 {
+		return coordinator.EffectTimeout
+	}
+	return maxRolloutEffectTimeout
+}
+
+func runForwardRolloutEffect[T any](
+	coordinator RolloutCoordinator,
+	ctx context.Context,
+	startedAt time.Time,
+	deadline time.Time,
+	effect func(context.Context) (T, error),
+) (T, error) {
+	var zero T
+	now := coordinator.Clock().UTC()
+	if now.Before(startedAt) || now.After(deadline) {
+		return zero, context.DeadlineExceeded
+	}
+	timeout := coordinator.effectTimeout()
+	if remaining := deadline.Sub(now); remaining < timeout {
+		timeout = remaining
+	}
+	if timeout <= 0 {
+		return zero, context.DeadlineExceeded
+	}
+	effectCtx, cancel := context.WithTimeout(ctx, timeout)
+	value, err := effect(effectCtx)
+	contextErr := effectCtx.Err()
+	cancel()
+	if errors.Is(contextErr, context.DeadlineExceeded) {
+		return value, context.DeadlineExceeded
+	}
+	return value, err
+}
+
+func runRecoveryRolloutEffect[T any](
+	coordinator RolloutCoordinator,
+	ctx context.Context,
+	effect func(context.Context) (T, error),
+) (T, error) {
+	effectCtx, cancel := context.WithTimeout(
+		context.WithoutCancel(ctx),
+		coordinator.effectTimeout(),
+	)
+	value, err := effect(effectCtx)
+	contextErr := effectCtx.Err()
+	cancel()
+	if errors.Is(contextErr, context.DeadlineExceeded) {
+		return value, context.DeadlineExceeded
+	}
+	return value, err
 }
 
 func validateRolloutRequest(
@@ -1147,7 +1331,7 @@ func ValidateRolloutTransaction(value RolloutTransaction) error {
 
 func validRolloutPhaseState(value RolloutTransaction) bool {
 	allApplied := len(value.Nodes) == exactTopologyNodeCount
-	allRestored := len(value.Nodes) > 0
+	allRestored := true
 	for index, node := range value.Nodes {
 		if node.Phase != RolloutNodeApplied {
 			allApplied = false
@@ -1272,18 +1456,61 @@ func ValidRolloutTransactionTransition(
 		!validRolloutPhaseTransition(before.Phase, after.Phase) {
 		return false
 	}
-	for index := range before.Nodes {
-		if before.Nodes[index].Slot != after.Nodes[index].Slot ||
-			before.Nodes[index].TargetImage != after.Nodes[index].TargetImage ||
-			before.Nodes[index].FallbackImage != after.Nodes[index].FallbackImage ||
-			!validRolloutNodeTransition(
-				before.Nodes[index].Phase,
-				after.Nodes[index].Phase,
-			) {
+	appended := len(after.Nodes) == len(before.Nodes)+1
+	if appended {
+		index := len(before.Nodes)
+		if before.Phase != RolloutPhaseApplying ||
+			after.Phase != RolloutPhaseApplying ||
+			after.Nodes[index].Slot != after.Order[index] ||
+			after.Nodes[index].Phase != RolloutNodeMutationPending {
 			return false
 		}
 	}
+	changedNodes := 0
+	for index := range before.Nodes {
+		if before.Nodes[index].Slot != after.Nodes[index].Slot ||
+			before.Nodes[index].TargetImage != after.Nodes[index].TargetImage ||
+			before.Nodes[index].FallbackImage != after.Nodes[index].FallbackImage {
+			return false
+		}
+		if before.Nodes[index].Phase != after.Nodes[index].Phase {
+			changedNodes++
+		}
+		if !validRolloutNodeTransition(
+			before.Nodes[index].Phase,
+			after.Nodes[index].Phase,
+		) {
+			return false
+		}
+	}
+	if changedNodes > 1 ||
+		changedNodes > 0 && before.Phase != after.Phase ||
+		appended && changedNodes > 0 ||
+		!validRolloutActivationTruthTransition(before, after) {
+		return false
+	}
 	return ValidateRolloutTransaction(after) == nil
+}
+
+func validRolloutActivationTruthTransition(
+	before, after RolloutTransaction,
+) bool {
+	same := before.AuthorityGeneration == after.AuthorityGeneration &&
+		before.CheckpointDigest == after.CheckpointDigest &&
+		before.RepositoryPersisted == after.RepositoryPersisted &&
+		before.ActiveReceiptCount == after.ActiveReceiptCount
+	if same {
+		return true
+	}
+	activationCheckpoint := before.Phase == RolloutPhaseActivationPending ||
+		before.Phase == RolloutPhaseRecoveryRequired &&
+			before.ResumeFrom == RolloutPhaseActivationPending
+	return activationCheckpoint &&
+		after.Phase == RolloutPhaseActivated &&
+		before.AuthorityGeneration == 0 &&
+		before.CheckpointDigest == "" &&
+		!before.RepositoryPersisted &&
+		before.ActiveReceiptCount == 0
 }
 
 func validRolloutPhaseTransition(before, after RolloutPhase) bool {
@@ -1293,11 +1520,13 @@ func validRolloutPhaseTransition(before, after RolloutPhase) bool {
 	switch before {
 	case RolloutPhasePreflighted:
 		return after == RolloutPhaseApplying ||
-			after == RolloutPhaseCompensating
+			after == RolloutPhaseCompensating ||
+			after == RolloutPhaseCompensated
 	case RolloutPhaseApplying:
 		return after == RolloutPhaseActivationPending ||
 			after == RolloutPhaseReadyToCommit ||
-			after == RolloutPhaseCompensating
+			after == RolloutPhaseCompensating ||
+			after == RolloutPhaseCompensated
 	case RolloutPhaseActivationPending:
 		return after == RolloutPhaseActivated ||
 			after == RolloutPhaseCompensating ||

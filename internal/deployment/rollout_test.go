@@ -84,6 +84,99 @@ func TestRolloutCoordinatorResumesPendingCompensationWithoutNewRollout(t *testin
 	require.True(t, journal.cleared)
 }
 
+func TestRolloutCoordinatorRecoversInterruptedNoEffectJournal(t *testing.T) {
+	raw := readTopologyFixture(t, "private-lan.json")
+	request := validRolloutRequest(t, raw, AuthorityChangeCompatible, false)
+	manifest, _, order, compatibilityDigest, err := validateRolloutRequest(request)
+	require.NoError(t, err)
+
+	for _, phase := range []RolloutPhase{
+		RolloutPhasePreflighted,
+		RolloutPhaseApplying,
+	} {
+		t.Run(string(phase), func(t *testing.T) {
+			transaction := newRolloutTransaction(
+				request,
+				manifest,
+				order,
+				compatibilityDigest,
+			)
+			transaction.Revision = 1
+			transaction.Phase = phase
+			if phase == RolloutPhaseApplying {
+				transaction.Revision++
+			}
+			journal := &rolloutJournalFake{
+				transaction: transaction,
+				found:       true,
+			}
+			hosts := newRolloutHostsFake()
+			coordinator := RolloutCoordinator{
+				Journal: journal, Preflight: &rolloutPreflightFake{},
+				Hosts: hosts, Authority: &rolloutAuthorityFake{},
+				Committer: &rolloutCommitterFake{},
+				Clock:     func() time.Time { return request.StartedAt.Add(time.Minute) },
+			}
+
+			status, err := coordinator.Rollout(context.Background(), request)
+			require.NoError(t, err)
+			require.Equal(t, RolloutOutcomeRecovered, status.Outcome)
+			require.Equal(t, RolloutPhaseCompensated, status.Phase)
+			require.Equal(t, RolloutReasonInterrupted, status.Reason)
+			require.Empty(t, hosts.forwardSlots())
+			require.Empty(t, hosts.compensationSlots())
+			require.True(t, journal.cleared)
+		})
+	}
+}
+
+func TestRolloutCoordinatorBoundsForwardAndRecoveryEffects(t *testing.T) {
+	raw := readTopologyFixture(t, "private-lan.json")
+	request := validRolloutRequest(t, raw, AuthorityChangeCompatible, false)
+
+	t.Run("forward effect deadline compensates ambiguous node", func(t *testing.T) {
+		hosts := newRolloutHostsFake()
+		hosts.blockForwardRecreate = true
+		coordinator := RolloutCoordinator{
+			Journal: &rolloutJournalFake{}, Preflight: &rolloutPreflightFake{},
+			Hosts: hosts, Authority: &rolloutAuthorityFake{},
+			Committer:     &rolloutCommitterFake{},
+			Clock:         func() time.Time { return request.StartedAt.Add(time.Minute) },
+			EffectTimeout: time.Millisecond,
+		}
+
+		started := time.Now()
+		status, err := coordinator.Rollout(context.Background(), request)
+		require.NoError(t, err)
+		require.Less(t, time.Since(started), time.Second)
+		require.Equal(t, RolloutOutcomeCompensated, status.Outcome)
+		require.Equal(t, RolloutReasonDeadlineExceeded, status.Reason)
+		require.Equal(t, []string{"node-b"}, hosts.compensationSlots())
+	})
+
+	t.Run("recovery effect deadline retains journal", func(t *testing.T) {
+		hosts := newRolloutHostsFake()
+		hosts.failReadiness["node-c"] = errors.New("forward readiness failed")
+		hosts.blockCompensationRecreate = true
+		journal := &rolloutJournalFake{}
+		coordinator := RolloutCoordinator{
+			Journal: journal, Preflight: &rolloutPreflightFake{},
+			Hosts: hosts, Authority: &rolloutAuthorityFake{},
+			Committer:     &rolloutCommitterFake{},
+			Clock:         func() time.Time { return request.StartedAt.Add(time.Minute) },
+			EffectTimeout: time.Millisecond,
+		}
+
+		started := time.Now()
+		status, err := coordinator.Rollout(context.Background(), request)
+		require.NoError(t, err)
+		require.Less(t, time.Since(started), time.Second)
+		require.Equal(t, RolloutOutcomeRecoveryRequired, status.Outcome)
+		require.Equal(t, RolloutReasonCompensationFailed, status.Reason)
+		require.True(t, journal.found)
+	})
+}
+
 func TestRolloutCoordinatorUsesAuthorityFirstMigrationAndActivation(t *testing.T) {
 	raw := readTopologyFixture(t, "public-direct.json")
 	request := validRolloutRequest(t, raw, AuthorityChangeMigration, true)
@@ -547,6 +640,8 @@ type rolloutHostsFake struct {
 	failCompensation          map[string]error
 	failCompensationStart     map[string]error
 	failCompensationReadiness map[string]error
+	blockForwardRecreate      bool
+	blockCompensationRecreate bool
 	inFlight                  int
 	maxInFlight               int
 }
@@ -564,7 +659,7 @@ func newRolloutHostsFake() *rolloutHostsFake {
 }
 
 func (fake *rolloutHostsFake) Recreate(
-	_ context.Context,
+	ctx context.Context,
 	target RolloutHostTarget,
 	change RolloutHostChange,
 ) (RolloutHostObservation, error) {
@@ -576,11 +671,21 @@ func (fake *rolloutHostsFake) Recreate(
 	kind := "forward"
 	if change.Compensating {
 		kind = "compensate"
+		if fake.blockCompensationRecreate {
+			<-ctx.Done()
+			return RolloutHostObservation{}, ctx.Err()
+		}
 		if err := fake.failCompensation[target.Slot]; err != nil {
 			return RolloutHostObservation{}, err
 		}
-	} else if err := fake.failRecreate[target.Slot]; err != nil {
-		return RolloutHostObservation{}, err
+	} else {
+		if fake.blockForwardRecreate {
+			<-ctx.Done()
+			return RolloutHostObservation{}, ctx.Err()
+		}
+		if err := fake.failRecreate[target.Slot]; err != nil {
+			return RolloutHostObservation{}, err
+		}
 	}
 	fake.events = append(fake.events, rolloutHostEvent{
 		kind: kind, slot: target.Slot, image: change.Image,
