@@ -182,6 +182,9 @@ implementation slices and commits.
 - PW3-19 is `ready-for-human`. No real host, network, signer, Authority,
   production state, qualification, capability promotion, push or deployment
   occurred. `deployment.multi-host` remains `Q=no`.
+- The maintainer accepted exact MR-02 implementation tip
+  `97fed1b68d8b2a21cbf1ba44aae0b027d48ef4e3` and closed PW3-19. This
+  acceptance does not admit MR-03 by itself and does not change `Q=no`.
 
 ## Stream ownership
 

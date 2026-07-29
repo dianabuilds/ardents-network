@@ -1,7 +1,7 @@
 # PW3-19: MR-02 inspect three Nodes through pinned host-local control
 
 Status: ready-for-human
-State: open
+State: closed
 Labels: ready-for-human
 Research class: R0 local-substitutable protected status
 
@@ -195,3 +195,8 @@ host or production state was touched.
     prompt;
   - outcome: `ready-for-human`. No real host, deployment, production state,
     qualification, capability promotion or push occurred.
+- 2026-07-29 maintainer disposition:
+  - the maintainer explicitly accepted exact MR-02 implementation tip
+    `97fed1b68d8b2a21cbf1ba44aae0b027d48ef4e3`;
+  - PW3-19 is closed without changing its canonical `ready-for-human` status;
+    acceptance does not qualify `deployment.multi-host` and `Q` remains `no`.
