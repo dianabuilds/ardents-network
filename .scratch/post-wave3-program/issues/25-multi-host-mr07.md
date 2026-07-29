@@ -1,7 +1,7 @@
 # PW3-25: MR-07 journal one-at-a-time rollout and recovery
 
 Status: ready-for-agent
-State: open
+State: closed
 Labels: ready-for-agent
 Research class: R1 local-substitutable failure injection plus deferred R3
 
@@ -122,28 +122,28 @@ failed compensation
 
 ## Acceptance criteria
 
-- [ ] Strict request/compatibility/fallback validation and complete preflight
+- [x] Strict request/compatibility/fallback validation and complete preflight
       happen before journal creation or mutation.
-- [ ] Compatible authority-last and migration authority-first orders are
+- [x] Compatible authority-last and migration authority-first orders are
       deterministic and serial.
-- [ ] Journal state is durable before every recreate/start/activation/commit
+- [x] Journal state is durable before every recreate/start/activation/commit
       effect and rejects unknown fields, invalid transitions, rebinding,
       revision conflicts and oversized content.
-- [ ] Fault injection covers every forward mutation/readiness/journal boundary
+- [x] Fault injection covers every forward mutation/readiness/journal boundary
       and every reverse-compensation boundary.
-- [ ] Reverse compensation includes an ambiguously mutated current Node,
+- [x] Reverse compensation includes an ambiguously mutated current Node,
       converges every journalled Node to its exact fallback, and uses complete
       data restore only when declared.
-- [ ] Pending recovery blocks new rollout and a successful resume returns
+- [x] Pending recovery blocks new rollout and a successful resume returns
       without starting the requested operation.
-- [ ] Final commit ambiguity distinguishes exact committed target from an
+- [x] Final commit ambiguity distinguishes exact committed target from an
       uncommitted target without assuming success.
-- [ ] Results and errors are bounded/redacted; concurrency permits one
+- [x] Results and errors are bounded/redacted; concurrency permits one
       coordinator revision chain and one in-flight Node mutation.
-- [ ] Focused, full, race, tooling, architecture, capability, API-generation,
+- [x] Focused, full, race, tooling, architecture, capability, API-generation,
       vet, vulnerability and diff checks pass.
-- [ ] Independent Spec, Standards and Security review findings are resolved.
-- [ ] `deployment.multi-host` remains `Q=no`.
+- [x] Independent Spec, Standards and Security review findings are resolved.
+- [x] `deployment.multi-host` remains `Q=no`.
 
 ## Out of scope
 
@@ -173,3 +173,27 @@ PW3-25 is admitted as that bounded R1 implementation. Real release
 compatibility and three-host evidence remain MR-08 R3.
 
 Admission changes no production state or capability qualification.
+
+## Implementation acceptance
+
+- Exact implementation tip: `21460bc`; logical range:
+  `15c44da..21460bc`.
+- The accepted coordinator owns one strict, crash-resumable transaction,
+  deterministic compatible/migration ordering, exact preflight/readiness,
+  monotonic activation reconciliation, exact commit and phase-aware reverse
+  compensation.
+- An OS-visible operation lease excludes overlapping effects across processes;
+  a separate revision lock provides optimistic file CAS. Every forward and
+  reverse effect is bounded, and every durable reverse checkpoint resumes
+  without illegal rewind.
+- Independent final Spec and Standards reviews pass. Retained security audit
+  `evidence/mr07-security/run-1` confirmed and remediated four
+  integrity/availability defects; no exploitable finding remains at the target
+  commit.
+- Focused, full, race, tooling, architecture, catalogue, document,
+  API-generation, vet, vulnerability and diff gates pass.
+- No production adapter, real host, qualification, release, push or deployment
+  occurred. `deployment.multi-host` remains `Q=no`.
+
+The maintainer's standing instruction treats the completed MR decision as
+accepted; PW3-25 is therefore closed.

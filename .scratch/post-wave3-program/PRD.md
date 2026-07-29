@@ -411,6 +411,23 @@ implementation slices and commits.
 - Qualification agents write to distinct evidence paths and never reuse an
   implementation commit as an unreviewed qualification snapshot.
 
+## MR-07 implementation acceptance checkpoint — 2026-07-29
+
+- PW3-25 is accepted and closed at exact implementation tip `21460bc`; its
+  logical implementation range is `15c44da..21460bc`.
+- The strict rollout coordinator holds one cross-process operation lease,
+  persists one state boundary per revision, serially applies the exact
+  authority-last or authority-first order, reconciles irreversible activation
+  and exact manifest commit, and resumes every reverse checkpoint.
+- Independent final Spec and Standards reviews pass. The retained MR-07
+  security audit confirmed and remediated four state-integrity/availability
+  defects and reports no remaining exploitable vulnerability.
+- Full, focused race, tooling, architecture, catalogue, document,
+  API-generation, vet and reachable-vulnerability gates pass.
+- Production adapters and real private-LAN/public-direct matching-commit
+  evidence remain MR-08 R3. No capability is promoted;
+  `deployment.multi-host` remains `Q=no`.
+
 ## Stabilization boundary
 
 Independent DR-06 stabilization covers exactly:
