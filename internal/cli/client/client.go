@@ -33,7 +33,7 @@ type Config struct {
 type Client struct {
 	service           Service
 	sessions          *SessionManager
-	close             func() error
+	close             func(context.Context) error
 	identityPublic    ardentsv1connect.IdentityServiceClient
 	identityProtected ardentsv1connect.IdentityServiceClient
 	targetNode        string
@@ -71,7 +71,7 @@ func New(cfg Config) (*Client, error) {
 		return nil, err
 	}
 	if cfg.Signer == nil {
-		_ = closeTransport()
+		_ = closeTransport(context.Background())
 		return nil, errors.New("Principal signer is required")
 	}
 	httpClient := &http.Client{
@@ -189,9 +189,12 @@ func (c *Client) CloseContext(ctx context.Context) error {
 	if c == nil {
 		return nil
 	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	logoutErr := c.LogoutContext(ctx)
 	if c.close != nil {
-		return errors.Join(logoutErr, c.close())
+		return errors.Join(logoutErr, c.close(ctx))
 	}
 	return logoutErr
 }

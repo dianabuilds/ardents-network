@@ -299,7 +299,7 @@ func TestClientCloseClosesTransportAndReturnsLogoutAndCloseFailures(t *testing.T
 	_, _, err := manager.authorization(context.Background())
 	require.NoError(t, err)
 	closeCalls := 0
-	client := &Client{sessions: manager, close: func() error {
+	client := &Client{sessions: manager, close: func(context.Context) error {
 		closeCalls++
 		return closeErr
 	}}
@@ -326,7 +326,7 @@ func TestClientCloseContextCannotOutliveCallerDeadline(t *testing.T) {
 	_, _, err := manager.authorization(context.Background())
 	require.NoError(t, err)
 	closeCalls := 0
-	client := &Client{sessions: manager, close: func() error {
+	client := &Client{sessions: manager, close: func(context.Context) error {
 		closeCalls++
 		return nil
 	}}

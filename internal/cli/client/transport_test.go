@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"net"
 	"os"
 	"os/exec"
@@ -139,6 +140,30 @@ func TestSSHStreamLocalClassifiesReadinessTimeout(t *testing.T) {
 	require.NoError(t, tunnel.Close())
 }
 
+func TestSSHStreamLocalCloseContextBoundsProcessWait(t *testing.T) {
+	tunnel := newSSHStreamLocalTransport(Config{
+		SSH: "ops@alpha", SSHPort: 22, SSHOperatorSocket: "/run/ardents/operator.sock",
+	})
+	dir := t.TempDir()
+	tunnel.started = true
+	tunnel.command = &exec.Cmd{}
+	tunnel.done = make(chan struct{})
+	tunnel.tempDir = dir
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+	defer cancel()
+	started := time.Now()
+
+	err := tunnel.CloseContext(ctx)
+
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.Less(t, time.Since(started), 250*time.Millisecond)
+	close(tunnel.done)
+	require.Eventually(t, func() bool {
+		_, statErr := os.Stat(dir)
+		return errors.Is(statErr, os.ErrNotExist)
+	}, time.Second, 10*time.Millisecond)
+}
+
 func TestSSHStreamLocalHelperProcess(t *testing.T) {
 	switch os.Getenv("ARDENTS_SSH_HELPER") {
 	case "":
@@ -170,12 +195,12 @@ func TestControlTransportClassifiesPrincipalEligibleTargets(t *testing.T) {
 	_, _, kind, closeTransport, err := controlTransport(Config{BaseURL: "unix:///run/ardents/operator.sock"})
 	require.NoError(t, err)
 	require.Equal(t, transportUnix, kind)
-	require.NoError(t, closeTransport())
+	require.NoError(t, closeTransport(context.Background()))
 
 	_, _, kind, closeTransport, err = controlTransport(Config{SSH: "ops@alpha", SSHPort: 22, SSHOperatorSocket: "/run/ardents/operator.sock"})
 	require.NoError(t, err)
 	require.Equal(t, transportSSHStreamLocal, kind)
-	require.NoError(t, closeTransport())
+	require.NoError(t, closeTransport(context.Background()))
 
 	_, _, _, _, err = controlTransport(Config{BaseURL: "http://127.0.0.1:8080"})
 	require.EqualError(t, err, "Operator transport requires a protected Unix socket or SSH stream-local forwarding")

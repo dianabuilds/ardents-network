@@ -41,7 +41,7 @@ const (
 	transportSSHStreamLocal
 )
 
-func controlTransport(cfg Config) (string, http.RoundTripper, transportKind, func() error, error) {
+func controlTransport(cfg Config) (string, http.RoundTripper, transportKind, func(context.Context) error, error) {
 	if cfg.SSH != "" {
 		if strings.HasPrefix(cfg.SSH, "-") || strings.ContainsAny(cfg.SSH, " \t\r\n") {
 			return "", nil, 0, nil, errors.New("invalid SSH target")
@@ -50,7 +50,7 @@ func controlTransport(cfg Config) (string, http.RoundTripper, transportKind, fun
 			return "", nil, 0, nil, errors.New("SSH transport requires an absolute remote Operator Unix socket")
 		}
 		tunnel := newSSHStreamLocalTransport(cfg)
-		return "http://ardents.local", tunnel, transportSSHStreamLocal, tunnel.Close, nil
+		return "http://ardents.local", tunnel, transportSSHStreamLocal, tunnel.CloseContext, nil
 	}
 	parsed, err := url.Parse(cfg.BaseURL)
 	if err != nil || parsed.Scheme != "unix" || parsed.Path == "" {
@@ -67,23 +67,27 @@ func controlTransport(cfg Config) (string, http.RoundTripper, transportKind, fun
 	transport.DialContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
 		return (&net.Dialer{}).DialContext(ctx, "unix", socketPath)
 	}
-	return "http://ardents.local", transport, transportUnix, func() error { transport.CloseIdleConnections(); return nil }, nil
+	return "http://ardents.local", transport, transportUnix, func(context.Context) error {
+		transport.CloseIdleConnections()
+		return nil
+	}, nil
 }
 
 type sshStreamLocalTransport struct {
 	cfg       Config
 	transport *http.Transport
 
-	mu        sync.Mutex
-	started   bool
-	closed    bool
-	startErr  error
-	command   *exec.Cmd
-	done      chan struct{}
-	tempDir   string
-	socket    string
-	closeOnce sync.Once
-	closeErr  error
+	mu          sync.Mutex
+	started     bool
+	closed      bool
+	startErr    error
+	command     *exec.Cmd
+	done        chan struct{}
+	tempDir     string
+	socket      string
+	closeOnce   sync.Once
+	cleanupOnce sync.Once
+	closeErr    error
 }
 
 func newSSHStreamLocalTransport(cfg Config) *sshStreamLocalTransport {
@@ -152,7 +156,7 @@ func (t *sshStreamLocalTransport) ensureStarted(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			t.stopLocked()
+			_ = t.stopLocked(ctx)
 			t.startErr = fmt.Errorf("%w: %v", ErrSSHTunnelTimeout, ctx.Err())
 			return t.startErr
 		case <-t.done:
@@ -196,27 +200,56 @@ func sshStreamLocalArguments(cfg Config, localSocket string) []string {
 	return arguments
 }
 
-func (t *sshStreamLocalTransport) stopLocked() error {
+func (t *sshStreamLocalTransport) stopLocked(ctx context.Context) error {
+	if t.done == nil {
+		return os.RemoveAll(t.tempDir)
+	}
+	select {
+	case <-t.done:
+		return os.RemoveAll(t.tempDir)
+	default:
+	}
 	if t.command != nil && t.command.Process != nil {
 		_ = t.command.Process.Kill()
 	}
-	if t.done != nil {
-		<-t.done
+	select {
+	case <-t.done:
+		return errors.Join(os.RemoveAll(t.tempDir), ctx.Err())
+	case <-ctx.Done():
+		t.cleanupAfterExit()
+		return ctx.Err()
 	}
-	if t.tempDir != "" {
-		return os.RemoveAll(t.tempDir)
+}
+
+func (t *sshStreamLocalTransport) cleanupAfterExit() {
+	if t.done == nil || t.tempDir == "" {
+		return
 	}
-	return nil
+	done, dir := t.done, t.tempDir
+	t.cleanupOnce.Do(func() {
+		go func() {
+			<-done
+			_ = os.RemoveAll(dir)
+		}()
+	})
 }
 
 func (t *sshStreamLocalTransport) Close() error {
+	return t.CloseContext(context.Background())
+}
+
+// CloseContext closes forwarding without waiting past ctx for OpenSSH to exit.
+func (t *sshStreamLocalTransport) CloseContext(ctx context.Context) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	t.closeOnce.Do(func() {
 		t.transport.CloseIdleConnections()
 		t.mu.Lock()
 		defer t.mu.Unlock()
 		t.closed = true
 		if t.started && t.command != nil {
-			t.closeErr = t.stopLocked()
+			t.closeErr = t.stopLocked(ctx)
 		} else if t.tempDir != "" {
 			t.closeErr = os.RemoveAll(t.tempDir)
 		}

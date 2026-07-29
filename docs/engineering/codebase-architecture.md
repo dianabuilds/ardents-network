@@ -629,7 +629,22 @@ cmd/ardentsctl
   -> one owning module, or daemon for a true cross-module node command
 ```
 
-The CLI never manipulates internal product types. Command, shell, watch, and TUI
+That is the ordinary single-Node flow. MR-02 has one explicit protected
+aggregate exception because no remote aggregate control API exists:
+
+```text
+cmd/ardentsctl
+  -> cli/topology command + protected Node observation adapter
+  -> deployment.StatusInspector over the abstract NodeStatusProbe seam
+  -> three separate cli/client instances
+  -> NodeService runtime + NetworkService status + NodeService features
+  -> deployment's bounded redacted projection
+```
+
+Outside that seam, the CLI never manipulates internal product types. The
+topology command consumes only deployment's admitted manifest/status types;
+its adapter converts protected protobuf snapshots into `NodeObservation` and
+does not interpret deployment policy. Other commands, shell, watch, and TUI
 reuse the same operator-facing client models instead of independently
 interpreting protobuf state.
 
