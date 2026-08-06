@@ -25,6 +25,12 @@ Software that uses Ardents to reach or provide a Service and owns the meaning,
 authorization, persistence, and user experience of its data.
 _Avoid_: Ardents plugin, built-in app, Node
 
+**Application Interface**:
+The local boundary through which an external Application publishes or opens
+Service Connections without embedding Ardents networking logic. Optional SDKs
+may wrap this boundary but do not define it.
+_Avoid_: Mandatory SDK, application runtime, network wire protocol
+
 **Service**:
 An application-defined function reachable inside Ardents through a Service
 Target and, optionally, a Service Name.
