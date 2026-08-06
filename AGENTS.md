@@ -9,6 +9,22 @@
 - There is no selected production language, transport, storage engine, consensus
   system, blockchain, or application runtime.
 
+## Current collaboration model
+
+- The active project team is one human Product Owner and Codex working
+  one-to-one.
+- Do not assume access to additional developers, researchers, interview panels,
+  operators, auditors, community managers, or other staff unless the Product
+  Owner explicitly adds them.
+- Scope research, implementation, operations, and maintenance for this actual
+  capacity. Prefer a smaller product contract and maintained community
+  components over plans that require a hidden organization to execute.
+- A structured Product Owner walkthrough can accept a product hypothesis or
+  architecture tracer. It is not external market, novice-usability, anonymity,
+  or independent-security validation.
+- External users and independent reviewers may be recorded as future release
+  gates, but must not be scheduled as if they are currently available.
+
 ## Order of authority
 
 When materials disagree, use this order:

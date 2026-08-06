@@ -4,6 +4,34 @@ Research exists to make a named product or architecture decision. It is not a
 holding area for interesting links and is not a way to smuggle an implementation
 choice into the repository.
 
+## Current one-to-one working model
+
+The active project is run by one human Product Owner and Codex. Research plans
+must not invent a larger team, a participant panel, an operations group, or an
+independent security function.
+
+During this phase, valid decision evidence includes primary-source research,
+reproducible experiments, competitor walkthroughs, threat and failure analysis,
+and structured one-to-one product decisions. The Product Owner supplies intent,
+constraints, priorities, and acceptance; Codex supplies evidence, competing
+options, counterarguments, specifications, and implementation work.
+
+This working model has explicit evidence limits:
+
+- a Product Owner walkthrough is not evidence of market demand;
+- an expert-author walkthrough is not evidence that a new user understands the
+  interface or its warnings;
+- our own tests are not an independent security review;
+- a simulated adversary is not evidence of resistance to an unmodelled real
+  adversary.
+
+Questions that require unavailable external evidence remain open and their
+claims remain assumptions. They do not block reversible product design or
+bounded experiments unless the missing evidence is necessary for the specific
+decision. External user validation and independent security review are future
+release gates before market or high-risk safety claims, not assumed current
+resources.
+
 ## Workflow
 
 1. Select or add a decision-relevant question in
@@ -44,6 +72,11 @@ A record is decision-ready only when it includes competing options, threat-model
 fit, operational and governance dependencies, failure cases, maintenance health,
 licensing, and an explicit “do not choose any yet” result when evidence is
 insufficient.
+
+Plans must also be executable by the current one-to-one team. If an option
+requires ongoing specialist staffing, moderation, 24/7 operations, or review
+that is not available, record that as an unmet dependency rather than silently
+assigning it to a fictional future team.
 
 See [reference systems](reference-systems.md) for the starting landscape. Those
 systems are sources of patterns and evidence, not preselected dependencies.

@@ -114,19 +114,30 @@ have been validated:
 - a Developer shipping a private client-side tool to invited users;
 - a community publishing a private resource and receiving asynchronous requests.
 
-### User validation
+### Current one-to-one decision evidence
 
-R-017 may recommend a tracer through desk research, but market-facing claims
-require R-016 interviews and scenario tests. Participants must compare the
-combined concept against their actual workaround, not merely say that privacy is
-desirable.
+As of 2026-08-06, the active team is the Product Owner and Codex working
+one-to-one. No participant panel or additional product, engineering, operations,
+or security staff is available or assumed.
+
+R-017 may therefore accept an **architecture tracer** through sourced research,
+an incumbent comparison, and a structured Product Owner walkthrough. That
+decision means “this is the most useful hypothesis for our next research,” not
+“users want this product.” It cannot validate market demand, first-user fit,
+novice comprehension, or real-world anonymity.
+
+R-016 and the external-observation part of R-018 remain open future gates. They
+do not block reversible architecture research, but no market-facing claim may be
+upgraded by substituting the Product Owner for an independent participant.
 
 ### Experiment
 
 No protocol code is required for the initial decision. If desk research supports
-H1, create a disposable interaction prototype covering publish, open, permission,
-send, offline reply, update, and failure messaging. Test comprehension before
-network implementation.
+H1, create a non-networked journey specification or disposable interaction
+prototype covering publish, open, permission, send, offline reply, update,
+recovery, and failure messaging. Walk it through together from Developer and
+Person perspectives before network implementation. This tests consistency and
+Product Owner acceptance, not external usability.
 
 ## Failure scenarios to test
 
@@ -413,31 +424,34 @@ actual job more safely. The response is not to implement all subsystems at once:
 keep one product journey, test each contract independently, and reject the
 journey if the integration does not produce user-visible value.
 
-### Required product validation
+### R-017-P1 under the current working model
 
-R-017-P1 and R-016 should:
+The Product Owner and Codex should:
 
-1. interview people with a recent real incident or recurring workflow across
-   censored/independent publishing, small rights-oriented organizations,
-   private-tool development, and community stewardship;
-2. record the trigger, consequence, current workaround, trust assumptions,
-   operational burden, and willingness to switch before showing the concept;
-3. compare Site-only, Mailbox-only, the combined journey, and the participant's
-   incumbent rather than asking whether privacy sounds desirable;
-4. test two non-networked variants—Site-only and Site + Protected Reply—against
-   the participant's incumbent for name verification, Inbox
-   permission, request creation, offline reply, update, recovery, failure, and
-   limitation comprehension;
-5. promote one segment only after at least three independent participants in
-   that segment describe the same recent problem and workaround, and observed
-   prototype behavior shows they understand both the benefit and the stated
-   anonymity limitation.
+1. state the exact publisher and visitor outcomes in ordinary language and list
+   which parts come from the Product Owner's intent versus external evidence;
+2. compare Site-only, Mailbox-only, the combined journey, and the strongest
+   composed incumbents without treating implementation difficulty as product
+   differentiation;
+3. walk two non-networked variants—Site-only and Site + Protected Reply—through
+   name verification, Inbox permission, request creation, offline reply,
+   update, recovery, failure, abuse, and limitation messaging;
+4. force explicit Product Owner choices at each scope boundary: public versus
+   invited discovery, static versus active content, open versus invited Inbox,
+   recovery versus unlinkability, latency versus observer resistance, and
+   availability versus retention;
+5. accept H1 as an architecture tracer only if one coherent job survives every
+   walkthrough, the combined variant has a concrete advantage over incumbents,
+   and every included function has a named failure and recovery outcome.
 
-These are directional research gates, not statistical proof. Reject or reshape
-the tracer if participants primarily need real-time chat, arbitrary files,
-public reach, a stateful workflow, or an incumbent with acceptable burden; if
-the Site adds no decision context; or if the reply path is not worth its abuse
-and recovery cost.
+Reject or reshape the tracer if the Product Owner's actual intended product is
+real-time chat, arbitrary files, public reach, a stateful workflow, or a general
+anonymous Internet; if the Site adds no decision context; or if the reply path
+is not worth its abuse and recovery cost.
+
+External validation remains future R-016/R-018 work. It is required before
+calling the tracer a validated V1 or claiming that unfamiliar people understand
+its security model, but it is not invented as a current resource.
 
 ## Disposition
 
@@ -448,8 +462,10 @@ and recovery cost.
 - Keep `Mailbox` as an internal delivery primitive, with `Service Inbox` and
   `Reply Thread` as provisional product concepts. Do not change the shared
   glossary until the recommendation is accepted.
-- R-016 must run alongside the technical program.
-- If the follow-up is accepted, prepare and run R-017-P1 without protocol code.
-  R-002 follows a positive tracer decision; no runtime is selected before then.
+- R-016 and external R-018 validation remain open future gates; they are not
+  assumed active under the current one-to-one working model.
+- Run R-017-P1 as a Product Owner–Codex design walkthrough without protocol
+  code. R-002 follows a positive architecture-tracer decision; no runtime is
+  selected before then.
 - No ADR yet; this recommendation is reversible and awaits product-owner review.
 - No implementation or experiment code yet.
