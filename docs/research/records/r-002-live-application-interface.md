@@ -173,6 +173,46 @@ Consequences:
 - error names, numeric codes, serialization, and operating-system mappings are
   implementation choices made later.
 
+### P1-D6 — Safe local Isolation Context
+
+**Product Owner decision, accepted 2026-08-07:** every locally authorized
+Application receives a distinct default Isolation Context. An Application may
+deliberately create or select additional opaque contexts, but the absence of an
+explicit value always uses its own safe default and never a global shared
+context.
+
+The product boundary is:
+
+- an Isolation Context is local to the Ardents endpoint and is not transmitted
+  to a Service or carrier Node;
+- it is never a User identity, Service identity, address, credential, or public
+  application profile;
+- different contexts cannot share linkable routing, rendezvous, connection-pool,
+  session-resumption, or other network-visible correlation state;
+- the same context permits safe reuse where the Route Profile allows it, but
+  does not assert that its connections belong to one real-world identity;
+- the boundary prevents linkage introduced by forbidden endpoint-state reuse;
+  it does not by itself defeat correlation through Application Data, timing,
+  volume, or an observer of the local network;
+- an Application may rotate or discard an additional context according to its
+  own profile lifecycle;
+- exact handle format, local transport, storage, and operating-system mapping
+  are implementation choices made later.
+
+Consequences:
+
+- ordinary Applications receive a privacy-safe default without an SDK or
+  explicit isolation configuration;
+- a multi-profile Application can request stronger separation without creating
+  network-wide Personas;
+- deliberate reuse of one context tells Ardents that state reuse is permitted;
+  the network cannot protect profiles that the Application intentionally places
+  in the same context;
+- R-004 and R-008 must identify and test every implementation state forbidden to
+  cross this boundary;
+- P1-D7 must define how the endpoint identifies and authorizes the local
+  Application to which the default belongs.
+
 ## Hypotheses
 
 - **H1 — Connection plus Service Administration Interfaces:** Applications
@@ -251,7 +291,10 @@ that maps an ordinary HTTP client and server through simulated `connect`,
 - **Product Owner decision:** Connection Results use bounded, evidence-supported
   classes without route disclosure. Partial writes, transport close, and failures
   never imply remote Application completion or automatic replay.
-- **Inference:** P1-D1 through P1-D5 select H1 as the working product shape. The
+- **Product Owner decision:** every Application receives a distinct local default
+  Isolation Context and may create additional contexts. Contexts are never
+  network identities, and different contexts cannot share linkable state.
+- **Inference:** P1-D1 through P1-D6 select H1 as the working product shape. The
   accepted logical separation does not require separate protocols or processes.
 
 ## Options
@@ -286,12 +329,14 @@ an explicit separately authorized Service Administration Interface. P1-D1 fixes
 the no-mandatory-SDK boundary, P1-D2 fixes the stream-only V1 data primitive,
 P1-D3 fixes their privilege separation, and P1-D4 fixes destination and target
 authentication semantics. P1-D5 fixes the observable result and failure boundary.
+P1-D6 fixes safe default and optional Application-controlled isolation.
 
 Resolve the remaining contract one decision at a time:
 
-1. **P1-D6:** how an Application supplies Isolation Context without turning it
-   into a global identity.
-2. **P1-D7:** local authorization for publishing and Service Authority access.
+1. **P1-D7:** local authorization for connecting, accepting, publishing, and
+   Service Authority access.
+2. **P1-D8:** backpressure and bounded connection, bandwidth, memory, and queue
+   behavior at the local interface.
 
 No concrete proxy protocol, serialization, library, or language is selected.
 
@@ -311,7 +356,10 @@ No concrete proxy protocol, serialization, library, or language is selected.
 - P1-D5 accepted: Connection Results use bounded honest classes, expose no route
   internals, and never claim remote Application completion after write, close,
   or failure.
+- P1-D6 accepted: every Application receives a safe local default Isolation
+  Context, may add opaque subdivisions, and never exposes a context as network
+  identity.
 - H1 is the working shape; H2 is rejected as mandatory integration; H3 is
   insufficient by itself.
-- P1-D6 is next.
+- P1-D7 is next; P1-D8 closes the remaining local resource contract.
 - No ADR and no code.

@@ -134,8 +134,9 @@ whether they represent HTTP, chat, files, commands, or another protocol.
 _Avoid_: Built-in message, network command, Node identity
 
 **Isolation Context**:
-An application-supplied boundary stating which connections must not become
-linkable through shared routing state.
+A local, network-invisible boundary assigned by an endpoint to an Application
+and optionally subdivided by it. Connections in different contexts must not
+share linkable routing or session state.
 _Avoid_: User account, global Persona, cosmetic privacy setting
 
 **Route Profile**:

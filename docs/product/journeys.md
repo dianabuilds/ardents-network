@@ -56,10 +56,11 @@ Service Target.
 **Start:** Existing client/server application logic
 
 **Flow:** separately authorize Service administration when publishing is needed
-→ use the least-privileged local Connection Interface → select Isolation Context
-→ supply either exact Service Name or Service Target → resolve the name when
-needed → authenticate and expose the exact target → connect or accept → read and
-write opaque bytes → handle close, timeout, backpressure, and classified failure
+→ use the least-privileged local Connection Interface → receive a safe default
+Isolation Context or deliberately select an additional one → supply either exact
+Service Name or Service Target → resolve the name when needed → authenticate and
+expose the exact target → connect or accept → read and write opaque bytes →
+handle close, timeout, backpressure, and classified failure
 
 **Done when:** the Application can use its own protocol without treating a Node
 ID as an application address, embedding a mandatory Ardents SDK, or importing
@@ -68,7 +69,9 @@ authorization, persistence, semantic retry, and data format. Access to connectio
 traffic alone does not expose Service Authority or Service administration.
 Failed name resolution or target authentication never falls back to another
 destination or the ordinary network. After a partial write or connection loss,
-the network never claims that the remote Application processed the bytes.
+the network never claims that the remote Application processed the bytes. The
+Isolation Context remains local and cannot become an application or network
+identity.
 
 ## J-05 — Use the Named Unlisted Site tracer
 

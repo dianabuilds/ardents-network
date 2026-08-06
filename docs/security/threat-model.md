@@ -119,7 +119,13 @@ No document or interface may say only “anonymous,” “private,” “secure,
   without a separate retention, deletion, abuse, and metadata contract.
 - Route downgrade and loss of endpoint authentication are explicit and cannot
   occur silently.
-- Different Isolation Contexts do not share forbidden route or session state.
+- Every locally authorized Application receives a distinct default Isolation
+  Context; missing explicit input never selects a global shared context.
+- Isolation Contexts are local policy boundaries, not network-visible User or
+  Service identities, and different contexts do not share linkable route or
+  session state.
+- Isolation Context separation does not defeat correlation through Application
+  Data, timing, volume, or observation of the local endpoint's network traffic.
 - Bounded retry does not create unbounded queues, amplification, or duplicate
   application operations by implication.
 - Bootstrap, naming, protocol releases, software distribution, and emergency
