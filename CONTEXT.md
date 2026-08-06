@@ -104,7 +104,8 @@ _Avoid_: DNS A record, service listing, origin address
 
 **Resolver**:
 The product function that verifies a Service Name and returns its current
-Service Target or an explicit resolution failure.
+Service Target or an explicit resolution failure. Successful resolution is not
+itself a successful Service Connection.
 _Avoid_: Search engine, trusted DNS server
 
 **Service Descriptor**:
@@ -115,10 +116,10 @@ _Avoid_: Name Record, IP endpoint, application profile
 ## Connections and routing
 
 **Service Connection**:
-A live protected, reliable, ordered, bidirectional byte stream between an
-Application and a Service Target. It carries opaque Application Data without
-message boundaries and implies no offline delivery, semantic completion, or
-automatic replay.
+A live protected, reliable, ordered, bidirectional byte stream bound to an
+authenticated Service Target. It carries opaque Application Data without message
+boundaries and implies no offline delivery, semantic completion, or automatic
+replay.
 _Avoid_: Node-to-node message, conversation, Mailbox
 
 **Application Data**:

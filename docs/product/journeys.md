@@ -25,7 +25,8 @@ phone, email, wallet, central User account, or manual routing configuration.
 
 **Flow:** enter exact name → resolve and verify Name Record → obtain current
 Service reachability → establish an Interactive Route → authenticate the Service
-Target → open a Service Connection
+Target → expose the authenticated target in the result → open a Service
+Connection
 
 **Done when:** the Application reaches the intended live Service or receives an
 explicit failure. No directory search occurs, and possession of the name is not
@@ -56,14 +57,17 @@ Service Target.
 
 **Flow:** separately authorize Service administration when publishing is needed
 → use the least-privileged local Connection Interface → select Isolation Context
-→ resolve or supply Service Target → connect or accept → read and write opaque
-bytes → handle close, timeout, backpressure, and classified failure
+→ supply either exact Service Name or Service Target → resolve the name when
+needed → authenticate and expose the exact target → connect or accept → read and
+write opaque bytes → handle close, timeout, backpressure, and classified failure
 
 **Done when:** the Application can use its own protocol without treating a Node
 ID as an application address, embedding a mandatory Ardents SDK, or importing
 routing internals. The Application remains responsible for User identity,
 authorization, persistence, semantic retry, and data format. Access to connection
 traffic alone does not expose Service Authority or Service administration.
+Failed name resolution or target authentication never falls back to another
+destination or the ordinary network.
 
 ## J-05 — Use the Named Unlisted Site tracer
 

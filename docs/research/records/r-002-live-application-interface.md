@@ -103,6 +103,33 @@ Consequences:
   processes, sockets, protocols, or binaries;
 - P1-D7 must define how local access is granted and scoped.
 
+### P1-D4 — Name and target destinations
+
+**Product Owner decision, accepted 2026-08-07:** an outbound connection accepts
+either an exact Service Name or a Service Target. A supplied name is verifiably
+resolved to its current target; a supplied target bypasses naming and selects
+that exact machine-verifiable identity.
+
+The authoritative result boundary is:
+
+- connection success is reported only after the selected Service Target has
+  been authenticated;
+- the authenticated Service Target is available to the Application as part of
+  the connection result, including when the input was a Service Name;
+- successful name resolution alone is not connection success;
+- resolution or authentication failure is explicit and never causes silent
+  fallback to another name source, target, namespace, or ordinary network.
+
+Consequences:
+
+- human-facing Applications may use stable Service Names that follow an accepted
+  target replacement;
+- machine integrations may connect to or pin an exact Service Target without
+  depending on the naming system;
+- the interface does not yet choose destination syntax, metadata encoding, or a
+  concrete proxy protocol;
+- P1-D5 must define the exact observable failure classes.
+
 ## Hypotheses
 
 - **H1 — Connection plus Service Administration Interfaces:** Applications
@@ -175,7 +202,10 @@ that maps an ordinary HTTP client and server through simulated `connect`,
 - **Product Owner decision:** connection traffic and Service administration are
   separate privilege boundaries. Connection access cannot expose Service
   Authority or grant publication and configuration operations.
-- **Inference:** P1-D1 through P1-D3 select H1 as the working product shape. The
+- **Product Owner decision:** both Service Name and Service Target are accepted
+  destinations. Connection success exposes the exact authenticated target, and
+  failed resolution or authentication never silently changes the destination.
+- **Inference:** P1-D1 through P1-D4 select H1 as the working product shape. The
   accepted logical separation does not require separate protocols or processes.
 
 ## Options
@@ -208,16 +238,15 @@ that maps an ordinary HTTP client and server through simulated `connect`,
 Keep **H1** as the working shape: an implementation-neutral local data path plus
 an explicit separately authorized Service Administration Interface. P1-D1 fixes
 the no-mandatory-SDK boundary, P1-D2 fixes the stream-only V1 data primitive,
-and P1-D3 fixes their privilege separation.
+P1-D3 fixes their privilege separation, and P1-D4 fixes destination and target
+authentication semantics.
 
 Resolve the remaining contract one decision at a time:
 
-1. **P1-D4:** whether `connect` accepts Service Name, Service Target, or both and
-   what authenticated result it returns.
-2. **P1-D5:** exact connection, partial-write, timeout, and close failures.
-3. **P1-D6:** how an Application supplies Isolation Context without turning it
+1. **P1-D5:** exact connection, partial-write, timeout, and close failures.
+2. **P1-D6:** how an Application supplies Isolation Context without turning it
    into a global identity.
-4. **P1-D7:** local authorization for publishing and Service Authority access.
+3. **P1-D7:** local authorization for publishing and Service Authority access.
 
 No concrete proxy protocol, serialization, library, or language is selected.
 
@@ -231,7 +260,10 @@ No concrete proxy protocol, serialization, library, or language is selected.
   automatic replay.
 - P1-D3 accepted: the Connection Interface is least-privileged and cannot grant
   access to the separately authorized Service Administration Interface.
+- P1-D4 accepted: both Service Name and Service Target are valid destinations;
+  success exposes the exact authenticated target and failures never silently
+  fall back to another destination.
 - H1 is the working shape; H2 is rejected as mandatory integration; H3 is
   insufficient by itself.
-- P1-D4 is next.
+- P1-D5 is next.
 - No ADR and no code.
