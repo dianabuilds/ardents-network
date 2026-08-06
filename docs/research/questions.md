@@ -1,59 +1,90 @@
-# Research queue
+# Network research queue
 
 Status: **open**
 
-This is the decision backlog for the first tracer product. Priority means “what
-must be learned first,” not implementation order.
+This backlog exists to design Ardents as a network product. A question belongs
+here only when its answer changes an observable network contract, a security
+claim, or a later technology comparison. It is not a list of every feature we
+could build.
 
-## Foundation — blocks architecture
+## Current working baseline
 
-| ID | Question | Decision unlocked | Required evidence | State |
-|---|---|---|---|---|
-| R-001 | What exact observer and relay-collusion models must Interactive and Shielded Routes resist? | Privacy claims, route contracts, test strategy | Formal claim matrix, attack analysis, simulation/measurement plan | open |
-| R-002 | What is the safe V1 application boundary for a Site Bundle? | Static web/client runtime, sandbox, Capability surface | Representative apps, fingerprinting study, sandbox comparison, escape/update threat analysis | open |
-| R-003 | How are global and scoped Service Names registered, resolved privately, recovered, expired, and disputed? | Naming constitution and recovery contract | Consistency and privacy analysis, governance options, query-linkability experiments, failure recovery | open |
-| R-004 | Which routing families can satisfy the Interactive Route latency and endpoint-location contract? | Interactive carrier architecture | Primary protocol analysis, prototype measurements, churn/collusion behavior, mobile constraints | open |
-| R-005 | Which routing families can satisfy the Shielded Route metadata contract at an affordable cover budget? | Higher-privacy Application Data carrier | Anonymity simulation, latency/bandwidth budgets, active attack analysis, operator diversity assumptions | open |
-| R-006 | How do Recovery Root, Devices, Personas, relationships, revocation, and multi-device state coexist without creating a universal identity? | Identity and authorization state model | State-machine scenarios, compromise/recovery analysis, existing protocol comparison, usability testing | open |
-| R-007 | What retention, replication, deletion, and recovery semantics keep Site Bundles available without stable metadata beacons, and can the same substrate safely retain Application Data? | Replica/storage boundary | Failure simulation, privacy analysis, capacity model, deletion and seizure behavior | open |
-| R-008 | What Client isolation model can run untrusted private applications without creating a universal fingerprint? | Application runtime and permission UX | Sandbox threat analysis, API prototype, deterministic/fingerprinting tests, update model | open |
-| R-019 | What generic Application Data contract should Ardents expose: destination, online/offline delivery, reliability, ordering, backpressure, retention, and Route Profile? | Network-versus-application responsibility and transport API | Representative non-messenger and messenger applications, state/failure matrix, metadata analysis, latency/storage budgets, capability walkthrough | open |
+Research starts from these reversible product boundaries:
 
-## Resilience — blocks hostile deployment
+- Ardents addresses a Service Target, not a User or infrastructure Node;
+- the smallest transport is an online Service Connection carrying opaque bytes;
+- the Application owns its protocol, User identity, authorization, persistence,
+  semantic retry, and offline behavior;
+- the core connects external local Applications and does not assume a bundled
+  runtime, replicated content store, or decentralized compute layer;
+- Named Unlisted Site is a Reference Application for the network, not the
+  definition of the network.
 
-| ID | Question | Decision unlocked | Required evidence | State |
-|---|---|---|---|---|
-| R-009 | How can Clients bootstrap and obtain Bridges under blocking without one partitionable trust root? | Bootstrap and circumvention architecture | Censorship cases, multi-source design, probing resistance, partition detection | open |
-| R-010 | Which local and anonymous costs limit spam, flooding, and Sybil capture without global identity? | Admission and abuse policy | Attack economics, accessibility impact, unlinkability analysis, adaptive-control experiments | open |
-| R-011 | How will the network measure independent operators and route around correlated ownership, ASN, software, and jurisdiction? | Contributor selection and transparency | Topology model, ownership signals, adversarial declarations, privacy-preserving telemetry | open |
-| R-012 | What happens when naming, bootstrap, releases, or emergency governance is captured or unavailable? | Control-plane constitution | Power map, quorum/failure scenarios, recovery and fork behavior, appeal/expiry model | open |
+Each open question must either confirm, narrow, or reject one of those
+boundaries with named evidence.
 
-## Technology — begins after contracts stabilize
+## Foundation — defines the network contract
 
-| ID | Question | Decision unlocked | Required evidence | State |
-|---|---|---|---|---|
-| R-013 | Which existing cryptographic protocols and maintained implementations cover each accepted identity, naming, Application Data, storage, and routing primitive? | Build/adopt map | Security reviews, API fit, maintenance history, license, interoperability and misuse analysis | open |
-| R-014 | Which implementation language and runtime best fit audited dependencies, memory safety, async networking, reproducible builds, mobile/desktop targets, and contributor capacity? | Production language/runtime ADR | Two tracer prototypes, dependency audit, profiling, cross-build/release comparison, team learning cost | open |
-| R-015 | What protocol-description and conformance strategy permits multiple implementations without freezing immature semantics? | Wire-format and compatibility policy | Evolution scenarios, fuzz/conformance prototype, canonicalization and downgrade analysis | open |
+| ID | Exact question | Decision and required result | State |
+|---|---|---|---|
+| R-006 | What is the lifecycle of a Service Target: creation/import, one or several live Service Instances, operational-key rotation, revocation, compromise, recovery, and permanent loss? | A state machine that never substitutes a Node ID or User identity for the Service, plus explicit behavior for every transition and conflict. | open |
+| R-002 | What is the smallest live Application Interface that lets an existing local application publish and consume a Service safely? | An exact `create/import → listen/accept → resolve/connect → read/write → close/fail` contract covering target authentication, ordering, reliability while live, backpressure, timeouts, cancellation, errors, resource limits, and Isolation Context. It must state what the Application still owns. | open |
+| R-001 | Which endpoint, local-observer, relay-collusion, and broad traffic-observer capabilities must the Interactive Route resist, and what does it deliberately expose? | A claim matrix using the threat-model format, including conditions, measurable falsification, and honest limitations. | open |
+| R-003 | How does an exact Service Name bind to a Service Target, resolve without becoming a directory, survive accepted rotation, and handle registration, expiry, recovery, conflict, enumeration, query privacy, and Control Plane capture? | A naming product contract and governance/failure state machine; no registry technology is selected until this exists. | open |
+| R-004 | Which routing and rendezvous families can meet the accepted Interactive Route claim and application latency budget under churn, malicious Nodes, and realistic client devices? | Comparable primary-source analysis and bounded measurements against one R-001 claim matrix; no library popularity scoring. | open |
+| R-007 | What availability does the core promise when a path fails or a Service is offline, and which retries can be performed without lying to the Application about operation completion? | A failure matrix for discovery, connect, partial write, route loss, service loss, and reconnect. Retained delivery and replicated content remain outside the core unless this research proves they are necessary. | open |
+| R-008 | How are local Applications separated from endpoint authority, network metadata, and each other's Isolation Context while still supporting ordinary software? | A local trust-boundary and misuse contract comparing proxy, process API, embedded library, and reference-client responsibilities. This is not a decision to run arbitrary application code. | open |
+| R-019 | What generic Application Data contract should include destination, online/offline delivery, reliability, ordering, retention, and Route Profile? | **Rejected as one question:** it mixed address lifecycle, live transport, storage, routing, and Application policy. Its decisions are now isolated in R-006, R-002, R-001, R-007, and R-008. | rejected |
 
-## Product validation — runs alongside technical research
+## Resilience — makes the product viable in a hostile network
 
-| ID | Question | Decision unlocked | Required evidence | State |
-|---|---|---|---|---|
-| R-016 | Which first users have a problem severe enough to accept the latency and trust trade-offs? | Initial audience and distribution | Interviews, scenario tests, alternatives used today, willingness-to-switch evidence | open |
-| R-017 | Is Named Private Site + Anonymous Mailbox the smallest slice that demonstrates differentiated value? | Architecture-tracer scope; later V1 candidate | Structured Product Owner walkthrough, incumbent comparison, traced failure/recovery; later external comprehension | decided |
-| R-018 | Do people understand Persona, Service Name, permissions, recovery, and route guarantees without learning network jargon? | Client information architecture | Usability prototypes, recovery drills, permission and warning comprehension tests | open |
+| ID | Exact question | Decision and required result | State |
+|---|---|---|---|
+| R-009 | How does a fresh or blocked endpoint obtain enough authenticated network state and replaceable entry paths without one permanently necessary bootstrap address or trust root? | Bootstrap, partition-detection, Bridge-distribution, probing-resistance, and recovery contract with explicit compromised-source behavior. | open |
+| R-010 | Which local, anonymous, and bounded costs protect connection, discovery, rendezvous, and naming capacity from flooding and Sybil capture without a global User identity? | Resource-by-resource attack economics and admission controls, including accessibility and unlinkability costs. | open |
+| R-011 | How does an endpoint estimate and avoid correlated control by operator, network, family, software supply chain, and jurisdiction without collecting a new User graph? | Selection inputs, uncertainty model, privacy-preserving measurements, and failure thresholds for the accepted route claim. | open |
+| R-012 | What happens when naming, bootstrap, protocol releases, or emergency governance is captured, partitioned, or unavailable? | A Control Plane power map with quorum, transparency, expiry, recovery, and fork behavior for each root. | open |
+| R-020 | Why will independent contributors provide and maintain useful network roles, and which incentive or public-goods models remain viable without making a token or one sponsor a security root? | A contributor journey, cost/capacity model, abuse incentives, concentration risks, and staged sustainability options that the current one-to-one project can actually operate. | open |
 
-Under the current one-to-one working model, R-016 and the external-observation
-part of R-018 remain open future gates. A Product Owner walkthrough may prepare
-their scenarios but must not be recorded as participant or market validation.
+## Optional network extensions — require a concrete product need
+
+| ID | Exact question | Decision and required result | State |
+|---|---|---|---|
+| R-005 | Does Ardents need a second, delayed or cover-traffic-heavy Route Profile for a named Application job, and can it provide a measurable advantage over the Interactive Route at an acceptable cost? | A real operation, observer claim, latency/bandwidth/cover budget, and comparison. `No second profile` is an acceptable answer. | open |
+| R-021 | Do multiple distinct Applications require the same retained-delivery or replicated-content semantics strongly enough to justify a standard Overlay Service? | At least two complete Application journeys, retention/deletion/abuse metadata analysis, failure model, and proof that a live connection plus application storage is insufficient. | open |
+| R-022 | Is any shared application identity, Credential, Contact, Space, or Capability model required at the network boundary rather than inside Applications? | Cross-application interoperability need, linkability analysis, recovery model, and a minimal boundary. `Application-owned identity only` is the default answer. | open |
+
+## Technology — begins after the relevant contracts stabilize
+
+| ID | Exact question | Decision and required result | State |
+|---|---|---|---|
+| R-013 | Which maintained protocols and implementations fit each accepted addressing, transport, routing, discovery, naming, and bootstrap contract? | Build/adopt map using specifications, security reviews, maintenance, license, interoperability, replacement cost, and misuse analysis. | open |
+| R-014 | Which implementation language and runtime best fit the same accepted tracer, audited dependencies, memory safety, async networking, reproducible builds, target platforms, and the one-to-one project's capacity? | Comparable bounded prototypes and release/dependency evidence. It is not a Go-versus-Rust preference vote. | open |
+| R-015 | What protocol-description, versioning, negotiation, and conformance strategy permits independent implementations without freezing immature semantics or enabling downgrade? | Evolution scenarios, conformance/fuzz prototype, canonicalization rules, and compatibility/deprecation contract. | open |
+
+## Product validation — runs beside technical research
+
+| ID | Exact question | Decision and required result | State |
+|---|---|---|---|
+| R-016 | Which Users and Developers have a problem severe enough to adopt an internal location-private network despite latency, installation, and trust costs? | Scenario and competitor comparison now; external demand evidence remains a future gate and must not be invented from the Product Owner's preferences. | open |
+| R-017 | Is Named Unlisted Site a useful smallest Reference Application for exercising publish, name, resolve, connect, and route failure without adding messenger semantics? | Selected as an architecture tracer. This does not validate market demand and no longer implies replicated Site Bundles or an Ardents runtime. | decided |
+| R-018 | Can a User and Developer understand Service Name trust, connection state, route limits, failure, and recovery without learning routing jargon? | One-to-one walkthrough can refine wording; external comprehension evidence remains a future release gate. | open |
 
 ## Decision order
 
-R-017 selected the Named Unlisted Site tracer and rejected a built-in Inbox.
-Resolve R-019 next, then R-002, R-003, R-006, and R-001 before selecting the
-production language or transport. R-016 and R-018 remain visible but do not
-block reversible architecture research while external participants are
-unavailable. R-004, R-005, R-007, and R-008 may then produce bounded
-experiments. R-014 compares implementation environments using the same accepted
-tracer and criteria; it must not begin as a Go-versus-Rust preference debate.
+The dependency path is intentionally short:
+
+1. **R-006 — Service Target lifecycle:** define what the network addresses.
+2. **R-002 — live Application Interface:** define exactly what software can do.
+3. **R-001 — Interactive Route claim:** define what protection that connection
+   promises.
+4. **R-003 — Service Name:** define the human layer over the accepted target.
+5. **R-004 and R-009 — routing and hostile bootstrap:** compare mechanisms only
+   against the accepted contracts.
+6. **R-007 and R-008 — failure and local isolation:** close the minimum tracer
+   safety boundary.
+
+R-010 through R-012 and R-020 run before any public deployment claim. Optional
+extensions R-005, R-021, and R-022 do not block the live network tracer. R-013
+then maps existing components, and R-014 compares languages using the same
+contract. No production stack is selected earlier.

@@ -1,117 +1,123 @@
-# Product journeys
+# Network product journeys
 
-These journeys define observable product behavior. They deliberately avoid
-selecting protocols, libraries, or implementation languages.
+These journeys define observable behavior of Ardents as a network. They avoid
+selecting protocols, libraries, implementation languages, or application
+semantics.
 
-## J-01 — First launch
+## J-01 — Start and join Ardents
 
-**Actor:** Person
+**Actor:** User or Developer
 
-**Start:** A newly installed Ardents Client
+**Start:** A newly installed local Ardents endpoint
 
-**Flow:** Create Vault → protect recovery method → name Device → create first
-Persona
+**Flow:** start endpoint → verify software/network state → obtain current
+bootstrap information → join through an available entry path → report ready or
+an exact degraded state
 
-**Done when:** no phone, email, wallet, or central registration was required;
-recovery was verified rather than merely displayed.
+**Done when:** a local Application can use the Application Interface without a
+phone, email, wallet, central User account, or manual routing configuration.
 
-## J-02 — Open a private site
+## J-02 — Open an Unlisted Service
 
-**Actor:** Person
+**Actor:** User
 
-**Start:** An exact human-readable Service Name already known by the Person
+**Start:** An exact human-readable Service Name already known by the User
 
-**Flow:** enter exact name → resolve without directory search → verify proof and
-expiry → select safe route → retrieve and authenticate release → render in
-isolation
+**Flow:** enter exact name → resolve and verify Name Record → obtain current
+Service reachability → establish an Interactive Route → authenticate the Service
+Target → open a Service Connection
 
-**Done when:** the intended release opens and publisher and visitor have not
-learned each other's network location within the Interactive Route contract. The
-service did not need to be indexed, but possession of its name was not presented
-as authorization or proof of secrecy.
+**Done when:** the Application reaches the intended live Service or receives an
+explicit failure. No directory search occurs, and possession of the name is not
+shown as authorization or secrecy.
 
-## J-03 — Publish a site or client application
+## J-03 — Publish a local Service
 
 **Actor:** Developer
 
-**Start:** Project assets and a desired Service Name
+**Start:** A local application server and an Ardents endpoint
 
-**Flow:** obtain name → declare Capabilities → lint → build reproducibly → sign →
-select Replicas → publish
+**Flow:** create or import Service Target → choose local listener → publish
+authenticated, expiring reachability → bind or update Service Name → accept a
+test Service Connection
 
-**Done when:** another Client can verify and open the release after one Replica
-is made unavailable.
+**Done when:** a remote Application can connect while neither the User nor an
+ordinary intermediary learns a public origin address outside the declared
+Route Profile. Stopping the local Service produces an explicit unavailable
+result, not implied offline delivery.
 
-## J-05 — Establish a Contact
+## J-04 — Integrate an Application
 
-**Actors:** Two People
+**Actor:** Developer
 
-**Start:** QR, Invite, or comparison in another trusted context
+**Start:** Existing client/server application logic
 
-**Flow:** verify invitation → accept Message Request → establish pairwise
-relationship → assign local display name
+**Flow:** connect to local Application Interface → select Isolation Context →
+resolve or supply Service Target → connect/listen → read and write opaque bytes
+→ handle close, timeout, backpressure, and classified failure
 
-**Done when:** the relationship is authenticated without a public directory and
-does not link either Person's unrelated Personas.
+**Done when:** the Application can use its own protocol without treating a Node
+ID as an application address and without importing routing internals. The
+Application remains responsible for User identity, authorization, persistence,
+semantic retry, and data format.
 
-## J-06 — Create a private Space
+## J-05 — Use the Named Unlisted Site tracer
 
-**Actor:** Space steward
+**Actors:** Developer and User
 
-**Start:** One or more Contacts
+**Start:** A local HTTP server and a desired Service Name
 
-**Flow:** create Space → choose recovery policy → invite members → delegate names
-→ install Service → choose admission policy
+**Flow:** publish HTTP server as Service → bind name → enter exact name in
+reference client → resolve → connect → exchange HTTP bytes → update local server
+or rotate accepted service material without changing the name
 
-**Done when:** members can collaborate under Space-scoped Personas, Capabilities,
-and names without creating a global authority.
+**Done when:** the site opens through the generic Service Connection and its
+name continuity and route failure behavior are visible. No replicated Site
+Bundle, Ardents runtime, or built-in application identity is required.
 
-## J-07 — Recover after losing a Device
+## J-06 — Recover from a failed or blocked path
 
-**Actor:** Person
+**Actor:** User or Developer
 
-**Start:** Protected Recovery Root and a replacement Device
+**Start:** An active or attempted Service Connection whose entry or route fails
 
-**Flow:** authorize replacement → recover selected Personas → revoke lost Device
-→ re-establish sessions as required
+**Flow:** classify failure → avoid unsafe silent downgrade → obtain alternate
+network state or Bridge when required → build a new route → reconnect or return
+an explicit terminal result
 
-**Done when:** the lost Device cannot obtain future protected data and unrelated
-Personas were neither exposed nor unnecessarily rotated.
+**Done when:** connectivity resumes without manual protocol configuration, or
+the Application receives enough information to make a safe retry decision. No
+claim is made that an interrupted application operation completed.
 
-## J-08 — Continue under network blocking
-
-**Actor:** Person
-
-**Start:** Ordinary bootstrap or entry path is blocked
-
-**Flow:** detect failure class → obtain a Bridge through an alternate channel →
-reconnect → rotate exposed entry metadata
-
-**Done when:** normal product use resumes without manual protocol configuration
-and without claiming that the Bridge alone creates anonymity.
-
-## J-09 — Contribute resources
+## J-07 — Contribute network resources
 
 **Actor:** Network Contributor
 
-**Start:** A host with bounded bandwidth, disk, or later compute
+**Start:** A host with bounded bandwidth and possibly other resources
 
-**Flow:** install → choose roles and limits → run self-check → participate →
-observe health → leave gracefully
+**Flow:** install → choose explicit network role and limits → self-check → join
+→ observe privacy-safe health → update → withdraw gracefully
 
-**Done when:** the Node helps the network without reading protected content,
-owning users, or leaving unfulfilled retained-data obligations.
+**Done when:** the Node helps the carrier without reading Application Data,
+becoming a Service or User identity, or silently retaining an unbounded duty
+after exit.
 
 ## Cross-journey failure cases
 
 Every implementation proposal must exercise at least these cases:
 
-- one ordinary relay is malicious, slow, or absent;
-- one Replica disappears permanently;
-- a name record is stale, expired, rolled back, or equivocating;
-- a Device is stolen while another Device is offline;
-- an application endpoint disappears during an operation;
-- a malicious Service requests excessive Capabilities or fingerprints the Client;
+- bootstrap information is stale, conflicting, blocked, or malicious;
+- one ordinary entry, relay, discovery, or rendezvous Node is malicious, slow,
+  or absent;
+- nominally different Nodes share one operator, network, software supply chain,
+  or jurisdiction;
+- a Name Record is stale, expired, rolled back, or equivocating;
+- a Service Descriptor is unavailable or points to no reachable Service
+  Instance;
+- a Service goes offline before connect, during handshake, or mid-operation;
+- a route fails after the Application has written some bytes;
+- an Application reuses one Isolation Context across identities or contexts that
+  should not be linked;
+- a local Application attempts to exceed connection, bandwidth, or queue limits;
 - a censor blocks known entry addresses and protocol fingerprints;
-- nominally different Nodes share one operator, network, or jurisdiction;
-- an official update channel is compromised or unavailable.
+- an official endpoint or protocol update channel is compromised or unavailable.

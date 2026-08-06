@@ -17,6 +17,31 @@ groups, governance, and application execution.
 | Gitcoin | Mechanism plurality, transparent review, appeals, and public-goods funding | One token or voting mechanism controlling every kind of decision |
 | Legacy Ardents | Root/Device separation, Credential distinct from authority, scoped Capabilities, transport identity separation | Stable global Principal, Node-centric enrollment, single Realm Authority, and architecture inherited without current evidence |
 
+## Network-product boundary evidence
+
+Sources in this section were checked on 2026-08-06.
+
+- **Sourced fact:** Tor describes itself as an overlay for low-latency TCP
+  applications. Its application interface opens a TCP stream, while an onion
+  service uses introduction and rendezvous paths and then maps the resulting
+  stream to an external process. See the [Tor introduction](https://spec.torproject.org/intro/index.html),
+  [onion-service overview](https://spec.torproject.org/rend-spec/protocol-overview.html),
+  and [SOCKS extensions](https://spec.torproject.org/socks-extensions.html).
+- **Sourced fact:** I2P gives an Application a cryptographic Destination distinct
+  from router identity. Its reliable ordered streaming protocol and datagrams
+  are application-layer facilities above the router interface; naming is also
+  largely implemented outside the router. See [Application development](https://i2p.net/en/docs/develop/applications/),
+  [Streaming](https://i2p.net/en/docs/api/streaming/),
+  [Datagrams](https://i2p.net/en/docs/api/datagrams), and
+  [Naming](https://i2p.net/en/docs/overview/naming/).
+- **Inference:** The common reusable boundary is an application endpoint plus a
+  generic live transport, not built-in messenger, content, or User identity
+  semantics. Ardents can add a human Service Name and stronger explicit privacy
+  contracts without making every possible Overlay a router primitive.
+- **Recommendation:** use an online bidirectional stream as the V1 working
+  baseline and require a concrete Application before adding datagrams, retained
+  delivery, replicated publishing, or shared identity to the core.
+
 ## Primary starting sources
 
 ### Tor

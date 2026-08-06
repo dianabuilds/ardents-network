@@ -484,7 +484,26 @@ its security model, but it is not invented as a current resource.
   neutral product term.
 - R-016 and external R-018 validation remain open future gates; they are not
   assumed active under the current one-to-one working model.
-- R-019 is next and must define network-versus-application responsibility before
-  an application transport API or offline-delivery primitive is accepted.
+- R-019 was initially named as the next question; the later network-product
+  clarification below rejects and decomposes it before any transport API or
+  offline-delivery primitive is accepted.
 - No ADR; the decision is reversible before implementation.
 - No implementation or experiment code yet.
+
+## Network-product clarification — 2026-08-06
+
+The later network functional-map review narrows what R-017 actually selected.
+**Named Unlisted Site is a Reference Application, not a storage or application
+runtime architecture.** Its baseline form is an ordinary local HTTP service
+exposed through a generic live Service Connection.
+
+The earlier Site Bundle, Replica, permission, and sandbox assumptions in this
+record are retained as historical evaluated hypotheses. They are not accepted
+network-core requirements. Replicated publishing or a bundled runtime may
+return only as separately justified Overlay Services.
+
+R-019 was rejected as an imprecise combined question. Its address, live
+transport, routing, failure, and local-boundary decisions are now separated into
+R-006, R-002, R-001, R-007, and R-008. This clarification does not reopen the
+accepted Unlisted Service rule or the rejection of built-in Inbox and messenger
+semantics.

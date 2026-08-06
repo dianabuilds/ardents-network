@@ -1,145 +1,168 @@
 # Product vision
 
-Status: **proposed product contract**
+Status: **proposed network product contract**
 
 Last reviewed: 2026-08-06
 
 ## Vision
 
-Ardents enables people and developers to create private worlds—relationships,
-spaces, sites, and applications—that do not depend on one provider and do not
-require exposing a universal identity or network location.
+Ardents is an internal application network for reaching services without making
+their ordinary network locations part of the application relationship. A User
+runs an Ardents endpoint; a Developer connects an existing site or application
+service; independently operated Nodes carry live Application Data between them.
 
-Ardents is an internal application network. It is not primarily an Internet
-proxy, cryptocurrency, hosting marketplace, or messenger. Naming, publishing,
-application isolation, and protected Application Data transport are coordinated
-surfaces. Messaging is one application that developers may build on those
-surfaces, not mandatory Ardents product semantics.
+The network is the product. A site, messenger, file exchange, community, or
+identity system is an Application or optional Overlay Service built on it.
+Ardents does not need to understand those application semantics in order to
+route and protect their connections.
 
-## Product boundary
+## What the product adjectives mean
 
-The carrier is public and open to independent Network Contributors. Privacy is
-created by a sufficiently broad anonymity set, independent paths, endpoint
-isolation, traffic protection appropriate to the operation, and explicit
-control-plane governance.
+- **Private** means Service Connections protect Application Data and expose only
+  the metadata allowed by a declared Route Profile. It does not mean every
+  Service is access-controlled.
+- **Anonymous** is never a blanket claim. The initial goal is location privacy
+  between a User and a Service and against any one ordinary intermediary, with
+  exact observer and collusion limits defined by research.
+- **Decentralized** means ordinary reachability and routing do not require one
+  hosting or relay operator. Naming, bootstrap, releases, and emergency powers
+  remain explicit Control Plane risks until their own designs are accepted.
 
-Private Services and Spaces can be Unlisted or capability-gated. Ardents does
-not index an Unlisted Service, but anyone who already knows its exact Service
-Name may open it. Knowing the name is not secrecy or authorization. A private
-service does not require the underlying carrier to be a small private network.
+## Fixed direction
 
-## People we serve
+The following product choices already constrain research:
 
-### Person
+1. Ardents is a public carrier for internal Services, not a membership-gated
+   private network and not a general clearnet exit.
+2. A Developer can expose a site or application through Ardents without
+   publishing a stable origin address to its Users.
+3. An Unlisted Service is not indexed, but anyone knowing its exact
+   human-readable Service Name may attempt to open it.
+4. The network carries opaque Application Data. It does not impose messenger,
+   Inbox, Contact, Space, file, or command semantics.
+5. Node identities are infrastructure details. They are not User identities,
+   Service addresses, or an application-level `from ID` / `to ID` model.
+6. Censorship, probing, Sybil participation, malicious infrastructure, seizure,
+   traffic analysis, and governance capture are normal operating conditions.
 
-A Person wants to communicate and use applications without registering a phone,
-email, wallet, or universal public profile. Network internals should remain
-invisible during normal use.
+## Network product boundary
 
-### Developer
+The core product must let a local Application:
 
-A Developer wants to publish and update a site or application without operating
-a stable public origin and without becoming an anonymity-protocol expert.
+- start an Ardents endpoint and join the carrier without a central user account;
+- create or import a location-independent Service Target;
+- expose a local Service Instance behind that target;
+- bind an optional human-readable Service Name to the target;
+- resolve an exact Service Name without a public directory;
+- establish a protected live Service Connection;
+- exchange opaque Application Data and receive explicit failure and closure;
+- keep unrelated application contexts from being linked by accidental route
+  reuse;
+- recover an entry path when ordinary bootstrap or transport is blocked.
 
-### Space steward
-
-A steward wants to create a private collaboration boundary, invite and revoke
-members, delegate names, install services, and choose local abuse policy without
-becoming a global identity authority.
-
-### Network Contributor
-
-A Contributor wants to provide bounded relay, storage, bridge, or execution
-resources without receiving access to protected content or ownership of users.
+The core does not, by default, execute untrusted application code, retain
+application payloads for offline recipients, replicate a site's content, define
+User identity, or decide application authorization. Any of those may later be a
+separate Ardents Application or Overlay Service after its own product contract
+is justified.
 
 ## Product surfaces
 
-These are responsibility boundaries, not necessarily separate binaries:
+These are responsibility boundaries, not selected binaries or APIs:
 
-- **Ardents Client** — identity, names, private applications, Capabilities,
-  Spaces, and route selection.
-- **Developer Studio** — names, packaging, privacy lint, releases, replication,
-  updates, and eventually stateful services.
-- **Space Console** — membership, delegation, installed services, and local
-  admission policy.
-- **Contributor Node** — explicit resource roles, limits, health, updates, and
-  graceful exit.
-- **Network Transparency** — control roots, operator diversity, governance, and
-  measurable privacy posture.
+- **Local Endpoint** — joins the network, builds routes, resolves Services, and
+  enforces connection isolation for local Applications.
+- **Application Interface** — lets software create/listen on Service Targets and
+  open/accept Service Connections without knowing network internals.
+- **Service Publisher** — binds a local Service Instance to a Service Target and
+  publishes authenticated reachability metadata.
+- **Naming Surface** — registers, resolves, rotates, recovers, and inspects
+  Service Names without becoming a service directory.
+- **Contributor Node** — provides explicit, bounded entry, relay, discovery,
+  rendezvous, or Bridge roles.
+- **Network Transparency** — exposes Control Plane roots, software provenance,
+  concentration, failures, and the limits of privacy claims.
 
 ## Core product promises
 
-1. Protected content is confidential and authenticated end to end.
-2. A Service Name is human-readable, location-independent, recoverable, and
-   verifiable without requiring a wallet.
-3. Person, Device, Persona, Contact, service, and route identities are not one
-   globally linkable identifier.
-4. A visitor and publisher do not learn each other's network location within the
-   declared Route Profile.
-5. Losing or blocking one ordinary relay or Replica does not require a central
-   operator to restore a service.
-6. Recovery and revocation do not require exposing a universal identity.
-7. Censorship, malicious infrastructure, Sybil pressure, seizure, and governance
-   capture are normal design inputs, not exceptional incidents.
-8. Every anonymity claim states its observer model and honest limitation.
+1. A Service Connection is confidential and authenticated end to end under its
+   accepted transport contract.
+2. A Service Target is independent of a Node identity and ordinary IP location.
+3. A Service Name resolves verifiably and can remain stable across accepted
+   Service Target or operational-key rotation.
+4. The User and Service do not learn each other's ordinary network location
+   within the declared Interactive Route conditions.
+5. No individual ordinary intermediary both reads Application Data and learns
+   both endpoint locations under the declared conditions.
+6. A failed path produces bounded recovery or an explicit failure; the network
+   does not silently pretend that an offline Service received data.
+7. Losing or blocking one ordinary path does not require one central operator
+   to restore connectivity.
+8. Every security, anonymity, availability, and decentralization claim states
+   its adversary, conditions, measurement, and limitation.
 
 ## First tracer: Named Unlisted Site
 
-The first product slice must prove the whole value chain:
+The first Reference Application proves the network chain without defining a
+general application platform:
 
-1. A Developer obtains a human-readable Service Name and defines recovery.
-2. The Developer builds, inspects, signs, and publishes an immutable Site Bundle.
-3. Independent Replicas retain the release and current service metadata.
-4. A Person who already knows the exact name enters it; the Client verifies
-   resolution and opens the Unlisted Service through an Interactive Route. No
-   network directory or search is involved.
-5. The Developer publishes an update and can recover control without changing
-   the Service Name.
-6. The journey still succeeds when one ordinary relay is blocked and one Replica
-   is unavailable.
+1. A Developer runs an ordinary local HTTP service.
+2. Ardents creates a Service Target, maps incoming connections to that local
+   service, and publishes reachability without an ordinary public origin.
+3. The Developer binds a recoverable Service Name to the target.
+4. A User who already knows the exact name enters it in a small reference
+   client. The name resolves and an Interactive Route reaches the Service.
+5. HTTP bytes cross a generic Service Connection; the network does not interpret
+   pages, forms, sessions, or application identity.
+6. The journey exposes route failure honestly, rebuilds an alternate path when
+   possible, and preserves the Service Name across an accepted service-key or
+   instance rotation.
 
-This tracer does not require a built-in Inbox, messenger, general stateful
-backend, large groups, payments, or a clearnet exit. Protected Application Data
-transport remains a core platform question, but R-019 must define its contract
-without importing chat semantics into the network.
+The tracer does not require replicated Site Bundles, an Ardents application
+runtime, offline storage, a built-in Inbox, or a permanent decentralized hosting
+layer. Those are separate product hypotheses, not hidden assumptions inside the
+network.
 
 ## Build versus adopt
 
-Ardents should build only the product semantics and integrations that make its
-promise unique. Proven community components are preferred for cryptography,
-secure storage, transport primitives, sandboxing, serialization, and standard
-protocol machinery when evidence shows that their threat model and maintenance
-model fit.
+Ardents should build only the network contracts and integrations that make its
+promise distinct. Proven community components are preferred for cryptography,
+transport primitives, secure local storage, serialization, sandboxing, and
+protocol machinery when their threat and maintenance models fit.
 
 No dependency is accepted because it is familiar, already present in `old`, or
-popular. No component is rejected merely because it was not written by this
-project.
+popular. No component is rejected merely because it was not written here. The
+production language, routing family, wire protocol, and library set remain open
+until the product and security contracts can compare them fairly.
 
-## Explicit non-goals for the first product
+## Explicit non-goals for the network core
 
 - clearnet exit, VPN, or general anonymous Internet access;
-- mandatory blockchain, public wallet linkage, token, or governance coin;
-- global username or proof-of-personhood registry;
-- opaque cryptographic addresses as the ordinary human experience;
-- public social feed or large public communities;
-- built-in Inbox, contact list, messenger, or universal conversation protocol;
-- generic cloud or arbitrary decentralized compute;
-- configurable anonymity knobs that silently create fingerprintable users;
-- an unmeasured claim of protection from a global passive observer;
+- public Service index, search, recommendations, or discovery feed;
+- built-in messenger, Inbox, Contacts, social graph, or conversation format;
+- universal User identity, global profile, mandatory Persona system, or proof
+  of personhood;
+- offline delivery, application history, or content persistence by implication;
+- bundled arbitrary application execution or decentralized compute;
+- mandatory blockchain, wallet, token, or governance coin;
+- opaque cryptographic addresses as the ordinary human naming experience;
+- user-tunable anonymity knobs that create silent fingerprinting hazards;
+- an unmeasured claim of protection from a global traffic observer;
 - compatibility with the architecture or wire contracts in `old`.
 
 ## What would falsify this direction
 
-The product direction must be reconsidered if research shows that at least one
-of the following is unavoidable:
+The direction must be reconsidered if evidence shows that at least one of the
+following is unavoidable:
 
-- human-readable naming necessarily creates a globally linkable owner or query
+- the Application Interface cannot be useful without importing application
+  identity, persistence, or protocol semantics into the network;
+- a useful low-latency route cannot hide both endpoint locations from the
+  accepted adversary;
+- human-readable naming necessarily creates an unacceptable ownership or query
   graph;
-- a useful Interactive Route cannot meet acceptable latency while hiding both
-  endpoints from the declared adversary;
-- safe application isolation requires capabilities so restrictive that useful
-  private applications cannot be built;
-- the contributor population cannot plausibly create independent operator,
-  network, and jurisdiction diversity;
-- recovery, multi-device operation, forward secrecy, and unlinkable Personas
-  cannot coexist under a usable human workflow.
+- safe isolation makes ordinary applications impractical to integrate;
+- a diverse contributor population cannot plausibly avoid one operator,
+  network, software, or jurisdiction becoming a de facto carrier;
+- hostile bootstrap and software update recovery require a permanent trusted
+  party whose power cannot be bounded or made visible.
