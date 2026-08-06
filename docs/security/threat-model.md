@@ -23,7 +23,7 @@ accepted.
 - ordinary network location of the User and Service Instance;
 - unlinkability between distinct Isolation Contexts to the extent promised by a
   Route Profile;
-- Service Target authority and continuity;
+- Service Authority secrecy and Service Target continuity;
 - Service Name binding, resolution integrity, and recovery state;
 - local Application Interface authority and network metadata;
 - route, discovery, bootstrap, and Bridge availability;
@@ -82,7 +82,7 @@ itself.
 | Sybil / flooding actor | Capture discovery or exhaust connection, rendezvous, descriptor, and naming capacity | Bounded queues and lifetimes, quotas or anonymous costs, diversified selection, local admission, and visible overload | No global proof of personhood; accessibility and concentration costs remain |
 | Malicious Service | Fingerprint requests, link Application identities, return exploit content, or lie at the application layer | Isolation Context, minimal network metadata, authenticated target, and clear Application boundary | The Service receives application plaintext and can link information that the Application voluntarily sends |
 | Malicious local Application | Reuse authority, inspect another app's state, overrun queues, or request unsafe route downgrade | Local interface authentication, per-Application authority, resource bounds, isolation, and explicit route policy | Code controlling the local endpoint can defeat local protections |
-| Compromised Service host | Steal online keys, observe Users' application data, or impersonate the Service | Separate recoverable Service authority from replaceable operational material; support revocation and rotation | A compromised live Service reads the data its Application is meant to receive and may impersonate it until revocation takes effect |
+| Compromised Service host | Copy the V1 Service Authority, observe Users' application data, or continue impersonating the Service after migration | Treat the Service Target as compromised, create a replacement authority and target, and rebind the Service Name; never claim same-target revocation | A compromised live Service reads intended plaintext; the old target remains impersonable, and recovery depends on trustworthy name replacement |
 | Operator loss / seizure | Remove Nodes, inspect state, or partition reachability | No plaintext at carrier Nodes, replaceable roles, bounded state, alternate paths, and explicit unavailable results | Real availability still requires independent capacity and a live Service Instance |
 | Supply-chain attacker | Ship a malicious official endpoint or protocol update | Reproducible artifacts, signed releases, staged updates, rollback protection, transparent roots, and later independent review | One widely trusted distribution root remains power until diversified |
 | Governance capture | Control naming, bootstrap, compatibility, releases, or emergencies | Separate power map, bounded quorum, transparency, expiry, recovery, and fork procedure | A decentralized data path does not remove Control Plane governance |
@@ -102,6 +102,8 @@ No document or interface may say only “anonymous,” “private,” “secure,
 ## Security invariants
 
 - A Node identity is never a User identity or Service Target.
+- Possession of the V1 Service Authority is sufficient to impersonate its
+  Service Target; suspected loss or compromise requires target replacement.
 - A Service Name is discovery, not Service authorization or human identity.
 - Name Records and Service Descriptors never contain an ordinary public origin
   address.
@@ -124,6 +126,6 @@ No document or interface may say only “anonymous,” “private,” “secure,
 ## Open security research
 
 The prioritized questions live in [the network research queue](../research/questions.md).
-No production architecture should be selected before R-006, R-002, R-001,
-R-003, R-004, R-007, and R-009 make the address, connection, observer, naming,
-routing, failure, and bootstrap contracts testable.
+R-006 fixes the V1 target lifecycle. No production architecture should be
+selected before R-002, R-001, R-003, R-004, R-007, and R-009 make the
+connection, observer, naming, routing, failure, and bootstrap contracts testable.

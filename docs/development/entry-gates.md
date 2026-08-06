@@ -23,7 +23,7 @@ does not select the production stack.
 The Reference Application may gain a shared codebase only after review of the
 minimum relevant contracts:
 
-- R-006 Service Target lifecycle;
+- accepted R-006 Service Target lifecycle;
 - R-002 live Application Interface;
 - R-001 Interactive Route adversary and claim;
 - R-003 Service Name and recovery boundary;

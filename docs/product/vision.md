@@ -44,13 +44,17 @@ The following product choices already constrain research:
    Service addresses, or an application-level `from ID` / `to ID` model.
 6. Censorship, probing, Sybil participation, malicious infrastructure, seizure,
    traffic analysis, and governance capture are normal operating conditions.
+7. V1 supports one active Service Instance per Service Target. Routine migration
+   preserves the target through an encrypted Service Authority export/import;
+   loss or compromise replaces the target through the stable Service Name.
 
 ## Network product boundary
 
 The core product must let a local Application:
 
 - start an Ardents endpoint and join the carrier without a central user account;
-- create or import a location-independent Service Target;
+- create or securely import a Service Authority and obtain its
+  location-independent Service Target;
 - expose a local Service Instance behind that target;
 - bind an optional human-readable Service Name to the target;
 - resolve an exact Service Name without a public directory;
@@ -88,8 +92,8 @@ These are responsibility boundaries, not selected binaries or APIs:
 1. A Service Connection is confidential and authenticated end to end under its
    accepted transport contract.
 2. A Service Target is independent of a Node identity and ordinary IP location.
-3. A Service Name resolves verifiably and can remain stable across accepted
-   Service Target or operational-key rotation.
+3. A Service Name resolves verifiably and can remain stable when a compromised
+   or lost Service Target must be replaced.
 4. The User and Service do not learn each other's ordinary network location
    within the declared Interactive Route conditions.
 5. No individual ordinary intermediary both reads Application Data and learns
@@ -115,8 +119,8 @@ general application platform:
 5. HTTP bytes cross a generic Service Connection; the network does not interpret
    pages, forms, sessions, or application identity.
 6. The journey exposes route failure honestly, rebuilds an alternate path when
-   possible, and preserves the Service Name across an accepted service-key or
-   instance rotation.
+   possible, preserves the Service Target during an ordinary host migration,
+   and preserves only the Service Name after simulated target compromise.
 
 The tracer does not require replicated Site Bundles, an Ardents application
 runtime, offline storage, a built-in Inbox, or a permanent decentralized hosting
@@ -143,6 +147,7 @@ until the product and security contracts can compare them fairly.
 - universal User identity, global profile, mandatory Persona system, or proof
   of personhood;
 - offline delivery, application history, or content persistence by implication;
+- multi-instance delegation or multihoming in the first tracer;
 - bundled arbitrary application execution or decentralized compute;
 - mandatory blockchain, wallet, token, or governance coin;
 - opaque cryptographic addresses as the ordinary human naming experience;

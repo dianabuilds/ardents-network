@@ -35,8 +35,8 @@ in order to carry a connection.
 | ID | Requirement | Status | Evidence or decision still needed |
 |---|---|---|---|
 | NET-01 | A User or Developer can start a local endpoint and join the public carrier without a central account, phone, email, or wallet. | fixed | R-009 defines hostile bootstrap and Bridge recovery. |
-| NET-02 | The addressable application object is a location-independent Service Target. A Node ID and User identity are never substituted for it. | fixed | R-006 defines creation, rotation, revocation, and multiple Service Instances. |
-| NET-03 | A Developer can expose an existing local Service Instance without publishing its ordinary origin address to Users. | fixed | R-002 defines the exact listen/accept contract; R-006 defines service lifecycle. |
+| NET-02 | The addressable application object is a location-independent Service Target. A Node ID and User identity are never substituted for it. | fixed | R-006 selected a portable Service Authority: ordinary migration preserves the target; loss or compromise replaces it. |
+| NET-03 | A Developer can expose one active V1 Service Instance without publishing its ordinary origin address to Users. | fixed | R-002 defines the exact listen/accept contract. Delegated multi-instance operation is not a V1 promise. |
 | NET-04 | An exact human-readable Service Name can resolve verifiably to a Service Target. Ardents does not index or recommend Unlisted Services. | fixed | R-003 defines registration, private resolution, recovery, expiry, and governance. |
 | NET-05 | The minimum Application Interface is an online, bidirectional, reliable, ordered byte stream that either carries data while live or reports failure explicitly. | working | R-002 tests whether this is sufficient and specifies connect, accept, backpressure, close, and errors. Datagram support is not assumed. |
 | NET-06 | Service Connections authenticate the intended Service Target and protect Application Data end to end from carrier Nodes. | fixed | R-001 states the adversary; R-002 defines what authentication is exposed to the Application. |
@@ -53,8 +53,8 @@ in order to carry a connection.
 | Function | User-visible outcome | Network responsibility |
 |---|---|---|
 | Start and join | Ardents becomes ready without creating a public User account. | Discover enough current network state, validate it, select entry, and expose degraded or blocked state. |
-| Create Service | A Developer receives a machine Service Target and protected authority material. | Create/import service authority without reusing a Node or User identity; R-006 decides rotation and recovery. |
-| Publish Service | A local server becomes reachable inside Ardents without a public origin address. | Bind incoming Service Connections to the selected local endpoint and publish authenticated, expiring reachability metadata. |
+| Create Service | A Developer receives a machine Service Target and a protectable Service Authority. | Create/import authority without reusing a Node or User identity. |
+| Publish Service | One active local server becomes reachable inside Ardents without a public origin address. | Bind incoming Service Connections to the selected local endpoint and publish authenticated, expiring reachability metadata. |
 | Name Service | The Developer can share a human-readable name rather than a cryptographic address. | Bind and verify Service Name to Service Target; expose expiry, conflict, and recovery state. |
 | Resolve exact name | A User reaches a known Unlisted Service without browsing a directory. | Resolve privately enough for the accepted adversary and reject invalid, stale, or equivocating records. |
 | Establish connection | The Application reaches the intended live Service or receives an explicit failure. | Discover current service reachability, construct routes, rendezvous endpoints, authenticate the Service Target, and negotiate the transport. |
@@ -74,7 +74,7 @@ in order to carry a connection.
 | User identity | No required network-wide User identity. | Login, Personas, contacts, credentials, groups, and account recovery when an Application needs them. |
 | Authorization | Protection of local Application Interface access and optional future restricted-discovery hooks. | Who may read, write, join, administer, or invoke a Service operation. |
 | Persistence | Short-lived buffers strictly required to operate a live connection. | Databases, history, offline queues, retained delivery, content pinning, deletion, and backups. |
-| Availability | Finding routes to a currently published Service and surfacing failure. | Keeping Service Instances online, multihoming, state replication, and application-level failover unless an explicit Overlay provides them. |
+| Availability | Finding routes to a currently published Service and surfacing failure. | Keeping the V1 Instance online; multihoming, state replication, and application-level failover require a later explicit contract. |
 | Retry | Safe bounded routing attempts and an explicit result. | Reissuing an operation, deduplication, exactly-once illusions, and user-visible recovery. |
 | Application execution | No arbitrary remote code execution in the carrier. | Local server, browser, application runtime, sandbox, and content rendering. A Reference Application may package these separately. |
 | Abuse | Protect shared carrier capacity from flooding and Sybil capture. | Service moderation, unsolicited content, domain policy, and application admission. |
@@ -90,7 +90,10 @@ The tracer is deliberately ordinary above the network boundary:
 4. HTTP request and response bytes cross the connection unchanged;
 5. a failed path is rebuilt or reported, and an offline Service is never shown as
    having received a request;
-6. the Service Name remains stable through one accepted instance or key rotation.
+6. an ordinary host migration imports the Service Authority and preserves both
+   Service Target and Service Name;
+7. a compromise drill creates a replacement target and keeps only the Service
+   Name stable.
 
 This tests the whole network control and data path. It does not make HTTP, a
 browser, static content replication, or decentralized hosting mandatory Ardents
@@ -102,6 +105,7 @@ The following remain legitimate future products but must not constrain the core
 before a concrete Application requires them:
 
 - unreliable or message-oriented datagrams;
+- several active Instances and bounded per-Instance delegation;
 - delayed or cover-traffic-heavy Route Profiles;
 - retained offline delivery and notifications;
 - signed replicated content and origin-independent site availability;

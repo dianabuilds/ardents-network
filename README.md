@@ -38,6 +38,9 @@ The first architecture tracer is **Named Unlisted Site**:
    live connection; Ardents supplies no directory or search.
 5. HTTP remains application data. The tracer verifies name continuity, target
    authentication, endpoint-location claims, route failure, and blocked entry.
+6. V1 uses one active Service Instance. An ordinary migration securely moves
+   its Service Authority and preserves the target; compromise creates a new
+   target while the Service Name remains.
 
 The tracer does not require a replicated Site Bundle, bundled application
 runtime, offline delivery, Inbox, or messenger. Those are separate optional
@@ -76,6 +79,7 @@ entry gates.
 - mandatory wallet, blockchain, token, KYC, or proof of personhood;
 - global User profile or universally linkable application identity;
 - built-in messenger, Inbox, Contacts, conversation format, or offline history;
+- multi-instance delegation or multihoming in the first tracer;
 - application persistence, arbitrary code execution, or decentralized compute
   by implication;
 - an opaque cryptographic address as the ordinary human-facing Service Name;

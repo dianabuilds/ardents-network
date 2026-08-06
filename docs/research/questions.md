@@ -12,6 +12,9 @@ could build.
 Research starts from these reversible product boundaries:
 
 - Ardents addresses a Service Target, not a User or infrastructure Node;
+- V1 uses one active Service Instance and a portable Service Authority; routine
+  migration preserves the target, while loss or compromise replaces it through
+  the Service Name;
 - the smallest transport is an online Service Connection carrying opaque bytes;
 - the Application owns its protocol, User identity, authorization, persistence,
   semantic retry, and offline behavior;
@@ -27,8 +30,8 @@ boundaries with named evidence.
 
 | ID | Exact question | Decision and required result | State |
 |---|---|---|---|
-| R-006 | What is the lifecycle of a Service Target: creation/import, one or several live Service Instances, operational-key rotation, revocation, compromise, recovery, and permanent loss? | A state machine that never substitutes a Node ID or User identity for the Service, plus explicit behavior for every transition and conflict. | open |
-| R-002 | What is the smallest live Application Interface that lets an existing local application publish and consume a Service safely? | An exact `create/import → listen/accept → resolve/connect → read/write → close/fail` contract covering target authentication, ordering, reliability while live, backpressure, timeouts, cancellation, errors, resource limits, and Isolation Context. It must state what the Application still owns. | open |
+| [R-006](records/r-006-service-target-lifecycle.md) | What is the V1 lifecycle of a Service Target across creation, publication, migration, loss, compromise, replacement, and retirement? | **Decided:** one active Instance uses a portable Service Authority. Routine migration uses encrypted export/import and preserves the target. Loss or compromise creates a new target and rebinds the Service Name; the old target remains untrusted. | decided |
+| R-002 | What is the smallest live Application Interface that lets an existing local application publish and consume a Service safely? | An exact `create/import authority → listen/accept → resolve/connect → read/write → close/fail` contract covering target authentication, ordering, reliability while live, backpressure, timeouts, cancellation, errors, resource limits, and Isolation Context. It must state what the Application still owns. | open |
 | R-001 | Which endpoint, local-observer, relay-collusion, and broad traffic-observer capabilities must the Interactive Route resist, and what does it deliberately expose? | A claim matrix using the threat-model format, including conditions, measurable falsification, and honest limitations. | open |
 | R-003 | How does an exact Service Name bind to a Service Target, resolve without becoming a directory, survive accepted rotation, and handle registration, expiry, recovery, conflict, enumeration, query privacy, and Control Plane capture? | A naming product contract and governance/failure state machine; no registry technology is selected until this exists. | open |
 | R-004 | Which routing and rendezvous families can meet the accepted Interactive Route claim and application latency budget under churn, malicious Nodes, and realistic client devices? | Comparable primary-source analysis and bounded measurements against one R-001 claim matrix; no library popularity scoring. | open |
@@ -67,21 +70,22 @@ boundaries with named evidence.
 | ID | Exact question | Decision and required result | State |
 |---|---|---|---|
 | R-016 | Which Users and Developers have a problem severe enough to adopt an internal location-private network despite latency, installation, and trust costs? | Scenario and competitor comparison now; external demand evidence remains a future gate and must not be invented from the Product Owner's preferences. | open |
-| R-017 | Is Named Unlisted Site a useful smallest Reference Application for exercising publish, name, resolve, connect, and route failure without adding messenger semantics? | Selected as an architecture tracer. This does not validate market demand and no longer implies replicated Site Bundles or an Ardents runtime. | decided |
+| [R-017](records/r-017-named-private-site-anonymous-mailbox.md) | Is Named Unlisted Site a useful smallest Reference Application for exercising publish, name, resolve, connect, and route failure without adding messenger semantics? | Selected as an architecture tracer. This does not validate market demand and no longer implies replicated Site Bundles or an Ardents runtime. | decided |
 | R-018 | Can a User and Developer understand Service Name trust, connection state, route limits, failure, and recovery without learning routing jargon? | One-to-one walkthrough can refine wording; external comprehension evidence remains a future release gate. | open |
 
 ## Decision order
 
-The dependency path is intentionally short:
+R-006 selected the portable-authority lifecycle. The remaining dependency path
+is intentionally short:
 
-1. **R-006 — Service Target lifecycle:** define what the network addresses.
-2. **R-002 — live Application Interface:** define exactly what software can do.
-3. **R-001 — Interactive Route claim:** define what protection that connection
+1. **R-002 — live Application Interface:** define exactly what software can do.
+2. **R-001 — Interactive Route claim:** define what protection that connection
    promises.
-4. **R-003 — Service Name:** define the human layer over the accepted target.
-5. **R-004 and R-009 — routing and hostile bootstrap:** compare mechanisms only
+3. **R-003 — Service Name:** define the human layer over the accepted target and
+   catastrophe replacement.
+4. **R-004 and R-009 — routing and hostile bootstrap:** compare mechanisms only
    against the accepted contracts.
-6. **R-007 and R-008 — failure and local isolation:** close the minimum tracer
+5. **R-007 and R-008 — failure and local isolation:** close the minimum tracer
    safety boundary.
 
 R-010 through R-012 and R-020 run before any public deployment claim. Optional

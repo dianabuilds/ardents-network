@@ -53,12 +53,18 @@ _Avoid_: Implied network primitive, mandatory core
 
 **Service Target**:
 The machine-verifiable, location-independent identity to which an Application
-connects. It identifies a Service, not the Node currently carrying or serving it.
+connects. It survives routine migration under the same Service Authority but is
+replaced after that authority is lost or compromised.
 _Avoid_: Node ID, User ID, IP address
+
+**Service Authority**:
+The durable secret authority whose holder controls one Service Target. Its loss
+or compromise requires replacing that target rather than claiming safe revocation.
+_Avoid_: User identity, Node key, Service Instance
 
 **Service Name**:
 A human-readable name that resolves to a Service Target and may remain stable
-while Service Instances or operational keys change.
+while a Service migrates or replaces a compromised target.
 _Avoid_: Onion address, IP address, search keyword
 
 **Unlisted Service**:

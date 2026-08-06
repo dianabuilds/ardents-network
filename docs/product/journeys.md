@@ -37,14 +37,16 @@ shown as authorization or secrecy.
 
 **Start:** A local application server and an Ardents endpoint
 
-**Flow:** create or import Service Target → choose local listener → publish
-authenticated, expiring reachability → bind or update Service Name → accept a
-test Service Connection
+**Flow:** create or securely import Service Authority → obtain its Service
+Target → choose one active local listener → publish authenticated, expiring
+reachability → bind or update Service Name → accept a test Service Connection
 
 **Done when:** a remote Application can connect while neither the User nor an
 ordinary intermediary learns a public origin address outside the declared
 Route Profile. Stopping the local Service produces an explicit unavailable
-result, not implied offline delivery.
+result, not implied offline delivery. A routine migration can stop the old
+Instance, import the encrypted authority on a new host, and republish the same
+Service Target.
 
 ## J-04 — Integrate an Application
 
@@ -68,12 +70,14 @@ semantic retry, and data format.
 **Start:** A local HTTP server and a desired Service Name
 
 **Flow:** publish HTTP server as Service → bind name → enter exact name in
-reference client → resolve → connect → exchange HTTP bytes → update local server
-or rotate accepted service material without changing the name
+reference client → resolve → connect → exchange HTTP bytes → migrate the
+authority to a new host without changing the target → simulate compromise by
+creating a replacement target and rebinding the same name
 
-**Done when:** the site opens through the generic Service Connection and its
-name continuity and route failure behavior are visible. No replicated Site
-Bundle, Ardents runtime, or built-in application identity is required.
+**Done when:** the site opens through the generic Service Connection; routine
+migration preserves both target and name; compromise preserves only the name;
+and route failure remains visible. No replicated Site Bundle, Ardents runtime,
+or built-in application identity is required.
 
 ## J-06 — Recover from a failed or blocked path
 
@@ -114,6 +118,8 @@ Every implementation proposal must exercise at least these cases:
 - a Name Record is stale, expired, rolled back, or equivocating;
 - a Service Descriptor is unavailable or points to no reachable Service
   Instance;
+- both an old and a new host publish with copies of one Service Authority;
+- a Service Authority is lost, corrupted, or suspected compromised;
 - a Service goes offline before connect, during handshake, or mid-operation;
 - a route fails after the Application has written some bytes;
 - an Application reuses one Isolation Context across identities or contexts that
