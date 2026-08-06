@@ -40,12 +40,13 @@ must be learned first,” not implementation order.
 | ID | Question | Decision unlocked | Required evidence | State |
 |---|---|---|---|---|
 | R-016 | Which first users have a problem severe enough to accept the latency and trust trade-offs? | Initial audience and distribution | Interviews, scenario tests, alternatives used today, willingness-to-switch evidence | open |
-| R-017 | Is Named Private Site + Anonymous Mailbox the smallest slice that demonstrates differentiated value? | V1 scope | Prototype journey tests, developer/user comprehension, comparison with separate existing tools | open |
+| R-017 | Is Named Private Site + Anonymous Mailbox the smallest slice that demonstrates differentiated value? | V1 scope | Prototype journey tests, developer/user comprehension, comparison with separate existing tools | review |
 | R-018 | Do people understand Persona, Service Name, permissions, recovery, and route guarantees without learning network jargon? | Client information architecture | Usability prototypes, recovery drills, permission and warning comprehension tests | open |
 
 ## Decision order
 
-Start R-001, R-002, R-003, R-006, and R-017 before selecting the production
-language or transport. R-004, R-005, R-007, and R-008 may then produce bounded
-experiments. R-014 compares implementation environments using the same accepted
-tracer and criteria; it must not begin as a Go-versus-Rust preference debate.
+Resolve R-017 first, then R-002, R-003, R-006, and R-001 before selecting the
+production language or transport. R-016 runs alongside them. R-004, R-005,
+R-007, and R-008 may then produce bounded experiments. R-014 compares
+implementation environments using the same accepted tracer and criteria; it
+must not begin as a Go-versus-Rust preference debate.
