@@ -33,7 +33,9 @@ or offline delivery.
 
 **Product Owner decision, accepted 2026-08-07:** an existing Application must be
 able to use Ardents through a local socket/proxy-style Application Interface
-without embedding a mandatory Ardents SDK or networking library.
+without embedding a mandatory Ardents SDK or networking library. An SDK is only
+a Developer convenience wrapper over that interface; it is not a network layer
+and cannot add transport behavior or guarantees unavailable without the SDK.
 
 Consequences:
 
@@ -44,6 +46,11 @@ Consequences:
   route, relay, rendezvous, or descriptor internals;
 - language-specific SDKs may wrap the interface for convenience, but do not
   become the authoritative network contract;
+- routing, rendezvous, target authentication, encryption, connection state, and
+  resource enforcement remain implemented by the Ardents endpoint rather than
+  independently inside each SDK;
+- an Application that does not use an SDK can perform the same authoritative
+  operations and observe the same results through the Application Interface;
 - the accepted outcome does not yet select SOCKS, HTTP CONNECT, Unix sockets,
   named pipes, RPC framing, or a particular operating-system API.
 
@@ -110,7 +117,9 @@ that maps an ordinary HTTP client and server through simulated `connect`,
 ## Findings
 
 - **Product Owner decision:** mandatory SDK integration is rejected. Existing
-  Applications must be able to use a local socket/proxy-style boundary.
+  Applications must be able to use a local socket/proxy-style boundary, and an
+  SDK is limited to developer ergonomics rather than network implementation or
+  additional semantics.
 - **Inference:** P1-D1 favors H1 or H3 over H2, but does not yet decide whether
   control and data share one protocol or how transparent the local integration
   should be.
@@ -146,7 +155,7 @@ that maps an ordinary HTTP client and server through simulated `connect`,
 
 Keep **H1** as the working shape: an implementation-neutral local data path plus
 an explicit bounded control surface. P1-D1 fixes only the no-mandatory-SDK
-boundary.
+boundary and makes every SDK subordinate to the same interface contract.
 
 Resolve the remaining contract one decision at a time:
 
@@ -165,7 +174,8 @@ No concrete proxy protocol, serialization, library, or language is selected.
 ## Disposition
 
 - State: `active`.
-- P1-D1 accepted: external local socket/proxy-style integration; SDK optional.
+- P1-D1 accepted: external local socket/proxy-style integration; SDK optional,
+  convenience-only, and non-authoritative.
 - H1 remains the working shape; H2 is rejected as mandatory integration; H3 is
   insufficient by itself.
 - P1-D2 is next.

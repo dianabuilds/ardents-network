@@ -79,6 +79,7 @@ These are responsibility boundaries, not selected binaries or APIs:
 - **Application Interface** — a local socket/proxy-style boundary that lets
   external software create/listen on Service Targets and open/accept Service
   Connections without a mandatory Ardents SDK or knowledge of network internals.
+  SDKs are convenience wrappers and never separate network implementations.
 - **Service Publisher** — binds a local Service Instance to a Service Target and
   publishes authenticated reachability metadata.
 - **Naming Surface** — registers, resolves, rotates, recovers, and inspects
