@@ -11,9 +11,10 @@ spaces, sites, and applications—that do not depend on one provider and do not
 require exposing a universal identity or network location.
 
 Ardents is an internal application network. It is not primarily an Internet
-proxy, cryptocurrency, hosting marketplace, or messenger. Messaging, naming,
-private sites, and application execution are coordinated surfaces of one
-product.
+proxy, cryptocurrency, hosting marketplace, or messenger. Naming, publishing,
+application isolation, and protected Application Data transport are coordinated
+surfaces. Messaging is one application that developers may build on those
+surfaces, not mandatory Ardents product semantics.
 
 ## Product boundary
 
@@ -55,8 +56,8 @@ resources without receiving access to protected content or ownership of users.
 
 These are responsibility boundaries, not necessarily separate binaries:
 
-- **Ardents Client** — identity, names, private applications, contacts,
-  messaging, Spaces, permissions, and route selection.
+- **Ardents Client** — identity, names, private applications, Capabilities,
+  Spaces, and route selection.
 - **Developer Studio** — names, packaging, privacy lint, releases, replication,
   updates, and eventually stateful services.
 - **Space Console** — membership, delegation, installed services, and local
@@ -82,7 +83,7 @@ These are responsibility boundaries, not necessarily separate binaries:
    capture are normal design inputs, not exceptional incidents.
 8. Every anonymity claim states its observer model and honest limitation.
 
-## First tracer: Named Private Site + Anonymous Mailbox
+## First tracer: Named Unlisted Site
 
 The first product slice must prove the whole value chain:
 
@@ -92,16 +93,15 @@ The first product slice must prove the whole value chain:
 4. A Person who already knows the exact name enters it; the Client verifies
    resolution and opens the Unlisted Service through an Interactive Route. No
    network directory or search is involved.
-5. The Person grants a bounded mailbox capability and sends a protected message
-   through a Shielded Route.
-6. The service replies while the Person is offline; the Client receives it later.
-7. The Developer publishes an update and can recover control without changing
+5. The Developer publishes an update and can recover control without changing
    the Service Name.
-8. The journey still succeeds when one ordinary relay is blocked and one Replica
+6. The journey still succeeds when one ordinary relay is blocked and one Replica
    is unavailable.
 
-This tracer does not require a general stateful backend, large groups, payments,
-or a clearnet exit.
+This tracer does not require a built-in Inbox, messenger, general stateful
+backend, large groups, payments, or a clearnet exit. Protected Application Data
+transport remains a core platform question, but R-019 must define its contract
+without importing chat semantics into the network.
 
 ## Build versus adopt
 
@@ -122,6 +122,7 @@ project.
 - global username or proof-of-personhood registry;
 - opaque cryptographic addresses as the ordinary human experience;
 - public social feed or large public communities;
+- built-in Inbox, contact list, messenger, or universal conversation protocol;
 - generic cloud or arbitrary decentralized compute;
 - configurable anonymity knobs that silently create fingerprintable users;
 - an unmeasured claim of protection from a global passive observer;

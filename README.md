@@ -22,17 +22,21 @@ small membership-gated transport would also produce a small anonymity set.
 
 ## First tracer product
 
-The first end-to-end product hypothesis is **Named Private Site + Anonymous
-Mailbox**:
+The first accepted architecture tracer is **Named Unlisted Site**:
 
 1. A developer obtains a human-readable Service Name.
 2. The developer builds and signs a reproducible site or client application.
 3. Independent Replicas make the release available.
 4. A person resolves the name and opens the verified application without either
    endpoint learning the other's network location.
-5. The person and service exchange end-to-end encrypted asynchronous messages.
-6. The name survives service-key rotation, updates, one unavailable Replica, and
+5. The name survives service-key rotation, updates, one unavailable Replica, and
    one blocked relay path.
+
+Ardents is expected to expose protected transport for Application Data, but it
+does not ship a mandatory Inbox or messenger. Applications define chat, files,
+commands, collaboration, or other semantics themselves. R-019 will decide the
+exact destination, online/offline, reliability, ordering, and retention boundary
+between the network and an application.
 
 ## Start here
 
@@ -67,6 +71,7 @@ documented entry gates.
 - an opaque address as the normal human-facing service identity;
 - a global user profile or universally linkable account;
 - generic decentralized compute;
+- a built-in universal Inbox, messenger, contact model, or conversation format;
 - large public social communities;
 - an unqualified claim of protection from a global traffic observer.
 

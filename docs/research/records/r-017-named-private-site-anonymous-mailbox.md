@@ -1,7 +1,7 @@
 ---
 id: R-017
 title: Is Named Private Site + Anonymous Mailbox the right first tracer?
-status: review
+status: decided
 owner: product research
 started: 2026-08-06
 reviewed: 2026-08-06
@@ -26,7 +26,6 @@ language.
 - [Functional map](../../product/functional-map.md)
 - [J-02: open a private site](../../product/journeys.md#j-02--open-a-private-site)
 - [J-03: publish a site or client application](../../product/journeys.md#j-03--publish-a-site-or-client-application)
-- [J-04: talk asynchronously to a Service](../../product/journeys.md#j-04--talk-asynchronously-to-a-service)
 - [Threat model](../../security/threat-model.md)
 - [ADR-0001](../../adr/0001-public-carrier-private-services.md)
 
@@ -34,9 +33,9 @@ Already fixed: Ardents is an internal application network with a public carrier,
 private or capability-gated Services, human-facing Service Names, no mandatory
 wallet, no clearnet exit in the first product, and no universal Person identity.
 
-Still open: whether a Site and Mailbox form one necessary product experience;
-which first users value it; whether either half is independently sufficient; and
-whether the combined slice is small enough to build and validate.
+At research start it was still open whether a Site and Mailbox formed one
+necessary product experience. P1-D2 resolved that product-scope question by
+rejecting the built-in Mailbox experience.
 
 ## Pre-registered hypotheses
 
@@ -256,10 +255,11 @@ results.
   Site + Protected Reply Thread**. Each protection claim must still name its
   adversary and limitation.
 
-### Narrowed tracer contract
+### Evaluated H1 contract — rejected by P1-D2
 
-**Recommendation:** Keep `Mailbox` as an internal bounded delivery primitive.
-Expose two narrower product concepts:
+The desk-research recommendation before the Product Owner walkthrough was to
+keep `Mailbox` as an internal bounded delivery primitive and expose two narrower
+product concepts:
 
 - **Service Inbox:** a Private Service's capability to accept an initial
   text-only request under an explicit local admission and retention policy;
@@ -302,7 +302,7 @@ one-relay failure case. These are deliberately provisional experiment budgets,
 not V1 protocol decisions. A separate prototype variant may show a public Inbox
 with quarantine, but open Sybil-resistant admission remains R-010.
 
-### Initial safety envelope
+### Evaluated H1 safety envelope — not a product commitment
 
 These are candidate claim envelopes for later falsification, not accepted
 security claims.
@@ -338,9 +338,9 @@ security claims.
   feature similarity is not permission to reuse code or inherit a security
   claim.
 - **Assumption:** A Developer will accept the cost of acquiring a name,
-  declaring an Inbox policy, selecting Replicas, and managing recovery if this
-  replaces an always-online hidden origin. R-016 must compare this with the
-  actual burden of OnionShare, SecureDrop, SimpleX, Tor, and ordinary hosting.
+  selecting Replicas, and managing recovery if this replaces an always-online
+  hidden origin. R-016 may eventually compare this with the actual burden of
+  OnionShare, SecureDrop, IPFS, Tor, and ordinary hosting.
 
 ## Options
 
@@ -380,11 +380,10 @@ measurements.
 ### H2 — Site only
 
 - Product fit: useful censorship-resistant publication and client-side tools.
-- Reason to reject as the primary tracer: close alternatives already exist and
-  it does not prove private service interaction, asynchronous routing, or
-  relationship-identity separation.
-- Appropriate use: the first technical experiment inside H1 may still implement
-  publication before Mailbox delivery.
+- Limitation: close alternatives already exist and it does not by itself prove a
+  generic application transport or stateful Private Service.
+- Product Owner decision: select it as the smallest architecture tracer. Generic
+  Application Data belongs to R-019; messenger semantics belong to applications.
 
 ### H3 — Mailbox only
 
@@ -396,33 +395,29 @@ measurements.
 
 ### H0 — reject all three
 
-H0 is not selected permanently, but neither is H1 accepted. H1 currently fails
-the pre-registered rule on differentiation and does not beat H2 on observed
-adoption evidence. Architecture coherence is not demand, and the required
-prototype/comprehension evidence has not been collected.
+H0 is not selected for architecture research. H2 is accepted as the smallest
+tracer, while market differentiation and first-user demand remain unvalidated.
 
 ## Recommendation
 
-**Recommendation:** choose none yet. Retain **Named Private Site + Protected
-Reply Thread** as the leading candidate and run the named follow-up
-**R-017-P1 — Tracer interaction and incumbent comparison** before changing the
-product contract.
+**Recommendation:** choose H2 as **Named Unlisted Site**, the smallest accepted
+architecture tracer. Reject a built-in Service Inbox and Reply Thread.
 
-This preserves the essential Site + Mailbox composition while preventing
-`Mailbox` from silently expanding into a messenger. It also replaces an
-unqualified `Anonymous` product label with exact, testable claims.
+Ardents transports and protects application-defined data but does not decide
+that the data is a chat message or impose conversations, contacts, history,
+attachments, presence, or messenger recovery on every application. A developer
+may build a messenger on the accepted transport contract.
 
-Confidence is **moderate** that the narrowed slice is a useful whole-network
-architecture tracer, and **low** that its differentiation, first segment, or
-willingness to switch has been validated.
+Transport alone is not a complete messenger: addressing, application-level
+end-to-end sessions, offline delivery, ordering, history sync, multi-device
+state, abuse handling, and notifications still need explicit ownership. R-019
+must decide which of those are generic network responsibilities and which remain
+inside the application.
 
-The strongest argument against the recommendation is scope: naming,
-publication, isolated rendering, two route profiles, replicated retention,
-pairwise state, abuse policy, recovery, and failure tolerance are still several
-hard systems in one demonstration. Separate mature tools may solve a user's
-actual job more safely. The response is not to implement all subsystems at once:
-keep one product journey, test each contract independently, and reject the
-journey if the integration does not produce user-visible value.
+Confidence is **high** in the Product Owner scope decision and **low** in market
+differentiation or first-user validation. The strongest counterargument is that
+a site-only tracer exercises less of the eventual application network. R-019
+addresses that gap without smuggling one application's UX into the core.
 
 ### R-017-P1 under the current working model
 
@@ -440,8 +435,8 @@ This fixes only the product discovery boundary:
 - knowing a Service Name is not authentication, authorization, or a promise that
   the name cannot be guessed or leaked;
 - a Service may later add a separate capability gate;
-- Inbox admission is a separate decision and is not granted automatically by
-  knowing the Service Name;
+- access to any application-defined data operation is separate from knowing the
+  Service Name and requires its own accepted Capability contract;
 - private resolution, resistance to namespace enumeration, registration, and
   recovery remain R-003 research rather than assumed properties.
 
@@ -449,28 +444,28 @@ The canonical term is **Unlisted Service**. The shared glossary and product
 journey were updated. No ADR is warranted: this is an explicit, reversible
 product-scope decision rather than a hard-to-reverse architecture choice.
 
-The Product Owner and Codex should:
+#### P1-D2 — No built-in Inbox or messenger semantics
 
-1. state the exact publisher and visitor outcomes in ordinary language and list
-   which parts come from the Product Owner's intent versus external evidence;
-2. compare Site-only, Mailbox-only, the combined journey, and the strongest
-   composed incumbents without treating implementation difficulty as product
-   differentiation;
-3. walk two non-networked variants—Site-only and Site + Protected Reply—through
-   name verification, Inbox permission, request creation, offline reply,
-   update, recovery, failure, abuse, and limitation messaging;
-4. force explicit Product Owner choices at each scope boundary: public versus
-   invited discovery (resolved by P1-D1), static versus active content, open
-   versus invited Inbox, recovery versus unlinkability, latency versus observer
-   resistance, and availability versus retention;
-5. accept H1 as an architecture tracer only if one coherent job survives every
-   walkthrough, the combined variant has a concrete advantage over incumbents,
-   and every included function has a named failure and recovery outcome.
+**Product Owner decision, accepted 2026-08-06:** a Service Inbox and Reply Thread
+are unnecessary Ardents product features. Applications may build a messenger or
+other interaction model on generic protected transport.
 
-Reject or reshape the tracer if the Product Owner's actual intended product is
-real-time chat, arbitrary files, public reach, a stateful workflow, or a general
-anonymous Internet; if the Site adds no decision context; or if the reply path
-is not worth its abuse and recovery cost.
+Consequences:
+
+- H1 and H3 are rejected as first-tracer product contracts; H2 is selected;
+- the first tracer is **Named Unlisted Site**;
+- the Ardents Client does not own conversations, Message Requests, chat history,
+  attachments, presence, or a universal contact UX;
+- the core handles opaque **Application Data**, not built-in messages;
+- infrastructure Node IDs are not silently promoted into Person or application
+  identities;
+- whether Ardents supplies live streams, datagrams, offline store-and-forward,
+  ordering, retries, or retained delivery is deliberately unresolved by this
+  decision and becomes R-019.
+
+No ADR is warranted yet. Removing product-specific messaging is easy to reverse
+before implementation, while the eventual transport boundary may require an ADR
+after R-019 evidence.
 
 External validation remains future R-016/R-018 work. It is required before
 calling the tracer a validated V1 or claiming that unfamiliar people understand
@@ -478,19 +473,18 @@ its security model, but it is not invented as a current resource.
 
 ## Disposition
 
-- State: `review`; the owner must accept, change, or reject the proposed
-  R-017-P1 follow-up. The product-contract change is not accepted yet.
-- H1 is the leading candidate but has not passed its decision rule.
+- State: `decided` for architecture-tracer scope.
+- H2 selected: **Named Unlisted Site**.
+- H1 and H3 rejected for the tracer; applications may still implement their
+  capabilities over generic Application Data transport.
 - P1-D1 accepted: the tracer uses an Unlisted Service openable by exact Service
   Name without a directory or opening Invite.
-- Proposed next product wording: `Named Private Site + Protected Reply Thread`.
-- Keep `Mailbox` as an internal delivery primitive, with `Service Inbox` and
-  `Reply Thread` as provisional product concepts. Do not change the shared
-  glossary until the recommendation is accepted.
+- P1-D2 accepted: no built-in Inbox, Reply Thread, or messenger semantics.
+- `Mailbox` was removed from the shared glossary; `Application Data` is the
+  neutral product term.
 - R-016 and external R-018 validation remain open future gates; they are not
   assumed active under the current one-to-one working model.
-- Run R-017-P1 as a Product Owner–Codex design walkthrough without protocol
-  code. R-002 follows a positive architecture-tracer decision; no runtime is
-  selected before then.
-- No ADR yet; this recommendation is reversible and awaits product-owner review.
+- R-019 is next and must define network-versus-application responsibility before
+  an application transport API or offline-delivery primitive is accepted.
+- No ADR; the decision is reversible before implementation.
 - No implementation or experiment code yet.

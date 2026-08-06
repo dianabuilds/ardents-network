@@ -19,15 +19,14 @@ does not select the production stack.
 
 ## Gate B — start the tracer implementation
 
-The Named Private Site + Anonymous Mailbox tracer may gain a shared codebase only
-after review of:
+The Named Unlisted Site tracer may gain a shared codebase only after review of:
 
 - R-001 Route Profile adversaries and claims;
 - R-002 Site Bundle/application boundary;
 - R-003 naming and recovery constitution;
-- R-006 recovery, Device, Persona, and messaging state model;
-- R-007 minimum Replica/Mailbox semantics;
-- R-017 validation that the tracer demonstrates differentiated user value.
+- R-004 minimum Interactive Route evidence;
+- R-007 minimum Site Bundle Replica semantics;
+- R-017 accepted architecture-tracer scope.
 
 The tracer must declare which components are simulations, central test fixtures,
 or deliberately insecure placeholders. Those declarations must be visible in
@@ -60,8 +59,7 @@ A security or privacy property may be presented as implemented only when:
 
 A release is usable only when complete journeys, not isolated primitives, pass
 on supported platforms. For the first tracer this includes publish, resolve,
-open, permission, asynchronous reply, update, recovery, Replica loss, and blocked
-entry behavior.
+open, update, recovery, Replica loss, and blocked-entry behavior.
 
 ## Repository promotion
 

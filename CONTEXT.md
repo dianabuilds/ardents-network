@@ -111,14 +111,14 @@ _Avoid_: The Service, permanent origin server
 ## Delivery and routing
 
 **Replica**:
-An independently operated holder of protected service, mailbox, or discovery
+An independently operated holder of protected service, application, or discovery
 material that is not trusted to reinterpret it.
 _Avoid_: Primary database, authoritative server
 
-**Mailbox**:
-A bounded replicated destination for asynchronous protected delivery, designed
-not to become a permanent public identity.
-_Avoid_: Central queue, account inbox
+**Application Data**:
+An opaque payload whose meaning belongs to a Private Service rather than
+Ardents; it is not inherently a message, file, command, or social interaction.
+_Avoid_: Built-in message, Mailbox item, Node identity
 
 **Rendezvous**:
 A temporary meeting point through which two endpoints connect without learning

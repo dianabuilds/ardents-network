@@ -14,12 +14,9 @@ Phases describe dependency order, not delivery dates.
 | V1 | Open Unlisted Service by exact name | Anyone who already knows a human-readable Service Name can resolve and open the authenticated service without an opaque address or network directory. |
 | V1 | Inspect name trust | The Client shows Namespace, expiry, recovery policy, and resolution status. |
 | V1 | Open and cache Site Bundle | A verified site or client application runs in isolation and may retain an approved offline copy. |
-| V1 | Control Service permissions | Mailbox, local storage, files, and Credential proofs are separate bounded Capabilities. |
-| V1 | Add Contact | QR, Invite, or verification phrase creates a pairwise relationship without a public directory. |
-| V1 | Handle Message Requests | Unknown senders are accepted, rejected, blocked, or quarantined before reaching normal conversations. |
-| V1 | Send and receive offline text | End-to-end protected messages survive temporary sender or recipient absence. |
+| V1 | Control Service permissions | Application transport, local storage, files, and Credential proofs are separate bounded Capabilities. |
 | V1 | Select safe Route Profile | The Client chooses the operation-appropriate default and exposes the latency/privacy contract. |
-| V1.5 | Send encrypted attachments | A file has explicit retention and download policy without a central file server. |
+| V1.5 | Add Contact | QR, Invite, or verification phrase creates a pairwise relationship for an application or Space without a public directory. |
 | V1.5 | Use a small private Space | Members share one bounded collaboration context with scoped Personas and names. |
 | V1.5 | Recover connectivity | The Client detects blocking and restores entry through a Bridge without protocol configuration. |
 
@@ -71,7 +68,8 @@ them:
 - global and scoped naming with verifiable, privacy-aware resolution;
 - independent endpoint-selected paths and temporary rendezvous;
 - Interactive and Shielded Route Profiles with separate claims;
-- rotating discovery and mailbox identifiers;
+- application-addressed protected transport whose online/offline, reliability,
+  ordering, and retention contract remains R-019;
 - protected replicated storage with bounded retention;
 - recovery-root, Device, Persona, relationship, session, Credential, and
   Capability separation;
@@ -86,3 +84,7 @@ A function enters a release only when its user journey, adversary, failure modes
 observable result, privacy limitation, and recovery path are all specified. A
 protocol primitive without a complete user journey is research, not product
 functionality.
+
+Messenger behavior—including conversations, Message Requests, history,
+attachments, presence, and multi-device synchronization—belongs to applications,
+not the Ardents Client core.

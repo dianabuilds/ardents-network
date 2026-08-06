@@ -7,8 +7,8 @@ Last reviewed: 2026-08-06
 ## Scope
 
 This threat model covers the first tracer product: resolving and opening a named
-private site, publishing updates, and exchanging asynchronous messages. It also
-sets constraints for later Spaces and stateful Private Services.
+private site and publishing updates. It also sets constraints for later
+Application Data transport, Spaces, and stateful Private Services.
 
 Security is evaluated across payload, metadata, endpoint, availability,
 software supply chain, and governance. Success in one dimension must not be
@@ -16,12 +16,13 @@ presented as success in another.
 
 ## Protected assets
 
-- message and application payload confidentiality and integrity;
+- site and Application Data payload confidentiality and integrity;
 - publisher and visitor network location;
 - relationship, Persona, membership, and service-use graphs;
 - recovery authority and Device revocation state;
 - Service Name continuity and release authenticity;
-- mailbox access pattern and retained-data availability;
+- application access patterns and retained-data availability when retention is
+  part of a later accepted contract;
 - Client execution boundary and local secrets;
 - control-plane integrity, operator diversity, and update provenance.
 
@@ -58,9 +59,10 @@ state so the fast path does not create unnecessary cross-context links.
 
 ### Shielded Route
 
-Used for asynchronous messages, mailbox operations, sensitive updates, and
-privacy-preserving proofs. Its target promise is stronger sender-receiver
-unlinkability under a declared observer and relay-collusion model.
+Used for Application Data operations that require stronger metadata protection,
+sensitive updates, and privacy-preserving proofs. Its target promise is stronger
+sender-receiver unlinkability under a declared observer and relay-collusion
+model.
 
 The required delay distribution, traffic shaping, cover budget, anonymity-set
 size, and measurable advantage over the Interactive Route remain research
@@ -79,7 +81,7 @@ replaceable circumvention layer, not an anonymity guarantee by itself.
 | Local observer | Observe entry address, timing, and volume | Bounded entry policy, multi-hop route, Shielded profile where needed | Interactive use remains correlation-sensitive |
 | Global passive observer | Correlate both ends statistically | Only Shielded operations target this class; measure delay, mixing, cover, and observer advantage | No blanket protection claim before evidence |
 | Malicious relays | Tag, delay, drop, or bias paths | Endpoint-selected diversity, integrity, isolation, bounded retry, ownership analysis | Guarantee depends on honest-path probability and real diversity |
-| Sybil / flooding actor | Capture discovery or exhaust mailboxes and Replicas | Quotas, bounded work, Invites, local policy, anonymous consumable admission proofs | No universal proof of personhood |
+| Sybil / flooding actor | Capture discovery or exhaust rendezvous, retained-data, and Replica capacity | Quotas, bounded work, Invites, local policy, anonymous consumable admission proofs | No universal proof of personhood |
 | Malicious Service | Fingerprint Client or request broad access | Application isolation, explicit Capabilities, privacy lint, per-Service Persona and storage | A controlled endpoint can still disclose data |
 | Seizure / operator loss | Inspect or remove infrastructure | Protected content, independent replication, replaceable instances, no single host truth | Availability needs real operator and jurisdiction diversity |
 | Compromised Device | Steal active keys and local history | Recovery/Device separation, revocation, compartmented Personas, minimal retention | Network protocols cannot secure a controlled endpoint completely |

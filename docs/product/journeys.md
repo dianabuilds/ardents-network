@@ -42,18 +42,6 @@ select Replicas → publish
 **Done when:** another Client can verify and open the release after one Replica
 is made unavailable.
 
-## J-04 — Talk asynchronously to a Service
-
-**Actors:** Person and Private Service
-
-**Start:** An opened Service
-
-**Flow:** approve mailbox Capability → send through Shielded Route → Person goes
-offline → Service replies → Client later retrieves reply
-
-**Done when:** payload remains end-to-end protected, delivery survives offline
-time, and the Service receives no universal Person identifier.
-
 ## J-05 — Establish a Contact
 
 **Actors:** Two People
@@ -122,7 +110,7 @@ Every implementation proposal must exercise at least these cases:
 - one Replica disappears permanently;
 - a name record is stale, expired, rolled back, or equivocating;
 - a Device is stolen while another Device is offline;
-- sender or recipient stays offline beyond normal retry intervals;
+- an application endpoint disappears during an operation;
 - a malicious Service requests excessive Capabilities or fingerprints the Client;
 - a censor blocks known entry addresses and protocol fingerprints;
 - nominally different Nodes share one operator, network, or jurisdiction;
