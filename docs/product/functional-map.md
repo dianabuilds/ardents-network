@@ -11,7 +11,7 @@ Phases describe dependency order, not delivery dates.
 | V1 | Create Identity Vault | A Person starts without phone, email, wallet, or central registration and verifies a recovery method. |
 | V1 | Add or revoke Device | A replacement Device receives only selected Personas; a lost Device loses future authority. |
 | V1 | Create Persona | The Person creates a separate identity for one service, relationship, or context. |
-| V1 | Open Service by name | A human-readable Service Name resolves to an authenticated service without displaying an opaque address. |
+| V1 | Open Unlisted Service by exact name | Anyone who already knows a human-readable Service Name can resolve and open the authenticated service without an opaque address or network directory. |
 | V1 | Inspect name trust | The Client shows Namespace, expiry, recovery policy, and resolution status. |
 | V1 | Open and cache Site Bundle | A verified site or client application runs in isolation and may retain an approved offline copy. |
 | V1 | Control Service permissions | Mailbox, local storage, files, and Credential proofs are separate bounded Capabilities. |

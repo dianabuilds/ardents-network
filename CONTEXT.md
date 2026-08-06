@@ -67,6 +67,12 @@ A site or application reached through a Service Name while hiding publisher and
 visitor location within a declared Route Profile.
 _Avoid_: Clearnet website, central backend
 
+**Unlisted Service**:
+A Private Service that anyone knowing its exact Service Name may open, while
+Ardents provides no directory or search for finding it. Knowing the name is
+discovery, not proof of authorization or secrecy.
+_Avoid_: Public listing, secret Service Name, capability-gated Service
+
 **Service Name**:
 A human-readable hierarchical name that remains stable while a Private Service
 moves, rotates keys, or changes Replicas.

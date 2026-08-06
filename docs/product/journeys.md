@@ -19,13 +19,16 @@ recovery was verified rather than merely displayed.
 
 **Actor:** Person
 
-**Start:** A human-readable Service Name or Invite
+**Start:** An exact human-readable Service Name already known by the Person
 
-**Flow:** Resolve name → verify proof and expiry → select safe route → retrieve
-and authenticate release → render in isolation
+**Flow:** enter exact name → resolve without directory search → verify proof and
+expiry → select safe route → retrieve and authenticate release → render in
+isolation
 
 **Done when:** the intended release opens and publisher and visitor have not
-learned each other's network location within the Interactive Route contract.
+learned each other's network location within the Interactive Route contract. The
+service did not need to be indexed, but possession of its name was not presented
+as authorization or proof of secrecy.
 
 ## J-03 — Publish a site or client application
 

@@ -426,6 +426,29 @@ journey if the integration does not produce user-visible value.
 
 ### R-017-P1 under the current working model
 
+#### P1-D1 — Unlisted discovery by exact Service Name
+
+**Product Owner decision, accepted 2026-08-06:** the first tracer Service is not
+indexed or offered through a network directory, but any Person who already knows
+its exact Service Name may resolve and open it. An Invite is not required merely
+to open the Service.
+
+This fixes only the product discovery boundary:
+
+- Ardents supplies no browse, recommendation, search, or global service list;
+- the Developer may share the exact Service Name through any chosen context;
+- knowing a Service Name is not authentication, authorization, or a promise that
+  the name cannot be guessed or leaked;
+- a Service may later add a separate capability gate;
+- Inbox admission is a separate decision and is not granted automatically by
+  knowing the Service Name;
+- private resolution, resistance to namespace enumeration, registration, and
+  recovery remain R-003 research rather than assumed properties.
+
+The canonical term is **Unlisted Service**. The shared glossary and product
+journey were updated. No ADR is warranted: this is an explicit, reversible
+product-scope decision rather than a hard-to-reverse architecture choice.
+
 The Product Owner and Codex should:
 
 1. state the exact publisher and visitor outcomes in ordinary language and list
@@ -437,9 +460,9 @@ The Product Owner and Codex should:
    name verification, Inbox permission, request creation, offline reply,
    update, recovery, failure, abuse, and limitation messaging;
 4. force explicit Product Owner choices at each scope boundary: public versus
-   invited discovery, static versus active content, open versus invited Inbox,
-   recovery versus unlinkability, latency versus observer resistance, and
-   availability versus retention;
+   invited discovery (resolved by P1-D1), static versus active content, open
+   versus invited Inbox, recovery versus unlinkability, latency versus observer
+   resistance, and availability versus retention;
 5. accept H1 as an architecture tracer only if one coherent job survives every
    walkthrough, the combined variant has a concrete advantage over incumbents,
    and every included function has a named failure and recovery outcome.
@@ -458,6 +481,8 @@ its security model, but it is not invented as a current resource.
 - State: `review`; the owner must accept, change, or reject the proposed
   R-017-P1 follow-up. The product-contract change is not accepted yet.
 - H1 is the leading candidate but has not passed its decision rule.
+- P1-D1 accepted: the tracer uses an Unlisted Service openable by exact Service
+  Name without a directory or opening Invite.
 - Proposed next product wording: `Named Private Site + Protected Reply Thread`.
 - Keep `Mailbox` as an internal delivery primitive, with `Service Inbox` and
   `Reply Thread` as provisional product concepts. Do not change the shared

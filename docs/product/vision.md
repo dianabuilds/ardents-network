@@ -22,7 +22,9 @@ created by a sufficiently broad anonymity set, independent paths, endpoint
 isolation, traffic protection appropriate to the operation, and explicit
 control-plane governance.
 
-Private Services and Spaces can be undiscoverable or capability-gated. A private
+Private Services and Spaces can be Unlisted or capability-gated. Ardents does
+not index an Unlisted Service, but anyone who already knows its exact Service
+Name may open it. Knowing the name is not secrecy or authorization. A private
 service does not require the underlying carrier to be a small private network.
 
 ## People we serve
@@ -87,8 +89,9 @@ The first product slice must prove the whole value chain:
 1. A Developer obtains a human-readable Service Name and defines recovery.
 2. The Developer builds, inspects, signs, and publishes an immutable Site Bundle.
 3. Independent Replicas retain the release and current service metadata.
-4. A Person enters the name; the Client verifies resolution and opens the bundle
-   through an Interactive Route.
+4. A Person who already knows the exact name enters it; the Client verifies
+   resolution and opens the Unlisted Service through an Interactive Route. No
+   network directory or search is involved.
 5. The Person grants a bounded mailbox capability and sends a protected message
    through a Shielded Route.
 6. The service replies while the Person is offline; the Client receives it later.
