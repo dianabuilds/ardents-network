@@ -122,6 +122,12 @@ boundaries and implies no offline delivery, semantic completion, or automatic
 replay.
 _Avoid_: Node-to-node message, conversation, Mailbox
 
+**Connection Result**:
+The authoritative outcome of attempting or ending a Service Connection: success
+bound to an authenticated target, clean close, or a bounded failure class. It is
+not a delivery receipt, an Application result, or a route trace.
+_Avoid_: Delivery status, application response, route diagnostics
+
 **Application Data**:
 Opaque bytes exchanged for an Application; only that Application defines
 whether they represent HTTP, chat, files, commands, or another protocol.

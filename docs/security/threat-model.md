@@ -2,7 +2,7 @@
 
 Status: **proposed; research must turn goals into measurable contracts**
 
-Last reviewed: 2026-08-06
+Last reviewed: 2026-08-07
 
 ## Scope
 
@@ -109,8 +109,12 @@ No document or interface may say only “anonymous,” “private,” “secure,
   address.
 - Carrier Nodes cannot reinterpret or forge Application Data accepted by an
   endpoint as belonging to the authenticated Service Connection.
-- A Service Connection is live: an explicit failure never means that an
-  application operation was retained or completed.
+- A Service Connection is live: a partial write, clean transport close, or
+  explicit failure never means that an Application operation was retained,
+  received, or completed.
+- Connection failures expose only supported product-level classes, never Node
+  identities or route topology; an indistinguishable cause is reported as
+  indeterminate rather than guessed.
 - Offline delivery, replicated content, and application history do not appear
   without a separate retention, deletion, abuse, and metadata contract.
 - Route downgrade and loss of endpoint authentication are explicit and cannot

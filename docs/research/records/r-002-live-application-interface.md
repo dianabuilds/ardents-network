@@ -73,7 +73,7 @@ Consequences:
   to the Application protocol;
 - future transport primitives may be added alongside the stream, but cannot
   silently change its accepted semantics;
-- exact partial-write, timeout, close, and failure reporting remains P1-D5.
+- exact partial-write, timeout, close, and failure reporting is fixed by P1-D5.
 
 ### P1-D3 — Separate connection and administration privileges
 
@@ -128,7 +128,50 @@ Consequences:
   depending on the naming system;
 - the interface does not yet choose destination syntax, metadata encoding, or a
   concrete proxy protocol;
-- P1-D5 must define the exact observable failure classes.
+- P1-D5 defines the exact observable failure classes.
+
+### P1-D5 — Honest bounded connection results
+
+**Product Owner decision, accepted 2026-08-07:** the Connection Interface reports
+only supported product-level outcomes. It never guesses an unavailable root
+cause, exposes Node identities or route topology, or turns a transport event
+into a claim about Application-level delivery.
+
+The V1 outcome classes are:
+
+- invalid destination or Service Name resolution failure;
+- local authorization or policy denial, including a local resource limit;
+- Service unavailable, when the network has evidence for that distinction;
+- Route unavailable, when the network has evidence for that distinction;
+- Service Target authentication failure;
+- local timeout or cancellation;
+- authenticated connection established;
+- clean transport close or abrupt connection loss;
+- indeterminate failure when no narrower supported class is justified.
+
+Stream semantics at failure are:
+
+- a successful local write reports only bytes accepted by the local Connection
+  Interface; it is not proof that the remote Application read or processed them;
+- after partial write, timeout, or connection loss, remote Application completion
+  is unknown unless the Application protocol supplied its own acknowledgement;
+- a clean transport close is not an Application success receipt;
+- Ardents may perform safe bounded route work while establishing or maintaining
+  the same Service Connection, but never silently reissues an Application
+  operation, reconnects as a new connection, or replays Application Data;
+- exact causes that cannot be distinguished in a hostile network collapse to
+  the indeterminate class rather than a fabricated diagnosis.
+
+Consequences:
+
+- Applications can react to stable product classes without learning relay or
+  topology internals useful for probing;
+- authentication failure remains distinct and cannot silently downgrade or
+  fall back;
+- R-007 must define the evidence and bounded retry behind Service unavailable,
+  Route unavailable, and indeterminate results;
+- error names, numeric codes, serialization, and operating-system mappings are
+  implementation choices made later.
 
 ## Hypotheses
 
@@ -205,7 +248,10 @@ that maps an ordinary HTTP client and server through simulated `connect`,
 - **Product Owner decision:** both Service Name and Service Target are accepted
   destinations. Connection success exposes the exact authenticated target, and
   failed resolution or authentication never silently changes the destination.
-- **Inference:** P1-D1 through P1-D4 select H1 as the working product shape. The
+- **Product Owner decision:** Connection Results use bounded, evidence-supported
+  classes without route disclosure. Partial writes, transport close, and failures
+  never imply remote Application completion or automatic replay.
+- **Inference:** P1-D1 through P1-D5 select H1 as the working product shape. The
   accepted logical separation does not require separate protocols or processes.
 
 ## Options
@@ -239,14 +285,13 @@ Keep **H1** as the working shape: an implementation-neutral local data path plus
 an explicit separately authorized Service Administration Interface. P1-D1 fixes
 the no-mandatory-SDK boundary, P1-D2 fixes the stream-only V1 data primitive,
 P1-D3 fixes their privilege separation, and P1-D4 fixes destination and target
-authentication semantics.
+authentication semantics. P1-D5 fixes the observable result and failure boundary.
 
 Resolve the remaining contract one decision at a time:
 
-1. **P1-D5:** exact connection, partial-write, timeout, and close failures.
-2. **P1-D6:** how an Application supplies Isolation Context without turning it
+1. **P1-D6:** how an Application supplies Isolation Context without turning it
    into a global identity.
-3. **P1-D7:** local authorization for publishing and Service Authority access.
+2. **P1-D7:** local authorization for publishing and Service Authority access.
 
 No concrete proxy protocol, serialization, library, or language is selected.
 
@@ -263,7 +308,10 @@ No concrete proxy protocol, serialization, library, or language is selected.
 - P1-D4 accepted: both Service Name and Service Target are valid destinations;
   success exposes the exact authenticated target and failures never silently
   fall back to another destination.
+- P1-D5 accepted: Connection Results use bounded honest classes, expose no route
+  internals, and never claim remote Application completion after write, close,
+  or failure.
 - H1 is the working shape; H2 is rejected as mandatory integration; H3 is
   insufficient by itself.
-- P1-D5 is next.
+- P1-D6 is next.
 - No ADR and no code.

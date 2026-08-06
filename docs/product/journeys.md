@@ -67,7 +67,8 @@ routing internals. The Application remains responsible for User identity,
 authorization, persistence, semantic retry, and data format. Access to connection
 traffic alone does not expose Service Authority or Service administration.
 Failed name resolution or target authentication never falls back to another
-destination or the ordinary network.
+destination or the ordinary network. After a partial write or connection loss,
+the network never claims that the remote Application processed the bytes.
 
 ## J-05 — Use the Named Unlisted Site tracer
 
@@ -91,13 +92,16 @@ or built-in application identity is required.
 
 **Start:** An active or attempted Service Connection whose entry or route fails
 
-**Flow:** classify failure → avoid unsafe silent downgrade → obtain alternate
-network state or Bridge when required → build a new route → reconnect or return
-an explicit terminal result
+**Flow:** classify only supported facts → avoid unsafe silent downgrade → obtain
+alternate network state or Bridge when required → attempt bounded route recovery
+within the same Service Connection → restore it or return a product-level failure
+class or honest indeterminate result → let the Application decide whether to open
+a new connection
 
 **Done when:** connectivity resumes without manual protocol configuration, or
 the Application receives enough information to make a safe retry decision. No
-claim is made that an interrupted application operation completed.
+claim is made that an interrupted Application operation completed, and no Node
+identity or route topology is exposed.
 
 ## J-07 — Contribute network resources
 
