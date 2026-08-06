@@ -27,7 +27,8 @@ selecting a programming language or wire protocol.
 Already fixed: Ardents connects external Applications to Service Targets; V1
 has one active Service Instance; Application Data is opaque; the network does
 not own User identity, application authorization, persistence, semantic retry,
-or offline delivery.
+or offline delivery; and the V1 data primitive is one live reliable ordered
+bidirectional byte stream.
 
 ### P1-D1 — External local integration
 
@@ -53,6 +54,26 @@ Consequences:
   operations and observe the same results through the Application Interface;
 - the accepted outcome does not yet select SOCKS, HTTP CONNECT, Unix sockets,
   named pipes, RPC framing, or a particular operating-system API.
+
+### P1-D2 — Stream-only V1
+
+**Product Owner decision, accepted 2026-08-07:** V1 exposes exactly one
+Application Data primitive: a live reliable ordered bidirectional byte stream.
+The Service Connection preserves byte order in each direction while it exists,
+but does not create application message boundaries or promise that a completed
+local write was processed by the remote Application.
+
+Consequences:
+
+- connection closure or failure is observable rather than converted into
+  retained delivery;
+- datagrams, offline queues, delivery receipts, exactly-once semantics, and
+  automatic replay or reconnect are not V1 network functions;
+- framing, semantic acknowledgements, idempotency, reconnect, and retry belong
+  to the Application protocol;
+- future transport primitives may be added alongside the stream, but cannot
+  silently change its accepted semantics;
+- exact partial-write, timeout, close, and failure reporting remains P1-D5.
 
 ## Hypotheses
 
@@ -120,11 +141,12 @@ that maps an ordinary HTTP client and server through simulated `connect`,
   Applications must be able to use a local socket/proxy-style boundary, and an
   SDK is limited to developer ergonomics rather than network implementation or
   additional semantics.
-- **Inference:** P1-D1 favors H1 or H3 over H2, but does not yet decide whether
-  control and data share one protocol or how transparent the local integration
-  should be.
-- **Assumption:** one reliable ordered bidirectional byte stream is sufficient
-  for V1. P1-D2 must accept or reject this explicitly before it becomes fixed.
+- **Product Owner decision:** the only V1 data primitive is a live reliable
+  ordered bidirectional byte stream. Datagram, message, retention, exactly-once,
+  and automatic replay semantics are rejected from the network contract.
+- **Inference:** P1-D1 and P1-D2 favor H1 or H3 over H2, but do not yet decide
+  whether control and data share one protocol or how transparent the local
+  integration should be.
 
 ## Options
 
@@ -154,20 +176,18 @@ that maps an ordinary HTTP client and server through simulated `connect`,
 ## Recommendation
 
 Keep **H1** as the working shape: an implementation-neutral local data path plus
-an explicit bounded control surface. P1-D1 fixes only the no-mandatory-SDK
-boundary and makes every SDK subordinate to the same interface contract.
+an explicit bounded control surface. P1-D1 fixes the no-mandatory-SDK boundary,
+and P1-D2 fixes the stream-only V1 data primitive.
 
 Resolve the remaining contract one decision at a time:
 
-1. **P1-D2:** whether V1 exposes only a reliable ordered bidirectional byte
-   stream.
-2. **P1-D3:** which operations belong to the data path and which to control.
-3. **P1-D4:** whether `connect` accepts Service Name, Service Target, or both and
+1. **P1-D3:** which operations belong to the data path and which to control.
+2. **P1-D4:** whether `connect` accepts Service Name, Service Target, or both and
    what authenticated result it returns.
-4. **P1-D5:** exact connection, partial-write, timeout, and close failures.
-5. **P1-D6:** how an Application supplies Isolation Context without turning it
+3. **P1-D5:** exact connection, partial-write, timeout, and close failures.
+4. **P1-D6:** how an Application supplies Isolation Context without turning it
    into a global identity.
-6. **P1-D7:** local authorization for publishing and Service Authority access.
+5. **P1-D7:** local authorization for publishing and Service Authority access.
 
 No concrete proxy protocol, serialization, library, or language is selected.
 
@@ -176,7 +196,10 @@ No concrete proxy protocol, serialization, library, or language is selected.
 - State: `active`.
 - P1-D1 accepted: external local socket/proxy-style integration; SDK optional,
   convenience-only, and non-authoritative.
+- P1-D2 accepted: one live reliable ordered bidirectional byte stream; no
+  datagrams, message boundaries, offline delivery, exactly-once semantics, or
+  automatic replay.
 - H1 remains the working shape; H2 is rejected as mandatory integration; H3 is
   insufficient by itself.
-- P1-D2 is next.
+- P1-D3 is next.
 - No ADR and no code.

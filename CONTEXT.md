@@ -102,9 +102,10 @@ _Avoid_: Name Record, IP endpoint, application profile
 ## Connections and routing
 
 **Service Connection**:
-A live protected channel between an Application and a Service Target. It carries
-opaque Application Data and does not imply offline delivery, history, or any
-application interaction model.
+A live protected, reliable, ordered, bidirectional byte stream between an
+Application and a Service Target. It carries opaque Application Data without
+message boundaries and implies no offline delivery, semantic completion, or
+automatic replay.
 _Avoid_: Node-to-node message, conversation, Mailbox
 
 **Application Data**:
