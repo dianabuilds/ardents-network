@@ -1,133 +1,140 @@
-# Ardents Network
+# Ardents Product Context
 
-Ardents connects managed Nodes and Principals through Applications in a private capability-governed network.
+Ardents is a private application network for people, communities, developers,
+and independent network contributors. This glossary defines product language;
+it intentionally contains no protocol or implementation choices.
 
-## Language
+## People and identity
 
-**Node**:
-A running Ardents participant that owns identity, network participation, retained data, and optional workload execution.
-_Avoid_: Server, daemon, peer when referring to the complete product role
+**Person**:
+A human using Ardents through one or more Devices. A Person has no public,
+universal identifier in the network.
+_Avoid_: Account, Principal, wallet
 
-**Principal**:
-A cryptographically distinguishable Ardents subject that can authenticate, own resources, and receive or delegate authority.
-_Avoid_: User, account, client, token holder
+**Developer**:
+A Person or team that creates and publishes a Private Service.
+_Avoid_: Hosting customer, server owner
 
-**Operator**:
-A Principal holding administrative grants for one specific Node. The same Principal may be an Operator of several Nodes with independent grants.
-_Avoid_: Administrator account, global admin, user type
+**Network Contributor**:
+A person or organization providing bounded network resources without becoming
+the owner of users, services, or protected content.
+_Avoid_: Trusted operator, Authority
 
-**Application**:
-A least-privilege program represented by its own Principal that consumes capabilities provided by a Node without receiving administrative authority.
-_Avoid_: Operator, workload, client
+**Device**:
+A replaceable user-controlled endpoint authorized for selected Personas.
+_Avoid_: Person, Node identity
 
-**Workload**:
-A Node-scoped managed execution resource; it has no Principal identity unless it is explicitly enrolled as an Application.
-_Avoid_: User, Application, daemon identity
+**Persona**:
+A context-specific identity used in one relationship, Space, or Private Service.
+Different Personas are unlinkable by default.
+_Avoid_: Global profile, account, permanent Principal
+
+**Recovery Root**:
+Person-controlled authority used only to recover or authorize Devices and
+Personas, never as an ordinary network identity.
+_Avoid_: Account password, network address, session key
 
 **Credential**:
-Evidence accepted by a Node to authenticate one Principal; a Credential does not itself define the Principal's authority.
-_Avoid_: Permission, role, grant
+Optional privacy-preserving evidence disclosed to satisfy one policy.
+_Avoid_: Identity, permission, universal humanity score
 
-**Application Credential**:
-A finite Key Credential that authenticates one Application Principal; the key may be portable, while every resulting Session is Node/interface-bound. Permissions come from separate Access Grants.
-_Avoid_: Operator token, API key
+**Capability**:
+Finite authority scoped to an exact Service, Space, resource, and class of
+action.
+_Avoid_: Global role, account type, Credential
 
-**Access Grant**:
-A signed, time-bounded statement authorizing one Principal to perform exact actions on an explicit resource or scope.
-_Avoid_: Credential, role, policy, channel capability
+## Relationships and spaces
 
-**Delegation**:
-A signed, time-bounded authorization through which one Principal allows one Application Principal to act within a subset of the delegator's existing authority.
-_Avoid_: Impersonation, shared credential
+**Contact**:
+A verified relationship between two Personas, normally established through an
+out-of-band invitation or comparison.
+_Avoid_: Follower, public address-book entry
 
-**Enrollment**:
-The creation of a local relationship between an existing Principal and one Node after key proof, normally accompanied by Node-issued Access Grants.
-_Avoid_: Creating the Principal, global account registration
+**Space**:
+A private collaboration boundary with its own members, Personas, names,
+capabilities, and installed Private Services.
+_Avoid_: Realm, global community
 
-**Bootstrap Ticket**:
-A Node-local, single-use secret authorizing only initial enrollment; it is not a Principal or a normal session.
-_Avoid_: User, Operator identity, permanent API token
+**Invite**:
+A bounded secret or unlinkable proof for discovering or joining one Contact,
+Space, or Private Service.
+_Avoid_: Public registration token, permanent access key
 
-**Ticket Handoff**:
-The lifecycle that keeps exactly one one-time enrollment secret authoritative while moving it from durable issuance to protected delivery and eventual use.
-_Avoid_: Token cache, plaintext recovery, permanent credential
+## Private services and naming
 
-**Realm Attestation**:
-A purpose-scoped signed claim about a Principal, such as membership or vendor identity; it does not authenticate a call or grant Node authority by itself.
-_Avoid_: Access Grant, certificate login, global account
+**Private Service**:
+A site or application reached through a Service Name while hiding publisher and
+visitor location within a declared Route Profile.
+_Avoid_: Clearnet website, central backend
 
-**Actor Principal**:
-The Principal that directly authenticated the current call.
-_Avoid_: Client, caller process, token
+**Service Name**:
+A human-readable hierarchical name that remains stable while a Private Service
+moves, rotates keys, or changes Replicas.
+_Avoid_: Onion address, IP address, opaque public key
 
-**Effective Principal**:
-The Principal whose authority is exercised by a call; it equals the Actor Principal unless a valid Delegation is present.
-_Avoid_: User ID header, impersonated user
+**Namespace**:
+A delegated naming boundary with explicit registration, renewal, transfer,
+recovery, visibility, and subname policy.
+_Avoid_: One global flat username registry, DNS zone owned by one provider
 
-**Waku Peer ID**:
-The transport identity of a Waku/libp2p participant, distinct from its Ardents Principal.
-_Avoid_: Principal, Node ID
+**Name Registry**:
+The verifiable source of ownership, expiry, and resolver truth for Namespaces
+and Service Names.
+_Avoid_: Central domain database, service directory
 
-**Operator Interface**:
-The local administrative interface used by Operators to control and inspect a Node.
-_Avoid_: Public API, Application Interface
+**Resolver**:
+A verifiable mapping from a Service Name to current service metadata without
+making network location part of the name.
+_Avoid_: Origin address, trusted DNS server
 
-**Realm Authority**:
-The single designated Principal and consistency group that owns Realm
-membership, Channel generation, revocation, and signed checkpoint truth.
-_Avoid_: Cluster controller, deployment coordinator, second membership source
+**Service Target**:
+The machine-verifiable identity behind a Service Name. It is normally hidden
+from human-facing interfaces.
+_Avoid_: User-facing domain, server IP
 
-**Authority Checkpoint**:
-The signed, strictly monotonic Realm Authority head that binds accepted
-membership, generation, revocation, and audit truth at one authority sequence.
-_Avoid_: Backup marker, Node state, deployment journal
+**Site Bundle**:
+An immutable release of site content or client application code that can be
+authenticated and replicated independently.
+_Avoid_: Mutable web root, deployment directory
 
-**Checkpoint Repository**:
-The independently administered immutable history of accepted Authority
-Checkpoints used to prove freshness and reject rollback; it is evidence, not a
-second writable Realm Authority.
-_Avoid_: Authority backup, mutable mirror, repair source
+**Service Instance**:
+One replaceable execution instance serving stateful requests for a Private
+Service.
+_Avoid_: The Service, permanent origin server
 
-**Fence Transaction**:
-A Deployment-owned durable, monotonic record of one requested Node isolation
-and removal workflow. It records attributable controls and progress but is not
-Realm membership truth.
-_Avoid_: Ban record, membership decision, Authority checkpoint
+## Delivery and routing
 
-**Deployment Fence Evidence**:
-Bounded attributable proof that the required host and network isolation
-controls were enforced for one exact Node, manifest, and request. Realm
-Authority may accept this evidence, but the evidence is not removal truth or an
-Authority Checkpoint.
-_Avoid_: Membership record, revocation checkpoint, deployment decision
+**Replica**:
+An independently operated holder of protected service, mailbox, or discovery
+material that is not trusted to reinterpret it.
+_Avoid_: Primary database, authoritative server
 
-**Rejoin**:
-Restoration of a previously removed Node through fresh accepted Realm
-membership and generation truth, survivor acknowledgement, and new
-identity/clock/readiness checks. Rejoin never reverses removal or reuses old
-Channel Grants.
-_Avoid_: Unfence, restore old grant, rollback removal
+**Mailbox**:
+A bounded replicated destination for asynchronous protected delivery, designed
+not to become a permanent public identity.
+_Avoid_: Central queue, account inbox
 
-**Rejoin Transaction**:
-A Deployment-owned durable, monotonic record of fresh re-admission for one
-previously fenced Node. It links to, but never rewrites, the terminal Fence
-Transaction and removal checkpoint.
-_Avoid_: Unfence transaction, fence rollback, grant restoration
+**Rendezvous**:
+A temporary meeting point through which two endpoints connect without learning
+each other's network location.
+_Avoid_: Origin endpoint, reverse proxy
 
-**Application Interface**:
-The versioned, capability-scoped interface through which Applications use a Node.
-_Avoid_: Operator API, remote admin API
+**Route Profile**:
+A standardized product contract describing latency, traffic shaping, routing,
+and observer-resistance for one operation.
+_Avoid_: Anonymous toggle, advanced network settings
 
-**SDK**:
-A language-specific adapter that presents typed Application operations while hiding the Application Interface transport and wire representation.
-_Avoid_: Generated RPC client, daemon
+**Interactive Route**:
+A low-latency Route Profile for browsing and interactive sessions that does not
+claim strong protection against global timing correlation.
+_Avoid_: Fully anonymous route
 
-**Content Reference**:
-An immutable identifier for content whose payload identity is verified by the Node.
-_Avoid_: File path, mutable object ID
+**Shielded Route**:
+A higher-cost Route Profile for asynchronous operations requiring stronger
+sender-receiver metadata unlinkability.
+_Avoid_: Fast route, guaranteed invisibility
 
-**Content Object**:
-A Principal-owned metadata record identified by its Owner Principal and an Object ID that is local to that owner.
-
-**Content Manifest**:
-A Principal-owned graph of content references identified by its Owner Principal and a Manifest ID that is local to that owner.
+**Bridge**:
+A non-public or replaceable entry path used when ordinary network participation
+is blocked or fingerprinted.
+_Avoid_: Core relay, trusted gateway

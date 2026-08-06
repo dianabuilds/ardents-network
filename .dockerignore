@@ -1,9 +1,0 @@
-.git
-.git.empty-disabled
-.gocache
-.codex-tmp
-.idea
-tests/.artifacts
-var
-tmp-*
-*.log

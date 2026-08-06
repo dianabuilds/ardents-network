@@ -1,10 +1,36 @@
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# Dependencies and build outputs
+node_modules/
+target/
+build/
+dist/
+coverage/
+*.out
+*.test
+
+# Local state and generated evidence
+.cache/
+.tmp/
+.artifacts/
 var/
 *.db
-.artifacts/
+*.db-*
+research/private/
+.legacy-local/
+
+# Tool-specific temporary files
 .codex-tmp/
-.gocache/
-.cache/
-.tmp-go-cache*/
-.idea/
-dist/
-/.tmp-application-review-cache/*
+*.swp
+*~

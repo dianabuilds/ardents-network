@@ -1,205 +1,75 @@
 # Ardents Network
 
-Ardents is a managed peer-to-peer node for private discovery, messaging, hosted
-services, workloads, and encrypted data availability. `v1` uses Waku as its
-canonical network foundation and keeps product truth in explicit domains rather
-than hiding it behind a generic runtime facade.
+Ardents is a greenfield product and protocol research project for a private,
+anonymous, decentralized application network designed for hostile environments.
 
-> Status: stabilization candidate, not a production release. The implementation
-> has real multi-node Waku transport and extensive Docker/Linux evidence, but the
-> final adversarial and release gates in the active stabilization
-> plan are not complete.
+The project is currently defining product contracts and validating security
+assumptions. This branch does **not** contain production-ready networking
+software. The previous implementation is preserved in the
+[`old`](https://github.com/dianabuilds/ardents-network/tree/old)
+branch and is evidence to learn from, not an architecture to continue by default.
 
-## What The Node Provides
+## Product hypothesis
 
-- persistent Ardents and Waku identities;
-- Waku Relay, Store, Filter, and Lightpush participation through supported
-  transport profiles;
-- capability-bound encrypted discovery and data envelopes with durable replay
-  protection;
-- local workload control and hosted-service publication;
-- encrypted blob/manifest storage, replica commitments, repair, and fetch;
-- local Operator and Application Interfaces on separate
-  permission-protected Unix sockets, an Operator CLI/TUI, Diagnostics,
-  readiness, structured logs, and bounded Prometheus metrics on a separate
-  loopback monitoring listener.
+Ardents lets people and developers create private relationships, spaces, sites,
+and applications without depending on one provider, exposing a universal
+identity, or revealing the network location of a publisher or visitor within a
+declared privacy profile.
 
-Ardents does not implement its own carrier network, silently fall back to
-plaintext, expose remote administrative HTTP, or treat an announced/cache copy
-as a committed data replica.
+The network is a public, people-powered carrier. Services and collaboration
+spaces can be private and capability-gated. This distinction is deliberate: a
+small membership-gated transport would also produce a small anonymity set.
 
-## Trust And Security Model
+## First tracer product
 
-Each node owns a long-lived Ardents signing identity and Waku peer identity.
-Private discovery and data exchange require an Identity-owned capability issued
-by a trusted realm authority. Possessing retained ciphertext, a network address,
-or another Principal's session secret does not grant that authority.
+The first end-to-end product hypothesis is **Named Private Site + Anonymous
+Mailbox**:
 
-The protected Operator and Application interfaces use separate
-permission-protected Unix sockets. The observability listener is a distinct
-read-only loopback boundary. Deployment secrets are separate from retained
-node state. Missing keys, partial restores, invalid capabilities, untrusted
-records, corrupt payloads, and failed runtime proofs fail closed and remain
-visible through Diagnostics.
+1. A developer obtains a human-readable Service Name.
+2. The developer builds and signs a reproducible site or client application.
+3. Independent Replicas make the release available.
+4. A person resolves the name and opens the verified application without either
+   endpoint learning the other's network location.
+5. The person and service exchange end-to-end encrypted asynchronous messages.
+6. The name survives service-key rotation, updates, one unavailable Replica, and
+   one blocked relay path.
 
-Start with:
+## Start here
 
-- [system concept](docs/product/system-concept.md)
-- [Application Interface and SDK](docs/product/application-api-and-sdk.md)
-- [canonical Waku foundation](docs/protocols/canonical-network-foundation.md)
-- [network privacy protocol](docs/protocols/network-privacy-protocol.md)
-- [persistent state and key security](docs/security/persistent-state-security.md)
-- [deployment contract](docs/operations/deployment-contract.md)
+- [Product vision](docs/product/vision.md)
+- [Functional map](docs/product/functional-map.md)
+- [User journeys](docs/product/journeys.md)
+- [Domain language](CONTEXT.md)
+- [Threat model](docs/security/threat-model.md)
+- [Research queue](docs/research/questions.md)
+- [Development entry gates](docs/development/entry-gates.md)
+- [Architecture decisions](docs/adr/README.md)
 
-## Distribution Model
+## Repository shape
 
-The public release contains two executables:
-
-- `ardentsd` is the self-contained node daemon; `ardentsd init` initializes a
-  local node, its protected state, canonical operator configuration, and the
-  one-use Bootstrap Ticket for first-Operator enrollment;
-- `ardentsctl` is the local operator client and can be installed independently
-  on an administrator workstation.
-
-Docker is an optional delivery and workload-execution adapter. A node starts
-without Docker by default because `workloads.executor` defaults to `disabled`.
-Set it explicitly to `docker` only where the node is allowed to control a
-Docker Engine, or to `trusted-process` for the restricted local-development
-profile. `ardents-ingress-proxy` is an internal, optional image used only for
-isolated hosted-service ingress; it is versioned with the node release but is
-not required to install, start, or operate a node.
-
-Initialization also creates a separate, permission-protected
-`application.sock`. Each Application installation uses its own Principal,
-device Credential, Node-issued grant, and short-lived Application session;
-enrollment uses a one-use ticket issued through the Operator Interface. See the
-[Application Interface and SDK](docs/product/application-api-and-sdk.md).
-
-For a native Linux node, extract the release archive and run the included
-installer. It creates the `ardents` service account, protected state, a systemd
-unit, and the one-use first-Operator Bootstrap Ticket:
-
-```sh
-sudo ./scripts/install/linux.sh install \
-  --node-name node-1 --transport-port 61001
-ardentsctl identity principal create --signer-file ROOT
-ardentsctl identity device create \
-  --root-signer-file ROOT --signer-file DEVICE
-sudo ardentsctl --addr unix:///var/lib/ardents/secrets/control.sock \
-  --signer-file DEVICE \
-  --principal p1_<node> \
-  identity enroll --root-signer-file ROOT --device-signer-file DEVICE \
-  --bootstrap-ticket-file /var/lib/ardents/secrets/operator-bootstrap-ticket
-sudo ardentsctl --addr unix:///var/lib/ardents/secrets/control.sock \
-  --signer-file DEVICE --principal p1_<node> node status
+```text
+docs/product/       Product promise, scope, functions, and journeys
+docs/security/      Adversaries, assets, guarantees, and honest limitations
+docs/research/      Open questions, evidence, and research templates
+docs/adr/           Accepted durable decisions only
+experiments/        Disposable code written to answer named questions
+CONTEXT.md          Canonical product vocabulary
 ```
 
-Use `--bootstrap-peer` during first installation when the node must join an
-existing endpoint. Re-running `install` repairs only the same build and
-preserves configuration, identity, Principal access state, and retained data; changing
-build identity requires the readiness-gated `upgrade` command. See the
-[native Linux installation contract](docs/operations/native-linux-installation.md)
-for upgrade and uninstall behavior.
+No production source directory exists yet. It will be created only after the
+relevant product, threat, protocol, and technology decisions have passed the
+documented entry gates.
 
-From an administrator workstation with an enrolled device Credential, a scoped
-Operator grant, and OpenSSH key/agent access, connect directly to the protected
-Operator Interface without exposing it on a network listener:
+## Non-goals for the first product
 
-```sh
-ardentsctl --ssh ops@node.example \
-  --ssh-port 22 \
-  --ssh-identity ~/.ssh/id_ed25519 \
-  --ssh-known-hosts ~/.ssh/known_hosts \
-  --ssh-operator-socket /var/lib/ardents/secrets/control.sock \
-  --principal p1_<node> node status
-```
+- a clearnet exit, VPN, or general anonymous Internet proxy;
+- a mandatory wallet, blockchain, token, KYC, or global proof of personhood;
+- an opaque address as the normal human-facing service identity;
+- a global user profile or universally linkable account;
+- generic decentralized compute;
+- large public social communities;
+- an unqualified claim of protection from a global traffic observer.
 
-The SSH transport forwards a private local stream socket to the remote
-permission-protected Operator Unix socket and uses normal OpenSSH host-key
-verification. It requires non-interactive key or agent authentication.
+## License
 
-## Docker Local Quick Start
-
-Requirements: a supported host from [the platform matrix](docs/product/supported-platforms.md),
-Docker Engine, Docker Compose v2, and PowerShell 7 for the lifecycle command.
-
-```powershell
-./ardents.ps1 up -Build
-./ardents.ps1 status
-```
-
-The command creates a seed and two peers, generates distinct local credentials,
-discovers the seed's real non-loopback Waku endpoint, and forms the network
-without manual peer-ID copying. State and private local credentials live under
-the git-ignored `var/deployment/local-multinode/` directory.
-
-For local development the command provisions an isolated, local-only realm
-authority while all nodes are stopped. Every node receives a distinct
-subject-bound discovery/data capability and distinct protected storage keys;
-the authority key remains in a separate Docker volume and is never copied into
-a node. `up` succeeds only after all three nodes report product readiness, so a
-network-only or `privacy.channel_grant.missing` cluster is rejected. Production
-never uses this local authority and requires deployment-managed realm material.
-
-Stop without deleting state:
-
-```powershell
-./ardents.ps1 stop
-./ardents.ps1 start
-./ardents.ps1 down
-```
-
-See [Docker deployment](deploy/docker/README.md) for backup, restore, upgrade, rollback,
-and production service definitions.
-
-## Operator CLI
-
-Local Docker orchestration uses a disposable helper container. The helper
-mounts the selected Node's protected runtime socket and the test-owned device
-signer; the daemon container never receives the Operator signer:
-
-```powershell
-docker compose -p ardents-local -f deploy/docker/compose/docker-compose.multinode.yml `
-  --profile tools run --rm seed-operator `
-  --signer-file /operator-identity/device.json --principal p1_<seed> node status
-```
-
-Useful groups are `node`, `network`, `diagnostics`, `config`, `workload`, and
-`data`. `ardentsctl version` prints the build identity without connecting to a node.
-Use `--output json` for automation and explicit `--node-name`, `--principal`,
-and scoped contexts where operator identity must be pinned.
-
-## Testing
-
-Canonical tests run in Docker/Linux; Windows is orchestration only.
-
-```powershell
-./ardents.ps1 test fast
-./ardents.ps1 test integration
-```
-
-Run targeted scenarios during development. Slow commands must have explicit
-deadlines and trigger CPU/RAM/disk diagnosis instead of being left as unbounded
-waits.
-
-## Current Limitations
-
-- single-host Docker Compose is the supported deployment shape; the native
-  systemd installer is a qualification candidate with lifecycle acceptance,
-  pending distribution-matrix and real-release transition evidence;
-- Kubernetes and multi-host schedulers do not have a `v1` support contract;
-- remote operator API exposure is unsupported;
-- private capability issuance is an external realm-authority operation;
-- QUIC, WebTransport, and WebRTC are suppressed in supported profiles;
-- Linux arm64 requires a native CGO build/qualification runner and is not yet a
-  release target;
-- tag releases receive GitHub OIDC/Sigstore artifact and SBOM attestations, but
-  adversarial QA and broader release acceptance remain open in the
-  stabilization plan.
-
-Security exceptions and upgrade triggers are recorded in
-[security exceptions](docs/security/security-exceptions.md). Do not delete retained keys
-or databases to “repair” a node; follow the [operator runbook](docs/operations/operator-runbook.md).
-
-Ardents Network is distributed under the [MIT License](LICENSE). Third-party
-components retain their respective licenses.
+[MIT](LICENSE)

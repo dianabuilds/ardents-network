@@ -1,41 +1,84 @@
-# Repository agent instructions
+# Repository instructions
 
-- Never place Go build or module caches inside this repository. In particular,
-  do not create `.cache/go-build`, `.gocache`, or `.tmp-go-cache*`.
-- Use the configured external `GOCACHE`. If a sandbox cannot write it, set
-  `GOCACHE` to a task-specific directory below the system temporary directory,
-  never below the workspace.
-- Temporary generated files must be removed when their command finishes. Keep
-  the Git worktree limited to source, generated contract outputs, tests, and
-  documentation that belong to the repository. Tagged test binaries under
-  `tests/.artifacts/testbin` are temporary and must be removed on both success
-  and failure; retained JSON/JUnit/coverage evidence is not temporary.
-- Keep the external Go cache for normal incremental test runs. Run
-  `scripts/clean-go-cache.ps1` only after a release gate, when the cache exceeds
-  5 GiB, when disk space is low, or while diagnosing suspected stale build
-  output. `scripts/clean-go-cache.ps1 -StatusOnly` reports its size; the normal
-  cleanup command retains caches at or below 5 GiB, and `-Force` is reserved
-  for the other listed cases. Do not clear it after every unit test.
-- Use disposable Docker containers for clean release/CI verification when
-  required. Remember that `--rm` removes containers, not Docker image or
-  BuildKit caches. `tests/run.ps1 -EphemeralCache` also disposes its anonymous
-  Go cache volumes. For normal cached runs, report/bound the two Ardents cache
-  volumes with `scripts/clean-docker-cache.ps1`; never run a broad Docker prune
-  automatically.
+## Repository state
 
-## Agent skills
+- `main` is a greenfield product and protocol research workspace.
+- The previous Go/Waku implementation is preserved in the remote `old` branch.
+- Do not copy architecture, terminology, dependencies, or generated artifacts
+  from `old` unless a current research record explicitly justifies doing so.
+- There is no selected production language, transport, storage engine, consensus
+  system, blockchain, or application runtime.
 
-### Issue tracker
+## Order of authority
 
-Issues and PRDs are local Markdown files under `.scratch/<feature>/`. See
-`docs/agents/issue-tracker.md`.
+When materials disagree, use this order:
 
-### Triage labels
+1. accepted ADRs;
+2. the product contract and threat model;
+3. completed research records and their evidence;
+4. experiments;
+5. legacy code and documents in `old`.
 
-The tracker uses `needs-triage`, `needs-info`, `ready-for-agent`,
-`ready-for-human`, and `wontfix`. See `docs/agents/triage-labels.md`.
+Open questions are not decisions. Experiments are not production foundations.
 
-### Domain docs
+## Research discipline
 
-The repository uses a single context rooted at `CONTEXT.md`, with shared
-decisions under `docs/adr/`. See `docs/agents/domain.md`.
+- Every research effort starts with a decision-relevant question from
+  `docs/research/questions.md` or a new question added there.
+- Use `docs/research/template.md` for durable research records.
+- Prefer primary sources: specifications, papers, official documentation,
+  source code, security advisories, and reproducible measurements.
+- Record access dates and distinguish sourced facts, measurements, assumptions,
+  and recommendations.
+- Define falsification criteria before running an experiment.
+- A library being popular is evidence of ecosystem maturity, not proof that its
+  threat model fits Ardents.
+
+## Code and experiments
+
+- Research code belongs under `experiments/<question-id>-<slug>/` until the
+  development entry gates are met.
+- Each experiment must include a README stating the question, hypothesis, run
+  instructions, captured evidence, result, and disposition.
+- Do not create a production `src`, `internal`, `api`, `sdk`, or deployment tree
+  merely to make progress look like implementation.
+- Do not implement cryptographic primitives. Evaluate reviewed, maintained
+  implementations against the declared threat model.
+- Keep generated files, dependency caches, databases, captures containing
+  sensitive metadata, and build outputs outside the repository.
+
+## Product and domain language
+
+- `CONTEXT.md` is the canonical glossary and contains product language only.
+- Update the glossary when a domain term is resolved; avoid implementation
+  details there.
+- Human-facing names are Service Names. Opaque cryptographic targets are not the
+  normal user experience.
+- Person, Device, Persona, transport identity, Service Target, Credential, and
+  Capability are separate concepts and must not be collapsed silently.
+
+## Security claims
+
+- Assume censorship, malicious peers, Sybil actors, relay collusion, endpoint
+  compromise, infrastructure seizure, traffic analysis, supply-chain attacks,
+  and governance capture.
+- State every privacy claim as: protected information, adversary, conditions,
+  measurement, and honest limitation.
+- Encryption of payload is not anonymity. Decentralized storage is not
+  availability. Multiple nodes are not independent operators.
+- Interactive and Shielded operations may have different guarantees; never
+  silently downgrade one to the other.
+
+## Durable decisions
+
+- Create an ADR only for a consequential, hard-to-reverse trade-off.
+- Keep ADRs short and place them under `docs/adr/`.
+- Technology selection requires a research record and an accepted ADR when it
+  creates meaningful lock-in.
+
+## Git and workspace hygiene
+
+- Preserve unrelated user changes.
+- Keep commits scoped to one research result, decision, or tracer slice.
+- Never place caches or temporary generated files inside the repository.
+- Do not rewrite or delete the `old` branch.
