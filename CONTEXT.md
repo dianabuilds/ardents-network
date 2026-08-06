@@ -27,9 +27,22 @@ _Avoid_: Ardents plugin, built-in app, Node
 
 **Application Interface**:
 The local boundary through which an external Application publishes or opens
-Service Connections without embedding Ardents networking logic. Optional SDKs
-may wrap this boundary but do not define it.
+Service Connections without embedding Ardents networking logic. It contains
+separately authorized Connection and Service Administration Interfaces;
+optional SDKs may wrap it but do not define it.
 _Avoid_: Mandatory SDK, application runtime, network wire protocol
+
+**Connection Interface**:
+The least-privileged part of the Application Interface for opening or accepting
+Service Connections and exchanging bytes. It cannot expose Service Authority or
+Service administration.
+_Avoid_: Message API, Service Administration Interface
+
+**Service Administration Interface**:
+The separately authorized part of the Application Interface for managing
+Service Authority, publication, and Service configuration. Access to the
+Connection Interface does not grant access to it.
+_Avoid_: Control Plane, Connection Interface
 
 **Service**:
 An application-defined function reachable inside Ardents through a Service

@@ -54,15 +54,16 @@ Service Target.
 
 **Start:** Existing client/server application logic
 
-**Flow:** connect through the local socket/proxy-style Application Interface →
-select Isolation Context → resolve or supply Service Target → connect/listen →
-read and write opaque bytes → handle close, timeout, backpressure, and classified
-failure
+**Flow:** separately authorize Service administration when publishing is needed
+→ use the least-privileged local Connection Interface → select Isolation Context
+→ resolve or supply Service Target → connect or accept → read and write opaque
+bytes → handle close, timeout, backpressure, and classified failure
 
 **Done when:** the Application can use its own protocol without treating a Node
 ID as an application address, embedding a mandatory Ardents SDK, or importing
 routing internals. The Application remains responsible for User identity,
-authorization, persistence, semantic retry, and data format.
+authorization, persistence, semantic retry, and data format. Access to connection
+traffic alone does not expose Service Authority or Service administration.
 
 ## J-05 — Use the Named Unlisted Site tracer
 

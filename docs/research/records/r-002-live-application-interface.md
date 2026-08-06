@@ -75,12 +75,40 @@ Consequences:
   silently change its accepted semantics;
 - exact partial-write, timeout, close, and failure reporting remains P1-D5.
 
+### P1-D3 — Separate connection and administration privileges
+
+**Product Owner decision, accepted 2026-08-07:** the Application Interface has
+two logically separate privilege boundaries. The least-privileged Connection
+Interface carries connection operations and Application Data; Service Authority,
+publication, and configuration require a separately authorized Service
+Administration Interface.
+
+The operation boundary is:
+
+- Connection Interface: connect, accept an already authorized Service's
+  connections, read, write, close, cancel, and observe connection errors;
+- Service Administration Interface: create, import, or export Service Authority;
+  publish or unpublish a Service; bind its local endpoint; initiate target
+  replacement under the accepted R-006 lifecycle; and change Service
+  configuration or policy;
+- access to the Connection Interface never grants Service Administration
+  Interface access.
+
+Consequences:
+
+- compromising an ordinary Application does not by itself expose Service
+  Authority or permit rebinding, unpublishing, or reconfiguring a Service;
+- an SDK may wrap either interface but cannot merge their authority boundaries;
+- this is a logical and authorization boundary, not yet a choice of separate
+  processes, sockets, protocols, or binaries;
+- P1-D7 must define how local access is granted and scoped.
+
 ## Hypotheses
 
-- **H1 — Local data interface plus control interface:** Applications exchange
-  bytes through a socket/proxy-style local data path, while service creation,
-  authority import/export, status, and policy use a separate bounded control
-  surface.
+- **H1 — Connection plus Service Administration Interfaces:** Applications
+  exchange bytes through a socket/proxy-style Connection Interface, while
+  Service creation, authority import/export, publication, and policy use a
+  separately authorized Service Administration Interface.
 - **H2 — One native Ardents API:** all data and control operations use one
   Ardents-specific RPC or SDK contract.
 - **H3 — Transparent proxy only:** Ardents intercepts ordinary application
@@ -144,13 +172,15 @@ that maps an ordinary HTTP client and server through simulated `connect`,
 - **Product Owner decision:** the only V1 data primitive is a live reliable
   ordered bidirectional byte stream. Datagram, message, retention, exactly-once,
   and automatic replay semantics are rejected from the network contract.
-- **Inference:** P1-D1 and P1-D2 favor H1 or H3 over H2, but do not yet decide
-  whether control and data share one protocol or how transparent the local
-  integration should be.
+- **Product Owner decision:** connection traffic and Service administration are
+  separate privilege boundaries. Connection access cannot expose Service
+  Authority or grant publication and configuration operations.
+- **Inference:** P1-D1 through P1-D3 select H1 as the working product shape. The
+  accepted logical separation does not require separate protocols or processes.
 
 ## Options
 
-### H1 — Local data interface plus control interface
+### H1 — Connection plus Service Administration Interfaces
 
 - Product fit: lets ordinary applications keep their data protocol while Ardents
   exposes explicit publication, authority, isolation, and status operations.
@@ -176,18 +206,18 @@ that maps an ordinary HTTP client and server through simulated `connect`,
 ## Recommendation
 
 Keep **H1** as the working shape: an implementation-neutral local data path plus
-an explicit bounded control surface. P1-D1 fixes the no-mandatory-SDK boundary,
-and P1-D2 fixes the stream-only V1 data primitive.
+an explicit separately authorized Service Administration Interface. P1-D1 fixes
+the no-mandatory-SDK boundary, P1-D2 fixes the stream-only V1 data primitive,
+and P1-D3 fixes their privilege separation.
 
 Resolve the remaining contract one decision at a time:
 
-1. **P1-D3:** which operations belong to the data path and which to control.
-2. **P1-D4:** whether `connect` accepts Service Name, Service Target, or both and
+1. **P1-D4:** whether `connect` accepts Service Name, Service Target, or both and
    what authenticated result it returns.
-3. **P1-D5:** exact connection, partial-write, timeout, and close failures.
-4. **P1-D6:** how an Application supplies Isolation Context without turning it
+2. **P1-D5:** exact connection, partial-write, timeout, and close failures.
+3. **P1-D6:** how an Application supplies Isolation Context without turning it
    into a global identity.
-5. **P1-D7:** local authorization for publishing and Service Authority access.
+4. **P1-D7:** local authorization for publishing and Service Authority access.
 
 No concrete proxy protocol, serialization, library, or language is selected.
 
@@ -199,7 +229,9 @@ No concrete proxy protocol, serialization, library, or language is selected.
 - P1-D2 accepted: one live reliable ordered bidirectional byte stream; no
   datagrams, message boundaries, offline delivery, exactly-once semantics, or
   automatic replay.
-- H1 remains the working shape; H2 is rejected as mandatory integration; H3 is
+- P1-D3 accepted: the Connection Interface is least-privileged and cannot grant
+  access to the separately authorized Service Administration Interface.
+- H1 is the working shape; H2 is rejected as mandatory integration; H3 is
   insufficient by itself.
-- P1-D3 is next.
+- P1-D4 is next.
 - No ADR and no code.
