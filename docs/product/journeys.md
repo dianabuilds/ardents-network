@@ -35,7 +35,9 @@ shown as authorization or secrecy. The Interactive Route is not a direct path
 or single proxy, and no one ordinary Node links the User's location to the
 Service Name, Service Target, or Service Instance location. The Service may
 still recognize identity disclosed by Application Data, credentials, client
-fingerprinting, timing, or behavior.
+fingerprinting, timing, or behavior. The route is presented as implementing this
+privacy claim only when its exact implementation candidate has current Route
+Qualification; otherwise the journey is visibly an experiment or simulation.
 
 ## J-03 — Publish a local Service
 
@@ -156,3 +158,7 @@ Every implementation proposal must exercise at least these cases:
 - a slow reader attempts to create unbounded buffering or starve other grants;
 - a censor blocks known entry addresses and protocol fingerprints;
 - an official endpoint or protocol update channel is compromised or unavailable.
+
+For an Interactive Route candidate, any forbidden endpoint, edge-observer, or
+single-Node disclosure, or any silently accepted substitution, modification,
+replay, redirect, or downgrade in these cases, fails Route Qualification.

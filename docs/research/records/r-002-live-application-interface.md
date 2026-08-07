@@ -487,6 +487,6 @@ No concrete proxy protocol, serialization, library, or language is selected.
   explicit overload, and measured honest-use performance are mandatory.
 - H1 is the accepted V1 shape; H2 is rejected as mandatory integration; H3 is
   insufficient by itself.
-- R-002 is closed; R-001 is the next foundation decision and R-023 defines the
-  parallel performance budget before routing comparison.
+- R-002 and R-001 are closed; R-023 is the next foundation decision and defines
+  the performance budget before routing comparison.
 - No ADR and no code.

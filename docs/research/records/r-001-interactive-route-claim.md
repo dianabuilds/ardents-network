@@ -1,7 +1,7 @@
 ---
 id: R-001
 title: What does the Interactive Route protect?
-status: active
+status: decided
 owner: product research
 started: 2026-08-07
 reviewed: 2026-08-07
@@ -332,11 +332,75 @@ Consequences:
 - R-007 specifies bounded recovery and evidence for failure classes; R-009
   specifies active probing and blocked entry; R-004 measures tagging exposure.
 
-## Remaining decisions
+### P2-D7 — Route Qualification and falsification gate
 
-1. **P2-D7 — Conditions and falsification:** required honest behavior,
-   diversity, measurements, failure thresholds, and user-facing limitation
-   text for the final claim matrix.
+**Product Owner decision, accepted 2026-08-07:** the Interactive Route is a
+test-gated product contract. A specific implementation candidate earns Route
+Qualification only after reproducible controlled-network tests show that every
+required observer, endpoint, and Node-role boundary holds and that active
+attacks fail closed. Until then Ardents remains research and must not present
+that implementation publicly as an anonymous network.
+
+The qualification environment must:
+
+- capture the network traffic visible at the User edge, Service edge, and every
+  ordinary Node role in a controlled topology;
+- inspect the live and retained protocol state available to each ordinary Node
+  role, testing one malicious role at a time rather than assuming role
+  separation from the design;
+- run malicious-User and malicious-Service cases and inspect every network
+  field, local result, diagnostic, and route artifact exposed to them;
+- attempt target substitution, modification, injection, replay, redirection,
+  downgrade, and forbidden reordering before and after connection
+  establishment;
+- retain enough topology, workload, build, configuration, capture, and result
+  evidence to reproduce the conclusion.
+
+The required conditions are part of the claim, not test fine print:
+
+- the protected endpoint, its Application, the Service Authority, and accepted
+  cryptography are uncompromised where the row depends on them;
+- the single-Node claim assumes no Correlated Control of additional roles and
+  that the remaining required roles follow the tested protocol;
+- the Local Traffic Observer occupies one endpoint edge and does not also own
+  the endpoint or a second observation position;
+- the connection uses the accepted Interactive Route without a direct path,
+  weaker Route Profile, alternate namespace, target, or ordinary-network
+  fallback;
+- distinct Isolation Contexts do not deliberately reuse Application identity or
+  Application Data that links them.
+
+Any forbidden disclosure in the captured traffic, role state, endpoint output,
+or diagnostics fails qualification. Any substituted target, modified or
+replayed data, redirect, downgrade, or invalid control state accepted as a
+successful connection or valid Application Data also fails qualification. A
+Broad Traffic Observer correlation or correlation by a sufficiently placed
+colluding set is not a failed test because those adversaries are explicitly
+outside the Interactive Route anonymity claim; that exclusion must be visible
+wherever the claim is shown.
+
+Passing qualifies only the tested implementation candidate under the recorded
+conditions. It is not a proof for an untested build, configuration, route
+family, future release, compromised endpoint, or excluded adversary.
+
+## Final claim matrix
+
+| Information | Adversary | Conditions | Falsification | Honest limitation |
+|---|---|---|---|---|
+| User ordinary location, Route, Isolation Context, and any network-generated stable User ID | Malicious intended Service | User endpoint and its local Application are uncompromised; exact target authentication holds; no direct or weaker-route fallback | Run the Service maliciously; inspect its Application Data, endpoint results, network-visible fields, traffic, logs, and repeated connections for forbidden User origin or network state | The Service receives plaintext Application Data, timing, volume, and behavior. Credentials, content, fingerprints, and behavior can identify or link the User; endpoint compromise defeats local protection |
+| Service Instance ordinary location, Route, and Service Authority | Malicious User | Service endpoint, local Service Application, and Service Authority are uncompromised; exact target authentication holds; no direct or weaker-route fallback | Run the User maliciously; inspect its Application Interface results, Service output, network-visible fields, traffic, diagnostics, and repeated connections for forbidden origin or authority | The User knows the selected Service Name or Service Target and receives intended Service output and behavior; compromised Service content or host can reveal more |
+| Link between either endpoint location and a Service Name, Service Target, or opposite endpoint; full Route; plaintext Application Data | Any one malicious ordinary Node, tested in every eligible role | Only one ordinary Node is malicious; if it performs several eligible roles, the test exposes their combined state; no additional Node is under Correlated Control | Make each eligible Node and role combination malicious in turn and inspect all traffic, live state, retained state, handles, logs, and failure paths available to it | The Node sees immediate peers, required role data, timing, direction, volume, and short-lived opaque handles. Sufficient Correlated Control or collusion is outside this claim |
+| Selected Service Name or Service Target, opposite endpoint location, Application Data, and full Route | Passive or active Local Traffic Observer at either endpoint edge | Observer does not control the endpoint or a second observation position; no direct fallback; accepted encryption and target authentication hold | Capture, classify, block, replay, and manipulate all edge traffic in both endpoint-edge cases; search captures and observable protocol behavior for protected values | The observer knows the adjacent endpoint location and may see peer addresses, timing, direction, duration, volume, retries, and a classifiable Ardents fingerprint |
+| Application Data confidentiality and integrity; exact Service Target, Route Profile, and fresh protocol state | One malicious Node or all carrier Nodes colluding and acting actively | Both endpoints, Service Authority, and accepted cryptography remain uncompromised | Capture carrier state and attempt substitution, modification, injection, replay, redirection, downgrade, truncation, and forbidden reordering across setup and established traffic | Carrier Nodes can deny, delay, drop, throttle, or shape traffic. Timing- and volume-based tags can aid excluded correlation without changing authenticated data |
+| Absence of network-generated linkage across distinct Isolation Contexts | Malicious Service and carrier observations available within the other accepted rows | Contexts are distinct and do not deliberately reuse linking Application Data, credentials, or behavior | Repeat equivalent connections in separate contexts and compare all route, session, handle, identifier, cache, and endpoint-visible state for forbidden reuse | Application Data, fingerprints, timing, volume, and endpoint observation may still link the contexts |
+| Not protected: relationship unlinkability from timing and volume near both endpoints | Broad Traffic Observer, or a colluding set whose combined views cross the knowledge boundary | Not promised by the Interactive Route | A successful timing-and-volume correlation is recorded as an expected limitation, not misreported as a passed anonymity test or a protocol-integrity failure | Low-latency Interactive traffic remains correlation-sensitive; a stronger profile requires a separate R-005 contract |
+
+## Closure
+
+R-001 has no remaining product decisions. Its matrix is the acceptance contract
+against which R-004 may compare route families and later implementation
+candidates may seek Route Qualification. Closing this record decides the claim;
+it does not validate an implementation.
 
 ## Evaluation rule
 
@@ -348,9 +412,9 @@ Every accepted row in the final claim matrix must state:
 4. an experiment or analysis that can falsify it;
 5. what remains visible, linkable, blockable, or attackable.
 
-The record remains active until every relevant actor has a complete row. No
-routing technology can be selected merely by using the words `anonymous`,
-`onion`, `mix`, or `decentralized`.
+Every relevant actor now has a row. No routing technology can be selected merely
+by using the words `anonymous`, `onion`, `mix`, or `decentralized`, and no
+implementation inherits Route Qualification from its design vocabulary.
 
 ## Evidence plan
 
@@ -366,8 +430,10 @@ than copying system labels.
 
 For each candidate route family, define a reproducible topology and collect the
 endpoint, intermediary, and observer views of connection setup, steady traffic,
-failure, and repeated connections. R-023 supplies the honest-workload budget;
-R-011 later tests whether claimed operator and network diversity exists.
+failure, and repeated connections. Execute the P2-D7 active-attack suite and
+retain the evidence needed for Route Qualification. R-023 supplies the
+honest-workload budget; R-011 later tests whether claimed operator and network
+diversity exists.
 
 ## Alternatives rejected by accepted decisions
 
@@ -419,10 +485,19 @@ R-011 later tests whether claimed operator and network diversity exists.
   because the network cannot infer Application idempotency or remote completion.
 - **P2-D6 — Promise detection of every timing tag:** rejected because a Node can
   shape low-latency timing and volume without modifying authenticated bytes.
+- **P2-D7 — Claim anonymity from design or terminology:** rejected because the
+  protected views and fail-closed behavior must be demonstrated on a specific
+  implementation candidate under reproducible conditions.
+- **P2-D7 — Treat excluded broad observation or collusion as a hidden pass:**
+  rejected because those are honest limitations that must be visible, not
+  omitted from qualification results.
+- **P2-D7 — Bury conditions in test documentation:** rejected because Users and
+  Developers must see the conditions and limitations wherever the Interactive
+  Route privacy claim is presented.
 
 ## Disposition
 
-- State: `active`.
+- State: `decided`.
 - P2-D1 accepted: the Interactive Route has no Broad Traffic Observer
   timing-and-volume correlation-resistance claim.
 - P2-D2 accepted: a Local Traffic Observer receives no direct Service
@@ -449,6 +524,14 @@ R-011 later tests whether claimed operator and network diversity exists.
   fail closed; detected violations never become accepted data or silent downgrade.
 - Delay, denial, traffic shaping, and indistinguishable attack remain honest
   limitations; bounded recovery never replays an Application operation.
-- P2-D7, conditions and falsification, is next.
+- P2-D7 accepted: Route Qualification requires reproducible traffic, Node-state,
+  endpoint, isolation, and active-attack tests; a forbidden disclosure or
+  silently accepted substitution, modification, replay, redirect, or downgrade
+  fails the candidate.
+- Broad Traffic Observer and sufficiently placed collusion correlation are
+  explicit non-claims, not false test failures; their limits remain visible.
+- R-001 is closed as a product contract. No implementation has yet earned Route
+  Qualification, so Ardents cannot yet present itself publicly as an anonymous
+  network implementation.
 - No routing family, protocol, library, implementation language, ADR, or code is
   selected.

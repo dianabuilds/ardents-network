@@ -18,6 +18,10 @@ Research starts from these reversible product boundaries:
 - the smallest transport is an online Service Connection carrying opaque bytes;
 - the local interface uses finite hierarchical budgets, backpressure, and
   measured performance without weakening accepted security boundaries;
+- the Interactive Route is a test-gated contract: endpoint, Local Traffic
+  Observer, one-malicious-Node, active-attack, and explicit broad-observer
+  boundaries are fixed, while no implementation has yet earned Route
+  Qualification;
 - the Application owns its protocol, User identity, authorization, persistence,
   semantic retry, and offline behavior;
 - the core connects external local Applications and does not assume a bundled
@@ -34,7 +38,7 @@ boundaries with named evidence.
 |---|---|---|---|
 | [R-006](records/r-006-service-target-lifecycle.md) | What is the V1 lifecycle of a Service Target across creation, publication, migration, loss, compromise, replacement, and retirement? | **Decided:** one active Instance uses a portable Service Authority. Routine migration uses encrypted export/import and preserves the target. Loss or compromise creates a new target and rebinds the Service Name; the old target remains untrusted. | decided |
 | [R-002](records/r-002-live-application-interface.md) | What is the smallest live Application Interface that lets an existing local application publish and consume a Service safely? | **Decided:** an external socket/proxy-style boundary exposes one live stream, both destination forms, authenticated results, honest failures, safe Isolation Contexts, endpoint-local least privilege, hierarchical resource budgets, backpressure, and measurable performance. SDKs remain optional wrappers; concrete protocol and numeric budgets remain later evidence. | decided |
-| [R-001](records/r-001-interactive-route-claim.md) | Which endpoint, Local Traffic Observer, relay-collusion, and Broad Traffic Observer capabilities must the Interactive Route resist, and what does it deliberately expose? | **Active:** P2-D1 through P2-D5 fix observer, multi-hop, collusion, and endpoint limits. P2-D6 requires fail-closed target authentication, Route Profile binding, freshness, and integrity while treating delay, denial, and indistinguishable causes honestly. Only conditions, measurements, and falsification remain. | active |
+| [R-001](records/r-001-interactive-route-claim.md) | Which endpoint, Local Traffic Observer, relay-collusion, and Broad Traffic Observer capabilities must the Interactive Route resist, and what does it deliberately expose? | **Decided:** the low-latency claim provides Endpoint Location Privacy against the opposite endpoint and any one malicious ordinary Node through multi-hop Route Knowledge Separation; it limits local observation without promising invisibility, excludes Broad Traffic Observer and arbitrary-collusion resistance, protects payload and exact target even under carrier collusion, fails closed under active attack, and requires Route Qualification before any implementation claim. | decided |
 | R-003 | How does an exact Service Name bind to a Service Target, resolve without becoming a directory, survive accepted rotation, and handle registration, expiry, recovery, conflict, enumeration, query privacy, and Control Plane capture? | A naming product contract and governance/failure state machine; no registry technology is selected until this exists. | open |
 | R-004 | Which routing and rendezvous families can meet the accepted Interactive Route claim and R-023 performance budget under churn, malicious Nodes, and realistic client devices? | Comparable primary-source analysis and bounded measurements of multi-hop Route Knowledge Separation, position-dependent collusion and tagging exposure, route shape, hop count, churn, fail-closed behavior, and cost against the R-001 claim matrix and R-023 budgets; no library popularity scoring. | open |
 | R-007 | What availability does the core promise when a path fails or a Service is offline, and which retries can be performed without lying to the Application about operation completion? | A failure matrix that maps network evidence, including P2-D6 active violations, to the accepted P1-D5 classes for discovery, connect, partial write, route loss, service loss, and reconnect. It must use indeterminate failure where attack and outage cannot be distinguished. Retained delivery and Application-operation retry remain outside the core. | open |
@@ -78,18 +82,17 @@ boundaries with named evidence.
 
 ## Decision order
 
-R-006 selected the portable-authority lifecycle and R-002 fixed the live
-Application Interface. The remaining dependency path is intentionally short:
+R-006 selected the portable-authority lifecycle, R-002 fixed the live
+Application Interface, and R-001 closed the Interactive Route claim and its
+qualification gate. The remaining dependency path is intentionally short:
 
-1. **R-001 — Interactive Route claim:** define what protection that connection
-   promises.
-2. **R-023 — performance budget:** define what useful performance means before
+1. **R-023 — performance budget:** define what useful performance means before
    comparing routing or implementation choices.
-3. **R-003 — Service Name:** define the human layer over the accepted target and
+2. **R-003 — Service Name:** define the human layer over the accepted target and
    catastrophe replacement.
-4. **R-004 and R-009 — routing and hostile bootstrap:** compare mechanisms only
+3. **R-004 and R-009 — routing and hostile bootstrap:** compare mechanisms only
    against the accepted contracts.
-5. **R-007 and R-008 — failure and local isolation:** close the minimum tracer
+4. **R-007 and R-008 — failure and local isolation:** close the minimum tracer
    safety boundary.
 
 R-010 through R-012 and R-020 run before any public deployment claim. Optional

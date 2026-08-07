@@ -27,6 +27,8 @@ route and protect their connections.
   endpoint location to a Service Name, Service Target, or opposite endpoint. It
   does not promise resistance to timing-and-volume correlation by a Broad
   Traffic Observer or hide identity disclosed by Application Data and behavior.
+  An implementation may present this claim only after Route Qualification;
+  Ardents research or an unqualified candidate is not an anonymous network.
 - **Decentralized** means ordinary reachability and routing do not require one
   hosting or relay operator. Naming, bootstrap, releases, and emergency powers
   remain explicit Control Plane risks until their own designs are accepted.
@@ -141,6 +143,10 @@ These are responsibility boundaries, not selected binaries or APIs:
 13. Target authentication, Route Profile binding, protocol freshness, and
     integrity fail closed. Detected modification, injection, replay, redirect,
     or downgrade never becomes an accepted connection or Application Data.
+14. The Interactive Route claim is implementation-gated. Reproducible
+    endpoint-edge, Node-role, malicious-endpoint, isolation, and active-attack
+    tests must pass before a candidate earns Route Qualification; the claim's
+    conditions and excluded adversaries remain visible to Users and Developers.
 
 The Interactive Route is therefore multi-hop, but the product contract does not
 select Tor, onion routing, a fixed path shape, or a fixed number of hops. R-004
@@ -170,7 +176,9 @@ general application platform:
    service, and publishes reachability without an ordinary public origin.
 3. The Developer binds a recoverable Service Name to the target.
 4. A User who already knows the exact name enters it in a small reference
-   client. The name resolves and an Interactive Route reaches the Service.
+   client. The name resolves and an Interactive Route with current Route
+   Qualification reaches the Service; a simulated or unqualified route is
+   labeled as such.
 5. HTTP bytes cross a generic Service Connection; the network does not interpret
    pages, forms, sessions, or application identity.
 6. The journey exposes route failure honestly, rebuilds an alternate path when
@@ -223,6 +231,9 @@ following is unavoidable:
   identity, persistence, or protocol semantics into the network;
 - a useful low-latency route cannot hide both endpoint locations from the
   accepted adversary;
+- every useful candidate necessarily exposes information forbidden by the
+  R-001 claim matrix or must accept target substitution, data modification,
+  replay, redirect, or downgrade to meet its performance budget;
 - human-readable naming necessarily creates an unacceptable ownership or query
   graph;
 - safe isolation makes ordinary applications impractical to integrate;

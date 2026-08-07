@@ -175,6 +175,13 @@ behavior, observer resistance, and honest limitations of a class of Service
 Connections.
 _Avoid_: Anonymous mode, routing algorithm
 
+**Route Qualification**:
+The evidence state of a specific implementation candidate after it passes every
+required observer, Node-role, endpoint, and active-attack falsification test for
+a Route Profile. It does not extend to excluded adversaries, untested builds, or
+later changes.
+_Avoid_: Security proof, anonymous by design, documentation-only claim
+
 **Interactive Route**:
 The low-latency Route Profile intended for live Applications. It does not
 promise resistance to timing-and-volume correlation by a Broad Traffic

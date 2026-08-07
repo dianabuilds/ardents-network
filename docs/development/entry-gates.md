@@ -25,7 +25,8 @@ minimum relevant contracts:
 
 - accepted R-006 Service Target lifecycle;
 - R-002 live Application Interface;
-- R-001 Interactive Route adversary and claim;
+- accepted R-001 Interactive Route adversary, claim matrix, and Route
+  Qualification gate;
 - R-003 Service Name and recovery boundary;
 - R-004 minimum Interactive Route evidence;
 - R-007 connection and Service failure behavior;
@@ -60,6 +61,19 @@ A security or privacy property may be presented as implemented only when:
 - measurements or analysis are retained and reproducible;
 - downgrade, route failure, key rotation, update, and recovery are covered;
 - documentation exposes the honest limitation to Users and Developers.
+
+For the Interactive Route, passing this gate is Route Qualification for one
+recorded implementation candidate, build, configuration, workload, and threat
+boundary. Its controlled topology must inspect both endpoint edges, every
+ordinary Node role in turn, malicious endpoints, distinct Isolation Contexts,
+and active substitution, modification, injection, replay, redirect, downgrade,
+truncation, and forbidden reordering. A forbidden disclosure or accepted active
+violation fails the candidate.
+
+Broad Traffic Observer and sufficiently placed collusion correlation are
+explicit non-claims, not hidden qualification successes or failures. Their
+limits must remain visible. Before Route Qualification, neither the release nor
+the project may present that implementation publicly as an anonymous network.
 
 ## Gate E — call a network release usable
 

@@ -282,7 +282,8 @@ This is a falsifiable JTBD formulation, not yet an observed user statement.
    for explicit permission to create one Reply Thread.
 4. The Person sends a text message using fresh service-scoped state through the
    required Shielded Route contract and may go offline. The Developer may also
-   be offline at send time. Until R-001 and R-005 resolve that contract, an
+   be offline at send time. R-001 deliberately excludes that stronger protection
+   from the Interactive Route; until R-005 justifies and defines it, an
    interaction prototype may simulate its delay and warning but may not claim
    its network protection.
 5. Bounded Replicas retain encrypted envelopes. The Developer later retrieves
@@ -315,7 +316,7 @@ security claims.
 | Availability | Site release and retained text remain retrievable | One unavailable ordinary Replica and one blocked ordinary relay | Sufficient independently controlled Replicas and an alternate accepted path | Remove each selected Replica/relay before and during publish, retrieve, send, poll, update, and rollback | Correlated operator loss, censorship, retention expiry, or loss of all replicas can still make data unavailable |
 
 - **Blocked claim:** relationship unlinkability against a Broad Traffic Observer
-  is not an Interactive Route promise. R-001 must still name collusion and
+  is not an Interactive Route promise. R-001 fixes the one-Node, collusion, and
   observation conditions; R-005 must justify any stronger Route Profile with a
   delay, cover, bandwidth, and anonymity-set budget and measurement.
 - **Recommendation — untrusted input:** accept text only. File submissions add

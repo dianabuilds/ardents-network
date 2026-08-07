@@ -1,6 +1,6 @@
 # Threat model
 
-Status: **proposed; research must turn goals into measurable contracts**
+Status: **proposed; Interactive Route contract decided, no implementation qualified**
 
 Last reviewed: 2026-08-07
 
@@ -90,6 +90,15 @@ Node can still delay, drop, block, and shape traffic. When attack and ordinary
 failure are indistinguishable, Ardents reports indeterminate failure rather than
 an accusation; bounded recovery never replays an Application operation.
 
+P2-D7 makes this a qualification gate rather than a design assertion. A
+specific implementation candidate must reproduce the accepted User-edge,
+Service-edge, Node-role, malicious-endpoint, Isolation Context, and active-attack
+tests before it can present the Interactive Route claim as implemented. Any
+forbidden disclosure or silently accepted substitution, modification, replay,
+redirect, or downgrade fails Route Qualification. Broad Traffic Observer and
+sufficiently placed collusion correlation remain explicit excluded cases rather
+than hidden passes.
+
 It does **not** claim resistance to a Broad Traffic Observer correlating timing
 and volume near both endpoints or across enough network locations. R-005 must
 first justify a concrete Application job before a delayed, padded, or
@@ -131,6 +140,29 @@ No document or interface may say only “anonymous,” “private,” “secure,
    behavior.
 4. **Measurement:** what experiment or analysis can falsify the claim?
 5. **Limitation:** what remains visible, linkable, or attackable?
+
+## Interactive Route qualification gate
+
+Route Qualification requires a controlled topology that records the tested
+build, configuration, workload, Route Profile, role placement, and observation
+conditions. The evidence must include:
+
+- traffic captures at both endpoint edges and every ordinary Node role;
+- inspection of the live and retained state available to each Node role while
+  each eligible role is malicious in turn;
+- malicious User and Service observations, including Application Interface
+  results, diagnostics, route artifacts, and repeated connections;
+- distinct-Isolation-Context comparisons for forbidden network-state reuse;
+- pre- and post-establishment target substitution, modification, injection,
+  replay, redirect, downgrade, truncation, and forbidden-reordering attempts.
+
+The candidate fails if protected information appears in a forbidden view or an
+active violation becomes a successful connection or accepted Application Data.
+Correlation by a Broad Traffic Observer or by a colluding set outside the
+one-Node claim does not fail this qualification, but the excluded capability and
+remaining exposure must be visible anywhere the claim is presented. Passing
+qualifies only the tested candidate and conditions, not later builds or a whole
+route family by implication.
 
 ## Security invariants
 
@@ -191,6 +223,15 @@ No document or interface may say only “anonymous,” “private,” “secure,
 - Target authentication, Route Profile binding, protocol freshness, and
   integrity fail closed. Modified, injected, replayed, redirected, or downgraded
   data is never accepted as a valid connection or Application Data.
+- A forbidden endpoint, Local Traffic Observer, or single-Node disclosure, or a
+  silently accepted active violation, fails Interactive Route Qualification for
+  that implementation candidate.
+- Route Qualification applies only to the tested build, configuration,
+  conditions, and adversary boundary; design terminology and a previously
+  qualified release are not evidence for an untested candidate.
+- Interactive Route conditions, excluded Broad Traffic Observer and collusion
+  cases, and remaining endpoint and traffic-metadata exposure are user-visible
+  parts of the claim, not internal test notes.
 - A detected target substitution produces target authentication failure when the
   evidence supports it. Integrity loss after establishment terminates the
   connection; indistinguishable causes remain connection loss or indeterminate
@@ -247,8 +288,9 @@ No document or interface may say only “anonymous,” “private,” “secure,
 
 The prioritized questions live in [the network research queue](../research/questions.md).
 R-006 fixes the V1 target lifecycle, R-002 fixes the Application Interface, and
-R-001 P2-D1 through P2-D6 fix its observer, Node, collusion, endpoint, and
-active-attack limits.
-No production architecture should be selected before R-001, R-003, R-004,
-R-007, R-009, and R-023 make the observer, naming, routing, failure, bootstrap,
-and performance contracts testable.
+R-001 P2-D1 through P2-D7 close the Interactive Route observer, Node, collusion,
+endpoint, active-attack, and Route Qualification contract. No implementation
+has passed that gate.
+No production architecture should be selected before R-003, R-004, R-007,
+R-009, and R-023 make the naming, routing, failure, bootstrap, and performance
+contracts testable against the closed R-001 claim.

@@ -1,8 +1,8 @@
 # Ardents Network
 
-Ardents is a greenfield product and protocol research project for a private,
-location-anonymous, decentralized application network designed for hostile
-environments.
+Ardents is a greenfield product and protocol research project pursuing a
+private, location-private, decentralized application network designed for
+hostile environments.
 
 The project is defining network contracts and validating security assumptions.
 This branch does **not** contain production-ready networking software. The
@@ -22,25 +22,33 @@ Service Connection. Infrastructure Node IDs are not User or application
 addresses, and the network does not impose messenger, identity, storage, or
 content semantics.
 
-The Interactive Route is multi-hop for Route Knowledge Separation: one ordinary
-Node cannot link an endpoint's ordinary location to a Service Name, Service
-Target, or opposite endpoint. This requirement selects neither Tor nor a fixed
-routing algorithm or hop count.
+The accepted Interactive Route contract is multi-hop for Route Knowledge
+Separation: one ordinary Node cannot link an endpoint's ordinary location to a
+Service Name, Service Target, or opposite endpoint. This requirement selects
+neither Tor nor a fixed routing algorithm or hop count.
 
-The baseline anonymity claim covers one malicious ordinary Node, not arbitrary
+The target anonymity claim covers one malicious ordinary Node, not arbitrary
 Correlated Control of several roles. Control spanning both endpoint sides may
 link the relationship through traffic metadata; end-to-end Application Data
 confidentiality and Service Target authentication remain separate guarantees.
 
-Ardents provides Endpoint Location Privacy, not automatic anonymity inside an
-Application. An intended Service reads its Application Data and can recognize
-credentials, content, fingerprints, timing, or behavior that the Application
-reveals; the network adds no global User identity or route diagnostics.
+The product contract is Endpoint Location Privacy, not automatic anonymity
+inside an Application. An intended Service reads its Application Data and can
+recognize credentials, content, fingerprints, timing, or behavior that the
+Application reveals; the network adds no global User identity or route
+diagnostics.
 
-Authentication and integrity fail closed: modified, injected, replayed,
-redirected, or downgraded protocol data is never accepted as a valid Service
-Connection. A Node can still delay or drop traffic; indistinguishable causes are
-reported honestly and bounded recovery never replays an Application operation.
+The contract requires authentication and integrity to fail closed: modified,
+injected, replayed, redirected, or downgraded protocol data is never accepted as
+a valid Service Connection. A Node can still delay or drop traffic;
+indistinguishable causes are reported honestly and bounded recovery never
+replays an Application operation.
+
+No implementation has yet earned Route Qualification. A candidate may present
+the Interactive Route claim only after reproducible edge-traffic, Node-state,
+malicious-endpoint, isolation, and active-attack tests pass. Until then this
+repository describes research toward an anonymous network, not a validated
+anonymous network implementation.
 
 The carrier is public so that private Services can draw from a broader anonymity
 set. Naming, bootstrap, software releases, and governance remain explicit
