@@ -115,7 +115,12 @@ creating a replacement target and rebinding the same name
 **Done when:** the site opens through the generic Service Connection; routine
 migration preserves both target and name; compromise preserves only the name;
 and route failure remains visible. No replicated Site Bundle, Ardents runtime,
-or built-in application identity is required.
+or built-in application identity is required. On the normal non-adversarial
+reference network, a running, network-ready endpoint receives the first valid
+HTTP response byte from the controlled tracer within `p95 <= 4 s` without a
+prepared Route and `p95 <= 2 s` with current authenticated state and reusable
+Route state for the same Isolation Context. Rendering and arbitrary Service
+processing are not part of this network KPI.
 
 ## J-06 — Recover from a failed or blocked path
 

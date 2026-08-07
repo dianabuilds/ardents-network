@@ -149,18 +149,46 @@ unverified network state, a direct Service path, a weaker Route Profile, a
 shared Isolation Context, or another bypass of the accepted security contract
 fails the product even if startup is faster.
 
+### P3-D2c — Named Unlisted Site first-byte latency
+
+**Product Owner decision, accepted 2026-08-07:** on the normal, non-adversarial
+V1 reference network, a running and network-ready endpoint opening the
+controlled Named Unlisted Site tracer must receive the first valid byte of its
+HTTP response within:
+
+- **cold site open:** `p95 <= 4 s` when no usable Route has been prepared for
+  the request;
+- **warm site open:** `p95 <= 2 s` when current authenticated naming and
+  reachability state and reusable Route state for the same Isolation Context are
+  already available.
+
+The timer starts when the Reference Application submits the exact Service Name
+and fixed tracer request. It ends when that Application receives the first byte
+of a valid HTTP response from the authenticated Service Target. The clock
+includes name resolution, reachability lookup, Route and Rendezvous work, target
+authentication, request transmission, controlled reference-service processing,
+and return transport.
+
+The workload is a deterministic small HTTP request and response served without
+external dependencies or intentional application delay. P3-D6 must fix their
+exact bytes and reference topology before qualification. Browser rendering,
+script execution, secondary assets, external resources, and arbitrary Service
+computation are excluded because the Ardents network cannot bound them.
+
+An otherwise eligible failure or timeout is a missed target and may not be
+removed from `p95`. A cached page response, direct path, weaker Route Profile,
+skipped target authentication, or cross-context Route reuse cannot satisfy the
+metric. These are top-down product targets and remain unverified.
+
 ## Remaining decisions
 
-1. **P3-D2c — First useful Application byte:** define the complete Named
-   Unlisted Site clock after endpoint readiness and set cold and warm percentile
-   budgets without hiding Application or network delay.
-2. **P3-D3 — Sustained service:** set throughput, concurrent-connection, CPU,
+1. **P3-D3 — Sustained service:** set throughput, concurrent-connection, CPU,
    memory, and bandwidth budgets for each reference class.
-3. **P3-D4 — Tail and degradation:** set jitter, loss, churn, alternate-route,
+2. **P3-D4 — Tail and degradation:** set jitter, loss, churn, alternate-route,
    and overload behavior without weakening R-001.
-4. **P3-D5 — Hostile load:** define fairness and resource-exhaustion workloads
+3. **P3-D5 — Hostile load:** define fairness and resource-exhaustion workloads
    and the useful honest-work floor during attack.
-5. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
+4. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
    artifacts, regression thresholds, and release failure rules.
 
 ## Hypotheses
@@ -229,6 +257,9 @@ traces, and direct-baseline results. Disposable experiment code belongs under
 - **Product Owner decision:** endpoint network readiness from an installed
   process start is capped at `p95 <= 5 s` for a routine restart with valid state
   and `p95 <= 15 s` for a clean first start without saved Ardents state.
+- **Product Owner decision:** the controlled Named Unlisted Site returns its
+  first valid HTTP response byte within `p95 <= 4 s` cold and `p95 <= 2 s` warm
+  from a running, network-ready endpoint.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -249,9 +280,9 @@ traces, and direct-baseline results. Disposable experiment code belongs under
 
 Keep one user-visible connection contract and measure class-specific resource
 ceilings unless evidence falsifies that shape. Use the accepted connection and
-endpoint-readiness targets as candidate gates, then define first-useful-byte
-latency, sustained load, degradation, hostile load, and the reproducible release
-gate in that order.
+endpoint-readiness targets and the tracer first-byte target as candidate gates,
+then define sustained load, degradation, hostile load, and the reproducible
+release gate in that order.
 
 Confidence: high for the platform boundary and desired connection experience;
 the accepted latency targets remain unverified and the other numeric targets
@@ -281,7 +312,14 @@ client product.
 - Software installation, operating-system startup, subsequent Service
   connection work, and blocked or hostile entry are outside these startup
   clocks.
+- P3-D2c accepted: the controlled Named Unlisted Site produces its first valid
+  HTTP response byte within `p95 <= 4 s` cold and `p95 <= 2 s` warm from a
+  running, network-ready endpoint.
+- Browser rendering, scripts, secondary assets, external resources, and
+  arbitrary Application processing are not hidden inside this network metric.
+- P3-D2 is complete: endpoint readiness, authenticated connection, and the
+  controlled tracer first-byte experience now have separate clocks.
 - Public DNS, naming design, bootstrap, routing, libraries, language, exact
   hardware, and the remaining numeric budgets remain unselected.
-- P3-D2c, first useful Application byte, is next.
+- P3-D3, sustained throughput, concurrency, and resource budgets, is next.
 - No ADR and no code.
