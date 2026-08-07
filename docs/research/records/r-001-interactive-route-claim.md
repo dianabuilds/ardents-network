@@ -42,8 +42,8 @@ The accepted outer claim remains:
 - the Service does not learn the User's ordinary network location from Ardents;
 - the User does not learn the Service Instance's ordinary network location from
   Ardents;
-- any one ordinary intermediary does not learn both ordinary endpoint locations
-  and plaintext Application Data under the final Interactive Route conditions;
+- any one ordinary Node does not learn both ordinary endpoint locations and
+  plaintext Application Data under the final Interactive Route conditions;
 - none of these statements is a blanket claim that a User, Service, or
   connection is globally anonymous or untraceable.
 
@@ -114,17 +114,60 @@ Consequences:
 - active probing and exact classification resistance belong to R-009 and the
   active-attack boundary in P2-D6.
 
+### P2-D3 — Multi-hop Route Knowledge Separation
+
+**Product Owner decision, accepted 2026-08-07:** the Interactive Route must use
+multiple separately operated Node roles to separate knowledge. A direct
+User-to-Service connection or one trusted proxy cannot satisfy the profile.
+
+The accepted per-role view is:
+
+- a User-adjacent entry role may know the User endpoint's ordinary network
+  location, its next Node, timing and volume, and a short-lived opaque route
+  handle, but not the selected Service Name, Service Target, or Service Instance
+  location;
+- a Service-adjacent entry role may know the Service Instance's ordinary network
+  location, its adjacent Node, timing and volume, and a short-lived opaque route
+  handle, but not the User location or a link between that origin and the Service
+  Name or Service Target;
+- an interior or Rendezvous role may know its immediate previous and next Nodes,
+  its required role data, timing and volume, and a short-lived opaque route
+  handle, but neither endpoint's ordinary location nor the Service Name or
+  Service Target;
+- no carrier role receives plaintext Application Data or the full Route;
+- one Node performing multiple roles must not combine their views to bypass the
+  same single-Node limit.
+
+This is a product information-flow contract, not a decision to adopt Tor, onion
+routing, layered-encryption details, a fixed path shape, or exactly three hops.
+R-004 must compare mechanisms and the smallest route shape that enforces the
+contract. R-023 must measure the resulting setup latency, throughput, tail
+latency, CPU, memory, and failure cost.
+
+Consequences:
+
+- a direct P2P path or single relay cannot be labeled or silently substituted as
+  an Interactive Route;
+- Service discovery and Rendezvous may use only short-lived opaque route data
+  at a carrier role; R-003 and R-004 must prevent a stable target-to-origin
+  mapping from appearing there;
+- different Node IDs or network addresses are not evidence of separate control;
+  actual operator, network, software, and jurisdictional diversity remain R-011
+  evidence and P2-D4 conditions;
+- physical co-location or one operator controlling multiple roles is treated as
+  collusion rather than independent multi-hop protection;
+- path length is selected later from the accepted security and performance
+  contracts, not copied from a reference system.
+
 ## Remaining decisions
 
-1. **P2-D3 — One intermediary:** the knowledge and control available to each
-   ordinary carrier role and the minimum separation the claim requires.
-2. **P2-D4 — Collusion:** which combinations of Nodes or network vantage points
+1. **P2-D4 — Collusion:** which combinations of Nodes or network vantage points
    break location privacy and which combinations must still be resisted.
-3. **P2-D5 — Malicious endpoint:** what a malicious User or Service can learn
+2. **P2-D5 — Malicious endpoint:** what a malicious User or Service can learn
    from Application Data, connection behavior, and repeated use.
-4. **P2-D6 — Active attacks:** required resistance to tagging, replay, delay,
+3. **P2-D6 — Active attacks:** required resistance to tagging, replay, delay,
    redirection, route manipulation, and target substitution.
-5. **P2-D7 — Conditions and falsification:** required honest behavior,
+4. **P2-D7 — Conditions and falsification:** required honest behavior,
    diversity, measurements, failure thresholds, and user-facing limitation
    text for the final claim matrix.
 
@@ -164,15 +207,22 @@ R-011 later tests whether claimed operator and network diversity exists.
 - **P2-D1 — Broad-observer resistance as a V1 promise:** rejected because it is
   not part of the accepted low-latency contract and would be dishonest without
   a separate measurable mechanism and cost.
-- **P2-D1 — No location-privacy promise:** rejected because it would remove the central
-  product value of reaching a Service without revealing ordinary endpoint
-  locations to the opposite endpoint or one ordinary intermediary.
+- **P2-D1 — No location-privacy promise:** rejected because it would remove the
+  central product value of reaching a Service without revealing ordinary
+  endpoint locations to the opposite endpoint or one ordinary Node.
 - **P2-D2 — Guaranteed ordinary-traffic disguise:** rejected because network
   addresses, traffic behavior, fingerprints, and active probing can expose or
   strongly suggest Ardents use.
 - **P2-D2 — No camouflage objective:** rejected because avoiding one fixed
   fingerprint and raising the cost of blanket blocking are necessary in the
   accepted hostile environment even though they cannot create invisibility.
+- **P2-D3 — Direct P2P or one trusted proxy:** rejected because one Node can then
+  combine endpoint location with destination or origin knowledge.
+- **P2-D3 — Adopt Tor and a fixed three-hop path now:** rejected because the
+  accepted decision is the observable knowledge boundary. R-004 and R-023 must
+  compare route families and costs before selecting a mechanism or hop count.
+- **P2-D3 — Treat different Node IDs as independence:** rejected because one
+  operator or correlated infrastructure can control nominally distinct roles.
 
 ## Disposition
 
@@ -184,8 +234,11 @@ R-011 later tests whether claimed operator and network diversity exists.
   the protocol, but may observe connection metadata and classify Ardents use.
 - Transport Camouflage is best-effort: no single mandatory stable fingerprint,
   but no invisibility or guaranteed ordinary-traffic disguise.
-- The endpoint-location and single-intermediary goals remain accepted, but their
-  exact conditions and collusion boundary are not yet complete.
-- P2-D3, the single-intermediary knowledge boundary, is next.
+- P2-D3 accepted: the Interactive Route is multi-hop for Route Knowledge
+  Separation; no one ordinary Node learns the full Route, plaintext, or a link
+  between endpoint location and a Service Name, Service Target, or opposite
+  endpoint.
+- Tor, onion routing, path shape, and hop count remain unselected.
+- P2-D4, the collusion boundary, is next.
 - No routing family, protocol, library, implementation language, ADR, or code is
   selected.

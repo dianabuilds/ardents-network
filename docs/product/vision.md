@@ -23,9 +23,10 @@ route and protect their connections.
   Service is access-controlled.
 - **Anonymous** is never a blanket claim. The Interactive Route aims to hide the
   User's ordinary location from the Service, the Service Instance's ordinary
-  location from the User, and prevent any one ordinary intermediary from
-  learning both locations and plaintext. It does not promise resistance to
-  timing-and-volume correlation by a Broad Traffic Observer.
+  location from the User, and prevent any one ordinary Node from linking an
+  endpoint location to a Service Name, Service Target, or opposite endpoint. It
+  does not promise resistance to timing-and-volume correlation by a Broad
+  Traffic Observer.
 - **Decentralized** means ordinary reachability and routing do not require one
   hosting or relay operator. Naming, bootstrap, releases, and emergency powers
   remain explicit Control Plane risks until their own designs are accepted.
@@ -110,8 +111,9 @@ These are responsibility boundaries, not selected binaries or APIs:
    or lost Service Target must be replaced.
 4. The User and Service do not learn each other's ordinary network location
    within the declared Interactive Route conditions.
-5. No individual ordinary intermediary both reads Application Data and learns
-   both endpoint locations under the declared conditions.
+5. Route Knowledge Separation prevents any one ordinary Node from learning the
+   full Route, reading Application Data, or linking an endpoint's ordinary
+   location to a Service Name, Service Target, or opposite endpoint.
 6. A failed path produces bounded recovery or an explicit failure; the network
    does not silently pretend that an offline Service received data.
 7. Losing or blocking one ordinary path does not require one central operator
@@ -124,6 +126,11 @@ These are responsibility boundaries, not selected binaries or APIs:
     the protocol. Ardents does not promise to hide its own use, but avoids one
     mandatory stable fingerprint and treats Transport Camouflage as a measurable
     censorship-resistance goal.
+
+The Interactive Route is therefore multi-hop, but the product contract does not
+select Tor, onion routing, a fixed path shape, or a fixed number of hops. R-004
+must find the least costly routing family that preserves the accepted knowledge
+separation, and R-023 must bound its performance cost.
 
 The Interactive Route deliberately makes no Broad Traffic Observer resistance
 claim. A delayed, padded, or cover-traffic-heavy profile enters the product only

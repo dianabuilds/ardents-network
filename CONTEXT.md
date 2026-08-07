@@ -174,6 +174,13 @@ promise resistance to timing-and-volume correlation by a Broad Traffic
 Observer.
 _Avoid_: Fully anonymous route, clearnet connection
 
+**Route Knowledge Separation**:
+The Interactive Route property in which several separately operated Node roles
+each receive only adjacent and role-specific information, so no ordinary Node
+can link an endpoint's ordinary location to a Service Name, Service Target, or
+the opposite endpoint. Different Node IDs are not proof of separate control.
+_Avoid_: Direct P2P path, single trusted proxy, fixed Tor circuit
+
 **Rendezvous**:
 A temporary network role through which two endpoints establish a Service
 Connection without learning each other's ordinary network location.

@@ -31,7 +31,9 @@ Connection
 
 **Done when:** the Application reaches the intended live Service or receives an
 explicit failure. No directory search occurs, and possession of the name is not
-shown as authorization or secrecy.
+shown as authorization or secrecy. The Interactive Route is not a direct path
+or single proxy, and no one ordinary Node links the User's location to the
+Service Name, Service Target, or Service Instance location.
 
 ## J-03 — Publish a local Service
 
@@ -45,12 +47,12 @@ per-Service administration → choose one active local listener → publish
 authenticated, expiring reachability without exposing raw authority → bind or
 update Service Name → accept a test Service Connection
 
-**Done when:** a remote Application can connect while neither the User nor an
-ordinary intermediary learns a public origin address outside the declared
-Route Profile. Stopping the local Service produces an explicit unavailable
-result, not implied offline delivery. A routine migration can stop the old
-Instance, import the encrypted authority on a new host, and republish the same
-Service Target.
+**Done when:** a remote Application can connect while neither the User nor any
+one ordinary Node can link the Service Instance's public origin address to its
+Service Name or Service Target outside the declared Route Profile. Stopping the
+local Service produces an explicit unavailable result, not implied offline
+delivery. A routine migration can stop the old Instance, import the encrypted
+authority on a new host, and republish the same Service Target.
 
 ## J-04 — Integrate an Application
 

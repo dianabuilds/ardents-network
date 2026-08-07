@@ -22,6 +22,11 @@ Service Connection. Infrastructure Node IDs are not User or application
 addresses, and the network does not impose messenger, identity, storage, or
 content semantics.
 
+The Interactive Route is multi-hop for Route Knowledge Separation: one ordinary
+Node cannot link an endpoint's ordinary location to a Service Name, Service
+Target, or opposite endpoint. This requirement selects neither Tor nor a fixed
+routing algorithm or hop count.
+
 The carrier is public so that private Services can draw from a broader anonymity
 set. Naming, bootstrap, software releases, and governance remain explicit
 Control Plane risks rather than being hidden behind the word “decentralized.”
