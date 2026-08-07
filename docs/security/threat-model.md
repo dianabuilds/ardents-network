@@ -247,6 +247,12 @@ route family by implication.
   eligible ordinary-Node or Carrier Channel failure when a qualifying alternate
   Route remains, and to terminate explicitly by `15 s` otherwise; broader
   availability is not guaranteed.
+- Ordinary-churn qualification repeats that eligible recovery three times in
+  one 10-minute run. Each next event strikes the current Route after the prior
+  recovery canary, while failed resources remain unavailable. Three is not a
+  runtime quota and cannot justify terminating an otherwise healthy connection;
+  overlapping failures and attacker-driven churn retain separate explicit
+  workloads and limits.
 - Integrity mechanisms reject protocol-level tagging that changes authenticated
   data, but cannot promise to detect every timing-, delay-, or volume-based tag.
   Such correlation remains within the P2-D1 and P2-D4 limitations.

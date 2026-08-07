@@ -218,6 +218,13 @@ active violations still fail closed; no direct fallback, Node identity, or
 route topology is exposed. The outcome is mandatory for the complete V1 stack
 regardless of which transport-specific Carrier Channels it uses.
 
+The same journey is also qualified under three sequential eligible failures in
+one 10-minute run. Each next failure affects the current Route only after the
+previous recovery canary arrives, while the failed Node or channel instance
+remains unavailable. All three recovery canaries and a final canary arrive
+through the same still-usable Service Connection. Three is a test workload, not
+a runtime quota or a reason to close after the third successful recovery.
+
 ## J-07 — Contribute network resources
 
 **Actor:** Network Contributor

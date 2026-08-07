@@ -827,13 +827,68 @@ bytes, endpoint traffic, and security checks. Pre-failure buffered data cannot
 end the clock. The `5 s` and `15 s` values are top-down unverified product
 targets, not claims that any individual transport already provides them.
 
+### P3-D4b1 — Three sequential recoveries under ordinary churn
+
+**Product Owner decision, accepted 2026-08-07:** one established Service
+Connection must survive three sequential eligible ordinary-Node or Carrier
+Channel failures during one continuous 10-minute qualification run. Each event
+retains the P3-D4a `p95 <= 5 s` recovery target and `15 s` terminal deadline.
+
+The window starts after the exact Service Target is authenticated, the Service
+Connection is usable, and the fixed incompressible workload is delivering in
+the measured direction without Application backpressure, cancellation, close,
+or a shorter Application timeout. The test is repeated separately for
+User-to-Service and Service-to-User delivery.
+
+The three injections are sequential rather than overlapping:
+
+- each affects an ordinary Node or Carrier Channel carrying the connection on
+  its then-current Interactive Route;
+- the next injection occurs only after the preceding unpredictable recovery
+  canary has been delivered through the same Service Connection;
+- a failed Node remains unavailable for the rest of the run, and a failed
+  Carrier Channel instance cannot be reused, so later events require genuine
+  continued adaptation rather than a return to the same failed resource;
+- both endpoints, the same active Service Instance and Service Target, and at
+  least one qualifying alternate Route remain available after every injection;
+- injection timing and eligible Route position are not disclosed to the
+  candidate in advance.
+
+Each event has its own P3-D4a recovery clock from the last pre-failure delivered
+byte to a newly generated post-injection canary delivered over the recovered
+path. Pre-failure buffering cannot end a clock. Every event remains in the same
+recovery percentile and miss-rate population; aggregating the three into one
+average cannot hide a slow or failed recovery.
+
+The run succeeds only if all three canaries arrive without a terminal
+Connection Result and the same Service Connection remains authenticated, open,
+ordered, non-duplicating, and usable through the end of the 10-minute window.
+After the third recovery the workload and an unpredictable final canary continue
+to prove that Ardents did not treat successful recovery number three as a reason
+to close or silently replace the stream.
+
+Every target, Isolation Context, Route Profile, queue, resource-safety,
+fail-closed, and no-direct-fallback invariant remains enabled. Carrier-level
+retransmission may preserve the stream, but neither an individual event nor the
+sequence may reissue an Application operation, expose a stable continuity
+identity, or share recovery state across Isolation Contexts. Recovery traffic
+and CPU, RSS, queue, and link cost remain visible evidence; their degraded-load
+ceilings are completed by P3-D4b2 and P3-D6.
+
+Three is a minimum qualification workload, not a runtime recovery quota or an
+availability promise for exactly three failures. Ardents cannot intentionally
+terminate a healthy recovered connection merely because the third event
+completed. Behavior beyond this workload remains finite, secure, and explicit,
+but has no numeric repeated-churn promise until separately qualified.
+
 ## Remaining decisions
 
 1. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
    units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
    floors on the accepted reference class.
-2. **P3-D4b — Loss, jitter, and repeated churn:** set useful progress and
-   recovery behavior beyond one eligible failure without weakening R-001.
+2. **P3-D4b2 — Impaired paths and overlapping churn:** set useful progress and
+   recovery cost under loss, jitter, ordinary congestion, and concurrent
+   failures without weakening R-001.
 3. **P3-D5 — Hostile load:** define fairness and resource-exhaustion workloads
    and the useful honest-work floor during attack.
 4. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
@@ -967,6 +1022,10 @@ traces, and direct-baseline results. Disposable experiment code belongs under
   failure it resumes ordered delivery as the same connection within
   `p95 <= 5 s`, or terminates explicitly by `15 s`; transport choice cannot
   weaken that V1 outcome.
+- **Product Owner decision:** the same Service Connection must pass three
+  sequential eligible failures in one 10-minute run. Each next failure occurs
+  only after recovery, each failed resource remains unavailable, and three is a
+  qualification workload rather than a runtime recovery quota.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -996,9 +1055,10 @@ enforce the accepted equal-load fair-progress floor, and apply the accepted
 `1.5x` endpoint carrier ratio under the accepted combined open-and-active load.
 Apply the accepted queue ceilings, backpressure semantics, and scale-up
 saturation gate. Apply the accepted single-failure Service Connection recovery
-gate next, then define loss, jitter, repeated churn, hostile load, and the
-reproducible release gate. Role-specific infrastructure capacity remains
-deferred until R-004 supplies candidate units of work.
+gate and three-event ordinary-churn workload, then define impaired paths,
+overlapping churn, hostile load, and the reproducible release gate.
+Role-specific infrastructure capacity remains deferred until R-004 supplies
+candidate units of work.
 
 Confidence: high for the platform boundary and desired connection experience;
 the accepted latency, goodput, client-concurrency, and publisher-concurrency
@@ -1006,14 +1066,15 @@ targets, infrastructure reference class, idle client resource ceiling, and
 active client and publisher resource ceilings and fairness floor remain
 unverified. The active carrier ratio, combined-load workload, queue ceilings,
 scale-up saturation gate, and single-failure recovery target also remain
-unverified; the idle carrier budget is unverified and deliberately secondary.
-The remaining numeric targets remain undecided. The strongest counterargument
-is that transport-independent continuation may require an Ardents layer above
-otherwise suitable carriers, adding state, attack surface, linkability risk, and
-resource cost. That is why the complete stack must earn the gate rather than
-assuming it from a protocol name. Supporting both Windows and Linux also
-increases packaging and systems-integration work for a one-to-one project, but
-removing either would contradict the accepted client product.
+unverified; the three-event churn workload is also unverified, and the idle
+carrier budget is unverified and deliberately secondary. The remaining numeric
+targets remain undecided. The strongest counterargument is that
+transport-independent continuation may require an Ardents layer above otherwise
+suitable carriers, adding state, attack surface, linkability risk, and resource
+cost. That is why the complete stack must earn the gate rather than assuming it
+from a protocol name. Supporting both Windows and Linux also increases packaging
+and systems-integration work for a one-to-one project, but removing either would
+contradict the accepted client product.
 
 ## Disposition
 
@@ -1163,8 +1224,18 @@ removing either would contradict the accepted client product.
   Application-facing connection without loss or duplicate presentation. It may
   retransmit carrier bytes but never reissues an Application operation, creates
   a hidden replacement connection, falls back directly, or weakens security.
+- P3-D4b1 accepted: one continuously loaded Service Connection must survive
+  three sequential eligible ordinary-Node or Carrier Channel failures in one
+  10-minute run, separately in each Application Data direction.
+- Each next event strikes the then-current Route only after the previous
+  post-injection canary arrived. Failed Nodes remain unavailable and failed
+  channel instances cannot be reused. Every event retains its own P3-D4a clock,
+  percentile membership, and `15 s` terminal deadline.
+- All three recovery canaries and a final canary must arrive through the same
+  still-usable Service Connection. Three is not a runtime quota; Ardents cannot
+  close a healthy connection merely because its third recovery completed.
 - Public DNS, naming design, bootstrap, routing, libraries, language, exact
   hardware, and the remaining numeric budgets remain unselected.
-- P3-D4b loss, jitter, and repeated churn is next. Role-specific Node capacity
-  remains deferred until R-004 candidate evidence under P3-D3b4.
+- P3-D4b2 impaired paths and overlapping churn is next. Role-specific Node
+  capacity remains deferred until R-004 candidate evidence under P3-D3b4.
 - No ADR and no code.
