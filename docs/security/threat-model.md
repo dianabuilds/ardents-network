@@ -253,6 +253,13 @@ route family by implication.
   runtime quota and cannot justify terminating an otherwise healthy connection;
   overlapping failures and attacker-driven churn retain separate explicit
   workloads and limits.
+- Controlled impairment does not authorize a hidden reconnect or security
+  shortcut. With `300 ms` base RTT, independent `5%` loss in each direction,
+  and `100 ms` `p95` additional jitter but no complete interruption, the same
+  connection must retain its accepted target, Route Profile, Isolation Context,
+  ordering, and bounded queues for 10 minutes while meeting the P3-D4b2a
+  goodput and `5 s` maximum no-progress gap. A complete interruption remains a
+  recovery event rather than an impaired-live success.
 - Integrity mechanisms reject protocol-level tagging that changes authenticated
   data, but cannot promise to detect every timing-, delay-, or volume-based tag.
   Such correlation remains within the P2-D1 and P2-D4 limitations.

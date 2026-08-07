@@ -188,11 +188,12 @@ prepared Route and `p95 <= 2 s` with current authenticated state and reusable
 Route state for the same Isolation Context. Rendering and arbitrary Service
 processing are not part of this network KPI.
 
-## J-06 — Recover from a failed or blocked path
+## J-06 — Continue through degradation or recover from a failed path
 
 **Actor:** User or Developer
 
-**Start:** An active or attempted Service Connection whose entry or route fails
+**Start:** An active or attempted Service Connection whose entry or Route is
+degraded, blocked, or failed
 
 **Flow:** authenticate target and protocol state → reject detected modification,
 replay, redirection, or downgrade → classify only supported facts → obtain
@@ -224,6 +225,17 @@ previous recovery canary arrives, while the failed Node or channel instance
 remains unavailable. All three recovery canaries and a final canary arrive
 through the same still-usable Service Connection. Three is a test workload, not
 a runtime quota or a reason to close after the third successful recovery.
+
+When the Route remains live, a separate 10-minute degraded-path qualification
+uses `300 ms` base end-to-end RTT, independent `5%` packet loss in each
+direction, and `100 ms` `p95` additional per-direction jitter. In separate
+Application Data directions, the same Service Connection has no zero-delivery
+interval longer than `5 s`, and its `p05` 60-second goodput is at least
+`min(2 Mbit/s, 25% of the paired impaired direct baseline)`. It remains
+exact-target-authenticated, open, ordered, non-duplicating, and usable without
+an Application-visible reconnect or security downgrade. A complete traffic
+interruption is evaluated as recovery, not as success in this degraded-live
+profile.
 
 ## J-07 — Contribute network resources
 
