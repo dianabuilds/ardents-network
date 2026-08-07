@@ -294,9 +294,11 @@ The observable failure contract remains the bounded P1-D5 Connection Results:
 - when manipulation, ordinary failure, censorship, and path loss cannot be
   distinguished, the result is indeterminate failure rather than an accusation;
 - no violation causes silent destination fallback, a weaker Route Profile, or
-  automatic replay of Application Data;
-- bounded route recovery may continue only when it preserves the same accepted
-  Service Connection semantics and never reissues an Application operation.
+  automatic replay of an Application operation;
+- bounded route recovery may replace Carrier Channels and retransmit protected
+  stream bytes only when it preserves the same accepted Service Connection,
+  never duplicates bytes at the Application Interface, and never reissues an
+  Application operation.
 
 Availability remains an honest limitation. A malicious Node can always delay,
 drop, block, throttle, or shape the traffic it carries. Ardents may select a
@@ -481,8 +483,10 @@ diversity exists.
 - **P2-D6 — Label every drop or delay as an attack:** rejected because churn,
   congestion, censorship, failure, and malicious behavior can be observationally
   indistinguishable.
-- **P2-D6 — Automatically reconnect and replay Application Data:** rejected
-  because the network cannot infer Application idempotency or remote completion.
+- **P2-D6 — Silently create a new Service Connection and replay an Application
+  operation:** rejected because the network cannot infer Application idempotency
+  or remote completion. Bounded Carrier Channel replacement inside the same
+  reliable Service Connection is not this rejected behavior.
 - **P2-D6 — Promise detection of every timing tag:** rejected because a Node can
   shape low-latency timing and volume without modifying authenticated bytes.
 - **P2-D7 — Claim anonymity from design or terminology:** rejected because the

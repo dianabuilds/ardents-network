@@ -59,20 +59,27 @@ Consequences:
 
 **Product Owner decision, accepted 2026-08-07:** V1 exposes exactly one
 Application Data primitive: a live reliable ordered bidirectional byte stream.
-The Service Connection preserves byte order in each direction while it exists,
-but does not create application message boundaries or promise that a completed
+The Service Connection preserves byte order in each direction while it exists
+and may span bounded replacement of transport-specific Carrier Channels. It
+does not create application message boundaries or promise that a completed
 local write was processed by the remote Application.
 
 Consequences:
 
 - connection closure or failure is observable rather than converted into
   retained delivery;
-- datagrams, offline queues, delivery receipts, exactly-once semantics, and
-  automatic replay or reconnect are not V1 network functions;
-- framing, semantic acknowledgements, idempotency, reconnect, and retry belong
-  to the Application protocol;
-- future transport primitives may be added alongside the stream, but cannot
-  silently change its accepted semantics;
+- datagrams as an Application primitive, offline queues, delivery receipts,
+  exactly-once Application semantics, automatic Application-operation replay,
+  and creation of a replacement Service Connection after terminal failure are
+  not V1 network functions;
+- framing, semantic acknowledgements, idempotency, operation retry, and the
+  decision to open a new Service Connection after terminal failure belong to
+  the Application protocol;
+- safe Carrier Channel replacement and carrier-level retransmission that
+  preserve the same Service Connection are network recovery, not an Application
+  reconnect or permission to duplicate bytes at the Application Interface;
+- future Application Data primitives may be added alongside the stream, but
+  cannot silently change its accepted semantics;
 - exact partial-write, timeout, close, and failure reporting is fixed by P1-D5.
 
 ### P1-D3 — Separate connection and administration privileges
@@ -146,7 +153,7 @@ The V1 outcome classes are:
 - Service Target authentication failure;
 - local timeout or cancellation;
 - authenticated connection established;
-- clean transport close or abrupt connection loss;
+- clean Service Connection close or abrupt connection loss;
 - indeterminate failure when no narrower supported class is justified.
 
 Stream semantics at failure are:
@@ -155,10 +162,12 @@ Stream semantics at failure are:
   Interface; it is not proof that the remote Application read or processed them;
 - after partial write, timeout, or connection loss, remote Application completion
   is unknown unless the Application protocol supplied its own acknowledgement;
-- a clean transport close is not an Application success receipt;
-- Ardents may perform safe bounded route work while establishing or maintaining
-  the same Service Connection, but never silently reissues an Application
-  operation, reconnects as a new connection, or replays Application Data;
+- a clean Service Connection close is not an Application success receipt;
+- Ardents may replace Carrier Channels and perform safe bounded route work while
+  maintaining the same Service Connection. Carrier-level retransmission may
+  preserve its reliable ordered stream, but must never duplicate bytes at the
+  Application Interface, silently create a new Service Connection, or reissue
+  an Application operation;
 - exact causes that cannot be distinguished in a hostile network collapse to
   the indeterminate class rather than a fabricated diagnosis.
 
@@ -399,7 +408,9 @@ that maps an ordinary HTTP client and server through simulated `connect`,
   additional semantics.
 - **Product Owner decision:** the only V1 data primitive is a live reliable
   ordered bidirectional byte stream. Datagram, message, retention, exactly-once,
-  and automatic replay semantics are rejected from the network contract.
+  and automatic Application-operation replay semantics are rejected from the
+  network contract. The same Service Connection may span bounded Carrier
+  Channel replacement without becoming an Application reconnect.
 - **Product Owner decision:** connection traffic and Service administration are
   separate privilege boundaries. Connection access cannot expose Service
   Authority or grant publication and configuration operations.
@@ -407,8 +418,9 @@ that maps an ordinary HTTP client and server through simulated `connect`,
   destinations. Connection success exposes the exact authenticated target, and
   failed resolution or authentication never silently changes the destination.
 - **Product Owner decision:** Connection Results use bounded, evidence-supported
-  classes without route disclosure. Partial writes, transport close, and failures
-  never imply remote Application completion or automatic replay.
+  classes without route disclosure. Partial writes, Service Connection close,
+  and failures never imply remote Application completion or automatic
+  Application-operation replay.
 - **Product Owner decision:** every Application receives a distinct local default
   Isolation Context and may create additional contexts. Contexts are never
   network identities, and different contexts cannot share linkable state.
@@ -472,7 +484,8 @@ No concrete proxy protocol, serialization, library, or language is selected.
   convenience-only, and non-authoritative.
 - P1-D2 accepted: one live reliable ordered bidirectional byte stream; no
   datagrams, message boundaries, offline delivery, exactly-once semantics, or
-  automatic replay.
+  automatic Application-operation replay. Bounded Carrier Channel replacement
+  may preserve the same Service Connection.
 - P1-D3 accepted: the Connection Interface is least-privileged and cannot grant
   access to the separately authorized Service Administration Interface.
 - P1-D4 accepted: both Service Name and Service Target are valid destinations;
@@ -480,7 +493,8 @@ No concrete proxy protocol, serialization, library, or language is selected.
   fall back to another destination.
 - P1-D5 accepted: Connection Results use bounded honest classes, expose no route
   internals, and never claim remote Application completion after write, close,
-  or failure.
+  or failure. Carrier recovery cannot silently create a replacement Service
+  Connection or duplicate bytes at the Application Interface.
 - P1-D6 accepted: every Application receives a safe local default Isolation
   Context, may add opaque subdivisions, and never exposes a context as network
   identity.

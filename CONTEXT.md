@@ -128,10 +128,17 @@ _Avoid_: Name Record, IP endpoint, application profile
 
 **Service Connection**:
 A live protected, reliable, ordered, bidirectional byte stream bound to an
-authenticated Service Target. It carries opaque Application Data without message
+authenticated Service Target whose lifetime can span bounded replacement of
+underlying Carrier Channels. It carries opaque Application Data without message
 boundaries and implies no offline delivery, semantic completion, or automatic
-replay.
+Application-operation replay.
 _Avoid_: Node-to-node message, conversation, Mailbox
+
+**Carrier Channel**:
+A replaceable transport-specific channel carrying part of a Service Connection
+over its current Route. Its lifetime and identity do not define the lifetime,
+identity, or Application semantics of the Service Connection.
+_Avoid_: Service Connection, Application stream, Route Profile
 
 **Connection Result**:
 The authoritative outcome of attempting or ending a Service Connection: success

@@ -179,7 +179,8 @@ creating a replacement target and rebinding the same name
 
 **Done when:** the site opens through the generic Service Connection; routine
 migration preserves both target and name; compromise preserves only the name;
-and route failure remains visible. No replicated Site Bundle, Ardents runtime,
+one eligible ordinary route failure preserves the same logical connection; and
+terminal failure remains visible. No replicated Site Bundle, Ardents runtime,
 or built-in application identity is required. On the normal non-adversarial
 reference network, a running, network-ready endpoint receives the first valid
 HTTP response byte from the controlled tracer within `p95 <= 4 s` without a
@@ -196,14 +197,26 @@ processing are not part of this network KPI.
 **Flow:** authenticate target and protocol state → reject detected modification,
 replay, redirection, or downgrade → classify only supported facts → obtain
 alternate network state or Bridge when required → attempt bounded safe route
-recovery within the same Service Connection → restore it or return a
-product-level failure class or honest indeterminate result → let the Application
-decide whether to open a new connection
+and Carrier Channel recovery within the same Service Connection → restore it or
+return a product-level failure class or honest indeterminate result → let the
+Application decide whether to open a new connection
 
-**Done when:** connectivity resumes without manual protocol configuration, or
-the Application receives enough information to make a safe retry decision. No
-claim is made that an interrupted Application operation completed, and no Node
-identity or route topology is exposed.
+**Done when:** with both endpoints, the same active Service Instance, and one
+qualifying alternate Route still available, loss of one ordinary Node or
+Carrier Channel resumes ordered delivery through the same Service Connection
+within `p95 <= 5 s`, measured from the last byte delivered before failure to an
+unpredictable post-failure canary delivered through the recovered path.
+Pre-failure buffered bytes cannot end the clock. Target, Isolation Context,
+Route Profile, and stream identity do not change, and no byte is lost or
+presented twice.
+
+If recovery has not succeeded by `15 s`, the Service Connection terminates
+explicitly rather than hanging or silently reconnecting. Carrier-level
+retransmission may preserve the stream, but Ardents never reissues an
+Application operation or claims that interrupted work completed. Detected
+active violations still fail closed; no direct fallback, Node identity, or
+route topology is exposed. The outcome is mandatory for the complete V1 stack
+regardless of which transport-specific Carrier Channels it uses.
 
 ## J-07 — Contribute network resources
 

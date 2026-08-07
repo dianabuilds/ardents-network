@@ -752,13 +752,88 @@ This defines useful capacity evidence, not linear hardware scaling. Additional
 CPU, RAM, or bandwidth grants no role, authority, trust, route priority, or
 security exception, and the selected profile is not required network metadata.
 
+### P3-D4a — Single-failure Service Connection recovery
+
+**Product Owner decision, accepted 2026-08-07:** seamless recovery of the same
+logical Service Connection is mandatory in V1 when one ordinary Node or one
+transport-specific Carrier Channel on its current Interactive Route becomes
+unavailable and a qualifying alternate Route remains. The chosen HTTP, WSS,
+TCP, UDP, QUIC, or other carrier mechanism may change how this is implemented;
+it does not change the Application-facing outcome.
+
+The eligible controlled scenario has all of these conditions:
+
+- the Service Connection is already established and continuously carries the
+  fixed incompressible Application Data workload in the measured direction
+  without Application backpressure, cancellation, close, or a shorter
+  Application timeout;
+- both endpoints and the same active Service Instance remain online, and the
+  authenticated Service Target does not change;
+- exactly one ordinary Node or one Carrier Channel on the current Route stops
+  carrying traffic;
+- at least one alternate path exists that satisfies the same Route Profile,
+  target-authentication, isolation, and resource-safety requirements;
+- there is no simultaneous endpoint access outage, Service outage, second path
+  failure, broad blocking event, or detected authenticity, integrity, replay,
+  redirection, or downgrade violation.
+
+Detected active violations remain governed by R-001 fail-closed semantics and
+cannot be converted into a recovery success. Repeated churn, loss, jitter,
+multiple failures, overload, censorship, and hostile recovery flooding remain
+separate P3-D4b and P3-D5 workloads.
+
+For each eligible run, the recovery clock begins at the end of the last
+Application Data byte delivered before the injected failure. After injection,
+the sender creates an unpredictable recovery canary that could not already be
+buffered; the clock ends when its first ordered byte is delivered through the
+same Service Connection over the recovered path. The target is `p95 <= 5 s`,
+measured separately in the User-to-Service and Service-to-User directions.
+Detection delay, alternate Route construction, Carrier Channel replacement,
+authentication, queued predecessor bytes, and safe stream continuation are all
+inside the clock.
+
+If continuation has not succeeded by `15 s` after the last delivered byte, the
+Service Connection terminates with an explicit supported Connection Result; it
+cannot remain apparently open or silently become a new connection. Every such
+terminal result is a recovery miss and remains in qualification evidence rather
+than disappearing from the percentile population. P3-D6 fixes repetitions and
+the allowed miss rate.
+
+Successful recovery preserves the authenticated Service Target, Isolation
+Context, Route Profile, byte order, and the same Application-facing Service
+Connection. It neither loses nor duplicates bytes presented at the Application
+Interface and requires no Application-visible reconnect. Carrier-level
+retransmission is permitted only to preserve this reliable stream. Ardents does
+not reissue an Application operation, and a terminal failure leaves remote
+Application completion unknown under R-002.
+
+Recovery may replace one or every Carrier Channel and may use a different
+carrier mechanism if the candidate supports it. No specific carrier protocol is
+selected here. If a carrier cannot provide continuity itself, the complete
+Ardents candidate must provide it above that carrier; a full stack that cannot
+meet the same semantics and budgets does not qualify for the V1 Interactive
+Route.
+
+Replacement cannot use a direct or ordinary-network fallback, a weaker Route
+Profile, a different target, forbidden cross-context state, or a security
+downgrade. Continuity state may link the old and new carrier binding at the two
+endpoints as required, but cannot become a stable network identity, be shared
+across Isolation Contexts, or expose the full Route to an ordinary Node.
+
+P3-D6 must inject the eligible failure at every ordinary Route position exposed
+by a candidate, generate the post-injection recovery canary, and retain delivery
+traces, Connection Results, Route and Carrier Channel events, CPU, RSS, queued
+bytes, endpoint traffic, and security checks. Pre-failure buffered data cannot
+end the clock. The `5 s` and `15 s` values are top-down unverified product
+targets, not claims that any individual transport already provides them.
+
 ## Remaining decisions
 
 1. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
    units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
    floors on the accepted reference class.
-2. **P3-D4 — Tail and degradation:** set jitter, loss, churn, alternate-route,
-   and overload behavior without weakening R-001.
+2. **P3-D4b — Loss, jitter, and repeated churn:** set useful progress and
+   recovery behavior beyond one eligible failure without weakening R-001.
 3. **P3-D5 — Hostile load:** define fairness and resource-exhaustion workloads
    and the useful honest-work floor during attack.
 4. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
@@ -887,6 +962,11 @@ traces, and direct-baseline results. Disposable experiment code belongs under
   accepted gates, and retain at least `20%` of each declared CPU, memory, and
   usable-link parent budget. The first confirmed miss is its saturation point
   and blocks that and larger automatic profiles for the tested envelope.
+- **Product Owner decision:** the logical Service Connection is independent of
+  any one Carrier Channel. Under one eligible ordinary-Node or Carrier Channel
+  failure it resumes ordered delivery as the same connection within
+  `p95 <= 5 s`, or terminates explicitly by `15 s`; transport choice cannot
+  weaken that V1 outcome.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -915,20 +995,25 @@ guardrail, apply the accepted active client and publisher resource ceilings,
 enforce the accepted equal-load fair-progress floor, and apply the accepted
 `1.5x` endpoint carrier ratio under the accepted combined open-and-active load.
 Apply the accepted queue ceilings, backpressure semantics, and scale-up
-saturation gate, followed by infrastructure Node capacity, degradation, hostile
-load, and the reproducible release gate.
+saturation gate. Apply the accepted single-failure Service Connection recovery
+gate next, then define loss, jitter, repeated churn, hostile load, and the
+reproducible release gate. Role-specific infrastructure capacity remains
+deferred until R-004 supplies candidate units of work.
 
 Confidence: high for the platform boundary and desired connection experience;
 the accepted latency, goodput, client-concurrency, and publisher-concurrency
 targets, infrastructure reference class, idle client resource ceiling, and
 active client and publisher resource ceilings and fairness floor remain
 unverified. The active carrier ratio, combined-load workload, queue ceilings,
-and scale-up saturation gate also remain unverified; the idle carrier budget is
-unverified and deliberately secondary. The remaining numeric targets remain
-undecided. The strongest counterargument is that
-supporting both Windows and Linux from the first V1 slice increases packaging
-and systems-integration work for a one-to-one project, but removing either would
-contradict the accepted client product.
+scale-up saturation gate, and single-failure recovery target also remain
+unverified; the idle carrier budget is unverified and deliberately secondary.
+The remaining numeric targets remain undecided. The strongest counterargument
+is that transport-independent continuation may require an Ardents layer above
+otherwise suitable carriers, adding state, attack surface, linkability risk, and
+resource cost. That is why the complete stack must earn the gate rather than
+assuming it from a protocol name. Supporting both Windows and Linux also
+increases packaging and systems-integration work for a one-to-one project, but
+removing either would contradict the accepted client product.
 
 ## Disposition
 
@@ -1064,8 +1149,22 @@ contradict the accepted client product.
   the saturation point and is not eligible for automatic selection. The owner
   may cap lower; a finite higher experimental override is visibly unqualified
   and cannot weaken any security or overload invariant.
+- P3-D4a accepted: a Service Connection is the logical Application stream above
+  replaceable Carrier Channels. If one ordinary Node or Carrier Channel fails
+  while both endpoints, the same Service Instance, and a qualifying alternate
+  Route remain, the same connection resumes ordered delivery within
+  `p95 <= 5 s`, measured separately in each direction.
+- The recovery clock runs from the last byte delivered before failure to an
+  unpredictable post-injection canary delivered through the recovered path and
+  includes detection, Route and Carrier Channel replacement, authentication,
+  queued predecessors, and continuation. At `15 s` without recovery the Service
+  Connection returns an explicit terminal result; the miss remains in evidence.
+- Recovery preserves target, Isolation Context, Route Profile, ordering, and the
+  Application-facing connection without loss or duplicate presentation. It may
+  retransmit carrier bytes but never reissues an Application operation, creates
+  a hidden replacement connection, falls back directly, or weakens security.
 - Public DNS, naming design, bootstrap, routing, libraries, language, exact
   hardware, and the remaining numeric budgets remain unselected.
-- Role-specific Node capacity is next but is completed with R-004 candidate
-  evidence under P3-D3b4.
+- P3-D4b loss, jitter, and repeated churn is next. Role-specific Node capacity
+  remains deferred until R-004 candidate evidence under P3-D3b4.
 - No ADR and no code.

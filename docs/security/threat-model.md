@@ -174,9 +174,9 @@ route family by implication.
   address.
 - Carrier Nodes cannot reinterpret or forge Application Data accepted by an
   endpoint as belonging to the authenticated Service Connection.
-- A Service Connection is live: a partial write, clean transport close, or
-  explicit failure never means that an Application operation was retained,
-  received, or completed.
+- A Service Connection is live: a partial write, clean Service Connection
+  close, or explicit failure never means that an Application operation was
+  retained, received, or completed.
 - Connection failures expose only supported product-level classes, never Node
   identities or route topology; an indistinguishable cause is reported as
   indeterminate rather than guessed.
@@ -237,11 +237,16 @@ route family by implication.
   connection; indistinguishable causes remain connection loss or indeterminate
   failure rather than a fabricated attack diagnosis.
 - No active failure causes silent fallback to another target, namespace, Route
-  Profile, direct Service path, or ordinary network, and no recovery replays
-  Application Data as a new operation.
+  Profile, direct Service path, or ordinary network, and no recovery reissues an
+  Application operation. Carrier-level retransmission is allowed only to
+  preserve the same reliable ordered Service Connection without duplicate byte
+  presentation.
 - A malicious Node can always delay, drop, block, or shape traffic. Bounded route
-  recovery may restore reachability but cannot guarantee availability or prove
-  that a failure was accidental.
+  recovery cannot prove that a failure was accidental. P3-D4a nevertheless
+  requires the same Service Connection to resume within `p95 <= 5 s` after one
+  eligible ordinary-Node or Carrier Channel failure when a qualifying alternate
+  Route remains, and to terminate explicitly by `15 s` otherwise; broader
+  availability is not guaranteed.
 - Integrity mechanisms reject protocol-level tagging that changes authenticated
   data, but cannot promise to detect every timing-, delay-, or volume-based tag.
   Such correlation remains within the P2-D1 and P2-D4 limitations.
@@ -260,6 +265,14 @@ route family by implication.
 - Transport Camouflage is best-effort. Ardents avoids one mandatory stable
   fingerprint but never claims invisibility or guaranteed indistinguishability
   from ordinary Internet traffic.
+- A Service Connection is a logical Application-facing stream above replaceable
+  transport-specific Carrier Channels. Loss or replacement of a Carrier Channel
+  does not itself authorize a new Service Connection, target, Isolation Context,
+  Route Profile, or Application operation.
+- Continuity state may bind old and new Carrier Channels at the endpoints only
+  as required to preserve one connection. It cannot become a stable network
+  identity, cross Isolation Contexts, expose the full Route to an ordinary Node,
+  or bypass target authentication and fresh Route validation.
 - Every Application Interface operation requires an endpoint-local grant scoped
   to the Application, optional Service, and allowed operations; connection or
   publication access never implies raw Service Authority export.
@@ -306,8 +319,10 @@ route family by implication.
   neither may bypass target authentication, isolation, least privilege, or
   resource bounds. Active endpoint carrier overhead counts required security and
   liveness bytes rather than suppressing them to meet the accepted ratio.
-- Bounded retry does not create unbounded queues, amplification, or duplicate
-  application operations by implication.
+- Bounded route and Carrier Channel retry does not create unbounded queues or
+  amplification. Carrier retransmission may preserve the same ordered stream,
+  but cannot duplicate bytes at the Application Interface or reissue an
+  Application operation.
 - Bootstrap, naming, protocol releases, software distribution, and emergency
   policy are separate Control Plane roots.
 - Payload protection is not metadata protection, and independent Node IDs are
