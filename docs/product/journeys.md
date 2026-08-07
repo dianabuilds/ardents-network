@@ -27,6 +27,12 @@ and `p95 <= 15 s` on a clean first start. The clock does not stop at a local
 socket or UI; authenticated current network state and a usable entry path are
 required.
 
+For the first 10 minutes after reporting ready, an otherwise idle required
+client keeps the complete Ardents process tree at
+`p95 resident memory <= 256 MiB` and mean CPU `<= 1%` of one logical core. It
+must remain network-ready and continue required background and security work;
+disconnecting or moving work to an uncounted helper does not satisfy the gate.
+
 ## J-02 — Open an Unlisted Service
 
 **Actor:** User

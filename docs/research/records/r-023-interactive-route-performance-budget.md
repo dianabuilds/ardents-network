@@ -360,19 +360,53 @@ hardware identity, not all inference. Linear scaling is not promised. P3-D3c2
 must measure where CPU, memory, bandwidth, contention, and privacy-preserving
 isolation stop producing useful additional capacity on each reference class.
 
+### P3-D3c2a — Idle client resource ceiling
+
+**Product Owner decision, accepted 2026-08-07:** on each required Windows and
+Linux client reference endpoint, a network-ready Ardents client with no open
+Service Connections, no published Service, and no infrastructure Node role is
+observed continuously for 10 minutes beginning immediately after it reports
+network readiness. Across the complete Ardents process tree, including helper
+processes, it must meet both:
+
+- `p95 resident memory <= 256 MiB`;
+- mean CPU use over the 10-minute window `<= 1%` of one logical CPU core, with
+  `100%` normalized to one fully occupied logical core.
+
+This is a top-down product ceiling, not a measured implementation claim. It is
+provisional until P3-D6 defines and runs the Windows and Linux reference
+hardware, process-tree attribution, uniform sampling interval, run count, and
+cross-platform resident-memory calculation. The memory percentile is computed
+from eligible samples rather than a convenient final snapshot; the CPU target
+allows short bounded bursts but not sustained background work hidden by process
+splitting.
+
+The endpoint must remain in the accepted network-ready state throughout the
+window, retain current authenticated state and a usable entry path, and perform
+all background control, validation, liveness, and security work required for an
+immediate Application request. It cannot satisfy the budget by disconnecting,
+pausing maintenance, deferring required validation or updates, weakening
+security, or moving work outside the counted process tree. Normal endpoint
+background network bytes are deliberately not included in this CPU and memory
+decision; P3-D3c2b gives them a separate measurable budget.
+
 ## Remaining decisions
 
-1. **P3-D3c2 — Resources, overhead, and fairness:** set CPU, memory,
-   carrier-bandwidth overhead, aggregate goodput, queue, and per-connection
-   progress budgets and measure scale-up saturation for each reference class.
-2. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
+1. **P3-D3c2b — Idle background carrier overhead:** bound all sent and received
+   carrier bytes required to keep an otherwise idle client network-ready, with
+   explicit exclusions and anti-fingerprinting guardrails.
+2. **P3-D3c2c — Active resources, overhead, and fairness:** set CPU, memory,
+   active carrier-bandwidth overhead, aggregate goodput, queue, and
+   per-connection progress budgets and measure scale-up saturation for each
+   reference class.
+3. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
    units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
    floors on the accepted reference class.
-3. **P3-D4 — Tail and degradation:** set jitter, loss, churn, alternate-route,
+4. **P3-D4 — Tail and degradation:** set jitter, loss, churn, alternate-route,
    and overload behavior without weakening R-001.
-4. **P3-D5 — Hostile load:** define fairness and resource-exhaustion workloads
+5. **P3-D5 — Hostile load:** define fairness and resource-exhaustion workloads
    and the useful honest-work floor during attack.
-5. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
+6. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
    artifacts, regression thresholds, and release failure rules.
 
 ## Hypotheses
@@ -462,6 +496,10 @@ traces, and direct-baseline results. Disposable experiment code belongs under
   conservative finite local resource profiles on stronger hardware; exact
   capacity is local, grants no authority or role, and is not required network
   metadata.
+- **Product Owner decision:** for the first 10 minutes after network readiness,
+  an otherwise idle required client keeps whole-process-tree
+  `p95 resident memory <= 256 MiB` and mean CPU `<= 1%` of one logical core
+  without leaving or weakening the network-ready state.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -484,15 +522,16 @@ Keep one user-visible connection contract and measure class-specific resource
 ceilings unless evidence falsifies that shape. Use the accepted connection and
 endpoint-readiness targets and the tracer first-byte target as candidate gates,
 then apply the accepted single-connection goodput and separate client and
-publisher concurrency floors. Define infrastructure Node capacity, resources,
-fairness, degradation, hostile load, and the reproducible release gate in that
-order; bounded endpoint scale-up is already fixed.
+publisher concurrency floors and the accepted idle client CPU and memory
+ceiling. Define idle background traffic, active resources and fairness,
+infrastructure Node capacity, degradation, hostile load, and the reproducible
+release gate next; bounded endpoint scale-up is already fixed.
 
 Confidence: high for the platform boundary and desired connection experience;
 the accepted latency, goodput, client-concurrency, and publisher-concurrency
-targets and the infrastructure reference class remain unverified, and the
-remaining numeric targets remain undecided. The strongest counterargument is
-that
+targets, infrastructure reference class, and idle client resource ceiling
+remain unverified, and the remaining numeric targets remain undecided. The
+strongest counterargument is that
 supporting both Windows and Linux from the first V1 slice increases packaging
 and systems-integration work for a one-to-one project, but removing either would
 contradict the accepted client product.
@@ -556,9 +595,16 @@ contradict the accepted client product.
   not as a qualified V1 performance result. More hardware grants no automatic
   Node role, trust, authority, route priority, cross-context access, or security
   shortcut, and exact hardware limits are not required network metadata.
+- P3-D3c2a accepted: during the 10-minute window beginning at network readiness,
+  an otherwise idle required Windows or Linux client keeps whole-process-tree
+  `p95 resident memory <= 256 MiB` and mean CPU `<= 1%` of one logical core.
+- The client remains genuinely network-ready and performs required background
+  and security work throughout the idle measurement. Process splitting,
+  disconnection, deferred validation, or weakened security cannot make a run
+  pass; exact sampling and platform attribution remain P3-D6 evidence.
 - Public DNS, naming design, bootstrap, routing, libraries, language, exact
   hardware, and the remaining numeric budgets remain unselected.
-- P3-D3c2, numeric CPU, memory, overhead, aggregate-goodput, and fairness budgets,
-  is next; role-specific Node capacity is completed with R-004 candidate
-  evidence under P3-D3b4.
+- P3-D3c2b, idle background carrier overhead, is next. Active resource,
+  aggregate-goodput, and fairness budgets remain P3-D3c2c; role-specific Node
+  capacity is completed with R-004 candidate evidence under P3-D3b4.
 - No ADR and no code.
