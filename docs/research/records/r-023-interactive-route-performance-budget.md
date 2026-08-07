@@ -1352,13 +1352,70 @@ a protocol-conformant anonymous peer can retain one. R-010 may compare anonymous
 costs within the accepted accessibility and unlinkability limits, but cannot
 erase this non-claim by assumption.
 
+### P3-D6a — Qualification matrix and pass/fail semantics
+
+**Product Owner decision, accepted 2026-08-07:** V1 Route Qualification is one
+conjunctive verdict over every mandatory performance and security cell. A pass
+on one platform, endpoint side, Application Data direction, or scenario cannot
+compensate for a failure in another.
+
+Before running a candidate, the qualification plan identifies every applicable
+cell by at least:
+
+- the exact implementation candidate, build, configuration, and Route Profile;
+- the required platform and endpoint side being measured;
+- the declared scenario and its normal, cold, warm, impaired, recovery, or
+  hostile mode where applicable;
+- the Application Data direction and any other predeclared input variant whose
+  behavior or cost may differ.
+
+P3-D6b fixes the concrete topology, platform pairings, sample counts, and full
+cell matrix. P3-D6a fixes how those cells produce a release decision: results
+are never pooled or averaged across mandatory platforms, endpoint sides,
+directions, or scenarios. Each cell must satisfy all of its applicable latency,
+success, progress, goodput, fairness, resource, carrier, queue, cleanup, and
+liveness requirements simultaneously.
+
+Security, privacy, isolation, authentication, and integrity requirements are
+hard guardrails rather than percentiles. One valid execution that reveals
+protected information in a forbidden view, accepts a forbidden substitution or
+data violation, reuses forbidden cross-context state, silently downgrades, or
+bypasses the declared Route hard-fails that candidate. Performance elsewhere
+cannot offset it. An excluded Broad Traffic Observer or out-of-scope collusion
+case remains an honest non-claim rather than either a hidden pass or failure.
+
+Every eligible attempt, failure, timeout, explicit terminal result, crash,
+premature connection loss, and measured event remains in the evidence and in
+the applicable metric calculation. Warm-up, exclusion, censoring, and missing
+sample rules must be declared before execution. A poor candidate result cannot
+be renamed a test-infrastructure problem or omitted after inspection.
+
+A run may be invalidated and repeated only when retained evidence confirms that
+the harness or declared reference environment failed to produce the specified
+input or trustworthy measurement independently of the candidate outcome. The
+original artifacts, invalidation reason, affected cells, and replacement run
+remain linked. Candidate timeout, crash, resource exhaustion, protocol failure,
+or inability to tolerate the declared workload is a result, not a harness
+invalidity. Scheduled repetitions are part of the plan and are not reruns.
+
+If any mandatory cell misses an applicable target, or any hard guardrail fails,
+the tested build and configuration do not earn V1 Route Qualification. They may
+remain available as an explicitly unqualified research build, but neither the
+release nor project communication may present them as a qualified V1 anonymous
+network. Qualification applies only to the recorded candidate and conditions;
+P3-D6c defines which later change requires partial or complete requalification.
+
 ## Remaining decisions
 
 1. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
    units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
    floors on the accepted reference class.
-2. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
-   artifacts, regression thresholds, and release failure rules.
+2. **P3-D6b — Reference matrix and sampling:** define hardware, operating-system
+   versions, topology, network distributions, direct baselines, sample counts,
+   repetitions, percentile calculation, and allowed failure rates.
+3. **P3-D6c — Evidence and regression:** define retained artifacts,
+   reproducibility, comparability, regression thresholds, invalidation review,
+   and partial or complete requalification rules.
 
 ## Hypotheses
 
@@ -1539,6 +1596,15 @@ traces, and direct-baseline results. Disposable experiment code belongs under
   an explicit capacity-unavailable result by `15 s`; V1 does not promise
   per-person fairness or honest admission against an indistinguishable Sybil
   attacker that has completed admission and retains valid connections.
+- **Product Owner decision:** Route Qualification is the conjunction of every
+  mandatory platform, endpoint-side, direction, and scenario cell. Cells cannot
+  compensate for one another; all applicable metrics must pass together, and
+  one valid security, privacy, isolation, authentication, or integrity
+  violation hard-fails the candidate.
+- **Product Owner decision:** failures and timeouts remain evidence. Only a
+  confirmed harness or reference-environment failure may invalidate a run, with
+  the original artifacts and reason retained; an unqualified build may remain
+  research but cannot carry the V1 anonymous-network claim.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -1573,7 +1639,9 @@ profile, plus the overlapping-failure recovery gate and accepted degraded-path
 and recovery endpoint resource and carrier limits. Apply both accepted
 pre-establishment-flood gates for established work and honest anonymous
 admission, and the accepted established-hostile-work isolation and full-capacity
-non-claim. Then define the reproducible release gate.
+non-claim. Apply the accepted conjunctive qualification and hard-guardrail
+semantics, then define its reference matrix, sampling, evidence, and regression
+rules.
 Role-specific infrastructure capacity remains deferred until R-004 supplies
 candidate units of work.
 
@@ -1590,7 +1658,9 @@ the established-work, honest-admission, and established-hostile workloads are
 unverified. The honest-client admission cost is also unverified on the required
 platforms. The idle carrier budget is unverified and deliberately secondary.
 The remaining numeric targets remain undecided. The strongest counterargument
-is that
+is that the mandatory matrix may be expensive to execute for a one-to-one
+project; P3-D6b must make it reproducible and proportionate without weakening
+coverage or allowing selective results. Separately,
 transport-independent continuation may require an Ardents layer above otherwise
 suitable carriers, adding state, attack surface, linkability risk, and resource
 cost. That is why the complete stack must earn the gate rather than assuming it
@@ -1854,9 +1924,21 @@ contradict the accepted client product.
 - V1 explicitly does not promise per-person fairness, creation of a free slot,
   or successful new admission against an indistinguishable Sybil attacker that
   has completed admission and retains protocol-conformant connections.
+- P3-D6a accepted: every mandatory platform, endpoint-side, direction, and
+  scenario cell is evaluated separately and all applicable metrics must pass
+  simultaneously. Results cannot be pooled or averaged across cells.
+- A valid security, privacy, isolation, authentication, or integrity violation
+  hard-fails the candidate regardless of performance. Failures, timeouts,
+  crashes, and terminal results remain in the applicable evidence.
+- A run may be invalidated only for a confirmed harness or reference-environment
+  failure independent of the candidate outcome. The original artifacts,
+  reason, affected cells, and linked replacement run are retained.
+- One failed mandatory cell blocks V1 Route Qualification for that build and
+  configuration. It may remain an explicitly unqualified research build but
+  cannot be presented as a qualified V1 anonymous network.
 - Public DNS, naming design, bootstrap, routing, libraries, language, exact
   hardware, and the remaining numeric budgets remain unselected.
-- P3-D6, the reproducible measurement and release gate, is next. Role-specific
-  Node capacity and cost remain deferred until R-004 candidate evidence under
-  P3-D3b4.
+- P3-D6b reference topology and sampling is next, followed by P3-D6c evidence
+  and regression rules. Role-specific Node capacity and cost remain deferred
+  until R-004 candidate evidence under P3-D3b4.
 - No ADR and no code.

@@ -164,6 +164,18 @@ remaining exposure must be visible anywhere the claim is presented. Passing
 qualifies only the tested candidate and conditions, not later builds or a whole
 route family by implication.
 
+The qualification verdict is conjunctive across every mandatory platform,
+endpoint side, Application Data direction, and scenario cell. Results are not
+pooled across cells, and all applicable performance and security requirements
+must pass together. One valid forbidden disclosure, accepted active violation,
+cross-context reuse, authentication failure, integrity failure, silent
+downgrade, or Route bypass hard-fails the candidate regardless of aggregate
+performance. Failures and timeouts remain evidence. A run may be replaced only
+for a confirmed harness or declared reference-environment failure independent
+of candidate behavior, with the original artifacts and invalidation reason
+retained. A failed build may remain research but cannot carry the qualified V1
+Interactive Route claim.
+
 ## Security invariants
 
 - A Node identity is never a User identity or Service Target.

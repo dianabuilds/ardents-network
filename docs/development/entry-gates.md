@@ -75,6 +75,15 @@ explicit non-claims, not hidden qualification successes or failures. Their
 limits must remain visible. Before Route Qualification, neither the release nor
 the project may present that implementation publicly as an anonymous network.
 
+Route Qualification is one conjunctive verdict across every mandatory platform,
+endpoint-side, direction, and scenario cell. Results are not averaged across
+cells. Each cell must meet all applicable metrics together, and one valid
+security, privacy, isolation, authentication, or integrity violation fails the
+candidate regardless of performance elsewhere. Failures, timeouts, crashes, and
+terminal results remain in the evidence. A run is replaced only for a confirmed
+harness or reference-environment failure independent of candidate behavior;
+the original artifacts and invalidation reason are retained.
+
 ## Gate E — call a network release usable
 
 A release is usable only when complete journeys, not isolated primitives, pass
@@ -87,6 +96,12 @@ desktop/laptop reference devices, while the infrastructure path must pass on a
 Linux `2 vCPU`, `2 GiB RAM`, symmetric `100 Mbit/s` reference VPS class.
 Server-only success cannot substitute for a working User or Developer endpoint.
 macOS and mobile do not block V1 until a later product decision promotes them.
+
+One failed mandatory cell blocks the usable V1 and Route Qualification claim for
+that build and configuration. The artifact may remain an explicitly
+unqualified research build, but passing cells cannot compensate for the failed
+one and project communication cannot present it as a qualified anonymous
+network.
 
 An offline Service must be reported as unavailable. The release must not imply
 that Application Data was retained, delivered, or semantically completed unless
