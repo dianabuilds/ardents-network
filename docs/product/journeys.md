@@ -135,8 +135,8 @@ Every implementation proposal must exercise at least these cases:
 - bootstrap information is stale, conflicting, blocked, or malicious;
 - one ordinary entry, relay, discovery, or rendezvous Node is malicious, slow,
   or absent;
-- nominally different Nodes share one operator, network, software supply chain,
-  or jurisdiction;
+- nominally different Nodes, including both endpoint-adjacent roles, share one
+  operator, network, software supply chain, or jurisdiction;
 - a Name Record is stale, expired, rolled back, or equivocating;
 - a Service Descriptor is unavailable or points to no reachable Service
   Instance;

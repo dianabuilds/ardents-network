@@ -159,15 +159,65 @@ Consequences:
 - path length is selected later from the accepted security and performance
   contracts, not copied from a reference system.
 
+### P2-D4 — One-Node guarantee and honest collusion limit
+
+**Product Owner decision, accepted 2026-08-07:** V1 guarantees the Interactive
+Route anonymity and Route Knowledge Separation claim against any one malicious
+ordinary Node. It does not promise to resist every pair or larger colluding set.
+
+The collusion boundary is capability- and position-dependent:
+
+- Correlated Control of both endpoint-adjacent roles may combine their timing,
+  volume, and endpoint-location views to link a User and Service;
+- another colluding set breaks the anonymity claim when its merged views connect
+  an endpoint location to the opposite endpoint, Service Name, or Service
+  Target;
+- two colluding interior Nodes that still lack endpoint, Service Name, or
+  Service Target information do not gain it merely by colluding, but V1 makes
+  no universal promise covering every possible pair;
+- different Node IDs, addresses, or advertised operators are not proof that
+  roles are independently controlled.
+
+An anonymity failure does not become a payload-security failure. Even if every
+carrier Node colludes, the Service Connection must retain end-to-end Application
+Data confidentiality and integrity and authenticate the exact Service Target,
+provided the endpoints, Service Authority, and accepted cryptography remain
+uncompromised. Colluding Nodes may still correlate metadata, block, delay, drop,
+or manipulate traffic; P2-D6 fixes the required detection and failure behavior
+for active attacks.
+
+The mitigation contract is:
+
+- route selection avoids correlated operator, network, software supply-chain,
+  and jurisdictional control using the best available evidence;
+- the product exposes uncertainty and concentration rather than asserting that
+  nominally different Nodes are independent;
+- R-011 defines the evidence, privacy cost, and failure thresholds for this
+  selection;
+- R-004 compares how candidate route shapes expose strategically useful role
+  combinations;
+- stronger resistance using multipath, mixing, padding, or cover traffic is a
+  separate R-005 decision with its own Application need and performance budget.
+
+Consequences:
+
+- the baseline claim is "one malicious ordinary Node," not "up to one known bad
+  operator" or "any two Nodes";
+- collusion may be invisible to the endpoint, so successful connection setup
+  cannot certify that the route was independently controlled;
+- path diversity reduces risk but cannot prove anonymity for a particular
+  connection;
+- confidentiality, authenticity, anonymity, and availability remain separate
+  claims with separate failure conditions;
+- P2-D4 does not select multipath or a stronger Route Profile for V1.
+
 ## Remaining decisions
 
-1. **P2-D4 — Collusion:** which combinations of Nodes or network vantage points
-   break location privacy and which combinations must still be resisted.
-2. **P2-D5 — Malicious endpoint:** what a malicious User or Service can learn
+1. **P2-D5 — Malicious endpoint:** what a malicious User or Service can learn
    from Application Data, connection behavior, and repeated use.
-3. **P2-D6 — Active attacks:** required resistance to tagging, replay, delay,
+2. **P2-D6 — Active attacks:** required resistance to tagging, replay, delay,
    redirection, route manipulation, and target substitution.
-4. **P2-D7 — Conditions and falsification:** required honest behavior,
+3. **P2-D7 — Conditions and falsification:** required honest behavior,
    diversity, measurements, failure thresholds, and user-facing limitation
    text for the final claim matrix.
 
@@ -223,6 +273,16 @@ R-011 later tests whether claimed operator and network diversity exists.
   compare route families and costs before selecting a mechanism or hop count.
 - **P2-D3 — Treat different Node IDs as independence:** rejected because one
   operator or correlated infrastructure can control nominally distinct roles.
+- **P2-D4 — Resist every pair of colluding Nodes in V1:** rejected as a blanket
+  low-latency claim. Strategically placed views can correlate both endpoint
+  sides, and stronger resistance requires a separate measurable mechanism and
+  cost.
+- **P2-D4 — Ignore collusion because it cannot be proven:** rejected because
+  route selection, concentration evidence, and honest limitation can still
+  reduce and expose risk.
+- **P2-D4 — Treat anonymity failure as payload compromise:** rejected because
+  end-to-end confidentiality, integrity, and target authentication do not depend
+  on carrier Nodes remaining independent.
 
 ## Disposition
 
@@ -239,6 +299,10 @@ R-011 later tests whether claimed operator and network diversity exists.
   between endpoint location and a Service Name, Service Target, or opposite
   endpoint.
 - Tor, onion routing, path shape, and hop count remain unselected.
-- P2-D4, the collusion boundary, is next.
+- P2-D4 accepted: V1 anonymity covers one malicious ordinary Node, not arbitrary
+  collusion; Correlated Control spanning enough role views may link endpoints.
+- End-to-end Application Data protection and Service Target authentication
+  remain required even if every carrier Node colludes.
+- P2-D5, the malicious-endpoint boundary, is next.
 - No routing family, protocol, library, implementation language, ADR, or code is
   selected.

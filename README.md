@@ -27,6 +27,11 @@ Node cannot link an endpoint's ordinary location to a Service Name, Service
 Target, or opposite endpoint. This requirement selects neither Tor nor a fixed
 routing algorithm or hop count.
 
+The baseline anonymity claim covers one malicious ordinary Node, not arbitrary
+Correlated Control of several roles. Control spanning both endpoint sides may
+link the relationship through traffic metadata; end-to-end Application Data
+confidentiality and Service Target authentication remain separate guarantees.
+
 The carrier is public so that private Services can draw from a broader anonymity
 set. Naming, bootstrap, software releases, and governance remain explicit
 Control Plane risks rather than being hidden behind the word “decentralized.”

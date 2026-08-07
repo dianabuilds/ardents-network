@@ -104,8 +104,9 @@ These are responsibility boundaries, not selected binaries or APIs:
 
 ## Core product promises
 
-1. A Service Connection is confidential and authenticated end to end under its
-   accepted transport contract.
+1. A Service Connection is confidential and authenticated end to end against
+   carrier Nodes acting alone or together, while its endpoints, Service
+   Authority, and accepted cryptography remain uncompromised.
 2. A Service Target is independent of a Node identity and ordinary IP location.
 3. A Service Name resolves verifiably and can remain stable when a compromised
    or lost Service Target must be replaced.
@@ -126,11 +127,19 @@ These are responsibility boundaries, not selected binaries or APIs:
     the protocol. Ardents does not promise to hide its own use, but avoids one
     mandatory stable fingerprint and treats Transport Camouflage as a measurable
     censorship-resistance goal.
+11. The Interactive Route anonymity claim covers one malicious ordinary Node,
+    not arbitrary collusion. Correlated Control spanning both endpoint sides may
+    link a User and Service through traffic metadata without exposing
+    Application Data.
 
 The Interactive Route is therefore multi-hop, but the product contract does not
 select Tor, onion routing, a fixed path shape, or a fixed number of hops. R-004
 must find the least costly routing family that preserves the accepted knowledge
 separation, and R-023 must bound its performance cost.
+
+Route selection must reduce exposure to Correlated Control across operator,
+network, software supply chain, and jurisdiction, but different Node IDs are not
+proof of independence. R-011 must make that uncertainty measurable.
 
 The Interactive Route deliberately makes no Broad Traffic Observer resistance
 claim. A delayed, padded, or cover-traffic-heavy profile enters the product only

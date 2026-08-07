@@ -181,6 +181,13 @@ can link an endpoint's ordinary location to a Service Name, Service Target, or
 the opposite endpoint. Different Node IDs are not proof of separate control.
 _Avoid_: Direct P2P path, single trusted proxy, fixed Tor circuit
 
+**Correlated Control**:
+Effective control or coordinated observation of multiple Node roles by one
+adversary, regardless of distinct Node IDs or advertised operators. It breaks
+the single-Node anonymity claim when the combined views span a Route Knowledge
+Separation boundary.
+_Avoid_: Node count, advertised independence, distinct Node IDs
+
 **Rendezvous**:
 A temporary network role through which two endpoints establish a Service
 Connection without learning each other's ordinary network location.

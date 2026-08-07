@@ -66,6 +66,15 @@ plaintext Application Data, or a link between an endpoint's ordinary location
 and a Service Name, Service Target, or opposite endpoint. The routing family
 and hop count remain open.
 
+P2-D4 limits that anonymity claim to any one malicious ordinary Node. Ardents
+does not claim resistance to every pair or larger colluding set. Correlated
+Control spanning both endpoint-adjacent views may link the User and Service
+through timing and volume; other combinations break the claim when their merged
+views cross the same knowledge boundary. End-to-end payload confidentiality,
+integrity, and Service Target authentication remain required even if all carrier
+Nodes collude, although those Nodes may still deny service or manipulate traffic
+subject to the later P2-D6 contract.
+
 It does **not** claim resistance to a Broad Traffic Observer correlating timing
 and volume near both endpoints or across enough network locations. R-005 must
 first justify a concrete Application job before a delayed, padded, or
@@ -86,6 +95,7 @@ anonymity or indistinguishability guarantee.
 | Local Traffic Observer | Observe the adjacent endpoint's location, external peer addresses, timing, direction, duration, volume, retries, and long-lived patterns; attempt to classify Ardents use | Encrypt protocol and Application Data; hide the selected Service Name or Service Target, opposite endpoint location, and full Route; prohibit direct Service fallback; avoid one mandatory stable fingerprint | Ardents use may still be classified or inferred, and low-latency traffic may be correlated with observations elsewhere |
 | Broad Traffic Observer | Correlate both endpoint traffic statistically | Make the lack of an Interactive Route correlation-resistance claim visible; measure any later stronger Route Profile separately | Interactive traffic is expected to remain timing- and volume-correlation-sensitive |
 | Malicious infrastructure Node | Combine endpoint location, Service Name or Service Target, Route, or payload knowledge; tag, delay, replay, drop, redirect, bias selection, or retain metadata | Multi-hop Route Knowledge Separation, end-to-end target authentication and payload protection, short-lived opaque route handles, bounded retry, role separation, and diversity analysis | The Node sees its immediate peers and traffic metadata; guarantees depend on the accepted collusion model and real diversity |
+| Correlated Control | Combine the permitted views of nominally different Nodes, especially both endpoint-adjacent roles, and correlate timing or volume | Avoid correlated route positions using operator, network, software, and jurisdiction evidence; expose uncertainty; test concentration under R-011 | V1 makes no anonymity guarantee against every pair or larger set; hidden common control cannot always be detected |
 | Sybil / flooding actor | Capture discovery or exhaust connection, rendezvous, descriptor, and naming capacity | Bounded queues and lifetimes, quotas or anonymous costs, diversified selection, local admission, and visible overload | No global proof of personhood; accessibility and concentration costs remain |
 | Malicious Service | Fingerprint requests, link Application identities, return exploit content, or lie at the application layer | Isolation Context, minimal network metadata, authenticated target, and clear Application boundary | The Service receives application plaintext and can link information that the Application voluntarily sends |
 | Malicious local Application | Reuse authority, inspect another app's state, overrun queues, or request unsafe route downgrade | Narrowly scoped Local Grants, separate Authority custody, resource bounds, isolation, and explicit route policy | Code controlling the local endpoint can defeat local protections |
@@ -151,7 +161,17 @@ No document or interface may say only “anonymous,” “private,” “secure,
   required for the connection. Combining incompatible role views in one Node
   must not bypass the single-Node claim.
 - Different Node IDs do not prove independent control. The claim depends on
-  actual non-collusion and diversity still to be fixed by P2-D4 and R-011.
+  actual non-collusion and diversity measured under R-011.
+- The Interactive Route anonymity claim covers one malicious ordinary Node. It
+  makes no blanket claim against two or more colluding Nodes, and does not imply
+  that every colluding pair necessarily holds useful combined views.
+- Correlated Control spanning both endpoint-adjacent roles may link the User and
+  Service through traffic metadata. An endpoint cannot always detect or report
+  that this correlation occurred.
+- Carrier collusion does not weaken end-to-end Application Data confidentiality,
+  integrity, or Service Target authentication while endpoints, Service
+  Authority, and accepted cryptography remain uncompromised. It can still break
+  anonymity or availability.
 - Transport Camouflage is best-effort. Ardents avoids one mandatory stable
   fingerprint but never claims invisibility or guaranteed indistinguishability
   from ordinary Internet traffic.
@@ -183,8 +203,8 @@ No document or interface may say only “anonymous,” “private,” “secure,
 
 The prioritized questions live in [the network research queue](../research/questions.md).
 R-006 fixes the V1 target lifecycle, R-002 fixes the Application Interface, and
-R-001 P2-D1 through P2-D3 fix its broad-observer, local-observer, and
-single-Node knowledge limits.
+R-001 P2-D1 through P2-D4 fix its broad-observer, local-observer, single-Node,
+and collusion limits.
 No production architecture should be selected before R-001, R-003, R-004,
 R-007, R-009, and R-023 make the observer, naming, routing, failure, bootstrap,
 and performance contracts testable.
