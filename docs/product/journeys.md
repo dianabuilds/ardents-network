@@ -88,7 +88,12 @@ authority on a new host, and republish the same Service Target. A required
 publisher reference endpoint supports at least `256` concurrently open incoming
 Service Connections, including at least `64` simultaneously active. This is a
 minimum total publisher capacity, not a Service maximum; one Service may use the
-whole budget when local policy permits.
+whole budget when local policy permits. Across separate 10-minute runs in each
+direction, those `64` active connections share `40 Mbit/s` of delivered
+Application Data while the complete Ardents process tree keeps
+`p95 resident memory <= 1 GiB` and mean CPU `<= 100%` of one logical core. The
+published Application's own work is excluded, but every connection must keep
+progressing and all Ardents publication and carrier work remains counted.
 
 ## J-04 — Integrate an Application
 
