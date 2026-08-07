@@ -1890,14 +1890,78 @@ confirmed independent of candidate behavior. Candidate resource use, hidden
 work, measurement escape or interference, and candidate-induced traffic remain
 candidate results.
 
+### P3-D6c1 — Immutable Qualification Evidence Bundle
+
+**Product Owner decision, accepted 2026-08-08:** a candidate may present V1
+Route Qualification only while one complete, immutable Qualification Evidence
+Bundle for that exact candidate and qualification matrix remains available. The
+bundle is evidence from which the verdict can be independently recomputed, not
+an exported dashboard or a selected collection of successful logs.
+
+**Candidate and condition identity:** the bundle binds the source revision,
+exact binary and package digests, build recipe, dependency inventory or locks,
+runtime configuration and feature flags, and every tested protocol or data
+format version. It also retains the exact operating-system images, hardware and
+resource manifests, topology and accounting boundaries, network and state
+manifests, payload artifacts, ordered seeds, scheduled cells, and the versions
+and configurations of the harness, collectors, and verdict calculator.
+
+Secret values are not published as configuration. The qualification fixture
+uses only synthetic credentials and keys with no authority outside its isolated
+test environment. Where a secret-shaped input affects the candidate, the bundle
+retains its field, generation rule, and digest or non-secret identifier so the
+condition is auditable without introducing a production secret or real identity.
+
+**Complete raw observations:** every predeclared attempt, episode, run, and
+direct control remains present, including success, failure, timeout, crash,
+premature termination, missing sample, and security violation. The raw layer
+includes state-preparation evidence, impairment events, exact timestamps,
+one-second series, interface counters, process-boundary membership, queue
+high-water records, canary and integrity results, candidate and harness logs,
+and every other input used by a metric or hard guardrail. A summary cannot
+replace any required raw input.
+
+An invalidation record retains the original artifacts, the exact affected scope,
+the claimed candidate-independent cause, the supporting review evidence, and a
+link to any replacement. Invalidating or replacing a run never deletes it.
+Unscheduled retries, selectively retained successes, or post-result omission
+make the candidate evidence incomplete.
+
+**Deterministic verdict:** a schema-versioned machine-readable layer maps every
+mandatory cell and raw artifact to its calculated metrics, applicable gates,
+and `pass`, `fail`, or `invalid` result. It includes the overall conjunctive
+verdict and a human-readable report, but the versioned calculator must reproduce
+every derived value and result from the retained raw layer. If the report and
+recalculation disagree, or a required input cannot be resolved, the bundle does
+not establish qualification.
+
+**Integrity, publication, and retention:** all pre-run manifests are fixed before
+the first candidate result. After collection, the logical bundle is sealed under
+content digests and is append-only: a correction creates a new linked bundle
+rather than rewriting the old one. Compression, replication, or physical storage
+changes may not alter its logical contents or identity.
+
+Every bundle supporting a publicly presented passing release is publicly
+downloadable in full for as long as the qualification claim remains in use. It
+contains only synthetic qualification traffic and must not collect real User or
+Developer activity, production secrets, or persistent private authority. An
+unexplained redaction or selective post-run removal makes the public evidence
+incomplete. Failed research candidates need not be published, but any failed or
+invalid run contributing to a passing candidate remains part of its public
+bundle. If that bundle becomes unavailable, corrupt, or incomplete, the project
+suspends the qualification claim until an identical verified copy is restored.
+
+This decision selects no artifact format, storage provider, signing scheme,
+continuous-integration service, implementation language, or testing library.
+
 ## Remaining decisions
 
 1. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
    units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
    floors on the accepted reference class.
-2. **P3-D6c — Evidence and regression:** define retained artifacts,
-   reproducibility, comparability, regression thresholds, invalidation review,
-   and partial or complete requalification rules.
+2. **P3-D6c2 — Regression and requalification:** define comparability and
+   regression thresholds, invalidation review, and the changes requiring partial
+   or complete requalification.
 
 ## Hypotheses
 
@@ -1937,9 +2001,10 @@ hardware.
 ### Experiment
 
 Create reproducible local and geographically distributed topologies only after
-P3-D2 through P3-D5 define their workloads. Retain configuration, build identity,
-platform information, raw samples, percentile summaries, failures, resource
-traces, and direct-baseline results. Disposable experiment code belongs under
+P3-D2 through P3-D5 define their workloads. A candidate seeking qualification
+retains the complete P3-D6c1 Qualification Evidence Bundle, including candidate
+and condition identity, raw observations and invalidations, and reproducible
+machine-readable verdicts. Disposable experiment code belongs under
 `experiments/r-023-interactive-route-performance/`.
 
 ### Failure scenarios
@@ -2187,6 +2252,17 @@ traces, and direct-baseline results. Disposable experiment code belongs under
   and egress boundaries; candidate counters are diagnostic only. Missing trusted
   attribution invalidates evidence only when independent of the candidate,
   while escape, interference, hidden work, and resource use fail the candidate.
+- **Product Owner decision:** one immutable Qualification Evidence Bundle binds
+  the exact source, binaries, build inputs, configuration, environment,
+  manifests, scheduled cells, and harness and calculator versions to all raw
+  observations and a deterministic machine-readable verdict.
+- **Product Owner decision:** every scheduled success, failure, timeout, crash,
+  security violation, and invalidated run remains linked in the bundle. A
+  summary, selected successes, unexplained redaction, or post-result deletion
+  cannot establish qualification.
+- **Product Owner decision:** a bundle supporting a public passing release is
+  content-addressed, append-only, fully public, contains only synthetic test
+  activity, and remains available while the qualification claim is used.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -2227,8 +2303,9 @@ baselines. Apply the accepted release sample floors, nearest-rank rules, and
 Windows 11/Ubuntu LTS endpoint hardware baseline and the accepted normal-network
 envelope, controlled payload suite, paired direct-baseline rule, and state-reset
 contract. Apply the accepted versioned impairment manifest and seed discipline,
-and the accepted cross-platform clocks, sampling, and attribution contract, then
-define evidence and regression rules.
+the accepted cross-platform clocks, sampling, and attribution contract, and the
+accepted immutable Qualification Evidence Bundle, then define regression and
+requalification rules.
 Role-specific infrastructure capacity remains deferred until R-004 supplies
 candidate units of work.
 
@@ -2253,7 +2330,9 @@ boundary. The impairment-manifest contract is also unverified across candidate
 transports and available Windows and Ubuntu harness implementations. The
 sampling and attribution contract is also unverified against portable Windows
 and Ubuntu accounting and capture implementations. The remaining numeric targets
-remain undecided. The `20`-episode recovery floor makes `p95` observable only at
+remain undecided. The Evidence Bundle contract is also unverified for practical
+public storage, deterministic recalculation, and secret-free cross-platform
+collection. The `20`-episode recovery floor makes `p95` observable only at
 coarse nearest-rank resolution; exact order statistics and success counts must
 remain visible, and later variability evidence may justify a larger predeclared
 sample.
@@ -2633,6 +2712,13 @@ either would contradict the accepted client product.
   reports, establish traffic. Candidate-independent missing attribution may
   invalidate evidence; candidate escape, interference, hidden work, and resource
   use fail the candidate.
-- P3-D6c — evidence and regression rules — is next. Role-specific Node capacity
-  and cost remain deferred until R-004 candidate evidence under P3-D3b4.
+- P3-D6c1 accepted: one immutable, content-addressed Qualification Evidence
+  Bundle binds the exact candidate and conditions to every scheduled raw result,
+  invalidation, deterministic per-cell result, and overall verdict.
+- A passing release publishes the complete synthetic-data bundle and retains it
+  while claiming qualification. Selected successes, unexplained redaction,
+  deletion, unavailable evidence, real User activity, or production secrets
+  cannot support the claim.
+- P3-D6c2 — regression and requalification rules — is next. Role-specific Node
+  capacity and cost remain deferred until R-004 candidate evidence under P3-D3b4.
 - No ADR and no code.

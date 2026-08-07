@@ -189,6 +189,13 @@ a Route Profile. It does not extend to excluded adversaries, untested builds, or
 later changes.
 _Avoid_: Security proof, anonymous by design, documentation-only claim
 
+**Qualification Evidence Bundle**:
+The immutable, content-addressed evidence record bound to one exact candidate
+and its qualification conditions. It contains the precommitted inputs, complete
+raw observations, invalidations, and deterministic verdict outputs needed to
+recompute its Route Qualification.
+_Avoid_: Test report, selected results, log archive
+
 **Interactive Route**:
 The low-latency Route Profile intended for live Applications. It does not
 promise resistance to timing-and-volume correlation by a Broad Traffic

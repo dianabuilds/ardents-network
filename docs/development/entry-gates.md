@@ -156,6 +156,22 @@ traffic, while candidate self-reports remain diagnostic. Candidate-independent
 missing attribution may invalidate evidence only under P3-D6a. Escape,
 interference, hidden work, and candidate resource use fail the candidate.
 
+A release claiming Route Qualification must publish one complete immutable
+Qualification Evidence Bundle for the exact candidate and conditions. It binds
+source and binary identity, build and dependency inputs, configuration,
+platforms, resources, manifests, scheduled cells, and harness and calculator
+versions to every raw success, failure, timeout, crash, security event, and
+invalidation. A schema-versioned deterministic calculator must reproduce every
+per-cell metric and the conjunctive verdict; a human report is not a substitute.
+
+Pre-run manifests are fixed before results, and the completed bundle is content-
+addressed and append-only. Corrections create linked successors, while original
+and invalidated evidence remains. The complete bundle stays publicly available
+while the qualification claim is used and contains only synthetic test activity,
+never real User or Developer traffic, production secrets, or persistent private
+authority. Selected successes, unexplained redaction, deletion, corruption,
+unavailability, or an unreproducible verdict cannot support qualification.
+
 Every reported usable connection immediately passes a fresh unpredictable
 `32-byte` request and exact `32-byte` response canary. The site tracer sends an
 exact `512-byte` nonce-bearing HTTP request and validates a complete `64 KiB`

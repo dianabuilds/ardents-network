@@ -227,6 +227,17 @@ authoritative. Candidate-independent missing attribution may invalidate evidence
 under P3-D6a, but process escape, measurement interference, hidden work, and
 candidate resource use fail the candidate.
 
+Qualification evidence is itself an integrity and privacy boundary. The public,
+content-addressed Qualification Evidence Bundle binds the exact candidate and
+conditions to every scheduled raw result, invalidation, deterministic per-cell
+calculation, and overall verdict. It is append-only; selected successes,
+rewritten or deleted failures, unexplained redaction, an unavailable bundle, or
+a report that cannot be reproduced from raw inputs cannot support a passing
+claim. The qualification fixture uses only synthetic activity and credentials
+without authority outside the isolated test environment; real User or Developer
+traffic, production secrets, and persistent private authority never enter the
+bundle.
+
 Payload shortcuts are also hard failures. Fresh `32-byte` connection canaries,
 nonce-bearing `512-byte` HTTP requests with complete `64 KiB` incompressible
 responses, and distinct pre-generated incompressible transfer streams are
