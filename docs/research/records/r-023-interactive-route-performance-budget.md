@@ -873,7 +873,7 @@ retransmission may preserve the stream, but neither an individual event nor the
 sequence may reissue an Application operation, expose a stable continuity
 identity, or share recovery state across Isolation Contexts. Recovery traffic
 and CPU, RSS, queue, and link cost remain visible evidence; their degraded-load
-ceilings are completed by P3-D4b2 and P3-D6.
+ceilings are completed by P3-D4b2c and P3-D6.
 
 Three is a minimum qualification workload, not a runtime recovery quota or an
 availability promise for exactly three failures. Ardents cannot intentionally
@@ -927,7 +927,7 @@ prohibition, Isolation Context, Route Profile, authentication, or fail-closed
 rules. Required security and liveness work cannot be disabled to meet the
 goodput or progress floor. CPU, RSS, queue occupancy, carrier traffic, and Node
 load remain retained evidence; their degraded-load ceilings are still part of
-P3-D4b2b and P3-D6.
+P3-D4b2c and P3-D6.
 
 A complete traffic interruption is not this workload: it invokes the P3-D4a
 recovery contract and remains in its recovery evidence. The impaired-live test
@@ -935,15 +935,73 @@ cannot silently discard an outage or relabel a newly opened Service Connection
 as continuation. These numbers are top-down unverified product targets rather
 than a claim about any transport, routing family, or implementation.
 
+### P3-D4b2b — Overlapping eligible failures during recovery
+
+**Product Owner decision, accepted 2026-08-07:** the same established Service
+Connection must survive one pair of overlapping eligible ordinary-Node or
+Carrier Channel failures during a continuous 10-minute qualification run.
+Recovery delivers an unpredictable canary through the final recovered Route
+within `p95 <= 8 s` from the first interruption and remains subject to one hard
+`15 s` terminal deadline from that same point.
+
+The run starts after exact Service Target authentication and useful delivery of
+the fixed incompressible workload. It is repeated separately for
+User-to-Service and Service-to-User Application Data without Application
+backpressure, cancellation, close, or a shorter Application timeout.
+
+The overlapping pair has this required shape:
+
+- the first injection stops a distinct ordinary Node or Carrier Channel needed
+  by the then-current Interactive Route, preventing that Route from continuing;
+- within `1 s` of the first injection and before any recovery canary arrives,
+  the second injection stops a different ordinary Node or Carrier Channel used
+  by the in-progress replacement attempt, preventing that attempt from
+  continuing;
+- both failed resources remain unavailable through the rest of the run;
+- both endpoints, the same active Service Instance and exact Service Target,
+  and at least one further qualifying alternate Route that uses neither failed
+  resource remain available after the second injection;
+- injection positions and timing are controlled evidence but are not disclosed
+  to the candidate in advance. P3-D6 fixes their reproducible selection across
+  every eligible Route position exposed by a candidate.
+
+This pair is one recovery episode. Its clock begins immediately after the last
+Application Data byte delivered before the first injection and ends only when
+a newly generated post-second-failure canary is delivered through the final
+recovered path. Detection, abandoned recovery work, Route and Carrier Channel
+replacement, authentication, queued predecessor bytes, and safe continuation
+all count. The second failure, an internal retry, or selection of another
+carrier cannot restart either the `8 s` target clock or the `15 s` deadline.
+
+If no valid recovery canary has arrived by `15 s`, the Service Connection
+terminates with an explicit supported Connection Result. That result remains a
+recovery miss; the implementation cannot hang, discard the run, or silently
+open a replacement connection. Every eligible episode remains in the same
+percentile and miss-rate population fixed by P3-D6.
+
+Success preserves the exact target, active Service Instance, Isolation
+Context, Route Profile, stream identity, ordering, and same Application-facing
+Service Connection without lost or duplicate byte presentation. Carrier-level
+retransmission and parallel or abandoned candidate work are permitted only
+inside the accepted finite resource and queue bounds. They cannot replay an
+Application operation, reuse either failed resource, fall back directly, share
+continuity state across Isolation Contexts, or weaken target authentication,
+route privacy, integrity, or fail-closed handling.
+
+The workload covers overlapping ordinary failures only while a further
+qualifying Route remains. Detected active violations still fail closed, and the
+contract does not claim survival after all qualifying paths are exhausted. The
+`8 s` target is a top-down unverified product boundary, not evidence that a
+specific route family, carrier, or implementation already provides it.
+
 ## Remaining decisions
 
 1. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
    units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
    floors on the accepted reference class.
-2. **P3-D4b2b — Overlapping churn and degraded-path cost:** set the outcome when
-   another eligible failure occurs before prior recovery completes, plus CPU,
-   RSS, queue, carrier-traffic, and Node-load ceilings during impaired operation
-   and recovery without weakening R-001.
+2. **P3-D4b2c — Degraded-path and recovery cost:** set CPU, RSS, queue,
+   carrier-traffic, and Node-load ceilings during impaired operation and
+   single, sequential, and overlapping recovery without weakening R-001.
 3. **P3-D5 — Hostile load:** define fairness and resource-exhaustion workloads
    and the useful honest-work floor during attack.
 4. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
@@ -1087,6 +1145,11 @@ traces, and direct-baseline results. Disposable experiment code belongs under
   longer than `5 s` and its `p05` 60-second Application goodput is at least
   `min(2 Mbit/s, 25% of the paired impaired direct baseline)` in each separately
   measured direction.
+- **Product Owner decision:** one pair of overlapping eligible failures, with
+  the second affecting a distinct in-progress recovery resource within `1 s`,
+  remains one recovery episode. The same Service Connection recovers within
+  `p95 <= 8 s` or terminates explicitly by `15 s`, both measured from the first
+  interruption without a timer reset.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -1117,8 +1180,8 @@ enforce the accepted equal-load fair-progress floor, and apply the accepted
 Apply the accepted queue ceilings, backpressure semantics, and scale-up
 saturation gate. Apply the accepted single-failure Service Connection recovery
 gate, three-event ordinary-churn workload, and impaired-live useful-progress
-profile, then define overlapping churn, degraded-path resource cost, hostile
-load, and the reproducible release gate.
+profile, plus the overlapping-failure recovery gate. Then define degraded-path
+resource cost, hostile load, and the reproducible release gate.
 Role-specific infrastructure capacity remains deferred until R-004 supplies
 candidate units of work.
 
@@ -1128,10 +1191,10 @@ targets, infrastructure reference class, idle client resource ceiling, and
 active client and publisher resource ceilings and fairness floor remain
 unverified. The active carrier ratio, combined-load workload, queue ceilings,
 scale-up saturation gate, and single-failure recovery target also remain
-unverified; the three-event churn workload and impaired-live profile are also
-unverified, and the idle carrier budget is unverified and deliberately
-secondary. The remaining numeric targets remain undecided. The strongest
-counterargument is that
+unverified; the three-event churn workload, impaired-live profile, and
+overlapping-failure target are also unverified, and the idle carrier budget is
+unverified and deliberately secondary. The remaining numeric targets remain
+undecided. The strongest counterargument is that
 transport-independent continuation may require an Ardents layer above otherwise
 suitable carriers, adding state, attack surface, linkability risk, and resource
 cost. That is why the complete stack must earn the gate rather than assuming it
@@ -1308,11 +1371,21 @@ contradict the accepted client product.
   Application-visible reconnect.
 - A complete interruption remains a P3-D4a recovery event rather than an
   impaired-live success. P3-D6 fixes distributions, windows, repetitions, and
-  retained evidence; P3-D4b2b fixes overlapping churn and degraded-path
-  resource cost.
+  retained evidence.
+- P3-D4b2b accepted: one overlapping pair occurs in a direction-specific
+  10-minute run. The first failure stops the current Route; within `1 s` and
+  before recovery completes, the second stops a distinct resource used by the
+  in-progress replacement attempt. A further qualifying Route remains.
+- Both failures form one recovery episode measured from the last byte delivered
+  before the first. The same connection delivers the final recovery canary
+  within `p95 <= 8 s` or terminates explicitly by `15 s`; the second failure and
+  internal retries cannot restart either clock.
+- Target, active Service Instance, Isolation Context, Route Profile, ordering,
+  and stream identity remain unchanged without loss, duplicate presentation,
+  Application-visible reconnect, operation replay, direct fallback, or
+  security downgrade.
 - Public DNS, naming design, bootstrap, routing, libraries, language, exact
   hardware, and the remaining numeric budgets remain unselected.
-- P3-D4b2b overlapping churn and degraded-path resource cost is next.
-  Role-specific Node capacity remains deferred until R-004 candidate evidence
-  under P3-D3b4.
+- P3-D4b2c degraded-path and recovery resource cost is next. Role-specific Node
+  capacity remains deferred until R-004 candidate evidence under P3-D3b4.
 - No ADR and no code.

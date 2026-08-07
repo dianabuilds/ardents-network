@@ -237,6 +237,17 @@ an Application-visible reconnect or security downgrade. A complete traffic
 interruption is evaluated as recovery, not as success in this degraded-live
 profile.
 
+An overlapping-failure qualification also runs separately in each Application
+Data direction for 10 minutes. The first failure stops the current Route; within
+`1 s`, before a recovery canary arrives, the second stops a distinct ordinary
+Node or Carrier Channel used by the in-progress replacement attempt. When both
+endpoints, the same active Service Instance and target, and a further qualifying
+Route remain, the same Service Connection delivers the final recovery canary
+within `p95 <= 8 s` from the first interruption or terminates explicitly by
+`15 s` from that point. The second failure never resets the clock. Recovery
+retains stream order, uniqueness, identity, security, and Isolation Context
+without an Application-visible reconnect or Application-operation replay.
+
 ## J-07 — Contribute network resources
 
 **Actor:** Network Contributor

@@ -250,9 +250,14 @@ route family by implication.
 - Ordinary-churn qualification repeats that eligible recovery three times in
   one 10-minute run. Each next event strikes the current Route after the prior
   recovery canary, while failed resources remain unavailable. Three is not a
-  runtime quota and cannot justify terminating an otherwise healthy connection;
-  overlapping failures and attacker-driven churn retain separate explicit
-  workloads and limits.
+  runtime quota and cannot justify terminating an otherwise healthy connection.
+- One accepted overlapping-failure workload stops the current Route and then,
+  within `1 s` before recovery completes, stops a distinct resource used by the
+  in-progress replacement attempt. If a further qualifying Route remains, the
+  same connection recovers within `p95 <= 8 s` or terminates explicitly by
+  `15 s`, both measured from the first interruption. A second failure or
+  internal retry never resets the clock. Failed resources stay unavailable;
+  attacker-driven churn beyond this pair retains separate explicit limits.
 - Controlled impairment does not authorize a hidden reconnect or security
   shortcut. With `300 ms` base RTT, independent `5%` loss in each direction,
   and `100 ms` `p95` additional jitter but no complete interruption, the same
