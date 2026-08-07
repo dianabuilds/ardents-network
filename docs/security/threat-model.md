@@ -280,6 +280,10 @@ route family by implication.
   inference, which is not presented as hidden by the protocol.
 - Slow consumers cause bounded stream backpressure, not unbounded queues or
   silent Application Data loss; overload and fairness outcomes remain explicit.
+- Under controlled equal-priority active load, aggregate success cannot hide
+  starvation: every eligible connection must meet the accepted delivered-data
+  floor and maximum no-progress gap. Unequal policy, degraded paths, and hostile
+  load remain separate explicit contracts rather than silent exceptions.
 - Security mechanisms and performance optimizations are measured together;
   neither may bypass target authentication, isolation, least privilege, or
   resource bounds.

@@ -93,7 +93,9 @@ direction, those `64` active connections share `40 Mbit/s` of delivered
 Application Data while the complete Ardents process tree keeps
 `p95 resident memory <= 1 GiB` and mean CPU `<= 100%` of one logical core. The
 published Application's own work is excluded, but every connection must keep
-progressing and all Ardents publication and carrier work remains counted.
+progressing and all Ardents publication and carrier work remains counted. Under
+the controlled equal-load benchmark, every connection averages at least
+`500 kbit/s` and has no zero-delivery interval longer than `2 s`.
 
 ## J-04 — Integrate an Application
 
@@ -131,11 +133,12 @@ total client capacity, not a maximum number of connections to one published
 Service. Across separate 10-minute runs in each direction, those `16` active
 connections share `10 Mbit/s` of delivered Application Data while the complete
 Ardents process tree keeps `p95 resident memory <= 512 MiB` and mean CPU
-`<= 50%` of one logical core; every connection continues to make progress. On
-stronger hardware the endpoint may raise its finite hierarchical
-local budgets, while an Endpoint Owner may cap them. Reduced limits are exposed
-locally and do not qualify as the V1 performance floor; added capacity grants no
-Node role, authority, trust, or security exception.
+`<= 50%` of one logical core. Under the controlled equal-load benchmark, every
+connection averages at least `500 kbit/s` and has no zero-delivery interval
+longer than `2 s`. On stronger hardware the endpoint may raise its finite
+hierarchical local budgets, while an Endpoint Owner may cap them. Reduced limits
+are exposed locally and do not qualify as the V1 performance floor; added
+capacity grants no Node role, authority, trust, or security exception.
 
 ## J-05 — Use the Named Unlisted Site tracer
 

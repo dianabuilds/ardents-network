@@ -243,14 +243,15 @@ allowance and do not limit how many Users may connect to a published Service.
 
 An open connection has authenticated its exact Service Target, returned
 success, and has not closed or failed. An active connection is offered the fixed
-P3-D6 transfer workload and must make Application Data progress during the
-measurement interval; opening idle sockets or moving one token byte cannot
-satisfy the `16`-connection case. P3-D6 must fix the duration, traffic mix, and
-progress rule.
+P3-D3c2c1 transfer workload and must make Application Data progress throughout
+the measurement interval; opening idle sockets or moving one token byte cannot
+satisfy the `16`-connection case. P3-D6 retains the exact topology, sampling,
+run count, and evidence format.
 
 The single-connection P3-D3a goodput floor does not apply independently to all
-16 active connections. Aggregate goodput, resource ceilings, and quantitative
-fairness remain P3-D3c so they cannot be inferred from a connection count.
+16 active connections. P3-D3c2c1 sets their aggregate goodput and resource
+ceiling, and P3-D3c2c3a sets their equal-load fair-progress floor; none is
+inferred from the connection count alone.
 
 When a configured finite budget is exhausted, a new operation returns the
 accepted local resource-limit result. Load must not cause a crash, deadlock,
@@ -279,11 +280,11 @@ application-policy limit; that does not reduce the capacity the controlled V1
 publisher benchmark must demonstrate.
 
 The P3-D3b1 definitions of open and active connections apply, with direction
-reversed for accepted incoming Service Connections. P3-D6 must supply the fixed
-Service workload, duration, traffic mix, and progress rule. The metric does not
-require the P3-D3a single-connection goodput floor independently on all 64
-active connections; aggregate goodput, CPU, memory, overhead, and fairness
-remain P3-D3c.
+reversed for accepted incoming Service Connections. P3-D3c2c2 fixes the
+64-connection workload, duration, aggregate goodput, CPU, and memory, while
+P3-D3c2c3a fixes its equal-load fair-progress floor. The metric does not require
+the P3-D3a single-connection goodput floor independently on all 64 active
+connections; active carrier overhead remains P3-D3c2c3b.
 
 When the finite publisher budget is exhausted, admission remains bounded and
 the remote side receives only a supported honest failure under the later R-007
@@ -457,8 +458,9 @@ process-tree and cross-platform resident-memory attribution, eligible-run count,
 and exact progress evidence. A run that stalls a connection, fails to sustain
 the declared delivered load, loses a connection, exceeds either resource
 ceiling, or bypasses authentication, Route Knowledge Separation, Isolation
-Contexts, required background work, or bounded queues is a miss. The exact
-fair-share threshold and active carrier-bandwidth overhead remain P3-D3c2c3.
+Contexts, required background work, or bounded queues is a miss. P3-D3c2c3a
+fixes the fair-progress floor; active carrier-bandwidth overhead remains
+P3-D3c2c3b.
 
 ### P3-D3c2c2 — Active publisher resource ceiling
 
@@ -494,24 +496,61 @@ process-tree and cross-platform resident-memory attribution, eligible-run count,
 and exact progress evidence. A run that stalls a connection, fails to sustain
 the declared delivered load, loses a connection, exceeds either resource
 ceiling, or bypasses authentication, Route Knowledge Separation, publication
-isolation, required background work, or bounded queues is a miss. The exact
-fair-share threshold, combined `256`-open and `64`-active workload, and active
-carrier-bandwidth overhead remain P3-D3c2c3.
+isolation, required background work, or bounded queues is a miss. P3-D3c2c3a
+fixes the fair-progress floor; active carrier-bandwidth overhead remains
+P3-D3c2c3b, and the combined `256`-open and `64`-active workload remains
+P3-D3c2c3c.
+
+### P3-D3c2c3a — Equal-load fair progress
+
+**Product Owner decision, accepted 2026-08-07:** in every eligible client and
+publisher active-resource run, each active Service Connection must meet both:
+
+- mean delivered Application goodput over the full 10-minute run
+  `>= 500 kbit/s`;
+- no continuous interval longer than `2 s` with zero Application Data delivered
+  to its receiving Application.
+
+The client and publisher workloads offer every connection an equal
+`625 kbit/s` share, so the mean floor is 80% of that share. Both conditions apply
+independently to every connection and to the separate User-to-Service and
+Service-to-User runs. Aggregate `10 Mbit/s` or `40 Mbit/s` success, a fast
+connection, or success in the opposite direction cannot compensate for one
+starved connection. Only delivered Application Data proves progress; carrier
+control, acknowledgements, padding, and retransmitted bytes do not.
+
+The controlled test gives the connections equal Local Grant priority and
+budgets, equivalent reference paths, continuously available incompressible
+payload, and non-blocking receivers. The contract therefore measures starvation
+introduced by Ardents scheduling and resource handling, not a promise that
+production connections with different grants, access links, Routes, remote
+behavior, or Application backpressure receive equal throughput. Deliberately
+unequal local policy remains allowed within the accepted finite hierarchy.
+
+This is a top-down, unverified qualification floor. P3-D6 must define timestamp
+resolution, eligible runs, path equivalence, and retained per-connection traces.
+A loss, close, average below the floor, or gap above the limit is a miss rather
+than an omitted sample. Meeting fairness by reducing the accepted aggregate
+load, weakening security or isolation, sharing forbidden cross-context state,
+or buffering without bound also fails the run. Degraded and hostile-path
+fairness remain P3-D4 and P3-D5.
 
 ## Remaining decisions
 
-1. **P3-D3c2c3 — Active overhead, fairness, and scale-up:** set active
-   carrier-bandwidth overhead, queue and per-connection fair-progress budgets,
-   preserve accepted aggregate goodput under combined open-and-active workloads,
-   and measure endpoint scale-up saturation.
-2. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
+1. **P3-D3c2c3b — Active carrier overhead:** bound sent-plus-received carrier
+   bytes relative to delivered Application Data for the accepted client and
+   publisher workloads without creating a security shortcut.
+2. **P3-D3c2c3c — Combined load and scale-up:** set queue budgets, preserve
+   accepted aggregate goodput and fair progress with `64/16` client and `256/64`
+   publisher open-and-active workloads, and measure endpoint saturation.
+3. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
    units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
    floors on the accepted reference class.
-3. **P3-D4 — Tail and degradation:** set jitter, loss, churn, alternate-route,
+4. **P3-D4 — Tail and degradation:** set jitter, loss, churn, alternate-route,
    and overload behavior without weakening R-001.
-4. **P3-D5 — Hostile load:** define fairness and resource-exhaustion workloads
+5. **P3-D5 — Hostile load:** define fairness and resource-exhaustion workloads
    and the useful honest-work floor during attack.
-5. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
+6. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
    artifacts, regression thresholds, and release failure rules.
 
 ## Hypotheses
@@ -617,6 +656,9 @@ traces, and direct-baseline results. Disposable experiment code belongs under
   sharing `40 Mbit/s` of delivered Application Data for 10 minutes, the complete
   publisher process tree keeps `p95 resident memory <= 1 GiB` and mean CPU
   `<= 100%` of one logical core in separate runs for each direction.
+- **Product Owner decision:** in both equal-load active benchmarks, every
+  connection averages at least `500 kbit/s` of delivered Application Data and
+  has no zero-delivery interval longer than `2 s`.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -642,16 +684,18 @@ then apply the accepted single-connection goodput and separate client and
 publisher concurrency floors and the accepted idle client CPU and memory
 ceiling. Treat the accepted idle background-traffic number as an optimization
 guardrail, apply the accepted active client and publisher resource ceilings,
-then define active overhead and fairness, infrastructure Node capacity,
-degradation, hostile load, and the reproducible release gate; bounded endpoint
-scale-up is already fixed.
+and enforce the accepted equal-load fair-progress floor. Define active carrier
+overhead and combined-load scale-up next, followed by infrastructure Node
+capacity, degradation, hostile load, and the reproducible release gate; bounded
+endpoint scale-up is already fixed.
 
 Confidence: high for the platform boundary and desired connection experience;
 the accepted latency, goodput, client-concurrency, and publisher-concurrency
 targets, infrastructure reference class, idle client resource ceiling, and
-active client and publisher resource ceilings remain unverified. The idle
-carrier budget is also unverified and deliberately secondary; the remaining
-numeric targets remain undecided. The strongest counterargument is that
+active client and publisher resource ceilings and fairness floor remain
+unverified. The idle carrier budget is also unverified and deliberately
+secondary; the remaining numeric targets remain undecided. The strongest
+counterargument is that
 supporting both Windows and Linux from the first V1 slice increases packaging
 and systems-integration work for a one-to-one project, but removing either would
 contradict the accepted client product.
@@ -745,9 +789,18 @@ contradict the accepted client product.
   remain counted. Lost or stalled connections, reduced useful load, process
   splitting, unbounded queues, or a security or isolation shortcut cannot make
   the publisher resource test pass.
+- P3-D3c2c3a accepted: in both equal-load active benchmarks, every connection
+  averages at least `500 kbit/s` of delivered Application Data over 10 minutes
+  and has no zero-delivery interval longer than `2 s`.
+- The floor applies separately to each connection and direction under equal
+  grants, offered load, and controlled paths. Aggregate success, carrier bytes,
+  fast peers, unbounded buffering, or a security or isolation shortcut cannot
+  hide starvation; unequal production policy and degraded or hostile paths have
+  separate contracts.
 - Public DNS, naming design, bootstrap, routing, libraries, language, exact
   hardware, and the remaining numeric budgets remain unselected.
-- P3-D3c2c3, active overhead, quantitative fairness, combined open-and-active
-  workloads, and scale-up saturation, is next; role-specific Node capacity is
-  completed with R-004 candidate evidence under P3-D3b4.
+- P3-D3c2c3b, active carrier overhead, is next. Combined open-and-active
+  workloads, queue budgets, and scale-up saturation remain P3-D3c2c3c;
+  role-specific Node capacity is completed with R-004 candidate evidence under
+  P3-D3b4.
 - No ADR and no code.
