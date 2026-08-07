@@ -82,6 +82,12 @@ on supported platforms. For the first tracer this includes start/join, publish,
 name, resolve, connect, exchange, close/fail, accepted rotation, alternate-path
 recovery, and blocked-entry behavior.
 
+For V1, those endpoint journeys must pass on both Windows and Linux
+desktop/laptop reference devices, while the infrastructure path must pass on a
+modest Linux server/VPS class. Server-only success cannot substitute for a
+working User or Developer endpoint. macOS and mobile do not block V1 until a
+later product decision promotes them.
+
 An offline Service must be reported as unavailable. The release must not imply
 that Application Data was retained, delivered, or semantically completed unless
 a separate accepted Overlay contract provides and verifies that behavior.

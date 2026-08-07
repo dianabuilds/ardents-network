@@ -8,7 +8,8 @@ semantics.
 
 **Actor:** User or Developer
 
-**Start:** A newly installed local Ardents endpoint
+**Start:** A newly installed local Ardents endpoint on a supported Windows or
+Linux desktop/laptop
 
 **Flow:** Endpoint Owner starts the endpoint → verify software/network state →
 obtain current bootstrap information → join through an available entry path →
@@ -17,6 +18,9 @@ report ready or an exact degraded state
 **Done when:** a local Application can use the Application Interface without a
 phone, email, wallet, central User account, network administrator approval, or
 manual routing configuration.
+
+**V1 platform gate:** the same ready outcome is required on both Windows and
+Linux; a result demonstrated only on an infrastructure server is insufficient.
 
 ## J-02 — Open an Unlisted Service
 
@@ -43,7 +47,8 @@ Qualification; otherwise the journey is visibly an experiment or simulation.
 
 **Actor:** Developer
 
-**Start:** A local application server and an Ardents endpoint
+**Start:** A local application server and an Ardents endpoint on a supported
+Windows or Linux desktop/laptop
 
 **Flow:** Endpoint Owner grants Authority Custody to an administration tool →
 create or securely import Service Authority → obtain its Service Target → grant

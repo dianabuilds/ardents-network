@@ -69,7 +69,8 @@ The following product choices already constrain research:
 
 The core product must let a local Application:
 
-- start an Ardents endpoint and join the carrier without a central user account;
+- start an Ardents endpoint on a Windows or Linux desktop/laptop and join the
+  carrier without a central user account;
 - create or securely import a Service Authority and obtain its
   location-independent Service Target;
 - expose a local Service Instance behind that target;
@@ -81,6 +82,11 @@ The core product must let a local Application:
 - keep unrelated application contexts from being linked by accidental route
   reuse;
 - recover an entry path when ordinary bootstrap or transport is blocked.
+
+The same V1 endpoint platforms must support publishing an ordinary local
+Application. A modest Linux server or VPS is the required V1 infrastructure
+Node class. macOS and mobile are later targets rather than current performance
+or release promises.
 
 The core does not, by default, execute untrusted application code, retain
 application payloads for offline recipients, replicate a site's content, define

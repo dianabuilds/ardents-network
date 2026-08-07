@@ -22,6 +22,11 @@ Service Connection. Infrastructure Node IDs are not User or application
 addresses, and the network does not impose messenger, identity, storage, or
 content semantics.
 
+V1 is endpoint software for ordinary Windows and Linux desktop/laptop devices:
+Users connect from them and Developers can publish local Applications from them.
+The required infrastructure benchmark uses a modest Linux server or VPS;
+macOS and mobile remain later targets.
+
 The accepted Interactive Route contract is multi-hop for Route Knowledge
 Separation: one ordinary Node cannot link an endpoint's ordinary location to a
 Service Name, Service Target, or opposite endpoint. This requirement selects
