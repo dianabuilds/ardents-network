@@ -256,6 +256,15 @@ and every ancestor cap remain unchanged. Completed or abandoned recovery state
 does not accumulate across failures. These limits apply together with the
 useful-progress, deadline, and security outcomes rather than replacing them.
 
+The impaired-live run keeps total endpoint carrier bytes at or below `2.0x`
+delivered Application Data in the measured direction. Each recovery episode
+adds at most `8 MiB` per endpoint over a paired no-failure run; the overlapping
+pair is one episode. Across all impaired and recovery runs, each endpoint
+network direction keeps `p95` one-second carrier bitrate at or below
+`min(25 Mbit/s, 80% of its declared usable link budget)`. Retransmission,
+abandoned attempts, control, padding, security, liveness, and background bytes
+remain counted, so retry storms cannot hide inside a ten-minute average.
+
 ## J-07 — Contribute network resources
 
 **Actor:** Network Contributor

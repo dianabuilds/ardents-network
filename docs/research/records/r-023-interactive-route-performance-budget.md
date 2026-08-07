@@ -1044,17 +1044,74 @@ workload. They are top-down unverified product ceilings, not measurements of an
 existing implementation. Infrastructure-Node cost remains deferred until R-004
 defines candidate roles and units of work under P3-D3b4.
 
+### P3-D4b2c2 — Endpoint carrier cost under impairment and recovery
+
+**Product Owner decision, accepted 2026-08-07:** degraded operation and recovery
+must satisfy three simultaneous endpoint carrier limits: a full-run impaired
+ratio, a per-episode excess-byte cap, and a short-window bitrate cap. Passing one
+cannot compensate for missing another.
+
+For the direction-specific 10-minute P3-D4b2a impaired-live run, the endpoint
+carrier ratio must be `<= 2.0` independently at each endpoint and measured
+Application Data direction:
+
+`(Ardents-attributable bytes sent + received) / delivered Application Data`.
+
+The numerator is measured at the endpoint operating-system network boundary
+over the full run. The denominator contains only fixed incompressible
+Application Data delivered to the receiving Application in the measured
+direction. Carrier bytes, bytes accepted but not delivered, progress in the
+opposite direction, or a shorter surviving interval cannot inflate it. The
+normal stable active-workload ratio remains `<= 1.5`; this `2.0` ceiling is only
+the explicit cost allowance for the accepted impaired-live profile.
+
+Every P3-D4a recovery, each of the three P3-D4b1 sequential recoveries, and the
+whole P3-D4b2b overlapping pair as one recovery episode may create at most
+`8 MiB` of additional Ardents-attributable carrier traffic at each endpoint.
+The cap uses combined sent and received endpoint bytes and compares the episode
+against a paired no-failure run with the same endpoints, initial authenticated
+state, offered Application workload, Route Profile, carrier environment, and
+wall-clock interval. P3-D6 fixes the paired calculation and must prevent reduced
+Application delivery, omitted background work, or a shortened interval from
+artificially lowering the excess. A negative difference is treated as zero and
+cannot offset another episode.
+
+Throughout every 10-minute P3-D4a, P3-D4b1, P3-D4b2a, and P3-D4b2b impaired or
+recovery run, each endpoint's `p95` one-second Ardents-attributable carrier
+bitrate in each physical network direction must be no more than:
+
+`min(25 Mbit/s, 80% of the declared usable link budget in that direction)`.
+
+The usable link budget is a finite P3-D6 measurement input no higher than the
+controlled endpoint access link available to Ardents in that run. The two
+physical network directions are evaluated separately; a quiet direction cannot
+compensate for a burst in the other. The cap is qualification evidence rather
+than permission to saturate a production link or override a lower local policy.
+
+All visible transport and network framing, encrypted payload, acknowledgements,
+retransmission, parallel and abandoned Route or Carrier Channel attempts,
+control, keepalive, padding, cover traffic, and required security, liveness, and
+background bytes attributable to Ardents or a helper count. Unrelated operating
+system and external Application traffic does not. Intermediate-Node forwarding
+remains outside this endpoint numerator and is deferred with role-specific work
+to R-004 and P3-D3b4.
+
+Every accepted progress, recovery, CPU, RSS, queue, target-authentication,
+Route-privacy, isolation, integrity, and fail-closed gate remains enabled. A
+candidate cannot pass by delaying or dropping recovery, suppressing security or
+liveness traffic, reclassifying failed attempts, moving bytes outside the
+measured process or network boundary, using a direct fallback, or averaging one
+episode against another. These are top-down unverified product ceilings rather
+than current implementation measurements.
+
 ## Remaining decisions
 
 1. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
    units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
    floors on the accepted reference class.
-2. **P3-D4b2c2 — Degraded-path and recovery carrier cost:** bound endpoint
-   carrier-byte amplification and burst rate during impaired operation and
-   single, sequential, and overlapping recovery without weakening R-001.
-3. **P3-D5 — Hostile load:** define fairness and resource-exhaustion workloads
+2. **P3-D5 — Hostile load:** define fairness and resource-exhaustion workloads
    and the useful honest-work floor during attack.
-4. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
+3. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
    artifacts, regression thresholds, and release failure rules.
 
 ## Hypotheses
@@ -1205,6 +1262,11 @@ traces, and direct-baseline results. Disposable experiment code belongs under
   `<= 50%` of one logical core, and `p95` one-second CPU `<= 100%` of one core.
   The `256 KiB` per-connection directional queue cap remains, and temporary
   recovery state cannot accumulate across completed or abandoned attempts.
+- **Product Owner decision:** the impaired-live endpoint carrier ratio is at
+  most `2.0`; each recovery episode adds at most `8 MiB` of combined endpoint
+  carrier traffic over a paired no-failure run; and `p95` one-second carrier
+  bitrate per endpoint network direction is at most
+  `min(25 Mbit/s, 80% of its declared usable link budget)`.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -1235,8 +1297,9 @@ enforce the accepted equal-load fair-progress floor, and apply the accepted
 Apply the accepted queue ceilings, backpressure semantics, and scale-up
 saturation gate. Apply the accepted single-failure Service Connection recovery
 gate, three-event ordinary-churn workload, and impaired-live useful-progress
-profile, plus the overlapping-failure recovery gate. Then define degraded-path
-and recovery carrier cost, hostile load, and the reproducible release gate.
+profile, plus the overlapping-failure recovery gate and accepted degraded-path
+and recovery endpoint resource and carrier limits. Then define hostile load and
+the reproducible release gate.
 Role-specific infrastructure capacity remains deferred until R-004 supplies
 candidate units of work.
 
@@ -1248,9 +1311,9 @@ unverified. The active carrier ratio, combined-load workload, queue ceilings,
 scale-up saturation gate, and single-failure recovery target also remain
 unverified; the three-event churn workload, impaired-live profile,
 overlapping-failure target, and endpoint recovery-resource ceilings are also
-unverified, and the idle carrier budget is unverified and deliberately
-secondary. The remaining numeric targets remain undecided. The strongest
-counterargument is that
+unverified. The impaired and recovery carrier limits are also unverified, and
+the idle carrier budget is unverified and deliberately secondary. The remaining
+numeric targets remain undecided. The strongest counterargument is that
 transport-independent continuation may require an Ardents layer above otherwise
 suitable carriers, adding state, attack surface, linkability risk, and resource
 cost. That is why the complete stack must earn the gate rather than assuming it
@@ -1450,9 +1513,21 @@ contradict the accepted client product.
 - Useful progress, recovery, security, and resources are simultaneous gates;
   no hidden reconnect, premature termination, process splitting, weakened
   security, false delivery, or omitted miss can make the resource result pass.
+- P3-D4b2c2 accepted: the 10-minute impaired-live endpoint carrier ratio is
+  `<= 2.0` separately at each endpoint and Application Data direction.
+- Each single or sequential recovery episode, and the complete overlapping pair
+  as one episode, adds no more than `8 MiB` of combined sent and received
+  endpoint carrier traffic over its paired no-failure run. One episode cannot
+  offset another.
+- Across every impaired or recovery run, each endpoint network direction has
+  `p95` one-second carrier bitrate
+  `<= min(25 Mbit/s, 80% of its declared usable link budget)`.
+- All retransmission, parallel and abandoned attempts, control, padding,
+  security, liveness, and attributable background bytes count; no missed
+  recovery, suppressed protection, direct fallback, or omitted bytes can make a
+  carrier result pass.
 - Public DNS, naming design, bootstrap, routing, libraries, language, exact
   hardware, and the remaining numeric budgets remain unselected.
-- P3-D4b2c2 degraded-path and recovery carrier cost is next. Role-specific Node
-  capacity and cost remain deferred until R-004 candidate evidence under
-  P3-D3b4.
+- P3-D5 hostile load is next. Role-specific Node capacity and cost remain
+  deferred until R-004 candidate evidence under P3-D3b4.
 - No ADR and no code.

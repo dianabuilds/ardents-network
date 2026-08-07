@@ -273,6 +273,14 @@ route family by implication.
   Channel, timer, task, handle, queued-copy, and cryptographic state cannot
   accumulate with completed or abandoned attempts. Process splitting, hidden
   reconnects, dropped outcomes, or weakened security cannot make a run pass.
+- Degradation and recovery cannot create unbounded endpoint traffic
+  amplification. The impaired-live carrier ratio is at most `2.0`; one recovery
+  episode adds at most `8 MiB` of endpoint traffic over a paired no-failure run;
+  and each endpoint network direction keeps `p95` one-second carrier bitrate at
+  or below `min(25 Mbit/s, 80% of its declared usable link budget)`. Parallel
+  and abandoned attempts, retransmission, control, padding, security, liveness,
+  and background bytes count. A quiet direction or episode cannot offset a
+  burst elsewhere, and required protection cannot be suppressed to pass.
 - Integrity mechanisms reject protocol-level tagging that changes authenticated
   data, but cannot promise to detect every timing-, delay-, or volume-based tag.
   Such correlation remains within the P2-D1 and P2-D4 limitations.
