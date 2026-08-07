@@ -2,7 +2,7 @@
 
 Status: **proposed network product contract**
 
-Last reviewed: 2026-08-06
+Last reviewed: 2026-08-07
 
 ## Vision
 
@@ -27,6 +27,15 @@ route and protect their connections.
 - **Decentralized** means ordinary reachability and routing do not require one
   hosting or relay operator. Naming, bootstrap, releases, and emergency powers
   remain explicit Control Plane risks until their own designs are accepted.
+
+## Security and performance
+
+Security and performance are equal product constraints. Every privacy,
+isolation, and abuse-control mechanism must state and measure its connection
+latency, throughput, tail behavior, CPU, memory, and overload cost on declared
+device and network classes. An optimization cannot bypass a security invariant,
+and a security mechanism is not viable if it makes the accepted Application
+journey impractical under honest load.
 
 ## Fixed direction
 
@@ -59,7 +68,8 @@ The core product must let a local Application:
 - bind an optional human-readable Service Name to the target;
 - resolve an exact Service Name without a public directory;
 - establish a protected live Service Connection;
-- exchange opaque Application Data and receive explicit failure and closure;
+- exchange opaque Application Data within measurable performance and resource
+  budgets and receive explicit failure and closure;
 - keep unrelated application contexts from being linked by accidental route
   reuse;
 - recover an entry path when ordinary bootstrap or transport is blocked.
@@ -106,6 +116,8 @@ These are responsibility boundaries, not selected binaries or APIs:
    to restore connectivity.
 8. Every security, anonymity, availability, and decentralization claim states
    its adversary, conditions, measurement, and limitation.
+9. Every accepted security mechanism also has a performance budget and overload
+   test; no performance optimization may silently weaken that mechanism.
 
 ## First tracer: Named Unlisted Site
 
@@ -139,7 +151,7 @@ protocol machinery when their threat and maintenance models fit.
 No dependency is accepted because it is familiar, already present in `old`, or
 popular. No component is rejected merely because it was not written here. The
 production language, routing family, wire protocol, and library set remain open
-until the product and security contracts can compare them fairly.
+until the product, security, and performance contracts can compare them fairly.
 
 ## Explicit non-goals for the network core
 
@@ -169,6 +181,8 @@ following is unavoidable:
 - human-readable naming necessarily creates an unacceptable ownership or query
   graph;
 - safe isolation makes ordinary applications impractical to integrate;
+- the accepted security contract cannot meet measured latency, throughput, and
+  resource budgets on declared reference devices and networks;
 - a diverse contributor population cannot plausibly avoid one operator,
   network, software, or jurisdiction becoming a de facto carrier;
 - hostile bootstrap and software update recovery require a permanent trusted

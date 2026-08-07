@@ -76,7 +76,9 @@ destination or the ordinary network. After a partial write or connection loss,
 the network never claims that the remote Application processed the bytes. The
 Isolation Context remains local and cannot become an application or network
 identity. No Endpoint Owner or Local Grant becomes an authority over the Ardents
-network.
+network. The journey remains within its declared setup-latency, throughput,
+memory, CPU, fairness, and overload budgets under both honest and adversarial
+load.
 
 ## J-05 — Use the Named Unlisted Site tracer
 
@@ -142,6 +144,9 @@ Every implementation proposal must exercise at least these cases:
 - a route fails after the Application has written some bytes;
 - an Application reuses one Isolation Context across identities or contexts that
   should not be linked;
+- an Application creates Services or Isolation Contexts to evade its parent
+  resource budget;
 - a local Application attempts to exceed connection, bandwidth, or queue limits;
+- a slow reader attempts to create unbounded buffering or starve other grants;
 - a censor blocks known entry addresses and protocol fingerprints;
 - an official endpoint or protocol update channel is compromised or unavailable.

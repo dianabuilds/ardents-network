@@ -16,6 +16,8 @@ Research starts from these reversible product boundaries:
   migration preserves the target, while loss or compromise replaces it through
   the Service Name;
 - the smallest transport is an online Service Connection carrying opaque bytes;
+- the local interface uses finite hierarchical budgets, backpressure, and
+  measured performance without weakening accepted security boundaries;
 - the Application owns its protocol, User identity, authorization, persistence,
   semantic retry, and offline behavior;
 - the core connects external local Applications and does not assume a bundled
@@ -31,12 +33,13 @@ boundaries with named evidence.
 | ID | Exact question | Decision and required result | State |
 |---|---|---|---|
 | [R-006](records/r-006-service-target-lifecycle.md) | What is the V1 lifecycle of a Service Target across creation, publication, migration, loss, compromise, replacement, and retirement? | **Decided:** one active Instance uses a portable Service Authority. Routine migration uses encrypted export/import and preserves the target. Loss or compromise creates a new target and rebinds the Service Name; the old target remains untrusted. | decided |
-| [R-002](records/r-002-live-application-interface.md) | What is the smallest live Application Interface that lets an existing local application publish and consume a Service safely? | **Active:** P1-D1 accepts a local socket/proxy-style boundary and optional convenience-only SDKs. P1-D2 accepts one live reliable ordered byte stream. P1-D3 through P1-D6 fix privilege separation, destinations, failures, and local isolation. P1-D7 accepts endpoint-local grants for connection use, per-Service administration, and Authority custody; no Endpoint Owner is a network administrator. Only resource and backpressure bounds remain. | active |
+| [R-002](records/r-002-live-application-interface.md) | What is the smallest live Application Interface that lets an existing local application publish and consume a Service safely? | **Decided:** an external socket/proxy-style boundary exposes one live stream, both destination forms, authenticated results, honest failures, safe Isolation Contexts, endpoint-local least privilege, hierarchical resource budgets, backpressure, and measurable performance. SDKs remain optional wrappers; concrete protocol and numeric budgets remain later evidence. | decided |
 | R-001 | Which endpoint, local-observer, relay-collusion, and broad traffic-observer capabilities must the Interactive Route resist, and what does it deliberately expose? | A claim matrix using the threat-model format, including conditions, measurable falsification, and honest limitations. | open |
 | R-003 | How does an exact Service Name bind to a Service Target, resolve without becoming a directory, survive accepted rotation, and handle registration, expiry, recovery, conflict, enumeration, query privacy, and Control Plane capture? | A naming product contract and governance/failure state machine; no registry technology is selected until this exists. | open |
-| R-004 | Which routing and rendezvous families can meet the accepted Interactive Route claim and application latency budget under churn, malicious Nodes, and realistic client devices? | Comparable primary-source analysis and bounded measurements against one R-001 claim matrix; no library popularity scoring. | open |
+| R-004 | Which routing and rendezvous families can meet the accepted Interactive Route claim and R-023 performance budget under churn, malicious Nodes, and realistic client devices? | Comparable primary-source analysis and bounded measurements against the R-001 claim matrix and R-023 budgets; no library popularity scoring. | open |
 | R-007 | What availability does the core promise when a path fails or a Service is offline, and which retries can be performed without lying to the Application about operation completion? | A failure matrix that maps network evidence to the accepted P1-D5 classes for discovery, connect, partial write, route loss, service loss, and reconnect. It must use indeterminate failure where causes cannot be distinguished. Retained delivery and Application-operation retry remain outside the core. | open |
 | R-008 | How are local Applications separated from endpoint authority, network metadata, and each other's Isolation Context while still supporting ordinary software? | A local trust-boundary and misuse contract implementing Local Grants and Isolation Contexts, identifying every state forbidden to cross Applications, grants, or contexts, and testing deliberate or accidental reuse. This is not a decision to run arbitrary application code. | open |
+| R-023 | What end-to-end performance budget makes the V1 Interactive Route and Named Unlisted Site useful without weakening the accepted security contract? | Scenario-based budgets for cold and warm connection setup, throughput, tail latency, concurrency, CPU, memory, fairness, and overload recovery on declared client and server classes, tested under honest and adversarial load against a direct baseline. | open |
 | R-019 | What generic Application Data contract should include destination, online/offline delivery, reliability, ordering, retention, and Route Profile? | **Rejected as one question:** it mixed address lifecycle, live transport, storage, routing, and Application policy. Its decisions are now isolated in R-006, R-002, R-001, R-007, and R-008. | rejected |
 
 ## Resilience — makes the product viable in a hostile network
@@ -75,12 +78,13 @@ boundaries with named evidence.
 
 ## Decision order
 
-R-006 selected the portable-authority lifecycle. The remaining dependency path
-is intentionally short:
+R-006 selected the portable-authority lifecycle and R-002 fixed the live
+Application Interface. The remaining dependency path is intentionally short:
 
-1. **R-002 — live Application Interface:** define exactly what software can do.
-2. **R-001 — Interactive Route claim:** define what protection that connection
+1. **R-001 — Interactive Route claim:** define what protection that connection
    promises.
+2. **R-023 — performance budget:** define what useful performance means before
+   comparing routing or implementation choices.
 3. **R-003 — Service Name:** define the human layer over the accepted target and
    catastrophe replacement.
 4. **R-004 and R-009 — routing and hostile bootstrap:** compare mechanisms only

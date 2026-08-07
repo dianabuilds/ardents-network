@@ -151,8 +151,9 @@ share linkable routing or session state.
 _Avoid_: User account, global Persona, cosmetic privacy setting
 
 **Route Profile**:
-A testable product contract for latency, path behavior, observer resistance,
-and honest limitations of a class of Service Connections.
+A testable product contract for latency, throughput, resource cost, path
+behavior, observer resistance, and honest limitations of a class of Service
+Connections.
 _Avoid_: Anonymous mode, routing algorithm
 
 **Interactive Route**:

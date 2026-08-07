@@ -27,6 +27,8 @@ accepted.
 - Service Name binding, resolution integrity, and recovery state;
 - endpoint-local grants, Application Interface authority, and network metadata;
 - route, discovery, bootstrap, and Bridge availability;
+- honest-workload latency, throughput, fairness, and endpoint resource
+  availability under load;
 - Control Plane integrity, software provenance, and real operator diversity.
 
 ## Adversaries
@@ -136,6 +138,13 @@ No document or interface may say only “anonymous,” “private,” “secure,
 - Compromise of an Endpoint Owner grants no network-wide administrative power,
   although the compromised endpoint remains capable of ordinary network attacks
   and loses the Service Authorities it holds.
+- Resource budgets are finite and hierarchical; creating Local Grants, Services,
+  Isolation Contexts, or connections never multiplies an ancestor budget.
+- Slow consumers cause bounded stream backpressure, not unbounded queues or
+  silent Application Data loss; overload and fairness outcomes remain explicit.
+- Security mechanisms and performance optimizations are measured together;
+  neither may bypass target authentication, isolation, least privilege, or
+  resource bounds.
 - Bounded retry does not create unbounded queues, amplification, or duplicate
   application operations by implication.
 - Bootstrap, naming, protocol releases, software distribution, and emergency
@@ -146,6 +155,7 @@ No document or interface may say only “anonymous,” “private,” “secure,
 ## Open security research
 
 The prioritized questions live in [the network research queue](../research/questions.md).
-R-006 fixes the V1 target lifecycle. No production architecture should be
-selected before R-002, R-001, R-003, R-004, R-007, and R-009 make the
-connection, observer, naming, routing, failure, and bootstrap contracts testable.
+R-006 fixes the V1 target lifecycle and R-002 fixes the Application Interface.
+No production architecture should be selected before R-001, R-003, R-004,
+R-007, R-009, and R-023 make the observer, naming, routing, failure, bootstrap,
+and performance contracts testable.

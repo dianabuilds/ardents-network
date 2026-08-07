@@ -1,7 +1,7 @@
 ---
 id: R-002
 title: What is the smallest live Application Interface?
-status: active
+status: decided
 owner: product research
 started: 2026-08-07
 reviewed: 2026-08-07
@@ -268,7 +268,59 @@ Consequences:
 - exact capability encoding, user interaction, operating-system identity, IPC,
   storage, revocation, and audit mechanisms are implementation choices made
   later;
-- P1-D8 must close the remaining local resource and backpressure contract.
+- P1-D8 closes the remaining local resource and backpressure contract.
+
+### P1-D8 — Bounded resources with a performance gate
+
+**Product Owner decision, accepted 2026-08-07:** resource safety and honest-use
+performance are coequal requirements. The Application Interface uses finite,
+hierarchical budgets and stream backpressure, while every security control is
+measured for its latency, throughput, CPU, memory, fairness, and overload cost.
+
+The budget hierarchy is:
+
+1. the Endpoint owns a finite parent budget;
+2. each Local Grant and Application receives a child budget;
+3. Services and Isolation Contexts consume that parent rather than creating new
+   capacity;
+4. connections, handshakes, active operations, buffers, queues, bandwidth, and
+   processing work consume bounded leaves.
+
+The overload contract is:
+
+- creating additional Services, Isolation Contexts, or connections never
+  multiplies an ancestor budget;
+- a slow reader or writer causes bounded backpressure before memory growth;
+- the reliable stream never silently drops accepted Application Data to relieve
+  pressure;
+- new work is rejected before an exhausted queue grows without bound;
+- if existing work cannot continue safely, it terminates with an explicit
+  Connection Result rather than apparent success;
+- scheduling prevents one Local Grant or Service from monopolizing all Endpoint
+  progress;
+- limits are finite, observable, and locally configurable, but exact values and
+  operating-system mappings are selected only from measurements.
+
+The performance evidence must cover:
+
+- cold and warm connection-setup latency, including tail latency;
+- steady throughput and latency under concurrent honest connections;
+- CPU and memory per idle and active connection;
+- fairness across Local Grants and Services;
+- backpressure, overload recovery, and behavior under adversarial churn;
+- incremental cost of authentication, encryption, route construction, Local
+  Grants, and Isolation Context separation against a declared direct baseline;
+- representative client, server, and later constrained-device classes.
+
+Consequences:
+
+- a security mechanism is not accepted merely because it survives attack; its
+  honest-workload cost must fit the product budget;
+- a performance optimization is not accepted if it bypasses target
+  authentication, isolation, least privilege, or resource bounds;
+- P1-D8 fixes semantics and required measurements, not invented numeric targets;
+- R-023 sets scenario-based V1 budgets, while R-004 and R-014 test routing and
+  implementation candidates against the same evidence.
 
 ## Hypotheses
 
@@ -300,6 +352,10 @@ Consequences:
    platforms and wrapped by multiple programming languages.
 8. Optional datagrams or future transport types can be added without changing
    the semantics of an accepted stream.
+9. A slow or malicious Application cannot create unbounded work or multiply its
+   budget by creating child scopes.
+10. Honest setup latency, throughput, CPU, memory, fairness, and overload
+    recovery are measurable without disabling accepted security boundaries.
 
 ## Evidence plan
 
@@ -329,6 +385,8 @@ that maps an ordinary HTTP client and server through simulated `connect`,
 - two logical identities accidentally reuse one Isolation Context;
 - the proxy reports success before target authentication finishes;
 - an SDK wrapper changes or hides an authoritative interface error.
+- one Application creates Services or Isolation Contexts to evade its budget;
+- an honest workload becomes unusable under security or isolation overhead.
 
 ## Findings
 
@@ -354,7 +412,10 @@ that maps an ordinary HTTP client and server through simulated `connect`,
 - **Product Owner decision:** Local Grants separate connection use, per-Service
   administration, and Authority custody. Endpoint Owners are strictly local and
   no central administrator approves network participation.
-- **Inference:** P1-D1 through P1-D7 select H1 as the working product shape. The
+- **Product Owner decision:** finite hierarchical budgets, backpressure, fair
+  scheduling, explicit overload, and measured performance are part of the same
+  security contract. Numeric targets require R-023 evidence.
+- **Inference:** P1-D1 through P1-D8 select H1 as the V1 product shape. The
   accepted logical separation does not require separate protocols or processes.
 
 ## Options
@@ -390,18 +451,19 @@ the no-mandatory-SDK boundary, P1-D2 fixes the stream-only V1 data primitive,
 P1-D3 fixes their privilege separation, and P1-D4 fixes destination and target
 authentication semantics. P1-D5 fixes the observable result and failure boundary.
 P1-D6 fixes safe default and optional Application-controlled isolation. P1-D7
-fixes endpoint-local least privilege without a network administrator.
+fixes endpoint-local least privilege without a network administrator. P1-D8
+fixes hierarchical resource, backpressure, fairness, and performance evidence.
 
-Resolve the remaining contract one decision at a time:
-
-1. **P1-D8:** backpressure and bounded connection, bandwidth, memory, and queue
-   behavior at the local interface.
+**R-002 is decided.** H1 is the accepted V1 product boundary. R-023 supplies
+numeric performance budgets, R-008 validates local isolation and grant
+enforcement, and later technology research must implement rather than redefine
+this interface.
 
 No concrete proxy protocol, serialization, library, or language is selected.
 
 ## Disposition
 
-- State: `active`.
+- State: `decided`.
 - P1-D1 accepted: external local socket/proxy-style integration; SDK optional,
   convenience-only, and non-authoritative.
 - P1-D2 accepted: one live reliable ordered bidirectional byte stream; no
@@ -421,7 +483,10 @@ No concrete proxy protocol, serialization, library, or language is selected.
 - P1-D7 accepted: Local Grants separate connection, per-Service administration,
   and Authority custody; each Endpoint Owner is local and no central administrator
   approves joining, connecting, or publishing.
-- H1 is the working shape; H2 is rejected as mandatory integration; H3 is
+- P1-D8 accepted: resources are finite and hierarchical; backpressure, fairness,
+  explicit overload, and measured honest-use performance are mandatory.
+- H1 is the accepted V1 shape; H2 is rejected as mandatory integration; H3 is
   insufficient by itself.
-- P1-D8 closes the remaining local resource contract.
+- R-002 is closed; R-001 is the next foundation decision and R-023 defines the
+  parallel performance budget before routing comparison.
 - No ADR and no code.
