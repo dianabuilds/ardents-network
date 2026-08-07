@@ -205,6 +205,17 @@ Candidate-induced delay, loss, reordering, retry traffic, and overhead remain
 observable; transport choice cannot move them outside the qualification result.
 Degraded, churn, blocking, and hostile workloads remain separate threat cells.
 
+Controlled impairment cannot be tuned to a candidate result. Each cell freezes
+a versioned immutable network manifest, complete generator parameters, and an
+ordered seed assignment before execution. The generator operates below Carrier
+Transports; qualification does not replay a transport-shaped fixed packet trace.
+Candidate packetization, retransmission, congestion, loss, delay, reordering,
+and retry remain observable behavior. Direct controls receive the same
+end-to-end profile and seed discipline but no internal Ardents Route segment.
+Configured and observed evidence is retained. Only a confirmed candidate-
+independent failure to apply or verify the manifest may invalidate evidence
+under P3-D6a; candidate-induced effects remain results.
+
 Payload shortcuts are also hard failures. Fresh `32-byte` connection canaries,
 nonce-bearing `512-byte` HTTP requests with complete `64 KiB` incompressible
 responses, and distinct pre-generated incompressible transfer streams are

@@ -4,7 +4,7 @@ title: What performance budget makes the Interactive Route useful?
 status: active
 owner: product research
 started: 2026-08-07
-reviewed: 2026-08-07
+reviewed: 2026-08-08
 ---
 
 # R-023 — Interactive Route performance budget
@@ -49,8 +49,9 @@ forbid them from doing so. macOS, phones, tablets, and other constrained devices
 are later compatibility and measurement targets, not V1 performance or release
 gates. P3-D6b2b1 fixes `x86-64`, Windows 11, Ubuntu LTS, and the endpoint
 hardware class, while P3-D6b2b2a fixes the normal reference-network envelope.
-Exact point releases, images, host CPU model, and reproducible impairment traces
-remain candidate measurement details.
+Exact point releases, images, host CPU model, and the concrete cross-platform
+harness implementation remain candidate measurement details; P3-D6b2b2c2b1
+fixes the versioned impairment-manifest semantics.
 
 This platform decision does not select public DNS, naming, or bootstrap.
 Service Name resolution remains an internal Ardents product function under
@@ -1379,9 +1380,9 @@ cell by at least:
 P3-D6b1 fixes the controlled topology and platform pairings, P3-D6b2a fixes
 minimum release sample counts, P3-D6b2b2a fixes the normal network envelope,
 P3-D6b2b2b fixes the Application payloads, P3-D6b2b2c1 fixes paired direct
-baselines, P3-D6b2b2c2a fixes state preparation, and P3-D6b2b2c2b fixes the
-remaining reference inputs. P3-D6a fixes how those cells produce a release
-decision: results are
+baselines, P3-D6b2b2c2a fixes state preparation, P3-D6b2b2c2b1 fixes the
+impairment manifest, and P3-D6b2b2c2b2 fixes the remaining reference inputs.
+P3-D6a fixes how those cells produce a release decision: results are
 never pooled or averaged across mandatory platforms, endpoint sides,
 directions, or scenarios. Each cell must satisfy all of its applicable latency,
 success, progress, goodput, fairness, resource, carrier, queue, cleanup, and
@@ -1506,7 +1507,7 @@ window contributes `0` goodput.
 CPU, memory, carrier-rate, and other time-series percentiles are calculated
 inside each 10-minute run; every one of the five runs must satisfy its applicable
 resource and carrier gates. Samples from a low-resource run cannot offset a
-failed run. P3-D6b2b2c2b fixes the time-series sampling interval and platform
+failed run. P3-D6b2b2c2b2 fixes the time-series sampling interval and platform
 attribution.
 
 The accepted 24-hour idle carrier guardrail requires one complete retained run
@@ -1613,7 +1614,7 @@ The paired direct baseline and Ardents batch use the same endpoint caps and
 end-to-end impairment profile. The generator, seeds, exact delay and loss
 distribution, and distribution of the `80 ms` total across Route segments are
 declared before observing candidate results and retained as evidence;
-P3-D6b2b2c2b fixes their reproducibility and matching rules. Candidate
+P3-D6b2b2c2b1 fixes their reproducibility and matching rules. Candidate
 processing time is not included in the injected network-only RTT and remains
 visible in measured latency.
 
@@ -1763,14 +1764,66 @@ behavior that preserves, reconstructs, or reuses forbidden state is a candidate
 failure and, for cross-context reuse or a security shortcut, a hard guardrail
 failure rather than a reset invalidation.
 
+### P3-D6b2b2c2b1 — Reproducible transport-independent impairment manifest
+
+**Product Owner decision, accepted 2026-08-08:** every controlled qualification
+cell receives a versioned immutable network manifest fixed before candidate
+execution. It defines at least:
+
+- its schema version, profile identifier, controlled-link topology, endpoint and
+  Node roles, and direction mapping;
+- every link cap, base delay, jitter and loss model, direction independence or
+  declared correlation, impairment placement, and any scheduled interruption or
+  failure belonging to the scenario;
+- the generator algorithm and version, complete parameters, seed interpretation,
+  and ordered seed assignment for every scheduled attempt, episode, or run;
+- the mapping from the end-to-end profile to controlled Route segments and the
+  evidence required to confirm that the harness applied it.
+
+The manifest and its complete seed schedule are frozen before any result is
+observed. Each scheduled attempt, episode, or run receives its preassigned
+generator instance; seeds cannot be selected, replaced, rerolled, or extended
+after candidate output is known. A replacement remains possible only through the
+P3-D6a invalidation process, with the original manifest, seed assignment,
+evidence, and reason retained and linked to it.
+
+Qualification reproduces the declared generator and inputs rather than replaying
+a captured or synthetic fixed packet trace. The generator operates at controlled
+network boundaries below Carrier Transports and consumes the candidate's actual
+carrier packets. TCP, UDP, QUIC, HTTP, WebSocket, or another Carrier Transport
+therefore receives the same declared network contract and seed discipline, while
+its packet count, packet timing, retransmission, congestion behavior, and other
+packetization consequences remain observable candidate behavior. A candidate
+cannot request a transport-specific trace or have those consequences removed as
+harness noise.
+
+Each paired direct control uses the same endpoint machines, direction, link
+caps, end-to-end delay, jitter and loss generator, and predeclared seed
+discipline as its Ardents cell. It has its own preassigned generator instance and
+contains no internal Ardents Route segment, ordinary Node, or production
+fallback. This matches end-to-end access conditions without pretending that a
+direct path has the candidate's multi-hop topology.
+
+The harness retains the manifest, generator and implementation versions, seed
+mapping, configured inputs, and observed execution evidence for every controlled
+link and direction. A confirmed candidate-independent failure to apply or verify
+the declared manifest invalidates the affected attempt or run under P3-D6a. Loss,
+delay, reordering, retry, overhead, or congestion introduced by the candidate is
+a result and cannot invalidate the harness. P3-D6b2b2c2b2 still fixes the exact
+observation cadence, cross-platform attribution, and acceptance checks for the
+recorded network evidence.
+
+This decision selects no operating-system tool, traffic-control library,
+transport, implementation language, or final Route topology.
+
 ## Remaining decisions
 
 1. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
    units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
    floors on the accepted reference class.
-2. **P3-D6b2b2c2b — Trace, sampling, and attribution:** define the exact
-   impairment generator and seed discipline, time-series sampling, and
-   cross-platform attribution.
+2. **P3-D6b2b2c2b2 — Sampling and attribution:** define time-series and event
+   sampling, cross-platform process and traffic attribution, and acceptance
+   checks for observed harness conditions.
 3. **P3-D6c — Evidence and regression:** define retained artifacts,
    reproducibility, comparability, regression thresholds, invalidation review,
    and partial or complete requalification rules.
@@ -2036,6 +2089,18 @@ traces, and direct-baseline results. Disposable experiment code belongs under
   precondition verification. A candidate-independent reset failure may
   invalidate it under P3-D6a; candidate retention, reconstruction, or
   cross-context reuse of forbidden state fails the candidate.
+- **Product Owner decision:** every controlled cell uses a versioned immutable
+  network manifest and preassigned seed schedule fixed before candidate results.
+  It records topology, directions, caps, delay, jitter and loss models,
+  impairment placement, generator version, and scenario failures.
+- **Product Owner decision:** qualification reproduces a deterministic generator
+  below Carrier Transports rather than a fixed packet trace. Actual packet count,
+  timing, retransmission, congestion, and other packetization consequences
+  remain candidate behavior.
+- **Product Owner decision:** paired direct controls use the same end-to-end
+  profile and seed discipline without internal Ardents Route segments. A
+  candidate-independent manifest failure may invalidate evidence; candidate-
+  induced loss, delay, retry, reordering, or congestion remains a result.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -2075,8 +2140,8 @@ semantics and the accepted four-pair controlled topology with bracketing direct
 baselines. Apply the accepted release sample floors, nearest-rank rules, and
 Windows 11/Ubuntu LTS endpoint hardware baseline and the accepted normal-network
 envelope, controlled payload suite, paired direct-baseline rule, and state-reset
-contract, then define reproducible impairment traces, sampling, attribution,
-evidence, and regression rules.
+contract. Apply the accepted versioned impairment manifest and seed discipline,
+then define sampling, attribution, evidence, and regression rules.
 Role-specific infrastructure capacity remains deferred until R-004 supplies
 candidate units of work.
 
@@ -2097,10 +2162,12 @@ unverified top-down qualification input. The controlled payload suite is
 unverified as a portable harness contract. The direct-baseline drift and
 combination rule is also unverified against real environment variability. The
 state-reset contract is also unverified as a portable cross-platform harness
-boundary. The remaining numeric targets remain undecided. The `20`-episode
-recovery floor makes `p95` observable only at coarse nearest-rank resolution;
-exact order statistics and success counts must remain visible, and later
-variability evidence may justify a larger predeclared sample.
+boundary. The impairment-manifest contract is also unverified across candidate
+transports and available Windows and Ubuntu harness implementations. The
+remaining numeric targets remain undecided. The `20`-episode recovery floor
+makes `p95` observable only at coarse nearest-rank resolution; exact order
+statistics and success counts must remain visible, and later variability
+evidence may justify a larger predeclared sample.
 The strongest counterargument
 is that the mandatory four-pair, two-direction matrix may be expensive to
 execute for a one-to-one project. That cost is accepted for release
@@ -2415,8 +2482,8 @@ either would contradict the accepted client product.
   is positive infinity, failed goodput is zero, all eligible samples count, and
   smaller smoke suites cannot qualify.
 - Public DNS, naming design, bootstrap, routing, libraries, language, exact host
-  CPU model, reproducible impairment traces, and the remaining numeric budgets
-  remain unselected.
+  CPU model, concrete harness tools, and the remaining numeric budgets remain
+  unselected.
 - P3-D6b2b1 accepted: the Windows 11 and Ubuntu LTS images are fully patched and
   frozen per candidate on `x86-64`; Ubuntu LTS is the sole Linux qualification
   baseline. Other distributions and architectures receive no V1 claim or
@@ -2461,8 +2528,14 @@ either would contradict the accepted client product.
 - Candidate-independent state-preparation failure may invalidate an attempt only
   under P3-D6a. Candidate retention, reconstruction, or cross-context reuse of
   forbidden state fails the candidate and cannot be relabeled as harness noise.
-- P3-D6b2b2c2b impairment traces, sampling, and cross-platform attribution is
-  next, followed by P3-D6c evidence and regression rules. Role-specific Node
-  capacity and cost remain deferred until R-004 candidate evidence under
-  P3-D3b4.
+- P3-D6b2b2c2b1 accepted: every controlled cell freezes a versioned network
+  manifest and ordered seed assignment before candidate results. It reproduces
+  a generator below Carrier Transports rather than replaying a fixed packet
+  trace; packetization consequences remain candidate behavior.
+- Direct controls use the same end-to-end impairment contract without internal
+  Ardents Route segments. Candidate-independent manifest failure may invalidate
+  evidence under P3-D6a; candidate-induced network effects remain results.
+- P3-D6b2b2c2b2 sampling and cross-platform attribution is next, followed by
+  P3-D6c evidence and regression rules. Role-specific Node capacity and cost
+  remain deferred until R-004 candidate evidence under P3-D3b4.
 - No ADR and no code.

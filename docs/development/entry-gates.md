@@ -122,6 +122,23 @@ no complete interruption or packet reordering in the normal profile. Shaping is
 below Carrier Transports, and all attributable protocol and background traffic
 consumes the link caps.
 
+Every controlled cell freezes a versioned immutable network manifest before
+candidate execution. It identifies the controlled-link topology, roles and
+directions, caps, delay, jitter and loss models, impairment placement, scenario
+failures, generator algorithm and version, complete parameters, and ordered seed
+assignment for every scheduled attempt, episode, or run. Neither the manifest
+nor its seed schedule may be selected, rerolled, replaced, or extended after
+results.
+
+The harness reproduces generator inputs below Carrier Transports rather than a
+fixed packet trace. Candidate packet count, timing, retransmission, congestion,
+loss, delay, reordering, retry, and other packetization consequences remain
+candidate results. Direct controls use the same end-to-end profile and seed
+discipline without internal Ardents Route segments. The manifest, configured
+inputs, and observed execution evidence remain retained. A confirmed
+candidate-independent failure to apply or verify the manifest may invalidate
+the affected evidence only under R-023 P3-D6a; candidate-induced effects cannot.
+
 Every reported usable connection immediately passes a fresh unpredictable
 `32-byte` request and exact `32-byte` response canary. The site tracer sends an
 exact `512-byte` nonce-bearing HTTP request and validates a complete `64 KiB`
