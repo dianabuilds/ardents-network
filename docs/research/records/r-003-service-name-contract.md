@@ -85,8 +85,8 @@ provider-specific meaning to the canonical name.
 Canonical Service Names may be hierarchical. Authority over a parent name may
 delegate a bounded subordinate name or subtree without granting Service
 Authority, authority over siblings or ancestors, or a network-wide administrator
-role. The exact label syntax, depth, normalization, and confusable-name handling
-remain P4-D2c decisions.
+role. P4-D2c below fixes the V1 label alphabet, hierarchy direction, canonical
+form, and explicit link form while requiring finite protocol limits.
 
 An endpoint or Application may maintain a local alias for convenience, but the
 alias is not a Service Name, has no network-wide meaning, and must be visibly
@@ -98,7 +98,7 @@ Service Target under a separately visible Application policy.
 
 One canonical Namespace is a consistency and user-experience contract, not a
 decision to use one server, registrar, administrator, ledger, operator set, or
-project-controlled root. P4-D2c through P4-D6 must further constrain naming and
+project-controlled root. P4-D3 through P4-D6 must further constrain naming and
 governance power and make partitions, capture, and forks visible.
 If honest clients cannot establish one current binding during a conflict, they
 fail explicitly rather than accepting resolver-dependent destinations.
@@ -141,9 +141,8 @@ unresolved.
 
 An active parent Name Authority may authorize creation or delegation of bounded
 subordinate names within its own subtree and bind each to a chosen Name Authority.
-It gains no authority over siblings or ancestors. P4-D2c and P4-D3 still define
-the exact hierarchy and whether parent, child, and lease lifecycle interact after
-delegation.
+It gains no authority over siblings or ancestors. P4-D3 still defines how parent,
+child, and lease lifecycle interact after delegation.
 
 Permissionless does not mean zero-cost or unlimited. P4-D6 and R-010 must select
 and measure a bounded anonymous anti-squatting and Sybil cost that does not require
@@ -151,18 +150,45 @@ a global User account, identity document, mandatory wallet, token balance, or on
 registrar. No cost mechanism, consensus family, ledger, auction, or proof system
 is selected by this decision.
 
+### P4-D2c — Explicit ASCII hierarchical syntax
+
+**Product Owner decision, accepted 2026-08-08:** a canonical V1 Service Name is
+one or more non-empty labels separated by dots. The rightmost label is the root;
+each label to its left is subordinate to the suffix on its right. For example,
+the Name Authority controlling `alice` may issue `blog.alice` but gains no
+authority over any sibling root.
+
+Canonical labels are serialized only with lowercase ASCII letters `a-z`, digits
+`0-9`, and hyphen `-`. Unicode, IDNA, and Punycode are not valid canonical V1
+Service Name forms and cannot create parallel Namespace entries. Applications
+may display Unicode titles, but those titles are Application Data rather than
+resolvable names. Exact finite limits on label length, total serialized length,
+and hierarchy depth remain protocol-validation parameters; no implementation may
+leave them unbounded.
+
+The name itself is `alice` or `blog.alice`. Its explicit shareable Service Link
+is `ardents://alice` or `ardents://blog.alice`. The scheme identifies the Ardents
+Namespace and is not part of the Service Name. Dot hierarchy does not make the
+name an ordinary DNS name, allocate a public top-level domain, inherit DNS trust,
+or permit a DNS query or fallback. Failure to parse or resolve the Ardents name
+remains an explicit Ardents failure.
+
+ASCII-only canonical form removes cross-script and Unicode-normalization
+ambiguity but does not eliminate deception using visually or semantically
+similar ASCII names. Clients must present the complete canonical Service Name or
+Service Link where destination trust matters; P4-D6 still owns squatting,
+reserved-name, and deceptive-name policy.
+
 ## Remaining decisions
 
-1. **P4-D2c — Canonical syntax and name safety:** define label grammar,
-   serialization, hierarchy limits, normalization, and confusable-name handling.
-2. **P4-D3 — Record lifecycle:** define Name Record versioning, expiry, renewal,
+1. **P4-D3 — Record lifecycle:** define Name Record versioning, expiry, renewal,
    caching, stale data, equivocation, partitions, and convergence.
-3. **P4-D4 — Name Authority lifecycle:** define custody, rotation, transfer,
+2. **P4-D4 — Name Authority lifecycle:** define custody, rotation, transfer,
    loss, compromise, recovery, and the limits of any recovery authority.
-4. **P4-D5 — Resolution privacy:** define what resolvers and naming
+3. **P4-D5 — Resolution privacy:** define what resolvers and naming
    infrastructure learn, how exact-name queries resist enumeration and linking,
    and what metadata remains an honest limitation.
-5. **P4-D6 — Governance and abuse:** define capture, disputes, squatting, Sybil
+4. **P4-D6 — Governance and abuse:** define capture, disputes, squatting, Sybil
    pressure, denial, accessibility, transparency, forks, and exit behavior.
 
 ## Hypotheses
@@ -251,6 +277,12 @@ query evidence without recording real User activity.
 - **Product Owner decision:** permissionless claims may carry a bounded anonymous
   anti-abuse cost, but no global account, identity document, mandatory wallet,
   token balance, or single registrar is required.
+- **Product Owner decision:** a canonical V1 Service Name is a lowercase ASCII
+  dot hierarchy with the parent on the right. Unicode, IDNA, and Punycode are not
+  canonical name forms; every length and depth dimension must be finitely bounded.
+- **Product Owner decision:** `ardents://<Service Name>` is the explicit
+  shareable Service Link. The similar shape does not invoke DNS, a public TLD,
+  DNS trust, lookup, or fallback.
 - **Assumption:** V1 can make separate Name Authority custody understandable to
   one Developer without requiring an always-online naming administrator.
 
@@ -276,6 +308,14 @@ query evidence without recording real User activity.
   censorship, and recovery failure modes.
 - **Administrator or auction allocation:** can moderate conflicts or scarcity,
   but introduces approval, identity, payment, capture, or accessibility roots.
+- **Lowercase ASCII canonical names:** make comparison and cross-platform display
+  tractable while excluding many natural-language names; ASCII lookalikes and
+  semantic deception remain possible.
+- **Canonical Unicode names:** improve language inclusion but add normalization,
+  versioning, script-mixing, font, and homograph failure modes to the security
+  boundary.
+- **Explicit Ardents scheme:** distinguishes a Service Link from DNS without a
+  public TLD; bare-name entry may remain an Ardents-client convenience only.
 
 ## Recommendation
 
@@ -283,9 +323,9 @@ Use the accepted separate Name Authority as the stable control root for each
 Service Name inside the accepted canonical network-wide Namespace. Keep concrete
 custody, registry, and recovery mechanisms reversible. Allocate root names as
 renewable permissionless Name Leases under deterministic shared-state ordering,
-with subordinate claims authorized only inside the parent subtree. Next define
-canonical syntax, serialization, normalization, hierarchy limits, and confusable
-name handling before comparing protocols.
+with subordinate claims authorized only inside the parent subtree. Use the
+accepted lowercase ASCII dot hierarchy and explicit `ardents://` Service Link.
+Next define record and lease lifecycle before comparing protocols.
 
 Confidence is high that Service Authority cannot also provide truthful recovery
 from its own compromise. Confidence is low that a usable, privacy-preserving,
@@ -294,24 +334,27 @@ governance or availability cost. The single canonical Namespace is also
 unverified against partitions, capture, allocation abuse, and accessible
 operation. The leased first-valid-claim policy is unverified against front-
 running, squatting, renewal censorship, and affordable Sybil resistance; these
-are the central R-003 research risks.
+are central R-003 research risks. ASCII syntax reduces Unicode ambiguity but
+cannot prevent ASCII lookalikes, misleading labels, or social-engineering links.
 
 The strongest counterarguments are that two authorities are too complex for a
 small V1 Developer journey and that one canonical Namespace creates a shared
 Control Plane. The first cost is accepted because merging authorities makes the
-catastrophe-recovery promise false. The second must be constrained by P4-D2b
+catastrophe-recovery promise false. The second must be constrained by P4-D3
 through P4-D6 without pretending that resolver-dependent names are safer. A
 third is that permissionless first-valid claims reward front-running and
 squatting; leases make that harm reversible but do not remove it.
 
 ## Disposition
 
-- State: `active`; P4-D1, P4-D2a, and P4-D2b are accepted; P4-D2c is next.
+- State: `active`; P4-D1 and P4-D2a through P4-D2c are accepted; P4-D3 is next.
 - `Name Authority` becomes canonical product language.
 - `Namespace` now means the one canonical Ardents network-wide naming boundary,
   not a resolver-selected provider or local alias scope.
 - `Name Lease` becomes canonical product language for time-bounded Namespace
   control by a Name Authority.
+- `Service Link` becomes canonical product language for the explicit
+  `ardents://<Service Name>` shareable form.
 - R-006 target lifecycle remains unchanged and now has a distinct naming
   continuity authority.
 - No ADR: no irreversible registry, governance, recovery, key, or protocol

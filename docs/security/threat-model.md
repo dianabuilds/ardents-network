@@ -28,6 +28,7 @@ accepted.
   recovery state;
 - canonical Namespace consistency across honest compatible clients;
 - Name Lease allocation, renewal, expiry, and subordinate-delegation integrity;
+- Service Name presentation integrity and resistance to namespace confusion;
 - endpoint-local grants, Application Interface authority, and network metadata;
 - route, discovery, bootstrap, and Bridge availability;
 - honest-workload latency, throughput, fairness, and endpoint resource
@@ -159,6 +160,14 @@ front-running, squatting, Sybil capture, and renewal censorship until P4-D6 and
 R-010 select and measure a bounded anonymous cost. That mechanism cannot require
 a global account, identity document, mandatory wallet, token balance, or one
 registrar.
+
+A canonical V1 Service Name is a lowercase ASCII dot hierarchy with the parent
+on the right. Unicode, IDNA, and Punycode cannot create canonical alternatives.
+The explicit `ardents://` Service Link separates Ardents resolution from DNS;
+the similar dotted shape grants no DNS trust and triggers no public-TLD lookup or
+fallback. ASCII removes cross-script and normalization ambiguity but does not
+prevent misleading labels, ASCII lookalikes, or social engineering. Destination
+trust surfaces therefore show the complete canonical name or link.
 
 ## Claim format
 
@@ -333,6 +342,9 @@ or privacy claim.
 - A Name Lease is time-bounded. No registrar, resolver, or manual dispute choice
   can override the accepted deterministic claim order or silently create
   concurrent controllers for the same complete Service Name.
+- A Service Link identifies Ardents explicitly. Parsing or resolution failure
+  cannot reinterpret its name as DNS, another namespace, Unicode, IDNA, or
+  Punycode; visually similar ASCII names remain distinct destinations.
 - Name Records and Service Descriptors never contain an ordinary public origin
   address.
 - Carrier Nodes cannot reinterpret or forge Application Data accepted by an

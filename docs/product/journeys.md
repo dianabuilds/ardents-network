@@ -51,13 +51,14 @@ profile.
 
 **Actor:** User
 
-**Start:** An exact canonical human-readable Service Name already known by the
-User
+**Start:** An exact canonical human-readable Service Name or explicit
+`ardents://` Service Link already known by the User
 
-**Flow:** enter the complete canonical name → resolve and verify Name Record →
-obtain current Service reachability → establish an Interactive Route →
-authenticate the Service Target → expose the authenticated target
-in the result → open a Service Connection
+**Flow:** enter the complete canonical name or open its Service Link → parse one
+lowercase ASCII Service Name → resolve and verify Name Record → obtain current
+Service reachability → establish an Interactive Route → authenticate the Service
+Target → expose the authenticated target in the result → open a Service
+Connection
 
 **Done when:** the Application reaches the intended live Service or receives an
 explicit failure. No directory search or silent alternate-namespace, DNS,
@@ -94,8 +95,8 @@ create or securely import Service Authority → obtain its Service Target → gr
 per-Service administration → choose one active local listener → publish
 authenticated, expiring reachability without exposing raw authority → separately
 authorize use of Name Authority → claim a root Name Lease or receive a delegated
-subordinate Name Lease → bind or update Service Name → accept a test Service
-Connection
+subordinate Name Lease → bind or update Service Name → produce its explicit
+Service Link → accept a test Service Connection
 
 **Done when:** a remote Application can connect while neither the User nor any
 one ordinary Node can link the Service Instance's public origin address to its
@@ -233,9 +234,10 @@ always cap lower; an explicit higher experimental cap remains unqualified.
 **Start:** A local HTTP server and a desired Service Name
 
 **Flow:** publish HTTP server as Service → claim or receive a Name Lease → bind
-name → enter exact name in reference client → resolve → connect → exchange
-HTTP bytes → migrate the authority to a new host without changing the target →
-simulate compromise by creating a replacement target and rebinding the same name
+name → open its explicit Service Link in the reference client → resolve → connect
+→ exchange HTTP bytes → migrate the authority to a new host without changing the
+target → simulate compromise by creating a replacement target and rebinding the
+same name
 
 **Done when:** the site opens through the generic Service Connection; routine
 migration preserves both target and name; compromise preserves only the name;

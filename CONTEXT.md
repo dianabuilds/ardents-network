@@ -93,10 +93,15 @@ or compromise requires replacing that target rather than claiming safe revocatio
 _Avoid_: User identity, Node key, Service Instance
 
 **Service Name**:
-A human-readable name in the canonical Namespace, controlled by a Name Authority,
-that resolves to a Service Target and may remain stable while a Service migrates
-or replaces a compromised target.
+A lowercase ASCII, dot-hierarchical human-readable name in the canonical
+Namespace, controlled by a Name Authority, that resolves to a Service Target and
+may remain stable while a Service migrates or replaces a compromised target.
 _Avoid_: Onion address, IP address, search keyword
+
+**Service Link**:
+The explicitly Ardents-scoped shareable form of a Service Name, such as
+`ardents://blog.alice`. It is not an ordinary web or DNS address.
+_Avoid_: DNS URL, public domain, implicit hostname
 
 **Name Authority**:
 The authority controlling one Service Name's authenticated binding independently
