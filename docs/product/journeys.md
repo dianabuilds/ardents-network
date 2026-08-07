@@ -123,7 +123,11 @@ and failed runs do not count as useful payload. A required client reference
 endpoint also supports at least `64` concurrently open outbound Service
 Connections, including at least `16` simultaneously active. This is a minimum
 total client capacity, not a maximum number of connections to one published
-Service. On stronger hardware the endpoint may raise its finite hierarchical
+Service. Across separate 10-minute runs in each direction, those `16` active
+connections share `10 Mbit/s` of delivered Application Data while the complete
+Ardents process tree keeps `p95 resident memory <= 512 MiB` and mean CPU
+`<= 50%` of one logical core; every connection continues to make progress. On
+stronger hardware the endpoint may raise its finite hierarchical
 local budgets, while an Endpoint Owner may cap them. Reduced limits are exposed
 locally and do not qualify as the V1 performance floor; added capacity grants no
 Node role, authority, trust, or security exception.

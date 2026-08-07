@@ -425,20 +425,58 @@ V1 cover traffic is not part of the baseline Interactive Route claim; a stronger
 profile that needs it belongs to R-005 with its own security and performance
 budget.
 
+### P3-D3c2c1 — Active client resource ceiling
+
+**Product Owner decision, accepted 2026-08-07:** on each required Windows and
+Linux client reference endpoint, the complete Ardents process tree must meet
+both of the following during a continuous 10-minute active-client window:
+
+- `p95 resident memory <= 512 MiB`;
+- mean CPU use `<= 50%` of one logical CPU core, with `100%` normalized to one
+  fully occupied logical core.
+
+The window begins after `16` outbound Service Connections are authenticated and
+usable and their fixed incompressible transfer begins. All `16` connections are
+continuously offered an equal share of `10 Mbit/s` aggregate Application Data,
+their receivers consume without Application backpressure, and every connection
+must continue delivering payload throughout the run. The test is repeated as a
+User-to-Service run and a Service-to-User run; resource success in one direction
+cannot compensate for failure in the other. This is `10 Mbit/s` total across the
+connections, not per connection.
+
+Only Application Data delivered to the receivers establishes the useful load.
+Protocol headers, encryption, routing control, retransmissions, padding, and
+other carrier overhead do not inflate the `10 Mbit/s`, but their client CPU and
+memory cost remains inside the measured process tree. The controlled
+Applications and remote Service processes are outside the client resource
+numerator; moving Ardents work to a helper process is not.
+
+This is a top-down qualification ceiling rather than a current implementation
+claim. P3-D6 must define the reference endpoint hardware, sample interval,
+process-tree and cross-platform resident-memory attribution, eligible-run count,
+and exact progress evidence. A run that stalls a connection, fails to sustain
+the declared delivered load, loses a connection, exceeds either resource
+ceiling, or bypasses authentication, Route Knowledge Separation, Isolation
+Contexts, required background work, or bounded queues is a miss. The exact
+fair-share threshold and active carrier-bandwidth overhead remain P3-D3c2c3.
+
 ## Remaining decisions
 
-1. **P3-D3c2c — Active resources, overhead, and fairness:** set CPU, memory,
-   active carrier-bandwidth overhead, aggregate goodput, queue, and
-   per-connection progress budgets and measure scale-up saturation for each
-   reference class.
-2. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
+1. **P3-D3c2c2 — Active publisher resource ceiling:** set CPU and memory budgets
+   for the accepted `64`-active publisher workload on each required publisher
+   reference endpoint.
+2. **P3-D3c2c3 — Active overhead, fairness, and scale-up:** set active
+   carrier-bandwidth overhead, aggregate publisher goodput, queue and
+   per-connection fair-progress budgets, and measure endpoint scale-up
+   saturation.
+3. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
    units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
    floors on the accepted reference class.
-3. **P3-D4 — Tail and degradation:** set jitter, loss, churn, alternate-route,
+4. **P3-D4 — Tail and degradation:** set jitter, loss, churn, alternate-route,
    and overload behavior without weakening R-001.
-4. **P3-D5 — Hostile load:** define fairness and resource-exhaustion workloads
+5. **P3-D5 — Hostile load:** define fairness and resource-exhaustion workloads
    and the useful honest-work floor during attack.
-5. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
+6. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
    artifacts, regression thresholds, and release failure rules.
 
 ## Hypotheses
@@ -536,6 +574,10 @@ traces, and direct-baseline results. Disposable experiment code belongs under
   more than `25 MiB` of total sent-plus-received Ardents carrier traffic during
   24 hours of steady idle. This is a secondary efficiency guardrail rather than
   a standalone release blocker.
+- **Product Owner decision:** with `16` continuously active outbound connections
+  sharing `10 Mbit/s` of delivered Application Data for 10 minutes, the complete
+  client process tree keeps `p95 resident memory <= 512 MiB` and mean CPU
+  `<= 50%` of one logical core in separate runs for each direction.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -560,16 +602,17 @@ endpoint-readiness targets and the tracer first-byte target as candidate gates,
 then apply the accepted single-connection goodput and separate client and
 publisher concurrency floors and the accepted idle client CPU and memory
 ceiling. Treat the accepted idle background-traffic number as an optimization
-guardrail, then define active resources and fairness, infrastructure Node
-capacity, degradation, hostile load, and the reproducible release gate;
-bounded endpoint scale-up is already fixed.
+guardrail, apply the accepted active client resource ceiling, then define active
+publisher resources and fairness, infrastructure Node capacity, degradation,
+hostile load, and the reproducible release gate; bounded endpoint scale-up is
+already fixed.
 
 Confidence: high for the platform boundary and desired connection experience;
 the accepted latency, goodput, client-concurrency, and publisher-concurrency
-targets, infrastructure reference class, and idle client resource ceiling
-remain unverified. The idle carrier budget is also unverified and deliberately
-secondary; the remaining numeric targets remain undecided. The strongest
-counterargument is that
+targets, infrastructure reference class, idle client resource ceiling, and
+active client resource ceiling remain unverified. The idle carrier budget is
+also unverified and deliberately secondary; the remaining numeric targets
+remain undecided. The strongest counterargument is that
 supporting both Windows and Linux from the first V1 slice increases packaging
 and systems-integration work for a one-to-one project, but removing either would
 contradict the accepted client product.
@@ -647,9 +690,18 @@ contradict the accepted client product.
   degraded recovery are measured separately. The guardrail is not a quota or a
   standalone release blocker, never justifies suppressing required traffic, and
   adds no hidden cover-traffic requirement to the baseline Route Profile.
+- P3-D3c2c1 accepted: for separate 10-minute transfer runs in each direction,
+  the complete required client process tree keeps
+  `p95 resident memory <= 512 MiB` and mean CPU `<= 50%` of one logical core
+  while `16` active connections share `10 Mbit/s` of delivered Application Data.
+- Every connection must keep delivering payload. Lost or stalled connections,
+  reduced useful load, process splitting, unbounded queues, or a security or
+  isolation shortcut cannot make the resource test pass; exact measurement and
+  fair-share evidence remain P3-D6 and P3-D3c2c3.
 - Public DNS, naming design, bootstrap, routing, libraries, language, exact
   hardware, and the remaining numeric budgets remain unselected.
-- P3-D3c2c, active resource, aggregate-goodput, and fairness budgets, is next;
+- P3-D3c2c2, the active publisher resource ceiling, is next. Active overhead,
+  quantitative fairness, and scale-up saturation remain P3-D3c2c3;
   role-specific Node capacity is completed with R-004 candidate evidence under
   P3-D3b4.
 - No ADR and no code.
