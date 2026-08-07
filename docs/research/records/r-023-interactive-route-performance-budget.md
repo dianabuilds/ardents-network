@@ -284,7 +284,7 @@ reversed for accepted incoming Service Connections. P3-D3c2c2 fixes the
 64-connection workload, duration, aggregate goodput, CPU, and memory, while
 P3-D3c2c3a fixes its equal-load fair-progress floor. The metric does not require
 the P3-D3a single-connection goodput floor independently on all 64 active
-connections; active carrier overhead remains P3-D3c2c3b.
+connections; P3-D3c2c3b fixes active endpoint carrier overhead.
 
 When the finite publisher budget is exhausted, admission remains bounded and
 the remote side receives only a supported honest failure under the later R-007
@@ -459,8 +459,8 @@ and exact progress evidence. A run that stalls a connection, fails to sustain
 the declared delivered load, loses a connection, exceeds either resource
 ceiling, or bypasses authentication, Route Knowledge Separation, Isolation
 Contexts, required background work, or bounded queues is a miss. P3-D3c2c3a
-fixes the fair-progress floor; active carrier-bandwidth overhead remains
-P3-D3c2c3b.
+fixes the fair-progress floor, and P3-D3c2c3b fixes active endpoint carrier
+overhead.
 
 ### P3-D3c2c2 — Active publisher resource ceiling
 
@@ -497,8 +497,8 @@ and exact progress evidence. A run that stalls a connection, fails to sustain
 the declared delivered load, loses a connection, exceeds either resource
 ceiling, or bypasses authentication, Route Knowledge Separation, publication
 isolation, required background work, or bounded queues is a miss. P3-D3c2c3a
-fixes the fair-progress floor; active carrier-bandwidth overhead remains
-P3-D3c2c3b, and the combined `256`-open and `64`-active workload remains
+fixes the fair-progress floor, P3-D3c2c3b fixes active endpoint carrier
+overhead, and the combined `256`-open and `64`-active workload remains
 P3-D3c2c3c.
 
 ### P3-D3c2c3a — Equal-load fair progress
@@ -535,22 +535,58 @@ load, weakening security or isolation, sharing forbidden cross-context state,
 or buffering without bound also fails the run. Degraded and hostile-path
 fairness remain P3-D4 and P3-D5.
 
+### P3-D3c2c3b — Active endpoint carrier overhead
+
+**Product Owner decision, accepted 2026-08-07:** in every eligible 10-minute
+client and publisher active-resource run, the active endpoint carrier ratio must
+be `<= 1.5` separately for each benchmarked endpoint and transfer direction:
+
+`(Ardents-attributable bytes sent + received) / delivered Application Data`
+
+The numerator is measured at the operating-system network boundary of the
+endpoint under test during the active transfer window. It includes transport and
+network framing visible at that boundary, encrypted carrier payload, protocol
+control, acknowledgements, keepalives, retransmissions, padding, cover traffic,
+and required background traffic attributable to Ardents or its helper processes.
+Unrelated operating-system and Application traffic is excluded. P3-D6 fixes one
+cross-platform attribution boundary and packet-accounting method so Windows and
+Linux results are comparable.
+
+The denominator contains only incompressible Application Data delivered to the
+receiving Application in the tested direction. Carrier bytes, a faster opposite
+direction, dropped data, and bytes accepted locally but not delivered remotely
+cannot inflate it. At the accepted aggregate loads, the ratio means that
+`10 Mbit/s` of Application Data permits at most `15 Mbit/s` of combined sent and
+received endpoint traffic on average, while `40 Mbit/s` permits at most
+`60 Mbit/s`.
+
+The ratio applies independently at each measured client or publisher endpoint;
+it does not sum the traffic of intermediate Nodes. Route-wide bandwidth and
+role-specific forwarding cost remain P3-D3b4 with R-004 evidence. Connection
+setup is outside the already-established transfer window, while all required
+maintenance during the window remains counted.
+
+This is a top-down, unverified qualification ceiling for the baseline
+Interactive Route on the normal stable non-adversarial reference network. A run
+over `1.5` is a miss, but an implementation cannot pass by suppressing required
+authentication, Route Knowledge Separation, integrity, isolation, liveness, or
+fail-closed behavior. Hidden V1 cover traffic is not a baseline requirement; a
+stronger R-005 profile may choose a different explicit security and bandwidth
+budget. Loss, churn, recovery, and hostile traffic remain P3-D4 and P3-D5.
+
 ## Remaining decisions
 
-1. **P3-D3c2c3b — Active carrier overhead:** bound sent-plus-received carrier
-   bytes relative to delivered Application Data for the accepted client and
-   publisher workloads without creating a security shortcut.
-2. **P3-D3c2c3c — Combined load and scale-up:** set queue budgets, preserve
+1. **P3-D3c2c3c — Combined load and scale-up:** set queue budgets, preserve
    accepted aggregate goodput and fair progress with `64/16` client and `256/64`
    publisher open-and-active workloads, and measure endpoint saturation.
-3. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
+2. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
    units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
    floors on the accepted reference class.
-4. **P3-D4 — Tail and degradation:** set jitter, loss, churn, alternate-route,
+3. **P3-D4 — Tail and degradation:** set jitter, loss, churn, alternate-route,
    and overload behavior without weakening R-001.
-5. **P3-D5 — Hostile load:** define fairness and resource-exhaustion workloads
+4. **P3-D5 — Hostile load:** define fairness and resource-exhaustion workloads
    and the useful honest-work floor during attack.
-6. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
+5. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
    artifacts, regression thresholds, and release failure rules.
 
 ## Hypotheses
@@ -659,6 +695,9 @@ traces, and direct-baseline results. Disposable experiment code belongs under
 - **Product Owner decision:** in both equal-load active benchmarks, every
   connection averages at least `500 kbit/s` of delivered Application Data and
   has no zero-delivery interval longer than `2 s`.
+- **Product Owner decision:** each endpoint and direction in the active
+  benchmarks keeps combined sent-plus-received Ardents carrier bytes at or below
+  `1.5x` the Application Data delivered in that direction.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -684,18 +723,18 @@ then apply the accepted single-connection goodput and separate client and
 publisher concurrency floors and the accepted idle client CPU and memory
 ceiling. Treat the accepted idle background-traffic number as an optimization
 guardrail, apply the accepted active client and publisher resource ceilings,
-and enforce the accepted equal-load fair-progress floor. Define active carrier
-overhead and combined-load scale-up next, followed by infrastructure Node
-capacity, degradation, hostile load, and the reproducible release gate; bounded
-endpoint scale-up is already fixed.
+enforce the accepted equal-load fair-progress floor, and apply the accepted
+`1.5x` endpoint carrier ratio. Define combined-load scale-up next, followed by
+infrastructure Node capacity, degradation, hostile load, and the reproducible
+release gate; bounded endpoint scale-up is already fixed.
 
 Confidence: high for the platform boundary and desired connection experience;
 the accepted latency, goodput, client-concurrency, and publisher-concurrency
 targets, infrastructure reference class, idle client resource ceiling, and
 active client and publisher resource ceilings and fairness floor remain
-unverified. The idle carrier budget is also unverified and deliberately
-secondary; the remaining numeric targets remain undecided. The strongest
-counterargument is that
+unverified. The active carrier ratio also remains unverified; the idle carrier
+budget is unverified and deliberately secondary. The remaining numeric targets
+remain undecided. The strongest counterargument is that
 supporting both Windows and Linux from the first V1 slice increases packaging
 and systems-integration work for a one-to-one project, but removing either would
 contradict the accepted client product.
@@ -797,10 +836,16 @@ contradict the accepted client product.
   fast peers, unbounded buffering, or a security or isolation shortcut cannot
   hide starvation; unequal production policy and degraded or hostile paths have
   separate contracts.
+- P3-D3c2c3b accepted: for each endpoint and direction in the active benchmarks,
+  combined Ardents-attributable bytes sent and received are at most `1.5x` the
+  Application Data delivered in that direction.
+- The ratio counts carrier control, framing, retransmission, padding, and
+  background work at the endpoint boundary, but not intermediate-Node traffic.
+  Required security and liveness work cannot be suppressed to pass; degraded,
+  hostile, and stronger-privacy profiles retain separate budgets.
 - Public DNS, naming design, bootstrap, routing, libraries, language, exact
   hardware, and the remaining numeric budgets remain unselected.
-- P3-D3c2c3b, active carrier overhead, is next. Combined open-and-active
-  workloads, queue budgets, and scale-up saturation remain P3-D3c2c3c;
-  role-specific Node capacity is completed with R-004 candidate evidence under
-  P3-D3b4.
+- P3-D3c2c3c, combined open-and-active workloads, queue budgets, and scale-up
+  saturation, is next; role-specific Node capacity is completed with R-004
+  candidate evidence under P3-D3b4.
 - No ADR and no code.

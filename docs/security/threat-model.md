@@ -286,7 +286,8 @@ route family by implication.
   load remain separate explicit contracts rather than silent exceptions.
 - Security mechanisms and performance optimizations are measured together;
   neither may bypass target authentication, isolation, least privilege, or
-  resource bounds.
+  resource bounds. Active endpoint carrier overhead counts required security and
+  liveness bytes rather than suppressing them to meet the accepted ratio.
 - Bounded retry does not create unbounded queues, amplification, or duplicate
   application operations by implication.
 - Bootstrap, naming, protocol releases, software distribution, and emergency

@@ -95,7 +95,9 @@ Application Data while the complete Ardents process tree keeps
 published Application's own work is excluded, but every connection must keep
 progressing and all Ardents publication and carrier work remains counted. Under
 the controlled equal-load benchmark, every connection averages at least
-`500 kbit/s` and has no zero-delivery interval longer than `2 s`.
+`500 kbit/s` and has no zero-delivery interval longer than `2 s`. At the
+publisher network boundary, all Ardents bytes sent plus received remain at or
+below `1.5x` the Application Data delivered in the tested direction.
 
 ## J-04 — Integrate an Application
 
@@ -135,10 +137,12 @@ connections share `10 Mbit/s` of delivered Application Data while the complete
 Ardents process tree keeps `p95 resident memory <= 512 MiB` and mean CPU
 `<= 50%` of one logical core. Under the controlled equal-load benchmark, every
 connection averages at least `500 kbit/s` and has no zero-delivery interval
-longer than `2 s`. On stronger hardware the endpoint may raise its finite
-hierarchical local budgets, while an Endpoint Owner may cap them. Reduced limits
-are exposed locally and do not qualify as the V1 performance floor; added
-capacity grants no Node role, authority, trust, or security exception.
+longer than `2 s`. At the client network boundary, all Ardents bytes sent plus
+received remain at or below `1.5x` the Application Data delivered in the tested
+direction. On stronger hardware the endpoint may raise its finite hierarchical
+local budgets, while an Endpoint Owner may cap them. Reduced limits are exposed
+locally and do not qualify as the V1 performance floor; added capacity grants no
+Node role, authority, trust, or security exception.
 
 ## J-05 — Use the Named Unlisted Site tracer
 
