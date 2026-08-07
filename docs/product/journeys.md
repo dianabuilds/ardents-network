@@ -21,6 +21,11 @@ manual routing configuration.
 
 **V1 platform gate:** the same ready outcome is required on both Windows and
 Linux; a result demonstrated only on an infrastructure server is insufficient.
+On the normal non-adversarial reference network, an installed process reaches
+this network-ready state within `p95 <= 5 s` on routine restart with valid state
+and `p95 <= 15 s` on a clean first start. The clock does not stop at a local
+socket or UI; authenticated current network state and a usable entry path are
+required.
 
 ## J-02 — Open an Unlisted Service
 

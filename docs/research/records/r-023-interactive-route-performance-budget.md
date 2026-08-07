@@ -112,11 +112,48 @@ Not included in these two clocks:
 Those scenarios need separate budgets rather than being averaged into the
 normal connection metric.
 
+### P3-D2b — Local endpoint readiness latency
+
+**Product Owner decision, accepted 2026-08-07:** on the normal, non-adversarial
+V1 reference network, the installed Ardents process must make the local endpoint
+network-ready within:
+
+- **routine restart:** `p95 <= 5 s` when valid previously authenticated local
+  network state is available;
+- **clean first start:** `p95 <= 15 s` when no saved Ardents network state is
+  available.
+
+The timer starts when the operating system starts the already installed Ardents
+process. It ends only when the Application Interface is available and the
+endpoint has authenticated enough current network state and established at
+least one usable entry path to accept an outbound connection attempt. Merely
+opening a local socket, loading a UI, or reporting a process as healthy is not
+network readiness.
+
+The clean-start clock includes local initialization, required local key or state
+creation, authenticated bootstrap-state acquisition, validation, entry
+selection, and joining work. It does not include downloading or installing the
+software, operating-system startup, optional User interaction, or a subsequent
+Service Name resolution and Service Connection. The routine-restart clock may
+reuse only valid authenticated state and may not skip expiry, rollback, or
+integrity checks.
+
+The targets assume an ordinary reachable network with at least one valid entry
+path and no deliberate blocking, injected failure, or overload. R-009 still
+defines authenticated bootstrap and blocked-entry recovery; no public DNS
+dependency is implied. An otherwise eligible failed or timed-out start is a
+missed target and may not be omitted from `p95`.
+
+These are top-down product targets and remain unverified. Reporting ready with
+unverified network state, a direct Service path, a weaker Route Profile, a
+shared Isolation Context, or another bypass of the accepted security contract
+fails the product even if startup is faster.
+
 ## Remaining decisions
 
-1. **P3-D2b — Startup and useful-data latency:** define endpoint start/join and
-   first useful Application byte, including resumed, first-ever, and degraded
-   cases, then set percentile budgets.
+1. **P3-D2c — First useful Application byte:** define the complete Named
+   Unlisted Site clock after endpoint readiness and set cold and warm percentile
+   budgets without hiding Application or network delay.
 2. **P3-D3 — Sustained service:** set throughput, concurrent-connection, CPU,
    memory, and bandwidth budgets for each reference class.
 3. **P3-D4 — Tail and degradation:** set jitter, loss, churn, alternate-route,
@@ -189,6 +226,9 @@ traces, and direct-baseline results. Disposable experiment code belongs under
   reference network, exact-name connection establishment is capped at
   `p95 <= 3 s` cold and `p95 <= 1 s` warm, ending only at an authenticated,
   usable Service Connection.
+- **Product Owner decision:** endpoint network readiness from an installed
+  process start is capped at `p95 <= 5 s` for a routine restart with valid state
+  and `p95 <= 15 s` for a clean first start without saved Ardents state.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -208,10 +248,10 @@ traces, and direct-baseline results. Disposable experiment code belongs under
 ## Recommendation
 
 Keep one user-visible connection contract and measure class-specific resource
-ceilings unless evidence falsifies that shape. Use the accepted cold and warm
-connection targets as route-candidate gates, then define startup and
-first-useful-byte latency, sustained load, degradation, hostile load, and the
-reproducible release gate in that order.
+ceilings unless evidence falsifies that shape. Use the accepted connection and
+endpoint-readiness targets as candidate gates, then define first-useful-byte
+latency, sustained load, degradation, hostile load, and the reproducible release
+gate in that order.
 
 Confidence: high for the platform boundary and desired connection experience;
 the accepted latency targets remain unverified and the other numeric targets
@@ -234,7 +274,14 @@ client product.
   exact-target-authenticated, usable stream.
 - Startup, join, Application processing, degraded paths, and hostile conditions
   are excluded from these two clocks and require their own explicit budgets.
+- P3-D2b accepted: an installed process reaches authenticated network readiness
+  within `p95 <= 5 s` on routine restart with valid state and `p95 <= 15 s` on a
+  clean first start. A local socket or UI without current network state and a
+  usable entry path is not ready.
+- Software installation, operating-system startup, subsequent Service
+  connection work, and blocked or hostile entry are outside these startup
+  clocks.
 - Public DNS, naming design, bootstrap, routing, libraries, language, exact
   hardware, and the remaining numeric budgets remain unselected.
-- P3-D2b, startup and useful-data latency, is next.
+- P3-D2c, first useful Application byte, is next.
 - No ADR and no code.
