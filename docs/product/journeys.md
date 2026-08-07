@@ -42,6 +42,11 @@ still recognize identity disclosed by Application Data, credentials, client
 fingerprinting, timing, or behavior. The route is presented as implementing this
 privacy claim only when its exact implementation candidate has current Route
 Qualification; otherwise the journey is visibly an experiment or simulation.
+On the normal non-adversarial reference network, the connection part of this
+journey completes within `p95 <= 3 s` without a prepared Route and
+`p95 <= 1 s` with current authenticated state and reusable Route state for the
+same Isolation Context, measured from Application submission to an
+authenticated, usable Service Connection.
 
 ## J-03 — Publish a local Service
 

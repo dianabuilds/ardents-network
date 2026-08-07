@@ -69,11 +69,54 @@ Consequences:
 - mobile feasibility may be measured early, but it cannot lower or replace the
   accepted desktop V1 gate.
 
+### P3-D2a — Authenticated connection establishment latency
+
+**Product Owner decision, accepted 2026-08-07:** on the normal, non-adversarial
+V1 reference network, a running and already joined endpoint opening a known
+exact Service Name must reach an authenticated Service Connection within:
+
+- **cold connection:** `p95 <= 3 s` when no usable Route has been prepared for
+  the request;
+- **warm connection:** `p95 <= 1 s` when current authenticated naming and
+  reachability state and reusable Route state for the same Isolation Context are
+  already available, but no Service Connection is yet open.
+
+For both metrics, the timer starts when the Application submits a valid connect
+request to the Application Interface. It stops only when the Application
+receives success bound to the exact authenticated Service Target and can use the
+byte stream. Name
+resolution, Service reachability lookup, route work, rendezvous, and target
+authentication performed inside that interval all count toward the result.
+
+The targets apply when the Service is online and reachable, the endpoint is
+already joined, and the measured topology has no deliberate blocking, injected
+failure, or overload. P3-D6 must still specify the reference link properties,
+geographic topology, sample count, and allowed failure rate. An otherwise
+eligible failed or timed-out attempt is a missed target, not a fast sample that
+may be omitted from the percentile.
+
+These are top-down product targets, not claims about an existing
+implementation. Passing them never permits a direct path, weaker Route Profile,
+cached unauthenticated state, skipped target authentication, shared Isolation
+Context, or any other R-001 violation. A candidate that needs such a shortcut
+fails the product contract even if its latency is lower.
+
+Not included in these two clocks:
+
+- process startup and initial or resumed network join;
+- Application request processing or time to the first useful Application byte
+  after the stream becomes usable;
+- an offline Service, blocked entry, active attack, route failure, or overloaded
+  network.
+
+Those scenarios need separate budgets rather than being averaged into the
+normal connection metric.
+
 ## Remaining decisions
 
-1. **P3-D2 — Connection latency scenarios:** define endpoint start/join, cold
-   first connection, warm connection, and first useful Application byte, then
-   set percentile budgets.
+1. **P3-D2b — Startup and useful-data latency:** define endpoint start/join and
+   first useful Application byte, including resumed, first-ever, and degraded
+   cases, then set percentile budgets.
 2. **P3-D3 — Sustained service:** set throughput, concurrent-connection, CPU,
    memory, and bandwidth budgets for each reference class.
 3. **P3-D4 — Tail and degradation:** set jitter, loss, churn, alternate-route,
@@ -142,6 +185,10 @@ traces, and direct-baseline results. Disposable experiment code belongs under
 - **Product Owner decision:** Windows and Linux desktop/laptop endpoints used by
   Users and Developers, plus a modest Linux server/VPS infrastructure Node, are
   the required V1 platform classes.
+- **Product Owner decision:** from a running, joined endpoint on the normal
+  reference network, exact-name connection establishment is capped at
+  `p95 <= 3 s` cold and `p95 <= 1 s` warm, ending only at an authenticated,
+  usable Service Connection.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -161,14 +208,17 @@ traces, and direct-baseline results. Disposable experiment code belongs under
 ## Recommendation
 
 Keep one user-visible connection contract and measure class-specific resource
-ceilings unless evidence falsifies that shape. Decide latency scenarios before
-choosing numbers, then define sustained load, degradation, hostile load, and the
+ceilings unless evidence falsifies that shape. Use the accepted cold and warm
+connection targets as route-candidate gates, then define startup and
+first-useful-byte latency, sustained load, degradation, hostile load, and the
 reproducible release gate in that order.
 
-Confidence: high for the platform boundary; numeric targets remain undecided.
-The strongest counterargument is that supporting both Windows and Linux from the
-first V1 slice increases packaging and systems-integration work for a one-to-one
-project, but removing either would contradict the accepted client product.
+Confidence: high for the platform boundary and desired connection experience;
+the accepted latency targets remain unverified and the other numeric targets
+remain undecided. The strongest counterargument is that supporting both Windows
+and Linux from the first V1 slice increases packaging and systems-integration
+work for a one-to-one project, but removing either would contradict the accepted
+client product.
 
 ## Disposition
 
@@ -177,7 +227,14 @@ project, but removing either would contradict the accepted client product.
   Developers and a modest Linux server/VPS infrastructure Node are mandatory V1
   benchmark and release classes.
 - macOS and mobile remain later targets rather than V1 promises.
+- P3-D2a accepted: exact-name connection establishment from a running, joined
+  endpoint on the normal reference network is `p95 <= 3 s` without a prepared
+  Route and `p95 <= 1 s` with current authenticated state and reusable Route
+  state for the same Isolation Context. The timer ends only at an
+  exact-target-authenticated, usable stream.
+- Startup, join, Application processing, degraded paths, and hostile conditions
+  are excluded from these two clocks and require their own explicit budgets.
 - Public DNS, naming design, bootstrap, routing, libraries, language, exact
-  hardware, and all numeric budgets remain unselected.
-- P3-D2, connection latency scenarios and budgets, is next.
+  hardware, and the remaining numeric budgets remain unselected.
+- P3-D2b, startup and useful-data latency, is next.
 - No ADR and no code.
