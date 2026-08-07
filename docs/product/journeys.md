@@ -8,8 +8,8 @@ semantics.
 
 **Actor:** User or Developer
 
-**Start:** A newly installed local Ardents endpoint on a supported Windows or
-Linux desktop/laptop
+**Start:** A newly installed local Ardents endpoint on a supported Windows 11 or
+Ubuntu LTS `x86-64` desktop/laptop
 
 **Flow:** Endpoint Owner starts the endpoint → verify software/network state →
 obtain current bootstrap information → join through an available entry path →
@@ -71,7 +71,7 @@ authenticated, usable Service Connection.
 **Actor:** Developer
 
 **Start:** A local application server and an Ardents endpoint on a supported
-Windows or Linux desktop/laptop
+Windows 11 or Ubuntu LTS `x86-64` desktop/laptop
 
 **Flow:** Endpoint Owner grants Authority Custody to an administration tool →
 create or securely import Service Authority → obtain its Service Target → grant
@@ -316,9 +316,9 @@ remain counted, so retry storms cannot hide inside a ten-minute average.
 **Done when:** the Node helps the carrier without reading Application Data,
 becoming a Service or User identity, or silently retaining an unbounded duty
 after exit. Every selected V1 role must demonstrate useful bounded operation on
-a Linux `2 vCPU`, `2 GiB RAM`, symmetric `100 Mbit/s` reference VPS. Stronger
-hardware may contribute more bounded capacity but gains no automatic role,
-trust, authority, or route-selection priority.
+an Ubuntu LTS `x86-64` `2 vCPU`, `2 GiB RAM`, symmetric `100 Mbit/s` reference
+VPS. Stronger hardware may contribute more bounded capacity but gains no
+automatic role, trust, authority, or route-selection priority.
 
 ## Cross-journey failure cases
 

@@ -22,10 +22,12 @@ Service Connection. Infrastructure Node IDs are not User or application
 addresses, and the network does not impose messenger, identity, storage, or
 content semantics.
 
-V1 is endpoint software for ordinary Windows and Linux desktop/laptop devices:
-Users connect from them and Developers can publish local Applications from them.
-The required infrastructure benchmark uses a Linux `2 vCPU`, `2 GiB RAM`,
-symmetric `100 Mbit/s` reference VPS; macOS and mobile remain later targets.
+V1 is endpoint software for ordinary Windows 11 and Ubuntu LTS `x86-64`
+desktop/laptop devices: Users connect from them and Developers can publish local
+Applications from them. The required infrastructure benchmark uses an Ubuntu
+LTS `x86-64` `2 vCPU`, `2 GiB RAM`, symmetric `100 Mbit/s` reference VPS; macOS
+and mobile remain later targets. Other Linux distributions and architectures
+have no V1 compatibility or release claim.
 Client and publisher capacity figures are minimum floors, not hard limits:
 stronger endpoints may use larger finite local budgets without gaining a Node
 role, trust, authority, route priority, or weaker security rules.

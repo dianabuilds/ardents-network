@@ -75,8 +75,8 @@ The following product choices already constrain research:
 
 The core product must let a local Application:
 
-- start an Ardents endpoint on a Windows or Linux desktop/laptop and join the
-  carrier without a central user account;
+- start an Ardents endpoint on a Windows 11 or Ubuntu LTS `x86-64`
+  desktop/laptop and join the carrier without a central user account;
 - create or securely import a Service Authority and obtain its
   location-independent Service Target;
 - expose a local Service Instance behind that target;
@@ -90,11 +90,13 @@ The core product must let a local Application:
 - recover an entry path when ordinary bootstrap or transport is blocked.
 
 The same V1 endpoint platforms must support publishing an ordinary local
-Application. The required V1 infrastructure reference class is a Linux server
-or VPS with `2 vCPU`, `2 GiB RAM`, and a symmetric `100 Mbit/s` link. Each
-selected role must be useful on that class; it is neither a capacity ceiling nor
-additional trust. macOS and mobile are later targets rather than current
-performance or release promises.
+Application. Ubuntu LTS is the sole Linux qualification baseline; other Linux
+distributions and architectures receive no V1 compatibility or release claim.
+The required V1 infrastructure reference class is an Ubuntu LTS `x86-64`
+server or VPS with `2 vCPU`, `2 GiB RAM`, and a symmetric `100 Mbit/s` link.
+Each selected role must be useful on that class; it is neither a capacity
+ceiling nor additional trust. macOS and mobile are later targets rather than
+current performance or release promises.
 
 The core does not, by default, execute untrusted application code, retain
 application payloads for offline recipients, replicate a site's content, define

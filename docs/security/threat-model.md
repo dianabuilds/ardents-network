@@ -176,16 +176,24 @@ of candidate behavior, with the original artifacts and invalidation reason
 retained. A failed build may remain research but cannot carry the qualified V1
 Interactive Route claim.
 
-The controlled endpoint topology covers all four Windows/Linux
-User-to-publisher operating-system pairings and measures both Application Data
-directions separately. User, Publisher, and every ordinary Node role execute on
-separate physical machines or isolated VMs through recorded controlled links;
-loopback, shared-memory transfer, in-process Nodes, and hidden same-host fast
-paths are invalid qualification evidence. The candidate retains its production
-Route shape and all cryptographic, authentication, isolation, resource, and
-fail-closed behavior. Direct baselines bracket applicable Ardents batches on the
-same endpoints and end-to-end impairment profile but can never become production
-fallback. Uncontrolled Internet runs are supplementary only.
+The controlled endpoint topology covers all four Windows 11/Ubuntu LTS
+`x86-64` User-to-publisher operating-system pairings and measures both
+Application Data directions separately. User, Publisher, and every ordinary
+Node role execute on separate physical machines or isolated VMs through recorded
+controlled links; loopback, shared-memory transfer, in-process Nodes, and hidden
+same-host fast paths are invalid qualification evidence. The candidate retains
+its production Route shape and all cryptographic, authentication, isolation,
+resource, and fail-closed behavior. Direct baselines bracket applicable Ardents
+batches on the same endpoints and end-to-end impairment profile but can never
+become production fallback. Uncontrolled Internet runs are supplementary only.
+
+Official V1 endpoint qualification uses frozen, fully patched Windows 11 and
+Ubuntu LTS `x86-64` images; Ubuntu LTS is the sole Linux baseline. User and
+Publisher reference endpoints each run with `4` dedicated vCPU threads,
+`8 GiB RAM`, SSD-backed storage, no GPU requirement, and no CPU or RAM
+overcommit. Built-in OS security remains enabled. Exact image, CPU, microcode,
+hypervisor, storage, power mode, and resource-cap evidence is retained. Other
+Linux distributions and architectures cannot inherit the V1 claim.
 
 Qualification sampling cannot hide tail failures. Normal short-event cells use
 `100` attempts and at least `99%` success unless a specific accepted scenario

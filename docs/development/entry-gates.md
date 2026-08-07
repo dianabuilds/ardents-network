@@ -84,14 +84,14 @@ terminal results remain in the evidence. A run is replaced only for a confirmed
 harness or reference-environment failure independent of candidate behavior;
 the original artifacts and invalidation reason are retained.
 
-The controlled endpoint matrix includes Windows-to-Windows, Windows-to-Linux,
-Linux-to-Windows, and Linux-to-Linux User/client-to-publisher pairings, each in
-both Application Data directions. Endpoints and every ordinary Node role run on
-separate physical machines or isolated VMs with recorded finite resources and
-controlled links. Loopback, shared memory, in-process Nodes, reduced test
-Routes, and hidden same-host fast paths do not qualify. The candidate retains
-its production cryptography, target authentication, isolation, resource
-controls, and fail-closed behavior.
+The controlled endpoint matrix includes Windows 11-to-Windows 11, Windows
+11-to-Ubuntu LTS, Ubuntu LTS-to-Windows 11, and Ubuntu LTS-to-Ubuntu LTS
+User/client-to-publisher pairings, each in both Application Data directions.
+Endpoints and every ordinary Node role run on separate physical machines or
+isolated VMs with recorded finite resources and controlled links. Loopback,
+shared memory, in-process Nodes, reduced test Routes, and hidden same-host fast
+paths do not qualify. The candidate retains its production cryptography, target
+authentication, isolation, resource controls, and fail-closed behavior.
 
 ## Gate E — call a network release usable
 
@@ -100,11 +100,18 @@ on supported platforms. For the first tracer this includes start/join, publish,
 name, resolve, connect, exchange, close/fail, accepted rotation, alternate-path
 recovery, and blocked-entry behavior.
 
-For V1, those endpoint journeys must pass on both Windows and Linux
-desktop/laptop reference devices, while the infrastructure path must pass on a
-Linux `2 vCPU`, `2 GiB RAM`, symmetric `100 Mbit/s` reference VPS class.
-Server-only success cannot substitute for a working User or Developer endpoint.
-macOS and mobile do not block V1 until a later product decision promotes them.
+For V1, those endpoint journeys must pass on frozen, fully patched Windows 11
+and Ubuntu LTS `x86-64` desktop/laptop reference images. Both endpoint roles use
+the `4 vCPU`, `8 GiB RAM`, SSD-backed, non-overcommitted base class with built-in
+OS protection enabled. The infrastructure path uses an Ubuntu LTS `x86-64`
+`2 vCPU`, `2 GiB RAM`, symmetric `100 Mbit/s` reference VPS class. Other Linux
+variants receive no V1 claim. Server-only success cannot substitute for a
+working User or Developer endpoint; macOS and mobile do not block V1.
+
+Exact image identifiers, OS builds, kernels, packages, host CPU, microcode,
+hypervisor, storage, power mode, and caps are frozen and retained per candidate.
+An image cannot be replaced after seeing its results; an updated image requires
+the requalification scope defined by R-023 P3-D6c.
 
 Every applicable direct baseline uses the same endpoint machines, payload,
 direction, duration, and end-to-end impairment profile and brackets its Ardents

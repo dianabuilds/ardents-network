@@ -38,32 +38,31 @@ Named Unlisted Site is the first complete workload.
 runs on ordinary User and Developer devices. V1 performance and release gates
 must cover:
 
-- a local endpoint used by a User on a Windows desktop or laptop;
-- a local endpoint used by a User on a Linux desktop or laptop;
+- a local endpoint used by a User on a Windows 11 `x86-64` desktop or laptop;
+- a local endpoint used by a User on an Ubuntu LTS `x86-64` desktop or laptop;
 - a local endpoint used by a Developer to publish an ordinary local Application
-  on the same Windows and Linux device classes;
-- an infrastructure Node on a modest Linux server or VPS.
+  on the same Windows 11 and Ubuntu LTS device classes;
+- an infrastructure Node on a modest Ubuntu LTS `x86-64` server or VPS.
 
 This does not require infrastructure Nodes to support Windows and does not
 forbid them from doing so. macOS, phones, tablets, and other constrained devices
 are later compatibility and measurement targets, not V1 performance or release
-gates. Exact supported OS versions, CPU architectures, reference hardware, and
-network conditions remain to be declared for endpoints; the concrete processor
-baseline and software environment for the later accepted reference VPS also
-remain measurement details.
+gates. P3-D6b2b1 fixes `x86-64`, Windows 11, Ubuntu LTS, and the endpoint
+hardware class; exact point releases, images, CPU model, and network conditions
+remain candidate measurement details.
 
 This platform decision does not select public DNS, naming, or bootstrap.
 Service Name resolution remains an internal Ardents product function under
 R-003, while authenticated entry and recovery remain R-009. A User connecting
-from Windows or Linux does not imply exposing a Service Name or origin through
-public DNS.
+from Windows 11 or Ubuntu LTS does not imply exposing a Service Name or origin
+through public DNS.
 
 Consequences:
 
-- a benchmark that runs only on a developer workstation or Linux server cannot
+- a benchmark that runs only on a developer workstation or Ubuntu server cannot
   establish V1 client performance;
-- publishing from an ordinary Windows or Linux device is a required product
-  journey, not a server-only extension;
+- publishing from an ordinary Windows 11 or Ubuntu LTS device is a required
+  product journey, not a server-only extension;
 - the same security contract and user-visible results apply on both endpoint
   operating systems;
 - platform-specific optimizations are allowed only when they preserve the same
@@ -225,7 +224,8 @@ and retained evidence.
 ### P3-D3b1 — Client endpoint concurrency floor
 
 **Product Owner decision, revised and accepted 2026-08-07:** every required
-Windows and Linux client reference endpoint must support at least:
+Windows 11 and Ubuntu LTS `x86-64` client reference endpoint must support at
+least:
 
 - `64` concurrently open outbound Service Connections in total;
 - `16` of those connections simultaneously carrying Application Data under the
@@ -328,8 +328,8 @@ not practically useful on the reference class.
 
 **Product Owner decision, accepted 2026-08-07:** the client `64/16` and publisher
 `256/64` capacities are qualification floors, not fixed implementation ceilings.
-A stronger Windows or Linux machine may use additional CPU, memory, and network
-capacity to support more bounded connections and aggregate work.
+A stronger Windows 11 or Ubuntu LTS machine may use additional CPU, memory, and
+network capacity to support more bounded connections and aggregate work.
 
 By default, the endpoint derives a conservative finite resource allowance from
 the resources available to its process, selects no higher than a compatible
@@ -378,7 +378,7 @@ processes, it must meet both:
   `100%` normalized to one fully occupied logical core.
 
 This is a top-down product ceiling, not a measured implementation claim. It is
-provisional until P3-D6 defines and runs the Windows and Linux reference
+provisional until P3-D6 defines and runs the Windows 11 and Ubuntu LTS reference
 hardware, process-tree attribution, uniform sampling interval, run count, and
 cross-platform resident-memory calculation. The memory percentile is computed
 from eligible samples rather than a convenient final snapshot; the CPU target
@@ -397,7 +397,8 @@ decision; P3-D3c2b gives them a separate measurable budget.
 ### P3-D3c2b — Idle background carrier overhead
 
 **Product Owner decision, accepted 2026-08-07 as a secondary efficiency
-guardrail:** on each required Windows and Linux client reference endpoint, an
+guardrail:** on each required Windows 11 and Ubuntu LTS `x86-64` client
+reference endpoint, an
 already joined client that remains network-ready for a continuous 24-hour
 steady-idle window sends and receives at most `25 MiB` of Ardents-attributable
 carrier traffic in total, approximately `750 MiB` per 30 days.
@@ -408,8 +409,8 @@ reference network. The numerator combines both directions and includes Ardents
 control messages, keepalives, network-state refresh, update checks and metadata,
 retransmissions, padding, and any cover traffic. P3-D6 must define the exact
 operating-system attribution boundary and include transport and network framing
-consistently on Windows and Linux; moving traffic to a helper process does not
-remove it from the total.
+consistently on Windows 11 and Ubuntu LTS; moving traffic to a helper process
+does not remove it from the total.
 
 The following are outside this steady-idle budget and require separately visible
 measurements rather than disappearing from evidence:
@@ -998,8 +999,9 @@ specific route family, carrier, or implementation already provides it.
 
 **Product Owner decision, accepted 2026-08-07:** in every direction-specific
 10-minute P3-D4a, P3-D4b1, P3-D4b2a, and P3-D4b2b qualification run, each
-required Windows or Linux endpoint participating as the User/client or
-Developer/publisher side must keep the complete Ardents process tree within:
+required Windows 11 or Ubuntu LTS `x86-64` endpoint participating as the
+User/client or Developer/publisher side must keep the complete Ardents process
+tree within:
 
 - `p95 resident memory <= 512 MiB`;
 - mean CPU `<= 50%` of one logical core;
@@ -1106,10 +1108,10 @@ than current implementation measurements.
 
 ### P3-D5a — Protect established publisher work from incomplete-attempt flood
 
-**Product Owner decision, accepted 2026-08-07:** a required Windows or Linux
-publisher endpoint must preserve useful established Service Connections during
-a continuous 10-minute anonymous pre-establishment flood on a controlled
-symmetric `100 Mbit/s` access link.
+**Product Owner decision, accepted 2026-08-07:** a required Windows 11 or Ubuntu
+LTS `x86-64` publisher endpoint must preserve useful established Service
+Connections during a continuous 10-minute anonymous pre-establishment flood on
+a controlled symmetric `100 Mbit/s` access link.
 
 Before the attack window, the publisher has the complete accepted normal set:
 
@@ -1370,7 +1372,7 @@ cell by at least:
   behavior or cost may differ.
 
 P3-D6b1 fixes the controlled topology and platform pairings, P3-D6b2a fixes
-minimum release sample counts, and P3-D6b2b fixes the remaining reference
+minimum release sample counts, and P3-D6b2b2 fixes the remaining reference
 inputs. P3-D6a fixes how those cells produce a release decision: results are
 never pooled or averaged across mandatory platforms, endpoint sides,
 directions, or scenarios. Each cell must satisfy all of its applicable latency,
@@ -1412,16 +1414,16 @@ P3-D6c defines which later change requires partial or complete requalification.
 matrix contains all four supported User/client-to-Developer/publisher platform
 pairings:
 
-- Windows to Windows;
-- Windows to Linux;
-- Linux to Windows;
-- Linux to Linux.
+- Windows 11 to Windows 11;
+- Windows 11 to Ubuntu LTS;
+- Ubuntu LTS to Windows 11;
+- Ubuntu LTS to Ubuntu LTS.
 
 The arrow identifies endpoint roles and operating-system families, not the
 Application Data direction. Every applicable workload is measured separately
 for User-to-Service and Service-to-User data inside each pairing. Exact supported
-OS versions and endpoint hardware images are frozen by P3-D6b2 for the tested
-candidate; one pairing cannot stand in for another.
+point releases and endpoint hardware images are frozen by P3-D6b2b1 for the
+tested candidate; one pairing cannot stand in for another.
 
 The User endpoint, Publisher endpoint, and every ordinary carrier role execute
 on separate physical machines or isolated virtual machines with separately
@@ -1431,8 +1433,9 @@ Nodes, or an unrecorded same-host fast path. Multiple isolated VMs may share
 physical hardware only when the declared caps and network path remain
 enforceable and visible in the evidence.
 
-Every measured infrastructure Node instance uses the accepted Linux reference
-VPS class of `2 vCPU`, `2 GiB RAM`, and a symmetric `100 Mbit/s` access link.
+Every measured infrastructure Node instance uses the accepted Ubuntu LTS
+`x86-64` reference VPS class of `2 vCPU`, `2 GiB RAM`, and a symmetric
+`100 Mbit/s` access link.
 This does not require all roles to share one host or assert that all roles have
 the same useful capacity. R-004 and P3-D3b4 determine the candidate's Route
 shape, hop count, role set, placement, and role-specific useful-work floors.
@@ -1495,14 +1498,14 @@ window contributes `0` goodput.
 CPU, memory, carrier-rate, and other time-series percentiles are calculated
 inside each 10-minute run; every one of the five runs must satisfy its applicable
 resource and carrier gates. Samples from a low-resource run cannot offset a
-failed run. P3-D6b2b fixes the time-series sampling interval and platform
+failed run. P3-D6b2b2 fixes the time-series sampling interval and platform
 attribution.
 
 The accepted 24-hour idle carrier guardrail requires one complete retained run
-on each required Windows and Linux client OS image for the candidate. It remains
-a secondary guardrail rather than a standalone release blocker, but a missing,
-invalid, or over-budget result must be reported and cannot be described as a
-pass.
+on each required Windows 11 and Ubuntu LTS client OS image for the candidate. It
+remains a secondary guardrail rather than a standalone release blocker, but a
+missing, invalid, or over-budget result must be reported and cannot be described
+as a pass.
 
 All percentiles use ascending nearest-rank order statistics without
 interpolation: for percentile `p` and `N` values, select rank `ceil(p * N)`.
@@ -1517,15 +1520,65 @@ Replacement remains limited to a P3-D6a confirmed harness invalidation. A
 shorter smoke matrix, a successful subset, or repeated execution until a pass
 never earns Route Qualification.
 
+### P3-D6b2b1 — Official V1 endpoint OS and hardware baseline
+
+**Product Owner decision, accepted 2026-08-07:** the generic Windows/Linux V1
+platform boundary is refined to two official `x86-64` reference OS families:
+
+- a supported, fully patched Windows 11 release available when the candidate is
+  frozen;
+- a supported, fully patched Ubuntu LTS point release available when the
+  candidate is frozen.
+
+Ubuntu LTS is the sole Linux qualification baseline for V1 endpoints and
+infrastructure Nodes. Other Linux distributions, package bases, and CPU
+architectures may happen to work, but they receive no V1 compatibility,
+performance, or release claim and add no mandatory matrix cell. Supporting one
+later requires an explicit product decision and its own qualification evidence;
+it is not an implicit roadmap commitment.
+
+The exact Windows edition and build, Ubuntu image and kernel, update set,
+architecture, package inventory, and immutable image identifier are frozen and
+recorded for each release candidate. Qualification cannot switch image after
+seeing a result. Routine security updates create a new tested image rather than
+permission to cite evidence from the old one; P3-D6c defines the required
+requalification scope.
+
+Both User/client and Developer/publisher reference endpoints use the same base
+machine class:
+
+- `4` dedicated virtual CPU threads;
+- `8 GiB` RAM;
+- SSD-backed storage;
+- no required GPU or accelerator.
+
+Each endpoint remains a separate physical machine or isolated VM under
+P3-D6b1. CPU and RAM cannot be overcommitted during qualification. The host CPU
+model, microcode, hypervisor and version, storage type, power mode, and any
+resource caps are fixed across the applicable batch and retained in evidence.
+Built-in OS security, firewall, exploit mitigations, and normal cryptographic
+protections remain enabled; a narrowly required network rule may be declared,
+but disabling platform protection to pass invalidates the result.
+
+This base class is a qualification floor, not a runtime maximum. A weaker device
+may expose explicitly reduced local capacity but cannot claim the V1 reference
+result. A stronger device may select only a separately qualified automatic
+scale-up profile under P3-D3c2c3c3; extra hardware grants no network role, trust,
+authority, priority, isolation exception, or security downgrade.
+
+The P3-D6b1 matrix labels are therefore Windows 11 to Windows 11, Windows 11 to
+Ubuntu LTS, Ubuntu LTS to Windows 11, and Ubuntu LTS to Ubuntu LTS, each in both
+Application Data directions. The accepted infrastructure class becomes Ubuntu
+LTS `x86-64` with `2 vCPU`, `2 GiB RAM`, and a symmetric `100 Mbit/s` link.
+
 ## Remaining decisions
 
 1. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
    units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
    floors on the accepted reference class.
-2. **P3-D6b2b — Reference inputs and baselines:** define exact endpoint
-   hardware, operating-system versions, normal network distributions,
-   Application payloads, time-series sampling and attribution, baseline
-   combination and drift, and state-reset rules.
+2. **P3-D6b2b2 — Network, payload, and baseline inputs:** define the normal
+   network distribution, Application payloads, time-series sampling and
+   attribution, baseline combination and drift, and state-reset rules.
 3. **P3-D6c — Evidence and regression:** define retained artifacts,
    reproducibility, comparability, regression thresholds, invalidation review,
    and partial or complete requalification rules.
@@ -1586,9 +1639,9 @@ traces, and direct-baseline results. Disposable experiment code belongs under
 
 ## Findings
 
-- **Product Owner decision:** Windows and Linux desktop/laptop endpoints used by
-  Users and Developers, plus a modest Linux server/VPS infrastructure Node, are
-  the required V1 platform classes.
+- **Product Owner decision:** Windows 11 and Ubuntu LTS `x86-64`
+  desktop/laptop endpoints used by Users and Developers, plus a modest Ubuntu
+  LTS server/VPS infrastructure Node, are the required V1 platform classes.
 - **Product Owner decision:** from a running, joined endpoint on the normal
   reference network, exact-name connection establishment is capped at
   `p95 <= 3 s` cold and `p95 <= 1 s` warm, ending only at an authenticated,
@@ -1602,17 +1655,19 @@ traces, and direct-baseline results. Disposable experiment code belongs under
 - **Product Owner decision:** for a single established Service Connection, the
   `p05` 60-second Application goodput in each direction is at least
   `min(10 Mbit/s, 50% of paired direct-baseline goodput)`.
-- **Product Owner decision:** a required Windows or Linux client reference
-  endpoint supports at least `64` concurrently open outbound Service
-  Connections, including at least `16` simultaneously active connections. This
-  revises the initially recorded `128/32` proposal after separating client and
-  publisher workloads.
-- **Product Owner decision:** a required Windows or Linux publisher reference
-  endpoint supports at least `256` concurrently open incoming Service
-  Connections, including at least `64` simultaneously active connections.
+- **Product Owner decision:** a required Windows 11 or Ubuntu LTS `x86-64`
+  client reference endpoint supports at least `64` concurrently open outbound
+  Service Connections, including at least `16` simultaneously active
+  connections. This revises the initially recorded `128/32` proposal after
+  separating client and publisher workloads.
+- **Product Owner decision:** a required Windows 11 or Ubuntu LTS `x86-64`
+  publisher reference endpoint supports at least `256` concurrently open
+  incoming Service Connections, including at least `64` simultaneously active
+  connections.
 - **Product Owner decision:** every selected infrastructure role must be useful
-  on a Linux `2 vCPU`, `2 GiB RAM`, symmetric `100 Mbit/s` reference VPS; this is
-  a minimum comparison class rather than a capacity ceiling.
+  on an Ubuntu LTS `x86-64` `2 vCPU`, `2 GiB RAM`, symmetric `100 Mbit/s`
+  reference VPS; this is a minimum comparison class rather than a capacity
+  ceiling.
 - **Product Owner decision:** client and publisher floors scale upward through
   conservative finite local resource profiles on stronger hardware; exact
   capacity is local, grants no authority or role, and is not required network
@@ -1718,11 +1773,12 @@ traces, and direct-baseline results. Disposable experiment code belongs under
   confirmed harness or reference-environment failure may invalidate a run, with
   the original artifacts and reason retained; an unqualified build may remain
   research but cannot carry the V1 anonymous-network claim.
-- **Product Owner decision:** qualification covers Windows-to-Windows,
-  Windows-to-Linux, Linux-to-Windows, and Linux-to-Linux endpoint-role pairings,
-  each in both Application Data directions. Endpoints and ordinary Nodes run on
-  separate machines or isolated VMs through a controlled network; loopback,
-  shared-memory, and hidden test fast paths are forbidden.
+- **Product Owner decision:** qualification covers Windows 11-to-Windows 11,
+  Windows 11-to-Ubuntu LTS, Ubuntu LTS-to-Windows 11, and Ubuntu LTS-to-Ubuntu
+  LTS endpoint-role pairings, each in both Application Data directions.
+  Endpoints and ordinary Nodes run on separate machines or isolated VMs through
+  a controlled network; loopback, shared-memory, and hidden test fast paths are
+  forbidden.
 - **Product Owner decision:** direct baselines bracket each applicable Ardents
   batch before and after on the same endpoints, payload, direction, duration,
   and end-to-end impairment profile. Uncontrolled Internet results are
@@ -1738,6 +1794,14 @@ traces, and direct-baseline results. Disposable experiment code belongs under
 - **Product Owner decision:** percentiles use nearest rank without interpolation.
   Failed latency is positive infinity, failed goodput is zero, all eligible
   samples count, and a smaller smoke suite never earns Route Qualification.
+- **Product Owner decision:** official V1 endpoint qualification covers only
+  fully patched frozen Windows 11 and Ubuntu LTS `x86-64` images on the same
+  `4 vCPU`, `8 GiB RAM`, SSD-backed, non-overcommitted base class with built-in
+  OS security enabled. Ubuntu LTS is the sole V1 Linux baseline.
+- **Product Owner decision:** other Linux distributions and architectures are
+  outside the V1 compatibility and release claim. Stronger hardware requires a
+  separately qualified scale-up profile; weaker hardware cannot claim the
+  reference result.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -1774,8 +1838,9 @@ pre-establishment-flood gates for established work and honest anonymous
 admission, and the accepted established-hostile-work isolation and full-capacity
 non-claim. Apply the accepted conjunctive qualification and hard-guardrail
 semantics and the accepted four-pair controlled topology with bracketing direct
-baselines. Apply the accepted release sample floors and nearest-rank rules, then
-define the remaining reference inputs, evidence, and regression rules.
+baselines. Apply the accepted release sample floors, nearest-rank rules, and
+Windows 11/Ubuntu LTS endpoint hardware baseline, then define the remaining
+network, payload, baseline, evidence, and regression rules.
 Role-specific infrastructure capacity remains deferred until R-004 supplies
 candidate units of work.
 
@@ -1803,16 +1868,17 @@ Separately,
 transport-independent continuation may require an Ardents layer above otherwise
 suitable carriers, adding state, attack surface, linkability risk, and resource
 cost. That is why the complete stack must earn the gate rather than assuming it
-from a protocol name. Supporting both Windows and Linux also increases packaging
-and systems-integration work for a one-to-one project, but removing either would
-contradict the accepted client product.
+from a protocol name. Supporting both Windows 11 and Ubuntu LTS also increases
+packaging and systems-integration work for a one-to-one project, but removing
+either would contradict the accepted client product.
 
 ## Disposition
 
 - State: `active`.
-- P3-D1 accepted: Windows and Linux desktop/laptop endpoints used by Users and
-  Developers and a modest Linux server/VPS infrastructure Node are mandatory V1
-  benchmark and release classes.
+- P3-D1, refined by P3-D6b2b1: Windows 11 and Ubuntu LTS `x86-64`
+  desktop/laptop endpoints used by Users and Developers, plus a modest Ubuntu
+  LTS server/VPS infrastructure Node, are mandatory V1 benchmark and release
+  classes.
 - macOS and mobile remain later targets rather than V1 promises.
 - P3-D2a accepted: exact-name connection establishment from a running, joined
   endpoint on the normal reference network is `p95 <= 3 s` without a prepared
@@ -1841,21 +1907,22 @@ contradict the accepted client product.
 - Only bytes delivered to the receiving Application count as useful payload;
   carrier overhead, failed runs, and the faster direction cannot inflate the
   result.
-- P3-D3b1 revised and accepted: each required Windows and Linux client reference
-  endpoint supports at least `64` concurrently open outbound Service
-  Connections, with at least `16` simultaneously carrying the declared
-  active-transfer workload.
+- P3-D3b1 revised and accepted: each required Windows 11 and Ubuntu LTS
+  `x86-64` client reference endpoint supports at least `64` concurrently open
+  outbound Service Connections, with at least `16` simultaneously carrying the
+  declared active-transfer workload.
 - The initial `128/32` client floor was superseded because it was not justified
   by the V1 client journey after publisher capacity was separated.
-- P3-D3b2 accepted: each required Windows and Linux publisher reference endpoint
-  supports at least `256` concurrently open incoming Service Connections, with
-  at least `64` simultaneously carrying the declared active-transfer workload.
+- P3-D3b2 accepted: each required Windows 11 and Ubuntu LTS `x86-64` publisher
+  reference endpoint supports at least `256` concurrently open incoming Service
+  Connections, with at least `64` simultaneously carrying the declared
+  active-transfer workload.
 - Both endpoint floors are minimum capacities rather than maxima. Exhaustion is
   bounded and explicit; publisher application policy may deliberately admit
   fewer connections without redefining the network benchmark.
 - P3-D3b3 accepted: every selected V1 infrastructure role must demonstrate
-  useful bounded operation on a Linux `2 vCPU`, `2 GiB RAM`, symmetric
-  `100 Mbit/s` reference VPS.
+  useful bounded operation on an Ubuntu LTS `x86-64` `2 vCPU`, `2 GiB RAM`,
+  symmetric `100 Mbit/s` reference VPS.
 - The reference VPS is not a capacity or trust ceiling. Stronger hardware may
   contribute more bounded work but receives no automatic additional role,
   authority, or route-selection privilege.
@@ -1868,8 +1935,9 @@ contradict the accepted client product.
   Node role, trust, authority, route priority, cross-context access, or security
   shortcut, and exact hardware limits are not required network metadata.
 - P3-D3c2a accepted: during the 10-minute window beginning at network readiness,
-  an otherwise idle required Windows or Linux client keeps whole-process-tree
-  `p95 resident memory <= 256 MiB` and mean CPU `<= 1%` of one logical core.
+  an otherwise idle required Windows 11 or Ubuntu LTS `x86-64` client keeps
+  whole-process-tree `p95 resident memory <= 256 MiB` and mean CPU `<= 1%` of one
+  logical core.
 - The client remains genuinely network-ready and performs required background
   and security work throughout the idle measurement. Process splitting,
   disconnection, deferred validation, or weakened security cannot make a run
@@ -2075,16 +2143,18 @@ contradict the accepted client product.
 - One failed mandatory cell blocks V1 Route Qualification for that build and
   configuration. It may remain an explicitly unqualified research build but
   cannot be presented as a qualified V1 anonymous network.
-- P3-D6b1 accepted: the controlled endpoint matrix contains Windows-to-Windows,
-  Windows-to-Linux, Linux-to-Windows, and Linux-to-Linux role pairings, with
-  User-to-Service and Service-to-User data measured separately in each.
+- P3-D6b1, refined by P3-D6b2b1: the controlled endpoint matrix contains
+  Windows 11-to-Windows 11, Windows 11-to-Ubuntu LTS, Ubuntu LTS-to-Windows 11,
+  and Ubuntu LTS-to-Ubuntu LTS role pairings, with User-to-Service and
+  Service-to-User data measured separately in each.
 - User, Publisher, and every ordinary Node role run on separate physical or
   isolated virtual machines with recorded finite resources and controlled
   links. Loopback, shared memory, in-process Nodes, and hidden same-host or
   reduced-Route fast paths cannot qualify.
-- Each infrastructure Node instance uses the Linux `2 vCPU`, `2 GiB RAM`,
-  symmetric `100 Mbit/s` reference VPS class. R-004 and P3-D3b4 still determine
-  candidate Route shape, roles, placement, and role-specific useful capacity.
+- Each infrastructure Node instance uses the Ubuntu LTS `x86-64` `2 vCPU`,
+  `2 GiB RAM`, symmetric `100 Mbit/s` reference VPS class. R-004 and P3-D3b4
+  still determine candidate Route shape, roles, placement, and role-specific
+  useful capacity.
 - Applicable direct baselines run on the same endpoints and end-to-end
   impairment profile immediately before and after each Ardents batch. They are
   measurement-only and never a production fallback; uncontrolled Internet
@@ -2104,9 +2174,22 @@ contradict the accepted client product.
 - Percentiles use ascending nearest rank without interpolation. Failed latency
   is positive infinity, failed goodput is zero, all eligible samples count, and
   smaller smoke suites cannot qualify.
-- Public DNS, naming design, bootstrap, routing, libraries, language, exact
-  hardware, and the remaining numeric budgets remain unselected.
-- P3-D6b2b exact reference inputs and baselines is next, followed by P3-D6c
+- Public DNS, naming design, bootstrap, routing, libraries, language, exact host
+  CPU model, normal network inputs, and the remaining numeric budgets remain
+  unselected.
+- P3-D6b2b1 accepted: the Windows 11 and Ubuntu LTS images are fully patched and
+  frozen per candidate on `x86-64`; Ubuntu LTS is the sole Linux qualification
+  baseline. Other distributions and architectures receive no V1 claim or
+  mandatory cell.
+- User and Publisher reference endpoints use `4` dedicated vCPU threads,
+  `8 GiB RAM`, SSD-backed storage, no required GPU, and no CPU or RAM overcommit.
+  Host CPU, microcode, hypervisor, storage, power mode, caps, and exact OS images
+  remain recorded; built-in OS security stays enabled.
+- The infrastructure image is Ubuntu LTS `x86-64` on the accepted `2 vCPU`,
+  `2 GiB RAM`, symmetric `100 Mbit/s` VPS class. Stronger endpoint capacity
+  requires a qualified scale-up profile; weaker hardware cannot claim the base
+  result.
+- P3-D6b2b2 network, payload, and baseline inputs is next, followed by P3-D6c
   evidence and regression rules. Role-specific Node capacity and cost remain
   deferred until R-004 candidate evidence under P3-D3b4.
 - No ADR and no code.
