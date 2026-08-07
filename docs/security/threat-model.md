@@ -205,6 +205,15 @@ Candidate-induced delay, loss, reordering, retry traffic, and overhead remain
 observable; transport choice cannot move them outside the qualification result.
 Degraded, churn, blocking, and hostile workloads remain separate threat cells.
 
+Payload shortcuts are also hard failures. Fresh `32-byte` connection canaries,
+nonce-bearing `512-byte` HTTP requests with complete `64 KiB` incompressible
+responses, and distinct pre-generated incompressible transfer streams are
+validated end to end for exact bytes, order, and integrity. An early first byte
+cannot survive a later invalid response. Caching, compression, deduplication,
+external resources, replayed canaries, and benchmark-specific paths cannot earn
+qualification. HTTP remains confined to the controlled tracer Application and
+does not become a carrier trust boundary or network semantic.
+
 Qualification sampling cannot hide tail failures. Normal short-event cells use
 `100` attempts and at least `99%` success unless a specific accepted scenario
 sets another floor; recovery uses at least `20` episodes and `95%` success where

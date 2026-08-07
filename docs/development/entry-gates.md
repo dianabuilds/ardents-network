@@ -122,6 +122,15 @@ no complete interruption or packet reordering in the normal profile. Shaping is
 below Carrier Transports, and all attributable protocol and background traffic
 consumes the link caps.
 
+Every reported usable connection immediately passes a fresh unpredictable
+`32-byte` request and exact `32-byte` response canary. The site tracer sends an
+exact `512-byte` nonce-bearing HTTP request and validates a complete `64 KiB`
+seeded incompressible response body after observing its first byte. Sustained and
+concurrent workloads use distinct pre-generated seeded incompressible streams;
+only bytes verified in exact order count. A canary, body, order, or integrity
+failure fails the attempt or run. Caching, compression, deduplication, external
+resources, and benchmark-specific fast paths cannot make a candidate pass.
+
 Every applicable direct baseline uses the same endpoint machines, payload,
 direction, duration, and end-to-end impairment profile and brackets its Ardents
 batch before and after. It is measurement-only and cannot become a production

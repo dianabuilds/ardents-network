@@ -1374,8 +1374,9 @@ cell by at least:
 
 P3-D6b1 fixes the controlled topology and platform pairings, P3-D6b2a fixes
 minimum release sample counts, P3-D6b2b2a fixes the normal network envelope,
-and P3-D6b2b2b fixes the remaining reference inputs. P3-D6a fixes how those
-cells produce a release decision: results are
+P3-D6b2b2b fixes the Application payloads, and P3-D6b2b2c fixes the remaining
+reference inputs. P3-D6a fixes how those cells produce a release decision:
+results are
 never pooled or averaged across mandatory platforms, endpoint sides,
 directions, or scenarios. Each cell must satisfy all of its applicable latency,
 success, progress, goodput, fairness, resource, carrier, queue, cleanup, and
@@ -1500,7 +1501,7 @@ window contributes `0` goodput.
 CPU, memory, carrier-rate, and other time-series percentiles are calculated
 inside each 10-minute run; every one of the five runs must satisfy its applicable
 resource and carrier gates. Samples from a low-resource run cannot offset a
-failed run. P3-D6b2b2b fixes the time-series sampling interval and platform
+failed run. P3-D6b2b2c fixes the time-series sampling interval and platform
 attribution.
 
 The accepted 24-hour idle carrier guardrail requires one complete retained run
@@ -1606,7 +1607,7 @@ and cannot be removed as harness noise.
 The paired direct baseline and Ardents batch use the same endpoint caps and
 end-to-end impairment profile. The generator, seeds, exact delay and loss
 distribution, and distribution of the `80 ms` total across Route segments are
-declared before observing candidate results and retained as evidence; P3-D6b2b2b
+declared before observing candidate results and retained as evidence; P3-D6b2b2c
 fixes their reproducibility and matching rules. Candidate processing time is not
 included in the injected network-only RTT and remains visible in measured
 latency.
@@ -1618,15 +1619,62 @@ reordering, the accepted `300 ms`/`5%` impaired-live profile, churn, blocking,
 and hostile traffic remain separate workloads and cannot be pooled with this
 normal result.
 
+### P3-D6b2b2b — Controlled Application payload suite
+
+**Product Owner decision, accepted 2026-08-07:** V1 qualification uses three
+transport-independent Application payload classes. Payload sizes are counted at
+the Application Interface; Carrier framing and control bytes do not inflate
+them.
+
+**Connection canary:** immediately after a connection is reported as
+exact-target-authenticated and usable, the User sends a fresh unpredictable
+`32-byte` challenge and the controlled Service returns the same `32` bytes. The
+challenge is unique to the attempt and is not disclosed to the candidate before
+the send operation. Exact request and response bytes and their timestamps are
+retained. A missing, changed, duplicated, or out-of-order response makes that
+attempt a failure under the existing success and percentile rules. It does not
+silently extend the connection-establishment timer past its defined usable-stream
+milestone.
+
+**Named Unlisted Site tracer:** the controlled Application receives one
+HTTP/1.1 request of exactly `512 bytes`, including headers and a fresh `32-byte`
+request nonce, with no request body. It returns fixed status and headers followed
+by exactly `64 KiB` of seeded incompressible response body bound to that nonce.
+The first valid HTTP response byte remains the latency observation, but the
+complete response syntax, length, nonce binding, byte sequence, and digest must
+validate before the attempt can pass. An invalid or incomplete body turns the
+attempt into a failed latency observation rather than preserving an early
+first-byte success.
+
+**Sustained and concurrent transfer:** every measured direction carries a
+pre-generated seeded incompressible byte stream. Each run and active Service
+Connection has a distinct declared stream and does not loop a shorter payload
+inside its timed window. The receiver validates every byte against its expected
+offset and retains the final digest. Only correctly ordered verified Application
+bytes count as goodput; any corruption, loss, duplication, or unexpected byte
+fails the run. The corresponding direct and Ardents measurements use the same
+payload artifact, direction, and duration.
+
+Payload artifacts are generated outside timed intervals by the harness, and
+their Application-side generation or validation work is outside the Ardents
+process-tree resource metrics. Any Ardents helper process remains counted. HTTP
+content encoding, Application caching, carrier payload compression,
+payload-aware deduplication, and benchmark-specific short paths are disabled or
+forbidden. No external resource is fetched by the tracer.
+
+HTTP is only the protocol of the first controlled site workload. It adds no HTTP
+method, header, URL, status, caching, or content semantics to Ardents. The V1
+Application Interface remains the accepted live bidirectional reliable ordered
+byte stream, and other Applications remain free to define their own protocols.
+
 ## Remaining decisions
 
 1. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
    units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
    floors on the accepted reference class.
-2. **P3-D6b2b2b — Reproducible workload and baseline inputs:** define the exact
-   impairment generator and seed discipline, Application payloads, time-series
-   sampling and attribution, baseline combination and drift, and state-reset
-   rules.
+2. **P3-D6b2b2c — Reproducible measurement and baseline mechanics:** define the
+   exact impairment generator and seed discipline, time-series sampling and
+   attribution, baseline combination and drift, and state-reset rules.
 3. **P3-D6c — Evidence and regression:** define retained artifacts,
    reproducibility, comparability, regression thresholds, invalidation review,
    and partial or complete requalification rules.
@@ -1859,6 +1907,19 @@ traces, and direct-baseline results. Disposable experiment code belongs under
   Transports and consumes link capacity with all attributable overhead. It
   chooses no transport; paired direct and Ardents measurements use the same
   declared profile.
+- **Product Owner decision:** a fresh `32-byte` request/response canary validates
+  each reported usable connection; a failed canary makes the attempt fail.
+- **Product Owner decision:** the Named Unlisted Site tracer uses an exact
+  `512-byte` nonce-bearing HTTP request and a `64 KiB` seeded incompressible
+  response body. First-byte latency passes only when the whole response later
+  validates.
+- **Product Owner decision:** goodput and concurrency use pre-generated distinct
+  seeded incompressible streams verified for exact order and integrity. Caching,
+  compression, deduplication, external resources, and benchmark shortcuts cannot
+  improve a result.
+- **Product Owner decision:** HTTP belongs only to the controlled tracer
+  Application and adds no protocol semantics to the generic byte-stream
+  Application Interface.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -1897,8 +1958,8 @@ non-claim. Apply the accepted conjunctive qualification and hard-guardrail
 semantics and the accepted four-pair controlled topology with bracketing direct
 baselines. Apply the accepted release sample floors, nearest-rank rules, and
 Windows 11/Ubuntu LTS endpoint hardware baseline and the accepted normal-network
-envelope, then define reproducible impairment traces, payload, baseline,
-evidence, and regression rules.
+envelope and controlled payload suite, then define reproducible impairment
+traces, baseline mechanics, evidence, and regression rules.
 Role-specific infrastructure capacity remains deferred until R-004 supplies
 candidate units of work.
 
@@ -1915,7 +1976,8 @@ the established-work, honest-admission, and established-hostile workloads are
 unverified. The honest-client admission cost and all accepted sample floors are
 also unverified on the required platforms. The idle carrier budget is
 unverified and deliberately secondary. The normal-network envelope is also an
-unverified top-down qualification input. The remaining numeric targets remain
+unverified top-down qualification input. The controlled payload suite is
+unverified as a portable harness contract. The remaining numeric targets remain
 undecided. The `20`-episode recovery floor makes `p95` observable only at coarse
 nearest-rank resolution; exact order statistics and success counts must remain
 visible, and later variability evidence may justify a larger predeclared sample.
@@ -2255,8 +2317,16 @@ either would contradict the accepted client product.
 - The envelope is transport-independent and applied below Carrier Transports.
   Its caps include all attributable traffic, and the same declared profile
   brackets the Ardents batch through its paired direct measurements.
-- P3-D6b2b2b reproducible impairment traces, payload, measurement, reset, and
-  direct-baseline inputs is next, followed by P3-D6c evidence and regression
-  rules. Role-specific Node capacity and cost remain deferred until R-004
-  candidate evidence under P3-D3b4.
+- P3-D6b2b2b accepted: connection success is validated by a fresh `32-byte`
+  request/response canary. The site tracer uses an exact `512-byte` HTTP request
+  with a fresh nonce and exactly `64 KiB` of seeded incompressible response body;
+  an invalid or incomplete response makes its first-byte observation fail.
+- Sustained and concurrent transfer uses distinct pre-generated seeded
+  incompressible streams with exact order and digest validation. Caching,
+  compression, deduplication, external resources, and benchmark short paths are
+  forbidden. HTTP remains a tracer protocol rather than an Ardents semantic.
+- P3-D6b2b2c reproducible impairment traces, measurement attribution,
+  direct-baseline combination and drift, and state-reset rules is next, followed
+  by P3-D6c evidence and regression rules. Role-specific Node capacity and cost
+  remain deferred until R-004 candidate evidence under P3-D3b4.
 - No ADR and no code.
