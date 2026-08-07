@@ -27,6 +27,7 @@ accepted.
 - Name Authority secrecy, Service Name binding, resolution integrity, and
   recovery state;
 - canonical Namespace consistency across honest compatible clients;
+- Name Lease allocation, renewal, expiry, and subordinate-delegation integrity;
 - endpoint-local grants, Application Interface authority, and network metadata;
 - route, discovery, bootstrap, and Bridge availability;
 - honest-workload latency, throughput, fairness, and endpoint resource
@@ -147,6 +148,17 @@ or a local alias. Conflicting, stale, invalid, partitioned, or unavailable
 canonical state produces an explicit resolution failure until one authenticated
 binding can be established. This consistency requirement does not imply one
 administrator and does not turn the Namespace into a directory.
+
+No administrator grants root Service Names. The first valid claim accepted in
+deterministic shared Namespace order creates a time-bounded Name Lease for its
+Name Authority; concurrent state cannot create two resolver-selected
+controllers. A valid parent may issue subordinate names only inside its subtree.
+The lease proves current network control, not human identity, trademark rights,
+or permanent property. First-valid claims and renewal remain exposed to
+front-running, squatting, Sybil capture, and renewal censorship until P4-D6 and
+R-010 select and measure a bounded anonymous cost. That mechanism cannot require
+a global account, identity document, mandatory wallet, token balance, or one
+registrar.
 
 ## Claim format
 
@@ -318,6 +330,9 @@ or privacy claim.
 - The same complete canonical Service Name has one network-wide Name Record;
   local aliases and external namespaces cannot silently substitute another
   meaning when resolution fails.
+- A Name Lease is time-bounded. No registrar, resolver, or manual dispute choice
+  can override the accepted deterministic claim order or silently create
+  concurrent controllers for the same complete Service Name.
 - Name Records and Service Descriptors never contain an ordinary public origin
   address.
 - Carrier Nodes cannot reinterpret or forge Application Data accepted by an

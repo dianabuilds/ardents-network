@@ -80,6 +80,8 @@ The core product must let a local Application:
 - create or securely import a Service Authority and obtain its
   location-independent Service Target;
 - expose a local Service Instance behind that target;
+- claim a root Name Lease or receive a delegated subordinate Name Lease without
+  approval from a central administrator, account provider, or registrar;
 - use a distinct Name Authority to bind an optional human-readable Service Name
   to the target without making that authority part of ordinary publication;
 - resolve an exact Service Name in one canonical network-wide Namespace without
@@ -118,9 +120,10 @@ These are responsibility boundaries, not selected binaries or APIs:
   SDKs are convenience wrappers and never separate network implementations.
 - **Service Publisher** — binds a local Service Instance to a Service Target and
   publishes authenticated reachability metadata.
-- **Naming Surface** — uses a distinct Name Authority to register, resolve,
-  rotate, recover, and inspect Service Names in one canonical Namespace without
-  making it part of Service publication or becoming a service directory.
+- **Naming Surface** — uses a distinct Name Authority to claim or receive,
+  renew, delegate, resolve, rotate, recover, and inspect time-bounded Service
+  Names in one canonical Namespace without making it part of Service
+  publication or becoming a service directory.
 - **Contributor Node** — provides explicit, bounded entry, relay, discovery,
   rendezvous, or Bridge roles.
 - **Network Transparency** — exposes Control Plane roots, software provenance,
@@ -135,35 +138,38 @@ These are responsibility boundaries, not selected binaries or APIs:
 3. A complete Service Name has one verifiable network-wide meaning under
    authority distinct from Service Authority and can remain stable when a
    compromised or lost Service Target must be replaced.
-4. The User and Service do not learn each other's ordinary network location
+4. Root Service Name control begins with the first valid claim in deterministic
+   shared Namespace order and remains a renewable lease, not permanent property,
+   a User account, or human identity.
+5. The User and Service do not learn each other's ordinary network location
    within the declared Interactive Route conditions.
-5. Route Knowledge Separation prevents any one ordinary Node from learning the
+6. Route Knowledge Separation prevents any one ordinary Node from learning the
    full Route, reading Application Data, or linking an endpoint's ordinary
    location to a Service Name, Service Target, or opposite endpoint.
-6. A failed path produces bounded recovery or an explicit failure; the network
+7. A failed path produces bounded recovery or an explicit failure; the network
    does not silently pretend that an offline Service received data.
-7. Losing or blocking one ordinary path does not require one central operator
+8. Losing or blocking one ordinary path does not require one central operator
    to restore connectivity.
-8. Every security, anonymity, availability, and decentralization claim states
+9. Every security, anonymity, availability, and decentralization claim states
    its adversary, conditions, measurement, and limitation.
-9. Every accepted security mechanism also has a performance budget and overload
+10. Every accepted security mechanism also has a performance budget and overload
    test; no performance optimization may silently weaken that mechanism.
-10. A Local Traffic Observer receives no Service destination or plaintext from
+11. A Local Traffic Observer receives no Service destination or plaintext from
     the protocol. Ardents does not promise to hide its own use, but avoids one
     mandatory stable fingerprint and treats Transport Camouflage as a measurable
     censorship-resistance goal.
-11. The Interactive Route anonymity claim covers one malicious ordinary Node,
+12. The Interactive Route anonymity claim covers one malicious ordinary Node,
     not arbitrary collusion. Correlated Control spanning both endpoint sides may
     link a User and Service through traffic metadata without exposing
     Application Data.
-12. A malicious Service receives no User origin, Route, Isolation Context, or
+13. A malicious Service receives no User origin, Route, Isolation Context, or
     network-generated stable User identifier from Ardents, while a malicious
     User receives no Service Instance origin, Route, or Service Authority. Each
     still sees the Application Data and behavior intended for it.
-13. Target authentication, Route Profile binding, protocol freshness, and
+14. Target authentication, Route Profile binding, protocol freshness, and
     integrity fail closed. Detected modification, injection, replay, redirect,
     or downgrade never becomes an accepted connection or Application Data.
-14. The Interactive Route claim is implementation-gated. Reproducible
+15. The Interactive Route claim is implementation-gated. Reproducible
     endpoint-edge, Node-role, malicious-endpoint, isolation, and active-attack
     tests must pass before a candidate earns Route Qualification; the claim's
     conditions and excluded adversaries remain visible to Users and Developers.
@@ -254,7 +260,7 @@ following is unavoidable:
 - every useful candidate necessarily exposes information forbidden by the
   R-001 claim matrix or must accept target substitution, data modification,
   replay, redirect, or downgrade to meet its performance budget;
-- human-readable naming necessarily creates an unacceptable ownership or query
+- human-readable naming necessarily creates an unacceptable control or query
   graph;
 - safe isolation makes ordinary applications impractical to integrate;
 - the accepted security contract cannot meet measured latency, throughput, and

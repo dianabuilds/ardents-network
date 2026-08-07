@@ -93,8 +93,9 @@ Windows 11 or Ubuntu LTS `x86-64` desktop/laptop
 create or securely import Service Authority → obtain its Service Target → grant
 per-Service administration → choose one active local listener → publish
 authenticated, expiring reachability without exposing raw authority → separately
-authorize use of Name Authority → bind or update Service Name → accept a test
-Service Connection
+authorize use of Name Authority → claim a root Name Lease or receive a delegated
+subordinate Name Lease → bind or update Service Name → accept a test Service
+Connection
 
 **Done when:** a remote Application can connect while neither the User nor any
 one ordinary Node can link the Service Instance's public origin address to its
@@ -231,10 +232,10 @@ always cap lower; an explicit higher experimental cap remains unqualified.
 
 **Start:** A local HTTP server and a desired Service Name
 
-**Flow:** publish HTTP server as Service → bind name → enter exact name in
-reference client → resolve → connect → exchange HTTP bytes → migrate the
-authority to a new host without changing the target → simulate compromise by
-creating a replacement target and rebinding the same name
+**Flow:** publish HTTP server as Service → claim or receive a Name Lease → bind
+name → enter exact name in reference client → resolve → connect → exchange
+HTTP bytes → migrate the authority to a new host without changing the target →
+simulate compromise by creating a replacement target and rebinding the same name
 
 **Done when:** the site opens through the generic Service Connection; routine
 migration preserves both target and name; compromise preserves only the name;

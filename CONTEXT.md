@@ -117,6 +117,12 @@ subordinate names. It is not a service directory, local alias scope, or mandate
 for one administrator.
 _Avoid_: Resolver provider, search directory, local alias scope
 
+**Name Lease**:
+The time-bounded canonical Namespace state assigning control of one Service Name
+to a Name Authority. It may be renewed under network rules but is not permanent
+property, human identity, or publication permission.
+_Avoid_: Name ownership, User account, registrar approval
+
 **Name Record**:
 Name-Authority-authenticated data that binds a Service Name to a current Service
 Target without publishing an ordinary network location.

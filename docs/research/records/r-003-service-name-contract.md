@@ -85,8 +85,8 @@ provider-specific meaning to the canonical name.
 Canonical Service Names may be hierarchical. Authority over a parent name may
 delegate a bounded subordinate name or subtree without granting Service
 Authority, authority over siblings or ancestors, or a network-wide administrator
-role. The exact label syntax, depth, normalization, delegation record, initial
-claim, and conflict policy remain P4-D2b decisions.
+role. The exact label syntax, depth, normalization, and confusable-name handling
+remain P4-D2c decisions.
 
 An endpoint or Application may maintain a local alias for convenience, but the
 alias is not a Service Name, has no network-wide meaning, and must be visibly
@@ -98,8 +98,8 @@ Service Target under a separately visible Application policy.
 
 One canonical Namespace is a consistency and user-experience contract, not a
 decision to use one server, registrar, administrator, ledger, operator set, or
-project-controlled root. P4-D2b through P4-D6 must distribute or constrain
-allocation and governance power and make partitions, capture, and forks visible.
+project-controlled root. P4-D2c through P4-D6 must further constrain naming and
+governance power and make partitions, capture, and forks visible.
 If honest clients cannot establish one current binding during a conflict, they
 fail explicitly rather than accepting resolver-dependent destinations.
 
@@ -108,11 +108,53 @@ still supplies no index, search, recommendation, or public browsing surface for
 Unlisted Services. P4-D5 must address enumeration and query linking created by
 the naming mechanism itself.
 
+### P4-D2b — Permissionless leased initial claim
+
+**Product Owner decision, accepted 2026-08-08:** no person, project operator,
+registrar, account provider, or other central administrator grants a canonical
+Service Name. A root-level name enters use through the first valid claim accepted
+by the shared Namespace state under its deterministic ordering rule. The claim
+binds a time-bounded Name Lease to a Name Authority; it does not bind a host,
+Service Authority, Service Target, User identity, legal identity, or publication
+permission.
+
+A valid claim must use an available canonical name, authenticate its proposed
+Name Authority, satisfy the then-current bounded anonymous anti-abuse rule, and
+be accepted as one ordered state transition. Two concurrent or partitioned
+claims cannot create two valid controllers of the same complete name. If the naming
+system cannot establish which valid transition controls, the name remains
+pending, conflicting, or unavailable and Resolvers fail explicitly rather than
+choosing locally.
+
+The accepted ordering is the meaning of "first"; wall-clock arrival at one Node,
+one resolver's observation, network proximity, project preference, trademark,
+social identity, or a manual dispute decision cannot override it in V1. A Name
+Lease is a network control state, not permanent property or a claim that its
+holder is the person, organization, or brand suggested by the label.
+
+Every Name Lease expires unless renewed by its controlling authority under the
+eventually accepted lifecycle. Names are not owned forever merely because they
+were claimed first. Exact duration, renewal window, grace behavior, stale-cache
+handling, and when an expired name becomes claimable again remain P4-D3. A
+Resolver cannot treat an expired lease as current while those transitions are
+unresolved.
+
+An active parent Name Authority may authorize creation or delegation of bounded
+subordinate names within its own subtree and bind each to a chosen Name Authority.
+It gains no authority over siblings or ancestors. P4-D2c and P4-D3 still define
+the exact hierarchy and whether parent, child, and lease lifecycle interact after
+delegation.
+
+Permissionless does not mean zero-cost or unlimited. P4-D6 and R-010 must select
+and measure a bounded anonymous anti-squatting and Sybil cost that does not require
+a global User account, identity document, mandatory wallet, token balance, or one
+registrar. No cost mechanism, consensus family, ledger, auction, or proof system
+is selected by this decision.
+
 ## Remaining decisions
 
-1. **P4-D2b — Canonical syntax and initial allocation:** define label grammar,
-   hierarchy limits, normalization, confusable-name handling, initial claim,
-   delegation, uniqueness, and conflicts without one mandatory registrar.
+1. **P4-D2c — Canonical syntax and name safety:** define label grammar,
+   serialization, hierarchy limits, normalization, and confusable-name handling.
 2. **P4-D3 — Record lifecycle:** define Name Record versioning, expiry, renewal,
    caching, stale data, equivocation, partitions, and convergence.
 3. **P4-D4 — Name Authority lifecycle:** define custody, rotation, transfer,
@@ -134,7 +176,7 @@ the naming mechanism itself.
   every binding change, simplifying recovery while concentrating censorship and
   redirection power.
 - **H0:** no evaluated naming contract provides useful human names without an
-  unacceptable ownership graph, query graph, capture root, or recovery failure.
+  unacceptable control graph, query graph, capture root, or recovery failure.
 
 ## Evaluation criteria
 
@@ -144,7 +186,7 @@ Every candidate naming contract must state:
 2. who can create, update, transfer, recover, expire, or retire a binding;
 3. how a Resolver authenticates current state and detects stale or conflicting
    state without silently selecting a target;
-4. what naming infrastructure learns about names, owners, resolvers, and query
+4. what naming infrastructure learns about names, authorities, resolvers, and query
    relationships under honest, malicious, colluding, and partitioned operation;
 5. how target compromise, Name Authority compromise, loss, squatting, capture,
    denial, rollback, equivocation, and forks become bounded visible states;
@@ -199,6 +241,16 @@ query evidence without recording real User activity.
 - **Product Owner decision:** canonical names may be hierarchical and delegate
   bounded subordinate authority. Local aliases are explicitly non-canonical and
   must never masquerade as shareable Service Names.
+- **Product Owner decision:** a root name is acquired without administrator
+  approval by the first valid claim in deterministic shared-state order. The
+  claim creates a renewable, time-bounded Name Lease for its Name Authority,
+  not permanent property or human identity.
+- **Product Owner decision:** a parent Name Authority may issue subordinate names
+  only inside its subtree. Concurrent claims cannot create resolver-selected
+  controllers; unresolved order becomes explicit conflict or unavailability.
+- **Product Owner decision:** permissionless claims may carry a bounded anonymous
+  anti-abuse cost, but no global account, identity document, mandatory wallet,
+  token balance, or single registrar is required.
 - **Assumption:** V1 can make separate Name Authority custody understandable to
   one Developer without requiring an always-online naming administrator.
 
@@ -217,34 +269,49 @@ query evidence without recording real User activity.
   ambiguous or longer and moves trust selection into every client.
 - **Resolver-local aliases:** convenient for one endpoint but cannot serve as a
   portable network name and create dangerous same-looking destinations.
+- **Permanent first claim:** simple continuity, but converts early capture and
+  squatting into irreversible property without proving identity or use.
+- **Renewable Name Lease:** permits deterministic permissionless allocation and
+  eventual reuse without manual control judgment, but adds expiry, renewal,
+  censorship, and recovery failure modes.
+- **Administrator or auction allocation:** can moderate conflicts or scarcity,
+  but introduces approval, identity, payment, capture, or accessibility roots.
 
 ## Recommendation
 
 Use the accepted separate Name Authority as the stable control root for each
 Service Name inside the accepted canonical network-wide Namespace. Keep concrete
-custody, registry, and recovery mechanisms reversible. Next define canonical
-syntax, normalization, hierarchy limits, initial allocation, and conflict policy
-before comparing protocols.
+custody, registry, and recovery mechanisms reversible. Allocate root names as
+renewable permissionless Name Leases under deterministic shared-state ordering,
+with subordinate claims authorized only inside the parent subtree. Next define
+canonical syntax, serialization, normalization, hierarchy limits, and confusable
+name handling before comparing protocols.
 
 Confidence is high that Service Authority cannot also provide truthful recovery
 from its own compromise. Confidence is low that a usable, privacy-preserving,
 capture-resistant Name Authority lifecycle exists without a meaningful
 governance or availability cost. The single canonical Namespace is also
 unverified against partitions, capture, allocation abuse, and accessible
-operation; these are the central R-003 research risks.
+operation. The leased first-valid-claim policy is unverified against front-
+running, squatting, renewal censorship, and affordable Sybil resistance; these
+are the central R-003 research risks.
 
 The strongest counterarguments are that two authorities are too complex for a
 small V1 Developer journey and that one canonical Namespace creates a shared
 Control Plane. The first cost is accepted because merging authorities makes the
 catastrophe-recovery promise false. The second must be constrained by P4-D2b
-through P4-D6 without pretending that resolver-dependent names are safer.
+through P4-D6 without pretending that resolver-dependent names are safer. A
+third is that permissionless first-valid claims reward front-running and
+squatting; leases make that harm reversible but do not remove it.
 
 ## Disposition
 
-- State: `active`; P4-D1 and P4-D2a are accepted and P4-D2b is next.
+- State: `active`; P4-D1, P4-D2a, and P4-D2b are accepted; P4-D2c is next.
 - `Name Authority` becomes canonical product language.
 - `Namespace` now means the one canonical Ardents network-wide naming boundary,
   not a resolver-selected provider or local alias scope.
+- `Name Lease` becomes canonical product language for time-bounded Namespace
+  control by a Name Authority.
 - R-006 target lifecycle remains unchanged and now has a distinct naming
   continuity authority.
 - No ADR: no irreversible registry, governance, recovery, key, or protocol
