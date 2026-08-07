@@ -105,6 +105,20 @@ per direction. If the published Application stops consuming, receiver flow
 control propagates backpressure; Ardents does not hide the stall with loss,
 eviction, or an unbounded memory or disk queue.
 
+The same publisher also protects established work during a 10-minute anonymous
+pre-establishment flood on a symmetric `100 Mbit/s` link. With all `256`
+connections open and `64` offered the normal `40 Mbit/s` aggregate workload,
+the endpoint receives `1,000` validly framed but incomplete attempts per second
+at no more than `20 Mbit/s` inbound attacker traffic. All established streams
+remain usable; the active set delivers at least `32 Mbit/s` aggregate, every
+active stream averages at least `400 kbit/s` with no gap over `5 s`, and the
+inactive set passes unpredictable canaries without reconnecting. Publisher
+`p95 RSS` stays within `1 GiB` and mean CPU within one core. Ardents assumes no
+IP, global User account, or stable attacker identity, bounds and cleans up
+incomplete-attempt state, and never presents it to the published Application as
+an accepted Service Connection. This gate protects established work; honest new
+admission during the flood remains a separate requirement.
+
 ## J-04 — Integrate an Application
 
 **Actor:** Developer

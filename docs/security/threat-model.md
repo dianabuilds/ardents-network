@@ -281,6 +281,16 @@ route family by implication.
   and abandoned attempts, retransmission, control, padding, security, liveness,
   and background bytes count. A quiet direction or episode cannot offset a
   burst elsewhere, and required protection cannot be suppressed to pass.
+- Anonymous incomplete establishment attempts cannot evict established
+  publisher work. Under the accepted 10-minute `1,000` attempts/s and
+  `20 Mbit/s` inbound flood on a `100 Mbit/s` link, all `256` established
+  connections remain usable, the active set retains its P3-D5a useful-work
+  floors, inactive canaries succeed, and publisher RSS/CPU stay within
+  `1 GiB`/one core. Attempt state is finite and cleaned up across all 600,000
+  attempts. The defense cannot depend on IP, a global User account, or a stable
+  network-generated User identity, and cannot bypass authentication, privacy,
+  isolation, queues, or fail-closed handling. New honest admission remains a
+  separate P3-D5b claim rather than an implied result.
 - Integrity mechanisms reject protocol-level tagging that changes authenticated
   data, but cannot promise to detect every timing-, delay-, or volume-based tag.
   Such correlation remains within the P2-D1 and P2-D4 limitations.

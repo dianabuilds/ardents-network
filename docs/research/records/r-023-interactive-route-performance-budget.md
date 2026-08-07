@@ -1104,14 +1104,97 @@ measured process or network boundary, using a direct fallback, or averaging one
 episode against another. These are top-down unverified product ceilings rather
 than current implementation measurements.
 
+### P3-D5a — Protect established publisher work from incomplete-attempt flood
+
+**Product Owner decision, accepted 2026-08-07:** a required Windows or Linux
+publisher endpoint must preserve useful established Service Connections during
+a continuous 10-minute anonymous pre-establishment flood on a controlled
+symmetric `100 Mbit/s` access link.
+
+Before the attack window, the publisher has the complete accepted normal set:
+
+- `256` exact-target-authenticated incoming Service Connections remain open;
+- `64` of them continuously receive equal shares of the fixed incompressible
+  `40 Mbit/s` offered Application workload in the measured direction;
+- the other `192` remain authenticated, open, and inactive but usable.
+
+The test is repeated separately for User-to-Service and Service-to-User
+Application Data. The controlled User and published Applications do not apply
+backpressure, cancel, close, or impose shorter timeouts.
+
+For every one-second interval of the 10-minute attack window, the publisher
+receives `1,000` new syntactically valid connection-establishment attempts aimed
+at the published Service. Each reaches the supported pre-establishment or
+admission path but is deliberately left incomplete and never becomes a Service
+Connection. Attacker-attributable inbound bytes at the publisher operating-
+system network boundary are capped at `20 Mbit/s` in every one-second interval,
+so the workload tests endpoint admission isolation rather than unavoidable
+physical link saturation.
+
+The attempts provide no global User account, stable network-generated User
+identity, or publisher-visible ordinary source location. The implementation
+cannot make the test pass by grouping or blocking attempts by IP address,
+account, or another stable attacker identity. P3-D6 fixes reproducible arrival
+timing and route diversity without weakening the R-001 privacy boundary.
+
+During the complete attack window, all of these honest-work floors apply
+simultaneously:
+
+- all `256` established connections remain authenticated, open, and usable as
+  the same Application-facing streams;
+- the `64` active connections deliver at least `32 Mbit/s` aggregate
+  Application Data, averaged across the full attack window;
+- every active connection averages at least `400 kbit/s` of delivered
+  Application Data and has no continuous zero-delivery interval longer than
+  `5 s`;
+- every inactive connection passes unpredictable bounded Application canaries,
+  including a final canary, without a new connect operation or hidden stream
+  replacement. P3-D6 fixes their schedule and deadline.
+
+Success in one connection, aggregate, or Application Data direction cannot hide
+a starved, closed, or silently replaced connection. Only bytes delivered to the
+receiving Application count. The retained `32 Mbit/s` is 80% of the accepted
+normal publisher aggregate workload; the per-connection and no-progress floors
+remain separate anti-starvation guards.
+
+The complete publisher Ardents process tree simultaneously keeps
+`p95 resident memory <= 1 GiB` and mean CPU `<= 100%` of one logical core. The
+published Application's own work remains excluded, but publication, admission,
+cryptography, carrier, security, liveness, canary, timeout, and cleanup work and
+every helper process count. Existing connection, endpoint, Local Grant,
+Isolation Context, queue, and operating-system resource caps remain in force.
+
+Incomplete-attempt state, timers, tasks, handles, and buffers are finite, expire
+or are rejected under bounded policy, and do not accumulate across the 600,000
+injected attempts. An incomplete attempt is never presented to the published
+Application as an accepted Service Connection. Overload outcomes remain honest
+and bounded; their exact Connection Results and anonymous admission mechanism
+remain R-007 and R-010 work.
+
+The endpoint cannot pass by pre-empting established connections, reducing the
+declared offered workload, discarding misses, disabling target authentication,
+Route privacy, isolation, integrity, liveness, or fail-closed checks, sharing
+forbidden cross-context state, moving work outside the measured process tree,
+or using a direct fallback. These are top-down unverified qualification targets.
+
+P3-D5a deliberately protects already established work only. It does not claim
+that a new honest anonymous User can connect during the flood, and it does not
+select proof of work, tokens, payments, global identities, IP reputation, or any
+other admission mechanism. Honest new admission is the separate P3-D5b decision
+and must preserve the no-global-User-identity product boundary.
+
 ## Remaining decisions
 
 1. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
    units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
    floors on the accepted reference class.
-2. **P3-D5 — Hostile load:** define fairness and resource-exhaustion workloads
-   and the useful honest-work floor during attack.
-3. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
+2. **P3-D5b — Honest admission during anonymous flood:** set success, latency,
+   fairness, and bounded cost for new honest attempts under P3-D5a without a
+   global User identity or source-location ban.
+3. **P3-D5c — Established hostile work:** bound connection hoarding, slow or
+   adversarial streams, and post-establishment resource exhaustion without
+   making Application moderation a carrier responsibility.
+4. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
    artifacts, regression thresholds, and release failure rules.
 
 ## Hypotheses
@@ -1267,6 +1350,12 @@ traces, and direct-baseline results. Disposable experiment code belongs under
   carrier traffic over a paired no-failure run; and `p95` one-second carrier
   bitrate per endpoint network direction is at most
   `min(25 Mbit/s, 80% of its declared usable link budget)`.
+- **Product Owner decision:** during 10 minutes of `1,000` validly framed but
+  incomplete connection attempts per second and at most `20 Mbit/s` inbound
+  attack traffic on a symmetric `100 Mbit/s` publisher link, all `256`
+  established connections remain usable. The `64` active connections retain
+  at least `32 Mbit/s` aggregate, `400 kbit/s` each, and no delivery gap over
+  `5 s`, while publisher `p95 RSS <= 1 GiB` and mean CPU stays within one core.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -1298,8 +1387,9 @@ Apply the accepted queue ceilings, backpressure semantics, and scale-up
 saturation gate. Apply the accepted single-failure Service Connection recovery
 gate, three-event ordinary-churn workload, and impaired-live useful-progress
 profile, plus the overlapping-failure recovery gate and accepted degraded-path
-and recovery endpoint resource and carrier limits. Then define hostile load and
-the reproducible release gate.
+and recovery endpoint resource and carrier limits. Apply the accepted
+established-work pre-establishment-flood gate, then define honest admission,
+established hostile work, and the reproducible release gate.
 Role-specific infrastructure capacity remains deferred until R-004 supplies
 candidate units of work.
 
@@ -1312,8 +1402,9 @@ scale-up saturation gate, and single-failure recovery target also remain
 unverified; the three-event churn workload, impaired-live profile,
 overlapping-failure target, and endpoint recovery-resource ceilings are also
 unverified. The impaired and recovery carrier limits are also unverified, and
-the idle carrier budget is unverified and deliberately secondary. The remaining
-numeric targets remain undecided. The strongest counterargument is that
+the pre-establishment-flood workload is unverified. The idle carrier budget is
+unverified and deliberately secondary. The remaining numeric targets remain
+undecided. The strongest counterargument is that
 transport-independent continuation may require an Ardents layer above otherwise
 suitable carriers, adding state, attack surface, linkability risk, and resource
 cost. That is why the complete stack must earn the gate rather than assuming it
@@ -1526,8 +1617,24 @@ contradict the accepted client product.
   security, liveness, and attributable background bytes count; no missed
   recovery, suppressed protection, direct fallback, or omitted bytes can make a
   carrier result pass.
+- P3-D5a accepted: on a symmetric `100 Mbit/s` link, a publisher with the full
+  `256/64` established workload receives `1,000` syntactically valid but
+  incomplete attempts per second for 10 minutes, capped at `20 Mbit/s` inbound
+  attacker traffic in every one-second interval.
+- All `256` established connections remain authenticated, open, and usable.
+  The active set retains at least `32 Mbit/s` aggregate, every active connection
+  retains `400 kbit/s` mean and no zero-delivery gap over `5 s`, and the inactive
+  set passes unpredictable canaries without reconnecting.
+- The complete publisher process tree retains `p95 RSS <= 1 GiB` and mean CPU
+  `<= 100%` of one logical core. Admission state is finite and cannot accumulate
+  across the 600,000 attempts; all security, isolation, queue, and honest
+  evidence gates remain enabled.
+- P3-D5a assumes no IP address, global User account, or stable attacker identity
+  and protects only already established work. It neither selects an admission
+  mechanism nor claims that new honest attempts succeed during the flood.
 - Public DNS, naming design, bootstrap, routing, libraries, language, exact
   hardware, and the remaining numeric budgets remain unselected.
-- P3-D5 hostile load is next. Role-specific Node capacity and cost remain
+- P3-D5b honest anonymous admission during the same flood is next. Established
+  hostile work remains P3-D5c. Role-specific Node capacity and cost remain
   deferred until R-004 candidate evidence under P3-D3b4.
 - No ADR and no code.
