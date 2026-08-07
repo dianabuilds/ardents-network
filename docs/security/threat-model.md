@@ -176,6 +176,18 @@ of candidate behavior, with the original artifacts and invalidation reason
 retained. A failed build may remain research but cannot carry the qualified V1
 Interactive Route claim.
 
+The controlled endpoint topology covers all four Windows/Linux
+User-to-publisher operating-system pairings and measures both Application Data
+directions separately. User, Publisher, and every ordinary Node role execute on
+separate physical machines or isolated VMs through recorded controlled links;
+loopback, shared-memory transfer, in-process Nodes, and hidden same-host fast
+paths are invalid qualification evidence. The candidate retains its production
+Route shape and all cryptographic, authentication, isolation, resource, and
+fail-closed behavior. Direct baselines bracket applicable Ardents batches on the
+same endpoints and end-to-end impairment profile but can never become production
+fallback.
+Uncontrolled Internet runs are supplementary only.
+
 ## Security invariants
 
 - A Node identity is never a User identity or Service Target.

@@ -84,6 +84,15 @@ terminal results remain in the evidence. A run is replaced only for a confirmed
 harness or reference-environment failure independent of candidate behavior;
 the original artifacts and invalidation reason are retained.
 
+The controlled endpoint matrix includes Windows-to-Windows, Windows-to-Linux,
+Linux-to-Windows, and Linux-to-Linux User/client-to-publisher pairings, each in
+both Application Data directions. Endpoints and every ordinary Node role run on
+separate physical machines or isolated VMs with recorded finite resources and
+controlled links. Loopback, shared memory, in-process Nodes, reduced test
+Routes, and hidden same-host fast paths do not qualify. The candidate retains
+its production cryptography, target authentication, isolation, resource
+controls, and fail-closed behavior.
+
 ## Gate E — call a network release usable
 
 A release is usable only when complete journeys, not isolated primitives, pass
@@ -96,6 +105,12 @@ desktop/laptop reference devices, while the infrastructure path must pass on a
 Linux `2 vCPU`, `2 GiB RAM`, symmetric `100 Mbit/s` reference VPS class.
 Server-only success cannot substitute for a working User or Developer endpoint.
 macOS and mobile do not block V1 until a later product decision promotes them.
+
+Every applicable direct baseline uses the same endpoint machines, payload,
+direction, duration, and end-to-end impairment profile and brackets its Ardents
+batch before and after. It is measurement-only and cannot become a production
+fallback. Public-Internet or uncontrolled community runs may supplement but
+cannot replace or repair a failed controlled cell.
 
 One failed mandatory cell blocks the usable V1 and Route Qualification claim for
 that build and configuration. The artifact may remain an explicitly

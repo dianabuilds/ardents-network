@@ -1405,14 +1405,68 @@ release nor project communication may present them as a qualified V1 anonymous
 network. Qualification applies only to the recorded candidate and conditions;
 P3-D6c defines which later change requires partial or complete requalification.
 
+### P3-D6b1 — Controlled cross-platform reference topology
+
+**Product Owner decision, accepted 2026-08-07:** the V1 endpoint qualification
+matrix contains all four supported User/client-to-Developer/publisher platform
+pairings:
+
+- Windows to Windows;
+- Windows to Linux;
+- Linux to Windows;
+- Linux to Linux.
+
+The arrow identifies endpoint roles and operating-system families, not the
+Application Data direction. Every applicable workload is measured separately
+for User-to-Service and Service-to-User data inside each pairing. Exact supported
+OS versions and endpoint hardware images are frozen by P3-D6b2 for the tested
+candidate; one pairing cannot stand in for another.
+
+The User endpoint, Publisher endpoint, and every ordinary carrier role execute
+on separate physical machines or isolated virtual machines with separately
+capped and recorded CPU, memory, storage, clock, and network resources. A
+qualifying run cannot use loopback, shared-memory data transfer, in-process
+Nodes, or an unrecorded same-host fast path. Multiple isolated VMs may share
+physical hardware only when the declared caps and network path remain
+enforceable and visible in the evidence.
+
+Every measured infrastructure Node instance uses the accepted Linux reference
+VPS class of `2 vCPU`, `2 GiB RAM`, and a symmetric `100 Mbit/s` access link.
+This does not require all roles to share one host or assert that all roles have
+the same useful capacity. R-004 and P3-D3b4 determine the candidate's Route
+shape, hop count, role set, placement, and role-specific useful-work floors.
+
+A controlled network layer mediates every inter-machine link and applies the
+declared bandwidth, latency, loss, jitter, interruption, and failure schedule.
+It records configured and observed conditions. The candidate uses its actual
+production Route shape, protocol, transports, cryptography, target
+authentication, Isolation Context handling, resource controls, and fail-closed
+behavior. A test-only direct path, trusted relay, disabled protection, reduced
+hop count, shared secret unavailable in production, or hidden topology shortcut
+invalidates qualification.
+
+Every metric that uses an ordinary-network direct baseline receives a paired
+baseline on the same endpoint machines and OS images, with the same Application
+payload, direction, duration, and declared end-to-end impairment profile. One
+direct run brackets the associated Ardents batch before it and another after it.
+The direct path exists only for measurement and can never become a production
+fallback. P3-D6b2 defines how the two measurements are combined and how much
+baseline drift invalidates the comparison.
+
+Public-Internet, community-node, or uncontrolled-VPS runs may provide useful
+supplementary field evidence, but they cannot replace, repair, or average into a
+failed controlled qualification cell. P3-D6b1 selects no routing family,
+transport, library, language, or final Route shape.
+
 ## Remaining decisions
 
 1. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
    units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
    floors on the accepted reference class.
-2. **P3-D6b — Reference matrix and sampling:** define hardware, operating-system
-   versions, topology, network distributions, direct baselines, sample counts,
-   repetitions, percentile calculation, and allowed failure rates.
+2. **P3-D6b2 — Reference inputs and sampling:** define exact endpoint hardware,
+   operating-system versions, normal network distributions, Application
+   payloads, baseline combination and drift, sample counts, repetitions,
+   percentile calculation, and allowed failure rates.
 3. **P3-D6c — Evidence and regression:** define retained artifacts,
    reproducibility, comparability, regression thresholds, invalidation review,
    and partial or complete requalification rules.
@@ -1605,6 +1659,15 @@ traces, and direct-baseline results. Disposable experiment code belongs under
   confirmed harness or reference-environment failure may invalidate a run, with
   the original artifacts and reason retained; an unqualified build may remain
   research but cannot carry the V1 anonymous-network claim.
+- **Product Owner decision:** qualification covers Windows-to-Windows,
+  Windows-to-Linux, Linux-to-Windows, and Linux-to-Linux endpoint-role pairings,
+  each in both Application Data directions. Endpoints and ordinary Nodes run on
+  separate machines or isolated VMs through a controlled network; loopback,
+  shared-memory, and hidden test fast paths are forbidden.
+- **Product Owner decision:** direct baselines bracket each applicable Ardents
+  batch before and after on the same endpoints, payload, direction, duration,
+  and end-to-end impairment profile. Uncontrolled Internet results are
+  supplementary only.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -1640,8 +1703,9 @@ and recovery endpoint resource and carrier limits. Apply both accepted
 pre-establishment-flood gates for established work and honest anonymous
 admission, and the accepted established-hostile-work isolation and full-capacity
 non-claim. Apply the accepted conjunctive qualification and hard-guardrail
-semantics, then define its reference matrix, sampling, evidence, and regression
-rules.
+semantics and the accepted four-pair controlled topology with bracketing direct
+baselines, then define the remaining reference inputs, sampling, evidence, and
+regression rules.
 Role-specific infrastructure capacity remains deferred until R-004 supplies
 candidate units of work.
 
@@ -1658,9 +1722,10 @@ the established-work, honest-admission, and established-hostile workloads are
 unverified. The honest-client admission cost is also unverified on the required
 platforms. The idle carrier budget is unverified and deliberately secondary.
 The remaining numeric targets remain undecided. The strongest counterargument
-is that the mandatory matrix may be expensive to execute for a one-to-one
-project; P3-D6b must make it reproducible and proportionate without weakening
-coverage or allowing selective results. Separately,
+is that the mandatory four-pair, two-direction matrix may be expensive to
+execute for a one-to-one project; P3-D6b2 must make sampling reproducible and
+proportionate without weakening coverage or allowing selective results.
+Separately,
 transport-independent continuation may require an Ardents layer above otherwise
 suitable carriers, adding state, attack surface, linkability risk, and resource
 cost. That is why the complete stack must earn the gate rather than assuming it
@@ -1936,9 +2001,24 @@ contradict the accepted client product.
 - One failed mandatory cell blocks V1 Route Qualification for that build and
   configuration. It may remain an explicitly unqualified research build but
   cannot be presented as a qualified V1 anonymous network.
+- P3-D6b1 accepted: the controlled endpoint matrix contains Windows-to-Windows,
+  Windows-to-Linux, Linux-to-Windows, and Linux-to-Linux role pairings, with
+  User-to-Service and Service-to-User data measured separately in each.
+- User, Publisher, and every ordinary Node role run on separate physical or
+  isolated virtual machines with recorded finite resources and controlled
+  links. Loopback, shared memory, in-process Nodes, and hidden same-host or
+  reduced-Route fast paths cannot qualify.
+- Each infrastructure Node instance uses the Linux `2 vCPU`, `2 GiB RAM`,
+  symmetric `100 Mbit/s` reference VPS class. R-004 and P3-D3b4 still determine
+  candidate Route shape, roles, placement, and role-specific useful capacity.
+- Applicable direct baselines run on the same endpoints and end-to-end
+  impairment profile immediately before and after each Ardents batch. They are
+  measurement-only
+  and never a production fallback; uncontrolled Internet evidence is
+  supplementary and cannot repair a failed controlled cell.
 - Public DNS, naming design, bootstrap, routing, libraries, language, exact
   hardware, and the remaining numeric budgets remain unselected.
-- P3-D6b reference topology and sampling is next, followed by P3-D6c evidence
-  and regression rules. Role-specific Node capacity and cost remain deferred
-  until R-004 candidate evidence under P3-D3b4.
+- P3-D6b2 exact reference inputs and sampling is next, followed by P3-D6c
+  evidence and regression rules. Role-specific Node capacity and cost remain
+  deferred until R-004 candidate evidence under P3-D3b4.
 - No ADR and no code.
