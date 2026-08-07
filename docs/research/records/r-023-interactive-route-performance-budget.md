@@ -390,23 +390,55 @@ security, or moving work outside the counted process tree. Normal endpoint
 background network bytes are deliberately not included in this CPU and memory
 decision; P3-D3c2b gives them a separate measurable budget.
 
+### P3-D3c2b — Idle background carrier overhead
+
+**Product Owner decision, accepted 2026-08-07 as a secondary efficiency
+guardrail:** on each required Windows and Linux client reference endpoint, an
+already joined client that remains network-ready for a continuous 24-hour
+steady-idle window sends and receives at most `25 MiB` of Ardents-attributable
+carrier traffic in total, approximately `750 MiB` per 30 days.
+
+The workload has no open Service Connections, no published Service, and no
+infrastructure Node role, and runs on the normal stable non-adversarial
+reference network. The numerator combines both directions and includes Ardents
+control messages, keepalives, network-state refresh, update checks and metadata,
+retransmissions, padding, and any cover traffic. P3-D6 must define the exact
+operating-system attribution boundary and include transport and network framing
+consistently on Windows and Linux; moving traffic to a helper process does not
+remove it from the total.
+
+The following are outside this steady-idle budget and require separately visible
+measurements rather than disappearing from evidence:
+
+- the initial bootstrap and full state acquisition of a clean first start;
+- an explicitly initiated software-package payload download or installation;
+- blocked-entry, partition, or degraded-network recovery covered by R-009 and
+  P3-D4.
+
+This number is a top-down, unverified optimization target rather than a
+standalone V1 release blocker or a runtime quota. Exceeding it in an otherwise
+qualified design requires explanation, retained evidence, and an optimization
+decision, but the client must not disconnect, delay required security or
+liveness work, or weaken R-001 merely to pass. The limit neither requires nor
+authorizes constant-rate padding or a periodic fingerprint. Under R-001, hidden
+V1 cover traffic is not part of the baseline Interactive Route claim; a stronger
+profile that needs it belongs to R-005 with its own security and performance
+budget.
+
 ## Remaining decisions
 
-1. **P3-D3c2b — Idle background carrier overhead:** bound all sent and received
-   carrier bytes required to keep an otherwise idle client network-ready, with
-   explicit exclusions and anti-fingerprinting guardrails.
-2. **P3-D3c2c — Active resources, overhead, and fairness:** set CPU, memory,
+1. **P3-D3c2c — Active resources, overhead, and fairness:** set CPU, memory,
    active carrier-bandwidth overhead, aggregate goodput, queue, and
    per-connection progress budgets and measure scale-up saturation for each
    reference class.
-3. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
+2. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
    units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
    floors on the accepted reference class.
-4. **P3-D4 — Tail and degradation:** set jitter, loss, churn, alternate-route,
+3. **P3-D4 — Tail and degradation:** set jitter, loss, churn, alternate-route,
    and overload behavior without weakening R-001.
-5. **P3-D5 — Hostile load:** define fairness and resource-exhaustion workloads
+4. **P3-D5 — Hostile load:** define fairness and resource-exhaustion workloads
    and the useful honest-work floor during attack.
-6. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
+5. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
    artifacts, regression thresholds, and release failure rules.
 
 ## Hypotheses
@@ -500,6 +532,10 @@ traces, and direct-baseline results. Disposable experiment code belongs under
   an otherwise idle required client keeps whole-process-tree
   `p95 resident memory <= 256 MiB` and mean CPU `<= 1%` of one logical core
   without leaving or weakening the network-ready state.
+- **Product Owner decision:** an already joined, network-ready client uses no
+  more than `25 MiB` of total sent-plus-received Ardents carrier traffic during
+  24 hours of steady idle. This is a secondary efficiency guardrail rather than
+  a standalone release blocker.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -523,15 +559,17 @@ ceilings unless evidence falsifies that shape. Use the accepted connection and
 endpoint-readiness targets and the tracer first-byte target as candidate gates,
 then apply the accepted single-connection goodput and separate client and
 publisher concurrency floors and the accepted idle client CPU and memory
-ceiling. Define idle background traffic, active resources and fairness,
-infrastructure Node capacity, degradation, hostile load, and the reproducible
-release gate next; bounded endpoint scale-up is already fixed.
+ceiling. Treat the accepted idle background-traffic number as an optimization
+guardrail, then define active resources and fairness, infrastructure Node
+capacity, degradation, hostile load, and the reproducible release gate;
+bounded endpoint scale-up is already fixed.
 
 Confidence: high for the platform boundary and desired connection experience;
 the accepted latency, goodput, client-concurrency, and publisher-concurrency
 targets, infrastructure reference class, and idle client resource ceiling
-remain unverified, and the remaining numeric targets remain undecided. The
-strongest counterargument is that
+remain unverified. The idle carrier budget is also unverified and deliberately
+secondary; the remaining numeric targets remain undecided. The strongest
+counterargument is that
 supporting both Windows and Linux from the first V1 slice increases packaging
 and systems-integration work for a one-to-one project, but removing either would
 contradict the accepted client product.
@@ -602,9 +640,16 @@ contradict the accepted client product.
   and security work throughout the idle measurement. Process splitting,
   disconnection, deferred validation, or weakened security cannot make a run
   pass; exact sampling and platform attribution remain P3-D6 evidence.
+- P3-D3c2b accepted as a secondary efficiency guardrail: an already joined,
+  network-ready client uses no more than `25 MiB` of combined sent and received
+  Ardents carrier traffic over 24 hours of normal steady idle.
+- Clean-start bootstrap, explicit software-package payloads, and blocked or
+  degraded recovery are measured separately. The guardrail is not a quota or a
+  standalone release blocker, never justifies suppressing required traffic, and
+  adds no hidden cover-traffic requirement to the baseline Route Profile.
 - Public DNS, naming design, bootstrap, routing, libraries, language, exact
   hardware, and the remaining numeric budgets remain unselected.
-- P3-D3c2b, idle background carrier overhead, is next. Active resource,
-  aggregate-goodput, and fairness budgets remain P3-D3c2c; role-specific Node
-  capacity is completed with R-004 candidate evidence under P3-D3b4.
+- P3-D3c2c, active resource, aggregate-goodput, and fairness budgets, is next;
+  role-specific Node capacity is completed with R-004 candidate evidence under
+  P3-D3b4.
 - No ADR and no code.

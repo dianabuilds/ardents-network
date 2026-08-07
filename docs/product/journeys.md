@@ -33,6 +33,13 @@ client keeps the complete Ardents process tree at
 must remain network-ready and continue required background and security work;
 disconnecting or moving work to an uncounted helper does not satisfy the gate.
 
+Once already joined, the same client has a secondary steady-idle efficiency
+target of at most `25 MiB` of combined sent and received Ardents carrier traffic
+per 24 hours. Initial bootstrap, explicit software-package payloads, and blocked
+or degraded recovery are measured separately. This target never requires
+disconnecting or suppressing security work and is not a hidden cover-traffic
+profile.
+
 ## J-02 — Open an Unlisted Service
 
 **Actor:** User
