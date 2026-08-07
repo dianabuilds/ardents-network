@@ -223,6 +223,17 @@ Only a confirmed candidate-independent harness or environment failure permits a
 complete replacement. Candidate-caused drift fails the candidate, and no direct
 path is available to production traffic.
 
+Qualification state is also a security boundary. Clean and routine startup and
+cold and warm request fixtures are declared and verified for every attempt. Cold
+state contains no prepared data for the exact Service Name, Service Target,
+Isolation Context, and Route Profile; warm state may reuse only current
+authenticated target and reusable Route state for that same tuple and never an
+open Service Connection or Application response cache. The fixture manifest and
+verification remain evidence. A candidate-independent reset failure may
+invalidate an attempt under P3-D6a, but candidate retention, reconstruction,
+hidden warm-up, response caching, or cross-context reuse is a candidate failure;
+where it violates isolation or authentication, it is a hard security failure.
+
 Qualification sampling cannot hide tail failures. Normal short-event cells use
 `100` attempts and at least `99%` success unless a specific accepted scenario
 sets another floor; recovery uses at least `20` episodes and `95%` success where
