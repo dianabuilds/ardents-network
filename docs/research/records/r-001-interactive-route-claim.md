@@ -65,20 +65,66 @@ Consequences:
 - R-023 may set useful low-latency performance budgets without pretending that
   those budgets also buy broad-observer resistance.
 
+### P2-D2 — Local privacy without an invisibility promise
+
+**Product Owner decision, accepted 2026-08-07:** the ideal is for Ardents use to
+look like ordinary traffic, but the Interactive Route cannot honestly promise
+invisibility or guaranteed indistinguishability to a network administrator,
+ISP, or other Local Traffic Observer.
+
+A network-only Local Traffic Observer adjacent to one endpoint is assumed to
+know that endpoint's ordinary network location. It may also observe:
+
+- destination addresses of the endpoint's external connections, including an
+  ordinary entry Node or Bridge;
+- connection timing, direction, duration, packet sizes or aggregate volume,
+  retries, and repeated-use patterns;
+- enough protocol or behavioral signals to suspect, infer, or classify Ardents
+  use.
+
+The Ardents protocol must not directly expose at that vantage point:
+
+- the selected Service Name or Service Target;
+- the opposite endpoint's ordinary network location;
+- plaintext Application Data;
+- the full Route or the identities of all participating Nodes.
+
+These are protocol-disclosure limits, not an anti-inference guarantee. A Local
+Traffic Observer may still correlate timing and volume with another observation,
+classify Ardents behavior, block or throttle visible peers, or learn information
+from an endpoint or Application compromised outside this network-only model.
+
+Transport Camouflage remains a real censorship-resistance goal: Ardents avoids
+one mandatory stable network fingerprint and aims to make confident
+classification or blanket blocking require active analysis or meaningful
+collateral blocking of ordinary traffic. R-009 must turn this into measurements
+for replaceable Bridges and transports. It remains best-effort and never becomes
+a statement that the observer "sees only HTTPS" or cannot identify Ardents.
+
+Consequences:
+
+- ordinary Interactive Route privacy does not depend on successful protocol
+  disguise;
+- Service identifiers, origin reachability, and Application Data cannot appear
+  in locally observable plaintext merely because camouflage fails;
+- transport agility and Bridges can improve circumvention without silently
+  strengthening the Interactive Route anonymity claim;
+- the product reports blocking or degraded reachability rather than claiming an
+  undetectable connection;
+- active probing and exact classification resistance belong to R-009 and the
+  active-attack boundary in P2-D6.
+
 ## Remaining decisions
 
-1. **P2-D2 — Local observer:** exactly what an ISP or observer near one endpoint
-   sees, what Ardents must hide, and what a Bridge may change without becoming a
-   baseline promise.
-2. **P2-D3 — One intermediary:** the knowledge and control available to each
+1. **P2-D3 — One intermediary:** the knowledge and control available to each
    ordinary carrier role and the minimum separation the claim requires.
-3. **P2-D4 — Collusion:** which combinations of Nodes or network vantage points
+2. **P2-D4 — Collusion:** which combinations of Nodes or network vantage points
    break location privacy and which combinations must still be resisted.
-4. **P2-D5 — Malicious endpoint:** what a malicious User or Service can learn
+3. **P2-D5 — Malicious endpoint:** what a malicious User or Service can learn
    from Application Data, connection behavior, and repeated use.
-5. **P2-D6 — Active attacks:** required resistance to tagging, replay, delay,
+4. **P2-D6 — Active attacks:** required resistance to tagging, replay, delay,
    redirection, route manipulation, and target substitution.
-6. **P2-D7 — Conditions and falsification:** required honest behavior,
+5. **P2-D7 — Conditions and falsification:** required honest behavior,
    diversity, measurements, failure thresholds, and user-facing limitation
    text for the final claim matrix.
 
@@ -113,22 +159,33 @@ endpoint, intermediary, and observer views of connection setup, steady traffic,
 failure, and repeated connections. R-023 supplies the honest-workload budget;
 R-011 later tests whether claimed operator and network diversity exists.
 
-## Alternatives rejected by P2-D1
+## Alternatives rejected by accepted decisions
 
-- **Broad-observer resistance as a V1 promise:** rejected because it is not part
-  of the accepted low-latency contract and would be dishonest without a separate
-  measurable mechanism and cost.
-- **No location-privacy promise:** rejected because it would remove the central
+- **P2-D1 — Broad-observer resistance as a V1 promise:** rejected because it is
+  not part of the accepted low-latency contract and would be dishonest without
+  a separate measurable mechanism and cost.
+- **P2-D1 — No location-privacy promise:** rejected because it would remove the central
   product value of reaching a Service without revealing ordinary endpoint
   locations to the opposite endpoint or one ordinary intermediary.
+- **P2-D2 — Guaranteed ordinary-traffic disguise:** rejected because network
+  addresses, traffic behavior, fingerprints, and active probing can expose or
+  strongly suggest Ardents use.
+- **P2-D2 — No camouflage objective:** rejected because avoiding one fixed
+  fingerprint and raising the cost of blanket blocking are necessary in the
+  accepted hostile environment even though they cannot create invisibility.
 
 ## Disposition
 
 - State: `active`.
 - P2-D1 accepted: the Interactive Route has no Broad Traffic Observer
   timing-and-volume correlation-resistance claim.
+- P2-D2 accepted: a Local Traffic Observer receives no direct Service
+  destination, opposite endpoint location, Application Data, or full Route from
+  the protocol, but may observe connection metadata and classify Ardents use.
+- Transport Camouflage is best-effort: no single mandatory stable fingerprint,
+  but no invisibility or guaranteed ordinary-traffic disguise.
 - The endpoint-location and single-intermediary goals remain accepted, but their
   exact conditions and collusion boundary are not yet complete.
-- P2-D2, the local-observer boundary, is next.
+- P2-D3, the single-intermediary knowledge boundary, is next.
 - No routing family, protocol, library, implementation language, ADR, or code is
   selected.

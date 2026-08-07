@@ -35,7 +35,8 @@ accepted.
 
 We assume the presence of:
 
-- a local or ISP observer seeing one endpoint's traffic;
+- a Local Traffic Observer or ISP seeing one endpoint's ordinary location and
+  external network connections;
 - a censor blocking, probing, throttling, and fingerprinting network entry;
 - malicious, unreliable, or colluding entry, relay, discovery, rendezvous, and
   naming infrastructure;
@@ -72,15 +73,16 @@ cover-traffic-heavy profile becomes part of the product.
 ### Bridge entry
 
 A Bridge provides a replaceable entry path when ordinary network participation
-is blocked. It is a circumvention mechanism, not an anonymity guarantee by
-itself.
+is blocked. Together with replaceable transports it may provide Transport
+Camouflage, but this is a best-effort circumvention property rather than an
+anonymity or indistinguishability guarantee.
 
 ## Threat and response matrix
 
 | Adversary | Representative attack | Required product response | Honest limitation |
 |---|---|---|---|
 | Censor / DPI | Block known Nodes, bootstrap sources, or protocol fingerprints; probe suspected Bridges | Multiple authenticated bootstrap sources, replaceable Bridges, transport agility, bounded rotation, and explicit blocked state | No fixed protocol disguise or address remains unblockable forever |
-| Local observer | Observe entry peer, timing, volume, and long-lived patterns | Encrypted entry, bounded entry policy, multi-hop route, connection isolation, and no direct Service fallback | The observer sees Ardents use and may correlate low-latency traffic with observations elsewhere |
+| Local Traffic Observer | Observe the adjacent endpoint's location, external peer addresses, timing, direction, duration, volume, retries, and long-lived patterns; attempt to classify Ardents use | Encrypt protocol and Application Data; hide the selected Service identity, opposite endpoint location, and full Route; prohibit direct Service fallback; avoid one mandatory stable fingerprint | Ardents use may still be classified or inferred, and low-latency traffic may be correlated with observations elsewhere |
 | Broad Traffic Observer | Correlate both endpoint traffic statistically | Make the lack of an Interactive Route correlation-resistance claim visible; measure any later stronger Route Profile separately | Interactive traffic is expected to remain timing- and volume-correlation-sensitive |
 | Malicious infrastructure Node | Tag, delay, replay, drop, redirect, bias selection, or retain metadata | End-to-end target authentication and integrity, endpoint-selected safe paths, replay protection, bounded retry, role separation, and diversity analysis | Guarantees depend on the accepted collusion model and real diversity |
 | Sybil / flooding actor | Capture discovery or exhaust connection, rendezvous, descriptor, and naming capacity | Bounded queues and lifetimes, quotas or anonymous costs, diversified selection, local admission, and visible overload | No global proof of personhood; accessibility and concentration costs remain |
@@ -133,6 +135,12 @@ No document or interface may say only “anonymous,” “private,” “secure,
 - The Interactive Route never claims resistance to timing-and-volume correlation
   by a Broad Traffic Observer; payload encryption is not traffic-analysis
   resistance.
+- A Local Traffic Observer may know the adjacent endpoint's ordinary location
+  and connection metadata, but the protocol does not directly expose the
+  selected Service, opposite endpoint location, Application Data, or full Route.
+- Transport Camouflage is best-effort. Ardents avoids one mandatory stable
+  fingerprint but never claims invisibility or guaranteed indistinguishability
+  from ordinary Internet traffic.
 - Every Application Interface operation requires an endpoint-local grant scoped
   to the Application, optional Service, and allowed operations; connection or
   publication access never implies raw Service Authority export.
@@ -161,7 +169,7 @@ No document or interface may say only “anonymous,” “private,” “secure,
 
 The prioritized questions live in [the network research queue](../research/questions.md).
 R-006 fixes the V1 target lifecycle, R-002 fixes the Application Interface, and
-R-001 P2-D1 fixes the outer limit of the Interactive Route claim.
+R-001 P2-D1 and P2-D2 fix its broad- and local-observer limits.
 No production architecture should be selected before R-001, R-003, R-004,
 R-007, R-009, and R-023 make the observer, naming, routing, failure, bootstrap,
 and performance contracts testable.

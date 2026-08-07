@@ -150,6 +150,12 @@ and optionally subdivided by it. Connections in different contexts must not
 share linkable routing or session state.
 _Avoid_: User account, global Persona, cosmetic privacy setting
 
+**Local Traffic Observer**:
+A network-only observer adjacent to one endpoint that can see that endpoint's
+ordinary location and external connection metadata, but is not assumed to
+observe both ends.
+_Avoid_: Endpoint administrator, compromised Device, Broad Traffic Observer
+
 **Broad Traffic Observer**:
 A passive adversary able to observe traffic timing and volume near both
 endpoints, or across enough network locations to correlate one low-latency
@@ -177,6 +183,12 @@ _Avoid_: Origin server, reverse proxy
 A non-public or replaceable entry path used when ordinary ways of joining
 Ardents are blocked or fingerprinted.
 _Avoid_: Trusted gateway, permanent bootstrap Node
+
+**Transport Camouflage**:
+A best-effort property that makes confident classification or blocking of
+Ardents require active analysis or meaningful collateral blocking of ordinary
+traffic. It is not a promise of invisibility or guaranteed indistinguishability.
+_Avoid_: Invisible traffic, guaranteed HTTPS disguise
 
 **Control Plane**:
 The mechanisms and authorities that govern network discovery, naming,

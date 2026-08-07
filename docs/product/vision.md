@@ -120,6 +120,10 @@ These are responsibility boundaries, not selected binaries or APIs:
    its adversary, conditions, measurement, and limitation.
 9. Every accepted security mechanism also has a performance budget and overload
    test; no performance optimization may silently weaken that mechanism.
+10. A Local Traffic Observer receives no Service destination or plaintext from
+    the protocol. Ardents does not promise to hide its own use, but avoids one
+    mandatory stable fingerprint and treats Transport Camouflage as a measurable
+    censorship-resistance goal.
 
 The Interactive Route deliberately makes no Broad Traffic Observer resistance
 claim. A delayed, padded, or cover-traffic-heavy profile enters the product only
@@ -172,6 +176,8 @@ until the product, security, and performance contracts can compare them fairly.
 - mandatory blockchain, wallet, token, or governance coin;
 - opaque cryptographic addresses as the ordinary human naming experience;
 - user-tunable anonymity knobs that create silent fingerprinting hazards;
+- guaranteed invisibility or indistinguishability from ordinary Internet
+  traffic;
 - Broad Traffic Observer resistance as an Interactive Route promise;
 - compatibility with the architecture or wire contracts in `old`.
 

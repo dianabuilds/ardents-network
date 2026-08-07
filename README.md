@@ -83,6 +83,7 @@ entry gates.
 - application persistence, arbitrary code execution, or decentralized compute
   by implication;
 - an opaque cryptographic address as the ordinary human-facing Service Name;
+- guaranteed indistinguishability from ordinary Internet traffic;
 - Broad Traffic Observer resistance as an Interactive Route promise.
 
 ## License
