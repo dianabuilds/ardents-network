@@ -93,9 +93,16 @@ or compromise requires replacing that target rather than claiming safe revocatio
 _Avoid_: User identity, Node key, Service Instance
 
 **Service Name**:
-A human-readable name that resolves to a Service Target and may remain stable
-while a Service migrates or replaces a compromised target.
+A human-readable name controlled by a Name Authority that resolves to a Service
+Target and may remain stable while a Service migrates or replaces a compromised
+target.
 _Avoid_: Onion address, IP address, search keyword
+
+**Name Authority**:
+The authority controlling one Service Name's authenticated binding independently
+of Service Authority. It is not needed to publish, resolve, or connect to the
+Service during ordinary operation.
+_Avoid_: Service Authority, User identity, registrar administrator
 
 **Unlisted Service**:
 A Service that anyone knowing its exact Service Name may attempt to open while
@@ -109,8 +116,8 @@ renewal, transfer, recovery, and disputes.
 _Avoid_: Service directory, global username registry
 
 **Name Record**:
-Authenticated naming data that binds a Service Name to a current Service Target
-without publishing an ordinary network location.
+Name-Authority-authenticated data that binds a Service Name to a current Service
+Target without publishing an ordinary network location.
 _Avoid_: DNS A record, service listing, origin address
 
 **Resolver**:

@@ -4,7 +4,7 @@ title: What is the V1 lifecycle of a Service Target?
 status: decided
 owner: product research
 started: 2026-08-07
-reviewed: 2026-08-07
+reviewed: 2026-08-08
 ---
 
 # R-006 — Service Target lifecycle
@@ -201,7 +201,10 @@ bounded instance delegation may become necessary earlier than multihoming does.
 - Service Authority becomes canonical product language.
 - R-002 is next and must expose creation/import, single active publication, and
   honest failure without selecting a key format.
-- R-003 must provide Service Name replacement after target compromise or loss.
+- R-003 P4-D1 now fixes Name Authority separately from Service Authority so the
+  stable name can bind a replacement after target compromise or loss. Its
+  allocation, authority lifecycle, private resolution, and governance remain
+  R-003 work.
 - No ADR: the decision is explicit, scoped to V1, and reversible before a wire
   format or production implementation exists.
 - No experiment or production code created.

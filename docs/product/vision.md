@@ -80,7 +80,8 @@ The core product must let a local Application:
 - create or securely import a Service Authority and obtain its
   location-independent Service Target;
 - expose a local Service Instance behind that target;
-- bind an optional human-readable Service Name to the target;
+- use a distinct Name Authority to bind an optional human-readable Service Name
+  to the target without making that authority part of ordinary publication;
 - resolve an exact Service Name without a public directory;
 - establish a protected live Service Connection;
 - exchange opaque Application Data within measurable performance and resource
@@ -116,8 +117,9 @@ These are responsibility boundaries, not selected binaries or APIs:
   SDKs are convenience wrappers and never separate network implementations.
 - **Service Publisher** — binds a local Service Instance to a Service Target and
   publishes authenticated reachability metadata.
-- **Naming Surface** — registers, resolves, rotates, recovers, and inspects
-  Service Names without becoming a service directory.
+- **Naming Surface** — uses a distinct Name Authority to register, resolve,
+  rotate, recover, and inspect Service Names without making it part of Service
+  publication or becoming a service directory.
 - **Contributor Node** — provides explicit, bounded entry, relay, discovery,
   rendezvous, or Bridge roles.
 - **Network Transparency** — exposes Control Plane roots, software provenance,
@@ -129,8 +131,9 @@ These are responsibility boundaries, not selected binaries or APIs:
    carrier Nodes acting alone or together, while its endpoints, Service
    Authority, and accepted cryptography remain uncompromised.
 2. A Service Target is independent of a Node identity and ordinary IP location.
-3. A Service Name resolves verifiably and can remain stable when a compromised
-   or lost Service Target must be replaced.
+3. A Service Name resolves verifiably under authority distinct from Service
+   Authority and can remain stable when a compromised or lost Service Target
+   must be replaced.
 4. The User and Service do not learn each other's ordinary network location
    within the declared Interactive Route conditions.
 5. Route Knowledge Separation prevents any one ordinary Node from learning the

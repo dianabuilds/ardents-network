@@ -90,15 +90,19 @@ Windows 11 or Ubuntu LTS `x86-64` desktop/laptop
 **Flow:** Endpoint Owner grants Authority Custody to an administration tool →
 create or securely import Service Authority → obtain its Service Target → grant
 per-Service administration → choose one active local listener → publish
-authenticated, expiring reachability without exposing raw authority → bind or
-update Service Name → accept a test Service Connection
+authenticated, expiring reachability without exposing raw authority → separately
+authorize use of Name Authority → bind or update Service Name → accept a test
+Service Connection
 
 **Done when:** a remote Application can connect while neither the User nor any
 one ordinary Node can link the Service Instance's public origin address to its
 Service Name or Service Target outside the declared Route Profile. Stopping the
 local Service produces an explicit unavailable result, not implied offline
 delivery. A routine migration can stop the old Instance, import the encrypted
-authority on a new host, and republish the same Service Target. A required
+authority on a new host, and republish the same Service Target. Name Authority
+is not needed on either runtime host for that migration. If the
+Service Authority is instead lost or compromised, independently held Name
+Authority binds the stable name to a newly created replacement Target. A required
 publisher reference endpoint supports at least `256` concurrently open incoming
 Service Connections, including at least `64` simultaneously active. This is a
 minimum total publisher capacity, not a Service maximum; one Service may use the

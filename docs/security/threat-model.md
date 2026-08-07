@@ -24,7 +24,8 @@ accepted.
 - unlinkability between distinct Isolation Contexts to the extent promised by a
   Route Profile;
 - Service Authority secrecy and Service Target continuity;
-- Service Name binding, resolution integrity, and recovery state;
+- Name Authority secrecy, Service Name binding, resolution integrity, and
+  recovery state;
 - endpoint-local grants, Application Interface authority, and network metadata;
 - route, discovery, bootstrap, and Bridge availability;
 - honest-workload latency, throughput, fairness, and endpoint resource
@@ -128,6 +129,15 @@ anonymity or indistinguishability guarantee.
 | Operator loss / seizure | Remove Nodes, inspect state, or partition reachability | No plaintext at carrier Nodes, replaceable roles, bounded state, alternate paths, and explicit unavailable results | Real availability still requires independent capacity and a live Service Instance |
 | Supply-chain attacker | Ship a malicious official endpoint or protocol update | Reproducible artifacts, signed releases, staged updates, rollback protection, transparent roots, and later independent review | One widely trusted distribution root remains power until diversified |
 | Governance capture | Control naming, bootstrap, compatibility, releases, or emergencies | Separate power map, bounded quorum, transparency, expiry, recovery, and fork procedure | A decentralized data path does not remove Control Plane governance |
+
+Name Authority and Service Authority are separate compromise boundaries. A
+Publisher does not need Name Authority for ordinary operation. If Service
+Authority is compromised while Name Authority remains safe, the name can later
+bind a replacement Target; if both are stored inside the compromised boundary,
+that recovery claim is lost. A malicious but valid Name Authority update can
+redirect name-based Users, and authenticating the resulting Target does not
+repair the poisoned binding. A direct Service Target destination remains pinned
+and does not follow the name.
 
 ## Claim format
 
@@ -290,6 +300,11 @@ or privacy claim.
 - A Node identity is never a User identity or Service Target.
 - Possession of the V1 Service Authority is sufficient to impersonate its
   Service Target; suspected loss or compromise requires target replacement.
+- Name Authority is distinct from Service Authority and controls only the
+  authenticated Service Name binding. It is unnecessary for ordinary
+  publication or resolution; compromising it permits malicious name rebinding
+  but does not replace the cryptographic authority of an explicitly supplied
+  Service Target.
 - A Service Name is discovery, not Service authorization or human identity.
 - Name Records and Service Descriptors never contain an ordinary public origin
   address.
