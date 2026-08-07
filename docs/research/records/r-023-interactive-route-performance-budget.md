@@ -323,12 +323,48 @@ capacity remain P3-D6 and P3-D3b4 evidence. A role that is technically able to
 start but cannot carry its later accepted workload within bounded resources is
 not practically useful on the reference class.
 
+### P3-D3c1 — Bounded local endpoint scale-up
+
+**Product Owner decision, accepted 2026-08-07:** the client `64/16` and publisher
+`256/64` capacities are qualification floors, not fixed implementation ceilings.
+A stronger Windows or Linux machine may use additional CPU, memory, and network
+capacity to support more bounded connections and aggregate work.
+
+By default, the endpoint derives a conservative finite resource profile from
+the resources available to its process and applies the accepted hierarchy:
+Endpoint, Local Grant or Application, Service or Isolation Context, then
+connection and operation. An Endpoint Owner may set a lower cap or raise the
+automatic cap within enforceable finite safety bounds. Creating additional
+Applications, Services, grants, or contexts never multiplies an ancestor budget.
+
+If effective local limits fall below the accepted client or publisher floor,
+the endpoint may still operate but must expose reduced local capacity and cannot
+claim the corresponding V1 performance qualification. Exhaustion remains an
+explicit bounded resource result rather than a crash, hang, unbounded queue,
+silent eviction, or security downgrade.
+
+Scaling changes capacity only. It never:
+
+- makes a client or publisher an infrastructure Node without explicit
+  Network Contributor opt-in and role configuration;
+- grants trust, governance authority, route-selection priority, or access to
+  another Local Grant, Service, or Isolation Context;
+- permits direct fallback, weaker Route Knowledge Separation, skipped target
+  authentication, or forbidden cross-context state sharing;
+- requires publishing exact CPU, memory, hardware identity, or configured local
+  limits as network metadata.
+
+Traffic volume, admission outcomes, and timing may still allow peers or
+observers to infer rough capacity; the contract prevents an explicit stable
+hardware identity, not all inference. Linear scaling is not promised. P3-D3c2
+must measure where CPU, memory, bandwidth, contention, and privacy-preserving
+isolation stop producing useful additional capacity on each reference class.
+
 ## Remaining decisions
 
-1. **P3-D3c — Resources, scale-up, overhead, and fairness:** define how stronger
-   client, publisher, and Node hardware raises bounded capacity; set CPU, memory,
+1. **P3-D3c2 — Resources, overhead, and fairness:** set CPU, memory,
    carrier-bandwidth overhead, aggregate goodput, queue, and per-connection
-   progress budgets for each reference class.
+   progress budgets and measure scale-up saturation for each reference class.
 2. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
    units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
    floors on the accepted reference class.
@@ -422,6 +458,10 @@ traces, and direct-baseline results. Disposable experiment code belongs under
 - **Product Owner decision:** every selected infrastructure role must be useful
   on a Linux `2 vCPU`, `2 GiB RAM`, symmetric `100 Mbit/s` reference VPS; this is
   a minimum comparison class rather than a capacity ceiling.
+- **Product Owner decision:** client and publisher floors scale upward through
+  conservative finite local resource profiles on stronger hardware; exact
+  capacity is local, grants no authority or role, and is not required network
+  metadata.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -445,8 +485,8 @@ ceilings unless evidence falsifies that shape. Use the accepted connection and
 endpoint-readiness targets and the tracer first-byte target as candidate gates,
 then apply the accepted single-connection goodput and separate client and
 publisher concurrency floors. Define infrastructure Node capacity, resources,
-scale-up, fairness, degradation, hostile load, and the reproducible release gate
-in that order.
+fairness, degradation, hostile load, and the reproducible release gate in that
+order; bounded endpoint scale-up is already fixed.
 
 Confidence: high for the platform boundary and desired connection experience;
 the accepted latency, goodput, client-concurrency, and publisher-concurrency
@@ -509,8 +549,16 @@ contradict the accepted client product.
 - The reference VPS is not a capacity or trust ceiling. Stronger hardware may
   contribute more bounded work but receives no automatic additional role,
   authority, or route-selection privilege.
+- P3-D3c1 accepted: supported endpoints derive conservative finite hierarchical
+  budgets from available resources; stronger machines may exceed the client and
+  publisher floors, and Endpoint Owners may bound or raise the automatic cap.
+- Operating below a floor is allowed only as explicitly reduced local capacity,
+  not as a qualified V1 performance result. More hardware grants no automatic
+  Node role, trust, authority, route priority, cross-context access, or security
+  shortcut, and exact hardware limits are not required network metadata.
 - Public DNS, naming design, bootstrap, routing, libraries, language, exact
   hardware, and the remaining numeric budgets remain unselected.
-- P3-D3c, scale-up and resource behavior, is next; role-specific Node capacity
-  is completed with R-004 candidate evidence under P3-D3b4.
+- P3-D3c2, numeric CPU, memory, overhead, aggregate-goodput, and fairness budgets,
+  is next; role-specific Node capacity is completed with R-004 candidate
+  evidence under P3-D3b4.
 - No ADR and no code.

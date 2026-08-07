@@ -110,7 +110,10 @@ and failed runs do not count as useful payload. A required client reference
 endpoint also supports at least `64` concurrently open outbound Service
 Connections, including at least `16` simultaneously active. This is a minimum
 total client capacity, not a maximum number of connections to one published
-Service.
+Service. On stronger hardware the endpoint may raise its finite hierarchical
+local budgets, while an Endpoint Owner may cap them. Reduced limits are exposed
+locally and do not qualify as the V1 performance floor; added capacity grants no
+Node role, authority, trust, or security exception.
 
 ## J-05 — Use the Named Unlisted Site tracer
 

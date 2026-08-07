@@ -272,6 +272,12 @@ route family by implication.
   and loses the Service Authorities it holds.
 - Resource budgets are finite and hierarchical; creating Local Grants, Services,
   Isolation Contexts, or connections never multiplies an ancestor budget.
+- Stronger endpoint hardware may raise finite local capacity above the accepted
+  performance floors, but extra capacity grants no Node role, trust, authority,
+  route-selection priority, cross-context access, or security exception.
+- Exact endpoint hardware and configured local limits are not required network
+  metadata. Traffic and admission behavior may still permit rough capacity
+  inference, which is not presented as hidden by the protocol.
 - Slow consumers cause bounded stream backpressure, not unbounded queues or
   silent Application Data loss; overload and fairness outcomes remain explicit.
 - Security mechanisms and performance optimizations are measured together;

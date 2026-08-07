@@ -42,6 +42,12 @@ device and network classes. An optimization cannot bypass a security invariant,
 and a security mechanism is not viable if it makes the accepted Application
 journey impractical under honest load.
 
+Performance floors are not hardware ceilings. A stronger endpoint may scale
+finite hierarchical local budgets above the V1 floor, while the Endpoint Owner
+retains a cap. Extra capacity grants no infrastructure role, trust, authority,
+route priority, or privacy exception, and exact hardware capacity is not required
+network metadata.
+
 ## Fixed direction
 
 The following product choices already constrain research:
