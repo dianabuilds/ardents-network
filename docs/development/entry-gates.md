@@ -172,6 +172,24 @@ never real User or Developer traffic, production secrets, or persistent private
 authority. Selected successes, unexplained redaction, deletion, corruption,
 unavailability, or an unreproducible verdict cannot support qualification.
 
+Every change to a tested candidate creates a new qualification identity. A
+partial rerun requires a change-impact scope fixed before results and evidence
+that every omitted cell cannot execute, read, share state with, or depend on the
+change. Unknown, indirect, shared, core, protocol, security, routing, naming,
+isolation, admission, recovery, transport, relevant dependency or runtime,
+qualification-contract, or measurement-semantic impact requires the complete
+mandatory matrix. External documentation and tooling require no Route rerun only
+when the tested candidate and all qualification inputs remain byte-identical.
+
+Installer-only, fixture, verdict-calculator, collector, or harness changes may
+repeat or recalculate only their proven affected scope under P3-D6c2. A runtime
+launcher repeats the complete matrix for its OS, and a shared or semantic harness
+change expands to the full matrix. Absolute product gates and every security
+invariant remain blocking. Between otherwise identical comparable bundles, an
+adverse movement of at least `10%` in any numeric KPI blocks automatic release
+promotion until an explicit explained Product Owner decision; it does not erase
+Route Qualification while every absolute gate still passes.
+
 Every reported usable connection immediately passes a fresh unpredictable
 `32-byte` request and exact `32-byte` response canary. The site tracer sends an
 exact `512-byte` nonce-bearing HTTP request and validates a complete `64 KiB`

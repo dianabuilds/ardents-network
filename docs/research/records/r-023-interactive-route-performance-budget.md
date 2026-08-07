@@ -1954,14 +1954,88 @@ suspends the qualification claim until an identical verified copy is restored.
 This decision selects no artifact format, storage provider, signing scheme,
 continuous-integration service, implementation language, or testing library.
 
+### P3-D6c2 — Regression and requalification
+
+**Product Owner decision, accepted 2026-08-08:** Route Qualification belongs to
+one exact candidate and never transfers automatically across a changed source,
+binary, package, dependency, build, runtime configuration, tested environment,
+or qualification contract. Every such change creates a new candidate identity.
+The previous Qualification Evidence Bundle remains evidence only for its exact
+candidate and conditions.
+
+Documentation, project websites, release notes, and SDK or tooling changes wholly
+outside the tested Application Interface and candidate boundary require no Route
+requalification when every candidate binary, package, configuration, fixture,
+and qualification input remains byte-for-byte identical. Their own product or
+conformance checks remain separate from Route Qualification.
+
+**Scoped requalification:** before observing new candidate results, the project
+records a change-impact scope mapping every changed artifact, dependency,
+configuration, platform component, harness component, and contract clause to
+the mandatory cells and invariants it can affect. Partial requalification is
+allowed only when that evidence demonstrates that every omitted cell cannot
+execute, read, link, share state with, or depend on the change. The scope and its
+supporting evidence become part of the new Qualification Evidence Bundle. An
+unknown, indirect, shared, or disputed effect requires full requalification.
+
+The following bounded cases may use partial work:
+
+- an installer-only change that is absent before candidate startup repeats its
+  installation and startup cells; a launcher, service wrapper, or integration
+  remaining at runtime repeats the complete mandatory matrix for that OS;
+- a controlled Reference Application or payload change repeats every cell using
+  it when the candidate, Application Interface, and other fixtures are unchanged;
+- a verdict-calculator-only correction may recompute a retained raw bundle and
+  create a linked successor without rerunning the candidate only when raw schema,
+  metric meaning, gates, and all required observations remain unchanged;
+- a collector or harness change repeats every cell and guardrail whose raw input,
+  timing, attribution, stimulus, or verdict it can influence. A shared foundation
+  or semantic change therefore expands to the complete matrix.
+
+**Full requalification:** the complete mandatory matrix is required after any
+change to network-core behavior; protocol or format semantics; Route shape,
+routing, rendezvous, discovery, bootstrap, or naming binding; cryptography,
+authentication, or key handling; Isolation Contexts or Local Grants; admission,
+resource control, queues, backpressure, recovery, or Carrier Transport behavior.
+It is also required after any source, dependency, compiler, runtime, feature
+flag, OS image, hardware cap, or candidate configuration change that may affect
+networking, security, timing, concurrency, memory, traffic, or failure behavior.
+
+A changed threat boundary, Route Profile, mandatory topology, workload, sample
+floor, gate, payload, state class, impairment rule, clock, attribution boundary,
+or measurement meaning also requires full qualification under the new versioned
+contract. If the impact cannot be bounded with retained evidence, the default is
+the full matrix rather than inherited confidence.
+
+**Regression review:** only bundles using the same versioned qualification
+contract, mandatory matrix, reference images and hardware, network and state
+inputs, payloads, and measurement semantics are compared numerically. A changed
+condition is labeled incomparable rather than normalized after results.
+
+Every absolute product gate remains the qualification boundary, and any security,
+privacy, isolation, authentication, integrity, or evidence-integrity violation
+hard-fails independently of numeric change. Among candidates that still pass all
+absolute gates, a numeric KPI has a material regression when it moves at least
+`10%` in the adverse direction against the most recent comparable publicly
+qualified predecessor: latency, CPU, RSS, traffic, or recovery cost rises, or
+goodput or success falls. A beneficial movement in another metric cannot offset
+it, and every smaller adverse movement remains visible in the bundle.
+
+A material regression blocks automatic release promotion and requires an
+explicit Product Owner decision with a recorded explanation, but it does not by
+itself revoke Route Qualification while every absolute gate still passes. The
+`10%` threshold is a provisional top-down review trigger, not a claim about
+statistical significance. Repeatability evidence may later replace it through a
+new versioned rule; no later threshold rewrites an existing bundle or verdict.
+
+This decision selects no diff tool, dependency graph implementation, statistical
+library, release service, or continuous-integration architecture.
+
 ## Remaining decisions
 
 1. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
    units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
    floors on the accepted reference class.
-2. **P3-D6c2 — Regression and requalification:** define comparability and
-   regression thresholds, invalidation review, and the changes requiring partial
-   or complete requalification.
 
 ## Hypotheses
 
@@ -2263,6 +2337,17 @@ machine-readable verdicts. Disposable experiment code belongs under
 - **Product Owner decision:** a bundle supporting a public passing release is
   content-addressed, append-only, fully public, contains only synthetic test
   activity, and remains available while the qualification claim is used.
+- **Product Owner decision:** every changed candidate has a new qualification
+  identity. Partial requalification requires a pre-result impact scope proving
+  that omitted cells cannot depend on the change; unknown or shared impact
+  requires the complete mandatory matrix.
+- **Product Owner decision:** core, protocol, routing, naming, cryptographic,
+  isolation, admission, recovery, transport, relevant dependency or runtime,
+  threat-contract, and measurement-semantic changes require full qualification.
+- **Product Owner decision:** absolute gates and security invariants remain
+  blocking. A comparable passing candidate with any numeric KPI at least `10%`
+  worse blocks automatic promotion pending an explicit explained Product Owner
+  decision, but retains qualification if every absolute gate passes.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -2304,8 +2389,9 @@ Windows 11/Ubuntu LTS endpoint hardware baseline and the accepted normal-network
 envelope, controlled payload suite, paired direct-baseline rule, and state-reset
 contract. Apply the accepted versioned impairment manifest and seed discipline,
 the accepted cross-platform clocks, sampling, and attribution contract, and the
-accepted immutable Qualification Evidence Bundle, then define regression and
-requalification rules.
+accepted immutable Qualification Evidence Bundle. Apply the accepted
+change-impact, full and partial requalification, comparable-regression, and
+explicit `10%` review-trigger rules.
 Role-specific infrastructure capacity remains deferred until R-004 supplies
 candidate units of work.
 
@@ -2332,7 +2418,9 @@ sampling and attribution contract is also unverified against portable Windows
 and Ubuntu accounting and capture implementations. The remaining numeric targets
 remain undecided. The Evidence Bundle contract is also unverified for practical
 public storage, deterministic recalculation, and secret-free cross-platform
-collection. The `20`-episode recovery floor makes `p95` observable only at
+collection. The change-impact boundary and provisional `10%` material-regression
+trigger are also unverified against real candidate and harness variability. The
+`20`-episode recovery floor makes `p95` observable only at
 coarse nearest-rank resolution; exact order statistics and success counts must
 remain visible, and later variability evidence may justify a larger predeclared
 sample.
@@ -2719,6 +2807,14 @@ either would contradict the accepted client product.
   while claiming qualification. Selected successes, unexplained redaction,
   deletion, unavailable evidence, real User activity, or production secrets
   cannot support the claim.
-- P3-D6c2 — regression and requalification rules — is next. Role-specific Node
-  capacity and cost remain deferred until R-004 candidate evidence under P3-D3b4.
+- P3-D6c2 accepted: every candidate change creates a new identity; partial
+  qualification requires a pre-result bounded impact scope, while core,
+  security, protocol, relevant platform or dependency, contract, measurement,
+  unknown, or shared changes require the complete mandatory matrix.
+- Absolute gates remain blocking. A comparable passing candidate at least `10%`
+  worse on any numeric KPI requires an explicit explained Product Owner release
+  decision, without losing qualification when every absolute gate still passes.
+- R-023 now has no further answerable pre-architecture decision. Role-specific
+  Node capacity and cost remain deferred until R-004 candidate evidence under
+  P3-D3b4.
 - No ADR and no code.

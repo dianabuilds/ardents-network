@@ -238,6 +238,15 @@ without authority outside the isolated test environment; real User or Developer
 traffic, production secrets, and persistent private authority never enter the
 bundle.
 
+Requalification scope cannot launder security impact. Every changed candidate
+has a new identity, and a partial rerun is valid only when a scope fixed before
+results proves that omitted cells cannot depend on the change. Core, protocol,
+routing, naming, cryptographic, isolation, admission, recovery, transport,
+relevant dependency or runtime, threat-contract, measurement-semantic, unknown,
+or shared changes require the complete mandatory matrix. No favorable KPI or
+less-than-`10%` regression can offset an absolute security, privacy, isolation,
+authentication, integrity, or evidence-integrity failure.
+
 Payload shortcuts are also hard failures. Fresh `32-byte` connection canaries,
 nonce-bearing `512-byte` HTTP requests with complete `64 KiB` incompressible
 responses, and distinct pre-generated incompressible transfer streams are
