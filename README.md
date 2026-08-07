@@ -24,8 +24,8 @@ content semantics.
 
 V1 is endpoint software for ordinary Windows and Linux desktop/laptop devices:
 Users connect from them and Developers can publish local Applications from them.
-The required infrastructure benchmark uses a modest Linux server or VPS;
-macOS and mobile remain later targets.
+The required infrastructure benchmark uses a Linux `2 vCPU`, `2 GiB RAM`,
+symmetric `100 Mbit/s` reference VPS; macOS and mobile remain later targets.
 
 The accepted Interactive Route contract is multi-hop for Route Knowledge
 Separation: one ordinary Node cannot link an endpoint's ordinary location to a

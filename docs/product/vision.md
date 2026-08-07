@@ -84,9 +84,11 @@ The core product must let a local Application:
 - recover an entry path when ordinary bootstrap or transport is blocked.
 
 The same V1 endpoint platforms must support publishing an ordinary local
-Application. A modest Linux server or VPS is the required V1 infrastructure
-Node class. macOS and mobile are later targets rather than current performance
-or release promises.
+Application. The required V1 infrastructure reference class is a Linux server
+or VPS with `2 vCPU`, `2 GiB RAM`, and a symmetric `100 Mbit/s` link. Each
+selected role must be useful on that class; it is neither a capacity ceiling nor
+additional trust. macOS and mobile are later targets rather than current
+performance or release promises.
 
 The core does not, by default, execute untrusted application code, retain
 application payloads for offline recipients, replicate a site's content, define

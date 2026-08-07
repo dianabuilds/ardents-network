@@ -48,7 +48,9 @@ This does not require infrastructure Nodes to support Windows and does not
 forbid them from doing so. macOS, phones, tablets, and other constrained devices
 are later compatibility and measurement targets, not V1 performance or release
 gates. Exact supported OS versions, CPU architectures, reference hardware, and
-network conditions remain to be declared before numeric budgets are accepted.
+network conditions remain to be declared for endpoints; the concrete processor
+baseline and software environment for the later accepted reference VPS also
+remain measurement details.
 
 This platform decision does not select public DNS, naming, or bootstrap.
 Service Name resolution remains an internal Ardents product function under
@@ -293,14 +295,43 @@ This decision does not set infrastructure Node capacity. Entry, relay,
 discovery, Rendezvous, and Bridge roles receive a separate P3-D3b3 floor because
 their unit of work and resource amplification differ from a published Service.
 
+### P3-D3b3 — Reference infrastructure Node class
+
+**Product Owner decision, accepted 2026-08-07:** every selected V1
+infrastructure role must demonstrate practically useful, bounded operation on a
+modest Linux server or VPS with:
+
+- `2 vCPU`;
+- `2 GiB RAM`;
+- a symmetric `100 Mbit/s` network link.
+
+This is the minimum reference class for comparing and qualifying a role, not a
+maximum, a recommended production ceiling, or a promise that smaller machines
+cannot contribute. More capable hardware may provide more bounded capacity, but
+hardware size alone never grants more trust, governance power, route-selection
+priority, or permission to perform another role.
+
+Each entry, relay, discovery, Rendezvous, or Bridge role is measured separately
+on this class once its unit of work is defined. The requirement does not say that
+one VPS must run every role simultaneously. A candidate that combines roles must
+still preserve R-001 Route Knowledge Separation and is evaluated as a combined
+trust and resource boundary rather than using co-location to claim efficiency.
+
+The exact processor model or minimum benchmark score, Linux distribution and
+kernel, available storage, network latency, traffic pattern, and sustained role
+capacity remain P3-D6 and P3-D3b4 evidence. A role that is technically able to
+start but cannot carry its later accepted workload within bounded resources is
+not practically useful on the reference class.
+
 ## Remaining decisions
 
-1. **P3-D3b3 — Infrastructure Node capacity:** set role-specific concurrent-work
-   floors for the modest Linux server/VPS class without copying endpoint
-   connection counts.
-2. **P3-D3c — Resources, overhead, and fairness:** set CPU, memory,
+1. **P3-D3c — Resources, scale-up, overhead, and fairness:** define how stronger
+   client, publisher, and Node hardware raises bounded capacity; set CPU, memory,
    carrier-bandwidth overhead, aggregate goodput, queue, and per-connection
    progress budgets for each reference class.
+2. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
+   units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
+   floors on the accepted reference class.
 3. **P3-D4 — Tail and degradation:** set jitter, loss, churn, alternate-route,
    and overload behavior without weakening R-001.
 4. **P3-D5 — Hostile load:** define fairness and resource-exhaustion workloads
@@ -388,6 +419,9 @@ traces, and direct-baseline results. Disposable experiment code belongs under
 - **Product Owner decision:** a required Windows or Linux publisher reference
   endpoint supports at least `256` concurrently open incoming Service
   Connections, including at least `64` simultaneously active connections.
+- **Product Owner decision:** every selected infrastructure role must be useful
+  on a Linux `2 vCPU`, `2 GiB RAM`, symmetric `100 Mbit/s` reference VPS; this is
+  a minimum comparison class rather than a capacity ceiling.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -411,13 +445,14 @@ ceilings unless evidence falsifies that shape. Use the accepted connection and
 endpoint-readiness targets and the tracer first-byte target as candidate gates,
 then apply the accepted single-connection goodput and separate client and
 publisher concurrency floors. Define infrastructure Node capacity, resources,
-fairness, degradation, hostile load, and the reproducible release gate in that
-order.
+scale-up, fairness, degradation, hostile load, and the reproducible release gate
+in that order.
 
 Confidence: high for the platform boundary and desired connection experience;
 the accepted latency, goodput, client-concurrency, and publisher-concurrency
-targets remain unverified, and the remaining numeric targets remain undecided.
-The strongest counterargument is that
+targets and the infrastructure reference class remain unverified, and the
+remaining numeric targets remain undecided. The strongest counterargument is
+that
 supporting both Windows and Linux from the first V1 slice increases packaging
 and systems-integration work for a one-to-one project, but removing either would
 contradict the accepted client product.
@@ -468,7 +503,14 @@ contradict the accepted client product.
 - Both endpoint floors are minimum capacities rather than maxima. Exhaustion is
   bounded and explicit; publisher application policy may deliberately admit
   fewer connections without redefining the network benchmark.
+- P3-D3b3 accepted: every selected V1 infrastructure role must demonstrate
+  useful bounded operation on a Linux `2 vCPU`, `2 GiB RAM`, symmetric
+  `100 Mbit/s` reference VPS.
+- The reference VPS is not a capacity or trust ceiling. Stronger hardware may
+  contribute more bounded work but receives no automatic additional role,
+  authority, or route-selection privilege.
 - Public DNS, naming design, bootstrap, routing, libraries, language, exact
   hardware, and the remaining numeric budgets remain unselected.
-- P3-D3b3, infrastructure-Node capacity by role, is next.
+- P3-D3c, scale-up and resource behavior, is next; role-specific Node capacity
+  is completed with R-004 candidate evidence under P3-D3b4.
 - No ADR and no code.

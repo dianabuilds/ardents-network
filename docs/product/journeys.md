@@ -162,7 +162,10 @@ identity or route topology is exposed.
 
 **Done when:** the Node helps the carrier without reading Application Data,
 becoming a Service or User identity, or silently retaining an unbounded duty
-after exit.
+after exit. Every selected V1 role must demonstrate useful bounded operation on
+a Linux `2 vCPU`, `2 GiB RAM`, symmetric `100 Mbit/s` reference VPS. Stronger
+hardware may contribute more bounded capacity but gains no automatic role,
+trust, authority, or route-selection priority.
 
 ## Cross-journey failure cases
 
