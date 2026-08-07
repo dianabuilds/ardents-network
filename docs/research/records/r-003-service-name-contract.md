@@ -98,7 +98,7 @@ Service Target under a separately visible Application policy.
 
 One canonical Namespace is a consistency and user-experience contract, not a
 decision to use one server, registrar, administrator, ledger, operator set, or
-project-controlled root. P4-D3 through P4-D6 must further constrain naming and
+project-controlled root. P4-D4 through P4-D6 must further constrain naming and
 governance power and make partitions, capture, and forks visible.
 If honest clients cannot establish one current binding during a conflict, they
 fail explicitly rather than accepting resolver-dependent destinations.
@@ -132,17 +132,15 @@ social identity, or a manual dispute decision cannot override it in V1. A Name
 Lease is a network control state, not permanent property or a claim that its
 holder is the person, organization, or brand suggested by the label.
 
-Every Name Lease expires unless renewed by its controlling authority under the
-eventually accepted lifecycle. Names are not owned forever merely because they
-were claimed first. Exact duration, renewal window, grace behavior, stale-cache
-handling, and when an expired name becomes claimable again remain P4-D3. A
-Resolver cannot treat an expired lease as current while those transitions are
-unresolved.
+Every Name Lease ends unless renewed by its controlling authority under the
+accepted P4-D3 lifecycle below. Names are not owned forever merely because they
+were claimed first. Exact numeric durations remain protocol parameters. A
+Resolver cannot invent lifecycle state when current state is unresolved.
 
 An active parent Name Authority may authorize creation or delegation of bounded
 subordinate names within its own subtree and bind each to a chosen Name Authority.
-It gains no authority over siblings or ancestors. P4-D3 still defines how parent,
-child, and lease lifecycle interact after delegation.
+It gains no authority over siblings or ancestors. P4-D3 below fixes the parent,
+child, and lease lifecycle relationship after delegation.
 
 Permissionless does not mean zero-cost or unlimited. P4-D6 and R-010 must select
 and measure a bounded anonymous anti-squatting and Sybil cost that does not require
@@ -179,16 +177,51 @@ similar ASCII names. Clients must present the complete canonical Service Name or
 Service Link where destination trust matters; P4-D6 still owns squatting,
 reserved-name, and deceptive-name policy.
 
+### P4-D3 — Lease, generation, and record lifecycle
+
+**Product Owner decision, accepted 2026-08-08:** every Name Lease follows three
+observable states. It is **Active** during its normal term. At the end of that
+term it enters a finite **Grace** period in which the existing Name Authority
+alone may renew it, the current Name Record may still resolve, and the User and
+Developer receive a visible expiry warning. A successful renewal during Active
+or Grace preserves the same Name Generation and returns the Lease to Active.
+
+At the end of Grace the Lease becomes **Released**. The name no longer resolves,
+the former Name Authority loses its exclusive renewal right, and the name becomes
+available to the ordinary first-valid claim process. No resolver or cache may
+extend Grace locally. Exact Active term, renewal window, Grace duration, warning
+thresholds, and time/convergence mechanism remain bounded protocol parameters
+that must be selected and tested later.
+
+Each accepted claim creates a new Name Generation. Every Name Record and Lease
+transition is authenticated and bound to that generation. Reclaiming a Released
+name never revives the preceding generation: all previous records, revisions,
+renewals, delegations, and signatures remain invalid even if their bytes are
+replayed. Within one generation, accepted Name Record revisions are monotonic;
+a Resolver cannot roll back to an older revision or choose between conflicting
+ones.
+
+A subordinate Name Lease may end earlier than its parent but cannot remain valid
+beyond the parent's lifecycle. While a parent is in Grace, a still-current child
+may resolve with the inherited expiry warning. When the parent becomes Released,
+every descendant stops resolving and renewing. A later claim of the parent starts
+a new parent generation and does not revive any former descendant.
+
+Cached naming evidence has finite freshness and cannot outlive the proven Lease,
+generation, or parent state. A Resolver that cannot prove one current generation,
+revision, and lifecycle state because evidence is stale, conflicting, partitioned,
+or unavailable fails explicitly instead of returning a guessed Service Target.
+The exact cache interval and state-convergence mechanism remain research inputs,
+not selected technologies.
+
 ## Remaining decisions
 
-1. **P4-D3 — Record lifecycle:** define Name Record versioning, expiry, renewal,
-   caching, stale data, equivocation, partitions, and convergence.
-2. **P4-D4 — Name Authority lifecycle:** define custody, rotation, transfer,
+1. **P4-D4 — Name Authority lifecycle:** define custody, rotation, transfer,
    loss, compromise, recovery, and the limits of any recovery authority.
-3. **P4-D5 — Resolution privacy:** define what resolvers and naming
+2. **P4-D5 — Resolution privacy:** define what resolvers and naming
    infrastructure learn, how exact-name queries resist enumeration and linking,
    and what metadata remains an honest limitation.
-4. **P4-D6 — Governance and abuse:** define capture, disputes, squatting, Sybil
+3. **P4-D6 — Governance and abuse:** define capture, disputes, squatting, Sybil
    pressure, denial, accessibility, transparency, forks, and exit behavior.
 
 ## Hypotheses
@@ -283,6 +316,16 @@ query evidence without recording real User activity.
 - **Product Owner decision:** `ardents://<Service Name>` is the explicit
   shareable Service Link. The similar shape does not invoke DNS, a public TLD,
   DNS trust, lookup, or fallback.
+- **Product Owner decision:** every Name Lease moves from Active to a finite Grace
+  period and then Released unless its current Name Authority renews it. Grace
+  preserves exclusive renewal and resolution with a visible warning; Released
+  state resolves nothing and permits a new claim.
+- **Product Owner decision:** every accepted claim creates a Name Generation.
+  Reclaim, including parent reclaim, never revives old records, signatures,
+  delegations, or descendants. Record revisions within one generation are
+  monotonic and stale or conflicting state fails explicitly.
+- **Product Owner decision:** a subordinate Lease cannot outlive its parent.
+  Parent Grace propagates a warning; parent Release disables every descendant.
 - **Assumption:** V1 can make separate Name Authority custody understandable to
   one Developer without requiring an always-online naming administrator.
 
@@ -316,6 +359,16 @@ query evidence without recording real User activity.
   boundary.
 - **Explicit Ardents scheme:** distinguishes a Service Link from DNS without a
   public TLD; bare-name entry may remain an Ardents-client convenience only.
+- **Immediate release at term end:** minimizes stale control but turns a missed
+  renewal into abrupt outage and immediate capture risk.
+- **Finite Grace:** preserves usability and recovery for the current authority,
+  but lengthens the period in which renewal censorship and abandoned names remain
+  visible.
+- **Permanent control:** removes renewal outages but makes squatting, abandoned
+  names, and compromised authority effectively irreversible.
+- **Generation-bound records:** prevent pre-release records and delegations from
+  replaying after reclaim, at the cost of requiring resolvers to prove current
+  generation as well as record authenticity.
 
 ## Recommendation
 
@@ -325,7 +378,10 @@ custody, registry, and recovery mechanisms reversible. Allocate root names as
 renewable permissionless Name Leases under deterministic shared-state ordering,
 with subordinate claims authorized only inside the parent subtree. Use the
 accepted lowercase ASCII dot hierarchy and explicit `ardents://` Service Link.
-Next define record and lease lifecycle before comparing protocols.
+Use the accepted Active, Grace, and Released lifecycle with generation-bound
+monotonic records and parent-bounded descendants. Next define Name Authority
+custody, rotation, transfer, loss, compromise, and recovery before comparing
+protocols.
 
 Confidence is high that Service Authority cannot also provide truthful recovery
 from its own compromise. Confidence is low that a usable, privacy-preserving,
@@ -336,18 +392,23 @@ operation. The leased first-valid-claim policy is unverified against front-
 running, squatting, renewal censorship, and affordable Sybil resistance; these
 are central R-003 research risks. ASCII syntax reduces Unicode ambiguity but
 cannot prevent ASCII lookalikes, misleading labels, or social-engineering links.
+The lifecycle prevents indefinite local extension and cross-generation replay,
+but concrete clock, ordering, convergence, cache, and renewal-censorship behavior
+remain unverified.
 
 The strongest counterarguments are that two authorities are too complex for a
 small V1 Developer journey and that one canonical Namespace creates a shared
 Control Plane. The first cost is accepted because merging authorities makes the
-catastrophe-recovery promise false. The second must be constrained by P4-D3
+catastrophe-recovery promise false. The second must be constrained by P4-D4
 through P4-D6 without pretending that resolver-dependent names are safer. A
 third is that permissionless first-valid claims reward front-running and
-squatting; leases make that harm reversible but do not remove it.
+squatting; leases make that harm reversible but do not remove it. A fourth is
+that parent expiry creates a cascading outage; allowing descendants to survive
+would instead violate hierarchical control and confuse a later parent claimant.
 
 ## Disposition
 
-- State: `active`; P4-D1 and P4-D2a through P4-D2c are accepted; P4-D3 is next.
+- State: `active`; P4-D1 and P4-D2a through P4-D3 are accepted; P4-D4 is next.
 - `Name Authority` becomes canonical product language.
 - `Namespace` now means the one canonical Ardents network-wide naming boundary,
   not a resolver-selected provider or local alias scope.
@@ -355,6 +416,8 @@ squatting; leases make that harm reversible but do not remove it.
   control by a Name Authority.
 - `Service Link` becomes canonical product language for the explicit
   `ardents://<Service Name>` shareable form.
+- `Name Generation` becomes canonical product language for one claim-bounded
+  lifetime whose records and descendants cannot survive reclaim.
 - R-006 target lifecycle remains unchanged and now has a distinct naming
   continuity authority.
 - No ADR: no irreversible registry, governance, recovery, key, or protocol

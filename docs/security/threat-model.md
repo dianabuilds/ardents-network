@@ -161,6 +161,17 @@ R-010 select and measure a bounded anonymous cost. That mechanism cannot require
 a global account, identity document, mandatory wallet, token balance, or one
 registrar.
 
+A Lease is Active, then enters finite Grace unless renewed by its current Name
+Authority, and finally becomes Released. Grace preserves resolution and exclusive
+renewal but exposes a warning; Released state resolves nothing and permits a new
+claim. Reclaim creates a new Name Generation, so replayed records, signatures,
+renewals, delegations, and cached proof from any earlier generation remain
+invalid. Revisions are monotonic inside a generation. A child can end earlier
+but cannot outlive its parent; parent Release disables every descendant and a new
+parent generation revives none. Unproven current generation, revision, Lease, or
+parent state fails explicitly. Exact clocks, durations, cache freshness, and
+convergence still require hostile-network research.
+
 A canonical V1 Service Name is a lowercase ASCII dot hierarchy with the parent
 on the right. Unicode, IDNA, and Punycode cannot create canonical alternatives.
 The explicit `ardents://` Service Link separates Ardents resolution from DNS;
@@ -342,6 +353,11 @@ or privacy claim.
 - A Name Lease is time-bounded. No registrar, resolver, or manual dispute choice
   can override the accepted deterministic claim order or silently create
   concurrent controllers for the same complete Service Name.
+- Grace preserves only the current Name Generation and emits a warning. Released
+  state resolves nothing; reclaim cannot revive earlier records, signatures,
+  delegations, descendants, or cached proof.
+- A subordinate Lease cannot outlive its parent. Parent Release disables every
+  descendant, including across a later claim of the same parent text.
 - A Service Link identifies Ardents explicitly. Parsing or resolution failure
   cannot reinterpret its name as DNS, another namespace, Unicode, IDNA, or
   Punycode; visually similar ASCII names remain distinct destinations.

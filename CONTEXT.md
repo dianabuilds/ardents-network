@@ -124,9 +124,14 @@ _Avoid_: Resolver provider, search directory, local alias scope
 
 **Name Lease**:
 The time-bounded canonical Namespace state assigning control of one Service Name
-to a Name Authority. It may be renewed under network rules but is not permanent
-property, human identity, or publication permission.
+to a Name Authority through Active and Grace states until it is Released. It is
+not permanent property, human identity, or publication permission.
 _Avoid_: Name ownership, User account, registrar approval
+
+**Name Generation**:
+The distinct lifetime of a Service Name created by one accepted claim and shared
+by its Lease and Name Records. Reclaiming a Released name starts a new generation.
+_Avoid_: Record version, permanent name identity, revived lease
 
 **Name Record**:
 Name-Authority-authenticated data that binds a Service Name to a current Service

@@ -61,7 +61,9 @@ Target → expose the authenticated target in the result → open a Service
 Connection
 
 **Done when:** the Application reaches the intended live Service or receives an
-explicit failure. No directory search or silent alternate-namespace, DNS,
+explicit failure. An Active name resolves normally; a Grace name remains usable
+with a visible expiry warning; a Released name and any descendant resolve
+nothing. No directory search or silent alternate-namespace, DNS,
 search-result, or local-alias fallback occurs, and possession of the name is not
 shown as authorization or secrecy. The Interactive Route is not a direct path
 or single proxy, and no one ordinary Node links the User's location to the
@@ -353,7 +355,8 @@ Every implementation proposal must exercise at least these cases:
 - one Node modifies, injects, replays, redirects, delays, drops, or tags traffic;
 - nominally different Nodes, including both endpoint-adjacent roles, share one
   operator, network, software supply chain, or jurisdiction;
-- a Name Record is stale, expired, rolled back, or equivocating;
+- a Name Lease is in Grace, becomes Released, or is reclaimed into a new
+  generation; a Name Record is stale, rolled back, or equivocating;
 - a Service Descriptor is unavailable or points to no reachable Service
   Instance;
 - both an old and a new host publish with copies of one Service Authority;

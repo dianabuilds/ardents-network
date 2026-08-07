@@ -82,6 +82,8 @@ The core product must let a local Application:
 - expose a local Service Instance behind that target;
 - claim a root Name Lease or receive a delegated subordinate Name Lease without
   approval from a central administrator, account provider, or registrar;
+- renew it through a visible finite Grace period or observe explicit Release,
+  without allowing old records or descendants to revive after reclaim;
 - use a distinct Name Authority to bind an optional human-readable Service Name
   to the target without making that authority part of ordinary publication;
 - share that destination as an explicit `ardents://` Service Link without
@@ -144,7 +146,8 @@ These are responsibility boundaries, not selected binaries or APIs:
    Ardents rather than DNS.
 4. Root Service Name control begins with the first valid claim in deterministic
    shared Namespace order and remains a renewable lease, not permanent property,
-   a User account, or human identity.
+   a User account, or human identity. Grace is visible, Release stops resolution,
+   and reclaim creates a new generation that invalidates prior state.
 5. The User and Service do not learn each other's ordinary network location
    within the declared Interactive Route conditions.
 6. Route Knowledge Separation prevents any one ordinary Node from learning the
