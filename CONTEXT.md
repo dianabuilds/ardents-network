@@ -93,9 +93,9 @@ or compromise requires replacing that target rather than claiming safe revocatio
 _Avoid_: User identity, Node key, Service Instance
 
 **Service Name**:
-A human-readable name controlled by a Name Authority that resolves to a Service
-Target and may remain stable while a Service migrates or replaces a compromised
-target.
+A human-readable name in the canonical Namespace, controlled by a Name Authority,
+that resolves to a Service Target and may remain stable while a Service migrates
+or replaces a compromised target.
 _Avoid_: Onion address, IP address, search keyword
 
 **Name Authority**:
@@ -111,9 +111,11 @@ Knowing the name is discovery, not authorization or secrecy.
 _Avoid_: Public listing, secret name, capability-gated Service
 
 **Namespace**:
-A naming boundary with an explicit policy for registration, delegation,
-renewal, transfer, recovery, and disputes.
-_Avoid_: Service directory, global username registry
+The one network-wide naming boundary in which a complete canonical Service Name
+has the same meaning for every honest compatible client and may delegate bounded
+subordinate names. It is not a service directory, local alias scope, or mandate
+for one administrator.
+_Avoid_: Resolver provider, search directory, local alias scope
 
 **Name Record**:
 Name-Authority-authenticated data that binds a Service Name to a current Service

@@ -73,11 +73,46 @@ which Namespace recognizes it, or whether recovery uses successor keys, several
 authorities, a time delay, a quorum, or another mechanism. No single project or
 network administrator gains implicit authority over every name.
 
+### P4-D2a — One canonical network-wide Namespace
+
+**Product Owner decision, accepted 2026-08-08:** V1 has one canonical
+network-wide Namespace for Service Names. The same complete Service Name denotes
+the same Name Record for every honest compatible client with the same valid
+network state. A Resolver either returns that authenticated record or an explicit
+unavailable, stale, conflicting, or invalid result; it does not assign a local or
+provider-specific meaning to the canonical name.
+
+Canonical Service Names may be hierarchical. Authority over a parent name may
+delegate a bounded subordinate name or subtree without granting Service
+Authority, authority over siblings or ancestors, or a network-wide administrator
+role. The exact label syntax, depth, normalization, delegation record, initial
+claim, and conflict policy remain P4-D2b decisions.
+
+An endpoint or Application may maintain a local alias for convenience, but the
+alias is not a Service Name, has no network-wide meaning, and must be visibly
+distinguished before sharing or connecting. Resolution never silently tries an
+external namespace, another namespace root, ordinary DNS, a search result, or a
+same-looking local alias when the canonical name fails. An explicit gateway may
+translate another naming system only by producing a canonical Service Name or
+Service Target under a separately visible Application policy.
+
+One canonical Namespace is a consistency and user-experience contract, not a
+decision to use one server, registrar, administrator, ledger, operator set, or
+project-controlled root. P4-D2b through P4-D6 must distribute or constrain
+allocation and governance power and make partitions, capture, and forks visible.
+If honest clients cannot establish one current binding during a conflict, they
+fail explicitly rather than accepting resolver-dependent destinations.
+
+Global uniqueness does not make a Service listed, authorized, or secret. Ardents
+still supplies no index, search, recommendation, or public browsing surface for
+Unlisted Services. P4-D5 must address enumeration and query linking created by
+the naming mechanism itself.
+
 ## Remaining decisions
 
-1. **P4-D2 — Namespace and initial allocation:** define canonical name scope,
-   uniqueness, initial claim, conflicts, normalization, and spoofing resistance
-   without one mandatory registrar or an enumerable service directory.
+1. **P4-D2b — Canonical syntax and initial allocation:** define label grammar,
+   hierarchy limits, normalization, confusable-name handling, initial claim,
+   delegation, uniqueness, and conflicts without one mandatory registrar.
 2. **P4-D3 — Record lifecycle:** define Name Record versioning, expiry, renewal,
    caching, stale data, equivocation, partitions, and convergence.
 3. **P4-D4 — Name Authority lifecycle:** define custody, rotation, transfer,
@@ -158,6 +193,12 @@ query evidence without recording real User activity.
   by binding to a replacement Service Target.
 - **Inference:** target authentication cannot repair a malicious but valid name
   update; naming integrity and target authentication are separate security gates.
+- **Product Owner decision:** V1 uses one canonical network-wide Namespace. One
+  complete Service Name cannot acquire different meanings from different honest
+  resolvers, local configuration, or silent fallback to another naming system.
+- **Product Owner decision:** canonical names may be hierarchical and delegate
+  bounded subordinate authority. Local aliases are explicitly non-canonical and
+  must never masquerade as shareable Service Names.
 - **Assumption:** V1 can make separate Name Authority custody understandable to
   one Developer without requiring an always-online naming administrator.
 
@@ -169,29 +210,41 @@ query evidence without recording real User activity.
   recovery from copied or compromised target authority.
 - **Registry-authorized updates:** may provide recovery and disputes, but makes
   registry governance a redirection and censorship root.
+- **One canonical Namespace:** gives a shared unambiguous human destination and
+  explicit conflict behavior, but creates a common allocation and governance
+  problem that cannot be hidden behind resolver choice.
+- **Several network namespaces:** could distribute roots but makes a shared name
+  ambiguous or longer and moves trust selection into every client.
+- **Resolver-local aliases:** convenient for one endpoint but cannot serve as a
+  portable network name and create dangerous same-looking destinations.
 
 ## Recommendation
 
 Use the accepted separate Name Authority as the stable control root for each
-Service Name, while keeping concrete custody and recovery reversible until
-P4-D4. Next define Namespace identity and initial allocation before comparing
-protocols: uniqueness and conflict policy determine what a human-readable name
-actually means.
+Service Name inside the accepted canonical network-wide Namespace. Keep concrete
+custody, registry, and recovery mechanisms reversible. Next define canonical
+syntax, normalization, hierarchy limits, initial allocation, and conflict policy
+before comparing protocols.
 
 Confidence is high that Service Authority cannot also provide truthful recovery
 from its own compromise. Confidence is low that a usable, privacy-preserving,
 capture-resistant Name Authority lifecycle exists without a meaningful
-governance or availability cost; that is the central R-003 research risk.
+governance or availability cost. The single canonical Namespace is also
+unverified against partitions, capture, allocation abuse, and accessible
+operation; these are the central R-003 research risks.
 
-The strongest counterargument is that two authorities are too complex for a
-small V1 Developer journey. That cost is accepted because merging them makes
-the already accepted catastrophe-recovery promise false rather than merely less
-convenient.
+The strongest counterarguments are that two authorities are too complex for a
+small V1 Developer journey and that one canonical Namespace creates a shared
+Control Plane. The first cost is accepted because merging authorities makes the
+catastrophe-recovery promise false. The second must be constrained by P4-D2b
+through P4-D6 without pretending that resolver-dependent names are safer.
 
 ## Disposition
 
-- State: `active`; P4-D1 is accepted and P4-D2 is next.
+- State: `active`; P4-D1 and P4-D2a are accepted and P4-D2b is next.
 - `Name Authority` becomes canonical product language.
+- `Namespace` now means the one canonical Ardents network-wide naming boundary,
+  not a resolver-selected provider or local alias scope.
 - R-006 target lifecycle remains unchanged and now has a distinct naming
   continuity authority.
 - No ADR: no irreversible registry, governance, recovery, key, or protocol

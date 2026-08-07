@@ -51,15 +51,17 @@ profile.
 
 **Actor:** User
 
-**Start:** An exact human-readable Service Name already known by the User
+**Start:** An exact canonical human-readable Service Name already known by the
+User
 
-**Flow:** enter exact name → resolve and verify Name Record → obtain current
-Service reachability → establish an Interactive Route → authenticate the Service
-Target → expose the authenticated target in the result → open a Service
-Connection
+**Flow:** enter the complete canonical name → resolve and verify Name Record →
+obtain current Service reachability → establish an Interactive Route →
+authenticate the Service Target → expose the authenticated target
+in the result → open a Service Connection
 
 **Done when:** the Application reaches the intended live Service or receives an
-explicit failure. No directory search occurs, and possession of the name is not
+explicit failure. No directory search or silent alternate-namespace, DNS,
+search-result, or local-alias fallback occurs, and possession of the name is not
 shown as authorization or secrecy. The Interactive Route is not a direct path
 or single proxy, and no one ordinary Node links the User's location to the
 Service Name, Service Target, or Service Instance location. The Service may

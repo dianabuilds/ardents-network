@@ -26,6 +26,7 @@ accepted.
 - Service Authority secrecy and Service Target continuity;
 - Name Authority secrecy, Service Name binding, resolution integrity, and
   recovery state;
+- canonical Namespace consistency across honest compatible clients;
 - endpoint-local grants, Application Interface authority, and network metadata;
 - route, discovery, bootstrap, and Bridge availability;
 - honest-workload latency, throughput, fairness, and endpoint resource
@@ -138,6 +139,14 @@ that recovery claim is lost. A malicious but valid Name Authority update can
 redirect name-based Users, and authenticating the resulting Target does not
 repair the poisoned binding. A direct Service Target destination remains pinned
 and does not follow the name.
+
+V1 has one canonical network-wide Namespace. A resolver, local configuration,
+or naming provider cannot assign a different destination to the same complete
+Service Name or silently fall back to another namespace, ordinary DNS, search,
+or a local alias. Conflicting, stale, invalid, partitioned, or unavailable
+canonical state produces an explicit resolution failure until one authenticated
+binding can be established. This consistency requirement does not imply one
+administrator and does not turn the Namespace into a directory.
 
 ## Claim format
 
@@ -306,6 +315,9 @@ or privacy claim.
   but does not replace the cryptographic authority of an explicitly supplied
   Service Target.
 - A Service Name is discovery, not Service authorization or human identity.
+- The same complete canonical Service Name has one network-wide Name Record;
+  local aliases and external namespaces cannot silently substitute another
+  meaning when resolution fails.
 - Name Records and Service Descriptors never contain an ordinary public origin
   address.
 - Carrier Nodes cannot reinterpret or forge Application Data accepted by an
