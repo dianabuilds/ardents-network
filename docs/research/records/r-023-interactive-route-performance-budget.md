@@ -1183,18 +1183,105 @@ select proof of work, tokens, payments, global identities, IP reputation, or any
 other admission mechanism. Honest new admission is the separate P3-D5b decision
 and must preserve the no-global-User-identity product boundary.
 
+### P3-D5b — Honest anonymous admission during incomplete-attempt flood
+
+**Product Owner decision, accepted 2026-08-07:** while the complete P3-D5a
+incomplete-attempt flood continues, a publisher with finite available connection
+capacity must still admit new honest anonymous Users with bounded success,
+latency, and client cost.
+
+This separate 10-minute run uses the same controlled symmetric `100 Mbit/s`
+publisher access link and, in every one-second interval, the same `1,000`
+incomplete attacker attempts and `20 Mbit/s` inbound attacker-traffic cap. Before
+the window begins, the publisher has `240` established incoming Service
+Connections:
+
+- `64` receive equal shares of the fixed incompressible `40 Mbit/s` offered
+  Application workload in the measured direction;
+- `176` remain authenticated, open, inactive, and usable;
+- `16` ordinary Service Connection slots remain available inside the accepted
+  `256`-connection publisher profile.
+
+The test is repeated separately for User-to-Service and Service-to-User
+Application Data. The established set retains the applicable P3-D5a floors:
+all `240` streams remain authenticated, open, and usable; the active set
+delivers at least `32 Mbit/s` aggregate, every active stream averages at least
+`400 kbit/s` with no zero-delivery interval over `5 s`, and inactive streams
+pass unpredictable canaries. The complete publisher process tree retains
+`p95 RSS <= 1 GiB` and mean CPU `<= 100%` of one logical core.
+
+At an undisclosed point in every one-second interval, one network-ready honest
+client submits an ordinary unprivileged connect request to the same exact
+Service destination. Each of the `600` attempts begins without an existing
+Service Connection, privileged allowlist state, a global User account, a stable
+network-generated User identity, or publisher-visible ordinary source location.
+P3-D6 fixes whether the exact destination form is Service Name or Service Target
+and balances both forms when their pre-admission work differs.
+
+After an honest attempt receives an exact-target-authenticated usable Service
+Connection, the harness generates unpredictable bounded Application Data,
+requires it to traverse the new stream, and then closes the connection cleanly
+to release the slot. No more than the available `16` honest admissions may
+remain concurrently established or in the accepted final admission stage; the
+offered schedule and the `15 s` deadline make the workload finite without
+requiring a hidden capacity increase.
+
+The run must satisfy both:
+
+- at least `95%` of all `600` honest attempts reach an authenticated usable
+  Service Connection and pass the canary;
+- connection latency has `p95 <= 8 s`, measured from the Application's connect
+  request to the exact-target-authenticated usable connection.
+
+Every honest attempt remains in both the success-rate and latency evidence.
+Failures are misses rather than omitted samples. At `15 s` without a connection
+result, the attempt terminates with an explicit supported result and remains a
+miss; it cannot hang or silently switch destination, Route Profile, Isolation
+Context, or ordinary network. P3-D6 fixes percentile calculation, canary size
+and deadline, and the allowed relation between the `95%` success floor and the
+`p95` latency gate so one cannot hide the other.
+
+If Ardents requires an anonymous network admission check under this workload,
+the additional cost attributable to that check on each honest client is capped
+at all of:
+
+- `1` logical-core CPU-second;
+- `64 MiB` additional peak resident memory;
+- `1 MiB` combined sent and received carrier traffic.
+
+The check cannot require money, a token balance, account registration, IP or
+source-location reputation, a stable network-generated User identifier, or a
+credential that links otherwise separate Services or Isolation Contexts. This
+does not forbid an Application from later requesting its own identity or
+payment after the Service Connection exists; that is outside carrier admission.
+The concrete anonymous cost or challenge remains an R-010 decision and must be
+measured on every required client platform.
+
+All target-authentication, Route-privacy, integrity, isolation, queue,
+backpressure, resource, liveness, and fail-closed checks remain active. A
+candidate cannot pass by marking attacker attempts as honest, using advance
+knowledge of honest arrival times, prioritizing IPs or accounts, pre-empting an
+established stream, reducing the established offered workload, reusing
+cross-context state, omitting failed attempts, or moving work outside the
+measured boundaries.
+
+This guarantee applies only while the declared `16` connection slots remain
+available. At the configured full capacity, Ardents may return an explicit
+bounded capacity result; it cannot hang, claim success, or evict another
+connection. P3-D5b does not cover an attacker that also completes the selected
+anonymous admission step and then hoards or abuses established connections;
+that is P3-D5c.
+
 ## Remaining decisions
 
 1. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
    units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
    floors on the accepted reference class.
-2. **P3-D5b — Honest admission during anonymous flood:** set success, latency,
-   fairness, and bounded cost for new honest attempts under P3-D5a without a
-   global User identity or source-location ban.
-3. **P3-D5c — Established hostile work:** bound connection hoarding, slow or
-   adversarial streams, and post-establishment resource exhaustion without
-   making Application moderation a carrier responsibility.
-4. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
+2. **P3-D5c — Established hostile work:** bound completed-admission
+   connection hoarding, slow or adversarial streams, and post-establishment
+   resource exhaustion without making Application moderation a carrier
+   responsibility.
+3. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
    artifacts, regression thresholds, and release failure rules.
 
 ## Hypotheses
@@ -1356,6 +1443,17 @@ traces, and direct-baseline results. Disposable experiment code belongs under
   established connections remain usable. The `64` active connections retain
   at least `32 Mbit/s` aggregate, `400 kbit/s` each, and no delivery gap over
   `5 s`, while publisher `p95 RSS <= 1 GiB` and mean CPU stays within one core.
+- **Product Owner decision:** during the same flood, a publisher starting with
+  `240` established connections and `16` available slots receives one honest
+  anonymous attempt per second. At least `95%` of all `600` attempts
+  authenticate the exact target and pass a canary, with connection
+  `p95 <= 8 s` and an explicit result by `15 s`; the established-work and
+  publisher-resource floors remain in force.
+- **Product Owner decision:** any network-mandated anonymous admission check
+  adds at most one logical-core CPU-second, `64 MiB` peak resident memory, and
+  `1 MiB` combined carrier traffic per honest client. It requires no money,
+  account, IP or source reputation, stable identifier, or cross-Service or
+  cross-Isolation-Context linkability.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -1387,9 +1485,10 @@ Apply the accepted queue ceilings, backpressure semantics, and scale-up
 saturation gate. Apply the accepted single-failure Service Connection recovery
 gate, three-event ordinary-churn workload, and impaired-live useful-progress
 profile, plus the overlapping-failure recovery gate and accepted degraded-path
-and recovery endpoint resource and carrier limits. Apply the accepted
-established-work pre-establishment-flood gate, then define honest admission,
-established hostile work, and the reproducible release gate.
+and recovery endpoint resource and carrier limits. Apply both accepted
+pre-establishment-flood gates for established work and honest anonymous
+admission, then define established hostile work and the reproducible release
+gate.
 Role-specific infrastructure capacity remains deferred until R-004 supplies
 candidate units of work.
 
@@ -1402,9 +1501,10 @@ scale-up saturation gate, and single-failure recovery target also remain
 unverified; the three-event churn workload, impaired-live profile,
 overlapping-failure target, and endpoint recovery-resource ceilings are also
 unverified. The impaired and recovery carrier limits are also unverified, and
-the pre-establishment-flood workload is unverified. The idle carrier budget is
-unverified and deliberately secondary. The remaining numeric targets remain
-undecided. The strongest counterargument is that
+the established-work and honest-admission flood workloads are unverified. The
+honest-client admission cost is also unverified on the required platforms. The
+idle carrier budget is unverified and deliberately secondary. The remaining
+numeric targets remain undecided. The strongest counterargument is that
 transport-independent continuation may require an Ardents layer above otherwise
 suitable carriers, adding state, attack surface, linkability risk, and resource
 cost. That is why the complete stack must earn the gate rather than assuming it
@@ -1632,9 +1732,25 @@ contradict the accepted client product.
 - P3-D5a assumes no IP address, global User account, or stable attacker identity
   and protects only already established work. It neither selects an admission
   mechanism nor claims that new honest attempts succeed during the flood.
+- P3-D5b accepted: under the same flood, a publisher starts with `240`
+  established connections and `16` available slots while one honest anonymous
+  client attempts to connect in every second for 10 minutes.
+- At least `95%` of all `600` honest attempts reach an exact-target-authenticated
+  usable Service Connection and pass a canary; connection latency has
+  `p95 <= 8 s`, and every attempt returns an explicit result by `15 s`.
+- The P3-D5a established-work and publisher-resource floors remain in force.
+  Failed and timed-out honest attempts remain misses, and success cannot depend
+  on IP, an account, advance arrival knowledge, or cross-context state.
+- Any network-mandated anonymous admission check adds at most one logical-core
+  CPU-second, `64 MiB` peak resident memory, and `1 MiB` combined carrier
+  traffic per honest client. It requires no money, token balance, account,
+  source reputation, stable identifier, or link between otherwise separate
+  Services or Isolation Contexts.
+- The P3-D5b guarantee applies while the declared `16` slots are available. At
+  full capacity, an explicit bounded capacity result is allowed; eviction,
+  false success, or a hanging attempt is not.
 - Public DNS, naming design, bootstrap, routing, libraries, language, exact
   hardware, and the remaining numeric budgets remain unselected.
-- P3-D5b honest anonymous admission during the same flood is next. Established
-  hostile work remains P3-D5c. Role-specific Node capacity and cost remain
-  deferred until R-004 candidate evidence under P3-D3b4.
+- P3-D5c established hostile work is next. Role-specific Node capacity and cost
+  remain deferred until R-004 candidate evidence under P3-D3b4.
 - No ADR and no code.

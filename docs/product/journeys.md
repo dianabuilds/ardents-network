@@ -116,8 +116,19 @@ inactive set passes unpredictable canaries without reconnecting. Publisher
 `p95 RSS` stays within `1 GiB` and mean CPU within one core. Ardents assumes no
 IP, global User account, or stable attacker identity, bounds and cleans up
 incomplete-attempt state, and never presents it to the published Application as
-an accepted Service Connection. This gate protects established work; honest new
-admission during the flood remains a separate requirement.
+an accepted Service Connection.
+
+Honest anonymous admission remains usable during that same flood when capacity
+exists. With `240` established connections and `16` free slots, one ordinary
+honest client starts an unprivileged connection attempt per second. At least
+`95%` of all `600` attempts authenticate the exact target, receive a usable
+Service Connection, and pass a canary; connection `p95` is at most `8 s`, and
+every attempt ends with an explicit result by `15 s`. Established work and the
+publisher's P3-D5a resource ceilings remain intact. Any network-required client
+check costs at most one logical-core CPU-second, `64 MiB` peak memory, and
+`1 MiB` traffic and needs no money, account, IP reputation, stable identity, or
+cross-context link. At full capacity Ardents may return an explicit capacity
+result, but cannot evict another connection or hang.
 
 ## J-04 — Integrate an Application
 
