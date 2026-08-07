@@ -1272,16 +1272,92 @@ connection. P3-D5b does not cover an attacker that also completes the selected
 anonymous admission step and then hoards or abuses established connections;
 that is P3-D5c.
 
+### P3-D5c — Established anonymous connection hoarding and backpressure
+
+**Product Owner decision, accepted 2026-08-07:** when hostile clients complete
+the same anonymous admission available to honest clients and obtain valid
+Service Connections, Ardents must bound their effect on other established work
+and publisher resources. It does not claim to identify them or to guarantee a
+new honest admission while all finite connection capacity remains occupied.
+
+The 10-minute publisher workload uses the same controlled symmetric
+`100 Mbit/s` access link and is repeated separately for User-to-Service and
+Service-to-User Application Data. Before measurement begins, all `256`
+connections in the accepted publisher profile are exact-target-authenticated,
+open, and usable against the same published Service:
+
+- `128` are controlled honest connections: `64` receive equal shares of the
+  fixed incompressible `40 Mbit/s` offered Application workload in the measured
+  direction and `64` remain inactive except for unpredictable canaries;
+- `128` are controlled hostile connections that have completed any selected
+  anonymous admission step and hold ordinary unprivileged Service Connections.
+
+The harness knows which connections are hostile, but the candidate receives no
+such label. The mapping is randomized and cannot be inferred through a supplied
+IP address, source location, account, stable network-generated User identity,
+privileged grant, or persistent cross-Service or cross-Isolation-Context state.
+
+The two direction-specific workloads exercise both backpressure boundaries:
+
+- in the User-to-Service run, every hostile Application continuously attempts
+  to write incompressible Application Data while the controlled published
+  Application deliberately does not consume those hostile streams;
+- in the Service-to-User run, the controlled published Application continuously
+  attempts to write incompressible Application Data to every hostile stream
+  while those hostile Applications do not consume it.
+
+P3-D6 fixes the exact write schedule, payload sizes, onset, and sampling, but it
+must drive every hostile stream to its applicable queue or backpressure
+boundary and hold that pressure for the measurement window. External
+Application work is not attributed to Ardents, but all Ardents processes,
+buffers, tasks, timers, handles, cryptographic state, control traffic, and
+cleanup are.
+
+Throughout both runs:
+
+- all `128` honest connections remain authenticated, open, and usable;
+- the `64` active honest connections deliver at least `32 Mbit/s` aggregate,
+  each averages at least `400 kbit/s`, and none has a zero-delivery interval
+  longer than `5 s`;
+- all `64` inactive honest connections pass unpredictable canaries without an
+  Application-visible reconnect;
+- the complete publisher process tree keeps `p95 RSS <= 1 GiB` and mean CPU
+  `<= 100%` of one logical core;
+- the existing `256 KiB` per-connection and `64 MiB` publisher aggregate
+  logical Application Data queue caps remain hard and separate in each
+  direction; a full leaf or ancestor stops accepting producer bytes and
+  propagates backpressure without blocking unrelated honest streams.
+
+No hostile stream may create unbounded memory or disk buffering, task, timer,
+handle, queue, retry, or cleanup state; borrow another connection's resource
+scope; or force silent loss, reordering, eviction, reconnect, direct fallback,
+or a weaker security path. Protocol violations still fail closed. A
+protocol-conformant stream may be backpressured or terminated only by the same
+documented finite resource or liveness policy that applies without the harness
+label; Application content and User moderation remain outside carrier policy.
+
+If all `256` slots stay occupied throughout a new connection attempt, Ardents
+may return an explicit supported capacity-unavailable result, but must do so by
+`15 s`. It cannot hang, queue the attempt without a finite bound, claim success,
+or evict another connection to manufacture capacity. If capacity exists, the
+separate P3-D5b honest-admission gate applies.
+
+This is also an explicit product limitation. Without a scarce identity,
+trusted account, payment, source reputation, or materially stronger anonymous
+cost, Ardents cannot know whether `128` valid connections represent `128`
+people or one Sybil attacker. V1 therefore promises bounded resource use,
+backpressure, established-work isolation, and an honest capacity result—not
+per-person fairness, guaranteed creation of a free slot, or a bound on how long
+a protocol-conformant anonymous peer can retain one. R-010 may compare anonymous
+costs within the accepted accessibility and unlinkability limits, but cannot
+erase this non-claim by assumption.
+
 ## Remaining decisions
 
 1. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
    units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
    floors on the accepted reference class.
-2. **P3-D5c — Established hostile work:** bound completed-admission
-   connection hoarding, slow or adversarial streams, and post-establishment
-   resource exhaustion without making Application moderation a carrier
-   responsibility.
-3. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
+2. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
    artifacts, regression thresholds, and release failure rules.
 
 ## Hypotheses
@@ -1454,6 +1530,15 @@ traces, and direct-baseline results. Disposable experiment code belongs under
   `1 MiB` combined carrier traffic per honest client. It requires no money,
   account, IP or source reputation, stable identifier, or cross-Service or
   cross-Isolation-Context linkability.
+- **Product Owner decision:** with the `256` publisher slots divided into `128`
+  honest and `128` valid admitted hostile connections, both unread hostile
+  input and non-reading hostile receivers must reach bounded per-stream
+  backpressure without harming the accepted `64`-stream honest workload,
+  inactive canaries, queue ceilings, or `1 GiB`/one-core publisher limits.
+- **Product Owner decision:** at full connection capacity, a new attempt receives
+  an explicit capacity-unavailable result by `15 s`; V1 does not promise
+  per-person fairness or honest admission against an indistinguishable Sybil
+  attacker that has completed admission and retains valid connections.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -1487,8 +1572,8 @@ gate, three-event ordinary-churn workload, and impaired-live useful-progress
 profile, plus the overlapping-failure recovery gate and accepted degraded-path
 and recovery endpoint resource and carrier limits. Apply both accepted
 pre-establishment-flood gates for established work and honest anonymous
-admission, then define established hostile work and the reproducible release
-gate.
+admission, and the accepted established-hostile-work isolation and full-capacity
+non-claim. Then define the reproducible release gate.
 Role-specific infrastructure capacity remains deferred until R-004 supplies
 candidate units of work.
 
@@ -1501,10 +1586,11 @@ scale-up saturation gate, and single-failure recovery target also remain
 unverified; the three-event churn workload, impaired-live profile,
 overlapping-failure target, and endpoint recovery-resource ceilings are also
 unverified. The impaired and recovery carrier limits are also unverified, and
-the established-work and honest-admission flood workloads are unverified. The
-honest-client admission cost is also unverified on the required platforms. The
-idle carrier budget is unverified and deliberately secondary. The remaining
-numeric targets remain undecided. The strongest counterargument is that
+the established-work, honest-admission, and established-hostile workloads are
+unverified. The honest-client admission cost is also unverified on the required
+platforms. The idle carrier budget is unverified and deliberately secondary.
+The remaining numeric targets remain undecided. The strongest counterargument
+is that
 transport-independent continuation may require an Ardents layer above otherwise
 suitable carriers, adding state, attack surface, linkability risk, and resource
 cost. That is why the complete stack must earn the gate rather than assuming it
@@ -1749,8 +1835,28 @@ contradict the accepted client product.
 - The P3-D5b guarantee applies while the declared `16` slots are available. At
   full capacity, an explicit bounded capacity result is allowed; eviction,
   false success, or a hanging attempt is not.
+- P3-D5c accepted: the publisher starts a 10-minute run at its `256`-connection
+  profile with `128` honest and `128` hostile but valid admitted connections to
+  the same Service. Of the honest set, `64` receive the `40 Mbit/s` workload and
+  `64` remain inactive canaries.
+- Separate direction-specific runs drive unread hostile input and non-reading
+  hostile receivers to their queue or backpressure boundaries. The harness
+  knows the labels; Ardents does not receive or infer them from IP, account,
+  stable identity, privileged state, or cross-context linkage.
+- All honest connections remain usable; the active set retains the P3-D5a
+  `32 Mbit/s` aggregate, `400 kbit/s` per-stream, and `5 s` progress floors;
+  inactive canaries pass. Publisher `p95 RSS <= 1 GiB`, mean CPU remains within
+  one core, and the existing `256 KiB` leaf and `64 MiB` aggregate directional
+  queue caps and per-stream backpressure remain active.
+- When all `256` slots stay occupied, a new attempt may receive an explicit
+  capacity-unavailable result but must do so by `15 s`; it cannot hang, enter an
+  unbounded queue, claim success, or evict another connection.
+- V1 explicitly does not promise per-person fairness, creation of a free slot,
+  or successful new admission against an indistinguishable Sybil attacker that
+  has completed admission and retains protocol-conformant connections.
 - Public DNS, naming design, bootstrap, routing, libraries, language, exact
   hardware, and the remaining numeric budgets remain unselected.
-- P3-D5c established hostile work is next. Role-specific Node capacity and cost
-  remain deferred until R-004 candidate evidence under P3-D3b4.
+- P3-D6, the reproducible measurement and release gate, is next. Role-specific
+  Node capacity and cost remain deferred until R-004 candidate evidence under
+  P3-D3b4.
 - No ADR and no code.

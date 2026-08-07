@@ -130,6 +130,20 @@ check costs at most one logical-core CPU-second, `64 MiB` peak memory, and
 cross-context link. At full capacity Ardents may return an explicit capacity
 result, but cannot evict another connection or hang.
 
+If an attacker completes admission and fills ordinary Service Connections,
+Ardents still isolates established work rather than pretending it can identify
+the attacker. In the full-capacity publisher workload, `128` honest connections
+share the Service with `128` valid admitted hostile connections. The hostile
+set either sends data that the published Application does not consume or stops
+consuming data written to it. Per-stream and aggregate queues stay bounded and
+propagate backpressure; the `64` active honest streams retain the P3-D5a useful
+work floors, `64` inactive honest streams pass canaries, and publisher RSS/CPU
+remain within `1 GiB`/one core. Ardents receives no harness label, IP, account,
+or stable identity with which to favor the honest set. While all `256` slots
+remain occupied, a new User receives an explicit capacity-unavailable result by
+`15 s`; V1 does not falsely promise per-person fairness or a free slot against
+an indistinguishable admitted Sybil.
+
 ## J-04 — Integrate an Application
 
 **Actor:** Developer

@@ -300,6 +300,17 @@ route family by implication.
   IP or source reputation, a stable identifier, or linking across Services or
   Isolation Contexts. Full capacity may produce an explicit bounded capacity
   result, never eviction, false success, or a hang.
+- A hostile client that completes anonymous admission is not assumed to remain
+  distinguishable from an honest client. With all `256` publisher slots split
+  between `128` honest and `128` valid admitted hostile connections, unread
+  hostile input and non-reading hostile receivers reach hard queue and
+  backpressure boundaries without breaking the honest useful-work and canary
+  floors or the `1 GiB`/one-core publisher limits. Harness labels, IP, accounts,
+  stable identities, privileged state, and cross-context linkage are forbidden
+  classifiers. While capacity remains full, an explicit capacity-unavailable
+  result by `15 s` is acceptable; eviction, false success, hang, or unbounded
+  admission queue is not. Ardents does not claim per-person fairness, creation
+  of a free slot, or Sybil-resistant new admission under this condition.
 - Integrity mechanisms reject protocol-level tagging that changes authenticated
   data, but cannot promise to detect every timing-, delay-, or volume-based tag.
   Such correlation remains within the P2-D1 and P2-D4 limitations.
