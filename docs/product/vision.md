@@ -26,7 +26,7 @@ route and protect their connections.
   location from the User, and prevent any one ordinary Node from linking an
   endpoint location to a Service Name, Service Target, or opposite endpoint. It
   does not promise resistance to timing-and-volume correlation by a Broad
-  Traffic Observer.
+  Traffic Observer or hide identity disclosed by Application Data and behavior.
 - **Decentralized** means ordinary reachability and routing do not require one
   hosting or relay operator. Naming, bootstrap, releases, and emergency powers
   remain explicit Control Plane risks until their own designs are accepted.
@@ -59,6 +59,9 @@ The following product choices already constrain research:
 7. V1 supports one active Service Instance per Service Target. Routine migration
    preserves the target through an encrypted Service Authority export/import;
    loss or compromise replaces the target through the stable Service Name.
+8. Endpoint Location Privacy is distinct from Application anonymity. Ardents
+   does not inspect, sanitize, or promise to unlink credentials, content,
+   fingerprints, timing, or behavior visible to an intended endpoint.
 
 ## Network product boundary
 
@@ -131,6 +134,10 @@ These are responsibility boundaries, not selected binaries or APIs:
     not arbitrary collusion. Correlated Control spanning both endpoint sides may
     link a User and Service through traffic metadata without exposing
     Application Data.
+12. A malicious Service receives no User origin, Route, Isolation Context, or
+    network-generated stable User identifier from Ardents, while a malicious
+    User receives no Service Instance origin, Route, or Service Authority. Each
+    still sees the Application Data and behavior intended for it.
 
 The Interactive Route is therefore multi-hop, but the product contract does not
 select Tor, onion routing, a fixed path shape, or a fixed number of hops. R-004
@@ -192,6 +199,8 @@ until the product, security, and performance contracts can compare them fairly.
 - mandatory blockchain, wallet, token, or governance coin;
 - opaque cryptographic addresses as the ordinary human naming experience;
 - user-tunable anonymity knobs that create silent fingerprinting hazards;
+- automatic anonymity from application credentials, content, client
+  fingerprinting, timing, or behavior;
 - guaranteed invisibility or indistinguishability from ordinary Internet
   traffic;
 - Broad Traffic Observer resistance as an Interactive Route promise;

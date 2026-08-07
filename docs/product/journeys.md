@@ -33,7 +33,9 @@ Connection
 explicit failure. No directory search occurs, and possession of the name is not
 shown as authorization or secrecy. The Interactive Route is not a direct path
 or single proxy, and no one ordinary Node links the User's location to the
-Service Name, Service Target, or Service Instance location.
+Service Name, Service Target, or Service Instance location. The Service may
+still recognize identity disclosed by Application Data, credentials, client
+fingerprinting, timing, or behavior.
 
 ## J-03 — Publish a local Service
 

@@ -144,6 +144,12 @@ Opaque bytes exchanged for an Application; only that Application defines
 whether they represent HTTP, chat, files, commands, or another protocol.
 _Avoid_: Built-in message, network command, Node identity
 
+**Endpoint Location Privacy**:
+A Route Profile property that prevents the opposite endpoint from learning an
+endpoint's ordinary network location and limits how Nodes can link that location
+to a Service. It does not hide identity disclosed by Application Data or behavior.
+_Avoid_: Total anonymity, content anonymity, endpoint compromise
+
 **Isolation Context**:
 A local, network-invisible boundary assigned by an endpoint to an Application
 and optionally subdivided by it. Connections in different contexts must not

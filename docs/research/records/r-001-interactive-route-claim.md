@@ -211,13 +211,67 @@ Consequences:
   claims with separate failure conditions;
 - P2-D4 does not select multipath or a stronger Route Profile for V1.
 
+### P2-D5 — Endpoint Location Privacy, not Application anonymity
+
+**Product Owner decision, accepted 2026-08-07:** Ardents protects the ordinary
+network location of a User and Service Instance from the opposite endpoint. It
+does not promise to anonymize Application Data or behavior visible to the
+intended User or Service.
+
+A malicious Service may receive and use:
+
+- all plaintext Application Data intentionally sent to it, including accounts,
+  credentials, cookies, tokens, identifiers, content, and protocol metadata;
+- connection timing, direction, volume, lifecycle, repeated-use patterns, and
+  client or Application fingerprints visible at its endpoint;
+- any real-world identity or relationship that the Application voluntarily or
+  accidentally reveals;
+- the ability to return malicious, deceptive, or fingerprinting Application
+  Data.
+
+Ardents does not provide that Service with the User's ordinary network location,
+the Route, Node identities, the local Isolation Context, or a network-generated
+stable User identifier.
+
+A malicious User may receive and use:
+
+- the Service Name or Service Target it supplied or authenticated;
+- all Application Data and behavior the Service intentionally exposes;
+- connection timing, direction, volume, lifecycle, and availability visible at
+  its endpoint;
+- repeated probes or Application operations allowed by local and Service policy.
+
+Ardents does not provide that User with the Service Instance's ordinary network
+location, the Route, carrier Node identities, or the Service Authority.
+
+Isolation Contexts prevent Ardents from reusing forbidden network-visible state
+across local contexts. They cannot unlink two connections when Application Data,
+credentials, content, fingerprints, timing, volume, or behavior already links
+them. A compromised User endpoint or Service host falls outside the
+network-only protection boundary for secrets, plaintext, and local network
+information present there.
+
+Consequences:
+
+- the correct claim is Endpoint Location Privacy, not total User or Application
+  anonymity;
+- Ardents does not inspect, rewrite, sanitize, or suppress Application Data to
+  make it anonymous;
+- browser fingerprinting resistance, cookie policy, account separation, content
+  safety, malware defense, and sandboxing belong to the Application or a
+  Reference Application;
+- the network must not add a stable User ID, expose Isolation Context, or reveal
+  route diagnostics that increase endpoint linkability;
+- Service abuse prevention and authorization remain Application concerns, while
+  shared carrier exhaustion remains R-010;
+- P2-D5 does not weaken Service Target authentication or carrier payload
+  protection.
+
 ## Remaining decisions
 
-1. **P2-D5 — Malicious endpoint:** what a malicious User or Service can learn
-   from Application Data, connection behavior, and repeated use.
-2. **P2-D6 — Active attacks:** required resistance to tagging, replay, delay,
+1. **P2-D6 — Active attacks:** required resistance to tagging, replay, delay,
    redirection, route manipulation, and target substitution.
-3. **P2-D7 — Conditions and falsification:** required honest behavior,
+2. **P2-D7 — Conditions and falsification:** required honest behavior,
    diversity, measurements, failure thresholds, and user-facing limitation
    text for the final claim matrix.
 
@@ -283,6 +337,15 @@ R-011 later tests whether claimed operator and network diversity exists.
 - **P2-D4 — Treat anonymity failure as payload compromise:** rejected because
   end-to-end confidentiality, integrity, and target authentication do not depend
   on carrier Nodes remaining independent.
+- **P2-D5 — Total anonymity from a malicious Service:** rejected because the
+  intended Service necessarily receives Application Data and can link identity
+  or behavior that the Application reveals.
+- **P2-D5 — Carrier inspection or sanitization for anonymity:** rejected because
+  it would violate opaque Application Data, end-to-end protection, and the
+  Application responsibility boundary.
+- **P2-D5 — Expose endpoint or route diagnostics for troubleshooting:** rejected
+  because the opposite endpoint does not need origin, Node, Route, Isolation
+  Context, or authority information to use a Service Connection.
 
 ## Disposition
 
@@ -303,6 +366,12 @@ R-011 later tests whether claimed operator and network diversity exists.
   collusion; Correlated Control spanning enough role views may link endpoints.
 - End-to-end Application Data protection and Service Target authentication
   remain required even if every carrier Node colludes.
-- P2-D5, the malicious-endpoint boundary, is next.
+- P2-D5 accepted: Ardents provides Endpoint Location Privacy against a malicious
+  opposite endpoint but does not anonymize Application Data, credentials,
+  fingerprints, timing, volume, or behavior visible to it.
+- A Service receives no User origin, Route, Isolation Context, or network-generated
+  stable User ID; a User receives no Service Instance origin, Route, or Service
+  Authority.
+- P2-D6, the active-attack boundary, is next.
 - No routing family, protocol, library, implementation language, ADR, or code is
   selected.

@@ -32,6 +32,11 @@ Correlated Control of several roles. Control spanning both endpoint sides may
 link the relationship through traffic metadata; end-to-end Application Data
 confidentiality and Service Target authentication remain separate guarantees.
 
+Ardents provides Endpoint Location Privacy, not automatic anonymity inside an
+Application. An intended Service reads its Application Data and can recognize
+credentials, content, fingerprints, timing, or behavior that the Application
+reveals; the network adds no global User identity or route diagnostics.
+
 The carrier is public so that private Services can draw from a broader anonymity
 set. Naming, bootstrap, software releases, and governance remain explicit
 Control Plane risks rather than being hidden behind the word “decentralized.”
@@ -93,6 +98,8 @@ entry gates.
 - application persistence, arbitrary code execution, or decentralized compute
   by implication;
 - an opaque cryptographic address as the ordinary human-facing Service Name;
+- automatic anonymity for Application Data, credentials, fingerprints, or
+  behavior;
 - guaranteed indistinguishability from ordinary Internet traffic;
 - Broad Traffic Observer resistance as an Interactive Route promise.
 
