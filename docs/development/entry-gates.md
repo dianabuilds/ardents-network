@@ -131,11 +131,18 @@ only bytes verified in exact order count. A canary, body, order, or integrity
 failure fails the attempt or run. Caching, compression, deduplication, external
 resources, and benchmark-specific fast paths cannot make a candidate pass.
 
-Every applicable direct baseline uses the same endpoint machines, payload,
-direction, duration, and end-to-end impairment profile and brackets its Ardents
-batch before and after. It is measurement-only and cannot become a production
-fallback. Public-Internet or uncontrolled community runs may supplement but
-cannot replace or repair a failed controlled cell.
+Every goodput target that references a direct baseline uses one verified
+`60-second` direct transfer immediately before and after its complete Ardents
+batch on the same endpoint machines, payload, direction, link caps, impairment
+profile, and timed-transfer boundary. Both direct values must be positive and
+`max/min <= 1.10`; their arithmetic mean supplies the applicable normal or
+impaired baseline. Otherwise the complete batch is invalid. All evidence remains,
+and replacement requires a confirmed candidate-independent harness or reference-
+environment failure. Candidate-caused drift fails the candidate. A direct path
+normalizes no other KPI and can never become a production fallback.
+
+Public-Internet or uncontrolled community runs may supplement but cannot replace
+or repair a failed controlled cell.
 
 Full qualification uses `100` eligible attempts with at least `99%` success for
 each normal startup, connection, and tracer cell unless a specific accepted

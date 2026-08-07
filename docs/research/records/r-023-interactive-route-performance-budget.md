@@ -1374,9 +1374,9 @@ cell by at least:
 
 P3-D6b1 fixes the controlled topology and platform pairings, P3-D6b2a fixes
 minimum release sample counts, P3-D6b2b2a fixes the normal network envelope,
-P3-D6b2b2b fixes the Application payloads, and P3-D6b2b2c fixes the remaining
-reference inputs. P3-D6a fixes how those cells produce a release decision:
-results are
+P3-D6b2b2b fixes the Application payloads, P3-D6b2b2c1 fixes paired direct
+baselines, and P3-D6b2b2c2 fixes the remaining reference inputs. P3-D6a fixes
+how those cells produce a release decision: results are
 never pooled or averaged across mandatory platforms, endpoint sides,
 directions, or scenarios. Each cell must satisfy all of its applicable latency,
 success, progress, goodput, fairness, resource, carrier, queue, cleanup, and
@@ -1454,11 +1454,11 @@ invalidates qualification.
 
 Every metric that uses an ordinary-network direct baseline receives a paired
 baseline on the same endpoint machines and OS images, with the same Application
-payload, direction, duration, and declared end-to-end impairment profile. One
-direct run brackets the associated Ardents batch before it and another after it.
-The direct path exists only for measurement and can never become a production
-fallback. P3-D6b2 defines how the two measurements are combined and how much
-baseline drift invalidates the comparison.
+payload, direction, `60-second` timed-transfer duration, and declared end-to-end
+impairment profile. One direct run brackets the complete associated Ardents batch
+before it and another after it. The direct path exists only for measurement and
+can never become a production fallback. P3-D6b2b2c1 defines how the two
+measurements are combined and how much baseline drift invalidates the comparison.
 
 Public-Internet, community-node, or uncontrolled-VPS runs may provide useful
 supplementary field evidence, but they cannot replace, repair, or average into a
@@ -1501,7 +1501,7 @@ window contributes `0` goodput.
 CPU, memory, carrier-rate, and other time-series percentiles are calculated
 inside each 10-minute run; every one of the five runs must satisfy its applicable
 resource and carrier gates. Samples from a low-resource run cannot offset a
-failed run. P3-D6b2b2c fixes the time-series sampling interval and platform
+failed run. P3-D6b2b2c2 fixes the time-series sampling interval and platform
 attribution.
 
 The accepted 24-hour idle carrier guardrail requires one complete retained run
@@ -1607,7 +1607,7 @@ and cannot be removed as harness noise.
 The paired direct baseline and Ardents batch use the same endpoint caps and
 end-to-end impairment profile. The generator, seeds, exact delay and loss
 distribution, and distribution of the `80 ms` total across Route segments are
-declared before observing candidate results and retained as evidence; P3-D6b2b2c
+declared before observing candidate results and retained as evidence; P3-D6b2b2c2
 fixes their reproducibility and matching rules. Candidate processing time is not
 included in the injected network-only RTT and remains visible in measured
 latency.
@@ -1667,14 +1667,54 @@ method, header, URL, status, caching, or content semantics to Ardents. The V1
 Application Interface remains the accepted live bidirectional reliable ordered
 byte stream, and other Applications remain free to define their own protocols.
 
+### P3-D6b2b2c1 — Paired direct-baseline combination and drift
+
+**Product Owner decision, accepted 2026-08-07:** every goodput cell whose target
+explicitly references a paired direct baseline is bracketed by one `60-second`
+direct transfer immediately before and one immediately after its complete
+Ardents batch. Both use the same endpoint machines, Application payload artifact,
+Application Data direction, link caps, impairment profile, and timed-transfer
+boundary as that batch. Connection setup is outside the direct transfer window,
+as it is for the corresponding established-stream goodput measurement.
+
+Let `B_before` and `B_after` be the two verified direct Application-goodput
+results. The pair is stable only when both are finite and greater than zero and:
+
+`max(B_before, B_after) / min(B_before, B_after) <= 1.10`
+
+For a stable pair, the baseline used by the candidate gate is the arithmetic
+mean:
+
+`B = (B_before + B_after) / 2`
+
+The accepted normal goodput target therefore uses
+`min(10 Mbit/s, 50% of B)`. The impaired-live target independently uses
+`min(2 Mbit/s, 25% of B_impaired)` from its own impaired direct pair. Results
+from different directions, platform cells, network profiles, or batches are
+never pooled or substituted.
+
+If either direct run ends early, fails payload integrity, uses the wrong inputs,
+or exceeds the `10%` drift bound, the entire bracketed batch is invalid and must
+not produce a qualification result. The direct evidence, every candidate result,
+and the invalidation reason remain retained. Invalidation cannot convert a
+failed candidate run into a pass, delete it from reporting, or justify selective
+reruns; a replacement requires the existing P3-D6a finding of a harness or
+reference-environment failure independent of candidate behavior and reruns the
+complete batch. Candidate-caused contamination or drift is a candidate failure,
+not an environment invalidation.
+
+No direct result normalizes latency, success rate, CPU, memory, carrier overhead,
+security, privacy, isolation, or integrity. A direct path remains a measurement
+control only and can never be selected as an Ardents production fallback.
+
 ## Remaining decisions
 
 1. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
    units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
    floors on the accepted reference class.
-2. **P3-D6b2b2c — Reproducible measurement and baseline mechanics:** define the
+2. **P3-D6b2b2c2 — Trace, sampling, attribution, and state reset:** define the
    exact impairment generator and seed discipline, time-series sampling and
-   attribution, baseline combination and drift, and state-reset rules.
+   cross-platform attribution, and state-reset rules.
 3. **P3-D6c — Evidence and regression:** define retained artifacts,
    reproducibility, comparability, regression thresholds, invalidation review,
    and partial or complete requalification rules.
@@ -1876,9 +1916,9 @@ traces, and direct-baseline results. Disposable experiment code belongs under
   a controlled network; loopback, shared-memory, and hidden test fast paths are
   forbidden.
 - **Product Owner decision:** direct baselines bracket each applicable Ardents
-  batch before and after on the same endpoints, payload, direction, duration,
-  and end-to-end impairment profile. Uncontrolled Internet results are
-  supplementary only.
+  batch before and after on the same endpoints, payload, direction, `60-second`
+  timed-transfer duration, and end-to-end impairment profile. Uncontrolled
+  Internet results are supplementary only.
 - **Product Owner decision:** normal startup, connection, and tracer cells use
   `100` attempts with at least `99%` success unless a scenario already fixes a
   different floor. Recovery uses at least `20` episodes with at least `95%`
@@ -1920,6 +1960,14 @@ traces, and direct-baseline results. Disposable experiment code belongs under
 - **Product Owner decision:** HTTP belongs only to the controlled tracer
   Application and adds no protocol semantics to the generic byte-stream
   Application Interface.
+- **Product Owner decision:** each direct-baseline goodput pair uses one verified
+  `60-second` transfer before and after the Ardents batch. When
+  `max(B_before, B_after) / min(B_before, B_after) <= 1.10`, its arithmetic mean
+  is the baseline used by the applicable normal or impaired goodput formula.
+- **Product Owner decision:** a zero, incomplete, corrupt, mismatched, or
+  over-drift direct result invalidates the complete batch. All evidence remains;
+  only a confirmed candidate-independent harness or environment failure permits
+  a complete rerun. Candidate-caused drift is a candidate failure.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -1958,8 +2006,9 @@ non-claim. Apply the accepted conjunctive qualification and hard-guardrail
 semantics and the accepted four-pair controlled topology with bracketing direct
 baselines. Apply the accepted release sample floors, nearest-rank rules, and
 Windows 11/Ubuntu LTS endpoint hardware baseline and the accepted normal-network
-envelope and controlled payload suite, then define reproducible impairment
-traces, baseline mechanics, evidence, and regression rules.
+envelope, controlled payload suite, and paired direct-baseline rule, then define
+reproducible impairment traces, sampling, attribution, state reset, evidence,
+and regression rules.
 Role-specific infrastructure capacity remains deferred until R-004 supplies
 candidate units of work.
 
@@ -1977,10 +2026,12 @@ unverified. The honest-client admission cost and all accepted sample floors are
 also unverified on the required platforms. The idle carrier budget is
 unverified and deliberately secondary. The normal-network envelope is also an
 unverified top-down qualification input. The controlled payload suite is
-unverified as a portable harness contract. The remaining numeric targets remain
-undecided. The `20`-episode recovery floor makes `p95` observable only at coarse
-nearest-rank resolution; exact order statistics and success counts must remain
-visible, and later variability evidence may justify a larger predeclared sample.
+unverified as a portable harness contract. The direct-baseline drift and
+combination rule is also unverified against real environment variability. The
+remaining numeric targets remain undecided. The `20`-episode recovery floor
+makes `p95` observable only at coarse nearest-rank resolution; exact order
+statistics and success counts must remain visible, and later variability
+evidence may justify a larger predeclared sample.
 The strongest counterargument
 is that the mandatory four-pair, two-direction matrix may be expensive to
 execute for a one-to-one project. That cost is accepted for release
@@ -2325,8 +2376,17 @@ either would contradict the accepted client product.
   incompressible streams with exact order and digest validation. Caching,
   compression, deduplication, external resources, and benchmark short paths are
   forbidden. HTTP remains a tracer protocol rather than an Ardents semantic.
-- P3-D6b2b2c reproducible impairment traces, measurement attribution,
-  direct-baseline combination and drift, and state-reset rules is next, followed
-  by P3-D6c evidence and regression rules. Role-specific Node capacity and cost
-  remain deferred until R-004 candidate evidence under P3-D3b4.
+- P3-D6b2b2c1 accepted: applicable goodput batches have verified `60-second`
+  direct transfers before and after. A pair is stable when both values are
+  positive and `max/min <= 1.10`; its arithmetic mean supplies the applicable
+  normal or impaired baseline.
+- A zero, incomplete, corrupt, mismatched, or over-drift direct run invalidates
+  the complete batch without erasing any evidence. Replacement requires a
+  confirmed candidate-independent harness or environment failure; candidate-
+  caused drift is a candidate failure. Direct results normalize only formulas
+  that explicitly reference them and never provide a production fallback.
+- P3-D6b2b2c2 impairment traces, sampling, cross-platform attribution, and
+  state-reset rules is next, followed by P3-D6c evidence and regression rules.
+  Role-specific Node capacity and cost remain deferred until R-004 candidate
+  evidence under P3-D3b4.
 - No ADR and no code.

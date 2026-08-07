@@ -214,6 +214,15 @@ external resources, replayed canaries, and benchmark-specific paths cannot earn
 qualification. HTTP remains confined to the controlled tracer Application and
 does not become a carrier trust boundary or network semantic.
 
+Paired direct controls cannot hide a candidate failure. Applicable goodput
+batches have verified `60-second` direct transfers before and after; both must be
+positive and within `max/min <= 1.10`, and their arithmetic mean supplies only
+the explicitly referenced baseline. A zero, corrupt, incomplete, mismatched, or
+over-drift control invalidates the complete batch while retaining every result.
+Only a confirmed candidate-independent harness or environment failure permits a
+complete replacement. Candidate-caused drift fails the candidate, and no direct
+path is available to production traffic.
+
 Qualification sampling cannot hide tail failures. Normal short-event cells use
 `100` attempts and at least `99%` success unless a specific accepted scenario
 sets another floor; recovery uses at least `20` episodes and `95%` success where
