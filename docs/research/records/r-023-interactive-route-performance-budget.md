@@ -1369,9 +1369,10 @@ cell by at least:
 - the Application Data direction and any other predeclared input variant whose
   behavior or cost may differ.
 
-P3-D6b fixes the concrete topology, platform pairings, sample counts, and full
-cell matrix. P3-D6a fixes how those cells produce a release decision: results
-are never pooled or averaged across mandatory platforms, endpoint sides,
+P3-D6b1 fixes the controlled topology and platform pairings, P3-D6b2a fixes
+minimum release sample counts, and P3-D6b2b fixes the remaining reference
+inputs. P3-D6a fixes how those cells produce a release decision: results are
+never pooled or averaged across mandatory platforms, endpoint sides,
 directions, or scenarios. Each cell must satisfy all of its applicable latency,
 success, progress, goodput, fairness, resource, carrier, queue, cleanup, and
 liveness requirements simultaneously.
@@ -1458,15 +1459,73 @@ supplementary field evidence, but they cannot replace, repair, or average into a
 failed controlled qualification cell. P3-D6b1 selects no routing family,
 transport, library, language, or final Route shape.
 
+### P3-D6b2a — Qualification sample floors and percentile rules
+
+**Product Owner decision, accepted 2026-08-07:** the following are minimum
+sample floors for full V1 Route Qualification. A smaller development or CI
+smoke suite may find regressions quickly but cannot contribute partial credit to
+or substitute for these release samples.
+
+For each applicable P3-D6b1 cell, every normal short-event scenario—routine
+restart, clean first start, cold and warm connection, and cold and warm Named
+Unlisted Site tracer—uses `100` eligible attempts for each declared mode. At
+least `99` of the `100` must reach that scenario's successful end event. When an
+accepted scenario already has a different explicit success floor or sample
+count, that specific rule prevails; P3-D5b therefore retains its `600` attempts
+and `>= 95%` honest-admission floor.
+
+Every recovery profile collects at least `20` eligible independent episodes per
+applicable cell and Application Data direction. Where recovery is expected
+because the accepted conditions retain a qualifying alternate Route, at least
+`19` of `20` episodes must continue the same Service Connection and every
+unsuccessful episode must still terminate explicitly by its accepted deadline.
+A stricter workload remains stricter: the three-event sequential-churn run, for
+example, still requires every declared event and final canary in each run to
+succeed. If the `20`-episode floor requires more than five scheduled runs, those
+additional runs are part of qualification rather than optional reruns.
+
+Every sustained 10-minute normal, impaired, recovery, admission-flood, or
+established-hostile workload runs independently at least `5` times per
+applicable cell and direction. All five must complete without a hard failure and
+must satisfy every non-percentile invariant. For a `p05` 60-second goodput
+metric, each run contributes exactly ten non-overlapping windows, producing
+`50` ordered values across the cell. A failed, prematurely lost, or undelivered
+window contributes `0` goodput.
+
+CPU, memory, carrier-rate, and other time-series percentiles are calculated
+inside each 10-minute run; every one of the five runs must satisfy its applicable
+resource and carrier gates. Samples from a low-resource run cannot offset a
+failed run. P3-D6b2b fixes the time-series sampling interval and platform
+attribution.
+
+The accepted 24-hour idle carrier guardrail requires one complete retained run
+on each required Windows and Linux client OS image for the candidate. It remains
+a secondary guardrail rather than a standalone release blocker, but a missing,
+invalid, or over-budget result must be reported and cannot be described as a
+pass.
+
+All percentiles use ascending nearest-rank order statistics without
+interpolation: for percentile `p` and `N` values, select rank `ceil(p * N)`.
+Thus a `p95` over `20` episodes uses rank `19`, and a `p05` over `50` goodput
+windows uses rank `3`. A failed or timed-out latency observation is ordered as
+positive infinity; failed goodput is `0`. Every offered eligible sample remains
+in the success-rate denominator and percentile evidence.
+
+Additional samples are allowed only when their count and inclusion rule are
+declared before observing candidate results; all eligible samples then count.
+Replacement remains limited to a P3-D6a confirmed harness invalidation. A
+shorter smoke matrix, a successful subset, or repeated execution until a pass
+never earns Route Qualification.
+
 ## Remaining decisions
 
 1. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
    units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
    floors on the accepted reference class.
-2. **P3-D6b2 — Reference inputs and sampling:** define exact endpoint hardware,
-   operating-system versions, normal network distributions, Application
-   payloads, baseline combination and drift, sample counts, repetitions,
-   percentile calculation, and allowed failure rates.
+2. **P3-D6b2b — Reference inputs and baselines:** define exact endpoint
+   hardware, operating-system versions, normal network distributions,
+   Application payloads, time-series sampling and attribution, baseline
+   combination and drift, and state-reset rules.
 3. **P3-D6c — Evidence and regression:** define retained artifacts,
    reproducibility, comparability, regression thresholds, invalidation review,
    and partial or complete requalification rules.
@@ -1668,6 +1727,17 @@ traces, and direct-baseline results. Disposable experiment code belongs under
   batch before and after on the same endpoints, payload, direction, duration,
   and end-to-end impairment profile. Uncontrolled Internet results are
   supplementary only.
+- **Product Owner decision:** normal startup, connection, and tracer cells use
+  `100` attempts with at least `99%` success unless a scenario already fixes a
+  different floor. Recovery uses at least `20` episodes with at least `95%`
+  success unless a stricter workload requires every event.
+- **Product Owner decision:** each 10-minute workload runs independently five
+  times. `p05` goodput uses `50` non-overlapping 60-second windows; resource
+  percentiles pass inside every run. Each client OS retains one 24-hour idle
+  carrier run as a secondary guardrail.
+- **Product Owner decision:** percentiles use nearest rank without interpolation.
+  Failed latency is positive infinity, failed goodput is zero, all eligible
+  samples count, and a smaller smoke suite never earns Route Qualification.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -1704,8 +1774,8 @@ pre-establishment-flood gates for established work and honest anonymous
 admission, and the accepted established-hostile-work isolation and full-capacity
 non-claim. Apply the accepted conjunctive qualification and hard-guardrail
 semantics and the accepted four-pair controlled topology with bracketing direct
-baselines, then define the remaining reference inputs, sampling, evidence, and
-regression rules.
+baselines. Apply the accepted release sample floors and nearest-rank rules, then
+define the remaining reference inputs, evidence, and regression rules.
 Role-specific infrastructure capacity remains deferred until R-004 supplies
 candidate units of work.
 
@@ -1719,12 +1789,16 @@ unverified; the three-event churn workload, impaired-live profile,
 overlapping-failure target, and endpoint recovery-resource ceilings are also
 unverified. The impaired and recovery carrier limits are also unverified, and
 the established-work, honest-admission, and established-hostile workloads are
-unverified. The honest-client admission cost is also unverified on the required
-platforms. The idle carrier budget is unverified and deliberately secondary.
-The remaining numeric targets remain undecided. The strongest counterargument
+unverified. The honest-client admission cost and all accepted sample floors are
+also unverified on the required platforms. The idle carrier budget is
+unverified and deliberately secondary. The remaining numeric targets remain
+undecided. The `20`-episode recovery floor makes `p95` observable only at coarse
+nearest-rank resolution; exact order statistics and success counts must remain
+visible, and later variability evidence may justify a larger predeclared sample.
+The strongest counterargument
 is that the mandatory four-pair, two-direction matrix may be expensive to
-execute for a one-to-one project; P3-D6b2 must make sampling reproducible and
-proportionate without weakening coverage or allowing selective results.
+execute for a one-to-one project. That cost is accepted for release
+qualification and does not expand the smaller development smoke suite.
 Separately,
 transport-independent continuation may require an Ardents layer above otherwise
 suitable carriers, adding state, attack surface, linkability risk, and resource
@@ -2013,12 +2087,26 @@ contradict the accepted client product.
   candidate Route shape, roles, placement, and role-specific useful capacity.
 - Applicable direct baselines run on the same endpoints and end-to-end
   impairment profile immediately before and after each Ardents batch. They are
-  measurement-only
-  and never a production fallback; uncontrolled Internet evidence is
-  supplementary and cannot repair a failed controlled cell.
+  measurement-only and never a production fallback; uncontrolled Internet
+  evidence is supplementary and cannot repair a failed controlled cell.
+- P3-D6b2a accepted: every applicable normal startup, connection, and tracer
+  cell uses `100` eligible attempts with at least `99` successes unless an
+  accepted scenario fixes another count or success floor.
+- Every recovery profile collects at least `20` eligible episodes per cell and
+  direction with at least `19` successful continuations when recovery is
+  expected. Stricter scenarios, including every event in sequential churn,
+  remain stricter.
+- Each sustained 10-minute workload has at least five independent runs. `p05`
+  goodput uses their `50` non-overlapping 60-second windows; each resource and
+  carrier percentile passes inside all five runs.
+- Each required client OS image retains one complete 24-hour idle carrier run.
+  It remains a reported secondary guardrail rather than a standalone blocker.
+- Percentiles use ascending nearest rank without interpolation. Failed latency
+  is positive infinity, failed goodput is zero, all eligible samples count, and
+  smaller smoke suites cannot qualify.
 - Public DNS, naming design, bootstrap, routing, libraries, language, exact
   hardware, and the remaining numeric budgets remain unselected.
-- P3-D6b2 exact reference inputs and sampling is next, followed by P3-D6c
+- P3-D6b2b exact reference inputs and baselines is next, followed by P3-D6c
   evidence and regression rules. Role-specific Node capacity and cost remain
   deferred until R-004 candidate evidence under P3-D3b4.
 - No ADR and no code.

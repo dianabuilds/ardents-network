@@ -112,6 +112,21 @@ batch before and after. It is measurement-only and cannot become a production
 fallback. Public-Internet or uncontrolled community runs may supplement but
 cannot replace or repair a failed controlled cell.
 
+Full qualification uses `100` eligible attempts with at least `99%` success for
+each normal startup, connection, and tracer cell unless a specific accepted
+scenario sets another floor. Each recovery profile uses at least `20` eligible
+episodes per cell and direction with at least `95%` successful continuation
+where expected; stricter scenario rules still prevail. Each sustained 10-minute
+workload runs independently five times. Its `p05` goodput uses `50`
+non-overlapping 60-second windows, while resource and carrier percentiles pass
+inside every run. Each required client OS image retains one complete 24-hour
+idle carrier run as a secondary guardrail.
+
+All percentiles use ascending nearest rank without interpolation. Failed latency
+orders as positive infinity, failed goodput is zero, and every eligible sample
+remains in the evidence. Additional samples must be predeclared and all count.
+Shorter development or CI smoke suites never earn Route Qualification.
+
 One failed mandatory cell blocks the usable V1 and Route Qualification claim for
 that build and configuration. The artifact may remain an explicitly
 unqualified research build, but passing cells cannot compensate for the failed

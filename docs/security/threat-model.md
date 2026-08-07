@@ -185,8 +185,16 @@ paths are invalid qualification evidence. The candidate retains its production
 Route shape and all cryptographic, authentication, isolation, resource, and
 fail-closed behavior. Direct baselines bracket applicable Ardents batches on the
 same endpoints and end-to-end impairment profile but can never become production
-fallback.
-Uncontrolled Internet runs are supplementary only.
+fallback. Uncontrolled Internet runs are supplementary only.
+
+Qualification sampling cannot hide tail failures. Normal short-event cells use
+`100` attempts and at least `99%` success unless a specific accepted scenario
+sets another floor; recovery uses at least `20` episodes and `95%` success where
+expected unless a stricter rule applies. Five independent runs cover each
+10-minute workload. Percentiles use nearest rank without interpolation, failed
+latency orders as positive infinity, failed goodput is zero, and every eligible
+sample remains evidence. A smaller smoke suite never establishes the security
+or privacy claim.
 
 ## Security invariants
 
