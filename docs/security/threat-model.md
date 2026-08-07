@@ -284,6 +284,9 @@ route family by implication.
   starvation: every eligible connection must meet the accepted delivered-data
   floor and maximum no-progress gap. Unequal policy, degraded paths, and hostile
   load remain separate explicit contracts rather than silent exceptions.
+- Full-capacity tests keep non-active authenticated connections usable while the
+  active subset meets its budgets; local handles backed by silently evicted
+  network state do not count as open connections.
 - Security mechanisms and performance optimizations are measured together;
   neither may bypass target authentication, isolation, least privilege, or
   resource bounds. Active endpoint carrier overhead counts required security and

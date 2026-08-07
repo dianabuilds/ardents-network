@@ -460,7 +460,7 @@ the declared delivered load, loses a connection, exceeds either resource
 ceiling, or bypasses authentication, Route Knowledge Separation, Isolation
 Contexts, required background work, or bounded queues is a miss. P3-D3c2c3a
 fixes the fair-progress floor, and P3-D3c2c3b fixes active endpoint carrier
-overhead.
+overhead; P3-D3c2c3c1 fixes the combined `64`-open and `16`-active workload.
 
 ### P3-D3c2c2 — Active publisher resource ceiling
 
@@ -498,8 +498,8 @@ the declared delivered load, loses a connection, exceeds either resource
 ceiling, or bypasses authentication, Route Knowledge Separation, publication
 isolation, required background work, or bounded queues is a miss. P3-D3c2c3a
 fixes the fair-progress floor, P3-D3c2c3b fixes active endpoint carrier
-overhead, and the combined `256`-open and `64`-active workload remains
-P3-D3c2c3c.
+overhead, and P3-D3c2c3c1 fixes the combined `256`-open and `64`-active
+workload.
 
 ### P3-D3c2c3a — Equal-load fair progress
 
@@ -574,19 +574,62 @@ fail-closed behavior. Hidden V1 cover traffic is not a baseline requirement; a
 stronger R-005 profile may choose a different explicit security and bandwidth
 budget. Loss, churn, recovery, and hostile traffic remain P3-D4 and P3-D5.
 
+### P3-D3c2c3c1 — Combined open-and-active endpoint load
+
+**Product Owner decision, accepted 2026-08-07:** the client and publisher active
+qualification runs use the full accepted open-connection capacity throughout
+the same continuous 10-minute window:
+
+- client: `64` concurrently open outbound Service Connections, of which `16`
+  carry the accepted aggregate `10 Mbit/s` active workload;
+- publisher: `256` concurrently open incoming Service Connections, of which
+  `64` carry the accepted aggregate `40 Mbit/s` active workload.
+
+The active subset must simultaneously retain every accepted direction-specific
+contract: client or publisher CPU and resident-memory ceiling, aggregate
+delivered Application Data, per-connection `500 kbit/s` mean, maximum `2 s`
+zero-delivery gap, and `1.5x` endpoint carrier ratio. The test is still repeated
+separately for User-to-Service and Service-to-User transfer.
+
+The other `48` client or `192` publisher connections remain authenticated to the
+exact Service Target, open, and usable Application-facing byte streams but do
+not carry the fixed active workload. They continue all required control,
+liveness, rekeying, and safe Route maintenance, whose CPU, memory, and endpoint
+carrier costs remain inside the same budgets. They cannot be represented by
+local handles after their network state was silently closed or discarded.
+
+P3-D6 must use unpredictable bounded Application canaries across the inactive
+set throughout the window, including at its end, to prove that the same
+Application-facing Service Connection can still deliver bytes without a new
+connect operation or replacement Connection Result. Canary Application Data
+does not inflate the active goodput or carrier-ratio denominator, while its
+carrier and endpoint resource cost remains counted. A connection may perform
+transparent safe internal maintenance without ceasing to be the same stream
+contract.
+
+This is a top-down, unverified qualification workload rather than a fixed
+implementation limit. Any open-connection loss, canary failure, active-metric
+failure, hidden eviction, unbounded buffering, process offload, cross-context
+state reuse, or security downgrade is a miss. An endpoint configured below the
+accepted floor may expose reduced local capacity under P3-D3c1, but cannot use
+that configuration to pass V1 client or publisher qualification.
+
 ## Remaining decisions
 
-1. **P3-D3c2c3c — Combined load and scale-up:** set queue budgets, preserve
-   accepted aggregate goodput and fair progress with `64/16` client and `256/64`
-   publisher open-and-active workloads, and measure endpoint saturation.
-2. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
+1. **P3-D3c2c3c2 — Queue and backpressure ceilings:** bound queued
+   not-yet-delivered Application Data per connection and endpoint and define the
+   exact backpressure and overload result.
+2. **P3-D3c2c3c3 — Scale-up saturation evidence:** define how stronger endpoint
+   profiles prove useful additional capacity and detect the CPU, memory,
+   bandwidth, or isolation saturation point.
+3. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
    units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
    floors on the accepted reference class.
-3. **P3-D4 — Tail and degradation:** set jitter, loss, churn, alternate-route,
+4. **P3-D4 — Tail and degradation:** set jitter, loss, churn, alternate-route,
    and overload behavior without weakening R-001.
-4. **P3-D5 — Hostile load:** define fairness and resource-exhaustion workloads
+5. **P3-D5 — Hostile load:** define fairness and resource-exhaustion workloads
    and the useful honest-work floor during attack.
-5. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
+6. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
    artifacts, regression thresholds, and release failure rules.
 
 ## Hypotheses
@@ -698,6 +741,10 @@ traces, and direct-baseline results. Disposable experiment code belongs under
 - **Product Owner decision:** each endpoint and direction in the active
   benchmarks keeps combined sent-plus-received Ardents carrier bytes at or below
   `1.5x` the Application Data delivered in that direction.
+- **Product Owner decision:** those active benchmarks run with the full capacity
+  present: `64` client connections with `16` active and `256` publisher
+  connections with `64` active. Every non-active connection remains
+  authenticated, open, and usable without an Application-visible reconnect.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -724,7 +771,8 @@ publisher concurrency floors and the accepted idle client CPU and memory
 ceiling. Treat the accepted idle background-traffic number as an optimization
 guardrail, apply the accepted active client and publisher resource ceilings,
 enforce the accepted equal-load fair-progress floor, and apply the accepted
-`1.5x` endpoint carrier ratio. Define combined-load scale-up next, followed by
+`1.5x` endpoint carrier ratio under the accepted combined open-and-active load.
+Define queue ceilings and scale-up saturation evidence next, followed by
 infrastructure Node capacity, degradation, hostile load, and the reproducible
 release gate; bounded endpoint scale-up is already fixed.
 
@@ -732,9 +780,10 @@ Confidence: high for the platform boundary and desired connection experience;
 the accepted latency, goodput, client-concurrency, and publisher-concurrency
 targets, infrastructure reference class, idle client resource ceiling, and
 active client and publisher resource ceilings and fairness floor remain
-unverified. The active carrier ratio also remains unverified; the idle carrier
-budget is unverified and deliberately secondary. The remaining numeric targets
-remain undecided. The strongest counterargument is that
+unverified. The active carrier ratio and combined-load workload also remain
+unverified; the idle carrier budget is unverified and deliberately secondary.
+The remaining numeric targets remain undecided. The strongest counterargument
+is that
 supporting both Windows and Linux from the first V1 slice increases packaging
 and systems-integration work for a one-to-one project, but removing either would
 contradict the accepted client product.
@@ -843,9 +892,16 @@ contradict the accepted client product.
   background work at the endpoint boundary, but not intermediate-Node traffic.
   Required security and liveness work cannot be suppressed to pass; degraded,
   hostile, and stronger-privacy profiles retain separate budgets.
+- P3-D3c2c3c1 accepted: the active client test runs with `64` total open and
+  `16` active connections, and the active publisher test with `256` total open
+  and `64` active connections, while retaining all accepted active metrics.
+- Every non-active connection remains authenticated, open, and usable as the
+  same Application-facing stream. Hidden eviction, discarded network state, a
+  failed unpredictable canary, or an Application-visible reconnect fails the
+  combined test; maintenance and canary costs remain counted.
 - Public DNS, naming design, bootstrap, routing, libraries, language, exact
   hardware, and the remaining numeric budgets remain unselected.
-- P3-D3c2c3c, combined open-and-active workloads, queue budgets, and scale-up
-  saturation, is next; role-specific Node capacity is completed with R-004
-  candidate evidence under P3-D3b4.
+- P3-D3c2c3c2, queue and backpressure ceilings, is next. Stronger-endpoint
+  saturation evidence remains P3-D3c2c3c3; role-specific Node capacity is
+  completed with R-004 candidate evidence under P3-D3b4.
 - No ADR and no code.

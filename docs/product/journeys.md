@@ -88,16 +88,18 @@ authority on a new host, and republish the same Service Target. A required
 publisher reference endpoint supports at least `256` concurrently open incoming
 Service Connections, including at least `64` simultaneously active. This is a
 minimum total publisher capacity, not a Service maximum; one Service may use the
-whole budget when local policy permits. Across separate 10-minute runs in each
-direction, those `64` active connections share `40 Mbit/s` of delivered
-Application Data while the complete Ardents process tree keeps
+whole budget when local policy permits. The active test keeps all `256`
+connections open while `64` share `40 Mbit/s` of delivered Application Data.
+Throughout the run, the complete Ardents process tree keeps
 `p95 resident memory <= 1 GiB` and mean CPU `<= 100%` of one logical core. The
 published Application's own work is excluded, but every connection must keep
 progressing and all Ardents publication and carrier work remains counted. Under
 the controlled equal-load benchmark, every connection averages at least
 `500 kbit/s` and has no zero-delivery interval longer than `2 s`. At the
 publisher network boundary, all Ardents bytes sent plus received remain at or
-below `1.5x` the Application Data delivered in the tested direction.
+below `1.5x` the Application Data delivered in the tested direction. The other
+`192` connections remain authenticated and usable as the same streams rather
+than being silently evicted.
 
 ## J-04 — Integrate an Application
 
@@ -132,17 +134,20 @@ and failed runs do not count as useful payload. A required client reference
 endpoint also supports at least `64` concurrently open outbound Service
 Connections, including at least `16` simultaneously active. This is a minimum
 total client capacity, not a maximum number of connections to one published
-Service. Across separate 10-minute runs in each direction, those `16` active
-connections share `10 Mbit/s` of delivered Application Data while the complete
-Ardents process tree keeps `p95 resident memory <= 512 MiB` and mean CPU
+Service. The active test keeps all `64` connections open while `16` share
+`10 Mbit/s` of delivered Application Data in separate runs in each direction,
+and the complete Ardents process tree keeps
+`p95 resident memory <= 512 MiB` and mean CPU
 `<= 50%` of one logical core. Under the controlled equal-load benchmark, every
 connection averages at least `500 kbit/s` and has no zero-delivery interval
 longer than `2 s`. At the client network boundary, all Ardents bytes sent plus
 received remain at or below `1.5x` the Application Data delivered in the tested
-direction. On stronger hardware the endpoint may raise its finite hierarchical
-local budgets, while an Endpoint Owner may cap them. Reduced limits are exposed
-locally and do not qualify as the V1 performance floor; added capacity grants no
-Node role, authority, trust, or security exception.
+direction. The other `48` connections remain authenticated and usable as the
+same streams rather than being silently evicted. On stronger hardware the
+endpoint may raise its finite hierarchical local budgets, while an Endpoint
+Owner may cap them. Reduced limits are exposed locally and do not qualify as the
+V1 performance floor; added capacity grants no Node role, authority, trust, or
+security exception.
 
 ## J-05 — Use the Named Unlisted Site tracer
 
