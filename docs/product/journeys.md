@@ -10,12 +10,13 @@ semantics.
 
 **Start:** A newly installed local Ardents endpoint
 
-**Flow:** start endpoint → verify software/network state → obtain current
-bootstrap information → join through an available entry path → report ready or
-an exact degraded state
+**Flow:** Endpoint Owner starts the endpoint → verify software/network state →
+obtain current bootstrap information → join through an available entry path →
+report ready or an exact degraded state
 
 **Done when:** a local Application can use the Application Interface without a
-phone, email, wallet, central User account, or manual routing configuration.
+phone, email, wallet, central User account, network administrator approval, or
+manual routing configuration.
 
 ## J-02 — Open an Unlisted Service
 
@@ -38,9 +39,11 @@ shown as authorization or secrecy.
 
 **Start:** A local application server and an Ardents endpoint
 
-**Flow:** create or securely import Service Authority → obtain its Service
-Target → choose one active local listener → publish authenticated, expiring
-reachability → bind or update Service Name → accept a test Service Connection
+**Flow:** Endpoint Owner grants Authority Custody to an administration tool →
+create or securely import Service Authority → obtain its Service Target → grant
+per-Service administration → choose one active local listener → publish
+authenticated, expiring reachability without exposing raw authority → bind or
+update Service Name → accept a test Service Connection
 
 **Done when:** a remote Application can connect while neither the User nor an
 ordinary intermediary learns a public origin address outside the declared
@@ -55,12 +58,13 @@ Service Target.
 
 **Start:** Existing client/server application logic
 
-**Flow:** separately authorize Service administration when publishing is needed
-→ use the least-privileged local Connection Interface → receive a safe default
-Isolation Context or deliberately select an additional one → supply either exact
-Service Name or Service Target → resolve the name when needed → authenticate and
-expose the exact target → connect or accept → read and write opaque bytes →
-handle close, timeout, backpressure, and classified failure
+**Flow:** receive a narrowly scoped Local Grant → separately authorize Service
+administration when publishing is needed → use the least-privileged local
+Connection Interface → receive a safe default Isolation Context or deliberately
+select an additional one → supply either exact Service Name or Service Target →
+resolve the name when needed → authenticate and expose the exact target → connect
+or accept → read and write opaque bytes → handle close, timeout, backpressure,
+and classified failure
 
 **Done when:** the Application can use its own protocol without treating a Node
 ID as an application address, embedding a mandatory Ardents SDK, or importing
@@ -71,7 +75,8 @@ Failed name resolution or target authentication never falls back to another
 destination or the ordinary network. After a partial write or connection loss,
 the network never claims that the remote Application processed the bytes. The
 Isolation Context remains local and cannot become an application or network
-identity.
+identity. No Endpoint Owner or Local Grant becomes an authority over the Ardents
+network.
 
 ## J-05 — Use the Named Unlisted Site tracer
 

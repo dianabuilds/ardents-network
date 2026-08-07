@@ -25,7 +25,7 @@ accepted.
   Route Profile;
 - Service Authority secrecy and Service Target continuity;
 - Service Name binding, resolution integrity, and recovery state;
-- local Application Interface authority and network metadata;
+- endpoint-local grants, Application Interface authority, and network metadata;
 - route, discovery, bootstrap, and Bridge availability;
 - Control Plane integrity, software provenance, and real operator diversity.
 
@@ -81,7 +81,7 @@ itself.
 | Malicious infrastructure Node | Tag, delay, replay, drop, redirect, bias selection, or retain metadata | End-to-end target authentication and integrity, endpoint-selected safe paths, replay protection, bounded retry, role separation, and diversity analysis | Guarantees depend on the accepted collusion model and real diversity |
 | Sybil / flooding actor | Capture discovery or exhaust connection, rendezvous, descriptor, and naming capacity | Bounded queues and lifetimes, quotas or anonymous costs, diversified selection, local admission, and visible overload | No global proof of personhood; accessibility and concentration costs remain |
 | Malicious Service | Fingerprint requests, link Application identities, return exploit content, or lie at the application layer | Isolation Context, minimal network metadata, authenticated target, and clear Application boundary | The Service receives application plaintext and can link information that the Application voluntarily sends |
-| Malicious local Application | Reuse authority, inspect another app's state, overrun queues, or request unsafe route downgrade | Local interface authentication, per-Application authority, resource bounds, isolation, and explicit route policy | Code controlling the local endpoint can defeat local protections |
+| Malicious local Application | Reuse authority, inspect another app's state, overrun queues, or request unsafe route downgrade | Narrowly scoped Local Grants, separate Authority custody, resource bounds, isolation, and explicit route policy | Code controlling the local endpoint can defeat local protections |
 | Compromised Service host | Copy the V1 Service Authority, observe Users' application data, or continue impersonating the Service after migration | Treat the Service Target as compromised, create a replacement authority and target, and rebind the Service Name; never claim same-target revocation | A compromised live Service reads intended plaintext; the old target remains impersonable, and recovery depends on trustworthy name replacement |
 | Operator loss / seizure | Remove Nodes, inspect state, or partition reachability | No plaintext at carrier Nodes, replaceable roles, bounded state, alternate paths, and explicit unavailable results | Real availability still requires independent capacity and a live Service Instance |
 | Supply-chain attacker | Ship a malicious official endpoint or protocol update | Reproducible artifacts, signed releases, staged updates, rollback protection, transparent roots, and later independent review | One widely trusted distribution root remains power until diversified |
@@ -126,6 +126,16 @@ No document or interface may say only “anonymous,” “private,” “secure,
   session state.
 - Isolation Context separation does not defeat correlation through Application
   Data, timing, volume, or observation of the local endpoint's network traffic.
+- Every Application Interface operation requires an endpoint-local grant scoped
+  to the Application, optional Service, and allowed operations; connection or
+  publication access never implies raw Service Authority export.
+- An Endpoint Owner controls only one endpoint. No Local Grant, Endpoint Owner,
+  Node operator, or sponsor is a network-wide administrator or approval root.
+- Joining, connecting, and publishing require no central administrator approval;
+  disappearance of one Endpoint Owner cannot block independent endpoints.
+- Compromise of an Endpoint Owner grants no network-wide administrative power,
+  although the compromised endpoint remains capable of ordinary network attacks
+  and loses the Service Authorities it holds.
 - Bounded retry does not create unbounded queues, amplification, or duplicate
   application operations by implication.
 - Bootstrap, naming, protocol releases, software distribution, and emergency

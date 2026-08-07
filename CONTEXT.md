@@ -15,6 +15,12 @@ _Avoid_: Account, Principal, network identity
 A person or team that connects an Application or Service to Ardents.
 _Avoid_: Hosting customer, Node operator
 
+**Endpoint Owner**:
+The person or system administrator controlling one local Ardents endpoint and
+its Application access. This role has no network-wide authority and is not
+required by any other endpoint.
+_Avoid_: Network administrator, Ardents operator, central approver
+
 **Network Contributor**:
 A person or organization that supplies a bounded network role without owning
 Users, Services, or Application Data.
@@ -43,6 +49,11 @@ The separately authorized part of the Application Interface for managing
 Service Authority, publication, and Service configuration. Access to the
 Connection Interface does not grant access to it.
 _Avoid_: Control Plane, Connection Interface
+
+**Local Grant**:
+An endpoint-local permission scoped to an Application, optional Service, and
+allowed operations. It is not a network credential or approval from Ardents.
+_Avoid_: Global admin token, network account, Service Authority
 
 **Service**:
 An application-defined function reachable inside Ardents through a Service

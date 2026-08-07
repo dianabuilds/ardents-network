@@ -101,7 +101,7 @@ Consequences:
 - an SDK may wrap either interface but cannot merge their authority boundaries;
 - this is a logical and authorization boundary, not yet a choice of separate
   processes, sockets, protocols, or binaries;
-- P1-D7 must define how local access is granted and scoped.
+- local access and scope are fixed by P1-D7.
 
 ### P1-D4 — Name and target destinations
 
@@ -210,8 +210,65 @@ Consequences:
   in the same context;
 - R-004 and R-008 must identify and test every implementation state forbidden to
   cross this boundary;
-- P1-D7 must define how the endpoint identifies and authorizes the local
-  Application to which the default belongs.
+- P1-D7 defines how the endpoint authorizes the local Application to which the
+  default belongs.
+
+### P1-D7 — Endpoint-local least privilege
+
+**Product Owner decision, accepted 2026-08-07:** an Endpoint Owner grants access
+only on one local Ardents endpoint. The endpoint enforces narrowly scoped Local
+Grants; neither the owner nor any grant becomes a network-wide administrator,
+credential, or approval root.
+
+The V1 grant families are:
+
+- **Connection Grant:** lets one Application open outbound Service Connections
+  within local policy and, when explicitly scoped to a Service, accept that
+  Service's incoming connections;
+- **Service Administration Grant:** lets one Application publish, unpublish, and
+  configure a specified Service without receiving its raw Service Authority;
+- **Authority Custody Grant:** separately permits creating a new Service
+  Authority or importing, exporting, and initiating R-006 replacement for a
+  specified authority. This is the strongest local grant.
+
+The authority rules are:
+
+- every grant is scoped to one Application, allowed operations, and an optional
+  Service; an ordinary Application receives only the Connection Grants it needs;
+- Connection access never implies Service administration, Service administration
+  never implies raw Authority export, and no privilege is inherited silently;
+- there is no shared all-Application admin token;
+- Local Grants and their identifiers remain on the endpoint and are never sent
+  to a Service, carrier Node, resolver, or naming system;
+- an Endpoint Owner may issue grants through a future local UI, CLI,
+  configuration, operating-system policy, or automation interface, but no remote
+  network actor can issue or require them;
+- an unattended server may preconfigure local grants without contacting a
+  central operator.
+
+The decentralization boundary is:
+
+- joining, connecting, or publishing requires no central administrator approval;
+- compromise or seizure of one Endpoint Owner grants no network-wide
+  administrative power, although it compromises that endpoint and the Service
+  Authorities held there;
+- disappearance of one Endpoint Owner cannot prevent independent endpoints from
+  joining, connecting, or publishing their own Services;
+- a V1 Service still depends on the holder of its own Service Authority, but the
+  Ardents network does not;
+- naming, bootstrap, releases, and emergency policy remain separate Control
+  Plane risks under R-012 and must not recreate one mandatory operator.
+
+Consequences:
+
+- a compromised ordinary Application cannot acquire Authority custody merely by
+  using or serving traffic;
+- a Service can be automated on a server without inventing a global Ardents
+  account or administrator;
+- exact capability encoding, user interaction, operating-system identity, IPC,
+  storage, revocation, and audit mechanisms are implementation choices made
+  later;
+- P1-D8 must close the remaining local resource and backpressure contract.
 
 ## Hypotheses
 
@@ -294,7 +351,10 @@ that maps an ordinary HTTP client and server through simulated `connect`,
 - **Product Owner decision:** every Application receives a distinct local default
   Isolation Context and may create additional contexts. Contexts are never
   network identities, and different contexts cannot share linkable state.
-- **Inference:** P1-D1 through P1-D6 select H1 as the working product shape. The
+- **Product Owner decision:** Local Grants separate connection use, per-Service
+  administration, and Authority custody. Endpoint Owners are strictly local and
+  no central administrator approves network participation.
+- **Inference:** P1-D1 through P1-D7 select H1 as the working product shape. The
   accepted logical separation does not require separate protocols or processes.
 
 ## Options
@@ -329,13 +389,12 @@ an explicit separately authorized Service Administration Interface. P1-D1 fixes
 the no-mandatory-SDK boundary, P1-D2 fixes the stream-only V1 data primitive,
 P1-D3 fixes their privilege separation, and P1-D4 fixes destination and target
 authentication semantics. P1-D5 fixes the observable result and failure boundary.
-P1-D6 fixes safe default and optional Application-controlled isolation.
+P1-D6 fixes safe default and optional Application-controlled isolation. P1-D7
+fixes endpoint-local least privilege without a network administrator.
 
 Resolve the remaining contract one decision at a time:
 
-1. **P1-D7:** local authorization for connecting, accepting, publishing, and
-   Service Authority access.
-2. **P1-D8:** backpressure and bounded connection, bandwidth, memory, and queue
+1. **P1-D8:** backpressure and bounded connection, bandwidth, memory, and queue
    behavior at the local interface.
 
 No concrete proxy protocol, serialization, library, or language is selected.
@@ -359,7 +418,10 @@ No concrete proxy protocol, serialization, library, or language is selected.
 - P1-D6 accepted: every Application receives a safe local default Isolation
   Context, may add opaque subdivisions, and never exposes a context as network
   identity.
+- P1-D7 accepted: Local Grants separate connection, per-Service administration,
+  and Authority custody; each Endpoint Owner is local and no central administrator
+  approves joining, connecting, or publishing.
 - H1 is the working shape; H2 is rejected as mandatory integration; H3 is
   insufficient by itself.
-- P1-D7 is next; P1-D8 closes the remaining local resource contract.
+- P1-D8 closes the remaining local resource contract.
 - No ADR and no code.
