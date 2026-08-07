@@ -48,7 +48,8 @@ This does not require infrastructure Nodes to support Windows and does not
 forbid them from doing so. macOS, phones, tablets, and other constrained devices
 are later compatibility and measurement targets, not V1 performance or release
 gates. P3-D6b2b1 fixes `x86-64`, Windows 11, Ubuntu LTS, and the endpoint
-hardware class; exact point releases, images, CPU model, and network conditions
+hardware class, while P3-D6b2b2a fixes the normal reference-network envelope.
+Exact point releases, images, host CPU model, and reproducible impairment traces
 remain candidate measurement details.
 
 This platform decision does not select public DNS, naming, or bootstrap.
@@ -1372,8 +1373,9 @@ cell by at least:
   behavior or cost may differ.
 
 P3-D6b1 fixes the controlled topology and platform pairings, P3-D6b2a fixes
-minimum release sample counts, and P3-D6b2b2 fixes the remaining reference
-inputs. P3-D6a fixes how those cells produce a release decision: results are
+minimum release sample counts, P3-D6b2b2a fixes the normal network envelope,
+and P3-D6b2b2b fixes the remaining reference inputs. P3-D6a fixes how those
+cells produce a release decision: results are
 never pooled or averaged across mandatory platforms, endpoint sides,
 directions, or scenarios. Each cell must satisfy all of its applicable latency,
 success, progress, goodput, fairness, resource, carrier, queue, cleanup, and
@@ -1498,7 +1500,7 @@ window contributes `0` goodput.
 CPU, memory, carrier-rate, and other time-series percentiles are calculated
 inside each 10-minute run; every one of the five runs must satisfy its applicable
 resource and carrier gates. Samples from a low-resource run cannot offset a
-failed run. P3-D6b2b2 fixes the time-series sampling interval and platform
+failed run. P3-D6b2b2b fixes the time-series sampling interval and platform
 attribution.
 
 The accepted 24-hour idle carrier guardrail requires one complete retained run
@@ -1571,14 +1573,60 @@ Ubuntu LTS, Ubuntu LTS to Windows 11, and Ubuntu LTS to Ubuntu LTS, each in both
 Application Data directions. The accepted infrastructure class becomes Ubuntu
 LTS `x86-64` with `2 vCPU`, `2 GiB RAM`, and a symmetric `100 Mbit/s` link.
 
+### P3-D6b2b2a — Normal reference-network envelope
+
+**Product Owner decision, accepted 2026-08-07:** every normal,
+non-adversarial qualification cell uses one controlled, transport-independent
+network envelope:
+
+- the User/client access link provides `100 Mbit/s` toward the client and
+  `20 Mbit/s` from the client;
+- the Developer/publisher access link is symmetric `100 Mbit/s`;
+- every ordinary infrastructure Node link remains symmetric `100 Mbit/s` under
+  the accepted reference VPS class;
+- the network-only base round-trip time between the User and Publisher
+  boundaries is `80 ms`;
+- carrier-packet loss is `0.1%` independently in each direction;
+- additional per-direction delay variation has `p95 <= 10 ms`;
+- the harness injects no complete interruption or packet reordering in this
+  profile.
+
+The access rates are usable carrier-link caps, not Application goodput promises.
+All Ardents data, framing, handshakes, acknowledgements, retransmissions,
+padding, control, security, liveness, and background traffic consume those caps.
+The same operating-system image uses the client cap when acting as User and the
+publisher cap when acting as Publisher.
+
+Impairment is applied at controlled network boundaries below the candidate's
+Carrier Transports. It therefore selects no protocol and applies equally to TCP,
+UDP, QUIC, HTTP, WebSocket, and any later transport that can use the declared
+boundary. Transport behavior caused by the candidate remains part of the result
+and cannot be removed as harness noise.
+
+The paired direct baseline and Ardents batch use the same endpoint caps and
+end-to-end impairment profile. The generator, seeds, exact delay and loss
+distribution, and distribution of the `80 ms` total across Route segments are
+declared before observing candidate results and retained as evidence; P3-D6b2b2b
+fixes their reproducibility and matching rules. Candidate processing time is not
+included in the injected network-only RTT and remains visible in measured
+latency.
+
+This profile is a qualification reference, not a minimum connectivity
+requirement or a promise that production paths match independent loss. A better
+link cannot replace the mandatory cell. Complete interruption, injected
+reordering, the accepted `300 ms`/`5%` impaired-live profile, churn, blocking,
+and hostile traffic remain separate workloads and cannot be pooled with this
+normal result.
+
 ## Remaining decisions
 
 1. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
    units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
    floors on the accepted reference class.
-2. **P3-D6b2b2 — Network, payload, and baseline inputs:** define the normal
-   network distribution, Application payloads, time-series sampling and
-   attribution, baseline combination and drift, and state-reset rules.
+2. **P3-D6b2b2b — Reproducible workload and baseline inputs:** define the exact
+   impairment generator and seed discipline, Application payloads, time-series
+   sampling and attribution, baseline combination and drift, and state-reset
+   rules.
 3. **P3-D6c — Evidence and regression:** define retained artifacts,
    reproducibility, comparability, regression thresholds, invalidation review,
    and partial or complete requalification rules.
@@ -1802,6 +1850,15 @@ traces, and direct-baseline results. Disposable experiment code belongs under
   outside the V1 compatibility and release claim. Stronger hardware requires a
   separately qualified scale-up profile; weaker hardware cannot claim the
   reference result.
+- **Product Owner decision:** the normal network uses a `100/20 Mbit/s`
+  User/client access link, symmetric `100 Mbit/s` Publisher and infrastructure
+  links, `80 ms` base end-to-end RTT, independent `0.1%` loss per direction, and
+  `p95 <= 10 ms` additional per-direction jitter, with no injected complete
+  interruption or reordering.
+- **Product Owner decision:** normal impairment is applied below Carrier
+  Transports and consumes link capacity with all attributable overhead. It
+  chooses no transport; paired direct and Ardents measurements use the same
+  declared profile.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -1839,8 +1896,9 @@ admission, and the accepted established-hostile-work isolation and full-capacity
 non-claim. Apply the accepted conjunctive qualification and hard-guardrail
 semantics and the accepted four-pair controlled topology with bracketing direct
 baselines. Apply the accepted release sample floors, nearest-rank rules, and
-Windows 11/Ubuntu LTS endpoint hardware baseline, then define the remaining
-network, payload, baseline, evidence, and regression rules.
+Windows 11/Ubuntu LTS endpoint hardware baseline and the accepted normal-network
+envelope, then define reproducible impairment traces, payload, baseline,
+evidence, and regression rules.
 Role-specific infrastructure capacity remains deferred until R-004 supplies
 candidate units of work.
 
@@ -1856,7 +1914,8 @@ unverified. The impaired and recovery carrier limits are also unverified, and
 the established-work, honest-admission, and established-hostile workloads are
 unverified. The honest-client admission cost and all accepted sample floors are
 also unverified on the required platforms. The idle carrier budget is
-unverified and deliberately secondary. The remaining numeric targets remain
+unverified and deliberately secondary. The normal-network envelope is also an
+unverified top-down qualification input. The remaining numeric targets remain
 undecided. The `20`-episode recovery floor makes `p95` observable only at coarse
 nearest-rank resolution; exact order statistics and success counts must remain
 visible, and later variability evidence may justify a larger predeclared sample.
@@ -2175,8 +2234,8 @@ either would contradict the accepted client product.
   is positive infinity, failed goodput is zero, all eligible samples count, and
   smaller smoke suites cannot qualify.
 - Public DNS, naming design, bootstrap, routing, libraries, language, exact host
-  CPU model, normal network inputs, and the remaining numeric budgets remain
-  unselected.
+  CPU model, reproducible impairment traces, and the remaining numeric budgets
+  remain unselected.
 - P3-D6b2b1 accepted: the Windows 11 and Ubuntu LTS images are fully patched and
   frozen per candidate on `x86-64`; Ubuntu LTS is the sole Linux qualification
   baseline. Other distributions and architectures receive no V1 claim or
@@ -2189,7 +2248,15 @@ either would contradict the accepted client product.
   `2 GiB RAM`, symmetric `100 Mbit/s` VPS class. Stronger endpoint capacity
   requires a qualified scale-up profile; weaker hardware cannot claim the base
   result.
-- P3-D6b2b2 network, payload, and baseline inputs is next, followed by P3-D6c
-  evidence and regression rules. Role-specific Node capacity and cost remain
-  deferred until R-004 candidate evidence under P3-D3b4.
+- P3-D6b2b2a accepted: the normal reference envelope uses `100/20 Mbit/s` User,
+  symmetric `100 Mbit/s` Publisher and infrastructure links, `80 ms` base RTT,
+  independent `0.1%` loss in each direction, and `p95 <= 10 ms` additional
+  per-direction jitter, with no injected complete interruption or reordering.
+- The envelope is transport-independent and applied below Carrier Transports.
+  Its caps include all attributable traffic, and the same declared profile
+  brackets the Ardents batch through its paired direct measurements.
+- P3-D6b2b2b reproducible impairment traces, payload, measurement, reset, and
+  direct-baseline inputs is next, followed by P3-D6c evidence and regression
+  rules. Role-specific Node capacity and cost remain deferred until R-004
+  candidate evidence under P3-D3b4.
 - No ADR and no code.

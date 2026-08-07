@@ -195,6 +195,16 @@ overcommit. Built-in OS security remains enabled. Exact image, CPU, microcode,
 hypervisor, storage, power mode, and resource-cap evidence is retained. Other
 Linux distributions and architectures cannot inherit the V1 claim.
 
+The normal performance envelope is imposed below Carrier Transports: User access
+is `100/20 Mbit/s`, Publisher and ordinary Node links are symmetric
+`100 Mbit/s`, base User-to-Publisher network RTT is `80 ms`, independent loss is
+`0.1%` per direction, and additional per-direction jitter has `p95 <= 10 ms`.
+The harness injects no complete interruption or reordering in this normal
+profile.
+Candidate-induced delay, loss, reordering, retry traffic, and overhead remain
+observable; transport choice cannot move them outside the qualification result.
+Degraded, churn, blocking, and hostile workloads remain separate threat cells.
+
 Qualification sampling cannot hide tail failures. Normal short-event cells use
 `100` attempts and at least `99%` success unless a specific accepted scenario
 sets another floor; recovery uses at least `20` episodes and `95%` success where

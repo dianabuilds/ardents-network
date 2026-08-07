@@ -113,6 +113,15 @@ hypervisor, storage, power mode, and caps are frozen and retained per candidate.
 An image cannot be replaced after seeing its results; an updated image requires
 the requalification scope defined by R-023 P3-D6c.
 
+Normal qualification gives the User/client a `100 Mbit/s` inbound and
+`20 Mbit/s` outbound access link and gives the Publisher and every ordinary Node
+a symmetric `100 Mbit/s` link. The controlled network applies `80 ms`
+network-only base User-to-Publisher RTT, independent `0.1%` carrier-packet loss
+in each direction, and `p95 <= 10 ms` additional per-direction jitter. It injects
+no complete interruption or packet reordering in the normal profile. Shaping is
+below Carrier Transports, and all attributable protocol and background traffic
+consumes the link caps.
+
 Every applicable direct baseline uses the same endpoint machines, payload,
 direction, duration, and end-to-end impairment profile and brackets its Ardents
 batch before and after. It is measurement-only and cannot become a production
