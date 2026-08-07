@@ -158,6 +158,14 @@ would-block instead of accepting bytes it cannot retain. Timeout or cancellation
 affects only the unaccepted remainder; an accepted prefix is never a claim of
 remote Application delivery and is never silently discarded.
 
+A stronger endpoint automatically selects only a previously qualified profile
+compatible with its current finite resources. A claimed scale factor increases
+open connections, active connections, and aggregate delivered Application Data
+together in the same 10-minute workload while leaving at least `20%` of every
+declared CPU, memory, and usable-link parent budget free. The first failed
+profile is saturation and is not selected automatically. The Endpoint Owner may
+always cap lower; an explicit higher experimental cap remains unqualified.
+
 ## J-05 — Use the Named Unlisted Site tracer
 
 **Actors:** Developer and User

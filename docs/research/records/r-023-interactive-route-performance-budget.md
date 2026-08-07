@@ -331,12 +331,14 @@ not practically useful on the reference class.
 A stronger Windows or Linux machine may use additional CPU, memory, and network
 capacity to support more bounded connections and aggregate work.
 
-By default, the endpoint derives a conservative finite resource profile from
-the resources available to its process and applies the accepted hierarchy:
-Endpoint, Local Grant or Application, Service or Isolation Context, then
-connection and operation. An Endpoint Owner may set a lower cap or raise the
-automatic cap within enforceable finite safety bounds. Creating additional
-Applications, Services, grants, or contexts never multiplies an ancestor budget.
+By default, the endpoint derives a conservative finite resource allowance from
+the resources available to its process, selects no higher than a compatible
+qualified profile, and applies the accepted hierarchy: Endpoint, Local Grant or
+Application, Service or Isolation Context, then connection and operation. An
+Endpoint Owner may set a lower cap. An explicit higher finite experimental cap
+remains unqualified under P3-D3c2c3c3 and is never selected automatically.
+Creating additional Applications, Services, grants, or contexts never
+multiplies an ancestor budget.
 
 If effective local limits fall below the accepted client or publisher floor,
 the endpoint may still operate but must expose reduced local capacity and cannot
@@ -359,7 +361,8 @@ Traffic volume, admission outcomes, and timing may still allow peers or
 observers to infer rough capacity; the contract prevents an explicit stable
 hardware identity, not all inference. Linear scaling is not promised. P3-D3c2
 must measure where CPU, memory, bandwidth, contention, and privacy-preserving
-isolation stop producing useful additional capacity on each reference class.
+isolation stop producing useful additional capacity on each reference class;
+P3-D3c2c3c3 fixes the automatic-profile saturation rule.
 
 ### P3-D3c2a — Idle client resource ceiling
 
@@ -681,19 +684,84 @@ successful acceptance beyond available capacity, silent loss or eviction,
 cross-scope borrowing, unbounded memory or disk growth, or security downgrade
 fails qualification.
 
+### P3-D3c2c3c3 — Scale-up saturation evidence
+
+**Product Owner decision, accepted 2026-08-07:** a stronger client or publisher
+may enable a higher automatic capacity profile only after that profile proves
+useful scaled work in the complete 10-minute combined open-and-active test and
+retains at least `20%` headroom in every declared parent CPU, memory, and usable
+link budget.
+
+A higher profile declares a scale factor `S > 1` against the applicable V1
+reference profile. Its qualification workload scales together:
+
+| Profile | Open connections | Active connections | Aggregate delivered Application Data | Aggregate logical queue cap per direction |
+|---|---:|---:|---:|---:|
+| Client | `64 * S` | `16 * S` | `10 * S Mbit/s` | at most `16 * S MiB` |
+| Publisher | `256 * S` | `64 * S` | `40 * S Mbit/s` | at most `64 * S MiB` |
+
+Connection counts are whole numbers. The claimed `S` cannot exceed the weakest
+ratio actually demonstrated among open capacity, active capacity, and aggregate
+delivered Application Data. More idle handles alone are not useful scale-up.
+The per-connection logical queue ceiling remains `256 KiB` in each direction;
+only the finite endpoint aggregate may grow with a qualified profile.
+
+Each profile declares finite resources available to Ardents after the
+operating-system reserve, conservative automatic allowance, and any lower
+Endpoint Owner cap. During each direction-specific active run:
+
+- mean whole-Ardents-process-tree CPU use is at most `80%` of the profile's CPU
+  parent budget;
+- whole-Ardents-process-tree `p95` resident memory is at most `80%` of the
+  profile's memory parent budget;
+- `p95` one-second Ardents carrier bitrate in each physical link direction is
+  at most `80%` of that direction's measured usable link budget.
+
+Declaring a budget larger than the resources safely available to the process
+does not create headroom. P3-D6 must fix the operating-system reserve, usable
+link baseline, sampling, repetitions, and hardware envelope for each profile.
+The existing absolute client and publisher resource ceilings continue to
+qualify the `S = 1` reference profiles; a higher profile uses its declared
+finite parent budgets and the `20%` reserve without weakening the reference
+claim.
+
+Every other applicable accepted gate remains enabled: all declared connections
+stay open and usable, the scaled useful load is delivered, every active
+connection retains the fair-progress floor and maximum no-progress gap, endpoint
+carrier overhead remains `<= 1.5x`, queue and backpressure semantics hold, and
+authentication, Route Knowledge Separation, isolation, and required background
+work are unchanged. Startup, connection latency, and single-connection goodput
+remain separate applicable gates rather than being hidden inside the active
+window.
+
+Profiles are tested in increasing order for the same implementation and claimed
+hardware and operating-system envelope. The first profile that fails any
+applicable metric or loses the `20%` reserve is the measured saturation point;
+it and larger profiles are ineligible for automatic selection on that envelope
+until new qualification evidence passes. One successful larger run cannot skip
+a confirmed failed profile.
+
+At runtime, the endpoint selects no higher than the greatest qualified profile
+compatible with its currently available finite resources. The Endpoint Owner
+may always cap it lower. An explicit finite experimental override above the
+automatic cap remains unqualified, is never selected automatically, and cannot
+be presented as a V1 performance result. It still obeys every security,
+isolation, queue, and explicit-overload invariant.
+
+This defines useful capacity evidence, not linear hardware scaling. Additional
+CPU, RAM, or bandwidth grants no role, authority, trust, route priority, or
+security exception, and the selected profile is not required network metadata.
+
 ## Remaining decisions
 
-1. **P3-D3c2c3c3 — Scale-up saturation evidence:** define how stronger endpoint
-   profiles prove useful additional capacity and detect the CPU, memory,
-   bandwidth, or isolation saturation point.
-2. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
+1. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
    units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
    floors on the accepted reference class.
-3. **P3-D4 — Tail and degradation:** set jitter, loss, churn, alternate-route,
+2. **P3-D4 — Tail and degradation:** set jitter, loss, churn, alternate-route,
    and overload behavior without weakening R-001.
-4. **P3-D5 — Hostile load:** define fairness and resource-exhaustion workloads
+3. **P3-D5 — Hostile load:** define fairness and resource-exhaustion workloads
    and the useful honest-work floor during attack.
-5. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
+4. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
    artifacts, regression thresholds, and release failure rules.
 
 ## Hypotheses
@@ -814,6 +882,11 @@ traces, and direct-baseline results. Disposable experiment code belongs under
   `64 MiB` across a publisher. Full queues apply honest stream backpressure;
   they never authorize hidden loss, eviction, cross-scope borrowing, or
   unbounded memory or disk buffering.
+- **Product Owner decision:** an automatic higher endpoint profile must scale
+  open and active connections and aggregate useful load together, preserve all
+  accepted gates, and retain at least `20%` of each declared CPU, memory, and
+  usable-link parent budget. The first confirmed miss is its saturation point
+  and blocks that and larger automatic profiles for the tested envelope.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -841,19 +914,18 @@ ceiling. Treat the accepted idle background-traffic number as an optimization
 guardrail, apply the accepted active client and publisher resource ceilings,
 enforce the accepted equal-load fair-progress floor, and apply the accepted
 `1.5x` endpoint carrier ratio under the accepted combined open-and-active load.
-Apply the accepted queue ceilings and backpressure semantics, then define
-scale-up saturation evidence, followed by infrastructure Node capacity,
-degradation, hostile load, and the reproducible release gate; bounded endpoint
-scale-up is already fixed.
+Apply the accepted queue ceilings, backpressure semantics, and scale-up
+saturation gate, followed by infrastructure Node capacity, degradation, hostile
+load, and the reproducible release gate.
 
 Confidence: high for the platform boundary and desired connection experience;
 the accepted latency, goodput, client-concurrency, and publisher-concurrency
 targets, infrastructure reference class, idle client resource ceiling, and
 active client and publisher resource ceilings and fairness floor remain
-unverified. The active carrier ratio, combined-load workload, and queue ceilings
-also remain unverified; the idle carrier budget is unverified and deliberately
-secondary. The remaining numeric targets remain undecided. The strongest
-counterargument is that
+unverified. The active carrier ratio, combined-load workload, queue ceilings,
+and scale-up saturation gate also remain unverified; the idle carrier budget is
+unverified and deliberately secondary. The remaining numeric targets remain
+undecided. The strongest counterargument is that
 supporting both Windows and Linux from the first V1 slice increases packaging
 and systems-integration work for a one-to-one project, but removing either would
 contradict the accepted client product.
@@ -912,7 +984,8 @@ contradict the accepted client product.
   authority, or route-selection privilege.
 - P3-D3c1 accepted: supported endpoints derive conservative finite hierarchical
   budgets from available resources; stronger machines may exceed the client and
-  publisher floors, and Endpoint Owners may bound or raise the automatic cap.
+  publisher floors through compatible qualified profiles, and Endpoint Owners
+  may cap lower. A finite higher experimental cap remains unqualified.
 - Operating below a floor is allowed only as explicitly reduced local capacity,
   not as a qualified V1 performance result. More hardware grants no automatic
   Node role, trust, authority, route priority, cross-context access, or security
@@ -980,9 +1053,19 @@ contradict the accepted client product.
   additional bytes; silent loss, eviction, reordering, cross-scope borrowing,
   unbounded disk or memory buffering, and false write success fail
   qualification.
+- P3-D3c2c3c3 accepted: a higher client or publisher profile declares a scale
+  factor `S > 1` and proves proportionally scaled open connections, active
+  connections, and aggregate delivered Application Data in the complete
+  combined-load test.
+- The per-connection queue cap remains `256 KiB`; only the finite endpoint
+  aggregate scales. Mean CPU, `p95` RSS, and `p95` one-second directional carrier
+  bitrate each remain at or below `80%` of their declared finite parent budget.
+- The first profile that misses any applicable metric or the `20%` reserve is
+  the saturation point and is not eligible for automatic selection. The owner
+  may cap lower; a finite higher experimental override is visibly unqualified
+  and cannot weaken any security or overload invariant.
 - Public DNS, naming design, bootstrap, routing, libraries, language, exact
   hardware, and the remaining numeric budgets remain unselected.
-- Stronger-endpoint saturation evidence is next under P3-D3c2c3c3;
-  role-specific Node capacity is completed with R-004 candidate evidence under
-  P3-D3b4.
+- Role-specific Node capacity is next but is completed with R-004 candidate
+  evidence under P3-D3b4.
 - No ADR and no code.

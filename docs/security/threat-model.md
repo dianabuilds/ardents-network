@@ -275,6 +275,13 @@ route family by implication.
 - Stronger endpoint hardware may raise finite local capacity above the accepted
   performance floors, but extra capacity grants no Node role, trust, authority,
   route-selection priority, cross-context access, or security exception.
+- Automatic scale-up requires a qualified profile that increases open and active
+  connections with aggregate useful load while retaining at least `20%` of
+  every declared CPU, memory, and usable-link parent budget. The first profile
+  that misses any accepted gate or reserve is saturation and cannot be selected
+  automatically for that tested envelope. An owner may cap lower; a finite
+  higher experimental override is unqualified and cannot relax resource,
+  isolation, backpressure, authentication, or Route Knowledge Separation.
 - Exact endpoint hardware and configured local limits are not required network
   metadata. Traffic and admission behavior may still permit rough capacity
   inference, which is not presented as hidden by the protocol.
