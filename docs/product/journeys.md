@@ -106,11 +106,12 @@ or built-in application identity is required.
 
 **Start:** An active or attempted Service Connection whose entry or route fails
 
-**Flow:** classify only supported facts → avoid unsafe silent downgrade → obtain
-alternate network state or Bridge when required → attempt bounded route recovery
-within the same Service Connection → restore it or return a product-level failure
-class or honest indeterminate result → let the Application decide whether to open
-a new connection
+**Flow:** authenticate target and protocol state → reject detected modification,
+replay, redirection, or downgrade → classify only supported facts → obtain
+alternate network state or Bridge when required → attempt bounded safe route
+recovery within the same Service Connection → restore it or return a
+product-level failure class or honest indeterminate result → let the Application
+decide whether to open a new connection
 
 **Done when:** connectivity resumes without manual protocol configuration, or
 the Application receives enough information to make a safe retry decision. No
@@ -137,6 +138,7 @@ Every implementation proposal must exercise at least these cases:
 - bootstrap information is stale, conflicting, blocked, or malicious;
 - one ordinary entry, relay, discovery, or rendezvous Node is malicious, slow,
   or absent;
+- one Node modifies, injects, replays, redirects, delays, drops, or tags traffic;
 - nominally different Nodes, including both endpoint-adjacent roles, share one
   operator, network, software supply chain, or jurisdiction;
 - a Name Record is stale, expired, rolled back, or equivocating;

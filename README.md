@@ -37,6 +37,11 @@ Application. An intended Service reads its Application Data and can recognize
 credentials, content, fingerprints, timing, or behavior that the Application
 reveals; the network adds no global User identity or route diagnostics.
 
+Authentication and integrity fail closed: modified, injected, replayed,
+redirected, or downgraded protocol data is never accepted as a valid Service
+Connection. A Node can still delay or drop traffic; indistinguishable causes are
+reported honestly and bounded recovery never replays an Application operation.
+
 The carrier is public so that private Services can draw from a broader anonymity
 set. Naming, bootstrap, software releases, and governance remain explicit
 Control Plane risks rather than being hidden behind the word “decentralized.”

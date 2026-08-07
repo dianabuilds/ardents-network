@@ -135,8 +135,9 @@ _Avoid_: Node-to-node message, conversation, Mailbox
 
 **Connection Result**:
 The authoritative outcome of attempting or ending a Service Connection: success
-bound to an authenticated target, clean close, or a bounded failure class. It is
-not a delivery receipt, an Application result, or a route trace.
+bound to an authenticated target, clean close, or a bounded failure class;
+detected authenticity or integrity violations are never success. It is not a
+delivery receipt, an Application result, or a route trace.
 _Avoid_: Delivery status, application response, route diagnostics
 
 **Application Data**:

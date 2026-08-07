@@ -138,6 +138,9 @@ These are responsibility boundaries, not selected binaries or APIs:
     network-generated stable User identifier from Ardents, while a malicious
     User receives no Service Instance origin, Route, or Service Authority. Each
     still sees the Application Data and behavior intended for it.
+13. Target authentication, Route Profile binding, protocol freshness, and
+    integrity fail closed. Detected modification, injection, replay, redirect,
+    or downgrade never becomes an accepted connection or Application Data.
 
 The Interactive Route is therefore multi-hop, but the product contract does not
 select Tor, onion routing, a fixed path shape, or a fixed number of hops. R-004
@@ -147,6 +150,11 @@ separation, and R-023 must bound its performance cost.
 Route selection must reduce exposure to Correlated Control across operator,
 network, software supply chain, and jurisdiction, but different Node IDs are not
 proof of independence. R-011 must make that uncertainty measurable.
+
+A malicious Node can always delay, drop, or block traffic. Ardents performs only
+bounded safe route recovery and otherwise returns the narrowest supported
+Connection Result, including indeterminate failure when attack and outage cannot
+be distinguished. It never silently retries an Application operation.
 
 The Interactive Route deliberately makes no Broad Traffic Observer resistance
 claim. A delayed, padded, or cover-traffic-heavy profile enters the product only

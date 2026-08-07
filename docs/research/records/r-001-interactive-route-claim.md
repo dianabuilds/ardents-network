@@ -267,11 +267,74 @@ Consequences:
 - P2-D5 does not weaken Service Target authentication or carrier payload
   protection.
 
+### P2-D6 — Fail-closed active-attack handling
+
+**Product Owner decision, accepted 2026-08-07:** target authentication, Route
+Profile binding, protocol freshness, control data, and Application Data
+integrity fail closed. A detected active violation never becomes an accepted
+Service Connection, valid Application Data, or a silent downgrade.
+
+The mandatory rejection boundary covers:
+
+- Service Target substitution or redirection;
+- downgrade to another Route Profile, target, namespace, direct Service path,
+  or ordinary network;
+- modification, injection, replay, rollback, truncation presented as clean
+  completion, or reordering beyond the reliable ordered stream contract;
+- forged route, rendezvous, discovery, or connection-control state;
+- reuse of expired or connection-scoped protocol material outside its accepted
+  freshness boundary.
+
+The observable failure contract remains the bounded P1-D5 Connection Results:
+
+- failure to authenticate the exact selected target is target authentication
+  failure when the endpoint has evidence for that class;
+- an integrity violation after establishment terminates the affected Service
+  Connection and is observed as connection loss;
+- when manipulation, ordinary failure, censorship, and path loss cannot be
+  distinguished, the result is indeterminate failure rather than an accusation;
+- no violation causes silent destination fallback, a weaker Route Profile, or
+  automatic replay of Application Data;
+- bounded route recovery may continue only when it preserves the same accepted
+  Service Connection semantics and never reissues an Application operation.
+
+Availability remains an honest limitation. A malicious Node can always delay,
+drop, block, throttle, or shape the traffic it carries. Ardents may select a
+different route and expose degraded or unavailable state, but cannot guarantee
+delivery or reliably distinguish every attack from churn, congestion, or
+failure.
+
+Tagging has two boundaries:
+
+- a tag that changes authenticated protocol or Application Data must be rejected
+  by the integrity and freshness contract;
+- timing, deliberate delay, loss, packet sizing, or volume patterns may survive
+  without a detectable integrity violation and aid correlation by colluding or
+  broad observers. Ardents must minimize and measure this exposure but does not
+  promise to detect every such tag under the P2-D1 and P2-D4 limits.
+
+Active discovery or probing of Bridges belongs to R-009 because it tests
+Transport Camouflage and entry availability rather than changing the
+Interactive Route endpoint claim.
+
+Consequences:
+
+- fail-closed security deliberately permits denial of service rather than
+  accepting unauthenticated or corrupted state;
+- active failure never reveals Node identities or a Route trace to the
+  Application merely to provide a more specific diagnosis;
+- an endpoint reports only evidence-supported Connection Results and does not
+  claim to identify an attacker it cannot observe;
+- replay protection at the network layer does not create Application-level
+  exactly-once delivery or semantic replay protection;
+- cryptographic construction, nonce format, epochs, counters, and concrete
+  protocol messages remain later design choices;
+- R-007 specifies bounded recovery and evidence for failure classes; R-009
+  specifies active probing and blocked entry; R-004 measures tagging exposure.
+
 ## Remaining decisions
 
-1. **P2-D6 — Active attacks:** required resistance to tagging, replay, delay,
-   redirection, route manipulation, and target substitution.
-2. **P2-D7 — Conditions and falsification:** required honest behavior,
+1. **P2-D7 — Conditions and falsification:** required honest behavior,
    diversity, measurements, failure thresholds, and user-facing limitation
    text for the final claim matrix.
 
@@ -346,6 +409,16 @@ R-011 later tests whether claimed operator and network diversity exists.
 - **P2-D5 — Expose endpoint or route diagnostics for troubleshooting:** rejected
   because the opposite endpoint does not need origin, Node, Route, Isolation
   Context, or authority information to use a Service Connection.
+- **P2-D6 — Continue after a detected integrity or authentication violation:**
+  rejected because availability cannot justify accepting unauthenticated,
+  corrupted, replayed, or downgraded state.
+- **P2-D6 — Label every drop or delay as an attack:** rejected because churn,
+  congestion, censorship, failure, and malicious behavior can be observationally
+  indistinguishable.
+- **P2-D6 — Automatically reconnect and replay Application Data:** rejected
+  because the network cannot infer Application idempotency or remote completion.
+- **P2-D6 — Promise detection of every timing tag:** rejected because a Node can
+  shape low-latency timing and volume without modifying authenticated bytes.
 
 ## Disposition
 
@@ -372,6 +445,10 @@ R-011 later tests whether claimed operator and network diversity exists.
 - A Service receives no User origin, Route, Isolation Context, or network-generated
   stable User ID; a User receives no Service Instance origin, Route, or Service
   Authority.
-- P2-D6, the active-attack boundary, is next.
+- P2-D6 accepted: authentication, integrity, freshness, and Route Profile binding
+  fail closed; detected violations never become accepted data or silent downgrade.
+- Delay, denial, traffic shaping, and indistinguishable attack remain honest
+  limitations; bounded recovery never replays an Application operation.
+- P2-D7, conditions and falsification, is next.
 - No routing family, protocol, library, implementation language, ADR, or code is
   selected.

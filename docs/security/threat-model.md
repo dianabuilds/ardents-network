@@ -73,7 +73,7 @@ through timing and volume; other combinations break the claim when their merged
 views cross the same knowledge boundary. End-to-end payload confidentiality,
 integrity, and Service Target authentication remain required even if all carrier
 Nodes collude, although those Nodes may still deny service or manipulate traffic
-subject to the later P2-D6 contract.
+under the P2-D6 contract.
 
 P2-D5 limits the endpoint claim to Endpoint Location Privacy. An intended
 Service necessarily receives its plaintext Application Data and connection
@@ -82,6 +82,13 @@ Name or Service Target. Ardents adds no stable User ID, exposes no Isolation
 Context or Route to the Service, and exposes no Service Instance origin, Route,
 or Service Authority to the User. Application credentials, content,
 fingerprinting, timing, and behavior can still identify or link participants.
+
+P2-D6 requires fail-closed authenticity, integrity, freshness, and Route Profile
+binding. Modified, injected, replayed, redirected, or downgraded protocol data
+must not become an accepted Service Connection or Application Data. A malicious
+Node can still delay, drop, block, and shape traffic. When attack and ordinary
+failure are indistinguishable, Ardents reports indeterminate failure rather than
+an accusation; bounded recovery never replays an Application operation.
 
 It does **not** claim resistance to a Broad Traffic Observer correlating timing
 and volume near both endpoints or across enough network locations. R-005 must
@@ -102,7 +109,7 @@ anonymity or indistinguishability guarantee.
 | Censor / DPI | Block known Nodes, bootstrap sources, or protocol fingerprints; probe suspected Bridges | Multiple authenticated bootstrap sources, replaceable Bridges, transport agility, bounded rotation, and explicit blocked state | No fixed protocol disguise or address remains unblockable forever |
 | Local Traffic Observer | Observe the adjacent endpoint's location, external peer addresses, timing, direction, duration, volume, retries, and long-lived patterns; attempt to classify Ardents use | Encrypt protocol and Application Data; hide the selected Service Name or Service Target, opposite endpoint location, and full Route; prohibit direct Service fallback; avoid one mandatory stable fingerprint | Ardents use may still be classified or inferred, and low-latency traffic may be correlated with observations elsewhere |
 | Broad Traffic Observer | Correlate both endpoint traffic statistically | Make the lack of an Interactive Route correlation-resistance claim visible; measure any later stronger Route Profile separately | Interactive traffic is expected to remain timing- and volume-correlation-sensitive |
-| Malicious infrastructure Node | Combine endpoint location, Service Name or Service Target, Route, or payload knowledge; tag, delay, replay, drop, redirect, bias selection, or retain metadata | Multi-hop Route Knowledge Separation, end-to-end target authentication and payload protection, short-lived opaque route handles, bounded retry, role separation, and diversity analysis | The Node sees its immediate peers and traffic metadata; guarantees depend on the accepted collusion model and real diversity |
+| Malicious infrastructure Node | Combine endpoint location, Service Name or Service Target, Route, or payload knowledge; tag, modify, inject, delay, replay, drop, redirect, downgrade, bias selection, or retain metadata | Multi-hop Route Knowledge Separation; authenticated fresh protocol state; end-to-end target authentication and payload integrity; fail-closed downgrade rejection; short-lived opaque route handles; bounded retry; role separation; diversity analysis | The Node can always deny, delay, or shape traffic; timing and volume tags may aid correlation without producing a distinguishable integrity violation |
 | Correlated Control | Combine the permitted views of nominally different Nodes, especially both endpoint-adjacent roles, and correlate timing or volume | Avoid correlated route positions using operator, network, software, and jurisdiction evidence; expose uncertainty; test concentration under R-011 | V1 makes no anonymity guarantee against every pair or larger set; hidden common control cannot always be detected |
 | Sybil / flooding actor | Capture discovery or exhaust connection, rendezvous, descriptor, and naming capacity | Bounded queues and lifetimes, quotas or anonymous costs, diversified selection, local admission, and visible overload | No global proof of personhood; accessibility and concentration costs remain |
 | Malicious Service | Fingerprint requests, link credentials or behavior, return exploit content, or lie at the Application layer | Hide User origin, Route, Isolation Context, and network-generated stable User identifiers; isolate network state; authenticate the Service Target; keep content semantics outside the carrier | The Service receives intended Application Data, timing, volume, and behavior and can link what the Application reveals |
@@ -181,6 +188,22 @@ No document or interface may say only “anonymous,” “private,” “secure,
   integrity, or Service Target authentication while endpoints, Service
   Authority, and accepted cryptography remain uncompromised. It can still break
   anonymity or availability.
+- Target authentication, Route Profile binding, protocol freshness, and
+  integrity fail closed. Modified, injected, replayed, redirected, or downgraded
+  data is never accepted as a valid connection or Application Data.
+- A detected target substitution produces target authentication failure when the
+  evidence supports it. Integrity loss after establishment terminates the
+  connection; indistinguishable causes remain connection loss or indeterminate
+  failure rather than a fabricated attack diagnosis.
+- No active failure causes silent fallback to another target, namespace, Route
+  Profile, direct Service path, or ordinary network, and no recovery replays
+  Application Data as a new operation.
+- A malicious Node can always delay, drop, block, or shape traffic. Bounded route
+  recovery may restore reachability but cannot guarantee availability or prove
+  that a failure was accidental.
+- Integrity mechanisms reject protocol-level tagging that changes authenticated
+  data, but cannot promise to detect every timing-, delay-, or volume-based tag.
+  Such correlation remains within the P2-D1 and P2-D4 limitations.
 - Endpoint Location Privacy is not Application anonymity. The intended Service
   reads its Application Data and observes connection behavior; the User reads
   the Service response and knows the selected Service Name or Service Target.
@@ -224,8 +247,8 @@ No document or interface may say only “anonymous,” “private,” “secure,
 
 The prioritized questions live in [the network research queue](../research/questions.md).
 R-006 fixes the V1 target lifecycle, R-002 fixes the Application Interface, and
-R-001 P2-D1 through P2-D5 fix its observer, Node, collusion, and malicious-endpoint
-limits.
+R-001 P2-D1 through P2-D6 fix its observer, Node, collusion, endpoint, and
+active-attack limits.
 No production architecture should be selected before R-001, R-003, R-004,
 R-007, R-009, and R-023 make the observer, naming, routing, failure, bootstrap,
 and performance contracts testable.
