@@ -994,13 +994,63 @@ contract does not claim survival after all qualifying paths are exhausted. The
 `8 s` target is a top-down unverified product boundary, not evidence that a
 specific route family, carrier, or implementation already provides it.
 
+### P3-D4b2c1 — Endpoint resource cost under impairment and recovery
+
+**Product Owner decision, accepted 2026-08-07:** in every direction-specific
+10-minute P3-D4a, P3-D4b1, P3-D4b2a, and P3-D4b2b qualification run, each
+required Windows or Linux endpoint participating as the User/client or
+Developer/publisher side must keep the complete Ardents process tree within:
+
+- `p95 resident memory <= 512 MiB`;
+- mean CPU `<= 50%` of one logical core;
+- `p95` one-second CPU `<= 100%` of one logical core.
+
+These ceilings apply independently at both endpoints while the accepted useful
+load, impairment, injections, progress, recovery clocks, and security checks
+remain enabled. They include every Ardents process and helper attributable to
+the endpoint, including Route and Carrier Channel work, cryptography,
+retransmission, background security and liveness work, publication work, and
+recovery bookkeeping. The external User or published Application's own process
+work is excluded. P3-D6 fixes OS versions, reference processors, sampling, RSS
+attribution, and CPU normalization.
+
+The accepted logical queue ceiling remains `256 KiB` per Service Connection and
+direction throughout every run. Existing endpoint and ancestor aggregate caps
+also remain in force; recovery creates no separate queue allowance. At a full
+cap the producer-facing stream applies honest backpressure. It cannot spill
+without bound, borrow from another Local Grant or Isolation Context, discard or
+duplicate bytes, or report false write success.
+
+Temporary recovery state cannot accumulate with failure count. A completed or
+abandoned Route attempt, Carrier Channel, timer, cryptographic context, queued
+copy, task, and operating-system handle must cease to be live when no longer
+needed by the current connection or recovery episode. A reusable cache may
+remain only under a declared finite cap independent of the number of completed
+failures and remains charged to RSS and other applicable budgets. P3-D6 retains
+pre-event and post-event counts and resource traces; monotonic growth
+attributable solely to completed or abandoned episodes fails qualification.
+
+Resource and product outcomes are coequal gates. A candidate cannot pass by
+missing the accepted goodput or recovery target, terminating an otherwise
+eligible connection, opening a hidden replacement connection, suppressing
+required security work, weakening the Route Profile or target authentication,
+or moving work outside the measured process tree. A resource miss cannot be
+removed from evidence, and a performance miss cannot be excused by staying
+under the resource ceiling.
+
+The limits deliberately give one impaired or recovering connection no more
+endpoint CPU or memory than the already accepted complete normal client active
+workload. They are top-down unverified product ceilings, not measurements of an
+existing implementation. Infrastructure-Node cost remains deferred until R-004
+defines candidate roles and units of work under P3-D3b4.
+
 ## Remaining decisions
 
 1. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
    units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
    floors on the accepted reference class.
-2. **P3-D4b2c — Degraded-path and recovery cost:** set CPU, RSS, queue,
-   carrier-traffic, and Node-load ceilings during impaired operation and
+2. **P3-D4b2c2 — Degraded-path and recovery carrier cost:** bound endpoint
+   carrier-byte amplification and burst rate during impaired operation and
    single, sequential, and overlapping recovery without weakening R-001.
 3. **P3-D5 — Hostile load:** define fairness and resource-exhaustion workloads
    and the useful honest-work floor during attack.
@@ -1150,6 +1200,11 @@ traces, and direct-baseline results. Disposable experiment code belongs under
   remains one recovery episode. The same Service Connection recovers within
   `p95 <= 8 s` or terminates explicitly by `15 s`, both measured from the first
   interruption without a timer reset.
+- **Product Owner decision:** throughout every 10-minute impaired and recovery
+  run, each complete endpoint process tree keeps `p95 RSS <= 512 MiB`, mean CPU
+  `<= 50%` of one logical core, and `p95` one-second CPU `<= 100%` of one core.
+  The `256 KiB` per-connection directional queue cap remains, and temporary
+  recovery state cannot accumulate across completed or abandoned attempts.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -1181,7 +1236,7 @@ Apply the accepted queue ceilings, backpressure semantics, and scale-up
 saturation gate. Apply the accepted single-failure Service Connection recovery
 gate, three-event ordinary-churn workload, and impaired-live useful-progress
 profile, plus the overlapping-failure recovery gate. Then define degraded-path
-resource cost, hostile load, and the reproducible release gate.
+and recovery carrier cost, hostile load, and the reproducible release gate.
 Role-specific infrastructure capacity remains deferred until R-004 supplies
 candidate units of work.
 
@@ -1191,10 +1246,11 @@ targets, infrastructure reference class, idle client resource ceiling, and
 active client and publisher resource ceilings and fairness floor remain
 unverified. The active carrier ratio, combined-load workload, queue ceilings,
 scale-up saturation gate, and single-failure recovery target also remain
-unverified; the three-event churn workload, impaired-live profile, and
-overlapping-failure target are also unverified, and the idle carrier budget is
-unverified and deliberately secondary. The remaining numeric targets remain
-undecided. The strongest counterargument is that
+unverified; the three-event churn workload, impaired-live profile,
+overlapping-failure target, and endpoint recovery-resource ceilings are also
+unverified, and the idle carrier budget is unverified and deliberately
+secondary. The remaining numeric targets remain undecided. The strongest
+counterargument is that
 transport-independent continuation may require an Ardents layer above otherwise
 suitable carriers, adding state, attack surface, linkability risk, and resource
 cost. That is why the complete stack must earn the gate rather than assuming it
@@ -1384,8 +1440,19 @@ contradict the accepted client product.
   and stream identity remain unchanged without loss, duplicate presentation,
   Application-visible reconnect, operation replay, direct fallback, or
   security downgrade.
+- P3-D4b2c1 accepted: throughout every direction-specific 10-minute impaired
+  or recovery run, each complete client or publisher endpoint process tree has
+  `p95 RSS <= 512 MiB`, mean CPU `<= 50%` of one logical core, and `p95`
+  one-second CPU `<= 100%` of one core.
+- The `256 KiB` logical queue cap per Service Connection and direction and all
+  ancestor caps remain in force. Recovery adds no queue allowance, and
+  completed or abandoned recovery state cannot accumulate with failure count.
+- Useful progress, recovery, security, and resources are simultaneous gates;
+  no hidden reconnect, premature termination, process splitting, weakened
+  security, false delivery, or omitted miss can make the resource result pass.
 - Public DNS, naming design, bootstrap, routing, libraries, language, exact
   hardware, and the remaining numeric budgets remain unselected.
-- P3-D4b2c degraded-path and recovery resource cost is next. Role-specific Node
-  capacity remains deferred until R-004 candidate evidence under P3-D3b4.
+- P3-D4b2c2 degraded-path and recovery carrier cost is next. Role-specific Node
+  capacity and cost remain deferred until R-004 candidate evidence under
+  P3-D3b4.
 - No ADR and no code.

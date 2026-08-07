@@ -265,6 +265,14 @@ route family by implication.
   ordering, and bounded queues for 10 minutes while meeting the P3-D4b2a
   goodput and `5 s` maximum no-progress gap. A complete interruption remains a
   recovery event rather than an impaired-live success.
+- Impairment and recovery remain inside the endpoint resource boundary. Each
+  complete client or publisher Ardents process tree keeps `p95 RSS <= 512 MiB`,
+  mean CPU `<= 50%` of one logical core, `p95` one-second CPU `<= 100%` of one
+  core, and the accepted `256 KiB` directional connection queue cap during
+  every 10-minute degraded or recovery workload. Temporary Route, Carrier
+  Channel, timer, task, handle, queued-copy, and cryptographic state cannot
+  accumulate with completed or abandoned attempts. Process splitting, hidden
+  reconnects, dropped outcomes, or weakened security cannot make a run pass.
 - Integrity mechanisms reject protocol-level tagging that changes authenticated
   data, but cannot promise to detect every timing-, delay-, or volume-based tag.
   Such correlation remains within the P2-D1 and P2-D4 limitations.

@@ -248,6 +248,14 @@ within `p95 <= 8 s` from the first interruption or terminates explicitly by
 retains stream order, uniqueness, identity, security, and Isolation Context
 without an Application-visible reconnect or Application-operation replay.
 
+Across every 10-minute impaired-live, single-failure, sequential-failure, and
+overlapping-failure run, each complete Ardents endpoint process tree stays
+within `512 MiB` `p95` RSS, `50%` mean CPU of one logical core, and `100%` `p95`
+one-second CPU of one core. The `256 KiB` per-connection and direction queue cap
+and every ancestor cap remain unchanged. Completed or abandoned recovery state
+does not accumulate across failures. These limits apply together with the
+useful-progress, deadline, and security outcomes rather than replacing them.
+
 ## J-07 — Contribute network resources
 
 **Actor:** Network Contributor
