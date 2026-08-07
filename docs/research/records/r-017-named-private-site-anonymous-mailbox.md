@@ -310,13 +310,13 @@ security claims.
 | Candidate | Information | Adversary | Required conditions | Falsification / measurement | Honest limitation |
 |---|---|---|---|---|---|
 | Text content | Message confidentiality, integrity, and service authenticity | Carrier and storage Nodes, including colluding ordinary Nodes without endpoint keys | Authenticated Service release/key binding, fresh thread keys, uncompromised endpoints, no key export to site code | Capture every envelope at each role; attempt cross-thread key use, tampering, replay, rollback, and malicious-Replica substitution | Publisher and visitor read plaintext; their Devices and the text itself can disclose the author |
-| Endpoint location | Visitor IP from the Service and publisher IP from the visitor; both from one ordinary intermediary | Opposite endpoint and any one relay or Replica | Accepted Route Profile, required non-colluding path diversity, no direct bundle networking, uncompromised endpoint | Run controlled malicious endpoints and each intermediary position; inspect packet/log views and force route/Replica failures | A local observer sees Ardents use; global timing/volume correlation and multi-party collusion are unclaimed until R-001/R-005 |
+| Endpoint location | Visitor IP from the Service and publisher IP from the visitor; both from one ordinary intermediary | Opposite endpoint and any one relay or Replica | Accepted Route Profile, required non-colluding path diversity, no direct bundle networking, uncompromised endpoint | Run controlled malicious endpoints and each intermediary position; inspect packet/log views and force route/Replica failures | A local observer sees Ardents use; Broad Traffic Observer correlation is not an Interactive Route claim, and multi-party collusion remains open in R-001 |
 | Cross-Service relationship | Whether two Reply Threads belong to one Person | Two colluding Services and any one ordinary relay or Replica | Separate keys, capabilities, storage identifiers, Persona/application state, and standardized Client behavior per Service | Inventory all identifiers and run paired two-Service correlation tests with controlled timing/content | Text, behavior, timing, fingerprinting, or a compromised Device can still link the Person |
 | Availability | Site release and retained text remain retrievable | One unavailable ordinary Replica and one blocked ordinary relay | Sufficient independently controlled Replicas and an alternate accepted path | Remove each selected Replica/relay before and during publish, retrieve, send, poll, update, and rollback | Correlated operator loss, censorship, retention expiry, or loss of all replicas can still make data unavailable |
 
-- **Blocked claim:** relationship unlinkability against a global timing observer
-  is part of the intended Shielded Route question, not a current R-017 result.
-  R-001 must name collusion and observation conditions; R-005 must provide a
+- **Blocked claim:** relationship unlinkability against a Broad Traffic Observer
+  is not an Interactive Route promise. R-001 must still name collusion and
+  observation conditions; R-005 must justify any stronger Route Profile with a
   delay, cover, bandwidth, and anonymity-set budget and measurement.
 - **Recommendation — untrusted input:** accept text only. File submissions add
   malware, parser, metadata, and safe-opening workflows that the first tracer

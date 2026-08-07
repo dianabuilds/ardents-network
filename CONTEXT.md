@@ -150,6 +150,12 @@ and optionally subdivided by it. Connections in different contexts must not
 share linkable routing or session state.
 _Avoid_: User account, global Persona, cosmetic privacy setting
 
+**Broad Traffic Observer**:
+A passive adversary able to observe traffic timing and volume near both
+endpoints, or across enough network locations to correlate one low-latency
+Service Connection.
+_Avoid_: Omniscient attacker, malicious Node
+
 **Route Profile**:
 A testable product contract for latency, throughput, resource cost, path
 behavior, observer resistance, and honest limitations of a class of Service
@@ -157,8 +163,9 @@ Connections.
 _Avoid_: Anonymous mode, routing algorithm
 
 **Interactive Route**:
-The low-latency Route Profile intended for live applications. It does not imply
-resistance to a global timing-and-volume observer.
+The low-latency Route Profile intended for live Applications. It does not
+promise resistance to timing-and-volume correlation by a Broad Traffic
+Observer.
 _Avoid_: Fully anonymous route, clearnet connection
 
 **Rendezvous**:

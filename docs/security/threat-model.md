@@ -39,8 +39,8 @@ We assume the presence of:
 - a censor blocking, probing, throttling, and fingerprinting network entry;
 - malicious, unreliable, or colluding entry, relay, discovery, rendezvous, and
   naming infrastructure;
-- a broad passive observer capable of timing and volume correlation across
-  multiple network locations;
+- a Broad Traffic Observer capable of timing and volume correlation near both
+  endpoints or across enough network locations to correlate a connection;
 - Sybil actors able to create many infrastructure identities;
 - a malicious User Application or Service attempting metadata access, target
   substitution, resource exhaustion, or cross-context linkage;
@@ -57,15 +57,17 @@ because Nodes advertise different identifiers.
 
 ### Interactive Route
 
-The baseline is a low-latency route for live Service Connections. Its intended
-claim is to hide the User's ordinary network location from the Service, hide the
-Service Instance's ordinary location from the User, and prevent any one ordinary
-intermediary from learning both locations and plaintext Application Data under
-the conditions accepted by R-001.
+The baseline is a low-latency route for live Service Connections. P2-D1 fixes
+its outer claim: hide the User's ordinary network location from the Service,
+hide the Service Instance's ordinary location from the User, and prevent any
+one ordinary intermediary from learning both locations and plaintext
+Application Data. Later R-001 decisions must still define the exact conditions,
+intermediary knowledge, and collusion boundary.
 
-It does **not** claim strong unlinkability against a broad observer correlating
-timing and volume. R-005 must first justify a concrete Application job before a
-delayed or cover-traffic-heavy profile becomes part of the product.
+It does **not** claim resistance to a Broad Traffic Observer correlating timing
+and volume near both endpoints or across enough network locations. R-005 must
+first justify a concrete Application job before a delayed, padded, or
+cover-traffic-heavy profile becomes part of the product.
 
 ### Bridge entry
 
@@ -79,7 +81,7 @@ itself.
 |---|---|---|---|
 | Censor / DPI | Block known Nodes, bootstrap sources, or protocol fingerprints; probe suspected Bridges | Multiple authenticated bootstrap sources, replaceable Bridges, transport agility, bounded rotation, and explicit blocked state | No fixed protocol disguise or address remains unblockable forever |
 | Local observer | Observe entry peer, timing, volume, and long-lived patterns | Encrypted entry, bounded entry policy, multi-hop route, connection isolation, and no direct Service fallback | The observer sees Ardents use and may correlate low-latency traffic with observations elsewhere |
-| Broad passive observer | Correlate both endpoint traffic statistically | Make the lack of a baseline global-correlation claim visible; measure any later stronger Route Profile separately | Interactive traffic is expected to remain timing- and volume-correlation-sensitive |
+| Broad Traffic Observer | Correlate both endpoint traffic statistically | Make the lack of an Interactive Route correlation-resistance claim visible; measure any later stronger Route Profile separately | Interactive traffic is expected to remain timing- and volume-correlation-sensitive |
 | Malicious infrastructure Node | Tag, delay, replay, drop, redirect, bias selection, or retain metadata | End-to-end target authentication and integrity, endpoint-selected safe paths, replay protection, bounded retry, role separation, and diversity analysis | Guarantees depend on the accepted collusion model and real diversity |
 | Sybil / flooding actor | Capture discovery or exhaust connection, rendezvous, descriptor, and naming capacity | Bounded queues and lifetimes, quotas or anonymous costs, diversified selection, local admission, and visible overload | No global proof of personhood; accessibility and concentration costs remain |
 | Malicious Service | Fingerprint requests, link Application identities, return exploit content, or lie at the application layer | Isolation Context, minimal network metadata, authenticated target, and clear Application boundary | The Service receives application plaintext and can link information that the Application voluntarily sends |
@@ -128,6 +130,9 @@ No document or interface may say only “anonymous,” “private,” “secure,
   session state.
 - Isolation Context separation does not defeat correlation through Application
   Data, timing, volume, or observation of the local endpoint's network traffic.
+- The Interactive Route never claims resistance to timing-and-volume correlation
+  by a Broad Traffic Observer; payload encryption is not traffic-analysis
+  resistance.
 - Every Application Interface operation requires an endpoint-local grant scoped
   to the Application, optional Service, and allowed operations; connection or
   publication access never implies raw Service Authority export.
@@ -155,7 +160,8 @@ No document or interface may say only “anonymous,” “private,” “secure,
 ## Open security research
 
 The prioritized questions live in [the network research queue](../research/questions.md).
-R-006 fixes the V1 target lifecycle and R-002 fixes the Application Interface.
+R-006 fixes the V1 target lifecycle, R-002 fixes the Application Interface, and
+R-001 P2-D1 fixes the outer limit of the Interactive Route claim.
 No production architecture should be selected before R-001, R-003, R-004,
 R-007, R-009, and R-023 make the observer, naming, routing, failure, bootstrap,
 and performance contracts testable.

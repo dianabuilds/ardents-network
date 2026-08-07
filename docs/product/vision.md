@@ -21,9 +21,11 @@ route and protect their connections.
 - **Private** means Service Connections protect Application Data and expose only
   the metadata allowed by a declared Route Profile. It does not mean every
   Service is access-controlled.
-- **Anonymous** is never a blanket claim. The initial goal is location privacy
-  between a User and a Service and against any one ordinary intermediary, with
-  exact observer and collusion limits defined by research.
+- **Anonymous** is never a blanket claim. The Interactive Route aims to hide the
+  User's ordinary location from the Service, the Service Instance's ordinary
+  location from the User, and prevent any one ordinary intermediary from
+  learning both locations and plaintext. It does not promise resistance to
+  timing-and-volume correlation by a Broad Traffic Observer.
 - **Decentralized** means ordinary reachability and routing do not require one
   hosting or relay operator. Naming, bootstrap, releases, and emergency powers
   remain explicit Control Plane risks until their own designs are accepted.
@@ -119,6 +121,10 @@ These are responsibility boundaries, not selected binaries or APIs:
 9. Every accepted security mechanism also has a performance budget and overload
    test; no performance optimization may silently weaken that mechanism.
 
+The Interactive Route deliberately makes no Broad Traffic Observer resistance
+claim. A delayed, padded, or cover-traffic-heavy profile enters the product only
+if R-005 identifies a concrete Application job and measurable advantage.
+
 ## First tracer: Named Unlisted Site
 
 The first Reference Application proves the network chain without defining a
@@ -166,7 +172,7 @@ until the product, security, and performance contracts can compare them fairly.
 - mandatory blockchain, wallet, token, or governance coin;
 - opaque cryptographic addresses as the ordinary human naming experience;
 - user-tunable anonymity knobs that create silent fingerprinting hazards;
-- an unmeasured claim of protection from a global traffic observer;
+- Broad Traffic Observer resistance as an Interactive Route promise;
 - compatibility with the architecture or wire contracts in `old`.
 
 ## What would falsify this direction
