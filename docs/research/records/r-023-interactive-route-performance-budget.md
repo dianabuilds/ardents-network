@@ -220,16 +220,55 @@ fails the product contract. The target is top-down and remains unverified until
 P3-D6 supplies the exact payload, topology, baseline procedure, sample count,
 and retained evidence.
 
+### P3-D3b1 — Client endpoint concurrency floor
+
+**Product Owner decision, accepted 2026-08-07:** every required Windows and
+Linux client reference endpoint must support at least:
+
+- `128` concurrently open outbound Service Connections in total;
+- `32` of those connections simultaneously carrying Application Data under the
+  declared active-transfer workload.
+
+These numbers are minimum supported capacity, not maximum product limits. An
+implementation or Endpoint Owner may configure and support more when resources
+allow. They are totals across the client endpoint's Applications, Local Grants,
+destination Services, and Isolation Contexts; they are not a per-Service
+allowance and do not limit how many Users may connect to a published Service.
+
+An open connection has authenticated its exact Service Target, returned
+success, and has not closed or failed. An active connection is offered the fixed
+P3-D6 transfer workload and must make Application Data progress during the
+measurement interval; opening idle sockets or moving one token byte cannot
+satisfy the `32`-connection case. P3-D6 must fix the duration, traffic mix, and
+progress rule.
+
+The single-connection P3-D3a goodput floor does not apply independently to all
+32 active connections. Aggregate goodput, resource ceilings, and quantitative
+fairness remain P3-D3c so they cannot be inferred from a connection count.
+
+When a configured finite budget is exhausted, a new operation returns the
+accepted local resource-limit result. Load must not cause a crash, deadlock,
+unbounded queue, silent connection eviction, cross-context state sharing, or
+security downgrade. Each connection retains the accepted target
+authentication, isolation, stream, and fail-closed contracts.
+
+This decision covers outbound capacity of a client endpoint only. Concurrent
+incoming connections to a published Service and the capacity of infrastructure
+Nodes remain P3-D3b2.
+
 ## Remaining decisions
 
-1. **P3-D3b — Concurrency and resources:** set simultaneous-connection, CPU,
-   memory, carrier-bandwidth overhead, and fairness budgets for each reference
-   class.
-2. **P3-D4 — Tail and degradation:** set jitter, loss, churn, alternate-route,
+1. **P3-D3b2 — Publisher and Node concurrency:** set separate incoming Service
+   and infrastructure-role capacity floors without treating the client `128/32`
+   floor as a server maximum.
+2. **P3-D3c — Resources, overhead, and fairness:** set CPU, memory,
+   carrier-bandwidth overhead, aggregate goodput, queue, and per-connection
+   progress budgets for each reference class.
+3. **P3-D4 — Tail and degradation:** set jitter, loss, churn, alternate-route,
    and overload behavior without weakening R-001.
-3. **P3-D5 — Hostile load:** define fairness and resource-exhaustion workloads
+4. **P3-D5 — Hostile load:** define fairness and resource-exhaustion workloads
    and the useful honest-work floor during attack.
-4. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
+5. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
    artifacts, regression thresholds, and release failure rules.
 
 ## Hypotheses
@@ -304,6 +343,9 @@ traces, and direct-baseline results. Disposable experiment code belongs under
 - **Product Owner decision:** for a single established Service Connection, the
   `p05` 60-second Application goodput in each direction is at least
   `min(10 Mbit/s, 50% of paired direct-baseline goodput)`.
+- **Product Owner decision:** a required Windows or Linux client reference
+  endpoint supports at least `128` concurrently open outbound Service
+  Connections, including at least `32` simultaneously active connections.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -325,13 +367,14 @@ traces, and direct-baseline results. Disposable experiment code belongs under
 Keep one user-visible connection contract and measure class-specific resource
 ceilings unless evidence falsifies that shape. Use the accepted connection and
 endpoint-readiness targets and the tracer first-byte target as candidate gates,
-then apply the accepted single-connection goodput floor and define concurrency,
-resources, degradation, hostile load, and the reproducible release gate in that
-order.
+then apply the accepted single-connection goodput and client-concurrency floors.
+Define publisher and Node concurrency, resources, fairness, degradation, hostile
+load, and the reproducible release gate in that order.
 
 Confidence: high for the platform boundary and desired connection experience;
-the accepted latency and goodput targets remain unverified, and the remaining
-numeric targets remain undecided. The strongest counterargument is that
+the accepted latency, goodput, and client-concurrency targets remain unverified,
+and the remaining numeric targets remain undecided. The strongest
+counterargument is that
 supporting both Windows and Linux from the first V1 slice increases packaging
 and systems-integration work for a one-to-one project, but removing either would
 contradict the accepted client product.
@@ -370,7 +413,14 @@ contradict the accepted client product.
 - Only bytes delivered to the receiving Application count as useful payload;
   carrier overhead, failed runs, and the faster direction cannot inflate the
   result.
+- P3-D3b1 accepted: each required Windows and Linux client reference endpoint
+  supports at least `128` concurrently open outbound Service Connections, with
+  at least `32` simultaneously carrying the declared active-transfer workload.
+- The `128/32` values are minimum client capacity, not hard maxima, per-Service
+  limits, publisher capacity, or infrastructure Node capacity. Exhaustion is an
+  explicit bounded resource-limit result.
 - Public DNS, naming design, bootstrap, routing, libraries, language, exact
   hardware, and the remaining numeric budgets remain unselected.
-- P3-D3b, concurrency, resource ceilings, overhead, and fairness, is next.
+- P3-D3b2, separate published-Service and infrastructure-Node concurrency, is
+  next.
 - No ADR and no code.

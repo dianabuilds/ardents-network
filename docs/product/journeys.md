@@ -102,7 +102,11 @@ memory, CPU, fairness, and overload budgets under both honest and adversarial
 load. Under the normal single-connection throughput workload, the 60-second
 Application goodput in each direction has
 `p05 >= min(10 Mbit/s, 50% of paired direct-baseline goodput)`; carrier overhead
-and failed runs do not count as useful payload.
+and failed runs do not count as useful payload. A required client reference
+endpoint also supports at least `128` concurrently open outbound Service
+Connections, including at least `32` simultaneously active. This is a minimum
+total client capacity, not a maximum number of connections to one published
+Service.
 
 ## J-05 — Use the Named Unlisted Site tracer
 
