@@ -216,6 +216,17 @@ Configured and observed evidence is retained. Only a confirmed candidate-
 independent failure to apply or verify the manifest may invalidate evidence
 under P3-D6a; candidate-induced effects remain results.
 
+Measurement attribution cannot hide work or fabricate elapsed time. Pass/fail
+durations use one host's monotonic clock; cross-host wall clocks only correlate
+logs. Raw one-second CPU, RSS, and directional carrier values are retained
+without smoothing, while latency, failure, recovery, security, and queue limits
+use native-resolution events and exact high-water evidence. The isolated charged
+boundary includes the complete Ardents process tree and every helper. Traffic is
+counted at controlled ingress and egress boundaries; candidate counters are not
+authoritative. Candidate-independent missing attribution may invalidate evidence
+under P3-D6a, but process escape, measurement interference, hidden work, and
+candidate resource use fail the candidate.
+
 Payload shortcuts are also hard failures. Fresh `32-byte` connection canaries,
 nonce-bearing `512-byte` HTTP requests with complete `64 KiB` incompressible
 responses, and distinct pre-generated incompressible transfer streams are

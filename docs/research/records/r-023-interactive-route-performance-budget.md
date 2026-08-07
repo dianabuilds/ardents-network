@@ -558,9 +558,9 @@ endpoint under test during the active transfer window. It includes transport and
 network framing visible at that boundary, encrypted carrier payload, protocol
 control, acknowledgements, keepalives, retransmissions, padding, cover traffic,
 and required background traffic attributable to Ardents or its helper processes.
-Unrelated operating-system and Application traffic is excluded. P3-D6 fixes one
-cross-platform attribution boundary and packet-accounting method so Windows and
-Linux results are comparable.
+Unrelated operating-system and Application traffic is excluded.
+P3-D6b2b2c2b2 fixes one cross-platform attribution boundary and
+packet-accounting method so Windows and Linux results are comparable.
 
 The denominator contains only incompressible Application Data delivered to the
 receiving Application in the tested direction. Carrier bytes, a faster opposite
@@ -1381,8 +1381,8 @@ P3-D6b1 fixes the controlled topology and platform pairings, P3-D6b2a fixes
 minimum release sample counts, P3-D6b2b2a fixes the normal network envelope,
 P3-D6b2b2b fixes the Application payloads, P3-D6b2b2c1 fixes paired direct
 baselines, P3-D6b2b2c2a fixes state preparation, P3-D6b2b2c2b1 fixes the
-impairment manifest, and P3-D6b2b2c2b2 fixes the remaining reference inputs.
-P3-D6a fixes how those cells produce a release decision: results are
+impairment manifest, and P3-D6b2b2c2b2 fixes sampling and attribution. P3-D6a
+fixes how those cells produce a release decision: results are
 never pooled or averaged across mandatory platforms, endpoint sides,
 directions, or scenarios. Each cell must satisfy all of its applicable latency,
 success, progress, goodput, fairness, resource, carrier, queue, cleanup, and
@@ -1809,22 +1809,93 @@ mapping, configured inputs, and observed execution evidence for every controlled
 link and direction. A confirmed candidate-independent failure to apply or verify
 the declared manifest invalidates the affected attempt or run under P3-D6a. Loss,
 delay, reordering, retry, overhead, or congestion introduced by the candidate is
-a result and cannot invalidate the harness. P3-D6b2b2c2b2 still fixes the exact
+a result and cannot invalidate the harness. P3-D6b2b2c2b2 fixes the exact
 observation cadence, cross-platform attribution, and acceptance checks for the
 recorded network evidence.
 
 This decision selects no operating-system tool, traffic-control library,
 transport, implementation language, or final Route topology.
 
+### P3-D6b2b2c2b2 — Cross-platform clocks, sampling, and attribution
+
+**Product Owner decision, accepted 2026-08-08:** every qualification metric uses
+one declared observation boundary and retains its raw inputs. The following
+semantics apply equally to the Windows 11 and Ubuntu LTS reference cells; exact
+operating-system APIs and harness tools remain implementation choices recorded
+with the evidence.
+
+**Event clocks:** every pass/fail duration is calculated from start and end
+events captured by one observer on one host using the same monotonic clock. The
+clock identity, native resolution, and raw timestamps are retained. Synchronized
+wall-clock timestamps and measured clock offset or drift may correlate events
+between machines, but a KPI cannot subtract timestamps from different hosts or
+use wall-clock adjustment as elapsed time. Startup, Application submission,
+usable-connection, first-byte, last-delivered-byte, canary, failure, and terminal
+events retain their exact monotonic timestamps where applicable.
+
+**One-second time series:** every sustained resource and traffic window is split
+from its declared start into contiguous, non-overlapping one-second intervals.
+Every interval remains in the raw evidence without smoothing, interpolation,
+coalescing, or omission:
+
+- CPU records the sum of user and kernel CPU-time deltas for every charged
+  Ardents process during the interval, divided by one second; `100%` means one
+  complete logical core and both raw deltas and the derived value are retained;
+- RSS records one timestamped observation at the end of the interval, summing
+  the operating system's resident or working-set bytes for every charged
+  process without manually subtracting shared pages;
+- carrier traffic records exact sent and received byte-counter deltas separately
+  for every controlled interface direction; one-second bitrate derives only
+  from that interval and the raw counters remain retained.
+
+Run means and nearest-rank percentiles are calculated only from these retained
+one-second values under P3-D6b2a. A required missing sample is not interpolated.
+If the measurement boundary failed independently of the candidate, the affected
+attempt or run is invalid under P3-D6a; if a candidate crash, exit, escape, or
+measurement interference caused the gap, the candidate fails.
+
+**Exact events and high-water evidence:** latency milestones, connection and
+Route transitions, injected failures, canaries, security violations, queue
+overflow or backpressure, and terminal results use event records at native
+monotonic resolution rather than one-second polling. Every hard logical queue
+cap retains the enforcing boundary's exact high-water mark and any rejected,
+blocked, or overflow operation. A periodic snapshot alone cannot prove a queue
+or security invariant.
+
+**Process attribution:** every candidate executes inside an isolated declared
+operating-system accounting boundary. The charged set includes the main Ardents
+process, its complete descendant tree, and every helper, daemon, sidecar, or
+other process performing Ardents work even when it is not a direct child.
+Reference Applications, the published Application, and the harness are excluded
+only by placing them in separate recorded boundaries. Cryptography, security,
+liveness, background, recovery, and failed-attempt work cannot be subtracted.
+Moving work outside the charged boundary, losing a helper, or changing the
+accounting rule after results fails qualification.
+
+**Traffic attribution:** carrier bytes are counted at the controlled network
+boundary for each endpoint and Node, separately by ingress and egress. The
+boundary includes all Ardents framing, handshakes, acknowledgements,
+retransmissions, padding, cover, control, security, liveness, recovery, and
+background traffic visible there. Candidate-reported traffic counters are
+diagnostic only and cannot establish a pass. Unrelated operating-system or
+harness traffic is excluded through the frozen image and isolated interface,
+not by subtracting selected packets after results. Direct controls and Ardents
+traffic remain separately labeled and cannot be pooled.
+
+The harness retains the accounting-boundary manifest, process membership over
+time, operating-system counter definitions, raw clock and time-series records,
+event and queue high-water records, and interface counters. Missing, ambiguous,
+or unverifiable required attribution invalidates the affected evidence only when
+confirmed independent of candidate behavior. Candidate resource use, hidden
+work, measurement escape or interference, and candidate-induced traffic remain
+candidate results.
+
 ## Remaining decisions
 
 1. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
    units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
    floors on the accepted reference class.
-2. **P3-D6b2b2c2b2 — Sampling and attribution:** define time-series and event
-   sampling, cross-platform process and traffic attribution, and acceptance
-   checks for observed harness conditions.
-3. **P3-D6c — Evidence and regression:** define retained artifacts,
+2. **P3-D6c — Evidence and regression:** define retained artifacts,
    reproducibility, comparability, regression thresholds, invalidation review,
    and partial or complete requalification rules.
 
@@ -2101,6 +2172,21 @@ traces, and direct-baseline results. Disposable experiment code belongs under
   profile and seed discipline without internal Ardents Route segments. A
   candidate-independent manifest failure may invalidate evidence; candidate-
   induced loss, delay, retry, reordering, or congestion remains a result.
+- **Product Owner decision:** KPI durations use one host's monotonic clock for
+  both ends of the interval. Wall clocks correlate retained logs but never
+  calculate pass/fail elapsed time across machines.
+- **Product Owner decision:** CPU, RSS, and directional carrier traffic retain
+  unsmoothed one-second values. CPU uses charged user-plus-kernel time with
+  `100%` equal to one logical core; RSS conservatively sums charged process
+  resident or working-set bytes without subtracting shared pages.
+- **Product Owner decision:** queue caps, latency milestones, recovery and
+  security events retain native-resolution timestamps and exact high-water
+  evidence; a one-second snapshot cannot prove these invariants.
+- **Product Owner decision:** every Ardents process and helper is charged inside
+  an isolated accounting boundary. Carrier bytes come from controlled ingress
+  and egress boundaries; candidate counters are diagnostic only. Missing trusted
+  attribution invalidates evidence only when independent of the candidate,
+  while escape, interference, hidden work, and resource use fail the candidate.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -2141,7 +2227,8 @@ baselines. Apply the accepted release sample floors, nearest-rank rules, and
 Windows 11/Ubuntu LTS endpoint hardware baseline and the accepted normal-network
 envelope, controlled payload suite, paired direct-baseline rule, and state-reset
 contract. Apply the accepted versioned impairment manifest and seed discipline,
-then define sampling, attribution, evidence, and regression rules.
+and the accepted cross-platform clocks, sampling, and attribution contract, then
+define evidence and regression rules.
 Role-specific infrastructure capacity remains deferred until R-004 supplies
 candidate units of work.
 
@@ -2164,10 +2251,12 @@ combination rule is also unverified against real environment variability. The
 state-reset contract is also unverified as a portable cross-platform harness
 boundary. The impairment-manifest contract is also unverified across candidate
 transports and available Windows and Ubuntu harness implementations. The
-remaining numeric targets remain undecided. The `20`-episode recovery floor
-makes `p95` observable only at coarse nearest-rank resolution; exact order
-statistics and success counts must remain visible, and later variability
-evidence may justify a larger predeclared sample.
+sampling and attribution contract is also unverified against portable Windows
+and Ubuntu accounting and capture implementations. The remaining numeric targets
+remain undecided. The `20`-episode recovery floor makes `p95` observable only at
+coarse nearest-rank resolution; exact order statistics and success counts must
+remain visible, and later variability evidence may justify a larger predeclared
+sample.
 The strongest counterargument
 is that the mandatory four-pair, two-direction matrix may be expensive to
 execute for a one-to-one project. That cost is accepted for release
@@ -2248,7 +2337,7 @@ either would contradict the accepted client product.
 - The client remains genuinely network-ready and performs required background
   and security work throughout the idle measurement. Process splitting,
   disconnection, deferred validation, or weakened security cannot make a run
-  pass; exact sampling and platform attribution remain P3-D6 evidence.
+  pass; P3-D6b2b2c2b2 fixes exact sampling and platform attribution.
 - P3-D3c2b accepted as a secondary efficiency guardrail: an already joined,
   network-ready client uses no more than `25 MiB` of combined sent and received
   Ardents carrier traffic over 24 hours of normal steady idle.
@@ -2535,7 +2624,15 @@ either would contradict the accepted client product.
 - Direct controls use the same end-to-end impairment contract without internal
   Ardents Route segments. Candidate-independent manifest failure may invalidate
   evidence under P3-D6a; candidate-induced network effects remain results.
-- P3-D6b2b2c2b2 sampling and cross-platform attribution is next, followed by
-  P3-D6c evidence and regression rules. Role-specific Node capacity and cost
-  remain deferred until R-004 candidate evidence under P3-D3b4.
+- P3-D6b2b2c2b2 accepted: KPI elapsed time uses same-host monotonic clocks;
+  CPU, RSS, and directional carrier traffic retain raw one-second values; queue,
+  latency, failure, recovery, and security invariants retain exact events and
+  high-water evidence.
+- The isolated accounting boundary charges the complete Ardents process tree and
+  every helper. Controlled ingress and egress counters, not candidate self-
+  reports, establish traffic. Candidate-independent missing attribution may
+  invalidate evidence; candidate escape, interference, hidden work, and resource
+  use fail the candidate.
+- P3-D6c — evidence and regression rules — is next. Role-specific Node capacity
+  and cost remain deferred until R-004 candidate evidence under P3-D3b4.
 - No ADR and no code.

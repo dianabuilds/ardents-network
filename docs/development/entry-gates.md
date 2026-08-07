@@ -139,6 +139,23 @@ inputs, and observed execution evidence remain retained. A confirmed
 candidate-independent failure to apply or verify the manifest may invalidate
 the affected evidence only under R-023 P3-D6a; candidate-induced effects cannot.
 
+Every elapsed-time KPI uses start and end events from one host's monotonic clock;
+wall clocks correlate logs only. Sustained windows retain contiguous raw
+one-second values without smoothing or interpolation. CPU is the charged
+user-plus-kernel CPU-time delta with `100%` equal to one logical core; RSS is the
+sum of OS-reported resident or working-set bytes across charged processes without
+subtracting shared pages; carrier bitrate uses exact controlled-interface byte
+deltas separately by direction.
+
+Latency, failure, recovery, security, and queue invariants retain native-
+resolution events and exact queue high-water evidence rather than relying on
+one-second snapshots. An isolated accounting boundary charges the complete
+Ardents process tree and every helper; excluded Applications and the harness use
+separate recorded boundaries. Controlled ingress and egress counters establish
+traffic, while candidate self-reports remain diagnostic. Candidate-independent
+missing attribution may invalidate evidence only under P3-D6a. Escape,
+interference, hidden work, and candidate resource use fail the candidate.
+
 Every reported usable connection immediately passes a fresh unpredictable
 `32-byte` request and exact `32-byte` response canary. The site tracer sends an
 exact `512-byte` nonce-bearing HTTP request and validates a complete `64 KiB`
