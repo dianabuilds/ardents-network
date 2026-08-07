@@ -99,7 +99,11 @@ the controlled equal-load benchmark, every connection averages at least
 publisher network boundary, all Ardents bytes sent plus received remain at or
 below `1.5x` the Application Data delivered in the tested direction. The other
 `192` connections remain authenticated and usable as the same streams rather
-than being silently evicted.
+than being silently evicted. Ardents queues no more than `256 KiB` of logical
+Application Data per connection and direction or `64 MiB` across the publisher
+per direction. If the published Application stops consuming, receiver flow
+control propagates backpressure; Ardents does not hide the stall with loss,
+eviction, or an unbounded memory or disk queue.
 
 ## J-04 — Integrate an Application
 
@@ -147,7 +151,12 @@ same streams rather than being silently evicted. On stronger hardware the
 endpoint may raise its finite hierarchical local budgets, while an Endpoint
 Owner may cap them. Reduced limits are exposed locally and do not qualify as the
 V1 performance floor; added capacity grants no Node role, authority, trust, or
-security exception.
+security exception. The required client profile queues no more than `256 KiB`
+of logical Application Data per connection and direction or `16 MiB` across the
+client per direction. At a full leaf or parent queue, a write blocks or reports
+would-block instead of accepting bytes it cannot retain. Timeout or cancellation
+affects only the unaccepted remainder; an accepted prefix is never a claim of
+remote Application delivery and is never silently discarded.
 
 ## J-05 — Use the Named Unlisted Site tracer
 

@@ -298,8 +298,9 @@ The overload contract is:
   Connection Result rather than apparent success;
 - scheduling prevents one Local Grant or Service from monopolizing all Endpoint
   progress;
-- limits are finite, observable, and locally configurable, but exact values and
-  operating-system mappings are selected only from measurements.
+- limits are finite, observable, and locally configurable; scenario-specific
+  numeric targets come from R-023, while operating-system mappings must still be
+  selected and qualified by measurement.
 
 The performance evidence must cover:
 
@@ -318,9 +319,11 @@ Consequences:
   honest-workload cost must fit the product budget;
 - a performance optimization is not accepted if it bypasses target
   authentication, isolation, least privilege, or resource bounds;
-- P1-D8 fixes semantics and required measurements, not invented numeric targets;
-- R-023 sets scenario-based V1 budgets, while R-004 and R-014 test routing and
-  implementation candidates against the same evidence.
+- P1-D8 fixes the interface semantics and required measurements; R-023 supplies
+  scenario-based numeric V1 targets, including its accepted per-connection and
+  endpoint queue ceilings;
+- R-004 and R-014 test routing and implementation candidates against the same
+  evidence.
 
 ## Hypotheses
 
@@ -414,7 +417,8 @@ that maps an ordinary HTTP client and server through simulated `connect`,
   no central administrator approves network participation.
 - **Product Owner decision:** finite hierarchical budgets, backpressure, fair
   scheduling, explicit overload, and measured performance are part of the same
-  security contract. Numeric targets require R-023 evidence.
+  security contract. R-023 supplies numeric targets, which remain unverified
+  until their measurement gates pass.
 - **Inference:** P1-D1 through P1-D8 select H1 as the V1 product shape. The
   accepted logical separation does not require separate protocols or processes.
 
@@ -484,7 +488,9 @@ No concrete proxy protocol, serialization, library, or language is selected.
   and Authority custody; each Endpoint Owner is local and no central administrator
   approves joining, connecting, or publishing.
 - P1-D8 accepted: resources are finite and hierarchical; backpressure, fairness,
-  explicit overload, and measured honest-use performance are mandatory.
+  explicit overload, and measured honest-use performance are mandatory. R-023
+  P3-D3c2c3c2 now caps logical Application Data queues for the required client
+  and publisher profiles without changing these interface semantics.
 - H1 is the accepted V1 shape; H2 is rejected as mandatory integration; H3 is
   insufficient by itself.
 - R-002 and R-001 are closed; R-023 is the next foundation decision and defines

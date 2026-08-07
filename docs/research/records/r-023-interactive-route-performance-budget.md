@@ -614,22 +614,86 @@ state reuse, or security downgrade is a miss. An endpoint configured below the
 accepted floor may expose reduced local capacity under P3-D3c1, but cannot use
 that configuration to pass V1 client or publisher qualification.
 
+### P3-D3c2c3c2 — Queue and backpressure ceilings
+
+**Product Owner decision, accepted 2026-08-07:** every required V1 client and
+publisher reference profile applies these hard logical Application Data queue
+ceilings separately in both stream directions:
+
+- no more than `256 KiB` per established Service Connection and direction;
+- no more than `16 MiB` across the complete client endpoint per direction;
+- no more than `64 MiB` across the complete publisher endpoint per direction.
+
+The client and publisher aggregate values equal the per-connection ceiling at
+their accepted `64`- and `256`-connection floors. They are parent ceilings, not
+capacity created for every Local Grant, Application, Service, or Isolation
+Context. Child scopes share and subdivide the applicable endpoint budget and
+cannot multiply it. A lower configured local limit must be visible as reduced
+capacity and still preserve honest backpressure. Any higher aggregate on a
+stronger endpoint belongs to P3-D3c2c3c3 scale-up evidence; the per-connection
+ceiling does not rise implicitly. Enabling both outbound use and publication on
+one endpoint does not automatically add the client and publisher parent caps;
+the combined-role profile remains finite and requires explicit qualification.
+
+The logical queue covers every Application Data byte retained locally by the
+Ardents Application Interface or carrier while responsibility has not yet moved
+to the next bounded consumer:
+
+- outbound data counts after the local Application Interface accepts it and
+  until the remote endpoint's transport flow control confirms admission into
+  that endpoint's bounded receive path; this is not evidence that the remote
+  Application read or processed it;
+- inbound data counts after authenticated transport admission and until the
+  local Application consumes it through the Application Interface.
+
+Attributable operating-system or IPC buffers at the Application Interface are
+inside this logical boundary. One logical byte is counted once per local
+endpoint and direction even if an implementation has several physical or
+encrypted representations. All physical representations remain bounded:
+process-resident copies, retransmission structures, packet buffers,
+cryptographic workspaces, and control buffers contribute to the accepted RSS
+ceiling, while attributable kernel or IPC capacity is covered by the logical
+cap and separately recorded OS-resource evidence. A candidate cannot pass by
+moving data to an uncounted stage or by spilling an unbounded queue to disk.
+
+Reaching either the connection or an ancestor ceiling makes the producer-facing
+stream stop accepting further bytes until capacity becomes available. A
+blocking interface blocks and a non-blocking interface reports its ordinary
+would-block state; timeout or cancellation applies only to the portion not yet
+accepted. A successful local write reports only its accepted prefix. Receiver
+flow control propagates a slow consumer back toward the producer rather than
+allowing another queue to grow.
+
+Queue pressure by itself does not close or evict an established connection and
+does not discard, reorder, or claim delivery of accepted bytes. A connection
+that cannot continue for an independent failure still returns the existing
+explicit Connection Result, and Ardents does not replay an Application
+operation. If a new connection cannot obtain its finite initial resources, its
+admission fails explicitly as a local resource limit instead of borrowing an
+unbounded queue from another scope.
+
+P3-D6 must record instantaneous and high-water logical queued bytes per
+connection, endpoint, and direction, plus time spent backpressured. Dedicated
+slow-reader and slow-writer runs fill each leaf and parent ceiling while
+checking ordering, accepted-prefix reporting, peer progress, isolation, RSS,
+and recovery after the consumer resumes. Any sample over a hard logical cap,
+successful acceptance beyond available capacity, silent loss or eviction,
+cross-scope borrowing, unbounded memory or disk growth, or security downgrade
+fails qualification.
+
 ## Remaining decisions
 
-1. **P3-D3c2c3c2 — Queue and backpressure ceilings:** bound queued
-   not-yet-delivered Application Data per connection and endpoint and define the
-   exact backpressure and overload result.
-2. **P3-D3c2c3c3 — Scale-up saturation evidence:** define how stronger endpoint
+1. **P3-D3c2c3c3 — Scale-up saturation evidence:** define how stronger endpoint
    profiles prove useful additional capacity and detect the CPU, memory,
    bandwidth, or isolation saturation point.
-3. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
+2. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
    units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
    floors on the accepted reference class.
-4. **P3-D4 — Tail and degradation:** set jitter, loss, churn, alternate-route,
+3. **P3-D4 — Tail and degradation:** set jitter, loss, churn, alternate-route,
    and overload behavior without weakening R-001.
-5. **P3-D5 — Hostile load:** define fairness and resource-exhaustion workloads
+4. **P3-D5 — Hostile load:** define fairness and resource-exhaustion workloads
    and the useful honest-work floor during attack.
-6. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
+5. **P3-D6 — Measurement gate:** define direct baselines, topology, repetitions,
    artifacts, regression thresholds, and release failure rules.
 
 ## Hypotheses
@@ -745,6 +809,11 @@ traces, and direct-baseline results. Disposable experiment code belongs under
   present: `64` client connections with `16` active and `256` publisher
   connections with `64` active. Every non-active connection remains
   authenticated, open, and usable without an Application-visible reconnect.
+- **Product Owner decision:** logical Application Data queued locally is capped
+  in each direction at `256 KiB` per connection, `16 MiB` across a client, and
+  `64 MiB` across a publisher. Full queues apply honest stream backpressure;
+  they never authorize hidden loss, eviction, cross-scope borrowing, or
+  unbounded memory or disk buffering.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -772,18 +841,19 @@ ceiling. Treat the accepted idle background-traffic number as an optimization
 guardrail, apply the accepted active client and publisher resource ceilings,
 enforce the accepted equal-load fair-progress floor, and apply the accepted
 `1.5x` endpoint carrier ratio under the accepted combined open-and-active load.
-Define queue ceilings and scale-up saturation evidence next, followed by
-infrastructure Node capacity, degradation, hostile load, and the reproducible
-release gate; bounded endpoint scale-up is already fixed.
+Apply the accepted queue ceilings and backpressure semantics, then define
+scale-up saturation evidence, followed by infrastructure Node capacity,
+degradation, hostile load, and the reproducible release gate; bounded endpoint
+scale-up is already fixed.
 
 Confidence: high for the platform boundary and desired connection experience;
 the accepted latency, goodput, client-concurrency, and publisher-concurrency
 targets, infrastructure reference class, idle client resource ceiling, and
 active client and publisher resource ceilings and fairness floor remain
-unverified. The active carrier ratio and combined-load workload also remain
-unverified; the idle carrier budget is unverified and deliberately secondary.
-The remaining numeric targets remain undecided. The strongest counterargument
-is that
+unverified. The active carrier ratio, combined-load workload, and queue ceilings
+also remain unverified; the idle carrier budget is unverified and deliberately
+secondary. The remaining numeric targets remain undecided. The strongest
+counterargument is that
 supporting both Windows and Linux from the first V1 slice increases packaging
 and systems-integration work for a one-to-one project, but removing either would
 contradict the accepted client product.
@@ -899,9 +969,20 @@ contradict the accepted client product.
   same Application-facing stream. Hidden eviction, discarded network state, a
   failed unpredictable canary, or an Application-visible reconnect fails the
   combined test; maintenance and canary costs remain counted.
+- P3-D3c2c3c2 accepted: each required client and publisher reference profile
+  caps locally queued logical Application Data at `256 KiB` per connection and
+  direction, with aggregate caps of `16 MiB` per client direction and `64 MiB`
+  per publisher direction.
+- Attributable local IPC buffers are inside the logical accounting boundary;
+  process-resident physical copies remain subject to whole-process-tree memory
+  ceilings and non-process buffers require separate bounded OS-resource
+  evidence. At a full queue the stream applies backpressure and accepts no
+  additional bytes; silent loss, eviction, reordering, cross-scope borrowing,
+  unbounded disk or memory buffering, and false write success fail
+  qualification.
 - Public DNS, naming design, bootstrap, routing, libraries, language, exact
   hardware, and the remaining numeric budgets remain unselected.
-- P3-D3c2c3c2, queue and backpressure ceilings, is next. Stronger-endpoint
-  saturation evidence remains P3-D3c2c3c3; role-specific Node capacity is
-  completed with R-004 candidate evidence under P3-D3b4.
+- Stronger-endpoint saturation evidence is next under P3-D3c2c3c3;
+  role-specific Node capacity is completed with R-004 candidate evidence under
+  P3-D3b4.
 - No ADR and no code.

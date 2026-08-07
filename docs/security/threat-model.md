@@ -279,7 +279,15 @@ route family by implication.
   metadata. Traffic and admission behavior may still permit rough capacity
   inference, which is not presented as hidden by the protocol.
 - Slow consumers cause bounded stream backpressure, not unbounded queues or
-  silent Application Data loss; overload and fairness outcomes remain explicit.
+  silent Application Data loss. Required client and publisher profiles cap
+  locally queued logical Application Data at `256 KiB` per connection and
+  direction, with `16 MiB` client and `64 MiB` publisher aggregate caps in each
+  direction. Attributable local OS/IPC buffering is inside that accounting;
+  child scopes cannot multiply it, process-resident copies remain subject to
+  the whole-process-tree RSS ceiling, and non-process buffers require separate
+  bounded OS-resource evidence. A full queue accepts no further bytes, does not
+  evict the connection, and cannot spill without bound to memory or disk;
+  overload and fairness outcomes remain explicit.
 - Under controlled equal-priority active load, aggregate success cannot hide
   starvation: every eligible connection must meet the accepted delivered-data
   floor and maximum no-progress gap. Unequal policy, degraded paths, and hostile
