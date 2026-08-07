@@ -71,7 +71,11 @@ one ordinary Node can link the Service Instance's public origin address to its
 Service Name or Service Target outside the declared Route Profile. Stopping the
 local Service produces an explicit unavailable result, not implied offline
 delivery. A routine migration can stop the old Instance, import the encrypted
-authority on a new host, and republish the same Service Target.
+authority on a new host, and republish the same Service Target. A required
+publisher reference endpoint supports at least `256` concurrently open incoming
+Service Connections, including at least `64` simultaneously active. This is a
+minimum total publisher capacity, not a Service maximum; one Service may use the
+whole budget when local policy permits.
 
 ## J-04 — Integrate an Application
 
@@ -103,8 +107,8 @@ load. Under the normal single-connection throughput workload, the 60-second
 Application goodput in each direction has
 `p05 >= min(10 Mbit/s, 50% of paired direct-baseline goodput)`; carrier overhead
 and failed runs do not count as useful payload. A required client reference
-endpoint also supports at least `128` concurrently open outbound Service
-Connections, including at least `32` simultaneously active. This is a minimum
+endpoint also supports at least `64` concurrently open outbound Service
+Connections, including at least `16` simultaneously active. This is a minimum
 total client capacity, not a maximum number of connections to one published
 Service.
 

@@ -222,12 +222,16 @@ and retained evidence.
 
 ### P3-D3b1 — Client endpoint concurrency floor
 
-**Product Owner decision, accepted 2026-08-07:** every required Windows and
-Linux client reference endpoint must support at least:
+**Product Owner decision, revised and accepted 2026-08-07:** every required
+Windows and Linux client reference endpoint must support at least:
 
-- `128` concurrently open outbound Service Connections in total;
-- `32` of those connections simultaneously carrying Application Data under the
+- `64` concurrently open outbound Service Connections in total;
+- `16` of those connections simultaneously carrying Application Data under the
   declared active-transfer workload.
+
+The initially recorded `128/32` floor was revised after separating ordinary
+client demand from publisher capacity. It was technically plausible but lacked a
+V1 client journey that justified making it a mandatory minimum.
 
 These numbers are minimum supported capacity, not maximum product limits. An
 implementation or Endpoint Owner may configure and support more when resources
@@ -239,11 +243,11 @@ An open connection has authenticated its exact Service Target, returned
 success, and has not closed or failed. An active connection is offered the fixed
 P3-D6 transfer workload and must make Application Data progress during the
 measurement interval; opening idle sockets or moving one token byte cannot
-satisfy the `32`-connection case. P3-D6 must fix the duration, traffic mix, and
+satisfy the `16`-connection case. P3-D6 must fix the duration, traffic mix, and
 progress rule.
 
 The single-connection P3-D3a goodput floor does not apply independently to all
-32 active connections. Aggregate goodput, resource ceilings, and quantitative
+16 active connections. Aggregate goodput, resource ceilings, and quantitative
 fairness remain P3-D3c so they cannot be inferred from a connection count.
 
 When a configured finite budget is exhausted, a new operation returns the
@@ -254,13 +258,46 @@ authentication, isolation, stream, and fail-closed contracts.
 
 This decision covers outbound capacity of a client endpoint only. Concurrent
 incoming connections to a published Service and the capacity of infrastructure
-Nodes remain P3-D3b2.
+Nodes remain P3-D3b2 and P3-D3b3 respectively.
+
+### P3-D3b2 — Publisher endpoint concurrency floor
+
+**Product Owner decision, accepted 2026-08-07:** every required Windows and
+Linux publisher reference endpoint must support at least:
+
+- `256` concurrently open incoming Service Connections in total;
+- `64` of those connections simultaneously carrying Application Data under the
+  declared active-transfer workload.
+
+These are minimum network-facing publisher capacities, not hard maxima. The
+budget is total across all local published Services, but one Service may use the
+entire capacity when its Local Grant and every ancestor resource budget permit
+it. A Developer or Application may deliberately configure a smaller
+application-policy limit; that does not reduce the capacity the controlled V1
+publisher benchmark must demonstrate.
+
+The P3-D3b1 definitions of open and active connections apply, with direction
+reversed for accepted incoming Service Connections. P3-D6 must supply the fixed
+Service workload, duration, traffic mix, and progress rule. The metric does not
+require the P3-D3a single-connection goodput floor independently on all 64
+active connections; aggregate goodput, CPU, memory, overhead, and fairness
+remain P3-D3c.
+
+When the finite publisher budget is exhausted, admission remains bounded and
+the remote side receives only a supported honest failure under the later R-007
+contract. Exhaustion must not cause unbounded queues, crash, deadlock, silent
+success, cross-Service or cross-context state reuse, target-authentication loss,
+or security downgrade.
+
+This decision does not set infrastructure Node capacity. Entry, relay,
+discovery, Rendezvous, and Bridge roles receive a separate P3-D3b3 floor because
+their unit of work and resource amplification differ from a published Service.
 
 ## Remaining decisions
 
-1. **P3-D3b2 — Publisher and Node concurrency:** set separate incoming Service
-   and infrastructure-role capacity floors without treating the client `128/32`
-   floor as a server maximum.
+1. **P3-D3b3 — Infrastructure Node capacity:** set role-specific concurrent-work
+   floors for the modest Linux server/VPS class without copying endpoint
+   connection counts.
 2. **P3-D3c — Resources, overhead, and fairness:** set CPU, memory,
    carrier-bandwidth overhead, aggregate goodput, queue, and per-connection
    progress budgets for each reference class.
@@ -344,8 +381,13 @@ traces, and direct-baseline results. Disposable experiment code belongs under
   `p05` 60-second Application goodput in each direction is at least
   `min(10 Mbit/s, 50% of paired direct-baseline goodput)`.
 - **Product Owner decision:** a required Windows or Linux client reference
-  endpoint supports at least `128` concurrently open outbound Service
-  Connections, including at least `32` simultaneously active connections.
+  endpoint supports at least `64` concurrently open outbound Service
+  Connections, including at least `16` simultaneously active connections. This
+  revises the initially recorded `128/32` proposal after separating client and
+  publisher workloads.
+- **Product Owner decision:** a required Windows or Linux publisher reference
+  endpoint supports at least `256` concurrently open incoming Service
+  Connections, including at least `64` simultaneously active connections.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -367,14 +409,15 @@ traces, and direct-baseline results. Disposable experiment code belongs under
 Keep one user-visible connection contract and measure class-specific resource
 ceilings unless evidence falsifies that shape. Use the accepted connection and
 endpoint-readiness targets and the tracer first-byte target as candidate gates,
-then apply the accepted single-connection goodput and client-concurrency floors.
-Define publisher and Node concurrency, resources, fairness, degradation, hostile
-load, and the reproducible release gate in that order.
+then apply the accepted single-connection goodput and separate client and
+publisher concurrency floors. Define infrastructure Node capacity, resources,
+fairness, degradation, hostile load, and the reproducible release gate in that
+order.
 
 Confidence: high for the platform boundary and desired connection experience;
-the accepted latency, goodput, and client-concurrency targets remain unverified,
-and the remaining numeric targets remain undecided. The strongest
-counterargument is that
+the accepted latency, goodput, client-concurrency, and publisher-concurrency
+targets remain unverified, and the remaining numeric targets remain undecided.
+The strongest counterargument is that
 supporting both Windows and Linux from the first V1 slice increases packaging
 and systems-integration work for a one-to-one project, but removing either would
 contradict the accepted client product.
@@ -413,14 +456,19 @@ contradict the accepted client product.
 - Only bytes delivered to the receiving Application count as useful payload;
   carrier overhead, failed runs, and the faster direction cannot inflate the
   result.
-- P3-D3b1 accepted: each required Windows and Linux client reference endpoint
-  supports at least `128` concurrently open outbound Service Connections, with
-  at least `32` simultaneously carrying the declared active-transfer workload.
-- The `128/32` values are minimum client capacity, not hard maxima, per-Service
-  limits, publisher capacity, or infrastructure Node capacity. Exhaustion is an
-  explicit bounded resource-limit result.
+- P3-D3b1 revised and accepted: each required Windows and Linux client reference
+  endpoint supports at least `64` concurrently open outbound Service
+  Connections, with at least `16` simultaneously carrying the declared
+  active-transfer workload.
+- The initial `128/32` client floor was superseded because it was not justified
+  by the V1 client journey after publisher capacity was separated.
+- P3-D3b2 accepted: each required Windows and Linux publisher reference endpoint
+  supports at least `256` concurrently open incoming Service Connections, with
+  at least `64` simultaneously carrying the declared active-transfer workload.
+- Both endpoint floors are minimum capacities rather than maxima. Exhaustion is
+  bounded and explicit; publisher application policy may deliberately admit
+  fewer connections without redefining the network benchmark.
 - Public DNS, naming design, bootstrap, routing, libraries, language, exact
   hardware, and the remaining numeric budgets remain unselected.
-- P3-D3b2, separate published-Service and infrastructure-Node concurrency, is
-  next.
+- P3-D3b3, infrastructure-Node capacity by role, is next.
 - No ADR and no code.
