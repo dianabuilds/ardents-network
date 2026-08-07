@@ -180,10 +180,51 @@ removed from `p95`. A cached page response, direct path, weaker Route Profile,
 skipped target authentication, or cross-context Route reuse cannot satisfy the
 metric. These are top-down product targets and remain unverified.
 
+### P3-D3a — Single-connection sustained Application goodput
+
+**Product Owner decision, accepted 2026-08-07:** on the normal, non-adversarial
+V1 reference network, at least 95% of eligible 60-second single-connection
+transfer runs must deliver Application Data at or above:
+
+`min(10 Mbit/s, 50% of paired direct-baseline goodput)`
+
+This is measured separately in each direction. In statistical terms, the
+fifth-percentile (`p05`) goodput for User-to-Service runs and for
+Service-to-User runs must each meet the formula; fast runs in one direction
+cannot compensate for slow runs in the other.
+
+The 60-second measurement window starts after the exact Service Target is
+authenticated, the Service Connection is usable, and the fixed transfer begins.
+Goodput is the Application Data successfully delivered to the receiving
+Application during that window divided by 60 seconds. Protocol headers,
+handshakes, padding, cover traffic, retransmissions, and other carrier bytes are
+cost rather than useful payload and do not enter the numerator.
+
+The paired direct baseline uses the same sending and receiving reference
+devices, access links, direction, and incompressible test payload in the
+controlled topology, but without the Ardents multi-hop path. It exists only as
+a benchmark and never permits a production direct Service path. For example, a
+20 Mbit/s direct baseline requires at least 10 Mbit/s through Ardents, while an
+8 Mbit/s baseline requires at least 4 Mbit/s.
+
+The target covers one active Service Connection with an online Service and no
+deliberate blocking, injected failure, or overload. Simultaneous full-duplex
+load, multiple connections, and resource ceilings remain P3-D3b. An eligible
+connection failure or premature loss is a missed run and may not be removed
+from `p05`.
+
+Meeting the target by reducing required Route Knowledge Separation, weakening
+target authentication or integrity, sharing forbidden cross-context state,
+omitting required camouflage traffic, or bypassing any accepted security rule
+fails the product contract. The target is top-down and remains unverified until
+P3-D6 supplies the exact payload, topology, baseline procedure, sample count,
+and retained evidence.
+
 ## Remaining decisions
 
-1. **P3-D3 — Sustained service:** set throughput, concurrent-connection, CPU,
-   memory, and bandwidth budgets for each reference class.
+1. **P3-D3b — Concurrency and resources:** set simultaneous-connection, CPU,
+   memory, carrier-bandwidth overhead, and fairness budgets for each reference
+   class.
 2. **P3-D4 — Tail and degradation:** set jitter, loss, churn, alternate-route,
    and overload behavior without weakening R-001.
 3. **P3-D5 — Hostile load:** define fairness and resource-exhaustion workloads
@@ -260,6 +301,9 @@ traces, and direct-baseline results. Disposable experiment code belongs under
 - **Product Owner decision:** the controlled Named Unlisted Site returns its
   first valid HTTP response byte within `p95 <= 4 s` cold and `p95 <= 2 s` warm
   from a running, network-ready endpoint.
+- **Product Owner decision:** for a single established Service Connection, the
+  `p05` 60-second Application goodput in each direction is at least
+  `min(10 Mbit/s, 50% of paired direct-baseline goodput)`.
 - **Assumption:** these classes can share one user-visible performance promise;
   measurement may require separate numeric resource ceilings.
 - **Assumption:** macOS and mobile support can follow without changing the V1
@@ -281,15 +325,16 @@ traces, and direct-baseline results. Disposable experiment code belongs under
 Keep one user-visible connection contract and measure class-specific resource
 ceilings unless evidence falsifies that shape. Use the accepted connection and
 endpoint-readiness targets and the tracer first-byte target as candidate gates,
-then define sustained load, degradation, hostile load, and the reproducible
-release gate in that order.
+then apply the accepted single-connection goodput floor and define concurrency,
+resources, degradation, hostile load, and the reproducible release gate in that
+order.
 
 Confidence: high for the platform boundary and desired connection experience;
-the accepted latency targets remain unverified and the other numeric targets
-remain undecided. The strongest counterargument is that supporting both Windows
-and Linux from the first V1 slice increases packaging and systems-integration
-work for a one-to-one project, but removing either would contradict the accepted
-client product.
+the accepted latency and goodput targets remain unverified, and the remaining
+numeric targets remain undecided. The strongest counterargument is that
+supporting both Windows and Linux from the first V1 slice increases packaging
+and systems-integration work for a one-to-one project, but removing either would
+contradict the accepted client product.
 
 ## Disposition
 
@@ -319,7 +364,13 @@ client product.
   arbitrary Application processing are not hidden inside this network metric.
 - P3-D2 is complete: endpoint readiness, authenticated connection, and the
   controlled tracer first-byte experience now have separate clocks.
+- P3-D3a accepted: the `p05` Application goodput over eligible 60-second runs is
+  at least `min(10 Mbit/s, 50% of paired direct-baseline goodput)` in each
+  direction for one established Service Connection.
+- Only bytes delivered to the receiving Application count as useful payload;
+  carrier overhead, failed runs, and the faster direction cannot inflate the
+  result.
 - Public DNS, naming design, bootstrap, routing, libraries, language, exact
   hardware, and the remaining numeric budgets remain unselected.
-- P3-D3, sustained throughput, concurrency, and resource budgets, is next.
+- P3-D3b, concurrency, resource ceilings, overhead, and fairness, is next.
 - No ADR and no code.

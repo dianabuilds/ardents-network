@@ -99,7 +99,10 @@ Isolation Context remains local and cannot become an application or network
 identity. No Endpoint Owner or Local Grant becomes an authority over the Ardents
 network. The journey remains within its declared setup-latency, throughput,
 memory, CPU, fairness, and overload budgets under both honest and adversarial
-load.
+load. Under the normal single-connection throughput workload, the 60-second
+Application goodput in each direction has
+`p05 >= min(10 Mbit/s, 50% of paired direct-baseline goodput)`; carrier overhead
+and failed runs do not count as useful payload.
 
 ## J-05 — Use the Named Unlisted Site tracer
 
