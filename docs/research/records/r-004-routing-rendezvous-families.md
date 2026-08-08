@@ -236,8 +236,8 @@ against the front-runner.
 
 ## Option C — Ardents split-leg rendezvous
 
-Use the accepted claim to design a smaller route rather than copy a reference
-network's full path:
+The initial minimum hypothesis used the accepted endpoint-link claim to design a
+smaller route rather than copy a reference network's full path:
 
 ```text
 User -> User Entry/Bridge -> Rendezvous -> Service Entry -> Service
@@ -253,7 +253,7 @@ entry leg to the Rendezvous. The Rendezvous joins two random handles; the
 endpoints then authenticate the exact Service Target and create the protected
 Service Connection end to end.
 
-The data-path views are deliberately narrow:
+The initial C-3 data-path views are deliberately narrow:
 
 - User Entry knows User location and Rendezvous, but no Service destination;
 - Service Entry knows Service location and Rendezvous, but no User origin;
@@ -266,11 +266,13 @@ The data-path views are deliberately narrow:
 
 ### Advantages
 
-- it is the smallest current shape that robustly separates both endpoint-adjacent
-  views from destination-specific introduction and rendezvous state;
-- one bidirectional data route is substantially cheaper than two full circuits or
-  four unidirectional tunnel pools;
-- prepared entry legs and service introduction state can optimize the warm path;
+- it is the minimum endpoint-link separation and therefore a useful unqualified
+  performance lower-bound control;
+- one joined bidirectional route avoids the four unidirectional tunnel pools of
+  Option B, though a qualifying position count may erase any advantage over
+  Tor-shaped circuits;
+- prepared endpoint legs and Service introduction state may optimize the warm
+  path;
 - Bridge entry replaces the User Entry transport without changing the security
   profile or exposing a direct path;
 - rendezvous state is per-connection, short-lived, and horizontally distributable.
@@ -279,20 +281,26 @@ The data-path views are deliberately narrow:
 
 - this exact construction is not inherited from a deployed protocol and must earn
   every security claim through information-flow tests and a prototype;
+- because the Rendezvous sees both Entry Nodes and itself, the three-position
+  drawing gives one ordinary Node the identities of every carrier Node on the
+  data Route. That contradicts the accepted no-full-Route disclosure boundary
+  even though endpoint locations remain separated;
 - the introduction path is the subtle part: it must not give User Entry or
   Rendezvous roles the Service Target, give any Introduction role an endpoint
   origin, or create a Target-to-origin mapping at one ordinary Node;
-- three data-path Nodes are the minimum, so unknown common control or poor role
-  diversity has a larger effect than in longer circuits;
+- the minimum C-3 shape makes unknown common control and poor role diversity more
+  consequential than in longer routes;
 - the Rendezvous is a per-connection availability and traffic-analysis point;
 - same-connection recovery needs a new authenticated route-attachment mechanism
   that prevents replay, rollback, stream duplication, and cross-context linkage.
 
 ### Assessment
 
-Contract fit: **best**. Expected performance fit: **best hypothesis**. Evidence:
-**none yet**. Advance this option to a bounded prototype while retaining Option B
-as the alternative and Option A as the security reference.
+Endpoint-link fit: **strong**. Full-Route disclosure fit: **fails as drawn**.
+Expected performance fit: **best lower-bound control**. The split-leg family may
+advance only with enough interior separation that no ordinary Node knows every
+carrier position. Retain Option B as the alternative and Option A as the mature
+security reference.
 
 ### Split-leg selection and introduction refinement
 
@@ -350,21 +358,30 @@ the combined role is too close to the exact forbidden link.
 Preparation:
 
 ```text
-Service -> Introduction Entry -> Introduction Node [opaque expiring slot]
+Service
+  -> Introduction Entry
+  -> Introduction Interior
+  -> Introduction Node [opaque expiring slot]
 ```
 
 Connection attempt:
 
 ```text
-User -> User Entry -> Rendezvous -> Introduction Node
-                                      -> Introduction Entry -> Service
-Service -> Data Service Entry -> Rendezvous
+User -> User Entry -> User Interior -> Rendezvous -> Introduction Node
+Introduction Node -> Introduction Interior -> Introduction Entry -> Service
+Service -> Data Service Entry -> Service Interior -> Rendezvous
 ```
 
 Joined data path:
 
 ```text
-User -> User Entry -> Rendezvous -> Data Service Entry -> Service
+User
+  -> User Entry
+  -> User Interior
+  -> Rendezvous
+  -> Service Interior
+  -> Data Service Entry
+  -> Service
 ```
 
 The User first establishes a fresh random join handle at its chosen Rendezvous.
@@ -397,24 +414,27 @@ The intended protocol-derived views are:
 
 | Role | Receives | Must not receive from its role |
 |---|---|---|
-| User Entry | User origin, Rendezvous, timing, volume | Introduction Node, Service Name, Target, Service origin |
-| Rendezvous | User Entry, Introduction Node during setup, Data Service Entry after attachment, random handles | Either endpoint origin, descriptor, Name, Target, endpoint keys, plaintext |
-| Introduction Node | Rendezvous, Introduction Entry, opaque slot, sealed invitation | Either endpoint origin, plaintext invitation, Target-to-origin mapping |
-| Introduction Entry | Service origin, Introduction Node, opaque channel state | User origin, Rendezvous proposal, Name, Target |
-| Data Service Entry | Service origin, Rendezvous, random route handle | User origin, Name, Target, endpoint handshake plaintext |
+| User Entry | User origin, User Interior, timing, volume | Rendezvous, Introduction Node, Name, Target, Service origin |
+| User Interior | User Entry, Rendezvous, opaque handles | User origin, Service side, Name, Target |
+| Rendezvous | User Interior, Introduction Node during setup, Service Interior after attachment, random handles | Both Entries, either endpoint origin, descriptor, Name, Target, endpoint keys, plaintext |
+| Introduction Node | Rendezvous, Introduction Interior, opaque slot, sealed invitation | Both Entries, either endpoint origin, plaintext invitation, Target-to-origin mapping |
+| Introduction Interior | Introduction Node, Introduction Entry, opaque handles | Service origin, User side, invitation plaintext, Name, Target |
+| Introduction Entry | Service origin, Introduction Interior, opaque channel state | User origin, Rendezvous proposal, Name, Target |
+| Service Interior | Rendezvous, Data Service Entry, opaque handles | Service origin, User side, Name, Target |
+| Data Service Entry | Service origin, Service Interior, random route handle | Rendezvous, User side, Name, Target, endpoint handshake plaintext |
 
-C1 reuses the already prepared User-to-Rendezvous leg for introduction and keeps
-the normal data path at three carrier positions. Its central risk is that the
-Rendezvous observes which shared Introduction Node receives the invitation. That
-must remain a many-Service role and the randomized invitation must not be
-comparable with descriptor bytes or another attempt.
+C1 reuses the already prepared User-to-Rendezvous leg for introduction. Its
+central risk is that the Rendezvous observes which shared Introduction Node
+receives the invitation. That must remain a many-Service role and the randomized
+invitation must not be comparable with descriptor bytes or another attempt.
 
 #### C2 — Separate introduction route
 
 ```text
-User -> User Entry -> Introduction Forwarder -> Introduction Node
-                                      -> Introduction Entry -> Service
-User -> User Entry -> Rendezvous <- Data Service Entry <- Service
+User -> User Entry -> User Interior -> Introduction Forwarder -> Introduction Node
+Introduction Node -> Introduction Interior -> Introduction Entry -> Service
+User -> User Entry -> User Interior -> Rendezvous
+Service -> Data Service Entry -> Service Interior -> Rendezvous
 ```
 
 C2 prevents the Rendezvous from observing the selected Introduction Node and
@@ -459,6 +479,147 @@ names as secrets, or selecting an unproven cryptographic construction. It advanc
 C1 as the current prototype hypothesis and retains C2 as its security fallback;
 it does not accept either route for production.
 
+### Data-path position comparison
+
+The accepted P2-D3 contract protects both the Target-to-origin link and the
+identities of all participating Nodes as one complete Route view. Position count
+must satisfy both. Tor is a useful control: its specification says anonymous
+connections should use at least three relays, and its onion-service rendezvous
+joins independently built client and Service circuits at a client-selected
+Rendezvous. I2P independently documents the tradeoff: more tunnel peers increase
+latency and premature-failure probability, while fewer make internal traffic
+analysis easier; most applications use two or three hops per tunnel.
+
+Sources: [Tor circuit creation](https://spec.torproject.org/tor-spec/creating-circuits.html),
+[Tor rendezvous protocol](https://spec.torproject.org/rend-spec/rendezvous-protocol.html),
+[I2P tunnel routing](https://i2p.net/en/docs/overview/tunnel-routing/), and
+[I2P performance](https://i2p.net/en/docs/overview/performance/).
+
+#### C-3 — Three carrier positions
+
+```text
+User -> User Entry -> Rendezvous -> Service Entry -> Service
+```
+
+The shape meets the one-Node endpoint-location separation: Entry roles see only
+their adjacent endpoint and Rendezvous, while the Rendezvous sees no endpoint
+origin. It nevertheless fails the separate no-full-Route rule. The Rendezvous
+sees User Entry, itself, and Service Entry: every carrier Node identity in this
+Route. Accepting C-3 would require weakening P2-D3 rather than implementing it.
+
+Retain C-3 only as an explicitly unqualified performance lower-bound control. It
+cannot become the Interactive Route merely because it is faster.
+
+#### C-4 — One asymmetric interior position
+
+```text
+User -> User Entry -> User Interior -> Rendezvous -> Service Entry -> Service
+```
+
+The added Interior prevents the Rendezvous from knowing every carrier identity,
+so C-4 passes the literal full-Route boundary. But it gives the User and Service
+different position exposure and different deterministic collusion thresholds.
+Placing the Interior on a random side merely makes one endpoint weaker on each
+connection and adds a route-shape distinction; it does not create a coherent
+stronger claim. Fixed or adaptive asymmetry has no accepted Application reason.
+
+Reject C-4 for the baseline. The product promises reciprocal endpoint-location
+privacy and should not introduce an unexplained weaker leg only to save one Node.
+
+#### C-5 — Symmetric interior separation
+
+```text
+User
+  -> User Entry
+  -> User Interior
+  -> Rendezvous
+  -> Service Interior
+  -> Service Entry
+  -> Service
+```
+
+Each endpoint selects its Entry and Interior leg independently; the User selects
+the fresh Rendezvous. The Service validates that proposal against its own route
+state before attaching. The protocol-derived data-path views become:
+
+| Role | Immediate view | Deliberately absent |
+|---|---|---|
+| User Entry | User origin, User Interior | Rendezvous, Service side, Name, Target |
+| User Interior | User Entry, Rendezvous | User origin, Service side, Name, Target |
+| Rendezvous | User Interior, Service Interior | Both Entries, both endpoint origins, Name, Target |
+| Service Interior | Rendezvous, Service Entry | Service origin, User side, Name, Target |
+| Service Entry | Service Interior, Service origin | Rendezvous, User side, Name, Target |
+
+No ordinary Node receives every carrier identity, either endpoint origin, or a
+Target-to-origin link. The Rendezvous no longer learns the endpoints' sticky Entry
+sets. C-5 therefore satisfies a security boundary that C-3 fails and avoids the
+unexplained asymmetry of C-4.
+
+The same separation must apply to introduction preparation:
+
+```text
+Service -> Introduction Entry -> Introduction Interior -> Introduction Node
+```
+
+and to the candidate C1 attempt:
+
+```text
+User -> User Entry -> User Interior -> Rendezvous -> Introduction Node
+Introduction Node -> Introduction Interior -> Introduction Entry -> Service
+Service -> Data Entry -> Service Interior -> Rendezvous
+```
+
+The normal joined path still carries no Introduction role. Introduction and data
+Entries and Interiors are separately selected for the attempt unless a later
+information-flow proof demonstrates that bounded reuse cannot combine forbidden
+views.
+
+#### Topological cost before measurement
+
+| Shape | Carrier Nodes | Endpoint/inter-Node segments | Relay processing relative to C-3 | Segment transmissions relative to C-3 | Contract result |
+|---|---:|---:|---:|---:|---|
+| C-3 | 3 | 4 | `1.00x` | `1.00x` | Fails no-full-Route rule |
+| C-4 | 4 | 5 | `1.33x` | `1.25x` | Asymmetric; reject |
+| C-5 | 5 | 6 | `1.67x` | `1.50x` | Smallest symmetric candidate |
+
+These ratios are topology counts for one carried unit, not performance results.
+They exclude framing, acknowledgements, retransmission, introduction, prepared
+state, cryptography, and recovery. C-5 adds one route extension per endpoint leg;
+prepared Entry-to-Interior legs may reduce warm setup time, but their idle bytes,
+memory, rotation, and failure cost remain inside the accepted budgets.
+
+C-5 does **not** gain a claim against every colluding pair or a Broad Traffic
+Observer. Low-latency timing correlation remains, and P2-D4 is unchanged. Its
+measurable gain is narrower: no single carrier gets the complete Node sequence,
+the Rendezvous does not directly learn either sticky Entry, and both endpoint
+legs have the same knowledge structure.
+
+#### Current position-count recommendation
+
+Advance **C-5** as the smallest split-leg candidate that implements the already
+accepted claim without asymmetry. Reject C-3 as privacy-qualified architecture
+and C-4 as baseline shape. This is not a decision to copy Tor: Ardents derives
+five positions from its own disclosure and symmetry contracts and still uses its
+own Service Connection, Introduction, recovery, naming, bootstrap, and Route
+Module boundaries.
+
+C-5 nevertheless converges to the logical data-path shape of two anonymous
+three-relay circuits sharing a Rendezvous. The split-leg hypothesis therefore no
+longer has a proven data-path position or forwarding-cost advantage over the Tor
+security reference. Its remaining possible advantages are C1's reused
+Rendezvous-forwarded introduction, same-connection route replacement, explicit
+Route Module boundaries, and replaceable Carrier Channel Adapters.
+
+Those differences do not justify a new routing protocol by themselves. R-013
+must prefer a maintained mature implementation whenever it can satisfy the same
+Interface, recovery, transport-agility, and qualification contract. A custom
+Implementation remains justified only by measured security, performance, or
+operability evidence that the adopted alternative cannot provide.
+
+The recommendation remains unaccepted until Product Owner review. A bounded
+prototype must compare C-5 with Option B under the same tracer; C-3 may appear
+only as a clearly unqualified performance control.
+
 ## Option D — Delayed packet mixnet
 
 Use independently routed fixed-size packets, randomized mixing delay, reordering,
@@ -476,11 +637,11 @@ Application need justifies the stronger claim and cost.
 
 | Criterion | A: full onion circuits | B: tunnel pools | C: split rendezvous | D: mixnet |
 |---|---|---|---|---|
-| One-Node knowledge separation | Strong reference | Strong if pool roles remain separate | Exact intended contract | Stronger than required |
-| Warm `p95 <= 1 s` hypothesis | Weak to uncertain | Promising with prepared pools | Best | Poor |
-| `10 Mbit/s` and overhead hypothesis | Highest circuit cost | Medium to high scheduling cost | Best | Poor |
+| One-Node knowledge separation | Strong reference | Strong if pool roles remain separate | C-3 fails full-Route rule; C-5 is the smallest symmetric fit | Stronger than required |
+| Warm `p95 <= 1 s` hypothesis | Uncertain; circuits may be prepared | Promising with prepared pools | Uncertain; C1 reuses a prepared Rendezvous leg | Poor |
+| `10 Mbit/s` and overhead hypothesis | Five-position data path; unmeasured | Medium to high scheduling cost | Same five-position lower bound as A; unmeasured | Poor |
 | Same-connection `p95 <= 5 s` recovery | Requires added continuity | Natural path alternatives, complex ordering | Requires added leg attachment | Requires stream reconstruction |
-| Endpoint state | Medium-high | Highest | Lowest current hypothesis | High |
+| Endpoint state | Medium-high | Highest | Medium for C-5 | High |
 | Shared lookup/control risk | HSDir and consensus if copied | Floodfill/DHT eclipse and Sybil | Still needs descriptor and bootstrap design | Epoch topology and admission root |
 | Mature complete analogue | Tor | I2P | None | Nym |
 | Current disposition | Comparison control | Alternative prototype | Front-runner prototype | Defer to R-005 |
@@ -495,9 +656,9 @@ No production implementation is justified yet. A throwaway candidate must first:
 1. model every Introduction, Entry, Rendezvous, descriptor, and recovery view;
 2. make each ordinary role malicious in turn and prove no forbidden value appears
    in live state, traffic, handles, logs, or retained state;
-3. run Option C with three data-path positions and Option B with the smallest
-   viable tunnel pool on the same controlled topology through the same Route
-   Module Interface and Service Connection tracer;
+3. run C-5 and Option B with the smallest viable tunnel pool on the same
+   controlled topology through the same Route Module Interface and Service
+   Connection tracer; C-3 may run only as an unqualified performance control;
 4. measure cold and warm connection setup, one-stream goodput, `64`/`256`
    connection workloads, CPU, RSS, queues, and endpoint traffic overhead;
 5. inject one leg, Rendezvous, Introduction, Carrier Channel, and descriptor-path
@@ -510,8 +671,8 @@ No production implementation is justified yet. A throwaway candidate must first:
 
 ## Open mechanism questions
 
-- whether the three-position data route passes hostile information-flow review or
-  needs one additional interior position;
+- whether C-5 passes hostile information-flow review and the accepted performance
+  budgets with prepared symmetric legs;
 - how introduction material is delivered without giving one Node a stable
   target-to-entry mapping;
 - how many prepared entry, introduction, and recovery choices fit the idle and
@@ -525,13 +686,14 @@ No production implementation is justified yet. A throwaway candidate must first:
 
 ## Recommendation
 
-Advance **Option C, Ardents split-leg rendezvous**, to an information-flow model
-and bounded prototype. Prototype **Option B** beside it as the strongest
-performance/recovery alternative. Keep **Option A** as the mature security-flow
-reference and reject **Option D** for the baseline unless R-005 later creates a
-stronger Route Profile.
+Advance the shared **five-position Tor/C-5 data-path shape** to an information-flow
+model, comparing Tor-style separate introduction with C1 Rendezvous-forwarded
+introduction. Prototype **Option B** beside it as the strongest structurally
+different performance/recovery alternative. Reject **Option D** for the baseline
+unless R-005 later creates a stronger Route Profile. C-3 is an unqualified
+performance control and C-4 is rejected.
 
-Option C is only the first candidate Route Adapter. Its three-position shape
+Option C is only the first candidate Route Adapter. Its internal position count
 must not leak into the Application Interface, Service Connection contract,
 Service Name, Service Target, or authority model.
 
