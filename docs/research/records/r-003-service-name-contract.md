@@ -66,8 +66,8 @@ correct for the poisoned binding. Direct connections to an explicitly supplied
 Service Target do not follow a changed Name Record and cannot silently fall back
 to the name. P4-D3 and P4-D4 therefore define separate expiry, loss, compromise,
 rotation, transfer, and precommitted recovery behavior without pretending target
-authentication repairs a captured name. P4-D5 and P4-D6 still define privacy,
-abuse, governance, and transparency boundaries.
+authentication repairs a captured name. P4-D5 below defines resolution privacy;
+P4-D6 still defines abuse, governance, and transparency boundaries.
 
 P4-D2a through P4-D4 now fix the Namespace, leased claim, syntax, lifecycle, and
 authority-transition product contracts without selecting registry, key,
@@ -99,15 +99,15 @@ Service Target under a separately visible Application policy.
 
 One canonical Namespace is a consistency and user-experience contract, not a
 decision to use one server, registrar, administrator, ledger, operator set, or
-project-controlled root. P4-D5 and P4-D6 must further constrain naming and
-governance power and make partitions, capture, and forks visible.
+project-controlled root. P4-D6 must further constrain naming and governance power
+and make partitions, capture, and forks visible.
 If honest clients cannot establish one current binding during a conflict, they
 fail explicitly rather than accepting resolver-dependent destinations.
 
 Global uniqueness does not make a Service listed, authorized, or secret. Ardents
 still supplies no index, search, recommendation, or public browsing surface for
-Unlisted Services. P4-D5 must address enumeration and query linking created by
-the naming mechanism itself.
+Unlisted Services. P4-D5 below fixes query-linking limits and P4-D6 still owns
+enumeration cost and abuse created by the naming mechanism itself.
 
 ### P4-D2b — Permissionless leased initial claim
 
@@ -263,12 +263,52 @@ human controller: the attacker may retain or visibly obtain control under the
 accepted rules. Recovery adds a bounded alternative authority, not proof of
 personhood or guaranteed restoration.
 
+### P4-D5 — Private Resolution without name secrecy
+
+**Product Owner decision, accepted 2026-08-08:** V1 protects the association
+between a querying User endpoint and an exact Service Name against any one
+malicious ordinary Node. It does not promise that a Service Name, its existence,
+or its popularity is secret. A short or predictable name can be guessed and
+queried by anyone, and knowing it remains discovery rather than authorization.
+
+The protocol exposes no list, search, recommendation, public browsing, or
+plaintext-directory API for Unlisted Services. This product omission is not a
+cryptographic non-enumerability claim. A naming participant that sees an exact
+name or a stable name-derived lookup identifier may infer the name, count its
+queries, and test dictionaries. P4-D6 must bound enumeration work and shared
+capacity abuse without claiming to make low-entropy names unguessable.
+
+Resolution uses multi-node knowledge separation. An endpoint-adjacent entry role
+may observe the User endpoint's ordinary location and traffic metadata but does
+not receive the Service Name or a publicly testable name-derived lookup value. A
+naming participant may receive the exact name or lookup identifier needed by the
+eventually selected mechanism, but receives no User location or network-generated
+stable User identifier. No one ordinary role receives both views for one query.
+
+Resolution sessions and query-derived state do not cross Isolation Contexts in a
+way that supplies a stable cross-context identifier. A naming participant may
+still link repeated work within one context or for the same visible lookup value,
+and timing, volume, retries, cache behavior, and query popularity remain metadata.
+Colluding entry and naming roles, Correlated Control, or a Broad Traffic Observer
+may correlate those views; V1 makes no stronger resolution-anonymity claim.
+
+The local Resolver authenticates current Namespace state and returns the accepted
+Name Record or an explicit failure. If the knowledge-separating resolution path
+is blocked, unavailable, stale, conflicting, or invalid, the endpoint fails
+closed. It never sends the name directly to a public resolver, DNS, ordinary
+HTTP service, alternate namespace, or less-private fallback.
+
+**Inference from the accepted Endpoint Location Privacy claim:** name claims,
+updates, renewals, policy changes, and recovery operations also cannot use a
+direct naming path that reveals the controlling endpoint's ordinary location and
+Service Name to one ordinary Node. Naming state necessarily identifies the Name
+Authority and generation being changed, so operations on one name remain linkable
+as that name's authenticated control history. Exact routing, replication, DHT,
+oblivious-query, PIR, or snapshot mechanisms remain unselected.
+
 ## Remaining decisions
 
-1. **P4-D5 — Resolution privacy:** define what resolvers and naming
-   infrastructure learn, how exact-name queries resist enumeration and linking,
-   and what metadata remains an honest limitation.
-2. **P4-D6 — Governance and abuse:** define capture, disputes, squatting, Sybil
+1. **P4-D6 — Governance and abuse:** define capture, disputes, squatting, Sybil
    pressure, denial, accessibility, transparency, forks, and exit behavior.
 
 ## Hypotheses
@@ -385,6 +425,21 @@ query evidence without recording real User activity.
   name resolution. Completion installs a successor in the same generation, but
   resolution resumes only after a fresh monotonic Name Record. Without a usable
   policy there is no administrative recovery.
+- **Product Owner decision:** Unlisted Service Names have no network list, search,
+  recommendation, or public browsing API, but are not secret capabilities. Short
+  names, name-derived lookup values, and query popularity may be guessed,
+  enumerated, inferred, or counted.
+- **Product Owner decision:** Private Resolution uses multi-node knowledge
+  separation so one ordinary Node receives either User location or the exact
+  name/lookup view, never both. Query state and sessions cannot create a stable
+  identifier across Isolation Contexts.
+- **Product Owner decision:** colluding roles, Correlated Control, and a Broad
+  Traffic Observer remain outside the resolution privacy claim. Unavailable
+  private resolution fails closed without direct public resolver, DNS, HTTP,
+  alternate-namespace, or other less-private fallback.
+- **Inference:** authenticated operations on one name are necessarily linkable as
+  its control history, but no direct naming path may also expose the controlling
+  endpoint's ordinary location to one ordinary Node.
 - **Assumption:** V1 can make separate Name Authority custody understandable to
   one Developer without requiring an always-online naming administrator.
 
@@ -437,6 +492,16 @@ query evidence without recording real User activity.
   and eventually take control after a visible delay.
 - **Registrar recovery:** may handle human disputes, but creates a mandatory
   identity, censorship, and redirection authority rejected by the product model.
+- **Direct public resolver:** is operationally simple but links User location to
+  the exact name and creates a query log, blocking point, and mandatory provider.
+- **Multi-node knowledge separation:** permits a naming participant to process a
+  name or lookup value without receiving User location, matching the accepted
+  one-malicious-ordinary-Node claim but not collusion resistance.
+- **Locally replicated naming snapshot:** can remove live query disclosure at the
+  cost of distribution, freshness, storage, and easier bulk state analysis.
+- **Oblivious query or PIR:** may hide more from naming participants but adds
+  cryptographic, latency, bandwidth, abuse, and deployment cost that must be
+  measured rather than assumed viable.
 
 ## Recommendation
 
@@ -449,8 +514,10 @@ accepted lowercase ASCII dot hierarchy and explicit `ardents://` Service Link.
 Use the accepted Active, Grace, and Released lifecycle with generation-bound
 monotonic records and parent-bounded descendants. Use authenticated successor
 rotation plus the optional precommitted, delayed, threshold Recovery Policy and
-fail-closed Recovery Pending state. Next define resolution privacy before
-comparing protocols.
+fail-closed Recovery Pending state. Use Private Resolution with multi-node
+location/name knowledge separation, explicit metadata limitations, Isolation
+Context separation, and no less-private fallback. Next define governance and
+abuse boundaries before comparing protocols.
 
 Confidence is high that Service Authority cannot also provide truthful recovery
 from its own compromise. Confidence is low that a usable, privacy-preserving,
@@ -465,24 +532,30 @@ The lifecycle prevents indefinite local extension and cross-generation replay,
 but concrete clock, ordering, convergence, cache, and renewal-censorship behavior
 remain unverified. Recovery avoids one mandatory administrator but adds a
 generation-scoped capture set whose diversity, threshold failure, delay, denial,
-policy-change, and custody behavior remain unverified.
+policy-change, and custody behavior remain unverified. Private Resolution matches
+the accepted single-Node claim but remains vulnerable to guessed names, query
+frequency analysis, colluding route and naming roles, Correlated Control, and a
+Broad Traffic Observer. The cost and privacy of concrete lookup mechanisms are
+unverified.
 
 The strongest counterarguments are that two authorities are too complex for a
 small V1 Developer journey and that one canonical Namespace creates a shared
 Control Plane. The first cost is accepted because merging authorities makes the
-catastrophe-recovery promise false. The second must be constrained by P4-D5 and
-P4-D6 without pretending that resolver-dependent names are safer. A
+catastrophe-recovery promise false. The second must be constrained by P4-D6
+without pretending that resolver-dependent names are safer. A
 third is that permissionless first-valid claims reward front-running and
 squatting; leases make that harm reversible but do not remove it. A fourth is
 that parent expiry creates a cascading outage; allowing descendants to survive
 would instead violate hierarchical control and confuse a later parent claimant.
 A fifth is that the Recovery Policy creates another authority capable of denial
 and eventual takeover; precommitment, threshold, delay, and visibility bound but
-do not eliminate that power.
+do not eliminate that power. A sixth is that the selected privacy boundary lets
+a naming participant infer names and popularity; stronger hiding remains a
+candidate enhancement only if it meets performance and abuse budgets.
 
 ## Disposition
 
-- State: `active`; P4-D1 and P4-D2a through P4-D4 are accepted; P4-D5 is next.
+- State: `active`; P4-D1 and P4-D2a through P4-D5 are accepted; P4-D6 is next.
 - `Name Authority` becomes canonical product language.
 - `Namespace` now means the one canonical Ardents network-wide naming boundary,
   not a resolver-selected provider or local alias scope.
@@ -494,6 +567,8 @@ do not eliminate that power.
   lifetime whose records and descendants cannot survive reclaim.
 - `Recovery Policy`, `Recovery Authority`, and `Recovery Pending` become
   canonical product language for precommitted, scoped, visible name recovery.
+- `Private Resolution` becomes canonical product language for the accepted
+  single-ordinary-Node User-location/name separation, not name secrecy.
 - R-006 target lifecycle remains unchanged and now has a distinct naming
   continuity authority.
 - No ADR: no concrete registry, cryptographic recovery, key, threshold, delay,

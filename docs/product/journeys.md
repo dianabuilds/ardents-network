@@ -66,7 +66,10 @@ with a visible expiry warning; a Released name and any descendant resolve
 nothing. Recovery Pending also resolves nothing until its successor issues a
 fresh Name Record. No directory search or silent alternate-namespace, DNS,
 search-result, or local-alias fallback occurs, and possession of the name is not
-shown as authorization or secrecy. The Interactive Route is not a direct path
+shown as authorization or secrecy. A naming participant may infer the queried
+name or count its popularity, but receives no User location or stable User ID;
+the endpoint-adjacent role receives no exact or publicly testable name value.
+The Interactive Route is not a direct path
 or single proxy, and no one ordinary Node links the User's location to the
 Service Name, Service Target, or Service Instance location. The Service may
 still recognize identity disclosed by Application Data, credentials, client
@@ -361,6 +364,8 @@ Every implementation proposal must exercise at least these cases:
   generation; a Name Record is stale, rolled back, or equivocating;
 - a Name Authority is rotated, transferred, lost, or compromised; Recovery Policy
   is absent, changing, captured, or has entered Recovery Pending;
+- private name resolution is blocked or a naming participant records query value,
+  repetition, popularity, timing, volume, or cache metadata;
 - a Service Descriptor is unavailable or points to no reachable Service
   Instance;
 - both an old and a new host publish with copies of one Service Authority;

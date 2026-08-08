@@ -91,7 +91,8 @@ The core product must let a local Application:
 - share that destination as an explicit `ardents://` Service Link without
   publishing or querying an ordinary DNS name;
 - resolve an exact Service Name in one canonical network-wide Namespace without
-  a public directory or resolver-selected alternate meaning;
+  a public directory or resolver-selected alternate meaning, while preventing
+  any one ordinary Node from linking User location to the queried name;
 - establish a protected live Service Connection;
 - exchange opaque Application Data within measurable performance and resource
   budgets and receive explicit failure and closure;
@@ -145,7 +146,8 @@ These are responsibility boundaries, not selected binaries or APIs:
    authority distinct from Service Authority and can remain stable when a
    compromised or lost Service Target must be replaced. Its V1 canonical form is
    a lowercase ASCII dot hierarchy and its explicit Service Link identifies
-   Ardents rather than DNS.
+   Ardents rather than DNS. Resolution separates User location from the name
+   against one ordinary Node, but does not make predictable names secret.
 4. Root Service Name control begins with the first valid claim in deterministic
    shared Namespace order and remains a renewable lease, not permanent property,
    a User account, or human identity. Grace is visible, Release stops resolution,

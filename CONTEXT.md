@@ -160,6 +160,12 @@ Service Target or an explicit resolution failure. Successful resolution is not
 itself a successful Service Connection.
 _Avoid_: Search engine, trusted DNS server
 
+**Private Resolution**:
+Resolution that prevents any one ordinary Node from learning both the querying
+endpoint's ordinary location and exact Service Name. It does not make a
+predictable name secret or unguessable.
+_Avoid_: Secret name, anonymous DNS, unobservable lookup
+
 **Service Descriptor**:
 Authenticated, time-bounded network metadata used to contact a Service Target
 without revealing an ordinary origin address.

@@ -30,6 +30,8 @@ accepted.
 - Name Lease allocation, renewal, expiry, and subordinate-delegation integrity;
 - Recovery Policy integrity, Recovery Authority independence, and visible
   Recovery Pending state;
+- privacy of the User-location-to-name query association and Isolation Context
+  separation during resolution;
 - Service Name presentation integrity and resistance to namespace confusion;
 - endpoint-local grants, Application Interface authority, and network metadata;
 - route, discovery, bootstrap, and Bridge availability;
@@ -185,6 +187,18 @@ Name Record before resolution resumes. Without usable recovery material there is
 no administrator who can restore the name. A captured recovery threshold can
 deny service and eventually take control after the visible delay; Ardents cannot
 identify a morally or legally rightful human controller.
+
+Private Resolution protects the association between User location and the exact
+Service Name against one malicious ordinary Node, not the secrecy of the name.
+The endpoint-adjacent role may see User location and traffic metadata but not the
+name or a publicly testable name-derived lookup value. A naming participant may
+see the name or lookup identifier and count, repeat, or dictionary-test it, but
+receives no User location or network-generated stable User identifier. Query
+sessions and derived state cannot link Isolation Contexts. Colluding entry and
+naming roles, Correlated Control, or a Broad Traffic Observer may correlate
+timing, volume, retries, cache behavior, and query popularity. A blocked private
+path fails closed without direct public resolver, DNS, HTTP, alternate namespace,
+or less-private fallback.
 
 A canonical V1 Service Name is a lowercase ASCII dot hierarchy with the parent
 on the right. Unicode, IDNA, and Punycode cannot create canonical alternatives.
@@ -378,6 +392,12 @@ or privacy claim.
 - Recovery Pending stops name resolution and cannot be silently bypassed by
   rotation, transfer, policy removal, or a stale Name Record. Recovery completion
   requires a fresh successor-authenticated record before resolution resumes.
+- Private Resolution gives no one ordinary Node both User location and the exact
+  Service Name or publicly testable lookup value. It supplies no name-secrecy,
+  non-enumerability, collusion-resistance, or Broad Traffic Observer claim.
+- Resolution creates no network-generated stable User identifier and shares no
+  linkable query session or derived state across Isolation Contexts. Failure never
+  triggers a direct public or less-private naming fallback.
 - A Service Link identifies Ardents explicitly. Parsing or resolution failure
   cannot reinterpret its name as DNS, another namespace, Unicode, IDNA, or
   Punycode; visually similar ASCII names remain distinct destinations.
