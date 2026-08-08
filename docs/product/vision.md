@@ -213,6 +213,10 @@ These are responsibility boundaries, not selected binaries or APIs:
     positions: User Entry, User Interior, Rendezvous, Service Interior, and
     Service Entry. A shorter path is not the same qualified profile and cannot
     be selected silently as a performance optimization.
+20. Connection introduction uses a separate Introduction Path, not the selected
+    Rendezvous. It carries only a sealed, expiring, single-use invitation that
+    lets the Service attach its own data leg; it carries no Application Data and
+    creates no offline-delivery promise.
 
 P5-D3 fixes that five-position information-flow shape because three positions
 give the Rendezvous the complete carrier sequence and four positions make the

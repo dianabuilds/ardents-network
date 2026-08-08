@@ -153,6 +153,10 @@ positions after the three-position candidate was shown to expose the complete
 carrier sequence to its Rendezvous. This refinement still does not select Tor,
 onion construction, cryptography, a library, or a wire protocol.
 
+R-004 P5-D4 later fixes a separate Introduction Path: the selected Rendezvous
+does not forward the connection invitation, and Introduction carries no
+Application Data or offline-delivery semantics.
+
 Consequences:
 
 - a direct P2P path or single relay cannot be labeled or silently substituted as
@@ -529,6 +533,8 @@ diversity exists.
 - R-004 P5-D3 subsequently fixes a symmetric five-position logical data path;
   Tor, onion routing, cryptography, libraries, and wire protocol remain
   unselected.
+- R-004 P5-D4 subsequently separates Introduction from the Rendezvous data path;
+  C1 Rendezvous-forwarding remains only an unqualified performance experiment.
 - P2-D4 accepted: V1 anonymity covers one malicious ordinary Node, not arbitrary
   collusion; Correlated Control spanning enough role views may link endpoints.
 - End-to-end Application Data protection and Service Target authentication

@@ -37,6 +37,9 @@ Separation: one ordinary Node cannot link an endpoint's ordinary location to a
 Service Name, Service Target, or opposite endpoint. Its baseline data path fixes
 five symmetric logical carrier positions without selecting Tor, a routing
 algorithm, library, cryptography, or wire protocol.
+Connection setup uses a separate Introduction Path carrying only a sealed,
+single-use invitation; the selected Rendezvous does not forward it, and no
+Application Data or offline message is carried there.
 
 The target anonymity claim covers one malicious ordinary Node, not arbitrary
 Correlated Control of several roles. Control spanning both endpoint sides may

@@ -56,8 +56,10 @@ profile.
 
 **Flow:** enter the complete canonical name or open its Service Link → parse one
 lowercase ASCII Service Name → resolve and verify Name Record → obtain current
-Service reachability → establish an Interactive Route → authenticate the Service
-Target → expose the authenticated target in the result → open a Service
+Service reachability → prepare a fresh Rendezvous leg and separate Introduction
+Path in parallel → send one sealed invitation over Introduction → let the Service
+attach its independently selected data leg to the Rendezvous → authenticate the
+Service Target → expose the authenticated target in the result → open a Service
 Connection
 
 **Done when:** the Application reaches the intended live Service or receives an
@@ -102,11 +104,12 @@ Windows 11 or Ubuntu LTS `x86-64` desktop/laptop
 **Flow:** Endpoint Owner grants Authority Custody to an administration tool →
 create or securely import Service Authority → obtain its Service Target → grant
 per-Service administration → choose one active local listener → publish
-authenticated, expiring reachability without exposing raw authority → separately
-authorize use of Name Authority → claim a root Name Lease or receive a delegated
-subordinate Name Lease under bounded Anonymous Cost and local admission →
-optionally commit Recovery Policy → bind or update Service Name → produce its
-explicit Service Link → accept a test Service Connection
+authenticated, expiring reachability and rotating Introduction Paths without
+exposing raw authority → separately authorize use of Name Authority → claim a
+root Name Lease or receive a delegated subordinate Name Lease under bounded
+Anonymous Cost and local admission → optionally commit Recovery Policy → bind or
+update Service Name → produce its explicit Service Link → accept a test Service
+Connection
 
 **Done when:** a remote Application can connect while neither the User nor any
 one ordinary Node can link the Service Instance's public origin address to its

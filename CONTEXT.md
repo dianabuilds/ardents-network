@@ -291,6 +291,13 @@ guesses its exact name, the operator may independently know its Service Name or
 Service Target; the role must not link that knowledge to either endpoint origin.
 _Avoid_: Service Entry, access-control service, secret Target guarantee
 
+**Introduction Path**:
+A temporary route-control path, separate from the Rendezvous data path, through
+which a User delivers one sealed, expiring, single-use connection invitation to
+an Introduction Role and the Service. It carries no Application Data and
+provides no offline storage or delivery.
+_Avoid_: Rendezvous forwarding, message mailbox, data path
+
 **Correlated Control**:
 Effective control or coordinated observation of multiple Node roles by one
 adversary, regardless of distinct Node IDs or advertised operators. It breaks

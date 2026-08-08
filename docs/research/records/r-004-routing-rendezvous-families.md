@@ -428,6 +428,11 @@ central risk is that the Rendezvous observes which shared Introduction Node
 receives the invitation. That must remain a many-Service role and the randomized
 invitation must not be comparable with descriptor bytes or another attempt.
 
+P5-D4 rejects this role combination for the baseline: the selected Rendezvous
+must not forward an invitation or receive the Introduction Node or slot from its
+role. C1 remains only an explicitly unqualified setup-performance experiment. It
+cannot be negotiated as, or silently substituted for, the Interactive Route.
+
 #### C2 — Separate introduction route
 
 ```text
@@ -437,11 +442,22 @@ User -> User Entry -> User Interior -> Rendezvous
 Service -> Data Service Entry -> Service Interior -> Rendezvous
 ```
 
+**Product Owner decision P5-D4, accepted 2026-08-08:** C2 is the baseline
+Introduction role architecture. The User delivers one sealed, expiring,
+single-use invitation over a separate Introduction Path that does not traverse
+the selected Rendezvous. The Service validates it, selects its own data leg, and
+attaches to the proposed Rendezvous. Introduction carries no Application Data,
+retained message, or offline-delivery semantics and ends for that attempt after
+acknowledgement.
+
 C2 prevents the Rendezvous from observing the selected Introduction Node and
-keeps setup and data-path roles independent. It costs another prepared path,
-Node, failure domain, queue, and setup schedule. Retain it as the security
-fallback if C1 cannot pass hostile information-flow or active-correlation tests;
-do not pay its cost before evidence identifies the failed C1 boundary.
+keeps setup and data-path roles independent. The User may prepare both paths in
+parallel and perform bounded retry through another advertised Introduction role
+without rebuilding a still-valid Rendezvous leg. It costs another path, failure
+domain, queue, and setup schedule, but that cost is confined to connection setup
+rather than the joined data path. Exact path depth, preparation policy, overlap
+rules beyond the accepted forbidden combinations, cryptography, and wire format
+remain prototype questions.
 
 #### C3 — Distributed invitation mailbox
 
@@ -475,9 +491,10 @@ no additional route state, authority, or protocol privilege from external
 knowledge. A Target-to-origin link remains a qualification failure.
 
 This closes the contradiction without making Services invite-only, treating
-names as secrets, or selecting an unproven cryptographic construction. It advances
-C1 as the current prototype hypothesis and retains C2 as its security fallback;
-it does not accept either route for production.
+names as secrets, or selecting an unproven cryptographic construction. P5-D4
+subsequently selects C2's separate role architecture for the baseline and keeps
+C1 only as an unqualified performance experiment; neither decision selects a
+production protocol.
 
 ### Data-path position comparison
 
@@ -561,11 +578,12 @@ The same separation must apply to introduction preparation:
 Service -> Introduction Entry -> Introduction Interior -> Introduction Node
 ```
 
-and to the candidate C1 attempt:
+and to the accepted P5-D4 attempt:
 
 ```text
-User -> User Entry -> User Interior -> Rendezvous -> Introduction Node
+User -> User Entry -> User Interior -> Introduction Forwarder -> Introduction Node
 Introduction Node -> Introduction Interior -> Introduction Entry -> Service
+User -> User Entry -> User Interior -> Rendezvous
 Service -> Data Entry -> Service Interior -> Rendezvous
 ```
 
@@ -619,8 +637,10 @@ C-5 nevertheless converges to the logical data-path shape of two anonymous
 three-relay circuits sharing a Rendezvous. The split-leg hypothesis therefore no
 longer has a proven data-path position or forwarding-cost advantage over the Tor
 security reference. Its remaining possible advantages are C1's reused
-Rendezvous-forwarded introduction, same-connection route replacement, explicit
-Route Module boundaries, and replaceable Carrier Channel Adapters.
+Rendezvous-forwarded setup control, same-connection route replacement, explicit
+Route Module boundaries, and replaceable Carrier Channel Adapters. P5-D4 rejects
+the first advantage for the baseline; only the remaining differences may justify
+implementation work.
 
 Those differences do not justify a new routing protocol by themselves. R-013
 must prefer a maintained mature implementation whenever it can satisfy the same
@@ -629,9 +649,9 @@ Implementation remains justified only by measured security, performance, or
 operability evidence that the adopted alternative cannot provide.
 
 P5-D3 selects an information-flow shape, not a production mechanism. It does not
-select Tor, onion construction, introduction design, a library, cryptography,
-wire protocol, or language, and it adds no claim against every colluding pair or
-a Broad Traffic Observer. A bounded prototype must compare the five-position
+select Tor, onion construction, a library, cryptography, wire protocol, or
+language, and it adds no claim against every colluding pair or a Broad Traffic
+Observer. A bounded prototype must compare the five-position
 shape with Option B under the same tracer; C-3 may appear only as a clearly
 unqualified performance control. If no implementation can meet the accepted
 security and performance contracts, the product contracts return to review; the
@@ -655,7 +675,7 @@ Application need justifies the stronger claim and cost.
 | Criterion | A: full onion circuits | B: tunnel pools | C: split rendezvous | D: mixnet |
 |---|---|---|---|---|
 | One-Node knowledge separation | Strong reference | Strong if pool roles remain separate | C-3 fails full-Route rule; C-5 is the smallest symmetric fit | Stronger than required |
-| Warm `p95 <= 1 s` hypothesis | Uncertain; circuits may be prepared | Promising with prepared pools | Uncertain; C1 reuses a prepared Rendezvous leg | Poor |
+| Warm `p95 <= 1 s` hypothesis | Uncertain; circuits may be prepared | Promising with prepared pools | Uncertain; separate Introduction and Rendezvous paths may be prepared in parallel | Poor |
 | `10 Mbit/s` and overhead hypothesis | Five-position data path; unmeasured | Medium to high scheduling cost | Same five-position lower bound as A; unmeasured | Poor |
 | Same-connection `p95 <= 5 s` recovery | Requires added continuity | Natural path alternatives, complex ordering | Requires added leg attachment | Requires stream reconstruction |
 | Endpoint state | Medium-high | Highest | Medium for C-5 | High |
@@ -703,28 +723,31 @@ No production implementation is justified yet. A throwaway candidate must first:
 
 ## Recommendation
 
-Advance the shared **five-position Tor/C-5 data-path shape** to an information-flow
-model, comparing Tor-style separate introduction with C1 Rendezvous-forwarded
-introduction. Prototype **Option B** beside it as the strongest structurally
+Advance the accepted **five-position Tor/C-5 data-path shape** with the P5-D4
+separate Introduction Path to an information-flow model. C1 Rendezvous-forwarded
+introduction may run only as an explicitly unqualified setup-performance control.
+Prototype **Option B** beside the accepted shape as the strongest structurally
 different performance/recovery alternative. Reject **Option D** for the baseline
 unless R-005 later creates a stronger Route Profile. C-3 is an unqualified
-performance control and C-4 is rejected.
+data-path performance control and C-4 is rejected.
 
 Option C is only the first candidate Route Adapter. Its internal position count
 must not leak into the Application Interface, Service Connection contract,
 Service Name, Service Target, or authority model.
 
-This recommendation is reversible. It selects what to test next, not what Ardents
-will ship.
+The prototype recommendation is reversible. P5-D3 and P5-D4 are product
+contracts: evidence may return them to explicit review, but a candidate cannot
+silently weaken them in order to pass.
 
 ## Disposition
 
 - State: `active`; P5-D1 fixes the strengthening Seam, P5-D2 fixes the
   Introduction-role knowledge boundary, and P5-D3 fixes the baseline symmetric
-  five-position logical data path. The routing and rendezvous mechanism remains
-  undecided.
+  five-position logical data path. P5-D4 fixes a separate Introduction Path and
+  forbids the selected Rendezvous from forwarding invitations. The production
+  routing and rendezvous mechanism remains undecided.
 - Tor, I2P, Nym, Session, Lokinet, libp2p, and Waku are references or component
   sources, not selected dependencies.
-- No routing family, introduction mechanism, library, cryptography, DHT, wire
-  protocol, language, or production mechanism is selected.
+- No routing family, concrete introduction protocol, library, cryptography, DHT,
+  wire protocol, language, or production mechanism is selected.
 - No ADR and no production code.

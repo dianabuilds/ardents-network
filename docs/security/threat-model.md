@@ -491,6 +491,10 @@ or privacy claim.
   state with a Service-adjacent entry view for the same Service or connection
   attempt. Independent Target knowledge alone is not an anonymity violation; any
   Target-to-origin link is.
+- The selected Rendezvous is not part of the Introduction Path and receives no
+  invitation, Introduction Node, or introduction slot from its role. Introduction
+  carries only sealed, expiring, single-use setup material and never Application
+  Data or retained offline messages.
 - No ordinary Node receives the full Route or plaintext Application Data for the
   connection, and external knowledge of a public Target grants no additional
   route state, endpoint location, authority, or protocol privilege.
