@@ -33,26 +33,55 @@ stronger endpoints may use larger finite local budgets without gaining a Node
 role, trust, authority, route priority, or weaker security rules.
 
 The accepted Interactive Route contract is multi-hop for Route Knowledge
-Separation: one ordinary Node cannot link an endpoint's ordinary location to a
-Service Name, Service Target, or opposite endpoint. Its baseline data path fixes
-five symmetric logical carrier positions without selecting Tor, a routing
-algorithm, library, cryptography, or wire protocol.
+Separation: one ordinary Node acting only from its role-local view is not
+directly given a binding between an endpoint's ordinary location and a Service
+Name, Service Target, or opposite endpoint. Its baseline selects the
+Tor-shaped family of two independently built endpoint circuits joined at a
+User-selected Rendezvous, with five symmetric logical carrier positions. It does
+not select Tor naming, exit routing, a library, cryptography, or wire protocol.
 Connection setup uses a separate Introduction Path carrying only a sealed,
 single-use invitation; the selected Rendezvous does not forward it, and no
 Application Data or offline message is carried there.
-Each endpoint selects its own leg from a long-lived Entry Set and a medium-lived
-Interior Set; the User selects a fresh Rendezvous for each new connection.
+Each endpoint selects its own leg from authenticated Candidate Materializations
+under one epoch-committed logical Candidate View. V1 has ordinary and Bridge
+regimes and at most one long-lived Entry Set for each activated adjacent Role
+Domain and regime per installation. Applications, Services, contexts,
+destinations, generations, and Bridge Invites cannot create more; every Bridge
+key is eligible for only one adjacent domain. Channels, Interiors, destinations,
+sessions, and recovery state remain context-separated. Disjoint stable Role
+Domains make the two hidden legs assignable without a Service-side rejection
+oracle. Name/Target/descriptor lookup uses a private Destination Resolution role
+restricted to the non-adjacent Rendezvous Domain; a resolution identity/family
+is excluded from that connection's Rendezvous. The User selects a fresh
+Rendezvous for each new connection. Domain assignment is finite and cannot
+overlap across reassignment: old duty stops, drains, and remains quarantined
+before later-domain eligibility.
 
-The target anonymity claim covers one malicious ordinary Node, not arbitrary
-Correlated Control of several roles. Control spanning both endpoint sides may
-link the relationship through traffic metadata; end-to-end Application Data
-confidentiality and Service Target authentication remain separate guarantees.
+A source contacted before a private Route exists sees the requester origin.
+Globally advertised Direct-Origin Sources are therefore source-only; ordinary
+candidates contacted directly enter one bounded installation-wide exposure set
+and are locally excluded from Route/Resolution work until every derived lifetime
+ends. Public family thresholds are calculated after all mandatory exclusions,
+and authenticated source-only family supply is counted separately.
+
+The one-Node claim covers only that Node's role-local view. A Node operator that
+also controls/observes an endpoint, active probe source, or direct-origin
+contact may confirm a known
+Target through distinctive low-latency timing/volume; arbitrary Correlated
+Control has the same broader limitation. Those are explicit non-claims.
+End-to-end Application Data confidentiality, Forward Secrecy for honestly
+completed connections, and Service Target authentication remain separate
+guarantees.
 
 The product contract is Endpoint Location Privacy, not automatic anonymity
 inside an Application. An intended Service reads its Application Data and can
 recognize credentials, content, fingerprints, timing, or behavior that the
 Application reveals; the network adds no global User identity or route
-diagnostics.
+diagnostics. Ardents protects only bytes submitted to its local interface. A
+claim-bearing private Application must run inside the tested Network-Isolated
+Application Boundary, with no ordinary listener, DNS, direct socket/fetch,
+WebRTC/QUIC, or callback/SSRF path. Generic adapters remain compatible but do
+not inherit the stronger Application-level location claim.
 
 The contract requires authentication and integrity to fail closed: modified,
 injected, replayed, redirected, or downgraded protocol data is never accepted as
@@ -62,7 +91,9 @@ replays an Application operation.
 
 No implementation has yet earned Route Qualification. A candidate may present
 the Interactive Route claim only after reproducible edge-traffic, Node-state,
-malicious-endpoint, isolation, and active-attack tests pass. Until then this
+malicious-endpoint, Application Principal, Application-network isolation,
+Direct-Origin Source, Role Domain transition, and active-attack tests pass.
+Until then this
 repository describes research toward an anonymous network, not a validated
 anonymous network implementation.
 
@@ -82,9 +113,16 @@ The first architecture tracer is **Named Unlisted Site**:
    live connection; Ardents supplies no directory or search.
 5. HTTP remains application data. The tracer verifies name continuity, target
    authentication, endpoint-location claims, route failure, and blocked entry.
-6. V1 uses one active Service Instance. An ordinary migration securely moves
-   its Service Authority and preserves the target; compromise creates a new
-   target while the Service Name remains.
+6. V1 uses one active Service Instance generation. During ordinary migration the
+   new host generates a new private Instance Key and receives a newly issued
+   public bounded Instance Credential; neither the old runtime key nor durable
+   Service Authority is moved. Root compromise creates a new target while the
+   Service Name can remain stable under its separate Name Authority.
+
+Both controlled tracer Applications run inside the Network-Isolated Application
+Boundary and communicate only through scoped local Ardents IPC/loopback. The
+first tracer has one active Service Instance; loss of its host means explicit
+unavailability until Owner-driven migration or Target replacement.
 
 The tracer does not require a replicated Site Bundle, bundled application
 runtime, offline delivery, Inbox, or messenger. Those are separate optional
@@ -93,6 +131,7 @@ products or overlays if future evidence justifies them.
 ## Start here
 
 - [Product vision](docs/product/vision.md)
+- [Accepted operating model and remaining bottlenecks](docs/product/operating-model.md)
 - [Network functional map](docs/product/functional-map.md)
 - [Network product journeys](docs/product/journeys.md)
 - [Domain language](CONTEXT.md)

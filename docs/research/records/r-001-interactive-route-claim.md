@@ -42,7 +42,9 @@ The accepted outer claim remains:
 - the Service does not learn the User's ordinary network location from Ardents;
 - the User does not learn the Service Instance's ordinary network location from
   Ardents;
-- any one ordinary Node does not learn both ordinary endpoint locations and
+- any one ordinary Node, acting only from its role-local view and not also
+  controlling/observing an endpoint or second network position, is not directly
+  given both ordinary endpoint locations, a Target-to-origin binding, or
   plaintext Application Data under the final Interactive Route conditions;
 - none of these statements is a blanket claim that a User, Service, or
   connection is globally anonymous or untraceable.
@@ -97,8 +99,9 @@ from an endpoint or Application compromised outside this network-only model.
 Transport Camouflage remains a real censorship-resistance goal: Ardents avoids
 one mandatory stable network fingerprint and aims to make confident
 classification or blanket blocking require active analysis or meaningful
-collateral blocking of ordinary traffic. R-009 must turn this into measurements
-for replaceable Bridges and transports. It remains best-effort and never becomes
+collateral blocking of ordinary traffic. R-009 now fixes replaceable Bridge and
+transport-agility behavior; R-013 experiments must measure concrete mechanisms.
+It remains best-effort and never becomes
 a statement that the observer "sees only HTTPS" or cannot identify Ardents.
 
 Consequences:
@@ -142,11 +145,11 @@ The accepted per-role view is:
 - one Node performing multiple roles must not combine their views to bypass the
   same single-Node limit.
 
-This is a product information-flow contract, not a decision to adopt Tor, onion
-routing, layered-encryption details, a fixed path shape, or exactly three hops.
-R-004 must compare mechanisms and the smallest route shape that enforces the
-contract. R-023 must measure the resulting setup latency, throughput, tail
-latency, CPU, memory, and failure cost.
+This began as a product information-flow contract rather than a decision to
+adopt Tor, onion routing, layered-encryption details, a fixed path shape, or
+exactly three hops. R-004 was tasked with comparing mechanisms and the smallest
+route shape that enforces the contract; R-023 measures the resulting setup
+latency, throughput, tail latency, CPU, memory, and failure cost.
 
 R-004 P5-D3 later fixes the resulting baseline as five symmetric logical carrier
 positions after the three-position candidate was shown to expose the complete
@@ -159,15 +162,19 @@ Application Data or offline-delivery semantics.
 
 R-004 P5-D5 later fixes selector authority and layered lifetimes: each endpoint
 selects its own long-lived Entry Set and medium-lived Interior Set, while the User
-selects a fresh Rendezvous for each new Service Connection. Route selection state
-does not cross Isolation Contexts.
+selects a fresh Rendezvous for each new Service Connection. R-024 and P5-D6
+through P5-D9 refine the boundary: one installation-and-entry-regime Entry Set
+may expose the same endpoint across contexts, but channels, keys, Interiors,
+destinations, sessions, continuity, and route-derived failure state do not cross
+Isolation Contexts. Disjoint Role Domains, one Candidate View, non-oracular
+selection, and endpoint-only continuity close the hidden-leg contradictions.
 
 Consequences:
 
 - a direct P2P path or single relay cannot be labeled or silently substituted as
   an Interactive Route;
 - Service discovery, Introduction, and Rendezvous may use only bounded opaque
-  route data at a carrier role; R-003 and R-004 must prevent a stable
+  route data at a carrier role; R-003 and R-004 prevent a stable
   Target-to-origin mapping from appearing there;
 - different Node IDs or network addresses are not evidence of separate control;
   actual operator, network, software, and jurisdictional diversity remain R-011
@@ -180,9 +187,12 @@ Consequences:
 
 ### P2-D4 — One-Node guarantee and honest collusion limit
 
-**Product Owner decision, accepted 2026-08-07:** V1 guarantees the Interactive
-Route anonymity and Route Knowledge Separation claim against any one malicious
-ordinary Node. It does not promise to resist every pair or larger colluding set.
+**Product Owner decision, accepted 2026-08-07; adversary scope clarified
+2026-08-08:** V1 guarantees protocol Route Knowledge Separation against one
+malicious ordinary Node acting only from its carrier role-local view. It does not
+promise to resist every pair or larger colluding set, or an endpoint-adjacent
+Node that also controls/observes an endpoint, an active confirmation source, or
+a direct pre-Route contact from that endpoint.
 
 The collusion boundary is capability- and position-dependent:
 
@@ -196,35 +206,52 @@ The collusion boundary is capability- and position-dependent:
   no universal promise covering every possible pair;
 - different Node IDs, addresses, or advertised operators are not proof that
   roles are independently controlled.
+- a malicious Service Entry can act as a User and generate a distinctive
+  timing/volume probe for a known Target, and a malicious User Entry can combine
+  its edge view with a controlled Service. That carrier-Node-plus-endpoint active
+  confirmation can link an origin even though the carrier role receives no
+  Target field. It is an explicit low-latency non-claim, not a second Route
+  Knowledge Separation guarantee.
 
 An anonymity failure does not become a payload-security failure. Even if every
 carrier Node colludes, the Service Connection must retain end-to-end Application
 Data confidentiality and integrity and authenticate the exact Service Target,
-provided the endpoints, Service Authority, and accepted cryptography remain
-uncompromised. Colluding Nodes may still correlate metadata, block, delay, drop,
-or manipulate traffic; P2-D6 fixes the required detection and failure behavior
-for active attacks.
+provided the endpoints and accepted cryptography remain uncompromised during the
+connection. Fresh authenticated ephemeral endpoint/session and per-leg keys must
+also provide Forward Secrecy: later compromise of Service Authority, Service
+Instance Key, Node long-term keys, or recorded ciphertext does not decrypt an
+honestly completed connection after best-effort key erasure. Colluding Nodes may
+still correlate metadata, block, delay, drop, or manipulate traffic; P2-D6 fixes
+the required detection and failure behavior for active attacks. A live endpoint
+compromise sees plaintext/session keys, and no post-compromise healing is claimed
+inside an already compromised connection.
 
 The mitigation contract is:
 
 - route selection avoids correlated operator, network, software supply-chain,
   and jurisdictional control using the best available evidence;
+- a globally advertised Direct-Origin Source is never Route- or Resolution-
+  eligible in the same Role Domain Assignment, while any ordinary identity or
+  known family contacted directly is retained in the installation-wide Direct
+  Source Exposure Set and excluded for the complete exposure/work bound;
 - the product exposes uncertainty and concentration rather than asserting that
   nominally different Nodes are independent;
-- R-011 defines the evidence, privacy cost, and failure thresholds for this
-  selection;
-- R-004 compares how candidate route shapes expose strategically useful role
-  combinations;
+- R-011/R-024 define the common Candidate View, privacy boundary, concentration
+  evidence, and explicit uncertainty for this selection;
+- R-004 selects the Tor-shaped split-circuit family and records how its role
+  combinations expose strategically useful views;
 - stronger resistance using multipath, mixing, padding, or cover traffic is a
   separate R-005 decision with its own Application need and performance budget.
 
 Consequences:
 
-- the baseline claim is "one malicious ordinary Node," not "up to one known bad
-  operator" or "any two Nodes";
+- the baseline claim is "one malicious ordinary Node's role-local protocol
+  view," not "up to one known bad operator," "one Node plus a controlled
+  endpoint," or "any two Nodes";
 - the one-Node claim does not depend on a public Service Target remaining secret;
-  a Node operator that independently knows the Target still receives no endpoint
-  origin or Target-to-origin link from its carrier role;
+  independently knowing the Target does not add a protocol field to the carrier
+  role, but actively probing that Target from a controlled endpoint and
+  correlating role-local traffic is outside the claim and may succeed;
 - collusion may be invisible to the endpoint, so successful connection setup
   cannot certify that the route was independently controlled;
 - path diversity reduces risk but cannot prove anonymity for a particular
@@ -280,8 +307,13 @@ Consequences:
 - Ardents does not inspect, rewrite, sanitize, or suppress Application Data to
   make it anonymous;
 - browser fingerprinting resistance, cookie policy, account separation, content
-  safety, malware defense, and sandboxing belong to the Application or a
-  Reference Application;
+  safety, and malware defense belong to the Application or a Reference
+  Application. A claim-bearing Ardents Application additionally runs inside the
+  qualified Network-Isolated Application Boundary: its complete process tree
+  has no ordinary-network listener, DNS, direct fetch, WebRTC, QUIC, callback,
+  or socket path and can reach the network only through scoped local Ardents
+  IPC/loopback. A generic adapter remains supported but receives only the
+  narrower carrier-traffic claim;
 - the network must not add a stable User ID, expose Isolation Context, or reveal
   route diagnostics that increase endpoint linkability;
 - Service abuse prevention and authorization remain Application concerns, while
@@ -353,8 +385,9 @@ Consequences:
   exactly-once delivery or semantic replay protection;
 - cryptographic construction, nonce format, epochs, counters, and concrete
   protocol messages remain later design choices;
-- R-007 specifies bounded recovery and evidence for failure classes; R-009
-  specifies active probing and blocked entry; R-004 measures tagging exposure.
+- R-007/R-024 specify bounded recovery and evidence for failure classes; R-009
+  specifies active probing and blocked entry; concrete R-013/R-023 candidates
+  measure tagging exposure.
 
 ### P2-D7 — Route Qualification and falsification gate
 
@@ -374,6 +407,27 @@ The qualification environment must:
   separation from the design;
 - run malicious-User and malicious-Service cases and inspect every network
   field, local result, diagnostic, and route artifact exposed to them;
+- run both controlled endpoint Applications inside the declared Network-
+  Isolated Application Boundary, then attempt external ingress scanning, DNS,
+  direct fetch, WebSocket/WebRTC/QUIC/socket egress, callbacks, and SSRF from
+  every helper and child process; any ordinary-network success hard-fails the
+  Application-level location claim;
+- run a hostile same-desktop-user sibling against each Application Principal,
+  including IPC/loopback attachment, bearer theft and replay, PID reuse,
+  restart, cross-Service/context access, diagnostics, and authority requests;
+- exercise Role Domain reassignment through stop-new-work, drain, quarantine,
+  and later eligibility, proving that no old and new duty overlaps;
+- exercise every Direct-Origin Source class, restart, retained-state collision,
+  unexpected post-authentication family collision, finite retry/set exhaustion,
+  and attempted later Route/Resolution selection. A globally source-only family
+  or any still-exposed contacted family appearing in a protected role hard-fails
+  the candidate;
+- run a separately labelled active-confirmation characterization in both
+  directions: one endpoint-adjacent malicious Node also controls the opposite
+  endpoint/probe source and emits a precommitted distinctive timing/volume
+  pattern. Retain correlation accuracy and false-positive evidence. Success is an
+  expected limitation of this profile, not a qualification pass; any public
+  wording that includes this combined adversary fails the claim review;
 - attempt target substitution, modification, injection, replay, redirection,
   downgrade, and forbidden reordering before and after connection
   establishment;
@@ -384,8 +438,13 @@ The required conditions are part of the claim, not test fine print:
 
 - the protected endpoint, its Application, the Service Authority, and accepted
   cryptography are uncompromised where the row depends on them;
-- the single-Node claim assumes no Correlated Control of additional roles and
-  that the remaining required roles follow the tested protocol;
+- an Application-level endpoint-location claim requires the tested Network-
+  Isolated Application Boundary on both controlled endpoint Application process
+  trees; a generic HTTP/SOCKS/stream adapter is outside that stronger claim;
+- the single-Node claim assumes no Correlated Control of additional roles, no
+  endpoint, second observation/probe source, or direct-origin observation
+  controlled by that Node adversary, and that the remaining required roles
+  follow the tested protocol;
 - the Local Traffic Observer occupies one endpoint edge and does not also own
   the endpoint or a second observation position;
 - the connection uses the accepted Interactive Route without a direct path,
@@ -411,20 +470,21 @@ family, future release, compromised endpoint, or excluded adversary.
 
 | Information | Adversary | Conditions | Falsification | Honest limitation |
 |---|---|---|---|---|
-| User ordinary location, Route, Isolation Context, and any network-generated stable User ID | Malicious intended Service | User endpoint and its local Application are uncompromised; exact target authentication holds; no direct or weaker-route fallback | Run the Service maliciously; inspect its Application Data, endpoint results, network-visible fields, traffic, logs, and repeated connections for forbidden User origin or network state | The Service receives plaintext Application Data, timing, volume, and behavior. Credentials, content, fingerprints, and behavior can identify or link the User; endpoint compromise defeats local protection |
-| Service Instance ordinary location, Route, and Service Authority | Malicious User | Service endpoint, local Service Application, and Service Authority are uncompromised; exact target authentication holds; no direct or weaker-route fallback | Run the User maliciously; inspect its Application Interface results, Service output, network-visible fields, traffic, diagnostics, and repeated connections for forbidden origin or authority | The User knows the selected Service Name or Service Target and receives intended Service output and behavior; compromised Service content or host can reveal more |
-| Link between either endpoint location and a Service Name, Service Target, or opposite endpoint; full Route; plaintext Application Data | Any one malicious ordinary Node, tested in every eligible role | Only one ordinary Node is malicious; if it performs several eligible roles, the test exposes their combined state; no additional Node is under Correlated Control | Make each eligible Node and role combination malicious in turn and inspect all traffic, live state, retained state, handles, logs, and failure paths available to it | The Node sees immediate peers, required role data, timing, direction, volume, and short-lived opaque handles. Sufficient Correlated Control or collusion is outside this claim |
+| User ordinary location, Route, Isolation Context, and any network-generated stable User ID | Malicious intended Service | User endpoint and its local Application are uncompromised; the tested Application process tree is Network-Isolated; exact target authentication holds; no direct or weaker-route fallback | Run the Service maliciously; inspect its Application Data, endpoint results, network-visible fields, traffic, logs, and repeated connections; independently probe every ordinary ingress/egress path of the User Application | The Service receives plaintext Application Data, timing, volume, and behavior. Credentials, content, fingerprints, behavior, or an Application outside the isolation boundary can identify or link the User; endpoint compromise defeats local protection |
+| Service Instance ordinary location, Route, and Service Authority | Malicious User | Service endpoint and local Service Application are uncompromised; the complete published Application process tree is Network-Isolated; exact target authentication holds; no direct or weaker-route fallback | Run the User maliciously; inspect its Application Interface results, Service output, network-visible fields, traffic, diagnostics, and repeated connections; independently probe every ordinary ingress/egress path of the Service Application | The User knows the selected Service Name or Service Target and receives intended Service output and behavior; compromised content/host or an Application outside the isolation boundary can reveal more |
+| Direct protocol-state link between either endpoint location and a Service Name, Service Target, or opposite endpoint; full Route; plaintext Application Data | Any one malicious ordinary Node, tested in every eligible role | The adversary has only that Node's role-local view, controls/observes no endpoint, direct-origin contact, or second position/probe source, and no additional Node is under Correlated Control | Make each eligible Node and allowed role combination malicious in turn and inspect all traffic, live state, retained state, handles, logs, source exposure, and failure paths available to it | The Node sees immediate peers, required role data, timing, direction, volume, and opaque handles. Node-plus-endpoint/direct-source active confirmation, a second observation, and sufficient Correlated Control are outside this claim |
+| Not protected: endpoint origin against targeted timing/volume confirmation | One endpoint-adjacent malicious Node that also controls/observes the opposite endpoint or an active probe source | Not promised by the Interactive Route | In both directions, emit precommitted distinctive probes for a known Target, correlate them at the adjacent Node, and retain accuracy/false-positive evidence | A public Target is probeable and a low-latency no-cover profile may reveal the origin statistically even though no carrier field carries the Target-to-origin binding |
 | Selected Service Name or Service Target, opposite endpoint location, Application Data, and full Route | Passive or active Local Traffic Observer at either endpoint edge | Observer does not control the endpoint or a second observation position; no direct fallback; accepted encryption and target authentication hold | Capture, classify, block, replay, and manipulate all edge traffic in both endpoint-edge cases; search captures and observable protocol behavior for protected values | The observer knows the adjacent endpoint location and may see peer addresses, timing, direction, duration, volume, retries, and a classifiable Ardents fingerprint |
-| Application Data confidentiality and integrity; exact Service Target, Route Profile, and fresh protocol state | One malicious Node or all carrier Nodes colluding and acting actively | Both endpoints, Service Authority, and accepted cryptography remain uncompromised | Capture carrier state and attempt substitution, modification, injection, replay, redirection, downgrade, truncation, and forbidden reordering across setup and established traffic | Carrier Nodes can deny, delay, drop, throttle, or shape traffic. Timing- and volume-based tags can aid excluded correlation without changing authenticated data |
+| Application Data confidentiality, integrity, Forward Secrecy; exact Service Target, Instance Key/Credential proof, Route Profile, and fresh protocol state | One malicious Node or all carrier Nodes colluding and acting actively; later long-term-key compromise | Both endpoints and accepted cryptography remain uncompromised during the connection; ephemeral keys are erased best-effort after completion | Capture carrier state and ciphertext; attempt substitution, modification, injection, replay, redirection, downgrade, truncation, forbidden reordering, then compromise Service/Node long-term keys after close and attempt retrospective decryption | Carrier Nodes can deny, delay, drop, throttle, or shape traffic. Live endpoint compromise reads plaintext/session keys; swap, hibernation, dumps, or snapshots may defeat erasure; no in-connection post-compromise healing is promised |
 | Absence of network-generated linkage across distinct Isolation Contexts | Malicious Service and carrier observations available within the other accepted rows | Contexts are distinct and do not deliberately reuse linking Application Data, credentials, or behavior | Repeat equivalent connections in separate contexts and compare all route, session, handle, identifier, cache, and endpoint-visible state for forbidden reuse | Application Data, fingerprints, timing, volume, and endpoint observation may still link the contexts |
 | Not protected: relationship unlinkability from timing and volume near both endpoints | Broad Traffic Observer, or a colluding set whose combined views cross the knowledge boundary | Not promised by the Interactive Route | A successful timing-and-volume correlation is recorded as an expected limitation, not misreported as a passed anonymity test or a protocol-integrity failure | Low-latency Interactive traffic remains correlation-sensitive; a stronger profile requires a separate R-005 contract |
 
 ## Closure
 
-R-001 has no remaining product decisions. Its matrix is the acceptance contract
-against which R-004 may compare route families and later implementation
-candidates may seek Route Qualification. Closing this record decides the claim;
-it does not validate an implementation.
+R-001 has no remaining product decisions. Its matrix was the acceptance contract
+against which R-004 selected the Route family and against which later concrete
+implementation candidates seek Route Qualification. Closing this record decides
+the claim; it does not validate an implementation.
 
 ## Evaluation rule
 
@@ -456,8 +516,8 @@ For each candidate route family, define a reproducible topology and collect the
 endpoint, intermediary, and observer views of connection setup, steady traffic,
 failure, and repeated connections. Execute the P2-D7 active-attack suite and
 retain the evidence needed for Route Qualification. R-023 supplies the
-honest-workload budget; R-011 later tests whether claimed operator and network
-diversity exists.
+honest-workload budget; public-launch concentration evidence later tests whether
+claimed operator and network diversity actually exists.
 
 ## Alternatives rejected by accepted decisions
 
@@ -465,8 +525,10 @@ diversity exists.
   not part of the accepted low-latency contract and would be dishonest without
   a separate measurable mechanism and cost.
 - **P2-D1 — No location-privacy promise:** rejected because it would remove the
-  central product value of reaching a Service without revealing ordinary
-  endpoint locations to the opposite endpoint or one ordinary Node.
+  central product value of reaching a Service without directly revealing
+  ordinary endpoint locations to the opposite endpoint or a role-local ordinary
+  Node. The accepted value does not include active traffic confirmation by a
+  Node-plus-endpoint observer.
 - **P2-D2 — Guaranteed ordinary-traffic disguise:** rejected because network
   addresses, traffic behavior, fingerprints, and active probing can expose or
   strongly suggest Ardents use.
@@ -475,9 +537,11 @@ diversity exists.
   accepted hostile environment even though they cannot create invisibility.
 - **P2-D3 — Direct P2P or one trusted proxy:** rejected because one Node can then
   combine endpoint location with destination or origin knowledge.
-- **P2-D3 — Adopt Tor and a fixed three-hop path now:** rejected because the
-  accepted decision is the observable knowledge boundary. R-004 and R-023 must
-  compare route families and costs before selecting a production mechanism.
+- **P2-D3 — Adopt Tor and a fixed three-hop path immediately:** rejected because
+  the accepted decision first had to be the observable knowledge boundary.
+  R-004 subsequently selected a Tor-shaped five-position split-circuit family,
+  not Tor wholesale or a fixed three-hop path, while concrete mechanisms remain
+  R-013/R-023 work.
 - **P2-D3 — Treat different Node IDs as independence:** rejected because one
   operator or correlated infrastructure can control nominally distinct roles.
 - **P2-D4 — Resist every pair of colluding Nodes in V1:** rejected as a blanket
@@ -532,24 +596,37 @@ diversity exists.
 - Transport Camouflage is best-effort: no single mandatory stable fingerprint,
   but no invisibility or guaranteed ordinary-traffic disguise.
 - P2-D3 accepted: the Interactive Route is multi-hop for Route Knowledge
-  Separation; no one ordinary Node learns the full Route, plaintext, or a link
-  between endpoint location and a Service Name, Service Target, or opposite
-  endpoint.
-- R-004 P5-D3 subsequently fixes a symmetric five-position logical data path;
-  Tor, onion routing, cryptography, libraries, and wire protocol remain
+  Separation; one ordinary Node's role-local view, when that adversary controls
+  or observes no endpoint, second position, or active probe source, receives no
+  full Route, plaintext, or direct endpoint-origin-to-Name/Target/opposite-
+  endpoint binding. Node-plus-endpoint timing/volume confirmation is an explicit
+  non-claim.
+- R-004 P5-D3 subsequently fixes a symmetric five-position logical data path and
+  later selects the Tor-shaped split-circuit family; Tor naming, exit routing,
+  concrete onion construction, cryptography, libraries, and wire protocol remain
   unselected.
 - R-004 P5-D4 subsequently separates Introduction from the Rendezvous data path;
   C1 Rendezvous-forwarding remains only an unqualified performance experiment.
 - R-004 P5-D5 subsequently fixes endpoint-owned selection, long-lived Entry,
   medium-lived Interior, connection-scoped Rendezvous, and overlapping
   Introduction rotation without fixing numeric durations or set sizes.
-- P2-D4 accepted: V1 anonymity covers one malicious ordinary Node, not arbitrary
-  collusion; Correlated Control spanning enough role views may link endpoints.
+- P2-D4 accepted: V1 Route Knowledge Separation covers one malicious ordinary
+  Node's role-local view, not arbitrary collusion or Node-plus-endpoint active
+  confirmation. Direct-Origin Source duty is globally separated and contacted
+  source families are locally exposure-excluded; an adversary that nevertheless
+  combines a direct-origin observation with a carrier role is outside the claim
+  and fails the accepted role/exposure architecture.
 - End-to-end Application Data protection and Service Target authentication
-  remain required even if every carrier Node colludes.
+  remain required even if every carrier Node colludes. Fresh authenticated
+  ephemeral keys and best-effort erasure additionally require Forward Secrecy
+  against later Service/Node long-term-key compromise; exact AKE and suite remain
+  R-013 work.
 - P2-D5 accepted: Ardents provides Endpoint Location Privacy against a malicious
   opposite endpoint but does not anonymize Application Data, credentials,
   fingerprints, timing, volume, or behavior visible to it.
+- The Application-level claim requires a qualified Network-Isolated Application
+  Boundary on both endpoint process trees. Generic adapters remain useful but
+  carry only the narrower claim for bytes actually submitted to Ardents.
 - A Service receives no User origin, Route, Isolation Context, or network-generated
   stable User ID; a User receives no Service Instance origin, Route, or Service
   Authority.
@@ -558,7 +635,8 @@ diversity exists.
 - Delay, denial, traffic shaping, and indistinguishable attack remain honest
   limitations; bounded recovery never replays an Application operation.
 - P2-D7 accepted: Route Qualification requires reproducible traffic, Node-state,
-  endpoint, isolation, and active-attack tests; a forbidden disclosure or
+  endpoint, Application Principal, Application-network isolation, Direct-Origin
+  Source, Role Domain transition, and active-attack tests; a forbidden disclosure or
   silently accepted substitution, modification, replay, redirect, or downgrade
   fails the candidate.
 - Broad Traffic Observer and sufficiently placed collusion correlation are
@@ -566,5 +644,6 @@ diversity exists.
 - R-001 is closed as a product contract. No implementation has yet earned Route
   Qualification, so Ardents cannot yet present itself publicly as an anonymous
   network implementation.
-- No routing family, protocol, library, implementation language, ADR, or code is
-  selected.
+- R-004 selects the Route family and ADR-0005 records its domain/exposure
+  boundary. No concrete protocol, library, cryptography, implementation language,
+  production code, or qualified implementation is selected.

@@ -4,6 +4,39 @@ These journeys define observable behavior of Ardents as a network. They avoid
 selecting protocols, libraries, implementation languages, or application
 semantics.
 
+They are completed by the accepted
+[product operating model](operating-model.md), which defines package trust,
+capability-specific readiness, diagnostics, update, and withdrawal.
+
+## J-00 — Install, repair, and remove Ardents
+
+**Actor:** Endpoint Owner
+
+**Start:** A supported Windows 11 or Ubuntu LTS `x86-64` host and an Ardents
+package obtained through any distribution channel
+
+**Flow:** verify threshold release metadata, platform binding, artifact digest,
+and public-network identity → install an unprivileged default Endpoint → create
+local IPC and finite state directories → keep publishing and contribution
+disabled → start or remain offline → later repair, update, create an encrypted
+Authority Recovery Bundle, or uninstall explicitly
+
+**Done when:** package delivery is not package authority; development, test, and
+public roots cannot share state; no account, wallet, User identity, Service, or
+Node was silently created; remote administration is disabled; repair preserves
+Authorities and freshness watermarks. A test restore is isolated and non-signing;
+restored authority remains `authority locked` until authenticated reconciliation
+permits a strictly higher generation/revision, and Local Grants/runtime Instance
+Keys are never derived from the Bundle. Normal uninstall retains the Bundle and
+required watermarks together or exports them first; specifically, a non-empty
+Authority Vault is preserved in place or uninstall blocks until a Recovery
+Bundle is explicitly exported and verified at an Owner-chosen destination. No
+secret or location is invented silently. An empty Vault can uninstall normally.
+A separate confirmed destructive purge enumerates affected authority classes,
+distinguishes disposable cache from authority material, warns that recovery may
+be impossible, and states that secure deletion of external snapshots or backups
+cannot be guaranteed.
+
 ## J-01 — Start and join Ardents
 
 **Actor:** User or Developer
@@ -11,28 +44,52 @@ semantics.
 **Start:** A newly installed local Ardents endpoint on a supported Windows 11 or
 Ubuntu LTS `x86-64` desktop/laptop
 
-**Flow:** Endpoint Owner starts the endpoint → verify software/network state →
-obtain current bootstrap information → join through an available entry path →
-report ready or an exact degraded state
+**Flow:** Endpoint Owner starts the endpoint → verify release, persistent
+freshness, and Time Confidence → obtain and authenticate one current Network
+Epoch through a finite precommitted source sequence, skipping any authenticated
+identity/family already present in retained Entry/Interior/Introduction state or
+live Route/Resolution work and recording every direct contact in the
+installation-wide Direct Source Exposure Set → detect conflict or rollback →
+verify the logical Candidate View commitment and fetch the deterministic proven
+Candidate Materializations required locally → join through each enabled
+capability's own Entry path → report each Capability Readiness or exact lifecycle
+state
 
-**Done when:** a local Application can use the Application Interface without a
-phone, email, wallet, central User account, network administrator approval, or
-manual routing configuration.
+**Done when:** a local Application can use every capability reported `ready`
+without a phone, email, wallet, central User account, network administrator
+approval, or manual routing configuration. Target Connect, Private Name
+Resolution, Publish, and Contribute readiness are distinct and share only the
+Common Readiness Base. Client Initiator, publication Responder/Introduction, and
+Contributor prerequisites are not inherited from one another; a local socket or
+one reachable Entry cannot make unavailable capabilities appear ready. Existing
+network work is bounded by a Work Safety Lease and cannot survive stale or
+revoked trust indefinitely. Direct-source retries and exclusion growth are
+finite; source exhaustion or a post-authentication conflict with retained
+endpoint-adjacent state is explicit unavailability unless one bounded
+owner-approved replacement is permitted by the existing Entry exposure policy.
+An Application or Isolation Context cannot reset source exposure or force fresh
+sampling.
 
 **V1 platform gate:** the same ready outcome is required on both Windows and
 Linux; a result demonstrated only on an infrastructure server is insufficient.
 On the normal non-adversarial reference network, an installed process reaches
-this network-ready state within `p95 <= 5 s` on routine restart with valid state
+**Target Connect Ready** within `p95 <= 5 s` on routine restart with valid state
 and `p95 <= 15 s` on a clean first start. The clock does not stop at a local
-socket or UI; authenticated current network state and a usable entry path are
-required.
+socket or UI; the Common Readiness Base, a usable Initiator Entry path,
+materialized eligible data-path roles, and a qualified profile are required.
+Private Resolution, configured Publish, and Contribute preparation receive their
+own capability-by-platform budgets before a usable release.
 
 A clean first start retains only the installed candidate, frozen configuration,
 trust roots, and declared bootstrap manifest; it has no state generated by a
 prior Ardents execution. A routine restart may retain valid authenticated
-persistent state, but the earlier process is stopped and no live Service
-Connection or Carrier Channel survives. State creation on clean start and state
-validation on routine restart remain inside their startup clocks.
+persistent state and a non-decreasing freshness watermark, but the earlier
+process is stopped and no live Service Connection or Carrier Channel survives.
+State creation on clean start and state validation on routine restart remain
+inside their startup clocks. `Clock uncertain`, `stale`, `conflicting`,
+`blocked`, `disabled/unconfigured`, `authority locked`, `probation/draining`,
+`incompatible`, `update state unavailable`, `update required`, `build revoked`,
+`unqualified`, and `local resource unavailable` are explicit non-ready outcomes.
 
 For the first 10 minutes after reporting ready, an otherwise idle required
 client keeps the complete Ardents process tree at
@@ -51,16 +108,24 @@ profile.
 
 **Actor:** User
 
-**Start:** An exact canonical human-readable Service Name or explicit
-`ardents://` Service Link already known by the User
+**Start:** An exact canonical human-readable Service Name, explicit
+`ardents://` Service Link, Service Target, or explicit Target Link already known
+by the User
 
 **Flow:** enter the complete canonical name or open its Service Link → parse one
 lowercase ASCII Service Name → resolve and verify Name Record → obtain current
 Service reachability → prepare a fresh Rendezvous leg and separate Introduction
 Path in parallel → send one sealed invitation over Introduction → let the Service
 attach its independently selected data leg to the Rendezvous → authenticate the
-Service Target → expose the authenticated target in the result → open a Service
-Connection
+Service Target and current Instance Key/Credential proof with fresh ephemeral
+session keys → bind the exact supplied Name generation/revision→Target or pinned
+Target provenance into the connection → expose the authenticated target in the
+result → open a Service Connection
+
+A Target or Target Link follows the same reachability, Route, Introduction,
+authentication, and connection flow but intentionally skips Namespace
+resolution. It still uses Private Reachability Resolution for the descriptor. A
+failed Name is never reinterpreted as a Target destination.
 
 **Done when:** the Application reaches the intended live Service or receives an
 explicit failure. An Active name resolves normally; a Grace name remains usable
@@ -74,13 +139,30 @@ the endpoint-adjacent role receives no exact or publicly testable name value.
 An incompatible naming-rule fork is explicit. A local filter may refuse the
 name with visible local-policy state but cannot present another canonical
 destination or erase the accepted Name Record.
-The Interactive Route is not a direct path
-or single proxy, and no one ordinary Node links the User's location to the
-Service Name, Service Target, or Service Instance location. The Service may
+The Interactive Route is not a direct path or single proxy. One ordinary Node
+acting only from its role-local view, with no endpoint/second observation/probe
+source under the same adversary, receives no direct User-origin-to-Name/Target/
+Service-location binding. A Node plus controlled endpoint may still confirm a
+known Target through timing/volume and is an explicit non-claim. The Service may
 still recognize identity disclosed by Application Data, credentials, client
 fingerprinting, timing, or behavior. The route is presented as implementing this
 privacy claim only when its exact implementation candidate has current Route
 Qualification; otherwise the journey is visibly an experiment or simulation.
+That network claim covers only traffic submitted to Ardents. An
+Application-level Endpoint Location Privacy claim additionally requires both the
+client and published Application to run inside qualified Network-Isolated
+Application Boundaries; a generic adapter with direct DNS/socket egress remains
+usable but visibly lacks that stronger claim.
+For a Name-origin connection, learned Recovery Pending, Release, or authenticated
+rebind to another Target stops new leg/recovery work and closes by a finite
+deadline; the stream never migrates to the new Target and the Application must
+reconnect. Same-Target renewal or Grace may extend it with the warning. An
+explicit Target-origin connection remains pinned and deliberately has no Name
+catastrophe recovery.
+After an honest connection closes and ephemeral keys are erased best-effort,
+later compromise of Service/Node long-term keys does not decrypt its recorded
+Application Data. A live endpoint compromise and keys retained in memory dumps,
+swap, hibernation, or snapshots remain outside that Forward Secrecy claim.
 On the normal non-adversarial reference network, the connection part of this
 journey completes within `p95 <= 3 s` in the cold state and `p95 <= 1 s` in the
 warm state defined below, measured from Application submission to an
@@ -102,28 +184,55 @@ fresh request and new response data.
 Windows 11 or Ubuntu LTS `x86-64` desktop/laptop
 
 **Flow:** Endpoint Owner grants Authority Custody to an administration tool →
-create or securely import Service Authority → obtain its Service Target → grant
-per-Service administration → choose one active local listener → publish
-authenticated, expiring reachability and rotating Introduction Paths without
-exposing raw authority → separately authorize use of Name Authority → claim a
+create or securely import Service Authority → obtain its Service Target → have
+the new host generate a private Service Instance Key → reconcile current
+authority/network generation → issue a public bounded monotonic Service Instance
+Credential for that public key → remove or lock root authority from the runtime
+boundary → grant per-Service administration → choose one active local listener →
+establish separate Responder and Introduction Entry paths → publish
+authenticated, expiring reachability and rotating Introduction Paths while
+proving the Credential with the private Instance Key and without exposing raw
+authority → separately authorize use of Name Authority → claim a
 root Name Lease or receive a delegated subordinate Name Lease under bounded
 Anonymous Cost and local admission → optionally commit Recovery Policy → bind or
 update Service Name → produce its explicit Service Link → accept a test Service
 Connection
 
-**Done when:** a remote Application can connect while neither the User nor any
-one ordinary Node can link the Service Instance's public origin address to its
-Service Name or Service Target outside the declared Route Profile. Stopping the
-local Service produces an explicit unavailable result, not implied offline
-delivery. A routine migration can stop the old Instance, import the encrypted
-authority on a new host, and republish the same Service Target. Name Authority
-is not needed on either runtime host for that migration. If the
-Service Authority is instead lost or compromised, independently held Name
+**Done when:** a remote Application can connect while the User receives no
+Service Instance origin and one ordinary Node, acting only from its role-local
+view with no endpoint/second observation/probe source under that adversary,
+receives no direct protocol origin-to-Name/Target link. `Publish
+Ready` requires acknowledged fresh descriptor replication and overlapping
+Introduction coverage, not merely a running local listener. Stopping the local
+Service produces an explicit unavailable result, not implied offline delivery.
+A routine migration stops the old Instance, has the new host generate a new
+private Instance Key, then uses the reconciled Authority Vault or an offline
+custody tool to issue a higher-generation public Credential for that key and
+republishes the same Service Target. Copying the Credential alone grants no
+power, and neither the old Instance Key, Service Authority, nor Name Authority
+is imported into the new runtime. Connections cannot outlive the Credential
+validity and authenticated supersession deadlines. If Service Authority is
+instead lost or compromised, independently held Name
 Authority binds the stable name to a newly created replacement Target. A required
 claim mechanism must not let an observer win merely by copying a pending revealed
 name; flooding, withholding, concurrent claims, and partitions remain explicit
 test cases. The cost grants no human identity, fairness, trademark right, or
 guaranteed protection from a more powerful squatter.
+
+The carrier cannot stop an arbitrary published Application from exposing an
+ordinary-network listener or performing DNS, callbacks, webhooks, SSRF, or
+direct socket access. A generic Service remains
+compatible but receives no Application-level Service-location privacy claim. A
+claim-bearing profile contains the complete published Application/helper process
+tree in a Network-Isolated Application Boundary, exposes no ordinary listener,
+and fails external requests
+instead of falling back outside Ardents.
+
+The same endpoint may also act as a client only with separate Initiator,
+Responder, and Introduction Entry Sets and Local Grants. The host and Local
+Traffic Observer may correlate those roles. Standalone client/publisher capacity
+figures are not additive; a release calls simultaneous co-residence usable only
+after its combined Target Connect + Publish profile passes R-023.
 
 The required publisher reference endpoint supports at least `256` concurrently
 open incoming Service Connections, including at least `64` simultaneously active.
@@ -193,10 +302,13 @@ an indistinguishable admitted Sybil.
 **Flow:** receive a narrowly scoped Local Grant → separately authorize Service
 administration when publishing is needed → use the least-privileged local
 Connection Interface → receive a safe default Isolation Context or deliberately
-select an additional one → supply either exact Service Name or Service Target →
+select an additional one → when an Application-level privacy claim is required,
+attach the complete client/server process tree through a Network-Isolated
+Application Boundary → supply either exact Service Name or Service Target →
 resolve the name when needed → authenticate and expose the exact target → connect
 or accept → read and write opaque bytes → handle close, timeout, backpressure,
-and classified failure
+and classified failure → optionally drain then revoke, or revoke immediately →
+rebind the Application to its OS-local principal after process/Endpoint restart
 
 **Done when:** the Application can use its own protocol without treating a Node
 ID as an application address, embedding a mandatory Ardents SDK, or importing
@@ -206,9 +318,18 @@ traffic alone does not expose Service Authority or Service administration.
 Failed name resolution or target authentication never falls back to another
 destination or the ordinary network. After a partial write or connection loss,
 the network never claims that the remote Application processed the bytes. The
+same no-fallback rule does not magically constrain arbitrary Application code:
+generic adapters are marked as having unverified Application networking, while a claim-bearing
+profile proves deny-by-default ordinary-network access at both endpoints. The
 Isolation Context remains local and cannot become an application or network
-identity. No Endpoint Owner or Local Grant becomes an authority over the Ardents
-network. The journey remains within its declared setup-latency, throughput,
+identity. Diagnostics follow the same Local Grant: this Application receives
+only bounded Connection Results and its authorized readiness, never peer, Route,
+other Service, authority, or Endpoint Owner state. Grant revocation immediately
+denies new work and invalidates child sessions; custody/admin closes immediately,
+while data closes immediately unless a finite drain was explicitly selected
+first. No ephemeral bearer survives restart, and no Endpoint Owner or Local Grant
+becomes an authority over the Ardents network. The journey remains within its
+declared setup-latency, throughput,
 memory, CPU, fairness, and overload budgets under both honest and adversarial
 load. Under the normal single-connection throughput workload, the 60-second
 Application goodput in each direction has
@@ -245,23 +366,37 @@ declared CPU, memory, and usable-link parent budget free. The first failed
 profile is saturation and is not selected automatically. The Endpoint Owner may
 always cap lower; an explicit higher experimental cap remains unqualified.
 
+Creating an Application or Isolation Context cannot create a fresh Entry Set.
+The endpoint reuses only its bounded installation-and-entry-regime exposure while
+keeping every per-context channel, key, Interior, Rendezvous, destination cache,
+continuity secret, and failure history separate. Applications receive no route
+topology or raw diagnostic identifiers.
+
 ## J-05 — Use the Named Unlisted Site tracer
 
 **Actors:** Developer and User
 
 **Start:** A local HTTP server and a desired Service Name
 
-**Flow:** publish HTTP server as Service → claim or receive a Name Lease → bind
-name → open its explicit Service Link in the reference client → resolve → connect
-→ exchange HTTP bytes → migrate the authority to a new host without changing the
-target → simulate compromise by creating a replacement target and rebinding the
-same name
+**Flow:** start the deterministic HTTP server with only scoped local IPC/loopback
+and the controlled single-response client inside Network-Isolated Application
+Boundaries → publish
+the HTTP server as a Service → claim or receive a Name Lease → bind name → open
+its explicit Service Link in the reference client → resolve → connect → exchange
+HTTP bytes → migrate the Service Instance to a new host, generate a new private
+Instance Key, and issue a higher-generation public Credential without moving
+Service Authority or changing the target → simulate compromise by creating a
+replacement target and rebinding the same name
 
 **Done when:** the site opens through the generic Service Connection; routine
 migration preserves both target and name; compromise preserves only the name;
 one eligible ordinary route failure preserves the same logical connection; and
 terminal failure remains visible. No replicated Site Bundle, Ardents runtime,
-or built-in application identity is required. On the normal non-adversarial
+or built-in application identity is required. Both endpoint Application process
+trees expose no ordinary-network listener and have deny-by-default egress; a
+generic browser/HTTP
+adapter outside that boundary is a compatibility mode, not this privacy claim.
+On the normal non-adversarial
 reference network, a running, network-ready endpoint receives the first valid
 HTTP response byte from the controlled tracer within `p95 <= 4 s` without a
 prepared Route and `p95 <= 2 s` with current authenticated state and reusable
@@ -298,6 +433,13 @@ Application operation or claims that interrupted work completed. Detected
 active violations still fail closed; no direct fallback, Node identity, or
 route topology is exposed. The outcome is mandatory for the complete V1 stack
 regardless of which transport-specific Carrier Channels it uses.
+
+Recovery first repairs a Carrier Channel, then may attach a fresh leg to the
+same Rendezvous, and after Rendezvous loss may use a fresh sealed Introduction
+attempt to attach both endpoints to a new Rendezvous. Every stage proves the same
+endpoint-only continuity secret with fresh handles, keys, and monotonic route
+generation. No relay receives a stable connection identifier; replay,
+cross-target, cross-profile, or cross-context attachment terminates that attempt.
 
 The same journey is also qualified under three sequential eligible failures in
 one 10-minute run. Each next failure affects the current Route only after the
@@ -349,10 +491,18 @@ remain counted, so retry storms cannot hide inside a ten-minute average.
 
 **Actor:** Network Contributor
 
-**Start:** A host with bounded bandwidth and possibly other resources
+**Start:** A dedicated Ubuntu LTS host/installation with bounded bandwidth and no
+V1 User connection or Service publication role
 
-**Flow:** install → choose explicit network role and limits → self-check → join
-→ observe privacy-safe health → update → withdraw gracefully
+**Flow:** install without enabling contribution → declare supported role
+capabilities, precommitted identity/family material, and finite owner limits →
+receive a finite deterministic Role Domain assignment under public epoch rules →
+reject any new duty whose maximum lifetime does not fit assignment `not-after` →
+self-check → enter probation → become eligible under one authenticated Network
+Epoch → serve → on reassignment publish stop-new-work and drain/quarantine the
+identity and known family until every old-domain duty terminates → become eligible
+in the new domain only afterward → observe privacy-safe aggregate health → drain
+→ update or withdraw gracefully
 
 **Done when:** the Node helps the carrier without reading Application Data,
 becoming a Service or User identity, or silently retaining an unbounded duty
@@ -361,11 +511,71 @@ an Ubuntu LTS `x86-64` `2 vCPU`, `2 GiB RAM`, symmetric `100 Mbit/s` reference
 VPS. Stronger hardware may contribute more bounded capacity but gains no
 automatic role, trust, authority, or route-selection priority.
 
+A co-resident development Node is explicitly unqualified and contributes no
+public capacity or decentralization evidence. An Endpoint never selects a
+Contributor identity or declared family it controls into its own Route. Public
+Client/Publisher+Contributor co-residence requires a future threat and combined
+qualification profile and is not a V1 deployment mode.
+
+An operator may declare a family, but different keys do not prove independence.
+One identity and one honestly declared family occupy only one Role Domain for the
+stable assignment lifetime. Withdrawal stops new assignments first, retains
+bounded drain state, and then expires; a crash does not restore old route handles.
+
+## J-08 — Update an Endpoint, Publisher, or Contributor
+
+**Actor:** Endpoint Owner or Network Contributor
+
+**Start:** A running installation and threshold-authenticated release metadata
+
+**Flow:** automatically check authenticated Release Safety metadata without an
+installation ID, account, Service list, cohort, `from-version`, or exact build
+history → use private-only retrieval by default, an explicitly enabled direct
+source, or offline import, with no silent fallback → verify the `3-of-5` public
+Targets authorization for a new executable, version, expiry, hashes, size,
+platform, source/dependency inputs, SBOM, applicable qualification identity, two
+matching independent build attestations, rollback watermark, build safety, and
+protocol phase → stage with finite disk reserve → install only under local policy
+→ stop accepting new work by the signed deadline → drain within the earlier of
+local policy and signed Work Safety Lease → atomically switch → self-test →
+commit or safely roll back
+
+**Done when:** update distribution did not acquire signing authority; a failed
+update did not corrupt Authority Vault or freshness state; rollback can reach
+only an authenticated schema-compatible non-revoked build; old protocol versions
+never create a silent downgrade; connections closed by process replacement are
+reported honestly; and local repair plus Authority export remain available even
+when normal network work cannot restart. Protocol migration and build safety are
+separate: ordinary current/previous protocol overlap lasts at least `90 days`,
+while a vulnerable/revoked build has no such entitlement. A normal `required`
+transition waits for qualified independent capacity plus drain reserve in every
+Role Domain and required control/discovery role. An expiring `4-of-5` emergency
+may bypass this only for a credible exploitable flaw, compromised primitive/key,
+or demonstrated safety incompatibility, with an explicit possible-network-
+unavailable result. Once Release Safety expires or a build is revoked, repair
+uses only a preconfigured external privacy proxy, an explicit direct-disclosure
+choice, or offline import—not an Ardents Route.
+
 ## Cross-journey failure cases
 
 Every implementation proposal must exercise at least these cases:
 
 - bootstrap information is stale, conflicting, blocked, or malicious;
+- a fresh install has a rolled-back wall clock, insufficient Time Confidence,
+  selective Candidate Materialization withholding, or a logged eligible Node is
+  omitted/rejected inconsistently from the epoch-committed Candidate View;
+- an ordinary or Bridge key is assigned or invited into more than one adjacent
+  Role Domain, or a co-resident client/publisher attempts to reuse one Entry Set;
+- a duty is proposed too near Role Domain Assignment `not-after`, or reassignment
+  occurs while Entry, Bridge, Introduction, Resolution, or other old-domain work
+  remains live: new work is rejected, identity/family stays in drain/quarantine,
+  and emergency closes work rather than creating overlapping eligibility;
+- a direct bootstrap/materialization/time/update source is already present in
+  retained Entry/Interior/Introduction state or live Route/Resolution work,
+  forces unbounded retries/exposure growth, or later appears in a forbidden role.
+  The Endpoint follows finite precommitted source/candidate sequences, preserves
+  installation-wide exclusions, and returns explicit unavailability when
+  bounded replacement or post-exclusion reserve is unavailable;
 - one ordinary entry, relay, discovery, or rendezvous Node is malicious, slow,
   or absent;
 - one Node modifies, injects, replays, redirects, delays, drops, or tags traffic;
@@ -375,6 +585,10 @@ Every implementation proposal must exercise at least these cases:
   generation; a Name Record is stale, rolled back, or equivocating;
 - a Name Authority is rotated, transferred, lost, or compromised; Recovery Policy
   is absent, changing, captured, or has entered Recovery Pending;
+- an existing Name-origin connection observes same-Target renewal/Grace,
+  Recovery Pending, Release, or rebind to a replacement Target; it must never
+  continue recovery indefinitely or silently retarget, while an explicit
+  Target-origin connection deliberately receives no Name rescue;
 - a pending claim is copied, front-run, withheld, flooded, or ordered differently
   across a partition; a powerful actor pays the Anonymous Cost at scale;
 - private name resolution is blocked or a naming participant records query value,
@@ -385,18 +599,33 @@ Every implementation proposal must exercise at least these cases:
   not silently choose another Namespace or rule version;
 - a Service Descriptor is unavailable or points to no reachable Service
   Instance;
-- both an old and a new host publish with copies of one Service Authority;
-- a Service Authority is lost, corrupted, or suspected compromised;
+- old and new hosts concurrently publish one stale or duplicated Instance
+  generation, or a stolen private Instance Key plus its public Credential races
+  a higher-generation successor;
+- a Service Authority is lost, corrupted, or suspected compromised; a stale
+  Recovery Bundle cannot reconcile monotonic state and remains authority-locked;
 - a Service goes offline before connect, during handshake, or mid-operation;
 - a route fails after the Application has written some bytes;
+- an endpoint changes network or address while the process survives, or instead
+  suspends, reboots, crashes, or updates and loses live connection state;
 - an Application reuses one Isolation Context across identities or contexts that
   should not be linked;
+- either endpoint Application exposes an ordinary-network listener, or a
+  malicious client response or Service request tries DNS, external fetch,
+  callback/SSRF, WebSocket/WebRTC, QUIC, or direct socket egress from either
+  endpoint Application. A claim-bearing boundary blocks it; a generic adapter is
+  reported as lacking Application-level location privacy;
 - an Application creates Services or Isolation Contexts to evade its parent
   resource budget;
 - a local Application attempts to exceed connection, bandwidth, or queue limits;
 - a slow reader attempts to create unbounded buffering or starve other grants;
 - a censor blocks known entry addresses and protocol fingerprints;
-- an official endpoint or protocol update channel is compromised or unavailable.
+- Release Safety expires or a build is revoked while a Route is live; Work Safety
+  Lease, no-recovery, and terminal deadlines close it rather than preserving old
+  trust indefinitely;
+- an official endpoint or protocol update channel is compromised or unavailable,
+  and private-only, direct-allowed, and offline repair modes do not silently
+  substitute for one another.
 
 For an Interactive Route candidate, any forbidden endpoint, edge-observer, or
 single-Node disclosure, or any silently accepted substitution, modification,

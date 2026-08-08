@@ -1,7 +1,7 @@
 ---
 id: R-004
 title: Which routing and rendezvous family should carry the Interactive Route?
-status: active
+status: decided
 owner: product research
 started: 2026-08-08
 reviewed: 2026-08-08
@@ -21,8 +21,9 @@ wire protocol, or production route.
 A candidate must preserve all of the following together:
 
 - both endpoint locations remain hidden from the opposite endpoint;
-- no one ordinary Node links an endpoint location to the opposite endpoint,
-  Service Name, or Service Target;
+- one ordinary Node acting only from its role-local view, with no endpoint,
+  second observation position, or active probe source under that adversary,
+  receives no direct endpoint-origin-to-opposite-endpoint/Name/Target binding;
 - each ordinary Node receives only adjacent and role-specific information,
   short-lived opaque handles, timing, direction, and volume;
 - Application Data and exact-target authentication remain end-to-end protected
@@ -31,6 +32,8 @@ A candidate must preserve all of the following together:
   Interactive Route;
 - Broad Traffic Observer and arbitrary-collusion resistance are explicit
   non-claims, not hidden goals that silently add cover-traffic cost;
+- Node-plus-endpoint active timing/volume confirmation is also an explicit
+  low-latency non-claim and mandatory characterization cell;
 - a warm exact-name connection has `p95 <= 1 s`, a cold one has `p95 <= 3 s`,
   and one eligible route failure resumes the same Service Connection within
   `p95 <= 5 s` or terminates explicitly by `15 s`;
@@ -341,18 +344,19 @@ than user-tunable anonymity controls.
 
 | Position | Selector | Accepted lifetime | Required constraint |
 |---|---|---|---|
-| User Entry or Bridge | User endpoint | Small long-lived set scoped by Isolation Context and entry regime | The Service and descriptor never choose or learn it; no routing state is shared across contexts. |
+| User Entry or Bridge | User endpoint | At most one small long-lived set for each activated Initiator Role Domain × ordinary/Bridge regime in an installation | Creating Applications, Services, Targets, generations, Isolation Contexts, destinations, or Bridge Invites cannot create another set or force fresh Entry sampling. Each Entry/Bridge key is eligible for one adjacent domain. Per-context channels, keys, Interiors, destinations, sessions, and recovery state remain separate. |
 | User Interior | User endpoint | Small medium-lived rolling set in the same Isolation Context | Rotates more often than Entry but is not sampled afresh for every connection or retry. |
 | Rendezvous | User endpoint | Fresh for a new Service Connection; retained only while that attempt or connection is alive | Bounded Introduction retry or one-leg repair may retain a live Rendezvous. A failed Rendezvous is replaced by another fresh candidate bound to the same connection; none is pooled across completed connections. |
 | Introduction Node | Service endpoint advertises a finite set; User chooses one | Shorter-lived overlapping rotating set | Shared by many Services; holds only an opaque expiring introduction slot and bounded forwarding state. |
-| Introduction-side Service Entry and Interior | Service endpoint | Distinct role-scoped long- and medium-lived sets for one active Service Instance under one Service Target | Carries introduction control traffic without exposing the Service origin to the Introduction Node; reuse with data roles requires later qualification evidence. |
-| Data Service Entry and Interior | Service endpoint after it learns the proposed Rendezvous | Distinct role-scoped long- and medium-lived sets for one active Service Instance under one Service Target | The User never chooses or learns them; the Service validates the proposed Rendezvous before attaching. |
+| Introduction-side Service Entry and Interior | Service endpoint | At most one long-lived Introduction-domain Entry Set per activated ordinary/Bridge regime plus medium-lived Interiors | Carries introduction control traffic without exposing the Service origin to the Introduction Node. It cannot reuse the Responder-domain Entry Set, including when client and Publisher roles share a host. |
+| Data Service Entry and Interior | Service endpoint after it learns the proposed Rendezvous | At most one long-lived Responder-domain Entry Set per activated ordinary/Bridge regime plus medium-lived Interiors | The User never chooses or learns them; the Service checks only authenticated Candidate View eligibility, Role Domain, expiry, and replay before attaching. Services, Targets, and Instance generations do not multiply the set. |
 
 An intermediate Node never chooses an endpoint-adjacent position for an endpoint.
-The User validates every overlap it can see before sending an invitation; the
-Service validates the Rendezvous against its own Entry and Introduction state
-before attaching. R-011 must handle operator, network, software, and jurisdiction
-overlap that different Node IDs cannot reveal.
+The User validates every overlap it can see before sending an invitation. The
+Service checks the proposed Rendezvous against the same authenticated Candidate
+View and disjoint Role Domain rule, never against a hidden Entry or Introduction
+set in a way that changes an observable result. R-011 must handle operator,
+network, software, and jurisdiction overlap that different Node IDs cannot reveal.
 
 One failure tries another already eligible member or returns a bounded failure;
 it does not evict an Entry into an attacker-driven sequence of new candidates.
@@ -371,6 +375,153 @@ numbers. Tor's primary-guard, guard-lifetime, vanguard, and Introduction Point
 parameters are reference inputs for experiments on a much larger deployed
 network; Ardents must derive its numeric values from R-011 concentration evidence
 and R-023 endpoint, latency, availability, and idle-cost budgets.
+
+#### P5-D6 — Disjoint Role Domains
+
+**Architecture closure decision, accepted 2026-08-08:** the five-position rule
+cannot be enforced across independently hidden endpoint legs by ordinary
+per-attempt comparison. A Service that rejects a User-proposed Rendezvous based
+on overlap with its hidden Entry Set would also create a repeatable
+Entry-discovery oracle.
+
+Eligible Node identities are therefore partitioned for a stable assignment
+lifetime into four non-overlapping exposure classes: Initiator Carrier,
+Rendezvous, Responder Carrier, and Introduction. One Node Identity and one
+honestly declared operator family occupy only one Role Domain during that
+lifetime. The User selects two distinct Initiator-domain identities and one
+Rendezvous-domain identity; the Service selects two distinct Responder-domain
+identities. Both endpoints can enforce local repetition rules, while domain
+separation makes cross-leg Node-ID collision impossible without revealing either
+hidden leg.
+
+Role assignment is deterministic from the authenticated Network Epoch,
+precommitted Node/family material, and public randomness that neither one Node
+nor one epoch signer can cheaply grind after seeing the outcome. It is not a
+manual allowlist, a per-Route Node choice, or proof of independent ownership.
+Hidden common control and Sybil identities remain R-011/R-010 limitations. If a
+domain lacks sufficient eligible capacity, the Route is unavailable rather than
+shortened or built through an overlap. The concrete randomness and resistance to
+identity grinding remain R-013 evidence work.
+
+Assignment is finite and cannot flip at an epoch boundary while old duty lives.
+Before selecting or renewing an Entry, Introduction slot, Resolution role, or
+other duty, the endpoint proves that the duty's maximum terminal lifetime plus
+required drain fits before assignment `not-after`. Reassignment publishes a
+finite stop-new-work boundary, then holds the identity and every known-family
+identity in old-domain drain/quarantine until all prior duties terminate. Only
+then may any become eligible in the new domain. Emergency may terminate old work
+immediately with an honest unavailable result, but never permits overlap.
+
+Destination-aware Name/Target/descriptor lookup and publication do not create a
+fifth global domain. They use a Destination Resolution role restricted to
+Rendezvous-domain identities, never Initiator, Responder, or Introduction. For
+one exact destination and Isolation Context, the endpoint excludes every
+resolution identity and known family it used from that connection's Rendezvous
+selection. Resolution also uses a separately isolated private path that hides the
+query from Entry and has bounded retries. Public concentration/capacity gates
+apply to the subrole itself and to the remaining Rendezvous pool after exclusion.
+This prevents one valid identity/family from receiving endpoint-adjacent origin
+and destination-aware lookup in the same operation without fragmenting operators
+across a fifth domain.
+
+A globally advertised direct-origin bootstrap, materialization, time, or update
+source identity and known family are likewise ineligible for every Route
+position and Destination Resolution during the assignment. If an ordinary
+candidate distributes bytes directly, the contacting Endpoint adds its
+authenticated identity/known family to the bounded installation-wide Direct
+Source Exposure Set and locally excludes it until the source exposure and every
+derived state/work lifetime terminate. Pre-contact selection rejects overlap
+with retained Entry/Interior/Introduction/prepared-role state or live work;
+candidate sequences, retries, and exposure growth are finite, and exhaustion is
+explicit unavailability.
+
+All public domain-capacity gates use the **effective** pool after the maximum
+union of own-family, Direct Source Exposure, exact resolver, drain/quarantine,
+and other mandatory local exclusions. Beta/stable must retain three/five
+families per domain or required subrole with no family above `40%`/`25%` of
+effective capacity. If `x_d` is that maximum distinct excluded-family union for
+domain `d`, the Route-family floor is at least `Σ_d(3+x_d)` for beta or
+`Σ_d(5+x_d)` for stable, and capacity may require more. The older `12`/`20`
+figures are only all-zero-exclusion four-domain Route floors. Three/five
+authenticated source-only families are additional, so `15`/`25` are only the
+all-zero-exclusion theoretical total infrastructure floors, not launch targets.
+
+This follows the risk exposed by Tor's current path-restriction work: an onion
+Service's observable refusal of particular Rendezvous candidates can reveal its
+Guards over repeated attempts. See
+[Tor Proposal 354](https://spec.torproject.org/proposals/354-relaxed-restrictions.html).
+
+#### P5-D7 — Authenticated Candidate View and local selection
+
+**Architecture closure decision, accepted 2026-08-08:** a Node publishes a
+signed expiring Node Record into a precommitted permissionless publication
+window and append-only transparency input, but publication alone grants no
+eligibility, trust, or Route weight. The threshold-authenticated Network Epoch
+commits one logical complete, canonically ordered Candidate View: root, length,
+publication cutoff/input-log root, global eligible count/capacity/concentration
+summaries, and the deterministic rules for eligibility, Role Domain, probation,
+reachability, protocol compatibility, synthetic capacity evidence, and bounded
+weighting. Every valid pre-cutoff record is included or receives a publicly
+verifiable deterministic rejection/revocation reason. A captured threshold may
+still deny or fork the whole input log; transparency detects accountable
+omission rather than making governance capture impossible.
+
+An ordinary endpoint need not download the complete View. It fetches
+deterministic Candidate Materializations—indexed records/shards and inclusion
+proofs—and verifies the requested material, committed selection indices, and
+eligibility locally. It does not claim global completeness from a partial
+sample. Independent full auditors recompute the View, input-log inclusion,
+global summaries, and concentration gates.
+
+Every endpoint selects its own positions locally. An epoch signer, distributor,
+bootstrap peer, Service, Rendezvous, or other Node never chooses a User's
+complete Route. If one selected record is withheld, the endpoint retries the
+same committed index at another source or fails explicitly; it never resamples
+silently. Fetches are batched independently of a destination and no distributor
+learns the complete selected Route. Local observations may avoid a failed Node
+only inside that endpoint's bounded state; Ardents uploads no User route history
+or reputation graph. Exact log convergence, sampling, and audit mechanisms remain
+R-013 feasibility work.
+
+#### P5-D8 — Non-oracular diversity
+
+**Architecture closure decision, accepted 2026-08-08:** Node identity, Role
+Domain, and a known operator family are hard constraints. ASN, prefix, hosting
+provider, jurisdiction, build provenance, and undeclared ownership are risk and
+concentration evidence, not proof of independence. Unknown means uncertain, not
+independent.
+
+No externally observable acceptance result, error detail, retry count, or
+deliberate timing distinction may depend on whether a proposed role intersects a
+hidden Entry or Interior set. Each endpoint constructs only its own leg under
+the disjoint-domain rule. When concentration or missing capacity prevents a
+qualified path, the endpoint reports generic Route unavailable without rotating
+Entry merely to satisfy the attempt.
+
+This is protocol knowledge separation, not traffic-confirmation resistance. An
+endpoint-adjacent malicious Node that also controls/observes an endpoint or
+active probe source may correlate a known Target through chosen timing/volume.
+That combined adversary is outside the Interactive Route claim and must be
+characterized in R-001/R-023 evidence rather than described as another protected
+single-Node case.
+
+#### P5-D9 — Endpoint-only connection continuity
+
+**Architecture closure decision, accepted 2026-08-08:** the initial
+target-authenticated endpoint handshake creates a connection-only continuity
+secret held solely by User and Service. A repaired leg or fresh Rendezvous uses
+fresh random handles, route keys, and a monotonic route generation and proves
+possession of that secret bound to the exact Target, Route Profile, Isolation
+Context, and original handshake transcript.
+
+Replayed, rolled-back, cross-target, cross-profile, and cross-context attachment
+is rejected. Endpoints reconcile authenticated byte sequence and acknowledgement
+ranges and may overlap old and new paths only for safe cutover; no Application
+byte is presented twice. Relays receive no stable connection identifier. Timing
+may still correlate repair with the old Route, which remains an explicit
+low-latency limitation. Rendezvous loss uses a fresh sealed Introduction attempt
+and shares the existing non-resetting recovery deadline rather than opening a
+new Application-visible connection.
 
 #### C0 — Service Entry is also the Introduction Node
 
@@ -434,9 +585,10 @@ placed into the invitation or transmitted as a network identifier.
 
 The Introduction Node forwards the opaque body over the Service's prepared
 Introduction path. It cannot alter the proposed Rendezvous or handshake without
-endpoint rejection. The Service checks expiry and replay, validates the proposed
-Rendezvous against its local diversity state, selects its own Data Service Entry,
-and attaches using a separate random join handle. The Rendezvous pairs the two
+endpoint rejection. The Service checks expiry, replay, authenticated Candidate
+View eligibility, and Role Domain, but no hidden local-set intersection changes
+the externally observable result. It selects its own Data Service Entry and
+attaches using a separate random join handle. The Rendezvous pairs the two
 handles but receives no Service Name, Service Target, endpoint key, or plaintext.
 The Application sees success only after the endpoints authenticate the exact
 Service Target and Route Profile end to end.
@@ -511,15 +663,20 @@ descriptors hide it from an uninformed directory, not from every party that know
 the service address.
 
 **Product Owner decision, accepted 2026-08-08:** preserve the core guarantee that
-no one ordinary Node links a Service Name or Target to either endpoint's ordinary
-location. Do not claim that an Introduction Node operator can never independently
-learn which public Service its opaque slot serves.
+one ordinary Node's role-local protocol view, without endpoint/second observation
+or active probe control, receives no direct Service Name/Target-to-endpoint-origin
+binding. Do not claim that an Introduction Node operator can never independently
+learn which public Service its opaque slot serves, or that the operator cannot
+actively confirm traffic when it also controls an endpoint/probe source.
 
 Public Target knowledge alone is not an anonymity failure. The Introduction role
 receives neither endpoint origin and cannot combine that state with a
 Service-adjacent Entry view for the same Service or connection attempt. It gains
 no additional route state, authority, or protocol privilege from external
 knowledge. A Target-to-origin link remains a qualification failure.
+Direct protocol-state disclosure inside the role-local claim remains a
+qualification failure; timing/volume confirmation by the combined adversary is
+the separately measured non-claim.
 
 This closes the contradiction without making Services invite-only, treating
 names as secrets, or selecting an unproven cryptographic construction. P5-D4
@@ -739,32 +896,35 @@ No production implementation is justified yet. A throwaway candidate must first:
    by reducing the Route, bypassing target authentication, or reusing forbidden
    state.
 
-## Open mechanism questions
+## Remaining implementation evidence
 
-- whether C-5 passes hostile information-flow review and the accepted performance
-  budgets with prepared symmetric legs;
-- what exact separate Introduction Path construction delivers P5-D4 without a
-  stable target-to-entry mapping;
+- whether the accepted Tor-shaped C-5 family passes hostile information-flow
+  review and the accepted performance budgets with prepared symmetric legs;
+- which maintained construction implements the separate Introduction Path
+  without a stable target-to-entry mapping;
 - what Entry, Interior, Introduction, and recovery set sizes, randomized
   lifetimes, and replacement thresholds fit the P5-D5 exposure boundary and the
   idle, latency, availability, and endpoint-resource budgets;
-- how a replacement leg attaches to the same Service Connection without exposing
-  a stable network identifier or accepting replay;
-- how R-011 operator-diversity evidence affects route selection without creating
-  a User graph;
+- which cryptographic and wire construction implements P5-D9 continuity without
+  exposing a stable network identifier or accepting replay;
+- what deterministic eligibility, Role Domain assignment, probation, evidence,
+  and concentration parameters implement P5-D6 through P5-D8;
 - which descriptor-distribution family can implement R-003 Private Resolution
   and the R-009 hostile bootstrap result.
 
 ## Recommendation
 
-Advance the accepted **five-position Tor/C-5 data-path shape**, P5-D4 separate
-Introduction Path, and P5-D5 layered selector lifecycle to an information-flow
-model. C1 Rendezvous-forwarded introduction may run only as an explicitly
-unqualified setup-performance control.
-Prototype **Option B** beside the accepted shape as the strongest structurally
-different performance/recovery alternative. Reject **Option D** for the baseline
-unless R-005 later creates a stronger Route Profile. C-3 is an unqualified
-data-path performance control and C-4 is rejected.
+Select the **Tor-shaped pair of independently built endpoint circuits joined at
+the User-selected Rendezvous** as the production routing family to evaluate.
+Apply Ardents' C-5 positions, P5-D4 separate Introduction, P5-D5 lifetimes,
+P5-D6 Role Domains, P5-D7 local selection, P5-D8 diversity boundary, and P5-D9
+connection continuity. This selects a family, not Tor naming, `.onion`, exit
+routing, a library, cryptography, wire protocol, or implementation language.
+
+Option B tunnel pools may remain a bounded falsification prototype if the
+Tor-shaped candidate cannot approach the recovery or warm-latency budgets, but
+it is no longer an equal production baseline. C1 and C-3 are explicitly
+unqualified performance controls, C-4 is rejected, and Option D is outside V1.
 
 Option C is only the first candidate Route Adapter. Its internal position count
 must not leak into the Application Interface, Service Connection contract,
@@ -776,15 +936,21 @@ silently weaken them in order to pass.
 
 ## Disposition
 
-- State: `active`; P5-D1 fixes the strengthening Seam, P5-D2 fixes the
+- State: `decided`; P5-D1 fixes the strengthening Seam, P5-D2 fixes the
   Introduction-role knowledge boundary, and P5-D3 fixes the baseline symmetric
   five-position logical data path. P5-D4 fixes a separate Introduction Path and
   forbids the selected Rendezvous from forwarding invitations. P5-D5 fixes
   endpoint-owned selection, long-lived Entry, medium-lived Interior,
-  connection-scoped Rendezvous, and overlapping Introduction rotation. The
-  production routing and rendezvous mechanism remains undecided.
+  connection-scoped Rendezvous, and overlapping Introduction rotation. P5-D6
+  through P5-D9 close hidden-leg distinctness, Candidate View authority,
+  non-oracular diversity, and endpoint-only continuity. The selected production
+  family is Tor-shaped split circuits; its concrete implementation remains R-013
+  and its qualification remains R-001/R-023.
+- P5-D6 also separates direct-origin distribution from Route/Resolution duty,
+  applies the installation-wide source-exposure exclusion, and evaluates public
+  family/capacity thresholds only after the profile's maximum exclusion union.
 - Tor, I2P, Nym, Session, Lokinet, libp2p, and Waku are references or component
   sources, not selected dependencies.
-- No routing family, concrete introduction protocol, library, cryptography, DHT,
-  wire protocol, language, or production mechanism is selected.
-- No ADR and no production code.
+- No concrete introduction protocol, library, cryptography, DHT, wire protocol,
+  language, or production mechanism is selected.
+- The Role Domain trade-off is recorded in ADR-0005. No production code.

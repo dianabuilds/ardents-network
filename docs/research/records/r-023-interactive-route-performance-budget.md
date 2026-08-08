@@ -23,14 +23,33 @@ never be traded away to meet the budget.
 - [Network functional map](../../product/functional-map.md)
 - [Network product journeys](../../product/journeys.md)
 - [Threat model](../../security/threat-model.md)
+- [Product operating model](../../product/operating-model.md)
 - [R-001: Interactive Route claim](r-001-interactive-route-claim.md)
 - [R-002: Live Application Interface](r-002-live-application-interface.md)
+- [R-004: selected Route family](r-004-routing-rendezvous-families.md)
+- [R-024: operational product closure](r-024-operational-product-closure.md)
 
 Already fixed: security and performance are coequal gates; the Interactive
 Route is a multi-hop low-latency Route Profile; no performance optimization may
 use a direct path, weaker target authentication, shared Isolation Context,
 unbounded queue, silent fallback, or automatic Application Data replay; and the
 Named Unlisted Site is the first complete workload.
+
+R-024 refines the older shorthand `network-ready`: readiness is always for an
+exact capability and qualified profile. In this record, bare `network-ready`
+means **Target Connect Ready** unless a metric explicitly exercises another
+capability. A name-based tracer begins with both Target Connect Ready and Private
+Name Resolution Ready, but no state for its exact destination tuple; its request
+timer measures the exact resolution and connection work, not generic naming-path
+startup. Private Resolution, Publish, and Contribute readiness require separate
+capability-by-platform startup gates. Fast Target Connect readiness cannot be
+reported as evidence that naming, publication, contribution, or update capability
+is ready.
+
+R-004 has since selected the Tor-shaped split-circuit family and its product
+constraints. R-023 remains active because no concrete Route Implementation has
+yet satisfied these budgets; route-family comparison language below is retained
+only where it describes the evidence sequence that produced the accepted gate.
 
 ### P3-D1 — Required V1 platform classes
 
@@ -156,12 +175,13 @@ fails the product even if startup is faster.
 
 ### P3-D2c — Named Unlisted Site first-byte latency
 
-**Product Owner decision, accepted 2026-08-07:** on the normal, non-adversarial
-V1 reference network, a running and network-ready endpoint opening the
-controlled Named Unlisted Site tracer must receive the first valid byte of its
-HTTP response within:
+**Product Owner decision, accepted 2026-08-07; readiness clarified 2026-08-08:**
+on the normal, non-adversarial V1 reference network, a running endpoint already
+reporting both Target Connect Ready and Private Name Resolution Ready and opening
+the controlled Named Unlisted Site tracer must receive the first valid byte of
+its HTTP response within:
 
-- **cold site open:** `p95 <= 4 s` when the endpoint is network-ready but no
+- **cold site open:** `p95 <= 4 s` when both capabilities are ready but no
   naming, reachability, Route, session, or cache state has been prepared for the
   exact Service Name, Service Target, Isolation Context, and Route Profile;
 - **warm site open:** `p95 <= 2 s` when current authenticated naming and
@@ -181,6 +201,15 @@ external dependencies or intentional application delay. P3-D6 must fix their
 exact bytes and reference topology before qualification. Browser rendering,
 script execution, secondary assets, external resources, and arbitrary Service
 computation are excluded because the Ardents network cannot bound them.
+
+Both controlled tracer Applications, including every helper and child process,
+run inside the qualified Network-Isolated Application Boundary. The server
+listens only on its scoped local IPC/loopback link to Ardents; the client reaches
+only that link. Ordinary ingress/listeners, DNS, direct fetch, WebSocket, WebRTC,
+QUIC, callbacks/SSRF, and raw sockets are denied on both sides. This is a hard
+security condition rather than time excluded from or averaged into the latency
+percentile. A generic adapter may be benchmarked separately but cannot earn the
+Application-level location claim.
 
 An otherwise eligible failure or timeout is a missed target and may not be
 removed from `p95`. A cached page response, direct path, weaker Route Profile,
@@ -572,7 +601,8 @@ received endpoint traffic on average, while `40 Mbit/s` permits at most
 
 The ratio applies independently at each measured client or publisher endpoint;
 it does not sum the traffic of intermediate Nodes. Route-wide bandwidth and
-role-specific forwarding cost remain P3-D3b4 with R-004 evidence. Connection
+role-specific forwarding cost remain P3-D3b4 measurements for an R-013
+implementation candidate of the selected R-004 family. Connection
 setup is outside the already-established transfer window, while all required
 maintenance during the window remains counted.
 
@@ -1049,8 +1079,9 @@ under the resource ceiling.
 The limits deliberately give one impaired or recovering connection no more
 endpoint CPU or memory than the already accepted complete normal client active
 workload. They are top-down unverified product ceilings, not measurements of an
-existing implementation. Infrastructure-Node cost remains deferred until R-004
-defines candidate roles and units of work under P3-D3b4.
+existing implementation. Infrastructure-Node cost remains deferred until an
+R-013 bounded prototype makes the selected R-004 roles and units of work
+measurable under P3-D3b4.
 
 ### P3-D4b2c2 — Endpoint carrier cost under impairment and recovery
 
@@ -1102,7 +1133,7 @@ control, keepalive, padding, cover traffic, and required security, liveness, and
 background bytes attributable to Ardents or a helper count. Unrelated operating
 system and external Application traffic does not. Intermediate-Node forwarding
 remains outside this endpoint numerator and is deferred with role-specific work
-to R-004 and P3-D3b4.
+to an R-013 implementation candidate and P3-D3b4.
 
 Every accepted progress, recovery, CPU, RSS, queue, target-authentication,
 Route-privacy, isolation, integrity, and fail-closed gate remains enabled. A
@@ -1176,8 +1207,8 @@ Incomplete-attempt state, timers, tasks, handles, and buffers are finite, expire
 or are rejected under bounded policy, and do not accumulate across the 600,000
 injected attempts. An incomplete attempt is never presented to the published
 Application as an accepted Service Connection. Overload outcomes remain honest
-and bounded; their exact Connection Results and anonymous admission mechanism
-remain R-007 and R-010 work.
+and bounded. R-007/R-024 fix their Connection Result and staged anonymous
+admission boundaries; exact mechanisms remain R-013 experiments.
 
 The endpoint cannot pass by pre-empting established connections, reducing the
 declared offered workload, discarding misses, disabling target authentication,
@@ -1262,8 +1293,9 @@ source-location reputation, a stable network-generated User identifier, or a
 credential that links otherwise separate Services or Isolation Contexts. This
 does not forbid an Application from later requesting its own identity or
 payment after the Service Connection exists; that is outside carrier admission.
-The concrete anonymous cost or challenge remains an R-010 decision and must be
-measured on every required client platform.
+R-010/R-024 fix the resource-specific anonymous boundary. A concrete cost or
+challenge remains an R-013 candidate and must be measured on every required
+client platform.
 
 All target-authentication, Route-privacy, integrity, isolation, queue,
 backpressure, resource, liveness, and fail-closed checks remain active. A
@@ -1396,6 +1428,14 @@ bypasses the declared Route hard-fails that candidate. Performance elsewhere
 cannot offset it. An excluded Broad Traffic Observer or out-of-scope collusion
 case remains an honest non-claim rather than either a hidden pass or failure.
 
+The matrix therefore includes, without percentile tolerance: external scans and
+ordinary-network ingress/egress attempts against both tracer Application process
+trees; hostile same-user sibling attacks against each Application Principal;
+Direct-Origin Source restart/collision/exhaustion and later-role attempts; and
+Role Domain stop-new-work, drain, quarantine, and reassignment overlap checks.
+These cells may add measured Ardents helper cost, but their security verdict is
+binary.
+
 Every eligible attempt, failure, timeout, explicit terminal result, crash,
 premature connection loss, and measured event remains in the evidence and in
 the applicable metric calculation. Warm-up, exclusion, censoring, and missing
@@ -1446,10 +1486,11 @@ Every measured infrastructure Node instance uses the accepted Ubuntu LTS
 `x86-64` reference VPS class of `2 vCPU`, `2 GiB RAM`, and a symmetric
 `100 Mbit/s` access link.
 This does not require all roles to share one host or assert that all roles have
-the same useful capacity. R-004 P5-D3 through P5-D5 fix the baseline logical
-Route shape, separate Introduction Path, and layered selector lifetimes. R-004
-and P3-D3b4 determine the candidate's mechanism, concrete role placement, and
-role-specific useful-work floors. Each candidate manifest declares the exact
+the same useful capacity. R-004 P5-D3 through P5-D9 fix the baseline logical
+Route shape, separate Introduction Path, layered selector lifetimes, Role
+Domains, Candidate View, diversity, and continuity. R-013 and P3-D3b4 determine
+the candidate's concrete mechanism, role workload, and role-specific useful-work
+floors. Each candidate manifest declares the exact
 Entry, Interior, Introduction, and recovery set sizes, lifetimes, overlap, and
 replacement thresholds used by every measured cell.
 
@@ -1655,6 +1696,12 @@ complete response syntax, length, nonce binding, byte sequence, and digest must
 validate before the attempt can pass. An invalid or incomplete body turns the
 attempt into a failed latency observation rather than preserving an early
 first-byte success.
+
+The deterministic HTTP server has no ordinary-network listener or dependency;
+its complete process tree communicates only through the scoped Ardents local
+boundary. The controlled client is isolated by the same rule. The harness
+attempts forbidden external ingress and every declared DNS/socket/fetch/
+WebRTC/QUIC/callback path on both Applications and retains the denial evidence.
 
 **Sustained and concurrent transfer:** every measured direction carries a
 pre-generated seeded incompressible byte stream. Each run and active Service
@@ -2037,9 +2084,47 @@ library, release service, or continuous-integration architecture.
 
 ## Remaining decisions
 
-1. **P3-D3b4 — Role-specific Node capacity:** after R-004 defines candidate
-   units of work, set entry, relay, discovery, Rendezvous, and Bridge capacity
-   floors on the accepted reference class.
+1. **Capability startup profiles:** existing `5 s`/`15 s` budgets mean Target
+   Connect Ready. Before a release calls them usable, set separate Windows/Ubuntu
+   startup/resource budgets for Private Name Resolution, configured Publish, and
+   local Contribute preparation. Contributor probation remains a network
+   lifecycle, not startup time.
+2. **P3-D3b4 — Role-specific Node capacity:** after an R-013 bounded prototype
+   makes the selected Entry, Interior, Rendezvous, Introduction, discovery, and
+   Bridge units of work measurable, set capacity floors on the accepted
+   reference class. Destination Resolution is measured as a required subrole
+   inside the Rendezvous Domain, including enough independent resolution-capable
+   families and remaining Rendezvous workload/concentration reserve after the
+   exact resolver family is excluded. Floors use effective post-exclusion
+   capacity after the maximum union of own-family, Direct Source Exposure,
+   resolver, drain/quarantine, and other profile exclusions; source-only
+   pre-Route workload and non-overlapping Role Domain reassignment are measured
+   separately rather than hidden inside the pre-exclusion `12`/`20` shorthand.
+3. **Client+Publisher combined profile:** standalone maxima are not additive.
+   Before claiming co-resident use, fix a simultaneous Target Connect Ready +
+   Publish Ready workload with at least one active inbound and outbound tracer,
+   hierarchical queue/CPU/RSS/link accounting, and finite reserve. Public
+   Contributor co-residence is not a V1 profile. Both endpoint Applications
+   still require their Network-Isolated boundaries and distinct Application
+   Principals.
+4. **Anonymous-admission viability:** P3-D5 protects established work and bounds
+   one honest admission attempt, but a protocol-conformant Sybil can fill every
+   finite slot. Before an open-Service availability claim, a selected admission
+   experiment must report attacker cost-to-deny and useful admission under a
+   declared hostile budget. If denial remains too cheap, the claim is blocked;
+   no per-person fairness or Sybil-identification promise is inferred.
+
+The R-001 Qualification evidence also includes two active-confirmation
+characterization cells, one for each endpoint side. In each, one endpoint-
+adjacent malicious Node additionally controls the opposite endpoint/probe source
+and emits a precommitted distinctive timing/volume schedule for a known Target.
+Each direction uses at least `100` blinded, balanced positive/negative episodes;
+the manifest fixes episodes and classifier before results;
+evidence retains the confusion matrix, correlation accuracy, and false-positive
+rate. There is no anonymity pass threshold because this combined adversary is an
+explicit Interactive Route non-claim. Discovery of a direct forbidden protocol
+field still fails the role-local one-Node claim, and omitting the characterization
+fails the completeness of the evidence bundle.
 
 ## Hypotheses
 
@@ -2294,11 +2379,13 @@ machine-readable verdicts. Disposable experiment code belongs under
 - **Product Owner decision:** a clean first start has no state generated by a
   prior Ardents execution; a routine restart may retain only valid authenticated
   persistent state and begins with no live process or connection.
-- **Product Owner decision:** a cold connection or site attempt begins
-  network-ready but without state for its exact name, target, Isolation Context,
-  and Route Profile. A warm attempt may retain current authenticated naming,
-  reachability, and reusable Route state for that same tuple, but no Service
-  Connection or Application/HTTP response cache.
+- **Product Owner decision:** a cold connection attempt begins Target Connect
+  Ready. A cold name-based site attempt begins both Target Connect Ready and
+  Private Name Resolution Ready. Neither has state for its exact name, target,
+  Isolation Context, and Route Profile. A warm attempt may retain current
+  authenticated naming, reachability, and reusable Route state for that same
+  tuple, but no Service Connection or Application/HTTP response cache. Generic
+  Private Resolution startup is measured separately from the site request.
 - **Product Owner decision:** every attempt retains its state manifest and
   precondition verification. A candidate-independent reset failure may
   invalidate it under P3-D6a; candidate retention, reconstruction, or
@@ -2396,8 +2483,8 @@ the accepted cross-platform clocks, sampling, and attribution contract, and the
 accepted immutable Qualification Evidence Bundle. Apply the accepted
 change-impact, full and partial requalification, comparable-regression, and
 explicit `10%` review-trigger rules.
-Role-specific infrastructure capacity remains deferred until R-004 supplies
-candidate units of work.
+Role-specific infrastructure capacity remains deferred until an R-013 bounded
+prototype supplies measurable units of work for the selected R-004 family.
 
 Confidence: high for the platform boundary and desired connection experience;
 the accepted latency, goodput, client-concurrency, and publisher-concurrency
@@ -2466,6 +2553,10 @@ either would contradict the accepted client product.
   running, network-ready endpoint under the P3-D6b2b2c2a state classes.
 - Browser rendering, scripts, secondary assets, external resources, and
   arbitrary Application processing are not hidden inside this network metric.
+- Both controlled tracer Applications must be Network-Isolated and pass
+  ordinary ingress/egress, DNS, socket, callback/SSRF, WebRTC, QUIC, and helper-
+  process denial tests. This is a binary privacy guardrail, not a performance
+  exclusion; a generic adapter receives no Application-level location claim.
 - P3-D2 is complete: endpoint readiness, authenticated connection, and the
   controlled tracer first-byte experience now have separate clocks.
 - P3-D3a accepted: the `p05` Application goodput over eligible 60-second runs is
@@ -2720,9 +2811,10 @@ either would contradict the accepted client product.
   reduced-Route fast paths cannot qualify.
 - Each infrastructure Node instance uses the Ubuntu LTS `x86-64` `2 vCPU`,
   `2 GiB RAM`, symmetric `100 Mbit/s` reference VPS class. R-004 P5-D3 through
-  P5-D5 fix the logical shape, Introduction separation, and layered lifetimes;
-  R-004 and P3-D3b4 still determine the production mechanism, concrete role
-  placement, exact selection parameters, and role-specific useful capacity.
+  P5-D9 fix the logical shape, Introduction separation, layered lifetimes, Role
+  Domains, Candidate View, diversity, and continuity; R-013 and P3-D3b4 still
+  determine the concrete mechanism, role workloads, exact selection parameters,
+  and role-specific useful capacity.
 - Applicable direct baselines run on the same endpoints and end-to-end
   impairment profile immediately before and after each Ardents batch. They are
   measurement-only and never a production fallback; uncontrolled Internet
@@ -2772,6 +2864,10 @@ either would contradict the accepted client product.
   incompressible streams with exact order and digest validation. Caching,
   compression, deduplication, external resources, and benchmark short paths are
   forbidden. HTTP remains a tracer protocol rather than an Ardents semantic.
+- Qualification also hard-fails Application Principal sibling isolation,
+  Direct-Origin Source exposure, Role Domain reassignment overlap, or endpoint-
+  Application network-isolation violations; good performance cannot offset
+  them.
 - P3-D6b2b2c1 accepted: applicable goodput batches have verified `60-second`
   direct transfers before and after. A pair is stable when both values are
   positive and `max/min <= 1.10`; its arithmetic mean supplies the applicable
@@ -2819,7 +2915,8 @@ either would contradict the accepted client product.
 - Absolute gates remain blocking. A comparable passing candidate at least `10%`
   worse on any numeric KPI requires an explicit explained Product Owner release
   decision, without losing qualification when every absolute gate still passes.
-- R-023 now has no further answerable pre-architecture decision. Role-specific
-  Node capacity and cost remain deferred until R-004 candidate evidence under
-  P3-D3b4.
-- No ADR and no code.
+- R-023 has no further numeric answer that can be chosen honestly before an
+  R-013 candidate. Capability-specific startup, role-specific Node capacity/cost,
+  and the Client+Publisher combined profile remain explicit evidence-driven
+  decisions rather than silent reuse of Target Connect or standalone floors.
+- This record creates no ADR and no code.

@@ -1,8 +1,8 @@
 # Threat model
 
-Status: **proposed; Interactive Route contract decided, no implementation qualified**
+Status: **accepted product threat contract; no implementation qualified**
 
-Last reviewed: 2026-08-07
+Last reviewed: 2026-08-08
 
 ## Scope
 
@@ -10,6 +10,10 @@ This threat model covers the minimum network product: joining Ardents,
 publishing a live Service, resolving an exact Service Name, establishing an
 Interactive Route, exchanging Application Data, recovering from path failure,
 and contributing infrastructure.
+
+Installation, capability readiness, Time Confidence, diagnostics, update, drain,
+and public-launch concentration are covered by the accepted
+[product operating model](../product/operating-model.md).
 
 It does not assume offline delivery, replicated application content, a bundled
 application runtime, a User identity system, or a second high-latency route.
@@ -20,10 +24,13 @@ accepted.
 
 - confidentiality, integrity, and Service Target authenticity of Application
   Data on a Service Connection;
+- Forward Secrecy of honestly completed Service Connections against later
+  compromise of Service/Node long-term keys and recorded ciphertext;
 - ordinary network location of the User and Service Instance;
 - unlinkability between distinct Isolation Contexts to the extent promised by a
   Route Profile;
-- Service Authority secrecy and Service Target continuity;
+- Service Authority and Service Instance Key secrecy, public bounded Instance
+  Credential integrity/generation, and Service Target continuity;
 - Name Authority secrecy, Service Name binding, resolution integrity, and
   recovery state;
 - canonical Namespace consistency across honest compatible clients;
@@ -37,9 +44,16 @@ accepted.
   state without exposing production query logs;
 - endpoint-local grants, Application Interface authority, and network metadata;
 - route, discovery, bootstrap, and Bridge availability;
+- separation between a Direct-Origin Source's requester-origin view and every
+  overlapping or derived Route/destination-aware view until the authenticated
+  exposure lease and dependent work terminate;
+- containment of both endpoint Applications when an Application-level location-
+  privacy claim is presented;
 - honest-workload latency, throughput, fairness, and endpoint resource
   availability under load;
-- Control Plane integrity, software provenance, and real operator diversity.
+- Control Plane integrity, software provenance, and real operator diversity;
+- release/update freshness, rollback resistance, Authority Vault preservation,
+  and diagnostic-data minimization.
 
 ## Adversaries
 
@@ -54,11 +68,17 @@ We assume the presence of:
   endpoints or across enough network locations to correlate a connection;
 - Sybil actors able to create many infrastructure identities;
 - a malicious User Application or Service attempting metadata access, target
-  substitution, resource exhaustion, or cross-context linkage;
+  substitution, resource exhaustion, cross-context linkage, or opposite-endpoint
+  disclosure through DNS, callback/SSRF, WebSocket/WebRTC, QUIC, or direct egress;
+- a malicious or censor-controlled bootstrap, Candidate Materialization,
+  authenticated-time, or update source that observes requester origin, biases
+  retries, withholds state, or later attempts a Route/Resolution role;
 - a fully compromised local endpoint or Service host;
 - infrastructure seizure, legal coercion, operator disappearance, and network
   partition;
 - dependency, build, signing, or update-channel compromise;
+- local clock rollback, malicious time sources, stale-state resurrection, and
+  update freeze or rollback;
 - capture of naming, bootstrap, protocol release, or emergency governance.
 
 We do not infer independent ownership, network, jurisdiction, or software merely
@@ -75,14 +95,23 @@ Route Knowledge Separation: no one ordinary Node receives the full Route,
 plaintext Application Data, or a link between an endpoint's ordinary location
 and a Service Name, Service Target, or opposite endpoint. P5-D3 makes this
 concrete as five symmetric logical carrier positions: User Entry, User Interior,
-Rendezvous, Service Interior, and Service Entry. The routing family, production
-mechanism, cryptography, and wire protocol remain open.
+Rendezvous, Service Interior, and Service Entry. The route family is selected
+below; concrete components, cryptography, wire protocol, and implementation
+parameters remain open and unqualified.
 
-P2-D4 limits that anonymity claim to any one malicious ordinary Node. Ardents
-does not claim resistance to every pair or larger colluding set. Correlated
-Control spanning both endpoint-adjacent views may link the User and Service
-through timing and volume; other combinations break the claim when their merged
-views cross the same knowledge boundary. End-to-end payload confidentiality,
+R-004 P5-D6 through P5-D9 close four cross-cutting boundaries: Initiator,
+Rendezvous, Responder, and Introduction identities occupy disjoint stable Role
+Domains; endpoints select locally from authenticated Candidate Materializations;
+observable failure never tests a proposal against a hidden Entry Set; and
+same-connection recovery proves endpoint-only continuity using fresh route state.
+The selected routing family is Tor-shaped split circuits, while every concrete
+component and build remains unqualified.
+
+P2-D4 limits that knowledge-separation claim to one malicious ordinary Node's
+role-local view when the adversary controls/observes no endpoint or second
+position/probe source. A Node plus a controlled endpoint can actively confirm a
+known Target through timing/volume, and correlated Nodes may combine views; both
+are explicit non-claims. End-to-end payload confidentiality,
 integrity, and Service Target authentication remain required even if all carrier
 Nodes collude, although those Nodes may still deny service or manipulate traffic
 under the P2-D6 contract.
@@ -94,6 +123,10 @@ Name or Service Target. Ardents adds no stable User ID, exposes no Isolation
 Context or Route to the Service, and exposes no Service Instance origin, Route,
 or Service Authority to the User. Application credentials, content,
 fingerprinting, timing, and behavior can still identify or link participants.
+The claim covers only traffic submitted to Ardents. A user-visible
+Application-level claim additionally requires qualified Network-Isolated
+Application Boundaries at both endpoint Applications; a generic adapter with
+ordinary-network ingress or egress has only the narrower carrier claim.
 
 P2-D6 requires fail-closed authenticity, integrity, freshness, and Route Profile
 binding. Modified, injected, replayed, redirected, or downgraded protocol data
@@ -123,22 +156,69 @@ is blocked. Together with replaceable transports it may provide Transport
 Camouflage, but this is a best-effort circumvention property rather than an
 anonymity or indistinguishability guarantee.
 
+### Direct-source separation claim
+
+1. **Information:** an authenticated Direct-Origin Source that sees an
+   Endpoint's origin and public artifact request must not also receive that
+   Endpoint's Route position or exact Name/Target resolution view during the
+   overlapping exposure.
+2. **Adversary:** one malicious source/ordinary Node identity or known family
+   that withholds, retries, changes role, or collides with retained state.
+3. **Conditions:** globally advertised source-only duty is incompatible with
+   Route/Resolution assignment; before direct contact the source is absent from
+   retained Entry/Interior/Introduction/prepared-role and live work; afterward
+   one installation-wide bounded exposure set excludes it until every derived
+   state/work terminal bound; sequences and replacement are precommitted and
+   finite.
+4. **Measurement:** qualification restarts with retained endpoint-adjacent
+   state, forces pre- and post-authentication family collisions, attempts later
+   Route/Resolution selection, withholds each source in order, exhausts the set,
+   and inspects every role and local selection result.
+5. **Limitation:** the source still sees origin, public artifact, timing, and
+   probable Ardents use; an unauthenticated external/CDN source has no provable
+   family, hidden common control remains possible, and the source can deny
+   availability.
+
+### Application network-isolation condition
+
+1. **Information:** ordinary endpoint location must not be disclosed by direct
+   network activity induced in either endpoint Application by its opposite peer.
+2. **Adversary:** a scanner connecting to an ordinary Publisher listener, or a
+   malicious Service response/content or User request that triggers DNS,
+   external fetch, callback/webhook/SSRF, WebSocket/WebRTC, QUIC, or an arbitrary
+   socket.
+3. **Conditions:** the complete client and published Application/helper process
+   trees run in Network-Isolated Application Boundaries with only scoped local
+   IPC/loopback, no ordinary ingress/listeners, deny-by-default egress,
+   per-Isolation-Context origin/storage, and no clearnet fallback. A generic
+   adapter is explicitly outside this claim.
+4. **Measurement:** every supported endpoint pairing scans/connects to both
+   process trees and attempts every egress class from both sides while controlled
+   interfaces are observed; any listener, packet, DNS query, fallback, or cross-
+   context storage reuse fails.
+5. **Limitation:** this does not sanitize content, hide Application credentials,
+   fingerprints, behavior, timing, or plaintext from the intended peer, and an
+   OS/endpoint compromise defeats containment.
+
 ## Threat and response matrix
 
 | Adversary | Representative attack | Required product response | Honest limitation |
 |---|---|---|---|
 | Censor / DPI | Block known Nodes, bootstrap sources, or protocol fingerprints; probe suspected Bridges | Multiple authenticated bootstrap sources, replaceable Bridges, transport agility, bounded rotation, and explicit blocked state | No fixed protocol disguise or address remains unblockable forever |
 | Local Traffic Observer | Observe the adjacent endpoint's location, external peer addresses, timing, direction, duration, volume, retries, and long-lived patterns; attempt to classify Ardents use | Encrypt protocol and Application Data; hide the selected Service Name or Service Target, opposite endpoint location, and full Route; prohibit direct Service fallback; avoid one mandatory stable fingerprint | Ardents use may still be classified or inferred, and low-latency traffic may be correlated with observations elsewhere |
+| Malicious Direct-Origin Source | Observe requester origin/public artifact, force retries or retained-state collision, then seek a Route or Destination Resolution view | Globally separate source-only assignment; pre-contact retained/live-role exclusion; bounded installation-wide exposure set; finite endpoint-precommitted source/candidate sequences; effective post-exclusion capacity gate; explicit unavailability | First/external contact reveals origin/artifact/timing; unknown-source family and hidden common control cannot be proven; source can deny availability |
 | Broad Traffic Observer | Correlate both endpoint traffic statistically | Make the lack of an Interactive Route correlation-resistance claim visible; measure any later stronger Route Profile separately | Interactive traffic is expected to remain timing- and volume-correlation-sensitive |
 | Malicious infrastructure Node | Combine endpoint location, Service Name or Service Target, Route, or payload knowledge; tag, modify, inject, delay, replay, drop, redirect, downgrade, bias selection, or retain metadata | Multi-hop Route Knowledge Separation; authenticated fresh protocol state; end-to-end target authentication and payload integrity; fail-closed downgrade rejection; short-lived opaque route handles; bounded retry; role separation; diversity analysis | The Node can always deny, delay, or shape traffic; timing and volume tags may aid correlation without producing a distinguishable integrity violation |
+| Active endpoint confirmation | Operate one endpoint-adjacent Node plus the opposite endpoint/probe source; generate a distinctive timing/volume pattern for a known Target and correlate it with the origin edge | Expose this combined adversary as outside the Interactive Route claim; characterize both directions in Qualification evidence; never imply a protocol field is required for successful inference | The low-latency no-cover V1 profile may reveal the endpoint origin statistically even though the Node role receives no Target-to-origin binding |
 | Correlated Control | Combine the permitted views of nominally different Nodes, especially both endpoint-adjacent roles, and correlate timing or volume | Avoid correlated route positions using operator, network, software, and jurisdiction evidence; expose uncertainty; test concentration under R-011 | V1 makes no anonymity guarantee against every pair or larger set; hidden common control cannot always be detected |
-| Sybil / flooding actor | Capture discovery or exhaust connection, rendezvous, descriptor, and naming capacity | Bounded queues and lifetimes, Anonymous Cost without identity or payment, diversified selection, local admission, front-running resistance, and visible overload | No proof of personhood, fair allocation, rightful control, or immunity from a better-resourced attacker |
+| Sybil / flooding actor | Capture discovery or exhaust connection, rendezvous, descriptor, naming, or all anonymously admitted Service slots | Bounded queues/lifetimes, Anonymous Cost without identity or payment, diversified selection, local staged admission, cost-to-deny evidence, established-work isolation, and visible overload | No proof of personhood, fair allocation, rightful control, free slot, or immunity from a better-resourced/valid admitted attacker; cheap sustained denial blocks an open-Service availability claim |
 | Malicious Service | Fingerprint requests, link credentials or behavior, return exploit content, or lie at the Application layer | Hide User origin, Route, Isolation Context, and network-generated stable User identifiers; isolate network state; authenticate the Service Target; keep content semantics outside the carrier | The Service receives intended Application Data, timing, volume, and behavior and can link what the Application reveals |
 | Malicious User | Probe Service behavior, exploit the Application, exhaust its exposed operations, or attempt to discover its origin or authority | Hide Service Instance origin, Route, and Service Authority; expose only the authenticated Service Target and Application response; enforce carrier resource limits | The User already knows the supplied Service Name or Service Target and sees all Application output intended for it |
-| Malicious local Application | Reuse authority, inspect another app's state, overrun queues, or request unsafe route downgrade | Narrowly scoped Local Grants, separate Authority custody, resource bounds, isolation, and explicit route policy | Code controlling the local endpoint can defeat local protections |
-| Compromised Service host | Copy the V1 Service Authority, observe Users' application data, or continue impersonating the Service after migration | Treat the Service Target as compromised, create a replacement authority and target, and rebind the Service Name; never claim same-target revocation | A compromised live Service reads intended plaintext; the old target remains impersonable, and recovery depends on trustworthy name replacement |
+| Application network escape | Find an ordinary Publisher listener, cause client DNS/external-resource/WebRTC access, or provoke Publisher callback/webhook/SSRF/direct socket access | Require qualified Network-Isolated Application Boundaries on both endpoint Application process trees for an Application-level claim; allow only scoped local IPC/loopback, deny ordinary ingress/egress and clearnet fallback, isolate origin/storage per context | Generic adapters remain compatible but have only the carrier claim; content, fingerprints, behavior, and compromised OS remain identifying |
+| Malicious same-user local Application | Attach to another app's loopback/IPC, steal or replay a bearer, exploit PID reuse/restart, inspect another app's context/Service, overrun queues, or request downgrade | Bind grants and fresh sessions to an OS-enforced or launcher-brokered Application Principal/process tree; test sibling isolation; treat indistinguishable apps as one trust domain; keep custody separate, resources finite, and route policy explicit | A generic same-user adapter may receive no malicious-sibling isolation claim; code controlling the Endpoint Owner/OS boundary still defeats local protections |
+| Compromised Service host | Copy its private Instance Key and public bounded Credential, observe Users' Application Data, or also obtain a co-located Service Authority | Stop renewal and supersede the stolen key/credential with a higher bounded generation while the root remains safe; bind every connection/recovery terminal lifetime to credential validity and learned supersession deadlines; replace the Target and rebind the Service Name if Service Authority is exposed | A compromised live Service reads intended plaintext and may impersonate its Target until credential expiry or authenticated supersession is learned; copying the public Credential alone grants no power, partitions can delay supersession, and co-locating the root removes bounded containment |
 | Operator loss / seizure | Remove Nodes, inspect state, or partition reachability | No plaintext at carrier Nodes, replaceable roles, bounded state, alternate paths, and explicit unavailable results | Real availability still requires independent capacity and a live Service Instance |
-| Supply-chain attacker | Ship a malicious official endpoint or protocol update | Reproducible artifacts, signed releases, staged updates, rollback protection, transparent roots, and later independent review | One widely trusted distribution root remains power until diversified |
+| Supply-chain attacker | Ship a malicious official endpoint or protocol update | Reproducible artifacts, threshold release authorization, role-separated update metadata, staged updates, rollback protection, transparent root transitions, and independent attestations | A malicious release threshold or compromised build process can still ship harmful code; reproducibility helps detection but does not make execution safe by itself |
 | Governance capture | Control naming, bootstrap, compatibility, releases, or emergencies | No administrative name seizure; versioned inspectable rules and transitions; finite technical reservations; bounded multiparty power; explicit incompatibility and fork procedure | A decentralized data path does not remove Control Plane governance, and a captured majority may still create a visible incompatible network |
 
 Name Authority and Service Authority are separate compromise boundaries. A
@@ -253,6 +333,20 @@ conditions. The evidence must include:
   each eligible role is malicious in turn;
 - malicious User and Service observations, including Application Interface
   results, diagnostics, route artifacts, and repeated connections;
+- a hostile process under the same desktop user attempting sibling IPC/loopback
+  attachment, bearer theft/replay, PID reuse, process/Endpoint restart, and
+  another Application's Service, Isolation Context, diagnostics, or authority;
+- external scan/connect attempts plus controlled DNS, external-fetch,
+  callback/SSRF, WebSocket/WebRTC, QUIC, and direct-socket attempts against/from
+  the complete client and published Application/helper process trees, with both
+  endpoint network boundaries observed;
+- clean/restart Direct-Origin Source sequences with retained Entry/Interior/
+  Introduction state, pre- and post-authentication identity/family collisions,
+  later forbidden role selection, withholding, finite exhaustion, and effective
+  post-exclusion reserve;
+- Role Domain duties near assignment `not-after`, reassignment while old duties
+  drain, and emergency termination, proving no identity/family cross-domain
+  eligibility overlap;
 - distinct-Isolation-Context comparisons for forbidden network-state reuse;
 - pre- and post-establishment target substitution, modification, injection,
   replay, redirect, downgrade, truncation, and forbidden-reordering attempts.
@@ -389,8 +483,37 @@ or privacy claim.
 ## Security invariants
 
 - A Node identity is never a User identity or Service Target.
-- Possession of the V1 Service Authority is sufficient to impersonate its
-  Service Target; suspected loss or compromise requires target replacement.
+- Possession of Service Authority is sufficient to replace or impersonate its
+  Service Target; suspected root loss or compromise requires Target replacement.
+- An online Service Instance normally holds one private, generation-scoped
+  Service Instance Key and its public bounded monotonic Credential. The host
+  proves possession of the key in publication and endpoint handshakes. Copying
+  the Credential alone grants no power; key compromise permits impersonation
+  within that Credential's scope until expiry or learned authenticated
+  supersession, but neither raw root export nor permanent Target replacement.
+  Co-locating Service Authority is supported only with an explicit warning and
+  forfeits that containment.
+- A Service Connection binds the exact Instance Key/Credential proof and has a
+  terminal `not-after` no later than Credential validity and its Work Safety
+  Lease. Learned authenticated supersession may make new leg/recovery work stop
+  earlier. A partition can delay learning supersession, so instant revocation is
+  not claimed; expiry remains the unconditional finite bound.
+- An Authority Recovery Bundle contains encrypted root material plus
+  authority-owned monotonic commitments and signing watermarks, never Local
+  Grants or runtime Instance Keys. An isolated test restore cannot sign. A real
+  restore remains `authority locked` and export-only until authenticated current
+  state permits a strictly higher generation/revision; unavailable or conflicting
+  state never authorizes stale signing.
+- Ordinary uninstall preserves rollback/freshness watermarks. With a non-empty
+  Authority Vault it either retains the Vault or blocks until an explicit
+  Owner-chosen Recovery Bundle export verifies; it never invents a secret or
+  destination. Erasing authority or watermarks is a separately confirmed
+  destructive purge with an unrecoverability warning.
+- Connection, per-Service Administration, and Authority Custody are
+  non-collapsing Local Grant boundaries. Service Administration can use an
+  already authorized public Credential and matching non-exportable Instance Key
+  for publication/configuration but cannot create/import/export/rotate an
+  Authority, issue a Credential, or export either root or Instance key.
 - Name Authority is distinct from Service Authority and controls only the
   authenticated Service Name binding. It is unnecessary for ordinary
   publication or resolution; compromising it permits malicious name rebinding
@@ -424,6 +547,12 @@ or privacy claim.
 - Private Resolution gives no one ordinary Node both User location and the exact
   Service Name or publicly testable lookup value. It supplies no name-secrecy,
   non-enumerability, collusion-resistance, or Broad Traffic Observer claim.
+- Private Reachability Resolution gives no role-local ordinary Node both endpoint
+  origin and exact Service Target/descriptor lookup value, including for a
+  Target Link. Destination-aware roles are restricted to the Rendezvous Domain
+  and excluded by identity/known family from the same connection's Rendezvous;
+  no direct descriptor fallback exists. Node-plus-endpoint active confirmation
+  remains outside this claim.
 - Resolution creates no network-generated stable User identifier and shares no
   linkable query session or derived state across Isolation Contexts. Failure never
   triggers a direct public or less-private naming fallback.
@@ -434,10 +563,31 @@ or privacy claim.
 - A Service Link identifies Ardents explicitly. Parsing or resolution failure
   cannot reinterpret its name as DNS, another namespace, Unicode, IDNA, or
   Punycode; visually similar ASCII names remain distinct destinations.
+- A Target Link is a separately tagged, versioned, network-bound type containing
+  the machine Target but no origin or mutable reachability. It cannot be parsed
+  as a Service Name, and possessing it grants discovery only, not Application
+  authorization or a weaker Route.
+- Every Service Connection retains its immutable Destination Binding. Name/Link
+  input binds authenticated Name generation/revision→Target into the Work Safety
+  Lease. Same-Target renewal/Grace may refresh it, but learned Recovery Pending,
+  Release, or rebind to another Target stops new leg/recovery work and closes by
+  a finite deadline. The stream never retargets. Explicit Target/Target-Link
+  input remains pinned and intentionally receives no Name recovery after Service
+  Authority compromise.
 - Name Records and Service Descriptors never contain an ordinary public origin
   address.
 - Carrier Nodes cannot reinterpret or forge Application Data accepted by an
   endpoint as belonging to the authenticated Service Connection.
+- Every Service Connection uses fresh authenticated ephemeral endpoint/session
+  keys bound to the Target, Instance Key/Credential proof, protocol, Route
+  Profile, Isolation Context, and transcript; every carrier leg uses fresh
+  independent ephemeral keys. After best-effort erasure, later compromise of
+  Service Authority, Instance Key, Node long-term keys, or recorded ciphertext
+  cannot decrypt an honestly completed connection.
+- Forward Secrecy does not protect a live compromised endpoint, promise
+  post-compromise healing inside an existing connection, or guarantee erasure
+  from memory dumps, swap, hibernation, crash artifacts, or snapshots. A safe
+  restart/new connection is required after compromise remediation.
 - A Service Connection is live: a partial write, clean Service Connection
   close, or explicit failure never means that an Application operation was
   retained, received, or completed.
@@ -465,7 +615,14 @@ or privacy claim.
   Context; missing explicit input never selects a global shared context.
 - Isolation Contexts are local policy boundaries, not network-visible User or
   Service identities, and different contexts do not share linkable route or
-  session state.
+  session state. They may share only immutable public state, bounded
+  installation/domain/regime Entry exposure, and the installation-wide Direct
+  Source Exposure Set; context creation cannot reset either exposure boundary.
+- Endpoint Location Privacy covers only traffic submitted through Ardents. A
+  claim-bearing private Application profile contains both endpoint Application/
+  helper process trees in Network-Isolated Application Boundaries, exposes no
+  ordinary listener, denies ordinary DNS and sockets, isolates origin/storage by context, and never uses clearnet
+  fallback. Generic adapters have no Application-level claim.
 - Isolation Context separation does not defeat correlation through Application
   Data, timing, volume, or observation of the local endpoint's network traffic.
 - The Interactive Route never claims resistance to timing-and-volume correlation
@@ -495,11 +652,72 @@ or privacy claim.
   invitation, Introduction Node, or introduction slot from its role. Introduction
   carries only sealed, expiring, single-use setup material and never Application
   Data or retained offline messages.
-- Each endpoint selects its own Entry and Interior positions. Entry uses a small
-  long-lived set and Interior a small medium-lived rolling set inside one User
-  Isolation Context or one active Service Instance under one Service Target. One
-  failure cannot force an Entry to be replaced by a fresh untried candidate;
-  authenticated ineligibility or bounded sustained unavailability is required.
+- Each endpoint selects its own Entry and Interior positions. An Entry Set is a
+  small, long-lived installation × adjacent Role Domain × entry-regime resource
+  shared across that endpoint role's Isolation Contexts because the same Entry
+  already observes the same ordinary endpoint location. V1 permits at most one
+  set for each activated Initiator, Responder, or Introduction domain and
+  ordinary/Bridge regime; co-resident client and Publisher roles use separate
+  domain sets. Applications, Services, Targets, generations, contexts,
+  destinations, and Bridge Invites cannot manufacture another set. Each ordinary
+  Entry or Bridge key is eligible for one adjacent domain, and an Invite carries
+  or references its epoch-bound domain proof. Contexts still separate channels,
+  keys, Interior choices, Rendezvous, destinations, queries, sessions,
+  continuity, and failure state. One failure cannot force an Entry to be replaced
+  by a fresh untried candidate; authenticated ineligibility or bounded sustained
+  unavailability is required.
+- Initiator Carrier, Rendezvous, Responder Carrier, and Introduction are disjoint
+  stable Role Domains. One Node identity and every honestly declared operator
+  family occupy one authenticated finite assignment. New duty is allowed only
+  when its maximum Entry/role/drain lifetime fits before assignment `not-after`.
+  Reassignment stops new work and quarantines identity/family until every
+  old-domain duty terminates; emergency may close work but never overlap domains.
+  Multiple Node IDs never make one family independent. If five distinct eligible positions
+  cannot be assigned without violating domains or known family constraints, the
+  route fails rather than asking a Service to reveal which proposal was unsafe.
+- A globally advertised Direct-Origin Source identity/known family is
+  incompatible with every Route and Destination Resolution assignment. Before
+  any direct contact, the source is absent from retained Entry/Interior/
+  Introduction/prepared-role state and live Route/Resolution work. An ordinary
+  carrier candidate contacted as a source enters one bounded installation-wide
+  local exposure set and stays excluded until the exposure lease and all derived
+  state/work terminate. Source/candidate sequences and set growth are finite and
+  endpoint-precommitted; unexpected collision or exhaustion is explicit
+  unavailability unless a bounded Owner-approved Entry replacement was already
+  permitted and counted. External/CDN hidden control remains a non-claim.
+- Destination-aware Name/Target/descriptor lookup and publication use a
+  Destination Resolution role restricted to Rendezvous-domain identities, never
+  an endpoint-adjacent domain. For one exact destination/context the endpoint
+  excludes every resolution identity and known family from that connection's
+  Rendezvous. The query is also hidden from the Entry over a separately isolated
+  private path with bounded retries. A Target Link never authorizes direct
+  descriptor lookup. Hidden family/Sybil control and Node-plus-endpoint active
+  confirmation remain explicit limits.
+- The Network Epoch commits one logical complete, canonically ordered Candidate
+  View: root, length, publication cutoff/input-log root, and global eligible
+  count/capacity/concentration summaries. A pre-cutoff valid Node Record is
+  included or receives a publicly verifiable deterministic rejection/revocation
+  reason. A captured threshold may still deny or fork the entire log; transparency
+  makes omission evidence visible rather than preventing governance capture.
+- Every compatible endpoint selects locally from deterministic Candidate
+  Materializations under that common View. It verifies chosen indices, records,
+  eligibility, and proofs, not global completeness. At least two full auditors,
+  independent from each other, the epoch signer threshold, and the audited
+  Candidate operator families, recompute the complete View, input inclusion,
+  and global summaries and publish control-independence evidence. A bootstrap
+  source, signer, Service, proposed Node, or infrastructure operator does not
+  choose an endpoint's complete Route.
+- Endpoint-chosen precommitted sampling and local verification prevent a
+  distributor from supplying a valid personalized subset. Withholding retries
+  the same chosen index at another source or produces unavailability; it never
+  triggers silent resampling to a different candidate. Fetching is batched
+  independently of a destination and no distributor receives the complete
+  selected Route.
+- Role Domain assignment is deterministic over precommitted identity/family
+  material and public anti-grinding randomness. A Node, signer, distributor, or
+  operator cannot choose a domain after seeing one connection or manually place
+  a Node; Sybil identities and dishonest family declarations remain explicit
+  limits rather than being called solved.
 - The User selects a fresh Rendezvous for each new Service Connection. Its state
   may survive bounded Introduction retry or qualifying leg replacement only for
   that same live attempt or connection and never crosses a completed connection
@@ -516,22 +734,34 @@ or privacy claim.
   must not bypass the single-Node claim.
 - Different Node IDs do not prove independent control. The claim depends on
   actual non-collusion and diversity measured under R-011.
-- The Interactive Route anonymity claim covers one malicious ordinary Node. It
-  makes no blanket claim against two or more colluding Nodes, and does not imply
-  that every colluding pair necessarily holds useful combined views.
+- Public beta/stable capacity is measured after the profile's maximum mandatory
+  local exclusion union. Every domain/subrole retains at least three/five
+  effective families and `40%`/`25%` family-share limits plus workload reserve.
+  `12`/`20` are only theoretical pre-exclusion Route-family floors; actual
+  supply follows `Σ_d(3+x_d)`/`Σ_d(5+x_d)` and may be higher.
+- The Interactive Route one-Node claim covers only one malicious ordinary Node's
+  role-local view with no endpoint, direct-origin observation, or second
+  observation/probe source under the same adversary. It makes no blanket claim
+  against Node-plus-endpoint/source active confirmation or two or more colluding
+  Nodes, and does not imply that every combined set necessarily holds useful
+  views.
 - Correlated Control spanning both endpoint-adjacent roles may link the User and
   Service through traffic metadata. An endpoint cannot always detect or report
   that this correlation occurred.
 - Carrier collusion does not weaken end-to-end Application Data confidentiality,
-  integrity, or Service Target authentication while endpoints, Service
-  Authority, and accepted cryptography remain uncompromised. It can still break
-  anonymity or availability.
+  integrity, or Service Target authentication while endpoints and session
+  cryptography remain uncompromised during the connection. It can still break
+  anonymity or availability; later long-term-key compromise is covered only by
+  the stated Forward Secrecy conditions.
 - Target authentication, Route Profile binding, protocol freshness, and
   integrity fail closed. Modified, injected, replayed, redirected, or downgraded
   data is never accepted as a valid connection or Application Data.
-- A forbidden endpoint, Local Traffic Observer, or single-Node disclosure, or a
-  silently accepted active violation, fails Interactive Route Qualification for
-  that implementation candidate.
+- A forbidden endpoint, Local Traffic Observer, or role-local single-Node
+  disclosure inside the declared claim, or a silently accepted active violation,
+  fails Interactive Route Qualification. A separate bidirectional
+  Node-plus-endpoint active-confirmation scenario retains correlation accuracy
+  and false positives as mandatory limitation evidence; its expected success is
+  not misreported as a qualified anonymity result.
 - Route Qualification applies only to the tested build, configuration,
   conditions, and adversary boundary; design terminology and a previously
   qualified release are not evidence for an untested candidate.
@@ -643,11 +873,34 @@ or privacy claim.
   as required to preserve one connection. It cannot become a stable network
   identity, cross Isolation Contexts, expose the full Route to an ordinary Node,
   or bypass target authentication and fresh Route validation.
+- Continuity repair uses fresh route handles, keys, and generation state bound to
+  the accepted Target, profile, context, connection transcript, and delivered
+  byte range. It may repair one carrier or leg, or establish a fresh Rendezvous
+  through Introduction, but cannot duplicate Application bytes, replay an
+  Application operation, or extend the non-resetting `15 s` recovery deadline.
 - Every Application Interface operation requires an endpoint-local grant scoped
-  to the Application, optional Service, and allowed operations; connection or
-  publication access never implies raw Service Authority export.
+  to an OS-enforced or launcher-brokered Application Principal/process tree,
+  optional Service, and allowed operations; a desktop account, PID, loopback
+  port, or copyable bearer alone is insufficient. Applications that cannot be
+  distinguished are one local trust domain. Connection or publication access
+  never implies raw Service Authority export.
+- Local Grant revocation immediately denies new work and invalidates descendant
+  session capabilities. Custody/admin sessions close immediately; data
+  connections close immediately unless an explicit finite drain-then-revoke was
+  selected beforehand, and that drain cannot exceed its Work Safety Lease.
+  Stored local policy may survive restart, but process/session bearer state does
+  not; fresh OS-local principal binding is required.
 - An Endpoint Owner controls only one endpoint. No Local Grant, Endpoint Owner,
   Node operator, or sponsor is a network-wide administrator or approval root.
+- A qualified public V1 Contributor runs on a dedicated host/installation and
+  exposes no User connection or Service publication role. Development
+  co-residence is unqualified and supplies no public capacity/independence
+  evidence. An Endpoint excludes every Contributor identity and declared family
+  it controls from its own Route selection.
+- Client+Publisher co-residence is allowed only with distinct grants and
+  Initiator/Responder/Introduction Entry Sets. The host, OS, compromise, and Local
+  Traffic Observer may correlate those roles. Standalone capacity floors are not
+  additive; simultaneous use requires its own combined qualification profile.
 - Joining, connecting, and publishing require no central administrator approval;
   disappearance of one Endpoint Owner cannot block independent endpoints.
 - Compromise of an Endpoint Owner grants no network-wide administrative power,
@@ -695,16 +948,83 @@ or privacy claim.
   Application operation.
 - Bootstrap, naming, protocol releases, software distribution, and emergency
   policy are separate Control Plane roots.
+- A fresh or restarted endpoint accepts only threshold-authenticated, expiring,
+  version-compatible Network Epoch state. Authorization is independent of
+  distribution: package, cache, mirror, peer, or imported file may carry the same
+  authenticated bytes but cannot make different bytes authoritative.
+- A directly contacted bootstrap, Candidate Materialization, authenticated-time,
+  or Release Safety distributor may observe requester origin, public artifact,
+  timing, and probable Ardents use. For every mandatory pre-Route artifact class,
+  public beta/stable requires at least three/five effective authenticated
+  independent source families with no family above `40%`/`25%`; finite sequences
+  and explicit exhaustion make none silently indispensable. The same source
+  families may serve several classes but count once toward global source supply.
+  External/CDN/file distribution without authenticated family evidence never
+  counts as independence. Multiple sources reduce indispensability but do not
+  turn first contact into an anonymity claim.
+- Freshness does not depend on an unauthenticated wall clock. Time Confidence
+  combines monotonic runtime, persisted non-decreasing security watermarks,
+  authenticated epoch bounds, and optional independent authenticated time
+  observations. Uncertain, conflicting, stale, rollback, forked, or incompatible
+  state blocks only the affected capability and is never silently accepted.
+- Every live Route, Service Connection, publication, and Contributor duty has a
+  finite Work Safety Lease ending no later than all applicable epoch,
+  Release Safety, protocol/build, credential, and role-specific terminal bounds.
+  Authenticated refresh may extend it before expiry; stale, clock-uncertain, or
+  revoked state cannot. New leg/recovery work requires current safety state, and
+  terminal expiry closes work explicitly rather than preserving old trust.
+- Release, epoch, namespace, qualification, and emergency authority are distinct.
+  A public baseline requires multiparty custody and expiring emergency actions;
+  project-only development keys describe a centralized unqualified test network.
+- Updates are authenticated by role-separated, versioned, expiring metadata with
+  hashes, sizes, platform bindings, rollback protection, and explicit root
+  transition. Every new public executable digest needs the `3-of-5` Targets
+  threshold and binds retained source/dependency inputs, SBOM, applicable
+  qualification identity, and two matching build attestations from builders
+  independent of each other and of the release-Targets threshold;
+  snapshot/timestamp delegates cannot introduce code. Security watermarks and
+  authority state are never rolled back with program files. An atomic update
+  drains, switches, self-tests, and either commits or returns to the last
+  compatible safe build without claiming seamless live-connection preservation.
+- Protocol migration (`announced`, `overlap-supported`, `preferred`, `required`,
+  `retired`) is separate from build safety (`current/superseded`, `vulnerable`,
+  `revoked`). A normal required transition waits for qualified independent
+  capacity and drain reserve in every Role Domain and required control/discovery
+  role. The `90-day` protocol overlap can be bypassed only by an expiring
+  `4-of-5` emergency for a credible exploitable flaw, compromised primitive/key,
+  or demonstrated safety incompatibility, with explicit possible unavailability;
+  build revocation has no overlap entitlement.
+- Release checks/downloads carry no installation identifier, account, Service
+  list, rollout cohort, `from-version`, delta, or exact build history. Private-
+  only mode has no direct fallback; direct-allowed and offline import are explicit
+  alternatives. A direct source still sees IP, platform, exact digest/release,
+  timing, repetition, and download history. Once Release Safety expires or a
+  build is revoked, Ardents itself cannot be the repair route; only a configured
+  external privacy proxy, explicit direct disclosure, or offline import remains.
+- Diagnostics are Local-Grant-scoped, finite, and local by default. A connection
+  Application, one Service administrator, Endpoint Owner aggregate, and one
+  Contributor role receive distinct bounded views; Authority Custody is separate.
+  Export is explicit and previewable and omits Authorities, Instance Keys, raw
+  Credentials, Names, Targets, Local Grants, Bridge secrets/Invites, Entry
+  membership, payload, continuity state, and complete Route histories. Telemetry
+  and automatic upload are absent by default.
 - Payload protection is not metadata protection, and independent Node IDs are
   not proof of independent control.
 
 ## Open security research
 
 The prioritized questions live in [the network research queue](../research/questions.md).
-R-006 fixes the V1 target lifecycle, R-002 fixes the Application Interface, and
-R-001 P2-D1 through P2-D7 close the Interactive Route observer, Node, collusion,
-endpoint, active-attack, and Route Qualification contract. No implementation
-has passed that gate.
-No production architecture should be selected before R-003, R-004, R-007,
-R-009, and R-023 make the naming, routing, failure, bootstrap, and performance
-contracts testable against the closed R-001 claim.
+R-001 through R-012 and R-024 now close the product-level target, naming, route,
+failure, isolation, bootstrap, control, lifecycle, update, and privacy contracts.
+They select a route family and operating boundaries, not a production component
+or a qualified implementation.
+
+The remaining security work is evidence: R-013 must compare concrete protocols,
+cryptography, transports, storage, language, and dependency choices; R-023 must
+complete role-specific workloads and qualify the exact implementation. Hostile
+bootstrap/direct-source, clock, rollback, fork, Role Domain transition, drain,
+update, Application Principal/network isolation, anonymous admission,
+uninstall/purge, Sybil/concentration, and recovery drills plus independent
+review are public-release gates. Until those pass, the
+project is an explicitly unqualified research network and cannot claim implemented
+anonymity merely because its documents are internally consistent.

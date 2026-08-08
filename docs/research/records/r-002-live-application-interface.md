@@ -82,30 +82,36 @@ Consequences:
   cannot silently change its accepted semantics;
 - exact partial-write, timeout, close, and failure reporting is fixed by P1-D5.
 
-### P1-D3 — Separate connection and administration privileges
+### P1-D3 — Separate connection, administration, and custody privileges
 
-**Product Owner decision, accepted 2026-08-07:** the Application Interface has
-two logically separate privilege boundaries. The least-privileged Connection
-Interface carries connection operations and Application Data; Service Authority,
-publication, and configuration require a separately authorized Service
-Administration Interface.
+**Product Owner decision, accepted 2026-08-07; clarified 2026-08-08:** three
+local privilege boundaries do not collapse. The ordinary Application Interface
+contains the least-privileged Connection Interface and a separately granted
+per-Service Administration Interface. The stronger Authority Custody boundary
+is outside that ordinary interface and is separately granted again.
 
 The operation boundary is:
 
 - Connection Interface: connect, accept an already authorized Service's
   connections, read, write, close, cancel, and observe connection errors;
-- Service Administration Interface: create, import, or export Service Authority;
-  publish or unpublish a Service; bind its local endpoint; initiate target
-  replacement under the accepted R-006 lifecycle; and change Service
-  configuration or policy;
+- Service Administration Interface: publish or unpublish a Service using the
+  matching private Instance Key and already authorized public bounded
+  Credential; bind its local endpoint; and change Service configuration or
+  policy. It cannot export either the Instance Key or Service Authority;
+- Authority Custody boundary: create/import/export/reconcile/sign with Service or
+  Name Authority, authorize or advance a Credential for a host-generated public
+  Instance key, rotate/transfer Name Authority, and initiate target replacement
+  under R-006. V1 does not rotate Service Authority in place: replacement creates
+  a new Authority and Target, while a vault-wrapping key may rotate separately.
+  None is a Service Administration operation;
 - access to the Connection Interface never grants Service Administration
-  Interface access.
+  Interface access, and neither interface grants Authority Custody.
 
 Consequences:
 
 - compromising an ordinary Application does not by itself expose Service
   Authority or permit rebinding, unpublishing, or reconfiguring a Service;
-- an SDK may wrap either interface but cannot merge their authority boundaries;
+- an SDK may wrap any surface but cannot merge their authority boundaries;
 - this is a logical and authorization boundary, not yet a choice of separate
   processes, sockets, protocols, or binaries;
 - local access and scope are fixed by P1-D7.
@@ -177,8 +183,8 @@ Consequences:
   topology internals useful for probing;
 - authentication failure remains distinct and cannot silently downgrade or
   fall back;
-- R-007 must define the evidence and bounded retry behind Service unavailable,
-  Route unavailable, and indeterminate results;
+- R-024 now defines the positive evidence and bounded recovery behind Service
+  unavailable, Route unavailable, and indeterminate results;
 - error names, numeric codes, serialization, and operating-system mappings are
   implementation choices made later.
 
@@ -196,8 +202,15 @@ The product boundary is:
   to a Service or carrier Node;
 - it is never a User identity, Service identity, address, credential, or public
   application profile;
-- different contexts cannot share linkable routing, rendezvous, connection-pool,
-  session-resumption, or other network-visible correlation state;
+- different contexts cannot share linkable Carrier Channels, circuit keys,
+  Interior or Rendezvous state, destination/query caches, connection pools,
+  continuity secrets, session resumption, or route-derived failure history;
+- immutable public network state, bounded installation/domain/regime Entry
+  exposure, and one installation-wide Direct Source Exposure Set may be shared.
+  An Entry or directly contacted source already sees the common endpoint origin
+  and may link its activity; isolation adds no claim against that accepted view
+  and prevents an Application from forcing fresh Entry/source sampling or
+  resetting source exclusions;
 - the same context permits safe reuse where the Route Profile allows it, but
   does not assert that its connections belong to one real-world identity;
 - the boundary prevents linkage introduced by forbidden endpoint-state reuse;
@@ -212,13 +225,13 @@ Consequences:
 
 - ordinary Applications receive a privacy-safe default without an SDK or
   explicit isolation configuration;
-- a multi-profile Application can request stronger separation without creating
-  network-wide Personas;
+- a multi-profile Application can request stronger higher-Route and session
+  separation without creating network-wide Personas or a new first-hop exposure;
 - deliberate reuse of one context tells Ardents that state reuse is permitted;
   the network cannot protect profiles that the Application intentionally places
   in the same context;
-- R-004 and R-008 must identify and test every implementation state forbidden to
-  cross this boundary;
+- R-004 and R-008/R-024 now identify every implementation state forbidden to
+  cross this boundary; concrete conformance and adversarial tests remain required;
 - P1-D7 defines how the endpoint authorizes the local Application to which the
   default belongs.
 
@@ -234,16 +247,25 @@ The V1 grant families are:
 - **Connection Grant:** lets one Application open outbound Service Connections
   within local policy and, when explicitly scoped to a Service, accept that
   Service's incoming connections;
-- **Service Administration Grant:** lets one Application publish, unpublish, and
-  configure a specified Service without receiving its raw Service Authority;
+- **Service Administration Grant:** lets one Application use an already
+  authorized matching private Instance Key and public bounded Credential to
+  publish, unpublish, and configure a specified Service without exporting that
+  Key or receiving raw Service Authority;
 - **Authority Custody Grant:** separately permits creating a new Service
-  Authority or importing, exporting, and initiating R-006 replacement for a
-  specified authority. This is the strongest local grant.
+  Authority; importing or exporting that root through the Recovery Bundle
+  lifecycle; authorizing or advancing a public Credential for a host-generated
+  Instance public key; and initiating R-006 replacement for a specified
+  authority. A public Credential by itself is not a custody secret. This is the
+  strongest local grant.
 
 The authority rules are:
 
-- every grant is scoped to one Application, allowed operations, and an optional
-  Service; an ordinary Application receives only the Connection Grants it needs;
+- every grant is scoped to one Application Principal, allowed operations, and an
+  optional Service; an ordinary Application receives only the Connection Grants
+  it needs. The principal is one OS-enforced or launcher-brokered process-tree/
+  session identity; a shared desktop user, PID, loopback port, or copyable
+  file/token alone is insufficient. Applications the platform cannot distinguish
+  form one local trust domain and receive no malicious-sibling isolation claim;
 - Connection access never implies Service administration, Service administration
   never implies raw Authority export, and no privilege is inherited silently;
 - there is no shared all-Application admin token;
@@ -254,6 +276,23 @@ The authority rules are:
   network actor can issue or require them;
 - an unattended server may preconfigure local grants without contacting a
   central operator.
+
+Grant lifecycle is fail-closed. Revocation immediately denies new operations and
+invalidates descendant session capabilities. Authority Custody and Service
+Administration sessions close immediately. Data Service Connections close
+immediately unless the Endpoint Owner explicitly selected a finite
+drain-then-revoke action before revocation; that drain cannot outlive the Work
+Safety Lease. A stored local policy may survive restart, but process/session
+bearers do not: the Application must bind again to its authorized OS-local
+principal and receive fresh ephemeral capability state. Exact Windows/Linux
+binding remains R-013 work.
+
+Qualification runs a same-user hostile sibling that attempts to attach to the
+local interface, steal/replay bearer material, exploit PID reuse, cross process/
+Endpoint restart, and obtain another Application's Service, Isolation Context,
+diagnostics, or authority. Failure narrows the supported V1 Application model to
+broker-launched/OS-isolated Applications; it cannot be hidden as a local API or
+network-library detail.
 
 The decentralization boundary is:
 
@@ -334,12 +373,40 @@ Consequences:
 - R-004 and R-014 test routing and implementation candidates against the same
   evidence.
 
+### P1-D9 — Carrier privacy does not constrain Application networking
+
+**Architecture closure decision, accepted 2026-08-08:** Ardents protects only
+traffic submitted to the Application Interface. A generic HTTP/SOCKS/stream or
+browser adapter remains supported, but a local Application that exposes an
+ordinary listener or can use ordinary DNS, fetch, WebSocket, WebRTC, QUIC, or
+arbitrary sockets can reveal its endpoint without compromising Ardents. It
+receives no Application-level Endpoint
+Location Privacy claim and must surface that limitation.
+
+A claim-bearing private-site/application profile instead uses an
+Network-Isolated Application Boundary on **both** endpoint Applications. Only
+scoped local IPC/loopback with Ardents is allowed; ordinary ingress/listeners and
+network egress are denied by default; origin/cache/storage state is separated by
+Isolation Context; and each external or secondary destination either names an
+exact Ardents destination or fails without clearnet fallback. The controlled V1
+tracer uses a deterministic HTTP Service with only scoped local IPC/loopback and
+a single-response client inside this boundary. Qualification externally scans/
+connects to both process trees and attempts malicious content and requests that
+trigger DNS, external fetch, callback/SSRF, WebSocket/WebRTC, QUIC, or direct
+socket access at each side and verifies the complete Application/helper process
+trees and controlled interfaces.
+
+This requirement does not make a browser, sanitizer, or general Application
+runtime part of the carrier. A future browser profile may earn the stronger claim
+only through its own supported-platform containment and storage-isolation
+qualification.
+
 ## Hypotheses
 
-- **H1 — Connection plus Service Administration Interfaces:** Applications
+- **H1 — Connection and Service Administration plus separate Custody:** Applications
   exchange bytes through a socket/proxy-style Connection Interface, while
-  Service creation, authority import/export, publication, and policy use a
-  separately authorized Service Administration Interface.
+  publication/configuration use a separately authorized Service Administration
+  Interface and root operations use a still separate Authority Custody boundary.
 - **H2 — One native Ardents API:** all data and control operations use one
   Ardents-specific RPC or SDK contract.
 - **H3 — Transparent proxy only:** Ardents intercepts ordinary application
@@ -426,7 +493,9 @@ that maps an ordinary HTTP client and server through simulated `connect`,
   network identities, and different contexts cannot share linkable state.
 - **Product Owner decision:** Local Grants separate connection use, per-Service
   administration, and Authority custody. Endpoint Owners are strictly local and
-  no central administrator approves network participation.
+  no central administrator approves network participation. Revocation
+  invalidates child capabilities and no bearer survives restart without fresh
+  OS-local authorization.
 - **Product Owner decision:** finite hierarchical budgets, backpressure, fair
   scheduling, explicit overload, and measured performance are part of the same
   security contract. R-023 supplies numeric targets, which remain unverified
@@ -469,6 +538,8 @@ authentication semantics. P1-D5 fixes the observable result and failure boundary
 P1-D6 fixes safe default and optional Application-controlled isolation. P1-D7
 fixes endpoint-local least privilege without a network administrator. P1-D8
 fixes hierarchical resource, backpressure, fairness, and performance evidence.
+P1-D9 prevents carrier privacy from being misapplied to direct Application
+egress.
 
 **R-002 is decided.** H1 is the accepted V1 product boundary. R-023 supplies
 numeric performance budgets, R-008 validates local isolation and grant
@@ -486,8 +557,9 @@ No concrete proxy protocol, serialization, library, or language is selected.
   datagrams, message boundaries, offline delivery, exactly-once semantics, or
   automatic Application-operation replay. Bounded Carrier Channel replacement
   may preserve the same Service Connection.
-- P1-D3 accepted: the Connection Interface is least-privileged and cannot grant
-  access to the separately authorized Service Administration Interface.
+- P1-D3 accepted: Connection, per-Service Administration, and Authority Custody
+  are non-collapsing boundaries; neither lower surface grants root operations or
+  raw key export.
 - P1-D4 accepted: both Service Name and Service Target are valid destinations;
   success exposes the exact authenticated target and failures never silently
   fall back to another destination.
@@ -499,12 +571,16 @@ No concrete proxy protocol, serialization, library, or language is selected.
   Context, may add opaque subdivisions, and never exposes a context as network
   identity.
 - P1-D7 accepted: Local Grants separate connection, per-Service administration,
-  and Authority custody; each Endpoint Owner is local and no central administrator
-  approves joining, connecting, or publishing.
+  and Authority custody; revocation invalidates child capabilities, restart
+  requires fresh OS-local session authorization, each Endpoint Owner is local,
+  and no central administrator approves joining, connecting, or publishing.
 - P1-D8 accepted: resources are finite and hierarchical; backpressure, fairness,
   explicit overload, and measured honest-use performance are mandatory. R-023
   P3-D3c2c3c2 now caps logical Application Data queues for the required client
   and publisher profiles without changing these interface semantics.
+- P1-D9 accepted: generic adapters provide compatibility only; an
+  Application-level location-privacy claim requires qualified deny-by-default
+  ordinary ingress/egress and storage isolation at both endpoint Applications.
 - H1 is the accepted V1 shape; H2 is rejected as mandatory integration; H3 is
   insufficient by itself.
 - R-002 and R-001 are closed; R-023 is the next foundation decision and defines

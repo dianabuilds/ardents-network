@@ -60,6 +60,14 @@ eventually accepted naming policy to rebind the existing name. The old Target
 remains untrusted. Routine migration under the same Service Authority preserves
 the Target and therefore does not require Name Authority use.
 
+A connection opened from a Service Name/Link retains an authenticated
+Destination Binding containing Name generation/revision→Target. Same-Target
+renewal or Grace may refresh its finite Work Safety Lease. Learned Recovery
+Pending, Release, or a valid rebind to another Target stops new leg/recovery work
+and closes by a finite signed deadline. The stream never retargets silently; the
+Application must open a new connection. A direct Target/Target-Link connection is
+intentionally pinned and receives no Name recovery.
+
 A Name Authority is powerful: a valid malicious rebind can direct name-based
 Users to an attacker-controlled Target, whose authentication would then be
 correct for the poisoned binding. Direct connections to an explicitly supplied
@@ -255,6 +263,10 @@ Resolution resumes only after the successor authenticates a fresh monotonic Name
 Record revision; a possibly compromised old binding is not silently reused. A
 direct Service Target connection remains pinned and does not follow this process.
 
+Existing Name-origin connections treat Recovery Pending as no-new-recovery state
+and close within their finite binding deadline. After a fresh replacement record,
+new connections may authenticate the new Target; old streams never migrate to it.
+
 Without a precommitted usable Recovery Policy, lost Name Authority material has
 no administrative recovery path. The name becomes claimable only if its Lease
 eventually reaches Released. If a compromised authority keeps renewing or a
@@ -285,6 +297,12 @@ not receive the Service Name or a publicly testable name-derived lookup value. A
 naming participant may receive the exact name or lookup identifier needed by the
 eventually selected mechanism, but receives no User location or network-generated
 stable User identifier. No one ordinary role receives both views for one query.
+
+V1 restricts the destination-aware Resolution role to Rendezvous-domain
+identities, never an endpoint-adjacent domain, and excludes each resolution
+identity/known family from acting as the same destination/context connection's
+Rendezvous. The query remains cryptographically hidden from Entry; role
+assignment alone is insufficient.
 
 Resolution sessions and query-derived state do not cross Isolation Contexts in a
 way that supplies a stable cross-context identifier. A naming participant may
@@ -434,6 +452,8 @@ production status merely by implementing the happy path.
 - an attacker floods claims, renewals, resolution, or recovery with Sybils;
 - a direct Service Target connection is incorrectly redirected after a name
   update.
+- a Name-origin connection remains recoverable past Recovery Pending/Release or
+  silently migrates its byte stream after a different-Target rebind.
 
 ## Findings
 
@@ -488,6 +508,10 @@ production status merely by implementing the happy path.
   name resolution. Completion installs a successor in the same generation, but
   resolution resumes only after a fresh monotonic Name Record. Without a usable
   policy there is no administrative recovery.
+- **Product Owner decision:** a Name-origin Destination Binding participates in
+  the connection Work Safety Lease. Recovery Pending, Release, or a different
+  Target stops new leg/recovery work and closes finitely without retargeting;
+  explicit Target connections remain pinned and have no Name rescue.
 - **Product Owner decision:** Unlisted Service Names have no network list, search,
   recommendation, or public browsing API, but are not secret capabilities. Short
   names, name-derived lookup values, and query popularity may be guessed,
@@ -675,6 +699,9 @@ and capture roots contradict the accepted product.
   canonical product language for precommitted, scoped, visible name recovery.
 - `Private Resolution` becomes canonical product language for the accepted
   single-ordinary-Node User-location/name separation, not name secrecy.
+- `Destination Binding` makes the Name generation/revision→Target provenance of
+  a Name-origin connection immutable and gives catastrophe rebinding a finite
+  effect on live old-Target work without silently moving its stream.
 - `Anonymous Cost` and `Protocol-reserved Name` become canonical product language
   for bounded non-identity abuse control and finite technical reservation.
 - R-006 target lifecycle remains unchanged and now has a distinct naming

@@ -1,19 +1,24 @@
 # Network research queue
 
-Status: **open**
+Status: **accepted product baseline; evidence and technology queue active**
 
 This backlog exists to design Ardents as a network product. A question belongs
 here only when its answer changes an observable network contract, a security
 claim, or a later technology comparison. It is not a list of every feature we
 could build.
 
-## Current working baseline
+## Current accepted baseline
 
-Research starts from these reversible product boundaries:
+Research starts from these accepted product boundaries. Evidence may reopen a
+decision explicitly, but an experiment or dependency cannot silently redefine it:
 
 - Ardents addresses a Service Target, not a User or infrastructure Node;
-- V1 uses one active Service Instance and a portable Service Authority; routine
-  migration preserves the target, while loss or compromise replaces it through
+- a tagged, versioned, network-bound Target Link provides the complete direct
+  destination path without naming, origin reachability, or security downgrade;
+- V1 uses one active Service Instance generation. The host generates a private
+  Instance Key and portable Service Authority signs a public bounded Credential
+  for that key; routine migration generates a new key, advances the generation,
+  and preserves the target, while root loss or compromise replaces it through
   the Service Name;
 - a distinct Name Authority controls the Service Name binding, is unnecessary
   for ordinary publication or resolution, and remains separate from Service
@@ -46,8 +51,25 @@ Research starts from these reversible product boundaries:
 - the Application Data primitive is an online logical Service Connection;
   replaceable transport-specific Carrier Channels carry it without defining its
   identity or Application semantics;
+- fresh authenticated ephemeral endpoint/session and per-leg keys provide
+  Forward Secrecy for honestly completed connections against later Service/Node
+  long-term-key compromise; live endpoint compromise, memory/snapshot remnants,
+  and in-connection post-compromise healing remain non-claims;
 - the local interface uses finite hierarchical budgets, backpressure, and
   measured performance without weakening accepted security boundaries;
+- Local Grant revocation recursively blocks new work, closes custody/admin
+  sessions immediately, and closes data immediately unless a finite drain was
+  preselected; no ephemeral process/session bearer survives restart without
+  fresh OS-local binding;
+- a claim-bearing Local Grant binds to an OS-enforced or launcher-brokered
+  Application Principal/process tree, not merely a desktop account, PID,
+  loopback port, or copyable bearer. Indistinguishable same-user apps are one
+  trust domain; malicious-sibling isolation requires platform qualification;
+- carrier privacy covers only traffic submitted to Ardents. An Application-level
+  location-privacy claim requires Network-Isolated Application Boundaries at
+  both endpoint Applications: scoped local IPC/loopback only, no ordinary
+  ingress/listeners or egress, per-context origin/storage, and no clearnet
+  fallback. Generic adapters remain compatible but lack that claim;
 - required client and publisher profiles cap locally queued logical Application
   Data at `256 KiB` per connection and direction, with endpoint aggregates of
   `16 MiB` per client direction and `64 MiB` per publisher direction;
@@ -55,11 +77,51 @@ Research starts from these reversible product boundaries:
   Observer, one-malicious-Node, active-attack, and explicit broad-observer
   boundaries are fixed, while no implementation has yet earned Route
   Qualification;
+- its independently hidden legs use stable disjoint Initiator, Rendezvous,
+  Responder, and Introduction Role Domains. Endpoint selection uses proven
+  Candidate Materializations under one authenticated logical Candidate View and
+  never conditions an observable Service rejection on a hidden Entry Set;
+- Name/Target/descriptor resolution is a private Destination Resolution role
+  restricted to the non-adjacent Rendezvous Domain; its identities/known families
+  are excluded from the same destination/context connection's Rendezvous. This
+  preserves four domains, while a Node plus controlled endpoint can still perform
+  active timing/volume confirmation and is an explicit non-claim;
+- the selected production family to prototype is a Tor-shaped pair of
+  independently built endpoint circuits joined at a User-selected Rendezvous,
+  with five data positions and a separate Introduction Path;
+- Entry exposure is bounded to at most one small long-lived set for each
+  activated installation × adjacent Role Domain × ordinary/Bridge regime:
+  Initiator, Responder, or Introduction. Co-resident roles stay separate and one
+  Bridge key proves one adjacent domain; Isolation Contexts separate every higher
+  Route, destination, channel, key, session, and recovery state without forcing
+  fresh Entry sampling;
+- one threshold-authenticated expiring Network Epoch is authorized separately
+  from its package, cache, mirror, peer, or file distribution paths. It commits a
+  transparent input cutoff/root, logical complete Candidate View, length, and
+  global summaries; endpoint materializations use indexed proofs, independent
+  full auditors check global inclusion/completeness, and a distributor cannot
+  tailor a valid subset or force silent resampling;
+- direct pre-Route sources expose requester origin/public artifact. Globally
+  advertised source identities/families are incompatible with Route/Resolution;
+  ordinary candidates contacted directly enter a bounded installation-wide
+  exposure set and are excluded through derived-work expiry. Pre-contact retained
+  state, sequences, retries, and growth are finite. Each mandatory artifact
+  class has three beta/five stable effective authenticated source-only families
+  under `40%`/`25%` caps; unauthenticated external distribution does not count;
+- readiness has a Common Base and independent capability-specific prerequisites
+  depending on Time Confidence; target connection, private name resolution,
+  publication, and contribution never inherit one another's Entry path or hide
+  behind one process-level boolean. Every live workload has a finite Work Safety
+  Lease under its epoch, release, protocol/build, credential, and role bounds;
 - V1 performance and release gates cover Windows 11 and Ubuntu LTS `x86-64`
   desktop/laptop endpoints for Users and Developers and an Ubuntu LTS `x86-64`
   `2 vCPU`, `2 GiB RAM`, symmetric `100 Mbit/s` reference VPS for
   infrastructure roles; other Linux variants receive no V1 claim, while macOS
   and mobile remain later targets;
+- a qualified public Contributor uses a dedicated host/installation and an
+  Endpoint excludes its own controlled Node identities/families. Client+Publisher
+  co-residence is allowed without a same-host unlinkability claim, but standalone
+  capacity floors are not additive and a combined profile must qualify;
 - normal qualification uses a `100/20 Mbit/s` User access link, symmetric
   `100 Mbit/s` Publisher and infrastructure links, `80 ms` base RTT, independent
   `0.1%` loss per direction, and `p95 <= 10 ms` additional per-direction jitter
@@ -91,6 +153,12 @@ Research starts from these reversible product boundaries:
   runtime, replicated content store, or decentralized compute layer;
 - Named Unlisted Site is a Reference Application for the network, not the
   definition of the network.
+- official installation and updates separate release authority from
+  distribution, require `3-of-5` authorization for every public executable,
+  protect version and rollback state, separate protocol transition from build
+  safety/revocation, drain under signed finite deadlines, switch atomically, use
+  explicit private-only/direct/offline retrieval modes, and never inherit Route
+  Qualification across an untested build.
 
 Each open question must either confirm, narrow, or reject one of those
 boundaries with named evidence.
@@ -99,33 +167,34 @@ boundaries with named evidence.
 
 | ID | Exact question | Decision and required result | State |
 |---|---|---|---|
-| [R-006](records/r-006-service-target-lifecycle.md) | What is the V1 lifecycle of a Service Target across creation, publication, migration, loss, compromise, replacement, and retirement? | **Decided:** one active Instance uses a portable Service Authority. Routine migration uses encrypted export/import and preserves the target. Loss or compromise creates a new target and rebinds the Service Name; the old target remains untrusted. | decided |
+| [R-006](records/r-006-service-target-lifecycle.md) | What is the V1 lifecycle of a Service Target across creation, publication, migration, loss, compromise, replacement, and retirement? | **Decided:** one active Instance generation uses a host-generated private Key plus public bounded Credential issued by portable Service Authority. Routine migration creates a new key, advances generation, and preserves the target. Connections cannot outlive Credential/Work Safety bounds. Root loss or compromise creates a new target and rebinds the Service Name; the old target remains untrusted. | decided |
 | [R-002](records/r-002-live-application-interface.md) | What is the smallest live Application Interface that lets an existing local application publish and consume a Service safely? | **Decided:** an external socket/proxy-style boundary exposes one live logical Service Connection, both destination forms, authenticated results, honest failures, safe Isolation Contexts, endpoint-local least privilege, hierarchical resource budgets, backpressure, and measurable performance. The same stream may span bounded Carrier Channel replacement without becoming an Application reconnect. SDKs remain optional wrappers; concrete protocol remains later, while scenario-specific numeric budgets come from R-023 evidence. | decided |
-| [R-001](records/r-001-interactive-route-claim.md) | Which endpoint, Local Traffic Observer, relay-collusion, and Broad Traffic Observer capabilities must the Interactive Route resist, and what does it deliberately expose? | **Decided:** the low-latency claim provides Endpoint Location Privacy against the opposite endpoint and any one malicious ordinary Node through multi-hop Route Knowledge Separation; it limits local observation without promising invisibility, excludes Broad Traffic Observer and arbitrary-collusion resistance, protects payload and exact target even under carrier collusion, fails closed under active attack, and requires Route Qualification before any implementation claim. R-004 P5-D2 clarifies the Introduction boundary; P5-D3 makes the no-full-Route rule concrete as a symmetric five-position baseline. | decided |
+| [R-001](records/r-001-interactive-route-claim.md) | Which endpoint, Local Traffic Observer, relay-collusion, and Broad Traffic Observer capabilities must the Interactive Route resist, and what does it deliberately expose? | **Decided:** the low-latency claim provides Endpoint Location Privacy against the opposite endpoint alone and role-local Route Knowledge Separation against one malicious ordinary Node with no endpoint/second observation under that adversary. Node-plus-endpoint active confirmation, Broad Traffic Observation, and arbitrary collusion are non-claims; bidirectional confirmation must still be characterized. Payload/exact-target protection survives carrier collusion, completed connections require Forward Secrecy, active integrity fails closed, and implementation claims require Qualification. | decided |
 | [R-003](records/r-003-service-name-contract.md) | How does an exact Service Name bind to a Service Target, resolve without becoming a directory, survive accepted rotation, and handle registration, expiry, recovery, conflict, enumeration, query privacy, and Control Plane capture? | **Decided:** P4-D1 through P4-D6 fix distinct Name Authority, one canonical Namespace, permissionless leased claims, ASCII hierarchy and Service Link, lifecycle and generations, precommitted recovery, Private Resolution, non-administrative governance, finite technical reservations, bounded Anonymous Cost, local filtering, inspectable rules, and explicit forks. Registry, ordering, lookup, routing, cryptographic recovery, cost, and governance mechanisms remain downstream research. | decided |
-| [R-004](records/r-004-routing-rendezvous-families.md) | Which routing and rendezvous families can meet the accepted Interactive Route claim and R-023 performance budget under churn, malicious Nodes, and realistic client devices? | **Active:** P5-D1 through P5-D5 fix the Route Module Seam, Introduction knowledge boundary, symmetric five-position data path, separate Introduction Path, and layered endpoint-owned selection: long-lived Entry, medium-lived Interior, connection-scoped User-selected Rendezvous, and overlapping Introduction rotation. C-3 and C1 Rendezvous-forwarding remain only unqualified performance controls; C-4 is rejected. The accepted shape converges to the Tor data-path and role-separation reference, so no custom forwarding advantage is assumed. Retain tunnel pools as the structurally different alternative. Exact set sizes, durations, selection evidence, routing family, library, cryptography, wire protocol, and language remain open. | active |
-| R-007 | What availability does the core promise when a path fails or a Service is offline, and which retries can be performed without lying to the Application about operation completion? | A failure matrix that maps network evidence, including P2-D6 active violations, to the accepted P1-D5 classes for discovery, connect, partial write, route loss, service loss, and reconnect. It must preserve P3-D4a, P3-D4b1, P3-D4b2a, and P3-D4b2b same-connection recovery, sequential churn, impaired-live progress, and the non-resetting overlapping-failure deadline, distinguish degradation and recovery from opening a new connection, and use indeterminate failure where attack and outage cannot be distinguished. Retained delivery and Application-operation retry remain outside the core. | open |
-| R-008 | How are local Applications separated from endpoint authority, network metadata, and each other's Isolation Context while still supporting ordinary software? | A local trust-boundary and misuse contract implementing Local Grants and Isolation Contexts, identifying every state forbidden to cross Applications, grants, or contexts, and testing deliberate or accidental reuse. This is not a decision to run arbitrary application code. | open |
-| [R-023](records/r-023-interactive-route-performance-budget.md) | What end-to-end performance budget makes the V1 Interactive Route and Named Unlisted Site useful without weakening the accepted security contract? | **Active:** P3-D1 through P3-D5 fix useful performance, finite resources, recovery, admission, and hostile-work isolation. P3-D6a makes qualification conjunctive with hard security guardrails, and P3-D6b1 fixes the four cross-platform, two-direction controlled topology. P3-D6b2a fixes release sampling: normal short-event cells use `100` attempts and `>= 99%` success unless specifically overridden; recovery uses at least `20` episodes and `>= 95%` unless stricter; 10-minute workloads run five times, with `50` goodput windows and per-run resource gates. Nearest-rank percentiles retain failed latency as infinity and failed goodput as zero; smoke tests do not qualify. P3-D6b2b1 fixes frozen Windows 11 and Ubuntu LTS `x86-64` endpoint images on a `4 vCPU`, `8 GiB RAM`, SSD-backed, non-overcommitted base; Ubuntu LTS is the sole Linux qualification baseline and other variants receive no V1 claim. P3-D6b2b2a fixes the transport-independent normal envelope at `100/20 Mbit/s` User access, symmetric `100 Mbit/s` Publisher and Node links, `80 ms` base RTT, independent `0.1%` loss per direction, and `p95 <= 10 ms` additional jitter. P3-D6b2b2b fixes fresh `32-byte` connection canaries, an exact `512-byte` nonce-bearing HTTP tracer request with a complete `64 KiB` incompressible response, and verified pre-generated incompressible transfer streams. P3-D6b2b2c1 fixes verified `60-second` direct transfers before and after each applicable batch, a `max/min <= 1.10` drift bound, and their arithmetic-mean baseline. P3-D6b2b2c2a fixes verified clean, routine, cold, and warm state classes and rejects forbidden retained or cross-context state. P3-D6b2b2c2b1 fixes the versioned impairment manifest, generator, seed schedule, and no-fixed-packet-trace rule. P3-D6b2b2c2b2 fixes same-host monotonic clocks, raw one-second resource and traffic sampling, exact event and high-water evidence, complete process/helper charging, and controlled-boundary traffic attribution. P3-D6c1 fixes the immutable public Qualification Evidence Bundle binding exact candidate inputs and complete raw results to a reproducible verdict. P3-D6c2 fixes change-impact scoping, full and partial requalification, comparable-regression rules, and the explicit `10%` material-regression review trigger. Only role-specific Node capacity and cost remain deferred until R-004 evidence. | active |
+| [R-004](records/r-004-routing-rendezvous-families.md) | Which routing and rendezvous families can meet the accepted Interactive Route claim and R-023 performance budget under churn, malicious Nodes, and realistic client devices? | **Decided:** use the Tor-shaped split-circuit family with five symmetric positions, separate Introduction, layered lifetimes, four disjoint Role Domains, Rendezvous-domain Destination Resolution with same-operation family exclusion, logical Candidate View plus endpoint materializations/full audit, local non-oracular selection, and endpoint-only continuity. Exact components, parameters, and Qualification remain R-013/R-023 evidence. | decided |
+| [R-007](records/r-024-operational-product-closure.md#operation) | What availability does the core promise when a path fails or a Service is offline, and which retries can be performed without lying to the Application about operation completion? | **Decided:** only positive authenticated evidence narrows Service or Route failure; ambiguity is indeterminate. Carrier/leg/Rendezvous recovery is bounded inside the same connection and never replays an Application operation. | decided |
+| [R-008](records/r-024-operational-product-closure.md#isolation-versus-cumulative-entry-exposure) | How are local Applications separated from endpoint authority, network metadata, and each other's Isolation Context while still supporting ordinary software? | **Decided:** Local Grants separate connection, Service operation, and Authority Custody with recursive revocation and fresh post-restart binding. Entry exposure is installation × adjacent domain × regime bounded; all higher Route, destination, session, continuity, and diagnostics state is context-separated. | decided |
+| [R-023](records/r-023-interactive-route-performance-budget.md) | What end-to-end performance budget makes the V1 Interactive Route and Named Unlisted Site useful without weakening the accepted security contract? | **Active evidence gate:** P3-D1 through P3-D5 fix useful performance, finite resources, recovery, admission, and hostile-work isolation. P3-D6a makes qualification conjunctive with hard security guardrails, and P3-D6b1 fixes the four cross-platform, two-direction controlled topology. P3-D6b2a fixes release sampling: normal short-event cells use `100` attempts and `>= 99%` success unless specifically overridden; recovery uses at least `20` episodes and `>= 95%` unless stricter; 10-minute workloads run five times, with `50` goodput windows and per-run resource gates. Nearest-rank percentiles retain failed latency as infinity and failed goodput as zero; smoke tests do not qualify. P3-D6b2b1 fixes frozen Windows 11 and Ubuntu LTS `x86-64` endpoint images on a `4 vCPU`, `8 GiB RAM`, SSD-backed, non-overcommitted base; Ubuntu LTS is the sole Linux qualification baseline and other variants receive no V1 claim. P3-D6b2b2a fixes the transport-independent normal envelope at `100/20 Mbit/s` User access, symmetric `100 Mbit/s` Publisher and Node links, `80 ms` base RTT, independent `0.1%` loss per direction, and `p95 <= 10 ms` additional jitter. P3-D6b2b2b fixes fresh `32-byte` connection canaries, an exact `512-byte` nonce-bearing HTTP tracer request with a complete `64 KiB` incompressible response, and verified pre-generated incompressible transfer streams. P3-D6b2b2c1 fixes verified `60-second` direct transfers before and after each applicable batch, a `max/min <= 1.10` drift bound, and their arithmetic-mean baseline. P3-D6b2b2c2a fixes verified clean, routine, cold, and warm state classes and rejects forbidden retained or cross-context state. P3-D6b2b2c2b1 fixes the versioned impairment manifest, generator, seed schedule, and no-fixed-packet-trace rule. P3-D6b2b2c2b2 fixes same-host monotonic clocks, raw one-second resource and traffic sampling, exact queue/security high-water evidence, complete process/helper charging, and controlled-boundary traffic attribution. P3-D6c1 fixes the immutable public Qualification Evidence Bundle; P3-D6c2 fixes requalification and the `10%` review trigger. The controlled tracer additionally hard-gates both endpoint Application network boundaries, Application Principal sibling isolation, Direct-Origin Source exposure, and Role Domain reassignment. Capability-specific startup, effective post-exclusion Node capacity/cost, the Client+Publisher combined profile, and anonymous cost-to-deny remain evidence-driven after R-013 prototypes. | active |
 | R-019 | What generic Application Data contract should include destination, online/offline delivery, reliability, ordering, retention, and Route Profile? | **Rejected as one question:** it mixed address lifecycle, live transport, storage, routing, and Application policy. Its decisions are now isolated in R-006, R-002, R-001, R-007, and R-008. | rejected |
+| [R-024](records/r-024-operational-product-closure.md) | Is the complete product lifecycle coherent across installation, warm-up, operation, security, performance, updateability, and privacy, and which unresolved points are real bottlenecks? | **Decided:** the operating model closes capability readiness, Time Confidence, Target Links, route domains, entry exposure, recovery attachment, diagnostics, update, Control Plane, contribution, and public-launch gates. Remaining gaps are explicit feasibility, technology, operator-supply, or external-evidence gates. | decided |
 
 ## Resilience — makes the product viable in a hostile network
 
 | ID | Exact question | Decision and required result | State |
 |---|---|---|---|
-| [R-009](records/r-009-hostile-bootstrap-and-bridge-entry.md) | How does a fresh or blocked endpoint obtain enough authenticated network state and replaceable entry paths without one permanently necessary bootstrap address or trust root? | **Active:** compare Tor-like authority consensus, I2P-like independent reseeds, and a threshold-signed expiring epoch bundle distributed through package, cache, mirrors, peers, files, and optional third-party channels. The epoch-bundle plus expiring Bridge Invite is the prototype front-runner; R-012 still owns signer and fork power. No signer, quorum, broker, transport, DHT, or library is selected. | active |
-| R-010 | Which local, anonymous, and bounded costs protect connection, discovery, rendezvous, and naming capacity from flooding and Sybil capture without a global User identity? | Resource-by-resource attack economics and admission controls, including accessibility and unlinkability costs. Publisher connection admission must meet P3-D5a and P3-D5b; any mandatory honest-client check is capped at one logical-core CPU-second, `64 MiB`, and `1 MiB` without money, account, IP or source reputation, stable identity, or cross-context linking. P3-D5c additionally fixes that an indistinguishable admitted Sybil can occupy finite capacity: the network must isolate established work and return explicit capacity by `15 s`, but does not promise per-person fairness or a free slot. The concrete anonymous mechanism remains open and cannot erase that non-claim by assumption. | open |
-| R-011 | How does an endpoint estimate and avoid correlated control by operator, network, family, software supply chain, and jurisdiction without collecting a new User graph? | Selection inputs, uncertainty model, privacy-preserving measurements, and failure thresholds that reduce P2-D4 exposure and test actual Route Knowledge Separation rather than counting different Node IDs. | open |
-| R-012 | What happens when naming, bootstrap, protocol releases, or emergency governance is captured, partitioned, or unavailable? | A Control Plane power map with quorum, transparency, expiry, recovery, and fork behavior for each root. It must preserve the P1-D7 invariant that no Endpoint Owner, sponsor, or operator is mandatory network-wide. | open |
-| R-020 | Why will independent contributors provide and maintain useful network roles, and which incentive or public-goods models remain viable without making a token or one sponsor a security root? | A contributor journey, cost/capacity model, abuse incentives, concentration risks, and staged sustainability options that the current one-to-one project can actually operate. | open |
+| [R-009](records/r-009-hostile-bootstrap-and-bridge-entry.md) | How does a fresh or blocked endpoint obtain enough authenticated network state and replaceable entry paths without one permanently necessary bootstrap address or trust root? | **Decided:** accept a threshold-authenticated expiring Network Epoch whose identical bytes may arrive through package, cache, mirrors, peers, or files, plus Bridge Invites bound to exactly one Initiator/Responder/Introduction adjacent Role Domain. Authorization and distribution are separate; exact components remain R-013. | decided |
+| [R-010](records/r-024-operational-product-closure.md#security) | Which local, anonymous, and bounded costs protect connection, discovery, rendezvous, and naming capacity from flooding and Sybil capture without a global User identity? | **Decided product boundary:** resource-specific staged admission uses cheap stateless validation before expensive bounded state and may add scoped short-lived capabilities or bounded puzzles under load. No money, account, IP reputation, stable identity, personhood, or fairness claim. Exact mechanisms remain experiments. | decided |
+| [R-011](records/r-024-operational-product-closure.md#security) | How does an endpoint estimate and avoid correlated control by operator, network, family, software supply chain, and jurisdiction without collecting a new User graph? | **Decided product boundary:** endpoints select locally from proven Candidate Materializations under one logical complete authenticated View; independent full auditors verify transparent inclusion and global summaries. Identity, Role Domain, and known family are hard constraints, while network/provider/jurisdiction/supply-chain evidence drives uncertainty and concentration gates without uploaded User route history. | decided |
+| [R-012](records/r-024-operational-product-closure.md#security) | What happens when naming, bootstrap, protocol releases, or emergency governance is captured, partitioned, or unavailable? | **Decided product boundary:** separate threshold roots, expiring delegation, transparency, rollback watermarks, delayed rotation, narrow emergency power, and explicit forks. Project-only keys define a centralized test network, not public decentralization. | decided |
+| [R-020](records/r-024-operational-product-closure.md#public-launch-gates) | Why will independent contributors provide and maintain useful network roles, and which incentive or public-goods models remain viable without making a token or one sponsor a security root? | **Decided for V1:** opt-in volunteer or institution-funded contribution, no token or payment system. Beta needs at least three effective families and stable five in every domain/subrole **after** the profile's maximum local exclusion union, plus capacity reserve. Route-family floors are `Σ_d(3+x_d)`/`Σ_d(5+x_d)`. Each mandatory pre-Route artifact class separately needs three/five authenticated source-only families under the same concentration cap; the same families may cover classes and count once. Thus `15`/`25`, not `12`/`20`, are the all-zero-exclusion theoretical infrastructure floors, and actual capacity may demand more. Insufficient supply blocks launch rather than weakening the Route. | decided |
 
 ## Optional network extensions — require a concrete product need
 
 | ID | Exact question | Decision and required result | State |
 |---|---|---|---|
-| R-005 | Does Ardents need a second, delayed or cover-traffic-heavy Route Profile for a named Application job, and can it provide a measurable advantage over the Interactive Route at an acceptable cost? | A real operation, stronger observer or collusion claim, latency/bandwidth/multipath/cover budget, and comparison. Any accepted profile reuses the Application Interface and Service Connection contract through the P5-D1 Route Module Seam, fails rather than downgrades, and earns separate Route Qualification. `No second profile` is an acceptable answer. | open |
-| R-021 | Do multiple distinct Applications require the same retained-delivery or replicated-content semantics strongly enough to justify a standard Overlay Service? | At least two complete Application journeys, retention/deletion/abuse metadata analysis, failure model, and proof that a live connection plus application storage is insufficient. | open |
-| R-022 | Is any shared application identity, Credential, Contact, Space, or Capability model required at the network boundary rather than inside Applications? | Cross-application interoperability need, linkability analysis, recovery model, and a minimal boundary. `Application-owned identity only` is the default answer. | open |
+| [R-005](records/r-024-operational-product-closure.md#performance) | Does Ardents need a second, delayed or cover-traffic-heavy Route Profile for a named Application job, and can it provide a measurable advantage over the Interactive Route at an acceptable cost? | **Rejected for V1:** no named Application job justifies it. Keep the Route Module seam; any future profile requires a new product case, budget, adversary claim, and independent Qualification. | rejected |
+| [R-021](records/r-024-operational-product-closure.md#disposition-of-the-research-queue) | Do multiple distinct Applications require the same retained-delivery or replicated-content semantics strongly enough to justify a standard Overlay Service? | **Rejected for V1:** no retained delivery, replicated content, or implicit storage enters the carrier. A future Overlay needs two complete journeys and its own retention, deletion, abuse, and metadata contract. | rejected |
+| [R-022](records/r-024-operational-product-closure.md#disposition-of-the-research-queue) | Is any shared application identity, Credential, Contact, Space, or Capability model required at the network boundary rather than inside Applications? | **Decided:** Application-owned identity only. Ardents adds no network User identity, Contact, Space, global Persona, or cross-Application credential model. | decided |
 
 ## Technology — begins after the relevant contracts stabilize
 
@@ -133,7 +202,7 @@ boundaries with named evidence.
 |---|---|---|---|
 | R-013 | Which maintained protocols and implementations fit each accepted addressing, Carrier Channel, routing, discovery, naming, and bootstrap contract? | Build/adopt map using specifications, security reviews, maintenance, license, interoperability, replacement cost, and misuse analysis. Carrier candidates are judged as part of a complete stack against the same logical Service Connection recovery contract rather than inheriting product semantics from HTTP, WSS, TCP, UDP, QUIC, or another mechanism. | open |
 | R-014 | Which implementation language and runtime best fit the same accepted tracer, audited dependencies, memory safety, async networking, reproducible builds, target platforms, and the one-to-one project's capacity? | Comparable bounded prototypes and release/dependency evidence. It is not a Go-versus-Rust preference vote. | open |
-| R-015 | What protocol-description, versioning, negotiation, and conformance strategy permits independent implementations without freezing immature semantics or enabling downgrade? | Evolution scenarios, conformance/fuzz prototype, canonicalization rules, and compatibility/deprecation contract. | open |
+| R-015 | What protocol-description, versioning, negotiation, and conformance strategy permits independent implementations without freezing immature semantics or enabling downgrade? | **Product behavior fixed:** authenticated capability and exact Route Profile binding; protocol `announced → overlap-supported → preferred → required → retired`, separately build `current/superseded → vulnerable → revoked`; at least `90 days` ordinary protocol overlap except scoped expiring emergency; finite no-new-work/terminal Work Safety deadlines; highest mutually supported qualified selection and explicit `update required`. Encoding, canonicalization, conformance, and fuzz tooling remain open. | open |
 
 ## Product validation — runs beside technical research
 
@@ -145,21 +214,30 @@ boundaries with named evidence.
 
 ## Decision order
 
-R-006 selected the portable-authority lifecycle, R-002 fixed the live
-Application Interface, and R-001 closed the Interactive Route claim and its
-qualification gate. The remaining dependency path is intentionally short:
+R-024 closed the operational product model after R-006, R-002, R-001, R-003,
+R-004, and R-009 fixed their respective boundaries. The remaining dependency
+path contains evidence and technology work rather than unanswered product
+behavior:
 
-1. **R-023 — performance budget:** the pre-architecture performance and
-   qualification contract is fixed; role-specific Node capacity resumes only
-   after R-004 supplies a candidate Route and units of work.
-2. **R-003 — Service Name:** the product contract is fixed; compare candidate
-   mechanisms only against P4-D1 through P4-D6.
-3. **R-004 and R-009 — routing and hostile bootstrap:** compare mechanisms only
-   against the accepted contracts.
-4. **R-007 and R-008 — failure and local isolation:** close the minimum tracer
-   safety boundary.
+1. **R-013 and R-014 — bounded components and language prototypes:** compare
+   maintained foundations and languages against the already fixed R-001/R-023
+   budgets; these prototypes define measurable units for each Route and control
+   role without claiming Qualification.
+2. **Architecture selection:** record the chosen replaceable component seams,
+   runtime, cryptographic construction, update/storage foundations, and rejected
+   alternatives in ADRs only after prototype evidence.
+3. **R-015 — protocol realization:** choose encoding, canonicalization,
+   negotiation, conformance, and fuzz strategy for the accepted evolution and
+   Work Safety behavior.
+4. **Integrated candidate and R-001/R-023 Qualification:** build the selected
+   complete tracer/network candidate, add role-specific units, then execute the
+   complete conjunctive matrix. A prototype cannot earn the claim piecemeal.
+5. **Service Name mechanism, in parallel:** compare registry, ordering, Private Resolution,
+   Anonymous Cost, and convergence mechanisms against P4-D1 through P4-D6;
+   Target Links keep carrier work independent of this gate.
 
-R-010 through R-012 and R-020 run before any public deployment claim. Optional
-extensions R-005, R-021, and R-022 do not block the live network tracer. R-013
-then maps existing components, and R-014 compares languages using the same
-contract. No production stack is selected earlier.
+R-010 through R-012 and R-020 have product answers, but their mechanisms and
+real independent participants remain public-launch gates. R-005, R-021, and
+network-owned R-022 identity are out of V1. R-016 and R-018 remain external
+evidence gates that the one-to-one team cannot honestly close alone. No
+production stack is selected before the bounded comparisons.

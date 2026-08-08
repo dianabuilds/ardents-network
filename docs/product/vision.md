@@ -1,8 +1,11 @@
 # Product vision
 
-Status: **proposed network product contract**
+Status: **accepted network product contract; implementation unqualified**
 
-Last reviewed: 2026-08-07
+Last reviewed: 2026-08-08
+
+The complete installation, readiness, operation, update, and withdrawal contract
+is defined in [the product operating model](operating-model.md).
 
 ## Vision
 
@@ -23,15 +26,18 @@ route and protect their connections.
   Service is access-controlled.
 - **Anonymous** is never a blanket claim. The Interactive Route aims to hide the
   User's ordinary location from the Service, the Service Instance's ordinary
-  location from the User, and prevent any one ordinary Node from linking an
-  endpoint location to a Service Name, Service Target, or opposite endpoint. It
-  does not promise resistance to timing-and-volume correlation by a Broad
-  Traffic Observer or hide identity disclosed by Application Data and behavior.
+  location from the User, and prevent one ordinary Node acting only from its
+  role-local view from directly receiving an endpoint-origin-to-Name/Target
+  binding. It does not resist timing/volume confirmation by a Node that also
+  controls an endpoint/probe source, a Broad Traffic Observer, or identity
+  disclosed by Application Data and behavior.
   An implementation may present this claim only after Route Qualification;
   Ardents research or an unqualified candidate is not an anonymous network.
 - **Decentralized** means ordinary reachability and routing do not require one
   hosting or relay operator. Naming, bootstrap, releases, and emergency powers
-  remain explicit Control Plane risks until their own designs are accepted.
+  remain explicit Control Plane risks; their product boundaries are accepted,
+  but public decentralization is not claimed until independent operators,
+  custodians, auditors, and builders actually satisfy the launch gates.
 
 ## Security and performance
 
@@ -64,9 +70,12 @@ The following product choices already constrain research:
    Service addresses, or an application-level `from ID` / `to ID` model.
 6. Censorship, probing, Sybil participation, malicious infrastructure, seizure,
    traffic analysis, and governance capture are normal operating conditions.
-7. V1 supports one active Service Instance per Service Target. Routine migration
-   preserves the target through an encrypted Service Authority export/import;
-   loss or compromise replaces the target through the stable Service Name.
+7. V1 supports one active Service Instance generation per Service Target. Each
+   host generates a private Instance Key; the durable Service Authority may
+   remain offline and authorizes its public key with a bounded public Instance
+   Credential. Routine migration generates a new key and advances the Instance
+   generation without exporting an old runtime secret; Service Authority loss or
+   compromise replaces the target through the stable Service Name.
 8. Endpoint Location Privacy is distinct from Application anonymity. Ardents
    does not inspect, sanitize, or promise to unlink credentials, content,
    fingerprints, timing, or behavior visible to an intended endpoint.
@@ -93,9 +102,13 @@ The core product must let a local Application:
   to the target without making that authority part of ordinary publication;
 - share that destination as an explicit `ardents://` Service Link without
   publishing or querying an ordinary DNS name;
+- share a machine-verifiable Target Link and connect without naming when the
+  canonical Namespace is unavailable or intentionally unused, without silently
+  converting a failed Name into a Target destination;
 - resolve an exact Service Name in one canonical network-wide Namespace without
   a public directory or resolver-selected alternate meaning, while preventing
-  any one ordinary Node from linking User location to the queried name;
+  any one ordinary Node acting only from its permitted role-local view from
+  linking User location to the queried name;
 - perform naming operations under bounded Anonymous Cost and local admission,
   inspect the governing rule version and incompatible fork state, and distinguish
   an explicit local filter from a change to the canonical Name Record;
@@ -105,6 +118,10 @@ The core product must let a local Application:
 - keep unrelated application contexts from being linked by accidental route
   reuse;
 - recover an entry path when ordinary bootstrap or transport is blocked.
+
+Those functions have independent Capability Readiness. A running process is not
+`ready` merely because its local socket exists, and unavailable naming cannot be
+hidden inside an otherwise working Target connection.
 
 The same V1 endpoint platforms must support publishing an ordinary local
 Application. Ubuntu LTS is the sole Linux qualification baseline; other Linux
@@ -170,9 +187,10 @@ These are responsibility boundaries, not selected binaries or APIs:
    canonical state, and an incompatible fork is explicit rather than silent.
 7. The User and Service do not learn each other's ordinary network location
    within the declared Interactive Route conditions.
-8. Route Knowledge Separation prevents any one ordinary Node from learning the
-   full Route, reading Application Data, or linking an endpoint's ordinary
-   location to a Service Name, Service Target, or opposite endpoint. An
+8. Route Knowledge Separation prevents one ordinary Node's role-local view from
+   receiving the full Route, Application Data, or a direct binding between an
+   endpoint's ordinary location and a Service Name, Service Target, or opposite
+   endpoint. An
    Introduction role may independently know a public Service Name or Target
    available to any User, but receives neither endpoint origin and must not turn
    that knowledge into a Target-to-origin link.
@@ -188,10 +206,12 @@ These are responsibility boundaries, not selected binaries or APIs:
     the protocol. Ardents does not promise to hide its own use, but avoids one
     mandatory stable fingerprint and treats Transport Camouflage as a measurable
     censorship-resistance goal.
-14. The Interactive Route anonymity claim covers one malicious ordinary Node,
-    not arbitrary collusion. Correlated Control spanning both endpoint sides may
-    link a User and Service through traffic metadata without exposing
-    Application Data.
+14. The one-Node claim covers only a malicious ordinary Node's carrier role-local
+    view. A Node that also controls/observes an endpoint or active probe source
+    or combines a direct-origin observation may confirm a known Target through
+    distinctive low-latency timing/volume;
+    arbitrary Correlated Control may do the same. Both are explicit non-claims
+    and do not imply Application Data decryption.
 15. A malicious Service receives no User origin, Route, Isolation Context, or
     network-generated stable User identifier from Ardents, while a malicious
     User receives no Service Instance origin, Route, or Service Authority. Each
@@ -199,10 +219,16 @@ These are responsibility boundaries, not selected binaries or APIs:
 16. Target authentication, Route Profile binding, protocol freshness, and
     integrity fail closed. Detected modification, injection, replay, redirect,
     or downgrade never becomes an accepted connection or Application Data.
+    Fresh authenticated ephemeral session/leg keys provide Forward Secrecy for
+    honestly completed connections against later Service/Node long-term-key
+    compromise; live endpoint compromise and memory/snapshot remnants remain
+    explicit limits.
 17. The Interactive Route claim is implementation-gated. Reproducible
-    endpoint-edge, Node-role, malicious-endpoint, isolation, and active-attack
-    tests must pass before a candidate earns Route Qualification; the claim's
-    conditions and excluded adversaries remain visible to Users and Developers.
+    endpoint-edge, Node-role, malicious-endpoint, Application Principal,
+    Application-network isolation, Direct-Origin Source, Role Domain transition,
+    and active-attack tests must pass before a candidate earns Route
+    Qualification; the claim's conditions and excluded adversaries remain
+    visible to Users and Developers.
 18. The Application Interface and logical Service Connection remain stable when
     Ardents strengthens routing. A versioned Route Profile may replace route
     shape, introduction, rendezvous, multipath, padding, mixing, cover traffic,
@@ -218,21 +244,72 @@ These are responsibility boundaries, not selected binaries or APIs:
     lets the Service attach its own data leg; it carries no Application Data and
     creates no offline-delivery promise.
 21. Each endpoint selects its own leg using a small long-lived Entry Set and a
-    small medium-lived Interior Set. Entry is not rotated after one failure; a
-    fresh User-selected Rendezvous is scoped to one new Service Connection, and
-    Introduction roles rotate gradually with overlap. These sets never share
-    routing state across Isolation Contexts.
+    small medium-lived Interior Set. V1 has ordinary and Bridge regimes and at
+    most one Entry Set for each activated adjacent Role Domain and regime per
+    installation: Initiator for client traffic, Responder for publication data,
+    and Introduction for prepared introduction paths. Co-resident roles retain
+    separate domain sets; Applications, Services, contexts, destinations,
+    generations, and Bridge Invites cannot force unlimited Entry sampling. Every
+    Bridge key is eligible for one adjacent domain only. Contexts share no
+    channel, key, Interior, Route, session, target, query, or recovery state.
+    Entry is not rotated after one failure; a fresh User-selected Rendezvous is
+    scoped to one new Service Connection, and Introduction roles rotate gradually
+    with overlap.
+22. Initiator, Rendezvous, Responder, and Introduction Node identities occupy
+    disjoint stable Role Domains. This makes the five-distinct-position rule
+    enforceable across independently hidden endpoint legs without turning
+    Service rejection into an Entry-discovery oracle. Name, Target, and
+    descriptor lookup/publication uses a Destination Resolution role restricted
+    to the non-adjacent Rendezvous Domain; identities/families used for one exact
+    destination/context are excluded from that connection's Rendezvous. This
+    keeps four capacity domains while preventing one valid identity/family from
+    combining endpoint Entry and destination-aware lookup.
+    Assignment is finite: duty must fit before `not-after`; reassignment stops
+    new work, drains and quarantines the old identity/family, and only then
+    permits another domain. Emergency closes rather than overlaps duty.
+23. Network state authority is separate from distribution. An endpoint accepts
+    one expiring threshold-authenticated Network Epoch, reports conflicting or
+    stale state explicitly, and selects its own Route from deterministic
+    Candidate Materializations under the common logical Candidate View. The
+    epoch commits its canonical length, input-log cutoff/root, and global
+    summaries. Shards or proofs bound client cost without pretending that one
+    partial client proves global completeness; independent full auditors check
+    inclusion, summaries, and concentration.
+24. Official updates use separated threshold release roles, `3-of-5`
+    authorization of every new public executable digest, authenticated version
+    and rollback state, staged atomic replacement, separate protocol and build
+    safety state machines, explicit protocol overlap, and no silent downgrade or
+    privacy fallback. One-to-one project keys define only an unqualified
+    provisional network.
+25. A globally advertised Direct-Origin Source is never Route- or Resolution-
+    eligible in the same assignment. An ordinary candidate contacted directly
+    enters the bounded installation-wide Direct Source Exposure Set until all
+    derived work expires. Public beta/stable requires three/five effective
+    authenticated source-only families in addition to effective post-exclusion
+    Route-domain supply.
+26. Connection, per-Service administration, and Authority Custody are separate
+    Local Grants bound to an OS-enforced or launcher-brokered Application
+    Principal. A claim-bearing private Application additionally has a Network-
+    Isolated Application Boundary; generic adapters protect only traffic they
+    actually submit to Ardents.
+27. V1 has one active Service Instance. Host loss makes the Service unavailable
+    until Owner-driven migration or Target replacement; automatic origin-loss
+    survival would require a separately designed multi-instance Overlay.
 
 P5-D3 fixes that five-position information-flow shape because three positions
 give the Rendezvous the complete carrier sequence and four positions make the
-endpoint legs asymmetric. It does not select Tor, onion routing, a library,
-cryptography, or a wire protocol. R-004 must find the least costly viable
-mechanism, preferring maintained components unless evidence justifies custom
-work, and R-023 must bound its performance cost.
+endpoint legs asymmetric. R-004 selects the Tor-shaped split-circuit family with
+a separate Introduction Path, disjoint Role Domains, local Candidate View
+selection, and endpoint-only continuity. This does not select Tor naming, onion
+routing code, a library, cryptography, or a wire protocol. R-013 must find the
+least costly viable implementation, preferring maintained components unless
+evidence justifies custom work, and R-023 must qualify its performance cost.
 
 Route selection must reduce exposure to Correlated Control across operator,
 network, software supply chain, and jurisdiction, but different Node IDs are not
-proof of independence. R-011 must make that uncertainty measurable.
+proof of independence. The operating model fixes effective post-exclusion
+concentration gates; R-013 must make their evidence and capacity calculation
+implementable.
 
 A malicious Node can always delay, drop, or block traffic. Ardents performs only
 bounded safe route recovery and otherwise returns the narrowest supported
@@ -251,12 +328,16 @@ version, and its own Qualification Evidence Bundle.
 The first Reference Application proves the network chain without defining a
 general application platform:
 
-1. A Developer runs an ordinary local HTTP service.
-2. Ardents creates a Service Target, maps incoming connections to that local
-   service, and publishes reachability without an ordinary public origin.
+1. A Developer runs a deterministic local HTTP service whose complete process
+   tree is Network-Isolated: only scoped local Ardents IPC/loopback is allowed;
+   ordinary listeners, DNS, callbacks, and direct network egress are denied.
+2. Ardents creates a Service Target; the host generates a private Instance Key
+   and receives a bounded public Instance Credential for that key. Ardents maps
+   incoming connections to the local service and publishes reachability without
+   an ordinary public origin.
 3. The Developer binds a recoverable Service Name to the target.
 4. A User who already knows the exact name enters it in a small reference
-   client. The name resolves and an Interactive Route with current Route
+   client inside the same Network-Isolated boundary. The name resolves and an Interactive Route with current Route
    Qualification reaches the Service; a simulated or unqualified route is
    labeled as such.
 5. HTTP bytes cross a generic Service Connection; the network does not interpret
@@ -270,6 +351,10 @@ runtime, offline storage, a built-in Inbox, or a permanent decentralized hosting
 layer. Those are separate product hypotheses, not hidden assumptions inside the
 network.
 
+The same tracer must also open the exact Target Link. That path is not a weaker
+Route: it removes only the optional naming operation and prevents an unfinished
+global Namespace from blocking carrier, publication, and recovery research.
+
 ## Build versus adopt
 
 Ardents should build only the network contracts and integrations that make its
@@ -279,8 +364,10 @@ protocol machinery when their threat and maintenance models fit.
 
 No dependency is accepted because it is familiar, already present in `old`, or
 popular. No component is rejected merely because it was not written here. The
-production language, routing family, wire protocol, and library set remain open
-until the product, security, and performance contracts can compare them fairly.
+route family is fixed, while the production language, concrete Route
+Implementation, wire protocol, cryptography, and library set remain open until
+bounded prototypes compare them against the product, security, and performance
+contracts.
 
 ## Explicit non-goals for the network core
 

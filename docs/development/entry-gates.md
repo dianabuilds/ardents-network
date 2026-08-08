@@ -21,22 +21,32 @@ does not select the production stack.
 ## Gate B — start the Named Unlisted Site tracer
 
 The Reference Application may gain a shared codebase only after review of the
-minimum relevant contracts:
+accepted product contract, not merely one transport API:
 
 - accepted R-006 Service Target lifecycle;
 - R-002 live Application Interface;
 - accepted R-001 Interactive Route adversary, claim matrix, and Route
   Qualification gate;
 - R-003 Service Name and recovery boundary;
-- R-004 minimum Interactive Route evidence;
-- R-007 connection and Service failure behavior;
-- R-009 minimum authenticated bootstrap path;
+- R-004 selected split-circuit Route family, Role Domains, Candidate View, and
+  endpoint-only continuity boundary;
+- R-007 positive-evidence failure behavior and no Application-operation replay;
+- R-009 threshold-authenticated Network Epoch and replaceable Bridge entry;
 - R-017 accepted Reference Application scope.
+- R-024 installation, capability readiness, Time Confidence, diagnostics,
+  update, privacy, and public-launch closure;
+- J00 installation, J01 capability-specific start/join, J02/J03 connect and
+  publish, and J08 update/drain journeys.
 
-The tracer must use an ordinary local HTTP service over the generic Application
-Interface. A browser adapter or simulated route may be part of the tracer, but
-must be visibly marked. Replicated Site Bundles, offline delivery, and an
-Ardents application runtime are not silently added to this gate.
+The tracer uses a deterministic HTTP Service whose only listener is scoped local
+IPC/loopback and a controlled single-response client over the generic
+Application Interface. Both complete Application/helper process trees run inside
+qualified Network-Isolated Application Boundaries. It must support an explicit Target Link before depending
+on a stable human Namespace; name-based operation remains visibly experimental
+until its separate feasibility gate passes. A generic browser adapter or
+simulated route may be included only with a visible unverified-networking/no-
+Application-level-privacy mark. Replicated Site Bundles, offline delivery, and
+an Ardents application runtime are not silently added to this gate.
 
 ## Gate C — select production language and foundations
 
@@ -75,6 +85,30 @@ explicit non-claims, not hidden qualification successes or failures. Their
 limits must remain visible. Before Route Qualification, neither the release nor
 the project may present that implementation publicly as an anonymous network.
 
+The role-local one-Node claim likewise excludes a Node adversary that also
+controls/observes an endpoint or active probe source. The evidence bundle still
+runs at least `100` blinded balanced positive/negative confirmation episodes in
+each endpoint direction under a precommitted probe schedule and classifier and
+publishes its confusion matrix, accuracy, and false-positive rate. Expected
+correlation has no anonymity pass threshold; a direct forbidden carrier field or
+wording that includes the combined adversary fails the claim review.
+
+Qualification attempts external connection/scan of every endpoint Application
+listener plus ordinary DNS, external fetch, callback/SSRF,
+WebSocket/WebRTC, QUIC, and direct socket egress from both endpoint Application
+process trees. A claim-bearing profile fails on any ordinary listener, escape, or transparent
+clearnet fallback; a generic adapter may pass only the narrower carrier claim
+with its limitation visible. Direct-origin source identity/family conflicts,
+finite source exhaustion, retained Entry-set collisions across restart, and Role
+Domain assignment expiry/reassignment are adversarial cells: no contact may
+overlap retained/prepared/live forbidden state, no duty may outlive assignment,
+and emergency may close work but never create cross-domain eligibility.
+The platform also runs a same-desktop-user hostile sibling that attempts local
+interface attachment, bearer theft/replay, PID reuse, process/Endpoint restart,
+and another Application's Service/Context/diagnostics/authority. Failure narrows
+the supported model to broker-launched or OS-isolated Applications; it cannot be
+waived as a loopback implementation detail.
+
 Route Qualification is one conjunctive verdict across every mandatory platform,
 endpoint-side, direction, and scenario cell. Results are not averaged across
 cells. Each cell must meet all applicable metrics together, and one valid
@@ -96,9 +130,18 @@ authentication, isolation, resource controls, and fail-closed behavior.
 ## Gate E — call a network release usable
 
 A release is usable only when complete journeys, not isolated primitives, pass
-on supported platforms. For the first tracer this includes start/join, publish,
-name, resolve, connect, exchange, close/fail, accepted rotation, alternate-path
-recovery, and blocked-entry behavior.
+on supported platforms. For the first tracer this includes unprivileged install
+and repair, capability-specific start/join, Target Link connect, publish, name
+and private resolve where claimed, exchange, close/fail, bounded Instance
+Key/Credential rotation, connection/Work Safety expiry, Local Grant revocation,
+alternate-path recovery, blocked entry, grant-scoped diagnostics, finite resource
+exhaustion, private/direct/offline update modes, update/drain, safe rollback, and
+Authority Recovery Bundle locked restore/export. It also includes finite direct-
+source sequencing and post-exclusion readiness, non-overlapping Role Domain
+reassignment, and blocked ordinary ingress/egress at both controlled tracer
+Applications, plus same-user hostile-sibling Application Principal isolation.
+One generic `network ready` flag cannot substitute for separate Target Connect,
+Private Name Resolution, Publish, and Contribute readiness results.
 
 For V1, those endpoint journeys must pass on frozen, fully patched Windows 11
 and Ubuntu LTS `x86-64` desktop/laptop reference images. Both endpoint roles use
@@ -203,9 +246,10 @@ Every startup, connection, and site-tracer attempt declares and verifies its
 state class before the applicable timer. Clean first start has only the installed
 candidate, frozen immutable inputs, trust roots, and bootstrap manifest, with no
 state generated by a prior execution. Routine restart may retain valid
-authenticated persistent state but no live process or connection. Cold request
-modes begin network-ready with no state for their exact Service Name, Service
-Target, Isolation Context, and Route Profile. Warm modes
+authenticated persistent state but no live process or connection. Cold
+connection modes begin Target Connect Ready; cold name-based tracer modes also
+begin Private Name Resolution Ready. Neither has state for its exact Service
+Name, Service Target, Isolation Context, and Route Profile. Warm modes
 may retain current authenticated naming, reachability, and reusable Route state
 for that same tuple, but no open Service Connection or Application/HTTP response
 cache.
@@ -254,6 +298,72 @@ network.
 An offline Service must be reported as unavailable. The release must not imply
 that Application Data was retained, delivered, or semantically completed unless
 a separate accepted Overlay contract provides and verifies that behavior.
+
+## Gate F — make a public network claim
+
+A locally usable build is not yet a decentralized public network. Public beta
+requires all of the following at the same time:
+
+- one exact build and configuration has passed the complete R-001/R-023 Route
+  Qualification matrix without a security or performance exception;
+- five real independent Control Plane custodians operate the accepted `3-of-5`
+  baseline and `4-of-5` expiring emergency thresholds; project-only keys are
+  visibly limited to a centralized test network;
+- at least two full Candidate View auditors, independent from each other, the
+  epoch signer threshold, and audited Candidate operator families, publish
+  retained input-inclusion, canonical-view, global-summary, concentration, and
+  control-independence evidence;
+- every Role Domain and required subrole, including Destination Resolution, has
+  an effective post-exclusion pool of at least three independent eligible
+  operator families, no family supplies more than `40%`, and workload reserve
+  remains after the profile's maximum union of own-family, Direct Source
+  Exposure, exact resolver-family, drain/quarantine, and other mandatory local
+  exclusions. Four domains give only a theoretical pre-exclusion beta floor of
+  `12`; with maximum distinct exclusion union `x_d` in domain `d`, the actual
+  route-family floor is at least `Σ_d(3 + x_d)` and may be higher for capacity.
+  every mandatory pre-Route artifact class additionally has at least three
+  effective authenticated source-only families with the `40%` cap. The same
+  three may cover several classes and count once; external/CDN/file sources
+  without authenticated family evidence do not count. Thus all-zero-exclusion
+  theoretical infrastructure supply starts at `15`, and every `x_d` is fixed
+  before qualification;
+- supported packages are reproducible, retain source/dependency inputs and an
+  SBOM, and have at least two matching build attestations from builders
+  independent of each other and of the release-Targets threshold;
+- every capability called usable has a platform startup/resource budget, and a
+  protocol cannot become required until every Role Domain and required
+  control/discovery role has qualified independent capacity plus drain reserve;
+- hostile bootstrap, Direct Source collision/exhaustion, Candidate omission/
+  materialization withholding, clock, rollback, update, fork, Role Domain
+  reassignment, drain, connection/Work Safety expiry, Local Grant revocation,
+  Authority Recovery Bundle, Application Principal hostile-sibling isolation,
+  endpoint-Application network isolation, anonymous admission/
+  cost-to-deny, and effective post-exclusion concentration drills pass and retain
+  evidence;
+- an external usability review and an independent security review cover the
+  claims presented to Users and operators.
+
+Human Service Names are called stable only after the selected mechanism passes
+its convergence, front-running, Private Resolution, accessible-cost, and
+non-administrative governance gates. Until then, Target Links remain the complete
+authenticated destination path and names remain experimental.
+
+A stable decentralization claim additionally requires at least five effective
+post-exclusion independent operator families in every Role Domain and required
+subrole, no family above `25%`, and workload reserve. `20` is only the theoretical
+pre-exclusion four-domain floor; the actual route-family floor is at least
+`Σ_d(5 + x_d)`. Each mandatory pre-Route artifact class also has five effective
+authenticated source-only families under the `25%` cap; the same five may cover
+several classes and count once. The all-zero-exclusion theoretical infrastructure
+floor is therefore `25`, and capacity may require more. These thresholds do not
+prove hidden independence; evidence of common control is counted as one family,
+and uncertainty remains public.
+
+If contributor capacity, custodians, attestations, or external review do not
+exist, launch remains an explicitly centralized or unqualified test network.
+The project does not compensate by shortening Routes, relaxing admission,
+inventing operator independence, or adding a token without a new product
+decision.
 
 ## Repository promotion
 

@@ -24,8 +24,8 @@ language.
 
 - [Product vision](../../product/vision.md)
 - [Functional map](../../product/functional-map.md)
-- [J-02: open a private site](../../product/journeys.md#j-02--open-a-private-site)
-- [J-03: publish a site or client application](../../product/journeys.md#j-03--publish-a-site-or-client-application)
+- [J-02: open an Unlisted Service](../../product/journeys.md#j-02--open-an-unlisted-service)
+- [J-03: publish a local Service](../../product/journeys.md#j-03--publish-a-local-service)
 - [Threat model](../../security/threat-model.md)
 - [ADR-0001](../../adr/0001-public-carrier-private-services.md)
 
@@ -301,7 +301,9 @@ outstanding initial request per single-use Invite, seven-day simulated
 retention, polling rather than third-party push, and the existing one-Replica /
 one-relay failure case. These are deliberately provisional experiment budgets,
 not V1 protocol decisions. A separate prototype variant may show a public Inbox
-with quarantine, but open Sybil-resistant admission remains R-010.
+with quarantine, but any future admission mechanism must follow the
+resource-specific anonymous boundary fixed by R-010/R-024 and earn separate
+evidence.
 
 ### Evaluated H1 safety envelope — not a product commitment
 
@@ -438,8 +440,9 @@ This fixes only the product discovery boundary:
 - a Service may later add a separate capability gate;
 - access to any application-defined data operation is separate from knowing the
   Service Name and requires its own accepted Capability contract;
-- private resolution, resistance to namespace enumeration, registration, and
-  recovery remain R-003 research rather than assumed properties.
+- later R-003 decisions require Private Name and Reachability Resolution even
+  for Target Links and fix registration/recovery semantics; their concrete
+  mechanisms remain unselected and unqualified.
 
 The canonical term is **Unlisted Service**. The shared glossary and product
 journey were updated. No ADR is warranted: this is an explicit, reversible
@@ -495,8 +498,14 @@ its security model, but it is not invented as a current resource.
 
 The later network functional-map review narrows what R-017 actually selected.
 **Named Unlisted Site is a Reference Application, not a storage or application
-runtime architecture.** Its baseline form is an ordinary local HTTP service
-exposed through a generic live Service Connection.
+runtime architecture.** Its baseline form is a deterministic local HTTP service
+and controlled client exposed through the generic live Service Connection. For
+the Application-level endpoint-location claim, both complete process trees run
+inside the Network-Isolated Application Boundary: scoped local IPC/loopback to
+Ardents is permitted, ordinary listeners/ingress plus DNS and direct socket/
+fetch/WebRTC/QUIC/callback egress are denied, and origin/storage is separated by
+Isolation Context. A generic HTTP/SOCKS/stream adapter remains supported for
+compatibility but receives only the narrower carrier-traffic claim.
 
 The earlier Site Bundle, Replica, permission, and sandbox assumptions in this
 record are retained as historical evaluated hypotheses. They are not accepted

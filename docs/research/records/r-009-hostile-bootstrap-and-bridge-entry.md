@@ -1,7 +1,7 @@
 ---
 id: R-009
 title: How does a fresh or blocked endpoint join without one bootstrap owner?
-status: active
+status: decided
 owner: product research
 started: 2026-08-08
 reviewed: 2026-08-08
@@ -209,12 +209,47 @@ Best fit for Ardents. It combines Tor-like authenticated epochs with I2P-like
 multi-channel and file reseeding while keeping state authority separate from
 distribution.
 
+### Direct-origin distribution boundary
+
+**Architecture closure decision, accepted 2026-08-08:** every source contacted
+before a private Route exists is a Direct-Origin Source and may learn requester
+origin, requested public artifact, timing, and probable Ardents use. Distribution
+diversity does not erase that observation.
+
+A globally advertised source identity and known operator family are source-only:
+they are ineligible for every Route position and Destination Resolution during
+the same finite Role Domain Assignment. If an ordinary carrier identity is
+contacted as a distributor, the Endpoint records its authenticated identity and
+known family in the bounded installation-wide Direct Source Exposure Set and
+excludes them from local Route/Resolution selection until the source exposure
+lease and every derived state/work lifetime have terminated. Creating another
+Application or Isolation Context never resets this set.
+
+Before contact, the Endpoint rejects a candidate already present in retained
+Entry, Interior, Introduction, prepared-role, or live Route/Resolution state. It
+then advances through a finite endpoint-precommitted source sequence. Unexpected
+family collision learned only after authentication, retry exhaustion, or a full
+exposure set returns explicit unavailability unless one bounded Owner-approved
+Entry replacement was already permitted and counted; it never resamples or
+rotates Entry without bound.
+
+For each mandatory pre-Route artifact class (at least Network Epoch/Candidate
+Materialization, independent authenticated time when required, and Release
+Safety state), public beta requires three effective authenticated source-only
+families with no family above `40%`; stable requires five with no family above
+`25%`. The same families may cover several artifact classes but count once
+toward total source supply. External/CDN/file delivery with no authenticated
+family evidence improves availability but does not count as independent.
+
 ## Bridge entry contract for Option C
 
-Ordinary entry and Bridge entry implement the same User-adjacent route role. A
-Bridge changes how the first Carrier Channel is reached and classified; it never
+Ordinary entry and Bridge entry implement the same endpoint-adjacent route role
+inside exactly one Initiator, Responder, or Introduction Role Domain. A Bridge
+changes how the first Carrier Channel is reached and classified; it never
 shortens the Interactive Route, becomes a trusted proxy, or learns the Service
-destination.
+destination. A Service-side Bridge is acquired by that Service endpoint and is
+never advertised to Users in the Service Descriptor. Co-resident client and
+Publisher roles cannot reuse one Bridge key across domains.
 
 A tentative **Bridge Invite** is an authenticated, expiring, narrowly scoped
 package containing only what is needed to reach one or more Bridge transports:
@@ -222,7 +257,9 @@ package containing only what is needed to reach one or more Bridge transports:
 - Bridge Node key and one or more carrier endpoints;
 - supported transport-adapter identifiers and bounded validity;
 - an optional probing-resistant admission capability;
-- the compatible network/epoch boundary;
+- the compatible network/epoch boundary, exactly one adjacent Role Domain, and
+  the Bridge key's epoch-bound eligibility/domain proof or authenticated
+  reference to it;
 - no User account, Service destination, global identity, or route trace.
 
 Invites may be transferred as a file, QR code, copyable text, removable media, or
@@ -230,6 +267,12 @@ through any third-party channel the User already has. Public brokers may exist,
 but none is mandatory or authoritative. A capability must not become a stable
 cross-context User identifier; exact group, blind, reusable, or one-use admission
 semantics remain R-010 mechanism research.
+
+An Invite adds or replaces members only inside the installation's bounded
+Bridge Entry Set for that domain. It does not create a new regime or set. One
+Bridge key is eligible for only one adjacent Role Domain during the assignment
+lifetime; an Invite with missing, stale, conflicting, or cross-domain proof is
+rejected.
 
 The Bridge does not answer an unauthenticated active probe with an Ardents-
 specific success signal when a selected transport can avoid doing so. Transport
@@ -272,38 +315,62 @@ A throwaway R-009 prototype must use synthetic keys and peers and test:
    partition, signer rotation, and missing quorum;
 4. contact with several candidate entries without treating their Node IDs as
    independent operators;
-5. normal `15 s` clean and `5 s` routine readiness gates with complete CPU, RSS,
-   traffic, and failure evidence;
+5. normal `15 s` clean and `5 s` routine **Target Connect Ready** gates with
+   complete CPU, RSS, traffic, and failure evidence, plus separately declared
+   readiness outcomes for other enabled capabilities;
 6. public entry blocking, Bridge Invite import, active Bridge probing, invite
    replay, and transport-adapter replacement;
-7. explicit blocked, degraded, stale, conflicting, and forked results without
+7. Direct-Origin Source restart, retained-state collision, unexpected
+   post-authentication family collision, finite retry/exposure exhaustion, and
+   attempted later Route/Resolution use, including the beta/stable effective
+   source-family gates;
+8. explicit blocked, degraded, stale, conflicting, and forked results without
    direct, weaker-route, DNS-selected, or administrator-selected fallback.
 
 ## Recommendation
 
-Advance **Option C, threshold epoch bundle with independent distribution**, to a
-bounded prototype. Reuse independent signed reseed files from **Option B** as one
-distribution channel, not as source-local truth. Reuse Tor's consensus freshness,
-fallback diversity, Bridge-role separation, and pluggable-transport boundary
-without copying one project-operated authority or bridge-distribution service.
+**Architecture closure decision, accepted 2026-08-08:** select **Option C,
+threshold-authenticated Network Epoch with independent distribution**, as the
+bootstrap architecture. Reuse independent signed reseed files from **Option B**
+as one distribution channel, not as source-local truth. Reuse Tor's consensus
+freshness, fallback diversity, Bridge-role separation, and pluggable-transport
+boundary without copying one project-operated authority or bridge-distribution
+service.
+
+`Network Epoch`, `Node Record`, logical `Candidate View`, `Candidate
+Materialization`, `Time Confidence`, and capability-specific readiness are
+defined in the domain glossary and
+[product operating model](../../product/operating-model.md). The epoch commits a
+transparent publication cutoff/input root, canonical View, and deterministic
+role eligibility/domain inputs but never assigns a User's complete Route. An
+ordinary endpoint verifies only its proven materialization; independent full
+auditors verify global inclusion and summaries. Authorization is separated from
+mirrors, peers, files, package stores, and other byte distributors.
 
 For an early one-to-one deployment, the initial signer set may necessarily be
 provisional and project-controlled. The product must label that centralization
 truthfully, publish its power, and make signer diversification a release gate
 rather than claiming the final decentralized state already exists.
 
-This recommendation is reversible. R-012 still decides the signer, update,
-emergency, capture, and fork power model.
+The concrete signer protocol, encoding, DHT or peer-sampling mechanism, Bridge
+transport, and authenticated-time combination remain implementation research.
+R-012's product power model is closed by the operating-model audit and recorded
+in ADR-0004; exact ceremonies and components remain R-013 work.
 
 ## Disposition
 
-- State: `active`; no Product Owner bootstrap or Bridge mechanism decision has
-  been accepted.
-- Threshold epoch bundles and Bridge Invites are research candidates, not
-  canonical product terms or selected wire formats.
+- State: `decided`; Option C and the Bridge Invite boundary are accepted product
+  architecture. `Network Epoch` is canonical product language, not a selected
+  wire format.
 - Public DNS discovery is neither required nor part of the recommended baseline.
   HTTPS, CDN, chat, email, and app delivery are also unselected and could only
   transport already authenticated bundle bytes, never define network state.
-- No signer set, quorum, DHT, broker, transport adapter, library, language, or
-  production mechanism is selected.
-- No ADR and no production code.
+- Direct download sources are explicitly source-only or locally exposure-
+  excluded from Route/Resolution work. Public beta/stable additionally requires
+  three/five effective authenticated source-only families per mandatory
+  pre-Route artifact class under the `40%`/`25%` caps; unknown external common
+  control remains an honest limitation rather than diversity evidence.
+- The public threshold baseline and separation of Control Plane roots are fixed
+  in the operating model and ADR-0004. Exact signers, DHT, broker, transport
+  adapter, library, language, and production mechanism are not selected.
+- No production code.

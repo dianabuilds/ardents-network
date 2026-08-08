@@ -21,6 +21,25 @@ its Application access. This role has no network-wide authority and is not
 required by any other endpoint.
 _Avoid_: Network administrator, Ardents operator, central approver
 
+**Endpoint**:
+One installed Ardents runtime and protected local-state boundary controlled by
+an Endpoint Owner. It scopes Local Grants, Entry Sets, Capability Readiness,
+resource accounting, and lifecycle state even when several helper processes are
+used. It is not a Person, Device identity, User identity, Service, or Node.
+_Avoid_: User account, machine identity, infrastructure peer
+
+**Client**:
+An activated Endpoint capability that initiates Service Connections for local
+Applications. It creates no public User identity and is not a separate
+installation or trust root.
+_Avoid_: User identity, account, initiator Node
+
+**Publisher**:
+An activated Endpoint capability that publishes and accepts connections for one
+or more explicitly authorized Services. It is not itself a Service identity or
+public Contributor Node.
+_Avoid_: Service Authority, hosting provider, Responder Node
+
 **Network Contributor**:
 A person or organization that supplies a bounded network role without owning
 Users, Services, or Application Data.
@@ -35,8 +54,28 @@ _Avoid_: Ardents plugin, built-in app, Node
 The local boundary through which an external Application publishes or opens
 Service Connections without embedding Ardents networking logic. It contains
 separately authorized Connection and Service Administration Interfaces;
-optional SDKs may wrap it but do not define it.
+optional SDKs may wrap it but do not define it. Authority Custody is a stronger
+separate local boundary and is never implied by this interface.
 _Avoid_: Mandatory SDK, application runtime, network wire protocol
+
+**Application Principal**:
+An operating-system-enforced or launcher-brokered identity for one local
+Application/helper process tree and session to which Local Grants are bound. A
+desktop user account, PID, loopback port, or copyable file/token alone is not a
+distinct principal. Applications that the platform cannot distinguish are one
+local trust domain and receive no malicious-sibling isolation claim.
+_Avoid_: User account, process ID, reusable API key, network identity
+
+**Network-Isolated Application Boundary**:
+A qualified local attachment or execution boundary in which the complete
+Application/helper process tree can communicate only through scoped local IPC
+or loopback with its granted Ardents Application Interface. Ordinary network
+ingress/listeners and DNS, HTTP, WebSocket, WebRTC, QUIC, or arbitrary socket
+egress are denied by default; origin, cache, and storage state do not cross
+Isolation Contexts; and an external or secondary request either names an exact
+Ardents destination or fails. A generic adapter outside this boundary remains
+usable but receives no Application-level Endpoint Location Privacy claim.
+_Avoid_: Generic browser proxy, content sanitizer, proof that an Application is anonymous
 
 **Connection Interface**:
 The least-privileged part of the Application Interface for opening or accepting
@@ -46,13 +85,39 @@ _Avoid_: Message API, Service Administration Interface
 
 **Service Administration Interface**:
 The separately authorized part of the Application Interface for managing
-Service Authority, publication, and Service configuration. Access to the
-Connection Interface does not grant access to it.
-_Avoid_: Control Plane, Connection Interface
+publication and Service configuration with an already authorized public
+Credential and matching non-exportable private Instance Key. It cannot create,
+import, export, or rotate Service Authority, issue a Credential, or export the
+Instance Key. Access to the Connection Interface does not grant access to it.
+_Avoid_: Authority Custody, Control Plane, Connection Interface
+
+**Authority Custody Boundary**:
+The strongest separately granted local operation surface for creating,
+importing, exporting, reconciling, or signing with Service and Name Authorities;
+issuing bounded public Credentials to host-generated Instance public keys;
+rotating/transferring Name Authority; and initiating Service Target replacement.
+V1 has no in-place Service Authority rotation: root replacement creates a new
+Authority and Target, while local vault-wrapping keys may rotate independently.
+This boundary is outside the ordinary Application Interface and is never implied
+by Connection or Service Administration access.
+_Avoid_: Service Administration Interface, shared admin token, network administrator
+
+**Authority Vault**:
+Protected local or offline storage for Service and Name root material together
+with their authority-owned monotonic commitments and signing watermarks. It
+contains no Local Grants, Service Instance Keys, Route state, or Application
+Data and is accessed only through Authority Custody.
+_Avoid_: Endpoint configuration, runtime key store, Recovery Bundle
 
 **Local Grant**:
 An endpoint-local permission scoped to an Application, optional Service, and
-allowed operations. It is not a network credential or approval from Ardents.
+allowed operations through one Application Principal. Revocation immediately denies new operations and invalidates
+all descendant session capabilities. Authority-custody and administration
+sessions close immediately; data connections close immediately unless the Owner
+first selected a finite drain-then-revoke action. A persistent local policy may
+survive restart, but every process/session must be rebound to the authorized
+operating-system-local principal and receive fresh ephemeral capability state.
+It is not a network credential or approval from Ardents.
 _Avoid_: Global admin token, network account, Service Authority
 
 **Service**:
@@ -65,8 +130,10 @@ One replaceable running instance that accepts live connections for a Service.
 _Avoid_: Service identity, permanent origin
 
 **Node**:
-Infrastructure that performs one or more network roles such as entry, relay,
-discovery, rendezvous, or bridge. A Node identity is not an application address.
+Infrastructure that performs one or more compatible network roles such as
+entry, relay, discovery, rendezvous, or bridge. A Node identity is not an
+application address, and direct-origin source duties cannot be combined with
+Route or Destination Resolution eligibility by one identity or known family.
 _Avoid_: User, Service, peer contact
 
 **Reference Application**:
@@ -88,9 +155,33 @@ replaced after that authority is lost or compromised.
 _Avoid_: Node ID, User ID, IP address
 
 **Service Authority**:
-The durable secret authority whose holder controls one Service Target. Its loss
-or compromise requires replacing that target rather than claiming safe revocation.
+The durable root authority whose holder controls one Service Target and may
+authorize bounded Service Instance Credentials. Its loss or compromise requires
+replacing that target rather than claiming safe revocation.
 _Avoid_: User identity, Node key, Service Instance
+
+**Service Instance Key**:
+A private key generated on the active Service host for one bounded Instance
+generation. Its public key is authorized by a Service Instance Credential, and
+its possession proves that credential in publication and endpoint handshakes.
+Routine migration generates a new key and never exports this secret.
+_Avoid_: Service Authority, public credential, permanent server key
+
+**Service Instance Credential**:
+A public, bounded, monotonic Service-Authority signature binding one Service
+Target, Instance public key, exclusive generation, validity bounds, network, and
+allowed capabilities. The matching Service Instance Key permits publication and
+target-authenticated handshakes but not export or replacement of Service
+Authority.
+_Avoid_: Private key, Service Authority, hosting account
+
+**Authority Recovery Bundle**:
+A versioned encrypted backup of Service or Name root material together with its
+network/root identity, last authenticated authority-owned generation or revision
+commitments, and non-decreasing signing watermarks. It excludes Local Grants and
+runtime Instance Keys. Restored authority remains export-only until it reconciles
+current authenticated state and can advance monotonically.
+_Avoid_: Private-key file, endpoint backup, help-desk recovery token
 
 **Service Name**:
 A lowercase ASCII, dot-hierarchical human-readable name in the canonical
@@ -102,6 +193,22 @@ _Avoid_: Onion address, IP address, search keyword
 The explicitly Ardents-scoped shareable form of a Service Name, such as
 `ardents://blog.alice`. It is not an ordinary web or DNS address.
 _Avoid_: DNS URL, public domain, implicit hostname
+
+**Target Link**:
+The explicit shareable Ardents form of a machine-verifiable Service Target. It
+bypasses naming but never target authentication, routing, or Application
+authorization. Its tagged versioned form is unambiguously distinct from a
+Service Link and binds the Ardents network plus target algorithm; it contains no
+origin or mutable reachability. Exact text and binary encoding are protocol work.
+_Avoid_: Service Name, origin address, naming fallback
+
+**Destination Binding**:
+The immutable connection provenance of the exact destination form supplied by
+the Application. A Name-bound connection records the authenticated Name
+generation/revision and Target; a Target-bound connection records only the exact
+Target. A changed Name binding can terminate but never silently retarget a live
+connection. A Target-bound connection never inherits Name recovery.
+_Avoid_: Redirect, fallback destination, mutable connection target
 
 **Name Authority**:
 The authority controlling one Service Name's authenticated binding independently
@@ -166,6 +273,13 @@ endpoint's ordinary location and exact Service Name. It does not make a
 predictable name secret or unguessable.
 _Avoid_: Secret name, anonymous DNS, unobservable lookup
 
+**Private Reachability Resolution**:
+Retrieval of current Service Descriptor/reachability for an exact Service Target
+without giving any one ordinary Node both the querying endpoint's origin and the
+Target or its publicly testable lookup value. It is required for Target Links as
+well as name-derived Targets and has no direct public fallback.
+_Avoid_: Direct descriptor server, target secrecy, origin address lookup
+
 **Anonymous Cost**:
 A bounded per-operation resource burden that raises abuse cost without relying
 on identity, account, payment, IP reputation, or stable cross-context state. It
@@ -183,6 +297,38 @@ Authenticated, time-bounded network metadata used to contact a Service Target
 without revealing an ordinary origin address.
 _Avoid_: Name Record, IP endpoint, application profile
 
+**Destination Resolution Role**:
+A destination-aware infrastructure role that serves authenticated Name/Target
+and Service Descriptor lookup or publication without learning endpoint origin.
+V1 permits it only to Rendezvous-domain identities, never endpoint-adjacent
+domains; an endpoint excludes every resolution identity and known family used for
+an exact destination/context from that connection's Rendezvous selection. The
+same identity or known family cannot also serve a direct-origin source role.
+_Avoid_: Direct resolver, fifth endpoint Entry, DNS fallback
+
+**Direct-Origin Source**:
+A bootstrap, Candidate Materialization, authenticated-time, release, or other
+public-artifact source contacted outside an established Ardents Route. It may
+see requester origin, requested artifact, timing, and probable Ardents use, so
+a globally advertised source identity and known family serving this duty are
+ineligible for every Route position and Destination Resolution during the
+overlapping assignment. An ordinary carrier peer that serves bytes is instead
+quarantined locally by each Endpoint that contacts it.
+_Avoid_: Trusted bootstrap, private resolver, anonymous download
+
+**Direct Source Exposure Set**:
+The bounded installation-local set of authenticated Node identities and known
+families actually contacted as Direct-Origin Sources. It is never uploaded or
+reset by creating an Application or Isolation Context. Members are excluded
+from Route and Destination Resolution selection until their finite exposure
+lease and all dependent work terminate. Before contact they must not appear in
+retained endpoint-adjacent/prepared-role state or live work; source order,
+retries, set growth, and candidate skipping are finite and endpoint-precommitted,
+with explicit unavailability on exhaustion. Post-readiness destination-sensitive
+fetches use private paths. An unauthenticated external source remains an honest
+origin-exposure and hidden-control limitation rather than presumed independent.
+_Avoid_: Route history upload, unbounded source sampling, privacy proof for first contact
+
 ## Connections and routing
 
 **Service Connection**:
@@ -190,8 +336,18 @@ A live protected, reliable, ordered, bidirectional byte stream bound to an
 authenticated Service Target whose lifetime can span bounded replacement of
 underlying Carrier Channels. It carries opaque Application Data without message
 boundaries and implies no offline delivery, semantic completion, or automatic
-Application-operation replay.
+Application-operation replay. Its Work Safety Lease and terminal `not-after`
+prevent an old live stream from preserving expired trust indefinitely.
 _Avoid_: Node-to-node message, conversation, Mailbox
+
+**Forward Secrecy**:
+The requirement that later compromise of Service Authority, Service Instance
+Key, Node long-term keys, or recorded ciphertext does not decrypt a completed
+Service Connection when both endpoints were honest during it and erased its
+ephemeral session/leg keys. It does not protect a live compromised endpoint,
+promise post-compromise healing inside an existing connection, or guarantee
+physical erasure from memory dumps, swap, hibernation, or snapshots.
+_Avoid_: Encryption at rest, endpoint-compromise protection, future impersonation
 
 **Carrier Channel**:
 A replaceable transport-specific channel carrying part of a Service Connection
@@ -276,12 +432,14 @@ _Avoid_: Fully anonymous route, clearnet connection, three-position route
 
 **Route Knowledge Separation**:
 The Interactive Route property in which several separately operated Node roles
-each receive only adjacent and role-specific information, so no ordinary Node
-can link an endpoint's ordinary location to a Service Name, Service Target, or
-the opposite endpoint. It does not require a public Service Target to remain
-unknown to every Node operator. Different Node IDs are not proof of separate
-control.
-_Avoid_: Direct P2P path, single trusted proxy, Target secrecy, fixed Tor circuit
+each receive only adjacent and role-specific information, so one ordinary Node
+acting only from its role-local view is not directly given an endpoint-origin-to-
+Name/Target/opposite-endpoint binding. The adversary controls or observes no
+endpoint, second position, or active probe source. Node-plus-endpoint timing/
+volume confirmation is an explicit non-claim. A public Target need not remain
+unknown to every operator, and different Node IDs do not prove separate control.
+_Avoid_: Direct P2P path, single trusted proxy, traffic-confirmation resistance,
+Target secrecy, fixed Tor circuit
 
 **Introduction Role**:
 A route-control role that holds an expiring service-specific opaque slot and
@@ -314,17 +472,41 @@ still alive; it is never pooled across completed connections.
 _Avoid_: Origin server, reverse proxy, reusable connection pool
 
 **Entry Set**:
-A small, long-lived, endpoint-selected set of endpoint-adjacent Nodes or Bridges
-scoped to one User Isolation Context or one active Service Instance under one
-Service Target. A single failure does not rotate it to an untried Node. Its
-purpose is to bound cumulative exposure, not to make a malicious Entry harmless.
-_Avoid_: Fresh Entry per connection, global cross-context pool, permanent Node
+A small, long-lived, endpoint-selected set of endpoint-adjacent Nodes or Bridges.
+V1 has ordinary and Bridge regimes and permits at most one set for each activated
+adjacent Role Domain and regime in an installation. A client uses the Initiator
+domain; publication uses separate Responder and Introduction domains, including
+when client and Publisher are co-resident. Applications, Services, Targets,
+Isolation Contexts, and Bridge Invites do not create additional sets. Channels
+and higher Route state remain separated. A single failure does not rotate a set
+to an untried Node.
+_Avoid_: Fresh Entry per connection or context, network-global Entry pool,
+permanent Node
 
 **Interior Set**:
 A small, medium-lived, endpoint-selected rolling set between an Entry Set and
-connection-specific roles. It rotates more often than Entry while avoiding a
-fresh unbounded sample on every Route.
+connection-specific roles. It is Isolation-Context- or Service-role-scoped,
+rotates more often than Entry, and avoids a fresh unbounded sample on every
+Route.
 _Avoid_: Permanent middle, fresh random middle per retry, user-tunable hop
+
+**Role Domain**:
+A stable, publicly verifiable Node-eligibility class separating Initiator,
+Rendezvous, Responder, and Introduction exposure. Destination Resolution is a
+role restricted to the non-adjacent Rendezvous Domain and excluded from acting as
+the same connection's Rendezvous. One Node Identity and one honestly declared
+operator family occupy only one domain during its assignment lifetime; this
+prevents same-identity cross-leg or Entry-plus-lookup overlap but does not prove
+independent control.
+_Avoid_: Trust tier, manual allowlist, Node role chosen per connection
+
+**Role Domain Assignment**:
+An authenticated finite assignment of one Node Identity and honestly declared
+operator family to one Role Domain. New duty is allowed only when its maximum
+terminal lifetime fits before assignment `not-after`. Reassignment first stops
+new work and drains/quarantines the identity and known family until every old-
+domain duty expires; neither is eligible in a new domain during overlap.
+_Avoid_: Instant domain flip, per-connection domain, overlapping eligibility
 
 **Bridge**:
 A non-public or replaceable entry path used when ordinary ways of joining
@@ -341,3 +523,69 @@ _Avoid_: Invisible traffic, guaranteed HTTPS disguise
 The mechanisms and authorities that govern network discovery, naming,
 bootstrap, software releases, compatibility, and emergency changes.
 _Avoid_: The data path, invisible governance
+
+**Network Epoch**:
+An expiring, content-addressed, threshold-authenticated statement of shared
+network identity, compatibility, eligibility inputs, Role Domains, and freshness.
+Its distributors provide identical bytes but do not define their authority.
+_Avoid_: Bootstrap server response, peer list, permanent address list
+
+**Node Record**:
+A Node-authenticated, expiring declaration of its key, supported capabilities,
+transports, declared operator family, and finite capacity. Publication makes a
+Node discoverable, not automatically eligible, independent, or trusted.
+_Avoid_: User profile, route assignment, reputation account
+
+**Candidate View**:
+The logical complete, canonically ordered Node/evidence set committed by one
+exact Network Epoch and Route Profile, including authenticated global counts and
+concentration summaries. Full auditors may materialize and recalculate it; one
+ordinary endpoint need not download it in full.
+_Avoid_: Downloaded peer list, Route, bootstrap peer opinion, User history
+
+**Candidate Materialization**:
+The deterministic shards or indexed records and inclusion proofs fetched by one
+endpoint under a Candidate View commitment. The endpoint verifies the requested
+material and selection indices, not global completeness; threshold state and
+independent full auditors cover the global commitment. Withholding retries the
+same index elsewhere or fails explicitly and never causes silent resampling.
+_Avoid_: Personalized Candidate View, distributor-selected route, reputation
+
+**Time Confidence**:
+The endpoint's bounded evidence that freshness decisions are safe, derived from
+monotonic elapsed time, a non-decreasing accepted watermark, Network Epoch
+bounds, and optional authenticated time observations.
+_Avoid_: Trusted wall clock, one NTP server, exact location time
+
+**Release Safety State**:
+Expiring authenticated public metadata proving that an installed build remains
+recognized and not revoked, independently of where those same bytes were
+obtained. A still-valid cached state permits restart during distributor outage;
+expired or conflicting state blocks new network work explicitly.
+_Avoid_: Vendor ping, auto-install permission, package-store opinion
+
+**Work Safety Lease**:
+The finite authenticated interval during which an existing Route, Service
+Connection, publication, or Contributor duty may continue. It ends no later
+than the earliest applicable Network Epoch, Release Safety, protocol/build,
+Service Instance Credential, Name-bound Destination Binding, or other
+role-specific terminal bound, including Role Domain Assignment. A fresh
+authenticated state may extend it before expiry; stale, uncertain, or revoked
+state never does. New leg attachment or recovery requires a current Common
+Readiness Base and applicable credential, not merely an unexpired old stream.
+_Avoid_: Immortal session, cached trust forever, update grace without deadline
+
+**Common Readiness Base**:
+The prerequisites shared by network capabilities: authenticated installed build,
+current non-revoked Release Safety State, compatible Network Epoch, sufficient
+Time Confidence, and finite local resources. It contains no Initiator,
+Publisher, naming, or Contributor path by itself.
+_Avoid_: Target Connect Ready, process running, universal network readiness
+
+**Capability Readiness**:
+An authenticated local state saying that one named function, such as Target
+Connect, Private Name Resolution, Publish, or Contribute, can be attempted under
+an exact Network Epoch and qualified profile. Each capability adds its own
+role-specific prerequisites to the Common Readiness Base; one capability never
+inherits another's Entry path merely because both run in one process.
+_Avoid_: Process running, UI ready, universal network readiness
