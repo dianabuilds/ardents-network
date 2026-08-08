@@ -63,7 +63,8 @@ Connection
 **Done when:** the Application reaches the intended live Service or receives an
 explicit failure. An Active name resolves normally; a Grace name remains usable
 with a visible expiry warning; a Released name and any descendant resolve
-nothing. No directory search or silent alternate-namespace, DNS,
+nothing. Recovery Pending also resolves nothing until its successor issues a
+fresh Name Record. No directory search or silent alternate-namespace, DNS,
 search-result, or local-alias fallback occurs, and possession of the name is not
 shown as authorization or secrecy. The Interactive Route is not a direct path
 or single proxy, and no one ordinary Node links the User's location to the
@@ -97,8 +98,9 @@ create or securely import Service Authority → obtain its Service Target → gr
 per-Service administration → choose one active local listener → publish
 authenticated, expiring reachability without exposing raw authority → separately
 authorize use of Name Authority → claim a root Name Lease or receive a delegated
-subordinate Name Lease → bind or update Service Name → produce its explicit
-Service Link → accept a test Service Connection
+subordinate Name Lease → optionally commit Recovery Policy → bind or update
+Service Name → produce its explicit Service Link → accept a test Service
+Connection
 
 **Done when:** a remote Application can connect while neither the User nor any
 one ordinary Node can link the Service Instance's public origin address to its
@@ -357,6 +359,8 @@ Every implementation proposal must exercise at least these cases:
   operator, network, software supply chain, or jurisdiction;
 - a Name Lease is in Grace, becomes Released, or is reclaimed into a new
   generation; a Name Record is stale, rolled back, or equivocating;
+- a Name Authority is rotated, transferred, lost, or compromised; Recovery Policy
+  is absent, changing, captured, or has entered Recovery Pending;
 - a Service Descriptor is unavailable or points to no reachable Service
   Instance;
 - both an old and a new host publish with copies of one Service Authority;

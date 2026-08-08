@@ -64,14 +64,15 @@ A Name Authority is powerful: a valid malicious rebind can direct name-based
 Users to an attacker-controlled Target, whose authentication would then be
 correct for the poisoned binding. Direct connections to an explicitly supplied
 Service Target do not follow a changed Name Record and cannot silently fall back
-to the name. R-003 must therefore define separate loss, compromise, rotation,
-recovery, transfer, expiry, conflict, and transparency behavior for Name
-Authority without pretending target authentication repairs a captured name.
+to the name. P4-D3 and P4-D4 therefore define separate expiry, loss, compromise,
+rotation, transfer, and precommitted recovery behavior without pretending target
+authentication repairs a captured name. P4-D5 and P4-D6 still define privacy,
+abuse, governance, and transparency boundaries.
 
-The existence of Name Authority does not decide who initially allocates a name,
-which Namespace recognizes it, or whether recovery uses successor keys, several
-authorities, a time delay, a quorum, or another mechanism. No single project or
-network administrator gains implicit authority over every name.
+P4-D2a through P4-D4 now fix the Namespace, leased claim, syntax, lifecycle, and
+authority-transition product contracts without selecting registry, key,
+threshold, delay, quorum, or consensus technology. No single project or network
+administrator gains implicit authority over every name.
 
 ### P4-D2a — One canonical network-wide Namespace
 
@@ -98,7 +99,7 @@ Service Target under a separately visible Application policy.
 
 One canonical Namespace is a consistency and user-experience contract, not a
 decision to use one server, registrar, administrator, ledger, operator set, or
-project-controlled root. P4-D4 through P4-D6 must further constrain naming and
+project-controlled root. P4-D5 and P4-D6 must further constrain naming and
 governance power and make partitions, capture, and forks visible.
 If honest clients cannot establish one current binding during a conflict, they
 fail explicitly rather than accepting resolver-dependent destinations.
@@ -214,14 +215,60 @@ or unavailable fails explicitly instead of returning a guessed Service Target.
 The exact cache interval and state-convergence mechanism remain research inputs,
 not selected technologies.
 
+### P4-D4 — Name Authority rotation, transfer, and recovery
+
+**Product Owner decision, accepted 2026-08-08:** ordinary rotation or transfer
+requires the current Name Authority to authenticate one successor transition.
+The accepted transition preserves the Name Generation, Lease, descendants, and
+current Name Record while giving all future Name Authority power to the successor.
+The former authority cannot later update, renew, rotate, transfer, or recover the
+name merely by replaying its old credentials. The network treats transfer as the
+same authority transition as rotation; identity, payment, sale, and legal
+ownership semantics remain outside Ardents.
+
+Recovery exists only when a Recovery Policy was committed before the incident.
+The optional policy is bound to one Name Generation, survives ordinary rotation
+and transfer, and defines a set of scoped Recovery Authorities, an authorization
+threshold, and a finite visible delay. No Recovery Authority is implicitly a
+User, registrar, project operator, or network-wide administrator. Exact key,
+threshold, delay, and cryptographic mechanism remain bounded protocol parameters.
+
+Adding, replacing, or disabling a Recovery Policy is itself delayed and visible.
+The previously accepted policy remains effective until that change completes,
+so possession of the current Name Authority cannot silently erase recovery.
+Neither ordinary rotation nor transfer bypasses a pending policy change or an
+already accepted recovery. Exact cancellation and contest rules must be
+precommitted by the policy; the current Name Authority alone cannot cancel a
+recovery intended to survive its compromise.
+
+A policy-authorized recovery initiated while the Lease is Active or in Grace
+enters **Recovery Pending**. Resolution and ordinary Name Authority transitions
+fail closed for its finite delay because the current binding may be compromised.
+The pending state may hold the name from becoming Released only until that fixed
+outcome deadline; repeated initiation cannot extend it indefinitely. Recovery
+participants can therefore cause a bounded denial of name resolution but cannot
+silently redirect Users.
+
+Successful recovery installs a successor Name Authority inside the same Name
+Generation and permanently removes the preceding authority's future power.
+Resolution resumes only after the successor authenticates a fresh monotonic Name
+Record revision; a possibly compromised old binding is not silently reused. A
+direct Service Target connection remains pinned and does not follow this process.
+
+Without a precommitted usable Recovery Policy, lost Name Authority material has
+no administrative recovery path. The name becomes claimable only if its Lease
+eventually reaches Released. If a compromised authority keeps renewing or a
+recovery threshold is itself captured, the network cannot infer the rightful
+human controller: the attacker may retain or visibly obtain control under the
+accepted rules. Recovery adds a bounded alternative authority, not proof of
+personhood or guaranteed restoration.
+
 ## Remaining decisions
 
-1. **P4-D4 — Name Authority lifecycle:** define custody, rotation, transfer,
-   loss, compromise, recovery, and the limits of any recovery authority.
-2. **P4-D5 — Resolution privacy:** define what resolvers and naming
+1. **P4-D5 — Resolution privacy:** define what resolvers and naming
    infrastructure learn, how exact-name queries resist enumeration and linking,
    and what metadata remains an honest limitation.
-3. **P4-D6 — Governance and abuse:** define capture, disputes, squatting, Sybil
+2. **P4-D6 — Governance and abuse:** define capture, disputes, squatting, Sybil
    pressure, denial, accessibility, transparency, forks, and exit behavior.
 
 ## Hypotheses
@@ -326,6 +373,18 @@ query evidence without recording real User activity.
   monotonic and stale or conflicting state fails explicitly.
 - **Product Owner decision:** a subordinate Lease cannot outlive its parent.
   Parent Grace propagates a warning; parent Release disables every descendant.
+- **Product Owner decision:** ordinary rotation or transfer is one authenticated
+  successor transition inside the same Name Generation. The old Name Authority
+  loses all future power; Ardents assigns no identity, payment, or ownership
+  meaning to transfer.
+- **Product Owner decision:** recovery exists only through an optional
+  generation-bound Recovery Policy committed before the incident. It may require
+  several scoped Recovery Authorities, a threshold, and a visible finite delay;
+  it survives rotation, and changing it is also delayed and visible.
+- **Product Owner decision:** valid recovery enters Recovery Pending and stops
+  name resolution. Completion installs a successor in the same generation, but
+  resolution resumes only after a fresh monotonic Name Record. Without a usable
+  policy there is no administrative recovery.
 - **Assumption:** V1 can make separate Name Authority custody understandable to
   one Developer without requiring an always-online naming administrator.
 
@@ -369,6 +428,15 @@ query evidence without recording real User activity.
 - **Generation-bound records:** prevent pre-release records and delegations from
   replaying after reclaim, at the cost of requiring resolvers to prove current
   generation as well as record authenticity.
+- **Current-key-only rotation:** has the smallest authority graph, but permanent
+  loss has no recovery and compromise can retain the name through renewal.
+- **Single recovery key:** is simple to operate but merely moves catastrophic
+  loss and compromise to another single secret.
+- **Precommitted threshold Recovery Policy:** can recover from current-key loss or
+  compromise without a network administrator, but its threshold can deny service
+  and eventually take control after a visible delay.
+- **Registrar recovery:** may handle human disputes, but creates a mandatory
+  identity, censorship, and redirection authority rejected by the product model.
 
 ## Recommendation
 
@@ -379,9 +447,10 @@ renewable permissionless Name Leases under deterministic shared-state ordering,
 with subordinate claims authorized only inside the parent subtree. Use the
 accepted lowercase ASCII dot hierarchy and explicit `ardents://` Service Link.
 Use the accepted Active, Grace, and Released lifecycle with generation-bound
-monotonic records and parent-bounded descendants. Next define Name Authority
-custody, rotation, transfer, loss, compromise, and recovery before comparing
-protocols.
+monotonic records and parent-bounded descendants. Use authenticated successor
+rotation plus the optional precommitted, delayed, threshold Recovery Policy and
+fail-closed Recovery Pending state. Next define resolution privacy before
+comparing protocols.
 
 Confidence is high that Service Authority cannot also provide truthful recovery
 from its own compromise. Confidence is low that a usable, privacy-preserving,
@@ -394,21 +463,26 @@ are central R-003 research risks. ASCII syntax reduces Unicode ambiguity but
 cannot prevent ASCII lookalikes, misleading labels, or social-engineering links.
 The lifecycle prevents indefinite local extension and cross-generation replay,
 but concrete clock, ordering, convergence, cache, and renewal-censorship behavior
-remain unverified.
+remain unverified. Recovery avoids one mandatory administrator but adds a
+generation-scoped capture set whose diversity, threshold failure, delay, denial,
+policy-change, and custody behavior remain unverified.
 
 The strongest counterarguments are that two authorities are too complex for a
 small V1 Developer journey and that one canonical Namespace creates a shared
 Control Plane. The first cost is accepted because merging authorities makes the
-catastrophe-recovery promise false. The second must be constrained by P4-D4
-through P4-D6 without pretending that resolver-dependent names are safer. A
+catastrophe-recovery promise false. The second must be constrained by P4-D5 and
+P4-D6 without pretending that resolver-dependent names are safer. A
 third is that permissionless first-valid claims reward front-running and
 squatting; leases make that harm reversible but do not remove it. A fourth is
 that parent expiry creates a cascading outage; allowing descendants to survive
 would instead violate hierarchical control and confuse a later parent claimant.
+A fifth is that the Recovery Policy creates another authority capable of denial
+and eventual takeover; precommitment, threshold, delay, and visibility bound but
+do not eliminate that power.
 
 ## Disposition
 
-- State: `active`; P4-D1 and P4-D2a through P4-D3 are accepted; P4-D4 is next.
+- State: `active`; P4-D1 and P4-D2a through P4-D4 are accepted; P4-D5 is next.
 - `Name Authority` becomes canonical product language.
 - `Namespace` now means the one canonical Ardents network-wide naming boundary,
   not a resolver-selected provider or local alias scope.
@@ -418,8 +492,10 @@ would instead violate hierarchical control and confuse a later parent claimant.
   `ardents://<Service Name>` shareable form.
 - `Name Generation` becomes canonical product language for one claim-bounded
   lifetime whose records and descendants cannot survive reclaim.
+- `Recovery Policy`, `Recovery Authority`, and `Recovery Pending` become
+  canonical product language for precommitted, scoped, visible name recovery.
 - R-006 target lifecycle remains unchanged and now has a distinct naming
   continuity authority.
-- No ADR: no irreversible registry, governance, recovery, key, or protocol
-  mechanism has been selected.
+- No ADR: no concrete registry, cryptographic recovery, key, threshold, delay,
+  governance, or protocol mechanism has been selected.
 - No experiment and no production code.

@@ -28,6 +28,8 @@ accepted.
   recovery state;
 - canonical Namespace consistency across honest compatible clients;
 - Name Lease allocation, renewal, expiry, and subordinate-delegation integrity;
+- Recovery Policy integrity, Recovery Authority independence, and visible
+  Recovery Pending state;
 - Service Name presentation integrity and resistance to namespace confusion;
 - endpoint-local grants, Application Interface authority, and network metadata;
 - route, discovery, bootstrap, and Bridge availability;
@@ -171,6 +173,18 @@ but cannot outlive its parent; parent Release disables every descendant and a ne
 parent generation revives none. Unproven current generation, revision, Lease, or
 parent state fails explicitly. Exact clocks, durations, cache freshness, and
 convergence still require hostile-network research.
+
+Routine Name Authority rotation or transfer preserves the Name Generation and
+gives future control only to its authenticated successor. Recovery exists only
+through an optional Recovery Policy committed before the incident. That policy
+survives ordinary transitions, while changing or disabling it is delayed and
+visible under the prior policy. An accepted threshold recovery fails name
+resolution closed during bounded Recovery Pending, cannot be bypassed or
+cancelled by the current authority alone, and requires a fresh successor-signed
+Name Record before resolution resumes. Without usable recovery material there is
+no administrator who can restore the name. A captured recovery threshold can
+deny service and eventually take control after the visible delay; Ardents cannot
+identify a morally or legally rightful human controller.
 
 A canonical V1 Service Name is a lowercase ASCII dot hierarchy with the parent
 on the right. Unicode, IDNA, and Punycode cannot create canonical alternatives.
@@ -358,6 +372,12 @@ or privacy claim.
   delegations, descendants, or cached proof.
 - A subordinate Lease cannot outlive its parent. Parent Release disables every
   descendant, including across a later claim of the same parent text.
+- Routine Name Authority rotation or transfer leaves one successor with future
+  control and no concurrent old-key authority. Recovery exists only under a
+  precommitted generation-scoped Recovery Policy.
+- Recovery Pending stops name resolution and cannot be silently bypassed by
+  rotation, transfer, policy removal, or a stale Name Record. Recovery completion
+  requires a fresh successor-authenticated record before resolution resumes.
 - A Service Link identifies Ardents explicitly. Parsing or resolution failure
   cannot reinterpret its name as DNS, another namespace, Unicode, IDNA, or
   Punycode; visually similar ASCII names remain distinct destinations.

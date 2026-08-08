@@ -133,6 +133,22 @@ The distinct lifetime of a Service Name created by one accepted claim and shared
 by its Lease and Name Records. Reclaiming a Released name starts a new generation.
 _Avoid_: Record version, permanent name identity, revived lease
 
+**Recovery Policy**:
+Optional precommitted, generation-bound rules defining which scoped Recovery
+Authorities may replace a Name Authority, with what threshold and visible delay.
+_Avoid_: Help desk, network administrator, account recovery
+
+**Recovery Authority**:
+Authority scoped to participation in one Recovery Policy. It is not a User
+identity, Name Authority, registrar, or network-wide administrator.
+_Avoid_: Guardian account, operator privilege, global recovery key
+
+**Recovery Pending**:
+The visible bounded state after valid recovery initiation and before its outcome,
+during which the Service Name fails closed rather than trusting a possibly
+compromised binding.
+_Avoid_: Background recovery, silent transfer, resolver warning
+
 **Name Record**:
 Name-Authority-authenticated data that binds a Service Name to a current Service
 Target without publishing an ordinary network location.
