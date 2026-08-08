@@ -69,6 +69,9 @@ search-result, or local-alias fallback occurs, and possession of the name is not
 shown as authorization or secrecy. A naming participant may infer the queried
 name or count its popularity, but receives no User location or stable User ID;
 the endpoint-adjacent role receives no exact or publicly testable name value.
+An incompatible naming-rule fork is explicit. A local filter may refuse the
+name with visible local-policy state but cannot present another canonical
+destination or erase the accepted Name Record.
 The Interactive Route is not a direct path
 or single proxy, and no one ordinary Node links the User's location to the
 Service Name, Service Target, or Service Instance location. The Service may
@@ -101,9 +104,9 @@ create or securely import Service Authority → obtain its Service Target → gr
 per-Service administration → choose one active local listener → publish
 authenticated, expiring reachability without exposing raw authority → separately
 authorize use of Name Authority → claim a root Name Lease or receive a delegated
-subordinate Name Lease → optionally commit Recovery Policy → bind or update
-Service Name → produce its explicit Service Link → accept a test Service
-Connection
+subordinate Name Lease under bounded Anonymous Cost and local admission →
+optionally commit Recovery Policy → bind or update Service Name → produce its
+explicit Service Link → accept a test Service Connection
 
 **Done when:** a remote Application can connect while neither the User nor any
 one ordinary Node can link the Service Instance's public origin address to its
@@ -114,10 +117,15 @@ authority on a new host, and republish the same Service Target. Name Authority
 is not needed on either runtime host for that migration. If the
 Service Authority is instead lost or compromised, independently held Name
 Authority binds the stable name to a newly created replacement Target. A required
-publisher reference endpoint supports at least `256` concurrently open incoming
-Service Connections, including at least `64` simultaneously active. This is a
-minimum total publisher capacity, not a Service maximum; one Service may use the
-whole budget when local policy permits. The active test keeps all `256`
+claim mechanism must not let an observer win merely by copying a pending revealed
+name; flooding, withholding, concurrent claims, and partitions remain explicit
+test cases. The cost grants no human identity, fairness, trademark right, or
+guaranteed protection from a more powerful squatter.
+
+The required publisher reference endpoint supports at least `256` concurrently
+open incoming Service Connections, including at least `64` simultaneously active.
+This is a minimum total publisher capacity, not a Service maximum; one Service
+may use the whole budget when local policy permits. The active test keeps all `256`
 connections open while `64` share `40 Mbit/s` of delivered Application Data.
 Throughout the run, the complete Ardents process tree keeps
 `p95 resident memory <= 1 GiB` and mean CPU `<= 100%` of one logical core. The
@@ -364,8 +372,14 @@ Every implementation proposal must exercise at least these cases:
   generation; a Name Record is stale, rolled back, or equivocating;
 - a Name Authority is rotated, transferred, lost, or compromised; Recovery Policy
   is absent, changing, captured, or has entered Recovery Pending;
+- a pending claim is copied, front-run, withheld, flooded, or ordered differently
+  across a partition; a powerful actor pays the Anonymous Cost at scale;
 - private name resolution is blocked or a naming participant records query value,
   repetition, popularity, timing, volume, or cache metadata;
+- a project, legal claimant, registrar, or operator attempts to seize or block a
+  Lease; a local filter is mistaken for canonical state;
+- naming rules are captured, rolled back, or fork incompatibly, and clients must
+  not silently choose another Namespace or rule version;
 - a Service Descriptor is unavailable or points to no reachable Service
   Instance;
 - both an old and a new host publish with copies of one Service Authority;

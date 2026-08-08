@@ -23,8 +23,9 @@ Research starts from these reversible product boundaries:
   namespaces never become silent resolution fallbacks;
 - root canonical names use first-valid deterministic permissionless claims that
   create renewable time-bounded Name Leases for Name Authority; a parent may
-  issue names only inside its subtree, while the anti-squatting cost remains open
-  and requires no global account, wallet, token balance, or single registrar;
+  issue names only inside its subtree; bounded Anonymous Cost protects naming
+  work without money, a global account, identity document, IP reputation, stable
+  identity, wallet, token, or registrar and makes no personhood or fairness claim;
 - canonical V1 Service Names are lowercase ASCII dot hierarchies with the parent
   on the right; `ardents://<Service Name>` is their explicit shareable form, not
   DNS, and Unicode, IDNA, Punycode, public-TLD lookup, and DNS fallback are absent;
@@ -38,6 +39,10 @@ Research starts from these reversible product boundaries:
   against one ordinary Node and across Isolation Contexts; names remain guessable,
   naming-side metadata and collusion remain visible limits, and no less-private
   resolver fallback exists;
+- no administrator, project, registrar, legal or trademark claimant, or manual
+  panel may seize, block, transfer, or reassign a canonical Name Lease; only a
+  finite versioned technical reserved-name set exists, local filters do not alter
+  canonical meaning, rules are inspectable, and incompatible forks are explicit;
 - the Application Data primitive is an online logical Service Connection;
   replaceable transport-specific Carrier Channels carry it without defining its
   identity or Application semantics;
@@ -97,7 +102,7 @@ boundaries with named evidence.
 | [R-006](records/r-006-service-target-lifecycle.md) | What is the V1 lifecycle of a Service Target across creation, publication, migration, loss, compromise, replacement, and retirement? | **Decided:** one active Instance uses a portable Service Authority. Routine migration uses encrypted export/import and preserves the target. Loss or compromise creates a new target and rebinds the Service Name; the old target remains untrusted. | decided |
 | [R-002](records/r-002-live-application-interface.md) | What is the smallest live Application Interface that lets an existing local application publish and consume a Service safely? | **Decided:** an external socket/proxy-style boundary exposes one live logical Service Connection, both destination forms, authenticated results, honest failures, safe Isolation Contexts, endpoint-local least privilege, hierarchical resource budgets, backpressure, and measurable performance. The same stream may span bounded Carrier Channel replacement without becoming an Application reconnect. SDKs remain optional wrappers; concrete protocol remains later, while scenario-specific numeric budgets come from R-023 evidence. | decided |
 | [R-001](records/r-001-interactive-route-claim.md) | Which endpoint, Local Traffic Observer, relay-collusion, and Broad Traffic Observer capabilities must the Interactive Route resist, and what does it deliberately expose? | **Decided:** the low-latency claim provides Endpoint Location Privacy against the opposite endpoint and any one malicious ordinary Node through multi-hop Route Knowledge Separation; it limits local observation without promising invisibility, excludes Broad Traffic Observer and arbitrary-collusion resistance, protects payload and exact target even under carrier collusion, fails closed under active attack, and requires Route Qualification before any implementation claim. | decided |
-| [R-003](records/r-003-service-name-contract.md) | How does an exact Service Name bind to a Service Target, resolve without becoming a directory, survive accepted rotation, and handle registration, expiry, recovery, conflict, enumeration, query privacy, and Control Plane capture? | **Active:** P4-D1 through P4-D4 fix distinct Name Authority, one canonical Namespace, permissionless Name Leases, ASCII hierarchy and Service Link, lifecycle and generations, plus precommitted recovery. P4-D5 fixes Private Resolution as single-ordinary-Node separation of User location from exact name/lookup view, no directory or less-private fallback, no cross-context identifier, and explicit guessability, naming-metadata, collusion, and Broad Traffic Observer limitations. Only numeric mechanism parameters and P4-D6 governance and abuse remain open; no registry, lookup, routing, or cryptographic recovery technology is selected. | active |
+| [R-003](records/r-003-service-name-contract.md) | How does an exact Service Name bind to a Service Target, resolve without becoming a directory, survive accepted rotation, and handle registration, expiry, recovery, conflict, enumeration, query privacy, and Control Plane capture? | **Decided:** P4-D1 through P4-D6 fix distinct Name Authority, one canonical Namespace, permissionless leased claims, ASCII hierarchy and Service Link, lifecycle and generations, precommitted recovery, Private Resolution, non-administrative governance, finite technical reservations, bounded Anonymous Cost, local filtering, inspectable rules, and explicit forks. Registry, ordering, lookup, routing, cryptographic recovery, cost, and governance mechanisms remain downstream research. | decided |
 | R-004 | Which routing and rendezvous families can meet the accepted Interactive Route claim and R-023 performance budget under churn, malicious Nodes, and realistic client devices? | Comparable primary-source analysis and bounded measurements of multi-hop Route Knowledge Separation, position-dependent collusion and tagging exposure, route shape, hop count, churn, fail-closed behavior, and cost against the R-001 claim matrix and R-023 budgets; no library popularity scoring. | open |
 | R-007 | What availability does the core promise when a path fails or a Service is offline, and which retries can be performed without lying to the Application about operation completion? | A failure matrix that maps network evidence, including P2-D6 active violations, to the accepted P1-D5 classes for discovery, connect, partial write, route loss, service loss, and reconnect. It must preserve P3-D4a, P3-D4b1, P3-D4b2a, and P3-D4b2b same-connection recovery, sequential churn, impaired-live progress, and the non-resetting overlapping-failure deadline, distinguish degradation and recovery from opening a new connection, and use indeterminate failure where attack and outage cannot be distinguished. Retained delivery and Application-operation retry remain outside the core. | open |
 | R-008 | How are local Applications separated from endpoint authority, network metadata, and each other's Isolation Context while still supporting ordinary software? | A local trust-boundary and misuse contract implementing Local Grants and Isolation Contexts, identifying every state forbidden to cross Applications, grants, or contexts, and testing deliberate or accidental reuse. This is not a decision to run arbitrary application code. | open |
@@ -147,8 +152,8 @@ qualification gate. The remaining dependency path is intentionally short:
 1. **R-023 — performance budget:** the pre-architecture performance and
    qualification contract is fixed; role-specific Node capacity resumes only
    after R-004 supplies a candidate Route and units of work.
-2. **R-003 — Service Name:** define the human layer over the accepted target and
-   catastrophe replacement.
+2. **R-003 — Service Name:** the product contract is fixed; compare candidate
+   mechanisms only against P4-D1 through P4-D6.
 3. **R-004 and R-009 — routing and hostile bootstrap:** compare mechanisms only
    against the accepted contracts.
 4. **R-007 and R-008 — failure and local isolation:** close the minimum tracer

@@ -70,6 +70,9 @@ The following product choices already constrain research:
 8. Endpoint Location Privacy is distinct from Application anonymity. Ardents
    does not inspect, sanitize, or promise to unlink credentials, content,
    fingerprints, timing, or behavior visible to an intended endpoint.
+9. Canonical Service Names have no administrative owner or dispute court.
+   Naming abuse is constrained by anonymous resource cost and explicit protocol
+   rules, not identity, payment, IP reputation, or discretionary reassignment.
 
 ## Network product boundary
 
@@ -93,6 +96,9 @@ The core product must let a local Application:
 - resolve an exact Service Name in one canonical network-wide Namespace without
   a public directory or resolver-selected alternate meaning, while preventing
   any one ordinary Node from linking User location to the queried name;
+- perform naming operations under bounded Anonymous Cost and local admission,
+  inspect the governing rule version and incompatible fork state, and distinguish
+  an explicit local filter from a change to the canonical Name Record;
 - establish a protected live Service Connection;
 - exchange opaque Application Data within measurable performance and resource
   budgets and receive explicit failure and closure;
@@ -153,35 +159,44 @@ These are responsibility boundaries, not selected binaries or APIs:
    a User account, or human identity. Grace is visible, Release stops resolution,
    and reclaim creates a new generation that invalidates prior state. Recovery
    exists only through a precommitted scoped policy and fails closed while pending.
-5. The User and Service do not learn each other's ordinary network location
+5. No administrator, project, registrar, legal claimant, trademark process, or
+   manual dispute panel can seize, block, transfer, or reassign a canonical Name
+   Lease. Only a finite versioned set of Protocol-reserved Names may exist for
+   parsing, compatibility, or protocol safety. Local filters are non-canonical.
+6. Naming capacity uses bounded Anonymous Cost without money, a global account,
+   identity document, IP reputation, stable identity, wallet, or token. It does
+   not prove one person, fair allocation, legitimate use, or rightful control.
+   Rules and transition evidence are inspectable, one operator cannot change
+   canonical state, and an incompatible fork is explicit rather than silent.
+7. The User and Service do not learn each other's ordinary network location
    within the declared Interactive Route conditions.
-6. Route Knowledge Separation prevents any one ordinary Node from learning the
+8. Route Knowledge Separation prevents any one ordinary Node from learning the
    full Route, reading Application Data, or linking an endpoint's ordinary
    location to a Service Name, Service Target, or opposite endpoint.
-7. A failed path produces bounded recovery or an explicit failure; the network
+9. A failed path produces bounded recovery or an explicit failure; the network
    does not silently pretend that an offline Service received data.
-8. Losing or blocking one ordinary path does not require one central operator
+10. Losing or blocking one ordinary path does not require one central operator
    to restore connectivity.
-9. Every security, anonymity, availability, and decentralization claim states
+11. Every security, anonymity, availability, and decentralization claim states
    its adversary, conditions, measurement, and limitation.
-10. Every accepted security mechanism also has a performance budget and overload
+12. Every accepted security mechanism also has a performance budget and overload
    test; no performance optimization may silently weaken that mechanism.
-11. A Local Traffic Observer receives no Service destination or plaintext from
+13. A Local Traffic Observer receives no Service destination or plaintext from
     the protocol. Ardents does not promise to hide its own use, but avoids one
     mandatory stable fingerprint and treats Transport Camouflage as a measurable
     censorship-resistance goal.
-12. The Interactive Route anonymity claim covers one malicious ordinary Node,
+14. The Interactive Route anonymity claim covers one malicious ordinary Node,
     not arbitrary collusion. Correlated Control spanning both endpoint sides may
     link a User and Service through traffic metadata without exposing
     Application Data.
-13. A malicious Service receives no User origin, Route, Isolation Context, or
+15. A malicious Service receives no User origin, Route, Isolation Context, or
     network-generated stable User identifier from Ardents, while a malicious
     User receives no Service Instance origin, Route, or Service Authority. Each
     still sees the Application Data and behavior intended for it.
-14. Target authentication, Route Profile binding, protocol freshness, and
+16. Target authentication, Route Profile binding, protocol freshness, and
     integrity fail closed. Detected modification, injection, replay, redirect,
     or downgrade never becomes an accepted connection or Application Data.
-15. The Interactive Route claim is implementation-gated. Reproducible
+17. The Interactive Route claim is implementation-gated. Reproducible
     endpoint-edge, Node-role, malicious-endpoint, isolation, and active-attack
     tests must pass before a candidate earns Route Qualification; the claim's
     conditions and excluded adversaries remain visible to Users and Developers.
@@ -251,6 +266,10 @@ until the product, security, and performance contracts can compare them fairly.
 - multi-instance delegation or multihoming in the first tracer;
 - bundled arbitrary application execution or decentralized compute;
 - mandatory blockchain, wallet, token, or governance coin;
+- a central registrar, paid name auction, trademark or legal dispute process,
+  administrative name seizure, or mandatory global name blacklist;
+- proof that anonymous naming produces one-person fairness, rightful ownership,
+  or complete prevention of squatting and enumeration;
 - opaque cryptographic addresses as the ordinary human naming experience;
 - user-tunable anonymity knobs that create silent fingerprinting hazards;
 - automatic anonymity from application credentials, content, client

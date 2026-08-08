@@ -1,7 +1,7 @@
 ---
 id: R-003
 title: How does a Service Name bind and recover without becoming a directory?
-status: active
+status: decided
 owner: product research
 started: 2026-08-08
 reviewed: 2026-08-08
@@ -66,13 +66,13 @@ correct for the poisoned binding. Direct connections to an explicitly supplied
 Service Target do not follow a changed Name Record and cannot silently fall back
 to the name. P4-D3 and P4-D4 therefore define separate expiry, loss, compromise,
 rotation, transfer, and precommitted recovery behavior without pretending target
-authentication repairs a captured name. P4-D5 below defines resolution privacy;
-P4-D6 still defines abuse, governance, and transparency boundaries.
+authentication repairs a captured name. P4-D5 defines resolution privacy and
+P4-D6 below completes abuse, governance, and transparency boundaries.
 
-P4-D2a through P4-D4 now fix the Namespace, leased claim, syntax, lifecycle, and
-authority-transition product contracts without selecting registry, key,
-threshold, delay, quorum, or consensus technology. No single project or network
-administrator gains implicit authority over every name.
+P4-D2a through P4-D6 fix the Namespace, leased claim, syntax, lifecycle,
+authority-transition, privacy, governance, and abuse product contracts without
+selecting registry, key, threshold, delay, quorum, or consensus technology. No
+single project or network administrator gains implicit authority over every name.
 
 ### P4-D2a — One canonical network-wide Namespace
 
@@ -99,15 +99,15 @@ Service Target under a separately visible Application policy.
 
 One canonical Namespace is a consistency and user-experience contract, not a
 decision to use one server, registrar, administrator, ledger, operator set, or
-project-controlled root. P4-D6 must further constrain naming and governance power
-and make partitions, capture, and forks visible.
+project-controlled root. P4-D6 below constrains naming and governance power and
+makes partitions, capture, and forks visible.
 If honest clients cannot establish one current binding during a conflict, they
 fail explicitly rather than accepting resolver-dependent destinations.
 
 Global uniqueness does not make a Service listed, authorized, or secret. Ardents
 still supplies no index, search, recommendation, or public browsing surface for
-Unlisted Services. P4-D5 below fixes query-linking limits and P4-D6 still owns
-enumeration cost and abuse created by the naming mechanism itself.
+Unlisted Services. P4-D5 fixes query-linking limits and P4-D6 below fixes the
+product boundary for enumeration cost and abuse.
 
 ### P4-D2b — Permissionless leased initial claim
 
@@ -143,11 +143,11 @@ subordinate names within its own subtree and bind each to a chosen Name Authorit
 It gains no authority over siblings or ancestors. P4-D3 below fixes the parent,
 child, and lease lifecycle relationship after delegation.
 
-Permissionless does not mean zero-cost or unlimited. P4-D6 and R-010 must select
-and measure a bounded anonymous anti-squatting and Sybil cost that does not require
-a global User account, identity document, mandatory wallet, token balance, or one
-registrar. No cost mechanism, consensus family, ledger, auction, or proof system
-is selected by this decision.
+Permissionless does not mean zero-cost or unlimited. P4-D6 below fixes a bounded
+anonymous anti-squatting and Sybil cost that does not require a global User
+account, identity document, money, IP reputation, mandatory wallet, token balance,
+or one registrar. R-010 and later mechanism research must select and measure it;
+no cost mechanism, consensus family, ledger, auction, or proof system is selected.
 
 ### P4-D2c — Explicit ASCII hierarchical syntax
 
@@ -175,8 +175,8 @@ remains an explicit Ardents failure.
 ASCII-only canonical form removes cross-script and Unicode-normalization
 ambiguity but does not eliminate deception using visually or semantically
 similar ASCII names. Clients must present the complete canonical Service Name or
-Service Link where destination trust matters; P4-D6 still owns squatting,
-reserved-name, and deceptive-name policy.
+Service Link where destination trust matters; P4-D6 below fixes squatting,
+reserved-name, and deceptive-name policy boundaries.
 
 ### P4-D3 — Lease, generation, and record lifecycle
 
@@ -275,8 +275,9 @@ The protocol exposes no list, search, recommendation, public browsing, or
 plaintext-directory API for Unlisted Services. This product omission is not a
 cryptographic non-enumerability claim. A naming participant that sees an exact
 name or a stable name-derived lookup identifier may infer the name, count its
-queries, and test dictionaries. P4-D6 must bound enumeration work and shared
-capacity abuse without claiming to make low-entropy names unguessable.
+queries, and test dictionaries. P4-D6 below requires bounded Anonymous Cost
+without claiming to make low-entropy names unguessable; R-010 remains the
+mechanism and shared-capacity question.
 
 Resolution uses multi-node knowledge separation. An endpoint-adjacent entry role
 may observe the User endpoint's ordinary location and traffic metadata but does
@@ -306,10 +307,71 @@ Authority and generation being changed, so operations on one name remain linkabl
 as that name's authenticated control history. Exact routing, replication, DHT,
 oblivious-query, PIR, or snapshot mechanisms remain unselected.
 
-## Remaining decisions
+### P4-D6 — Non-administrative governance and bounded abuse cost
 
-1. **P4-D6 — Governance and abuse:** define capture, disputes, squatting, Sybil
-   pressure, denial, accessibility, transparency, forks, and exit behavior.
+**Product Owner decision, accepted 2026-08-08:** no network administrator,
+project operator, registrar, legal claimant, trademark process, or manual dispute
+panel may delete, seize, block, transfer, or reassign a canonical Name Lease.
+Canonical control follows only the accepted deterministic Namespace state and
+its authenticated transitions. A name proves current network control, not human
+identity, endorsement, legal ownership, or a right to application content.
+
+The protocol may define a finite, transparent set of **Protocol-reserved Names**
+or labels solely to prevent parsing, compatibility, or protocol ambiguity. The
+set is fixed by an explicit protocol version, not chosen case by case for brands,
+content, governments, or project preference. A change cannot silently seize an
+existing Lease; an incompatible reservation or meaning is a visible protocol and
+Namespace compatibility boundary.
+
+Naming capacity is protected by bounded **Anonymous Cost** and local resource
+admission for claim, renewal, resolution, recovery, and other state operations.
+No mandatory cost may require money, a global account, identity document, IP or
+source reputation, stable identity, cross-context linking, wallet, token balance,
+or governance coin. The exact computation, memory, bandwidth, storage, delay,
+quota, or proof mechanism remains R-010 and mechanism research, and must satisfy
+accepted honest-client accessibility, privacy, resource, and performance bounds.
+
+Anonymous Cost raises the price of mass Sybil work but does not prove one human,
+one actor, fair allocation, legitimate use, or rightful control. A funded or
+well-provisioned actor may still claim many names, squat, enumerate, or exhaust
+finite capacity. Leases make abandoned capture reversible; they do not solve
+scarcity or human disputes. The product makes no anti-squatting guarantee beyond
+measured cost, finite lifecycle, and explicit overload or unavailability.
+
+An initial-claim mechanism must not grant priority merely because an observer
+copied a pending claimant's revealed name. Every candidate must model and test
+front-running, observation, withholding, flooding, and partitioned ordering;
+commitment, reveal, ordering, and proof details remain unselected. If no candidate
+can bound trivial copying without violating privacy or accessibility, root-name
+allocation must be redesigned rather than assigned to a central registrar.
+
+An Endpoint Owner, Node operator, Application, or gateway may locally refuse or
+hide a Service Name under its own explicit policy. That decision changes neither
+the canonical Name Record nor what the complete name means to other compatible
+clients. Ardents supplies no mandatory global content blacklist or name takedown
+surface; Application authorization, moderation, and content law remain outside
+the carrier's canonical naming state.
+
+Namespace rules, compatibility inputs, and accepted state-transition evidence
+are versioned and publicly inspectable without publishing query logs. No single
+operator may unilaterally alter canonical rules or state. Exact multiparty update,
+quorum, release, emergency, and fork governance remains R-012, but it must preserve
+this boundary. A partition, rollback, capture signal, or incompatible fork is
+shown as conflicting, unavailable, or explicitly different network state; a
+Resolver never silently selects another fork or Namespace.
+
+If no naming mechanism meets the accepted security, privacy, performance,
+accessibility, convergence, and non-centralization gates, Ardents revisits or
+removes permissionless human-readable root names. It does not satisfy the product
+contract by adding one mandatory registrar, paid auction, token, administrator,
+or resolver.
+
+## Decision completeness
+
+P4-D1 and P4-D2a through P4-D6 close the Service Name product contract. Exact
+registry, consensus, ordering, clock, cache, anonymous-cost, lookup, routing,
+cryptographic, recovery, and governance mechanisms remain downstream research
+and must be rejected if they cannot implement this contract.
 
 ## Hypotheses
 
@@ -353,10 +415,11 @@ non-centralization, and catastrophe-recovery contracts.
 
 ### Experiment
 
-No experiment is justified before P4-D2 through P4-D5 define observable naming
-states and adversaries. Later prototypes must use synthetic names and authorities
-and retain reproducible conflict, partition, stale-cache, recovery, and private-
-query evidence without recording real User activity.
+The product contract and observable adversaries are now complete. Candidate
+prototypes must use synthetic names and authorities and retain reproducible
+conflict, partition, stale-cache, recovery, governance, abuse, front-running, and
+private-query evidence without recording real User activity. No candidate earns
+production status merely by implementing the happy path.
 
 ### Failure scenarios
 
@@ -440,6 +503,29 @@ query evidence without recording real User activity.
 - **Inference:** authenticated operations on one name are necessarily linkable as
   its control history, but no direct naming path may also expose the controlling
   endpoint's ordinary location to one ordinary Node.
+- **Product Owner decision:** no administrator, registrar, legal or trademark
+  claimant, or manual dispute panel may seize, delete, block, transfer, or
+  reassign a canonical Name Lease.
+- **Product Owner decision:** a finite transparent Protocol-reserved Name set may
+  exist solely for versioned protocol safety. It cannot become a discretionary
+  brand, content, government, or project reservation list.
+- **Product Owner decision:** claim, renewal, resolution, recovery, and naming
+  state capacity use bounded Anonymous Cost and local resource admission without
+  money, account, identity document, IP reputation, stable identity, wallet,
+  token, or cross-context linking.
+- **Product Owner decision:** Anonymous Cost raises mass-abuse cost but proves no
+  personhood, fair allocation, legitimate use, or rightful control. Candidates
+  must also bound observation-based front-running rather than rewarding copied
+  pending claims.
+- **Product Owner decision:** local filters may refuse a name but cannot alter its
+  canonical meaning. Ardents supplies no global content blacklist or name
+  takedown surface.
+- **Product Owner decision:** Namespace rules and state-transition evidence are
+  versioned and publicly inspectable without query logs. No single operator may
+  change canonical state; partitions and incompatible forks remain explicit.
+- **Product Owner decision:** failure to find a viable accessible, private, and
+  decentralized naming mechanism reopens or removes root names rather than
+  introducing a registrar, paid auction, token, administrator, or resolver.
 - **Assumption:** V1 can make separate Name Authority custody understandable to
   one Developer without requiring an always-online naming administrator.
 
@@ -502,6 +588,19 @@ query evidence without recording real User activity.
 - **Oblivious query or PIR:** may hide more from naming participants but adds
   cryptographic, latency, bandwidth, abuse, and deployment cost that must be
   measured rather than assumed viable.
+- **Unrestricted free operations:** maximize initial access but let inexpensive
+  Sybils capture names and exhaust shared naming capacity.
+- **Identity, payment, auction, or token admission:** may raise abuse cost and
+  settle scarcity, but creates excluded identity, wealth, accessibility,
+  surveillance, and governance roots.
+- **Bounded Anonymous Cost:** protects finite work without a stable User identity,
+  but cannot enforce one-person fairness and may still favor powerful attackers.
+- **Global canonical blacklist:** enables uniform takedown but gives its controller
+  censorship and reassignment power. Explicit local filters preserve canonical
+  meaning without pretending every Node must carry every Service.
+- **Unilateral project governance:** is simple during early development but cannot
+  support the accepted decentralized product claim. Versioned inspectable
+  multiparty governance retains visible capture, disagreement, and fork costs.
 
 ## Recommendation
 
@@ -516,8 +615,10 @@ monotonic records and parent-bounded descendants. Use authenticated successor
 rotation plus the optional precommitted, delayed, threshold Recovery Policy and
 fail-closed Recovery Pending state. Use Private Resolution with multi-node
 location/name knowledge separation, explicit metadata limitations, Isolation
-Context separation, and no less-private fallback. Next define governance and
-abuse boundaries before comparing protocols.
+Context separation, and no less-private fallback. Use non-administrative naming
+governance, finite technical reservations, bounded Anonymous Cost, explicit local
+filtering, publicly inspectable rules and transitions, and visible forks. This
+contract is now the gate for comparing naming mechanisms.
 
 Confidence is high that Service Authority cannot also provide truthful recovery
 from its own compromise. Confidence is low that a usable, privacy-preserving,
@@ -536,13 +637,15 @@ policy-change, and custody behavior remain unverified. Private Resolution matche
 the accepted single-Node claim but remains vulnerable to guessed names, query
 frequency analysis, colluding route and naming roles, Correlated Control, and a
 Broad Traffic Observer. The cost and privacy of concrete lookup mechanisms are
-unverified.
+unverified. Governance and abuse boundaries reject hidden administrative escape
+hatches, but concrete Anonymous Cost, front-running protection, multiparty rule
+updates, capture evidence, fork recovery, and accessibility remain unverified.
 
 The strongest counterarguments are that two authorities are too complex for a
 small V1 Developer journey and that one canonical Namespace creates a shared
 Control Plane. The first cost is accepted because merging authorities makes the
-catastrophe-recovery promise false. The second must be constrained by P4-D6
-without pretending that resolver-dependent names are safer. A
+catastrophe-recovery promise false. The second is bounded by non-administrative
+governance and an explicit fork rather than resolver-dependent names. A
 third is that permissionless first-valid claims reward front-running and
 squatting; leases make that harm reversible but do not remove it. A fourth is
 that parent expiry creates a cascading outage; allowing descendants to survive
@@ -551,11 +654,14 @@ A fifth is that the Recovery Policy creates another authority capable of denial
 and eventual takeover; precommitment, threshold, delay, and visibility bound but
 do not eliminate that power. A sixth is that the selected privacy boundary lets
 a naming participant infer names and popularity; stronger hiding remains a
-candidate enhancement only if it meets performance and abuse budgets.
+candidate enhancement only if it meets performance and abuse budgets. A seventh
+is that identity or paid allocation could suppress some abuse more directly;
+those approaches are rejected because their surveillance, wealth, accessibility,
+and capture roots contradict the accepted product.
 
 ## Disposition
 
-- State: `active`; P4-D1 and P4-D2a through P4-D5 are accepted; P4-D6 is next.
+- State: `decided`; P4-D1 and P4-D2a through P4-D6 are accepted.
 - `Name Authority` becomes canonical product language.
 - `Namespace` now means the one canonical Ardents network-wide naming boundary,
   not a resolver-selected provider or local alias scope.
@@ -569,8 +675,11 @@ candidate enhancement only if it meets performance and abuse budgets.
   canonical product language for precommitted, scoped, visible name recovery.
 - `Private Resolution` becomes canonical product language for the accepted
   single-ordinary-Node User-location/name separation, not name secrecy.
+- `Anonymous Cost` and `Protocol-reserved Name` become canonical product language
+  for bounded non-identity abuse control and finite technical reservation.
 - R-006 target lifecycle remains unchanged and now has a distinct naming
   continuity authority.
-- No ADR: no concrete registry, cryptographic recovery, key, threshold, delay,
-  governance, or protocol mechanism has been selected.
+- No ADR: this research record is the reversible product contract; no concrete
+  registry, ordering, cryptographic recovery, Anonymous Cost, governance, or
+  protocol mechanism has been selected.
 - No experiment and no production code.

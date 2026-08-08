@@ -33,6 +33,8 @@ accepted.
 - privacy of the User-location-to-name query association and Isolation Context
   separation during resolution;
 - Service Name presentation integrity and resistance to namespace confusion;
+- Namespace-rule integrity, naming accessibility, and explicit incompatible-fork
+  state without exposing production query logs;
 - endpoint-local grants, Application Interface authority, and network metadata;
 - route, discovery, bootstrap, and Bridge availability;
 - honest-workload latency, throughput, fairness, and endpoint resource
@@ -128,14 +130,14 @@ anonymity or indistinguishability guarantee.
 | Broad Traffic Observer | Correlate both endpoint traffic statistically | Make the lack of an Interactive Route correlation-resistance claim visible; measure any later stronger Route Profile separately | Interactive traffic is expected to remain timing- and volume-correlation-sensitive |
 | Malicious infrastructure Node | Combine endpoint location, Service Name or Service Target, Route, or payload knowledge; tag, modify, inject, delay, replay, drop, redirect, downgrade, bias selection, or retain metadata | Multi-hop Route Knowledge Separation; authenticated fresh protocol state; end-to-end target authentication and payload integrity; fail-closed downgrade rejection; short-lived opaque route handles; bounded retry; role separation; diversity analysis | The Node can always deny, delay, or shape traffic; timing and volume tags may aid correlation without producing a distinguishable integrity violation |
 | Correlated Control | Combine the permitted views of nominally different Nodes, especially both endpoint-adjacent roles, and correlate timing or volume | Avoid correlated route positions using operator, network, software, and jurisdiction evidence; expose uncertainty; test concentration under R-011 | V1 makes no anonymity guarantee against every pair or larger set; hidden common control cannot always be detected |
-| Sybil / flooding actor | Capture discovery or exhaust connection, rendezvous, descriptor, and naming capacity | Bounded queues and lifetimes, quotas or anonymous costs, diversified selection, local admission, and visible overload | No global proof of personhood; accessibility and concentration costs remain |
+| Sybil / flooding actor | Capture discovery or exhaust connection, rendezvous, descriptor, and naming capacity | Bounded queues and lifetimes, Anonymous Cost without identity or payment, diversified selection, local admission, front-running resistance, and visible overload | No proof of personhood, fair allocation, rightful control, or immunity from a better-resourced attacker |
 | Malicious Service | Fingerprint requests, link credentials or behavior, return exploit content, or lie at the Application layer | Hide User origin, Route, Isolation Context, and network-generated stable User identifiers; isolate network state; authenticate the Service Target; keep content semantics outside the carrier | The Service receives intended Application Data, timing, volume, and behavior and can link what the Application reveals |
 | Malicious User | Probe Service behavior, exploit the Application, exhaust its exposed operations, or attempt to discover its origin or authority | Hide Service Instance origin, Route, and Service Authority; expose only the authenticated Service Target and Application response; enforce carrier resource limits | The User already knows the supplied Service Name or Service Target and sees all Application output intended for it |
 | Malicious local Application | Reuse authority, inspect another app's state, overrun queues, or request unsafe route downgrade | Narrowly scoped Local Grants, separate Authority custody, resource bounds, isolation, and explicit route policy | Code controlling the local endpoint can defeat local protections |
 | Compromised Service host | Copy the V1 Service Authority, observe Users' application data, or continue impersonating the Service after migration | Treat the Service Target as compromised, create a replacement authority and target, and rebind the Service Name; never claim same-target revocation | A compromised live Service reads intended plaintext; the old target remains impersonable, and recovery depends on trustworthy name replacement |
 | Operator loss / seizure | Remove Nodes, inspect state, or partition reachability | No plaintext at carrier Nodes, replaceable roles, bounded state, alternate paths, and explicit unavailable results | Real availability still requires independent capacity and a live Service Instance |
 | Supply-chain attacker | Ship a malicious official endpoint or protocol update | Reproducible artifacts, signed releases, staged updates, rollback protection, transparent roots, and later independent review | One widely trusted distribution root remains power until diversified |
-| Governance capture | Control naming, bootstrap, compatibility, releases, or emergencies | Separate power map, bounded quorum, transparency, expiry, recovery, and fork procedure | A decentralized data path does not remove Control Plane governance |
+| Governance capture | Control naming, bootstrap, compatibility, releases, or emergencies | No administrative name seizure; versioned inspectable rules and transitions; finite technical reservations; bounded multiparty power; explicit incompatibility and fork procedure | A decentralized data path does not remove Control Plane governance, and a captured majority may still create a visible incompatible network |
 
 Name Authority and Service Authority are separate compromise boundaries. A
 Publisher does not need Name Authority for ordinary operation. If Service
@@ -154,16 +156,25 @@ canonical state produces an explicit resolution failure until one authenticated
 binding can be established. This consistency requirement does not imply one
 administrator and does not turn the Namespace into a directory.
 
-No administrator grants root Service Names. The first valid claim accepted in
-deterministic shared Namespace order creates a time-bounded Name Lease for its
-Name Authority; concurrent state cannot create two resolver-selected
-controllers. A valid parent may issue subordinate names only inside its subtree.
-The lease proves current network control, not human identity, trademark rights,
-or permanent property. First-valid claims and renewal remain exposed to
-front-running, squatting, Sybil capture, and renewal censorship until P4-D6 and
-R-010 select and measure a bounded anonymous cost. That mechanism cannot require
-a global account, identity document, mandatory wallet, token balance, or one
-registrar.
+No administrator grants or adjudicates root Service Names. The first valid claim
+accepted in deterministic shared Namespace order creates a time-bounded Name
+Lease for its Name Authority; concurrent state cannot create two resolver-
+selected controllers. A valid parent may issue subordinate names only inside its
+subtree. No project, registrar, legal claimant, trademark process, or manual
+panel can delete, seize, block, transfer, or reassign a canonical Lease. It proves
+current network control, not human identity, trademark rights, endorsement,
+legitimate use, or permanent property.
+
+Claim, renewal, resolution, recovery, and naming-state capacity use bounded
+Anonymous Cost and local resource admission. They cannot require money, a global
+account, identity document, IP or source reputation, stable identity, cross-
+context linking, wallet, token balance, or governance coin. Cost raises mass-
+abuse work but proves no personhood, fairness, rightful control, or protection
+from a better-resourced squatter. Every candidate must test copied pending claims,
+front-running, withholding, flooding, enumeration, partitioned ordering, and
+renewal censorship. R-010 selects and measures a mechanism; if none meets the
+accepted accessibility, privacy, performance, convergence, and decentralization
+gates, Ardents revisits root names rather than adding a central allocator.
 
 A Lease is Active, then enters finite Grace unless renewed by its current Name
 Authority, and finally becomes Released. Grace preserves resolution and exclusive
@@ -199,6 +210,15 @@ naming roles, Correlated Control, or a Broad Traffic Observer may correlate
 timing, volume, retries, cache behavior, and query popularity. A blocked private
 path fails closed without direct public resolver, DNS, HTTP, alternate namespace,
 or less-private fallback.
+
+Only a finite, transparent, protocol-versioned set of Protocol-reserved Names
+may exist, solely for parsing, compatibility, or protocol safety. A local Node,
+Application, or gateway may refuse a name under visible local policy, but cannot
+change its canonical Name Record or meaning. Namespace rules, compatibility
+inputs, and accepted transition evidence are publicly inspectable without query
+logs; no single operator may alter canonical state. Capture, rollback, partition,
+or incompatible rule change is explicit conflicting, unavailable, or forked
+state, never a silently selected alternate Namespace.
 
 A canonical V1 Service Name is a lowercase ASCII dot hierarchy with the parent
 on the right. Unicode, IDNA, and Punycode cannot create canonical alternatives.
@@ -381,6 +401,13 @@ or privacy claim.
 - A Name Lease is time-bounded. No registrar, resolver, or manual dispute choice
   can override the accepted deterministic claim order or silently create
   concurrent controllers for the same complete Service Name.
+- No administrator, project, legal or trademark claimant, or manual panel can
+  seize, block, transfer, or reassign a canonical Name Lease. Protocol-reserved
+  Names are finite, transparent, versioned, and limited to technical safety.
+- Naming operations use bounded Anonymous Cost without money, a global account,
+  identity document, IP reputation, stable identity, wallet, token, or cross-
+  context link. It is not proof of personhood, fairness, legitimate use, rightful
+  control, or complete anti-squatting protection.
 - Grace preserves only the current Name Generation and emits a warning. Released
   state resolves nothing; reclaim cannot revive earlier records, signatures,
   delegations, descendants, or cached proof.
@@ -398,6 +425,10 @@ or privacy claim.
 - Resolution creates no network-generated stable User identifier and shares no
   linkable query session or derived state across Isolation Contexts. Failure never
   triggers a direct public or less-private naming fallback.
+- A local name filter changes only visible local policy, never canonical meaning.
+  Namespace rules and accepted transitions are inspectable without query logs;
+  incompatible forks remain explicit, and no operator silently selects another
+  Namespace for the User.
 - A Service Link identifies Ardents explicitly. Parsing or resolution failure
   cannot reinterpret its name as DNS, another namespace, Unicode, IDNA, or
   Punycode; visually similar ASCII names remain distinct destinations.

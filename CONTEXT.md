@@ -166,6 +166,18 @@ endpoint's ordinary location and exact Service Name. It does not make a
 predictable name secret or unguessable.
 _Avoid_: Secret name, anonymous DNS, unobservable lookup
 
+**Anonymous Cost**:
+A bounded per-operation resource burden that raises abuse cost without relying
+on identity, account, payment, IP reputation, or stable cross-context state. It
+is not proof of one person or fair access.
+_Avoid_: Identity check, registration fee, token stake
+
+**Protocol-reserved Name**:
+One of a finite transparent set of names or labels unavailable solely for
+versioned protocol safety. It is not a discretionary brand, content, or legal
+reservation.
+_Avoid_: Trademark hold, administrator block, takedown list
+
 **Service Descriptor**:
 Authenticated, time-bounded network metadata used to contact a Service Target
 without revealing an ordinary origin address.
