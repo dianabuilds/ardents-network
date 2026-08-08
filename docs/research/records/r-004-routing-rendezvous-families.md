@@ -293,6 +293,172 @@ Contract fit: **best**. Expected performance fit: **best hypothesis**. Evidence:
 **none yet**. Advance this option to a bounded prototype while retaining Option B
 as the alternative and Option A as the security reference.
 
+### Split-leg selection and introduction refinement
+
+The mature references constrain the design without selecting their complete
+architectures:
+
+- Tor has the client choose the Rendezvous Point, the Service choose several
+  Introduction Points, and the Service build its own path to the client-chosen
+  rendezvous. The sealed introduction contains the rendezvous location, one-use
+  cookie, and the first endpoint-handshake material. The Service rejects replay,
+  then completes an endpoint-authenticated handshake through the rendezvous.
+- Tor uses a small persistent guard set because choosing a fresh endpoint-adjacent
+  Node for every path eventually exposes endpoints to more malicious candidates.
+- I2P treats service reachability as sensitive state: LeaseSets are published and
+  retrieved through tunnels, and the encrypted form blinds the Destination from
+  storage Nodes. Its reusable tunnel pools remain the Option B alternative, not
+  an implicit dependency of Option C.
+
+Sources: [Tor protocol overview](https://spec.torproject.org/rend-spec/protocol-overview.html),
+[Tor introduction protocol](https://spec.torproject.org/rend-spec/introduction-protocol.html),
+[Tor rendezvous protocol](https://spec.torproject.org/rend-spec/rendezvous-protocol.html),
+[Tor guard specification](https://spec.torproject.org/guard-spec/), and
+[I2P network database](https://i2p.net/en/docs/overview/network-database/).
+
+#### Who selects each position
+
+| Position | Selector | Initial lifetime | Required constraint |
+|---|---|---|---|
+| User Entry or Bridge | User endpoint | Small sticky set scoped by Isolation Context and entry regime | The Service and descriptor never choose or learn it. |
+| Rendezvous | User endpoint | Fresh one-use candidate for a connection attempt | Chosen from authenticated eligible state; distinct from the User Entry and offered Introduction roles. |
+| Introduction Node | Service endpoint; User chooses one from the advertised set | Short-lived rotating set | Shared by many Services; holds only an opaque expiring introduction slot and bounded forwarding state. |
+| Introduction-side Service Entry | Service endpoint | Small sticky service-side set | Carries introduction control traffic without exposing the Service origin to the Introduction Node. |
+| Data Service Entry | Service endpoint after it learns the proposed Rendezvous | Prepared or freshly selected attachment | Distinct from the Rendezvous and preferably from the Introduction path; the User never chooses or learns it. |
+
+An intermediate Node never chooses an endpoint-adjacent position for an endpoint.
+The User validates every overlap it can see before sending an invitation; the
+Service validates the Rendezvous against its own Entry and Introduction state
+before attaching. R-011 must handle operator, network, software, and jurisdiction
+overlap that different Node IDs cannot reveal.
+
+#### C0 — Service Entry is also the Introduction Node
+
+```text
+User -> User Entry -> Rendezvous -> Service Entry -> Service
+```
+
+The descriptor directs the invitation to the same Service Entry that reaches the
+Service. This is the cheapest construction, but the Service-adjacent Node holds a
+service-specific inbound handle while also observing the Service origin. Active
+probing and timing can turn that into a Target-to-origin mapping. **Reject C0**:
+the combined role is too close to the exact forbidden link.
+
+#### C1 — Rendezvous-forwarded sealed introduction
+
+Preparation:
+
+```text
+Service -> Introduction Entry -> Introduction Node [opaque expiring slot]
+```
+
+Connection attempt:
+
+```text
+User -> User Entry -> Rendezvous -> Introduction Node
+                                      -> Introduction Entry -> Service
+Service -> Data Service Entry -> Rendezvous
+```
+
+Joined data path:
+
+```text
+User -> User Entry -> Rendezvous -> Data Service Entry -> Service
+```
+
+The User first establishes a fresh random join handle at its chosen Rendezvous.
+It then sends a fixed-shape, randomized invitation through that Rendezvous to one
+Introduction Node from the authenticated Service Descriptor. Among carrier
+roles, only the Introduction Node uses the routable opaque slot; only the Service
+can open the invitation. The sealed body binds:
+
+- the exact Route Profile and compatible protocol capability set;
+- the Rendezvous identity and reachability needed by the Service;
+- a fresh single-use join handle and finite expiry;
+- the User's ephemeral half of the endpoint handshake;
+- transcript context that prevents substitution across Target, profile, network,
+  or connection attempt.
+
+Invitation and Route state are allocated inside the local Isolation Context and
+cannot be reused by another context, but the Isolation Context itself is never
+placed into the invitation or transmitted as a network identifier.
+
+The Introduction Node forwards the opaque body over the Service's prepared
+Introduction path. It cannot alter the proposed Rendezvous or handshake without
+endpoint rejection. The Service checks expiry and replay, validates the proposed
+Rendezvous against its local diversity state, selects its own Data Service Entry,
+and attaches using a separate random join handle. The Rendezvous pairs the two
+handles but receives no Service Name, Service Target, endpoint key, or plaintext.
+The Application sees success only after the endpoints authenticate the exact
+Service Target and Route Profile end to end.
+
+The intended protocol-derived views are:
+
+| Role | Receives | Must not receive from its role |
+|---|---|---|
+| User Entry | User origin, Rendezvous, timing, volume | Introduction Node, Service Name, Target, Service origin |
+| Rendezvous | User Entry, Introduction Node during setup, Data Service Entry after attachment, random handles | Either endpoint origin, descriptor, Name, Target, endpoint keys, plaintext |
+| Introduction Node | Rendezvous, Introduction Entry, opaque slot, sealed invitation | Either endpoint origin, plaintext invitation, Target-to-origin mapping |
+| Introduction Entry | Service origin, Introduction Node, opaque channel state | User origin, Rendezvous proposal, Name, Target |
+| Data Service Entry | Service origin, Rendezvous, random route handle | User origin, Name, Target, endpoint handshake plaintext |
+
+C1 reuses the already prepared User-to-Rendezvous leg for introduction and keeps
+the normal data path at three carrier positions. Its central risk is that the
+Rendezvous observes which shared Introduction Node receives the invitation. That
+must remain a many-Service role and the randomized invitation must not be
+comparable with descriptor bytes or another attempt.
+
+#### C2 — Separate introduction route
+
+```text
+User -> User Entry -> Introduction Forwarder -> Introduction Node
+                                      -> Introduction Entry -> Service
+User -> User Entry -> Rendezvous <- Data Service Entry <- Service
+```
+
+C2 prevents the Rendezvous from observing the selected Introduction Node and
+keeps setup and data-path roles independent. It costs another prepared path,
+Node, failure domain, queue, and setup schedule. Retain it as the security
+fallback if C1 cannot pass hostile information-flow or active-correlation tests;
+do not pay its cost before evidence identifies the failed C1 boundary.
+
+#### C3 — Distributed invitation mailbox
+
+The User stores a sealed invitation under a short-lived lookup token and the
+Service polls anonymously. This removes a dedicated Introduction circuit and can
+survive brief disconnection, but adds storage, polling traffic, lookup privacy,
+Sybil/eclipse exposure, retention semantics, and new replay/DoS state. **Reject
+C3 for the baseline**: it recreates a message-storage subsystem to establish a
+live connection. It may return only if a later mechanism proves strictly cheaper
+and retains no Application Data.
+
+#### Blocking claim question
+
+An Introduction Node necessarily handles a service-specific opaque slot. Because
+an Unlisted Service is public to anyone who knows or guesses its exact Service
+Name, a malicious Node operator can independently act as a User, resolve that
+name, and inspect the descriptor material available to every User. Tor's own
+Introduction Points likewise hold a per-Service authentication key; encrypted
+descriptors hide it from an uninformed directory, not from every party that knows
+the service address.
+
+Therefore Ardents can realistically guarantee that no one ordinary Node links a
+Service Name or Target to either endpoint's ordinary location. It cannot promise
+that an Introduction Node can never independently learn which public Service its
+opaque slot serves. Keeping the stronger wording would require a still-unproven
+unlinkable introduction capability, or making Services invite-only and their
+names secret, which contradicts the accepted public exact-name contract.
+
+No claim is changed by this active record. The Product Owner must choose whether
+to:
+
+1. refine the per-role wording while preserving the core no-Target-to-origin
+   link guarantee, then advance C1 (**current recommendation**);
+2. retain absolute Target ignorance and open a bounded cryptographic feasibility
+   study before accepting any split-leg route;
+3. reject public exact-name Services, which would reopen P4-D5 and is not
+   recommended.
+
 ## Option D — Delayed packet mixnet
 
 Use independently routed fixed-size packets, randomized mixing delay, reordering,
@@ -344,6 +510,8 @@ No production implementation is justified yet. A throwaway candidate must first:
 
 ## Open mechanism questions
 
+- whether the Introduction-role claim is refined to forbid Target-to-origin
+  linkage rather than impossible independent knowledge of a public Target;
 - whether the three-position data route passes hostile information-flow review or
   needs one additional interior position;
 - how introduction material is delivered without giving one Node a stable
