@@ -172,7 +172,10 @@ These are responsibility boundaries, not selected binaries or APIs:
    within the declared Interactive Route conditions.
 8. Route Knowledge Separation prevents any one ordinary Node from learning the
    full Route, reading Application Data, or linking an endpoint's ordinary
-   location to a Service Name, Service Target, or opposite endpoint.
+   location to a Service Name, Service Target, or opposite endpoint. An
+   Introduction role may independently know a public Service Name or Target
+   available to any User, but receives neither endpoint origin and must not turn
+   that knowledge into a Target-to-origin link.
 9. A failed path produces bounded recovery or an explicit failure; the network
    does not silently pretend that an offline Service received data.
 10. Losing or blocking one ordinary path does not require one central operator

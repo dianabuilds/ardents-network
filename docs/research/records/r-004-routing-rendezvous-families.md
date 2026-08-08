@@ -279,8 +279,9 @@ The data-path views are deliberately narrow:
 
 - this exact construction is not inherited from a deployed protocol and must earn
   every security claim through information-flow tests and a prototype;
-- the introduction path is the subtle part: public descriptor material must not
-  let User Entry, Rendezvous, or Introduction roles derive the Service Target;
+- the introduction path is the subtle part: it must not give User Entry or
+  Rendezvous roles the Service Target, give any Introduction role an endpoint
+  origin, or create a Target-to-origin mapping at one ordinary Node;
 - three data-path Nodes are the minimum, so unknown common control or poor role
   diversity has a larger effect than in longer circuits;
 - the Rendezvous is a per-connection availability and traffic-analysis point;
@@ -432,7 +433,7 @@ C3 for the baseline**: it recreates a message-storage subsystem to establish a
 live connection. It may return only if a later mechanism proves strictly cheaper
 and retains no Application Data.
 
-#### Blocking claim question
+#### P5-D2 — Public Target knowledge at Introduction
 
 An Introduction Node necessarily handles a service-specific opaque slot. Because
 an Unlisted Service is public to anyone who knows or guesses its exact Service
@@ -442,22 +443,21 @@ Introduction Points likewise hold a per-Service authentication key; encrypted
 descriptors hide it from an uninformed directory, not from every party that knows
 the service address.
 
-Therefore Ardents can realistically guarantee that no one ordinary Node links a
-Service Name or Target to either endpoint's ordinary location. It cannot promise
-that an Introduction Node can never independently learn which public Service its
-opaque slot serves. Keeping the stronger wording would require a still-unproven
-unlinkable introduction capability, or making Services invite-only and their
-names secret, which contradicts the accepted public exact-name contract.
+**Product Owner decision, accepted 2026-08-08:** preserve the core guarantee that
+no one ordinary Node links a Service Name or Target to either endpoint's ordinary
+location. Do not claim that an Introduction Node operator can never independently
+learn which public Service its opaque slot serves.
 
-No claim is changed by this active record. The Product Owner must choose whether
-to:
+Public Target knowledge alone is not an anonymity failure. The Introduction role
+receives neither endpoint origin and cannot combine that state with a
+Service-adjacent Entry view for the same Service or connection attempt. It gains
+no additional route state, authority, or protocol privilege from external
+knowledge. A Target-to-origin link remains a qualification failure.
 
-1. refine the per-role wording while preserving the core no-Target-to-origin
-   link guarantee, then advance C1 (**current recommendation**);
-2. retain absolute Target ignorance and open a bounded cryptographic feasibility
-   study before accepting any split-leg route;
-3. reject public exact-name Services, which would reopen P4-D5 and is not
-   recommended.
+This closes the contradiction without making Services invite-only, treating
+names as secrets, or selecting an unproven cryptographic construction. It advances
+C1 as the current prototype hypothesis and retains C2 as its security fallback;
+it does not accept either route for production.
 
 ## Option D — Delayed packet mixnet
 
@@ -510,8 +510,6 @@ No production implementation is justified yet. A throwaway candidate must first:
 
 ## Open mechanism questions
 
-- whether the Introduction-role claim is refined to forbid Target-to-origin
-  linkage rather than impossible independent knowledge of a public Target;
 - whether the three-position data route passes hostile information-flow review or
   needs one additional interior position;
 - how introduction material is delivered without giving one Node a stable
@@ -542,8 +540,9 @@ will ship.
 
 ## Disposition
 
-- State: `active`; P5-D1 fixes the strengthening Seam, but no Product Owner route
-  or rendezvous architecture decision has been accepted.
+- State: `active`; P5-D1 fixes the strengthening Seam and P5-D2 fixes the
+  Introduction-role knowledge boundary, but no Product Owner route or rendezvous
+  architecture decision has been accepted.
 - Tor, I2P, Nym, Session, Lokinet, libp2p, and Waku are references or component
   sources, not selected dependencies.
 - No route length, library, cryptography, DHT, wire protocol, language, or

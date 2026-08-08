@@ -134,6 +134,10 @@ The accepted per-role view is:
   its required role data, timing and volume, and a short-lived opaque route
   handle, but neither endpoint's ordinary location nor the Service Name or
   Service Target;
+- an Introduction role may additionally hold an expiring service-specific opaque
+  slot and sealed invitation. Its operator may independently know a public
+  Service Name or Service Target as any User can, but the role receives neither
+  endpoint's ordinary location and cannot link that knowledge to either origin;
 - no carrier role receives plaintext Application Data or the full Route;
 - one Node performing multiple roles must not combine their views to bypass the
   same single-Node limit.
@@ -148,9 +152,9 @@ Consequences:
 
 - a direct P2P path or single relay cannot be labeled or silently substituted as
   an Interactive Route;
-- Service discovery and Rendezvous may use only short-lived opaque route data
-  at a carrier role; R-003 and R-004 must prevent a stable target-to-origin
-  mapping from appearing there;
+- Service discovery, Introduction, and Rendezvous may use only bounded opaque
+  route data at a carrier role; R-003 and R-004 must prevent a stable
+  Target-to-origin mapping from appearing there;
 - different Node IDs or network addresses are not evidence of separate control;
   actual operator, network, software, and jurisdictional diversity remain R-011
   evidence and P2-D4 conditions;
@@ -203,6 +207,9 @@ Consequences:
 
 - the baseline claim is "one malicious ordinary Node," not "up to one known bad
   operator" or "any two Nodes";
+- the one-Node claim does not depend on a public Service Target remaining secret;
+  a Node operator that independently knows the Target still receives no endpoint
+  origin or Target-to-origin link from its carrier role;
 - collusion may be invisible to the endpoint, so successful connection setup
   cannot certify that the route was independently controlled;
 - path diversity reduces risk but cannot prove anonymity for a particular

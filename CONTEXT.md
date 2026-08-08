@@ -275,8 +275,18 @@ _Avoid_: Fully anonymous route, clearnet connection
 The Interactive Route property in which several separately operated Node roles
 each receive only adjacent and role-specific information, so no ordinary Node
 can link an endpoint's ordinary location to a Service Name, Service Target, or
-the opposite endpoint. Different Node IDs are not proof of separate control.
-_Avoid_: Direct P2P path, single trusted proxy, fixed Tor circuit
+the opposite endpoint. It does not require a public Service Target to remain
+unknown to every Node operator. Different Node IDs are not proof of separate
+control.
+_Avoid_: Direct P2P path, single trusted proxy, Target secrecy, fixed Tor circuit
+
+**Introduction Role**:
+A route-control role that holds an expiring service-specific opaque slot and
+forwards a sealed connection invitation without receiving either endpoint's
+ordinary location. Because an Unlisted Service is public to anyone who knows or
+guesses its exact name, the operator may independently know its Service Name or
+Service Target; the role must not link that knowledge to either endpoint origin.
+_Avoid_: Service Entry, access-control service, secret Target guarantee
 
 **Correlated Control**:
 Effective control or coordinated observation of multiple Node roles by one

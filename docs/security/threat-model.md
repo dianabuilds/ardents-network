@@ -476,10 +476,18 @@ or privacy claim.
 - An Interactive Route is never a direct endpoint-to-endpoint path or one
   trusted proxy. It uses multiple separately operated Node roles for Route
   Knowledge Separation without prescribing a routing algorithm or hop count.
-- An endpoint-adjacent Node may know that endpoint's ordinary location, and an
-  interior or Rendezvous role may know its adjacent Nodes. No ordinary Node also
-  receives the Service Name or Service Target, opposite endpoint location, full
-  Route, or plaintext Application Data for that connection.
+- An endpoint-adjacent Node may know that endpoint's ordinary location, while an
+  interior or Rendezvous role may know its adjacent Nodes but receives neither
+  endpoint origin, Service Name, nor Service Target from its role.
+- An Introduction role may hold an expiring service-specific opaque slot. Its
+  operator may independently know a public Service Name or Service Target as any
+  User can, but the role receives neither endpoint origin and cannot combine that
+  state with a Service-adjacent entry view for the same Service or connection
+  attempt. Independent Target knowledge alone is not an anonymity violation; any
+  Target-to-origin link is.
+- No ordinary Node receives the full Route or plaintext Application Data for the
+  connection, and external knowledge of a public Target grants no additional
+  route state, endpoint location, authority, or protocol privilege.
 - Ordinary Nodes use only the role data and short-lived opaque route handles
   required for the connection. Combining incompatible role views in one Node
   must not bypass the single-Node claim.
