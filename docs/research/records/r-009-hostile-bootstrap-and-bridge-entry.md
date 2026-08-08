@@ -16,6 +16,13 @@ worth prototyping with the R-004 route front-runner. This record does not select
 signers, quorum, transports, bridge distributors, cryptography, or release
 governance.
 
+**Scope clarification, accepted 2026-08-08:** this is a closed-test/public-
+network promotion contract, not Carrier Lab scope. Carrier Lab uses a fixed
+synthetic topology and preconfigured project-owned test state; it implements no
+fresh-install discovery, Direct-Origin Source machinery, Bridge distribution,
+camouflage, or multiparty epoch authority. R-009 mechanisms are prototyped only
+after the Route candidate and Target-first connection are viable.
+
 ## Accepted gate
 
 A fresh or blocked Windows or Ubuntu endpoint must:
@@ -129,7 +136,7 @@ view.
 - simple, cheap, and compatible with direct file or person-to-person transfer;
 - no always-online global consensus service;
 - many operators can add distribution capacity independently;
-- naturally fits a small network's first implementation.
+- naturally fits an early small Closed Test Network after Carrier Lab.
 
 ### Costs and risks
 

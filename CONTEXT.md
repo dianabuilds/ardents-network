@@ -3,6 +3,9 @@
 Ardents is a public, independently operated network for location-private
 application services. This glossary defines the network product boundary and
 contains no protocol, library, or implementation-language choices.
+It describes eventual product language, not current implementation status;
+[product scope](docs/product/scope.md) controls which Delivery Horizon may be
+built, and Carrier Lab is not yet a public or independently operated network.
 
 ## Actors and software
 
@@ -96,7 +99,7 @@ The strongest separately granted local operation surface for creating,
 importing, exporting, reconciling, or signing with Service and Name Authorities;
 issuing bounded public Credentials to host-generated Instance public keys;
 rotating/transferring Name Authority; and initiating Service Target replacement.
-V1 has no in-place Service Authority rotation: root replacement creates a new
+The first public product has no in-place Service Authority rotation: root replacement creates a new
 Authority and Target, while local vault-wrapping keys may rotate independently.
 This boundary is outside the ordinary Application Interface and is never implied
 by Connection or Service Administration access.
@@ -140,6 +143,36 @@ _Avoid_: User, Service, peer contact
 A small application used to prove the network contract without becoming a
 mandatory part of that contract.
 _Avoid_: Network core, universal client runtime
+
+**Product Core**:
+The smallest durable Ardents information-flow and responsibility contract,
+independent of one implementation or delivery milestone.
+_Avoid_: Current backlog, complete public network, V1
+
+**Delivery Horizon**:
+An explicit promotion boundary controlling when an accepted product requirement
+may enter implementation scope. Decision maturity does not imply horizon entry.
+_Avoid_: Priority label, release version, fixed requirement
+
+**Carrier Lab**:
+The disposable Ubuntu-only controlled experiment that falsifies the current
+Interactive Route candidate before naming or public-network systems are built.
+_Avoid_: Reference Application, test network, Ardents release
+
+**Closed Test Network**:
+A persistent multi-host but project-controlled Ardents environment used to test
+later vertical slices without claiming independent or public operation.
+_Avoid_: Public Beta, decentralized network, Carrier Lab
+
+**Public Beta**:
+The first externally usable Ardents network allowed to make only the claims that
+have passed its public operator, control, platform, and qualification gates.
+_Avoid_: Carrier Lab, project-key test network, V1
+
+**Stable Network**:
+A Public Beta successor that also passes the stronger diversity, operational,
+update, recovery, and external-review gates declared for stable use.
+_Avoid_: Prototype, documentation-complete network
 
 **Overlay Service**:
 Optional reusable functionality built over Ardents, such as retained delivery,
@@ -300,7 +333,7 @@ _Avoid_: Name Record, IP endpoint, application profile
 **Destination Resolution Role**:
 A destination-aware infrastructure role that serves authenticated Name/Target
 and Service Descriptor lookup or publication without learning endpoint origin.
-V1 permits it only to Rendezvous-domain identities, never endpoint-adjacent
+Public Beta permits it only to Rendezvous-domain identities, never endpoint-adjacent
 domains; an endpoint excludes every resolution identity and known family used for
 an exact destination/context from that connection's Rendezvous selection. The
 same identity or known family cannot also serve a direct-origin source role.
@@ -473,7 +506,7 @@ _Avoid_: Origin server, reverse proxy, reusable connection pool
 
 **Entry Set**:
 A small, long-lived, endpoint-selected set of endpoint-adjacent Nodes or Bridges.
-V1 has ordinary and Bridge regimes and permits at most one set for each activated
+Public Beta has ordinary and Bridge regimes and permits at most one set for each activated
 adjacent Role Domain and regime in an installation. A client uses the Initiator
 domain; publication uses separate Responder and Introduction domains, including
 when client and Publisher are co-resident. Applications, Services, Targets,

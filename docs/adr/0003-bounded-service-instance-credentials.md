@@ -5,11 +5,15 @@ date: 2026-08-08
 
 # Delegate bounded credentials to online Service Instances
 
-Service Authority remains the durable Service Target root but the online V1
+This hierarchy enters shared product code with the Named Unlisted Site horizon;
+Carrier Lab may use ephemeral fixture keys and does not implement Authority
+backup or custody workflows.
+
+Service Authority remains the durable Service Target root but the online public-product
 runtime generates a private Service Instance Key. The root signs only a public,
 bounded, monotonic Service Instance Credential binding that public key, Target,
 generation, validity, network, and capabilities. Routine migration creates a
-new key and higher generation rather than exporting the old runtime secret. V1
+new key and higher generation rather than exporting the old runtime secret. The first public product
 still permits only one active Instance generation. Co-locating the root remains
 possible with an explicit custody warning, while hardened operation can keep it
 offline. This extra key hierarchy and freshness machinery is accepted because

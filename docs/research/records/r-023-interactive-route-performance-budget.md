@@ -11,7 +11,7 @@ reviewed: 2026-08-08
 
 ## Decision this unlocks
 
-Define the end-to-end V1 performance and resource contract before comparing
+Define the end-to-end public-product performance and resource contract before comparing
 routing families, transports, libraries, implementation languages, or path
 shapes. The result must say what a User experiences, on which supported device
 and network classes, at which percentile, and which security invariants may
@@ -26,14 +26,23 @@ never be traded away to meet the budget.
 - [Product operating model](../../product/operating-model.md)
 - [R-001: Interactive Route claim](r-001-interactive-route-claim.md)
 - [R-002: Live Application Interface](r-002-live-application-interface.md)
-- [R-004: selected Route family](r-004-routing-rendezvous-families.md)
+- [R-004: first Route candidate](r-004-routing-rendezvous-families.md)
 - [R-024: operational product closure](r-024-operational-product-closure.md)
+
+**Scope clarification, accepted 2026-08-08:** the numeric matrices in this
+record are future Route Qualification hypotheses and public promotion gates, not
+the Carrier Lab backlog. Carrier Lab records only coarse setup latency,
+one-stream goodput, CPU, memory, per-role observations, and one explicit path-
+failure outcome on Ubuntu. It neither runs nor partially earns the complete
+cross-platform qualification matrix. See
+[product scope](../../product/scope.md).
 
 Already fixed: security and performance are coequal gates; the Interactive
 Route is a multi-hop low-latency Route Profile; no performance optimization may
 use a direct path, weaker target authentication, shared Isolation Context,
 unbounded queue, silent fallback, or automatic Application Data replay; and the
-Named Unlisted Site is the first complete workload.
+Named Unlisted Site is the first conditional product-shaped workload after
+Carrier Lab.
 
 R-024 refines the older shorthand `network-ready`: readiness is always for an
 exact capability and qualified profile. In this record, bare `network-ready`
@@ -46,8 +55,8 @@ capability-by-platform startup gates. Fast Target Connect readiness cannot be
 reported as evidence that naming, publication, contribution, or update capability
 is ready.
 
-R-004 has since selected the Tor-shaped split-circuit family and its product
-constraints. R-023 remains active because no concrete Route Implementation has
+R-004 has selected the Tor-shaped split-circuit family as the first architecture
+candidate to falsify. R-023 remains active because no concrete Route Implementation has
 yet satisfied these budgets; route-family comparison language below is retained
 only where it describes the evidence sequence that produced the accepted gate.
 

@@ -24,10 +24,18 @@ selecting a programming language or wire protocol.
 - [Domain language](../../../CONTEXT.md)
 - [Threat model](../../security/threat-model.md)
 
-Already fixed: Ardents connects external Applications to Service Targets; V1
+**Scope clarification, accepted 2026-08-08:** Carrier Lab may use a trusted
+experiment harness and internal adapter; it does not implement a public SDK,
+generic proxy, persistent Local Grants, Authority Custody UI, or malicious-
+sibling Application isolation. Named Unlisted Site introduces the smallest
+stable local stream boundary. General OS-enforced Application Principal and
+Network-Isolated Application profiles are later claim conditions, not Carrier
+Lab features.
+
+Already fixed: Ardents connects external Applications to Service Targets; the first public product
 has one active Service Instance; Application Data is opaque; the network does
 not own User identity, application authorization, persistence, semantic retry,
-or offline delivery; and the V1 data primitive is one live reliable ordered
+or offline delivery; and the public-product data primitive is one live reliable ordered
 bidirectional byte stream.
 
 ### P1-D1 — External local integration

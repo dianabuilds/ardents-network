@@ -16,6 +16,14 @@ the accepted Interactive Route security and performance contracts. This record
 does not select a library, cryptographic construction, implementation language,
 wire protocol, or production route.
 
+**Scope clarification, accepted 2026-08-08:** `decided` means that the
+Tor-shaped five-position split-circuit family is the first Carrier Lab candidate,
+not that production routing is frozen. The durable Product Core fixes the
+knowledge-separation claim and stable Application Interface. Five positions,
+separate Introduction, four Role Domains, Candidate View, and source exclusions
+remain a coherent candidate package to falsify; failure reopens that package
+before later-horizon systems are built.
+
 ## Accepted gate
 
 A candidate must preserve all of the following together:
@@ -915,7 +923,8 @@ No production implementation is justified yet. A throwaway candidate must first:
 ## Recommendation
 
 Select the **Tor-shaped pair of independently built endpoint circuits joined at
-the User-selected Rendezvous** as the production routing family to evaluate.
+the User-selected Rendezvous** as the first Carrier Lab routing candidate to
+evaluate.
 Apply Ardents' C-5 positions, P5-D4 separate Introduction, P5-D5 lifetimes,
 P5-D6 Role Domains, P5-D7 local selection, P5-D8 diversity boundary, and P5-D9
 connection continuity. This selects a family, not Tor naming, `.onion`, exit
@@ -923,16 +932,18 @@ routing, a library, cryptography, wire protocol, or implementation language.
 
 Option B tunnel pools may remain a bounded falsification prototype if the
 Tor-shaped candidate cannot approach the recovery or warm-latency budgets, but
-it is no longer an equal production baseline. C1 and C-3 are explicitly
-unqualified performance controls, C-4 is rejected, and Option D is outside V1.
+it is no longer an equal first candidate. C1 and C-3 are explicitly unqualified
+performance controls, C-4 is rejected, and Option D is outside the current
+Interactive Route research.
 
 Option C is only the first candidate Route Adapter. Its internal position count
 must not leak into the Application Interface, Service Connection contract,
 Service Name, Service Target, or authority model.
 
-The prototype recommendation is reversible. P5-D3 through P5-D5 are product
-contracts: evidence may return them to explicit review, but a candidate cannot
-silently weaken them in order to pass.
+The prototype recommendation is reversible. P5-D3 through P5-D9 define the
+current candidate package, while the Product Core fixes its information-flow
+claim. Evidence may return the package to explicit review, but a candidate
+cannot silently weaken the claim in order to pass.
 
 ## Disposition
 
@@ -943,9 +954,10 @@ silently weaken them in order to pass.
   endpoint-owned selection, long-lived Entry, medium-lived Interior,
   connection-scoped Rendezvous, and overlapping Introduction rotation. P5-D6
   through P5-D9 close hidden-leg distinctness, Candidate View authority,
-  non-oracular diversity, and endpoint-only continuity. The selected production
-  family is Tor-shaped split circuits; its concrete implementation remains R-013
-  and its qualification remains R-001/R-023.
+  non-oracular diversity, and endpoint-only continuity. The first Carrier Lab
+  candidate is Tor-shaped split circuits; no production family is selected. Its
+  concrete implementation remains R-013 and its qualification remains
+  R-001/R-023.
 - P5-D6 also separates direct-origin distribution from Route/Resolution duty,
   applies the installation-wide source-exposure exclusion, and evaluates public
   family/capacity thresholds only after the profile's maximum exclusion union.

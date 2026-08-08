@@ -1,13 +1,19 @@
 # Network research queue
 
-Status: **accepted product baseline; evidence and technology queue active**
+Status: **accepted cross-horizon decision registry; Carrier Lab queue active**
 
 This backlog exists to design Ardents as a network product. A question belongs
 here only when its answer changes an observable network contract, a security
 claim, or a later technology comparison. It is not a list of every feature we
 could build.
 
-## Current accepted baseline
+[Product scope and delivery horizons](../product/scope.md) is authoritative for
+work order. Most decided rows below constrain a later Public Beta or Stable
+Network claim and are not current implementation tasks. Only questions needed to
+falsify Carrier Lab may enter the active engineering queue. Historical `V1`
+wording means the first public product contract, not the next prototype.
+
+## Accepted contracts across horizons
 
 Research starts from these accepted product boundaries. Evidence may reopen a
 decision explicitly, but an experiment or dependency cannot silently redefine it:
@@ -86,7 +92,7 @@ decision explicitly, but an experiment or dependency cannot silently redefine it
   are excluded from the same destination/context connection's Rendezvous. This
   preserves four domains, while a Node plus controlled endpoint can still perform
   active timing/volume confirmation and is an explicit non-claim;
-- the selected production family to prototype is a Tor-shaped pair of
+- the first Carrier Lab family to prototype is a Tor-shaped pair of
   independently built endpoint circuits joined at a User-selected Rendezvous,
   with five data positions and a separate Introduction Path;
 - Entry exposure is bounded to at most one small long-lived set for each
@@ -167,11 +173,11 @@ boundaries with named evidence.
 
 | ID | Exact question | Decision and required result | State |
 |---|---|---|---|
-| [R-006](records/r-006-service-target-lifecycle.md) | What is the V1 lifecycle of a Service Target across creation, publication, migration, loss, compromise, replacement, and retirement? | **Decided:** one active Instance generation uses a host-generated private Key plus public bounded Credential issued by portable Service Authority. Routine migration creates a new key, advances generation, and preserves the target. Connections cannot outlive Credential/Work Safety bounds. Root loss or compromise creates a new target and rebinds the Service Name; the old target remains untrusted. | decided |
+| [R-006](records/r-006-service-target-lifecycle.md) | What is the public-product lifecycle of a Service Target across creation, publication, migration, loss, compromise, replacement, and retirement? | **Decided across horizons:** Carrier Lab uses ephemeral authenticated fixtures; Named Unlisted Site introduces one active Instance plus bounded Credential and ordinary migration; durable Authority recovery, compromise replacement, and retirement are later public-product lifecycle requirements. | decided |
 | [R-002](records/r-002-live-application-interface.md) | What is the smallest live Application Interface that lets an existing local application publish and consume a Service safely? | **Decided:** an external socket/proxy-style boundary exposes one live logical Service Connection, both destination forms, authenticated results, honest failures, safe Isolation Contexts, endpoint-local least privilege, hierarchical resource budgets, backpressure, and measurable performance. The same stream may span bounded Carrier Channel replacement without becoming an Application reconnect. SDKs remain optional wrappers; concrete protocol remains later, while scenario-specific numeric budgets come from R-023 evidence. | decided |
 | [R-001](records/r-001-interactive-route-claim.md) | Which endpoint, Local Traffic Observer, relay-collusion, and Broad Traffic Observer capabilities must the Interactive Route resist, and what does it deliberately expose? | **Decided:** the low-latency claim provides Endpoint Location Privacy against the opposite endpoint alone and role-local Route Knowledge Separation against one malicious ordinary Node with no endpoint/second observation under that adversary. Node-plus-endpoint active confirmation, Broad Traffic Observation, and arbitrary collusion are non-claims; bidirectional confirmation must still be characterized. Payload/exact-target protection survives carrier collusion, completed connections require Forward Secrecy, active integrity fails closed, and implementation claims require Qualification. | decided |
 | [R-003](records/r-003-service-name-contract.md) | How does an exact Service Name bind to a Service Target, resolve without becoming a directory, survive accepted rotation, and handle registration, expiry, recovery, conflict, enumeration, query privacy, and Control Plane capture? | **Decided:** P4-D1 through P4-D6 fix distinct Name Authority, one canonical Namespace, permissionless leased claims, ASCII hierarchy and Service Link, lifecycle and generations, precommitted recovery, Private Resolution, non-administrative governance, finite technical reservations, bounded Anonymous Cost, local filtering, inspectable rules, and explicit forks. Registry, ordering, lookup, routing, cryptographic recovery, cost, and governance mechanisms remain downstream research. | decided |
-| [R-004](records/r-004-routing-rendezvous-families.md) | Which routing and rendezvous families can meet the accepted Interactive Route claim and R-023 performance budget under churn, malicious Nodes, and realistic client devices? | **Decided:** use the Tor-shaped split-circuit family with five symmetric positions, separate Introduction, layered lifetimes, four disjoint Role Domains, Rendezvous-domain Destination Resolution with same-operation family exclusion, logical Candidate View plus endpoint materializations/full audit, local non-oracular selection, and endpoint-only continuity. Exact components, parameters, and Qualification remain R-013/R-023 evidence. | decided |
+| [R-004](records/r-004-routing-rendezvous-families.md) | Which routing and rendezvous families can meet the accepted Interactive Route claim and R-023 performance budget under churn, malicious Nodes, and realistic client devices? | **Decided candidate order:** test the Tor-shaped split-circuit package first, with five symmetric positions and separate Introduction. Role Domains, Candidate View, source exclusions, and endpoint-only continuity remain candidate constraints for later promotion, not current public subsystems. Carrier Lab may falsify the package; no production family is selected. | decided |
 | [R-007](records/r-024-operational-product-closure.md#operation) | What availability does the core promise when a path fails or a Service is offline, and which retries can be performed without lying to the Application about operation completion? | **Decided:** only positive authenticated evidence narrows Service or Route failure; ambiguity is indeterminate. Carrier/leg/Rendezvous recovery is bounded inside the same connection and never replays an Application operation. | decided |
 | [R-008](records/r-024-operational-product-closure.md#isolation-versus-cumulative-entry-exposure) | How are local Applications separated from endpoint authority, network metadata, and each other's Isolation Context while still supporting ordinary software? | **Decided:** Local Grants separate connection, Service operation, and Authority Custody with recursive revocation and fresh post-restart binding. Entry exposure is installation × adjacent domain × regime bounded; all higher Route, destination, session, continuity, and diagnostics state is context-separated. | decided |
 | [R-023](records/r-023-interactive-route-performance-budget.md) | What end-to-end performance budget makes the V1 Interactive Route and Named Unlisted Site useful without weakening the accepted security contract? | **Active evidence gate:** P3-D1 through P3-D5 fix useful performance, finite resources, recovery, admission, and hostile-work isolation. P3-D6a makes qualification conjunctive with hard security guardrails, and P3-D6b1 fixes the four cross-platform, two-direction controlled topology. P3-D6b2a fixes release sampling: normal short-event cells use `100` attempts and `>= 99%` success unless specifically overridden; recovery uses at least `20` episodes and `>= 95%` unless stricter; 10-minute workloads run five times, with `50` goodput windows and per-run resource gates. Nearest-rank percentiles retain failed latency as infinity and failed goodput as zero; smoke tests do not qualify. P3-D6b2b1 fixes frozen Windows 11 and Ubuntu LTS `x86-64` endpoint images on a `4 vCPU`, `8 GiB RAM`, SSD-backed, non-overcommitted base; Ubuntu LTS is the sole Linux qualification baseline and other variants receive no V1 claim. P3-D6b2b2a fixes the transport-independent normal envelope at `100/20 Mbit/s` User access, symmetric `100 Mbit/s` Publisher and Node links, `80 ms` base RTT, independent `0.1%` loss per direction, and `p95 <= 10 ms` additional jitter. P3-D6b2b2b fixes fresh `32-byte` connection canaries, an exact `512-byte` nonce-bearing HTTP tracer request with a complete `64 KiB` incompressible response, and verified pre-generated incompressible transfer streams. P3-D6b2b2c1 fixes verified `60-second` direct transfers before and after each applicable batch, a `max/min <= 1.10` drift bound, and their arithmetic-mean baseline. P3-D6b2b2c2a fixes verified clean, routine, cold, and warm state classes and rejects forbidden retained or cross-context state. P3-D6b2b2c2b1 fixes the versioned impairment manifest, generator, seed schedule, and no-fixed-packet-trace rule. P3-D6b2b2c2b2 fixes same-host monotonic clocks, raw one-second resource and traffic sampling, exact queue/security high-water evidence, complete process/helper charging, and controlled-boundary traffic attribution. P3-D6c1 fixes the immutable public Qualification Evidence Bundle; P3-D6c2 fixes requalification and the `10%` review trigger. The controlled tracer additionally hard-gates both endpoint Application network boundaries, Application Principal sibling isolation, Direct-Origin Source exposure, and Role Domain reassignment. Capability-specific startup, effective post-exclusion Node capacity/cost, the Client+Publisher combined profile, and anonymous cost-to-deny remain evidence-driven after R-013 prototypes. | active |
@@ -209,35 +215,35 @@ boundaries with named evidence.
 | ID | Exact question | Decision and required result | State |
 |---|---|---|---|
 | R-016 | Which Users and Developers have a problem severe enough to adopt an internal location-private network despite latency, installation, and trust costs? | Scenario and competitor comparison now; external demand evidence remains a future gate and must not be invented from the Product Owner's preferences. | open |
-| [R-017](records/r-017-named-private-site-anonymous-mailbox.md) | Is Named Unlisted Site a useful smallest Reference Application for exercising publish, name, resolve, connect, and route failure without adding messenger semantics? | Selected as an architecture tracer. This does not validate market demand and no longer implies replicated Site Bundles or an Ardents runtime. | decided |
+| [R-017](records/r-017-named-private-site-anonymous-mailbox.md) | Is Named Unlisted Site a useful smallest Reference Application for exercising publish, name, resolve, connect, and route failure without adding messenger semantics? | Selected as the first **conditional Reference Application after Carrier Lab**. It is not the next implementation slice, does not validate market demand, and implies neither replicated Site Bundles nor an Ardents runtime. | decided |
 | R-018 | Can a User and Developer understand Service Name trust, connection state, route limits, failure, and recovery without learning routing jargon? | One-to-one walkthrough can refine wording; external comprehension evidence remains a future release gate. | open |
 
 ## Decision order
 
-R-024 closed the operational product model after R-006, R-002, R-001, R-003,
-R-004, and R-009 fixed their respective boundaries. The remaining dependency
-path contains evidence and technology work rather than unanswered product
-behavior:
+R-024 closed the eventual public operating model, not the current backlog. The
+dependency path is now deliberately sequential:
 
-1. **R-013 and R-014 — bounded components and language prototypes:** compare
-   maintained foundations and languages against the already fixed R-001/R-023
-   budgets; these prototypes define measurable units for each Route and control
-   role without claiming Qualification.
-2. **Architecture selection:** record the chosen replaceable component seams,
-   runtime, cryptographic construction, update/storage foundations, and rejected
-   alternatives in ADRs only after prototype evidence.
-3. **R-015 — protocol realization:** choose encoding, canonicalization,
-   negotiation, conformance, and fuzz strategy for the accepted evolution and
-   Work Safety behavior.
-4. **Integrated candidate and R-001/R-023 Qualification:** build the selected
-   complete tracer/network candidate, add role-specific units, then execute the
-   complete conjunctive matrix. A prototype cannot earn the claim piecemeal.
-5. **Service Name mechanism, in parallel:** compare registry, ordering, Private Resolution,
-   Anonymous Cost, and convergence mechanisms against P4-D1 through P4-D6;
-   Target Links keep carrier work independent of this gate.
+1. **Carrier Lab specification:** freeze its Ubuntu fixtures, synthetic topology,
+   per-role observations, coarse feasibility metrics, and stop conditions.
+2. **R-013/R-014 lab candidates:** compare only the maintained components and
+   languages needed for that experiment; do not design naming, updater, public
+   Control Plane, SDK, or cross-platform packaging seams speculatively.
+3. **Route candidate verdict:** retain, revise, or reject the current split-
+   circuit package from measured knowledge and cost evidence. Failure stops
+   expansion.
+4. **Named Unlisted Site Reference Application:** only after a viable Route,
+   add Target publication, private reachability, one pre-provisioned exact Name,
+   and the controlled HTTP tracer. Permissionless Namespace governance remains
+   separate.
+5. **Closed test network:** only then prototype hostile bootstrap, public role
+   admission, Bridges, naming lifecycle, update/control state, Windows, and
+   broader Application boundaries as independent vertical slices.
+6. **Public qualification:** run the applicable complete R-001/R-023 and launch-
+   independence gates only for a release candidate. Earlier experiments cannot
+   accumulate partial public claims.
 
 R-010 through R-012 and R-020 have product answers, but their mechanisms and
 real independent participants remain public-launch gates. R-005, R-021, and
-network-owned R-022 identity are out of V1. R-016 and R-018 remain external
+network-owned R-022 identity are outside the Product Core. R-016 and R-018 remain external
 evidence gates that the one-to-one team cannot honestly close alone. No
 production stack is selected before the bounded comparisons.

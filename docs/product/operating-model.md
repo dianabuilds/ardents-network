@@ -1,6 +1,6 @@
 # Product operating model
 
-Status: **accepted product contract; implementation and qualification pending**
+Status: **accepted public-product target model; not the current implementation backlog**
 
 Accepted: 2026-08-08
 
@@ -8,6 +8,13 @@ This document closes the operational shape of Ardents from installation through
 withdrawal. It does not select a programming language, library, cryptographic
 suite, wire encoding, or package manager. Those choices must implement this
 contract rather than redefine it.
+
+[Product scope and delivery horizons](scope.md) controls when any part of this
+model may enter implementation. Carrier Lab intentionally implements only its
+controlled Route experiment subset. Installation custody, public bootstrap,
+naming governance, Bridges, updates, cross-platform qualification, independent
+control, and stable operations remain promotion gates even where their product
+decision is already accepted.
 
 The product has no single `ready` boolean. Readiness is always for a named
 capability, exact Network Epoch, protocol family, and Route Profile. A test

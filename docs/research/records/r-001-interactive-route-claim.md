@@ -24,6 +24,13 @@ collusion breaks the claim, how the claim is tested, and what remains exposed.
 - [R-002: Live Application Interface](r-002-live-application-interface.md)
 - [Domain language](../../../CONTEXT.md)
 
+**Scope clarification, accepted 2026-08-08:** this record fixes the eventual
+claim and its falsification contract. Carrier Lab exercises only controlled
+per-role knowledge, Target/payload protection, and explicit failure to decide
+whether the route candidate is viable. It earns no Route Qualification and
+makes no public Endpoint Location Privacy or anonymity claim. The complete
+matrix becomes mandatory only for the corresponding public promotion horizon.
+
 Already fixed: the Interactive Route is the low-latency Route Profile for one
 live, authenticated Service Connection; Application Data is protected end to
 end from carrier Nodes; the User and Service should not receive each other's
@@ -32,7 +39,7 @@ are coequal gates.
 
 ### P2-D1 — No broad-observer promise for the Interactive Route
 
-**Product Owner decision, accepted 2026-08-07:** V1 does not promise that the
+**Product Owner decision, accepted 2026-08-07:** the Interactive Route does not promise that the
 Interactive Route resists a Broad Traffic Observer able to compare timing and
 volume near both endpoints or across enough network locations to correlate one
 low-latency Service Connection.

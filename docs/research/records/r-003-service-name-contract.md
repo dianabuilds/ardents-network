@@ -25,6 +25,14 @@ connections pinned and resolution failures explicit.
 - [R-006: Service Target lifecycle](r-006-service-target-lifecycle.md)
 - [R-002: Live Application Interface](r-002-live-application-interface.md)
 
+**Scope clarification, accepted 2026-08-08:** human-readable exact naming stays
+in the long-term Product Core, but the complete Namespace is a separate delivery
+horizon. Carrier Lab has no Service Name. The first Named Unlisted Site slice
+uses one pre-provisioned exact Name and tests private binding/resolution only.
+Permissionless initial claims, leases, delegation, recovery, Anonymous Cost,
+governance, forks, and public convergence are Public Beta mechanisms and cannot
+block Target-first Route research.
+
 Already fixed: a Service Name is optional, human-readable, and used for exact
 resolution rather than search. An Unlisted Service may be opened by anyone who
 already knows its exact name; knowing the name is neither authorization nor a

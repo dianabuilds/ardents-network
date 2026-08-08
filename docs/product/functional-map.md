@@ -1,17 +1,44 @@
 # Network functional map
 
-Status: **accepted product decomposition; implementation evidence pending**
+Status: **accepted requirements registry across delivery horizons**
 
 This map describes Ardents as a network product. It separates the mandatory
 carrier contract from Application behavior and from optional Overlay Services.
 Lifecycle and release behavior are defined in the accepted
-[product operating model](operating-model.md).
+[product operating model](operating-model.md). The authoritative implementation
+boundary is [product scope and delivery horizons](scope.md).
 
 Status labels:
 
 - **fixed** — already follows from an accepted product decision;
 - **working** — recommended baseline for focused research, still reversible;
 - **open** — no product commitment yet.
+
+These labels describe **decision maturity only**. They never mean “implement in
+the current slice.” A fixed Public Beta or Stable Network gate remains outside
+the backlog until the preceding Delivery Horizon passes. Historical `V1`
+wording in this registry means the first public product contract, not Carrier
+Lab or the next code change.
+
+## Current implementation boundary
+
+Carrier Lab is the only current implementation scope. It uses a controlled
+Ubuntu topology, preconfigured Target/reachability fixture, one stream, and the
+current split-circuit Route candidate to measure knowledge separation and basic
+feasibility. Service Names, public discovery/contribution, Bridges, production
+updates and custody, Windows qualification, general Application isolation, and
+the full NET-14 qualification matrix are later horizons.
+
+The first Reference Application, Named Unlisted Site, is conditional on Carrier
+Lab. The eventual public product still requires the fixed contracts below, but
+this registry is not one release checklist or backlog.
+
+Candidate-specific records such as `NET-07H` through `NET-07M` and `NET-15`
+describe a coherent design package and its eventual claim conditions. They do
+not freeze that package as the production architecture or place all of it in
+Carrier Lab. The lab implements only the route and Introduction subset named in
+[scope](scope.md); later enforcement and control mechanisms require separate
+promotion and may be replaced after evidence from the lab.
 
 ## Product boundary
 
@@ -35,7 +62,7 @@ The network connects Applications to Service Targets. It does not send product
 messages between infrastructure Node IDs, and it does not need a User identity
 in order to carry a connection.
 
-## Baseline product requirements
+## Accepted requirements registry across horizons
 
 | ID | Requirement | Status | Evidence or decision still needed |
 |---|---|---|---|
@@ -163,7 +190,7 @@ in order to carry a connection.
 | Connection isolation | A distinct local default per Application and enforcement that different Isolation Contexts share no linkable route or session state. | Whether one Application deliberately reuses a context across its own profiles and accepts the resulting linkability. |
 | Performance and resources | Hierarchical finite budgets, backpressure, fair scheduling, explicit overload, and measured security overhead for the network path and Application Interface. | Application workload, payload processing, concurrency within its Local Grant, and any stricter application-level limits. |
 | Persistence | Short-lived buffers strictly required to operate a live connection. | Databases, history, offline queues, retained delivery, content pinning, deletion, and backups. |
-| Availability | Finding routes to a currently published Service, bounded replacement of failed Carrier Channels within the same Service Connection, and explicit terminal failure. | Keeping the V1 Instance online; multihoming, state replication, and application-level failover require a later explicit contract. |
+| Availability | Finding routes to a currently published Service, bounded replacement of failed Carrier Channels within the same Service Connection, and explicit terminal failure. | Keeping the first public-product Instance online; multihoming, state replication, and application-level failover require a later explicit contract. |
 | Retry | Safe bounded routing and carrier attempts within the same Service Connection; carrier retransmission may preserve the ordered stream but cannot duplicate bytes at the interface or reissue an Application operation. | Reissuing an operation, deduplication, exactly-once illusions, and opening a new Service Connection after terminal failure. |
 | Application execution | No arbitrary remote code execution in the carrier. | Local server, browser, application runtime, sandbox, and content rendering. A Reference Application may package these separately. |
 | Abuse | Protect shared carrier and naming capacity through bounded Anonymous Cost, finite lifetimes, local admission, and explicit overload without identity, payment, IP reputation, or a fairness claim. | Service moderation, unsolicited content, local name filtering, application policy, and application admission; none changes the canonical Name Record. |
@@ -171,29 +198,34 @@ in order to carry a connection.
 
 ## Named Unlisted Site tracer
 
-The tracer is deliberately ordinary above the network boundary:
+This conditional Reference Application starts only after Carrier Lab retains a
+viable Route candidate. Its first slice is deliberately ordinary and controlled
+above the network boundary:
 
-1. a Developer starts a deterministic HTTP server with only scoped local
-   IPC/loopback inside a Network-Isolated Application Boundary;
-2. the Service Publisher exposes it as a Service Target, binds a Service Name,
-   and produces its explicit Service Link;
+1. a Developer starts a deterministic HTTP server in a controlled harness that
+   exposes only scoped local IPC/loopback and supplies no ordinary network path;
+2. the Service Publisher exposes it as a Service Target and the test fixture
+   supplies one pre-provisioned exact Service Name binding;
 3. a controlled single-response reference client inside a Network-Isolated
    Application Boundary opens the link, resolves the exact name, and opens a
    Service Connection;
 4. HTTP request and response bytes cross the connection unchanged;
 5. a failed path is rebuilt or reported, and an offline Service is never shown as
    having received a request;
-6. in an ordinary host migration the new host generates a private Instance Key
-   and receives a newly issued higher-generation public Credential while Service
-   Authority may remain offline, preserving both Service Target and Service Name;
-7. a compromise drill creates a replacement target and keeps only the Service
-   Name stable.
+6. in a later ordinary-migration slice the new host generates a private Instance
+   Key and receives a newly issued higher-generation public Credential while
+   Service Authority may remain offline, preserving both Service Target and
+   Service Name.
 
-This tests the whole network control and data path. A generic browser or local
-adapter may use the same Service Connection, but it receives no Application-level
-Endpoint Location Privacy claim unless it independently passes the same egress
-and storage-isolation contract. The tracer does not make HTTP, a browser, static
+This tests one complete controlled Target-to-Application path, not the public
+Control Plane. A generic browser or local adapter may use the same Service
+Connection, but it receives no Application-level Endpoint Location Privacy claim
+unless it independently passes the same egress and storage-isolation contract.
+The tracer does not make HTTP, a browser, static
 content replication, or decentralized hosting mandatory Ardents primitives.
+Permissionless Name claiming, leases, delegation, Recovery Policy, catastrophe
+replacement, public Namespace governance, and the full R-023 matrix remain
+later horizons rather than tracer prerequisites.
 
 ## Candidate extensions, not baseline requirements
 

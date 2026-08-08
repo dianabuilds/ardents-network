@@ -1,15 +1,23 @@
 # Threat model
 
-Status: **accepted product threat contract; no implementation qualified**
+Status: **accepted claim registry across delivery horizons; no implementation qualified**
 
 Last reviewed: 2026-08-08
 
 ## Scope
 
-This threat model covers the minimum network product: joining Ardents,
-publishing a live Service, resolving an exact Service Name, establishing an
-Interactive Route, exchanging Application Data, recovering from path failure,
-and contributing infrastructure.
+This threat model covers claims across the Product Core, Carrier Lab, Named
+Unlisted Site, Closed Test Network, Public Beta, and Stable Network horizons defined by
+[product scope](../product/scope.md). It is not one current implementation
+checklist.
+
+Carrier Lab applies only the controlled Target/Instance authentication,
+Application Data protection, per-role Route knowledge, explicit failure, finite
+resource, and coarse feasibility portions. It makes no public Endpoint Location
+Privacy, anonymity, decentralization, naming, bootstrap, update, or Application-
+isolation claim. Resolving a canonical Service Name, contributing public
+infrastructure, hostile bootstrap, and production lifecycle threats become
+mandatory only when their corresponding horizon is promoted.
 
 Installation, capability readiness, Time Confidence, diagnostics, update, drain,
 and public-launch concentration are covered by the accepted

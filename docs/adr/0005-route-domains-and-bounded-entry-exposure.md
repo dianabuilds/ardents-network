@@ -5,6 +5,11 @@ date: 2026-08-08
 
 # Separate hidden Route legs by domain and bound Entry exposure
 
+This ADR constrains the current five-position split-circuit **candidate** when it
+is evaluated or promoted; it does not freeze a production route or require the
+public assignment/control machinery in Carrier Lab. The durable decision is the
+one-role-view knowledge boundary, not the candidate's position count.
+
 Initiator Carrier, Rendezvous, Responder Carrier, and Introduction positions use
 stable disjoint Role Domains. One Node Identity and one honestly declared
 operator family occupy only one domain for at least an Entry lifetime. This

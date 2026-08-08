@@ -8,6 +8,32 @@ They are completed by the accepted
 [product operating model](operating-model.md), which defines package trust,
 capability-specific readiness, diagnostics, update, and withdrawal.
 
+These are cross-horizon journeys, not one implementation plan. The authoritative
+order is [product scope](scope.md). Only the Carrier Lab journey below is current;
+J-02/J-03/J-05 become the conditional Named Unlisted Site slice, while install,
+public join/contribution, update, Bridges, and full qualification are later
+promotion horizons.
+
+## J-LAB — Falsify the Route candidate
+
+**Actor:** Product Researcher
+
+**Start:** Controlled Ubuntu LTS client, publisher, and synthetic infrastructure
+fixtures; one preconfigured authenticated Target/reachability record; one active
+Service Instance; project-owned ephemeral test keys
+
+**Flow:** start the fixed topology → construct the current five-position Route
+candidate and separate Introduction → authenticate the Target/Instance → exchange
+one deterministic byte stream → capture each role's traffic and state → measure
+coarse setup, goodput, CPU, and RSS → stop one path position → observe bounded
+continuation or explicit terminal failure
+
+**Done when:** evidence shows exactly what every role learned, whether the
+Product Core knowledge boundary was violated, whether one useful stream remained
+plausible on modest hardware, and whether the candidate should continue, change,
+or stop. No Service Name, public discovery, Bridge, installer/updater, Windows
+cell, SDK, general Application sandbox, or public network claim is present.
+
 ## J-00 — Install, repair, and remove Ardents
 
 **Actor:** Endpoint Owner
@@ -376,32 +402,27 @@ topology or raw diagnostic identifiers.
 
 **Actors:** Developer and User
 
-**Start:** A local HTTP server and a desired Service Name
+**Start:** Carrier Lab retained a viable Route candidate; controlled Ubuntu
+client and publisher Applications exist; one exact Service Name and its
+Target/reachability state are pre-provisioned by the test fixture
 
-**Flow:** start the deterministic HTTP server with only scoped local IPC/loopback
-and the controlled single-response client inside Network-Isolated Application
-Boundaries → publish
-the HTTP server as a Service → claim or receive a Name Lease → bind name → open
-its explicit Service Link in the reference client → resolve → connect → exchange
-HTTP bytes → migrate the Service Instance to a new host, generate a new private
-Instance Key, and issue a higher-generation public Credential without moving
-Service Authority or changing the target → simulate compromise by creating a
-replacement target and rebinding the same name
+**Flow:** start the deterministic HTTP server and controlled single-response
+client in a harness that exposes only scoped local IPC/loopback and supplies no
+ordinary network path → publish the HTTP server as one Service
+Instance → privately resolve the pre-provisioned exact Name → authenticate its
+Target/Instance → exchange one nonce-bound HTTP response → stop the Service and
+observe explicit unavailability → in a separate ordinary-migration slice,
+generate a new private Instance Key and issue a higher-generation public
+Credential without moving Service Authority or changing the Target
 
-**Done when:** the site opens through the generic Service Connection; routine
-migration preserves both target and name; compromise preserves only the name;
-one eligible ordinary route failure preserves the same logical connection; and
-terminal failure remains visible. No replicated Site Bundle, Ardents runtime,
-or built-in application identity is required. Both endpoint Application process
-trees expose no ordinary-network listener and have deny-by-default egress; a
-generic browser/HTTP
-adapter outside that boundary is a compatibility mode, not this privacy claim.
-On the normal non-adversarial
-reference network, a running, network-ready endpoint receives the first valid
-HTTP response byte from the controlled tracer within `p95 <= 4 s` without a
-prepared Route and `p95 <= 2 s` with current authenticated state and reusable
-Route state for the same Isolation Context. Rendering and arbitrary Service
-processing are not part of this network KPI.
+**Done when:** the controlled site opens through the generic Service Connection,
+private exact-name resolution does not expose the querying origin in a forbidden
+role view, ordinary migration preserves Target and Name, and offline/failure
+state remains visible. The slice does not implement permissionless Name claims,
+leases, delegation, Recovery Policy, catastrophe Target replacement, a public
+Namespace, a generic browser sandbox, or the full R-023 latency matrix. It
+records latency and resources as observations only. No replicated Site Bundle,
+Ardents runtime, offline delivery, or built-in application identity is required.
 
 ## J-06 — Continue through degradation or recover from a failed path
 

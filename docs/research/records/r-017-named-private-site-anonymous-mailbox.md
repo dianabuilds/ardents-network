@@ -20,6 +20,14 @@ This decision accepts or changes the tracer contract. It does not claim
 product-market fit, select the first user segment, or select a protocol or
 language.
 
+**Scope clarification, accepted 2026-08-08:** this record selects the first
+product-shaped **Reference Application**, not the first implementation
+milestone. Ubuntu Carrier Lab precedes it and contains no naming or HTTP product
+surface. The first Named Unlisted Site slice uses one pre-provisioned exact Name;
+permissionless Namespace lifecycle, recovery, governance, Bridges, packaging,
+and public qualification remain later horizons under
+[product scope](../../product/scope.md).
+
 ## Current contract
 
 - [Product vision](../../product/vision.md)
@@ -49,7 +57,8 @@ rejecting the built-in Mailbox experience.
 - **H3 — Mailbox-only:** anonymous asynchronous messaging or submission is the
   actual urgent job; the Site and application runtime add avoidable scope and
   duplicate ordinary publishing tools.
-- **H0 — Reject current tracer:** none of these slices has sufficiently clear
+- **H0 — Reject the proposed Reference Application:** none of these slices has
+  sufficiently clear
   first-user value or differentiation to constrain the network architecture.
 
 ## Pre-registered evaluation criteria
@@ -422,11 +431,12 @@ differentiation or first-user validation. The strongest counterargument is that
 a site-only tracer exercises less of the eventual application network. R-019
 addresses that gap without smuggling one application's UX into the core.
 
-### R-017-P1 under the current working model
+### R-017-P1 under the historical pre-horizon model
 
 #### P1-D1 — Unlisted discovery by exact Service Name
 
-**Product Owner decision, accepted 2026-08-06:** the first tracer Service is not
+**Product Owner decision, accepted 2026-08-06; horizon clarified 2026-08-08:**
+the first Reference Application Service is not
 indexed or offered through a network directory, but any Person who already knows
 its exact Service Name may resolve and open it. An Invite is not required merely
 to open the Service.
@@ -456,8 +466,8 @@ other interaction model on generic protected transport.
 
 Consequences:
 
-- H1 and H3 are rejected as first-tracer product contracts; H2 is selected;
-- the first tracer is **Named Unlisted Site**;
+- H1 and H3 are rejected as first-Reference-Application contracts; H2 is selected;
+- the first Reference Application is **Named Unlisted Site**, after Carrier Lab;
 - the Ardents Client does not own conversations, Message Requests, chat history,
   attachments, presence, or a universal contact UX;
 - the core handles opaque **Application Data**, not built-in messages;

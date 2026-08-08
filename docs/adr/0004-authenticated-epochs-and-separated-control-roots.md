@@ -5,6 +5,10 @@ date: 2026-08-08
 
 # Authenticate shared epochs and separate Control Plane roots
 
+This is a closed-test/Public Beta Control Plane boundary, not Carrier Lab scope.
+Carrier Lab uses explicit project-owned synthetic state and makes no public
+decentralization, freshness, completeness, or auditor-independence claim.
+
 Ardents accepts one expiring threshold-authenticated Network Epoch committing a
 logical complete Candidate View, its canonical length, global summaries, and a
 precommitted append-only Node-publication input root/cutoff. Clients may fetch

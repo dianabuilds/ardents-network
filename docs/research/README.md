@@ -4,6 +4,10 @@ Research exists to make a named product or architecture decision. It is not a
 holding area for interesting links and is not a way to smuggle an implementation
 choice into the repository.
 
+[Product scope and delivery horizons](../product/scope.md) controls which
+questions may drive current implementation. Research may design later gates,
+but a decided later-horizon contract is not a current backlog item.
+
 ## Current one-to-one working model
 
 The active project is run by one human Product Owner and Codex. Research plans

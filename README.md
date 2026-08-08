@@ -10,6 +10,12 @@ previous implementation is preserved in the
 [`old`](https://github.com/dianabuilds/ardents-network/tree/old) branch as
 evidence to learn from, not an architecture to continue by default.
 
+The documents describe several delivery horizons. They are not one backlog.
+The only current implementation scope is the Ubuntu controlled **Carrier Lab**
+defined in [product scope](docs/product/scope.md); public naming, Bridges,
+production updates, Windows qualification, multiparty control, and the complete
+release test matrix remain later promotion gates.
+
 ## Product hypothesis
 
 Ardents lets an existing local Application publish or connect to an internal
@@ -22,28 +28,30 @@ Service Connection. Infrastructure Node IDs are not User or application
 addresses, and the network does not impose messenger, identity, storage, or
 content semantics.
 
-V1 is endpoint software for ordinary Windows 11 and Ubuntu LTS `x86-64`
+Public Beta is intended as endpoint software for ordinary Windows 11 and Ubuntu LTS `x86-64`
 desktop/laptop devices: Users connect from them and Developers can publish local
 Applications from them. The required infrastructure benchmark uses an Ubuntu
 LTS `x86-64` `2 vCPU`, `2 GiB RAM`, symmetric `100 Mbit/s` reference VPS; macOS
 and mobile remain later targets. Other Linux distributions and architectures
-have no V1 compatibility or release claim.
+have no Public Beta compatibility or release claim.
 Client and publisher capacity figures are minimum floors, not hard limits:
 stronger endpoints may use larger finite local budgets without gaining a Node
 role, trust, authority, route priority, or weaker security rules.
 
-The accepted Interactive Route contract is multi-hop for Route Knowledge
-Separation: one ordinary Node acting only from its role-local view is not
-directly given a binding between an endpoint's ordinary location and a Service
-Name, Service Target, or opposite endpoint. Its baseline selects the
+The durable Interactive Route contract is multi-hop Route Knowledge Separation:
+one ordinary Node acting only from its role-local view is not directly given a
+binding between an endpoint's ordinary location and a Service Name, Service
+Target, or opposite endpoint. The first Carrier Lab candidate uses the
 Tor-shaped family of two independently built endpoint circuits joined at a
-User-selected Rendezvous, with five symmetric logical carrier positions. It does
-not select Tor naming, exit routing, a library, cryptography, or wire protocol.
-Connection setup uses a separate Introduction Path carrying only a sealed,
-single-use invitation; the selected Rendezvous does not forward it, and no
-Application Data or offline message is carried there.
-Each endpoint selects its own leg from authenticated Candidate Materializations
-under one epoch-committed logical Candidate View. V1 has ordinary and Bridge
+User-selected Rendezvous, with five symmetric logical carrier positions and a
+separate Introduction Path. This is a falsifiable candidate, not a selected
+production route, Tor naming, exit routing, library, cryptography, or wire
+protocol.
+
+If that data-path candidate survives, the current later-horizon enforcement
+candidate has each endpoint select its own leg from authenticated Candidate
+Materializations under one epoch-committed logical Candidate View. Public Beta
+has ordinary and Bridge
 regimes and at most one long-lived Entry Set for each activated adjacent Role
 Domain and regime per installation. Applications, Services, contexts,
 destinations, generations, and Bridge Invites cannot create more; every Bridge
@@ -89,8 +97,8 @@ a valid Service Connection. A Node can still delay or drop traffic;
 indistinguishable causes are reported honestly and bounded recovery never
 replays an Application operation.
 
-No implementation has yet earned Route Qualification. A candidate may present
-the Interactive Route claim only after reproducible edge-traffic, Node-state,
+No implementation has yet earned Route Qualification. A Public Beta candidate
+may present the Interactive Route claim only after reproducible edge-traffic, Node-state,
 malicious-endpoint, Application Principal, Application-network isolation,
 Direct-Origin Source, Role Domain transition, and active-attack tests pass.
 Until then this
@@ -101,27 +109,40 @@ The carrier is public so that private Services can draw from a broader anonymity
 set. Naming, bootstrap, software releases, and governance remain explicit
 Control Plane risks rather than being hidden behind the word “decentralized.”
 
-## First Reference Application
+## Current research slice
 
-The first architecture tracer is **Named Unlisted Site**:
+The next code, if started, is a disposable Ubuntu-to-Ubuntu **Carrier Lab**. It
+uses one deterministic byte stream, one active Service Instance, project-owned
+test keys, a preconfigured Target/reachability fixture, and a fixed synthetic
+topology to falsify the current five-position Route candidate. It implements no
+Service Name, public Node discovery, Bridge, installer, updater, SDK, browser,
+or public-network governance, and it makes no anonymity or decentralization
+claim.
+
+## First conditional Reference Application
+
+After Carrier Lab demonstrates a plausible Route, the first product-shaped
+tracer is **Named Unlisted Site**:
 
 1. A Developer runs an ordinary local HTTP service.
 2. Ardents exposes it under a Service Target without publishing a stable public
    origin to Users.
-3. The Developer binds a human-readable Service Name.
+3. The test fixture supplies one pre-provisioned human-readable Service Name
+   binding; permissionless claiming is not part of this slice.
 4. A User who already knows the exact name resolves it and opens a protected
    live connection; Ardents supplies no directory or search.
-5. HTTP remains application data. The tracer verifies name continuity, target
-   authentication, endpoint-location claims, route failure, and blocked entry.
-6. V1 uses one active Service Instance generation. During ordinary migration the
+5. HTTP remains application data. The tracer observes private name resolution,
+   target authentication, route behavior, and explicit failure without claiming
+   public Route Qualification.
+6. A later ordinary-migration slice keeps one active Service Instance generation. The
    new host generates a new private Instance Key and receives a newly issued
    public bounded Instance Credential; neither the old runtime key nor durable
-   Service Authority is moved. Root compromise creates a new target while the
-   Service Name can remain stable under its separate Name Authority.
+   Service Authority is moved.
 
-Both controlled tracer Applications run inside the Network-Isolated Application
-Boundary and communicate only through scoped local Ardents IPC/loopback. The
-first tracer has one active Service Instance; loss of its host means explicit
+Both controlled tracer Applications have no ordinary network path by harness
+construction and communicate only through scoped local Ardents IPC/loopback;
+this is not yet a reusable desktop sandbox product. The
+first Reference Application has one active Service Instance; loss of its host means explicit
 unavailability until Owner-driven migration or Target replacement.
 
 The tracer does not require a replicated Site Bundle, bundled application
@@ -130,6 +151,7 @@ products or overlays if future evidence justifies them.
 
 ## Start here
 
+- [Authoritative product scope and delivery horizons](docs/product/scope.md)
 - [Product vision](docs/product/vision.md)
 - [Accepted operating model and remaining bottlenecks](docs/product/operating-model.md)
 - [Network functional map](docs/product/functional-map.md)
@@ -162,7 +184,7 @@ entry gates.
 - mandatory wallet, blockchain, token, KYC, or proof of personhood;
 - global User profile or universally linkable application identity;
 - built-in messenger, Inbox, Contacts, conversation format, or offline history;
-- multi-instance delegation or multihoming in the first tracer;
+- multi-instance delegation or multihoming in the first public product;
 - application persistence, arbitrary code execution, or decentralized compute
   by implication;
 - an opaque cryptographic address as the ordinary human-facing Service Name;

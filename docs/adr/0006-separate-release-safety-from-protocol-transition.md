@@ -5,6 +5,10 @@ date: 2026-08-08
 
 # Separate release safety from protocol transition
 
+This decision applies when a closed test network begins producing installable
+release candidates. Carrier Lab and early Reference Application experiments have
+no automatic updater, public threshold, or protocol-migration subsystem.
+
 Ardents uses two independent lifecycle machines. Protocol generations move from
 announced through overlap-supported, preferred, required, and retired, with at
 least 90 days of current/previous overlap except an expiring threshold emergency

@@ -4,6 +4,10 @@ The repository separates **research code**, **Reference Application code**, and
 **production network code**. Passing time or accumulating code does not promote
 one category into the next.
 
+[Product scope and delivery horizons](../product/scope.md) is authoritative.
+Only the current Delivery Horizon may enter the backlog; later fixed contracts
+are claim and promotion gates, not permission to build speculative subsystems.
+
 ## Gate A — start an experiment
 
 An experiment may be written when:
@@ -18,37 +22,49 @@ An experiment may be written when:
 An experiment may use any suitable language or maintained library. That choice
 does not select the production stack.
 
-## Gate B — start the Named Unlisted Site tracer
+## Gate B — start Carrier Lab
 
-The Reference Application may gain a shared codebase only after review of the
-accepted product contract, not merely one transport API:
+Carrier Lab may start only after one experiment record freezes:
 
-- accepted R-006 Service Target lifecycle;
-- R-002 live Application Interface;
-- accepted R-001 Interactive Route adversary, claim matrix, and Route
-  Qualification gate;
-- R-003 Service Name and recovery boundary;
-- R-004 selected split-circuit Route family, Role Domains, Candidate View, and
-  endpoint-only continuity boundary;
-- R-007 positive-evidence failure behavior and no Application-operation replay;
-- R-009 threshold-authenticated Network Epoch and replaceable Bridge entry;
-- R-017 accepted Reference Application scope.
-- R-024 installation, capability readiness, Time Confidence, diagnostics,
-  update, privacy, and public-launch closure;
-- J00 installation, J01 capability-specific start/join, J02/J03 connect and
-  publish, and J08 update/drain journeys.
+- the Ubuntu LTS `x86-64` client, publisher, and controlled infrastructure
+  fixtures;
+- one active Service Instance, deterministic byte-stream workload, ephemeral
+  project-owned test keys, and preconfigured authenticated Target/reachability;
+- the current five-position split-circuit candidate, separate Introduction, and
+  only the comparison controls needed to falsify it;
+- per-role traffic/state observations for the R-001 knowledge boundary;
+- coarse setup latency, one-stream goodput, CPU, RSS, and one injected path-
+  failure measurement;
+- explicit pass, redesign, and stop conditions plus evidence cleanup.
 
-The tracer uses a deterministic HTTP Service whose only listener is scoped local
-IPC/loopback and a controlled single-response client over the generic
-Application Interface. Both complete Application/helper process trees run inside
-qualified Network-Isolated Application Boundaries. It must support an explicit Target Link before depending
-on a stable human Namespace; name-based operation remains visibly experimental
-until its separate feasibility gate passes. A generic browser adapter or
-simulated route may be included only with a visible unverified-networking/no-
-Application-level-privacy mark. Replicated Site Bundles, offline delivery, and
-an Ardents application runtime are not silently added to this gate.
+Carrier Lab stays under `experiments/`. It contains no Service Name, public
+discovery/contribution, Bridge, production installer/updater, Windows build,
+public SDK/proxy/browser, general Application sandbox, multiparty Control Plane,
+or complete R-023 matrix. It makes no privacy, anonymity, decentralization, or
+release claim. Passing Gate B only answers whether the Route candidate deserves
+another experiment.
 
-## Gate C — select production language and foundations
+## Gate C — start the Named Unlisted Site Reference Application
+
+Named Unlisted Site work starts only after Carrier Lab evidence retains a viable
+Route candidate. Its first controlled slice is Ubuntu-to-Ubuntu and adds:
+
+- the stable minimum Application Interface and one-Service Target/Instance
+  Credential lifecycle from R-002/R-006;
+- private reachability resolution and one pre-provisioned exact Service Name;
+- a deterministic HTTP Service and single-response client with no ordinary
+  network access by construction;
+- exact target authentication, explicit offline/failure behavior, and ordinary
+  one-Instance migration.
+
+Permissionless Name claims, leases, delegation, catastrophe recovery, Bridges,
+public Contributor admission, production updates, general browser support, and
+cross-platform qualification do not enter this gate. A Reference Application
+may begin as another experiment; it gains shared production code only after Gate
+D. Replicated Site Bundles, offline delivery, and an Ardents application runtime
+remain outside scope.
+
+## Gate D — select production language and foundations
 
 A production language, runtime, routing foundation, storage component, or wire
 format is selected only when:
@@ -62,14 +78,16 @@ format is selected only when:
 - a research record recommends the choice;
 - an ADR records meaningful lock-in and rejected alternatives.
 
-## Gate D — claim a security property
+## Gate E — claim a security property
 
 A security or privacy property may be presented as implemented only when:
 
 - it follows the claim format in the threat model;
 - conformance and adversarial tests exercise the declared conditions;
 - measurements or analysis are retained and reproducible;
-- downgrade, route failure, key rotation, update, and recovery are covered;
+- every downgrade, failure, key/lifecycle, update, and recovery path that can
+  affect the exact declared claim is covered; unrelated later-horizon systems
+  are neither assumed nor smuggled into its scope;
 - documentation exposes the honest limitation to Users and Developers.
 
 For the Interactive Route, passing this gate is Route Qualification for one
@@ -127,11 +145,12 @@ shared memory, in-process Nodes, reduced test Routes, and hidden same-host fast
 paths do not qualify. The candidate retains its production cryptography, target
 authentication, isolation, resource controls, and fail-closed behavior.
 
-## Gate E — call a network release usable
+## Gate F — call a Public Beta candidate locally usable
 
-A release is usable only when complete journeys, not isolated primitives, pass
-on supported platforms. For the first tracer this includes unprivileged install
-and repair, capability-specific start/join, Target Link connect, publish, name
+A Public Beta candidate is locally usable only when complete journeys, not
+isolated primitives, pass on supported platforms. This later horizon includes
+unprivileged install and repair, capability-specific start/join, Target Link
+connect, publish, name
 and private resolve where claimed, exchange, close/fail, bounded Instance
 Key/Credential rotation, connection/Work Safety expiry, Local Grant revocation,
 alternate-path recovery, blocked entry, grant-scoped diagnostics, finite resource
@@ -143,13 +162,13 @@ Applications, plus same-user hostile-sibling Application Principal isolation.
 One generic `network ready` flag cannot substitute for separate Target Connect,
 Private Name Resolution, Publish, and Contribute readiness results.
 
-For V1, those endpoint journeys must pass on frozen, fully patched Windows 11
+For Public Beta, those endpoint journeys must pass on frozen, fully patched Windows 11
 and Ubuntu LTS `x86-64` desktop/laptop reference images. Both endpoint roles use
 the `4 vCPU`, `8 GiB RAM`, SSD-backed, non-overcommitted base class with built-in
 OS protection enabled. The infrastructure path uses an Ubuntu LTS `x86-64`
 `2 vCPU`, `2 GiB RAM`, symmetric `100 Mbit/s` reference VPS class. Other Linux
-variants receive no V1 claim. Server-only success cannot substitute for a
-working User or Developer endpoint; macOS and mobile do not block V1.
+variants receive no Public Beta claim. Server-only success cannot substitute for a
+working User or Developer endpoint; macOS and mobile do not block Public Beta.
 
 Exact image identifiers, OS builds, kernels, packages, host CPU, microcode,
 hypervisor, storage, power mode, and caps are frozen and retained per candidate.
@@ -289,8 +308,8 @@ orders as positive infinity, failed goodput is zero, and every eligible sample
 remains in the evidence. Additional samples must be predeclared and all count.
 Shorter development or CI smoke suites never earn Route Qualification.
 
-One failed mandatory cell blocks the usable V1 and Route Qualification claim for
-that build and configuration. The artifact may remain an explicitly
+One failed mandatory cell blocks the usable Public Beta and Route Qualification
+claim for that build and configuration. The artifact may remain an explicitly
 unqualified research build, but passing cells cannot compensate for the failed
 one and project communication cannot present it as a qualified anonymous
 network.
@@ -299,9 +318,9 @@ An offline Service must be reported as unavailable. The release must not imply
 that Application Data was retained, delivered, or semantically completed unless
 a separate accepted Overlay contract provides and verifies that behavior.
 
-## Gate F — make a public network claim
+## Gate G — make a public network claim
 
-A locally usable build is not yet a decentralized public network. Public beta
+A locally usable build is not yet a decentralized public network. Public Beta
 requires all of the following at the same time:
 
 - one exact build and configuration has passed the complete R-001/R-023 Route

@@ -1,11 +1,13 @@
 # Product vision
 
-Status: **accepted network product contract; implementation unqualified**
+Status: **accepted long-term product contract; current scope is Carrier Lab**
 
 Last reviewed: 2026-08-08
 
 The complete installation, readiness, operation, update, and withdrawal contract
-is defined in [the product operating model](operating-model.md).
+is defined in [the product operating model](operating-model.md). What may be
+built now is controlled separately by
+[product scope and delivery horizons](scope.md).
 
 ## Vision
 
@@ -18,6 +20,20 @@ The network is the product. A site, messenger, file exchange, community, or
 identity system is an Application or optional Overlay Service built on it.
 Ardents does not need to understand those application semantics in order to
 route and protect their connections.
+
+## Delivery horizon
+
+The vision describes the eventual public product, not one immediate release.
+Current implementation scope is only the Ubuntu controlled **Carrier Lab**:
+Target-first, one Service Instance, one live stream, a fixed synthetic topology,
+and the current Route candidate. It exists to falsify route feasibility before
+we build naming, public contribution, Bridges, production updates, multiparty
+governance, Windows support, or complete qualification.
+
+Named Unlisted Site is the first conditional Reference Application after that
+lab. Public Beta and Stable Network are later promotion horizons. A fixed
+long-term requirement is not automatically a current backlog item, and the
+ambiguous planning label `V1` is no longer used for the next implementation.
 
 ## What the product adjectives mean
 
@@ -49,12 +65,12 @@ and a security mechanism is not viable if it makes the accepted Application
 journey impractical under honest load.
 
 Performance floors are not hardware ceilings. A stronger endpoint may scale
-finite hierarchical local budgets above the V1 floor, while the Endpoint Owner
+finite hierarchical local budgets above the applicable qualified public floor, while the Endpoint Owner
 retains a cap. Extra capacity grants no infrastructure role, trust, authority,
 route priority, or privacy exception, and exact hardware capacity is not required
 network metadata.
 
-## Fixed direction
+## Long-term fixed direction
 
 The following product choices already constrain research:
 
@@ -70,7 +86,7 @@ The following product choices already constrain research:
    Service addresses, or an application-level `from ID` / `to ID` model.
 6. Censorship, probing, Sybil participation, malicious infrastructure, seizure,
    traffic analysis, and governance capture are normal operating conditions.
-7. V1 supports one active Service Instance generation per Service Target. Each
+7. The first public product supports one active Service Instance generation per Service Target. Each
    host generates a private Instance Key; the durable Service Authority may
    remain offline and authorizes its public key with a bounded public Instance
    Credential. Routine migration generates a new key and advances the Instance
@@ -83,7 +99,7 @@ The following product choices already constrain research:
    Naming abuse is constrained by anonymous resource cost and explicit protocol
    rules, not identity, payment, IP reputation, or discretionary reassignment.
 
-## Network product boundary
+## Public product boundary, not current implementation scope
 
 The core product must let a local Application:
 
@@ -123,10 +139,10 @@ Those functions have independent Capability Readiness. A running process is not
 `ready` merely because its local socket exists, and unavailable naming cannot be
 hidden inside an otherwise working Target connection.
 
-The same V1 endpoint platforms must support publishing an ordinary local
+The same Public Beta endpoint platforms must support publishing an ordinary local
 Application. Ubuntu LTS is the sole Linux qualification baseline; other Linux
-distributions and architectures receive no V1 compatibility or release claim.
-The required V1 infrastructure reference class is an Ubuntu LTS `x86-64`
+distributions and architectures receive no Public Beta compatibility or release claim.
+The required Public Beta infrastructure reference class is an Ubuntu LTS `x86-64`
 server or VPS with `2 vCPU`, `2 GiB RAM`, and a symmetric `100 Mbit/s` link.
 Each selected role must be useful on that class; it is neither a capacity
 ceiling nor additional trust. macOS and mobile are later targets rather than
@@ -159,7 +175,7 @@ These are responsibility boundaries, not selected binaries or APIs:
 - **Network Transparency** — exposes Control Plane roots, software provenance,
   concentration, failures, and the limits of privacy claims.
 
-## Core product promises
+## Long-term core product promises
 
 1. A Service Connection is confidential and authenticated end to end against
    carrier Nodes acting alone or together, while its endpoints, Service
@@ -167,7 +183,7 @@ These are responsibility boundaries, not selected binaries or APIs:
 2. A Service Target is independent of a Node identity and ordinary IP location.
 3. A complete Service Name has one verifiable network-wide meaning under
    authority distinct from Service Authority and can remain stable when a
-   compromised or lost Service Target must be replaced. Its V1 canonical form is
+   compromised or lost Service Target must be replaced. Its Public Beta canonical form is
    a lowercase ASCII dot hierarchy and its explicit Service Link identifies
    Ardents rather than DNS. Resolution separates User location from the name
    against one ordinary Node, but does not make predictable names secret.
@@ -235,16 +251,17 @@ These are responsibility boundaries, not selected binaries or APIs:
     or Carrier Channel Adapters below that boundary. An unsupported exact
     profile fails explicitly; it is never silently negotiated to a weaker one,
     and every Implementation earns Route Qualification independently.
-19. The baseline Interactive Route data path has five symmetric logical carrier
+19. The first Carrier Lab candidate has five symmetric logical carrier
     positions: User Entry, User Interior, Rendezvous, Service Interior, and
-    Service Entry. A shorter path is not the same qualified profile and cannot
-    be selected silently as a performance optimization.
-20. Connection introduction uses a separate Introduction Path, not the selected
-    Rendezvous. It carries only a sealed, expiring, single-use invitation that
-    lets the Service attach its own data leg; it carries no Application Data and
-    creates no offline-delivery promise.
-21. Each endpoint selects its own leg using a small long-lived Entry Set and a
-    small medium-lived Interior Set. V1 has ordinary and Bridge regimes and at
+    Service Entry. A shorter path is only an explicitly unqualified comparison
+    control. This fixes the experiment, not the production Route shape.
+20. In that candidate, connection introduction uses a separate Introduction
+    Path, not the selected Rendezvous. It carries only a sealed, expiring,
+    single-use invitation that lets the Service attach its own data leg; it
+    carries no Application Data and creates no offline-delivery promise.
+21. If the data-path candidate survives, the current later-horizon design has
+    each endpoint select its own leg using a small long-lived Entry Set and a
+    small medium-lived Interior Set. Public Beta has ordinary and Bridge regimes and at
     most one Entry Set for each activated adjacent Role Domain and regime per
     installation: Initiator for client traffic, Responder for publication data,
     and Introduction for prepared introduction paths. Co-resident roles retain
@@ -255,8 +272,9 @@ These are responsibility boundaries, not selected binaries or APIs:
     Entry is not rotated after one failure; a fresh User-selected Rendezvous is
     scoped to one new Service Connection, and Introduction roles rotate gradually
     with overlap.
-22. Initiator, Rendezvous, Responder, and Introduction Node identities occupy
-    disjoint stable Role Domains. This makes the five-distinct-position rule
+22. The corresponding later-horizon candidate places Initiator, Rendezvous,
+    Responder, and Introduction Node identities in disjoint stable Role Domains.
+    This makes the five-distinct-position rule
     enforceable across independently hidden endpoint legs without turning
     Service rejection into an Entry-discovery oracle. Name, Target, and
     descriptor lookup/publication uses a Destination Resolution role restricted
@@ -267,8 +285,9 @@ These are responsibility boundaries, not selected binaries or APIs:
     Assignment is finite: duty must fit before `not-after`; reassignment stops
     new work, drains and quarantines the old identity/family, and only then
     permits another domain. Emergency closes rather than overlaps duty.
-23. Network state authority is separate from distribution. An endpoint accepts
-    one expiring threshold-authenticated Network Epoch, reports conflicting or
+23. The current public Control Plane candidate separates network-state authority
+    from distribution. An endpoint accepts one expiring threshold-authenticated
+    Network Epoch, reports conflicting or
     stale state explicitly, and selects its own Route from deterministic
     Candidate Materializations under the common logical Candidate View. The
     epoch commits its canonical length, input-log cutoff/root, and global
@@ -292,18 +311,20 @@ These are responsibility boundaries, not selected binaries or APIs:
     Principal. A claim-bearing private Application additionally has a Network-
     Isolated Application Boundary; generic adapters protect only traffic they
     actually submit to Ardents.
-27. V1 has one active Service Instance. Host loss makes the Service unavailable
+27. The first public product has one active Service Instance. Host loss makes the Service unavailable
     until Owner-driven migration or Target replacement; automatic origin-loss
     survival would require a separately designed multi-instance Overlay.
 
-P5-D3 fixes that five-position information-flow shape because three positions
-give the Rendezvous the complete carrier sequence and four positions make the
-endpoint legs asymmetric. R-004 selects the Tor-shaped split-circuit family with
-a separate Introduction Path, disjoint Role Domains, local Candidate View
-selection, and endpoint-only continuity. This does not select Tor naming, onion
-routing code, a library, cryptography, or a wire protocol. R-013 must find the
-least costly viable implementation, preferring maintained components unless
-evidence justifies custom work, and R-023 must qualify its performance cost.
+Within the current candidate, P5-D3 chooses that five-position information-flow
+shape because three positions give the Rendezvous the complete carrier sequence
+and four positions make the endpoint legs asymmetric. R-004 selects the
+Tor-shaped split-circuit family with a separate Introduction Path as the first
+candidate. Disjoint Role Domains, local Candidate View selection, and endpoint-
+only continuity are conditional promotion designs. A different production
+candidate may replace this package under item 18 without changing Applications
+or weakening the Product Core claim. R-013 compares maintained implementation
+options only after the applicable gate, and R-023 qualifies performance only for
+a promoted release candidate.
 
 Route selection must reduce exposure to Correlated Control across operator,
 network, software supply chain, and jurisdiction, but different Node IDs are not
@@ -323,33 +344,43 @@ must reuse the same Application Interface and Service Connection contract; it
 may require a new internal Route Adapter, descriptor capabilities, protocol
 version, and its own Qualification Evidence Bundle.
 
-## First tracer: Named Unlisted Site
+## First Reference Application: Named Unlisted Site
+
+Named Unlisted Site is conditional on a successful Carrier Lab. It is the first
+product-shaped tracer, not the first code milestone. Carrier Lab deliberately
+uses a preconfigured Target/reachability fixture and no Service Name so that a
+failed Route candidate stops the project before a second distributed system is
+built.
 
 The first Reference Application proves the network chain without defining a
 general application platform:
 
-1. A Developer runs a deterministic local HTTP service whose complete process
-   tree is Network-Isolated: only scoped local Ardents IPC/loopback is allowed;
-   ordinary listeners, DNS, callbacks, and direct network egress are denied.
+1. A Developer runs a deterministic local HTTP service whose controlled process
+   tree has no ordinary network path by harness construction and uses only
+   scoped local Ardents IPC/loopback. This is not a general sandbox product.
 2. Ardents creates a Service Target; the host generates a private Instance Key
    and receives a bounded public Instance Credential for that key. Ardents maps
    incoming connections to the local service and publishes reachability without
    an ordinary public origin.
-3. The Developer binds a recoverable Service Name to the target.
+3. The fixture supplies one pre-provisioned exact Service Name binding; public
+   claiming, lease, delegation, and recovery are not part of this slice.
 4. A User who already knows the exact name enters it in a small reference
-   client inside the same Network-Isolated boundary. The name resolves and an Interactive Route with current Route
-   Qualification reaches the Service; a simulated or unqualified route is
-   labeled as such.
+   controlled client. The name resolves and the current Interactive Route
+   candidate reaches the Service while remaining explicitly unqualified.
 5. HTTP bytes cross a generic Service Connection; the network does not interpret
    pages, forms, sessions, or application identity.
-6. The journey exposes route failure honestly, rebuilds an alternate path when
-   possible, preserves the Service Target during an ordinary host migration,
-   and preserves only the Service Name after simulated target compromise.
+6. The journey exposes offline and route failure honestly. A later vertical
+   slice may preserve the Service Target during ordinary one-Instance migration;
+   catastrophe Target replacement belongs to the public naming lifecycle.
 
 The tracer does not require replicated Site Bundles, an Ardents application
 runtime, offline storage, a built-in Inbox, or a permanent decentralized hosting
 layer. Those are separate product hypotheses, not hidden assumptions inside the
 network.
+
+The full permissionless Namespace, Name recovery/governance, Bridges, public
+Contributor operation, production updater, and R-023 qualification matrix are
+not Reference Application prerequisites.
 
 The same tracer must also open the exact Target Link. That path is not a weaker
 Route: it removes only the optional naming operation and prevents an unfinished
@@ -364,10 +395,10 @@ protocol machinery when their threat and maintenance models fit.
 
 No dependency is accepted because it is familiar, already present in `old`, or
 popular. No component is rejected merely because it was not written here. The
-route family is fixed, while the production language, concrete Route
-Implementation, wire protocol, cryptography, and library set remain open until
-bounded prototypes compare them against the product, security, and performance
-contracts.
+first Route candidate is fixed for Carrier Lab, but the production family,
+language, concrete Route Implementation, wire protocol, cryptography, and
+library set remain open until bounded prototypes compare them against the
+product, security, and performance contracts.
 
 ## Explicit non-goals for the network core
 
@@ -377,7 +408,7 @@ contracts.
 - universal User identity, global profile, mandatory Persona system, or proof
   of personhood;
 - offline delivery, application history, or content persistence by implication;
-- multi-instance delegation or multihoming in the first tracer;
+- multi-instance delegation or multihoming in the first Reference Application;
 - bundled arbitrary application execution or decentralized compute;
 - mandatory blockchain, wallet, token, or governance coin;
 - a central registrar, paid name auction, trademark or legal dispute process,

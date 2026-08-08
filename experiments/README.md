@@ -3,6 +3,12 @@
 This directory contains disposable code written to answer named research
 questions. It is not the product source tree.
 
+The only current multi-component experiment authorized by
+[product scope](../docs/product/scope.md) is Carrier Lab. Its directory does not
+exist until Gate B freezes the experiment record. Naming, public bootstrap,
+Bridges, updater/governance, Windows, SDK/browser work, and complete public
+qualification must not be added to Carrier Lab.
+
 Create one directory per question:
 
 ```text

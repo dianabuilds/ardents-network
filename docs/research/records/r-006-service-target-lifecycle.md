@@ -1,6 +1,6 @@
 ---
 id: R-006
-title: What is the V1 lifecycle of a Service Target?
+title: What is the public-product lifecycle of a Service Target?
 status: decided
 owner: product research
 started: 2026-08-07
@@ -34,6 +34,12 @@ Open at research start: whether ordinary migration copies one permanent secret,
 creates a new target behind the same name, or uses a permanent offline authority
 that delegates bounded credentials to one or more Service Instances.
 
+**Scope clarification, accepted 2026-08-08:** Carrier Lab uses ephemeral
+project-owned Target/Instance fixtures and tests authentication, not durable
+custody, backup, migration, compromise, or retirement. The bounded Credential
+hierarchy enters the conditional Named Unlisted Site slice; catastrophe
+replacement and full Authority lifecycle remain public-product horizons.
+
 ## Hypotheses
 
 - **H1a — Online portable Service Authority:** one active V1 Service Instance
@@ -48,7 +54,7 @@ that delegates bounded credentials to one or more Service Instances.
 - **H3 — Name-only continuity:** every deployment may create a new Service
   Target; only the Service Name provides continuity between hosts.
 - **H0 — No accepted lifecycle:** none of the options gives a usable and honest
-  recovery story for the first tracer.
+  recovery story for the first public product.
 
 ## Evaluation criteria
 

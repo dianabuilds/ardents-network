@@ -20,6 +20,13 @@ The Product Owner instructed this pass to make bounded decisions without
 stopping for approval on each parameter. The accepted result is the
 [product operating model](../../product/operating-model.md).
 
+**Scope clarification, accepted 2026-08-08:** this record checks whether the
+eventual public lifecycle has missing contradictions; it does not promote every
+closed decision into the current backlog. The authoritative delivery order is
+[product scope](../../product/scope.md): Carrier Lab first, Named Unlisted Site
+only after Route feasibility, and public/stable operating mechanisms only at
+their promotion gates.
+
 ## Evidence used
 
 - Tor keeps a small persistent guard set because repeatedly sampling fresh
@@ -84,7 +91,7 @@ The carrier now claims only traffic submitted to Ardents. A claim-bearing
 private-application profile contains both endpoint Application/helper process
 trees in Network-Isolated Application Boundaries with only scoped local IPC/
 loopback, no ordinary ingress/listeners, deny-by-default egress, per-context
-origin/storage, and no clearnet fallback. The V1 tracer uses a controlled
+origin/storage, and no clearnet fallback. Public qualification of the Reference Application uses a controlled
 single-response client and deterministic no-ordinary-network HTTP
 Service. Generic adapters remain compatible but visibly lack the Application-
 level claim; Ardents still does not become a mandatory browser/runtime.
@@ -368,20 +375,20 @@ the tested Network-Isolated boundary on both endpoint process trees.
 
 | Question | Product disposition after this pass |
 |---|---|
-| R-004 | **Decided:** Tor-shaped split circuits, P5-D1 through P5-D9. Concrete component and qualification remain. |
+| R-004 | **Decided candidate order:** Tor-shaped split circuits are first in Carrier Lab; no production family is frozen. Concrete component and qualification remain. |
 | R-007 | **Decided:** positive-evidence failure matrix, bounded recovery, otherwise indeterminate; no semantic retry. |
 | R-008 | **Decided:** Local Grants, separate authority custody, endpoint-bounded Entry exposure, per-context higher state, local-only diagnostics. |
 | R-009 | **Decided:** threshold-authenticated Network Epoch, independent distribution, and Bridge Invites bound to exactly one Initiator/Responder/Introduction adjacent Role Domain. |
 | R-010 | **Decided product boundary:** resource-specific staged admission and bounded Anonymous Cost; no universal identity, money, IP reputation, personhood, or fairness claim. Exact mechanisms remain experiments. |
 | R-011 | **Decided product boundary:** logical complete Candidate View plus transparent input, proven endpoint materialization, independent full audit, local selection, hard identity/domain/family constraints, soft concentration evidence, and no User reputation graph. Exact log, weights, and thresholds remain measured parameters. |
 | R-012 | **Decided product boundary:** separate threshold roots, expiry, transparency, delayed rotation, narrow emergency power, explicit forks, and no decentralized claim for project-only keys. |
-| R-020 | **Decided for V1:** volunteer or institution-funded opt-in contribution; no token or payment. Every domain/subrole retains three beta/five stable effective families after maximum exclusions, and every mandatory pre-Route artifact class has three/five effective authenticated source-only families. Actual supply derives from fixed `x_d`; `15`/`25` are only all-zero-exclusion theoretical infrastructure floors. Insufficient independent role/source capacity blocks public launch. |
-| R-005 | **Rejected for V1:** no second delayed/cover Route Profile. The Route Module seam remains. |
-| R-021 | **Deferred outside V1:** no retained delivery or replicated-content Overlay in the carrier. |
+| R-020 | **Decided for public promotion:** volunteer or institution-funded opt-in contribution; no token or payment. Every domain/subrole retains three beta/five stable effective families after maximum exclusions, and every mandatory pre-Route artifact class has three/five effective authenticated source-only families. Actual supply derives from fixed `x_d`; `15`/`25` are only all-zero-exclusion theoretical infrastructure floors. Insufficient independent role/source capacity blocks public launch. |
+| R-005 | **Rejected for the first public product:** no second delayed/cover Route Profile. The Route Module seam remains. |
+| R-021 | **Deferred outside the Product Core:** no retained delivery or replicated-content Overlay in the carrier. |
 | R-022 | **Decided default:** Application-owned identity only; no shared network identity model. |
 | R-015 | **Product behavior decided:** authenticated capability/profile negotiation, overlap, required/retired phases, and no downgrade. Encoding and conformance tooling remain technology work. |
 | R-013 / R-014 | **Still open by design:** components and language are selected after bounded prototypes; they are not missing product behavior. |
-| R-023 | **Active evidence gate:** budgets are decided but unmeasured; a failure is a stop/review condition. |
+| R-023 | **Active public-qualification gate:** budgets are decided but unmeasured; Carrier Lab uses only coarse decision metrics and earns no partial qualification. |
 | R-016 / R-018 | **External-evidence gates:** target users and vocabulary are hypotheses; the one-to-one team cannot manufacture demand or novice comprehension evidence. |
 
 ## Public launch gates
@@ -445,7 +452,9 @@ against concealed ownership.
 
 ## Final result
 
-The product picture is now closed enough to begin bounded prototypes. Remaining
-unknowns are visible feasibility measurements, technology choices, real-world
+The public-product picture is closed enough to constrain bounded prototypes.
+Only Carrier Lab is currently authorized; “closed” does not mean “implement all
+mechanisms.” Remaining unknowns are visible feasibility measurements,
+technology choices, real-world
 operator/custodian supply, and external evidence. None authorizes a silent
 security downgrade or invented decentralization claim.

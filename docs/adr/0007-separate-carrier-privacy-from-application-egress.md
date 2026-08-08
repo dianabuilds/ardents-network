@@ -5,6 +5,11 @@ date: 2026-08-08
 
 # Separate carrier privacy from Application networking
 
+This is a condition on an **Application-level** location claim, not a mandate for
+the carrier to build a universal desktop sandbox. Carrier Lab uses trusted
+no-network fixtures by construction; generic OS-enforced Application isolation
+is a later Reference Application/Public Beta profile.
+
 Ardents provides privacy only for traffic submitted to its local Application
 Interface. A claim-bearing private-site or application experience additionally
 uses a **Network-Isolated Application Boundary at both endpoint Applications**:
