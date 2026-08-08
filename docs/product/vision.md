@@ -200,6 +200,12 @@ These are responsibility boundaries, not selected binaries or APIs:
     endpoint-edge, Node-role, malicious-endpoint, isolation, and active-attack
     tests must pass before a candidate earns Route Qualification; the claim's
     conditions and excluded adversaries remain visible to Users and Developers.
+18. The Application Interface and logical Service Connection remain stable when
+    Ardents strengthens routing. A versioned Route Profile may replace route
+    shape, introduction, rendezvous, multipath, padding, mixing, cover traffic,
+    or Carrier Channel Adapters below that boundary. An unsupported exact
+    profile fails explicitly; it is never silently negotiated to a weaker one,
+    and every Implementation earns Route Qualification independently.
 
 The Interactive Route is therefore multi-hop, but the product contract does not
 select Tor, onion routing, a fixed path shape, or a fixed number of hops. R-004
@@ -217,7 +223,10 @@ be distinguished. It never silently retries an Application operation.
 
 The Interactive Route deliberately makes no Broad Traffic Observer resistance
 claim. A delayed, padded, or cover-traffic-heavy profile enters the product only
-if R-005 identifies a concrete Application job and measurable advantage.
+if R-005 identifies a concrete Application job and measurable advantage. It
+must reuse the same Application Interface and Service Connection contract; it
+may require a new internal Route Adapter, descriptor capabilities, protocol
+version, and its own Qualification Evidence Bundle.
 
 ## First tracer: Named Unlisted Site
 

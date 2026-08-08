@@ -446,6 +446,19 @@ or privacy claim.
   without a separate retention, deletion, abuse, and metadata contract.
 - Route downgrade and loss of endpoint authentication are explicit and cannot
   occur silently.
+- The exact Route Profile is authenticated into the Service Connection. Profile
+  negotiation cannot silently substitute a weaker observer, path, padding,
+  mixing, or Carrier Channel contract, and unsupported capability combinations
+  fail explicitly.
+- Route and session state, prepared paths, peer-selection state, caches, and
+  recovery handles cannot cross Route Profiles or Isolation Contexts. A new
+  Route Implementation inherits no Route Qualification from another profile or
+  previously qualified Adapter.
+- Strengthening a Route Profile may replace route shape, introduction,
+  rendezvous, multipath, mixing, padding, cover traffic, or Carrier Channel
+  Adapters below the Route Module Interface. It cannot weaken or reinterpret the
+  Application Interface, authenticated Service Target, Service Connection byte
+  stream, Connection Result, or Application-operation replay boundary.
 - Every locally authorized Application receives a distinct default Isolation
   Context; missing explicit input never selects a global shared context.
 - Isolation Contexts are local policy boundaries, not network-visible User or

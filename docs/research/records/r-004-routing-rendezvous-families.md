@@ -35,10 +35,67 @@ A candidate must preserve all of the following together:
   and one eligible route failure resumes the same Service Connection within
   `p95 <= 5 s` or terminates explicitly by `15 s`;
 - the required client sustains the accepted goodput, concurrency, CPU, memory,
-  queue, and traffic-overhead budgets on ordinary Windows and Ubuntu devices.
+  queue, and traffic-overhead budgets on ordinary Windows and Ubuntu devices;
+- a stronger future Route Profile can replace the routing family beneath the
+  same Application Interface and Service Connection without rewriting naming,
+  identity, Service publication, or Applications.
 
 These are conjunctive gates. Familiar vocabulary such as onion, garlic, mix,
 DHT, or peer-to-peer is not evidence that a candidate passes.
+
+## P5-D1 — Strengthening without an Application rewrite
+
+**Product Owner decision, accepted 2026-08-08:** the routing family is a
+replaceable Implementation behind one deep Route Module Interface. The first
+Interactive Route candidate is an Adapter, not the permanent topology of the
+whole product.
+
+The stable layering is:
+
+```text
+Application
+    -> Application Interface
+        -> Service Connection
+            -> Route Module (exact Route Profile + Isolation Context)
+                -> Route Adapter
+                    -> replaceable Carrier Channel Adapters
+```
+
+The Service Connection owns the authenticated Service Target, reliable ordered
+byte-stream semantics, connection identity, bounded recovery, duplicate
+suppression, and Application-visible failure. The Route Module receives only the
+connection-scoped protected frames, exact Route Profile, Isolation Context, and
+authenticated reachability material needed to attach or replace a Route. It
+returns a usable protected attachment or an explicit route failure.
+
+The Route Module Interface does not expose or freeze:
+
+- hop count or path directionality;
+- Introduction, Rendezvous, tunnel-pool, or mix roles;
+- multipath, padding, fixed packetization, delay, or cover traffic;
+- concrete HTTP, WSS, TCP, UDP, QUIC, or other Carrier Channel Adapters;
+- route retry schedules, peer selection, prepared state, or descriptor lookup.
+
+A Route Profile is a small versioned product contract, not a universal routing
+language and not a collection of user-tunable anonymity knobs. Its exact identity
+and capability set are authenticated into the endpoint session. Unsupported
+profiles fail explicitly; negotiation cannot silently select a weaker profile.
+Service Descriptors and bootstrap state advertise extensible versioned
+capabilities rather than encoding one permanent three-position topology.
+
+All reusable route and session state is keyed and isolated by Route Profile and
+Isolation Context. Every distinct Route Implementation and profile must earn its
+own Route Qualification; the baseline cannot lend evidence to a stronger
+profile. Adding that profile may require internal routing work, descriptor
+capability extensions, protocol evolution, and new evidence, but not a rewrite
+of Applications, Service Names, Service Targets, authority custody, or
+publication workflows.
+
+This Seam is justified now because the research already contains independent
+Adapters with materially different shapes: split-leg rendezvous, paired tunnel
+pools, and a possible delayed mixnet. The prototype must demonstrate at least
+the first two through the same Route Module test harness. It must not build a
+general routing virtual machine in anticipation of unknown designs.
 
 ## Primary-source findings
 
@@ -273,7 +330,8 @@ No production implementation is justified yet. A throwaway candidate must first:
 2. make each ordinary role malicious in turn and prove no forbidden value appears
    in live state, traffic, handles, logs, or retained state;
 3. run Option C with three data-path positions and Option B with the smallest
-   viable tunnel pool on the same controlled topology;
+   viable tunnel pool on the same controlled topology through the same Route
+   Module Interface and Service Connection tracer;
 4. measure cold and warm connection setup, one-stream goodput, `64`/`256`
    connection workloads, CPU, RSS, queues, and endpoint traffic overhead;
 5. inject one leg, Rendezvous, Introduction, Carrier Channel, and descriptor-path
@@ -307,12 +365,17 @@ performance/recovery alternative. Keep **Option A** as the mature security-flow
 reference and reject **Option D** for the baseline unless R-005 later creates a
 stronger Route Profile.
 
+Option C is only the first candidate Route Adapter. Its three-position shape
+must not leak into the Application Interface, Service Connection contract,
+Service Name, Service Target, or authority model.
+
 This recommendation is reversible. It selects what to test next, not what Ardents
 will ship.
 
 ## Disposition
 
-- State: `active`; no Product Owner architecture decision has been accepted.
+- State: `active`; P5-D1 fixes the strengthening Seam, but no Product Owner route
+  or rendezvous architecture decision has been accepted.
 - Tor, I2P, Nym, Session, Lokinet, libp2p, and Waku are references or component
   sources, not selected dependencies.
 - No route length, library, cryptography, DHT, wire protocol, language, or

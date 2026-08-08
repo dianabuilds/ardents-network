@@ -155,6 +155,8 @@ accepts a threshold-signed, expiring **epoch bundle** containing:
 - digests of the accepted rule/checkpoint state needed to detect another fork;
 - a diverse sample of public discovery and entry candidates with authenticated
   Node keys and supported carrier transports;
+- extensible Route Profile, role, and protocol capability versions without
+  encoding one permanent route topology;
 - signer-set version and transition evidence;
 - no User identity, query history, Service Name, or application state.
 
@@ -186,7 +188,8 @@ independence from different Node IDs alone.
 - no single mirror, address, DNS operator, broker, or ordinary peer is necessary;
 - supports fast package/cached startup and hostile out-of-band recovery;
 - conflict and fork state remain visible instead of becoming source-dependent;
-- distribution can evolve without changing the R-004 route or Application API.
+- distribution and Route Profile capabilities can evolve without changing the
+  Application Interface or Service Connection contract.
 
 ### Costs and risks
 

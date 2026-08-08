@@ -236,10 +236,20 @@ Service Connection.
 _Avoid_: Omniscient attacker, malicious Node
 
 **Route Profile**:
-A testable product contract for latency, throughput, resource cost, path
-behavior, observer resistance, and honest limitations of a class of Service
-Connections.
-_Avoid_: Anonymous mode, routing algorithm
+A versioned, exact, testable product contract for latency, throughput, resource
+cost, path behavior, observer resistance, and honest limitations of a class of
+Service Connections. It may select a different Route Implementation without
+changing Application Interface or Service Connection semantics; the selected
+profile is authenticated and cannot be silently weakened.
+_Avoid_: Anonymous mode, user-tunable routing knobs, routing algorithm, silent fallback
+
+**Route Module**:
+The logical deep Module below the Service Connection boundary. Its stable
+Interface carries connection-scoped protected frames under an exact Route
+Profile and Isolation Context while hiding the routing family, hop shape,
+introduction, rendezvous, multipath, mixing, padding, and Carrier Channel
+Adapters used by its Implementation.
+_Avoid_: Application Interface, universal routing language, fixed topology
 
 **Route Qualification**:
 The evidence state of a specific implementation candidate after it passes every
