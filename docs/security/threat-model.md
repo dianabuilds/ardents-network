@@ -73,8 +73,10 @@ P2-D1 fixes its outer claim: hide the User's ordinary network location from the
 Service and the Service Instance's ordinary location from the User. P2-D3 adds
 Route Knowledge Separation: no one ordinary Node receives the full Route,
 plaintext Application Data, or a link between an endpoint's ordinary location
-and a Service Name, Service Target, or opposite endpoint. The routing family
-and hop count remain open.
+and a Service Name, Service Target, or opposite endpoint. P5-D3 makes this
+concrete as five symmetric logical carrier positions: User Entry, User Interior,
+Rendezvous, Service Interior, and Service Entry. The routing family, production
+mechanism, cryptography, and wire protocol remain open.
 
 P2-D4 limits that anonymity claim to any one malicious ordinary Node. Ardents
 does not claim resistance to every pair or larger colluding set. Correlated
@@ -475,7 +477,11 @@ or privacy claim.
   Application Data, or full Route.
 - An Interactive Route is never a direct endpoint-to-endpoint path or one
   trusted proxy. It uses multiple separately operated Node roles for Route
-  Knowledge Separation without prescribing a routing algorithm or hop count.
+  Knowledge Separation without prescribing a routing algorithm.
+- Its baseline data path is `User -> User Entry -> User Interior -> Rendezvous ->
+  Service Interior -> Service Entry -> Service`. Each position is assigned to a
+  different ordinary Node for that attempt. A shorter route is an unqualified
+  profile or downgrade, not an optimization of the accepted baseline.
 - An endpoint-adjacent Node may know that endpoint's ordinary location, while an
   interior or Rendezvous role may know its adjacent Nodes but receives neither
   endpoint origin, Service Name, nor Service Target from its role.

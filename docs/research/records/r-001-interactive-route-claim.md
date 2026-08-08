@@ -148,6 +148,11 @@ R-004 must compare mechanisms and the smallest route shape that enforces the
 contract. R-023 must measure the resulting setup latency, throughput, tail
 latency, CPU, memory, and failure cost.
 
+R-004 P5-D3 later fixes the resulting baseline as five symmetric logical carrier
+positions after the three-position candidate was shown to expose the complete
+carrier sequence to its Rendezvous. This refinement still does not select Tor,
+onion construction, cryptography, a library, or a wire protocol.
+
 Consequences:
 
 - a direct P2P path or single relay cannot be labeled or silently substituted as
@@ -160,8 +165,9 @@ Consequences:
   evidence and P2-D4 conditions;
 - physical co-location or one operator controlling multiple roles is treated as
   collusion rather than independent multi-hop protection;
-- path length is selected later from the accepted security and performance
-  contracts, not copied from a reference system.
+- the five-position baseline is derived from the accepted disclosure and
+  symmetry contracts rather than copied from a reference system; its production
+  mechanism remains subject to security and performance evidence.
 
 ### P2-D4 — One-Node guarantee and honest collusion limit
 
@@ -462,7 +468,7 @@ diversity exists.
   combine endpoint location with destination or origin knowledge.
 - **P2-D3 — Adopt Tor and a fixed three-hop path now:** rejected because the
   accepted decision is the observable knowledge boundary. R-004 and R-023 must
-  compare route families and costs before selecting a mechanism or hop count.
+  compare route families and costs before selecting a production mechanism.
 - **P2-D3 — Treat different Node IDs as independence:** rejected because one
   operator or correlated infrastructure can control nominally distinct roles.
 - **P2-D4 — Resist every pair of colluding Nodes in V1:** rejected as a blanket
@@ -520,7 +526,9 @@ diversity exists.
   Separation; no one ordinary Node learns the full Route, plaintext, or a link
   between endpoint location and a Service Name, Service Target, or opposite
   endpoint.
-- Tor, onion routing, path shape, and hop count remain unselected.
+- R-004 P5-D3 subsequently fixes a symmetric five-position logical data path;
+  Tor, onion routing, cryptography, libraries, and wire protocol remain
+  unselected.
 - P2-D4 accepted: V1 anonymity covers one malicious ordinary Node, not arbitrary
   collusion; Correlated Control spanning enough role views may link endpoints.
 - End-to-end Application Data protection and Service Target authentication

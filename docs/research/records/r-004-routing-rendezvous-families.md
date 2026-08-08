@@ -81,7 +81,7 @@ language and not a collection of user-tunable anonymity knobs. Its exact identit
 and capability set are authenticated into the endpoint session. Unsupported
 profiles fail explicitly; negotiation cannot silently select a weaker profile.
 Service Descriptors and bootstrap state advertise extensible versioned
-capabilities rather than encoding one permanent three-position topology.
+capabilities rather than encoding an implementation-specific topology.
 
 All reusable route and session state is keyed and isolated by Route Profile and
 Isolation Context. Every distinct Route Implementation and profile must earn its
@@ -594,7 +594,19 @@ measurable gain is narrower: no single carrier gets the complete Node sequence,
 the Rendezvous does not directly learn either sticky Entry, and both endpoint
 legs have the same knowledge structure.
 
-#### Current position-count recommendation
+#### P5-D3 — Symmetric five-position baseline
+
+**Product Owner decision, accepted 2026-08-08:** the baseline Interactive Route
+uses the symmetric C-5 logical data path:
+
+`User -> User Entry -> User Interior -> Rendezvous -> Service Interior -> Service Entry -> Service`.
+
+Each position is assigned to a different ordinary Node for that attempt. C-3
+remains only an explicitly unqualified performance control because its
+Rendezvous sees every carrier Node. C-4 is rejected because it protects the two
+endpoint legs asymmetrically. A shorter path is not a transparent optimization;
+it is an unqualified profile or downgrade and must never inherit the Interactive
+Route claim.
 
 Advance **C-5** as the smallest split-leg candidate that implements the already
 accepted claim without asymmetry. Reject C-3 as privacy-qualified architecture
@@ -616,9 +628,14 @@ Interface, recovery, transport-agility, and qualification contract. A custom
 Implementation remains justified only by measured security, performance, or
 operability evidence that the adopted alternative cannot provide.
 
-The recommendation remains unaccepted until Product Owner review. A bounded
-prototype must compare C-5 with Option B under the same tracer; C-3 may appear
-only as a clearly unqualified performance control.
+P5-D3 selects an information-flow shape, not a production mechanism. It does not
+select Tor, onion construction, introduction design, a library, cryptography,
+wire protocol, or language, and it adds no claim against every colluding pair or
+a Broad Traffic Observer. A bounded prototype must compare the five-position
+shape with Option B under the same tracer; C-3 may appear only as a clearly
+unqualified performance control. If no implementation can meet the accepted
+security and performance contracts, the product contracts return to review; the
+route is not silently shortened.
 
 ## Option D — Delayed packet mixnet
 
@@ -702,11 +719,12 @@ will ship.
 
 ## Disposition
 
-- State: `active`; P5-D1 fixes the strengthening Seam and P5-D2 fixes the
-  Introduction-role knowledge boundary, but no Product Owner route or rendezvous
-  architecture decision has been accepted.
+- State: `active`; P5-D1 fixes the strengthening Seam, P5-D2 fixes the
+  Introduction-role knowledge boundary, and P5-D3 fixes the baseline symmetric
+  five-position logical data path. The routing and rendezvous mechanism remains
+  undecided.
 - Tor, I2P, Nym, Session, Lokinet, libp2p, and Waku are references or component
   sources, not selected dependencies.
-- No route length, library, cryptography, DHT, wire protocol, language, or
-  production mechanism is selected.
+- No routing family, introduction mechanism, library, cryptography, DHT, wire
+  protocol, language, or production mechanism is selected.
 - No ADR and no production code.

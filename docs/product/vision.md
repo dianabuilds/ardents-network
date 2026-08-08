@@ -209,11 +209,17 @@ These are responsibility boundaries, not selected binaries or APIs:
     or Carrier Channel Adapters below that boundary. An unsupported exact
     profile fails explicitly; it is never silently negotiated to a weaker one,
     and every Implementation earns Route Qualification independently.
+19. The baseline Interactive Route data path has five symmetric logical carrier
+    positions: User Entry, User Interior, Rendezvous, Service Interior, and
+    Service Entry. A shorter path is not the same qualified profile and cannot
+    be selected silently as a performance optimization.
 
-The Interactive Route is therefore multi-hop, but the product contract does not
-select Tor, onion routing, a fixed path shape, or a fixed number of hops. R-004
-must find the least costly routing family that preserves the accepted knowledge
-separation, and R-023 must bound its performance cost.
+P5-D3 fixes that five-position information-flow shape because three positions
+give the Rendezvous the complete carrier sequence and four positions make the
+endpoint legs asymmetric. It does not select Tor, onion routing, a library,
+cryptography, or a wire protocol. R-004 must find the least costly viable
+mechanism, preferring maintained components unless evidence justifies custom
+work, and R-023 must bound its performance cost.
 
 Route selection must reduce exposure to Correlated Control across operator,
 network, software supply chain, and jurisdiction, but different Node IDs are not

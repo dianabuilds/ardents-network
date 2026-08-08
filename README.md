@@ -34,8 +34,9 @@ role, trust, authority, route priority, or weaker security rules.
 
 The accepted Interactive Route contract is multi-hop for Route Knowledge
 Separation: one ordinary Node cannot link an endpoint's ordinary location to a
-Service Name, Service Target, or opposite endpoint. This requirement selects
-neither Tor nor a fixed routing algorithm or hop count.
+Service Name, Service Target, or opposite endpoint. Its baseline data path fixes
+five symmetric logical carrier positions without selecting Tor, a routing
+algorithm, library, cryptography, or wire protocol.
 
 The target anonymity claim covers one malicious ordinary Node, not arbitrary
 Correlated Control of several roles. Control spanning both endpoint sides may

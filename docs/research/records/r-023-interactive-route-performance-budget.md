@@ -1446,8 +1446,9 @@ Every measured infrastructure Node instance uses the accepted Ubuntu LTS
 `x86-64` reference VPS class of `2 vCPU`, `2 GiB RAM`, and a symmetric
 `100 Mbit/s` access link.
 This does not require all roles to share one host or assert that all roles have
-the same useful capacity. R-004 and P3-D3b4 determine the candidate's Route
-shape, hop count, role set, placement, and role-specific useful-work floors.
+the same useful capacity. R-004 P5-D3 fixes the baseline logical Route shape;
+R-004 and P3-D3b4 determine the candidate's mechanism, concrete role placement,
+and role-specific useful-work floors.
 
 A controlled network layer mediates every inter-machine link and applies the
 declared bandwidth, latency, loss, jitter, interruption, and failure schedule.

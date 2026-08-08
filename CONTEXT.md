@@ -268,8 +268,11 @@ _Avoid_: Test report, selected results, log archive
 **Interactive Route**:
 The low-latency Route Profile intended for live Applications. It does not
 promise resistance to timing-and-volume correlation by a Broad Traffic
-Observer.
-_Avoid_: Fully anonymous route, clearnet connection
+Observer. Its baseline data path has five logical carrier positions: User
+Entry, User Interior, Rendezvous, Service Interior, and Service Entry. This is
+an information-flow shape, not a selected routing protocol or proof that the
+operators behind different Nodes are independent.
+_Avoid_: Fully anonymous route, clearnet connection, three-position route
 
 **Route Knowledge Separation**:
 The Interactive Route property in which several separately operated Node roles
