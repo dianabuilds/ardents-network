@@ -157,6 +157,11 @@ R-004 P5-D4 later fixes a separate Introduction Path: the selected Rendezvous
 does not forward the connection invitation, and Introduction carries no
 Application Data or offline-delivery semantics.
 
+R-004 P5-D5 later fixes selector authority and layered lifetimes: each endpoint
+selects its own long-lived Entry Set and medium-lived Interior Set, while the User
+selects a fresh Rendezvous for each new Service Connection. Route selection state
+does not cross Isolation Contexts.
+
 Consequences:
 
 - a direct P2P path or single relay cannot be labeled or silently substituted as
@@ -535,6 +540,9 @@ diversity exists.
   unselected.
 - R-004 P5-D4 subsequently separates Introduction from the Rendezvous data path;
   C1 Rendezvous-forwarding remains only an unqualified performance experiment.
+- R-004 P5-D5 subsequently fixes endpoint-owned selection, long-lived Entry,
+  medium-lived Interior, connection-scoped Rendezvous, and overlapping
+  Introduction rotation without fixing numeric durations or set sizes.
 - P2-D4 accepted: V1 anonymity covers one malicious ordinary Node, not arbitrary
   collusion; Correlated Control spanning enough role views may link endpoints.
 - End-to-end Application Data protection and Service Target authentication

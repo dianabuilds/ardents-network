@@ -40,6 +40,8 @@ algorithm, library, cryptography, or wire protocol.
 Connection setup uses a separate Introduction Path carrying only a sealed,
 single-use invitation; the selected Rendezvous does not forward it, and no
 Application Data or offline message is carried there.
+Each endpoint selects its own leg from a long-lived Entry Set and a medium-lived
+Interior Set; the User selects a fresh Rendezvous for each new connection.
 
 The target anonymity claim covers one malicious ordinary Node, not arbitrary
 Correlated Control of several roles. Control spanning both endpoint sides may

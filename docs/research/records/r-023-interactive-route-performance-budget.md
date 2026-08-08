@@ -1446,9 +1446,12 @@ Every measured infrastructure Node instance uses the accepted Ubuntu LTS
 `x86-64` reference VPS class of `2 vCPU`, `2 GiB RAM`, and a symmetric
 `100 Mbit/s` access link.
 This does not require all roles to share one host or assert that all roles have
-the same useful capacity. R-004 P5-D3 fixes the baseline logical Route shape;
-R-004 and P3-D3b4 determine the candidate's mechanism, concrete role placement,
-and role-specific useful-work floors.
+the same useful capacity. R-004 P5-D3 through P5-D5 fix the baseline logical
+Route shape, separate Introduction Path, and layered selector lifetimes. R-004
+and P3-D3b4 determine the candidate's mechanism, concrete role placement, and
+role-specific useful-work floors. Each candidate manifest declares the exact
+Entry, Interior, Introduction, and recovery set sizes, lifetimes, overlap, and
+replacement thresholds used by every measured cell.
 
 A controlled network layer mediates every inter-machine link and applies the
 declared bandwidth, latency, loss, jitter, interruption, and failure schedule.
@@ -2716,9 +2719,10 @@ either would contradict the accepted client product.
   links. Loopback, shared memory, in-process Nodes, and hidden same-host or
   reduced-Route fast paths cannot qualify.
 - Each infrastructure Node instance uses the Ubuntu LTS `x86-64` `2 vCPU`,
-  `2 GiB RAM`, symmetric `100 Mbit/s` reference VPS class. R-004 and P3-D3b4
-  still determine candidate Route shape, roles, placement, and role-specific
-  useful capacity.
+  `2 GiB RAM`, symmetric `100 Mbit/s` reference VPS class. R-004 P5-D3 through
+  P5-D5 fix the logical shape, Introduction separation, and layered lifetimes;
+  R-004 and P3-D3b4 still determine the production mechanism, concrete role
+  placement, exact selection parameters, and role-specific useful capacity.
 - Applicable direct baselines run on the same endpoints and end-to-end
   impairment profile immediately before and after each Ardents batch. They are
   measurement-only and never a production fallback; uncontrolled Internet

@@ -314,6 +314,9 @@ architectures:
   then completes an endpoint-authenticated handshake through the rendezvous.
 - Tor uses a small persistent guard set because choosing a fresh endpoint-adjacent
   Node for every path eventually exposes endpoints to more malicious candidates.
+- Tor Vanguards extends that principle to one or two rolling interior layers for
+  onion-service activity because repeated attacker-triggered circuits can expose
+  the endpoint guard. The layers deliberately rotate at different rates.
 - I2P treats service reachability as sensitive state: LeaseSets are published and
   retrieved through tunnels, and the encrypted form blinds the Destination from
   storage Nodes. Its reusable tunnel pools remain the Option B alternative, not
@@ -322,24 +325,52 @@ architectures:
 Sources: [Tor protocol overview](https://spec.torproject.org/rend-spec/protocol-overview.html),
 [Tor introduction protocol](https://spec.torproject.org/rend-spec/introduction-protocol.html),
 [Tor rendezvous protocol](https://spec.torproject.org/rend-spec/rendezvous-protocol.html),
-[Tor guard specification](https://spec.torproject.org/guard-spec/), and
+[Tor guard specification](https://spec.torproject.org/guard-spec/),
+[Tor Vanguards specification](https://spec.torproject.org/vanguards-spec/),
+[Tor network parameters](https://spec.torproject.org/param-spec), and
 [I2P network database](https://i2p.net/en/docs/overview/network-database/).
 
-#### Who selects each position
+#### P5-D5 — Endpoint-owned layered rotation
 
-| Position | Selector | Initial lifetime | Required constraint |
+**Product Owner decision, accepted 2026-08-08:** each endpoint selects its own
+leg. Entry uses a small long-lived set, Interior a small medium-lived rolling
+set, and Rendezvous is fresh and scoped to one Service Connection. Introduction
+roles rotate as a finite overlapping set. Numeric set sizes, durations, weights,
+and replacement thresholds remain evidence-driven protocol parameters rather
+than user-tunable anonymity controls.
+
+| Position | Selector | Accepted lifetime | Required constraint |
 |---|---|---|---|
-| User Entry or Bridge | User endpoint | Small sticky set scoped by Isolation Context and entry regime | The Service and descriptor never choose or learn it. |
-| Rendezvous | User endpoint | Fresh one-use candidate for a connection attempt | Chosen from authenticated eligible state; distinct from the User Entry and offered Introduction roles. |
-| Introduction Node | Service endpoint; User chooses one from the advertised set | Short-lived rotating set | Shared by many Services; holds only an opaque expiring introduction slot and bounded forwarding state. |
-| Introduction-side Service Entry | Service endpoint | Small sticky service-side set | Carries introduction control traffic without exposing the Service origin to the Introduction Node. |
-| Data Service Entry | Service endpoint after it learns the proposed Rendezvous | Prepared or freshly selected attachment | Distinct from the Rendezvous and preferably from the Introduction path; the User never chooses or learns it. |
+| User Entry or Bridge | User endpoint | Small long-lived set scoped by Isolation Context and entry regime | The Service and descriptor never choose or learn it; no routing state is shared across contexts. |
+| User Interior | User endpoint | Small medium-lived rolling set in the same Isolation Context | Rotates more often than Entry but is not sampled afresh for every connection or retry. |
+| Rendezvous | User endpoint | Fresh for a new Service Connection; retained only while that attempt or connection is alive | Bounded Introduction retry or one-leg repair may retain a live Rendezvous. A failed Rendezvous is replaced by another fresh candidate bound to the same connection; none is pooled across completed connections. |
+| Introduction Node | Service endpoint advertises a finite set; User chooses one | Shorter-lived overlapping rotating set | Shared by many Services; holds only an opaque expiring introduction slot and bounded forwarding state. |
+| Introduction-side Service Entry and Interior | Service endpoint | Distinct role-scoped long- and medium-lived sets for one active Service Instance under one Service Target | Carries introduction control traffic without exposing the Service origin to the Introduction Node; reuse with data roles requires later qualification evidence. |
+| Data Service Entry and Interior | Service endpoint after it learns the proposed Rendezvous | Distinct role-scoped long- and medium-lived sets for one active Service Instance under one Service Target | The User never chooses or learns them; the Service validates the proposed Rendezvous before attaching. |
 
 An intermediate Node never chooses an endpoint-adjacent position for an endpoint.
 The User validates every overlap it can see before sending an invitation; the
 Service validates the Rendezvous against its own Entry and Introduction state
 before attaching. R-011 must handle operator, network, software, and jurisdiction
 overlap that different Node IDs cannot reveal.
+
+One failure tries another already eligible member or returns a bounded failure;
+it does not evict an Entry into an attacker-driven sequence of new candidates.
+Entry replacement requires lifecycle expiry, authenticated ineligibility, or a
+bounded sustained-unavailability rule. If the required distinct eligible roles
+cannot be selected, the endpoint returns Route unavailable rather than reusing a
+forbidden position, shortening the Route, or borrowing another Isolation
+Context's state.
+
+Fresh Rendezvous means new connection-bound state and an independent eligible
+selection. It does not claim that random selection can never choose a Node ID
+seen on an earlier completed connection by chance.
+
+This contract intentionally adopts the ordering of lifetimes, not Tor's current
+numbers. Tor's primary-guard, guard-lifetime, vanguard, and Introduction Point
+parameters are reference inputs for experiments on a much larger deployed
+network; Ardents must derive its numeric values from R-011 concentration evidence
+and R-023 endpoint, latency, availability, and idle-cost budgets.
 
 #### C0 — Service Entry is also the Introduction Node
 
@@ -701,7 +732,9 @@ No production implementation is justified yet. A throwaway candidate must first:
 5. inject one leg, Rendezvous, Introduction, Carrier Channel, and descriptor-path
    failure and test the accepted `5 s`/`15 s` outcomes;
 6. test replay, target substitution, route downgrade, timing and loss tagging,
-   descriptor enumeration, pool reuse, and Isolation Context crossover;
+   descriptor enumeration, forbidden pool reuse, Isolation Context crossover,
+   repeated forced failure, Entry-churn bounds, medium-layer rotation, fresh
+   Rendezvous selection, and overlapping Introduction rotation;
 7. retain all failed runs as evidence and reject any candidate that passes only
    by reducing the Route, bypassing target authentication, or reusing forbidden
    state.
@@ -710,10 +743,11 @@ No production implementation is justified yet. A throwaway candidate must first:
 
 - whether C-5 passes hostile information-flow review and the accepted performance
   budgets with prepared symmetric legs;
-- how introduction material is delivered without giving one Node a stable
-  target-to-entry mapping;
-- how many prepared entry, introduction, and recovery choices fit the idle and
-  endpoint-resource budgets;
+- what exact separate Introduction Path construction delivers P5-D4 without a
+  stable target-to-entry mapping;
+- what Entry, Interior, Introduction, and recovery set sizes, randomized
+  lifetimes, and replacement thresholds fit the P5-D5 exposure boundary and the
+  idle, latency, availability, and endpoint-resource budgets;
 - how a replacement leg attaches to the same Service Connection without exposing
   a stable network identifier or accepting replay;
 - how R-011 operator-diversity evidence affects route selection without creating
@@ -723,9 +757,10 @@ No production implementation is justified yet. A throwaway candidate must first:
 
 ## Recommendation
 
-Advance the accepted **five-position Tor/C-5 data-path shape** with the P5-D4
-separate Introduction Path to an information-flow model. C1 Rendezvous-forwarded
-introduction may run only as an explicitly unqualified setup-performance control.
+Advance the accepted **five-position Tor/C-5 data-path shape**, P5-D4 separate
+Introduction Path, and P5-D5 layered selector lifecycle to an information-flow
+model. C1 Rendezvous-forwarded introduction may run only as an explicitly
+unqualified setup-performance control.
 Prototype **Option B** beside the accepted shape as the strongest structurally
 different performance/recovery alternative. Reject **Option D** for the baseline
 unless R-005 later creates a stronger Route Profile. C-3 is an unqualified
@@ -735,7 +770,7 @@ Option C is only the first candidate Route Adapter. Its internal position count
 must not leak into the Application Interface, Service Connection contract,
 Service Name, Service Target, or authority model.
 
-The prototype recommendation is reversible. P5-D3 and P5-D4 are product
+The prototype recommendation is reversible. P5-D3 through P5-D5 are product
 contracts: evidence may return them to explicit review, but a candidate cannot
 silently weaken them in order to pass.
 
@@ -744,8 +779,10 @@ silently weaken them in order to pass.
 - State: `active`; P5-D1 fixes the strengthening Seam, P5-D2 fixes the
   Introduction-role knowledge boundary, and P5-D3 fixes the baseline symmetric
   five-position logical data path. P5-D4 fixes a separate Introduction Path and
-  forbids the selected Rendezvous from forwarding invitations. The production
-  routing and rendezvous mechanism remains undecided.
+  forbids the selected Rendezvous from forwarding invitations. P5-D5 fixes
+  endpoint-owned selection, long-lived Entry, medium-lived Interior,
+  connection-scoped Rendezvous, and overlapping Introduction rotation. The
+  production routing and rendezvous mechanism remains undecided.
 - Tor, I2P, Nym, Session, Lokinet, libp2p, and Waku are references or component
   sources, not selected dependencies.
 - No routing family, concrete introduction protocol, library, cryptography, DHT,

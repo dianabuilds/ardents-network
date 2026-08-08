@@ -495,6 +495,19 @@ or privacy claim.
   invitation, Introduction Node, or introduction slot from its role. Introduction
   carries only sealed, expiring, single-use setup material and never Application
   Data or retained offline messages.
+- Each endpoint selects its own Entry and Interior positions. Entry uses a small
+  long-lived set and Interior a small medium-lived rolling set inside one User
+  Isolation Context or one active Service Instance under one Service Target. One
+  failure cannot force an Entry to be replaced by a fresh untried candidate;
+  authenticated ineligibility or bounded sustained unavailability is required.
+- The User selects a fresh Rendezvous for each new Service Connection. Its state
+  may survive bounded Introduction retry or qualifying leg replacement only for
+  that same live attempt or connection and never crosses a completed connection
+  or Isolation Context. A Service may reject an ineligible proposal but does not
+  choose the User's replacement.
+- Introduction roles rotate as a finite overlapping set so withdrawing old
+  reachability does not create a planned outage. If eligible distinct positions
+  are unavailable, route construction fails rather than weakening separation.
 - No ordinary Node receives the full Route or plaintext Application Data for the
   connection, and external knowledge of a public Target grants no additional
   route state, endpoint location, authority, or protocol privilege.

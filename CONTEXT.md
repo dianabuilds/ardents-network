@@ -306,9 +306,25 @@ Separation boundary.
 _Avoid_: Node count, advertised independence, distinct Node IDs
 
 **Rendezvous**:
-A temporary network role through which two endpoints establish a Service
-Connection without learning each other's ordinary network location.
-_Avoid_: Origin server, reverse proxy
+A temporary network role, selected by the User for one new Service Connection,
+through which two endpoint-selected legs join without revealing either ordinary
+network location to the other endpoint. Its state may survive bounded
+Introduction retry or leg replacement only while that attempt or connection is
+still alive; it is never pooled across completed connections.
+_Avoid_: Origin server, reverse proxy, reusable connection pool
+
+**Entry Set**:
+A small, long-lived, endpoint-selected set of endpoint-adjacent Nodes or Bridges
+scoped to one User Isolation Context or one active Service Instance under one
+Service Target. A single failure does not rotate it to an untried Node. Its
+purpose is to bound cumulative exposure, not to make a malicious Entry harmless.
+_Avoid_: Fresh Entry per connection, global cross-context pool, permanent Node
+
+**Interior Set**:
+A small, medium-lived, endpoint-selected rolling set between an Entry Set and
+connection-specific roles. It rotates more often than Entry while avoiding a
+fresh unbounded sample on every Route.
+_Avoid_: Permanent middle, fresh random middle per retry, user-tunable hop
 
 **Bridge**:
 A non-public or replaceable entry path used when ordinary ways of joining

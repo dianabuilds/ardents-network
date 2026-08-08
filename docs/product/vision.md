@@ -217,6 +217,11 @@ These are responsibility boundaries, not selected binaries or APIs:
     Rendezvous. It carries only a sealed, expiring, single-use invitation that
     lets the Service attach its own data leg; it carries no Application Data and
     creates no offline-delivery promise.
+21. Each endpoint selects its own leg using a small long-lived Entry Set and a
+    small medium-lived Interior Set. Entry is not rotated after one failure; a
+    fresh User-selected Rendezvous is scoped to one new Service Connection, and
+    Introduction roles rotate gradually with overlap. These sets never share
+    routing state across Isolation Contexts.
 
 P5-D3 fixes that five-position information-flow shape because three positions
 give the Rendezvous the complete carrier sequence and four positions make the
