@@ -206,8 +206,9 @@ boundaries with named evidence.
 
 | ID | Exact question | Decision and required result | State |
 |---|---|---|---|
-| R-013 | Which maintained protocols and implementations fit each accepted addressing, Carrier Channel, routing, discovery, naming, and bootstrap contract? | Build/adopt map using specifications, security reviews, maintenance, license, interoperability, replacement cost, and misuse analysis. Carrier candidates are judged as part of a complete stack against the same logical Service Connection recovery contract rather than inheriting product semantics from HTTP, WSS, TCP, UDP, QUIC, or another mechanism. | open |
-| R-014 | Which implementation language and runtime best fit the same accepted tracer, audited dependencies, memory safety, async networking, reproducible builds, target platforms, and the one-to-one project's capacity? | Comparable bounded prototypes and release/dependency evidence. It is not a Go-versus-Rust preference vote. | open |
+| [R-013](records/r-013-carrier-lab-technology-candidates.md) | Which maintained protocols and implementations fit each accepted addressing, Carrier Channel, routing, discovery, naming, and bootstrap contract? | **Carrier Lab candidate fixed:** native C-5/C2 Route Adapter over TCP, telescoped and end-to-end TLS 1.3, HPKE invitation, direct/C-3 controls, and C Tor/Chutney mature reference. I2P-shaped pools are conditional; libp2p is only a later Carrier toolbox candidate; Waku/Nym are not the Interactive Route. Public addressing, discovery, naming, bootstrap, storage, update, and production foundations remain horizon-gated. | active |
+| [R-014](records/r-014-language-runtime-candidates.md) | Which implementation language and runtime best fit the same accepted tracer, audited dependencies, memory safety, async networking, reproducible builds, target platforms, and the one-to-one project's capacity? | **Maintained foundation decided:** standard-library-first Go 1.26.x in one root module; CI and Carrier Lab pin Go 1.26.5. ADR-0009 records the selection and replacement rule. Safe Rust/Tokio remains only a bounded challenger after a measured Go-specific hard failure, not parallel maintained work. | decided |
+| R-025 | How are the exact `tc netem` and packet-capture implementations supplied as content-addressed, license-reviewed Carrier Lab inputs without mutable package installation, runtime download, cgo, or first-party `unsafe`? | **Active implementation prerequisite:** R-013 requires shaping, captures, and pinned tool versions, but currently specifies no artifact identity or permitted in-binary replacement. Native C-5/C2 execution is blocked until one minimal supply path is researched and fixed. | active |
 | R-015 | What protocol-description, versioning, negotiation, and conformance strategy permits independent implementations without freezing immature semantics or enabling downgrade? | **Product behavior fixed:** authenticated capability and exact Route Profile binding; protocol `announced → overlap-supported → preferred → required → retired`, separately build `current/superseded → vulnerable → revoked`; at least `90 days` ordinary protocol overlap except scoped expiring emergency; finite no-new-work/terminal Work Safety deadlines; highest mutually supported qualified selection and explicit `update required`. Encoding, canonicalization, conformance, and fuzz tooling remain open. | open |
 
 ## Product validation — runs beside technical research
@@ -223,12 +224,14 @@ boundaries with named evidence.
 R-024 closed the eventual public operating model, not the current backlog. The
 dependency path is now deliberately sequential:
 
-1. **Carrier Lab specification:** freeze its Ubuntu fixtures, synthetic topology,
-   per-role observations, coarse feasibility metrics, and stop conditions.
-2. **R-013/R-014 lab candidates:** compare only the maintained components and
-   languages needed for that experiment; do not design naming, updater, public
-   Control Plane, SDK, or cross-platform packaging seams speculatively.
-3. **Route candidate verdict:** retain, revise, or reject the current split-
+1. **Carrier Lab specification — complete for implementation:** R-013 freezes
+   its Ubuntu fixtures, synthetic topology, per-role observations, coarse
+   feasibility metrics, stop conditions, and cleanup.
+2. **R-013/R-014 lab candidates — complete for the current horizon:** native
+   C-5/C2 with mature controls and Go are selected for the experiment; Rust is
+   the later bounded challenger. Naming, updater, public Control Plane, SDK, and
+   cross-platform packaging seams remain deliberately unselected.
+3. **Route candidate verdict — next:** retain, revise, or reject the current split-
    circuit package from measured knowledge and cost evidence. Failure stops
    expansion.
 4. **Named Unlisted Site Reference Application:** only after a viable Route,

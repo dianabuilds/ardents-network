@@ -1,0 +1,52 @@
+x-role: &role
+  image: ${CARRIER_LAB_IMAGE:?}
+  user: "65532:65532"
+  read_only: true
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,nodev,size=16m
+  cpus: "0.25"
+  mem_limit: 64m
+  pids_limit: 32
+  networks:
+    - adjacency
+
+services:
+  alpha:
+    <<: *role
+    command: ["smoke-role", "--config", "/config/role.json", "--evidence-dir", "/evidence"]
+    volumes:
+      - type: bind
+        source: ${ALPHA_CONFIG:?}
+        target: /config/role.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${ALPHA_EVIDENCE:?}
+        target: /evidence
+        bind:
+          create_host_path: false
+
+  beta:
+    <<: *role
+    command: ["smoke-role", "--config", "/config/role.json", "--evidence-dir", "/evidence"]
+    volumes:
+      - type: bind
+        source: ${BETA_CONFIG:?}
+        target: /config/role.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${BETA_EVIDENCE:?}
+        target: /evidence
+        bind:
+          create_host_path: false
+
+networks:
+  adjacency:
+    internal: true

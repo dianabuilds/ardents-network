@@ -6,8 +6,10 @@
 - The previous Go/Waku implementation is preserved in the remote `old` branch.
 - Do not copy architecture, terminology, dependencies, or generated artifacts
   from `old` unless a current research record explicitly justifies doing so.
-- There is no selected production language, transport, storage engine, consensus
-  system, blockchain, or application runtime.
+- Go is the selected language and runtime foundation for the maintained project
+  under ADR-0009. Transport, storage engine, consensus system, blockchain,
+  route implementation, public wire protocol, and application runtime remain
+  unselected.
 
 ## Current collaboration model
 
@@ -35,7 +37,8 @@ When materials disagree, use this order:
 4. experiments;
 5. legacy code and documents in `old`.
 
-Open questions are not decisions. Experiments are not production foundations.
+Open questions are not decisions. Experiments are evidence, not project
+foundations.
 
 ## Research discipline
 
@@ -50,14 +53,30 @@ Open questions are not decisions. Experiments are not production foundations.
 - A library being popular is evidence of ecosystem maturity, not proof that its
   threat model fits Ardents.
 
-## Code and experiments
+## Go project and experiments
 
-- Research code belongs under `experiments/<question-id>-<slug>/` until the
-  development entry gates are met.
+- The repository has one root Go module. Maintained Go code belongs in thin
+  `cmd/<name>` adapters and cohesive deep modules under `internal/<domain>`.
+- Do not create empty packages, speculative interfaces, or generic dumping
+  grounds named `util`, `common`, `misc`, `types`, `interfaces`, or `api`.
+- Package and command names describe one responsibility, use normal Go naming,
+  and must be registered in `docs/development/package-map.md`. Renaming or
+  adding a package is an explicit architecture change.
+- Keep module interfaces small and implementation details unexported. A new
+  package requires a real cohesive boundary, not merely another source file.
+- First-party cgo, `unsafe`, implicit `init`, and `panic` require a superseding
+  accepted ADR and dedicated risk tests.
+- Prefer the standard library. Record and review every runtime dependency in
+  `docs/development/dependencies.md` before changing `go.mod`.
+- Run `make quick-check` while writing code and `make check` before integration.
+  Do not weaken or bypass a failing gate. Tools are installed only through the
+  explicit `make tools-install` command.
+- Disposable research spikes may use `experiments/<question-id>-<slug>/`, but
+  maintained Go modules and project packages do not belong there.
 - Each experiment must include a README stating the question, hypothesis, run
   instructions, captured evidence, result, and disposition.
-- Do not create a production `src`, `internal`, `api`, `sdk`, or deployment tree
-  merely to make progress look like implementation.
+- Do not create `src`, `pkg`, `api`, `sdk`, or deployment trees merely to make
+  progress look like implementation.
 - Do not implement cryptographic primitives. Evaluate reviewed, maintained
   implementations against the declared threat model.
 - Keep generated files, dependency caches, databases, captures containing
