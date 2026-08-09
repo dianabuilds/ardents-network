@@ -1,0 +1,16 @@
+**
+
+!go.mod
+!cmd
+!cmd/**
+!internal
+!internal/**
+
+**/*_test.go
+.git
+.github
+.githooks
+docs
+experiments
+scripts
+*.md

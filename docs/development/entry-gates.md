@@ -19,8 +19,9 @@ An experiment may be written when:
 - inputs, environment, evidence, and cleanup behavior are defined;
 - its directory is under `experiments/` and makes no compatibility promise.
 
-An experiment may use any suitable language or maintained library. That choice
-does not select the production stack.
+A disposable comparison experiment may use a suitable tool, but maintained Go
+code remains in the root project under ADR-0009. An experiment cannot create a
+second project stack by inertia.
 
 ## Gate B — start Carrier Lab
 
@@ -37,7 +38,12 @@ Carrier Lab may start only after one experiment record freezes:
   failure measurement;
 - explicit pass, redesign, and stop conditions plus evidence cleanup.
 
-Carrier Lab stays under `experiments/`. It contains no Service Name, public
+[R-013](../research/records/r-013-carrier-lab-technology-candidates.md)
+now freezes this experiment contract. Gate B permits implementing only the
+declared Carrier Lab behavior in the root project. It does not imply a passing
+Route result or select routing, transport, storage, or wire foundations.
+
+Carrier Lab stays the only maintained project behavior slice. It contains no Service Name, public
 discovery/contribution, Bridge, production installer/updater, Windows build,
 public SDK/proxy/browser, general Application sandbox, multiparty Control Plane,
 or complete R-023 matrix. It makes no privacy, anonymity, decentralization, or
@@ -66,8 +72,8 @@ remain outside scope.
 
 ## Gate D — select production language and foundations
 
-A production language, runtime, routing foundation, storage component, or wire
-format is selected only when:
+A routing foundation, storage component, wire format, or other protocol-bound
+foundation is selected only when:
 
 - the same accepted network and tracer contract is evaluated fairly;
 - security and maintenance evidence covers proposed dependencies;
@@ -77,6 +83,10 @@ format is selected only when:
 - migration and replacement boundaries are explicit;
 - a research record recommends the choice;
 - an ADR records meaningful lock-in and rejected alternatives.
+
+The language/runtime portion is satisfied for the maintained project by R-014,
+the Product Owner's explicit promotion, and ADR-0009. That decision does not
+satisfy any remaining foundation gate or authorize a later product horizon.
 
 ## Gate E — claim a security property
 

@@ -103,10 +103,12 @@ of Applications, Service Names, Service Targets, authority custody, or
 publication workflows.
 
 This Seam is justified now because the research already contains independent
-Adapters with materially different shapes: split-leg rendezvous, paired tunnel
-pools, and a possible delayed mixnet. The prototype must demonstrate at least
-the first two through the same Route Module test harness. It must not build a
-general routing virtual machine in anticipation of unknown designs.
+Adapters with materially different implementations: the native split-leg
+candidate and the external C Tor control, plus a conditional paired-tunnel
+alternative. Carrier Lab drives the first two through the same Route Module
+tracer. Paired tunnel pools require a recorded C-5 failure that they are expected
+to answer; a possible delayed mixnet remains outside V1. The experiment must not
+build a general routing virtual machine in anticipation of unknown designs.
 
 ## Primary-source findings
 
@@ -847,11 +849,13 @@ operability evidence that the adopted alternative cannot provide.
 P5-D3 selects an information-flow shape, not a production mechanism. It does not
 select Tor, onion construction, a library, cryptography, wire protocol, or
 language, and it adds no claim against every colluding pair or a Broad Traffic
-Observer. A bounded prototype must compare the five-position
-shape with Option B under the same tracer; C-3 may appear only as a clearly
-unqualified performance control. If no implementation can meet the accepted
-security and performance contracts, the product contracts return to review; the
-route is not silently shortened.
+Observer. A bounded prototype must compare the five-position shape with direct,
+C-3, and the mature Tor reference under the same tracer. Option B enters a
+follow-up only when the recorded C-5 result identifies setup, warm-use, or path-
+replacement cost that paired pools are specifically expected to improve. C-3
+may appear only as a clearly unqualified performance control. If no
+implementation can meet the accepted security and performance contracts, the
+product contracts return to review; the route is not silently shortened.
 
 ## Option D — Delayed packet mixnet
 
@@ -877,29 +881,30 @@ Application need justifies the stronger claim and cost.
 | Endpoint state | Medium-high | Highest | Medium for C-5 | High |
 | Shared lookup/control risk | HSDir and consensus if copied | Floodfill/DHT eclipse and Sybil | Still needs descriptor and bootstrap design | Epoch topology and admission root |
 | Mature complete analogue | Tor | I2P | None | Nym |
-| Current disposition | Comparison control | Alternative prototype | Front-runner prototype | Defer to R-005 |
+| Current disposition | Comparison control | Conditional follow-up | Front-runner prototype | Defer to R-005 |
 
 The grades are architectural hypotheses, not measured results or Route
 Qualification.
 
 ## Prototype decision gate
 
-No production implementation is justified yet. A throwaway candidate must first:
+No production implementation is justified yet. The current throwaway Carrier
+Lab candidate must follow the narrower R-013 contract:
 
-1. model every Introduction, Entry, Rendezvous, descriptor, and recovery view;
-2. make each ordinary role malicious in turn and prove no forbidden value appears
-   in live state, traffic, handles, logs, or retained state;
-3. run C-5 and Option B with the smallest viable tunnel pool on the same
-   controlled topology through the same Route Module Interface and Service
-   Connection tracer; C-3 may run only as an unqualified performance control;
-4. measure cold and warm connection setup, one-stream goodput, `64`/`256`
-   connection workloads, CPU, RSS, queues, and endpoint traffic overhead;
-5. inject one leg, Rendezvous, Introduction, Carrier Channel, and descriptor-path
-   failure and test the accepted `5 s`/`15 s` outcomes;
-6. test replay, target substitution, route downgrade, timing and loss tagging,
-   descriptor enumeration, forbidden pool reuse, Isolation Context crossover,
-   repeated forced failure, Entry-churn bounds, medium-layer rotation, fresh
-   Rendezvous selection, and overlapping Introduction rotation;
+1. model every fixed C-5/C2 ordinary role view without adding public descriptor,
+   selection, recovery, or control-plane state;
+2. make each ordinary role inspect its complete decoded configuration, traffic,
+   handles, state, and retained audit view for forbidden values;
+3. run direct, C-3, C-5/C2, and the mature Tor control through the same Route
+   Module tracer; C-3 remains an unqualified performance control, while Option B
+   requires the recorded conditional trigger above;
+4. measure ready-state setup, one-stream goodput, CPU, RSS, queues, and endpoint
+   traffic overhead; `64`/`256` concurrency remains future qualification work;
+5. inject the one fixed R-013 Rendezvous failure and require explicit terminal
+   failure by `15 s`; same-connection repair remains outside Carrier Lab;
+6. test the bounded R-013 replay, target/Instance substitution, profile/run/
+   Rendezvous binding, protected-record modification, oversize, and invalid-state
+   cases without adding descriptor enumeration, rotation, or public admission;
 7. retain all failed runs as evidence and reject any candidate that passes only
    by reducing the Route, bypassing target authentication, or reusing forbidden
    state.

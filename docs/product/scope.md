@@ -49,9 +49,10 @@ The Product Core is the smallest durable promise that defines Ardents:
 - independently operated infrastructure is required before Ardents may claim a
   decentralized public network.
 
-The Product Core fixes information-flow and responsibility boundaries, not one
-programming language, dependency, wire format, cryptographic suite, discovery
-mechanism, route implementation, or operating model.
+The Product Core fixes information-flow and responsibility boundaries. ADR-0009
+selects Go as the maintained project foundation, but dependencies, wire format,
+cryptographic suite, discovery mechanism, route implementation, and operating
+model remain separate decisions.
 
 The five-position split-circuit Route with a separate Introduction is the first
 Carrier Lab candidate. Four Role Domains, Candidate View, and source-exclusion
@@ -63,9 +64,8 @@ same claim and evidence contract without weakening the Application Interface.
 
 ## Horizon 1 — Current Research Slice: Carrier Lab
 
-Only the **Carrier Lab** is authorized as the next implementation slice. It is
-a disposable experiment under `experiments/`, not a release or production
-network.
+Only the **Carrier Lab** is authorized as the current implementation slice. It
+is maintained in the root project, but is not a release or production network.
 
 It contains only:
 
@@ -222,8 +222,8 @@ proofing” of the carrier.
    shows that it is still needed and the Product Owner explicitly promotes it.
 5. Failure of the current route candidate triggers redesign or project stop,
    not compensating scope in naming, governance, SDKs, or UI.
-6. The production language and dependency set remain open until Carrier Lab has
-   identified the expensive seams worth preserving.
+6. Go is the maintained project foundation under ADR-0009. Runtime dependencies
+   and protocol-bound foundations remain open until evidence justifies them.
 
 ## How to read the other documents
 
@@ -233,6 +233,8 @@ proofing” of the carrier.
 | [Functional map](functional-map.md) | Requirements registry across all horizons, not one backlog. `fixed` means decision maturity, not “build now.” |
 | [Operating model](operating-model.md) | Target lifecycle for a public product; only explicitly promoted parts apply to Carrier Lab. |
 | [Threat model](../security/threat-model.md) | Conditions required before making each claim; an unclaimed condition need not become a current feature. |
+| [R-013](../research/records/r-013-carrier-lab-technology-candidates.md) | Frozen Carrier Lab experiment contract and current component candidates; not a production-stack decision. |
+| [R-014](../research/records/r-014-language-runtime-candidates.md) | Evidence and rationale for the Go project foundation recorded by ADR-0009. |
 | [R-023](../research/records/r-023-interactive-route-performance-budget.md) | Future qualification contract and hypothesis set; Carrier Lab uses only its coarse decision metrics. |
 | [R-024](../research/records/r-024-operational-product-closure.md) | Completeness audit of the eventual public lifecycle, not authorization to implement every mechanism now. |
 | [Development gates](../development/entry-gates.md) | The only promotion path between horizons. |

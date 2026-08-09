@@ -5,7 +5,8 @@ private, location-private, decentralized application network designed for
 hostile environments.
 
 The project is defining network contracts and validating security assumptions.
-This branch does **not** contain production-ready networking software. The
+This branch contains the maintained Go project foundation and the Carrier Lab
+preflight, but **not** production-ready networking software. The
 previous implementation is preserved in the
 [`old`](https://github.com/dianabuilds/ardents-network/tree/old) branch as
 evidence to learn from, not an architecture to continue by default.
@@ -45,8 +46,9 @@ Target, or opposite endpoint. The first Carrier Lab candidate uses the
 Tor-shaped family of two independently built endpoint circuits joined at a
 User-selected Rendezvous, with five symmetric logical carrier positions and a
 separate Introduction Path. This is a falsifiable candidate, not a selected
-production route, Tor naming, exit routing, library, cryptography, or wire
-protocol.
+production route or a selection of Tor naming, exit routing, production
+library, production cryptography, or production wire protocol. The disposable
+lab choices are frozen separately in R-013 and carry no promotion by inertia.
 
 If that data-path candidate survives, the current later-horizon enforcement
 candidate has each endpoint select its own leg from authenticated Candidate
@@ -109,15 +111,16 @@ The carrier is public so that private Services can draw from a broader anonymity
 set. Naming, bootstrap, software releases, and governance remain explicit
 Control Plane risks rather than being hidden behind the word “decentralized.”
 
-## Current research slice
+## Current project slice
 
-The next code, if started, is a disposable Ubuntu-to-Ubuntu **Carrier Lab**. It
+The first maintained vertical slice is an Ubuntu-to-Ubuntu **Carrier Lab**. It
 uses one deterministic byte stream, one active Service Instance, project-owned
 test keys, a preconfigured Target/reachability fixture, and a fixed synthetic
 topology to falsify the current five-position Route candidate. It implements no
 Service Name, public Node discovery, Bridge, installer, updater, SDK, browser,
 or public-network governance, and it makes no anonymity or decentralization
-claim.
+claim. Its exact disposable technology and evidence contract is
+[R-013](docs/research/records/r-013-carrier-lab-technology-candidates.md).
 
 ## First conditional Reference Application
 
@@ -152,6 +155,8 @@ products or overlays if future evidence justifies them.
 ## Start here
 
 - [Authoritative product scope and delivery horizons](docs/product/scope.md)
+- [Carrier Lab technology and experiment contract](docs/research/records/r-013-carrier-lab-technology-candidates.md)
+- [Language and runtime candidates](docs/research/records/r-014-language-runtime-candidates.md)
 - [Product vision](docs/product/vision.md)
 - [Accepted operating model and remaining bottlenecks](docs/product/operating-model.md)
 - [Network functional map](docs/product/functional-map.md)
@@ -160,22 +165,30 @@ products or overlays if future evidence justifies them.
 - [Threat model](docs/security/threat-model.md)
 - [Network research queue](docs/research/questions.md)
 - [Development entry gates](docs/development/entry-gates.md)
+- [Go engineering rules](docs/development/go-engineering.md)
+- [Repository layout and growth rules](docs/development/repository-layout.md)
+- [Current package map](docs/development/package-map.md)
+- [Carrier Lab preflight contract](docs/development/carrier-lab-preflight.md)
+- [Contributor workflow](CONTRIBUTING.md)
 - [Architecture decisions](docs/adr/README.md)
 
 ## Repository shape
 
-```text
-docs/product/       Product promise, network boundary, functions, and journeys
-docs/security/      Adversaries, assets, guarantees, and honest limitations
-docs/research/      Open questions, evidence, and research templates
-docs/adr/           Accepted durable decisions only
-experiments/        Disposable code written to answer named questions
-CONTEXT.md          Canonical network product vocabulary
+The normative [repository layout and growth
+rules](docs/development/repository-layout.md) separate the current factual tree
+from conditional future Modules and delivery zones. The [package
+map](docs/development/package-map.md) lists only Go packages that exist and their
+permitted current imports. Run `make quick-check` while working and `make check`
+before integration.
+
+Carrier Lab preflight is run with:
+
+```sh
+bash ./scripts/preflight.sh --go-archive /absolute/path/go1.26.5.linux-amd64.tar.gz
 ```
 
-No production source directory exists yet. It will be created only after the
-relevant product, threat, protocol, and technology decisions pass the documented
-entry gates.
+The command requires the R-013-pinned Ubuntu image and Go archive to already be
+present; it never substitutes mutable inputs or installs missing dependencies.
 
 ## Non-goals for the network core
 
