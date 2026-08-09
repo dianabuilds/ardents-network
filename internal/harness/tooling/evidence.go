@@ -72,7 +72,9 @@ func sanitizeToolingFailure(layout runLayout, message string) string {
 		return len(right.value) - len(left.value)
 	})
 	for _, replacement := range replacements {
-		for _, value := range []string{replacement.value, filepath.ToSlash(replacement.value)} {
+		forward := strings.ReplaceAll(replacement.value, `\`, "/")
+		backward := strings.ReplaceAll(replacement.value, "/", `\`)
+		for _, value := range []string{replacement.value, forward, backward} {
 			if value != "" {
 				message = strings.ReplaceAll(message, value, replacement.label)
 			}
