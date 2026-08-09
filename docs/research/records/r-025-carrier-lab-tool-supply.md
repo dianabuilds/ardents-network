@@ -221,28 +221,28 @@ directory. Reproduction starts from the exact URLs and hashes in
   a missing base fails before Docker receives a build request. The subsequent
   build with `--pull=false --network=none` verified all 12 package
   hashes/control records plus all three runtime hashes and produced local image
-  ID `sha256:103b4b7ccdece82e87accea56dd5a30b7ee707ab7aa10018e9b1ba7250b23123`.
+  ID `sha256:7044a145123e64fa5b2264bfac6ecd5f71c1346bae692f7560e2b39674c70021`.
   Before Compose, the controller bound that runnable image to source digest
-  `ff1fd10e25c0ac577e56502c5184639c95aedb7db3f60a395153ac17bec8d978`,
+  `c45556c69526a4bb4eabdaed340b008038c1e2a3979d0d0e8b087aa0e03da938`,
   Carrier Lab binary digest
-  `580be06f4a8466841641359edae204ef33a230d6a310817c5bd0d24ed80810f2`,
+  `2b277c93a6633c40f4401ef48eabc77e0b9afe119757908cdf7a148f7a046a7f`,
   the locked base reference, and lock digest. The prior syntactically valid
   image ID was rejected before Compose because it lacked this receipt contract.
 - Development smoke recorded both real qdiscs as `limit 1000 delay 40ms rate
   100Mbit`, produced a 2,180-byte pcap containing the
   run-local tracer, recorded pcap SHA-256
-  `7f0cce9f625591c1b79bc036abbe7742379936c38342347d6ad0d3684e0548a9`,
+  `4dd0af6057129474774683e8a8683aad7df8517dddd55387a0047ab3f46f221f`,
   deleted the raw pcap, and proved the exact five-container project, the exact
   two tracer network attachments, reciprocal alpha/beta peer observations,
   isolation, and cleanup. The
   retained tooling manifest SHA-256 was
-  `620a013d91c71ff901bbdf916f6e21b209a0f09351ad343be059b8a806d13bff`
+  `7b71b7e3d9a1df8ae1fb296204b377afea64cc3e8b311a9898cc74629ce8c7e1`
   and the separate passing verdict bound that exact digest.
 - Injected `capture-start` failure exited non-zero, retained `status: failed`,
   removed the run directory and raw capture, and reported
   `cleanup_complete: true`. No retained failure contained a host path. The
   application image
-  `sha256:9ecee47776eca459a9cda9e15073682d9fc7cac127a8f13b09415ddb0b713458`
+  `sha256:79cb507961983616182e3bab6eb2766cc091df7ec01f1ce22cd36efe14860257`
   also passed the separate two-role isolation smoke, and the native Direct TLS
   control passed. No Compose container, network, or volume remained after any
   run.
