@@ -1,3 +1,3 @@
-// Package harness owns the fixed Carrier Lab scenario lifecycle, isolated role
-// processes, bounded evidence, failure injection, and complete cleanup.
+// Package harness owns the fixed two-role Carrier Lab isolation scenario,
+// bounded observations, failure injection, and complete cleanup.
 package harness

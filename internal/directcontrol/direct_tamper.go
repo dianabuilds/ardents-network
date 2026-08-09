@@ -38,9 +38,9 @@ type directTamperResult struct {
 	Failure                 string `json:"failure,omitempty"`
 }
 
-// RunDirectTamper executes the fixed modified-record fault without receiving
+// RunTamper executes the fixed modified-record fault without receiving
 // Target, Instance, canary, payload, naming, discovery, or topology knowledge.
-func RunDirectTamper(ctx context.Context, configPath, evidenceDir string) error {
+func RunTamper(ctx context.Context, configPath, evidenceDir string) error {
 	started := time.Now()
 	config, err := readDirectTamperConfig(configPath)
 	if err != nil {

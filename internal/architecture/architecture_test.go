@@ -3,7 +3,6 @@ package architecture
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"go/ast"
 	"go/format"
 	"go/parser"
@@ -11,8 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
-	"sort"
 	"strings"
 	"testing"
 )
@@ -34,10 +31,16 @@ var forbiddenPackageNames = map[string]bool{
 	"util":       true,
 }
 
+var forbiddenGoFileNames = map[string]bool{
+	"common.go": true, "helpers.go": true, "misc.go": true, "model.go": true,
+	"support.go": true, "types.go": true, "util.go": true,
+}
+
 var laboratoryPackages = map[string]bool{
-	"internal/directcontrol": true,
-	"internal/harness":       true,
-	"internal/preflight":     true,
+	"internal/directcontrol":   true,
+	"internal/harness":         true,
+	"internal/harness/tooling": true,
+	"internal/preflight":       true,
 }
 
 func TestRepositoryArchitecture(t *testing.T) {
@@ -65,6 +68,10 @@ func assertQualityWiring(t *testing.T, root string) {
 		if !bytes.Contains(makefile, []byte(required)) {
 			t.Errorf("Makefile is missing mandatory quality control %q", required)
 		}
+	}
+	dockerRecipe := regexp.MustCompile(`(?m)^\t[^\n]*\bdocker([[:space:]]|$)`)
+	if dockerRecipe.Match(makefile) {
+		t.Error("ordinary Make quality gates must not build or run Docker; Carrier Lab qualification is explicit after source freeze")
 	}
 	hook := readProjectFile(t, root, ".githooks/pre-commit")
 	if !bytes.Contains(hook, []byte("exec make quick-check")) {
@@ -363,6 +370,13 @@ func assertPackage(t *testing.T, root, relativeDirectory string, files []string)
 			t.Errorf("read %s: %v", relative, err)
 			continue
 		}
+		lines := bytes.Count(data, []byte{'\n'})
+		if len(data) > 0 && data[len(data)-1] != '\n' {
+			lines++
+		}
+		if lines > 500 {
+			t.Errorf("Go file exceeds the hard 500-line limit: %s (%d lines)", relative, lines)
+		}
 		if formatted, err := format.Source(data); err != nil {
 			t.Errorf("parse/format %s: %v", relative, err)
 		} else if !bytes.Equal(data, formatted) {
@@ -381,10 +395,12 @@ func assertPackage(t *testing.T, root, relativeDirectory string, files []string)
 		}
 		if !strings.HasSuffix(relative, "_test.go") && !isBuildIgnored(data) {
 			productionFiles++
-			lines := bytes.Count(data, []byte{'\n'})
 			productionLines += lines
-			if lines > 500 {
-				t.Errorf("production file exceeds 500 lines; split by responsibility: %s (%d lines)", relative, lines)
+			if lines > 250 {
+				t.Errorf("production file exceeds the hard 250-line limit; split by responsibility: %s (%d lines)", relative, lines)
+			}
+			if forbiddenGoFileNames[filepath.Base(relative)] {
+				t.Errorf("production filename hides its responsibility: %s", relative)
 			}
 			if strings.HasPrefix(relative, "cmd/") && lines > 120 {
 				t.Errorf("command must remain a thin adapter (max 120 lines): %s", relative)
@@ -461,123 +477,4 @@ func inspectProductionFile(t *testing.T, relative string, file *ast.File) int {
 		return true
 	})
 	return exported
-}
-
-func assertRepositoryContainsNoArtifacts(t *testing.T, root string) {
-	t.Helper()
-	forbiddenDirectories := map[string]bool{
-		".artifacts": true, ".cache": true, ".tmp": true, "build": true,
-		"coverage": true, "dist": true, "evidence": true, "node_modules": true,
-		"target": true, "tmp": true, "var": true, "vendor": true,
-	}
-	forbiddenSuffixes := []string{".db", ".db-shm", ".db-wal", ".out", ".pcap", ".pcapng", ".prof", ".test"}
-	walk(t, root, func(path string, entry os.DirEntry) {
-		relative := relativePath(t, root, path)
-		if entry.IsDir() && forbiddenDirectories[entry.Name()] {
-			t.Errorf("generated or sensitive directory is forbidden: %s", relative)
-		}
-		if !entry.IsDir() {
-			lowerName := strings.ToLower(entry.Name())
-			if (entry.Name() == ".env" || strings.HasPrefix(entry.Name(), ".env.")) && entry.Name() != ".env.example" {
-				t.Errorf("generated or sensitive file is forbidden: %s", relative)
-			}
-			if strings.HasSuffix(lowerName, ".key") {
-				t.Errorf("key material is forbidden: %s", relative)
-			}
-			for _, suffix := range forbiddenSuffixes {
-				if strings.HasSuffix(lowerName, suffix) {
-					t.Errorf("generated or sensitive file is forbidden: %s", relative)
-				}
-			}
-			data, err := os.ReadFile(path)
-			if err != nil {
-				t.Errorf("read repository file %s: %v", relative, err)
-				return
-			}
-			trimmed := bytes.TrimSpace(data)
-			if strings.HasSuffix(lowerName, ".pem") &&
-				(!pathHasSegment(relative, "testdata") ||
-					(!bytes.HasPrefix(trimmed, []byte("-----BEGIN CERTIFICATE-----")) &&
-						!bytes.HasPrefix(trimmed, []byte("-----BEGIN PUBLIC KEY-----"))) ||
-					bytes.Contains(trimmed, []byte("PRIVATE KEY"))) {
-				t.Errorf("PEM files must be owned public-certificate or public-key test fixtures: %s", relative)
-			}
-		}
-	})
-}
-
-func pathHasSegment(path, wanted string) bool {
-	for _, segment := range strings.Split(filepath.ToSlash(path), "/") {
-		if segment == wanted {
-			return true
-		}
-	}
-	return false
-}
-
-func repositoryRoot(t *testing.T) string {
-	t.Helper()
-	_, current, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("cannot locate architecture test")
-	}
-	return filepath.Clean(filepath.Join(filepath.Dir(current), "..", ".."))
-}
-
-func walk(t *testing.T, root string, visit func(string, os.DirEntry)) {
-	t.Helper()
-	var paths []string
-	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if entry.IsDir() && (entry.Name() == ".git" || entry.Name() == ".idea") {
-			return filepath.SkipDir
-		}
-		paths = append(paths, path)
-		return nil
-	})
-	if err != nil {
-		t.Fatalf("walk repository: %v", err)
-	}
-	sort.Strings(paths)
-	for _, path := range paths {
-		entry, err := os.Stat(path)
-		if err != nil {
-			t.Fatalf("stat %s: %v", path, err)
-		}
-		visit(path, fileInfoEntry{FileInfo: entry})
-	}
-}
-
-func relativePath(t *testing.T, root, path string) string {
-	t.Helper()
-	relative, err := filepath.Rel(root, path)
-	if err != nil {
-		t.Fatalf("relative path for %s: %v", path, err)
-	}
-	return filepath.ToSlash(relative)
-}
-
-func readProjectFile(t *testing.T, root, relative string) []byte {
-	t.Helper()
-	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(relative)))
-	if err != nil {
-		t.Fatalf("read %s: %v", relative, err)
-	}
-	return data
-}
-
-func isBuildIgnored(data []byte) bool {
-	return bytes.HasPrefix(data, []byte("//go:build ignore\n"))
-}
-
-type fileInfoEntry struct{ os.FileInfo }
-
-func (entry fileInfoEntry) Type() os.FileMode          { return entry.Mode().Type() }
-func (entry fileInfoEntry) Info() (os.FileInfo, error) { return entry.FileInfo, nil }
-
-func Example_projectShape() {
-	fmt.Println("cmd -> internal")
-	// Output: cmd -> internal
 }

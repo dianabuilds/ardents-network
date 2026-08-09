@@ -19,10 +19,22 @@ None. The project currently uses the Go standard library only.
 `make tools-install` is the only documented installation command. Normal build
 and quick-check targets never install or upgrade tools implicitly.
 
-## Blocked Carrier Lab tool inputs
+## Carrier Lab-only tool inputs
 
-R-013 requires `tc netem` plus packet capture for the native C-5/C2 condition,
-but no version, immutable artifact, digest, or reviewed license/maintenance
-record has been selected. They are not dependencies yet and must not be fetched
-with `apt`, a mutable image, or runtime download. R-025 must close this supply
-decision before iteration 6 resumes.
+These tools are not product runtime dependencies and do not enter `go.mod` or
+the `application` image target. They exist only in the disposable `tooling`
+target of `carrier-lab/Dockerfile`.
+
+| Tool | Version | Supplied by | License summary | Purpose |
+|---|---:|---|---|---|
+| iproute2 `tc` | 6.19.0 | Ubuntu `iproute2` 6.19.0-1ubuntu1.1 | GPL-2.0-only | fixed endpoint `netem` shaping |
+| tcpdump | 4.99.6 | Ubuntu `tcpdump` 4.99.6-1 | BSD-3-Clause with historical notices | bounded link capture and readback |
+| libpcap | 1.10.6 | Ubuntu `libpcap0.8t64` 1.10.6-1ubuntu1 | BSD-family and other permissive notices | packet socket/filter runtime |
+
+The exact 12-file runtime closure, official URLs, versions, SHA-256 values,
+license summaries, installed paths, and executable hashes are normative in
+[`carrier-lab/tools.lock`](../../carrier-lab/tools.lock). R-025 records the
+source and security review. The external `.deb` bundle is an explicitly
+prepared input outside Git. Normal build and run use no package repository,
+installer, maintainer script, or download fallback; a missing, extra, or
+mismatched artifact fails closed.

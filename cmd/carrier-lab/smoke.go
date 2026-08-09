@@ -8,11 +8,21 @@ import (
 	"os/signal"
 
 	"github.com/dianabuilds/ardents-network/internal/harness"
+	"github.com/dianabuilds/ardents-network/internal/harness/tooling"
 	"github.com/dianabuilds/ardents-network/internal/preflight"
 )
 
 func composeSmoke(arguments []string) int {
-	flags := flag.NewFlagSet("compose-smoke", flag.ContinueOnError)
+	return smokeControl(arguments, "compose-smoke", "Compose isolation", harness.Run)
+}
+func toolingSmoke(arguments []string) int {
+	return smokeControl(arguments, "tooling-smoke", "tooling", tooling.RunSmoke)
+}
+
+type smokeRunner func(context.Context, preflight.RunLayout, string, string) (string, error)
+
+func smokeControl(arguments []string, name, label string, runSmoke smokeRunner) int {
+	flags := flag.NewFlagSet(name, flag.ContinueOnError)
 	repositoryRoot := flags.String("repository-root", "", "repository root")
 	sessionRoot := flags.String("session-root", "", "owned smoke session root")
 	tempRoot := flags.String("temp-root", "", "system temporary root")
@@ -24,17 +34,17 @@ func composeSmoke(arguments []string) int {
 	}
 	layout, err := preflight.NewRunLayout(*sessionRoot, *repositoryRoot, *tempRoot, *runID)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "compose smoke layout: %v\n", err)
+		fmt.Fprintf(os.Stderr, "%s layout: %v\n", label, err)
 		return 2
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
-	evidence, err := harness.Run(ctx, layout, *image, *fault)
+	evidence, err := runSmoke(ctx, layout, *image, *fault)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "compose smoke: %v\nevidence: %s\n", err, evidence)
+		fmt.Fprintf(os.Stderr, "%s smoke: %v\nevidence: %s\n", label, err, evidence)
 		return 2
 	}
-	fmt.Printf("Carrier Lab Compose smoke: passed\nEvidence: %s\n", evidence)
+	fmt.Printf("Carrier Lab %s smoke: passed\nEvidence: %s\n", label, evidence)
 	return 0
 }
 

@@ -12,7 +12,7 @@ const carrierLabBase = "ubuntu@sha256:7b202b0e2e0028c6250f5fcf41d04df492d145a165
 func TestCarrierLabImageContract(t *testing.T) {
 	t.Parallel()
 	root := repositoryRoot(t)
-	dockerfile := readProjectFile(t, root, "Dockerfile.carrier-lab")
+	dockerfile := readProjectFile(t, root, "carrier-lab/Dockerfile")
 	ignore := readProjectFile(t, root, ".dockerignore")
 
 	var fromLines []string
@@ -36,6 +36,7 @@ func TestCarrierLabImageContract(t *testing.T) {
 	}
 
 	required := []string{
+		" AS application", " AS tooling",
 		"type=bind,from=go_archive", "source=go1.26.5.linux-amd64.tar.gz", "target=/input/go1.26.5.linux-amd64.tar.gz,ro",
 		"5c2c3b16caefa1d968a94c1daca04a7ca301a496d9b086e17ad77bb81393f053",
 		"sha256sum -c -", "RUN --network=none", "GOTOOLCHAIN=local", "GOPROXY=off",

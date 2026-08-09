@@ -23,8 +23,7 @@ func bootstrap(arguments []string) int {
 		return 64
 	}
 	if err := preflight.Bootstrap(context.Background(), *repositoryRoot, *goArchive, *seed, *faultFinalizer, os.Stdout, os.Stderr); err != nil {
-		fmt.Fprintf(os.Stderr, "bootstrap preflight: %v\n", err)
-		return 2
+		return commandError("bootstrap preflight", err)
 	}
 	return 0
 }

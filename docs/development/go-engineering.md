@@ -19,6 +19,11 @@ architecture gate checks both records against the Go tree.
 - First-party `unsafe`, cgo, and implicit `init` require a superseding accepted
   ADR and dedicated risk tests.
 - Use `gofmt`; package comments are mandatory; command packages remain thin.
+- Name each file after one implementation responsibility. Production files
+  have a hard limit of 250 lines; every Go file, including
+  tests, has a hard limit of 500. Split files without inventing package seams.
+- Do not use catch-all filenames such as `model.go`, `support.go`, `types.go`,
+  `helpers.go`, `common.go`, `misc.go`, or `util.go`.
 - Add tests for behavior and failure paths in the same change.
 - Prefer the standard library. A third-party runtime dependency requires an
   entry in `dependencies.md` and a documented review before `go.mod` changes.

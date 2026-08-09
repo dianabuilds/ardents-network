@@ -30,7 +30,7 @@ func TestDirectRoleRejectsKnowledgeOutsideItsFixedConfig(t *testing.T) {
 	if err := os.WriteFile(configPath, []byte(config), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := RunDirectRole(context.Background(), configPath, evidenceDir); err == nil {
+	if err := RunRole(context.Background(), configPath, evidenceDir); err == nil {
 		t.Fatal("Direct TLS role accepted undeclared target naming knowledge")
 	}
 }
@@ -61,9 +61,9 @@ func TestDirectTLSControlAuthenticatesExactInstanceAndCanary(t *testing.T) {
 	})
 
 	serviceDone := make(chan error, 1)
-	go func() { serviceDone <- RunDirectRole(context.Background(), serviceConfig, serviceEvidence) }()
+	go func() { serviceDone <- RunRole(context.Background(), serviceConfig, serviceEvidence) }()
 	waitForDirectReady(t, filepath.Join(serviceEvidence, "ready.json"))
-	if err := RunDirectRole(context.Background(), userConfig, userEvidence); err != nil {
+	if err := RunRole(context.Background(), userConfig, userEvidence); err != nil {
 		t.Fatal(err)
 	}
 	if err := <-serviceDone; err != nil {
@@ -110,9 +110,9 @@ func TestDirectTLSControlRejectsWrongInstanceBeforeApplicationBytes(t *testing.T
 	})
 
 	serviceDone := make(chan error, 1)
-	go func() { serviceDone <- RunDirectRole(context.Background(), serviceConfig, serviceEvidence) }()
+	go func() { serviceDone <- RunRole(context.Background(), serviceConfig, serviceEvidence) }()
 	waitForDirectReady(t, filepath.Join(serviceEvidence, "ready.json"))
-	if err := RunDirectRole(context.Background(), userConfig, userEvidence); err == nil {
+	if err := RunRole(context.Background(), userConfig, userEvidence); err == nil {
 		t.Fatal("wrong Instance leaf was accepted")
 	}
 	if err := <-serviceDone; err == nil {
@@ -158,11 +158,11 @@ func TestDirectTLSControlRejectsModifiedProtectedRecord(t *testing.T) {
 
 	serviceDone := make(chan error, 1)
 	proxyDone := make(chan error, 1)
-	go func() { serviceDone <- RunDirectRole(context.Background(), serviceConfig, serviceEvidence) }()
+	go func() { serviceDone <- RunRole(context.Background(), serviceConfig, serviceEvidence) }()
 	waitForDirectReady(t, filepath.Join(serviceEvidence, "ready.json"))
-	go func() { proxyDone <- RunDirectTamper(context.Background(), proxyConfig, proxyEvidence) }()
+	go func() { proxyDone <- RunTamper(context.Background(), proxyConfig, proxyEvidence) }()
 	waitForDirectReady(t, filepath.Join(proxyEvidence, "ready.json"))
-	if err := RunDirectRole(context.Background(), userConfig, userEvidence); err == nil {
+	if err := RunRole(context.Background(), userConfig, userEvidence); err == nil {
 		t.Fatal("modified protected record was accepted")
 	}
 	if err := <-proxyDone; err != nil {

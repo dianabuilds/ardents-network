@@ -1,0 +1,189 @@
+# One topology definition with two independently selected profiles:
+# isolation proves the base two-role contour; tooling proves tc/tcpdump supply.
+x-secure-role: &secure-role
+  read_only: true
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,nodev,size=16m
+  cpus: "0.25"
+  mem_limit: 64m
+  pids_limit: 32
+
+x-isolation-role: &isolation-role
+  <<: *secure-role
+  profiles: ["isolation"]
+  image: ${CARRIER_LAB_IMAGE:?}
+  user: "65532:65532"
+  networks:
+    - adjacency
+
+x-tool-role: &tool-role
+  <<: *secure-role
+  profiles: ["tooling"]
+  image: ${CARRIER_LAB_IMAGE:?}
+  user: "65532:65532"
+
+x-tool-tracer: &tool-tracer
+  <<: *tool-role
+  networks:
+    - tooling-link
+  volumes:
+    - type: bind
+      source: ${CARRIER_LAB_RUN:?}/control
+      target: /control
+      read_only: true
+      bind:
+        create_host_path: false
+
+x-tool-sidecar: &tool-sidecar
+  <<: *tool-role
+  user: "0:0"
+  volumes:
+    - type: bind
+      source: ${CARRIER_LAB_RUN:?}/control
+      target: /control
+      read_only: true
+      bind:
+        create_host_path: false
+
+services:
+  alpha:
+    <<: *isolation-role
+    command: ["smoke-role", "--config", "/config/role.json", "--evidence-dir", "/evidence"]
+    volumes:
+      - type: bind
+        source: ${CARRIER_LAB_RUN:?}/configs/alpha.json
+        target: /config/role.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${CARRIER_LAB_RUN:?}/evidence-alpha
+        target: /evidence
+        bind:
+          create_host_path: false
+
+  beta:
+    <<: *isolation-role
+    command: ["smoke-role", "--config", "/config/role.json", "--evidence-dir", "/evidence"]
+    volumes:
+      - type: bind
+        source: ${CARRIER_LAB_RUN:?}/configs/beta.json
+        target: /config/role.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${CARRIER_LAB_RUN:?}/evidence-beta
+        target: /evidence
+        bind:
+          create_host_path: false
+
+  tracer-alpha:
+    <<: *tool-tracer
+    command: ["tooling-role", "tracer", "${TOOLING_RUN_ID:?}", "alpha"]
+    volumes:
+      - type: bind
+        source: ${CARRIER_LAB_RUN:?}/control
+        target: /control
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${CARRIER_LAB_RUN:?}/tracer-alpha
+        target: /evidence
+        bind:
+          create_host_path: false
+
+  tracer-beta:
+    <<: *tool-tracer
+    command: ["tooling-role", "tracer", "${TOOLING_RUN_ID:?}", "beta"]
+    volumes:
+      - type: bind
+        source: ${CARRIER_LAB_RUN:?}/control
+        target: /control
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${CARRIER_LAB_RUN:?}/tracer-beta
+        target: /evidence
+        bind:
+          create_host_path: false
+
+  shape-alpha:
+    <<: *tool-sidecar
+    network_mode: "service:tracer-alpha"
+    cap_add:
+      - NET_ADMIN
+    depends_on:
+      - tracer-alpha
+    command: ["tooling-role", "shape", "${TOOLING_RUN_ID:?}", "alpha", "${SHAPING_ALPHA_FAULT:-}"]
+    volumes:
+      - type: bind
+        source: ${CARRIER_LAB_RUN:?}/control
+        target: /control
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${CARRIER_LAB_RUN:?}/shape-alpha
+        target: /evidence
+        bind:
+          create_host_path: false
+
+  shape-beta:
+    <<: *tool-sidecar
+    network_mode: "service:tracer-beta"
+    cap_add:
+      - NET_ADMIN
+    depends_on:
+      - tracer-beta
+    command: ["tooling-role", "shape", "${TOOLING_RUN_ID:?}", "beta"]
+    volumes:
+      - type: bind
+        source: ${CARRIER_LAB_RUN:?}/control
+        target: /control
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${CARRIER_LAB_RUN:?}/shape-beta
+        target: /evidence
+        bind:
+          create_host_path: false
+
+  capture-alpha:
+    <<: *tool-sidecar
+    network_mode: "service:tracer-alpha"
+    cap_add:
+      - NET_RAW
+    depends_on:
+      - tracer-alpha
+    command: ["tooling-role", "capture", "${TOOLING_RUN_ID:?}", "alpha", "${CAPTURE_FAULT:-}"]
+    volumes:
+      - type: bind
+        source: ${CARRIER_LAB_RUN:?}/control
+        target: /control
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${CARRIER_LAB_RUN:?}/capture-alpha
+        target: /evidence
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${CARRIER_LAB_RUN:?}/raw-capture
+        target: /capture
+        bind:
+          create_host_path: false
+
+networks:
+  adjacency:
+    internal: true
+  tooling-link:
+    internal: true

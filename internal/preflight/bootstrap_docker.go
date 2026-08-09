@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/dianabuilds/ardents-network/internal/qualification"
 )
 
 const pinnedVerifierScript = `
@@ -42,10 +44,16 @@ fi
 `
 
 func (run *bootstrapRun) buildCandidateImage() error {
+	sourceSHA256, err := qualification.SourceSHA256(run.repositoryRoot)
+	if err != nil {
+		return fmt.Errorf("qualification source snapshot: %w", err)
+	}
 	return run.runCommand([]string{"DOCKER_BUILDKIT=1"}, "docker",
 		"build", "--no-cache", "--pull=false", "--network=none",
+		"--build-arg", "CARRIER_LAB_SOURCE_SHA256="+sourceSHA256,
 		"--build-context", "go_archive="+filepath.Dir(run.goArchive),
-		"--file", filepath.Join(run.repositoryRoot, "Dockerfile.carrier-lab"),
+		"--file", filepath.Join(run.repositoryRoot, "carrier-lab", "Dockerfile"),
+		"--target", "application",
 		"--tag", run.imageTag, run.repositoryRoot,
 	)
 }

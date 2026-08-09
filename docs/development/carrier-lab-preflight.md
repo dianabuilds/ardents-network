@@ -22,6 +22,12 @@ Go foundation selected by
 - the already present Ubuntu image manifest
   `sha256:7b202b0e2e0028c6250f5fcf41d04df492d145a1654c6995a6553f0c1f6f1960`.
 
+Native-candidate tooling smoke additionally requires the 12 exact Ubuntu
+`.deb` files named in `carrier-lab/tools.lock`, together in one external
+directory containing no other entry, and the locked Ubuntu base already
+present in the local image store. Preparation may use the network as an
+explicit separate operation; verification, build, and run never do.
+
 Missing inputs are a failed preflight. The thin script sets offline Go launcher
 controls and invokes `internal/preflight`; it does not own Docker lifecycle,
 cleanup, or evidence policy. The Go Module does not pull an image, download Go,
@@ -31,22 +37,41 @@ pinned archive before a passing verdict is possible.
 
 ## Reproducible Carrier Lab image
 
-`Dockerfile.carrier-lab` is a two-stage build whose builder and runtime both
-use the exact R-013 Ubuntu digest. The Go archive stays outside the repository
+### Development and qualification workflow
+
+Ordinary development is container-free: `make quick-check`, `make check`, the
+pre-commit hook, and the `quality` CI workflow compile and test Go without
+building or running a Docker image. A code test never triggers Carrier Lab
+image construction.
+
+Docker is an explicit qualification boundary after the source tree is frozen:
+
+1. finish source, architecture, documentation, and Go tests;
+2. run `make check` and make no further source edits;
+3. verify external inputs, build each required final image once with
+   `--no-cache --pull=false --network=none`;
+4. pass immutable image IDs to the required smoke commands;
+5. retain only bounded evidence and update its durable record.
+
+The smoke controllers always use Compose with `--no-build --pull never`; they
+cannot rebuild an image. A later edit to maintained code, tests, Docker/Compose,
+Make, hooks, or CI inputs invalidates the embedded qualification-source receipt,
+but does not trigger an automatic rebuild. Documentation-only evidence updates
+do not. Qualification waits until the next source freeze. `--no-cache` belongs
+to this final evidence boundary, not to the edit/test loop.
+
+`carrier-lab/Dockerfile` is one multi-target build definition. Its shared
+builder and the `application` and `tooling` runtime targets all use the exact
+R-013 Ubuntu digest. The Go archive stays outside the repository
 and ordinary build context. BuildKit receives its containing directory as the
 named `go_archive` file context; the Dockerfile mounts only the expected archive
 read-only and verifies its SHA-256 before extraction. Build and module caches
 are tmpfs mounts, and every build `RUN` has `--network=none` with
 `GOTOOLCHAIN=local`, `GOPROXY=off`, `GOSUMDB=off`, and `CGO_ENABLED=0`.
 
-An equivalent direct development build is:
-
-```sh
-docker build --no-cache --pull=false --network=none \
-  --build-context go_archive=/absolute/directory/containing-the-go-archive \
-  --file Dockerfile.carrier-lab \
-  --tag ardents-carrier-lab:development .
-```
+The `bootstrap` command computes the qualification-source digest and passes it
+as the required `CARRIER_LAB_SOURCE_SHA256` build argument. A manual build that
+omits that receipt fails closed; ordinary development does not build this image.
 
 The final stage is the pinned Ubuntu runtime plus
 `/usr/local/bin/carrier-lab`; it contains no source tree, Go toolchain, or build
@@ -58,14 +83,19 @@ The image is disposable Carrier Lab input, not a release artifact.
 
 ## Two-role isolation smoke
 
-`compose.carrier-lab.yaml` defines exactly two disposable roles, `alpha` and
-`beta`, on one Compose-internal `adjacency` network. There is no default,
+The `isolation` profile in `carrier-lab/compose.yaml` defines exactly two
+disposable roles, `alpha` and `beta`, on one Compose-internal `adjacency`
+network. There is no default,
 external, host, or published-port path. Each role runs as numeric user
 `65532:65532` with a read-only root filesystem, all capabilities dropped,
 `no-new-privileges`, bounded CPU, memory, PIDs, and tmpfs, one read-only role
 configuration, and one separate writable evidence bind. Neither role receives
 the repository, Docker socket, another role's evidence, or topology data beyond
 its one allowed peer.
+
+Both Compose profiles receive only one immutable image ID, one controller-owned
+run root, and one run ID. Mount paths are fixed children of that root inside the
+Compose definition; callers do not pass a separate host path for every role.
 
 The deep `internal/harness` Module behind `compose-smoke` is the sole lifecycle
 controller. It accepts an
@@ -96,7 +126,8 @@ result, or production claim.
 ## Direct TLS measurement control
 
 `direct-control` is the R-013 measurement-floor control, not a Route and never
-a fallback. The harness creates one ephemeral Ed25519 Target root, one active
+a fallback. The `internal/directcontrol` Module creates one ephemeral Ed25519
+Target root, one active
 Ed25519 Instance leaf, and one inactive wrong-leaf fixture under the same root.
 It launches the same `carrier-lab` binary as separate User and Service tracer
 processes. The User accepts only the exact active leaf under the preconfigured
@@ -120,15 +151,84 @@ The summary always states `direct_relationship_disclosed=true` and
 `route_fallback=false`. Passing it provides no Route, privacy, anonymity,
 decentralization, availability, or production claim.
 
-## Native candidate prerequisite stop
+## Native candidate tooling supply and smoke
 
-The native C-5/C2 scenario is not implemented. R-013 requires actual link
-shaping and per-link packet captures, but the pinned offline runtime has no
-`tc` or capture tool and no reviewed content-addressed tool artifact is
-registered. R-025 records the minimal supply decision needed before code may
-resume. Direct TLS success cannot substitute for the C-5/C2 topology, its C2
-Introduction Path, controlled network, role-view evidence, mandatory failures,
-or mature Tor/Chutney comparison.
+R-025 supplies the laboratory tools without changing the unprivileged
+Application image. `carrier-lab/tools.lock` names every external package and
+runtime binary by version and SHA-256. The `tooling` target in the shared
+`carrier-lab/Dockerfile` verifies the exact directory contents, package control
+identity, architecture, package hashes, and final `tc`/`tcpdump`/libpcap
+hashes, then uses `dpkg-deb --extract`; it never runs APT, `dpkg --install`, or
+maintainer scripts.
+
+The `tooling` profile in `carrier-lab/compose.yaml` has two unprivileged
+synthetic tracer roles, two namespace-sharing shaping sidecars, and one capture
+sidecar on one internal network. Tracers have no effective capabilities. Each
+shaper runs as a
+laboratory-only root user with all capabilities dropped and only `NET_ADMIN`
+added; capture uses the same contour with only `NET_RAW`. Root is required here
+because Docker clears the added effective capability when the fixed numeric
+non-root user execs the tool. All roles retain a read-only root filesystem,
+`no-new-privileges`, no published port, no external network, bounded resources,
+and only their dedicated external mounts.
+
+The fixed smoke applies `delay 40ms rate 100mbit limit 1000` to each endpoint
+egress, producing the R-013 80 ms round-trip floor. tcpdump captures exactly 12
+packets on alpha's `eth0` and TCP port 37002. It reads the pcap back itself,
+checks the run-local synthetic marker, records the pcap hash and size, and
+deletes the raw file. The canonical summary can become `passed` only after
+tool identity, the complete `delay`/`rate`/`limit` contract on both qdiscs,
+capture, the exact five-container Compose project, the exact two tracer
+attachments, both reciprocal `ObservedPeer` values, raw deletion, and repeated
+resource cleanup all pass. `--fault capture-start` must fail while still
+proving cleanup.
+
+An offline build after explicit input preparation is:
+
+```sh
+VERIFY_OUTPUT="$(go run ./cmd/carrier-lab tooling-verify \
+  --lock "$PWD/carrier-lab/tools.lock" \
+  --bundle /external/absolute/tool-bundle \
+  --repository-root "$PWD")"
+printf '%s\n' "$VERIFY_OUTPUT"
+SOURCE_SHA256="$(printf '%s\n' "$VERIFY_OUTPUT" | sed -n 's/^Qualification source SHA-256: //p')"
+test "${#SOURCE_SHA256}" -eq 64
+docker build --no-cache --pull=false --network=none \
+  --build-arg CARRIER_LAB_SOURCE_SHA256="$SOURCE_SHA256" \
+  --build-context go_archive=/external/absolute/go-archive-directory \
+  --build-context tool_bundle=/external/absolute/tool-bundle \
+  --file carrier-lab/Dockerfile \
+  --target tooling \
+  --iidfile /external/absolute/tooling-image.id .
+```
+
+`tooling-verify` is the mandatory pre-build gate: as well as checking the exact
+external bundle, it resolves the base reference from the repository lock and
+requires `docker image inspect` to find that repository digest locally. A
+missing base therefore fails before Docker receives the build request; there
+is no implicit pull or alternate-base fallback in the documented flow. The
+verifier prints the qualification digest; the explicit build argument embeds
+that digest, and smoke independently recomputes it.
+
+`tooling-smoke` takes the resulting immutable `sha256:` image ID and the same
+derived session/run path contract as `compose-smoke`. Before Compose starts,
+the controller inspects the image's locked-base and target labels, hashes its
+embedded lock and executable with network disabled, and compares the embedded
+source-snapshot digest with the current build input. A syntactically valid but
+unbound `sha256:` image is rejected. Retained `tooling-manifest.json` contains
+no host path or address. Its build receipt binds the final image ID, exact base
+reference, lock digest, source digest, and executable digest; the remainder
+records tool identities, effective capability masks, bounded qdisc state, pcap
+hash/size, exact peer/isolation assertions, classification, status, and
+cleanup. The separate `tooling-verdict.json` binds that manifest by SHA-256;
+the controller re-reads and verifies the binding before it returns. Later
+mutation is thus detectable and cannot preserve the canonical verdict
+identity.
+
+The native C-5/C2 scenario remains unimplemented. Tool supply is no longer its
+blocker, but tooling smoke does not substitute for that topology, its separate
+C2 Introduction Path, role-view evidence, mandatory failures, or the mature
+Tor/Chutney comparison.
 
 ## Run
 

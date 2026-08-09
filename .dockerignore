@@ -5,6 +5,8 @@
 !cmd/**
 !internal
 !internal/**
+!carrier-lab
+!carrier-lab/tools.lock
 
 **/*_test.go
 .git

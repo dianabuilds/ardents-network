@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 )
@@ -214,59 +213,4 @@ func (run *bootstrapRun) fail(code, stage string, cause error) error {
 	}
 	fmt.Fprintf(run.stderr, "Carrier Lab bootstrap: bootstrap_failed (%s)\nEvidence: %s\n", code, run.evidenceDir)
 	return fmt.Errorf("%s: %w", stage, cause)
-}
-
-func canonicalDirectory(path string) (string, error) {
-	absolute, err := filepath.Abs(path)
-	if err != nil {
-		return "", err
-	}
-	resolved, err := filepath.EvalSymlinks(absolute)
-	if err != nil {
-		return "", err
-	}
-	resolved = filepath.Clean(resolved)
-	if err := requireCanonicalDirectory(resolved); err != nil {
-		return "", err
-	}
-	return resolved, nil
-}
-
-func canonicalRegularFile(path string) (string, error) {
-	if path == "" || !filepath.IsAbs(path) {
-		return "", errors.New("path must be absolute")
-	}
-	clean := filepath.Clean(path)
-	if err := requireNoSymlinkComponents(clean); err != nil {
-		return "", err
-	}
-	resolved, err := filepath.EvalSymlinks(clean)
-	if err != nil {
-		return "", err
-	}
-	info, err := os.Lstat(resolved)
-	if err != nil {
-		return "", err
-	}
-	if !info.Mode().IsRegular() {
-		return "", errors.New("path must name a regular file")
-	}
-	return resolved, nil
-}
-
-func hostPlatform() (string, string, string) {
-	ubuntu := "unavailable"
-	if data, err := os.ReadFile("/etc/os-release"); err == nil {
-		for _, line := range strings.Split(string(data), "\n") {
-			if strings.HasPrefix(line, "VERSION_ID=") {
-				ubuntu = strings.Trim(strings.TrimPrefix(line, "VERSION_ID="), "\"")
-			}
-		}
-	}
-	return runtime.GOOS, runtime.GOARCH, ubuntu
-}
-
-func pathAbsent(path string) bool {
-	_, err := os.Lstat(path)
-	return os.IsNotExist(err)
 }

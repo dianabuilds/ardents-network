@@ -11,6 +11,10 @@ import (
 
 var runIDPattern = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
 
+func carrierLabComposePath(repositoryRoot string) string {
+	return filepath.Join(repositoryRoot, "carrier-lab", "compose.yaml")
+}
+
 func requireCanonicalDirectory(path string) error {
 	if path == "" || !filepath.IsAbs(path) || filepath.Clean(path) != path {
 		return errors.New("path must be absolute and clean")
@@ -81,6 +85,29 @@ func writeAtomic(path string, data []byte, mode os.FileMode) (runErr error) {
 	}
 	if err := os.Rename(temporaryPath, path); err != nil {
 		return fmt.Errorf("publish evidence: %w", err)
+	}
+	return nil
+}
+
+func removeSmokeRunDirectory(layout runLayout) error {
+	if _, err := ownedLayout(layout.identity, false, false); err != nil {
+		return err
+	}
+	if info, err := os.Lstat(layout.runDir); err == nil {
+		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+			return errors.New("smoke run path is not an owned directory")
+		}
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	if err := os.RemoveAll(layout.runDir); err != nil {
+		return err
+	}
+	if err := os.RemoveAll(layout.runDir); err != nil {
+		return err
+	}
+	if _, err := os.Stat(layout.runDir); !os.IsNotExist(err) {
+		return errors.New("smoke run directory remains after cleanup")
 	}
 	return nil
 }

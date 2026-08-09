@@ -31,9 +31,9 @@ type directRoleConfig struct {
 	PayloadSize        int    `json:"payload_size,omitempty"`
 }
 
-// RunDirectRole executes one fixed Direct TLS tracer role from a data-only
+// RunRole executes one fixed Direct TLS tracer role from a data-only
 // configuration. The role never receives naming, discovery, or topology data.
-func RunDirectRole(ctx context.Context, configPath, evidenceDir string) error {
+func RunRole(ctx context.Context, configPath, evidenceDir string) error {
 	started := time.Now()
 	config, err := readDirectRoleConfig(configPath)
 	if err != nil {

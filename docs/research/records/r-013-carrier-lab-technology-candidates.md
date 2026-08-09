@@ -78,8 +78,8 @@ conditional follow-up only after a recorded C-5 result justifies that work.
   stack; the fixed synthetic topology and workload are useful feasibility
   proxies; local container roles do not imply independent operators.
 - **Recommendations and decisions:** use the frozen native candidate and
-  controls below, stop before C-5/C2 until R-025 supplies reviewed shaping and
-  capture tools, and promote no Route until measured advance criteria pass.
+  controls below with the reviewed R-025 shaping/capture supply, and promote no
+  Route until measured advance criteria pass.
 
 ## Why no complete existing stack is selected
 
@@ -477,25 +477,24 @@ archive. Committed evidence contains no private key or reusable credential.
 
 ## Open after this record
 
-### Implementation stop found on 2026-08-09
+### Tool-supply prerequisite resolved on 2026-08-09
 
-The iteration-6 prerequisite audit found one unresolved input rather than a
-candidate result. This record requires real `tc netem`, per-link packet
-captures, and pinned tool versions, while the frozen runtime image contains
-neither `tc` nor `tcpdump`/`tshark`. The accepted offline Dockerfile also
-forbids mutable package installation and runtime download, and the dependency
-register contains no reviewed artifact version, digest, license disposition,
-or removal plan for those tools.
+[R-025](r-025-carrier-lab-tool-supply.md) fixes one minimal supply path: 12
+official Ubuntu `.deb` artifacts are content-addressed in
+`carrier-lab/tools.lock`, verified and extracted without installation or
+network access into a disposable tooling image, and executed only by separate
+namespace-sharing sidecars. Shapers have exact effective `NET_ADMIN`; capture
+has exact effective `NET_RAW`; Application tracer roles have no effective
+capabilities.
 
-Consequently no native C-5/C2 run may claim the controlled link or capture
-conditions yet. Selecting an arbitrary package/image would change the frozen
-candidate inputs; implementing netlink shaping and packet capture inside the
-first-party binary would add a new security-sensitive responsibility that this
-record has not reviewed. [R-025](../questions.md) is the minimal redesign seam:
-choose and content-address one external lab-tool supply path, or explicitly
-authorize and risk-test an in-binary replacement, before resuming the native
-candidate. Direct TLS control evidence remains valid as a measurement-control
-foundation and does not satisfy this native gate.
+Development smoke on Docker Desktop applied and reported real endpoint qdiscs
+with `delay 40ms rate 100Mbit`, captured the bounded TCP synthetic marker with
+real tcpdump/libpcap, retained its SHA-256, removed the raw pcap, and proved
+normal and forced-failure cleanup. The run is supply evidence, not an official
+native Route result. Tool supply is no longer a C-5/C2 implementation blocker;
+the separate native task must still run the complete frozen scenario on the
+official Ubuntu 26.04 `x86-64` runner. Direct TLS remains only its measurement
+control and never a fallback.
 
 - actual Carrier Lab results and the Route verdict;
 - the bounded Go/Rust production comparison in R-014 after a viable Route;

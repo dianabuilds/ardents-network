@@ -8,7 +8,6 @@ import (
 	"os/signal"
 
 	"github.com/dianabuilds/ardents-network/internal/directcontrol"
-	"github.com/dianabuilds/ardents-network/internal/harness"
 	"github.com/dianabuilds/ardents-network/internal/preflight"
 )
 
@@ -23,17 +22,15 @@ func directControl(arguments []string) int {
 	}
 	layout, err := preflight.NewRunLayout(*sessionRoot, *repositoryRoot, *tempRoot, *runID)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Direct TLS layout: %v\n", err)
-		return 2
+		return commandError("Direct TLS layout", err)
 	}
 	binaryPath, err := os.Executable()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "locate Carrier Lab binary: %v\n", err)
-		return 2
+		return commandError("locate Carrier Lab binary", err)
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
-	evidence, err := harness.RunDirectControl(ctx, layout, binaryPath)
+	evidence, err := directcontrol.RunControl(ctx, layout, binaryPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Direct TLS control: %v\nevidence: %s\n", err, evidence)
 		return 2
@@ -43,11 +40,11 @@ func directControl(arguments []string) int {
 }
 
 func directRole(arguments []string) int {
-	return runDirectChild("direct-role", arguments, directcontrol.RunDirectRole)
+	return runDirectChild("direct-role", arguments, directcontrol.RunRole)
 }
 
 func directTamper(arguments []string) int {
-	return runDirectChild("direct-tamper", arguments, directcontrol.RunDirectTamper)
+	return runDirectChild("direct-tamper", arguments, directcontrol.RunTamper)
 }
 
 func runDirectChild(name string, arguments []string, execute func(context.Context, string, string) error) int {
@@ -60,8 +57,7 @@ func runDirectChild(name string, arguments []string, execute func(context.Contex
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 	if err := execute(ctx, *configPath, *evidenceDir); err != nil {
-		fmt.Fprintf(os.Stderr, "%s: %v\n", name, err)
-		return 2
+		return commandError(name, err)
 	}
 	return 0
 }

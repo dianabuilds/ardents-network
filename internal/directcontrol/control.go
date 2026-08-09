@@ -1,17 +1,10 @@
-package harness
+package directcontrol
 
 import (
-	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"time"
 
@@ -64,17 +57,17 @@ type directEvidenceResult struct {
 	Goroutines               int    `json:"goroutines"`
 }
 
-// RunDirectControl owns the complete fixed Direct TLS measurement control:
+// RunControl owns the complete fixed Direct TLS measurement control:
 // fixtures, child processes, three cases, bounded evidence, and cleanup.
-func RunDirectControl(ctx context.Context, identity preflight.RunLayout, binaryPath string) (evidenceDir string, runErr error) {
-	layout, err := ownedLayout(identity, false, false)
+func RunControl(ctx context.Context, identity preflight.RunLayout, binaryPath string) (evidenceDir string, runErr error) {
+	layout, err := openControlLayout(identity, false, false)
 	if err != nil {
 		return "", err
 	}
 	if err := requireDirectBinary(binaryPath); err != nil {
 		return "", err
 	}
-	if err := prepareSmokeWorkspace(layout); err != nil {
+	if err := prepareControlWorkspace(layout); err != nil {
 		return "", err
 	}
 	evidenceDir = layout.evidenceDir
@@ -122,14 +115,14 @@ func RunDirectControl(ctx context.Context, identity preflight.RunLayout, binaryP
 		}
 	}
 	summary.Checks["processes_reaped"] = true
-	if !allChecksPassed(summary.Checks, "cleanup_complete") {
+	if !controlChecksPassed(summary.Checks, "cleanup_complete") {
 		return evidenceDir, errors.New("direct TLS control checks failed")
 	}
 	summary.Status = "passed"
 	return evidenceDir, nil
 }
 
-func runDirectCase(ctx context.Context, layout runLayout, binaryPath string, fixture directFixture, caseName string) (directCaseSummary, directEvidenceResult, error) {
+func runDirectCase(ctx context.Context, layout controlLayout, binaryPath string, fixture directFixture, caseName string) (directCaseSummary, directEvidenceResult, error) {
 	caseRoot := filepath.Join(layout.runDir, "direct-"+caseName)
 	serviceEvidence := filepath.Join(caseRoot, "service-evidence")
 	userEvidence := filepath.Join(caseRoot, "user-evidence")
@@ -139,14 +132,14 @@ func runDirectCase(ctx context.Context, layout runLayout, binaryPath string, fix
 			return directCaseSummary{}, directEvidenceResult{}, err
 		}
 	}
-	serviceAddress, err := reserveDirectAddress()
+	serviceAddress, err := reserveControlAddress()
 	if err != nil {
 		return directCaseSummary{}, directEvidenceResult{}, err
 	}
 	userAddress := serviceAddress
 	proxyAddress := ""
 	if caseName == "modified-record" {
-		proxyAddress, err = reserveDirectAddress()
+		proxyAddress, err = reserveControlAddress()
 		if err != nil {
 			return directCaseSummary{}, directEvidenceResult{}, err
 		}
@@ -158,13 +151,13 @@ func runDirectCase(ctx context.Context, layout runLayout, binaryPath string, fix
 	}
 	serviceConfig := filepath.Join(caseRoot, "service.json")
 	userConfig := filepath.Join(caseRoot, "user.json")
-	if err := writeBoundedJSON(serviceConfig, directRoleConfigInput{
+	if err := writeDirectJSON(serviceConfig, directRoleConfigInput{
 		SchemaVersion: "carrier-lab-direct-role/v1", RunID: layout.runID, Case: caseName, Role: "service", Address: serviceAddress,
 		CertificatePath: certificatePath, PrivateKeyPath: privateKeyPath,
 	}); err != nil {
 		return directCaseSummary{}, directEvidenceResult{}, err
 	}
-	if err := writeBoundedJSON(userConfig, directRoleConfigInput{
+	if err := writeDirectJSON(userConfig, directRoleConfigInput{
 		SchemaVersion: "carrier-lab-direct-role/v1", RunID: layout.runID, Case: caseName, Role: "user", Address: userAddress,
 		TargetRootPath: fixture.targetRoot, ExpectedLeafSHA256: fixture.activeLeafSHA256,
 		CanaryHex: fixture.canaryHex, PayloadSeed: fixture.payloadSeed, PayloadSize: 64 * 1024,
@@ -182,7 +175,7 @@ func runDirectCase(ctx context.Context, layout runLayout, binaryPath string, fix
 	var proxy *directChild
 	if caseName == "modified-record" {
 		proxyConfig := filepath.Join(caseRoot, "proxy.json")
-		if err := writeBoundedJSON(proxyConfig, directTamperConfigInput{
+		if err := writeDirectJSON(proxyConfig, directTamperConfigInput{
 			SchemaVersion: "carrier-lab-direct-tamper/v1", RunID: layout.runID, ListenAddress: proxyAddress, ServiceAddress: serviceAddress,
 		}); err != nil {
 			return directCaseSummary{}, directEvidenceResult{}, err
@@ -236,127 +229,4 @@ func runDirectCase(ctx context.Context, layout runLayout, binaryPath string, fix
 		UserGoroutines: userResult.Goroutines, ServiceGoroutines: serviceResult.Goroutines,
 		ProxyHeapAllocBytes: proxyResult.HeapAllocBytes, PayloadBytes: userResult.PayloadBytes, Passed: passed,
 	}, userResult, nil
-}
-
-func finishDirectControl(layout runLayout, summary *directControlSummary, started time.Time, runErr error) error {
-	summary.ElapsedMilliseconds = time.Since(started).Milliseconds()
-	if runErr != nil {
-		summary.Status = "failed"
-		summary.Failure = runErr.Error()
-	}
-	cleanupErr := removeSmokeRunDirectory(layout)
-	if cleanupErr == nil {
-		summary.Checks["cleanup_complete"] = true
-	} else {
-		summary.Status = "failed"
-		summary.Failure = errors.Join(runErr, cleanupErr).Error()
-	}
-	evidenceErr := writeBoundedJSON(filepath.Join(layout.evidenceDir, "direct-control.json"), summary)
-	return errors.Join(runErr, cleanupErr, evidenceErr)
-}
-
-func requireDirectBinary(path string) error {
-	if path == "" || !filepath.IsAbs(path) || filepath.Clean(path) != path {
-		return errors.New("binary path must be absolute and clean")
-	}
-	info, err := os.Stat(path)
-	if err != nil {
-		return err
-	}
-	if !info.Mode().IsRegular() {
-		return errors.New("binary path is not a regular file")
-	}
-	return nil
-}
-
-func hashDirectBinary(path string) (string, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-	digest := sha256.New()
-	if _, err := io.Copy(digest, file); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(digest.Sum(nil)), nil
-}
-
-func reserveDirectAddress() (string, error) {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		return "", err
-	}
-	address := listener.Addr().String()
-	return address, listener.Close()
-}
-
-func waitDirectReady(ctx context.Context, path string) error {
-	deadline := time.Now().Add(5 * time.Second)
-	for time.Now().Before(deadline) {
-		if info, err := os.Stat(path); err == nil && info.Size() <= smokeEvidenceCap {
-			return nil
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(20 * time.Millisecond):
-		}
-	}
-	return errors.New("direct TLS child did not become ready")
-}
-
-func readDirectEvidence(path string, target any) error {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-	if len(data) > smokeEvidenceCap {
-		return errors.New("direct TLS role evidence exceeds its cap")
-	}
-	return json.Unmarshal(data, target)
-}
-
-type directChild struct {
-	command  *exec.Cmd
-	output   bytes.Buffer
-	startErr error
-	waited   bool
-	exitCode int
-}
-
-func startDirectChild(ctx context.Context, binaryPath string, arguments ...string) directChild {
-	child := directChild{command: exec.CommandContext(ctx, binaryPath, arguments...)}
-	child.command.Stdout = &child.output
-	child.command.Stderr = &child.output
-	child.startErr = child.command.Start()
-	return child
-}
-
-func (child *directChild) wait() int {
-	if child == nil || child.startErr != nil {
-		return -1
-	}
-	if child.waited {
-		return child.exitCode
-	}
-	err := child.command.Wait()
-	child.waited = true
-	child.exitCode = 0
-	if err != nil {
-		if exitError, ok := err.(*exec.ExitError); ok {
-			child.exitCode = exitError.ExitCode()
-		} else {
-			child.exitCode = -1
-		}
-	}
-	return child.exitCode
-}
-
-func (child *directChild) stop() {
-	if child == nil || child.startErr != nil || child.waited {
-		return
-	}
-	_ = child.command.Process.Kill()
-	child.wait()
 }

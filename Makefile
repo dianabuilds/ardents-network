@@ -1,5 +1,9 @@
 SHELL := /bin/sh
 
+# Development quality gates are intentionally container-free. Carrier Lab
+# Docker qualification runs explicitly after a source freeze; see
+# docs/development/carrier-lab-preflight.md.
+
 QUALITY_CACHE_ROOT ?= $(if $(TEMP),$(TEMP),/tmp)/ardents-network-quality
 export GOENV := off
 export GOTOOLCHAIN := local

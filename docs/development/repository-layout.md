@@ -35,12 +35,19 @@ co-location grants none of them access to another zone's authority material.
 | `deployments/` | Conditional environment/deployment definitions after production orchestration is selected. It is not created for Carrier Lab. |
 | `.github/workflows/` | Repository CI and release automation after the applicable horizon authorizes it. |
 | `.githooks/` | Optional local developer checks; CI remains authoritative. |
-| repository root | Project-wide policy and build entrypoints such as `AGENTS.md`, `README.md`, `CONTEXT.md`, `go.mod`, and `Makefile`, plus purpose-named root Docker/Compose definitions while Carrier Lab is the only image contour. |
+| `carrier-lab/` | The three human-authored container inputs for the current laboratory: one multi-target Dockerfile, one profiled Compose topology, and one immutable external-tool lock. It contains no generated images, packages, captures, run state, or evidence. |
+| repository root | Project-wide policy and build entrypoints such as `AGENTS.md`, `README.md`, `CONTEXT.md`, `go.mod`, and `Makefile`. |
 
 `packaging/`, `deployments/`, and `tests/` are permitted locations, not
 instructions to create empty directories. A new top-level zone requires a real
 artifact, a responsibility not owned by an existing zone, and an architecture
 review in the same change. Generated output has no repository zone.
+
+`carrier-lab/` is an asset directory, not a Go Module or independently
+versioned subsystem. It has no `go.mod`, executable entrypoint, product
+Interface, or deployment lifecycle. The one root Go module owns the lab command
+and its `internal` Modules; the directory exists only because Docker needs
+repository-relative build, topology, and supply inputs.
 
 A disposable Go spike under `experiments/` uses `//go:build ignore` so the root
 module and its `./...` quality gates do not treat it as maintained project code.
@@ -57,7 +64,9 @@ cmd/
 internal/
   architecture/                executable repository and quality rules
   harness/                     Carrier Lab scenarios and lifecycle
+    tooling/                   shaping/capture supply and smoke lifecycle
   preflight/                   pinned setup, verification, evidence, and cleanup
+  qualification/               final source identity for lab qualification
   directcontrol/               Direct TLS measurement control and wire fault
 scripts/
   check-tools.go               build-ignored developer tool-version check
@@ -65,8 +74,10 @@ scripts/
   preflight.sh                 thin host-Go launcher for the Carrier Lab bootstrap
 .github/workflows/quality.yml  mandatory CI quality gate
 .githooks/pre-commit           local quick gate
-Dockerfile.carrier-lab         reproducible Carrier Lab image definition
-compose.carrier-lab.yaml       disposable two-role Carrier Lab contour
+carrier-lab/
+  Dockerfile                   shared build plus application/tooling targets
+  compose.yaml                 isolation and tooling execution profiles
+  tools.lock                   exact external laboratory-tool identities
 docs/                          product, security, research, ADR, and development records
 experiments/README.md          policy for future disposable spikes
 go.mod                         the only Go module
@@ -77,18 +88,22 @@ Only the Go packages listed in [package-map.md](package-map.md) exist as
 maintained packages. `internal/directcontrol` implements only the laboratory
 Direct TLS measurement control and its protected-record fault; it is not a
 Route, a product fallback, a transport selection, or the future Route Module
-Interface described by R-013. `internal/harness`, `internal/preflight`, and
-`internal/directcontrol` are laboratory code. The Dockerfile and Compose file
-serve only reproducible Carrier Lab execution and are not deployment or release
-packaging.
+Interface described by R-013. `internal/harness`, its `tooling` Module,
+`internal/preflight`, `internal/qualification`, and `internal/directcontrol`
+are laboratory code. The
+Dockerfile and Compose file serve only reproducible Carrier Lab execution and
+are not deployment or release packaging.
 
 The exact current project imports are also recorded in the package map. In
 summary:
 
 ```text
-cmd/carrier-lab -> internal/directcontrol, internal/harness, internal/preflight
+cmd/carrier-lab -> internal/directcontrol, internal/harness, internal/harness/tooling, internal/preflight
 internal/harness -> internal/preflight
-internal/directcontrol, internal/preflight, internal/architecture -> standard library
+internal/harness/tooling -> internal/preflight, internal/qualification
+internal/directcontrol -> internal/preflight
+internal/preflight -> internal/qualification
+internal/qualification, internal/architecture -> standard library
 ```
 
 ## Conditional target map and delivery horizons
@@ -153,6 +168,72 @@ create generic directories or packages named `util`, `common`, `misc`, `types`,
 `interfaces`, `api`, `services`, `models`, `adapters`, `src`, `pkg`, or `sdk`.
 Do not encode a transport, storage engine, cryptographic suite, or other
 unselected technology in a Module name.
+
+An existing package is considered for division only when its implementation
+has at least two independent reasons to change and one or more of the following
+is observable:
+
+1. callers use disjoint parts of its Interface;
+2. the parts own independent state, invariants, lifecycle, or failure policy;
+3. one part introduces dependencies irrelevant to the other;
+4. tests must reach past the Interface to isolate one part;
+5. the package Interface has become a union of unrelated operations.
+
+Line count, file count, filename prefixes, or a future second Adapter do not by
+themselves create a package Seam. A division moves complete behavior and its
+tests; it does not introduce a global shared-types or helper package.
+
+A nested directory is a full Go package, not an organizational folder. Parent
+and child packages share no private implementation. `internal/<owner>/<module>`
+is allowed only when `<owner>` already owns several real Modules and the child
+independently meets every package rule above; otherwise use another file in the
+owning package or a factual sibling `internal/<module>`.
+
+Every new package, including a nested package, must arrive in one change with:
+
+1. `doc.go` stating the single owned responsibility;
+2. a maintained Implementation rather than placeholders or forwarding wrappers;
+3. behavior tests at the package Interface;
+4. at least one maintained non-test caller;
+5. one `package-map.md` row naming its exact permitted project imports;
+6. command ownership updated when a command crosses the new Seam.
+
+Directory nesting grants no privileged dependency. The package map states the
+direction explicitly, and the architecture gate rejects any undeclared import.
+For the current tree, `internal/harness` and `internal/harness/tooling` do not
+import one another; the thin `cmd/carrier-lab` Adapter composes them. Changing
+that direction is an explicit architecture change, not an incidental import.
+
+`internal/harness/tooling` qualifies as a separate Module because three callers
+use a disjoint Interface and it owns an independent supply, role, failure, and
+evidence lifecycle. Its complete exported Go surface is `VerifyInputs`,
+`RunSmoke`, and `RunRole`; it exports no configuration or evidence types.
+Callers provide absolute verified input paths, a validated preflight run
+identity, an immutable image ID, and one of the fixed documented fault/role
+values. The Implementation owns Docker interaction, shaping, capture, cleanup,
+and bounded evidence. It may import only `internal/preflight` and the standard
+library.
+
+## Go file ownership and size
+
+A Go file is an implementation navigation unit, not a Module. Its name states
+one responsibility or one responsibility plus an aspect: for example
+`compose_smoke.go`, `compose_evidence.go`, `tooling/role.go`, and
+`tooling/role_runtime.go`. Tests use the corresponding responsibility name.
+`doc.go` contains only the package comment.
+
+- Production files may never exceed 250 lines.
+- Every Go file, including tests, may never exceed 500 lines.
+- A command file may never exceed 120 lines and the complete command package
+  remains capped at 300 production lines.
+- A file is divided at cohesive type/function clusters. Division does not
+  justify another package or exported symbol.
+- Catch-all filenames `model.go`, `support.go`, `types.go`, `helpers.go`,
+  `common.go`, `misc.go`, and `util.go` are forbidden.
+
+The architecture gate enforces the hard limits and forbidden filenames.
+Semantic responsibility remains a review rule because a mechanical line
+threshold cannot determine a correct Seam.
 
 ## Module, Interface, Implementation, Seam, and Adapter
 
@@ -260,10 +341,14 @@ created. Generated test evidence follows the artifact rules below.
 
 ## Docker, infrastructure, and packaging
 
-`Dockerfile.carrier-lab` and `compose.carrier-lab.yaml` remain purpose-named
-root entrypoints while Carrier Lab is the only container contour. They build
-and run the reproducible laboratory environment only. They contain no
-production deployment promise and receive no secrets from version control.
+`carrier-lab/Dockerfile`, `carrier-lab/compose.yaml`, and
+`carrier-lab/tools.lock` are the complete container-source interface for the
+current laboratory. The Dockerfile shares one reproducible Go build and exposes
+only the `application` and `tooling` targets. Compose exposes separate
+`isolation` and `tooling` profiles in one file. The lock is separate because it
+is supplied-artifact identity, not build or topology behavior. These files
+contain no production deployment promise and receive no secrets from version
+control.
 
 If supported image or operating-system package definitions become real, their
 source belongs under `packaging/<target>/`; image definitions use

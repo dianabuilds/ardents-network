@@ -64,6 +64,18 @@ foundations.
   adding a package is an explicit architecture change.
 - Keep module interfaces small and implementation details unexported. A new
   package requires a real cohesive boundary, not merely another source file.
+- Name each Go file after one implementation responsibility. Production files
+  have a hard maximum of 250 lines; every Go file,
+  including tests, has a hard maximum of 500. Split a file before creating a
+  package. Catch-all filenames such as `model.go`, `support.go`, `types.go`,
+  `helpers.go`, `common.go`, `misc.go`, and `util.go` are forbidden.
+- A nested directory is a real package, not visual grouping. Create a
+  subpackage only when it independently satisfies the same responsibility,
+  Interface, Implementation, test, and package-map requirements.
+- Every new package or subpackage must add `doc.go`, maintained Implementation,
+  behavior tests, at least one non-test caller, its exact permitted imports,
+  and command ownership where applicable in the same change. Directory nesting
+  grants no implicit import direction; the package map is authoritative.
 - First-party cgo, `unsafe`, implicit `init`, and `panic` require a superseding
   accepted ADR and dedicated risk tests.
 - Prefer the standard library. Record and review every runtime dependency in

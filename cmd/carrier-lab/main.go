@@ -1,5 +1,4 @@
-// Command carrier-lab drives the fixed Carrier Lab preflight and isolation
-// smoke commands and records their bounded evidence and cleanup verdicts.
+// Command carrier-lab drives fixed lab commands and records bounded evidence and cleanup verdicts.
 package main
 
 import (
@@ -13,10 +12,13 @@ import (
 func main() {
 	os.Exit(run(os.Args[1:]))
 }
-
+func commandError(label string, err error) int {
+	fmt.Fprintf(os.Stderr, "%s: %v\n", label, err)
+	return 2
+}
 func run(arguments []string) int {
 	if len(arguments) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: carrier-lab <bootstrap|evaluate|finalize-cleanup|compose-smoke|smoke-role|direct-control|direct-role|direct-tamper> [options]")
+		fmt.Fprintln(os.Stderr, "usage: carrier-lab <bootstrap|evaluate|finalize-cleanup|compose-smoke|smoke-role|tooling-verify|tooling-smoke|tooling-role|direct-control|direct-role|direct-tamper> [options]")
 		return 64
 	}
 	switch arguments[0] {
@@ -30,6 +32,12 @@ func run(arguments []string) int {
 		return composeSmoke(arguments[1:])
 	case "smoke-role":
 		return smokeRole(arguments[1:])
+	case "tooling-verify":
+		return toolingVerify(arguments[1:])
+	case "tooling-smoke":
+		return toolingSmoke(arguments[1:])
+	case "tooling-role":
+		return toolingRole(arguments[1:])
 	case "direct-control":
 		return directControl(arguments[1:])
 	case "direct-role":
@@ -54,13 +62,11 @@ func evaluate(arguments []string) int {
 	}
 	layout, err := preflight.NewRunLayout(*sessionRoot, *repositoryRoot, *tempRoot, *runID)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "evaluate preflight layout: %v\n", err)
-		return 2
+		return commandError("evaluate preflight layout", err)
 	}
 	result, err := preflight.Evaluate(*inputPath, layout)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "evaluate preflight: %v\n", err)
-		return 2
+		return commandError("evaluate preflight", err)
 	}
 	if !result.ChecksPassed {
 		return 2
@@ -82,8 +88,7 @@ func finalizeCleanup(arguments []string) int {
 	}
 	layout, err := preflight.NewRunLayout(*sessionRoot, *repositoryRoot, *tempRoot, *runID)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "finalize cleanup layout: %v\n", err)
-		return 2
+		return commandError("finalize cleanup layout", err)
 	}
 	result, err := preflight.FinalizeCleanup(layout, preflight.OwnedResources{
 		ContainersAbsent: *containersAbsent,
@@ -91,8 +96,7 @@ func finalizeCleanup(arguments []string) int {
 		VolumesAbsent:    *volumesAbsent,
 	})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "finalize cleanup: %v\n", err)
-		return 2
+		return commandError("finalize cleanup", err)
 	}
 	if !result.Passed {
 		return 2

@@ -122,6 +122,14 @@ or public-network governance, and it makes no anonymity or decentralization
 claim. Its exact disposable technology and evidence contract is
 [R-013](docs/research/records/r-013-carrier-lab-technology-candidates.md).
 
+Carrier Lab is not a second repository, Go module, product runtime, or future
+top-level architecture. The repository has one root `go.mod`. `cmd/carrier-lab`
+is only its executable adapter; `internal/harness`,
+`internal/harness/tooling`, `internal/preflight`, and `internal/directcontrol`
+are laboratory Modules; and `carrier-lab/` contains only the three container
+inputs needed to run them reproducibly. Product
+Modules may later be promoted from accepted evidence, but never import the lab.
+
 ## First conditional Reference Application
 
 After Carrier Lab demonstrates a plausible Route, the first product-shaped
