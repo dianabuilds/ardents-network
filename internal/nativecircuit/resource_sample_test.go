@@ -1,6 +1,9 @@
 package nativecircuit
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 func TestParseDockerResourceLine(t *testing.T) {
 	t.Parallel()
@@ -17,5 +20,15 @@ func TestParseDockerSizeRejectsUnknownUnit(t *testing.T) {
 	t.Parallel()
 	if _, err := parseDockerSize("1watts"); err == nil {
 		t.Fatal("unknown Docker size unit was accepted")
+	}
+}
+
+func TestDockerStatsUsesFullContainerIDs(t *testing.T) {
+	arguments := dockerStatsArguments([]string{"full-b", "full-a"})
+	if !slices.Contains(arguments, "--no-trunc") {
+		t.Fatal("resource sampling may compare truncated Docker IDs with inspected full IDs")
+	}
+	if arguments[len(arguments)-2] != "full-a" || arguments[len(arguments)-1] != "full-b" {
+		t.Fatalf("container IDs are not deterministic: %v", arguments)
 	}
 }

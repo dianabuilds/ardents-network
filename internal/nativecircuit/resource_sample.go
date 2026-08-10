@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -76,8 +77,8 @@ func readDockerResources(ctx context.Context, roles map[string]string, elapsed i
 	for id := range roles {
 		ids = append(ids, id)
 	}
-	arguments := []string{"stats", "--no-stream", "--format", "{{.ID}}\t{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}\t{{.PIDs}}"}
-	output, err := exec.CommandContext(ctx, "docker", append(arguments, ids...)...).Output()
+	arguments := dockerStatsArguments(ids)
+	output, err := exec.CommandContext(ctx, "docker", arguments...).Output()
 	if err != nil {
 		return nil, err
 	}
@@ -99,6 +100,12 @@ func readDockerResources(ctx context.Context, roles map[string]string, elapsed i
 		return nil, errors.New("docker stats did not return the exact native process set")
 	}
 	return samples, nil
+}
+
+func dockerStatsArguments(ids []string) []string {
+	sort.Strings(ids)
+	arguments := []string{"stats", "--no-stream", "--no-trunc", "--format", "{{.ID}}\t{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}\t{{.PIDs}}"}
+	return append(arguments, ids...)
 }
 
 func parseDockerResourceLine(line string) (dockerResourceSample, error) {

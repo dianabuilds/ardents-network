@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -38,12 +39,13 @@ func runTorReference(ctx context.Context, identity preflight.RunLayout, manifest
 	tor := filepath.Join(torRoot, "usr", "bin", "tor")
 	gencert := filepath.Join(torRoot, "usr", "bin", "tor-gencert")
 	libraryPath := filepath.Join(torRoot, "lib", "x86_64-linux-gnu") + ":" + filepath.Join(torRoot, "usr", "lib", "x86_64-linux-gnu")
-	environment := append(os.Environ(),
-		"LD_LIBRARY_PATH="+libraryPath,
-		"PYTHONPATH="+pythonPackages+":"+filepath.Join(chutney, "lib"),
-		"CHUTNEY_PATH="+chutney, "CHUTNEY_TOR="+tor, "CHUTNEY_TOR_GENCERT="+gencert,
-		"CHUTNEY_DATA_DIR="+filepath.Join(runDirectory, "tor-network"), "CHUTNEY_DNS_CONF=/dev/null",
-	)
+	referenceEnvironment := []string{
+		"LD_LIBRARY_PATH=" + libraryPath,
+		"PYTHONPATH=" + pythonPackages + ":" + filepath.Join(chutney, "lib"),
+		"CHUTNEY_PATH=" + chutney, "CHUTNEY_TOR=" + tor, "CHUTNEY_TOR_GENCERT=" + gencert,
+		"CHUTNEY_DATA_DIR=" + filepath.Join(runDirectory, "tor-network"), "CHUTNEY_DNS_CONF=/dev/null",
+	}
+	environment := append(os.Environ(), referenceEnvironment...)
 	torVersion, err := observedReferenceVersion(ctx, environment, tor, "--version")
 	if err != nil {
 		return referenceResult{}, err
@@ -60,13 +62,12 @@ func runTorReference(ctx context.Context, identity preflight.RunLayout, manifest
 	started := time.Now()
 	referenceContext, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
-	arguments := []string{
-		"--user", "--map-root-user", "--net", "bash", "-c", "ip link set lo up; exec \"$@\"", "bash",
+	referenceArguments := []string{
 		filepath.Join(chutney, "tools", "test-network.sh"), "--chutney-path", chutney,
 		"--tor", tor, "--tor-gencert", gencert, "--flavor", result.NetworkFlavor,
 		"--offline", "--data", "10485760", "--start-time", "180", "--bootstrap-time", "90", "--stop-time", "0",
 	}
-	command := exec.CommandContext(referenceContext, "unshare", arguments...)
+	command := isolatedReferenceCommand(referenceContext, referenceEnvironment, referenceArguments)
 	command.Env = environment
 	output, runErr := command.CombinedOutput()
 	result.ElapsedMilliseconds = time.Since(started).Milliseconds()
@@ -86,6 +87,18 @@ func runTorReference(ctx context.Context, identity preflight.RunLayout, manifest
 	}
 	result.Status = "passed"
 	return result, nil
+}
+
+func isolatedReferenceCommand(ctx context.Context, environment, referenceArguments []string) *exec.Cmd {
+	arguments := []string{"--non-interactive", "unshare", "--net", "env"}
+	arguments = append(arguments, environment...)
+	arguments = append(arguments,
+		"bash", "-c",
+		`uid=$1; gid=$2; shift 2; ip link set lo up; exec setpriv --reuid "$uid" --regid "$gid" --clear-groups "$@"`,
+		"carrier-lab-reference", strconv.Itoa(os.Getuid()), strconv.Itoa(os.Getgid()),
+	)
+	arguments = append(arguments, referenceArguments...)
+	return exec.CommandContext(ctx, "sudo", arguments...)
 }
 
 func observedReferenceVersion(ctx context.Context, environment []string, name string, arguments ...string) (string, error) {

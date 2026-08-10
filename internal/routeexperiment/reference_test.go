@@ -1,7 +1,10 @@
 package routeexperiment
 
 import (
+	"context"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 )
 
@@ -13,5 +16,18 @@ func TestReferenceLockNamesExactExternalClosure(t *testing.T) {
 	}
 	if len(inputs.Packages) != 13 || len(inputs.Wheels) != 3 || inputs.Archive != "chutney-988fc372cc418fbecc60558fe27e75d07d76b996.tar.gz" {
 		t.Fatalf("unexpected reference closure: %+v", inputs)
+	}
+}
+
+func TestReferenceNamespaceIsCreatedByRootThenDropsToRunner(t *testing.T) {
+	t.Parallel()
+	command := isolatedReferenceCommand(context.Background(), []string{"LOCKED=value"}, []string{"reference-command", "argument"})
+	for _, required := range []string{"sudo", "--non-interactive", "unshare", "--net", "setpriv", "--clear-groups", "reference-command"} {
+		if !slices.ContainsFunc(command.Args, func(value string) bool { return value == required || strings.Contains(value, required) }) {
+			t.Fatalf("isolated reference command is missing %q: %v", required, command.Args)
+		}
+	}
+	if slices.Contains(command.Args, "--user") {
+		t.Fatal("reference command still depends on disabled rootless user namespaces")
 	}
 }
