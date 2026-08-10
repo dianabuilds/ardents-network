@@ -14,12 +14,14 @@ import (
 )
 
 type collectedRoleResult struct {
-	Status                   string   `json:"status"`
-	TerminalResult           string   `json:"terminal_result"`
-	TLSVersion               string   `json:"tls_version"`
-	ApplicationBytesVerified bool     `json:"application_bytes_verified"`
-	ApplicationBytes         int      `json:"application_bytes"`
-	ObservedFields           []string `json:"observed_fields"`
+	Status                    string   `json:"status"`
+	TerminalResult            string   `json:"terminal_result"`
+	TLSVersion                string   `json:"tls_version"`
+	ApplicationBytesVerified  bool     `json:"application_bytes_verified"`
+	ApplicationBytes          int      `json:"application_bytes"`
+	QueueHighWaterBytes       int      `json:"queue_high_water_bytes"`
+	StreamElapsedMilliseconds int64    `json:"stream_elapsed_milliseconds"`
+	ObservedFields            []string `json:"observed_fields"`
 }
 
 type collectedToolResult struct {
@@ -27,8 +29,9 @@ type collectedToolResult struct {
 	EffectiveCapabilities string            `json:"effective_capabilities"`
 	Qdisc                 map[string]string `json:"qdisc"`
 	Links                 map[string]struct {
-		Packet bool  `json:"packet_observed"`
-		Bytes  int64 `json:"bytes"`
+		Packet    bool   `json:"packet_observed"`
+		Bytes     int64  `json:"bytes"`
+		WireBytes uint64 `json:"wire_bytes"`
 	} `json:"links"`
 	RawCaptureRemoved bool `json:"raw_capture_removed"`
 }
@@ -103,7 +106,7 @@ func collectNativeEvidence(fixture nativeFixture, retained string, summary *nati
 	return nil
 }
 
-func inspectForbiddenSentinels(directory string, sentinels [][]byte) error {
+func inspectForbiddenSentinels(directory string, sentinels [][]byte, expectedCaptures int) error {
 	entries, err := os.ReadDir(directory)
 	if err != nil {
 		return err
@@ -130,7 +133,7 @@ func inspectForbiddenSentinels(directory string, sentinels [][]byte) error {
 		captures++
 		total += info.Size()
 	}
-	if captures != 11 || total > 2*1024*1024*1024 {
+	if captures != expectedCaptures || total > 2*1024*1024*1024 {
 		return fmt.Errorf("native capture set is not exact: files=%d bytes=%d", captures, total)
 	}
 	return nil

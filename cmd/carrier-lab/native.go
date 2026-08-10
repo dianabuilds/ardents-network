@@ -39,3 +39,20 @@ func nativeToolRole(arguments []string) int {
 		return tooling.RunNativeRole(config, evidence, capture)
 	})
 }
+
+func nativeNegative(arguments []string) int {
+	flags := flag.NewFlagSet("native-negative", flag.ContinueOnError)
+	flags.SetOutput(os.Stderr)
+	var name string
+	flags.StringVar(&name, "case", "", "fixed R-013 negative case")
+	if err := flags.Parse(arguments); err != nil || flags.NArg() != 0 {
+		return 64
+	}
+	ctx, stop := interruptContext()
+	defer stop()
+	if err := nativecircuit.RunNegative(ctx, name); err != nil {
+		return commandError("native negative "+name, err)
+	}
+	fmt.Printf("Carrier Lab negative %s: failed closed\n", name)
+	return 0
+}

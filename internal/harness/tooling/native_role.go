@@ -22,8 +22,9 @@ type nativeToolConfig struct {
 }
 
 type nativeCaptureLink struct {
-	Name string `json:"name"`
-	Peer string `json:"peer"`
+	Name       string `json:"name"`
+	Peer       string `json:"peer"`
+	CaptureAll bool   `json:"capture_all,omitempty"`
 }
 
 // RunNativeRole executes one native-route shaping or capture sidecar from a
@@ -73,6 +74,9 @@ func readNativeToolConfig(path string) (nativeToolConfig, error) {
 	for _, link := range config.Links {
 		if !nativeLinkName.MatchString(link.Name) || !nativeLinkName.MatchString(link.Peer) || seen[link.Name] {
 			return nativeToolConfig{}, errors.New("native capture link is invalid or duplicated")
+		}
+		if link.CaptureAll && len(config.Links) != 1 {
+			return nativeToolConfig{}, errors.New("unfiltered native capture requires one isolated link")
 		}
 		seen[link.Name] = true
 	}

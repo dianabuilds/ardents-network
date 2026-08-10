@@ -14,14 +14,14 @@ func TestCarrierLabToolingPackageHasOneSmallInterface(t *testing.T) {
 	assertPackageExports(t, "internal/harness/tooling", "NativeImageReceipt", "VerifyInputs", "VerifyNativeImages", "RunSmoke", "RunRole", "RunNativeRole")
 }
 
-func TestCarrierLabContainerSourcesHaveThreeResponsibilities(t *testing.T) {
+func TestCarrierLabContainerSourcesHaveFourResponsibilities(t *testing.T) {
 	t.Parallel()
 	root := repositoryRoot(t)
 	entries, err := os.ReadDir(filepath.Join(root, "carrier-lab"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]bool{"Dockerfile": true, "compose.yaml": true, "tools.lock": true}
+	want := map[string]bool{"Dockerfile": true, "compose.yaml": true, "tools.lock": true, "reference.lock": true}
 	if len(entries) != len(want) {
 		t.Fatalf("carrier-lab source entries = %d, want exactly %d", len(entries), len(want))
 	}

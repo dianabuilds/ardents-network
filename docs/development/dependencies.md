@@ -44,3 +44,24 @@ source and security review. The external `.deb` bundle is an explicitly
 prepared input outside Git. Normal build and run use no package repository,
 installer, maintainer script, or download fallback; a missing, extra, or
 mismatched artifact fails closed.
+
+## Carrier Lab external reference inputs
+
+The R-013 comparison uses Tor and Chutney only as a black-box laboratory
+reference. They are not linked into the Go binary, included in either Carrier
+Lab image, or selected as a product runtime foundation.
+
+| Input | Reviewed version | License | Purpose |
+|---|---:|---|---|
+| Tor | Ubuntu 0.4.9.6-1 package closure; upstream 0.4.9.11 recorded | BSD-3-Clause | private onion-service reference |
+| Chutney | revision `988fc372cc418fbecc60558fe27e75d07d76b996` | BSD-3-Clause | isolated local Tor network |
+| typeguard | 4.3.0 | MIT | Chutney runtime validation |
+| tomli-w | 1.2.0 | MIT | Chutney configuration writer |
+| typing-extensions | 4.15.0 | PSF-2.0 | Python compatibility for Chutney/typeguard |
+
+[`carrier-lab/reference.lock`](../../carrier-lab/reference.lock) is normative
+for the exact Tor 13-package closure, Chutney archive, wheels, source locations,
+and SHA-256 identities. The selected Chutney revision predates its optional SSH
+launcher and restricted-discovery dependencies, so Paramiko, rpyc, and Python
+`cryptography` are deliberately absent. Online preparation is explicit; the
+experiment verifies and consumes the prepared directory without downloading.

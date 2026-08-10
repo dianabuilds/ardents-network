@@ -20,6 +20,8 @@ type endpointFixture struct {
 	privatePEM   []byte
 	leafSHA256   string
 	targetMarker []byte
+	rootCert     *x509.Certificate
+	rootKey      ed25519.PrivateKey
 }
 
 func generateNodeIdentity(directory, role string) (roleHop, error) {
@@ -106,8 +108,35 @@ func generateEndpointFixture() (endpointFixture, error) {
 	digest := sha256.Sum256(leafDER)
 	return endpointFixture{
 		rootPEM: rootPEM, chainPEM: chainPEM, privatePEM: pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privateDER}),
-		leafSHA256: hex.EncodeToString(digest[:]), targetMarker: []byte(marker),
+		leafSHA256: hex.EncodeToString(digest[:]), targetMarker: []byte(marker), rootCert: rootCertificate, rootKey: rootPrivate,
 	}, nil
+}
+
+func generateAlternateEndpointLeaf(root endpointFixture) ([]byte, []byte, error) {
+	publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return nil, nil, err
+	}
+	serial, err := randomSerial()
+	if err != nil {
+		return nil, nil, err
+	}
+	template := &x509.Certificate{
+		SerialNumber: serial, Subject: pkix.Name{CommonName: "otherwise-valid-wrong-instance"}, DNSNames: []string{endpointServerName},
+		NotBefore: time.Now().Add(-time.Minute), NotAfter: time.Now().Add(time.Hour), KeyUsage: x509.KeyUsageDigitalSignature,
+		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	}
+	leafDER, err := x509.CreateCertificate(rand.Reader, template, root.rootCert, publicKey, root.rootKey)
+	if err != nil {
+		return nil, nil, err
+	}
+	privateDER, err := x509.MarshalPKCS8PrivateKey(privateKey)
+	if err != nil {
+		return nil, nil, err
+	}
+	chain := append(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: leafDER}), root.rootPEM...)
+	key := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privateDER})
+	return chain, key, nil
 }
 
 func randomSerial() (*big.Int, error) {

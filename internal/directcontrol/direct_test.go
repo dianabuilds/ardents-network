@@ -36,7 +36,6 @@ func TestDirectRoleRejectsKnowledgeOutsideItsFixedConfig(t *testing.T) {
 }
 
 func TestDirectTLSControlAuthenticatesExactInstanceAndCanary(t *testing.T) {
-	t.Parallel()
 	root := t.TempDir()
 	address := reserveDirectAddress(t)
 	targetRoot, certificate, privateKey, leafHash := writeDirectFixture(t, root, "active-instance")
@@ -62,7 +61,7 @@ func TestDirectTLSControlAuthenticatesExactInstanceAndCanary(t *testing.T) {
 
 	serviceDone := make(chan error, 1)
 	go func() { serviceDone <- RunRole(context.Background(), serviceConfig, serviceEvidence) }()
-	waitForDirectReady(t, filepath.Join(serviceEvidence, "ready.json"))
+	waitForDirectReady(t, filepath.Join(serviceEvidence, "ready.json"), serviceDone)
 	if err := RunRole(context.Background(), userConfig, userEvidence); err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +84,6 @@ func TestDirectTLSControlAuthenticatesExactInstanceAndCanary(t *testing.T) {
 }
 
 func TestDirectTLSControlRejectsWrongInstanceBeforeApplicationBytes(t *testing.T) {
-	t.Parallel()
 	root := t.TempDir()
 	address := reserveDirectAddress(t)
 	targetRoot, _, _, activeLeafHash, wrongCertificate, wrongKey := writeDirectFixturePair(t, root)
@@ -111,7 +109,7 @@ func TestDirectTLSControlRejectsWrongInstanceBeforeApplicationBytes(t *testing.T
 
 	serviceDone := make(chan error, 1)
 	go func() { serviceDone <- RunRole(context.Background(), serviceConfig, serviceEvidence) }()
-	waitForDirectReady(t, filepath.Join(serviceEvidence, "ready.json"))
+	waitForDirectReady(t, filepath.Join(serviceEvidence, "ready.json"), serviceDone)
 	if err := RunRole(context.Background(), userConfig, userEvidence); err == nil {
 		t.Fatal("wrong Instance leaf was accepted")
 	}
@@ -126,7 +124,6 @@ func TestDirectTLSControlRejectsWrongInstanceBeforeApplicationBytes(t *testing.T
 }
 
 func TestDirectTLSControlRejectsModifiedProtectedRecord(t *testing.T) {
-	t.Parallel()
 	root := t.TempDir()
 	serviceAddress := reserveDirectAddress(t)
 	proxyAddress := reserveDirectAddress(t)
@@ -159,9 +156,9 @@ func TestDirectTLSControlRejectsModifiedProtectedRecord(t *testing.T) {
 	serviceDone := make(chan error, 1)
 	proxyDone := make(chan error, 1)
 	go func() { serviceDone <- RunRole(context.Background(), serviceConfig, serviceEvidence) }()
-	waitForDirectReady(t, filepath.Join(serviceEvidence, "ready.json"))
+	waitForDirectReady(t, filepath.Join(serviceEvidence, "ready.json"), serviceDone)
 	go func() { proxyDone <- RunTamper(context.Background(), proxyConfig, proxyEvidence) }()
-	waitForDirectReady(t, filepath.Join(proxyEvidence, "ready.json"))
+	waitForDirectReady(t, filepath.Join(proxyEvidence, "ready.json"), proxyDone)
 	if err := RunRole(context.Background(), userConfig, userEvidence); err == nil {
 		t.Fatal("modified protected record was accepted")
 	}
@@ -328,14 +325,18 @@ func writeDirectTamperConfig(t *testing.T, path string, config directTamperConfi
 	}
 }
 
-func waitForDirectReady(t *testing.T, path string) {
+func waitForDirectReady(t *testing.T, path string, done <-chan error) {
 	t.Helper()
 	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
 		if _, err := os.Stat(path); err == nil {
 			return
 		}
-		time.Sleep(10 * time.Millisecond)
+		select {
+		case err := <-done:
+			t.Fatalf("Direct TLS role exited before ready: %v", err)
+		case <-time.After(10 * time.Millisecond):
+		}
 	}
 	t.Fatal("Direct TLS service did not become ready")
 }

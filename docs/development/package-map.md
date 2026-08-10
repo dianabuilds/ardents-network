@@ -8,13 +8,14 @@ rules are in [repository-layout.md](repository-layout.md).
 
 | Directory | Go declaration | Responsibility | May import |
 |---|---|---|---|
-| `cmd/carrier-lab` | `package main` | Parse fixed Carrier Lab commands, call the selected Module, and translate results to exit codes. | `internal/directcontrol`, `internal/harness`, `internal/harness/tooling`, `internal/nativecircuit`, `internal/preflight`, standard library |
+| `cmd/carrier-lab` | `package main` | Parse fixed Carrier Lab commands, call the selected Module, and translate results to exit codes. | `internal/directcontrol`, `internal/harness`, `internal/harness/tooling`, `internal/nativecircuit`, `internal/preflight`, `internal/routeexperiment`, standard library |
 | `internal/harness` | `package harness` | Own the fixed two-role Carrier Lab isolation scenario: role configuration, Compose lifecycle, bounded observations, fault injection, verdict, and cleanup. | `internal/preflight`, standard library |
 | `internal/harness/tooling` | `package tooling` | Verify the exact external tool supply and runnable image pair; own shaping, capture, tracer, fail-closed smoke, and evidence behind `VerifyInputs`, `VerifyNativeImages`, `RunSmoke`, `RunRole`, and `RunNativeRole`. | `internal/preflight`, `internal/qualification`, standard library |
 | `internal/preflight` | `package preflight` | Orchestrate pinned setup, verify the environment, protect one run identity and its owned paths, and write canonical preflight evidence and cleanup verdicts. | `internal/qualification`, standard library |
 | `internal/qualification` | `package qualification` | Bind maintained code, tests, Docker/Compose, Make, hooks, and CI inputs into one final Carrier Lab qualification source digest behind `SourceSHA256`. | standard library |
 | `internal/directcontrol` | `package directcontrol` | Own the complete lab-only Direct TLS fixture, control lifecycle, roles, protected-record fault, evidence, and cleanup behind `RunControl`, `RunRole`, and `RunTamper`; never act as a Route or fallback. | `internal/preflight`, standard library |
-| `internal/nativecircuit` | `package nativecircuit` | Own the fixed lab-only native C-5/C2 candidate: bounded wire protocol, HPKE Introduction, telescoped Node TLS, joined endpoint TLS, role-local runtime, Compose lifecycle, evidence, and cleanup behind `Run` and `RunRole`. | `internal/harness/tooling`, `internal/preflight`, standard library |
+| `internal/nativecircuit` | `package nativecircuit` | Own the fixed lab-only native C-5/C2 candidate: bounded wire protocol, HPKE Introduction, telescoped Node TLS, joined endpoint TLS, role-local runtime, Compose lifecycle, evidence, and cleanup behind `Run`, `RunNegative`, `RunRole`, and `RunWorkload`. | `internal/harness/tooling`, `internal/preflight`, standard library |
+| `internal/routeexperiment` | `package routeexperiment` | Own the frozen R-013 comparative sequence, immutable workload/seed manifest, coarse statistics, conjunctive C-5 verdict, retained evidence, and cleanup behind `Run`. | `internal/nativecircuit`, `internal/preflight`, `internal/qualification`, standard library |
 | `internal/architecture` | `package architecture` | Test repository structure, names, dependencies, formatting, and quality wiring. | standard library |
 
 ## Carrier Lab command registry
@@ -35,6 +36,8 @@ rules are in [repository-layout.md](repository-layout.md).
 | `native-run` | `internal/nativecircuit` | Run the fixed isolated native C-5/C2 development smoke and retain its bounded verdict. |
 | `native-role` | `internal/nativecircuit` | Run one role-local native User, Service, relay, Rendezvous, or Introduction process. |
 | `native-tool-role` | `internal/harness/tooling` | Apply real link shaping or capture for one native role namespace with one exact capability. |
+| `native-negative` | `internal/nativecircuit` | Execute one fixed fail-closed R-013 negative inside the immutable application image. |
+| `route-experiment` | `internal/routeexperiment` | Run the frozen Direct/C-3/C-5 comparison, required negatives, conditional Tor reference, and canonical verdict without building or downloading. |
 
 The architecture gate parses this table and rejects an unregistered or stale
 package, a mismatched Go declaration, or a current project import absent from

@@ -18,7 +18,11 @@ func runConfiguredRole(ctx context.Context, config roleConfig, evidenceDir strin
 		result.finish(started, runErr)
 		runErr = errors.Join(runErr, writeRoleResult(filepath.Join(evidenceDir, "result.json"), result))
 	}()
-	if isRelayRole(config.Role) || config.Role == "rendezvous" || config.Role == "introduction-node" {
+	if config.Profile == directProfile && config.Role == "user" {
+		runErr = runDirectUserRole(ctx, config, evidenceDir, &result)
+	} else if config.Profile == directProfile {
+		runErr = runDirectServiceRole(ctx, config, evidenceDir, &result)
+	} else if isRelayRole(config.Role) || config.Role == "rendezvous" || config.Role == "introduction-node" {
 		runErr = runNodeRole(ctx, config, evidenceDir, &result)
 	} else if config.Role == "user" {
 		runErr = runUserRole(ctx, config, evidenceDir, &result)
@@ -98,6 +102,7 @@ func runUserRole(ctx context.Context, config roleConfig, evidenceDir string, res
 	if err := waitForRoleStart(ctx, config.StartPath); err != nil {
 		return err
 	}
+	plan.SetupVerified = func() error { return writeRoleMarker(evidenceDir, config, "setup-ready.json", "authenticated") }
 	if config.Fault == "rendezvous-process" {
 		plan.FirstChunkVerified = func() error {
 			if err := writeRoleMarker(evidenceDir, config, "stream-ready.json", "first_chunk_verified"); err != nil {

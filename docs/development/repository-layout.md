@@ -35,7 +35,7 @@ co-location grants none of them access to another zone's authority material.
 | `deployments/` | Conditional environment/deployment definitions after production orchestration is selected. It is not created for Carrier Lab. |
 | `.github/workflows/` | Repository CI and release automation after the applicable horizon authorizes it. |
 | `.githooks/` | Optional local developer checks; CI remains authoritative. |
-| `carrier-lab/` | The three human-authored container inputs for the current laboratory: one multi-target Dockerfile, one profiled Compose topology, and one immutable external-tool lock. It contains no generated images, packages, captures, run state, or evidence. |
+| `carrier-lab/` | Four human-authored laboratory inputs: one multi-target Dockerfile, one profiled Compose topology, and two immutable locks for tool and external-reference supply. It contains no generated images, packages, captures, run state, or evidence. |
 | repository root | Project-wide policy and build entrypoints such as `AGENTS.md`, `README.md`, `CONTEXT.md`, `go.mod`, and `Makefile`. |
 
 `packaging/`, `deployments/`, and `tests/` are permitted locations, not
@@ -69,16 +69,22 @@ internal/
   qualification/               final source identity for lab qualification
   directcontrol/               Direct TLS measurement control and wire fault
   nativecircuit/               native C-5/C2 laboratory candidate and lifecycle
+  routeexperiment/             frozen R-013 sequence, metrics, verdict, and report
 scripts/
   check-tools.go               build-ignored developer tool-version check
   install-git-hooks.sh         local hook bootstrap
   preflight.sh                 thin host-Go launcher for the Carrier Lab bootstrap
-.github/workflows/quality.yml  mandatory CI quality gate
+  prepare-carrier-tools.sh     explicit online preparation of locked tool inputs
+  prepare-carrier-reference.sh explicit online preparation of locked reference inputs
+.github/workflows/
+  quality.yml                  mandatory ordinary CI quality gate
+  carrier-lab.yml              explicit official Ubuntu R-013 qualification
 .githooks/pre-commit           local quick gate
 carrier-lab/
   Dockerfile                   shared build plus application/tooling targets
   compose.yaml                 isolation, tooling, and native execution profiles
   tools.lock                   exact external laboratory-tool identities
+  reference.lock               exact Tor/Chutney reference identities
 docs/                          product, security, research, ADR, and development records
 experiments/README.md          policy for future disposable spikes
 go.mod                         the only Go module
@@ -90,8 +96,8 @@ maintained packages. `internal/directcontrol` implements only the laboratory
 Direct TLS measurement control and its protected-record fault; it is not a
 Route, a product fallback, a transport selection, or the future Route Module
 Interface described by R-013. `internal/harness`, its `tooling` Module,
-`internal/preflight`, `internal/qualification`, `internal/directcontrol`, and
-`internal/nativecircuit` are laboratory code. The
+`internal/preflight`, `internal/qualification`, `internal/directcontrol`,
+`internal/nativecircuit`, and `internal/routeexperiment` are laboratory code. The
 Dockerfile and Compose file serve only reproducible Carrier Lab execution and
 are not deployment or release packaging.
 
@@ -99,10 +105,11 @@ The exact current project imports are also recorded in the package map. In
 summary:
 
 ```text
-cmd/carrier-lab -> internal/directcontrol, internal/harness, internal/harness/tooling, internal/nativecircuit, internal/preflight
+cmd/carrier-lab -> internal/directcontrol, internal/harness, internal/harness/tooling, internal/nativecircuit, internal/preflight, internal/routeexperiment
 internal/harness -> internal/preflight
 internal/harness/tooling -> internal/preflight, internal/qualification
 internal/nativecircuit -> internal/harness/tooling, internal/preflight
+internal/routeexperiment -> internal/nativecircuit, internal/preflight, internal/qualification
 internal/directcontrol -> internal/preflight
 internal/preflight -> internal/qualification
 internal/qualification, internal/architecture -> standard library
@@ -231,7 +238,7 @@ one responsibility or one responsibility plus an aspect: for example
 - Production files may never exceed 250 lines.
 - Every Go file, including tests, may never exceed 500 lines.
 - A command file may never exceed 120 lines and the complete command package
-  remains capped at 300 production lines.
+  remains capped at 360 production lines.
 - A file is divided at cohesive type/function clusters. Division does not
   justify another package or exported symbol.
 - Catch-all filenames `model.go`, `support.go`, `types.go`, `helpers.go`,

@@ -19,6 +19,7 @@ type sourceFile struct {
 
 var sourceFiles = []string{
 	".dockerignore",
+	".github/workflows/carrier-lab.yml",
 	".github/workflows/quality.yml",
 	".githooks/pre-commit",
 	"AGENTS.md",

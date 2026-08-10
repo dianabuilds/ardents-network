@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"os"
+	"time"
 )
 
 func loadUserPlan(config roleConfig) (candidateUserPlan, error) {
@@ -44,11 +45,15 @@ func loadUserPlan(config roleConfig) (candidateUserPlan, error) {
 	if err != nil {
 		return candidateUserPlan{}, err
 	}
-	return candidateUserPlan{
+	plan := candidateUserPlan{
 		Profile: config.Profile, RunID: config.RunID, Rendezvous: config.Rendezvous, Slot: slot,
 		IntroductionPath: introductionPath, DataPath: dataPath, HPKEPublic: publicKey,
 		EndpointTrust: endpointTrust{Roots: roots, LeafSHA256: leaf}, Payload: seededPayload(config.PayloadSeed, config.PayloadBytes),
-	}, nil
+	}
+	if config.StreamDirection != "" {
+		plan.Stream = &streamSpec{Direction: config.StreamDirection, Seed: config.StreamSeed, Duration: time.Duration(config.StreamDuration) * time.Second}
+	}
+	return plan, nil
 }
 
 func loadServicePlan(config roleConfig) (candidateServicePlan, error) {
@@ -76,10 +81,14 @@ func loadServicePlan(config roleConfig) (candidateServicePlan, error) {
 	if err != nil {
 		return candidateServicePlan{}, err
 	}
-	return candidateServicePlan{
+	plan := candidateServicePlan{
 		Profile: config.Profile, RunID: config.RunID, Rendezvous: config.Rendezvous, Slot: slot,
 		IntroductionPath: introductionPath, DataPath: dataPath, HPKEPrivate: privateKey, EndpointCertificate: certificate,
-	}, nil
+	}
+	if config.StreamDirection != "" {
+		plan.Stream = &streamSpec{Direction: config.StreamDirection, Seed: config.StreamSeed, Duration: time.Duration(config.StreamDuration) * time.Second}
+	}
+	return plan, nil
 }
 
 func parseRolePath(values []roleHop) ([]circuitHop, error) {

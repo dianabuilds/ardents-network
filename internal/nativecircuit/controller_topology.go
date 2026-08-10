@@ -27,9 +27,9 @@ var nativeNetworkRoles = map[string][]string{
 	"ie-service":  {"introduction-entry", "service"},
 }
 
-func exactNativeRoleNetworks(project, role string, actual map[string]json.RawMessage) bool {
+func exactNativeRoleNetworks(project, role string, actual map[string]json.RawMessage, networkRoles map[string][]string) bool {
 	wanted := make(map[string]bool)
-	for network, roles := range nativeNetworkRoles {
+	for network, roles := range networkRoles {
 		for _, candidate := range roles {
 			if candidate == role {
 				wanted[project+"_"+network] = true
@@ -60,7 +60,7 @@ func exactNativeSidecarNamespaces(states map[string]nativeContainerInspect, appl
 	return true
 }
 
-func inspectNativeNetworks(ctx context.Context, project string, applicationIDs map[string]string) (bool, error) {
+func inspectNativeNetworks(ctx context.Context, project string, applicationIDs map[string]string, networkRoles map[string][]string) (bool, error) {
 	ids, err := exec.CommandContext(ctx, "docker", "network", "ls", "--quiet", "--filter", "label=com.docker.compose.project="+project).Output()
 	if err != nil {
 		return false, err
@@ -77,12 +77,12 @@ func inspectNativeNetworks(ctx context.Context, project string, applicationIDs m
 	if err := json.Unmarshal(data, &networks); err != nil {
 		return false, err
 	}
-	if len(networks) != len(nativeNetworkRoles) {
+	if len(networks) != len(networkRoles) {
 		return false, nil
 	}
 	for _, network := range networks {
 		shortName := strings.TrimPrefix(network.Name, project+"_")
-		roles, found := nativeNetworkRoles[shortName]
+		roles, found := networkRoles[shortName]
 		if !found || !network.Internal || len(network.Containers) != len(roles) {
 			return false, nil
 		}

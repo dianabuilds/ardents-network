@@ -47,6 +47,7 @@ func runNativeRendezvousFailure(ctx context.Context, layout nativeRunLayout, fix
 		return err
 	}
 	summary.Checks["failure_within_15_seconds"] = time.Since(started) <= 15*time.Second
+	summary.FailureMilliseconds = time.Since(started).Milliseconds()
 	user, err := readFailureRoleResult(paths[0])
 	if err != nil {
 		return err

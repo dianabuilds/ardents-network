@@ -42,7 +42,15 @@ type nativeContainerInspect struct {
 }
 
 func nativeCompose(ctx context.Context, layout nativeRunLayout, project string, environment []string, arguments ...string) ([]byte, error) {
-	base := []string{"compose", "--project-name", project, "--file", filepath.Join(layout.repositoryRoot, "carrier-lab", "compose.yaml"), "--profile", "native"}
+	base := []string{"compose", "--project-name", project, "--file", filepath.Join(layout.repositoryRoot, "carrier-lab", "compose.yaml")}
+	if override := environmentValue(environment, "CARRIER_LAB_COMPOSE_OVERRIDE"); override != "" {
+		base = append(base, "--file", override)
+	}
+	profile := environmentValue(environment, "CARRIER_LAB_PROFILE")
+	if profile == "" {
+		profile = "native"
+	}
+	base = append(base, "--profile", profile)
 	command := exec.CommandContext(ctx, "docker", append(base, arguments...)...)
 	command.Env = environment
 	output, err := command.CombinedOutput()
@@ -53,7 +61,26 @@ func nativeCompose(ctx context.Context, layout nativeRunLayout, project string, 
 }
 
 func nativeEnvironment(fixture nativeFixture, applicationImage, toolImage string) []string {
-	return append(os.Environ(), "CARRIER_LAB_RUN="+filepath.Dir(fixture.root), "CARRIER_LAB_APPLICATION_IMAGE="+applicationImage, "CARRIER_LAB_TOOL_IMAGE="+toolImage, "CARRIER_LAB_IMAGE="+applicationImage, "TOOLING_RUN_ID=native")
+	environment := append(os.Environ(), "CARRIER_LAB_RUN="+filepath.Dir(fixture.root), "CARRIER_LAB_APPLICATION_IMAGE="+applicationImage, "CARRIER_LAB_TOOL_IMAGE="+toolImage, "CARRIER_LAB_IMAGE="+applicationImage, "TOOLING_RUN_ID=native")
+	override := filepath.Join(fixture.root, "compose-c3.yaml")
+	if _, err := os.Stat(override); err == nil {
+		environment = append(environment, "CARRIER_LAB_COMPOSE_OVERRIDE="+override, "CARRIER_LAB_PROFILE=c3")
+	}
+	override = filepath.Join(fixture.root, "compose-direct.yaml")
+	if _, err := os.Stat(override); err == nil {
+		environment = append(environment, "CARRIER_LAB_COMPOSE_OVERRIDE="+override, "CARRIER_LAB_PROFILE=direct")
+	}
+	return environment
+}
+
+func environmentValue(environment []string, name string) string {
+	prefix := name + "="
+	for _, value := range environment {
+		if strings.HasPrefix(value, prefix) {
+			return strings.TrimPrefix(value, prefix)
+		}
+	}
+	return ""
 }
 
 func waitNativeReady(ctx context.Context, _ nativeFixture, paths []string, timeout time.Duration) error {
@@ -134,15 +161,15 @@ func inspectNativeServiceStates(ctx context.Context, layout nativeRunLayout, pro
 	return states, nil
 }
 
-func inspectNativeProject(ctx context.Context, layout nativeRunLayout, project string, environment []string) (nativeInspection, error) {
+func inspectNativeProject(ctx context.Context, layout nativeRunLayout, project string, environment []string, topology nativeTopology) (nativeInspection, error) {
 	result := nativeInspection{FixedTopology: true, BoundedCapabilities: true}
 	states, err := inspectNativeServiceStates(ctx, layout, project, environment)
 	if err != nil {
 		return nativeInspection{}, err
 	}
-	services := nativeComposeServices()
+	services := topology.services()
 	result.FixedTopology = len(states) == len(services)
-	applicationIDs := make(map[string]string, len(nativeApplicationRoles))
+	applicationIDs := make(map[string]string, len(topology.applicationRoles))
 	for _, service := range services {
 		container, found := states[service]
 		if !found {
@@ -158,12 +185,12 @@ func inspectNativeProject(ctx context.Context, layout nativeRunLayout, project s
 		}
 		if !strings.HasPrefix(service, "shape-") && !strings.HasPrefix(service, "capture-") {
 			result.BoundedCapabilities = result.BoundedCapabilities && len(container.HostConfig.CapAdd) == 0 && len(container.HostConfig.CapDrop) == 1 && container.HostConfig.CapDrop[0] == "ALL" && len(container.NetworkSettings.Networks) >= 1
-			result.FixedTopology = result.FixedTopology && exactNativeRoleNetworks(project, service, container.NetworkSettings.Networks)
+			result.FixedTopology = result.FixedTopology && exactNativeRoleNetworks(project, service, container.NetworkSettings.Networks, topology.networkRoles)
 			applicationIDs[service] = container.ID
 		}
 	}
 	result.FixedTopology = result.FixedTopology && exactNativeSidecarNamespaces(states, applicationIDs)
-	networksMatch, err := inspectNativeNetworks(ctx, project, applicationIDs)
+	networksMatch, err := inspectNativeNetworks(ctx, project, applicationIDs, topology.networkRoles)
 	if err != nil {
 		return nativeInspection{}, err
 	}

@@ -7,7 +7,7 @@ import (
 
 func TestNativeCircuitPackageHasOneSmallInterface(t *testing.T) {
 	t.Parallel()
-	assertPackageExports(t, "internal/nativecircuit", "Run", "RunRole")
+	assertPackageExports(t, "internal/nativecircuit", "Run", "RunNegative", "RunRole", "RunWorkload")
 }
 
 func TestNativeComposeDeclaresExactRoleTopologyAndCapabilities(t *testing.T) {

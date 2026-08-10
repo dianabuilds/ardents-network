@@ -24,13 +24,14 @@ type endpointTrust struct {
 }
 
 type endpointObservation struct {
-	TLSVersion               string
-	Curve                    string
-	CipherSuite              string
-	SessionResumed           bool
-	ApplicationBytesVerified bool
-	ApplicationBytes         int
-	QueueHighWaterBytes      int
+	TLSVersion                string
+	Curve                     string
+	CipherSuite               string
+	SessionResumed            bool
+	ApplicationBytesVerified  bool
+	ApplicationBytes          int
+	QueueHighWaterBytes       int
+	StreamElapsedMilliseconds int64
 }
 
 func runEndpointUser(ctx context.Context, transport net.Conn, trust endpointTrust, nonce handle, payload []byte) (endpointObservation, error) {
@@ -38,6 +39,10 @@ func runEndpointUser(ctx context.Context, transport net.Conn, trust endpointTrus
 }
 
 func runEndpointUserWithProgress(ctx context.Context, transport net.Conn, trust endpointTrust, nonce handle, payload []byte, firstChunkVerified func() error) (endpointObservation, error) {
+	return runEndpointUserWithCallbacks(ctx, transport, trust, nonce, payload, nil, firstChunkVerified)
+}
+
+func runEndpointUserWithCallbacks(ctx context.Context, transport net.Conn, trust endpointTrust, nonce handle, payload []byte, setupVerified, firstChunkVerified func() error) (endpointObservation, error) {
 	defer transport.Close()
 	if trust.Roots == nil || len(payload) > maximumQueueBytes {
 		return endpointObservation{}, errors.New("endpoint trust or Application payload is outside the fixed contract")
@@ -70,6 +75,11 @@ func runEndpointUserWithProgress(ctx context.Context, transport net.Conn, trust 
 	acknowledgement, err := readFrame(secured)
 	if err != nil || acknowledgement.Type != frameProtectedData || subtle.ConstantTimeCompare(acknowledgement.Payload, nonce[:]) != 1 {
 		return observation, errors.New("endpoint handshake nonce was not authenticated")
+	}
+	if setupVerified != nil {
+		if err := setupVerified(); err != nil {
+			return observation, err
+		}
 	}
 	for offset := 0; offset < len(payload); {
 		end := min(offset+maximumApplicationPayload, len(payload))

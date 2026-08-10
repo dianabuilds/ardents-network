@@ -23,6 +23,8 @@ type candidateUserPlan struct {
 	HPKEPublic         *ecdh.PublicKey
 	EndpointTrust      endpointTrust
 	Payload            []byte
+	Stream             *streamSpec
+	SetupVerified      func() error
 	FirstChunkVerified func() error
 }
 
@@ -35,6 +37,7 @@ type candidateServicePlan struct {
 	DataPath            []circuitHop
 	HPKEPrivate         *ecdh.PrivateKey
 	EndpointCertificate tls.Certificate
+	Stream              *streamSpec
 	Registered          func() error
 }
 
@@ -92,7 +95,10 @@ func runCandidateUser(ctx context.Context, plan candidateUserPlan) (endpointObse
 		return endpointObservation{}, errors.New("rendezvous did not join the C-5 legs")
 	}
 	dataOwned = false
-	return runEndpointUserWithProgress(ctx, data, plan.EndpointTrust, nonce, plan.Payload, plan.FirstChunkVerified)
+	if plan.Stream != nil {
+		return runEndpointUserStream(ctx, data, plan.EndpointTrust, nonce, *plan.Stream, plan.SetupVerified)
+	}
+	return runEndpointUserWithCallbacks(ctx, data, plan.EndpointTrust, nonce, plan.Payload, plan.SetupVerified, plan.FirstChunkVerified)
 }
 
 func runCandidateService(ctx context.Context, plan candidateServicePlan) (endpointObservation, error) {
@@ -150,6 +156,9 @@ func runCandidateService(ctx context.Context, plan candidateServicePlan) (endpoi
 		return endpointObservation{}, errors.New("service leg was not joined at Rendezvous")
 	}
 	dataOwned = false
+	if plan.Stream != nil {
+		return runEndpointServiceStream(ctx, data, plan.EndpointCertificate, opened.HandshakeNonce, *plan.Stream)
+	}
 	return runEndpointService(ctx, data, plan.EndpointCertificate, opened.HandshakeNonce)
 }
 
@@ -170,20 +179,34 @@ func randomCryptoHandle() (handle, error) {
 }
 
 func validateUserPlan(plan candidateUserPlan) error {
-	if plan.Profile != candidateProfile || plan.RunID == "" || plan.Rendezvous == "" || plan.Slot == (handle{}) || plan.HPKEPublic == nil || plan.EndpointTrust.Roots == nil || len(plan.Payload) > maximumQueueBytes {
+	if plan.Profile != candidateProfile && plan.Profile != c3Profile || plan.RunID == "" || plan.Rendezvous == "" || plan.Slot == (handle{}) || plan.HPKEPublic == nil || plan.EndpointTrust.Roots == nil || len(plan.Payload) > maximumQueueBytes {
 		return errors.New("native C-5/C2 User plan is incomplete")
 	}
-	if len(plan.DataPath) != 3 || len(plan.IntroductionPath) != 4 || plan.DataPath[2].Address != plan.Rendezvous {
+	if plan.Stream != nil && validateStreamSpec(*plan.Stream, false) != nil || plan.Stream != nil && len(plan.Payload) != 0 {
+		return errors.New("native C-5/C2 User stream plan is invalid")
+	}
+	dataLength, introductionLength := 3, 4
+	if plan.Profile == c3Profile {
+		dataLength, introductionLength = 2, 2
+	}
+	if len(plan.DataPath) != dataLength || len(plan.IntroductionPath) != introductionLength || plan.DataPath[dataLength-1].Address != plan.Rendezvous {
 		return errors.New("native C-5/C2 User paths do not match the fixed topology")
 	}
 	return nil
 }
 
 func validateServicePlan(plan candidateServicePlan) error {
-	if plan.Profile != candidateProfile || plan.RunID == "" || plan.Rendezvous == "" || plan.Slot == (handle{}) || plan.HPKEPrivate == nil || len(plan.EndpointCertificate.Certificate) == 0 {
+	if plan.Profile != candidateProfile && plan.Profile != c3Profile || plan.RunID == "" || plan.Rendezvous == "" || plan.Slot == (handle{}) || plan.HPKEPrivate == nil || len(plan.EndpointCertificate.Certificate) == 0 {
 		return errors.New("native C-5/C2 Service plan is incomplete")
 	}
-	if len(plan.DataPath) != 3 || len(plan.IntroductionPath) != 3 || plan.DataPath[2].Address != plan.Rendezvous {
+	if plan.Stream != nil && validateStreamSpec(*plan.Stream, false) != nil {
+		return errors.New("native C-5/C2 Service stream plan is invalid")
+	}
+	dataLength, introductionLength := 3, 3
+	if plan.Profile == c3Profile {
+		dataLength, introductionLength = 2, 2
+	}
+	if len(plan.DataPath) != dataLength || len(plan.IntroductionPath) != introductionLength || plan.DataPath[dataLength-1].Address != plan.Rendezvous {
 		return errors.New("native C-5/C2 Service paths do not match the fixed topology")
 	}
 	return nil

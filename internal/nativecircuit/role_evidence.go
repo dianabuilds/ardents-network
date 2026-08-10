@@ -13,24 +13,25 @@ import (
 const nativeEvidenceSchema = "carrier-lab-native-role-evidence/v1"
 
 type roleResult struct {
-	SchemaVersion            string   `json:"schema_version"`
-	RunID                    string   `json:"run_id"`
-	Role                     string   `json:"role"`
-	Status                   string   `json:"status"`
-	TerminalResult           string   `json:"terminal_result"`
-	ConfigurationFields      []string `json:"configuration_fields"`
-	ObservedFields           []string `json:"observed_fields"`
-	TLSVersion               string   `json:"tls_version,omitempty"`
-	Curve                    string   `json:"curve,omitempty"`
-	CipherSuite              string   `json:"cipher_suite,omitempty"`
-	SessionResumed           bool     `json:"session_resumed"`
-	ApplicationBytesVerified bool     `json:"application_bytes_verified"`
-	ApplicationBytes         int      `json:"application_bytes"`
-	QueueHighWaterBytes      int      `json:"queue_high_water_bytes"`
-	ElapsedMilliseconds      int64    `json:"elapsed_milliseconds"`
-	HeapAllocBytes           uint64   `json:"heap_alloc_bytes"`
-	Goroutines               int      `json:"goroutines"`
-	Failure                  string   `json:"failure,omitempty"`
+	SchemaVersion             string   `json:"schema_version"`
+	RunID                     string   `json:"run_id"`
+	Role                      string   `json:"role"`
+	Status                    string   `json:"status"`
+	TerminalResult            string   `json:"terminal_result"`
+	ConfigurationFields       []string `json:"configuration_fields"`
+	ObservedFields            []string `json:"observed_fields"`
+	TLSVersion                string   `json:"tls_version,omitempty"`
+	Curve                     string   `json:"curve,omitempty"`
+	CipherSuite               string   `json:"cipher_suite,omitempty"`
+	SessionResumed            bool     `json:"session_resumed"`
+	ApplicationBytesVerified  bool     `json:"application_bytes_verified"`
+	ApplicationBytes          int      `json:"application_bytes"`
+	QueueHighWaterBytes       int      `json:"queue_high_water_bytes"`
+	StreamElapsedMilliseconds int64    `json:"stream_elapsed_milliseconds,omitempty"`
+	ElapsedMilliseconds       int64    `json:"elapsed_milliseconds"`
+	HeapAllocBytes            uint64   `json:"heap_alloc_bytes"`
+	Goroutines                int      `json:"goroutines"`
+	Failure                   string   `json:"failure,omitempty"`
 }
 
 func newRoleResult(config roleConfig) roleResult {
@@ -45,6 +46,7 @@ func (result *roleResult) applyEndpoint(observation endpointObservation) {
 	result.ApplicationBytesVerified = observation.ApplicationBytesVerified
 	result.ApplicationBytes = observation.ApplicationBytes
 	result.QueueHighWaterBytes = observation.QueueHighWaterBytes
+	result.StreamElapsedMilliseconds = observation.StreamElapsedMilliseconds
 }
 
 func (result *roleResult) finish(started time.Time, runErr error) {
@@ -140,8 +142,14 @@ func roleConfigurationFields(config roleConfig) []string {
 	if config.PayloadSeed != "" {
 		fields = append(fields, "payload_seed")
 	}
+	if config.StreamDirection != "" {
+		fields = append(fields, "stream_direction", "stream_seed", "stream_duration")
+	}
 	if config.Fault != "" {
 		fields = append(fields, "fault")
+	}
+	if config.DirectAddress != "" {
+		fields = append(fields, "direct_address")
 	}
 	return fields
 }

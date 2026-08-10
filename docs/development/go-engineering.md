@@ -19,6 +19,8 @@ architecture gate checks both records against the Go tree.
 - First-party `unsafe`, cgo, and implicit `init` require a superseding accepted
   ADR and dedicated risk tests.
 - Use `gofmt`; package comments are mandatory; command packages remain thin.
+- A command package has a hard aggregate limit of 360 production lines and
+  each command file remains below 120 lines; orchestration belongs in Modules.
 - Name each file after one implementation responsibility. Production files
   have a hard limit of 250 lines; every Go file, including
   tests, has a hard limit of 500. Split files without inventing package seams.

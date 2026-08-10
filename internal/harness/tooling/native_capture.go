@@ -25,9 +25,10 @@ type nativeCaptureResult struct {
 }
 
 type nativeCaptureRecord struct {
-	SHA256 string `json:"sha256"`
-	Bytes  int64  `json:"bytes"`
-	Packet bool   `json:"packet_observed"`
+	SHA256    string `json:"sha256"`
+	Bytes     int64  `json:"bytes"`
+	WireBytes uint64 `json:"wire_bytes"`
+	Packet    bool   `json:"packet_observed"`
 }
 
 type nativeCaptureProcess struct {
@@ -70,10 +71,13 @@ func runNativeCapture(config nativeToolConfig, evidenceDirectory, captureDirecto
 	for _, link := range config.Links {
 		path := filepath.Join(captureDirectory, link.Name+".pcap")
 		paths = append(paths, path)
-		addresses, err := resolveNativeCapturePeer(link.Peer, 10*time.Second)
-		if err != nil {
-			stopNativeCaptures(processes)
-			return err
+		var addresses []string
+		if !link.CaptureAll {
+			addresses, err = resolveNativeCapturePeer(link.Peer, 10*time.Second)
+			if err != nil {
+				stopNativeCaptures(processes)
+				return err
+			}
 		}
 		process, err := startNativeCapture(link, path, addresses)
 		if err != nil {
@@ -131,7 +135,7 @@ func runNativeCapture(config nativeToolConfig, evidenceDirectory, captureDirecto
 
 func startNativeCapture(link nativeCaptureLink, path string, addresses []string) (nativeCaptureProcess, error) {
 	_ = os.Remove(path)
-	arguments := []string{"-Z", "root", "-i", "any", "-n", "-U", "-s", "256", "-B", "1024", "-w", path}
+	arguments := []string{"-Z", "root", "-i", "any", "-n", "-U", "-s", "96", "-B", "1024", "-w", path}
 	arguments = append(arguments, nativeCaptureFilter(addresses)...)
 	command := exec.Command("/usr/bin/tcpdump", arguments...)
 	stderrPipe, err := command.StderrPipe()
@@ -191,5 +195,9 @@ func inspectNativeCapture(path string) (nativeCaptureRecord, error) {
 	if err != nil {
 		return nativeCaptureRecord{}, err
 	}
-	return nativeCaptureRecord{SHA256: digest, Bytes: info.Size(), Packet: true}, nil
+	wireBytes, err := pcapWireBytes(path)
+	if err != nil || wireBytes == 0 {
+		return nativeCaptureRecord{}, errors.Join(err, errors.New("native link capture has no wire bytes"))
+	}
+	return nativeCaptureRecord{SHA256: digest, Bytes: info.Size(), WireBytes: wireBytes, Packet: true}, nil
 }

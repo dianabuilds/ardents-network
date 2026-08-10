@@ -26,7 +26,8 @@ type nativeFixture struct {
 	forbiddenSentinels [][]byte
 }
 
-func prepareNativeFixture(runDirectory, runID, fault string) (nativeFixture, error) {
+func prepareNativeFixture(runDirectory, runID, fault string, workload *nativeWorkload) (nativeFixture, error) {
+	topology := topologyFor(workload)
 	root := filepath.Join(runDirectory, "native")
 	fixture := nativeFixture{
 		root: root, roleEvidence: make(map[string]string), toolEvidence: make(map[string]string),
@@ -42,8 +43,8 @@ func prepareNativeFixture(runDirectory, runID, fault string) (nativeFixture, err
 			return nativeFixture{}, err
 		}
 	}
-	hops := make(map[string]roleHop, len(nativeNodeRoles))
-	for _, role := range nativeNodeRoles {
+	hops := make(map[string]roleHop, len(topology.nodeRoles))
+	for _, role := range topology.nodeRoles {
 		directory, evidence, err := prepareRoleDirectories(root, role)
 		if err != nil {
 			return nativeFixture{}, err
@@ -78,19 +79,39 @@ func prepareNativeFixture(runDirectory, runID, fault string) (nativeFixture, err
 		return nativeFixture{}, err
 	}
 	payloadSeed := hex.EncodeToString(seedBytes)
-	payload := seededPayload(payloadSeed, 64*1024)
-	fixture.forbiddenSentinels = [][]byte{endpoint.targetMarker, payload[:32]}
+	if workload != nil {
+		payloadSeed = workload.Seed
+	}
+	payloadBytes := 64 * 1024
+	if workload != nil && workload.Kind == "stream" {
+		payloadBytes = 0
+	}
+	payloadSentinel := seededPayload(payloadSeed, 32)
+	if workload != nil && workload.Kind == "stream" {
+		payloadSentinel = seededStreamChunk(payloadSeed, 0)[:32]
+	}
+	fixture.forbiddenSentinels = [][]byte{endpoint.targetMarker, payloadSentinel}
 	if err := writeEndpointInputs(root, endpoint, hpkePrivate); err != nil {
 		return nativeFixture{}, err
 	}
-	configs := fixedNativeRoleConfigs(runID, hops, slot, endpoint.leafSHA256, payloadSeed, fault)
+	configs := fixedNativeRoleConfigs(runID, hops, slot, endpoint.leafSHA256, payloadSeed, payloadBytes, fault, workload)
 	for role, config := range configs {
 		if err := writeFixtureJSON(filepath.Join(root, "configs", role, "role.json"), config); err != nil {
 			return nativeFixture{}, err
 		}
 	}
-	if err := prepareNativeToolConfigs(&fixture, runID); err != nil {
+	if err := prepareNativeToolConfigs(&fixture, runID, topology); err != nil {
 		return nativeFixture{}, err
+	}
+	if topology.profile == "c3" {
+		if err := writeC3ComposeOverride(root); err != nil {
+			return nativeFixture{}, err
+		}
+	}
+	if topology.profile == "direct" {
+		if err := writeDirectComposeOverride(root); err != nil {
+			return nativeFixture{}, err
+		}
 	}
 	return fixture, nil
 }

@@ -2,8 +2,6 @@ package nativecircuit
 
 import (
 	"context"
-	"encoding/binary"
-	"io"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -65,29 +63,5 @@ func TestJoinedRouteRejectsModifiedProtectedRecord(t *testing.T) {
 	}
 	if observation.ApplicationBytesVerified {
 		t.Fatal("modified protected bytes reached the Application stream")
-	}
-}
-
-func copyNativeTLSRecords(reader io.Reader, writer io.Writer, inspect func(byte, []byte)) error {
-	for {
-		header := make([]byte, 5)
-		if _, err := io.ReadFull(reader, header); err != nil {
-			return err
-		}
-		size := int(binary.BigEndian.Uint16(header[3:5]))
-		if size < 1 || size > 18*1024 {
-			return io.ErrUnexpectedEOF
-		}
-		payload := make([]byte, size)
-		if _, err := io.ReadFull(reader, payload); err != nil {
-			return err
-		}
-		inspect(header[0], payload)
-		if err := writeAll(writer, header); err != nil {
-			return err
-		}
-		if err := writeAll(writer, payload); err != nil {
-			return err
-		}
 	}
 }

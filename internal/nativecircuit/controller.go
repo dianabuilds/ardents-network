@@ -22,24 +22,43 @@ type nativeRunLayout struct {
 }
 
 type nativeRunSummary struct {
-	SchemaVersion    string                      `json:"schema_version"`
-	RunID            string                      `json:"run_id"`
-	Profile          string                      `json:"profile"`
-	Classification   string                      `json:"classification"`
-	Status           string                      `json:"status"`
-	Verdict          string                      `json:"verdict"`
-	Checks           map[string]bool             `json:"checks"`
-	ApplicationImage string                      `json:"application_image"`
-	ToolImage        string                      `json:"tool_image"`
-	ImageReceipt     *tooling.NativeImageReceipt `json:"image_receipt,omitempty"`
-	Fault            string                      `json:"fault,omitempty"`
-	Failure          string                      `json:"failure,omitempty"`
+	SchemaVersion       string                      `json:"schema_version"`
+	RunID               string                      `json:"run_id"`
+	Profile             string                      `json:"profile"`
+	Classification      string                      `json:"classification"`
+	Status              string                      `json:"status"`
+	Verdict             string                      `json:"verdict"`
+	Checks              map[string]bool             `json:"checks"`
+	ApplicationImage    string                      `json:"application_image"`
+	ToolImage           string                      `json:"tool_image"`
+	ImageReceipt        *tooling.NativeImageReceipt `json:"image_receipt,omitempty"`
+	Fault               string                      `json:"fault,omitempty"`
+	Failure             string                      `json:"failure,omitempty"`
+	Workload            *nativeWorkload             `json:"workload,omitempty"`
+	SetupMilliseconds   int64                       `json:"setup_milliseconds"`
+	FailureMilliseconds int64                       `json:"failure_milliseconds,omitempty"`
 }
 
 // Run owns one native C-5/C2 development smoke lifecycle. It proves the fixed
 // topology, protected stream, real per-link shaping/capture, evidence, and
 // cleanup; it does not claim the full R-013 sampling verdict.
 func Run(ctx context.Context, identity preflight.RunLayout, applicationImage, toolImage, fault string) (evidenceDir string, runErr error) {
+	return runNative(ctx, identity, applicationImage, toolImage, fault, nil)
+}
+
+// RunWorkload owns one exact setup or 60-second stream attempt for the frozen
+// R-013 comparative experiment. The immutable images are supplied by ID and
+// never built by this function.
+func RunWorkload(ctx context.Context, identity preflight.RunLayout, applicationImage, toolImage, workloadPath string) (evidenceDir string, runErr error) {
+	workload, err := readNativeWorkload(workloadPath)
+	if err != nil {
+		return "", err
+	}
+	return runNative(ctx, identity, applicationImage, toolImage, "", &workload)
+}
+
+func runNative(ctx context.Context, identity preflight.RunLayout, applicationImage, toolImage, fault string, workload *nativeWorkload) (evidenceDir string, runErr error) {
+	topology := topologyFor(workload)
 	layout, err := openNativeRunLayout(identity, false, false)
 	if err != nil {
 		return "", err
@@ -58,17 +77,24 @@ func Run(ctx context.Context, identity preflight.RunLayout, applicationImage, to
 	if _, err := openNativeRunLayout(identity, true, true); err != nil {
 		return "", err
 	}
-	fixture, err := prepareNativeFixture(layout.runDirectory, layout.runID, fault)
+	fixture, err := prepareNativeFixture(layout.runDirectory, layout.runID, fault, workload)
 	if err != nil {
 		return layout.evidenceDir, err
 	}
 	project := nativeProjectName(layout.runID)
 	environment := nativeEnvironment(fixture, applicationImage, toolImage)
+	roleProfile := candidateProfile
+	if topology.profile == "c3" {
+		roleProfile = c3Profile
+	} else if topology.profile == "direct" {
+		roleProfile = directProfile
+	}
 	summary := nativeRunSummary{
-		SchemaVersion: nativeRunSchema, RunID: layout.runID, Profile: candidateProfile,
+		SchemaVersion: nativeRunSchema, RunID: layout.runID, Profile: roleProfile,
 		Classification: nativeRunnerClassification(), Status: "failed", Verdict: "invalid",
 		ApplicationImage: applicationImage, ToolImage: toolImage, Fault: fault,
-		Checks: nativeRunChecks(fault),
+		Checks:   nativeRunChecks(fault),
+		Workload: workload,
 	}
 	evidenceDir = layout.evidenceDir
 	defer func() { runErr = finishNativeRun(layout, fixture, project, environment, &summary, runErr) }()
@@ -81,10 +107,10 @@ func Run(ctx context.Context, identity preflight.RunLayout, applicationImage, to
 	if _, err := nativeCompose(ctx, layout, project, environment, "up", "--detach", "--no-build", "--pull", "never"); err != nil {
 		return evidenceDir, err
 	}
-	if err := waitNativeReady(ctx, fixture, initialNativeReadyPaths(fixture), 30*time.Second); err != nil {
+	if err := waitNativeReady(ctx, fixture, initialNativeReadyPaths(fixture, topology), 30*time.Second); err != nil {
 		return evidenceDir, err
 	}
-	inspection, err := inspectNativeProject(ctx, layout, project, environment)
+	inspection, err := inspectNativeProject(ctx, layout, project, environment, topology)
 	if err != nil {
 		return evidenceDir, err
 	}
@@ -99,17 +125,56 @@ func Run(ctx context.Context, identity preflight.RunLayout, applicationImage, to
 	if err := waitNativeReady(ctx, fixture, []string{filepath.Join(fixture.roleEvidence["service"], "ready.json")}, 15*time.Second); err != nil {
 		return evidenceDir, err
 	}
+	var sampler *resourceSampler
+	if workload != nil && workload.Kind == "stream" {
+		states, err := inspectNativeServiceStates(ctx, layout, project, environment)
+		if err != nil {
+			return evidenceDir, err
+		}
+		roles := make(map[string]string, len(topology.applicationRoles))
+		for _, role := range topology.applicationRoles {
+			container, found := states[role]
+			if !found {
+				return evidenceDir, errors.New("native resource sampler process set is incomplete")
+			}
+			roles[container.ID] = role
+		}
+		sampler = startResourceSampler(ctx, roles)
+		defer sampler.stop()
+	}
 	if err := writeControlMarker(fixture.controlDirectory, "user-start"); err != nil {
 		return evidenceDir, err
 	}
+	setupStarted := time.Now()
+	if err := waitNativeReady(ctx, fixture, []string{filepath.Join(fixture.roleEvidence["user"], "setup-ready.json")}, 30*time.Second); err != nil {
+		return evidenceDir, err
+	}
+	summary.SetupMilliseconds = time.Since(setupStarted).Milliseconds()
 	if fault == "rendezvous-process" {
 		return evidenceDir, runNativeRendezvousFailure(ctx, layout, fixture, project, environment, &summary)
+	}
+	attemptTimeout := 30 * time.Second
+	if workload != nil && workload.Kind == "stream" {
+		attemptTimeout = 90 * time.Second
 	}
 	if err := waitNativeReady(ctx, fixture, []string{
 		filepath.Join(fixture.roleEvidence["user"], "attempt-ready.json"),
 		filepath.Join(fixture.roleEvidence["service"], "attempt-ready.json"),
-	}, 30*time.Second); err != nil {
+	}, attemptTimeout); err != nil {
 		return evidenceDir, err
+	}
+	if sampler != nil {
+		samples, err := sampler.stop()
+		if err != nil || len(samples) == 0 {
+			return evidenceDir, errors.Join(err, errors.New("native resource samples are incomplete"))
+		}
+		data, err := marshalResourceSamples(samples)
+		if err != nil {
+			return evidenceDir, err
+		}
+		if err := os.WriteFile(filepath.Join(layout.evidenceDir, "resource-samples.json"), append(data, '\n'), 0o600); err != nil {
+			return evidenceDir, err
+		}
 	}
 	if err := writeControlMarker(fixture.controlDirectory, "stop"); err != nil {
 		return evidenceDir, err
@@ -117,14 +182,14 @@ func Run(ctx context.Context, identity preflight.RunLayout, applicationImage, to
 	if err := waitNativeReady(ctx, fixture, nativeCaptureReadyPaths(fixture), 30*time.Second); err != nil {
 		return evidenceDir, err
 	}
-	if err := inspectForbiddenSentinels(fixture.captureDirectory, fixture.forbiddenSentinels); err != nil {
+	if err := inspectForbiddenSentinels(fixture.captureDirectory, fixture.forbiddenSentinels, len(topology.networkRoles)); err != nil {
 		return evidenceDir, err
 	}
 	summary.Checks["forbidden_sentinels_absent"] = true
 	if err := writeControlMarker(fixture.controlDirectory, "capture-cleanup"); err != nil {
 		return evidenceDir, err
 	}
-	if err := waitNativeServices(ctx, layout, project, environment, nativeComposeServices(), 30*time.Second); err != nil {
+	if err := waitNativeServices(ctx, layout, project, environment, topology.services(), 30*time.Second); err != nil {
 		return evidenceDir, err
 	}
 	if err := collectNativeEvidence(fixture, layout.evidenceDir, &summary); err != nil {

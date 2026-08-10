@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"time"
 )
 
 const nativeRoleSchema = "carrier-lab-native-role/v1"
@@ -42,7 +43,11 @@ type roleConfig struct {
 	EndpointPrivateKey  string    `json:"endpoint_private_key_path,omitempty"`
 	PayloadSeed         string    `json:"payload_seed,omitempty"`
 	PayloadBytes        int       `json:"payload_bytes,omitempty"`
+	StreamDirection     string    `json:"stream_direction,omitempty"`
+	StreamSeed          string    `json:"stream_seed,omitempty"`
+	StreamDuration      int       `json:"stream_duration_seconds,omitempty"`
 	Fault               string    `json:"fault,omitempty"`
+	DirectAddress       string    `json:"direct_address,omitempty"`
 }
 
 // RunRole executes one fixed native C-5/C2 role from a role-local data-only
@@ -80,6 +85,9 @@ func readRoleConfig(path string) (roleConfig, error) {
 }
 
 func validateRoleConfig(config roleConfig) error {
+	if config.Profile == directProfile {
+		return validateDirectRoleConfig(config)
+	}
 	if isRelayRole(config.Role) || config.Role == "rendezvous" || config.Role == "introduction-node" {
 		if config.ListenAddress == "" || config.CertificatePath == "" || config.PrivateKeyPath == "" || config.ExpectedConnections < 1 {
 			return errors.New("native Node role configuration is incomplete")
@@ -114,23 +122,60 @@ func hasEndpointKnowledge(config roleConfig) bool {
 	return config.StartPath != "" || config.Profile != "" || config.Rendezvous != "" || config.SlotHex != "" ||
 		len(config.IntroductionPath) != 0 || len(config.DataPath) != 0 || config.HPKEPublicPath != "" ||
 		config.HPKEPrivatePath != "" || config.TargetRootPath != "" || config.ExpectedLeafSHA256 != "" ||
-		config.EndpointCertificate != "" || config.EndpointPrivateKey != "" || config.PayloadSeed != "" || config.PayloadBytes != 0 || config.Fault != ""
+		config.EndpointCertificate != "" || config.EndpointPrivateKey != "" || config.PayloadSeed != "" || config.PayloadBytes != 0 ||
+		config.StreamDirection != "" || config.StreamSeed != "" || config.StreamDuration != 0 || config.DirectAddress != "" || config.Fault != ""
+
+}
+
+func validateDirectRoleConfig(config roleConfig) error {
+	if config.Role != "user" && config.Role != "service" || config.DirectAddress == "" || config.SlotHex == "" {
+		return errors.New("native Direct role configuration is incomplete")
+	}
+	streaming := config.StreamDirection != "" || config.StreamSeed != "" || config.StreamDuration != 0
+	streamValid := validateStreamSpec(streamSpec{Direction: config.StreamDirection, Seed: config.StreamSeed, Duration: time.Duration(config.StreamDuration) * time.Second}, false) == nil
+	if streaming && !streamValid {
+		return errors.New("native Direct stream configuration is invalid")
+	}
+	if config.Role == "user" {
+		payloadValid := config.PayloadSeed != "" && config.PayloadBytes >= 1 && config.PayloadBytes <= maximumQueueBytes
+		if config.TargetRootPath == "" || config.ExpectedLeafSHA256 == "" || !streaming && !payloadValid || config.EndpointCertificate != "" || config.EndpointPrivateKey != "" {
+			return errors.New("native Direct User knowledge is invalid")
+		}
+		return nil
+	}
+	if config.EndpointCertificate == "" || config.EndpointPrivateKey == "" || config.TargetRootPath != "" || config.ExpectedLeafSHA256 != "" || config.PayloadSeed != "" || config.PayloadBytes != 0 {
+		return errors.New("native Direct Service knowledge is invalid")
+	}
+	return nil
 }
 
 func validateEndpointRoleConfig(config roleConfig) error {
 	if config.ListenAddress != "" || config.CertificatePath != "" || config.PrivateKeyPath != "" || len(config.AllowedNext) != 0 || config.ExpectedConnections != 0 {
 		return errors.New("native endpoint received ordinary Node configuration")
 	}
-	if config.StartPath == "" || config.Profile != candidateProfile || config.Rendezvous == "" || config.SlotHex == "" {
+	if config.StartPath == "" || config.Profile != candidateProfile && config.Profile != c3Profile || config.Rendezvous == "" || config.SlotHex == "" {
 		return errors.New("native endpoint route configuration is incomplete")
 	}
 	if config.Role == "user" {
-		if len(config.DataPath) != 3 || len(config.IntroductionPath) != 4 || config.HPKEPublicPath == "" || config.TargetRootPath == "" || config.ExpectedLeafSHA256 == "" || config.PayloadSeed == "" || config.PayloadBytes < 1 || config.PayloadBytes > maximumQueueBytes || config.HPKEPrivatePath != "" || config.EndpointPrivateKey != "" || config.Fault != "" && config.Fault != "rendezvous-process" {
+		dataLength, introductionLength := 3, 4
+		if config.Profile == c3Profile {
+			dataLength, introductionLength = 2, 2
+		}
+		streaming := config.StreamDirection != "" || config.StreamSeed != "" || config.StreamDuration != 0
+		streamValid := validateStreamSpec(streamSpec{Direction: config.StreamDirection, Seed: config.StreamSeed, Duration: time.Duration(config.StreamDuration) * time.Second}, false) == nil
+		payloadValid := config.PayloadSeed != "" && config.PayloadBytes >= 1 && config.PayloadBytes <= maximumQueueBytes
+		if len(config.DataPath) != dataLength || len(config.IntroductionPath) != introductionLength || config.HPKEPublicPath == "" || config.TargetRootPath == "" || config.ExpectedLeafSHA256 == "" || streaming && !streamValid || !streaming && !payloadValid || streaming && (config.PayloadSeed != "" || config.PayloadBytes != 0) || config.HPKEPrivatePath != "" || config.EndpointPrivateKey != "" || config.Fault != "" && config.Fault != "rendezvous-process" {
 			return errors.New("native User configuration violates the fixed knowledge boundary")
 		}
 		return nil
 	}
-	if len(config.DataPath) != 3 || len(config.IntroductionPath) != 3 || config.HPKEPrivatePath == "" || config.EndpointCertificate == "" || config.EndpointPrivateKey == "" || config.HPKEPublicPath != "" || config.TargetRootPath != "" || config.ExpectedLeafSHA256 != "" || config.PayloadSeed != "" || config.PayloadBytes != 0 || config.Fault != "" {
+	streaming := config.StreamDirection != "" || config.StreamSeed != "" || config.StreamDuration != 0
+	streamValid := validateStreamSpec(streamSpec{Direction: config.StreamDirection, Seed: config.StreamSeed, Duration: time.Duration(config.StreamDuration) * time.Second}, false) == nil
+	dataLength, introductionLength := 3, 3
+	if config.Profile == c3Profile {
+		dataLength, introductionLength = 2, 2
+	}
+	if len(config.DataPath) != dataLength || len(config.IntroductionPath) != introductionLength || config.HPKEPrivatePath == "" || config.EndpointCertificate == "" || config.EndpointPrivateKey == "" || config.HPKEPublicPath != "" || config.TargetRootPath != "" || config.ExpectedLeafSHA256 != "" || config.PayloadSeed != "" || config.PayloadBytes != 0 || streaming && !streamValid || config.Fault != "" {
 		return errors.New("native Service configuration violates the fixed knowledge boundary")
 	}
 	return nil

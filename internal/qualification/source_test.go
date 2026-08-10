@@ -15,7 +15,7 @@ func TestSourceSHA256BindsCodeTestsAndInfrastructure(t *testing.T) {
 		}
 	}
 	files := map[string]string{
-		".dockerignore": "**\n", ".github/workflows/quality.yml": "name: quality\n",
+		".dockerignore": "**\n", ".github/workflows/carrier-lab.yml": "name: carrier-lab\n", ".github/workflows/quality.yml": "name: quality\n",
 		".githooks/pre-commit": "make quick-check\n", "AGENTS.md": "rules\n",
 		"CONTRIBUTING.md": "workflow\n", "Makefile": "check:\n", "README.md": "project\n",
 		"go.mod": "module example.test/lab\n\ngo 1.26.0\n", "carrier-lab/Dockerfile": "FROM scratch\n",

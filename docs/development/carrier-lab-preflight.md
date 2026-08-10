@@ -311,6 +311,44 @@ timed bidirectional streams, Direct/C-3 measurements, the full workload form of
 the process-failure condition, and later Tor/Chutney reference remain a separate
 experiment run.
 
+### Complete R-013 route experiment
+
+The manual `Carrier Lab R-013` GitHub workflow is the canonical runner. It uses
+native Ubuntu 26.04 `x86-64`, runs `make check`, prepares every external input
+from the two lock files, and then builds the `application` and `tooling` targets
+once. All 78 positive attempts and seven negative cases reuse those immutable
+image IDs with Compose `--no-build --pull never`.
+
+Direct, C-3, and C-5/C2 are runtime profiles of the same binary and committed
+`carrier-lab/compose.yaml`. The controller writes one bounded temporary Compose
+override inside the owned run directory for Direct or C-3; it is deleted with
+the run. It is not another maintained Compose source. Direct keeps only the
+two endpoints and one shaped internal link. C-3 keeps User Entry,
+Rendezvous, Data Service Entry, and a separate Introduction Node. Only C-5/C2
+receives the Route verdict.
+
+Preparation is the only online phase:
+
+```sh
+bash scripts/prepare-carrier-tools.sh carrier-lab/tools.lock /external/tool-bundle
+bash scripts/prepare-carrier-reference.sh carrier-lab/reference.lock /external/reference-inputs
+```
+
+The reference directory contains only verified raw `.deb` files, wheels, the
+pinned Chutney archive, and the copied lock. During the offline experiment the
+controller verifies the exact set and SHA-256 values, then extracts Tor,
+Chutney, and the three pure-Python packages into its disposable run directory.
+The Tor/Chutney process is additionally confined to a new user and network
+namespace with loopback as its only interface.
+
+The final retained evidence directory contains `input-manifest.json`, all
+bounded condition summaries, `experiment.json`, `experiment-verdict.json`, and
+`report.md`. The verdict binds both the manifest and machine result by SHA-256.
+Raw captures, credentials, generated Compose overrides, extracted reference
+software, containers, and networks are removed before completion. A decision
+is valid only on the official runner and is exactly one of `advance`,
+`redesign`, or `stop`.
+
 ## Run
 
 ```sh

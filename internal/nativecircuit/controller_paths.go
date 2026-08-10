@@ -2,9 +2,9 @@ package nativecircuit
 
 import "path/filepath"
 
-func initialNativeReadyPaths(fixture nativeFixture) []string {
-	paths := make([]string, 0, len(nativeNodeRoles)+len(fixture.toolEvidence))
-	for _, role := range nativeNodeRoles {
+func initialNativeReadyPaths(fixture nativeFixture, topology nativeTopology) []string {
+	paths := make([]string, 0, len(topology.nodeRoles)+len(fixture.toolEvidence))
+	for _, role := range topology.nodeRoles {
 		paths = append(paths, filepath.Join(fixture.roleEvidence[role], "ready.json"))
 	}
 	for _, directory := range fixture.toolEvidence {
@@ -21,15 +21,4 @@ func nativeCaptureReadyPaths(fixture nativeFixture) []string {
 		}
 	}
 	return paths
-}
-
-func nativeComposeServices() []string {
-	services := append([]string(nil), nativeApplicationRoles...)
-	for _, role := range nativeApplicationRoles {
-		services = append(services, "shape-"+role)
-	}
-	for _, role := range []string{"user", "user-entry", "user-interior", "rendezvous", "service-interior", "data-service-entry", "introduction-forwarder", "introduction-node", "introduction-interior", "introduction-entry"} {
-		services = append(services, "capture-"+role)
-	}
-	return services
 }
