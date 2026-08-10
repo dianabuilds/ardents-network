@@ -6,7 +6,56 @@ maintenance and security signals, alternatives considered, and removal plan.
 
 ## Current runtime dependencies
 
-None. The project currently uses the Go standard library only.
+The maintained product-shaped Modules still use the Go standard library only.
+Gate C adds the following exact runtime closure solely to the maintained
+`internal/siteexperiment` laboratory Module. The dependency is selected by
+[R-026](../research/records/r-026-private-resolution-adapter.md); it must enter
+`go.mod` as this reviewed set rather than as the vulnerable versions declared
+by `openpcc/ohttp v0.0.80`.
+
+| Module | Reviewed version | License | Gate C purpose |
+|---|---:|---|---|
+| `github.com/openpcc/ohttp` | `v0.0.80`, commit `79bec89d804248df1a71a0f56c882b116579035d` | Apache-2.0 | RFC 9458 client and Gateway encapsulation |
+| `github.com/openpcc/twoway` | `v0.0.73` | Apache-2.0 | request/response HPKE context used by OHTTP |
+| `github.com/openpcc/bhttp` | `v0.0.73` | Apache-2.0 | RFC 9292 known-length HTTP encoding |
+| `github.com/cloudflare/circl` | `v1.6.3` | BSD-3-Clause | reviewed HPKE implementation; raised from vulnerable `v1.6.1` |
+| `github.com/quic-go/quic-go` | `v0.57.1` | MIT | QUIC varint implementation required by BHTTP |
+| `github.com/cespare/xxhash/v2` | `v2.3.0` | MIT | tracing dependency closure |
+| `go.opentelemetry.io/otel` | `v1.39.0` | Apache-2.0 | OHTTP tracing types; Gate C emits no external telemetry |
+| `go.opentelemetry.io/otel/trace` | `v1.39.0` | Apache-2.0 | OHTTP tracing Interface |
+| `golang.org/x/crypto` | `v0.51.0` | BSD-3-Clause | selected cryptographic support closure |
+| `golang.org/x/net` | `v0.55.0` | BSD-3-Clause | BHTTP HTTP support; raised from vulnerable `v0.48.0` |
+| `golang.org/x/sys` | `v0.45.0` | BSD-3-Clause | platform support selected by the fixed closure |
+| `golang.org/x/text` | `v0.39.0` | BSD-3-Clause | BHTTP normalization; raised from vulnerable `v0.32.0` |
+
+**Need and owner:** RFC 9458 is the accepted external-first Private Resolution
+shape. `internal/siteexperiment` is the sole first-party owner and imports the
+OHTTP/CIRCL Interface; no product Module may import it.
+
+**Maintenance and security review:** `openpcc/ohttp` has versioned releases, an
+Apache-2.0 license, tests including RFC vectors and malformed inputs, and a
+published security contact. Its selected tag predates three now-known reachable
+dependency advisories, so the raised versions above are mandatory. On Go
+1.26.5 the exact set passes checksums, upstream and independent role-view tests,
+offline build/test with cgo disabled, and reachable `govulncheck`. The reachable
+Go packages have no cgo files or `unsafe` imports. CIRCL contains optimized
+assembly behind portable Go APIs; Gate C selects no custom cryptographic suite.
+
+**Alternatives:** `chris-wood/ohttp-go` at commit `776f22a178b8` has a smaller
+MIT/BSD closure and passes after CIRCL is raised to `v1.6.3`, but has no release
+and declares its implementation/API experimental. First-party OHTTP/PIR, local
+lookup, direct/DNS/HTTP resolution, alternate Namespace, and cached-success
+fallback are rejected.
+
+**Offline supply:** an explicit preparation step runs `go mod download` and
+`go mod verify` outside the repository, then supplies a temporary vendor context
+to a Docker build with `--network=none`. No vendor tree, module cache, generated
+dependency, or Gateway key is committed.
+
+**Removal plan:** the complete closure leaves with the Gate C OHTTP Adapter. A
+changed version or dependency graph repeats R-026; an unremediated reachable
+high/critical vulnerability, unacceptable license, offline-build failure, or
+broken role split selects `stop`, not a fork.
 
 The native Carrier Lab candidate uses the Go 1.26 standard-library
 `crypto/hpke`, `crypto/tls`, `crypto/x509`, and `crypto/ecdh` implementations.

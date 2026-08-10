@@ -1,7 +1,7 @@
 ---
 id: R-026
 title: Can an existing OHTTP implementation support Gate C Private Resolution?
-status: active
+status: decided
 owner: product research
 started: 2026-08-10
 reviewed: 2026-08-10
@@ -186,7 +186,77 @@ the product contract.
 
 ## Disposition
 
-- State: `active`; criteria frozen before prototype execution.
-- No root dependency selected and no root module change authorized yet.
-- Next action: run the external candidate evaluation and append exact
-  measurements, recommendation, and dependency disposition here.
+- State: `decided` for the bounded Gate C experiment.
+- Selected Adapter dependency: `github.com/openpcc/ohttp v0.0.80`, source
+  commit `79bec89d804248df1a71a0f56c882b116579035d`, module sum
+  `h1:LsDWRCU55vfI+mes1zuMGGKDZ8MsgbnlEr9IDd6jG9Y=`.
+- The dependency register fixes the complete selected runtime closure and the
+  raised security versions that must enter `go.mod` together.
+- R-026 does not select a production resolver, public protocol, Gateway
+  operator, Namespace mechanism, or privacy claim. A changed dependency or
+  closure requires this gate to be repeated.
+
+## Candidate measurements and decision — 2026-08-10
+
+The external prototype used Go 1.26.5 on Windows `amd64` only to evaluate the
+portable Go modules before the official Ubuntu run. Both modules were retrieved
+into owned system-temporary modules; root `go.mod` and `go.sum` were unchanged
+during evaluation.
+
+### O1 measurements — selected
+
+- **Measurement:** Go proxy resolved `github.com/openpcc/ohttp v0.0.80` to
+  commit `79bec89d804248df1a71a0f56c882b116579035d`; `go mod verify` passed.
+- **Measurement:** the upstream package and RFC vector tests passed on Go
+  1.26.5 with `CGO_ENABLED=0`. After the complete cache was prepared, the same
+  tests and package build passed with `GOPROXY=off` and `GOSUMDB=off`.
+- **Measurement:** the version's declared closure initially had three reachable
+  advisories: GO-2026-5970 in `x/text v0.32.0`, GO-2026-5026 in
+  `x/net v0.48.0`, and GO-2026-4550 in CIRCL `v1.6.1`. Raising CIRCL to
+  `v1.6.3`, `x/net` to `v0.55.0`, `x/text` to `v0.39.0`, and their selected
+  `x/crypto`/`x/sys` closure removed every reachable finding. The repeated
+  `govulncheck github.com/openpcc/ohttp` result was zero.
+- **Measurement:** an independent client→Relay→Gateway test sent an exact
+  4096-byte plaintext containing the fixed Name and a lookup marker. Relay
+  bytes contained neither marker; Gateway received the exact plaintext from a
+  Relay-origin connection; modifying the encapsulated response was rejected.
+- **Measurement:** the reachable package closure has no cgo files and no Go
+  source import of `unsafe`. Its 12 third-party modules have Apache-2.0, MIT, or
+  BSD-family licenses recorded with exact versions in the dependency register.
+- **Limitation:** the library provides no Relay, key distribution, signed
+  application records, deadline/replay store, fixed-size padding policy, or
+  product binding. Gate C must own those behaviors and test them independently.
+- **Limitation:** `openpcc/ohttp` brings BHTTP, two-way HPKE, QUIC varint, and
+  telemetry modules beyond the small OHTTP core. This is accepted only for the
+  maintained experiment; the Adapter remains private to `siteexperiment` so
+  the complete closure can be removed with that Module.
+
+### O2 measurements — reference, not selected
+
+- **Measurement:** Go proxy resolved the latest reference to
+  `github.com/chris-wood/ohttp-go` commit
+  `776f22a178b8332f4acacc2919176df8e61046cc`, module sum
+  `h1:M3jyHgFxzohWoxsZB1rTlfEN9qG8xMthhfBFP1kZtqo=`.
+- **Measurement:** its upstream tests passed on Go 1.26.5 with cgo disabled.
+  The declared 2023 CIRCL pseudo-version produced four reachable findings;
+  raising CIRCL to `v1.6.3` and matching `x/crypto`/`x/sys` removed them, and
+  online plus offline tests still passed.
+- **Sourced fact:** upstream publishes no release and explicitly warns that the
+  code and API are experimental and may change.
+- **Inference:** its smaller closure is attractive, but the maintenance and API
+  signal is weaker than the versioned primary candidate. It remains a reference
+  for vectors and behavior, not a second maintained Adapter.
+
+### Recommendation after experiment
+
+Choose O1 with the exact raised closure. Confidence is medium-high for Gate C:
+the external evidence proves the required cryptographic transport shape and
+supply reproducibility, while the retained Module tests must still prove
+application authentication, freshness, replay, fixed-size envelopes, role
+views, migration, and fail-closed behavior.
+
+The strongest remaining objection is dependency breadth. It is bounded by one
+private experiment Adapter, exact versions, offline preparation, no vendor tree
+in Git, a complete `make check`/`govulncheck` gate, and a removal plan. If a
+future update cannot retain those properties, Gate C stops rather than forking
+or reimplementing OHTTP.
