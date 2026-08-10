@@ -2,11 +2,39 @@ package routeexperiment
 
 import (
 	"context"
+	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
 )
+
+func TestReferenceTemporaryDataPathLeavesTheRepository(t *testing.T) {
+	t.Parallel()
+	directory, err := os.MkdirTemp("", "ar-r013-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(directory) })
+	repository, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	directory, err = filepath.Abs(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.HasPrefix(directory+string(filepath.Separator), repository+string(filepath.Separator)) {
+		t.Fatalf("reference data directory must be outside the repository: %s", directory)
+	}
+	if runtime.GOOS != "windows" {
+		controlSocket := filepath.Join(directory, "nodes.2147483647", "004ba", "control")
+		if len(controlSocket) >= 108 {
+			t.Fatalf("Tor control socket path exceeds the Unix socket limit: %s", controlSocket)
+		}
+	}
+}
 
 func TestReferenceLockNamesExactExternalClosure(t *testing.T) {
 	t.Parallel()

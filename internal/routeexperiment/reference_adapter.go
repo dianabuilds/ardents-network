@@ -43,12 +43,17 @@ func runTorReference(ctx context.Context, identity preflight.RunLayout, manifest
 	if err := os.Mkdir(referenceHome, 0o700); err != nil {
 		return referenceResult{}, err
 	}
+	referenceData, err := os.MkdirTemp("", "ar-r013-")
+	if err != nil {
+		return referenceResult{}, fmt.Errorf("create short Tor reference data directory: %w", err)
+	}
+	defer os.RemoveAll(referenceData)
 	referenceEnvironment := []string{
 		"HOME=" + referenceHome,
 		"LD_LIBRARY_PATH=" + libraryPath,
 		"PYTHONPATH=" + pythonPackages + ":" + filepath.Join(chutney, "lib"),
 		"CHUTNEY_PATH=" + chutney, "CHUTNEY_TOR=" + tor, "CHUTNEY_TOR_GENCERT=" + gencert,
-		"CHUTNEY_DATA_DIR=" + filepath.Join(runDirectory, "tor-network"), "CHUTNEY_DNS_CONF=/dev/null",
+		"CHUTNEY_DATA_DIR=" + referenceData, "CHUTNEY_DNS_CONF=/dev/null",
 	}
 	environment := append(os.Environ(), referenceEnvironment...)
 	torVersion, err := observedReferenceVersion(ctx, environment, tor, "--version")
