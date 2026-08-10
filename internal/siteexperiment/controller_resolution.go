@@ -2,7 +2,6 @@ package siteexperiment
 
 import (
 	"bytes"
-	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -11,7 +10,6 @@ import (
 
 type activeResolver struct {
 	transport http.RoundTripper
-	fixture   *authorityFixture
 	gateway   *httptest.Server
 	relay     *httptest.Server
 }
@@ -54,27 +52,10 @@ func openActiveResolver(fixture *authorityFixture, now time.Time) (*activeResolv
 		gateway.Close()
 		return nil, err
 	}
-	return &activeResolver{transport: transport, fixture: fixture, gateway: gateway, relay: relay}, nil
+	return &activeResolver{transport: transport, gateway: gateway, relay: relay}, nil
 }
 
 func (resolver *activeResolver) close() {
 	resolver.relay.Close()
 	resolver.gateway.Close()
-}
-
-func (resolver *activeResolver) resolve(ctx context.Context, now time.Time) (fixtureRecord, fixtureRecord, error) {
-	nameData, nameNonce, err := resolveMessage(ctx, resolver.transport, "name", "site.reference", resolver.fixture.runID, resolver.fixture.networkID, now)
-	if err != nil {
-		return fixtureRecord{}, fixtureRecord{}, err
-	}
-	name, err := verifyNameRecord(nameData, resolver.fixture.namePublic, resolver.fixture.runID, resolver.fixture.networkID, nameNonce, now)
-	if err != nil {
-		return fixtureRecord{}, fixtureRecord{}, err
-	}
-	descriptorData, descriptorNonce, err := resolveMessage(ctx, resolver.transport, "reachability", name.Target, resolver.fixture.runID, resolver.fixture.networkID, now)
-	if err != nil {
-		return fixtureRecord{}, fixtureRecord{}, err
-	}
-	descriptor, err := verifyDescriptor(descriptorData, resolver.fixture.servicePublic, resolver.fixture.runID, resolver.fixture.networkID, descriptorNonce, name.Target, resolver.fixture.instanceGeneration, now)
-	return name, descriptor, err
 }

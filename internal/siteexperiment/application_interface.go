@@ -173,10 +173,37 @@ func readConnectResponse(reader io.Reader) (connectResponse, error) {
 	decoder := json.NewDecoder(bytes.NewReader(payload))
 	decoder.DisallowUnknownFields()
 	var response connectResponse
-	if err := decoder.Decode(&response); err != nil || response.Schema != applicationInterfaceSchema {
+	if err := decoder.Decode(&response); err != nil {
 		return connectResponse{}, errors.New("application response is invalid")
 	}
+	var extra any
+	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
+		return connectResponse{}, errors.New("application response has trailing data")
+	}
+	if err := validateConnectResponse(response); err != nil {
+		return connectResponse{}, err
+	}
 	return response, nil
+}
+
+func validateConnectResponse(response connectResponse) error {
+	if response.Schema != applicationInterfaceSchema {
+		return errors.New("application response schema is invalid")
+	}
+	switch response.Status {
+	case "connected":
+		if response.Target == "" || response.NameGeneration == 0 || response.NameRevision == 0 || response.InstanceGeneration == 0 || response.Class != "" {
+			return errors.New("connected application response is incomplete or contradictory")
+		}
+	case "failed":
+		validClass := validFailureClass(response.Class) || response.Class == "invalid_request"
+		if !validClass || response.Target != "" || response.NameGeneration != 0 || response.NameRevision != 0 || response.InstanceGeneration != 0 {
+			return errors.New("failed application response is incomplete or contradictory")
+		}
+	default:
+		return errors.New("application response status is invalid")
+	}
+	return nil
 }
 
 func proxyOpaqueStream(ctx context.Context, left, right io.ReadWriteCloser) error {

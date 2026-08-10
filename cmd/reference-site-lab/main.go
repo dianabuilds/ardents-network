@@ -24,6 +24,20 @@ func run(arguments []string) int {
 	if arguments[0] == "run" {
 		return runGateC(arguments[1:])
 	}
+	if arguments[0] == "probe" {
+		flags := flag.NewFlagSet("probe", flag.ContinueOnError)
+		kind := flags.String("kind", "", "closed isolation probe")
+		observerName := flags.String("observer-name", "", "controlled forbidden-boundary observer name")
+		observerAddress := flags.String("observer-address", "", "controlled forbidden-boundary observer address")
+		if flags.Parse(arguments[1:]) != nil || flags.NArg() != 0 {
+			return 2
+		}
+		if err := siteexperiment.RunRole(context.Background(), "isolation-probe", siteexperiment.RoleConfig{ProbeKind: *kind, ObserverName: *observerName, ObserverAddress: *observerAddress}); err != nil {
+			fmt.Fprintf(os.Stderr, "reference-site-lab: %v\n", err)
+			return 1
+		}
+		return 0
+	}
 	if arguments[0] != "role" {
 		return 2
 	}
@@ -31,11 +45,16 @@ func run(arguments []string) int {
 	flags.SetOutput(os.Stderr)
 	role := flags.String("role", "", "closed Gate C role")
 	socket := flags.String("socket", "", "owned Unix socket path")
+	gatewaySocket := flags.String("gateway-socket", "", "role-local Gateway Unix socket path")
 	nonce := flags.String("nonce", "", "32-byte canonical hex nonce")
+	configPath := flags.String("config", "", "role-local configuration")
+	evidenceDir := flags.String("evidence-dir", "", "role-local bounded evidence")
+	observerName := flags.String("observer-name", "", "controlled forbidden-boundary observer name")
+	observerAddress := flags.String("observer-address", "", "controlled forbidden-boundary observer address")
 	if err := flags.Parse(arguments[1:]); err != nil || flags.NArg() != 0 {
 		return 2
 	}
-	if err := siteexperiment.RunRole(context.Background(), *role, siteexperiment.RoleConfig{SocketPath: *socket, NonceHex: *nonce}); err != nil {
+	if err := siteexperiment.RunRole(context.Background(), *role, siteexperiment.RoleConfig{SocketPath: *socket, GatewaySocketPath: *gatewaySocket, NonceHex: *nonce, ConfigPath: *configPath, EvidenceDir: *evidenceDir, ObserverName: *observerName, ObserverAddress: *observerAddress}); err != nil {
 		fmt.Fprintf(os.Stderr, "reference-site-lab: %v\n", err)
 		return 1
 	}

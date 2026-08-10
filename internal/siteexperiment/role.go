@@ -13,8 +13,14 @@ import (
 // RoleConfig contains only the local, role-scoped inputs accepted by a Gate C
 // container process.
 type RoleConfig struct {
-	SocketPath string
-	NonceHex   string
+	SocketPath        string
+	GatewaySocketPath string
+	NonceHex          string
+	ConfigPath        string
+	EvidenceDir       string
+	ProbeKind         string
+	ObserverName      string
+	ObserverAddress   string
 }
 
 // RunRole runs one member of the closed Gate C container-role set.
@@ -28,7 +34,28 @@ func RunRole(ctx context.Context, role string, config RoleConfig) error {
 		if err != nil || len(nonce) != 32 || hex.EncodeToString(nonce) != config.NonceHex {
 			return errors.New("HTTP Application nonce must be 32 canonical bytes")
 		}
-		return runHTTPApplicationRole(ctx, config.SocketPath, nonce)
+		if err := runHTTPApplicationRole(ctx, config.SocketPath, nonce); err != nil {
+			return err
+		}
+		return writeBoundedJSON(filepath.Join(config.EvidenceDir, "http-application.json"), map[string]any{"schema_version": "gatec-http-application-evidence/v1", "status": "completed", "ordinary_listener": false})
+	case "http-client":
+		return runHTTPClientRole(ctx, config.SocketPath, config.NonceHex, config.EvidenceDir)
+	case "client-endpoint":
+		return runClientEndpointRole(ctx, config.ConfigPath, config.EvidenceDir)
+	case "resolution-relay":
+		return runResolutionRelayRole(ctx, config.EvidenceDir)
+	case "resolution-gateway":
+		return runResolutionGatewayRole(ctx, config.ConfigPath, config.SocketPath, config.EvidenceDir)
+	case "authority":
+		return runAuthorityRole(ctx, config.ConfigPath, config.SocketPath, config.GatewaySocketPath, config.EvidenceDir)
+	case "administration":
+		return runAdministrationRole(ctx, config.ConfigPath, config.SocketPath, config.EvidenceDir)
+	case "isolation-probe":
+		return runIsolationProbe(ctx, config.ProbeKind, config.ObserverName, config.ObserverAddress)
+	case "isolation-observer":
+		return runIsolationObserver(ctx)
+	case "isolation-control":
+		return runIsolationControl(ctx, config.ObserverName, config.ObserverAddress)
 	default:
 		return errors.New("role is not part of the closed Gate C set")
 	}
@@ -54,7 +81,7 @@ func runHTTPApplicationRole(ctx context.Context, socketPath string, nonce []byte
 		_ = listener.Close()
 		removeOwnedSocket(socketPath)
 	}()
-	if err := os.Chmod(socketPath, 0o600); err != nil {
+	if err := os.Chmod(socketPath, 0o666); err != nil {
 		return err
 	}
 	deadline, ok := ctx.Deadline()

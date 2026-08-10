@@ -79,17 +79,32 @@ jobs:
           go run ./cmd/reference-site-lab run --repository-root "$GITHUB_WORKSPACE" --session-root "$session" --temporary-root "$RUNNER_TEMP" --run-id "$run_id" --application-image "$(cat "$RUNNER_TEMP/application-image.id")" --tool-image "$(cat "$RUNNER_TEMP/tool-image.id")" --reference-image "$(cat "$RUNNER_TEMP/reference-image.id")" --r013-receipt "$R013_RECEIPT"
       - name: Validate terminal Gate C evidence
         run: |
-          python3 - "$GATEC_EVIDENCE/result.json" "$GATEC_SOURCE_SHA256" <<'PY'
-          import json, sys
-          with open(sys.argv[1], encoding="utf-8") as source:
-              value = json.load(source)
+          python3 - "$GATEC_EVIDENCE" "$GATEC_SOURCE_SHA256" <<'PY'
+          import hashlib, json, pathlib, sys
+          root = pathlib.Path(sys.argv[1])
+          def load(name):
+              with (root / name).open(encoding="utf-8") as source:
+                  return json.load(source)
+          value, manifest, receipt = load("result.json"), load("manifest.json"), load("receipt.json")
+          role_views, migration = load("role-views.json"), load("migration.json")
           matrix = value["matrix"]
-          if value["source_sha256"] != sys.argv[2] or not value["cleanup_complete"]:
+          if value.get("schema_version") != "gatec-result/v1" or manifest.get("schema_version") != "gatec-manifest/v1" or receipt.get("schema_version") != "gatec-receipt/v1":
+              raise SystemExit("Gate C bundle schema is invalid")
+          if value["source_sha256"] != sys.argv[2] or manifest["source_sha256"] != sys.argv[2] or not value["cleanup_complete"]:
               raise SystemExit("Gate C evidence identity or cleanup failed")
+          for name, field in (("manifest.json", "manifest_sha256"), ("result.json", "result_sha256")):
+              digest = hashlib.sha256((root / name).read_bytes()).hexdigest()
+              if receipt.get(field) != digest:
+                  raise SystemExit(f"Gate C receipt does not bind {name}")
           if matrix["verdict"] not in {"advance", "redesign", "stop"}:
               raise SystemExit(f"non-terminal Gate C verdict: {matrix}")
           if matrix["verdict"] == "advance" and (matrix["positive_passed"] != 20 or len(matrix["migrations"]) != 5 or not all(matrix["failures"].values())):
               raise SystemExit(f"invalid advance verdict: {matrix}")
+          if role_views.get("schema_version") != "gatec-role-view-summary/v1" or migration.get("schema_version") != "gatec-migration-evidence/v1" or not (root / "report.md").is_file():
+              raise SystemExit("Gate C bounded summaries are incomplete")
+          forbidden = {"key-config.bin", "vendor"}
+          if any(path.name in forbidden or path.suffix in {".pem", ".pcap", ".pcapng"} for path in root.rglob("*")):
+              raise SystemExit("Gate C artifact contains forbidden runtime or secret material")
           print(f"Gate C verdict: {matrix['verdict']}")
           PY
       - name: Upload bounded Gate C evidence

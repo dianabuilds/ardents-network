@@ -24,7 +24,7 @@ func TestRunRoleServesHTTPApplicationOnlyOnOwnedUDS(t *testing.T) {
 	defer cancel()
 	done := make(chan error, 1)
 	go func() {
-		done <- RunRole(ctx, "http-application", RoleConfig{SocketPath: socketPath, NonceHex: hex.EncodeToString(nonce)})
+		done <- RunRole(ctx, "http-application", RoleConfig{SocketPath: socketPath, NonceHex: hex.EncodeToString(nonce), EvidenceDir: ownedDirectory})
 	}()
 	var connection net.Conn
 	err = nil

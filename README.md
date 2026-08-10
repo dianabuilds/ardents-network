@@ -5,15 +5,16 @@ private, location-private, decentralized application network designed for
 hostile environments.
 
 The project is defining network contracts and validating security assumptions.
-This branch contains the maintained Go project foundation and the Carrier Lab
-preflight, but **not** production-ready networking software. The
+This branch contains the maintained Go project foundation, the completed
+Carrier Lab Route experiment, and the bounded Gate C Named Unlisted Site
+laboratory tracer, but **not** production-ready networking software. The
 previous implementation is preserved in the
 [`old`](https://github.com/dianabuilds/ardents-network/tree/old) branch as
 evidence to learn from, not an architecture to continue by default.
 
 The documents describe several delivery horizons. They are not one backlog.
-The only current implementation scope is the Ubuntu controlled **Carrier Lab**
-defined in [product scope](docs/product/scope.md); public naming, Bridges,
+The current implementation scope is the controlled Ubuntu **Gate C** terminal
+experiment defined in [product scope](docs/product/scope.md); public naming, Bridges,
 production updates, Windows qualification, multiparty control, and the complete
 release test matrix remain later promotion gates.
 

@@ -36,6 +36,7 @@ co-location grants none of them access to another zone's authority material.
 | `.github/workflows/` | Repository CI and release automation after the applicable horizon authorizes it. |
 | `.githooks/` | Optional local developer checks; CI remains authoritative. |
 | `carrier-lab/` | Four human-authored laboratory inputs: one multi-target Dockerfile, one profiled Compose topology, and two immutable locks for tool and external-reference supply. It contains no generated images, packages, captures, run state, or evidence. |
+| `reference-site/` | Two human-authored Gate C laboratory inputs: one multi-target Dockerfile and one closed-role Compose topology. It contains no generated dependencies, images, keys, sockets, run state, or evidence. |
 | repository root | Project-wide policy and build entrypoints such as `AGENTS.md`, `README.md`, `CONTEXT.md`, `go.mod`, and `Makefile`. |
 
 `packaging/`, `deployments/`, and `tests/` are permitted locations, not
@@ -61,30 +62,38 @@ The maintained tree at the time of this decision is:
 ```text
 cmd/
   carrier-lab/                 thin Carrier Lab executable adapter
+  reference-site-lab/          thin Gate C executable and role adapter
 internal/
   architecture/                executable repository and quality rules
   harness/                     Carrier Lab scenarios and lifecycle
     tooling/                   shaping/capture supply and smoke lifecycle
   preflight/                   pinned setup, verification, evidence, and cleanup
-  qualification/               final source identity for lab qualification
+  experimentrun/               owned run identity, paths, and cleanup boundary
+  experimentidentity/          shared source identity for maintained experiments
   directcontrol/               Direct TLS measurement control and wire fault
   nativecircuit/               native C-5/C2 laboratory candidate and lifecycle
   routeexperiment/             frozen R-013 sequence, metrics, verdict, and report
+  siteexperiment/              complete bounded Gate C scenario and role lifecycle
 scripts/
   check-tools.go               build-ignored developer tool-version check
   install-git-hooks.sh         local hook bootstrap
   preflight.sh                 thin host-Go launcher for the Carrier Lab bootstrap
   prepare-carrier-tools.sh     explicit online preparation of locked tool inputs
   prepare-carrier-reference.sh explicit online preparation of locked reference inputs
+  prepare-go-vendor.go         verified disposable vendor context outside Git
 .github/workflows/
   quality.yml                  mandatory ordinary CI quality gate
   carrier-lab.yml              explicit official Ubuntu R-013 qualification
+  gate-c.yml                   explicit official Ubuntu Gate C terminal run
 .githooks/pre-commit           local quick gate
 carrier-lab/
   Dockerfile                   shared build plus application/tooling targets
   compose.yaml                 isolation, tooling, and native execution profiles
   tools.lock                   exact external laboratory-tool identities
   reference.lock               exact Tor/Chutney reference identities
+reference-site/
+  Dockerfile                   offline Reference Site role image
+  compose.yaml                 seven-role knowledge/isolation topology
 docs/                          product, security, research, ADR, and development records
 experiments/README.md          policy for future disposable spikes
 go.mod                         the only Go module
@@ -96,23 +105,26 @@ maintained packages. `internal/directcontrol` implements only the laboratory
 Direct TLS measurement control and its protected-record fault; it is not a
 Route, a product fallback, a transport selection, or the future Route Module
 Interface described by R-013. `internal/harness`, its `tooling` Module,
-`internal/preflight`, `internal/qualification`, `internal/directcontrol`,
+`internal/preflight`, `internal/experimentrun`, `internal/experimentidentity`, `internal/directcontrol`,
 `internal/nativecircuit`, and `internal/routeexperiment` are laboratory code. The
-Dockerfile and Compose file serve only reproducible Carrier Lab execution and
-are not deployment or release packaging.
+Gate C `internal/siteexperiment` Module and `reference-site/` inputs are also
+maintained laboratory code. Their Dockerfiles and Compose files serve only
+reproducible experiments and are not deployment or release packaging.
 
 The exact current project imports are also recorded in the package map. In
 summary:
 
 ```text
 cmd/carrier-lab -> internal/directcontrol, internal/harness, internal/harness/tooling, internal/nativecircuit, internal/preflight, internal/routeexperiment
+cmd/reference-site-lab -> internal/experimentrun, internal/siteexperiment
 internal/harness -> internal/preflight
-internal/harness/tooling -> internal/preflight, internal/qualification
-internal/nativecircuit -> internal/harness/tooling, internal/preflight
-internal/routeexperiment -> internal/nativecircuit, internal/preflight, internal/qualification
+internal/harness/tooling -> internal/preflight, internal/experimentidentity
+internal/nativecircuit -> internal/experimentrun, internal/harness/tooling, internal/preflight
+internal/routeexperiment -> internal/nativecircuit, internal/preflight, internal/experimentidentity
+internal/siteexperiment -> internal/experimentrun, internal/experimentidentity, internal/nativecircuit, reviewed OHTTP closure
 internal/directcontrol -> internal/preflight
-internal/preflight -> internal/qualification
-internal/qualification, internal/architecture -> standard library
+internal/preflight -> internal/experimentrun, internal/experimentidentity
+internal/experimentrun, internal/experimentidentity, internal/architecture -> standard library
 ```
 
 ## Conditional target map and delivery horizons
@@ -224,8 +236,8 @@ exports no role configuration type.
 Callers provide absolute verified input paths, a validated preflight run
 identity, an immutable image ID, and one of the fixed documented fault/role
 values. The Implementation owns Docker interaction, shaping, capture, cleanup,
-and bounded evidence. It may import only `internal/preflight` and the standard
-library.
+and bounded evidence. It may import only `internal/preflight`,
+`internal/experimentidentity`, and the standard library.
 
 ## Go file ownership and size
 
@@ -354,10 +366,12 @@ created. Generated test evidence follows the artifact rules below.
 
 ## Docker, infrastructure, and packaging
 
-`carrier-lab/Dockerfile`, `carrier-lab/compose.yaml`, and
-`carrier-lab/tools.lock` are the complete container-source interface for the
-current laboratory. The Dockerfile shares one reproducible Go build and exposes
-only the `application` and `tooling` targets. Compose exposes separate
+`carrier-lab/{Dockerfile,compose.yaml,tools.lock,reference.lock}` and
+`reference-site/{Dockerfile,compose.yaml}` are the complete human-authored
+container-source interface for the maintained Carrier Lab and Gate C
+laboratories. The Carrier Dockerfile shares one reproducible Go build and exposes
+only the `application` and `tooling` targets; the Reference Site Dockerfile
+exposes its closed role image. Carrier Compose exposes separate
 `isolation`, `tooling`, and `native` profiles in one file. The lock is separate
 because it is supplied-artifact identity, not build or topology behavior. These files
 contain no production deployment promise and receive no secrets from version

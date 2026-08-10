@@ -2,6 +2,7 @@ package siteexperiment
 
 import (
 	"context"
+	"errors"
 	"testing"
 )
 
@@ -19,6 +20,22 @@ func TestFixedMatrixRequiresEveryPositiveFailureAndMigration(t *testing.T) {
 	result := runFixedMatrix(t.Context(), runner)
 	if result.Verdict != "advance" || positiveCalls != 20 || failureCalls != len(fixedFailureCases) || migrationCalls != 5 {
 		t.Fatalf("result=%+v calls=%d/%d/%d", result, positiveCalls, failureCalls, migrationCalls)
+	}
+}
+
+func TestFixedMatrixStopsOnPositiveIsolationFailure(t *testing.T) {
+	t.Parallel()
+	runner := matrixRunner{
+		positive: func(context.Context, int, uint64) error {
+			return hardGate(errors.New("Application escaped its network boundary"))
+		},
+		failure: func(context.Context, string) error { return nil },
+		migrate: func(context.Context, int) (migrationResult, error) {
+			return migrationResult{}, nil
+		},
+	}
+	if result := runFixedMatrix(t.Context(), runner); result.Verdict != "stop" {
+		t.Fatalf("verdict=%q, want stop", result.Verdict)
 	}
 }
 

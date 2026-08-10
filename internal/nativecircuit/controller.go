@@ -132,7 +132,7 @@ func runNative(ctx context.Context, identity ownedRunLayout, applicationImage, t
 		return evidenceDir, err
 	}
 	var sampler *resourceSampler
-	if workload != nil && workload.Kind == "stream" {
+	if workload != nil && workload.Kind == "stream" || attached != nil {
 		states, err := inspectNativeServiceStates(ctx, layout, project, environment)
 		if err != nil {
 			return evidenceDir, err
@@ -145,7 +145,11 @@ func runNative(ctx context.Context, identity ownedRunLayout, applicationImage, t
 			}
 			roles[container.ID] = role
 		}
-		sampler = startResourceSampler(ctx, roles)
+		initialSamples, err := readDockerResources(ctx, roles, 0)
+		if err != nil || len(initialSamples) != len(roles) {
+			return evidenceDir, errors.Join(err, errors.New("initial native resource sample is incomplete"))
+		}
+		sampler = startResourceSampler(ctx, roles, initialSamples)
 		defer sampler.stop()
 	}
 	if err := writeControlMarker(fixture.controlDirectory, "user-start"); err != nil {
@@ -160,7 +164,7 @@ func runNative(ctx context.Context, identity ownedRunLayout, applicationImage, t
 		return evidenceDir, runNativeRendezvousFailure(ctx, layout, fixture, project, environment, &summary)
 	}
 	attemptTimeout := 30 * time.Second
-	if workload != nil && workload.Kind == "stream" {
+	if workload != nil && workload.Kind == "stream" || attached != nil {
 		attemptTimeout = 90 * time.Second
 	}
 	if err := waitNativeReady(ctx, fixture, []string{

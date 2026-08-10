@@ -15,31 +15,38 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/experimentrun"
 )
 
-const gateCRunSchema = "gatec-run/v1"
-
 type runManifest struct {
-	SchemaVersion  string       `json:"schema_version"`
-	RunID          string       `json:"run_id"`
-	SourceSHA256   string       `json:"source_sha256"`
-	Images         []string     `json:"image_ids"`
-	OHTTPModule    string       `json:"ohttp_module"`
-	R013ReceiptSHA string       `json:"r013_receipt_sha256"`
-	Topology       string       `json:"topology"`
-	Matrix         matrixResult `json:"matrix"`
-	Cleanup        bool         `json:"cleanup_complete"`
-	CompletedUnix  int64        `json:"completed_unix"`
+	SchemaVersion        string   `json:"schema_version"`
+	RunID                string   `json:"run_id"`
+	SourceSHA256         string   `json:"source_sha256"`
+	Images               []string `json:"image_ids"`
+	OHTTPModule          string   `json:"ohttp_module"`
+	DependencyClosureSHA string   `json:"dependency_closure_sha256"`
+	R013ReceiptSHA       string   `json:"r013_receipt_sha256"`
+	Topology             string   `json:"topology"`
+	Schedule             string   `json:"schedule"`
 }
 
 // Run owns the complete fixed Gate C scenario and writes its terminal bounded
 // evidence. Images are immutable inputs and are never built by this function.
-func Run(ctx context.Context, identity experimentrun.Layout, applicationImage, toolImage, referenceImage, r013Receipt string) (string, error) {
-	if ctx == nil || !validImageID(applicationImage) || !validImageID(toolImage) || !validImageID(referenceImage) {
-		return "", errors.New("gate C requires context and three immutable image IDs")
+func Run(ctx context.Context, identity experimentrun.Layout, applicationImage, toolImage, referenceImage, r013Receipt string) (evidenceDirectory string, runErr error) {
+	if ctx == nil {
+		return "", errors.New("gate C requires a context")
+	}
+	images, err := bindExperimentImages(applicationImage, toolImage, referenceImage)
+	if err != nil {
+		return "", err
 	}
 	runID, repositoryRoot, runDirectory, evidenceDirectory, err := identity.OwnedPaths(false, false)
 	if err != nil {
 		return "", err
 	}
+	prepared := false
+	defer func() {
+		if !prepared {
+			runErr = errors.Join(runErr, cleanupGateCPreparation(identity))
+		}
+	}()
 	for _, directory := range []string{runDirectory, evidenceDirectory} {
 		if err := os.Mkdir(directory, 0o700); err != nil {
 			return "", err
@@ -48,6 +55,13 @@ func Run(ctx context.Context, identity experimentrun.Layout, applicationImage, t
 	if _, _, _, _, err := identity.OwnedPaths(true, true); err != nil {
 		return "", err
 	}
+	prepared = true
+	cleaned := false
+	defer func() {
+		if !cleaned {
+			runErr = errors.Join(runErr, cleanupGateCRuntime(identity, runDirectory))
+		}
+	}()
 	receiptSHA, err := validateR013Receipt(r013Receipt)
 	if err != nil {
 		return evidenceDirectory, err
@@ -56,55 +70,83 @@ func Run(ctx context.Context, identity experimentrun.Layout, applicationImage, t
 	if err != nil {
 		return evidenceDirectory, err
 	}
-	if err := verifyReferenceImage(ctx, referenceImage, sourceSHA); err != nil {
+	if err := verifyReferenceImage(ctx, images.reference, sourceSHA); err != nil {
 		return evidenceDirectory, err
 	}
-	sequence := 0
+	dependencySHA, err := fileSHA256(filepath.Join(repositoryRoot, "go.sum"))
+	if err != nil {
+		return evidenceDirectory, err
+	}
+	sequence, allAttemptsClean := 0, true
+	runAttempt := func(operation context.Context, fixture *authorityFixture, superseded *instanceCredential) error {
+		sequence++
+		err := runRouteAttempt(operation, identity, fixture, superseded, sequence, images, evidenceDirectory)
+		allAttemptsClean = allAttemptsClean && attemptCleanupProven(evidenceDirectory, sequence)
+		return err
+	}
 	runner := matrixRunner{
 		positive: func(operation context.Context, _ int, _ uint64) error {
-			sequence++
 			fixture, err := newAuthorityFixture(runID, "gatec-network", time.Now(), rand.Reader)
 			if err != nil {
 				return err
 			}
-			return runRouteAttempt(operation, identity, fixture, sequence, applicationImage, toolImage, referenceImage, evidenceDirectory)
+			return runAttempt(operation, fixture, nil)
 		},
-		failure: runContractFailure,
+		failure: func(operation context.Context, name string) error {
+			return runContractFailure(operation, name, evidenceDirectory)
+		},
 		migrate: func(operation context.Context, episode int) (migrationResult, error) {
 			fixture, err := newAuthorityFixture(runID, "gatec-network", time.Now(), rand.Reader)
 			if err != nil {
 				return migrationResult{Episode: episode}, err
 			}
-			sequence++
-			if err := runRouteAttempt(operation, identity, fixture, sequence, applicationImage, toolImage, referenceImage, evidenceDirectory); err != nil {
+			originalName, originalTarget := "site.reference", fixture.target
+			oldNonce := make([]byte, 32)
+			if _, err := rand.Read(oldNonce); err != nil {
 				return migrationResult{Episode: episode}, err
 			}
-			oldKey := append([]byte(nil), fixture.instancePublic...)
+			oldDescriptor, err := fixture.signedDescriptor(oldNonce, time.Now().Add(10*time.Second))
+			if err != nil {
+				return migrationResult{Episode: episode}, err
+			}
+			if err := runAttempt(operation, fixture, nil); err != nil {
+				return migrationResult{Episode: episode}, err
+			}
+			generationOneStopped := attemptCleanupProven(evidenceDirectory, sequence)
+			oldCredential := fixture.credential
 			if err := fixture.migrate(time.Now(), rand.Reader); err != nil {
 				return migrationResult{Episode: episode}, err
 			}
-			sequence++
-			err = runRouteAttempt(operation, identity, fixture, sequence, applicationImage, toolImage, referenceImage, evidenceDirectory)
-			return migrationResult{Episode: episode, GenerationOneStopped: true, GenerationTwoPassed: err == nil, OldInstanceRejected: string(oldKey) != string(fixture.instancePublic)}, err
+			oldRejected := fixture.target == originalTarget && originalName == "site.reference"
+			if _, verifyErr := verifyDescriptor(oldDescriptor, fixture.servicePublic, fixture.runID, fixture.networkID, oldNonce, fixture.target, fixture.instanceGeneration, time.Now()); verifyErr == nil {
+				oldRejected = false
+			}
+			err = runAttempt(operation, fixture, &oldCredential)
+			oldRejected = oldRejected && supersededPublicationRejected(evidenceDirectory, sequence)
+			return migrationResult{Episode: episode, GenerationOneStopped: generationOneStopped, GenerationTwoPassed: err == nil, OldInstanceRejected: oldRejected}, err
 		},
 	}
 	if err := validateMatrixRunner(runner); err != nil {
 		return evidenceDirectory, err
 	}
 	matrix := runFixedMatrix(ctx, runner)
+	measurements, measurementErr := summarizeAttempts(evidenceDirectory)
+	if (measurementErr != nil || measurements.Attempts != 30 || measurements.MaximumQueueBytes > 256*1024) && matrix.Verdict == "advance" {
+		matrix = failMatrix(matrix, "resource observations are incomplete", false)
+	}
 	manifest := runManifest{
-		SchemaVersion: gateCRunSchema, RunID: runID, SourceSHA256: sourceSHA,
-		Images: []string{applicationImage, toolImage, referenceImage}, OHTTPModule: "github.com/openpcc/ohttp@v0.0.80",
-		R013ReceiptSHA: receiptSHA, Topology: "reference-site/compose.yaml+carrier-lab/compose.yaml", Matrix: matrix,
-		CompletedUnix: time.Now().Unix(),
+		SchemaVersion: "gatec-manifest/v1", RunID: runID, SourceSHA256: sourceSHA,
+		Images: images.identities(), OHTTPModule: "github.com/openpcc/ohttp@v0.0.80",
+		DependencyClosureSHA: dependencySHA, R013ReceiptSHA: receiptSHA,
+		Topology: "reference-site/compose.yaml+carrier-lab/compose.yaml", Schedule: "20 positives; 17 failures; 5 migrations",
 	}
 	cleanupErr := cleanupGateCRuntime(identity, runDirectory)
-	manifest.Cleanup = cleanupErr == nil
-	writeErr := writeBoundedJSON(filepath.Join(evidenceDirectory, "result.json"), manifest)
-	receiptErr := writeBoundedJSON(filepath.Join(evidenceDirectory, "receipt.json"), map[string]any{
-		"schema_version": gateCRunSchema, "run_id": runID, "source_sha256": sourceSHA, "verdict": matrix.Verdict,
-	})
-	return evidenceDirectory, errors.Join(cleanupErr, writeErr, receiptErr)
+	if !allAttemptsClean {
+		cleanupErr = errors.Join(cleanupErr, errors.New("one or more Gate C attempts lack complete Docker cleanup evidence"))
+	}
+	cleaned = cleanupErr == nil
+	bundleErr := writeGateCBundle(evidenceDirectory, manifest, matrix, measurements, cleaned, time.Now())
+	return evidenceDirectory, errors.Join(cleanupErr, bundleErr)
 }
 
 func validateR013Receipt(path string) (string, error) {

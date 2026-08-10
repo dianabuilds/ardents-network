@@ -37,10 +37,10 @@ type resourceSampleResult struct {
 	err     error
 }
 
-func startResourceSampler(ctx context.Context, roles map[string]string) *resourceSampler {
+func startResourceSampler(ctx context.Context, roles map[string]string, initial []dockerResourceSample) *resourceSampler {
 	sampleContext, cancel := context.WithCancel(ctx)
 	sampler := &resourceSampler{cancel: cancel, done: make(chan resourceSampleResult, 1)}
-	go func() { sampler.done <- sampleDockerResources(sampleContext, roles) }()
+	go func() { sampler.done <- sampleDockerResources(sampleContext, roles, initial) }()
 	return sampler
 }
 
@@ -55,10 +55,15 @@ func (sampler *resourceSampler) stop() ([]dockerResourceSample, error) {
 	return sampler.result.samples, sampler.result.err
 }
 
-func sampleDockerResources(ctx context.Context, roles map[string]string) resourceSampleResult {
+func sampleDockerResources(ctx context.Context, roles map[string]string, initial []dockerResourceSample) resourceSampleResult {
 	started := time.Now()
-	var samples []dockerResourceSample
+	samples := append([]dockerResourceSample(nil), initial...)
 	for {
+		select {
+		case <-ctx.Done():
+			return resourceSampleResult{samples: samples}
+		case <-time.After(time.Second):
+		}
 		batch, err := readDockerResources(ctx, roles, time.Since(started).Milliseconds())
 		if err != nil {
 			if resourceSamplingCanceled(ctx, err) {
@@ -67,11 +72,6 @@ func sampleDockerResources(ctx context.Context, roles map[string]string) resourc
 			return resourceSampleResult{samples: samples, err: err}
 		}
 		samples = append(samples, batch...)
-		select {
-		case <-ctx.Done():
-			return resourceSampleResult{samples: samples}
-		case <-time.After(time.Second):
-		}
 	}
 }
 

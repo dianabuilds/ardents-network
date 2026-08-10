@@ -122,6 +122,31 @@ func TestApplicationInterfaceRejectsOversizeAndPartialFrame(t *testing.T) {
 	}
 }
 
+func TestApplicationInterfaceRejectsTrailingAndContradictoryResponses(t *testing.T) {
+	t.Parallel()
+	for _, test := range []struct {
+		name    string
+		payload string
+	}{
+		{name: "trailing value", payload: `{"schema":"gatec-application-interface/v1","status":"connected","target":"target","name_generation":1,"name_revision":1,"instance_generation":1}{}`},
+		{name: "connected failure class", payload: `{"schema":"gatec-application-interface/v1","status":"connected","target":"target","name_generation":1,"name_revision":1,"instance_generation":1,"class":"route_unavailable"}`},
+		{name: "failed target", payload: `{"schema":"gatec-application-interface/v1","status":"failed","target":"target","class":"route_unavailable"}`},
+		{name: "unknown status", payload: `{"schema":"gatec-application-interface/v1","status":"pending"}`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := readConnectResponse(bytes.NewReader(testControlFrame(test.payload))); err == nil {
+				t.Fatal("invalid response accepted")
+			}
+		})
+	}
+}
+
+func testControlFrame(payload string) []byte {
+	var prefix [4]byte
+	binary.BigEndian.PutUint32(prefix[:], uint32(len(payload)))
+	return append(prefix[:], payload...)
+}
+
 func writeTestFrame(t *testing.T, conn net.Conn, payload string) {
 	t.Helper()
 	var prefix [4]byte

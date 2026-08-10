@@ -46,3 +46,23 @@ func cleanupGateCRuntime(identity experimentrun.Layout, runDirectory string) err
 	}
 	return nil
 }
+
+func cleanupGateCPreparation(identity experimentrun.Layout) error {
+	_, _, runDirectory, evidenceDirectory, err := identity.OwnedPaths(false, false)
+	if err != nil {
+		return err
+	}
+	for _, target := range []string{runDirectory, evidenceDirectory} {
+		info, inspectErr := os.Lstat(target)
+		if os.IsNotExist(inspectErr) {
+			continue
+		}
+		if inspectErr != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+			return errors.New("partial Gate C preparation is not an owned real directory")
+		}
+		if err := os.RemoveAll(target); err != nil {
+			return err
+		}
+	}
+	return nil
+}

@@ -40,7 +40,7 @@ func runFixedMatrix(ctx context.Context, runner matrixRunner) matrixResult {
 	for attempt := 1; attempt <= result.PositiveTotal; attempt++ {
 		err := runner.positive(ctx, attempt, 1)
 		if err != nil {
-			return failMatrix(result, "positive attempt failed", false)
+			return failMatrix(result, "positive attempt failed", isHardGateFailure(err))
 		}
 		result.PositivePassed++
 	}
@@ -60,6 +60,19 @@ func runFixedMatrix(ctx context.Context, runner matrixRunner) matrixResult {
 		}
 	}
 	return result
+}
+
+var errHardGateFailure = errors.New("gate C hard failure")
+
+func hardGate(err error) error {
+	if err == nil {
+		return nil
+	}
+	return errors.Join(errHardGateFailure, err)
+}
+
+func isHardGateFailure(err error) bool {
+	return errors.Is(err, errHardGateFailure)
 }
 
 func failMatrix(result matrixResult, message string, hard bool) matrixResult {
