@@ -51,9 +51,9 @@ jobs:
         run: |
           set -euo pipefail
           run_id="r013-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          session_root="$RUNNER_TEMP/carrier-lab-session-$run_id"
+          session_root="$RUNNER_TEMP/ardents-carrier-lab-preflight-session.$run_id"
           mkdir -p "$session_root"
-          evidence_directory="$session_root/evidence-$run_id"
+          evidence_directory="$session_root/ardents-carrier-lab-preflight-evidence.$run_id"
           printf 'CARRIER_LAB_EVIDENCE=%s\n' "$evidence_directory" >> "$GITHUB_ENV"
           go run ./cmd/carrier-lab route-experiment \
             --repository-root "$GITHUB_WORKSPACE" \
