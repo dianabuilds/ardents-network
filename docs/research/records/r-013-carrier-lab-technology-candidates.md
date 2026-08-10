@@ -71,18 +71,20 @@ conditional follow-up only after a recorded C-5 result justifies that work.
   Arti, libp2p, Waku, I2P, Nym, Ubuntu, Go, TLS 1.3, and HPKE come from the
   specifications, official documentation, and source repositories linked in
   this record. All external sources were accessed on 2026-08-09.
-- **Measurements:** 2026-08-10 Docker Desktop development smokes prove one
-  native C-5/C2 setup, protected 64 KiB stream, real shaping/capture, role-view
-  collection, image binding, fail-closed Rendezvous process loss, and cleanup.
-  This is implementation evidence, not
-  the frozen comparative workload, an official Ubuntu result, a Route verdict,
-  or an anonymity result. No Tor/Chutney comparison exists yet.
+- **Measurements:** development smokes first proved one native C-5/C2 setup,
+  protected 64 KiB stream, real shaping/capture, role-view collection, image
+  binding, fail-closed Rendezvous process loss, and cleanup. The official
+  Ubuntu 26.04 `x86-64` run `31404126248` then completed the frozen Direct,
+  C-3, C-5/C2, negative, and Tor/Chutney sequence and produced `advance`.
+  These are coarse same-host Carrier Lab measurements, not Route
+  Qualification, an anonymity result, or a production-network result.
 - **Assumptions:** one Product Owner plus Codex must be able to own the selected
   stack; the fixed synthetic topology and workload are useful feasibility
   proxies; local container roles do not imply independent operators.
-- **Recommendations and decisions:** use the frozen native candidate and
-  controls below with the reviewed R-025 shaping/capture supply, and promote no
-  Route until measured advance criteria pass.
+- **Recommendations and decisions:** the measured `advance` retains the native
+  shape only for the bounded Gate C tracer. Keep the reviewed R-025 supply and
+  frozen controls for regression evidence; promote no production Route or
+  security claim without the later gates.
 
 ## Why no complete existing stack is selected
 
@@ -527,16 +529,53 @@ The successful positive development smoke carried and verified 65,536 Applicatio
 bytes, authenticated the exact Instance, found neither the Target marker nor
 the Application marker in cleartext captures, collected every role/tool result,
 and proved cleanup. This closes the implementation slice only. It deliberately
-does not produce `advance`, `redesign`, or `stop`. The paired failure smoke
+did not itself produce `advance`, `redesign`, or `stop`. The paired failure smoke
 kills the real Rendezvous after the first verified 16 KiB chunk and requires
 explicit endpoint failure within 15 seconds without accepting the full stream.
-The 20 setup attempts, six 60-second streams per condition, Direct/C-3
-comparison, full workload failure evidence, official Ubuntu 26.04 runner
-evidence, and later Tor/Chutney reference remain the separate R-013 experiment
-run.
 
-- full comparative Carrier Lab measurements and the Route verdict;
-- the bounded Go/Rust production comparison in R-014 after a viable Route;
+### Official Carrier Lab verdict on 2026-08-10
+
+[GitHub Actions run `31404126248`](https://github.com/dianabuilds/ardents-network/actions/runs/31404126248)
+completed on commit `54eee1232461106af15da3a1665a9f4f8166675a` and
+published bounded artifact `carrier-lab-r013-31404126248-1`. The artifact is
+bound to source SHA-256
+`279722ecc4e76d69c1dd5ec5c39e3b49da167671f48f5a3f499a30656bef67f6`,
+application image
+`sha256:3208bc6b4f80f1f761f0e6230d403d89682b72ccda08464ec246f663866204fb`,
+and tooling image
+`sha256:a91aee4426a025e7036ff738e87b6d322172dcb37c8a2a6539972a6292c5793a`.
+The retained receipt is
+bound by input-manifest SHA-256
+`fdf0ffd8d55a0bb33ad2daa4dee53bf39c4f91f2d6f692af98d6b3abf39031f7`
+and experiment SHA-256
+`b05440a6fa8f07be5494f8169e6df1364b34f7d5dbb8f70bff94b11f6c298bf7`.
+
+| Condition | Setup | Setup p50 / p95 | User to Service minimum / median | Service to User minimum / median |
+|---|---:|---:|---:|---:|
+| Direct | 20/20 | 0.352 s / 0.352 s | 94.35 / 94.35 Mbit/s | 94.35 / 94.38 Mbit/s |
+| C-3 | 20/20 | 0.805 s / 0.806 s | 93.29 / 93.29 Mbit/s | 93.29 / 93.30 Mbit/s |
+| C-5/C2 | 20/20 | 1.183 s / 1.185 s | 92.38 / 92.38 Mbit/s | 92.38 / 92.38 Mbit/s |
+
+All seven negative cases failed closed. The injected real Rendezvous process
+failure became terminal in `298 ms`. In C-5/C2 the largest endpoint RSS was
+`13.69 MiB`, the largest ordinary-Node RSS was `5.23 MiB`, the largest mean
+per-process CPU observation was `0.1282` logical core, and the largest logical
+queue observation was `16 KiB`. Cleanup passed for every condition.
+
+The pinned Tor 0.4.9.6 / Chutney
+`988fc372cc418fbecc60558fe27e75d07d76b996` `bridges+hs-v3` black-box
+reference bootstrapped and verified traffic inside a network namespace with no
+external interface. Its retained log SHA-256 is
+`5efd1e0826e8e6b2e4a2ba7924f349cea2bd548ba86a005f393d82832b99d7bd`.
+
+The conjunctive Carrier Lab decision is **`advance`**. The native C-5/C2 shape
+is therefore a viable candidate for the next controlled slice. This decision
+does not select its lab framing, TCP carrier, TLS/HPKE suite, Compose topology,
+or Tor as a production foundation, and it makes no anonymity, decentralization,
+availability, or public Route Qualification claim.
+
+The following work remains outside this completed Carrier Lab result:
+
 - whether QUIC or libp2p earns a second real Carrier Channel Adapter;
 - production endpoint handshake, credential encoding, protocol negotiation,
   canonical signed records, storage, discovery, naming, bootstrap, update, and
@@ -545,10 +584,13 @@ run.
 
 ## Disposition
 
-- State: `active`; the native development implementation smoke exists and is
-  ready for the frozen comparative experiment, but no Route verdict exists.
+- Carrier Lab C-5/C2 implementation and the frozen comparative experiment are
+  complete; the recorded candidate decision is `advance`.
+- R-013 remains `active` only as the broader technology-selection record for
+  later protocol-bound foundations. The completed Carrier Lab slice is not
+  rerun or expanded by default.
 - Gate A is satisfied for the named R-004/R-013 experiment.
-- Gate B permits implementing the Carrier Lab slice in the root project against
-  this exact record. It does not permit any later-horizon subsystem.
+- Gate B has produced its intended evidence. Gate C now permits the bounded
+  Ubuntu-to-Ubuntu Named Unlisted Site Reference Application slice.
 - ADR-0009 selects only the maintained Go project foundation; this record still
   makes no route or production-network selection.

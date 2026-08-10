@@ -127,19 +127,22 @@ top-level architecture. The repository has one root `go.mod`. `cmd/carrier-lab`
 is only its executable adapter; `internal/harness`,
 `internal/harness/tooling`, `internal/preflight`, `internal/directcontrol`, and
 `internal/nativecircuit` are laboratory Modules; and `carrier-lab/` contains
-only the three container inputs needed to run them reproducibly. Product
+only four human-authored inputs needed to run them reproducibly: one Dockerfile,
+one Compose topology, and two immutable supply locks. Product
 Modules may later be promoted from accepted evidence, but never import the lab.
 
-The native C-5/C2 laboratory implementation now has a reproducible development
-smoke with separate Introduction and data paths, exact Instance authentication,
-real link shaping/capture, bounded evidence, and cleanup. This is readiness for
-the frozen R-013 comparative experiment, not a Route Qualification or a
-production networking claim.
+The native C-5/C2 laboratory implementation and frozen R-013 comparison are
+complete. Official Ubuntu run
+[`31404126248`](https://github.com/dianabuilds/ardents-network/actions/runs/31404126248)
+returned `advance` after Direct, C-3, C-5/C2, all seven negative cases, resource
+and cleanup gates, and an isolated Tor/Chutney reference passed. This retains a
+plausible shape for the next controlled slice; it is not a Route Qualification,
+an anonymity claim, or a production networking decision.
 
 ## First conditional Reference Application
 
-After Carrier Lab demonstrates a plausible Route, the first product-shaped
-tracer is **Named Unlisted Site**:
+Carrier Lab has demonstrated a plausible Route candidate, so the next permitted
+product-shaped tracer is **Named Unlisted Site**:
 
 1. A Developer runs an ordinary local HTTP service.
 2. Ardents exposes it under a Service Target without publishing a stable public

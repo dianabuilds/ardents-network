@@ -305,11 +305,12 @@ that authenticated prefix, neither endpoint may accept the complete stream,
 and cleanup remains mandatory. `failure_smoke_passed` is development evidence,
 not a timed recovery or availability result.
 
-`development_smoke_passed` closes only the implementation slice. It is not the
-R-013 comparative verdict: the official Ubuntu 26.04 runner, 20 setup attempts,
-timed bidirectional streams, Direct/C-3 measurements, the full workload form of
-the process-failure condition, and later Tor/Chutney reference remain a separate
-experiment run.
+`development_smoke_passed` closes only the implementation slice and is never
+the R-013 comparative verdict. The official Ubuntu 26.04 runner, 20 setup
+attempts, timed bidirectional streams, Direct/C-3 measurements, the full
+workload process-failure condition, and Tor/Chutney reference are owned by the
+separate complete experiment below. Official run `31404126248` has now
+completed that experiment with decision `advance`.
 
 ### Complete R-013 route experiment
 
@@ -338,8 +339,10 @@ The reference directory contains only verified raw `.deb` files, wheels, the
 pinned Chutney archive, and the copied lock. During the offline experiment the
 controller verifies the exact set and SHA-256 values, then extracts Tor,
 Chutney, and the three pure-Python packages into its disposable run directory.
-The Tor/Chutney process is additionally confined to a new user and network
-namespace with loopback as its only interface.
+The Tor/Chutney process is additionally confined to a new network namespace
+with loopback as its only interface. Root creates and configures that namespace,
+then `setpriv` drops the reference process back to the unprivileged runner user;
+the GitHub host disables the rootless user-namespace mechanism.
 
 The final retained evidence directory contains `input-manifest.json`, all
 bounded condition summaries, `experiment.json`, `experiment-verdict.json`, and
@@ -348,6 +351,15 @@ Raw captures, credentials, generated Compose overrides, extracted reference
 software, containers, and networks are removed before completion. A decision
 is valid only on the official runner and is exactly one of `advance`,
 `redesign`, or `stop`.
+
+The canonical completed result is
+[run `31404126248`](https://github.com/dianabuilds/ardents-network/actions/runs/31404126248)
+on commit `54eee1232461106af15da3a1665a9f4f8166675a`. Its bounded artifact
+`carrier-lab-r013-31404126248-1` records `completed / advance`, 20/20 setups in
+all three conditions, all timed streams verified, all seven negative cases
+passed, the isolated Tor/Chutney reference passed, and cleanup passed. The
+receipt binds the input manifest and experiment JSON by SHA-256; raw captures,
+keys, generated dependencies, and run state are absent from the repository.
 
 ## Run
 

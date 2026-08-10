@@ -50,6 +50,12 @@ or complete R-023 matrix. It makes no privacy, anonymity, decentralization, or
 release claim. Passing Gate B only answers whether the Route candidate deserves
 another experiment.
 
+Official Ubuntu run
+[`31404126248`](https://github.com/dianabuilds/ardents-network/actions/runs/31404126248)
+answered that bounded question with `advance`. Gate B is complete for the
+current native C-5/C2 candidate; repeating or enlarging Carrier Lab is not a
+prerequisite for Gate C unless the candidate inputs change.
+
 ## Gate C — start the Named Unlisted Site Reference Application
 
 Named Unlisted Site work starts only after Carrier Lab evidence retains a viable
@@ -69,6 +75,11 @@ cross-platform qualification do not enter this gate. A Reference Application
 may begin as another experiment; it gains shared production code only after Gate
 D. Replicated Site Bundles, offline delivery, and an Ardents application runtime
 remain outside scope.
+
+The advancing R-013 Carrier Lab result satisfies this gate's Route-candidate
+precondition. The bounded Ubuntu-to-Ubuntu Named Unlisted Site tracer is now the
+next permitted implementation slice. Gate D and Gate E remain unsatisfied for
+protocol-bound production foundations and public security claims.
 
 ## Gate D — select production language and foundations
 
