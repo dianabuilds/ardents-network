@@ -13,6 +13,7 @@ Thumbs.db
 
 # Dependencies and build outputs
 node_modules/
+vendor/
 target/
 build/
 dist/

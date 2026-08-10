@@ -1,0 +1,47 @@
+x-role: &role
+  image: ${GATEC_REFERENCE_IMAGE:?}
+  user: "65532:65532"
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  tmpfs: [/tmp:rw,noexec,nosuid,nodev,size=16m]
+  cpus: "0.50"
+  mem_limit: 256m
+  pids_limit: 32
+
+x-application: &application
+  <<: *role
+  mem_limit: 512m
+  network_mode: none
+
+services:
+  http-client:
+    <<: *application
+    command: ["role", "--role", "http-client", "--socket", "/client/app.sock", "--nonce", "${GATEC_NONCE:?}"]
+    volumes: [{type: bind, source: "${GATEC_CLIENT_DIR:?}", target: /client, bind: {create_host_path: false}}]
+  http-application:
+    <<: *application
+    command: ["role", "--role", "http-application", "--socket", "/service/app.sock", "--nonce", "${GATEC_NONCE:?}"]
+    volumes: [{type: bind, source: "${GATEC_SERVICE_DIR:?}", target: /service, bind: {create_host_path: false}}]
+  administration:
+    <<: *role
+    network_mode: none
+    command: ["role", "--role", "administration", "--socket", "/admin/admin.sock", "--nonce", "${GATEC_NONCE:?}"]
+    volumes: [{type: bind, source: "${GATEC_ADMIN_DIR:?}", target: /admin, bind: {create_host_path: false}}]
+  authority:
+    <<: *role
+    network_mode: none
+    command: ["role", "--role", "authority", "--socket", "/authority/authority.sock", "--nonce", "${GATEC_NONCE:?}"]
+    volumes: [{type: bind, source: "${GATEC_AUTHORITY_DIR:?}", target: /authority, bind: {create_host_path: false}}]
+  relay:
+    <<: *role
+    command: ["role", "--role", "resolution-relay", "--socket", "/run/relay.sock", "--nonce", "${GATEC_NONCE:?}"]
+    networks: [client-relay, relay-gateway]
+  gateway:
+    <<: *role
+    command: ["role", "--role", "resolution-gateway", "--socket", "/run/gateway.sock", "--nonce", "${GATEC_NONCE:?}"]
+    networks: [relay-gateway]
+
+networks:
+  client-relay: {internal: true}
+  relay-gateway: {internal: true}

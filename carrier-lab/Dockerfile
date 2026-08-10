@@ -11,14 +11,16 @@ RUN --network=none --mount=type=bind,from=go_archive,source=go1.26.5.linux-amd64
 
 WORKDIR /workspace
 COPY go.mod ./
+COPY go.sum ./
 COPY cmd ./cmd
 COPY internal ./internal
+COPY --from=go_vendor . ./vendor
 
 ENV GOTOOLCHAIN=local \
     GOPROXY=off \
     GOSUMDB=off \
     GOWORK=off \
-    GOFLAGS=-mod=readonly \
+    GOFLAGS=-mod=vendor \
     CGO_ENABLED=0
 
 RUN --network=none \

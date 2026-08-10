@@ -1,12 +1,15 @@
 **
 
 !go.mod
+!go.sum
 !cmd
 !cmd/**
 !internal
 !internal/**
 !carrier-lab
 !carrier-lab/tools.lock
+!reference-site
+!reference-site/**
 
 **/*_test.go
 .git
