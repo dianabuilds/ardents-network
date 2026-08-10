@@ -41,16 +41,8 @@ archive=$(awk -F '\t' '$1 == "chutney" && $2 == "revision" {print $4}' "$lock")
 archive_digest=$(awk -F '\t' '$1 == "chutney" && $2 == "revision" {print $5}' "$lock")
 repository=$(awk -F '\t' '$1 == "chutney" && $2 == "revision" {print $6}' "$lock")
 [[ ${#revision} -eq 40 && -n "$archive" && ${#archive_digest} -eq 64 && -n "$repository" ]]
-
-checkout="$output/chutney-checkout"
-git clone --filter=blob:none --no-checkout "$repository" "$checkout"
-git -C "$checkout" checkout --detach "$revision"
-[[ $(git -C "$checkout" rev-parse HEAD) == "$revision" ]]
-# A plain git-generated tar is byte-for-byte reproducible. The tar.gz writer
-# embeds the current gzip timestamp, so its digest changes on every run.
-git -C "$checkout" archive --format=tar --prefix=chutney/ -o "$output/$archive" "$revision"
+curl --fail --location --proto '=https' --tlsv1.2 --output "$output/$archive" "$repository"
 printf '%s  %s\n' "$archive_digest" "$output/$archive" | sha256sum --check --status
-rm -rf "$checkout"
 
 cp "$lock" "$output/reference.lock"
 printf 'prepared pinned raw Tor packages, wheels, and Chutney archive in %s\n' "$output"

@@ -118,7 +118,7 @@ func prepareReferenceRuntime(ctx context.Context, inputsRoot, runDirectory strin
 			return "", "", "", err
 		}
 	}
-	if err := runReferencePreparation(ctx, "tar", "-xf", filepath.Join(inputsRoot, inputs.Archive), "--strip-components=1", "-C", chutney); err != nil {
+	if err := runReferencePreparation(ctx, "tar", "-xzf", filepath.Join(inputsRoot, inputs.Archive), "--strip-components=1", "-C", chutney); err != nil {
 		return "", "", "", err
 	}
 	packages := make([]string, 0, len(inputs.Packages))

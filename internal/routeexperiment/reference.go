@@ -115,7 +115,7 @@ func readReferenceLock(path string) (referenceInputs, error) {
 			if err := addReferencePackage(result.Packages, fields[3], fields[4]); err != nil {
 				return referenceInputs{}, err
 			}
-		case len(fields) == 7 && fields[0] == "chutney" && fields[1] == "revision":
+		case validChutneyRecord(fields):
 			result.Archive, result.ArchiveSHA256 = fields[3], fields[4]
 		case fields[0] == "wheel":
 			if !validReferenceRecord(fields, "https://files.pythonhosted.org/packages/") {
@@ -133,6 +133,18 @@ func readReferenceLock(path string) (referenceInputs, error) {
 		return referenceInputs{}, errors.New("reference lock input closure is incomplete")
 	}
 	return result, nil
+}
+
+func validChutneyRecord(fields []string) bool {
+	if !validReferenceRecord(fields, "https://gitlab.torproject.org/tpo/core/chutney/-/archive/") || len(fields[2]) != 40 {
+		return false
+	}
+	for _, character := range fields[2] {
+		if character < '0' || character > '9' && character < 'a' || character > 'f' {
+			return false
+		}
+	}
+	return strings.Contains(fields[5], "/"+fields[2]+"/") && strings.HasSuffix(fields[5], "/"+fields[3])
 }
 
 func validReferenceRecord(fields []string, sourcePrefix string) bool {
