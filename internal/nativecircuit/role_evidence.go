@@ -151,6 +151,9 @@ func roleConfigurationFields(config roleConfig) []string {
 	if config.DirectAddress != "" {
 		fields = append(fields, "direct_address")
 	}
+	if config.AttachedSocket != "" {
+		fields = append(fields, "attached_socket")
+	}
 	return fields
 }
 

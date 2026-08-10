@@ -48,6 +48,7 @@ type roleConfig struct {
 	StreamDuration      int       `json:"stream_duration_seconds,omitempty"`
 	Fault               string    `json:"fault,omitempty"`
 	DirectAddress       string    `json:"direct_address,omitempty"`
+	AttachedSocket      string    `json:"attached_socket,omitempty"`
 }
 
 // RunRole executes one fixed native C-5/C2 role from a role-local data-only
@@ -123,7 +124,7 @@ func hasEndpointKnowledge(config roleConfig) bool {
 		len(config.IntroductionPath) != 0 || len(config.DataPath) != 0 || config.HPKEPublicPath != "" ||
 		config.HPKEPrivatePath != "" || config.TargetRootPath != "" || config.ExpectedLeafSHA256 != "" ||
 		config.EndpointCertificate != "" || config.EndpointPrivateKey != "" || config.PayloadSeed != "" || config.PayloadBytes != 0 ||
-		config.StreamDirection != "" || config.StreamSeed != "" || config.StreamDuration != 0 || config.DirectAddress != "" || config.Fault != ""
+		config.StreamDirection != "" || config.StreamSeed != "" || config.StreamDuration != 0 || config.DirectAddress != "" || config.AttachedSocket != "" || config.Fault != ""
 
 }
 
@@ -164,7 +165,8 @@ func validateEndpointRoleConfig(config roleConfig) error {
 		streaming := config.StreamDirection != "" || config.StreamSeed != "" || config.StreamDuration != 0
 		streamValid := validateStreamSpec(streamSpec{Direction: config.StreamDirection, Seed: config.StreamSeed, Duration: time.Duration(config.StreamDuration) * time.Second}, false) == nil
 		payloadValid := config.PayloadSeed != "" && config.PayloadBytes >= 1 && config.PayloadBytes <= maximumQueueBytes
-		if len(config.DataPath) != dataLength || len(config.IntroductionPath) != introductionLength || config.HPKEPublicPath == "" || config.TargetRootPath == "" || config.ExpectedLeafSHA256 == "" || streaming && !streamValid || !streaming && !payloadValid || streaming && (config.PayloadSeed != "" || config.PayloadBytes != 0) || config.HPKEPrivatePath != "" || config.EndpointPrivateKey != "" || config.Fault != "" && config.Fault != "rendezvous-process" {
+		attached := validAttachedSocket(config.AttachedSocket)
+		if len(config.DataPath) != dataLength || len(config.IntroductionPath) != introductionLength || config.HPKEPublicPath == "" || config.TargetRootPath == "" || config.ExpectedLeafSHA256 == "" || streaming && !streamValid || !streaming && !attached && !payloadValid || streaming && (config.PayloadSeed != "" || config.PayloadBytes != 0 || attached) || attached && (config.PayloadSeed != "" || config.PayloadBytes != 0) || config.HPKEPrivatePath != "" || config.EndpointPrivateKey != "" || config.Fault != "" && config.Fault != "rendezvous-process" {
 			return errors.New("native User configuration violates the fixed knowledge boundary")
 		}
 		return nil
@@ -175,8 +177,13 @@ func validateEndpointRoleConfig(config roleConfig) error {
 	if config.Profile == c3Profile {
 		dataLength, introductionLength = 2, 2
 	}
-	if len(config.DataPath) != dataLength || len(config.IntroductionPath) != introductionLength || config.HPKEPrivatePath == "" || config.EndpointCertificate == "" || config.EndpointPrivateKey == "" || config.HPKEPublicPath != "" || config.TargetRootPath != "" || config.ExpectedLeafSHA256 != "" || config.PayloadSeed != "" || config.PayloadBytes != 0 || streaming && !streamValid || config.Fault != "" {
+	attached := validAttachedSocket(config.AttachedSocket)
+	if len(config.DataPath) != dataLength || len(config.IntroductionPath) != introductionLength || config.HPKEPrivatePath == "" || config.EndpointCertificate == "" || config.EndpointPrivateKey == "" || config.HPKEPublicPath != "" || config.TargetRootPath != "" || config.ExpectedLeafSHA256 != "" || config.PayloadSeed != "" || config.PayloadBytes != 0 || streaming && !streamValid || streaming && attached || !streaming && config.AttachedSocket != "" && !attached || config.Fault != "" {
 		return errors.New("native Service configuration violates the fixed knowledge boundary")
 	}
 	return nil
+}
+
+func validAttachedSocket(path string) bool {
+	return path == "/attached/user/app.sock" || path == "/attached/service/app.sock"
 }

@@ -60,7 +60,7 @@ func nativeCompose(ctx context.Context, layout nativeRunLayout, project string, 
 	return output, nil
 }
 
-func nativeEnvironment(fixture nativeFixture, applicationImage, toolImage string) []string {
+func nativeEnvironment(fixture nativeFixture, applicationImage, toolImage string, attached *attachedSpec) []string {
 	environment := append(os.Environ(), "CARRIER_LAB_RUN="+filepath.Dir(fixture.root), "CARRIER_LAB_APPLICATION_IMAGE="+applicationImage, "CARRIER_LAB_TOOL_IMAGE="+toolImage, "CARRIER_LAB_IMAGE="+applicationImage, "TOOLING_RUN_ID=native")
 	override := filepath.Join(fixture.root, "compose-c3.yaml")
 	if _, err := os.Stat(override); err == nil {
@@ -69,6 +69,14 @@ func nativeEnvironment(fixture nativeFixture, applicationImage, toolImage string
 	override = filepath.Join(fixture.root, "compose-direct.yaml")
 	if _, err := os.Stat(override); err == nil {
 		environment = append(environment, "CARRIER_LAB_COMPOSE_OVERRIDE="+override, "CARRIER_LAB_PROFILE=direct")
+	}
+	if attached != nil {
+		override = filepath.Join(fixture.root, "compose-attached.yaml")
+		environment = append(environment,
+			"CARRIER_LAB_COMPOSE_OVERRIDE="+override,
+			"GATEC_USER_SOCKET_DIR="+filepath.Dir(attached.userSocket),
+			"GATEC_SERVICE_SOCKET_DIR="+filepath.Dir(attached.serviceSocket),
+		)
 	}
 	return environment
 }

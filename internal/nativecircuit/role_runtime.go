@@ -96,6 +96,9 @@ func runUserRole(ctx context.Context, config roleConfig, evidenceDir string, res
 	if err != nil {
 		return err
 	}
+	if plan.Attached != nil {
+		defer plan.Attached.Close()
+	}
 	if err := writeRoleReady(evidenceDir, config); err != nil {
 		return err
 	}
@@ -126,6 +129,9 @@ func runServiceRole(ctx context.Context, config roleConfig, evidenceDir string, 
 	plan, err := loadServicePlan(config)
 	if err != nil {
 		return err
+	}
+	if plan.Attached != nil {
+		defer plan.Attached.Close()
 	}
 	if err := waitForRoleStart(ctx, config.StartPath); err != nil {
 		return err

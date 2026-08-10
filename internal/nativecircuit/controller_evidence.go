@@ -151,7 +151,7 @@ func finishNativeRun(layout nativeRunLayout, fixture nativeFixture, project stri
 	if nativeResourcesRemain(cleanupContext, project) {
 		downErr = errors.Join(downErr, errors.New("native Compose resources remain after cleanup"))
 	}
-	removeErr := removeNativeRunDirectory(layout)
+	removeErr := removeNativeRunDirectory(layout, fixture)
 	if downErr == nil && removeErr == nil {
 		summary.Checks["cleanup_complete"] = true
 	}
@@ -190,21 +190,25 @@ func writeControlMarker(directory, name string) error {
 	return file.Close()
 }
 
-func removeNativeRunDirectory(layout nativeRunLayout) error {
+func removeNativeRunDirectory(layout nativeRunLayout, fixture nativeFixture) error {
 	if _, err := openNativeRunLayout(layout.identity, false, false); err != nil {
 		return err
 	}
-	if info, err := os.Lstat(layout.runDirectory); err == nil {
+	target := layout.runDirectory
+	if layout.shared {
+		target = fixture.root
+	}
+	if info, err := os.Lstat(target); err == nil {
 		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
 			return errors.New("native run path is not an owned directory")
 		}
 	} else if !os.IsNotExist(err) {
 		return err
 	}
-	if err := os.RemoveAll(layout.runDirectory); err != nil {
+	if err := os.RemoveAll(target); err != nil {
 		return err
 	}
-	if _, err := os.Stat(layout.runDirectory); !os.IsNotExist(err) {
+	if _, err := os.Stat(target); !os.IsNotExist(err) {
 		return errors.New("native run directory remains after cleanup")
 	}
 	return nil

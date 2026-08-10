@@ -14,11 +14,16 @@ import (
 const nativeRunSchema = "carrier-lab-native-run/v1"
 
 type nativeRunLayout struct {
-	identity       preflight.RunLayout
+	identity       ownedRunLayout
 	runID          string
 	repositoryRoot string
 	runDirectory   string
 	evidenceDir    string
+	shared         bool
+}
+
+type ownedRunLayout interface {
+	OwnedPaths(requireRun, requireEvidence bool) (string, string, string, string, error)
 }
 
 type nativeRunSummary struct {
@@ -43,7 +48,7 @@ type nativeRunSummary struct {
 // topology, protected stream, real per-link shaping/capture, evidence, and
 // cleanup; it does not claim the full R-013 sampling verdict.
 func Run(ctx context.Context, identity preflight.RunLayout, applicationImage, toolImage, fault string) (evidenceDir string, runErr error) {
-	return runNative(ctx, identity, applicationImage, toolImage, fault, nil)
+	return runNative(ctx, identity, applicationImage, toolImage, fault, nil, nil)
 }
 
 // RunWorkload owns one exact setup or 60-second stream attempt for the frozen
@@ -54,10 +59,10 @@ func RunWorkload(ctx context.Context, identity preflight.RunLayout, applicationI
 	if err != nil {
 		return "", err
 	}
-	return runNative(ctx, identity, applicationImage, toolImage, "", &workload)
+	return runNative(ctx, identity, applicationImage, toolImage, "", &workload, nil)
 }
 
-func runNative(ctx context.Context, identity preflight.RunLayout, applicationImage, toolImage, fault string, workload *nativeWorkload) (evidenceDir string, runErr error) {
+func runNative(ctx context.Context, identity ownedRunLayout, applicationImage, toolImage, fault string, workload *nativeWorkload, attached *attachedSpec) (evidenceDir string, runErr error) {
 	topology := topologyFor(workload)
 	layout, err := openNativeRunLayout(identity, false, false)
 	if err != nil {
@@ -69,20 +74,21 @@ func runNative(ctx context.Context, identity preflight.RunLayout, applicationIma
 	if fault != "" && fault != "rendezvous-process" {
 		return "", errors.New("native run fault is not part of the fixed contract")
 	}
+	layout.shared = attached != nil
 	for _, directory := range []string{layout.runDirectory, layout.evidenceDir} {
-		if err := os.Mkdir(directory, 0o700); err != nil {
+		if err := ensureNativeDirectory(directory, attached != nil); err != nil {
 			return "", err
 		}
 	}
 	if _, err := openNativeRunLayout(identity, true, true); err != nil {
 		return "", err
 	}
-	fixture, err := prepareNativeFixture(layout.runDirectory, layout.runID, fault, workload)
+	fixture, err := prepareNativeFixtureMode(layout.runDirectory, layout.runID, fault, workload, attached)
 	if err != nil {
 		return layout.evidenceDir, err
 	}
 	project := nativeProjectName(layout.runID)
-	environment := nativeEnvironment(fixture, applicationImage, toolImage)
+	environment := nativeEnvironment(fixture, applicationImage, toolImage, attached)
 	roleProfile := candidateProfile
 	if topology.profile == "c3" {
 		roleProfile = c3Profile
@@ -200,7 +206,7 @@ func runNative(ctx context.Context, identity preflight.RunLayout, applicationIma
 	return evidenceDir, nil
 }
 
-func openNativeRunLayout(identity preflight.RunLayout, requireRun, requireEvidence bool) (nativeRunLayout, error) {
+func openNativeRunLayout(identity ownedRunLayout, requireRun, requireEvidence bool) (nativeRunLayout, error) {
 	runID, repositoryRoot, runDirectory, evidenceDir, err := identity.OwnedPaths(requireRun, requireEvidence)
 	if err != nil {
 		return nativeRunLayout{}, err

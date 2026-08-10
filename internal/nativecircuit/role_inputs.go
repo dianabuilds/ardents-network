@@ -8,6 +8,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
+	"net"
 	"os"
 	"time"
 )
@@ -53,6 +54,12 @@ func loadUserPlan(config roleConfig) (candidateUserPlan, error) {
 	if config.StreamDirection != "" {
 		plan.Stream = &streamSpec{Direction: config.StreamDirection, Seed: config.StreamSeed, Duration: time.Duration(config.StreamDuration) * time.Second}
 	}
+	if config.AttachedSocket != "" {
+		plan.Attached, err = dialAttachedSocket(config.AttachedSocket)
+		if err != nil {
+			return candidateUserPlan{}, err
+		}
+	}
 	return plan, nil
 }
 
@@ -88,7 +95,28 @@ func loadServicePlan(config roleConfig) (candidateServicePlan, error) {
 	if config.StreamDirection != "" {
 		plan.Stream = &streamSpec{Direction: config.StreamDirection, Seed: config.StreamSeed, Duration: time.Duration(config.StreamDuration) * time.Second}
 	}
+	if config.AttachedSocket != "" {
+		plan.Attached, err = dialAttachedSocket(config.AttachedSocket)
+		if err != nil {
+			return candidateServicePlan{}, err
+		}
+	}
 	return plan, nil
+}
+
+func dialAttachedSocket(path string) (net.Conn, error) {
+	if !validAttachedSocket(path) {
+		return nil, errors.New("attached Application socket is outside the fixed role boundary")
+	}
+	info, err := os.Lstat(path)
+	if err != nil || info.Mode()&os.ModeSocket == 0 || info.Mode()&os.ModeSymlink != 0 {
+		return nil, errors.New("attached Application socket is not a real Unix socket")
+	}
+	connection, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: path, Net: "unix"})
+	if err != nil {
+		return nil, err
+	}
+	return connection, nil
 }
 
 func parseRolePath(values []roleHop) ([]circuitHop, error) {

@@ -27,6 +27,15 @@ type nativeFixture struct {
 }
 
 func prepareNativeFixture(runDirectory, runID, fault string, workload *nativeWorkload) (nativeFixture, error) {
+	return prepareNativeFixtureMode(runDirectory, runID, fault, workload, nil)
+}
+
+type attachedSpec struct {
+	userSocket    string
+	serviceSocket string
+}
+
+func prepareNativeFixtureMode(runDirectory, runID, fault string, workload *nativeWorkload, attached *attachedSpec) (nativeFixture, error) {
 	topology := topologyFor(workload)
 	root := filepath.Join(runDirectory, "native")
 	fixture := nativeFixture{
@@ -95,6 +104,17 @@ func prepareNativeFixture(runDirectory, runID, fault string, workload *nativeWor
 		return nativeFixture{}, err
 	}
 	configs := fixedNativeRoleConfigs(runID, hops, slot, endpoint.leafSHA256, payloadSeed, payloadBytes, fault, workload)
+	if attached != nil {
+		user := configs["user"]
+		user.PayloadSeed, user.PayloadBytes, user.AttachedSocket = "", 0, "/attached/user/app.sock"
+		configs["user"] = user
+		service := configs["service"]
+		service.AttachedSocket = "/attached/service/app.sock"
+		configs["service"] = service
+		if err := writeAttachedComposeOverride(root); err != nil {
+			return nativeFixture{}, err
+		}
+	}
 	for role, config := range configs {
 		if err := writeFixtureJSON(filepath.Join(root, "configs", role, "role.json"), config); err != nil {
 			return nativeFixture{}, err

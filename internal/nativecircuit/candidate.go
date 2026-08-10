@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"time"
 )
 
@@ -24,6 +25,7 @@ type candidateUserPlan struct {
 	EndpointTrust      endpointTrust
 	Payload            []byte
 	Stream             *streamSpec
+	Attached           net.Conn
 	SetupVerified      func() error
 	FirstChunkVerified func() error
 }
@@ -38,6 +40,7 @@ type candidateServicePlan struct {
 	HPKEPrivate         *ecdh.PrivateKey
 	EndpointCertificate tls.Certificate
 	Stream              *streamSpec
+	Attached            net.Conn
 	Registered          func() error
 }
 
@@ -95,6 +98,9 @@ func runCandidateUser(ctx context.Context, plan candidateUserPlan) (endpointObse
 		return endpointObservation{}, errors.New("rendezvous did not join the C-5 legs")
 	}
 	dataOwned = false
+	if plan.Attached != nil {
+		return runEndpointUserAttached(ctx, data, plan.EndpointTrust, nonce, plan.Attached, plan.SetupVerified)
+	}
 	if plan.Stream != nil {
 		return runEndpointUserStream(ctx, data, plan.EndpointTrust, nonce, *plan.Stream, plan.SetupVerified)
 	}
@@ -156,6 +162,9 @@ func runCandidateService(ctx context.Context, plan candidateServicePlan) (endpoi
 		return endpointObservation{}, errors.New("service leg was not joined at Rendezvous")
 	}
 	dataOwned = false
+	if plan.Attached != nil {
+		return runEndpointServiceAttached(ctx, data, plan.EndpointCertificate, opened.HandshakeNonce, plan.Attached)
+	}
 	if plan.Stream != nil {
 		return runEndpointServiceStream(ctx, data, plan.EndpointCertificate, opened.HandshakeNonce, *plan.Stream)
 	}
@@ -182,7 +191,8 @@ func validateUserPlan(plan candidateUserPlan) error {
 	if plan.Profile != candidateProfile && plan.Profile != c3Profile || plan.RunID == "" || plan.Rendezvous == "" || plan.Slot == (handle{}) || plan.HPKEPublic == nil || plan.EndpointTrust.Roots == nil || len(plan.Payload) > maximumQueueBytes {
 		return errors.New("native C-5/C2 User plan is incomplete")
 	}
-	if plan.Stream != nil && validateStreamSpec(*plan.Stream, false) != nil || plan.Stream != nil && len(plan.Payload) != 0 {
+	if plan.Stream != nil && validateStreamSpec(*plan.Stream, false) != nil || plan.Stream != nil && len(plan.Payload) != 0 ||
+		plan.Attached != nil && (plan.Stream != nil || len(plan.Payload) != 0) {
 		return errors.New("native C-5/C2 User stream plan is invalid")
 	}
 	dataLength, introductionLength := 3, 4
@@ -199,7 +209,7 @@ func validateServicePlan(plan candidateServicePlan) error {
 	if plan.Profile != candidateProfile && plan.Profile != c3Profile || plan.RunID == "" || plan.Rendezvous == "" || plan.Slot == (handle{}) || plan.HPKEPrivate == nil || len(plan.EndpointCertificate.Certificate) == 0 {
 		return errors.New("native C-5/C2 Service plan is incomplete")
 	}
-	if plan.Stream != nil && validateStreamSpec(*plan.Stream, false) != nil {
+	if plan.Stream != nil && validateStreamSpec(*plan.Stream, false) != nil || plan.Attached != nil && plan.Stream != nil {
 		return errors.New("native C-5/C2 Service stream plan is invalid")
 	}
 	dataLength, introductionLength := 3, 3
