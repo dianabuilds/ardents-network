@@ -33,6 +33,9 @@ func prepareNativeFixture(runDirectory, runID, fault string, workload *nativeWor
 type attachedSpec struct {
 	userSocket    string
 	serviceSocket string
+	targetRoot    []byte
+	instanceChain []byte
+	instanceKey   []byte
 }
 
 func prepareNativeFixtureMode(runDirectory, runID, fault string, workload *nativeWorkload, attached *attachedSpec) (nativeFixture, error) {
@@ -74,6 +77,12 @@ func prepareNativeFixtureMode(runDirectory, runID, fault string, workload *nativ
 	endpoint, err := generateEndpointFixture()
 	if err != nil {
 		return nativeFixture{}, err
+	}
+	if attached != nil {
+		endpoint, err = attachedEndpointFixture(attached)
+		if err != nil {
+			return nativeFixture{}, err
+		}
 	}
 	hpkePrivate, err := ecdh.X25519().GenerateKey(rand.Reader)
 	if err != nil {

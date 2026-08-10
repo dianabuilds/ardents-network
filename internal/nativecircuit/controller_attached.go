@@ -1,7 +1,13 @@
 package nativecircuit
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/hex"
+	"encoding/pem"
 	"errors"
 	"os"
 	"path/filepath"
@@ -12,16 +18,40 @@ import (
 
 // RunAttached connects two already-listening, owned Unix sockets through the
 // authenticated native C-5/C2 Route. The Route sees only opaque stream bytes.
-func RunAttached(ctx context.Context, identity experimentrun.Layout, applicationImage, toolImage, userSocket, serviceSocket string) (evidenceDir string, runErr error) {
+func RunAttached(ctx context.Context, identity experimentrun.Layout, applicationImage, toolImage, userSocket, serviceSocket string, targetRoot, instanceChain, instanceKey []byte) (evidenceDir string, runErr error) {
 	_, _, runDirectory, _, err := identity.OwnedPaths(true, true)
 	if err != nil {
 		return "", err
 	}
-	attached := &attachedSpec{userSocket: userSocket, serviceSocket: serviceSocket}
+	attached := &attachedSpec{userSocket: userSocket, serviceSocket: serviceSocket, targetRoot: targetRoot, instanceChain: instanceChain, instanceKey: instanceKey}
 	if err := validateAttachedHostSockets(runDirectory, attached); err != nil {
 		return "", err
 	}
 	return runNative(ctx, identity, applicationImage, toolImage, "", nil, attached)
+}
+
+func attachedEndpointFixture(attached *attachedSpec) (endpointFixture, error) {
+	certificate, err := tls.X509KeyPair(attached.instanceChain, attached.instanceKey)
+	if err != nil || len(certificate.Certificate) != 2 {
+		return endpointFixture{}, errors.New("attached Instance must supply one leaf and one Target root")
+	}
+	leaf, err := x509.ParseCertificate(certificate.Certificate[0])
+	if err != nil || leaf.VerifyHostname(endpointServerName) != nil {
+		return endpointFixture{}, errors.New("attached Instance leaf is outside the Route TLS contract")
+	}
+	rootBlock, remainder := pem.Decode(attached.targetRoot)
+	if rootBlock == nil || rootBlock.Type != "CERTIFICATE" || len(remainder) != 0 {
+		return endpointFixture{}, errors.New("attached Target root is not one canonical certificate")
+	}
+	root, err := x509.ParseCertificate(rootBlock.Bytes)
+	if err != nil || !root.IsCA || leaf.CheckSignatureFrom(root) != nil || !bytes.Equal(certificate.Certificate[1], root.Raw) || !leaf.NotAfter.After(leaf.NotBefore) {
+		return endpointFixture{}, errors.New("attached Instance is not issued by the supplied Target root")
+	}
+	digest := sha256.Sum256(leaf.Raw)
+	return endpointFixture{
+		rootPEM: attached.targetRoot, chainPEM: attached.instanceChain, privatePEM: attached.instanceKey,
+		leafSHA256: hex.EncodeToString(digest[:]), targetMarker: append([]byte(nil), root.RawSubjectPublicKeyInfo...),
+	}, nil
 }
 
 func ensureNativeDirectory(path string, allowExisting bool) error {

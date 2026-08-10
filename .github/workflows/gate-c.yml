@@ -1,0 +1,102 @@
+name: Gate C Named Unlisted Site
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gate-c-named-unlisted-site
+  cancel-in-progress: false
+
+jobs:
+  gate-c:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 600
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Set up Go 1.26.5
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.26.5
+          cache: false
+      - name: Run full repository gate
+        run: |
+          make tools-install
+          make check
+      - name: Prepare pinned external inputs outside the repository
+        env:
+          BASE_IMAGE: ubuntu@sha256:7b202b0e2e0028c6250f5fcf41d04df492d145a1654c6995a6553f0c1f6f1960
+          GO_ARCHIVE_SHA256: 5c2c3b16caefa1d968a94c1daca04a7ca301a496d9b086e17ad77bb81393f053
+        run: |
+          set -euo pipefail
+          docker pull "$BASE_IMAGE"
+          mkdir -p "$RUNNER_TEMP/go-input" "$RUNNER_TEMP/tool-bundle" "$RUNNER_TEMP/reference-inputs"
+          curl --fail --location --proto '=https' --tlsv1.2 --output "$RUNNER_TEMP/go-input/go1.26.5.linux-amd64.tar.gz" https://go.dev/dl/go1.26.5.linux-amd64.tar.gz
+          printf '%s  %s\n' "$GO_ARCHIVE_SHA256" "$RUNNER_TEMP/go-input/go1.26.5.linux-amd64.tar.gz" | sha256sum --check
+          bash scripts/prepare-carrier-tools.sh carrier-lab/tools.lock "$RUNNER_TEMP/tool-bundle"
+          bash scripts/prepare-carrier-reference.sh carrier-lab/reference.lock "$RUNNER_TEMP/reference-inputs"
+          go mod download
+          go mod verify
+          go run ./scripts/prepare-go-vendor.go "$RUNNER_TEMP/go-vendor"
+      - name: Build three immutable images once
+        run: |
+          set -euo pipefail
+          verification=$(go run ./cmd/carrier-lab tooling-verify --lock "$GITHUB_WORKSPACE/carrier-lab/tools.lock" --bundle "$RUNNER_TEMP/tool-bundle" --repository-root "$GITHUB_WORKSPACE")
+          source_sha256=$(printf '%s\n' "$verification" | sed -n 's/^Qualification source SHA-256: //p')
+          [[ ${#source_sha256} -eq 64 ]]
+          common=(--pull=false --network=none --build-context "go_archive=$RUNNER_TEMP/go-input" --build-context "go_vendor=$RUNNER_TEMP/go-vendor")
+          docker build --no-cache "${common[@]}" --build-context "tool_bundle=$RUNNER_TEMP/tool-bundle" --build-arg "CARRIER_LAB_SOURCE_SHA256=$source_sha256" --target tooling --iidfile "$RUNNER_TEMP/tool-image.id" -f carrier-lab/Dockerfile .
+          docker build "${common[@]}" --build-context "tool_bundle=$RUNNER_TEMP/tool-bundle" --build-arg "CARRIER_LAB_SOURCE_SHA256=$source_sha256" --target application --iidfile "$RUNNER_TEMP/application-image.id" -f carrier-lab/Dockerfile .
+          docker build "${common[@]}" --build-arg "GATEC_SOURCE_SHA256=$source_sha256" --target reference --iidfile "$RUNNER_TEMP/reference-image.id" -f reference-site/Dockerfile .
+          printf 'GATEC_SOURCE_SHA256=%s\n' "$source_sha256" >> "$GITHUB_ENV"
+      - name: Repeat complete R-013 regression on the same identity
+        run: |
+          set -euo pipefail
+          run_id="gatec-r013-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          session="$RUNNER_TEMP/ardents-experiment-session.$run_id"
+          mkdir -p "$session"
+          r013_evidence="$session/ardents-experiment-evidence.$run_id"
+          go run ./cmd/carrier-lab route-experiment --repository-root "$GITHUB_WORKSPACE" --session-root "$session" --temp-root "$RUNNER_TEMP" --run-id "$run_id" --application-image "$(cat "$RUNNER_TEMP/application-image.id")" --tool-image "$(cat "$RUNNER_TEMP/tool-image.id")" --reference-directory "$RUNNER_TEMP/reference-inputs"
+          python3 - "$r013_evidence/experiment-verdict.json" <<'PY'
+          import json, sys
+          with open(sys.argv[1], encoding="utf-8") as source:
+              value = json.load(source)
+          if value.get("status") != "completed" or value.get("decision") != "advance":
+              raise SystemExit(f"Gate C blocked by R-013 regression: {value}")
+          PY
+          printf 'R013_RECEIPT=%s\n' "$r013_evidence/experiment-verdict.json" >> "$GITHUB_ENV"
+      - name: Run the complete Gate C matrix without rebuilding
+        run: |
+          set -euo pipefail
+          run_id="gatec-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          session="$RUNNER_TEMP/ardents-experiment-session.$run_id"
+          mkdir -p "$session"
+          evidence="$session/ardents-experiment-evidence.$run_id"
+          printf 'GATEC_EVIDENCE=%s\n' "$evidence" >> "$GITHUB_ENV"
+          go run ./cmd/reference-site-lab run --repository-root "$GITHUB_WORKSPACE" --session-root "$session" --temporary-root "$RUNNER_TEMP" --run-id "$run_id" --application-image "$(cat "$RUNNER_TEMP/application-image.id")" --tool-image "$(cat "$RUNNER_TEMP/tool-image.id")" --reference-image "$(cat "$RUNNER_TEMP/reference-image.id")" --r013-receipt "$R013_RECEIPT"
+      - name: Validate terminal Gate C evidence
+        run: |
+          python3 - "$GATEC_EVIDENCE/result.json" "$GATEC_SOURCE_SHA256" <<'PY'
+          import json, sys
+          with open(sys.argv[1], encoding="utf-8") as source:
+              value = json.load(source)
+          matrix = value["matrix"]
+          if value["source_sha256"] != sys.argv[2] or not value["cleanup_complete"]:
+              raise SystemExit("Gate C evidence identity or cleanup failed")
+          if matrix["verdict"] not in {"advance", "redesign", "stop"}:
+              raise SystemExit(f"non-terminal Gate C verdict: {matrix}")
+          if matrix["verdict"] == "advance" and (matrix["positive_passed"] != 20 or len(matrix["migrations"]) != 5 or not all(matrix["failures"].values())):
+              raise SystemExit(f"invalid advance verdict: {matrix}")
+          print(f"Gate C verdict: {matrix['verdict']}")
+          PY
+      - name: Upload bounded Gate C evidence
+        if: always() && env.GATEC_EVIDENCE != ''
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: gate-c-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.GATEC_EVIDENCE }}
+          if-no-files-found: error
+          retention-days: 30

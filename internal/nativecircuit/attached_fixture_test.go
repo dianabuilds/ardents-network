@@ -7,8 +7,13 @@ import (
 )
 
 func TestAttachedFixtureKeepsRouteKnowledgeOpaque(t *testing.T) {
+	endpoint, err := generateEndpointFixture()
+	if err != nil {
+		t.Fatal(err)
+	}
 	fixture, err := prepareNativeFixtureMode(t.TempDir(), "gatec-attached", "", nil, &attachedSpec{
 		userSocket: "/owned/user/app.sock", serviceSocket: "/owned/service/app.sock",
+		targetRoot: endpoint.rootPEM, instanceChain: endpoint.chainPEM, instanceKey: endpoint.privatePEM,
 	})
 	if err != nil {
 		t.Fatal(err)

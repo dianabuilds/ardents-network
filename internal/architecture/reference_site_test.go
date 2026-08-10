@@ -39,3 +39,23 @@ func TestReferenceSiteHasExactlyTwoHumanAuthoredDockerInputs(t *testing.T) {
 		}
 	}
 }
+
+func TestGateCOfficialWorkflowIsPinnedAndConjunctive(t *testing.T) {
+	t.Parallel()
+	workflow := readProjectFile(t, repositoryRoot(t), ".github/workflows/gate-c.yml")
+	for _, required := range []string{
+		"workflow_dispatch:", "runs-on: ubuntu-26.04", "go-version: 1.26.5", "make check", "go mod verify",
+		"--network=none", "route-experiment", "reference-site-lab run", `value.get("decision") != "advance"`, "positive_passed",
+	} {
+		if !bytes.Contains(workflow, []byte(required)) {
+			t.Errorf("Gate C workflow is missing official-run control %q", required)
+		}
+	}
+	controller := readProjectFile(t, repositoryRoot(t), "internal/siteexperiment/controller_docker.go")
+	for _, required := range []string{"--no-build", "--pull", "never"} {
+		if !bytes.Contains(controller, []byte(required)) {
+			t.Errorf("Gate C controller is missing immutable-run control %q", required)
+		}
+	}
+	assertPinnedActions(t, workflow)
+}

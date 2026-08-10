@@ -151,6 +151,34 @@ func writeControlFrame(writer io.Writer, value connectResponse) error {
 	return err
 }
 
+func writeConnectRequest(writer io.Writer) error {
+	payload, err := json.Marshal(connectRequest{Schema: applicationInterfaceSchema, Operation: "connect", Destination: gateCServiceLink})
+	if err != nil {
+		return err
+	}
+	var prefix [4]byte
+	binary.BigEndian.PutUint32(prefix[:], uint32(len(payload)))
+	if _, err := writer.Write(prefix[:]); err != nil {
+		return err
+	}
+	_, err = writer.Write(payload)
+	return err
+}
+
+func readConnectResponse(reader io.Reader) (connectResponse, error) {
+	payload, err := readControlFrame(reader)
+	if err != nil {
+		return connectResponse{}, err
+	}
+	decoder := json.NewDecoder(bytes.NewReader(payload))
+	decoder.DisallowUnknownFields()
+	var response connectResponse
+	if err := decoder.Decode(&response); err != nil || response.Schema != applicationInterfaceSchema {
+		return connectResponse{}, errors.New("Application response is invalid")
+	}
+	return response, nil
+}
+
 func proxyOpaqueStream(ctx context.Context, left, right io.ReadWriteCloser) error {
 	errorsFound := make(chan error, 2)
 	copyOne := func(destination io.Writer, source io.Reader) {

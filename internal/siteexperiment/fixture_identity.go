@@ -4,11 +4,15 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/sha256"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"time"
 )
 
@@ -25,6 +29,10 @@ type authorityFixture struct {
 	instancePrivate    ed25519.PrivateKey
 	instanceGeneration uint64
 	credential         instanceCredential
+	rootCertificate    *x509.Certificate
+	rootPEM            []byte
+	instanceChainPEM   []byte
+	instanceKeyPEM     []byte
 }
 
 type instanceCredential struct {
@@ -74,6 +82,24 @@ func newAuthorityFixture(runID, networkID string, now time.Time, random io.Reade
 		runID: runID, networkID: networkID, target: "target:sha256:" + hex.EncodeToString(targetDigest[:]),
 		namePublic: namePublic, namePrivate: namePrivate, servicePublic: servicePublic, servicePrivate: servicePrivate,
 	}
+	rootSerial, err := randomFixtureSerial(random)
+	if err != nil {
+		return nil, err
+	}
+	rootTemplate := &x509.Certificate{
+		SerialNumber: rootSerial, Subject: pkix.Name{CommonName: "Gate C Service Target"},
+		NotBefore: now.Add(-time.Minute), NotAfter: now.Add(time.Hour), IsCA: true, BasicConstraintsValid: true,
+		KeyUsage: x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature,
+	}
+	rootDER, err := x509.CreateCertificate(random, rootTemplate, rootTemplate, servicePublic, servicePrivate)
+	if err != nil {
+		return nil, err
+	}
+	fixture.rootCertificate, err = x509.ParseCertificate(rootDER)
+	if err != nil {
+		return nil, err
+	}
+	fixture.rootPEM = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: rootDER})
 	if err := fixture.replaceInstance(now, random); err != nil {
 		return nil, err
 	}
@@ -91,6 +117,25 @@ func (fixture *authorityFixture) replaceInstance(now time.Time, random io.Reader
 	}
 	fixture.instanceGeneration++
 	fixture.instancePublic, fixture.instancePrivate = publicKey, privateKey
+	leafSerial, err := randomFixtureSerial(random)
+	if err != nil {
+		return err
+	}
+	leafTemplate := &x509.Certificate{
+		SerialNumber: leafSerial, Subject: pkix.Name{CommonName: "Gate C active Instance"},
+		DNSNames: []string{"carrier.invalid"}, NotBefore: now.Add(-time.Minute), NotAfter: now.Add(5 * time.Minute),
+		KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	}
+	leafDER, err := x509.CreateCertificate(random, leafTemplate, fixture.rootCertificate, publicKey, fixture.servicePrivate)
+	if err != nil {
+		return err
+	}
+	privateDER, err := x509.MarshalPKCS8PrivateKey(privateKey)
+	if err != nil {
+		return err
+	}
+	fixture.instanceChainPEM = append(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: leafDER}), fixture.rootPEM...)
+	fixture.instanceKeyPEM = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privateDER})
 	credential := instanceCredential{
 		Schema: fixtureSchema, RunID: fixture.runID, NetworkID: fixture.networkID, Target: fixture.target,
 		InstancePublicKey: hex.EncodeToString(publicKey), InstanceGeneration: fixture.instanceGeneration,
@@ -103,6 +148,23 @@ func (fixture *authorityFixture) replaceInstance(now time.Time, random io.Reader
 	credential.Signature = signature
 	fixture.credential = credential
 	return nil
+}
+
+func (fixture *authorityFixture) routeIdentity() (root, chain, key []byte) {
+	return bytes.Clone(fixture.rootPEM), bytes.Clone(fixture.instanceChainPEM), bytes.Clone(fixture.instanceKeyPEM)
+}
+
+func randomFixtureSerial(random io.Reader) (*big.Int, error) {
+	value := make([]byte, 16)
+	if _, err := io.ReadFull(random, value); err != nil {
+		return nil, err
+	}
+	value[0] &= 0x7f
+	serial := new(big.Int).SetBytes(value)
+	if serial.Sign() == 0 {
+		return big.NewInt(1), nil
+	}
+	return serial, nil
 }
 
 func (fixture *authorityFixture) signedNameRecord(nonce []byte, deadline time.Time) ([]byte, error) {
