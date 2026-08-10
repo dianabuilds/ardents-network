@@ -40,14 +40,17 @@ jobs:
           bash scripts/prepare-carrier-reference.sh carrier-lab/reference.lock "$RUNNER_TEMP/reference-inputs"
           go mod download
           go mod verify
-          go run ./scripts/prepare-go-vendor.go "$RUNNER_TEMP/go-vendor"
+          vendor_root=$(mktemp -d /tmp/ardents-gatec-vendor.XXXXXX)
+          printf 'GATEC_VENDOR_ROOT=%s\n' "$vendor_root" >> "$GITHUB_ENV"
+          go run ./scripts/prepare-go-vendor.go "$vendor_root/go-vendor"
+          printf 'GATEC_VENDOR_CONTEXT=%s\n' "$vendor_root/go-vendor" >> "$GITHUB_ENV"
       - name: Build three immutable images once
         run: |
           set -euo pipefail
           verification=$(go run ./cmd/carrier-lab tooling-verify --lock "$GITHUB_WORKSPACE/carrier-lab/tools.lock" --bundle "$RUNNER_TEMP/tool-bundle" --repository-root "$GITHUB_WORKSPACE")
           source_sha256=$(printf '%s\n' "$verification" | sed -n 's/^Qualification source SHA-256: //p')
           [[ ${#source_sha256} -eq 64 ]]
-          common=(--pull=false --network=none --build-context "go_archive=$RUNNER_TEMP/go-input" --build-context "go_vendor=$RUNNER_TEMP/go-vendor")
+          common=(--pull=false --network=none --build-context "go_archive=$RUNNER_TEMP/go-input" --build-context "go_vendor=$GATEC_VENDOR_CONTEXT")
           docker build --no-cache "${common[@]}" --build-context "tool_bundle=$RUNNER_TEMP/tool-bundle" --build-arg "CARRIER_LAB_SOURCE_SHA256=$source_sha256" --target tooling --iidfile "$RUNNER_TEMP/tool-image.id" -f carrier-lab/Dockerfile .
           docker build "${common[@]}" --build-context "tool_bundle=$RUNNER_TEMP/tool-bundle" --build-arg "CARRIER_LAB_SOURCE_SHA256=$source_sha256" --target application --iidfile "$RUNNER_TEMP/application-image.id" -f carrier-lab/Dockerfile .
           docker build "${common[@]}" --build-arg "GATEC_SOURCE_SHA256=$source_sha256" --target reference --iidfile "$RUNNER_TEMP/reference-image.id" -f reference-site/Dockerfile .
@@ -115,3 +118,9 @@ jobs:
           path: ${{ env.GATEC_EVIDENCE }}
           if-no-files-found: error
           retention-days: 30
+      - name: Remove disposable dependency context
+        if: always() && env.GATEC_VENDOR_ROOT != ''
+        run: |
+          set -euo pipefail
+          [[ "$GATEC_VENDOR_ROOT" == /tmp/ardents-gatec-vendor.* ]]
+          rm -rf -- "$GATEC_VENDOR_ROOT"
