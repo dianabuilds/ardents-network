@@ -3,6 +3,7 @@ package routeexperiment
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/preflight"
@@ -29,8 +30,8 @@ func runNativeCondition(ctx context.Context, identity preflight.RunLayout, manif
 	resources := make(map[string]*resourceAggregate)
 	for _, workload := range workloads {
 		attempt, attemptErr := runNativeAttempt(ctx, identity, manifest, profile, workload)
-		if attemptErr != nil && attempt.summary.Status == "" {
-			return result, attemptErr
+		if operationalErr := operationalAttemptError(attempt, attemptErr); operationalErr != nil {
+			return result, operationalErr
 		}
 		result.CleanupPassed = result.CleanupPassed && attempt.summary.Checks["cleanup_complete"]
 		if workload.Kind == "setup" {
@@ -66,6 +67,17 @@ func runNativeCondition(ctx context.Context, identity preflight.RunLayout, manif
 		})
 	}
 	return result, nil
+}
+
+func operationalAttemptError(attempt nativeAttemptEvidence, attemptErr error) error {
+	if attemptErr == nil {
+		return nil
+	}
+	checks := attempt.summary.Checks
+	if attempt.summary.Status == "" || !checks["verified_images"] || !checks["fixed_topology"] || !checks["bounded_capabilities"] {
+		return fmt.Errorf("native condition infrastructure is invalid: %w", attemptErr)
+	}
+	return nil
 }
 
 func aggregateAttemptResources(resources map[string]*resourceAggregate, attempt nativeAttemptEvidence) {

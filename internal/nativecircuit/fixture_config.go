@@ -129,10 +129,11 @@ func prepareNativeToolConfigs(fixture *nativeFixture, runID string, topology nat
 func prepareFixtureTool(fixture *nativeFixture, name string, config fixtureToolConfig) error {
 	configDirectory := filepath.Join(fixture.root, "tool-configs", name)
 	evidenceDirectory := filepath.Join(fixture.root, "tool-evidence", name)
-	for _, directory := range []string{configDirectory, evidenceDirectory} {
-		if err := os.Mkdir(directory, 0o700); err != nil {
-			return err
-		}
+	if err := os.Mkdir(configDirectory, 0o755); err != nil {
+		return err
+	}
+	if err := os.Mkdir(evidenceDirectory, 0o700); err != nil {
+		return err
 	}
 	if err := os.Chmod(evidenceDirectory, 0o777); err != nil {
 		return err
