@@ -60,7 +60,10 @@ func sampleDockerResources(ctx context.Context, roles map[string]string) resourc
 	var samples []dockerResourceSample
 	for {
 		batch, err := readDockerResources(ctx, roles, time.Since(started).Milliseconds())
-		if err != nil && !errors.Is(err, context.Canceled) {
+		if err != nil {
+			if resourceSamplingCanceled(ctx, err) {
+				return resourceSampleResult{samples: samples}
+			}
 			return resourceSampleResult{samples: samples, err: err}
 		}
 		samples = append(samples, batch...)
@@ -70,6 +73,10 @@ func sampleDockerResources(ctx context.Context, roles map[string]string) resourc
 		case <-time.After(time.Second):
 		}
 	}
+}
+
+func resourceSamplingCanceled(ctx context.Context, err error) bool {
+	return ctx.Err() != nil || errors.Is(err, context.Canceled)
 }
 
 func readDockerResources(ctx context.Context, roles map[string]string, elapsed int64) ([]dockerResourceSample, error) {

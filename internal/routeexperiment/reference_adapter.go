@@ -39,7 +39,12 @@ func runTorReference(ctx context.Context, identity preflight.RunLayout, manifest
 	tor := filepath.Join(torRoot, "usr", "bin", "tor")
 	gencert := filepath.Join(torRoot, "usr", "bin", "tor-gencert")
 	libraryPath := filepath.Join(torRoot, "lib", "x86_64-linux-gnu") + ":" + filepath.Join(torRoot, "usr", "lib", "x86_64-linux-gnu")
+	referenceHome := filepath.Join(runDirectory, "reference-home")
+	if err := os.Mkdir(referenceHome, 0o700); err != nil {
+		return referenceResult{}, err
+	}
 	referenceEnvironment := []string{
+		"HOME=" + referenceHome,
 		"LD_LIBRARY_PATH=" + libraryPath,
 		"PYTHONPATH=" + pythonPackages + ":" + filepath.Join(chutney, "lib"),
 		"CHUTNEY_PATH=" + chutney, "CHUTNEY_TOR=" + tor, "CHUTNEY_TOR_GENCERT=" + gencert,

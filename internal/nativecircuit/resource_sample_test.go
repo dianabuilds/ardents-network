@@ -1,6 +1,8 @@
 package nativecircuit
 
 import (
+	"context"
+	"errors"
 	"slices"
 	"testing"
 )
@@ -30,5 +32,16 @@ func TestDockerStatsUsesFullContainerIDs(t *testing.T) {
 	}
 	if arguments[len(arguments)-2] != "full-a" || arguments[len(arguments)-1] != "full-b" {
 		t.Fatalf("container IDs are not deterministic: %v", arguments)
+	}
+}
+
+func TestCanceledSamplerCommandIsNotAResourceFailure(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if !resourceSamplingCanceled(ctx, errors.New("signal: killed")) {
+		t.Fatal("command termination caused by sampler cancellation was treated as a resource failure")
+	}
+	if resourceSamplingCanceled(context.Background(), errors.New("docker stats failed")) {
+		t.Fatal("an active sampler hid a real Docker stats failure")
 	}
 }
