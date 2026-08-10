@@ -68,6 +68,7 @@ internal/
   preflight/                   pinned setup, verification, evidence, and cleanup
   qualification/               final source identity for lab qualification
   directcontrol/               Direct TLS measurement control and wire fault
+  nativecircuit/               native C-5/C2 laboratory candidate and lifecycle
 scripts/
   check-tools.go               build-ignored developer tool-version check
   install-git-hooks.sh         local hook bootstrap
@@ -76,7 +77,7 @@ scripts/
 .githooks/pre-commit           local quick gate
 carrier-lab/
   Dockerfile                   shared build plus application/tooling targets
-  compose.yaml                 isolation and tooling execution profiles
+  compose.yaml                 isolation, tooling, and native execution profiles
   tools.lock                   exact external laboratory-tool identities
 docs/                          product, security, research, ADR, and development records
 experiments/README.md          policy for future disposable spikes
@@ -89,8 +90,8 @@ maintained packages. `internal/directcontrol` implements only the laboratory
 Direct TLS measurement control and its protected-record fault; it is not a
 Route, a product fallback, a transport selection, or the future Route Module
 Interface described by R-013. `internal/harness`, its `tooling` Module,
-`internal/preflight`, `internal/qualification`, and `internal/directcontrol`
-are laboratory code. The
+`internal/preflight`, `internal/qualification`, `internal/directcontrol`, and
+`internal/nativecircuit` are laboratory code. The
 Dockerfile and Compose file serve only reproducible Carrier Lab execution and
 are not deployment or release packaging.
 
@@ -98,9 +99,10 @@ The exact current project imports are also recorded in the package map. In
 summary:
 
 ```text
-cmd/carrier-lab -> internal/directcontrol, internal/harness, internal/harness/tooling, internal/preflight
+cmd/carrier-lab -> internal/directcontrol, internal/harness, internal/harness/tooling, internal/nativecircuit, internal/preflight
 internal/harness -> internal/preflight
 internal/harness/tooling -> internal/preflight, internal/qualification
+internal/nativecircuit -> internal/harness/tooling, internal/preflight
 internal/directcontrol -> internal/preflight
 internal/preflight -> internal/qualification
 internal/qualification, internal/architecture -> standard library
@@ -201,13 +203,17 @@ Every new package, including a nested package, must arrive in one change with:
 Directory nesting grants no privileged dependency. The package map states the
 direction explicitly, and the architecture gate rejects any undeclared import.
 For the current tree, `internal/harness` and `internal/harness/tooling` do not
-import one another; the thin `cmd/carrier-lab` Adapter composes them. Changing
-that direction is an explicit architecture change, not an incidental import.
+import one another. `internal/nativecircuit` uses only the tooling Module's
+image-pair receipt and fixed native sidecar entrypoint; tooling receives no
+Route, Target, or Application implementation. Changing that direction is an
+explicit architecture change, not an incidental import.
 
 `internal/harness/tooling` qualifies as a separate Module because three callers
 use a disjoint Interface and it owns an independent supply, role, failure, and
 evidence lifecycle. Its complete exported Go surface is `VerifyInputs`,
-`RunSmoke`, and `RunRole`; it exports no configuration or evidence types.
+`VerifyNativeImages`, `RunSmoke`, `RunRole`, and `RunNativeRole`, plus the
+bounded `NativeImageReceipt` returned to the native evidence collector. It
+exports no role configuration type.
 Callers provide absolute verified input paths, a validated preflight run
 identity, an immutable image ID, and one of the fixed documented fault/role
 values. The Implementation owns Docker interaction, shaping, capture, cleanup,
@@ -345,8 +351,8 @@ created. Generated test evidence follows the artifact rules below.
 `carrier-lab/tools.lock` are the complete container-source interface for the
 current laboratory. The Dockerfile shares one reproducible Go build and exposes
 only the `application` and `tooling` targets. Compose exposes separate
-`isolation` and `tooling` profiles in one file. The lock is separate because it
-is supplied-artifact identity, not build or topology behavior. These files
+`isolation`, `tooling`, and `native` profiles in one file. The lock is separate
+because it is supplied-artifact identity, not build or topology behavior. These files
 contain no production deployment promise and receive no secrets from version
 control.
 

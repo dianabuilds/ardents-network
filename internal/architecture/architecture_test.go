@@ -40,6 +40,7 @@ var laboratoryPackages = map[string]bool{
 	"internal/directcontrol":   true,
 	"internal/harness":         true,
 	"internal/harness/tooling": true,
+	"internal/nativecircuit":   true,
 	"internal/preflight":       true,
 }
 

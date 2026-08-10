@@ -200,7 +200,20 @@ docker build --no-cache --pull=false --network=none \
   --file carrier-lab/Dockerfile \
   --target tooling \
   --iidfile /external/absolute/tooling-image.id .
+docker build --pull=false --network=none \
+  --build-arg CARRIER_LAB_SOURCE_SHA256="$SOURCE_SHA256" \
+  --build-context go_archive=/external/absolute/go-archive-directory \
+  --build-context tool_bundle=/external/absolute/tool-bundle \
+  --file carrier-lab/Dockerfile \
+  --target application \
+  --iidfile /external/absolute/application-image.id .
 ```
+
+The source is frozen before these two builds. The first build verifies and
+extracts the tool closure and builds the one Carrier Lab binary. The second
+target reuses that content-addressed build stage; it does not repeat package
+preparation. Tests and scenario attempts reuse the two immutable IDs. Rebuild
+only after a qualification-source file changes, never once per test.
 
 `tooling-verify` is the mandatory pre-build gate: as well as checking the exact
 external bundle, it resolves the base reference from the repository lock and
@@ -225,10 +238,78 @@ the controller re-reads and verifies the binding before it returns. Later
 mutation is thus detectable and cannot preserve the canonical verdict
 identity.
 
-The native C-5/C2 scenario remains unimplemented. Tool supply is no longer its
-blocker, but tooling smoke does not substitute for that topology, its separate
-C2 Introduction Path, role-view evidence, mandatory failures, or the mature
-Tor/Chutney comparison.
+### Native C-5/C2 development smoke
+
+The `native` profile uses the same Compose file and the same two image targets;
+there is no additional Dockerfile, Compose overlay, package cache, or generated
+container source in Git. Eleven unprivileged application roles form 11 exact
+adjacent internal networks. Eleven `NET_ADMIN` sidecars apply the fixed qdisc,
+and ten `NET_RAW` sidecars produce 11 link captures (User Interior owns the two
+distinct outgoing links). Each application role receives the same read-only
+lifecycle control mount. No role receives a host, external, or Docker-control
+network.
+
+Run one development smoke from a source-frozen pair as follows:
+
+```sh
+RUN_ID="native-$(date -u +%Y%m%dT%H%M%SZ)"
+TEMP_ROOT="${TMPDIR:-/tmp}"
+SESSION_ROOT="$TEMP_ROOT/ardents-carrier-lab-preflight-session.$RUN_ID"
+mkdir -m 700 "$SESSION_ROOT"
+go run ./cmd/carrier-lab native-run \
+  --repository-root "$PWD" \
+  --session-root "$SESSION_ROOT" \
+  --temp-root "$TEMP_ROOT" \
+  --run-id "$RUN_ID" \
+  --application-image "$(cat /external/absolute/application-image.id)" \
+  --tool-image "$(cat /external/absolute/tooling-image.id)"
+```
+
+Before Compose starts, `native-run` verifies both image IDs, target/base labels,
+the current qualification-source digest, the identical embedded binary digest,
+and the tooling image's exact embedded lock. It then requires all roles and
+sidecars to become ready, inspects the topology and effective capability
+contract, runs the separate C2 Introduction and C-5 data paths, authenticates
+the exact ephemeral Instance, verifies 64 KiB of protected Application bytes,
+checks all 11 captures for forbidden cleartext markers, collects bounded role
+and tool summaries, removes raw captures, and removes all owned Compose and run
+state. Failure logs are retained in bounded form before cleanup.
+
+The retained `native-run.json`, `native-roles/*.json`, and
+`native-tools/*.json` are development evidence outside the repository. A pass
+requires the image receipt, exact topology, bounded privileges, complete qdisc
+state, all link captures, role views, endpoint authentication, ordered bytes,
+marker absence, raw-capture deletion, and resource cleanup together. Package
+tests separately fail closed for a wrong Instance, a modified TLS record,
+invitation replay and wrong profile/run/Rendezvous binding, oversized or
+unknown frames, invalid Introduction state, and Rendezvous cancellation.
+
+The same immutable images also run the fixed process-failure smoke; no rebuild
+is allowed between the positive and failure cases:
+
+```sh
+go run ./cmd/carrier-lab native-run \
+  --repository-root "$PWD" \
+  --session-root "$SESSION_ROOT.failure" \
+  --temp-root "$TEMP_ROOT" \
+  --run-id "$RUN_ID-failure" \
+  --application-image "$(cat /external/absolute/application-image.id)" \
+  --tool-image "$(cat /external/absolute/tooling-image.id)" \
+  --fault rendezvous-process
+```
+
+After the User verifies the first 16 KiB protected Application chunk, the
+controller sends `SIGKILL` to the actual Rendezvous container. Both endpoints
+must record an explicit failure within 15 seconds, the User may retain exactly
+that authenticated prefix, neither endpoint may accept the complete stream,
+and cleanup remains mandatory. `failure_smoke_passed` is development evidence,
+not a timed recovery or availability result.
+
+`development_smoke_passed` closes only the implementation slice. It is not the
+R-013 comparative verdict: the official Ubuntu 26.04 runner, 20 setup attempts,
+timed bidirectional streams, Direct/C-3 measurements, the full workload form of
+the process-failure condition, and later Tor/Chutney reference remain a separate
+experiment run.
 
 ## Run
 

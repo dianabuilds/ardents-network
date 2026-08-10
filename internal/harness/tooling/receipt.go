@@ -60,6 +60,7 @@ func inspectToolingBuildReceipt(ctx context.Context, layout runLayout, project, 
 	}()
 	command := exec.CommandContext(ctx, "docker", "run", "--rm", "--name", containerName,
 		"--label", "com.docker.compose.project="+project, "--pull", "never", "--network", "none", "--read-only",
+		"--cap-drop", "ALL", "--security-opt", "no-new-privileges",
 		"--entrypoint", "/bin/sh", image, "-ceu",
 		"sha256sum /usr/share/ardents/carrier-lab-tools.lock /usr/local/bin/carrier-lab; cat /usr/share/ardents/carrier-lab-source.sha256")
 	output, err := command.CombinedOutput()

@@ -1,0 +1,190 @@
+package nativecircuit
+
+import (
+	"context"
+	"crypto/ecdh"
+	"crypto/rand"
+	"crypto/tls"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"time"
+)
+
+const candidateProfile = "carrier-lab-c5-c2/v1"
+
+type candidateUserPlan struct {
+	Profile            string
+	RunID              string
+	Rendezvous         string
+	Slot               handle
+	IntroductionPath   []circuitHop
+	DataPath           []circuitHop
+	HPKEPublic         *ecdh.PublicKey
+	EndpointTrust      endpointTrust
+	Payload            []byte
+	FirstChunkVerified func() error
+}
+
+type candidateServicePlan struct {
+	Profile             string
+	RunID               string
+	Rendezvous          string
+	Slot                handle
+	IntroductionPath    []circuitHop
+	DataPath            []circuitHop
+	HPKEPrivate         *ecdh.PrivateKey
+	EndpointCertificate tls.Certificate
+	Registered          func() error
+}
+
+func runCandidateUser(ctx context.Context, plan candidateUserPlan) (endpointObservation, error) {
+	if err := validateUserPlan(plan); err != nil {
+		return endpointObservation{}, err
+	}
+	joinToken, err := randomCryptoHandle()
+	if err != nil {
+		return endpointObservation{}, err
+	}
+	userAttempt, err := randomCryptoHandle()
+	if err != nil {
+		return endpointObservation{}, err
+	}
+	nonce, err := randomCryptoHandle()
+	if err != nil {
+		return endpointObservation{}, err
+	}
+	data, err := dialTelescopedCircuit(ctx, plan.DataPath)
+	if err != nil {
+		return endpointObservation{}, err
+	}
+	dataOwned := true
+	defer func() {
+		if dataOwned {
+			_ = data.Close()
+		}
+	}()
+	if err := writeControlFrame(data, frameRendezvousRegister, rendezvousAttachment{JoinToken: joinToken, AttemptHandle: userAttempt}); err != nil {
+		return endpointObservation{}, err
+	}
+	sealed, err := sealInvitation(plan.HPKEPublic, invitation{
+		Profile: plan.Profile, RunID: plan.RunID, Rendezvous: plan.Rendezvous,
+		JoinToken: joinToken, HandshakeNonce: nonce, ExpiresUnix: time.Now().Add(30 * time.Second).Unix(),
+	})
+	if err != nil {
+		return endpointObservation{}, err
+	}
+	introduction, err := dialTelescopedCircuit(ctx, plan.IntroductionPath)
+	if err != nil {
+		return endpointObservation{}, err
+	}
+	if err := writeControlFrame(introduction, frameIntroductionDeliver, introductionDeliveryFrame{Slot: plan.Slot, Sealed: sealed}); err != nil {
+		_ = introduction.Close()
+		return endpointObservation{}, err
+	}
+	acknowledgement, err := readFrame(introduction)
+	_ = introduction.Close()
+	if err != nil || acknowledgement.Type != frameIntroductionAcknowledge || string(acknowledgement.Payload) != "accepted" {
+		return endpointObservation{}, errors.New("separate Introduction Path did not acknowledge the invitation")
+	}
+	joined, err := readFrame(data)
+	if err != nil || joined.Type != frameRendezvousResult || string(joined.Payload) != "joined" {
+		return endpointObservation{}, errors.New("rendezvous did not join the C-5 legs")
+	}
+	dataOwned = false
+	return runEndpointUserWithProgress(ctx, data, plan.EndpointTrust, nonce, plan.Payload, plan.FirstChunkVerified)
+}
+
+func runCandidateService(ctx context.Context, plan candidateServicePlan) (endpointObservation, error) {
+	if err := validateServicePlan(plan); err != nil {
+		return endpointObservation{}, err
+	}
+	introduction, err := dialTelescopedCircuit(ctx, plan.IntroductionPath)
+	if err != nil {
+		return endpointObservation{}, err
+	}
+	defer introduction.Close()
+	if err := writeControlFrame(introduction, frameIntroductionRegister, introductionRegistrationFrame{Slot: plan.Slot}); err != nil {
+		return endpointObservation{}, err
+	}
+	registered, err := readFrame(introduction)
+	if err != nil || registered.Type != frameIntroductionAcknowledge || string(registered.Payload) != "registered" {
+		return endpointObservation{}, errors.New("introduction slot was not registered")
+	}
+	if plan.Registered != nil {
+		if err := plan.Registered(); err != nil {
+			return endpointObservation{}, err
+		}
+	}
+	delivery, err := readFrame(introduction)
+	if err != nil || delivery.Type != frameIntroductionDeliver {
+		return endpointObservation{}, errors.New("service did not receive a sealed Introduction invitation")
+	}
+	guard := newInvitationGuard(plan.Profile, plan.RunID, plan.Rendezvous, time.Now())
+	opened, err := guard.open(plan.HPKEPrivate, delivery.Payload)
+	if err != nil {
+		return endpointObservation{}, err
+	}
+	if err := writeFrame(introduction, frame{Type: frameIntroductionAcknowledge, Payload: []byte("accepted")}); err != nil {
+		return endpointObservation{}, err
+	}
+	serviceAttempt, err := randomCryptoHandle()
+	if err != nil {
+		return endpointObservation{}, err
+	}
+	data, err := dialTelescopedCircuit(ctx, plan.DataPath)
+	if err != nil {
+		return endpointObservation{}, err
+	}
+	dataOwned := true
+	defer func() {
+		if dataOwned {
+			_ = data.Close()
+		}
+	}()
+	if err := writeControlFrame(data, frameRendezvousAttach, rendezvousAttachment{JoinToken: opened.JoinToken, AttemptHandle: serviceAttempt}); err != nil {
+		return endpointObservation{}, err
+	}
+	joined, err := readFrame(data)
+	if err != nil || joined.Type != frameRendezvousResult || string(joined.Payload) != "joined" {
+		return endpointObservation{}, errors.New("service leg was not joined at Rendezvous")
+	}
+	dataOwned = false
+	return runEndpointService(ctx, data, plan.EndpointCertificate, opened.HandshakeNonce)
+}
+
+func writeControlFrame(connection interface{ Write([]byte) (int, error) }, kind frameType, value any) error {
+	payload, err := json.Marshal(value)
+	if err != nil {
+		return fmt.Errorf("encode native circuit control frame: %w", err)
+	}
+	return writeFrame(connection, frame{Type: kind, Payload: payload})
+}
+
+func randomCryptoHandle() (handle, error) {
+	var value handle
+	if _, err := rand.Read(value[:]); err != nil {
+		return handle{}, fmt.Errorf("generate native circuit handle: %w", err)
+	}
+	return value, nil
+}
+
+func validateUserPlan(plan candidateUserPlan) error {
+	if plan.Profile != candidateProfile || plan.RunID == "" || plan.Rendezvous == "" || plan.Slot == (handle{}) || plan.HPKEPublic == nil || plan.EndpointTrust.Roots == nil || len(plan.Payload) > maximumQueueBytes {
+		return errors.New("native C-5/C2 User plan is incomplete")
+	}
+	if len(plan.DataPath) != 3 || len(plan.IntroductionPath) != 4 || plan.DataPath[2].Address != plan.Rendezvous {
+		return errors.New("native C-5/C2 User paths do not match the fixed topology")
+	}
+	return nil
+}
+
+func validateServicePlan(plan candidateServicePlan) error {
+	if plan.Profile != candidateProfile || plan.RunID == "" || plan.Rendezvous == "" || plan.Slot == (handle{}) || plan.HPKEPrivate == nil || len(plan.EndpointCertificate.Certificate) == 0 {
+		return errors.New("native C-5/C2 Service plan is incomplete")
+	}
+	if len(plan.DataPath) != 3 || len(plan.IntroductionPath) != 3 || plan.DataPath[2].Address != plan.Rendezvous {
+		return errors.New("native C-5/C2 Service paths do not match the fixed topology")
+	}
+	return nil
+}

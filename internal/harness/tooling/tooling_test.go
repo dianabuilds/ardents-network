@@ -129,7 +129,19 @@ func TestToolingImageReceiptParsingAndSourceBinding(t *testing.T) {
 	if _, _, _, err := parseToolingImageIdentities(digestA); err == nil {
 		t.Fatal("incomplete image receipt was accepted")
 	}
+}
 
+func TestApplicationImageReceiptParsingAndSourceBinding(t *testing.T) {
+	t.Parallel()
+	digestA := strings.Repeat("a", 64)
+	digestB := strings.Repeat("b", 64)
+	binary, source, err := parseApplicationImageIdentities(digestA + "  /usr/local/bin/carrier-lab\n" + digestB + "\n")
+	if err != nil || binary != digestA || source != digestB {
+		t.Fatalf("valid application receipt rejected: %q %q %v", binary, source, err)
+	}
+	if _, _, err := parseApplicationImageIdentities(digestA); err == nil {
+		t.Fatal("incomplete application image receipt was accepted")
+	}
 }
 
 func TestCaptureStartupFailureFailsClosed(t *testing.T) {

@@ -4,7 +4,7 @@ title: Which technology candidates may enter Carrier Lab?
 status: active
 owner: product research
 started: 2026-08-08
-reviewed: 2026-08-08
+reviewed: 2026-08-10
 ---
 
 # R-013 — Carrier Lab technology candidates
@@ -71,9 +71,12 @@ conditional follow-up only after a recorded C-5 result justifies that work.
   Arti, libp2p, Waku, I2P, Nym, Ubuntu, Go, TLS 1.3, and HPKE come from the
   specifications, official documentation, and source repositories linked in
   this record. All external sources were accessed on 2026-08-09.
-- **Measurements:** no native C-5/C2, Tor/Chutney, or performance result exists
-  yet. The 2026-08-09 prerequisite audit is a repository/input inspection, not
-  a Route measurement or anonymity result.
+- **Measurements:** 2026-08-10 Docker Desktop development smokes prove one
+  native C-5/C2 setup, protected 64 KiB stream, real shaping/capture, role-view
+  collection, image binding, fail-closed Rendezvous process loss, and cleanup.
+  This is implementation evidence, not
+  the frozen comparative workload, an official Ubuntu result, a Route verdict,
+  or an anonymity result. No Tor/Chutney comparison exists yet.
 - **Assumptions:** one Product Owner plus Codex must be able to own the selected
   stack; the fixed synthetic topology and workload are useful feasibility
   proxies; local container roles do not imply independent operators.
@@ -496,7 +499,43 @@ the separate native task must still run the complete frozen scenario on the
 official Ubuntu 26.04 `x86-64` runner. Direct TLS remains only its measurement
 control and never a fallback.
 
-- actual Carrier Lab results and the Route verdict;
+### Native implementation status on 2026-08-10
+
+The lab-only `internal/nativecircuit` Module now implements the frozen positive
+C-5/C2 scenario without selecting a product protocol:
+
+- nine distinct Node roles plus User and Service endpoint roles run in isolated
+  adjacent Compose networks; the C2 Introduction Path is separate from C-5;
+- endpoint-to-Node circuits telescope TLS 1.3/X25519 layers; RFC 9180 HPKE seals
+  the one-use invitation; a separate TLS 1.3/X25519 session authenticates the
+  exact ephemeral Target/Instance and protects the Application stream;
+- bounded framing, queue, invitation, replay, binding, wrong-Instance,
+  modified-record, invalid-frame/state, and Rendezvous-cancellation behavior is
+  covered by package tests and parser fuzz seeds;
+- 11 namespace-sharing shapers apply real `tc netem`; 10 capture sidecars retain
+  11 per-link pcap identities using real tcpdump/libpcap. Application roles have
+  no effective capabilities, while tool roles receive exactly one of
+  `NET_ADMIN` or `NET_RAW`;
+- application and tooling image IDs are verified against their target/base
+  labels, the current qualification source digest, an identical binary digest,
+  and the exact embedded tool lock before Compose starts;
+- raw captures and credentials remain in one run-owned system-temporary tree.
+  The retained development evidence contains bounded summaries and hashes, and
+  successful cleanup removes raw captures, containers, networks, and run state.
+
+The successful positive development smoke carried and verified 65,536 Application
+bytes, authenticated the exact Instance, found neither the Target marker nor
+the Application marker in cleartext captures, collected every role/tool result,
+and proved cleanup. This closes the implementation slice only. It deliberately
+does not produce `advance`, `redesign`, or `stop`. The paired failure smoke
+kills the real Rendezvous after the first verified 16 KiB chunk and requires
+explicit endpoint failure within 15 seconds without accepting the full stream.
+The 20 setup attempts, six 60-second streams per condition, Direct/C-3
+comparison, full workload failure evidence, official Ubuntu 26.04 runner
+evidence, and later Tor/Chutney reference remain the separate R-013 experiment
+run.
+
+- full comparative Carrier Lab measurements and the Route verdict;
 - the bounded Go/Rust production comparison in R-014 after a viable Route;
 - whether QUIC or libp2p earns a second real Carrier Channel Adapter;
 - production endpoint handshake, credential encoding, protocol negotiation,
@@ -506,8 +545,8 @@ control and never a fallback.
 
 ## Disposition
 
-- State: `active`; Carrier Lab components and experiment contract are frozen,
-  but no implementation result exists.
+- State: `active`; the native development implementation smoke exists and is
+  ready for the frozen comparative experiment, but no Route verdict exists.
 - Gate A is satisfied for the named R-004/R-013 experiment.
 - Gate B permits implementing the Carrier Lab slice in the root project against
   this exact record. It does not permit any later-horizon subsystem.

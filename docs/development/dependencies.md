@@ -8,6 +8,12 @@ maintenance and security signals, alternatives considered, and removal plan.
 
 None. The project currently uses the Go standard library only.
 
+The native Carrier Lab candidate uses the Go 1.26 standard-library
+`crypto/hpke`, `crypto/tls`, `crypto/x509`, and `crypto/ecdh` implementations.
+They add no module dependency. First-party cryptographic primitives, cgo, and
+`unsafe` remain forbidden; replacing a standard implementation requires the
+normal dependency review before `go.mod` changes.
+
 ## Development tools
 
 | Tool | Version | Purpose |

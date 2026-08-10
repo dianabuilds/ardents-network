@@ -125,10 +125,16 @@ claim. Its exact disposable technology and evidence contract is
 Carrier Lab is not a second repository, Go module, product runtime, or future
 top-level architecture. The repository has one root `go.mod`. `cmd/carrier-lab`
 is only its executable adapter; `internal/harness`,
-`internal/harness/tooling`, `internal/preflight`, and `internal/directcontrol`
-are laboratory Modules; and `carrier-lab/` contains only the three container
-inputs needed to run them reproducibly. Product
+`internal/harness/tooling`, `internal/preflight`, `internal/directcontrol`, and
+`internal/nativecircuit` are laboratory Modules; and `carrier-lab/` contains
+only the three container inputs needed to run them reproducibly. Product
 Modules may later be promoted from accepted evidence, but never import the lab.
+
+The native C-5/C2 laboratory implementation now has a reproducible development
+smoke with separate Introduction and data paths, exact Instance authentication,
+real link shaping/capture, bounded evidence, and cleanup. This is readiness for
+the frozen R-013 comparative experiment, not a Route Qualification or a
+production networking claim.
 
 ## First conditional Reference Application
 
