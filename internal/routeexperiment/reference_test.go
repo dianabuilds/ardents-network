@@ -11,7 +11,7 @@ func TestReferenceLockNamesExactExternalClosure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(inputs.Packages) != 13 || len(inputs.Wheels) != 3 || inputs.Archive != "ardents-r013-chutney-988fc37.tar.gz" {
+	if len(inputs.Packages) != 13 || len(inputs.Wheels) != 3 || inputs.Archive != "ardents-r013-chutney-988fc37.tar" {
 		t.Fatalf("unexpected reference closure: %+v", inputs)
 	}
 }

@@ -46,7 +46,9 @@ checkout="$output/chutney-checkout"
 git clone --filter=blob:none --no-checkout "$repository" "$checkout"
 git -C "$checkout" checkout --detach "$revision"
 [[ $(git -C "$checkout" rev-parse HEAD) == "$revision" ]]
-git -C "$checkout" archive --format=tar.gz --prefix=chutney/ -o "$output/$archive" "$revision"
+# A plain git-generated tar is byte-for-byte reproducible. The tar.gz writer
+# embeds the current gzip timestamp, so its digest changes on every run.
+git -C "$checkout" archive --format=tar --prefix=chutney/ -o "$output/$archive" "$revision"
 printf '%s  %s\n' "$archive_digest" "$output/$archive" | sha256sum --check --status
 rm -rf "$checkout"
 
