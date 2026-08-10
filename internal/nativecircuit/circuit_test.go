@@ -74,6 +74,24 @@ func TestTelescopedCircuitAuthenticatesEveryLayerAndCarriesOpaqueStream(t *testi
 	}
 }
 
+func TestTelescopedCircuitClosesPriorLayerWhenNestedAuthenticationFails(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	entry := newTestNode(t, "entry")
+	terminal := newTestNode(t, "terminal")
+	go serveOneRelay(ctx, entry.listener, entry.certificate, []string{terminal.address})
+	go serveOneNode(ctx, terminal.listener, terminal.certificate, func(net.Conn) error { return nil })
+	wrongDigest := terminal.digest
+	wrongDigest[0] ^= 1
+	if connection, err := dialTelescopedCircuit(ctx, []circuitHop{
+		{Address: entry.address, CertificateSHA256: entry.digest},
+		{Address: terminal.address, CertificateSHA256: wrongDigest},
+	}); err == nil || connection != nil {
+		t.Fatal("nested Node with the wrong identity was accepted")
+	}
+}
+
 type testNode struct {
 	listener    net.Listener
 	address     string

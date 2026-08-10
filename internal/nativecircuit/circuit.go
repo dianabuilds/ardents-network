@@ -64,11 +64,12 @@ func dialTelescopedCircuit(ctx context.Context, path []circuitHop) (net.Conn, er
 			_ = current.Close()
 			return nil, errors.New("native circuit extension failed closed")
 		}
-		current, err = authenticateNode(ctx, current, hop.CertificateSHA256)
+		nextLayer, err := authenticateNode(ctx, current, hop.CertificateSHA256)
 		if err != nil {
 			_ = current.Close()
 			return nil, err
 		}
+		current = nextLayer
 	}
 	return current, nil
 }

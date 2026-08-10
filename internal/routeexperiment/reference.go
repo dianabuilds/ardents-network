@@ -110,7 +110,7 @@ func readReferenceLock(path string) (referenceInputs, error) {
 			}
 		case len(fields) > 1 && fields[0] == "tor" && fields[1] == "package":
 			if !validReferenceRecord(fields, "https://archive.ubuntu.com/ubuntu/pool/") {
-				return referenceInputs{}, errors.New("Tor package provenance or license is invalid")
+				return referenceInputs{}, errors.New("tor package provenance or license is invalid")
 			}
 			if err := addReferencePackage(result.Packages, fields[3], fields[4]); err != nil {
 				return referenceInputs{}, err

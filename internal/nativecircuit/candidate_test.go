@@ -57,6 +57,7 @@ func TestNativeC5C2UsesSeparateIntroductionAndJoinedDataPaths(t *testing.T) {
 	runID := "20260810T130000Z-native"
 	serviceDone := make(chan endpointObservation, 1)
 	serviceErr := make(chan error, 1)
+	serviceRegistered := make(chan struct{})
 	go func() {
 		observation, err := runCandidateService(ctx, candidateServicePlan{
 			Profile: candidateProfile, RunID: runID, Rendezvous: rendezvous.address, Slot: slot,
@@ -71,10 +72,16 @@ func TestNativeC5C2UsesSeparateIntroductionAndJoinedDataPaths(t *testing.T) {
 				{Address: rendezvous.address, CertificateSHA256: rendezvous.digest},
 			},
 			HPKEPrivate: hpkePrivate, EndpointCertificate: endpointCertificate,
+			Registered: func() error { close(serviceRegistered); return nil },
 		})
 		serviceDone <- observation
 		serviceErr <- err
 	}()
+	select {
+	case <-serviceRegistered:
+	case <-ctx.Done():
+		t.Fatal("Service did not register its Introduction slot")
+	}
 
 	payload := []byte("native C-5/C2 verified Application stream")
 	userObservation, err := runCandidateUser(ctx, candidateUserPlan{
