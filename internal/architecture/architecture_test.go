@@ -45,6 +45,7 @@ var laboratoryPackages = map[string]bool{
 	"internal/nativecircuit":      true,
 	"internal/preflight":          true,
 	"internal/routeexperiment":    true,
+	"internal/siteexperiment":     true,
 }
 
 func TestRepositoryArchitecture(t *testing.T) {
