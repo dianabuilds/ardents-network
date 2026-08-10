@@ -88,7 +88,16 @@ func waitNativeReady(ctx context.Context, _ nativeFixture, paths []string, timeo
 	for time.Now().Before(deadline) {
 		ready := true
 		for _, path := range paths {
-			if info, err := os.Stat(path); err != nil || info.Size() == 0 || info.Size() > 32*1024*1024 {
+			file, err := os.Open(path)
+			if err != nil {
+				ready = false
+				break
+			}
+			info, statErr := file.Stat()
+			buffer := make([]byte, 1)
+			readCount, readErr := file.Read(buffer)
+			closeErr := file.Close()
+			if statErr != nil || info.Size() == 0 || info.Size() > 32*1024*1024 || readErr != nil || readCount != 1 || closeErr != nil {
 				ready = false
 				break
 			}

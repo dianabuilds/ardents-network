@@ -86,7 +86,7 @@ func writeRoleJSON(path string, value any) error {
 		return errors.New("native role evidence exceeds 32 MiB")
 	}
 	temporary := path + ".tmp"
-	if err := os.WriteFile(temporary, append(data, '\n'), 0o600); err != nil {
+	if err := os.WriteFile(temporary, append(data, '\n'), 0o644); err != nil {
 		return err
 	}
 	return os.Rename(temporary, path)

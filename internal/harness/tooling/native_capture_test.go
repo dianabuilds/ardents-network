@@ -6,8 +6,26 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"testing"
 )
+
+func TestNativeToolEvidenceIsReadableByTheHostController(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not preserve Unix permission bits for Linux bind mounts")
+	}
+	path := filepath.Join(t.TempDir(), "ready.json")
+	if err := writeBoundedJSON(path, map[string]string{"status": "ready"}); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0o644 {
+		t.Fatalf("tool evidence mode = %o, want 644", info.Mode().Perm())
+	}
+}
 
 func TestNativeCaptureFilterUsesResolvedAddresses(t *testing.T) {
 	got := nativeCaptureFilter([]string{"172.20.0.2", "fd00::2"})

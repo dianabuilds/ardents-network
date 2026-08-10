@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -38,5 +39,22 @@ func TestRoleRejectsUnknownConfigurationField(t *testing.T) {
 	}
 	if err := RunRole(context.Background(), configPath, evidenceDir); err == nil {
 		t.Fatal("Rendezvous accepted an undeclared configuration field")
+	}
+}
+
+func TestRoleEvidenceIsReadableByTheHostController(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not preserve Unix permission bits for Linux bind mounts")
+	}
+	path := filepath.Join(t.TempDir(), "ready.json")
+	if err := writeRoleJSON(path, map[string]string{"status": "ready"}); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0o644 {
+		t.Fatalf("role evidence mode = %o, want 644", info.Mode().Perm())
 	}
 }

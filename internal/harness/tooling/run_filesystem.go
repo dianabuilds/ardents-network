@@ -129,7 +129,7 @@ func writeBoundedJSON(path string, value any) error {
 	if len(data) > smokeEvidenceCap {
 		return errors.New("tooling evidence exceeds bounded size")
 	}
-	return writeAtomic(path, data, 0o600)
+	return writeAtomic(path, data, 0o644)
 }
 
 func removeSmokeRunDirectory(layout runLayout) error {
