@@ -20,7 +20,7 @@ type RoleConfig struct {
 // RunRole runs one member of the closed Gate C container-role set.
 func RunRole(ctx context.Context, role string, config RoleConfig) error {
 	if ctx == nil {
-		return errors.New("Gate C role context is required")
+		return errors.New("gate C role context is required")
 	}
 	switch role {
 	case "http-application":

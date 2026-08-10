@@ -73,7 +73,7 @@ func failMatrix(result matrixResult, message string, hard bool) matrixResult {
 
 func validateMatrixRunner(runner matrixRunner) error {
 	if runner.positive == nil || runner.failure == nil || runner.migrate == nil {
-		return errors.New("Gate C matrix runner is incomplete")
+		return errors.New("gate C matrix runner is incomplete")
 	}
 	return nil
 }

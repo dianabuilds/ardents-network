@@ -174,7 +174,7 @@ func readConnectResponse(reader io.Reader) (connectResponse, error) {
 	decoder.DisallowUnknownFields()
 	var response connectResponse
 	if err := decoder.Decode(&response); err != nil || response.Schema != applicationInterfaceSchema {
-		return connectResponse{}, errors.New("Application response is invalid")
+		return connectResponse{}, errors.New("application response is invalid")
 	}
 	return response, nil
 }

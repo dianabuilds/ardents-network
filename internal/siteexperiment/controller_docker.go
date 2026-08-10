@@ -53,7 +53,7 @@ func startReferenceApplication(ctx context.Context, repositoryRoot, runDirectory
 		case <-time.After(20 * time.Millisecond):
 		}
 	}
-	return process, "", errors.New("Reference HTTP Application socket was not ready")
+	return process, "", errors.New("reference HTTP Application socket was not ready")
 }
 
 func (process *referenceProcess) compose(ctx context.Context, arguments ...string) ([]byte, error) {
@@ -62,7 +62,7 @@ func (process *referenceProcess) compose(ctx context.Context, arguments ...strin
 	command.Env = process.environment
 	output, err := command.CombinedOutput()
 	if err != nil {
-		return output, fmt.Errorf("Reference Site Compose: %w: %s", err, strings.TrimSpace(string(output)))
+		return output, fmt.Errorf("reference Site Compose: %w: %s", err, strings.TrimSpace(string(output)))
 	}
 	return output, nil
 }
@@ -78,7 +78,7 @@ func verifyReferenceImage(ctx context.Context, image, sourceSHA string) error {
 	command := exec.CommandContext(ctx, "docker", "run", "--rm", "--pull", "never", "--network", "none", "--entrypoint", "/bin/sh", image, "-c", "cat /usr/share/ardents/gate-c-source.sha256")
 	output, err := command.CombinedOutput()
 	if err != nil || strings.TrimSpace(string(output)) != sourceSHA {
-		return errors.New("Reference Site image is not bound to the current source identity")
+		return errors.New("reference Site image is not bound to the current source identity")
 	}
 	return nil
 }

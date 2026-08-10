@@ -91,7 +91,7 @@ func exerciseApplicationInterface(ctx context.Context, route net.Conn, resolver 
 	}
 	response, err := readConnectResponse(client)
 	if err != nil || response.Status != "connected" || response.Target != fixture.target || response.InstanceGeneration != fixture.instanceGeneration {
-		return errors.New("Application Interface did not return the authenticated binding")
+		return errors.New("application Interface did not return the authenticated binding")
 	}
 	_, workloadErr := executeHTTPWorkload(client, workloadNonce)
 	_ = client.Close()

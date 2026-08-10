@@ -34,7 +34,7 @@ type runManifest struct {
 // evidence. Images are immutable inputs and are never built by this function.
 func Run(ctx context.Context, identity experimentrun.Layout, applicationImage, toolImage, referenceImage, r013Receipt string) (string, error) {
 	if ctx == nil || !validImageID(applicationImage) || !validImageID(toolImage) || !validImageID(referenceImage) {
-		return "", errors.New("Gate C requires context and three immutable image IDs")
+		return "", errors.New("gate C requires context and three immutable image IDs")
 	}
 	runID, repositoryRoot, runDirectory, evidenceDirectory, err := identity.OwnedPaths(false, false)
 	if err != nil {

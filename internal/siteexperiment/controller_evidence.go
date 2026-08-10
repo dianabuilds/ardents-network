@@ -24,7 +24,7 @@ func writeBoundedJSON(path string, value any) error {
 		return err
 	}
 	if len(data) > 4*1024*1024 {
-		return errors.New("Gate C evidence exceeds 4 MiB")
+		return errors.New("gate C evidence exceeds 4 MiB")
 	}
 	return os.WriteFile(path, append(data, '\n'), 0o600)
 }
@@ -32,17 +32,17 @@ func writeBoundedJSON(path string, value any) error {
 func cleanupGateCRuntime(identity experimentrun.Layout, runDirectory string) error {
 	_, _, verifiedRun, _, err := identity.OwnedPaths(true, true)
 	if err != nil || verifiedRun != runDirectory {
-		return errors.New("Gate C cleanup identity changed")
+		return errors.New("gate C cleanup identity changed")
 	}
 	info, err := os.Lstat(runDirectory)
 	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 || filepath.Base(runDirectory) == "" {
-		return errors.New("Gate C runtime is not an owned real directory")
+		return errors.New("gate C runtime is not an owned real directory")
 	}
 	if err := os.RemoveAll(runDirectory); err != nil {
 		return err
 	}
 	if _, err := os.Stat(runDirectory); !os.IsNotExist(err) {
-		return errors.New("Gate C runtime remains after cleanup")
+		return errors.New("gate C runtime remains after cleanup")
 	}
 	return nil
 }
