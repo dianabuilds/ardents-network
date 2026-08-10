@@ -1,6 +1,10 @@
 package preflight
 
-import "time"
+import (
+	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/experimentrun"
+)
 
 const (
 	inputSchemaVersion    = "carrier-lab-preflight-input/v1"
@@ -15,9 +19,9 @@ const (
 	expectedGoArchiveSHA256     = "5c2c3b16caefa1d968a94c1daca04a7ca301a496d9b086e17ad77bb81393f053"
 	expectedGoVersion           = "go1.26.5"
 
-	runDirectoryPrefix      = "ardents-carrier-lab-preflight-run."
-	evidenceDirectoryPrefix = "ardents-carrier-lab-preflight-evidence."
-	sessionDirectoryPrefix  = "ardents-carrier-lab-preflight-session."
+	runDirectoryPrefix      = experimentrun.RunPrefix
+	evidenceDirectoryPrefix = experimentrun.EvidencePrefix
+	sessionDirectoryPrefix  = experimentrun.SessionPrefix
 
 	manifestFilename = "preflight-manifest.json"
 	verdictFilename  = "verdict.json"

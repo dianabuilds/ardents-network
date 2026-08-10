@@ -19,10 +19,10 @@ func TestCleanupFailureReturnsNonZeroAfterRemovingRunDirectory(t *testing.T) {
 	t.Parallel()
 	tempRoot := t.TempDir()
 	runID := "20260809T120000Z-command"
-	sessionRoot := filepath.Join(tempRoot, "ardents-carrier-lab-preflight-session."+runID)
+	sessionRoot := filepath.Join(tempRoot, "ardents-experiment-session."+runID)
 	repositoryRoot := filepath.Join(tempRoot, "repository")
-	runDir := filepath.Join(sessionRoot, "ardents-carrier-lab-preflight-run."+runID)
-	evidenceDir := filepath.Join(sessionRoot, "ardents-carrier-lab-preflight-evidence."+runID)
+	runDir := filepath.Join(sessionRoot, "ardents-experiment-run."+runID)
+	evidenceDir := filepath.Join(sessionRoot, "ardents-experiment-evidence."+runID)
 	for _, directory := range []string{repositoryRoot, runDir, evidenceDir} {
 		if err := os.MkdirAll(directory, 0o700); err != nil {
 			t.Fatal(err)

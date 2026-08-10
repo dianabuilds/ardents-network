@@ -65,7 +65,7 @@ func runNativeAttempt(ctx context.Context, identity preflight.RunLayout, manifes
 	}
 	childID := runID + "-" + compactName(profile) + "-" + compactName(workload.Name)
 	parentSession := filepath.Dir(runDirectory)
-	childSession := filepath.Join(parentSession, "ardents-carrier-lab-preflight-session."+childID)
+	childSession := filepath.Join(parentSession, "ardents-experiment-session."+childID)
 	if err := os.Mkdir(childSession, 0o700); err != nil {
 		return nativeAttemptEvidence{}, err
 	}
@@ -161,7 +161,7 @@ func copyEvidenceTree(source, target string) error {
 }
 
 func removeChildSession(child, parent string) error {
-	if filepath.Dir(child) != parent || !strings.HasPrefix(filepath.Base(child), "ardents-carrier-lab-preflight-session.") {
+	if filepath.Dir(child) != parent || !strings.HasPrefix(filepath.Base(child), "ardents-experiment-session.") {
 		return errors.New("refusing to remove an unowned condition session")
 	}
 	return os.RemoveAll(child)

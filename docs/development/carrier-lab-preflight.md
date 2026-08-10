@@ -254,7 +254,7 @@ Run one development smoke from a source-frozen pair as follows:
 ```sh
 RUN_ID="native-$(date -u +%Y%m%dT%H%M%SZ)"
 TEMP_ROOT="${TMPDIR:-/tmp}"
-SESSION_ROOT="$TEMP_ROOT/ardents-carrier-lab-preflight-session.$RUN_ID"
+SESSION_ROOT="$TEMP_ROOT/ardents-experiment-session.$RUN_ID"
 mkdir -m 700 "$SESSION_ROOT"
 go run ./cmd/carrier-lab native-run \
   --repository-root "$PWD" \

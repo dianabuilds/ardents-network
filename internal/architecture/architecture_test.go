@@ -86,7 +86,7 @@ func assertQualityWiring(t *testing.T, root string) {
 		}
 	}
 	carrierWorkflow := readProjectFile(t, root, ".github/workflows/carrier-lab.yml")
-	for _, required := range []string{"workflow_dispatch:", "runs-on: ubuntu-26.04", "route-experiment", "--network=none", "ardents-carrier-lab-preflight-session.", "experiment-verdict.json"} {
+	for _, required := range []string{"workflow_dispatch:", "runs-on: ubuntu-26.04", "route-experiment", "--network=none", "ardents-experiment-session.", "experiment-verdict.json"} {
 		if !bytes.Contains(carrierWorkflow, []byte(required)) {
 			t.Errorf("Carrier Lab workflow is missing qualification control %q", required)
 		}

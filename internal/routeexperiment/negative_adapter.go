@@ -43,7 +43,7 @@ func runRendezvousFailure(ctx context.Context, identity preflight.RunLayout, man
 	}
 	childID := runID + "-rendezvousfailure"
 	parentSession := filepath.Dir(runDirectory)
-	childSession := filepath.Join(parentSession, "ardents-carrier-lab-preflight-session."+childID)
+	childSession := filepath.Join(parentSession, "ardents-experiment-session."+childID)
 	if err := os.Mkdir(childSession, 0o700); err != nil {
 		return failureSummary{}, err
 	}

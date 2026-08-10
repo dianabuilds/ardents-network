@@ -25,7 +25,7 @@ func TestDockerProfilesReuseFrozenImages(t *testing.T) {
 	for _, profile := range []string{workloadDirect, workloadC3, workloadC5} {
 		t.Run(profile, func(t *testing.T) {
 			runID := "integration-" + profile + "-" + time.Now().UTC().Format("20060102T150405.000000000")
-			sessionRoot := filepath.Join(temporaryRoot, "ardents-carrier-lab-preflight-session."+runID)
+			sessionRoot := filepath.Join(temporaryRoot, "ardents-experiment-session."+runID)
 			if err := os.Mkdir(sessionRoot, 0o700); err != nil {
 				t.Fatal(err)
 			}

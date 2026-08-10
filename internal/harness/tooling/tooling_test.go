@@ -228,7 +228,7 @@ func TestToolingCleanupRemovesWorkspaceAfterPartialPreparationFailure(t *testing
 	t.Parallel()
 	root := t.TempDir()
 	repository := filepath.Join(root, "repository")
-	session := filepath.Join(root, "ardents-carrier-lab-preflight-session.partial-failure")
+	session := filepath.Join(root, "ardents-experiment-session.partial-failure")
 	if err := os.Mkdir(repository, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -283,7 +283,7 @@ func TestToolingVerdictBindsImmutableManifest(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	repository := filepath.Join(root, "repository")
-	session := filepath.Join(root, "ardents-carrier-lab-preflight-session.manifest-binding")
+	session := filepath.Join(root, "ardents-experiment-session.manifest-binding")
 	if err := os.Mkdir(repository, 0o700); err != nil {
 		t.Fatal(err)
 	}
