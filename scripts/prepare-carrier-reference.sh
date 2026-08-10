@@ -14,19 +14,19 @@ output=$(realpath "$output")
 [[ "$output" != / && "$output" != "$PWD" ]] || exit 64
 
 download_package() {
-  local name=$1 version=$2 filename=$3 digest=$4
-  (
-    cd "$output/packages"
-    apt-get download "$name=$version"
-  )
-  [[ -f "$output/packages/$filename" ]]
+  local name=$1 version=$2 filename=$3 digest=$4 url=$5 expected_architecture=amd64
+  [[ "$filename" == *_all.deb ]] && expected_architecture=all
+  curl --fail --location --proto '=https' --tlsv1.2 --output "$output/packages/$filename" "$url"
   printf '%s  %s\n' "$digest" "$output/packages/$filename" | sha256sum --check --status
+  [[ $(dpkg-deb --field "$output/packages/$filename" Package) == "$name" ]]
+  [[ $(dpkg-deb --field "$output/packages/$filename" Version) == "$version" ]]
+  [[ $(dpkg-deb --field "$output/packages/$filename" Architecture) == "$expected_architecture" ]]
 }
 
-while IFS=$'\t' read -r kind name version filename digest remainder; do
+while IFS=$'\t' read -r kind name version filename digest url license; do
   case "$kind/$name" in
-    package/*) download_package "$name" "$version" "$filename" "$digest" ;;
-    tor/package) download_package tor "$version" "$filename" "$digest" ;;
+    package/*) download_package "$name" "$version" "$filename" "$digest" "$url" ;;
+    tor/package) download_package tor "$version" "$filename" "$digest" "$url" ;;
   esac
 done < "$lock"
 

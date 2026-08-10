@@ -101,17 +101,26 @@ func readReferenceLock(path string) (referenceInputs, error) {
 			continue
 		}
 		switch {
-		case len(fields) >= 5 && fields[0] == "package":
+		case fields[0] == "package":
+			if !validReferenceRecord(fields, "https://archive.ubuntu.com/ubuntu/pool/") {
+				return referenceInputs{}, errors.New("reference package provenance or license is invalid")
+			}
 			if err := addReferencePackage(result.Packages, fields[3], fields[4]); err != nil {
 				return referenceInputs{}, err
 			}
-		case len(fields) >= 6 && fields[0] == "tor" && fields[1] == "package":
+		case len(fields) > 1 && fields[0] == "tor" && fields[1] == "package":
+			if !validReferenceRecord(fields, "https://archive.ubuntu.com/ubuntu/pool/") {
+				return referenceInputs{}, errors.New("Tor package provenance or license is invalid")
+			}
 			if err := addReferencePackage(result.Packages, fields[3], fields[4]); err != nil {
 				return referenceInputs{}, err
 			}
-		case len(fields) >= 7 && fields[0] == "chutney" && fields[1] == "revision":
+		case len(fields) == 7 && fields[0] == "chutney" && fields[1] == "revision":
 			result.Archive, result.ArchiveSHA256 = fields[3], fields[4]
-		case len(fields) >= 7 && fields[0] == "wheel":
+		case fields[0] == "wheel":
+			if !validReferenceRecord(fields, "https://files.pythonhosted.org/packages/") {
+				return referenceInputs{}, errors.New("reference wheel provenance or license is invalid")
+			}
 			if err := addReferencePackage(result.Wheels, fields[3], fields[4]); err != nil {
 				return referenceInputs{}, err
 			}
@@ -124,6 +133,10 @@ func readReferenceLock(path string) (referenceInputs, error) {
 		return referenceInputs{}, errors.New("reference lock input closure is incomplete")
 	}
 	return result, nil
+}
+
+func validReferenceRecord(fields []string, sourcePrefix string) bool {
+	return len(fields) == 7 && strings.HasPrefix(fields[5], sourcePrefix) && !strings.ContainsAny(fields[5], " \r\n\t") && strings.TrimSpace(fields[6]) != ""
 }
 
 func addReferencePackage(packages map[string]string, name, digest string) error {
