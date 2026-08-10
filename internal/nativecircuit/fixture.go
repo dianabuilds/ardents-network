@@ -119,10 +119,11 @@ func prepareNativeFixture(runDirectory, runID, fault string, workload *nativeWor
 func prepareRoleDirectories(root, role string) (string, string, error) {
 	config := filepath.Join(root, "configs", role)
 	evidence := filepath.Join(root, "evidence", role)
-	for _, directory := range []string{config, evidence} {
-		if err := os.Mkdir(directory, 0o700); err != nil {
-			return "", "", err
-		}
+	if err := os.Mkdir(config, 0o755); err != nil {
+		return "", "", err
+	}
+	if err := os.Mkdir(evidence, 0o700); err != nil {
+		return "", "", err
 	}
 	if err := os.Chmod(evidence, 0o777); err != nil {
 		return "", "", err
@@ -137,7 +138,7 @@ func writeEndpointInputs(root string, endpoint endpointFixture, hpkePrivate *ecd
 	}
 	for role, files := range inputs {
 		for name, data := range files {
-			if err := os.WriteFile(filepath.Join(root, "configs", role, name), data, 0o600); err != nil {
+			if err := os.WriteFile(filepath.Join(root, "configs", role, name), data, 0o644); err != nil {
 				return err
 			}
 		}
@@ -150,7 +151,7 @@ func writeFixtureJSON(path string, value any) error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(path, append(data, '\n'), 0o600); err != nil {
+	if err := os.WriteFile(path, append(data, '\n'), 0o644); err != nil {
 		return fmt.Errorf("write fixture %s: %w", filepath.Base(path), err)
 	}
 	return nil

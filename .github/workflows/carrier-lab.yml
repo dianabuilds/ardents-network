@@ -73,6 +73,16 @@ jobs:
               verdict = json.load(source)
           if verdict["status"] != "completed" or verdict["decision"] not in {"advance", "redesign", "stop"}:
               raise SystemExit(f"invalid Carrier Lab result: {verdict}")
+          with open(sys.argv[1].replace("experiment-verdict.json", "experiment.json"), encoding="utf-8") as source:
+              experiment = json.load(source)
+          direct = experiment.get("conditions", {}).get("direct", {})
+          if (len(direct.get("setups", [])) != 20
+                  or not all(sample.get("passed") for sample in direct["setups"])
+                  or len(direct.get("streams", [])) != 6
+                  or not all(sample.get("verified") and sample.get("bits_per_second", 0) > 0 for sample in direct["streams"])
+                  or not direct.get("resources")
+                  or not direct.get("cleanup_passed")):
+              raise SystemExit("Direct baseline is operationally invalid; no technology verdict may be accepted")
           print(f"Carrier Lab decision: {verdict['decision']}")
           PY
       - name: Upload bounded experiment evidence

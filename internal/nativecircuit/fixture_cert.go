@@ -46,10 +46,10 @@ func generateNodeIdentity(directory, role string) (roleHop, error) {
 	if err != nil {
 		return roleHop{}, err
 	}
-	if err := os.WriteFile(filepath.Join(directory, "node.pem"), pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(directory, "node.pem"), pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}), 0o644); err != nil {
 		return roleHop{}, err
 	}
-	if err := os.WriteFile(filepath.Join(directory, "node.key"), pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privateDER}), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(directory, "node.key"), pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privateDER}), 0o644); err != nil {
 		return roleHop{}, err
 	}
 	digest := sha256.Sum256(der)
