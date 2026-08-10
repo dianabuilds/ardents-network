@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dianabuilds/ardents-network/internal/qualification"
+	"github.com/dianabuilds/ardents-network/internal/experimentidentity"
 )
 
 const pinnedVerifierScript = `
@@ -44,7 +44,7 @@ fi
 `
 
 func (run *bootstrapRun) buildCandidateImage() error {
-	sourceSHA256, err := qualification.SourceSHA256(run.repositoryRoot)
+	sourceSHA256, err := experimentidentity.SourceSHA256(run.repositoryRoot)
 	if err != nil {
 		return fmt.Errorf("qualification source snapshot: %w", err)
 	}

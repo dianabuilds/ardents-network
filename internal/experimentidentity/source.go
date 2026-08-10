@@ -1,4 +1,4 @@
-package qualification
+package experimentidentity
 
 import (
 	"crypto/sha256"
@@ -18,41 +18,34 @@ type sourceFile struct {
 }
 
 var sourceFiles = []string{
-	".dockerignore",
-	".github/workflows/carrier-lab.yml",
-	".github/workflows/quality.yml",
-	".githooks/pre-commit",
-	"AGENTS.md",
-	"CONTRIBUTING.md",
-	"Makefile",
-	"README.md",
-	"go.mod",
+	".dockerignore", ".githooks/pre-commit", "AGENTS.md", "CONTRIBUTING.md",
+	"Makefile", "README.md", "go.mod",
 }
 
-var sourceDirectories = []string{"carrier-lab", "cmd", "internal", "scripts"}
+var sourceDirectories = []string{".github/workflows", "carrier-lab", "cmd", "internal", "scripts"}
+var optionalSourceDirectories = []string{"reference-site"}
 
-// SourceSHA256 binds maintained code, tests, and the local build/quality
-// infrastructure used to qualify a Carrier Lab image.
+// SourceSHA256 binds all maintained inputs shared by Carrier Lab and Gate C.
 func SourceSHA256(repositoryRoot string) (string, error) {
 	root, err := canonicalRoot(repositoryRoot)
 	if err != nil {
 		return "", err
 	}
-	identities := make([]sourceFile, 0, 64)
+	identities := make([]sourceFile, 0, 96)
 	add := func(path string, entry fs.DirEntry) error {
 		if entry != nil && entry.Type()&os.ModeSymlink != 0 {
-			return fmt.Errorf("qualification source contains symlink %s", path)
+			return fmt.Errorf("experiment source contains symlink %s", path)
 		}
 		info, err := os.Lstat(path)
 		if err != nil {
-			return fmt.Errorf("inspect qualification source %s: %w", path, err)
+			return fmt.Errorf("inspect experiment source %s: %w", path, err)
 		}
 		if !info.Mode().IsRegular() {
-			return fmt.Errorf("qualification source contains non-regular file %s", path)
+			return fmt.Errorf("experiment source contains non-regular file %s", path)
 		}
 		digest, err := fileSHA256(path)
 		if err != nil {
-			return fmt.Errorf("hash qualification source %s: %w", path, err)
+			return fmt.Errorf("hash experiment source %s: %w", path, err)
 		}
 		relative, err := filepath.Rel(root, path)
 		if err != nil {
@@ -66,8 +59,9 @@ func SourceSHA256(repositoryRoot string) (string, error) {
 			return "", err
 		}
 	}
-	for _, directory := range sourceDirectories {
-		err := filepath.WalkDir(filepath.Join(root, directory), func(path string, entry fs.DirEntry, walkErr error) error {
+	directories := append(slices.Clone(sourceDirectories), existingOptionalDirectories(root)...)
+	for _, directory := range directories {
+		err := filepath.WalkDir(filepath.Join(root, filepath.FromSlash(directory)), func(path string, entry fs.DirEntry, walkErr error) error {
 			if walkErr != nil {
 				return walkErr
 			}
@@ -80,14 +74,23 @@ func SourceSHA256(repositoryRoot string) (string, error) {
 			return "", err
 		}
 	}
-	slices.SortFunc(identities, func(left, right sourceFile) int {
-		return strings.Compare(left.path, right.path)
-	})
+	slices.SortFunc(identities, func(left, right sourceFile) int { return strings.Compare(left.path, right.path) })
 	hash := sha256.New()
 	for _, identity := range identities {
 		_, _ = fmt.Fprintf(hash, "%s  %s\n", identity.digest, identity.path)
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+func existingOptionalDirectories(root string) []string {
+	var existing []string
+	for _, relative := range optionalSourceDirectories {
+		info, err := os.Stat(filepath.Join(root, filepath.FromSlash(relative)))
+		if err == nil && info.IsDir() {
+			existing = append(existing, relative)
+		}
+	}
+	return existing
 }
 
 func canonicalRoot(path string) (string, error) {

@@ -12,7 +12,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/dianabuilds/ardents-network/internal/qualification"
+	"github.com/dianabuilds/ardents-network/internal/experimentidentity"
 )
 
 const toolBundleSchema = "carrier-lab-tool-bundle/v1"
@@ -65,7 +65,7 @@ func VerifyInputs(lockPath, bundlePath, repositoryRoot string) (lockSHA256 strin
 	if err != nil {
 		return "", 0, "", "", err
 	}
-	sourceSHA256, err = qualification.SourceSHA256(repositoryRoot)
+	sourceSHA256, err = experimentidentity.SourceSHA256(repositoryRoot)
 	if err != nil {
 		return "", 0, "", "", fmt.Errorf("qualification source snapshot: %w", err)
 	}

@@ -37,12 +37,14 @@ var forbiddenGoFileNames = map[string]bool{
 }
 
 var laboratoryPackages = map[string]bool{
-	"internal/directcontrol":   true,
-	"internal/harness":         true,
-	"internal/harness/tooling": true,
-	"internal/nativecircuit":   true,
-	"internal/preflight":       true,
-	"internal/routeexperiment": true,
+	"internal/directcontrol":      true,
+	"internal/experimentidentity": true,
+	"internal/experimentrun":      true,
+	"internal/harness":            true,
+	"internal/harness/tooling":    true,
+	"internal/nativecircuit":      true,
+	"internal/preflight":          true,
+	"internal/routeexperiment":    true,
 }
 
 func TestRepositoryArchitecture(t *testing.T) {

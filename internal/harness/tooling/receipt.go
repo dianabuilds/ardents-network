@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/qualification"
+	"github.com/dianabuilds/ardents-network/internal/experimentidentity"
 )
 
 const toolingBuildReceiptSchema = "carrier-lab-tooling-build-receipt/v1"
@@ -71,7 +71,7 @@ func inspectToolingBuildReceipt(ctx context.Context, layout runLayout, project, 
 	if err != nil {
 		return toolingBuildReceipt{}, err
 	}
-	currentSource, err := qualification.SourceSHA256(layout.repositoryRoot)
+	currentSource, err := experimentidentity.SourceSHA256(layout.repositoryRoot)
 	if err != nil {
 		return toolingBuildReceipt{}, err
 	}

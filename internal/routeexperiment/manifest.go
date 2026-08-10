@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/qualification"
+	"github.com/dianabuilds/ardents-network/internal/experimentidentity"
 )
 
 type inputManifest struct {
@@ -68,7 +68,7 @@ func prepareManifest(ctx context.Context, runID, repositoryRoot, applicationImag
 	if err != nil {
 		return inputManifest{}, err
 	}
-	sourceDigest, err := qualification.SourceSHA256(repositoryRoot)
+	sourceDigest, err := experimentidentity.SourceSHA256(repositoryRoot)
 	if err != nil {
 		return inputManifest{}, err
 	}
