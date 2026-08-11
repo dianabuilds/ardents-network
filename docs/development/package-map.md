@@ -13,6 +13,8 @@ Only purpose-named `cmd/*-lab` adapters may start laboratory Modules.
 
 | Directory | Go declaration | Responsibility | May import |
 |---|---|---|---|
+| `cmd/ardents` | `package main` | Parse bounded Endpoint offline-state inputs, call Network State, and render the accepted generation. | `internal/networkstate`, standard library |
+| `cmd/ardents-qualify` | `package main` | Start bounded black-box qualification and render its terminal machine result. | `internal/qualification`, standard library |
 | `cmd/carrier-lab` | `package main` | Parse fixed Carrier Lab commands, call the selected Module, and translate results to exit codes. | `internal/lab/directcontrol`, `internal/lab/carrier`, `internal/lab/tooling`, `internal/lab/nativecircuit`, `internal/lab/preflight`, `internal/lab/routecomparison`, standard library |
 | `cmd/named-site-lab` | `package main` | Parse fixed Gate C commands, derive one experiment identity, call `namedsite`, and translate its result to an exit code. | `internal/lab/runlayout`, `internal/lab/namedsite`, standard library |
 | `internal/lab/carrier` | `package carrier` | Own the fixed two-role Carrier Lab isolation scenario: role configuration, Compose lifecycle, bounded observations, fault injection, verdict, and cleanup. | `internal/lab/preflight`, standard library |
@@ -24,6 +26,8 @@ Only purpose-named `cmd/*-lab` adapters may start laboratory Modules.
 | `internal/lab/directcontrol` | `package directcontrol` | Own the complete lab-only Direct TLS fixture, control lifecycle, roles, protected-record fault, evidence, and cleanup behind `RunControl`, `RunRole`, and `RunTamper`; never act as a Route or fallback. | `internal/lab/preflight`, standard library |
 | `internal/lab/nativecircuit` | `package nativecircuit` | Own the fixed lab-only native C-5/C2 candidate: bounded wire protocol, HPKE Introduction, telescoped Node TLS, joined endpoint TLS, opaque UDS attachment, role-local runtime, Compose lifecycle, evidence, and cleanup behind its small run/role interface. | `internal/lab/runlayout`, `internal/lab/tooling`, `internal/lab/preflight`, standard library |
 | `internal/lab/routecomparison` | `package routecomparison` | Own the frozen R-013 comparative sequence, immutable workload/seed manifest, coarse statistics, conjunctive C-5 verdict, retained evidence, and cleanup behind `Run`. | `internal/lab/sourceidentity`, `internal/lab/nativecircuit`, `internal/lab/preflight`, standard library |
+| `internal/networkstate` | `package networkstate` | Verify bounded Network Epochs and Candidate Views, prove materializations, and own immutable crash-safe current state. | standard library |
+| `internal/qualification` | `package qualification` | Independently recompute black-box manifests, candidate state, proofs, and terminal qualification verdicts. | standard library |
 | `internal/architecture` | `package architecture` | Test repository structure, names, dependencies, formatting, and quality wiring. | standard library |
 
 ## Carrier Lab command registry
