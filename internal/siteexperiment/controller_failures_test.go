@@ -3,6 +3,7 @@ package siteexperiment
 import (
 	"context"
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,7 +11,7 @@ import (
 
 func TestRetainedFailureProbeSetupErrorIsOperational(t *testing.T) {
 	err := runContractFailure(t.Context(), "forbidden_origin_query_role_view", t.TempDir())
-	if !errors.Is(err, errMatrixOperational) || errors.Is(err, errFailureAssertion) {
+	if !errors.Is(err, errMatrixOperational) || errors.Is(err, errFailureAssertion) || !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("missing retained evidence was misclassified: %v", err)
 	}
 }

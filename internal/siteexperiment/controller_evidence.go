@@ -12,6 +12,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/experimentrun"
 )
 
+const evidenceFileMode = 0o644
+
 func validImageID(value string) bool {
 	algorithm, digest, found := strings.Cut(value, ":")
 	decoded, err := hex.DecodeString(digest)
@@ -23,7 +25,10 @@ func writeBoundedJSON(path string, value any) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, 0o600)
+	if err := os.WriteFile(path, data, evidenceFileMode); err != nil {
+		return err
+	}
+	return os.Chmod(path, evidenceFileMode)
 }
 
 func writeAtomicBoundedJSON(path string, value any) (writeErr error) {
@@ -46,6 +51,9 @@ func writeAtomicBoundedJSON(path string, value any) (writeErr error) {
 		}
 	}()
 	if _, err := temporary.Write(data); err != nil {
+		return err
+	}
+	if err := temporary.Chmod(evidenceFileMode); err != nil {
 		return err
 	}
 	if err := temporary.Close(); err != nil {

@@ -236,7 +236,10 @@ func verifyRetainedIsolation(evidenceDirectory, condition string) error {
 
 func readStrictEvidence(path string, destination any) error {
 	data, err := os.ReadFile(path)
-	if err != nil || len(data) == 0 || len(data) > 1024*1024 {
+	if err != nil {
+		return err
+	}
+	if len(data) == 0 || len(data) > 1024*1024 {
 		return errors.New("required bounded failure evidence is absent")
 	}
 	if err := json.Unmarshal(data, destination); err != nil {
