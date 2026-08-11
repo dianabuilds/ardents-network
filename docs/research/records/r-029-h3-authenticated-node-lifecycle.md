@@ -78,6 +78,63 @@ H1 is recommended. H2 creates a durable subsystem with no product consumer. H3
 would mix frozen laboratory semantics into the greenfield product. H0 is chosen
 if the interfaces below cannot remain transport-neutral or resource-bounded.
 
+## Evaluation criteria
+
+The accepted candidate must satisfy all of these together:
+
+1. authenticated state controls at least one separately keyed, separately
+   running Node process rather than ending at a parser or fixture;
+2. the Network State and Node Lifecycle Interfaces remain independent of the
+   role-probe transport, Route, Service, Namespace, Bridge, and Application
+   Interface;
+3. Candidate View construction, rejection, materialization, and assignment are
+   deterministic and independently recomputable from a finite frozen corpus;
+4. stale, conflicting, corrupt, resource-unsafe, or evidence-unsafe state cannot
+   leave Node readiness positive or overlap old/new Role Domain duty;
+5. sources, retries, queues, state, work, resources, evidence, drain, and cleanup
+   have explicit finite bounds;
+6. the implementation uses the accepted Go foundation and standard library
+   without a new runtime dependency or custom cryptography;
+7. the exact four-host campaign can produce a deterministic `pass`, `fail`, or
+   `invalid` result while making no Route, capacity, anonymity, independence, or
+   decentralization claim;
+8. the complete implementation and evidence path remain maintainable by the
+   Product Owner plus Codex team.
+
+## Findings
+
+- **Sourced fact:** ADR-0004 and R-009 require authenticated expiring state whose
+  authority is separate from distribution; R-027 supplies the accepted bounded
+  source, freshness, conflict, and persistence appendix.
+- **Sourced fact:** the accepted product and threat contracts require a logical
+  complete Candidate View, same-index materialization retry, deterministic Role
+  Domain Assignment, finite Work Safety, and no overlapping old/new duty.
+- **Sourced fact:** RFC 9162 specifies the largest-power-of-two recursive Merkle
+  tree shape used as the reviewed construction reference. Stage 1 adds its own
+  domain-separated lab leaf encodings and makes no public wire-format claim.
+- **Sourced fact:** RFC 8446 defines TLS 1.3, resumption, and early data. The
+  role-probe and distribution fixtures deliberately disable resumption tickets
+  and early data so every bounded connection exercises a full handshake.
+- **Assumption:** the exact E/S1/S2/H Ubuntu fixture, process isolation, cgroup v2
+  controls, fixed clocks, collectors, and external evidence roots can be
+  provisioned as specified. Failure of that preflight blocks feature code.
+- **Inference:** bootstrap-only H2 would create maintained state machinery with
+  no product consumer, while extending H2 laboratory code would violate the
+  product/laboratory dependency boundary. H1 is the smallest candidate that
+  tests the reusable state-to-lifecycle seam without selecting the Route.
+- **Inference:** the role probe is acceptable only while it remains a private,
+  deletable lifecycle implementation detail; leakage into either product
+  Interface falsifies the candidate.
+
+## Options
+
+| Option | Product/security fit | Main risk | Disposition |
+|---|---|---|---|
+| H1: integrated state-to-Node tracer | Proves authenticated state, real process duty, bounded withdrawal, and independent evidence through product Interfaces. | The probe could leak transport assumptions or the one-to-one fixture could exceed its resource/maintenance envelope. | **Accepted.** |
+| H2: bootstrap first | Reuses the detailed R-027 mechanics. | Ends without a real state consumer and creates a parallel temporary product architecture. | Superseded as a standalone order; retained only as the R-027 appendix. |
+| H3: inherit Gate C | Reuses already working laboratory processes. | Imports frozen H2 architecture and semantics into the greenfield product. | Rejected. |
+| H0: choose none | Avoids an unjustified foundation. | Stage 1 cannot proceed. | Select if the accepted Interfaces, resource bounds, fixture, or evidence contract falsify. |
+
 ## Exact Stage 1 outcome
 
 On a persistent project-controlled Ubuntu network:
@@ -298,6 +355,39 @@ must show no monotonic process, goroutine, FD, socket, timer, queue, or mutable
 state growth.
 
 ## Evidence and failure matrix
+
+### Evidence plan
+
+#### Primary sources
+
+Accessed 2026-08-11:
+
+- [RFC 9162, Certificate Transparency Version 2.0, Merkle Tree definition](https://www.rfc-editor.org/rfc/rfc9162.html#section-2.1);
+- [RFC 8446, The Transport Layer Security Protocol Version 1.3](https://www.rfc-editor.org/rfc/rfc8446.html);
+- [Go `crypto/ed25519` package](https://pkg.go.dev/crypto/ed25519);
+- [Go `crypto/sha256` package](https://pkg.go.dev/crypto/sha256);
+- the dated primary-source lists and bounded experiment contracts in accepted
+  R-027 and R-028 for source selection, persistence, cgroup v2, Go runtime,
+  resource accounting, statistics, and evidence behavior.
+
+#### Experiment
+
+Freeze the canonical corpus, golden bytes, manifest, source/order seeds, fault
+plan, resource profiles, event/sample schemas, calculator, and expected result
+before candidate behavior. Execute S1-0 through S1-4 on the exact controlled
+topology. H receives the complete frozen input corpus out of band, drives product
+executables only as black boxes, and independently recomputes the View,
+rejections, proofs, assignments, lifecycle evidence, and terminal verdict.
+Generated keys, state, samples, captures, and evidence remain outside Git.
+
+#### Failure scenarios
+
+The mandatory matrix below covers malformed and conflicting state, omission and
+withholding, crash boundaries, clock uncertainty, assignment overlap, hostile
+resource pressure, evidence failure, process isolation, shutdown, and cleanup.
+The falsification section converts every unbounded, collapsed, or
+non-recomputable outcome into `redesign` or `stop`; a selected success cannot
+compensate for a failed conjunct.
 
 Before feature behavior, freeze a manifest, canonical golden bytes, fault plan,
 sample schema, calculator, and expected terminal result. H owns one-second OS
