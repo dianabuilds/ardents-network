@@ -125,8 +125,9 @@ naming, governance, packaging, or public-network work begins.
 
 ## Horizon 2 — Conditional Reference Application: Named Unlisted Site
 
-The first Reference Application remains **Named Unlisted Site**, but work on it
-starts only after Carrier Lab produces a viable route candidate.
+The first Reference Application is **Named Unlisted Site**. Carrier Lab produced
+a viable route candidate, and official Gate C run `gatec-31464163490-1`
+completed this controlled Ubuntu slice with `advance`.
 
 Its first controlled slice adds only:
 
@@ -146,10 +147,17 @@ Contributor operation, or production release governance. Those mechanisms may
 be prototyped separately, but do not join shared product code merely because the
 full public contract eventually needs them.
 
+Gate C completion means only that the closed tracer worked: 20/20 positives,
+17/17 required failures, and 5/5 migrations passed with complete cleanup. It
+does not promote the laboratory Route/OHTTP protocol, qualify a privacy claim,
+or satisfy public naming, platform, operator, or release gates.
+
 ## Horizon 3 — Closed Test Network
 
-Only after the Named Unlisted Site slice works may Ardents assemble a persistent
-multi-host test network. It remains project-key-controlled, invite-only or
+The Named Unlisted Site slice now works in its bounded Gate C environment, so
+Horizon 3 is the next permitted scope. Ardents may assemble one separately
+scoped persistent multi-host test-network slice at a time. It remains
+project-key-controlled, invite-only or
 otherwise bounded, visibly centralized, and unable to make a public anonymity or
 decentralization claim.
 

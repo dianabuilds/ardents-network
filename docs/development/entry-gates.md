@@ -76,10 +76,17 @@ may begin as another experiment; it gains shared production code only after Gate
 D. Replicated Site Bundles, offline delivery, and an Ardents application runtime
 remain outside scope.
 
-The advancing R-013 Carrier Lab result satisfies this gate's Route-candidate
-precondition. The bounded Ubuntu-to-Ubuntu Named Unlisted Site tracer is now the
-next permitted implementation slice. Gate D and Gate E remain unsatisfied for
-protocol-bound production foundations and public security claims.
+The advancing R-013 Carrier Lab result satisfied this gate's Route-candidate
+precondition. Official Ubuntu workflow
+[`31464163490`](https://github.com/dianabuilds/ardents-network/actions/runs/31464163490)
+completed run `gatec-31464163490-1` with `advance`: 20/20 positives,
+17/17 required failures, 5/5 migrations, all required role-view and isolation
+checks, resource bounds, and cleanup passed. Its source SHA-256 is
+`fc0b941cf28befacfa3ce76e0373eccfa3e08ec8c2f8c5075150741b8f570610`.
+Gate C is complete for this controlled candidate. Horizon 3 may now begin with
+one separately bounded Closed Test Network slice. Gate D and Gate E remain
+unsatisfied for protocol-bound production foundations and public security
+claims.
 
 ## Gate D — select production language and foundations
 

@@ -260,3 +260,27 @@ private experiment Adapter, exact versions, offline preparation, no vendor tree
 in Git, a complete `make check`/`govulncheck` gate, and a removal plan. If a
 future update cannot retain those properties, Gate C stops rather than forking
 or reimplementing OHTTP.
+
+## Official Gate C verification — 2026-08-11
+
+Official Ubuntu workflow
+[`31464163490`](https://github.com/dianabuilds/ardents-network/actions/runs/31464163490)
+exercised the selected Adapter inside the complete Gate C tracer and returned
+`advance` for run `gatec-31464163490-1`.
+
+- **Identity:** source SHA-256
+  `fc0b941cf28befacfa3ce76e0373eccfa3e08ec8c2f8c5075150741b8f570610`;
+  OHTTP `github.com/openpcc/ohttp@v0.0.80`; dependency closure SHA-256
+  `b27bd00df0c64b589370f1f2ba293df939f0903a5dcffef01fe2c775994553c6`.
+- **Measurement:** Relay evidence reported `exact_name_or_target_visible=false`;
+  Gateway evidence contained only the two fixed plaintext query types from a
+  Relay origin; no Authority private key was present.
+- **Measurement:** modification, stale record, replay, nonce mismatch, wrong
+  binding, and forbidden combined role view were rejected; all 17 required
+  failure probes passed.
+- **Supply:** the same workflow completed the exact offline dependency and
+  immutable-image gates before the matrix; all scenarios used the three pinned
+  image IDs without rebuild or pull.
+- **Limitation:** this validates the selected Adapter only in one closed,
+  project-operated Ubuntu experiment. It does not select a production resolver,
+  Gateway operator, public protocol, Namespace, or public privacy claim.

@@ -502,7 +502,8 @@ its security model, but it is not invented as a current resource.
   clarification below rejects and decomposes it before any transport API or
   offline-delivery primitive is accepted.
 - No ADR; the decision is reversible before implementation.
-- No implementation or experiment code yet.
+- The bounded Ubuntu laboratory implementation is complete; it remains
+  experiment code and is not a production Application runtime.
 
 ## Network-product clarification — 2026-08-06
 
@@ -527,3 +528,37 @@ transport, routing, failure, and local-boundary decisions are now separated into
 R-006, R-002, R-001, R-007, and R-008. This clarification does not reopen the
 accepted Unlisted Service rule or the rejection of built-in Inbox and messenger
 semantics.
+
+## Gate C implementation result — 2026-08-11
+
+Official Ubuntu workflow
+[`31464163490`](https://github.com/dianabuilds/ardents-network/actions/runs/31464163490)
+completed the bounded Named Unlisted Site architecture tracer with `advance`
+for run `gatec-31464163490-1`.
+
+- 20/20 fresh generation-1 connections returned the exact HTTP workload.
+- All 17 required negative conditions passed, including Name/Target/Instance
+  binding, OHTTP replay/nonce, offline/unavailable, ambiguous failure,
+  Application network escape, and forbidden role-view cases.
+- All 5 migration episodes stopped generation 1, preserved the Name and Target,
+  accepted generation 2, and rejected the old Instance.
+- The 30 Route attempts retained complete cleanup evidence. Coarse setup was
+  p50 `1183 ms` and p95 `1183 ms`; observed maxima were `0.006` CPU cores,
+  `2,769,289` RSS bytes, and a `32,768`-byte logical queue.
+- Source SHA-256 was
+  `fc0b941cf28befacfa3ce76e0373eccfa3e08ec8c2f8c5075150741b8f570610`;
+  the Carrier Application, Carrier tooling, and Reference Site image IDs were
+  `sha256:d36f1a816573d9fb665b0855d9fca91d1b1a248f9e351dca35b3887dc0216006`,
+  `sha256:1f9a24f8256167abd8010cfeea3b80ecaefd1135a8644cc442ae619cc4cdf60d`,
+  and
+  `sha256:f0c6ca41981981b84a39e98a41e902ac7c2bf70d66324851e4cbcd35b43f94b6`.
+- The preceding same-identity R-013 regression receipt SHA-256 was
+  `b197947afda24b0c26ac237fc43f01062bee711043c8d621d560493ddeee896d`;
+  receipt hashes bind the manifest as
+  `895b3e4f9cdcf9a92be9d84f04f95292089a763fe6d227c26b706af47b4cff56`
+  and the result as
+  `96a929b6903ece3c3827594dfaa290eca79c3397b7c0ed04c590e81be1a16454`.
+
+This closes the controlled tracer, not market validation, independent
+operation, public naming, Route Qualification, or a reusable sandbox/runtime.
+Horizon 3 is now open only to one separately scoped Closed Test Network slice.

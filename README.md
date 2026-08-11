@@ -13,10 +13,11 @@ previous implementation is preserved in the
 evidence to learn from, not an architecture to continue by default.
 
 The documents describe several delivery horizons. They are not one backlog.
-The current implementation scope is the controlled Ubuntu **Gate C** terminal
-experiment defined in [product scope](docs/product/scope.md); public naming, Bridges,
-production updates, Windows qualification, multiparty control, and the complete
-release test matrix remain later promotion gates.
+The controlled Ubuntu **Gate C** terminal experiment defined in
+[product scope](docs/product/scope.md) is complete with `advance`. The next
+permitted scope is one bounded Horizon 3 Closed Test Network slice; public
+naming, Bridges, production updates, Windows qualification, multiparty control,
+and the complete release test matrix remain later promotion gates.
 
 ## Product hypothesis
 
@@ -142,7 +143,7 @@ an anonymity claim, or a production networking decision.
 
 ## First conditional Reference Application
 
-Carrier Lab has demonstrated a plausible Route candidate, so the next permitted
+Carrier Lab demonstrated a plausible Route candidate, and the completed first
 product-shaped tracer is **Named Unlisted Site**:
 
 1. A Developer runs an ordinary local HTTP service.
@@ -169,6 +170,16 @@ unavailability until Owner-driven migration or Target replacement.
 The tracer does not require a replicated Site Bundle, bundled application
 runtime, offline delivery, Inbox, or messenger. Those are separate optional
 products or overlays if future evidence justifies them.
+
+Official Ubuntu workflow
+[`31464163490`](https://github.com/dianabuilds/ardents-network/actions/runs/31464163490)
+returned Gate C `advance` for run `gatec-31464163490-1`: 20/20
+positive connections, 17/17 required failures, and 5/5 migration episodes
+passed, with cleanup complete. The bounded result is bound to source SHA-256
+`fc0b941cf28befacfa3ce76e0373eccfa3e08ec8c2f8c5075150741b8f570610`.
+This closes the controlled Ubuntu tracer only; it is not Route Qualification,
+a public privacy/anonymity claim, or permission to implement every Horizon 3
+system at once.
 
 ## Start here
 
