@@ -43,12 +43,12 @@ now freezes this experiment contract. Gate B permits implementing only the
 declared Carrier Lab behavior in the root project. It does not imply a passing
 Route result or select routing, transport, storage, or wire foundations.
 
-Carrier Lab stays the only maintained project behavior slice. It contains no Service Name, public
-discovery/contribution, Bridge, production installer/updater, Windows build,
-public SDK/proxy/browser, general Application sandbox, multiparty Control Plane,
-or complete R-023 matrix. It makes no privacy, anonymity, decentralization, or
-release claim. Passing Gate B only answers whether the Route candidate deserves
-another experiment.
+Within Gate B, Carrier Lab was the only maintained project behavior slice. It
+contained no Service Name, public discovery/contribution, Bridge, production
+installer/updater, Windows build, public SDK/proxy/browser, general Application
+sandbox, multiparty Control Plane, or complete R-023 matrix. It made no privacy,
+anonymity, decentralization, or release claim. Passing Gate B answered only
+whether the Route candidate deserved another experiment.
 
 Official Ubuntu run
 [`31404126248`](https://github.com/dianabuilds/ardents-network/actions/runs/31404126248)
@@ -87,6 +87,34 @@ Gate C is complete for this controlled candidate. Horizon 3 may now begin with
 one separately bounded Closed Test Network slice. Gate D and Gate E remain
 unsatisfied for protocol-bound production foundations and public security
 claims.
+
+## H3 slice gate — start one Closed Test Network vertical slice
+
+Opening Horizon 3 permits research, not an undifferentiated implementation
+backlog. One H3 slice may start only when:
+
+- a named research record fixes one end-to-end outcome, its exact controlled
+  topology, and every explicit exclusion;
+- the record distinguishes a project-controlled mechanical result from any
+  anonymity, decentralization, operator-independence, or production claim;
+- algorithms, finite retry/source/state bounds, resource envelopes, diagnostics,
+  shutdown, evidence, and falsification criteria are frozen before code;
+- every runtime dependency and protocol-shaped fixture is either already
+  reviewed for that exact use or remains behind a lab-only replaceable Adapter;
+- the slice uses no production transport, storage, consensus, naming, update,
+  or deployment foundation by inertia;
+- the Product Owner explicitly marks the research record `decided` and promotes
+  only that slice.
+
+[R-029](../research/records/r-029-h3-authenticated-node-lifecycle.md) is decided
+and promotes one integrated Stage 1 in which authenticated Network State
+controls a real Node lifecycle. R-027 and R-028 are accepted only as its
+bootstrap and resource/evidence appendices, not as separately runnable slices;
+the standalone H3-A brief is withdrawn. The Product Owner decision and
+[Stage 1 brief](horizon-3-stage-1-brief.md) satisfy the scope-promotion part of
+this gate. Patched Go 1.26.5 and the exact four-host fixture must still pass
+preflight before feature code. Route, recovery/capacity, Bridges, naming,
+updates, Windows, and broader Application work remain sequential follow-ups.
 
 ## Gate D — select production language and foundations
 

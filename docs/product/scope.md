@@ -62,10 +62,11 @@ only as separately promoted slices. Neither set is an irrevocable product
 feature. A maintained alternative may replace them only if it satisfies the
 same claim and evidence contract without weakening the Application Interface.
 
-## Horizon 1 — Current Research Slice: Carrier Lab
+## Horizon 1 — Completed Research Slice: Carrier Lab
 
-Only the **Carrier Lab** is authorized as the current implementation slice. It
-is maintained in the root project, but is not a release or production network.
+The **Carrier Lab** was the first authorized implementation slice and completed
+Gate B with `advance`. It remains maintained in the root project for regression
+evidence, but is not a release or production network.
 
 It contains only:
 
@@ -174,6 +175,19 @@ This horizon may add one vertical slice at a time:
 Each slice has its own stop condition. Passing the Named tracer does not
 authorize building all of them in parallel, and a project-operated test network
 is not evidence of independent operation.
+
+No H3 implementation starts merely because this horizon is open. A research
+record must first freeze the exact vertical slice, protected claim, finite
+resources, evidence, falsification conditions, and exclusions, and the Product
+Owner must explicitly mark that record `decided`. The
+[Horizon 3 technical design](../development/horizon-3-technical-design.md) maps
+the complete horizon and its sequential outcomes.
+[R-029](../research/records/r-029-h3-authenticated-node-lifecycle.md) is the
+decided and authorized Stage 1: authenticated Network State must control a real
+Node lifecycle. R-027 and R-028 are accepted only as its detailed bootstrap and
+resource/evidence appendices, not standalone implementation slices. This
+promotion authorizes Stage 1 only; all later H3 stages remain sequential
+research and Product Owner decision gates.
 
 ## Horizon 4 — Public Beta
 
