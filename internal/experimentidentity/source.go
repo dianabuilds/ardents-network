@@ -19,7 +19,7 @@ type sourceFile struct {
 
 var sourceFiles = []string{
 	".dockerignore", ".githooks/pre-commit", "AGENTS.md", "CONTRIBUTING.md",
-	"Makefile", "README.md", "go.mod",
+	"Makefile", "go.mod", "go.sum",
 }
 
 var sourceDirectories = []string{".github/workflows", "carrier-lab", "cmd", "internal", "scripts"}

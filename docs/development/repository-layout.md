@@ -110,6 +110,11 @@ Interface described by R-013. `internal/harness`, its `tooling` Module,
 Gate C `internal/siteexperiment` Module and `reference-site/` inputs are also
 maintained laboratory code. Their Dockerfiles and Compose files serve only
 reproducible experiments and are not deployment or release packaging.
+`internal/experimentidentity` binds maintained experiment code, tests,
+workflows, build policy, dependency declarations, locks, and container inputs.
+It deliberately excludes post-run human-facing result summaries such as this
+repository's `README.md`; otherwise recording a terminal source SHA inside the
+summary would recursively change that SHA.
 
 The exact current project imports are also recorded in the package map. In
 summary:
