@@ -37,16 +37,12 @@ type referenceInspect struct {
 }
 
 func (process *referenceProcess) inspectIsolation(ctx context.Context) error {
-	ids, err := process.compose(ctx, "ps", "--all", "--quiet")
-	if err != nil {
-		return err
+	if len(process.containerIDs) == 0 {
+		if err := process.captureContainerIDs(ctx); err != nil {
+			return err
+		}
 	}
-	fields := strings.Fields(string(ids))
-	if len(fields) != len(referenceRoles) {
-		return errors.New("reference Site process set is incomplete")
-	}
-	process.containerIDs = append([]string(nil), fields...)
-	data, err := exec.CommandContext(ctx, "docker", append([]string{"inspect"}, fields...)...).Output()
+	data, err := exec.CommandContext(ctx, "docker", append([]string{"inspect"}, process.containerIDs...)...).Output()
 	if err != nil {
 		return err
 	}

@@ -148,7 +148,7 @@ func runAdministrationRole(ctx context.Context, configPath, authoritySocket, evi
 			return errors.New("superseded Instance publication was accepted")
 		}
 	}
-	return writeBoundedJSON(filepath.Join(evidenceDirectory, "publication.json"), map[string]any{
+	return writeAtomicBoundedJSON(filepath.Join(evidenceDirectory, "publication.json"), map[string]any{
 		"schema_version": "gatec-publication/v1", "status": "published", "target": response.Target,
 		"instance_generation": response.InstanceGeneration, "authority_received": false, "instance_private_key_received": false,
 		"superseded_publication_attempted": supersededAttempted, "superseded_publication_rejected": supersededRejected,

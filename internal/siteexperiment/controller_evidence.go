@@ -19,14 +19,51 @@ func validImageID(value string) bool {
 }
 
 func writeBoundedJSON(path string, value any) error {
-	data, err := json.MarshalIndent(value, "", "  ")
+	data, err := marshalBoundedJSON(value)
 	if err != nil {
 		return err
 	}
-	if len(data) > 4*1024*1024 {
-		return errors.New("gate C evidence exceeds 4 MiB")
+	return os.WriteFile(path, data, 0o600)
+}
+
+func writeAtomicBoundedJSON(path string, value any) (writeErr error) {
+	data, err := marshalBoundedJSON(value)
+	if err != nil {
+		return err
 	}
-	return os.WriteFile(path, append(data, '\n'), 0o600)
+	temporary, err := os.CreateTemp(filepath.Dir(path), ".gatec-evidence-*.tmp")
+	if err != nil {
+		return err
+	}
+	temporaryPath := temporary.Name()
+	closed := false
+	defer func() {
+		if !closed {
+			writeErr = errors.Join(writeErr, temporary.Close())
+		}
+		if removeErr := os.Remove(temporaryPath); removeErr != nil && !os.IsNotExist(removeErr) {
+			writeErr = errors.Join(writeErr, removeErr)
+		}
+	}()
+	if _, err := temporary.Write(data); err != nil {
+		return err
+	}
+	if err := temporary.Close(); err != nil {
+		return err
+	}
+	closed = true
+	return os.Rename(temporaryPath, path)
+}
+
+func marshalBoundedJSON(value any) ([]byte, error) {
+	data, err := json.MarshalIndent(value, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	if len(data) > 4*1024*1024 {
+		return nil, errors.New("gate C evidence exceeds 4 MiB")
+	}
+	return append(data, '\n'), nil
 }
 
 func writeAttemptCleanup(retained string, sequence int) error {

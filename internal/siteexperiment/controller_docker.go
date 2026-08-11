@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -33,24 +32,9 @@ type referenceProcess struct {
 
 func startReferenceApplication(ctx context.Context, repositoryRoot, runDirectory, image, nonce string, sequence int, fixture *authorityFixture, superseded *instanceCredential, progress func(string) error) (*referenceProcess, error) {
 	root := filepath.Join(runDirectory, fmt.Sprintf("attempt-%03d", sequence), "reference")
-	directories := make(map[string]string)
-	for _, name := range []string{"client", "service", "route", "admin", "gateway-authority", "gateway", "authority-config", "admin-config", "client-config", "evidence"} {
-		directory := filepath.Join(root, name)
-		if err := os.MkdirAll(directory, 0o700); err != nil {
-			return nil, err
-		}
-		directories[name] = directory
-	}
-	for _, role := range referenceRoles {
-		directory := filepath.Join(directories["evidence"], role)
-		if err := os.MkdirAll(directory, 0o777); err != nil {
-			return nil, err
-		}
-	}
-	for _, name := range []string{"client", "service", "route", "admin", "gateway-authority", "gateway"} {
-		if err := os.Chmod(directories[name], 0o777); err != nil {
-			return nil, err
-		}
+	directories, err := prepareReferenceDirectories(root)
+	if err != nil {
+		return nil, err
 	}
 	authorityRole := authorityConfig(fixture)
 	if superseded != nil {
@@ -97,6 +81,9 @@ func startReferenceApplication(ctx context.Context, repositoryRoot, runDirectory
 	if _, err := process.compose(ctx, append([]string{"up", "--detach", "--no-build", "--pull", "never"}, referenceRoles...)...); err != nil {
 		return process, err
 	}
+	if err := process.captureContainerIDs(ctx); err != nil {
+		return process, err
+	}
 	if err := progress("reference-compose-started"); err != nil {
 		return process, err
 	}
@@ -133,12 +120,21 @@ func (process *referenceProcess) waitPublication(ctx context.Context) error {
 			SupersededAttempted bool   `json:"superseded_publication_attempted"`
 			SupersededRejected  bool   `json:"superseded_publication_rejected"`
 		}
-		err := readStrictEvidence(path, &publication)
-		if err == nil {
+		_, statErr := os.Stat(path)
+		if statErr == nil {
+			if err := readStrictEvidence(path, &publication); err != nil {
+				return err
+			}
 			if publication.Status != "published" || publication.Target != process.expectedTarget || publication.InstanceGeneration != process.expectedGeneration || publication.AuthorityReceived || publication.PrivateKeyReceived || publication.SupersededAttempted != process.expectedSuperseded || publication.SupersededRejected != process.expectedSuperseded {
 				return scenarioFailure(errors.New("reference Site publication handle is invalid"))
 			}
 			return nil
+		}
+		if !os.IsNotExist(statErr) {
+			return statErr
+		}
+		if err := process.detectFailedRole(ctx); err != nil {
+			return err
 		}
 		select {
 		case <-ctx.Done():
@@ -150,13 +146,15 @@ func (process *referenceProcess) waitPublication(ctx context.Context) error {
 
 func (process *referenceProcess) waitSockets(ctx context.Context) error {
 	for {
-		ready := true
-		for _, socket := range []string{process.serviceSocket, process.routeSocket} {
-			info, err := os.Lstat(socket)
-			ready = ready && err == nil && info.Mode()&os.ModeSocket != 0
+		ready, err := referenceSocketsReady(process.serviceSocket, process.routeSocket)
+		if err != nil {
+			return err
 		}
 		if ready {
 			return nil
+		}
+		if err := process.detectFailedRole(ctx); err != nil {
+			return err
 		}
 		select {
 		case <-ctx.Done():
@@ -164,6 +162,24 @@ func (process *referenceProcess) waitSockets(ctx context.Context) error {
 		case <-time.After(20 * time.Millisecond):
 		}
 	}
+}
+
+func referenceSocketsReady(paths ...string) (bool, error) {
+	ready := true
+	for _, path := range paths {
+		info, err := os.Lstat(path)
+		if os.IsNotExist(err) {
+			ready = false
+			continue
+		}
+		if err != nil {
+			return false, fmt.Errorf("inspect reference Site socket %q: %w", path, err)
+		}
+		if info.Mode()&os.ModeSocket == 0 {
+			return false, fmt.Errorf("reference Site socket %q has an invalid filesystem type", path)
+		}
+	}
+	return ready, nil
 }
 
 func (process *referenceProcess) compose(ctx context.Context, arguments ...string) ([]byte, error) {
@@ -182,22 +198,16 @@ func (process *referenceProcess) wait(ctx context.Context) error {
 		return errors.New("reference Site container identity set is incomplete")
 	}
 	for {
-		data, err := exec.CommandContext(ctx, "docker", append([]string{"inspect"}, process.containerIDs...)...).Output()
-		var containers []struct {
-			State struct {
-				Running  bool `json:"Running"`
-				ExitCode int  `json:"ExitCode"`
-			} `json:"State"`
+		states, err := process.referenceRoleStates(ctx)
+		if err != nil {
+			return matrixOperational(err)
 		}
-		if err != nil || json.Unmarshal(data, &containers) != nil || len(containers) != len(referenceRoles) {
-			return matrixOperational(errors.New("reference Site completion inspection failed"))
+		if failed := firstFailedReferenceRole(states); failed != nil {
+			return matrixOperational(process.describeFailedRole(ctx, failed))
 		}
 		complete := true
-		for _, container := range containers {
-			complete = complete && !container.State.Running
-			if !container.State.Running && container.State.ExitCode != 0 {
-				return scenarioFailure(errors.New("reference Site role exited unsuccessfully"))
-			}
+		for _, state := range states {
+			complete = complete && !state.State.Running
 		}
 		if complete {
 			return nil
