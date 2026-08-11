@@ -3,10 +3,8 @@ package networkstate
 import (
 	"context"
 	"crypto/ed25519"
-	"crypto/sha256"
+	"crypto/tls"
 	"errors"
-	"fmt"
-	"path/filepath"
 	"sync"
 	"time"
 )
@@ -18,10 +16,28 @@ type Config struct {
 	Authorities map[[32]byte]ed25519.PublicKey
 	Threshold   int
 	Now         time.Time
+	Clock       func() time.Time
+
+	SourceAddresses            [2]string
+	SourceServerNames          [2]string
+	SourceIdentities           [2][32]byte
+	SourceFamilies             [2]string
+	SourceEndpointHandles      [2]string
+	SourceRootPEM              [2][]byte
+	SourceLeafKeyDigests       [2][32]byte
+	SourceClientCertificate    tls.Certificate
+	SourceMaterializationIndex uint32
+	ClockObservation           time.Time
+	SourceOrderSeed            [32]byte
+
+	ServeAddress           string
+	ServeCertificate       tls.Certificate
+	ServeClientRootPEM     []byte
+	ServeClientKeyDigests  [][32]byte
+	ServeReadHeaderTimeout time.Duration
 }
 
-// Materialization is one precommitted Candidate View member and its proof.
-type Materialization struct {
+type materialization struct {
 	EpochDigest [32]byte
 	Index       uint32
 	Record      []byte
@@ -30,22 +46,44 @@ type Materialization struct {
 
 // Snapshot is an immutable description of the current verified generation.
 type Snapshot struct {
-	Generation     string
-	Epoch          uint64
-	Digest         [32]byte
-	ValidUntil     time.Time
-	ViewRoot       [32]byte
-	ViewLength     uint32
-	RejectedRoot   [32]byte
-	RejectedLength uint32
+	Generation         string
+	Epoch              uint64
+	Digest             [32]byte
+	ValidUntil         time.Time
+	ViewRoot           [32]byte
+	ViewLength         uint32
+	RejectedRoot       [32]byte
+	RejectedLength     uint32
+	Freshness          string
+	Conflicting        bool
+	SourceAttempts     uint16
+	SourceOutcomes     [4]string
+	LatestCompleteness string
+	ObservedEpochs     [4]uint64
+	ObservedDigests    [4][32]byte
+	TrustedTime        time.Time
+	NextAutomatic      time.Time
+	PendingEpoch       uint64
+	PendingDigest      [32]byte
+	PendingAt          time.Time
 }
 
-// Store owns verification, at most 64 S1-0 generations, and the atomic current pointer.
-type Store struct {
-	mu      sync.RWMutex
-	config  config
-	current *Snapshot
-	closed  bool
+// store owns verification, finite source work, immutable generations, and pointers.
+type store struct {
+	mu              sync.RWMutex
+	config          config
+	current         *Snapshot
+	currentDecision *candidateDecision
+	pendingDecision *candidateDecision
+	distribution    distributionState
+	lease           rootLease
+	serverDone      chan struct{}
+	serverErr       error
+	workContext     context.Context
+	workCancel      context.CancelFunc
+	work            sync.WaitGroup
+	refreshing      bool
+	closed          bool
 }
 
 type config struct {
@@ -54,28 +92,85 @@ type config struct {
 	authorities map[[32]byte]ed25519.PublicKey
 	threshold   int
 	now         time.Time
+	clock       func() time.Time
+	sources     [2]sourceConfig
+	material    uint32
+	observation time.Time
+	orderSeed   [32]byte
+	server      sourceServerConfig
+	anchorWall  time.Time
+	anchorMono  time.Time
 }
 
 // Open recovers one state root and verifies any current generation before use.
-func Open(input Config) (*Store, error) {
+func Open(input Config) (*store, error) {
 	resolved, err := validateConfig(input)
 	if err != nil {
 		return nil, err
 	}
+	if err := inspectRoot(resolved.root); err != nil {
+		return nil, err
+	}
+	lease, err := acquireRootLease(resolved.root)
+	if err != nil {
+		return nil, err
+	}
+	opened := false
+	defer func() {
+		if !opened {
+			_ = lease.release()
+		}
+	}()
 	if err := prepareRoot(resolved.root); err != nil {
 		return nil, err
 	}
-	store := &Store{config: resolved}
+	workContext, workCancel := context.WithCancel(context.Background())
+	defer func() {
+		if !opened {
+			workCancel()
+		}
+	}()
+	store := &store{config: resolved, lease: lease, workContext: workContext, workCancel: workCancel}
 	current, err := loadCurrent(resolved)
 	if err != nil {
 		return nil, err
 	}
 	store.current = current
+	if current != nil {
+		decision, _, loadErr := loadGenerationChain(resolved, current.Generation, make(map[string]bool), true)
+		if loadErr != nil {
+			return nil, loadErr
+		}
+		store.currentDecision = &decision
+	}
+	if err := store.loadDistributionState(); err != nil {
+		return nil, err
+	}
+	if resolved.server.address != "" {
+		if store.current == nil {
+			return nil, errors.New("source mode requires a current generation")
+		}
+		store.serverDone = make(chan struct{})
+		ready := make(chan error, 1)
+		go func() {
+			err := store.serveSource(workContext, ready)
+			store.mu.Lock()
+			store.serverErr = err
+			close(store.serverDone)
+			store.mu.Unlock()
+		}()
+		if err := <-ready; err != nil {
+			workCancel()
+			<-store.serverDone
+			return nil, err
+		}
+	}
+	opened = true
 	return store, nil
 }
 
 // Accept verifies a complete offline decision before committing a new generation.
-func (s *Store) Accept(ctx context.Context, epoch []byte, inputs [][]byte, materials []Materialization) (Snapshot, error) {
+func (s *store) Accept(ctx context.Context, epoch []byte, inputs [][]byte, encodedMaterials [][]byte) (Snapshot, error) {
 	if err := ctx.Err(); err != nil {
 		return Snapshot{}, err
 	}
@@ -83,6 +178,13 @@ func (s *Store) Accept(ctx context.Context, epoch []byte, inputs [][]byte, mater
 	defer s.mu.Unlock()
 	if s.closed {
 		return Snapshot{}, errors.New("network state is closed")
+	}
+	if s.refreshing {
+		return Snapshot{}, errors.New("network state refresh owns the active transition")
+	}
+	materials, err := decodeMaterializations(encodedMaterials)
+	if err != nil {
+		return Snapshot{}, err
 	}
 	decision, err := verifyDecision(s.config, s.current, epoch, inputs, materials, true)
 	if err != nil {
@@ -91,16 +193,17 @@ func (s *Store) Accept(ctx context.Context, epoch []byte, inputs [][]byte, mater
 	if err := ctx.Err(); err != nil {
 		return Snapshot{}, err
 	}
-	if err := commitGeneration(s.config.root, decision); err != nil {
+	state := s.distribution
+	state.sequence++
+	state.trustedTimeFloor = max(state.trustedTimeFloor, s.config.clock().UTC().Unix())
+	if err := s.commitActiveDecision(decision, state); err != nil {
 		return Snapshot{}, err
 	}
-	snapshot := decision.snapshot
-	s.current = &snapshot
-	return snapshot, nil
+	return s.snapshotWithDistribution(s.config.clock().UTC()), nil
 }
 
 // Current returns a copy of the current immutable Snapshot.
-func (s *Store) Current() (Snapshot, error) {
+func (s *store) Current() (Snapshot, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if s.closed {
@@ -109,52 +212,14 @@ func (s *Store) Current() (Snapshot, error) {
 	if s.current == nil {
 		return Snapshot{}, errors.New("network state has no current generation")
 	}
-	return *s.current, nil
-}
-
-// Close prevents further work through this Store.
-func (s *Store) Close() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.closed {
-		return nil
+	now, err := trustedNow(s.config, s.distribution)
+	if err != nil && s.config.sources[0].address != "" {
+		snapshot := s.snapshotWithDistribution(s.config.clock().UTC())
+		snapshot.Freshness = "clock-uncertain"
+		return snapshot, nil
 	}
-	s.closed = true
-	return nil
-}
-
-func validateConfig(input Config) (config, error) {
-	if input.Root == "" {
-		return config{}, errors.New("state root is required")
-	}
-	root, err := filepath.Abs(input.Root)
 	if err != nil {
-		return config{}, fmt.Errorf("resolve state root: %w", err)
+		now = s.config.clock().UTC()
 	}
-	if input.Threshold < 1 || input.Threshold > len(input.Authorities) {
-		return config{}, errors.New("authority threshold is outside the authority set")
-	}
-	if len(input.Authorities) > 16 {
-		return config{}, errors.New("authority set exceeds 16 keys")
-	}
-	if input.Now.IsZero() {
-		return config{}, errors.New("verification time is required")
-	}
-	authorities := make(map[[32]byte]ed25519.PublicKey, len(input.Authorities))
-	for id, public := range input.Authorities {
-		if len(public) != ed25519.PublicKeySize {
-			return config{}, errors.New("authority public key has invalid length")
-		}
-		if sha256.Sum256(public) != id {
-			return config{}, errors.New("authority identifier does not match its public key")
-		}
-		authorities[id] = append(ed25519.PublicKey(nil), public...)
-	}
-	return config{
-		root:        root,
-		networkID:   input.NetworkID,
-		authorities: authorities,
-		threshold:   input.Threshold,
-		now:         input.Now.UTC(),
-	}, nil
+	return s.snapshotWithDistribution(now), nil
 }

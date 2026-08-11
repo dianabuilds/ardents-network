@@ -1,32 +1,28 @@
 package main
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"sort"
-
-	"github.com/dianabuilds/ardents-network/internal/networkstate"
 )
 
-func readOfflineInputs(raw rawConfig) ([]byte, [][]byte, networkstate.Materialization, error) {
+func readOfflineInputs(raw rawConfig) ([]byte, [][]byte, []byte, error) {
 	epoch, err := readCommandFile(raw.epoch, 1<<20)
 	if err != nil {
-		return nil, nil, networkstate.Materialization{}, fmt.Errorf("read epoch: %w", err)
+		return nil, nil, nil, fmt.Errorf("read epoch: %w", err)
 	}
 	inputs, err := readInputDirectory(raw.inputs)
 	if err != nil {
-		return nil, nil, networkstate.Materialization{}, err
+		return nil, nil, nil, err
 	}
 	materialBytes, err := readCommandFile(raw.material, 35<<10)
 	if err != nil {
-		return nil, nil, networkstate.Materialization{}, fmt.Errorf("read materialization: %w", err)
+		return nil, nil, nil, fmt.Errorf("read materialization: %w", err)
 	}
-	material, err := decodeMaterialization(materialBytes)
-	return epoch, inputs, material, err
+	return epoch, inputs, materialBytes, nil
 }
 
 func readInputDirectory(path string) ([][]byte, error) {
@@ -77,30 +73,4 @@ func readCommandFile(path string, maximum int64) ([]byte, error) {
 		return nil, errors.New("input file exceeds its framing bound")
 	}
 	return contents, nil
-}
-
-func decodeMaterialization(raw []byte) (networkstate.Materialization, error) {
-	const fixed = 32 + 4 + 4 + 2
-	if len(raw) < fixed {
-		return networkstate.Materialization{}, errors.New("materialization is truncated")
-	}
-	var material networkstate.Materialization
-	copy(material.EpochDigest[:], raw[:32])
-	material.Index = binary.BigEndian.Uint32(raw[32:36])
-	recordLength := int(binary.BigEndian.Uint32(raw[36:40]))
-	if recordLength < 1 || recordLength > 32<<10 || len(raw) < 40+recordLength+2 {
-		return networkstate.Materialization{}, errors.New("materialization record length is invalid")
-	}
-	material.Record = append([]byte(nil), raw[40:40+recordLength]...)
-	offset := 40 + recordLength
-	count := int(binary.BigEndian.Uint16(raw[offset : offset+2]))
-	offset += 2
-	if count > 64 || len(raw) != offset+count*32 {
-		return networkstate.Materialization{}, errors.New("materialization proof framing is invalid")
-	}
-	material.Siblings = make([][32]byte, count)
-	for index := range material.Siblings {
-		copy(material.Siblings[index][:], raw[offset+index*32:offset+(index+1)*32])
-	}
-	return material, nil
 }

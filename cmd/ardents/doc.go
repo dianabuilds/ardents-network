@@ -1,2 +1,2 @@
-// Command ardents owns the Endpoint runtime adapter.
+// Command ardents owns the product's thin offline and source-refresh adapters.
 package main

@@ -42,7 +42,7 @@ type evaluatedRecord struct {
 	code   uint16
 }
 
-func verifyDecision(config config, current *Snapshot, epochBytes []byte, inputs [][]byte, materials []Materialization, requireMaterials bool) (candidateDecision, error) {
+func verifyDecision(config config, current *Snapshot, epochBytes []byte, inputs [][]byte, materials []materialization, requireMaterials bool) (candidateDecision, error) {
 	if err := preflightDecision(epochBytes, inputs, materials); err != nil {
 		return candidateDecision{}, err
 	}
@@ -84,7 +84,7 @@ func verifyDecision(config config, current *Snapshot, epochBytes []byte, inputs 
 	return decision, nil
 }
 
-func preflightDecision(epoch []byte, inputs [][]byte, materials []Materialization) error {
+func preflightDecision(epoch []byte, inputs [][]byte, materials []materialization) error {
 	if len(epoch) == 0 || len(epoch) > maximumEpochBytes || len(inputs) > 64 || len(materials) > 64 {
 		return errors.New("offline decision exceeds its framing bounds")
 	}
@@ -217,7 +217,7 @@ func verifyViewCommitment(epoch epochEnvelope, accepted []nodeRecord, rejected [
 	return nil
 }
 
-func verifyMaterializations(epoch epochEnvelope, accepted []nodeRecord, materials []Materialization, required bool) error {
+func verifyMaterializations(epoch epochEnvelope, accepted []nodeRecord, materials []materialization, required bool) error {
 	if len(accepted) > 0 && required && len(materials) == 0 {
 		return errors.New("candidate materialization is required")
 	}

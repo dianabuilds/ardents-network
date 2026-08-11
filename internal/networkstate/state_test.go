@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -61,6 +62,7 @@ func TestAcceptOfflineGenesisAndRecoverCurrent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reopen state: %v", err)
 	}
+	defer reopened.Close()
 	recovered, err := reopened.Current()
 	if err != nil {
 		t.Fatalf("read recovered current state: %v", err)
@@ -73,7 +75,7 @@ func TestAcceptOfflineGenesisAndRecoverCurrent(t *testing.T) {
 func TestAcceptRejectsWrongMaterializationWithoutWriting(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)
-	fixture.materializations[0].Siblings[0][0] ^= 0xff
+	fixture.materializations[0][len(fixture.materializations[0])-1] ^= 0xff
 	root := t.TempDir()
 	store, err := networkstate.Open(networkstate.Config{
 		Root:        root,
@@ -85,6 +87,7 @@ func TestAcceptRejectsWrongMaterializationWithoutWriting(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open state: %v", err)
 	}
+	defer store.Close()
 	if _, err := store.Accept(context.Background(), fixture.epoch, fixture.inputs, fixture.materializations); err == nil {
 		t.Fatal("accept succeeded with a corrupt proof")
 	}
@@ -97,12 +100,16 @@ func TestOpenRemovesInterruptedStagingAndKeepsNoCurrent(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	fixture := newFixture(t)
-	if _, err := networkstate.Open(networkstate.Config{
+	claimed, err := networkstate.Open(networkstate.Config{
 		Root: root, NetworkID: fixture.networkID,
 		Authorities: map[[32]byte]ed25519.PublicKey{fixture.authorityID: fixture.authorityPublic},
 		Threshold:   1, Now: time.Unix(fixtureNow, 0),
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatalf("claim empty owned root: %v", err)
+	}
+	if err := claimed.Close(); err != nil {
+		t.Fatal(err)
 	}
 	if err := os.MkdirAll(filepath.Join(root, "generations", ".stage-interrupted"), 0o700); err != nil {
 		t.Fatal(err)
@@ -120,6 +127,7 @@ func TestOpenRemovesInterruptedStagingAndKeepsNoCurrent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("recover interrupted staging: %v", err)
 	}
+	defer store.Close()
 	if _, err := store.Current(); err == nil {
 		t.Fatal("empty recovered root reported current state")
 	}
@@ -175,10 +183,14 @@ func TestAcceptRecoversCompleteGenerationMissingCurrentPointer(t *testing.T) {
 	if err := os.Remove(filepath.Join(root, "current")); err != nil {
 		t.Fatal(err)
 	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
 	restarted, err := networkstate.Open(config)
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer restarted.Close()
 	recovered, err := restarted.Current()
 	if err != nil || recovered != accepted {
 		t.Fatalf("recover completed immutable generation: snapshot=%+v err=%v", recovered, err)
@@ -234,14 +246,79 @@ func TestSuccessorChainSurvivesRestart(t *testing.T) {
 	if err != nil || got != want {
 		t.Fatalf("restarted snapshot=%+v err=%v, want %+v", got, err, want)
 	}
+	if err := restarted.Close(); err != nil {
+		t.Fatal(err)
+	}
 	laterConfig := config
 	laterConfig.Now = time.Unix(genesis.now+1900, 0)
 	later, err := networkstate.Open(laterConfig)
 	if err != nil {
 		t.Fatalf("reopen current successor after genesis expiry: %v", err)
 	}
+	defer later.Close()
 	laterSnapshot, err := later.Current()
 	if err != nil || laterSnapshot != want {
 		t.Fatalf("later snapshot=%+v err=%v, want %+v", laterSnapshot, err, want)
+	}
+}
+
+func TestStateRootLeaseExcludesSecondStore(t *testing.T) {
+	fixture := newFixture(t)
+	config := networkstate.Config{
+		Root: t.TempDir(), NetworkID: fixture.networkID,
+		Authorities: map[[32]byte]ed25519.PublicKey{fixture.authorityID: fixture.authorityPublic},
+		Threshold:   1, Now: time.Unix(fixture.now, 0),
+	}
+	first, err := networkstate.Open(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := networkstate.Open(config); err == nil || !strings.Contains(err.Error(), "exclusive state-root lease") {
+		t.Fatalf("second Store acquired the owned root: %v", err)
+	}
+	if err := first.Close(); err != nil {
+		t.Fatal(err)
+	}
+	third, err := networkstate.Open(config)
+	if err != nil {
+		t.Fatalf("released root lease stayed locked: %v", err)
+	}
+	defer third.Close()
+}
+
+func TestDistributionStateRepairsStaleCurrentMirror(t *testing.T) {
+	genesis := newFixture(t)
+	successor := nextFixture(t, genesis)
+	config := networkstate.Config{
+		Root: t.TempDir(), NetworkID: genesis.networkID,
+		Authorities: map[[32]byte]ed25519.PublicKey{genesis.authorityID: genesis.authorityPublic},
+		Threshold:   1, Now: time.Unix(genesis.now, 0),
+	}
+	store, err := networkstate.Open(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, err := store.Accept(context.Background(), genesis.epoch, genesis.inputs, genesis.materializations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := store.Accept(context.Background(), successor.epoch, successor.inputs, successor.materializations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(config.Root, "current"), []byte(first.Generation+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	restarted, err := networkstate.Open(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer restarted.Close()
+	current, err := restarted.Current()
+	if err != nil || current.Generation != second.Generation {
+		t.Fatalf("recovered active generation=%s err=%v", current.Generation, err)
 	}
 }

@@ -7,8 +7,6 @@ import (
 	"encoding/binary"
 	"sort"
 	"testing"
-
-	"github.com/dianabuilds/ardents-network/internal/networkstate"
 )
 
 const (
@@ -31,7 +29,7 @@ type fixture struct {
 	viewRoot         [32]byte
 	rejectedRoot     [32]byte
 	accepted         []fixtureRecord
-	materializations []networkstate.Materialization
+	materializations [][]byte
 }
 
 type fixtureRecord struct {
@@ -113,12 +111,7 @@ func newFixture(t *testing.T) fixture {
 	epoch = append(epoch, authorityID[:]...)
 	epoch = append(epoch, ed25519.Sign(authorityPrivate, digest[:])...)
 
-	materials := []networkstate.Materialization{{
-		EpochDigest: digest,
-		Index:       0,
-		Record:      append([]byte(nil), viewBytes[0]...),
-		Siblings:    merkleProof(viewBytes, 0),
-	}}
+	materials := [][]byte{encodeFixtureMaterial(digest, 0, viewBytes[0], merkleProof(viewBytes, 0))}
 	return fixture{
 		now:              fixtureNow,
 		networkID:        networkID,
@@ -137,8 +130,12 @@ func newFixture(t *testing.T) fixture {
 }
 
 func nextFixture(t *testing.T, previous fixture) fixture {
+	return nextFixtureWithSeed(t, previous, "assignment-seed-2")
+}
+
+func nextFixtureWithSeed(t *testing.T, previous fixture, label string) fixture {
 	t.Helper()
-	seed := sha256.Sum256([]byte("assignment-seed-2"))
+	seed := sha256.Sum256([]byte(label))
 	unsigned := new(bytes.Buffer)
 	unsigned.WriteString("AREP")
 	unsigned.WriteByte(1)
@@ -174,10 +171,22 @@ func nextFixture(t *testing.T, previous fixture) fixture {
 	epoch = append(epoch, ed25519.Sign(previous.authorityPrivate, digest[:])...)
 	view := [][]byte{previous.accepted[0].bytes, previous.accepted[1].bytes}
 	previous.epoch, previous.epochDigest = epoch, digest
-	previous.materializations = []networkstate.Materialization{{
-		EpochDigest: digest, Index: 0, Record: append([]byte(nil), view[0]...), Siblings: merkleProof(view, 0),
-	}}
+	previous.materializations = [][]byte{encodeFixtureMaterial(digest, 0, view[0], merkleProof(view, 0))}
 	return previous
+}
+
+func futureFixture(t *testing.T, previous fixture, validFrom int64) fixture {
+	t.Helper()
+	value := nextFixtureWithSeed(t, previous, "future-assignment-seed")
+	const validFromOffset = 4 + 1 + 32 + 8 + 32
+	binary.BigEndian.PutUint64(value.epoch[validFromOffset:validFromOffset+8], uint64(validFrom))
+	unsignedEnd := len(value.epoch) - 1 - 32 - ed25519.SignatureSize
+	digest := sha256.Sum256(value.epoch[:unsignedEnd])
+	copy(value.epoch[unsignedEnd+1+32:], ed25519.Sign(previous.authorityPrivate, digest[:]))
+	value.epochDigest = digest
+	copy(value.materializations[0][:32], digest[:])
+	value.now = validFrom
+	return value
 }
 
 type fixtureDomainSummary struct {
@@ -344,4 +353,17 @@ func writeU64(buf *bytes.Buffer, value uint64) {
 
 func writeI64(buf *bytes.Buffer, value int64) {
 	writeU64(buf, uint64(value))
+}
+
+func encodeFixtureMaterial(digest [32]byte, index uint32, record []byte, siblings [][32]byte) []byte {
+	buffer := new(bytes.Buffer)
+	buffer.Write(digest[:])
+	writeU32(buffer, index)
+	writeU32(buffer, uint32(len(record)))
+	buffer.Write(record)
+	writeU16(buffer, uint16(len(siblings)))
+	for _, sibling := range siblings {
+		buffer.Write(sibling[:])
+	}
+	return buffer.Bytes()
 }

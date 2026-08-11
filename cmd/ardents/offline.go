@@ -12,6 +12,9 @@ import (
 )
 
 func run(ctx context.Context, arguments []string, output io.Writer) error {
+	if len(arguments) > 0 && arguments[0] == "refresh-sources" {
+		return runRefreshSources(ctx, arguments, output)
+	}
 	if len(arguments) == 0 || arguments[0] != "accept-offline" {
 		return errors.New("usage: ardents accept-offline [flags]")
 	}
@@ -45,7 +48,7 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 		return fmt.Errorf("open network state: %w", err)
 	}
 	defer store.Close()
-	snapshot, err := store.Accept(ctx, epoch, inputs, []networkstate.Materialization{material})
+	snapshot, err := store.Accept(ctx, epoch, inputs, [][]byte{material})
 	if err != nil {
 		return fmt.Errorf("accept offline state: %w", err)
 	}

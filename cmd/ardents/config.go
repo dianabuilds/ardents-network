@@ -13,14 +13,8 @@ import (
 )
 
 type rawConfig struct {
-	root        string
-	network     string
-	authorities string
-	threshold   int
-	at          string
-	epoch       string
-	inputs      string
-	material    string
+	root, network, authorities, at, epoch, inputs, material string
+	threshold                                               int
 }
 
 func (raw rawConfig) networkStateConfig() (networkstate.Config, error) {
@@ -37,26 +31,19 @@ func (raw rawConfig) networkStateConfig() (networkstate.Config, error) {
 		if err := decodeFixedHex(encoded, public); err != nil {
 			return networkstate.Config{}, fmt.Errorf("authority: %w", err)
 		}
-		id := sha256.Sum256(public)
-		authorities[id] = ed25519.PublicKey(public)
+		authorities[sha256.Sum256(public)] = ed25519.PublicKey(public)
 	}
 	at, err := time.Parse(time.RFC3339, raw.at)
 	if err != nil {
 		return networkstate.Config{}, fmt.Errorf("at: %w", err)
 	}
-	return networkstate.Config{
-		Root: raw.root, NetworkID: networkID, Authorities: authorities,
-		Threshold: raw.threshold, Now: at,
-	}, nil
+	return networkstate.Config{Root: raw.root, NetworkID: networkID, Authorities: authorities, Threshold: raw.threshold, Now: at}, nil
 }
 
 func decodeFixedHex(encoded string, destination []byte) error {
 	decoded, err := hex.DecodeString(encoded)
-	if err != nil {
-		return err
-	}
-	if len(decoded) != len(destination) {
-		return fmt.Errorf("decoded length is %d, want %d", len(decoded), len(destination))
+	if err != nil || len(decoded) != len(destination) {
+		return fmt.Errorf("invalid fixed hexadecimal value")
 	}
 	copy(destination, decoded)
 	return nil

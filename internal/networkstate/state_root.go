@@ -12,9 +12,10 @@ import (
 const (
 	rootMarkerName = ".ardents-network-state-v1"
 	rootMarker     = "ardents-network-state-v1\n"
+	rootLockName   = ".ardents-network-state-lock"
 )
 
-func prepareRoot(root string) error {
+func inspectRoot(root string) error {
 	info, err := os.Lstat(root)
 	if os.IsNotExist(err) {
 		if err := os.MkdirAll(root, 0o700); err != nil {
@@ -25,6 +26,24 @@ func prepareRoot(root string) error {
 	} else if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 		return errors.New("state root is not an owned directory")
 	}
+	markerInfo, markerErr := os.Lstat(filepath.Join(root, rootMarkerName))
+	if markerErr == nil {
+		if !markerInfo.Mode().IsRegular() || markerInfo.Mode()&os.ModeSymlink != 0 {
+			return errors.New("state root ownership marker is not a regular file")
+		}
+		return nil
+	}
+	if !os.IsNotExist(markerErr) {
+		return fmt.Errorf("inspect state root ownership marker: %w", markerErr)
+	}
+	entries, readErr := readBoundedDirectory(root, 2)
+	if readErr != nil || len(entries) > 1 || len(entries) == 1 && entries[0].Name() != rootLockName {
+		return errors.New("refusing to claim a non-empty unowned state root")
+	}
+	return nil
+}
+
+func prepareRoot(root string) error {
 	if err := ensureRootMarker(root); err != nil {
 		return err
 	}
@@ -54,8 +73,8 @@ func ensureRootMarker(root string) error {
 	if !os.IsNotExist(err) {
 		return fmt.Errorf("inspect state root ownership marker: %w", err)
 	}
-	entries, readErr := readBoundedDirectory(root, 1)
-	if readErr != nil || len(entries) != 0 {
+	entries, readErr := readBoundedDirectory(root, 2)
+	if readErr != nil || len(entries) != 1 || entries[0].Name() != rootLockName {
 		return errors.New("refusing to claim a non-empty unowned state root")
 	}
 	if err := writeSynced(markerPath, []byte(rootMarker)); err != nil {

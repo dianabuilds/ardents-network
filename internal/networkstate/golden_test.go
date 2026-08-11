@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/sha256"
-	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"os"
@@ -23,7 +22,7 @@ func TestProductAcceptsFrozenOfflineVector(t *testing.T) {
 	for index := range inputs {
 		inputs[index] = readGoldenHex(t, filepath.Join(base, fmt.Sprintf("input-%04d.hex", index)))
 	}
-	material := decodeGoldenMaterial(t, readGoldenHex(t, filepath.Join(base, "materialization-0000.hex")))
+	material := readGoldenHex(t, filepath.Join(base, "materialization-0000.hex"))
 	networkID := decodeGoldenArray(t, "488a631a444652b50d760a739c338d5f7e54bc14e92a3c3d6002eaeead4f2d3d")
 	public := ed25519.PublicKey(readGoldenString(t, "c2f38d34dafe402561da5a0a278e8a3255e0fc9c2e58c0209966a589fd07b631"))
 	authorityID := sha256.Sum256(public)
@@ -35,7 +34,8 @@ func TestProductAcceptsFrozenOfflineVector(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	snapshot, err := store.Accept(context.Background(), epoch, inputs, []networkstate.Materialization{material})
+	defer store.Close()
+	snapshot, err := store.Accept(context.Background(), epoch, inputs, [][]byte{material})
 	if err != nil {
 		t.Fatalf("accept frozen vector: %v", err)
 	}
@@ -71,21 +71,4 @@ func decodeGoldenArray(t *testing.T, encoded string) [32]byte {
 	var result [32]byte
 	copy(result[:], readGoldenString(t, encoded))
 	return result
-}
-
-func decodeGoldenMaterial(t *testing.T, raw []byte) networkstate.Materialization {
-	t.Helper()
-	var material networkstate.Materialization
-	copy(material.EpochDigest[:], raw[:32])
-	material.Index = binary.BigEndian.Uint32(raw[32:36])
-	length := int(binary.BigEndian.Uint32(raw[36:40]))
-	material.Record = append([]byte(nil), raw[40:40+length]...)
-	offset := 40 + length
-	count := int(binary.BigEndian.Uint16(raw[offset : offset+2]))
-	offset += 2
-	material.Siblings = make([][32]byte, count)
-	for index := range material.Siblings {
-		copy(material.Siblings[index][:], raw[offset+index*32:offset+(index+1)*32])
-	}
-	return material
 }

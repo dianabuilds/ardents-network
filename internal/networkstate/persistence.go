@@ -35,7 +35,7 @@ func loadCurrent(config config) (*Snapshot, error) {
 	return &snapshot, nil
 }
 
-func loadGeneration(config config, name string, previous *Snapshot, current bool) (candidateDecision, error) {
+func loadGeneration(config config, name string, previous *Snapshot, _ bool) (candidateDecision, error) {
 	directory := filepath.Join(config.root, "generations", name)
 	epochBytes, err := readBoundedFile(filepath.Join(directory, "epoch.bin"), maximumEpochBytes)
 	if err != nil {
@@ -61,13 +61,15 @@ func loadGeneration(config config, name string, previous *Snapshot, current bool
 		return candidateDecision{}, errors.New("current generation has an unexpected input file")
 	}
 	verificationConfig := config
-	if !current {
-		verificationConfig.now = epoch.validFrom
-	}
+	verificationConfig.now = epoch.validFrom
 	return verifyDecision(verificationConfig, previous, epochBytes, inputs, nil, false)
 }
 
-func commitGeneration(root string, decision candidateDecision) error {
+func stageGeneration(root string, decision candidateDecision) error {
+	return publishGeneration(root, decision)
+}
+
+func publishGeneration(root string, decision candidateDecision) error {
 	generations := filepath.Join(root, "generations")
 	staging, err := os.MkdirTemp(generations, ".stage-")
 	if err != nil {
@@ -91,7 +93,7 @@ func commitGeneration(root string, decision candidateDecision) error {
 			return fmt.Errorf("remove redundant generation staging: %w", err)
 		}
 		committed = true
-		return replaceCurrent(root, decision.snapshot.Generation)
+		return nil
 	} else if !os.IsNotExist(statErr) {
 		return fmt.Errorf("inspect immutable generation: %w", statErr)
 	}
@@ -102,7 +104,7 @@ func commitGeneration(root string, decision candidateDecision) error {
 	if err := syncDirectory(generations); err != nil {
 		return fmt.Errorf("sync generations directory: %w", err)
 	}
-	return replaceCurrent(root, decision.snapshot.Generation)
+	return nil
 }
 
 func generationMatches(directory string, decision candidateDecision) bool {
@@ -169,6 +171,10 @@ func writeSynced(path string, contents []byte) error {
 }
 
 func replaceCurrent(root, generation string) error {
+	return replaceNamedPointer(root, "current", generation)
+}
+
+func replaceNamedPointer(root, name, generation string) error {
 	temporary, err := os.CreateTemp(root, ".current-")
 	if err != nil {
 		return fmt.Errorf("create current pointer staging: %w", err)
@@ -188,7 +194,7 @@ func replaceCurrent(root, generation string) error {
 	if closeErr != nil {
 		return fmt.Errorf("close current pointer staging: %w", closeErr)
 	}
-	if err := os.Rename(temporaryPath, filepath.Join(root, "current")); err != nil {
+	if err := os.Rename(temporaryPath, filepath.Join(root, name)); err != nil {
 		return fmt.Errorf("replace current pointer: %w", err)
 	}
 	if err := syncDirectory(root); err != nil {

@@ -47,8 +47,11 @@ func VerifyOffline(input OfflineCase) Result {
 	if err != nil {
 		return Result{Verdict: "invalid", Reason: err.Error()}
 	}
-	epoch, err := verifyOfflineEvidence(input, evidence)
+	epoch, err := verifyOfflineChain(input, evidence.generation)
 	if err != nil {
+		return Result{Verdict: "fail", Reason: err.Error(), Generation: evidence.generation}
+	}
+	if err := verifyOfflineEvidence(input, evidence, epoch); err != nil {
 		return Result{Verdict: "fail", Reason: err.Error(), Generation: evidence.generation}
 	}
 	return Result{
@@ -156,23 +159,50 @@ func independentlyReadDirectory(path string, maximum int) ([]os.DirEntry, error)
 	return entries, nil
 }
 
-func verifyOfflineEvidence(input OfflineCase, evidence offlineEvidence) (offlineEpoch, error) {
-	epoch, err := verifyOfflineEpoch(input, evidence.epoch)
-	if err != nil {
-		return offlineEpoch{}, err
-	}
+func verifyOfflineEvidence(input OfflineCase, evidence offlineEvidence, epoch offlineEpoch) error {
 	if fmt.Sprintf("%x", epoch.digest) != evidence.generation {
-		return offlineEpoch{}, errors.New("generation name does not match the epoch digest")
+		return errors.New("generation name does not match the epoch digest")
 	}
 	if recordRoot(evidence.inputs, 0x10) != epoch.inputRoot {
-		return offlineEpoch{}, errors.New("candidate input root is inconsistent")
+		return errors.New("candidate input root is inconsistent")
 	}
 	accepted, rejected := independentlyEvaluate(input, epoch, evidence.inputs)
 	if err := independentlyVerifyView(epoch, accepted, rejected); err != nil {
-		return offlineEpoch{}, err
+		return err
 	}
 	if err := verifyOfflineMaterials(epoch, accepted, input.Materializations); err != nil {
-		return offlineEpoch{}, err
+		return err
 	}
-	return epoch, nil
+	return nil
+}
+
+func verifyOfflineChain(input OfflineCase, current string) (offlineEpoch, error) {
+	seen := make(map[string]bool)
+	var load func(string, bool) (offlineEpoch, error)
+	load = func(name string, tip bool) (offlineEpoch, error) {
+		if !canonicalGeneration.MatchString(name) || seen[name] || len(seen) >= 64 {
+			return offlineEpoch{}, errors.New("offline generation chain is cyclic or exceeds its bound")
+		}
+		seen[name] = true
+		raw, err := independentlyReadBounded(filepath.Join(input.Root, "generations", name, "epoch.bin"), 1<<20)
+		if err != nil {
+			return offlineEpoch{}, fmt.Errorf("read offline chain epoch: %w", err)
+		}
+		epoch, err := verifyOfflineEpoch(input, raw, !tip)
+		if err != nil || fmt.Sprintf("%x", epoch.digest) != name {
+			return offlineEpoch{}, errors.Join(errors.New("offline generation chain member is invalid"), err)
+		}
+		if epoch.number == 1 {
+			if epoch.previous != [32]byte{} {
+				return offlineEpoch{}, errors.New("offline genesis previous digest is not zero")
+			}
+			return epoch, nil
+		}
+		prior, err := load(fmt.Sprintf("%x", epoch.previous), false)
+		if err != nil || prior.number+1 != epoch.number || prior.digest != epoch.previous {
+			return offlineEpoch{}, errors.Join(errors.New("offline epoch transition is invalid"), err)
+		}
+		return epoch, nil
+	}
+	return load(current, true)
 }

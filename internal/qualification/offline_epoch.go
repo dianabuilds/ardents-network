@@ -194,16 +194,18 @@ func readOfflineSummaries(d *byteDecoder, epoch *offlineEpoch) error {
 	return nil
 }
 
-func verifyOfflineEpoch(input OfflineCase, raw []byte) (offlineEpoch, error) {
+func verifyOfflineEpoch(input OfflineCase, raw []byte, historical bool) (offlineEpoch, error) {
 	epoch, err := parseOfflineEpoch(raw)
 	if err != nil {
 		return offlineEpoch{}, err
 	}
-	var zero [32]byte
-	if epoch.networkID != input.NetworkID || epoch.number != 1 || epoch.previous != zero {
-		return offlineEpoch{}, errors.New("offline genesis identity or chain is invalid")
+	if epoch.networkID != input.NetworkID {
+		return offlineEpoch{}, errors.New("offline epoch network identity is invalid")
 	}
 	now := input.Now.UTC()
+	if historical {
+		now = epoch.validFrom
+	}
 	if now.Before(epoch.validFrom) || !now.Before(epoch.validUntil) {
 		return offlineEpoch{}, errors.New("offline epoch is not strictly current")
 	}
