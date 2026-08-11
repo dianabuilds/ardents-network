@@ -9,11 +9,18 @@ import (
 	"errors"
 	"io"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"slices"
 	"time"
 )
+
+var errFailureAssertion = errors.New("gate C failure assertion failed")
+
+func failureAssertion(message string) error {
+	return errors.Join(errFailureAssertion, errors.New(message))
+}
 
 func runContractFailure(ctx context.Context, name, evidenceDirectory string) error {
 	select {
@@ -24,11 +31,11 @@ func runContractFailure(ctx context.Context, name, evidenceDirectory string) err
 	now := time.Now()
 	fixture, err := newAuthorityFixture("failure-run", "failure-network", now, rand.Reader)
 	if err != nil {
-		return err
+		return matrixOperational(err)
 	}
 	nonce := make([]byte, 32)
 	if _, err := rand.Read(nonce); err != nil {
-		return err
+		return matrixOperational(err)
 	}
 	switch name {
 	case "invalid_name":
@@ -50,18 +57,24 @@ func runContractFailure(ctx context.Context, name, evidenceDirectory string) err
 	case "application_dns_escape", "application_socket_escape", "application_listener_escape", "forbidden_origin_query_role_view":
 		err = verifyRetainedIsolation(evidenceDirectory, name)
 	default:
-		return errors.New("unknown Gate C failure condition")
+		return matrixOperational(errors.New("unknown Gate C failure condition"))
 	}
 	if err != nil {
-		return err
+		if errors.Is(err, errFailureAssertion) {
+			return err
+		}
+		return matrixOperational(err)
 	}
 	path := filepath.Join(evidenceDirectory, "failures")
 	if err := os.MkdirAll(path, 0o700); err != nil {
-		return err
+		return matrixOperational(err)
 	}
-	return writeBoundedJSON(filepath.Join(path, name+".json"), map[string]any{
+	if err := writeBoundedJSON(filepath.Join(path, name+".json"), map[string]any{
 		"schema_version": "gatec-failure-evidence/v1", "condition": name, "result": "rejected_as_required",
-	})
+	}); err != nil {
+		return matrixOperational(err)
+	}
+	return nil
 }
 
 func expectLookupRejected(ctx context.Context, fixture *authorityFixture, lookup string) error {
@@ -72,7 +85,11 @@ func expectLookupRejected(ctx context.Context, fixture *authorityFixture, lookup
 	defer resolver.close()
 	_, _, err = resolveMessage(ctx, resolver.transport, "name", lookup, fixture.runID, fixture.networkID, time.Now())
 	if err == nil {
-		return errors.New("invalid or absent Name was resolved")
+		return failureAssertion("invalid or absent Name was resolved")
+	}
+	var rejected *gatewayStatusError
+	if !errors.As(err, &rejected) || rejected.status != http.StatusBadRequest {
+		return err
 	}
 	return nil
 }
@@ -91,7 +108,12 @@ func expectOHTTPReplayRejected(ctx context.Context, fixture *authorityFixture, n
 		return err
 	}
 	if _, err := sendOHTTPMessage(ctx, resolver.transport, query); err == nil {
-		return errors.New("replayed OHTTP request was accepted")
+		return failureAssertion("replayed OHTTP request was accepted")
+	} else {
+		var rejected *gatewayStatusError
+		if !errors.As(err, &rejected) || rejected.status != http.StatusConflict {
+			return err
+		}
 	}
 	return nil
 }
@@ -113,7 +135,7 @@ func expectNameRecordRejected(fixture *authorityFixture, name string, nonce []by
 		return err
 	}
 	if _, verifyErr := verifyNameRecord(data, fixture.namePublic, fixture.runID, fixture.networkID, nonce, now); verifyErr == nil {
-		return errors.New("invalid Name Record was accepted")
+		return failureAssertion("invalid Name Record was accepted")
 	}
 	return nil
 }
@@ -140,7 +162,7 @@ func expectDescriptorRejected(fixture *authorityFixture, name string, nonce []by
 		return err
 	}
 	if _, verifyErr := verifyDescriptor(data, serviceKey, fixture.runID, fixture.networkID, nonce, target, generation, when); verifyErr == nil {
-		return errors.New("invalid Descriptor or Credential was accepted")
+		return failureAssertion("invalid Descriptor or Credential was accepted")
 	}
 	return nil
 }
@@ -160,11 +182,14 @@ func expectApplicationFailure(ctx context.Context, connectorErr error, expected 
 	_ = application.Close()
 	serveErr := <-done
 	if err != nil || serveErr == nil || response.Status != "failed" || response.Class != expected || response.Target != "" || response.NameGeneration != 0 || response.NameRevision != 0 || response.InstanceGeneration != 0 {
-		return errors.New("application Interface exposed or misclassified a connection failure")
+		return failureAssertion("application Interface exposed or misclassified a connection failure")
 	}
 	encoded, err := json.Marshal(response)
 	if err != nil || bytes.Contains(encoded, []byte("node")) || bytes.Contains(encoded, []byte("relay")) || bytes.Contains(encoded, []byte("gateway")) {
-		return errors.New("application Interface failure exposed topology")
+		if err != nil {
+			return err
+		}
+		return failureAssertion("application Interface failure exposed topology")
 	}
 	return nil
 }
@@ -179,8 +204,13 @@ func verifyRetainedIsolation(evidenceDirectory, condition string) error {
 			Queries          []string `json:"plaintext_query_types"`
 			AuthorityPrivate bool     `json:"authority_private_key_present"`
 		}
-		if readStrictEvidence(filepath.Join(reference, "relay", "relay.json"), &relay) != nil || readStrictEvidence(filepath.Join(reference, "gateway", "gateway.json"), &gateway) != nil || relay.Cleartext || gateway.AuthorityPrivate || !slices.Equal(gateway.Queries, []string{"name", "reachability"}) {
-			return errors.New("resolution role view violates the fixed knowledge matrix")
+		relayErr := readStrictEvidence(filepath.Join(reference, "relay", "relay.json"), &relay)
+		gatewayErr := readStrictEvidence(filepath.Join(reference, "gateway", "gateway.json"), &gateway)
+		if relayErr != nil || gatewayErr != nil {
+			return errors.Join(errors.New("required resolution role-view evidence is absent"), relayErr, gatewayErr)
+		}
+		if relay.Cleartext || gateway.AuthorityPrivate || !slices.Equal(gateway.Queries, []string{"name", "reachability"}) {
+			return failureAssertion("resolution role view violates the fixed knowledge matrix")
 		}
 		return nil
 	}
@@ -196,10 +226,10 @@ func verifyRetainedIsolation(evidenceDirectory, condition string) error {
 		return err
 	}
 	if condition == "application_dns_escape" && (!isolation.NetworkNone || !isolation.DNSRejected) || condition == "application_socket_escape" && (!isolation.FilesystemViews || !isolation.SocketRejected) || isolation.PublishedPorts {
-		return errors.New("application isolation evidence does not reject the requested escape")
+		return failureAssertion("application isolation evidence does not reject the requested escape")
 	}
 	if condition == "application_listener_escape" && !isolation.ListenerAbsent {
-		return errors.New("HTTP Application opened an ordinary listener")
+		return failureAssertion("HTTP Application opened an ordinary listener")
 	}
 	return nil
 }

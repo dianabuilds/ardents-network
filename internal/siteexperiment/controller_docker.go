@@ -124,7 +124,7 @@ func (process *referenceProcess) waitPublication(ctx context.Context) error {
 		err := readStrictEvidence(path, &publication)
 		if err == nil {
 			if publication.Status != "published" || publication.Target != process.expectedTarget || publication.InstanceGeneration != process.expectedGeneration || publication.AuthorityReceived || publication.PrivateKeyReceived || publication.SupersededAttempted != process.expectedSuperseded || publication.SupersededRejected != process.expectedSuperseded {
-				return errors.New("reference Site publication handle is invalid")
+				return scenarioFailure(errors.New("reference Site publication handle is invalid"))
 			}
 			return nil
 		}
@@ -178,13 +178,13 @@ func (process *referenceProcess) wait(ctx context.Context) error {
 			} `json:"State"`
 		}
 		if err != nil || json.Unmarshal(data, &containers) != nil || len(containers) != len(referenceRoles) {
-			return errors.New("reference Site completion inspection failed")
+			return matrixOperational(errors.New("reference Site completion inspection failed"))
 		}
 		complete := true
 		for _, container := range containers {
 			complete = complete && !container.State.Running
 			if !container.State.Running && container.State.ExitCode != 0 {
-				return errors.New("reference Site role exited unsuccessfully")
+				return scenarioFailure(errors.New("reference Site role exited unsuccessfully"))
 			}
 		}
 		if complete {

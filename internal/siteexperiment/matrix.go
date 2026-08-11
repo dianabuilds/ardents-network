@@ -35,34 +35,79 @@ type matrixRunner struct {
 	migrate  func(context.Context, int) (migrationResult, error)
 }
 
-func runFixedMatrix(ctx context.Context, runner matrixRunner) matrixResult {
-	result := matrixResult{PositiveTotal: 20, Failures: make(map[string]bool), Verdict: "advance"}
+func runFixedMatrix(ctx context.Context, runner matrixRunner) (matrixResult, error) {
+	result := matrixResult{PositiveTotal: 20, Failures: make(map[string]bool)}
 	for attempt := 1; attempt <= result.PositiveTotal; attempt++ {
+		if err := ctx.Err(); err != nil {
+			return result, matrixOperational(err)
+		}
 		err := runner.positive(ctx, attempt, 1)
 		if err != nil {
-			return failMatrix(result, "positive attempt failed", isHardGateFailure(err))
+			if contextErr := ctx.Err(); contextErr != nil {
+				return result, matrixOperational(contextErr)
+			}
+			if errors.Is(err, errMatrixOperational) {
+				return result, err
+			}
+			if isHardGateFailure(err) {
+				return failMatrix(result, "positive attempt failed", true), nil
+			}
+			if errors.Is(err, errScenarioFailure) {
+				return failMatrix(result, "positive attempt failed", false), nil
+			}
+			return result, matrixOperational(err)
 		}
 		result.PositivePassed++
 	}
 	for _, name := range fixedFailureCases {
+		if err := ctx.Err(); err != nil {
+			return result, matrixOperational(err)
+		}
 		err := runner.failure(ctx, name)
 		result.Failures[name] = err == nil
 		if err != nil {
+			if contextErr := ctx.Err(); contextErr != nil {
+				return result, matrixOperational(contextErr)
+			}
+			if errors.Is(err, errMatrixOperational) {
+				return result, err
+			}
+			if !errors.Is(err, errFailureAssertion) {
+				return result, matrixOperational(err)
+			}
 			hard := name == "forbidden_origin_query_role_view" || name == "application_dns_escape" || name == "application_socket_escape" || name == "application_listener_escape"
-			return failMatrix(result, "failure condition did not fail closed: "+name, hard)
+			return failMatrix(result, "failure condition did not fail closed: "+name, hard), nil
 		}
 	}
 	for episode := 1; episode <= 5; episode++ {
+		if err := ctx.Err(); err != nil {
+			return result, matrixOperational(err)
+		}
 		migration, err := runner.migrate(ctx, episode)
 		result.Migrations = append(result.Migrations, migration)
 		if err != nil || !migration.GenerationOneStopped || !migration.GenerationTwoPassed || !migration.OldInstanceRejected {
-			return failMatrix(result, "migration episode failed", false)
+			if contextErr := ctx.Err(); contextErr != nil {
+				return result, matrixOperational(contextErr)
+			}
+			if errors.Is(err, errMatrixOperational) {
+				return result, err
+			}
+			if err != nil && !errors.Is(err, errScenarioFailure) {
+				return result, matrixOperational(err)
+			}
+			return failMatrix(result, "migration episode failed", false), nil
 		}
 	}
-	return result
+	if err := ctx.Err(); err != nil {
+		return result, matrixOperational(err)
+	}
+	result.Verdict = "advance"
+	return result, nil
 }
 
 var errHardGateFailure = errors.New("gate C hard failure")
+var errMatrixOperational = errors.New("gate C matrix operational failure")
+var errScenarioFailure = errors.New("gate C scenario failure")
 
 func hardGate(err error) error {
 	if err == nil {
@@ -73,6 +118,20 @@ func hardGate(err error) error {
 
 func isHardGateFailure(err error) bool {
 	return errors.Is(err, errHardGateFailure)
+}
+
+func matrixOperational(err error) error {
+	if err == nil {
+		return nil
+	}
+	return errors.Join(errMatrixOperational, err)
+}
+
+func scenarioFailure(err error) error {
+	if err == nil {
+		return nil
+	}
+	return errors.Join(errScenarioFailure, err)
 }
 
 func failMatrix(result matrixResult, message string, hard bool) matrixResult {

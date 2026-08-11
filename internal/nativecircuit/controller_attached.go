@@ -7,6 +7,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/hex"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"os"
@@ -52,6 +53,46 @@ func attachedEndpointFixture(attached *attachedSpec) (endpointFixture, error) {
 		rootPEM: attached.targetRoot, chainPEM: attached.instanceChain, privatePEM: attached.instanceKey,
 		leafSHA256: hex.EncodeToString(digest[:]), targetMarker: append([]byte(nil), root.RawSubjectPublicKeyInfo...),
 	}, nil
+}
+
+func attachedRoleScenarioFailure(fixture nativeFixture) (bool, error) {
+	scenarios, downstream := 0, 0
+	for _, role := range []string{"user", "service"} {
+		data, err := os.ReadFile(filepath.Join(fixture.roleEvidence[role], "result.json"))
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		if err != nil {
+			return false, err
+		}
+		if len(data) == 0 || len(data) > 32*1024*1024 {
+			return false, errors.New("attached role failure evidence is empty or oversized")
+		}
+		var result struct {
+			SchemaVersion string `json:"schema_version"`
+			RunID         string `json:"run_id"`
+			Role          string `json:"role"`
+			Status        string `json:"status"`
+			Terminal      string `json:"terminal_result"`
+			FailureKind   string `json:"failure_kind"`
+		}
+		if err := json.Unmarshal(data, &result); err != nil {
+			return false, err
+		}
+		validKind := result.FailureKind == "scenario" || result.FailureKind == "downstream" || result.FailureKind == "operational"
+		if result.SchemaVersion != nativeEvidenceSchema || result.RunID != fixture.runID || result.Role != role || result.Status != "failed" || result.Terminal != "explicit_failure" || !validKind {
+			return false, errors.New("attached role failure evidence is invalid")
+		}
+		if result.FailureKind == "operational" {
+			return false, nil
+		}
+		if result.FailureKind == "scenario" {
+			scenarios++
+		} else {
+			downstream++
+		}
+	}
+	return scenarios >= 1 && scenarios+downstream == 2, nil
 }
 
 func ensureNativeDirectory(path string, allowExisting bool) error {

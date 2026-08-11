@@ -90,12 +90,18 @@ func runCandidateUser(ctx context.Context, plan candidateUserPlan) (endpointObse
 	}
 	acknowledgement, err := readFrame(introduction)
 	_ = introduction.Close()
-	if err != nil || acknowledgement.Type != frameIntroductionAcknowledge || string(acknowledgement.Payload) != "accepted" {
-		return endpointObservation{}, errors.New("separate Introduction Path did not acknowledge the invitation")
+	if err != nil {
+		return endpointObservation{}, candidatePeerReadFailure(err)
+	}
+	if acknowledgement.Type != frameIntroductionAcknowledge || string(acknowledgement.Payload) != "accepted" {
+		return endpointObservation{}, candidateContractFailure("separate Introduction Path did not acknowledge the invitation")
 	}
 	joined, err := readFrame(data)
-	if err != nil || joined.Type != frameRendezvousResult || string(joined.Payload) != "joined" {
-		return endpointObservation{}, errors.New("rendezvous did not join the C-5 legs")
+	if err != nil {
+		return endpointObservation{}, candidatePeerReadFailure(err)
+	}
+	if joined.Type != frameRendezvousResult || string(joined.Payload) != "joined" {
+		return endpointObservation{}, candidateContractFailure("rendezvous did not join the C-5 legs")
 	}
 	dataOwned = false
 	if plan.Attached != nil {
@@ -120,8 +126,11 @@ func runCandidateService(ctx context.Context, plan candidateServicePlan) (endpoi
 		return endpointObservation{}, err
 	}
 	registered, err := readFrame(introduction)
-	if err != nil || registered.Type != frameIntroductionAcknowledge || string(registered.Payload) != "registered" {
-		return endpointObservation{}, errors.New("introduction slot was not registered")
+	if err != nil {
+		return endpointObservation{}, candidatePeerReadFailure(err)
+	}
+	if registered.Type != frameIntroductionAcknowledge || string(registered.Payload) != "registered" {
+		return endpointObservation{}, candidateContractFailure("introduction slot was not registered")
 	}
 	if plan.Registered != nil {
 		if err := plan.Registered(); err != nil {
@@ -129,13 +138,16 @@ func runCandidateService(ctx context.Context, plan candidateServicePlan) (endpoi
 		}
 	}
 	delivery, err := readFrame(introduction)
-	if err != nil || delivery.Type != frameIntroductionDeliver {
-		return endpointObservation{}, errors.New("service did not receive a sealed Introduction invitation")
+	if err != nil {
+		return endpointObservation{}, candidatePeerReadFailure(err)
+	}
+	if delivery.Type != frameIntroductionDeliver {
+		return endpointObservation{}, candidateContractFailure("service did not receive a sealed Introduction invitation")
 	}
 	guard := newInvitationGuard(plan.Profile, plan.RunID, plan.Rendezvous, time.Now())
 	opened, err := guard.open(plan.HPKEPrivate, delivery.Payload)
 	if err != nil {
-		return endpointObservation{}, err
+		return endpointObservation{}, errors.Join(errCandidateContractFailure, err)
 	}
 	if err := writeFrame(introduction, frame{Type: frameIntroductionAcknowledge, Payload: []byte("accepted")}); err != nil {
 		return endpointObservation{}, err
@@ -158,8 +170,11 @@ func runCandidateService(ctx context.Context, plan candidateServicePlan) (endpoi
 		return endpointObservation{}, err
 	}
 	joined, err := readFrame(data)
-	if err != nil || joined.Type != frameRendezvousResult || string(joined.Payload) != "joined" {
-		return endpointObservation{}, errors.New("service leg was not joined at Rendezvous")
+	if err != nil {
+		return endpointObservation{}, candidatePeerReadFailure(err)
+	}
+	if joined.Type != frameRendezvousResult || string(joined.Payload) != "joined" {
+		return endpointObservation{}, candidateContractFailure("service leg was not joined at Rendezvous")
 	}
 	dataOwned = false
 	if plan.Attached != nil {

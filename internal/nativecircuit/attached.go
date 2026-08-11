@@ -20,11 +20,11 @@ func runEndpointUserAttached(ctx context.Context, transport net.Conn, trust endp
 	defer application.Close()
 	secured := tls.Client(transport, userStreamTLSConfig(trust))
 	if err := secured.HandshakeContext(ctx); err != nil {
-		return endpointObservation{}, fmt.Errorf("authenticate exact Target/Instance: %w", err)
+		return endpointObservation{}, fmt.Errorf("authenticate exact Target/Instance: %w", candidatePeerReadFailure(err))
 	}
 	observation, err := observeEndpointTLS(secured.ConnectionState())
 	if err != nil {
-		return observation, err
+		return observation, errors.Join(errCandidateContractFailure, err)
 	}
 	applyAttachedDeadline(ctx, secured, application)
 	if err := exchangeUserCanary(secured, nonce); err != nil {
@@ -49,11 +49,11 @@ func runEndpointServiceAttached(ctx context.Context, transport net.Conn, certifi
 		CurvePreferences: []tls.CurveID{tls.X25519}, NextProtos: []string{endpointALPN}, SessionTicketsDisabled: true,
 	})
 	if err := secured.HandshakeContext(ctx); err != nil {
-		return endpointObservation{}, fmt.Errorf("active Instance TLS handshake: %w", err)
+		return endpointObservation{}, fmt.Errorf("active Instance TLS handshake: %w", candidatePeerReadFailure(err))
 	}
 	observation, err := observeEndpointTLS(secured.ConnectionState())
 	if err != nil {
-		return observation, err
+		return observation, errors.Join(errCandidateContractFailure, err)
 	}
 	applyAttachedDeadline(ctx, secured, application)
 	if err := exchangeServiceCanary(secured, nonce); err != nil {

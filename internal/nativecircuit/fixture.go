@@ -18,6 +18,7 @@ var nativeNodeRoles = []string{
 var nativeApplicationRoles = append([]string{"user", "service"}, nativeNodeRoles...)
 
 type nativeFixture struct {
+	runID              string
 	root               string
 	roleEvidence       map[string]string
 	toolEvidence       map[string]string
@@ -42,7 +43,7 @@ func prepareNativeFixtureMode(runDirectory, runID, fault string, workload *nativ
 	topology := topologyFor(workload)
 	root := filepath.Join(runDirectory, "native")
 	fixture := nativeFixture{
-		root: root, roleEvidence: make(map[string]string), toolEvidence: make(map[string]string),
+		runID: runID, root: root, roleEvidence: make(map[string]string), toolEvidence: make(map[string]string),
 		captureDirectory: filepath.Join(root, "raw-capture"), controlDirectory: filepath.Join(root, "control"),
 	}
 	for _, directory := range []string{root, filepath.Join(root, "configs"), filepath.Join(root, "evidence"), filepath.Join(root, "tool-configs"), filepath.Join(root, "tool-evidence"), fixture.captureDirectory, fixture.controlDirectory} {

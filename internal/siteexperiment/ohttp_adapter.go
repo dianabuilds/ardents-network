@@ -12,6 +12,14 @@ import (
 	"github.com/openpcc/ohttp"
 )
 
+type gatewayStatusError struct {
+	status int
+}
+
+func (failure *gatewayStatusError) Error() string {
+	return "OHTTP Gateway returned status " + http.StatusText(failure.status)
+}
+
 const resolutionMessageSize = 4096
 
 func newOHTTPGateway(target http.Handler) (ohttp.KeyConfig, http.Handler, error) {
@@ -55,7 +63,7 @@ func sendOHTTPMessage(ctx context.Context, transport http.RoundTripper, plaintex
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		return nil, errors.New("OHTTP Gateway returned a non-success status")
+		return nil, &gatewayStatusError{status: response.StatusCode}
 	}
 	body, err := io.ReadAll(io.LimitReader(response.Body, resolutionMessageSize+1))
 	if err != nil {

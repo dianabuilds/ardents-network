@@ -13,6 +13,22 @@ import (
 
 const nativeRunSchema = "carrier-lab-native-run/v1"
 
+var errNativeContractFailure = errors.New("native candidate contract failure")
+
+func nativeContractFailure(err error) error {
+	if err == nil {
+		return nil
+	}
+	return errors.Join(errNativeContractFailure, err)
+}
+
+func nativeFailureKind(runErr, cleanupErr error) string {
+	if cleanupErr == nil && errors.Is(runErr, errNativeContractFailure) {
+		return "scenario"
+	}
+	return "operational"
+}
+
 type nativeRunLayout struct {
 	identity       ownedRunLayout
 	runID          string
@@ -39,6 +55,7 @@ type nativeRunSummary struct {
 	ImageReceipt        *tooling.NativeImageReceipt `json:"image_receipt,omitempty"`
 	Fault               string                      `json:"fault,omitempty"`
 	Failure             string                      `json:"failure,omitempty"`
+	FailureKind         string                      `json:"failure_kind,omitempty"`
 	Workload            *nativeWorkload             `json:"workload,omitempty"`
 	SetupMilliseconds   int64                       `json:"setup_milliseconds"`
 	FailureMilliseconds int64                       `json:"failure_milliseconds,omitempty"`
@@ -123,7 +140,7 @@ func runNative(ctx context.Context, identity ownedRunLayout, applicationImage, t
 	summary.Checks["fixed_topology"] = inspection.FixedTopology
 	summary.Checks["bounded_capabilities"] = inspection.BoundedCapabilities
 	if !inspection.FixedTopology || !inspection.BoundedCapabilities {
-		return evidenceDir, errors.New("native Compose topology or capability inspection failed")
+		return evidenceDir, nativeContractFailure(errors.New("native Compose topology or capability inspection failed"))
 	}
 	if err := writeControlMarker(fixture.controlDirectory, "nodes-ready"); err != nil {
 		return evidenceDir, err
@@ -171,6 +188,15 @@ func runNative(ctx context.Context, identity ownedRunLayout, applicationImage, t
 		filepath.Join(fixture.roleEvidence["user"], "attempt-ready.json"),
 		filepath.Join(fixture.roleEvidence["service"], "attempt-ready.json"),
 	}, attemptTimeout); err != nil {
+		if attached != nil {
+			scenario, evidenceErr := attachedRoleScenarioFailure(fixture)
+			if evidenceErr != nil {
+				return evidenceDir, errors.Join(err, evidenceErr)
+			}
+			if scenario {
+				return evidenceDir, nativeContractFailure(err)
+			}
+		}
 		return evidenceDir, err
 	}
 	if sampler != nil {

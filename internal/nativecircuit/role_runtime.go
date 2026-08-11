@@ -120,6 +120,7 @@ func runUserRole(ctx context.Context, config roleConfig, evidenceDir string, res
 		"introduction.acknowledgement", "rendezvous.joined", "target.instance_certificate", "application.protected_stream",
 	)
 	if err != nil {
+		result.FailureKind = candidateFailureKind(err)
 		return err
 	}
 	return writeRoleMarker(evidenceDir, config, "attempt-ready.json", "completed")
@@ -143,6 +144,7 @@ func runServiceRole(ctx context.Context, config roleConfig, evidenceDir string, 
 		"introduction.invitation_plaintext", "rendezvous.joined", "application.protected_stream",
 	)
 	if err != nil {
+		result.FailureKind = candidateFailureKind(err)
 		return err
 	}
 	return writeRoleMarker(evidenceDir, config, "attempt-ready.json", "completed")

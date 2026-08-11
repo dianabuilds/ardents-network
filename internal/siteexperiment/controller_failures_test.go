@@ -2,10 +2,18 @@ package siteexperiment
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 )
+
+func TestRetainedFailureProbeSetupErrorIsOperational(t *testing.T) {
+	err := runContractFailure(t.Context(), "forbidden_origin_query_role_view", t.TempDir())
+	if !errors.Is(err, errMatrixOperational) || errors.Is(err, errFailureAssertion) {
+		t.Fatalf("missing retained evidence was misclassified: %v", err)
+	}
+}
 
 func TestEveryGateCFailureProbeProducesBoundedEvidence(t *testing.T) {
 	evidence := t.TempDir()

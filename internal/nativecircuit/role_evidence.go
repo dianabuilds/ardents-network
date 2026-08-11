@@ -32,6 +32,7 @@ type roleResult struct {
 	HeapAllocBytes            uint64   `json:"heap_alloc_bytes"`
 	Goroutines                int      `json:"goroutines"`
 	Failure                   string   `json:"failure,omitempty"`
+	FailureKind               string   `json:"failure_kind,omitempty"`
 }
 
 func newRoleResult(config roleConfig) roleResult {
@@ -54,6 +55,9 @@ func (result *roleResult) finish(started time.Time, runErr error) {
 		result.Status = "passed"
 		result.TerminalResult = "completed"
 	} else {
+		if result.FailureKind == "" {
+			result.FailureKind = "operational"
+		}
 		result.Failure = runErr.Error()
 	}
 	slices.Sort(result.ObservedFields)

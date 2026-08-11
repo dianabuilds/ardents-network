@@ -27,6 +27,20 @@ type runManifest struct {
 	Schedule             string   `json:"schedule"`
 }
 
+const attemptLifecycleLimit = 6 * time.Minute
+
+type runProgress struct {
+	SchemaVersion string `json:"schema_version"`
+	Stage         string `json:"stage"`
+	Attempt       int    `json:"attempt"`
+}
+
+type interruptionEvidence struct {
+	SchemaVersion string `json:"schema_version"`
+	Status        string `json:"status"`
+	Attempt       int    `json:"attempt"`
+}
+
 // Run owns the complete fixed Gate C scenario and writes its terminal bounded
 // evidence. Images are immutable inputs and are never built by this function.
 func Run(ctx context.Context, identity experimentrun.Layout, applicationImage, toolImage, referenceImage, r013Receipt string) (evidenceDirectory string, runErr error) {
@@ -55,6 +69,9 @@ func Run(ctx context.Context, identity experimentrun.Layout, applicationImage, t
 	if _, _, _, _, err := identity.OwnedPaths(true, true); err != nil {
 		return "", err
 	}
+	if err := writeRunProgress(evidenceDirectory, "preparing", 0); err != nil {
+		return evidenceDirectory, err
+	}
 	prepared = true
 	cleaned := false
 	defer func() {
@@ -80,15 +97,20 @@ func Run(ctx context.Context, identity experimentrun.Layout, applicationImage, t
 	sequence, allAttemptsClean := 0, true
 	runAttempt := func(operation context.Context, fixture *authorityFixture, superseded *instanceCredential) error {
 		sequence++
-		err := runRouteAttempt(operation, identity, fixture, superseded, sequence, images, evidenceDirectory)
+		if err := writeRunProgress(evidenceDirectory, "running-attempt", sequence); err != nil {
+			return matrixOperational(err)
+		}
+		attemptContext, cancel := context.WithTimeout(operation, attemptLifecycleLimit)
+		defer cancel()
+		err := runRouteAttempt(attemptContext, identity, fixture, superseded, sequence, images, evidenceDirectory)
 		allAttemptsClean = allAttemptsClean && attemptCleanupProven(evidenceDirectory, sequence)
-		return err
+		return classifyAttemptResult(operation, attemptContext, err)
 	}
 	runner := matrixRunner{
 		positive: func(operation context.Context, _ int, _ uint64) error {
 			fixture, err := newAuthorityFixture(runID, "gatec-network", time.Now(), rand.Reader)
 			if err != nil {
-				return err
+				return matrixOperational(err)
 			}
 			return runAttempt(operation, fixture, nil)
 		},
@@ -98,16 +120,16 @@ func Run(ctx context.Context, identity experimentrun.Layout, applicationImage, t
 		migrate: func(operation context.Context, episode int) (migrationResult, error) {
 			fixture, err := newAuthorityFixture(runID, "gatec-network", time.Now(), rand.Reader)
 			if err != nil {
-				return migrationResult{Episode: episode}, err
+				return migrationResult{Episode: episode}, matrixOperational(err)
 			}
 			originalName, originalTarget := "site.reference", fixture.target
 			oldNonce := make([]byte, 32)
 			if _, err := rand.Read(oldNonce); err != nil {
-				return migrationResult{Episode: episode}, err
+				return migrationResult{Episode: episode}, matrixOperational(err)
 			}
 			oldDescriptor, err := fixture.signedDescriptor(oldNonce, time.Now().Add(10*time.Second))
 			if err != nil {
-				return migrationResult{Episode: episode}, err
+				return migrationResult{Episode: episode}, matrixOperational(err)
 			}
 			if err := runAttempt(operation, fixture, nil); err != nil {
 				return migrationResult{Episode: episode}, err
@@ -115,7 +137,7 @@ func Run(ctx context.Context, identity experimentrun.Layout, applicationImage, t
 			generationOneStopped := attemptCleanupProven(evidenceDirectory, sequence)
 			oldCredential := fixture.credential
 			if err := fixture.migrate(time.Now(), rand.Reader); err != nil {
-				return migrationResult{Episode: episode}, err
+				return migrationResult{Episode: episode}, matrixOperational(err)
 			}
 			oldRejected := fixture.target == originalTarget && originalName == "site.reference"
 			if _, verifyErr := verifyDescriptor(oldDescriptor, fixture.servicePublic, fixture.runID, fixture.networkID, oldNonce, fixture.target, fixture.instanceGeneration, time.Now()); verifyErr == nil {
@@ -129,7 +151,21 @@ func Run(ctx context.Context, identity experimentrun.Layout, applicationImage, t
 	if err := validateMatrixRunner(runner); err != nil {
 		return evidenceDirectory, err
 	}
-	matrix := runFixedMatrix(ctx, runner)
+	matrix, matrixErr := runFixedMatrix(ctx, runner)
+	if matrixErr != nil {
+		status := "operational-failure"
+		if errors.Is(ctx.Err(), context.Canceled) {
+			status = "external-cancellation"
+		} else if errors.Is(matrixErr, context.DeadlineExceeded) {
+			status = "lifecycle-timeout"
+		}
+		progressErr := writeRunProgress(evidenceDirectory, "interrupted", sequence)
+		interruptionErr := writeInterruptionEvidence(evidenceDirectory, status, sequence)
+		return evidenceDirectory, errors.Join(matrixErr, progressErr, interruptionErr)
+	}
+	if err := writeRunProgress(evidenceDirectory, "matrix-complete", sequence); err != nil {
+		return evidenceDirectory, err
+	}
 	measurements, measurementErr := summarizeAttempts(evidenceDirectory)
 	if (measurementErr != nil || measurements.Attempts != 30 || measurements.MaximumQueueBytes > 256*1024) && matrix.Verdict == "advance" {
 		matrix = failMatrix(matrix, "resource observations are incomplete", false)
@@ -147,6 +183,32 @@ func Run(ctx context.Context, identity experimentrun.Layout, applicationImage, t
 	cleaned = cleanupErr == nil
 	bundleErr := writeGateCBundle(evidenceDirectory, manifest, matrix, measurements, cleaned, time.Now())
 	return evidenceDirectory, errors.Join(cleanupErr, bundleErr)
+}
+
+func classifyAttemptResult(parent, attempt context.Context, runErr error) error {
+	if err := parent.Err(); err != nil {
+		return matrixOperational(errors.Join(runErr, err))
+	}
+	if err := attempt.Err(); err != nil {
+		return matrixOperational(errors.Join(runErr, err))
+	}
+	return runErr
+}
+
+func writeRunProgress(evidenceDirectory, stage string, attempt int) error {
+	return writeBoundedJSON(filepath.Join(evidenceDirectory, "progress.json"), runProgress{
+		SchemaVersion: "gatec-progress/v1",
+		Stage:         stage,
+		Attempt:       attempt,
+	})
+}
+
+func writeInterruptionEvidence(evidenceDirectory, status string, attempt int) error {
+	return writeBoundedJSON(filepath.Join(evidenceDirectory, "interruption.json"), interruptionEvidence{
+		SchemaVersion: "gatec-interruption/v1",
+		Status:        status,
+		Attempt:       attempt,
+	})
 }
 
 func validateR013Receipt(path string) (string, error) {

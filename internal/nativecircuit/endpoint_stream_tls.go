@@ -116,16 +116,22 @@ func exchangeUserCanary(connection net.Conn, nonce handle) error {
 		return err
 	}
 	acknowledgement, err := readFrame(connection)
-	if err != nil || acknowledgement.Type != frameProtectedData || subtle.ConstantTimeCompare(acknowledgement.Payload, nonce[:]) != 1 {
-		return errors.New("endpoint handshake nonce was not authenticated")
+	if err != nil {
+		return candidatePeerReadFailure(err)
+	}
+	if acknowledgement.Type != frameProtectedData || subtle.ConstantTimeCompare(acknowledgement.Payload, nonce[:]) != 1 {
+		return candidateContractFailure("endpoint handshake nonce was not authenticated")
 	}
 	return nil
 }
 
 func exchangeServiceCanary(connection net.Conn, expected handle) error {
 	nonce, err := readFrame(connection)
-	if err != nil || nonce.Type != frameProtectedData || subtle.ConstantTimeCompare(nonce.Payload, expected[:]) != 1 {
-		return errors.New("endpoint handshake nonce does not match the sealed invitation")
+	if err != nil {
+		return candidatePeerReadFailure(err)
+	}
+	if nonce.Type != frameProtectedData || subtle.ConstantTimeCompare(nonce.Payload, expected[:]) != 1 {
+		return candidateContractFailure("endpoint handshake nonce does not match the sealed invitation")
 	}
 	return writeFrame(connection, frame{Type: frameProtectedData, Payload: nonce.Payload})
 }

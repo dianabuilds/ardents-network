@@ -29,6 +29,33 @@ func writeBoundedJSON(path string, value any) error {
 	return os.WriteFile(path, append(data, '\n'), 0o600)
 }
 
+func writeAttemptCleanup(retained string, sequence int) error {
+	return writeBoundedJSON(filepath.Join(retained, "attempts", formatAttempt(sequence), "cleanup.json"), map[string]any{
+		"schema_version": "gatec-attempt-cleanup/v1", "reference_resources_removed": true,
+	})
+}
+
+func writeReferenceOnlyAttemptCleanup(retained string, sequence int) error {
+	return writeBoundedJSON(filepath.Join(retained, "attempts", formatAttempt(sequence), "cleanup.json"), map[string]any{
+		"schema_version": "gatec-attempt-cleanup/v1", "reference_resources_removed": true, "native_route_not_started": true,
+	})
+}
+
+func attemptCleanupProven(retained string, sequence int) bool {
+	directory := filepath.Join(retained, "attempts", formatAttempt(sequence))
+	var cleanup struct {
+		Removed          bool `json:"reference_resources_removed"`
+		NativeNotStarted bool `json:"native_route_not_started"`
+	}
+	var native struct {
+		Checks map[string]bool `json:"checks"`
+	}
+	if readStrictEvidence(filepath.Join(directory, "cleanup.json"), &cleanup) != nil || !cleanup.Removed {
+		return false
+	}
+	return cleanup.NativeNotStarted || readStrictEvidence(filepath.Join(directory, "native-run.json"), &native) == nil && native.Checks["cleanup_complete"]
+}
+
 func cleanupGateCRuntime(identity experimentrun.Layout, runDirectory string) error {
 	_, _, verifiedRun, _, err := identity.OwnedPaths(true, true)
 	if err != nil || verifiedRun != runDirectory {

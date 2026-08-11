@@ -22,6 +22,7 @@ type collectedRoleResult struct {
 	QueueHighWaterBytes       int      `json:"queue_high_water_bytes"`
 	StreamElapsedMilliseconds int64    `json:"stream_elapsed_milliseconds"`
 	ObservedFields            []string `json:"observed_fields"`
+	FailureKind               string   `json:"failure_kind,omitempty"`
 }
 
 type collectedToolResult struct {
@@ -51,7 +52,13 @@ func collectNativeEvidence(fixture nativeFixture, retained string, summary *nati
 			return err
 		}
 		var result collectedRoleResult
-		if err := json.Unmarshal(data, &result); err != nil || result.Status != "passed" {
+		if err := json.Unmarshal(data, &result); err != nil {
+			return err
+		}
+		if result.Status != "passed" {
+			if result.FailureKind == "scenario" {
+				return nativeContractFailure(fmt.Errorf("native role %s did not pass", role))
+			}
 			return fmt.Errorf("native role %s did not pass", role)
 		}
 		roleViews = roleViews && len(result.ObservedFields) > 0
@@ -70,8 +77,11 @@ func collectNativeEvidence(fixture nativeFixture, retained string, summary *nati
 			return err
 		}
 		var result collectedToolResult
-		if err := json.Unmarshal(data, &result); err != nil || result.Status != "passed" {
-			return fmt.Errorf("native tool role %s did not pass", role)
+		if err := json.Unmarshal(data, &result); err != nil {
+			return err
+		}
+		if result.Status != "passed" {
+			return nativeContractFailure(fmt.Errorf("native tool role %s did not pass", role))
 		}
 		if strings.HasPrefix(role, "shape-") {
 			shaping = shaping && result.EffectiveCapabilities == "0000000000001000" && len(result.Qdisc) > 0
@@ -100,7 +110,7 @@ func collectNativeEvidence(fixture nativeFixture, retained string, summary *nati
 	summary.Checks["raw_capture_removed"] = rawRemoved
 	for name, passed := range summary.Checks {
 		if name != "cleanup_complete" && !passed {
-			return fmt.Errorf("native evidence check %s did not pass", name)
+			return nativeContractFailure(fmt.Errorf("native evidence check %s did not pass", name))
 		}
 	}
 	return nil
@@ -115,11 +125,14 @@ func inspectForbiddenSentinels(directory string, sentinels [][]byte, expectedCap
 	var total int64
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".pcap") {
-			return errors.New("raw capture directory contains an unexpected artifact")
+			return nativeContractFailure(errors.New("raw capture directory contains an unexpected artifact"))
 		}
 		info, err := entry.Info()
-		if err != nil || info.Size() <= 24 || info.Size() > 64*1024*1024 {
-			return errors.New("native link capture is empty or exceeds 64 MiB")
+		if err != nil {
+			return err
+		}
+		if info.Size() <= 24 || info.Size() > 64*1024*1024 {
+			return nativeContractFailure(errors.New("native link capture is empty or exceeds 64 MiB"))
 		}
 		data, err := os.ReadFile(filepath.Join(directory, entry.Name()))
 		if err != nil {
@@ -127,14 +140,14 @@ func inspectForbiddenSentinels(directory string, sentinels [][]byte, expectedCap
 		}
 		for _, sentinel := range sentinels {
 			if len(sentinel) > 0 && bytes.Contains(data, sentinel) {
-				return fmt.Errorf("forbidden sentinel appears in cleartext capture %s", entry.Name())
+				return nativeContractFailure(fmt.Errorf("forbidden sentinel appears in cleartext capture %s", entry.Name()))
 			}
 		}
 		captures++
 		total += info.Size()
 	}
 	if captures != expectedCaptures || total > 2*1024*1024*1024 {
-		return fmt.Errorf("native capture set is not exact: files=%d bytes=%d", captures, total)
+		return nativeContractFailure(fmt.Errorf("native capture set is not exact: files=%d bytes=%d", captures, total))
 	}
 	return nil
 }
@@ -157,6 +170,7 @@ func finishNativeRun(layout nativeRunLayout, fixture nativeFixture, project stri
 	}
 	cleanupErr := errors.Join(downErr, removeErr)
 	if runErr != nil || cleanupErr != nil {
+		summary.FailureKind = nativeFailureKind(runErr, cleanupErr)
 		summary.Status = "failed"
 		summary.Verdict = "invalid"
 		summary.Failure = sanitizeNativeFailure(layout, errors.Join(runErr, cleanupErr).Error())

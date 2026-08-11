@@ -71,14 +71,14 @@ func (process *referenceProcess) inspectIsolation(ctx context.Context) error {
 		}
 		noNewPrivileges := slices.Contains(container.HostConfig.SecurityOpt, "no-new-privileges") || slices.Contains(container.HostConfig.SecurityOpt, "no-new-privileges:true")
 		if container.Config.User != expectedUser || !container.HostConfig.ReadonlyRootfs || container.HostConfig.Privileged || container.HostConfig.Memory != expectedMemory || container.HostConfig.PidsLimit == nil || *container.HostConfig.PidsLimit != 32 || len(container.HostConfig.CapDrop) != 1 || strings.ToUpper(container.HostConfig.CapDrop[0]) != "ALL" || !noNewPrivileges || len(container.NetworkSettings.Ports) != 0 {
-			return hardGate(errors.New("reference Site capability or resource isolation failed"))
+			return process.hardIsolationFailure("capability_or_resource_isolation")
 		}
 		if !validRoleMounts(role, container.Mounts) {
-			return hardGate(errors.New("reference Site principal received a forbidden filesystem view"))
+			return process.hardIsolationFailure("principal_filesystem_view")
 		}
 		if role == "http-client" || role == "http-application" || role == "administration" || role == "authority" {
 			if container.HostConfig.NetworkMode != "none" || !onlyNoneNetwork(container.NetworkSettings.Networks) {
-				return hardGate(errors.New("networkless Principal received an ordinary network"))
+				return process.hardIsolationFailure("networkless_principal_network")
 			}
 			continue
 		}
@@ -89,7 +89,7 @@ func (process *referenceProcess) inspectIsolation(ctx context.Context) error {
 		slices.Sort(networks)
 		expected := map[string][]string{"client-endpoint": {"client-relay"}, "gateway": {"relay-gateway"}, "relay": {"client-relay", "relay-gateway"}}[role]
 		if !slices.Equal(networks, expected) {
-			return hardGate(errors.New("resolution role received a forbidden network view"))
+			return process.hardIsolationFailure("resolution_role_network_view")
 		}
 	}
 	for _, role := range referenceRoles {
@@ -98,6 +98,9 @@ func (process *referenceProcess) inspectIsolation(ctx context.Context) error {
 		}
 	}
 	if err := runActiveApplicationProbes(ctx, process, roleIDs); err != nil {
+		if isHardGateFailure(err) {
+			return errors.Join(err, process.writeFailedIsolation("active_application_probe"))
+		}
 		return err
 	}
 	return writeBoundedJSON(filepath.Join(process.evidence, "isolation.json"), map[string]any{
@@ -105,6 +108,20 @@ func (process *referenceProcess) inspectIsolation(ctx context.Context) error {
 		"application_network_mode_none": true, "exact_resolution_networks": true, "resource_caps": true,
 		"principal_filesystem_views": true, "no_new_privileges": true, "published_ports": false,
 		"active_dns_escape_rejected": true, "active_socket_escape_rejected": true, "active_listener_absent": true,
+	})
+}
+
+func (process *referenceProcess) hardIsolationFailure(class string) error {
+	err := hardGate(errors.New("reference Site isolation gate failed: " + class))
+	if evidenceErr := process.writeFailedIsolation(class); evidenceErr != nil {
+		return errors.Join(err, matrixOperational(evidenceErr))
+	}
+	return err
+}
+
+func (process *referenceProcess) writeFailedIsolation(class string) error {
+	return writeBoundedJSON(filepath.Join(process.evidence, "isolation.json"), map[string]any{
+		"schema_version": "gatec-isolation-evidence/v1", "status": "failed", "failure_class": class,
 	})
 }
 
