@@ -39,6 +39,7 @@ type interruptionEvidence struct {
 	SchemaVersion string `json:"schema_version"`
 	Status        string `json:"status"`
 	Attempt       int    `json:"attempt"`
+	LastStage     string `json:"last_stage"`
 }
 
 // Run owns the complete fixed Gate C scenario and writes its terminal bounded
@@ -94,15 +95,19 @@ func Run(ctx context.Context, identity experimentrun.Layout, applicationImage, t
 	if err != nil {
 		return evidenceDirectory, err
 	}
-	sequence, allAttemptsClean := 0, true
+	sequence, allAttemptsClean, lastStage := 0, true, "preparing"
 	runAttempt := func(operation context.Context, fixture *authorityFixture, superseded *instanceCredential) error {
 		sequence++
-		if err := writeRunProgress(evidenceDirectory, "running-attempt", sequence); err != nil {
+		recordProgress := func(stage string) error {
+			lastStage = stage
+			return writeRunProgress(evidenceDirectory, stage, sequence)
+		}
+		if err := recordProgress("running-attempt"); err != nil {
 			return matrixOperational(err)
 		}
 		attemptContext, cancel := context.WithTimeout(operation, attemptLifecycleLimit)
 		defer cancel()
-		err := runRouteAttempt(attemptContext, identity, fixture, superseded, sequence, images, evidenceDirectory)
+		err := runRouteAttempt(attemptContext, identity, fixture, superseded, sequence, images, evidenceDirectory, recordProgress)
 		allAttemptsClean = allAttemptsClean && attemptCleanupProven(evidenceDirectory, sequence)
 		return classifyAttemptResult(operation, attemptContext, err)
 	}
@@ -160,7 +165,7 @@ func Run(ctx context.Context, identity experimentrun.Layout, applicationImage, t
 			status = "lifecycle-timeout"
 		}
 		progressErr := writeRunProgress(evidenceDirectory, "interrupted", sequence)
-		interruptionErr := writeInterruptionEvidence(evidenceDirectory, status, sequence)
+		interruptionErr := writeInterruptionEvidence(evidenceDirectory, status, sequence, lastStage)
 		return evidenceDirectory, errors.Join(matrixErr, progressErr, interruptionErr)
 	}
 	if err := writeRunProgress(evidenceDirectory, "matrix-complete", sequence); err != nil {
@@ -203,11 +208,12 @@ func writeRunProgress(evidenceDirectory, stage string, attempt int) error {
 	})
 }
 
-func writeInterruptionEvidence(evidenceDirectory, status string, attempt int) error {
+func writeInterruptionEvidence(evidenceDirectory, status string, attempt int, lastStage string) error {
 	return writeBoundedJSON(filepath.Join(evidenceDirectory, "interruption.json"), interruptionEvidence{
 		SchemaVersion: "gatec-interruption/v1",
 		Status:        status,
 		Attempt:       attempt,
+		LastStage:     lastStage,
 	})
 }
 

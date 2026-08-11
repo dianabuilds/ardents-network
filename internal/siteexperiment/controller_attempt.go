@@ -12,7 +12,13 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/nativecircuit"
 )
 
-func runRouteAttempt(ctx context.Context, identity experimentrun.Layout, fixture *authorityFixture, superseded *instanceCredential, sequence int, images experimentImages, retained string) (runErr error) {
+func runRouteAttempt(ctx context.Context, identity experimentrun.Layout, fixture *authorityFixture, superseded *instanceCredential, sequence int, images experimentImages, retained string, progress func(string) error) (runErr error) {
+	if progress == nil {
+		progress = func(string) error { return nil }
+	}
+	if err := progress("reference-preparing"); err != nil {
+		return matrixOperational(err)
+	}
 	_, repositoryRoot, runDirectory, _, err := identity.OwnedPaths(true, true)
 	if err != nil {
 		return matrixOperational(err)
@@ -21,7 +27,7 @@ func runRouteAttempt(ctx context.Context, identity experimentrun.Layout, fixture
 	if _, err := rand.Read(nonce); err != nil {
 		return matrixOperational(err)
 	}
-	reference, err := startReferenceApplication(ctx, repositoryRoot, runDirectory, images.reference, hex.EncodeToString(nonce), sequence, fixture, superseded)
+	reference, err := startReferenceApplication(ctx, repositoryRoot, runDirectory, images.reference, hex.EncodeToString(nonce), sequence, fixture, superseded, progress)
 	if err != nil {
 		var evidenceErr error
 		if reference != nil {
@@ -60,6 +66,9 @@ func runRouteAttempt(ctx context.Context, identity experimentrun.Layout, fixture
 			}
 		}
 	}()
+	if err := progress("native-route-running"); err != nil {
+		return matrixOperational(err)
+	}
 	root, chain, key := fixture.routeIdentity()
 	if _, err := nativecircuit.RunAttached(ctx, identity, images.application, images.tooling, reference.routeSocket, reference.serviceSocket, root, chain, key); err != nil {
 		scenario, outcomeErr := nativeAttachedScenarioFailed(retained)
@@ -89,6 +98,9 @@ func runRouteAttempt(ctx context.Context, identity experimentrun.Layout, fixture
 			}
 		}
 		return err
+	}
+	if err := progress("retaining-evidence"); err != nil {
+		return matrixOperational(err)
 	}
 	if err := retainReferenceEvidence(retained, sequence, reference.evidence); err != nil {
 		return matrixOperational(err)

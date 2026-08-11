@@ -7,7 +7,21 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/experimentrun"
 )
+
+func TestRunRouteAttemptPropagatesInitialProgressFailure(t *testing.T) {
+	want := errors.New("progress unavailable")
+	stage := ""
+	err := runRouteAttempt(t.Context(), experimentrun.Layout{}, nil, nil, 1, experimentImages{}, "", func(value string) error {
+		stage = value
+		return want
+	})
+	if stage != "reference-preparing" || !errors.Is(err, want) || !errors.Is(err, errMatrixOperational) {
+		t.Fatalf("initial progress failure was not preserved: stage=%q err=%v", stage, err)
+	}
+}
 
 func TestClassifyAttemptResultPreservesTimeoutAndCleanupFailure(t *testing.T) {
 	parent := t.Context()
@@ -54,7 +68,7 @@ func TestWriteRunProgressRejectsMissingEvidenceDirectory(t *testing.T) {
 
 func TestWriteInterruptionEvidence(t *testing.T) {
 	directory := t.TempDir()
-	if err := writeInterruptionEvidence(directory, "lifecycle-timeout", 4); err != nil {
+	if err := writeInterruptionEvidence(directory, "lifecycle-timeout", 4, "reference-published"); err != nil {
 		t.Fatal(err)
 	}
 	data, err := os.ReadFile(filepath.Join(directory, "interruption.json"))
@@ -65,7 +79,7 @@ func TestWriteInterruptionEvidence(t *testing.T) {
 	if err := json.Unmarshal(data, &evidence); err != nil {
 		t.Fatal(err)
 	}
-	if evidence.SchemaVersion != "gatec-interruption/v1" || evidence.Status != "lifecycle-timeout" || evidence.Attempt != 4 {
+	if evidence.SchemaVersion != "gatec-interruption/v1" || evidence.Status != "lifecycle-timeout" || evidence.Attempt != 4 || evidence.LastStage != "reference-published" {
 		t.Fatalf("unexpected interruption evidence: %+v", evidence)
 	}
 }

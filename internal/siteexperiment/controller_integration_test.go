@@ -3,8 +3,10 @@ package siteexperiment
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -51,8 +53,32 @@ func TestReferenceTopologyCarriesOneAuthenticatedWorkload(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
-	if err := runRouteAttempt(ctx, identity, fixture, nil, 1, images, evidence); err != nil {
+	var stages []string
+	if err := runRouteAttempt(ctx, identity, fixture, nil, 1, images, evidence, func(stage string) error {
+		stages = append(stages, stage)
+		return nil
+	}); err != nil {
 		t.Fatal(err)
+	}
+	wantStages := []string{"reference-preparing", "reference-compose-started", "reference-sockets-ready", "reference-published", "reference-isolation-verified", "native-route-running", "retaining-evidence"}
+	if !slices.Equal(stages, wantStages) {
+		t.Fatalf("progress stages=%v, want %v", stages, wantStages)
+	}
+	failureFixture, err := newAuthorityFixture(runID, "gatec-network", time.Now(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantProgressErr := errors.New("progress write failed after Compose start")
+	failureContext, failureCancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer failureCancel()
+	err = runRouteAttempt(failureContext, identity, failureFixture, nil, 2, images, evidence, func(stage string) error {
+		if stage == "reference-compose-started" {
+			return wantProgressErr
+		}
+		return nil
+	})
+	if !errors.Is(err, wantProgressErr) || !errors.Is(err, errMatrixOperational) || !attemptCleanupProven(evidence, 2) {
+		t.Fatalf("post-Compose progress failure did not clean up: %v", err)
 	}
 }
 
@@ -97,7 +123,7 @@ func TestReferenceTopologyRejectsSupersededPublicationDuringMigration(t *testing
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 	target, oldCredential := fixture.target, fixture.credential
-	if err := runRouteAttempt(ctx, identity, fixture, nil, 1, images, evidence); err != nil {
+	if err := runRouteAttempt(ctx, identity, fixture, nil, 1, images, evidence, nil); err != nil {
 		t.Fatal(err)
 	}
 	if !attemptCleanupProven(evidence, 1) {
@@ -109,7 +135,7 @@ func TestReferenceTopologyRejectsSupersededPublicationDuringMigration(t *testing
 	if fixture.target != target || fixture.instanceGeneration != 2 {
 		t.Fatal("migration changed Target or skipped generation")
 	}
-	if err := runRouteAttempt(ctx, identity, fixture, &oldCredential, 2, images, evidence); err != nil {
+	if err := runRouteAttempt(ctx, identity, fixture, &oldCredential, 2, images, evidence, nil); err != nil {
 		t.Fatal(err)
 	}
 	if !supersededPublicationRejected(evidence, 2) {

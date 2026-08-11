@@ -31,7 +31,7 @@ type referenceProcess struct {
 	expectedSuperseded bool
 }
 
-func startReferenceApplication(ctx context.Context, repositoryRoot, runDirectory, image, nonce string, sequence int, fixture *authorityFixture, superseded *instanceCredential) (*referenceProcess, error) {
+func startReferenceApplication(ctx context.Context, repositoryRoot, runDirectory, image, nonce string, sequence int, fixture *authorityFixture, superseded *instanceCredential, progress func(string) error) (*referenceProcess, error) {
 	root := filepath.Join(runDirectory, fmt.Sprintf("attempt-%03d", sequence), "reference")
 	directories := make(map[string]string)
 	for _, name := range []string{"client", "service", "route", "admin", "gateway-authority", "gateway", "authority-config", "admin-config", "client-config", "evidence"} {
@@ -97,13 +97,25 @@ func startReferenceApplication(ctx context.Context, repositoryRoot, runDirectory
 	if _, err := process.compose(ctx, append([]string{"up", "--detach", "--no-build", "--pull", "never"}, referenceRoles...)...); err != nil {
 		return process, err
 	}
+	if err := progress("reference-compose-started"); err != nil {
+		return process, err
+	}
 	if err := process.waitSockets(ctx); err != nil {
+		return process, err
+	}
+	if err := progress("reference-sockets-ready"); err != nil {
 		return process, err
 	}
 	if err := process.waitPublication(ctx); err != nil {
 		return process, err
 	}
+	if err := progress("reference-published"); err != nil {
+		return process, err
+	}
 	if err := process.inspectIsolation(ctx); err != nil {
+		return process, err
+	}
+	if err := progress("reference-isolation-verified"); err != nil {
 		return process, err
 	}
 	return process, nil
