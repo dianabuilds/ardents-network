@@ -20,8 +20,14 @@ func main() {
 }
 
 func run(ctx context.Context, arguments []string, output io.Writer) error {
-	if len(arguments) != 3 || arguments[0] != "source" || arguments[1] != "--config" {
-		return errors.New("usage: ardents-node source --config PATH")
+	if len(arguments) != 3 || arguments[1] != "--config" {
+		return errors.New("usage: ardents-node (source|node) --config PATH")
+	}
+	if arguments[0] == "node" {
+		return runNode(ctx, arguments[2], output)
+	}
+	if arguments[0] != "source" {
+		return errors.New("usage: ardents-node (source|node) --config PATH")
 	}
 	store, err := openSource(arguments[2])
 	if err != nil {
@@ -29,12 +35,10 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 	}
 	snapshot, err := store.Current()
 	if err == nil {
-		err = json.NewEncoder(output).Encode(struct {
-			Schema     string `json:"schema"`
-			Kind       string `json:"kind"`
-			Generation string `json:"generation"`
-			Epoch      uint64 `json:"epoch"`
-		}{"ardents-h3-s1-source-event-v1", "source-ready", snapshot.Generation, snapshot.Epoch})
+		err = json.NewEncoder(output).Encode(map[string]any{
+			"schema": "ardents-h3-s1-source-event-v1", "kind": "source-ready",
+			"generation": snapshot.Generation, "epoch": snapshot.Epoch,
+		})
 	}
 	if err != nil {
 		_ = store.Close()

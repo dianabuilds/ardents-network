@@ -97,7 +97,7 @@ func startTruncatedSource(t *testing.T, address string, server testCertificate, 
 				defer active.Done()
 				defer connection.Close()
 				_ = connection.SetDeadline(time.Now().Add(5 * time.Second))
-				var request [73]byte
+				var request [77]byte
 				if _, err := io.ReadFull(connection, request[:]); err != nil {
 					return
 				}

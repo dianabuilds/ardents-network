@@ -100,13 +100,12 @@ func (s *store) handleSourceConnection(connection net.Conn) {
 	}
 	decision := *s.currentDecision
 	digest := decision.epoch.digest
-	materialIndex := s.config.material
 	s.mu.RUnlock()
 	if request.opcode == sourceByDigest && request.objectDigest != digest {
 		_ = writeSourceResponse(connection, sourceResponse{status: sourceNotFound})
 		return
 	}
-	payload, err := encodeSourceBundle(decision, materialIndex)
+	payload, err := encodeSourceBundle(decision, request.materialIndex)
 	if err != nil {
 		_ = writeSourceResponse(connection, sourceResponse{status: sourceInternal})
 		return

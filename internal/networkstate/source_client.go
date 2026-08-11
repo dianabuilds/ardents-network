@@ -48,7 +48,7 @@ func (s *store) Refresh(ctx context.Context) (Snapshot, error) {
 	}
 	if s.distribution.nextAutomatic > now.Unix() {
 		s.mu.Unlock()
-		return Snapshot{}, errors.New("finite source retry is in durable backoff")
+		return Snapshot{}, fmt.Errorf("%w: retry is in durable backoff", errRefreshUnavailable)
 	}
 	if err := s.rejectSourceCollisions(); err != nil {
 		s.mu.Unlock()
@@ -100,6 +100,7 @@ func (s *store) fetchAndVerify(ctx context.Context, index int, current *Snapshot
 	resultIndex, outcomeIndex := index, index
 	response, err := s.fetchSource(ctx, index, sourceRequest{
 		opcode: sourceLatest, networkDigest: networkIdentityDigest(s.config.networkID),
+		materialIndex: s.config.material,
 	})
 	if err != nil && !isZero32(response.objectDigest) {
 		observations[index] = classifySourceOutcome(err)
@@ -111,6 +112,7 @@ func (s *store) fetchAndVerify(ctx context.Context, index int, current *Snapshot
 		resultIndex, outcomeIndex = fallback, 2+fallback
 		response, err = s.fetchSource(ctx, fallback, sourceRequest{
 			opcode: sourceByDigest, networkDigest: networkIdentityDigest(s.config.networkID), objectDigest: response.objectDigest,
+			materialIndex: s.config.material,
 		})
 		if terminalErr := s.finishDigestAttempt(fallback, err == nil); terminalErr != nil {
 			return failedSourceResult(resultIndex, outcomeIndex, observations, terminalErr)

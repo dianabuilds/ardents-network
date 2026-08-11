@@ -72,15 +72,19 @@ func verifyDecision(config config, current *Snapshot, epochBytes []byte, inputs 
 		rejections: rejected,
 		snapshot: Snapshot{
 			Generation:     generation,
+			NetworkID:      epoch.networkID,
 			Epoch:          epoch.number,
 			Digest:         epoch.digest,
+			EpochValidFrom: epoch.validFrom,
 			ValidUntil:     epoch.validUntil,
+			Profile:        epochProfile,
 			ViewRoot:       epoch.viewRoot,
 			ViewLength:     epoch.viewLength,
 			RejectedRoot:   epoch.rejectedRoot,
 			RejectedLength: epoch.rejectedLength,
 		},
 	}
+	attachMaterializedRecord(config.material, &decision)
 	return decision, nil
 }
 

@@ -37,6 +37,9 @@ func TestAcceptOfflineGenesisAndRecoverCurrent(t *testing.T) {
 	if snapshot.Digest != fixture.epochDigest || snapshot.ViewRoot != fixture.viewRoot {
 		t.Fatal("snapshot did not retain the verified commitments")
 	}
+	if !snapshot.RecordPresent || snapshot.Profile != "h3-role-probe-v1" || snapshot.Assignment == "" || snapshot.ProbeCapacity == 0 {
+		t.Fatalf("snapshot lacks its proven local record and assignment: %+v", snapshot)
+	}
 	if err := store.Close(); err != nil {
 		t.Fatalf("close state: %v", err)
 	}

@@ -31,6 +31,21 @@ func validateConfig(input Config) (config, error) {
 		fixed := input.Now.UTC()
 		clock = func() time.Time { return fixed }
 	}
+	observe := input.ObserveClock
+	if observe != nil && input.ClockObservationFile != "" {
+		return config{}, errors.New("clock observation has multiple owners")
+	}
+	if input.ClockObservationFile != "" {
+		observationPath, pathErr := filepath.Abs(input.ClockObservationFile)
+		if pathErr != nil {
+			return config{}, errors.New("resolve clock observation file")
+		}
+		observe = fileClockObserver(observationPath)
+	}
+	if observe == nil {
+		fixed := input.ClockObservation.UTC()
+		observe = func() time.Time { return fixed }
+	}
 	authorities := make(map[[32]byte]ed25519.PublicKey, len(input.Authorities))
 	for id, public := range input.Authorities {
 		if len(public) != ed25519.PublicKeySize {
@@ -45,11 +60,24 @@ func validateConfig(input Config) (config, error) {
 	resolved := config{
 		root: root, networkID: input.NetworkID, authorities: authorities,
 		threshold: input.Threshold, now: initial, clock: clock,
-		material: input.SourceMaterializationIndex, observation: input.ClockObservation.UTC(),
-		orderSeed: input.SourceOrderSeed, anchorWall: initial, anchorMono: time.Now(),
+		material: input.SourceMaterializationIndex, observation: input.ClockObservation.UTC(), observe: observe,
+		orderSeed: input.SourceOrderSeed, automatic: input.AutomaticRefreshInterval,
+		anchorWall: initial, anchorMono: time.Now(),
+	}
+	if resolved.material >= 64 {
+		return config{}, errors.New("materialization index is outside the Candidate View bound")
+	}
+	if resolved.automatic < 0 || resolved.automatic > time.Minute || resolved.automatic > 0 && resolved.automatic < 100*time.Millisecond {
+		return config{}, errors.New("automatic refresh interval is invalid")
+	}
+	if resolved.automatic > 0 && input.ObserveClock == nil && input.ClockObservationFile == "" {
+		return config{}, errors.New("automatic refresh requires live clock observations")
 	}
 	if err := configureDistribution(&resolved, input); err != nil {
 		return config{}, err
+	}
+	if resolved.automatic > 0 && resolved.sources[0].address == "" {
+		return config{}, errors.New("automatic refresh requires a finite source plan")
 	}
 	return resolved, nil
 }

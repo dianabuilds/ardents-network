@@ -25,7 +25,7 @@ func (s *store) startSourceWave(now time.Time) ([2]int, time.Time, error) {
 			if err := s.commitDistribution(state); err != nil {
 				return [2]int{}, time.Time{}, err
 			}
-			return [2]int{}, time.Time{}, errors.New("durable source cycle reached its recorded deadline")
+			return [2]int{}, time.Time{}, fmt.Errorf("%w: durable source cycle reached its recorded deadline", errRefreshUnavailable)
 		}
 		changed := false
 		for index := 2; index < len(state.attempts); index++ {
@@ -131,7 +131,7 @@ func (s *store) completeSourceWave(now time.Time, base *Snapshot, results []sour
 		if err := s.commitSourceFailure(now, outcomes, observedEpochs, observedDigests); err != nil {
 			return Snapshot{}, err
 		}
-		failures := []error{errors.New("finite source wave produced no valid state")}
+		failures := []error{errRefreshUnavailable, errors.New("finite source wave produced no valid state")}
 		for _, result := range results {
 			if result.err != nil {
 				failures = append(failures, fmt.Errorf("source %d: %w", result.index+1, result.err))

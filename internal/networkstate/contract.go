@@ -28,7 +28,10 @@ type Config struct {
 	SourceClientCertificate    tls.Certificate
 	SourceMaterializationIndex uint32
 	ClockObservation           time.Time
+	ClockObservationFile       string
+	ObserveClock               func() time.Time
 	SourceOrderSeed            [32]byte
+	AutomaticRefreshInterval   time.Duration
 
 	ServeAddress           string
 	ServeCertificate       tls.Certificate
@@ -47,9 +50,12 @@ type materialization struct {
 // Snapshot is an immutable description of the current verified generation.
 type Snapshot struct {
 	Generation         string
+	NetworkID          [32]byte
 	Epoch              uint64
 	Digest             [32]byte
+	EpochValidFrom     time.Time
 	ValidUntil         time.Time
+	Profile            string
 	ViewRoot           [32]byte
 	ViewLength         uint32
 	RejectedRoot       [32]byte
@@ -66,6 +72,17 @@ type Snapshot struct {
 	PendingEpoch       uint64
 	PendingDigest      [32]byte
 	PendingAt          time.Time
+	RecordPresent      bool
+	NodeID             [32]byte
+	NodePublicKey      [32]byte
+	RecordGeneration   uint64
+	RecordValidFrom    time.Time
+	RecordValidUntil   time.Time
+	DeclaredFamily     string
+	ProbeEndpoint      string
+	ProbeCapacity      uint16
+	Assignment         string
+	AssignmentDigest   [32]byte
 }
 
 // store owns verification, finite source work, immutable generations, and pointers.
@@ -79,6 +96,7 @@ type store struct {
 	lease           rootLease
 	serverDone      chan struct{}
 	serverErr       error
+	automaticErr    error
 	workContext     context.Context
 	workCancel      context.CancelFunc
 	work            sync.WaitGroup
@@ -96,7 +114,9 @@ type config struct {
 	sources     [2]sourceConfig
 	material    uint32
 	observation time.Time
+	observe     func() time.Time
 	orderSeed   [32]byte
+	automatic   time.Duration
 	server      sourceServerConfig
 	anchorWall  time.Time
 	anchorMono  time.Time
@@ -165,6 +185,10 @@ func Open(input Config) (*store, error) {
 			return nil, err
 		}
 	}
+	if resolved.automatic > 0 {
+		store.work.Add(1)
+		go store.runAutomaticRefresh(workContext)
+	}
 	opened = true
 	return store, nil
 }
@@ -200,26 +224,4 @@ func (s *store) Accept(ctx context.Context, epoch []byte, inputs [][]byte, encod
 		return Snapshot{}, err
 	}
 	return s.snapshotWithDistribution(s.config.clock().UTC()), nil
-}
-
-// Current returns a copy of the current immutable Snapshot.
-func (s *store) Current() (Snapshot, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	if s.closed {
-		return Snapshot{}, errors.New("network state is closed")
-	}
-	if s.current == nil {
-		return Snapshot{}, errors.New("network state has no current generation")
-	}
-	now, err := trustedNow(s.config, s.distribution)
-	if err != nil && s.config.sources[0].address != "" {
-		snapshot := s.snapshotWithDistribution(s.config.clock().UTC())
-		snapshot.Freshness = "clock-uncertain"
-		return snapshot, nil
-	}
-	if err != nil {
-		now = s.config.clock().UTC()
-	}
-	return s.snapshotWithDistribution(now), nil
 }

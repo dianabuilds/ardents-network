@@ -83,3 +83,30 @@ func TestOpenFailsOnCorruptCurrentGeneration(t *testing.T) {
 		t.Fatal("corrupt current generation was recovered")
 	}
 }
+
+func TestConfigRejectsUnboundedAutomaticAcquisition(t *testing.T) {
+	t.Parallel()
+	value := newFixture(t)
+	base := networkstate.Config{Root: t.TempDir(), NetworkID: value.networkID,
+		Authorities: map[[32]byte]ed25519.PublicKey{value.authorityID: value.authorityPublic}, Threshold: 1,
+		Now: time.Unix(value.now, 0)}
+	tests := []struct {
+		name string
+		edit func(*networkstate.Config)
+	}{
+		{"materialization index", func(config *networkstate.Config) { config.SourceMaterializationIndex = 64 }},
+		{"hot refresh", func(config *networkstate.Config) { config.AutomaticRefreshInterval = time.Nanosecond }},
+		{"static observation", func(config *networkstate.Config) { config.AutomaticRefreshInterval = time.Second }},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			config := base
+			config.Root = t.TempDir()
+			test.edit(&config)
+			if store, err := networkstate.Open(config); err == nil {
+				_ = store.Close()
+				t.Fatal("invalid acquisition config was accepted")
+			}
+		})
+	}
+}

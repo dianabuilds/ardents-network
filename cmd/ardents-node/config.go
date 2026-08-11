@@ -4,11 +4,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/sha256"
-	"crypto/tls"
-	"encoding/json"
 	"errors"
-	"io"
-	"strings"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/networkstate"
@@ -34,18 +30,10 @@ func openSource(path string) (interface {
 	Wait(context.Context) error
 	Close() error
 }, error) {
-	raw, err := readNodeFile(path, 32<<10)
-	if err != nil {
-		return nil, err
-	}
+	var err error
 	var plan sourceServerPlan
-	decoder := json.NewDecoder(strings.NewReader(string(raw)))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&plan); err != nil || plan.Schema != "ardents-h3-source-server-v1" {
+	if err := decodeNodeJSON(path, 32<<10, &plan); err != nil || plan.Schema != "ardents-h3-source-server-v1" {
 		return nil, errors.New("source server plan is not canonical")
-	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		return nil, errors.New("source server plan contains trailing JSON")
 	}
 	if len(plan.AuthorityPublic) == 0 || len(plan.AuthorityPublic) > 16 || len(plan.ClientKeyDigests) == 0 || len(plan.ClientKeyDigests) > 3 {
 		return nil, errors.New("source server trust-map count is invalid")
@@ -65,15 +53,7 @@ func openSource(path string) (interface {
 	if err != nil {
 		return nil, err
 	}
-	certificatePEM, err := readNodeFile(plan.ServerCertificate, 64<<10)
-	if err != nil {
-		return nil, err
-	}
-	keyPEM, err := readNodeFile(plan.ServerKey, 64<<10)
-	if err != nil {
-		return nil, err
-	}
-	config.ServeCertificate, err = tls.X509KeyPair(certificatePEM, keyPEM)
+	config.ServeCertificate, err = loadNodeKeyPair(plan.ServerCertificate, plan.ServerKey)
 	if err != nil {
 		return nil, err
 	}

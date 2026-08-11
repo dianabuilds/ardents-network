@@ -8,7 +8,7 @@ import (
 
 func TestSourceRequestFrozenBytes(t *testing.T) {
 	t.Parallel()
-	request := sourceRequest{opcode: sourceByDigest}
+	request := sourceRequest{opcode: sourceByDigest, materialIndex: 7}
 	for index := range request.networkDigest {
 		request.networkDigest[index] = byte(index)
 		request.objectDigest[index] = byte(0x80 + index)
@@ -19,7 +19,8 @@ func TestSourceRequestFrozenBytes(t *testing.T) {
 	}
 	want := "415244483351310002" +
 		"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" +
-		"808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f"
+		"808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f" +
+		"00000007"
 	if hex.EncodeToString(encoded.Bytes()) != want {
 		t.Fatalf("request bytes=%x", encoded.Bytes())
 	}

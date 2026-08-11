@@ -213,7 +213,8 @@ func trustedNow(config config, state distributionState) (time.Time, error) {
 	if monotonic.After(now) {
 		now = monotonic
 	}
-	if config.observation.IsZero() || now.Sub(config.observation).Abs() > 2*time.Second {
+	observation := config.observe().UTC()
+	if observation.IsZero() || now.Sub(observation).Abs() > 2*time.Second {
 		return time.Time{}, errors.New("clock confidence is outside the two-second bound")
 	}
 	if now.Unix()+2 < state.trustedTimeFloor {

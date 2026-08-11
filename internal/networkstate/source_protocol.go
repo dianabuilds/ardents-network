@@ -20,6 +20,7 @@ type sourceRequest struct {
 	opcode        byte
 	networkDigest [32]byte
 	objectDigest  [32]byte
+	materialIndex uint32
 }
 
 type sourceResponse struct {
@@ -29,7 +30,7 @@ type sourceResponse struct {
 }
 
 func readSourceRequest(reader io.Reader) (sourceRequest, error) {
-	var raw [73]byte
+	var raw [77]byte
 	if _, err := io.ReadFull(reader, raw[:]); err != nil {
 		return sourceRequest{}, err
 	}
@@ -40,6 +41,10 @@ func readSourceRequest(reader io.Reader) (sourceRequest, error) {
 	request.opcode = raw[8]
 	copy(request.networkDigest[:], raw[9:41])
 	copy(request.objectDigest[:], raw[41:73])
+	request.materialIndex = binary.BigEndian.Uint32(raw[73:77])
+	if request.materialIndex >= 64 {
+		return sourceRequest{}, errors.New("source materialization index is invalid")
+	}
 	if request.opcode == sourceLatest && !isZero32(request.objectDigest) {
 		return sourceRequest{}, errors.New("latest request digest is not zero")
 	}
@@ -50,11 +55,12 @@ func readSourceRequest(reader io.Reader) (sourceRequest, error) {
 }
 
 func writeSourceRequest(writer io.Writer, request sourceRequest) error {
-	var raw [73]byte
+	var raw [77]byte
 	copy(raw[:8], "ARDH3Q1\x00")
 	raw[8] = request.opcode
 	copy(raw[9:41], request.networkDigest[:])
 	copy(raw[41:], request.objectDigest[:])
+	binary.BigEndian.PutUint32(raw[73:77], request.materialIndex)
 	_, err := writer.Write(raw[:])
 	return err
 }
