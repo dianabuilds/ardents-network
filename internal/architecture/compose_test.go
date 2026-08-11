@@ -7,12 +7,12 @@ import (
 
 func TestCarrierLabIsolationPackageHasOneSmallInterface(t *testing.T) {
 	t.Parallel()
-	assertPackageExports(t, "internal/harness", "Run", "RunRole")
+	assertPackageExports(t, "internal/lab/carrier", "Run", "RunRole")
 }
 
 func TestCarrierLabComposeIsolationContract(t *testing.T) {
 	t.Parallel()
-	compose := readProjectFile(t, repositoryRoot(t), "carrier-lab/compose.yaml")
+	compose := readProjectFile(t, repositoryRoot(t), "lab/carrier/compose.yaml")
 
 	required := []string{
 		"alpha:", "beta:", `profiles: ["isolation"]`, "${CARRIER_LAB_IMAGE:?}", "adjacency:", "internal: true",

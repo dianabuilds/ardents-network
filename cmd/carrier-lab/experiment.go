@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dianabuilds/ardents-network/internal/preflight"
-	"github.com/dianabuilds/ardents-network/internal/routeexperiment"
+	"github.com/dianabuilds/ardents-network/internal/lab/preflight"
+	"github.com/dianabuilds/ardents-network/internal/lab/routecomparison"
 )
 
 func routeExperiment(arguments []string) int {
@@ -18,7 +18,7 @@ func routeExperiment(arguments []string) int {
 	}, func(layout preflight.RunLayout) int {
 		ctx, stop := interruptContext()
 		defer stop()
-		evidence, err := routeexperiment.Run(ctx, layout, applicationImage, toolImage, referenceDirectory)
+		evidence, err := routecomparison.Run(ctx, layout, applicationImage, toolImage, referenceDirectory)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "R-013 route experiment: %v\nevidence: %s\n", err, evidence)
 			return 2

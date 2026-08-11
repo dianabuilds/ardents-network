@@ -486,7 +486,7 @@ archive. Committed evidence contains no private key or reusable credential.
 
 [R-025](r-025-carrier-lab-tool-supply.md) fixes one minimal supply path: 12
 official Ubuntu `.deb` artifacts are content-addressed in
-`carrier-lab/tools.lock`, verified and extracted without installation or
+`lab/carrier/tools.lock`, verified and extracted without installation or
 network access into a disposable tooling image, and executed only by separate
 namespace-sharing sidecars. Shapers have exact effective `NET_ADMIN`; capture
 has exact effective `NET_RAW`; Application tracer roles have no effective
@@ -503,7 +503,7 @@ control and never a fallback.
 
 ### Native implementation status on 2026-08-10
 
-The lab-only `internal/nativecircuit` Module now implements the frozen positive
+The lab-only `internal/lab/nativecircuit` Module now implements the frozen positive
 C-5/C2 scenario without selecting a product protocol:
 
 - nine distinct Node roles plus User and Service endpoint roles run in isolated

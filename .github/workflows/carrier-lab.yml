@@ -36,18 +36,18 @@ jobs:
           mkdir -p "$RUNNER_TEMP/go-input" "$RUNNER_TEMP/tool-bundle" "$RUNNER_TEMP/reference-inputs"
           curl --fail --location --proto '=https' --tlsv1.2 --output "$RUNNER_TEMP/go-input/go1.26.5.linux-amd64.tar.gz" https://go.dev/dl/go1.26.5.linux-amd64.tar.gz
           printf '%s  %s\n' "$GO_ARCHIVE_SHA256" "$RUNNER_TEMP/go-input/go1.26.5.linux-amd64.tar.gz" | sha256sum --check
-          bash scripts/prepare-carrier-tools.sh carrier-lab/tools.lock "$RUNNER_TEMP/tool-bundle"
-          bash scripts/prepare-carrier-reference.sh carrier-lab/reference.lock "$RUNNER_TEMP/reference-inputs"
+          bash scripts/prepare-carrier-tools.sh lab/carrier/tools.lock "$RUNNER_TEMP/tool-bundle"
+          bash scripts/prepare-carrier-reference.sh lab/carrier/reference.lock "$RUNNER_TEMP/reference-inputs"
           go run ./scripts/prepare-go-vendor.go "$RUNNER_TEMP/go-vendor"
       - name: Verify inputs and build each immutable image once
         run: |
           set -euo pipefail
-          verification=$(go run ./cmd/carrier-lab tooling-verify --lock "$GITHUB_WORKSPACE/carrier-lab/tools.lock" --bundle "$RUNNER_TEMP/tool-bundle" --repository-root "$GITHUB_WORKSPACE")
+          verification=$(go run ./cmd/carrier-lab tooling-verify --lock "$GITHUB_WORKSPACE/lab/carrier/tools.lock" --bundle "$RUNNER_TEMP/tool-bundle" --repository-root "$GITHUB_WORKSPACE")
           printf '%s\n' "$verification"
           source_sha256=$(printf '%s\n' "$verification" | sed -n 's/^Qualification source SHA-256: //p')
           [[ ${#source_sha256} -eq 64 ]]
-          docker build --no-cache --pull=false --network=none --build-context "go_archive=$RUNNER_TEMP/go-input" --build-context "go_vendor=$RUNNER_TEMP/go-vendor" --build-context "tool_bundle=$RUNNER_TEMP/tool-bundle" --build-arg "CARRIER_LAB_SOURCE_SHA256=$source_sha256" --target tooling --iidfile "$RUNNER_TEMP/tool-image.id" -f carrier-lab/Dockerfile .
-          docker build --pull=false --network=none --build-context "go_archive=$RUNNER_TEMP/go-input" --build-context "go_vendor=$RUNNER_TEMP/go-vendor" --build-context "tool_bundle=$RUNNER_TEMP/tool-bundle" --build-arg "CARRIER_LAB_SOURCE_SHA256=$source_sha256" --target application --iidfile "$RUNNER_TEMP/application-image.id" -f carrier-lab/Dockerfile .
+          docker build --no-cache --pull=false --network=none --build-context "go_archive=$RUNNER_TEMP/go-input" --build-context "go_vendor=$RUNNER_TEMP/go-vendor" --build-context "tool_bundle=$RUNNER_TEMP/tool-bundle" --build-arg "CARRIER_LAB_SOURCE_SHA256=$source_sha256" --target tooling --iidfile "$RUNNER_TEMP/tool-image.id" -f lab/carrier/Dockerfile .
+          docker build --pull=false --network=none --build-context "go_archive=$RUNNER_TEMP/go-input" --build-context "go_vendor=$RUNNER_TEMP/go-vendor" --build-context "tool_bundle=$RUNNER_TEMP/tool-bundle" --build-arg "CARRIER_LAB_SOURCE_SHA256=$source_sha256" --target application --iidfile "$RUNNER_TEMP/application-image.id" -f lab/carrier/Dockerfile .
       - name: Run frozen Direct, C-3, C-5/C2, negative, and Tor controls
         run: |
           set -euo pipefail

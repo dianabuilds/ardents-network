@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dianabuilds/ardents-network/internal/harness/tooling"
-	"github.com/dianabuilds/ardents-network/internal/nativecircuit"
-	"github.com/dianabuilds/ardents-network/internal/preflight"
+	"github.com/dianabuilds/ardents-network/internal/lab/nativecircuit"
+	"github.com/dianabuilds/ardents-network/internal/lab/preflight"
+	"github.com/dianabuilds/ardents-network/internal/lab/tooling"
 )
 
 func nativeRun(arguments []string) int {

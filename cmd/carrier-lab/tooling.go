@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dianabuilds/ardents-network/internal/harness/tooling"
+	"github.com/dianabuilds/ardents-network/internal/lab/tooling"
 )
 
 func toolingVerify(arguments []string) int {

@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dianabuilds/ardents-network/internal/harness"
-	"github.com/dianabuilds/ardents-network/internal/harness/tooling"
-	"github.com/dianabuilds/ardents-network/internal/preflight"
+	"github.com/dianabuilds/ardents-network/internal/lab/carrier"
+	"github.com/dianabuilds/ardents-network/internal/lab/preflight"
+	"github.com/dianabuilds/ardents-network/internal/lab/tooling"
 )
 
 func composeSmoke(arguments []string) int {
-	return smokeControl(arguments, "compose-smoke", "Compose isolation", harness.Run)
+	return smokeControl(arguments, "compose-smoke", "Compose isolation", carrier.Run)
 }
 func toolingSmoke(arguments []string) int {
 	return smokeControl(arguments, "tooling-smoke", "tooling", tooling.RunSmoke)
@@ -38,5 +38,5 @@ func smokeControl(arguments []string, name, label string, runSmoke smokeRunner) 
 	})
 }
 func smokeRole(arguments []string) int {
-	return runRoleCommand("smoke-role", arguments, func(_ context.Context, config, evidence, _ string) error { return harness.RunRole(config, evidence) })
+	return runRoleCommand("smoke-role", arguments, func(_ context.Context, config, evidence, _ string) error { return carrier.RunRole(config, evidence) })
 }

@@ -7,15 +7,15 @@ import (
 
 func TestDirectControlPackageHasOneSmallInterface(t *testing.T) {
 	t.Parallel()
-	assertPackageExports(t, "internal/directcontrol", "RunControl", "RunRole", "RunTamper")
+	assertPackageExports(t, "internal/lab/directcontrol", "RunControl", "RunRole", "RunTamper")
 }
 
 func TestDirectTLSControlContract(t *testing.T) {
 	t.Parallel()
 	root := repositoryRoot(t)
-	tlsSource := readProjectFile(t, root, "internal/directcontrol/direct_tls.go")
-	fixtureSource := readProjectFile(t, root, "internal/directcontrol/control_fixture.go")
-	tamperSource := readProjectFile(t, root, "internal/directcontrol/direct_tamper.go")
+	tlsSource := readProjectFile(t, root, "internal/lab/directcontrol/direct_tls.go")
+	fixtureSource := readProjectFile(t, root, "internal/lab/directcontrol/control_fixture.go")
+	tamperSource := readProjectFile(t, root, "internal/lab/directcontrol/direct_tamper.go")
 
 	for _, required := range []string{
 		"tls.VersionTLS13", "tls.X25519", "SessionTicketsDisabled: true",

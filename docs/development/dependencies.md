@@ -8,7 +8,7 @@ maintenance and security signals, alternatives considered, and removal plan.
 
 The maintained product-shaped Modules still use the Go standard library only.
 Gate C adds the following exact runtime closure solely to the maintained
-`internal/siteexperiment` laboratory Module. The dependency is selected by
+`internal/lab/namedsite` laboratory Module. The dependency is selected by
 [R-026](../research/records/r-026-private-resolution-adapter.md); it must enter
 `go.mod` as this reviewed set rather than as the vulnerable versions declared
 by `openpcc/ohttp v0.0.80`.
@@ -29,7 +29,7 @@ by `openpcc/ohttp v0.0.80`.
 | `golang.org/x/text` | `v0.39.0` | BSD-3-Clause | BHTTP normalization; raised from vulnerable `v0.32.0` |
 
 **Need and owner:** RFC 9458 is the accepted external-first Private Resolution
-shape. `internal/siteexperiment` is the sole first-party owner and imports the
+shape. `internal/lab/namedsite` is the sole first-party owner and imports the
 OHTTP/CIRCL Interface; no product Module may import it.
 
 **Maintenance and security review:** `openpcc/ohttp` has versioned releases, an
@@ -78,7 +78,7 @@ and quick-check targets never install or upgrade tools implicitly.
 
 These tools are not product runtime dependencies and do not enter `go.mod` or
 the `application` image target. They exist only in the disposable `tooling`
-target of `carrier-lab/Dockerfile`.
+target of `lab/carrier/Dockerfile`.
 
 | Tool | Version | Supplied by | License summary | Purpose |
 |---|---:|---|---|---|
@@ -88,7 +88,7 @@ target of `carrier-lab/Dockerfile`.
 
 The exact 12-file runtime closure, official URLs, versions, SHA-256 values,
 license summaries, installed paths, and executable hashes are normative in
-[`carrier-lab/tools.lock`](../../carrier-lab/tools.lock). R-025 records the
+[`lab/carrier/tools.lock`](../../lab/carrier/tools.lock). R-025 records the
 source and security review. The external `.deb` bundle is an explicitly
 prepared input outside Git. Normal build and run use no package repository,
 installer, maintainer script, or download fallback; a missing, extra, or
@@ -108,7 +108,7 @@ Lab image, or selected as a product runtime foundation.
 | tomli-w | 1.2.0 | MIT | Chutney configuration writer |
 | typing-extensions | 4.15.0 | PSF-2.0 | Python compatibility for Chutney/typeguard |
 
-[`carrier-lab/reference.lock`](../../carrier-lab/reference.lock) is normative
+[`lab/carrier/reference.lock`](../../lab/carrier/reference.lock) is normative
 for the exact Tor 13-package closure, Chutney archive, wheels, source locations,
 and SHA-256 identities. The selected Chutney revision predates its optional SSH
 launcher and restricted-discovery dependencies, so Paramiko, rpyc, and Python

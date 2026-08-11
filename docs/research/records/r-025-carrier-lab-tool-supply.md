@@ -146,7 +146,7 @@ The prepared `.deb` files, image layers, captures, and generated evidence stay
 outside Git. Binary inputs, derived images, and raw captures are disposable;
 bounded retained summaries may remain in the external run-owned evidence
 directory. Reproduction starts from the exact URLs and hashes in
-[`carrier-lab/tools.lock`](../../../carrier-lab/tools.lock).
+[`lab/carrier/tools.lock`](../../../lab/carrier/tools.lock).
 
 ### Failure scenarios
 
@@ -280,7 +280,7 @@ directory. Reproduction starts from the exact URLs and hashes in
 
 The normative filenames, versions, SHA-256 values, official URLs, license
 summaries, target paths, tool versions, and runtime hashes are in
-[`carrier-lab/tools.lock`](../../../carrier-lab/tools.lock). The 12 artifacts
+[`lab/carrier/tools.lock`](../../../lab/carrier/tools.lock). The 12 artifacts
 are `iproute2`, `libbpf1`, `libcap2`, `libdbus-1-3`, `libelf1t64`,
 `libibverbs1`, `libmnl0`, `libnl-3-200`, `libnl-route-3-200`,
 `libpcap0.8t64`, `libxtables12`, and `tcpdump`.

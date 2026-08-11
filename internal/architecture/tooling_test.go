@@ -11,19 +11,19 @@ import (
 
 func TestCarrierLabToolingPackageHasOneSmallInterface(t *testing.T) {
 	t.Parallel()
-	assertPackageExports(t, "internal/harness/tooling", "NativeImageReceipt", "VerifyInputs", "VerifyNativeImages", "RunSmoke", "RunRole", "RunNativeRole")
+	assertPackageExports(t, "internal/lab/tooling", "NativeImageReceipt", "VerifyInputs", "VerifyNativeImages", "RunSmoke", "RunRole", "RunNativeRole")
 }
 
 func TestCarrierLabContainerSourcesHaveFourResponsibilities(t *testing.T) {
 	t.Parallel()
 	root := repositoryRoot(t)
-	entries, err := os.ReadDir(filepath.Join(root, "carrier-lab"))
+	entries, err := os.ReadDir(filepath.Join(root, "lab", "carrier"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := map[string]bool{"Dockerfile": true, "compose.yaml": true, "tools.lock": true, "reference.lock": true}
 	if len(entries) != len(want) {
-		t.Fatalf("carrier-lab source entries = %d, want exactly %d", len(entries), len(want))
+		t.Fatalf("lab/carrier source entries = %d, want exactly %d", len(entries), len(want))
 	}
 	for _, entry := range entries {
 		if entry.IsDir() || !want[entry.Name()] {
@@ -43,8 +43,8 @@ func TestCarrierLabContainerSourcesHaveFourResponsibilities(t *testing.T) {
 func TestCarrierLabToolingImageIsOfflineAndContentAddressed(t *testing.T) {
 	t.Parallel()
 	root := repositoryRoot(t)
-	dockerfile := readProjectFile(t, root, "carrier-lab/Dockerfile")
-	lock := readProjectFile(t, root, "carrier-lab/tools.lock")
+	dockerfile := readProjectFile(t, root, "lab/carrier/Dockerfile")
+	lock := readProjectFile(t, root, "lab/carrier/tools.lock")
 
 	scanner := bufio.NewScanner(bytes.NewReader(dockerfile))
 	for scanner.Scan() {
@@ -79,7 +79,7 @@ func TestCarrierLabToolingImageIsOfflineAndContentAddressed(t *testing.T) {
 
 func TestCarrierLabToolingComposeIsolationAndCapabilities(t *testing.T) {
 	t.Parallel()
-	compose := readProjectFile(t, repositoryRoot(t), "carrier-lab/compose.yaml")
+	compose := readProjectFile(t, repositoryRoot(t), "lab/carrier/compose.yaml")
 	for _, required := range []string{
 		"tracer-alpha:", "tracer-beta:", "shape-alpha:", "shape-beta:", "capture-alpha:", `profiles: ["tooling"]`,
 		`network_mode: "service:tracer-alpha"`, `network_mode: "service:tracer-beta"`,

@@ -36,23 +36,12 @@ var forbiddenGoFileNames = map[string]bool{
 	"support.go": true, "types.go": true, "util.go": true,
 }
 
-var laboratoryPackages = map[string]bool{
-	"internal/directcontrol":      true,
-	"internal/experimentidentity": true,
-	"internal/experimentrun":      true,
-	"internal/harness":            true,
-	"internal/harness/tooling":    true,
-	"internal/nativecircuit":      true,
-	"internal/preflight":          true,
-	"internal/routeexperiment":    true,
-	"internal/siteexperiment":     true,
-}
-
 func TestRepositoryArchitecture(t *testing.T) {
 	t.Parallel()
 	root := repositoryRoot(t)
 
 	assertRequiredProjectFiles(t, root)
+	assertLaboratoryQuarantine(t, root)
 	assertSingleModule(t, root)
 	assertDependenciesRegistered(t, root)
 	assertGoFilesAreProjectCode(t, root)
@@ -295,8 +284,11 @@ func assertRegisteredDependencies(t *testing.T, registry map[string]packageRegis
 			if _, exists := registry[dependency]; !exists {
 				t.Errorf("package %s permits unregistered dependency %s", owner, dependency)
 			}
-			if isProductPackage(owner) && laboratoryPackages[dependency] {
+			if isProductPackage(owner) && isLaboratoryPackage(dependency) {
 				t.Errorf("product package %s cannot depend on laboratory package %s", owner, dependency)
+			}
+			if isProductCommand(owner) && isLaboratoryPackage(dependency) {
+				t.Errorf("product command %s cannot depend on laboratory package %s", owner, dependency)
 			}
 		}
 	}
@@ -353,8 +345,11 @@ func assertPackageImports(t *testing.T, directory string, files []string, regist
 			if !registration.allowedImports[dependency] {
 				t.Errorf("package %s imports %s without permission in package-map.md", directory, dependency)
 			}
-			if isProductPackage(directory) && laboratoryPackages[dependency] {
+			if isProductPackage(directory) && isLaboratoryPackage(dependency) {
 				t.Errorf("product package %s imports laboratory package %s", directory, dependency)
+			}
+			if isProductCommand(directory) && isLaboratoryPackage(dependency) {
+				t.Errorf("product command %s imports laboratory package %s", directory, dependency)
 			}
 		}
 	}
@@ -368,7 +363,15 @@ func assertPackageImports(t *testing.T, directory string, files []string, regist
 func isProductPackage(directory string) bool {
 	return strings.HasPrefix(directory, "internal/") &&
 		directory != "internal/architecture" &&
-		!laboratoryPackages[directory]
+		!isLaboratoryPackage(directory)
+}
+
+func isLaboratoryPackage(directory string) bool {
+	return strings.HasPrefix(directory, "internal/lab/")
+}
+
+func isProductCommand(directory string) bool {
+	return strings.HasPrefix(directory, "cmd/") && !strings.HasSuffix(directory, "-lab")
 }
 
 func assertPackage(t *testing.T, root, relativeDirectory string, files []string) (string, bool) {

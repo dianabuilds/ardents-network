@@ -12,7 +12,7 @@ const carrierLabBase = "ubuntu@sha256:7b202b0e2e0028c6250f5fcf41d04df492d145a165
 func TestCarrierLabImageContract(t *testing.T) {
 	t.Parallel()
 	root := repositoryRoot(t)
-	dockerfile := readProjectFile(t, root, "carrier-lab/Dockerfile")
+	dockerfile := readProjectFile(t, root, "lab/carrier/Dockerfile")
 	ignore := readProjectFile(t, root, ".dockerignore")
 
 	var fromLines []string

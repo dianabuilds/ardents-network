@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dianabuilds/ardents-network/internal/directcontrol"
-	"github.com/dianabuilds/ardents-network/internal/preflight"
+	"github.com/dianabuilds/ardents-network/internal/lab/directcontrol"
+	"github.com/dianabuilds/ardents-network/internal/lab/preflight"
 )
 
 func directControl(arguments []string) int {

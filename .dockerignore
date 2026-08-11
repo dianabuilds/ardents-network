@@ -6,10 +6,8 @@
 !cmd/**
 !internal
 !internal/**
-!carrier-lab
-!carrier-lab/tools.lock
-!reference-site
-!reference-site/**
+!lab
+!lab/**
 
 **/*_test.go
 .git

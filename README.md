@@ -126,12 +126,18 @@ claim. Its exact disposable technology and evidence contract is
 
 Carrier Lab is not a second repository, Go module, product runtime, or future
 top-level architecture. The repository has one root `go.mod`. `cmd/carrier-lab`
-is only its executable adapter; `internal/harness`,
-`internal/harness/tooling`, `internal/preflight`, `internal/directcontrol`, and
-`internal/nativecircuit` are laboratory Modules; and `carrier-lab/` contains
+is only its executable adapter; `internal/lab/carrier`,
+`internal/lab/tooling`, `internal/lab/preflight`, `internal/lab/directcontrol`, and
+`internal/lab/nativecircuit` are laboratory Modules; and `lab/carrier/` contains
 only four human-authored inputs needed to run them reproducibly: one Dockerfile,
 one Compose topology, and two immutable supply locks. Product
 Modules may later be promoted from accepted evidence, but never import the lab.
+
+All maintained laboratory source is quarantined under `internal/lab/`; its
+human-authored Docker and topology inputs are under `lab/`. The completed Gate C
+implementation is factually named `internal/lab/namedsite`, with the thin
+`cmd/named-site-lab` adapter. Future product Modules are created as cohesive
+siblings under `internal/<responsibility>` and cannot import laboratory code.
 
 The native C-5/C2 laboratory implementation and frozen R-013 comparison are
 complete. Official Ubuntu run

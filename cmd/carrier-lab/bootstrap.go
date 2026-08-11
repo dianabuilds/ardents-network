@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dianabuilds/ardents-network/internal/preflight"
+	"github.com/dianabuilds/ardents-network/internal/lab/preflight"
 )
 
 func bootstrap(arguments []string) int {

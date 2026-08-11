@@ -228,7 +228,7 @@ during evaluation.
   product binding. Gate C must own those behaviors and test them independently.
 - **Limitation:** `openpcc/ohttp` brings BHTTP, two-way HPKE, QUIC varint, and
   telemetry modules beyond the small OHTTP core. This is accepted only for the
-  maintained experiment; the Adapter remains private to `siteexperiment` so
+  maintained experiment; the Adapter remains private to `internal/lab/namedsite` so
   the complete closure can be removed with that Module.
 
 ### O2 measurements — reference, not selected

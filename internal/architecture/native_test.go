@@ -7,12 +7,12 @@ import (
 
 func TestNativeCircuitPackageHasOneSmallInterface(t *testing.T) {
 	t.Parallel()
-	assertPackageExports(t, "internal/nativecircuit", "Run", "RunAttached", "RunNegative", "RunRole", "RunWorkload")
+	assertPackageExports(t, "internal/lab/nativecircuit", "Run", "RunAttached", "RunNegative", "RunRole", "RunWorkload")
 }
 
 func TestNativeComposeDeclaresExactRoleTopologyAndCapabilities(t *testing.T) {
 	t.Parallel()
-	compose := readProjectFile(t, repositoryRoot(t), "carrier-lab/compose.yaml")
+	compose := readProjectFile(t, repositoryRoot(t), "lab/carrier/compose.yaml")
 	for _, required := range []string{
 		`profiles: ["native"]`, "user:", "user-entry:", "user-interior:", "rendezvous:",
 		"service-interior:", "data-service-entry:", "service:", "introduction-forwarder:",

@@ -6,7 +6,7 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/dianabuilds/ardents-network/internal/preflight"
+	"github.com/dianabuilds/ardents-network/internal/lab/preflight"
 )
 
 func interruptContext() (context.Context, context.CancelFunc) {

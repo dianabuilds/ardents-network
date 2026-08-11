@@ -23,13 +23,13 @@ Go foundation selected by
   `sha256:7b202b0e2e0028c6250f5fcf41d04df492d145a1654c6995a6553f0c1f6f1960`.
 
 Native-candidate tooling smoke additionally requires the 12 exact Ubuntu
-`.deb` files named in `carrier-lab/tools.lock`, together in one external
+`.deb` files named in `lab/carrier/tools.lock`, together in one external
 directory containing no other entry, and the locked Ubuntu base already
 present in the local image store. Preparation may use the network as an
 explicit separate operation; verification, build, and run never do.
 
 Missing inputs are a failed preflight. The thin script sets offline Go launcher
-controls and invokes `internal/preflight`; it does not own Docker lifecycle,
+controls and invokes `internal/lab/preflight`; it does not own Docker lifecycle,
 cleanup, or evidence policy. The Go Module does not pull an image, download Go,
 install a tool, accept a mutable image tag, or use the host-built launcher as
 success evidence. The candidate and verifier are rebuilt with the supplied
@@ -60,7 +60,7 @@ but does not trigger an automatic rebuild. Documentation-only evidence updates
 do not. Qualification waits until the next source freeze. `--no-cache` belongs
 to this final evidence boundary, not to the edit/test loop.
 
-`carrier-lab/Dockerfile` is one multi-target build definition. Its shared
+`lab/carrier/Dockerfile` is one multi-target build definition. Its shared
 builder and the `application` and `tooling` runtime targets all use the exact
 R-013 Ubuntu digest. The Go archive stays outside the repository
 and ordinary build context. BuildKit receives its containing directory as the
@@ -83,7 +83,7 @@ The image is disposable Carrier Lab input, not a release artifact.
 
 ## Two-role isolation smoke
 
-The `isolation` profile in `carrier-lab/compose.yaml` defines exactly two
+The `isolation` profile in `lab/carrier/compose.yaml` defines exactly two
 disposable roles, `alpha` and `beta`, on one Compose-internal `adjacency`
 network. There is no default,
 external, host, or published-port path. Each role runs as numeric user
@@ -97,7 +97,7 @@ Both Compose profiles receive only one immutable image ID, one controller-owned
 run root, and one run ID. Mount paths are fixed children of that root inside the
 Compose definition; callers do not pass a separate host path for every role.
 
-The deep `internal/harness` Module behind `compose-smoke` is the sole lifecycle
+The deep `internal/lab/carrier` Module behind `compose-smoke` is the sole lifecycle
 controller. It accepts an
 immutable local image ID, creates the fixed data-only role configurations,
 starts the contour without building or pulling, waits for both readiness
@@ -126,7 +126,7 @@ result, or production claim.
 ## Direct TLS measurement control
 
 `direct-control` is the R-013 measurement-floor control, not a Route and never
-a fallback. The `internal/directcontrol` Module creates one ephemeral Ed25519
+a fallback. The `internal/lab/directcontrol` Module creates one ephemeral Ed25519
 Target root, one active
 Ed25519 Instance leaf, and one inactive wrong-leaf fixture under the same root.
 It launches the same `carrier-lab` binary as separate User and Service tracer
@@ -154,14 +154,14 @@ decentralization, availability, or production claim.
 ## Native candidate tooling supply and smoke
 
 R-025 supplies the laboratory tools without changing the unprivileged
-Application image. `carrier-lab/tools.lock` names every external package and
+Application image. `lab/carrier/tools.lock` names every external package and
 runtime binary by version and SHA-256. The `tooling` target in the shared
-`carrier-lab/Dockerfile` verifies the exact directory contents, package control
+`lab/carrier/Dockerfile` verifies the exact directory contents, package control
 identity, architecture, package hashes, and final `tc`/`tcpdump`/libpcap
 hashes, then uses `dpkg-deb --extract`; it never runs APT, `dpkg --install`, or
 maintainer scripts.
 
-The `tooling` profile in `carrier-lab/compose.yaml` has two unprivileged
+The `tooling` profile in `lab/carrier/compose.yaml` has two unprivileged
 synthetic tracer roles, two namespace-sharing shaping sidecars, and one capture
 sidecar on one internal network. Tracers have no effective capabilities. Each
 shaper runs as a
@@ -187,7 +187,7 @@ An offline build after explicit input preparation is:
 
 ```sh
 VERIFY_OUTPUT="$(go run ./cmd/carrier-lab tooling-verify \
-  --lock "$PWD/carrier-lab/tools.lock" \
+  --lock "$PWD/lab/carrier/tools.lock" \
   --bundle /external/absolute/tool-bundle \
   --repository-root "$PWD")"
 printf '%s\n' "$VERIFY_OUTPUT"
@@ -197,14 +197,14 @@ docker build --no-cache --pull=false --network=none \
   --build-arg CARRIER_LAB_SOURCE_SHA256="$SOURCE_SHA256" \
   --build-context go_archive=/external/absolute/go-archive-directory \
   --build-context tool_bundle=/external/absolute/tool-bundle \
-  --file carrier-lab/Dockerfile \
+  --file lab/carrier/Dockerfile \
   --target tooling \
   --iidfile /external/absolute/tooling-image.id .
 docker build --pull=false --network=none \
   --build-arg CARRIER_LAB_SOURCE_SHA256="$SOURCE_SHA256" \
   --build-context go_archive=/external/absolute/go-archive-directory \
   --build-context tool_bundle=/external/absolute/tool-bundle \
-  --file carrier-lab/Dockerfile \
+  --file lab/carrier/Dockerfile \
   --target application \
   --iidfile /external/absolute/application-image.id .
 ```
@@ -321,7 +321,7 @@ once. All 78 positive attempts and seven negative cases reuse those immutable
 image IDs with Compose `--no-build --pull never`.
 
 Direct, C-3, and C-5/C2 are runtime profiles of the same binary and committed
-`carrier-lab/compose.yaml`. The controller writes one bounded temporary Compose
+`lab/carrier/compose.yaml`. The controller writes one bounded temporary Compose
 override inside the owned run directory for Direct or C-3; it is deleted with
 the run. It is not another maintained Compose source. Direct keeps only the
 two endpoints and one shaped internal link. C-3 keeps User Entry,
@@ -331,8 +331,8 @@ receives the Route verdict.
 Preparation is the only online phase:
 
 ```sh
-bash scripts/prepare-carrier-tools.sh carrier-lab/tools.lock /external/tool-bundle
-bash scripts/prepare-carrier-reference.sh carrier-lab/reference.lock /external/reference-inputs
+bash scripts/prepare-carrier-tools.sh lab/carrier/tools.lock /external/tool-bundle
+bash scripts/prepare-carrier-reference.sh lab/carrier/reference.lock /external/reference-inputs
 ```
 
 The reference directory contains only verified raw `.deb` files, wheels, the
