@@ -11,15 +11,16 @@ func loadSourceCredentials(config *state.Config, plan sourcePlan) error {
 		return err
 	}
 	for index, source := range plan.Sources {
-		config.Source.Addresses[index], config.Source.ServerNames[index] = source.Address, source.ServerName
-		config.Source.Families[index], config.Source.EndpointHandles[index] = source.Family, source.EndpointHandle
-		if err := planfile.FixedHex(source.Identity, config.Source.Identities[index][:]); err != nil {
+		declared := &config.Source.Sources[index]
+		declared.Address, declared.ServerName = source.Address, source.ServerName
+		declared.Family, declared.EndpointHandle = source.Family, source.EndpointHandle
+		if err := planfile.FixedHex(source.Identity, declared.Identity[:]); err != nil {
 			return err
 		}
-		if err := planfile.FixedHex(source.LeafKeyDigest, config.Source.LeafKeyDigests[index][:]); err != nil {
+		if err := planfile.FixedHex(source.LeafKeyDigest, declared.LeafKeyDigest[:]); err != nil {
 			return err
 		}
-		config.Source.RootPEM[index], err = planfile.Read(source.RootCA, 64<<10)
+		declared.RootPEM, err = planfile.Read(source.RootCA, 64<<10)
 		if err != nil {
 			return err
 		}

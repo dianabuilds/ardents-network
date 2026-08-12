@@ -64,15 +64,16 @@ func readNodePlan(path string) (nodeRuntime, error) {
 		return nodeRuntime{}, err
 	}
 	for index, source := range plan.Sources {
-		state.Source.Addresses[index], state.Source.ServerNames[index] = source.Address, source.ServerName
-		state.Source.Families[index], state.Source.EndpointHandles[index] = source.Family, source.EndpointHandle
-		if err := planfile.FixedHex(source.Identity, state.Source.Identities[index][:]); err != nil {
+		declared := &state.Source.Sources[index]
+		declared.Address, declared.ServerName = source.Address, source.ServerName
+		declared.Family, declared.EndpointHandle = source.Family, source.EndpointHandle
+		if err := planfile.FixedHex(source.Identity, declared.Identity[:]); err != nil {
 			return nodeRuntime{}, err
 		}
-		if err := planfile.FixedHex(source.LeafKeyDigest, state.Source.LeafKeyDigests[index][:]); err != nil {
+		if err := planfile.FixedHex(source.LeafKeyDigest, declared.LeafKeyDigest[:]); err != nil {
 			return nodeRuntime{}, err
 		}
-		if state.Source.RootPEM[index], err = planfile.Read(source.RootCA, 64<<10); err != nil {
+		if declared.RootPEM, err = planfile.Read(source.RootCA, 64<<10); err != nil {
 			return nodeRuntime{}, err
 		}
 	}

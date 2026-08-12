@@ -59,14 +59,14 @@ func validateConfig(input Config) (config, error) {
 		authorities[id] = append(ed25519.PublicKey(nil), public...)
 	}
 	initial := clock().UTC()
-	sourcePlan, err := source.New(input.Source, authorities)
+	sourcePlan, sourceInfo, err := source.New(input.Source, authorities)
 	if err != nil {
 		return config{}, err
 	}
 	resolved := config{
 		root: root, networkID: input.NetworkID, authorities: authorities,
 		threshold: input.Threshold, now: initial, clock: clock,
-		source: sourcePlan, sourceInfo: sourcePlan.Details(), observation: input.ClockObservation.UTC(), observe: observe,
+		source: sourcePlan, sourceInfo: sourceInfo, observation: input.ClockObservation.UTC(), observe: observe,
 		automatic: input.AutomaticRefreshInterval, profile: input.RuntimeProfile,
 		anchorWall: initial, anchorMono: time.Now(),
 	}

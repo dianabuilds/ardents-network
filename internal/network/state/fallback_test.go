@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
@@ -43,13 +44,12 @@ func TestIncompleteLatestUsesExactSameIndexFallback(t *testing.T) {
 	}
 	config.Now, config.Clock = time.Time{}, func() time.Time { return now }
 	config.ClockObservation = now
-	config.Source.Addresses = addresses
-	config.Source.ServerNames = [2]string{"truncated-source.test", "complete-source.test"}
-	config.Source.Identities = [2][32]byte{{1}, {2}}
-	config.Source.Families = [2]string{"truncated-family", "complete-family"}
-	config.Source.EndpointHandles = [2]string{"truncated-handle", "complete-handle"}
-	config.Source.RootPEM = [2][]byte{firstAuthority.rootPEM, secondAuthority.rootPEM}
-	config.Source.LeafKeyDigests = [2][32]byte{firstServer.pin, secondServer.pin}
+	config.Source.Sources = [2]source.Source{
+		{Address: addresses[0], ServerName: "truncated-source.test", Identity: [32]byte{1}, Family: "truncated-family",
+			EndpointHandle: "truncated-handle", RootPEM: firstAuthority.rootPEM, LeafKeyDigest: firstServer.pin},
+		{Address: addresses[1], ServerName: "complete-source.test", Identity: [32]byte{2}, Family: "complete-family",
+			EndpointHandle: "complete-handle", RootPEM: secondAuthority.rootPEM, LeafKeyDigest: secondServer.pin},
+	}
 	config.Source.ClientCertificate = client.certificate
 	config.Source.MaterialIndex = 1
 	endpoint, err := state.Open(config)

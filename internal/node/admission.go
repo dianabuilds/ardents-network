@@ -80,7 +80,7 @@ func assessAdmission(config runtimeConfig, snapshot Facts) admission {
 	}
 	now := config.now()
 	terminal := now.Add(config.Probe.MaximumDuty)
-	if snapshot.Conflicting || snapshot.Freshness != "fresh" || now.Before(snapshot.EpochValidFrom) ||
+	if snapshot.Conflicting || !snapshot.Fresh || now.Before(snapshot.EpochValidFrom) ||
 		now.Before(snapshot.RecordValidFrom) || !terminal.Before(snapshot.ValidUntil) ||
 		!terminal.Before(snapshot.RecordValidUntil) {
 		return admission{kind: admissionPrepared, reason: "freshness, validity, or terminal duty bound is not satisfied"}

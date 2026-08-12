@@ -32,7 +32,7 @@ func runNode(ctx context.Context, path string, output io.Writer) error {
 			Generation: snapshot.Generation, NetworkID: snapshot.NetworkID,
 			Epoch: snapshot.Epoch, Digest: snapshot.Digest,
 			EpochValidFrom: snapshot.EpochValidFrom, ValidUntil: snapshot.ValidUntil,
-			Profile: snapshot.Profile, Freshness: snapshot.Freshness, Conflicting: snapshot.Conflicting,
+			Profile: snapshot.Profile, Fresh: snapshot.Freshness == "fresh", Conflicting: snapshot.Conflicting,
 			RecordPresent: snapshot.RecordPresent, NodeID: snapshot.NodeID,
 			NodePublicKey: snapshot.NodePublicKey, RecordValidFrom: snapshot.RecordValidFrom,
 			RecordValidUntil: snapshot.RecordValidUntil, ProbeEndpoint: snapshot.ProbeEndpoint,

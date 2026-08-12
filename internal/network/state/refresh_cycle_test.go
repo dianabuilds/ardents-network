@@ -15,7 +15,7 @@ func TestInterruptedCycleResumesOnlyUnstartedLatestAttempt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := source.New(source.Config{OrderSeed: sha256.Sum256([]byte("resume-order"))}, nil)
+	plan, _, err := source.New(source.Config{OrderSeed: sha256.Sum256([]byte("resume-order"))}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

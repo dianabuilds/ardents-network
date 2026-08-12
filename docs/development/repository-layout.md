@@ -85,7 +85,7 @@ The maintained product Modules are:
 | `internal/network/store` | Own the exclusive state root, immutable generations, control journal, and atomic pointers. |
 | `internal/node` | Bind one local Node identity to authenticated assignment, readiness, duty, drain, withdrawal, and terminal cleanup. |
 | `internal/node/probe` | Own authenticated bounded role-probe TLS, framing, replay rejection, listener pressure, and cleanup. |
-| `internal/resource` | Own bounded process placement and pressure transitions shared by State and Node. |
+| `internal/resource` | Own bounded OS/runtime measurement, process placement, hysteresis, and pressure decisions shared by State and Node; each consumer owns its reaction. |
 | `internal/planfile` | Own bounded operator-plan and credential decoding shared by command adapters. |
 
 Human-authored Dockerfiles, Compose manifests, and non-secret qualification

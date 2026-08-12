@@ -22,7 +22,7 @@ func TestAdmissionRequiresEveryPrerequisite(t *testing.T) {
 	snapshot := Facts{NetworkID: config.NetworkID, NodeID: config.NodeID, RecordPresent: true,
 		EpochValidFrom: now.Add(-time.Hour), ValidUntil: now.Add(time.Hour), RecordValidFrom: now.Add(-time.Hour),
 		RecordValidUntil: now.Add(time.Hour), Profile: "h3-role-probe-v1", Assignment: "domain-a",
-		ProbeEndpoint: config.Probe.ListenAddress, ProbeCapacity: 1, Freshness: "fresh"}
+		ProbeEndpoint: config.Probe.ListenAddress, ProbeCapacity: 1, Fresh: true}
 	copy(snapshot.NodePublicKey[:], public)
 	if got := assessAdmission(config, snapshot); got.kind != admissionReady {
 		t.Fatalf("complete admission = %+v", got)
@@ -41,7 +41,7 @@ func TestAdmissionRequiresEveryPrerequisite(t *testing.T) {
 		{"capacity", func(s *Facts, _ *runtimeConfig) { s.ProbeCapacity = 0 }, admissionPrepared},
 		{"endpoint", func(s *Facts, _ *runtimeConfig) { s.ProbeEndpoint = "127.0.0.1:9" }, admissionFailed},
 		{"conflict", func(s *Facts, _ *runtimeConfig) { s.Conflicting = true }, admissionPrepared},
-		{"freshness", func(s *Facts, _ *runtimeConfig) { s.Freshness = "expired" }, admissionPrepared},
+		{"freshness", func(s *Facts, _ *runtimeConfig) { s.Fresh = false }, admissionPrepared},
 		{"epoch boundary", func(s *Facts, _ *runtimeConfig) { s.ValidUntil = now.Add(time.Second) }, admissionPrepared},
 		{"record boundary", func(s *Facts, _ *runtimeConfig) { s.RecordValidUntil = now.Add(time.Second) }, admissionPrepared},
 		{"placement", func(_ *Facts, c *runtimeConfig) {

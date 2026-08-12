@@ -315,6 +315,15 @@ qualification or `internal/lab`. The resource governor begins unexported inside
 each Module; it is not promoted to a generic package until a second real
 maintained caller proves a shared seam.
 
+**Implementation lifecycle note (2026-08-12):** Network State and Node are now
+the two real maintained callers that prove that seam. Under ADR-0010 the shared
+deep Module is `internal/resource`; it owns only OS/runtime measurement,
+placement checks, hysteresis, and the common `NORMAL`/`PROTECT`/`DRAIN` pressure
+decision. Network State and Node still own their distinct reactions, readiness,
+admission, drain, and shutdown behavior. Resource does not know Epoch, Source,
+Route, Node duty, or qualification. This note records the implementation
+lifecycle and does not rewrite the accepted decision or authorize Stage 2.
+
 The proposed factual paths, created only with implementation and callers, are:
 
 - `internal/networkstate`;
@@ -323,6 +332,12 @@ The proposed factual paths, created only with implementation and callers, are:
 - `cmd/ardents`;
 - `cmd/ardents-node`;
 - `cmd/ardents-qualify`.
+
+Those proposal-era package names are retained as history. ADR-0010 and the
+factual package map now place their cohesive responsibilities under
+`internal/network/*`, `internal/node/*`, `internal/resource`, and
+`internal/qualification/*`; no monolithic `networkstate` or `nodelifecycle`
+package is restored.
 
 No `util`, `types`, `interfaces`, generic transport, SDK, daemon framework, or
 future-role package is permitted.

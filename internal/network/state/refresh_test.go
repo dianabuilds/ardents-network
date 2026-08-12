@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
@@ -59,13 +60,12 @@ func TestRefreshWaitsForTwoAuthenticatedSourcesAndRestarts(t *testing.T) {
 	endpointConfig.Clock = func() time.Time { return now }
 	endpointConfig.Now = time.Time{}
 	endpointConfig.ClockObservation = now
-	endpointConfig.Source.Addresses = addresses
-	endpointConfig.Source.ServerNames = [2]string{"source-one.test", "source-two.test"}
-	endpointConfig.Source.Identities = [2][32]byte{sha256.Sum256([]byte("source-one")), sha256.Sum256([]byte("source-two"))}
-	endpointConfig.Source.Families = [2]string{"source-family-one", "source-family-two"}
-	endpointConfig.Source.EndpointHandles = [2]string{"source-handle-one", "source-handle-two"}
-	endpointConfig.Source.RootPEM = [2][]byte{firstAuthority.rootPEM, secondAuthority.rootPEM}
-	endpointConfig.Source.LeafKeyDigests = [2][32]byte{firstServer.pin, secondServer.pin}
+	endpointConfig.Source.Sources = [2]source.Source{
+		{Address: addresses[0], ServerName: "source-one.test", Identity: sha256.Sum256([]byte("source-one")),
+			Family: "source-family-one", EndpointHandle: "source-handle-one", RootPEM: firstAuthority.rootPEM, LeafKeyDigest: firstServer.pin},
+		{Address: addresses[1], ServerName: "source-two.test", Identity: sha256.Sum256([]byte("source-two")),
+			Family: "source-family-two", EndpointHandle: "source-handle-two", RootPEM: secondAuthority.rootPEM, LeafKeyDigest: secondServer.pin},
+	}
 	endpointConfig.Source.ClientCertificate = client.certificate
 	endpointConfig.Source.OrderSeed = sha256.Sum256([]byte("fixed-source-order"))
 
@@ -139,8 +139,8 @@ func TestRefreshPersistsTLSFailureBackoff(t *testing.T) {
 	successor := nextFixture(t, genesis)
 	config, closeSources := sourceEnvironment(t, genesis, successor, successor)
 	defer closeSources()
-	config.Source.LeafKeyDigests[0] = sha256.Sum256([]byte("wrong-source-one-pin"))
-	config.Source.LeafKeyDigests[1] = sha256.Sum256([]byte("wrong-source-two-pin"))
+	config.Source.Sources[0].LeafKeyDigest = sha256.Sum256([]byte("wrong-source-one-pin"))
+	config.Source.Sources[1].LeafKeyDigest = sha256.Sum256([]byte("wrong-source-two-pin"))
 	endpoint, err := state.Open(config)
 	if err != nil {
 		t.Fatal(err)
@@ -170,7 +170,7 @@ func TestRefreshRecordsPartialWaveWithoutCompletenessClaim(t *testing.T) {
 	successor := nextFixture(t, genesis)
 	config, closeSources := sourceEnvironment(t, genesis, successor, successor)
 	defer closeSources()
-	config.Source.LeafKeyDigests[0] = sha256.Sum256([]byte("wrong-source-one-pin"))
+	config.Source.Sources[0].LeafKeyDigest = sha256.Sum256([]byte("wrong-source-one-pin"))
 	endpoint, err := state.Open(config)
 	if err != nil {
 		t.Fatal(err)
@@ -290,13 +290,12 @@ func sourceEnvironment(t *testing.T, genesis, firstValue, secondValue fixture) (
 	config.Now = time.Time{}
 	config.Clock = func() time.Time { return now }
 	config.ClockObservation = now
-	config.Source.Addresses = addresses
-	config.Source.ServerNames = [2]string{"first-source.test", "second-source.test"}
-	config.Source.Identities = [2][32]byte{sha256.Sum256([]byte("first-source")), sha256.Sum256([]byte("second-source"))}
-	config.Source.Families = [2]string{"first-source-family", "second-source-family"}
-	config.Source.EndpointHandles = [2]string{"first-source-handle", "second-source-handle"}
-	config.Source.RootPEM = [2][]byte{firstAuthority.rootPEM, secondAuthority.rootPEM}
-	config.Source.LeafKeyDigests = [2][32]byte{firstServer.pin, secondServer.pin}
+	config.Source.Sources = [2]source.Source{
+		{Address: addresses[0], ServerName: "first-source.test", Identity: sha256.Sum256([]byte("first-source")),
+			Family: "first-source-family", EndpointHandle: "first-source-handle", RootPEM: firstAuthority.rootPEM, LeafKeyDigest: firstServer.pin},
+		{Address: addresses[1], ServerName: "second-source.test", Identity: sha256.Sum256([]byte("second-source")),
+			Family: "second-source-family", EndpointHandle: "second-source-handle", RootPEM: secondAuthority.rootPEM, LeafKeyDigest: secondServer.pin},
+	}
 	config.Source.ClientCertificate = client.certificate
 	config.Source.OrderSeed = sha256.Sum256([]byte("source-environment-order"))
 	return config, func() { _ = first.Close(); _ = second.Close() }

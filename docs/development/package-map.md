@@ -42,7 +42,7 @@ Only purpose-named `cmd/*-lab` adapters may start laboratory Modules.
 | `internal/qualification/state` | `package state` | Independently read and recompute bounded persisted Network State framing, digests, signatures, Epoch chain, Candidate View, rejections, summaries, assignments, and materialization proofs, then return the terminal verdict. | `internal/qualification/byteio`, standard library |
 | `internal/qualification/node` | `package node` | Run the bounded black-box Node Docker campaign, hostile workloads, Linux fault injection, external observations, evidence, and terminal verdict. | `internal/qualification/byteio`, `internal/qualification/node/fixture`, `golang.org/x/sys/unix`, standard library |
 | `internal/qualification/node/fixture` | `package fixture` | Create one immutable bounded Node qualification fixture and optionally seed its initial persisted Network State. | `internal/network/epoch/assignment`, `internal/qualification/byteio`, `internal/qualification/epochfixture`, standard library |
-| `internal/resource` | `package resource` | Enforce one fixed H3 runtime/cgroup placement and own the finite NORMAL/PROTECT/DRAIN pressure transition behind `Check` and `Observe`. | standard library |
+| `internal/resource` | `package resource` | Own shared OS/runtime measurement, fixed H3 placement, hysteresis, and the finite NORMAL/PROTECT/DRAIN pressure decision behind `Check` and `Observe`; consumers own readiness, admission, drain, and shutdown reactions. | standard library |
 | `internal/architecture` | `package architecture` | Test repository structure, names, dependencies, formatting, and quality wiring. | standard library |
 
 ## Carrier Lab command registry

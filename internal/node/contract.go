@@ -21,7 +21,6 @@ type Facts struct {
 	EpochValidFrom   time.Time
 	ValidUntil       time.Time
 	Profile          string
-	Freshness        string
 	Conflicting      bool
 	RecordPresent    bool
 	NodeID           [32]byte
@@ -32,6 +31,7 @@ type Facts struct {
 	ProbeCapacity    uint16
 	Assignment       string
 	AssignmentDigest [32]byte
+	Fresh            bool
 }
 
 // Config binds one local identity, authenticated duty facts, and private role-probe listener.

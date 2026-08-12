@@ -128,7 +128,7 @@ func TestDrainCancelsEstablishedProbeAtDeadline(t *testing.T) {
 	waitForState(t, events, "READY")
 	established := dialProbe(t, fixture)
 	fixture.mu.Lock()
-	fixture.snapshot.Freshness = "expired"
+	fixture.snapshot.Fresh = false
 	fixture.mu.Unlock()
 	waitForState(t, events, "DRAINING")
 	select {
@@ -215,7 +215,7 @@ func newLifecycleFixture(t *testing.T) *lifecycleFixture {
 	address := reserveAddress(t)
 	snapshot := Facts{Generation: "generation-1", NetworkID: [32]byte{1}, Epoch: 1,
 		Digest: [32]byte{3}, EpochValidFrom: now.Add(-time.Hour), ValidUntil: now.Add(time.Hour),
-		Profile: "h3-role-probe-v1", Freshness: "fresh", RecordPresent: true, NodeID: [32]byte{2},
+		Profile: "h3-role-probe-v1", Fresh: true, RecordPresent: true, NodeID: [32]byte{2},
 		RecordValidFrom: now.Add(-time.Hour), RecordValidUntil: now.Add(time.Hour), ProbeEndpoint: address, ProbeCapacity: 4,
 		Assignment: "domain-a", AssignmentDigest: [32]byte{4}}
 	copy(snapshot.NodePublicKey[:], identityPublic)

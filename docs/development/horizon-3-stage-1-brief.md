@@ -108,6 +108,7 @@ behavior tests, a non-test caller, and the package-map row.
 | `internal/network/{state,epoch,source,store}` | Orchestrate Network State while keeping Epoch semantics, Direct-Origin Source, and durable storage under distinct owners | `internal/resource`, standard library |
 | `internal/node` | Run one local Node identity through assignment, readiness, duty, drain, withdrawal, and terminal cleanup | `internal/node/probe`, `internal/resource`, standard library |
 | `internal/node/probe` | Own bounded authenticated role-probe transport and accepted work | standard library |
+| `internal/resource` | Own common OS/runtime measurement, placement, hysteresis, and `NORMAL`/`PROTECT`/`DRAIN`; State and Node own their reactions | standard library |
 | `internal/qualification/{state,node}` | Own independent State verification and black-box Node campaign evidence | standard library |
 | `cmd/ardents` | Run the Endpoint Network State consumer and expose bounded local status | `internal/network/state`, `internal/network/source`, `internal/planfile`, standard library |
 | `cmd/ardents-node` | Run one separately configured Node identity and one active role per process | Network, Node, Probe, and planfile Modules; standard library |
@@ -124,10 +125,11 @@ The product import direction is:
 cmd/ardents -> internal/network/state, internal/network/source
 cmd/ardents-node -> internal/network/state, internal/node
 cmd/ardents-qualify -> internal/qualification/state, internal/qualification/node
-internal/network/state -> internal/network/epoch, internal/network/framing, internal/network/source, internal/network/store
+internal/network/state -> internal/network/epoch, internal/network/epoch/assignment, internal/network/epoch/merkle, internal/network/framing, internal/network/source, internal/network/store, internal/resource
 internal/network/epoch -> internal/network/epoch/assignment, internal/network/epoch/merkle, internal/network/framing
 internal/node -> internal/node/probe, internal/resource
-internal/qualification/state -> internal/network/epoch, internal/qualification/byteio
+internal/resource -> standard library
+internal/qualification/state -> internal/qualification/byteio
 internal/qualification/node -> internal/qualification/byteio, internal/qualification/node/fixture
 internal/qualification/node/fixture -> internal/network/epoch/assignment, internal/qualification/byteio, internal/qualification/epochfixture
 internal/qualification/epochfixture -> internal/network/epoch/assignment, internal/network/epoch/merkle
@@ -137,10 +139,12 @@ internal/qualification/byteio -> standard library
 Product Modules and product runtime commands never import qualification or
 `internal/lab`. Qualification drives product executables as black boxes and
 must independently recompute security decisions rather than importing their
-validator. Do not create a resource, crypto, transport, persistence, schema,
-errors, types, interfaces, adapters, common, util, API, or SDK package. Keep the
-resource governor private to its owning Module. A future second implementation
-may justify a new seam; Stage 1 does not.
+validator. `internal/resource` remains the shared deep Module proven by its two
+production consumers; it owns only measurement, placement, hysteresis, and
+pressure decisions, while State and Node own their reactions. It must not know
+Epoch, Source, Route, Node duty, or qualification. Do not create crypto,
+transport, persistence, schema, errors, types, interfaces, adapters, common,
+util, API, or SDK packages.
 
 When `internal/qualification` and `cmd/ardents-qualify` first appear, extend the
 architecture gate in the same increment so it enforces their non-product status,

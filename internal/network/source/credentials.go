@@ -11,7 +11,7 @@ import (
 )
 
 func configureClients(plan *Plan, input Config, authorities map[[32]byte]ed25519.PublicKey) error {
-	if input.Addresses[0] == "" || input.Addresses[1] == "" {
+	if input.Sources[0].Address == "" || input.Sources[1].Address == "" {
 		return errors.New("finite source plan requires exactly two sources")
 	}
 	if err := validateCertificate(input.ClientCertificate); err != nil {
@@ -22,33 +22,34 @@ func configureClients(plan *Plan, input Config, authorities map[[32]byte]ed25519
 		return errors.New("source client transport key must be separate from Epoch signer keys")
 	}
 	for index := range plan.clients {
-		roots, err := parseRoots(input.RootPEM[index])
+		declared := input.Sources[index]
+		roots, err := parseRoots(declared.RootPEM)
 		if err != nil {
 			return err
 		}
-		if err := validateAddress(input.Addresses[index]); err != nil {
+		if err := validateAddress(declared.Address); err != nil {
 			return err
 		}
-		if !validText(input.ServerNames[index], 253) || isZero(input.Identities[index]) ||
-			!validText(input.Families[index], 64) || !validText(input.EndpointHandles[index], 96) ||
-			isZero(input.LeafKeyDigests[index]) {
+		if !validText(declared.ServerName, 253) || isZero(declared.Identity) ||
+			!validText(declared.Family, 64) || !validText(declared.EndpointHandle, 96) ||
+			isZero(declared.LeafKeyDigest) {
 			return errors.New("source trust-map entry is incomplete")
 		}
-		if _, exists := authorities[input.Identities[index]]; exists {
+		if _, exists := authorities[declared.Identity]; exists {
 			return errors.New("source identity collides with an Epoch authority")
 		}
-		if input.LeafKeyDigests[index] == clientDigest || digestIsAuthority(input.LeafKeyDigests[index], authorities) {
+		if declared.LeafKeyDigest == clientDigest || digestIsAuthority(declared.LeafKeyDigest, authorities) {
 			return errors.New("client, source, and Epoch signer keys must be separate")
 		}
-		plan.clients[index] = client{address: input.Addresses[index], serverName: input.ServerNames[index],
-			roots: roots, leafKeyDigest: input.LeafKeyDigests[index], certificate: input.ClientCertificate}
+		plan.clients[index] = client{address: declared.Address, serverName: declared.ServerName,
+			roots: roots, leafKeyDigest: declared.LeafKeyDigest, certificate: input.ClientCertificate}
 		plan.details.Identities[index], plan.details.Families[index], plan.details.EndpointHandles[index] =
-			input.Identities[index], input.Families[index], input.EndpointHandles[index]
-		raw := append([]byte("ardents-h3-direct-source-exposure-v1\x00"), input.Identities[index][:]...)
-		raw = append(raw, byte(len(input.Families[index])))
-		raw = append(raw, input.Families[index]...)
-		raw = append(raw, byte(len(input.EndpointHandles[index])))
-		raw = append(raw, input.EndpointHandles[index]...)
+			declared.Identity, declared.Family, declared.EndpointHandle
+		raw := append([]byte("ardents-h3-direct-source-exposure-v1\x00"), declared.Identity[:]...)
+		raw = append(raw, byte(len(declared.Family)))
+		raw = append(raw, declared.Family...)
+		raw = append(raw, byte(len(declared.EndpointHandle)))
+		raw = append(raw, declared.EndpointHandle...)
 		plan.details.Exposures[index] = sha256.Sum256(raw)
 	}
 	if plan.details.Identities[0] == plan.details.Identities[1] || plan.details.Families[0] == plan.details.Families[1] ||

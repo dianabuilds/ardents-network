@@ -9,15 +9,20 @@ import (
 	"time"
 )
 
+// Source is one indivisible Direct-Origin Source declaration.
+type Source struct {
+	Address        string
+	ServerName     string
+	Identity       [32]byte
+	Family         string
+	EndpointHandle string
+	RootPEM        []byte
+	LeafKeyDigest  [32]byte
+}
+
 // Config declares the complete finite Direct-Origin Source plan.
 type Config struct {
-	Addresses         [2]string
-	ServerNames       [2]string
-	Identities        [2][32]byte
-	Families          [2]string
-	EndpointHandles   [2]string
-	RootPEM           [2][]byte
-	LeafKeyDigests    [2][32]byte
+	Sources           [2]Source
 	ClientCertificate tls.Certificate
 	MaterialIndex     uint32
 	OrderSeed         [32]byte
@@ -66,29 +71,26 @@ type server struct {
 
 // New validates and owns one complete source plan. Empty acquisition and
 // serving halves are allowed; a partially configured half is rejected.
-func New(input Config, authorities map[[32]byte]ed25519.PublicKey) (*Plan, error) {
+func New(input Config, authorities map[[32]byte]ed25519.PublicKey) (*Plan, Details, error) {
 	plan := &Plan{details: Details{MaterialIndex: input.MaterialIndex, OrderSeed: input.OrderSeed}}
 	if input.MaterialIndex >= 64 {
-		return nil, errors.New("source materialization index exceeds its bound")
+		return nil, Details{}, errors.New("source materialization index exceeds its bound")
 	}
-	if input.Addresses[0] != "" || input.Addresses[1] != "" {
+	if input.Sources[0].Address != "" || input.Sources[1].Address != "" {
 		if err := configureClients(plan, input, authorities); err != nil {
-			return nil, err
+			return nil, Details{}, err
 		}
 	}
 	if input.ServeAddress != "" {
 		resolved, err := configureServer(input, authorities)
 		if err != nil {
-			return nil, err
+			return nil, Details{}, err
 		}
 		plan.server = resolved
 		plan.details.Serving = true
 	}
-	return plan, nil
+	return plan, plan.details, nil
 }
-
-// Details returns the immutable non-secret plan facts.
-func (p *Plan) Details() Details { return p.details }
 
 // Fetch performs one bounded authenticated request through a configured source.
 func (p *Plan) Fetch(ctx context.Context, index int, request Message) (Message, error) {
