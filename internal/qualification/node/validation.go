@@ -1,11 +1,60 @@
 package node
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net"
+	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/qualification/node/fixture"
 )
+
+func validateCampaign(input Campaign) (Campaign, error) {
+	if campaignDuration(input.Mode) < 0 {
+		return input, errors.New("node campaign mode is invalid")
+	}
+	if err := validateNodeSpecialInput(input, input.Mode); err != nil {
+		return input, err
+	}
+	var err error
+	if input.FixtureRoot, err = filepath.Abs(input.FixtureRoot); err != nil {
+		return input, fmt.Errorf("resolve node fixture root: %w", err)
+	}
+	if input.EvidenceRoot, err = filepath.Abs(input.EvidenceRoot); err != nil {
+		return input, fmt.Errorf("resolve node evidence root: %w", err)
+	}
+	if input.ComposeFile, err = filepath.Abs(input.ComposeFile); err != nil {
+		return input, fmt.Errorf("resolve node Compose file: %w", err)
+	}
+	if err := fixture.Validate(input.FixtureRoot); err != nil {
+		return input, fmt.Errorf("validate node fixture: %w", err)
+	}
+	if _, err := os.Stat(input.ComposeFile); err != nil {
+		return input, fmt.Errorf("inspect node Compose file: %w", err)
+	}
+	if err := os.Mkdir(input.EvidenceRoot, 0o700); err != nil {
+		return input, fmt.Errorf("create node evidence root: %w", err)
+	}
+	owner := filepath.Join(input.EvidenceRoot, ".ardents-node-evidence")
+	if err := os.WriteFile(owner, []byte(nodeEvidenceOwner), 0o600); err != nil {
+		return input, fmt.Errorf("write node evidence owner: %w", err)
+	}
+	raw, err := json.Marshal(input)
+	if err != nil {
+		return input, fmt.Errorf("encode node campaign input: %w", err)
+	}
+	if len(raw) > 16<<10 {
+		return input, errors.New("node campaign input exceeds its bound")
+	}
+	path := filepath.Join(input.EvidenceRoot, "campaign-input.json")
+	if err := os.WriteFile(path, append(raw, '\n'), 0o600); err != nil {
+		return input, fmt.Errorf("write node campaign input: %w", err)
+	}
+	return input, nil
+}
 
 func validateNodeSpecialInput(input Campaign, mode string) error {
 	if len(input.Mode) > 32 || input.Mode != mode {
@@ -45,7 +94,7 @@ func validateNodeInjectionInput(input Campaign) error {
 		input.FixtureRoot != "" || input.EvidenceRoot != "" || input.ComposeFile != "" {
 		return errors.New("node injection input is invalid")
 	}
-	if input.Injection == "memory" || input.Injection == "cpu" {
+	if input.Injection == "memory" || input.Injection == "cpu" || input.Injection == "nofile" {
 		if len(input.Addresses) != 0 || input.SecretRoot != "" || input.ProbePlan != "" {
 			return errors.New("node pressure injection has irrelevant fields")
 		}

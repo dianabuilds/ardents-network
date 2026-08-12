@@ -2,6 +2,7 @@ package node
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"testing"
 	"time"
@@ -51,5 +52,88 @@ func TestCandidateInspectTreatsPIDZeroAsObservedExit(t *testing.T) {
 	}
 	if _, _, err := nodeCandidateFromInspect("node1", "abc123def456", "abc123def456789\tnot-a-pid\n"); err == nil {
 		t.Fatal("malformed host PID was accepted")
+	}
+}
+
+func TestNofileInjectionAcceptsNoCandidateControlledInputs(t *testing.T) {
+	input := Campaign{Mode: "inject", Injection: "nofile"}
+	if err := validateNodeInjectionInput(input); err != nil {
+		t.Fatalf("nofile injection rejected: %v", err)
+	}
+	input.Addresses = []string{"127.0.0.1:1"}
+	if err := validateNodeInjectionInput(input); err == nil {
+		t.Fatal("nofile injection accepted an irrelevant address")
+	}
+}
+
+func TestMachineResultRejectsFailedOrMalformedStimulus(t *testing.T) {
+	expected := "EMFILE descriptor occupancy completed"
+	if err := classifyNodeMachineResult([]byte(`{"verdict":"pass","reason":"EMFILE descriptor occupancy completed"}`),
+		0, expected); err != nil {
+		t.Fatalf("exact machine result rejected: %v", err)
+	}
+	for _, raw := range [][]byte{
+		[]byte(`{"verdict":"fail","reason":"EMFILE injector could not establish a descriptor stimulus"}`),
+		[]byte(`{"verdict":"pass","reason":"different"}`),
+		[]byte("docker daemon unavailable"),
+	} {
+		if err := classifyNodeMachineResult(raw, 0, expected); err == nil {
+			t.Fatalf("invalid machine result accepted: %s", raw)
+		}
+	}
+}
+
+func TestMachineCommandSeparatesCandidateFailureFromInvalidHarness(t *testing.T) {
+	failure := []byte(`{"verdict":"fail","reason":"candidate rejected probe"}`)
+	if err := classifyNodeMachineResult(failure, 1, "pass reason"); err == nil || errors.Is(err, errInvalidNodeCampaign) {
+		t.Fatalf("candidate failure = %v, want ordinary fail", err)
+	}
+	for _, test := range []struct {
+		raw  []byte
+		exit int
+	}{
+		{failure, 2},
+		{[]byte(`{"verdict":"pass","reason":"pass reason"}`), 1},
+		{[]byte("daemon unavailable"), 1},
+	} {
+		if err := classifyNodeMachineResult(test.raw, test.exit, "pass reason"); !errors.Is(err, errInvalidNodeCampaign) {
+			t.Fatalf("machine result %s/exit %d = %v, want invalid", test.raw, test.exit, err)
+		}
+	}
+}
+
+func TestProductCommandSeparatesCandidateOutputFromDockerFailure(t *testing.T) {
+	dockerErr := invalidNodeCampaign(errors.New("docker daemon unavailable"))
+	if err := nodeProductCommandError(dockerErr, "refresh network state:", "candidate failed"); !errors.Is(err, errInvalidNodeCampaign) {
+		t.Fatalf("Docker failure = %v, want invalid", err)
+	}
+	productErr := invalidNodeCampaign(errors.New("refresh network state: rejected"))
+	if err := nodeProductCommandError(productErr, "refresh network state:", "candidate failed"); err == nil || errors.Is(err, errInvalidNodeCampaign) {
+		t.Fatalf("product failure = %v, want ordinary candidate failure", err)
+	}
+}
+
+func TestReadyEventRequiresExactState(t *testing.T) {
+	if !nodeReadyEvent([]byte("{\"kind\":\"lifecycle\",\"state\":\"READY\"}\n")) {
+		t.Fatal("READY event rejected")
+	}
+	for _, raw := range [][]byte{
+		[]byte(`{"state":"NOT_READY"}`),
+		[]byte(`{"message":"candidate emitted \\"state\\":\\"READY\\""}`),
+		[]byte(`not-json {"state":"READY"}`),
+		[]byte(`node1  | {"state":"READY"}`),
+	} {
+		if nodeReadyEvent(raw) {
+			t.Fatalf("non-event READY accepted: %s", raw)
+		}
+	}
+}
+
+func TestDiskFullStimulusMarkerRequiresExactLine(t *testing.T) {
+	if !nodeLogContainsExactLine([]byte("before\n"+nodeDiskFullStimulus+"\nafter\n"), nodeDiskFullStimulus) {
+		t.Fatal("exact disk-full stimulus marker rejected")
+	}
+	if nodeLogContainsExactLine([]byte("prefix "+nodeDiskFullStimulus+" suffix\n"), nodeDiskFullStimulus) {
+		t.Fatal("embedded disk-full stimulus marker accepted")
 	}
 }

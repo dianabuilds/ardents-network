@@ -22,8 +22,12 @@ func (observer *nodeObserver) result(verdict string, cause error) Result {
 	if evidenceErr != nil {
 		verdict, cause = "invalid", errors.Join(cause, errors.New("node external evidence failed"), evidenceErr)
 	}
-	if manifestErr := validateNodeCampaignManifest(observer.input.EvidenceRoot, observer.input.FixtureRoot); manifestErr != nil {
+	if manifestErr := validateNodeCampaignManifest(observer.input.EvidenceRoot, observer.input.FixtureRoot,
+		observer.input.Mode, observer.sourceDigest, observer.initialStateDigest); manifestErr != nil {
 		verdict, cause = "invalid", errors.Join(cause, manifestErr)
+	}
+	if sourceErr := validateNodeSourceIdentity(observer.input.EvidenceRoot, observer.sourceRoot, observer.sourceDigest); sourceErr != nil {
+		verdict, cause = "invalid", errors.Join(cause, sourceErr)
 	}
 	if verdict != "invalid" {
 		if resourceErr := observer.verifyResourceEvidence(); resourceErr != nil {
@@ -80,8 +84,11 @@ func (observer *nodeObserver) recordEvidenceError(err error) {
 
 func writeNodeResult(root string, result Result) error {
 	raw, err := json.Marshal(result)
-	if err != nil || len(raw) > 64<<10 {
-		return errors.Join(err, errors.New("node terminal result exceeds its bound"))
+	if err != nil {
+		return err
+	}
+	if len(raw) > 64<<10 {
+		return errors.New("node terminal result exceeds its bound")
 	}
 	temporary := filepath.Join(root, ".result-stage")
 	file, err := os.OpenFile(temporary, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)

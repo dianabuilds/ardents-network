@@ -28,6 +28,9 @@ func validateConfig(input Config) (config, error) {
 	if input.Now.IsZero() && input.Clock == nil {
 		return config{}, errors.New("verification time is required")
 	}
+	if !input.Now.IsZero() && input.Clock != nil {
+		return config{}, errors.New("verification time has multiple owners")
+	}
 	clock := input.Clock
 	if clock == nil {
 		fixed := input.Now.UTC()
@@ -40,7 +43,7 @@ func validateConfig(input Config) (config, error) {
 	if input.ClockObservationFile != "" {
 		observationPath, pathErr := filepath.Abs(input.ClockObservationFile)
 		if pathErr != nil {
-			return config{}, errors.New("resolve clock observation file")
+			return config{}, fmt.Errorf("resolve clock observation file: %w", pathErr)
 		}
 		observe = fileClockObserver(observationPath)
 	}

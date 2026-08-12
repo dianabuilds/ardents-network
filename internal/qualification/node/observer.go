@@ -1,8 +1,10 @@
 package node
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -12,33 +14,41 @@ import (
 )
 
 type nodeObserver struct {
-	input        Campaign
-	ctx          context.Context
-	cancel       context.CancelFunc
-	work         sync.WaitGroup
-	mu           sync.Mutex
-	clock        [3]bool
-	samples      *os.File
-	cleanupOnce  sync.Once
-	cleanupErr   error
-	captured     map[string]bool
-	evidenceErr  error
-	evidenceBad  chan struct{}
-	evidenceOnce sync.Once
-	project      string
-	imageTag     string
-	sampleBytes  int64
-	sampleCount  int
-	resources    map[string]*nodeResourceSeries
-	activeFaults map[string]bool
-	sourceDigest string
-	collectorID  string
-	sampleLimit  int
-	sampleBudget int64
+	input              Campaign
+	composeFile        string
+	ctx                context.Context
+	cancel             context.CancelFunc
+	work               sync.WaitGroup
+	mu                 sync.Mutex
+	clock              [3]bool
+	samples            *os.File
+	cleanupOnce        sync.Once
+	cleanupErr         error
+	captured           map[string]bool
+	evidenceErr        error
+	evidenceBad        chan struct{}
+	evidenceOnce       sync.Once
+	project            string
+	imageTag           string
+	sampleBytes        int64
+	sampleCount        int
+	resources          map[string]*nodeResourceSeries
+	activeFaults       map[string]bool
+	sourceDigest       string
+	sourceRoot         string
+	initialStateDigest string
+	collectorID        string
+	sampleLimit        int
+	sampleBudget       int64
+}
+
+type nodeServiceIdentity struct {
+	service string
+	id      string
 }
 
 func newNodeObserver(input Campaign) (*nodeObserver, error) {
-	sourceDigest, err := captureNodeSourceIdentity(input.ComposeFile, input.EvidenceRoot)
+	sourceDigest, sourceRoot, err := captureNodeSourceIdentity(input.ComposeFile, input.EvidenceRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +59,8 @@ func newNodeObserver(input Campaign) (*nodeObserver, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	identity := fmt.Sprintf("%x", sha256.Sum256([]byte(input.EvidenceRoot)))[:12]
 	mode, _ := selectNodeCampaignMode(input.Mode)
-	return &nodeObserver{input: input, ctx: ctx, cancel: cancel, clock: [3]bool{true, true, true}, sourceDigest: sourceDigest,
+	return &nodeObserver{input: input, composeFile: input.ComposeFile, ctx: ctx, cancel: cancel, clock: [3]bool{true, true, true},
+		sourceDigest: sourceDigest, sourceRoot: sourceRoot,
 		samples: samples, captured: make(map[string]bool), project: "ardents-node-" + identity,
 		imageTag: "run-" + identity, evidenceBad: make(chan struct{}), resources: make(map[string]*nodeResourceSeries),
 		activeFaults: make(map[string]bool),
@@ -121,7 +132,7 @@ func (observer *nodeObserver) runClock() {
 }
 
 func (observer *nodeObserver) composeBounded(ctx context.Context, limit int, arguments ...string) ([]byte, error) {
-	args := append([]string{"compose", "-p", observer.project, "-f", observer.input.ComposeFile}, arguments...)
+	args := append([]string{"compose", "-p", observer.project, "-f", observer.composeFile}, arguments...)
 	return observer.dockerBounded(ctx, limit, 32<<10, args...)
 }
 
@@ -136,16 +147,24 @@ func (observer *nodeObserver) waitReady(ctx context.Context, timeout time.Durati
 }
 
 func (observer *nodeObserver) waitServiceReady(ctx context.Context, timeout time.Duration, services ...string) error {
-	deadline := time.NewTimer(timeout)
-	defer deadline.Stop()
-	ticker := time.NewTicker(500 * time.Millisecond)
-	defer ticker.Stop()
-	for {
-		logs, err := observer.compose(ctx, append([]string{"logs", "--no-color", "--since", "45s"}, services...)...)
+	identities := make([]nodeServiceIdentity, 0, len(services))
+	for _, service := range services {
+		identity, err := observer.serviceID(ctx, service)
 		if err != nil {
 			return err
 		}
-		if countBytes(logs, []byte(`"state":"READY"`)) >= len(services) {
+		identities = append(identities, nodeServiceIdentity{service: service, id: identity})
+	}
+	deadline := time.NewTimer(timeout)
+	defer deadline.Stop()
+	ticker := time.NewTicker(250 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		ready, err := observer.serviceSetReady(ctx, identities)
+		if err != nil {
+			return err
+		}
+		if ready {
 			return nil
 		}
 		select {
@@ -156,6 +175,30 @@ func (observer *nodeObserver) waitServiceReady(ctx context.Context, timeout time
 		case <-ticker.C:
 		}
 	}
+}
+
+func (observer *nodeObserver) serviceSetReady(ctx context.Context, identities []nodeServiceIdentity) (bool, error) {
+	for _, expected := range identities {
+		current, err := observer.serviceID(ctx, expected.service)
+		if err != nil {
+			return false, err
+		}
+		if current != expected.id {
+			return false, invalidNodeCampaign(errors.New("node candidate identity changed while awaiting readiness"))
+		}
+		logs, err := observer.dockerBounded(ctx, 256<<10, 32<<10, "logs", "--since", "45s", current)
+		if err != nil {
+			return false, err
+		}
+		if !nodeReadyEvent(logs) {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func nodeReadyEvent(logs []byte) bool {
+	return countNodeLogEvents(logs, "", "READY") > 0
 }
 
 func (observer *nodeObserver) waitServiceRunning(ctx context.Context, timeout time.Duration, service string) error {
@@ -181,21 +224,25 @@ func (observer *nodeObserver) waitServiceRunning(ctx context.Context, timeout ti
 	}
 }
 
-func countBytes(raw, target []byte) int {
+func countNodeLogEvents(raw []byte, kind, state string) int {
 	count := 0
-	for index := 0; index+len(target) <= len(raw); {
-		if string(raw[index:index+len(target)]) == string(target) {
+	for _, line := range bytes.Split(raw, []byte{'\n'}) {
+		var event struct {
+			Kind  string `json:"kind"`
+			State string `json:"state"`
+		}
+		if json.Unmarshal(line, &event) == nil && event.State == state && (kind == "" || event.Kind == kind) {
 			count++
-			index += len(target)
-		} else {
-			index++
 		}
 	}
 	return count
 }
 
-func (observer *nodeObserver) close() {
-	observer.cancel()
-	observer.work.Wait()
-	observer.recordEvidenceError(observer.samples.Close())
+func nodeLogContainsExactLine(raw []byte, expected string) bool {
+	for _, line := range bytes.Split(raw, []byte{'\n'}) {
+		if string(bytes.TrimSpace(line)) == expected {
+			return true
+		}
+	}
+	return false
 }

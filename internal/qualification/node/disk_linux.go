@@ -59,6 +59,9 @@ func runNodeDiskWrapper() Result {
 	if !errors.Is(err, syscall.ENOSPC) {
 		return Result{Verdict: "invalid", Reason: "disk-full tmpfs did not reach ENOSPC"}
 	}
+	if _, err := os.Stdout.WriteString(nodeDiskFullStimulus + "\n"); err != nil {
+		return Result{Verdict: "invalid", Reason: err.Error()}
+	}
 	command := []string{"/usr/local/bin/ardents-node", "node", "--config", "/run/ardents/config.json"}
 	if err := syscall.Exec(command[0], command, os.Environ()); err != nil {
 		return Result{Verdict: "invalid", Reason: err.Error()}

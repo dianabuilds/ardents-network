@@ -43,7 +43,7 @@ services:
   source1:
     <<: *h3s
     build:
-      context: ../../..
+      context: ${ARDENTS_NODE_BUILD_CONTEXT:-../../..}
       dockerfile: tests/qualification/h3-node-v1/Dockerfile
       args:
         ARDENTS_SOURCE_DIGEST: ${ARDENTS_NODE_SOURCE_DIGEST:?source digest required}
@@ -239,7 +239,6 @@ services:
     <<: *common
     profiles: [fault]
     user: "12001:12001"
-    pid: "service:node1_emfile"
     command: [/usr/local/bin/ardents-qualify, inject-node, --mode, emfile, --addresses, "172.30.3.11:4401"]
     cpus: 0.5
     mem_limit: 128m

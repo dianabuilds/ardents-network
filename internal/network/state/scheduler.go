@@ -9,7 +9,7 @@ import (
 var errRefreshUnavailable = errors.New("finite sources are temporarily unavailable")
 var errClockUncertain = errors.New("clock confidence is outside the two-second bound")
 
-func (s *store) runAutomaticRefresh(ctx context.Context) {
+func (s *networkState) runAutomaticRefresh(ctx context.Context) {
 	defer s.work.Done()
 	ticker := time.NewTicker(s.config.automatic)
 	defer ticker.Stop()

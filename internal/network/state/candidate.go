@@ -5,7 +5,7 @@ import (
 	"errors"
 )
 
-func (s *store) verifySourceBundle(bundle sourceBundle, current *Snapshot, currentDecision *candidateDecision) (candidateDecision, error) {
+func (s *networkState) verifySourceBundle(bundle sourceBundle, current *Snapshot, currentDecision *candidateDecision) (candidateDecision, error) {
 	if len(bundle.materials) != 1 {
 		return candidateDecision{}, errors.New("source withheld the requested materialization index")
 	}

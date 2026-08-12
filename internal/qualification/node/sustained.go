@@ -42,7 +42,7 @@ func (observer *nodeObserver) runSustainedCampaign(ctx context.Context) error {
 			}
 		case <-probe.C:
 			if err := observer.partialHandshakeFlood(ctx); err != nil {
-				return invalidNodeCampaign(err)
+				return err
 			}
 		case <-churnChannel:
 			churnCycle++
@@ -75,6 +75,8 @@ func churnResourceCell(cycle int) (string, string) {
 }
 
 func (observer *nodeObserver) stabilizeCurrentAssignment(ctx context.Context) error {
+	observer.setExpectedAbsence(true, "node1", "node2")
+	defer observer.setExpectedAbsence(false, "node1", "node2")
 	if err := observer.waitStopped(ctx, 12*time.Second, "node1", "node2"); err != nil {
 		return nodeCandidateFailure("automatic reassignment did not drain both original duties", err)
 	}
@@ -86,13 +88,15 @@ func (observer *nodeObserver) stabilizeCurrentAssignment(ctx context.Context) er
 }
 
 func (observer *nodeObserver) restartCandidateSet(ctx context.Context) error {
+	observer.setExpectedAbsence(true, "source1", "source2", "node1", "node2")
+	defer observer.setExpectedAbsence(false, "source1", "source2", "node1", "node2")
 	before := [2]int{}
 	for index, service := range []string{"node1", "node2"} {
-		logs, err := observer.compose(ctx, "logs", "--no-color", "--since", "10m", service)
+		logs, err := observer.compose(ctx, "logs", "--no-color", "--no-log-prefix", "--since", "10m", service)
 		if err != nil {
 			return invalidNodeCampaign(err)
 		}
-		before[index] = countBytes(logs, []byte(`"state":"READY"`))
+		before[index] = countNodeLogEvents(logs, "", "READY")
 	}
 	if _, err := observer.compose(ctx, "restart", "source1", "source2", "node1", "node2"); err != nil {
 		return invalidNodeCampaign(err)

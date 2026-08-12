@@ -2,7 +2,7 @@ package state
 
 import "errors"
 
-func (s *store) beginLatestAttempt(index int) (bool, byte, error) {
+func (s *networkState) beginLatestAttempt(index int) (bool, byte, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	state := s.distribution
@@ -33,7 +33,7 @@ func (s *store) beginLatestAttempt(index int) (bool, byte, error) {
 	return true, 0, nil
 }
 
-func (s *store) beginDigestAttempt(source int, digest [32]byte) error {
+func (s *networkState) beginDigestAttempt(source int, digest [32]byte) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	index := 2 + source
@@ -51,7 +51,7 @@ func (s *store) beginDigestAttempt(source int, digest [32]byte) error {
 	return s.commitDistribution(state)
 }
 
-func (s *store) finishDigestAttempt(source int, succeeded bool) error {
+func (s *networkState) finishDigestAttempt(source int, succeeded bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	index := 2 + source

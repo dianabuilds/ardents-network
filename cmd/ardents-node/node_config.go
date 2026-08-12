@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"crypto/sha256"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/source"
@@ -42,7 +43,10 @@ type nodeRuntime struct {
 func readNodePlan(path string) (nodeRuntime, error) {
 	var err error
 	var plan nodePlan
-	if err := planfile.Decode(path, 64<<10, &plan); err != nil || plan.Schema != "ardents-h3-node-plan-v1" || len(plan.Sources) != 2 || len(plan.AuthorityPublic) == 0 || len(plan.AuthorityPublic) > 16 {
+	if err := planfile.Decode(path, 64<<10, &plan); err != nil {
+		return nodeRuntime{}, fmt.Errorf("decode node plan: %w", err)
+	}
+	if plan.Schema != "ardents-h3-node-plan-v1" || len(plan.Sources) != 2 || len(plan.AuthorityPublic) == 0 || len(plan.AuthorityPublic) > 16 {
 		return nodeRuntime{}, errors.New("node plan is not canonical or complete")
 	}
 	state := state.Config{Root: plan.StateRoot, Threshold: plan.Threshold, Authorities: make(map[[32]byte]ed25519.PublicKey), Clock: time.Now,

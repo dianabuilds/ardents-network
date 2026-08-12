@@ -16,7 +16,7 @@ func evaluateNodeInjection(arguments []string) (statequalification.Result, error
 	flags := flag.NewFlagSet("inject-node", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	var addresses, secrets, plan, mode string
-	flags.StringVar(&mode, "mode", "probe", "probe, memory, or cpu")
+	flags.StringVar(&mode, "mode", "probe", "probe, memory, cpu, nofile, or emfile")
 	flags.StringVar(&addresses, "addresses", "", "comma-separated literal Node addresses")
 	flags.StringVar(&secrets, "secrets", "", "isolated Harness credential root")
 	flags.StringVar(&plan, "plan", "", "frozen public role-probe plan")

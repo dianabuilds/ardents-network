@@ -97,6 +97,7 @@ func TestConfigRejectsUnboundedAutomaticAcquisition(t *testing.T) {
 		{"materialization index", func(config *state.Config) { config.Source.MaterialIndex = 64 }},
 		{"hot refresh", func(config *state.Config) { config.AutomaticRefreshInterval = time.Nanosecond }},
 		{"static observation", func(config *state.Config) { config.AutomaticRefreshInterval = time.Second }},
+		{"multiple clocks", func(config *state.Config) { config.Clock = time.Now }},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

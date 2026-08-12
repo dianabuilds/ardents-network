@@ -20,7 +20,7 @@ func TestInterruptedCycleResumesOnlyUnstartedLatestAttempt(t *testing.T) {
 		t.Fatal(err)
 	}
 	config := config{root: root, source: plan}
-	initial := &store{config: config, storage: storage}
+	initial := &networkState{config: config, storage: storage}
 	if err := initial.loadDistributionState(); err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestInterruptedCycleResumesOnlyUnstartedLatestAttempt(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer storage.Close()
-	restarted := &store{config: config, storage: storage}
+	restarted := &networkState{config: config, storage: storage}
 	if err := restarted.loadDistributionState(); err != nil {
 		t.Fatal(err)
 	}

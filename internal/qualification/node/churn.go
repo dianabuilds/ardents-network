@@ -3,11 +3,14 @@ package node
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/qualification/byteio"
 )
 
 func (observer *nodeObserver) runRestartQuiescence(ctx context.Context) error {
@@ -18,26 +21,46 @@ func (observer *nodeObserver) runRestartQuiescence(ctx context.Context) error {
 	for range 3 {
 		before := [2]int{}
 		for index, service := range []string{"node1", "node2"} {
-			logs, err := observer.compose(ctx, "logs", "--no-color", "--since", "10m", service)
+			logs, err := observer.compose(ctx, "logs", "--no-color", "--no-log-prefix", "--since", "10m", service)
 			if err != nil {
 				return err
 			}
-			before[index] = countBytes(logs, []byte(`"state":"READY"`))
+			before[index] = countNodeLogEvents(logs, "", "READY")
 		}
+		observer.setExpectedAbsence(true, "source1", "source2", "node1", "node2")
 		if _, err := observer.compose(ctx, "restart", "source1", "source2", "node1", "node2"); err != nil {
+			observer.setExpectedAbsence(false, "source1", "source2", "node1", "node2")
 			return err
 		}
 		if err := observer.waitNewReadiness(ctx, before); err != nil {
+			observer.setExpectedAbsence(false, "source1", "source2", "node1", "node2")
 			return err
 		}
+		observer.setExpectedAbsence(false, "source1", "source2", "node1", "node2")
 	}
 	if err := waitNode(ctx, 120*time.Second); err != nil {
 		return err
 	}
 	after, err := observer.sampleNodeResources(ctx, time.Now())
-	if err != nil || !nodeQuiescentResources(baseline, after) {
-		return errors.Join(err, errors.New("node candidate resources did not quiesce after 120 seconds"))
+	quiescenceErr := errors.Join(err, validateNodeQuiescentResources(baseline, after))
+	if quiescenceErr == nil {
+		quiescenceErr = observer.validateNodeProcessQuiescence(ctx)
 	}
+	if quiescenceErr == nil {
+		quiescenceErr = verifyNodeStateQuiescence(observer.input.FixtureRoot)
+	}
+	receiptErr := byteio.WriteJSON(filepath.Join(observer.input.EvidenceRoot, "quiescence.json"), map[string]any{
+		"schema": "ardents-h3-node-quiescence-v1", "baseline": baseline, "after": after,
+		"scope":   []string{"cgroup-memory", "process-fds", "process-sockets", "process-pids", "candidate-state"},
+		"verdict": nodeQuiescenceVerdict(quiescenceErr), "reason": errorText(quiescenceErr),
+	}, 256<<10)
+	if receiptErr != nil {
+		return errors.Join(quiescenceErr, invalidNodeCampaign(fmt.Errorf("write node quiescence evidence: %w", receiptErr)))
+	}
+	return quiescenceErr
+}
+
+func (observer *nodeObserver) validateNodeProcessQuiescence(ctx context.Context) error {
 	ids, err := observer.compose(ctx, "ps", "-q")
 	if err != nil {
 		return err
@@ -57,22 +80,26 @@ func (observer *nodeObserver) runRestartQuiescence(ctx context.Context) error {
 			return errors.New("node process tree exceeded its PID fuse after churn")
 		}
 	}
-	return verifyNodeStateQuiescence(observer.input.FixtureRoot)
+	return nil
 }
 
-func nodeQuiescentResources(before, after []nodeResourceSnapshot) bool {
+func validateNodeQuiescentResources(before, after []nodeResourceSnapshot) error {
 	baseline := make(map[string]nodeResourceSnapshot, len(before))
 	for _, sample := range before {
 		baseline[sample.Service] = sample
 	}
-	checked := 0
+	current := make(map[string]nodeResourceSnapshot, len(after))
 	for _, sample := range after {
-		first, found := baseline[sample.Service]
-		if !found || sample.Service == "endpoint" {
-			continue
+		current[sample.Service] = sample
+	}
+	for _, service := range []string{"source1", "source2", "endpoint", "node1", "node2"} {
+		first, beforeOK := baseline[service]
+		sample, afterOK := current[service]
+		if !beforeOK || !afterOK {
+			return invalidNodeCampaign(errors.New("node quiescence sample is missing for " + service))
 		}
 		if sample.FDs > first.FDs+16 || sample.Sockets > first.Sockets+4 || sample.PIDs > first.PIDs+32 {
-			return false
+			return errors.New("node descriptor, socket, or PID quiescence gate failed for " + service)
 		}
 		for _, name := range []string{"anon", "sock", "slab"} {
 			old, oldOK := nodeRawCounter(first.Raw["memory.stat"], name)
@@ -82,13 +109,25 @@ func nodeQuiescentResources(before, after []nodeResourceSnapshot) bool {
 				absolute = 8 << 20
 			}
 			allowed := max(absolute, old/20)
-			if !oldOK || !currentOK || current > old+allowed {
-				return false
+			if !oldOK || !currentOK {
+				return invalidNodeCampaign(errors.New("node memory quiescence counter is missing for " + service + ":" + name))
+			}
+			if current > old+allowed {
+				return errors.New("node memory quiescence gate failed for " + service + ":" + name)
 			}
 		}
-		checked++
 	}
-	return checked == 4
+	return nil
+}
+
+func nodeQuiescenceVerdict(err error) string {
+	if errors.Is(err, errInvalidNodeCampaign) || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return "invalid"
+	}
+	if err != nil {
+		return "fail"
+	}
+	return "pass"
 }
 
 func (observer *nodeObserver) waitNewReadiness(ctx context.Context, before [2]int) error {
@@ -99,11 +138,11 @@ func (observer *nodeObserver) waitNewReadiness(ctx context.Context, before [2]in
 	for {
 		ready := true
 		for index, service := range []string{"node1", "node2"} {
-			logs, err := observer.compose(ctx, "logs", "--no-color", "--since", "1m", service)
+			logs, err := observer.compose(ctx, "logs", "--no-color", "--no-log-prefix", "--since", "1m", service)
 			if err != nil {
 				return err
 			}
-			ready = ready && countBytes(logs, []byte(`"state":"READY"`)) > before[index]
+			ready = ready && countNodeLogEvents(logs, "", "READY") > before[index]
 		}
 		if ready {
 			return nil
@@ -125,9 +164,12 @@ func verifyNodeStateQuiescence(root string) error {
 		if entries > 512 {
 			return errors.New("node state tree exceeds its quiescence bound")
 		}
-		if walkErr == nil && (strings.HasPrefix(entry.Name(), ".stage-") || strings.HasPrefix(entry.Name(), ".current-")) {
+		if walkErr != nil {
+			return invalidNodeCampaign(fmt.Errorf("inspect node state quiescence: %w", walkErr))
+		}
+		if strings.HasPrefix(entry.Name(), ".stage-") || strings.HasPrefix(entry.Name(), ".current-") {
 			return errors.New("node state tree retained a temporary resource")
 		}
-		return walkErr
+		return nil
 	})
 }

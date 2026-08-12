@@ -1,9 +1,7 @@
 package epoch
 
 import (
-	"bytes"
 	"crypto/ed25519"
-	"encoding/binary"
 	"errors"
 	"time"
 
@@ -11,7 +9,8 @@ import (
 )
 
 // Policy contains the installed authority and predecessor state used for one
-// deterministic Network Epoch decision.
+// deterministic Network Epoch decision. Verify copies authority keys and all
+// returned byte slices; a zero Policy is invalid.
 type Policy struct {
 	NetworkID            [32]byte
 	Authorities          map[[32]byte]ed25519.PublicKey
@@ -21,7 +20,9 @@ type Policy struct {
 	Previous             *Snapshot
 }
 
-// Snapshot is the immutable Epoch/View result consumed by Network State.
+// Snapshot is the immutable, complete Epoch/View result consumed atomically by
+// Network State. The broad value keeps the authenticated identity, validity,
+// commitments, record, and assignment from being observed out of generation.
 type Snapshot struct {
 	Generation       string
 	NetworkID        [32]byte
@@ -49,7 +50,8 @@ type Snapshot struct {
 }
 
 // Decision retains the canonical bytes needed to persist and redistribute one
-// verified result. Its slices are owned immutable copies.
+// verified result. Its slices are owned immutable copies and preserve canonical
+// input order. A zero Decision has not been verified.
 type Decision struct {
 	EpochBytes []byte
 	Inputs     [][]byte
@@ -61,13 +63,6 @@ type Decision struct {
 	epoch      epochEnvelope
 	accepted   []nodeRecord
 	rejections []rejection
-}
-
-type materialization struct {
-	epochDigest [32]byte
-	index       uint32
-	record      []byte
-	siblings    [][32]byte
 }
 
 // Verify authenticates one exact Epoch/View decision and its encoded
@@ -116,109 +111,4 @@ func (decision Decision) VerifyMaterials(encoded [][]byte) error {
 		return err
 	}
 	return verifyMaterializations(decision.epoch, decision.accepted, materials, true)
-}
-
-func snapshotFor(value epochEnvelope) Snapshot {
-	return Snapshot{
-		Generation:     value.digestString(),
-		NetworkID:      value.networkID,
-		Epoch:          value.number,
-		Digest:         value.digest,
-		PreviousDigest: value.previous,
-		EpochValidFrom: value.validFrom,
-		ValidUntil:     value.validUntil,
-		Profile:        epochProfile,
-		ViewRoot:       value.viewRoot,
-		ViewLength:     value.viewLength,
-		RejectedRoot:   value.rejectedRoot,
-		RejectedLength: value.rejectedLength,
-	}
-}
-
-func (value epochEnvelope) digestString() string {
-	const hexadecimal = "0123456789abcdef"
-	encoded := make([]byte, len(value.digest)*2)
-	for index, current := range value.digest {
-		encoded[index*2] = hexadecimal[current>>4]
-		encoded[index*2+1] = hexadecimal[current&15]
-	}
-	return string(encoded)
-}
-
-func decodeMaterializations(encoded [][]byte) ([]materialization, error) {
-	if len(encoded) > 64 {
-		return nil, errors.New("materialization count exceeds 64")
-	}
-	materials := make([]materialization, len(encoded))
-	for index, raw := range encoded {
-		if len(raw) == 0 || len(raw) > 35<<10 {
-			return nil, errors.New("materialization framing length is invalid")
-		}
-		value, err := decodeMaterialization(raw)
-		if err != nil {
-			return nil, err
-		}
-		materials[index] = value
-	}
-	return materials, nil
-}
-
-func decodeMaterialization(raw []byte) (materialization, error) {
-	d := newDecoder(raw)
-	digest, err := d.bytes(32)
-	if err != nil {
-		return materialization{}, err
-	}
-	var value materialization
-	copy(value.epochDigest[:], digest)
-	if value.index, err = d.uint32(); err != nil {
-		return materialization{}, err
-	}
-	record, err := lengthBytes(&d, maximumRecordBytes)
-	if err != nil {
-		return materialization{}, err
-	}
-	value.record = append([]byte(nil), record...)
-	count, err := d.uint16()
-	if err != nil || count > 64 {
-		return materialization{}, errors.New("materialization proof count is invalid")
-	}
-	for range int(count) {
-		sibling, readErr := d.bytes(32)
-		if readErr != nil {
-			return materialization{}, readErr
-		}
-		var digest [32]byte
-		copy(digest[:], sibling)
-		value.siblings = append(value.siblings, digest)
-	}
-	if !d.done() {
-		return materialization{}, errors.New("materialization has trailing bytes")
-	}
-	return value, nil
-}
-
-func encodeMaterialization(value materialization) []byte {
-	buffer := new(bytes.Buffer)
-	buffer.Write(value.epochDigest[:])
-	_ = binary.Write(buffer, binary.BigEndian, value.index)
-	writeLengthBytes(buffer, value.record)
-	_ = binary.Write(buffer, binary.BigEndian, uint16(len(value.siblings)))
-	for _, sibling := range value.siblings {
-		buffer.Write(sibling[:])
-	}
-	return buffer.Bytes()
-}
-
-func lengthBytes(d *decoder, maximum int) ([]byte, error) {
-	length, err := d.uint32()
-	if err != nil || length == 0 || length > uint32(maximum) {
-		return nil, errors.New("materialization member length is invalid")
-	}
-	return d.bytes(int(length))
-}
-
-func writeLengthBytes(buffer *bytes.Buffer, raw []byte) {
-	_ = binary.Write(buffer, binary.BigEndian, uint32(len(raw)))
-	buffer.Write(raw)
 }

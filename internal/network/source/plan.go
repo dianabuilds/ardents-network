@@ -9,7 +9,9 @@ import (
 	"time"
 )
 
-// Source is one indivisible Direct-Origin Source declaration.
+// Source is one indivisible Direct-Origin Source declaration. RootPEM is copied
+// by New; Address, identity, family, endpoint handle, and leaf-key digest must
+// all describe the same declared source.
 type Source struct {
 	Address        string
 	ServerName     string
@@ -20,7 +22,11 @@ type Source struct {
 	LeafKeyDigest  [32]byte
 }
 
-// Config declares the complete finite Direct-Origin Source plan.
+// Config declares the complete finite Direct-Origin Source plan. Acquisition
+// is either absent or exactly two fully declared sources. Serving is absent or
+// a complete mutually authenticated endpoint. New copies PEM, certificates,
+// and digest slices; a partially configured half or a material index outside
+// its bound is rejected.
 type Config struct {
 	Sources           [2]Source
 	ClientCertificate tls.Certificate

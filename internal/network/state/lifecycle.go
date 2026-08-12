@@ -7,7 +7,7 @@ import (
 )
 
 // Wait reports terminal background-work failure or returns after ctx cancellation.
-func (s *store) Wait(ctx context.Context) error {
+func (s *networkState) Wait(ctx context.Context) error {
 	s.mu.RLock()
 	done, automatic := s.serverDone, s.config.automatic
 	s.mu.RUnlock()
@@ -43,7 +43,7 @@ func (s *store) Wait(ctx context.Context) error {
 }
 
 // Close prevents further work through this Store and releases its root lease.
-func (s *store) Close() error {
+func (s *networkState) Close() error {
 	s.mu.Lock()
 	if s.closed {
 		s.mu.Unlock()

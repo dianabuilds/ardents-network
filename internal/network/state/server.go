@@ -6,7 +6,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 )
 
-func (s *store) serveSource(ctx context.Context, ready chan<- error) error {
+func (s *networkState) serveSource(ctx context.Context, ready chan<- error) error {
 	return s.config.source.Serve(ctx, ready,
 		func() bool {
 			s.mu.RLock()
@@ -25,7 +25,7 @@ func (s *store) serveSource(ctx context.Context, ready chan<- error) error {
 		s.resolveDistributionRequest)
 }
 
-func (s *store) resolveDistributionRequest(_ context.Context, request source.Message) source.Message {
+func (s *networkState) resolveDistributionRequest(_ context.Context, request source.Message) source.Message {
 	if request.NetworkDigest != networkIdentityDigest(s.config.networkID) {
 		return source.Message{Status: "bad-request"}
 	}

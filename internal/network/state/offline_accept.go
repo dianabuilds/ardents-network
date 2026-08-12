@@ -6,7 +6,7 @@ import (
 )
 
 // Accept verifies a complete offline decision before committing a new generation.
-func (s *store) Accept(ctx context.Context, epoch []byte, inputs [][]byte, encodedMaterials [][]byte) (Snapshot, error) {
+func (s *networkState) Accept(ctx context.Context, epoch []byte, inputs [][]byte, encodedMaterials [][]byte) (Snapshot, error) {
 	if err := ctx.Err(); err != nil {
 		return Snapshot{}, err
 	}

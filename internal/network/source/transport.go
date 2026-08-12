@@ -50,7 +50,8 @@ func fetch(ctx context.Context, client client, request Message) (Message, error)
 }
 
 // Serve owns the configured bounded TLS listener until cancellation or
-// terminal failure.
+// terminal failure. The callbacks belong to one server owner and may be called
+// concurrently until Serve returns; resolve must return a bounded Message.
 func (p *Plan) Serve(ctx context.Context, ready chan<- error, protected func() bool,
 	active func(int), resolve func(context.Context, Message) Message) error {
 	if p == nil || !p.details.Serving {
@@ -88,7 +89,7 @@ func serve(ctx context.Context, server server, ready chan<- error, protected fun
 		if acceptErr != nil {
 			<-credits
 			if ctx.Err() != nil {
-				return context.Canceled
+				return ctx.Err()
 			}
 			return fmt.Errorf("accept distribution connection: %w", acceptErr)
 		}
@@ -101,13 +102,15 @@ func serve(ctx context.Context, server server, ready chan<- error, protected fun
 		go func() {
 			defer connections.Done()
 			defer func() { <-credits }()
-			handleConnection(ctx, server, active, connection, resolve)
+			// A peer controls its connection lifetime, so a response-write failure
+			// terminates only this connection and cannot stop the shared listener.
+			_ = handleConnection(ctx, server, active, connection, resolve)
 		}()
 	}
 }
 
 func handleConnection(ctx context.Context, server server, active func(int), connection net.Conn,
-	resolve func(context.Context, Message) Message) {
+	resolve func(context.Context, Message) Message) error {
 	if active != nil {
 		active(1)
 		defer active(-1)
@@ -115,17 +118,22 @@ func handleConnection(ctx context.Context, server server, active func(int), conn
 	defer connection.Close()
 	started := time.Now()
 	if err := connection.SetDeadline(started.Add(server.headerTimeout)); err != nil {
-		return
+		return fmt.Errorf("set distribution request deadline: %w", err)
 	}
 	request, err := readRequest(connection)
 	if err != nil {
-		_ = writeResponse(connection, Message{Status: "bad-request"})
-		return
+		if writeErr := writeResponse(connection, Message{Status: "bad-request"}); writeErr != nil {
+			return fmt.Errorf("write distribution rejection: %w", writeErr)
+		}
+		return nil
 	}
 	if err := connection.SetDeadline(started.Add(5 * time.Second)); err != nil {
-		return
+		return fmt.Errorf("set distribution response deadline: %w", err)
 	}
-	_ = writeResponse(connection, resolve(ctx, request))
+	if err := writeResponse(connection, resolve(ctx, request)); err != nil {
+		return fmt.Errorf("write distribution response: %w", err)
+	}
+	return nil
 }
 
 func clientTLSConfig(client client) *tls.Config {

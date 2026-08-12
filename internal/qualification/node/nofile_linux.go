@@ -8,14 +8,19 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+const (
+	nodeProcessPID           = 1
+	emfileDescriptorBoundary = 8
+)
+
 func lowerNodeNofile() error {
 	var current unix.Rlimit
-	if err := unix.Prlimit(1, unix.RLIMIT_NOFILE, nil, &current); err != nil {
+	if err := unix.Prlimit(nodeProcessPID, unix.RLIMIT_NOFILE, nil, &current); err != nil {
 		return err
 	}
-	if current.Cur < 8 || current.Max < 8 {
+	if current.Cur < emfileDescriptorBoundary || current.Max < emfileDescriptorBoundary {
 		return errors.New("node descriptor limit is below the fault-injection boundary")
 	}
-	limit := unix.Rlimit{Cur: 8, Max: 8}
-	return unix.Prlimit(1, unix.RLIMIT_NOFILE, &limit, nil)
+	limit := uint64(emfileDescriptorBoundary)
+	return unix.Prlimit(nodeProcessPID, unix.RLIMIT_NOFILE, &unix.Rlimit{Cur: limit, Max: limit}, nil)
 }

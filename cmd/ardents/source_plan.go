@@ -86,8 +86,10 @@ func runRefreshSources(ctx context.Context, arguments []string, output io.Writer
 
 func readSourcePlan(root, path string) (state.Config, error) {
 	var plan sourcePlan
-	if err := planfile.Decode(path, 32<<10, &plan); err != nil || plan.Schema != "ardents-h3-source-plan-v1" ||
-		len(plan.Sources) != 2 {
+	if err := planfile.Decode(path, 32<<10, &plan); err != nil {
+		return state.Config{}, fmt.Errorf("decode source plan: %w", err)
+	}
+	if plan.Schema != "ardents-h3-source-plan-v1" || len(plan.Sources) != 2 {
 		return state.Config{}, errors.New("source plan is not canonical or complete")
 	}
 	var err error
@@ -109,8 +111,5 @@ func readSourcePlan(root, path string) (state.Config, error) {
 	if err := planfile.FixedHex(plan.OrderSeed, config.Source.OrderSeed[:]); err != nil {
 		return config, err
 	}
-	if err := loadSourceCredentials(&config, plan); err != nil {
-		return config, err
-	}
-	return config, nil
+	return config, loadSourceCredentials(&config, plan)
 }

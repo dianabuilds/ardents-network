@@ -31,7 +31,7 @@ type distributionState struct {
 	sourceOrder         [2]byte
 }
 
-func (s *store) loadDistributionState() error {
+func (s *networkState) loadDistributionState() error {
 	name, raw, err := s.storage.LoadControl()
 	if err != nil {
 		return fmt.Errorf("load distribution security state: %w", err)
@@ -60,7 +60,7 @@ func (s *store) loadDistributionState() error {
 	return s.recoverPendingState()
 }
 
-func (s *store) recoverDistributionActive(state distributionState) error {
+func (s *networkState) recoverDistributionActive(state distributionState) error {
 	name := fmt.Sprintf("%x", state.epochDigest)
 	decision, err := loadStoredChain(s.config, s.storage, name)
 	if err != nil {
@@ -77,7 +77,7 @@ func (s *store) recoverDistributionActive(state distributionState) error {
 	return nil
 }
 
-func (s *store) commitDistribution(state distributionState) error {
+func (s *networkState) commitDistribution(state distributionState) error {
 	raw := encodeDistributionState(state)
 	name := distributionDigest(raw)
 	if err := s.storage.CommitControl(name, raw); err != nil {
@@ -87,7 +87,7 @@ func (s *store) commitDistribution(state distributionState) error {
 	return nil
 }
 
-func (s *store) commitActiveDecision(decision candidateDecision, state distributionState) error {
+func (s *networkState) commitActiveDecision(decision candidateDecision, state distributionState) error {
 	if err := persistDecision(s.storage, decision, false); err != nil {
 		return err
 	}

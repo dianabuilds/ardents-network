@@ -9,12 +9,14 @@ import (
 )
 
 type nodeSampleResult struct {
-	sequence    int
-	at          time.Time
-	processes   []byte
-	resources   []nodeResourceSnapshot
-	diagnostics []byte
-	err         error
+	sequence      int
+	at            time.Time
+	processes     []byte
+	resources     []nodeResourceSnapshot
+	diagnostics   []byte
+	faults        map[string]bool
+	diagnosticErr error
+	err           error
 }
 
 func (observer *nodeObserver) runSamples() {
@@ -48,13 +50,13 @@ func (observer *nodeObserver) runSamples() {
 				return
 			}
 			active++
-			go observer.collectNodeSample(sequence, at, results)
+			go observer.collectNodeSample(sequence, at, observer.faultSnapshot(), results)
 			sequence++
 		}
 	}
 }
 
-func (observer *nodeObserver) collectNodeSample(sequence int, at time.Time, output chan<- nodeSampleResult) {
+func (observer *nodeObserver) collectNodeSample(sequence int, at time.Time, faults map[string]bool, output chan<- nodeSampleResult) {
 	ctx, cancel := context.WithTimeout(observer.ctx, 12*time.Second)
 	defer cancel()
 	processes, processErr := observer.composeBounded(ctx, 32<<10, "ps", "-a", "--format",
@@ -62,32 +64,48 @@ func (observer *nodeObserver) collectNodeSample(sequence int, at time.Time, outp
 	resources, resourceErr := observer.sampleNodeResources(ctx, at)
 	diagnostics, diagnosticErr := observer.composeBounded(ctx, 256<<10, "logs", "--no-color", "--timestamps", "--since", "2s",
 		"source1", "source2", "endpoint", "node1", "node2")
+	fatalErr, diagnosticErr := classifyNodeSampleErrors(processErr, resourceErr, diagnosticErr)
 	result := nodeSampleResult{sequence: sequence, at: at, processes: processes, resources: resources,
-		diagnostics: diagnostics, err: errors.Join(processErr, resourceErr, diagnosticErr)}
+		diagnostics: diagnostics, faults: faults, diagnosticErr: diagnosticErr, err: fatalErr}
 	select {
 	case output <- result:
 	case <-observer.ctx.Done():
 	}
 }
 
+func classifyNodeSampleErrors(processErr, resourceErr, diagnosticErr error) (error, error) {
+	return errors.Join(processErr, resourceErr), diagnosticErr
+}
+
 func (observer *nodeObserver) writeNodeSample(result nodeSampleResult) bool {
-	observer.observeResources(result.resources)
+	observer.observeResources(result.resources, result.faults)
 	record := map[string]any{"at": result.at.UTC(), "processes": string(result.processes), "resources": result.resources,
-		"candidate_events": string(result.diagnostics), "active_faults": observer.faultSnapshot()}
+		"candidate_events": string(result.diagnostics), "active_faults": result.faults}
+	if result.diagnosticErr != nil {
+		record["candidate_diagnostic_error"] = result.diagnosticErr.Error()
+	}
 	if result.err != nil {
 		record["observer_error"] = result.err.Error()
 		observer.recordEvidenceError(result.err)
 	}
 	raw, marshalErr := json.Marshal(record)
-	if marshalErr != nil || len(raw) > 128<<10 || observer.sampleCount >= observer.sampleLimit ||
+	if marshalErr != nil {
+		observer.recordEvidenceError(marshalErr)
+		return false
+	}
+	if len(raw) > 128<<10 || observer.sampleCount >= observer.sampleLimit ||
 		observer.sampleBytes+int64(len(raw)+1) > observer.sampleBudget {
-		observer.recordEvidenceError(errors.Join(marshalErr, errors.New("node sample evidence exceeded its finite budget")))
+		observer.recordEvidenceError(errors.New("node sample evidence exceeded its finite budget"))
 		return false
 	}
 	raw = append(raw, '\n')
 	written, writeErr := observer.samples.Write(raw)
-	if writeErr != nil || written != len(raw) {
-		observer.recordEvidenceError(errors.Join(writeErr, io.ErrShortWrite))
+	if writeErr != nil {
+		observer.recordEvidenceError(writeErr)
+		return false
+	}
+	if written != len(raw) {
+		observer.recordEvidenceError(io.ErrShortWrite)
 		return false
 	}
 	observer.sampleCount++

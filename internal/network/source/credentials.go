@@ -17,6 +17,7 @@ func configureClients(plan *Plan, input Config, authorities map[[32]byte]ed25519
 	if err := validateCertificate(input.ClientCertificate); err != nil {
 		return errors.New("source client certificate is required")
 	}
+	clientCertificate := cloneCertificate(input.ClientCertificate)
 	clientDigest, err := certificateDigest(input.ClientCertificate)
 	if err != nil || digestIsAuthority(clientDigest, authorities) {
 		return errors.New("source client transport key must be separate from Epoch signer keys")
@@ -42,7 +43,7 @@ func configureClients(plan *Plan, input Config, authorities map[[32]byte]ed25519
 			return errors.New("client, source, and Epoch signer keys must be separate")
 		}
 		plan.clients[index] = client{address: declared.Address, serverName: declared.ServerName,
-			roots: roots, leafKeyDigest: declared.LeafKeyDigest, certificate: input.ClientCertificate}
+			roots: roots, leafKeyDigest: declared.LeafKeyDigest, certificate: clientCertificate}
 		plan.details.Identities[index], plan.details.Families[index], plan.details.EndpointHandles[index] =
 			declared.Identity, declared.Family, declared.EndpointHandle
 		raw := append([]byte("ardents-h3-direct-source-exposure-v1\x00"), declared.Identity[:]...)
@@ -90,8 +91,25 @@ func configureServer(input Config, authorities map[[32]byte]ed25519.PublicKey) (
 	if timeout <= 0 || timeout > 3*time.Second {
 		timeout = 3 * time.Second
 	}
-	return server{address: input.ServeAddress, certificate: input.ServeCertificate,
+	return server{address: input.ServeAddress, certificate: cloneCertificate(input.ServeCertificate),
 		clientRoots: roots, clientDigests: pins, headerTimeout: timeout}, nil
+}
+
+func cloneCertificate(input tls.Certificate) tls.Certificate {
+	clone := tls.Certificate{
+		Certificate:                  make([][]byte, len(input.Certificate)),
+		PrivateKey:                   append(ed25519.PrivateKey(nil), input.PrivateKey.(ed25519.PrivateKey)...),
+		SupportedSignatureAlgorithms: append([]tls.SignatureScheme(nil), input.SupportedSignatureAlgorithms...),
+		OCSPStaple:                   append([]byte(nil), input.OCSPStaple...),
+		SignedCertificateTimestamps:  make([][]byte, len(input.SignedCertificateTimestamps)),
+	}
+	for index := range input.Certificate {
+		clone.Certificate[index] = append([]byte(nil), input.Certificate[index]...)
+	}
+	for index := range input.SignedCertificateTimestamps {
+		clone.SignedCertificateTimestamps[index] = append([]byte(nil), input.SignedCertificateTimestamps[index]...)
+	}
+	return clone
 }
 
 func parseRoots(raw []byte) (*x509.CertPool, error) {

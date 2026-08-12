@@ -11,7 +11,7 @@ import (
 
 var errSourceRoleCollision = errors.New("source role collides with a Candidate View member")
 
-func (s *store) rejectSourceCollisions() error {
+func (s *networkState) rejectSourceCollisions() error {
 	for _, decision := range []*candidateDecision{s.currentDecision, s.pendingDecision} {
 		if decision != nil && sourceCollides(s.config.sourceInfo, *decision) {
 			return fmt.Errorf("%w: identity, family, or endpoint", errSourceRoleCollision)
@@ -20,7 +20,7 @@ func (s *store) rejectSourceCollisions() error {
 	return nil
 }
 
-func (s *store) rejectDecisionSourceCollisions(decision candidateDecision) error {
+func (s *networkState) rejectDecisionSourceCollisions(decision candidateDecision) error {
 	if sourceCollides(s.config.sourceInfo, decision) {
 		return fmt.Errorf("%w: identity, family, or endpoint", errSourceRoleCollision)
 	}
@@ -58,7 +58,7 @@ func epochDecisionCollides(decision stateepoch.Decision, identity [32]byte, fami
 	return false
 }
 
-func (s *store) snapshotWithDistribution(now time.Time) Snapshot {
+func (s *networkState) snapshotWithDistribution(now time.Time) Snapshot {
 	if s.current == nil {
 		return Snapshot{}
 	}

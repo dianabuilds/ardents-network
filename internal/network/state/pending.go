@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func (s *store) recoverPendingState() error {
+func (s *networkState) recoverPendingState() error {
 	state := s.distribution
 	if isZero32(state.pendingDigest) {
 		return nil
@@ -32,7 +32,7 @@ func (s *store) recoverPendingState() error {
 	return nil
 }
 
-func (s *store) activatePending(now time.Time) error {
+func (s *networkState) activatePending(now time.Time) error {
 	if s.pendingDecision == nil || now.Before(s.pendingDecision.epoch.validFrom) {
 		return nil
 	}

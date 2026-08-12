@@ -19,6 +19,11 @@ const (
 )
 
 // Message is one exact acquisition request or bounded terminal response.
+// Requests set Operation, NetworkDigest, ObjectDigest, and MaterialIndex and
+// leave response fields empty. Responses set Status and, only for OK, an
+// ObjectDigest plus an owned Payload of at most maximumPayloadBytes. Protocol
+// readers and writers reject mixed variants, unknown strings, and indices at
+// or above 64; a zero Message is invalid in either direction.
 type Message struct {
 	Operation     string
 	NetworkDigest [32]byte

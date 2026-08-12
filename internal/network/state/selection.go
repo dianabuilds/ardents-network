@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func (s *store) startSourceWave(now time.Time) ([2]int, time.Time, error) {
+func (s *networkState) startSourceWave(now time.Time) ([2]int, time.Time, error) {
 	state := s.distribution
 	if state.cycleActive {
 		if now.Unix() >= state.cycleDeadline {
@@ -73,7 +73,7 @@ func (s *store) startSourceWave(now time.Time) ([2]int, time.Time, error) {
 	return order, time.Unix(state.cycleDeadline, 0), nil
 }
 
-func (s *store) completeSourceWave(now time.Time, base *Snapshot, results []sourceResult) (Snapshot, error) {
+func (s *networkState) completeSourceWave(now time.Time, base *Snapshot, results []sourceResult) (Snapshot, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	defer func() { s.refreshing = false }()
@@ -83,40 +83,21 @@ func (s *store) completeSourceWave(now time.Time, base *Snapshot, results []sour
 	if !sameGeneration(s.current, base) {
 		return Snapshot{}, errors.New("network state changed during the finite source wave")
 	}
-	valid := make([]candidateDecision, 0, 2)
-	outcomes := [4]byte{}
-	observedEpochs := [4]uint64{}
-	observedDigests := [4][32]byte{}
-	var collisionErr error
-	for _, result := range results {
-		for index, outcome := range result.observations {
-			if outcome != 0 {
-				outcomes[index] = outcome
-			}
-		}
-		if errors.Is(result.err, errSourceRoleCollision) && collisionErr == nil {
-			collisionErr = result.err
-		}
-		if result.err == nil {
-			valid = append(valid, result.decision)
-			observedEpochs[result.slot] = result.decision.epoch.number
-			observedDigests[result.slot] = result.decision.epoch.digest
-		}
-	}
-	if collisionErr != nil {
-		if err := s.recordSourceConflict(now, outcomes, observedEpochs, observedDigests); err != nil {
+	summary := summarizeSourceWave(results)
+	if summary.collisionErr != nil {
+		if err := s.recordSourceConflict(now, summary.outcomes, summary.observedEpochs, summary.observedDigests); err != nil {
 			return Snapshot{}, err
 		}
-		return Snapshot{}, collisionErr
+		return Snapshot{}, summary.collisionErr
 	}
-	if sourceConflict(valid) {
-		if err := s.recordSourceConflict(now, outcomes, observedEpochs, observedDigests); err != nil {
+	if sourceConflict(summary.valid) {
+		if err := s.recordSourceConflict(now, summary.outcomes, summary.observedEpochs, summary.observedDigests); err != nil {
 			return Snapshot{}, err
 		}
 		return Snapshot{}, errors.New("sources exposed threshold-valid conflicting Epochs")
 	}
-	if len(valid) == 0 {
-		if err := s.commitSourceFailure(now, outcomes, observedEpochs, observedDigests); err != nil {
+	if len(summary.valid) == 0 {
+		if err := s.commitSourceFailure(now, summary.outcomes, summary.observedEpochs, summary.observedDigests); err != nil {
 			return Snapshot{}, err
 		}
 		failures := []error{errRefreshUnavailable, errors.New("finite source wave produced no valid state")}
@@ -127,63 +108,20 @@ func (s *store) completeSourceWave(now time.Time, base *Snapshot, results []sour
 		}
 		return Snapshot{}, errors.Join(failures...)
 	}
-	selected := valid[0]
-	for _, candidate := range valid[1:] {
-		if candidate.epoch.number > selected.epoch.number {
-			selected = candidate
-		}
-	}
+	selected := newestSourceDecision(summary.valid)
 	if s.pendingDecision != nil && selected.epoch.number == s.pendingDecision.epoch.number && selected.epoch.digest != s.pendingDecision.epoch.digest {
-		if err := s.recordSourceConflict(now, outcomes, observedEpochs, observedDigests); err != nil {
+		if err := s.recordSourceConflict(now, summary.outcomes, summary.observedEpochs, summary.observedDigests); err != nil {
 			return Snapshot{}, err
 		}
 		return Snapshot{}, errors.New("source Epoch conflicts with the durable pending Epoch")
 	}
 	if now.Before(selected.epoch.validFrom) {
-		newPending := s.pendingDecision == nil
-		if newPending {
-			if err := stageGeneration(s.storage, selected); err != nil {
-				return Snapshot{}, err
-			}
-		}
-		state := s.distribution
-		state.observedEpochs, state.observedDigests = observedEpochs, observedDigests
-		if err := finishWaveState(&state, now, outcomes); err != nil {
-			return Snapshot{}, err
-		}
-		state.pendingDigest, state.pendingValidFrom = selected.epoch.digest, selected.epoch.validFrom.Unix()
-		if err := s.commitDistribution(state); err != nil {
-			return Snapshot{}, err
-		}
-		if newPending {
-			s.pendingDecision = &selected
-		}
-		return s.snapshotWithDistribution(now), nil
+		return s.commitPendingSourceWave(now, selected, summary)
 	}
-	state := s.distribution
-	state.observedEpochs, state.observedDigests = observedEpochs, observedDigests
-	if err := finishWaveState(&state, now, outcomes); err != nil {
-		return Snapshot{}, err
-	}
-	state.epochFloor, state.epochDigest = selected.epoch.number, selected.epoch.digest
-	state.trustedTimeFloor = max(state.trustedTimeFloor, now.Unix())
-	if state.pendingDigest == selected.epoch.digest {
-		state.pendingDigest, state.pendingValidFrom = [32]byte{}, 0
-	}
-	if s.current == nil || selected.epoch.digest != s.current.Digest {
-		if err := s.commitActiveDecision(selected, state); err != nil {
-			return Snapshot{}, err
-		}
-	} else if err := s.commitDistribution(state); err != nil {
-		return Snapshot{}, err
-	}
-	if s.pendingDecision != nil && s.pendingDecision.epoch.digest == selected.epoch.digest {
-		s.pendingDecision = nil
-	}
-	return s.snapshotWithDistribution(now), nil
+	return s.commitActiveSourceWave(now, selected, summary)
 }
 
-func (s *store) recordSourceConflict(now time.Time, outcomes [4]byte, epochs [4]uint64, digests [4][32]byte) error {
+func (s *networkState) recordSourceConflict(now time.Time, outcomes [4]byte, epochs [4]uint64, digests [4][32]byte) error {
 	state := s.distribution
 	state.observedEpochs, state.observedDigests = epochs, digests
 	if err := finishWaveState(&state, now, outcomes); err != nil {
@@ -200,7 +138,7 @@ func sameGeneration(current, base *Snapshot) bool {
 	return current.Generation == base.Generation && current.Digest == base.Digest
 }
 
-func (s *store) commitSourceFailure(now time.Time, outcomes [4]byte, epochs [4]uint64, digests [4][32]byte) error {
+func (s *networkState) commitSourceFailure(now time.Time, outcomes [4]byte, epochs [4]uint64, digests [4][32]byte) error {
 	state := s.distribution
 	state.observedEpochs, state.observedDigests = epochs, digests
 	if err := finishWaveState(&state, now, outcomes); err != nil {
@@ -220,7 +158,7 @@ func sourceConflict(valid []candidateDecision) bool {
 	return false
 }
 
-func (s *store) finishRefresh() { s.mu.Lock(); s.refreshing = false; s.mu.Unlock() }
+func (s *networkState) finishRefresh() { s.mu.Lock(); s.refreshing = false; s.mu.Unlock() }
 
 func containsIdentity(history [][32]byte, identity [32]byte) bool {
 	for _, current := range history {

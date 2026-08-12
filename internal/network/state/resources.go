@@ -9,7 +9,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
-func (s *store) runResourceGovernor(ctx context.Context) {
+func (s *networkState) runResourceGovernor(ctx context.Context) {
 	defer s.work.Done()
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
@@ -50,7 +50,7 @@ func (s *store) runResourceGovernor(ctx context.Context) {
 	}
 }
 
-func (s *store) failResourceGovernor(err error) {
+func (s *networkState) failResourceGovernor(err error) {
 	s.mu.Lock()
 	s.resourceErr, s.resourceProtect = err, true
 	cancel := s.workCancel

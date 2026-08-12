@@ -6,7 +6,7 @@ import (
 )
 
 // Current returns a copy of the current immutable Snapshot.
-func (s *store) Current() (Snapshot, error) {
+func (s *networkState) Current() (Snapshot, error) {
 	if s.resourceGuard != nil {
 		if err := s.resourceGuard.Check(); err != nil {
 			return Snapshot{}, err

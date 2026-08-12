@@ -1,23 +1,27 @@
 package node
 
 import (
-	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/dianabuilds/ardents-network/internal/qualification/byteio"
 )
 
+type nodeEvidenceFile struct {
+	name string
+	raw  []byte
+}
+
 func (observer *nodeObserver) capturePreflightEvidence(ctx context.Context) error {
-	manifest, err := os.ReadFile(filepath.Join(observer.input.FixtureRoot, "manifest.json"))
-	if err != nil || len(manifest) > 64<<10 {
-		return errors.Join(err, errors.New("node fixture manifest evidence is invalid"))
+	files, err := readNodeFixtureEvidence(observer.input.FixtureRoot)
+	if err != nil {
+		return err
 	}
-	seal, err := os.ReadFile(filepath.Join(observer.input.FixtureRoot, ".ardents-node-manifest.sha256"))
-	if err != nil || len(seal) > 128 {
-		return errors.Join(err, errors.New("node fixture manifest seal evidence is invalid"))
-	}
+	manifest := files[0].raw
 	config, err := observer.composeBounded(ctx, 2<<20, "config")
 	if err != nil {
 		return err
@@ -30,20 +34,48 @@ func (observer *nodeObserver) capturePreflightEvidence(ctx context.Context) erro
 	if err != nil {
 		return err
 	}
-	files := map[string][]byte{"manifest.json": manifest, "manifest.sha256": seal, "compose-resolved.yaml": config,
-		"docker-version.json": version, "docker-info.json": info}
-	for name, raw := range files {
-		if err := os.WriteFile(filepath.Join(observer.input.EvidenceRoot, name), raw, 0o600); err != nil {
-			return err
-		}
+	files = append(files, nodeEvidenceFile{"compose-resolved.yaml", config},
+		nodeEvidenceFile{"docker-version.json", version}, nodeEvidenceFile{"docker-info.json", info})
+	if err := observer.writeEvidenceFiles(files); err != nil {
+		return err
 	}
+	observer.composeFile = filepath.Join(observer.input.EvidenceRoot, "compose-resolved.yaml")
 	return observer.freezeCampaignManifest(manifest, config)
 }
 
+func readNodeFixtureEvidence(root string) ([]nodeEvidenceFile, error) {
+	manifest, err := byteio.ReadFile(filepath.Join(root, "manifest.json"), 64<<10)
+	if err != nil {
+		return nil, fmt.Errorf("read node fixture manifest evidence: %w", err)
+	}
+	if len(manifest) == 0 {
+		return nil, errors.New("node fixture manifest evidence is empty")
+	}
+	seal, err := byteio.ReadFile(filepath.Join(root, ".ardents-node-manifest.sha256"), 128)
+	if err != nil {
+		return nil, fmt.Errorf("read node fixture manifest seal evidence: %w", err)
+	}
+	if len(strings.TrimSpace(string(seal))) != 64 {
+		return nil, errors.New("node fixture manifest seal evidence is invalid")
+	}
+	return []nodeEvidenceFile{{"manifest.json", manifest}, {"manifest.sha256", seal}}, nil
+}
+
 func (observer *nodeObserver) captureCandidateIdentity(ctx context.Context) error {
+	if err := validateNodeSourceIdentity(observer.input.EvidenceRoot, observer.sourceRoot, observer.sourceDigest); err != nil {
+		return err
+	}
 	image, err := observer.dockerBounded(ctx, 2<<20, 32<<10, "image", "inspect", "ardents-node:"+observer.imageTag)
-	if err != nil || !bytes.Contains(image, []byte(observer.sourceDigest)) {
-		return errors.Join(err, errors.New("node image is not bound to the captured source digest"))
+	if err != nil {
+		return err
+	}
+	label, err := observer.dockerBounded(ctx, 128, 4096, "image", "inspect", "--format",
+		"{{index .Config.Labels \"org.opencontainers.image.revision\"}}", "ardents-node:"+observer.imageTag)
+	if err != nil {
+		return err
+	}
+	if string(bytesTrimSpace(label)) != observer.sourceDigest {
+		return errors.New("node image is not bound to the captured source digest")
 	}
 	id, err := observer.serviceID(ctx, "source1")
 	if err != nil {
@@ -54,21 +86,20 @@ func (observer *nodeObserver) captureCandidateIdentity(ctx context.Context) erro
 		return err
 	}
 	identities, err := observer.composeBounded(ctx, 4096, "ps", "-q")
-	if err != nil || len(strings.Fields(string(identities))) != 5 {
-		return errors.Join(err, errors.New("node topology identity is incomplete"))
+	if err != nil {
+		return err
+	}
+	if len(strings.Fields(string(identities))) != 5 {
+		return errors.New("node topology identity is incomplete")
 	}
 	arguments := append([]string{"inspect"}, strings.Fields(string(identities))...)
 	topology, err := observer.dockerBounded(ctx, 4<<20, 32<<10, arguments...)
 	if err != nil {
 		return err
 	}
-	files := map[string][]byte{"image-inspect.json": image, "build-identity.json": build, "topology-inspect.json": topology}
-	for name, raw := range files {
-		if err := os.WriteFile(filepath.Join(observer.input.EvidenceRoot, name), raw, 0o600); err != nil {
-			return err
-		}
-	}
-	return nil
+	return observer.writeEvidenceFiles([]nodeEvidenceFile{
+		{"image-inspect.json", image}, {"build-identity.json", build}, {"topology-inspect.json", topology},
+	})
 }
 
 func (observer *nodeObserver) startCollector(ctx context.Context) error {
@@ -80,12 +111,24 @@ func (observer *nodeObserver) startCollector(ctx context.Context) error {
 		"/usr/local/bin/ardents-qualify", "collector-node"}
 	raw, err := observer.dockerBounded(ctx, 128, 4096, arguments...)
 	observer.collectorID = string(bytesTrimSpace(raw))
-	if err != nil || len(observer.collectorID) < 12 || len(observer.collectorID) > 64 {
-		return errors.Join(err, errors.New("node resource collector did not start"))
+	if err != nil {
+		return err
+	}
+	if len(observer.collectorID) < 12 || len(observer.collectorID) > 64 {
+		return errors.New("node resource collector did not start")
 	}
 	inspect, err := observer.dockerBounded(ctx, 256<<10, 4096, "inspect", observer.collectorID)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(observer.input.EvidenceRoot, "collector-inspect.json"), inspect, 0o600)
+	return observer.writeEvidenceFiles([]nodeEvidenceFile{{"collector-inspect.json", inspect}})
+}
+
+func (observer *nodeObserver) writeEvidenceFiles(files []nodeEvidenceFile) error {
+	for _, file := range files {
+		if err := os.WriteFile(filepath.Join(observer.input.EvidenceRoot, file.name), file.raw, 0o600); err != nil {
+			return fmt.Errorf("write node evidence %s: %w", file.name, err)
+		}
+	}
+	return nil
 }

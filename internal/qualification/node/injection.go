@@ -17,18 +17,26 @@ import (
 )
 
 func runNodeInjection(ctx context.Context, input Campaign) Result {
-	if input.Injection == "memory" {
+	switch input.Injection {
+	case "nofile":
+		if err := lowerNodeNofile(); err != nil {
+			return Result{Verdict: "fail", Reason: err.Error()}
+		}
+		return Result{Verdict: "pass", Reason: "candidate descriptor limit lowered"}
+	case "memory":
 		return injectNodeMemory(ctx)
-	}
-	if input.Injection == "cpu" {
+	case "cpu":
 		return injectNodeCPU(ctx)
-	}
-	if input.Injection == "emfile" {
+	case "emfile":
 		return injectNodeEMFILE(ctx, input.Addresses[0])
-	}
-	if input.Injection != "probe" {
+	case "probe":
+		return injectNodeProbe(ctx, input)
+	default:
 		return Result{Verdict: "invalid", Reason: "node injection mode is invalid"}
 	}
+}
+
+func injectNodeProbe(ctx context.Context, input Campaign) Result {
 	if len(input.Addresses) != 2 {
 		return Result{Verdict: "invalid", Reason: "node injector requires exactly two Node addresses"}
 	}
@@ -142,9 +150,6 @@ func injectNodeCPU(ctx context.Context) Result {
 }
 
 func injectNodeEMFILE(ctx context.Context, address string) Result {
-	if err := lowerNodeNofile(); err != nil {
-		return Result{Verdict: "fail", Reason: err.Error()}
-	}
 	connections := make([]net.Conn, 0, 64)
 	defer func() {
 		for _, connection := range connections {
@@ -157,8 +162,8 @@ func injectNodeEMFILE(ctx context.Context, address string) Result {
 			connections = append(connections, connection)
 		}
 	}
-	if len(connections) < 4 {
-		return Result{Verdict: "fail", Reason: "EMFILE injector could not occupy enough candidate descriptors"}
+	if len(connections) == 0 {
+		return Result{Verdict: "fail", Reason: "EMFILE injector could not establish a descriptor stimulus"}
 	}
 	if err := waitNode(ctx, 5*time.Second); err != nil {
 		return Result{Verdict: "fail", Reason: err.Error()}

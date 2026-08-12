@@ -17,7 +17,7 @@ type sourceResult struct {
 }
 
 // Refresh waits for the complete two-source wave and accepts its highest valid state.
-func (s *store) Refresh(ctx context.Context) (Snapshot, error) {
+func (s *networkState) Refresh(ctx context.Context) (Snapshot, error) {
 	if s.resourceGuard != nil {
 		if err := s.resourceGuard.Check(); err != nil {
 			return Snapshot{}, err
@@ -98,7 +98,7 @@ func (s *store) Refresh(ctx context.Context) (Snapshot, error) {
 	return s.completeSourceWave(now, current, observed)
 }
 
-func (s *store) fetchAndVerify(ctx context.Context, index int, current *Snapshot, currentDecision *candidateDecision) sourceResult {
+func (s *networkState) fetchAndVerify(ctx context.Context, index int, current *Snapshot, currentDecision *candidateDecision) sourceResult {
 	observations := [4]byte{}
 	resultIndex, outcomeIndex := index, index
 	response, err := s.fetchSource(ctx, index, source.Message{
@@ -157,7 +157,7 @@ func failedSourceResult(index, outcomeIndex int, observations [4]byte, err error
 	return sourceResult{index: index, slot: outcomeIndex, observations: observations, err: err}
 }
 
-func (s *store) fetchSource(ctx context.Context, index int, request source.Message) (source.Message, error) {
+func (s *networkState) fetchSource(ctx context.Context, index int, request source.Message) (source.Message, error) {
 	response, err := s.config.source.Fetch(ctx, index, request)
 	if err != nil {
 		return response, err

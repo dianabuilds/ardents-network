@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 )
@@ -33,8 +34,11 @@ func (observer *nodeObserver) cleanup() {
 		}
 		raw, marshalErr := json.Marshal(map[string]any{"schema": "ardents-h3-node-cleanup-v1", "verdict": verdict,
 			"owned_containers": 0, "owned_networks": 0, "owned_volumes": 0, "owned_images": 0})
-		observer.recordEvidenceError(errors.Join(marshalErr,
-			os.WriteFile(filepath.Join(observer.input.EvidenceRoot, "cleanup.json"), append(raw, '\n'), 0o600)))
+		if marshalErr != nil {
+			observer.recordEvidenceError(marshalErr)
+		} else {
+			observer.recordEvidenceError(os.WriteFile(filepath.Join(observer.input.EvidenceRoot, "cleanup.json"), append(raw, '\n'), 0o600))
+		}
 	})
 }
 
@@ -48,8 +52,11 @@ func (observer *nodeObserver) verifyDockerQuiescence(ctx context.Context) error 
 	}
 	for _, arguments := range filters {
 		raw, err := observer.dockerBounded(ctx, 4096, 4096, arguments...)
-		if err != nil || len(bytesTrimSpace(raw)) != 0 {
-			return errors.Join(err, errors.New("node cleanup left an owned Docker process, network, volume, or image"))
+		if err != nil {
+			return err
+		}
+		if len(bytesTrimSpace(raw)) != 0 {
+			return errors.New("node cleanup left an owned Docker process, network, volume, or image")
 		}
 	}
 	return nil
@@ -59,8 +66,12 @@ func (observer *nodeObserver) captureLogs(ctx context.Context, services ...strin
 	for _, service := range services {
 		identity, err := observer.compose(ctx, "ps", "-a", "-q", service)
 		id := string(bytesTrimSpace(identity))
-		if err != nil || len(id) < 12 {
-			observer.recordEvidenceError(errors.Join(err, errors.New("node candidate identity capture failed")))
+		if err != nil {
+			observer.recordEvidenceError(err)
+			continue
+		}
+		if len(id) < 12 {
+			observer.recordEvidenceError(errors.New("node candidate identity capture failed"))
 			continue
 		}
 		if observer.captured[id] {
@@ -85,7 +96,10 @@ func (observer *nodeObserver) appendCandidateEvidence(raw []byte) error {
 		observer.recordEvidenceError(err)
 		return err
 	}
-	_, writeErr := file.Write(raw)
+	written, writeErr := file.Write(raw)
+	if writeErr == nil && written != len(raw) {
+		writeErr = io.ErrShortWrite
+	}
 	err = errors.Join(writeErr, file.Close())
 	observer.recordEvidenceError(err)
 	return err

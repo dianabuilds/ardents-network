@@ -12,7 +12,7 @@ import (
 )
 
 func (observer *nodeObserver) compose(ctx context.Context, arguments ...string) ([]byte, error) {
-	args := append([]string{"compose", "-p", observer.project, "-f", observer.input.ComposeFile}, arguments...)
+	args := append([]string{"compose", "-p", observer.project, "-f", observer.composeFile}, arguments...)
 	return observer.docker(ctx, args...)
 }
 
@@ -25,7 +25,8 @@ func (observer *nodeObserver) dockerBounded(ctx context.Context, stdoutLimit, st
 	defer cancel()
 	command := exec.CommandContext(commandContext, "docker", arguments...)
 	command.Env = append(os.Environ(), "ARDENTS_NODE_ROOT="+observer.input.FixtureRoot,
-		"ARDENTS_NODE_IMAGE_TAG="+observer.imageTag, "ARDENTS_NODE_SOURCE_DIGEST="+observer.sourceDigest)
+		"ARDENTS_NODE_IMAGE_TAG="+observer.imageTag, "ARDENTS_NODE_SOURCE_DIGEST="+observer.sourceDigest,
+		"ARDENTS_NODE_BUILD_CONTEXT="+observer.sourceRoot)
 	stdout, stderr := byteio.NewBuffer(stdoutLimit), byteio.NewBuffer(stderrLimit)
 	command.Stdout, command.Stderr = stdout, stderr
 	runErr := command.Run()

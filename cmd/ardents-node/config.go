@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/source"
@@ -33,7 +34,10 @@ func openSource(path string, emit func([]byte) error) (interface {
 }, error) {
 	var err error
 	var plan sourceServerPlan
-	if err := planfile.Decode(path, 32<<10, &plan); err != nil || plan.Schema != "ardents-h3-source-server-v1" {
+	if err := planfile.Decode(path, 32<<10, &plan); err != nil {
+		return nil, fmt.Errorf("decode source server plan: %w", err)
+	}
+	if plan.Schema != "ardents-h3-source-server-v1" {
 		return nil, errors.New("source server plan is not canonical")
 	}
 	if len(plan.ClientKeyDigests) == 0 || len(plan.ClientKeyDigests) > 3 {

@@ -1,18 +1,17 @@
 package state
 
 import (
-	"context"
 	"crypto/ed25519"
-	"errors"
-	"sync"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/source"
-	statestore "github.com/dianabuilds/ardents-network/internal/network/store"
-	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
-// Config identifies one owned state root and its offline trust policy.
+// Config identifies one owned state root and the complete policy needed to
+// open it. The broad record is intentional: Open validates cross-field trust,
+// source, clock, refresh, and resource constraints atomically. Authorities and
+// keys are copied. Exactly one of Now or Clock supplies verification time;
+// Clock may be called concurrently after Open. The zero Config is invalid.
 type Config struct {
 	Root        string
 	NetworkID   [32]byte
@@ -21,7 +20,13 @@ type Config struct {
 	Now         time.Time
 	Clock       func() time.Time
 
-	Source                   source.Config
+	Source source.Config
+
+	// ClockObservation is the initial independent observation. ObserveClock
+	// and ClockObservationFile are alternative live owners. Automatic refresh
+	// requires a live observation and finite source plan. RuntimeProfile enables
+	// the H3-S governor; ObserveResources receives newly allocated JSON records
+	// serially, and an error terminates live operation.
 	ClockObservation         time.Time
 	ClockObservationFile     string
 	ObserveClock             func() time.Time
@@ -30,7 +35,10 @@ type Config struct {
 	ObserveResources         func([]byte) error
 }
 
-// Snapshot is an immutable description of the current verified generation.
+// Snapshot is the immutable, complete projection of one verified generation
+// plus its finite-source state. The broad record is intentional: callers use a
+// single atomic value rather than assembling security-relevant identity,
+// validity, assignment, and freshness fields from separate reads.
 type Snapshot struct {
 	Generation         string
 	NetworkID          [32]byte
@@ -66,117 +74,4 @@ type Snapshot struct {
 	ProbeCapacity      uint16
 	Assignment         string
 	AssignmentDigest   [32]byte
-}
-
-// store owns verification, finite source work, immutable generations, and pointers.
-type store struct {
-	mu              sync.RWMutex
-	config          config
-	current         *Snapshot
-	currentDecision *candidateDecision
-	pendingDecision *candidateDecision
-	distribution    distributionState
-	storage         *statestore.Root
-	serverDone      chan struct{}
-	serverErr       error
-	automaticErr    error
-	resourceErr     error
-	resourceProtect bool
-	resourceGuard   *resource.Guard
-	activeSource    uint16
-	workContext     context.Context
-	workCancel      context.CancelFunc
-	work            sync.WaitGroup
-	refreshing      bool
-	closed          bool
-}
-
-type config struct {
-	root        string
-	networkID   [32]byte
-	authorities map[[32]byte]ed25519.PublicKey
-	threshold   int
-	now         time.Time
-	clock       func() time.Time
-	source      *source.Plan
-	sourceInfo  source.Details
-	observation time.Time
-	observe     func() time.Time
-	automatic   time.Duration
-	profile     string
-	resources   func([]byte) error
-	anchorWall  time.Time
-	anchorMono  time.Time
-}
-
-// Open recovers one state root and verifies any current generation before use.
-func Open(input Config) (*store, error) {
-	resolved, err := validateConfig(input)
-	if err != nil {
-		return nil, err
-	}
-	var guard *resource.Guard
-	if resolved.profile != "" {
-		guard, err = resource.New(resource.Config{Profile: resolved.profile, Interval: time.Second})
-		if err != nil {
-			return nil, err
-		}
-		if err := guard.Check(); err != nil {
-			return nil, err
-		}
-	}
-	storage, err := statestore.Open(resolved.root)
-	if err != nil {
-		return nil, err
-	}
-	opened := false
-	defer func() {
-		if !opened {
-			_ = storage.Close()
-		}
-	}()
-	workContext, workCancel := context.WithCancel(context.Background())
-	defer func() {
-		if !opened {
-			workCancel()
-		}
-	}()
-	store := &store{config: resolved, storage: storage, workContext: workContext, workCancel: workCancel, resourceGuard: guard}
-	current, currentDecision, err := loadCurrent(resolved, storage)
-	if err != nil {
-		return nil, err
-	}
-	store.current, store.currentDecision = current, currentDecision
-	if err := store.loadDistributionState(); err != nil {
-		return nil, err
-	}
-	if resolved.sourceInfo.Serving {
-		if store.current == nil {
-			return nil, errors.New("source mode requires a current generation")
-		}
-		store.serverDone = make(chan struct{})
-		ready := make(chan error, 1)
-		go func() {
-			err := store.serveSource(workContext, ready)
-			store.mu.Lock()
-			store.serverErr = err
-			close(store.serverDone)
-			store.mu.Unlock()
-		}()
-		if err := <-ready; err != nil {
-			workCancel()
-			<-store.serverDone
-			return nil, err
-		}
-	}
-	if resolved.automatic > 0 {
-		store.work.Add(1)
-		go store.runAutomaticRefresh(workContext)
-	}
-	if resolved.profile == "h3-s-v1" {
-		store.work.Add(1)
-		go store.runResourceGovernor(workContext)
-	}
-	opened = true
-	return store, nil
 }
