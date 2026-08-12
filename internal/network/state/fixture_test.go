@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/epoch/merkle"
-	"github.com/dianabuilds/ardents-network/internal/qualification/epochfixture"
 )
 
 const fixtureNow = int64(1_800_000_100)
@@ -79,16 +78,9 @@ func futureFixture(t *testing.T, previous fixture, validFrom int64) fixture {
 
 func buildFixtureEpoch(t *testing.T, value fixture, number uint64, previous, seed [32]byte, from, until time.Time) fixture {
 	t.Helper()
-	accepted := make([]epochfixture.Record, len(value.accepted))
-	for index, record := range value.accepted {
-		accepted[index] = epochfixture.Record{Raw: record.bytes, NodeID: record.nodeID, Family: record.family, Capacity: record.capacity}
-	}
-	built, err := epochfixture.BuildEpoch(epochfixture.EpochSpec{NetworkID: value.networkID, Number: number, Previous: previous,
-		ValidFrom: from, ValidUntil: until, Inputs: value.inputs, Accepted: accepted, Rejections: value.rejections,
-		AssignmentSeed: seed, Domains: []string{"alpha", "beta"}, Authorities: []ed25519.PrivateKey{value.authorityPrivate}})
-	if err != nil {
-		t.Fatal(err)
-	}
+	built := buildTestEpoch(t, testEpochSpec{networkID: value.networkID, number: number, previous: previous,
+		validFrom: from, validUntil: until, inputs: value.inputs, accepted: value.accepted, rejections: value.rejections,
+		assignmentSeed: seed, domains: []string{"alpha", "beta"}, authorities: []ed25519.PrivateKey{value.authorityPrivate}})
 	value.epoch, value.epochDigest, value.materializations = built.Raw, built.Digest, [][]byte{built.Materials[0]}
 	view := make([][]byte, len(value.accepted))
 	for index := range value.accepted {
@@ -121,11 +113,6 @@ func makeRecordAt(t *testing.T, network [32]byte, marker byte, family, endpoint 
 
 func makeRecordWithKey(t *testing.T, network, nodeID [32]byte, private ed25519.PrivateKey, family, endpoint string, capacity uint16, from, until int64) fixtureRecord {
 	t.Helper()
-	built, err := epochfixture.BuildRecord(epochfixture.RecordSpec{NetworkID: network, NodeID: nodeID, Generation: 1,
-		ValidFrom: time.Unix(from, 0).UTC(), ValidUntil: time.Unix(until, 0).UTC(), Family: family, Endpoint: endpoint,
-		Capability: 1, Capacity: capacity, PrivateKey: private})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return fixtureRecord{bytes: built.Raw, nodeID: nodeID, family: family, capacity: capacity}
+	return buildTestRecord(t, network, nodeID, private, family, endpoint, capacity,
+		time.Unix(from, 0).UTC(), time.Unix(until, 0).UTC())
 }

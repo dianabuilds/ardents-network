@@ -43,7 +43,6 @@ func TestRepositoryArchitectureQualificationBoundary(t *testing.T) {
 	for owner, registration := range registry {
 		for _, directory := range packages {
 			allowed := owner == "cmd/ardents-qualify" ||
-				owner == "internal/network/state" && directory == "internal/qualification/epochfixture" ||
 				owner == "internal/qualification/state" && directory == "internal/qualification/byteio" ||
 				owner == "internal/qualification/node" && (directory == "internal/qualification/byteio" || directory == "internal/qualification/node/fixture") ||
 				owner == "internal/qualification/node/fixture" && (directory == "internal/qualification/byteio" || directory == "internal/qualification/epochfixture")

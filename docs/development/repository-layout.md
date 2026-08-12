@@ -113,7 +113,7 @@ The product import direction is:
 cmd/ardents -> internal/network/state, internal/network/source, internal/planfile
 cmd/ardents-node -> internal/network/state, internal/network/source, internal/node, internal/node/probe, internal/planfile
 cmd/ardents-qualify -> internal/qualification/state, internal/qualification/node
-internal/network/state -> internal/network/epoch, internal/network/framing, internal/network/source, internal/network/store, internal/resource
+internal/network/state -> internal/network/epoch, internal/network/epoch/assignment, internal/network/epoch/merkle, internal/network/framing, internal/network/source, internal/network/store, internal/resource
 internal/network/epoch -> internal/network/epoch/assignment, internal/network/epoch/merkle, internal/network/framing
 internal/node -> internal/node/probe, internal/resource
 internal/qualification/state -> internal/qualification/byteio
