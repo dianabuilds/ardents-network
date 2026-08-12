@@ -2,9 +2,10 @@ package state
 
 import (
 	"crypto/ed25519"
+	"crypto/sha256"
+	"errors"
+	"fmt"
 	"time"
-
-	stateepoch "github.com/dianabuilds/ardents-network/internal/network/epoch"
 )
 
 // Case identifies one persisted candidate generation and its supplied evidence.
@@ -27,27 +28,66 @@ type Result struct {
 	EvidenceDigest string `json:"evidence_digest,omitempty"`
 }
 
-// Verify reads one bounded state root and asks the canonical Epoch Module to
-// recompute its authenticated current decision.
+// Verify independently recomputes the authenticated current decision from
+// persisted canonical bytes. It does not call the product validation pipeline.
 func Verify(input Case) Result {
-	if input.Root == "" || len(input.Materializations) > 64 {
-		return Result{Verdict: "invalid", Reason: "bounded evidence root and materializations are required"}
+	if err := validateCase(input); err != nil {
+		return Result{Verdict: "invalid", Reason: err.Error()}
 	}
 	evidence, err := readEvidence(input.Root, input.Materializations)
 	if err != nil {
 		return Result{Verdict: "invalid", Reason: err.Error()}
 	}
-	decision, err := stateepoch.VerifyEvidence(stateepoch.Policy{
-		NetworkID: input.NetworkID, Authorities: input.Authorities, Threshold: input.Threshold, Now: input.Now,
-	}, evidence.current, evidence.generations, evidence.inputs, evidence.materializations)
+	epoch, err := verifyChain(input, evidence)
 	if err != nil {
 		return Result{Verdict: "fail", Reason: err.Error(), Generation: evidence.current}
 	}
-	if decision.Snapshot.Generation != evidence.current {
-		return Result{Verdict: "fail", Reason: "epoch report disagrees with current evidence", Generation: evidence.current}
+	if err := verifyDecision(input, evidence, epoch); err != nil {
+		return Result{Verdict: "fail", Reason: err.Error(), Generation: evidence.current}
 	}
-	// Keep the frozen v1 machine reason stable even though Epoch rules now have
-	// one canonical implementation instead of a competing qualification copy.
 	return Result{Verdict: "pass", Reason: "independent offline verification passed",
-		Generation: decision.Snapshot.Generation, Epoch: decision.Snapshot.Epoch}
+		Generation: evidence.current, Epoch: epoch.number}
 }
+
+func validateCase(input Case) error {
+	if input.Root == "" {
+		return errors.New("evidence root is required")
+	}
+	if input.Threshold < 1 || input.Threshold > len(input.Authorities) {
+		return errors.New("authority threshold is outside the authority set")
+	}
+	if len(input.Authorities) > 16 || len(input.Materializations) > 64 {
+		return errors.New("qualification input exceeds its finite set bounds")
+	}
+	if input.Now.IsZero() {
+		return errors.New("verification time is required")
+	}
+	for id, public := range input.Authorities {
+		if len(public) != ed25519.PublicKeySize {
+			return errors.New("authority public key has invalid length")
+		}
+		if keyID(public) != id {
+			return errors.New("authority identifier does not match its public key")
+		}
+	}
+	return nil
+}
+
+func verifyDecision(input Case, evidence persistedEvidence, epoch verifiedEpoch) error {
+	if fmt.Sprintf("%x", epoch.digest) != evidence.current {
+		return errors.New("generation name does not match the epoch digest")
+	}
+	if len(evidence.inputs) != int(epoch.cutoff) {
+		return errors.New("candidate input file count does not match its cutoff")
+	}
+	if recordRoot(evidence.inputs, 0x10) != epoch.inputRoot {
+		return errors.New("candidate input root is inconsistent")
+	}
+	accepted, rejected := evaluateInputs(input, epoch, evidence.inputs)
+	if err := verifyView(epoch, accepted, rejected); err != nil {
+		return err
+	}
+	return verifyMaterials(epoch, accepted, evidence.materializations)
+}
+
+func keyID(public []byte) [32]byte { return sha256.Sum256(public) }

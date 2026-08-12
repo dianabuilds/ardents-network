@@ -14,9 +14,8 @@ func TestRepositoryArchitectureQualificationBoundary(t *testing.T) {
 		}
 		switch directory {
 		case "internal/qualification/state":
-			if len(qualification.allowedImports) != 2 || !qualification.allowedImports["internal/qualification/byteio"] ||
-				!qualification.allowedImports["internal/network/epoch"] {
-				t.Errorf("%s may import only qualification byte I/O and canonical Network Epoch", directory)
+			if len(qualification.allowedImports) != 1 || !qualification.allowedImports["internal/qualification/byteio"] {
+				t.Errorf("%s may import only qualification byte I/O", directory)
 			}
 		case "internal/qualification/node":
 			if len(qualification.allowedImports) != 2 || !qualification.allowedImports["internal/qualification/byteio"] ||

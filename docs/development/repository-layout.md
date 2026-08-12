@@ -94,7 +94,7 @@ paths are black-box qualification assets, not
 `internal/lab`, product runtime, packaging, or deployment. Images, keys, state,
 captures, evidence, caches, and generated manifests remain outside Git.
 
-`internal/qualification/{state,epoch,node,node/fixture,byteio}` are not product
+`internal/qualification/{state,epochfixture,node,node/fixture,byteio}` are not product
 Modules. They own controlled manifests, faults, observers, independent evidence
 recomputation, campaign verdicts, and cleanup for `cmd/ardents-qualify`.
 Qualification observes and drives product executables as black boxes and does
@@ -116,7 +116,7 @@ cmd/ardents-qualify -> internal/qualification/state, internal/qualification/node
 internal/network/state -> internal/network/epoch, internal/network/framing, internal/network/source, internal/network/store, internal/resource
 internal/network/epoch -> internal/network/epoch/assignment, internal/network/epoch/merkle, internal/network/framing
 internal/node -> internal/node/probe, internal/resource
-internal/qualification/state -> internal/network/epoch, internal/qualification/byteio
+internal/qualification/state -> internal/qualification/byteio
 internal/qualification/node -> internal/qualification/byteio, internal/qualification/node/fixture
 internal/qualification/node/fixture -> internal/network/epoch/assignment, internal/qualification/byteio, internal/qualification/epochfixture
 internal/qualification/epochfixture -> internal/network/epoch/assignment, internal/network/epoch/merkle
