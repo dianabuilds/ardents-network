@@ -14,7 +14,7 @@ func lowerNodeNofile() error {
 		return err
 	}
 	if current.Cur < 8 || current.Max < 8 {
-		return errors.New("Node descriptor limit is below the fault-injection boundary")
+		return errors.New("node descriptor limit is below the fault-injection boundary")
 	}
 	limit := unix.Rlimit{Cur: 8, Max: 8}
 	return unix.Prlimit(1, unix.RLIMIT_NOFILE, &limit, nil)

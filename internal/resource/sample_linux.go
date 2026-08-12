@@ -81,11 +81,11 @@ func managedMemory() (uint64, error) {
 	samples := []metrics.Sample{{Name: "/memory/classes/total:bytes"}, {Name: "/memory/classes/heap/released:bytes"}}
 	metrics.Read(samples)
 	if samples[0].Value.Kind() != metrics.KindUint64 || samples[1].Value.Kind() != metrics.KindUint64 {
-		return 0, errors.New("Go memory counter is unavailable")
+		return 0, errors.New("managed memory counter is unavailable")
 	}
 	total, released := samples[0].Value.Uint64(), samples[1].Value.Uint64()
 	if released > total {
-		return 0, errors.New("Go memory counter is invalid")
+		return 0, errors.New("managed memory counter is invalid")
 	}
 	return total - released, nil
 }
