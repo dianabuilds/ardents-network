@@ -17,9 +17,11 @@ func evaluateNodePreparation(arguments []string) (statequalification.Result, err
 	flags := flag.NewFlagSet("prepare-node", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	var root, atText, ardentsPath string
+	var linuxUIDOwnership bool
 	flags.StringVar(&root, "root", "", "new out-of-repository fixture root")
 	flags.StringVar(&atText, "at", "", "campaign time in RFC3339")
 	flags.StringVar(&ardentsPath, "ardents", "", "optional absolute ardents binary path")
+	flags.BoolVar(&linuxUIDOwnership, "linux-uid-ownership", false, "assign fixed Docker role UIDs on a Linux host")
 	if err := flags.Parse(arguments); err != nil {
 		return statequalification.Result{}, err
 	}
@@ -40,7 +42,8 @@ func evaluateNodePreparation(arguments []string) (statequalification.Result, err
 			return statequalification.Result{}, err
 		}
 	}
-	if err := fixture.Prepare(root, at, ardentsPath); err != nil {
+	if err := fixture.Prepare(fixture.PrepareConfig{Root: root, Now: at, ArdentsPath: ardentsPath,
+		LinuxUIDOwnership: linuxUIDOwnership}); err != nil {
 		return statequalification.Result{}, err
 	}
 	return statequalification.Result{Verdict: "pass", Reason: "node fixture prepared"}, nil

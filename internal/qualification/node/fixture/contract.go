@@ -23,33 +23,44 @@ func Validate(root string) error {
 	return nil
 }
 
+// PrepareConfig declares one immutable fixture preparation mode.
+type PrepareConfig struct {
+	Root              string
+	Now               time.Time
+	ArdentsPath       string
+	LinuxUIDOwnership bool
+}
+
 // Prepare freezes one bounded E/S1/S2/N1/N2 fixture without starting candidates.
-func Prepare(root string, now time.Time, ardentsPath string) error {
-	if root == "" || !filepath.IsAbs(root) || now.IsZero() {
+func Prepare(config PrepareConfig) error {
+	if config.Root == "" || !filepath.IsAbs(config.Root) || config.Now.IsZero() {
 		return errors.New("node fixture requires an absolute root and verification time")
 	}
-	if _, err := os.Stat(root); err == nil {
+	if _, err := os.Stat(config.Root); err == nil {
 		return errors.New("node fixture root already exists")
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
-	if err := os.Mkdir(root, 0o700); err != nil {
+	if err := os.Mkdir(config.Root, 0o700); err != nil {
 		return err
 	}
-	if err := os.WriteFile(filepath.Join(root, ".ardents-node-owned"), []byte(nodeOwner), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(config.Root, ".ardents-node-owned"), []byte(nodeOwner), 0o600); err != nil {
 		return err
 	}
-	fixture, err := newNodeFixture(now.UTC())
+	fixture, err := newNodeFixture(config.Now.UTC())
 	if err != nil {
 		return err
 	}
-	if err := fixture.write(root); err != nil {
+	if err := fixture.write(config.Root); err != nil {
 		return err
 	}
-	if ardentsPath != "" {
-		if err := seedNode(root, ardentsPath); err != nil {
+	if config.ArdentsPath != "" {
+		if err := seedNode(config.Root, config.ArdentsPath); err != nil {
 			return err
 		}
 	}
-	return assignNodeOwnership(root)
+	if config.LinuxUIDOwnership {
+		return assignNodeOwnership(config.Root)
+	}
+	return nil
 }

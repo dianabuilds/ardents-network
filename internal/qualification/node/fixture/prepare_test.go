@@ -10,9 +10,9 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/qualification/node/fixture"
 )
 
-func TestPrepareCreatesOwnedBoundedIsolatedFixture(t *testing.T) {
+func TestPrepareCreatesBoundedIsolatedFixtureAsCurrentUser(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "node")
-	err := fixture.Prepare(root, time.Unix(1_800_000_100, 0).UTC(), "")
+	err := fixture.Prepare(fixture.PrepareConfig{Root: root, Now: time.Unix(1_800_000_100, 0).UTC()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +41,7 @@ func TestPrepareCreatesOwnedBoundedIsolatedFixture(t *testing.T) {
 			t.Errorf("fixture path %s: %v", path, err)
 		}
 	}
-	if err := fixture.Prepare(root, time.Now(), ""); err == nil {
+	if err := fixture.Prepare(fixture.PrepareConfig{Root: root, Now: time.Now()}); err == nil {
 		t.Fatal("non-empty fixture root was reused")
 	}
 }

@@ -2,4 +2,8 @@
 
 package fixture
 
-func assignNodeOwnership(string) error { return nil }
+import "errors"
+
+func assignNodeOwnership(string) error {
+	return errors.New("node fixture Linux UID ownership requires a Linux host")
+}
