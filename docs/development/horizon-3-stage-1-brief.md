@@ -317,6 +317,26 @@ cleanup, and quiescence gates. S1-4 remains open until `short`, `churn-2h`, and
 host. Local Docker results are development evidence only and cannot change that
 status or authorize Stage 2.
 
+Recorded development evidence (2026-08-12):
+
+| Increment | Implementation/check result | Campaign evidence and machine result |
+|---|---|---|
+| S1-0 | Implemented; independent persisted-state verification and frozen vectors pass the Go 1.26.5 full gate | Not a Docker campaign |
+| S1-1 | Implemented; finite authenticated two-source and restart/conflict regression suites pass | Not a Docker campaign |
+| S1-2 | Implemented; lifecycle, authenticated probe, withdrawal, restart, and black-box process suites pass | Functional development evidence only |
+| S1-3 | Campaign implementation and fail-closed observer findings are closed in code; a fresh full matrix has not passed after the final PID-transition fix | Latest full local result: `invalid`, digest `1c3bdd291eeb5e724d139234d2495709644b89d4c63c8577f572196d95464aaf`, root `C:\Users\vitek\AppData\Local\Temp\ardents-h3-local-final-31f58549ce2348b1a2de6f4356e57e91\short-evidence` |
+| S1-4 | Not complete; no qualifying Ubuntu result | Official `short`, `churn-2h`, and `unattended-24h` were not run; no machine result or evidence root exists |
+
+The local host was Docker Desktop 4.55.0 / Engine 29.1.3 on a WSL2 Linux
+6.6.87.2 kernel with cgroup v2. It is explicitly non-qualifying. Earlier local
+runs that exposed evidence-cadence and process-transition defects remain
+development findings outside Git; an early apparent `pass` is rejected because
+its audit found only 194 samples over 667 seconds. The only remaining execution
+path is the exact three-root Ubuntu command in
+`tests/qualification/h3-node-v1/README.md`. Until all three official results are
+valid passes, Stage 1 is incomplete and the recommendation is `redesign`; do
+not start Stage 2.
+
 Every increment runs `make quick-check` while changing and `make check` before
 integration. Keep commits scoped to one increment. Do not modify frozen H2
 laboratory behavior to make Stage 1 pass.
