@@ -3,13 +3,10 @@ package node
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 )
@@ -33,25 +30,39 @@ type nodeObserver struct {
 	sampleBytes  int64
 	sampleCount  int
 	resources    map[string]*nodeResourceSeries
+	sourceDigest string
+	collectorID  string
+	sampleLimit  int
+	sampleBudget int64
 }
 
 func newNodeObserver(input Campaign) (*nodeObserver, error) {
+	sourceDigest, err := captureNodeSourceIdentity(input.ComposeFile, input.EvidenceRoot)
+	if err != nil {
+		return nil, err
+	}
 	samples, err := os.OpenFile(filepath.Join(input.EvidenceRoot, "samples.jsonl"), os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 	if err != nil {
 		return nil, err
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	identity := fmt.Sprintf("%x", sha256.Sum256([]byte(input.EvidenceRoot)))[:12]
-	return &nodeObserver{input: input, ctx: ctx, cancel: cancel, clock: [3]bool{true, true, true},
+	limit, budget := nodeSampleBounds(input.Mode)
+	return &nodeObserver{input: input, ctx: ctx, cancel: cancel, clock: [3]bool{true, true, true}, sourceDigest: sourceDigest,
 		samples: samples, captured: make(map[string]bool), project: "ardents-node-" + identity,
-		imageTag: "run-" + identity, evidenceBad: make(chan struct{}), resources: make(map[string]*nodeResourceSeries)}, nil
+		imageTag: "run-" + identity, evidenceBad: make(chan struct{}), resources: make(map[string]*nodeResourceSeries),
+		sampleLimit: limit, sampleBudget: budget}, nil
 }
 
 func (observer *nodeObserver) start() {
-	observer.work.Add(3)
+	observer.work.Add(2)
 	go observer.runClock()
-	go observer.runSamples()
 	go observer.stopOnEvidenceFailure()
+}
+
+func (observer *nodeObserver) startSamples() {
+	observer.work.Add(1)
+	go observer.runSamples()
 }
 
 func (observer *nodeObserver) stopOnEvidenceFailure() {
@@ -89,48 +100,14 @@ func (observer *nodeObserver) runClock() {
 	}
 }
 
-func (observer *nodeObserver) runSamples() {
-	defer observer.work.Done()
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-observer.ctx.Done():
-			return
-		case at := <-ticker.C:
-			ids, idErr := observer.composeBounded(observer.ctx, 32<<10, "ps", "-q")
-			arguments := []string{"stats", "--no-stream", "--format", "{{json .}}"}
-			for _, id := range strings.Fields(string(ids)) {
-				if len(id) >= 12 && len(id) <= 64 {
-					arguments = append(arguments, id)
-				}
-			}
-			var stats []byte
-			var statsErr error
-			if len(arguments) > 4 {
-				stats, statsErr = observer.dockerBounded(observer.ctx, 64<<10, 32<<10, arguments...)
-			}
-			processes, processErr := observer.composeBounded(observer.ctx, 32<<10, "ps", "-a", "--format", "{{.Service}}\t{{.State}}\t{{.ExitCode}}\t{{.ID}}")
-			resources, resourceErr := observer.sampleNodeResources(observer.ctx, at)
-			observer.observeResources(resources)
-			record := map[string]any{"at": at.UTC(), "stats": string(stats), "processes": string(processes), "resources": resources}
-			if idErr != nil || statsErr != nil || processErr != nil || resourceErr != nil {
-				record["observer_error"] = errors.Join(idErr, statsErr, processErr, resourceErr).Error()
-			}
-			raw, marshalErr := json.Marshal(record)
-			if marshalErr != nil || len(raw) > 128<<10 || observer.sampleCount >= 86464 || observer.sampleBytes+int64(len(raw)+1) > 256<<20 {
-				observer.recordEvidenceError(errors.Join(marshalErr, errors.New("node sample evidence exceeded its finite budget")))
-				return
-			}
-			raw = append(raw, '\n')
-			written, writeErr := observer.samples.Write(raw)
-			if writeErr != nil || written != len(raw) {
-				observer.recordEvidenceError(errors.Join(writeErr, io.ErrShortWrite))
-				return
-			}
-			observer.sampleCount++
-			observer.sampleBytes += int64(written)
-		}
+func nodeSampleBounds(mode string) (int, int64) {
+	switch mode {
+	case "churn-2h":
+		return 8_000, int64(2) << 30
+	case "unattended-24h":
+		return 87_000, int64(8) << 30
+	default:
+		return 4_096, int64(512) << 20
 	}
 }
 

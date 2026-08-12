@@ -16,22 +16,27 @@ import (
 )
 
 func nodeProcessTree(mainPID int) (uint64, uint64, uint64, uint64, string, string, error) {
+	mainCgroup, err := nodeProcessCgroup(strconv.Itoa(mainPID))
+	if err != nil {
+		return 0, 0, 0, 0, "", "", err
+	}
 	directory, err := os.Open("/proc")
 	if err != nil {
 		return 0, 0, 0, 0, "", "", err
 	}
-	names, readErr := directory.Readdirnames(1025)
+	names, readErr := directory.Readdirnames(8193)
 	closeErr := directory.Close()
 	if errors.Is(readErr, io.EOF) {
 		readErr = nil
 	}
-	if len(names) > 1024 || readErr != nil || closeErr != nil {
+	if len(names) > 8192 || readErr != nil || closeErr != nil {
 		return 0, 0, 0, 0, "", "", errors.Join(readErr, closeErr, errors.New("node proc directory exceeds its bound"))
 	}
 	fields := make([]string, 0, 512)
 	for _, name := range names {
 		pid, parseErr := strconv.Atoi(name)
-		if parseErr == nil && pid > 0 {
+		cgroup, cgroupErr := nodeProcessCgroup(name)
+		if parseErr == nil && pid > 0 && cgroupErr == nil && cgroup == mainCgroup {
 			fields = append(fields, name)
 		}
 	}
@@ -71,6 +76,15 @@ func nodeProcessTree(mainPID int) (uint64, uint64, uint64, uint64, string, strin
 		return 0, 0, 0, 0, "", "", errors.New("node main process is absent from its cgroup")
 	}
 	return fds, sockets, threads, rss, start, evidence.String(), nil
+}
+
+func nodeProcessCgroup(pid string) (string, error) {
+	raw, err := byteio.ReadFile(filepath.Join("/proc", pid, "cgroup"), 4096)
+	value := strings.TrimSpace(string(raw))
+	if err != nil || !strings.HasPrefix(value, "0::/") || strings.Contains(value, "\n") {
+		return "", errors.Join(err, errors.New("node process cgroup is invalid"))
+	}
+	return value, nil
 }
 
 func nodeStatusCounter(raw, name string, multiplier uint64) (uint64, bool) {

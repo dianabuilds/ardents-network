@@ -28,6 +28,40 @@ func SampleContainerResources(at time.Time) ([]byte, error) {
 	return raw, nil
 }
 
+// SampleHostResources reads candidate processes from a separate host-PID collector.
+func SampleHostResources(at time.Time, encoded string) ([]byte, error) {
+	if len(encoded) == 0 || len(encoded) > 4096 {
+		return nil, errors.New("node host resource input exceeds its bound")
+	}
+	var candidates []nodeHostCandidate
+	if err := json.Unmarshal([]byte(encoded), &candidates); err != nil || len(candidates) < 1 || len(candidates) > 5 {
+		return nil, errors.Join(err, errors.New("node host resource input is invalid"))
+	}
+	expected := map[string]bool{"source1": true, "source2": true, "endpoint": true, "node1": true, "node2": true}
+	seen := make(map[string]bool, len(candidates))
+	samples := make([]nodeResourceSnapshot, 0, len(candidates))
+	for _, candidate := range candidates {
+		if !expected[candidate.Service] || seen[candidate.Service] || candidate.PID < 1 ||
+			len(candidate.ContainerID) < 12 || len(candidate.ContainerID) > 64 {
+			return nil, errors.New("node host resource candidate is invalid")
+		}
+		seen[candidate.Service] = true
+		sample, err := readNodeProcessResources(candidate.Service, candidate.ContainerID, candidate.PID, at)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		samples = append(samples, sample)
+	}
+	raw, err := json.Marshal(samples)
+	if err != nil || len(raw) > 384<<10 {
+		return nil, errors.Join(err, errors.New("node host resource sample exceeds its bound"))
+	}
+	return raw, nil
+}
+
 func readNodeProcessResources(service, identity string, pid int, at time.Time) (nodeResourceSnapshot, error) {
 	root := filepath.Join("/proc", strconv.Itoa(pid), "root", "sys", "fs", "cgroup")
 	raw := make(map[string]string, 18)
@@ -40,6 +74,9 @@ func readNodeProcessResources(service, identity string, pid int, at time.Time) (
 		}
 		raw[name] = string(value)
 	}
+	ancestry, ancestryErr := byteio.ReadFile(filepath.Join("/proc", strconv.Itoa(pid), "cgroup"), 4096)
+	mounts, mountErr := byteio.ReadFile(filepath.Join("/proc", strconv.Itoa(pid), "mountinfo"), 64<<10)
+	raw["proc.cgroup"], raw["proc.mountinfo"] = string(ancestry), string(mounts)
 	usage, err := nodeNamedCounter(raw["cpu.stat"], "usage_usec")
 	memory, memoryErr := strconv.ParseUint(strings.TrimSpace(raw["memory.current"]), 10, 64)
 	pids, pidsErr := strconv.ParseUint(strings.TrimSpace(raw["pids.current"]), 10, 64)
@@ -48,7 +85,7 @@ func readNodeProcessResources(service, identity string, pid int, at time.Time) (
 	raw["net.dev"] = string(networkRaw)
 	fds, sockets, threads, rss, start, processRaw, processErr := nodeProcessTree(pid)
 	raw["process_tree"] = processRaw
-	if err = errors.Join(err, memoryErr, pidsErr, eventErr, networkErr, processErr); err != nil {
+	if err = errors.Join(err, ancestryErr, mountErr, memoryErr, pidsErr, eventErr, networkErr, processErr); err != nil {
 		return nodeResourceSnapshot{}, err
 	}
 	return nodeResourceSnapshot{Service: service, At: at.UTC(), CPUUsageUsec: usage, Memory: memory,

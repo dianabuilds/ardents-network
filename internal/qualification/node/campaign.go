@@ -57,26 +57,47 @@ func Run(ctx context.Context, input Campaign) Result {
 	if _, err := observer.compose(ctx, "config", "--quiet"); err != nil {
 		return observer.result("invalid", err)
 	}
+	if err := observer.capturePreflightEvidence(ctx); err != nil {
+		return observer.result("invalid", err)
+	}
 	observer.start()
 	if _, err := observer.compose(ctx, "up", "--build", "-d", "--force-recreate"); err != nil {
 		return observer.result("invalid", err)
 	}
 	defer observer.cleanup()
+	if err := observer.captureCandidateIdentity(ctx); err != nil {
+		return observer.result("invalid", err)
+	}
+	if err := observer.startCollector(ctx); err != nil {
+		return observer.result("invalid", err)
+	}
 	if err := observer.waitReady(ctx, 30*time.Second); err != nil {
 		return observer.result("fail", err)
 	}
 	if err := observer.captureInitialResources(ctx); err != nil {
-		return observer.result("fail", err)
+		return observer.result("invalid", err)
 	}
-	err = observer.runShortMatrix(ctx)
+	observer.startSamples()
+	if input.Mode == "short" {
+		err = observer.runShortMatrix(ctx)
+	} else {
+		err = observer.runSustainedCampaign(ctx)
+	}
 	if err != nil {
+		var invalid invalidNodeCampaignError
+		if errors.As(err, &invalid) || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return observer.result("invalid", err)
+		}
 		return observer.result("fail", err)
 	}
 	return observer.result("pass", nil)
 }
 
 func validateCampaign(input Campaign) (Campaign, error) {
-	if err := validateNodeSpecialInput(input, "short"); err != nil {
+	if campaignDuration(input.Mode) < 0 {
+		return input, errors.New("node campaign mode is invalid")
+	}
+	if err := validateNodeSpecialInput(input, input.Mode); err != nil {
 		return input, err
 	}
 	var err error

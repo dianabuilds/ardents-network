@@ -19,7 +19,7 @@ func evaluateNodeCampaign(arguments []string) (statequalification.Result, error)
 	flags.StringVar(&fixture, "fixture", "", "prepared node fixture root")
 	flags.StringVar(&evidence, "evidence", "", "new external evidence root")
 	flags.StringVar(&compose, "compose", "", "node Compose file")
-	flags.StringVar(&mode, "mode", "short", "short hostile-resource matrix")
+	flags.StringVar(&mode, "mode", "short", "short, churn-2h, or unattended-24h campaign")
 	if err := flags.Parse(arguments); err != nil {
 		return statequalification.Result{}, err
 	}

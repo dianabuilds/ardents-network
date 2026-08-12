@@ -15,8 +15,17 @@ import (
 )
 
 func run(arguments []string, output, diagnostics io.Writer) int {
-	if len(arguments) > 0 && arguments[0] == "sample-node" {
-		raw, err := evaluateNodeSample(arguments[1:])
+	if len(arguments) > 0 && arguments[0] == "collector-node" {
+		return holdNodeCollector(arguments[1:], diagnostics)
+	}
+	if len(arguments) > 0 && (arguments[0] == "sample-node" || arguments[0] == "build-info-node") {
+		var raw []byte
+		var err error
+		if arguments[0] == "sample-node" {
+			raw, err = evaluateNodeSample(arguments[1:])
+		} else {
+			raw, err = evaluateNodeBuildIdentity(arguments[1:])
+		}
 		if err == nil {
 			_, err = output.Write(append(raw, '\n'))
 		}

@@ -8,18 +8,11 @@ import (
 )
 
 func (observer *nodeObserver) runShortMatrix(ctx context.Context) error {
-	if err := observer.waitStopped(ctx, 12*time.Second, "node1", "node2"); err != nil {
-		return errors.New("automatic reassignment did not drain both original duties")
-	}
-	observer.captureLogs(ctx, "node1", "node2")
-	if _, err := observer.compose(ctx, "up", "-d", "--force-recreate", "node1", "node2"); err != nil {
-		return err
-	}
-	if err := observer.waitReady(ctx, 15*time.Second); err != nil {
+	if err := observer.stabilizeCurrentAssignment(ctx); err != nil {
 		return err
 	}
 	if err := observer.partialHandshakeFlood(ctx); err != nil {
-		return err
+		return invalidNodeCampaignError{err}
 	}
 	if _, err := observer.compose(ctx, "kill", "source1"); err != nil {
 		return err

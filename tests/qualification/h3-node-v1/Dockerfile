@@ -9,6 +9,8 @@ RUN CGO_ENABLED=0 go build -trimpath -o /out/ardents ./cmd/ardents && \
     CGO_ENABLED=0 go build -trimpath -o /out/ardents-qualify ./cmd/ardents-qualify
 
 FROM scratch
+ARG ARDENTS_SOURCE_DIGEST
+LABEL org.opencontainers.image.revision=$ARDENTS_SOURCE_DIGEST
 COPY --from=build /out/ardents /usr/local/bin/ardents
 COPY --from=build /out/ardents-node /usr/local/bin/ardents-node
 COPY --from=build /out/ardents-qualify /usr/local/bin/ardents-qualify

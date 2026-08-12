@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -13,26 +12,63 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/qualification/byteio"
 )
 
-func (observer *nodeObserver) sampleNodeResources(ctx context.Context, at time.Time) ([]nodeResourceSnapshot, error) {
-	samples := make([]nodeResourceSnapshot, 0, 5)
-	var sampleErr error
-	for _, service := range []string{"source1", "source2", "endpoint", "node1", "node2"} {
-		identity, err := observer.composeBounded(ctx, 128, "ps", "-q", service)
-		id := string(bytesTrimSpace(identity))
-		if err != nil || len(id) < 12 || len(id) > 64 {
-			sampleErr = errors.Join(sampleErr, err, errors.New("node resource candidate is unavailable: "+service))
-			continue
-		}
-		raw, err := observer.dockerBounded(ctx, 64<<10, 4096, "exec", id, "/usr/local/bin/ardents-qualify", "sample-node")
-		var sample nodeResourceSnapshot
-		if err != nil || json.Unmarshal(raw, &sample) != nil || sample.ProcessStart == "" || sample.Raw == nil || sample.Events == nil {
-			sampleErr = errors.Join(sampleErr, err, errors.New("node container resource sample is invalid: "+service))
-			continue
-		}
-		sample.Service, sample.At, sample.ContainerID, sample.HostPID = service, at.UTC(), id, 0
-		samples = append(samples, sample)
+func (observer *nodeObserver) sampleNodeResources(ctx context.Context, _ time.Time) ([]nodeResourceSnapshot, error) {
+	services := []string{"source1", "source2", "endpoint", "node1", "node2"}
+	identities, err := observer.composeBounded(ctx, 4096, "ps", "--format", "{{.Service}}\t{{.ID}}")
+	if err != nil {
+		return nil, err
 	}
-	return samples, sampleErr
+	ids := make(map[string]string, len(services))
+	for _, line := range strings.Split(string(identities), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) == 2 && len(fields[1]) >= 12 && len(fields[1]) <= 64 {
+			ids[fields[0]] = fields[1]
+		}
+	}
+	arguments := []string{"inspect", "--format", "{{.Id}}\t{{.State.Pid}}"}
+	for _, service := range services {
+		if ids[service] != "" {
+			arguments = append(arguments, ids[service])
+		}
+	}
+	if len(arguments) == 3 {
+		return nil, errors.New("node resource candidate set is empty")
+	}
+	inspected, err := observer.dockerBounded(ctx, 8192, 4096, arguments...)
+	if err != nil {
+		return nil, err
+	}
+	candidates := make([]nodeHostCandidate, 0, len(services))
+	for _, service := range services {
+		if ids[service] == "" {
+			continue
+		}
+		candidate, found, candidateErr := nodeCandidateFromInspect(service, ids[service], string(inspected))
+		if candidateErr != nil {
+			return nil, candidateErr
+		}
+		if !found {
+			continue
+		}
+		candidates = append(candidates, candidate)
+	}
+	if len(candidates) == 0 {
+		return []nodeResourceSnapshot{}, nil
+	}
+	payload, err := json.Marshal(candidates)
+	if err != nil || len(payload) > 4096 {
+		return nil, errors.Join(err, errors.New("node resource collector input exceeds its bound"))
+	}
+	if len(observer.collectorID) < 12 {
+		return nil, errors.New("node resource collector is unavailable")
+	}
+	raw, err := observer.dockerBounded(ctx, 384<<10, 4096, "exec", observer.collectorID,
+		"/usr/local/bin/ardents-qualify", "sample-node", string(payload))
+	var samples []nodeResourceSnapshot
+	if err != nil || json.Unmarshal(raw, &samples) != nil || len(samples) > len(candidates) {
+		return nil, errors.Join(err, errors.New("node host resource sample is invalid"))
+	}
+	return samples, nil
 }
 
 type nodeResourceSnapshot struct {
@@ -52,6 +88,12 @@ type nodeResourceSnapshot struct {
 	Events       map[string]uint64 `json:"memory_events"`
 }
 
+type nodeHostCandidate struct {
+	Service     string `json:"service"`
+	ContainerID string `json:"container_id"`
+	PID         int    `json:"pid"`
+}
+
 type nodeResourceSeries struct {
 	lastAt         time.Time
 	lastCPU        uint64
@@ -65,27 +107,41 @@ type nodeResourceSeries struct {
 	identity       string
 	eventFailure   bool
 	profileFailure bool
+	cadenceFailure bool
 }
 
 func (observer *nodeObserver) observeResources(samples []nodeResourceSnapshot) {
+	present := make(map[string]bool, len(samples))
+	for _, sample := range samples {
+		present[sample.Service] = true
+	}
+	for service, series := range observer.resources {
+		if !present[service] {
+			series.lastAt = time.Time{}
+		}
+	}
 	for _, sample := range samples {
 		series := observer.resources[sample.Service]
 		if series == nil {
 			series = new(nodeResourceSeries)
 			observer.resources[sample.Service] = series
 		}
-		if !series.lastAt.IsZero() && sample.CPUUsageUsec >= series.lastCPU {
-			elapsed := sample.At.Sub(series.lastAt).Microseconds()
+		identity := sample.ContainerID + ":" + sample.ProcessStart
+		sameProcess := series.identity == "" || series.identity == identity
+		if !sameProcess {
+			series.lastAt, series.lastCPU = time.Time{}, 0
+		}
+		if !series.lastAt.IsZero() && sameProcess && sample.CPUUsageUsec >= series.lastCPU {
+			gap := sample.At.Sub(series.lastAt)
+			if gap > 1500*time.Millisecond {
+				series.cadenceFailure = true
+			}
+			elapsed := gap.Microseconds()
 			if elapsed > 0 {
 				series.cpuMilli = append(series.cpuMilli, (sample.CPUUsageUsec-series.lastCPU)*1000/uint64(elapsed))
 			}
 		}
-		series.lastAt, series.lastCPU = sample.At, sample.CPUUsageUsec
-		identity := sample.ContainerID + ":" + sample.ProcessStart
-		if series.identity != "" && series.identity != identity {
-			series.lastAt, series.lastCPU = sample.At, sample.CPUUsageUsec
-		}
-		series.identity = identity
+		series.lastAt, series.lastCPU, series.identity = sample.At, sample.CPUUsageUsec, identity
 		series.memory = append(series.memory, sample.Memory)
 		series.maxPIDs = max(series.maxPIDs, sample.PIDs)
 		series.maxFDs = max(series.maxFDs, sample.FDs)
@@ -125,7 +181,8 @@ func (observer *nodeObserver) verifyResourceEvidence() error {
 		if service == "node1" || service == "node2" {
 			fdLimit, socketLimit, pidLimit = 512, 256, 256
 		}
-		if series.eventFailure || series.profileFailure || series.maxFDs > fdLimit || series.maxSockets > socketLimit || series.maxPIDs > pidLimit || series.maxThreads > pidLimit {
+		if series.eventFailure || series.profileFailure || series.cadenceFailure || series.maxFDs > fdLimit ||
+			series.maxSockets > socketLimit || series.maxPIDs > pidLimit || series.maxThreads > pidLimit {
 			return errors.New("node process resource fuse failed for " + service)
 		}
 	}
@@ -145,7 +202,10 @@ func validNodeResourceProfile(sample nodeResourceSnapshot) bool {
 			return false
 		}
 	}
-	return strings.TrimSpace(sample.Raw["cpuset.cpus.effective"]) != "" && nodeNetworkCountersHealthy(sample.Raw["net.dev"])
+	ancestry := strings.TrimSpace(sample.Raw["proc.cgroup"])
+	mounts := sample.Raw["proc.mountinfo"]
+	return strings.HasPrefix(ancestry, "0::/") && strings.Contains(mounts, " - cgroup2 cgroup ") &&
+		strings.TrimSpace(sample.Raw["cpuset.cpus.effective"]) != "" && nodeNetworkCountersHealthy(sample.Raw["net.dev"])
 }
 
 func nodeNetworkCountersHealthy(raw string) bool {
@@ -182,22 +242,4 @@ func (observer *nodeObserver) captureInitialResources(ctx context.Context) error
 	}
 	observer.observeResources(samples)
 	return byteio.WriteJSON(filepath.Join(observer.input.EvidenceRoot, "resources-initial.json"), samples, 64<<10)
-}
-
-func nearestRank95(values []uint64) uint64 {
-	ordered := append([]uint64(nil), values...)
-	sort.Slice(ordered, func(left, right int) bool { return ordered[left] < ordered[right] })
-	index := (95*len(ordered)+99)/100 - 1
-	return ordered[index]
-}
-
-func nodeRawCounter(raw, name string) (uint64, bool) {
-	for _, line := range strings.Split(raw, "\n") {
-		fields := strings.Fields(line)
-		if len(fields) == 2 && fields[0] == name {
-			value, err := strconv.ParseUint(fields[1], 10, 64)
-			return value, err == nil
-		}
-	}
-	return 0, false
 }

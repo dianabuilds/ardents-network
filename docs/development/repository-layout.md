@@ -127,6 +127,12 @@ Qualification code may drive or observe product Interfaces but cannot implement
 missing product behavior on their behalf. A passing harness shortcut is a test
 failure, not a substitute for Endpoint or Node runtime behavior.
 
+The Node qualification owner exposes three separate campaign modes (`short`,
+`churn-2h`, and `unattended-24h`). Each requires a new sealed fixture and
+evidence root outside Git and binds the maintained production-source digest to
+the Docker image and inspected Go binaries. No combined run satisfies more than
+one mode.
+
 A disposable Go spike under `experiments/` uses `//go:build ignore` so the root
 module and its `./...` quality gates do not treat it as maintained project code.
 It does not create a nested `go.mod`; its question record and README own the run

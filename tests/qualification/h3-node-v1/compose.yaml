@@ -45,6 +45,8 @@ services:
     build:
       context: ../../..
       dockerfile: tests/qualification/h3-node-v1/Dockerfile
+      args:
+        ARDENTS_SOURCE_DIGEST: ${ARDENTS_NODE_SOURCE_DIGEST:?source digest required}
     user: "11001:11001"
     command: [/usr/local/bin/ardents-node, source, --config, /run/ardents/config.json]
     volumes:

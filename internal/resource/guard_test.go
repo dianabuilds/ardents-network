@@ -74,3 +74,44 @@ func TestSourceGuardUsesSourceProfileThresholds(t *testing.T) {
 		t.Fatalf("source emergency = %+v, %v", observation, err)
 	}
 }
+
+func TestNodeGuardCoversEveryDeclaredResourceDimension(t *testing.T) {
+	cases := map[string]struct {
+		sample     resource.Sample
+		timers     uint64
+		queueItems uint64
+		queueBytes uint64
+	}{
+		"memory":         {sample: resource.Sample{MemoryBytes: 384 << 20}},
+		"managed memory": {sample: resource.Sample{GoMemoryBytes: 288 << 20}},
+		"socket memory":  {sample: resource.Sample{SocketMemoryBytes: 128 << 20}},
+		"descriptors":    {sample: resource.Sample{FDs: 410}},
+		"goroutines":     {sample: resource.Sample{Goroutines: 410}},
+		"threads":        {sample: resource.Sample{Threads: 64}},
+		"timers":         {timers: 410},
+		"queue items":    {queueItems: 410},
+		"queue bytes":    {queueBytes: (8 << 20) * 8 / 10},
+		"CPU PSI":        {sample: resource.Sample{CPUPressure: 20}},
+		"memory PSI":     {sample: resource.Sample{MemoryPressure: 5}},
+		"I/O PSI":        {sample: resource.Sample{IOPressure: 1}},
+	}
+	for name, test := range cases {
+		t.Run(name, func(t *testing.T) {
+			guard, err := resource.New(resource.Config{Profile: "h3-np1-v1", Interval: time.Second,
+				Measure: func() (resource.Sample, error) { return test.sample, nil }})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var observation resource.Observation
+			for range 3 {
+				observation, err = guard.Observe(test.timers, test.queueItems, test.queueBytes)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			if !observation.Protect || observation.Drain {
+				t.Fatalf("observation = %+v, want PROTECT", observation)
+			}
+		})
+	}
+}

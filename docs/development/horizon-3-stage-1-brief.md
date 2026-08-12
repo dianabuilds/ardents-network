@@ -109,7 +109,7 @@ behavior tests, a non-test caller, and the package-map row.
 | `internal/node` | Run one local Node identity through assignment, readiness, duty, drain, withdrawal, and terminal cleanup | `internal/node/probe`, `internal/resource`, standard library |
 | `internal/node/probe` | Own bounded authenticated role-probe transport and accepted work | standard library |
 | `internal/resource` | Own common OS/runtime measurement, placement, hysteresis, and `NORMAL`/`PROTECT`/`DRAIN`; State and Node own their reactions | standard library |
-| `internal/qualification/{state,node}` | Own independent State verification and black-box Node campaign evidence | standard library |
+| `internal/qualification/{state,node}` | Own independent State verification and black-box Node campaign evidence | Qualification submodules and standard library only; no product verifier |
 | `cmd/ardents` | Run the Endpoint Network State consumer and expose bounded local status | `internal/network/state`, `internal/network/source`, `internal/planfile`, standard library |
 | `cmd/ardents-node` | Run one separately configured Node identity and one active role per process | Network, Node, Probe, and planfile Modules; standard library |
 | `cmd/ardents-qualify` | Start controlled qualification work and render its terminal result | Qualification Modules; standard library |
@@ -307,6 +307,15 @@ findings.
 | S1-2 real Node lifecycle | Add the Node and Probe Modules; N1/N2 consume the same state, perform role-probe work, refresh, drain, withdraw, restart, and reassign without overlap | Functional only; no resource qualification |
 | S1-3 hostile resource matrix | External cgroup/process accounting, overload, faults, evidence, fail-stop, cleanup, and quiescence pass | No soak or advance result |
 | S1-4 official Stage 1 campaign | Complete short matrix, independent 2 h churn campaign, and independent 24 h unattended campaign produce machine-verifiable evidence roots and verdicts | Product Owner records advance/redesign/stop |
+
+Current closure note (2026-08-12): S1-0, S1-1, and S1-2 are re-proven by the
+maintained regression and black-box process suites. S1-3 now has a fail-closed
+Docker harness with sealed manifests, source/image/binary identity binding,
+external cgroup-v2 ancestry and process sampling, the hostile fault matrix,
+cleanup, and quiescence gates. S1-4 remains open until `short`, `churn-2h`, and
+`unattended-24h` each produce a valid evidence root on the qualifying Ubuntu
+host. Local Docker results are development evidence only and cannot change that
+status or authorize Stage 2.
 
 Every increment runs `make quick-check` while changing and `make check` before
 integration. Keep commits scoped to one increment. Do not modify frozen H2

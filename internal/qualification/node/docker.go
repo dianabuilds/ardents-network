@@ -25,7 +25,7 @@ func (observer *nodeObserver) dockerBounded(ctx context.Context, stdoutLimit, st
 	defer cancel()
 	command := exec.CommandContext(commandContext, "docker", arguments...)
 	command.Env = append(os.Environ(), "ARDENTS_NODE_ROOT="+observer.input.FixtureRoot,
-		"ARDENTS_NODE_IMAGE_TAG="+observer.imageTag)
+		"ARDENTS_NODE_IMAGE_TAG="+observer.imageTag, "ARDENTS_NODE_SOURCE_DIGEST="+observer.sourceDigest)
 	stdout, stderr := byteio.NewBuffer(stdoutLimit), byteio.NewBuffer(stderrLimit)
 	command.Stdout, command.Stderr = stdout, stderr
 	runErr := command.Run()

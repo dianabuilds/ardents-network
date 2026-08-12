@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net"
 	"path/filepath"
+	"time"
 )
 
 func validateNodeSpecialInput(input Campaign, mode string) error {
@@ -22,13 +23,26 @@ func validateNodeSpecialInput(input Campaign, mode string) error {
 			return errors.New("node campaign path is invalid")
 		}
 	}
-	if mode == "short" {
+	if campaignDuration(mode) >= 0 {
 		if len(input.Addresses) != 0 || input.SecretRoot != "" || input.Injection != "" || input.ProbePlan != "" {
-			return errors.New("node short campaign has irrelevant fields")
+			return errors.New("node campaign has irrelevant fields")
 		}
 		return nil
 	}
 	return errors.New("node campaign mode is invalid")
+}
+
+func campaignDuration(mode string) time.Duration {
+	switch mode {
+	case "short":
+		return 0
+	case "churn-2h":
+		return 2 * time.Hour
+	case "unattended-24h":
+		return 24 * time.Hour
+	default:
+		return -1
+	}
 }
 
 func validateNodeInjectionInput(input Campaign) error {

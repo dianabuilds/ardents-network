@@ -45,3 +45,17 @@ func TestPrepareCreatesBoundedIsolatedFixtureAsCurrentUser(t *testing.T) {
 		t.Fatal("non-empty fixture root was reused")
 	}
 }
+
+func TestValidateRejectsCorruptedManifest(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "node")
+	if err := fixture.Prepare(fixture.PrepareConfig{Root: root, Now: time.Unix(1_800_000_100, 0).UTC()}); err != nil {
+		t.Fatal(err)
+	}
+	manifest := filepath.Join(root, "manifest.json")
+	if err := os.WriteFile(manifest, []byte("{}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := fixture.Validate(root); err == nil {
+		t.Fatal("corrupted manifest was accepted")
+	}
+}
