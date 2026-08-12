@@ -7,10 +7,12 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+
+	"github.com/dianabuilds/ardents-network/internal/planfile"
 )
 
 func readOfflineInputs(raw rawConfig) ([]byte, [][]byte, []byte, error) {
-	epoch, err := readCommandFile(raw.epoch, 1<<20)
+	epoch, err := planfile.Read(raw.epoch, 1<<20)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("read epoch: %w", err)
 	}
@@ -18,7 +20,7 @@ func readOfflineInputs(raw rawConfig) ([]byte, [][]byte, []byte, error) {
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	materialBytes, err := readCommandFile(raw.material, 35<<10)
+	materialBytes, err := planfile.Read(raw.material, 35<<10)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("read materialization: %w", err)
 	}
@@ -48,29 +50,10 @@ func readInputDirectory(path string) ([][]byte, error) {
 		if entry.IsDir() || entry.Name() != expected {
 			return nil, fmt.Errorf("input entry %q is not canonical %q", entry.Name(), expected)
 		}
-		inputs[index], err = readCommandFile(filepath.Join(path, entry.Name()), 32<<10)
+		inputs[index], err = planfile.Read(filepath.Join(path, entry.Name()), 32<<10)
 		if err != nil {
 			return nil, fmt.Errorf("read input %d: %w", index, err)
 		}
 	}
 	return inputs, nil
-}
-
-func readCommandFile(path string, maximum int64) ([]byte, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	contents, readErr := io.ReadAll(io.LimitReader(file, maximum+1))
-	closeErr := file.Close()
-	if readErr != nil {
-		return nil, readErr
-	}
-	if closeErr != nil {
-		return nil, closeErr
-	}
-	if int64(len(contents)) > maximum {
-		return nil, errors.New("input file exceeds its framing bound")
-	}
-	return contents, nil
 }

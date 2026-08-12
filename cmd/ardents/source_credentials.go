@@ -1,34 +1,25 @@
 package main
 
 import (
-	"crypto/tls"
-
-	"github.com/dianabuilds/ardents-network/internal/networkstate"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/planfile"
 )
 
-func loadSourceCredentials(config *networkstate.Config, plan sourcePlan) error {
-	certificatePEM, err := readCommandFile(plan.ClientCertificate, 64<<10)
-	if err != nil {
-		return err
-	}
-	keyPEM, err := readCommandFile(plan.ClientKey, 64<<10)
-	if err != nil {
-		return err
-	}
-	config.SourceClientCertificate, err = tls.X509KeyPair(certificatePEM, keyPEM)
-	if err != nil {
+func loadSourceCredentials(config *state.Config, plan sourcePlan) error {
+	var err error
+	if config.Source.ClientCertificate, err = planfile.KeyPair(plan.ClientCertificate, plan.ClientKey); err != nil {
 		return err
 	}
 	for index, source := range plan.Sources {
-		config.SourceAddresses[index], config.SourceServerNames[index] = source.Address, source.ServerName
-		config.SourceFamilies[index], config.SourceEndpointHandles[index] = source.Family, source.EndpointHandle
-		if err := decodeFixedHex(source.Identity, config.SourceIdentities[index][:]); err != nil {
+		config.Source.Addresses[index], config.Source.ServerNames[index] = source.Address, source.ServerName
+		config.Source.Families[index], config.Source.EndpointHandles[index] = source.Family, source.EndpointHandle
+		if err := planfile.FixedHex(source.Identity, config.Source.Identities[index][:]); err != nil {
 			return err
 		}
-		if err := decodeFixedHex(source.LeafKeyDigest, config.SourceLeafKeyDigests[index][:]); err != nil {
+		if err := planfile.FixedHex(source.LeafKeyDigest, config.Source.LeafKeyDigests[index][:]); err != nil {
 			return err
 		}
-		config.SourceRootPEM[index], err = readCommandFile(source.RootCA, 64<<10)
+		config.Source.RootPEM[index], err = planfile.Read(source.RootCA, 64<<10)
 		if err != nil {
 			return err
 		}

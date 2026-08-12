@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	"crypto/ed25519"
-	"crypto/sha256"
 	"errors"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/networkstate"
+	"github.com/dianabuilds/ardents-network/internal/network/source"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/planfile"
 )
 
 type sourceServerPlan struct {
@@ -23,50 +23,46 @@ type sourceServerPlan struct {
 	ClientRoot           string   `json:"client_root"`
 	ClientKeyDigests     []string `json:"client_key_digests"`
 	MaterializationIndex uint32   `json:"materialization_index"`
+	RuntimeProfile       string   `json:"runtime_profile,omitempty"`
 }
 
 func openSource(path string) (interface {
-	Current() (networkstate.Snapshot, error)
+	Current() (state.Snapshot, error)
 	Wait(context.Context) error
 	Close() error
 }, error) {
 	var err error
 	var plan sourceServerPlan
-	if err := decodeNodeJSON(path, 32<<10, &plan); err != nil || plan.Schema != "ardents-h3-source-server-v1" {
+	if err := planfile.Decode(path, 32<<10, &plan); err != nil || plan.Schema != "ardents-h3-source-server-v1" {
 		return nil, errors.New("source server plan is not canonical")
 	}
-	if len(plan.AuthorityPublic) == 0 || len(plan.AuthorityPublic) > 16 || len(plan.ClientKeyDigests) == 0 || len(plan.ClientKeyDigests) > 3 {
+	if len(plan.ClientKeyDigests) == 0 || len(plan.ClientKeyDigests) > 3 {
 		return nil, errors.New("source server trust-map count is invalid")
 	}
-	config := networkstate.Config{Root: plan.StateRoot, Threshold: plan.Threshold, Authorities: make(map[[32]byte]ed25519.PublicKey), ServeAddress: plan.Listen, SourceMaterializationIndex: plan.MaterializationIndex}
-	if err := decodeNodeHex(plan.NetworkID, config.NetworkID[:]); err != nil {
+	config := state.Config{Root: plan.StateRoot, Threshold: plan.Threshold,
+		Source: source.Config{ServeAddress: plan.Listen, MaterialIndex: plan.MaterializationIndex}, RuntimeProfile: plan.RuntimeProfile}
+	if err := planfile.FixedHex(plan.NetworkID, config.NetworkID[:]); err != nil {
 		return nil, err
 	}
-	for _, encoded := range plan.AuthorityPublic {
-		public := make([]byte, ed25519.PublicKeySize)
-		if err := decodeNodeHex(encoded, public); err != nil {
-			return nil, err
-		}
-		config.Authorities[sha256.Sum256(public)] = ed25519.PublicKey(public)
+	config.Authorities, err = planfile.Authorities(plan.AuthorityPublic, 16)
+	if err != nil {
+		return nil, err
 	}
 	config.Now, err = time.Parse(time.RFC3339, plan.At)
 	if err != nil {
 		return nil, err
 	}
-	config.ServeCertificate, err = loadNodeKeyPair(plan.ServerCertificate, plan.ServerKey)
+	config.Source.ServeCertificate, err = planfile.KeyPair(plan.ServerCertificate, plan.ServerKey)
 	if err != nil {
 		return nil, err
 	}
-	config.ServeClientRootPEM, err = readNodeFile(plan.ClientRoot, 64<<10)
+	config.Source.ServeClientRootPEM, err = planfile.Read(plan.ClientRoot, 64<<10)
 	if err != nil {
 		return nil, err
 	}
-	for _, encoded := range plan.ClientKeyDigests {
-		var pin [32]byte
-		if err := decodeNodeHex(encoded, pin[:]); err != nil {
-			return nil, err
-		}
-		config.ServeClientKeyDigests = append(config.ServeClientKeyDigests, pin)
+	config.Source.ServeClientKeyDigests, err = planfile.Digests(plan.ClientKeyDigests, 3)
+	if err != nil {
+		return nil, err
 	}
-	return networkstate.Open(config)
+	return state.Open(config)
 }

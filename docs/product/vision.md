@@ -1,8 +1,8 @@
 # Product vision
 
-Status: **accepted long-term product contract; current scope is Carrier Lab**
+Status: **accepted long-term product contract; current horizon is bounded H3 research**
 
-Last reviewed: 2026-08-08
+Last reviewed: 2026-08-11
 
 The complete installation, readiness, operation, update, and withdrawal contract
 is defined in [the product operating model](operating-model.md). What may be
@@ -24,16 +24,15 @@ route and protect their connections.
 ## Delivery horizon
 
 The vision describes the eventual public product, not one immediate release.
-Current implementation scope is only the Ubuntu controlled **Carrier Lab**:
-Target-first, one Service Instance, one live stream, a fixed synthetic topology,
-and the current Route candidate. It exists to falsify route feasibility before
-we build naming, public contribution, Bridges, production updates, multiparty
-governance, Windows support, or complete qualification.
-
-Named Unlisted Site is the first conditional Reference Application after that
-lab. Public Beta and Stable Network are later promotion horizons. A fixed
-long-term requirement is not automatically a current backlog item, and the
-ambiguous planning label `V1` is no longer used for the next implementation.
+Carrier Lab and the controlled Named Unlisted Site tracer have completed their
+bounded gates. Horizon 3 now permits research for one project-controlled Closed
+Test Network vertical slice at a time; no slice enters implementation without a
+frozen record and explicit Product Owner promotion. Public contribution,
+Bridges, permissionless naming, production updates, multiparty governance,
+Windows qualification, and complete Route Qualification remain separate later
+gates. A fixed long-term requirement is not automatically a current backlog
+item, and the ambiguous planning label `V1` is no longer used for the next
+implementation.
 
 ## What the product adjectives mean
 
@@ -346,8 +345,9 @@ version, and its own Qualification Evidence Bundle.
 
 ## First Reference Application: Named Unlisted Site
 
-Named Unlisted Site is conditional on a successful Carrier Lab. It is the first
-product-shaped tracer, not the first code milestone. Carrier Lab deliberately
+Named Unlisted Site followed a successful Carrier Lab and completed its bounded
+Gate C tracer. It is the first product-shaped tracer, not a production release.
+Carrier Lab deliberately
 uses a preconfigured Target/reachability fixture and no Service Name so that a
 failed Route candidate stops the project before a second distributed system is
 built.
@@ -395,10 +395,11 @@ protocol machinery when their threat and maintenance models fit.
 
 No dependency is accepted because it is familiar, already present in `old`, or
 popular. No component is rejected merely because it was not written here. The
-first Route candidate is fixed for Carrier Lab, but the production family,
-language, concrete Route Implementation, wire protocol, cryptography, and
-library set remain open until bounded prototypes compare them against the
-product, security, and performance contracts.
+first Route candidate is fixed for Carrier Lab and Go is the maintained project
+foundation under ADR-0009. The production protocol family, concrete Route
+Implementation, wire protocol, cryptographic constructions, and runtime library
+set remain open until bounded prototypes compare them against the product,
+security, and performance contracts.
 
 ## Explicit non-goals for the network core
 

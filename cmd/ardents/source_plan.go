@@ -2,17 +2,16 @@ package main
 
 import (
 	"context"
-	"crypto/ed25519"
-	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
-	"strings"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/networkstate"
+	"github.com/dianabuilds/ardents-network/internal/network/source"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/planfile"
 )
 
 type sourcePlan struct {
@@ -21,8 +20,11 @@ type sourcePlan struct {
 	AuthorityPublic      []string           `json:"authority_public"`
 	Threshold            int                `json:"threshold"`
 	ClockObservedAt      string             `json:"clock_observed_at"`
+	ClockObservationFile string             `json:"clock_observation_file,omitempty"`
 	OrderSeed            string             `json:"order_seed"`
 	MaterializationIndex uint32             `json:"materialization_index"`
+	RefreshIntervalMS    uint32             `json:"refresh_interval_ms,omitempty"`
+	RuntimeProfile       string             `json:"runtime_profile,omitempty"`
 	ClientCertificate    string             `json:"client_certificate"`
 	ClientKey            string             `json:"client_key"`
 	Sources              []sourcePlanMember `json:"sources"`
@@ -41,9 +43,11 @@ type sourcePlanMember struct {
 func runRefreshSources(ctx context.Context, arguments []string, output io.Writer) error {
 	flags := flag.NewFlagSet("refresh-sources", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
-	root, planPath := "", ""
+	root, planPath, once, resume := "", "", false, false
 	flags.StringVar(&root, "state-root", "", "owned state root")
 	flags.StringVar(&planPath, "source-plan", "", "bounded source plan JSON")
+	flags.BoolVar(&once, "once", false, "perform exactly one source wave")
+	flags.BoolVar(&resume, "resume", false, "resume automatic refresh from current state")
 	if err := flags.Parse(arguments[1:]); err != nil || flags.NArg() != 0 {
 		return errors.New("usage: ardents refresh-sources --state-root PATH --source-plan PATH")
 	}
@@ -51,16 +55,19 @@ func runRefreshSources(ctx context.Context, arguments []string, output io.Writer
 	if err != nil {
 		return err
 	}
-	store, err := networkstate.Open(config)
+	store, err := state.Open(config)
 	if err != nil {
 		return fmt.Errorf("open network state: %w", err)
 	}
 	defer store.Close()
-	snapshot, err := store.Refresh(ctx)
+	snapshot, err := store.Current()
+	if !resume {
+		snapshot, err = store.Refresh(ctx)
+	}
 	if err != nil {
 		return fmt.Errorf("refresh network state: %w", err)
 	}
-	return json.NewEncoder(output).Encode(struct {
+	err = json.NewEncoder(output).Encode(struct {
 		Schema             string    `json:"schema"`
 		Kind               string    `json:"kind"`
 		Generation         string    `json:"generation"`
@@ -68,41 +75,37 @@ func runRefreshSources(ctx context.Context, arguments []string, output io.Writer
 		SourceAttempts     uint16    `json:"source_attempts"`
 		SourceOutcomes     [4]string `json:"source_outcomes"`
 		LatestCompleteness string    `json:"latest_completeness"`
-	}{"ardents-h3-s1-source-event-v1", "source-wave-accepted", snapshot.Generation, snapshot.Epoch,
+	}{"ardents-h3-source-event-v1", "source-wave-accepted", snapshot.Generation, snapshot.Epoch,
 		snapshot.SourceAttempts, snapshot.SourceOutcomes, snapshot.LatestCompleteness})
+	if err != nil || once || config.AutomaticRefreshInterval == 0 {
+		return err
+	}
+	return store.Wait(ctx)
 }
 
-func readSourcePlan(root, path string) (networkstate.Config, error) {
-	raw, err := readCommandFile(path, 32<<10)
-	if err != nil {
-		return networkstate.Config{}, fmt.Errorf("read source plan: %w", err)
-	}
+func readSourcePlan(root, path string) (state.Config, error) {
 	var plan sourcePlan
-	decoder := json.NewDecoder(strings.NewReader(string(raw)))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&plan); err != nil || plan.Schema != "ardents-h3-source-plan-v1" ||
-		len(plan.Sources) != 2 || len(plan.AuthorityPublic) == 0 || len(plan.AuthorityPublic) > 16 {
-		return networkstate.Config{}, errors.New("source plan is not canonical or complete")
+	if err := planfile.Decode(path, 32<<10, &plan); err != nil || plan.Schema != "ardents-h3-source-plan-v1" ||
+		len(plan.Sources) != 2 {
+		return state.Config{}, errors.New("source plan is not canonical or complete")
 	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		return networkstate.Config{}, errors.New("source plan contains trailing JSON")
-	}
-	config := networkstate.Config{Root: root, Threshold: plan.Threshold, Authorities: make(map[[32]byte]ed25519.PublicKey), SourceMaterializationIndex: plan.MaterializationIndex}
-	if err := decodeFixedHex(plan.NetworkID, config.NetworkID[:]); err != nil {
+	var err error
+	config := state.Config{Root: root, Threshold: plan.Threshold,
+		Source: source.Config{MaterialIndex: plan.MaterializationIndex}, RuntimeProfile: plan.RuntimeProfile,
+		AutomaticRefreshInterval: time.Duration(plan.RefreshIntervalMS) * time.Millisecond}
+	if err := planfile.FixedHex(plan.NetworkID, config.NetworkID[:]); err != nil {
 		return config, err
 	}
-	for _, encoded := range plan.AuthorityPublic {
-		public := make([]byte, ed25519.PublicKeySize)
-		if err := decodeFixedHex(encoded, public); err != nil {
-			return config, err
-		}
-		config.Authorities[sha256.Sum256(public)] = ed25519.PublicKey(public)
+	config.Authorities, err = planfile.Authorities(plan.AuthorityPublic, 16)
+	if err != nil {
+		return config, err
 	}
 	config.Clock = time.Now
+	config.ClockObservationFile = plan.ClockObservationFile
 	if config.ClockObservation, err = time.Parse(time.RFC3339, plan.ClockObservedAt); err != nil {
 		return config, err
 	}
-	if err := decodeFixedHex(plan.OrderSeed, config.SourceOrderSeed[:]); err != nil {
+	if err := planfile.FixedHex(plan.OrderSeed, config.Source.OrderSeed[:]); err != nil {
 		return config, err
 	}
 	if err := loadSourceCredentials(&config, plan); err != nil {

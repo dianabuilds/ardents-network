@@ -13,7 +13,7 @@ import (
 
 func TestAcceptOfflineCommandPublishesFrozenGeneration(t *testing.T) {
 	t.Parallel()
-	base := filepath.Join("..", "..", "tests", "qualification", "h3-s1-offline-v1", "testdata")
+	base := filepath.Join("..", "..", "tests", "qualification", "h3-state-v1", "testdata")
 	fixture := t.TempDir()
 	inputs := filepath.Join(fixture, "inputs")
 	if err := os.Mkdir(inputs, 0o700); err != nil {

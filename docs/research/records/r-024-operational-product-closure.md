@@ -458,3 +458,13 @@ mechanisms.” Remaining unknowns are visible feasibility measurements,
 technology choices, real-world
 operator/custodian supply, and external evidence. None authorizes a silent
 security downgrade or invented decentralization claim.
+
+## Delivery lifecycle note — 2026-08-11
+
+The sentence above recorded the delivery state when this closure audit was
+accepted. Gate B and Gate C subsequently completed with `advance`; the accepted
+scope now permits research for, and later explicit promotion of, one bounded
+Horizon 3 Closed Test Network slice at a time. This does not change any eventual
+public-product requirement in this record. R-027 and R-028 are review-ready
+first-slice and resource contracts and authorize no implementation until the
+Product Owner marks both `decided`.

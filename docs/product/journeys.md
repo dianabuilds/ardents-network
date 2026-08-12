@@ -9,10 +9,11 @@ They are completed by the accepted
 capability-specific readiness, diagnostics, update, and withdrawal.
 
 These are cross-horizon journeys, not one implementation plan. The authoritative
-order is [product scope](scope.md). Only the Carrier Lab journey below is current;
-J-02/J-03/J-05 become the conditional Named Unlisted Site slice, while install,
-public join/contribution, update, Bridges, and full qualification are later
-promotion horizons.
+order is [product scope](scope.md). Carrier Lab and the conditional Named
+Unlisted Site tracer are completed research slices. Only one separately
+researched and Product Owner-decided H3 vertical slice may become current;
+install, public join/contribution, update, Bridges, and full qualification remain
+later promotion horizons.
 
 ## J-LAB — Falsify the Route candidate
 

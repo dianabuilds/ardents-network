@@ -11,7 +11,10 @@ reviewed: 2026-08-11
 
 **Current disposition:** accepted resource/evidence appendix to R-029. References
 to standalone H3-A sequencing are historical and non-normative; R-029 controls
-integrated Stage 1 scope and adds the distinct H3-NP1 role-probe profile.
+integrated Stage 1 scope and adds the distinct H3-NP1 role-probe profile. R-029
+also supersedes this record's physical four-host placement with one local
+Docker Compose matrix; the per-process cgroup limits, external accounting,
+workload, failure, and cleanup contracts remain unchanged.
 
 ## Decision this unlocks
 
@@ -25,6 +28,12 @@ for accepted Stage 1 under R-029. R-029 adds a separate role-probe Node profile;
 this record does not set public product SLOs or infrastructure Node capacity.
 
 ## Current contract
+
+**Measured 2026-08-12:** Docker Desktop maps Compose `mem_reservation: 1152m`
+to cgroup v2 `memory.low=1207959552` while leaving `memory.high=max`; it maps
+`mem_limit: 1280m` to `memory.max=1342177280`. The maintained container
+contract therefore uses the enforceable reservation plus hard limit and keeps
+960/1152 MiB PROTECT/DRAIN transitions in the application resource governor.
 
 - [R-023](r-023-interactive-route-performance-budget.md) fixes endpoint floors,
   finite queues, honest backpressure, explicit capacity failure, controlled
@@ -154,8 +163,8 @@ not Node useful-capacity floors.
 | Normal CPU gate | mean `<= 1.12` cores; p95 one-second `<= 1.28` | Retains `30%` mean and `20%` p95 headroom inside the candidate quota; this is not an instantaneous guarantee. |
 | `GOMAXPROCS` | fixed `2` after preflight | Avoids unnoticed parent/migration changes during a fixed run. |
 | `memory.max` | `1280 MiB` | Process-tree hard boundary, below host RAM. |
-| `memory.high` | `1152 MiB` | Kernel reclaim/throttling boundary, deliberately above the normal gate. |
-| Normal `memory.current` gate | p95 `<= 896 MiB` | Leaves `256 MiB` before `memory.high` and requires zero new `high/max/oom/oom_kill` events in normal cells. |
+| `memory.low` | `1152 MiB` | Docker-enforceable protected reservation above the normal gate; application-level PROTECT/DRAIN owns pressure transitions. |
+| Normal `memory.current` gate | p95 `<= 896 MiB` | Leaves `256 MiB` before the emergency transition and requires zero new `max/oom/oom_kill` events in normal cells. |
 | `GOMEMLIMIT` | `768 MiB` | Soft target for Go-managed memory, including goroutine stacks; cgroup headroom covers executable mappings, page cache, kernel/socket memory, evidence, and other non-Go cost. |
 | `GOGC` | `100` | Stable first candidate; changes require a new profile identity and full affected rerun. |
 | Swap | disabled for the measured cgroup | Prevents hidden latency/state movement in the H3 evidence profile. |
@@ -258,7 +267,7 @@ records and verifies:
 
 1. cgroup v2 controllers available for CPU, memory, and PIDs;
 2. the process's complete cgroup ancestry, not only its leaf;
-3. effective `cpu.max`, `cpu.max.burst`, affinity/cpuset, `memory.high`,
+3. effective `cpu.max`, `cpu.max.burst`, affinity/cpuset, `memory.low`,
    `memory.max`, swap, `pids.max`, and parent ceilings;
 4. soft/hard `RLIMIT_NOFILE` and current descriptor use;
 5. actual `GOMAXPROCS`, `GOGC`, and `GOMEMLIMIT` reported through the fixed local
@@ -449,7 +458,7 @@ H3-S starts with:
 - no finalizer-dependent release of sockets, files, reservations, or secrets;
 - no automatic runtime retuning from attacker-controlled load.
 
-The Go memory limit is deliberately below the cgroup high/max boundaries. It
+The Go memory limit is deliberately below the cgroup reservation/max boundaries. It
 includes heap, goroutine stacks, and other Go-managed memory, but excludes
 kernel/socket memory and some mapped/non-Go memory; it is also soft. It is a GC
 goal, not an admission limit. If the live set cannot fit, the response is to
@@ -938,7 +947,7 @@ together for each applicable candidate cgroup:
 - all generator-validity and launch-timing gates pass;
 - mean CPU `<= 1.12` cores and p95 one-second CPU `<= 1.28`;
 - p95 `memory.current <= 896 MiB` and zero delta in
-  `memory.events.local high/max/oom/oom_kill`;
+  `memory.events.local max/oom/oom_kill`;
 - every working FD, socket, goroutine, timer, byte, and queue cap respected;
 - no unexpected `EMFILE`, panic, deadlock, false success, unbounded spill, or hidden
   process outside the charged tree;
@@ -1007,7 +1016,7 @@ different impairment stack.
 
 | Risk | Required response |
 |---|---|
-| `GOMEMLIMIT` is mistaken for RSS/host safety. | Keep cgroup high/max, socket/kernel accounting, and headroom authoritative. |
+| `GOMEMLIMIT` is mistaken for RSS/host safety. | Keep cgroup reservation/max, socket/kernel accounting, and headroom authoritative. |
 | Go sees only a leaf CPU limit or misses migration. | Harness inspects full ancestry, candidate validates only its accessible profile, GOMAXPROCS stays fixed, and any changed placement invalidates the run. |
 | More goroutines are treated as scalable concurrency. | Token before goroutine, bounded workers, scheduler/GC evidence, and useful-work measurement. |
 | OS fuse is used as normal admission. | Internal caps are far below RLIMIT/cgroup fuses; crossing a fuse is failure. |

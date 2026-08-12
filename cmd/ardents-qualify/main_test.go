@@ -10,13 +10,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/qualification"
+	statequalification "github.com/dianabuilds/ardents-network/internal/qualification/state"
 )
 
 func TestOfflineCommandRendersIndependentPass(t *testing.T) {
 	t.Parallel()
 	const generation = "243fba444fe71948f6cd4a253552301192857a156c7eb6359eed604c2d2cda4b"
-	base := filepath.Join("..", "..", "tests", "qualification", "h3-s1-offline-v1", "testdata")
+	base := filepath.Join("..", "..", "tests", "qualification", "h3-state-v1", "testdata")
 	root := t.TempDir()
 	inputs := filepath.Join(root, "generations", generation, "inputs")
 	if err := os.MkdirAll(inputs, 0o700); err != nil {
@@ -43,7 +43,7 @@ func TestOfflineCommandRendersIndependentPass(t *testing.T) {
 	if code != 0 || diagnostics.Len() != 0 {
 		t.Fatalf("exit=%d diagnostics=%q", code, diagnostics.String())
 	}
-	var result qualification.Result
+	var result statequalification.Result
 	if err := json.Unmarshal(output.Bytes(), &result); err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestOfflineCommandUsesInvalidExitForBadInvocation(t *testing.T) {
 	if code := run(nil, &output, &diagnostics); code != 2 {
 		t.Fatalf("exit=%d, want 2", code)
 	}
-	var result qualification.Result
+	var result statequalification.Result
 	if err := json.Unmarshal(output.Bytes(), &result); err != nil {
 		t.Fatal(err)
 	}

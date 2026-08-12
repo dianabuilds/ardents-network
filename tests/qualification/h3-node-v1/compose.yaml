@@ -1,0 +1,269 @@
+x-common: &common
+  image: ardents-node:${ARDENTS_NODE_IMAGE_TAG:-dev}
+  pull_policy: never
+  read_only: true
+  restart: "no"
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,nodev,size=16m
+
+x-h3s: &h3s
+  <<: *common
+  labels:
+    ardents.h3-s.memory-low: "1207959552"
+  cpus: 1.6
+  mem_limit: 1280m
+  mem_reservation: 1152m
+  memswap_limit: 1280m
+  mem_swappiness: 0
+  pids_limit: 512
+  environment:
+    GOMAXPROCS: "2"
+    GOMEMLIMIT: 768MiB
+    GOGC: "100"
+  ulimits:
+    nofile: {soft: 4096, hard: 4096}
+
+x-h3np1: &h3np1
+  <<: *common
+  cpus: 1.0
+  mem_limit: 512m
+  memswap_limit: 512m
+  mem_swappiness: 0
+  pids_limit: 256
+  environment:
+    GOMAXPROCS: "1"
+    GOMEMLIMIT: 320MiB
+    GOGC: "100"
+  ulimits:
+    nofile: {soft: 512, hard: 512}
+
+services:
+  source1:
+    <<: *h3s
+    build:
+      context: ../../..
+      dockerfile: tests/qualification/h3-node-v1/Dockerfile
+    user: "11001:11001"
+    command: [/usr/local/bin/ardents-node, source, --config, /run/ardents/config.json]
+    volumes:
+      - type: bind
+        source: ${ARDENTS_NODE_ROOT:?fixture root required}/plans/source-1.json
+        target: /run/ardents/config.json
+        read_only: true
+      - type: bind
+        source: ${ARDENTS_NODE_ROOT:?fixture root required}/secrets/s1
+        target: /run/ardents/secrets
+        read_only: true
+      - type: bind
+        source: ${ARDENTS_NODE_ROOT:?fixture root required}/state/s1
+        target: /run/ardents/state
+    networks:
+      source1_net: {ipv4_address: 172.30.1.10}
+
+  source2:
+    <<: *h3s
+    user: "11002:11002"
+    command: [/usr/local/bin/ardents-node, source, --config, /run/ardents/config.json]
+    volumes:
+      - type: bind
+        source: ${ARDENTS_NODE_ROOT:?fixture root required}/plans/source-2.json
+        target: /run/ardents/config.json
+        read_only: true
+      - type: bind
+        source: ${ARDENTS_NODE_ROOT:?fixture root required}/secrets/s2
+        target: /run/ardents/secrets
+        read_only: true
+      - type: bind
+        source: ${ARDENTS_NODE_ROOT:?fixture root required}/state/s2
+        target: /run/ardents/state
+    networks:
+      source2_net: {ipv4_address: 172.30.2.10}
+
+  endpoint:
+    <<: *h3s
+    user: "10001:10001"
+    depends_on: [source1, source2]
+    command: [/usr/local/bin/ardents, refresh-sources, --state-root, /run/ardents/state, --source-plan, /run/ardents/config.json, --resume]
+    volumes:
+      - type: bind
+        source: ${ARDENTS_NODE_ROOT:?fixture root required}/plans/endpoint.json
+        target: /run/ardents/config.json
+        read_only: true
+      - type: bind
+        source: ${ARDENTS_NODE_ROOT:?fixture root required}/secrets/e
+        target: /run/ardents/secrets
+        read_only: true
+      - type: bind
+        source: ${ARDENTS_NODE_ROOT:?fixture root required}/state/e
+        target: /run/ardents/state
+      - type: bind
+        source: ${ARDENTS_NODE_ROOT:?fixture root required}/clock/e.observation
+        target: /run/ardents/clock/observation
+        read_only: true
+    networks:
+      source1_net: {ipv4_address: 172.30.1.20}
+      source2_net: {ipv4_address: 172.30.2.20}
+
+  node1: &node1_service
+    <<: *h3np1
+    user: "12001:12001"
+    depends_on: [source1, source2]
+    command: [/usr/local/bin/ardents-node, node, --config, /run/ardents/config.json]
+    volumes:
+      - type: bind
+        source: ${ARDENTS_NODE_ROOT:?fixture root required}/plans/node-1.json
+        target: /run/ardents/config.json
+        read_only: true
+      - type: bind
+        source: ${ARDENTS_NODE_ROOT:?fixture root required}/secrets/n1
+        target: /run/ardents/secrets
+        read_only: true
+      - type: bind
+        source: ${ARDENTS_NODE_ROOT:?fixture root required}/state/n1
+        target: /run/ardents/state
+      - type: bind
+        source: ${ARDENTS_NODE_ROOT:?fixture root required}/clock/n1.observation
+        target: /run/ardents/clock/observation
+        read_only: true
+    networks:
+      source1_net: {ipv4_address: 172.30.1.21}
+      source2_net: {ipv4_address: 172.30.2.21}
+      probe_net: {ipv4_address: 172.30.3.11}
+
+  node2:
+    <<: *h3np1
+    user: "12002:12002"
+    depends_on: [source1, source2]
+    command: [/usr/local/bin/ardents-node, node, --config, /run/ardents/config.json]
+    volumes:
+      - type: bind
+        source: ${ARDENTS_NODE_ROOT:?fixture root required}/plans/node-2.json
+        target: /run/ardents/config.json
+        read_only: true
+      - type: bind
+        source: ${ARDENTS_NODE_ROOT:?fixture root required}/secrets/n2
+        target: /run/ardents/secrets
+        read_only: true
+      - type: bind
+        source: ${ARDENTS_NODE_ROOT:?fixture root required}/state/n2
+        target: /run/ardents/state
+      - type: bind
+        source: ${ARDENTS_NODE_ROOT:?fixture root required}/clock/n2.observation
+        target: /run/ardents/clock/observation
+        read_only: true
+    networks:
+      source1_net: {ipv4_address: 172.30.1.22}
+      source2_net: {ipv4_address: 172.30.2.22}
+      probe_net: {ipv4_address: 172.30.3.12}
+
+  harness:
+    <<: *common
+    profiles: [fault]
+    user: "13001:13001"
+    command: [/usr/local/bin/ardents-qualify, inject-node, --addresses, "172.30.3.11:4401,172.30.3.12:4402", --secrets, /run/ardents/secrets, --plan, /run/ardents/harness.json]
+    volumes:
+      - type: bind
+        source: ${ARDENTS_NODE_ROOT:?fixture root required}/secrets/h
+        target: /run/ardents/secrets
+        read_only: true
+      - type: bind
+        source: ${ARDENTS_NODE_ROOT:?fixture root required}/plans/harness.json
+        target: /run/ardents/harness.json
+        read_only: true
+    cpus: 0.5
+    mem_limit: 128m
+    memswap_limit: 128m
+    pids_limit: 64
+    ulimits:
+      nofile: {soft: 128, hard: 128}
+    networks:
+      probe_net: {ipv4_address: 172.30.3.20}
+
+  node1_diskfull:
+    <<: *node1_service
+    profiles: [fault]
+    command: [/usr/local/bin/ardents-qualify, diskfull-node]
+    ports: []
+    volumes:
+      - type: bind
+        source: ${ARDENTS_NODE_ROOT:?fixture root required}/plans/node-1.json
+        target: /run/ardents/config.json
+        read_only: true
+      - type: bind
+        source: ${ARDENTS_NODE_ROOT:?fixture root required}/secrets/n1
+        target: /run/ardents/secrets
+        read_only: true
+      - type: bind
+        source: ${ARDENTS_NODE_ROOT:?fixture root required}/state/n1
+        target: /run/ardents/seed
+        read_only: true
+      - type: bind
+        source: ${ARDENTS_NODE_ROOT:?fixture root required}/clock/n1.observation
+        target: /run/ardents/clock/observation
+        read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m
+      - /run/ardents/state:rw,noexec,nosuid,nodev,size=4m
+    networks:
+      source1_net: {}
+      source2_net: {}
+      probe_net: {}
+
+  node1_emfile:
+    <<: *node1_service
+    profiles: [fault]
+    ulimits:
+      nofile: {soft: 16, hard: 16}
+    volumes:
+      - type: bind
+        source: ${ARDENTS_NODE_ROOT:?fixture root required}/plans/node-1-emfile.json
+        target: /run/ardents/config.json
+        read_only: true
+      - type: bind
+        source: ${ARDENTS_NODE_ROOT:?fixture root required}/secrets/n1
+        target: /run/ardents/secrets
+        read_only: true
+      - type: bind
+        source: ${ARDENTS_NODE_ROOT:?fixture root required}/state/n1
+        target: /run/ardents/state
+      - type: bind
+        source: ${ARDENTS_NODE_ROOT:?fixture root required}/clock/n1.observation
+        target: /run/ardents/clock/observation
+        read_only: true
+
+  emfile_harness:
+    <<: *common
+    profiles: [fault]
+    user: "12001:12001"
+    pid: "service:node1_emfile"
+    command: [/usr/local/bin/ardents-qualify, inject-node, --mode, emfile, --addresses, "172.30.3.11:4401"]
+    cpus: 0.5
+    mem_limit: 128m
+    memswap_limit: 128m
+    pids_limit: 64
+    ulimits:
+      nofile: {soft: 128, hard: 128}
+    networks:
+      probe_net: {}
+
+  node1_evidence:
+    <<: *node1_service
+    profiles: [fault]
+    command: [/usr/local/bin/ardents-qualify, evidence-fault-node]
+    networks:
+      source1_net: {}
+      source2_net: {}
+      probe_net: {}
+
+networks:
+  source1_net:
+    internal: true
+    ipam: {config: [{subnet: 172.30.1.0/24}]}
+  source2_net:
+    internal: true
+    ipam: {config: [{subnet: 172.30.2.0/24}]}
+  probe_net:
+    internal: true
+    ipam: {config: [{subnet: 172.30.3.0/24}]}

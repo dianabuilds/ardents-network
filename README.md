@@ -113,9 +113,17 @@ The carrier is public so that private Services can draw from a broader anonymity
 set. Naming, bootstrap, software releases, and governance remain explicit
 Control Plane risks rather than being hidden behind the word “decentralized.”
 
-## Current project slice
+## Current implementation state
 
-The first maintained vertical slice is an Ubuntu-to-Ubuntu **Carrier Lab**. It
+The maintained Go tree contains the completed Carrier Lab and Named Site
+laboratories plus the first Horizon 3 product runtime: `cmd/ardents`,
+`cmd/ardents-node`, `cmd/ardents-qualify`, and cohesive product Modules under
+`internal/network`, `internal/node`, `internal/qualification`, and
+`internal/resource`. Product work never grows inside or imports the frozen
+`internal/lab` quarantine.
+
+The first completed maintained vertical slice was an Ubuntu-to-Ubuntu
+**Carrier Lab**. It
 uses one deterministic byte stream, one active Service Instance, project-owned
 test keys, a preconfigured Target/reachability fixture, and a fixed synthetic
 topology to falsify the current five-position Route candidate. It implements no
@@ -189,6 +197,9 @@ system at once.
 
 ## Start here
 
+- [Complete Horizon 3 technical design](docs/development/horizon-3-technical-design.md)
+- [Review-ready Horizon 3 Stage 1 decision](docs/research/records/r-029-h3-authenticated-node-lifecycle.md)
+- [Horizon 3 Stage 1 implementation brief](docs/development/horizon-3-stage-1-brief.md)
 - [Authoritative product scope and delivery horizons](docs/product/scope.md)
 - [Carrier Lab technology and experiment contract](docs/research/records/r-013-carrier-lab-technology-candidates.md)
 - [Language and runtime candidates](docs/research/records/r-014-language-runtime-candidates.md)

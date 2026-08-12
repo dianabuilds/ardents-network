@@ -22,3 +22,11 @@ cryptographic suite, public wire protocol, application runtime, or production
 network claim. ADR-0008 still limits the current behavior slice to Carrier Lab.
 Go may be reconsidered only with measured failure against an accepted contract
 and a superseding ADR; an untested parallel implementation is not maintained.
+
+## Lifecycle note — 2026-08-11
+
+The final Carrier Lab sentence was temporal. Gate B and Gate C later completed,
+so Go now also underpins whichever **single bounded Horizon 3 slice** is
+explicitly promoted under the accepted product scope. This note changes neither
+the language decision nor any still-open transport, storage, routing, wire,
+cryptographic, or deployment-foundation choice.

@@ -22,16 +22,16 @@ Lab or the next code change.
 
 ## Current implementation boundary
 
-Carrier Lab is the only current implementation scope. It uses a controlled
-Ubuntu topology, preconfigured Target/reachability fixture, one stream, and the
-current split-circuit Route candidate to measure knowledge separation and basic
-feasibility. Service Names, public discovery/contribution, Bridges, production
-updates and custody, Windows qualification, general Application isolation, and
-the full NET-14 qualification matrix are later horizons.
+Carrier Lab and the controlled Named Unlisted Site tracer completed their
+bounded gates. Current work may research one Horizon 3 Closed Test Network slice
+at a time; implementation starts only after a record freezes that slice and the
+Product Owner explicitly promotes it. Public discovery/contribution, Bridges,
+permissionless naming, production updates and custody, Windows qualification,
+general Application isolation, and the full NET-14 qualification matrix remain
+later horizons unless separately promoted.
 
-The first Reference Application, Named Unlisted Site, is conditional on Carrier
-Lab. The eventual public product still requires the fixed contracts below, but
-this registry is not one release checklist or backlog.
+The eventual public product still requires the fixed contracts below, but this
+registry is not one release checklist or backlog.
 
 Candidate-specific records such as `NET-07H` through `NET-07M` and `NET-15`
 describe a coherent design package and its eventual claim conditions. They do

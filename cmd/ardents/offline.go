@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/networkstate"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
 func run(ctx context.Context, arguments []string, output io.Writer) error {
@@ -43,7 +43,7 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 	if err != nil {
 		return err
 	}
-	store, err := networkstate.Open(config)
+	store, err := state.Open(config)
 	if err != nil {
 		return fmt.Errorf("open network state: %w", err)
 	}
@@ -63,7 +63,7 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 		ViewLength     uint32 `json:"view_length"`
 		RejectedLength uint32 `json:"rejected_length"`
 	}{
-		"ardents-h3-s1-offline-event-v1", 1, "generation-accepted",
+		"ardents-h3-state-event-v1", 1, "generation-accepted",
 		snapshot.Generation, snapshot.Epoch, snapshot.ViewLength, snapshot.RejectedLength,
 	})
 }

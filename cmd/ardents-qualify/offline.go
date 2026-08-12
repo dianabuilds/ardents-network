@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/ed25519"
 	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -12,13 +11,24 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/qualification"
+	statequalification "github.com/dianabuilds/ardents-network/internal/qualification/state"
 )
 
 func run(arguments []string, output, diagnostics io.Writer) int {
+	if len(arguments) > 0 && arguments[0] == "sample-node" {
+		raw, err := evaluateNodeSample(arguments[1:])
+		if err == nil {
+			_, err = output.Write(append(raw, '\n'))
+		}
+		if err != nil {
+			fmt.Fprintln(diagnostics, err)
+			return 2
+		}
+		return 0
+	}
 	result, err := evaluate(arguments)
 	if err != nil {
-		result = qualification.Result{Verdict: "invalid", Reason: err.Error()}
+		result = statequalification.Result{Verdict: "invalid", Reason: err.Error()}
 	}
 	if encodeErr := json.NewEncoder(output).Encode(result); encodeErr != nil {
 		fmt.Fprintln(diagnostics, encodeErr)
@@ -34,9 +44,24 @@ func run(arguments []string, output, diagnostics io.Writer) int {
 	}
 }
 
-func evaluate(arguments []string) (qualification.Result, error) {
+func evaluate(arguments []string) (statequalification.Result, error) {
+	if len(arguments) > 0 && arguments[0] == "prepare-node" {
+		return evaluateNodePreparation(arguments[1:])
+	}
+	if len(arguments) > 0 && arguments[0] == "run-node" {
+		return evaluateNodeCampaign(arguments[1:])
+	}
+	if len(arguments) > 0 && arguments[0] == "inject-node" {
+		return evaluateNodeInjection(arguments[1:])
+	}
+	if len(arguments) > 0 && arguments[0] == "diskfull-node" {
+		return evaluateNodeDisk(arguments[1:])
+	}
+	if len(arguments) > 0 && arguments[0] == "evidence-fault-node" {
+		return evaluateNodeEvidenceFault(arguments[1:])
+	}
 	if len(arguments) == 0 || arguments[0] != "offline" {
-		return qualification.Result{}, errors.New("usage: ardents-qualify offline [flags]")
+		return statequalification.Result{}, errors.New("usage: ardents-qualify (offline|prepare-node|run-node|inject-node) [flags]")
 	}
 	flags := flag.NewFlagSet("offline", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
@@ -49,16 +74,16 @@ func evaluate(arguments []string) (qualification.Result, error) {
 	flags.StringVar(&atText, "at", "", "verification time in RFC3339")
 	flags.StringVar(&materialsText, "materializations", "", "comma-separated materialization files")
 	if err := flags.Parse(arguments[1:]); err != nil {
-		return qualification.Result{}, err
+		return statequalification.Result{}, err
 	}
 	if flags.NArg() != 0 {
-		return qualification.Result{}, errors.New("offline qualification has unexpected positional arguments")
+		return statequalification.Result{}, errors.New("offline qualification has unexpected positional arguments")
 	}
 	networkID, authorities, at, materials, err := parseCaseInputs(networkHex, authorityHex, atText, materialsText)
 	if err != nil {
-		return qualification.Result{}, err
+		return statequalification.Result{}, err
 	}
-	return qualification.VerifyOffline(qualification.OfflineCase{
+	return statequalification.Verify(statequalification.Case{
 		Root: root, NetworkID: networkID, Authorities: authorities,
 		Threshold: threshold, Now: at, Materializations: materials,
 	}), nil
@@ -83,35 +108,4 @@ func parseCaseInputs(networkHex, authorityHex, atText, materialsText string) ([3
 	}
 	materials, err := readMaterials(materialsText)
 	return networkID, authorities, at, materials, err
-}
-
-func readMaterials(paths string) ([][]byte, error) {
-	if paths == "" {
-		return nil, errors.New("materializations are required")
-	}
-	parts := strings.Split(paths, ",")
-	if len(parts) > 64 {
-		return nil, errors.New("too many materializations")
-	}
-	materials := make([][]byte, len(parts))
-	for index, path := range parts {
-		var err error
-		materials[index], err = readQualifierFile(path, 35<<10)
-		if err != nil {
-			return nil, fmt.Errorf("read materialization %d: %w", index, err)
-		}
-	}
-	return materials, nil
-}
-
-func decodeHex(encoded string, destination []byte) error {
-	decoded, err := hex.DecodeString(encoded)
-	if err != nil {
-		return err
-	}
-	if len(decoded) != len(destination) {
-		return fmt.Errorf("decoded length is %d, want %d", len(decoded), len(destination))
-	}
-	copy(destination, decoded)
-	return nil
 }

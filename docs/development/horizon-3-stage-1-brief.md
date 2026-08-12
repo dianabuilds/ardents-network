@@ -27,7 +27,7 @@ The implementation is complete only when authenticated state controls the real
 Node process. A parser, state downloader, readiness event, or synthetic fixture
 alone is not Stage 1.
 
-## Blocking prerequisites
+## S1-0 blocking prerequisites
 
 Do not write feature code until all are true:
 
@@ -37,13 +37,37 @@ Do not write feature code until all are true:
    H3 slice gate continue to point to R-029;
 3. the repository-approved patched Go 1.26.5 toolchain is active;
 4. `make quick-check` and `make check` pass before the first increment;
-5. E/S1/S2/H Ubuntu hosts, separate candidate identities, cgroup v2, fixed
-   clocks, collectors, management plane, and evidence roots pass preflight;
-6. unrelated workspace changes are committed or explicitly separated from the
+5. unrelated workspace changes are committed or explicitly separated from the
    implementation change.
 
 If any prerequisite is absent, report the exact blocker. Do not create a
-placeholder package, fake Node, in-process-only proof, or Docker-only substitute.
+placeholder package, fake Node, or in-process-only proof.
+
+The multi-host fixture is **not** an S1-0 prerequisite. S1-0 is deliberately
+offline and must proceed without SSH aliases, remote inventory, pre-created
+evidence roots, or four running hosts. `cmd/ardents-qualify` creates its bounded
+local evidence root under an explicitly configured temporary directory outside
+Git.
+
+Environment prerequisites are staged:
+
+- S1-0 uses local files, processes, golden vectors, and independent offline
+  verification only;
+- S1-1 and S1-2 must first work as local black-box multi-process development
+  runs; loopback, Docker, or a local Linux VM may support development but make no
+  qualifying claim;
+- S1-3 requires a Linux cgroup-v2 environment only for the applicable resource
+  cells; platform-independent implementation and tests continue while it is
+  unavailable;
+- only S1-4 official qualification requires one preflighted dedicated Ubuntu
+  Docker Engine host carrying the exact isolated E/S1/S2/N1/N2 logical zones,
+  fixed candidate budgets, host-owned collectors/management, and external
+  evidence partitions.
+
+Missing remote infrastructure blocks only the evidence that actually needs it.
+It never blocks earlier implementation, unit/fuzz tests, local black-box tests,
+manifest generation, verifier work, or preparation of reproducible provisioning
+instructions.
 
 ## Fixed scope
 
@@ -81,22 +105,33 @@ behavior tests, a non-test caller, and the package-map row.
 
 | Path | Module responsibility | Permitted project imports |
 |---|---|---|
-| `internal/networkstate` | Verify, persist, refresh, and expose immutable authenticated Network State and Candidate Materializations | standard library |
-| `internal/nodelifecycle` | Run one local Node identity through assignment, readiness, bounded duty, drain, withdrawal, and terminal cleanup | `internal/networkstate`, standard library |
-| `internal/qualification` | Own black-box manifests, workloads, faults, external observation, independent verification, verdict, and cleanup | standard library |
-| `cmd/ardents` | Run the Endpoint Network State consumer and expose bounded local status | `internal/networkstate`, standard library |
-| `cmd/ardents-node` | Run one separately configured Node identity and one active role per process | `internal/networkstate`, `internal/nodelifecycle`, standard library |
-| `cmd/ardents-qualify` | Start controlled qualification work and render its terminal result | `internal/qualification`, standard library |
+| `internal/network/{state,epoch,source,store}` | Orchestrate Network State while keeping Epoch semantics, Direct-Origin Source, and durable storage under distinct owners | `internal/resource`, standard library |
+| `internal/node` | Run one local Node identity through assignment, readiness, duty, drain, withdrawal, and terminal cleanup | `internal/node/probe`, `internal/resource`, standard library |
+| `internal/node/probe` | Own bounded authenticated role-probe transport and accepted work | standard library |
+| `internal/qualification/{state,node}` | Own independent State verification and black-box Node campaign evidence | standard library |
+| `cmd/ardents` | Run the Endpoint Network State consumer and expose bounded local status | `internal/network/state`, `internal/network/source`, `internal/planfile`, standard library |
+| `cmd/ardents-node` | Run one separately configured Node identity and one active role per process | Network, Node, Probe, and planfile Modules; standard library |
+| `cmd/ardents-qualify` | Start controlled qualification work and render its terminal result | Qualification Modules; standard library |
+
+The S1-3/S1-4 human-authored Dockerfile, Compose topology, and non-secret fixture
+inputs belong in `tests/qualification/h3-node-v1/` when they gain a real caller.
+Generated images, keys, state, manifests, captures, and evidence stay outside
+Git. Do not place H3 qualification assets under `lab/` or `deployments/`.
 
 The product import direction is:
 
 ```text
-cmd/ardents -> internal/networkstate
-cmd/ardents-node -> internal/networkstate, internal/nodelifecycle
-cmd/ardents-qualify -> internal/qualification
-internal/qualification -> standard library
-internal/nodelifecycle -> internal/networkstate
-internal/networkstate -> standard library
+cmd/ardents -> internal/network/state, internal/network/source
+cmd/ardents-node -> internal/network/state, internal/node
+cmd/ardents-qualify -> internal/qualification/state, internal/qualification/node
+internal/network/state -> internal/network/epoch, internal/network/framing, internal/network/source, internal/network/store
+internal/network/epoch -> internal/network/epoch/assignment, internal/network/epoch/merkle, internal/network/framing
+internal/node -> internal/node/probe, internal/resource
+internal/qualification/state -> internal/network/epoch, internal/qualification/byteio
+internal/qualification/node -> internal/qualification/byteio, internal/qualification/node/fixture
+internal/qualification/node/fixture -> internal/network/epoch/assignment, internal/qualification/byteio, internal/qualification/epochfixture
+internal/qualification/epochfixture -> internal/network/epoch/assignment, internal/network/epoch/merkle
+internal/qualification/byteio -> standard library
 ```
 
 Product Modules and product runtime commands never import qualification or
@@ -263,9 +298,9 @@ findings.
 
 | Increment | Observable result | Review boundary |
 |---|---|---|
-| S1-0 contract and offline state | Create `networkstate`, `ardents`, `qualification`, and `ardents-qualify` with frozen golden artifacts, offline genesis/View acceptance, proof verification, durable generation, and independent local verdict | No network, Node process, listener, or readiness claim |
+| S1-0 contract and offline state | Create Network State, Epoch, Store, `ardents`, State qualification, and `ardents-qualify` with frozen golden artifacts, offline genesis/View acceptance, proof verification, durable generation, and a separate persisted-state verdict | No network, Node process, listener, or readiness claim |
 | S1-1 finite state distribution | Add `ardents-node` source mode; E obtains identical state/materialization through S1/S2 under exact R-027 retry, conflict, exposure, clock, and restart behavior | No assigned Node lifecycle claim |
-| S1-2 real Node lifecycle | Add `nodelifecycle`; N1/N2 consume the same state, perform role-probe work, refresh, drain, withdraw, restart, and reassign without overlap | Functional only; no resource qualification |
+| S1-2 real Node lifecycle | Add the Node and Probe Modules; N1/N2 consume the same state, perform role-probe work, refresh, drain, withdraw, restart, and reassign without overlap | Functional only; no resource qualification |
 | S1-3 hostile resource matrix | External cgroup/process accounting, overload, faults, evidence, fail-stop, cleanup, and quiescence pass | No soak or advance result |
 | S1-4 official Stage 1 campaign | Complete short matrix, independent 2 h churn campaign, and independent 24 h unattended campaign produce machine-verifiable evidence roots and verdicts | Product Owner records advance/redesign/stop |
 
@@ -365,7 +400,8 @@ Stop and return to R-029 rather than improvising if:
 - product Modules need H2 lab imports or the probe leaks into their Interfaces;
 - a new external dependency, public encoding, transport framework, database,
   orchestration platform, or custom cryptography becomes necessary;
-- process/key/state isolation cannot be proven on the four-host fixture;
+- process/key/state/cgroup/network isolation cannot be proven on the controlled
+  Docker fixture;
 - resource limits make required security/lifecycle work impossible;
 - a failure cannot be classified as candidate `fail` or harness `invalid`;
 - the work expands into Route, naming, Service, Bridge, installer, updater,

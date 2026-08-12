@@ -25,7 +25,7 @@ by `openpcc/ohttp v0.0.80`.
 | `go.opentelemetry.io/otel/trace` | `v1.39.0` | Apache-2.0 | OHTTP tracing Interface |
 | `golang.org/x/crypto` | `v0.51.0` | BSD-3-Clause | selected cryptographic support closure |
 | `golang.org/x/net` | `v0.55.0` | BSD-3-Clause | BHTTP HTTP support; raised from vulnerable `v0.48.0` |
-| `golang.org/x/sys` | `v0.45.0` | BSD-3-Clause | platform support selected by the fixed closure |
+| `golang.org/x/sys` | `v0.45.0` | BSD-3-Clause | bounded Linux `prlimit` fault injection plus platform support selected by the fixed closure |
 | `golang.org/x/text` | `v0.39.0` | BSD-3-Clause | BHTTP normalization; raised from vulnerable `v0.32.0` |
 
 **Need and owner:** RFC 9458 is the accepted external-first Private Resolution

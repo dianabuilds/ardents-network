@@ -61,6 +61,72 @@ special cases. Closed laboratory Modules change only for reproducibility,
 security maintenance, or an explicitly opened new experiment; a later Delivery
 Horizon does not grow inside them.
 
+## Horizon 3 product trunk
+
+Horizon 3 starts the maintained product beside the frozen laboratories. It does
+not extend `cmd/carrier-lab`, `cmd/named-site-lab`, or any package below
+`internal/lab`.
+
+The first real product commands are:
+
+| Command | Stable responsibility |
+|---|---|
+| `cmd/ardents` | Run the local Endpoint process. It grows only through accepted Endpoint capabilities and remains a thin adapter over product Modules. |
+| `cmd/ardents-node` | Run one separately configured Contributor Node identity and one active role per process. Co-resident roles require distinct processes, keys, state, and resource ownership. |
+| `cmd/ardents-qualify` | Run controlled qualification campaigns against product processes. It is an engineering executable, is not distributed as the user product, and grants no runtime authority. |
+
+The maintained product Modules are:
+
+| Module path | Stable responsibility |
+|---|---|
+| `internal/network/state` | Orchestrate authenticated Network State acceptance, current and pending decisions, acquisition, and publication. |
+| `internal/network/epoch` | Verify Network Epoch, Candidate View, materialization, and assignment semantics. |
+| `internal/network/source` | Own the finite Direct-Origin Source plan, credential binding, private transport, and exposure identity. |
+| `internal/network/store` | Own the exclusive state root, immutable generations, control journal, and atomic pointers. |
+| `internal/node` | Bind one local Node identity to authenticated assignment, readiness, duty, drain, withdrawal, and terminal cleanup. |
+| `internal/node/probe` | Own authenticated bounded role-probe TLS, framing, replay rejection, listener pressure, and cleanup. |
+| `internal/resource` | Own bounded process placement and pressure transitions shared by State and Node. |
+| `internal/planfile` | Own bounded operator-plan and credential decoding shared by command adapters. |
+
+Human-authored Dockerfiles, Compose manifests, and non-secret qualification
+inputs live under their owning `tests/qualification/<profile>/` slice. These
+paths are black-box qualification assets, not
+`internal/lab`, product runtime, packaging, or deployment. Images, keys, state,
+captures, evidence, caches, and generated manifests remain outside Git.
+
+`internal/qualification/{state,epoch,node,node/fixture,byteio}` are not product
+Modules. They own controlled manifests, faults, observers, independent evidence
+recomputation, campaign verdicts, and cleanup for `cmd/ardents-qualify`.
+Qualification observes and drives product executables as black boxes and does
+not reuse their verification implementation. No product Module or product
+runtime command may import it.
+
+This is a trunk, not a complete future directory tree. Route, Carrier,
+Publication, Service Connection, Namespace, Bridge, Release Safety, platform,
+and Application Interface paths do not exist until their promoted vertical
+slice supplies real maintained behavior. Horizon numbers and stage names never
+appear in product package paths or product command names.
+
+The product import direction is:
+
+```text
+cmd/ardents -> internal/network/state, internal/network/source, internal/planfile
+cmd/ardents-node -> internal/network/state, internal/network/source, internal/node, internal/node/probe, internal/planfile
+cmd/ardents-qualify -> internal/qualification/state, internal/qualification/node
+internal/network/state -> internal/network/epoch, internal/network/framing, internal/network/source, internal/network/store, internal/resource
+internal/network/epoch -> internal/network/epoch/assignment, internal/network/epoch/merkle, internal/network/framing
+internal/node -> internal/node/probe, internal/resource
+internal/qualification/state -> internal/network/epoch, internal/qualification/byteio
+internal/qualification/node -> internal/qualification/byteio, internal/qualification/node/fixture
+internal/qualification/node/fixture -> internal/network/epoch/assignment, internal/qualification/byteio, internal/qualification/epochfixture
+internal/qualification/epochfixture -> internal/network/epoch/assignment, internal/network/epoch/merkle
+internal/qualification/byteio -> standard library
+```
+
+Qualification code may drive or observe product Interfaces but cannot implement
+missing product behavior on their behalf. A passing harness shortcut is a test
+failure, not a substitute for Endpoint or Node runtime behavior.
+
 A disposable Go spike under `experiments/` uses `//go:build ignore` so the root
 module and its `./...` quality gates do not treat it as maintained project code.
 It does not create a nested `go.mod`; its question record and README own the run

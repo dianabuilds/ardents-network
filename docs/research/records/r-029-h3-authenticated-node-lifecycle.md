@@ -95,7 +95,7 @@ The accepted candidate must satisfy all of these together:
    have explicit finite bounds;
 6. the implementation uses the accepted Go foundation and standard library
    without a new runtime dependency or custom cryptography;
-7. the exact four-host campaign can produce a deterministic `pass`, `fail`, or
+7. the exact controlled Docker campaign can produce a deterministic `pass`, `fail`, or
    `invalid` result while making no Route, capacity, anonymity, independence, or
    decentralization claim;
 8. the complete implementation and evidence path remain maintainable by the
@@ -115,9 +115,13 @@ The accepted candidate must satisfy all of these together:
 - **Sourced fact:** RFC 8446 defines TLS 1.3, resumption, and early data. The
   role-probe and distribution fixtures deliberately disable resumption tickets
   and early data so every bounded connection exercises a full handshake.
-- **Assumption:** the exact E/S1/S2/H Ubuntu fixture, process isolation, cgroup v2
-  controls, fixed clocks, collectors, and external evidence roots can be
-  provisioned as specified. Failure of that preflight blocks feature code.
+- **Assumption:** one dedicated Ubuntu Docker Engine host can provide separate
+  cgroup-v2, network, PID/IPC, mount, key, and state zones for E/S1/S2/N1/N2,
+  while a host-owned qualifier observes them externally. Failure of that
+  preflight blocks the official Stage 1 verdict, not local implementation.
+  Evidence roots are created by the qualifier in its configured
+  out-of-repository output directory; they are not supplied by the Product
+  Owner as an implementation prerequisite.
 - **Inference:** bootstrap-only H2 would create maintained state machinery with
   no product consumer, while extending H2 laboratory code would violate the
   product/laboratory dependency boundary. H1 is the smallest candidate that
@@ -159,19 +163,30 @@ protocol.
 
 ## Controlled topology
 
-Use the existing four-host R-027 shape with explicit additional process zones:
+Use one dedicated remote Ubuntu host with Docker Engine, cgroup v2, and an
+externally owned qualification process. The logical E/S1/S2/N1/N2/H topology is
+preserved as isolated process zones, not claimed as separate physical hosts:
 
-| Host | Candidate processes | Harness process | Qualification limit |
-|---|---|---|---|
-| E | Endpoint Network State consumer | local external collector | No Application, Route, DNS, or direct fallback |
-| S1 | source distributor S1; separately keyed Node N1 | local external collector | Co-residence is disclosed and proves no operator independence |
-| S2 | source distributor S2; separately keyed Node N2 | local external collector | Same as S1 |
-| H | none | orchestrator, workload clients, full-view verifier | H is management/evidence only, never a data-path proxy |
+| Zone | Process | Qualification limit |
+|---|---|---|
+| E | Endpoint Network State consumer | No Application, Route, DNS, or direct fallback |
+| S1/S2 | two independently keyed source processes | Source identities, state, listeners, and budgets remain distinct |
+| N1/N2 | two independently keyed Node processes | Node identity, assignment, state, listener, and budget remain distinct from sources and each other |
+| H | host-owned orchestrator, workload clients, collector, and independent full-view verifier | H is management/evidence only, never a candidate data-path proxy |
 
-S1/N1 and S2/N2 use separate OS users, keys, state roots, cgroups, network
-namespaces, listeners, and evidence streams. Host root can observe or compromise
-both; this is an explicit limitation. Source and Node identities never share key
-material. Management traffic is unreachable from candidate namespaces.
+E/S1/S2/N1/N2 have separate unprivileged containers, users, keys, read-only root
+filesystems, state/evidence mounts, cgroups, network namespaces, PID/IPC
+namespaces, listeners, and explicit network allowlists. Candidate containers
+receive no Docker socket, host network, shared PID/IPC namespace, privileged
+mode, or cross-role secret/state volume. H owns container lifecycle and
+host-level cgroup/network observation outside candidate containers.
+
+The host may observe or compromise every zone, shares one kernel, scheduler,
+clock source, physical NIC, power domain, and operator, and is therefore one
+failure/control family. Stage 1 claims no kernel isolation, physical-host
+failure recovery, real inter-host latency, operator independence, diversity, or
+anonymity from this fixture. Those properties require later distributed Route
+Qualification; they are not silently inferred from containers.
 
 The manifest records one real control family, `project-controlled`, for every
 process. Any additional declared family values exist only to exercise canonical
@@ -324,8 +339,8 @@ future-role package is permitted.
 | Persistence | immutable generations, fsync, atomic current pointer | no database; real query/transaction need reopens choice |
 | Concurrency | `context`, bounded channels, owned counters/semaphores | no external dependency without review |
 | Logging | `log/slog`, fixed low-cardinality events | no remote telemetry listener |
-| Containment | systemd/cgroup v2 fixture, namespaces, firewall | not production installer/orchestration |
-| Reproduction | Docker allowed only for non-qualifying local smoke | cannot replace the multi-host evidence run |
+| Containment | dedicated Ubuntu Docker Engine host, cgroup v2, namespaces, firewall | selected only as the H3 Stage 1 qualification fixture; not production orchestration |
+| Reproduction | the same Compose/topology contract may run locally or remotely | only a preflighted dedicated Ubuntu host produces the official Stage 1 verdict |
 
 Stage 1 adds no runtime module dependency to `go.mod`. Existing Gate C
 dependencies remain confined to `internal/lab/namedsite` and cannot be imported.
@@ -345,9 +360,11 @@ probe uses profile `H3-NP1`, deliberately limited to this lifecycle workload:
 | Probe work | `16` open sessions, `4` active; each active client sends one request/s |
 | Persistent/evidence | `16 MiB` candidate state/evidence; external evidence separately budgeted |
 
-S1 and S2 comparison hosts use `4 vCPU`, `4 GiB` RAM so H3-S and H3-NP1 have
-separate cgroups plus host reserve. More hardware changes neither quota nor pass
-threshold. H3-NP1 is not public Node capacity and must not be copied into Stage 2.
+The Docker host preflight proves that the sum of all candidate CPU quotas is at
+most `75%` of effective host CPU and that candidate `memory.max` totals plus the
+frozen H/OS reserve fit without host swap or overcommit. Individual H3-S and
+H3-NP1 cgroup limits and pass thresholds do not change with a stronger host.
+H3-NP1 is not public Node capacity and must not be copied into Stage 2.
 
 All work reserves goroutine, socket, timer, and byte credit before allocation.
 Pressure follows `NORMAL -> PROTECT -> DRAIN -> EXIT`. Quiescence after churn
@@ -443,7 +460,8 @@ Choose `redesign` or `stop` if any of the following is necessary:
 - queues, retries, state, evidence, or cleanup are unbounded;
 - Stage 1 requires libp2p, Waku, a DHT, database, Kubernetes, DNS, public
   consensus, blockchain, or custom cryptography to produce the tracer;
-- the one-to-one project cannot maintain the Module and four-host evidence path.
+- the one-to-one project cannot maintain the product Modules and controlled
+  Docker qualification path.
 
 ## Recommendation
 
