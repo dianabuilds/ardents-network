@@ -72,20 +72,24 @@ func Run(ctx context.Context, input Campaign) Result {
 		return observer.result("invalid", err)
 	}
 	if err := observer.waitReady(ctx, 30*time.Second); err != nil {
-		return observer.result("fail", err)
+		failure := nodeCandidateFailure("node candidates did not reach READY", err)
+		if errors.Is(failure, errInvalidNodeCampaign) || errors.Is(failure, context.Canceled) || errors.Is(failure, context.DeadlineExceeded) {
+			return observer.result("invalid", failure)
+		}
+		return observer.result("fail", failure)
 	}
 	if err := observer.captureInitialResources(ctx); err != nil {
 		return observer.result("invalid", err)
 	}
 	observer.startSamples()
-	if input.Mode == "short" {
+	mode, _ := selectNodeCampaignMode(input.Mode)
+	if mode.short {
 		err = observer.runShortMatrix(ctx)
 	} else {
 		err = observer.runSustainedCampaign(ctx)
 	}
 	if err != nil {
-		var invalid invalidNodeCampaignError
-		if errors.As(err, &invalid) || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		if errors.Is(err, errInvalidNodeCampaign) || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 			return observer.result("invalid", err)
 		}
 		return observer.result("fail", err)

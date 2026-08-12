@@ -9,10 +9,21 @@ import (
 
 // Sample is one bounded process/cgroup observation.
 type Sample struct {
-	CPUUsageUsec, MemoryBytes, GoMemoryBytes, SocketMemoryBytes uint64
-	FDs, Goroutines, Threads, Timers, QueueItems, QueueBytes    uint64
-	CPUPressure, MemoryPressure, IOPressure                     float64
-	HighEvents, EmergencyEvents                                 uint64
+	CPUUsageUsec      uint64  `json:"cpu_usage_usec"`
+	MemoryBytes       uint64  `json:"memory_bytes"`
+	GoMemoryBytes     uint64  `json:"go_memory_bytes"`
+	SocketMemoryBytes uint64  `json:"socket_memory_bytes"`
+	FDs               uint64  `json:"fds"`
+	Goroutines        uint64  `json:"goroutines"`
+	Threads           uint64  `json:"threads"`
+	Timers            uint64  `json:"timers"`
+	QueueItems        uint64  `json:"queue_items"`
+	QueueBytes        uint64  `json:"queue_bytes"`
+	CPUPressure       float64 `json:"cpu_pressure"`
+	MemoryPressure    float64 `json:"memory_pressure"`
+	IOPressure        float64 `json:"io_pressure"`
+	HighEvents        uint64  `json:"high_events"`
+	EmergencyEvents   uint64  `json:"emergency_events"`
 }
 
 // Check verifies the fixed runtime and OS placement for this guard's profile.
@@ -51,6 +62,9 @@ type Config struct {
 type Observation struct {
 	Protect bool
 	Drain   bool
+	// Sample is diagnostic evidence. A qualification verdict must pair it with
+	// independent OS/cgroup/process observations.
+	Sample Sample
 }
 
 // Guard owns one process's placement and pressure state.
@@ -77,9 +91,9 @@ func New(config Config) (*Guard, error) {
 func (guard *Guard) Observe(timers, queueItems, queueBytes uint64) (Observation, error) {
 	sample, err := guard.measure()
 	if err != nil {
-		return Observation{Protect: true, Drain: true}, err
+		return Observation{Protect: true, Drain: true, Sample: sample}, err
 	}
 	sample.Timers, sample.QueueItems, sample.QueueBytes = timers, queueItems, queueBytes
 	level := guard.monitor.observe(guard.profile, sample)
-	return Observation{Protect: level != levelNormal, Drain: level == levelDrain}, nil
+	return Observation{Protect: level != levelNormal, Drain: level == levelDrain, Sample: sample}, nil
 }

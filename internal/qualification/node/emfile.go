@@ -16,22 +16,25 @@ func (observer *nodeObserver) forceEMFILE(ctx context.Context) error {
 		return err
 	}
 	if err := observer.waitServiceReady(ctx, 15*time.Second, "node1_emfile"); err != nil {
-		return errors.New("low-FD Node did not reach the isolated EMFILE cell")
+		return nodeCandidateFailure("low-FD Node did not reach the isolated EMFILE cell", err)
 	}
 	raw, injectErr := observer.compose(ctx, "run", "--rm", "--no-deps", "emfile_harness", "/usr/local/bin/ardents-qualify",
 		"inject-node", "--mode", "emfile", "--addresses", "172.30.3.11:4401")
 	if appendErr := observer.appendCandidateEvidence(raw); appendErr != nil {
 		return appendErr
 	}
+	if injectErr != nil {
+		return injectErr
+	}
 	if err := observer.waitStopped(ctx, 5*time.Second, "node1_emfile"); err != nil {
-		return errors.Join(injectErr, errors.New("deliberate EMFILE did not cause bounded candidate exit"))
+		return nodeCandidateFailure("deliberate EMFILE did not cause bounded candidate exit", err)
 	}
 	logs, logErr := observer.compose(ctx, "logs", "--no-color", "node1_emfile")
 	if appendErr := observer.appendCandidateEvidence(logs); appendErr != nil {
 		return appendErr
 	}
 	if logErr != nil || !strings.Contains(string(logs), "too many open files") {
-		return errors.Join(injectErr, logErr, errors.New("EMFILE cell did not prove an actual descriptor exhaustion"))
+		return errors.Join(logErr, errors.New("EMFILE cell did not prove an actual descriptor exhaustion"))
 	}
 	if _, err := observer.compose(ctx, "rm", "-f", "node1_emfile"); err != nil {
 		return err
@@ -40,7 +43,7 @@ func (observer *nodeObserver) forceEMFILE(ctx context.Context) error {
 		return err
 	}
 	if err := observer.waitReady(ctx, 15*time.Second); err != nil {
-		return errors.New("node did not recover after the isolated EMFILE cell")
+		return nodeCandidateFailure("node did not recover after the isolated EMFILE cell", err)
 	}
 	return nil
 }

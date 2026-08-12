@@ -1,6 +1,9 @@
 package node
 
-import "github.com/dianabuilds/ardents-network/internal/node/probe"
+import (
+	"github.com/dianabuilds/ardents-network/internal/node/probe"
+	"github.com/dianabuilds/ardents-network/internal/resource"
+)
 
 type pressureLevel byte
 
@@ -10,17 +13,17 @@ const (
 	pressureDrain
 )
 
-func (config runtimeConfig) resourcePressure(server *probe.Server) (pressureLevel, error) {
+func (config runtimeConfig) resourcePressure(server *probe.Server) (pressureLevel, resource.Sample, error) {
 	if config.pressure == nil {
-		return pressureNormal, nil
+		return pressureNormal, resource.Sample{}, nil
 	}
 	timers, queueItems, queueBytes := server.Usage()
 	observation, err := config.pressure.Observe(timers, queueItems, queueBytes)
 	if err != nil || observation.Drain {
-		return pressureDrain, err
+		return pressureDrain, observation.Sample, err
 	}
 	if observation.Protect {
-		return pressureProtect, nil
+		return pressureProtect, observation.Sample, nil
 	}
-	return pressureNormal, nil
+	return pressureNormal, observation.Sample, nil
 }

@@ -310,9 +310,10 @@ findings.
 
 Current closure note (2026-08-12): S1-0, S1-1, and S1-2 are re-proven by the
 maintained regression and black-box process suites. S1-3 now has a fail-closed
-Docker harness with sealed manifests, source/image/binary identity binding,
-external cgroup-v2 ancestry and process sampling, the hostile fault matrix,
-cleanup, and quiescence gates. S1-4 remains open until `short`, `churn-2h`, and
+Docker harness with a pre-behavior sealed campaign contract, immutable fixture
+and source/image/binary identity binding, candidate runtime diagnostics retained
+without verdict trust, external cgroup-v2/process/behavior gates, deterministic two-hour resource churn,
+the hostile fault matrix, cleanup, and quiescence gates. S1-4 remains open until `short`, `churn-2h`, and
 `unattended-24h` each produce a valid evidence root on the qualifying Ubuntu
 host. Local Docker results are development evidence only and cannot change that
 status or authorize Stage 2.
@@ -324,7 +325,7 @@ Recorded development evidence (2026-08-12):
 | S1-0 | Implemented; independent persisted-state verification and frozen vectors pass the Go 1.26.5 full gate | Not a Docker campaign |
 | S1-1 | Implemented; finite authenticated two-source and restart/conflict regression suites pass | Not a Docker campaign |
 | S1-2 | Implemented; lifecycle, authenticated probe, withdrawal, restart, and black-box process suites pass | Functional development evidence only |
-| S1-3 | Campaign implementation and fail-closed observer findings are closed in code; a fresh full matrix has not passed after the final PID-transition fix | Latest full local result: `invalid`, digest `1c3bdd291eeb5e724d139234d2495709644b89d4c63c8577f572196d95464aaf`, root `C:\Users\vitek\AppData\Local\Temp\ardents-h3-local-final-31f58549ce2348b1a2de6f4356e57e91\short-evidence` |
+| S1-3 | Campaign implementation and final review findings are closed in code; a fresh full matrix has not passed after the campaign-contract/runtime-evidence changes | Latest full local result predates those changes and remains rejected: `invalid`, digest `1c3bdd291eeb5e724d139234d2495709644b89d4c63c8577f572196d95464aaf`, root `C:\Users\vitek\AppData\Local\Temp\ardents-h3-local-final-31f58549ce2348b1a2de6f4356e57e91\short-evidence` |
 | S1-4 | Not complete; no qualifying Ubuntu result | Official `short`, `churn-2h`, and `unattended-24h` were not run; no machine result or evidence root exists |
 
 The local host was Docker Desktop 4.55.0 / Engine 29.1.3 on a WSL2 Linux

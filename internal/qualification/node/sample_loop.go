@@ -9,11 +9,12 @@ import (
 )
 
 type nodeSampleResult struct {
-	sequence  int
-	at        time.Time
-	processes []byte
-	resources []nodeResourceSnapshot
-	err       error
+	sequence    int
+	at          time.Time
+	processes   []byte
+	resources   []nodeResourceSnapshot
+	diagnostics []byte
+	err         error
 }
 
 func (observer *nodeObserver) runSamples() {
@@ -59,8 +60,10 @@ func (observer *nodeObserver) collectNodeSample(sequence int, at time.Time, outp
 	processes, processErr := observer.composeBounded(ctx, 32<<10, "ps", "-a", "--format",
 		"{{.Service}}\t{{.State}}\t{{.ExitCode}}\t{{.ID}}")
 	resources, resourceErr := observer.sampleNodeResources(ctx, at)
+	diagnostics, diagnosticErr := observer.composeBounded(ctx, 256<<10, "logs", "--no-color", "--timestamps", "--since", "2s",
+		"source1", "source2", "endpoint", "node1", "node2")
 	result := nodeSampleResult{sequence: sequence, at: at, processes: processes, resources: resources,
-		err: errors.Join(processErr, resourceErr)}
+		diagnostics: diagnostics, err: errors.Join(processErr, resourceErr, diagnosticErr)}
 	select {
 	case output <- result:
 	case <-observer.ctx.Done():
@@ -69,7 +72,8 @@ func (observer *nodeObserver) collectNodeSample(sequence int, at time.Time, outp
 
 func (observer *nodeObserver) writeNodeSample(result nodeSampleResult) bool {
 	observer.observeResources(result.resources)
-	record := map[string]any{"at": result.at.UTC(), "processes": string(result.processes), "resources": result.resources}
+	record := map[string]any{"at": result.at.UTC(), "processes": string(result.processes), "resources": result.resources,
+		"candidate_events": string(result.diagnostics), "active_faults": observer.faultSnapshot()}
 	if result.err != nil {
 		record["observer_error"] = result.err.Error()
 		observer.recordEvidenceError(result.err)

@@ -68,6 +68,7 @@ func validateConfig(input Config) (config, error) {
 		threshold: input.Threshold, now: initial, clock: clock,
 		source: sourcePlan, sourceInfo: sourceInfo, observation: input.ClockObservation.UTC(), observe: observe,
 		automatic: input.AutomaticRefreshInterval, profile: input.RuntimeProfile,
+		resources:  input.ObserveResources,
 		anchorWall: initial, anchorMono: time.Now(),
 	}
 	if resolved.profile != "" && resolved.profile != "h3-s-v1" {

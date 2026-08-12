@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/node/probe"
+	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
 // Run owns one Node duty and returns only after terminal cleanup.
@@ -82,6 +83,7 @@ func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, s
 	ticker := time.NewTicker(config.PollInterval)
 	defer ticker.Stop()
 	protected := false
+	nextResourceEvidence := time.Time{}
 	for {
 		select {
 		case <-ctx.Done():
@@ -92,9 +94,16 @@ func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, s
 			}
 			return fail(config, machine, server, "role-probe listener stopped", terminalErr)
 		case <-ticker.C:
-			pressure, pressureErr := config.resourcePressure(server)
+			pressure, sample, pressureErr := config.resourcePressure(server)
 			if pressureErr != nil {
 				return fail(config, machine, server, "resource pressure evidence is unavailable", pressureErr)
+			}
+			now := config.now()
+			if !now.Before(nextResourceEvidence) {
+				if err := emitResourceDiagnostic(config, current, now, sample); err != nil {
+					return fail(config, machine, server, "external evidence channel failed", err)
+				}
+				nextResourceEvidence = now.Add(time.Second)
 			}
 			if pressure == pressureDrain {
 				if err := emitResourceState(config, current, "DRAIN", "resource pressure crossed an emergency threshold"); err != nil {
@@ -132,6 +141,14 @@ func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, s
 			}
 		}
 	}
+}
+
+func emitResourceDiagnostic(config runtimeConfig, snapshot Facts, at time.Time, sample resource.Sample) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	return config.Emit(ctx, Event{Schema: eventSchema, Kind: "resource-sample", State: "OBSERVED", At: at,
+		Epoch: snapshot.Epoch, Generation: snapshot.Generation, Assignment: snapshot.Assignment,
+		AssignmentDigest: snapshot.AssignmentDigest, Resource: &sample})
 }
 
 func emitResourceState(config runtimeConfig, snapshot Facts, state, reason string) error {

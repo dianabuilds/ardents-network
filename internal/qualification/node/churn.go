@@ -18,7 +18,10 @@ func (observer *nodeObserver) runRestartQuiescence(ctx context.Context) error {
 	for range 3 {
 		before := [2]int{}
 		for index, service := range []string{"node1", "node2"} {
-			logs, _ := observer.compose(ctx, "logs", "--no-color", service)
+			logs, err := observer.compose(ctx, "logs", "--no-color", "--since", "10m", service)
+			if err != nil {
+				return err
+			}
 			before[index] = countBytes(logs, []byte(`"state":"READY"`))
 		}
 		if _, err := observer.compose(ctx, "restart", "source1", "source2", "node1", "node2"); err != nil {
@@ -36,7 +39,10 @@ func (observer *nodeObserver) runRestartQuiescence(ctx context.Context) error {
 		return errors.Join(err, errors.New("node candidate resources did not quiesce after 120 seconds"))
 	}
 	ids, err := observer.compose(ctx, "ps", "-q")
-	if err != nil || len(strings.Fields(string(ids))) != 5 {
+	if err != nil {
+		return err
+	}
+	if len(strings.Fields(string(ids))) != 5 {
 		return errors.New("node churn did not quiesce to five candidate processes")
 	}
 	arguments := []string{"stats", "--no-stream", "--format", "{{.PIDs}}"}
@@ -93,7 +99,10 @@ func (observer *nodeObserver) waitNewReadiness(ctx context.Context, before [2]in
 	for {
 		ready := true
 		for index, service := range []string{"node1", "node2"} {
-			logs, _ := observer.compose(ctx, "logs", "--no-color", service)
+			logs, err := observer.compose(ctx, "logs", "--no-color", "--since", "1m", service)
+			if err != nil {
+				return err
+			}
 			ready = ready && countBytes(logs, []byte(`"state":"READY"`)) > before[index]
 		}
 		if ready {

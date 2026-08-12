@@ -27,6 +27,7 @@ type Config struct {
 	ObserveClock             func() time.Time
 	AutomaticRefreshInterval time.Duration
 	RuntimeProfile           string
+	ObserveResources         func([]byte) error
 }
 
 // Snapshot is an immutable description of the current verified generation.
@@ -103,6 +104,7 @@ type config struct {
 	observe     func() time.Time
 	automatic   time.Duration
 	profile     string
+	resources   func([]byte) error
 	anchorWall  time.Time
 	anchorMono  time.Time
 }

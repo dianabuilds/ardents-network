@@ -19,8 +19,9 @@ brief; a local run is not a substitute.
 
 The campaign binary accepts exactly three normal modes. `short` runs the
 hostile fault/resource matrix. `churn-2h` runs for two hours with five-minute
-source and Node restart cycles, periodic authenticated probes, one-second
-external samples, and a final 120-second quiescence gate. `unattended-24h`
+deterministic Node memory/CPU or H3-S source-pressure cells followed by source
+and Node restart cycles, periodic authenticated probes, one-second external
+samples, and a final 120-second quiescence gate. `unattended-24h`
 runs for twenty-four hours without deliberate churn, checking the process set
 every 30 seconds and the authenticated probe path every 15 minutes. An
 interrupted campaign, failed harness, missing observer, or changed manifest is
@@ -63,9 +64,14 @@ run_campaign unattended-24h
 printf 'evidence parent: %s\n' "$campaign_parent"
 ```
 
-Each evidence root contains the sealed fixture manifest, production-source
-digest, resolved Compose topology, Docker host/image/container identities,
-binary toolchain and linked dependency receipts, one-second cgroup/process
-samples, candidate events, fault outcomes, cleanup receipt, and terminal
+Each evidence root contains the sealed fixture manifest and pre-behavior
+campaign contract, immutable fixture-input and production-source digests,
+resolved Compose topology, Docker host/image/container identities, binary
+toolchain and linked dependency receipts, paired candidate runtime diagnostics
+and one-second external cgroup/process samples, fault outcomes, cleanup receipt, and terminal
 `result.json`. Private keys and mutable candidate state remain only in that
 campaign's fixture root outside Git.
+
+Candidate runtime diagnostics are retained for diagnosis only. They never
+contribute a passing or failing gate; the machine verdict uses the independent
+external cgroup/process samples and externally driven behavior matrix.

@@ -26,7 +26,7 @@ type sourceServerPlan struct {
 	RuntimeProfile       string   `json:"runtime_profile,omitempty"`
 }
 
-func openSource(path string) (interface {
+func openSource(path string, emit func([]byte) error) (interface {
 	Current() (state.Snapshot, error)
 	Wait(context.Context) error
 	Close() error
@@ -41,6 +41,7 @@ func openSource(path string) (interface {
 	}
 	config := state.Config{Root: plan.StateRoot, Threshold: plan.Threshold,
 		Source: source.Config{ServeAddress: plan.Listen, MaterialIndex: plan.MaterializationIndex}, RuntimeProfile: plan.RuntimeProfile}
+	config.ObserveResources = emit
 	if err := planfile.FixedHex(plan.NetworkID, config.NetworkID[:]); err != nil {
 		return nil, err
 	}

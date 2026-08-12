@@ -29,7 +29,7 @@ func (observer *nodeObserver) cleanup() {
 		observer.cleanupErr = errors.Join(observer.cleanupErr, observer.verifyDockerQuiescence(context.Background()))
 		verdict := "pass"
 		if observer.cleanupErr != nil {
-			verdict = "fail"
+			verdict = "invalid"
 		}
 		raw, marshalErr := json.Marshal(map[string]any{"schema": "ardents-h3-node-cleanup-v1", "verdict": verdict,
 			"owned_containers": 0, "owned_networks": 0, "owned_volumes": 0, "owned_images": 0})
@@ -66,12 +66,13 @@ func (observer *nodeObserver) captureLogs(ctx context.Context, services ...strin
 		if observer.captured[id] {
 			continue
 		}
-		logs, err := observer.compose(ctx, "logs", "--no-color", service)
+		logs, err := observer.compose(ctx, "logs", "--no-color", "--timestamps", "--since", "3s", service)
 		if err != nil {
 			observer.recordEvidenceError(err)
 			continue
 		}
-		err = observer.appendCandidateEvidence(logs)
+		err = errors.Join(observer.appendCandidateEvidence(logs),
+			os.WriteFile(filepath.Join(observer.input.EvidenceRoot, "candidate-"+service+"-events.log"), logs, 0o600))
 		if err == nil {
 			observer.captured[id] = true
 		}

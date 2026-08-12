@@ -44,6 +44,9 @@ func TestGuardProtectsRecoversAndDrains(t *testing.T) {
 	if err != nil || !observation.Protect || !observation.Drain {
 		t.Fatalf("emergency = %+v, %v", observation, err)
 	}
+	if observation.Sample.MemoryBytes != sample.MemoryBytes {
+		t.Fatalf("diagnostic sample = %+v, want measured sample", observation.Sample)
+	}
 }
 
 func TestSourceGuardUsesSourceProfileThresholds(t *testing.T) {

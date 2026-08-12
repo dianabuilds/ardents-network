@@ -13,9 +13,7 @@ import (
 
 func (observer *nodeObserver) result(verdict string, cause error) Result {
 	observer.cleanup()
-	if observer.cleanupErr != nil {
-		verdict, cause = "fail", errors.Join(cause, observer.cleanupErr)
-	}
+	verdict, cause = classifyNodeCleanup(verdict, cause, observer.cleanupErr)
 	observer.recordEvidenceError(observer.samples.Sync())
 	observer.recordEvidenceError(observer.samples.Close())
 	observer.mu.Lock()
@@ -24,9 +22,17 @@ func (observer *nodeObserver) result(verdict string, cause error) Result {
 	if evidenceErr != nil {
 		verdict, cause = "invalid", errors.Join(cause, errors.New("node external evidence failed"), evidenceErr)
 	}
-	if verdict == "pass" {
+	if manifestErr := validateNodeCampaignManifest(observer.input.EvidenceRoot, observer.input.FixtureRoot); manifestErr != nil {
+		verdict, cause = "invalid", errors.Join(cause, manifestErr)
+	}
+	if verdict != "invalid" {
 		if resourceErr := observer.verifyResourceEvidence(); resourceErr != nil {
-			verdict, cause = "fail", errors.Join(cause, resourceErr)
+			if errors.Is(resourceErr, errInvalidNodeCampaign) {
+				verdict = "invalid"
+			} else {
+				verdict = "fail"
+			}
+			cause = errors.Join(cause, resourceErr)
 		}
 	}
 	digest, digestErr := nodeEvidenceDigest(observer.input.EvidenceRoot)
@@ -40,6 +46,13 @@ func (observer *nodeObserver) result(verdict string, cause error) Result {
 		result.Reason = boundedNodeReason(errors.Join(errors.New("node terminal result was not durable"), err))
 	}
 	return result
+}
+
+func classifyNodeCleanup(verdict string, cause, cleanupErr error) (string, error) {
+	if cleanupErr == nil {
+		return verdict, cause
+	}
+	return "invalid", errors.Join(cause, cleanupErr)
 }
 
 func boundedNodeReason(cause error) string {

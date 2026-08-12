@@ -151,7 +151,7 @@ func (observer *nodeObserver) observeResources(samples []nodeResourceSnapshot) {
 		if sample.Events["max"] > 0 || sample.Events["oom"] > 0 || sample.Events["oom_kill"] > 0 {
 			series.eventFailure = true
 		}
-		if !validNodeResourceProfile(sample) {
+		if !validNodeResourceProfile(sample) && !observer.faultSnapshot()["cgroup-drift:"+sample.Service] {
 			series.profileFailure = true
 		}
 	}
@@ -161,7 +161,7 @@ func (observer *nodeObserver) verifyResourceEvidence() error {
 	for _, service := range []string{"source1", "source2", "endpoint", "node1", "node2"} {
 		series := observer.resources[service]
 		if series == nil || len(series.cpuMilli) < 3 || len(series.memory) < 3 {
-			return errors.New("node resource evidence is incomplete for " + service)
+			return invalidNodeCampaign(errors.New("node resource evidence is incomplete for " + service))
 		}
 		meanLimit, p95Limit := uint64(1120), uint64(1280)
 		if service == "node1" || service == "node2" {
@@ -181,7 +181,10 @@ func (observer *nodeObserver) verifyResourceEvidence() error {
 		if service == "node1" || service == "node2" {
 			fdLimit, socketLimit, pidLimit = 512, 256, 256
 		}
-		if series.eventFailure || series.profileFailure || series.cadenceFailure || series.maxFDs > fdLimit ||
+		if series.cadenceFailure {
+			return invalidNodeCampaign(errors.New("node external sampling cadence failed for " + service))
+		}
+		if series.eventFailure || series.profileFailure || series.maxFDs > fdLimit ||
 			series.maxSockets > socketLimit || series.maxPIDs > pidLimit || series.maxThreads > pidLimit {
 			return errors.New("node process resource fuse failed for " + service)
 		}

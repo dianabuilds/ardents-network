@@ -12,12 +12,20 @@ func (observer *nodeObserver) runShortMatrix(ctx context.Context) error {
 		return err
 	}
 	if err := observer.partialHandshakeFlood(ctx); err != nil {
-		return invalidNodeCampaignError{err}
+		return invalidNodeCampaign(err)
 	}
 	if _, err := observer.compose(ctx, "kill", "source1"); err != nil {
 		return err
 	}
-	if err := waitNode(ctx, 6*time.Second); err != nil || !observer.running(ctx, "node1") || !observer.running(ctx, "node2") {
+	if err := waitNode(ctx, 6*time.Second); err != nil {
+		return invalidNodeCampaign(err)
+	}
+	node1Running, node1Err := observer.running(ctx, "node1")
+	node2Running, node2Err := observer.running(ctx, "node2")
+	if err := errors.Join(node1Err, node2Err); err != nil {
+		return err
+	}
+	if !node1Running || !node2Running {
 		return errors.New("one finite source death removed healthy current Node duties")
 	}
 	if _, err := observer.compose(ctx, "up", "-d", "source1"); err != nil {
@@ -25,7 +33,7 @@ func (observer *nodeObserver) runShortMatrix(ctx context.Context) error {
 	}
 	observer.setClock(1, false)
 	if err := observer.waitStopped(ctx, 9*time.Second, "node1"); err != nil {
-		return errors.New("clock uncertainty did not withdraw Node1")
+		return nodeCandidateFailure("clock uncertainty did not withdraw Node1", err)
 	}
 	observer.captureLogs(ctx, "node1")
 	observer.setClock(1, true)
@@ -57,13 +65,16 @@ func (observer *nodeObserver) runShortMatrix(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	observer.setFault("cgroup-drift:node2", true)
 	if _, err := observer.docker(ctx, "update", "--cpus", "0.5", id); err != nil {
+		observer.setFault("cgroup-drift:node2", false)
 		return err
 	}
 	if err := observer.waitStopped(ctx, 5*time.Second, "node2"); err != nil {
-		return errors.New("candidate-visible cgroup drift did not withdraw Node2")
+		return nodeCandidateFailure("candidate-visible cgroup drift did not withdraw Node2", err)
 	}
 	observer.captureLogs(ctx, "node2")
+	observer.setFault("cgroup-drift:node2", false)
 	if _, err = observer.compose(ctx, "up", "-d", "--force-recreate", "node2"); err != nil {
 		return err
 	}
@@ -82,7 +93,10 @@ func (observer *nodeObserver) injectEvidenceFailure(ctx context.Context) error {
 	if appendErr := observer.appendCandidateEvidence(raw); appendErr != nil {
 		return appendErr
 	}
-	if err != nil || !strings.Contains(string(raw), `"verdict":"pass"`) {
+	if err != nil {
+		return err
+	}
+	if !strings.Contains(string(raw), `"verdict":"pass"`) {
 		return errors.New("candidate evidence failure did not produce bounded fail-stop proof")
 	}
 	if _, err := observer.compose(ctx, "up", "-d", "--force-recreate", "node1"); err != nil {
@@ -97,28 +111,29 @@ func (observer *nodeObserver) forceDiskFull(ctx context.Context) error {
 	}
 	observer.captureLogs(ctx, "node1")
 	raw, runErr := observer.compose(ctx, "run", "--rm", "--no-deps", "node1_diskfull")
-	observer.appendCandidateEvidence(append(raw, []byte("\n"+errorText(runErr)+"\n")...))
-	if runErr == nil || !strings.Contains(runErr.Error(), "no space left on device") || countBytes(raw, []byte(`"state":"READY"`)) != 0 {
+	if appendErr := observer.appendCandidateEvidence(append(raw, []byte("\n"+errorText(runErr)+"\n")...)); appendErr != nil {
+		return appendErr
+	}
+	if runErr == nil {
 		return errors.New("disk-full persistence cell did not fail closed before Node readiness")
+	}
+	if !strings.Contains(runErr.Error(), "no space left on device") {
+		return runErr
+	}
+	if countBytes(raw, []byte(`"state":"READY"`)) != 0 {
+		return errors.New("disk-full persistence cell reached Node readiness")
 	}
 	if _, err := observer.compose(ctx, "up", "-d", "--force-recreate", "node1"); err != nil {
 		return err
 	}
 	if err := observer.waitReady(ctx, 15*time.Second); err != nil {
-		return errors.New("node did not recover after the isolated disk-full cell")
+		return nodeCandidateFailure("node did not recover after the isolated disk-full cell", err)
 	}
 	return nil
 }
 
-func errorText(err error) string {
-	if err == nil {
-		return ""
-	}
-	return err.Error()
-}
-
 func (observer *nodeObserver) injectPressure(ctx context.Context, service, mode string) error {
-	logs, err := observer.compose(ctx, "logs", "--no-color", service)
+	logs, err := observer.compose(ctx, "logs", "--no-color", "--since", "5m", service)
 	if err != nil {
 		return err
 	}
@@ -136,8 +151,11 @@ func (observer *nodeObserver) injectPressure(ctx context.Context, service, mode 
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	for {
-		logs, err = observer.compose(ctx, "logs", "--no-color", service)
-		if err == nil && countBytes(logs, []byte(`"state":"PROTECT"`)) > beforeProtect &&
+		logs, err = observer.compose(ctx, "logs", "--no-color", "--since", "5m", service)
+		if err != nil {
+			return err
+		}
+		if countBytes(logs, []byte(`"state":"PROTECT"`)) > beforeProtect &&
 			countBytes(logs, []byte(`"kind":"resource","state":"NORMAL"`)) > beforeNormal {
 			break
 		}
@@ -149,7 +167,11 @@ func (observer *nodeObserver) injectPressure(ctx context.Context, service, mode 
 		case <-ticker.C:
 		}
 	}
-	if !observer.running(ctx, service) {
+	running, err := observer.running(ctx, service)
+	if err != nil {
+		return err
+	}
+	if !running {
 		return errors.New(mode + " recoverable pressure terminated the candidate")
 	}
 	observer.captureLogs(ctx, service)
@@ -164,7 +186,11 @@ func (observer *nodeObserver) waitStopped(ctx context.Context, timeout time.Dura
 	for {
 		stopped := true
 		for _, service := range services {
-			stopped = stopped && !observer.running(ctx, service)
+			running, err := observer.running(ctx, service)
+			if err != nil {
+				return err
+			}
+			stopped = stopped && !running
 		}
 		if stopped {
 			return nil
@@ -184,15 +210,30 @@ func (observer *nodeObserver) partialHandshakeFlood(ctx context.Context) error {
 	if err != nil {
 		return errors.New("isolated Harness probe matrix failed: " + err.Error() + ": " + string(bytesTrimSpace(raw)))
 	}
-	if !observer.running(ctx, "node1") || !observer.running(ctx, "node2") {
+	node1Running, node1Err := observer.running(ctx, "node1")
+	node2Running, node2Err := observer.running(ctx, "node2")
+	if err := errors.Join(node1Err, node2Err); err != nil {
+		return err
+	}
+	if !node1Running || !node2Running {
 		return errors.New("partial-handshake flood escaped the Node connection bound")
 	}
 	return nil
 }
 
-func (observer *nodeObserver) running(ctx context.Context, service string) bool {
+func (observer *nodeObserver) running(ctx context.Context, service string) (bool, error) {
 	raw, err := observer.compose(ctx, "ps", "-q", service)
-	return err == nil && len(bytesTrimSpace(raw)) >= 12
+	if err != nil {
+		return false, err
+	}
+	identity := bytesTrimSpace(raw)
+	if len(identity) == 0 {
+		return false, nil
+	}
+	if len(identity) < 12 || len(identity) > 64 {
+		return false, invalidNodeCampaign(errors.New("node service status identity is invalid"))
+	}
+	return true, nil
 }
 
 func waitNode(ctx context.Context, duration time.Duration) error {

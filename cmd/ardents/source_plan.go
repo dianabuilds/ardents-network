@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -51,10 +50,12 @@ func runRefreshSources(ctx context.Context, arguments []string, output io.Writer
 	if err := flags.Parse(arguments[1:]); err != nil || flags.NArg() != 0 {
 		return errors.New("usage: ardents refresh-sources --state-root PATH --source-plan PATH")
 	}
+	events := newEventOutput(output)
 	config, err := readSourcePlan(root, planPath)
 	if err != nil {
 		return err
 	}
+	config.ObserveResources = events.append
 	store, err := state.Open(config)
 	if err != nil {
 		return fmt.Errorf("open network state: %w", err)
@@ -67,7 +68,7 @@ func runRefreshSources(ctx context.Context, arguments []string, output io.Writer
 	if err != nil {
 		return fmt.Errorf("refresh network state: %w", err)
 	}
-	err = json.NewEncoder(output).Encode(struct {
+	err = events.encode(struct {
 		Schema             string    `json:"schema"`
 		Kind               string    `json:"kind"`
 		Generation         string    `json:"generation"`

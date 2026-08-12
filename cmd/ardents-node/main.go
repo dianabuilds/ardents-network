@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -29,13 +28,14 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 	if arguments[0] != "source" {
 		return errors.New("usage: ardents-node (source|node) --config PATH")
 	}
-	store, err := openSource(arguments[2])
+	events := newEventOutput(output)
+	store, err := openSource(arguments[2], events.append)
 	if err != nil {
 		return err
 	}
 	snapshot, err := store.Current()
 	if err == nil {
-		err = json.NewEncoder(output).Encode(map[string]any{
+		err = events.encode(map[string]any{
 			"schema": "ardents-h3-source-event-v1", "kind": "source-ready",
 			"generation": snapshot.Generation, "epoch": snapshot.Epoch,
 		})

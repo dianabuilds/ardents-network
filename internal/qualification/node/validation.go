@@ -33,16 +33,11 @@ func validateNodeSpecialInput(input Campaign, mode string) error {
 }
 
 func campaignDuration(mode string) time.Duration {
-	switch mode {
-	case "short":
-		return 0
-	case "churn-2h":
-		return 2 * time.Hour
-	case "unattended-24h":
-		return 24 * time.Hour
-	default:
+	selected, found := selectNodeCampaignMode(mode)
+	if !found {
 		return -1
 	}
+	return selected.duration
 }
 
 func validateNodeInjectionInput(input Campaign) error {

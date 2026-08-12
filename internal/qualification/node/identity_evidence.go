@@ -37,7 +37,7 @@ func (observer *nodeObserver) capturePreflightEvidence(ctx context.Context) erro
 			return err
 		}
 	}
-	return nil
+	return observer.freezeCampaignManifest(manifest, config)
 }
 
 func (observer *nodeObserver) captureCandidateIdentity(ctx context.Context) error {

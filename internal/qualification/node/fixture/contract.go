@@ -1,6 +1,7 @@
 package fixture
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -23,12 +24,20 @@ func Validate(root string) error {
 	if err != nil || string(owner) != nodeOwner {
 		return errors.New("node fixture ownership marker is invalid")
 	}
-	manifest, manifestErr := byteio.ReadFile(filepath.Join(root, "manifest.json"), 64<<10)
-	digest, digestErr := byteio.ReadFile(filepath.Join(root, nodeManifestDigest), 128)
-	want, decodeErr := hex.DecodeString(string(bytesTrimSpace(digest)))
+	manifest, err := byteio.ReadFile(filepath.Join(root, "manifest.json"), 64<<10)
+	if err != nil {
+		return err
+	}
+	digest, err := byteio.ReadFile(filepath.Join(root, nodeManifestDigest), 128)
+	if err != nil {
+		return err
+	}
+	want, err := hex.DecodeString(string(bytes.TrimSpace(digest)))
+	if err != nil {
+		return err
+	}
 	actual := sha256.Sum256(manifest)
-	if manifestErr != nil || digestErr != nil || decodeErr != nil || len(want) != sha256.Size ||
-		!equalBytes(want, actual[:]) {
+	if len(want) != sha256.Size || !bytes.Equal(want, actual[:]) {
 		return errors.New("node fixture manifest digest is invalid")
 	}
 	return nil
@@ -82,26 +91,4 @@ func Prepare(config PrepareConfig) error {
 		return assignNodeOwnership(config.Root)
 	}
 	return nil
-}
-
-func bytesTrimSpace(raw []byte) []byte {
-	start, end := 0, len(raw)
-	for start < end && (raw[start] == ' ' || raw[start] == '\r' || raw[start] == '\n' || raw[start] == '\t') {
-		start++
-	}
-	for end > start && (raw[end-1] == ' ' || raw[end-1] == '\r' || raw[end-1] == '\n' || raw[end-1] == '\t') {
-		end--
-	}
-	return raw[start:end]
-}
-
-func equalBytes(left, right []byte) bool {
-	if len(left) != len(right) {
-		return false
-	}
-	var different byte
-	for index := range left {
-		different |= left[index] ^ right[index]
-	}
-	return different == 0
 }

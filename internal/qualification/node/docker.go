@@ -30,10 +30,10 @@ func (observer *nodeObserver) dockerBounded(ctx context.Context, stdoutLimit, st
 	command.Stdout, command.Stderr = stdout, stderr
 	runErr := command.Run()
 	if stdout.Overflowed() || stderr.Overflowed() {
-		return stdout.Bytes(), fmt.Errorf("docker %v output exceeded its evidence bound", arguments)
+		return stdout.Bytes(), invalidNodeCampaign(fmt.Errorf("docker %v output exceeded its evidence bound", arguments))
 	}
 	if runErr != nil {
-		return stdout.Bytes(), fmt.Errorf("docker %v: %w: %s", arguments, runErr, stderr.Bytes())
+		return stdout.Bytes(), invalidNodeCampaign(fmt.Errorf("docker %v: %w: %s", arguments, runErr, stderr.Bytes()))
 	}
 	return stdout.Bytes(), nil
 }
@@ -45,7 +45,7 @@ func (observer *nodeObserver) serviceID(ctx context.Context, service string) (st
 	}
 	id := string(bytesTrimSpace(raw))
 	if len(id) < 12 || len(id) > 64 {
-		return "", errors.New("node service container identity is invalid")
+		return "", invalidNodeCampaign(errors.New("node service container identity is invalid"))
 	}
 	return id, nil
 }

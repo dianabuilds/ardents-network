@@ -52,15 +52,16 @@ type Config struct {
 
 // Event is one bounded external observation of Node lifecycle state.
 type Event struct {
-	Schema           string    `json:"schema"`
-	Kind             string    `json:"kind"`
-	State            string    `json:"state"`
-	At               time.Time `json:"at"`
-	Epoch            uint64    `json:"epoch,omitempty"`
-	Generation       string    `json:"generation,omitempty"`
-	Assignment       string    `json:"assignment,omitempty"`
-	AssignmentDigest [32]byte  `json:"assignment_digest,omitempty"`
-	Reason           string    `json:"reason,omitempty"`
+	Schema           string           `json:"schema"`
+	Kind             string           `json:"kind"`
+	State            string           `json:"state"`
+	At               time.Time        `json:"at"`
+	Epoch            uint64           `json:"epoch,omitempty"`
+	Generation       string           `json:"generation,omitempty"`
+	Assignment       string           `json:"assignment,omitempty"`
+	AssignmentDigest [32]byte         `json:"assignment_digest,omitempty"`
+	Reason           string           `json:"reason,omitempty"`
+	Resource         *resource.Sample `json:"resource,omitempty"`
 }
 
 // Result describes the terminal state after the listener and accepted work are gone.

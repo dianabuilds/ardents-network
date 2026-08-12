@@ -30,6 +30,7 @@ type nodeObserver struct {
 	sampleBytes  int64
 	sampleCount  int
 	resources    map[string]*nodeResourceSeries
+	activeFaults map[string]bool
 	sourceDigest string
 	collectorID  string
 	sampleLimit  int
@@ -47,11 +48,30 @@ func newNodeObserver(input Campaign) (*nodeObserver, error) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	identity := fmt.Sprintf("%x", sha256.Sum256([]byte(input.EvidenceRoot)))[:12]
-	limit, budget := nodeSampleBounds(input.Mode)
+	mode, _ := selectNodeCampaignMode(input.Mode)
 	return &nodeObserver{input: input, ctx: ctx, cancel: cancel, clock: [3]bool{true, true, true}, sourceDigest: sourceDigest,
 		samples: samples, captured: make(map[string]bool), project: "ardents-node-" + identity,
 		imageTag: "run-" + identity, evidenceBad: make(chan struct{}), resources: make(map[string]*nodeResourceSeries),
-		sampleLimit: limit, sampleBudget: budget}, nil
+		activeFaults: make(map[string]bool),
+		sampleLimit:  mode.sampleLimit, sampleBudget: mode.sampleBudget}, nil
+}
+
+func (observer *nodeObserver) setFault(name string, active bool) {
+	observer.mu.Lock()
+	observer.activeFaults[name] = active
+	observer.mu.Unlock()
+}
+
+func (observer *nodeObserver) faultSnapshot() map[string]bool {
+	observer.mu.Lock()
+	defer observer.mu.Unlock()
+	result := make(map[string]bool, len(observer.activeFaults))
+	for name, active := range observer.activeFaults {
+		if active {
+			result[name] = true
+		}
+	}
+	return result
 }
 
 func (observer *nodeObserver) start() {
@@ -100,17 +120,6 @@ func (observer *nodeObserver) runClock() {
 	}
 }
 
-func nodeSampleBounds(mode string) (int, int64) {
-	switch mode {
-	case "churn-2h":
-		return 8_000, int64(2) << 30
-	case "unattended-24h":
-		return 87_000, int64(8) << 30
-	default:
-		return 4_096, int64(512) << 20
-	}
-}
-
 func (observer *nodeObserver) composeBounded(ctx context.Context, limit int, arguments ...string) ([]byte, error) {
 	args := append([]string{"compose", "-p", observer.project, "-f", observer.input.ComposeFile}, arguments...)
 	return observer.dockerBounded(ctx, limit, 32<<10, args...)
@@ -132,7 +141,10 @@ func (observer *nodeObserver) waitServiceReady(ctx context.Context, timeout time
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 	for {
-		logs, _ := observer.compose(ctx, append([]string{"logs", "--no-color"}, services...)...)
+		logs, err := observer.compose(ctx, append([]string{"logs", "--no-color", "--since", "45s"}, services...)...)
+		if err != nil {
+			return err
+		}
 		if countBytes(logs, []byte(`"state":"READY"`)) >= len(services) {
 			return nil
 		}
@@ -152,7 +164,11 @@ func (observer *nodeObserver) waitServiceRunning(ctx context.Context, timeout ti
 	ticker := time.NewTicker(250 * time.Millisecond)
 	defer ticker.Stop()
 	for {
-		if observer.running(ctx, service) {
+		running, err := observer.running(ctx, service)
+		if err != nil {
+			return err
+		}
+		if running {
 			return nil
 		}
 		select {
