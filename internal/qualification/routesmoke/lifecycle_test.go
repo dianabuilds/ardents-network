@@ -125,3 +125,9 @@ func TestMissingCurrentEvidenceCannotFinalizePass(t *testing.T) {
 		t.Fatalf("missing evidence finalized as %+v", result)
 	}
 }
+
+func TestNilExclusionsKeepCanonicalManifestForm(t *testing.T) {
+	if hexIDs(nil) != nil {
+		t.Fatal("nil identity exclusions became a non-nil empty slice")
+	}
+}

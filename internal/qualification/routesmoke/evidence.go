@@ -98,6 +98,9 @@ func acceptVerifier(root string, raw []byte) (string, error) {
 }
 
 func hexIDs(values [][32]byte) []string {
+	if values == nil {
+		return nil
+	}
 	result := make([]string, len(values))
 	for index := range values {
 		result[index] = hex32(values[index])

@@ -14,7 +14,9 @@ type manifestCandidate struct {
 }
 
 func resolveCandidates(input *qualification.Case, value manifest) error {
-	input.ExcludedIdentities = make([][32]byte, len(value.ExcludedIdentities))
+	if value.ExcludedIdentities != nil {
+		input.ExcludedIdentities = make([][32]byte, len(value.ExcludedIdentities))
+	}
 	for index := range value.ExcludedIdentities {
 		if err := fixedHex(value.ExcludedIdentities[index], input.ExcludedIdentities[index][:]); err != nil {
 			return err
