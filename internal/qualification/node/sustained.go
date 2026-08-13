@@ -90,18 +90,11 @@ func (observer *nodeObserver) stabilizeCurrentAssignment(ctx context.Context) er
 func (observer *nodeObserver) restartCandidateSet(ctx context.Context) error {
 	observer.setExpectedAbsence(true, "source1", "source2", "node1", "node2")
 	defer observer.setExpectedAbsence(false, "source1", "source2", "node1", "node2")
-	before := [2]int{}
-	for index, service := range []string{"node1", "node2"} {
-		logs, err := observer.compose(ctx, "logs", "--no-color", "--no-log-prefix", "--since", "10m", service)
-		if err != nil {
-			return invalidNodeCampaign(err)
-		}
-		before[index] = countNodeLogEvents(logs, "", "READY")
-	}
+	restartBarrier := time.Now().UTC()
 	if _, err := observer.compose(ctx, "restart", "source1", "source2", "node1", "node2"); err != nil {
 		return invalidNodeCampaign(err)
 	}
-	return observer.waitNewReadiness(ctx, before)
+	return observer.waitNewReadiness(ctx, restartBarrier)
 }
 
 func (observer *nodeObserver) ensureCandidateSet(ctx context.Context) error {

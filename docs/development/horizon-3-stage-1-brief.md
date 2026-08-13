@@ -318,22 +318,24 @@ the hostile fault matrix, cleanup, and quiescence gates. S1-4 remains open until
 host. Local Docker results are development evidence only and cannot change that
 status or authorize Stage 2.
 
-Recorded development evidence (2026-08-12):
+Recorded development evidence (2026-08-13):
 
 | Increment | Implementation/check result | Campaign evidence and machine result |
 |---|---|---|
 | S1-0 | Implemented; independent persisted-state verification and frozen vectors pass the Go 1.26.5 full gate | Not a Docker campaign |
 | S1-1 | Implemented; finite authenticated two-source and restart/conflict regression suites pass | Not a Docker campaign |
 | S1-2 | Implemented; lifecycle, authenticated probe, withdrawal, restart, and black-box process suites pass | Functional development evidence only |
-| S1-3 | Campaign implementation and final review findings are closed in code; a fresh full matrix has not passed after the campaign-contract/runtime-evidence changes | Latest full local result predates those changes and remains rejected: `invalid`, digest `1c3bdd291eeb5e724d139234d2495709644b89d4c63c8577f572196d95464aaf`, root `C:\Users\vitek\AppData\Local\Temp\ardents-h3-local-final-31f58549ce2348b1a2de6f4356e57e91\short-evidence` |
-| S1-4 | Not complete; no qualifying Ubuntu result | Official `short`, `churn-2h`, and `unattended-24h` were not run; no machine result or evidence root exists |
+| S1-3 | Campaign implementation and review findings are closed in code; the fresh local development matrix passed | Local Docker Desktop `short`: `pass`, digest `a214806c7725f14fc99999739e8ae27c6f8c528ff9268e22fcd2be02f3c9f0c4`, root `C:\Users\vitek\AppData\Local\Temp\ardents-h3-short-boundary-71a66971bd5140f687105356f7c6fb02\evidence` |
+| S1-4 | Not complete; no accepted complete Ubuntu result set | The external `churn-2h` run is not audited in this local code result; accepted Ubuntu `short`, `churn-2h`, and `unattended-24h` evidence is still required |
 
 The local host was Docker Desktop 4.55.0 / Engine 29.1.3 on a WSL2 Linux
 6.6.87.2 kernel with cgroup v2. It is explicitly non-qualifying. Earlier local
 runs that exposed evidence-cadence and process-transition defects remain
 development findings outside Git; an early apparent `pass` is rejected because
-its audit found only 194 samples over 667 seconds. The only remaining execution
-path is the exact three-root Ubuntu command in
+its audit found only 194 samples over 667 seconds. The current local `short`
+contains 643 one-second records over 660 seconds, passes quiescence and cleanup,
+and remains development evidence rather than an Ubuntu qualification result.
+The official completion path remains the exact three-root Ubuntu command in
 `tests/qualification/h3-node-v1/README.md`. Until all three official results are
 valid passes, Stage 1 is incomplete and the recommendation is `redesign`; do
 not start Stage 2.

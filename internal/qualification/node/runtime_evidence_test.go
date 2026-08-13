@@ -164,3 +164,15 @@ func TestSampleErrorPolicyKeepsDiagnosticsNonAuthoritative(t *testing.T) {
 		t.Fatalf("sample errors = fatal %v, diagnostic %v", fatal, retained)
 	}
 }
+
+func TestRestartReadinessUsesOnlyEventsAfterBarrier(t *testing.T) {
+	historical := []byte("{\"kind\":\"lifecycle\",\"state\":\"READY\"}\n" +
+		"{\"kind\":\"lifecycle\",\"state\":\"READY\"}\n")
+	current := []byte("{\"kind\":\"lifecycle\",\"state\":\"READY\"}\n")
+	if countNodeLogEvents(current, "", "READY") > countNodeLogEvents(historical, "", "READY") {
+		t.Fatal("fixture no longer reproduces the mismatched-window false negative")
+	}
+	if !nodeSetReadyAfterRestart([2][]byte{current, current}) {
+		t.Fatal("fresh READY events were rejected because historical counts were larger")
+	}
+}

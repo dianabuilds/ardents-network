@@ -33,7 +33,7 @@ func TestCandidateBuildIdentityReadsBinaryInsteadOfSelfReport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	raw, err := ReadCandidateBuildIdentity([]string{binary})
+	raw, err := readCandidateBuildIdentity([]string{binary})
 	if err != nil {
 		t.Fatal(err)
 	}

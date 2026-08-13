@@ -8,9 +8,13 @@ import (
 )
 
 func (observer *nodeObserver) setExpectedAbsence(active bool, services ...string) {
+	observer.mu.Lock()
 	for _, service := range services {
-		observer.setFault("absence:"+service, active)
+		observer.activeFaults["absence:"+service] = active
 	}
+	faults := copyNodeFaults(observer.activeFaults)
+	observer.mu.Unlock()
+	observer.notifyResourceReset(faults)
 }
 
 func (observer *nodeObserver) waitStopped(ctx context.Context, timeout time.Duration, services ...string) error {

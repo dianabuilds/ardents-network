@@ -7,12 +7,31 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/qualification/byteio"
 )
 
-func (observer *nodeObserver) sampleNodeResources(ctx context.Context, scheduled time.Time) ([]nodeResourceSnapshot, error) {
+func (observer *nodeObserver) sampleNodeResources(ctx context.Context) ([]nodeResourceSnapshot, error) {
+	candidates, err := observer.nodeResourceCandidates(ctx)
+	if err != nil {
+		return nil, err
+	}
+	payload, err := encodeNodeResourceCandidates(candidates)
+	if err != nil {
+		return nil, err
+	}
+	if len(observer.collectorID) < 12 {
+		return nil, errors.New("node resource collector is unavailable")
+	}
+	raw, err := observer.dockerBounded(ctx, 384<<10, 4096, "exec", observer.collectorID,
+		"/usr/local/bin/ardents-qualify", "sample-node", string(payload))
+	if err != nil {
+		return nil, err
+	}
+	return decodeNodeResourceSamples(raw, len(candidates))
+}
+
+func (observer *nodeObserver) nodeResourceCandidates(ctx context.Context) ([]nodeHostCandidate, error) {
 	services := []string{"source1", "source2", "endpoint", "node1", "node2"}
 	identities, err := observer.composeBounded(ctx, 4096, "ps", "--format", "{{.Service}}\t{{.ID}}")
 	if err != nil {
@@ -53,8 +72,12 @@ func (observer *nodeObserver) sampleNodeResources(ctx context.Context, scheduled
 		candidates = append(candidates, candidate)
 	}
 	if len(candidates) == 0 {
-		return []nodeResourceSnapshot{}, nil
+		return nil, errors.New("node resource candidate set is empty")
 	}
+	return candidates, nil
+}
+
+func encodeNodeResourceCandidates(candidates []nodeHostCandidate) ([]byte, error) {
 	payload, err := json.Marshal(candidates)
 	if err != nil {
 		return nil, fmt.Errorf("encode node resource collector input: %w", err)
@@ -62,29 +85,22 @@ func (observer *nodeObserver) sampleNodeResources(ctx context.Context, scheduled
 	if len(payload) > 4096 {
 		return nil, errors.New("node resource collector input exceeds its bound")
 	}
-	if len(observer.collectorID) < 12 {
-		return nil, errors.New("node resource collector is unavailable")
-	}
-	raw, err := observer.dockerBounded(ctx, 384<<10, 4096, "exec", observer.collectorID,
-		"/usr/local/bin/ardents-qualify", "sample-node", string(payload))
-	if err != nil {
-		return nil, err
-	}
+	return payload, nil
+}
+
+func decodeNodeResourceSamples(raw []byte, maximum int) ([]nodeResourceSnapshot, error) {
 	var samples []nodeResourceSnapshot
 	if err := json.Unmarshal(raw, &samples); err != nil {
 		return nil, invalidNodeCampaign(fmt.Errorf("decode node host resource sample: %w", err))
 	}
-	if len(samples) > len(candidates) {
+	if len(samples) > maximum {
 		return nil, invalidNodeCampaign(errors.New("node host resource sample count is invalid"))
-	}
-	for index := range samples {
-		samples[index].TickDelayNanos = int64(samples[index].At.Sub(scheduled))
 	}
 	return samples, nil
 }
 
 func (observer *nodeObserver) captureInitialResources(ctx context.Context) error {
-	samples, err := observer.sampleNodeResources(ctx, time.Now())
+	samples, err := observer.sampleNodeResources(ctx)
 	if err != nil {
 		return err
 	}

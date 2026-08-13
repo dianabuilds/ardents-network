@@ -34,6 +34,7 @@ type nodeObserver struct {
 	sampleCount        int
 	resources          map[string]*nodeResourceSeries
 	activeFaults       map[string]bool
+	resourceReset      chan nodeResourceReset
 	sourceDigest       string
 	sourceRoot         string
 	initialStateDigest string
@@ -63,26 +64,8 @@ func newNodeObserver(input Campaign) (*nodeObserver, error) {
 		sourceDigest: sourceDigest, sourceRoot: sourceRoot,
 		samples: samples, captured: make(map[string]bool), project: "ardents-node-" + identity,
 		imageTag: "run-" + identity, evidenceBad: make(chan struct{}), resources: make(map[string]*nodeResourceSeries),
-		activeFaults: make(map[string]bool),
-		sampleLimit:  mode.sampleLimit, sampleBudget: mode.sampleBudget}, nil
-}
-
-func (observer *nodeObserver) setFault(name string, active bool) {
-	observer.mu.Lock()
-	observer.activeFaults[name] = active
-	observer.mu.Unlock()
-}
-
-func (observer *nodeObserver) faultSnapshot() map[string]bool {
-	observer.mu.Lock()
-	defer observer.mu.Unlock()
-	result := make(map[string]bool, len(observer.activeFaults))
-	for name, active := range observer.activeFaults {
-		if active {
-			result[name] = true
-		}
-	}
-	return result
+		activeFaults: make(map[string]bool), resourceReset: make(chan nodeResourceReset, 32),
+		sampleLimit: mode.sampleLimit, sampleBudget: mode.sampleBudget}, nil
 }
 
 func (observer *nodeObserver) start() {

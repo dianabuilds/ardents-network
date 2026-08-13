@@ -31,6 +31,13 @@ func TestWriteEvidenceFilesUsesPrivatePermissions(t *testing.T) {
 	}
 }
 
+func TestResolvedComposeIncludesFaultProfileServices(t *testing.T) {
+	arguments := resolvedNodeComposeArguments()
+	if len(arguments) != 3 || arguments[0] != "--profile" || arguments[1] != "fault" || arguments[2] != "config" {
+		t.Fatalf("resolved Compose arguments = %v", arguments)
+	}
+}
+
 func TestReadNodeFixtureEvidenceSeparatesOperationAndValidationErrors(t *testing.T) {
 	_, err := readNodeFixtureEvidence(t.TempDir())
 	if err == nil || !errors.Is(err, os.ErrNotExist) || !strings.Contains(err.Error(), "read node fixture manifest") {

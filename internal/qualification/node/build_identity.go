@@ -23,8 +23,7 @@ type nodeBuildModule struct {
 	Replace string `json:"replace,omitempty"`
 }
 
-// ReadCandidateBuildIdentity inspects bounded Go executables without trusting their runtime output.
-func ReadCandidateBuildIdentity(paths []string) ([]byte, error) {
+func readCandidateBuildIdentity(paths []string) ([]byte, error) {
 	if len(paths) == 0 || len(paths) > 8 {
 		return nil, errors.New("candidate build identity path count is invalid")
 	}

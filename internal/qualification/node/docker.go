@@ -24,9 +24,7 @@ func (observer *nodeObserver) dockerBounded(ctx context.Context, stdoutLimit, st
 	commandContext, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 	command := exec.CommandContext(commandContext, "docker", arguments...)
-	command.Env = append(os.Environ(), "ARDENTS_NODE_ROOT="+observer.input.FixtureRoot,
-		"ARDENTS_NODE_IMAGE_TAG="+observer.imageTag, "ARDENTS_NODE_SOURCE_DIGEST="+observer.sourceDigest,
-		"ARDENTS_NODE_BUILD_CONTEXT="+observer.sourceRoot)
+	command.Env = observer.dockerEnvironment()
 	stdout, stderr := byteio.NewBuffer(stdoutLimit), byteio.NewBuffer(stderrLimit)
 	command.Stdout, command.Stderr = stdout, stderr
 	runErr := command.Run()
@@ -37,6 +35,12 @@ func (observer *nodeObserver) dockerBounded(ctx context.Context, stdoutLimit, st
 		return stdout.Bytes(), invalidNodeCampaign(fmt.Errorf("docker %v: %w: %s", arguments, runErr, stderr.Bytes()))
 	}
 	return stdout.Bytes(), nil
+}
+
+func (observer *nodeObserver) dockerEnvironment() []string {
+	return append(os.Environ(), "ARDENTS_NODE_ROOT="+observer.input.FixtureRoot,
+		"ARDENTS_NODE_IMAGE_TAG="+observer.imageTag, "ARDENTS_NODE_SOURCE_DIGEST="+observer.sourceDigest,
+		"ARDENTS_NODE_BUILD_CONTEXT="+observer.sourceRoot)
 }
 
 func (observer *nodeObserver) serviceID(ctx context.Context, service string) (string, error) {

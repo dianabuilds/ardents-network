@@ -15,8 +15,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/qualification/byteio"
 )
 
-// SampleContainerResources captures one bounded Linux snapshot from inside a candidate container.
-func SampleContainerResources(at time.Time) ([]byte, error) {
+func sampleContainerResources(at time.Time) ([]byte, error) {
 	sample, err := readNodeProcessResources("", "", 1, at)
 	if err != nil {
 		return nil, err
@@ -28,8 +27,7 @@ func SampleContainerResources(at time.Time) ([]byte, error) {
 	return raw, nil
 }
 
-// SampleHostResources reads candidate processes from a separate host-PID collector.
-func SampleHostResources(at time.Time, encoded string) ([]byte, error) {
+func sampleHostResources(at time.Time, encoded string) ([]byte, error) {
 	if len(encoded) == 0 || len(encoded) > 4096 {
 		return nil, errors.New("node host resource input exceeds its bound")
 	}
@@ -40,19 +38,21 @@ func SampleHostResources(at time.Time, encoded string) ([]byte, error) {
 	expected := map[string]bool{"source1": true, "source2": true, "endpoint": true, "node1": true, "node2": true}
 	seen := make(map[string]bool, len(candidates))
 	samples := make([]nodeResourceSnapshot, 0, len(candidates))
+	actual := time.Now()
 	for _, candidate := range candidates {
 		if !expected[candidate.Service] || seen[candidate.Service] || candidate.PID < 1 ||
 			len(candidate.ContainerID) < 12 || len(candidate.ContainerID) > 64 {
 			return nil, errors.New("node host resource candidate is invalid")
 		}
 		seen[candidate.Service] = true
-		sample, err := readNodeProcessResources(candidate.Service, candidate.ContainerID, candidate.PID, at)
+		sample, err := readNodeProcessResources(candidate.Service, candidate.ContainerID, candidate.PID, actual)
 		if errors.Is(err, os.ErrNotExist) {
 			continue
 		}
 		if err != nil {
 			return nil, err
 		}
+		sample.TickDelayNanos = int64(actual.Sub(at))
 		samples = append(samples, sample)
 	}
 	raw, err := json.Marshal(samples)

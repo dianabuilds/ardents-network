@@ -22,7 +22,7 @@ func (observer *nodeObserver) capturePreflightEvidence(ctx context.Context) erro
 		return err
 	}
 	manifest := files[0].raw
-	config, err := observer.composeBounded(ctx, 2<<20, "config")
+	config, err := observer.composeBounded(ctx, 2<<20, resolvedNodeComposeArguments()...)
 	if err != nil {
 		return err
 	}
@@ -41,6 +41,10 @@ func (observer *nodeObserver) capturePreflightEvidence(ctx context.Context) erro
 	}
 	observer.composeFile = filepath.Join(observer.input.EvidenceRoot, "compose-resolved.yaml")
 	return observer.freezeCampaignManifest(manifest, config)
+}
+
+func resolvedNodeComposeArguments() []string {
+	return []string{"--profile", "fault", "config"}
 }
 
 func readNodeFixtureEvidence(root string) ([]nodeEvidenceFile, error) {
@@ -105,7 +109,7 @@ func (observer *nodeObserver) captureCandidateIdentity(ctx context.Context) erro
 func (observer *nodeObserver) startCollector(ctx context.Context) error {
 	arguments := []string{"run", "-d", "--pull", "never", "--name", observer.project + "-collector", "--pid", "host",
 		"--network", "none", "--read-only", "--user", "0:0", "--cap-drop", "ALL", "--cap-add", "SYS_PTRACE",
-		"--cap-add", "DAC_READ_SEARCH", "--security-opt", "no-new-privileges:true", "--pids-limit", "32",
+		"--cap-add", "DAC_READ_SEARCH", "--security-opt", "no-new-privileges:true", "--pids-limit", "64",
 		"--memory", "128m", "--memory-swap", "128m", "--cpus", "0.5", "--stop-timeout", "2",
 		"--label", "ardents.qualification.project=" + observer.project, "ardents-node:" + observer.imageTag,
 		"/usr/local/bin/ardents-qualify", "collector-node"}

@@ -58,12 +58,10 @@ func (observer *nodeObserver) observeResources(samples []nodeResourceSnapshot, f
 			series = new(nodeResourceSeries)
 			observer.resources[service] = series
 		}
-		if !present[service] {
-			if faults["absence:"+service] {
-				series.lastAt = time.Time{}
-			} else {
-				series.cadenceFailure = true
-			}
+		if faults["absence:"+service] {
+			series.lastAt = time.Time{}
+		} else if !present[service] {
+			series.cadenceFailure = true
 		}
 	}
 	for _, sample := range samples {

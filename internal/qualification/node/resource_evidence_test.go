@@ -90,6 +90,22 @@ func TestExpectedResourceAbsenceStartsNewSeriesSegment(t *testing.T) {
 	}
 }
 
+func TestExpectedAbsencePublishesOneAtomicResourceState(t *testing.T) {
+	observer := nodeObserver{activeFaults: make(map[string]bool), resourceReset: make(chan nodeResourceReset, 2)}
+	observer.setExpectedAbsence(true, "source1", "source2", "node1", "node2")
+	reset := <-observer.resourceReset
+	for _, service := range []string{"source1", "source2", "node1", "node2"} {
+		if !reset.faults["absence:"+service] {
+			t.Fatalf("atomic fault state omitted %s: %v", service, reset.faults)
+		}
+	}
+	select {
+	case extra := <-observer.resourceReset:
+		t.Fatalf("expected one resource update, got extra %v", extra.faults)
+	default:
+	}
+}
+
 func TestUnexpectedResourceAbsenceOrRestartInvalidatesSeries(t *testing.T) {
 	base := time.Unix(1_800_000_000, 0)
 	for _, test := range []struct {

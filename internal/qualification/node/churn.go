@@ -14,25 +14,18 @@ import (
 )
 
 func (observer *nodeObserver) runRestartQuiescence(ctx context.Context) error {
-	baseline, err := observer.sampleNodeResources(ctx, time.Now())
+	baseline, err := observer.sampleNodeResources(ctx)
 	if err != nil {
 		return err
 	}
 	for range 3 {
-		before := [2]int{}
-		for index, service := range []string{"node1", "node2"} {
-			logs, err := observer.compose(ctx, "logs", "--no-color", "--no-log-prefix", "--since", "10m", service)
-			if err != nil {
-				return err
-			}
-			before[index] = countNodeLogEvents(logs, "", "READY")
-		}
 		observer.setExpectedAbsence(true, "source1", "source2", "node1", "node2")
+		restartBarrier := time.Now().UTC()
 		if _, err := observer.compose(ctx, "restart", "source1", "source2", "node1", "node2"); err != nil {
 			observer.setExpectedAbsence(false, "source1", "source2", "node1", "node2")
 			return err
 		}
-		if err := observer.waitNewReadiness(ctx, before); err != nil {
+		if err := observer.waitNewReadiness(ctx, restartBarrier); err != nil {
 			observer.setExpectedAbsence(false, "source1", "source2", "node1", "node2")
 			return err
 		}
@@ -41,7 +34,7 @@ func (observer *nodeObserver) runRestartQuiescence(ctx context.Context) error {
 	if err := waitNode(ctx, 120*time.Second); err != nil {
 		return err
 	}
-	after, err := observer.sampleNodeResources(ctx, time.Now())
+	after, err := observer.sampleNodeResources(ctx)
 	quiescenceErr := errors.Join(err, validateNodeQuiescentResources(baseline, after))
 	if quiescenceErr == nil {
 		quiescenceErr = observer.validateNodeProcessQuiescence(ctx)
@@ -130,21 +123,22 @@ func nodeQuiescenceVerdict(err error) string {
 	return "pass"
 }
 
-func (observer *nodeObserver) waitNewReadiness(ctx context.Context, before [2]int) error {
+func (observer *nodeObserver) waitNewReadiness(ctx context.Context, after time.Time) error {
 	deadline := time.NewTimer(15 * time.Second)
 	defer deadline.Stop()
 	ticker := time.NewTicker(250 * time.Millisecond)
 	defer ticker.Stop()
 	for {
-		ready := true
+		var events [2][]byte
 		for index, service := range []string{"node1", "node2"} {
-			logs, err := observer.compose(ctx, "logs", "--no-color", "--no-log-prefix", "--since", "1m", service)
+			logs, err := observer.compose(ctx, "logs", "--no-color", "--no-log-prefix", "--since",
+				after.Format(time.RFC3339Nano), service)
 			if err != nil {
 				return err
 			}
-			ready = ready && countNodeLogEvents(logs, "", "READY") > before[index]
+			events[index] = logs
 		}
-		if ready {
+		if nodeSetReadyAfterRestart(events) {
 			return nil
 		}
 		select {
@@ -155,6 +149,10 @@ func (observer *nodeObserver) waitNewReadiness(ctx context.Context, before [2]in
 		case <-ticker.C:
 		}
 	}
+}
+
+func nodeSetReadyAfterRestart(events [2][]byte) bool {
+	return nodeReadyEvent(events[0]) && nodeReadyEvent(events[1])
 }
 
 func verifyNodeStateQuiescence(root string) error {
