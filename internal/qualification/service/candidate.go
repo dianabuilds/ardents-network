@@ -63,7 +63,7 @@ func validateGeneration(input candidate, generation generationEvidence) error {
 		return errors.New("credential or exact Target authentication evidence failed")
 	}
 	if !validIntroductionReceipt(generation.IntroductionAcknowledgement, input, credential) {
-		return errors.New("Introduction acknowledgement is not bound to the publication")
+		return errors.New("introduction acknowledgement is not bound to the publication")
 	}
 	for _, endpoint := range []endpointEvidence{generation.ClientEndpoint, generation.PublisherEndpoint} {
 		if endpoint.Class != "clean service connection close" || endpoint.AuthenticatedTarget != input.Target ||

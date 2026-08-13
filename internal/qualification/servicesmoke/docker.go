@@ -116,7 +116,7 @@ func verifyRetained(ctx context.Context, input Config, result *Result) error {
 		raw, err := observer.docker(ctx, time.Minute, kind, "ls", "-q", "--filter",
 			"label=com.docker.compose.project="+result.dockerProject)
 		if err != nil || strings.TrimSpace(string(raw)) != "" {
-			return errors.New("Docker project resources remain before independent verification")
+			return errors.New("docker project resources remain before independent verification")
 		}
 	}
 	for _, evidenceFile := range result.attemptFiles {
