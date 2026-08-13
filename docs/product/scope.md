@@ -198,10 +198,11 @@ resource/evidence appendices, not standalone implementation slices. This
   Application Interface tracer. The resulting Stage 3 local campaign at commit
   `6c8faf9` passed one retained `27/27` bundle; independent verification replayed
   that same bundle rather than creating a second campaign. Proposed
-  [R-032](../research/records/r-032-h3-same-connection-recovery.md) remains the
-  open decision gate for Stage 4 recovery and authorizes no code yet. These
-  local results do not change the official gates; all later H3 stages remain
-  sequential research and Product Owner decision gates.
+  [R-032](../research/records/r-032-h3-same-connection-recovery.md) was accepted
+  on 2026-08-13 and authorizes bounded S4.1–S4.3 recovery development. S4.4
+  remains gated on a separately accepted P3-D3b4 decision. These local results
+  do not change the official gates; all later H3 stages remain sequential
+  research and Product Owner decision gates.
 
 ## Horizon 4 — Public Beta
 

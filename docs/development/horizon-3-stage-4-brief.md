@@ -1,14 +1,15 @@
 # Horizon 3 Stage 4 implementation brief
 
-Status: **draft; Stage 3 local development evidence passed; no implementation
-authority until R-032 is accepted by the Product Owner**
+Status: **authorized 2026-08-13 for S4.1–S4.3 recovery development; S4.4 remains
+gated on a separately accepted R-023 P3-D3b4 decision**
 
-Authoritative inputs after that acceptance: accepted ADRs, R-001, R-002, R-004,
+Authoritative inputs: accepted ADRs, R-001, R-002, R-004,
 R-006, R-023, R-024, R-029 through R-031,
 [R-032](../research/records/r-032-h3-same-connection-recovery.md), the H3
 technical design, operating model, threat model, package map, dependency
-register, and repository rules. Until acceptance, this document freezes a
-reviewable implementation proposal and authorizes no Stage 4 code.
+register, and repository rules. The Product Owner accepted R-032 and authorized
+this brief on 2026-08-13. That acceptance authorizes S4.1–S4.3 only and does not
+authorize S4.4 or any qualification/release claim.
 
 ## Entry gate and completion levels
 
@@ -23,9 +24,8 @@ and retained-evidence digest
 `9aea2d37de910dec39cce79187fde94b49d53a10f0a6bab3a5ca14e6955162ae`
 match; Docker and private-fixture cleanup passed.
 
-Stage 4 implementation may start only after the Product Owner additionally
-accepts R-032, changes its state from `open` to `decided`, authorizes this brief,
-and commits the synchronized decision documents. That promotion accepts the
+On 2026-08-13 the Product Owner explicitly accepted R-032, changed it from
+`open` to `decided`, and authorized this brief. That promotion accepts the
 bounded Stage 3 result as development readiness only, not official Stage 1/2/3
 qualification.
 

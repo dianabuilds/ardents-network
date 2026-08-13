@@ -678,21 +678,21 @@ security downgrade, starvation of established work, or GC/resource collapse
 prevents useful capacity.
 
 [R-032](../research/records/r-032-h3-same-connection-recovery.md) records the
-open same-connection recovery research: the Service Connection Module owns
+accepted same-connection recovery contract: the Service Connection Module owns
 endpoint-only continuity and logical byte order while the Route Module supplies
 fresh bounded Route Attachments. The Stage 3 local development gate passed at
 commit `6c8faf9` with one retained `27/27` Docker campaign and an independent
 `27/27` verifier replay over the same frozen bundle, clean reviews/checks,
 retained digest
 `9aea2d37de910dec39cce79187fde94b49d53a10f0a6bab3a5ca14e6955162ae`, and
-complete cleanup. R-032's current recommendation still authorizes no Stage 4
-code until the Product Owner accepts it. The
-[draft Stage 4 brief](horizon-3-stage-4-brief.md) translates that proposal into
-four gated vertical slices. Recovery counters are only inputs to R-023 P3-D3b4:
+complete cleanup. The Product Owner accepted R-032 on 2026-08-13 and authorized
+S4.1–S4.3 recovery development. The
+[authorized Stage 4 brief](horizon-3-stage-4-brief.md) translates that decision
+into four gated vertical slices. Recovery counters are only inputs to R-023 P3-D3b4:
 the complete bounded R-013 role prototype and controlled Ubuntu reference-host
 evidence remain prerequisites to role-specific production useful-work units and
 effective post-exclusion capacity. R-032 and the brief do not invent those
-floors.
+floors, and S4.4 remains separately unauthorized.
 
 ### Stage 5 — Bridge and Blocked Entry
 

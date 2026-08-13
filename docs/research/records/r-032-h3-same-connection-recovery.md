@@ -1,7 +1,7 @@
 ---
 id: R-032
 title: Can Stage 4 preserve one live Service Connection across eligible Route failure?
-status: open
+status: decided
 owner: Product Owner
 started: 2026-08-13
 reviewed: 2026-08-13
@@ -21,7 +21,7 @@ must instead return one explicit terminal Connection Result by the accepted
 deadline. A terminal result does not count as successful recovery when a
 qualifying alternate remains.
 
-The proposed contract is translated into an executable, still-unauthorized
+The accepted contract is translated into the authorized recovery-development
 [Stage 4 implementation brief](../../development/horizon-3-stage-4-brief.md).
 
 This record deliberately does not invent production Node-capacity floors before
@@ -77,8 +77,8 @@ that same frozen 27-attempt bundle also returned `27/27`; image
 and retained-evidence digest
 `9aea2d37de910dec39cce79187fde94b49d53a10f0a6bab3a5ca14e6955162ae`
 match the terminal summary; Docker and private-fixture cleanup passed. This
-closes the Stage 3 local development gate only. Stage 4 development promotion
-still requires Product Owner acceptance of this record. Official Stage 1 Ubuntu
+closes the Stage 3 local development gate only. The Product Owner accepted
+R-032 on 2026-08-13 and authorized S4.1–S4.3 recovery development. Official Stage 1 Ubuntu
 `short`, current `churn-2h`, independent `unattended-24h`, and applicable R-023
 qualification remain prerequisites for the integrated H3 verdict or any
 stronger external, privacy, security, or release claim.
@@ -615,17 +615,16 @@ tracers are designed to falsify that assumption before capacity work expands.
 
 ## Disposition
 
-- State: `open`, ready for Product Owner decision; this draft authorizes no
-  Stage 4 code.
+- State: `decided`; accepted by the Product Owner on 2026-08-13.
 - The clean committed Stage 3 local development gate is closed; Stage 4
-  development remains gated on explicit acceptance of R-032.
-- The draft Stage 4 implementation brief splits work into recovery core,
+  S4.1–S4.3 recovery development is authorized in the brief's exact order.
+- The authorized Stage 4 implementation brief splits work into recovery core,
   Route/Rendezvous replacement, overlapping and impaired-live recovery, then
-  evidence-driven pressure/capacity work. It becomes implementation authority
-  only after the entry gate and R-032 acceptance.
+  separately gated evidence-driven pressure/capacity work.
 - P3-D3b4 role-specific production capacity remains open until the complete
   bounded R-013 role prototype and its accepted Ubuntu reference-host evidence
-  exist; recovery counters are only one input.
+  exist; recovery counters are only one input. S4.4 remains unauthorized until
+  that separate research decision receives explicit Product Owner acceptance.
 - No ADR: the proposed decision is a replaceable tracer seam and laboratory
   adapter, not a hard-to-reverse technology selection.
 - `CONTEXT.md` needs no new product term: Service Connection, Carrier Channel,
