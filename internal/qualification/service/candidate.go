@@ -126,6 +126,7 @@ func validateRouteChain(roles []roleEvidence, topology string) error {
 		return errors.New("client Route observation does not retain four selected positions")
 	}
 	chain := []string{"initiator", "introduction", "rendezvous", "responder"}
+	ports := []string{"4601", "4602", "4603", "4604"}
 	epoch := client.EpochDigest
 	if epoch == [32]byte{} {
 		return errors.New("client Route observation omits its epoch digest")
@@ -134,7 +135,7 @@ func validateRouteChain(roles []roleEvidence, topology string) error {
 		position, actor := client.Positions[index], byRole[name]
 		host, port, endpointErr := net.SplitHostPort(position.Endpoint)
 		if position.Role != name || position.NodeID == [32]byte{} || position.Endpoint == "" ||
-			actor.NodeID != position.NodeID || actor.EpochDigest != epoch || endpointErr != nil || port == "" ||
+			actor.NodeID != position.NodeID || actor.EpochDigest != epoch || endpointErr != nil || port != ports[index] ||
 			host != topologyIPv4([]byte(topology), name) {
 			return errors.New("route observation does not bind the selected ordered position: " + name)
 		}

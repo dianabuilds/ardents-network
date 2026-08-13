@@ -43,6 +43,17 @@ func TestVerifierRecomputesOwnedResourcesRouteAndHostileBoundary(t *testing.T) {
 		"route endpoint differs": func(value *candidate) {
 			value.Generations[0].Roles[0].Positions[1].Endpoint = "172.31.20.99:4605"
 		},
+		"route port differs": func(value *candidate) {
+			value.Generations[0].Roles[0].Positions[0].Endpoint = "172.31.20.11:9999"
+		},
+		"hostile topology mount": func(value *candidate) {
+			value.Topology = strings.Replace(value.Topology, "  hostile-sibling:\n    network_mode: none",
+				"  hostile-sibling:\n    network_mode: none\n    volumes:\n      - target: /run/ardents/client-app", 1)
+		},
+		"operator ambient network": func(value *candidate) {
+			value.Topology = strings.Replace(value.Topology, "  publication-operator:\n    network_mode: none",
+				"  publication-operator:\n    network_mode: none\n    networks:\n      route_net:", 1)
+		},
 		"hostile mount": func(value *candidate) {
 			value.Generations[0].HostileSibling.MountDestinations = []string{"/run/ardents/client-app"}
 		},
@@ -147,8 +158,9 @@ func validCandidate(t *testing.T) candidate {
 				ReverseOpaqueDigest: [32]byte{byte(index + 8)}}
 			if roleIndex == 0 {
 				for position := 0; position < 4; position++ {
+					digit := string(rune('1' + position))
 					receipt.Positions = append(receipt.Positions, routePositionEvidence{Role: routeRoles[position+1],
-						NodeID: [32]byte{byte(position + 1)}, Endpoint: "172.31.20.1" + string(rune('1'+position)) + ":4605"})
+						NodeID: [32]byte{byte(position + 1)}, Endpoint: "172.31.20.1" + digit + ":460" + digit})
 				}
 			} else {
 				receipt.NodeID = [32]byte{byte(roleIndex)}
@@ -180,7 +192,8 @@ func validCandidate(t *testing.T) candidate {
 func validTopology() string {
 	return "services:\n" +
 		"  client:\n    networks:\n      route_net:\n        ipv4_address: 172.31.20.10\n  hostile-sibling:\n    network_mode: none\n  negative-suite:\n    image: test\n" +
-		"  publication-operator:\n    network_mode: none\n  verifier:\n    image: test\n  volume-init:\n    image: test\n" +
+		"  publication-operator:\n    network_mode: none\n    volumes:\n      - target: /run/ardents/admin\n" +
+		"  verifier:\n    image: test\n  volume-init:\n    image: test\n" +
 		"  initiator:\n    networks:\n      route_net:\n        ipv4_address: 172.31.20.11\n" +
 		"  introduction:\n    networks:\n      route_net:\n        ipv4_address: 172.31.20.12\n" +
 		"  rendezvous:\n    networks:\n      route_net:\n        ipv4_address: 172.31.20.13\n" +

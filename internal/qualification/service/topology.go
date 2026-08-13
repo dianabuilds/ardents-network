@@ -30,8 +30,11 @@ func validateTopology(raw []byte) (map[string]bool, error) {
 	for role, address := range routeAddresses {
 		block := topologyServiceBlock(raw, role)
 		allRoles = allRoles && bytes.Contains(block, []byte("networks:\n      route_net:")) &&
-			bytes.Contains(block, []byte("ipv4_address: "+address))
+			bytes.Contains(block, []byte("ipv4_address: "+address)) &&
+			equalTopologyNames(topologyNetworks(block), []string{"route_net"})
 	}
+	operatorMounts := topologyMountTargets(publicationOperator)
+	hostileMounts := topologyMountTargets(hostileSibling)
 	noAmbient := !bytes.Contains(raw, []byte("network_mode: host")) && !bytes.Contains(raw, []byte("ports:"))
 	noProxy := !bytes.Contains(bytes.ToLower(raw), []byte("http_proxy")) &&
 		!bytes.Contains(bytes.ToLower(raw), []byte("https_proxy"))
@@ -43,12 +46,18 @@ func validateTopology(raw []byte) (map[string]bool, error) {
 	for _, token := range []string{"route_net", "client_route", "publisher_route", "publication", "introduction_ack", "lifecycle"} {
 		applicationPrivate = applicationPrivate && !bytes.Contains(publicationOperator, []byte(token))
 	}
+	applicationPrivate = applicationPrivate && len(hostileMounts) == 0 &&
+		equalTopologyNames(operatorMounts, []string{"/run/ardents/admin"})
 	exactServices := topologyServices(raw)
 	expected := []string{"client", "client-app", "client-endpoint", "hostile-sibling", "initiator", "introduction",
 		"negative-suite", "publication-operator", "publisher", "publisher-app", "publisher-endpoint", "rendezvous",
 		"responder", "verifier", "volume-init"}
-	if !isolated || !applicationPrivate || !allRoles || !noAmbient || !noProxy || !equalTopologyNames(exactServices, expected) {
-		return nil, errors.New("retained topology contains or cannot exclude a forbidden Stage 3 shortcut")
+	for label, valid := range map[string]bool{"networkless-principals": isolated, "principal-mounts": applicationPrivate,
+		"route-network": allRoles, "ambient-network": noAmbient, "proxy": noProxy,
+		"service-set": equalTopologyNames(exactServices, expected)} {
+		if !valid {
+			return nil, errors.New("retained topology cannot exclude forbidden Stage 3 shortcut: " + label)
+		}
 	}
 	return map[string]bool{
 		"localhost-data": isolated, "shared-data-file": applicationPrivate, "dns": noAmbient, "proxy": noProxy,
@@ -65,6 +74,42 @@ func topologyIPv4(raw []byte, name string) string {
 		}
 	}
 	return ""
+}
+
+func topologyNetworks(block []byte) []string {
+	return topologyIndentedNames(block, "    networks:", 6)
+}
+
+func topologyMountTargets(block []byte) []string {
+	lines := bytes.Split(block, []byte{'\n'})
+	var targets []string
+	for _, line := range lines {
+		trimmed := bytes.TrimSpace(bytes.TrimPrefix(bytes.TrimSpace(line), []byte{'-'}))
+		if bytes.HasPrefix(trimmed, []byte("target: ")) {
+			targets = append(targets, string(bytes.TrimSpace(bytes.TrimPrefix(trimmed, []byte("target: ")))))
+		}
+	}
+	return targets
+}
+
+func topologyIndentedNames(block []byte, marker string, indent int) []string {
+	lines := bytes.Split(block, []byte{'\n'})
+	active := false
+	var names []string
+	for _, line := range lines {
+		if string(line) == marker {
+			active = true
+			continue
+		}
+		if active && len(line) <= indent {
+			break
+		}
+		if active && len(line) > indent && bytes.Equal(line[:indent], bytes.Repeat([]byte{' '}, indent)) &&
+			line[indent] != ' ' && line[len(line)-1] == ':' {
+			names = append(names, string(line[indent:len(line)-1]))
+		}
+	}
+	return names
 }
 
 func topologyServices(raw []byte) []string {
