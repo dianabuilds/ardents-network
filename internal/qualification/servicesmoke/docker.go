@@ -60,6 +60,7 @@ func runDocker(ctx context.Context, input Config, fixture prepared) (result Resu
 		return observer.invalid(err)
 	}
 	started, attempts := time.Now(), 0
+	attemptFiles := make([]string, 0, 4)
 	for {
 		attempts++
 		attemptRoot := filepath.Join(input.EvidenceRoot, fmt.Sprintf("attempt-%06d", attempts))
@@ -88,22 +89,64 @@ func runDocker(ctx context.Context, input Config, fixture prepared) (result Resu
 		if err != nil {
 			return observer.invalid(err)
 		}
-		verified, verifyErr := observer.compose(ctx, time.Minute, "--profile", "verify", "run", "--no-deps", "--rm", "verifier")
-		verifierJSON := jsonLine(verified, "verdict")
-		if writeErr := os.WriteFile(filepath.Join(attemptRoot, "verifier.json"), verifierJSON, 0o600); writeErr != nil {
-			return observer.invalid(writeErr)
-		}
-		var verdict struct{ Verdict string }
-		if json.Unmarshal(verifierJSON, &verdict) != nil || verdict.Verdict != "pass" || verifyErr != nil {
-			return Result{Verdict: "fail", Reason: "independent Stage 3 verifier did not pass", EvidenceRoot: input.EvidenceRoot,
-				Attempts: attempts, SourceCommit: commit, ImageID: imageID}
-		}
+		attemptFiles = append(attemptFiles, observer.evidenceFile)
 		if time.Since(started) >= input.Duration {
 			break
 		}
 	}
 	return Result{Verdict: "pass", Reason: fmt.Sprintf("local Docker H3 Stage 3 smoke passed %d migration attempts", attempts),
-		EvidenceRoot: input.EvidenceRoot, Attempts: attempts, SourceCommit: commit, ImageID: imageID}
+		EvidenceRoot: input.EvidenceRoot, Attempts: attempts, SourceCommit: commit, ImageID: imageID,
+		attemptFiles: attemptFiles, dockerProject: observer.project, imageTag: observer.image}
+}
+
+func verifyRetained(ctx context.Context, input Config, result *Result) error {
+	if !result.DockerCleanup || !result.FixtureCleanup {
+		return errors.New("independent verification requires completed Docker and private-fixture cleanup")
+	}
+	if _, err := os.Lstat(input.FixtureRoot); !errors.Is(err, os.ErrNotExist) {
+		return errors.New("private fixture remains when independent verification begins")
+	}
+	observer := dockerObserver{input: input, sourceCommit: result.SourceCommit, project: result.dockerProject,
+		image: result.imageTag, runtimeUser: runtimeUser(), generation: filepath.Join(input.FixtureRoot, "generations", "1")}
+	defer func() {
+		observer.evidenceFile = filepath.Join(input.EvidenceRoot, "empty.json")
+		_, _ = observer.compose(context.Background(), 2*time.Minute, "down", "-v", "--remove-orphans")
+	}()
+	for _, kind := range []string{"container", "network", "volume"} {
+		raw, err := observer.docker(ctx, time.Minute, kind, "ls", "-q", "--filter",
+			"label=com.docker.compose.project="+result.dockerProject)
+		if err != nil || strings.TrimSpace(string(raw)) != "" {
+			return errors.New("Docker project resources remain before independent verification")
+		}
+	}
+	for _, evidenceFile := range result.attemptFiles {
+		raw, err := byteio.ReadFile(evidenceFile, 4<<20)
+		if err != nil {
+			return err
+		}
+		var evidence attemptEvidence
+		if err := json.Unmarshal(raw, &evidence); err != nil {
+			return err
+		}
+		for name := range evidence.Cleanup {
+			evidence.Cleanup[name] = true
+		}
+		evidence.PrivateMaterialAbsent = true
+		if _, err := writeAttempt(filepath.Dir(evidenceFile), evidence); err != nil {
+			return err
+		}
+		observer.evidenceFile = evidenceFile
+		verified, verifyErr := observer.compose(ctx, time.Minute, "--profile", "verify", "run", "--no-deps", "--rm", "verifier")
+		verifierJSON := jsonLine(verified, "verdict")
+		if writeErr := os.WriteFile(filepath.Join(filepath.Dir(evidenceFile), "verifier.json"), verifierJSON, 0o600); writeErr != nil {
+			return writeErr
+		}
+		var verdict struct{ Verdict string }
+		if json.Unmarshal(verifierJSON, &verdict) != nil || verdict.Verdict != "pass" || verifyErr != nil {
+			return errors.New("independent Stage 3 verifier did not pass after cleanup")
+		}
+	}
+	return nil
 }
 
 func jsonLine(raw []byte, required string) []byte {
@@ -127,10 +170,11 @@ func newAttemptEvidence(fixture prepared, commit, image string, generations []ge
 	negatives, shortcuts map[string]bool) attemptEvidence {
 	cleanup := map[string]bool{}
 	for _, name := range []string{"containers", "network", "listeners", "sockets", "processes", "sessions", "publications"} {
-		cleanup[name] = true
+		cleanup[name] = false
 	}
 	return attemptEvidence{Schema: "ardents-h3-service-evidence-v1", SourceCommit: commit, ImageID: image,
 		ManifestDigest: hex32(fixture.manifest), NetworkID: fixture.network, AuthorityPublic: fixture.authority,
+		IntroductionPublic: fixture.introduction, RouteManifestDigest: fixture.routeManifest,
 		Target: fixture.target, Generations: generations, Negatives: negatives, ShortcutsAbsent: shortcuts,
-		Cleanup: cleanup, PrivateMaterialAbsent: true}
+		Cleanup: cleanup, PrivateMaterialAbsent: false}
 }

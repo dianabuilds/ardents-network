@@ -1,15 +1,29 @@
 package service
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 )
 
 func validateCandidate(input candidate) error {
 	if input.Target != targetFor(input.AuthorityPublic) {
 		return errors.New("service Target does not bind the declared Authority")
+	}
+	commitment := make([]byte, 0, 32*6)
+	credentialDigest := sha256.Sum256(append(credentialJSON(input.Generations[0].Credential),
+		credentialJSON(input.Generations[1].Credential)...))
+	for _, field := range [][32]byte{input.RouteManifestDigest, input.NetworkID, input.AuthorityPublic,
+		input.IntroductionPublic, input.Target, credentialDigest} {
+		commitment = append(commitment, field[:]...)
+	}
+	manifest := sha256.Sum256(commitment)
+	if input.ManifestDigest != hexDigest(manifest) {
+		return errors.New("service manifest does not bind its authoritative inputs")
 	}
 	first, second := input.Generations[0], input.Generations[1]
 	if first.Generation != 1 || second.Generation != 2 || first.Credential.Generation != 1 ||
@@ -48,11 +62,18 @@ func validateGeneration(input candidate, generation generationEvidence) error {
 		credentialBody(credential), credential.Signature[:]) {
 		return errors.New("credential or exact Target authentication evidence failed")
 	}
+	if !validIntroductionReceipt(generation.IntroductionAcknowledgement, input, credential) {
+		return errors.New("Introduction acknowledgement is not bound to the publication")
+	}
 	for _, endpoint := range []endpointEvidence{generation.ClientEndpoint, generation.PublisherEndpoint} {
 		if endpoint.Class != "clean service connection close" || endpoint.AuthenticatedTarget != input.Target ||
-			endpoint.Generation != generation.Generation || endpoint.AcceptedBytes != 64<<10 || endpoint.ReceivedBytes != 64<<10 {
+			endpoint.Generation != generation.Generation || endpoint.AcceptedBytes != 64<<10 || endpoint.ReceivedBytes != 64<<10 ||
+			endpoint.ConnectionCanary == [32]byte{} {
 			return errors.New("endpoint Service Connection result violates the frozen contract")
 		}
+	}
+	if generation.ClientEndpoint.ConnectionCanary != generation.PublisherEndpoint.ConnectionCanary {
+		return errors.New("connection canary observations do not match")
 	}
 	client, publisher := generation.ClientApplication, generation.PublisherApplication
 	if client.Schema != "ardents-h3-stream-application-v1" || publisher.Schema != client.Schema ||
@@ -69,6 +90,24 @@ func validateGeneration(input candidate, generation generationEvidence) error {
 	}
 	return nil
 }
+
+func validIntroductionReceipt(raw []byte, input candidate, credential publicCredential) bool {
+	if len(raw) != 213 || string(raw[:4]) != "ASIA" || raw[4] != 1 ||
+		!bytes.Equal(raw[5:37], credential.Target[:]) || binary.BigEndian.Uint64(raw[37:45]) != credential.Generation ||
+		binary.BigEndian.Uint64(raw[45:53]) != uint64(credential.NotAfter) || !bytes.Equal(raw[53:85], input.NetworkID[:]) ||
+		bytes.Equal(raw[85:117], make([]byte, 32)) || bytes.Equal(raw[117:149], make([]byte, 32)) {
+		return false
+	}
+	message := append([]byte("ardents-h3-introduction-ack-v1\x00"), raw[:149]...)
+	return ed25519.Verify(ed25519.PublicKey(input.IntroductionPublic[:]), message, raw[149:])
+}
+
+func credentialJSON(value publicCredential) []byte {
+	raw, _ := json.Marshal(value)
+	return raw
+}
+
+func hexDigest(value [32]byte) string { return hex.EncodeToString(value[:]) }
 
 func targetFor(authority [32]byte) [32]byte {
 	return sha256.Sum256(append([]byte("ardents-h3-service-target-v1\x00"), authority[:]...))

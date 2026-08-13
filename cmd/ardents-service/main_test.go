@@ -18,6 +18,7 @@ func TestEndpointPlanRejectsUnknownAndCrossRoleInputs(t *testing.T) {
 	}
 	client := endpointPlan{Role: "client", NetworkID: strings.Repeat("01", 32), BrokerID: strings.Repeat("02", 32),
 		AuthorityPublic: strings.Repeat("03", 32), ConnectionPrincipal: strings.Repeat("04", 32),
+		IntroductionPublic:      strings.Repeat("07", 32),
 		AdministrationPrincipal: strings.Repeat("05", 32), Target: strings.Repeat("06", 32),
 		ApplicationSocket: "/run/app.sock", RouteSocket: "/run/route.sock", PublicationFile: "/run/publication",
 		At: "2033-05-18T03:33:20Z", Deadline: "5s", BytesEachDirection: 4096}

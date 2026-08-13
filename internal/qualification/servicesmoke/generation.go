@@ -15,9 +15,19 @@ import (
 func (observer dockerObserver) runGeneration(ctx context.Context, fixture prepared, number int) (generationEvidence, bool, error) {
 	observer.generation = filepath.Join(observer.input.FixtureRoot, "generations", strconv.Itoa(number))
 	observer.evidenceFile = filepath.Join(observer.input.EvidenceRoot, "empty.json")
-	_, _ = observer.compose(ctx, time.Minute, "down", "-v", "--remove-orphans")
+	down := []string{"down", "--remove-orphans"}
+	if number == 1 {
+		down = []string{"down", "-v", "--remove-orphans"}
+	}
+	_, _ = observer.compose(ctx, time.Minute, down...)
 	if _, err := observer.compose(ctx, time.Minute, "--profile", "setup", "run", "--no-deps", "--rm", "volume-init"); err != nil {
 		return generationEvidence{}, false, errors.Join(errors.New("stage 3 socket volumes could not be initialized"), err)
+	}
+	if _, err := observer.compose(ctx, time.Minute, "up", "-d", "introduction"); err != nil {
+		return generationEvidence{}, false, err
+	}
+	if err := observer.waitReady(ctx, "introduction"); err != nil {
+		return generationEvidence{}, false, err
 	}
 	if _, err := observer.compose(ctx, time.Minute, "up", "-d", "publisher-endpoint"); err != nil {
 		return generationEvidence{}, false, err
@@ -29,11 +39,11 @@ func (observer dockerObserver) runGeneration(ctx context.Context, fixture prepar
 	if err != nil || observer.waitContainer(ctx, operatorID, true) != nil {
 		return generationEvidence{}, false, errors.New("publication operator failed")
 	}
-	routeServers := []string{"publisher-app", "publisher", "responder", "rendezvous", "introduction", "initiator"}
+	routeServers := []string{"publisher-app", "publisher", "responder", "rendezvous", "initiator"}
 	if _, err := observer.compose(ctx, time.Minute, append([]string{"up", "-d"}, routeServers...)...); err != nil {
 		return generationEvidence{}, false, err
 	}
-	for _, role := range []string{"publisher", "responder", "rendezvous", "introduction", "initiator"} {
+	for _, role := range []string{"publisher", "responder", "rendezvous", "initiator"} {
 		if err := observer.waitReady(ctx, role); err != nil {
 			return generationEvidence{}, false, err
 		}
@@ -70,7 +80,11 @@ func (observer dockerObserver) runGeneration(ctx context.Context, fixture prepar
 	if err != nil {
 		return generationEvidence{}, hostileRejected, err
 	}
-	if _, err := observer.compose(ctx, time.Minute, "down", "-v", "--remove-orphans"); err != nil {
+	cleanup := []string{"down", "--remove-orphans"}
+	if number == 2 {
+		cleanup = []string{"down", "-v", "--remove-orphans"}
+	}
+	if _, err := observer.compose(ctx, time.Minute, cleanup...); err != nil {
 		return generationEvidence{}, hostileRejected, err
 	}
 	remaining, err := observer.compose(ctx, time.Minute, "ps", "-q")
@@ -107,8 +121,9 @@ func (observer dockerObserver) collectGeneration(ctx context.Context, fixture pr
 		return generationEvidence{}, err
 	}
 	value := generationEvidence{Generation: uint64(number), Credential: fixture.credentials[number-1],
-		IntroductionAcknowledgement: fixture.acknowledgements[number-1], PublicationReady: true,
-		ClientEndpoint: endpointReceipt(clientEndpoint), PublisherEndpoint: endpointReceipt(publisherEndpoint),
+		IntroductionAcknowledgement: publisherEndpoint.IntroductionAcknowledgement,
+		PublicationReady:            len(publisherEndpoint.IntroductionAcknowledgement) != 0,
+		ClientEndpoint:              endpointReceipt(clientEndpoint), PublisherEndpoint: endpointReceipt(publisherEndpoint),
 		ClientApplication: clientApp, PublisherApplication: publisherApp, ContainerIDs: identities}
 	for _, role := range []string{"client", "initiator", "introduction", "rendezvous", "responder", "publisher"} {
 		observation, routeErr := terminalRoute(logs[role])
@@ -122,10 +137,12 @@ func (observer dockerObserver) collectGeneration(ctx context.Context, fixture pr
 
 func endpointReceipt(value serviceconn.Result) endpointEvidence {
 	return endpointEvidence{Class: value.Class, AuthenticatedTarget: value.AuthenticatedTarget,
-		Generation: value.Generation, AcceptedBytes: value.AcceptedBytes, ReceivedBytes: value.ReceivedBytes}
+		Generation: value.Generation, AcceptedBytes: value.AcceptedBytes, ReceivedBytes: value.ReceivedBytes,
+		ConnectionCanary: value.ConnectionCanary}
 }
 
 func routeReceipt(value route.Evidence) roleEvidence {
 	return roleEvidence{Role: value.Role, RuntimeID: value.RuntimeID, Terminal: value.Terminal,
-		PID: value.PID, Cleanup: value.Cleanup}
+		PID: value.PID, Cleanup: value.Cleanup, ManifestDigest: value.ManifestDigest,
+		NetworkID: value.NetworkID, OpaqueBytes: value.OpaqueBytes}
 }

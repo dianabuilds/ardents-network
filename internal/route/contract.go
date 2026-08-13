@@ -11,23 +11,24 @@ const observationSchema = "ardents-h3-route-observation-v1"
 // Actor is one role-local Route process configuration. Cross-role fields are
 // rejected: a Node never receives the complete Plan or Publisher credential.
 type Actor struct {
-	ManifestDigest     [32]byte
-	NetworkID          [32]byte
-	EpochDigest        [32]byte
-	Role               string
-	NodeID             [32]byte
-	ListenAddress      string
-	Certificate        tls.Certificate
-	UpstreamPin        [32]byte
-	NextNodeID         [32]byte
-	NextAddress        string
-	NextPin            [32]byte
-	Plan               Plan
-	PublisherPin       [32]byte
-	ClientCertificate  tls.Certificate
-	ServiceCertificate tls.Certificate
-	Stream             io.ReadWriteCloser
-	Deadline           time.Duration
+	ManifestDigest                                [32]byte
+	NetworkID                                     [32]byte
+	EpochDigest                                   [32]byte
+	Role                                          string
+	NodeID                                        [32]byte
+	ListenAddress                                 string
+	Certificate                                   tls.Certificate
+	UpstreamPin                                   [32]byte
+	NextNodeID                                    [32]byte
+	NextAddress                                   string
+	NextPin                                       [32]byte
+	Plan                                          Plan
+	PublisherPin                                  [32]byte
+	ClientCertificate                             tls.Certificate
+	ServiceCertificate                            tls.Certificate
+	Stream                                        io.ReadWriteCloser
+	AcknowledgementSocket, AcknowledgementKeyFile string
+	Deadline                                      time.Duration
 }
 
 // Evidence is bounded role-local evidence from one process.

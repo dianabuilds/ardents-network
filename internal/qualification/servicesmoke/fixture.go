@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -19,10 +20,9 @@ const fixtureMarker = "ardents-h3-service-smoke-fixture-v1\n"
 const evidenceMarker = "ardents-h3-service-smoke-evidence-v1\n"
 
 type prepared struct {
-	network, authority, target, manifest [32]byte
-	at                                   time.Time
-	credentials                          [2]serviceconn.Credential
-	acknowledgements                     [2][32]byte
+	network, authority, introduction, target, routeManifest, manifest [32]byte
+	at                                                                time.Time
+	credentials                                                       [2]serviceconn.Credential
 }
 
 func prepare(input Config) (prepared, error) {
@@ -45,6 +45,16 @@ func prepare(input Config) (prepared, error) {
 	if err != nil {
 		return prepared{}, err
 	}
+	introductionPublic, introductionPrivate, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return prepared{}, err
+	}
+	defer erase(introductionPrivate)
+	var introduction [32]byte
+	copy(introduction[:], introductionPublic)
+	if err := configureIntroduction(filepath.Join(input.FixtureRoot, "route"), introductionPrivate); err != nil {
+		return prepared{}, err
+	}
 	public, private, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return prepared{}, err
@@ -52,7 +62,8 @@ func prepare(input Config) (prepared, error) {
 	defer erase(private)
 	var authority [32]byte
 	copy(authority[:], public)
-	value := prepared{network: route.NetworkID, authority: authority, at: at}
+	value := prepared{network: route.NetworkID, authority: authority, introduction: introduction,
+		routeManifest: route.ManifestDigest, at: at}
 	for index := range 2 {
 		instancePublic, instancePrivate, keyErr := ed25519.GenerateKey(rand.Reader)
 		if keyErr != nil {
@@ -71,16 +82,15 @@ func prepare(input Config) (prepared, error) {
 		if index == 0 {
 			value.target = credential.Target
 		}
-		acknowledgement, writeErr := writeGeneration(input.FixtureRoot, index+1, at, credential, instancePrivate, authority)
+		_, writeErr := writeGeneration(input.FixtureRoot, index+1, at, credential, instancePrivate, authority, introduction)
 		if writeErr != nil {
 			erase(instancePrivate)
 			return prepared{}, writeErr
 		}
-		value.acknowledgements[index] = acknowledgement
 		erase(instancePrivate)
 	}
 	commitment := make([]byte, 0, 32*5)
-	for _, field := range [][32]byte{route.ManifestDigest, value.network, value.authority, value.target,
+	for _, field := range [][32]byte{route.ManifestDigest, value.network, value.authority, value.introduction, value.target,
 		sha256.Sum256(append(credentialBytes(value.credentials[0]), credentialBytes(value.credentials[1])...))} {
 		commitment = append(commitment, field[:]...)
 	}
@@ -91,6 +101,25 @@ func prepare(input Config) (prepared, error) {
 		return prepared{}, err
 	}
 	return value, nil
+}
+
+func configureIntroduction(routeRoot string, private ed25519.PrivateKey) error {
+	planPath := filepath.Join(routeRoot, "plans", "introduction.json")
+	raw, err := byteio.ReadFile(planPath, 64<<10)
+	if err != nil {
+		return err
+	}
+	var plan map[string]any
+	if err := json.Unmarshal(raw, &plan); err != nil {
+		return err
+	}
+	plan["AcknowledgementSocket"] = "/run/ardents/introduction-ack/ack.sock"
+	plan["AcknowledgementKey"] = "/run/ardents/secrets/ack.hex"
+	if err := byteio.WriteJSON(planPath, plan, 64<<10); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(routeRoot, "secrets", "introduction", "ack.hex"),
+		[]byte(hex.EncodeToString(private)), 0o600)
 }
 
 func newAbsolute(path string) bool {

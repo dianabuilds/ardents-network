@@ -35,6 +35,38 @@ func (value fixture) expired(ctx context.Context) bool {
 	return targetFailure(result, err)
 }
 
+func (value fixture) notYetValid(ctx context.Context) bool {
+	at := value.now.Add(-2 * time.Minute)
+	endpoint := value.endpoint()
+	session := admit(ctx, endpoint, value.admin, "administration", at)
+	result, err := endpoint.Do(ctx, serviceconn.Request{Action: "publish", Principal: value.admin,
+		Session: session, Credential: value.first, InstancePrivate: value.firstPrivate,
+		IntroductionAcknowledgement: value.acknowledgement(value.first), At: at})
+	return targetFailure(result, err)
+}
+
+func (value fixture) wrongCapability(ctx context.Context) bool {
+	public := value.firstPrivate.Public().(ed25519.PublicKey)
+	var instance [32]byte
+	copy(instance[:], public)
+	credential, err := serviceconn.IssueCredential(value.authorityPrivate, serviceconn.Credential{
+		InstancePublic: instance, Generation: 1, NotBefore: value.now.Add(-time.Minute).Unix(),
+		NotAfter: value.now.Add(time.Minute).Unix(), NetworkID: value.network, Capabilities: 1})
+	if err != nil {
+		return false
+	}
+	result, err := publish(ctx, value.endpoint(), value, credential, value.firstPrivate)
+	return targetFailure(result, err)
+}
+
+func (value fixture) malformedPublication(ctx context.Context) bool {
+	endpoint := value.endpoint()
+	session := admit(ctx, endpoint, value.connection, "connection", value.now)
+	result, err := endpoint.Do(ctx, serviceconn.Request{Action: "connect", Principal: value.connection,
+		Session: session, Target: value.first.Target, Publication: []byte{1, 2, 3}, At: value.now})
+	return targetFailure(result, err)
+}
+
 func (value fixture) wrongNetwork(ctx context.Context) bool {
 	public := value.firstPrivate.Public().(ed25519.PublicKey)
 	credential, err := value.issue(public, 1, [32]byte{88}, value.now.Add(time.Minute))

@@ -3,12 +3,14 @@ package serviceconn
 import (
 	"crypto/rand"
 	"errors"
+	"time"
 )
 
 type localSession struct {
 	principal [32]byte
 	surface   string
 	broker    [32]byte
+	expires   int64
 }
 
 func (endpoint *Endpoint) admit(input Request) (Result, error) {
@@ -36,18 +38,20 @@ func (endpoint *Endpoint) admit(input Request) (Result, error) {
 	if capability == [32]byte{} {
 		return failed("indeterminate failure", "fresh local session is invalid", errors.New("zero session capability"))
 	}
-	endpoint.sessions[capability] = localSession{principal: input.Principal, surface: input.Surface, broker: endpoint.broker}
+	endpoint.sessions[capability] = localSession{principal: input.Principal, surface: input.Surface,
+		broker: endpoint.broker, expires: input.At.Add(15 * time.Second).UnixNano()}
 	return Result{Class: "authorized", Session: capability}, nil
 }
 
-func (endpoint *Endpoint) consume(capability, principal [32]byte, surface string) error {
+func (endpoint *Endpoint) consume(capability, principal [32]byte, surface string, at time.Time) error {
 	endpoint.mu.Lock()
 	defer endpoint.mu.Unlock()
 	session, ok := endpoint.sessions[capability]
 	if ok {
 		delete(endpoint.sessions, capability)
 	}
-	if !ok || capability == [32]byte{} || session.principal != principal || session.surface != surface || session.broker != endpoint.broker {
+	if !ok || capability == [32]byte{} || session.principal != principal || session.surface != surface ||
+		session.broker != endpoint.broker || at.UnixNano() > session.expires {
 		return errors.New("ephemeral session is absent, replayed, or bound to another principal")
 	}
 	return nil

@@ -34,8 +34,11 @@ type Setup struct {
 	NetworkID               [32]byte
 	BrokerID                [32]byte
 	AuthorityPublic         ed25519.PublicKey
+	IntroductionPublic      ed25519.PublicKey
 	ConnectionPrincipal     [32]byte
 	AdministrationPrincipal [32]byte
+	LastGeneration          uint64
+	GenerationStateFile     string
 }
 
 // Request is one role-scoped operation at the Service Connection seam.
@@ -44,7 +47,8 @@ type Request struct {
 	Principal, Session, Target  [32]byte
 	Credential                  Credential
 	InstancePrivate             ed25519.PrivateKey
-	IntroductionAcknowledgement [32]byte
+	IntroductionAcknowledgement []byte
+	IntroductionSocket          string
 	Publication                 []byte
 	Route, Application          io.ReadWriteCloser
 	BytesEachDirection          uint32
@@ -53,14 +57,17 @@ type Request struct {
 
 // Result is a bounded product-class outcome with no Route internals.
 type Result struct {
-	Class               string   `json:"class"`
-	Reason              string   `json:"reason"`
-	Session             [32]byte `json:"session"`
-	Publication         []byte   `json:"publication"`
-	AuthenticatedTarget [32]byte `json:"authenticated_target"`
-	Generation          uint64   `json:"generation"`
-	AcceptedBytes       uint32   `json:"accepted_bytes"`
-	ReceivedBytes       uint32   `json:"received_bytes"`
+	Class                       string   `json:"class"`
+	Reason                      string   `json:"reason"`
+	Session                     [32]byte `json:"session"`
+	Publication                 []byte   `json:"publication"`
+	AuthenticatedTarget         [32]byte `json:"authenticated_target"`
+	Generation                  uint64   `json:"generation"`
+	AcceptedBytes               uint32   `json:"accepted_bytes"`
+	ReceivedBytes               uint32   `json:"received_bytes"`
+	ConnectionCanary            [32]byte `json:"connection_canary"`
+	IntroductionReceipt         [32]byte `json:"introduction_receipt"`
+	IntroductionAcknowledgement []byte   `json:"introduction_acknowledgement,omitempty"`
 }
 
 // Endpoint owns one broker generation's sessions and current publication.
@@ -68,24 +75,35 @@ type Endpoint struct {
 	mu                  sync.Mutex
 	network, broker     [32]byte
 	authority           [32]byte
+	introduction        [32]byte
 	connectionPrincipal [32]byte
 	adminPrincipal      [32]byte
 	sessions            map[[32]byte]localSession
 	current             *currentPublication
 	lastGeneration      uint64
+	generationStateFile string
 }
 
 // New creates one finite Endpoint-local admission and publication boundary.
 func New(input Setup) (*Endpoint, error) {
 	if input.NetworkID == [32]byte{} || input.BrokerID == [32]byte{} ||
-		len(input.AuthorityPublic) != ed25519.PublicKeySize || input.ConnectionPrincipal == [32]byte{} {
+		len(input.AuthorityPublic) != ed25519.PublicKeySize || len(input.IntroductionPublic) != ed25519.PublicKeySize ||
+		input.ConnectionPrincipal == [32]byte{} {
 		return nil, errors.New("endpoint setup is incomplete")
 	}
 	var authority [32]byte
 	copy(authority[:], input.AuthorityPublic)
+	var introduction [32]byte
+	copy(introduction[:], input.IntroductionPublic)
+	lastGeneration, err := readGeneration(input.GenerationStateFile, input.LastGeneration)
+	if err != nil {
+		return nil, err
+	}
 	return &Endpoint{network: input.NetworkID, broker: input.BrokerID, authority: authority,
+		introduction:        introduction,
 		connectionPrincipal: input.ConnectionPrincipal, adminPrincipal: input.AdministrationPrincipal,
-		sessions: make(map[[32]byte]localSession, maximumSessions)}, nil
+		sessions: make(map[[32]byte]localSession, maximumSessions), lastGeneration: lastGeneration,
+		generationStateFile: input.GenerationStateFile}, nil
 }
 
 // Do executes one admitted operation and returns only an R-002 product class.
@@ -100,7 +118,7 @@ func (endpoint *Endpoint) Do(ctx context.Context, input Request) (Result, error)
 	case "admit":
 		return endpoint.admit(input)
 	case "publish":
-		return endpoint.publish(input)
+		return endpoint.publish(ctx, input)
 	case "unpublish":
 		return endpoint.unpublish(input)
 	case "connect":

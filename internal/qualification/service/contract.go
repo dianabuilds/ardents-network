@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"strings"
 )
 
 const schema = "ardents-h3-service-evidence-v1"
@@ -59,8 +60,13 @@ func Verify(raw []byte) Verdict {
 }
 
 func validateEvidence(input candidate) error {
-	if input.Schema != schema || input.SourceCommit == "" || input.ImageID == "" || input.ManifestDigest == "" ||
+	commit, commitErr := hex.DecodeString(input.SourceCommit)
+	image, imageErr := hex.DecodeString(strings.TrimPrefix(input.ImageID, "sha256:"))
+	manifest, manifestErr := hex.DecodeString(input.ManifestDigest)
+	if input.Schema != schema || commitErr != nil || len(commit) != 20 || imageErr != nil || len(image) != 32 ||
+		!strings.HasPrefix(input.ImageID, "sha256:") || manifestErr != nil || len(manifest) != 32 ||
 		input.NetworkID == [32]byte{} || input.AuthorityPublic == [32]byte{} || input.Target == [32]byte{} ||
+		input.IntroductionPublic == [32]byte{} || input.RouteManifestDigest == [32]byte{} ||
 		len(input.Generations) != 2 || !input.PrivateMaterialAbsent {
 		return errors.New("identity, schema, generation, or secret-handling evidence is incomplete")
 	}
@@ -80,13 +86,14 @@ func validateEvidence(input candidate) error {
 		}
 	}
 	for _, generation := range input.Generations {
-		if generation.IntroductionAcknowledgement == [32]byte{} || !generation.PublicationReady ||
+		if len(generation.IntroductionAcknowledgement) == 0 || !generation.PublicationReady ||
 			len(generation.Roles) != 6 || len(generation.ContainerIDs) != 12 {
 			return errors.New("publication or process evidence is incomplete")
 		}
 		roles, runtimes := map[string]bool{}, map[string]bool{}
 		for _, role := range generation.Roles {
-			if role.Role == "" || role.PID < 1 || role.RuntimeID == "" || roles[role.Role] || runtimes[role.RuntimeID] {
+			if role.Role == "" || role.PID < 1 || role.RuntimeID == "" || roles[role.Role] || runtimes[role.RuntimeID] ||
+				role.ManifestDigest != input.RouteManifestDigest || role.NetworkID != input.NetworkID || role.OpaqueBytes == 0 {
 				return errors.New("route process separation evidence is contradictory")
 			}
 			roles[role.Role], runtimes[role.RuntimeID] = true, true
@@ -102,6 +109,15 @@ func validateEvidence(input candidate) error {
 				return errors.New("container separation evidence is incomplete or repeated")
 			}
 			seen[identity] = true
+		}
+		for runtime := range runtimes {
+			bound := false
+			for identity := range seen {
+				bound = bound || strings.HasPrefix(identity, runtime)
+			}
+			if !bound {
+				return errors.New("route runtime identity is not bound to an observed container")
+			}
 		}
 	}
 	return nil

@@ -11,12 +11,13 @@ import (
 )
 
 type endpointPlan struct {
-	Role, NetworkID, BrokerID, AuthorityPublic, ConnectionPrincipal string
-	AdministrationPrincipal, Target, IntroductionAcknowledgement    string
-	ApplicationSocket, RouteSocket, AdministrationSocket            string
-	PublicationFile, CredentialFile, InstanceKeyFile                string
-	At, Deadline                                                    string
-	BytesEachDirection                                              uint32
+	Role, NetworkID, BrokerID, AuthorityPublic, ConnectionPrincipal       string
+	AdministrationPrincipal, Target                                       string
+	IntroductionSocket, IntroductionPublic                                string
+	ApplicationSocket, RouteSocket, AdministrationSocket                  string
+	PublicationFile, CredentialFile, InstanceKeyFile, GenerationStateFile string
+	At, Deadline                                                          string
+	BytesEachDirection                                                    uint32
 }
 
 func readPlan(path string) (endpointPlan, error) {
@@ -43,7 +44,6 @@ func readPlan(path string) (endpointPlan, error) {
 	}
 	return value, nil
 }
-
 func (value endpointPlan) validate() error {
 	if value.Role != "client" && value.Role != "publisher" {
 		return errors.New("endpoint role is invalid")
@@ -52,12 +52,17 @@ func (value endpointPlan) validate() error {
 		value.At == "" || value.Deadline == "" || value.BytesEachDirection == 0 || value.BytesEachDirection > 64<<10 {
 		return errors.New("endpoint plan is incomplete or outside its bound")
 	}
+	if value.IntroductionPublic == "" {
+		return errors.New("endpoint plan lacks the Introduction verification key")
+	}
 	if value.Role == "client" && (value.Target == "" || value.AdministrationSocket != "" ||
-		value.CredentialFile != "" || value.InstanceKeyFile != "" || value.AdministrationPrincipal != "") {
+		value.CredentialFile != "" || value.InstanceKeyFile != "" || value.AdministrationPrincipal != "" ||
+		value.IntroductionSocket != "" || value.GenerationStateFile != "") {
 		return errors.New("client plan contains publisher administration input")
 	}
 	if value.Role == "publisher" && (value.AdministrationSocket == "" || value.CredentialFile == "" ||
-		value.InstanceKeyFile == "" || value.IntroductionAcknowledgement == "") {
+		value.InstanceKeyFile == "" || value.IntroductionSocket == "" || value.IntroductionPublic == "" ||
+		value.GenerationStateFile == "") {
 		return errors.New("publisher plan lacks its administration input")
 	}
 	if _, err := time.Parse(time.RFC3339, value.At); err != nil {
@@ -69,7 +74,12 @@ func (value endpointPlan) validate() error {
 	}
 	return nil
 }
-
+func (plan endpointPlan) roleAction() string {
+	if plan.Role == "client" {
+		return "connect"
+	}
+	return "accept"
+}
 func fixedHex(value string, destination []byte) error {
 	if len(value) != len(destination)*2 {
 		return errors.New("hexadecimal field has wrong length")

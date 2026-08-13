@@ -8,6 +8,8 @@ type candidate struct {
 	EvidenceDigest        string               `json:"evidence_digest"`
 	NetworkID             [32]byte             `json:"network_id"`
 	AuthorityPublic       [32]byte             `json:"authority_public"`
+	IntroductionPublic    [32]byte             `json:"introduction_public"`
+	RouteManifestDigest   [32]byte             `json:"route_manifest_digest"`
 	Target                [32]byte             `json:"target"`
 	Generations           []generationEvidence `json:"generations"`
 	Negatives             map[string]bool      `json:"negatives"`
@@ -19,7 +21,7 @@ type candidate struct {
 type generationEvidence struct {
 	Generation                  uint64              `json:"generation"`
 	Credential                  publicCredential    `json:"credential"`
-	IntroductionAcknowledgement [32]byte            `json:"introduction_acknowledgement"`
+	IntroductionAcknowledgement []byte              `json:"introduction_acknowledgement"`
 	PublicationReady            bool                `json:"publication_ready"`
 	ClientEndpoint              endpointEvidence    `json:"client_endpoint"`
 	PublisherEndpoint           endpointEvidence    `json:"publisher_endpoint"`
@@ -47,6 +49,7 @@ type endpointEvidence struct {
 	Generation          uint64   `json:"generation"`
 	AcceptedBytes       uint32   `json:"accepted_bytes"`
 	ReceivedBytes       uint32   `json:"received_bytes"`
+	ConnectionCanary    [32]byte `json:"connection_canary"`
 }
 
 type applicationEvidence struct {
@@ -60,11 +63,14 @@ type applicationEvidence struct {
 }
 
 type roleEvidence struct {
-	Role      string `json:"role"`
-	RuntimeID string `json:"runtime_id"`
-	Terminal  string `json:"terminal"`
-	PID       int    `json:"pid"`
-	Cleanup   bool   `json:"cleanup"`
+	Role           string   `json:"role"`
+	RuntimeID      string   `json:"runtime_id"`
+	Terminal       string   `json:"terminal"`
+	PID            int      `json:"pid"`
+	Cleanup        bool     `json:"cleanup"`
+	ManifestDigest [32]byte `json:"manifest_digest"`
+	NetworkID      [32]byte `json:"network_id"`
+	OpaqueBytes    uint64   `json:"opaque_bytes"`
 }
 
 var routeRoles = [...]string{"client", "initiator", "introduction", "rendezvous", "responder", "publisher"}
@@ -73,6 +79,10 @@ var requiredNegatives = [...]string{
 	"ungranted-sibling", "session-replay", "principal-substitution", "restart-reuse",
 	"connection-admin", "credential-only", "wrong-target", "wrong-key", "expired",
 	"wrong-network", "stale-generation", "same-generation-conflict",
+	"not-yet-valid", "wrong-capability", "malformed-publication", "administration-connection",
+	"administration-custody", "administration-export", "pid-substitution", "container-substitution",
+	"malformed-ipc-frame", "oversized-ipc-frame", "partial-ipc-frame", "slow-ipc-frame",
+	"stale-generation-new-work",
 }
 
 var requiredShortcuts = [...]string{

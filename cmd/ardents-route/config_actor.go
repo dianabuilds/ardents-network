@@ -29,6 +29,7 @@ func (raw actorPlan) listener() (route.Actor, func(), error) {
 		return route.Actor{}, nil, err
 	}
 	actor := route.Actor{Role: raw.Role, ListenAddress: raw.Listen, Certificate: certificate, Deadline: deadline}
+	actor.AcknowledgementSocket, actor.AcknowledgementKeyFile = raw.AcknowledgementSocket, raw.AcknowledgementKey
 	for _, field := range []struct {
 		encoded     string
 		destination []byte

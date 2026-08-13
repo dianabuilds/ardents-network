@@ -14,7 +14,7 @@ import (
 )
 
 func writeGeneration(root string, generation int, at time.Time, credential serviceconn.Credential,
-	private ed25519.PrivateKey, authority [32]byte) ([32]byte, error) {
+	private ed25519.PrivateKey, authority, introduction [32]byte) ([32]byte, error) {
 	generationRoot := filepath.Join(root, "generations", strconv.Itoa(generation))
 	if err := os.MkdirAll(generationRoot, 0o700); err != nil {
 		return [32]byte{}, err
@@ -33,19 +33,18 @@ func writeGeneration(root string, generation int, at time.Time, credential servi
 		}
 		principals[index] = value
 	}
-	acknowledgement, err := random32()
-	if err != nil {
-		return [32]byte{}, err
-	}
 	common := map[string]any{"NetworkID": hex32(credential.NetworkID), "AuthorityPublic": hex32(authority),
-		"At": at.Format(time.RFC3339), "Deadline": "15s", "BytesEachDirection": 64 << 10,
+		"IntroductionPublic": hex32(introduction),
+		"At":                 at.Format(time.RFC3339), "Deadline": "15s", "BytesEachDirection": 64 << 10,
 		"PublicationFile": "/run/ardents/publication/current.bin"}
 	publisher := clone(common)
 	for key, value := range map[string]any{"Role": "publisher", "BrokerID": hex32(principals[4]),
 		"ConnectionPrincipal": hex32(principals[0]), "AdministrationPrincipal": hex32(principals[1]),
 		"ApplicationSocket": "/run/ardents/publisher-app/app.sock", "RouteSocket": "/run/ardents/publisher-route/route.sock",
 		"AdministrationSocket": "/run/ardents/admin/admin.sock", "CredentialFile": "/run/ardents/service/credential.json",
-		"InstanceKeyFile": "/run/ardents/service/instance.hex", "IntroductionAcknowledgement": hex32(acknowledgement)} {
+		"InstanceKeyFile":     "/run/ardents/service/instance.hex",
+		"IntroductionSocket":  "/run/ardents/introduction-ack/ack.sock",
+		"GenerationStateFile": "/run/ardents/lifecycle/generation"} {
 		publisher[key] = value
 	}
 	client := clone(common)
@@ -60,7 +59,7 @@ func writeGeneration(root string, generation int, at time.Time, credential servi
 	if err := byteio.WriteJSON(filepath.Join(generationRoot, "client.json"), client, 64<<10); err != nil {
 		return [32]byte{}, err
 	}
-	return acknowledgement, nil
+	return [32]byte{}, nil
 }
 
 func clone(input map[string]any) map[string]any {

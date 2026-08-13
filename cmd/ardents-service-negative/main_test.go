@@ -15,7 +15,7 @@ func TestNegativeCommandObservesEveryRequiredRejection(t *testing.T) {
 	if err := json.Unmarshal(output.Bytes(), &value); err != nil {
 		t.Fatal(err)
 	}
-	if value.Schema != "ardents-h3-service-negative-v1" || len(value.Negatives) != 11 {
+	if value.Schema != "ardents-h3-service-negative-v1" || len(value.Negatives) != 24 {
 		t.Fatalf("unexpected negative receipt: %+v", value)
 	}
 	for name, passed := range value.Negatives {

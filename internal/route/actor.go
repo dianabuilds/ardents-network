@@ -19,6 +19,16 @@ func Run(ctx context.Context, input Actor, ready func(Evidence)) (Evidence, erro
 	}
 	attempt, cancel := context.WithTimeout(ctx, input.Deadline)
 	defer cancel()
+	var acknowledgement <-chan error
+	if input.Role == "introduction" && input.AcknowledgementSocket != "" {
+		stop, completed, err := startAcknowledgement(attempt, input.AcknowledgementSocket,
+			input.AcknowledgementKeyFile)
+		if err != nil {
+			return Evidence{}, err
+		}
+		defer stop()
+		acknowledgement = completed
+	}
 	var result Evidence
 	var err error
 	switch input.Role {
@@ -33,6 +43,9 @@ func Run(ctx context.Context, input Actor, ready func(Evidence)) (Evidence, erro
 		result, err = serveNode(attempt, input, ready)
 	default:
 		return Evidence{}, errors.New("route actor role is invalid")
+	}
+	if acknowledgement != nil {
+		err = errors.Join(err, <-acknowledgement)
 	}
 	result.ManifestDigest = input.ManifestDigest
 	result.RuntimeID = runtimeIdentity()

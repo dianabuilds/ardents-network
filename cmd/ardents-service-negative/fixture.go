@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"encoding/binary"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/serviceconn"
@@ -14,6 +15,8 @@ type fixture struct {
 	network, connection, admin  [32]byte
 	authorityPublic             ed25519.PublicKey
 	authorityPrivate            ed25519.PrivateKey
+	introductionPublic          ed25519.PublicKey
+	introductionPrivate         ed25519.PrivateKey
 	firstPrivate, secondPrivate ed25519.PrivateKey
 	first, second               serviceconn.Credential
 }
@@ -23,6 +26,10 @@ func newFixture() (fixture, error) {
 		connection: [32]byte{2}, admin: [32]byte{3}}
 	var err error
 	value.authorityPublic, value.authorityPrivate, err = ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return value, err
+	}
+	value.introductionPublic, value.introductionPrivate, err = ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return value, err
 	}
@@ -56,7 +63,8 @@ func (value fixture) issue(instance ed25519.PublicKey, generation uint64, networ
 
 func (value fixture) endpoint() *serviceconn.Endpoint {
 	endpoint, _ := serviceconn.New(serviceconn.Setup{NetworkID: value.network, BrokerID: [32]byte{4},
-		AuthorityPublic: value.authorityPublic, ConnectionPrincipal: value.connection,
+		AuthorityPublic: value.authorityPublic, IntroductionPublic: value.introductionPublic,
+		ConnectionPrincipal:     value.connection,
 		AdministrationPrincipal: value.admin})
 	return endpoint
 }
@@ -71,5 +79,20 @@ func publish(ctx context.Context, endpoint *serviceconn.Endpoint, value fixture,
 	credential serviceconn.Credential, private ed25519.PrivateKey) (serviceconn.Result, error) {
 	session := admit(ctx, endpoint, value.admin, "administration", value.now)
 	return endpoint.Do(ctx, serviceconn.Request{Action: "publish", Principal: value.admin, Session: session,
-		Credential: credential, InstancePrivate: private, IntroductionAcknowledgement: [32]byte{1}, At: value.now})
+		Credential: credential, InstancePrivate: private,
+		IntroductionAcknowledgement: value.acknowledgement(credential), At: value.now})
+}
+
+func (value fixture) acknowledgement(credential serviceconn.Credential) []byte {
+	body := make([]byte, 149)
+	copy(body[:4], "ASIA")
+	body[4] = 1
+	copy(body[5:37], credential.Target[:])
+	binary.BigEndian.PutUint64(body[37:45], credential.Generation)
+	binary.BigEndian.PutUint64(body[45:53], uint64(credential.NotAfter))
+	copy(body[53:85], credential.NetworkID[:])
+	body[85] = 4
+	body[117] = 1
+	message := append([]byte("ardents-h3-introduction-ack-v1\x00"), body...)
+	return append(body, ed25519.Sign(value.introductionPrivate, message)...)
 }

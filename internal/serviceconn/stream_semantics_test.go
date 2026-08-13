@@ -72,7 +72,8 @@ func TestMalformedAndOversizedPublicationsAreTargetAuthenticationFailures(t *tes
 	fixture := newFixture(t)
 	for _, publication := range [][]byte{{1, 2, 3}, make([]byte, 9<<10)} {
 		client, _ := serviceconn.New(serviceconn.Setup{NetworkID: fixture.networkID, BrokerID: [32]byte{8},
-			AuthorityPublic: fixture.authorityPublic, ConnectionPrincipal: fixture.clientPrincipal})
+			AuthorityPublic: fixture.authorityPublic, IntroductionPublic: fixture.introductionPublic,
+			ConnectionPrincipal: fixture.clientPrincipal})
 		session := admit(t, client, "connection", fixture.clientPrincipal, fixture.now)
 		result, err := client.Do(context.Background(), serviceconn.Request{Action: "connect",
 			Principal: fixture.clientPrincipal, Session: session, Target: fixture.first.Target,
@@ -88,7 +89,8 @@ func connectedEndpoints(t *testing.T, fixture fixture) (*serviceconn.Endpoint, *
 	publisher := newPublisher(t, fixture)
 	publication := publish(t, publisher, fixture, fixture.first, fixture.firstPrivate)
 	client, err := serviceconn.New(serviceconn.Setup{NetworkID: fixture.networkID, BrokerID: [32]byte{8},
-		AuthorityPublic: fixture.authorityPublic, ConnectionPrincipal: fixture.clientPrincipal})
+		AuthorityPublic: fixture.authorityPublic, IntroductionPublic: fixture.introductionPublic,
+		ConnectionPrincipal: fixture.clientPrincipal})
 	if err != nil {
 		t.Fatal(err)
 	}

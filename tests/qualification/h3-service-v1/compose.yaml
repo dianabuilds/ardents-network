@@ -38,7 +38,7 @@ services:
     profiles: [setup]
     user: "0:0"
     cap_add: [CHOWN]
-    command: [/usr/local/bin/ardents-service-volume-init, "${ARDENTS_SERVICE_RUNTIME_USER:?}", /run/ardents/publisher-app, /run/ardents/publisher-route, /run/ardents/client-app, /run/ardents/client-route, /run/ardents/admin, /run/ardents/publication]
+    command: [/usr/local/bin/ardents-service-volume-init, "${ARDENTS_SERVICE_RUNTIME_USER:?}", /run/ardents/publisher-app, /run/ardents/publisher-route, /run/ardents/client-app, /run/ardents/client-route, /run/ardents/admin, /run/ardents/publication, /run/ardents/introduction-ack, /run/ardents/lifecycle]
     volumes:
       - publisher_app:/run/ardents/publisher-app
       - publisher_route:/run/ardents/publisher-route
@@ -46,6 +46,8 @@ services:
       - client_route:/run/ardents/client-route
       - administration:/run/ardents/admin
       - publication:/run/ardents/publication
+      - introduction_ack:/run/ardents/introduction-ack
+      - lifecycle:/run/ardents/lifecycle
   publisher-endpoint:
     <<: [*local, *build]
     command: [/usr/local/bin/ardents-service, run, /run/ardents/plan.json]
@@ -57,6 +59,8 @@ services:
       - publisher_route:/run/ardents/publisher-route
       - administration:/run/ardents/admin
       - publication:/run/ardents/publication
+      - introduction_ack:/run/ardents/introduction-ack
+      - lifecycle:/run/ardents/lifecycle
   publication-operator:
     <<: *local
     command: [/usr/local/bin/ardents-publish-app, publish, /run/ardents/admin/admin.sock]
@@ -106,7 +110,7 @@ services:
   introduction:
     <<: *route
     command: [/usr/local/bin/ardents-route, run, /run/ardents/plan.json]
-    volumes: [{type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/plans/introduction.json", target: /run/ardents/plan.json, read_only: true, bind: {create_host_path: false}}, {type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/secrets/introduction", target: /run/ardents/secrets, read_only: true, bind: {create_host_path: false}}]
+    volumes: [{type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/plans/introduction.json", target: /run/ardents/plan.json, read_only: true, bind: {create_host_path: false}}, {type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/secrets/introduction", target: /run/ardents/secrets, read_only: true, bind: {create_host_path: false}}, introduction_ack:/run/ardents/introduction-ack]
     networks: {route_net: {ipv4_address: 172.31.20.12}}
   initiator:
     <<: *route
@@ -140,3 +144,5 @@ volumes:
   client_route: {}
   administration: {}
   publication: {}
+  introduction_ack: {}
+  lifecycle: {}

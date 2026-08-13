@@ -70,7 +70,23 @@ func exchange(connection io.ReadWriter, role string, sendSeed, expectSeed byte, 
 	transfers := make(chan transfer, 2)
 	var writers sync.WaitGroup
 	writers.Add(1)
-	go func() { defer writers.Done(); _, err := connection.Write(sent); transfers <- transfer{err: err} }()
+	go func() {
+		defer writers.Done()
+		written := 0
+		for written < len(sent) {
+			count, writeErr := connection.Write(sent[written:])
+			written += count
+			if writeErr != nil {
+				transfers <- transfer{err: writeErr}
+				return
+			}
+			if count == 0 {
+				transfers <- transfer{err: io.ErrShortWrite}
+				return
+			}
+		}
+		transfers <- transfer{}
+	}()
 	go func() {
 		value := make([]byte, count)
 		_, err := io.ReadFull(connection, value)

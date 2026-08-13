@@ -15,7 +15,6 @@ func main() {
 		os.Exit(1)
 	}
 }
-
 func run(ctx context.Context, arguments []string, output io.Writer) error {
 	if len(arguments) != 2 || arguments[0] != "run" || arguments[1] == "" {
 		return errors.New("usage: ardents-service run <endpoint-plan.json>")

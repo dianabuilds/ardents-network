@@ -36,13 +36,26 @@ func (value fixture) connectionAdministration(ctx context.Context) bool {
 	session := admit(ctx, endpoint, value.connection, "connection", value.now)
 	result, err := endpoint.Do(ctx, serviceconn.Request{Action: "publish", Principal: value.connection,
 		Session: session, Credential: value.first, InstancePrivate: value.firstPrivate,
-		IntroductionAcknowledgement: [32]byte{1}, At: value.now})
+		IntroductionAcknowledgement: value.acknowledgement(value.first), At: value.now})
 	return denied(result, err)
 }
 
 func (value fixture) credentialOnly(ctx context.Context) bool {
 	result, err := value.endpoint().Do(ctx, serviceconn.Request{Action: "publish", Principal: value.admin,
 		Credential: value.first, InstancePrivate: value.firstPrivate,
-		IntroductionAcknowledgement: [32]byte{1}, At: value.now})
+		IntroductionAcknowledgement: value.acknowledgement(value.first), At: value.now})
+	return denied(result, err)
+}
+
+func (value fixture) administrationConnection(ctx context.Context) bool {
+	endpoint := value.endpoint()
+	session := admit(ctx, endpoint, value.admin, "administration", value.now)
+	result, err := endpoint.Do(ctx, serviceconn.Request{Action: "connect", Principal: value.admin,
+		Session: session, Target: value.first.Target, At: value.now})
+	return denied(result, err)
+}
+
+func (value fixture) forbiddenAdministrationAction(ctx context.Context, action string) bool {
+	result, err := value.endpoint().Do(ctx, serviceconn.Request{Action: action, Principal: value.admin, At: value.now})
 	return denied(result, err)
 }

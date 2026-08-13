@@ -13,7 +13,7 @@ const challengeSize = 4 + 1 + 32 + 8 + 32
 const proofSize = 4 + 1 + ed25519.SignatureSize
 
 func (endpoint *Endpoint) connect(ctx context.Context, input Request) (Result, error) {
-	if err := endpoint.consume(input.Session, input.Principal, "connection"); err != nil {
+	if err := endpoint.consume(input.Session, input.Principal, "connection", input.At); err != nil {
 		return denied(err.Error())
 	}
 	credential, err := decodePublication(input.Publication, endpoint.authority, endpoint.network, input.At)
@@ -30,7 +30,8 @@ func (endpoint *Endpoint) connect(ctx context.Context, input Request) (Result, e
 		_ = input.Application.Close()
 	})
 	defer stop()
-	if err := authenticateInstance(input.Route, credential); err != nil {
+	canary, err := authenticateInstance(input.Route, credential)
+	if err != nil {
 		return failed("service target authentication failure", "current Service Instance proof failed", err)
 	}
 	accepted, received, err := exchangeExact(input.Application, input.Route, input.BytesEachDirection)
@@ -39,11 +40,11 @@ func (endpoint *Endpoint) connect(ctx context.Context, input Request) (Result, e
 	}
 	return Result{Class: "clean service connection close", AuthenticatedTarget: credential.Target,
 		Generation: credential.Generation, AcceptedBytes: input.BytesEachDirection,
-		ReceivedBytes: input.BytesEachDirection}, nil
+		ReceivedBytes: input.BytesEachDirection, ConnectionCanary: canary}, nil
 }
 
 func (endpoint *Endpoint) accept(ctx context.Context, input Request) (Result, error) {
-	if err := endpoint.consume(input.Session, input.Principal, "connection"); err != nil {
+	if err := endpoint.consume(input.Session, input.Principal, "connection", input.At); err != nil {
 		return denied(err.Error())
 	}
 	if err := validateStreams(input); err != nil {
@@ -58,6 +59,7 @@ func (endpoint *Endpoint) accept(ctx context.Context, input Request) (Result, er
 	private := append(ed25519.PrivateKey(nil), endpoint.current.private...)
 	endpoint.mu.Unlock()
 	defer erase(private)
+	defer endpoint.retire(credential.Generation)
 	defer input.Route.Close()
 	defer input.Application.Close()
 	stop := context.AfterFunc(ctx, func() {
@@ -65,7 +67,8 @@ func (endpoint *Endpoint) accept(ctx context.Context, input Request) (Result, er
 		_ = input.Application.Close()
 	})
 	defer stop()
-	if err := proveInstance(input.Route, credential, private); err != nil {
+	canary, err := proveInstance(input.Route, credential, private)
+	if err != nil {
 		return failed("service target authentication failure", "incoming exact Target proof failed", err)
 	}
 	accepted, received, err := exchangeExact(input.Application, input.Route, input.BytesEachDirection)
@@ -74,7 +77,7 @@ func (endpoint *Endpoint) accept(ctx context.Context, input Request) (Result, er
 	}
 	return Result{Class: "clean service connection close", AuthenticatedTarget: credential.Target,
 		Generation: credential.Generation, AcceptedBytes: input.BytesEachDirection,
-		ReceivedBytes: input.BytesEachDirection}, nil
+		ReceivedBytes: input.BytesEachDirection, ConnectionCanary: canary}, nil
 }
 
 func validateStreams(input Request) error {
@@ -84,43 +87,47 @@ func validateStreams(input Request) error {
 	return nil
 }
 
-func authenticateInstance(connection io.ReadWriter, credential Credential) error {
+func authenticateInstance(connection io.ReadWriter, credential Credential) ([32]byte, error) {
+	var canary [32]byte
 	challenge := make([]byte, challengeSize)
 	copy(challenge[:4], "ASCH")
 	challenge[4] = 1
 	copy(challenge[5:37], credential.Target[:])
 	binary.BigEndian.PutUint64(challenge[37:45], credential.Generation)
 	if _, err := rand.Read(challenge[45:]); err != nil {
-		return err
+		return canary, err
 	}
+	copy(canary[:], challenge[45:])
 	if err := writeAll(connection, challenge); err != nil {
-		return err
+		return canary, err
 	}
 	proof := make([]byte, proofSize)
 	if _, err := io.ReadFull(connection, proof); err != nil {
-		return err
+		return canary, err
 	}
 	if string(proof[:4]) != "ASPR" || proof[4] != 1 ||
 		!ed25519.Verify(ed25519.PublicKey(credential.InstancePublic[:]), proofMessage(challenge), proof[5:]) {
-		return errors.New("instance proof is invalid")
+		return canary, errors.New("instance proof is invalid")
 	}
-	return nil
+	return canary, nil
 }
 
-func proveInstance(connection io.ReadWriter, credential Credential, private ed25519.PrivateKey) error {
+func proveInstance(connection io.ReadWriter, credential Credential, private ed25519.PrivateKey) ([32]byte, error) {
+	var canary [32]byte
 	challenge := make([]byte, challengeSize)
 	if _, err := io.ReadFull(connection, challenge); err != nil {
-		return err
+		return canary, err
 	}
 	if string(challenge[:4]) != "ASCH" || challenge[4] != 1 ||
 		!equal32(challenge[5:37], credential.Target) || binary.BigEndian.Uint64(challenge[37:45]) != credential.Generation {
-		return errors.New("connection challenge does not bind current Target and generation")
+		return canary, errors.New("connection challenge does not bind current Target and generation")
 	}
+	copy(canary[:], challenge[45:])
 	proof := make([]byte, proofSize)
 	copy(proof[:4], "ASPR")
 	proof[4] = 1
 	copy(proof[5:], ed25519.Sign(private, proofMessage(challenge)))
-	return writeAll(connection, proof)
+	return canary, writeAll(connection, proof)
 }
 
 func proofMessage(challenge []byte) []byte {

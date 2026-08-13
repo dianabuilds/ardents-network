@@ -17,6 +17,7 @@ type actorPlan struct {
 	NextNodeID, Next, NextPin, ServiceCertificate, ServiceKey string
 	Deadline, StateRoot, At, Seed, PublisherPin               string
 	Stream                                                    string
+	AcknowledgementSocket, AcknowledgementKey                 string
 	Authorities, ExcludedFamilies, ExcludedDomains            []string
 	ExcludedIdentities                                        []string
 	Threshold                                                 int
@@ -44,6 +45,13 @@ func (value actorPlan) validateRoleLocal() error {
 		}
 	default:
 		return errors.New("role plan has an invalid actor role")
+	}
+	if value.Role == "introduction" {
+		if (value.AcknowledgementSocket == "") != (value.AcknowledgementKey == "") {
+			return errors.New("introduction acknowledgement surface is incomplete")
+		}
+	} else if value.AcknowledgementSocket != "" || value.AcknowledgementKey != "" {
+		return errors.New("non-introduction plan contains publication acknowledgement input")
 	}
 	return nil
 }

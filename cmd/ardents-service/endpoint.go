@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"crypto/ed25519"
+	"errors"
+	"io"
 	"os"
 	"time"
 
@@ -28,9 +30,12 @@ func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (servicec
 		return serviceconn.Result{}, err
 	}
 	defer closeLocal(routeListener, plan.RouteSocket)
+	var published serviceconn.Result
 	if plan.Role == "publisher" {
-		if err := publishCurrent(endpoint, plan, at, deadline, ready); err != nil {
-			return serviceconn.Result{}, err
+		var publishErr error
+		published, publishErr = publishCurrent(endpoint, plan, at, deadline, ready)
+		if publishErr != nil {
+			return serviceconn.Result{}, publishErr
 		}
 	} else if ready != nil {
 		ready()
@@ -56,21 +61,26 @@ func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (servicec
 		if err := fixedHex(plan.Target, request.Target[:]); err != nil {
 			return serviceconn.Result{}, err
 		}
-		request.Publication, err = os.ReadFile(plan.PublicationFile)
-		if err != nil {
-			return serviceconn.Result{}, err
+		file, openErr := os.Open(plan.PublicationFile)
+		if openErr != nil {
+			return serviceconn.Result{}, openErr
+		}
+		request.Publication, err = io.ReadAll(io.LimitReader(file, 4<<10+1))
+		closeErr := file.Close()
+		if err != nil || closeErr != nil || len(request.Publication) > 4<<10 {
+			return serviceconn.Result{}, errors.Join(err, closeErr, errors.New("publication file is invalid or oversized"))
 		}
 	}
-	return endpoint.Do(ctx, request)
-}
-
-func (plan endpointPlan) roleAction() string {
-	if plan.Role == "client" {
-		return "connect"
+	operation, cancel := context.WithTimeout(ctx, deadline)
+	defer cancel()
+	result, err := endpoint.Do(operation, request)
+	result.IntroductionReceipt = published.IntroductionReceipt
+	if plan.Role == "publisher" {
+		result.IntroductionAcknowledgement = published.IntroductionAcknowledgement
+		err = errors.Join(err, os.Remove(plan.PublicationFile))
 	}
-	return "accept"
+	return result, err
 }
-
 func endpointSetup(plan endpointPlan) (serviceconn.Setup, time.Time, time.Duration, error) {
 	var setup serviceconn.Setup
 	for _, field := range []struct {
@@ -89,6 +99,11 @@ func endpointSetup(plan endpointPlan) (serviceconn.Setup, time.Time, time.Durati
 	if err := fixedHex(plan.AuthorityPublic, setup.AuthorityPublic); err != nil {
 		return setup, time.Time{}, 0, err
 	}
+	setup.IntroductionPublic = make([]byte, ed25519.PublicKeySize)
+	if err := fixedHex(plan.IntroductionPublic, setup.IntroductionPublic); err != nil {
+		return setup, time.Time{}, 0, err
+	}
+	setup.GenerationStateFile = plan.GenerationStateFile
 	at, err := time.Parse(time.RFC3339, plan.At)
 	if err != nil {
 		return setup, time.Time{}, 0, err
@@ -96,7 +111,6 @@ func endpointSetup(plan endpointPlan) (serviceconn.Setup, time.Time, time.Durati
 	deadline, err := time.ParseDuration(plan.Deadline)
 	return setup, at, deadline, err
 }
-
 func admit(endpoint *serviceconn.Endpoint, principal [32]byte, surface string, at time.Time) ([32]byte, error) {
 	result, err := endpoint.Do(context.Background(), serviceconn.Request{Action: "admit", Surface: surface, Principal: principal, At: at})
 	return result.Session, err

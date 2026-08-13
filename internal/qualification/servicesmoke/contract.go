@@ -21,6 +21,8 @@ type Result struct {
 	Attempts                                      int
 	Elapsed                                       time.Duration
 	DockerCleanup, FixtureCleanup                 bool
+	attemptFiles                                  []string
+	dockerProject, imageTag                       string
 }
 
 // Run executes complete generation-1 to generation-2 attempts for the duration.
@@ -48,6 +50,12 @@ func Run(input Config) Result {
 		result.Reason = errors.Join(errors.New(result.Reason), cleanupErr).Error()
 	} else {
 		result.FixtureCleanup = true
+	}
+	if result.Verdict == "pass" {
+		if verifyErr := verifyRetained(ctx, input, &result); verifyErr != nil {
+			result.Verdict = "fail"
+			result.Reason = verifyErr.Error()
+		}
 	}
 	result.Elapsed = time.Since(started)
 	return finalize(input, result)
