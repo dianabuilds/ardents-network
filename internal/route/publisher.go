@@ -52,6 +52,15 @@ func servePublisher(ctx context.Context, input Actor, ready func(Evidence)) (Evi
 		return observation, fmt.Errorf("accept end-to-end canary session: %w", err)
 	}
 	observation.PeerAuthenticated = true
+	if input.Stream != nil {
+		defer input.Stream.Close()
+		count, digest, streamErr := relayOpaque(inner, input.Stream)
+		observation.OpaqueBytes, observation.OpaqueDigest = count, digest
+		if streamErr != nil && !benignStreamError(streamErr) {
+			return observation, fmt.Errorf("carry bounded publisher stream: %w", streamErr)
+		}
+		return observation, nil
+	}
 	value, err := readCanary(inner)
 	if err != nil {
 		return observation, fmt.Errorf("read canary: %w", err)

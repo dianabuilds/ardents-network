@@ -2,6 +2,7 @@ package route
 
 import (
 	"crypto/tls"
+	"io"
 	"time"
 )
 
@@ -25,6 +26,7 @@ type Actor struct {
 	PublisherPin       [32]byte
 	ClientCertificate  tls.Certificate
 	ServiceCertificate tls.Certificate
+	Stream             io.ReadWriteCloser
 	Deadline           time.Duration
 }
 

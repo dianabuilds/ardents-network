@@ -16,6 +16,7 @@ type actorPlan struct {
 	Listen, Certificate, Key, UpstreamPin                     string
 	NextNodeID, Next, NextPin, ServiceCertificate, ServiceKey string
 	Deadline, StateRoot, At, Seed, PublisherPin               string
+	Stream                                                    string
 	Authorities, ExcludedFamilies, ExcludedDomains            []string
 	ExcludedIdentities                                        []string
 	Threshold                                                 int
@@ -38,7 +39,7 @@ func (value actorPlan) validateRoleLocal() error {
 			return errors.New("publisher plan contains information outside its role-local duty")
 		}
 	case "initiator", "introduction", "rendezvous", "responder":
-		if clientOnly || serviceOnly {
+		if clientOnly || serviceOnly || value.Stream != "" {
 			return errors.New("node plan contains information outside its role-local duty")
 		}
 	default:

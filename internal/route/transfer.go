@@ -56,6 +56,15 @@ func transfer(ctx context.Context, input Actor) (Evidence, error) {
 		return evidence, fmt.Errorf("authenticate publisher through Route: %w", err)
 	}
 	evidence.PeerAuthenticated = true
+	if input.Stream != nil {
+		defer input.Stream.Close()
+		count, digest, streamErr := relayOpaque(input.Stream, inner)
+		evidence.OpaqueBytes, evidence.OpaqueDigest = count, digest
+		if streamErr != nil && !benignStreamError(streamErr) {
+			return evidence, fmt.Errorf("carry bounded Service Connection stream: %w", streamErr)
+		}
+		return evidence, nil
+	}
 	if err := writeCanary(inner, canary); err != nil {
 		return evidence, fmt.Errorf("write canary: %w", err)
 	}

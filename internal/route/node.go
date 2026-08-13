@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"syscall"
 	"time"
 )
 
@@ -63,13 +64,18 @@ func serveNode(ctx context.Context, input Actor, ready func(Evidence)) (Evidence
 	count, digest, err := relayOpaque(securedUpstream, downstream)
 	observation.OpaqueBytes, observation.OpaqueDigest = count, digest
 	if err != nil {
-		return observation, err
+		if ctx.Err() != nil {
+			return observation, ctx.Err()
+		}
+		if !benignStreamError(err) {
+			return observation, err
+		}
 	}
 	return observation, nil
 }
 
 func validateNode(input Actor) error {
-	if !emptyPlan(input.Plan) || input.PublisherPin != [32]byte{} ||
+	if !emptyPlan(input.Plan) || input.PublisherPin != [32]byte{} || input.Stream != nil ||
 		!emptyCertificate(input.ClientCertificate) || !emptyCertificate(input.ServiceCertificate) {
 		return errors.New("node received information outside its role-local duty")
 	}
@@ -93,19 +99,19 @@ func validateNode(input Actor) error {
 	return validateDeadline(input.Deadline)
 }
 
-func relayOpaque(upstream, downstream net.Conn) (uint64, [32]byte, error) {
+func relayOpaque(upstream, downstream io.ReadWriteCloser) (uint64, [32]byte, error) {
 	hash := sha256.New()
 	type copyResult struct {
 		count int64
 		err   error
 	}
 	results := make(chan copyResult, 2)
-	copyDirection := func(destination, source net.Conn, record bool) {
+	copyDirection := func(destination, source io.ReadWriteCloser, record bool) {
 		writer := io.Writer(destination)
 		if record {
 			writer = io.MultiWriter(destination, hash)
 		}
-		count, err := io.Copy(writer, io.LimitReader(source, 64<<10))
+		count, err := io.Copy(writer, io.LimitReader(source, 128<<10))
 		if closer, ok := destination.(interface{ CloseWrite() error }); ok {
 			_ = closer.CloseWrite()
 		}
@@ -120,6 +126,11 @@ func relayOpaque(upstream, downstream net.Conn) (uint64, [32]byte, error) {
 		return uint64(first.count), digest, errors.Join(first.err, second.err)
 	}
 	return uint64(first.count), digest, nil
+}
+
+func benignStreamError(err error) bool {
+	return err == nil || errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed) || errors.Is(err, io.ErrClosedPipe) ||
+		errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.EPIPE)
 }
 
 func contextError(ctx context.Context, err error) error {

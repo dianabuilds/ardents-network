@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/tls"
 	"errors"
+	"net"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
@@ -42,6 +43,14 @@ func (raw actorPlan) listener() (route.Actor, func(), error) {
 		actor.ServiceCertificate, err = tls.LoadX509KeyPair(raw.ServiceCertificate, raw.ServiceKey)
 		if err != nil {
 			return route.Actor{}, nil, err
+		}
+		if raw.Stream != "" {
+			stream, dialErr := net.DialTimeout("unix", raw.Stream, deadline)
+			if dialErr != nil {
+				return route.Actor{}, nil, dialErr
+			}
+			actor.Stream = stream
+			return actor, func() { _ = stream.Close() }, nil
 		}
 	} else {
 		if err := fixedHex(raw.NextNodeID, actor.NextNodeID[:]); err != nil {

@@ -1,0 +1,101 @@
+package main
+
+import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net"
+	"os"
+	"strconv"
+	"sync"
+	"time"
+)
+
+type observation struct {
+	Schema         string   `json:"schema"`
+	Role           string   `json:"role"`
+	Terminal       string   `json:"terminal"`
+	SentBytes      uint32   `json:"sent_bytes"`
+	ReceivedBytes  uint32   `json:"received_bytes"`
+	SentDigest     [32]byte `json:"sent_digest"`
+	ReceivedDigest [32]byte `json:"received_digest"`
+}
+
+func main() {
+	if err := run(os.Args[1:], os.Stdout); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func run(arguments []string, output io.Writer) error {
+	if len(arguments) != 6 || arguments[0] != "run" {
+		return errors.New("usage: ardents-stream-app run <role> <socket> <send-seed> <expect-seed> <bytes>")
+	}
+	sendSeed, err := strconv.Atoi(arguments[3])
+	if err != nil {
+		return err
+	}
+	expectSeed, err := strconv.Atoi(arguments[4])
+	if err != nil {
+		return err
+	}
+	count, err := strconv.Atoi(arguments[5])
+	if err != nil || count < 1 || count > 64<<10 {
+		return errors.New("stream byte count is outside its bound")
+	}
+	connection, err := net.DialTimeout("unix", arguments[2], 5*time.Second)
+	if err != nil {
+		return err
+	}
+	defer connection.Close()
+	result, err := exchange(connection, arguments[1], byte(sendSeed), byte(expectSeed), count)
+	if encodeErr := json.NewEncoder(output).Encode(result); encodeErr != nil {
+		return errors.Join(err, encodeErr)
+	}
+	return err
+}
+
+func exchange(connection io.ReadWriter, role string, sendSeed, expectSeed byte, count int) (observation, error) {
+	sent, expected := workload(count, sendSeed), workload(count, expectSeed)
+	result := observation{Schema: "ardents-h3-stream-application-v1", Role: role,
+		SentBytes: uint32(count), SentDigest: sha256.Sum256(sent)}
+	type transfer struct {
+		value []byte
+		err   error
+	}
+	transfers := make(chan transfer, 2)
+	var writers sync.WaitGroup
+	writers.Add(1)
+	go func() { defer writers.Done(); _, err := connection.Write(sent); transfers <- transfer{err: err} }()
+	go func() {
+		value := make([]byte, count)
+		_, err := io.ReadFull(connection, value)
+		transfers <- transfer{value: value, err: err}
+	}()
+	first, second := <-transfers, <-transfers
+	writers.Wait()
+	received := first.value
+	if received == nil {
+		received = second.value
+	}
+	err := errors.Join(first.err, second.err)
+	result.ReceivedBytes, result.ReceivedDigest = uint32(len(received)), sha256.Sum256(received)
+	if err != nil || !bytes.Equal(received, expected) {
+		result.Terminal = "error"
+		return result, errors.Join(err, errors.New("opaque stream length, order, or bytes differ"))
+	}
+	result.Terminal = "success"
+	return result, nil
+}
+
+func workload(count int, seed byte) []byte {
+	value := make([]byte, count)
+	for index := range value {
+		value[index] = byte((index*131 + int(seed)) % 251)
+	}
+	return value
+}

@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"crypto/sha256"
 	"crypto/tls"
+	"net"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
@@ -67,8 +68,18 @@ func (raw actorPlan) client() (route.Actor, func(), error) {
 		opened.Close()
 		return route.Actor{}, nil, err
 	}
-	return route.Actor{Role: "client", ManifestDigest: manifest, Plan: plan, ClientCertificate: certificate,
-		PublisherPin: publisher, Deadline: deadline}, func() { _ = opened.Close() }, nil
+	actor := route.Actor{Role: "client", ManifestDigest: manifest, Plan: plan, ClientCertificate: certificate,
+		PublisherPin: publisher, Deadline: deadline}
+	if raw.Stream != "" {
+		stream, dialErr := net.DialTimeout("unix", raw.Stream, deadline)
+		if dialErr != nil {
+			opened.Close()
+			return route.Actor{}, nil, dialErr
+		}
+		actor.Stream = stream
+		return actor, func() { _ = stream.Close(); _ = opened.Close() }, nil
+	}
+	return actor, func() { _ = opened.Close() }, nil
 }
 
 func identities(values []string) ([][32]byte, error) {
