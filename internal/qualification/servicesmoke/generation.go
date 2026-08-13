@@ -138,11 +138,17 @@ func (observer dockerObserver) collectGeneration(ctx context.Context, fixture pr
 func endpointReceipt(value serviceconn.Result) endpointEvidence {
 	return endpointEvidence{Class: value.Class, AuthenticatedTarget: value.AuthenticatedTarget,
 		Generation: value.Generation, AcceptedBytes: value.AcceptedBytes, ReceivedBytes: value.ReceivedBytes,
-		ConnectionCanary: value.ConnectionCanary}
+		ConnectionCanary: value.ConnectionCanary, PrincipalCommitment: value.PrincipalCommitment,
+		SessionCommitment: value.SessionCommitment, GrantSurface: value.GrantSurface,
+		SessionConsumed: value.SessionConsumed, MemoryHighWater: value.MemoryHighWater, CPUSeconds: value.CPUSeconds,
+		OpenFilesHighWater: value.OpenFilesHighWater, GoroutinesHighWater: value.GoroutinesHighWater,
+		ActiveSessions: value.ActiveSessions, TimerHighWater: value.TimerHighWater, QueueHighWater: value.QueueHighWater,
+		TempEntries: value.TempEntries}
 }
 
 func routeReceipt(value route.Evidence) roleEvidence {
 	return roleEvidence{Role: value.Role, RuntimeID: value.RuntimeID, Terminal: value.Terminal,
 		PID: value.PID, Cleanup: value.Cleanup, ManifestDigest: value.ManifestDigest,
-		NetworkID: value.NetworkID, OpaqueBytes: value.OpaqueBytes}
+		NetworkID: value.NetworkID, OpaqueBytes: value.OpaqueBytes, SourceID: value.SourceID,
+		BuildDigest: value.BuildDigest, OpaqueDigest: value.OpaqueDigest}
 }

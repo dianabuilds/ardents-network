@@ -1,8 +1,9 @@
-package main
+package servicenegative
 
 import (
 	"context"
 	"crypto/ed25519"
+	"net"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/serviceconn"
@@ -18,6 +19,41 @@ func (value fixture) wrongTarget(ctx context.Context) bool {
 	result, err := client.Do(ctx, serviceconn.Request{Action: "connect", Principal: value.connection,
 		Session: session, Target: [32]byte{44}, Publication: published.Publication, At: value.now})
 	return targetFailure(result, err)
+}
+
+func (value fixture) staleGenerationNewWork(ctx context.Context) bool {
+	publisher := value.endpoint()
+	first, err := publish(ctx, publisher, value, value.first, value.firstPrivate)
+	if err != nil {
+		return false
+	}
+	if _, err := publish(ctx, publisher, value, value.second, value.secondPrivate); err != nil {
+		return false
+	}
+	client := value.endpointWithBroker([32]byte{8})
+	clientRoute, publisherRoute := net.Pipe()
+	clientApp, clientPeer := net.Pipe()
+	publisherApp, publisherPeer := net.Pipe()
+	defer clientPeer.Close()
+	defer publisherPeer.Close()
+	attempt, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+	results := make(chan bool, 2)
+	go func() {
+		session := admit(attempt, publisher, value.connection, "connection", value.now)
+		result, acceptErr := publisher.Do(attempt, serviceconn.Request{Action: "accept", Principal: value.connection,
+			Session: session, Route: publisherRoute, Application: publisherApp, BytesEachDirection: 1, At: value.now})
+		results <- targetFailure(result, acceptErr)
+	}()
+	go func() {
+		session := admit(attempt, client, value.connection, "connection", value.now)
+		result, connectErr := client.Do(attempt, serviceconn.Request{Action: "connect", Principal: value.connection,
+			Session: session, Target: value.first.Target, Publication: first.Publication,
+			Route: clientRoute, Application: clientApp, BytesEachDirection: 1, At: value.now})
+		results <- targetFailure(result, connectErr)
+	}()
+	clientRejected, publisherRejected := <-results, <-results
+	return clientRejected && publisherRejected
 }
 
 func (value fixture) wrongKey(ctx context.Context) bool {

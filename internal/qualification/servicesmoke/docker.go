@@ -78,13 +78,15 @@ func runDocker(ctx context.Context, input Config, fixture prepared) (result Resu
 			generations = append(generations, observation)
 			ungranted = ungranted && hostileRejected
 		}
-		negatives, negativeErr := observer.negativeReceipt(ctx)
+		negative, negativeErr := observer.negativeReceipt(ctx)
 		if negativeErr != nil {
 			return Result{Verdict: "fail", Reason: negativeErr.Error(), EvidenceRoot: input.EvidenceRoot,
 				Attempts: attempts, SourceCommit: commit, ImageID: imageID}
 		}
-		negatives["ungranted-sibling"] = ungranted
-		evidence := newAttemptEvidence(fixture, commit, imageID, generations, negatives, shortcuts)
+		negative.Negatives["ungranted-sibling"] = ungranted
+		negative.Mechanisms["ungranted-sibling"] = "hostile-sibling-volume-boundary"
+		evidence := newAttemptEvidence(fixture, commit, imageID, string(topology), generations,
+			negative, shortcuts)
 		observer.evidenceFile, err = writeAttempt(attemptRoot, evidence)
 		if err != nil {
 			return observer.invalid(err)
@@ -112,6 +114,8 @@ func verifyRetained(ctx context.Context, input Config, result *Result) error {
 		observer.evidenceFile = filepath.Join(input.EvidenceRoot, "empty.json")
 		_, _ = observer.compose(context.Background(), 2*time.Minute, "down", "-v", "--remove-orphans")
 	}()
+	observed := cleanupObservation{Observed: true, Project: result.dockerProject, FixtureAbsent: true,
+		Containers: []string{}, Networks: []string{}, Volumes: []string{}}
 	for _, kind := range []string{"container", "network", "volume"} {
 		raw, err := observer.docker(ctx, time.Minute, kind, "ls", "-q", "--filter",
 			"label=com.docker.compose.project="+result.dockerProject)
@@ -131,6 +135,7 @@ func verifyRetained(ctx context.Context, input Config, result *Result) error {
 		for name := range evidence.Cleanup {
 			evidence.Cleanup[name] = true
 		}
+		evidence.CleanupObservation = observed
 		evidence.PrivateMaterialAbsent = true
 		if _, err := writeAttempt(filepath.Dir(evidenceFile), evidence); err != nil {
 			return err
@@ -166,8 +171,8 @@ func (observer dockerObserver) invalid(err error) Result {
 		SourceCommit: observer.sourceCommit, ImageID: observer.image}
 }
 
-func newAttemptEvidence(fixture prepared, commit, image string, generations []generationEvidence,
-	negatives, shortcuts map[string]bool) attemptEvidence {
+func newAttemptEvidence(fixture prepared, commit, image, topology string, generations []generationEvidence,
+	negative negativeReceipt, shortcuts map[string]bool) attemptEvidence {
 	cleanup := map[string]bool{}
 	for _, name := range []string{"containers", "network", "listeners", "sockets", "processes", "sessions", "publications"} {
 		cleanup[name] = false
@@ -175,6 +180,8 @@ func newAttemptEvidence(fixture prepared, commit, image string, generations []ge
 	return attemptEvidence{Schema: "ardents-h3-service-evidence-v1", SourceCommit: commit, ImageID: image,
 		ManifestDigest: hex32(fixture.manifest), NetworkID: fixture.network, AuthorityPublic: fixture.authority,
 		IntroductionPublic: fixture.introduction, RouteManifestDigest: fixture.routeManifest,
-		Target: fixture.target, Generations: generations, Negatives: negatives, ShortcutsAbsent: shortcuts,
+		Target: fixture.target, Topology: topology, Generations: generations, Negatives: negative.Negatives,
+		NegativeMechanisms: negative.Mechanisms, OperationObservations: negative.Operations,
+		OperationClasses: negative.Classes, OperationCounts: negative.Counts, ShortcutsAbsent: shortcuts,
 		Cleanup: cleanup, PrivateMaterialAbsent: false}
 }

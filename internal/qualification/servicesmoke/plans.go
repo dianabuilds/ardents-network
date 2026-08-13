@@ -1,8 +1,6 @@
 package servicesmoke
 
 import (
-	"crypto/ed25519"
-	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -14,15 +12,12 @@ import (
 )
 
 func writeGeneration(root string, generation int, at time.Time, credential serviceconn.Credential,
-	private ed25519.PrivateKey, authority, introduction [32]byte) ([32]byte, error) {
+	authority, introduction [32]byte) ([32]byte, error) {
 	generationRoot := filepath.Join(root, "generations", strconv.Itoa(generation))
 	if err := os.MkdirAll(generationRoot, 0o700); err != nil {
 		return [32]byte{}, err
 	}
 	if err := byteio.WriteJSON(filepath.Join(generationRoot, "credential.json"), credential, 8<<10); err != nil {
-		return [32]byte{}, err
-	}
-	if err := os.WriteFile(filepath.Join(generationRoot, "instance.hex"), []byte(hex.EncodeToString(private)), 0o600); err != nil {
 		return [32]byte{}, err
 	}
 	principals := make([][32]byte, 5)

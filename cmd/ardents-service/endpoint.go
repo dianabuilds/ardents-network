@@ -24,16 +24,16 @@ func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (servicec
 	if err != nil {
 		return serviceconn.Result{}, err
 	}
-	defer closeLocal(applicationListener, plan.ApplicationSocket)
+	defer func() { _ = applicationListener.Close(); _ = os.Remove(plan.ApplicationSocket) }()
 	routeListener, err := listenLocal(plan.RouteSocket, deadline)
 	if err != nil {
 		return serviceconn.Result{}, err
 	}
-	defer closeLocal(routeListener, plan.RouteSocket)
+	defer func() { _ = routeListener.Close(); _ = os.Remove(plan.RouteSocket) }()
 	var published serviceconn.Result
 	if plan.Role == "publisher" {
 		var publishErr error
-		published, publishErr = publishCurrent(endpoint, plan, at, deadline, ready)
+		published, publishErr = publishCurrent(endpoint, plan, setup.AdministrationPrincipal, at, deadline, ready)
 		if publishErr != nil {
 			return serviceconn.Result{}, publishErr
 		}
@@ -44,6 +44,7 @@ func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (servicec
 	if err != nil {
 		return serviceconn.Result{}, err
 	}
+	defer application.Close()
 	route, err := routeListener.Accept()
 	if err != nil {
 		application.Close()
@@ -79,6 +80,7 @@ func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (servicec
 		result.IntroductionAcknowledgement = published.IntroductionAcknowledgement
 		err = errors.Join(err, os.Remove(plan.PublicationFile))
 	}
+	err = errors.Join(err, deliverResult(application, result))
 	return result, err
 }
 func endpointSetup(plan endpointPlan) (serviceconn.Setup, time.Time, time.Duration, error) {

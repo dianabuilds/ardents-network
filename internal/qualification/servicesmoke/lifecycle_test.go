@@ -2,6 +2,9 @@ package servicesmoke
 
 import (
 	"bytes"
+	"crypto/ed25519"
+	"crypto/rand"
+	"encoding/hex"
 	"os"
 	"path/filepath"
 	"testing"
@@ -9,6 +12,20 @@ import (
 )
 
 func TestPrepareCreatesStableTargetChangingInstanceAndCleansPrivateRoot(t *testing.T) {
+	original := generateInstance
+	generateInstance = func(_ string, path string) ([32]byte, error) {
+		public, private, err := ed25519.GenerateKey(rand.Reader)
+		if err != nil {
+			return [32]byte{}, err
+		}
+		if err := os.WriteFile(path, []byte(hex.EncodeToString(private)), 0o600); err != nil {
+			return [32]byte{}, err
+		}
+		var value [32]byte
+		copy(value[:], public)
+		return value, nil
+	}
+	defer func() { generateInstance = original }()
 	parent := t.TempDir()
 	fixtureRoot := filepath.Join(parent, "private")
 	evidenceRoot := filepath.Join(parent, "evidence")

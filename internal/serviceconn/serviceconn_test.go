@@ -124,10 +124,18 @@ func TestPublicationRejectsWrongPossessionValidityScopeAndGeneration(t *testing.
 
 func TestSessionExpiresAndGenerationSurvivesEndpointRestart(t *testing.T) {
 	fixture := newFixture(t)
-	publisher := newPublisher(t, fixture)
+	clock := fixture.now
+	publisher, err := serviceconn.New(serviceconn.Setup{NetworkID: fixture.networkID, BrokerID: [32]byte{7},
+		AuthorityPublic: fixture.authorityPublic, IntroductionPublic: fixture.introductionPublic,
+		ConnectionPrincipal: fixture.publisherPrincipal, AdministrationPrincipal: fixture.administrationPrincipal,
+		Clock: func() time.Time { return clock }})
+	if err != nil {
+		t.Fatal(err)
+	}
 	session := admit(t, publisher, "connection", fixture.publisherPrincipal, fixture.now)
+	clock = clock.Add(16 * time.Second)
 	result, err := publisher.Do(context.Background(), serviceconn.Request{Action: "accept",
-		Principal: fixture.publisherPrincipal, Session: session, At: fixture.now.Add(16 * time.Second)})
+		Principal: fixture.publisherPrincipal, Session: session, At: fixture.now})
 	if err == nil || result.Class != "local authorization or policy denial" {
 		t.Fatalf("expired session remained usable: result=%+v err=%v", result, err)
 	}

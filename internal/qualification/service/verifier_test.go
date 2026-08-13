@@ -48,10 +48,16 @@ func validCandidate(t *testing.T) candidate {
 	input := candidate{Schema: schema, SourceCommit: "0123456789abcdef0123456789abcdef01234567",
 		ImageID: "sha256:" + string(make([]byte, 0)), NetworkID: [32]byte{1}, AuthorityPublic: authority,
 		IntroductionPublic: introduction, RouteManifestDigest: [32]byte{2},
-		Target: targetFor(authority), Generations: make([]generationEvidence, 2),
-		Negatives: map[string]bool{}, ShortcutsAbsent: map[string]bool{}, Cleanup: map[string]bool{}, PrivateMaterialAbsent: true}
+		Target: targetFor(authority), Topology: validTopology(), Generations: make([]generationEvidence, 2),
+		Negatives: map[string]bool{}, NegativeMechanisms: map[string]string{}, ShortcutsAbsent: map[string]bool{}, Cleanup: map[string]bool{}, PrivateMaterialAbsent: true,
+		OperationObservations: map[string]bool{"backpressure": true, "cancellation": true, "partial-write": true},
+		OperationClasses:      map[string]string{"cancellation": "local timeout or cancellation", "partial-write": "abrupt connection loss"},
+		OperationCounts:       map[string]uint32{"cancellation-accepted": 0, "cancellation-received": 0, "partial-low": 1024, "partial-high": 2048},
+		CleanupObservation: cleanupObservation{Observed: true, Project: "stage-3-test", FixtureAbsent: true,
+			Containers: []string{}, Networks: []string{}, Volumes: []string{}}}
 	for _, name := range requiredNegatives {
 		input.Negatives[name] = true
+		input.NegativeMechanisms[name] = expectedNegativeMechanisms[name]
 	}
 	for _, name := range requiredShortcuts {
 		input.ShortcutsAbsent[name] = true
@@ -74,21 +80,28 @@ func validCandidate(t *testing.T) candidate {
 		sentPublisher := sha256.Sum256([]byte{byte(index), 2})
 		endpoint := endpointEvidence{Class: "clean service connection close", AuthenticatedTarget: input.Target,
 			Generation: uint64(index + 1), AcceptedBytes: 64 << 10, ReceivedBytes: 64 << 10,
-			ConnectionCanary: [32]byte{byte(index + 3)}}
+			ConnectionCanary: [32]byte{byte(index + 3)}, PrincipalCommitment: [32]byte{4},
+			SessionCommitment: [32]byte{5}, GrantSurface: "connection", SessionConsumed: true,
+			MemoryHighWater: 1 << 20, CPUSeconds: 1, OpenFilesHighWater: 4, GoroutinesHighWater: 2,
+			TimerHighWater: 1, QueueHighWater: 2}
 		generation := generationEvidence{Generation: uint64(index + 1), Credential: credential,
 			IntroductionAcknowledgement: signedReceipt(credential, input, introductionPrivate), PublicationReady: true,
 			ClientEndpoint: endpoint, PublisherEndpoint: endpoint,
 			ClientApplication: applicationEvidence{Schema: "ardents-h3-stream-application-v1", Role: "client",
 				Terminal: "success", SentBytes: 64 << 10, ReceivedBytes: 64 << 10,
-				SentDigest: sentClient, ReceivedDigest: sentPublisher},
+				SentDigest: sentClient, ReceivedDigest: sentPublisher,
+				ResultClass: "clean service connection close", AuthenticatedTarget: input.Target},
 			PublisherApplication: applicationEvidence{Schema: "ardents-h3-stream-application-v1", Role: "publisher",
 				Terminal: "success", SentBytes: 64 << 10, ReceivedBytes: 64 << 10,
-				SentDigest: sentPublisher, ReceivedDigest: sentClient}, ContainerIDs: make([]string, 12)}
+				SentDigest: sentPublisher, ReceivedDigest: sentClient,
+				ResultClass: "clean service connection close", AuthenticatedTarget: input.Target},
+			ContainerIDs: make([]string, 12)}
 		for roleIndex, role := range routeRoles {
 			runtime := string(rune('a' + index*10 + roleIndex))
 			generation.Roles = append(generation.Roles, roleEvidence{Role: role, PID: index*10 + roleIndex + 1,
 				RuntimeID: runtime, Terminal: "success", Cleanup: true, ManifestDigest: input.RouteManifestDigest,
-				NetworkID: input.NetworkID, OpaqueBytes: 1})
+				NetworkID: input.NetworkID, OpaqueBytes: 64 << 10, SourceID: "source@version",
+				BuildDigest: [32]byte{6}, OpaqueDigest: [32]byte{byte(index + 7)}})
 			generation.ContainerIDs[roleIndex] = runtime + "-container"
 		}
 		for containerIndex := len(routeRoles); containerIndex < len(generation.ContainerIDs); containerIndex++ {
@@ -105,6 +118,15 @@ func validCandidate(t *testing.T) candidate {
 	}
 	input.ManifestDigest = hexDigest(sha256.Sum256(commitment))
 	return input
+}
+
+func validTopology() string {
+	return "services:\n" +
+		"  client:\n    image: test\n  initiator:\n    image: test\n  introduction:\n    image: test\n" +
+		"  rendezvous:\n    image: test\n  responder:\n    image: test\n  publisher:\n    image: test\n" +
+		"  client-app:\n    network_mode: none\n  publisher-app:\n    network_mode: none\n" +
+		"  client-endpoint:\n    network_mode: none\n  publisher-endpoint:\n    network_mode: none\n" +
+		"networks:\n  route:\n    internal: true\n"
 }
 
 func signedReceipt(credential publicCredential, input candidate, private ed25519.PrivateKey) []byte {

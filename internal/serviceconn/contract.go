@@ -39,6 +39,7 @@ type Setup struct {
 	AdministrationPrincipal [32]byte
 	LastGeneration          uint64
 	GenerationStateFile     string
+	Clock                   func() time.Time
 }
 
 // Request is one role-scoped operation at the Service Connection seam.
@@ -68,6 +69,18 @@ type Result struct {
 	ConnectionCanary            [32]byte `json:"connection_canary"`
 	IntroductionReceipt         [32]byte `json:"introduction_receipt"`
 	IntroductionAcknowledgement []byte   `json:"introduction_acknowledgement,omitempty"`
+	PrincipalCommitment         [32]byte `json:"principal_commitment"`
+	SessionCommitment           [32]byte `json:"session_commitment"`
+	GrantSurface                string   `json:"grant_surface"`
+	SessionConsumed             bool     `json:"session_consumed"`
+	MemoryHighWater             uint64   `json:"memory_high_water"`
+	CPUSeconds                  float64  `json:"cpu_seconds"`
+	OpenFilesHighWater          uint32   `json:"open_files_high_water"`
+	GoroutinesHighWater         uint32   `json:"goroutines_high_water"`
+	ActiveSessions              uint32   `json:"active_sessions"`
+	TimerHighWater              uint32   `json:"timer_high_water"`
+	QueueHighWater              uint32   `json:"queue_high_water"`
+	TempEntries                 uint32   `json:"temp_entries"`
 }
 
 // Endpoint owns one broker generation's sessions and current publication.
@@ -82,6 +95,7 @@ type Endpoint struct {
 	current             *currentPublication
 	lastGeneration      uint64
 	generationStateFile string
+	clock               func() time.Time
 }
 
 // New creates one finite Endpoint-local admission and publication boundary.
@@ -99,11 +113,15 @@ func New(input Setup) (*Endpoint, error) {
 	if err != nil {
 		return nil, err
 	}
+	clock := input.Clock
+	if clock == nil {
+		clock = time.Now
+	}
 	return &Endpoint{network: input.NetworkID, broker: input.BrokerID, authority: authority,
 		introduction:        introduction,
 		connectionPrincipal: input.ConnectionPrincipal, adminPrincipal: input.AdministrationPrincipal,
 		sessions: make(map[[32]byte]localSession, maximumSessions), lastGeneration: lastGeneration,
-		generationStateFile: input.GenerationStateFile}, nil
+		generationStateFile: input.GenerationStateFile, clock: clock}, nil
 }
 
 // Do executes one admitted operation and returns only an R-002 product class.
@@ -114,20 +132,25 @@ func (endpoint *Endpoint) Do(ctx context.Context, input Request) (Result, error)
 	if err := ctx.Err(); err != nil {
 		return failed("local timeout or cancellation", "local operation was cancelled", err)
 	}
+	monitor := startResourceMonitor()
+	var result Result
+	var err error
 	switch input.Action {
 	case "admit":
-		return endpoint.admit(input)
+		result, err = endpoint.admit(input)
 	case "publish":
-		return endpoint.publish(ctx, input)
+		result, err = endpoint.publish(ctx, input)
 	case "unpublish":
-		return endpoint.unpublish(input)
+		result, err = endpoint.unpublish(input)
 	case "connect":
-		return endpoint.connect(ctx, input)
+		result, err = endpoint.connect(ctx, input)
 	case "accept":
-		return endpoint.accept(ctx, input)
+		result, err = endpoint.accept(ctx, input)
 	default:
 		return denied("local operation is not permitted")
 	}
+	endpoint.observe(&result, input, monitor.stop())
+	return result, err
 }
 
 func denied(reason string) (Result, error) {

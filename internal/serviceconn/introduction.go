@@ -15,6 +15,13 @@ func requestIntroductionAcknowledgement(ctx context.Context, socket string, cred
 		return nil, err
 	}
 	defer connection.Close()
+	if deadline, ok := ctx.Deadline(); ok {
+		if err := connection.SetDeadline(deadline); err != nil {
+			return nil, err
+		}
+	}
+	stop := context.AfterFunc(ctx, func() { _ = connection.Close() })
+	defer stop()
 	body := make([]byte, acknowledgementBodySize)
 	copy(body[:4], "ASIA")
 	body[4] = 1
@@ -28,6 +35,11 @@ func requestIntroductionAcknowledgement(ctx context.Context, socket string, cred
 	}
 	if err := writeAll(connection, body); err != nil {
 		return nil, err
+	}
+	if half, ok := connection.(interface{ CloseWrite() error }); ok {
+		if err := half.CloseWrite(); err != nil {
+			return nil, err
+		}
 	}
 	raw := make([]byte, acknowledgementSize)
 	copy(raw, body)

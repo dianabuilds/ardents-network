@@ -1,4 +1,4 @@
-package main
+package servicenegative
 
 import (
 	"context"
@@ -62,7 +62,11 @@ func (value fixture) issue(instance ed25519.PublicKey, generation uint64, networ
 }
 
 func (value fixture) endpoint() *serviceconn.Endpoint {
-	endpoint, _ := serviceconn.New(serviceconn.Setup{NetworkID: value.network, BrokerID: [32]byte{4},
+	return value.endpointWithBroker([32]byte{4})
+}
+
+func (value fixture) endpointWithBroker(broker [32]byte) *serviceconn.Endpoint {
+	endpoint, _ := serviceconn.New(serviceconn.Setup{NetworkID: value.network, BrokerID: broker,
 		AuthorityPublic: value.authorityPublic, IntroductionPublic: value.introductionPublic,
 		ConnectionPrincipal:     value.connection,
 		AdministrationPrincipal: value.admin})

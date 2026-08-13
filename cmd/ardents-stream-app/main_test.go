@@ -3,6 +3,8 @@ package main
 import (
 	"net"
 	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/applicationipc"
 )
 
 func TestExternalApplicationsExchangeOpaqueBytesWithoutArdentsState(t *testing.T) {
@@ -21,5 +23,26 @@ func TestExternalApplicationsExchangeOpaqueBytesWithoutArdentsState(t *testing.T
 		if result.err != nil || result.value.Terminal != "success" || result.value.SentBytes != 4096 || result.value.ReceivedBytes != 4096 {
 			t.Fatalf("opaque external Application failed: value=%+v err=%v", result.value, result.err)
 		}
+	}
+}
+
+func TestExternalApplicationRequiresClassifiedConnectionResult(t *testing.T) {
+	application, endpoint := net.Pipe()
+	defer application.Close()
+	defer endpoint.Close()
+	go func() {
+		_ = applicationipc.Write(endpoint, applicationipc.Result{Class: "clean service connection close",
+			AuthenticatedTarget: [32]byte{1}, AcceptedBytes: 4096, ReceivedBytes: 4096})
+	}()
+	result, err := applicationipc.Read(application)
+	if err != nil || result.Class != "clean service connection close" || result.AcceptedBytes != 4096 {
+		t.Fatalf("classified result=%+v err=%v", result, err)
+	}
+
+	cleanEOF, peer := net.Pipe()
+	_ = peer.Close()
+	defer cleanEOF.Close()
+	if _, err := applicationipc.Read(cleanEOF); err == nil {
+		t.Fatal("clean EOF was treated as semantic Application success")
 	}
 }

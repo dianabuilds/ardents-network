@@ -80,7 +80,9 @@ func validateGeneration(input candidate, generation generationEvidence) error {
 		client.Role != "client" || publisher.Role != "publisher" ||
 		client.Terminal != "success" || publisher.Terminal != "success" || client.SentBytes != 64<<10 ||
 		client.ReceivedBytes != 64<<10 || publisher.SentBytes != 64<<10 || publisher.ReceivedBytes != 64<<10 ||
-		client.SentDigest != publisher.ReceivedDigest || publisher.SentDigest != client.ReceivedDigest {
+		client.SentDigest != publisher.ReceivedDigest || publisher.SentDigest != client.ReceivedDigest ||
+		client.ResultClass != "clean service connection close" || publisher.ResultClass != client.ResultClass ||
+		client.AuthenticatedTarget != input.Target || publisher.AuthenticatedTarget != input.Target {
 		return errors.New("opaque Application stream length, order, or digest differs")
 	}
 	for _, role := range generation.Roles {

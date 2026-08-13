@@ -32,21 +32,33 @@ func startAcknowledgement(ctx context.Context, socket, keyFile string) (func(), 
 	}
 	_ = os.Chmod(socket, 0o600)
 	completed := make(chan error, 1)
-	go serveAcknowledgement(listener, private, completed)
+	go serveAcknowledgement(ctx, listener, private, completed)
 	stop := func() { _ = listener.Close(); _ = os.Remove(socket); eraseBytes(private) }
 	go func() { <-ctx.Done(); _ = listener.Close() }()
 	return stop, completed, nil
 }
 
-func serveAcknowledgement(listener net.Listener, private ed25519.PrivateKey, completed chan<- error) {
+func serveAcknowledgement(ctx context.Context, listener net.Listener, private ed25519.PrivateKey, completed chan<- error) {
 	connection, err := listener.Accept()
 	if err != nil {
 		completed <- err
 		return
 	}
 	defer connection.Close()
-	body := make([]byte, acknowledgementBodySize)
-	if _, err = io.ReadFull(connection, body); err != nil || string(body[:4]) != "ASIA" || body[4] != 1 {
+	if deadline, ok := ctx.Deadline(); ok {
+		if err := connection.SetDeadline(deadline); err != nil {
+			completed <- err
+			return
+		}
+	}
+	stop := context.AfterFunc(ctx, func() { _ = connection.Close() })
+	defer stop()
+	body, err := io.ReadAll(io.LimitReader(connection, acknowledgementBodySize+1))
+	if err != nil || len(body) != acknowledgementBodySize {
+		completed <- errors.Join(err, errors.New("introduction acknowledgement request is partial or oversized"))
+		return
+	}
+	if string(body[:4]) != "ASIA" || body[4] != 1 {
 		completed <- errors.Join(err, errors.New("introduction acknowledgement request is malformed"))
 		return
 	}

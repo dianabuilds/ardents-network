@@ -21,7 +21,7 @@ type currentPublication struct {
 }
 
 func (endpoint *Endpoint) publish(ctx context.Context, input Request) (Result, error) {
-	if err := endpoint.consume(input.Session, input.Principal, "administration", input.At); err != nil {
+	if err := endpoint.consume(input.Session, input.Principal, "administration"); err != nil {
 		return denied(err.Error())
 	}
 	if err := validateCredential(input.Credential, endpoint.authority, endpoint.network, input.At, publishCapability|connectCapability); err != nil {
@@ -67,7 +67,7 @@ func (endpoint *Endpoint) publish(ctx context.Context, input Request) (Result, e
 }
 
 func (endpoint *Endpoint) unpublish(input Request) (Result, error) {
-	if err := endpoint.consume(input.Session, input.Principal, "administration", input.At); err != nil {
+	if err := endpoint.consume(input.Session, input.Principal, "administration"); err != nil {
 		return denied(err.Error())
 	}
 	endpoint.mu.Lock()

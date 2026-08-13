@@ -12,17 +12,9 @@ import (
 	"strconv"
 	"sync"
 	"time"
-)
 
-type observation struct {
-	Schema         string   `json:"schema"`
-	Role           string   `json:"role"`
-	Terminal       string   `json:"terminal"`
-	SentBytes      uint32   `json:"sent_bytes"`
-	ReceivedBytes  uint32   `json:"received_bytes"`
-	SentDigest     [32]byte `json:"sent_digest"`
-	ReceivedDigest [32]byte `json:"received_digest"`
-}
+	"github.com/dianabuilds/ardents-network/internal/applicationipc"
+)
 
 func main() {
 	if err := run(os.Args[1:], os.Stdout); err != nil {
@@ -52,7 +44,14 @@ func run(arguments []string, output io.Writer) error {
 		return err
 	}
 	defer connection.Close()
-	result, err := exchange(connection, arguments[1], byte(sendSeed), byte(expectSeed), count)
+	_ = connection.SetDeadline(time.Now().Add(15 * time.Second))
+	result, streamErr := exchange(connection, arguments[1], byte(sendSeed), byte(expectSeed), count)
+	classified, resultErr := applicationipc.Read(connection)
+	result.ResultClass, result.AuthenticatedTarget = classified.Class, classified.AuthenticatedTarget
+	if classified.Class != "clean service connection close" {
+		resultErr = errors.Join(resultErr, errors.New("connection result is not semantic success"))
+	}
+	err = errors.Join(streamErr, resultErr)
 	if encodeErr := json.NewEncoder(output).Encode(result); encodeErr != nil {
 		return errors.Join(err, encodeErr)
 	}

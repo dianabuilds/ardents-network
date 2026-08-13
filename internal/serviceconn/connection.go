@@ -13,7 +13,7 @@ const challengeSize = 4 + 1 + 32 + 8 + 32
 const proofSize = 4 + 1 + ed25519.SignatureSize
 
 func (endpoint *Endpoint) connect(ctx context.Context, input Request) (Result, error) {
-	if err := endpoint.consume(input.Session, input.Principal, "connection", input.At); err != nil {
+	if err := endpoint.consume(input.Session, input.Principal, "connection"); err != nil {
 		return denied(err.Error())
 	}
 	credential, err := decodePublication(input.Publication, endpoint.authority, endpoint.network, input.At)
@@ -24,7 +24,6 @@ func (endpoint *Endpoint) connect(ctx context.Context, input Request) (Result, e
 		return failed("local authorization or policy denial", "bounded local stream input is invalid", err)
 	}
 	defer input.Route.Close()
-	defer input.Application.Close()
 	stop := context.AfterFunc(ctx, func() {
 		_ = input.Route.Close()
 		_ = input.Application.Close()
@@ -44,7 +43,7 @@ func (endpoint *Endpoint) connect(ctx context.Context, input Request) (Result, e
 }
 
 func (endpoint *Endpoint) accept(ctx context.Context, input Request) (Result, error) {
-	if err := endpoint.consume(input.Session, input.Principal, "connection", input.At); err != nil {
+	if err := endpoint.consume(input.Session, input.Principal, "connection"); err != nil {
 		return denied(err.Error())
 	}
 	if err := validateStreams(input); err != nil {
@@ -61,7 +60,6 @@ func (endpoint *Endpoint) accept(ctx context.Context, input Request) (Result, er
 	defer erase(private)
 	defer endpoint.retire(credential.Generation)
 	defer input.Route.Close()
-	defer input.Application.Close()
 	stop := context.AfterFunc(ctx, func() {
 		_ = input.Route.Close()
 		_ = input.Application.Close()

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/qualification/servicenegative"
 )
 
 func TestNegativeCommandObservesEveryRequiredRejection(t *testing.T) {
@@ -11,7 +13,7 @@ func TestNegativeCommandObservesEveryRequiredRejection(t *testing.T) {
 	if err := run(&output); err != nil {
 		t.Fatal(err)
 	}
-	var value receipt
+	var value servicenegative.Receipt
 	if err := json.Unmarshal(output.Bytes(), &value); err != nil {
 		t.Fatal(err)
 	}

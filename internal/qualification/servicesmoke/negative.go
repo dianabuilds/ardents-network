@@ -8,23 +8,34 @@ import (
 	"time"
 )
 
-func (observer dockerObserver) negativeReceipt(ctx context.Context) (map[string]bool, error) {
+type negativeReceipt struct {
+	Schema     string            `json:"schema"`
+	Negatives  map[string]bool   `json:"negatives"`
+	Mechanisms map[string]string `json:"mechanisms"`
+	Operations map[string]bool   `json:"operations"`
+	Classes    map[string]string `json:"classes"`
+	Counts     map[string]uint32 `json:"counts"`
+}
+
+func (observer dockerObserver) negativeReceipt(ctx context.Context) (negativeReceipt, error) {
 	raw, err := observer.compose(ctx, time.Minute, "--profile", "negative", "run", "--no-deps", "--rm", "negative-suite")
 	if err != nil {
-		return nil, err
+		return negativeReceipt{}, err
 	}
-	var value struct {
-		Schema    string          `json:"schema"`
-		Negatives map[string]bool `json:"negatives"`
-	}
+	var value negativeReceipt
 	if json.Unmarshal(bytes.TrimSpace(raw), &value) != nil || value.Schema != "ardents-h3-service-negative-v1" ||
-		len(value.Negatives) != 24 {
-		return nil, errors.New("stage 3 negative-suite receipt is malformed")
+		len(value.Negatives) != 24 || len(value.Mechanisms) != 24 || len(value.Operations) != 3 {
+		return negativeReceipt{}, errors.New("stage 3 negative-suite receipt is malformed")
 	}
 	for _, passed := range value.Negatives {
 		if !passed {
-			return nil, errors.New("stage 3 negative suite observed an accepted forbidden case")
+			return negativeReceipt{}, errors.New("stage 3 negative suite observed an accepted forbidden case")
 		}
 	}
-	return value.Negatives, nil
+	for _, passed := range value.Operations {
+		if !passed {
+			return negativeReceipt{}, errors.New("stage 3 negative suite failed a stream observation")
+		}
+	}
+	return value, nil
 }

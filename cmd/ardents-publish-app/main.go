@@ -36,6 +36,11 @@ func publish(connection io.ReadWriter) error {
 	if _, err := connection.Write([]byte("publish\n")); err != nil {
 		return err
 	}
+	if half, ok := any(connection).(interface{ CloseWrite() error }); ok {
+		if err := half.CloseWrite(); err != nil {
+			return err
+		}
+	}
 	response := make([]byte, 10)
 	if _, err := io.ReadFull(connection, response); err != nil {
 		return err

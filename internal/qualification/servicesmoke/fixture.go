@@ -65,29 +65,28 @@ func prepare(input Config) (prepared, error) {
 	value := prepared{network: route.NetworkID, authority: authority, introduction: introduction,
 		routeManifest: route.ManifestDigest, at: at}
 	for index := range 2 {
-		instancePublic, instancePrivate, keyErr := ed25519.GenerateKey(rand.Reader)
+		generationRoot := filepath.Join(input.FixtureRoot, "generations", string(rune('1'+index)))
+		if err := os.MkdirAll(generationRoot, 0o700); err != nil {
+			return prepared{}, err
+		}
+		instance, keyErr := generateInstance(input.SourceRoot, filepath.Join(generationRoot, "instance.hex"))
 		if keyErr != nil {
 			return prepared{}, keyErr
 		}
-		var instance [32]byte
-		copy(instance[:], instancePublic)
 		credential, issueErr := serviceconn.IssueCredential(private, serviceconn.Credential{InstancePublic: instance,
 			Generation: uint64(index + 1), NotBefore: at.Add(-time.Minute).Unix(), NotAfter: at.Add(60 * time.Minute).Unix(),
 			NetworkID: route.NetworkID, Capabilities: 3})
 		if issueErr != nil {
-			erase(instancePrivate)
 			return prepared{}, issueErr
 		}
 		value.credentials[index] = credential
 		if index == 0 {
 			value.target = credential.Target
 		}
-		_, writeErr := writeGeneration(input.FixtureRoot, index+1, at, credential, instancePrivate, authority, introduction)
+		_, writeErr := writeGeneration(input.FixtureRoot, index+1, at, credential, authority, introduction)
 		if writeErr != nil {
-			erase(instancePrivate)
 			return prepared{}, writeErr
 		}
-		erase(instancePrivate)
 	}
 	commitment := make([]byte, 0, 32*5)
 	for _, field := range [][32]byte{route.ManifestDigest, value.network, value.authority, value.introduction, value.target,

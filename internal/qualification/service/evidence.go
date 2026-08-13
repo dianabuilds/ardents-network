@@ -11,11 +11,26 @@ type candidate struct {
 	IntroductionPublic    [32]byte             `json:"introduction_public"`
 	RouteManifestDigest   [32]byte             `json:"route_manifest_digest"`
 	Target                [32]byte             `json:"target"`
+	Topology              string               `json:"topology"`
 	Generations           []generationEvidence `json:"generations"`
 	Negatives             map[string]bool      `json:"negatives"`
+	NegativeMechanisms    map[string]string    `json:"negative_mechanisms"`
+	OperationObservations map[string]bool      `json:"operation_observations"`
+	OperationClasses      map[string]string    `json:"operation_classes"`
+	OperationCounts       map[string]uint32    `json:"operation_counts"`
 	ShortcutsAbsent       map[string]bool      `json:"shortcuts_absent"`
 	Cleanup               map[string]bool      `json:"cleanup"`
 	PrivateMaterialAbsent bool                 `json:"private_material_absent"`
+	CleanupObservation    cleanupObservation   `json:"cleanup_observation"`
+}
+
+type cleanupObservation struct {
+	Observed      bool     `json:"observed"`
+	Project       string   `json:"project"`
+	FixtureAbsent bool     `json:"fixture_absent"`
+	Containers    []string `json:"containers"`
+	Networks      []string `json:"networks"`
+	Volumes       []string `json:"volumes"`
 }
 
 type generationEvidence struct {
@@ -50,16 +65,30 @@ type endpointEvidence struct {
 	AcceptedBytes       uint32   `json:"accepted_bytes"`
 	ReceivedBytes       uint32   `json:"received_bytes"`
 	ConnectionCanary    [32]byte `json:"connection_canary"`
+	PrincipalCommitment [32]byte `json:"principal_commitment"`
+	SessionCommitment   [32]byte `json:"session_commitment"`
+	GrantSurface        string   `json:"grant_surface"`
+	SessionConsumed     bool     `json:"session_consumed"`
+	MemoryHighWater     uint64   `json:"memory_high_water"`
+	CPUSeconds          float64  `json:"cpu_seconds"`
+	OpenFilesHighWater  uint32   `json:"open_files_high_water"`
+	GoroutinesHighWater uint32   `json:"goroutines_high_water"`
+	ActiveSessions      uint32   `json:"active_sessions"`
+	TimerHighWater      uint32   `json:"timer_high_water"`
+	QueueHighWater      uint32   `json:"queue_high_water"`
+	TempEntries         uint32   `json:"temp_entries"`
 }
 
 type applicationEvidence struct {
-	Schema         string   `json:"schema"`
-	Role           string   `json:"role"`
-	Terminal       string   `json:"terminal"`
-	SentBytes      uint32   `json:"sent_bytes"`
-	ReceivedBytes  uint32   `json:"received_bytes"`
-	SentDigest     [32]byte `json:"sent_digest"`
-	ReceivedDigest [32]byte `json:"received_digest"`
+	Schema              string   `json:"schema"`
+	Role                string   `json:"role"`
+	Terminal            string   `json:"terminal"`
+	SentBytes           uint32   `json:"sent_bytes"`
+	ReceivedBytes       uint32   `json:"received_bytes"`
+	SentDigest          [32]byte `json:"sent_digest"`
+	ReceivedDigest      [32]byte `json:"received_digest"`
+	ResultClass         string   `json:"result_class"`
+	AuthenticatedTarget [32]byte `json:"authenticated_target"`
 }
 
 type roleEvidence struct {
@@ -71,6 +100,9 @@ type roleEvidence struct {
 	ManifestDigest [32]byte `json:"manifest_digest"`
 	NetworkID      [32]byte `json:"network_id"`
 	OpaqueBytes    uint64   `json:"opaque_bytes"`
+	SourceID       string   `json:"source_id"`
+	BuildDigest    [32]byte `json:"build_digest"`
+	OpaqueDigest   [32]byte `json:"opaque_digest"`
 }
 
 var routeRoles = [...]string{"client", "initiator", "introduction", "rendezvous", "responder", "publisher"}
@@ -83,6 +115,22 @@ var requiredNegatives = [...]string{
 	"administration-custody", "administration-export", "pid-substitution", "container-substitution",
 	"malformed-ipc-frame", "oversized-ipc-frame", "partial-ipc-frame", "slow-ipc-frame",
 	"stale-generation-new-work",
+}
+
+var expectedNegativeMechanisms = map[string]string{
+	"ungranted-sibling": "hostile-sibling-volume-boundary", "session-replay": "serviceconn-session-replay",
+	"principal-substitution": "serviceconn-principal-swap", "restart-reuse": "serviceconn-endpoint-restart",
+	"connection-admin": "serviceconn-connection-publish", "credential-only": "serviceconn-no-admin-session",
+	"wrong-target": "publication-target-mutation", "wrong-key": "instance-proof-key-mismatch",
+	"expired": "credential-expired-time", "wrong-network": "credential-network-mutation",
+	"stale-generation": "publication-old-generation", "same-generation-conflict": "publication-generation-conflict",
+	"not-yet-valid": "credential-future-time", "wrong-capability": "credential-capability-mask",
+	"malformed-publication": "publication-binary-truncation", "administration-connection": "serviceconn-admin-connect",
+	"administration-custody": "serviceconn-admin-custody", "administration-export": "serviceconn-admin-export",
+	"pid-substitution": "process-pid-derived-principal", "container-substitution": "broker-container-identity-swap",
+	"malformed-ipc-frame": "unix-control-malformed-frame", "oversized-ipc-frame": "unix-control-oversized-frame",
+	"partial-ipc-frame": "unix-control-partial-eof", "slow-ipc-frame": "unix-control-stalled-deadline",
+	"stale-generation-new-work": "retired-runtime-new-connection",
 }
 
 var requiredShortcuts = [...]string{

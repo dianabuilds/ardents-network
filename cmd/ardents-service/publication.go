@@ -11,16 +11,17 @@ import (
 	"os"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/applicationipc"
 	"github.com/dianabuilds/ardents-network/internal/serviceconn"
 )
 
-func publishCurrent(endpoint *serviceconn.Endpoint, plan endpointPlan, at time.Time, deadline time.Duration,
-	ready func()) (serviceconn.Result, error) {
+func publishCurrent(endpoint *serviceconn.Endpoint, plan endpointPlan, principal [32]byte, at time.Time,
+	deadline time.Duration, ready func()) (serviceconn.Result, error) {
 	listener, err := listenLocal(plan.AdministrationSocket, deadline)
 	if err != nil {
 		return serviceconn.Result{}, err
 	}
-	defer closeLocal(listener, plan.AdministrationSocket)
+	defer func() { _ = listener.Close(); _ = os.Remove(plan.AdministrationSocket) }()
 	if ready != nil {
 		ready()
 	}
@@ -29,23 +30,24 @@ func publishCurrent(endpoint *serviceconn.Endpoint, plan endpointPlan, at time.T
 		return serviceconn.Result{}, err
 	}
 	defer administrator.Close()
-	request := make([]byte, 8)
-	if _, err := io.ReadFull(administrator, request); err != nil || string(request) != "publish\n" {
-		return serviceconn.Result{}, errors.New("administration request is malformed")
+	operation, cancel := context.WithTimeout(context.Background(), deadline)
+	defer cancel()
+	request, err := applicationipc.ReadControl(operation, administrator, 8)
+	if err != nil || string(request) != "publish\n" {
+		err = errors.Join(err, errors.New("administration request is malformed, partial, or oversized"))
+		return serviceconn.Result{}, err
 	}
 	credential, private, err := publicationInputs(plan)
 	if err != nil {
 		return serviceconn.Result{}, err
 	}
-	defer erase(private)
-	session, err := admit(endpoint, endpointPrincipal(plan.AdministrationPrincipal), "administration", at)
+	defer clear(private)
+	session, err := admit(endpoint, principal, "administration", at)
 	if err != nil {
 		return serviceconn.Result{}, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), deadline)
-	defer cancel()
-	result, err := endpoint.Do(ctx, serviceconn.Request{Action: "publish",
-		Principal: endpointPrincipal(plan.AdministrationPrincipal), Session: session, Credential: credential,
+	result, err := endpoint.Do(operation, serviceconn.Request{Action: "publish",
+		Principal: principal, Session: session, Credential: credential,
 		InstancePrivate: private, IntroductionSocket: plan.IntroductionSocket, At: at})
 	if err != nil {
 		return serviceconn.Result{}, err
@@ -87,15 +89,7 @@ func publicationInputs(plan endpointPlan) (serviceconn.Credential, ed25519.Priva
 	}
 	return credential, ed25519.PrivateKey(private), nil
 }
-func endpointPrincipal(encoded string) [32]byte {
-	var value [32]byte
-	_ = fixedHex(encoded, value[:])
-	return value
-}
 func listenLocal(path string, deadline time.Duration) (*net.UnixListener, error) {
-	if path == "" {
-		return nil, errors.New("local socket path is empty")
-	}
 	listener, err := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})
 	if err != nil {
 		return nil, err
@@ -104,12 +98,8 @@ func listenLocal(path string, deadline time.Duration) (*net.UnixListener, error)
 	_ = listener.SetDeadline(time.Now().Add(deadline))
 	return listener, nil
 }
-func closeLocal(listener *net.UnixListener, path string) {
-	_ = listener.Close()
-	_ = os.Remove(path)
-}
-func erase(value []byte) {
-	for index := range value {
-		value[index] = 0
-	}
+func deliverResult(output io.Writer, result serviceconn.Result) error {
+	return applicationipc.Write(output, applicationipc.Result{Class: result.Class, Reason: result.Reason,
+		AuthenticatedTarget: result.AuthenticatedTarget, AcceptedBytes: result.AcceptedBytes,
+		ReceivedBytes: result.ReceivedBytes})
 }
