@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -66,7 +67,8 @@ func (observer dockerObserver) waitContainer(ctx context.Context, identity strin
 				if (state.ExitCode == 0) == success {
 					return nil
 				}
-				return errors.New("container returned an unexpected exit class")
+				return errors.New("container returned unexpected exit=" + strconv.Itoa(state.ExitCode) + " " +
+					observer.exitDiagnostic(ctx, identity))
 			}
 		}
 		select {
