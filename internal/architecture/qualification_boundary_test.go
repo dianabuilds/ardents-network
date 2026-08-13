@@ -7,7 +7,8 @@ func TestRepositoryArchitectureQualificationBoundary(t *testing.T) {
 	root := repositoryRoot(t)
 	registry := readPackageRegistry(t, root)
 	packages := []string{"internal/qualification/byteio", "internal/qualification/epochfixture", "internal/qualification/state",
-		"internal/qualification/node", "internal/qualification/node/fixture", "internal/qualification/route", "internal/qualification/routesmoke"}
+		"internal/qualification/node", "internal/qualification/node/fixture", "internal/qualification/route", "internal/qualification/routesmoke",
+		"internal/qualification/service", "internal/qualification/servicesmoke"}
 	for _, directory := range packages {
 		qualification, exists := registry[directory]
 		if !exists {
@@ -35,6 +36,16 @@ func TestRepositoryArchitectureQualificationBoundary(t *testing.T) {
 			if len(qualification.allowedImports) != len(wanted) {
 				t.Errorf("%s has an unexpected import count", directory)
 			}
+		case "internal/qualification/servicesmoke":
+			wanted := []string{"internal/qualification/byteio", "internal/qualification/routesmoke", "internal/route", "internal/serviceconn"}
+			if len(qualification.allowedImports) != len(wanted) {
+				t.Errorf("%s has an unexpected import count", directory)
+			}
+			for _, dependency := range wanted {
+				if !qualification.allowedImports[dependency] {
+					t.Errorf("%s must permit %s", directory, dependency)
+				}
+			}
 			for _, dependency := range wanted {
 				if !qualification.allowedImports[dependency] {
 					t.Errorf("%s must permit %s", directory, dependency)
@@ -60,7 +71,10 @@ func TestRepositoryArchitectureQualificationBoundary(t *testing.T) {
 		for _, directory := range packages {
 			allowed := owner == "cmd/ardents-qualify" ||
 				owner == "internal/qualification/routesmoke" ||
+				owner == "internal/qualification/servicesmoke" &&
+					(directory == "internal/qualification/byteio" || directory == "internal/qualification/routesmoke") ||
 				owner == "cmd/ardents-route-qualify" && directory == "internal/qualification/route" ||
+				owner == "cmd/ardents-service-qualify" && directory == "internal/qualification/service" ||
 				owner == "internal/qualification/state" && directory == "internal/qualification/byteio" ||
 				owner == "internal/qualification/node" && (directory == "internal/qualification/byteio" || directory == "internal/qualification/node/fixture") ||
 				owner == "internal/qualification/node/fixture" && (directory == "internal/qualification/byteio" || directory == "internal/qualification/epochfixture")

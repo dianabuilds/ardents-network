@@ -37,6 +37,9 @@ func run(arguments []string, output, diagnostics io.Writer) int {
 }
 
 func evaluate(arguments []string) (statequalification.Result, error) {
+	if len(arguments) > 0 && arguments[0] == "service-smoke" {
+		return evaluateServiceSmoke(arguments[1:])
+	}
 	if len(arguments) > 0 && arguments[0] == "route-smoke" {
 		return evaluateRouteSmoke(arguments[1:])
 	}
@@ -56,7 +59,7 @@ func evaluate(arguments []string) (statequalification.Result, error) {
 		return evaluateNodeEvidenceFault(arguments[1:])
 	}
 	if len(arguments) == 0 || arguments[0] != "offline" {
-		return statequalification.Result{}, errors.New("usage: ardents-qualify (offline|prepare-node|run-node|route-smoke|inject-node) [flags]")
+		return statequalification.Result{}, errors.New("usage: ardents-qualify (offline|prepare-node|run-node|route-smoke|service-smoke|inject-node) [flags]")
 	}
 	flags := flag.NewFlagSet("offline", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)

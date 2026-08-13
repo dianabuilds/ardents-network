@@ -1,0 +1,142 @@
+x-route: &route
+  image: ${ARDENTS_SERVICE_IMAGE_TAG:?}
+  pull_policy: never
+  read_only: true
+  restart: "no"
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  user: "${ARDENTS_SERVICE_RUNTIME_USER:?}"
+  tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=8m"]
+  cpus: 0.5
+  mem_limit: 128m
+  pids_limit: 32
+  networks: [route_net]
+
+x-local: &local
+  image: ${ARDENTS_SERVICE_IMAGE_TAG:?}
+  pull_policy: never
+  read_only: true
+  restart: "no"
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  user: "65532:65532"
+  tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=8m"]
+  cpus: 0.5
+  mem_limit: 128m
+  pids_limit: 32
+  network_mode: none
+
+x-build: &build
+  build:
+    context: ${ARDENTS_SERVICE_BUILD_CONTEXT:-../../..}
+    dockerfile: tests/qualification/h3-service-v1/Dockerfile
+    args: {ARDENTS_SOURCE_COMMIT: "${ARDENTS_SERVICE_SOURCE_COMMIT:?}"}
+
+services:
+  volume-init:
+    <<: [*local, *build]
+    profiles: [setup]
+    user: "0:0"
+    cap_add: [CHOWN]
+    command: [/usr/local/bin/ardents-service-volume-init, "${ARDENTS_SERVICE_RUNTIME_USER:?}", /run/ardents/publisher-app, /run/ardents/publisher-route, /run/ardents/client-app, /run/ardents/client-route, /run/ardents/admin, /run/ardents/publication]
+    volumes:
+      - publisher_app:/run/ardents/publisher-app
+      - publisher_route:/run/ardents/publisher-route
+      - client_app:/run/ardents/client-app
+      - client_route:/run/ardents/client-route
+      - administration:/run/ardents/admin
+      - publication:/run/ardents/publication
+  publisher-endpoint:
+    <<: [*local, *build]
+    command: [/usr/local/bin/ardents-service, run, /run/ardents/plan.json]
+    volumes:
+      - {type: bind, source: "${ARDENTS_SERVICE_GENERATION:?}/publisher.json", target: /run/ardents/plan.json, read_only: true, bind: {create_host_path: false}}
+      - {type: bind, source: "${ARDENTS_SERVICE_GENERATION:?}/credential.json", target: /run/ardents/service/credential.json, read_only: true, bind: {create_host_path: false}}
+      - {type: bind, source: "${ARDENTS_SERVICE_GENERATION:?}/instance.hex", target: /run/ardents/service/instance.hex, read_only: true, bind: {create_host_path: false}}
+      - publisher_app:/run/ardents/publisher-app
+      - publisher_route:/run/ardents/publisher-route
+      - administration:/run/ardents/admin
+      - publication:/run/ardents/publication
+  publication-operator:
+    <<: *local
+    command: [/usr/local/bin/ardents-publish-app, publish, /run/ardents/admin/admin.sock]
+    volumes: [administration:/run/ardents/admin]
+  publisher-app:
+    <<: *local
+    command: [/usr/local/bin/ardents-stream-app, run, publisher, /run/ardents/publisher-app/app.sock, "91", "17", "65536"]
+    volumes: [publisher_app:/run/ardents/publisher-app]
+  client-endpoint:
+    <<: *local
+    command: [/usr/local/bin/ardents-service, run, /run/ardents/plan.json]
+    volumes:
+      - {type: bind, source: "${ARDENTS_SERVICE_GENERATION:?}/client.json", target: /run/ardents/plan.json, read_only: true, bind: {create_host_path: false}}
+      - client_app:/run/ardents/client-app
+      - client_route:/run/ardents/client-route
+      - publication:/run/ardents/publication:ro
+  client-app:
+    <<: *local
+    command: [/usr/local/bin/ardents-stream-app, run, client, /run/ardents/client-app/app.sock, "17", "91", "65536"]
+    volumes: [client_app:/run/ardents/client-app]
+  hostile-sibling:
+    <<: *local
+    command: [/usr/local/bin/ardents-stream-app, run, hostile, /run/ardents/not-granted/app.sock, "1", "2", "1"]
+  negative-suite:
+    <<: *local
+    profiles: [negative]
+    command: [/usr/local/bin/ardents-service-negative]
+
+  publisher:
+    <<: *route
+    command: [/usr/local/bin/ardents-route, run, /run/ardents/plan.json]
+    volumes:
+      - {type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/plans/publisher.json", target: /run/ardents/plan.json, read_only: true, bind: {create_host_path: false}}
+      - {type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/secrets/publisher", target: /run/ardents/secrets, read_only: true, bind: {create_host_path: false}}
+      - publisher_route:/run/ardents/publisher-route
+    networks: {route_net: {ipv4_address: 172.31.20.16}}
+  responder:
+    <<: *route
+    command: [/usr/local/bin/ardents-route, run, /run/ardents/plan.json]
+    volumes: [{type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/plans/responder.json", target: /run/ardents/plan.json, read_only: true, bind: {create_host_path: false}}, {type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/secrets/responder", target: /run/ardents/secrets, read_only: true, bind: {create_host_path: false}}]
+    networks: {route_net: {ipv4_address: 172.31.20.14}}
+  rendezvous:
+    <<: *route
+    command: [/usr/local/bin/ardents-route, run, /run/ardents/plan.json]
+    volumes: [{type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/plans/rendezvous.json", target: /run/ardents/plan.json, read_only: true, bind: {create_host_path: false}}, {type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/secrets/rendezvous", target: /run/ardents/secrets, read_only: true, bind: {create_host_path: false}}]
+    networks: {route_net: {ipv4_address: 172.31.20.13}}
+  introduction:
+    <<: *route
+    command: [/usr/local/bin/ardents-route, run, /run/ardents/plan.json]
+    volumes: [{type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/plans/introduction.json", target: /run/ardents/plan.json, read_only: true, bind: {create_host_path: false}}, {type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/secrets/introduction", target: /run/ardents/secrets, read_only: true, bind: {create_host_path: false}}]
+    networks: {route_net: {ipv4_address: 172.31.20.12}}
+  initiator:
+    <<: *route
+    command: [/usr/local/bin/ardents-route, run, /run/ardents/plan.json]
+    volumes: [{type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/plans/initiator.json", target: /run/ardents/plan.json, read_only: true, bind: {create_host_path: false}}, {type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/secrets/initiator", target: /run/ardents/secrets, read_only: true, bind: {create_host_path: false}}]
+    networks: {route_net: {ipv4_address: 172.31.20.11}}
+  client:
+    <<: *route
+    command: [/usr/local/bin/ardents-route, run, /run/ardents/plan.json]
+    volumes:
+      - {type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/plans/client.json", target: /run/ardents/plan.json, read_only: true, bind: {create_host_path: false}}
+      - {type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/secrets/client", target: /run/ardents/secrets, read_only: true, bind: {create_host_path: false}}
+      - {type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/state", target: /run/ardents/state, bind: {create_host_path: false}}
+      - client_route:/run/ardents/client-route
+    networks: {route_net: {ipv4_address: 172.31.20.10}}
+  verifier:
+    <<: *local
+    profiles: [verify]
+    command: [/usr/local/bin/ardents-service-qualify, /run/ardents/evidence.json]
+    volumes: [{type: bind, source: "${ARDENTS_SERVICE_EVIDENCE_FILE:?}", target: /run/ardents/evidence.json, read_only: true, bind: {create_host_path: false}}]
+
+networks:
+  route_net:
+    internal: true
+    ipam: {config: [{subnet: 172.31.20.0/24}]}
+
+volumes:
+  publisher_app: {}
+  publisher_route: {}
+  client_app: {}
+  client_route: {}
+  administration: {}
+  publication: {}
