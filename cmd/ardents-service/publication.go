@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/ed25519"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"io"
 	"net"
@@ -12,15 +11,18 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/applicationipc"
+	"github.com/dianabuilds/ardents-network/internal/planfile"
 	"github.com/dianabuilds/ardents-network/internal/serviceconn"
 )
 
-func publishCurrent(endpoint *serviceconn.Endpoint, plan endpointPlan, principal [32]byte, at time.Time,
+func publishCurrent(endpoint *serviceconn.Endpoint, resources func(string, int) uint32, plan endpointPlan, principal [32]byte, at time.Time,
 	deadline time.Duration, ready func()) (serviceconn.Result, error) {
 	listener, err := listenLocal(plan.AdministrationSocket, deadline)
 	if err != nil {
 		return serviceconn.Result{}, err
 	}
+	resources("control-file", 1)
+	defer resources("control-file", -1)
 	defer func() { _ = listener.Close(); _ = os.Remove(plan.AdministrationSocket) }()
 	if ready != nil {
 		ready()
@@ -29,7 +31,11 @@ func publishCurrent(endpoint *serviceconn.Endpoint, plan endpointPlan, principal
 	if err != nil {
 		return serviceconn.Result{}, err
 	}
+	resources("accepted-ipc", 1)
+	defer resources("accepted-ipc", -1)
 	defer administrator.Close()
+	resources("timer", 1)
+	defer resources("timer", -1)
 	operation, cancel := context.WithTimeout(context.Background(), deadline)
 	defer cancel()
 	request, err := applicationipc.ReadControl(operation, administrator, 8)
@@ -55,32 +61,17 @@ func publishCurrent(endpoint *serviceconn.Endpoint, plan endpointPlan, principal
 	if err := os.WriteFile(plan.PublicationFile, result.Publication, 0o600); err != nil {
 		return serviceconn.Result{}, err
 	}
+	resources("control-file", 1)
 	_, err = administrator.Write([]byte("published\n"))
 	return result, err
 }
 func publicationInputs(plan endpointPlan) (serviceconn.Credential, ed25519.PrivateKey, error) {
 	var credential serviceconn.Credential
-	file, err := os.Open(plan.CredentialFile)
-	if err != nil {
+	if err := planfile.Decode(plan.CredentialFile, 8<<10, &credential); err != nil {
 		return credential, nil, err
 	}
-	decoder := json.NewDecoder(io.LimitReader(file, 8<<10))
-	decoder.DisallowUnknownFields()
-	err = decoder.Decode(&credential)
-	if err == nil && decoder.Decode(&struct{}{}) != io.EOF {
-		err = errors.New("credential file contains multiple JSON values")
-	}
-	_ = file.Close()
-	if err != nil {
-		return credential, nil, err
-	}
-	keyFile, err := os.Open(plan.InstanceKeyFile)
-	if err != nil {
-		return credential, nil, err
-	}
-	raw, readErr := io.ReadAll(io.LimitReader(keyFile, ed25519.PrivateKeySize*2+1))
-	closeErr := keyFile.Close()
-	if readErr != nil || closeErr != nil || len(raw) != ed25519.PrivateKeySize*2 {
+	raw, err := planfile.Read(plan.InstanceKeyFile, ed25519.PrivateKeySize*2)
+	if err != nil || len(raw) != ed25519.PrivateKeySize*2 {
 		return credential, nil, errors.New("instance Key file is invalid")
 	}
 	private := make([]byte, ed25519.PrivateKeySize)
@@ -102,4 +93,9 @@ func deliverResult(output io.Writer, result serviceconn.Result) error {
 	return applicationipc.Write(output, applicationipc.Result{Class: result.Class, Reason: result.Reason,
 		AuthenticatedTarget: result.AuthenticatedTarget, AcceptedBytes: result.AcceptedBytes,
 		ReceivedBytes: result.ReceivedBytes})
+}
+
+func admit(endpoint *serviceconn.Endpoint, principal [32]byte, surface string, at time.Time) ([32]byte, error) {
+	result, err := endpoint.Do(context.Background(), serviceconn.Request{Action: "admit", Surface: surface, Principal: principal, At: at})
+	return result.Session, err
 }

@@ -20,8 +20,13 @@ func validateTopology(raw []byte) (map[string]bool, error) {
 		!bytes.Contains(clientApp, []byte("publication")) &&
 		!bytes.Contains(publisherApp, []byte("publication"))
 	allRoles := true
-	for _, role := range []string{"client", "initiator", "introduction", "rendezvous", "responder", "publisher"} {
-		allRoles = allRoles && len(topologyServiceBlock(raw, role)) != 0
+	routeAddresses := map[string]string{"client": "172.31.20.10", "initiator": "172.31.20.11",
+		"introduction": "172.31.20.12", "rendezvous": "172.31.20.13", "responder": "172.31.20.14",
+		"publisher": "172.31.20.16"}
+	for role, address := range routeAddresses {
+		block := topologyServiceBlock(raw, role)
+		allRoles = allRoles && bytes.Contains(block, []byte("networks:\n      route_net:")) &&
+			bytes.Contains(block, []byte("ipv4_address: "+address))
 	}
 	noAmbient := !bytes.Contains(raw, []byte("network_mode: host")) && !bytes.Contains(raw, []byte("ports:"))
 	noProxy := !bytes.Contains(bytes.ToLower(raw), []byte("http_proxy")) &&
@@ -39,8 +44,7 @@ func validateTopology(raw []byte) (map[string]bool, error) {
 		return nil, errors.New("retained topology contains or cannot exclude a forbidden Stage 3 shortcut")
 	}
 	return map[string]bool{
-		"direct": allRoles, "shortened": allRoles, "localhost-data": isolated,
-		"shared-data-file": applicationPrivate, "dns": noAmbient, "proxy": noProxy,
+		"localhost-data": isolated, "shared-data-file": applicationPrivate, "dns": noAmbient, "proxy": noProxy,
 		"ambient-network": noAmbient, "route-visible-to-application": applicationPrivate,
 	}, nil
 }

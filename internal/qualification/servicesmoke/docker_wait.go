@@ -78,6 +78,41 @@ func (observer dockerObserver) waitContainer(ctx context.Context, identity strin
 	return errors.New("container did not terminate within 30s")
 }
 
+func (observer dockerObserver) hostileObservation(ctx context.Context, identity string) (hostileObservation, error) {
+	raw, err := observer.docker(ctx, 10*time.Second, "inspect", "--format", "{{json .State}}", identity)
+	if err != nil {
+		return hostileObservation{}, err
+	}
+	var state struct {
+		Running  bool `json:"Running"`
+		ExitCode int  `json:"ExitCode"`
+	}
+	if json.Unmarshal(bytes.TrimSpace(raw), &state) != nil {
+		return hostileObservation{}, errors.New("hostile sibling state is malformed")
+	}
+	raw, err = observer.docker(ctx, 10*time.Second, "inspect", "--format", "{{json .Mounts}}", identity)
+	if err != nil {
+		return hostileObservation{}, err
+	}
+	var mounts []struct {
+		Destination string `json:"Destination"`
+	}
+	if json.Unmarshal(bytes.TrimSpace(raw), &mounts) != nil {
+		return hostileObservation{}, errors.New("hostile sibling mounts are malformed")
+	}
+	result := hostileObservation{RuntimeID: identity, Running: state.Running, ExitCode: state.ExitCode,
+		MountDestinations: make([]string, 0, len(mounts))}
+	for _, mount := range mounts {
+		result.MountDestinations = append(result.MountDestinations, mount.Destination)
+	}
+	output, err := observer.docker(ctx, 10*time.Second, "logs", identity)
+	if err != nil || len(output) > 4<<10 {
+		return hostileObservation{}, errors.New("hostile sibling output is unavailable or oversized")
+	}
+	result.Output = string(output)
+	return result, nil
+}
+
 func validContainerID(value string) bool {
 	if len(value) != 64 {
 		return false

@@ -40,6 +40,7 @@ type Setup struct {
 	LastGeneration          uint64
 	GenerationStateFile     string
 	Clock                   func() time.Time
+	Resources               func(string, int) uint32
 }
 
 // Request is one role-scoped operation at the Service Connection seam.
@@ -84,7 +85,9 @@ type Result struct {
 	ActiveSessions              uint32   `json:"active_sessions"`
 	TimerHighWater              uint32   `json:"timer_high_water"`
 	QueueHighWater              uint32   `json:"queue_high_water"`
-	TempEntries                 uint32   `json:"temp_entries"`
+	AcceptedIPCHighWater        uint32   `json:"accepted_ipc_high_water"`
+	ServiceConnectionsHighWater uint32   `json:"service_connections_high_water"`
+	ControlFilesHighWater       uint32   `json:"control_files_high_water"`
 }
 
 // Endpoint owns one broker generation's sessions and current publication.
@@ -101,6 +104,7 @@ type Endpoint struct {
 	lastGeneration      uint64
 	generationStateFile string
 	clock               func() time.Time
+	resources           func(string, int) uint32
 }
 
 // New creates one finite Endpoint-local admission and publication boundary.
@@ -122,11 +126,16 @@ func New(input Setup) (*Endpoint, error) {
 	if clock == nil {
 		clock = time.Now
 	}
+	resources := input.Resources
+	if resources == nil {
+		resources = newResourceObserver()
+	}
 	return &Endpoint{network: input.NetworkID, broker: input.BrokerID, authority: authority,
 		introduction:        introduction,
 		connectionPrincipal: input.ConnectionPrincipal, adminPrincipal: input.AdministrationPrincipal,
 		sessions: make(map[[32]byte]localSession, maximumSessions), lastGeneration: lastGeneration,
-		consumed: make(map[[32]byte]localSession, maximumSessions), generationStateFile: input.GenerationStateFile, clock: clock}, nil
+		consumed: make(map[[32]byte]localSession, maximumSessions), generationStateFile: input.GenerationStateFile,
+		clock: clock, resources: resources}, nil
 }
 
 // Do executes one admitted operation and returns only an R-002 product class.
@@ -142,7 +151,7 @@ func (endpoint *Endpoint) Do(ctx context.Context, input Request) (Result, error)
 	default:
 		return denied("local operation is not permitted")
 	}
-	monitor := startResourceMonitor()
+	monitor := startResourceMonitor(endpoint.resources)
 	var result Result
 	var err error
 	switch input.Action {

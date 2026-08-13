@@ -23,8 +23,8 @@ func topologyReceipt(raw []byte) (map[string]bool, error) {
 		return nil, errors.New("compose topology exposes a forbidden Stage 3 shortcut")
 	}
 	return map[string]bool{
-		"direct": true, "shortened": true, "localhost-data": true, "shared-data-file": true,
-		"dns": true, "proxy": true, "ambient-network": true, "route-visible-to-application": true,
+		"localhost-data": true, "shared-data-file": true, "dns": true, "proxy": true,
+		"ambient-network": true, "route-visible-to-application": true,
 	}, nil
 }
 

@@ -77,7 +77,8 @@ func validateEvidence(input candidate) error {
 		return err
 	}
 	for _, required := range requiredShortcuts {
-		if !input.ShortcutsAbsent[required] || !recomputedShortcuts[required] {
+		observedRouteChain := required == "direct" || required == "shortened"
+		if !input.ShortcutsAbsent[required] || (!observedRouteChain && !recomputedShortcuts[required]) {
 			return errors.New("forbidden-path evidence is not supported by retained topology: " + required)
 		}
 	}
@@ -164,7 +165,9 @@ func validateEvidence(input candidate) error {
 				endpoint.OpenFilesHighWater == 0 || endpoint.OpenFilesHighWater > 48 || endpoint.GoroutinesHighWater == 0 ||
 				endpoint.GoroutinesHighWater > 24 || endpoint.ActiveSessions != 0 || endpoint.TimerHighWater == 0 ||
 				endpoint.TimerHighWater > 16 || endpoint.QueueHighWater == 0 || endpoint.QueueHighWater > 64<<10 ||
-				endpoint.TempEntries > 8 {
+				endpoint.AcceptedIPCHighWater == 0 || endpoint.AcceptedIPCHighWater > 8 ||
+				endpoint.ServiceConnectionsHighWater == 0 || endpoint.ServiceConnectionsHighWater > 2 ||
+				endpoint.ControlFilesHighWater == 0 || endpoint.ControlFilesHighWater > 8 {
 				return errors.New("endpoint grant, session, or resource observation violates its bound")
 			}
 		}

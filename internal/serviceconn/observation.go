@@ -5,14 +5,13 @@ import (
 	"os"
 	"runtime"
 	"runtime/metrics"
-	"strings"
 	"time"
 )
 
 type resourceSample struct {
-	memory, cpu                      float64
-	files, goroutines                uint32
-	timers, queuedBytes, tempEntries uint32
+	memory, cpu       float64
+	files, goroutines uint32
+	queuedBytes       uint32
 }
 
 type resourceMonitor struct {
@@ -20,9 +19,11 @@ type resourceMonitor struct {
 	done       chan resourceSample
 }
 
-func startResourceMonitor() resourceMonitor {
+func startResourceMonitor(observe func(string, int) uint32) resourceMonitor {
 	monitor := resourceMonitor{stopSignal: make(chan struct{}), done: make(chan resourceSample, 1)}
 	go func() {
+		releaseTimer := acquireResource(observe, "timer")
+		defer releaseTimer()
 		started, peak := sampleResources(), sampleResources()
 		ticker := time.NewTicker(5 * time.Millisecond)
 		defer ticker.Stop()
@@ -76,11 +77,13 @@ func (endpoint *Endpoint) observe(result *Result, input Request, resources resou
 	result.GoroutinesHighWater = resources.goroutines
 	result.OpenFilesHighWater = resources.files
 	result.CPUSeconds = resources.cpu
-	result.TimerHighWater = resources.timers
+	result.TimerHighWater = endpoint.resources("timer", 0)
+	result.AcceptedIPCHighWater = endpoint.resources("accepted-ipc", 0)
+	result.ServiceConnectionsHighWater = endpoint.resources("service-connection", 0)
+	result.ControlFilesHighWater = endpoint.resources("control-file", 0)
 	if resources.queuedBytes > result.QueueHighWater {
 		result.QueueHighWater = resources.queuedBytes
 	}
-	result.TempEntries = resources.tempEntries
 	result.ActiveSessions = activeSessions
 }
 
@@ -88,7 +91,7 @@ func sampleResources() resourceSample {
 	var memory runtime.MemStats
 	runtime.ReadMemStats(&memory)
 	sample := resourceSample{memory: float64(memory.Sys), cpu: processCPUSeconds(),
-		goroutines: uint32(runtime.NumGoroutine()), timers: 1, tempEntries: ownedTempEntries()}
+		goroutines: uint32(runtime.NumGoroutine())}
 	if descriptors, err := os.ReadDir("/proc/self/fd"); err == nil {
 		sample.files = uint32(len(descriptors))
 	}
@@ -108,30 +111,10 @@ func higherResources(left, right resourceSample) resourceSample {
 	if right.goroutines > left.goroutines {
 		left.goroutines = right.goroutines
 	}
-	if right.timers > left.timers {
-		left.timers = right.timers
-	}
 	if right.queuedBytes > left.queuedBytes {
 		left.queuedBytes = right.queuedBytes
 	}
-	if right.tempEntries > left.tempEntries {
-		left.tempEntries = right.tempEntries
-	}
 	return left
-}
-
-func ownedTempEntries() uint32 {
-	entries, err := os.ReadDir(os.TempDir())
-	if err != nil {
-		return 0
-	}
-	var count uint32
-	for _, entry := range entries {
-		if strings.HasPrefix(entry.Name(), "ardents-service-") {
-			count++
-		}
-	}
-	return count
 }
 
 func commitment(kind string, value [32]byte) [32]byte {

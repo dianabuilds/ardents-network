@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"strings"
 )
 
 func validateCandidate(input candidate) error {
@@ -95,7 +96,65 @@ func validateGeneration(input candidate, generation generationEvidence) error {
 			return errors.New("route actor did not terminate successfully and cleanly")
 		}
 	}
+	if err := validateRouteChain(generation.Roles); err != nil {
+		return err
+	}
+	hostile := generation.HostileSibling
+	if !validContainerID(hostile.RuntimeID) || hostile.Running || hostile.ExitCode == 0 || len(hostile.MountDestinations) != 0 ||
+		!strings.Contains(hostile.Output, "dial unix /run/ardents/not-granted/app.sock") ||
+		!strings.Contains(hostile.Output, "no such file or directory") {
+		return errors.New("hostile sibling rejection is not supported by retained process and mount observations")
+	}
+	seenHostile := false
+	for _, identity := range generation.ContainerIDs {
+		seenHostile = seenHostile || identity == hostile.RuntimeID
+	}
+	if !seenHostile {
+		return errors.New("hostile sibling observation is not bound to the retained container set")
+	}
 	return nil
+}
+
+func validateRouteChain(roles []roleEvidence) error {
+	byRole := make(map[string]roleEvidence, len(roles))
+	for _, role := range roles {
+		byRole[role.Role] = role
+	}
+	client := byRole["client"]
+	if len(client.Positions) != 4 {
+		return errors.New("client Route observation does not retain four selected positions")
+	}
+	chain := []string{"initiator", "introduction", "rendezvous", "responder"}
+	for index, name := range chain {
+		position, actor := client.Positions[index], byRole[name]
+		if position.Role != name || position.NodeID == [32]byte{} || position.Endpoint == "" ||
+			actor.NodeID != position.NodeID {
+			return errors.New("route observation does not bind the selected ordered position: " + name)
+		}
+		expectedNext := byRole["publisher"].NodeID
+		if index+1 < len(chain) {
+			expectedNext = client.Positions[index+1].NodeID
+		}
+		if actor.NextNodeID != expectedNext {
+			return errors.New("route observation contains a direct or shortened role transition: " + name)
+		}
+	}
+	if byRole["publisher"].NodeID == [32]byte{} {
+		return errors.New("route observation omits the publisher identity")
+	}
+	return nil
+}
+
+func validContainerID(value string) bool {
+	if len(value) != 64 {
+		return false
+	}
+	for _, character := range value {
+		if !strings.ContainsRune("0123456789abcdef", character) {
+			return false
+		}
+	}
+	return true
 }
 
 func expectedWorkload(seed [32]byte) []byte {

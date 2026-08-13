@@ -60,6 +60,7 @@ func (endpoint *Endpoint) publish(ctx context.Context, input Request) (Result, e
 		endpoint.current = nil
 		return failed("service unavailable", "exclusive generation state could not be retained", err)
 	}
+	endpoint.resources("control-file", 1)
 	return Result{Class: "published", Publication: append([]byte(nil), encoded...),
 		IntroductionReceipt:         sha256.Sum256(input.IntroductionAcknowledgement),
 		IntroductionAcknowledgement: append([]byte(nil), input.IntroductionAcknowledgement...),

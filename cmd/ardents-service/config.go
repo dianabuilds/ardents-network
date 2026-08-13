@@ -1,13 +1,13 @@
 package main
 
 import (
-	"bytes"
-	"encoding/hex"
-	"encoding/json"
+	"crypto/ed25519"
 	"errors"
-	"io"
-	"os"
+	"sync"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/planfile"
+	"github.com/dianabuilds/ardents-network/internal/serviceconn"
 )
 
 type endpointPlan struct {
@@ -21,23 +21,9 @@ type endpointPlan struct {
 }
 
 func readPlan(path string) (endpointPlan, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return endpointPlan{}, err
-	}
-	defer file.Close()
-	raw, err := io.ReadAll(io.LimitReader(file, 64<<10+1))
-	if err != nil || len(raw) == 0 || len(raw) > 64<<10 {
-		return endpointPlan{}, errors.New("endpoint plan is empty or exceeds 64 KiB")
-	}
 	var value endpointPlan
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&value); err != nil {
+	if err := planfile.Decode(path, 64<<10, &value); err != nil {
 		return endpointPlan{}, err
-	}
-	if decoder.Decode(&struct{}{}) != io.EOF {
-		return endpointPlan{}, errors.New("endpoint plan contains multiple JSON values")
 	}
 	if err := value.validate(); err != nil {
 		return endpointPlan{}, err
@@ -74,16 +60,52 @@ func (value endpointPlan) validate() error {
 	}
 	return nil
 }
-func (plan endpointPlan) roleAction() string {
-	if plan.Role == "client" {
-		return "connect"
+func endpointSetup(plan endpointPlan) (serviceconn.Setup, time.Time, time.Duration, error) {
+	var setup serviceconn.Setup
+	for _, field := range []struct {
+		encoded     string
+		destination []byte
+	}{
+		{plan.NetworkID, setup.NetworkID[:]}, {plan.BrokerID, setup.BrokerID[:]},
+		{plan.ConnectionPrincipal, setup.ConnectionPrincipal[:]}, {plan.AdministrationPrincipal, setup.AdministrationPrincipal[:]}} {
+		if field.encoded != "" {
+			if err := planfile.FixedHex(field.encoded, field.destination); err != nil {
+				return setup, time.Time{}, 0, err
+			}
+		}
 	}
-	return "accept"
+	setup.AuthorityPublic = make([]byte, ed25519.PublicKeySize)
+	if err := planfile.FixedHex(plan.AuthorityPublic, setup.AuthorityPublic); err != nil {
+		return setup, time.Time{}, 0, err
+	}
+	setup.IntroductionPublic = make([]byte, ed25519.PublicKeySize)
+	if err := planfile.FixedHex(plan.IntroductionPublic, setup.IntroductionPublic); err != nil {
+		return setup, time.Time{}, 0, err
+	}
+	setup.GenerationStateFile = plan.GenerationStateFile
+	setup.Resources = resourceObserver()
+	at, err := time.Parse(time.RFC3339, plan.At)
+	if err != nil {
+		return setup, time.Time{}, 0, err
+	}
+	deadline, err := time.ParseDuration(plan.Deadline)
+	return setup, at, deadline, err
 }
-func fixedHex(value string, destination []byte) error {
-	if len(value) != len(destination)*2 {
-		return errors.New("hexadecimal field has wrong length")
+
+func resourceObserver() func(string, int) uint32 {
+	var mu sync.Mutex
+	current, highWater := map[string]uint32{}, map[string]uint32{}
+	return func(kind string, delta int) uint32 {
+		mu.Lock()
+		defer mu.Unlock()
+		if delta > 0 {
+			current[kind] += uint32(delta)
+			if current[kind] > highWater[kind] {
+				highWater[kind] = current[kind]
+			}
+		} else if delta < 0 && current[kind] >= uint32(-delta) {
+			current[kind] -= uint32(-delta)
+		}
+		return highWater[kind]
 	}
-	_, err := hex.Decode(destination, []byte(value))
-	return err
 }

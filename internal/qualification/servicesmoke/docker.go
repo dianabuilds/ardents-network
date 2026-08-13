@@ -85,6 +85,8 @@ func runDocker(ctx context.Context, input Config, fixture prepared) (result Resu
 		}
 		negative.Negatives["ungranted-sibling"] = ungranted
 		negative.Mechanisms["ungranted-sibling"] = "hostile-sibling-volume-boundary"
+		shortcuts["direct"] = observedFixedRoute(generations)
+		shortcuts["shortened"] = shortcuts["direct"]
 		evidence := newAttemptEvidence(fixture, commit, imageID, string(topology), generations,
 			negative, shortcuts)
 		observer.evidenceFile, err = writeAttempt(attemptRoot, evidence)

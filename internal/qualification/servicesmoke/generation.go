@@ -65,6 +65,10 @@ func (observer dockerObserver) runGeneration(ctx context.Context, fixture prepar
 		return generationEvidence{}, false, err
 	}
 	hostileRejected := observer.waitContainer(ctx, hostileID, false) == nil
+	hostile, hostileErr := observer.hostileObservation(ctx, hostileID)
+	if hostileErr != nil {
+		return generationEvidence{}, false, hostileErr
+	}
 	services := []string{"client", "initiator", "introduction", "rendezvous", "responder", "publisher",
 		"client-endpoint", "publisher-endpoint", "client-app", "publisher-app"}
 	identities := make([]string, 0, 12)
@@ -83,6 +87,7 @@ func (observer dockerObserver) runGeneration(ctx context.Context, fixture prepar
 	if err != nil {
 		return generationEvidence{}, hostileRejected, err
 	}
+	value.HostileSibling = hostile
 	cleanup := []string{"down", "--remove-orphans"}
 	if number == 2 {
 		cleanup = []string{"down", "-v", "--remove-orphans"}
@@ -152,13 +157,46 @@ func endpointReceipt(value serviceconn.Result) endpointEvidence {
 		SessionExpiresAt: value.SessionExpiresAt, MemoryHighWater: value.MemoryHighWater, CPUSeconds: value.CPUSeconds,
 		OpenFilesHighWater: value.OpenFilesHighWater, GoroutinesHighWater: value.GoroutinesHighWater,
 		ActiveSessions: value.ActiveSessions, TimerHighWater: value.TimerHighWater, QueueHighWater: value.QueueHighWater,
-		TempEntries: value.TempEntries}
+		AcceptedIPCHighWater:        value.AcceptedIPCHighWater,
+		ServiceConnectionsHighWater: value.ServiceConnectionsHighWater,
+		ControlFilesHighWater:       value.ControlFilesHighWater}
 }
 
 func routeReceipt(value route.Evidence) roleEvidence {
-	return roleEvidence{Role: value.Role, RuntimeID: value.RuntimeID, Terminal: value.Terminal,
+	receipt := roleEvidence{Role: value.Role, RuntimeID: value.RuntimeID, Terminal: value.Terminal,
 		PID: value.PID, Cleanup: value.Cleanup, ManifestDigest: value.ManifestDigest,
 		NetworkID: value.NetworkID, OpaqueBytes: value.OpaqueBytes, SourceID: value.SourceID,
 		BuildDigest: value.BuildDigest, OpaqueDigest: value.OpaqueDigest,
-		ReverseOpaqueBytes: value.ReverseOpaqueBytes, ReverseOpaqueDigest: value.ReverseOpaqueDigest}
+		ReverseOpaqueBytes: value.ReverseOpaqueBytes, ReverseOpaqueDigest: value.ReverseOpaqueDigest,
+		NodeID: value.NodeID, NextNodeID: value.NextNodeID}
+	for _, position := range value.Positions {
+		receipt.Positions = append(receipt.Positions, routePositionEvidence{Role: position.Role,
+			NodeID: position.NodeID, Endpoint: position.Endpoint})
+	}
+	return receipt
+}
+
+func observedFixedRoute(generations []generationEvidence) bool {
+	for _, generation := range generations {
+		roles := make(map[string]roleEvidence, len(generation.Roles))
+		for _, role := range generation.Roles {
+			roles[role.Role] = role
+		}
+		client := roles["client"]
+		chain := []string{"initiator", "introduction", "rendezvous", "responder"}
+		if len(client.Positions) != len(chain) || roles["publisher"].NodeID == [32]byte{} {
+			return false
+		}
+		for index, name := range chain {
+			expected := roles["publisher"].NodeID
+			if index+1 < len(chain) {
+				expected = client.Positions[index+1].NodeID
+			}
+			if client.Positions[index].Role != name || client.Positions[index].NodeID != roles[name].NodeID ||
+				roles[name].NextNodeID != expected {
+				return false
+			}
+		}
+	}
+	return len(generations) != 0
 }

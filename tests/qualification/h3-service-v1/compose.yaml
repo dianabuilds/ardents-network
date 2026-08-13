@@ -89,7 +89,7 @@ services:
       - {type: bind, source: "${ARDENTS_SERVICE_GENERATION:?}/publisher-seed.hex", target: /run/ardents/workload/publisher.hex, read_only: true, bind: {create_host_path: false}}
   hostile-sibling:
     <<: *local
-    command: [/usr/local/bin/ardents-stream-app, run, hostile, /run/ardents/not-granted/app.sock, "1", "2", "1"]
+    command: [/usr/local/bin/ardents-publish-app, publish, /run/ardents/not-granted/app.sock]
   negative-suite:
     <<: *local
     profiles: [negative]

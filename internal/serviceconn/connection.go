@@ -23,6 +23,8 @@ func (endpoint *Endpoint) connect(ctx context.Context, input Request) (Result, e
 	if err := validateStreams(input); err != nil {
 		return failed("local authorization or policy denial", "bounded local stream input is invalid", err)
 	}
+	releaseConnection := acquireResource(endpoint.resources, "service-connection")
+	defer releaseConnection()
 	defer input.Route.Close()
 	stop := context.AfterFunc(ctx, func() {
 		_ = input.Route.Close()
@@ -51,6 +53,8 @@ func (endpoint *Endpoint) accept(ctx context.Context, input Request) (Result, er
 	if err := validateStreams(input); err != nil {
 		return failed("local authorization or policy denial", "bounded local stream input is invalid", err)
 	}
+	releaseConnection := acquireResource(endpoint.resources, "service-connection")
+	defer releaseConnection()
 	endpoint.mu.Lock()
 	if endpoint.current == nil || input.At.Unix() < endpoint.current.credential.NotBefore || input.At.Unix() >= endpoint.current.credential.NotAfter {
 		endpoint.mu.Unlock()

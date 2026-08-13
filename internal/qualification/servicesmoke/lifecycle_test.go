@@ -56,7 +56,7 @@ func TestPrivateCleanupRefusesUnownedRoot(t *testing.T) {
 func TestTopologyReceiptRequiresApplicationAndEndpointIsolation(t *testing.T) {
 	good := []byte("services:\n  client-app:\n    network_mode: none\n  publisher-app:\n    network_mode: none\n" +
 		"  client-endpoint:\n    network_mode: none\n  publisher-endpoint:\n    network_mode: none\nnetworks:\n  route_net:\n    internal: true\n")
-	if value, err := topologyReceipt(good); err != nil || len(value) != 8 {
+	if value, err := topologyReceipt(good); err != nil || len(value) != 6 {
 		t.Fatalf("isolated topology rejected: value=%v err=%v", value, err)
 	}
 	bad := bytes.Replace(good, []byte("  client-app:\n    network_mode: none"),

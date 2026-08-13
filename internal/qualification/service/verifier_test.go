@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 )
@@ -29,6 +30,26 @@ func TestVerifierSeparatesPassFailAndInvalid(t *testing.T) {
 	input.Generations[0].ClientApplication.SentDigest[0]++
 	if verdict := Verify(committed(t, input)); verdict.Verdict != "fail" {
 		t.Fatalf("complete wrong-byte evidence was not fail: %+v", verdict)
+	}
+}
+
+func TestVerifierRecomputesOwnedResourcesRouteAndHostileBoundary(t *testing.T) {
+	tests := map[string]func(*candidate){
+		"timer unavailable": func(value *candidate) { value.Generations[0].ClientEndpoint.TimerHighWater = 0 },
+		"IPC exceeds bound": func(value *candidate) { value.Generations[0].ClientEndpoint.AcceptedIPCHighWater = 9 },
+		"shortened route":   func(value *candidate) { value.Generations[0].Roles[1].NextNodeID = [32]byte{5} },
+		"hostile mount": func(value *candidate) {
+			value.Generations[0].HostileSibling.MountDestinations = []string{"/run/ardents/client-app"}
+		},
+	}
+	for name, mutate := range tests {
+		t.Run(name, func(t *testing.T) {
+			value := validCandidate(t)
+			mutate(&value)
+			if verdict := Verify(committed(t, value)); verdict.Verdict == "pass" {
+				t.Fatalf("unsupported evidence was not rejected: %+v", verdict)
+			}
+		})
 	}
 }
 
@@ -86,7 +107,8 @@ func validCandidate(t *testing.T) candidate {
 			SessionCommitment: [32]byte{5}, GrantSurface: "connection", SessionConsumed: true,
 			MemoryHighWater: 1 << 20, CPUSeconds: 1, OpenFilesHighWater: 4, GoroutinesHighWater: 2,
 			TimerHighWater: 1, QueueHighWater: 16 << 10, SessionIssuedAt: 1,
-			SessionExpiresAt: 1 + int64(15*time.Second)}
+			SessionExpiresAt: 1 + int64(15*time.Second), AcceptedIPCHighWater: 2,
+			ServiceConnectionsHighWater: 1, ControlFilesHighWater: 2}
 		clientGrant := grantEvidence{Broker: [32]byte{byte(index + 10)}, Principal: [32]byte{byte(index + 11)}, Surface: "connection"}
 		publisherGrant := grantEvidence{Broker: [32]byte{byte(index + 12)}, Principal: [32]byte{byte(index + 13)}, Surface: "connection"}
 		endpointFor := func(grant grantEvidence) endpointEvidence {
@@ -113,16 +135,30 @@ func validCandidate(t *testing.T) candidate {
 			ContainerIDs: make([]string, 12)}
 		for roleIndex, role := range routeRoles {
 			runtime := string(rune('a' + index*10 + roleIndex))
-			generation.Roles = append(generation.Roles, roleEvidence{Role: role, PID: index*10 + roleIndex + 1,
+			receipt := roleEvidence{Role: role, PID: index*10 + roleIndex + 1,
 				RuntimeID: runtime, Terminal: "success", Cleanup: true, ManifestDigest: input.RouteManifestDigest,
 				NetworkID: input.NetworkID, OpaqueBytes: 64 << 10, SourceID: "source@version",
 				BuildDigest: [32]byte{6}, OpaqueDigest: [32]byte{byte(index + 7)}, ReverseOpaqueBytes: 64 << 10,
-				ReverseOpaqueDigest: [32]byte{byte(index + 8)}})
-			generation.ContainerIDs[roleIndex] = runtime + "-container"
+				ReverseOpaqueDigest: [32]byte{byte(index + 8)}}
+			if roleIndex == 0 {
+				for position := 0; position < 4; position++ {
+					receipt.Positions = append(receipt.Positions, routePositionEvidence{Role: routeRoles[position+1],
+						NodeID: [32]byte{byte(position + 1)}, Endpoint: "172.31.20.1:4605"})
+				}
+			} else {
+				receipt.NodeID = [32]byte{byte(roleIndex)}
+				if roleIndex < len(routeRoles)-1 {
+					receipt.NextNodeID = [32]byte{byte(roleIndex + 1)}
+				}
+			}
+			generation.Roles = append(generation.Roles, receipt)
+			generation.ContainerIDs[roleIndex] = runtime + strings.Repeat("a", 64-len(runtime))
 		}
 		for containerIndex := len(routeRoles); containerIndex < len(generation.ContainerIDs); containerIndex++ {
-			generation.ContainerIDs[containerIndex] = "extra-" + string(rune('A'+index*10+containerIndex))
+			generation.ContainerIDs[containerIndex] = strings.Repeat(string(rune('0'+containerIndex%10)), 64)
 		}
+		generation.HostileSibling = hostileObservation{RuntimeID: generation.ContainerIDs[11], ExitCode: 1,
+			Output: "dial unix /run/ardents/not-granted/app.sock: no such file or directory"}
 		input.Generations[index] = generation
 	}
 	credentialDigest := sha256.Sum256(append(credentialJSON(input.Generations[0].Credential),
@@ -138,10 +174,13 @@ func validCandidate(t *testing.T) candidate {
 
 func validTopology() string {
 	return "services:\n" +
-		"  client:\n    image: test\n  hostile-sibling:\n    image: test\n  negative-suite:\n    image: test\n" +
+		"  client:\n    networks:\n      route_net:\n        ipv4_address: 172.31.20.10\n  hostile-sibling:\n    image: test\n  negative-suite:\n    image: test\n" +
 		"  publication-operator:\n    image: test\n  verifier:\n    image: test\n  volume-init:\n    image: test\n" +
-		"  initiator:\n    image: test\n  introduction:\n    image: test\n" +
-		"  rendezvous:\n    image: test\n  responder:\n    image: test\n  publisher:\n    image: test\n" +
+		"  initiator:\n    networks:\n      route_net:\n        ipv4_address: 172.31.20.11\n" +
+		"  introduction:\n    networks:\n      route_net:\n        ipv4_address: 172.31.20.12\n" +
+		"  rendezvous:\n    networks:\n      route_net:\n        ipv4_address: 172.31.20.13\n" +
+		"  responder:\n    networks:\n      route_net:\n        ipv4_address: 172.31.20.14\n" +
+		"  publisher:\n    networks:\n      route_net:\n        ipv4_address: 172.31.20.16\n" +
 		"  client-app:\n    network_mode: none\n  publisher-app:\n    network_mode: none\n" +
 		"  client-endpoint:\n    network_mode: none\n  publisher-endpoint:\n    network_mode: none\n" +
 		"networks:\n  route:\n    internal: true\n"

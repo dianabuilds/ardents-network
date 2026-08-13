@@ -2,12 +2,11 @@ package main
 
 import (
 	"context"
-	"crypto/ed25519"
 	"errors"
 	"io"
 	"os"
-	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/planfile"
 	"github.com/dianabuilds/ardents-network/internal/serviceconn"
 )
 
@@ -24,19 +23,24 @@ func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (servicec
 	if err != nil {
 		return serviceconn.Result{}, err
 	}
+	setup.Resources("control-file", 1)
+	defer setup.Resources("control-file", -1)
 	defer func() { _ = applicationListener.Close(); _ = os.Remove(plan.ApplicationSocket) }()
 	routeListener, err := listenLocal(plan.RouteSocket, deadline)
 	if err != nil {
 		return serviceconn.Result{}, err
 	}
+	setup.Resources("control-file", 1)
+	defer setup.Resources("control-file", -1)
 	defer func() { _ = routeListener.Close(); _ = os.Remove(plan.RouteSocket) }()
 	var published serviceconn.Result
 	if plan.Role == "publisher" {
 		var publishErr error
-		published, publishErr = publishCurrent(endpoint, plan, setup.AdministrationPrincipal, at, deadline, ready)
+		published, publishErr = publishCurrent(endpoint, setup.Resources, plan, setup.AdministrationPrincipal, at, deadline, ready)
 		if publishErr != nil {
 			return serviceconn.Result{}, publishErr
 		}
+		defer setup.Resources("control-file", -2)
 	} else if ready != nil {
 		ready()
 	}
@@ -44,12 +48,16 @@ func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (servicec
 	if err != nil {
 		return serviceconn.Result{}, err
 	}
+	setup.Resources("accepted-ipc", 1)
+	defer setup.Resources("accepted-ipc", -1)
 	defer application.Close()
 	route, err := routeListener.Accept()
 	if err != nil {
 		application.Close()
 		return serviceconn.Result{}, err
 	}
+	setup.Resources("accepted-ipc", 1)
+	defer setup.Resources("accepted-ipc", -1)
 	session, err := admit(endpoint, setup.ConnectionPrincipal, "connection", at)
 	if err != nil {
 		application.Close()
@@ -59,7 +67,7 @@ func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (servicec
 	request := serviceconn.Request{Action: plan.roleAction(), Principal: setup.ConnectionPrincipal,
 		Session: session, Route: route, Application: application, BytesEachDirection: plan.BytesEachDirection, At: at}
 	if plan.Role == "client" {
-		if err := fixedHex(plan.Target, request.Target[:]); err != nil {
+		if err := planfile.FixedHex(plan.Target, request.Target[:]); err != nil {
 			return serviceconn.Result{}, err
 		}
 		file, openErr := os.Open(plan.PublicationFile)
@@ -72,6 +80,8 @@ func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (servicec
 			return serviceconn.Result{}, errors.Join(err, closeErr, errors.New("publication file is invalid or oversized"))
 		}
 	}
+	setup.Resources("timer", 1)
+	defer setup.Resources("timer", -1)
 	operation, cancel := context.WithTimeout(ctx, deadline)
 	defer cancel()
 	result, err := endpoint.Do(operation, request)
@@ -83,37 +93,9 @@ func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (servicec
 	err = errors.Join(err, deliverResult(application, result))
 	return result, err
 }
-func endpointSetup(plan endpointPlan) (serviceconn.Setup, time.Time, time.Duration, error) {
-	var setup serviceconn.Setup
-	for _, field := range []struct {
-		encoded     string
-		destination []byte
-	}{
-		{plan.NetworkID, setup.NetworkID[:]}, {plan.BrokerID, setup.BrokerID[:]},
-		{plan.ConnectionPrincipal, setup.ConnectionPrincipal[:]}, {plan.AdministrationPrincipal, setup.AdministrationPrincipal[:]}} {
-		if field.encoded != "" {
-			if err := fixedHex(field.encoded, field.destination); err != nil {
-				return setup, time.Time{}, 0, err
-			}
-		}
+func (plan endpointPlan) roleAction() string {
+	if plan.Role == "client" {
+		return "connect"
 	}
-	setup.AuthorityPublic = make([]byte, ed25519.PublicKeySize)
-	if err := fixedHex(plan.AuthorityPublic, setup.AuthorityPublic); err != nil {
-		return setup, time.Time{}, 0, err
-	}
-	setup.IntroductionPublic = make([]byte, ed25519.PublicKeySize)
-	if err := fixedHex(plan.IntroductionPublic, setup.IntroductionPublic); err != nil {
-		return setup, time.Time{}, 0, err
-	}
-	setup.GenerationStateFile = plan.GenerationStateFile
-	at, err := time.Parse(time.RFC3339, plan.At)
-	if err != nil {
-		return setup, time.Time{}, 0, err
-	}
-	deadline, err := time.ParseDuration(plan.Deadline)
-	return setup, at, deadline, err
-}
-func admit(endpoint *serviceconn.Endpoint, principal [32]byte, surface string, at time.Time) ([32]byte, error) {
-	result, err := endpoint.Do(context.Background(), serviceconn.Request{Action: "admit", Surface: surface, Principal: principal, At: at})
-	return result.Session, err
+	return "accept"
 }

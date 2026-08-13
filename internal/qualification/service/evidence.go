@@ -46,6 +46,15 @@ type generationEvidence struct {
 	ContainerIDs                []string            `json:"container_ids"`
 	ClientGrant                 grantEvidence       `json:"client_grant"`
 	PublisherGrant              grantEvidence       `json:"publisher_grant"`
+	HostileSibling              hostileObservation  `json:"hostile_sibling"`
+}
+
+type hostileObservation struct {
+	RuntimeID         string   `json:"runtime_id"`
+	ExitCode          int      `json:"exit_code"`
+	Running           bool     `json:"running"`
+	MountDestinations []string `json:"mount_destinations"`
+	Output            string   `json:"output"`
 }
 
 type grantEvidence struct {
@@ -67,28 +76,30 @@ type publicCredential struct {
 }
 
 type endpointEvidence struct {
-	Class               string   `json:"class"`
-	AuthenticatedTarget [32]byte `json:"authenticated_target"`
-	Generation          uint64   `json:"generation"`
-	AcceptedBytes       uint32   `json:"accepted_bytes"`
-	ReceivedBytes       uint32   `json:"received_bytes"`
-	ConnectionCanary    [32]byte `json:"connection_canary"`
-	PrincipalCommitment [32]byte `json:"principal_commitment"`
-	SessionCommitment   [32]byte `json:"session_commitment"`
-	GrantSurface        string   `json:"grant_surface"`
-	SessionConsumed     bool     `json:"session_consumed"`
-	BrokerCommitment    [32]byte `json:"broker_commitment"`
-	GrantCommitment     [32]byte `json:"grant_commitment"`
-	SessionIssuedAt     int64    `json:"session_issued_at"`
-	SessionExpiresAt    int64    `json:"session_expires_at"`
-	MemoryHighWater     uint64   `json:"memory_high_water"`
-	CPUSeconds          float64  `json:"cpu_seconds"`
-	OpenFilesHighWater  uint32   `json:"open_files_high_water"`
-	GoroutinesHighWater uint32   `json:"goroutines_high_water"`
-	ActiveSessions      uint32   `json:"active_sessions"`
-	TimerHighWater      uint32   `json:"timer_high_water"`
-	QueueHighWater      uint32   `json:"queue_high_water"`
-	TempEntries         uint32   `json:"temp_entries"`
+	Class                       string   `json:"class"`
+	AuthenticatedTarget         [32]byte `json:"authenticated_target"`
+	Generation                  uint64   `json:"generation"`
+	AcceptedBytes               uint32   `json:"accepted_bytes"`
+	ReceivedBytes               uint32   `json:"received_bytes"`
+	ConnectionCanary            [32]byte `json:"connection_canary"`
+	PrincipalCommitment         [32]byte `json:"principal_commitment"`
+	SessionCommitment           [32]byte `json:"session_commitment"`
+	GrantSurface                string   `json:"grant_surface"`
+	SessionConsumed             bool     `json:"session_consumed"`
+	BrokerCommitment            [32]byte `json:"broker_commitment"`
+	GrantCommitment             [32]byte `json:"grant_commitment"`
+	SessionIssuedAt             int64    `json:"session_issued_at"`
+	SessionExpiresAt            int64    `json:"session_expires_at"`
+	MemoryHighWater             uint64   `json:"memory_high_water"`
+	CPUSeconds                  float64  `json:"cpu_seconds"`
+	OpenFilesHighWater          uint32   `json:"open_files_high_water"`
+	GoroutinesHighWater         uint32   `json:"goroutines_high_water"`
+	ActiveSessions              uint32   `json:"active_sessions"`
+	TimerHighWater              uint32   `json:"timer_high_water"`
+	QueueHighWater              uint32   `json:"queue_high_water"`
+	AcceptedIPCHighWater        uint32   `json:"accepted_ipc_high_water"`
+	ServiceConnectionsHighWater uint32   `json:"service_connections_high_water"`
+	ControlFilesHighWater       uint32   `json:"control_files_high_water"`
 }
 
 type applicationEvidence struct {
@@ -106,19 +117,28 @@ type applicationEvidence struct {
 }
 
 type roleEvidence struct {
-	Role                string   `json:"role"`
-	RuntimeID           string   `json:"runtime_id"`
-	Terminal            string   `json:"terminal"`
-	PID                 int      `json:"pid"`
-	Cleanup             bool     `json:"cleanup"`
-	ManifestDigest      [32]byte `json:"manifest_digest"`
-	NetworkID           [32]byte `json:"network_id"`
-	OpaqueBytes         uint64   `json:"opaque_bytes"`
-	SourceID            string   `json:"source_id"`
-	BuildDigest         [32]byte `json:"build_digest"`
-	OpaqueDigest        [32]byte `json:"opaque_digest"`
-	ReverseOpaqueBytes  uint64   `json:"reverse_opaque_bytes"`
-	ReverseOpaqueDigest [32]byte `json:"reverse_opaque_digest"`
+	Role                string                  `json:"role"`
+	RuntimeID           string                  `json:"runtime_id"`
+	Terminal            string                  `json:"terminal"`
+	PID                 int                     `json:"pid"`
+	Cleanup             bool                    `json:"cleanup"`
+	ManifestDigest      [32]byte                `json:"manifest_digest"`
+	NetworkID           [32]byte                `json:"network_id"`
+	OpaqueBytes         uint64                  `json:"opaque_bytes"`
+	SourceID            string                  `json:"source_id"`
+	BuildDigest         [32]byte                `json:"build_digest"`
+	OpaqueDigest        [32]byte                `json:"opaque_digest"`
+	ReverseOpaqueBytes  uint64                  `json:"reverse_opaque_bytes"`
+	ReverseOpaqueDigest [32]byte                `json:"reverse_opaque_digest"`
+	NodeID              [32]byte                `json:"node_id"`
+	NextNodeID          [32]byte                `json:"next_node_id"`
+	Positions           []routePositionEvidence `json:"positions,omitempty"`
+}
+
+type routePositionEvidence struct {
+	Role     string   `json:"role"`
+	NodeID   [32]byte `json:"node_id"`
+	Endpoint string   `json:"endpoint"`
 }
 
 var routeRoles = [...]string{"client", "initiator", "introduction", "rendezvous", "responder", "publisher"}
