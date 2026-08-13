@@ -101,6 +101,28 @@ func TestEvidenceIntegritySeparatesPassFailAndInvalid(t *testing.T) {
 	}
 }
 
+func TestContainerProcessesUseDistinctRuntimeIdentities(t *testing.T) {
+	input := evidenceCase(t)
+	lines := splitLines(input.RawEvidence)
+	for index := range lines {
+		var evidence route.Evidence
+		if err := json.Unmarshal(lines[index], &evidence); err != nil {
+			t.Fatal(err)
+		}
+		evidence.PID = 1
+		evidence.RuntimeID = "container-" + string(rune('a'+index))
+		lines[index], _ = json.Marshal(evidence)
+		input.ExitedPIDs[index] = 1
+		input.ExitedRuntimeIDs[index] = evidence.RuntimeID
+		input.ContainerIDs[index] = evidence.RuntimeID + "0000000000000000000000000000000000000000000000000000"
+	}
+	input.RawEvidence = joinLines(lines)
+	input.EvidenceDigest = sha256.Sum256(input.RawEvidence)
+	if result := qualification.Evaluate(input); result.Verdict != "pass" {
+		t.Fatalf("distinct container processes did not pass: %+v", result)
+	}
+}
+
 func evidenceCase(t *testing.T) qualification.Case {
 	t.Helper()
 	roles := []string{"initiator", "introduction", "rendezvous", "responder"}
@@ -146,10 +168,13 @@ func evidenceCase(t *testing.T) qualification.Case {
 		NetworkID: input.NetworkID, EpochDigest: input.EpochDigest, NodeID: input.PublisherID,
 		PreviousPin: input.PublicKeys[3], CanaryLength: 32, CanaryDigest: digest})
 	for index := range values {
+		values[index].RuntimeID = "process-" + string(rune('a'+index))
 		values[index].SourceID, values[index].BuildDigest = input.SourceID, input.BuildDigest
 		values[index].ManifestDigest, values[index].PeerAuthenticated = input.ManifestDigest, true
 		values[index].DeadlineMillis, values[index].Cleanup, values[index].Terminal = 5_000, true, "success"
 		input.ExitedPIDs[index] = values[index].PID
+		input.ExitedRuntimeIDs[index] = values[index].RuntimeID
+		input.ContainerIDs[index] = values[index].RuntimeID + "0000000000000000000000000000000000000000000000000000"
 	}
 	lines := make([][]byte, len(values))
 	for index := range values {

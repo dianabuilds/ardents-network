@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
+	"os"
 	"time"
 )
 
@@ -33,6 +35,7 @@ func Run(ctx context.Context, input Actor, ready func(Evidence)) (Evidence, erro
 		return Evidence{}, errors.New("route actor role is invalid")
 	}
 	result.ManifestDigest = input.ManifestDigest
+	result.RuntimeID = runtimeIdentity()
 	result.DeadlineMillis = uint32(input.Deadline / time.Millisecond)
 	result.Cleanup = true
 	result.Terminal = "success"
@@ -47,6 +50,17 @@ func Run(ctx context.Context, input Actor, ready func(Evidence)) (Evidence, erro
 		result.Error = err.Error()
 	}
 	return result, err
+}
+
+func runtimeIdentity() string {
+	hostname, err := os.Hostname()
+	if err != nil || hostname == "" {
+		hostname = "host"
+	}
+	if _, err := os.Stat("/.dockerenv"); err == nil {
+		return hostname
+	}
+	return fmt.Sprintf("%s-%d", hostname, os.Getpid())
 }
 
 func emptyPlan(value Plan) bool {

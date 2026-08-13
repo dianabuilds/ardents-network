@@ -44,3 +44,24 @@ func TestCarrierLabComposeIsolationContract(t *testing.T) {
 		}
 	}
 }
+
+func TestH3RouteSmokeComposeContract(t *testing.T) {
+	t.Parallel()
+	compose := readProjectFile(t, repositoryRoot(t), "tests/qualification/h3-route-v1/compose.yaml")
+	required := []string{
+		"client:", "initiator:", "introduction:", "rendezvous:", "responder:", "publisher:", "verifier:",
+		"${ARDENTS_ROUTE_IMAGE_TAG:?}", "${ARDENTS_ROUTE_ROOT:?}", "route_net:", "internal: true",
+		"read_only: true", "cap_drop:", "- ALL", "no-new-privileges:true", "restart: \"no\"",
+		"tmpfs:", "cpus:", "mem_limit:", "pids_limit:", "type: bind", "read_only: true", "create_host_path: false",
+	}
+	for _, value := range required {
+		if !bytes.Contains(compose, []byte(value)) {
+			t.Errorf("H3 Route smoke Compose is missing %q", value)
+		}
+	}
+	for _, forbidden := range []string{"ports:", "privileged:", "/var/run/docker.sock", "network_mode:", "external: true"} {
+		if bytes.Contains(compose, []byte(forbidden)) {
+			t.Errorf("H3 Route smoke Compose contains forbidden setting %q", forbidden)
+		}
+	}
+}

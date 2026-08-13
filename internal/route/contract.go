@@ -34,6 +34,7 @@ type Evidence struct {
 	Kind               string     `json:"kind"`
 	Role               string     `json:"role"`
 	PID                int        `json:"pid"`
+	RuntimeID          string     `json:"runtime_id"`
 	SourceID           string     `json:"source_id"`
 	BuildDigest        [32]byte   `json:"build_digest"`
 	ManifestDigest     [32]byte   `json:"manifest_digest"`

@@ -6,7 +6,8 @@ func TestRepositoryArchitectureQualificationBoundary(t *testing.T) {
 	t.Parallel()
 	root := repositoryRoot(t)
 	registry := readPackageRegistry(t, root)
-	packages := []string{"internal/qualification/byteio", "internal/qualification/epochfixture", "internal/qualification/state", "internal/qualification/node", "internal/qualification/node/fixture"}
+	packages := []string{"internal/qualification/byteio", "internal/qualification/epochfixture", "internal/qualification/state",
+		"internal/qualification/node", "internal/qualification/node/fixture", "internal/qualification/route", "internal/qualification/routesmoke"}
 	for _, directory := range packages {
 		qualification, exists := registry[directory]
 		if !exists {
@@ -28,6 +29,21 @@ func TestRepositoryArchitectureQualificationBoundary(t *testing.T) {
 				!qualification.allowedImports["internal/qualification/epochfixture"] {
 				t.Errorf("%s may import only canonical Epoch rules and qualification byte I/O", directory)
 			}
+		case "internal/qualification/routesmoke":
+			wanted := []string{"internal/network/epoch/assignment", "internal/network/state", "internal/qualification/byteio",
+				"internal/qualification/epochfixture", "internal/qualification/route", "internal/route"}
+			if len(qualification.allowedImports) != len(wanted) {
+				t.Errorf("%s has an unexpected import count", directory)
+			}
+			for _, dependency := range wanted {
+				if !qualification.allowedImports[dependency] {
+					t.Errorf("%s must permit %s", directory, dependency)
+				}
+			}
+		case "internal/qualification/route":
+			if len(qualification.allowedImports) != 1 || !qualification.allowedImports["internal/route"] {
+				t.Errorf("%s may import the candidate Route only from compatibility tests", directory)
+			}
 		case "internal/qualification/epochfixture":
 			if len(qualification.allowedImports) != 3 || !qualification.allowedImports["internal/network/epoch"] ||
 				!qualification.allowedImports["internal/network/epoch/assignment"] ||
@@ -43,6 +59,8 @@ func TestRepositoryArchitectureQualificationBoundary(t *testing.T) {
 	for owner, registration := range registry {
 		for _, directory := range packages {
 			allowed := owner == "cmd/ardents-qualify" ||
+				owner == "internal/qualification/routesmoke" ||
+				owner == "cmd/ardents-route-qualify" && directory == "internal/qualification/route" ||
 				owner == "internal/qualification/state" && directory == "internal/qualification/byteio" ||
 				owner == "internal/qualification/node" && (directory == "internal/qualification/byteio" || directory == "internal/qualification/node/fixture") ||
 				owner == "internal/qualification/node/fixture" && (directory == "internal/qualification/byteio" || directory == "internal/qualification/epochfixture")

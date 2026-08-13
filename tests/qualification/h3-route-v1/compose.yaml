@@ -1,0 +1,63 @@
+x-common: &common
+  image: ${ARDENTS_ROUTE_IMAGE_TAG:?}
+  pull_policy: never
+  read_only: true
+  restart: "no"
+  cap_drop:
+    - ALL
+  security_opt: [no-new-privileges:true]
+  user: "${ARDENTS_ROUTE_RUNTIME_USER:?}"
+  tmpfs: [/tmp:rw,noexec,nosuid,nodev,size=8m]
+  cpus: 0.5
+  mem_limit: 128m
+  pids_limit: 32
+  networks: [route_net]
+
+x-build: &build
+  build:
+    context: ${ARDENTS_ROUTE_BUILD_CONTEXT:-../../..}
+    dockerfile: tests/qualification/h3-route-v1/Dockerfile
+    args:
+      ARDENTS_SOURCE_DIGEST: ${ARDENTS_ROUTE_SOURCE_DIGEST:?}
+
+services:
+  publisher:
+    <<: [*common, *build]
+    command: [/usr/local/bin/ardents-route, run, /run/ardents/plan.json]
+    volumes: [{type: bind, source: "${ARDENTS_ROUTE_ROOT:?}/plans/publisher.json", target: /run/ardents/plan.json, read_only: true, bind: {create_host_path: false}}, {type: bind, source: "${ARDENTS_ROUTE_ROOT:?}/secrets/publisher", target: /run/ardents/secrets, read_only: true, bind: {create_host_path: false}}]
+    networks: {route_net: {ipv4_address: 172.31.20.16}}
+  responder:
+    <<: *common
+    command: [/usr/local/bin/ardents-route, run, /run/ardents/plan.json]
+    volumes: [{type: bind, source: "${ARDENTS_ROUTE_ROOT:?}/plans/responder.json", target: /run/ardents/plan.json, read_only: true, bind: {create_host_path: false}}, {type: bind, source: "${ARDENTS_ROUTE_ROOT:?}/secrets/responder", target: /run/ardents/secrets, read_only: true, bind: {create_host_path: false}}]
+    networks: {route_net: {ipv4_address: 172.31.20.14}}
+  rendezvous:
+    <<: *common
+    command: [/usr/local/bin/ardents-route, run, /run/ardents/plan.json]
+    volumes: [{type: bind, source: "${ARDENTS_ROUTE_ROOT:?}/plans/rendezvous.json", target: /run/ardents/plan.json, read_only: true, bind: {create_host_path: false}}, {type: bind, source: "${ARDENTS_ROUTE_ROOT:?}/secrets/rendezvous", target: /run/ardents/secrets, read_only: true, bind: {create_host_path: false}}]
+    networks: {route_net: {ipv4_address: 172.31.20.13}}
+  introduction:
+    <<: *common
+    command: [/usr/local/bin/ardents-route, run, /run/ardents/plan.json]
+    volumes: [{type: bind, source: "${ARDENTS_ROUTE_ROOT:?}/plans/introduction.json", target: /run/ardents/plan.json, read_only: true, bind: {create_host_path: false}}, {type: bind, source: "${ARDENTS_ROUTE_ROOT:?}/secrets/introduction", target: /run/ardents/secrets, read_only: true, bind: {create_host_path: false}}]
+    networks: {route_net: {ipv4_address: 172.31.20.12}}
+  initiator:
+    <<: *common
+    command: [/usr/local/bin/ardents-route, run, /run/ardents/plan.json]
+    volumes: [{type: bind, source: "${ARDENTS_ROUTE_ROOT:?}/plans/initiator.json", target: /run/ardents/plan.json, read_only: true, bind: {create_host_path: false}}, {type: bind, source: "${ARDENTS_ROUTE_ROOT:?}/secrets/initiator", target: /run/ardents/secrets, read_only: true, bind: {create_host_path: false}}]
+    networks: {route_net: {ipv4_address: 172.31.20.11}}
+  client:
+    <<: *common
+    command: [/usr/local/bin/ardents-route, run, /run/ardents/plan.json]
+    volumes: [{type: bind, source: "${ARDENTS_ROUTE_ROOT:?}/plans/client.json", target: /run/ardents/plan.json, read_only: true, bind: {create_host_path: false}}, {type: bind, source: "${ARDENTS_ROUTE_ROOT:?}/secrets/client", target: /run/ardents/secrets, read_only: true, bind: {create_host_path: false}}, {type: bind, source: "${ARDENTS_ROUTE_ROOT:?}/state", target: /run/ardents/state, bind: {create_host_path: false}}]
+    networks: {route_net: {ipv4_address: 172.31.20.10}}
+  verifier:
+    <<: *common
+    profiles: [verify]
+    command: [/usr/local/bin/ardents-route-qualify, /run/ardents/evidence/manifest.json]
+    volumes: [{type: bind, source: "${ARDENTS_ROUTE_EVIDENCE:?}", target: /run/ardents/evidence, read_only: true, bind: {create_host_path: false}}]
+
+networks:
+  route_net:
+    internal: true
+    ipam: {config: [{subnet: 172.31.20.0/24}]}

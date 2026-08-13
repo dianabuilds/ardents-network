@@ -116,8 +116,12 @@ func TestAuthenticatedRouteUsesSeparateRoleProcesses(t *testing.T) {
 	verification.SourceID, verification.BuildDigest = clientEvidence.SourceID, clientEvidence.BuildDigest
 	verification.CleanupVerified = true
 	verification.ExitedPIDs[0] = clientEvidence.PID
+	verification.ExitedRuntimeIDs[0] = clientEvidence.RuntimeID
+	verification.ContainerIDs[0] = clientEvidence.RuntimeID + "0000000000000000000000000000000000000000000000000000"
 	for index, evidence := range completed {
 		verification.ExitedPIDs[index+1] = evidence.PID
+		verification.ExitedRuntimeIDs[index+1] = evidence.RuntimeID
+		verification.ContainerIDs[index+1] = evidence.RuntimeID + "0000000000000000000000000000000000000000000000000000"
 	}
 	verification.EvidenceDigest = sha256.Sum256(verification.RawEvidence)
 	if result := qualification.Evaluate(verification); result.Verdict != "pass" {

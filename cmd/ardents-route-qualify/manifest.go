@@ -36,6 +36,8 @@ type manifest struct {
 	SourceID           string              `json:"source_id"`
 	BuildDigest        string              `json:"build_digest"`
 	ExitedPIDs         []int               `json:"exited_pids"`
+	ExitedRuntimeIDs   []string            `json:"exited_runtime_ids"`
+	ContainerIDs       []string            `json:"container_ids"`
 	CleanupVerified    bool                `json:"cleanup_verified"`
 }
 
@@ -51,13 +53,15 @@ func readCase(path string) (qualification.Case, error) {
 		return qualification.Case{}, err
 	}
 	if len(value.NodeIDs) != 4 || len(value.PublicKeys) != 4 || len(value.Families) != 4 ||
-		len(value.Endpoints) != 4 || len(value.Candidates) == 0 || len(value.Candidates) > 64 || len(value.ExitedPIDs) != 6 {
+		len(value.Endpoints) != 4 || len(value.Candidates) == 0 || len(value.Candidates) > 64 ||
+		len(value.ExitedPIDs) != 6 || len(value.ExitedRuntimeIDs) != 6 || len(value.ContainerIDs) != 6 {
 		return qualification.Case{}, errors.New("route evidence manifest requires four positions")
 	}
 	input := qualification.Case{Generation: value.Generation, Epoch: value.Epoch, Profile: value.Profile,
 		SelectionAt: value.SelectionAt, Families: [4]string(value.Families), Endpoints: [4]string(value.Endpoints),
 		ExcludedFamilies: value.ExcludedFamilies, ExcludedDomains: value.ExcludedDomains, SourceID: value.SourceID,
-		ExitedPIDs: [6]int(value.ExitedPIDs), CleanupVerified: value.CleanupVerified}
+		ExitedPIDs: [6]int(value.ExitedPIDs), ExitedRuntimeIDs: [6]string(value.ExitedRuntimeIDs),
+		ContainerIDs: [6]string(value.ContainerIDs), CleanupVerified: value.CleanupVerified}
 	for _, field := range []struct {
 		encoded     string
 		destination []byte

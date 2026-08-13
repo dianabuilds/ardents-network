@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 var roles = [...]string{"initiator", "introduction", "rendezvous", "responder"}
@@ -38,6 +39,8 @@ type Case struct {
 	SourceID           string
 	BuildDigest        [32]byte
 	ExitedPIDs         [6]int
+	ExitedRuntimeIDs   [6]string
+	ContainerIDs       [6]string
 	CleanupVerified    bool
 }
 
@@ -59,6 +62,8 @@ func Commit(input Case) [32]byte {
 	input.SourceID = ""
 	input.BuildDigest = [32]byte{}
 	input.ExitedPIDs = [6]int{}
+	input.ExitedRuntimeIDs = [6]string{}
+	input.ContainerIDs = [6]string{}
 	input.CleanupVerified = false
 	raw, _ := json.Marshal(input)
 	return sha256.Sum256(raw)
@@ -78,6 +83,7 @@ type observation struct {
 	Generation         string     `json:"generation"`
 	Error              string     `json:"error"`
 	PID                int        `json:"pid"`
+	RuntimeID          string     `json:"runtime_id"`
 	SourceID           string     `json:"source_id"`
 	BuildDigest        [32]byte   `json:"build_digest"`
 	ManifestDigest     [32]byte   `json:"manifest_digest"`
@@ -148,12 +154,17 @@ func validateCase(input Case, digest [32]byte) error {
 		!input.CleanupVerified || input.ManifestDigest == [32]byte{} || Commit(input) != input.ManifestDigest {
 		return errors.New("manifest or evidence integrity is invalid")
 	}
-	seen := map[int]bool{}
-	for _, pid := range input.ExitedPIDs {
-		if pid < 1 || seen[pid] {
+	seen := map[string]bool{}
+	containerSeen := map[string]bool{}
+	for index, pid := range input.ExitedPIDs {
+		runtimeID := input.ExitedRuntimeIDs[index]
+		containerID := input.ContainerIDs[index]
+		if pid < 1 || runtimeID == "" || seen[runtimeID] || len(containerID) < 12 ||
+			containerSeen[containerID] || !strings.HasPrefix(containerID, runtimeID) {
 			return errors.New("external process-exit evidence is invalid")
 		}
-		seen[pid] = true
+		seen[runtimeID] = true
+		containerSeen[containerID] = true
 	}
 	return nil
 }
@@ -181,21 +192,22 @@ func verifyComplete(input Case, values []observation) error {
 	if len(values) != 6 {
 		return errors.New("evidence does not contain exactly six terminal processes")
 	}
-	seenPID, seenRole := map[int]bool{}, map[string]bool{}
-	exited := map[int]bool{}
-	for _, pid := range input.ExitedPIDs {
-		exited[pid] = true
+	seenProcess, seenRole := map[string]bool{}, map[string]bool{}
+	exited := map[string]int{}
+	for index, runtimeID := range input.ExitedRuntimeIDs {
+		exited[runtimeID] = input.ExitedPIDs[index]
 	}
 	for _, value := range values {
 		if value.Schema != "ardents-h3-route-observation-v1" || value.Kind != "complete" || value.PID < 1 ||
-			seenPID[value.PID] || seenRole[value.Role] || !exited[value.PID] || value.NetworkID != input.NetworkID ||
+			value.RuntimeID == "" || seenProcess[value.RuntimeID] || seenRole[value.Role] || exited[value.RuntimeID] != value.PID ||
+			value.NetworkID != input.NetworkID ||
 			value.EpochDigest != input.EpochDigest || value.SourceID != input.SourceID || value.BuildDigest != input.BuildDigest ||
 			value.ManifestDigest != input.ManifestDigest || value.Terminal != "success" && value.Terminal != "error" ||
 			value.Terminal == "success" && value.Error != "" || value.Terminal == "error" && value.Error == "" ||
 			value.Cancelled || !value.Cleanup || value.DeadlineMillis == 0 || value.DeadlineMillis > 15_000 {
 			return errors.New("process evidence identity, schema, or state binding is incomplete")
 		}
-		seenPID[value.PID], seenRole[value.Role] = true, true
+		seenProcess[value.RuntimeID], seenRole[value.Role] = true, true
 	}
 	for _, role := range append(roles[:], "client", "publisher") {
 		if !seenRole[role] {
