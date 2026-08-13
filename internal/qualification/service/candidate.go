@@ -27,7 +27,9 @@ func validateCandidate(input candidate) error {
 	}
 	first, second := input.Generations[0], input.Generations[1]
 	if first.Generation != 1 || second.Generation != 2 || first.Credential.Generation != 1 ||
-		second.Credential.Generation != 2 || first.Credential.InstancePublic == second.Credential.InstancePublic {
+		second.Credential.Generation != 2 || first.Credential.InstancePublic == second.Credential.InstancePublic ||
+		first.ClientApplication.SendSeed == second.ClientApplication.SendSeed ||
+		first.PublisherApplication.SendSeed == second.PublisherApplication.SendSeed {
 		return errors.New("routine migration generation or Instance Key is wrong")
 	}
 	for _, generation := range input.Generations {
@@ -82,7 +84,10 @@ func validateGeneration(input candidate, generation generationEvidence) error {
 		client.ReceivedBytes != 64<<10 || publisher.SentBytes != 64<<10 || publisher.ReceivedBytes != 64<<10 ||
 		client.SentDigest != publisher.ReceivedDigest || publisher.SentDigest != client.ReceivedDigest ||
 		client.ResultClass != "clean service connection close" || publisher.ResultClass != client.ResultClass ||
-		client.AuthenticatedTarget != input.Target || publisher.AuthenticatedTarget != input.Target {
+		client.AuthenticatedTarget != input.Target || publisher.AuthenticatedTarget != input.Target ||
+		client.SendSeed == [32]byte{} || publisher.SendSeed == [32]byte{} || client.SendSeed != publisher.ExpectSeed ||
+		publisher.SendSeed != client.ExpectSeed || sha256.Sum256(expectedWorkload(client.SendSeed)) != client.SentDigest ||
+		sha256.Sum256(expectedWorkload(publisher.SendSeed)) != publisher.SentDigest {
 		return errors.New("opaque Application stream length, order, or digest differs")
 	}
 	for _, role := range generation.Roles {
@@ -91,6 +96,18 @@ func validateGeneration(input candidate, generation generationEvidence) error {
 		}
 	}
 	return nil
+}
+
+func expectedWorkload(seed [32]byte) []byte {
+	value := make([]byte, 0, 64<<10)
+	for counter := uint64(0); len(value) < 64<<10; counter++ {
+		block := make([]byte, 40)
+		copy(block, seed[:])
+		binary.BigEndian.PutUint64(block[32:], counter)
+		digest := sha256.Sum256(block)
+		value = append(value, digest[:]...)
+	}
+	return value[:64<<10]
 }
 
 func validIntroductionReceipt(raw []byte, input candidate, credential publicCredential) bool {

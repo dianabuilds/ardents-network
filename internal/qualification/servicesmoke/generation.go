@@ -14,6 +14,9 @@ import (
 
 func (observer dockerObserver) runGeneration(ctx context.Context, fixture prepared, number int) (generationEvidence, bool, error) {
 	observer.generation = filepath.Join(observer.input.FixtureRoot, "generations", strconv.Itoa(number))
+	if err := refreshWorkload(observer.generation); err != nil {
+		return generationEvidence{}, false, err
+	}
 	observer.evidenceFile = filepath.Join(observer.input.EvidenceRoot, "empty.json")
 	down := []string{"down", "--remove-orphans"}
 	if number == 1 {
@@ -125,6 +128,10 @@ func (observer dockerObserver) collectGeneration(ctx context.Context, fixture pr
 		PublicationReady:            len(publisherEndpoint.IntroductionAcknowledgement) != 0,
 		ClientEndpoint:              endpointReceipt(clientEndpoint), PublisherEndpoint: endpointReceipt(publisherEndpoint),
 		ClientApplication: clientApp, PublisherApplication: publisherApp, ContainerIDs: identities}
+	value.ClientGrant = grantEvidence{Broker: fixture.bindings[number-1][0].Broker,
+		Principal: fixture.bindings[number-1][0].Principal, Surface: fixture.bindings[number-1][0].Surface}
+	value.PublisherGrant = grantEvidence{Broker: fixture.bindings[number-1][1].Broker,
+		Principal: fixture.bindings[number-1][1].Principal, Surface: fixture.bindings[number-1][1].Surface}
 	for _, role := range []string{"client", "initiator", "introduction", "rendezvous", "responder", "publisher"} {
 		observation, routeErr := terminalRoute(logs[role])
 		if routeErr != nil {
@@ -140,7 +147,9 @@ func endpointReceipt(value serviceconn.Result) endpointEvidence {
 		Generation: value.Generation, AcceptedBytes: value.AcceptedBytes, ReceivedBytes: value.ReceivedBytes,
 		ConnectionCanary: value.ConnectionCanary, PrincipalCommitment: value.PrincipalCommitment,
 		SessionCommitment: value.SessionCommitment, GrantSurface: value.GrantSurface,
-		SessionConsumed: value.SessionConsumed, MemoryHighWater: value.MemoryHighWater, CPUSeconds: value.CPUSeconds,
+		SessionConsumed: value.SessionConsumed, BrokerCommitment: value.BrokerCommitment,
+		GrantCommitment: value.GrantCommitment, SessionIssuedAt: value.SessionIssuedAt,
+		SessionExpiresAt: value.SessionExpiresAt, MemoryHighWater: value.MemoryHighWater, CPUSeconds: value.CPUSeconds,
 		OpenFilesHighWater: value.OpenFilesHighWater, GoroutinesHighWater: value.GoroutinesHighWater,
 		ActiveSessions: value.ActiveSessions, TimerHighWater: value.TimerHighWater, QueueHighWater: value.QueueHighWater,
 		TempEntries: value.TempEntries}

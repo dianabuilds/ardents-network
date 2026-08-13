@@ -73,6 +73,10 @@ type Result struct {
 	SessionCommitment           [32]byte `json:"session_commitment"`
 	GrantSurface                string   `json:"grant_surface"`
 	SessionConsumed             bool     `json:"session_consumed"`
+	BrokerCommitment            [32]byte `json:"broker_commitment"`
+	GrantCommitment             [32]byte `json:"grant_commitment"`
+	SessionIssuedAt             int64    `json:"session_issued_at"`
+	SessionExpiresAt            int64    `json:"session_expires_at"`
 	MemoryHighWater             uint64   `json:"memory_high_water"`
 	CPUSeconds                  float64  `json:"cpu_seconds"`
 	OpenFilesHighWater          uint32   `json:"open_files_high_water"`
@@ -92,6 +96,7 @@ type Endpoint struct {
 	connectionPrincipal [32]byte
 	adminPrincipal      [32]byte
 	sessions            map[[32]byte]localSession
+	consumed            map[[32]byte]localSession
 	current             *currentPublication
 	lastGeneration      uint64
 	generationStateFile string
@@ -121,7 +126,7 @@ func New(input Setup) (*Endpoint, error) {
 		introduction:        introduction,
 		connectionPrincipal: input.ConnectionPrincipal, adminPrincipal: input.AdministrationPrincipal,
 		sessions: make(map[[32]byte]localSession, maximumSessions), lastGeneration: lastGeneration,
-		generationStateFile: input.GenerationStateFile, clock: clock}, nil
+		consumed: make(map[[32]byte]localSession, maximumSessions), generationStateFile: input.GenerationStateFile, clock: clock}, nil
 }
 
 // Do executes one admitted operation and returns only an R-002 product class.
@@ -131,6 +136,11 @@ func (endpoint *Endpoint) Do(ctx context.Context, input Request) (Result, error)
 	}
 	if err := ctx.Err(); err != nil {
 		return failed("local timeout or cancellation", "local operation was cancelled", err)
+	}
+	switch input.Action {
+	case "admit", "publish", "unpublish", "connect", "accept":
+	default:
+		return denied("local operation is not permitted")
 	}
 	monitor := startResourceMonitor()
 	var result Result
@@ -146,8 +156,6 @@ func (endpoint *Endpoint) Do(ctx context.Context, input Request) (Result, error)
 		result, err = endpoint.connect(ctx, input)
 	case "accept":
 		result, err = endpoint.accept(ctx, input)
-	default:
-		return denied("local operation is not permitted")
 	}
 	endpoint.observe(&result, input, monitor.stop())
 	return result, err

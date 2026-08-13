@@ -26,7 +26,16 @@ func validateTopology(raw []byte) (map[string]bool, error) {
 	noAmbient := !bytes.Contains(raw, []byte("network_mode: host")) && !bytes.Contains(raw, []byte("ports:"))
 	noProxy := !bytes.Contains(bytes.ToLower(raw), []byte("http_proxy")) &&
 		!bytes.Contains(bytes.ToLower(raw), []byte("https_proxy"))
-	if !isolated || !applicationPrivate || !allRoles || !noAmbient || !noProxy {
+	forbiddenAppTokens := []string{"route_net", "client_route", "publisher_route", "publication", "administration", "introduction_ack", "lifecycle"}
+	for _, token := range forbiddenAppTokens {
+		applicationPrivate = applicationPrivate && !bytes.Contains(clientApp, []byte(token)) &&
+			!bytes.Contains(publisherApp, []byte(token))
+	}
+	exactServices := topologyServices(raw)
+	expected := []string{"client", "client-app", "client-endpoint", "hostile-sibling", "initiator", "introduction",
+		"negative-suite", "publication-operator", "publisher", "publisher-app", "publisher-endpoint", "rendezvous",
+		"responder", "verifier", "volume-init"}
+	if !isolated || !applicationPrivate || !allRoles || !noAmbient || !noProxy || !equalTopologyNames(exactServices, expected) {
 		return nil, errors.New("retained topology contains or cannot exclude a forbidden Stage 3 shortcut")
 	}
 	return map[string]bool{
@@ -34,6 +43,41 @@ func validateTopology(raw []byte) (map[string]bool, error) {
 		"shared-data-file": applicationPrivate, "dns": noAmbient, "proxy": noProxy,
 		"ambient-network": noAmbient, "route-visible-to-application": applicationPrivate,
 	}, nil
+}
+
+func topologyServices(raw []byte) []string {
+	lines := bytes.Split(raw, []byte{'\n'})
+	active := false
+	var names []string
+	for _, line := range lines {
+		if bytes.Equal(line, []byte("services:")) {
+			active = true
+			continue
+		}
+		if active && len(line) > 0 && line[0] != ' ' {
+			break
+		}
+		if active && len(line) > 3 && line[0] == ' ' && line[1] == ' ' && line[2] != ' ' && line[len(line)-1] == ':' {
+			names = append(names, string(line[2:len(line)-1]))
+		}
+	}
+	return names
+}
+
+func equalTopologyNames(left, right []string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	seen := map[string]bool{}
+	for _, name := range left {
+		seen[name] = true
+	}
+	for _, name := range right {
+		if !seen[name] {
+			return false
+		}
+	}
+	return true
 }
 
 func topologyServiceBlock(raw []byte, name string) []byte {

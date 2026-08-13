@@ -9,6 +9,7 @@ import (
 	"io"
 	"math"
 	"strings"
+	"time"
 )
 
 const schema = "ardents-h3-service-evidence-v1"
@@ -150,16 +151,34 @@ func validateEvidence(input candidate) error {
 				return errors.New("route runtime identity is not bound to an observed container")
 			}
 		}
-		for _, endpoint := range []endpointEvidence{generation.ClientEndpoint, generation.PublisherEndpoint} {
+		for index, endpoint := range []endpointEvidence{generation.ClientEndpoint, generation.PublisherEndpoint} {
+			grant := []grantEvidence{generation.ClientGrant, generation.PublisherGrant}[index]
 			if endpoint.PrincipalCommitment == [32]byte{} || endpoint.SessionCommitment == [32]byte{} ||
-				endpoint.GrantSurface != "connection" || !endpoint.SessionConsumed || endpoint.MemoryHighWater == 0 ||
+				grant.Broker == [32]byte{} || grant.Principal == [32]byte{} || grant.Surface != "connection" ||
+				endpoint.PrincipalCommitment != evidenceCommitment("principal", grant.Principal) ||
+				endpoint.BrokerCommitment != evidenceCommitment("broker", grant.Broker) ||
+				endpoint.GrantCommitment != evidenceGrantCommitment(grant) || endpoint.GrantSurface != grant.Surface ||
+				!endpoint.SessionConsumed || endpoint.SessionIssuedAt == 0 ||
+				endpoint.SessionExpiresAt-endpoint.SessionIssuedAt != int64(15*time.Second) || endpoint.MemoryHighWater == 0 ||
 				endpoint.MemoryHighWater > 512<<20 || math.IsNaN(endpoint.CPUSeconds) || endpoint.CPUSeconds < 0 ||
-				endpoint.OpenFilesHighWater == 0 || endpoint.OpenFilesHighWater > 128 || endpoint.GoroutinesHighWater == 0 ||
-				endpoint.GoroutinesHighWater > 64 || endpoint.ActiveSessions != 0 || endpoint.TimerHighWater != 1 ||
-				endpoint.QueueHighWater != 2 || endpoint.TempEntries != 0 {
+				endpoint.OpenFilesHighWater == 0 || endpoint.OpenFilesHighWater > 48 || endpoint.GoroutinesHighWater == 0 ||
+				endpoint.GoroutinesHighWater > 24 || endpoint.ActiveSessions != 0 || endpoint.TimerHighWater == 0 ||
+				endpoint.TimerHighWater > 16 || endpoint.QueueHighWater == 0 || endpoint.QueueHighWater > 64<<10 ||
+				endpoint.TempEntries > 8 {
 				return errors.New("endpoint grant, session, or resource observation violates its bound")
 			}
 		}
 	}
 	return nil
+}
+
+func evidenceCommitment(kind string, value [32]byte) [32]byte {
+	return sha256.Sum256(append([]byte("ardents-h3-service-"+kind+"-v1\x00"), value[:]...))
+}
+
+func evidenceGrantCommitment(grant grantEvidence) [32]byte {
+	value := append([]byte("ardents-h3-service-grant-v1\x00"), grant.Broker[:]...)
+	value = append(value, grant.Principal[:]...)
+	value = append(value, grant.Surface...)
+	return sha256.Sum256(value)
 }

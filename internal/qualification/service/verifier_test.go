@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"testing"
+	"time"
 )
 
 func TestVerifierSeparatesPassFailAndInvalid(t *testing.T) {
@@ -76,25 +77,39 @@ func validCandidate(t *testing.T) candidate {
 		credential := publicCredential{AuthorityPublic: authority, Target: input.Target, InstancePublic: instance,
 			NetworkID: input.NetworkID, Generation: uint64(index + 1), NotBefore: 1, NotAfter: 4_000_000_000, Capabilities: 3}
 		copy(credential.Signature[:], ed25519.Sign(private, credentialBody(credential)))
-		sentClient := sha256.Sum256([]byte{byte(index), 1})
-		sentPublisher := sha256.Sum256([]byte{byte(index), 2})
+		clientSeed, publisherSeed := [32]byte{byte(index + 1)}, [32]byte{byte(index + 3)}
+		sentClient := sha256.Sum256(expectedWorkload(clientSeed))
+		sentPublisher := sha256.Sum256(expectedWorkload(publisherSeed))
 		endpoint := endpointEvidence{Class: "clean service connection close", AuthenticatedTarget: input.Target,
 			Generation: uint64(index + 1), AcceptedBytes: 64 << 10, ReceivedBytes: 64 << 10,
 			ConnectionCanary: [32]byte{byte(index + 3)}, PrincipalCommitment: [32]byte{4},
 			SessionCommitment: [32]byte{5}, GrantSurface: "connection", SessionConsumed: true,
 			MemoryHighWater: 1 << 20, CPUSeconds: 1, OpenFilesHighWater: 4, GoroutinesHighWater: 2,
-			TimerHighWater: 1, QueueHighWater: 2}
+			TimerHighWater: 1, QueueHighWater: 16 << 10, SessionIssuedAt: 1,
+			SessionExpiresAt: 1 + int64(15*time.Second)}
+		clientGrant := grantEvidence{Broker: [32]byte{byte(index + 10)}, Principal: [32]byte{byte(index + 11)}, Surface: "connection"}
+		publisherGrant := grantEvidence{Broker: [32]byte{byte(index + 12)}, Principal: [32]byte{byte(index + 13)}, Surface: "connection"}
+		endpointFor := func(grant grantEvidence) endpointEvidence {
+			value := endpoint
+			value.PrincipalCommitment = evidenceCommitment("principal", grant.Principal)
+			value.BrokerCommitment = evidenceCommitment("broker", grant.Broker)
+			value.GrantCommitment = evidenceGrantCommitment(grant)
+			return value
+		}
 		generation := generationEvidence{Generation: uint64(index + 1), Credential: credential,
 			IntroductionAcknowledgement: signedReceipt(credential, input, introductionPrivate), PublicationReady: true,
-			ClientEndpoint: endpoint, PublisherEndpoint: endpoint,
+			ClientEndpoint: endpointFor(clientGrant), PublisherEndpoint: endpointFor(publisherGrant),
+			ClientGrant: clientGrant, PublisherGrant: publisherGrant,
 			ClientApplication: applicationEvidence{Schema: "ardents-h3-stream-application-v1", Role: "client",
 				Terminal: "success", SentBytes: 64 << 10, ReceivedBytes: 64 << 10,
 				SentDigest: sentClient, ReceivedDigest: sentPublisher,
-				ResultClass: "clean service connection close", AuthenticatedTarget: input.Target},
+				ResultClass: "clean service connection close", AuthenticatedTarget: input.Target,
+				SendSeed: clientSeed, ExpectSeed: publisherSeed},
 			PublisherApplication: applicationEvidence{Schema: "ardents-h3-stream-application-v1", Role: "publisher",
 				Terminal: "success", SentBytes: 64 << 10, ReceivedBytes: 64 << 10,
 				SentDigest: sentPublisher, ReceivedDigest: sentClient,
-				ResultClass: "clean service connection close", AuthenticatedTarget: input.Target},
+				ResultClass: "clean service connection close", AuthenticatedTarget: input.Target,
+				SendSeed: publisherSeed, ExpectSeed: clientSeed},
 			ContainerIDs: make([]string, 12)}
 		for roleIndex, role := range routeRoles {
 			runtime := string(rune('a' + index*10 + roleIndex))
@@ -123,7 +138,9 @@ func validCandidate(t *testing.T) candidate {
 
 func validTopology() string {
 	return "services:\n" +
-		"  client:\n    image: test\n  initiator:\n    image: test\n  introduction:\n    image: test\n" +
+		"  client:\n    image: test\n  hostile-sibling:\n    image: test\n  negative-suite:\n    image: test\n" +
+		"  publication-operator:\n    image: test\n  verifier:\n    image: test\n  volume-init:\n    image: test\n" +
+		"  initiator:\n    image: test\n  introduction:\n    image: test\n" +
 		"  rendezvous:\n    image: test\n  responder:\n    image: test\n  publisher:\n    image: test\n" +
 		"  client-app:\n    network_mode: none\n  publisher-app:\n    network_mode: none\n" +
 		"  client-endpoint:\n    network_mode: none\n  publisher-endpoint:\n    network_mode: none\n" +

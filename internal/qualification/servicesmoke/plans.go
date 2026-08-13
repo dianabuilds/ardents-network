@@ -11,20 +11,25 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/serviceconn"
 )
 
+type grantBinding struct {
+	Broker, Principal [32]byte
+	Surface           string
+}
+
 func writeGeneration(root string, generation int, at time.Time, credential serviceconn.Credential,
-	authority, introduction [32]byte) ([32]byte, error) {
+	authority, introduction [32]byte) ([2]grantBinding, error) {
 	generationRoot := filepath.Join(root, "generations", strconv.Itoa(generation))
 	if err := os.MkdirAll(generationRoot, 0o700); err != nil {
-		return [32]byte{}, err
+		return [2]grantBinding{}, err
 	}
 	if err := byteio.WriteJSON(filepath.Join(generationRoot, "credential.json"), credential, 8<<10); err != nil {
-		return [32]byte{}, err
+		return [2]grantBinding{}, err
 	}
 	principals := make([][32]byte, 5)
 	for index := range principals {
 		value, err := random32()
 		if err != nil {
-			return [32]byte{}, err
+			return [2]grantBinding{}, err
 		}
 		principals[index] = value
 	}
@@ -49,12 +54,13 @@ func writeGeneration(root string, generation int, at time.Time, credential servi
 		client[key] = value
 	}
 	if err := byteio.WriteJSON(filepath.Join(generationRoot, "publisher.json"), publisher, 64<<10); err != nil {
-		return [32]byte{}, err
+		return [2]grantBinding{}, err
 	}
 	if err := byteio.WriteJSON(filepath.Join(generationRoot, "client.json"), client, 64<<10); err != nil {
-		return [32]byte{}, err
+		return [2]grantBinding{}, err
 	}
-	return [32]byte{}, nil
+	return [2]grantBinding{{Broker: principals[3], Principal: principals[2], Surface: "connection"},
+		{Broker: principals[4], Principal: principals[0], Surface: "connection"}}, nil
 }
 
 func clone(input map[string]any) map[string]any {

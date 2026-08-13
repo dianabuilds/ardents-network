@@ -44,6 +44,14 @@ type generationEvidence struct {
 	PublisherApplication        applicationEvidence `json:"publisher_application"`
 	Roles                       []roleEvidence      `json:"roles"`
 	ContainerIDs                []string            `json:"container_ids"`
+	ClientGrant                 grantEvidence       `json:"client_grant"`
+	PublisherGrant              grantEvidence       `json:"publisher_grant"`
+}
+
+type grantEvidence struct {
+	Broker    [32]byte `json:"broker"`
+	Principal [32]byte `json:"principal"`
+	Surface   string   `json:"surface"`
 }
 
 type publicCredential struct {
@@ -69,6 +77,10 @@ type endpointEvidence struct {
 	SessionCommitment   [32]byte `json:"session_commitment"`
 	GrantSurface        string   `json:"grant_surface"`
 	SessionConsumed     bool     `json:"session_consumed"`
+	BrokerCommitment    [32]byte `json:"broker_commitment"`
+	GrantCommitment     [32]byte `json:"grant_commitment"`
+	SessionIssuedAt     int64    `json:"session_issued_at"`
+	SessionExpiresAt    int64    `json:"session_expires_at"`
 	MemoryHighWater     uint64   `json:"memory_high_water"`
 	CPUSeconds          float64  `json:"cpu_seconds"`
 	OpenFilesHighWater  uint32   `json:"open_files_high_water"`
@@ -89,6 +101,8 @@ type applicationEvidence struct {
 	ReceivedDigest      [32]byte `json:"received_digest"`
 	ResultClass         string   `json:"result_class"`
 	AuthenticatedTarget [32]byte `json:"authenticated_target"`
+	SendSeed            [32]byte `json:"send_seed"`
+	ExpectSeed          [32]byte `json:"expect_seed"`
 }
 
 type roleEvidence struct {

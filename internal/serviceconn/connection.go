@@ -33,13 +33,15 @@ func (endpoint *Endpoint) connect(ctx context.Context, input Request) (Result, e
 	if err != nil {
 		return failed("service target authentication failure", "current Service Instance proof failed", err)
 	}
-	accepted, received, err := exchangeExact(input.Application, input.Route, input.BytesEachDirection)
+	accepted, received, queued, err := exchangeExact(input.Application, input.Route, input.BytesEachDirection)
 	if err != nil {
-		return streamFailure(ctx, accepted, received, err)
+		result, failure := streamFailure(ctx, accepted, received, err)
+		result.QueueHighWater = queued
+		return result, failure
 	}
 	return Result{Class: "clean service connection close", AuthenticatedTarget: credential.Target,
 		Generation: credential.Generation, AcceptedBytes: input.BytesEachDirection,
-		ReceivedBytes: input.BytesEachDirection, ConnectionCanary: canary}, nil
+		ReceivedBytes: input.BytesEachDirection, ConnectionCanary: canary, QueueHighWater: queued}, nil
 }
 
 func (endpoint *Endpoint) accept(ctx context.Context, input Request) (Result, error) {
@@ -69,13 +71,15 @@ func (endpoint *Endpoint) accept(ctx context.Context, input Request) (Result, er
 	if err != nil {
 		return failed("service target authentication failure", "incoming exact Target proof failed", err)
 	}
-	accepted, received, err := exchangeExact(input.Application, input.Route, input.BytesEachDirection)
+	accepted, received, queued, err := exchangeExact(input.Application, input.Route, input.BytesEachDirection)
 	if err != nil {
-		return streamFailure(ctx, accepted, received, err)
+		result, failure := streamFailure(ctx, accepted, received, err)
+		result.QueueHighWater = queued
+		return result, failure
 	}
 	return Result{Class: "clean service connection close", AuthenticatedTarget: credential.Target,
 		Generation: credential.Generation, AcceptedBytes: input.BytesEachDirection,
-		ReceivedBytes: input.BytesEachDirection, ConnectionCanary: canary}, nil
+		ReceivedBytes: input.BytesEachDirection, ConnectionCanary: canary, QueueHighWater: queued}, nil
 }
 
 func validateStreams(input Request) error {

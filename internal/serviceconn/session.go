@@ -11,6 +11,7 @@ type localSession struct {
 	surface   string
 	broker    [32]byte
 	expires   int64
+	issued    int64
 }
 
 func (endpoint *Endpoint) admit(input Request) (Result, error) {
@@ -38,8 +39,9 @@ func (endpoint *Endpoint) admit(input Request) (Result, error) {
 	if capability == [32]byte{} {
 		return failed("indeterminate failure", "fresh local session is invalid", errors.New("zero session capability"))
 	}
+	issued := endpoint.clock()
 	endpoint.sessions[capability] = localSession{principal: input.Principal, surface: input.Surface,
-		broker: endpoint.broker, expires: endpoint.clock().Add(15 * time.Second).UnixNano()}
+		broker: endpoint.broker, issued: issued.UnixNano(), expires: issued.Add(15 * time.Second).UnixNano()}
 	return Result{Class: "authorized", Session: capability}, nil
 }
 
@@ -54,5 +56,6 @@ func (endpoint *Endpoint) consume(capability, principal [32]byte, surface string
 		session.broker != endpoint.broker || endpoint.clock().UnixNano() > session.expires {
 		return errors.New("ephemeral session is absent, replayed, or bound to another principal")
 	}
+	endpoint.consumed[capability] = session
 	return nil
 }

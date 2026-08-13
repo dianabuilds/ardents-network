@@ -16,8 +16,14 @@ func TestExternalApplicationsExchangeOpaqueBytesWithoutArdentsState(t *testing.T
 		err   error
 	}
 	results := make(chan outcome, 2)
-	go func() { value, err := exchange(client, "client", 17, 91, 4096); results <- outcome{value, err} }()
-	go func() { value, err := exchange(publisher, "publisher", 91, 17, 4096); results <- outcome{value, err} }()
+	go func() {
+		value, err := exchange(client, "client", [32]byte{17}, [32]byte{91}, 4096)
+		results <- outcome{value, err}
+	}()
+	go func() {
+		value, err := exchange(publisher, "publisher", [32]byte{91}, [32]byte{17}, 4096)
+		results <- outcome{value, err}
+	}()
 	for range 2 {
 		result := <-results
 		if result.err != nil || result.value.Terminal != "success" || result.value.SentBytes != 4096 || result.value.ReceivedBytes != 4096 {

@@ -23,6 +23,7 @@ type prepared struct {
 	network, authority, introduction, target, routeManifest, manifest [32]byte
 	at                                                                time.Time
 	credentials                                                       [2]serviceconn.Credential
+	bindings                                                          [2][2]grantBinding
 }
 
 func prepare(input Config) (prepared, error) {
@@ -83,10 +84,11 @@ func prepare(input Config) (prepared, error) {
 		if index == 0 {
 			value.target = credential.Target
 		}
-		_, writeErr := writeGeneration(input.FixtureRoot, index+1, at, credential, authority, introduction)
+		bindings, writeErr := writeGeneration(input.FixtureRoot, index+1, at, credential, authority, introduction)
 		if writeErr != nil {
 			return prepared{}, writeErr
 		}
+		value.bindings[index] = bindings
 	}
 	commitment := make([]byte, 0, 32*5)
 	for _, field := range [][32]byte{route.ManifestDigest, value.network, value.authority, value.introduction, value.target,

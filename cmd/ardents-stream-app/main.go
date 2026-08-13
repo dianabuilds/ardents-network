@@ -25,17 +25,18 @@ func main() {
 
 func run(arguments []string, output io.Writer) error {
 	if len(arguments) != 6 || arguments[0] != "run" {
-		return errors.New("usage: ardents-stream-app run <role> <socket> <send-seed> <expect-seed> <bytes>")
+		return errors.New("usage: ardents-stream-app run <role> <socket> <send-seed-file> <expect-seed-file> <bytes>")
 	}
-	sendSeed, err := strconv.Atoi(arguments[3])
+	sendSeed, err := readSeed(arguments[3])
 	if err != nil {
 		return err
 	}
-	expectSeed, err := strconv.Atoi(arguments[4])
+	expectSeed, err := readSeed(arguments[4])
 	if err != nil {
 		return err
 	}
-	count, err := strconv.Atoi(arguments[5])
+	count64, err := strconv.ParseInt(arguments[5], 10, 32)
+	count := int(count64)
 	if err != nil || count < 1 || count > 64<<10 {
 		return errors.New("stream byte count is outside its bound")
 	}
@@ -45,7 +46,7 @@ func run(arguments []string, output io.Writer) error {
 	}
 	defer connection.Close()
 	_ = connection.SetDeadline(time.Now().Add(15 * time.Second))
-	result, streamErr := exchange(connection, arguments[1], byte(sendSeed), byte(expectSeed), count)
+	result, streamErr := exchange(connection, arguments[1], sendSeed, expectSeed, count)
 	classified, resultErr := applicationipc.Read(connection)
 	result.ResultClass, result.AuthenticatedTarget = classified.Class, classified.AuthenticatedTarget
 	if classified.Class != "clean service connection close" {
@@ -58,9 +59,9 @@ func run(arguments []string, output io.Writer) error {
 	return err
 }
 
-func exchange(connection io.ReadWriter, role string, sendSeed, expectSeed byte, count int) (observation, error) {
+func exchange(connection io.ReadWriter, role string, sendSeed, expectSeed [32]byte, count int) (observation, error) {
 	sent, expected := workload(count, sendSeed), workload(count, expectSeed)
-	result := observation{Schema: "ardents-h3-stream-application-v1", Role: role,
+	result := observation{Schema: "ardents-h3-stream-application-v1", Role: role, SendSeed: sendSeed, ExpectSeed: expectSeed,
 		SentBytes: uint32(count), SentDigest: sha256.Sum256(sent)}
 	type transfer struct {
 		value []byte
@@ -105,12 +106,4 @@ func exchange(connection io.ReadWriter, role string, sendSeed, expectSeed byte, 
 	}
 	result.Terminal = "success"
 	return result, nil
-}
-
-func workload(count int, seed byte) []byte {
-	value := make([]byte, count)
-	for index := range value {
-		value[index] = byte((index*131 + int(seed)) % 251)
-	}
-	return value
 }

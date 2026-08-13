@@ -10,4 +10,6 @@ type observation struct {
 	ReceivedDigest      [32]byte `json:"received_digest"`
 	ResultClass         string   `json:"result_class"`
 	AuthenticatedTarget [32]byte `json:"authenticated_target"`
+	SendSeed            [32]byte `json:"send_seed"`
+	ExpectSeed          [32]byte `json:"expect_seed"`
 }
