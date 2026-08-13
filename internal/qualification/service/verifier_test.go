@@ -48,11 +48,57 @@ func TestVerifierRecomputesOwnedResourcesRouteAndHostileBoundary(t *testing.T) {
 		},
 		"hostile topology mount": func(value *candidate) {
 			value.Topology = strings.Replace(value.Topology, "  hostile-sibling:\n    network_mode: none",
-				"  hostile-sibling:\n    network_mode: none\n    volumes:\n      - target: /run/ardents/client-app", 1)
+				"  hostile-sibling:\n    network_mode: none\n    volumes:\n      - type: volume\n        source: client_app\n        target: /run/ardents/client-app", 1)
+		},
+		"operator bind mount": func(value *candidate) {
+			value.Topology = strings.Replace(value.Topology, "- type: volume\n        source: administration",
+				"- type: bind\n        source: /var/run/docker.sock", 1)
+		},
+		"client Docker socket mount": func(value *candidate) {
+			value.Topology = strings.Replace(value.Topology, "        target: /run/ardents/client-app",
+				"        target: /run/ardents/client-app\n      - type: bind\n        source: /var/run/docker.sock\n        target: /var/run/docker.sock", 1)
+		},
+		"client workload writable": func(value *candidate) {
+			value.Topology = strings.Replace(value.Topology, "        target: /run/ardents/workload/client.hex\n        read_only: true",
+				"        target: /run/ardents/workload/client.hex\n        read_only: false", 1)
+		},
+		"application ALL_PROXY": func(value *candidate) {
+			value.Topology = strings.Replace(value.Topology, "  client-app:\n    network_mode: none",
+				"  client-app:\n    network_mode: none\n    environment:\n      ALL_PROXY: socks5://proxy:1080", 1)
+		},
+		"unrelated internal network": func(value *candidate) {
+			value.Topology = strings.Replace(value.Topology, "networks:\n  route_net:\n    internal: true",
+				"networks:\n  route_net:\n  unrelated:\n    internal: true", 1)
+		},
+		"internal label decoy": func(value *candidate) {
+			value.Topology = strings.Replace(value.Topology, "  route_net:\n    internal: true",
+				"  route_net:\n    internal: false\n    labels:\n      proof: \"internal: true\"", 1)
+		},
+		"mount label decoy": func(value *candidate) {
+			value.Topology = strings.Replace(value.Topology,
+				"    volumes:\n      - type: volume\n        source: administration\n        target: /run/ardents/admin",
+				"    labels:\n      type: volume\n      source: administration\n      target: /run/ardents/admin", 1)
+		},
+		"hostile inline mount": func(value *candidate) {
+			value.Topology = strings.Replace(value.Topology, "  hostile-sibling:\n    network_mode: none",
+				"  hostile-sibling:\n    network_mode: none\n    volumes: [client_app:/run/ardents/client-app]", 1)
+		},
+		"operator short mount": func(value *candidate) {
+			value.Topology = strings.Replace(value.Topology, "        target: /run/ardents/admin",
+				"        target: /run/ardents/admin\n      - client_app:/run/ardents/client-app", 1)
 		},
 		"operator ambient network": func(value *candidate) {
 			value.Topology = strings.Replace(value.Topology, "  publication-operator:\n    network_mode: none",
 				"  publication-operator:\n    network_mode: none\n    networks:\n      route_net:", 1)
+		},
+		"network mode label decoy": func(value *candidate) {
+			value.Topology = strings.Replace(value.Topology, "  hostile-sibling:\n    network_mode: none",
+				"  hostile-sibling:\n    network_mode: bridge\n    labels:\n      proof: \"network_mode: none\"", 1)
+		},
+		"route IP label decoy": func(value *candidate) {
+			value.Topology = strings.Replace(value.Topology,
+				"      route_net:\n        ipv4_address: 172.31.20.11",
+				"      route_net:\n        ipv4_address: 172.31.20.99\n    labels:\n      proof: \"ipv4_address: 172.31.20.11\"", 1)
 		},
 		"hostile mount": func(value *candidate) {
 			value.Generations[0].HostileSibling.MountDestinations = []string{"/run/ardents/client-app"}
@@ -192,16 +238,23 @@ func validCandidate(t *testing.T) candidate {
 func validTopology() string {
 	return "services:\n" +
 		"  client:\n    networks:\n      route_net:\n        ipv4_address: 172.31.20.10\n  hostile-sibling:\n    network_mode: none\n  negative-suite:\n    image: test\n" +
-		"  publication-operator:\n    network_mode: none\n    volumes:\n      - target: /run/ardents/admin\n" +
+		"  publication-operator:\n    network_mode: none\n    volumes:\n      - type: volume\n        source: administration\n        target: /run/ardents/admin\n" +
 		"  verifier:\n    image: test\n  volume-init:\n    image: test\n" +
 		"  initiator:\n    networks:\n      route_net:\n        ipv4_address: 172.31.20.11\n" +
 		"  introduction:\n    networks:\n      route_net:\n        ipv4_address: 172.31.20.12\n" +
 		"  rendezvous:\n    networks:\n      route_net:\n        ipv4_address: 172.31.20.13\n" +
 		"  responder:\n    networks:\n      route_net:\n        ipv4_address: 172.31.20.14\n" +
 		"  publisher:\n    networks:\n      route_net:\n        ipv4_address: 172.31.20.16\n" +
-		"  client-app:\n    network_mode: none\n  publisher-app:\n    network_mode: none\n" +
+		"  client-app:\n    network_mode: none\n    volumes:\n" +
+		"      - type: volume\n        source: client_app\n        target: /run/ardents/client-app\n" +
+		"      - type: bind\n        source: C:\\fixture/client-seed.hex\n        target: /run/ardents/workload/client.hex\n        read_only: true\n" +
+		"      - type: bind\n        source: C:\\fixture/publisher-seed.hex\n        target: /run/ardents/workload/publisher.hex\n        read_only: true\n" +
+		"  publisher-app:\n    network_mode: none\n    volumes:\n" +
+		"      - type: volume\n        source: publisher_app\n        target: /run/ardents/publisher-app\n" +
+		"      - type: bind\n        source: C:\\fixture/publisher-seed.hex\n        target: /run/ardents/workload/publisher.hex\n        read_only: true\n" +
+		"      - type: bind\n        source: C:\\fixture/client-seed.hex\n        target: /run/ardents/workload/client.hex\n        read_only: true\n" +
 		"  client-endpoint:\n    network_mode: none\n  publisher-endpoint:\n    network_mode: none\n" +
-		"networks:\n  route:\n    internal: true\n"
+		"networks:\n  route_net:\n    internal: true\n"
 }
 
 func signedReceipt(credential publicCredential, input candidate, private ed25519.PrivateKey) []byte {
