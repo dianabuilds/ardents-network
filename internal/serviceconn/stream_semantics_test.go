@@ -1,13 +1,101 @@
 package serviceconn_test
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"net"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/serviceconn"
 )
+
+type finalEOFApplication struct{ *bytes.Reader }
+
+func (application *finalEOFApplication) Read(value []byte) (int, error) {
+	read, _ := application.Reader.Read(value)
+	return read, io.EOF
+}
+
+func (*finalEOFApplication) Write(value []byte) (int, error) { return len(value), nil }
+func (*finalEOFApplication) Close() error                    { return nil }
+
+func TestPartialApplicationChunkIsFramedWithoutWaitingForRecordBoundary(t *testing.T) {
+	const partial = 16_381
+	fixture := newFixture(t)
+	client, publisher, publication := connectedEndpoints(t, fixture)
+	clientRoute, publisherRoute := net.Pipe()
+	clientEndpoint, clientApplication := net.Pipe()
+	publisherEndpoint, publisherApplication := net.Pipe()
+	defer clientApplication.Close()
+	defer publisherApplication.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	outcomes := make(chan serviceOutcome, 2)
+	go func() {
+		result, err := client.Do(ctx, serviceconn.Request{Action: "connect", Principal: fixture.clientPrincipal,
+			Session: session(client, fixture.clientPrincipal, fixture.now), Target: fixture.first.Target,
+			Publication: publication, Route: clientRoute, Application: clientEndpoint,
+			SendBytes: partial * 2, At: fixture.now})
+		outcomes <- serviceOutcome{result, err}
+	}()
+	go func() {
+		result, err := publisher.Do(ctx, serviceconn.Request{Action: "accept", Principal: fixture.publisherPrincipal,
+			Session: session(publisher, fixture.publisherPrincipal, fixture.now), Route: publisherRoute,
+			Application: publisherEndpoint, ReceiveBytes: partial * 2, At: fixture.now})
+		outcomes <- serviceOutcome{result, err}
+	}()
+	payload := seededBytes(partial, 51)
+	written := make(chan error, 1)
+	go func() { _, err := clientApplication.Write(payload); written <- err }()
+	if err := <-written; err != nil {
+		t.Fatal(err)
+	}
+	_ = publisherApplication.SetReadDeadline(time.Now().Add(250 * time.Millisecond))
+	received := make([]byte, partial)
+	if _, err := io.ReadFull(publisherApplication, received); err != nil {
+		t.Fatalf("partial chunk remained buffered at Endpoint: %v", err)
+	}
+	cancel()
+	for range 2 {
+		<-outcomes
+	}
+}
+
+func TestFinalApplicationBytesReturnedWithEOFCompleteCleanly(t *testing.T) {
+	payload := seededBytes(16_381, 73)
+	fixture := newFixture(t)
+	client, publisher, publication := connectedEndpoints(t, fixture)
+	clientRoute, publisherRoute := net.Pipe()
+	publisherEndpoint, publisherApplication := net.Pipe()
+	defer publisherApplication.Close()
+	clientApplication := &finalEOFApplication{Reader: bytes.NewReader(payload)}
+	outcomes := make(chan serviceOutcome, 2)
+	go func() {
+		result, err := client.Do(context.Background(), serviceconn.Request{Action: "connect",
+			Principal: fixture.clientPrincipal, Session: session(client, fixture.clientPrincipal, fixture.now),
+			Target: fixture.first.Target, Publication: publication, Route: clientRoute,
+			Application: clientApplication, SendBytes: uint32(len(payload)), At: fixture.now})
+		outcomes <- serviceOutcome{result, err}
+	}()
+	go func() {
+		result, err := publisher.Do(context.Background(), serviceconn.Request{Action: "accept",
+			Principal: fixture.publisherPrincipal, Session: session(publisher, fixture.publisherPrincipal, fixture.now),
+			Route: publisherRoute, Application: publisherEndpoint, ReceiveBytes: uint32(len(payload)), At: fixture.now})
+		outcomes <- serviceOutcome{result, err}
+	}()
+	received := make([]byte, len(payload))
+	if _, err := io.ReadFull(publisherApplication, received); err != nil || !bytes.Equal(received, payload) {
+		t.Fatalf("final bytes accompanying EOF were not delivered: %v", err)
+	}
+	for range 2 {
+		outcome := <-outcomes
+		if outcome.err != nil || outcome.result.Class != "clean service connection close" {
+			t.Fatalf("final bytes accompanying EOF failed: %+v err=%v", outcome.result, outcome.err)
+		}
+	}
+}
 
 type serviceOutcome struct {
 	result serviceconn.Result

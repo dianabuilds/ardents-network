@@ -36,7 +36,7 @@ func (stream *recoveryStream) sendApplication(limit uint64) error {
 		}
 		stream.mu.Unlock()
 
-		read, err := io.ReadFull(stream.application, buffer[:want])
+		read, err := stream.application.Read(buffer[:want])
 		if read > 0 {
 			stream.mu.Lock()
 			stream.sendData = append(stream.sendData, buffer[:read]...)
@@ -50,8 +50,13 @@ func (stream *recoveryStream) sendApplication(limit uint64) error {
 			}
 		}
 		if err != nil {
-			stream.sendTerminal()
-			return errors.Join(err, errors.New("application stream ended before the declared byte count"))
+			stream.mu.Lock()
+			complete := stream.sendEnd >= limit
+			stream.mu.Unlock()
+			if !complete {
+				stream.sendTerminal()
+				return errors.Join(err, errors.New("application stream ended before the declared byte count"))
+			}
 		}
 	}
 }
