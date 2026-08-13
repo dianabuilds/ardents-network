@@ -7,7 +7,7 @@ x-common: &common
     - ALL
   security_opt: [no-new-privileges:true]
   user: "${ARDENTS_ROUTE_RUNTIME_USER:?}"
-  tmpfs: [/tmp:rw,noexec,nosuid,nodev,size=8m]
+  tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=8m"]
   cpus: 0.5
   mem_limit: 128m
   pids_limit: 32
