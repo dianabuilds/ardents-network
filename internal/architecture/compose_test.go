@@ -75,7 +75,7 @@ func TestH3ServiceSmokeComposeContract(t *testing.T) {
 		"${ARDENTS_SERVICE_IMAGE_TAG:?}", "${ARDENTS_SERVICE_RUNTIME_USER:?}", "route_net:", "internal: true",
 		"network_mode: none", "read_only: true", "cap_drop: [ALL]", "no-new-privileges:true", "restart: \"no\"",
 		"tmpfs:", "cpus:", "mem_limit:", "pids_limit:", "type: bind", "read_only: true", "create_host_path: false",
-		"user: \"0:0\"", "cap_add: [CHOWN]",
+		"user: \"0:0\"", "cap_add: [CHOWN, FOWNER]",
 	}
 	for _, value := range required {
 		if !bytes.Contains(compose, []byte(value)) {

@@ -37,7 +37,7 @@ services:
     <<: [*local, *build]
     profiles: [setup]
     user: "0:0"
-    cap_add: [CHOWN]
+    cap_add: [CHOWN, FOWNER]
     command: [/usr/local/bin/ardents-service-volume-init, "${ARDENTS_SERVICE_RUNTIME_USER:?}", /run/ardents/publisher-app, /run/ardents/publisher-route, /run/ardents/client-app, /run/ardents/client-route, /run/ardents/admin, /run/ardents/publication, /run/ardents/introduction-ack, /run/ardents/lifecycle]
     volumes:
       - publisher_app:/run/ardents/publisher-app
