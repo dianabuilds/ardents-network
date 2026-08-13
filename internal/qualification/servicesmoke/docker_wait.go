@@ -45,7 +45,7 @@ func containerIDFromOutput(raw []byte) string {
 }
 
 func (observer dockerObserver) serviceID(ctx context.Context, service string) (string, error) {
-	raw, err := observer.compose(ctx, time.Minute, "ps", "-q", service)
+	raw, err := observer.compose(ctx, time.Minute, "ps", "-a", "-q", service)
 	identity := strings.TrimSpace(string(raw))
 	if err != nil || !validContainerID(identity) {
 		return "", errors.New(service + " container identity is invalid")
