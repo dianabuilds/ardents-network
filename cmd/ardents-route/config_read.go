@@ -17,13 +17,18 @@ type actorPlan struct {
 	NextNodeID, Next, NextPin, ServiceCertificate, ServiceKey string
 	Deadline, StateRoot, At, Seed, PublisherPin               string
 	Stream                                                    string
+	RawAttachment                                             bool
 	AcknowledgementSocket, AcknowledgementKey                 string
 	Authorities, ExcludedFamilies, ExcludedDomains            []string
 	ExcludedIdentities                                        []string
 	Threshold                                                 int
+	Attachments                                               uint32
 }
 
 func (value actorPlan) validateRoleLocal() error {
+	if value.Attachments > 3 {
+		return errors.New("route Attachment process count is outside its bound")
+	}
 	clientOnly := value.StateRoot != "" || value.At != "" || value.Seed != "" || value.PublisherPin != "" ||
 		len(value.Authorities) != 0 || value.Threshold != 0 || len(value.ExcludedIdentities) != 0 ||
 		len(value.ExcludedFamilies) != 0 || len(value.ExcludedDomains) != 0
@@ -35,12 +40,18 @@ func (value actorPlan) validateRoleLocal() error {
 		if listenerOnly || nextOnly || serviceOnly {
 			return errors.New("client plan contains information outside its role-local duty")
 		}
+		if value.RawAttachment && (value.Stream == "" || value.PublisherPin != "") {
+			return errors.New("raw client attachment plan is invalid")
+		}
 	case "publisher":
 		if clientOnly || nextOnly {
 			return errors.New("publisher plan contains information outside its role-local duty")
 		}
+		if value.RawAttachment && (value.Stream == "" || serviceOnly) {
+			return errors.New("raw publisher attachment plan is invalid")
+		}
 	case "initiator", "introduction", "rendezvous", "responder":
-		if clientOnly || serviceOnly || value.Stream != "" {
+		if clientOnly || serviceOnly || value.Stream != "" || value.RawAttachment {
 			return errors.New("node plan contains information outside its role-local duty")
 		}
 	default:

@@ -21,9 +21,30 @@ func TestRunExercisesDistinctMandatoryCases(t *testing.T) {
 		}
 		seen[mechanism] = true
 	}
-	if len(receipt.Operations) != 3 || receipt.Classes["cancellation"] != "local timeout or cancellation" ||
+	if len(receipt.Operations) != 4 || !receipt.Operations["recovery-queue-full"] ||
+		receipt.Classes["cancellation"] != "local timeout or cancellation" ||
 		receipt.Classes["partial-write"] != "abrupt connection loss" || receipt.Counts["partial-low"] != 1024 ||
 		receipt.Counts["partial-high"] != 2048 {
 		t.Fatalf("stream observations are incomplete: %+v", receipt)
+	}
+}
+
+func TestRunInjectsConcreteContinuityProofAttacks(t *testing.T) {
+	digests := map[string]bool{}
+	for _, name := range []string{"recovery-replayed-attachment", "recovery-stale-attachment", "recovery-cross-binding"} {
+		receipt, err := Run(context.Background(), name)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		observed := receipt.Recovery[name]
+		if !observed.Passed || observed.TerminalCount != 1 || observed.InjectionKind != name ||
+			len(observed.InjectionDigest) != 64 || digests[observed.InjectionDigest] {
+			t.Fatalf("%s observation is incomplete or aliased: %+v", name, observed)
+		}
+		if name == "recovery-replayed-attachment" &&
+			(observed.AttackAttempts != 2 || observed.RecoveryCount != 1 || observed.RouteGeneration != 2) {
+			t.Fatalf("replay was not captured from an accepted proof: %+v", observed)
+		}
+		digests[observed.InjectionDigest] = true
 	}
 }

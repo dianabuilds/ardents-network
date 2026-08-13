@@ -85,9 +85,9 @@ func (value fixture) wrongCapability(ctx context.Context) bool {
 	public := value.firstPrivate.Public().(ed25519.PublicKey)
 	var instance [32]byte
 	copy(instance[:], public)
-	credential, err := serviceconn.IssueCredential(value.authorityPrivate, serviceconn.Credential{
+	credential, err := (serviceconn.Credential{
 		InstancePublic: instance, Generation: 1, NotBefore: value.now.Add(-time.Minute).Unix(),
-		NotAfter: value.now.Add(time.Minute).Unix(), NetworkID: value.network, Capabilities: 1})
+		NotAfter: value.now.Add(time.Minute).Unix(), NetworkID: value.network, Capabilities: 1}).Issue(value.authorityPrivate)
 	if err != nil {
 		return false
 	}

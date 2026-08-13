@@ -1,0 +1,20 @@
+include:
+  - ../h3-service-v1/compose.yaml
+
+services:
+  recovery-verifier:
+    image: ${ARDENTS_SERVICE_IMAGE_TAG:?}
+    pull_policy: never
+    profiles: [recovery-verify]
+    read_only: true
+    restart: "no"
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    user: "65532:65532"
+    network_mode: none
+    cpus: 0.5
+    mem_limit: 64m
+    pids_limit: 16
+    command: [/usr/local/bin/ardents-recovery-qualify, /run/ardents/evidence.json]
+    volumes:
+      - {type: bind, source: "${ARDENTS_RECOVERY_EVIDENCE_FILE:?}", target: /run/ardents/evidence.json, read_only: true, bind: {create_host_path: false}}

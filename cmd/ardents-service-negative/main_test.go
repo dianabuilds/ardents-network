@@ -10,7 +10,7 @@ import (
 
 func TestNegativeCommandObservesEveryRequiredRejection(t *testing.T) {
 	var output bytes.Buffer
-	if err := run(&output); err != nil {
+	if err := run(nil, &output); err != nil {
 		t.Fatal(err)
 	}
 	var value servicenegative.Receipt

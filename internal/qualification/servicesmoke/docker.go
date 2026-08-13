@@ -24,6 +24,9 @@ func runDocker(ctx context.Context, input Config, fixture prepared) (result Resu
 		project: "ardents-service-" + commit[:8] + "-" + hex.EncodeToString(fixture.manifest[:4]),
 		image:   "ardents-service-smoke:" + commit[:12], runtimeUser: runtimeUser()}
 	defer func() {
+		if result.DockerCleanup {
+			return
+		}
 		observer.generation = filepath.Join(input.FixtureRoot, "generations", "1")
 		observer.evidenceFile = filepath.Join(input.EvidenceRoot, "empty.json")
 		_, cleanupErr := observer.compose(context.Background(), 2*time.Minute, "down", "-v", "--remove-orphans")

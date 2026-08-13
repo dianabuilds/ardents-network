@@ -1,9 +1,5 @@
 package main
 
-import (
-	"os"
-)
+import "os"
 
-func main() {
-	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
-}
+func main() { os.Exit(run(os.Args[1:], os.Stdout, os.Stderr)) }

@@ -101,6 +101,7 @@ type observation struct {
 	NextNodeID          [32]byte   `json:"next_node_id"`
 	Epoch               uint64     `json:"epoch"`
 	OpaqueBytes         uint64     `json:"opaque_bytes"`
+	Attachment          uint32     `json:"attachment"`
 	OpaqueDigest        [32]byte   `json:"opaque_digest"`
 	ReverseOpaqueBytes  uint64     `json:"reverse_opaque_bytes"`
 	ReverseOpaqueDigest [32]byte   `json:"reverse_opaque_digest"`

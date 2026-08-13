@@ -74,9 +74,9 @@ func prepare(input Config) (prepared, error) {
 		if keyErr != nil {
 			return prepared{}, keyErr
 		}
-		credential, issueErr := serviceconn.IssueCredential(private, serviceconn.Credential{InstancePublic: instance,
+		credential, issueErr := (serviceconn.Credential{InstancePublic: instance,
 			Generation: uint64(index + 1), NotBefore: at.Add(-time.Minute).Unix(), NotAfter: at.Add(60 * time.Minute).Unix(),
-			NetworkID: route.NetworkID, Capabilities: 3})
+			NetworkID: route.NetworkID, Capabilities: 3}).Issue(private)
 		if issueErr != nil {
 			return prepared{}, issueErr
 		}

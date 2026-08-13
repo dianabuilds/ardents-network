@@ -25,3 +25,12 @@ func ParseConfig(arguments []string) (Config, error) {
 	}
 	return value, nil
 }
+
+// Execute parses and runs one public service-smoke invocation.
+func Execute(arguments []string) (Result, error) {
+	config, err := ParseConfig(arguments)
+	if err != nil {
+		return Result{}, err
+	}
+	return Run(config), nil
+}

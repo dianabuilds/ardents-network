@@ -14,7 +14,7 @@ type localSession struct {
 	issued    int64
 }
 
-func (endpoint *Endpoint) admit(input Request) (Result, error) {
+func (endpoint *endpoint) admit(input Request) (Result, error) {
 	var expected [32]byte
 	switch input.Surface {
 	case "connection":
@@ -45,7 +45,7 @@ func (endpoint *Endpoint) admit(input Request) (Result, error) {
 	return Result{Class: "authorized", Session: capability}, nil
 }
 
-func (endpoint *Endpoint) consume(capability, principal [32]byte, surface string) error {
+func (endpoint *endpoint) consume(capability, principal [32]byte, surface string) error {
 	endpoint.mu.Lock()
 	defer endpoint.mu.Unlock()
 	session, ok := endpoint.sessions[capability]

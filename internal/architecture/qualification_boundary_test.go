@@ -8,7 +8,8 @@ func TestRepositoryArchitectureQualificationBoundary(t *testing.T) {
 	registry := readPackageRegistry(t, root)
 	packages := []string{"internal/qualification/byteio", "internal/qualification/epochfixture", "internal/qualification/state",
 		"internal/qualification/node", "internal/qualification/node/fixture", "internal/qualification/route", "internal/qualification/routesmoke",
-		"internal/qualification/service", "internal/qualification/servicesmoke"}
+		"internal/qualification/recovery", "internal/qualification/recoverysmoke", "internal/qualification/service",
+		"internal/qualification/servicenegative", "internal/qualification/servicesmoke"}
 	for _, directory := range packages {
 		qualification, exists := registry[directory]
 		if !exists {
@@ -41,10 +42,11 @@ func TestRepositoryArchitectureQualificationBoundary(t *testing.T) {
 			if len(qualification.allowedImports) != len(wanted) {
 				t.Errorf("%s has an unexpected import count", directory)
 			}
-			for _, dependency := range wanted {
-				if !qualification.allowedImports[dependency] {
-					t.Errorf("%s must permit %s", directory, dependency)
-				}
+		case "internal/qualification/recoverysmoke":
+			wanted := []string{"internal/qualification/byteio", "internal/qualification/recovery",
+				"internal/qualification/routesmoke", "internal/qualification/servicenegative", "internal/route", "internal/serviceconn"}
+			if len(qualification.allowedImports) != len(wanted) {
+				t.Errorf("%s has an unexpected import count", directory)
 			}
 			for _, dependency := range wanted {
 				if !qualification.allowedImports[dependency] {
@@ -61,6 +63,11 @@ func TestRepositoryArchitectureQualificationBoundary(t *testing.T) {
 				!qualification.allowedImports["internal/network/epoch/merkle"] {
 				t.Errorf("%s may import only canonical Epoch rules", directory)
 			}
+		case "internal/qualification/servicenegative":
+			if len(qualification.allowedImports) != 2 || !qualification.allowedImports["internal/applicationipc"] ||
+				!qualification.allowedImports["internal/serviceconn"] {
+				t.Errorf("%s may import only its two public candidate seams", directory)
+			}
 		default:
 			if len(qualification.allowedImports) != 0 {
 				t.Errorf("%s must use only the standard library", directory)
@@ -70,11 +77,17 @@ func TestRepositoryArchitectureQualificationBoundary(t *testing.T) {
 	for owner, registration := range registry {
 		for _, directory := range packages {
 			allowed := owner == "cmd/ardents-qualify" ||
+				owner == "cmd/ardents-recovery-qualify" && directory == "internal/qualification/recovery" ||
+				owner == "cmd/ardents-service-negative" && directory == "internal/qualification/servicenegative" ||
 				owner == "internal/qualification/routesmoke" ||
+				owner == "internal/qualification/recoverysmoke" &&
+					(directory == "internal/qualification/byteio" || directory == "internal/qualification/recovery" ||
+						directory == "internal/qualification/routesmoke" || directory == "internal/qualification/servicenegative") ||
 				owner == "internal/qualification/servicesmoke" &&
 					(directory == "internal/qualification/byteio" || directory == "internal/qualification/routesmoke") ||
 				owner == "cmd/ardents-route-qualify" && directory == "internal/qualification/route" ||
-				owner == "cmd/ardents-service-qualify" && directory == "internal/qualification/service" ||
+				owner == "cmd/ardents-service-qualify" &&
+					(directory == "internal/qualification/service" || directory == "internal/qualification/servicenegative") ||
 				owner == "internal/qualification/state" && directory == "internal/qualification/byteio" ||
 				owner == "internal/qualification/node" && (directory == "internal/qualification/byteio" || directory == "internal/qualification/node/fixture") ||
 				owner == "internal/qualification/node/fixture" && (directory == "internal/qualification/byteio" || directory == "internal/qualification/epochfixture")

@@ -1,4 +1,4 @@
-package main
+package serviceendpoint
 
 import (
 	"context"
@@ -15,7 +15,11 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/serviceconn"
 )
 
-func publishCurrent(endpoint *serviceconn.Endpoint, resources func(string, int) uint32, plan endpointPlan, principal [32]byte, at time.Time,
+type connectionEndpoint interface {
+	Do(context.Context, serviceconn.Request) (serviceconn.Result, error)
+}
+
+func publishCurrent(endpoint connectionEndpoint, resources func(string, int) uint32, plan endpointPlan, principal [32]byte, at time.Time,
 	deadline time.Duration, ready func()) (serviceconn.Result, error) {
 	listener, err := listenLocal(plan.AdministrationSocket, deadline)
 	if err != nil {
@@ -101,7 +105,7 @@ func deliverResult(output io.Writer, result serviceconn.Result) error {
 		ReceivedBytes: result.ReceivedBytes})
 }
 
-func admit(endpoint *serviceconn.Endpoint, principal [32]byte, surface string, at time.Time) ([32]byte, error) {
+func admit(endpoint connectionEndpoint, principal [32]byte, surface string, at time.Time) ([32]byte, error) {
 	result, err := endpoint.Do(context.Background(), serviceconn.Request{Action: "admit", Surface: surface, Principal: principal, At: at})
 	return result.Session, err
 }

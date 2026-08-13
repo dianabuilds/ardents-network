@@ -37,7 +37,12 @@ func (observer dockerObserver) command(ctx context.Context, timeout time.Duratio
 		"ARDENTS_SERVICE_ROUTE_ROOT="+filepath.Join(observer.input.FixtureRoot, "route"),
 		"ARDENTS_SERVICE_GENERATION="+observer.generation,
 		"ARDENTS_SERVICE_EVIDENCE_FILE="+observer.evidenceFile,
+		"ARDENTS_RECOVERY_EVIDENCE_FILE="+observer.evidenceFile,
 		"ARDENTS_SERVICE_RUNTIME_USER="+observer.runtimeUser)
+	command.Env = append(command.Env,
+		"ARDENTS_CLIENT_SEND_BYTES=65536", "ARDENTS_CLIENT_RECEIVE_BYTES=65536",
+		"ARDENTS_PUBLISHER_SEND_BYTES=65536", "ARDENTS_PUBLISHER_RECEIVE_BYTES=65536",
+		"ARDENTS_STREAM_CHUNK_DELAY=", "ARDENTS_STREAM_PROGRESS=0")
 	output, err := command.CombinedOutput()
 	if bounded.Err() != nil {
 		return output, bounded.Err()

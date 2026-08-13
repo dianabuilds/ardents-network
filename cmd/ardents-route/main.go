@@ -26,24 +26,37 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 	if err != nil {
 		return err
 	}
-	actor, closeState, err := raw.actor()
-	if err != nil {
-		return err
-	}
-	if closeState != nil {
-		defer closeState()
-	}
 	encoder := json.NewEncoder(output)
 	encoder.SetEscapeHTML(false)
-	var ready func(route.Evidence)
-	if actor.Role != "client" {
-		ready = func(value route.Evidence) { _ = encoder.Encode(value) }
+	attempts := raw.Attachments
+	if attempts == 0 {
+		attempts = 1
 	}
-	result, err := route.Run(ctx, actor, ready)
-	if err != nil {
-		result.Error = err.Error()
-		_ = encoder.Encode(result)
-		return err
+	for attempt := uint32(0); attempt < attempts; attempt++ {
+		if attempt > 0 {
+			raw.AcknowledgementSocket, raw.AcknowledgementKey = "", ""
+		}
+		actor, closeState, err := raw.actor()
+		if err != nil {
+			return err
+		}
+		var ready func(route.Evidence)
+		if actor.Role != "client" {
+			ready = func(value route.Evidence) { _ = encoder.Encode(value) }
+		}
+		result, runErr := route.Run(ctx, actor, ready)
+		result.Attachment = attempt + 1
+		if closeState != nil {
+			closeState()
+		}
+		if runErr != nil && attempt+1 == attempts {
+			result.Error = runErr.Error()
+			_ = encoder.Encode(result)
+			return runErr
+		}
+		if err := encoder.Encode(result); err != nil {
+			return err
+		}
 	}
-	return encoder.Encode(result)
+	return nil
 }

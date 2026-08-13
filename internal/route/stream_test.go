@@ -3,6 +3,7 @@ package route_test
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"net"
 	"sync"
 	"testing"
@@ -12,6 +13,15 @@ import (
 )
 
 func TestBoundedOpaqueStreamCrossesEveryRoutePosition(t *testing.T) {
+	runBoundedOpaqueStream(t, false)
+}
+
+func TestEndpointSecuredAttachmentCrossesRouteWithoutPublisherCredential(t *testing.T) {
+	runBoundedOpaqueStream(t, true)
+}
+
+func runBoundedOpaqueStream(t *testing.T, endpointSecured bool) {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	identities := make([]testRouteIdentity, 6)
@@ -63,10 +73,20 @@ func TestBoundedOpaqueStreamCrossesEveryRoutePosition(t *testing.T) {
 			Certificate: identities[index].certificate, UpstreamPin: upstream, NextNodeID: nextID,
 			NextAddress: nextAddress, NextPin: nextPin, Deadline: 8 * time.Second}, true)
 	}
-	start(route.Actor{Role: "publisher", ManifestDigest: [32]byte{99}, NetworkID: plan.NetworkID,
+	publisher := route.Actor{Role: "publisher", ManifestDigest: [32]byte{99}, NetworkID: plan.NetworkID,
 		EpochDigest: plan.Digest, NodeID: [32]byte{90}, ListenAddress: addresses[4],
 		Certificate: identities[4].certificate, UpstreamPin: identities[3].public,
-		ServiceCertificate: identities[4].certificate, Stream: publisherRoute, Deadline: 8 * time.Second}, true)
+		ServiceCertificate: identities[4].certificate, Stream: publisherRoute, Deadline: 8 * time.Second}
+	client := route.Actor{Role: "client", ManifestDigest: [32]byte{99}, Plan: plan,
+		ClientCertificate: identities[5].certificate, PublisherPin: identities[4].public,
+		Stream: clientRoute, Deadline: 8 * time.Second}
+	if endpointSecured {
+		publisher.ServiceCertificate = tls.Certificate{}
+		publisher.RawAttachment = true
+		client.PublisherPin = [32]byte{}
+		client.RawAttachment = true
+	}
+	start(publisher, true)
 	for range 5 {
 		select {
 		case <-ready:
@@ -74,12 +94,14 @@ func TestBoundedOpaqueStreamCrossesEveryRoutePosition(t *testing.T) {
 			t.Fatal(ctx.Err())
 		}
 	}
-	start(route.Actor{Role: "client", ManifestDigest: [32]byte{99}, Plan: plan,
-		ClientCertificate: identities[5].certificate, PublisherPin: identities[4].public,
-		Stream: clientRoute, Deadline: 8 * time.Second}, false)
+	start(client, false)
 
-	clientBytes := bytes.Repeat([]byte{0x3c, 0x00, 0xff, 0x17}, 1024)
-	publisherBytes := bytes.Repeat([]byte{0xa5, 0x42, 0x00, 0x7e}, 1024)
+	repetitions := 1024
+	if endpointSecured {
+		repetitions = 1 << 20
+	}
+	clientBytes := bytes.Repeat([]byte{0x3c, 0x00, 0xff, 0x17}, repetitions)
+	publisherBytes := bytes.Repeat([]byte{0xa5, 0x42, 0x00, 0x7e}, repetitions)
 	exchangeRouteApplications(t, clientApplication, publisherApplication, clientBytes, publisherBytes)
 	_ = clientApplication.Close()
 	_ = publisherApplication.Close()

@@ -1,14 +1,28 @@
-package main
+package serviceendpoint
 
 import (
 	"context"
 	"errors"
 	"io"
 	"os"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/planfile"
 	"github.com/dianabuilds/ardents-network/internal/serviceconn"
 )
+
+// Run loads one role-local plan and owns its Endpoint process composition.
+func Run(ctx context.Context, planPath string, ready func(string)) (serviceconn.Result, error) {
+	plan, err := readPlan(planPath)
+	if err != nil {
+		return serviceconn.Result{}, err
+	}
+	return runEndpoint(ctx, plan, func() {
+		if ready != nil {
+			ready(plan.Role)
+		}
+	})
+}
 
 func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (serviceconn.Result, error) {
 	setup, at, deadline, err := endpointSetup(plan)
@@ -53,15 +67,16 @@ func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (servicec
 		return serviceconn.Result{}, err
 	}
 	setup.Resources("accepted-ipc", 1)
+	setup.Resources("application-accept", 1)
 	defer setup.Resources("accepted-ipc", -1)
 	defer application.Close()
-	route, err := routeListener.Accept()
+	openAttachment := routeAttachmentOpener(routeListener, setup.Resources)
+	route, err := openAttachment(ctx, serviceconn.Recovery{Generation: 1, Deadline: time.Now().Add(deadline)})
 	if err != nil {
 		application.Close()
 		return serviceconn.Result{}, err
 	}
-	setup.Resources("accepted-ipc", 1)
-	defer setup.Resources("accepted-ipc", -1)
+	defer route.Close()
 	session, err := admit(endpoint, setup.ConnectionPrincipal, "connection", at)
 	if err != nil {
 		application.Close()
@@ -69,7 +84,15 @@ func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (servicec
 		return serviceconn.Result{}, err
 	}
 	request := serviceconn.Request{Action: plan.roleAction(), Principal: setup.ConnectionPrincipal,
-		Session: session, Route: route, Application: application, BytesEachDirection: plan.BytesEachDirection, At: at}
+		Session: session, Route: route, Application: application,
+		BytesEachDirection: plan.BytesEachDirection, SendBytes: plan.SendBytes, ReceiveBytes: plan.ReceiveBytes, At: at}
+	request.RecoveryBinding, err = plan.recoveryBinding()
+	if err != nil {
+		return serviceconn.Result{}, err
+	}
+	if plan.recoveryEnabled() {
+		request.OpenAttachment = openAttachment
+	}
 	if plan.Role == "client" {
 		if err := planfile.FixedHex(plan.Target, request.Target[:]); err != nil {
 			return serviceconn.Result{}, err
@@ -89,6 +112,8 @@ func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (servicec
 	operation, cancel := context.WithTimeout(ctx, deadline)
 	defer cancel()
 	result, err := endpoint.Do(operation, request)
+	result.ApplicationIPCAccepts = setup.Resources("application-accept", 0)
+	result.RouteAttachmentsAccepted = setup.Resources("route-attachment-accept", 0)
 	result.IntroductionReceipt = published.IntroductionReceipt
 	if plan.Role == "publisher" {
 		result.IntroductionAcknowledgement = published.IntroductionAcknowledgement

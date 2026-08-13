@@ -12,8 +12,8 @@ import (
 const credentialBodySize = 4 + 1 + 32 + 32 + 32 + 8 + 8 + 8 + 32 + 4
 const credentialSize = credentialBodySize + ed25519.SignatureSize
 
-// IssueCredential signs one bounded laboratory Credential with Service Authority.
-func IssueCredential(authority ed25519.PrivateKey, value Credential) (Credential, error) {
+// Issue signs this bounded laboratory Credential with Service Authority.
+func (value Credential) Issue(authority ed25519.PrivateKey) (Credential, error) {
 	if len(authority) != ed25519.PrivateKeySize || value.InstancePublic == [32]byte{} ||
 		value.Generation == 0 || value.NotBefore >= value.NotAfter || value.NetworkID == [32]byte{} || value.Capabilities == 0 {
 		return Credential{}, errors.New("credential request is invalid")

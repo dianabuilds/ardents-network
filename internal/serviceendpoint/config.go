@@ -1,4 +1,4 @@
-package main
+package serviceendpoint
 
 import (
 	"crypto/ed25519"
@@ -13,11 +13,14 @@ import (
 type endpointPlan struct {
 	Role, NetworkID, BrokerID, AuthorityPublic, ConnectionPrincipal       string
 	AdministrationPrincipal, Target                                       string
+	CandidateView, IsolationContext, DestinationBinding, RouteProfile     string
 	IntroductionSocket, IntroductionPublic                                string
 	ApplicationSocket, RouteSocket, AdministrationSocket                  string
 	PublicationFile, CredentialFile, InstanceKeyFile, GenerationStateFile string
 	At, Deadline                                                          string
 	BytesEachDirection                                                    uint32
+	SendBytes, ReceiveBytes                                               uint32
+	WorkSafetyNotAfter, WorkSafetyMaximum, NoNewRecoveryAfter             int64
 }
 
 func readPlan(path string) (endpointPlan, error) {
@@ -35,7 +38,7 @@ func (value endpointPlan) validate() error {
 		return errors.New("endpoint role is invalid")
 	}
 	if value.ApplicationSocket == "" || value.RouteSocket == "" || value.PublicationFile == "" ||
-		value.At == "" || value.Deadline == "" || value.BytesEachDirection == 0 || value.BytesEachDirection > 64<<10 {
+		value.At == "" || value.Deadline == "" || !value.validStreamBounds() {
 		return errors.New("endpoint plan is incomplete or outside its bound")
 	}
 	if value.IntroductionPublic == "" {
@@ -51,14 +54,59 @@ func (value endpointPlan) validate() error {
 		value.GenerationStateFile == "") {
 		return errors.New("publisher plan lacks its administration input")
 	}
-	if _, err := time.Parse(time.RFC3339, value.At); err != nil {
+	at, err := time.Parse(time.RFC3339, value.At)
+	if err != nil {
 		return err
 	}
 	deadline, err := time.ParseDuration(value.Deadline)
 	if err != nil || deadline <= 0 || deadline > 15*time.Second {
 		return errors.New("endpoint deadline is outside the frozen bound")
 	}
+	fields := []bool{value.CandidateView != "", value.IsolationContext != "", value.DestinationBinding != "",
+		value.RouteProfile != "", value.WorkSafetyNotAfter != 0, value.WorkSafetyMaximum != 0,
+		value.NoNewRecoveryAfter != 0}
+	enabled := fields[0]
+	for _, present := range fields[1:] {
+		if present != enabled {
+			return errors.New("recovery binding is partial")
+		}
+	}
+	if enabled && (len(value.RouteProfile) > 63 || value.WorkSafetyNotAfter <= at.Unix() ||
+		value.WorkSafetyMaximum < value.WorkSafetyNotAfter || value.NoNewRecoveryAfter <= at.Unix() ||
+		value.NoNewRecoveryAfter > value.WorkSafetyNotAfter) {
+		return errors.New("recovery binding safety bounds are invalid")
+	}
 	return nil
+}
+
+func (value endpointPlan) validStreamBounds() bool {
+	if value.SendBytes == 0 && value.ReceiveBytes == 0 {
+		return value.BytesEachDirection > 0 && value.BytesEachDirection <= 4<<20
+	}
+	return value.BytesEachDirection == 0 && value.SendBytes <= 4<<20 && value.ReceiveBytes <= 4<<20 &&
+		(value.SendBytes > 0 || value.ReceiveBytes > 0)
+}
+
+func (value endpointPlan) recoveryEnabled() bool { return value.CandidateView != "" }
+
+func (value endpointPlan) recoveryBinding() (serviceconn.Recovery, error) {
+	var binding serviceconn.Recovery
+	if !value.recoveryEnabled() {
+		return binding, nil
+	}
+	for _, field := range []struct {
+		encoded     string
+		destination []byte
+	}{{value.CandidateView, binding.CandidateView[:]}, {value.IsolationContext, binding.IsolationContext[:]},
+		{value.DestinationBinding, binding.DestinationBinding[:]}} {
+		if err := planfile.FixedHex(field.encoded, field.destination); err != nil {
+			return serviceconn.Recovery{}, err
+		}
+	}
+	binding.RouteProfile = value.RouteProfile
+	binding.WorkSafetyNotAfter, binding.WorkSafetyMaximum = value.WorkSafetyNotAfter, value.WorkSafetyMaximum
+	binding.NoNewRecoveryAfter = value.NoNewRecoveryAfter
+	return binding, nil
 }
 func endpointSetup(plan endpointPlan) (serviceconn.Setup, time.Time, time.Duration, error) {
 	var setup serviceconn.Setup

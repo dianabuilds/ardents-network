@@ -21,6 +21,10 @@ type fixture struct {
 	first, second               serviceconn.Credential
 }
 
+type endpointRunner interface {
+	Do(context.Context, serviceconn.Request) (serviceconn.Result, error)
+}
+
 func newFixture() (fixture, error) {
 	value := fixture{now: time.Unix(2_000_000_000, 0), network: [32]byte{1},
 		connection: [32]byte{2}, admin: [32]byte{3}}
@@ -54,18 +58,18 @@ func (value fixture) issue(instance ed25519.PublicKey, generation uint64, networ
 	var authority, public [32]byte
 	copy(authority[:], value.authorityPublic)
 	copy(public[:], instance)
-	return serviceconn.IssueCredential(value.authorityPrivate, serviceconn.Credential{
+	return (serviceconn.Credential{
 		AuthorityPublic: authority, InstancePublic: public, Generation: generation,
 		NotBefore: value.now.Add(-time.Minute).Unix(), NotAfter: notAfter.Unix(),
 		NetworkID: network, Capabilities: 3,
-	})
+	}).Issue(value.authorityPrivate)
 }
 
-func (value fixture) endpoint() *serviceconn.Endpoint {
+func (value fixture) endpoint() endpointRunner {
 	return value.endpointWithBroker([32]byte{4})
 }
 
-func (value fixture) endpointWithBroker(broker [32]byte) *serviceconn.Endpoint {
+func (value fixture) endpointWithBroker(broker [32]byte) endpointRunner {
 	endpoint, _ := serviceconn.New(serviceconn.Setup{NetworkID: value.network, BrokerID: broker,
 		AuthorityPublic: value.authorityPublic, IntroductionPublic: value.introductionPublic,
 		ConnectionPrincipal:     value.connection,
@@ -73,13 +77,13 @@ func (value fixture) endpointWithBroker(broker [32]byte) *serviceconn.Endpoint {
 	return endpoint
 }
 
-func admit(ctx context.Context, endpoint *serviceconn.Endpoint, principal [32]byte,
+func admit(ctx context.Context, endpoint endpointRunner, principal [32]byte,
 	surface string, at time.Time) [32]byte {
 	result, _ := endpoint.Do(ctx, serviceconn.Request{Action: "admit", Principal: principal, Surface: surface, At: at})
 	return result.Session
 }
 
-func publish(ctx context.Context, endpoint *serviceconn.Endpoint, value fixture,
+func publish(ctx context.Context, endpoint endpointRunner, value fixture,
 	credential serviceconn.Credential, private ed25519.PrivateKey) (serviceconn.Result, error) {
 	session := admit(ctx, endpoint, value.admin, "administration", value.now)
 	return endpoint.Do(ctx, serviceconn.Request{Action: "publish", Principal: value.admin, Session: session,

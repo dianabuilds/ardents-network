@@ -268,11 +268,11 @@ func issue(t *testing.T, fixture fixture, public ed25519.PublicKey, generation u
 	var authority, instance [32]byte
 	copy(authority[:], fixture.authorityPublic)
 	copy(instance[:], public)
-	credential, err := serviceconn.IssueCredential(fixture.authorityPrivate, serviceconn.Credential{
+	credential, err := (serviceconn.Credential{
 		AuthorityPublic: authority, InstancePublic: instance, Generation: generation,
 		NotBefore: fixture.now.Add(-time.Minute).Unix(), NotAfter: fixture.now.Add(time.Minute).Unix(),
 		NetworkID: fixture.networkID, Capabilities: capabilities,
-	})
+	}).Issue(fixture.authorityPrivate)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -283,7 +283,7 @@ func alterCredential(t *testing.T, fixture fixture, change func(*serviceconn.Cre
 	t.Helper()
 	value := fixture.first
 	change(&value)
-	credential, err := serviceconn.IssueCredential(fixture.authorityPrivate, value)
+	credential, err := value.Issue(fixture.authorityPrivate)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -295,7 +295,7 @@ func alteredUnsigned(value serviceconn.Credential, change func(*serviceconn.Cred
 	return value
 }
 
-func newPublisher(t *testing.T, fixture fixture) *serviceconn.Endpoint {
+func newPublisher(t *testing.T, fixture fixture) endpointRunner {
 	t.Helper()
 	endpoint, err := serviceconn.New(serviceconn.Setup{NetworkID: fixture.networkID, BrokerID: [32]byte{7},
 		AuthorityPublic: fixture.authorityPublic, IntroductionPublic: fixture.introductionPublic,
@@ -307,7 +307,7 @@ func newPublisher(t *testing.T, fixture fixture) *serviceconn.Endpoint {
 	return endpoint
 }
 
-func admit(t *testing.T, endpoint *serviceconn.Endpoint, surface string, principal [32]byte, at time.Time) [32]byte {
+func admit(t *testing.T, endpoint endpointRunner, surface string, principal [32]byte, at time.Time) [32]byte {
 	t.Helper()
 	result, err := endpoint.Do(context.Background(), serviceconn.Request{Action: "admit", Surface: surface, Principal: principal, At: at})
 	if err != nil || result.Class != "authorized" || result.Session == [32]byte{} {
@@ -316,7 +316,7 @@ func admit(t *testing.T, endpoint *serviceconn.Endpoint, surface string, princip
 	return result.Session
 }
 
-func publish(t *testing.T, endpoint *serviceconn.Endpoint, fixture fixture, credential serviceconn.Credential, private ed25519.PrivateKey) []byte {
+func publish(t *testing.T, endpoint endpointRunner, fixture fixture, credential serviceconn.Credential, private ed25519.PrivateKey) []byte {
 	t.Helper()
 	session := admit(t, endpoint, "administration", fixture.administrationPrincipal, fixture.now)
 	result, err := endpoint.Do(context.Background(), serviceconn.Request{Action: "publish",

@@ -67,11 +67,13 @@ services:
     volumes: [administration:/run/ardents/admin]
   publisher-app:
     <<: *local
-    command: [/usr/local/bin/ardents-stream-app, run, publisher, /run/ardents/publisher-app/app.sock, /run/ardents/workload/publisher.hex, /run/ardents/workload/client.hex, "65536"]
+    command: [/usr/local/bin/ardents-stream-app, run, publisher, /run/ardents/publisher-app/app.sock, /run/ardents/workload/publisher.hex, /run/ardents/workload/client.hex, "${ARDENTS_PUBLISHER_SEND_BYTES:-65536}", "${ARDENTS_PUBLISHER_RECEIVE_BYTES:-65536}"]
+    environment: {ARDENTS_STREAM_CHUNK_DELAY: "${ARDENTS_STREAM_CHUNK_DELAY:-}", ARDENTS_STREAM_PROGRESS: "${ARDENTS_STREAM_PROGRESS:-}", ARDENTS_STREAM_GATE_OFFSET: "${ARDENTS_STREAM_GATE_OFFSET:-}", ARDENTS_STREAM_GATE_ROOT: "${ARDENTS_STREAM_GATE_ROOT:-}"}
     volumes:
       - publisher_app:/run/ardents/publisher-app
       - {type: bind, source: "${ARDENTS_SERVICE_GENERATION:?}/publisher-seed.hex", target: /run/ardents/workload/publisher.hex, read_only: true, bind: {create_host_path: false}}
       - {type: bind, source: "${ARDENTS_SERVICE_GENERATION:?}/client-seed.hex", target: /run/ardents/workload/client.hex, read_only: true, bind: {create_host_path: false}}
+      - {type: bind, source: "${ARDENTS_RECOVERY_GATE_HOST:?}", target: /run/ardents/gate, bind: {create_host_path: false}}
   client-endpoint:
     <<: *local
     command: [/usr/local/bin/ardents-service, run, /run/ardents/plan.json]
@@ -82,11 +84,13 @@ services:
       - publication:/run/ardents/publication:ro
   client-app:
     <<: *local
-    command: [/usr/local/bin/ardents-stream-app, run, client, /run/ardents/client-app/app.sock, /run/ardents/workload/client.hex, /run/ardents/workload/publisher.hex, "65536"]
+    command: [/usr/local/bin/ardents-stream-app, run, client, /run/ardents/client-app/app.sock, /run/ardents/workload/client.hex, /run/ardents/workload/publisher.hex, "${ARDENTS_CLIENT_SEND_BYTES:-65536}", "${ARDENTS_CLIENT_RECEIVE_BYTES:-65536}"]
+    environment: {ARDENTS_STREAM_CHUNK_DELAY: "${ARDENTS_STREAM_CHUNK_DELAY:-}", ARDENTS_STREAM_PROGRESS: "${ARDENTS_STREAM_PROGRESS:-}", ARDENTS_STREAM_GATE_OFFSET: "${ARDENTS_STREAM_GATE_OFFSET:-}", ARDENTS_STREAM_GATE_ROOT: "${ARDENTS_STREAM_GATE_ROOT:-}"}
     volumes:
       - client_app:/run/ardents/client-app
       - {type: bind, source: "${ARDENTS_SERVICE_GENERATION:?}/client-seed.hex", target: /run/ardents/workload/client.hex, read_only: true, bind: {create_host_path: false}}
       - {type: bind, source: "${ARDENTS_SERVICE_GENERATION:?}/publisher-seed.hex", target: /run/ardents/workload/publisher.hex, read_only: true, bind: {create_host_path: false}}
+      - {type: bind, source: "${ARDENTS_RECOVERY_GATE_HOST:?}", target: /run/ardents/gate, bind: {create_host_path: false}}
   hostile-sibling:
     <<: *local
     command: [/usr/local/bin/ardents-publish-app, publish, /run/ardents/not-granted/app.sock]

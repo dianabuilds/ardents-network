@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"errors"
 	"io"
+	"net"
 	"sync"
 	"time"
 )
@@ -13,8 +14,23 @@ const (
 	publishCapability = uint32(1)
 	connectCapability = uint32(2)
 	maximumSessions   = 6
-	maximumStream     = uint32(64 << 10)
+	maximumStream     = uint32(4 << 20)
 )
+
+// Recovery fixes connection values and constrains one fresh Route Attachment.
+type Recovery struct {
+	Generation         uint64
+	Deadline           time.Time
+	NetworkID          [32]byte
+	CandidateView      [32]byte
+	IsolationContext   [32]byte
+	DestinationBinding [32]byte
+	RouteProfile       string
+	Role               string
+	WorkSafetyNotAfter int64
+	WorkSafetyMaximum  int64
+	NoNewRecoveryAfter int64
+}
 
 // Credential is one public bounded authorization for an exclusive Instance.
 type Credential struct {
@@ -52,8 +68,12 @@ type Request struct {
 	IntroductionAcknowledgement []byte
 	IntroductionSocket          string
 	Publication                 []byte
-	Route, Application          io.ReadWriteCloser
+	Route                       net.Conn
+	Application                 io.ReadWriteCloser
+	OpenAttachment              func(context.Context, Recovery) (net.Conn, error)
+	RecoveryBinding             Recovery
 	BytesEachDirection          uint32
+	SendBytes, ReceiveBytes     uint32
 	At                          time.Time
 }
 
@@ -65,6 +85,9 @@ type Result struct {
 	Publication                 []byte   `json:"publication"`
 	AuthenticatedTarget         [32]byte `json:"authenticated_target"`
 	Generation                  uint64   `json:"generation"`
+	RouteGeneration             uint64   `json:"route_generation"`
+	RecoveryCount               uint32   `json:"recovery_count"`
+	ContinuityCommitment        [32]byte `json:"continuity_commitment"`
 	AcceptedBytes               uint32   `json:"accepted_bytes"`
 	ReceivedBytes               uint32   `json:"received_bytes"`
 	ConnectionCanary            [32]byte `json:"connection_canary"`
@@ -88,10 +111,12 @@ type Result struct {
 	AcceptedIPCHighWater        uint32   `json:"accepted_ipc_high_water"`
 	ServiceConnectionsHighWater uint32   `json:"service_connections_high_water"`
 	ControlFilesHighWater       uint32   `json:"control_files_high_water"`
+	ApplicationIPCAccepts       uint32   `json:"application_ipc_accepts"`
+	RouteAttachmentsAccepted    uint32   `json:"route_attachments_accepted"`
 }
 
-// Endpoint owns one broker generation's sessions and current publication.
-type Endpoint struct {
+// endpoint owns one broker generation's sessions and current publication.
+type endpoint struct {
 	mu                  sync.Mutex
 	network, broker     [32]byte
 	authority           [32]byte
@@ -108,7 +133,7 @@ type Endpoint struct {
 }
 
 // New creates one finite Endpoint-local admission and publication boundary.
-func New(input Setup) (*Endpoint, error) {
+func New(input Setup) (*endpoint, error) {
 	if input.NetworkID == [32]byte{} || input.BrokerID == [32]byte{} ||
 		len(input.AuthorityPublic) != ed25519.PublicKeySize || len(input.IntroductionPublic) != ed25519.PublicKeySize ||
 		input.ConnectionPrincipal == [32]byte{} {
@@ -130,7 +155,7 @@ func New(input Setup) (*Endpoint, error) {
 	if resources == nil {
 		resources = newResourceObserver()
 	}
-	return &Endpoint{network: input.NetworkID, broker: input.BrokerID, authority: authority,
+	return &endpoint{network: input.NetworkID, broker: input.BrokerID, authority: authority,
 		introduction:        introduction,
 		connectionPrincipal: input.ConnectionPrincipal, adminPrincipal: input.AdministrationPrincipal,
 		sessions: make(map[[32]byte]localSession, maximumSessions), lastGeneration: lastGeneration,
@@ -139,7 +164,7 @@ func New(input Setup) (*Endpoint, error) {
 }
 
 // Do executes one admitted operation and returns only an R-002 product class.
-func (endpoint *Endpoint) Do(ctx context.Context, input Request) (Result, error) {
+func (endpoint *endpoint) Do(ctx context.Context, input Request) (Result, error) {
 	if endpoint == nil || input.At.IsZero() {
 		return denied("local operation is incomplete")
 	}

@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,7 +8,6 @@ import (
 	"net"
 	"os"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/applicationipc"
@@ -24,8 +21,8 @@ func main() {
 }
 
 func run(arguments []string, output io.Writer) error {
-	if len(arguments) != 6 || arguments[0] != "run" {
-		return errors.New("usage: ardents-stream-app run <role> <socket> <send-seed-file> <expect-seed-file> <bytes>")
+	if len(arguments) != 7 || arguments[0] != "run" {
+		return errors.New("usage: ardents-stream-app run <role> <socket> <send-seed-file> <expect-seed-file> <send-bytes> <receive-bytes>")
 	}
 	sendSeed, err := readSeed(arguments[3])
 	if err != nil {
@@ -35,10 +32,9 @@ func run(arguments []string, output io.Writer) error {
 	if err != nil {
 		return err
 	}
-	count64, err := strconv.ParseInt(arguments[5], 10, 32)
-	count := int(count64)
-	if err != nil || count < 1 || count > 64<<10 {
-		return errors.New("stream byte count is outside its bound")
+	sendCount, receiveCount, err := streamCounts(arguments[5], arguments[6])
+	if err != nil {
+		return err
 	}
 	connection, err := net.DialTimeout("unix", arguments[2], 5*time.Second)
 	if err != nil {
@@ -46,64 +42,43 @@ func run(arguments []string, output io.Writer) error {
 	}
 	defer connection.Close()
 	_ = connection.SetDeadline(time.Now().Add(15 * time.Second))
-	result, streamErr := exchange(connection, arguments[1], sendSeed, expectSeed, count)
+	write, err := workloadWriter(connection, os.Getenv("ARDENTS_STREAM_CHUNK_DELAY"))
+	if err != nil {
+		return err
+	}
+	encoder := json.NewEncoder(output)
+	gateOffset, gate, err := progressGate(arguments[1])
+	if err != nil {
+		return err
+	}
+	if gateOffset > 0 && sendCount > 0 {
+		write = gatedWorkloadWriter(write, gateOffset, gate)
+	}
+	progress := func(received uint32) {
+		if os.Getenv("ARDENTS_STREAM_PROGRESS") == "1" {
+			_ = encoder.Encode(map[string]any{"schema": "ardents-h3-stream-progress-v1", "role": arguments[1],
+				"received_bytes": received})
+		}
+	}
+	result, streamErr := exchange(connection, arguments[1], sendSeed, expectSeed, sendCount, receiveCount, write, progress)
 	classified, resultErr := applicationipc.Read(connection)
 	result.ResultClass, result.AuthenticatedTarget = classified.Class, classified.AuthenticatedTarget
 	if classified.Class != "clean service connection close" {
 		resultErr = errors.Join(resultErr, errors.New("connection result is not semantic success"))
 	}
 	err = errors.Join(streamErr, resultErr)
-	if encodeErr := json.NewEncoder(output).Encode(result); encodeErr != nil {
+	if encodeErr := encoder.Encode(result); encodeErr != nil {
 		return errors.Join(err, encodeErr)
 	}
 	return err
 }
 
-func exchange(connection io.ReadWriter, role string, sendSeed, expectSeed [32]byte, count int) (observation, error) {
-	sent, expected := workload(count, sendSeed), workload(count, expectSeed)
-	result := observation{Schema: "ardents-h3-stream-application-v1", Role: role, SendSeed: sendSeed, ExpectSeed: expectSeed,
-		SentBytes: uint32(count), SentDigest: sha256.Sum256(sent)}
-	type transfer struct {
-		value []byte
-		err   error
+func streamCounts(sendText, receiveText string) (int, int, error) {
+	send64, sendErr := strconv.ParseInt(sendText, 10, 32)
+	receive64, receiveErr := strconv.ParseInt(receiveText, 10, 32)
+	if sendErr != nil || receiveErr != nil || send64 < 0 || receive64 < 0 || send64 > 4<<20 || receive64 > 4<<20 ||
+		(send64 == 0 && receive64 == 0) {
+		return 0, 0, errors.New("stream byte counts are outside their bound")
 	}
-	transfers := make(chan transfer, 2)
-	var writers sync.WaitGroup
-	writers.Add(1)
-	go func() {
-		defer writers.Done()
-		written := 0
-		for written < len(sent) {
-			count, writeErr := connection.Write(sent[written:])
-			written += count
-			if writeErr != nil {
-				transfers <- transfer{err: writeErr}
-				return
-			}
-			if count == 0 {
-				transfers <- transfer{err: io.ErrShortWrite}
-				return
-			}
-		}
-		transfers <- transfer{}
-	}()
-	go func() {
-		value := make([]byte, count)
-		_, err := io.ReadFull(connection, value)
-		transfers <- transfer{value: value, err: err}
-	}()
-	first, second := <-transfers, <-transfers
-	writers.Wait()
-	received := first.value
-	if received == nil {
-		received = second.value
-	}
-	err := errors.Join(first.err, second.err)
-	result.ReceivedBytes, result.ReceivedDigest = uint32(len(received)), sha256.Sum256(received)
-	if err != nil || !bytes.Equal(received, expected) {
-		result.Terminal = "error"
-		return result, errors.Join(err, errors.New("opaque stream length, order, or bytes differ"))
-	}
-	result.Terminal = "success"
-	return result, nil
+	return int(send64), int(receive64), nil
 }

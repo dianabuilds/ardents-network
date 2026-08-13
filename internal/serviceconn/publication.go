@@ -20,7 +20,7 @@ type currentPublication struct {
 	encoded    []byte
 }
 
-func (endpoint *Endpoint) publish(ctx context.Context, input Request) (Result, error) {
+func (endpoint *endpoint) publish(ctx context.Context, input Request) (Result, error) {
 	if err := endpoint.consume(input.Session, input.Principal, "administration"); err != nil {
 		return denied(err.Error())
 	}
@@ -67,7 +67,7 @@ func (endpoint *Endpoint) publish(ctx context.Context, input Request) (Result, e
 		AuthenticatedTarget:         input.Credential.Target, Generation: input.Credential.Generation}, nil
 }
 
-func (endpoint *Endpoint) unpublish(input Request) (Result, error) {
+func (endpoint *endpoint) unpublish(input Request) (Result, error) {
 	if err := endpoint.consume(input.Session, input.Principal, "administration"); err != nil {
 		return denied(err.Error())
 	}
@@ -141,7 +141,7 @@ func erase(value []byte) {
 	}
 }
 
-func (endpoint *Endpoint) retire(generation uint64) {
+func (endpoint *endpoint) retire(generation uint64) {
 	endpoint.mu.Lock()
 	defer endpoint.mu.Unlock()
 	if endpoint.current != nil && endpoint.current.credential.Generation == generation {

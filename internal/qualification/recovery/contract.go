@@ -1,0 +1,94 @@
+package recovery
+
+// Evidence is the bounded, public-only S4.1 observer record.
+type Evidence struct {
+	Schema, SourceCommit, ImageID, TopologyDigest, ManifestDigest string
+	VerifierImageID, Claim                                        string
+	Target, Instance, NetworkID, CandidateView                    [32]byte
+	IsolationContext, DestinationBinding, AuthorityPublic         [32]byte
+	ClientPrincipal, PublisherPrincipal                           [32]byte
+	RouteProfile                                                  string
+	CredentialGeneration                                          uint64
+	CredentialNotBefore, CredentialNotAfter                       int64
+	WorkSafetyNotAfter, WorkSafetyMaximum, NoNewRecoveryAfter     int64
+	BinaryDigests                                                 map[string]string
+	Topology                                                      []byte
+	Manifest                                                      PublicManifest
+	RequestedNanos, CampaignNanos                                 int64
+	Cells                                                         []Cell
+	Negatives                                                     map[string]Negative
+	Cleanup                                                       Cleanup
+}
+
+// PublicManifest contains every public input to the S4.1 connection binding.
+type PublicManifest struct {
+	RouteManifest, NetworkID, AuthorityPublic, IntroductionPublic [32]byte
+	Target, InstancePublic, ClientPrincipal, PublisherPrincipal   [32]byte
+	CredentialSignature                                           [64]byte
+	CredentialGeneration                                          uint64
+	CredentialNotBefore, CredentialNotAfter                       int64
+	CredentialCapabilities                                        uint32
+	RouteProfile                                                  string
+	WorkSafetyNotAfter, WorkSafetyMaximum, NoNewRecoveryAfter     int64
+}
+
+// Cell records one externally observed directional Carrier recovery.
+type Cell struct {
+	Direction, ClientProcess, PublisherProcess                      string
+	ClientApplicationProcess, PublisherApplicationProcess           string
+	InitialCarrier, ReplacementCarrier                              string
+	CellManifestDigest                                              string
+	FaultService, FaultContainer, FaultNetwork                      string
+	Seed                                                            [32]byte
+	ExpectedDigest, ObservedDigest, Canary                          [32]byte
+	Bytes, PlannedFaultOffset, FaultOffset                          uint32
+	DeliveredBeforeFault, CanaryOffset                              uint32
+	LastDeliveryNanos, FaultAtNanos, CanaryAtNanos, TerminalAtNanos int64
+	ClientRouteGeneration, PublisherRouteGeneration                 uint64
+	ClientRecoveryCount, PublisherRecoveryCount                     uint32
+	ClientApplicationAccepts, PublisherApplicationAccepts           uint32
+	ClientRouteAccepts, PublisherRouteAccepts                       uint32
+	ClientContinuity, PublisherContinuity                           [32]byte
+	Ordered, Unique, SameConnection, ApplicationReconnected         bool
+	OldCarrierReused, FailedResourceUnavailable, TerminalClean      bool
+	FaultNetworkAbsent                                              bool
+	QueueHighWater                                                  uint32
+	MemoryHighWater, CarrierForwardBytes, CarrierReverseBytes       uint64
+	CPUSeconds                                                      float64
+	ExternalCPUPercent                                              float64
+	ExternalStatsObserved                                           bool
+	OpenFilesHighWater, GoroutinesHighWater, TimerHighWater         uint32
+	ResourceSamples                                                 []ResourceSample
+	BaselineClientTraffic, BaselinePublisherTraffic                 uint64
+}
+
+// ResourceSample is one host-observed endpoint-tree sample.
+type ResourceSample struct {
+	AtNanos                                                      int64
+	ClientRSS, PublisherRSS                                      uint64
+	ClientCPUPercent, PublisherCPUPercent                        float64
+	ClientReceived, ClientSent, PublisherReceived, PublisherSent uint64
+}
+
+// Negative records one isolated fail-closed S4.1 case.
+type Negative struct {
+	TerminalCount                                              uint32
+	Class                                                      string
+	WithinNanos                                                int64
+	Passed                                                     bool
+	ContainerID, InjectedResource, BeforeProcess, AfterProcess string
+	InjectionKind, InjectionDigest                             string
+	AttackAttempts, RecoveryCount                              uint32
+	RouteGeneration                                            uint64
+}
+
+// Cleanup records externally checked terminal ownership and secret removal.
+type Cleanup struct {
+	DockerEmpty, FixtureAbsent, PrivateMaterialAbsent bool
+}
+
+// Result is exactly one independent pass, fail, or invalid verdict.
+type Result struct {
+	Verdict string `json:"verdict"`
+	Reason  string `json:"reason"`
+}

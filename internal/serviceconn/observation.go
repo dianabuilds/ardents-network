@@ -50,7 +50,7 @@ func (monitor resourceMonitor) stop() resourceSample {
 	return <-monitor.done
 }
 
-func (endpoint *Endpoint) observe(result *Result, input Request, resources resourceSample) {
+func (endpoint *endpoint) observe(result *Result, input Request, resources resourceSample) {
 	endpoint.mu.Lock()
 	session, consumed := endpoint.consumed[input.Session]
 	delete(endpoint.consumed, input.Session)

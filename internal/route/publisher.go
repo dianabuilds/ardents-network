@@ -46,6 +46,17 @@ func servePublisher(ctx context.Context, input Actor, ready func(Evidence)) (Evi
 	if err := acceptLegBinding(outer, input.NetworkID, input.EpochDigest, input.NodeID); err != nil {
 		return observation, fmt.Errorf("accept authenticated responder leg: %w", err)
 	}
+	if input.RawAttachment {
+		observation.PeerAuthenticated = true
+		defer input.Stream.Close()
+		forward, reverse, streamErr := relayOpaque(outer, input.Stream)
+		observation.OpaqueBytes, observation.OpaqueDigest = forward.count, forward.digest
+		observation.ReverseOpaqueBytes, observation.ReverseOpaqueDigest = reverse.count, reverse.digest
+		if streamErr != nil && !benignStreamError(streamErr) {
+			return observation, fmt.Errorf("carry raw publisher attachment: %w", streamErr)
+		}
+		return observation, nil
+	}
 	inner := tls.Server(outer, &tls.Config{MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13,
 		Certificates: []tls.Certificate{input.ServiceCertificate}, SessionTicketsDisabled: true})
 	if err := inner.HandshakeContext(ctx); err != nil {
@@ -89,7 +100,11 @@ func validatePublisher(input Actor) error {
 	if err := validateCertificate(input.Certificate); err != nil {
 		return err
 	}
-	if err := validateCertificate(input.ServiceCertificate); err != nil {
+	if input.RawAttachment {
+		if input.Stream == nil || !emptyCertificate(input.ServiceCertificate) {
+			return errors.New("raw publisher attachment duty is invalid")
+		}
+	} else if err := validateCertificate(input.ServiceCertificate); err != nil {
 		return err
 	}
 	return validateDeadline(input.Deadline)

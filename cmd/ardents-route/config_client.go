@@ -26,8 +26,10 @@ func (raw actorPlan) client() (route.Actor, func(), error) {
 	if err := fixedHex(raw.Seed, seed[:]); err != nil {
 		return route.Actor{}, nil, err
 	}
-	if err := fixedHex(raw.PublisherPin, publisher[:]); err != nil {
-		return route.Actor{}, nil, err
+	if !raw.RawAttachment {
+		if err := fixedHex(raw.PublisherPin, publisher[:]); err != nil {
+			return route.Actor{}, nil, err
+		}
 	}
 	authorities := make(map[[32]byte]ed25519.PublicKey, len(raw.Authorities))
 	for _, encoded := range raw.Authorities {
@@ -69,7 +71,7 @@ func (raw actorPlan) client() (route.Actor, func(), error) {
 		return route.Actor{}, nil, err
 	}
 	actor := route.Actor{Role: "client", ManifestDigest: manifest, Plan: plan, ClientCertificate: certificate,
-		PublisherPin: publisher, Deadline: deadline}
+		PublisherPin: publisher, Deadline: deadline, RawAttachment: raw.RawAttachment}
 	if raw.Stream != "" {
 		stream, dialErr := net.DialTimeout("unix", raw.Stream, deadline)
 		if dialErr != nil {

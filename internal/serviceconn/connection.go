@@ -12,7 +12,7 @@ import (
 const challengeSize = 4 + 1 + 32 + 8 + 32
 const proofSize = 4 + 1 + ed25519.SignatureSize
 
-func (endpoint *Endpoint) connect(ctx context.Context, input Request) (Result, error) {
+func (endpoint *endpoint) connect(ctx context.Context, input Request) (Result, error) {
 	if err := endpoint.consume(input.Session, input.Principal, "connection"); err != nil {
 		return denied(err.Error())
 	}
@@ -23,6 +23,10 @@ func (endpoint *Endpoint) connect(ctx context.Context, input Request) (Result, e
 	if err := validateStreams(input); err != nil {
 		return failed("local authorization or policy denial", "bounded local stream input is invalid", err)
 	}
+	if err := validateRecoveryBinding(input, credential); err != nil {
+		return failed("local authorization or policy denial", "recovery binding is invalid", err)
+	}
+	binding := input.RecoveryBinding
 	releaseConnection := acquireResource(endpoint.resources, "service-connection")
 	defer releaseConnection()
 	defer input.Route.Close()
@@ -31,22 +35,31 @@ func (endpoint *Endpoint) connect(ctx context.Context, input Request) (Result, e
 		_ = input.Application.Close()
 	})
 	defer stop()
-	canary, err := authenticateInstance(input.Route, credential)
+	attachment, continuity, err := secureClient(ctx, input.Route, credential, binding, 1)
+	if err != nil {
+		return failed("service target authentication failure", "current Service Instance TLS proof failed", err)
+	}
+	canary, err := authenticateInstance(attachment.connection, credential)
 	if err != nil {
 		return failed("service target authentication failure", "current Service Instance proof failed", err)
 	}
-	accepted, received, queued, err := exchangeExact(input.Application, input.Route, input.BytesEachDirection)
+	stream := newRecoveryStream(ctx, input.Application, credential, binding,
+		nil, true, input.OpenAttachment, attachment, continuity, input.At, endpoint.resources)
+	sendBytes, receiveBytes := streamBounds(input)
+	outcome, err := stream.run(sendBytes, receiveBytes)
 	if err != nil {
-		result, failure := streamFailure(ctx, accepted, received, err)
-		result.QueueHighWater = queued
+		result, failure := streamFailure(ctx, outcome.accepted, outcome.received, err)
+		applyRecoveryOutcome(&result, outcome)
 		return result, failure
 	}
 	return Result{Class: "clean service connection close", AuthenticatedTarget: credential.Target,
-		Generation: credential.Generation, AcceptedBytes: input.BytesEachDirection,
-		ReceivedBytes: input.BytesEachDirection, ConnectionCanary: canary, QueueHighWater: queued}, nil
+		Generation: credential.Generation, AcceptedBytes: sendBytes,
+		ReceivedBytes: receiveBytes, ConnectionCanary: canary, QueueHighWater: outcome.queueHigh,
+		RouteGeneration: outcome.generation, RecoveryCount: outcome.recoveries,
+		ContinuityCommitment: outcome.continuity}, nil
 }
 
-func (endpoint *Endpoint) accept(ctx context.Context, input Request) (Result, error) {
+func (endpoint *endpoint) accept(ctx context.Context, input Request) (Result, error) {
 	if err := endpoint.consume(input.Session, input.Principal, "connection"); err != nil {
 		return denied(err.Error())
 	}
@@ -63,6 +76,10 @@ func (endpoint *Endpoint) accept(ctx context.Context, input Request) (Result, er
 	credential := endpoint.current.credential
 	private := append(ed25519.PrivateKey(nil), endpoint.current.private...)
 	endpoint.mu.Unlock()
+	if err := validateRecoveryBinding(input, credential); err != nil {
+		return failed("local authorization or policy denial", "recovery binding is invalid", err)
+	}
+	binding := input.RecoveryBinding
 	defer erase(private)
 	defer endpoint.retire(credential.Generation)
 	defer input.Route.Close()
@@ -71,24 +88,67 @@ func (endpoint *Endpoint) accept(ctx context.Context, input Request) (Result, er
 		_ = input.Application.Close()
 	})
 	defer stop()
-	canary, err := proveInstance(input.Route, credential, private)
+	attachment, continuity, err := securePublisher(ctx, input.Route, credential, private, binding, 1)
+	if err != nil {
+		return failed("service target authentication failure", "incoming Service Instance TLS proof failed", err)
+	}
+	canary, err := proveInstance(attachment.connection, credential, private)
 	if err != nil {
 		return failed("service target authentication failure", "incoming exact Target proof failed", err)
 	}
-	accepted, received, queued, err := exchangeExact(input.Application, input.Route, input.BytesEachDirection)
+	stream := newRecoveryStream(ctx, input.Application, credential, binding,
+		private, false, input.OpenAttachment, attachment, continuity, input.At, endpoint.resources)
+	sendBytes, receiveBytes := streamBounds(input)
+	outcome, err := stream.run(sendBytes, receiveBytes)
 	if err != nil {
-		result, failure := streamFailure(ctx, accepted, received, err)
-		result.QueueHighWater = queued
+		result, failure := streamFailure(ctx, outcome.accepted, outcome.received, err)
+		applyRecoveryOutcome(&result, outcome)
 		return result, failure
 	}
 	return Result{Class: "clean service connection close", AuthenticatedTarget: credential.Target,
-		Generation: credential.Generation, AcceptedBytes: input.BytesEachDirection,
-		ReceivedBytes: input.BytesEachDirection, ConnectionCanary: canary, QueueHighWater: queued}, nil
+		Generation: credential.Generation, AcceptedBytes: sendBytes,
+		ReceivedBytes: receiveBytes, ConnectionCanary: canary, QueueHighWater: outcome.queueHigh,
+		RouteGeneration: outcome.generation, RecoveryCount: outcome.recoveries,
+		ContinuityCommitment: outcome.continuity}, nil
+}
+
+func applyRecoveryOutcome(result *Result, outcome recoveryOutcome) {
+	result.QueueHighWater = outcome.queueHigh
+	result.RouteGeneration = outcome.generation
+	result.RecoveryCount = outcome.recoveries
+	result.ContinuityCommitment = outcome.continuity
 }
 
 func validateStreams(input Request) error {
-	if input.Route == nil || input.Application == nil || input.BytesEachDirection == 0 || input.BytesEachDirection > maximumStream {
+	sendBytes, receiveBytes := streamBounds(input)
+	if input.Route == nil || input.Application == nil || sendBytes > maximumStream || receiveBytes > maximumStream ||
+		(sendBytes == 0 && receiveBytes == 0) {
 		return errors.New("stream or byte bound is missing")
+	}
+	return nil
+}
+
+func streamBounds(input Request) (uint32, uint32) {
+	if input.SendBytes == 0 && input.ReceiveBytes == 0 {
+		return input.BytesEachDirection, input.BytesEachDirection
+	}
+	return input.SendBytes, input.ReceiveBytes
+}
+
+func validateRecoveryBinding(input Request, credential Credential) error {
+	binding := input.RecoveryBinding
+	if input.OpenAttachment == nil {
+		if binding != (Recovery{}) {
+			return errors.New("recovery binding exists without an attachment opener")
+		}
+		return nil
+	}
+	if binding.CandidateView == [32]byte{} || binding.IsolationContext == [32]byte{} ||
+		binding.DestinationBinding == [32]byte{} || len(binding.RouteProfile) == 0 || len(binding.RouteProfile) > 63 ||
+		binding.WorkSafetyNotAfter <= input.At.Unix() || binding.WorkSafetyMaximum < binding.WorkSafetyNotAfter ||
+		binding.WorkSafetyMaximum > credential.NotAfter || binding.NoNewRecoveryAfter <= input.At.Unix() ||
+		binding.NoNewRecoveryAfter > binding.WorkSafetyNotAfter {
+		return errors.New("fixed recovery values or finite safety bounds are incomplete")
 	}
 	return nil
 }

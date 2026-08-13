@@ -29,6 +29,7 @@ func (raw actorPlan) listener() (route.Actor, func(), error) {
 		return route.Actor{}, nil, err
 	}
 	actor := route.Actor{Role: raw.Role, ListenAddress: raw.Listen, Certificate: certificate, Deadline: deadline}
+	actor.RawAttachment = raw.RawAttachment
 	actor.AcknowledgementSocket, actor.AcknowledgementKeyFile = raw.AcknowledgementSocket, raw.AcknowledgementKey
 	for _, field := range []struct {
 		encoded     string
@@ -41,9 +42,11 @@ func (raw actorPlan) listener() (route.Actor, func(), error) {
 	}
 	actor.NextAddress = raw.Next
 	if raw.Role == "publisher" {
-		actor.ServiceCertificate, err = tls.LoadX509KeyPair(raw.ServiceCertificate, raw.ServiceKey)
-		if err != nil {
-			return route.Actor{}, nil, err
+		if !raw.RawAttachment {
+			actor.ServiceCertificate, err = tls.LoadX509KeyPair(raw.ServiceCertificate, raw.ServiceKey)
+			if err != nil {
+				return route.Actor{}, nil, err
+			}
 		}
 		if raw.Stream != "" {
 			stream, dialErr := net.DialTimeout("unix", raw.Stream, deadline)

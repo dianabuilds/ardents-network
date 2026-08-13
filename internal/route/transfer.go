@@ -31,8 +31,14 @@ func transfer(ctx context.Context, input Actor) (Evidence, error) {
 	if err := validateCertificate(input.ClientCertificate); err != nil {
 		return evidence, err
 	}
-	if input.PublisherPin == [32]byte{} {
+	if input.RawAttachment && input.Stream == nil {
+		return evidence, errors.New("raw attachment stream is required")
+	}
+	if !input.RawAttachment && input.PublisherPin == [32]byte{} {
 		return evidence, errors.New("publisher test identity is required")
+	}
+	if input.RawAttachment && input.PublisherPin != [32]byte{} {
+		return evidence, errors.New("raw attachment exposes publisher identity to Route")
 	}
 	if err := validateDeadline(input.Deadline); err != nil {
 		return evidence, err
@@ -50,6 +56,17 @@ func transfer(ctx context.Context, input Actor) (Evidence, error) {
 	_ = outer.SetDeadline(time.Now().Add(input.Deadline))
 	if err := confirmLegBinding(outer, input.Plan.NetworkID, input.Plan.Digest, first.NodeID); err != nil {
 		return evidence, fmt.Errorf("confirm initiator Network State binding: %w", err)
+	}
+	if input.RawAttachment {
+		evidence.PeerAuthenticated = true
+		defer input.Stream.Close()
+		forward, reverse, streamErr := relayOpaque(input.Stream, outer)
+		evidence.OpaqueBytes, evidence.OpaqueDigest = forward.count, forward.digest
+		evidence.ReverseOpaqueBytes, evidence.ReverseOpaqueDigest = reverse.count, reverse.digest
+		if streamErr != nil && !benignStreamError(streamErr) {
+			return evidence, fmt.Errorf("carry raw Route Attachment: %w", streamErr)
+		}
+		return evidence, nil
 	}
 	inner := tls.Client(outer, clientTLS(tls.Certificate{}, input.PublisherPin))
 	if err := inner.HandshakeContext(ctx); err != nil {

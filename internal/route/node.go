@@ -13,6 +13,8 @@ import (
 	"time"
 )
 
+const maximumOpaqueBytes = 16 << 20
+
 func serveNode(ctx context.Context, input Actor, ready func(Evidence)) (Evidence, error) {
 	observation := Evidence{Schema: observationSchema, Kind: "complete", Role: input.Role,
 		PID: os.Getpid(), ManifestDigest: input.ManifestDigest, NetworkID: input.NetworkID, EpochDigest: input.EpochDigest,
@@ -77,7 +79,7 @@ func serveNode(ctx context.Context, input Actor, ready func(Evidence)) (Evidence
 
 func validateNode(input Actor) error {
 	if !emptyPlan(input.Plan) || input.PublisherPin != [32]byte{} || input.Stream != nil ||
-		!emptyCertificate(input.ClientCertificate) || !emptyCertificate(input.ServiceCertificate) {
+		!emptyCertificate(input.ClientCertificate) || !emptyCertificate(input.ServiceCertificate) || input.RawAttachment {
 		return errors.New("node received information outside its role-local duty")
 	}
 	roleOK := false
@@ -115,7 +117,7 @@ func relayOpaque(upstream, downstream io.ReadWriteCloser) (opaqueDirection, opaq
 	copyDirection := func(destination, source io.ReadWriteCloser, forward bool) {
 		hash := sha256.New()
 		writer := io.MultiWriter(destination, hash)
-		count, err := io.Copy(writer, io.LimitReader(source, 128<<10))
+		count, err := io.Copy(writer, io.LimitReader(source, maximumOpaqueBytes))
 		if closer, ok := destination.(interface{ CloseWrite() error }); ok {
 			_ = closer.CloseWrite()
 		}

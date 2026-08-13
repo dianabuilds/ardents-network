@@ -37,29 +37,29 @@ func run(arguments []string, output, diagnostics io.Writer) int {
 }
 
 func evaluate(arguments []string) (statequalification.Result, error) {
-	if len(arguments) > 0 && arguments[0] == "service-smoke" {
-		return evaluateServiceSmoke(arguments[1:])
+	if len(arguments) == 0 {
+		return statequalification.Result{}, errors.New("usage: ardents-qualify (offline|prepare-node|run-node|route-smoke|service-smoke|recovery-smoke|inject-node) [flags]")
 	}
-	if len(arguments) > 0 && arguments[0] == "route-smoke" {
+	switch arguments[0] {
+	case "service-smoke":
+		return evaluateDockerSmoke("service", arguments[1:])
+	case "recovery-smoke":
+		return evaluateDockerSmoke("recovery", arguments[1:])
+	case "route-smoke":
 		return evaluateRouteSmoke(arguments[1:])
-	}
-	if len(arguments) > 0 && arguments[0] == "prepare-node" {
+	case "prepare-node":
 		return evaluateNodePreparation(arguments[1:])
-	}
-	if len(arguments) > 0 && arguments[0] == "run-node" {
+	case "run-node":
 		return evaluateNodeCampaign(arguments[1:])
-	}
-	if len(arguments) > 0 && arguments[0] == "inject-node" {
+	case "inject-node":
 		return evaluateNodeInjection(arguments[1:])
-	}
-	if len(arguments) > 0 && arguments[0] == "diskfull-node" {
+	case "diskfull-node":
 		return evaluateNodeDisk(arguments[1:])
-	}
-	if len(arguments) > 0 && arguments[0] == "evidence-fault-node" {
+	case "evidence-fault-node":
 		return evaluateNodeEvidenceFault(arguments[1:])
 	}
-	if len(arguments) == 0 || arguments[0] != "offline" {
-		return statequalification.Result{}, errors.New("usage: ardents-qualify (offline|prepare-node|run-node|route-smoke|service-smoke|inject-node) [flags]")
+	if arguments[0] != "offline" {
+		return statequalification.Result{}, errors.New("usage: ardents-qualify (offline|prepare-node|run-node|route-smoke|service-smoke|recovery-smoke|inject-node) [flags]")
 	}
 	flags := flag.NewFlagSet("offline", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)

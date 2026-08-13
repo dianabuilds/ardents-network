@@ -27,6 +27,7 @@ type Actor struct {
 	ClientCertificate                             tls.Certificate
 	ServiceCertificate                            tls.Certificate
 	Stream                                        io.ReadWriteCloser
+	RawAttachment                                 bool
 	AcknowledgementSocket, AcknowledgementKeyFile string
 	Deadline                                      time.Duration
 }
@@ -43,6 +44,7 @@ type Evidence struct {
 	ManifestDigest      [32]byte   `json:"manifest_digest"`
 	NetworkID           [32]byte   `json:"network_id,omitempty"`
 	Generation          string     `json:"generation,omitempty"`
+	Attachment          uint32     `json:"attachment,omitempty"`
 	Epoch               uint64     `json:"epoch,omitempty"`
 	EpochDigest         [32]byte   `json:"epoch_digest,omitempty"`
 	Profile             string     `json:"profile,omitempty"`

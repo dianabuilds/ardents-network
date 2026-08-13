@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"os"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -37,7 +38,8 @@ func TestCandidateBuildIdentityReadsBinaryInsteadOfSelfReport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Contains(raw, []byte(`"go_version":"go1.26.5"`)) || !bytes.Contains(raw, []byte(`"dependencies"`)) {
+	version := []byte(`"go_version":"` + runtime.Version() + `"`)
+	if !bytes.Contains(raw, version) || !bytes.Contains(raw, []byte(`"dependencies"`)) {
 		t.Fatalf("build identity is incomplete: %s", raw)
 	}
 }

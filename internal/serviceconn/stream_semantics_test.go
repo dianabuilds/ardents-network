@@ -14,6 +14,10 @@ type serviceOutcome struct {
 	err    error
 }
 
+type endpointRunner interface {
+	Do(context.Context, serviceconn.Request) (serviceconn.Result, error)
+}
+
 func TestSlowConsumersApplyBackpressureUntilLocalCancellation(t *testing.T) {
 	fixture := newFixture(t)
 	client, publisher, publication := connectedEndpoints(t, fixture)
@@ -37,6 +41,53 @@ func TestSlowConsumersApplyBackpressureUntilLocalCancellation(t *testing.T) {
 			outcome.result.AcceptedBytes != 0 || outcome.result.ReceivedBytes != 0 {
 			t.Fatalf("dishonest cancellation result: %+v err=%v", outcome.result, outcome.err)
 		}
+	}
+}
+
+func TestLogicalQueueBackpressuresAtFrozenDirectionalCap(t *testing.T) {
+	fixture := newFixture(t)
+	client, publisher, publication := connectedEndpoints(t, fixture)
+	clientRoute, publisherRoute := tcpPair(t)
+	clientEndpoint, clientApplication := net.Pipe()
+	publisherEndpoint, publisherApplication := net.Pipe()
+	defer clientApplication.Close()
+	defer publisherApplication.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	outcomes := make(chan serviceOutcome, 2)
+	go func() {
+		result, err := client.Do(ctx, serviceconn.Request{Action: "connect", Principal: fixture.clientPrincipal,
+			Session: session(client, fixture.clientPrincipal, fixture.now), Target: fixture.first.Target,
+			Publication: publication, Route: clientRoute, Application: clientEndpoint,
+			BytesEachDirection: 4 << 20, At: fixture.now})
+		outcomes <- serviceOutcome{result, err}
+	}()
+	go func() {
+		result, err := publisher.Do(ctx, serviceconn.Request{Action: "accept", Principal: fixture.publisherPrincipal,
+			Session: session(publisher, fixture.publisherPrincipal, fixture.now), Route: publisherRoute,
+			Application: publisherEndpoint, BytesEachDirection: 4 << 20, At: fixture.now})
+		outcomes <- serviceOutcome{result, err}
+	}()
+	writeDone := make(chan error, 1)
+	go func() {
+		_, err := clientApplication.Write(seededBytes(4<<20, 33))
+		writeDone <- err
+	}()
+	select {
+	case err := <-writeDone:
+		t.Fatalf("slow remote Application did not backpressure four MiB write: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+	cancel()
+	bounded := false
+	for range 2 {
+		outcome := <-outcomes
+		if outcome.result.AcceptedBytes > 256<<10 || outcome.result.QueueHighWater > 256<<10 {
+			t.Fatalf("logical queue exceeded frozen cap: result=%+v err=%v", outcome.result, outcome.err)
+		}
+		bounded = bounded || outcome.result.QueueHighWater > 0
+	}
+	if !bounded {
+		t.Fatal("test did not exercise the logical queue")
 	}
 }
 
@@ -84,7 +135,7 @@ func TestMalformedAndOversizedPublicationsAreTargetAuthenticationFailures(t *tes
 	}
 }
 
-func connectedEndpoints(t *testing.T, fixture fixture) (*serviceconn.Endpoint, *serviceconn.Endpoint, []byte) {
+func connectedEndpoints(t *testing.T, fixture fixture) (endpointRunner, endpointRunner, []byte) {
 	t.Helper()
 	publisher := newPublisher(t, fixture)
 	publication := publish(t, publisher, fixture, fixture.first, fixture.firstPrivate)
@@ -97,7 +148,7 @@ func connectedEndpoints(t *testing.T, fixture fixture) (*serviceconn.Endpoint, *
 	return client, publisher, publication
 }
 
-func runConnections(ctx context.Context, fixture fixture, client, publisher *serviceconn.Endpoint, publication []byte,
+func runConnections(ctx context.Context, fixture fixture, client, publisher endpointRunner, publication []byte,
 	clientRoute, publisherRoute, clientApplication, publisherApplication net.Conn) <-chan serviceOutcome {
 	outcomes := make(chan serviceOutcome, 2)
 	clientSession := session(client, fixture.clientPrincipal, fixture.now)
@@ -117,7 +168,7 @@ func runConnections(ctx context.Context, fixture fixture, client, publisher *ser
 	return outcomes
 }
 
-func session(endpoint *serviceconn.Endpoint, principal [32]byte, at time.Time) [32]byte {
+func session(endpoint endpointRunner, principal [32]byte, at time.Time) [32]byte {
 	result, _ := endpoint.Do(context.Background(), serviceconn.Request{Action: "admit",
 		Surface: "connection", Principal: principal, At: at})
 	return result.Session

@@ -63,9 +63,24 @@ func validateCertificate(value tls.Certificate) error {
 }
 
 func dialTLS(ctx context.Context, address string, certificate tls.Certificate, pin [32]byte, deadline time.Duration) (*tls.Conn, error) {
-	raw, err := (&net.Dialer{Timeout: deadline}).DialContext(ctx, "tcp", address)
-	if err != nil {
-		return nil, err
+	end := time.Now().Add(deadline)
+	var raw net.Conn
+	var err error
+	for {
+		remaining := time.Until(end)
+		if remaining <= 0 {
+			return nil, err
+		}
+		attempt := min(remaining, 250*time.Millisecond)
+		raw, err = (&net.Dialer{Timeout: attempt}).DialContext(ctx, "tcp", address)
+		if err == nil {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(min(remaining, 20*time.Millisecond)):
+		}
 	}
 	secured := tls.Client(raw, clientTLS(certificate, pin))
 	_ = raw.SetDeadline(time.Now().Add(deadline))
