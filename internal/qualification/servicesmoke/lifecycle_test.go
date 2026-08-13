@@ -48,3 +48,14 @@ func TestTopologyReceiptRequiresApplicationAndEndpointIsolation(t *testing.T) {
 		t.Fatal("application Route visibility was accepted")
 	}
 }
+
+func TestContainerIDExtractionIgnoresComposeProgress(t *testing.T) {
+	identity := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	raw := []byte(" Container fixture Creating\n Container fixture Created\n" + identity + "\n")
+	if got := containerIDFromOutput(raw); got != identity {
+		t.Fatalf("container identity=%q, want %q", got, identity)
+	}
+	if got := containerIDFromOutput([]byte("created without identity")); got != "" {
+		t.Fatalf("malformed output produced identity %q", got)
+	}
+}

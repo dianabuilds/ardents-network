@@ -27,11 +27,21 @@ func (observer dockerObserver) waitReady(ctx context.Context, service string) er
 
 func (observer dockerObserver) runDetached(ctx context.Context, service string) (string, error) {
 	raw, err := observer.compose(ctx, time.Minute, "run", "-d", "--no-deps", service)
-	identity := strings.TrimSpace(string(raw))
+	identity := containerIDFromOutput(raw)
 	if err != nil || !validContainerID(identity) {
 		return "", errors.New(service + " container identity is invalid")
 	}
 	return identity, nil
+}
+
+func containerIDFromOutput(raw []byte) string {
+	lines := strings.Fields(string(raw))
+	for index := len(lines) - 1; index >= 0; index-- {
+		if validContainerID(lines[index]) {
+			return lines[index]
+		}
+	}
+	return ""
 }
 
 func (observer dockerObserver) serviceID(ctx context.Context, service string) (string, error) {
