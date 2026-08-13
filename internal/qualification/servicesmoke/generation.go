@@ -17,7 +17,7 @@ func (observer dockerObserver) runGeneration(ctx context.Context, fixture prepar
 	observer.evidenceFile = filepath.Join(observer.input.EvidenceRoot, "empty.json")
 	_, _ = observer.compose(ctx, time.Minute, "down", "-v", "--remove-orphans")
 	if _, err := observer.compose(ctx, time.Minute, "--profile", "setup", "run", "--no-deps", "--rm", "volume-init"); err != nil {
-		return generationEvidence{}, false, errors.New("stage 3 socket volumes could not be initialized")
+		return generationEvidence{}, false, errors.Join(errors.New("stage 3 socket volumes could not be initialized"), err)
 	}
 	if _, err := observer.compose(ctx, time.Minute, "up", "-d", "publisher-endpoint"); err != nil {
 		return generationEvidence{}, false, err

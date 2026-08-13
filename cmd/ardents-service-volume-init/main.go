@@ -33,10 +33,10 @@ func run(arguments []string) error {
 		if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 			return errors.New("volume initialization target is not an existing directory")
 		}
-		if err := os.Chown(path, uid, gid); err != nil {
+		if err := os.Chmod(path, 0o700); err != nil {
 			return err
 		}
-		if err := os.Chmod(path, 0o700); err != nil {
+		if err := os.Chown(path, uid, gid); err != nil {
 			return err
 		}
 	}
