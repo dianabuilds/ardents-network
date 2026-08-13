@@ -59,3 +59,11 @@ func TestContainerIDExtractionIgnoresComposeProgress(t *testing.T) {
 		t.Fatalf("malformed output produced identity %q", got)
 	}
 }
+
+func TestJSONLineSeparatesMachineReceiptFromDiagnostics(t *testing.T) {
+	raw := []byte("invalid\n{\"schema\":\"verdict\",\"verdict\":\"invalid\"}\n")
+	want := "{\"schema\":\"verdict\",\"verdict\":\"invalid\"}\n"
+	if got := string(jsonLine(raw, "verdict")); got != want {
+		t.Fatalf("JSON receipt=%q, want %q", got, want)
+	}
+}

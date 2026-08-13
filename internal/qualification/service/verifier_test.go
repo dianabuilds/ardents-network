@@ -68,9 +68,11 @@ func validCandidate(t *testing.T) candidate {
 		generation := generationEvidence{Generation: uint64(index + 1), Credential: credential,
 			IntroductionAcknowledgement: [32]byte{byte(index + 1)}, PublicationReady: true,
 			ClientEndpoint: endpoint, PublisherEndpoint: endpoint,
-			ClientApplication: applicationEvidence{Terminal: "success", SentBytes: 64 << 10, ReceivedBytes: 64 << 10,
+			ClientApplication: applicationEvidence{Schema: "ardents-h3-stream-application-v1", Role: "client",
+				Terminal: "success", SentBytes: 64 << 10, ReceivedBytes: 64 << 10,
 				SentDigest: sentClient, ReceivedDigest: sentPublisher},
-			PublisherApplication: applicationEvidence{Terminal: "success", SentBytes: 64 << 10, ReceivedBytes: 64 << 10,
+			PublisherApplication: applicationEvidence{Schema: "ardents-h3-stream-application-v1", Role: "publisher",
+				Terminal: "success", SentBytes: 64 << 10, ReceivedBytes: 64 << 10,
 				SentDigest: sentPublisher, ReceivedDigest: sentClient}, ContainerIDs: make([]string, 12)}
 		for roleIndex, role := range routeRoles {
 			generation.Roles = append(generation.Roles, roleEvidence{Role: role, PID: index*10 + roleIndex + 1,

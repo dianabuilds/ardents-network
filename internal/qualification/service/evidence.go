@@ -33,10 +33,10 @@ type publicCredential struct {
 	AuthorityPublic [32]byte `json:"authority_public"`
 	Target          [32]byte `json:"target"`
 	InstancePublic  [32]byte `json:"instance_public"`
-	NetworkID       [32]byte `json:"network_id"`
 	Generation      uint64   `json:"generation"`
 	NotBefore       int64    `json:"not_before"`
 	NotAfter        int64    `json:"not_after"`
+	NetworkID       [32]byte `json:"network_id"`
 	Capabilities    uint32   `json:"capabilities"`
 	Signature       [64]byte `json:"signature"`
 }
@@ -50,6 +50,8 @@ type endpointEvidence struct {
 }
 
 type applicationEvidence struct {
+	Schema         string   `json:"schema"`
+	Role           string   `json:"role"`
 	Terminal       string   `json:"terminal"`
 	SentBytes      uint32   `json:"sent_bytes"`
 	ReceivedBytes  uint32   `json:"received_bytes"`

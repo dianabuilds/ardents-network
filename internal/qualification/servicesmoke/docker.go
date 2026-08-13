@@ -89,11 +89,12 @@ func runDocker(ctx context.Context, input Config, fixture prepared) (result Resu
 			return observer.invalid(err)
 		}
 		verified, verifyErr := observer.compose(ctx, time.Minute, "--profile", "verify", "run", "--no-deps", "--rm", "verifier")
-		if writeErr := os.WriteFile(filepath.Join(attemptRoot, "verifier.json"), bytes.TrimSpace(verified), 0o600); writeErr != nil {
+		verifierJSON := jsonLine(verified, "verdict")
+		if writeErr := os.WriteFile(filepath.Join(attemptRoot, "verifier.json"), verifierJSON, 0o600); writeErr != nil {
 			return observer.invalid(writeErr)
 		}
 		var verdict struct{ Verdict string }
-		if json.Unmarshal(bytes.TrimSpace(verified), &verdict) != nil || verdict.Verdict != "pass" || verifyErr != nil {
+		if json.Unmarshal(verifierJSON, &verdict) != nil || verdict.Verdict != "pass" || verifyErr != nil {
 			return Result{Verdict: "fail", Reason: "independent Stage 3 verifier did not pass", EvidenceRoot: input.EvidenceRoot,
 				Attempts: attempts, SourceCommit: commit, ImageID: imageID}
 		}
@@ -103,6 +104,18 @@ func runDocker(ctx context.Context, input Config, fixture prepared) (result Resu
 	}
 	return Result{Verdict: "pass", Reason: fmt.Sprintf("local Docker H3 Stage 3 smoke passed %d migration attempts", attempts),
 		EvidenceRoot: input.EvidenceRoot, Attempts: attempts, SourceCommit: commit, ImageID: imageID}
+}
+
+func jsonLine(raw []byte, required string) []byte {
+	for _, line := range splitLines(raw) {
+		var value map[string]any
+		if json.Unmarshal(bytes.TrimSpace(line), &value) == nil {
+			if _, ok := value[required]; ok {
+				return append(bytes.TrimSpace(line), '\n')
+			}
+		}
+	}
+	return nil
 }
 
 func (observer dockerObserver) invalid(err error) Result {
