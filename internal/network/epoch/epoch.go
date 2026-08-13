@@ -10,13 +10,11 @@ import (
 )
 
 const (
-	maximumEpochBytes = 1 << 20
-	maximumEpochChain = 64
-	epochProfile      = "h3-role-probe-v1"
-	assignmentV1      = "ardents-h3-role-domain-v1"
-	emptyInputTag     = byte(0x10)
-	emptyViewTag      = byte(0x11)
-	emptyRejectionTag = byte(0x12)
+	maximumEpochBytes, maximumEpochChain = 1 << 20, 64
+	assignmentV1                         = "ardents-h3-role-domain-v1"
+	emptyInputTag                        = byte(0x10)
+	emptyViewTag                         = byte(0x11)
+	emptyRejectionTag                    = byte(0x12)
 )
 
 type epochEnvelope struct {
@@ -26,6 +24,7 @@ type epochEnvelope struct {
 	previous          [32]byte
 	validFrom         time.Time
 	validUntil        time.Time
+	profile           string
 	cutoff            uint32
 	inputRoot         [32]byte
 	viewRoot          [32]byte
@@ -125,9 +124,10 @@ func decodeEpochCommitment(d *decoder, epoch *epochEnvelope) error {
 		return errors.New("epoch input cutoff is invalid")
 	}
 	profile, err := d.text(64)
-	if err != nil || profile != epochProfile {
+	if err != nil || !knownProfile(profile) {
 		return errors.New("epoch profile is unsupported")
 	}
+	epoch.profile = profile
 	return decodeViewCommitment(d, epoch)
 }
 
@@ -212,6 +212,9 @@ func verifyEpoch(config Policy, current *Snapshot, raw []byte) (epochEnvelope, e
 	}
 	if epoch.number > maximumEpochChain {
 		return epochEnvelope{}, errors.New("epoch exceeds the retained chain bound")
+	}
+	if err := matchProfile(config.Profile, epoch.profile); err != nil {
+		return epochEnvelope{}, err
 	}
 	if err := verifyEpochChain(current, epoch); err != nil {
 		return epochEnvelope{}, err

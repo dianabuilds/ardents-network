@@ -45,7 +45,7 @@ func parseEpoch(raw []byte) (epochEnvelope, error) {
 func verifyDecision(config config, current *Snapshot, epochBytes []byte, inputs, materials [][]byte, requireMaterials bool) (candidateDecision, error) {
 	policy := stateepoch.Policy{
 		NetworkID: config.networkID, Authorities: config.authorities,
-		Threshold: config.threshold, Now: config.now,
+		Threshold: config.threshold, Profile: config.acceptedProfile, Now: config.now,
 		MaterializationIndex: config.sourceInfo.MaterialIndex,
 	}
 	if current != nil {

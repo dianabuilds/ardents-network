@@ -17,8 +17,11 @@ type Config struct {
 	NetworkID   [32]byte
 	Authorities map[[32]byte]ed25519.PublicKey
 	Threshold   int
-	Now         time.Time
-	Clock       func() time.Time
+	// AcceptedProfile is empty for the Stage 1 role probe or explicitly names
+	// the replaceable H3 Route tracer profile.
+	AcceptedProfile string
+	Now             time.Time
+	Clock           func() time.Time
 
 	Source source.Config
 
@@ -74,4 +77,17 @@ type Snapshot struct {
 	ProbeCapacity      uint16
 	Assignment         string
 	AssignmentDigest   [32]byte
+	CandidateCount     uint8
+	Candidates         [64]routeCandidate
+}
+
+type routeCandidate struct {
+	NodeID     [32]byte
+	PublicKey  [32]byte
+	Family     string
+	Endpoint   string
+	Capacity   uint16
+	Domain     string
+	ValidFrom  time.Time
+	ValidUntil time.Time
 }

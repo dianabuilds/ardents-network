@@ -9,7 +9,7 @@ func snapshotFor(value epochEnvelope) Snapshot {
 		PreviousDigest: value.previous,
 		EpochValidFrom: value.validFrom,
 		ValidUntil:     value.validUntil,
-		Profile:        epochProfile,
+		Profile:        value.profile,
 		ViewRoot:       value.viewRoot,
 		ViewLength:     value.viewLength,
 		RejectedRoot:   value.rejectedRoot,

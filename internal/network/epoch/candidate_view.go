@@ -73,17 +73,15 @@ func verifyDecision(config Policy, current *Snapshot, epochBytes []byte, inputs 
 			PreviousDigest: epoch.previous,
 			EpochValidFrom: epoch.validFrom,
 			ValidUntil:     epoch.validUntil,
-			Profile:        epochProfile,
+			Profile:        epoch.profile,
 			ViewRoot:       epoch.viewRoot,
 			ViewLength:     epoch.viewLength,
 			RejectedRoot:   epoch.rejectedRoot,
 			RejectedLength: epoch.rejectedLength,
 		},
 	}
-	for _, record := range accepted {
-		decision.Identities = append(decision.Identities, record.nodeID, record.keyID)
-		decision.Families = append(decision.Families, record.family)
-		decision.Endpoints = append(decision.Endpoints, record.endpoint)
+	if err := attachCandidates(&decision, accepted, epoch); err != nil {
+		return candidateDecision{}, err
 	}
 	attachMaterializedRecord(config.MaterializationIndex, &decision)
 	return decision, nil
@@ -120,7 +118,7 @@ func evaluateInputs(config Policy, epoch epochEnvelope, inputs [][]byte) ([]node
 			evaluated[index].code = rejectSignature
 		case epoch.validFrom.Before(record.notBefore) || !epoch.validFrom.Before(record.notAfter):
 			evaluated[index].code = rejectTime
-		case record.capability != 1:
+		case record.capability != requiredCapability(epoch.profile):
 			evaluated[index].code = rejectProfile
 		case record.capacity == 0 || record.capacity > 1024:
 			evaluated[index].code = rejectCapacity

@@ -15,6 +15,7 @@ type Policy struct {
 	NetworkID            [32]byte
 	Authorities          map[[32]byte]ed25519.PublicKey
 	Threshold            int
+	Profile              string
 	Now                  time.Time
 	MaterializationIndex uint32
 	Previous             *Snapshot
@@ -56,9 +57,15 @@ type Decision struct {
 	EpochBytes []byte
 	Inputs     [][]byte
 	Snapshot   Snapshot
-	Identities [][32]byte
+	NodeIDs    [][32]byte
+	KeyIDs     [][32]byte
+	PublicKeys [][32]byte
 	Families   []string
 	Endpoints  []string
+	Capacities []uint16
+	Domains    []string
+	ValidFrom  []time.Time
+	ValidUntil []time.Time
 
 	epoch      epochEnvelope
 	accepted   []nodeRecord

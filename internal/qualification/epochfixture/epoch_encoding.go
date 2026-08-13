@@ -20,7 +20,11 @@ func encodeEpochCommitment(spec EpochSpec, view [][]byte, rejected [][32]byte, s
 	i64(buffer, spec.ValidFrom.Unix())
 	i64(buffer, spec.ValidUntil.Unix())
 	u32(buffer, uint32(len(spec.Inputs)))
-	text(buffer, "h3-role-probe-v1")
+	profile := spec.Profile
+	if profile == "" {
+		profile = "h3-role-probe-v1"
+	}
+	text(buffer, profile)
 	inputRoot, viewRoot := merkle.Root(spec.Inputs, 0x10), merkle.Root(view, 0x11)
 	buffer.Write(inputRoot[:])
 	buffer.Write(viewRoot[:])

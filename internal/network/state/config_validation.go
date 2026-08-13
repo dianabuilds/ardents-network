@@ -66,9 +66,16 @@ func validateConfig(input Config) (config, error) {
 	if err != nil {
 		return config{}, err
 	}
+	acceptedProfile := input.AcceptedProfile
+	if acceptedProfile == "" {
+		acceptedProfile = "h3-role-probe-v1"
+	}
+	if acceptedProfile != "h3-role-probe-v1" && acceptedProfile != "h3-route-tracer-v1" {
+		return config{}, errors.New("accepted Network State profile is unsupported")
+	}
 	resolved := config{
 		root: root, networkID: input.NetworkID, authorities: authorities,
-		threshold: input.Threshold, now: initial, clock: clock,
+		threshold: input.Threshold, acceptedProfile: acceptedProfile, now: initial, clock: clock,
 		source: sourcePlan, sourceInfo: sourceInfo, observation: input.ClockObservation.UTC(), observe: observe,
 		automatic: input.AutomaticRefreshInterval, profile: input.RuntimeProfile,
 		resources:  input.ObserveResources,

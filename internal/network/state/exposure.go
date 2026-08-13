@@ -40,7 +40,12 @@ func sourceCollides(info source.Details, decision candidateDecision) bool {
 }
 
 func epochDecisionCollides(decision stateepoch.Decision, identity [32]byte, family, endpoint string) bool {
-	for _, candidate := range decision.Identities {
+	for _, candidate := range decision.NodeIDs {
+		if candidate == identity {
+			return true
+		}
+	}
+	for _, candidate := range decision.KeyIDs {
 		if candidate == identity {
 			return true
 		}
@@ -63,6 +68,7 @@ func (s *networkState) snapshotWithDistribution(now time.Time) Snapshot {
 		return Snapshot{}
 	}
 	snapshot := *s.current
+	snapshot.Candidates, snapshot.CandidateCount = routeCandidates(s.currentDecision)
 	snapshot.Conflicting = s.distribution.conflicting
 	snapshot.SourceAttempts = uint16(len(s.distribution.history))
 	snapshot.LatestCompleteness = "latest completeness unproven"
@@ -93,4 +99,18 @@ func (s *networkState) snapshotWithDistribution(now time.Time) Snapshot {
 		snapshot.Freshness = "fresh"
 	}
 	return snapshot
+}
+
+func routeCandidates(decision *candidateDecision) ([64]routeCandidate, uint8) {
+	var result [64]routeCandidate
+	if decision == nil {
+		return result, 0
+	}
+	verified := decision.verified
+	for index := range verified.NodeIDs {
+		result[index] = routeCandidate{NodeID: verified.NodeIDs[index], PublicKey: verified.PublicKeys[index],
+			Family: verified.Families[index], Endpoint: verified.Endpoints[index], Capacity: verified.Capacities[index],
+			Domain: verified.Domains[index], ValidFrom: verified.ValidFrom[index], ValidUntil: verified.ValidUntil[index]}
+	}
+	return result, uint8(len(verified.NodeIDs))
 }
