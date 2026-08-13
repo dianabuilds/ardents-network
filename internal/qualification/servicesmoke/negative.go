@@ -18,7 +18,7 @@ func (observer dockerObserver) negativeReceipt(ctx context.Context) (map[string]
 		Negatives map[string]bool `json:"negatives"`
 	}
 	if json.Unmarshal(bytes.TrimSpace(raw), &value) != nil || value.Schema != "ardents-h3-service-negative-v1" ||
-		len(value.Negatives) != 11 {
+		len(value.Negatives) != 24 {
 		return nil, errors.New("stage 3 negative-suite receipt is malformed")
 	}
 	for _, passed := range value.Negatives {
