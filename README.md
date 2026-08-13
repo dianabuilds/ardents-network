@@ -198,8 +198,9 @@ system at once.
 ## Start here
 
 - [Complete Horizon 3 technical design](docs/development/horizon-3-technical-design.md)
-- [Review-ready Horizon 3 Stage 1 decision](docs/research/records/r-029-h3-authenticated-node-lifecycle.md)
-- [Horizon 3 Stage 1 implementation brief](docs/development/horizon-3-stage-1-brief.md)
+- [Authorized Horizon 3 Stage 3 decision](docs/research/records/r-031-h3-service-connection-application-interface.md)
+- [Horizon 3 Stage 3 implementation brief](docs/development/horizon-3-stage-3-brief.md)
+- [Horizon 3 Stage 2 Route decision](docs/research/records/r-030-h3-real-multi-node-route.md)
 - [Authoritative product scope and delivery horizons](docs/product/scope.md)
 - [Carrier Lab technology and experiment contract](docs/research/records/r-013-carrier-lab-technology-candidates.md)
 - [Language and runtime candidates](docs/research/records/r-014-language-runtime-candidates.md)

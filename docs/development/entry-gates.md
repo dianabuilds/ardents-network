@@ -133,6 +133,17 @@ mandatory deferred qualification/soak gates and must all close before the final
 integrated H3 verdict or any stronger external, security, or release claim.
 Earlier two-hour evidence produced by a superseded harness is diagnostic only.
 
+The Product Owner's later 2026-08-13 decision in
+[R-031](../research/records/r-031-h3-service-connection-application-interface.md)
+accepts the clean committed Stage 2 local Docker development campaign as the
+next bounded promotion: `95/95` attempts passed in `10m13.5548419s`, with
+retained-evidence digest
+`bcfd00c4e44c501dcc31be103699c4e4474eb8773e243ec68822ac00a036dfb1`.
+This permits only the Stage 3 Service Connection/Application Interface tracer
+defined by its implementation brief. It is not official Stage 1/2
+qualification, Route Qualification, production IPC, or a privacy/release claim;
+the same deferred Ubuntu and independent soak gates remain conjunctive.
+
 ## Gate D — select production language and foundations
 
 A routing foundation, storage component, wire format, or other protocol-bound

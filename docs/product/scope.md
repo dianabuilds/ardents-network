@@ -191,8 +191,12 @@ resource/evidence appendices, not standalone implementation slices. This
   authorizes only the bounded Stage 2 tracer after local development readiness.
   It does not complete official Stage 1 qualification: Ubuntu `short`, current
   `churn-2h`, and independent `unattended-24h` remain required before the final
-  integrated H3 verdict or any stronger external/release claim. All later H3
-  stages remain sequential research and Product Owner decision gates.
+  integrated H3 verdict or any stronger external/release claim. The later
+  [R-031](../research/records/r-031-h3-service-connection-application-interface.md)
+  decision accepts the clean committed `95/95` local Stage 2 Docker development
+  campaign only as readiness for the bounded Stage 3 Service Connection and
+  Application Interface tracer. It does not change those official gates. All
+  later H3 stages remain sequential research and Product Owner decision gates.
 
 ## Horizon 4 — Public Beta
 

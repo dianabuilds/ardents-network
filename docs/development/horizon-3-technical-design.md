@@ -610,6 +610,14 @@ Stage 2 tracer contract. Its TLS-over-literal-TCP carrier and framing are
 replaceable laboratory adapters, not selected Ardents transport or public wire
 protocol.
 
+R-031 records the later Product Owner promotion: the clean committed local
+Stage 2 Docker development campaign (`95/95` attempts, retained digest
+`bcfd00c4e44c501dcc31be103699c4e4474eb8773e243ec68822ac00a036dfb1`) is
+sufficient to begin the bounded Stage 3 tracer. It is not official Stage 1 or
+Stage 2 qualification. The deferred Ubuntu `short`, current `churn-2h`, and
+independent `unattended-24h` gates remain required before the integrated H3
+verdict or stronger external/release claims.
+
 ### Stage 3 — Service Transport and Application Interface
 
 **Outcome:** an external client/server application uses local IPC to publish one
@@ -633,6 +641,12 @@ Key/Credential but preserves uncompromised Target; byte/resource limits hold.
 **Stop/redesign:** the API exposes route internals, becomes a mandatory SDK or
 message protocol, conflates Service/Node identity, needs root authority online,
 or cannot express bounded backpressure and partial outcomes honestly.
+
+[R-031](../research/records/r-031-h3-service-connection-application-interface.md)
+and the [Stage 3 brief](horizon-3-stage-3-brief.md) authorize this exact bounded
+development tracer. Unix IPC, credential encoding, publication state, framing,
+and carrier/session cryptography remain replaceable laboratory adapters; the
+authorization creates no production or privacy claim.
 
 ### Stage 4 — Recovery, Churn, and Role Capacity
 
