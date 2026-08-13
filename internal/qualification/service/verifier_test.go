@@ -101,7 +101,8 @@ func validCandidate(t *testing.T) candidate {
 			generation.Roles = append(generation.Roles, roleEvidence{Role: role, PID: index*10 + roleIndex + 1,
 				RuntimeID: runtime, Terminal: "success", Cleanup: true, ManifestDigest: input.RouteManifestDigest,
 				NetworkID: input.NetworkID, OpaqueBytes: 64 << 10, SourceID: "source@version",
-				BuildDigest: [32]byte{6}, OpaqueDigest: [32]byte{byte(index + 7)}})
+				BuildDigest: [32]byte{6}, OpaqueDigest: [32]byte{byte(index + 7)}, ReverseOpaqueBytes: 64 << 10,
+				ReverseOpaqueDigest: [32]byte{byte(index + 8)}})
 			generation.ContainerIDs[roleIndex] = runtime + "-container"
 		}
 		for containerIndex := len(routeRoles); containerIndex < len(generation.ContainerIDs); containerIndex++ {

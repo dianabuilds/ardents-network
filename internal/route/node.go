@@ -61,8 +61,9 @@ func serveNode(ctx context.Context, input Actor, ready func(Evidence)) (Evidence
 		return observation, fmt.Errorf("confirm next authenticated leg binding: %w", err)
 	}
 	observation.PeerAuthenticated = true
-	count, digest, err := relayOpaque(securedUpstream, downstream)
-	observation.OpaqueBytes, observation.OpaqueDigest = count, digest
+	forward, reverse, err := relayOpaque(securedUpstream, downstream)
+	observation.OpaqueBytes, observation.OpaqueDigest = forward.count, forward.digest
+	observation.ReverseOpaqueBytes, observation.ReverseOpaqueDigest = reverse.count, reverse.digest
 	if err != nil {
 		if ctx.Err() != nil {
 			return observation, ctx.Err()
@@ -99,33 +100,40 @@ func validateNode(input Actor) error {
 	return validateDeadline(input.Deadline)
 }
 
-func relayOpaque(upstream, downstream io.ReadWriteCloser) (uint64, [32]byte, error) {
-	hash := sha256.New()
+type opaqueDirection struct {
+	count  uint64
+	digest [32]byte
+}
+
+func relayOpaque(upstream, downstream io.ReadWriteCloser) (opaqueDirection, opaqueDirection, error) {
 	type copyResult struct {
-		count int64
-		err   error
+		direction opaqueDirection
+		forward   bool
+		err       error
 	}
 	results := make(chan copyResult, 2)
-	copyDirection := func(destination, source io.ReadWriteCloser, record bool) {
-		writer := io.Writer(destination)
-		if record {
-			writer = io.MultiWriter(destination, hash)
-		}
+	copyDirection := func(destination, source io.ReadWriteCloser, forward bool) {
+		hash := sha256.New()
+		writer := io.MultiWriter(destination, hash)
 		count, err := io.Copy(writer, io.LimitReader(source, 128<<10))
 		if closer, ok := destination.(interface{ CloseWrite() error }); ok {
 			_ = closer.CloseWrite()
 		}
-		results <- copyResult{count, err}
+		var digest [32]byte
+		copy(digest[:], hash.Sum(nil))
+		results <- copyResult{direction: opaqueDirection{count: uint64(count), digest: digest}, forward: forward, err: err}
 	}
 	go copyDirection(downstream, upstream, true)
 	go copyDirection(upstream, downstream, false)
 	first, second := <-results, <-results
-	var digest [32]byte
-	copy(digest[:], hash.Sum(nil))
-	if first.err != nil || second.err != nil {
-		return uint64(first.count), digest, errors.Join(first.err, second.err)
+	forward, reverse := first.direction, second.direction
+	if !first.forward {
+		forward, reverse = second.direction, first.direction
 	}
-	return uint64(first.count), digest, nil
+	if first.err != nil || second.err != nil {
+		return forward, reverse, errors.Join(first.err, second.err)
+	}
+	return forward, reverse, nil
 }
 
 func benignStreamError(err error) bool {

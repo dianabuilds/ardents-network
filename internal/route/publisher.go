@@ -54,8 +54,9 @@ func servePublisher(ctx context.Context, input Actor, ready func(Evidence)) (Evi
 	observation.PeerAuthenticated = true
 	if input.Stream != nil {
 		defer input.Stream.Close()
-		count, digest, streamErr := relayOpaque(inner, input.Stream)
-		observation.OpaqueBytes, observation.OpaqueDigest = count, digest
+		forward, reverse, streamErr := relayOpaque(inner, input.Stream)
+		observation.OpaqueBytes, observation.OpaqueDigest = forward.count, forward.digest
+		observation.ReverseOpaqueBytes, observation.ReverseOpaqueDigest = reverse.count, reverse.digest
 		if streamErr != nil && !benignStreamError(streamErr) {
 			return observation, fmt.Errorf("carry bounded publisher stream: %w", streamErr)
 		}

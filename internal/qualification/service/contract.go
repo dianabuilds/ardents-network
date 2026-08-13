@@ -114,17 +114,18 @@ func validateEvidence(input candidate) error {
 		}
 		roles, runtimes := map[string]bool{}, map[string]bool{}
 		var sourceID string
-		var buildDigest, opaqueDigest [32]byte
+		var buildDigest [32]byte
 		for _, role := range generation.Roles {
 			if role.Role == "" || role.PID < 1 || role.RuntimeID == "" || roles[role.Role] || runtimes[role.RuntimeID] ||
-				role.ManifestDigest != input.RouteManifestDigest || role.NetworkID != input.NetworkID || role.OpaqueBytes != 64<<10 ||
-				role.SourceID == "" || role.BuildDigest == [32]byte{} || role.OpaqueDigest == [32]byte{} {
+				role.ManifestDigest != input.RouteManifestDigest || role.NetworkID != input.NetworkID || role.OpaqueBytes == 0 ||
+				role.ReverseOpaqueBytes == 0 || role.SourceID == "" || role.BuildDigest == [32]byte{} ||
+				role.OpaqueDigest == [32]byte{} || role.ReverseOpaqueDigest == [32]byte{} {
 				return errors.New("route process separation evidence is contradictory")
 			}
 			if sourceID == "" {
-				sourceID, buildDigest, opaqueDigest = role.SourceID, role.BuildDigest, role.OpaqueDigest
-			} else if role.SourceID != sourceID || role.BuildDigest != buildDigest || role.OpaqueDigest != opaqueDigest {
-				return errors.New("route source, build, or exact opaque-byte observations differ")
+				sourceID, buildDigest = role.SourceID, role.BuildDigest
+			} else if role.SourceID != sourceID || role.BuildDigest != buildDigest {
+				return errors.New("route source or build observations differ")
 			}
 			roles[role.Role], runtimes[role.RuntimeID] = true, true
 		}

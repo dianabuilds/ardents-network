@@ -58,8 +58,9 @@ func transfer(ctx context.Context, input Actor) (Evidence, error) {
 	evidence.PeerAuthenticated = true
 	if input.Stream != nil {
 		defer input.Stream.Close()
-		count, digest, streamErr := relayOpaque(input.Stream, inner)
-		evidence.OpaqueBytes, evidence.OpaqueDigest = count, digest
+		forward, reverse, streamErr := relayOpaque(input.Stream, inner)
+		evidence.OpaqueBytes, evidence.OpaqueDigest = forward.count, forward.digest
+		evidence.ReverseOpaqueBytes, evidence.ReverseOpaqueDigest = reverse.count, reverse.digest
 		if streamErr != nil && !benignStreamError(streamErr) {
 			return evidence, fmt.Errorf("carry bounded Service Connection stream: %w", streamErr)
 		}

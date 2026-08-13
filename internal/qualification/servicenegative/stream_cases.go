@@ -3,6 +3,7 @@ package servicenegative
 import (
 	"context"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/serviceconn"
@@ -11,6 +12,22 @@ import (
 type streamOutcome struct {
 	result serviceconn.Result
 	err    error
+}
+
+type observedConnection struct {
+	net.Conn
+	once    sync.Once
+	entered chan struct{}
+}
+
+func (connection *observedConnection) Read(output []byte) (int, error) {
+	connection.once.Do(func() { close(connection.entered) })
+	return connection.Conn.Read(output)
+}
+
+func (connection *observedConnection) Write(input []byte) (int, error) {
+	connection.once.Do(func() { close(connection.entered) })
+	return connection.Conn.Write(input)
 }
 
 func (value fixture) streamObservations(ctx context.Context) (map[string]bool, map[string]string, map[string]uint32) {
@@ -35,19 +52,33 @@ func (value fixture) observeCancellation(parent context.Context) (bool, bool, st
 	defer clientPeer.Close()
 	defer publisherPeer.Close()
 	ctx, cancel := context.WithCancel(parent)
+	clientEntered, publisherEntered := make(chan struct{}), make(chan struct{})
 	outcomes := value.runConnections(ctx, client, publisher, publication, clientRoute, publisherRoute,
-		clientEndpoint, publisherEndpoint)
-	blocked := false
+		&observedConnection{Conn: clientEndpoint, entered: clientEntered},
+		&observedConnection{Conn: publisherEndpoint, entered: publisherEntered})
+	entered := true
+	for _, signal := range []<-chan struct{}{clientEntered, publisherEntered} {
+		select {
+		case <-signal:
+		case <-time.After(time.Second):
+			entered = false
+		}
+	}
+	blocked := entered
+	completed := make([]streamOutcome, 0, 2)
 	select {
-	case <-outcomes:
-	case <-time.After(50 * time.Millisecond):
-		blocked = true
+	case outcome := <-outcomes:
+		blocked = false
+		completed = append(completed, outcome)
+	default:
 	}
 	cancel()
 	classified := true
 	var accepted, received uint32
-	for range 2 {
-		outcome := <-outcomes
+	for len(completed) < 2 {
+		completed = append(completed, <-outcomes)
+	}
+	for _, outcome := range completed {
 		classified = classified && outcome.err != nil && outcome.result.Class == "local timeout or cancellation" &&
 			outcome.result.AcceptedBytes == 0 && outcome.result.ReceivedBytes == 0
 		accepted += outcome.result.AcceptedBytes

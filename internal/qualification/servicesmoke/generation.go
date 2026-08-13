@@ -150,5 +150,6 @@ func routeReceipt(value route.Evidence) roleEvidence {
 	return roleEvidence{Role: value.Role, RuntimeID: value.RuntimeID, Terminal: value.Terminal,
 		PID: value.PID, Cleanup: value.Cleanup, ManifestDigest: value.ManifestDigest,
 		NetworkID: value.NetworkID, OpaqueBytes: value.OpaqueBytes, SourceID: value.SourceID,
-		BuildDigest: value.BuildDigest, OpaqueDigest: value.OpaqueDigest}
+		BuildDigest: value.BuildDigest, OpaqueDigest: value.OpaqueDigest,
+		ReverseOpaqueBytes: value.ReverseOpaqueBytes, ReverseOpaqueDigest: value.ReverseOpaqueDigest}
 }

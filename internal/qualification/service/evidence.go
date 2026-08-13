@@ -92,17 +92,19 @@ type applicationEvidence struct {
 }
 
 type roleEvidence struct {
-	Role           string   `json:"role"`
-	RuntimeID      string   `json:"runtime_id"`
-	Terminal       string   `json:"terminal"`
-	PID            int      `json:"pid"`
-	Cleanup        bool     `json:"cleanup"`
-	ManifestDigest [32]byte `json:"manifest_digest"`
-	NetworkID      [32]byte `json:"network_id"`
-	OpaqueBytes    uint64   `json:"opaque_bytes"`
-	SourceID       string   `json:"source_id"`
-	BuildDigest    [32]byte `json:"build_digest"`
-	OpaqueDigest   [32]byte `json:"opaque_digest"`
+	Role                string   `json:"role"`
+	RuntimeID           string   `json:"runtime_id"`
+	Terminal            string   `json:"terminal"`
+	PID                 int      `json:"pid"`
+	Cleanup             bool     `json:"cleanup"`
+	ManifestDigest      [32]byte `json:"manifest_digest"`
+	NetworkID           [32]byte `json:"network_id"`
+	OpaqueBytes         uint64   `json:"opaque_bytes"`
+	SourceID            string   `json:"source_id"`
+	BuildDigest         [32]byte `json:"build_digest"`
+	OpaqueDigest        [32]byte `json:"opaque_digest"`
+	ReverseOpaqueBytes  uint64   `json:"reverse_opaque_bytes"`
+	ReverseOpaqueDigest [32]byte `json:"reverse_opaque_digest"`
 }
 
 var routeRoles = [...]string{"client", "initiator", "introduction", "rendezvous", "responder", "publisher"}
