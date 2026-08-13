@@ -24,7 +24,8 @@ func TestIntroductionControlReadStopsAtOperationDeadline(t *testing.T) {
 	done := make(chan error, 1)
 	go func() {
 		_, requestErr := requestIntroductionAcknowledgement(ctx, socket, Credential{
-			Target: [32]byte{1}, Generation: 1, NotAfter: time.Now().Add(time.Minute).Unix(), NetworkID: [32]byte{2}}, [32]byte{3})
+			Target: [32]byte{1}, Generation: 1, NotAfter: time.Now().Add(time.Minute).Unix(), NetworkID: [32]byte{2}},
+			[32]byte{3}, newResourceObserver())
 		done <- requestErr
 	}()
 	connection := <-accepted

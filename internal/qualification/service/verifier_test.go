@@ -35,9 +35,14 @@ func TestVerifierSeparatesPassFailAndInvalid(t *testing.T) {
 
 func TestVerifierRecomputesOwnedResourcesRouteAndHostileBoundary(t *testing.T) {
 	tests := map[string]func(*candidate){
-		"timer unavailable": func(value *candidate) { value.Generations[0].ClientEndpoint.TimerHighWater = 0 },
-		"IPC exceeds bound": func(value *candidate) { value.Generations[0].ClientEndpoint.AcceptedIPCHighWater = 9 },
-		"shortened route":   func(value *candidate) { value.Generations[0].Roles[1].NextNodeID = [32]byte{5} },
+		"timer unavailable":    func(value *candidate) { value.Generations[0].ClientEndpoint.TimerHighWater = 0 },
+		"IPC exceeds bound":    func(value *candidate) { value.Generations[0].ClientEndpoint.AcceptedIPCHighWater = 9 },
+		"shortened route":      func(value *candidate) { value.Generations[0].Roles[1].NextNodeID = [32]byte{5} },
+		"route epoch differs":  func(value *candidate) { value.Generations[0].Roles[2].EpochDigest = [32]byte{8} },
+		"route digest differs": func(value *candidate) { value.Generations[0].Roles[3].OpaqueDigest = [32]byte{8} },
+		"route endpoint differs": func(value *candidate) {
+			value.Generations[0].Roles[0].Positions[1].Endpoint = "172.31.20.99:4605"
+		},
 		"hostile mount": func(value *candidate) {
 			value.Generations[0].HostileSibling.MountDestinations = []string{"/run/ardents/client-app"}
 		},
@@ -137,13 +142,13 @@ func validCandidate(t *testing.T) candidate {
 			runtime := string(rune('a' + index*10 + roleIndex))
 			receipt := roleEvidence{Role: role, PID: index*10 + roleIndex + 1,
 				RuntimeID: runtime, Terminal: "success", Cleanup: true, ManifestDigest: input.RouteManifestDigest,
-				NetworkID: input.NetworkID, OpaqueBytes: 64 << 10, SourceID: "source@version",
+				NetworkID: input.NetworkID, EpochDigest: [32]byte{9}, OpaqueBytes: 64 << 10, SourceID: "source@version",
 				BuildDigest: [32]byte{6}, OpaqueDigest: [32]byte{byte(index + 7)}, ReverseOpaqueBytes: 64 << 10,
 				ReverseOpaqueDigest: [32]byte{byte(index + 8)}}
 			if roleIndex == 0 {
 				for position := 0; position < 4; position++ {
 					receipt.Positions = append(receipt.Positions, routePositionEvidence{Role: routeRoles[position+1],
-						NodeID: [32]byte{byte(position + 1)}, Endpoint: "172.31.20.1:4605"})
+						NodeID: [32]byte{byte(position + 1)}, Endpoint: "172.31.20.1" + string(rune('1'+position)) + ":4605"})
 				}
 			} else {
 				receipt.NodeID = [32]byte{byte(roleIndex)}
@@ -174,8 +179,8 @@ func validCandidate(t *testing.T) candidate {
 
 func validTopology() string {
 	return "services:\n" +
-		"  client:\n    networks:\n      route_net:\n        ipv4_address: 172.31.20.10\n  hostile-sibling:\n    image: test\n  negative-suite:\n    image: test\n" +
-		"  publication-operator:\n    image: test\n  verifier:\n    image: test\n  volume-init:\n    image: test\n" +
+		"  client:\n    networks:\n      route_net:\n        ipv4_address: 172.31.20.10\n  hostile-sibling:\n    network_mode: none\n  negative-suite:\n    image: test\n" +
+		"  publication-operator:\n    network_mode: none\n  verifier:\n    image: test\n  volume-init:\n    image: test\n" +
 		"  initiator:\n    networks:\n      route_net:\n        ipv4_address: 172.31.20.11\n" +
 		"  introduction:\n    networks:\n      route_net:\n        ipv4_address: 172.31.20.12\n" +
 		"  rendezvous:\n    networks:\n      route_net:\n        ipv4_address: 172.31.20.13\n" +

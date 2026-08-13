@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"net"
 	"strings"
 )
 
@@ -96,7 +97,7 @@ func validateGeneration(input candidate, generation generationEvidence) error {
 			return errors.New("route actor did not terminate successfully and cleanly")
 		}
 	}
-	if err := validateRouteChain(generation.Roles); err != nil {
+	if err := validateRouteChain(generation.Roles, input.Topology); err != nil {
 		return err
 	}
 	hostile := generation.HostileSibling
@@ -115,7 +116,7 @@ func validateGeneration(input candidate, generation generationEvidence) error {
 	return nil
 }
 
-func validateRouteChain(roles []roleEvidence) error {
+func validateRouteChain(roles []roleEvidence, topology string) error {
 	byRole := make(map[string]roleEvidence, len(roles))
 	for _, role := range roles {
 		byRole[role.Role] = role
@@ -125,10 +126,16 @@ func validateRouteChain(roles []roleEvidence) error {
 		return errors.New("client Route observation does not retain four selected positions")
 	}
 	chain := []string{"initiator", "introduction", "rendezvous", "responder"}
+	epoch := client.EpochDigest
+	if epoch == [32]byte{} {
+		return errors.New("client Route observation omits its epoch digest")
+	}
 	for index, name := range chain {
 		position, actor := client.Positions[index], byRole[name]
+		host, port, endpointErr := net.SplitHostPort(position.Endpoint)
 		if position.Role != name || position.NodeID == [32]byte{} || position.Endpoint == "" ||
-			actor.NodeID != position.NodeID {
+			actor.NodeID != position.NodeID || actor.EpochDigest != epoch || endpointErr != nil || port == "" ||
+			host != topologyIPv4([]byte(topology), name) {
 			return errors.New("route observation does not bind the selected ordered position: " + name)
 		}
 		expectedNext := byRole["publisher"].NodeID
@@ -139,10 +146,24 @@ func validateRouteChain(roles []roleEvidence) error {
 			return errors.New("route observation contains a direct or shortened role transition: " + name)
 		}
 	}
-	if byRole["publisher"].NodeID == [32]byte{} {
+	if byRole["publisher"].NodeID == [32]byte{} || byRole["publisher"].EpochDigest != epoch {
 		return errors.New("route observation omits the publisher identity")
 	}
+	if !sameTransfer(client, byRole["publisher"]) {
+		return errors.New("client and publisher Route transfer observations differ")
+	}
+	firstNode := byRole[chain[0]]
+	for _, name := range chain[1:] {
+		if !sameTransfer(firstNode, byRole[name]) {
+			return errors.New("Route actor transfer continuity differs: " + name)
+		}
+	}
 	return nil
+}
+
+func sameTransfer(left, right roleEvidence) bool {
+	return left.OpaqueBytes == right.OpaqueBytes && left.OpaqueDigest == right.OpaqueDigest &&
+		left.ReverseOpaqueBytes == right.ReverseOpaqueBytes && left.ReverseOpaqueDigest == right.ReverseOpaqueDigest
 }
 
 func validContainerID(value string) bool {

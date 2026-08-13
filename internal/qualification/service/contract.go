@@ -119,7 +119,8 @@ func validateEvidence(input candidate) error {
 		var buildDigest [32]byte
 		for _, role := range generation.Roles {
 			if role.Role == "" || role.PID < 1 || role.RuntimeID == "" || roles[role.Role] || runtimes[role.RuntimeID] ||
-				role.ManifestDigest != input.RouteManifestDigest || role.NetworkID != input.NetworkID || role.OpaqueBytes == 0 ||
+				role.ManifestDigest != input.RouteManifestDigest || role.NetworkID != input.NetworkID ||
+				role.EpochDigest == [32]byte{} || role.OpaqueBytes == 0 ||
 				role.ReverseOpaqueBytes == 0 || role.SourceID == "" || role.BuildDigest == [32]byte{} ||
 				role.OpaqueDigest == [32]byte{} || role.ReverseOpaqueDigest == [32]byte{} {
 				return errors.New("route process separation evidence is contradictory")

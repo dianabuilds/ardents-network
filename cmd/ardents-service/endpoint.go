@@ -23,6 +23,8 @@ func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (servicec
 	if err != nil {
 		return serviceconn.Result{}, err
 	}
+	setup.Resources("timer", 1)
+	defer setup.Resources("timer", -1)
 	setup.Resources("control-file", 1)
 	defer setup.Resources("control-file", -1)
 	defer func() { _ = applicationListener.Close(); _ = os.Remove(plan.ApplicationSocket) }()
@@ -30,6 +32,8 @@ func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (servicec
 	if err != nil {
 		return serviceconn.Result{}, err
 	}
+	setup.Resources("timer", 1)
+	defer setup.Resources("timer", -1)
 	setup.Resources("control-file", 1)
 	defer setup.Resources("control-file", -1)
 	defer func() { _ = routeListener.Close(); _ = os.Remove(plan.RouteSocket) }()

@@ -10,15 +10,23 @@ func topologyReceipt(raw []byte) (map[string]bool, error) {
 	publisherApp := serviceBlock(raw, "publisher-app")
 	clientEndpoint := serviceBlock(raw, "client-endpoint")
 	publisherEndpoint := serviceBlock(raw, "publisher-endpoint")
+	publicationOperator := serviceBlock(raw, "publication-operator")
+	hostileSibling := serviceBlock(raw, "hostile-sibling")
 	isolated := bytes.Contains(raw, []byte("internal: true")) &&
 		bytes.Contains(clientApp, []byte("network_mode: none")) &&
 		bytes.Contains(publisherApp, []byte("network_mode: none")) &&
 		bytes.Contains(clientEndpoint, []byte("network_mode: none")) &&
-		bytes.Contains(publisherEndpoint, []byte("network_mode: none"))
+		bytes.Contains(publisherEndpoint, []byte("network_mode: none")) &&
+		bytes.Contains(publicationOperator, []byte("network_mode: none")) &&
+		bytes.Contains(hostileSibling, []byte("network_mode: none"))
 	applicationPrivate := !bytes.Contains(clientApp, []byte("client_route")) &&
 		!bytes.Contains(publisherApp, []byte("publisher_route")) &&
 		!bytes.Contains(clientApp, []byte("publication")) &&
-		!bytes.Contains(publisherApp, []byte("publication"))
+		!bytes.Contains(publisherApp, []byte("publication")) &&
+		!bytes.Contains(hostileSibling, []byte("route_net")) && !bytes.Contains(hostileSibling, []byte("volumes:")) &&
+		!bytes.Contains(publicationOperator, []byte("route_net")) &&
+		!bytes.Contains(publicationOperator, []byte("client_route")) &&
+		!bytes.Contains(publicationOperator, []byte("publisher_route"))
 	if !isolated || !applicationPrivate {
 		return nil, errors.New("compose topology exposes a forbidden Stage 3 shortcut")
 	}

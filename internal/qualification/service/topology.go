@@ -10,11 +10,15 @@ func validateTopology(raw []byte) (map[string]bool, error) {
 	publisherApp := topologyServiceBlock(raw, "publisher-app")
 	clientEndpoint := topologyServiceBlock(raw, "client-endpoint")
 	publisherEndpoint := topologyServiceBlock(raw, "publisher-endpoint")
+	publicationOperator := topologyServiceBlock(raw, "publication-operator")
+	hostileSibling := topologyServiceBlock(raw, "hostile-sibling")
 	isolated := bytes.Contains(raw, []byte("internal: true")) &&
 		bytes.Contains(clientApp, []byte("network_mode: none")) &&
 		bytes.Contains(publisherApp, []byte("network_mode: none")) &&
 		bytes.Contains(clientEndpoint, []byte("network_mode: none")) &&
-		bytes.Contains(publisherEndpoint, []byte("network_mode: none"))
+		bytes.Contains(publisherEndpoint, []byte("network_mode: none")) &&
+		bytes.Contains(publicationOperator, []byte("network_mode: none")) &&
+		bytes.Contains(hostileSibling, []byte("network_mode: none"))
 	applicationPrivate := !bytes.Contains(clientApp, []byte("client_route")) &&
 		!bytes.Contains(publisherApp, []byte("publisher_route")) &&
 		!bytes.Contains(clientApp, []byte("publication")) &&
@@ -34,7 +38,10 @@ func validateTopology(raw []byte) (map[string]bool, error) {
 	forbiddenAppTokens := []string{"route_net", "client_route", "publisher_route", "publication", "administration", "introduction_ack", "lifecycle"}
 	for _, token := range forbiddenAppTokens {
 		applicationPrivate = applicationPrivate && !bytes.Contains(clientApp, []byte(token)) &&
-			!bytes.Contains(publisherApp, []byte(token))
+			!bytes.Contains(publisherApp, []byte(token)) && !bytes.Contains(hostileSibling, []byte(token))
+	}
+	for _, token := range []string{"route_net", "client_route", "publisher_route", "publication", "introduction_ack", "lifecycle"} {
+		applicationPrivate = applicationPrivate && !bytes.Contains(publicationOperator, []byte(token))
 	}
 	exactServices := topologyServices(raw)
 	expected := []string{"client", "client-app", "client-endpoint", "hostile-sibling", "initiator", "introduction",
@@ -47,6 +54,17 @@ func validateTopology(raw []byte) (map[string]bool, error) {
 		"localhost-data": isolated, "shared-data-file": applicationPrivate, "dns": noAmbient, "proxy": noProxy,
 		"ambient-network": noAmbient, "route-visible-to-application": applicationPrivate,
 	}, nil
+}
+
+func topologyIPv4(raw []byte, name string) string {
+	block := topologyServiceBlock(raw, name)
+	for _, line := range bytes.Split(block, []byte{'\n'}) {
+		trimmed := bytes.TrimSpace(line)
+		if bytes.HasPrefix(trimmed, []byte("ipv4_address: ")) {
+			return string(bytes.TrimSpace(bytes.TrimPrefix(trimmed, []byte("ipv4_address: "))))
+		}
+	}
+	return ""
 }
 
 func topologyServices(raw []byte) []string {

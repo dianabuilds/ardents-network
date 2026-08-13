@@ -9,13 +9,15 @@ import (
 )
 
 func requestIntroductionAcknowledgement(ctx context.Context, socket string, credential Credential,
-	broker [32]byte) ([]byte, error) {
+	broker [32]byte, observe func(string, int) uint32) ([]byte, error) {
 	connection, err := (&net.Dialer{}).DialContext(ctx, "unix", socket)
 	if err != nil {
 		return nil, err
 	}
 	defer connection.Close()
 	if deadline, ok := ctx.Deadline(); ok {
+		releaseTimer := acquireResource(observe, "timer")
+		defer releaseTimer()
 		if err := connection.SetDeadline(deadline); err != nil {
 			return nil, err
 		}

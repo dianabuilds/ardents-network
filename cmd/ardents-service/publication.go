@@ -21,6 +21,8 @@ func publishCurrent(endpoint *serviceconn.Endpoint, resources func(string, int) 
 	if err != nil {
 		return serviceconn.Result{}, err
 	}
+	resources("timer", 1)
+	defer resources("timer", -1)
 	resources("control-file", 1)
 	defer resources("control-file", -1)
 	defer func() { _ = listener.Close(); _ = os.Remove(plan.AdministrationSocket) }()
@@ -38,6 +40,8 @@ func publishCurrent(endpoint *serviceconn.Endpoint, resources func(string, int) 
 	defer resources("timer", -1)
 	operation, cancel := context.WithTimeout(context.Background(), deadline)
 	defer cancel()
+	resources("timer", 1)
+	defer resources("timer", -1)
 	request, err := applicationipc.ReadControl(operation, administrator, 8)
 	if err != nil || string(request) != "publish\n" {
 		err = errors.Join(err, errors.New("administration request is malformed, partial, or oversized"))
@@ -86,7 +90,9 @@ func listenLocal(path string, deadline time.Duration) (*net.UnixListener, error)
 		return nil, err
 	}
 	_ = os.Chmod(path, 0o600)
-	_ = listener.SetDeadline(time.Now().Add(deadline))
+	if err := listener.SetDeadline(time.Now().Add(deadline)); err != nil {
+		return nil, errors.Join(err, listener.Close(), os.Remove(path))
+	}
 	return listener, nil
 }
 func deliverResult(output io.Writer, result serviceconn.Result) error {

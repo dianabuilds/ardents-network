@@ -29,7 +29,7 @@ func (endpoint *Endpoint) publish(ctx context.Context, input Request) (Result, e
 	}
 	if len(input.IntroductionAcknowledgement) == 0 && input.IntroductionSocket != "" {
 		acknowledgement, err := requestIntroductionAcknowledgement(ctx, input.IntroductionSocket,
-			input.Credential, endpoint.broker)
+			input.Credential, endpoint.broker, endpoint.resources)
 		if err != nil {
 			return failed("service unavailable", "Introduction acknowledgement request failed", err)
 		}

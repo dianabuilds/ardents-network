@@ -124,6 +124,7 @@ type roleEvidence struct {
 	Cleanup             bool                    `json:"cleanup"`
 	ManifestDigest      [32]byte                `json:"manifest_digest"`
 	NetworkID           [32]byte                `json:"network_id"`
+	EpochDigest         [32]byte                `json:"epoch_digest"`
 	OpaqueBytes         uint64                  `json:"opaque_bytes"`
 	SourceID            string                  `json:"source_id"`
 	BuildDigest         [32]byte                `json:"build_digest"`
