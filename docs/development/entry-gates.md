@@ -120,6 +120,19 @@ machines/VMs remain a later Route Qualification requirement, not a Stage 1 one.
 Route, recovery/capacity, Bridges, naming, updates, Windows, and broader
 Application work remain sequential follow-ups.
 
+The Product Owner's 2026-08-13 decision in
+[R-030](../research/records/r-030-h3-real-multi-node-route.md) separates
+**development readiness** from **official Stage 1 qualification**. The current
+local `short` result (`pass`, 643 one-second external samples, quiescence and
+cleanup pass, evidence digest
+`a214806c7725f14fc99999739e8ae27c6f8c528ff9268e22fcd2be02f3c9f0c4`) plus a
+green `make check` permits the bounded Stage 2 tracer to begin. This does not
+complete S1-4 or create an Ubuntu qualification pass. An official Ubuntu
+`short`, a current `churn-2h`, and an independent `unattended-24h` remain
+mandatory deferred qualification/soak gates and must all close before the final
+integrated H3 verdict or any stronger external, security, or release claim.
+Earlier two-hour evidence produced by a superseded harness is diagnostic only.
+
 ## Gate D — select production language and foundations
 
 A routing foundation, storage component, wire format, or other protocol-bound

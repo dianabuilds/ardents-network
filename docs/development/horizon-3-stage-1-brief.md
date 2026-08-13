@@ -1,6 +1,6 @@
 # Horizon 3 Stage 1 implementation brief
 
-Status: **authorized by accepted R-029; prerequisites remain blocking**
+Status: **implemented development baseline; official S1-4 qualification remains open**
 
 Audience: implementation agent working one increment at a time.
 
@@ -316,7 +316,9 @@ without verdict trust, external cgroup-v2/process/behavior gates, deterministic 
 the hostile fault matrix, cleanup, and quiescence gates. S1-4 remains open until `short`, `churn-2h`, and
 `unattended-24h` each produce a valid evidence root on the qualifying Ubuntu
 host. Local Docker results are development evidence only and cannot change that
-status or authorize Stage 2.
+official qualification status. The later R-030 Product Owner decision, not the
+local result by itself, authorizes bounded Stage 2 development under the
+separate readiness rule recorded below.
 
 Recorded development evidence (2026-08-13):
 
@@ -337,8 +339,14 @@ contains 643 one-second records over 660 seconds, passes quiescence and cleanup,
 and remains development evidence rather than an Ubuntu qualification result.
 The official completion path remains the exact three-root Ubuntu command in
 `tests/qualification/h3-node-v1/README.md`. Until all three official results are
-valid passes, Stage 1 is incomplete and the recommendation is `redesign`; do
-not start Stage 2.
+valid passes, Stage 1 is not officially qualified. Under the Product Owner's
+2026-08-13 promotion decision recorded in R-030, that fact no longer blocks
+development of the bounded Stage 2 tracer: the current local `short` result and
+a green `make check` establish development readiness only. The official Ubuntu
+`short`, current `churn-2h`, and independent `unattended-24h` remain mandatory
+before the final integrated H3 verdict or any stronger external/release claim.
+No unrun campaign is described as successful, and earlier two-hour output from
+a superseded harness remains diagnostic evidence only.
 
 Every increment runs `make quick-check` while changing and `make check` before
 integration. Keep commits scoped to one increment. Do not modify frozen H2
@@ -405,7 +413,7 @@ source/management access.
 
 ## Definition of Done
 
-Stage 1 is done only when:
+Stage 1 official qualification is done only when:
 
 1. all six approved product/qualification paths exist with the registered import
    direction, real behavior, tests, non-test callers, and no speculative package;

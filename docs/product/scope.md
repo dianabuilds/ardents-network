@@ -182,12 +182,17 @@ resources, evidence, falsification conditions, and exclusions, and the Product
 Owner must explicitly mark that record `decided`. The
 [Horizon 3 technical design](../development/horizon-3-technical-design.md) maps
 the complete horizon and its sequential outcomes.
-[R-029](../research/records/r-029-h3-authenticated-node-lifecycle.md) is the
+  [R-029](../research/records/r-029-h3-authenticated-node-lifecycle.md) is the
 decided and authorized Stage 1: authenticated Network State must control a real
 Node lifecycle. R-027 and R-028 are accepted only as its detailed bootstrap and
 resource/evidence appendices, not standalone implementation slices. This
-promotion authorizes Stage 1 only; all later H3 stages remain sequential
-research and Product Owner decision gates.
+  original Stage 1 authorization. The Product Owner's later
+  [R-030](../research/records/r-030-h3-real-multi-node-route.md) decision
+  authorizes only the bounded Stage 2 tracer after local development readiness.
+  It does not complete official Stage 1 qualification: Ubuntu `short`, current
+  `churn-2h`, and independent `unattended-24h` remain required before the final
+  integrated H3 verdict or any stronger external/release claim. All later H3
+  stages remain sequential research and Product Owner decision gates.
 
 ## Horizon 4 — Public Beta
 

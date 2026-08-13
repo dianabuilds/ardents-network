@@ -566,6 +566,13 @@ decided and authorized integrated Stage 1. R-027/R-028 are accepted only as its
 bootstrap and resource/evidence appendices. Stage 1 must not finish with a
 synthetic fixture that no real Node process consumes.
 
+R-030 records the later Product Owner promotion rule: a current local `short`
+pass plus a green repository gate is sufficient development evidence to begin
+the bounded Stage 2 tracer. It is not an official Stage 1 qualification result.
+The official Ubuntu `short`, `churn-2h`, and `unattended-24h` results remain
+deferred conjunctive gates before the final integrated H3 verdict or a stronger
+external/release claim.
+
 **Pass:** zero false control-state acceptance; all lifecycle transitions survive
 restart and remain bounded; no overlapping forbidden role/family duty; a separate
 verifier recomputes the declared state result.
@@ -597,6 +604,11 @@ identity, reproducible canary and resource evidence.
 **Stop/redesign:** Route requires forbidden shared state, one Node learns the
 complete protected binding from protocol state alone, ordinary performance is
 not plausible on the reference hosts, or replacement seams are false.
+
+[R-030](../research/records/r-030-h3-real-multi-node-route.md) is the decided
+Stage 2 tracer contract. Its TLS-over-literal-TCP carrier and framing are
+replaceable laboratory adapters, not selected Ardents transport or public wire
+protocol.
 
 ### Stage 3 — Service Transport and Application Interface
 

@@ -493,6 +493,14 @@ Interfaces.
 
 ## Disposition
 
+**Later promotion note (2026-08-13):** R-030 records the Product Owner's
+subsequent decision that the current local `short` pass plus a green
+`make check` is sufficient development readiness for the bounded Stage 2
+tracer. This does not rewrite this record's evidence or complete S1-4. Official
+Ubuntu `short`, current `churn-2h`, and independent `unattended-24h` remain
+mandatory before the final integrated H3 verdict or any stronger external or
+release claim; an earlier run made with a superseded harness is diagnostic only.
+
 - Question state: `decided` by explicit Product Owner acceptance on 2026-08-11.
 - Exactly Stage 1 is promoted; Stages 2-8 remain sequential research and
   decision gates.
