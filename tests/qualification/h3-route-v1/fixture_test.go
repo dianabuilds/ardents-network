@@ -20,6 +20,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/epoch/assignment"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/qualification/epochfixture"
+	qualification "github.com/dianabuilds/ardents-network/internal/qualification/route"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
@@ -40,6 +41,7 @@ type processFixture struct {
 	snapshot                            state.Snapshot
 	plan                                route.Plan
 	publisherID                         [32]byte
+	qualification                       qualification.Case
 }
 
 func newProcessFixture(t *testing.T) processFixture {
@@ -100,6 +102,20 @@ func newProcessFixture(t *testing.T) processFixture {
 	if err := opened.Close(); err != nil {
 		t.Fatal(err)
 	}
+	value.qualification = qualification.Case{NetworkID: value.network, Generation: value.plan.Generation,
+		Epoch: value.plan.Epoch, EpochDigest: value.epochDigest, Profile: value.plan.Profile, ViewRoot: value.plan.ViewRoot,
+		SelectionSeed: value.selectionSeed, SelectionAt: value.now.Unix(), ClientPin: value.identities[5].public,
+		PublisherID: value.publisherID}
+	for index, position := range value.plan.Positions {
+		candidate := value.snapshot.Candidates[index]
+		value.qualification.Candidates = append(value.qualification.Candidates, qualification.Candidate{
+			NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, Family: candidate.Family,
+			Endpoint: candidate.Endpoint, Domain: candidate.Domain, Capacity: candidate.Capacity,
+			ValidFrom: candidate.ValidFrom.Unix(), ValidUntil: candidate.ValidUntil.Unix()})
+		value.qualification.NodeIDs[index], value.qualification.PublicKeys[index] = position.NodeID, position.PublicKey
+		value.qualification.Families[index], value.qualification.Endpoints[index] = position.Family, position.Endpoint
+	}
+	value.qualification.ManifestDigest = qualification.Commit(value.qualification)
 	return value
 }
 

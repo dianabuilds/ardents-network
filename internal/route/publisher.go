@@ -13,7 +13,8 @@ import (
 
 func servePublisher(ctx context.Context, input Actor, ready func(Evidence)) (Evidence, error) {
 	observation := Evidence{Schema: observationSchema, Kind: "complete", Role: "publisher", PID: os.Getpid(),
-		NetworkID: input.NetworkID, EpochDigest: input.EpochDigest, NodeID: input.NodeID, PreviousPin: input.UpstreamPin}
+		ManifestDigest: input.ManifestDigest, NetworkID: input.NetworkID, EpochDigest: input.EpochDigest,
+		NodeID: input.NodeID, PreviousPin: input.UpstreamPin}
 	if err := validatePublisher(input); err != nil {
 		return observation, err
 	}
@@ -22,6 +23,7 @@ func servePublisher(ctx context.Context, input Actor, ready func(Evidence)) (Evi
 		return observation, fmt.Errorf("listen for publisher: %w", err)
 	}
 	defer listener.Close()
+	_ = listener.(*net.TCPListener).SetDeadline(time.Now().Add(input.Deadline))
 	stop := context.AfterFunc(ctx, func() { _ = listener.Close() })
 	defer stop()
 	if ready != nil {
@@ -49,6 +51,7 @@ func servePublisher(ctx context.Context, input Actor, ready func(Evidence)) (Evi
 	if err := inner.HandshakeContext(ctx); err != nil {
 		return observation, fmt.Errorf("accept end-to-end canary session: %w", err)
 	}
+	observation.PeerAuthenticated = true
 	value, err := readCanary(inner)
 	if err != nil {
 		return observation, fmt.Errorf("read canary: %w", err)
@@ -61,7 +64,7 @@ func servePublisher(ctx context.Context, input Actor, ready func(Evidence)) (Evi
 }
 
 func validatePublisher(input Actor) error {
-	if !emptyPlan(input.Plan) || input.PublisherPin != [32]byte{} || len(input.Canary) != 0 ||
+	if !emptyPlan(input.Plan) || input.PublisherPin != [32]byte{} ||
 		!emptyCertificate(input.ClientCertificate) || input.NextNodeID != [32]byte{} || input.NextAddress != "" ||
 		input.NextPin != [32]byte{} {
 		return errors.New("publisher received information outside its role-local duty")

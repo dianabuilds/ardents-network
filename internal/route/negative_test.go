@@ -21,7 +21,7 @@ func TestRouteNodeRejectsWrongUpstreamIdentity(t *testing.T) {
 	defer cancel()
 	ready, done := make(chan route.Evidence, 1), make(chan error, 1)
 	go func() {
-		_, err := route.Run(ctx, route.Actor{Role: "initiator", NetworkID: [32]byte{1}, EpochDigest: [32]byte{2},
+		_, err := route.Run(ctx, route.Actor{Role: "initiator", ManifestDigest: [32]byte{99}, NetworkID: [32]byte{1}, EpochDigest: [32]byte{2},
 			NodeID: [32]byte{3}, ListenAddress: address, Certificate: identities[0].certificate,
 			UpstreamPin: identities[1].public, NextNodeID: [32]byte{4}, NextAddress: unusedAddress(t),
 			NextPin: identities[1].public, Deadline: time.Second}, func(value route.Evidence) { ready <- value })
@@ -65,7 +65,7 @@ func TestPublisherRejectsMalformedPartialOversizedAndSlowFrames(t *testing.T) {
 			defer cancel()
 			ready, done := make(chan route.Evidence, 1), make(chan error, 1)
 			go func() {
-				_, err := route.Run(ctx, route.Actor{Role: "publisher", NetworkID: [32]byte{1}, EpochDigest: [32]byte{2},
+				_, err := route.Run(ctx, route.Actor{Role: "publisher", ManifestDigest: [32]byte{99}, NetworkID: [32]byte{1}, EpochDigest: [32]byte{2},
 					NodeID: [32]byte{3}, ListenAddress: address, Certificate: publisher.certificate,
 					UpstreamPin: responder.public, ServiceCertificate: publisher.certificate,
 					Deadline: 500 * time.Millisecond}, func(value route.Evidence) { ready <- value })
@@ -104,7 +104,7 @@ func TestCancelledRouteListenerReleasesItsAddress(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	ready, done := make(chan route.Evidence, 1), make(chan error, 1)
 	go func() {
-		_, err := route.Run(ctx, route.Actor{Role: "initiator", NetworkID: [32]byte{1}, EpochDigest: [32]byte{2},
+		_, err := route.Run(ctx, route.Actor{Role: "initiator", ManifestDigest: [32]byte{99}, NetworkID: [32]byte{1}, EpochDigest: [32]byte{2},
 			NodeID: [32]byte{3}, ListenAddress: address, Certificate: identity.certificate,
 			UpstreamPin: upstream.public, NextNodeID: [32]byte{4}, NextAddress: unusedAddress(t),
 			NextPin: upstream.public, Deadline: time.Second}, func(value route.Evidence) { ready <- value })
@@ -120,6 +120,81 @@ func TestCancelledRouteListenerReleasesItsAddress(t *testing.T) {
 		t.Fatalf("cancelled listener retained its address: %v", err)
 	}
 	listener.Close()
+}
+
+func TestCancellationDuringActiveRelayReleasesConnectionsAndGoroutines(t *testing.T) {
+	node, upstream, downstream := routeIdentity(t, 61), routeIdentity(t, 62), routeIdentity(t, 63)
+	nodeAddress := unusedAddress(t)
+	nextListener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	downstreamDone := make(chan struct{})
+	go func() {
+		defer close(downstreamDone)
+		raw, acceptErr := nextListener.Accept()
+		_ = nextListener.Close()
+		if acceptErr != nil {
+			return
+		}
+		defer raw.Close()
+		secured := tls.Server(raw, &tls.Config{MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13,
+			Certificates: []tls.Certificate{downstream.certificate}, ClientAuth: tls.RequireAnyClientCert})
+		if secured.Handshake() != nil {
+			return
+		}
+		frame := make([]byte, 101)
+		if _, readErr := io.ReadFull(secured, frame); readErr != nil {
+			return
+		}
+		_, _ = secured.Write([]byte("ARLA"))
+		_, _ = io.Copy(io.Discard, secured)
+	}()
+	ctx, cancel := context.WithCancel(context.Background())
+	ready := make(chan route.Evidence, 1)
+	done := make(chan route.Evidence, 1)
+	go func() {
+		result, runErr := route.Run(ctx, route.Actor{Role: "initiator", ManifestDigest: [32]byte{99},
+			NetworkID: [32]byte{1}, EpochDigest: [32]byte{2}, NodeID: [32]byte{3}, ListenAddress: nodeAddress,
+			Certificate: node.certificate, UpstreamPin: upstream.public, NextNodeID: [32]byte{4},
+			NextAddress: nextListener.Addr().String(), NextPin: downstream.public, Deadline: 3 * time.Second},
+			func(value route.Evidence) { ready <- value })
+		if runErr != nil {
+			result.Error = runErr.Error()
+		}
+		done <- result
+	}()
+	<-ready
+	connection, err := tls.Dial("tcp", nodeAddress, &tls.Config{MinVersion: tls.VersionTLS13,
+		MaxVersion: tls.VersionTLS13, InsecureSkipVerify: true, Certificates: []tls.Certificate{upstream.certificate}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := testLegBinding(connection, [32]byte{1}, [32]byte{2}, [32]byte{3}); err != nil {
+		t.Fatal(err)
+	}
+	_, _ = connection.Write(make([]byte, 1024))
+	time.Sleep(25 * time.Millisecond)
+	cancel()
+	select {
+	case result := <-done:
+		if !result.Cancelled || !result.Cleanup {
+			t.Fatalf("active cancellation evidence incomplete: %+v", result)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("active relay did not terminate after cancellation")
+	}
+	connection.Close()
+	select {
+	case <-downstreamDone:
+	case <-time.After(time.Second):
+		t.Fatal("downstream relay goroutine remained after cancellation")
+	}
+	rebound, err := net.Listen("tcp", nodeAddress)
+	if err != nil {
+		t.Fatalf("active cancellation retained listener: %v", err)
+	}
+	rebound.Close()
 }
 
 func testLegBinding(connection io.ReadWriter, network, epoch, destination [32]byte) error {

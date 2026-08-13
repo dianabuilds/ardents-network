@@ -12,13 +12,39 @@ import (
 )
 
 type actorPlan struct {
-	Role, NetworkID, EpochDigest, NodeID                      string
+	Role, ManifestDigest, NetworkID, EpochDigest, NodeID      string
 	Listen, Certificate, Key, UpstreamPin                     string
 	NextNodeID, Next, NextPin, ServiceCertificate, ServiceKey string
-	Deadline, StateRoot, At, Seed, PublisherPin, Canary       string
+	Deadline, StateRoot, At, Seed, PublisherPin               string
 	Authorities, ExcludedFamilies, ExcludedDomains            []string
 	ExcludedIdentities                                        []string
 	Threshold                                                 int
+}
+
+func (value actorPlan) validateRoleLocal() error {
+	clientOnly := value.StateRoot != "" || value.At != "" || value.Seed != "" || value.PublisherPin != "" ||
+		len(value.Authorities) != 0 || value.Threshold != 0 || len(value.ExcludedIdentities) != 0 ||
+		len(value.ExcludedFamilies) != 0 || len(value.ExcludedDomains) != 0
+	nextOnly := value.NextNodeID != "" || value.Next != "" || value.NextPin != ""
+	serviceOnly := value.ServiceCertificate != "" || value.ServiceKey != ""
+	listenerOnly := value.Listen != "" || value.UpstreamPin != "" || value.NodeID != "" || value.EpochDigest != ""
+	switch value.Role {
+	case "client":
+		if listenerOnly || nextOnly || serviceOnly {
+			return errors.New("client plan contains information outside its role-local duty")
+		}
+	case "publisher":
+		if clientOnly || nextOnly {
+			return errors.New("publisher plan contains information outside its role-local duty")
+		}
+	case "initiator", "introduction", "rendezvous", "responder":
+		if clientOnly || serviceOnly {
+			return errors.New("node plan contains information outside its role-local duty")
+		}
+	default:
+		return errors.New("role plan has an invalid actor role")
+	}
+	return nil
 }
 
 func readActorPlan(path string) (actorPlan, error) {
@@ -40,6 +66,9 @@ func readActorPlan(path string) (actorPlan, error) {
 	}
 	if decoder.Decode(&struct{}{}) != io.EOF {
 		return actorPlan{}, errors.New("role plan contains multiple JSON values")
+	}
+	if err := value.validateRoleLocal(); err != nil {
+		return actorPlan{}, err
 	}
 	return value, nil
 }

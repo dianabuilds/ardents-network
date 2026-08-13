@@ -4,8 +4,6 @@ import (
 	"crypto/ed25519"
 	"crypto/sha256"
 	"crypto/tls"
-	"encoding/hex"
-	"errors"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
@@ -17,7 +15,10 @@ func (raw actorPlan) client() (route.Actor, func(), error) {
 	if err != nil {
 		return route.Actor{}, nil, err
 	}
-	var network, seed, publisher [32]byte
+	var manifest, network, seed, publisher [32]byte
+	if err := fixedHex(raw.ManifestDigest, manifest[:]); err != nil {
+		return route.Actor{}, nil, err
+	}
 	if err := fixedHex(raw.NetworkID, network[:]); err != nil {
 		return route.Actor{}, nil, err
 	}
@@ -66,13 +67,8 @@ func (raw actorPlan) client() (route.Actor, func(), error) {
 		opened.Close()
 		return route.Actor{}, nil, err
 	}
-	canary, err := hex.DecodeString(raw.Canary)
-	if err != nil || raw.Canary != "" && len(canary) != 32 {
-		opened.Close()
-		return route.Actor{}, nil, errors.New("canary must be empty or exactly 32 bytes")
-	}
-	return route.Actor{Role: "client", Plan: plan, ClientCertificate: certificate,
-		PublisherPin: publisher, Canary: canary, Deadline: deadline}, func() { _ = opened.Close() }, nil
+	return route.Actor{Role: "client", ManifestDigest: manifest, Plan: plan, ClientCertificate: certificate,
+		PublisherPin: publisher, Deadline: deadline}, func() { _ = opened.Close() }, nil
 }
 
 func identities(values []string) ([][32]byte, error) {

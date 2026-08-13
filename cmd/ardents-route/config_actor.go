@@ -31,7 +31,7 @@ func (raw actorPlan) listener() (route.Actor, func(), error) {
 	for _, field := range []struct {
 		encoded     string
 		destination []byte
-	}{{raw.NetworkID, actor.NetworkID[:]}, {raw.EpochDigest, actor.EpochDigest[:]},
+	}{{raw.ManifestDigest, actor.ManifestDigest[:]}, {raw.NetworkID, actor.NetworkID[:]}, {raw.EpochDigest, actor.EpochDigest[:]},
 		{raw.NodeID, actor.NodeID[:]}, {raw.UpstreamPin, actor.UpstreamPin[:]}} {
 		if err := fixedHex(field.encoded, field.destination); err != nil {
 			return route.Actor{}, nil, err

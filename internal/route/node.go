@@ -14,7 +14,7 @@ import (
 
 func serveNode(ctx context.Context, input Actor, ready func(Evidence)) (Evidence, error) {
 	observation := Evidence{Schema: observationSchema, Kind: "complete", Role: input.Role,
-		PID: os.Getpid(), NetworkID: input.NetworkID, EpochDigest: input.EpochDigest,
+		PID: os.Getpid(), ManifestDigest: input.ManifestDigest, NetworkID: input.NetworkID, EpochDigest: input.EpochDigest,
 		NodeID: input.NodeID, PreviousPin: input.UpstreamPin, NextNodeID: input.NextNodeID}
 	if err := validateNode(input); err != nil {
 		return observation, err
@@ -24,6 +24,7 @@ func serveNode(ctx context.Context, input Actor, ready func(Evidence)) (Evidence
 		return observation, fmt.Errorf("listen for %s: %w", input.Role, err)
 	}
 	defer listener.Close()
+	_ = listener.(*net.TCPListener).SetDeadline(time.Now().Add(input.Deadline))
 	stop := context.AfterFunc(ctx, func() { _ = listener.Close() })
 	defer stop()
 	if ready != nil {
@@ -58,6 +59,7 @@ func serveNode(ctx context.Context, input Actor, ready func(Evidence)) (Evidence
 	if err := confirmLegBinding(downstream, input.NetworkID, input.EpochDigest, input.NextNodeID); err != nil {
 		return observation, fmt.Errorf("confirm next authenticated leg binding: %w", err)
 	}
+	observation.PeerAuthenticated = true
 	count, digest, err := relayOpaque(securedUpstream, downstream)
 	observation.OpaqueBytes, observation.OpaqueDigest = count, digest
 	if err != nil {
@@ -67,7 +69,7 @@ func serveNode(ctx context.Context, input Actor, ready func(Evidence)) (Evidence
 }
 
 func validateNode(input Actor) error {
-	if !emptyPlan(input.Plan) || input.PublisherPin != [32]byte{} || len(input.Canary) != 0 ||
+	if !emptyPlan(input.Plan) || input.PublisherPin != [32]byte{} ||
 		!emptyCertificate(input.ClientCertificate) || !emptyCertificate(input.ServiceCertificate) {
 		return errors.New("node received information outside its role-local duty")
 	}

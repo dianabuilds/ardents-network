@@ -27,7 +27,8 @@ func TestAuthenticatedRouteUsesSeparateRoleProcesses(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	publisherPlan := writeProcessPlan(t, map[string]any{
-		"Role": "publisher", "NetworkID": hex32(fixture.network), "EpochDigest": hex32(fixture.epochDigest),
+		"Role": "publisher", "ManifestDigest": hex32(fixture.qualification.ManifestDigest),
+		"NetworkID": hex32(fixture.network), "EpochDigest": hex32(fixture.epochDigest),
 		"NodeID": hex32(fixture.publisherID), "Listen": fixture.addresses[4],
 		"Certificate": fixture.identities[4].cert, "Key": fixture.identities[4].key,
 		"UpstreamPin":        hex32(fixture.identities[3].public),
@@ -44,7 +45,8 @@ func TestAuthenticatedRouteUsesSeparateRoleProcesses(t *testing.T) {
 			nextID, nextAddress, nextPin = fixture.plan.Positions[index+1].NodeID, fixture.addresses[index+1], fixture.identities[index+1].public
 		}
 		plan := writeProcessPlan(t, map[string]any{
-			"Role": position.Role, "NetworkID": hex32(fixture.network), "EpochDigest": hex32(fixture.epochDigest),
+			"Role": position.Role, "ManifestDigest": hex32(fixture.qualification.ManifestDigest),
+			"NetworkID": hex32(fixture.network), "EpochDigest": hex32(fixture.epochDigest),
 			"NodeID": hex32(position.NodeID), "Listen": fixture.addresses[index],
 			"Certificate": fixture.identities[index].cert, "Key": fixture.identities[index].key,
 			"UpstreamPin": hex32(upstream), "NextNodeID": hex32(nextID), "Next": nextAddress,
@@ -54,7 +56,8 @@ func TestAuthenticatedRouteUsesSeparateRoleProcesses(t *testing.T) {
 	}
 	authority := fixture.authority.Public().(ed25519.PublicKey)
 	clientPlan := writeProcessPlan(t, map[string]any{
-		"Role": "client", "StateRoot": fixture.stateRoot, "NetworkID": hex32(fixture.network),
+		"Role": "client", "ManifestDigest": hex32(fixture.qualification.ManifestDigest),
+		"StateRoot": fixture.stateRoot, "NetworkID": hex32(fixture.network),
 		"Authorities": []string{hex.EncodeToString(authority)}, "Threshold": 1,
 		"At": fixture.now.Format(time.RFC3339), "Seed": hex32(fixture.selectionSeed),
 		"Certificate": fixture.identities[5].cert, "Key": fixture.identities[5].key,
@@ -108,12 +111,13 @@ func TestAuthenticatedRouteUsesSeparateRoleProcesses(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	verification := qualification.Case{RawEvidence: rawEvidence.Bytes(), NetworkID: fixture.network,
-		Generation: clientEvidence.Generation, Epoch: clientEvidence.Epoch, EpochDigest: fixture.epochDigest,
-		ClientPin: fixture.identities[5].public, PublisherID: fixture.publisherID}
-	for index, position := range fixture.plan.Positions {
-		verification.NodeIDs[index], verification.PublicKeys[index], verification.Families[index] =
-			position.NodeID, position.PublicKey, position.Family
+	verification := fixture.qualification
+	verification.RawEvidence = rawEvidence.Bytes()
+	verification.SourceID, verification.BuildDigest = clientEvidence.SourceID, clientEvidence.BuildDigest
+	verification.CleanupVerified = true
+	verification.ExitedPIDs[0] = clientEvidence.PID
+	for index, evidence := range completed {
+		verification.ExitedPIDs[index+1] = evidence.PID
 	}
 	verification.EvidenceDigest = sha256.Sum256(verification.RawEvidence)
 	if result := qualification.Evaluate(verification); result.Verdict != "pass" {

@@ -68,6 +68,7 @@ func dialTLS(ctx context.Context, address string, certificate tls.Certificate, p
 		return nil, err
 	}
 	secured := tls.Client(raw, clientTLS(certificate, pin))
+	_ = raw.SetDeadline(time.Now().Add(deadline))
 	if err := secured.HandshakeContext(ctx); err != nil {
 		raw.Close()
 		return nil, err

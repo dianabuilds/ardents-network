@@ -28,7 +28,8 @@ func TestCanaryCrossesEveryRealRoutePosition(t *testing.T) {
 	for index := range addresses {
 		addresses[index] = unusedAddress(t)
 	}
-	plan := route.Plan{NetworkID: [32]byte{8}, Generation: "generation-7", Epoch: 7, Digest: [32]byte{7}}
+	plan := route.Plan{NetworkID: [32]byte{8}, Generation: "generation-7", Epoch: 7, Digest: [32]byte{7},
+		Profile: "h3-route-tracer-v1", ViewRoot: [32]byte{6}, Seed: [32]byte{5}, SelectionAt: time.Now().Unix()}
 	roles := []string{"initiator", "introduction", "rendezvous", "responder"}
 	for index, role := range roles {
 		plan.Positions = append(plan.Positions, route.Position{Role: role, Domain: role,
@@ -55,13 +56,13 @@ func TestCanaryCrossesEveryRealRoutePosition(t *testing.T) {
 		if index > 0 {
 			upstream = identities[index-1].public
 		}
-		start(route.Actor{NetworkID: plan.NetworkID, EpochDigest: plan.Digest,
+		start(route.Actor{ManifestDigest: [32]byte{99}, NetworkID: plan.NetworkID, EpochDigest: plan.Digest,
 			Role: roles[index], NodeID: plan.Positions[index].NodeID, ListenAddress: addresses[index],
 			Certificate: identities[index].certificate, UpstreamPin: upstream,
 			NextNodeID: nextID, NextAddress: nextAddress, NextPin: nextPin, Deadline: 5 * time.Second})
 	}
 	go func() {
-		observation, err := route.Run(ctx, route.Actor{Role: "publisher", NetworkID: plan.NetworkID,
+		observation, err := route.Run(ctx, route.Actor{Role: "publisher", ManifestDigest: [32]byte{99}, NetworkID: plan.NetworkID,
 			EpochDigest: plan.Digest, NodeID: [32]byte{90},
 			ListenAddress: addresses[4], Certificate: identities[4].certificate,
 			UpstreamPin: identities[3].public, ServiceCertificate: identities[4].certificate,
@@ -81,14 +82,13 @@ func TestCanaryCrossesEveryRealRoutePosition(t *testing.T) {
 			t.Fatal(ctx.Err())
 		}
 	}
-	canary := bytes.Repeat([]byte{0xa7}, 32)
-	result, err := route.Run(ctx, route.Actor{Role: "client", Plan: plan,
+	result, err := route.Run(ctx, route.Actor{Role: "client", ManifestDigest: [32]byte{99}, Plan: plan,
 		ClientCertificate: identities[5].certificate, PublisherPin: identities[4].public,
-		Canary: canary, Deadline: 5 * time.Second}, nil)
+		Deadline: 5 * time.Second}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.CanaryLength != 32 || result.CanaryDigest != sha256.Sum256(canary) || !bytes.Equal(result.Canary, canary) {
+	if result.CanaryLength != 32 || result.CanaryDigest != sha256.Sum256(result.Canary) || len(result.Canary) != 32 {
 		t.Fatalf("canary result does not match: %+v", result)
 	}
 	observations := make([]route.Evidence, 0, 5)
@@ -118,7 +118,8 @@ func TestCanaryCrossesEveryRealRoutePosition(t *testing.T) {
 
 func TestActorsRejectCrossRoleInformation(t *testing.T) {
 	identity, upstream := routeIdentity(t, 51), routeIdentity(t, 52)
-	plan := route.Plan{NetworkID: [32]byte{1}, Generation: "generation", Epoch: 1, Digest: [32]byte{2}}
+	plan := route.Plan{NetworkID: [32]byte{1}, Generation: "generation", Epoch: 1, Digest: [32]byte{2},
+		Profile: "h3-route-tracer-v1", ViewRoot: [32]byte{6}, Seed: [32]byte{5}, SelectionAt: time.Now().Unix()}
 	roles := []string{"initiator", "introduction", "rendezvous", "responder"}
 	for index, role := range roles {
 		plan.Positions = append(plan.Positions, route.Position{Role: role, Domain: role, NodeID: [32]byte{byte(index + 3)},
@@ -128,13 +129,13 @@ func TestActorsRejectCrossRoleInformation(t *testing.T) {
 		name  string
 		actor route.Actor
 	}{
-		{"Node full Plan", route.Actor{Role: "initiator", NetworkID: [32]byte{1}, EpochDigest: [32]byte{2}, NodeID: [32]byte{3},
+		{"Node full Plan", route.Actor{Role: "initiator", ManifestDigest: [32]byte{99}, NetworkID: [32]byte{1}, EpochDigest: [32]byte{2}, NodeID: [32]byte{3},
 			ListenAddress: unusedAddress(t), Certificate: identity.certificate, UpstreamPin: upstream.public,
 			NextNodeID: [32]byte{4}, NextAddress: unusedAddress(t), NextPin: upstream.public, Plan: plan, Deadline: time.Second}},
-		{"Publisher next hop", route.Actor{Role: "publisher", NetworkID: [32]byte{1}, EpochDigest: [32]byte{2}, NodeID: [32]byte{3},
+		{"Publisher next hop", route.Actor{Role: "publisher", ManifestDigest: [32]byte{99}, NetworkID: [32]byte{1}, EpochDigest: [32]byte{2}, NodeID: [32]byte{3},
 			ListenAddress: unusedAddress(t), Certificate: identity.certificate, UpstreamPin: upstream.public,
 			ServiceCertificate: identity.certificate, NextNodeID: [32]byte{4}, Deadline: time.Second}},
-		{"Client listener", route.Actor{Role: "client", Plan: plan, ClientCertificate: identity.certificate,
+		{"Client listener", route.Actor{Role: "client", ManifestDigest: [32]byte{99}, Plan: plan, ClientCertificate: identity.certificate,
 			PublisherPin: upstream.public, ListenAddress: unusedAddress(t), Deadline: time.Second}},
 	}
 	for _, test := range tests {

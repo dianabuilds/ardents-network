@@ -13,7 +13,12 @@ import (
 func transfer(ctx context.Context, input Actor) (Evidence, error) {
 	evidence := Evidence{Schema: observationSchema, Kind: "complete", Role: "client", PID: os.Getpid(),
 		NetworkID: input.Plan.NetworkID, Generation: input.Plan.Generation, Epoch: input.Plan.Epoch,
-		EpochDigest: input.Plan.Digest, Positions: append([]Position(nil), input.Plan.Positions...)}
+		EpochDigest: input.Plan.Digest, Profile: input.Plan.Profile, ViewRoot: input.Plan.ViewRoot,
+		SelectionSeed: input.Plan.Seed, SelectionAt: input.Plan.SelectionAt,
+		ExcludedIdentities: append([][32]byte(nil), input.Plan.ExcludedIdentities...),
+		ExcludedFamilies:   append([]string(nil), input.Plan.ExcludedFamilies...),
+		ExcludedDomains:    append([]string(nil), input.Plan.ExcludedDomains...),
+		Positions:          append([]Position(nil), input.Plan.Positions...)}
 	if input.NetworkID != [32]byte{} || input.EpochDigest != [32]byte{} || input.NodeID != [32]byte{} ||
 		input.ListenAddress != "" || !emptyCertificate(input.Certificate) || input.UpstreamPin != [32]byte{} ||
 		input.NextNodeID != [32]byte{} || input.NextAddress != "" || input.NextPin != [32]byte{} ||
@@ -32,15 +37,9 @@ func transfer(ctx context.Context, input Actor) (Evidence, error) {
 	if err := validateDeadline(input.Deadline); err != nil {
 		return evidence, err
 	}
-	canary := append([]byte(nil), input.Canary...)
-	if len(canary) == 0 {
-		canary = make([]byte, canaryLength)
-		if _, err := rand.Read(canary); err != nil {
-			return evidence, fmt.Errorf("draw canary: %w", err)
-		}
-	}
-	if len(canary) != canaryLength {
-		return evidence, errors.New("canary must contain exactly 32 bytes")
+	canary := make([]byte, canaryLength)
+	if _, err := rand.Read(canary); err != nil {
+		return evidence, fmt.Errorf("draw canary: %w", err)
 	}
 	first := input.Plan.Positions[0]
 	outer, err := dialTLS(ctx, first.Endpoint, input.ClientCertificate, first.PublicKey, input.Deadline)
@@ -56,6 +55,7 @@ func transfer(ctx context.Context, input Actor) (Evidence, error) {
 	if err := inner.HandshakeContext(ctx); err != nil {
 		return evidence, fmt.Errorf("authenticate publisher through Route: %w", err)
 	}
+	evidence.PeerAuthenticated = true
 	if err := writeCanary(inner, canary); err != nil {
 		return evidence, fmt.Errorf("write canary: %w", err)
 	}

@@ -33,6 +33,16 @@ func TestClientSelectionRejectsIdentityFamilyDomainAndShortPaths(t *testing.T) {
 		})
 	}
 	fixture.snapshot.Candidates = base
+	fixture.snapshot.Profile = "h3-role-probe-v1"
+	if _, err := route.Select(fixture.snapshot, route.Selection{Seed: fixture.selectionSeed, At: fixture.now}); err == nil {
+		t.Fatal("Stage 1 profile produced a Stage 2 Route")
+	}
+	fixture.snapshot.Profile = "h3-route-tracer-v1"
+	fixture.snapshot.Candidates[1].Endpoint = "127.0.0.1:http"
+	if _, err := route.Select(fixture.snapshot, route.Selection{Seed: fixture.selectionSeed, At: fixture.now}); err == nil {
+		t.Fatal("service-name endpoint produced a Route")
+	}
+	fixture.snapshot.Candidates = base
 	if _, err := route.Select(fixture.snapshot, route.Selection{Seed: fixture.selectionSeed, At: fixture.now,
 		ExcludedIdentities: [][32]byte{fixture.snapshot.Candidates[0].NodeID}}); err == nil {
 		t.Fatal("identity exclusion produced a Route")

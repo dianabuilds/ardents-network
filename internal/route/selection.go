@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"net"
+	"strconv"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
@@ -34,22 +35,34 @@ type Position struct {
 
 // Plan is one complete endpoint-owned Route selection.
 type Plan struct {
-	NetworkID  [32]byte
-	Generation string
-	Epoch      uint64
-	Digest     [32]byte
-	Positions  []Position
+	NetworkID          [32]byte
+	Generation         string
+	Epoch              uint64
+	Digest             [32]byte
+	Profile            string
+	ViewRoot           [32]byte
+	Seed               [32]byte
+	SelectionAt        int64
+	ExcludedIdentities [][32]byte
+	ExcludedFamilies   []string
+	ExcludedDomains    []string
+	Positions          []Position
 }
 
 // Select chooses one distinct authenticated Candidate for every frozen role.
 func Select(view state.Snapshot, input Selection) (Plan, error) {
 	if input.Seed == [32]byte{} || input.At.IsZero() || view.Generation == "" || view.Epoch == 0 ||
 		view.NetworkID == [32]byte{} || view.Digest == [32]byte{} || !input.At.Before(view.ValidUntil) ||
-		view.Freshness != "fresh" || view.Conflicting || view.CandidateCount == 0 || view.CandidateCount > 64 {
+		view.Profile != "h3-route-tracer-v1" || view.ViewRoot == [32]byte{} || view.Freshness != "fresh" ||
+		view.Conflicting || view.CandidateCount == 0 || view.CandidateCount > 64 {
 		return Plan{}, errors.New("route selection input is invalid")
 	}
 	excludedIDs, excludedFamilies, excludedDomains := exclusions(input)
-	plan := Plan{NetworkID: view.NetworkID, Generation: view.Generation, Epoch: view.Epoch, Digest: view.Digest}
+	plan := Plan{NetworkID: view.NetworkID, Generation: view.Generation, Epoch: view.Epoch, Digest: view.Digest,
+		Profile: view.Profile, ViewRoot: view.ViewRoot, Seed: input.Seed, SelectionAt: input.At.Unix(),
+		ExcludedIdentities: append([][32]byte(nil), input.ExcludedIdentities...),
+		ExcludedFamilies:   append([]string(nil), input.ExcludedFamilies...),
+		ExcludedDomains:    append([]string(nil), input.ExcludedDomains...)}
 	for _, role := range routeRoles {
 		candidate, ok := choose(view, role, input, excludedIDs, excludedFamilies, excludedDomains)
 		if !ok {
@@ -122,12 +135,14 @@ func candidateRank(seed [32]byte, role string, identity [32]byte) [32]byte {
 
 func literalEndpoint(endpoint string) bool {
 	host, port, err := net.SplitHostPort(endpoint)
-	return err == nil && net.ParseIP(host) != nil && port != ""
+	number, portErr := strconv.Atoi(port)
+	return err == nil && net.ParseIP(host) != nil && portErr == nil && number >= 1 && number <= 65535
 }
 
 // Validate rejects incomplete, reordered, repeated, or non-literal plans.
 func Validate(plan Plan) error {
 	if plan.NetworkID == [32]byte{} || plan.Generation == "" || plan.Epoch == 0 || plan.Digest == [32]byte{} ||
+		plan.Profile != "h3-route-tracer-v1" || plan.ViewRoot == [32]byte{} || plan.Seed == [32]byte{} || plan.SelectionAt <= 0 ||
 		len(plan.Positions) != len(routeRoles) {
 		return errors.New("route must contain every fixed position")
 	}
