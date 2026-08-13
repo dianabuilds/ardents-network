@@ -461,7 +461,11 @@ same Rendezvous, and after Rendezvous loss may use a fresh sealed Introduction
 attempt to attach both endpoints to a new Rendezvous. Every stage proves the same
 endpoint-only continuity secret with fresh handles, keys, and monotonic route
 generation. No relay receives a stable connection identifier; replay,
-cross-target, cross-profile, or cross-context attachment terminates that attempt.
+forged proof, nonce/handle reuse, or cross-target, cross-profile, or cross-
+context attachment is a detected connection-control integrity violation after
+establishment and terminates the affected Service Connection fail-closed. An
+ordinary unavailable, expired, or newly ineligible candidate terminates only
+that attachment attempt and may be followed by another bounded safe proposal.
 
 The same journey is also qualified under three sequential eligible failures in
 one 10-minute run. Each next failure affects the current Route only after the

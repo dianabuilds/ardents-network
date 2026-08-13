@@ -198,6 +198,8 @@ system at once.
 ## Start here
 
 - [Complete Horizon 3 technical design](docs/development/horizon-3-technical-design.md)
+- [Proposed Horizon 3 Stage 4 recovery decision](docs/research/records/r-032-h3-same-connection-recovery.md)
+- [Draft Horizon 3 Stage 4 implementation brief](docs/development/horizon-3-stage-4-brief.md)
 - [Authorized Horizon 3 Stage 3 decision](docs/research/records/r-031-h3-service-connection-application-interface.md)
 - [Horizon 3 Stage 3 implementation brief](docs/development/horizon-3-stage-3-brief.md)
 - [Horizon 3 Stage 2 Route decision](docs/research/records/r-030-h3-real-multi-node-route.md)

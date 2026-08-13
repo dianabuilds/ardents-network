@@ -144,6 +144,16 @@ defined by its implementation brief. It is not official Stage 1/2
 qualification, Route Qualification, production IPC, or a privacy/release claim;
 the same deferred Ubuntu and independent soak gates remain conjunctive.
 
+The later Stage 3 local development campaign at commit `6c8faf9` produced one
+retained `27/27` Docker result with digest
+`9aea2d37de910dec39cce79187fde94b49d53a10f0a6bab3a5ca14e6955162ae`; an
+independent verifier replay over that same frozen bundle also returned `27/27`.
+This closes only the Stage 3 local development gate. Proposed
+[R-032](../research/records/r-032-h3-same-connection-recovery.md) and its draft
+[Stage 4 brief](horizon-3-stage-4-brief.md) remain unauthorized until explicit
+Product Owner acceptance, and official Ubuntu/soak/qualification gates remain
+unchanged.
+
 ## Gate D — select production language and foundations
 
 A routing foundation, storage component, wire format, or other protocol-bound

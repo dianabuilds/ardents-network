@@ -195,8 +195,13 @@ resource/evidence appendices, not standalone implementation slices. This
   [R-031](../research/records/r-031-h3-service-connection-application-interface.md)
   decision accepts the clean committed `95/95` local Stage 2 Docker development
   campaign only as readiness for the bounded Stage 3 Service Connection and
-  Application Interface tracer. It does not change those official gates. All
-  later H3 stages remain sequential research and Product Owner decision gates.
+  Application Interface tracer. The resulting Stage 3 local campaign at commit
+  `6c8faf9` passed one retained `27/27` bundle; independent verification replayed
+  that same bundle rather than creating a second campaign. Proposed
+  [R-032](../research/records/r-032-h3-same-connection-recovery.md) remains the
+  open decision gate for Stage 4 recovery and authorizes no code yet. These
+  local results do not change the official gates; all later H3 stages remain
+  sequential research and Product Owner decision gates.
 
 ## Horizon 4 — Public Beta
 

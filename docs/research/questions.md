@@ -1,6 +1,7 @@
 # Network research queue
 
-Status: **accepted cross-horizon decision registry; Horizon 3 Stage 1 active**
+Status: **accepted cross-horizon decision registry; Horizon 3 Stage 3 local
+development evidence passed; Stage 4 research open**
 
 This backlog exists to design Ardents as a network product. A question belongs
 here only when its answer changes an observable network contract, a security
@@ -10,9 +11,11 @@ could build.
 [Product scope and delivery horizons](../product/scope.md) is authoritative for
 work order. Most decided rows below constrain a later Public Beta or Stable
 Network claim and are not current implementation tasks. Gate B and Gate C are
-complete. R-029 is the one decided Horizon 3 vertical slice in the active
-engineering queue; later stages remain research gates. Historical `V1` wording
-means the first public product contract, not the next prototype.
+complete. R-029 through R-031 are the decided sequential Horizon 3 vertical
+slices; their deferred official qualification gates remain open. R-032 is the
+current open decision gate and authorizes no Stage 4 implementation yet.
+Historical `V1` wording means the first public product contract, not the next
+prototype.
 
 ## Accepted contracts across horizons
 
@@ -195,6 +198,7 @@ boundaries with named evidence.
 | [R-029](records/r-029-h3-authenticated-node-lifecycle.md) | What integrated first H3 slice joins authenticated state to a real Node lifecycle without prematurely selecting the Route? | **Decided Stage 1:** a bounded canonical Candidate View and Materialization control separately keyed Node processes through admission, role-probe work, refresh, drain, withdrawal, restart, and reassignment under exact resource/evidence gates. R-027/R-028 are appendices; the role probe is replaceable and proves no Route, capacity, anonymity, independence, or decentralization claim. | decided |
 | [R-030](records/r-030-h3-real-multi-node-route.md) | Can the first Stage 2 tracer build an endpoint-chosen multi-process Route from authenticated eligible Node material without direct/short fallback or complete protected binding at one Node? | **Decided Stage 2:** begin development after the current local Stage 1 `short` pass and green `make check`; retain official Ubuntu `short`, current `churn-2h`, and independent `unattended-24h` as deferred gates before the integrated H3 verdict or stronger claim. Use four distinct role-domain processes, nested authenticated laboratory carrier legs, an end-to-end protected unpredictable canary, role-local evidence, bounded cleanup, and `pass|fail|invalid`. No production transport or public protocol is selected. | decided |
 | [R-031](records/r-031-h3-service-connection-application-interface.md) | Can external client and publisher Applications use scoped OS-local IPC to exchange opaque bytes through an exact-Target-authenticated Service Connection over the Stage 2 Route, including one routine Instance migration, without receiving Ardents routing, publication, credential, or retry logic? | **Decided Stage 3 tracer:** the current clean committed Stage 2 local Docker result (`95/95`, digest `bcfd00c4e44c501dcc31be103699c4e4474eb8773e243ec68822ac00a036dfb1`) permits bounded Stage 3 development only. Freeze separate Connection, Service Administration, and external Authority Custody processes; one Target, exclusive generations 1 then 2, scoped launcher-brokered principals, `64 KiB` in each direction plus fresh `32-byte` canaries, exact authentication before success, finite backpressure/cancellation semantics, real four-position Route use, independent evidence, and no direct/ambient fallback. Official Stage 1/2 qualification and every privacy/release claim remain deferred. | decided |
+| [R-032](records/r-032-h3-same-connection-recovery.md) | Can Stage 4 preserve one live exact-Target Service Connection across eligible Carrier, leg, and Rendezvous failure without Application reconnect, operation replay, security downgrade, or unbounded recovery state? | **Proposed Stage 4 recovery contract:** the Service Connection Module owns endpoint-only continuity, connection-level sequence/acknowledgement, bounded replay, non-resetting deadlines, and terminal results while the Route Module supplies fresh bounded Route Attachments. Exercise Carrier repair, same-Rendezvous leg replacement, fresh Introduction/Rendezvous, sequential/overlapping failure, impairment, and cleanup under the existing R-023 gates. One retained Stage 3 local campaign passed `27/27` at commit `6c8faf9`; an independent verifier replay of the same frozen bundle also returned `27/27`. Stage 4 code still requires Product Owner acceptance of R-032. Recovery measurements are only inputs to P3-D3b4; the complete bounded R-013 role prototype remains its prerequisite. | open |
 | [R-010](records/r-024-operational-product-closure.md#security) | Which local, anonymous, and bounded costs protect connection, discovery, rendezvous, and naming capacity from flooding and Sybil capture without a global User identity? | **Decided product boundary:** resource-specific staged admission uses cheap stateless validation before expensive bounded state and may add scoped short-lived capabilities or bounded puzzles under load. No money, account, IP reputation, stable identity, personhood, or fairness claim. Exact mechanisms remain experiments. | decided |
 | [R-011](records/r-024-operational-product-closure.md#security) | How does an endpoint estimate and avoid correlated control by operator, network, family, software supply chain, and jurisdiction without collecting a new User graph? | **Decided product boundary:** endpoints select locally from proven Candidate Materializations under one logical complete authenticated View; independent full auditors verify transparent inclusion and global summaries. Identity, Role Domain, and known family are hard constraints, while network/provider/jurisdiction/supply-chain evidence drives uncertainty and concentration gates without uploaded User route history. | decided |
 | [R-012](records/r-024-operational-product-closure.md#security) | What happens when naming, bootstrap, protocol releases, or emergency governance is captured, partitioned, or unavailable? | **Decided product boundary:** separate threshold roots, expiring delegation, transparency, rollback watermarks, delayed rotation, narrow emergency power, and explicit forks. Project-only keys define a centralized test network, not public decentralization. | decided |
@@ -247,14 +251,21 @@ dependency path is now deliberately sequential:
    Interface, Target/Instance lifecycle, private reachability, one
    pre-provisioned exact Name, controlled HTTP tracer, failures, and migration.
    Permissionless Namespace governance remains separate.
-5. **Closed test network — Stage 2 tracer active:** accepted R-029 joins
-   authenticated state and a real Node lifecycle. R-030 records the Product
-   Owner's development promotion and freezes the first endpoint-chosen real
-   multi-process Route tracer. Official Stage 1 Ubuntu `short`, `churn-2h`, and
+5. **Closed test network — Stage 3 local evidence passed, Stage 4 research open:**
+   accepted R-029 and R-030 join authenticated state, real Node lifecycle, and
+   the endpoint-chosen multi-process Route. Accepted R-031 authorizes the
+   Service Connection/Application Interface tracer. Its local development gate
+   passed at commit `6c8faf9`: one retained `27/27` Docker campaign and an
+   independent `27/27` verifier replay over the same frozen bundle, clean
+   checks/reviews, retained digest
+   `9aea2d37de910dec39cce79187fde94b49d53a10f0a6bab3a5ca14e6955162ae`, and
+   complete cleanup. R-032 proposes the next same-connection recovery contract
+   but authorizes no code until the record itself is accepted. Official Stage 1
+   Ubuntu `short`, `churn-2h`, and
    `unattended-24h` qualification remains open and blocks the integrated H3 or
-   stronger external/release claim, not Stage 2 development. Recovery/capacity,
-   Bridges, naming, updates, Windows, and broader Application boundaries remain
-   later decision gates.
+   stronger external/release claim. Role-capacity floors, Bridges, naming,
+   updates, Windows, and broader Application boundaries retain their explicit
+   later gates.
 6. **Public qualification:** run the applicable complete R-001/R-023 and launch-
    independence gates only for a release candidate. Earlier experiments cannot
    accumulate partial public claims.

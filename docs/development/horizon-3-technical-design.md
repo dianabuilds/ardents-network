@@ -228,10 +228,13 @@ The Service Connection is the stable Application-visible stream. It binds:
 The Application never receives raw Node IDs, route topology, bootstrap sources,
 Bridge membership, or retry internals.
 
-The carrier owns ordered byte transport, confidentiality/integrity, bounded
-buffering, backpressure, same-connection path recovery, and explicit terminal
-failure. The Application owns data meaning, login, authorization, persistence,
-semantic retry, idempotency, and whether to open a new Service Connection.
+The Service Connection owns ordered unique Application bytes, end-to-end
+confidentiality/integrity, bounded logical buffering/backpressure, same-
+connection continuity/recovery, and the explicit terminal result. Route owns
+endpoint-local path selection and bounded replaceable Route Attachments; Carrier
+owns one bounded authenticated channel for a Route leg. The Application owns
+data meaning, login, authorization, persistence, semantic retry, idempotency,
+and whether to open a new Service Connection after a terminal result.
 
 ### 3.5 Carrier Transport boundary
 
@@ -664,13 +667,32 @@ Includes:
 - NORMAL/PROTECT/DRAIN/EXIT and leak/GC evidence;
 - stronger-host scale-up experiment.
 
-**Pass:** same-connection ordered unique data resumes or terminates on deadline;
-no operation replay/downgrade; established work remains usable under declared
-pressure; every completed/abandoned recovery resource is released.
+**Pass:** positive eligible recovery cells resume same-connection ordered unique
+data within the applicable target; terminal-by-deadline passes only declared
+negative/no-safe-alternate cells and otherwise remains a recovery miss. No
+operation replay/downgrade occurs; established work remains usable under
+declared pressure; every completed/abandoned recovery resource is released.
 
 **Stop/redesign:** retry storms, hidden reconnect, unbounded recovery state,
 security downgrade, starvation of established work, or GC/resource collapse
 prevents useful capacity.
+
+[R-032](../research/records/r-032-h3-same-connection-recovery.md) records the
+open same-connection recovery research: the Service Connection Module owns
+endpoint-only continuity and logical byte order while the Route Module supplies
+fresh bounded Route Attachments. The Stage 3 local development gate passed at
+commit `6c8faf9` with one retained `27/27` Docker campaign and an independent
+`27/27` verifier replay over the same frozen bundle, clean reviews/checks,
+retained digest
+`9aea2d37de910dec39cce79187fde94b49d53a10f0a6bab3a5ca14e6955162ae`, and
+complete cleanup. R-032's current recommendation still authorizes no Stage 4
+code until the Product Owner accepts it. The
+[draft Stage 4 brief](horizon-3-stage-4-brief.md) translates that proposal into
+four gated vertical slices. Recovery counters are only inputs to R-023 P3-D3b4:
+the complete bounded R-013 role prototype and controlled Ubuntu reference-host
+evidence remain prerequisites to role-specific production useful-work units and
+effective post-exclusion capacity. R-032 and the brief do not invent those
+floors.
 
 ### Stage 5 — Bridge and Blocked Entry
 
@@ -786,7 +808,7 @@ journeys has no integrated owner and evidence path.
 | J03 publish and move a Service | 3, 4, 6, 7, 8 | Authority issues a bounded generation, publication becomes reachable, migration preserves the name/Target without moving root authority |
 | J04 integrate an Application | 3, 7, 8 | Local principal receives only its granted connect/listen operations and no implicit identity, DNS, or network fallback |
 | J05 named end-to-end tracer | 2, 3, 6, 8 | Deterministic test Service proves name, Target, Route, transport, byte integrity, cancellation, and classified failure together |
-| J06 recover from failure or blocking | 4, 5, 8 | Route, Service, authority, and entry failures have bounded replacement or explicit terminal failure without downgrade |
+| J-06 recover from failure or blocking | 4, 5, 8 | Route, Service, authority, and entry failures have bounded replacement or explicit terminal failure without downgrade |
 | J07 contribute bounded network capacity | 1, 2, 4, 7, 8 | Contributor starts a declared Node role, resource policy is enforced, useful work is attributed, and withdrawal completes |
 | J08 update, rollback, and recover authority | 7, 8 | Signed compatible update succeeds, failed update rolls back, and release infrastructure cannot seize Service/Name authority |
 
