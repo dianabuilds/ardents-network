@@ -16,10 +16,14 @@ type replacementPlan struct {
 
 const replacementSetupDeadline = "2s"
 
-func configureReplacementPlans(root string, fixture prepared, lifetime string) (replacementPlan, error) {
+func configureReplacementPlans(root string, fixture prepared, lifetime string, proposalCount int) (replacementPlan, error) {
 	selections, err := replacementSelections(fixture.candidates)
 	if err != nil || lifetime == "" {
 		return replacementPlan{}, errors.Join(err, errors.New("replacement lifetime is required"))
+	}
+	selections, err = boundedReplacementSelections(selections, proposalCount)
+	if err != nil {
+		return replacementPlan{}, err
 	}
 	plan := replacementPlan{selections: selections}
 	used := make(map[string]bool, 12)
@@ -61,9 +65,19 @@ func configureReplacementPlans(root string, fixture prepared, lifetime string) (
 	return plan, nil
 }
 
+func boundedReplacementSelections(selections []selectedRoute, count int) ([]selectedRoute, error) {
+	if count < 2 || count > len(selections) {
+		return nil, errors.New("replacement proposal count is outside the finite selection ladder")
+	}
+	return selections[:count], nil
+}
+
 func configureClientReplacementPlan(root string, candidates []route.Position,
 	selections []selectedRoute, publisherPublic [32]byte, lifetime string) error {
-	attempts := []map[string]any{{}, {}, {}, {}}
+	attempts := make([]map[string]any, len(selections))
+	for index := range attempts {
+		attempts[index] = map[string]any{}
+	}
 	for _, role := range replacementRoles {
 		first := hex32(selections[0][role].NodeID)
 		secondCandidate, err := roleCandidate(candidates, role, 1)
@@ -71,18 +85,24 @@ func configureClientReplacementPlan(root string, candidates []route.Position,
 			return err
 		}
 		second := hex32(secondCandidate.NodeID)
-		if role != "rendezvous" {
+		if len(attempts) > 1 && role != "rendezvous" {
 			attempts[1]["ExcludedIdentities"] = appendString(attempts[1]["ExcludedIdentities"], first)
+		}
+		if len(attempts) > 2 {
+			attempts[2]["ExcludedIdentities"] = appendString(attempts[2]["ExcludedIdentities"], first, second)
+		}
+		if len(attempts) > 3 && role != "rendezvous" {
 			attempts[3]["ExcludedIdentities"] = appendString(attempts[3]["ExcludedIdentities"], first)
 		}
-		attempts[2]["ExcludedIdentities"] = appendString(attempts[2]["ExcludedIdentities"], first, second)
-		if role == "rendezvous" {
+		if len(attempts) > 3 && role == "rendezvous" {
 			attempts[3]["ExcludedIdentities"] = appendString(attempts[3]["ExcludedIdentities"], first, second)
 		}
 	}
-	attempts[2]["IntroductionSetupSocket"] = "/run/ardents/recovery-introduction-user/setup.sock"
-	attempts[2]["IntroductionSetupPublic"] = hex32(selections[2]["introduction"].PublicKey)
-	attempts[2]["IntroductionServicePublic"] = hex32(publisherPublic)
+	if len(attempts) > 2 {
+		attempts[2]["IntroductionSetupSocket"] = "/run/ardents/recovery-introduction-user/setup.sock"
+		attempts[2]["IntroductionSetupPublic"] = hex32(selections[2]["introduction"].PublicKey)
+		attempts[2]["IntroductionServicePublic"] = hex32(publisherPublic)
+	}
 	path := filepath.Join(root, "route", "plans", "client.json")
 	return updatePlan(path, func(value map[string]any) {
 		delete(value, "Attachments")
@@ -143,9 +163,14 @@ func configureNodeReplacementPlan(root string, candidates []route.Position, serv
 	}
 	return updatePlan(path, func(value map[string]any) {
 		delete(value, "Attachments")
+		for _, key := range []string{"IntroductionSetupSocket", "IntroductionSetupPeer",
+			"IntroductionForwardSocket", "IntroductionForwardPublic"} {
+			delete(value, key)
+		}
 		value["AttachmentPlans"], value["Lifetime"] = attempts, lifetime
 		value["Deadline"] = replacementSetupDeadline
-		if position.Role == "introduction" && position.NodeID == selections[2]["introduction"].NodeID {
+		if len(selections) > 2 && position.Role == "introduction" &&
+			position.NodeID == selections[2]["introduction"].NodeID {
 			value["IntroductionSetupSocket"] = "/run/ardents/recovery-introduction-user/setup.sock"
 			value["IntroductionSetupPeer"] = clientPeer
 			value["IntroductionForwardSocket"] = "/run/ardents/recovery-introduction-service/setup.sock"

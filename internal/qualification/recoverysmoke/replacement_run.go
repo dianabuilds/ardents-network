@@ -21,6 +21,10 @@ func (observer dockerObserver) runReplacementRecovery(ctx context.Context, fixtu
 	if sequential {
 		offsets, lifetime, delay, mode = sequentialReplacementSchedule()
 	}
+	proposalCount, err := replacementProposalCount(mode)
+	if err != nil {
+		return replacementCell{}, err
+	}
 	if err := resetSequentialGates(filepathGateRoot(observer), offsets); err != nil {
 		return replacementCell{}, err
 	}
@@ -29,7 +33,7 @@ func (observer dockerObserver) runReplacementRecovery(ctx context.Context, fixtu
 	if err := configureRecoveryDirection(observer.generation, direction); err != nil {
 		return replacementCell{}, err
 	}
-	plan, err := configureReplacementPlans(observer.input.FixtureRoot, fixture, lifetime)
+	plan, err := configureReplacementPlans(observer.input.FixtureRoot, fixture, lifetime, proposalCount)
 	if err != nil {
 		return replacementCell{}, err
 	}
@@ -49,10 +53,6 @@ func (observer dockerObserver) runReplacementRecovery(ctx context.Context, fixtu
 	cellClock := hostClock.Add(time.Duration(hostStartedAt))
 	processObserver := newDockerProcessAdapter(observer, hostScope, hostClock)
 	identities, err := observer.startReplacementServices(ctx, fixture, plan)
-	if err != nil {
-		return replacementCell{}, err
-	}
-	proposalCount, err := replacementProposalCount(mode)
 	if err != nil {
 		return replacementCell{}, err
 	}
