@@ -102,7 +102,7 @@ func observeCarrierSocket(remote string) (carrierObservation, error) {
 }
 
 func faultCarrierSocket(socketID string) (receipt carrierFaultReceipt, err error) {
-	value, raw, err := decodeCarrierSocketID(socketID)
+	value, _, err := decodeCarrierSocketID(socketID)
 	if err != nil {
 		return receipt, err
 	}
@@ -120,7 +120,7 @@ func faultCarrierSocket(socketID string) (receipt carrierFaultReceipt, err error
 	cutAfter := time.Since(started).Nanoseconds()
 	deadline := time.Now().Add(time.Second)
 	for time.Now().Before(deadline) {
-		present, statusErr := platformCarrierSocketPresent(raw)
+		present, statusErr := carrierInterfacePresent(interfaceName)
 		if statusErr != nil {
 			return receipt, statusErr
 		}
@@ -131,7 +131,20 @@ func faultCarrierSocket(socketID string) (receipt carrierFaultReceipt, err error
 		}
 		time.Sleep(time.Millisecond)
 	}
-	return receipt, errors.New("faulted Carrier socket remained present")
+	return receipt, errors.New("faulted Carrier interface remained present")
+}
+
+func carrierInterfacePresent(name string) (bool, error) {
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return false, err
+	}
+	for _, candidate := range interfaces {
+		if candidate.Name == name {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func validateDedicatedCarrier(value carrierObservation) error {

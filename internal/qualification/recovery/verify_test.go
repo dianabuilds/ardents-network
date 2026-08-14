@@ -23,7 +23,7 @@ func TestVerifyRejectsMutationMissingEvidenceAndCandidateFailure(t *testing.T) {
 		"reconnect":        func(value *Evidence) { value.Cells[1].ApplicationReconnected = true },
 		"late canary":      func(value *Evidence) { value.Cells[0].CanaryAtNanos += int64(6 * time.Second) },
 		"secret cleanup":   func(value *Evidence) { value.Cleanup.PrivateMaterialAbsent = false },
-		"destroy mismatch": func(value *Evidence) { value.Cells[0].DestroyedCarrier = strings.Repeat("3", 64) },
+		"fault mismatch":   func(value *Evidence) { value.Cells[0].FaultedCarrier = strings.Repeat("3", 64) },
 		"route pid changed": func(value *Evidence) {
 			value.Cells[0].RecoveredRoutePIDs["rendezvous"]++
 		},
@@ -137,7 +137,7 @@ func validEvidence() Evidence {
 			ReplacementCarrier: strings.Repeat("2", 64), FaultService: "rendezvous-responder-carrier", FaultContainer: "rendezvous-container",
 			InitialCarrierLocal: "172.31.21.13:50001", InitialCarrierRemote: "172.31.21.14:4604",
 			ReplacementCarrierLocal: "172.31.21.13:50002", ReplacementCarrierRemote: "172.31.21.14:4604",
-			DestroyedCarrier: strings.Repeat("1", 64), InitialCarrierInode: 1, ReplacementCarrierInode: 2,
+			FaultedCarrier: strings.Repeat("1", 64), InitialCarrierInode: 1, ReplacementCarrierInode: 2,
 			InitialCarrierInterface: "eth1", ReplacementCarrierInterface: "eth1",
 			InitialCarrierInterfaceIndex: 3, ReplacementCarrierInterfaceIndex: 4,
 			FaultNetwork: "ardents-recovery-test_carrier_net", FaultController: strings.Repeat(string(rune('e'+index)), 64),

@@ -39,7 +39,7 @@ type Cell struct {
 	InitialCarrier, ReplacementCarrier                             string
 	InitialCarrierLocal, InitialCarrierRemote                      string
 	ReplacementCarrierLocal, ReplacementCarrierRemote              string
-	DestroyedCarrier                                               string
+	FaultedCarrier                                                 string
 	InitialCarrierInode, ReplacementCarrierInode                   uint32
 	InitialCarrierInterface, ReplacementCarrierInterface           string
 	InitialCarrierInterfaceIndex, ReplacementCarrierInterfaceIndex int

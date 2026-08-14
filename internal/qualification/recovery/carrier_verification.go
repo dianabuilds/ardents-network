@@ -18,7 +18,7 @@ func verifyCarrierEvidence(cell Cell, imageID string) Result {
 			return invalid("Carrier socket commitment is malformed")
 		}
 	}
-	if cell.DestroyedCarrier != cell.InitialCarrier || cell.InitialCarrierInode == 0 || cell.ReplacementCarrierInode == 0 ||
+	if cell.FaultedCarrier != cell.InitialCarrier || cell.InitialCarrierInode == 0 || cell.ReplacementCarrierInode == 0 ||
 		cell.InitialCarrierInterface == "" || cell.InitialCarrierInterface != cell.ReplacementCarrierInterface ||
 		cell.InitialCarrierInterfaceIndex <= 0 || cell.ReplacementCarrierInterfaceIndex <= 0 ||
 		cell.InitialCarrierInterfaceIndex == cell.ReplacementCarrierInterfaceIndex ||
@@ -26,7 +26,7 @@ func verifyCarrierEvidence(cell Cell, imageID string) Result {
 		!carrierEndpoint(cell.InitialCarrierRemote, "172.31.21.14", true) ||
 		!carrierEndpoint(cell.ReplacementCarrierLocal, "172.31.21.13", false) ||
 		!carrierEndpoint(cell.ReplacementCarrierRemote, "172.31.21.14", true) {
-		return invalid("native Carrier tuple, inode, or destroy receipt is incomplete")
+		return invalid("native Carrier tuple, inode, or fault receipt is incomplete")
 	}
 	if cell.FaultService != "rendezvous-responder-carrier" {
 		return invalid("fault did not identify the native same-leg Carrier socket")

@@ -84,10 +84,10 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 		return recovery.Cell{}, err
 	}
 	carrierObservedAt := time.Since(cellClock).Nanoseconds()
-	destroyedCarrier, faultAt, faultCompletedAt, carrierCutAfter, absenceAfter, controllerRemoved, resourceAbsent, err :=
+	faultedCarrier, faultAt, faultCompletedAt, carrierCutAfter, absenceAfter, controllerRemoved, resourceAbsent, err :=
 		observer.destroyCarrier(ctx, faultController, identities["rendezvous"], network, initialCarrier, cellClock)
 	if err != nil || !resourceAbsent {
-		return recovery.Cell{}, errors.Join(err, errors.New("faulted Carrier socket remained available"))
+		return recovery.Cell{}, errors.Join(err, errors.New("faulted Carrier resource remained available"))
 	}
 	if err := os.WriteFile(filepath.Join(gateRoot, senderRole+".release"), []byte("release\n"), 0o600); err != nil {
 		return recovery.Cell{}, err
@@ -131,7 +131,7 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 		ReplacementCarrier:  replacementCarrier.SocketIDSHA256,
 		InitialCarrierLocal: initialCarrier.LocalAddress, InitialCarrierRemote: initialCarrier.RemoteAddress,
 		ReplacementCarrierLocal: replacementCarrier.LocalAddress, ReplacementCarrierRemote: replacementCarrier.RemoteAddress,
-		DestroyedCarrier: destroyedCarrier, InitialCarrierInode: initialCarrier.Inode, ReplacementCarrierInode: replacementCarrier.Inode,
+		FaultedCarrier: faultedCarrier, InitialCarrierInode: initialCarrier.Inode, ReplacementCarrierInode: replacementCarrier.Inode,
 		InitialCarrierInterface: initialCarrier.InterfaceName, ReplacementCarrierInterface: replacementCarrier.InterfaceName,
 		InitialCarrierInterfaceIndex: initialCarrier.InterfaceIndex, ReplacementCarrierInterfaceIndex: replacementCarrier.InterfaceIndex,
 		Seed: seed, ExpectedDigest: expected, ObservedDigest: application.ReceivedDigest,
