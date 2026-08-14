@@ -1,11 +1,16 @@
 package recoverysmoke
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"net"
+	"os"
+	"os/exec"
 	"testing"
+	"time"
 )
 
 func TestCarrierSocketIdentityEncodesEndpointsAndDigest(t *testing.T) {
@@ -47,4 +52,56 @@ func TestCarrierFaultWaitReportsReadyAndStopsWithContext(t *testing.T) {
 	if err := <-done; !errors.Is(err, context.Canceled) {
 		t.Fatalf("carrierFaultWait returned %v", err)
 	}
+}
+
+func TestCarrierFaultWaitAdapterRemainsAliveAfterReady(t *testing.T) {
+	if os.Getenv("ARDENTS_TEST_CARRIER_WAIT") == "1" {
+		code, handled := RunCarrierFaultAdapter([]string{"carrier-fault", "wait"}, os.Stdout, os.Stderr)
+		if !handled {
+			os.Exit(3)
+		}
+		os.Exit(code)
+	}
+	command := exec.Command(os.Args[0], "-test.run=TestCarrierFaultWaitAdapterRemainsAliveAfterReady")
+	command.Env = append(os.Environ(), "ARDENTS_TEST_CARRIER_WAIT=1")
+	stdout, err := command.StdoutPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var diagnostics bytes.Buffer
+	command.Stderr = &diagnostics
+	if err := command.Start(); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan error, 1)
+	go func() { done <- command.Wait() }()
+	finished := false
+	defer func() {
+		if !finished {
+			_ = command.Process.Kill()
+			<-done
+		}
+	}()
+	var ready map[string]string
+	decoded := make(chan error, 1)
+	go func() { decoded <- json.NewDecoder(stdout).Decode(&ready) }()
+	select {
+	case err := <-decoded:
+		if err != nil || ready["kind"] != "ready" {
+			t.Fatalf("controller readiness failed: %v %q", err, diagnostics.String())
+		}
+	case <-time.After(time.Second):
+		t.Fatal("controller did not report readiness")
+	}
+	select {
+	case err := <-done:
+		finished = true
+		t.Fatalf("controller exited after readiness: %v %q", err, diagnostics.String())
+	case <-time.After(200 * time.Millisecond):
+	}
+	if err := command.Process.Kill(); err != nil {
+		t.Fatal(err)
+	}
+	<-done
+	finished = true
 }

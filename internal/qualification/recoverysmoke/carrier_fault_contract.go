@@ -9,6 +9,9 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 )
 
@@ -47,7 +50,13 @@ func executeCarrierFault(arguments []string, output io.Writer) error {
 	encoder := json.NewEncoder(output)
 	if len(arguments) == 1 && arguments[0] == "wait" {
 		ready := func() { _ = encoder.Encode(map[string]string{"kind": "ready"}) }
-		return carrierFaultWait(context.Background(), ready)
+		waitCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		err := carrierFaultWait(waitCtx, ready)
+		if errors.Is(err, context.Canceled) {
+			return nil
+		}
+		return err
 	}
 	if len(arguments) == 1 && arguments[0] == "observe" {
 		value, err := observeCarrierSocket(carrierRemote)
