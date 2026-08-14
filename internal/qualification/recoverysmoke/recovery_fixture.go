@@ -31,10 +31,9 @@ func configureRecoveryFixture(root string, fixture prepared) error {
 		path := filepath.Join(root, "route", "plans", role+".json")
 		if err := updatePlan(path, func(plan map[string]any) {
 			plan["Attachments"] = 2
-			plan["Deadline"] = "15s"
+			applyRouteDeadline(plan, role)
 			if role == "rendezvous" {
 				plan["Next"] = "172.31.21.14:4604"
-				plan["Deadline"] = "8s"
 			}
 			if listen, ok := plan["Listen"].(string); ok {
 				_, port, err := net.SplitHostPort(listen)
@@ -57,6 +56,13 @@ func configureRecoveryFixture(root string, fixture prepared) error {
 		}
 	}
 	return nil
+}
+
+func applyRouteDeadline(plan map[string]any, role string) {
+	plan["Deadline"] = "15s"
+	if role == "rendezvous" || role == "responder" {
+		plan["Deadline"] = "8s"
+	}
 }
 
 func updatePlan(path string, update func(map[string]any)) error {

@@ -56,7 +56,7 @@ type Cell struct {
 	LastDeliveryNanos, CarrierObservedNanos, FaultAtNanos          int64
 	FaultCompletedNanos                                            int64
 	CarrierCutAfterNanos, AbsenceAfterNanos                        int64
-	RendezvousAttachmentDeadlineNanos, OldCarrierRetiredNanos      int64
+	CarrierAttachmentDeadlineNanos, OldCarrierRetiredNanos         int64
 	CanaryAtNanos, ReplacementObservedNanos                        int64
 	TerminalAtNanos                                                int64
 	ClientRouteGeneration, PublisherRouteGeneration                uint64

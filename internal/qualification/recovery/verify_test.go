@@ -36,8 +36,8 @@ func TestVerifyRejectsMutationMissingEvidenceAndCandidateFailure(t *testing.T) {
 			cell.TerminalAtNanos = int64(16 * time.Second)
 			cell.OldCarrierRetiredNanos = int64(4*time.Second) + 1
 		},
-		"wrong Rendezvous Attachment deadline": func(value *Evidence) {
-			value.Cells[0].RendezvousAttachmentDeadlineNanos = int64(7 * time.Second)
+		"wrong Carrier Attachment deadline": func(value *Evidence) {
+			value.Cells[0].CarrierAttachmentDeadlineNanos = int64(7 * time.Second)
 		},
 		"old Carrier not retired": func(value *Evidence) {
 			value.Cells[0].OldCarrierRetired = false
@@ -173,7 +173,7 @@ func validEvidence() Evidence {
 			CellManifestDigest: cellManifestDigest(direction, seed, planned), FaultOffset: planned, DeliveredBeforeFault: planned,
 			CanaryOffset: planned + 32, LastDeliveryNanos: 1, CarrierObservedNanos: 2, FaultAtNanos: 3,
 			FaultCompletedNanos: 10, CarrierCutAfterNanos: 1, AbsenceAfterNanos: 2,
-			RendezvousAttachmentDeadlineNanos: int64(8 * time.Second), OldCarrierRetiredNanos: 8,
+			CarrierAttachmentDeadlineNanos: int64(8 * time.Second), OldCarrierRetiredNanos: 8,
 			CanaryAtNanos:            int64(time.Second),
 			ReplacementObservedNanos: int64(time.Second) + 1, TerminalAtNanos: int64(2 * time.Second), ClientRouteGeneration: 2,
 			PublisherRouteGeneration: 2, ClientRecoveryCount: 1, PublisherRecoveryCount: 1,

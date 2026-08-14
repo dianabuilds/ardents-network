@@ -38,7 +38,7 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 	if err := byteio.WriteJSON(filepath.Join(observer.input.FixtureRoot, "cell-manifest.json"), map[string]any{
 		"schema": "ardents-h3-recovery-cell-manifest-v1", "direction": direction, "seed": seed,
 		"bytes": recoveryBytes, "fault_family": "carrier-channel", "planned_fault_offset": faultThreshold,
-		"canary_bytes": 32, "rendezvous_attachment_deadline": "8s",
+		"canary_bytes": 32, "carrier_attachment_deadline": "8s",
 		"digest": manifestDigest}, 64<<10); err != nil {
 		return recovery.Cell{}, err
 	}
@@ -146,7 +146,7 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 		DeliveredBeforeFault: delivered, CanaryOffset: canaryOffset, LastDeliveryNanos: lastDeliveryAt,
 		CarrierObservedNanos: carrierObservedAt, FaultAtNanos: fault.faultAt, FaultCompletedNanos: fault.completedAt,
 		CarrierCutAfterNanos: fault.cutAfter, AbsenceAfterNanos: fault.absenceAfter,
-		RendezvousAttachmentDeadlineNanos: int64(8 * time.Second), OldCarrierRetiredNanos: fault.socketRetiredAt,
+		CarrierAttachmentDeadlineNanos: int64(8 * time.Second), OldCarrierRetiredNanos: fault.socketRetiredAt,
 		CanaryAtNanos: canaryAt, ReplacementObservedNanos: replacementObservedAt, TerminalAtNanos: terminalAt,
 		ClientRouteGeneration: clientEndpoint.RouteGeneration, PublisherRouteGeneration: publisherEndpoint.RouteGeneration,
 		ClientRecoveryCount: clientEndpoint.RecoveryCount, PublisherRecoveryCount: publisherEndpoint.RecoveryCount,
