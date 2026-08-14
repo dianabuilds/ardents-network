@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/qualification/recovery"
@@ -29,16 +30,36 @@ type trafficBaseline struct {
 
 func (observer dockerObserver) startTrafficObservers(ctx context.Context,
 	identities map[string]string) (trafficObservers, error) {
+	result, err := collectTrafficObservers(ctx, identities, observer.startTrafficObserver)
+	if err != nil {
+		removeErr := result.remove(context.Background(), observer)
+		return trafficObservers{}, errors.Join(err, removeErr)
+	}
+	return result, nil
+}
+
+func collectTrafficObservers(ctx context.Context, identities map[string]string,
+	start func(context.Context, string) (string, recovery.ObserverProcess, error)) (trafficObservers, error) {
 	var result trafficObservers
+	var failures [2]error
+	var wait sync.WaitGroup
+	wait.Add(2)
 	for index, role := range []string{"client", "publisher"} {
-		result.routes[index] = identities[role]
-		identity, projection, err := observer.startTrafficObserver(ctx, identities[role])
-		if err != nil {
-			removeErr := result.remove(context.Background(), observer)
-			return trafficObservers{}, fmt.Errorf("start %s Route traffic observer: %w", role,
-				errors.Join(err, removeErr))
+		go func(index int, role string) {
+			defer wait.Done()
+			result.routes[index] = identities[role]
+			result.ids[index], result.projections[index], failures[index] = start(ctx, identities[role])
+		}(index, role)
+	}
+	wait.Wait()
+	var joined error
+	for index, role := range []string{"client", "publisher"} {
+		if failures[index] != nil {
+			joined = errors.Join(joined, fmt.Errorf("start %s Route traffic observer: %w", role, failures[index]))
 		}
-		result.ids[index], result.projections[index] = identity, projection
+	}
+	if joined != nil {
+		return result, joined
 	}
 	return result, nil
 }
