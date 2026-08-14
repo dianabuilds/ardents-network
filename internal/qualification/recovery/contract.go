@@ -1,5 +1,7 @@
 package recovery
 
+import "encoding/json"
+
 // Evidence is the bounded, public-only S4.1 observer record.
 type Evidence struct {
 	Schema, SourceCommit, ImageID, TopologyDigest, ManifestDigest string
@@ -14,6 +16,7 @@ type Evidence struct {
 	BinaryDigests                                                 map[string]string
 	Topology                                                      []byte
 	Manifest                                                      PublicManifest
+	S42                                                           json.RawMessage
 	RequestedNanos, CampaignNanos                                 int64
 	Cells                                                         []Cell
 	Negatives                                                     map[string]Negative

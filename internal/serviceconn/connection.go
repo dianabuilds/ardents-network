@@ -54,7 +54,8 @@ func (endpoint *endpoint) connect(ctx context.Context, input Request) (Result, e
 	}
 	return Result{Class: "clean service connection close", AuthenticatedTarget: credential.Target,
 		Generation: credential.Generation, AcceptedBytes: sendBytes,
-		ReceivedBytes: receiveBytes, ConnectionCanary: canary, QueueHighWater: outcome.queueHigh,
+		AcknowledgedBytes: outcome.acknowledged, ReceivedBytes: receiveBytes,
+		ConnectionCanary: canary, QueueHighWater: outcome.queueHigh,
 		RouteGeneration: outcome.generation, RecoveryCount: outcome.recoveries,
 		ContinuityCommitment: outcome.continuity}, nil
 }
@@ -107,12 +108,14 @@ func (endpoint *endpoint) accept(ctx context.Context, input Request) (Result, er
 	}
 	return Result{Class: "clean service connection close", AuthenticatedTarget: credential.Target,
 		Generation: credential.Generation, AcceptedBytes: sendBytes,
-		ReceivedBytes: receiveBytes, ConnectionCanary: canary, QueueHighWater: outcome.queueHigh,
+		AcknowledgedBytes: outcome.acknowledged, ReceivedBytes: receiveBytes,
+		ConnectionCanary: canary, QueueHighWater: outcome.queueHigh,
 		RouteGeneration: outcome.generation, RecoveryCount: outcome.recoveries,
 		ContinuityCommitment: outcome.continuity}, nil
 }
 
 func applyRecoveryOutcome(result *Result, outcome recoveryOutcome) {
+	result.AcknowledgedBytes = outcome.acknowledged
 	result.QueueHighWater = outcome.queueHigh
 	result.RouteGeneration = outcome.generation
 	result.RecoveryCount = outcome.recoveries

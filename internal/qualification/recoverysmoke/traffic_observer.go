@@ -35,7 +35,8 @@ func (observer dockerObserver) startTrafficObservers(ctx context.Context,
 		identity, projection, err := observer.startTrafficObserver(ctx, identities[role])
 		if err != nil {
 			removeErr := result.remove(context.Background(), observer)
-			return trafficObservers{}, errors.Join(err, removeErr)
+			return trafficObservers{}, fmt.Errorf("start %s Route traffic observer: %w", role,
+				errors.Join(err, removeErr))
 		}
 		result.ids[index], result.projections[index] = identity, projection
 	}

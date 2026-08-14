@@ -81,7 +81,12 @@ func updatePlan(path string, update func(map[string]any)) error {
 func setRouteAttachments(root string, count uint32) error {
 	for _, role := range []string{"client", "initiator", "introduction", "rendezvous", "responder", "publisher"} {
 		path := filepath.Join(root, "route", "plans", role+".json")
-		if err := updatePlan(path, func(plan map[string]any) { plan["Attachments"] = count }); err != nil {
+		if err := updatePlan(path, func(plan map[string]any) {
+			delete(plan, "AttachmentPlans")
+			delete(plan, "ConcurrentAttachments")
+			delete(plan, "Lifetime")
+			plan["Attachments"] = count
+		}); err != nil {
 			return err
 		}
 	}

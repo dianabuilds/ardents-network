@@ -55,7 +55,12 @@ func (observer dockerObserver) serviceID(ctx context.Context, service string) (s
 }
 
 func (observer dockerObserver) waitContainer(ctx context.Context, identity string, success bool) error {
-	deadline := time.Now().Add(30 * time.Second)
+	return observer.waitContainerFor(ctx, identity, success, 30*time.Second)
+}
+
+func (observer dockerObserver) waitContainerFor(ctx context.Context, identity string, success bool,
+	limit time.Duration) error {
+	deadline := time.Now().Add(limit)
 	for time.Now().Before(deadline) {
 		raw, err := observer.docker(ctx, 10*time.Second, "inspect", "--format", "{{json .State}}", identity)
 		if err == nil {
@@ -77,7 +82,7 @@ func (observer dockerObserver) waitContainer(ctx context.Context, identity strin
 		case <-time.After(100 * time.Millisecond):
 		}
 	}
-	return errors.New("container did not terminate within 30s")
+	return errors.New("container did not terminate within its bounded lifetime")
 }
 
 func validContainerID(value string) bool {

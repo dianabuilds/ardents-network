@@ -17,7 +17,7 @@ type endpointPlan struct {
 	IntroductionSocket, IntroductionPublic                                string
 	ApplicationSocket, RouteSocket, AdministrationSocket                  string
 	PublicationFile, CredentialFile, InstanceKeyFile, GenerationStateFile string
-	At, Deadline                                                          string
+	At, Deadline, Lifetime                                                string
 	BytesEachDirection                                                    uint32
 	SendBytes, ReceiveBytes                                               uint32
 	WorkSafetyNotAfter, WorkSafetyMaximum, NoNewRecoveryAfter             int64
@@ -62,6 +62,9 @@ func (value endpointPlan) validate() error {
 	if err != nil || deadline <= 0 || deadline > 15*time.Second {
 		return errors.New("endpoint deadline is outside the frozen bound")
 	}
+	if _, err := value.connectionLifetime(deadline); err != nil {
+		return err
+	}
 	fields := []bool{value.CandidateView != "", value.IsolationContext != "", value.DestinationBinding != "",
 		value.RouteProfile != "", value.WorkSafetyNotAfter != 0, value.WorkSafetyMaximum != 0,
 		value.NoNewRecoveryAfter != 0}
@@ -77,6 +80,17 @@ func (value endpointPlan) validate() error {
 		return errors.New("recovery binding safety bounds are invalid")
 	}
 	return nil
+}
+
+func (value endpointPlan) connectionLifetime(deadline time.Duration) (time.Duration, error) {
+	if value.Lifetime == "" {
+		return deadline, nil
+	}
+	lifetime, err := time.ParseDuration(value.Lifetime)
+	if err != nil || lifetime < deadline || lifetime > 30*time.Minute {
+		return 0, errors.New("endpoint connection lifetime is outside the frozen development bound")
+	}
+	return lifetime, nil
 }
 
 func (value endpointPlan) validStreamBounds() bool {

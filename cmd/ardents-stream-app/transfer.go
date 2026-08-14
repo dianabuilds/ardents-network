@@ -67,6 +67,9 @@ func exchange(connection io.ReadWriter, role string, sendSeed, expectSeed [32]by
 	}
 	err := errors.Join(first.err, second.err)
 	result.ReceivedBytes, result.ReceivedDigest = uint32(len(received)), sha256.Sum256(received)
+	if len(received) >= len(result.ReceivedTail) {
+		copy(result.ReceivedTail[:], received[len(received)-len(result.ReceivedTail):])
+	}
 	if err != nil || !bytes.Equal(received, expected) {
 		result.Terminal = "error"
 		return result, errors.Join(err, errors.New("opaque stream length, order, or bytes differ"))
@@ -80,7 +83,7 @@ func workloadWriter(destination io.Writer, encodedDelay string) (func([]byte) (i
 		return destination.Write, nil
 	}
 	delay, err := time.ParseDuration(encodedDelay)
-	if err != nil || delay <= 0 || delay > 100*time.Millisecond {
+	if err != nil || delay <= 0 || delay > 3*time.Second {
 		return nil, errors.New("stream chunk delay is outside its bound")
 	}
 	return func(value []byte) (int, error) {

@@ -4,9 +4,21 @@ import (
 	"bytes"
 	"net"
 	"testing"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/applicationipc"
 )
+
+func TestStreamLifetimeIsBoundedIndependentlyFromDial(t *testing.T) {
+	t.Setenv("ARDENTS_STREAM_LIFETIME", "12m")
+	if lifetime, err := streamLifetime(); err != nil || lifetime != 12*time.Minute {
+		t.Fatalf("stream lifetime=%v err=%v", lifetime, err)
+	}
+	t.Setenv("ARDENTS_STREAM_LIFETIME", "31m")
+	if _, err := streamLifetime(); err == nil {
+		t.Fatal("unbounded stream lifetime was accepted")
+	}
+}
 
 func TestExternalApplicationsExchangeOpaqueBytesWithoutArdentsState(t *testing.T) {
 	client, publisher := net.Pipe()
@@ -27,7 +39,11 @@ func TestExternalApplicationsExchangeOpaqueBytesWithoutArdentsState(t *testing.T
 	}()
 	for range 2 {
 		result := <-results
-		if result.err != nil || result.value.Terminal != "success" || result.value.SentBytes != 4096 || result.value.ReceivedBytes != 4096 {
+		expected := workload(4096, result.value.ExpectSeed)
+		var tail [32]byte
+		copy(tail[:], expected[len(expected)-len(tail):])
+		if result.err != nil || result.value.Terminal != "success" || result.value.SentBytes != 4096 ||
+			result.value.ReceivedBytes != 4096 || result.value.ReceivedTail != tail {
 			t.Fatalf("opaque external Application failed: value=%+v err=%v", result.value, result.err)
 		}
 	}
@@ -43,7 +59,7 @@ func TestPacedWorkloadWriterUsesNonRecordAlignedFiniteChunks(t *testing.T) {
 	if err != nil || written != 16_381 || output.Len() != 16_381 {
 		t.Fatalf("paced write=%d retained=%d err=%v", written, output.Len(), err)
 	}
-	if _, err := workloadWriter(&output, "101ms"); err == nil {
+	if _, err := workloadWriter(&output, "3001ms"); err == nil {
 		t.Fatal("unbounded stream pacing accepted")
 	}
 }

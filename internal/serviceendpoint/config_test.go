@@ -52,3 +52,20 @@ func TestEndpointPlanAcceptsFrozenFourMiBStreamBound(t *testing.T) {
 		t.Fatal("stream above four MiB was accepted")
 	}
 }
+
+func TestEndpointPlanSeparatesSetupDeadlineFromConnectionLifetime(t *testing.T) {
+	plan := endpointPlan{Role: "client", ApplicationSocket: "app", RouteSocket: "route", PublicationFile: "publication",
+		IntroductionPublic: "introduction", Target: "target", At: "2033-05-18T03:33:20Z", Deadline: "15s",
+		Lifetime: "12m", BytesEachDirection: 4 << 20}
+	if err := plan.validate(); err != nil {
+		t.Fatal(err)
+	}
+	plan.Lifetime = "31m"
+	if err := plan.validate(); err == nil {
+		t.Fatal("connection lifetime above the development campaign bound was accepted")
+	}
+	plan.Lifetime = "10s"
+	if err := plan.validate(); err == nil {
+		t.Fatal("connection lifetime shorter than setup deadline was accepted")
+	}
+}

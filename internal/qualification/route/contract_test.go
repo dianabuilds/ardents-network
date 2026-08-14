@@ -171,7 +171,8 @@ func evidenceCase(t *testing.T) qualification.Case {
 		values[index].RuntimeID = "process-" + string(rune('a'+index))
 		values[index].SourceID, values[index].BuildDigest = input.SourceID, input.BuildDigest
 		values[index].ManifestDigest, values[index].PeerAuthenticated = input.ManifestDigest, true
-		values[index].DeadlineMillis, values[index].Cleanup, values[index].Terminal = 5_000, true, "success"
+		values[index].DeadlineMillis, values[index].LifetimeMillis = 5_000, 5_000
+		values[index].Cleanup, values[index].Terminal = true, "success"
 		input.ExitedPIDs[index] = values[index].PID
 		input.ExitedRuntimeIDs[index] = values[index].RuntimeID
 		input.ContainerIDs[index] = values[index].RuntimeID + "0000000000000000000000000000000000000000000000000000"

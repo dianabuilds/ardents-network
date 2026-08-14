@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"errors"
 	"net"
 	"sync"
 	"testing"
@@ -13,14 +14,18 @@ import (
 )
 
 func TestBoundedOpaqueStreamCrossesEveryRoutePosition(t *testing.T) {
-	runBoundedOpaqueStream(t, false)
+	runBoundedOpaqueStream(t, false, 8*time.Second, 0, 0)
 }
 
 func TestEndpointSecuredAttachmentCrossesRouteWithoutPublisherCredential(t *testing.T) {
-	runBoundedOpaqueStream(t, true)
+	runBoundedOpaqueStream(t, true, 8*time.Second, 0, 0)
 }
 
-func runBoundedOpaqueStream(t *testing.T, endpointSecured bool) {
+func TestActiveAttachmentOutlivesItsSetupDeadline(t *testing.T) {
+	runBoundedOpaqueStream(t, true, 150*time.Millisecond, 2*time.Second, 300*time.Millisecond)
+}
+
+func runBoundedOpaqueStream(t *testing.T, endpointSecured bool, setupDeadline, lifetime, hold time.Duration) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -42,8 +47,6 @@ func runBoundedOpaqueStream(t *testing.T, endpointSecured bool) {
 	}
 	clientRoute, clientApplication := net.Pipe()
 	publisherRoute, publisherApplication := net.Pipe()
-	defer clientApplication.Close()
-	defer publisherApplication.Close()
 	ready := make(chan route.Evidence, 5)
 	done := make(chan route.Evidence, 6)
 	start := func(config route.Actor, listener bool) {
@@ -71,15 +74,15 @@ func runBoundedOpaqueStream(t *testing.T, endpointSecured bool) {
 		start(route.Actor{ManifestDigest: [32]byte{99}, NetworkID: plan.NetworkID, EpochDigest: plan.Digest,
 			Role: roles[index], NodeID: plan.Positions[index].NodeID, ListenAddress: addresses[index],
 			Certificate: identities[index].certificate, UpstreamPin: upstream, NextNodeID: nextID,
-			NextAddress: nextAddress, NextPin: nextPin, Deadline: 8 * time.Second}, true)
+			NextAddress: nextAddress, NextPin: nextPin, Deadline: setupDeadline, Lifetime: lifetime}, true)
 	}
 	publisher := route.Actor{Role: "publisher", ManifestDigest: [32]byte{99}, NetworkID: plan.NetworkID,
 		EpochDigest: plan.Digest, NodeID: [32]byte{90}, ListenAddress: addresses[4],
 		Certificate: identities[4].certificate, UpstreamPin: identities[3].public,
-		ServiceCertificate: identities[4].certificate, Stream: publisherRoute, Deadline: 8 * time.Second}
+		ServiceCertificate: identities[4].certificate, Stream: publisherRoute, Deadline: setupDeadline, Lifetime: lifetime}
 	client := route.Actor{Role: "client", ManifestDigest: [32]byte{99}, Plan: plan,
 		ClientCertificate: identities[5].certificate, PublisherPin: identities[4].public,
-		Stream: clientRoute, Deadline: 8 * time.Second}
+		Stream: clientRoute, Deadline: setupDeadline, Lifetime: lifetime}
 	if endpointSecured {
 		publisher.ServiceCertificate = tls.Certificate{}
 		publisher.RawAttachment = true
@@ -95,6 +98,9 @@ func runBoundedOpaqueStream(t *testing.T, endpointSecured bool) {
 		}
 	}
 	start(client, false)
+	if hold > 0 {
+		time.Sleep(hold)
+	}
 
 	repetitions := 1024
 	if endpointSecured {
@@ -103,8 +109,9 @@ func runBoundedOpaqueStream(t *testing.T, endpointSecured bool) {
 	clientBytes := bytes.Repeat([]byte{0x3c, 0x00, 0xff, 0x17}, repetitions)
 	publisherBytes := bytes.Repeat([]byte{0xa5, 0x42, 0x00, 0x7e}, repetitions)
 	exchangeRouteApplications(t, clientApplication, publisherApplication, clientBytes, publisherBytes)
-	_ = clientApplication.Close()
-	_ = publisherApplication.Close()
+	if err := errors.Join(clientApplication.Close(), publisherApplication.Close()); err != nil {
+		t.Fatal(err)
+	}
 	for range 6 {
 		select {
 		case observation := <-done:
@@ -114,6 +121,9 @@ func runBoundedOpaqueStream(t *testing.T, endpointSecured bool) {
 		case <-ctx.Done():
 			t.Fatal(ctx.Err())
 		}
+	}
+	if err := errors.Join(clientRoute.Close(), publisherRoute.Close()); err != nil {
+		t.Fatal(err)
 	}
 }
 

@@ -13,38 +13,12 @@ func verifyResources(cell Cell) Result {
 	if len(cell.ResourceSamples) < 3 || cell.BaselineClientTraffic == 0 || cell.BaselinePublisherTraffic == 0 {
 		return invalid("paired baseline or one-second resource samples are incomplete")
 	}
-	clientRSS, publisherRSS := make([]uint64, 0, len(cell.ResourceSamples)), make([]uint64, 0, len(cell.ResourceSamples))
-	clientCPU, publisherCPU := make([]float64, 0, len(cell.ResourceSamples)), make([]float64, 0, len(cell.ResourceSamples))
-	var clientCPUTotal, publisherCPUTotal float64
-	var memoryHigh uint64
-	var externalCPUHigh float64
-	for index, sample := range cell.ResourceSamples {
-		if sample.AtNanos <= 0 || sample.ClientRSS == 0 || sample.PublisherRSS == 0 ||
-			sample.ClientCPUPercent < 0 || sample.PublisherCPUPercent < 0 {
-			return invalid("host resource sample is malformed")
-		}
-		if index > 0 {
-			previous := cell.ResourceSamples[index-1]
-			interval := sample.AtNanos - previous.AtNanos
-			if interval < int64(900*time.Millisecond) || interval > int64(1500*time.Millisecond) ||
-				trafficBitrate(previous, sample) > carrierBitrateLimit {
-				return fail("one-second carrier sampling or bitrate gate failed")
-			}
-		}
-		clientRSS, publisherRSS = append(clientRSS, sample.ClientRSS), append(publisherRSS, sample.PublisherRSS)
-		clientCPU, publisherCPU = append(clientCPU, sample.ClientCPUPercent), append(publisherCPU, sample.PublisherCPUPercent)
-		clientCPUTotal += sample.ClientCPUPercent
-		publisherCPUTotal += sample.PublisherCPUPercent
-		memoryHigh = max(memoryHigh, sample.ClientRSS, sample.PublisherRSS)
-		externalCPUHigh = max(externalCPUHigh, sample.ClientCPUPercent, sample.PublisherCPUPercent)
+	summary, result := verifyResourceSamples(cell.ResourceSamples)
+	if result.Verdict != "pass" {
+		return result
 	}
-	if cell.MemoryHighWater != memoryHigh || cell.ExternalCPUPercent != externalCPUHigh {
+	if cell.MemoryHighWater != summary.memoryHigh || cell.ExternalCPUPercent != summary.cpuHigh {
 		return invalid("resource or traffic high-water projection is inconsistent")
-	}
-	if percentileUint64(clientRSS, 0.95) > endpointRSSLimit || percentileUint64(publisherRSS, 0.95) > endpointRSSLimit ||
-		clientCPUTotal/float64(len(clientCPU)) > 50 || publisherCPUTotal/float64(len(publisherCPU)) > 50 ||
-		percentileFloat(clientCPU, 0.95) > 100 || percentileFloat(publisherCPU, 0.95) > 100 {
-		return fail("endpoint RSS or CPU gate failed")
 	}
 	clientTraffic := cell.FinalTraffic.ClientReceived + cell.FinalTraffic.ClientSent
 	publisherTraffic := cell.FinalTraffic.PublisherReceived + cell.FinalTraffic.PublisherSent
@@ -53,6 +27,47 @@ func verifyResources(cell Cell) Result {
 		return fail("recovery episode exceeded paired endpoint carrier allowance")
 	}
 	return Result{Verdict: "pass"}
+}
+
+type resourceSummary struct {
+	memoryHigh uint64
+	cpuHigh    float64
+}
+
+func verifyResourceSamples(samples []ResourceSample) (resourceSummary, Result) {
+	if len(samples) < 3 {
+		return resourceSummary{}, invalid("one-second resource samples are incomplete")
+	}
+	clientRSS, publisherRSS := make([]uint64, 0, len(samples)), make([]uint64, 0, len(samples))
+	clientCPU, publisherCPU := make([]float64, 0, len(samples)), make([]float64, 0, len(samples))
+	var clientCPUTotal, publisherCPUTotal float64
+	var summary resourceSummary
+	for index, sample := range samples {
+		if sample.AtNanos <= 0 || sample.ClientRSS == 0 || sample.PublisherRSS == 0 ||
+			sample.ClientCPUPercent < 0 || sample.PublisherCPUPercent < 0 {
+			return resourceSummary{}, invalid("host resource sample is malformed")
+		}
+		if index > 0 {
+			previous := samples[index-1]
+			interval := sample.AtNanos - previous.AtNanos
+			if interval < int64(900*time.Millisecond) || interval > int64(1500*time.Millisecond) ||
+				trafficBitrate(previous, sample) > carrierBitrateLimit {
+				return resourceSummary{}, fail("one-second carrier sampling or bitrate gate failed")
+			}
+		}
+		clientRSS, publisherRSS = append(clientRSS, sample.ClientRSS), append(publisherRSS, sample.PublisherRSS)
+		clientCPU, publisherCPU = append(clientCPU, sample.ClientCPUPercent), append(publisherCPU, sample.PublisherCPUPercent)
+		clientCPUTotal += sample.ClientCPUPercent
+		publisherCPUTotal += sample.PublisherCPUPercent
+		summary.memoryHigh = max(summary.memoryHigh, sample.ClientRSS, sample.PublisherRSS)
+		summary.cpuHigh = max(summary.cpuHigh, sample.ClientCPUPercent, sample.PublisherCPUPercent)
+	}
+	if percentileUint64(clientRSS, 0.95) > endpointRSSLimit || percentileUint64(publisherRSS, 0.95) > endpointRSSLimit ||
+		clientCPUTotal/float64(len(clientCPU)) > 50 || publisherCPUTotal/float64(len(publisherCPU)) > 50 ||
+		percentileFloat(clientCPU, 0.95) > 100 || percentileFloat(publisherCPU, 0.95) > 100 {
+		return resourceSummary{}, fail("endpoint RSS or CPU gate failed")
+	}
+	return summary, Result{Verdict: "pass"}
 }
 
 func trafficBitrate(previous, current ResourceSample) float64 {

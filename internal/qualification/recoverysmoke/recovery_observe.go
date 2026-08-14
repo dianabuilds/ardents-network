@@ -71,25 +71,17 @@ func (observer dockerObserver) recoveryIdentities(ctx context.Context) (map[stri
 
 func (observer dockerObserver) recoveryTerminals(ctx context.Context, receiver string) (
 	serviceconn.Result, serviceconn.Result, applicationEvidence, []route.Evidence, error) {
-	logs := make(map[string][]byte, 5)
-	for _, service := range []string{"client-endpoint", "publisher-endpoint", receiver, "client", "publisher"} {
-		raw, err := observer.compose(ctx, time.Minute, "logs", "--no-color", "--no-log-prefix", service)
-		if err != nil {
-			return serviceconn.Result{}, serviceconn.Result{}, applicationEvidence{}, nil, err
-		}
-		logs[service] = raw
-	}
-	client, err := terminalEndpoint(logs["client-endpoint"])
-	if err != nil {
-		return client, serviceconn.Result{}, applicationEvidence{}, nil, err
-	}
-	publisher, err := terminalEndpoint(logs["publisher-endpoint"])
-	if err != nil {
-		return client, publisher, applicationEvidence{}, nil, err
-	}
-	application, err := terminalApplication(logs[receiver])
+	client, publisher, application, err := observer.connectionTerminals(ctx, receiver)
 	if err != nil {
 		return client, publisher, application, nil, err
+	}
+	logs := make(map[string][]byte, 2)
+	for _, service := range []string{"client", "publisher"} {
+		raw, err := observer.compose(ctx, time.Minute, "logs", "--no-color", "--no-log-prefix", service)
+		if err != nil {
+			return client, publisher, application, nil, err
+		}
+		logs[service] = raw
 	}
 	var routes []route.Evidence
 	for _, service := range []string{"client", "publisher"} {
@@ -104,4 +96,26 @@ func (observer dockerObserver) recoveryTerminals(ctx context.Context, receiver s
 		return client, publisher, application, routes, fmt.Errorf("four endpoint Route Attachment observations required, got %d", len(routes))
 	}
 	return client, publisher, application, routes, nil
+}
+
+func (observer dockerObserver) connectionTerminals(ctx context.Context, receiver string) (
+	serviceconn.Result, serviceconn.Result, applicationEvidence, error) {
+	logs := make(map[string][]byte, 3)
+	for _, service := range []string{"client-endpoint", "publisher-endpoint", receiver} {
+		raw, err := observer.compose(ctx, time.Minute, "logs", "--no-color", "--no-log-prefix", service)
+		if err != nil {
+			return serviceconn.Result{}, serviceconn.Result{}, applicationEvidence{}, err
+		}
+		logs[service] = raw
+	}
+	client, err := terminalEndpoint(logs["client-endpoint"])
+	if err != nil {
+		return client, serviceconn.Result{}, applicationEvidence{}, err
+	}
+	publisher, err := terminalEndpoint(logs["publisher-endpoint"])
+	if err != nil {
+		return client, publisher, applicationEvidence{}, err
+	}
+	application, err := terminalApplication(logs[receiver])
+	return client, publisher, application, err
 }

@@ -47,8 +47,10 @@ func servePublisher(ctx context.Context, input Actor, ready func(Evidence)) (Evi
 		return observation, fmt.Errorf("accept authenticated responder leg: %w", err)
 	}
 	if input.RawAttachment {
+		if err := outer.SetDeadline(time.Time{}); err != nil {
+			return observation, fmt.Errorf("clear publisher raw Attachment setup deadline: %w", err)
+		}
 		observation.PeerAuthenticated = true
-		defer input.Stream.Close()
 		forward, reverse, streamErr := relayOpaque(outer, input.Stream)
 		observation.OpaqueBytes, observation.OpaqueDigest = forward.count, forward.digest
 		observation.ReverseOpaqueBytes, observation.ReverseOpaqueDigest = reverse.count, reverse.digest
@@ -62,9 +64,11 @@ func servePublisher(ctx context.Context, input Actor, ready func(Evidence)) (Evi
 	if err := inner.HandshakeContext(ctx); err != nil {
 		return observation, fmt.Errorf("accept end-to-end canary session: %w", err)
 	}
+	if err := inner.SetDeadline(time.Time{}); err != nil {
+		return observation, fmt.Errorf("clear publisher end-to-end setup deadline: %w", err)
+	}
 	observation.PeerAuthenticated = true
 	if input.Stream != nil {
-		defer input.Stream.Close()
 		forward, reverse, streamErr := relayOpaque(inner, input.Stream)
 		observation.OpaqueBytes, observation.OpaqueDigest = forward.count, forward.digest
 		observation.ReverseOpaqueBytes, observation.ReverseOpaqueDigest = reverse.count, reverse.digest
@@ -87,7 +91,9 @@ func servePublisher(ctx context.Context, input Actor, ready func(Evidence)) (Evi
 func validatePublisher(input Actor) error {
 	if !emptyPlan(input.Plan) || input.PublisherPin != [32]byte{} ||
 		!emptyCertificate(input.ClientCertificate) || input.NextNodeID != [32]byte{} || input.NextAddress != "" ||
-		input.NextPin != [32]byte{} {
+		input.NextPin != [32]byte{} || input.IntroductionSetupPublic != [32]byte{} ||
+		input.IntroductionForwardSocket != "" || input.IntroductionForwardPublic != [32]byte{} ||
+		input.IntroductionServicePublic != [32]byte{} {
 		return errors.New("publisher received information outside its role-local duty")
 	}
 	if input.Role != "publisher" || input.NetworkID == [32]byte{} || input.EpochDigest == [32]byte{} ||
@@ -100,12 +106,21 @@ func validatePublisher(input Actor) error {
 	if err := validateCertificate(input.Certificate); err != nil {
 		return err
 	}
+	setup := input.IntroductionSetupSocket != ""
+	if setup != (input.IntroductionSetupPeer != [32]byte{}) || setup != (input.IntroductionSetupNode != [32]byte{}) {
+		return errors.New("publisher sealed setup service duty is incomplete")
+	}
 	if input.RawAttachment {
-		if input.Stream == nil || !emptyCertificate(input.ServiceCertificate) {
+		if input.Stream == nil || !setup && !emptyCertificate(input.ServiceCertificate) {
 			return errors.New("raw publisher attachment duty is invalid")
 		}
 	} else if err := validateCertificate(input.ServiceCertificate); err != nil {
 		return err
+	}
+	if setup {
+		if err := validateCertificate(input.ServiceCertificate); err != nil {
+			return fmt.Errorf("validate sealed setup service certificate: %w", err)
+		}
 	}
 	return validateDeadline(input.Deadline)
 }

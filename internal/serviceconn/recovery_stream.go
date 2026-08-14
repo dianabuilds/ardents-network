@@ -63,11 +63,11 @@ type receivedRange struct {
 }
 
 type recoveryOutcome struct {
-	accepted, received uint32
-	queueHigh          uint32
-	generation         uint64
-	recoveries         uint32
-	continuity         [32]byte
+	accepted, acknowledged, received uint32
+	queueHigh                        uint32
+	generation                       uint64
+	recoveries                       uint32
+	continuity                       [32]byte
 }
 
 func newRecoveryStream(ctx context.Context, application io.ReadWriteCloser, credential Credential,
@@ -117,7 +117,8 @@ func (stream *recoveryStream) run(sendCount, receiveCount uint32) (recoveryOutco
 	if err == nil {
 		err = stream.terminal
 	}
-	outcome := recoveryOutcome{accepted: uint32(stream.sendEnd), received: uint32(stream.recvNext),
+	outcome := recoveryOutcome{accepted: uint32(stream.sendEnd), acknowledged: uint32(stream.sendBase),
+		received:  uint32(stream.recvNext),
 		queueHigh: stream.queueMax, generation: stream.currentGenerationLocked(), recoveries: stream.recoveries,
 		continuity: sha256.Sum256(append([]byte("ardents-h3-continuity-commitment-v1\x00"), stream.continuity[:]...))}
 	stream.mu.Unlock()

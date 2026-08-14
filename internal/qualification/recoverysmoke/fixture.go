@@ -14,6 +14,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/qualification/byteio"
 	"github.com/dianabuilds/ardents-network/internal/qualification/recovery"
 	"github.com/dianabuilds/ardents-network/internal/qualification/routesmoke"
+	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/serviceconn"
 )
 
@@ -25,6 +26,9 @@ type prepared struct {
 	at                                                                time.Time
 	credentials                                                       [2]serviceconn.Credential
 	bindings                                                          [2][2]grantBinding
+	candidates                                                        []route.Position
+	publisherRoutePublic                                              [32]byte
+	routeCase                                                         json.RawMessage
 }
 
 func prepare(input config) (prepared, error) {
@@ -44,7 +48,7 @@ func prepare(input config) (prepared, error) {
 		return prepared{}, err
 	}
 	at := time.Now().UTC().Truncate(time.Second)
-	route, err := routesmoke.PrepareStreamFixture(filepath.Join(input.FixtureRoot, "route"),
+	routeFixture, err := routesmoke.PrepareRecoveryStreamFixture(filepath.Join(input.FixtureRoot, "route"),
 		"/run/ardents/client-route/route.sock", "/run/ardents/publisher-route/route.sock", at)
 	if err != nil {
 		return prepared{}, err
@@ -66,8 +70,14 @@ func prepare(input config) (prepared, error) {
 	defer erase(private)
 	var authority [32]byte
 	copy(authority[:], public)
-	value := prepared{network: route.NetworkID, authority: authority, introduction: introduction,
-		routeManifest: route.ManifestDigest, at: at}
+	routeCase, err := json.Marshal(routeFixture.RouteCase)
+	if err != nil {
+		return prepared{}, err
+	}
+	value := prepared{network: routeFixture.NetworkID, authority: authority, introduction: introduction,
+		routeManifest: routeFixture.ManifestDigest, at: at,
+		candidates: append([]route.Position(nil), routeFixture.Candidates...), routeCase: routeCase,
+		publisherRoutePublic: routeFixture.PublisherPublic}
 	for index := range 2 {
 		generationRoot := filepath.Join(input.FixtureRoot, "generations", string(rune('1'+index)))
 		if err := os.MkdirAll(generationRoot, 0o700); err != nil {
@@ -79,7 +89,7 @@ func prepare(input config) (prepared, error) {
 		}
 		credential, issueErr := (serviceconn.Credential{InstancePublic: instance,
 			Generation: uint64(index + 1), NotBefore: at.Add(-time.Minute).Unix(), NotAfter: at.Add(60 * time.Minute).Unix(),
-			NetworkID: route.NetworkID, Capabilities: 3}).Issue(private)
+			NetworkID: routeFixture.NetworkID, Capabilities: 3}).Issue(private)
 		if issueErr != nil {
 			return prepared{}, issueErr
 		}
@@ -93,7 +103,7 @@ func prepare(input config) (prepared, error) {
 		}
 		value.bindings[index] = bindings
 	}
-	publicManifest := recovery.PublicManifest{RouteManifest: route.ManifestDigest, NetworkID: value.network,
+	publicManifest := recovery.PublicManifest{RouteManifest: routeFixture.ManifestDigest, NetworkID: value.network,
 		AuthorityPublic: value.authority, IntroductionPublic: value.introduction, Target: value.target,
 		InstancePublic: value.credentials[0].InstancePublic, ClientPrincipal: value.bindings[0][0].Principal,
 		PublisherPrincipal: value.bindings[0][1].Principal, CredentialSignature: value.credentials[0].Signature,

@@ -15,6 +15,8 @@ type grantBinding struct {
 	Surface           string
 }
 
+const recoveryOperationLifetime = "30s"
+
 func writeGeneration(root string, generation int, at time.Time, credential serviceconn.Credential,
 	authority, introduction [32]byte) ([2]grantBinding, error) {
 	generationRoot := filepath.Join(root, "generations", strconv.Itoa(generation))
@@ -32,10 +34,7 @@ func writeGeneration(root string, generation int, at time.Time, credential servi
 		}
 		principals[index] = value
 	}
-	common := map[string]any{"NetworkID": hex32(credential.NetworkID), "AuthorityPublic": hex32(authority),
-		"IntroductionPublic": hex32(introduction),
-		"At":                 at.Format(time.RFC3339), "Deadline": "15s", "BytesEachDirection": 64 << 10,
-		"PublicationFile": "/run/ardents/publication/current.bin"}
+	common := endpointGenerationPlan(at, credential, authority, introduction)
 	publisher := clone(common)
 	for key, value := range map[string]any{"Role": "publisher", "BrokerID": hex32(principals[4]),
 		"ConnectionPrincipal": hex32(principals[0]), "AdministrationPrincipal": hex32(principals[1]),
@@ -60,6 +59,15 @@ func writeGeneration(root string, generation int, at time.Time, credential servi
 	}
 	return [2]grantBinding{{Broker: principals[3], Principal: principals[2], Surface: "connection"},
 		{Broker: principals[4], Principal: principals[0], Surface: "connection"}}, nil
+}
+
+func endpointGenerationPlan(at time.Time, credential serviceconn.Credential,
+	authority, introduction [32]byte) map[string]any {
+	return map[string]any{"NetworkID": hex32(credential.NetworkID), "AuthorityPublic": hex32(authority),
+		"IntroductionPublic": hex32(introduction),
+		"At":                 at.Format(time.RFC3339), "Deadline": "15s", "Lifetime": recoveryOperationLifetime,
+		"BytesEachDirection": 64 << 10,
+		"PublicationFile":    "/run/ardents/publication/current.bin"}
 }
 
 func clone(input map[string]any) map[string]any {

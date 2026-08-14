@@ -12,7 +12,7 @@ import (
 
 const acknowledgementBodySize = 149
 
-func startAcknowledgement(ctx context.Context, socket, keyFile string) (func(), <-chan error, error) {
+func startAcknowledgement(ctx context.Context, socket, keyFile string) (func() error, <-chan error, error) {
 	file, err := os.Open(keyFile)
 	if err != nil {
 		return nil, nil, err
@@ -30,10 +30,15 @@ func startAcknowledgement(ctx context.Context, socket, keyFile string) (func(), 
 	if err != nil {
 		return nil, nil, err
 	}
-	_ = os.Chmod(socket, 0o600)
+	if err := os.Chmod(socket, 0o600); err != nil {
+		return nil, nil, errors.Join(err, listener.Close(), os.Remove(socket))
+	}
 	completed := make(chan error, 1)
 	go serveAcknowledgement(ctx, listener, private, completed)
-	stop := func() { _ = listener.Close(); _ = os.Remove(socket); eraseBytes(private) }
+	stop := func() error {
+		eraseBytes(private)
+		return cleanupUnixListener(listener, socket)
+	}
 	go func() { <-ctx.Done(); _ = listener.Close() }()
 	return stop, completed, nil
 }

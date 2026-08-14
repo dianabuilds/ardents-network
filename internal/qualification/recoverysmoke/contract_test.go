@@ -27,3 +27,13 @@ func TestExecuteRejectsUnexpectedPositionals(t *testing.T) {
 		t.Fatal("unexpected positional argument was accepted")
 	}
 }
+
+func TestParseConfigSelectsOnlyAnImplementedRecoverySlice(t *testing.T) {
+	value, err := parseConfig([]string{"--slice", "s4.2"})
+	if err != nil || value.Slice != "s4.2" {
+		t.Fatalf("slice config=%+v err=%v", value, err)
+	}
+	if _, err := parseConfig([]string{"--slice", "s4.4"}); err == nil {
+		t.Fatal("unauthorized recovery slice was accepted")
+	}
+}

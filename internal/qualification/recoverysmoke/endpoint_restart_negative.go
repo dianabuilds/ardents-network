@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -12,7 +13,9 @@ import (
 )
 
 func (observer dockerObserver) endpointRestartNegative(ctx context.Context) (recovery.Negative, error) {
-	_, _ = observer.compose(ctx, time.Minute, "down", "-v", "--remove-orphans")
+	if err := observer.resetRecoveryTopology(ctx, time.Minute); err != nil {
+		return recovery.Negative{}, err
+	}
 	observer.direction, observer.gateOffset = "client-to-publisher", 17*16_381
 	observer.generation = filepath.Join(observer.input.FixtureRoot, "generations", "1")
 	if err := configureRecoveryDirection(observer.generation, observer.direction); err != nil {
@@ -28,7 +31,11 @@ func (observer dockerObserver) endpointRestartNegative(ctx context.Context) (rec
 	if err := observer.startRecoveryServices(ctx); err != nil {
 		return recovery.Negative{}, err
 	}
-	if _, err := observer.waitGate(ctx, gate, "client", observer.gateOffset); err != nil {
+	gateWait, err := pacedGateWait(0, observer.gateOffset, observer.input.ChunkDelay)
+	if err != nil {
+		return recovery.Negative{}, err
+	}
+	if _, err := observer.waitGate(ctx, gate, "client", observer.gateOffset, gateWait); err != nil {
 		return recovery.Negative{}, err
 	}
 	if delivered, err := observer.waitProgress(ctx, "publisher-app", observer.gateOffset); err != nil || delivered != observer.gateOffset {
@@ -66,7 +73,7 @@ func (observer dockerObserver) endpointRestartNegative(ctx context.Context) (rec
 		return recovery.Negative{}, err
 	}
 	terminal, terminalErr := terminalEndpoint(raw)
-	_, cleanupErr := observer.compose(ctx, time.Minute, "down", "-v", "--remove-orphans")
+	cleanupErr := observer.resetRecoveryTopology(ctx, time.Minute)
 	if terminalErr != nil || cleanupErr != nil {
 		return recovery.Negative{}, errors.Join(terminalErr, cleanupErr)
 	}
@@ -78,6 +85,11 @@ func (observer dockerObserver) endpointRestartNegative(ctx context.Context) (rec
 
 func writeRelease(root, role string) error {
 	return os.WriteFile(filepath.Join(root, role+".release"), []byte("release\n"), 0o600)
+}
+
+func writeSequentialRelease(root, role string, offset uint32) error {
+	name := role + ".release." + strconv.FormatUint(uint64(offset), 10)
+	return os.WriteFile(filepath.Join(root, name), []byte("release\n"), 0o600)
 }
 
 func (observer dockerObserver) containerProcessIdentity(ctx context.Context, container string) (string, error) {

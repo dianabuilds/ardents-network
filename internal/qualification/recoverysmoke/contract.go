@@ -12,6 +12,7 @@ import (
 
 type config struct {
 	FixtureRoot, EvidenceRoot, ComposeFile, SourceRoot string
+	Slice                                              string
 	Duration                                           time.Duration
 	Bytes                                              uint32
 	ChunkDelay                                         string
@@ -32,17 +33,21 @@ type Result struct {
 func parseConfig(arguments []string) (config, error) {
 	flags := flag.NewFlagSet("recovery-smoke", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
-	value := config{Bytes: 4 << 20, ChunkDelay: "20ms"}
+	value := config{Bytes: 4 << 20, ChunkDelay: "20ms", Slice: "s4.1"}
 	flags.StringVar(&value.FixtureRoot, "fixture", "", "new external private recovery fixture root")
 	flags.StringVar(&value.EvidenceRoot, "evidence", "", "new retained recovery evidence root")
 	flags.StringVar(&value.ComposeFile, "compose", "", "Stage 4 recovery Compose file")
 	flags.StringVar(&value.SourceRoot, "source", "", "clean committed repository root")
 	flags.DurationVar(&value.Duration, "duration", 10*time.Minute, "10m..30m recovery development campaign")
+	flags.StringVar(&value.Slice, "slice", "s4.1", "implemented recovery slice: s4.1 or s4.2")
 	if err := flags.Parse(arguments); err != nil {
 		return config{}, err
 	}
 	if flags.NArg() != 0 {
 		return config{}, errors.New("recovery-smoke has unexpected positional arguments")
+	}
+	if value.Slice != "s4.1" && value.Slice != "s4.2" {
+		return config{}, errors.New("recovery-smoke slice is not implemented or authorized")
 	}
 	return value, nil
 }

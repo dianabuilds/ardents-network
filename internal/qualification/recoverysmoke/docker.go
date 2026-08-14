@@ -21,9 +21,9 @@ func runDocker(ctx context.Context, input config, fixture prepared) (result Resu
 		}
 		observer.generation = filepath.Join(input.FixtureRoot, "generations", "1")
 		observer.evidenceFile = filepath.Join(input.EvidenceRoot, "empty.json")
-		_, cleanupErr := observer.compose(context.Background(), 2*time.Minute, "down", "-v", "--remove-orphans")
+		cleanupErr := observer.resetRecoveryTopology(context.Background(), 2*time.Minute)
 		if cleanupErr != nil {
-			result.Verdict, result.Reason = "invalid", cleanupErr.Error()
+			result.Verdict, result.Reason = "invalid", cleanupFailureReason(result.Reason, cleanupErr)
 			return
 		}
 		result.DockerCleanup = true
@@ -51,6 +51,13 @@ func runDocker(ctx context.Context, input config, fixture prepared) (result Resu
 		return observer.invalid(errors.New("recovery image revision does not match source commit"))
 	}
 	return observer.runRecoveryCell(ctx, fixture, observer.imageID, topology)
+}
+
+func cleanupFailureReason(reason string, cleanupErr error) string {
+	if reason == "" {
+		return cleanupErr.Error()
+	}
+	return errors.Join(errors.New(reason), cleanupErr).Error()
 }
 
 func (observer dockerObserver) invalid(err error) Result {

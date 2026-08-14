@@ -62,6 +62,9 @@ func serveNode(ctx context.Context, input Actor, ready func(Evidence)) (Evidence
 	if err := confirmLegBinding(downstream, input.NetworkID, input.EpochDigest, input.NextNodeID); err != nil {
 		return observation, fmt.Errorf("confirm next authenticated leg binding: %w", err)
 	}
+	if err := errors.Join(securedUpstream.SetDeadline(time.Time{}), downstream.SetDeadline(time.Time{})); err != nil {
+		return observation, fmt.Errorf("clear %s authenticated leg setup deadlines: %w", input.Role, err)
+	}
 	observation.PeerAuthenticated = true
 	forward, reverse, err := relayOpaque(securedUpstream, downstream)
 	observation.OpaqueBytes, observation.OpaqueDigest = forward.count, forward.digest
@@ -79,7 +82,9 @@ func serveNode(ctx context.Context, input Actor, ready func(Evidence)) (Evidence
 
 func validateNode(input Actor) error {
 	if !emptyPlan(input.Plan) || input.PublisherPin != [32]byte{} || input.Stream != nil ||
-		!emptyCertificate(input.ClientCertificate) || !emptyCertificate(input.ServiceCertificate) || input.RawAttachment {
+		!emptyCertificate(input.ClientCertificate) || !emptyCertificate(input.ServiceCertificate) || input.RawAttachment ||
+		input.IntroductionSetupPublic != [32]byte{} || input.IntroductionServicePublic != [32]byte{} ||
+		input.IntroductionSetupNode != [32]byte{} {
 		return errors.New("node received information outside its role-local duty")
 	}
 	roleOK := false
@@ -89,6 +94,16 @@ func validateNode(input Actor) error {
 	if !roleOK || input.NetworkID == [32]byte{} || input.EpochDigest == [32]byte{} || input.NodeID == [32]byte{} ||
 		input.UpstreamPin == [32]byte{} || input.NextNodeID == [32]byte{} || input.NextPin == [32]byte{} {
 		return errors.New("role-local carrier duty is invalid")
+	}
+	if input.Role == "introduction" {
+		present := input.IntroductionSetupSocket != ""
+		if present != (input.IntroductionSetupPeer != [32]byte{}) ||
+			present != (input.IntroductionForwardSocket != "") || present != (input.IntroductionForwardPublic != [32]byte{}) {
+			return errors.New("sealed Introduction setup duty is incomplete")
+		}
+	} else if input.IntroductionSetupSocket != "" || input.IntroductionSetupPeer != [32]byte{} ||
+		input.IntroductionForwardSocket != "" || input.IntroductionForwardPublic != [32]byte{} {
+		return errors.New("sealed Introduction setup reached a different Node role")
 	}
 	if err := validateEndpoint(input.ListenAddress); err != nil {
 		return err
@@ -140,7 +155,7 @@ func relayOpaque(upstream, downstream io.ReadWriteCloser) (opaqueDirection, opaq
 
 func benignStreamError(err error) bool {
 	return err == nil || errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed) || errors.Is(err, io.ErrClosedPipe) ||
-		errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.EPIPE)
+		errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.EPIPE) || platformBenignStreamError(err)
 }
 
 func contextError(ctx context.Context, err error) error {

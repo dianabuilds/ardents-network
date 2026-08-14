@@ -12,7 +12,9 @@ import (
 )
 
 func (observer dockerObserver) recoveryNegatives(ctx context.Context) (map[string]recovery.Negative, error) {
-	_, _ = observer.compose(ctx, time.Minute, "down", "-v", "--remove-orphans")
+	if err := observer.resetRecoveryTopology(ctx, time.Minute); err != nil {
+		return nil, err
+	}
 	mapping := map[string]string{
 		"no-alternate": "recovery-no-alternate", "cancellation": "recovery-cancellation",
 		"deadline": "recovery-deadline", "forged-attachment": "recovery-forged-attachment",

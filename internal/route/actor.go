@@ -17,17 +17,50 @@ func Run(ctx context.Context, input Actor, ready func(Evidence)) (Evidence, erro
 	if err := validateDeadline(input.Deadline); err != nil {
 		return Evidence{}, err
 	}
-	attempt, cancel := context.WithTimeout(ctx, input.Deadline)
+	lifetime := input.Lifetime
+	if lifetime == 0 {
+		lifetime = input.Deadline
+	}
+	if err := validateLifetime(input.Deadline, lifetime); err != nil {
+		return Evidence{}, err
+	}
+	attempt, cancel := context.WithTimeout(ctx, lifetime)
 	defer cancel()
 	var acknowledgement <-chan error
+	var introductionSetup <-chan introductionSetupResult
+	var cleanups []func() error
+	cleanup := func() error {
+		var cleanupErr error
+		for index := len(cleanups) - 1; index >= 0; index-- {
+			cleanupErr = errors.Join(cleanupErr, cleanups[index]())
+		}
+		cleanups = nil
+		return cleanupErr
+	}
 	if input.Role == "introduction" && input.AcknowledgementSocket != "" {
 		stop, completed, err := startAcknowledgement(attempt, input.AcknowledgementSocket,
 			input.AcknowledgementKeyFile)
 		if err != nil {
 			return Evidence{}, err
 		}
-		defer stop()
+		cleanups = append(cleanups, stop)
 		acknowledgement = completed
+	}
+	if input.Role == "introduction" && input.IntroductionSetupSocket != "" {
+		stop, completed, err := startIntroductionRelay(attempt, input)
+		if err != nil {
+			return Evidence{}, errors.Join(err, cleanup())
+		}
+		cleanups = append(cleanups, stop)
+		introductionSetup = completed
+	}
+	if input.Role == "publisher" && input.IntroductionSetupSocket != "" {
+		stop, completed, err := startIntroductionService(attempt, input)
+		if err != nil {
+			return Evidence{}, errors.Join(err, cleanup())
+		}
+		cleanups = append(cleanups, stop)
+		introductionSetup = completed
 	}
 	var result Evidence
 	var err error
@@ -47,10 +80,21 @@ func Run(ctx context.Context, input Actor, ready func(Evidence)) (Evidence, erro
 	if acknowledgement != nil {
 		err = errors.Join(err, <-acknowledgement)
 	}
+	if introductionSetup != nil {
+		setup := <-introductionSetup
+		result.IntroductionSetupReceipt = setup.receipt
+		result.IntroductionSetup = setup.proof
+		result.IntroductionOpaqueBytes = setup.opaqueBytes
+		result.IntroductionOpaqueDigest = setup.opaqueDigest
+		err = errors.Join(err, setup.err)
+	}
+	cleanupErr := cleanup()
+	err = errors.Join(err, cleanupErr)
 	result.ManifestDigest = input.ManifestDigest
 	result.RuntimeID = runtimeIdentity()
 	result.DeadlineMillis = uint32(input.Deadline / time.Millisecond)
-	result.Cleanup = true
+	result.LifetimeMillis = uint32(lifetime / time.Millisecond)
+	result.Cleanup = cleanupErr == nil
 	result.Terminal = "success"
 	if err != nil {
 		result.Terminal = "error"

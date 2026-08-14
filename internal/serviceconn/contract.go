@@ -89,6 +89,7 @@ type Result struct {
 	RecoveryCount               uint32   `json:"recovery_count"`
 	ContinuityCommitment        [32]byte `json:"continuity_commitment"`
 	AcceptedBytes               uint32   `json:"accepted_bytes"`
+	AcknowledgedBytes           uint32   `json:"acknowledged_bytes"`
 	ReceivedBytes               uint32   `json:"received_bytes"`
 	ConnectionCanary            [32]byte `json:"connection_canary"`
 	IntroductionReceipt         [32]byte `json:"introduction_receipt"`

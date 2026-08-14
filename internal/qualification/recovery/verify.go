@@ -19,8 +19,9 @@ var negativeNames = [...]string{"no-alternate", "cancellation", "deadline", "for
 
 // Verify recomputes every public S4.1 candidate conjunct without candidate packages.
 func Verify(value Evidence) Result {
+	s42 := value.Claim == "S4.2 four-position local development tracer only; does not qualify split-leg/Introduction topology"
 	if value.Schema != schema || len(value.SourceCommit) != 40 || value.ImageID == "" || value.VerifierImageID != value.ImageID || value.TopologyDigest == "" ||
-		value.ManifestDigest == "" || value.Claim != "S4.1 local development evidence only" {
+		value.ManifestDigest == "" || value.Claim != "S4.1 local development evidence only" && !s42 {
 		return invalid("identity, schema, or claim binding is incomplete")
 	}
 	if len(value.Topology) == 0 || len(value.Topology) > 1<<20 || hexDigest(value.Topology) != value.TopologyDigest {
@@ -49,7 +50,11 @@ func Verify(value Evidence) Result {
 		return invalid("credential or Work Safety history is incomplete")
 	}
 	maximumCampaign := min(value.RequestedNanos+int64(2*time.Minute), int64(30*time.Minute))
-	if value.RequestedNanos < int64(10*time.Minute) || value.RequestedNanos > int64(30*time.Minute) ||
+	minimumCampaign := int64(10 * time.Minute)
+	if s42 {
+		minimumCampaign, maximumCampaign = int64(20*time.Minute), int64(30*time.Minute)
+	}
+	if value.RequestedNanos < minimumCampaign || value.RequestedNanos > int64(30*time.Minute) ||
 		value.CampaignNanos < value.RequestedNanos || value.CampaignNanos > maximumCampaign {
 		return invalid("campaign duration is outside its frozen bound")
 	}
@@ -79,6 +84,11 @@ func Verify(value Evidence) Result {
 	}
 	if !directions["client-to-publisher"] || !directions["publisher-to-client"] {
 		return invalid("both directional cells are required")
+	}
+	if s42 {
+		if result := verifyReplacementEvidence(value, containerIDs); result.Verdict != "pass" {
+			return result
+		}
 	}
 	for _, name := range negativeNames {
 		negative, ok := value.Negatives[name]
@@ -114,7 +124,11 @@ func Verify(value Evidence) Result {
 	if !value.Cleanup.DockerEmpty || !value.Cleanup.FixtureAbsent || !value.Cleanup.PrivateMaterialAbsent {
 		return invalid("cleanup or private-material removal is incomplete")
 	}
-	return Result{Verdict: "pass", Reason: "all frozen S4.1 recovery conjuncts passed"}
+	reason := "all frozen S4.1 recovery conjuncts passed"
+	if s42 {
+		reason = "all frozen S4.1 and S4.2 recovery conjuncts passed"
+	}
+	return Result{Verdict: "pass", Reason: reason}
 }
 
 func verifyCell(cell Cell, manifestText, imageID string) Result {
@@ -140,7 +154,7 @@ func verifyCell(cell Cell, manifestText, imageID string) Result {
 		return invalid("manifest digest is malformed")
 	}
 	_ = manifest
-	planned := (uint32(184) + uint32(cell.Seed[0]%8)) * 16_381
+	planned := (uint32(17) + uint32(cell.Seed[0]%8)) * 16_381
 	if cell.CellManifestDigest != cellManifestDigest(cell.Direction, cell.Seed, planned) {
 		return invalid("directional cell manifest does not bind seed and fault schedule")
 	}
@@ -206,35 +220,6 @@ func cellManifestDigest(direction string, seed [32]byte, planned uint32) string 
 	binary.BigEndian.PutUint32(values[8:12], 32)
 	_, _ = hash.Write(values[:])
 	return hex.EncodeToString(hash.Sum(nil))
-}
-
-func workloadDigest(seed [32]byte, count uint32) [32]byte {
-	hash := sha256.New()
-	for offset := uint32(0); offset < count; {
-		block := workloadBlock(seed, uint64(offset/32))
-		length := min(uint32(len(block)), count-offset)
-		_, _ = hash.Write(block[:length])
-		offset += length
-	}
-	var value [32]byte
-	copy(value[:], hash.Sum(nil))
-	return value
-}
-
-func workloadRange(seed [32]byte, offset uint32) [32]byte {
-	var value [32]byte
-	for index := uint32(0); index < uint32(len(value)); index++ {
-		block := workloadBlock(seed, uint64((offset+index)/32))
-		value[index] = block[(offset+index)%32]
-	}
-	return value
-}
-
-func workloadBlock(seed [32]byte, counter uint64) [32]byte {
-	input := make([]byte, 40)
-	copy(input, seed[:])
-	binary.BigEndian.PutUint64(input[32:], counter)
-	return sha256.Sum256(input)
 }
 
 func invalid(reason string) Result { return Result{Verdict: "invalid", Reason: reason} }

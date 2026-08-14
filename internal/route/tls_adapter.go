@@ -55,6 +55,13 @@ func validateDeadline(value time.Duration) error {
 	return nil
 }
 
+func validateLifetime(deadline, lifetime time.Duration) error {
+	if lifetime < deadline || lifetime > 30*time.Minute {
+		return errors.New("carrier lifetime is outside the frozen development bound")
+	}
+	return nil
+}
+
 func validateCertificate(value tls.Certificate) error {
 	if len(value.Certificate) != 1 || value.PrivateKey == nil {
 		return errors.New("carrier certificate is invalid")

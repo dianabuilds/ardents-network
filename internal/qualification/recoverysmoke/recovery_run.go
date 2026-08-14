@@ -18,9 +18,13 @@ import (
 func (observer dockerObserver) runRecoveryCell(ctx context.Context, fixture prepared,
 	imageID string, topology []byte) (result Result) {
 	path := filepath.Join(observer.input.EvidenceRoot, "recovery-evidence.json")
+	claim := "S4.1 local development evidence only"
+	if observer.input.Slice == "s4.2" {
+		claim = "S4.2 four-position local development tracer only; does not qualify split-leg/Introduction topology"
+	}
 	evidence := recovery.Evidence{Schema: "ardents-h3-recovery-evidence-v1", SourceCommit: observer.sourceCommit,
 		ImageID: imageID, TopologyDigest: digestText(topology), ManifestDigest: hex32(fixture.manifest),
-		VerifierImageID: imageID, Claim: "S4.1 local development evidence only", Negatives: make(map[string]recovery.Negative),
+		VerifierImageID: imageID, Claim: claim, Negatives: make(map[string]recovery.Negative),
 		Target: fixture.target, Instance: fixture.credentials[0].InstancePublic, NetworkID: fixture.network,
 		CandidateView: fixture.routeManifest, AuthorityPublic: fixture.authority,
 		ClientPrincipal: fixture.bindings[0][0].Principal, PublisherPrincipal: fixture.bindings[0][1].Principal,
@@ -29,6 +33,7 @@ func (observer dockerObserver) runRecoveryCell(ctx context.Context, fixture prep
 		WorkSafetyNotAfter: fixture.credentials[0].NotAfter, WorkSafetyMaximum: fixture.credentials[0].NotAfter,
 		NoNewRecoveryAfter: fixture.credentials[0].NotAfter}
 	evidence.Topology = append([]byte(nil), topology...)
+	extension := replacementEvidence{RouteCase: append(json.RawMessage(nil), fixture.routeCase...)}
 	evidence.Manifest = recovery.PublicManifest{RouteManifest: fixture.routeManifest, NetworkID: fixture.network,
 		AuthorityPublic: fixture.authority, IntroductionPublic: fixture.introduction, Target: fixture.target,
 		InstancePublic: fixture.credentials[0].InstancePublic, ClientPrincipal: fixture.bindings[0][0].Principal,
@@ -39,6 +44,10 @@ func (observer dockerObserver) runRecoveryCell(ctx context.Context, fixture prep
 		WorkSafetyMaximum: fixture.credentials[0].NotAfter, NoNewRecoveryAfter: fixture.credentials[0].NotAfter}
 	evidence.IsolationContext = sha256.Sum256(append([]byte("isolation\x00"), fixture.manifest[:]...))
 	evidence.DestinationBinding = sha256.Sum256(append([]byte("destination\x00"), fixture.target[:]...))
+	for _, candidate := range fixture.candidates {
+		extension.Candidates = append(extension.Candidates, replacementCandidate{Role: candidate.Role, Family: candidate.Family,
+			Endpoint: candidate.Endpoint, NodeID: candidate.NodeID, PublicKey: candidate.PublicKey})
+	}
 	var err error
 	evidence.BinaryDigests, err = observer.binaryIdentities(ctx)
 	if err != nil {
@@ -47,9 +56,27 @@ func (observer dockerObserver) runRecoveryCell(ctx context.Context, fixture prep
 	observer.generation = filepath.Join(observer.input.FixtureRoot, "generations", "1")
 	observer.evidenceFile = filepath.Join(observer.input.EvidenceRoot, "empty.json")
 	campaignStarted := time.Now()
-	for {
+	if observer.input.Slice == "s4.1" {
+		for {
+			for _, direction := range []string{"client-to-publisher", "publisher-to-client"} {
+				observer.direction = direction
+				baseline, err := observer.runNoFailureBaseline(ctx, direction)
+				if err != nil {
+					return observer.invalid(err)
+				}
+				cell, err := observer.runPositiveRecovery(ctx, direction, baseline)
+				if err != nil {
+					return Result{Verdict: "fail", Reason: direction + ": " + err.Error(), EvidenceRoot: observer.input.EvidenceRoot,
+						SourceCommit: observer.sourceCommit, ImageID: imageID}
+				}
+				evidence.Cells = append(evidence.Cells, cell)
+			}
+			if time.Since(campaignStarted) >= observer.input.Duration {
+				break
+			}
+		}
+	} else {
 		for _, direction := range []string{"client-to-publisher", "publisher-to-client"} {
-			observer.direction = direction
 			baseline, err := observer.runNoFailureBaseline(ctx, direction)
 			if err != nil {
 				return observer.invalid(err)
@@ -60,19 +87,48 @@ func (observer dockerObserver) runRecoveryCell(ctx context.Context, fixture prep
 					SourceCommit: observer.sourceCommit, ImageID: imageID}
 			}
 			evidence.Cells = append(evidence.Cells, cell)
+			for _, role := range replacementRoles {
+				baseline, err = observer.runNoFailureBaseline(ctx, direction)
+				if err != nil {
+					return observer.invalid(err)
+				}
+				replacement, replacementErr := observer.runReplacementRecovery(ctx, fixture, direction,
+					[]string{role}, baseline, false)
+				if replacementErr != nil {
+					return Result{Verdict: "fail", Reason: direction + " " + role + ": " + replacementErr.Error(),
+						EvidenceRoot: observer.input.EvidenceRoot, SourceCommit: observer.sourceCommit, ImageID: imageID}
+				}
+				extension.Cells = append(extension.Cells, replacement)
+			}
+			baseline, err = observer.runNoFailureBaseline(ctx, direction)
+			if err != nil {
+				return observer.invalid(err)
+			}
+			sequential, sequentialErr := observer.runReplacementRecovery(ctx, fixture, direction,
+				[]string{"initiator", "rendezvous", "responder"}, baseline, true)
+			if sequentialErr != nil {
+				return Result{Verdict: "fail", Reason: direction + " sequential: " + sequentialErr.Error(),
+					EvidenceRoot: observer.input.EvidenceRoot, SourceCommit: observer.sourceCommit, ImageID: imageID}
+			}
+			extension.Cells = append(extension.Cells, sequential)
 		}
-		if time.Since(campaignStarted) >= observer.input.Duration {
-			break
+		raw, marshalErr := json.Marshal(extension)
+		if marshalErr != nil {
+			return observer.invalid(marshalErr)
 		}
+		evidence.S42 = raw
 	}
 	evidence.RequestedNanos = observer.input.Duration.Nanoseconds()
+	if observer.input.Slice == "s4.2" {
+		evidence.RequestedNanos = max(evidence.RequestedNanos, int64(20*time.Minute))
+	}
 	evidence.CampaignNanos = time.Since(campaignStarted).Nanoseconds()
 	negatives, err := observer.recoveryNegatives(ctx)
 	if err != nil {
 		return observer.invalid(err)
 	}
 	evidence.Negatives = negatives
-	if _, err := observer.compose(ctx, time.Minute, "down", "-v", "--remove-orphans"); err != nil {
+	if err := observer.resetRecoveryTopology(ctx, time.Minute); err != nil {
 		return observer.invalid(err)
 	}
 	if err := observer.assertDockerEmpty(ctx); err != nil {
@@ -97,7 +153,7 @@ func (observer dockerObserver) runRecoveryCell(ctx context.Context, fixture prep
 		}
 		return observer.invalid(err)
 	}
-	if _, err := observer.compose(ctx, time.Minute, "down", "-v", "--remove-orphans"); err != nil {
+	if err := observer.resetRecoveryTopology(ctx, time.Minute); err != nil {
 		return observer.invalid(err)
 	}
 	if err := observer.assertDockerEmpty(ctx); err != nil {

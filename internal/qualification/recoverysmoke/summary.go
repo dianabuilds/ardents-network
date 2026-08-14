@@ -27,7 +27,7 @@ func finalize(input config, result Result) Result {
 		"reason": result.Reason, "attempts": result.Attempts, "requested_duration": input.Duration.String(),
 		"elapsed": result.Elapsed.String(), "source_commit": result.SourceCommit, "image_id": result.ImageID,
 		"docker_cleanup_verified": result.DockerCleanup, "private_fixture_cleanup_verified": result.FixtureCleanup,
-		"claim": "S4.1 local development evidence only"}
+		"claim": recoveryClaim(input.Slice)}
 	if err := byteio.WriteJSON(filepath.Join(input.EvidenceRoot, "terminal.json"), terminal, 64<<10); err != nil {
 		result.Verdict, result.Reason = "invalid", err.Error()
 		return result
@@ -41,11 +41,18 @@ func finalize(input config, result Result) Result {
 	summary := map[string]any{"schema": "ardents-h3-recovery-summary-v1", "verdict": result.Verdict,
 		"reason": result.Reason, "attempts": result.Attempts, "requested_duration": input.Duration.String(),
 		"elapsed": result.Elapsed.String(), "source_commit": result.SourceCommit, "image_id": result.ImageID,
-		"evidence_digest": result.EvidenceDigest, "claim": "S4.1 local development evidence only"}
+		"evidence_digest": result.EvidenceDigest, "claim": recoveryClaim(input.Slice)}
 	if err := byteio.WriteJSON(filepath.Join(input.EvidenceRoot, "summary.json"), summary, 64<<10); err != nil {
 		result.Verdict, result.Reason = "invalid", err.Error()
 	}
 	return result
+}
+
+func recoveryClaim(slice string) string {
+	if slice == "s4.2" {
+		return "S4.2 four-position local development tracer only; does not qualify split-leg/Introduction topology"
+	}
+	return "S4.1 local development evidence only"
 }
 
 func evidenceBundleDigest(root string) ([32]byte, error) {

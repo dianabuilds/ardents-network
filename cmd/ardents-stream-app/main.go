@@ -41,18 +41,24 @@ func run(arguments []string, output io.Writer) error {
 		return err
 	}
 	defer connection.Close()
-	_ = connection.SetDeadline(time.Now().Add(15 * time.Second))
+	lifetime, err := streamLifetime()
+	if err != nil {
+		return err
+	}
+	if err := connection.SetDeadline(time.Now().Add(lifetime)); err != nil {
+		return fmt.Errorf("bound Application stream lifetime: %w", err)
+	}
 	write, err := workloadWriter(connection, os.Getenv("ARDENTS_STREAM_CHUNK_DELAY"))
 	if err != nil {
 		return err
 	}
 	encoder := json.NewEncoder(output)
-	gateOffset, gate, err := progressGate(arguments[1])
+	gateOffsets, gate, err := progressGates(arguments[1])
 	if err != nil {
 		return err
 	}
-	if gateOffset > 0 && sendCount > 0 {
-		write = gatedWorkloadWriter(write, gateOffset, gate)
+	if len(gateOffsets) > 0 && sendCount > 0 {
+		write = gatedWorkloadSequenceWriter(write, gateOffsets, gate)
 	}
 	progress := func(received uint32) {
 		if os.Getenv("ARDENTS_STREAM_PROGRESS") == "1" {
@@ -71,6 +77,18 @@ func run(arguments []string, output io.Writer) error {
 		return errors.Join(err, encodeErr)
 	}
 	return err
+}
+
+func streamLifetime() (time.Duration, error) {
+	value := os.Getenv("ARDENTS_STREAM_LIFETIME")
+	if value == "" {
+		return 15 * time.Second, nil
+	}
+	lifetime, err := time.ParseDuration(value)
+	if err != nil || lifetime < 15*time.Second || lifetime > 30*time.Minute {
+		return 0, errors.New("stream lifetime is outside the frozen development bound")
+	}
+	return lifetime, nil
 }
 
 func streamCounts(sendText, receiveText string) (int, int, error) {

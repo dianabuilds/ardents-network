@@ -2,9 +2,6 @@ package recoverysmoke
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/binary"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -19,8 +16,11 @@ const recoveryBytes = uint32(4 << 20)
 
 func (observer dockerObserver) runPositiveRecovery(ctx context.Context, direction string,
 	baseline trafficBaseline) (recovery.Cell, error) {
+	observer = observer.forRecoveryOperation(direction)
 	cellClock := time.Now()
-	_, _ = observer.compose(ctx, time.Minute, "down", "-v", "--remove-orphans")
+	if err := observer.resetRecoveryTopology(ctx, time.Minute); err != nil {
+		return recovery.Cell{}, err
+	}
 	if err := setRouteAttachments(observer.input.FixtureRoot, 2); err != nil {
 		return recovery.Cell{}, err
 	}
@@ -28,7 +28,7 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 	if err != nil {
 		return recovery.Cell{}, err
 	}
-	faultThreshold := (uint32(184) + uint32(seed[0]%8)) * 16_381
+	faultThreshold := (uint32(17) + uint32(seed[0]%8)) * 16_381
 	observer.gateOffset = faultThreshold
 	gateRoot := filepath.Join(observer.input.FixtureRoot, "gate")
 	for _, name := range []string{"client.ready", "client.release", "publisher.ready", "publisher.release"} {
@@ -79,7 +79,11 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 	if direction == "publisher-to-client" {
 		senderRole = "publisher"
 	}
-	_, err = observer.waitGate(ctx, gateRoot, senderRole, faultThreshold)
+	gateWait, err := pacedGateWait(0, faultThreshold, observer.input.ChunkDelay)
+	if err != nil {
+		return recovery.Cell{}, err
+	}
+	_, err = observer.waitGate(ctx, gateRoot, senderRole, faultThreshold, gateWait)
 	if err != nil {
 		return recovery.Cell{}, err
 	}
@@ -195,50 +199,8 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 		BaselineClientRoute: baseline.routes[0], BaselinePublisherRoute: baseline.routes[1],
 		BaselineClientTrafficObserver: baseline.observers[0], BaselinePublisherTrafficObserver: baseline.observers[1],
 		ClientTrafficObserver: traffic.projections[0], PublisherTrafficObserver: traffic.projections[1]}
-	if _, err := observer.compose(ctx, time.Minute, "down", "-v", "--remove-orphans"); err != nil {
+	if err := observer.resetRecoveryTopology(ctx, time.Minute); err != nil {
 		return recovery.Cell{}, err
 	}
 	return cell, nil
-}
-
-func recoveryDirectionSeed(root, direction string) ([32]byte, error) {
-	name := "client-seed.hex"
-	if direction == "publisher-to-client" {
-		name = "publisher-seed.hex"
-	}
-	var seed [32]byte
-	raw, err := byteio.ReadFile(filepath.Join(root, name), 64)
-	if err != nil || len(raw) != 64 {
-		return seed, errors.Join(err, errors.New("recovery workload seed is invalid"))
-	}
-	_, err = hex.Decode(seed[:], raw)
-	return seed, err
-}
-
-func workloadDigest(seed [32]byte, count uint32) [32]byte {
-	hash := sha256.New()
-	for offset := uint32(0); offset < count; offset += 32 {
-		block := workloadBlock(seed, uint64(offset/32))
-		length := min(uint32(32), count-offset)
-		_, _ = hash.Write(block[:length])
-	}
-	var digest [32]byte
-	copy(digest[:], hash.Sum(nil))
-	return digest
-}
-
-func workloadCanary(seed [32]byte, offset uint32) [32]byte {
-	var canary [32]byte
-	for index := range canary {
-		block := workloadBlock(seed, uint64((offset+uint32(index))/32))
-		canary[index] = block[(offset+uint32(index))%32]
-	}
-	return canary
-}
-
-func workloadBlock(seed [32]byte, counter uint64) [32]byte {
-	input := make([]byte, 40)
-	copy(input, seed[:])
-	binary.BigEndian.PutUint64(input[32:], counter)
-	return sha256.Sum256(input)
 }

@@ -23,6 +23,22 @@ func TestGatedWriterStopsAtExactPrecommittedOffset(t *testing.T) {
 	}
 }
 
+func TestGatedWriterStopsAtEachSequentialPrecommittedOffset(t *testing.T) {
+	var stored uint32
+	var observed []uint32
+	write := func(value []byte) (int, error) { stored += uint32(len(value)); return len(value), nil }
+	gated := gatedWorkloadSequenceWriter(write, []uint32{2 * 16_381, 4 * 16_381, 6 * 16_381},
+		func(offset uint32) error { observed = append(observed, offset); return nil })
+	for range 7 {
+		if _, err := gated(make([]byte, 16_381)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(observed) != 3 || observed[0] != 2*16_381 || observed[1] != 4*16_381 || observed[2] != 6*16_381 {
+		t.Fatalf("sequential gates differ: %v", observed)
+	}
+}
+
 func TestGateReadinessIsPublishedAtomically(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "client.ready")
 	if err := publishGateReady(path, 176*16_381); err != nil {

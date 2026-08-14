@@ -22,7 +22,9 @@ func transfer(ctx context.Context, input Actor) (Evidence, error) {
 	if input.NetworkID != [32]byte{} || input.EpochDigest != [32]byte{} || input.NodeID != [32]byte{} ||
 		input.ListenAddress != "" || !emptyCertificate(input.Certificate) || input.UpstreamPin != [32]byte{} ||
 		input.NextNodeID != [32]byte{} || input.NextAddress != "" || input.NextPin != [32]byte{} ||
-		!emptyCertificate(input.ServiceCertificate) {
+		!emptyCertificate(input.ServiceCertificate) || input.IntroductionSetupPeer != [32]byte{} ||
+		input.IntroductionForwardSocket != "" || input.IntroductionForwardPublic != [32]byte{} ||
+		input.IntroductionSetupNode != [32]byte{} {
 		return evidence, errors.New("client received information outside its role-local duty")
 	}
 	if err := Validate(input.Plan); err != nil {
@@ -43,6 +45,18 @@ func transfer(ctx context.Context, input Actor) (Evidence, error) {
 	if err := validateDeadline(input.Deadline); err != nil {
 		return evidence, err
 	}
+	if (input.IntroductionSetupSocket == "") != (input.IntroductionSetupPublic == [32]byte{}) ||
+		(input.IntroductionSetupSocket == "") != (input.IntroductionServicePublic == [32]byte{}) {
+		return evidence, errors.New("sealed Introduction setup input is incomplete")
+	}
+	if input.IntroductionSetupSocket != "" {
+		setup, receipt, err := requestIntroductionSetup(ctx, input)
+		if err != nil {
+			return evidence, fmt.Errorf("perform sealed Introduction setup: %w", err)
+		}
+		evidence.IntroductionSetupReceipt = receipt
+		evidence.IntroductionSetup = setup
+	}
 	canary := make([]byte, canaryLength)
 	if _, err := rand.Read(canary); err != nil {
 		return evidence, fmt.Errorf("draw canary: %w", err)
@@ -58,8 +72,10 @@ func transfer(ctx context.Context, input Actor) (Evidence, error) {
 		return evidence, fmt.Errorf("confirm initiator Network State binding: %w", err)
 	}
 	if input.RawAttachment {
+		if err := outer.SetDeadline(time.Time{}); err != nil {
+			return evidence, fmt.Errorf("clear client raw Attachment setup deadline: %w", err)
+		}
 		evidence.PeerAuthenticated = true
-		defer input.Stream.Close()
 		forward, reverse, streamErr := relayOpaque(input.Stream, outer)
 		evidence.OpaqueBytes, evidence.OpaqueDigest = forward.count, forward.digest
 		evidence.ReverseOpaqueBytes, evidence.ReverseOpaqueDigest = reverse.count, reverse.digest
@@ -72,9 +88,11 @@ func transfer(ctx context.Context, input Actor) (Evidence, error) {
 	if err := inner.HandshakeContext(ctx); err != nil {
 		return evidence, fmt.Errorf("authenticate publisher through Route: %w", err)
 	}
+	if err := inner.SetDeadline(time.Time{}); err != nil {
+		return evidence, fmt.Errorf("clear client end-to-end setup deadline: %w", err)
+	}
 	evidence.PeerAuthenticated = true
 	if input.Stream != nil {
-		defer input.Stream.Close()
 		forward, reverse, streamErr := relayOpaque(input.Stream, inner)
 		evidence.OpaqueBytes, evidence.OpaqueDigest = forward.count, forward.digest
 		evidence.ReverseOpaqueBytes, evidence.ReverseOpaqueDigest = reverse.count, reverse.digest

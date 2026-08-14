@@ -1,4 +1,4 @@
-x-route: &route
+x-route-process: &route-process
   image: ${ARDENTS_SERVICE_IMAGE_TAG:?}
   pull_policy: never
   read_only: true
@@ -10,6 +10,9 @@ x-route: &route
   cpus: 0.5
   mem_limit: 128m
   pids_limit: 32
+
+x-route: &route
+  <<: *route-process
   networks: [route_net]
 
 x-local: &local
@@ -38,7 +41,7 @@ services:
     profiles: [setup]
     user: "0:0"
     cap_add: [CHOWN, FOWNER]
-    command: [/usr/local/bin/ardents-service-volume-init, "${ARDENTS_SERVICE_RUNTIME_USER:?}", /run/ardents/publisher-app, /run/ardents/publisher-route, /run/ardents/client-app, /run/ardents/client-route, /run/ardents/admin, /run/ardents/publication, /run/ardents/introduction-ack, /run/ardents/lifecycle]
+    command: [/usr/local/bin/ardents-service-volume-init, "${ARDENTS_SERVICE_RUNTIME_USER:?}", /run/ardents/publisher-app, /run/ardents/publisher-route, /run/ardents/client-app, /run/ardents/client-route, /run/ardents/admin, /run/ardents/publication, /run/ardents/introduction-ack, /run/ardents/recovery-introduction-user, /run/ardents/recovery-introduction-service, /run/ardents/lifecycle]
     volumes:
       - publisher_app:/run/ardents/publisher-app
       - publisher_route:/run/ardents/publisher-route
@@ -47,6 +50,8 @@ services:
       - administration:/run/ardents/admin
       - publication:/run/ardents/publication
       - introduction_ack:/run/ardents/introduction-ack
+      - recovery_introduction_user:/run/ardents/recovery-introduction-user
+      - recovery_introduction_service:/run/ardents/recovery-introduction-service
       - lifecycle:/run/ardents/lifecycle
   publisher-endpoint:
     <<: [*local, *build]
@@ -68,7 +73,7 @@ services:
   publisher-app:
     <<: *local
     command: [/usr/local/bin/ardents-stream-app, run, publisher, /run/ardents/publisher-app/app.sock, /run/ardents/workload/publisher.hex, /run/ardents/workload/client.hex, "${ARDENTS_PUBLISHER_SEND_BYTES:-65536}", "${ARDENTS_PUBLISHER_RECEIVE_BYTES:-65536}"]
-    environment: {ARDENTS_STREAM_CHUNK_DELAY: "${ARDENTS_STREAM_CHUNK_DELAY:-}", ARDENTS_STREAM_PROGRESS: "${ARDENTS_STREAM_PROGRESS:-}", ARDENTS_STREAM_GATE_OFFSET: "${ARDENTS_STREAM_GATE_OFFSET:-}", ARDENTS_STREAM_GATE_ROOT: "${ARDENTS_STREAM_GATE_ROOT:-}"}
+    environment: {ARDENTS_STREAM_CHUNK_DELAY: "${ARDENTS_STREAM_CHUNK_DELAY:-}", ARDENTS_STREAM_PROGRESS: "${ARDENTS_STREAM_PROGRESS:-}", ARDENTS_STREAM_GATE_OFFSET: "${ARDENTS_STREAM_GATE_OFFSET:-}", ARDENTS_STREAM_GATE_OFFSETS: "${ARDENTS_STREAM_GATE_OFFSETS:-}", ARDENTS_STREAM_GATE_ROOT: "${ARDENTS_STREAM_GATE_ROOT:-}", ARDENTS_STREAM_LIFETIME: "${ARDENTS_STREAM_LIFETIME:-}"}
     volumes:
       - publisher_app:/run/ardents/publisher-app
       - {type: bind, source: "${ARDENTS_SERVICE_GENERATION:?}/publisher-seed.hex", target: /run/ardents/workload/publisher.hex, read_only: true, bind: {create_host_path: false}}
@@ -85,7 +90,7 @@ services:
   client-app:
     <<: *local
     command: [/usr/local/bin/ardents-stream-app, run, client, /run/ardents/client-app/app.sock, /run/ardents/workload/client.hex, /run/ardents/workload/publisher.hex, "${ARDENTS_CLIENT_SEND_BYTES:-65536}", "${ARDENTS_CLIENT_RECEIVE_BYTES:-65536}"]
-    environment: {ARDENTS_STREAM_CHUNK_DELAY: "${ARDENTS_STREAM_CHUNK_DELAY:-}", ARDENTS_STREAM_PROGRESS: "${ARDENTS_STREAM_PROGRESS:-}", ARDENTS_STREAM_GATE_OFFSET: "${ARDENTS_STREAM_GATE_OFFSET:-}", ARDENTS_STREAM_GATE_ROOT: "${ARDENTS_STREAM_GATE_ROOT:-}"}
+    environment: {ARDENTS_STREAM_CHUNK_DELAY: "${ARDENTS_STREAM_CHUNK_DELAY:-}", ARDENTS_STREAM_PROGRESS: "${ARDENTS_STREAM_PROGRESS:-}", ARDENTS_STREAM_GATE_OFFSET: "${ARDENTS_STREAM_GATE_OFFSET:-}", ARDENTS_STREAM_GATE_OFFSETS: "${ARDENTS_STREAM_GATE_OFFSETS:-}", ARDENTS_STREAM_GATE_ROOT: "${ARDENTS_STREAM_GATE_ROOT:-}", ARDENTS_STREAM_LIFETIME: "${ARDENTS_STREAM_LIFETIME:-}"}
     volumes:
       - client_app:/run/ardents/client-app
       - {type: bind, source: "${ARDENTS_SERVICE_GENERATION:?}/client-seed.hex", target: /run/ardents/workload/client.hex, read_only: true, bind: {create_host_path: false}}
@@ -106,6 +111,7 @@ services:
       - {type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/plans/publisher.json", target: /run/ardents/plan.json, read_only: true, bind: {create_host_path: false}}
       - {type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/secrets/publisher", target: /run/ardents/secrets, read_only: true, bind: {create_host_path: false}}
       - publisher_route:/run/ardents/publisher-route
+      - recovery_introduction_service:/run/ardents/recovery-introduction-service
     networks: {route_net: {ipv4_address: 172.31.20.16}}
   responder:
     <<: *route
@@ -141,6 +147,54 @@ services:
     command: [/usr/local/bin/ardents-route, run, /run/ardents/plan.json]
     volumes: [{type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/plans/initiator.json", target: /run/ardents/plan.json, read_only: true, bind: {create_host_path: false}}, {type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/secrets/initiator", target: /run/ardents/secrets, read_only: true, bind: {create_host_path: false}}]
     networks: {route_net: {ipv4_address: 172.31.20.11}}
+  initiator-2:
+    <<: *route
+    profiles: [s42]
+    command: [/usr/local/bin/ardents-route, run, /run/ardents/plan.json]
+    volumes: [{type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/plans/initiator-2.json", target: /run/ardents/plan.json, read_only: true, bind: {create_host_path: false}}, {type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/secrets/initiator-2", target: /run/ardents/secrets, read_only: true, bind: {create_host_path: false}}]
+    networks: {route_net: {ipv4_address: 172.31.20.21}}
+  initiator-3:
+    <<: *route
+    profiles: [s42]
+    command: [/usr/local/bin/ardents-route, run, /run/ardents/plan.json]
+    volumes: [{type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/plans/initiator-3.json", target: /run/ardents/plan.json, read_only: true, bind: {create_host_path: false}}, {type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/secrets/initiator-3", target: /run/ardents/secrets, read_only: true, bind: {create_host_path: false}}]
+    networks: {route_net: {ipv4_address: 172.31.20.31}}
+  introduction-2:
+    <<: *route
+    profiles: [s42]
+    command: [/usr/local/bin/ardents-route, run, /run/ardents/plan.json]
+    volumes: [{type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/plans/introduction-2.json", target: /run/ardents/plan.json, read_only: true, bind: {create_host_path: false}}, {type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/secrets/introduction-2", target: /run/ardents/secrets, read_only: true, bind: {create_host_path: false}}]
+    networks: {route_net: {ipv4_address: 172.31.20.22}}
+  introduction-3:
+    <<: *route
+    profiles: [s42]
+    command: [/usr/local/bin/ardents-route, run, /run/ardents/plan.json]
+    volumes: [{type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/plans/introduction-3.json", target: /run/ardents/plan.json, read_only: true, bind: {create_host_path: false}}, {type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/secrets/introduction-3", target: /run/ardents/secrets, read_only: true, bind: {create_host_path: false}}, recovery_introduction_user:/run/ardents/recovery-introduction-user, recovery_introduction_service:/run/ardents/recovery-introduction-service]
+    networks: {route_net: {ipv4_address: 172.31.20.32}}
+  rendezvous-2:
+    <<: *route
+    profiles: [s42]
+    command: [/usr/local/bin/ardents-route, run, /run/ardents/plan.json]
+    volumes: [{type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/plans/rendezvous-2.json", target: /run/ardents/plan.json, read_only: true, bind: {create_host_path: false}}, {type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/secrets/rendezvous-2", target: /run/ardents/secrets, read_only: true, bind: {create_host_path: false}}]
+    networks: {route_net: {ipv4_address: 172.31.20.23}}
+  rendezvous-3:
+    <<: *route
+    profiles: [s42]
+    command: [/usr/local/bin/ardents-route, run, /run/ardents/plan.json]
+    volumes: [{type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/plans/rendezvous-3.json", target: /run/ardents/plan.json, read_only: true, bind: {create_host_path: false}}, {type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/secrets/rendezvous-3", target: /run/ardents/secrets, read_only: true, bind: {create_host_path: false}}]
+    networks: {route_net: {ipv4_address: 172.31.20.33}}
+  responder-2:
+    <<: *route
+    profiles: [s42]
+    command: [/usr/local/bin/ardents-route, run, /run/ardents/plan.json]
+    volumes: [{type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/plans/responder-2.json", target: /run/ardents/plan.json, read_only: true, bind: {create_host_path: false}}, {type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/secrets/responder-2", target: /run/ardents/secrets, read_only: true, bind: {create_host_path: false}}]
+    networks: {route_net: {ipv4_address: 172.31.20.24}}
+  responder-3:
+    <<: *route
+    profiles: [s42]
+    command: [/usr/local/bin/ardents-route, run, /run/ardents/plan.json]
+    volumes: [{type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/plans/responder-3.json", target: /run/ardents/plan.json, read_only: true, bind: {create_host_path: false}}, {type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/secrets/responder-3", target: /run/ardents/secrets, read_only: true, bind: {create_host_path: false}}]
+    networks: {route_net: {ipv4_address: 172.31.20.34}}
   client:
     <<: *route
     command: [/usr/local/bin/ardents-route, run, /run/ardents/plan.json]
@@ -149,6 +203,7 @@ services:
       - {type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/secrets/client", target: /run/ardents/secrets, read_only: true, bind: {create_host_path: false}}
       - {type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/state", target: /run/ardents/state, bind: {create_host_path: false}}
       - client_route:/run/ardents/client-route
+      - recovery_introduction_user:/run/ardents/recovery-introduction-user
     networks: {route_net: {ipv4_address: 172.31.20.10}}
   verifier:
     <<: *local
@@ -177,4 +232,6 @@ volumes:
   administration: {}
   publication: {}
   introduction_ack: {}
+  recovery_introduction_user: {}
+  recovery_introduction_service: {}
   lifecycle: {}

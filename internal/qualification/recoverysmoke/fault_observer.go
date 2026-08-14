@@ -28,9 +28,38 @@ func (observer dockerObserver) waitProgress(ctx context.Context, service string,
 	return 0, errors.New("receiver progress did not reach the seeded fault threshold")
 }
 
-func (observer dockerObserver) waitGate(ctx context.Context, root, role string, expected uint32) (uint32, error) {
-	path := filepath.Join(root, role+".ready")
-	deadline := time.Now().Add(15 * time.Second)
+func (observer dockerObserver) waitGate(ctx context.Context, root, role string, expected uint32,
+	within time.Duration) (uint32, error) {
+	return observer.waitGateFile(ctx, filepath.Join(root, role+".ready"), expected, within)
+}
+
+func (observer dockerObserver) waitSequentialGate(ctx context.Context, root, role string,
+	expected uint32, within time.Duration) (uint32, error) {
+	return observer.waitGateFile(ctx, filepath.Join(root, role+".ready."+strconv.FormatUint(uint64(expected), 10)),
+		expected, within)
+}
+
+func resetSequentialGates(root string, offsets []uint32) error {
+	for _, role := range []string{"client", "publisher"} {
+		for _, offset := range offsets {
+			suffix := strconv.FormatUint(uint64(offset), 10)
+			ready := filepath.Join(root, role+".ready."+suffix)
+			for _, path := range []string{ready, ready + ".pending", filepath.Join(root, role+".release."+suffix)} {
+				if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+					return fmt.Errorf("remove prior host-controlled gate state %q: %w", path, err)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (observer dockerObserver) waitGateFile(ctx context.Context, path string, expected uint32,
+	within time.Duration) (uint32, error) {
+	if within <= 0 || within > 4*time.Minute {
+		return 0, errors.New("host-controlled stream gate wait is outside its bound")
+	}
+	deadline := time.Now().Add(within)
 	for time.Now().Before(deadline) {
 		raw, err := os.ReadFile(path)
 		if err == nil {
@@ -43,13 +72,32 @@ func (observer dockerObserver) waitGate(ctx context.Context, root, role string, 
 			}
 			return uint32(value), nil
 		}
+		if !errors.Is(err, os.ErrNotExist) {
+			return 0, fmt.Errorf("read host-controlled stream gate %q: %w", path, err)
+		}
 		select {
 		case <-ctx.Done():
-			return 0, ctx.Err()
+			return 0, fmt.Errorf("wait for host-controlled stream gate %q offset %d: %w", path, expected, ctx.Err())
 		case <-time.After(time.Millisecond):
 		}
 	}
-	return 0, errors.New("host-controlled stream gate was not reached")
+	return 0, fmt.Errorf("host-controlled stream gate %q offset %d was not reached within %s", path, expected, within)
+}
+
+func pacedGateWait(previous, next uint32, delayText string) (time.Duration, error) {
+	const chunk = uint32(16_381)
+	if next <= previous || next%chunk != 0 || previous%chunk != 0 {
+		return 0, errors.New("stream gate offsets are not an increasing whole-chunk schedule")
+	}
+	delay, err := time.ParseDuration(delayText)
+	if err != nil || delay <= 0 {
+		return 0, errors.Join(err, errors.New("stream gate chunk delay is invalid"))
+	}
+	within := time.Duration((next-previous)/chunk)*delay + 30*time.Second
+	if within > 4*time.Minute {
+		return 0, errors.New("stream gate wait exceeds four minutes")
+	}
+	return within, nil
 }
 
 func (observer dockerObserver) currentProgress(ctx context.Context, service string) (uint32, error) {

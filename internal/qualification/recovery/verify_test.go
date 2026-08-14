@@ -237,7 +237,7 @@ func validEvidence() Evidence {
 	for index, direction := range []string{"client-to-publisher", "publisher-to-client"} {
 		identity := func(slot int) string { return fmt.Sprintf("%064x", 100+index*20+slot) }
 		seed := [32]byte{byte(index + 1)}
-		planned := (uint32(184) + uint32(seed[0]%8)) * 16_381
+		planned := (uint32(17) + uint32(seed[0]%8)) * 16_381
 		cell := Cell{Direction: direction, ClientProcess: identity(1), PublisherProcess: identity(2),
 			ClientApplicationProcess: identity(3), PublisherApplicationProcess: identity(4), InitialCarrier: strings.Repeat("1", 64),
 			ReplacementCarrier: strings.Repeat("2", 64), FaultService: "rendezvous-responder-carrier", FaultContainer: identity(8),

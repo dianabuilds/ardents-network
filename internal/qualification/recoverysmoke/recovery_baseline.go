@@ -11,11 +11,14 @@ import (
 
 func (observer dockerObserver) runNoFailureBaseline(ctx context.Context, direction string) (trafficBaseline, error) {
 	baselineClock := time.Now()
-	_, _ = observer.compose(ctx, time.Minute, "down", "-v", "--remove-orphans")
+	if err := observer.resetRecoveryTopology(ctx, time.Minute); err != nil {
+		return trafficBaseline{}, err
+	}
 	if err := refreshWorkload(observer.generation); err != nil {
 		return trafficBaseline{}, err
 	}
-	observer.direction, observer.gateOffset = direction, 0
+	observer = observer.forRecoveryOperation(direction)
+	observer.gateOffset = 0
 	if err := setRouteAttachments(observer.input.FixtureRoot, 1); err != nil {
 		return trafficBaseline{}, err
 	}
@@ -57,7 +60,7 @@ func (observer dockerObserver) runNoFailureBaseline(ctx context.Context, directi
 	_ = samples
 	clientTraffic := finalTraffic.ClientReceived + finalTraffic.ClientSent
 	publisherTraffic := finalTraffic.PublisherReceived + finalTraffic.PublisherSent
-	if _, err := observer.compose(ctx, time.Minute, "down", "-v", "--remove-orphans"); err != nil {
+	if err := observer.resetRecoveryTopology(ctx, time.Minute); err != nil {
 		return trafficBaseline{}, err
 	}
 	return trafficBaseline{client: clientTraffic, publisher: publisherTraffic,

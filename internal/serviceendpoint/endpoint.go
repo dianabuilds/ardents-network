@@ -29,6 +29,10 @@ func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (servicec
 	if err != nil {
 		return serviceconn.Result{}, err
 	}
+	lifetime, err := plan.connectionLifetime(deadline)
+	if err != nil {
+		return serviceconn.Result{}, err
+	}
 	endpoint, err := serviceconn.New(setup)
 	if err != nil {
 		return serviceconn.Result{}, err
@@ -109,7 +113,7 @@ func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (servicec
 	}
 	setup.Resources("timer", 1)
 	defer setup.Resources("timer", -1)
-	operation, cancel := context.WithTimeout(ctx, deadline)
+	operation, cancel := context.WithTimeout(ctx, lifetime)
 	defer cancel()
 	result, err := endpoint.Do(operation, request)
 	result.ApplicationIPCAccepts = setup.Resources("application-accept", 0)

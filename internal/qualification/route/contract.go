@@ -77,43 +77,56 @@ type Result struct {
 }
 
 type observation struct {
-	Schema              string     `json:"schema"`
-	Kind                string     `json:"kind"`
-	Role                string     `json:"role"`
-	Generation          string     `json:"generation"`
-	Error               string     `json:"error"`
-	PID                 int        `json:"pid"`
-	RuntimeID           string     `json:"runtime_id"`
-	SourceID            string     `json:"source_id"`
-	BuildDigest         [32]byte   `json:"build_digest"`
-	ManifestDigest      [32]byte   `json:"manifest_digest"`
-	NetworkID           [32]byte   `json:"network_id"`
-	EpochDigest         [32]byte   `json:"epoch_digest"`
-	Profile             string     `json:"profile"`
-	ViewRoot            [32]byte   `json:"view_root"`
-	SelectionSeed       [32]byte   `json:"selection_seed"`
-	SelectionAt         int64      `json:"selection_at"`
-	ExcludedIdentities  [][32]byte `json:"excluded_identities"`
-	ExcludedFamilies    []string   `json:"excluded_families"`
-	ExcludedDomains     []string   `json:"excluded_domains"`
-	NodeID              [32]byte   `json:"node_id"`
-	PreviousPin         [32]byte   `json:"previous_pin"`
-	NextNodeID          [32]byte   `json:"next_node_id"`
-	Epoch               uint64     `json:"epoch"`
-	OpaqueBytes         uint64     `json:"opaque_bytes"`
-	Attachment          uint32     `json:"attachment"`
-	OpaqueDigest        [32]byte   `json:"opaque_digest"`
-	ReverseOpaqueBytes  uint64     `json:"reverse_opaque_bytes"`
-	ReverseOpaqueDigest [32]byte   `json:"reverse_opaque_digest"`
-	CanaryDigest        [32]byte   `json:"canary_digest"`
-	CanaryLength        uint32     `json:"canary_length"`
-	Canary              []byte     `json:"canary"`
-	Positions           []position `json:"positions"`
-	PeerAuthenticated   bool       `json:"peer_authenticated"`
-	DeadlineMillis      uint32     `json:"deadline_millis"`
-	Cancelled           bool       `json:"cancelled"`
-	Cleanup             bool       `json:"cleanup"`
-	Terminal            string     `json:"terminal"`
+	Schema                   string            `json:"schema"`
+	Kind                     string            `json:"kind"`
+	Role                     string            `json:"role"`
+	Generation               string            `json:"generation"`
+	Error                    string            `json:"error"`
+	PID                      int               `json:"pid"`
+	RuntimeID                string            `json:"runtime_id"`
+	SourceID                 string            `json:"source_id"`
+	BuildDigest              [32]byte          `json:"build_digest"`
+	ManifestDigest           [32]byte          `json:"manifest_digest"`
+	NetworkID                [32]byte          `json:"network_id"`
+	EpochDigest              [32]byte          `json:"epoch_digest"`
+	Profile                  string            `json:"profile"`
+	ViewRoot                 [32]byte          `json:"view_root"`
+	SelectionSeed            [32]byte          `json:"selection_seed"`
+	SelectionAt              int64             `json:"selection_at"`
+	ExcludedIdentities       [][32]byte        `json:"excluded_identities"`
+	ExcludedFamilies         []string          `json:"excluded_families"`
+	ExcludedDomains          []string          `json:"excluded_domains"`
+	NodeID                   [32]byte          `json:"node_id"`
+	PreviousPin              [32]byte          `json:"previous_pin"`
+	NextNodeID               [32]byte          `json:"next_node_id"`
+	Epoch                    uint64            `json:"epoch"`
+	OpaqueBytes              uint64            `json:"opaque_bytes"`
+	Attachment               uint32            `json:"attachment"`
+	OpaqueDigest             [32]byte          `json:"opaque_digest"`
+	ReverseOpaqueBytes       uint64            `json:"reverse_opaque_bytes"`
+	ReverseOpaqueDigest      [32]byte          `json:"reverse_opaque_digest"`
+	CanaryDigest             [32]byte          `json:"canary_digest"`
+	CanaryLength             uint32            `json:"canary_length"`
+	Canary                   []byte            `json:"canary"`
+	IntroductionSetupReceipt [32]byte          `json:"introduction_setup_receipt"`
+	IntroductionSetup        introductionSetup `json:"introduction_setup"`
+	IntroductionOpaqueBytes  uint64            `json:"introduction_opaque_bytes"`
+	IntroductionOpaqueDigest [32]byte          `json:"introduction_opaque_digest"`
+	Positions                []position        `json:"positions"`
+	PeerAuthenticated        bool              `json:"peer_authenticated"`
+	DeadlineMillis           uint32            `json:"deadline_millis"`
+	LifetimeMillis           uint32            `json:"lifetime_millis"`
+	Cancelled                bool              `json:"cancelled"`
+	Cleanup                  bool              `json:"cleanup"`
+	Terminal                 string            `json:"terminal"`
+}
+
+type introductionSetup struct {
+	ManifestDigest, NetworkID, EpochDigest, ViewRoot         [32]byte
+	ProfileDigest, CapabilitiesDigest                        [32]byte
+	IntroductionNode, RendezvousNode, RendezvousReachability [32]byte
+	JoinHandle, EndpointHandshake, TranscriptContext, Reply  [32]byte
+	ExpiresAtNanos                                           int64
 }
 
 type position struct {
@@ -207,7 +220,8 @@ func verifyComplete(input Case, values []observation) error {
 			value.EpochDigest != input.EpochDigest || value.SourceID != input.SourceID || value.BuildDigest != input.BuildDigest ||
 			value.ManifestDigest != input.ManifestDigest || value.Terminal != "success" && value.Terminal != "error" ||
 			value.Terminal == "success" && value.Error != "" || value.Terminal == "error" && value.Error == "" ||
-			value.Cancelled || !value.Cleanup || value.DeadlineMillis == 0 || value.DeadlineMillis > 15_000 {
+			value.Cancelled || !value.Cleanup || value.DeadlineMillis == 0 || value.DeadlineMillis > 15_000 ||
+			value.LifetimeMillis < value.DeadlineMillis || value.LifetimeMillis > 1_800_000 {
 			return errors.New("process evidence identity, schema, or state binding is incomplete")
 		}
 		seenProcess[value.RuntimeID], seenRole[value.Role] = true, true
