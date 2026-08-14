@@ -21,6 +21,18 @@ func TestResourceSummaryUsesLiveHighWater(t *testing.T) {
 	}
 }
 
+func TestStatsSamplerLeavesSampleCountToItsOwner(t *testing.T) {
+	done := make(chan struct{})
+	close(done)
+	sampler := &statsSampler{cancel: func() {}, done: done, samples: []recovery.ResourceSample{
+		{ClientRSS: 1, PublisherRSS: 1},
+	}}
+	samples, err := sampler.stop()
+	if err != nil || len(samples) != 1 {
+		t.Fatalf("samples=%d err=%v", len(samples), err)
+	}
+}
+
 func TestResourceObservationCoalescesOnlyExactDockerRedraw(t *testing.T) {
 	left := recovery.ResourceSample{AtNanos: 1, ClientRSS: 2, PublisherRSS: 3,
 		ClientCPUPercent: 4, PublisherCPUPercent: 5, ClientReceived: 6, ClientSent: 7,

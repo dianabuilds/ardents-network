@@ -54,10 +54,6 @@ func (sampler *statsSampler) stop() ([]recovery.ResourceSample, error) {
 			}
 		}
 		sampler.stoppedErr = sampler.err
-		if len(sampler.stoppedSamples) < 3 {
-			sampler.stoppedErr = errors.Join(sampler.stoppedErr,
-				errors.New("fewer than three one-second host resource samples"))
-		}
 	})
 	return append([]recovery.ResourceSample(nil), sampler.stoppedSamples...), sampler.stoppedErr
 }

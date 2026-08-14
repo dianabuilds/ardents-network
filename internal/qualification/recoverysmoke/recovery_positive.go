@@ -128,6 +128,9 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 	terminalAt := time.Since(cellClock).Nanoseconds()
 	finalTraffic, trafficErr := traffic.snapshotAndRemove(ctx, observer, cellClock)
 	samples, err := sampler.stop()
+	if len(samples) < 3 {
+		err = errors.Join(err, errors.New("fewer than three one-second host resource samples"))
+	}
 	if err != nil || trafficErr != nil {
 		return recovery.Cell{}, errors.Join(err, trafficErr)
 	}

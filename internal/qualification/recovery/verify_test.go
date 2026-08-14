@@ -79,6 +79,9 @@ func TestVerifyRejectsMutationMissingEvidenceAndCandidateFailure(t *testing.T) {
 		"sub-one-second resource cadence": func(value *Evidence) {
 			value.Cells[0].ResourceSamples[1].AtNanos = int64(500 * time.Millisecond)
 		},
+		"too few recovery resource samples": func(value *Evidence) {
+			value.Cells[0].ResourceSamples = value.Cells[0].ResourceSamples[:2]
+		},
 		"traffic observer not removed": func(value *Evidence) {
 			value.Cells[0].ClientTrafficObserver.Removed = false
 		},
