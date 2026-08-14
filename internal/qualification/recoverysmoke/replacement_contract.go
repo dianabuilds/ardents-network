@@ -8,7 +8,6 @@ import (
 
 type replacementEvidence struct {
 	RouteCase  json.RawMessage
-	HostScope  hostScopeEvidence
 	Candidates []replacementCandidate
 	Cells      []replacementCell
 }

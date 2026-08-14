@@ -8,7 +8,8 @@ import (
 func TestCommonS42ProcessRulesAcceptAdapterNeutralEvidence(t *testing.T) {
 	value := validS42Evidence(t)
 	extension := decodeReplacementTest(t, value.S42)
-	nativeTestReplacementProcesses(&extension)
+	hostScope := decodeHostScopeTest(t, value.HostScope)
+	nativeTestReplacementProcesses(&extension, &hostScope)
 	byRole, err := verifyReplacementCandidates(extension.Candidates)
 	if err != nil {
 		t.Fatal(err)
@@ -20,11 +21,11 @@ func TestCommonS42ProcessRulesAcceptAdapterNeutralEvidence(t *testing.T) {
 			identities[process.Host.Identity] = true
 		}
 		if result := verifyReplacementProposals(*cell, byRole, extension.RouteCase,
-			value.Manifest.RouteManifest, extension.HostScope, identities); result.Verdict != "pass" {
+			value.Manifest.RouteManifest, hostScope, identities); result.Verdict != "pass" {
 			t.Fatalf("cell %d adapter-neutral proposals were rejected: %+v", cellIndex, result)
 		}
 		if result := verifyReplacementRoutes(*cell, byRole, extension.RouteCase.SelectionSeed,
-			extension.HostScope, identities); result.Verdict != "pass" {
+			hostScope, identities); result.Verdict != "pass" {
 			t.Fatalf("cell %d adapter-neutral routes were rejected: %+v", cellIndex, result)
 		}
 	}
@@ -33,7 +34,9 @@ func TestCommonS42ProcessRulesAcceptAdapterNeutralEvidence(t *testing.T) {
 func TestVerifyRejectsUnsupportedS42Adapter(t *testing.T) {
 	value := validS42Evidence(t)
 	extension := decodeReplacementTest(t, value.S42)
-	nativeTestReplacementProcesses(&extension)
+	hostScope := decodeHostScopeTest(t, value.HostScope)
+	nativeTestReplacementProcesses(&extension, &hostScope)
+	value.HostScope = encodeHostScopeTest(t, hostScope)
 	var err error
 	value.S42, err = json.Marshal(extension)
 	if err != nil {
@@ -44,10 +47,22 @@ func TestVerifyRejectsUnsupportedS42Adapter(t *testing.T) {
 	}
 }
 
+func TestVerifyRejectsChangedS42HostScope(t *testing.T) {
+	value := validS42Evidence(t)
+	hostScope := decodeHostScopeTest(t, value.HostScope)
+	hostScope.Machine[0]++
+	hostScope.Commitment = hostScopeCommitment(hostScope)
+	value.HostScope = encodeHostScopeTest(t, hostScope)
+	if result := Verify(value); result.Verdict == "pass" {
+		t.Fatal("changed campaign HostScope passed existing process observations")
+	}
+}
+
 func TestCommonS42ProcessRulesRejectIdentityProjectionReuse(t *testing.T) {
 	value := validS42Evidence(t)
 	extension := decodeReplacementTest(t, value.S42)
-	nativeTestReplacementProcesses(&extension)
+	hostScope := decodeHostScopeTest(t, value.HostScope)
+	nativeTestReplacementProcesses(&extension, &hostScope)
 	cell := &extension.Cells[0]
 	source, reused := cell.Proposals[0].Processes[0], &cell.Proposals[0].Processes[1]
 	reused.Host.Identity, reused.Host.Incarnation = source.Host.Identity, source.Host.Incarnation
@@ -62,37 +77,37 @@ func TestCommonS42ProcessRulesRejectIdentityProjectionReuse(t *testing.T) {
 		t.Fatal(err)
 	}
 	if result := verifyReplacementProposals(*cell, byRole, extension.RouteCase,
-		value.Manifest.RouteManifest, extension.HostScope, map[string]bool{}); result.Verdict == "pass" {
+		value.Manifest.RouteManifest, hostScope, map[string]bool{}); result.Verdict == "pass" {
 		t.Fatal("one process identity represented multiple projections and Node candidates")
 	}
 }
 
-func nativeTestReplacementProcesses(extension *replacementEvidence) {
-	extension.HostScope.Adapter = "native-host-v1"
-	extension.HostScope.AdapterProjection = "native-test-machine"
-	extension.HostScope.Commitment = hostScopeCommitment(extension.HostScope)
+func nativeTestReplacementProcesses(extension *replacementEvidence, scope *hostScopeEvidence) {
+	scope.Adapter = "native-host-v1"
+	scope.AdapterProjection = "native-test-machine"
+	scope.Commitment = hostScopeCommitment(*scope)
 	for cellIndex := range extension.Cells {
 		cell := &extension.Cells[cellIndex]
 		for routeIndex := range cell.Routes {
 			for role, process := range cell.Routes[routeIndex].Processes {
-				cell.Routes[routeIndex].Processes[role] = nativeTestProcess(process, extension.HostScope)
+				cell.Routes[routeIndex].Processes[role] = nativeTestProcess(process, *scope)
 			}
 		}
 		for proposalIndex := range cell.Proposals {
 			proposal := &cell.Proposals[proposalIndex]
 			for processIndex, process := range proposal.Processes {
-				proposal.Processes[processIndex] = nativeTestProcess(process, extension.HostScope)
+				proposal.Processes[processIndex] = nativeTestProcess(process, *scope)
 				proposal.Stopped[processIndex] = nativeTestState(proposal.Stopped[processIndex],
 					proposal.Processes[processIndex])
 			}
 		}
 		for eventIndex := range cell.Events {
 			event := &cell.Events[eventIndex]
-			event.Failed = nativeTestProcess(event.Failed, extension.HostScope)
-			event.Replacement = nativeTestProcess(event.Replacement, extension.HostScope)
-			event.RendezvousBefore = nativeTestProcess(event.RendezvousBefore, extension.HostScope)
-			event.RendezvousAfter = nativeTestProcess(event.RendezvousAfter, extension.HostScope)
-			event.Introduction = nativeTestProcess(event.Introduction, extension.HostScope)
+			event.Failed = nativeTestProcess(event.Failed, *scope)
+			event.Replacement = nativeTestProcess(event.Replacement, *scope)
+			event.RendezvousBefore = nativeTestProcess(event.RendezvousBefore, *scope)
+			event.RendezvousAfter = nativeTestProcess(event.RendezvousAfter, *scope)
+			event.Introduction = nativeTestProcess(event.Introduction, *scope)
 			event.FailedResource = nativeTestState(event.FailedResource, event.Failed)
 			event.FailedResource.Fault.Resource = event.Failed.Host
 			event.FailedResource.Fault.Commitment = processFaultCommitment(event.FailedResource.Fault)

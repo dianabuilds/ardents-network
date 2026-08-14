@@ -1,7 +1,11 @@
 package recovery
 
 import (
+	"bytes"
 	"crypto/sha256"
+	"encoding/json"
+	"errors"
+	"io"
 	"strings"
 )
 
@@ -9,6 +13,26 @@ type hostScopeEvidence struct {
 	Adapter, AdapterProjection       string
 	Machine, Campaign, Source, Image [32]byte
 	Commitment                       [32]byte
+}
+
+func decodeHostScope(raw []byte) (hostScopeEvidence, error) {
+	var value hostScopeEvidence
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	if len(raw) == 0 || len(raw) > 64<<10 {
+		return value, errors.New("host-observation scope is malformed")
+	}
+	if err := decoder.Decode(&value); err != nil {
+		return value, err
+	}
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		return value, errors.New("host-observation scope contains multiple values")
+	}
+	canonical, err := json.Marshal(value)
+	if err != nil || !bytes.Equal(canonical, raw) {
+		return value, errors.Join(err, errors.New("host-observation scope is not canonical"))
+	}
+	return value, nil
 }
 
 func hostScopeCommitment(value hostScopeEvidence) [32]byte {

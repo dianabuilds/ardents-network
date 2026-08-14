@@ -68,10 +68,6 @@ func TestVerifyRejectsS42ReplacementMutations(t *testing.T) {
 			process.Host.Commitment = processRefCommitment(process.Host)
 			value.Cells[0].Routes[0].Processes["initiator"] = process
 		},
-		"host machine scope changed": func(value *replacementEvidence) {
-			value.HostScope.Machine[0]++
-			value.HostScope.Commitment = hostScopeCommitment(value.HostScope)
-		},
 		"mixed process adapter": func(value *replacementEvidence) {
 			process := value.Cells[0].Routes[0].Processes["initiator"]
 			process.Host.Adapter = "native-test-v1"
@@ -208,7 +204,7 @@ func TestVerifyRejectsS42ReplacementMutations(t *testing.T) {
 
 func validS42Evidence(t *testing.T) Evidence {
 	t.Helper()
-	value := validEvidence()
+	value := validEvidence(t)
 	value.Claim = "S4.2 four-position local development tracer only; does not qualify split-leg/Introduction topology"
 	value.RequestedNanos = int64(20 * time.Minute)
 	value.CampaignNanos = int64(21 * time.Minute)
@@ -231,7 +227,7 @@ func validS42Evidence(t *testing.T) Evidence {
 	value.IsolationContext = sha256.Sum256(append([]byte("isolation\x00"), manifestDigest[:]...))
 	serial := 1000
 	hostScope := testHostScope(value.SourceCommit, value.ImageID, value.ManifestDigest)
-	extension.HostScope = hostScope
+	value.HostScope = encodeHostScopeTest(t, hostScope)
 	nextID := func() string { serial++; return fmt.Sprintf("%064x", serial) }
 	hostStartedAt := int64(100)
 	for _, direction := range []string{"client-to-publisher", "publisher-to-client"} {

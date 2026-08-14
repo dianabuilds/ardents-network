@@ -2,7 +2,6 @@ package recovery
 
 type replacementEvidence struct {
 	RouteCase  routeCase
-	HostScope  hostScopeEvidence
 	Candidates []replacementCandidate
 	Cells      []replacementCell
 }

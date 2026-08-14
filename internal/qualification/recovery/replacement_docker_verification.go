@@ -13,17 +13,17 @@ type dockerProcessPublicProjection struct {
 	Arguments                              []string
 }
 
-func validDockerReplacementProcesses(value replacementEvidence) bool {
+func validDockerReplacementProcesses(value replacementEvidence, scope hostScopeEvidence) bool {
 	for _, cell := range value.Cells {
 		for _, service := range replacementEndpointProcessRoles {
-			if !validDockerProcessObservation(cell.HostProcesses[service], value.HostScope, service) {
+			if !validDockerProcessObservation(cell.HostProcesses[service], scope, service) {
 				return false
 			}
 		}
 		for _, route := range cell.Routes {
 			for role, process := range route.Processes {
 				if !strings.HasPrefix(process.Service, role) ||
-					!validDockerCandidateProcess(process, value.HostScope) {
+					!validDockerCandidateProcess(process, scope) {
 					return false
 				}
 			}
@@ -31,7 +31,7 @@ func validDockerReplacementProcesses(value replacementEvidence) bool {
 		for _, proposal := range cell.Proposals {
 			for index, process := range proposal.Processes {
 				if !strings.HasPrefix(process.Service, replacementRoles[index]) ||
-					!validDockerCandidateProcess(process, value.HostScope) ||
+					!validDockerCandidateProcess(process, scope) ||
 					proposal.Stopped[index].ContainerID != process.ContainerID {
 					return false
 				}
@@ -40,7 +40,7 @@ func validDockerReplacementProcesses(value replacementEvidence) bool {
 		for _, event := range cell.Events {
 			for _, process := range []candidateProcess{event.Failed, event.Replacement,
 				event.RendezvousBefore, event.RendezvousAfter, event.Introduction} {
-				if !validDockerCandidateProcess(process, value.HostScope) {
+				if !validDockerCandidateProcess(process, scope) {
 					return false
 				}
 			}

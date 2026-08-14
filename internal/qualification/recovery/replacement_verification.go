@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func verifyReplacementEvidence(value Evidence, prior map[string]bool) Result {
+func verifyReplacementEvidence(value Evidence, prior map[string]bool, hostScope hostScopeEvidence) Result {
 	var replacement replacementEvidence
 	decoder := json.NewDecoder(bytes.NewReader(value.S42))
 	decoder.DisallowUnknownFields()
@@ -41,19 +41,14 @@ func verifyReplacementEvidence(value Evidence, prior map[string]bool) Result {
 	if len(replacement.Cells) != 10 {
 		return invalid("S4.2 requires five replacement cells in each direction")
 	}
-	if !validHostScope(replacement.HostScope, value.SourceCommit, value.ImageID) {
-		return invalid("S4.2 host-observation scope is invalid")
-	}
-	switch replacement.HostScope.Adapter {
+	switch hostScope.Adapter {
 	case "docker-compose-v1":
-		if !validDockerHostScopeProjection(replacement.HostScope, value.ManifestDigest) ||
-			!validDockerReplacementProcesses(replacement) {
+		if !validDockerReplacementProcesses(replacement, hostScope) {
 			return invalid("S4.2 Docker Adapter projection is invalid")
 		}
 	default:
 		return invalid("S4.2 host-observation Adapter is unsupported")
 	}
-	hostScope := replacement.HostScope
 	required := make(map[string]bool, 10)
 	var priorHostTerminal int64
 	for index := range replacement.Cells {

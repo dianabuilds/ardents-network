@@ -16,6 +16,7 @@ type Evidence struct {
 	BinaryDigests                                                 map[string]string
 	Topology                                                      []byte
 	Manifest                                                      PublicManifest
+	HostScope                                                     json.RawMessage
 	S42                                                           json.RawMessage
 	RequestedNanos, CampaignNanos                                 int64
 	Cells                                                         []Cell

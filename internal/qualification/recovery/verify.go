@@ -30,6 +30,18 @@ func Verify(value Evidence) Result {
 	if err := verifyTopology(value.Topology); err != nil {
 		return invalid(err.Error())
 	}
+	hostScope, scopeErr := decodeHostScope(value.HostScope)
+	if scopeErr != nil || !validHostScope(hostScope, value.SourceCommit, value.ImageID) {
+		return invalid("host-observation scope is invalid")
+	}
+	switch hostScope.Adapter {
+	case "docker-compose-v1":
+		if !validDockerHostScopeProjection(hostScope, value.ManifestDigest) {
+			return invalid("Docker Adapter host scope is invalid")
+		}
+	default:
+		return invalid("host-observation Adapter is unsupported")
+	}
 	if result := verifyManifest(value); result.Verdict != "pass" {
 		return result
 	}
@@ -86,7 +98,7 @@ func Verify(value Evidence) Result {
 		return invalid("both directional cells are required")
 	}
 	if s42 {
-		if result := verifyReplacementEvidence(value, containerIDs); result.Verdict != "pass" {
+		if result := verifyReplacementEvidence(value, containerIDs, hostScope); result.Verdict != "pass" {
 			return result
 		}
 	}

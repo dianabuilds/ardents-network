@@ -54,3 +54,21 @@ func decodeReplacementTest(t *testing.T, raw []byte) replacementEvidence {
 	}
 	return result
 }
+
+func decodeHostScopeTest(t *testing.T, raw []byte) hostScopeEvidence {
+	t.Helper()
+	value, err := decodeHostScope(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return value
+}
+
+func encodeHostScopeTest(t *testing.T, value hostScopeEvidence) json.RawMessage {
+	t.Helper()
+	raw, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
+}

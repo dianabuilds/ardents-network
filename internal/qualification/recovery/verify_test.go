@@ -11,9 +11,17 @@ import (
 )
 
 func TestVerifyAcceptsTwoCompleteDirectionalCells(t *testing.T) {
-	evidence := validEvidence()
+	evidence := validEvidence(t)
 	if result := Verify(evidence); result.Verdict != "pass" {
 		t.Fatalf("complete evidence rejected: %+v", result)
+	}
+}
+
+func TestVerifyRejectsMissingHostScope(t *testing.T) {
+	value := validEvidence(t)
+	value.HostScope = nil
+	if result := Verify(value); result.Verdict != "invalid" {
+		t.Fatalf("missing HostScope verdict = %+v, want invalid", result)
 	}
 }
 
@@ -167,7 +175,7 @@ func TestVerifyRejectsMutationMissingEvidenceAndCandidateFailure(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			value := validEvidence()
+			value := validEvidence(t)
 			mutate(&value)
 			if result := Verify(value); result.Verdict == "pass" {
 				t.Fatalf("mutation passed: %+v", result)
@@ -176,7 +184,8 @@ func TestVerifyRejectsMutationMissingEvidenceAndCandidateFailure(t *testing.T) {
 	}
 }
 
-func validEvidence() Evidence {
+func validEvidence(t *testing.T) Evidence {
+	t.Helper()
 	private := ed25519.NewKeyFromSeed(make([]byte, ed25519.SeedSize))
 	var authority [32]byte
 	copy(authority[:], private.Public().(ed25519.PublicKey))
@@ -213,6 +222,7 @@ func validEvidence() Evidence {
 			"ardents-recovery-qualify": strings.Repeat("d", 64)},
 		RequestedNanos: int64(10 * time.Minute), CampaignNanos: int64(10 * time.Minute),
 		Negatives: map[string]Negative{}, Cleanup: cleanup{DockerEmpty: true, FixtureAbsent: true, PrivateMaterialAbsent: true}}
+	value.HostScope = encodeHostScopeTest(t, testHostScope(value.SourceCommit, value.ImageID, value.ManifestDigest))
 	value.IsolationContext = sha256.Sum256(append([]byte("isolation\x00"), manifestDigest[:]...))
 	value.DestinationBinding = sha256.Sum256(append([]byte("destination\x00"), target[:]...))
 	for _, name := range negativeNames {
