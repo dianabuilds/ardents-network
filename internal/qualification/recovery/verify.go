@@ -139,7 +139,7 @@ func verifyCell(cell Cell, manifestText, imageID string) Result {
 		return invalid("manifest digest is malformed")
 	}
 	_ = manifest
-	planned := (uint32(56) + uint32(cell.Seed[0]%8)) * 16_381
+	planned := (uint32(176) + uint32(cell.Seed[0]%8)) * 16_381
 	if cell.CellManifestDigest != cellManifestDigest(cell.Direction, cell.Seed, planned) {
 		return invalid("directional cell manifest does not bind seed and fault schedule")
 	}
@@ -158,13 +158,13 @@ func verifyCell(cell Cell, manifestText, imageID string) Result {
 		cell.FaultCompletedNanos < cell.FaultAtNanos ||
 		cell.CarrierCutAfterNanos <= 0 || cell.AbsenceAfterNanos < cell.CarrierCutAfterNanos ||
 		cell.AbsenceAfterNanos > cell.FaultCompletedNanos-cell.FaultAtNanos ||
-		cell.RendezvousAttachmentDeadlineNanos != int64(6*time.Second) ||
+		cell.RendezvousAttachmentDeadlineNanos != int64(8*time.Second) ||
 		cell.OldCarrierClosedNanos < cell.FaultAtNanos || cell.OldCarrierClosedNanos > cell.FaultCompletedNanos ||
 		cell.CanaryAtNanos < cell.FaultCompletedNanos ||
 		cell.CanaryAtNanos <= cell.FaultAtNanos ||
-		cell.CanaryAtNanos-cell.FaultAtNanos > int64(5*time.Second) || cell.TerminalAtNanos < cell.CanaryAtNanos ||
+		cell.CanaryAtNanos-cell.LastDeliveryNanos > int64(5*time.Second) || cell.TerminalAtNanos < cell.CanaryAtNanos ||
 		cell.ReplacementObservedNanos < cell.CanaryAtNanos || cell.TerminalAtNanos < cell.ReplacementObservedNanos ||
-		cell.TerminalAtNanos-cell.FaultAtNanos > int64(15*time.Second) {
+		cell.TerminalAtNanos-cell.LastDeliveryNanos > int64(15*time.Second) {
 		return fail("recovery timing missed its externally observed bound")
 	}
 	if cell.ClientRouteGeneration != 2 || cell.PublisherRouteGeneration != 2 ||
@@ -196,7 +196,7 @@ func verifyCell(cell Cell, manifestText, imageID string) Result {
 func cellManifestDigest(direction string, seed [32]byte, planned uint32) string {
 	hash := sha256.New()
 	_, _ = hash.Write([]byte("ardents-h3-recovery-cell-manifest-v1\x00" + direction +
-		"\x00carrier-channel\x00rendezvous-attachment-deadline=6s\x00"))
+		"\x00carrier-channel\x00rendezvous-attachment-deadline=8s\x00"))
 	_, _ = hash.Write(seed[:])
 	var values [12]byte
 	binary.BigEndian.PutUint32(values[:4], streamBytes)

@@ -22,8 +22,22 @@ func TestVerifyRejectsMutationMissingEvidenceAndCandidateFailure(t *testing.T) {
 		"missing negative": func(value *Evidence) { delete(value.Negatives, "deadline") },
 		"reconnect":        func(value *Evidence) { value.Cells[1].ApplicationReconnected = true },
 		"late canary":      func(value *Evidence) { value.Cells[0].CanaryAtNanos += int64(6 * time.Second) },
+		"fault setup moved recovery clock": func(value *Evidence) {
+			cell := &value.Cells[0]
+			cell.CarrierObservedNanos, cell.FaultAtNanos = int64(6*time.Second), int64(6*time.Second)+1
+			cell.FaultCompletedNanos, cell.CanaryAtNanos = int64(6*time.Second)+3, int64(6*time.Second)+4
+			cell.ReplacementObservedNanos, cell.TerminalAtNanos = int64(6*time.Second)+5, int64(7*time.Second)
+			cell.OldCarrierClosedNanos = int64(6*time.Second) + 2
+		},
+		"fault setup moved terminal clock": func(value *Evidence) {
+			cell := &value.Cells[0]
+			cell.FaultAtNanos, cell.FaultCompletedNanos = int64(4*time.Second), int64(4*time.Second)+2
+			cell.CanaryAtNanos, cell.ReplacementObservedNanos = int64(5*time.Second), int64(5*time.Second)+1
+			cell.TerminalAtNanos = int64(16 * time.Second)
+			cell.OldCarrierClosedNanos = int64(4*time.Second) + 1
+		},
 		"wrong Rendezvous Attachment deadline": func(value *Evidence) {
-			value.Cells[0].RendezvousAttachmentDeadlineNanos = int64(5 * time.Second)
+			value.Cells[0].RendezvousAttachmentDeadlineNanos = int64(7 * time.Second)
 		},
 		"old Carrier not closed": func(value *Evidence) {
 			value.Cells[0].OldCarrierClosed = false
@@ -141,7 +155,7 @@ func validEvidence() Evidence {
 		Passed: true, ContainerID: "endpoint-container", InjectedResource: "publisher-endpoint", BeforeProcess: "101", AfterProcess: "202"}
 	for index, direction := range []string{"client-to-publisher", "publisher-to-client"} {
 		seed := [32]byte{byte(index + 1)}
-		planned := (uint32(56) + uint32(seed[0]%8)) * 16_381
+		planned := (uint32(176) + uint32(seed[0]%8)) * 16_381
 		cell := Cell{Direction: direction, ClientProcess: "client", PublisherProcess: "publisher",
 			ClientApplicationProcess: "client-app", PublisherApplicationProcess: "publisher-app", InitialCarrier: strings.Repeat("1", 64),
 			ReplacementCarrier: strings.Repeat("2", 64), FaultService: "rendezvous-responder-carrier", FaultContainer: "rendezvous-container",
@@ -159,7 +173,7 @@ func validEvidence() Evidence {
 			CellManifestDigest: cellManifestDigest(direction, seed, planned), FaultOffset: planned, DeliveredBeforeFault: planned,
 			CanaryOffset: planned + 32, LastDeliveryNanos: 1, CarrierObservedNanos: 2, FaultAtNanos: 3,
 			FaultCompletedNanos: 10, CarrierCutAfterNanos: 1, AbsenceAfterNanos: 2,
-			RendezvousAttachmentDeadlineNanos: int64(6 * time.Second), OldCarrierClosedNanos: 8,
+			RendezvousAttachmentDeadlineNanos: int64(8 * time.Second), OldCarrierClosedNanos: 8,
 			CanaryAtNanos:            int64(time.Second),
 			ReplacementObservedNanos: int64(time.Second) + 1, TerminalAtNanos: int64(2 * time.Second), ClientRouteGeneration: 2,
 			PublisherRouteGeneration: 2, ClientRecoveryCount: 1, PublisherRecoveryCount: 1,
