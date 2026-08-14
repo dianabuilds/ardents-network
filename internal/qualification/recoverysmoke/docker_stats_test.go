@@ -3,6 +3,7 @@ package recoverysmoke
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/qualification/recovery"
 )
@@ -17,6 +18,26 @@ func TestResourceSummaryUsesLiveHighWater(t *testing.T) {
 	memory, cpu := resourceHighWater(samples)
 	if memory != 30 || cpu != 4 {
 		t.Fatalf("summary=%d %.1f", memory, cpu)
+	}
+}
+
+func TestResourceObservationCoalescesOnlyExactDockerRedraw(t *testing.T) {
+	left := recovery.ResourceSample{AtNanos: 1, ClientRSS: 2, PublisherRSS: 3,
+		ClientCPUPercent: 4, PublisherCPUPercent: 5, ClientReceived: 6, ClientSent: 7,
+		PublisherReceived: 8, PublisherSent: 9}
+	right := left
+	right.AtNanos = int64(time.Millisecond)
+	if !sameResourceObservation(left, right) {
+		t.Fatal("timestamp-only Docker redraw was not coalesced")
+	}
+	right.AtNanos = int64(time.Second)
+	if sameResourceObservation(left, right) {
+		t.Fatal("genuine unchanged resource interval was coalesced")
+	}
+	right.AtNanos = int64(time.Millisecond)
+	right.ClientReceived++
+	if sameResourceObservation(left, right) {
+		t.Fatal("changed resource observation was coalesced")
 	}
 }
 

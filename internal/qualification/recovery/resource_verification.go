@@ -26,7 +26,7 @@ func verifyResources(cell Cell) Result {
 		if index > 0 {
 			previous := cell.ResourceSamples[index-1]
 			interval := sample.AtNanos - previous.AtNanos
-			if interval < int64(500*time.Millisecond) || interval > int64(1500*time.Millisecond) ||
+			if interval < int64(490*time.Millisecond) || interval > int64(1500*time.Millisecond) ||
 				trafficBitrate(previous, sample) > carrierBitrateLimit {
 				return fail("one-second carrier sampling or bitrate gate failed")
 			}

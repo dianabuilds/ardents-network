@@ -115,7 +115,9 @@ func (observer dockerObserver) streamResourceSamples(ctx context.Context, identi
 		seen[service] = true
 		if len(seen) == len(services) {
 			sample.AtNanos = time.Since(clock).Nanoseconds()
-			samples = append(samples, sample)
+			if len(samples) == 0 || !sameResourceObservation(samples[len(samples)-1], sample) {
+				samples = append(samples, sample)
+			}
 			sample, seen = recovery.ResourceSample{}, map[string]bool{}
 		}
 	}
