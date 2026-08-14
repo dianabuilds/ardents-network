@@ -26,7 +26,7 @@ func TestResourceObservationCoalescesOnlyExactDockerRedraw(t *testing.T) {
 		ClientCPUPercent: 4, PublisherCPUPercent: 5, ClientReceived: 6, ClientSent: 7,
 		PublisherReceived: 8, PublisherSent: 9}
 	right := left
-	right.AtNanos = int64(time.Millisecond)
+	right.AtNanos = int64(500 * time.Millisecond)
 	if !sameResourceObservation(left, right) {
 		t.Fatal("timestamp-only Docker redraw was not coalesced")
 	}
@@ -34,7 +34,7 @@ func TestResourceObservationCoalescesOnlyExactDockerRedraw(t *testing.T) {
 	if sameResourceObservation(left, right) {
 		t.Fatal("genuine unchanged resource interval was coalesced")
 	}
-	right.AtNanos = int64(time.Millisecond)
+	right.AtNanos = int64(500 * time.Millisecond)
 	right.ClientReceived++
 	if sameResourceObservation(left, right) {
 		t.Fatal("changed resource observation was coalesced")

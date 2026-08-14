@@ -76,6 +76,9 @@ func TestVerifyRejectsMutationMissingEvidenceAndCandidateFailure(t *testing.T) {
 		"resource high-water underreported": func(value *Evidence) {
 			value.Cells[0].CarrierForwardBytes--
 		},
+		"sub-one-second resource cadence": func(value *Evidence) {
+			value.Cells[0].ResourceSamples[1].AtNanos = int64(500 * time.Millisecond)
+		},
 		"traffic observer not removed": func(value *Evidence) {
 			value.Cells[0].ClientTrafficObserver.Removed = false
 		},

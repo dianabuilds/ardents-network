@@ -8,7 +8,7 @@ import (
 
 func sameResourceObservation(left, right recovery.ResourceSample) bool {
 	interval := right.AtNanos - left.AtNanos
-	if interval < 0 || interval > int64(10*time.Millisecond) {
+	if interval < 0 || interval > int64(600*time.Millisecond) {
 		return false
 	}
 	left.AtNanos, right.AtNanos = 0, 0
