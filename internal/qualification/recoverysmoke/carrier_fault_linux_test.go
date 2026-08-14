@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"testing"
+	"time"
 
 	"golang.org/x/sys/unix"
 )
@@ -21,6 +22,26 @@ func TestCarrierDiagRequestAndMalformedResponse(t *testing.T) {
 	binary.NativeEndian.PutUint32(malformed[:4], 15)
 	if _, _, err := parseCarrierDiagDatagram(malformed); err == nil {
 		t.Fatal("malformed response passed")
+	}
+}
+
+func TestExactCarrierSocketResponseFailsClosed(t *testing.T) {
+	socketID := make([]byte, carrierSocketIDBytes)
+	valid := make([]byte, carrierDiagMessageBytes)
+	copy(valid[4:52], socketID)
+	if present, err := exactCarrierSocketResponse([][]byte{valid}, socketID); err != nil || !present {
+		t.Fatalf("exact response rejected: present=%v err=%v", present, err)
+	}
+	for name, messages := range map[string][][]byte{
+		"empty": nil, "short": {make([]byte, 51)}, "extra": {valid, valid},
+		"mismatch": {append([]byte(nil), valid...)},
+	} {
+		if name == "mismatch" {
+			messages[0][4] = 1
+		}
+		if present, err := exactCarrierSocketResponse(messages, socketID); err == nil || present {
+			t.Fatalf("%s response passed: present=%v err=%v", name, present, err)
+		}
 	}
 }
 
@@ -81,8 +102,26 @@ func TestCarrierFaultObservesExactSocket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	present, err := platformCarrierSocketPresent(raw)
+	present, err := platformCarrierSocketPresent(raw, time.Second)
 	if err != nil || !present {
 		t.Fatalf("observed socket present=%v err=%v", present, err)
 	}
+	if err := client.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := server.Close(); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		present, err = platformCarrierSocketPresent(raw, time.Second)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !present {
+			return
+		}
+		time.Sleep(time.Millisecond)
+	}
+	t.Fatal("closed socket remained in the exact inet_diag observation")
 }

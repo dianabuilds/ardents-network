@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net"
 	"strconv"
+	"time"
 
 	"golang.org/x/sys/unix"
 )
@@ -23,7 +24,7 @@ const (
 func platformCarrierSockets(remote string) ([]carrierObservation, error) {
 	host, portText, _ := net.SplitHostPort(remote)
 	port, _ := strconv.ParseUint(portText, 10, 16)
-	messages, err := carrierDiagExchange(unix.SOCK_DIAG_BY_FAMILY, unix.NLM_F_REQUEST|unix.NLM_F_DUMP, nil)
+	messages, err := carrierDiagExchange(unix.SOCK_DIAG_BY_FAMILY, unix.NLM_F_REQUEST|unix.NLM_F_DUMP, nil, 5*time.Second)
 	if err != nil {
 		return nil, err
 	}
@@ -46,17 +47,22 @@ func platformCarrierSockets(remote string) ([]carrierObservation, error) {
 	return result, nil
 }
 
-func platformCarrierSocketPresent(socketID []byte) (bool, error) {
-	messages, err := carrierDiagExchange(unix.SOCK_DIAG_BY_FAMILY, unix.NLM_F_REQUEST|unix.NLM_F_DUMP, nil)
+func platformCarrierSocketPresent(socketID []byte, timeout time.Duration) (bool, error) {
+	messages, err := carrierDiagExchange(unix.SOCK_DIAG_BY_FAMILY, unix.NLM_F_REQUEST, socketID, timeout)
+	if errors.Is(err, unix.ENOENT) {
+		return false, nil
+	}
 	if err != nil {
 		return false, err
 	}
-	for _, message := range messages {
-		if len(message) >= 52 && string(message[4:52]) == string(socketID) {
-			return true, nil
-		}
+	return exactCarrierSocketResponse(messages, socketID)
+}
+
+func exactCarrierSocketResponse(messages [][]byte, socketID []byte) (bool, error) {
+	if len(messages) != 1 || len(messages[0]) < 52 || string(messages[0][4:52]) != string(socketID) {
+		return false, errors.New("exact inet_diag socket response is missing or mismatched")
 	}
-	return false, nil
+	return true, nil
 }
 
 func platformCarrierInterfaceForAddress(endpoint string) (string, int, error) {
@@ -125,7 +131,7 @@ func platformDeleteCarrierInterface(name string) error {
 	return nil
 }
 
-func carrierDiagExchange(messageType uint16, flags uint16, socketID []byte) ([][]byte, error) {
+func carrierDiagExchange(messageType uint16, flags uint16, socketID []byte, timeout time.Duration) ([][]byte, error) {
 	file, err := unix.Socket(unix.AF_NETLINK, unix.SOCK_RAW|unix.SOCK_CLOEXEC, unix.NETLINK_INET_DIAG)
 	if err != nil {
 		return nil, err
@@ -134,14 +140,15 @@ func carrierDiagExchange(messageType uint16, flags uint16, socketID []byte) ([][
 	if err := unix.Bind(file, &unix.SockaddrNetlink{Family: unix.AF_NETLINK}); err != nil {
 		return nil, err
 	}
-	if err := unix.SetsockoptTimeval(file, unix.SOL_SOCKET, unix.SO_RCVTIMEO, &unix.Timeval{Sec: 5}); err != nil {
+	deadline := unix.NsecToTimeval(timeout.Nanoseconds())
+	if err := unix.SetsockoptTimeval(file, unix.SOL_SOCKET, unix.SO_RCVTIMEO, &deadline); err != nil {
 		return nil, err
 	}
 	if err := unix.Sendto(file, makeCarrierDiagRequest(messageType, flags, socketID), 0,
 		&unix.SockaddrNetlink{Family: unix.AF_NETLINK}); err != nil {
 		return nil, err
 	}
-	return receiveCarrierDiag(file)
+	return receiveCarrierDiag(file, flags&unix.NLM_F_DUMP != 0)
 }
 
 func makeCarrierDiagRequest(messageType uint16, flags uint16, socketID []byte) []byte {
@@ -151,7 +158,11 @@ func makeCarrierDiagRequest(messageType uint16, flags uint16, socketID []byte) [
 	binary.NativeEndian.PutUint16(request[6:8], flags)
 	binary.NativeEndian.PutUint32(request[8:12], 1)
 	request[16], request[17] = unix.AF_INET, unix.IPPROTO_TCP
-	binary.NativeEndian.PutUint32(request[20:24], 1<<carrierTCPEstablished)
+	states := uint32(1 << carrierTCPEstablished)
+	if len(socketID) == carrierSocketIDBytes {
+		states = ^uint32(0)
+	}
+	binary.NativeEndian.PutUint32(request[20:24], states)
 	if len(socketID) == carrierSocketIDBytes {
 		copy(request[24:], socketID)
 	} else {
@@ -162,7 +173,7 @@ func makeCarrierDiagRequest(messageType uint16, flags uint16, socketID []byte) [
 	return request
 }
 
-func receiveCarrierDiag(file int) ([][]byte, error) {
+func receiveCarrierDiag(file int, multipart bool) ([][]byte, error) {
 	var result [][]byte
 	buffer := make([]byte, 64<<10)
 	totalBytes := 0
@@ -181,6 +192,9 @@ func receiveCarrierDiag(file int) ([][]byte, error) {
 				return nil, errors.New("inet_diag response exceeded its bound")
 			}
 			result = append(result, append([]byte(nil), payload...))
+		}
+		if !multipart {
+			return result, nil
 		}
 		if done {
 			return result, nil

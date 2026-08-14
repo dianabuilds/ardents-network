@@ -28,7 +28,7 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 	if err != nil {
 		return recovery.Cell{}, err
 	}
-	faultThreshold := (uint32(17) + uint32(seed[0]%16)) * 16_381
+	faultThreshold := (uint32(56) + uint32(seed[0]%8)) * 16_381
 	observer.gateOffset = faultThreshold
 	gateRoot := filepath.Join(observer.input.FixtureRoot, "gate")
 	for _, name := range []string{"client.ready", "client.release", "publisher.ready", "publisher.release"} {
@@ -38,7 +38,8 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 	if err := byteio.WriteJSON(filepath.Join(observer.input.FixtureRoot, "cell-manifest.json"), map[string]any{
 		"schema": "ardents-h3-recovery-cell-manifest-v1", "direction": direction, "seed": seed,
 		"bytes": recoveryBytes, "fault_family": "carrier-channel", "planned_fault_offset": faultThreshold,
-		"canary_bytes": 32, "digest": manifestDigest}, 64<<10); err != nil {
+		"canary_bytes": 32, "rendezvous_attachment_deadline": "6s",
+		"digest": manifestDigest}, 64<<10); err != nil {
 		return recovery.Cell{}, err
 	}
 	if _, err := observer.compose(ctx, time.Minute, "--profile", "setup", "run", "--no-deps", "--rm", "volume-init"); err != nil {
@@ -84,9 +85,8 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 		return recovery.Cell{}, err
 	}
 	carrierObservedAt := time.Since(cellClock).Nanoseconds()
-	faultedCarrier, faultAt, faultCompletedAt, carrierCutAfter, absenceAfter, controllerRemoved, resourceAbsent, err :=
-		observer.destroyCarrier(ctx, faultController, identities["rendezvous"], network, initialCarrier, cellClock)
-	if err != nil || !resourceAbsent {
+	fault, err := observer.destroyCarrier(ctx, faultController, identities["rendezvous"], network, initialCarrier, cellClock)
+	if err != nil || !fault.resourceAbsent {
 		return recovery.Cell{}, errors.Join(err, errors.New("faulted Carrier resource remained available"))
 	}
 	if err := os.WriteFile(filepath.Join(gateRoot, senderRole+".release"), []byte("release\n"), 0o600); err != nil {
@@ -131,20 +131,22 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 		ReplacementCarrier:  replacementCarrier.SocketIDSHA256,
 		InitialCarrierLocal: initialCarrier.LocalAddress, InitialCarrierRemote: initialCarrier.RemoteAddress,
 		ReplacementCarrierLocal: replacementCarrier.LocalAddress, ReplacementCarrierRemote: replacementCarrier.RemoteAddress,
-		FaultedCarrier: faultedCarrier, InitialCarrierInode: initialCarrier.Inode, ReplacementCarrierInode: replacementCarrier.Inode,
+		FaultedCarrier: fault.commitment, ClosedCarrier: fault.closedCommitment,
+		InitialCarrierInode: initialCarrier.Inode, ReplacementCarrierInode: replacementCarrier.Inode,
 		InitialCarrierInterface: initialCarrier.InterfaceName, ReplacementCarrierInterface: replacementCarrier.InterfaceName,
 		InitialCarrierInterfaceIndex: initialCarrier.InterfaceIndex, ReplacementCarrierInterfaceIndex: replacementCarrier.InterfaceIndex,
 		Seed: seed, ExpectedDigest: expected, ObservedDigest: application.ReceivedDigest,
 		CellManifestDigest: manifestDigest,
 		FaultService:       "rendezvous-responder-carrier", FaultContainer: identities["rendezvous"], FaultNetwork: network,
-		FaultController: faultController, FaultControllerRemoved: controllerRemoved, ReplacementObserver: replacementObserver,
+		FaultController: faultController, FaultControllerRemoved: fault.controllerRemoved, ReplacementObserver: replacementObserver,
 		InitialRouteContainers: initialRouteContainers, RecoveredRouteContainers: recoveredRouteContainers,
 		InitialRoutePIDs: initialRoutePIDs, RecoveredRoutePIDs: recoveredRoutePIDs,
 		Canary: workloadCanary(seed, canaryOffset), Bytes: recoveryBytes, PlannedFaultOffset: faultThreshold,
 		FaultOffset:          delivered,
 		DeliveredBeforeFault: delivered, CanaryOffset: canaryOffset, LastDeliveryNanos: lastDeliveryAt,
-		CarrierObservedNanos: carrierObservedAt, FaultAtNanos: faultAt, FaultCompletedNanos: faultCompletedAt,
-		CarrierCutAfterNanos: carrierCutAfter, AbsenceAfterNanos: absenceAfter,
+		CarrierObservedNanos: carrierObservedAt, FaultAtNanos: fault.faultAt, FaultCompletedNanos: fault.completedAt,
+		CarrierCutAfterNanos: fault.cutAfter, AbsenceAfterNanos: fault.absenceAfter,
+		RendezvousAttachmentDeadlineNanos: int64(6 * time.Second), OldCarrierClosedNanos: fault.socketClosedAt,
 		CanaryAtNanos: canaryAt, ReplacementObservedNanos: replacementObservedAt, TerminalAtNanos: terminalAt,
 		ClientRouteGeneration: clientEndpoint.RouteGeneration, PublisherRouteGeneration: publisherEndpoint.RouteGeneration,
 		ClientRecoveryCount: clientEndpoint.RecoveryCount, PublisherRecoveryCount: publisherEndpoint.RecoveryCount,
@@ -156,8 +158,8 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 		Ordered: application.Terminal == "success", Unique: application.ReceivedBytes == recoveryBytes,
 		SameConnection:         clientEndpoint.ServiceConnectionsHighWater == 1 && publisherEndpoint.ServiceConnectionsHighWater == 1,
 		ApplicationReconnected: clientEndpoint.ApplicationIPCAccepts != 1 || publisherEndpoint.ApplicationIPCAccepts != 1,
-		OldCarrierReused:       oldCarrierReused, FaultResourceAbsent: resourceAbsent,
-		FailedResourceUnavailable: resourceAbsent && !oldCarrierReused,
+		OldCarrierReused:       oldCarrierReused, OldCarrierClosed: fault.socketClosed,
+		FaultResourceAbsent: fault.resourceAbsent, FailedResourceUnavailable: fault.resourceAbsent && fault.socketClosed && !oldCarrierReused,
 		TerminalClean: clientEndpoint.Class == "clean service connection close" &&
 			publisherEndpoint.Class == "clean service connection close", QueueHighWater: max(clientEndpoint.QueueHighWater, publisherEndpoint.QueueHighWater),
 		MemoryHighWater:    max(lastSample.ClientRSS, lastSample.PublisherRSS),

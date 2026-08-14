@@ -2,7 +2,10 @@
 
 package recoverysmoke
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
 
 func platformCarrierSockets(string) ([]carrierObservation, error) {
 	return nil, errors.New("carrier socket fault injection requires Linux")
@@ -16,6 +19,6 @@ func platformDeleteCarrierInterface(string) error {
 	return errors.New("carrier socket fault injection requires Linux")
 }
 
-func platformCarrierSocketPresent([]byte) (bool, error) {
+func platformCarrierSocketPresent([]byte, time.Duration) (bool, error) {
 	return false, errors.New("carrier socket fault injection requires Linux")
 }

@@ -105,37 +105,58 @@ func parseCarrierObservation(raw []byte) (carrierObservation, error) {
 	return value, nil
 }
 
+type carrierFaultOutcome struct {
+	commitment, closedCommitment                                 string
+	faultAt, completedAt, cutAfter, absenceAfter, socketClosedAt int64
+	controllerRemoved, resourceAbsent, socketClosed              bool
+}
+
 func (observer dockerObserver) destroyCarrier(ctx context.Context, controller, rendezvous, network string,
-	value carrierObservation, cellClock time.Time) (digest string, faultAt, completedAt int64,
-	cutAfter, absenceAfter int64,
-	controllerRemoved, absent bool, err error) {
-	faultAt = time.Since(cellClock).Nanoseconds()
+	value carrierObservation, cellClock time.Time) (carrierFaultOutcome, error) {
+	result := carrierFaultOutcome{faultAt: time.Since(cellClock).Nanoseconds()}
 	raw, err := observer.docker(ctx, 10*time.Second, "exec", controller,
 		"/usr/local/bin/ardents-qualify", "carrier-fault", "fault", value.SocketID)
 	if err != nil {
-		return "", 0, 0, 0, 0, false, false, err
+		return result, err
 	}
 	var receipt carrierFaultReceipt
 	if json.Unmarshal(raw, &receipt) != nil || receipt.Kind != "faulted" || receipt.SocketIDSHA256 != value.SocketIDSHA256 ||
 		receipt.InterfaceName != value.InterfaceName || receipt.CarrierCutAfterNanos <= 0 ||
 		receipt.AbsenceAfterNanos < receipt.CarrierCutAfterNanos || !receipt.Absent {
-		return "", 0, 0, 0, 0, false, false, errors.New("external Carrier fault receipt is invalid")
+		return result, errors.New("external Carrier fault receipt is invalid")
 	}
+	result.commitment, result.cutAfter = receipt.SocketIDSHA256, receipt.CarrierCutAfterNanos
+	result.absenceAfter, result.resourceAbsent = receipt.AbsenceAfterNanos, true
+	closedRaw, err := observer.docker(ctx, 6*time.Second, "exec", controller,
+		"/usr/local/bin/ardents-qualify", "carrier-fault", "await-closed", value.SocketID)
+	if err != nil {
+		return result, err
+	}
+	var closed carrierClosureReceipt
+	if decodeErr := json.Unmarshal(closedRaw, &closed); decodeErr != nil {
+		return result, fmt.Errorf("decode external old-Carrier closure receipt: %w", decodeErr)
+	}
+	if closed.Kind != "closed" || closed.SocketIDSHA256 != value.SocketIDSHA256 ||
+		closed.SocketAbsentAfterNanos <= 0 || !closed.Absent {
+		return result, errors.New("external old-Carrier closure receipt is invalid")
+	}
+	result.closedCommitment = closed.SocketIDSHA256
+	result.socketClosed, result.socketClosedAt = true, time.Since(cellClock).Nanoseconds()
 	_, removeErr := observer.docker(ctx, 10*time.Second, "rm", "-f", controller)
 	present, presenceErr := observer.docker(ctx, 10*time.Second, "ps", "-a", "-q", "--no-trunc", "--filter", "id="+controller)
 	if presenceErr != nil || strings.TrimSpace(string(present)) != "" {
-		return "", 0, 0, 0, 0, false, false,
+		return result,
 			errors.Join(removeErr, presenceErr, errors.New("Carrier fault controller remained present after removal"))
 	}
+	result.controllerRemoved = true
 	if err := observer.disconnectCarrierNetwork(ctx, network, rendezvous); err != nil {
-		return "", 0, 0, 0, 0, true, false, err
+		return result, err
 	}
 	if _, err := observer.docker(ctx, 10*time.Second, "network", "connect", "--ip", carrierLocalIP, network, rendezvous); err != nil {
-		return "", 0, 0, 0, 0, true, false, fmt.Errorf("restore exact Carrier network: %w", err)
+		return result, fmt.Errorf("restore exact Carrier network: %w", err)
 	}
-	completedAt = time.Since(cellClock).Nanoseconds()
-	return receipt.SocketIDSHA256, faultAt, completedAt, receipt.CarrierCutAfterNanos,
-		receipt.AbsenceAfterNanos, true, true, nil
+	result.completedAt = time.Since(cellClock).Nanoseconds()
+	return result, nil
 }
 
 func (observer dockerObserver) disconnectCarrierNetwork(ctx context.Context, network, rendezvous string) error {

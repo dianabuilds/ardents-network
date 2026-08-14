@@ -139,7 +139,7 @@ func verifyCell(cell Cell, manifestText, imageID string) Result {
 		return invalid("manifest digest is malformed")
 	}
 	_ = manifest
-	planned := (uint32(17) + uint32(cell.Seed[0]%16)) * 16_381
+	planned := (uint32(56) + uint32(cell.Seed[0]%8)) * 16_381
 	if cell.CellManifestDigest != cellManifestDigest(cell.Direction, cell.Seed, planned) {
 		return invalid("directional cell manifest does not bind seed and fault schedule")
 	}
@@ -158,6 +158,8 @@ func verifyCell(cell Cell, manifestText, imageID string) Result {
 		cell.FaultCompletedNanos < cell.FaultAtNanos ||
 		cell.CarrierCutAfterNanos <= 0 || cell.AbsenceAfterNanos < cell.CarrierCutAfterNanos ||
 		cell.AbsenceAfterNanos > cell.FaultCompletedNanos-cell.FaultAtNanos ||
+		cell.RendezvousAttachmentDeadlineNanos != int64(6*time.Second) ||
+		cell.OldCarrierClosedNanos < cell.FaultAtNanos || cell.OldCarrierClosedNanos > cell.FaultCompletedNanos ||
 		cell.CanaryAtNanos < cell.FaultCompletedNanos ||
 		cell.CanaryAtNanos <= cell.FaultAtNanos ||
 		cell.CanaryAtNanos-cell.FaultAtNanos > int64(5*time.Second) || cell.TerminalAtNanos < cell.CanaryAtNanos ||
@@ -173,7 +175,8 @@ func verifyCell(cell Cell, manifestText, imageID string) Result {
 		return fail("generation or continuity observations do not prove one recovery")
 	}
 	if !cell.Ordered || !cell.Unique || !cell.SameConnection || cell.ApplicationReconnected ||
-		cell.OldCarrierReused || !cell.FailedResourceUnavailable || !cell.FaultResourceAbsent || !cell.TerminalClean {
+		cell.OldCarrierReused || !cell.OldCarrierClosed || !cell.FailedResourceUnavailable ||
+		!cell.FaultResourceAbsent || !cell.TerminalClean {
 		return fail("same-connection ordered recovery conjunct failed")
 	}
 	if cell.QueueHighWater > queueLimit {
@@ -192,7 +195,8 @@ func verifyCell(cell Cell, manifestText, imageID string) Result {
 
 func cellManifestDigest(direction string, seed [32]byte, planned uint32) string {
 	hash := sha256.New()
-	_, _ = hash.Write([]byte("ardents-h3-recovery-cell-manifest-v1\x00" + direction + "\x00carrier-channel\x00"))
+	_, _ = hash.Write([]byte("ardents-h3-recovery-cell-manifest-v1\x00" + direction +
+		"\x00carrier-channel\x00rendezvous-attachment-deadline=6s\x00"))
 	_, _ = hash.Write(seed[:])
 	var values [12]byte
 	binary.BigEndian.PutUint32(values[:4], streamBytes)

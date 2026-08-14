@@ -8,7 +8,8 @@ import (
 
 func recoveryCellManifest(direction string, seed [32]byte, planned uint32) string {
 	hash := sha256.New()
-	_, _ = hash.Write([]byte("ardents-h3-recovery-cell-manifest-v1\x00" + direction + "\x00carrier-channel\x00"))
+	_, _ = hash.Write([]byte("ardents-h3-recovery-cell-manifest-v1\x00" + direction +
+		"\x00carrier-channel\x00rendezvous-attachment-deadline=6s\x00"))
 	_, _ = hash.Write(seed[:])
 	var values [12]byte
 	binary.BigEndian.PutUint32(values[:4], recoveryBytes)

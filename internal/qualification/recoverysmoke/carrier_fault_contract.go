@@ -46,6 +46,13 @@ type carrierFaultReceipt struct {
 	Absent               bool   `json:"absent"`
 }
 
+type carrierClosureReceipt struct {
+	Kind                   string `json:"kind"`
+	SocketIDSHA256         string `json:"socket_id_sha256"`
+	SocketAbsentAfterNanos int64  `json:"socket_absent_after_nanos"`
+	Absent                 bool   `json:"absent"`
+}
+
 func executeCarrierFault(arguments []string, output io.Writer) error {
 	encoder := json.NewEncoder(output)
 	if len(arguments) == 1 && arguments[0] == "wait" {
@@ -70,6 +77,13 @@ func executeCarrierFault(arguments []string, output io.Writer) error {
 	}
 	if len(arguments) == 2 && arguments[0] == "fault" {
 		value, err := faultCarrierSocket(arguments[1])
+		if err != nil {
+			return err
+		}
+		return encoder.Encode(value)
+	}
+	if len(arguments) == 2 && arguments[0] == "await-closed" {
+		value, err := awaitCarrierClosure(arguments[1], platformCarrierSocketPresent)
 		if err != nil {
 			return err
 		}
@@ -132,6 +146,30 @@ func faultCarrierSocket(socketID string) (receipt carrierFaultReceipt, err error
 		time.Sleep(time.Millisecond)
 	}
 	return receipt, errors.New("faulted Carrier interface remained present")
+}
+
+func awaitCarrierClosure(socketID string, present func([]byte, time.Duration) (bool, error)) (carrierClosureReceipt, error) {
+	value, raw, err := decodeCarrierSocketID(socketID)
+	if err != nil {
+		return carrierClosureReceipt{}, err
+	}
+	if err := validateDedicatedCarrier(value); err != nil {
+		return carrierClosureReceipt{}, err
+	}
+	started, deadline := time.Now(), time.Now().Add(5*time.Second)
+	for time.Now().Before(deadline) {
+		remaining := time.Until(deadline)
+		isPresent, statusErr := present(raw, min(remaining, 100*time.Millisecond))
+		if statusErr != nil {
+			return carrierClosureReceipt{}, statusErr
+		}
+		if !isPresent {
+			return carrierClosureReceipt{Kind: "closed", SocketIDSHA256: value.SocketIDSHA256,
+				SocketAbsentAfterNanos: time.Since(started).Nanoseconds(), Absent: true}, nil
+		}
+		time.Sleep(time.Millisecond)
+	}
+	return carrierClosureReceipt{}, errors.New("faulted Carrier socket remained present beyond its Route deadline")
 }
 
 func carrierInterfacePresent(name string) (bool, error) {

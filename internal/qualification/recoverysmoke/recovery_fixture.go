@@ -34,6 +34,7 @@ func configureRecoveryFixture(root string, fixture prepared) error {
 			plan["Deadline"] = "15s"
 			if role == "rendezvous" {
 				plan["Next"] = "172.31.21.14:4604"
+				plan["Deadline"] = "6s"
 			}
 			if listen, ok := plan["Listen"].(string); ok {
 				_, port, err := net.SplitHostPort(listen)
