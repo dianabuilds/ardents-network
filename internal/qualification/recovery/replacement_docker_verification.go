@@ -15,6 +15,11 @@ type dockerProcessPublicProjection struct {
 
 func validDockerReplacementProcesses(value replacementEvidence) bool {
 	for _, cell := range value.Cells {
+		for _, service := range replacementEndpointProcessRoles {
+			if !validDockerProcessObservation(cell.HostProcesses[service], value.HostScope, service) {
+				return false
+			}
+		}
 		for _, route := range cell.Routes {
 			for role, process := range route.Processes {
 				if !strings.HasPrefix(process.Service, role) ||
@@ -49,18 +54,25 @@ func validDockerReplacementProcesses(value replacementEvidence) bool {
 }
 
 func validDockerCandidateProcess(process candidateProcess, scope hostScopeEvidence) bool {
-	if !validDockerProcessProjection(process, scope) {
+	observation := processObservationEvidence{Host: process.Host, PID: process.PID,
+		ObservedAtNanos: process.ObservedAtNanos, HostObservation: process.HostObservation,
+		AdapterProjection: process.AdapterProjection}
+	if !validDockerProcessObservation(observation, scope, process.Service) ||
+		process.Host.Identity != process.ContainerID || process.Host.Incarnation != process.Incarnation {
 		return false
 	}
-	_, ok := processStartedAt(process.Incarnation, process.ContainerID)
-	return ok
+	return true
 }
 
-func validDockerProcessProjection(process candidateProcess, scope hostScopeEvidence) bool {
+func validDockerProcessObservation(process processObservationEvidence, scope hostScopeEvidence,
+	service string) bool {
 	if len(process.AdapterProjection) == 0 || len(process.AdapterProjection) > 64<<10 {
 		return false
 	}
 	value := process.Host
+	if _, ok := processStartedAt(value.Incarnation, value.Identity); !ok {
+		return false
+	}
 	var projection dockerProcessPublicProjection
 	decoder := json.NewDecoder(bytes.NewReader([]byte(process.AdapterProjection)))
 	decoder.DisallowUnknownFields()
@@ -83,13 +95,12 @@ func validDockerProcessProjection(process candidateProcess, scope hostScopeEvide
 	executable := dockerProcessProjection("ardents-qualification-executable-v1\x00",
 		append([]string{projection.Image, projection.Path}, projection.Arguments...)...)
 	tree := dockerProcessProjection("ardents-qualification-process-tree-v1\x00",
-		projection.Project, projection.Service, projection.PIDMode, process.ContainerID)
+		projection.Project, projection.Service, projection.PIDMode, value.Identity)
 	return value.Adapter == "docker-compose-v1" && projection.Image != "" && projection.Path != "" &&
 		sha256.Sum256([]byte(projection.Image)) == scope.Image && projection.Project == scope.AdapterProjection &&
-		projection.Service == process.Service && (projection.PIDMode == "" || projection.PIDMode == "private") &&
+		projection.Service == service && (projection.PIDMode == "" || projection.PIDMode == "private") &&
 		value.Executable == executable && value.Tree == tree &&
-		value.Identity == process.ContainerID && value.Incarnation == process.Incarnation &&
-		fullContainerID(process.ContainerID) && process.PID != 0
+		fullContainerID(value.Identity) && process.PID != 0
 }
 
 func dockerProcessProjection(domain string, values ...string) [32]byte {

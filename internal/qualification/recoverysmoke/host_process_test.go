@@ -20,11 +20,13 @@ type hostProcessStub struct {
 	faultSpec                      processFaultSpec
 	wanted                         processState
 	limit                          time.Duration
+	selectors                      []processSelector
 }
 
 func (stub *hostProcessStub) ResolveProcess(_ context.Context,
 	selector processSelector) (processObservation, error) {
 	stub.selector = selector
+	stub.selectors = append(stub.selectors, selector)
 	return stub.observations[selector.AdapterKey], stub.resolveErr
 }
 

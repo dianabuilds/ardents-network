@@ -15,8 +15,10 @@ func TestCommonS42ProcessRulesAcceptAdapterNeutralEvidence(t *testing.T) {
 	}
 	for cellIndex := range extension.Cells {
 		cell := &extension.Cells[cellIndex]
-		identities := map[string]bool{cell.ClientProcess: true, cell.PublisherProcess: true,
-			cell.ClientApplicationProcess: true, cell.PublisherApplicationProcess: true}
+		identities := map[string]bool{}
+		for _, process := range cell.HostProcesses {
+			identities[process.Host.Identity] = true
+		}
 		if result := verifyReplacementProposals(*cell, byRole, extension.RouteCase,
 			value.Manifest.RouteManifest, extension.HostScope, identities); result.Verdict != "pass" {
 			t.Fatalf("cell %d adapter-neutral proposals were rejected: %+v", cellIndex, result)

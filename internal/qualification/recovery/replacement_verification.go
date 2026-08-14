@@ -117,10 +117,6 @@ func verifyReplacementCell(cell replacementCell, candidates map[string][]replace
 		cell.ObservedDigest != cell.ExpectedDigest || cell.HostStartedAtNanos <= 0 || cell.TerminalNanos <= 0 {
 		return invalid("S4.2 replacement cell identity or workload is incomplete")
 	}
-	if !fullContainerID(cell.ClientProcess) || !fullContainerID(cell.PublisherProcess) ||
-		!fullContainerID(cell.ClientApplicationProcess) || !fullContainerID(cell.PublisherApplicationProcess) {
-		return invalid("S4.2 Endpoint or Application process identity is incomplete")
-	}
 	if len(cell.Routes) != len(cell.Events)+1 || len(cell.Events) == 0 || len(cell.Events) > 3 ||
 		cell.ClientRouteGeneration != uint64(len(cell.Routes)) || cell.PublisherRouteGeneration != uint64(len(cell.Routes)) ||
 		cell.ClientRecoveryCount != uint32(len(cell.Events)) || cell.PublisherRecoveryCount != uint32(len(cell.Events)) ||
@@ -148,8 +144,10 @@ func verifyReplacementCell(cell replacementCell, candidates map[string][]replace
 		cell.FinalCanaryObservedNanos-cell.TerminalNanos > int64(30*time.Second) {
 		return fail("S4.2 final same-stream canary is missing or unbound")
 	}
-	identities := map[string]bool{cell.ClientProcess: true, cell.PublisherProcess: true,
-		cell.ClientApplicationProcess: true, cell.PublisherApplicationProcess: true}
+	identities := map[string]bool{}
+	if result := verifyReplacementEndpointProcesses(cell, hostScope, identities); result.Verdict != "pass" {
+		return result
+	}
 	if result := verifyReplacementProposals(cell, candidates, routeCase, routeManifest, hostScope, identities); result.Verdict != "pass" {
 		return result
 	}

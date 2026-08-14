@@ -50,6 +50,12 @@ func processObservationCommitment(ref processEvidenceRef, projection []byte, pid
 }
 
 func validProcessRef(process candidateProcess, scope hostScopeEvidence) bool {
+	return validProcessObservation(processObservationEvidence{Host: process.Host, PID: process.PID,
+		ObservedAtNanos: process.ObservedAtNanos, HostObservation: process.HostObservation,
+		AdapterProjection: process.AdapterProjection}, scope)
+}
+
+func validProcessObservation(process processObservationEvidence, scope hostScopeEvidence) bool {
 	value := process.Host
 	return value.Adapter == scope.Adapter && value.Scope == scope.Commitment && value.Executable != [32]byte{} &&
 		value.Tree != [32]byte{} && value.Identity != "" && value.Incarnation != "" && process.ObservedAtNanos > 0 &&

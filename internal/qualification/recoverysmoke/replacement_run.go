@@ -48,6 +48,7 @@ func (observer dockerObserver) runReplacementRecovery(ctx context.Context, fixtu
 		return replacementCell{}, err
 	}
 	proposalRoutes := make([]routeGeneration, proposalCount)
+	var hostProcesses map[string]processObservationEvidence
 	var traffic trafficObservers
 	var sampler *statsSampler
 	defer func() {
@@ -65,6 +66,10 @@ func (observer dockerObserver) runReplacementRecovery(ctx context.Context, fixtu
 		}
 		return err
 	}, func() error {
+		hostProcesses, err = observeReplacementEndpointProcesses(ctx, processObserver, identities)
+		if err != nil {
+			return err
+		}
 		for index := range proposalRoutes {
 			proposalRoutes[index], err = observeRouteGeneration(ctx, processObserver, fixture,
 				uint64(index+1), plan.selections[index])
@@ -87,8 +92,7 @@ func (observer dockerObserver) runReplacementRecovery(ctx context.Context, fixtu
 	cell := replacementCell{Direction: direction, Mode: mode, Bytes: 4 << 20, Seed: seed,
 		HostStartedAtNanos: hostStartedAt,
 		ExpectedDigest:     workloadDigest(seed, 4<<20), Routes: []routeGeneration{initialRoute},
-		ClientProcess: identities["client-endpoint"], PublisherProcess: identities["publisher-endpoint"],
-		ClientApplicationProcess: identities["client-app"], PublisherApplicationProcess: identities["publisher-app"],
+		HostProcesses:        hostProcesses,
 		BaselineFinalTraffic: baseline.finalTraffic, BaselineClientTraffic: baseline.client,
 		BaselinePublisherTraffic: baseline.publisher, BaselineClientRoute: baseline.routes[0],
 		BaselinePublisherRoute: baseline.routes[1], BaselineClientTrafficObserver: baseline.observers[0],

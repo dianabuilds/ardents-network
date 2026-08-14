@@ -40,8 +40,10 @@ func verifyReplacementObservers(cell replacementCell, imageID string, identities
 }
 
 func replacementCellIdentities(cell replacementCell) map[string]bool {
-	result := map[string]bool{cell.ClientProcess: true, cell.PublisherProcess: true,
-		cell.ClientApplicationProcess: true, cell.PublisherApplicationProcess: true}
+	result := make(map[string]bool, len(cell.HostProcesses)+16)
+	for _, process := range cell.HostProcesses {
+		result[process.Host.Identity] = true
+	}
 	for _, generation := range cell.Routes {
 		for _, process := range generation.Processes {
 			result[process.Host.Identity] = true

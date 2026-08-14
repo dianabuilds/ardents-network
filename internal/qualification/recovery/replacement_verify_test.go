@@ -80,6 +80,29 @@ func TestVerifyRejectsS42ReplacementMutations(t *testing.T) {
 				[]byte(process.AdapterProjection), process.PID, true, process.ObservedAtNanos)
 			value.Cells[0].Routes[0].Processes["initiator"] = process
 		},
+		"missing Endpoint process observation": func(value *replacementEvidence) {
+			delete(value.Cells[0].HostProcesses, "client-endpoint")
+		},
+		"changed Application process observation": func(value *replacementEvidence) {
+			process := value.Cells[0].HostProcesses["client-app"]
+			process.ObservedAtNanos++
+			value.Cells[0].HostProcesses["client-app"] = process
+		},
+		"Endpoint process identity reused": func(value *replacementEvidence) {
+			process := value.Cells[0].HostProcesses["publisher-endpoint"]
+			process.Host = value.Cells[0].HostProcesses["client-endpoint"].Host
+			process.HostObservation = processObservationCommitment(process.Host,
+				[]byte(process.AdapterProjection), process.PID, true, process.ObservedAtNanos)
+			value.Cells[0].HostProcesses["publisher-endpoint"] = process
+		},
+		"Docker Endpoint incarnation changed": func(value *replacementEvidence) {
+			process := value.Cells[0].HostProcesses["client-endpoint"]
+			process.Host.Incarnation = "unbound-start-incarnation"
+			process.Host.Commitment = processRefCommitment(process.Host)
+			process.HostObservation = processObservationCommitment(process.Host,
+				[]byte(process.AdapterProjection), process.PID, true, process.ObservedAtNanos)
+			value.Cells[0].HostProcesses["client-endpoint"] = process
+		},
 		"Docker process projection changed": func(value *replacementEvidence) {
 			process := value.Cells[0].Routes[0].Processes["initiator"]
 			process.AdapterProjection = `{"Image":"wrong","Path":"/wrong","Project":"wrong","Service":"initiator"}`
@@ -127,9 +150,15 @@ func TestVerifyRejectsS42ReplacementMutations(t *testing.T) {
 			value.Cells[0].Proposals[0].Stopped[0].ObservedAtNanos = value.Cells[0].TerminalNanos - 1
 		},
 		"proposal process overlaps Endpoint": func(value *replacementEvidence) {
-			value.Cells[0].Proposals[0].Processes[0].ContainerID = value.Cells[0].ClientProcess
-			value.Cells[0].Proposals[0].Processes[0].Incarnation = value.Cells[0].ClientProcess + "@2026-01-01T00:00:00Z"
-			value.Cells[0].Proposals[0].Stopped[0].ContainerID = value.Cells[0].ClientProcess
+			endpoint := value.Cells[0].HostProcesses["client-endpoint"]
+			process := &value.Cells[0].Proposals[0].Processes[0]
+			process.ContainerID, process.Incarnation = endpoint.Host.Identity, endpoint.Host.Incarnation
+			process.Host.Identity, process.Host.Incarnation = endpoint.Host.Identity, endpoint.Host.Incarnation
+			process.Host.Commitment = processRefCommitment(process.Host)
+			process.HostObservation = processObservationCommitment(process.Host,
+				[]byte(process.AdapterProjection), process.PID, true, process.ObservedAtNanos)
+			value.Cells[0].Proposals[0].Stopped[0] = testStoppedReceipt(*process,
+				value.Cells[0].HostStartedAtNanos, value.Cells[0].TerminalNanos+1, 0)
 		},
 		"committed proposal process substituted": func(value *replacementEvidence) {
 			process := &value.Cells[0].Proposals[0].Processes[0]
@@ -291,8 +320,6 @@ func s42Cell(imageID, direction, mode string, failures []string, sets map[string
 	processes := map[[32]byte]candidateProcess{}
 	cell := replacementCell{Direction: direction, Mode: mode, Seed: seed, Bytes: streamBytes,
 		ExpectedDigest: workloadDigest(seed, streamBytes), ObservedDigest: workloadDigest(seed, streamBytes),
-		ClientProcess: nextID(), PublisherProcess: nextID(),
-		ClientApplicationProcess: nextID(), PublisherApplicationProcess: nextID(),
 		ClientRouteGeneration: uint64(len(selections)), PublisherRouteGeneration: uint64(len(selections)),
 		ClientRecoveryCount: uint32(len(failures)), PublisherRecoveryCount: uint32(len(failures)),
 		ClientApplicationAccepts: 1, PublisherApplicationAccepts: 1,
@@ -304,6 +331,10 @@ func s42Cell(imageID, direction, mode string, failures []string, sets map[string
 	if mode == "sequential-three" {
 		cell.TerminalNanos = int64(10*time.Minute + time.Second)
 	}
+	cell.HostProcesses = endpointProcessTestSet(t, hostScope, imageID, hostStartedAt, map[string]string{
+		"client-endpoint": nextID(), "publisher-endpoint": nextID(),
+		"client-app": nextID(), "publisher-app": nextID(),
+	})
 	if direction == "client-to-publisher" {
 		cell.ClientAcceptedBytes, cell.ClientAcknowledgedBytes = streamBytes, streamBytes
 		cell.PublisherReceivedBytes = streamBytes

@@ -20,8 +20,7 @@ type replacementCandidate struct {
 
 type replacementCell struct {
 	Direction, Mode                                                            string
-	ClientProcess, PublisherProcess                                            string
-	ClientApplicationProcess, PublisherApplicationProcess                      string
+	HostProcesses                                                              map[string]processObservationEvidence
 	Seed, ExpectedDigest, ObservedDigest                                       [32]byte
 	Bytes                                                                      uint32
 	HostStartedAtNanos, TerminalNanos                                          int64
@@ -85,6 +84,14 @@ type candidateProcess struct {
 	AdapterProjection                 string
 	NodeID, PublicKey                 [32]byte
 	Host                              processEvidenceRef
+}
+
+type processObservationEvidence struct {
+	Host              processEvidenceRef
+	PID               uint32
+	ObservedAtNanos   int64
+	HostObservation   [32]byte
+	AdapterProjection string
 }
 
 type replacementEvent struct {

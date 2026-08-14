@@ -65,26 +65,37 @@ func observeRouteGeneration(ctx context.Context, observer hostProcessAdapter, fi
 		if err != nil {
 			return routeGeneration{}, err
 		}
-		observed, err := observer.ResolveProcess(ctx,
-			processSelector{LogicalRole: roleName, AdapterKey: service})
+		evidence, err := observeProcessEvidence(ctx, observer, roleName, service)
 		if err != nil {
 			return routeGeneration{}, fmt.Errorf("resolve %s Route process: %w", roleName, err)
 		}
-		if err := validateProcessObservation(observed); err != nil {
-			return routeGeneration{}, fmt.Errorf("resolve %s Route process: %w", roleName, err)
-		}
 		candidate := selection[roleName]
-		host := bindProcessRef(observed.Ref)
 		process := candidateProcess{Service: service,
-			ContainerID: observed.Ref.Identity, Incarnation: observed.Ref.Incarnation,
-			PID: observed.OSProcessID, ObservedAtNanos: observed.ObservedAtNanos,
-			NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, Host: host,
-			AdapterProjection: string(observed.AdapterProjection)}
-		process.HostObservation = processObservationCommitment(host, []byte(process.AdapterProjection),
-			process.PID, true, process.ObservedAtNanos)
+			ContainerID: evidence.Host.Identity, Incarnation: evidence.Host.Incarnation,
+			PID: evidence.PID, ObservedAtNanos: evidence.ObservedAtNanos,
+			HostObservation: evidence.HostObservation, AdapterProjection: evidence.AdapterProjection,
+			NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, Host: evidence.Host}
 		result.Processes[roleName] = process
 	}
 	return result, nil
+}
+
+func observeProcessEvidence(ctx context.Context, observer hostProcessAdapter,
+	logicalRole, adapterKey string) (processObservationEvidence, error) {
+	observed, err := observer.ResolveProcess(ctx,
+		processSelector{LogicalRole: logicalRole, AdapterKey: adapterKey})
+	if err != nil {
+		return processObservationEvidence{}, err
+	}
+	if err := validateProcessObservation(observed); err != nil {
+		return processObservationEvidence{}, err
+	}
+	host := bindProcessRef(observed.Ref)
+	projection := string(observed.AdapterProjection)
+	return processObservationEvidence{Host: host, PID: observed.OSProcessID,
+		ObservedAtNanos: observed.ObservedAtNanos, AdapterProjection: projection,
+		HostObservation: processObservationCommitment(host, []byte(projection),
+			observed.OSProcessID, true, observed.ObservedAtNanos)}, nil
 }
 
 func stopCandidate(ctx context.Context, observer hostProcessAdapter,
