@@ -30,7 +30,9 @@ func servePublisher(ctx context.Context, input Actor, ready func(Evidence)) (Evi
 	defer stop()
 	if ready != nil {
 		ready(Evidence{Schema: observationSchema, Kind: "ready", Role: "publisher", PID: os.Getpid(),
-			NetworkID: input.NetworkID, EpochDigest: input.EpochDigest, NodeID: input.NodeID, PreviousPin: input.UpstreamPin})
+			NetworkID: input.NetworkID, EpochDigest: input.EpochDigest, NodeID: input.NodeID, PreviousPin: input.UpstreamPin,
+			DeadlineMillis: uint32(input.Deadline / time.Millisecond),
+			LifetimeMillis: uint32(input.Lifetime / time.Millisecond)})
 	}
 	connection, err := listener.Accept()
 	if err != nil {

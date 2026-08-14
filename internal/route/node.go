@@ -35,7 +35,9 @@ func serveNode(ctx context.Context, input Actor, ready func(Evidence)) (Evidence
 	if ready != nil {
 		ready(Evidence{Schema: observationSchema, Kind: "ready", Role: input.Role, PID: os.Getpid(),
 			NetworkID: input.NetworkID, EpochDigest: input.EpochDigest, NodeID: input.NodeID,
-			PreviousPin: input.UpstreamPin, NextNodeID: input.NextNodeID})
+			PreviousPin: input.UpstreamPin, NextNodeID: input.NextNodeID,
+			DeadlineMillis: uint32(input.Deadline / time.Millisecond),
+			LifetimeMillis: uint32(input.Lifetime / time.Millisecond)})
 	}
 	upstream, err := listener.Accept()
 	if err != nil {

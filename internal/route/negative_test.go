@@ -19,24 +19,38 @@ func TestRouteNodeRejectsWrongUpstreamIdentity(t *testing.T) {
 	address := unusedAddress(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	ready, done := make(chan route.Evidence, 1), make(chan error, 1)
+	ready := make(chan route.Evidence, 1)
+	done := make(chan struct {
+		value route.Evidence
+		err   error
+	}, 1)
 	go func() {
-		_, err := route.Run(ctx, route.Actor{Role: "initiator", ManifestDigest: [32]byte{99}, NetworkID: [32]byte{1}, EpochDigest: [32]byte{2},
+		value, err := route.Run(ctx, route.Actor{Role: "initiator", ManifestDigest: [32]byte{99}, NetworkID: [32]byte{1}, EpochDigest: [32]byte{2},
 			NodeID: [32]byte{3}, ListenAddress: address, Certificate: identities[0].certificate,
 			UpstreamPin: identities[1].public, NextNodeID: [32]byte{4}, NextAddress: unusedAddress(t),
 			NextPin: identities[1].public, Deadline: time.Second}, func(value route.Evidence) { ready <- value })
-		done <- err
+		done <- struct {
+			value route.Evidence
+			err   error
+		}{value, err}
 	}()
-	<-ready
+	readyValue := <-ready
+	if readyValue.DeadlineMillis != 1_000 || readyValue.LifetimeMillis != 1_000 {
+		t.Fatalf("defaulted ready timing=%d/%d", readyValue.DeadlineMillis, readyValue.LifetimeMillis)
+	}
 	connection, err := tls.Dial("tcp", address, &tls.Config{MinVersion: tls.VersionTLS13,
 		MaxVersion: tls.VersionTLS13, InsecureSkipVerify: true, Certificates: []tls.Certificate{identities[2].certificate}})
 	if err == nil {
 		connection.Close()
 	}
 	select {
-	case err := <-done:
-		if err == nil || !strings.Contains(err.Error(), "upstream") {
-			t.Fatalf("wrong identity did not fail at the upstream boundary: %v", err)
+	case outcome := <-done:
+		if outcome.err == nil || !strings.Contains(outcome.err.Error(), "upstream") {
+			t.Fatalf("wrong identity did not fail at the upstream boundary: %v", outcome.err)
+		}
+		if outcome.value.DeadlineMillis != readyValue.DeadlineMillis ||
+			outcome.value.LifetimeMillis != readyValue.LifetimeMillis {
+			t.Fatalf("ready/complete timing mismatch: ready=%+v complete=%+v", readyValue, outcome.value)
 		}
 	case <-ctx.Done():
 		t.Fatal("wrong-identity Node did not terminate within its bound")

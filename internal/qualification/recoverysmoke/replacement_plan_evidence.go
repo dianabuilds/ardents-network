@@ -91,20 +91,27 @@ func replacementPlanProcess(cell *replacementCell, proposal *replacementProposal
 
 func parseRoutePlanTiming(raw []byte, role string, attachment uint32) (routePlanTiming, error) {
 	var result routePlanTiming
-	count := 0
+	seen := make(map[string]bool, 2)
 	for _, line := range splitLines(raw) {
 		var value route.Evidence
 		if err := json.Unmarshal(line, &value); err != nil {
 			return routePlanTiming{}, fmt.Errorf("decode %s Route plan evidence: %w", role, err)
 		}
-		if value.Kind != "complete" || value.Role != role || value.Attachment != attachment {
+		if value.Kind != "complete" && value.Kind != "ready" || value.Role != role || value.Attachment != attachment {
 			continue
 		}
-		count++
-		result = routePlanTiming{Attachment: value.Attachment,
+		if seen[value.Kind] {
+			return routePlanTiming{}, errors.New(role + " Route plan timing evidence is duplicated")
+		}
+		seen[value.Kind] = true
+		observed := routePlanTiming{Attachment: value.Attachment,
 			DeadlineMillis: value.DeadlineMillis, LifetimeMillis: value.LifetimeMillis}
+		if result.Attachment != 0 && result != observed {
+			return routePlanTiming{}, errors.New(role + " Route plan timing observations disagree")
+		}
+		result = observed
 	}
-	if count != 1 || result.DeadlineMillis == 0 || result.LifetimeMillis == 0 {
+	if result.Attachment == 0 || result.DeadlineMillis == 0 || result.LifetimeMillis == 0 {
 		return routePlanTiming{}, errors.New(role + " Route plan timing evidence is incomplete or duplicated")
 	}
 	return result, nil

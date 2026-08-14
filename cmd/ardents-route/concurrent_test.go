@@ -35,9 +35,13 @@ func TestCollectConcurrentClosesEveryOwnedTaskOnConstructionFailure(t *testing.T
 func TestExecuteConcurrentSerializesEvidenceAndClosesMixedOutcomes(t *testing.T) {
 	var active, encoded, closed atomic.Int32
 	var concurrent atomic.Bool
-	encode := func(any) error {
+	readyAttachments := make(chan uint32, 2)
+	encode := func(value any) error {
 		if active.Add(1) != 1 {
 			concurrent.Store(true)
+		}
+		if evidence, ok := value.(route.Evidence); ok && evidence.Kind == "ready" {
+			readyAttachments <- evidence.Attachment
 		}
 		time.Sleep(time.Millisecond)
 		encoded.Add(1)
@@ -60,6 +64,10 @@ func TestExecuteConcurrentSerializesEvidenceAndClosesMixedOutcomes(t *testing.T)
 	}
 	if concurrent.Load() || encoded.Load() != 4 || closed.Load() != 2 {
 		t.Fatalf("concurrent=%v encoded=%d closed=%d", concurrent.Load(), encoded.Load(), closed.Load())
+	}
+	seen := map[uint32]bool{<-readyAttachments: true, <-readyAttachments: true}
+	if !seen[1] || !seen[2] {
+		t.Fatalf("ready Attachment ownership=%v", seen)
 	}
 }
 

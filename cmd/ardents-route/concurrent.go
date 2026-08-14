@@ -68,6 +68,7 @@ func executeConcurrent(ctx context.Context, tasks []concurrentTask, encode func(
 	for _, task := range tasks {
 		go func(task concurrentTask) {
 			ready := func(value route.Evidence) {
+				value.Attachment = task.attachment
 				output.Lock()
 				defer output.Unlock()
 				outputErr = errors.Join(outputErr, encode(value))

@@ -56,7 +56,10 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 		var readyErr error
 		var ready func(route.Evidence)
 		if step.Actor.Role != "client" {
-			ready = func(value route.Evidence) { readyErr = encoder.Encode(value) }
+			ready = func(value route.Evidence) {
+				value.Attachment = step.Attachment
+				readyErr = encoder.Encode(value)
+			}
 		}
 		result, runErr := route.Run(ctx, step.Actor, ready)
 		runErr = errors.Join(runErr, readyErr)

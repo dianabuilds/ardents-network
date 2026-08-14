@@ -24,6 +24,7 @@ func Run(ctx context.Context, input Actor, ready func(Evidence)) (Evidence, erro
 	if err := validateLifetime(input.Deadline, lifetime); err != nil {
 		return Evidence{}, err
 	}
+	input.Lifetime = lifetime
 	attempt, cancel := context.WithTimeout(ctx, lifetime)
 	defer cancel()
 	var acknowledgement <-chan error
