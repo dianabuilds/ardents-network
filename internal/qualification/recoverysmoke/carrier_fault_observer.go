@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -50,9 +51,32 @@ func (observer dockerObserver) destroyCarrier(ctx context.Context, controller, r
 	if _, err := observer.docker(ctx, 10*time.Second, "network", "connect", "--ip", carrierLocalIP, network, rendezvous); err != nil {
 		return "", 0, 0, 0, 0, false, err
 	}
+	if err := observer.ensureControllerRunning(ctx, controller); err != nil {
+		return "", 0, 0, 0, 0, false, err
+	}
 	completedAt = time.Since(cellClock).Nanoseconds()
 	return receipt.SocketIDSHA256, faultAt, completedAt, receipt.CarrierCutAfterNanos,
 		receipt.AbsenceAfterNanos, true, nil
+}
+
+func (observer dockerObserver) ensureControllerRunning(ctx context.Context, controller string) error {
+	raw, err := observer.docker(ctx, 10*time.Second, "inspect", "--format", "{{.State.Running}}", controller)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(string(raw)) != "true" {
+		if _, err := observer.docker(ctx, 10*time.Second, "start", controller); err != nil {
+			return err
+		}
+	}
+	raw, err = observer.docker(ctx, 10*time.Second, "inspect", "--format", "{{.Id}} {{.State.Running}}", controller)
+	if err != nil {
+		return fmt.Errorf("inspect restored fault controller: %w", err)
+	}
+	if strings.TrimSpace(string(raw)) != controller+" true" {
+		return errors.New("fault controller did not retain its container identity after Carrier restoration")
+	}
+	return nil
 }
 
 func (observer dockerObserver) routeProcessIdentities(ctx context.Context,
