@@ -77,12 +77,17 @@ func Verify(value Evidence) Result {
 	directions := map[string]bool{}
 	containerIDs := map[string]bool{}
 	faultNetwork := ""
+	var priorCellHostEnd int64
 	for index := range value.Cells {
+		cell := value.Cells[index]
+		if cell.HostStartedAtNanos <= 0 || cell.HostCompletedAtNanos < cell.HostStartedAtNanos ||
+			cell.HostStartedAtNanos < priorCellHostEnd || cell.HostCompletedAtNanos > value.CampaignCompletedAtNanos {
+			return invalid("Carrier cell host-observation chronology is invalid")
+		}
 		directions[value.Cells[index].Direction] = true
-		if result := verifyCell(value.Cells[index], value.ManifestDigest, value.ImageID); result.Verdict != "pass" {
+		if result := verifyCell(value.Cells[index], value.ManifestDigest, value.ImageID, hostScope); result.Verdict != "pass" {
 			return result
 		}
-		cell := value.Cells[index]
 		for identity := range retainedContainerIdentities(cell) {
 			if containerIDs[identity] {
 				return invalid("directional cells reused a retained container identity")
@@ -94,6 +99,7 @@ func Verify(value Evidence) Result {
 		} else if value.Cells[index].FaultNetwork != faultNetwork {
 			return invalid("directional cells do not share the frozen Carrier network")
 		}
+		priorCellHostEnd = cell.HostCompletedAtNanos
 	}
 	if !directions["client-to-publisher"] || !directions["publisher-to-client"] {
 		return invalid("both directional cells are required")
@@ -148,7 +154,7 @@ func Verify(value Evidence) Result {
 	return Result{Verdict: "pass", Reason: reason}
 }
 
-func verifyCell(cell Cell, manifestText, imageID string) Result {
+func verifyCell(cell Cell, manifestText, imageID string, hostScope hostScopeEvidence) Result {
 	if cell.Direction != "client-to-publisher" && cell.Direction != "publisher-to-client" {
 		return invalid("direction is invalid")
 	}
@@ -160,7 +166,7 @@ func verifyCell(cell Cell, manifestText, imageID string) Result {
 			return invalid("process or carrier identity is missing")
 		}
 	}
-	if result := verifyCarrierEvidence(cell, imageID); result.Verdict != "pass" {
+	if result := verifyChannelEvidence(cell, imageID, hostScope); result.Verdict != "pass" {
 		return result
 	}
 	if result := verifyTrafficObservers(cell, imageID); result.Verdict != "pass" {

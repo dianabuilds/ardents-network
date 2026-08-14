@@ -15,9 +15,10 @@ import (
 const recoveryBytes = uint32(4 << 20)
 
 func (observer dockerObserver) runPositiveRecovery(ctx context.Context, direction string,
-	baseline trafficBaseline) (recovery.Cell, error) {
+	baseline trafficBaseline, hostScope hostScopeEvidence, hostClock time.Time) (recovery.Cell, error) {
 	observer = observer.forRecoveryOperation(direction)
 	cellClock := time.Now()
+	cellHostStartedAt := max(int64(1), time.Since(hostClock).Nanoseconds())
 	if err := observer.resetRecoveryTopology(ctx, time.Minute); err != nil {
 		return recovery.Cell{}, err
 	}
@@ -98,7 +99,9 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 		return recovery.Cell{}, err
 	}
 	carrierObservedAt := time.Since(cellClock).Nanoseconds()
-	fault, err := observer.destroyCarrier(ctx, faultController, identities["rendezvous"], network, initialCarrier, cellClock)
+	carrierHostObservedAt := time.Since(hostClock).Nanoseconds()
+	fault, err := observer.destroyCarrier(ctx, faultController, identities["rendezvous"], network,
+		initialCarrier, cellClock, hostClock)
 	if err != nil || !fault.resourceAbsent {
 		return recovery.Cell{}, errors.Join(err, errors.New("faulted Carrier resource remained available"))
 	}
@@ -116,6 +119,7 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 		return recovery.Cell{}, errors.Join(err, errors.New("recovery reused the failed Carrier socket"))
 	}
 	replacementObservedAt := time.Since(cellClock).Nanoseconds()
+	replacementHostObservedAt := time.Since(hostClock).Nanoseconds()
 	recoveredRouteIncarnations, err := observer.routeProcessIncarnations(ctx, identities)
 	if err != nil {
 		return recovery.Cell{}, err
@@ -148,7 +152,14 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 	memoryHighWater, externalCPU := resourceHighWater(samples)
 	forwardBytes := max(finalTraffic.ClientSent, finalTraffic.PublisherSent)
 	reverseBytes := max(finalTraffic.ClientReceived, finalTraffic.PublisherReceived)
-	cell := recovery.Cell{Direction: direction, ClientProcess: identities["client-endpoint"],
+	cellHostCompletedAt := time.Since(hostClock).Nanoseconds()
+	channelEvidence, err := freezeCommonChannelEvidence(hostScope, network, identities["rendezvous"],
+		faultController, initialCarrier, replacementCarrier, fault, carrierHostObservedAt, replacementHostObservedAt)
+	if err != nil {
+		return recovery.Cell{}, err
+	}
+	cell := recovery.Cell{ChannelEvidence: channelEvidence, HostStartedAtNanos: cellHostStartedAt,
+		HostCompletedAtNanos: cellHostCompletedAt, Direction: direction, ClientProcess: identities["client-endpoint"],
 		PublisherProcess: identities["publisher-endpoint"], ClientApplicationProcess: identities["client-app"],
 		PublisherApplicationProcess: identities["publisher-app"], InitialCarrier: initialCarrier.SocketIDSHA256,
 		ReplacementCarrier:  replacementCarrier.SocketIDSHA256,

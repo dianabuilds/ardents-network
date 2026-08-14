@@ -34,6 +34,14 @@ func TestVerifyRejectsMissingCleanupReceipt(t *testing.T) {
 	}
 }
 
+func TestVerifyRejectsMissingCommonChannelEvidence(t *testing.T) {
+	value := validEvidence(t)
+	value.Cells[0].ChannelEvidence = nil
+	if result := Verify(value); result.Verdict != "invalid" {
+		t.Fatalf("missing common channel evidence verdict = %+v, want invalid", result)
+	}
+}
+
 func TestVerifyRejectsMutationMissingEvidenceAndCandidateFailure(t *testing.T) {
 	for name, mutate := range map[string]func(*Evidence){
 		"mutated bytes":    func(value *Evidence) { value.Cells[0].ObservedDigest[0]++ },
@@ -48,6 +56,12 @@ func TestVerifyRejectsMutationMissingEvidenceAndCandidateFailure(t *testing.T) {
 		},
 		"campaign completion predates duration": func(value *Evidence) {
 			value.CampaignCompletedAtNanos = value.CampaignNanos - 1
+		},
+		"Carrier cell host clock reset": func(value *Evidence) {
+			value.Cells[1].HostStartedAtNanos = value.Cells[0].HostCompletedAtNanos - 1
+		},
+		"Carrier cell finishes after campaign": func(value *Evidence) {
+			value.Cells[1].HostCompletedAtNanos = value.CampaignCompletedAtNanos + 1
 		},
 		"late canary": func(value *Evidence) { value.Cells[0].CanaryAtNanos += int64(6 * time.Second) },
 		"fault setup moved recovery clock": func(value *Evidence) {
@@ -276,6 +290,8 @@ func validEvidence(t *testing.T) Evidence {
 		seed := [32]byte{byte(index + 1)}
 		planned := (uint32(17) + uint32(seed[0]%8)) * 16_381
 		cell := Cell{Direction: direction, ClientProcess: identity(1), PublisherProcess: identity(2),
+			HostStartedAtNanos:       int64(index*10)*int64(time.Second) + 1,
+			HostCompletedAtNanos:     int64(index*10+6) * int64(time.Second),
 			ClientApplicationProcess: identity(3), PublisherApplicationProcess: identity(4), InitialCarrier: strings.Repeat("1", 64),
 			ReplacementCarrier: strings.Repeat("2", 64), FaultService: "rendezvous-responder-carrier", FaultContainer: identity(8),
 			InitialCarrierLocal: "172.31.21.13:50001", InitialCarrierRemote: "172.31.21.14:4604",
@@ -345,6 +361,7 @@ func validEvidence(t *testing.T) Evidence {
 		}
 		cell.ExpectedDigest, cell.ObservedDigest = workloadDigest(seed, streamBytes), workloadDigest(seed, streamBytes)
 		cell.Canary = workloadRange(seed, cell.CanaryOffset)
+		cell.ChannelEvidence = testChannelEvidence(t, cell, hostScope)
 		value.Cells = append(value.Cells, cell)
 	}
 	return value

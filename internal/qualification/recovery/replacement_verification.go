@@ -52,6 +52,7 @@ func verifyReplacementEvidence(value Evidence, prior map[string]bool, hostScope 
 	}
 	required := make(map[string]bool, 10)
 	var priorHostTerminal int64
+	hostEnds := make([]int64, 0, len(replacement.Cells))
 	for index := range replacement.Cells {
 		cell := replacement.Cells[index]
 		hostTerminal := cell.HostStartedAtNanos + cell.TerminalNanos
@@ -63,6 +64,7 @@ func verifyReplacementEvidence(value Evidence, prior map[string]bool, hostScope 
 			return result
 		}
 		hostEnd := replacementCellHostEnd(cell, hostTerminal)
+		hostEnds = append(hostEnds, hostEnd)
 		key := cell.Direction + ":" + cell.Mode
 		if required[key] {
 			return invalid("S4.2 replacement cell was duplicated")
@@ -87,7 +89,31 @@ func verifyReplacementEvidence(value Evidence, prior map[string]bool, hostScope 
 	if priorHostTerminal > campaignCompletedAt {
 		return invalid("S4.2 host observation follows campaign completion")
 	}
+	if !validReplacementInterleaving(value.Cells, replacement.Cells, hostEnds) {
+		return invalid("S4.2 base and replacement cell chronology is invalid")
+	}
 	return Result{Verdict: "pass"}
+}
+
+func validReplacementInterleaving(base []Cell, cells []replacementCell, ends []int64) bool {
+	modes := []string{"isolated-initiator", "isolated-introduction", "isolated-rendezvous",
+		"isolated-responder", "sequential-three"}
+	if len(base) != 2 || len(cells) != 10 || len(ends) != len(cells) {
+		return false
+	}
+	for index := range cells {
+		direction := "client-to-publisher"
+		if index >= len(modes) {
+			direction = "publisher-to-client"
+		}
+		if cells[index].Direction != direction || cells[index].Mode != modes[index%len(modes)] {
+			return false
+		}
+	}
+	return base[0].Direction == "client-to-publisher" && base[1].Direction == "publisher-to-client" &&
+		base[0].HostCompletedAtNanos <= cells[0].HostStartedAtNanos &&
+		ends[4] <= base[1].HostStartedAtNanos &&
+		base[1].HostCompletedAtNanos <= cells[5].HostStartedAtNanos
 }
 
 func replacementCellHostEnd(cell replacementCell, current int64) int64 {

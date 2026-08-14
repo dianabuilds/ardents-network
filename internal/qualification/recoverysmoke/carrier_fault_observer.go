@@ -108,12 +108,15 @@ func parseCarrierObservation(raw []byte) (carrierObservation, error) {
 type carrierFaultOutcome struct {
 	commitment, retiredCommitment                                 string
 	faultAt, completedAt, cutAfter, absenceAfter, socketRetiredAt int64
+	retiredAfter                                                  int64
+	hostFaultAt, hostCompletedAt, hostRetiredAt                   int64
 	controllerRemoved, resourceAbsent, socketRetired              bool
 }
 
 func (observer dockerObserver) destroyCarrier(ctx context.Context, controller, rendezvous, network string,
-	value carrierObservation, cellClock time.Time) (carrierFaultOutcome, error) {
-	result := carrierFaultOutcome{faultAt: time.Since(cellClock).Nanoseconds()}
+	value carrierObservation, cellClock, hostClock time.Time) (carrierFaultOutcome, error) {
+	result := carrierFaultOutcome{faultAt: time.Since(cellClock).Nanoseconds(),
+		hostFaultAt: time.Since(hostClock).Nanoseconds()}
 	raw, err := observer.docker(ctx, 10*time.Second, "exec", controller,
 		"/usr/local/bin/ardents-qualify", "carrier-fault", "fault", value.SocketID)
 	if err != nil {
@@ -141,7 +144,9 @@ func (observer dockerObserver) destroyCarrier(ctx context.Context, controller, r
 		return result, errors.New("external old-Carrier retirement receipt is invalid")
 	}
 	result.retiredCommitment = retired.SocketIDSHA256
+	result.retiredAfter = retired.SocketLeftEstablishedAfterNanos
 	result.socketRetired, result.socketRetiredAt = true, time.Since(cellClock).Nanoseconds()
+	result.hostRetiredAt = time.Since(hostClock).Nanoseconds()
 	_, removeErr := observer.docker(ctx, 10*time.Second, "rm", "-f", controller)
 	present, presenceErr := observer.docker(ctx, 10*time.Second, "ps", "-a", "-q", "--no-trunc", "--filter", "id="+controller)
 	if presenceErr != nil || strings.TrimSpace(string(present)) != "" {
@@ -156,6 +161,7 @@ func (observer dockerObserver) destroyCarrier(ctx context.Context, controller, r
 		return result, fmt.Errorf("restore exact Carrier network: %w", err)
 	}
 	result.completedAt = time.Since(cellClock).Nanoseconds()
+	result.hostCompletedAt = time.Since(hostClock).Nanoseconds()
 	return result, nil
 }
 

@@ -38,6 +38,7 @@ type PublicManifest struct {
 
 // Cell records one externally observed directional Carrier recovery.
 type Cell struct {
+	ChannelEvidence                                                 json.RawMessage
 	Direction, ClientProcess, PublisherProcess                      string
 	ClientApplicationProcess, PublisherApplicationProcess           string
 	InitialCarrier, ReplacementCarrier                              string
@@ -62,6 +63,7 @@ type Cell struct {
 	Bytes, PlannedFaultOffset, FaultOffset                          uint32
 	DeliveredBeforeFault, CanaryOffset                              uint32
 	LastDeliveryNanos, CarrierObservedNanos, FaultAtNanos           int64
+	HostStartedAtNanos, HostCompletedAtNanos                        int64
 	FaultCompletedNanos                                             int64
 	CarrierCutAfterNanos, AbsenceAfterNanos                         int64
 	CarrierAttachmentDeadlineNanos, ChunkDelayNanos                 int64

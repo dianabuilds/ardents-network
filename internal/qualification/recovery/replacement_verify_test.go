@@ -228,9 +228,18 @@ func validS42Evidence(t *testing.T) Evidence {
 	serial := 1000
 	hostScope := testHostScope(value.SourceCommit, value.ImageID, value.ManifestDigest)
 	value.HostScope = encodeHostScopeTest(t, hostScope)
+	for index := range value.Cells {
+		value.Cells[index].ChannelEvidence = testChannelEvidence(t, value.Cells[index], hostScope)
+	}
 	nextID := func() string { serial++; return fmt.Sprintf("%064x", serial) }
-	hostStartedAt := int64(100)
-	for _, direction := range []string{"client-to-publisher", "publisher-to-client"} {
+	hostStartedAt := value.Cells[0].HostCompletedAtNanos + 10
+	for directionIndex, direction := range []string{"client-to-publisher", "publisher-to-client"} {
+		if directionIndex == 1 {
+			value.Cells[1].HostStartedAtNanos = hostStartedAt
+			value.Cells[1].HostCompletedAtNanos = hostStartedAt + int64(6*time.Second)
+			value.Cells[1].ChannelEvidence = testChannelEvidence(t, value.Cells[1], hostScope)
+			hostStartedAt = value.Cells[1].HostCompletedAtNanos + 10
+		}
 		for _, role := range replacementRoleNames {
 			cell := s42Cell(value.ImageID, direction, "isolated-"+role, []string{role}, sets, seed,
 				extension.RouteCase, routeDigest, hostScope, hostStartedAt, nextID, t)

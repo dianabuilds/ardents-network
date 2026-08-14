@@ -74,7 +74,7 @@ func (observer dockerObserver) runRecoveryCell(ctx context.Context, fixture prep
 				if err != nil {
 					return observer.invalid(err)
 				}
-				cell, err := observer.runPositiveRecovery(ctx, direction, baseline)
+				cell, err := observer.runPositiveRecovery(ctx, direction, baseline, hostScope, hostClock)
 				if err != nil {
 					return Result{Verdict: "fail", Reason: direction + ": " + err.Error(), EvidenceRoot: observer.input.EvidenceRoot,
 						SourceCommit: observer.sourceCommit, ImageID: imageID}
@@ -91,7 +91,7 @@ func (observer dockerObserver) runRecoveryCell(ctx context.Context, fixture prep
 			if err != nil {
 				return observer.invalid(err)
 			}
-			cell, err := observer.runPositiveRecovery(ctx, direction, baseline)
+			cell, err := observer.runPositiveRecovery(ctx, direction, baseline, hostScope, hostClock)
 			if err != nil {
 				return Result{Verdict: "fail", Reason: direction + ": " + err.Error(), EvidenceRoot: observer.input.EvidenceRoot,
 					SourceCommit: observer.sourceCommit, ImageID: imageID}
