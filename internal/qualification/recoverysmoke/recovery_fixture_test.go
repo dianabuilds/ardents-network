@@ -8,7 +8,7 @@ func TestCarrierAdjacentRolesShareTheBoundedAttachmentDeadline(t *testing.T) {
 		applyRouteDeadline(plan, role)
 		expected := "15s"
 		if role == "rendezvous" || role == "responder" {
-			expected = "8s"
+			expected = "10s"
 		}
 		if plan["Deadline"] != expected {
 			t.Fatalf("role %s deadline %v; want %s", role, plan["Deadline"], expected)

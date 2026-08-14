@@ -8,7 +8,7 @@ import (
 
 func TestParseConfigFreezesRecoveryBounds(t *testing.T) {
 	value, err := parseConfig([]string{"--fixture", "fixture", "--evidence", "evidence"})
-	if err != nil || value.Bytes != 4<<20 || value.ChunkDelay != "20ms" {
+	if err != nil || value.Bytes != 4<<20 || value.ChunkDelay != "30ms" {
 		t.Fatalf("config=%+v err=%v", value, err)
 	}
 }

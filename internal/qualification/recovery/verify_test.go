@@ -37,7 +37,10 @@ func TestVerifyRejectsMutationMissingEvidenceAndCandidateFailure(t *testing.T) {
 			cell.OldCarrierRetiredNanos = int64(4*time.Second) + 1
 		},
 		"wrong Carrier Attachment deadline": func(value *Evidence) {
-			value.Cells[0].CarrierAttachmentDeadlineNanos = int64(7 * time.Second)
+			value.Cells[0].CarrierAttachmentDeadlineNanos = int64(9 * time.Second)
+		},
+		"wrong workload chunk delay": func(value *Evidence) {
+			value.Cells[0].ChunkDelayNanos = int64(20 * time.Millisecond)
 		},
 		"old Carrier not retired": func(value *Evidence) {
 			value.Cells[0].OldCarrierRetired = false
@@ -155,7 +158,7 @@ func validEvidence() Evidence {
 		Passed: true, ContainerID: "endpoint-container", InjectedResource: "publisher-endpoint", BeforeProcess: "101", AfterProcess: "202"}
 	for index, direction := range []string{"client-to-publisher", "publisher-to-client"} {
 		seed := [32]byte{byte(index + 1)}
-		planned := (uint32(176) + uint32(seed[0]%8)) * 16_381
+		planned := (uint32(184) + uint32(seed[0]%8)) * 16_381
 		cell := Cell{Direction: direction, ClientProcess: "client", PublisherProcess: "publisher",
 			ClientApplicationProcess: "client-app", PublisherApplicationProcess: "publisher-app", InitialCarrier: strings.Repeat("1", 64),
 			ReplacementCarrier: strings.Repeat("2", 64), FaultService: "rendezvous-responder-carrier", FaultContainer: "rendezvous-container",
@@ -173,7 +176,8 @@ func validEvidence() Evidence {
 			CellManifestDigest: cellManifestDigest(direction, seed, planned), FaultOffset: planned, DeliveredBeforeFault: planned,
 			CanaryOffset: planned + 32, LastDeliveryNanos: 1, CarrierObservedNanos: 2, FaultAtNanos: 3,
 			FaultCompletedNanos: 10, CarrierCutAfterNanos: 1, AbsenceAfterNanos: 2,
-			CarrierAttachmentDeadlineNanos: int64(8 * time.Second), OldCarrierRetiredNanos: 8,
+			CarrierAttachmentDeadlineNanos: int64(10 * time.Second), ChunkDelayNanos: int64(30 * time.Millisecond),
+			OldCarrierRetiredNanos:   8,
 			CanaryAtNanos:            int64(time.Second),
 			ReplacementObservedNanos: int64(time.Second) + 1, TerminalAtNanos: int64(2 * time.Second), ClientRouteGeneration: 2,
 			PublisherRouteGeneration: 2, ClientRecoveryCount: 1, PublisherRecoveryCount: 1,

@@ -28,7 +28,7 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 	if err != nil {
 		return recovery.Cell{}, err
 	}
-	faultThreshold := (uint32(176) + uint32(seed[0]%8)) * 16_381
+	faultThreshold := (uint32(184) + uint32(seed[0]%8)) * 16_381
 	observer.gateOffset = faultThreshold
 	gateRoot := filepath.Join(observer.input.FixtureRoot, "gate")
 	for _, name := range []string{"client.ready", "client.release", "publisher.ready", "publisher.release"} {
@@ -38,7 +38,7 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 	if err := byteio.WriteJSON(filepath.Join(observer.input.FixtureRoot, "cell-manifest.json"), map[string]any{
 		"schema": "ardents-h3-recovery-cell-manifest-v1", "direction": direction, "seed": seed,
 		"bytes": recoveryBytes, "fault_family": "carrier-channel", "planned_fault_offset": faultThreshold,
-		"canary_bytes": 32, "carrier_attachment_deadline": "8s",
+		"canary_bytes": 32, "carrier_attachment_deadline": "10s", "chunk_delay": "30ms",
 		"digest": manifestDigest}, 64<<10); err != nil {
 		return recovery.Cell{}, err
 	}
@@ -146,8 +146,9 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 		DeliveredBeforeFault: delivered, CanaryOffset: canaryOffset, LastDeliveryNanos: lastDeliveryAt,
 		CarrierObservedNanos: carrierObservedAt, FaultAtNanos: fault.faultAt, FaultCompletedNanos: fault.completedAt,
 		CarrierCutAfterNanos: fault.cutAfter, AbsenceAfterNanos: fault.absenceAfter,
-		CarrierAttachmentDeadlineNanos: int64(8 * time.Second), OldCarrierRetiredNanos: fault.socketRetiredAt,
-		CanaryAtNanos: canaryAt, ReplacementObservedNanos: replacementObservedAt, TerminalAtNanos: terminalAt,
+		CarrierAttachmentDeadlineNanos: int64(10 * time.Second), ChunkDelayNanos: int64(30 * time.Millisecond),
+		OldCarrierRetiredNanos: fault.socketRetiredAt,
+		CanaryAtNanos:          canaryAt, ReplacementObservedNanos: replacementObservedAt, TerminalAtNanos: terminalAt,
 		ClientRouteGeneration: clientEndpoint.RouteGeneration, PublisherRouteGeneration: publisherEndpoint.RouteGeneration,
 		ClientRecoveryCount: clientEndpoint.RecoveryCount, PublisherRecoveryCount: publisherEndpoint.RecoveryCount,
 		ClientApplicationAccepts:    clientEndpoint.ApplicationIPCAccepts,
