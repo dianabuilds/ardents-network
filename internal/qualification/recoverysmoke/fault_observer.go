@@ -40,18 +40,34 @@ func (observer dockerObserver) waitSequentialGate(ctx context.Context, root, rol
 }
 
 func resetSequentialGates(root string, offsets []uint32) error {
+	var paths []string
 	for _, role := range []string{"client", "publisher"} {
 		for _, offset := range offsets {
 			suffix := strconv.FormatUint(uint64(offset), 10)
 			ready := filepath.Join(root, role+".ready."+suffix)
-			for _, path := range []string{ready, ready + ".pending", filepath.Join(root, role+".release."+suffix)} {
-				if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
-					return fmt.Errorf("remove prior host-controlled gate state %q: %w", path, err)
-				}
-			}
+			paths = append(paths, ready, ready+".pending", filepath.Join(root, role+".release."+suffix))
 		}
 	}
-	return nil
+	return removeHostGateState(paths)
+}
+
+func resetRecoveryGates(root string) error {
+	var paths []string
+	for _, role := range []string{"client", "publisher"} {
+		ready := filepath.Join(root, role+".ready")
+		paths = append(paths, ready, ready+".pending", filepath.Join(root, role+".release"))
+	}
+	return removeHostGateState(paths)
+}
+
+func removeHostGateState(paths []string) error {
+	var result error
+	for _, path := range paths {
+		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+			result = errors.Join(result, fmt.Errorf("remove prior host-controlled gate state %q: %w", path, err))
+		}
+	}
+	return result
 }
 
 func (observer dockerObserver) waitGateFile(ctx context.Context, path string, expected uint32,

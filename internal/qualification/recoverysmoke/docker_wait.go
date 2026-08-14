@@ -5,8 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -52,6 +54,39 @@ func (observer dockerObserver) serviceID(ctx context.Context, service string) (s
 		return "", errors.New(service + " container identity is invalid")
 	}
 	return identity, nil
+}
+
+func (observer dockerObserver) serviceIDs(ctx context.Context, services []string) (map[string]string, error) {
+	return collectServiceIDs(ctx, services, observer.serviceID)
+}
+
+func collectServiceIDs(ctx context.Context, services []string,
+	resolve func(context.Context, string) (string, error)) (map[string]string, error) {
+	identities := make([]string, len(services))
+	errorsByService := make([]error, len(services))
+	var wait sync.WaitGroup
+	wait.Add(len(services))
+	for index, service := range services {
+		go func(index int, service string) {
+			defer wait.Done()
+			identities[index], errorsByService[index] = resolve(ctx, service)
+		}(index, service)
+	}
+	wait.Wait()
+	result := make(map[string]string, len(services))
+	var joined error
+	for index, service := range services {
+		if errorsByService[index] != nil {
+			joined = errors.Join(joined,
+				fmt.Errorf("resolve %s service identity: %w", service, errorsByService[index]))
+			continue
+		}
+		result[service] = identities[index]
+	}
+	if joined != nil {
+		return nil, joined
+	}
+	return result, nil
 }
 
 func (observer dockerObserver) waitContainer(ctx context.Context, identity string, success bool) error {

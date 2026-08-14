@@ -66,15 +66,7 @@ func recoveryServiceNames() []string {
 }
 
 func (observer dockerObserver) recoveryIdentities(ctx context.Context) (map[string]string, error) {
-	identities := make(map[string]string, len(recoveryServiceNames()))
-	for _, service := range recoveryServiceNames() {
-		identity, err := observer.serviceID(ctx, service)
-		if err != nil {
-			return nil, err
-		}
-		identities[service] = identity
-	}
-	return identities, nil
+	return observer.serviceIDs(ctx, recoveryServiceNames())
 }
 
 func (observer dockerObserver) recoveryTerminals(ctx context.Context, receiver string) (

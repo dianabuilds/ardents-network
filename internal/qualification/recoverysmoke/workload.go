@@ -39,6 +39,10 @@ func recoveryDirectionSeed(root, direction string) ([32]byte, error) {
 	return seed, err
 }
 
+func recoveryFaultOffset(seed [32]byte) uint32 {
+	return (uint32(17) + uint32(seed[0]%8)) * 16_381
+}
+
 func workloadDigest(seed [32]byte, count uint32) [32]byte {
 	hash := sha256.New()
 	for offset := uint32(0); offset < count; offset += 32 {

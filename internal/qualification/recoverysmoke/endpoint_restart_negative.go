@@ -25,8 +25,8 @@ func (observer dockerObserver) endpointRestartNegative(ctx context.Context) (rec
 		return recovery.Negative{}, err
 	}
 	gate := filepath.Join(observer.input.FixtureRoot, "gate")
-	for _, name := range []string{"client.ready", "client.release", "publisher.ready", "publisher.release"} {
-		_ = os.Remove(filepath.Join(gate, name))
+	if err := resetRecoveryGates(gate); err != nil {
+		return recovery.Negative{}, err
 	}
 	if err := observer.startRecoveryServices(ctx); err != nil {
 		return recovery.Negative{}, err

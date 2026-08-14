@@ -62,13 +62,9 @@ func (observer dockerObserver) replacementCoreIdentities(ctx context.Context, pl
 	services := []string{"client", "publisher",
 		"client-endpoint", "publisher-endpoint", "client-app", "publisher-app"}
 	services = append(services, plan.services...)
-	result := make(map[string]string, len(services)+4)
-	for _, service := range services {
-		identity, err := observer.serviceID(ctx, service)
-		if err != nil {
-			return nil, fmt.Errorf("resolve replacement %s process identity: %w", service, err)
-		}
-		result[service] = identity
+	result, err := observer.serviceIDs(ctx, services)
+	if err != nil {
+		return nil, fmt.Errorf("resolve replacement process identities: %w", err)
 	}
 	return result, nil
 }

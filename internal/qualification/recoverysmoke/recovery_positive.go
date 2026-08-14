@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -29,11 +28,11 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 	if err != nil {
 		return recovery.Cell{}, err
 	}
-	faultThreshold := (uint32(17) + uint32(seed[0]%8)) * 16_381
+	faultThreshold := recoveryFaultOffset(seed)
 	observer.gateOffset = faultThreshold
 	gateRoot := filepath.Join(observer.input.FixtureRoot, "gate")
-	for _, name := range []string{"client.ready", "client.release", "publisher.ready", "publisher.release"} {
-		_ = os.Remove(filepath.Join(gateRoot, name))
+	if err := resetRecoveryGates(gateRoot); err != nil {
+		return recovery.Cell{}, err
 	}
 	manifestDigest := recoveryCellManifest(direction, seed, faultThreshold)
 	if err := byteio.WriteJSON(filepath.Join(observer.input.FixtureRoot, "cell-manifest.json"), map[string]any{
@@ -105,7 +104,7 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 	if err != nil || !fault.resourceAbsent {
 		return recovery.Cell{}, errors.Join(err, errors.New("faulted Carrier resource remained available"))
 	}
-	if err := os.WriteFile(filepath.Join(gateRoot, senderRole+".release"), []byte("release\n"), 0o600); err != nil {
+	if err := writeRelease(gateRoot, senderRole); err != nil {
 		return recovery.Cell{}, err
 	}
 	canaryOffset := delivered + 32

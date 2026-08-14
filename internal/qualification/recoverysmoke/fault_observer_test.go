@@ -2,6 +2,7 @@ package recoverysmoke
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -91,5 +92,34 @@ func TestResetSequentialGatesPreservesRemovalFailure(t *testing.T) {
 	if err := resetSequentialGates(root, []uint32{offset}); err == nil ||
 		!strings.Contains(err.Error(), ready) {
 		t.Fatalf("gate reset hid removal failure: %v", err)
+	}
+}
+
+func TestResetRecoveryGatesRemovesEveryOwnedShapeAndPreservesErrors(t *testing.T) {
+	root := t.TempDir()
+	names := []string{"client.ready", "client.ready.pending", "client.release",
+		"publisher.ready", "publisher.ready.pending", "publisher.release"}
+	for _, name := range names {
+		if err := os.WriteFile(filepath.Join(root, name), []byte("stale"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := resetRecoveryGates(root); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range names {
+		if _, err := os.Stat(filepath.Join(root, name)); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("owned gate state %s remains: %v", name, err)
+		}
+	}
+	blocked := filepath.Join(root, "client.ready")
+	if err := os.Mkdir(blocked, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(blocked, "owned"), []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := resetRecoveryGates(root); err == nil || !strings.Contains(err.Error(), blocked) {
+		t.Fatalf("recovery gate reset hid removal failure: %v", err)
 	}
 }
