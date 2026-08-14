@@ -155,6 +155,11 @@ services:
     profiles: [verify]
     command: [/usr/local/bin/ardents-service-qualify, /run/ardents/evidence.json]
     volumes: [{type: bind, source: "${ARDENTS_SERVICE_EVIDENCE_FILE:?}", target: /run/ardents/evidence.json, read_only: true, bind: {create_host_path: false}}]
+  recovery-verifier:
+    <<: *local
+    profiles: [recovery-verify]
+    command: [/usr/local/bin/ardents-recovery-qualify, /run/ardents/evidence.json]
+    volumes: [{type: bind, source: "${ARDENTS_RECOVERY_EVIDENCE_FILE:?}", target: /run/ardents/evidence.json, read_only: true, bind: {create_host_path: false}}]
 
 networks:
   route_net:
