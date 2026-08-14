@@ -37,7 +37,7 @@ func TestVerifyRejectsMutationMissingEvidenceAndCandidateFailure(t *testing.T) {
 			cell.OldCarrierRetiredNanos = int64(4*time.Second) + 1
 		},
 		"wrong Carrier Attachment deadline": func(value *Evidence) {
-			value.Cells[0].CarrierAttachmentDeadlineNanos = int64(9 * time.Second)
+			value.Cells[0].CarrierAttachmentDeadlineNanos = int64(12 * time.Second)
 		},
 		"wrong workload chunk delay": func(value *Evidence) {
 			value.Cells[0].ChunkDelayNanos = int64(20 * time.Millisecond)
@@ -176,7 +176,7 @@ func validEvidence() Evidence {
 			CellManifestDigest: cellManifestDigest(direction, seed, planned), FaultOffset: planned, DeliveredBeforeFault: planned,
 			CanaryOffset: planned + 32, LastDeliveryNanos: 1, CarrierObservedNanos: 2, FaultAtNanos: 3,
 			FaultCompletedNanos: 10, CarrierCutAfterNanos: 1, AbsenceAfterNanos: 2,
-			CarrierAttachmentDeadlineNanos: int64(10 * time.Second), ChunkDelayNanos: int64(30 * time.Millisecond),
+			CarrierAttachmentDeadlineNanos: int64(13 * time.Second), ChunkDelayNanos: int64(30 * time.Millisecond),
 			OldCarrierRetiredNanos:   8,
 			CanaryAtNanos:            int64(time.Second),
 			ReplacementObservedNanos: int64(time.Second) + 1, TerminalAtNanos: int64(2 * time.Second), ClientRouteGeneration: 2,

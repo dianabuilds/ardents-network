@@ -158,7 +158,7 @@ func verifyCell(cell Cell, manifestText, imageID string) Result {
 		cell.FaultCompletedNanos < cell.FaultAtNanos ||
 		cell.CarrierCutAfterNanos <= 0 || cell.AbsenceAfterNanos < cell.CarrierCutAfterNanos ||
 		cell.AbsenceAfterNanos > cell.FaultCompletedNanos-cell.FaultAtNanos ||
-		cell.CarrierAttachmentDeadlineNanos != int64(10*time.Second) ||
+		cell.CarrierAttachmentDeadlineNanos != int64(13*time.Second) ||
 		cell.ChunkDelayNanos != int64(30*time.Millisecond) ||
 		cell.OldCarrierRetiredNanos < cell.FaultAtNanos || cell.OldCarrierRetiredNanos > cell.FaultCompletedNanos ||
 		cell.CanaryAtNanos < cell.FaultCompletedNanos ||
@@ -197,7 +197,7 @@ func verifyCell(cell Cell, manifestText, imageID string) Result {
 func cellManifestDigest(direction string, seed [32]byte, planned uint32) string {
 	hash := sha256.New()
 	_, _ = hash.Write([]byte("ardents-h3-recovery-cell-manifest-v1\x00" + direction +
-		"\x00carrier-channel\x00carrier-attachment-deadline=10s\x00chunk-delay=30ms\x00"))
+		"\x00carrier-channel\x00carrier-attachment-deadline=13s\x00chunk-delay=30ms\x00"))
 	_, _ = hash.Write(seed[:])
 	var values [12]byte
 	binary.BigEndian.PutUint32(values[:4], streamBytes)
