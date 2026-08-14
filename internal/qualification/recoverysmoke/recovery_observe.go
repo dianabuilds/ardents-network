@@ -36,6 +36,12 @@ func (observer dockerObserver) startRecoveryServices(ctx context.Context) error 
 			return err
 		}
 	}
+	if _, err := observer.compose(ctx, time.Minute, "up", "-d", "carrier-fault"); err != nil {
+		return err
+	}
+	if err := observer.waitReady(ctx, "carrier-fault"); err != nil {
+		return err
+	}
 	if _, err := observer.compose(ctx, time.Minute, "up", "-d", "client-endpoint"); err != nil {
 		return err
 	}

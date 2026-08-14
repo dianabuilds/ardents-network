@@ -7,9 +7,11 @@ maintenance and security signals, alternatives considered, and removal plan.
 ## Current runtime dependencies
 
 The maintained product-shaped Modules still use the Go standard library only.
-Gate C adds the following exact runtime closure solely to the maintained
-`internal/lab/namedsite` laboratory Module. The dependency is selected by
-[R-026](../research/records/r-026-private-resolution-adapter.md); it must enter
+Gate C adds the following exact runtime closure to the maintained
+`internal/lab/namedsite` laboratory Module. Stage 4 recovery qualification also
+uses only the already-reviewed `golang.org/x/sys` entry below. The OHTTP closure is selected by
+[R-026](../research/records/r-026-private-resolution-adapter.md), while the bounded
+external socket fault use is selected by [R-032](../research/records/r-032-h3-same-connection-recovery.md); the set must enter
 `go.mod` as this reviewed set rather than as the vulnerable versions declared
 by `openpcc/ohttp v0.0.80`.
 
@@ -25,12 +27,15 @@ by `openpcc/ohttp v0.0.80`.
 | `go.opentelemetry.io/otel/trace` | `v1.39.0` | Apache-2.0 | OHTTP tracing Interface |
 | `golang.org/x/crypto` | `v0.51.0` | BSD-3-Clause | selected cryptographic support closure |
 | `golang.org/x/net` | `v0.55.0` | BSD-3-Clause | BHTTP HTTP support; raised from vulnerable `v0.48.0` |
-| `golang.org/x/sys` | `v0.45.0` | BSD-3-Clause | bounded Linux `prlimit` fault injection plus platform support selected by the fixed closure |
+| `golang.org/x/sys` | `v0.45.0` | BSD-3-Clause | bounded Linux `prlimit`, S4.1 `inet_diag` observation, and exact dedicated-Carrier interface fault injection |
 | `golang.org/x/text` | `v0.39.0` | BSD-3-Clause | BHTTP normalization; raised from vulnerable `v0.32.0` |
 
 **Need and owner:** RFC 9458 is the accepted external-first Private Resolution
-shape. `internal/lab/namedsite` is the sole first-party owner and imports the
-OHTTP/CIRCL Interface; no product Module may import it.
+shape. `internal/lab/namedsite` is the sole first-party owner of the OHTTP/CIRCL
+Interface. `internal/qualification/node` owns `x/sys/unix` for bounded Linux
+resource-limit injection, and `internal/qualification/recoverysmoke` owns it for
+bounded Linux netlink observation and exact dedicated-Carrier interface fault
+injection. No product Module may import this dependency closure.
 
 **Maintenance and security review:** `openpcc/ohttp` has versioned releases, an
 Apache-2.0 license, tests including RFC vectors and malformed inputs, and a
@@ -52,7 +57,10 @@ fallback are rejected.
 to a Docker build with `--network=none`. No vendor tree, module cache, generated
 dependency, or Gateway key is committed.
 
-**Removal plan:** the complete closure leaves with the Gate C OHTTP Adapter. A
+**Removal plan:** the OHTTP closure leaves with the Gate C OHTTP Adapter;
+`x/sys` remains only while either Node qualification requires its Linux
+resource-limit injection or accepted S4.1 qualification requires its external
+Carrier fault controller. A
 changed version or dependency graph repeats R-026; an unremediated reachable
 high/critical vulnerability, unacceptable license, offline-build failure, or
 broken role split selects `stop`, not a fork.

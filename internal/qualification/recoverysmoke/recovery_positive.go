@@ -51,6 +51,14 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 	if err != nil {
 		return recovery.Cell{}, err
 	}
+	initialRouteContainers, initialRoutePIDs, err := observer.routeProcessIdentities(ctx, identities)
+	if err != nil {
+		return recovery.Cell{}, err
+	}
+	faultController, err := observer.serviceID(ctx, "carrier-fault")
+	if err != nil {
+		return recovery.Cell{}, err
+	}
 	sampler := observer.startStats(ctx, identities, cellClock)
 	defer func() { _, _ = sampler.stop() }()
 	receiver := "publisher-app"
@@ -70,29 +78,19 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 		return recovery.Cell{}, errors.Join(err, errors.New("receiver did not drain to the exact gated offset"))
 	}
 	lastDeliveryAt := time.Since(cellClock).Nanoseconds()
-	network := observer.project + "_route_net"
-	initialCarrier, err := observer.networkEndpointID(ctx, identities["rendezvous"], network)
+	network := observer.project + "_carrier_net"
+	initialCarrier, err := observer.observeCarrier(ctx, faultController)
 	if err != nil {
 		return recovery.Cell{}, err
 	}
-	if _, err := observer.docker(ctx, time.Minute, "network", "disconnect", "--force", network, identities["rendezvous"]); err != nil {
-		return recovery.Cell{}, err
+	carrierObservedAt := time.Since(cellClock).Nanoseconds()
+	destroyedCarrier, faultAt, faultCompletedAt, carrierDownAfter, absenceAfter, carrierRestoredAfter, resourceAbsent, err :=
+		observer.destroyCarrier(ctx, faultController, initialCarrier, cellClock)
+	if err != nil || !resourceAbsent {
+		return recovery.Cell{}, errors.Join(err, errors.New("faulted Carrier socket remained available"))
 	}
-	networkAbsent, err := observer.networkAbsent(ctx, identities["rendezvous"], network)
-	if err != nil || !networkAbsent {
-		return recovery.Cell{}, errors.Join(err, errors.New("faulted network remained attached"))
-	}
-	faultAt := time.Since(cellClock).Nanoseconds()
 	if err := os.WriteFile(filepath.Join(gateRoot, senderRole+".release"), []byte("release\n"), 0o600); err != nil {
 		return recovery.Cell{}, err
-	}
-	time.Sleep(100 * time.Millisecond)
-	if _, err := observer.docker(ctx, time.Minute, "network", "connect", "--ip", "172.31.20.13", network, identities["rendezvous"]); err != nil {
-		return recovery.Cell{}, err
-	}
-	replacementCarrier, err := observer.networkEndpointID(ctx, identities["rendezvous"], network)
-	if err != nil || replacementCarrier == initialCarrier {
-		return recovery.Cell{}, errors.Join(err, errors.New("docker reused the failed network endpoint handle"))
 	}
 	canaryOffset := delivered + 32
 	canaryDelivered, err := observer.waitProgress(ctx, receiver, canaryOffset+32)
@@ -100,6 +98,15 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 		return recovery.Cell{}, errors.Join(err, errors.New("recovery canary was not externally observed"))
 	}
 	canaryAt := time.Since(cellClock).Nanoseconds()
+	replacementCarrier, err := observer.observeCarrier(ctx, faultController)
+	if err != nil || replacementCarrier.SocketIDSHA256 == initialCarrier.SocketIDSHA256 {
+		return recovery.Cell{}, errors.Join(err, errors.New("recovery reused the failed Carrier socket"))
+	}
+	replacementObservedAt := time.Since(cellClock).Nanoseconds()
+	recoveredRouteContainers, recoveredRoutePIDs, err := observer.routeProcessIdentities(ctx, identities)
+	if err != nil {
+		return recovery.Cell{}, err
+	}
 	for _, service := range recoveryServiceNames() {
 		if err := observer.waitContainer(ctx, identities[service], true); err != nil {
 			return recovery.Cell{}, fmt.Errorf("%s: %w", service, err)
@@ -115,19 +122,30 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 		return recovery.Cell{}, err
 	}
 	expected := workloadDigest(seed, recoveryBytes)
-	oldCarrierReused := initialCarrier == replacementCarrier
+	oldCarrierReused := initialCarrier.SocketIDSHA256 == replacementCarrier.SocketIDSHA256
 	_ = routes
 	lastSample := samples[len(samples)-1]
 	cell := recovery.Cell{Direction: direction, ClientProcess: identities["client-endpoint"],
 		PublisherProcess: identities["publisher-endpoint"], ClientApplicationProcess: identities["client-app"],
-		PublisherApplicationProcess: identities["publisher-app"], InitialCarrier: initialCarrier,
-		ReplacementCarrier: replacementCarrier, Seed: seed, ExpectedDigest: expected, ObservedDigest: application.ReceivedDigest,
+		PublisherApplicationProcess: identities["publisher-app"], InitialCarrier: initialCarrier.SocketIDSHA256,
+		ReplacementCarrier:  replacementCarrier.SocketIDSHA256,
+		InitialCarrierLocal: initialCarrier.LocalAddress, InitialCarrierRemote: initialCarrier.RemoteAddress,
+		ReplacementCarrierLocal: replacementCarrier.LocalAddress, ReplacementCarrierRemote: replacementCarrier.RemoteAddress,
+		DestroyedCarrier: destroyedCarrier, InitialCarrierInode: initialCarrier.Inode, ReplacementCarrierInode: replacementCarrier.Inode,
+		InitialCarrierInterface: initialCarrier.InterfaceName, ReplacementCarrierInterface: replacementCarrier.InterfaceName,
+		InitialCarrierInterfaceIndex: initialCarrier.InterfaceIndex, ReplacementCarrierInterfaceIndex: replacementCarrier.InterfaceIndex,
+		Seed: seed, ExpectedDigest: expected, ObservedDigest: application.ReceivedDigest,
 		CellManifestDigest: manifestDigest,
-		FaultService:       "rendezvous", FaultContainer: identities["rendezvous"], FaultNetwork: network,
+		FaultService:       "rendezvous-responder-carrier", FaultContainer: identities["rendezvous"], FaultNetwork: network,
+		FaultController: faultController, InitialRouteContainers: initialRouteContainers, RecoveredRouteContainers: recoveredRouteContainers,
+		InitialRoutePIDs: initialRoutePIDs, RecoveredRoutePIDs: recoveredRoutePIDs,
 		Canary: workloadCanary(seed, canaryOffset), Bytes: recoveryBytes, PlannedFaultOffset: faultThreshold,
 		FaultOffset:          delivered,
-		DeliveredBeforeFault: delivered, CanaryOffset: canaryOffset, LastDeliveryNanos: lastDeliveryAt, FaultAtNanos: faultAt,
-		CanaryAtNanos: canaryAt, TerminalAtNanos: terminalAt,
+		DeliveredBeforeFault: delivered, CanaryOffset: canaryOffset, LastDeliveryNanos: lastDeliveryAt,
+		CarrierObservedNanos: carrierObservedAt, FaultAtNanos: faultAt, FaultCompletedNanos: faultCompletedAt,
+		CarrierDownAfterNanos: carrierDownAfter, AbsenceAfterNanos: absenceAfter,
+		CarrierRestoredAfterNanos: carrierRestoredAfter,
+		CanaryAtNanos:             canaryAt, ReplacementObservedNanos: replacementObservedAt, TerminalAtNanos: terminalAt,
 		ClientRouteGeneration: clientEndpoint.RouteGeneration, PublisherRouteGeneration: publisherEndpoint.RouteGeneration,
 		ClientRecoveryCount: clientEndpoint.RecoveryCount, PublisherRecoveryCount: publisherEndpoint.RecoveryCount,
 		ClientApplicationAccepts:    clientEndpoint.ApplicationIPCAccepts,
@@ -138,8 +156,8 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 		Ordered: application.Terminal == "success", Unique: application.ReceivedBytes == recoveryBytes,
 		SameConnection:         clientEndpoint.ServiceConnectionsHighWater == 1 && publisherEndpoint.ServiceConnectionsHighWater == 1,
 		ApplicationReconnected: clientEndpoint.ApplicationIPCAccepts != 1 || publisherEndpoint.ApplicationIPCAccepts != 1,
-		OldCarrierReused:       oldCarrierReused, FaultNetworkAbsent: networkAbsent,
-		FailedResourceUnavailable: networkAbsent && !oldCarrierReused,
+		OldCarrierReused:       oldCarrierReused, FaultResourceAbsent: resourceAbsent,
+		FailedResourceUnavailable: resourceAbsent && !oldCarrierReused,
 		TerminalClean: clientEndpoint.Class == "clean service connection close" &&
 			publisherEndpoint.Class == "clean service connection close", QueueHighWater: max(clientEndpoint.QueueHighWater, publisherEndpoint.QueueHighWater),
 		MemoryHighWater:    max(lastSample.ClientRSS, lastSample.PublisherRSS),

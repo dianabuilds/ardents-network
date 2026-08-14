@@ -1,0 +1,204 @@
+//go:build linux
+
+package recoverysmoke
+
+import (
+	"encoding/binary"
+	"errors"
+	"net"
+	"strconv"
+
+	"golang.org/x/sys/unix"
+)
+
+const (
+	carrierDiagRequestBytes = 56
+	carrierDiagMessageBytes = 72
+	carrierTCPEstablished   = 1
+	carrierDiagMaxMessages  = 256
+	carrierDiagMaxBytes     = 256 << 10
+	carrierDiagMaxDatagrams = 64
+)
+
+func platformCarrierSockets(remote string) ([]carrierObservation, error) {
+	host, portText, _ := net.SplitHostPort(remote)
+	port, _ := strconv.ParseUint(portText, 10, 16)
+	messages, err := carrierDiagExchange(unix.SOCK_DIAG_BY_FAMILY, unix.NLM_F_REQUEST|unix.NLM_F_DUMP, nil)
+	if err != nil {
+		return nil, err
+	}
+	var result []carrierObservation
+	for _, message := range messages {
+		if len(message) < carrierDiagMessageBytes || message[0] != unix.AF_INET || message[1] != carrierTCPEstablished {
+			continue
+		}
+		socketID := append([]byte(nil), message[4:52]...)
+		if carrierMatchesRemote(socketID, net.ParseIP(host), uint16(port)) {
+			observation := carrierObservationFromID(socketID, binary.NativeEndian.Uint32(message[68:72]))
+			name, index, interfaceErr := platformCarrierInterfaceForAddress(observation.LocalAddress)
+			if interfaceErr != nil {
+				return nil, interfaceErr
+			}
+			observation.InterfaceName, observation.InterfaceIndex = name, index
+			result = append(result, observation)
+		}
+	}
+	return result, nil
+}
+
+func platformCarrierSocketPresent(socketID []byte) (bool, error) {
+	messages, err := carrierDiagExchange(unix.SOCK_DIAG_BY_FAMILY, unix.NLM_F_REQUEST|unix.NLM_F_DUMP, nil)
+	if err != nil {
+		return false, err
+	}
+	for _, message := range messages {
+		if len(message) >= 52 && string(message[4:52]) == string(socketID) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func platformCarrierInterfaceForAddress(endpoint string) (string, int, error) {
+	host, _, err := net.SplitHostPort(endpoint)
+	if err != nil {
+		return "", 0, err
+	}
+	for _, candidate := range mustInterfaces() {
+		addresses, addressErr := candidate.Addrs()
+		if addressErr != nil {
+			return "", 0, addressErr
+		}
+		for _, address := range addresses {
+			ip, _, parseErr := net.ParseCIDR(address.String())
+			if parseErr == nil && ip.Equal(net.ParseIP(host)) {
+				return candidate.Name, candidate.Index, nil
+			}
+		}
+	}
+	return "", 0, errors.New("Carrier interface identity is missing")
+}
+
+func mustInterfaces() []net.Interface {
+	interfaces, _ := net.Interfaces()
+	return interfaces
+}
+
+func platformSetCarrierInterface(name string, up bool) error {
+	file, err := unix.Socket(unix.AF_INET, unix.SOCK_DGRAM|unix.SOCK_CLOEXEC, 0)
+	if err != nil {
+		return err
+	}
+	defer unix.Close(file)
+	request, err := unix.NewIfreq(name)
+	if err != nil {
+		return err
+	}
+	if err := unix.IoctlIfreq(file, unix.SIOCGIFFLAGS, request); err != nil {
+		return err
+	}
+	flags := request.Uint16()
+	if up {
+		flags |= unix.IFF_UP
+	} else {
+		flags &^= unix.IFF_UP
+	}
+	request.SetUint16(flags)
+	return unix.IoctlIfreq(file, unix.SIOCSIFFLAGS, request)
+}
+
+func carrierDiagExchange(messageType uint16, flags uint16, socketID []byte) ([][]byte, error) {
+	file, err := unix.Socket(unix.AF_NETLINK, unix.SOCK_RAW|unix.SOCK_CLOEXEC, unix.NETLINK_INET_DIAG)
+	if err != nil {
+		return nil, err
+	}
+	defer unix.Close(file)
+	if err := unix.Bind(file, &unix.SockaddrNetlink{Family: unix.AF_NETLINK}); err != nil {
+		return nil, err
+	}
+	if err := unix.SetsockoptTimeval(file, unix.SOL_SOCKET, unix.SO_RCVTIMEO, &unix.Timeval{Sec: 5}); err != nil {
+		return nil, err
+	}
+	if err := unix.Sendto(file, makeCarrierDiagRequest(messageType, flags, socketID), 0,
+		&unix.SockaddrNetlink{Family: unix.AF_NETLINK}); err != nil {
+		return nil, err
+	}
+	return receiveCarrierDiag(file)
+}
+
+func makeCarrierDiagRequest(messageType uint16, flags uint16, socketID []byte) []byte {
+	request := make([]byte, 16+carrierDiagRequestBytes)
+	binary.NativeEndian.PutUint32(request[0:4], uint32(len(request)))
+	binary.NativeEndian.PutUint16(request[4:6], messageType)
+	binary.NativeEndian.PutUint16(request[6:8], flags)
+	binary.NativeEndian.PutUint32(request[8:12], 1)
+	request[16], request[17] = unix.AF_INET, unix.IPPROTO_TCP
+	binary.NativeEndian.PutUint32(request[20:24], 1<<carrierTCPEstablished)
+	if len(socketID) == carrierSocketIDBytes {
+		copy(request[24:], socketID)
+	} else {
+		for index := 64; index < 72; index++ {
+			request[index] = 0xff
+		}
+	}
+	return request
+}
+
+func receiveCarrierDiag(file int) ([][]byte, error) {
+	var result [][]byte
+	buffer := make([]byte, 64<<10)
+	totalBytes := 0
+	for datagram := 0; datagram < carrierDiagMaxDatagrams; datagram++ {
+		count, _, err := unix.Recvfrom(file, buffer, 0)
+		if err != nil {
+			return nil, err
+		}
+		payloads, done, err := parseCarrierDiagDatagram(buffer[:count])
+		if err != nil {
+			return nil, err
+		}
+		for _, payload := range payloads {
+			totalBytes += len(payload)
+			if len(result) >= carrierDiagMaxMessages || totalBytes > carrierDiagMaxBytes {
+				return nil, errors.New("inet_diag response exceeded its bound")
+			}
+			result = append(result, append([]byte(nil), payload...))
+		}
+		if done {
+			return result, nil
+		}
+	}
+	return nil, errors.New("inet_diag response did not terminate within its datagram bound")
+}
+
+func parseCarrierDiagDatagram(buffer []byte) ([][]byte, bool, error) {
+	var result [][]byte
+	for offset := 0; offset+16 <= len(buffer); {
+		length := int(binary.NativeEndian.Uint32(buffer[offset : offset+4]))
+		if length < 16 || offset+length > len(buffer) {
+			return nil, false, errors.New("malformed inet_diag response")
+		}
+		messageType := binary.NativeEndian.Uint16(buffer[offset+4 : offset+6])
+		payload := buffer[offset+16 : offset+length]
+		switch messageType {
+		case unix.NLMSG_DONE:
+			return result, true, nil
+		case unix.NLMSG_ERROR:
+			if len(payload) < 4 {
+				return nil, false, errors.New("short inet_diag error")
+			}
+			code := int32(binary.NativeEndian.Uint32(payload[:4]))
+			if code == 0 {
+				return result, true, nil
+			}
+			return nil, false, unix.Errno(-code)
+		default:
+			result = append(result, payload)
+		}
+		offset += (length + 3) &^ 3
+	}
+	if len(buffer)%4 != 0 {
+		return nil, false, errors.New("truncated inet_diag response")
+	}
+	return result, false, nil
+}

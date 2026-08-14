@@ -56,14 +56,6 @@ func evaluateNodeSpecial(arguments []string, command, mode string) (statequalifi
 	return renderNode(nodequalification.Run(context.Background(), nodequalification.Campaign{Mode: mode})), nil
 }
 
-func evaluateNodeDisk(arguments []string) (statequalification.Result, error) {
-	return evaluateNodeSpecial(arguments, "diskfull-node", "disk-wrapper")
-}
-
-func evaluateNodeEvidenceFault(arguments []string) (statequalification.Result, error) {
-	return evaluateNodeSpecial(arguments, "evidence-fault-node", "evidence-fault")
-}
-
 func renderNode(result nodequalification.Result) statequalification.Result {
 	return statequalification.Result{
 		Verdict: result.Verdict, Reason: result.Reason,

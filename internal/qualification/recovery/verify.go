@@ -32,7 +32,7 @@ func Verify(value Evidence) Result {
 	if result := verifyManifest(value); result.Verdict != "pass" {
 		return result
 	}
-	for _, binary := range []string{"ardents-route", "ardents-service", "ardents-stream-app", "ardents-recovery-qualify"} {
+	for _, binary := range []string{"ardents-route", "ardents-qualify", "ardents-service", "ardents-stream-app", "ardents-recovery-qualify"} {
 		if len(value.BinaryDigests[binary]) != 64 {
 			return invalid("binary identity is missing: " + binary)
 		}
@@ -56,10 +56,16 @@ func Verify(value Evidence) Result {
 		return invalid("both directional cells are required")
 	}
 	directions := map[string]bool{}
+	faultNetwork := ""
 	for index := range value.Cells {
 		directions[value.Cells[index].Direction] = true
 		if result := verifyCell(value.Cells[index], value.ManifestDigest); result.Verdict != "pass" {
 			return result
+		}
+		if faultNetwork == "" {
+			faultNetwork = value.Cells[index].FaultNetwork
+		} else if value.Cells[index].FaultNetwork != faultNetwork {
+			return invalid("directional cells do not share the frozen Carrier network")
 		}
 	}
 	if !directions["client-to-publisher"] || !directions["publisher-to-client"] {
@@ -107,14 +113,14 @@ func verifyCell(cell Cell, manifestText string) Result {
 	}
 	identities := []string{cell.ClientProcess, cell.PublisherProcess, cell.ClientApplicationProcess,
 		cell.PublisherApplicationProcess, cell.InitialCarrier, cell.ReplacementCarrier,
-		cell.FaultService, cell.FaultContainer, cell.FaultNetwork}
+		cell.FaultService, cell.FaultContainer, cell.FaultNetwork, cell.FaultController}
 	for _, identity := range identities {
 		if identity == "" {
 			return invalid("process or carrier identity is missing")
 		}
 	}
-	if cell.InitialCarrier == cell.ReplacementCarrier {
-		return fail("replacement reused the failed carrier")
+	if result := verifyCarrierEvidence(cell); result.Verdict != "pass" {
+		return result
 	}
 	manifest, err := hex.DecodeString(manifestText)
 	if err != nil || len(manifest) != 32 {
@@ -135,9 +141,16 @@ func verifyCell(cell Cell, manifestText string) Result {
 	if expected != cell.ExpectedDigest || expected != cell.ObservedDigest || canary != cell.Canary {
 		return fail("seeded bytes or unpredictable recovery canary differ")
 	}
-	if cell.LastDeliveryNanos <= 0 || cell.LastDeliveryNanos > cell.FaultAtNanos || cell.FaultAtNanos <= 0 ||
+	if cell.LastDeliveryNanos <= 0 || cell.LastDeliveryNanos > cell.CarrierObservedNanos ||
+		cell.CarrierObservedNanos > cell.FaultAtNanos || cell.FaultAtNanos <= 0 ||
+		cell.FaultCompletedNanos < cell.FaultAtNanos ||
+		cell.CarrierDownAfterNanos <= 0 || cell.AbsenceAfterNanos < cell.CarrierDownAfterNanos ||
+		cell.CarrierRestoredAfterNanos < cell.AbsenceAfterNanos ||
+		cell.CarrierRestoredAfterNanos > cell.FaultCompletedNanos-cell.FaultAtNanos ||
+		cell.CanaryAtNanos < cell.FaultCompletedNanos ||
 		cell.CanaryAtNanos <= cell.FaultAtNanos ||
 		cell.CanaryAtNanos-cell.FaultAtNanos > int64(5*time.Second) || cell.TerminalAtNanos < cell.CanaryAtNanos ||
+		cell.ReplacementObservedNanos < cell.CanaryAtNanos || cell.TerminalAtNanos < cell.ReplacementObservedNanos ||
 		cell.TerminalAtNanos-cell.FaultAtNanos > int64(15*time.Second) {
 		return fail("recovery timing missed its externally observed bound")
 	}
@@ -149,7 +162,7 @@ func verifyCell(cell Cell, manifestText string) Result {
 		return fail("generation or continuity observations do not prove one recovery")
 	}
 	if !cell.Ordered || !cell.Unique || !cell.SameConnection || cell.ApplicationReconnected ||
-		cell.OldCarrierReused || !cell.FailedResourceUnavailable || !cell.FaultNetworkAbsent || !cell.TerminalClean {
+		cell.OldCarrierReused || !cell.FailedResourceUnavailable || !cell.FaultResourceAbsent || !cell.TerminalClean {
 		return fail("same-connection ordered recovery conjunct failed")
 	}
 	if cell.QueueHighWater > queueLimit {

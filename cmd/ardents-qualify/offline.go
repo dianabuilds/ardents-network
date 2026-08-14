@@ -11,10 +11,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/qualification/recoverysmoke"
 	statequalification "github.com/dianabuilds/ardents-network/internal/qualification/state"
 )
 
 func run(arguments []string, output, diagnostics io.Writer) int {
+	if code, handled := recoverysmoke.RunCarrierFaultAdapter(arguments, output, diagnostics); handled {
+		return code
+	}
 	if code, handled := runNodeOfflineCommand(arguments, output, diagnostics); handled {
 		return code
 	}
@@ -54,9 +58,9 @@ func evaluate(arguments []string) (statequalification.Result, error) {
 	case "inject-node":
 		return evaluateNodeInjection(arguments[1:])
 	case "diskfull-node":
-		return evaluateNodeDisk(arguments[1:])
+		return evaluateNodeSpecial(arguments[1:], "diskfull-node", "disk-wrapper")
 	case "evidence-fault-node":
-		return evaluateNodeEvidenceFault(arguments[1:])
+		return evaluateNodeSpecial(arguments[1:], "evidence-fault-node", "evidence-fault")
 	}
 	if arguments[0] != "offline" {
 		return statequalification.Result{}, errors.New("usage: ardents-qualify (offline|prepare-node|run-node|route-smoke|service-smoke|recovery-smoke|inject-node) [flags]")

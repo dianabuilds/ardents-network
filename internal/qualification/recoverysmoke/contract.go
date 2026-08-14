@@ -32,7 +32,7 @@ type Result struct {
 func parseConfig(arguments []string) (config, error) {
 	flags := flag.NewFlagSet("recovery-smoke", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
-	value := config{Bytes: 4 << 20, ChunkDelay: "20ms"}
+	value := config{Bytes: 4 << 20, ChunkDelay: "8ms"}
 	flags.StringVar(&value.FixtureRoot, "fixture", "", "new external private recovery fixture root")
 	flags.StringVar(&value.EvidenceRoot, "evidence", "", "new retained recovery evidence root")
 	flags.StringVar(&value.ComposeFile, "compose", "", "Stage 4 recovery Compose file")

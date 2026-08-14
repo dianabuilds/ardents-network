@@ -23,6 +23,15 @@ func TestVerifyRejectsMutationMissingEvidenceAndCandidateFailure(t *testing.T) {
 		"reconnect":        func(value *Evidence) { value.Cells[1].ApplicationReconnected = true },
 		"late canary":      func(value *Evidence) { value.Cells[0].CanaryAtNanos += int64(6 * time.Second) },
 		"secret cleanup":   func(value *Evidence) { value.Cleanup.PrivateMaterialAbsent = false },
+		"destroy mismatch": func(value *Evidence) { value.Cells[0].DestroyedCarrier = strings.Repeat("3", 64) },
+		"route pid changed": func(value *Evidence) {
+			value.Cells[0].RecoveredRoutePIDs["rendezvous"]++
+		},
+		"wrong fault network": func(value *Evidence) { value.Cells[0].FaultNetwork = "campaign_route_net" },
+		"controller authority widened": func(value *Evidence) {
+			value.Topology = []byte(strings.Replace(string(value.Topology), "cap_add: [NET_ADMIN]", "cap_add: [NET_ADMIN, SYS_ADMIN]", 1))
+			value.TopologyDigest = hexDigest(value.Topology)
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			value := validEvidence()
@@ -50,10 +59,14 @@ func validEvidence() Evidence {
 		"  client-app:\n    network_mode: none\n  publisher-app:\n    network_mode: none\n" +
 		"  client-endpoint:\n    network_mode: none\n  publisher-endpoint:\n    network_mode: none\n" +
 		"  recovery-verifier:\n    network_mode: none\n    command: [/run/ardents/evidence.json]\n    volumes: [/run/ardents/evidence.json]\n" +
-		"  client:\n    networks: [route_net]\n  publisher:\n    networks: [route_net]\n" +
-		"  initiator:\n    networks: [route_net]\n  introduction:\n    networks: [route_net]\n" +
-		"  rendezvous:\n    networks: [route_net]\n  responder:\n    networks: [route_net]\n" +
-		"networks:\n  route_net:\n    internal: true\n")
+		"  client:\n    networks: [route_net]\n    restart: \"no\"\n  publisher:\n    networks: [route_net]\n    restart: \"no\"\n" +
+		"  initiator:\n    networks: [route_net]\n    restart: \"no\"\n  introduction:\n    networks: [route_net]\n    restart: \"no\"\n" +
+		"  rendezvous:\n    networks: [route_net, carrier_net]\n    ipv4_address: 172.31.21.13\n    restart: \"no\"\n" +
+		"  responder:\n    networks: [route_net, carrier_net]\n    ipv4_address: 172.31.21.14\n    restart: \"no\"\n" +
+		"  carrier-fault:\n    command: [ardents-qualify, carrier-fault, wait]\n    network_mode: service:rendezvous\n" +
+		"    cap_add: [NET_ADMIN]\n    cap_drop: [ALL]\n    security_opt: [no-new-privileges:true]\n" +
+		"    read_only: true\n    restart: \"no\"\n    user: \"0:0\"\n    cpus: 0.25\n    mem_limit: \"33554432\"\n    pids_limit: 16\n" +
+		"networks:\n  route_net:\n    internal: true\n  carrier_net:\n    internal: true\n")
 	value := Evidence{Schema: schema, SourceCommit: "0123456789012345678901234567890123456789", ImageID: "sha256:image", VerifierImageID: "sha256:image",
 		Topology: topology, TopologyDigest: hexDigest(topology), Manifest: manifest,
 		ManifestDigest: hex.EncodeToString(manifestDigest[:]), Claim: "S4.1 local development evidence only",
@@ -63,7 +76,8 @@ func validEvidence() Evidence {
 		CredentialGeneration: 1, CredentialNotBefore: 1, CredentialNotAfter: 100, WorkSafetyNotAfter: 90,
 		WorkSafetyMaximum: 100, NoNewRecoveryAfter: 80,
 		BinaryDigests: map[string]string{"ardents-route": strings.Repeat("a", 64), "ardents-service": strings.Repeat("b", 64),
-			"ardents-stream-app": strings.Repeat("c", 64), "ardents-recovery-qualify": strings.Repeat("d", 64)},
+			"ardents-qualify": strings.Repeat("e", 64), "ardents-stream-app": strings.Repeat("c", 64),
+			"ardents-recovery-qualify": strings.Repeat("d", 64)},
 		RequestedNanos: int64(10 * time.Minute), CampaignNanos: int64(10 * time.Minute),
 		Negatives: map[string]Negative{}, Cleanup: Cleanup{DockerEmpty: true, FixtureAbsent: true, PrivateMaterialAbsent: true}}
 	value.IsolationContext = sha256.Sum256(append([]byte("isolation\x00"), manifestDigest[:]...))
@@ -88,17 +102,31 @@ func validEvidence() Evidence {
 		seed := [32]byte{byte(index + 1)}
 		planned := (uint32(17) + uint32(seed[0]%16)) * 16_381
 		cell := Cell{Direction: direction, ClientProcess: "client", PublisherProcess: "publisher",
-			ClientApplicationProcess: "client-app", PublisherApplicationProcess: "publisher-app", InitialCarrier: "one",
-			ReplacementCarrier: "two", FaultService: "rendezvous", FaultContainer: "container", FaultNetwork: "network",
-			FaultNetworkAbsent: true, Seed: seed, Bytes: streamBytes, PlannedFaultOffset: planned,
+			ClientApplicationProcess: "client-app", PublisherApplicationProcess: "publisher-app", InitialCarrier: strings.Repeat("1", 64),
+			ReplacementCarrier: strings.Repeat("2", 64), FaultService: "rendezvous-responder-carrier", FaultContainer: "rendezvous-container",
+			InitialCarrierLocal: "172.31.21.13:50001", InitialCarrierRemote: "172.31.21.14:4604",
+			ReplacementCarrierLocal: "172.31.21.13:50002", ReplacementCarrierRemote: "172.31.21.14:4604",
+			DestroyedCarrier: strings.Repeat("1", 64), InitialCarrierInode: 1, ReplacementCarrierInode: 2,
+			InitialCarrierInterface: "eth1", ReplacementCarrierInterface: "eth1",
+			InitialCarrierInterfaceIndex: 3, ReplacementCarrierInterfaceIndex: 3,
+			FaultNetwork: "ardents-recovery-test_carrier_net", FaultController: "controller", FaultResourceAbsent: true,
+			InitialRouteContainers: map[string]string{}, RecoveredRouteContainers: map[string]string{},
+			InitialRoutePIDs: map[string]uint32{}, RecoveredRoutePIDs: map[string]uint32{},
+			Seed: seed, Bytes: streamBytes, PlannedFaultOffset: planned,
 			CellManifestDigest: cellManifestDigest(direction, seed, planned), FaultOffset: planned, DeliveredBeforeFault: planned,
-			CanaryOffset: planned + 32, LastDeliveryNanos: 1, FaultAtNanos: 2,
-			CanaryAtNanos: int64(time.Second), TerminalAtNanos: int64(2 * time.Second), ClientRouteGeneration: 2,
+			CanaryOffset: planned + 32, LastDeliveryNanos: 1, CarrierObservedNanos: 2, FaultAtNanos: 3,
+			FaultCompletedNanos: 10, CarrierDownAfterNanos: 1, AbsenceAfterNanos: 2,
+			CarrierRestoredAfterNanos: 3, CanaryAtNanos: int64(time.Second),
+			ReplacementObservedNanos: int64(time.Second) + 1, TerminalAtNanos: int64(2 * time.Second), ClientRouteGeneration: 2,
 			PublisherRouteGeneration: 2, ClientRecoveryCount: 1, PublisherRecoveryCount: 1,
 			ClientApplicationAccepts: 1, PublisherApplicationAccepts: 1, ClientRouteAccepts: 2, PublisherRouteAccepts: 2,
 			ClientContinuity: [32]byte{9}, PublisherContinuity: [32]byte{9}, Ordered: true, Unique: true,
 			SameConnection: true, FailedResourceUnavailable: true, TerminalClean: true, QueueHighWater: queueLimit}
 		cell.MemoryHighWater, cell.OpenFilesHighWater, cell.GoroutinesHighWater, cell.TimerHighWater = 1, 1, 1, 1
+		for roleIndex, role := range []string{"client", "initiator", "introduction", "rendezvous", "responder", "publisher"} {
+			cell.InitialRouteContainers[role], cell.RecoveredRouteContainers[role] = role+"-container", role+"-container"
+			cell.InitialRoutePIDs[role], cell.RecoveredRoutePIDs[role] = uint32(roleIndex+1), uint32(roleIndex+1)
+		}
 		cell.ExternalStatsObserved = true
 		cell.CarrierForwardBytes, cell.CarrierReverseBytes = 1, 1
 		cell.BaselineClientTraffic, cell.BaselinePublisherTraffic = 1, 1

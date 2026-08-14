@@ -11,29 +11,6 @@ import (
 	"time"
 )
 
-func (observer dockerObserver) networkAbsent(ctx context.Context, container, network string) (bool, error) {
-	raw, err := observer.docker(ctx, 10*time.Second, "inspect", "--format", "{{json .NetworkSettings.Networks}}", container)
-	if err != nil {
-		return false, err
-	}
-	var networks map[string]any
-	if err := json.Unmarshal(raw, &networks); err != nil {
-		return false, err
-	}
-	_, present := networks[network]
-	return !present, nil
-}
-
-func (observer dockerObserver) networkEndpointID(ctx context.Context, container, network string) (string, error) {
-	raw, err := observer.docker(ctx, 10*time.Second, "inspect", "--format",
-		"{{(index .NetworkSettings.Networks \""+network+"\").EndpointID}}", container)
-	value := strings.TrimSpace(string(raw))
-	if err != nil || len(value) < 12 {
-		return "", errors.Join(err, errors.New("docker network endpoint identity is missing"))
-	}
-	return value, nil
-}
-
 func (observer dockerObserver) waitProgress(ctx context.Context, service string, minimum uint32) (uint32, error) {
 	deadline := time.Now().Add(15 * time.Second)
 	for time.Now().Before(deadline) {

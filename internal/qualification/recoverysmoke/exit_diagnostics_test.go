@@ -25,3 +25,10 @@ func TestExitClassificationDoesNotRetainUntrustedText(t *testing.T) {
 		t.Fatalf("unsafe or missing classification: %q", classification)
 	}
 }
+
+func TestExitClassificationRecognizesLocalAttachmentLoss(t *testing.T) {
+	classification := classifyExitLog([]byte("dial unix /private/path: no such file"))
+	if classification != "local-attachment-unavailable" {
+		t.Fatalf("unexpected classification: %q", classification)
+	}
+}

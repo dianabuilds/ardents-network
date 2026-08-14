@@ -74,6 +74,17 @@ func TestOfflineCommandUsesInvalidExitForBadInvocation(t *testing.T) {
 	}
 }
 
+func TestCarrierFaultAdapterRejectsInvalidInvocation(t *testing.T) {
+	t.Parallel()
+	var output, diagnostics bytes.Buffer
+	if code := run([]string{"carrier-fault", "invalid"}, &output, &diagnostics); code != 2 {
+		t.Fatalf("exit=%d, want 2", code)
+	}
+	if output.Len() != 0 || diagnostics.Len() == 0 {
+		t.Fatalf("output=%q diagnostics=%q", output.String(), diagnostics.String())
+	}
+}
+
 func writeQualifierGolden(t *testing.T, destination, source string) {
 	t.Helper()
 	encoded, err := os.ReadFile(source)

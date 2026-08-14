@@ -111,12 +111,26 @@ services:
     <<: *route
     command: [/usr/local/bin/ardents-route, run, /run/ardents/plan.json]
     volumes: [{type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/plans/responder.json", target: /run/ardents/plan.json, read_only: true, bind: {create_host_path: false}}, {type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/secrets/responder", target: /run/ardents/secrets, read_only: true, bind: {create_host_path: false}}]
-    networks: {route_net: {ipv4_address: 172.31.20.14}}
+    networks: {route_net: {ipv4_address: 172.31.20.14}, carrier_net: {ipv4_address: 172.31.21.14}}
+  carrier-fault:
+    image: ${ARDENTS_SERVICE_IMAGE_TAG:?}
+    pull_policy: never
+    read_only: true
+    restart: "no"
+    cap_drop: [ALL]
+    cap_add: [NET_ADMIN]
+    security_opt: [no-new-privileges:true]
+    user: "0:0"
+    network_mode: service:rendezvous
+    cpus: 0.25
+    mem_limit: 32m
+    pids_limit: 16
+    command: [/usr/local/bin/ardents-qualify, carrier-fault, wait]
   rendezvous:
     <<: *route
     command: [/usr/local/bin/ardents-route, run, /run/ardents/plan.json]
     volumes: [{type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/plans/rendezvous.json", target: /run/ardents/plan.json, read_only: true, bind: {create_host_path: false}}, {type: bind, source: "${ARDENTS_SERVICE_ROUTE_ROOT:?}/secrets/rendezvous", target: /run/ardents/secrets, read_only: true, bind: {create_host_path: false}}]
-    networks: {route_net: {ipv4_address: 172.31.20.13}}
+    networks: {route_net: {ipv4_address: 172.31.20.13}, carrier_net: {ipv4_address: 172.31.21.13}}
   introduction:
     <<: *route
     command: [/usr/local/bin/ardents-route, run, /run/ardents/plan.json]
@@ -146,6 +160,9 @@ networks:
   route_net:
     internal: true
     ipam: {config: [{subnet: 172.31.20.0/24}]}
+  carrier_net:
+    internal: true
+    ipam: {config: [{subnet: 172.31.21.0/24}]}
 
 volumes:
   publisher_app: {}

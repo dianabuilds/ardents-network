@@ -78,6 +78,7 @@ func allowlistedExitClass(value string) string {
 		{"accept authenticated leg binding:", "upstream-binding"},
 		{"authenticate next role:", "next-role-authentication"},
 		{"confirm next authenticated leg binding:", "next-role-binding"},
+		{"dial unix ", "local-attachment-unavailable"},
 		{"context deadline exceeded", "deadline"},
 	}
 	trimmed := strings.TrimSpace(value)

@@ -20,8 +20,8 @@ func (observer dockerObserver) binaryIdentities(ctx context.Context) (map[string
 		return nil, errors.New("binary-inspection container identity is invalid")
 	}
 	defer func() { _, _ = observer.docker(context.Background(), time.Minute, "rm", "-f", identity) }()
-	result := make(map[string]string, 4)
-	for _, name := range []string{"ardents-route", "ardents-service", "ardents-stream-app", "ardents-recovery-qualify"} {
+	result := make(map[string]string, 5)
+	for _, name := range []string{"ardents-route", "ardents-qualify", "ardents-service", "ardents-stream-app", "ardents-recovery-qualify"} {
 		path := filepath.Join(observer.input.FixtureRoot, "binary-"+name)
 		if _, err := observer.docker(ctx, time.Minute, "cp", identity+":/usr/local/bin/"+name, path); err != nil {
 			return nil, err

@@ -5,6 +5,7 @@ COPY go.mod go.sum ./
 COPY cmd ./cmd
 COPY internal ./internal
 RUN CGO_ENABLED=0 go build -trimpath -o /out/ardents-route ./cmd/ardents-route && \
+	CGO_ENABLED=0 go build -trimpath -o /out/ardents-qualify ./cmd/ardents-qualify && \
     CGO_ENABLED=0 go build -trimpath -o /out/ardents-service ./cmd/ardents-service && \
     CGO_ENABLED=0 go build -trimpath -o /out/ardents-stream-app ./cmd/ardents-stream-app && \
     CGO_ENABLED=0 go build -trimpath -o /out/ardents-publish-app ./cmd/ardents-publish-app && \
