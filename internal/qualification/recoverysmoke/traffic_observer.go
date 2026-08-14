@@ -59,11 +59,61 @@ func (observer dockerObserver) startTrafficObserver(ctx context.Context,
 		_, removeErr := observer.docker(context.Background(), 10*time.Second, "rm", "-f", identity)
 		return "", recovery.ObserverProcess{}, errors.Join(inspectErr, removeErr)
 	}
-	if _, err := observer.docker(ctx, 10*time.Second, "start", identity); err != nil {
+	if err := observer.startTrafficObserverProcess(ctx, identity); err != nil {
 		_, removeErr := observer.docker(context.Background(), 10*time.Second, "rm", "-f", identity)
 		return "", recovery.ObserverProcess{}, errors.Join(err, removeErr)
 	}
 	return identity, projection, nil
+}
+
+func (observer dockerObserver) startTrafficObserverProcess(ctx context.Context, identity string) error {
+	return retryObserverStart(ctx, func(attemptCtx context.Context) error {
+		_, err := observer.docker(attemptCtx, time.Second, "start", identity)
+		return err
+	}, func(attemptCtx context.Context) (bool, error) {
+		raw, err := observer.docker(attemptCtx, time.Second, "inspect", "--format",
+			"{{.Id}} {{.State.Running}}", identity)
+		if err != nil {
+			return false, err
+		}
+		value := strings.TrimSpace(string(raw))
+		if value == identity+" true" {
+			return true, nil
+		}
+		if value == identity+" false" {
+			return false, nil
+		}
+		return false, errors.New("traffic observer running inspection is invalid")
+	})
+}
+
+func retryObserverStart(ctx context.Context, start func(context.Context) error,
+	running func(context.Context) (bool, error)) error {
+	retryCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	var failures error
+	for attempt := 1; ; attempt++ {
+		startErr := start(retryCtx)
+		isRunning, inspectErr := running(retryCtx)
+		if isRunning && inspectErr == nil {
+			return nil
+		}
+		if startErr != nil {
+			failures = errors.Join(failures, fmt.Errorf("start traffic observer attempt %d: %w", attempt, startErr))
+		}
+		if inspectErr != nil {
+			failures = errors.Join(failures, fmt.Errorf("inspect traffic observer attempt %d: %w", attempt, inspectErr))
+		}
+		if startErr == nil && inspectErr == nil {
+			failures = errors.Join(failures,
+				fmt.Errorf("traffic observer was not running after start attempt %d", attempt))
+		}
+		select {
+		case <-retryCtx.Done():
+			return errors.Join(fmt.Errorf("start traffic observer within retry bound: %w", retryCtx.Err()), failures)
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
 }
 
 func (value *trafficObservers) snapshotAndRemove(ctx context.Context, observer dockerObserver,
