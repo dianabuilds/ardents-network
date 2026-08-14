@@ -27,11 +27,11 @@ func (observer dockerObserver) startRecoveryServices(ctx context.Context) error 
 	if err := observer.waitContainer(ctx, operatorID, true); err != nil {
 		return errors.New("publication operator failed")
 	}
-	servers := []string{"publisher-app", "publisher", "responder", "rendezvous", "initiator"}
+	servers := []string{"publisher-app", "responder", "rendezvous", "initiator"}
 	if _, err := observer.compose(ctx, time.Minute, append([]string{"up", "-d"}, servers...)...); err != nil {
 		return err
 	}
-	for _, service := range []string{"publisher", "responder", "rendezvous", "initiator"} {
+	for _, service := range []string{"responder", "rendezvous", "initiator"} {
 		if err := observer.waitReady(ctx, service); err != nil {
 			return err
 		}
@@ -46,6 +46,14 @@ func (observer dockerObserver) startRecoveryServices(ctx context.Context) error 
 		return err
 	}
 	if err := observer.waitReady(ctx, "client-endpoint"); err != nil {
+		return err
+	}
+	// Publisher lifetime starts only after every passive service is ready;
+	// fixture setup must not consume the bounded Route lifetime.
+	if _, err := observer.compose(ctx, time.Minute, "up", "-d", "publisher"); err != nil {
+		return err
+	}
+	if err := observer.waitReady(ctx, "publisher"); err != nil {
 		return err
 	}
 	_, err = observer.compose(ctx, time.Minute, "up", "-d", "client-app", "client")
