@@ -121,8 +121,11 @@ func (observer dockerObserver) destroyCarrier(ctx context.Context, controller, r
 		receipt.AbsenceAfterNanos < receipt.CarrierCutAfterNanos || !receipt.Absent {
 		return "", 0, 0, 0, 0, false, false, errors.New("external Carrier fault receipt is invalid")
 	}
-	if _, err := observer.docker(ctx, 10*time.Second, "rm", "-f", controller); err != nil {
-		return "", 0, 0, 0, 0, false, false, fmt.Errorf("remove stopped Carrier fault controller: %w", err)
+	_, removeErr := observer.docker(ctx, 10*time.Second, "rm", "-f", controller)
+	present, presenceErr := observer.docker(ctx, 10*time.Second, "ps", "-a", "-q", "--no-trunc", "--filter", "id="+controller)
+	if presenceErr != nil || strings.TrimSpace(string(present)) != "" {
+		return "", 0, 0, 0, 0, false, false,
+			errors.Join(removeErr, presenceErr, errors.New("Carrier fault controller remained present after removal"))
 	}
 	if _, err := observer.docker(ctx, 10*time.Second, "network", "disconnect", "-f", network, rendezvous); err != nil {
 		return "", 0, 0, 0, 0, true, false, err
