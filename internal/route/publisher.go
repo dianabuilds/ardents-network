@@ -23,7 +23,9 @@ func servePublisher(ctx context.Context, input Actor, ready func(Evidence)) (Evi
 		return observation, fmt.Errorf("listen for publisher: %w", err)
 	}
 	defer listener.Close()
-	_ = listener.(*net.TCPListener).SetDeadline(time.Now().Add(input.Deadline))
+	if err := bindListenerLifetime(ctx, listener.(*net.TCPListener), input.Role); err != nil {
+		return observation, err
+	}
 	stop := context.AfterFunc(ctx, func() { _ = listener.Close() })
 	defer stop()
 	if ready != nil {

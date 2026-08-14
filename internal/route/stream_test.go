@@ -14,18 +14,23 @@ import (
 )
 
 func TestBoundedOpaqueStreamCrossesEveryRoutePosition(t *testing.T) {
-	runBoundedOpaqueStream(t, false, 8*time.Second, 0, 0)
+	runBoundedOpaqueStream(t, false, 8*time.Second, 0, 0, 0)
 }
 
 func TestEndpointSecuredAttachmentCrossesRouteWithoutPublisherCredential(t *testing.T) {
-	runBoundedOpaqueStream(t, true, 8*time.Second, 0, 0)
+	runBoundedOpaqueStream(t, true, 8*time.Second, 0, 0, 0)
 }
 
 func TestActiveAttachmentOutlivesItsSetupDeadline(t *testing.T) {
-	runBoundedOpaqueStream(t, true, 150*time.Millisecond, 2*time.Second, 300*time.Millisecond)
+	runBoundedOpaqueStream(t, true, 150*time.Millisecond, 2*time.Second, 0, 300*time.Millisecond)
 }
 
-func runBoundedOpaqueStream(t *testing.T, endpointSecured bool, setupDeadline, lifetime, hold time.Duration) {
+func TestWaitingAttachmentUsesLifetimeBeforeSetupDeadline(t *testing.T) {
+	runBoundedOpaqueStream(t, true, 150*time.Millisecond, 2*time.Second, 300*time.Millisecond, 0)
+}
+
+func runBoundedOpaqueStream(t *testing.T, endpointSecured bool, setupDeadline, lifetime,
+	startDelay, hold time.Duration) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -97,7 +102,15 @@ func runBoundedOpaqueStream(t *testing.T, endpointSecured bool, setupDeadline, l
 			t.Fatal(ctx.Err())
 		}
 	}
+	if startDelay > 0 {
+		time.Sleep(startDelay)
+	}
 	start(client, false)
+	applicationDeadline := time.Now().Add(2 * time.Second)
+	if err := errors.Join(clientApplication.SetDeadline(applicationDeadline),
+		publisherApplication.SetDeadline(applicationDeadline)); err != nil {
+		t.Fatal(err)
+	}
 	if hold > 0 {
 		time.Sleep(hold)
 	}
