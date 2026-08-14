@@ -17,6 +17,7 @@ import (
 
 func (observer dockerObserver) runRecoveryCell(ctx context.Context, fixture prepared,
 	imageID string, topology []byte) (result Result) {
+	hostClock := time.Now()
 	path := filepath.Join(observer.input.EvidenceRoot, "recovery-evidence.json")
 	claim := "S4.1 local development evidence only"
 	if observer.input.Slice == "s4.2" {
@@ -34,6 +35,13 @@ func (observer dockerObserver) runRecoveryCell(ctx context.Context, fixture prep
 		NoNewRecoveryAfter: fixture.credentials[0].NotAfter}
 	evidence.Topology = append([]byte(nil), topology...)
 	extension := replacementEvidence{RouteCase: append(json.RawMessage(nil), fixture.routeCase...)}
+	if observer.input.Slice == "s4.2" {
+		var scopeErr error
+		extension.HostScope, scopeErr = observer.observeDockerHostScope(ctx, fixture.manifest, imageID)
+		if scopeErr != nil {
+			return observer.invalid(scopeErr)
+		}
+	}
 	evidence.Manifest = recovery.PublicManifest{RouteManifest: fixture.routeManifest, NetworkID: fixture.network,
 		AuthorityPublic: fixture.authority, IntroductionPublic: fixture.introduction, Target: fixture.target,
 		InstancePublic: fixture.credentials[0].InstancePublic, ClientPrincipal: fixture.bindings[0][0].Principal,
@@ -93,7 +101,7 @@ func (observer dockerObserver) runRecoveryCell(ctx context.Context, fixture prep
 					return observer.invalid(err)
 				}
 				replacement, replacementErr := observer.runReplacementRecovery(ctx, fixture, direction,
-					[]string{role}, baseline, false)
+					[]string{role}, baseline, false, extension.HostScope, hostClock)
 				if replacementErr != nil {
 					return Result{Verdict: "fail", Reason: direction + " " + role + ": " + replacementErr.Error(),
 						EvidenceRoot: observer.input.EvidenceRoot, SourceCommit: observer.sourceCommit, ImageID: imageID}
@@ -105,7 +113,7 @@ func (observer dockerObserver) runRecoveryCell(ctx context.Context, fixture prep
 				return observer.invalid(err)
 			}
 			sequential, sequentialErr := observer.runReplacementRecovery(ctx, fixture, direction,
-				[]string{"initiator", "rendezvous", "responder"}, baseline, true)
+				[]string{"initiator", "rendezvous", "responder"}, baseline, true, extension.HostScope, hostClock)
 			if sequentialErr != nil {
 				return Result{Verdict: "fail", Reason: direction + " sequential: " + sequentialErr.Error(),
 					EvidenceRoot: observer.input.EvidenceRoot, SourceCommit: observer.sourceCommit, ImageID: imageID}

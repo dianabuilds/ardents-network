@@ -8,6 +8,7 @@ import (
 
 type replacementEvidence struct {
 	RouteCase  json.RawMessage
+	HostScope  hostScopeEvidence
 	Candidates []replacementCandidate
 	Cells      []replacementCell
 }
@@ -23,7 +24,7 @@ type replacementCell struct {
 	ClientApplicationProcess, PublisherApplicationProcess                      string
 	Seed, ExpectedDigest, ObservedDigest                                       [32]byte
 	Bytes                                                                      uint32
-	TerminalNanos                                                              int64
+	HostStartedAtNanos, TerminalNanos                                          int64
 	ClientRouteGeneration, PublisherRouteGeneration                            uint64
 	ClientRecoveryCount, PublisherRecoveryCount                                uint32
 	ClientApplicationAccepts, PublisherApplicationAccepts                      uint32
@@ -79,7 +80,11 @@ type routeGeneration struct {
 type candidateProcess struct {
 	Service, ContainerID, Incarnation string
 	PID                               uint32
+	ObservedAtNanos                   int64
+	HostObservation                   [32]byte
+	AdapterProjection                 string
 	NodeID, PublicKey                 [32]byte
+	Host                              processEvidenceRef
 }
 
 type replacementEvent struct {
@@ -103,4 +108,6 @@ type failedResourceReceipt struct {
 	ContainerID     string
 	ObservedAtNanos int64
 	Running         bool
+	Fault           processFaultEvidence
+	State           processStateEvidence
 }

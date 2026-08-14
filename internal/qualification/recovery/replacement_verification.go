@@ -41,13 +41,32 @@ func verifyReplacementEvidence(value Evidence, prior map[string]bool) Result {
 	if len(replacement.Cells) != 10 {
 		return invalid("S4.2 requires five replacement cells in each direction")
 	}
+	if !validHostScope(replacement.HostScope, value.SourceCommit, value.ImageID) {
+		return invalid("S4.2 host-observation scope is invalid")
+	}
+	switch replacement.HostScope.Adapter {
+	case "docker-compose-v1":
+		if !validDockerHostScopeProjection(replacement.HostScope, value.ManifestDigest) ||
+			!validDockerReplacementProcesses(replacement) {
+			return invalid("S4.2 Docker Adapter projection is invalid")
+		}
+	default:
+		return invalid("S4.2 host-observation Adapter is unsupported")
+	}
+	hostScope := replacement.HostScope
 	required := make(map[string]bool, 10)
+	var priorHostTerminal int64
 	for index := range replacement.Cells {
 		cell := replacement.Cells[index]
+		hostTerminal := cell.HostStartedAtNanos + cell.TerminalNanos
+		if hostTerminal <= cell.HostStartedAtNanos || cell.HostStartedAtNanos < priorHostTerminal {
+			return invalid("S4.2 host-observation clock chronology is invalid")
+		}
 		if result := verifyReplacementCell(cell, byRole, replacement.RouteCase, value.Manifest.RouteManifest,
-			value.ImageID); result.Verdict != "pass" {
+			value.ImageID, hostScope); result.Verdict != "pass" {
 			return result
 		}
+		hostEnd := replacementCellHostEnd(cell, hostTerminal)
 		key := cell.Direction + ":" + cell.Mode
 		if required[key] {
 			return invalid("S4.2 replacement cell was duplicated")
@@ -59,6 +78,7 @@ func verifyReplacementEvidence(value Evidence, prior map[string]bool) Result {
 			}
 			prior[identity] = true
 		}
+		priorHostTerminal = hostEnd
 	}
 	for _, direction := range []string{"client-to-publisher", "publisher-to-client"} {
 		for _, mode := range []string{"isolated-initiator", "isolated-introduction", "isolated-rendezvous",
@@ -71,12 +91,30 @@ func verifyReplacementEvidence(value Evidence, prior map[string]bool) Result {
 	return Result{Verdict: "pass"}
 }
 
+func replacementCellHostEnd(cell replacementCell, current int64) int64 {
+	for _, route := range cell.Routes {
+		for _, process := range route.Processes {
+			current = max(current, process.ObservedAtNanos)
+		}
+	}
+	for _, proposal := range cell.Proposals {
+		for index, process := range proposal.Processes {
+			current = max(current, process.ObservedAtNanos, proposal.Stopped[index].State.ObservedAtNanos)
+		}
+	}
+	for _, event := range cell.Events {
+		current = max(current, event.FailedResource.State.ObservedAtNanos,
+			event.FailedResource.Fault.InvocationCompletedNanos, event.FailedResource.Fault.ObservedAtNanos)
+	}
+	return current
+}
+
 func verifyReplacementCell(cell replacementCell, candidates map[string][]replacementCandidate,
-	routeCase routeCase, routeManifest [32]byte, imageID string) Result {
+	routeCase routeCase, routeManifest [32]byte, imageID string, hostScope hostScopeEvidence) Result {
 	selectionSeed := routeCase.SelectionSeed
 	if cell.Direction != "client-to-publisher" && cell.Direction != "publisher-to-client" ||
 		cell.Bytes != streamBytes || cell.Seed == [32]byte{} || cell.ExpectedDigest != workloadDigest(cell.Seed, cell.Bytes) ||
-		cell.ObservedDigest != cell.ExpectedDigest || cell.TerminalNanos <= 0 {
+		cell.ObservedDigest != cell.ExpectedDigest || cell.HostStartedAtNanos <= 0 || cell.TerminalNanos <= 0 {
 		return invalid("S4.2 replacement cell identity or workload is incomplete")
 	}
 	if !fullContainerID(cell.ClientProcess) || !fullContainerID(cell.PublisherProcess) ||
@@ -112,10 +150,10 @@ func verifyReplacementCell(cell replacementCell, candidates map[string][]replace
 	}
 	identities := map[string]bool{cell.ClientProcess: true, cell.PublisherProcess: true,
 		cell.ClientApplicationProcess: true, cell.PublisherApplicationProcess: true}
-	if result := verifyReplacementProposals(cell, candidates, routeCase, routeManifest, identities); result.Verdict != "pass" {
+	if result := verifyReplacementProposals(cell, candidates, routeCase, routeManifest, hostScope, identities); result.Verdict != "pass" {
 		return result
 	}
-	if result := verifyReplacementRoutes(cell, candidates, selectionSeed, identities); result.Verdict != "pass" {
+	if result := verifyReplacementRoutes(cell, candidates, selectionSeed, hostScope, identities); result.Verdict != "pass" {
 		return result
 	}
 	if result := verifyReplacementObservers(cell, imageID, identities); result.Verdict != "pass" {

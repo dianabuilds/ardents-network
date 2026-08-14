@@ -52,6 +52,74 @@ func TestVerifyRejectsS42ReplacementMutations(t *testing.T) {
 		"proposal process identity is short": func(value *replacementEvidence) {
 			value.Cells[0].Proposals[0].Processes[0].ContainerID = "short"
 		},
+		"missing common process commitment": func(value *replacementEvidence) {
+			process := value.Cells[0].Routes[0].Processes["initiator"]
+			process.Host.Commitment = [32]byte{}
+			value.Cells[0].Routes[0].Processes["initiator"] = process
+		},
+		"changed process observation time": func(value *replacementEvidence) {
+			process := value.Cells[0].Routes[0].Processes["initiator"]
+			process.ObservedAtNanos++
+			value.Cells[0].Routes[0].Processes["initiator"] = process
+		},
+		"process scope changed outside campaign": func(value *replacementEvidence) {
+			process := value.Cells[0].Routes[0].Processes["initiator"]
+			process.Host.Scope[0]++
+			process.Host.Commitment = processRefCommitment(process.Host)
+			value.Cells[0].Routes[0].Processes["initiator"] = process
+		},
+		"host machine scope changed": func(value *replacementEvidence) {
+			value.HostScope.Machine[0]++
+			value.HostScope.Commitment = hostScopeCommitment(value.HostScope)
+		},
+		"mixed process adapter": func(value *replacementEvidence) {
+			process := value.Cells[0].Routes[0].Processes["initiator"]
+			process.Host.Adapter = "native-test-v1"
+			process.Host.Commitment = processRefCommitment(process.Host)
+			process.HostObservation = processObservationCommitment(process.Host,
+				[]byte(process.AdapterProjection), process.PID, true, process.ObservedAtNanos)
+			value.Cells[0].Routes[0].Processes["initiator"] = process
+		},
+		"Docker process projection changed": func(value *replacementEvidence) {
+			process := value.Cells[0].Routes[0].Processes["initiator"]
+			process.AdapterProjection = `{"Image":"wrong","Path":"/wrong","Project":"wrong","Service":"initiator"}`
+			process.HostObservation = processObservationCommitment(process.Host,
+				[]byte(process.AdapterProjection), process.PID, true, process.ObservedAtNanos)
+			value.Cells[0].Routes[0].Processes["initiator"] = process
+		},
+		"Docker process projection is not canonical": func(value *replacementEvidence) {
+			process := value.Cells[0].Routes[0].Processes["initiator"]
+			comma := strings.IndexByte(process.AdapterProjection, ',')
+			process.AdapterProjection = "{" + process.AdapterProjection[1:comma] + "," + process.AdapterProjection[1:]
+			process.HostObservation = processObservationCommitment(process.Host,
+				[]byte(process.AdapterProjection), process.PID, true, process.ObservedAtNanos)
+			value.Cells[0].Routes[0].Processes["initiator"] = process
+		},
+		"host clock reset between cells": func(value *replacementEvidence) {
+			value.Cells[1].HostStartedAtNanos = 1
+		},
+		"next cell overlaps prior host observation": func(value *replacementEvidence) {
+			receipt := &value.Cells[0].Proposals[0].Stopped[0]
+			receipt.State.ObservedAtNanos = value.Cells[1].HostStartedAtNanos + 1
+			receipt.State.Commitment = processStateCommitment(receipt.State)
+			receipt.ObservedAtNanos = receipt.State.ObservedAtNanos - value.Cells[0].HostStartedAtNanos
+		},
+		"process observed after its fault": func(value *replacementEvidence) {
+			cell := &value.Cells[0]
+			process := cell.Routes[0].Processes["initiator"]
+			process.ObservedAtNanos = cell.Events[0].FailedResource.Fault.InvocationStartedNanos + 1
+			process.HostObservation = processObservationCommitment(process.Host,
+				[]byte(process.AdapterProjection), process.PID, true, process.ObservedAtNanos)
+			cell.Routes[0].Processes["initiator"] = process
+			cell.Events[0].Failed = process
+			cell.Proposals[0].Processes[0] = process
+		},
+		"missing common fault receipt": func(value *replacementEvidence) {
+			value.Cells[0].Events[0].FailedResource.Fault = processFaultEvidence{}
+		},
+		"missing common state receipt": func(value *replacementEvidence) {
+			value.Cells[0].Events[0].FailedResource.State = processStateEvidence{}
+		},
 		"proposal process still running": func(value *replacementEvidence) {
 			value.Cells[0].Proposals[0].Stopped[0].Running = true
 		},
@@ -133,15 +201,22 @@ func validS42Evidence(t *testing.T) Evidence {
 	value.ManifestDigest = fmt.Sprintf("%x", manifestDigest)
 	value.IsolationContext = sha256.Sum256(append([]byte("isolation\x00"), manifestDigest[:]...))
 	serial := 1000
+	hostScope := testHostScope(value.SourceCommit, value.ImageID, value.ManifestDigest)
+	extension.HostScope = hostScope
 	nextID := func() string { serial++; return fmt.Sprintf("%064x", serial) }
+	hostStartedAt := int64(100)
 	for _, direction := range []string{"client-to-publisher", "publisher-to-client"} {
 		for _, role := range replacementRoleNames {
-			extension.Cells = append(extension.Cells,
-				s42Cell(value.ImageID, direction, "isolated-"+role, []string{role}, sets, seed,
-					extension.RouteCase, routeDigest, nextID))
+			cell := s42Cell(value.ImageID, direction, "isolated-"+role, []string{role}, sets, seed,
+				extension.RouteCase, routeDigest, hostScope, hostStartedAt, nextID, t)
+			extension.Cells = append(extension.Cells, cell)
+			hostStartedAt += cell.TerminalNanos + 10
 		}
-		extension.Cells = append(extension.Cells, s42Cell(value.ImageID, direction, "sequential-three",
-			[]string{"initiator", "rendezvous", "responder"}, sets, seed, extension.RouteCase, routeDigest, nextID))
+		cell := s42Cell(value.ImageID, direction, "sequential-three",
+			[]string{"initiator", "rendezvous", "responder"}, sets, seed, extension.RouteCase, routeDigest,
+			hostScope, hostStartedAt, nextID, t)
+		extension.Cells = append(extension.Cells, cell)
+		hostStartedAt += cell.TerminalNanos + 10
 	}
 	value.S42, err = json.Marshal(extension)
 	if err != nil {
@@ -196,7 +271,8 @@ func testCandidateRank(seed [32]byte, role string, node [32]byte) string {
 }
 
 func s42Cell(imageID, direction, mode string, failures []string, sets map[string][]replacementCandidate,
-	seed [32]byte, routeCase routeCase, routeManifest [32]byte, nextID func() string) replacementCell {
+	seed [32]byte, routeCase routeCase, routeManifest [32]byte, hostScope hostScopeEvidence,
+	hostStartedAt int64, nextID func() string, t *testing.T) replacementCell {
 	proposalIndexes := [][4]int{{0, 0, 0, 0}, {1, 1, 0, 1}, {2, 2, 2, 2}, {1, 1, 2, 1}}
 	proposals := []int{0, 1}
 	if mode == "isolated-rendezvous" {
@@ -223,6 +299,7 @@ func s42Cell(imageID, direction, mode string, failures []string, sets map[string
 		ClientRouteAccepts: uint32(len(selections)), PublisherRouteAccepts: uint32(len(selections)),
 		ClientContinuity: [32]byte{9}, PublisherContinuity: [32]byte{9}, Ordered: true, Unique: true,
 		SameConnection: true, TerminalClean: true, ClientQueueHighWater: 1, PublisherQueueHighWater: 1}
+	cell.HostStartedAtNanos = hostStartedAt
 	cell.TerminalNanos = int64(6 * time.Second)
 	if mode == "sequential-three" {
 		cell.TerminalNanos = int64(10*time.Minute + time.Second)
@@ -244,9 +321,11 @@ func s42Cell(imageID, direction, mode string, failures []string, sets map[string
 			process, ok := processes[candidate.NodeID]
 			if !ok {
 				container := nextID()
-				process = candidateProcess{Service: role, ContainerID: container,
-					Incarnation: container + "@2026-08-14T08:04:05Z", PID: uint32(10 + len(processes)),
-					NodeID: candidate.NodeID, PublicKey: candidate.PublicKey}
+				incarnation := container + "@2026-08-14T08:04:05Z"
+				process = testObservedProcess(t, candidateProcess{Service: role, ContainerID: container,
+					Incarnation: incarnation, PID: uint32(10 + len(processes)), ObservedAtNanos: hostStartedAt + 1,
+					NodeID: candidate.NodeID, PublicKey: candidate.PublicKey,
+					Host: testProcessRef(hostScope, container, incarnation)}, hostScope, imageID)
 				processes[candidate.NodeID] = process
 			}
 			routeGeneration.Processes[role] = process
@@ -278,14 +357,16 @@ func s42Cell(imageID, direction, mode string, failures []string, sets map[string
 			process, ok := processes[candidate.NodeID]
 			if !ok {
 				container := nextID()
-				process = candidateProcess{Service: role, ContainerID: container,
-					Incarnation: container + "@2026-08-14T08:04:05Z", PID: uint32(10 + len(processes)),
-					NodeID: candidate.NodeID, PublicKey: candidate.PublicKey}
+				incarnation := container + "@2026-08-14T08:04:05Z"
+				process = testObservedProcess(t, candidateProcess{Service: role, ContainerID: container,
+					Incarnation: incarnation, PID: uint32(10 + len(processes)), ObservedAtNanos: hostStartedAt + 1,
+					NodeID: candidate.NodeID, PublicKey: candidate.PublicKey,
+					Host: testProcessRef(hostScope, container, incarnation)}, hostScope, imageID)
 				processes[candidate.NodeID] = process
 			}
 			proposal.Processes[roleIndex] = process
-			proposal.Stopped[roleIndex] = failedResourceReceipt{ContainerID: process.ContainerID,
-				ObservedAtNanos: cell.TerminalNanos + 1}
+			proposal.Stopped[roleIndex] = testStoppedReceipt(process, cell.HostStartedAtNanos,
+				cell.TerminalNanos+1, 0)
 			count := 0
 			switch proposalIndex {
 			case 1:
@@ -327,8 +408,8 @@ func s42Cell(imageID, direction, mode string, failures []string, sets map[string
 			Introduction: after.Processes["introduction"], IntroductionAttachment: introductionAttachment,
 			FaultOffset: offset, CanaryOffset: offset, Canary: workloadRange(seed, offset),
 			LastDeliveryNanos: last, FaultAtNanos: last + 1, CanaryNanos: last + int64(time.Second),
-			FailedResource: failedResourceReceipt{ContainerID: before.Processes[failure].ContainerID,
-				ObservedAtNanos: cell.TerminalNanos + 1}})
+			FailedResource: testStoppedReceipt(before.Processes[failure], cell.HostStartedAtNanos,
+				cell.TerminalNanos+1, last+1)})
 		if failure == "rendezvous" {
 			cell.Events[index].Layer = "rendezvous"
 			cell.Events[index].IntroductionSetupAttachment = 3
@@ -377,51 +458,4 @@ func s42IntroductionProof(value routeCase, manifest [32]byte,
 	receipt := append([]byte("ardents-h3-sealed-introduction-v2\x00"), body...)
 	receipt = append(receipt, proof.Reply[:]...)
 	return proof, sha256.Sum256(receipt)
-}
-
-func s42Samples(terminal int64) []ResourceSample {
-	count := int(terminal / int64(time.Second))
-	result := make([]ResourceSample, 0, count)
-	for index := 1; index <= count; index++ {
-		counter := uint64(index * 100)
-		result = append(result, ResourceSample{AtNanos: int64(index) * int64(time.Second), ClientRSS: 1,
-			PublisherRSS: 1, ClientCPUPercent: 1, PublisherCPUPercent: 1, ClientReceived: counter,
-			ClientSent: counter, PublisherReceived: counter, PublisherSent: counter})
-	}
-	return result
-}
-
-func s42Observer(imageID, identity, route string) ObserverProcess {
-	return ObserverProcess{ContainerID: identity, ImageID: imageID, NetworkMode: "container:" + route,
-		User: "65532:65532", IPCMode: "private",
-		Command: []string{"/usr/local/bin/ardents-qualify", "carrier-fault", "traffic-wait"},
-		CapDrop: []string{"ALL"}, SecurityOpt: []string{"no-new-privileges"}, ReadOnly: true, Removed: true,
-		PidsLimit: 16, MemoryLimit: 32 << 20, NanoCPUs: 250_000_000}
-}
-
-func s42Topology(input []byte) []byte {
-	text := strings.Replace(string(input), "  client:\n",
-		"  client:\n    volumes: [recovery_introduction_user:/run/ardents/recovery-introduction-user]\n", 1)
-	text = strings.Replace(text, "  publisher:\n",
-		"  publisher:\n    volumes: [recovery_introduction_service:/run/ardents/recovery-introduction-service]\n", 1)
-	var additions strings.Builder
-	for _, role := range replacementRoleNames {
-		for candidate := 2; candidate <= 3; candidate++ {
-			volume := ""
-			if role == "introduction" && candidate == 3 {
-				volume = "    volumes: [recovery_introduction_user:/run/ardents/recovery-introduction-user, recovery_introduction_service:/run/ardents/recovery-introduction-service]\n"
-			}
-			fmt.Fprintf(&additions, "  %s-%d:\n    networks: [route_net]\n    restart: \"no\"\n%s", role, candidate, volume)
-		}
-	}
-	return []byte(strings.Replace(text, "networks:\n", additions.String()+"networks:\n", 1))
-}
-
-func decodeReplacementTest(t *testing.T, raw []byte) replacementEvidence {
-	t.Helper()
-	var result replacementEvidence
-	if err := json.Unmarshal(raw, &result); err != nil {
-		t.Fatal(err)
-	}
-	return result
 }

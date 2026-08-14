@@ -44,12 +44,12 @@ func replacementCellIdentities(cell replacementCell) map[string]bool {
 		cell.ClientApplicationProcess: true, cell.PublisherApplicationProcess: true}
 	for _, generation := range cell.Routes {
 		for _, process := range generation.Processes {
-			result[process.ContainerID] = true
+			result[process.Host.Identity] = true
 		}
 	}
 	for _, proposal := range cell.Proposals {
 		for _, process := range proposal.Processes {
-			result[process.ContainerID] = true
+			result[process.Host.Identity] = true
 		}
 	}
 	for _, identity := range []string{cell.BaselineClientRoute, cell.BaselinePublisherRoute, cell.ClientRoute, cell.PublisherRoute,

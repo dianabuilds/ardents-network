@@ -8,7 +8,7 @@ import (
 )
 
 func verifyReplacementProposals(cell replacementCell, candidates map[string][]replacementCandidate,
-	routeCase routeCase, routeManifest [32]byte, reserved map[string]bool) Result {
+	routeCase routeCase, routeManifest [32]byte, hostScope hostScopeEvidence, reserved map[string]bool) Result {
 	selectionSeed := routeCase.SelectionSeed
 	expected := 2
 	if cell.Mode == "isolated-rendezvous" {
@@ -20,7 +20,7 @@ func verifyReplacementProposals(cell replacementCell, candidates map[string][]re
 		return invalid("S4.2 proposed Route evidence count is incomplete")
 	}
 	processes := map[[32]byte]candidateProcess{}
-	containers := map[string][32]byte{}
+	resources := map[string]candidateProcess{}
 	for proposalIndex, proposal := range cell.Proposals {
 		selected, err := layeredCandidates(candidates, selectionSeed, proposalIndex)
 		if err != nil || proposal.Attachment != uint32(proposalIndex+1) ||
@@ -34,23 +34,27 @@ func verifyReplacementProposals(cell replacementCell, candidates map[string][]re
 			}
 			process, stopped := proposal.Processes[roleIndex], proposal.Stopped[roleIndex]
 			if process.NodeID != selected[role].NodeID || process.PublicKey != selected[role].PublicKey ||
-				!fullContainerID(process.ContainerID) || process.PID == 0 || stopped.ContainerID != process.ContainerID ||
-				reserved[process.ContainerID] ||
+				!validProcessRef(process, hostScope) ||
+				process.ObservedAtNanos < cell.HostStartedAtNanos ||
+				process.ObservedAtNanos > cell.HostStartedAtNanos+cell.TerminalNanos ||
+				!validProcessState(stopped.State, process) ||
+				stopped.ObservedAtNanos+cell.HostStartedAtNanos != stopped.State.ObservedAtNanos ||
+				process.ObservedAtNanos > stopped.State.ObservedAtNanos ||
+				reserved[process.Host.Identity] ||
 				stopped.Running || stopped.ObservedAtNanos < cell.TerminalNanos ||
 				stopped.ObservedAtNanos-cell.TerminalNanos > int64(30*time.Second) {
 				return invalid("S4.2 proposed Route process or stopped receipt is invalid")
 			}
-			if _, ok := processStartedAt(process.Incarnation, process.ContainerID); !ok {
-				return invalid("S4.2 proposed Route process incarnation is invalid")
-			}
-			if prior, ok := processes[process.NodeID]; ok && prior != process {
+			if prior, ok := processes[process.NodeID]; ok &&
+				(!sameProcessIncarnation(prior, process) || process.ObservedAtNanos < prior.ObservedAtNanos) {
 				return invalid("S4.2 one proposed Node changed process incarnation")
 			}
-			if prior, ok := containers[process.ContainerID]; ok && prior != process.NodeID {
-				return invalid("S4.2 one proposed process represented multiple Node candidates")
+			if prior, ok := resources[process.Host.Identity]; ok &&
+				(prior.NodeID != process.NodeID || !sameProcessIncarnation(prior, process)) {
+				return invalid("S4.2 proposed process identity or projection changed ownership")
 			}
 			processes[process.NodeID] = process
-			containers[process.ContainerID] = process.NodeID
+			resources[process.Host.Identity] = process
 		}
 		wantCommitted := cell.Mode != "isolated-rendezvous" || proposalIndex != 1
 		wantTerminal := "error"
@@ -72,7 +76,8 @@ func verifyReplacementProposals(cell replacementCell, candidates map[string][]re
 		}
 		proposal := cell.Proposals[proposalIndex]
 		for roleIndex, role := range replacementRoles {
-			if proposal.Processes[roleIndex] != generation.Processes[role] {
+			proposed, observed := proposal.Processes[roleIndex], generation.Processes[role]
+			if !sameProcessIncarnation(proposed, observed) || proposed.ObservedAtNanos > observed.ObservedAtNanos {
 				return invalid("S4.2 committed generation process differs from its proposed Route")
 			}
 		}

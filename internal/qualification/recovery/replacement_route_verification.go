@@ -1,14 +1,11 @@
 package recovery
 
-import (
-	"strings"
-	"time"
-)
+import "time"
 
 func verifyReplacementRoutes(cell replacementCell, candidates map[string][]replacementCandidate,
-	selectionSeed [32]byte, identities map[string]bool) Result {
+	selectionSeed [32]byte, hostScope hostScopeEvidence, identities map[string]bool) Result {
 	nodeProcesses := map[[32]byte]candidateProcess{}
-	containerNodes := map[string][32]byte{}
+	resourceProcesses := map[string]candidateProcess{}
 	failedRoles := map[string]bool{}
 	for generationIndex, generation := range cell.Routes {
 		if generation.Generation != uint64(generationIndex+1) || len(generation.Processes) != len(replacementRoles) {
@@ -26,23 +23,25 @@ func verifyReplacementRoutes(cell replacementCell, candidates map[string][]repla
 			process := generation.Processes[role]
 			candidate := selected[role]
 			if process.NodeID != candidate.NodeID || process.PublicKey != candidate.PublicKey ||
-				!strings.HasPrefix(process.Service, role) || !fullContainerID(process.ContainerID) || process.PID == 0 {
+				!validProcessRef(process, hostScope) ||
+				process.ObservedAtNanos < cell.HostStartedAtNanos ||
+				process.ObservedAtNanos > cell.HostStartedAtNanos+cell.TerminalNanos {
 				return invalid("S4.2 selected candidate process does not match the recomputed Route")
 			}
-			if _, ok := processStartedAt(process.Incarnation, process.ContainerID); !ok {
-				return invalid("S4.2 selected candidate process incarnation is invalid")
-			}
-			if prior, ok := nodeProcesses[process.NodeID]; ok && prior != process {
+			if prior, ok := nodeProcesses[process.NodeID]; ok &&
+				(!sameProcessIncarnation(prior, process) || process.ObservedAtNanos < prior.ObservedAtNanos) {
 				return invalid("S4.2 unchanged Node changed process incarnation")
 			}
-			if prior, ok := containerNodes[process.ContainerID]; ok && prior != process.NodeID {
-				return invalid("S4.2 one process represented multiple Node candidates")
+			if prior, ok := resourceProcesses[process.Host.Identity]; ok &&
+				(prior.NodeID != process.NodeID || !sameProcessIncarnation(prior, process)) {
+				return invalid("S4.2 process identity or projection changed ownership")
 			}
-			if identities[process.ContainerID] && containerNodes[process.ContainerID] == [32]byte{} {
+			_, knownResource := resourceProcesses[process.Host.Identity]
+			if identities[process.Host.Identity] && !knownResource {
 				return invalid("S4.2 candidate process overlaps Endpoint or Application identity")
 			}
-			nodeProcesses[process.NodeID], containerNodes[process.ContainerID] = process, process.NodeID
-			identities[process.ContainerID] = true
+			nodeProcesses[process.NodeID], resourceProcesses[process.Host.Identity] = process, process
+			identities[process.Host.Identity] = true
 		}
 		if generationIndex == len(cell.Events) {
 			continue
@@ -54,10 +53,18 @@ func verifyReplacementRoutes(cell replacementCell, candidates map[string][]repla
 		failedRoles[event.Role] = true
 		before, after := generation, cell.Routes[generationIndex+1]
 		if event.GenerationBefore != before.Generation || event.GenerationAfter != after.Generation ||
-			event.Failed != before.Processes[event.Role] || event.Replacement != after.Processes[event.Role] ||
-			event.Failed == event.Replacement || event.FailedResource.ContainerID != event.Failed.ContainerID ||
-			event.FailedResource.Running || !fullContainerID(event.FailedResource.ContainerID) ||
+			!sameProcessIncarnation(event.Failed, before.Processes[event.Role]) ||
+			!sameProcessIncarnation(event.Replacement, after.Processes[event.Role]) ||
+			sameProcessIncarnation(event.Failed, event.Replacement) ||
+			event.FailedResource.Running ||
 			event.FailedResource.ObservedAtNanos < cell.TerminalNanos ||
+			!validProcessState(event.FailedResource.State, event.Failed) ||
+			!validProcessFault(event.FailedResource.Fault, event.Failed) ||
+			event.FailedResource.ObservedAtNanos+cell.HostStartedAtNanos !=
+				event.FailedResource.State.ObservedAtNanos ||
+			event.Failed.ObservedAtNanos > event.FailedResource.Fault.InvocationStartedNanos ||
+			event.FailedResource.Fault.InvocationStartedNanos-cell.HostStartedAtNanos != event.FaultAtNanos ||
+			event.FailedResource.Fault.InvocationCompletedNanos-cell.HostStartedAtNanos > event.CanaryNanos ||
 			event.FailedResource.ObservedAtNanos-cell.TerminalNanos > int64(30*time.Second) {
 			return fail("S4.2 failed and replacement candidate evidence is inconsistent")
 		}
@@ -84,24 +91,25 @@ func verifyReplacementEvent(cell replacementCell, index int, event replacementEv
 	}
 	introductionAttachment := uint32(0)
 	for generation := 0; generation <= index+1; generation++ {
-		if cell.Routes[generation].Processes["introduction"] == event.Introduction {
+		if sameProcessIncarnation(cell.Routes[generation].Processes["introduction"], event.Introduction) {
 			introductionAttachment++
 		}
 	}
-	if event.RendezvousBefore != before.Processes["rendezvous"] ||
-		event.RendezvousAfter != after.Processes["rendezvous"] || event.Introduction != after.Processes["introduction"] ||
+	if !sameProcessIncarnation(event.RendezvousBefore, before.Processes["rendezvous"]) ||
+		!sameProcessIncarnation(event.RendezvousAfter, after.Processes["rendezvous"]) ||
+		!sameProcessIncarnation(event.Introduction, after.Processes["introduction"]) ||
 		event.IntroductionAttachment == 0 ||
 		event.IntroductionAttachment != introductionAttachment {
 		return invalid("S4.2 Rendezvous or fresh Introduction evidence is incomplete")
 	}
 	if event.Role == "rendezvous" {
-		if event.Layer != "rendezvous" || event.RendezvousBefore == event.RendezvousAfter ||
+		if event.Layer != "rendezvous" || sameProcessIncarnation(event.RendezvousBefore, event.RendezvousAfter) ||
 			event.IntroductionSetupReceipt == [32]byte{} || event.IntroductionSetupAttachment != 3 ||
 			event.IntroductionOpaqueBytes == 0 || event.IntroductionOpaqueDigest == [32]byte{} ||
 			len(cell.Proposals) < 3 || event.IntroductionSetupReceipt != cell.Proposals[2].IntroductionReceipt {
 			return fail("S4.2 Rendezvous loss did not commit a distinct Rendezvous")
 		}
-	} else if event.Layer != "leg" || event.RendezvousBefore != event.RendezvousAfter ||
+	} else if event.Layer != "leg" || !sameProcessIncarnation(event.RendezvousBefore, event.RendezvousAfter) ||
 		event.IntroductionSetupReceipt != [32]byte{} || event.IntroductionSetupAttachment != 0 ||
 		event.IntroductionOpaqueBytes != 0 || event.IntroductionOpaqueDigest != [32]byte{} {
 		return fail("S4.2 leg replacement did not retain the same live Rendezvous")

@@ -9,7 +9,8 @@ import (
 )
 
 func (observer dockerObserver) runReplacementRecovery(ctx context.Context, fixture prepared, direction string,
-	failures []string, baseline trafficBaseline, sequential bool) (result replacementCell, returnErr error) {
+	failures []string, baseline trafficBaseline, sequential bool,
+	hostScope hostScopeEvidence, hostClock time.Time) (result replacementCell, returnErr error) {
 	if err := observer.resetRecoveryTopology(ctx, time.Minute); err != nil {
 		return replacementCell{}, fmt.Errorf("reset replacement topology: %w", err)
 	}
@@ -35,7 +36,9 @@ func (observer dockerObserver) runReplacementRecovery(ctx context.Context, fixtu
 	if _, err := observer.compose(ctx, time.Minute, "--profile", "setup", "run", "--no-deps", "--rm", "volume-init"); err != nil {
 		return replacementCell{}, err
 	}
-	cellClock := time.Now()
+	hostStartedAt := max(int64(1), time.Since(hostClock).Nanoseconds())
+	cellClock := hostClock.Add(time.Duration(hostStartedAt))
+	processObserver := newDockerProcessAdapter(observer, hostScope, hostClock)
 	identities, err := observer.startReplacementServices(ctx, fixture, plan)
 	if err != nil {
 		return replacementCell{}, err
@@ -63,7 +66,7 @@ func (observer dockerObserver) runReplacementRecovery(ctx context.Context, fixtu
 		return err
 	}, func() error {
 		for index := range proposalRoutes {
-			proposalRoutes[index], err = observer.observeRouteGeneration(ctx, fixture,
+			proposalRoutes[index], err = observeRouteGeneration(ctx, processObserver, fixture,
 				uint64(index+1), plan.selections[index])
 			if err != nil {
 				return err
@@ -76,12 +79,14 @@ func (observer dockerObserver) runReplacementRecovery(ctx context.Context, fixtu
 	}
 	initialRoute := proposalRoutes[0]
 	failed := make(map[string]candidateProcess, 3)
+	faultReceipts := make(map[string]processFaultEvidence, 3)
 	seed, err := recoveryDirectionSeed(observer.generation, direction)
 	if err != nil {
 		return replacementCell{}, err
 	}
 	cell := replacementCell{Direction: direction, Mode: mode, Bytes: 4 << 20, Seed: seed,
-		ExpectedDigest: workloadDigest(seed, 4<<20), Routes: []routeGeneration{initialRoute},
+		HostStartedAtNanos: hostStartedAt,
+		ExpectedDigest:     workloadDigest(seed, 4<<20), Routes: []routeGeneration{initialRoute},
 		ClientProcess: identities["client-endpoint"], PublisherProcess: identities["publisher-endpoint"],
 		ClientApplicationProcess: identities["client-app"], PublisherApplicationProcess: identities["publisher-app"],
 		BaselineFinalTraffic: baseline.finalTraffic, BaselineClientTraffic: baseline.client,
@@ -111,11 +116,13 @@ func (observer dockerObserver) runReplacementRecovery(ctx context.Context, fixtu
 		lastDelivery := time.Since(cellClock).Nanoseconds()
 		before := cell.Routes[len(cell.Routes)-1]
 		fault := before.Processes[role]
-		faultAt := time.Since(cellClock).Nanoseconds()
-		if err := observer.stopCandidate(ctx, fault); err != nil {
+		faultReceipt, err := stopCandidate(ctx, processObserver, fault)
+		if err != nil {
 			return replacementCell{}, err
 		}
 		failed[fault.ContainerID] = fault
+		faultReceipts[fault.ContainerID] = faultReceipt
+		faultAt := faultReceipt.InvocationStartedNanos - hostStartedAt
 		nextProposal := eventIndex + 1
 		if mode == "isolated-rendezvous" {
 			nextProposal = 2
@@ -132,7 +139,7 @@ func (observer dockerObserver) runReplacementRecovery(ctx context.Context, fixtu
 		if canaryAt-lastDelivery > int64(5*time.Second) {
 			return replacementCell{}, errors.New("replacement recovery missed five seconds")
 		}
-		after, err := observer.observeRouteGeneration(ctx, fixture, uint64(eventIndex+2), nextSelection)
+		after, err := observeRouteGeneration(ctx, processObserver, fixture, uint64(eventIndex+2), nextSelection)
 		if err != nil {
 			return replacementCell{}, err
 		}
@@ -149,14 +156,15 @@ func (observer dockerObserver) runReplacementRecovery(ctx context.Context, fixtu
 		cell.Events = append(cell.Events, event)
 		previousOffset = offset
 	}
-	if err := observer.waitReplacementTerminal(ctx, identities, failed, sequential, cellClock); err != nil {
+	if err := observer.waitReplacementTerminal(ctx, processObserver, identities, failed, sequential,
+		hostStartedAt); err != nil {
 		return replacementCell{}, err
 	}
 	cell.TerminalNanos = time.Since(cellClock).Nanoseconds()
 	return finalizeReplacementObservation(&traffic, &sampler,
 		func(ownedTraffic *trafficObservers, ownedSampler *statsSampler) (replacementCell, error) {
-			return observer.finishReplacementCell(ctx, cell, receiver, ownedTraffic, ownedSampler,
-				failed, proposalRoutes, cellClock)
+			return observer.finishReplacementCell(ctx, processObserver, cell, receiver, ownedTraffic, ownedSampler,
+				failed, faultReceipts, proposalRoutes, cellClock, hostStartedAt)
 		})
 }
 

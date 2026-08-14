@@ -7,8 +7,8 @@ import (
 	"time"
 )
 
-func (observer dockerObserver) waitReplacementTerminal(ctx context.Context, identities map[string]string,
-	failed map[string]candidateProcess, sequential bool, cellClock time.Time) error {
+func (observer dockerObserver) waitReplacementTerminal(ctx context.Context, processObserver hostProcessAdapter,
+	identities map[string]string, failed map[string]candidateProcess, sequential bool, hostStartedAt int64) error {
 	limit := time.Minute
 	if sequential {
 		limit = 13 * time.Minute
@@ -27,17 +27,18 @@ func (observer dockerObserver) waitReplacementTerminal(ctx context.Context, iden
 		}
 	}
 	for _, process := range failed {
-		if _, err := observer.candidateUnavailable(ctx, process, cellClock); err != nil {
+		if _, err := candidateUnavailable(ctx, processObserver, process, hostStartedAt); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (observer dockerObserver) finishReplacementCell(ctx context.Context, cell replacementCell,
-	receiver string, traffic *trafficObservers, sampler *statsSampler,
-	failed map[string]candidateProcess, proposalRoutes []routeGeneration,
-	cellClock time.Time) (replacementCell, error) {
+func (observer dockerObserver) finishReplacementCell(ctx context.Context, processObserver hostProcessAdapter,
+	cell replacementCell, receiver string, traffic *trafficObservers, sampler *statsSampler,
+	failed map[string]candidateProcess, faultReceipts map[string]processFaultEvidence,
+	proposalRoutes []routeGeneration,
+	cellClock time.Time, hostStartedAt int64) (replacementCell, error) {
 	finalTraffic, trafficErr := traffic.snapshotAndRemove(ctx, observer, cellClock)
 	samples, sampleErr := sampler.stop()
 	if trafficErr != nil || sampleErr != nil || len(samples) < 3 {
@@ -84,7 +85,7 @@ func (observer dockerObserver) finishReplacementCell(ctx context.Context, cell r
 	for proposalIndex := range cell.Proposals {
 		for roleIndex, role := range replacementRoles {
 			process := proposalRoutes[proposalIndex].Processes[role]
-			receipt, receiptErr := observer.candidateUnavailable(ctx, process, cellClock)
+			receipt, receiptErr := candidateUnavailable(ctx, processObserver, process, hostStartedAt)
 			if receiptErr != nil {
 				return replacementCell{}, receiptErr
 			}
@@ -104,7 +105,7 @@ func (observer dockerObserver) finishReplacementCell(ctx context.Context, cell r
 		}
 		expected := uint32(0)
 		for generation := 0; generation <= index+1; generation++ {
-			if cell.Routes[generation].Processes["introduction"] == event.Introduction {
+			if sameProcessIncarnation(cell.Routes[generation].Processes["introduction"], event.Introduction) {
 				expected++
 			}
 		}
@@ -128,10 +129,15 @@ func (observer dockerObserver) finishReplacementCell(ctx context.Context, cell r
 		if !ok {
 			return replacementCell{}, errors.New("failed Route candidate is absent from the stopped set")
 		}
-		receipt, err := observer.candidateUnavailable(ctx, process, cellClock)
+		receipt, err := candidateUnavailable(ctx, processObserver, process, hostStartedAt)
 		if err != nil {
 			return replacementCell{}, err
 		}
+		faultReceipt, ok := faultReceipts[process.ContainerID]
+		if !ok {
+			return replacementCell{}, errors.New("failed route candidate fault receipt is missing")
+		}
+		receipt.Fault = faultReceipt
 		event.FailedResource = receipt
 	}
 	return cell, nil
