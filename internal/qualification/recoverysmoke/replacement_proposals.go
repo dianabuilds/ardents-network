@@ -36,8 +36,8 @@ func replacementProposals(raw []byte, mode string) ([]replacementProposal, error
 		}
 		proposal := replacementProposal{Attachment: value.Attachment,
 			ExcludedIdentities: append([][32]byte(nil), value.ExcludedIdentities...), Terminal: value.Terminal,
-			Committed: value.Terminal == "success", IntroductionReceipt: value.IntroductionSetupReceipt,
-			IntroductionProof: value.IntroductionSetup}
+			IntroductionReceipt: value.IntroductionSetupReceipt,
+			IntroductionProof:   value.IntroductionSetup}
 		for index, position := range value.Positions {
 			proposal.NodeIDs[index], proposal.PublicKeys[index] = position.NodeID, position.PublicKey
 		}
@@ -48,7 +48,8 @@ func replacementProposals(raw []byte, mode string) ([]replacementProposal, error
 	}
 	for index := range result {
 		wantCommitted := mode != "isolated-rendezvous" || index != 1
-		if result[index].Committed != wantCommitted || (index == 2) != (result[index].IntroductionReceipt != [32]byte{}) {
+		result[index].Committed = wantCommitted
+		if result[index].Terminal != "success" || (index == 2) != (result[index].IntroductionReceipt != [32]byte{}) {
 			return nil, errors.New("replacement proposal outcome or Introduction setup is inconsistent")
 		}
 	}

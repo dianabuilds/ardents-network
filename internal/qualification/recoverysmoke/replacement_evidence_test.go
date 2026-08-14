@@ -66,3 +66,28 @@ func TestAttachmentEvidenceAcceptsStructuredTerminalError(t *testing.T) {
 		t.Fatalf("attachment count = %d; want 1", count)
 	}
 }
+
+func TestRendezvousProposalSeparatesRouteTerminalFromConnectionCommit(t *testing.T) {
+	positions := make([]route.Position, len(replacementRoles))
+	var raw []byte
+	for attachment := uint32(1); attachment <= 3; attachment++ {
+		value := route.Evidence{Kind: "complete", Role: "client", Attachment: attachment,
+			Terminal: "success", Positions: positions}
+		if attachment == 3 {
+			value.IntroductionSetupReceipt = [32]byte{1}
+		}
+		encoded, err := json.Marshal(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw = append(raw, encoded...)
+		raw = append(raw, '\n')
+	}
+	proposals, err := replacementProposals(raw, "isolated-rendezvous")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if proposals[1].Terminal != "success" || proposals[1].Committed {
+		t.Fatalf("failed Carrier proposal terminal=%s committed=%v", proposals[1].Terminal, proposals[1].Committed)
+	}
+}

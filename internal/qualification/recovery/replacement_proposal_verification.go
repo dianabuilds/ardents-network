@@ -57,11 +57,7 @@ func verifyReplacementProposals(cell replacementCell, candidates map[string][]re
 			resources[process.Host.Identity] = process
 		}
 		wantCommitted := cell.Mode != "isolated-rendezvous" || proposalIndex != 1
-		wantTerminal := "error"
-		if wantCommitted {
-			wantTerminal = "success"
-		}
-		if proposal.Committed != wantCommitted || proposal.Terminal != wantTerminal ||
+		if proposal.Committed != wantCommitted || proposal.Terminal != "success" ||
 			(proposalIndex == 2) != (proposal.IntroductionReceipt != [32]byte{}) {
 			return fail("S4.2 proposal outcome or sealed Introduction receipt is inconsistent")
 		}

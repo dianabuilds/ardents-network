@@ -393,7 +393,7 @@ func s42Cell(imageID, direction, mode string, failures []string, sets map[string
 	for proposalIndex := range proposalCount {
 		proposal := replacementProposal{Attachment: uint32(proposalIndex + 1), Terminal: "success", Committed: true}
 		if mode == "isolated-rendezvous" && proposalIndex == 1 {
-			proposal.Terminal, proposal.Committed = "error", false
+			proposal.Committed = false
 		}
 		if proposalIndex == 2 {
 			selected := map[string]replacementCandidate{}
