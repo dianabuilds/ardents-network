@@ -250,7 +250,7 @@ func validEvidence() Evidence {
 			CellManifestDigest: cellManifestDigest(direction, seed, planned), FaultOffset: planned, DeliveredBeforeFault: planned,
 			CanaryOffset: planned + 32, LastDeliveryNanos: 1, CarrierObservedNanos: 2, FaultAtNanos: 3,
 			FaultCompletedNanos: 10, CarrierCutAfterNanos: 1, AbsenceAfterNanos: 2,
-			CarrierAttachmentDeadlineNanos: int64(11 * time.Second), ChunkDelayNanos: int64(20 * time.Millisecond),
+			CarrierAttachmentDeadlineNanos: int64(10*time.Second + 500*time.Millisecond), ChunkDelayNanos: int64(20 * time.Millisecond),
 			OldCarrierRetiredNanos:   8,
 			CanaryAtNanos:            int64(time.Second),
 			ReplacementObservedNanos: int64(time.Second) + 1, TerminalAtNanos: int64(2 * time.Second), ClientRouteGeneration: 2,

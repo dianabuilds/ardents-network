@@ -61,7 +61,7 @@ func configureRecoveryFixture(root string, fixture prepared) error {
 func applyRouteDeadline(plan map[string]any, role string) {
 	plan["Deadline"] = "15s"
 	if role == "rendezvous" || role == "responder" {
-		plan["Deadline"] = "11s"
+		plan["Deadline"] = "10.5s"
 	}
 }
 
