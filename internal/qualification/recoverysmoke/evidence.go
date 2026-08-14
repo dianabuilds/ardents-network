@@ -23,14 +23,16 @@ type applicationEvidence struct {
 
 func terminalEndpoint(raw []byte) (serviceconn.Result, error) {
 	var terminal serviceconn.Result
+	count := 0
 	for _, line := range splitLines(raw) {
 		var value serviceconn.Result
 		if json.Unmarshal(line, &value) == nil && value.Class != "" {
 			terminal = value
+			count++
 		}
 	}
-	if terminal.Class == "" {
-		return terminal, errors.New("endpoint terminal evidence is missing")
+	if count != 1 {
+		return serviceconn.Result{}, errors.New("endpoint terminal evidence count is not exactly one")
 	}
 	return terminal, nil
 }

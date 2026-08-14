@@ -57,7 +57,7 @@ func (observer dockerObserver) endpointRestartNegative(ctx context.Context) (rec
 	if err != nil {
 		return recovery.Negative{}, err
 	}
-	if err := observer.waitContainer(ctx, clientID, true); err != nil {
+	if err := observer.waitContainer(ctx, clientID, false); err != nil {
 		return recovery.Negative{}, err
 	}
 	elapsed := time.Since(started)
