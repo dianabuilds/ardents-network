@@ -2,8 +2,11 @@ package recoverysmoke
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -45,7 +48,7 @@ func (observer dockerObserver) startTrafficObserver(ctx context.Context,
 		"--ipc", "private", "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
 		"--user", "65532:65532", "--pids-limit", "16", "--memory", "32m", "--cpus", "0.25",
 		"--label", "com.docker.compose.project="+observer.project, observer.imageID,
-		"/usr/local/bin/ardents-qualify", "carrier-fault", "wait")
+		"/usr/local/bin/ardents-qualify", "carrier-fault", "traffic-wait")
 	identity := strings.TrimSpace(string(raw))
 	if err != nil || !validContainerID(identity) {
 		return "", recovery.ObserverProcess{}, errors.Join(err, errors.New("traffic observer identity is invalid"))
@@ -79,15 +82,64 @@ func (value *trafficObservers) snapshotAndRemove(ctx context.Context, observer d
 }
 
 func (observer dockerObserver) observeTrafficCounter(ctx context.Context, identity string) (trafficCounterReceipt, error) {
-	raw, err := observer.docker(ctx, 10*time.Second, "exec", identity,
-		"/usr/local/bin/ardents-qualify", "carrier-fault", "traffic")
-	var value trafficCounterReceipt
-	decodeErr := json.Unmarshal(raw, &value)
-	if err != nil || decodeErr != nil || value.Kind != "traffic" || value.Interfaces == 0 ||
-		value.Received == 0 || value.Sent == 0 {
-		return trafficCounterReceipt{}, errors.Join(err, decodeErr, errors.New("terminal network traffic observation is invalid"))
+	if _, err := observer.docker(ctx, 10*time.Second, "kill", "--signal", "USR1", identity); err != nil {
+		return trafficCounterReceipt{}, err
 	}
-	return value, nil
+	retryCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	var lastErr error
+	for {
+		raw, err := observer.boundedTrafficLogs(retryCtx, identity)
+		if err == nil {
+			if value, parseErr := parseTrafficReceipt(raw); parseErr == nil {
+				return value, nil
+			} else {
+				lastErr = parseErr
+			}
+		} else {
+			lastErr = err
+		}
+		select {
+		case <-retryCtx.Done():
+			return trafficCounterReceipt{}, errors.Join(errors.New("terminal network traffic observation ended"),
+				retryCtx.Err(), lastErr)
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+}
+
+func (observer dockerObserver) boundedTrafficLogs(ctx context.Context, identity string) ([]byte, error) {
+	tail := &boundedTail{limit: 8 << 10}
+	command := exec.CommandContext(ctx, "docker", "logs", "--tail", "4", identity)
+	command.Dir, command.Stdout, command.Stderr = observer.input.SourceRoot, tail, tail
+	if err := command.Run(); err != nil {
+		digest := sha256.Sum256(tail.value())
+		return nil, fmt.Errorf("read traffic observer logs (sha256=%x): %w", digest, err)
+	}
+	return tail.value(), nil
+}
+
+func parseTrafficReceipt(raw []byte) (trafficCounterReceipt, error) {
+	var result trafficCounterReceipt
+	readyCount, trafficCount := 0, 0
+	for _, line := range splitLines(raw) {
+		var value trafficCounterReceipt
+		if err := json.Unmarshal(line, &value); err != nil {
+			return trafficCounterReceipt{}, fmt.Errorf("decode traffic observer receipt: %w", err)
+		}
+		if value.Kind == "ready" {
+			readyCount++
+			continue
+		}
+		if value.Kind != "traffic" || value.Interfaces == 0 || value.Received == 0 || value.Sent == 0 {
+			return trafficCounterReceipt{}, errors.New("terminal network traffic observation is invalid")
+		}
+		result, trafficCount = value, trafficCount+1
+	}
+	if readyCount != 1 || trafficCount != 1 {
+		return trafficCounterReceipt{}, errors.New("exactly one ready and one terminal network traffic receipt are required")
+	}
+	return result, nil
 }
 
 func (value *trafficObservers) remove(ctx context.Context, observer dockerObserver) error {

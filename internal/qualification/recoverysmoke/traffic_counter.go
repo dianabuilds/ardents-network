@@ -3,12 +3,16 @@ package recoverysmoke
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
+
+var errNoNetworkTrafficInterface = errors.New("network traffic table has no observed interface")
 
 func readNetworkTrafficFile() (trafficCounterReceipt, error) {
 	file, err := os.Open("/proc/net/dev")
@@ -61,7 +65,40 @@ func readNetworkTraffic(input io.Reader) (trafficCounterReceipt, error) {
 		return trafficCounterReceipt{}, err
 	}
 	if result.Interfaces == 0 {
-		return trafficCounterReceipt{}, errors.New("network traffic table has no observed interface")
+		return trafficCounterReceipt{}, errNoNetworkTrafficInterface
 	}
 	return result, nil
+}
+
+func retainNetworkTraffic(ctx context.Context, reports <-chan os.Signal, ready func(),
+	emit func(trafficCounterReceipt) error, read func() (trafficCounterReceipt, error)) error {
+	ticker := time.NewTicker(20 * time.Millisecond)
+	defer ticker.Stop()
+	var retained trafficCounterReceipt
+	retained.Kind = "traffic"
+	if ready != nil {
+		ready()
+	}
+	for {
+		value, err := read()
+		if err == nil {
+			retained.Interfaces = max(retained.Interfaces, value.Interfaces)
+			retained.Received = max(retained.Received, value.Received)
+			retained.Sent = max(retained.Sent, value.Sent)
+		} else if !errors.Is(err, errNoNetworkTrafficInterface) {
+			return err
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+		case <-reports:
+			if retained.Interfaces == 0 || retained.Received == 0 || retained.Sent == 0 {
+				return errors.New("network traffic receipt was requested before a complete sample")
+			}
+			if err := emit(retained); err != nil {
+				return err
+			}
+		}
+	}
 }

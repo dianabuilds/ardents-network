@@ -61,7 +61,7 @@ func verifyTrafficObservers(cell Cell, imageID string) Result {
 func confinedTrafficObserver(value ObserverProcess, imageID, route string) bool {
 	return containerID(value.ContainerID) && value.ImageID == imageID && value.NetworkMode == "container:"+route &&
 		value.User == "65532:65532" && exactStrings(value.Command,
-		[]string{"/usr/local/bin/ardents-qualify", "carrier-fault", "wait"}) &&
+		[]string{"/usr/local/bin/ardents-qualify", "carrier-fault", "traffic-wait"}) &&
 		len(value.CapAdd) == 0 && value.PIDMode == "" && value.IPCMode == "private" && !value.Privileged &&
 		exactStrings(value.CapDrop, []string{"ALL"}) && exactStrings(value.SecurityOpt, []string{"no-new-privileges"}) &&
 		value.ReadOnly && value.Removed && value.MountCount == 0 && value.PidsLimit == 16 &&

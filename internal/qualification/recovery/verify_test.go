@@ -260,7 +260,7 @@ func validEvidence() Evidence {
 		trafficObserver := func(slot int, route string) ObserverProcess {
 			return ObserverProcess{ContainerID: identity(slot), ImageID: value.ImageID,
 				NetworkMode: "container:" + route, User: "65532:65532", IPCMode: "private",
-				Command: []string{"/usr/local/bin/ardents-qualify", "carrier-fault", "wait"},
+				Command: []string{"/usr/local/bin/ardents-qualify", "carrier-fault", "traffic-wait"},
 				CapDrop: []string{"ALL"}, SecurityOpt: []string{"no-new-privileges"}, ReadOnly: true, Removed: true,
 				PidsLimit: 16, MemoryLimit: 32 << 20, NanoCPUs: 250_000_000}
 		}
