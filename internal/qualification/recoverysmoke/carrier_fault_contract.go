@@ -46,11 +46,11 @@ type carrierFaultReceipt struct {
 	Absent               bool   `json:"absent"`
 }
 
-type carrierClosureReceipt struct {
-	Kind                   string `json:"kind"`
-	SocketIDSHA256         string `json:"socket_id_sha256"`
-	SocketAbsentAfterNanos int64  `json:"socket_absent_after_nanos"`
-	Absent                 bool   `json:"absent"`
+type carrierRetirementReceipt struct {
+	Kind                            string `json:"kind"`
+	SocketIDSHA256                  string `json:"socket_id_sha256"`
+	SocketLeftEstablishedAfterNanos int64  `json:"socket_left_established_after_nanos"`
+	Established                     bool   `json:"established"`
 }
 
 func executeCarrierFault(arguments []string, output io.Writer) error {
@@ -82,8 +82,8 @@ func executeCarrierFault(arguments []string, output io.Writer) error {
 		}
 		return encoder.Encode(value)
 	}
-	if len(arguments) == 2 && arguments[0] == "await-closed" {
-		value, err := awaitCarrierClosure(arguments[1], platformCarrierSocketPresent)
+	if len(arguments) == 2 && arguments[0] == "await-retired" {
+		value, err := awaitCarrierRetirement(arguments[1], platformCarrierSocketEstablished)
 		if err != nil {
 			return err
 		}
@@ -148,28 +148,29 @@ func faultCarrierSocket(socketID string) (receipt carrierFaultReceipt, err error
 	return receipt, errors.New("faulted Carrier interface remained present")
 }
 
-func awaitCarrierClosure(socketID string, present func([]byte, time.Duration) (bool, error)) (carrierClosureReceipt, error) {
+func awaitCarrierRetirement(socketID string,
+	established func([]byte, time.Duration) (bool, error)) (carrierRetirementReceipt, error) {
 	value, raw, err := decodeCarrierSocketID(socketID)
 	if err != nil {
-		return carrierClosureReceipt{}, err
+		return carrierRetirementReceipt{}, err
 	}
 	if err := validateDedicatedCarrier(value); err != nil {
-		return carrierClosureReceipt{}, err
+		return carrierRetirementReceipt{}, err
 	}
 	started, deadline := time.Now(), time.Now().Add(5*time.Second)
 	for time.Now().Before(deadline) {
 		remaining := time.Until(deadline)
-		isPresent, statusErr := present(raw, min(remaining, 100*time.Millisecond))
+		isEstablished, statusErr := established(raw, min(remaining, 100*time.Millisecond))
 		if statusErr != nil {
-			return carrierClosureReceipt{}, statusErr
+			return carrierRetirementReceipt{}, statusErr
 		}
-		if !isPresent {
-			return carrierClosureReceipt{Kind: "closed", SocketIDSHA256: value.SocketIDSHA256,
-				SocketAbsentAfterNanos: time.Since(started).Nanoseconds(), Absent: true}, nil
+		if !isEstablished {
+			return carrierRetirementReceipt{Kind: "retired", SocketIDSHA256: value.SocketIDSHA256,
+				SocketLeftEstablishedAfterNanos: time.Since(started).Nanoseconds()}, nil
 		}
 		time.Sleep(time.Millisecond)
 	}
-	return carrierClosureReceipt{}, errors.New("faulted Carrier socket remained present beyond its Route deadline")
+	return carrierRetirementReceipt{}, errors.New("faulted Carrier socket remained established beyond the 5s retirement observation bound")
 }
 
 func carrierInterfacePresent(name string) (bool, error) {

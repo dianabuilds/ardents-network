@@ -27,27 +27,27 @@ func TestVerifyRejectsMutationMissingEvidenceAndCandidateFailure(t *testing.T) {
 			cell.CarrierObservedNanos, cell.FaultAtNanos = int64(6*time.Second), int64(6*time.Second)+1
 			cell.FaultCompletedNanos, cell.CanaryAtNanos = int64(6*time.Second)+3, int64(6*time.Second)+4
 			cell.ReplacementObservedNanos, cell.TerminalAtNanos = int64(6*time.Second)+5, int64(7*time.Second)
-			cell.OldCarrierClosedNanos = int64(6*time.Second) + 2
+			cell.OldCarrierRetiredNanos = int64(6*time.Second) + 2
 		},
 		"fault setup moved terminal clock": func(value *Evidence) {
 			cell := &value.Cells[0]
 			cell.FaultAtNanos, cell.FaultCompletedNanos = int64(4*time.Second), int64(4*time.Second)+2
 			cell.CanaryAtNanos, cell.ReplacementObservedNanos = int64(5*time.Second), int64(5*time.Second)+1
 			cell.TerminalAtNanos = int64(16 * time.Second)
-			cell.OldCarrierClosedNanos = int64(4*time.Second) + 1
+			cell.OldCarrierRetiredNanos = int64(4*time.Second) + 1
 		},
 		"wrong Rendezvous Attachment deadline": func(value *Evidence) {
 			value.Cells[0].RendezvousAttachmentDeadlineNanos = int64(7 * time.Second)
 		},
-		"old Carrier not closed": func(value *Evidence) {
-			value.Cells[0].OldCarrierClosed = false
+		"old Carrier not retired": func(value *Evidence) {
+			value.Cells[0].OldCarrierRetired = false
 		},
-		"old Carrier closed after restoration": func(value *Evidence) {
-			value.Cells[0].OldCarrierClosedNanos = value.Cells[0].FaultCompletedNanos + 1
+		"old Carrier retired after restoration": func(value *Evidence) {
+			value.Cells[0].OldCarrierRetiredNanos = value.Cells[0].FaultCompletedNanos + 1
 		},
-		"secret cleanup":   func(value *Evidence) { value.Cleanup.PrivateMaterialAbsent = false },
-		"fault mismatch":   func(value *Evidence) { value.Cells[0].FaultedCarrier = strings.Repeat("3", 64) },
-		"closure mismatch": func(value *Evidence) { value.Cells[0].ClosedCarrier = strings.Repeat("3", 64) },
+		"secret cleanup":      func(value *Evidence) { value.Cleanup.PrivateMaterialAbsent = false },
+		"fault mismatch":      func(value *Evidence) { value.Cells[0].FaultedCarrier = strings.Repeat("3", 64) },
+		"retirement mismatch": func(value *Evidence) { value.Cells[0].RetiredCarrier = strings.Repeat("3", 64) },
 		"route pid changed": func(value *Evidence) {
 			value.Cells[0].RecoveredRoutePIDs["rendezvous"]++
 		},
@@ -161,7 +161,7 @@ func validEvidence() Evidence {
 			ReplacementCarrier: strings.Repeat("2", 64), FaultService: "rendezvous-responder-carrier", FaultContainer: "rendezvous-container",
 			InitialCarrierLocal: "172.31.21.13:50001", InitialCarrierRemote: "172.31.21.14:4604",
 			ReplacementCarrierLocal: "172.31.21.13:50002", ReplacementCarrierRemote: "172.31.21.14:4604",
-			FaultedCarrier: strings.Repeat("1", 64), ClosedCarrier: strings.Repeat("1", 64),
+			FaultedCarrier: strings.Repeat("1", 64), RetiredCarrier: strings.Repeat("1", 64),
 			InitialCarrierInode: 1, ReplacementCarrierInode: 2,
 			InitialCarrierInterface: "eth1", ReplacementCarrierInterface: "eth1",
 			InitialCarrierInterfaceIndex: 3, ReplacementCarrierInterfaceIndex: 4,
@@ -173,13 +173,13 @@ func validEvidence() Evidence {
 			CellManifestDigest: cellManifestDigest(direction, seed, planned), FaultOffset: planned, DeliveredBeforeFault: planned,
 			CanaryOffset: planned + 32, LastDeliveryNanos: 1, CarrierObservedNanos: 2, FaultAtNanos: 3,
 			FaultCompletedNanos: 10, CarrierCutAfterNanos: 1, AbsenceAfterNanos: 2,
-			RendezvousAttachmentDeadlineNanos: int64(8 * time.Second), OldCarrierClosedNanos: 8,
+			RendezvousAttachmentDeadlineNanos: int64(8 * time.Second), OldCarrierRetiredNanos: 8,
 			CanaryAtNanos:            int64(time.Second),
 			ReplacementObservedNanos: int64(time.Second) + 1, TerminalAtNanos: int64(2 * time.Second), ClientRouteGeneration: 2,
 			PublisherRouteGeneration: 2, ClientRecoveryCount: 1, PublisherRecoveryCount: 1,
 			ClientApplicationAccepts: 1, PublisherApplicationAccepts: 1, ClientRouteAccepts: 2, PublisherRouteAccepts: 2,
 			ClientContinuity: [32]byte{9}, PublisherContinuity: [32]byte{9}, Ordered: true, Unique: true,
-			SameConnection: true, OldCarrierClosed: true, FailedResourceUnavailable: true, TerminalClean: true, QueueHighWater: queueLimit}
+			SameConnection: true, OldCarrierRetired: true, FailedResourceUnavailable: true, TerminalClean: true, QueueHighWater: queueLimit}
 		observerID := strings.Repeat(string(rune('a'+index)), 64)
 		cell.ReplacementObserver = ObserverProcess{ContainerID: observerID, ImageID: value.ImageID,
 			NetworkMode: "container:rendezvous-container", User: "65532:65532", IPCMode: "private",

@@ -19,6 +19,6 @@ func platformDeleteCarrierInterface(string) error {
 	return errors.New("carrier socket fault injection requires Linux")
 }
 
-func platformCarrierSocketPresent([]byte, time.Duration) (bool, error) {
+func platformCarrierSocketEstablished([]byte, time.Duration) (bool, error) {
 	return false, errors.New("carrier socket fault injection requires Linux")
 }

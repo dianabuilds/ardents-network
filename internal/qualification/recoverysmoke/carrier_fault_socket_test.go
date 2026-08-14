@@ -30,14 +30,14 @@ func TestCarrierSocketIdentityEncodesEndpointsAndDigest(t *testing.T) {
 	if err := validateDedicatedCarrier(observation); err != nil {
 		t.Fatalf("dedicated Carrier rejected: %v", err)
 	}
-	receipt, err := awaitCarrierClosure(observation.SocketID, func(candidate []byte, timeout time.Duration) (bool, error) {
+	receipt, err := awaitCarrierRetirement(observation.SocketID, func(candidate []byte, timeout time.Duration) (bool, error) {
 		if !bytes.Equal(candidate, raw) || timeout <= 0 || timeout > 100*time.Millisecond {
 			t.Fatalf("unexpected exact-socket query: %x %s", candidate, timeout)
 		}
 		return false, nil
 	})
-	if err != nil || receipt.Kind != "closed" || !receipt.Absent || receipt.SocketIDSHA256 != observation.SocketIDSHA256 {
-		t.Fatalf("exact Carrier closure rejected: %+v %v", receipt, err)
+	if err != nil || receipt.Kind != "retired" || receipt.Established || receipt.SocketIDSHA256 != observation.SocketIDSHA256 {
+		t.Fatalf("exact Carrier retirement rejected: %+v %v", receipt, err)
 	}
 	routeRaw := append([]byte(nil), raw...)
 	copy(routeRaw[4:8], net.ParseIP("172.31.20.13").To4())
@@ -49,8 +49,8 @@ func TestCarrierSocketIdentityEncodesEndpointsAndDigest(t *testing.T) {
 	if _, err := faultCarrierSocket(routeSocket.SocketID); err == nil {
 		t.Fatal("route-network socket reached the privileged interface operation")
 	}
-	if _, err := awaitCarrierClosure(routeSocket.SocketID, platformCarrierSocketPresent); err == nil {
-		t.Fatal("route-network socket reached the exact Carrier closure observer")
+	if _, err := awaitCarrierRetirement(routeSocket.SocketID, platformCarrierSocketEstablished); err == nil {
+		t.Fatal("route-network socket reached the exact Carrier retirement observer")
 	}
 }
 

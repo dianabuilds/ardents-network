@@ -16,6 +16,7 @@ const (
 	carrierDiagRequestBytes = 56
 	carrierDiagMessageBytes = 72
 	carrierTCPEstablished   = 1
+	carrierTCPMaximumState  = 13
 	carrierDiagMaxMessages  = 256
 	carrierDiagMaxBytes     = 256 << 10
 	carrierDiagMaxDatagrams = 64
@@ -47,7 +48,7 @@ func platformCarrierSockets(remote string) ([]carrierObservation, error) {
 	return result, nil
 }
 
-func platformCarrierSocketPresent(socketID []byte, timeout time.Duration) (bool, error) {
+func platformCarrierSocketEstablished(socketID []byte, timeout time.Duration) (bool, error) {
 	messages, err := carrierDiagExchange(unix.SOCK_DIAG_BY_FAMILY, unix.NLM_F_REQUEST, socketID, timeout)
 	if errors.Is(err, unix.ENOENT) {
 		return false, nil
@@ -55,14 +56,18 @@ func platformCarrierSocketPresent(socketID []byte, timeout time.Duration) (bool,
 	if err != nil {
 		return false, err
 	}
-	return exactCarrierSocketResponse(messages, socketID)
+	state, err := exactCarrierSocketState(messages, socketID)
+	return state == carrierTCPEstablished, err
 }
 
-func exactCarrierSocketResponse(messages [][]byte, socketID []byte) (bool, error) {
+func exactCarrierSocketState(messages [][]byte, socketID []byte) (byte, error) {
 	if len(messages) != 1 || len(messages[0]) < 52 || string(messages[0][4:52]) != string(socketID) {
-		return false, errors.New("exact inet_diag socket response is missing or mismatched")
+		return 0, errors.New("exact inet_diag socket response is missing or mismatched")
 	}
-	return true, nil
+	if messages[0][1] == 0 || messages[0][1] > carrierTCPMaximumState {
+		return 0, errors.New("exact inet_diag socket state is invalid")
+	}
+	return messages[0][1], nil
 }
 
 func platformCarrierInterfaceForAddress(endpoint string) (string, int, error) {

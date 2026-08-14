@@ -25,22 +25,26 @@ func TestCarrierDiagRequestAndMalformedResponse(t *testing.T) {
 	}
 }
 
-func TestExactCarrierSocketResponseFailsClosed(t *testing.T) {
+func TestExactCarrierSocketStateFailsClosed(t *testing.T) {
 	socketID := make([]byte, carrierSocketIDBytes)
 	valid := make([]byte, carrierDiagMessageBytes)
+	valid[1] = carrierTCPEstablished
 	copy(valid[4:52], socketID)
-	if present, err := exactCarrierSocketResponse([][]byte{valid}, socketID); err != nil || !present {
-		t.Fatalf("exact response rejected: present=%v err=%v", present, err)
+	if state, err := exactCarrierSocketState([][]byte{valid}, socketID); err != nil || state != carrierTCPEstablished {
+		t.Fatalf("exact response rejected: state=%d err=%v", state, err)
 	}
 	for name, messages := range map[string][][]byte{
 		"empty": nil, "short": {make([]byte, 51)}, "extra": {valid, valid},
-		"mismatch": {append([]byte(nil), valid...)},
+		"mismatch": {append([]byte(nil), valid...)}, "invalid state": {append([]byte(nil), valid...)},
 	} {
 		if name == "mismatch" {
 			messages[0][4] = 1
 		}
-		if present, err := exactCarrierSocketResponse(messages, socketID); err == nil || present {
-			t.Fatalf("%s response passed: present=%v err=%v", name, present, err)
+		if name == "invalid state" {
+			messages[0][1] = 0
+		}
+		if state, err := exactCarrierSocketState(messages, socketID); err == nil || state != 0 {
+			t.Fatalf("%s response passed: state=%d err=%v", name, state, err)
 		}
 	}
 }
@@ -102,9 +106,9 @@ func TestCarrierFaultObservesExactSocket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	present, err := platformCarrierSocketPresent(raw, time.Second)
-	if err != nil || !present {
-		t.Fatalf("observed socket present=%v err=%v", present, err)
+	established, err := platformCarrierSocketEstablished(raw, time.Second)
+	if err != nil || !established {
+		t.Fatalf("observed socket established=%v err=%v", established, err)
 	}
 	if err := client.Close(); err != nil {
 		t.Fatal(err)
@@ -114,14 +118,14 @@ func TestCarrierFaultObservesExactSocket(t *testing.T) {
 	}
 	deadline := time.Now().Add(time.Second)
 	for time.Now().Before(deadline) {
-		present, err = platformCarrierSocketPresent(raw, time.Second)
+		established, err = platformCarrierSocketEstablished(raw, time.Second)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !present {
+		if !established {
 			return
 		}
 		time.Sleep(time.Millisecond)
 	}
-	t.Fatal("closed socket remained in the exact inet_diag observation")
+	t.Fatal("retired socket remained established in the exact inet_diag observation")
 }

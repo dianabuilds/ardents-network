@@ -106,9 +106,9 @@ func parseCarrierObservation(raw []byte) (carrierObservation, error) {
 }
 
 type carrierFaultOutcome struct {
-	commitment, closedCommitment                                 string
-	faultAt, completedAt, cutAfter, absenceAfter, socketClosedAt int64
-	controllerRemoved, resourceAbsent, socketClosed              bool
+	commitment, retiredCommitment                                 string
+	faultAt, completedAt, cutAfter, absenceAfter, socketRetiredAt int64
+	controllerRemoved, resourceAbsent, socketRetired              bool
 }
 
 func (observer dockerObserver) destroyCarrier(ctx context.Context, controller, rendezvous, network string,
@@ -127,21 +127,21 @@ func (observer dockerObserver) destroyCarrier(ctx context.Context, controller, r
 	}
 	result.commitment, result.cutAfter = receipt.SocketIDSHA256, receipt.CarrierCutAfterNanos
 	result.absenceAfter, result.resourceAbsent = receipt.AbsenceAfterNanos, true
-	closedRaw, err := observer.docker(ctx, 6*time.Second, "exec", controller,
-		"/usr/local/bin/ardents-qualify", "carrier-fault", "await-closed", value.SocketID)
+	retiredRaw, err := observer.docker(ctx, 6*time.Second, "exec", controller,
+		"/usr/local/bin/ardents-qualify", "carrier-fault", "await-retired", value.SocketID)
 	if err != nil {
 		return result, err
 	}
-	var closed carrierClosureReceipt
-	if decodeErr := json.Unmarshal(closedRaw, &closed); decodeErr != nil {
-		return result, fmt.Errorf("decode external old-Carrier closure receipt: %w", decodeErr)
+	var retired carrierRetirementReceipt
+	if decodeErr := json.Unmarshal(retiredRaw, &retired); decodeErr != nil {
+		return result, fmt.Errorf("decode external old-Carrier retirement receipt: %w", decodeErr)
 	}
-	if closed.Kind != "closed" || closed.SocketIDSHA256 != value.SocketIDSHA256 ||
-		closed.SocketAbsentAfterNanos <= 0 || !closed.Absent {
-		return result, errors.New("external old-Carrier closure receipt is invalid")
+	if retired.Kind != "retired" || retired.SocketIDSHA256 != value.SocketIDSHA256 ||
+		retired.SocketLeftEstablishedAfterNanos <= 0 || retired.Established {
+		return result, errors.New("external old-Carrier retirement receipt is invalid")
 	}
-	result.closedCommitment = closed.SocketIDSHA256
-	result.socketClosed, result.socketClosedAt = true, time.Since(cellClock).Nanoseconds()
+	result.retiredCommitment = retired.SocketIDSHA256
+	result.socketRetired, result.socketRetiredAt = true, time.Since(cellClock).Nanoseconds()
 	_, removeErr := observer.docker(ctx, 10*time.Second, "rm", "-f", controller)
 	present, presenceErr := observer.docker(ctx, 10*time.Second, "ps", "-a", "-q", "--no-trunc", "--filter", "id="+controller)
 	if presenceErr != nil || strings.TrimSpace(string(present)) != "" {

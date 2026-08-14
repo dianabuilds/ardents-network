@@ -18,7 +18,7 @@ func verifyCarrierEvidence(cell Cell, imageID string) Result {
 			return invalid("Carrier socket commitment is malformed")
 		}
 	}
-	if cell.FaultedCarrier != cell.InitialCarrier || cell.ClosedCarrier != cell.InitialCarrier ||
+	if cell.FaultedCarrier != cell.InitialCarrier || cell.RetiredCarrier != cell.InitialCarrier ||
 		cell.InitialCarrierInode == 0 || cell.ReplacementCarrierInode == 0 ||
 		cell.InitialCarrierInterface == "" || cell.InitialCarrierInterface != cell.ReplacementCarrierInterface ||
 		cell.InitialCarrierInterfaceIndex <= 0 || cell.ReplacementCarrierInterfaceIndex <= 0 ||

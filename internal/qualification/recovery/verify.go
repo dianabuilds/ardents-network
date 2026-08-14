@@ -159,7 +159,7 @@ func verifyCell(cell Cell, manifestText, imageID string) Result {
 		cell.CarrierCutAfterNanos <= 0 || cell.AbsenceAfterNanos < cell.CarrierCutAfterNanos ||
 		cell.AbsenceAfterNanos > cell.FaultCompletedNanos-cell.FaultAtNanos ||
 		cell.RendezvousAttachmentDeadlineNanos != int64(8*time.Second) ||
-		cell.OldCarrierClosedNanos < cell.FaultAtNanos || cell.OldCarrierClosedNanos > cell.FaultCompletedNanos ||
+		cell.OldCarrierRetiredNanos < cell.FaultAtNanos || cell.OldCarrierRetiredNanos > cell.FaultCompletedNanos ||
 		cell.CanaryAtNanos < cell.FaultCompletedNanos ||
 		cell.CanaryAtNanos <= cell.FaultAtNanos ||
 		cell.CanaryAtNanos-cell.LastDeliveryNanos > int64(5*time.Second) || cell.TerminalAtNanos < cell.CanaryAtNanos ||
@@ -175,7 +175,7 @@ func verifyCell(cell Cell, manifestText, imageID string) Result {
 		return fail("generation or continuity observations do not prove one recovery")
 	}
 	if !cell.Ordered || !cell.Unique || !cell.SameConnection || cell.ApplicationReconnected ||
-		cell.OldCarrierReused || !cell.OldCarrierClosed || !cell.FailedResourceUnavailable ||
+		cell.OldCarrierReused || !cell.OldCarrierRetired || !cell.FailedResourceUnavailable ||
 		!cell.FaultResourceAbsent || !cell.TerminalClean {
 		return fail("same-connection ordered recovery conjunct failed")
 	}

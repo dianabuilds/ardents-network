@@ -39,7 +39,7 @@ type Cell struct {
 	InitialCarrier, ReplacementCarrier                             string
 	InitialCarrierLocal, InitialCarrierRemote                      string
 	ReplacementCarrierLocal, ReplacementCarrierRemote              string
-	FaultedCarrier, ClosedCarrier                                  string
+	FaultedCarrier, RetiredCarrier                                 string
 	InitialCarrierInode, ReplacementCarrierInode                   uint32
 	InitialCarrierInterface, ReplacementCarrierInterface           string
 	InitialCarrierInterfaceIndex, ReplacementCarrierInterfaceIndex int
@@ -56,7 +56,7 @@ type Cell struct {
 	LastDeliveryNanos, CarrierObservedNanos, FaultAtNanos          int64
 	FaultCompletedNanos                                            int64
 	CarrierCutAfterNanos, AbsenceAfterNanos                        int64
-	RendezvousAttachmentDeadlineNanos, OldCarrierClosedNanos       int64
+	RendezvousAttachmentDeadlineNanos, OldCarrierRetiredNanos      int64
 	CanaryAtNanos, ReplacementObservedNanos                        int64
 	TerminalAtNanos                                                int64
 	ClientRouteGeneration, PublisherRouteGeneration                uint64
@@ -65,7 +65,7 @@ type Cell struct {
 	ClientRouteAccepts, PublisherRouteAccepts                      uint32
 	ClientContinuity, PublisherContinuity                          [32]byte
 	Ordered, Unique, SameConnection, ApplicationReconnected        bool
-	OldCarrierReused, OldCarrierClosed, TerminalClean              bool
+	OldCarrierReused, OldCarrierRetired, TerminalClean             bool
 	FaultResourceAbsent, FailedResourceUnavailable                 bool
 	QueueHighWater                                                 uint32
 	MemoryHighWater, CarrierForwardBytes, CarrierReverseBytes      uint64
