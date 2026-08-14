@@ -127,15 +127,32 @@ func (observer dockerObserver) destroyCarrier(ctx context.Context, controller, r
 		return "", 0, 0, 0, 0, false, false,
 			errors.Join(removeErr, presenceErr, errors.New("Carrier fault controller remained present after removal"))
 	}
-	if _, err := observer.docker(ctx, 10*time.Second, "network", "disconnect", "-f", network, rendezvous); err != nil {
+	if err := observer.disconnectCarrierNetwork(ctx, network, rendezvous); err != nil {
 		return "", 0, 0, 0, 0, true, false, err
 	}
 	if _, err := observer.docker(ctx, 10*time.Second, "network", "connect", "--ip", carrierLocalIP, network, rendezvous); err != nil {
-		return "", 0, 0, 0, 0, true, false, err
+		return "", 0, 0, 0, 0, true, false, fmt.Errorf("restore exact Carrier network: %w", err)
 	}
 	completedAt = time.Since(cellClock).Nanoseconds()
 	return receipt.SocketIDSHA256, faultAt, completedAt, receipt.CarrierCutAfterNanos,
 		receipt.AbsenceAfterNanos, true, true, nil
+}
+
+func (observer dockerObserver) disconnectCarrierNetwork(ctx context.Context, network, rendezvous string) error {
+	retryCtx, cancel := context.WithTimeout(ctx, 1500*time.Millisecond)
+	defer cancel()
+	var lastErr error
+	for {
+		_, lastErr = observer.docker(retryCtx, 500*time.Millisecond, "network", "disconnect", "-f", network, rendezvous)
+		if lastErr == nil {
+			return nil
+		}
+		select {
+		case <-retryCtx.Done():
+			return errors.Join(fmt.Errorf("disconnect exact Carrier network after controller removal: %w", retryCtx.Err()), lastErr)
+		case <-time.After(50 * time.Millisecond):
+		}
+	}
 }
 
 func (observer dockerObserver) routeProcessIdentities(ctx context.Context,
