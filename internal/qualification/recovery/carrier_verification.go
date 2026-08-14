@@ -20,7 +20,8 @@ func verifyCarrierEvidence(cell Cell) Result {
 	}
 	if cell.DestroyedCarrier != cell.InitialCarrier || cell.InitialCarrierInode == 0 || cell.ReplacementCarrierInode == 0 ||
 		cell.InitialCarrierInterface == "" || cell.InitialCarrierInterface != cell.ReplacementCarrierInterface ||
-		cell.InitialCarrierInterfaceIndex <= 0 || cell.InitialCarrierInterfaceIndex != cell.ReplacementCarrierInterfaceIndex ||
+		cell.InitialCarrierInterfaceIndex <= 0 || cell.ReplacementCarrierInterfaceIndex <= 0 ||
+		cell.InitialCarrierInterfaceIndex == cell.ReplacementCarrierInterfaceIndex ||
 		!carrierEndpoint(cell.InitialCarrierLocal, "172.31.21.13", false) ||
 		!carrierEndpoint(cell.InitialCarrierRemote, "172.31.21.14", true) ||
 		!carrierEndpoint(cell.ReplacementCarrierLocal, "172.31.21.13", false) ||

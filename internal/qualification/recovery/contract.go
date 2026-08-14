@@ -53,8 +53,7 @@ type Cell struct {
 	DeliveredBeforeFault, CanaryOffset                             uint32
 	LastDeliveryNanos, CarrierObservedNanos, FaultAtNanos          int64
 	FaultCompletedNanos                                            int64
-	CarrierDownAfterNanos, AbsenceAfterNanos                       int64
-	CarrierRestoredAfterNanos                                      int64
+	CarrierCutAfterNanos, AbsenceAfterNanos                        int64
 	CanaryAtNanos, ReplacementObservedNanos                        int64
 	TerminalAtNanos                                                int64
 	ClientRouteGeneration, PublisherRouteGeneration                uint64

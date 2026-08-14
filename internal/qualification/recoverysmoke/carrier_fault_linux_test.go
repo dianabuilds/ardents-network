@@ -4,8 +4,8 @@ package recoverysmoke
 
 import (
 	"encoding/binary"
-	"errors"
 	"net"
+	"os"
 	"testing"
 
 	"golang.org/x/sys/unix"
@@ -24,7 +24,36 @@ func TestCarrierDiagRequestAndMalformedResponse(t *testing.T) {
 	}
 }
 
-func TestCarrierFaultObservesSocketAndControlsExactInterface(t *testing.T) {
+func TestCarrierFaultDeletesExactIsolatedInterface(t *testing.T) {
+	if os.Getenv("ARDENTS_TEST_DELETE_INTERFACE") != "1" {
+		t.Skip("requires an isolated disposable network namespace")
+	}
+	if _, err := os.Stat("/.dockerenv"); err != nil {
+		t.Fatal("destructive interface test requires a disposable Docker namespace")
+	}
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var disposable []net.Interface
+	for _, candidate := range interfaces {
+		if candidate.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+		disposable = append(disposable, candidate)
+	}
+	if len(disposable) != 1 || disposable[0].Name != "eth0" || disposable[0].Flags&net.FlagUp == 0 {
+		t.Fatalf("unexpected disposable namespace topology: %+v", disposable)
+	}
+	if err := platformDeleteCarrierInterface("eth0"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := net.InterfaceByName("eth0"); err == nil {
+		t.Fatal("deleted Carrier interface remained present")
+	}
+}
+
+func TestCarrierFaultObservesExactSocket(t *testing.T) {
 	listener, err := net.Listen("tcp4", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -55,22 +84,5 @@ func TestCarrierFaultObservesSocketAndControlsExactInterface(t *testing.T) {
 	present, err := platformCarrierSocketPresent(raw)
 	if err != nil || !present {
 		t.Fatalf("observed socket present=%v err=%v", present, err)
-	}
-	if err := platformSetCarrierInterface(observation.InterfaceName, false); errors.Is(err, unix.EPERM) || errors.Is(err, unix.EACCES) {
-		t.Skip("interface fault requires NET_ADMIN")
-	} else if err != nil {
-		t.Fatal(err)
-	}
-	defer platformSetCarrierInterface(observation.InterfaceName, true)
-	down, err := net.InterfaceByName(observation.InterfaceName)
-	if err != nil || down.Flags&net.FlagUp != 0 {
-		t.Fatalf("Carrier interface remained up: %+v err=%v", down, err)
-	}
-	if err := platformSetCarrierInterface(observation.InterfaceName, true); err != nil {
-		t.Fatal(err)
-	}
-	up, err := net.InterfaceByName(observation.InterfaceName)
-	if err != nil || up.Flags&net.FlagUp == 0 {
-		t.Fatalf("Carrier interface did not recover: %+v err=%v", up, err)
 	}
 }

@@ -84,8 +84,8 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 		return recovery.Cell{}, err
 	}
 	carrierObservedAt := time.Since(cellClock).Nanoseconds()
-	destroyedCarrier, faultAt, faultCompletedAt, carrierDownAfter, absenceAfter, carrierRestoredAfter, resourceAbsent, err :=
-		observer.destroyCarrier(ctx, faultController, initialCarrier, cellClock)
+	destroyedCarrier, faultAt, faultCompletedAt, carrierCutAfter, absenceAfter, resourceAbsent, err :=
+		observer.destroyCarrier(ctx, faultController, identities["rendezvous"], network, initialCarrier, cellClock)
 	if err != nil || !resourceAbsent {
 		return recovery.Cell{}, errors.Join(err, errors.New("faulted Carrier socket remained available"))
 	}
@@ -143,9 +143,8 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 		FaultOffset:          delivered,
 		DeliveredBeforeFault: delivered, CanaryOffset: canaryOffset, LastDeliveryNanos: lastDeliveryAt,
 		CarrierObservedNanos: carrierObservedAt, FaultAtNanos: faultAt, FaultCompletedNanos: faultCompletedAt,
-		CarrierDownAfterNanos: carrierDownAfter, AbsenceAfterNanos: absenceAfter,
-		CarrierRestoredAfterNanos: carrierRestoredAfter,
-		CanaryAtNanos:             canaryAt, ReplacementObservedNanos: replacementObservedAt, TerminalAtNanos: terminalAt,
+		CarrierCutAfterNanos: carrierCutAfter, AbsenceAfterNanos: absenceAfter,
+		CanaryAtNanos: canaryAt, ReplacementObservedNanos: replacementObservedAt, TerminalAtNanos: terminalAt,
 		ClientRouteGeneration: clientEndpoint.RouteGeneration, PublisherRouteGeneration: publisherEndpoint.RouteGeneration,
 		ClientRecoveryCount: clientEndpoint.RecoveryCount, PublisherRecoveryCount: publisherEndpoint.RecoveryCount,
 		ClientApplicationAccepts:    clientEndpoint.ApplicationIPCAccepts,

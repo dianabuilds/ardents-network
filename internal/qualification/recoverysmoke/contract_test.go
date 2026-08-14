@@ -13,17 +13,6 @@ func TestParseConfigFreezesRecoveryBounds(t *testing.T) {
 	}
 }
 
-func TestRecoveryDeadlineScopesFailureDetectionToRendezvous(t *testing.T) {
-	for _, role := range []string{"client", "initiator", "introduction", "responder", "publisher"} {
-		if got := recoveryRouteDeadline(role); got != "15s" {
-			t.Fatalf("role %s deadline=%s, want 15s", role, got)
-		}
-	}
-	if got := recoveryRouteDeadline("rendezvous"); got != "4s" {
-		t.Fatalf("rendezvous deadline=%s, want 4s", got)
-	}
-}
-
 func TestRunRejectsUnsafeRootsBeforeCreatingFixture(t *testing.T) {
 	root := t.TempDir()
 	result := run(config{FixtureRoot: filepath.Join(root, "fixture"), EvidenceRoot: filepath.Join(root, "fixture", "evidence"),

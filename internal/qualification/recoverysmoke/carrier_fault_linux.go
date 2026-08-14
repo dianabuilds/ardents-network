@@ -84,27 +84,45 @@ func mustInterfaces() []net.Interface {
 	return interfaces
 }
 
-func platformSetCarrierInterface(name string, up bool) error {
-	file, err := unix.Socket(unix.AF_INET, unix.SOCK_DGRAM|unix.SOCK_CLOEXEC, 0)
+func platformDeleteCarrierInterface(name string) error {
+	interfaceValue, err := net.InterfaceByName(name)
+	if err != nil {
+		return err
+	}
+	file, err := unix.Socket(unix.AF_NETLINK, unix.SOCK_RAW|unix.SOCK_CLOEXEC, unix.NETLINK_ROUTE)
 	if err != nil {
 		return err
 	}
 	defer unix.Close(file)
-	request, err := unix.NewIfreq(name)
+	if err := unix.Bind(file, &unix.SockaddrNetlink{Family: unix.AF_NETLINK}); err != nil {
+		return err
+	}
+	if err := unix.SetsockoptTimeval(file, unix.SOL_SOCKET, unix.SO_RCVTIMEO, &unix.Timeval{Sec: 5}); err != nil {
+		return err
+	}
+	request := make([]byte, unix.NLMSG_HDRLEN+unix.SizeofIfInfomsg)
+	binary.NativeEndian.PutUint32(request[0:4], uint32(len(request)))
+	binary.NativeEndian.PutUint16(request[4:6], unix.RTM_DELLINK)
+	binary.NativeEndian.PutUint16(request[6:8], unix.NLM_F_REQUEST|unix.NLM_F_ACK)
+	binary.NativeEndian.PutUint32(request[8:12], 1)
+	request[unix.NLMSG_HDRLEN] = unix.AF_UNSPEC
+	binary.NativeEndian.PutUint32(request[unix.NLMSG_HDRLEN+4:unix.NLMSG_HDRLEN+8], uint32(interfaceValue.Index))
+	if err := unix.Sendto(file, request, 0, &unix.SockaddrNetlink{Family: unix.AF_NETLINK}); err != nil {
+		return err
+	}
+	response := make([]byte, 4096)
+	count, _, err := unix.Recvfrom(file, response, 0)
 	if err != nil {
 		return err
 	}
-	if err := unix.IoctlIfreq(file, unix.SIOCGIFFLAGS, request); err != nil {
+	_, done, err := parseCarrierDiagDatagram(response[:count])
+	if err != nil {
 		return err
 	}
-	flags := request.Uint16()
-	if up {
-		flags |= unix.IFF_UP
-	} else {
-		flags &^= unix.IFF_UP
+	if !done {
+		return errors.New("interface deletion acknowledgement is incomplete")
 	}
-	request.SetUint16(flags)
-	return unix.IoctlIfreq(file, unix.SIOCSIFFLAGS, request)
+	return nil
 }
 
 func carrierDiagExchange(messageType uint16, flags uint16, socketID []byte) ([][]byte, error) {

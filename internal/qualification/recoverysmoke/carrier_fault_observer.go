@@ -28,26 +28,31 @@ func (observer dockerObserver) observeCarrier(ctx context.Context, controller st
 	return value, nil
 }
 
-func (observer dockerObserver) destroyCarrier(ctx context.Context, controller string,
+func (observer dockerObserver) destroyCarrier(ctx context.Context, controller, rendezvous, network string,
 	value carrierObservation, cellClock time.Time) (digest string, faultAt, completedAt int64,
-	downAfter, absenceAfter, restoredAfter int64,
+	cutAfter, absenceAfter int64,
 	absent bool, err error) {
 	faultAt = time.Since(cellClock).Nanoseconds()
 	raw, err := observer.docker(ctx, 10*time.Second, "exec", controller,
 		"/usr/local/bin/ardents-qualify", "carrier-fault", "fault", value.SocketID)
 	if err != nil {
-		return "", 0, 0, 0, 0, 0, false, err
+		return "", 0, 0, 0, 0, false, err
 	}
-	completedAt = time.Since(cellClock).Nanoseconds()
 	var receipt carrierFaultReceipt
 	if json.Unmarshal(raw, &receipt) != nil || receipt.Kind != "faulted" || receipt.SocketIDSHA256 != value.SocketIDSHA256 ||
-		receipt.InterfaceName != value.InterfaceName || receipt.CarrierDownAfterNanos <= 0 ||
-		receipt.AbsenceAfterNanos < receipt.CarrierDownAfterNanos || receipt.RestoredAfterNanos < receipt.AbsenceAfterNanos ||
-		!receipt.Absent || !receipt.Restored {
-		return "", 0, 0, 0, 0, 0, false, errors.New("external Carrier fault receipt is invalid")
+		receipt.InterfaceName != value.InterfaceName || receipt.CarrierCutAfterNanos <= 0 ||
+		receipt.AbsenceAfterNanos < receipt.CarrierCutAfterNanos || !receipt.Absent {
+		return "", 0, 0, 0, 0, false, errors.New("external Carrier fault receipt is invalid")
 	}
-	return receipt.SocketIDSHA256, faultAt, completedAt, receipt.CarrierDownAfterNanos,
-		receipt.AbsenceAfterNanos, receipt.RestoredAfterNanos, true, nil
+	if _, err := observer.docker(ctx, 10*time.Second, "network", "disconnect", "-f", network, rendezvous); err != nil {
+		return "", 0, 0, 0, 0, false, err
+	}
+	if _, err := observer.docker(ctx, 10*time.Second, "network", "connect", "--ip", carrierLocalIP, network, rendezvous); err != nil {
+		return "", 0, 0, 0, 0, false, err
+	}
+	completedAt = time.Since(cellClock).Nanoseconds()
+	return receipt.SocketIDSHA256, faultAt, completedAt, receipt.CarrierCutAfterNanos,
+		receipt.AbsenceAfterNanos, true, nil
 }
 
 func (observer dockerObserver) routeProcessIdentities(ctx context.Context,

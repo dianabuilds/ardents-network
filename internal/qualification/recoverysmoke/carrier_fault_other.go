@@ -12,7 +12,7 @@ func platformCarrierInterfaceForAddress(string) (string, int, error) {
 	return "", 0, errors.New("carrier socket fault injection requires Linux")
 }
 
-func platformSetCarrierInterface(string, bool) error {
+func platformDeleteCarrierInterface(string) error {
 	return errors.New("carrier socket fault injection requires Linux")
 }
 

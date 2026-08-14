@@ -35,14 +35,12 @@ type carrierObservation struct {
 }
 
 type carrierFaultReceipt struct {
-	Kind                  string `json:"kind"`
-	SocketIDSHA256        string `json:"socket_id_sha256"`
-	InterfaceName         string `json:"interface_name"`
-	CarrierDownAfterNanos int64  `json:"carrier_down_after_nanos"`
-	AbsenceAfterNanos     int64  `json:"absence_after_nanos"`
-	RestoredAfterNanos    int64  `json:"restored_after_nanos"`
-	Absent                bool   `json:"absent"`
-	Restored              bool   `json:"restored"`
+	Kind                 string `json:"kind"`
+	SocketIDSHA256       string `json:"socket_id_sha256"`
+	InterfaceName        string `json:"interface_name"`
+	CarrierCutAfterNanos int64  `json:"carrier_cut_after_nanos"`
+	AbsenceAfterNanos    int64  `json:"absence_after_nanos"`
+	Absent               bool   `json:"absent"`
 }
 
 func executeCarrierFault(arguments []string, output io.Writer) error {
@@ -107,32 +105,20 @@ func faultCarrierSocket(socketID string) (receipt carrierFaultReceipt, err error
 		return receipt, err
 	}
 	started := time.Now()
-	if err := platformSetCarrierInterface(interfaceName, false); err != nil {
+	if err := platformDeleteCarrierInterface(interfaceName); err != nil {
 		return receipt, err
 	}
-	restored := false
-	defer func() {
-		if !restored {
-			err = errors.Join(err, platformSetCarrierInterface(interfaceName, true))
-		}
-	}()
-	downAfter := time.Since(started).Nanoseconds()
-	deadline := time.Now().Add(3500 * time.Millisecond)
+	cutAfter := time.Since(started).Nanoseconds()
+	deadline := time.Now().Add(time.Second)
 	for time.Now().Before(deadline) {
 		present, statusErr := platformCarrierSocketPresent(raw)
 		if statusErr != nil {
 			return receipt, statusErr
 		}
 		if !present {
-			absenceAfter := time.Since(started).Nanoseconds()
-			if err := platformSetCarrierInterface(interfaceName, true); err != nil {
-				return receipt, err
-			}
-			restored = true
 			return carrierFaultReceipt{Kind: "faulted", SocketIDSHA256: value.SocketIDSHA256,
-				InterfaceName: interfaceName, CarrierDownAfterNanos: downAfter,
-				AbsenceAfterNanos: absenceAfter, RestoredAfterNanos: time.Since(started).Nanoseconds(),
-				Absent: true, Restored: true}, nil
+				InterfaceName: interfaceName, CarrierCutAfterNanos: cutAfter,
+				AbsenceAfterNanos: time.Since(started).Nanoseconds(), Absent: true}, nil
 		}
 		time.Sleep(time.Millisecond)
 	}

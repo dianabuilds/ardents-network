@@ -31,7 +31,7 @@ func configureRecoveryFixture(root string, fixture prepared) error {
 		path := filepath.Join(root, "route", "plans", role+".json")
 		if err := updatePlan(path, func(plan map[string]any) {
 			plan["Attachments"] = 2
-			plan["Deadline"] = recoveryRouteDeadline(role)
+			plan["Deadline"] = "15s"
 			if role == "rendezvous" {
 				plan["Next"] = "172.31.21.14:4604"
 			}
@@ -56,13 +56,6 @@ func configureRecoveryFixture(root string, fixture prepared) error {
 		}
 	}
 	return nil
-}
-
-func recoveryRouteDeadline(role string) string {
-	if role == "rendezvous" {
-		return "4s"
-	}
-	return "15s"
 }
 
 func updatePlan(path string, update func(map[string]any)) error {

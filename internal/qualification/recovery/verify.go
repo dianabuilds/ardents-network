@@ -144,9 +144,8 @@ func verifyCell(cell Cell, manifestText string) Result {
 	if cell.LastDeliveryNanos <= 0 || cell.LastDeliveryNanos > cell.CarrierObservedNanos ||
 		cell.CarrierObservedNanos > cell.FaultAtNanos || cell.FaultAtNanos <= 0 ||
 		cell.FaultCompletedNanos < cell.FaultAtNanos ||
-		cell.CarrierDownAfterNanos <= 0 || cell.AbsenceAfterNanos < cell.CarrierDownAfterNanos ||
-		cell.CarrierRestoredAfterNanos < cell.AbsenceAfterNanos ||
-		cell.CarrierRestoredAfterNanos > cell.FaultCompletedNanos-cell.FaultAtNanos ||
+		cell.CarrierCutAfterNanos <= 0 || cell.AbsenceAfterNanos < cell.CarrierCutAfterNanos ||
+		cell.AbsenceAfterNanos > cell.FaultCompletedNanos-cell.FaultAtNanos ||
 		cell.CanaryAtNanos < cell.FaultCompletedNanos ||
 		cell.CanaryAtNanos <= cell.FaultAtNanos ||
 		cell.CanaryAtNanos-cell.FaultAtNanos > int64(5*time.Second) || cell.TerminalAtNanos < cell.CanaryAtNanos ||
