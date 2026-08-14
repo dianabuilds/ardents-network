@@ -146,7 +146,7 @@ func (observer dockerObserver) destroyCarrier(ctx context.Context, controller, r
 	present, presenceErr := observer.docker(ctx, 10*time.Second, "ps", "-a", "-q", "--no-trunc", "--filter", "id="+controller)
 	if presenceErr != nil || strings.TrimSpace(string(present)) != "" {
 		return result,
-			errors.Join(removeErr, presenceErr, errors.New("Carrier fault controller remained present after removal"))
+			errors.Join(removeErr, presenceErr, errors.New("carrier fault controller remained present after removal"))
 	}
 	result.controllerRemoved = true
 	if err := observer.disconnectCarrierNetwork(ctx, network, rendezvous); err != nil {
