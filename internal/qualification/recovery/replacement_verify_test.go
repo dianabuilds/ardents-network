@@ -78,6 +78,16 @@ func TestVerifyRejectsS42ReplacementMutations(t *testing.T) {
 		"missing Endpoint process observation": func(value *replacementEvidence) {
 			delete(value.Cells[0].HostProcesses, "client-endpoint")
 		},
+		"observed Route deadline changed": func(value *replacementEvidence) {
+			timing := value.Cells[0].Proposals[0].PlanTimings["rendezvous"]
+			timing.DeadlineMillis++
+			value.Cells[0].Proposals[0].PlanTimings["rendezvous"] = timing
+		},
+		"stopped Rendezvous timing unbound": func(value *replacementEvidence) {
+			timing := value.Cells[2].Proposals[1].PlanTimings["rendezvous"]
+			timing.Attachment++
+			value.Cells[2].Proposals[1].PlanTimings["rendezvous"] = timing
+		},
 		"changed Application process observation": func(value *replacementEvidence) {
 			process := value.Cells[0].HostProcesses["client-app"]
 			process.ObservedAtNanos++
@@ -327,8 +337,9 @@ func s42Cell(imageID, direction, mode string, failures []string, sets map[string
 	cell := replacementCell{Direction: direction, Mode: mode, Seed: seed, Bytes: streamBytes,
 		ExpectedDigest: workloadDigest(seed, streamBytes), ObservedDigest: workloadDigest(seed, streamBytes),
 		FaultFamily: "route-process", ChunkBytes: 16_381, CanaryBytes: 32,
-		ChunkDelayNanos: int64(20 * time.Millisecond), LifetimeNanos: int64(30 * time.Second),
-		FailureRoles: append([]string(nil), failures...), FaultOffsets: []uint32{17 * 16_381},
+		ChunkDelayNanos: int64(20 * time.Millisecond), SetupDeadlineNanos: int64(2 * time.Second),
+		LifetimeNanos: int64(time.Minute),
+		FailureRoles:  append([]string(nil), failures...), FaultOffsets: []uint32{17 * 16_381},
 		ClientRouteGeneration: uint64(len(selections)), PublisherRouteGeneration: uint64(len(selections)),
 		ClientRecoveryCount: uint32(len(failures)), PublisherRecoveryCount: uint32(len(failures)),
 		ClientApplicationAccepts: 1, PublisherApplicationAccepts: 1,
@@ -343,10 +354,8 @@ func s42Cell(imageID, direction, mode string, failures []string, sets map[string
 		cell.FaultOffsets = []uint32{64 * 16_381, 128 * 16_381, 192 * 16_381}
 	}
 	cell.CellManifestDigest = replacementManifestDigest(cell)
-	cell.HostProcesses = endpointProcessTestSet(t, hostScope, imageID, hostStartedAt, map[string]string{
-		"client-endpoint": nextID(), "publisher-endpoint": nextID(),
-		"client-app": nextID(), "publisher-app": nextID(),
-	})
+	managedIDs := map[string]string{"client-endpoint": nextID(), "publisher-endpoint": nextID(), "client-app": nextID(), "publisher-app": nextID(), "client": nextID(), "publisher": nextID()}
+	cell.HostProcesses = managedProcessTestSet(t, hostScope, imageID, hostStartedAt, managedIDs)
 	if direction == "client-to-publisher" {
 		cell.ClientAcceptedBytes, cell.ClientAcknowledgedBytes = streamBytes, streamBytes
 		cell.PublisherReceivedBytes = streamBytes
@@ -428,6 +437,17 @@ func s42Cell(imageID, direction, mode string, failures []string, sets map[string
 				proposal.ExcludedIdentities = append(proposal.ExcludedIdentities, sets[role][candidateIndex].NodeID)
 			}
 		}
+		proposal.PlanTimings = map[string]routePlanTiming{}
+		for _, role := range replacementPlanRoles {
+			if !proposal.Committed && role == "rendezvous" {
+				proposal.PlanTimings[role] = cell.Proposals[proposalIndex-1].PlanTimings[role]
+				continue
+			}
+			process, _ := replacementPlanProcess(cell, proposal, role)
+			localAttachment := replacementLocalAttachment(append(cell.Proposals, proposal), proposalIndex, role, process)
+			proposal.PlanTimings[role] = routePlanTiming{Process: process, Attachment: localAttachment,
+				DeadlineMillis: 2_000, LifetimeMillis: uint32(cell.LifetimeNanos / int64(time.Millisecond))}
+		}
 		cell.Proposals = append(cell.Proposals, proposal)
 	}
 	for index, failure := range failures {
@@ -473,7 +493,7 @@ func s42Cell(imageID, direction, mode string, failures []string, sets map[string
 	cell.BaselineClientRoute, cell.BaselinePublisherRoute = nextID(), nextID()
 	cell.BaselineClientTrafficObserver = s42Observer(imageID, nextID(), cell.BaselineClientRoute)
 	cell.BaselinePublisherTrafficObserver = s42Observer(imageID, nextID(), cell.BaselinePublisherRoute)
-	cell.ClientRoute, cell.PublisherRoute = nextID(), nextID()
+	cell.ClientRoute, cell.PublisherRoute = managedIDs["client"], managedIDs["publisher"]
 	cell.ClientTrafficObserver = s42Observer(imageID, nextID(), cell.ClientRoute)
 	cell.PublisherTrafficObserver = s42Observer(imageID, nextID(), cell.PublisherRoute)
 	return cell

@@ -88,6 +88,15 @@ func nativeTestReplacementProcesses(extension *replacementEvidence, scope *hostS
 	scope.Commitment = hostScopeCommitment(*scope)
 	for cellIndex := range extension.Cells {
 		cell := &extension.Cells[cellIndex]
+		for role, process := range cell.HostProcesses {
+			process.Host.Adapter, process.Host.Scope = scope.Adapter, scope.Commitment
+			process.Host.Identity, process.Host.Incarnation = "process/"+process.Host.Identity, "boot/"+process.Host.Incarnation
+			process.Host.Commitment = processRefCommitment(process.Host)
+			process.AdapterProjection = `{"kind":"native-host-v1"}`
+			process.HostObservation = processObservationCommitment(process.Host, []byte(process.AdapterProjection),
+				process.PID, true, process.ObservedAtNanos)
+			cell.HostProcesses[role] = process
+		}
 		for routeIndex := range cell.Routes {
 			for role, process := range cell.Routes[routeIndex].Processes {
 				cell.Routes[routeIndex].Processes[role] = nativeTestProcess(process, *scope)
@@ -99,6 +108,11 @@ func nativeTestReplacementProcesses(extension *replacementEvidence, scope *hostS
 				proposal.Processes[processIndex] = nativeTestProcess(process, *scope)
 				proposal.Stopped[processIndex] = nativeTestState(proposal.Stopped[processIndex],
 					proposal.Processes[processIndex])
+			}
+			for role, timing := range proposal.PlanTimings {
+				process, _ := replacementPlanProcess(*cell, *proposal, role)
+				timing.Process = process
+				proposal.PlanTimings[role] = timing
 			}
 		}
 		for eventIndex := range cell.Events {

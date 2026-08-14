@@ -176,6 +176,9 @@ func verifyReplacementCell(cell replacementCell, candidates map[string][]replace
 	if result := verifyReplacementEndpointProcesses(cell, hostScope, identities); result.Verdict != "pass" {
 		return result
 	}
+	if result := verifyReplacementRouteProcesses(cell, hostScope, identities); result.Verdict != "pass" {
+		return result
+	}
 	if result := verifyReplacementProposals(cell, candidates, routeCase, routeManifest, hostScope, identities); result.Verdict != "pass" {
 		return result
 	}

@@ -68,6 +68,9 @@ func verifyReplacementProposals(cell replacementCell, candidates map[string][]re
 		if proposalIndex == 2 && !validIntroductionProof(proposal, routeCase, routeManifest, selected) {
 			return invalid("S4.2 sealed Introduction proof is not bound to the selected Route")
 		}
+		if result := verifyReplacementPlanTimings(cell, proposalIndex); result.Verdict != "pass" {
+			return result
+		}
 	}
 	for generationIndex, generation := range cell.Routes {
 		proposalIndex := generationIndex

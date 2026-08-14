@@ -32,6 +32,7 @@ func configurePublisherReplacementPlans(root string, selections []selectedRoute,
 	}
 	delete(base, "Attachments")
 	base["ConcurrentAttachments"], base["AttachmentPlans"], base["Lifetime"] = true, attempts, lifetime
+	base["Deadline"] = replacementSetupDeadline
 	return byteio.WriteJSON(path, base, 64<<10)
 }
 

@@ -93,6 +93,9 @@ func (observer dockerObserver) finishReplacementCell(ctx context.Context, proces
 			cell.Proposals[proposalIndex].Stopped[roleIndex] = receipt
 		}
 	}
+	if err := observer.bindReplacementPlanTimings(ctx, &cell, clientRaw); err != nil {
+		return replacementCell{}, err
+	}
 	for index := range cell.Events {
 		event := &cell.Events[index]
 		raw, err := observer.compose(ctx, time.Minute, "logs", "--no-color", "--no-log-prefix", event.Introduction.Service)

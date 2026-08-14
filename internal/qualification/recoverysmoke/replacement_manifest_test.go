@@ -28,6 +28,7 @@ func TestPrepareReplacementManifestFreezesCellInputs(t *testing.T) {
 	}
 	if retained.Digest != value.Digest || retained.Digest != replacementManifestDigest(retained) ||
 		retained.ChunkDelayNanos != int64(2350*time.Millisecond) ||
+		retained.SetupDeadlineNanos != int64(2*time.Second) ||
 		retained.LifetimeNanos != int64(12*time.Minute) || len(retained.FailureRoles) != 3 ||
 		len(retained.FaultOffsets) != 3 {
 		t.Fatalf("replacement manifest is incomplete: %+v", retained)

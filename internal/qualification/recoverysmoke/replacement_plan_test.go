@@ -68,7 +68,8 @@ func TestClientReplacementPlanContainsOnlyTheFixedLayerPolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 	var plan struct {
-		AttachmentPlans []struct {
+		Deadline, Lifetime string
+		AttachmentPlans    []struct {
 			ExcludedIdentities      []string
 			IntroductionSetupSocket string
 		}
@@ -80,7 +81,8 @@ func TestClientReplacementPlanContainsOnlyTheFixedLayerPolicy(t *testing.T) {
 		len(plan.AttachmentPlans[1].ExcludedIdentities) != 3 ||
 		len(plan.AttachmentPlans[2].ExcludedIdentities) != 8 ||
 		len(plan.AttachmentPlans[3].ExcludedIdentities) != 5 ||
-		plan.AttachmentPlans[2].IntroductionSetupSocket == "" {
+		plan.AttachmentPlans[2].IntroductionSetupSocket == "" ||
+		plan.Deadline != replacementSetupDeadline || plan.Lifetime != "30s" {
 		t.Fatalf("fixed layered policy differs: %+v", plan.AttachmentPlans)
 	}
 }

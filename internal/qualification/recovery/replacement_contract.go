@@ -19,7 +19,8 @@ type replacementCell struct {
 	HostProcesses                                                              map[string]processObservationEvidence
 	Seed, ExpectedDigest, ObservedDigest                                       [32]byte
 	Bytes, ChunkBytes, CanaryBytes                                             uint32
-	ChunkDelayNanos, LifetimeNanos, HostStartedAtNanos, ResourceStartedAtNanos int64
+	ChunkDelayNanos, SetupDeadlineNanos, LifetimeNanos, HostStartedAtNanos     int64
+	ResourceStartedAtNanos                                                     int64
 	TerminalNanos                                                              int64
 	ClientRouteGeneration, PublisherRouteGeneration                            uint64
 	ClientRecoveryCount, PublisherRecoveryCount                                uint32
@@ -58,6 +59,13 @@ type replacementProposal struct {
 	IntroductionProof   introductionProof
 	Processes           [4]candidateProcess
 	Stopped             [4]failedResourceReceipt
+	PlanTimings         map[string]routePlanTiming
+}
+
+type routePlanTiming struct {
+	Process                    processEvidenceRef
+	Attachment, DeadlineMillis uint32
+	LifetimeMillis             uint32
 }
 
 type introductionProof struct {

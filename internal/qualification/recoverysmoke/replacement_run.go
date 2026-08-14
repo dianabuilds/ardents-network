@@ -81,6 +81,13 @@ func (observer dockerObserver) runReplacementRecovery(ctx context.Context, fixtu
 		if err != nil {
 			return err
 		}
+		routeProcesses, routeErr := observeReplacementRouteProcesses(ctx, processObserver, identities)
+		if routeErr != nil {
+			return routeErr
+		}
+		for role, process := range routeProcesses {
+			hostProcesses[role] = process
+		}
 		for index := range proposalRoutes {
 			proposalRoutes[index], err = observeRouteGeneration(ctx, processObserver, fixture,
 				uint64(index+1), plan.selections[index])
@@ -100,7 +107,8 @@ func (observer dockerObserver) runReplacementRecovery(ctx context.Context, fixtu
 		CellManifestDigest: manifest.Digest, FaultFamily: manifest.FaultFamily,
 		FailureRoles: manifest.FailureRoles, FaultOffsets: manifest.FaultOffsets,
 		ChunkBytes: manifest.ChunkBytes, CanaryBytes: manifest.CanaryBytes,
-		ChunkDelayNanos: manifest.ChunkDelayNanos, LifetimeNanos: manifest.LifetimeNanos,
+		ChunkDelayNanos: manifest.ChunkDelayNanos, SetupDeadlineNanos: manifest.SetupDeadlineNanos,
+		LifetimeNanos:      manifest.LifetimeNanos,
 		HostStartedAtNanos: hostStartedAt, ResourceStartedAtNanos: resourceStartedAt,
 		ExpectedDigest: workloadDigest(seed, 4<<20), Routes: []routeGeneration{initialRoute},
 		HostProcesses:        hostProcesses,
@@ -184,7 +192,7 @@ func (observer dockerObserver) runReplacementRecovery(ctx context.Context, fixtu
 }
 
 func isolatedReplacementSchedule(failures []string) ([]uint32, string, string, string) {
-	return []uint32{17 * 16_381}, "30s", "20ms", "isolated-" + failures[0]
+	return []uint32{17 * 16_381}, "1m", "20ms", "isolated-" + failures[0]
 }
 
 func sequentialReplacementSchedule() ([]uint32, string, string, string) {

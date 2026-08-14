@@ -17,7 +17,9 @@ type routeStreamUnavailable struct{ err error }
 func (value *routeStreamUnavailable) Error() string { return value.err.Error() }
 func (value *routeStreamUnavailable) Unwrap() error { return value.err }
 
-func (raw actorPlan) client() (route.Actor, func() error, error) {
+const replacementStreamWait = 500 * time.Millisecond
+
+func (raw actorPlan) client(waitForStream bool) (route.Actor, func() error, error) {
 	at, err := time.Parse(time.RFC3339, raw.At)
 	if err != nil {
 		return route.Actor{}, nil, fmt.Errorf("parse client selection time: %w", err)
@@ -85,7 +87,7 @@ func (raw actorPlan) client() (route.Actor, func() error, error) {
 		}
 	}
 	if raw.Stream != "" {
-		stream, dialErr := net.DialTimeout("unix", raw.Stream, deadline)
+		stream, dialErr := dialClientStream(raw.Stream, deadline, waitForStream)
 		if dialErr != nil {
 			failure := errors.Join(fmt.Errorf("dial client Route stream: %w", dialErr), opened.Close())
 			return route.Actor{}, nil, &routeStreamUnavailable{err: failure}
@@ -94,6 +96,30 @@ func (raw actorPlan) client() (route.Actor, func() error, error) {
 		return actor, func() error { return errors.Join(stream.Close(), opened.Close()) }, nil
 	}
 	return actor, opened.Close, nil
+}
+
+func dialClientStream(path string, setupDeadline time.Duration, wait bool) (net.Conn, error) {
+	if setupDeadline <= 0 {
+		return nil, errors.New("client stream setup deadline is invalid")
+	}
+	if !wait {
+		return net.DialTimeout("unix", path, setupDeadline)
+	}
+	deadline := time.Now().Add(min(setupDeadline, replacementStreamWait))
+	var lastErr error
+	for time.Now().Before(deadline) {
+		remaining := time.Until(deadline)
+		connection, err := net.DialTimeout("unix", path, min(50*time.Millisecond, remaining))
+		if err == nil {
+			return connection, nil
+		}
+		lastErr = err
+		time.Sleep(min(10*time.Millisecond, max(time.Duration(0), time.Until(deadline))))
+	}
+	if lastErr == nil {
+		return nil, errors.New("client recovery stream wait expired before dialing")
+	}
+	return nil, lastErr
 }
 
 func identities(values []string) ([][32]byte, error) {

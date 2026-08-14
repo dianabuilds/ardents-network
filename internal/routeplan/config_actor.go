@@ -10,10 +10,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
-func (raw actorPlan) actor() (route.Actor, func() error, error) {
+func (raw actorPlan) actor(waitForClientStream bool) (route.Actor, func() error, error) {
 	switch raw.Role {
 	case "client":
-		return raw.client()
+		return raw.client(waitForClientStream)
 	case "publisher", "initiator", "introduction", "rendezvous", "responder":
 		return raw.listener()
 	default:

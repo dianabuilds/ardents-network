@@ -7,11 +7,11 @@ import (
 	"testing"
 )
 
-func TestVerifyUsesCommonS42EndpointProcessEvidence(t *testing.T) {
+func TestVerifyUsesCommonS42ManagedProcessEvidence(t *testing.T) {
 	value := validS42Evidence(t)
 	extension := decodeReplacementTest(t, value.S42)
 	for index, cell := range extension.Cells {
-		if len(cell.HostProcesses) != 4 {
+		if len(cell.HostProcesses) != 6 {
 			t.Fatalf("cell %d host process count = %d", index, len(cell.HostProcesses))
 		}
 	}
@@ -20,7 +20,7 @@ func TestVerifyUsesCommonS42EndpointProcessEvidence(t *testing.T) {
 	}
 }
 
-func endpointProcessTestSet(t *testing.T, scope hostScopeEvidence, imageID string, observedAt int64,
+func managedProcessTestSet(t *testing.T, scope hostScopeEvidence, imageID string, observedAt int64,
 	identities map[string]string) map[string]processObservationEvidence {
 	t.Helper()
 	result := make(map[string]processObservationEvidence, len(identities))
@@ -30,6 +30,8 @@ func endpointProcessTestSet(t *testing.T, scope hostScopeEvidence, imageID strin
 		path := "/usr/local/bin/ardents-stream-app"
 		if service == "client-endpoint" || service == "publisher-endpoint" {
 			path = "/usr/local/bin/ardents-service"
+		} else if service == "client" || service == "publisher" {
+			path = "/usr/local/bin/ardents-route"
 		}
 		projection := dockerProcessPublicProjection{Image: imageID, Path: path,
 			Project: scope.AdapterProjection, Service: service}
@@ -48,8 +50,8 @@ func endpointProcessTestSet(t *testing.T, scope hostScopeEvidence, imageID strin
 			ObservedAtNanos: observation, AdapterProjection: string(raw),
 			HostObservation: processObservationCommitment(ref, raw, serial, true, observation)}
 	}
-	if len(result) != 4 || scope.Image != sha256.Sum256([]byte(imageID)) {
-		t.Fatal(fmt.Errorf("endpoint process fixture is inconsistent"))
+	if len(result) != len(identities) || scope.Image != sha256.Sum256([]byte(imageID)) {
+		t.Fatal(fmt.Errorf("managed process fixture is inconsistent"))
 	}
 	return result
 }

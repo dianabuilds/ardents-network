@@ -6,9 +6,6 @@ var replacementEndpointProcessRoles = [...]string{
 
 func verifyReplacementEndpointProcesses(cell replacementCell, scope hostScopeEvidence,
 	identities map[string]bool) Result {
-	if len(cell.HostProcesses) != len(replacementEndpointProcessRoles) {
-		return invalid("S4.2 Endpoint or Application process evidence is incomplete")
-	}
 	for _, role := range replacementEndpointProcessRoles {
 		process, ok := cell.HostProcesses[role]
 		if !ok || !validProcessObservation(process, scope) ||

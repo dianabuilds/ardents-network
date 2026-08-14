@@ -14,13 +14,13 @@ import (
 const replacementManifestSchema = "ardents-h3-replacement-cell-manifest-v1"
 
 type replacementCellManifest struct {
-	Schema, Direction, Mode, FaultFamily string
-	Seed                                 [32]byte
-	Bytes, ChunkBytes, CanaryBytes       uint32
-	ChunkDelayNanos, LifetimeNanos       int64
-	FailureRoles                         []string
-	FaultOffsets                         []uint32
-	Digest                               string
+	Schema, Direction, Mode, FaultFamily               string
+	Seed                                               [32]byte
+	Bytes, ChunkBytes, CanaryBytes                     uint32
+	ChunkDelayNanos, SetupDeadlineNanos, LifetimeNanos int64
+	FailureRoles                                       []string
+	FaultOffsets                                       []uint32
+	Digest                                             string
 }
 
 func prepareReplacementManifest(root, direction, mode string, seed [32]byte, failures []string,
@@ -33,10 +33,15 @@ func prepareReplacementManifest(root, direction, mode string, seed [32]byte, fai
 	if err != nil {
 		return replacementCellManifest{}, fmt.Errorf("parse replacement pacing: %w", err)
 	}
+	deadlineValue, err := time.ParseDuration(replacementSetupDeadline)
+	if err != nil {
+		return replacementCellManifest{}, fmt.Errorf("parse replacement setup deadline: %w", err)
+	}
 	value := replacementCellManifest{Schema: replacementManifestSchema, Direction: direction, Mode: mode,
 		FaultFamily: "route-process", Seed: seed, Bytes: 4 << 20, ChunkBytes: 16_381, CanaryBytes: 32,
-		ChunkDelayNanos: delayValue.Nanoseconds(), LifetimeNanos: lifetimeValue.Nanoseconds(),
-		FailureRoles: append([]string(nil), failures...), FaultOffsets: append([]uint32(nil), offsets...)}
+		ChunkDelayNanos: delayValue.Nanoseconds(), SetupDeadlineNanos: deadlineValue.Nanoseconds(),
+		LifetimeNanos: lifetimeValue.Nanoseconds(),
+		FailureRoles:  append([]string(nil), failures...), FaultOffsets: append([]uint32(nil), offsets...)}
 	value.Digest = replacementManifestDigest(value)
 	path := filepath.Join(root, "replacement-cell-manifest.json")
 	if err := byteio.WriteJSON(path, value, 64<<10); err != nil {
@@ -52,12 +57,13 @@ func replacementManifestDigest(value replacementCellManifest) string {
 	writeManifestText(hash.Write, value.Mode)
 	writeManifestText(hash.Write, value.FaultFamily)
 	_, _ = hash.Write(value.Seed[:])
-	var numeric [28]byte
+	var numeric [36]byte
 	binary.BigEndian.PutUint32(numeric[0:4], value.Bytes)
 	binary.BigEndian.PutUint32(numeric[4:8], value.ChunkBytes)
 	binary.BigEndian.PutUint32(numeric[8:12], value.CanaryBytes)
 	binary.BigEndian.PutUint64(numeric[12:20], uint64(value.ChunkDelayNanos))
-	binary.BigEndian.PutUint64(numeric[20:28], uint64(value.LifetimeNanos))
+	binary.BigEndian.PutUint64(numeric[20:28], uint64(value.SetupDeadlineNanos))
+	binary.BigEndian.PutUint64(numeric[28:36], uint64(value.LifetimeNanos))
 	_, _ = hash.Write(numeric[:])
 	writeManifestList(hash.Write, value.FailureRoles, value.FaultOffsets)
 	return hex.EncodeToString(hash.Sum(nil))

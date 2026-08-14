@@ -14,6 +14,8 @@ type replacementPlan struct {
 	services   []string
 }
 
+const replacementSetupDeadline = "2s"
+
 func configureReplacementPlans(root string, fixture prepared, lifetime string) (replacementPlan, error) {
 	selections, err := replacementSelections(fixture.candidates)
 	if err != nil || lifetime == "" {
@@ -85,6 +87,7 @@ func configureClientReplacementPlan(root string, candidates []route.Position,
 	return updatePlan(path, func(value map[string]any) {
 		delete(value, "Attachments")
 		value["AttachmentPlans"], value["Lifetime"] = attempts, lifetime
+		value["Deadline"] = replacementSetupDeadline
 	})
 }
 
@@ -141,6 +144,7 @@ func configureNodeReplacementPlan(root string, candidates []route.Position, serv
 	return updatePlan(path, func(value map[string]any) {
 		delete(value, "Attachments")
 		value["AttachmentPlans"], value["Lifetime"] = attempts, lifetime
+		value["Deadline"] = replacementSetupDeadline
 		if position.Role == "introduction" && position.NodeID == selections[2]["introduction"].NodeID {
 			value["IntroductionSetupSocket"] = "/run/ardents/recovery-introduction-user/setup.sock"
 			value["IntroductionSetupPeer"] = clientPeer

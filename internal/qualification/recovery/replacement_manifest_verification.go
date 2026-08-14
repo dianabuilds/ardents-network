@@ -16,7 +16,8 @@ func verifyReplacementManifest(cell replacementCell) Result {
 	}
 	expectedRoles := []string{strings.TrimPrefix(cell.Mode, "isolated-")}
 	expectedOffsets := []uint32{17 * 16_381}
-	expectedDelay, expectedLifetime := int64(20*time.Millisecond), int64(30*time.Second)
+	expectedDelay, expectedDeadline := int64(20*time.Millisecond), int64(2*time.Second)
+	expectedLifetime := int64(time.Minute)
 	if cell.Mode == "sequential-three" {
 		expectedRoles = []string{"initiator", "rendezvous", "responder"}
 		expectedOffsets = []uint32{64 * 16_381, 128 * 16_381, 192 * 16_381}
@@ -25,7 +26,8 @@ func verifyReplacementManifest(cell replacementCell) Result {
 		return invalid("S4.2 workload and fault manifest mode is invalid")
 	}
 	if cell.FaultFamily != "route-process" || cell.ChunkBytes != 16_381 || cell.CanaryBytes != 32 ||
-		cell.ChunkDelayNanos != expectedDelay || cell.LifetimeNanos != expectedLifetime ||
+		cell.ChunkDelayNanos != expectedDelay || cell.SetupDeadlineNanos != expectedDeadline ||
+		cell.LifetimeNanos != expectedLifetime ||
 		!equalManifestRoles(cell.FailureRoles, expectedRoles) ||
 		!equalManifestOffsets(cell.FaultOffsets, expectedOffsets) ||
 		cell.CellManifestDigest != replacementManifestDigest(cell) {
@@ -41,12 +43,13 @@ func replacementManifestDigest(cell replacementCell) string {
 	writeReplacementManifestText(hash.Write, cell.Mode)
 	writeReplacementManifestText(hash.Write, cell.FaultFamily)
 	_, _ = hash.Write(cell.Seed[:])
-	var numeric [28]byte
+	var numeric [36]byte
 	binary.BigEndian.PutUint32(numeric[0:4], cell.Bytes)
 	binary.BigEndian.PutUint32(numeric[4:8], cell.ChunkBytes)
 	binary.BigEndian.PutUint32(numeric[8:12], cell.CanaryBytes)
 	binary.BigEndian.PutUint64(numeric[12:20], uint64(cell.ChunkDelayNanos))
-	binary.BigEndian.PutUint64(numeric[20:28], uint64(cell.LifetimeNanos))
+	binary.BigEndian.PutUint64(numeric[20:28], uint64(cell.SetupDeadlineNanos))
+	binary.BigEndian.PutUint64(numeric[28:36], uint64(cell.LifetimeNanos))
 	_, _ = hash.Write(numeric[:])
 	writeReplacementManifestList(hash.Write, cell.FailureRoles, cell.FaultOffsets)
 	return hex.EncodeToString(hash.Sum(nil))

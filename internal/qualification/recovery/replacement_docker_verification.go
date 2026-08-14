@@ -20,6 +20,11 @@ func validDockerReplacementProcesses(value replacementEvidence, scope hostScopeE
 				return false
 			}
 		}
+		for _, service := range replacementRouteProcessRoles {
+			if !validDockerProcessObservation(cell.HostProcesses[service], scope, service) {
+				return false
+			}
+		}
 		for _, route := range cell.Routes {
 			for role, process := range route.Processes {
 				if !strings.HasPrefix(process.Service, role) ||

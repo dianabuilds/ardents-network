@@ -12,11 +12,17 @@ func verifyReplacementObservers(cell replacementCell, imageID string, identities
 		{cell.ClientTrafficObserver, cell.ClientRoute},
 		{cell.PublisherTrafficObserver, cell.PublisherRoute},
 	}
-	for _, route := range []string{cell.BaselineClientRoute, cell.BaselinePublisherRoute, cell.ClientRoute, cell.PublisherRoute} {
+	for _, route := range []string{cell.BaselineClientRoute, cell.BaselinePublisherRoute} {
 		if !fullContainerID(route) || identities[route] {
 			return invalid("S4.2 traffic Route identity is incomplete or overlaps a candidate")
 		}
 		identities[route] = true
+	}
+	for role, route := range map[string]string{"client": cell.ClientRoute, "publisher": cell.PublisherRoute} {
+		process, ok := cell.HostProcesses[role]
+		if !ok || !fullContainerID(route) || process.Host.Identity != route || !identities[route] {
+			return invalid("S4.2 traffic Route identity is not bound to its process observation")
+		}
 	}
 	for _, pair := range pairs {
 		if identities[pair.observer.ContainerID] || !confinedTrafficObserver(pair.observer, imageID, pair.route) {
