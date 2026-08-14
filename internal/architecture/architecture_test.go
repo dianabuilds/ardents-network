@@ -441,7 +441,7 @@ func inspectProductionFile(t *testing.T, relative string, file *ast.File) int {
 	ast.Inspect(file, func(node ast.Node) bool {
 		switch value := node.(type) {
 		case *ast.FuncDecl:
-			if ast.IsExported(value.Name.Name) {
+			if ast.IsExported(value.Name.Name) && exportedReceiver(value.Recv) {
 				exported++
 			}
 			if value.Name.Name == "init" {
@@ -470,4 +470,16 @@ func inspectProductionFile(t *testing.T, relative string, file *ast.File) int {
 		return true
 	})
 	return exported
+}
+
+func exportedReceiver(receiver *ast.FieldList) bool {
+	if receiver == nil {
+		return true
+	}
+	value := receiver.List[0].Type
+	if pointer, ok := value.(*ast.StarExpr); ok {
+		value = pointer.X
+	}
+	identifier, ok := value.(*ast.Ident)
+	return ok && ast.IsExported(identifier.Name)
 }

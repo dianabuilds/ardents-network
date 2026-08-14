@@ -159,7 +159,7 @@ func (value *Sequence) Next() (Step, bool, error) {
 	if err != nil {
 		return Step{}, false, err
 	}
-	actor, closeState, err := plan.actor(value.next > 0)
+	actor, closeState, err := plan.actor(value.next == 0)
 	if value.clientTerminal(err) {
 		value.next = value.plan.attachmentCount()
 		return Step{}, false, nil

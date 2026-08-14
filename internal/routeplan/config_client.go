@@ -19,7 +19,7 @@ func (value *routeStreamUnavailable) Unwrap() error { return value.err }
 
 const replacementStreamWait = 500 * time.Millisecond
 
-func (raw actorPlan) client(waitForStream bool) (route.Actor, func() error, error) {
+func (raw actorPlan) client(initialStream bool) (route.Actor, func() error, error) {
 	at, err := time.Parse(time.RFC3339, raw.At)
 	if err != nil {
 		return route.Actor{}, nil, fmt.Errorf("parse client selection time: %w", err)
@@ -87,7 +87,11 @@ func (raw actorPlan) client(waitForStream bool) (route.Actor, func() error, erro
 		}
 	}
 	if raw.Stream != "" {
-		stream, dialErr := dialClientStream(raw.Stream, deadline, waitForStream)
+		wait := replacementStreamWait
+		if initialStream {
+			wait = deadline
+		}
+		stream, dialErr := dialClientStream(raw.Stream, deadline, wait)
 		if dialErr != nil {
 			failure := errors.Join(fmt.Errorf("dial client Route stream: %w", dialErr), opened.Close())
 			return route.Actor{}, nil, &routeStreamUnavailable{err: failure}
@@ -98,14 +102,14 @@ func (raw actorPlan) client(waitForStream bool) (route.Actor, func() error, erro
 	return actor, opened.Close, nil
 }
 
-func dialClientStream(path string, setupDeadline time.Duration, wait bool) (net.Conn, error) {
+func dialClientStream(path string, setupDeadline, wait time.Duration) (net.Conn, error) {
 	if setupDeadline <= 0 {
 		return nil, errors.New("client stream setup deadline is invalid")
 	}
-	if !wait {
-		return net.DialTimeout("unix", path, setupDeadline)
+	if wait <= 0 {
+		return nil, errors.New("client stream wait is invalid")
 	}
-	deadline := time.Now().Add(min(setupDeadline, replacementStreamWait))
+	deadline := time.Now().Add(min(setupDeadline, wait))
 	var lastErr error
 	for time.Now().Before(deadline) {
 		remaining := time.Until(deadline)

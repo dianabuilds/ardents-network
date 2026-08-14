@@ -4,16 +4,15 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"net"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
-func (raw actorPlan) actor(waitForClientStream bool) (route.Actor, func() error, error) {
+func (raw actorPlan) actor(initialClientStream bool) (route.Actor, func() error, error) {
 	switch raw.Role {
 	case "client":
-		return raw.client(waitForClientStream)
+		return raw.client(initialClientStream)
 	case "publisher", "initiator", "introduction", "rendezvous", "responder":
 		return raw.listener()
 	default:
@@ -75,10 +74,7 @@ func (raw actorPlan) listener() (route.Actor, func() error, error) {
 			}
 		}
 		if raw.Stream != "" {
-			stream, dialErr := net.DialTimeout("unix", raw.Stream, deadline)
-			if dialErr != nil {
-				return route.Actor{}, nil, fmt.Errorf("dial publisher Route stream: %w", dialErr)
-			}
+			stream := &deferredUnixStream{path: raw.Stream, timeout: deadline}
 			actor.Stream = stream
 			return actor, stream.Close, nil
 		}

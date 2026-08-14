@@ -63,8 +63,39 @@ func TestLoadNextAndCloseOwnsPublisherStream(t *testing.T) {
 	if err != nil || !ok || step.Actor.Stream == nil {
 		t.Fatalf("construct publisher step: ok=%v err=%v", ok, err)
 	}
+	select {
+	case peer := <-accepted:
+		_ = peer.Close()
+		t.Fatal("publisher registered its stream before upstream traffic")
+	case <-time.After(20 * time.Millisecond):
+	}
+	writeDone := make(chan error, 1)
+	go func() {
+		_, writeErr := step.Actor.Stream.Write([]byte{7})
+		writeDone <- writeErr
+	}()
 	peer := <-accepted
 	defer peer.Close()
+	buffer := make([]byte, 1)
+	if _, err := peer.Read(buffer); err != nil || buffer[0] != 7 {
+		t.Fatalf("read deferred publisher stream: value=%v err=%v", buffer, err)
+	}
+	if err := <-writeDone; err != nil {
+		t.Fatalf("write deferred publisher stream: %v", err)
+	}
+	halfCloser, ok := step.Actor.Stream.(interface{ CloseWrite() error })
+	if !ok {
+		t.Fatal("deferred publisher stream lost half-close support")
+	}
+	if err := halfCloser.CloseWrite(); err != nil {
+		t.Fatal(err)
+	}
+	if err := peer.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if count, err := peer.Read(buffer); count != 0 || err == nil {
+		t.Fatalf("publisher stream half-close was not forwarded: count=%d err=%v", count, err)
+	}
 	if err := step.Close(); err != nil {
 		t.Fatal(err)
 	}

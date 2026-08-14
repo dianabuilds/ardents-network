@@ -33,7 +33,7 @@ func TestClientStreamRetryBridgesOneRecoveryPublicationGap(t *testing.T) {
 			accepted <- connection
 		}
 	}()
-	connection, err := dialClientStream(path, time.Second, true)
+	connection, err := dialClientStream(path, time.Second, replacementStreamWait)
 	if err != nil {
 		<-listenerReady
 		t.Fatal(err)
@@ -45,7 +45,8 @@ func TestClientStreamRetryBridgesOneRecoveryPublicationGap(t *testing.T) {
 
 func TestClientStreamRetryRemainsBounded(t *testing.T) {
 	started := time.Now()
-	if _, err := dialClientStream(filepath.Join(t.TempDir(), "absent.sock"), 80*time.Millisecond, true); err == nil {
+	if _, err := dialClientStream(filepath.Join(t.TempDir(), "absent.sock"), 80*time.Millisecond,
+		replacementStreamWait); err == nil {
 		t.Fatal("absent recovery stream was accepted")
 	}
 	if elapsed := time.Since(started); elapsed < 60*time.Millisecond || elapsed > 250*time.Millisecond {
@@ -56,7 +57,7 @@ func TestClientStreamRetryRemainsBounded(t *testing.T) {
 func TestClientStreamRetryRejectsInvalidOrExpiredDeadline(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "absent.sock")
 	for _, deadline := range []time.Duration{0, time.Nanosecond} {
-		connection, err := dialClientStream(path, deadline, true)
+		connection, err := dialClientStream(path, deadline, replacementStreamWait)
 		if err == nil || connection != nil {
 			t.Fatalf("deadline %s returned connection=%v error=%v", deadline, connection, err)
 		}
