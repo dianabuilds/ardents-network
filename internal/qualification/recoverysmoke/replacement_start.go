@@ -30,12 +30,6 @@ func (observer dockerObserver) startReplacementServices(ctx context.Context, fix
 	if _, err := observer.compose(ctx, time.Minute, "up", "-d", "publisher-app"); err != nil {
 		return nil, fmt.Errorf("start publisher Application: %w", err)
 	}
-	if _, err := observer.compose(ctx, time.Minute, "up", "-d", "publisher"); err != nil {
-		return nil, fmt.Errorf("start bounded publisher Attachments: %w", err)
-	}
-	if err := observer.waitReady(ctx, "publisher"); err != nil {
-		return nil, fmt.Errorf("wait for bounded publisher Attachment readiness: %w", err)
-	}
 	if _, err := observer.compose(ctx, time.Minute, append([]string{"--profile", "s42", "up", "-d"}, plan.services...)...); err != nil {
 		return nil, fmt.Errorf("start finite replacement candidates: %w", err)
 	}
@@ -49,6 +43,14 @@ func (observer dockerObserver) startReplacementServices(ctx context.Context, fix
 	}
 	if err := observer.waitReady(ctx, "client-endpoint"); err != nil {
 		return nil, fmt.Errorf("wait for client Endpoint readiness: %w", err)
+	}
+	// Publisher lifetime starts only after every passive listener is ready;
+	// Docker setup latency must not consume the bounded Route lifetime.
+	if _, err := observer.compose(ctx, time.Minute, "up", "-d", "publisher"); err != nil {
+		return nil, fmt.Errorf("start bounded publisher Attachments: %w", err)
+	}
+	if err := observer.waitReady(ctx, "publisher"); err != nil {
+		return nil, fmt.Errorf("wait for bounded publisher Attachment readiness: %w", err)
 	}
 	if _, err := observer.compose(ctx, time.Minute, "up", "-d", "client-app", "client"); err != nil {
 		return nil, fmt.Errorf("start client Application and bounded Route policy: %w", err)
