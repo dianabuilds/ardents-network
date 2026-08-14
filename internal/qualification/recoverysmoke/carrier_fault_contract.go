@@ -53,6 +53,13 @@ type carrierRetirementReceipt struct {
 	Established                     bool   `json:"established"`
 }
 
+type trafficCounterReceipt struct {
+	Kind       string `json:"kind"`
+	Interfaces uint32 `json:"interfaces"`
+	Received   uint64 `json:"received_bytes"`
+	Sent       uint64 `json:"sent_bytes"`
+}
+
 func executeCarrierFault(arguments []string, output io.Writer) error {
 	encoder := json.NewEncoder(output)
 	if len(arguments) == 1 && arguments[0] == "wait" {
@@ -71,6 +78,13 @@ func executeCarrierFault(arguments []string, output io.Writer) error {
 			return err
 		}
 		if err := validateDedicatedCarrier(value); err != nil {
+			return err
+		}
+		return encoder.Encode(value)
+	}
+	if len(arguments) == 1 && arguments[0] == "traffic" {
+		value, err := readNetworkTrafficFile()
+		if err != nil {
 			return err
 		}
 		return encoder.Encode(value)

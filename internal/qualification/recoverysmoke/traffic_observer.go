@@ -2,6 +2,7 @@ package recoverysmoke
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"time"
@@ -63,29 +64,30 @@ func (observer dockerObserver) startTrafficObserver(ctx context.Context,
 
 func (value *trafficObservers) snapshotAndRemove(ctx context.Context, observer dockerObserver,
 	clock time.Time) (recovery.ResourceSample, error) {
-	identities := map[string]string{"client-traffic": value.ids[0], "publisher-traffic": value.ids[1]}
-	services := []string{"client-traffic", "publisher-traffic"}
-	args := []string{"stats", "--no-stream", "--format", "{{json .}}", value.ids[0], value.ids[1]}
-	raw, err := observer.docker(ctx, 10*time.Second, args...)
 	var sample recovery.ResourceSample
-	seen := map[string]bool{}
-	for _, line := range splitLines(raw) {
-		service, rowErr := addResourceRow(line, identities, services, &sample)
-		if rowErr == nil && service == "" {
-			continue
-		}
-		if rowErr != nil || seen[service] {
-			err = errors.Join(err, rowErr, errors.New("final traffic observation is malformed"))
-			break
-		}
-		seen[service] = true
+	client, clientErr := observer.observeTrafficCounter(ctx, value.ids[0])
+	publisher, publisherErr := observer.observeTrafficCounter(ctx, value.ids[1])
+	if clientErr == nil {
+		sample.ClientReceived, sample.ClientSent = client.Received, client.Sent
+	}
+	if publisherErr == nil {
+		sample.PublisherReceived, sample.PublisherSent = publisher.Received, publisher.Sent
 	}
 	sample.AtNanos = time.Since(clock).Nanoseconds()
-	if len(seen) != len(services) {
-		err = errors.Join(err, errors.New("final traffic observation is incomplete"))
-	}
 	removeErr := value.remove(context.Background(), observer)
-	return sample, errors.Join(err, removeErr)
+	return sample, errors.Join(clientErr, publisherErr, removeErr)
+}
+
+func (observer dockerObserver) observeTrafficCounter(ctx context.Context, identity string) (trafficCounterReceipt, error) {
+	raw, err := observer.docker(ctx, 10*time.Second, "exec", identity,
+		"/usr/local/bin/ardents-qualify", "carrier-fault", "traffic")
+	var value trafficCounterReceipt
+	decodeErr := json.Unmarshal(raw, &value)
+	if err != nil || decodeErr != nil || value.Kind != "traffic" || value.Interfaces == 0 ||
+		value.Received == 0 || value.Sent == 0 {
+		return trafficCounterReceipt{}, errors.Join(err, decodeErr, errors.New("terminal network traffic observation is invalid"))
+	}
+	return value, nil
 }
 
 func (value *trafficObservers) remove(ctx context.Context, observer dockerObserver) error {
