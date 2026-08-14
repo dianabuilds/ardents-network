@@ -40,3 +40,33 @@ func TestResourceRowBindsTheExactContainerSide(t *testing.T) {
 		})
 	}
 }
+
+func TestResourceRowAcceptsOnlyDockerStatsCursorFraming(t *testing.T) {
+	identity := strings.Repeat("a", 64)
+	row := `{"ID":"` + identity[:12] + `","MemUsage":"1MiB / 2MiB","CPUPerc":"1%","NetIO":"1kB / 1kB"}`
+	for name, framed := range map[string]string{
+		"cursor home": "\x1b[H" + row,
+		"refresh":     "\x1b[J\x1b[H" + row + " \x1b[K",
+	} {
+		t.Run(name, func(t *testing.T) {
+			service, err := addResourceRow([]byte(framed), map[string]string{"client": identity},
+				[]string{"client"}, &recovery.ResourceSample{})
+			if err != nil || service != "client" {
+				t.Fatalf("service=%q err=%v", service, err)
+			}
+		})
+	}
+	if service, err := addResourceRow([]byte(" \x1b[K"), map[string]string{"client": identity},
+		[]string{"client"}, &recovery.ResourceSample{}); err != nil || service != "" {
+		t.Fatalf("control-only row service=%q err=%v", service, err)
+	}
+	for name, framed := range map[string]string{"text": "prefix" + row, "wide CSI": "\x1b[2J" + row,
+		"suffix": row + " garbage"} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := addResourceRow([]byte(framed), map[string]string{"client": identity},
+				[]string{"client"}, &recovery.ResourceSample{}); err == nil {
+				t.Fatal("unrecognized framing passed")
+			}
+		})
+	}
+}

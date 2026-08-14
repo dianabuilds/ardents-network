@@ -2,6 +2,7 @@ package recoverysmoke
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -100,6 +101,9 @@ func (observer dockerObserver) streamResourceSamples(ctx context.Context, identi
 			parseErr = rowErr
 			break
 		}
+		if service == "" {
+			continue
+		}
 		if seen[service] {
 			sample, seen = recovery.ResourceSample{}, map[string]bool{}
 			service, rowErr = addResourceRow(scanner.Bytes(), identities, services, &sample)
@@ -132,8 +136,12 @@ func (observer dockerObserver) streamResourceSamples(ctx context.Context, identi
 
 func addResourceRow(line []byte, identities map[string]string, services []string,
 	result *recovery.ResourceSample) (string, error) {
+	payload, present, err := dockerStatsPayload(line)
+	if err != nil || !present {
+		return "", err
+	}
 	var value struct{ ID, MemUsage, CPUPerc, NetIO string }
-	if err := json.Unmarshal(line, &value); err != nil {
+	if err := json.Unmarshal(payload, &value); err != nil {
 		return "", fmt.Errorf("docker stats row is malformed: %w", err)
 	}
 	memory, received, sent, cpu, err := parseDockerStats(value.MemUsage, value.NetIO, value.CPUPerc)
@@ -167,6 +175,36 @@ func addResourceRow(line []byte, identities map[string]string, services []string
 		}
 	}
 	return "", errors.New("docker stats process identity is unknown")
+}
+
+func dockerStatsPayload(line []byte) ([]byte, bool, error) {
+	line = bytes.TrimSuffix(line, []byte{'\r'})
+	start, end := bytes.IndexByte(line, '{'), bytes.LastIndexByte(line, '}')
+	if start < 0 && end < 0 {
+		if dockerStatsControl(line) {
+			return nil, false, nil
+		}
+		return nil, false, errors.New("docker stats row has no JSON payload")
+	}
+	if start < 0 || end < start || !dockerStatsControl(line[:start]) || !dockerStatsControl(line[end+1:]) {
+		return nil, false, errors.New("docker stats row has invalid stream framing")
+	}
+	return line[start : end+1], true, nil
+}
+
+func dockerStatsControl(value []byte) bool {
+	for len(value) > 0 {
+		if value[0] == ' ' {
+			value = value[1:]
+			continue
+		}
+		if len(value) < 3 || value[0] != 0x1b || value[1] != '[' ||
+			(value[2] != 'H' && value[2] != 'J' && value[2] != 'K') {
+			return false
+		}
+		value = value[3:]
+	}
+	return true
 }
 
 func parseDockerStats(memoryText, networkText, cpuText string) (uint64, uint64, uint64, float64, error) {

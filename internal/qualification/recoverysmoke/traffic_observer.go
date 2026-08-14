@@ -71,6 +71,9 @@ func (value *trafficObservers) snapshotAndRemove(ctx context.Context, observer d
 	seen := map[string]bool{}
 	for _, line := range splitLines(raw) {
 		service, rowErr := addResourceRow(line, identities, services, &sample)
+		if rowErr == nil && service == "" {
+			continue
+		}
 		if rowErr != nil || seen[service] {
 			err = errors.Join(err, rowErr, errors.New("final traffic observation is malformed"))
 			break
