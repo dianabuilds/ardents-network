@@ -67,7 +67,8 @@ func Verify(value Evidence) Result {
 		minimumCampaign, maximumCampaign = int64(20*time.Minute), int64(30*time.Minute)
 	}
 	if value.RequestedNanos < minimumCampaign || value.RequestedNanos > int64(30*time.Minute) ||
-		value.CampaignNanos < value.RequestedNanos || value.CampaignNanos > maximumCampaign {
+		value.CampaignNanos < value.RequestedNanos || value.CampaignNanos > maximumCampaign ||
+		value.CampaignCompletedAtNanos < value.CampaignNanos {
 		return invalid("campaign duration is outside its frozen bound")
 	}
 	if len(value.Cells) < 2 {
@@ -98,7 +99,8 @@ func Verify(value Evidence) Result {
 		return invalid("both directional cells are required")
 	}
 	if s42 {
-		if result := verifyReplacementEvidence(value, containerIDs, hostScope); result.Verdict != "pass" {
+		if result := verifyReplacementEvidence(value, containerIDs, hostScope,
+			value.CampaignCompletedAtNanos); result.Verdict != "pass" {
 			return result
 		}
 	}
@@ -133,7 +135,10 @@ func Verify(value Evidence) Result {
 			}
 		}
 	}
-	if !value.Cleanup.DockerEmpty || !value.Cleanup.FixtureAbsent || !value.Cleanup.PrivateMaterialAbsent {
+	if !validCleanupObservation(value.Cleanup, hostScope) ||
+		hostScope.Adapter == "docker-compose-v1" && !validDockerCleanupProjection(value.Cleanup, hostScope) ||
+		value.Cleanup.ObservedAtNanos < value.CampaignCompletedAtNanos ||
+		!value.Cleanup.FixtureAbsent || !value.Cleanup.PrivateMaterialAbsent {
 		return invalid("cleanup or private-material removal is incomplete")
 	}
 	reason := "all frozen S4.1 recovery conjuncts passed"

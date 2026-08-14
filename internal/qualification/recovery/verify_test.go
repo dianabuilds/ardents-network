@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -25,6 +26,14 @@ func TestVerifyRejectsMissingHostScope(t *testing.T) {
 	}
 }
 
+func TestVerifyRejectsMissingCleanupReceipt(t *testing.T) {
+	value := validEvidence(t)
+	value.Cleanup.Adapter = ""
+	if result := Verify(value); result.Verdict != "invalid" {
+		t.Fatalf("missing cleanup receipt verdict = %+v, want invalid", result)
+	}
+}
+
 func TestVerifyRejectsMutationMissingEvidenceAndCandidateFailure(t *testing.T) {
 	for name, mutate := range map[string]func(*Evidence){
 		"mutated bytes":    func(value *Evidence) { value.Cells[0].ObservedDigest[0]++ },
@@ -36,6 +45,9 @@ func TestVerifyRejectsMutationMissingEvidenceAndCandidateFailure(t *testing.T) {
 		"campaign exceeds absolute maximum": func(value *Evidence) {
 			value.RequestedNanos = int64(30 * time.Minute)
 			value.CampaignNanos = value.RequestedNanos + 1
+		},
+		"campaign completion predates duration": func(value *Evidence) {
+			value.CampaignCompletedAtNanos = value.CampaignNanos - 1
 		},
 		"late canary": func(value *Evidence) { value.Cells[0].CanaryAtNanos += int64(6 * time.Second) },
 		"fault setup moved recovery clock": func(value *Evidence) {
@@ -64,7 +76,19 @@ func TestVerifyRejectsMutationMissingEvidenceAndCandidateFailure(t *testing.T) {
 		"old Carrier retired after restoration": func(value *Evidence) {
 			value.Cells[0].OldCarrierRetiredNanos = value.Cells[0].FaultCompletedNanos + 1
 		},
-		"secret cleanup":      func(value *Evidence) { value.Cleanup.PrivateMaterialAbsent = false },
+		"secret cleanup": func(value *Evidence) { value.Cleanup.PrivateMaterialAbsent = false },
+		"owned cleanup resource": func(value *Evidence) {
+			value.Cleanup.OwnedResources = 1
+			value.Cleanup.Observation = cleanupObservationCommitment(value.Cleanup)
+		},
+		"cleanup Adapter projection changed": func(value *Evidence) {
+			value.Cleanup.AdapterProjection = []byte(`{"Project":"other","Containers":0,"Networks":0,"Volumes":0}`)
+			value.Cleanup.Observation = cleanupObservationCommitment(value.Cleanup)
+		},
+		"cleanup observed before campaign completion": func(value *Evidence) {
+			value.Cleanup.ObservedAtNanos = value.CampaignCompletedAtNanos - 1
+			value.Cleanup.Observation = cleanupObservationCommitment(value.Cleanup)
+		},
 		"fault mismatch":      func(value *Evidence) { value.Cells[0].FaultedCarrier = strings.Repeat("3", 64) },
 		"retirement mismatch": func(value *Evidence) { value.Cells[0].RetiredCarrier = strings.Repeat("3", 64) },
 		"route process incarnation changed": func(value *Evidence) {
@@ -221,8 +245,11 @@ func validEvidence(t *testing.T) Evidence {
 			"ardents-qualify": strings.Repeat("e", 64), "ardents-stream-app": strings.Repeat("c", 64),
 			"ardents-recovery-qualify": strings.Repeat("d", 64)},
 		RequestedNanos: int64(10 * time.Minute), CampaignNanos: int64(10 * time.Minute),
-		Negatives: map[string]Negative{}, Cleanup: cleanup{DockerEmpty: true, FixtureAbsent: true, PrivateMaterialAbsent: true}}
-	value.HostScope = encodeHostScopeTest(t, testHostScope(value.SourceCommit, value.ImageID, value.ManifestDigest))
+		CampaignCompletedAtNanos: int64(10 * time.Minute),
+		Negatives:                map[string]Negative{}}
+	hostScope := testHostScope(value.SourceCommit, value.ImageID, value.ManifestDigest)
+	value.HostScope = encodeHostScopeTest(t, hostScope)
+	value.Cleanup = testCleanupObservation(t, hostScope, value.CampaignCompletedAtNanos+1)
 	value.IsolationContext = sha256.Sum256(append([]byte("isolation\x00"), manifestDigest[:]...))
 	value.DestinationBinding = sha256.Sum256(append([]byte("destination\x00"), target[:]...))
 	for _, name := range negativeNames {
@@ -321,4 +348,16 @@ func validEvidence(t *testing.T) Evidence {
 		value.Cells = append(value.Cells, cell)
 	}
 	return value
+}
+
+func testCleanupObservation(t *testing.T, scope hostScopeEvidence, observedAt int64) cleanup {
+	t.Helper()
+	raw, err := json.Marshal(dockerCleanupProjection{Project: scope.AdapterProjection})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := cleanup{Adapter: scope.Adapter, Scope: scope.Commitment, ObservedAtNanos: observedAt,
+		AdapterProjection: raw, FixtureAbsent: true, PrivateMaterialAbsent: true}
+	result.Observation = cleanupObservationCommitment(result)
+	return result
 }

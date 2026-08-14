@@ -247,6 +247,8 @@ func validS42Evidence(t *testing.T) Evidence {
 	if err != nil {
 		t.Fatal(err)
 	}
+	value.CampaignCompletedAtNanos = max(value.CampaignNanos, hostStartedAt)
+	value.Cleanup = testCleanupObservation(t, hostScope, value.CampaignCompletedAtNanos+1)
 	return value
 }
 

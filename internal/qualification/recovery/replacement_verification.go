@@ -9,7 +9,8 @@ import (
 	"time"
 )
 
-func verifyReplacementEvidence(value Evidence, prior map[string]bool, hostScope hostScopeEvidence) Result {
+func verifyReplacementEvidence(value Evidence, prior map[string]bool, hostScope hostScopeEvidence,
+	campaignCompletedAt int64) Result {
 	var replacement replacementEvidence
 	decoder := json.NewDecoder(bytes.NewReader(value.S42))
 	decoder.DisallowUnknownFields()
@@ -82,6 +83,9 @@ func verifyReplacementEvidence(value Evidence, prior map[string]bool, hostScope 
 				return invalid("mandatory S4.2 replacement cell is missing")
 			}
 		}
+	}
+	if priorHostTerminal > campaignCompletedAt {
+		return invalid("S4.2 host observation follows campaign completion")
 	}
 	return Result{Verdict: "pass"}
 }

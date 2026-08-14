@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/qualification/byteio"
 )
 
 type dockerObserver struct {
@@ -32,8 +34,31 @@ func (observer dockerObserver) docker(ctx context.Context, timeout time.Duration
 }
 
 func (observer dockerObserver) command(ctx context.Context, timeout time.Duration, name string, arguments ...string) ([]byte, error) {
-	bounded, cancel := context.WithTimeout(ctx, timeout)
+	command, bounded, cancel := observer.configuredCommand(ctx, timeout, name, arguments...)
 	defer cancel()
+	output, err := command.CombinedOutput()
+	return commandOutput(output, err, bounded.Err())
+}
+
+func (observer dockerObserver) commandBounded(ctx context.Context, timeout time.Duration, maximum int,
+	name string, arguments ...string) ([]byte, error) {
+	command, bounded, cancel := observer.configuredCommand(ctx, timeout, name, arguments...)
+	defer cancel()
+	output := byteio.NewBuffer(maximum)
+	command.Stdout, command.Stderr = output, output
+	err := command.Run()
+	if bounded.Err() != nil {
+		return output.Bytes(), bounded.Err()
+	}
+	if output.Overflowed() {
+		return output.Bytes(), errors.Join(fmt.Errorf("command output exceeded %d bytes", maximum), err)
+	}
+	return commandOutput(output.Bytes(), err, nil)
+}
+
+func (observer dockerObserver) configuredCommand(ctx context.Context, timeout time.Duration, name string,
+	arguments ...string) (*exec.Cmd, context.Context, context.CancelFunc) {
+	bounded, cancel := context.WithTimeout(ctx, timeout)
 	command := exec.CommandContext(bounded, name, arguments...)
 	command.Dir = observer.input.SourceRoot
 	command.Env = append(os.Environ(),
@@ -66,12 +91,19 @@ func (observer dockerObserver) command(ctx context.Context, timeout time.Duratio
 	} else {
 		command.Env = append(command.Env, "ARDENTS_STREAM_GATE_ROOT=")
 	}
-	output, err := command.CombinedOutput()
-	if bounded.Err() != nil {
-		return output, bounded.Err()
+	return command, bounded, cancel
+}
+
+func commandOutput(output []byte, runErr, contextErr error) ([]byte, error) {
+	if contextErr != nil {
+		return output, contextErr
 	}
-	if err != nil {
-		return output, errors.New(strings.TrimSpace(string(output)) + ": " + err.Error())
+	if runErr != nil {
+		diagnostic := strings.TrimSpace(string(output))
+		if diagnostic == "" {
+			return output, fmt.Errorf("command failed: %w", runErr)
+		}
+		return output, fmt.Errorf("%s: %w", diagnostic, runErr)
 	}
 	return output, nil
 }

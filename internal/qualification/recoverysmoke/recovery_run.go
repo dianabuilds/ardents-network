@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -137,13 +138,18 @@ func (observer dockerObserver) runRecoveryCell(ctx context.Context, fixture prep
 		return observer.invalid(err)
 	}
 	evidence.Negatives = negatives
+	evidence.CampaignCompletedAtNanos = max(evidence.CampaignNanos,
+		max(int64(1), time.Since(hostClock).Nanoseconds()))
 	if err := observer.resetRecoveryTopology(ctx, time.Minute); err != nil {
 		return observer.invalid(err)
 	}
-	if err := observer.assertDockerEmpty(ctx); err != nil {
+	cleanup, err := observer.observeDockerCleanup(ctx, hostScope, hostClock)
+	if err != nil {
 		return observer.invalid(err)
 	}
-	evidence.Cleanup.DockerEmpty = true
+	evidence.Cleanup.Adapter, evidence.Cleanup.Scope = cleanup.adapter, cleanup.scope
+	evidence.Cleanup.ObservedAtNanos, evidence.Cleanup.OwnedResources = cleanup.observedAt, cleanup.owned
+	evidence.Cleanup.AdapterProjection, evidence.Cleanup.Observation = cleanup.adapterProjection, cleanup.commitment
 	if err := removePrivateFixture(observer.input.FixtureRoot); err != nil {
 		return observer.invalid(err)
 	}
@@ -203,10 +209,12 @@ func resultImage(observer dockerObserver) string {
 
 func (observer dockerObserver) assertDockerEmpty(ctx context.Context) error {
 	for _, kind := range []string{"container", "network", "volume"} {
-		raw, err := observer.docker(ctx, time.Minute, kind, "ls", "-q", "--filter",
-			"label=com.docker.compose.project="+observer.project)
-		if err != nil || strings.TrimSpace(string(raw)) != "" {
-			return errors.New("recovery Docker ownership is not empty")
+		raw, err := observer.docker(ctx, time.Minute, dockerOwnedListArguments(kind, observer.project)...)
+		if err != nil {
+			return fmt.Errorf("enumerate final owned Docker %s resources: %w", kind, err)
+		}
+		if strings.TrimSpace(string(raw)) != "" {
+			return fmt.Errorf("recovery Docker ownership retains a %s resource", kind)
 		}
 	}
 	return nil

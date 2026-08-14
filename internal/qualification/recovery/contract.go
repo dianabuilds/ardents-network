@@ -18,7 +18,7 @@ type Evidence struct {
 	Manifest                                                      PublicManifest
 	HostScope                                                     json.RawMessage
 	S42                                                           json.RawMessage
-	RequestedNanos, CampaignNanos                                 int64
+	RequestedNanos, CampaignNanos, CampaignCompletedAtNanos       int64
 	Cells                                                         []Cell
 	Negatives                                                     map[string]Negative
 	Cleanup                                                       cleanup
@@ -121,7 +121,12 @@ type Negative struct {
 }
 
 type cleanup struct {
-	DockerEmpty, FixtureAbsent, PrivateMaterialAbsent bool
+	Adapter                              string
+	Scope, Observation                   [32]byte
+	ObservedAtNanos                      int64
+	OwnedResources                       uint32
+	AdapterProjection                    json.RawMessage
+	FixtureAbsent, PrivateMaterialAbsent bool
 }
 
 // Result is exactly one independent pass, fail, or invalid verdict.
