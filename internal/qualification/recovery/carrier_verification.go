@@ -38,16 +38,22 @@ func verifyCarrierEvidence(cell Cell, imageID string) Result {
 	}
 	roles := []string{"client", "initiator", "introduction", "rendezvous", "responder", "publisher"}
 	if len(cell.InitialRouteContainers) != len(roles) || len(cell.RecoveredRouteContainers) != len(roles) ||
-		len(cell.InitialRoutePIDs) != len(roles) || len(cell.RecoveredRoutePIDs) != len(roles) {
+		len(cell.InitialRoutePIDs) != len(roles) || len(cell.InitialRouteIncarnations) != len(roles) ||
+		len(cell.RecoveredRouteIncarnations) != len(roles) {
 		return invalid("selected Route process evidence is incomplete")
 	}
 	for _, role := range roles {
 		initialContainer, initialContainerOK := cell.InitialRouteContainers[role]
 		recoveredContainer, recoveredContainerOK := cell.RecoveredRouteContainers[role]
 		initialPID, initialPIDOK := cell.InitialRoutePIDs[role]
-		recoveredPID, recoveredPIDOK := cell.RecoveredRoutePIDs[role]
-		if !initialContainerOK || !recoveredContainerOK || !initialPIDOK || !recoveredPIDOK ||
-			initialContainer == "" || initialPID == 0 || initialContainer != recoveredContainer || initialPID != recoveredPID {
+		initialIncarnation, initialIncarnationOK := cell.InitialRouteIncarnations[role]
+		recoveredIncarnation, recoveredIncarnationOK := cell.RecoveredRouteIncarnations[role]
+		_, initialStartedOK := processStartedAt(initialIncarnation, initialContainer)
+		_, recoveredStartedOK := processStartedAt(recoveredIncarnation, recoveredContainer)
+		if !initialContainerOK || !recoveredContainerOK || !initialPIDOK || !initialIncarnationOK ||
+			!recoveredIncarnationOK || !containerID(initialContainer) || !containerID(recoveredContainer) || initialPID == 0 ||
+			initialContainer != recoveredContainer || !initialStartedOK || !recoveredStartedOK ||
+			initialIncarnation != recoveredIncarnation {
 			return fail("selected Route process changed during Carrier recovery: " + role)
 		}
 		if cell.FaultController == initialContainer {

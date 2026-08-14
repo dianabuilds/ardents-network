@@ -51,7 +51,8 @@ type Cell struct {
 	ClientTrafficObserver, PublisherTrafficObserver                 ObserverProcess
 	BaselineClientRoute, BaselinePublisherRoute                     string
 	InitialRouteContainers, RecoveredRouteContainers                map[string]string
-	InitialRoutePIDs, RecoveredRoutePIDs                            map[string]uint32
+	InitialRoutePIDs                                                map[string]uint32
+	InitialRouteIncarnations, RecoveredRouteIncarnations            map[string]string
 	Seed                                                            [32]byte
 	ExpectedDigest, ObservedDigest, Canary                          [32]byte
 	Bytes, PlannedFaultOffset, FaultOffset                          uint32

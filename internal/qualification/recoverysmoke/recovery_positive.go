@@ -56,6 +56,10 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 	if err != nil {
 		return recovery.Cell{}, err
 	}
+	initialRouteIncarnations, err := observer.routeProcessIncarnations(ctx, identities)
+	if err != nil {
+		return recovery.Cell{}, err
+	}
 	traffic, err := observer.startTrafficObservers(ctx, identities)
 	if err != nil {
 		return recovery.Cell{}, err
@@ -108,9 +112,13 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 		return recovery.Cell{}, errors.Join(err, errors.New("recovery reused the failed Carrier socket"))
 	}
 	replacementObservedAt := time.Since(cellClock).Nanoseconds()
-	recoveredRouteContainers, recoveredRoutePIDs, err := observer.routeProcessIdentities(ctx, identities)
+	recoveredRouteIncarnations, err := observer.routeProcessIncarnations(ctx, identities)
 	if err != nil {
 		return recovery.Cell{}, err
+	}
+	recoveredRouteContainers := make(map[string]string, len(initialRouteContainers))
+	for role, identity := range initialRouteContainers {
+		recoveredRouteContainers[role] = identity
 	}
 	for _, service := range recoveryServiceNames() {
 		if err := observer.waitContainer(ctx, identities[service], true); err != nil {
@@ -148,8 +156,9 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 		FaultService:       "rendezvous-responder-carrier", FaultContainer: identities["rendezvous"], FaultNetwork: network,
 		FaultController: faultController, FaultControllerRemoved: fault.controllerRemoved, ReplacementObserver: replacementObserver,
 		InitialRouteContainers: initialRouteContainers, RecoveredRouteContainers: recoveredRouteContainers,
-		InitialRoutePIDs: initialRoutePIDs, RecoveredRoutePIDs: recoveredRoutePIDs,
-		Canary: workloadCanary(seed, canaryOffset), Bytes: recoveryBytes, PlannedFaultOffset: faultThreshold,
+		InitialRoutePIDs: initialRoutePIDs, InitialRouteIncarnations: initialRouteIncarnations,
+		RecoveredRouteIncarnations: recoveredRouteIncarnations,
+		Canary:                     workloadCanary(seed, canaryOffset), Bytes: recoveryBytes, PlannedFaultOffset: faultThreshold,
 		FaultOffset:          delivered,
 		DeliveredBeforeFault: delivered, CanaryOffset: canaryOffset, LastDeliveryNanos: lastDeliveryAt,
 		CarrierObservedNanos: carrierObservedAt, FaultAtNanos: fault.faultAt, FaultCompletedNanos: fault.completedAt,

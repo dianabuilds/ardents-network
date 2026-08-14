@@ -59,8 +59,15 @@ func TestVerifyRejectsMutationMissingEvidenceAndCandidateFailure(t *testing.T) {
 		"secret cleanup":      func(value *Evidence) { value.Cleanup.PrivateMaterialAbsent = false },
 		"fault mismatch":      func(value *Evidence) { value.Cells[0].FaultedCarrier = strings.Repeat("3", 64) },
 		"retirement mismatch": func(value *Evidence) { value.Cells[0].RetiredCarrier = strings.Repeat("3", 64) },
-		"route pid changed": func(value *Evidence) {
-			value.Cells[0].RecoveredRoutePIDs["rendezvous"]++
+		"route process incarnation changed": func(value *Evidence) {
+			container := value.Cells[0].RecoveredRouteContainers["rendezvous"]
+			value.Cells[0].RecoveredRouteIncarnations["rendezvous"] = container + "@2026-08-14T08:04:06Z"
+		},
+		"route process container is not a full Docker identity": func(value *Evidence) {
+			cell := &value.Cells[0]
+			cell.InitialRouteContainers["initiator"], cell.RecoveredRouteContainers["initiator"] = "short", "short"
+			cell.InitialRouteIncarnations["initiator"] = "short@2026-08-14T08:04:05Z"
+			cell.RecoveredRouteIncarnations["initiator"] = "short@2026-08-14T08:04:05Z"
 		},
 		"wrong fault network": func(value *Evidence) { value.Cells[0].FaultNetwork = "campaign_route_net" },
 		"missing replacement interface": func(value *Evidence) {
@@ -237,8 +244,9 @@ func validEvidence() Evidence {
 			FaultNetwork: "ardents-recovery-test_carrier_net", FaultController: identity(11),
 			FaultControllerRemoved: true, FaultResourceAbsent: true,
 			InitialRouteContainers: map[string]string{}, RecoveredRouteContainers: map[string]string{},
-			InitialRoutePIDs: map[string]uint32{}, RecoveredRoutePIDs: map[string]uint32{},
-			Seed: seed, Bytes: streamBytes, PlannedFaultOffset: planned,
+			InitialRoutePIDs: map[string]uint32{}, InitialRouteIncarnations: map[string]string{},
+			RecoveredRouteIncarnations: map[string]string{},
+			Seed:                       seed, Bytes: streamBytes, PlannedFaultOffset: planned,
 			CellManifestDigest: cellManifestDigest(direction, seed, planned), FaultOffset: planned, DeliveredBeforeFault: planned,
 			CanaryOffset: planned + 32, LastDeliveryNanos: 1, CarrierObservedNanos: 2, FaultAtNanos: 3,
 			FaultCompletedNanos: 10, CarrierCutAfterNanos: 1, AbsenceAfterNanos: 2,
@@ -270,7 +278,9 @@ func validEvidence() Evidence {
 		cell.MemoryHighWater, cell.OpenFilesHighWater, cell.GoroutinesHighWater, cell.TimerHighWater = 1, 1, 1, 1
 		for roleIndex, role := range []string{"client", "initiator", "introduction", "rendezvous", "responder", "publisher"} {
 			cell.InitialRouteContainers[role], cell.RecoveredRouteContainers[role] = identity(5+roleIndex), identity(5+roleIndex)
-			cell.InitialRoutePIDs[role], cell.RecoveredRoutePIDs[role] = uint32(roleIndex+1), uint32(roleIndex+1)
+			cell.InitialRoutePIDs[role] = uint32(roleIndex + 1)
+			incarnation := identity(5+roleIndex) + "@2026-08-14T08:04:05Z"
+			cell.InitialRouteIncarnations[role], cell.RecoveredRouteIncarnations[role] = incarnation, incarnation
 		}
 		cell.ClientTrafficObserver = trafficObserver(17, cell.InitialRouteContainers["client"])
 		cell.PublisherTrafficObserver = trafficObserver(18, cell.InitialRouteContainers["publisher"])

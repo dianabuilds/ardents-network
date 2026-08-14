@@ -190,3 +190,16 @@ func (observer dockerObserver) routeProcessIdentities(ctx context.Context,
 	}
 	return containerResult, pidResult, nil
 }
+
+func (observer dockerObserver) routeProcessIncarnations(ctx context.Context,
+	containers map[string]string) (map[string]string, error) {
+	result := make(map[string]string, 6)
+	for _, role := range []string{"client", "initiator", "introduction", "rendezvous", "responder", "publisher"} {
+		identity, err := observer.containerProcessIdentity(ctx, containers[role])
+		if err != nil {
+			return nil, fmt.Errorf("selected Route %s process incarnation: %w", role, err)
+		}
+		result[role] = identity
+	}
+	return result, nil
+}
