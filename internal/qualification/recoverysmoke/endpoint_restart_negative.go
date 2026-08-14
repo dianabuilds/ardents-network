@@ -39,15 +39,15 @@ func (observer dockerObserver) endpointRestartNegative(ctx context.Context) (rec
 	if err != nil {
 		return recovery.Negative{}, err
 	}
-	beforePID, err := observer.containerPID(ctx, publisherID)
+	beforeProcess, err := observer.containerProcessIdentity(ctx, publisherID)
 	if err != nil {
 		return recovery.Negative{}, err
 	}
 	if _, err := observer.compose(ctx, time.Minute, "restart", "publisher-endpoint"); err != nil {
 		return recovery.Negative{}, err
 	}
-	afterPID, err := observer.containerPID(ctx, publisherID)
-	if err != nil || afterPID == beforePID {
+	afterProcess, err := observer.containerProcessIdentity(ctx, publisherID)
+	if err != nil || afterProcess == beforeProcess {
 		return recovery.Negative{}, errors.Join(err, errors.New("endpoint process identity did not change on restart"))
 	}
 	if err := writeRelease(gate, "client"); err != nil {
@@ -72,18 +72,30 @@ func (observer dockerObserver) endpointRestartNegative(ctx context.Context) (rec
 	}
 	passed := terminal.Class != "" && terminal.Class != "clean service connection close" && elapsed <= 15*time.Second
 	return recovery.Negative{TerminalCount: 1, Class: terminal.Class, WithinNanos: elapsed.Nanoseconds(), Passed: passed,
-		ContainerID: publisherID, InjectedResource: "publisher-endpoint", BeforeProcess: beforePID, AfterProcess: afterPID}, nil
+		ContainerID: publisherID, InjectedResource: "publisher-endpoint",
+		BeforeProcess: beforeProcess, AfterProcess: afterProcess}, nil
 }
 
 func writeRelease(root, role string) error {
 	return os.WriteFile(filepath.Join(root, role+".release"), []byte("release\n"), 0o600)
 }
 
-func (observer dockerObserver) containerPID(ctx context.Context, container string) (string, error) {
-	raw, err := observer.docker(ctx, 10*time.Second, "inspect", "--format", "{{.State.Pid}}", container)
-	pid := strings.TrimSpace(string(raw))
-	if err != nil || pid == "" || pid == "0" {
-		return "", errors.Join(err, errors.New("container process identity is missing"))
+func (observer dockerObserver) containerProcessIdentity(ctx context.Context, container string) (string, error) {
+	raw, err := observer.docker(ctx, 10*time.Second, "inspect", "--format", "{{.Id}} {{.State.StartedAt}}", container)
+	if err != nil {
+		return "", errors.Join(err, errors.New("container process identity inspection failed"))
 	}
-	return pid, nil
+	return parseProcessIdentity(container, raw)
+}
+
+func parseProcessIdentity(container string, raw []byte) (string, error) {
+	fields := strings.Fields(string(raw))
+	if len(fields) != 2 || !validContainerID(container) || fields[0] != container {
+		return "", errors.New("container process identity is missing")
+	}
+	started, err := time.Parse(time.RFC3339Nano, fields[1])
+	if err != nil || started.IsZero() {
+		return "", errors.Join(err, errors.New("container process start identity is invalid"))
+	}
+	return container + "@" + started.UTC().Format(time.RFC3339Nano), nil
 }

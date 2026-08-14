@@ -92,9 +92,10 @@ func Verify(value Evidence) Result {
 			negative.WithinNanos <= 0 || negative.WithinNanos > int64(15*time.Second) || negative.ContainerID == "" {
 			return fail("mandatory negative did not terminate exactly once within 15 seconds: " + name)
 		}
-		if name == "endpoint-restart" && (negative.InjectedResource != "publisher-endpoint" ||
-			negative.BeforeProcess == "" || negative.AfterProcess == "" || negative.BeforeProcess == negative.AfterProcess) {
-			return invalid("Endpoint restart process identity is incomplete")
+		if name == "endpoint-restart" {
+			if result := verifyEndpointRestart(negative); result.Verdict != "pass" {
+				return result
+			}
 		}
 		injections := map[string]string{"replayed-attachment": "recovery-replayed-attachment",
 			"stale-attachment": "recovery-stale-attachment", "cross-binding": "recovery-cross-binding"}

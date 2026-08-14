@@ -90,6 +90,21 @@ func TestVerifyRejectsMutationMissingEvidenceAndCandidateFailure(t *testing.T) {
 			value.Topology = []byte(strings.Replace(string(value.Topology), "cap_add: [NET_ADMIN]", "cap_add: [NET_ADMIN, SYS_ADMIN]", 1))
 			value.TopologyDigest = hexDigest(value.Topology)
 		},
+		"restart identity is not host process identity": func(value *Evidence) {
+			negative := value.Negatives["endpoint-restart"]
+			negative.AfterProcess = "202"
+			value.Negatives["endpoint-restart"] = negative
+		},
+		"restart identity names another container": func(value *Evidence) {
+			negative := value.Negatives["endpoint-restart"]
+			negative.AfterProcess = strings.Repeat("e", 64) + "@2026-08-14T08:04:06Z"
+			value.Negatives["endpoint-restart"] = negative
+		},
+		"restart identity did not advance": func(value *Evidence) {
+			negative := value.Negatives["endpoint-restart"]
+			negative.AfterProcess = negative.BeforeProcess
+			value.Negatives["endpoint-restart"] = negative
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			value := validEvidence()
@@ -154,8 +169,11 @@ func validEvidence() Evidence {
 		}
 		value.Negatives[name] = negative
 	}
+	endpointContainer := strings.Repeat("f", 64)
 	value.Negatives["endpoint-restart"] = Negative{TerminalCount: 1, Class: "terminal", WithinNanos: int64(time.Second),
-		Passed: true, ContainerID: "endpoint-container", InjectedResource: "publisher-endpoint", BeforeProcess: "101", AfterProcess: "202"}
+		Passed: true, ContainerID: endpointContainer, InjectedResource: "publisher-endpoint",
+		BeforeProcess: endpointContainer + "@2026-08-14T08:04:05Z",
+		AfterProcess:  endpointContainer + "@2026-08-14T08:04:06Z"}
 	for index, direction := range []string{"client-to-publisher", "publisher-to-client"} {
 		seed := [32]byte{byte(index + 1)}
 		planned := (uint32(184) + uint32(seed[0]%8)) * 16_381
