@@ -9,48 +9,60 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/serviceconn"
 )
 
-func (observer dockerObserver) runNoFailureBaseline(ctx context.Context, direction string) (uint64, uint64, error) {
+func (observer dockerObserver) runNoFailureBaseline(ctx context.Context, direction string) (trafficBaseline, error) {
+	baselineClock := time.Now()
 	_, _ = observer.compose(ctx, time.Minute, "down", "-v", "--remove-orphans")
 	if err := refreshWorkload(observer.generation); err != nil {
-		return 0, 0, err
+		return trafficBaseline{}, err
 	}
 	observer.direction, observer.gateOffset = direction, 0
 	if err := setRouteAttachments(observer.input.FixtureRoot, 1); err != nil {
-		return 0, 0, err
+		return trafficBaseline{}, err
 	}
 	if err := configureRecoveryDirection(observer.generation, direction); err != nil {
-		return 0, 0, err
+		return trafficBaseline{}, err
 	}
 	if _, err := observer.compose(ctx, time.Minute, "--profile", "setup", "run", "--no-deps", "--rm", "volume-init"); err != nil {
-		return 0, 0, err
+		return trafficBaseline{}, err
 	}
 	if err := observer.startRecoveryServices(ctx); err != nil {
-		return 0, 0, err
+		return trafficBaseline{}, err
 	}
 	identities, err := observer.recoveryIdentities(ctx)
 	if err != nil {
-		return 0, 0, err
+		return trafficBaseline{}, err
 	}
+	traffic, err := observer.startTrafficObservers(ctx, identities)
+	if err != nil {
+		return trafficBaseline{}, err
+	}
+	defer func() { _ = traffic.remove(context.Background(), observer) }()
 	sampler := observer.startStats(ctx, identities, time.Now())
 	defer func() { _, _ = sampler.stop() }()
 	for _, service := range recoveryServiceNames() {
 		if err := observer.waitContainer(ctx, identities[service], true); err != nil {
-			return 0, 0, fmt.Errorf("baseline %s: %w", service, err)
+			return trafficBaseline{}, fmt.Errorf("baseline %s: %w", service, err)
 		}
 	}
+	terminalNanos := time.Since(baselineClock).Nanoseconds()
+	finalTraffic, trafficErr := traffic.snapshotAndRemove(ctx, observer, baselineClock)
 	samples, sampleErr := sampler.stop()
-	if sampleErr != nil {
-		return 0, 0, sampleErr
+	if sampleErr != nil || trafficErr != nil {
+		return trafficBaseline{}, errors.Join(sampleErr, trafficErr)
 	}
 	client, publisher, terminalErr := observer.baselineTerminals(ctx)
 	if terminalErr != nil || client.Class != "clean service connection close" || publisher.Class != "clean service connection close" {
-		return 0, 0, errors.Join(terminalErr, errors.New("paired no-failure baseline was not clean"))
+		return trafficBaseline{}, errors.Join(terminalErr, errors.New("paired no-failure baseline was not clean"))
 	}
-	last := samples[len(samples)-1]
+	_ = samples
+	clientTraffic := finalTraffic.ClientReceived + finalTraffic.ClientSent
+	publisherTraffic := finalTraffic.PublisherReceived + finalTraffic.PublisherSent
 	if _, err := observer.compose(ctx, time.Minute, "down", "-v", "--remove-orphans"); err != nil {
-		return 0, 0, err
+		return trafficBaseline{}, err
 	}
-	return last.ClientReceived + last.ClientSent, last.PublisherReceived + last.PublisherSent, nil
+	return trafficBaseline{client: clientTraffic, publisher: publisherTraffic,
+		terminalNanos: terminalNanos, finalTraffic: finalTraffic,
+		routes: traffic.routes, observers: traffic.projections}, nil
 }
 
 func (observer dockerObserver) baselineTerminals(ctx context.Context) (serviceconn.Result, serviceconn.Result, error) {

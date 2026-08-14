@@ -1,9 +1,13 @@
 package recoverysmoke
 
 import (
+	"bufio"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
@@ -28,24 +32,11 @@ func (observer dockerObserver) startStats(ctx context.Context, identities map[st
 	result := &statsSampler{cancel: cancel, done: make(chan struct{})}
 	go func() {
 		defer close(result.done)
-		ticker := time.NewTicker(time.Second)
-		defer ticker.Stop()
-		for {
-			sample, err := observer.hostResourceSample(sampleCtx, identities, clock)
-			result.mu.Lock()
-			if err != nil && sampleCtx.Err() == nil {
-				result.err = err
-			}
-			if err == nil {
-				result.samples = append(result.samples, sample)
-			}
-			result.mu.Unlock()
-			select {
-			case <-sampleCtx.Done():
-				return
-			case <-ticker.C:
-			}
-		}
+		samples, err := observer.streamResourceSamples(sampleCtx, identities, clock)
+		result.mu.Lock()
+		defer result.mu.Unlock()
+		result.samples = samples
+		result.err = err
 	}()
 	return result
 }
@@ -56,7 +47,11 @@ func (sampler *statsSampler) stop() ([]recovery.ResourceSample, error) {
 		<-sampler.done
 		sampler.mu.Lock()
 		defer sampler.mu.Unlock()
-		sampler.stoppedSamples = append([]recovery.ResourceSample(nil), sampler.samples...)
+		for _, sample := range sampler.samples {
+			if sample.ClientRSS > 0 && sample.PublisherRSS > 0 {
+				sampler.stoppedSamples = append(sampler.stoppedSamples, sample)
+			}
+		}
 		sampler.stoppedErr = sampler.err
 		if len(sampler.stoppedSamples) < 3 {
 			sampler.stoppedErr = errors.Join(sampler.stoppedErr,
@@ -66,51 +61,112 @@ func (sampler *statsSampler) stop() ([]recovery.ResourceSample, error) {
 	return append([]recovery.ResourceSample(nil), sampler.stoppedSamples...), sampler.stoppedErr
 }
 
-func (observer dockerObserver) hostResourceSample(ctx context.Context, identities map[string]string,
-	clock time.Time) (recovery.ResourceSample, error) {
+func resourceHighWater(samples []recovery.ResourceSample) (uint64, float64) {
+	var memory uint64
+	var cpu float64
+	for _, sample := range samples {
+		memory = max(memory, sample.ClientRSS, sample.PublisherRSS)
+		cpu = max(cpu, sample.ClientCPUPercent, sample.PublisherCPUPercent)
+	}
+	return memory, cpu
+}
+
+func (observer dockerObserver) streamResourceSamples(ctx context.Context, identities map[string]string,
+	clock time.Time) ([]recovery.ResourceSample, error) {
 	services := []string{"client-endpoint", "client-app", "client", "publisher-endpoint", "publisher-app", "publisher"}
-	args := []string{"stats", "--no-stream", "--format", "{{json .}}"}
+	args := []string{"stats", "--format", "{{json .}}"}
 	for _, service := range services {
 		args = append(args, identities[service])
 	}
-	raw, err := observer.docker(ctx, 30*time.Second, args...)
+	command := exec.CommandContext(ctx, "docker", args...)
+	stderr := &boundedTail{limit: 8 << 10}
+	command.Dir, command.Stderr = observer.input.SourceRoot, stderr
+	stdout, err := command.StdoutPipe()
 	if err != nil {
-		return recovery.ResourceSample{}, err
+		return nil, err
 	}
-	var result recovery.ResourceSample
-	result.AtNanos = time.Since(clock).Nanoseconds()
-	for _, line := range splitLines(raw) {
-		var value struct{ ID, MemUsage, CPUPerc, NetIO string }
-		if json.Unmarshal(line, &value) != nil {
-			return result, errors.New("docker stats row is malformed")
+	if err := command.Start(); err != nil {
+		return nil, err
+	}
+	var samples []recovery.ResourceSample
+	var sample recovery.ResourceSample
+	seen := map[string]bool{}
+	scanner := bufio.NewScanner(stdout)
+	scanner.Buffer(make([]byte, 1024), 64<<10)
+	var parseErr error
+	for scanner.Scan() {
+		service, rowErr := addResourceRow(scanner.Bytes(), identities, services, &sample)
+		if rowErr != nil {
+			parseErr = rowErr
+			break
 		}
-		memory, received, sent, cpu, parseErr := parseDockerStats(value.MemUsage, value.NetIO, value.CPUPerc)
-		if parseErr != nil {
-			return result, parseErr
-		}
-		client, matched := false, false
-		for _, service := range services {
-			if strings.HasPrefix(identities[service], value.ID) || strings.HasPrefix(value.ID, identities[service][:12]) {
-				client, matched = strings.HasPrefix(service, "client"), true
+		if seen[service] {
+			sample, seen = recovery.ResourceSample{}, map[string]bool{}
+			service, rowErr = addResourceRow(scanner.Bytes(), identities, services, &sample)
+			if rowErr != nil {
+				parseErr = rowErr
 				break
 			}
 		}
-		if !matched {
-			return result, errors.New("docker stats process identity is unknown")
-		}
-		if client {
-			result.ClientRSS += memory
-			result.ClientCPUPercent += cpu
-			result.ClientReceived += received
-			result.ClientSent += sent
-		} else {
-			result.PublisherRSS += memory
-			result.PublisherCPUPercent += cpu
-			result.PublisherReceived += received
-			result.PublisherSent += sent
+		seen[service] = true
+		if len(seen) == len(services) {
+			sample.AtNanos = time.Since(clock).Nanoseconds()
+			samples = append(samples, sample)
+			sample, seen = recovery.ResourceSample{}, map[string]bool{}
 		}
 	}
-	return result, nil
+	scanErr := scanner.Err()
+	if parseErr != nil || scanErr != nil {
+		_ = command.Process.Kill()
+	}
+	waitErr := command.Wait()
+	if ctx.Err() != nil && parseErr == nil && scanErr == nil {
+		return samples, nil
+	}
+	if waitErr != nil {
+		digest := sha256.Sum256(stderr.value())
+		waitErr = fmt.Errorf("docker stats stream failed (stderr_sha256=%x): %w", digest, waitErr)
+	}
+	return samples, errors.Join(parseErr, scanErr, waitErr)
+}
+
+func addResourceRow(line []byte, identities map[string]string, services []string,
+	result *recovery.ResourceSample) (string, error) {
+	var value struct{ ID, MemUsage, CPUPerc, NetIO string }
+	if err := json.Unmarshal(line, &value); err != nil {
+		return "", fmt.Errorf("docker stats row is malformed: %w", err)
+	}
+	memory, received, sent, cpu, err := parseDockerStats(value.MemUsage, value.NetIO, value.CPUPerc)
+	if err != nil {
+		return "", err
+	}
+	matched := ""
+	for _, service := range services {
+		identity := identities[service]
+		if validContainerID(identity) && (value.ID == identity || value.ID == identity[:12]) {
+			if matched != "" {
+				return "", errors.New("docker stats process identity is ambiguous")
+			}
+			matched = service
+		}
+	}
+	for _, service := range services {
+		if service == matched {
+			if strings.HasPrefix(service, "client") {
+				result.ClientRSS += memory
+				result.ClientCPUPercent += cpu
+				result.ClientReceived += received
+				result.ClientSent += sent
+			} else {
+				result.PublisherRSS += memory
+				result.PublisherCPUPercent += cpu
+				result.PublisherReceived += received
+				result.PublisherSent += sent
+			}
+			return service, nil
+		}
+	}
+	return "", errors.New("docker stats process identity is unknown")
 }
 
 func parseDockerStats(memoryText, networkText, cpuText string) (uint64, uint64, uint64, float64, error) {

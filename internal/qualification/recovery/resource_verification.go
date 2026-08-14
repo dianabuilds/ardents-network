@@ -16,6 +16,8 @@ func verifyResources(cell Cell) Result {
 	clientRSS, publisherRSS := make([]uint64, 0, len(cell.ResourceSamples)), make([]uint64, 0, len(cell.ResourceSamples))
 	clientCPU, publisherCPU := make([]float64, 0, len(cell.ResourceSamples)), make([]float64, 0, len(cell.ResourceSamples))
 	var clientCPUTotal, publisherCPUTotal float64
+	var memoryHigh uint64
+	var externalCPUHigh float64
 	for index, sample := range cell.ResourceSamples {
 		if sample.AtNanos <= 0 || sample.ClientRSS == 0 || sample.PublisherRSS == 0 ||
 			sample.ClientCPUPercent < 0 || sample.PublisherCPUPercent < 0 {
@@ -24,7 +26,8 @@ func verifyResources(cell Cell) Result {
 		if index > 0 {
 			previous := cell.ResourceSamples[index-1]
 			interval := sample.AtNanos - previous.AtNanos
-			if interval <= 0 || interval > int64(2*time.Second) || trafficBitrate(previous, sample) > carrierBitrateLimit {
+			if interval < int64(500*time.Millisecond) || interval > int64(1500*time.Millisecond) ||
+				trafficBitrate(previous, sample) > carrierBitrateLimit {
 				return fail("one-second carrier sampling or bitrate gate failed")
 			}
 		}
@@ -32,14 +35,19 @@ func verifyResources(cell Cell) Result {
 		clientCPU, publisherCPU = append(clientCPU, sample.ClientCPUPercent), append(publisherCPU, sample.PublisherCPUPercent)
 		clientCPUTotal += sample.ClientCPUPercent
 		publisherCPUTotal += sample.PublisherCPUPercent
+		memoryHigh = max(memoryHigh, sample.ClientRSS, sample.PublisherRSS)
+		externalCPUHigh = max(externalCPUHigh, sample.ClientCPUPercent, sample.PublisherCPUPercent)
+	}
+	if cell.MemoryHighWater != memoryHigh || cell.ExternalCPUPercent != externalCPUHigh {
+		return invalid("resource or traffic high-water projection is inconsistent")
 	}
 	if percentileUint64(clientRSS, 0.95) > endpointRSSLimit || percentileUint64(publisherRSS, 0.95) > endpointRSSLimit ||
 		clientCPUTotal/float64(len(clientCPU)) > 50 || publisherCPUTotal/float64(len(publisherCPU)) > 50 ||
 		percentileFloat(clientCPU, 0.95) > 100 || percentileFloat(publisherCPU, 0.95) > 100 {
 		return fail("endpoint RSS or CPU gate failed")
 	}
-	last := cell.ResourceSamples[len(cell.ResourceSamples)-1]
-	clientTraffic, publisherTraffic := last.ClientReceived+last.ClientSent, last.PublisherReceived+last.PublisherSent
+	clientTraffic := cell.FinalTraffic.ClientReceived + cell.FinalTraffic.ClientSent
+	publisherTraffic := cell.FinalTraffic.PublisherReceived + cell.FinalTraffic.PublisherSent
 	if trafficExcess(clientTraffic, cell.BaselineClientTraffic) > recoveryTrafficAllowance ||
 		trafficExcess(publisherTraffic, cell.BaselinePublisherTraffic) > recoveryTrafficAllowance {
 		return fail("recovery episode exceeded paired endpoint carrier allowance")

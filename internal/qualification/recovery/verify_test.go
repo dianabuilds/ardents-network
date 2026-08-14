@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -21,7 +22,14 @@ func TestVerifyRejectsMutationMissingEvidenceAndCandidateFailure(t *testing.T) {
 		"mutated bytes":    func(value *Evidence) { value.Cells[0].ObservedDigest[0]++ },
 		"missing negative": func(value *Evidence) { delete(value.Negatives, "deadline") },
 		"reconnect":        func(value *Evidence) { value.Cells[1].ApplicationReconnected = true },
-		"late canary":      func(value *Evidence) { value.Cells[0].CanaryAtNanos += int64(6 * time.Second) },
+		"unbounded campaign overrun": func(value *Evidence) {
+			value.CampaignNanos = value.RequestedNanos + int64(2*time.Minute) + 1
+		},
+		"campaign exceeds absolute maximum": func(value *Evidence) {
+			value.RequestedNanos = int64(30 * time.Minute)
+			value.CampaignNanos = value.RequestedNanos + 1
+		},
+		"late canary": func(value *Evidence) { value.Cells[0].CanaryAtNanos += int64(6 * time.Second) },
 		"fault setup moved recovery clock": func(value *Evidence) {
 			cell := &value.Cells[0]
 			cell.CarrierObservedNanos, cell.FaultAtNanos = int64(6*time.Second), int64(6*time.Second)+1
@@ -55,9 +63,48 @@ func TestVerifyRejectsMutationMissingEvidenceAndCandidateFailure(t *testing.T) {
 			value.Cells[0].RecoveredRoutePIDs["rendezvous"]++
 		},
 		"wrong fault network": func(value *Evidence) { value.Cells[0].FaultNetwork = "campaign_route_net" },
-		"malformed observer":  func(value *Evidence) { value.Cells[0].ReplacementObserver.ContainerID = "observer" },
+		"missing replacement interface": func(value *Evidence) {
+			value.Cells[0].ReplacementCarrierInterface = ""
+		},
+		"resource high-water underreported": func(value *Evidence) {
+			value.Cells[0].CarrierForwardBytes--
+		},
+		"traffic observer not removed": func(value *Evidence) {
+			value.Cells[0].ClientTrafficObserver.Removed = false
+		},
+		"final traffic predates terminal": func(value *Evidence) {
+			value.Cells[0].FinalTraffic.AtNanos = value.Cells[0].TerminalAtNanos - 1
+		},
+		"inflated paired baseline traffic": func(value *Evidence) {
+			value.Cells[0].BaselineClientTraffic++
+		},
+		"baseline traffic predates baseline terminal": func(value *Evidence) {
+			value.Cells[0].BaselineFinalTraffic.AtNanos = value.Cells[0].BaselineTerminalNanos - 1
+		},
+		"baseline Route overlaps controller": func(value *Evidence) {
+			cell := &value.Cells[0]
+			cell.BaselineClientRoute = cell.FaultController
+			cell.BaselineClientTrafficObserver.NetworkMode = "container:" + cell.FaultController
+		},
+		"baseline Route overlaps observer": func(value *Evidence) {
+			cell := &value.Cells[0]
+			cell.BaselineClientRoute = cell.BaselineClientTrafficObserver.ContainerID
+			cell.BaselineClientTrafficObserver.NetworkMode = "container:" + cell.BaselineClientRoute
+		},
+		"malformed observer": func(value *Evidence) { value.Cells[0].ReplacementObserver.ContainerID = "observer" },
 		"reused observer": func(value *Evidence) {
 			value.Cells[1].ReplacementObserver = value.Cells[0].ReplacementObserver
+		},
+		"observer overlaps prior controller": func(value *Evidence) {
+			value.Cells[1].ClientTrafficObserver.ContainerID = value.Cells[0].FaultController
+		},
+		"endpoint overlaps prior observer": func(value *Evidence) {
+			value.Cells[1].ClientProcess = value.Cells[0].ReplacementObserver.ContainerID
+		},
+		"baseline Route overlaps prior observer": func(value *Evidence) {
+			cell := &value.Cells[1]
+			cell.BaselineClientRoute = value.Cells[0].ReplacementObserver.ContainerID
+			cell.BaselineClientTrafficObserver.NetworkMode = "container:" + cell.BaselineClientRoute
 		},
 		"controller not removed": func(value *Evidence) {
 			value.Cells[0].FaultControllerRemoved = false
@@ -175,18 +222,19 @@ func validEvidence() Evidence {
 		BeforeProcess: endpointContainer + "@2026-08-14T08:04:05Z",
 		AfterProcess:  endpointContainer + "@2026-08-14T08:04:06Z"}
 	for index, direction := range []string{"client-to-publisher", "publisher-to-client"} {
+		identity := func(slot int) string { return fmt.Sprintf("%064x", 100+index*20+slot) }
 		seed := [32]byte{byte(index + 1)}
 		planned := (uint32(184) + uint32(seed[0]%8)) * 16_381
-		cell := Cell{Direction: direction, ClientProcess: "client", PublisherProcess: "publisher",
-			ClientApplicationProcess: "client-app", PublisherApplicationProcess: "publisher-app", InitialCarrier: strings.Repeat("1", 64),
-			ReplacementCarrier: strings.Repeat("2", 64), FaultService: "rendezvous-responder-carrier", FaultContainer: "rendezvous-container",
+		cell := Cell{Direction: direction, ClientProcess: identity(1), PublisherProcess: identity(2),
+			ClientApplicationProcess: identity(3), PublisherApplicationProcess: identity(4), InitialCarrier: strings.Repeat("1", 64),
+			ReplacementCarrier: strings.Repeat("2", 64), FaultService: "rendezvous-responder-carrier", FaultContainer: identity(8),
 			InitialCarrierLocal: "172.31.21.13:50001", InitialCarrierRemote: "172.31.21.14:4604",
 			ReplacementCarrierLocal: "172.31.21.13:50002", ReplacementCarrierRemote: "172.31.21.14:4604",
 			FaultedCarrier: strings.Repeat("1", 64), RetiredCarrier: strings.Repeat("1", 64),
 			InitialCarrierInode: 1, ReplacementCarrierInode: 2,
-			InitialCarrierInterface: "eth1", ReplacementCarrierInterface: "eth1",
+			InitialCarrierInterface: "eth0", ReplacementCarrierInterface: "eth2",
 			InitialCarrierInterfaceIndex: 3, ReplacementCarrierInterfaceIndex: 4,
-			FaultNetwork: "ardents-recovery-test_carrier_net", FaultController: strings.Repeat(string(rune('e'+index)), 64),
+			FaultNetwork: "ardents-recovery-test_carrier_net", FaultController: identity(11),
 			FaultControllerRemoved: true, FaultResourceAbsent: true,
 			InitialRouteContainers: map[string]string{}, RecoveredRouteContainers: map[string]string{},
 			InitialRoutePIDs: map[string]uint32{}, RecoveredRoutePIDs: map[string]uint32{},
@@ -202,19 +250,37 @@ func validEvidence() Evidence {
 			ClientApplicationAccepts: 1, PublisherApplicationAccepts: 1, ClientRouteAccepts: 2, PublisherRouteAccepts: 2,
 			ClientContinuity: [32]byte{9}, PublisherContinuity: [32]byte{9}, Ordered: true, Unique: true,
 			SameConnection: true, OldCarrierRetired: true, FailedResourceUnavailable: true, TerminalClean: true, QueueHighWater: queueLimit}
-		observerID := strings.Repeat(string(rune('a'+index)), 64)
+		observerID := identity(12)
 		cell.ReplacementObserver = ObserverProcess{ContainerID: observerID, ImageID: value.ImageID,
-			NetworkMode: "container:rendezvous-container", User: "65532:65532", IPCMode: "private",
+			NetworkMode: "container:" + identity(8), User: "65532:65532", IPCMode: "private",
 			Command: []string{"/usr/local/bin/ardents-qualify", "carrier-fault", "observe"},
 			CapDrop: []string{"ALL"}, SecurityOpt: []string{"no-new-privileges"}, ReadOnly: true, Removed: true,
 			PidsLimit: 16, MemoryLimit: 32 << 20, NanoCPUs: 250_000_000}
+		baselineRoutes := [2]string{identity(13), identity(14)}
+		trafficObserver := func(slot int, route string) ObserverProcess {
+			return ObserverProcess{ContainerID: identity(slot), ImageID: value.ImageID,
+				NetworkMode: "container:" + route, User: "65532:65532", IPCMode: "private",
+				Command: []string{"/usr/local/bin/ardents-qualify", "carrier-fault", "wait"},
+				CapDrop: []string{"ALL"}, SecurityOpt: []string{"no-new-privileges"}, ReadOnly: true, Removed: true,
+				PidsLimit: 16, MemoryLimit: 32 << 20, NanoCPUs: 250_000_000}
+		}
+		cell.BaselineClientRoute, cell.BaselinePublisherRoute = baselineRoutes[0], baselineRoutes[1]
+		cell.BaselineClientTrafficObserver = trafficObserver(15, baselineRoutes[0])
+		cell.BaselinePublisherTrafficObserver = trafficObserver(16, baselineRoutes[1])
 		cell.MemoryHighWater, cell.OpenFilesHighWater, cell.GoroutinesHighWater, cell.TimerHighWater = 1, 1, 1, 1
 		for roleIndex, role := range []string{"client", "initiator", "introduction", "rendezvous", "responder", "publisher"} {
-			cell.InitialRouteContainers[role], cell.RecoveredRouteContainers[role] = role+"-container", role+"-container"
+			cell.InitialRouteContainers[role], cell.RecoveredRouteContainers[role] = identity(5+roleIndex), identity(5+roleIndex)
 			cell.InitialRoutePIDs[role], cell.RecoveredRoutePIDs[role] = uint32(roleIndex+1), uint32(roleIndex+1)
 		}
-		cell.ExternalStatsObserved = true
-		cell.CarrierForwardBytes, cell.CarrierReverseBytes = 1, 1
+		cell.ClientTrafficObserver = trafficObserver(17, cell.InitialRouteContainers["client"])
+		cell.PublisherTrafficObserver = trafficObserver(18, cell.InitialRouteContainers["publisher"])
+		cell.FinalTraffic = ResourceSample{AtNanos: cell.TerminalAtNanos + 1,
+			ClientReceived: 3, ClientSent: 3, PublisherReceived: 3, PublisherSent: 3}
+		cell.BaselineTerminalNanos = int64(time.Second)
+		cell.BaselineFinalTraffic = ResourceSample{AtNanos: cell.BaselineTerminalNanos + 1,
+			ClientReceived: 1, PublisherReceived: 1}
+		cell.ExternalStatsObserved, cell.ExternalCPUPercent = true, 1
+		cell.CarrierForwardBytes, cell.CarrierReverseBytes = 3, 3
 		cell.BaselineClientTraffic, cell.BaselinePublisherTraffic = 1, 1
 		cell.ResourceSamples = []ResourceSample{
 			{AtNanos: 1, ClientRSS: 1, PublisherRSS: 1, ClientCPUPercent: 1, PublisherCPUPercent: 1,

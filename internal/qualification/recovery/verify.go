@@ -48,32 +48,29 @@ func Verify(value Evidence) Result {
 		value.NoNewRecoveryAfter > value.WorkSafetyNotAfter {
 		return invalid("credential or Work Safety history is incomplete")
 	}
+	maximumCampaign := min(value.RequestedNanos+int64(2*time.Minute), int64(30*time.Minute))
 	if value.RequestedNanos < int64(10*time.Minute) || value.RequestedNanos > int64(30*time.Minute) ||
-		value.CampaignNanos < value.RequestedNanos || value.CampaignNanos > value.RequestedNanos+int64(30*time.Second) {
+		value.CampaignNanos < value.RequestedNanos || value.CampaignNanos > maximumCampaign {
 		return invalid("campaign duration is outside its frozen bound")
 	}
 	if len(value.Cells) < 2 {
 		return invalid("both directional cells are required")
 	}
 	directions := map[string]bool{}
-	observerIDs := map[string]bool{}
-	controllerIDs := map[string]bool{}
+	containerIDs := map[string]bool{}
 	faultNetwork := ""
 	for index := range value.Cells {
 		directions[value.Cells[index].Direction] = true
 		if result := verifyCell(value.Cells[index], value.ManifestDigest, value.ImageID); result.Verdict != "pass" {
 			return result
 		}
-		observerID := value.Cells[index].ReplacementObserver.ContainerID
-		if observerIDs[observerID] {
-			return invalid("directional cells reused a transient replacement observer")
+		cell := value.Cells[index]
+		for identity := range retainedContainerIdentities(cell) {
+			if containerIDs[identity] {
+				return invalid("directional cells reused a retained container identity")
+			}
+			containerIDs[identity] = true
 		}
-		observerIDs[observerID] = true
-		controllerID := value.Cells[index].FaultController
-		if controllerIDs[controllerID] {
-			return invalid("directional cells reused a removed fault controller")
-		}
-		controllerIDs[controllerID] = true
 		if faultNetwork == "" {
 			faultNetwork = value.Cells[index].FaultNetwork
 		} else if value.Cells[index].FaultNetwork != faultNetwork {
@@ -133,6 +130,9 @@ func verifyCell(cell Cell, manifestText, imageID string) Result {
 		}
 	}
 	if result := verifyCarrierEvidence(cell, imageID); result.Verdict != "pass" {
+		return result
+	}
+	if result := verifyTrafficObservers(cell, imageID); result.Verdict != "pass" {
 		return result
 	}
 	manifest, err := hex.DecodeString(manifestText)

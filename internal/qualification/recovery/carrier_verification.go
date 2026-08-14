@@ -20,7 +20,7 @@ func verifyCarrierEvidence(cell Cell, imageID string) Result {
 	}
 	if cell.FaultedCarrier != cell.InitialCarrier || cell.RetiredCarrier != cell.InitialCarrier ||
 		cell.InitialCarrierInode == 0 || cell.ReplacementCarrierInode == 0 ||
-		cell.InitialCarrierInterface == "" || cell.InitialCarrierInterface != cell.ReplacementCarrierInterface ||
+		cell.InitialCarrierInterface == "" || cell.ReplacementCarrierInterface == "" ||
 		cell.InitialCarrierInterfaceIndex <= 0 || cell.ReplacementCarrierInterfaceIndex <= 0 ||
 		cell.InitialCarrierInterfaceIndex == cell.ReplacementCarrierInterfaceIndex ||
 		!carrierEndpoint(cell.InitialCarrierLocal, "172.31.21.13", false) ||

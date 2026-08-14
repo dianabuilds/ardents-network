@@ -34,48 +34,54 @@ type PublicManifest struct {
 
 // Cell records one externally observed directional Carrier recovery.
 type Cell struct {
-	Direction, ClientProcess, PublisherProcess                     string
-	ClientApplicationProcess, PublisherApplicationProcess          string
-	InitialCarrier, ReplacementCarrier                             string
-	InitialCarrierLocal, InitialCarrierRemote                      string
-	ReplacementCarrierLocal, ReplacementCarrierRemote              string
-	FaultedCarrier, RetiredCarrier                                 string
-	InitialCarrierInode, ReplacementCarrierInode                   uint32
-	InitialCarrierInterface, ReplacementCarrierInterface           string
-	InitialCarrierInterfaceIndex, ReplacementCarrierInterfaceIndex int
-	CellManifestDigest                                             string
-	FaultService, FaultContainer, FaultNetwork, FaultController    string
-	FaultControllerRemoved                                         bool
-	ReplacementObserver                                            ObserverProcess
-	InitialRouteContainers, RecoveredRouteContainers               map[string]string
-	InitialRoutePIDs, RecoveredRoutePIDs                           map[string]uint32
-	Seed                                                           [32]byte
-	ExpectedDigest, ObservedDigest, Canary                         [32]byte
-	Bytes, PlannedFaultOffset, FaultOffset                         uint32
-	DeliveredBeforeFault, CanaryOffset                             uint32
-	LastDeliveryNanos, CarrierObservedNanos, FaultAtNanos          int64
-	FaultCompletedNanos                                            int64
-	CarrierCutAfterNanos, AbsenceAfterNanos                        int64
-	CarrierAttachmentDeadlineNanos, ChunkDelayNanos                int64
-	OldCarrierRetiredNanos                                         int64
-	CanaryAtNanos, ReplacementObservedNanos                        int64
-	TerminalAtNanos                                                int64
-	ClientRouteGeneration, PublisherRouteGeneration                uint64
-	ClientRecoveryCount, PublisherRecoveryCount                    uint32
-	ClientApplicationAccepts, PublisherApplicationAccepts          uint32
-	ClientRouteAccepts, PublisherRouteAccepts                      uint32
-	ClientContinuity, PublisherContinuity                          [32]byte
-	Ordered, Unique, SameConnection, ApplicationReconnected        bool
-	OldCarrierReused, OldCarrierRetired, TerminalClean             bool
-	FaultResourceAbsent, FailedResourceUnavailable                 bool
-	QueueHighWater                                                 uint32
-	MemoryHighWater, CarrierForwardBytes, CarrierReverseBytes      uint64
-	CPUSeconds                                                     float64
-	ExternalCPUPercent                                             float64
-	ExternalStatsObserved                                          bool
-	OpenFilesHighWater, GoroutinesHighWater, TimerHighWater        uint32
-	ResourceSamples                                                []ResourceSample
-	BaselineClientTraffic, BaselinePublisherTraffic                uint64
+	Direction, ClientProcess, PublisherProcess                      string
+	ClientApplicationProcess, PublisherApplicationProcess           string
+	InitialCarrier, ReplacementCarrier                              string
+	InitialCarrierLocal, InitialCarrierRemote                       string
+	ReplacementCarrierLocal, ReplacementCarrierRemote               string
+	FaultedCarrier, RetiredCarrier                                  string
+	InitialCarrierInode, ReplacementCarrierInode                    uint32
+	InitialCarrierInterface, ReplacementCarrierInterface            string
+	InitialCarrierInterfaceIndex, ReplacementCarrierInterfaceIndex  int
+	CellManifestDigest                                              string
+	FaultService, FaultContainer, FaultNetwork, FaultController     string
+	FaultControllerRemoved                                          bool
+	ReplacementObserver                                             ObserverProcess
+	BaselineClientTrafficObserver, BaselinePublisherTrafficObserver ObserverProcess
+	ClientTrafficObserver, PublisherTrafficObserver                 ObserverProcess
+	BaselineClientRoute, BaselinePublisherRoute                     string
+	InitialRouteContainers, RecoveredRouteContainers                map[string]string
+	InitialRoutePIDs, RecoveredRoutePIDs                            map[string]uint32
+	Seed                                                            [32]byte
+	ExpectedDigest, ObservedDigest, Canary                          [32]byte
+	Bytes, PlannedFaultOffset, FaultOffset                          uint32
+	DeliveredBeforeFault, CanaryOffset                              uint32
+	LastDeliveryNanos, CarrierObservedNanos, FaultAtNanos           int64
+	FaultCompletedNanos                                             int64
+	CarrierCutAfterNanos, AbsenceAfterNanos                         int64
+	CarrierAttachmentDeadlineNanos, ChunkDelayNanos                 int64
+	OldCarrierRetiredNanos                                          int64
+	CanaryAtNanos, ReplacementObservedNanos                         int64
+	TerminalAtNanos                                                 int64
+	ClientRouteGeneration, PublisherRouteGeneration                 uint64
+	ClientRecoveryCount, PublisherRecoveryCount                     uint32
+	ClientApplicationAccepts, PublisherApplicationAccepts           uint32
+	ClientRouteAccepts, PublisherRouteAccepts                       uint32
+	ClientContinuity, PublisherContinuity                           [32]byte
+	Ordered, Unique, SameConnection, ApplicationReconnected         bool
+	OldCarrierReused, OldCarrierRetired, TerminalClean              bool
+	FaultResourceAbsent, FailedResourceUnavailable                  bool
+	QueueHighWater                                                  uint32
+	MemoryHighWater, CarrierForwardBytes, CarrierReverseBytes       uint64
+	CPUSeconds                                                      float64
+	ExternalCPUPercent                                              float64
+	ExternalStatsObserved                                           bool
+	OpenFilesHighWater, GoroutinesHighWater, TimerHighWater         uint32
+	ResourceSamples                                                 []ResourceSample
+	FinalTraffic                                                    ResourceSample
+	BaselineFinalTraffic                                            ResourceSample
+	BaselineTerminalNanos                                           int64
+	BaselineClientTraffic, BaselinePublisherTraffic                 uint64
 }
 
 // ObserverProcess is the host-inspected public confinement projection of a transient Carrier observer.

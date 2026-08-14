@@ -18,7 +18,7 @@ import (
 const recoveryBytes = uint32(4 << 20)
 
 func (observer dockerObserver) runPositiveRecovery(ctx context.Context, direction string,
-	baselineClient, baselinePublisher uint64) (recovery.Cell, error) {
+	baseline trafficBaseline) (recovery.Cell, error) {
 	cellClock := time.Now()
 	_, _ = observer.compose(ctx, time.Minute, "down", "-v", "--remove-orphans")
 	if err := setRouteAttachments(observer.input.FixtureRoot, 2); err != nil {
@@ -56,6 +56,11 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 	if err != nil {
 		return recovery.Cell{}, err
 	}
+	traffic, err := observer.startTrafficObservers(ctx, identities)
+	if err != nil {
+		return recovery.Cell{}, err
+	}
+	defer func() { _ = traffic.remove(context.Background(), observer) }()
 	faultController, err := observer.serviceID(ctx, "carrier-fault")
 	if err != nil {
 		return recovery.Cell{}, err
@@ -113,9 +118,10 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 		}
 	}
 	terminalAt := time.Since(cellClock).Nanoseconds()
+	finalTraffic, trafficErr := traffic.snapshotAndRemove(ctx, observer, cellClock)
 	samples, err := sampler.stop()
-	if err != nil {
-		return recovery.Cell{}, err
+	if err != nil || trafficErr != nil {
+		return recovery.Cell{}, errors.Join(err, trafficErr)
 	}
 	clientEndpoint, publisherEndpoint, application, routes, err := observer.recoveryTerminals(ctx, receiver)
 	if err != nil {
@@ -124,7 +130,9 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 	expected := workloadDigest(seed, recoveryBytes)
 	oldCarrierReused := initialCarrier.SocketIDSHA256 == replacementCarrier.SocketIDSHA256
 	_ = routes
-	lastSample := samples[len(samples)-1]
+	memoryHighWater, externalCPU := resourceHighWater(samples)
+	forwardBytes := max(finalTraffic.ClientSent, finalTraffic.PublisherSent)
+	reverseBytes := max(finalTraffic.ClientReceived, finalTraffic.PublisherReceived)
 	cell := recovery.Cell{Direction: direction, ClientProcess: identities["client-endpoint"],
 		PublisherProcess: identities["publisher-endpoint"], ClientApplicationProcess: identities["client-app"],
 		PublisherApplicationProcess: identities["publisher-app"], InitialCarrier: initialCarrier.SocketIDSHA256,
@@ -163,15 +171,18 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 		FaultResourceAbsent: fault.resourceAbsent, FailedResourceUnavailable: fault.resourceAbsent && fault.socketRetired && !oldCarrierReused,
 		TerminalClean: clientEndpoint.Class == "clean service connection close" &&
 			publisherEndpoint.Class == "clean service connection close", QueueHighWater: max(clientEndpoint.QueueHighWater, publisherEndpoint.QueueHighWater),
-		MemoryHighWater:    max(lastSample.ClientRSS, lastSample.PublisherRSS),
+		MemoryHighWater:    memoryHighWater,
 		CPUSeconds:         max(clientEndpoint.CPUSeconds, publisherEndpoint.CPUSeconds),
-		ExternalCPUPercent: max(lastSample.ClientCPUPercent, lastSample.PublisherCPUPercent), ExternalStatsObserved: true,
+		ExternalCPUPercent: externalCPU, ExternalStatsObserved: true,
 		OpenFilesHighWater:  max(clientEndpoint.OpenFilesHighWater, publisherEndpoint.OpenFilesHighWater),
 		GoroutinesHighWater: max(clientEndpoint.GoroutinesHighWater, publisherEndpoint.GoroutinesHighWater),
 		TimerHighWater:      max(clientEndpoint.TimerHighWater, publisherEndpoint.TimerHighWater),
-		CarrierForwardBytes: max(lastSample.ClientSent, lastSample.PublisherSent),
-		CarrierReverseBytes: max(lastSample.ClientReceived, lastSample.PublisherReceived), ResourceSamples: samples,
-		BaselineClientTraffic: baselineClient, BaselinePublisherTraffic: baselinePublisher}
+		CarrierForwardBytes: forwardBytes, CarrierReverseBytes: reverseBytes, ResourceSamples: samples,
+		FinalTraffic: finalTraffic, BaselineClientTraffic: baseline.client, BaselinePublisherTraffic: baseline.publisher,
+		BaselineFinalTraffic: baseline.finalTraffic, BaselineTerminalNanos: baseline.terminalNanos,
+		BaselineClientRoute: baseline.routes[0], BaselinePublisherRoute: baseline.routes[1],
+		BaselineClientTrafficObserver: baseline.observers[0], BaselinePublisherTrafficObserver: baseline.observers[1],
+		ClientTrafficObserver: traffic.projections[0], PublisherTrafficObserver: traffic.projections[1]}
 	if _, err := observer.compose(ctx, time.Minute, "down", "-v", "--remove-orphans"); err != nil {
 		return recovery.Cell{}, err
 	}

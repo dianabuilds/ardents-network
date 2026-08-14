@@ -50,11 +50,11 @@ func (observer dockerObserver) runRecoveryCell(ctx context.Context, fixture prep
 	for {
 		for _, direction := range []string{"client-to-publisher", "publisher-to-client"} {
 			observer.direction = direction
-			baselineClient, baselinePublisher, err := observer.runNoFailureBaseline(ctx, direction)
+			baseline, err := observer.runNoFailureBaseline(ctx, direction)
 			if err != nil {
 				return observer.invalid(err)
 			}
-			cell, err := observer.runPositiveRecovery(ctx, direction, baselineClient, baselinePublisher)
+			cell, err := observer.runPositiveRecovery(ctx, direction, baseline)
 			if err != nil {
 				return Result{Verdict: "fail", Reason: direction + ": " + err.Error(), EvidenceRoot: observer.input.EvidenceRoot,
 					SourceCommit: observer.sourceCommit, ImageID: imageID}
