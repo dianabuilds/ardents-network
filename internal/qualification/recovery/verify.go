@@ -56,12 +56,18 @@ func Verify(value Evidence) Result {
 		return invalid("both directional cells are required")
 	}
 	directions := map[string]bool{}
+	observerIDs := map[string]bool{}
 	faultNetwork := ""
 	for index := range value.Cells {
 		directions[value.Cells[index].Direction] = true
-		if result := verifyCell(value.Cells[index], value.ManifestDigest); result.Verdict != "pass" {
+		if result := verifyCell(value.Cells[index], value.ManifestDigest, value.ImageID); result.Verdict != "pass" {
 			return result
 		}
+		observerID := value.Cells[index].ReplacementObserver.ContainerID
+		if observerIDs[observerID] {
+			return invalid("directional cells reused a transient replacement observer")
+		}
+		observerIDs[observerID] = true
 		if faultNetwork == "" {
 			faultNetwork = value.Cells[index].FaultNetwork
 		} else if value.Cells[index].FaultNetwork != faultNetwork {
@@ -107,7 +113,7 @@ func Verify(value Evidence) Result {
 	return Result{Verdict: "pass", Reason: "all frozen S4.1 recovery conjuncts passed"}
 }
 
-func verifyCell(cell Cell, manifestText string) Result {
+func verifyCell(cell Cell, manifestText, imageID string) Result {
 	if cell.Direction != "client-to-publisher" && cell.Direction != "publisher-to-client" {
 		return invalid("direction is invalid")
 	}
@@ -119,7 +125,7 @@ func verifyCell(cell Cell, manifestText string) Result {
 			return invalid("process or carrier identity is missing")
 		}
 	}
-	if result := verifyCarrierEvidence(cell); result.Verdict != "pass" {
+	if result := verifyCarrierEvidence(cell, imageID); result.Verdict != "pass" {
 		return result
 	}
 	manifest, err := hex.DecodeString(manifestText)

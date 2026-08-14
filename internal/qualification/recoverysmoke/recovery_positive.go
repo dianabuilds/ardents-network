@@ -98,7 +98,7 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 		return recovery.Cell{}, errors.Join(err, errors.New("recovery canary was not externally observed"))
 	}
 	canaryAt := time.Since(cellClock).Nanoseconds()
-	replacementCarrier, err := observer.observeCarrier(ctx, faultController)
+	replacementCarrier, replacementObserver, err := observer.observeCarrierInNamespace(ctx, identities["rendezvous"])
 	if err != nil || replacementCarrier.SocketIDSHA256 == initialCarrier.SocketIDSHA256 {
 		return recovery.Cell{}, errors.Join(err, errors.New("recovery reused the failed Carrier socket"))
 	}
@@ -137,7 +137,8 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 		Seed: seed, ExpectedDigest: expected, ObservedDigest: application.ReceivedDigest,
 		CellManifestDigest: manifestDigest,
 		FaultService:       "rendezvous-responder-carrier", FaultContainer: identities["rendezvous"], FaultNetwork: network,
-		FaultController: faultController, InitialRouteContainers: initialRouteContainers, RecoveredRouteContainers: recoveredRouteContainers,
+		FaultController: faultController, ReplacementObserver: replacementObserver,
+		InitialRouteContainers: initialRouteContainers, RecoveredRouteContainers: recoveredRouteContainers,
 		InitialRoutePIDs: initialRoutePIDs, RecoveredRoutePIDs: recoveredRoutePIDs,
 		Canary: workloadCanary(seed, canaryOffset), Bytes: recoveryBytes, PlannedFaultOffset: faultThreshold,
 		FaultOffset:          delivered,

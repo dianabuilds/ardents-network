@@ -28,6 +28,28 @@ func TestVerifyRejectsMutationMissingEvidenceAndCandidateFailure(t *testing.T) {
 			value.Cells[0].RecoveredRoutePIDs["rendezvous"]++
 		},
 		"wrong fault network": func(value *Evidence) { value.Cells[0].FaultNetwork = "campaign_route_net" },
+		"malformed observer":  func(value *Evidence) { value.Cells[0].ReplacementObserver.ContainerID = "observer" },
+		"reused observer": func(value *Evidence) {
+			value.Cells[1].ReplacementObserver = value.Cells[0].ReplacementObserver
+		},
+		"observer privilege widened": func(value *Evidence) {
+			value.Cells[0].ReplacementObserver.CapDrop = nil
+		},
+		"observer privileged": func(value *Evidence) {
+			value.Cells[0].ReplacementObserver.Privileged = true
+		},
+		"observer capability added": func(value *Evidence) {
+			value.Cells[0].ReplacementObserver.CapAdd = []string{"SYS_ADMIN"}
+		},
+		"observer host pid": func(value *Evidence) {
+			value.Cells[0].ReplacementObserver.PIDMode = "host"
+		},
+		"observer host ipc": func(value *Evidence) {
+			value.Cells[0].ReplacementObserver.IPCMode = "host"
+		},
+		"observer endpoint overlap": func(value *Evidence) {
+			value.Cells[0].ClientProcess = value.Cells[0].ReplacementObserver.ContainerID
+		},
 		"controller authority widened": func(value *Evidence) {
 			value.Topology = []byte(strings.Replace(string(value.Topology), "cap_add: [NET_ADMIN]", "cap_add: [NET_ADMIN, SYS_ADMIN]", 1))
 			value.TopologyDigest = hexDigest(value.Topology)
@@ -79,7 +101,7 @@ func validEvidence() Evidence {
 			"ardents-qualify": strings.Repeat("e", 64), "ardents-stream-app": strings.Repeat("c", 64),
 			"ardents-recovery-qualify": strings.Repeat("d", 64)},
 		RequestedNanos: int64(10 * time.Minute), CampaignNanos: int64(10 * time.Minute),
-		Negatives: map[string]Negative{}, Cleanup: Cleanup{DockerEmpty: true, FixtureAbsent: true, PrivateMaterialAbsent: true}}
+		Negatives: map[string]Negative{}, Cleanup: cleanup{DockerEmpty: true, FixtureAbsent: true, PrivateMaterialAbsent: true}}
 	value.IsolationContext = sha256.Sum256(append([]byte("isolation\x00"), manifestDigest[:]...))
 	value.DestinationBinding = sha256.Sum256(append([]byte("destination\x00"), target[:]...))
 	for _, name := range negativeNames {
@@ -122,6 +144,12 @@ func validEvidence() Evidence {
 			ClientApplicationAccepts: 1, PublisherApplicationAccepts: 1, ClientRouteAccepts: 2, PublisherRouteAccepts: 2,
 			ClientContinuity: [32]byte{9}, PublisherContinuity: [32]byte{9}, Ordered: true, Unique: true,
 			SameConnection: true, FailedResourceUnavailable: true, TerminalClean: true, QueueHighWater: queueLimit}
+		observerID := strings.Repeat(string(rune('a'+index)), 64)
+		cell.ReplacementObserver = ObserverProcess{ContainerID: observerID, ImageID: value.ImageID,
+			NetworkMode: "container:rendezvous-container", User: "65532:65532", IPCMode: "private",
+			Command: []string{"/usr/local/bin/ardents-qualify", "carrier-fault", "observe"},
+			CapDrop: []string{"ALL"}, SecurityOpt: []string{"no-new-privileges"}, ReadOnly: true, Removed: true,
+			PidsLimit: 16, MemoryLimit: 32 << 20, NanoCPUs: 250_000_000}
 		cell.MemoryHighWater, cell.OpenFilesHighWater, cell.GoroutinesHighWater, cell.TimerHighWater = 1, 1, 1, 1
 		for roleIndex, role := range []string{"client", "initiator", "introduction", "rendezvous", "responder", "publisher"} {
 			cell.InitialRouteContainers[role], cell.RecoveredRouteContainers[role] = role+"-container", role+"-container"

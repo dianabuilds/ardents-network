@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func verifyCarrierEvidence(cell Cell) Result {
+func verifyCarrierEvidence(cell Cell, imageID string) Result {
 	if cell.InitialCarrier == cell.ReplacementCarrier {
 		return fail("replacement reused the failed carrier")
 	}
@@ -52,11 +52,44 @@ func verifyCarrierEvidence(cell Cell) Result {
 		if cell.FaultController == initialContainer {
 			return invalid("fault controller identity overlaps a selected Route process")
 		}
+		if cell.ReplacementObserver.ContainerID == initialContainer {
+			return invalid("replacement observer identity overlaps a selected Route process")
+		}
+	}
+	observer := cell.ReplacementObserver
+	if observer.ContainerID == cell.FaultController {
+		return invalid("replacement observation did not use a separately confined process")
+	}
+	for _, process := range []string{cell.ClientProcess, cell.PublisherProcess,
+		cell.ClientApplicationProcess, cell.PublisherApplicationProcess} {
+		if observer.ContainerID == process {
+			return invalid("replacement observer identity overlaps an Endpoint or Application process")
+		}
+	}
+	if !containerID(observer.ContainerID) || observer.ImageID != imageID ||
+		observer.NetworkMode != "container:"+cell.InitialRouteContainers["rendezvous"] ||
+		observer.User != "65532:65532" || !exactStrings(observer.Command,
+		[]string{"/usr/local/bin/ardents-qualify", "carrier-fault", "observe"}) ||
+		len(observer.CapAdd) != 0 || observer.PIDMode != "" || observer.IPCMode != "private" || observer.Privileged ||
+		!exactStrings(observer.CapDrop, []string{"ALL"}) ||
+		!exactStrings(observer.SecurityOpt, []string{"no-new-privileges"}) ||
+		!observer.ReadOnly || !observer.Removed || observer.MountCount != 0 ||
+		observer.PidsLimit != 16 || observer.MemoryLimit != 32<<20 || observer.NanoCPUs != 250_000_000 {
+		return invalid("replacement observer confinement or cleanup projection is incomplete")
 	}
 	if cell.FaultContainer != cell.InitialRouteContainers["rendezvous"] {
 		return invalid("faulted Carrier host identity does not match Rendezvous")
 	}
 	return Result{Verdict: "pass"}
+}
+
+func containerID(value string) bool {
+	raw, err := hex.DecodeString(value)
+	return err == nil && len(raw) == 32 && value == strings.ToLower(value)
+}
+
+func exactStrings(actual, expected []string) bool {
+	return len(actual) == len(expected) && strings.Join(actual, "\x00") == strings.Join(expected, "\x00")
 }
 
 func carrierEndpoint(value, expectedIP string, fixedPort bool) bool {

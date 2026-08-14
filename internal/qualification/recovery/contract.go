@@ -17,7 +17,7 @@ type Evidence struct {
 	RequestedNanos, CampaignNanos                                 int64
 	Cells                                                         []Cell
 	Negatives                                                     map[string]Negative
-	Cleanup                                                       Cleanup
+	Cleanup                                                       cleanup
 }
 
 // PublicManifest contains every public input to the S4.1 connection binding.
@@ -45,6 +45,7 @@ type Cell struct {
 	InitialCarrierInterfaceIndex, ReplacementCarrierInterfaceIndex int
 	CellManifestDigest                                             string
 	FaultService, FaultContainer, FaultNetwork, FaultController    string
+	ReplacementObserver                                            ObserverProcess
 	InitialRouteContainers, RecoveredRouteContainers               map[string]string
 	InitialRoutePIDs, RecoveredRoutePIDs                           map[string]uint32
 	Seed                                                           [32]byte
@@ -74,6 +75,17 @@ type Cell struct {
 	BaselineClientTraffic, BaselinePublisherTraffic                uint64
 }
 
+// ObserverProcess is the host-inspected public confinement projection of a transient Carrier observer.
+type ObserverProcess struct {
+	ContainerID, ImageID, NetworkMode, User string
+	PIDMode, IPCMode                        string
+	Command, CapAdd, CapDrop, SecurityOpt   []string
+	ReadOnly, Privileged, Removed           bool
+	MountCount                              uint32
+	PidsLimit                               int64
+	MemoryLimit, NanoCPUs                   int64
+}
+
 // ResourceSample is one host-observed endpoint-tree sample.
 type ResourceSample struct {
 	AtNanos                                                      int64
@@ -94,8 +106,7 @@ type Negative struct {
 	RouteGeneration                                            uint64
 }
 
-// Cleanup records externally checked terminal ownership and secret removal.
-type Cleanup struct {
+type cleanup struct {
 	DockerEmpty, FixtureAbsent, PrivateMaterialAbsent bool
 }
 

@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/qualification/recovery"
 )
 
 const (
@@ -21,6 +23,80 @@ func (observer dockerObserver) observeCarrier(ctx context.Context, controller st
 	if err != nil {
 		return carrierObservation{}, err
 	}
+	return parseCarrierObservation(raw)
+}
+
+func (observer dockerObserver) observeCarrierInNamespace(ctx context.Context,
+	rendezvous string) (carrierObservation, recovery.ObserverProcess, error) {
+	rawID, err := observer.docker(ctx, 10*time.Second, "create", "--network", "container:"+rendezvous,
+		"--ipc", "private", "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
+		"--user", "65532:65532",
+		"--pids-limit", "16", "--memory", "32m", "--cpus", "0.25",
+		"--label", "com.docker.compose.project="+observer.project, observer.imageID,
+		"/usr/local/bin/ardents-qualify", "carrier-fault", "observe")
+	if err != nil {
+		return carrierObservation{}, recovery.ObserverProcess{}, err
+	}
+	identity := strings.TrimSpace(string(rawID))
+	if !validContainerID(identity) {
+		return carrierObservation{}, recovery.ObserverProcess{}, errors.New("replacement Carrier observer identity is invalid")
+	}
+	projection, err := observer.inspectReplacementObserver(ctx, identity)
+	if err != nil {
+		_, removeErr := observer.docker(context.Background(), 10*time.Second, "rm", "-f", identity)
+		return carrierObservation{}, recovery.ObserverProcess{}, errors.Join(err, removeErr)
+	}
+	raw, startErr := observer.docker(ctx, 10*time.Second, "start", "-a", identity)
+	_, removeErr := observer.docker(context.Background(), 10*time.Second, "rm", "-f", identity)
+	if startErr != nil || removeErr != nil {
+		return carrierObservation{}, recovery.ObserverProcess{}, errors.Join(startErr, removeErr)
+	}
+	projection.Removed = true
+	value, err := parseCarrierObservation(raw)
+	return value, projection, err
+}
+
+func (observer dockerObserver) inspectReplacementObserver(ctx context.Context,
+	identity string) (recovery.ObserverProcess, error) {
+	raw, err := observer.docker(ctx, 10*time.Second, "inspect", identity)
+	var values []struct {
+		ID, Image string
+		Config    struct {
+			User string
+			Cmd  []string
+		}
+		HostConfig struct {
+			NetworkMode      string
+			PidMode, IpcMode string
+			ReadonlyRootfs   bool
+			Privileged       bool
+			CapAdd, CapDrop  []string
+			SecurityOpt      []string
+			PidsLimit        *int64
+			Memory, NanoCpus int64
+		}
+		Mounts []json.RawMessage
+	}
+	if err != nil {
+		return recovery.ObserverProcess{}, fmt.Errorf("inspect replacement observer: %w", err)
+	}
+	if decodeErr := json.Unmarshal(raw, &values); decodeErr != nil {
+		return recovery.ObserverProcess{}, fmt.Errorf("decode replacement observer inspection: %w", decodeErr)
+	}
+	if len(values) != 1 || values[0].HostConfig.PidsLimit == nil {
+		return recovery.ObserverProcess{}, errors.New("replacement observer inspection is invalid")
+	}
+	value := values[0]
+	return recovery.ObserverProcess{ContainerID: value.ID, ImageID: value.Image,
+		NetworkMode: value.HostConfig.NetworkMode, User: value.Config.User, Command: value.Config.Cmd,
+		PIDMode: value.HostConfig.PidMode, IPCMode: value.HostConfig.IpcMode,
+		CapAdd: value.HostConfig.CapAdd, CapDrop: value.HostConfig.CapDrop, SecurityOpt: value.HostConfig.SecurityOpt,
+		ReadOnly: value.HostConfig.ReadonlyRootfs, Privileged: value.HostConfig.Privileged,
+		MountCount: uint32(len(value.Mounts)), PidsLimit: *value.HostConfig.PidsLimit,
+		MemoryLimit: value.HostConfig.Memory, NanoCPUs: value.HostConfig.NanoCpus}, nil
+}
+
+func parseCarrierObservation(raw []byte) (carrierObservation, error) {
 	var value carrierObservation
 	if json.Unmarshal(raw, &value) != nil || len(value.SocketID) != 96 || len(value.SocketIDSHA256) != 64 ||
 		value.RemoteAddress != carrierRemote || value.Inode == 0 || value.InterfaceName == "" || value.InterfaceIndex <= 0 {
@@ -51,32 +127,9 @@ func (observer dockerObserver) destroyCarrier(ctx context.Context, controller, r
 	if _, err := observer.docker(ctx, 10*time.Second, "network", "connect", "--ip", carrierLocalIP, network, rendezvous); err != nil {
 		return "", 0, 0, 0, 0, false, err
 	}
-	if err := observer.ensureControllerRunning(ctx, controller); err != nil {
-		return "", 0, 0, 0, 0, false, err
-	}
 	completedAt = time.Since(cellClock).Nanoseconds()
 	return receipt.SocketIDSHA256, faultAt, completedAt, receipt.CarrierCutAfterNanos,
 		receipt.AbsenceAfterNanos, true, nil
-}
-
-func (observer dockerObserver) ensureControllerRunning(ctx context.Context, controller string) error {
-	raw, err := observer.docker(ctx, 10*time.Second, "inspect", "--format", "{{.State.Running}}", controller)
-	if err != nil {
-		return err
-	}
-	if strings.TrimSpace(string(raw)) != "true" {
-		if _, err := observer.docker(ctx, 10*time.Second, "start", controller); err != nil {
-			return err
-		}
-	}
-	raw, err = observer.docker(ctx, 10*time.Second, "inspect", "--format", "{{.Id}} {{.State.Running}}", controller)
-	if err != nil {
-		return fmt.Errorf("inspect restored fault controller: %w", err)
-	}
-	if strings.TrimSpace(string(raw)) != controller+" true" {
-		return errors.New("fault controller did not retain its container identity after Carrier restoration")
-	}
-	return nil
 }
 
 func (observer dockerObserver) routeProcessIdentities(ctx context.Context,
