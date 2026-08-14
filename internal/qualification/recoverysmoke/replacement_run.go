@@ -33,6 +33,15 @@ func (observer dockerObserver) runReplacementRecovery(ctx context.Context, fixtu
 	if err != nil {
 		return replacementCell{}, err
 	}
+	seed, err := recoveryDirectionSeed(observer.generation, direction)
+	if err != nil {
+		return replacementCell{}, err
+	}
+	manifest, err := prepareReplacementManifest(observer.input.FixtureRoot, direction, mode, seed,
+		failures, offsets, lifetime, delay)
+	if err != nil {
+		return replacementCell{}, err
+	}
 	if _, err := observer.compose(ctx, time.Minute, "--profile", "setup", "run", "--no-deps", "--rm", "volume-init"); err != nil {
 		return replacementCell{}, err
 	}
@@ -51,6 +60,7 @@ func (observer dockerObserver) runReplacementRecovery(ctx context.Context, fixtu
 	var hostProcesses map[string]processObservationEvidence
 	var traffic trafficObservers
 	var sampler *statsSampler
+	var resourceStartedAt int64
 	defer func() {
 		trafficErr := traffic.remove(context.Background(), observer)
 		var sampleErr error
@@ -62,6 +72,7 @@ func (observer dockerObserver) runReplacementRecovery(ctx context.Context, fixtu
 	err = orderedReplacementObservation(func() error {
 		traffic, err = observer.startTrafficObservers(ctx, identities)
 		if err == nil {
+			resourceStartedAt = max(int64(1), time.Since(cellClock).Nanoseconds())
 			sampler = observer.startStats(ctx, identities, cellClock)
 		}
 		return err
@@ -85,13 +96,13 @@ func (observer dockerObserver) runReplacementRecovery(ctx context.Context, fixtu
 	initialRoute := proposalRoutes[0]
 	failed := make(map[string]candidateProcess, 3)
 	faultReceipts := make(map[string]processFaultEvidence, 3)
-	seed, err := recoveryDirectionSeed(observer.generation, direction)
-	if err != nil {
-		return replacementCell{}, err
-	}
 	cell := replacementCell{Direction: direction, Mode: mode, Bytes: 4 << 20, Seed: seed,
-		HostStartedAtNanos: hostStartedAt,
-		ExpectedDigest:     workloadDigest(seed, 4<<20), Routes: []routeGeneration{initialRoute},
+		CellManifestDigest: manifest.Digest, FaultFamily: manifest.FaultFamily,
+		FailureRoles: manifest.FailureRoles, FaultOffsets: manifest.FaultOffsets,
+		ChunkBytes: manifest.ChunkBytes, CanaryBytes: manifest.CanaryBytes,
+		ChunkDelayNanos: manifest.ChunkDelayNanos, LifetimeNanos: manifest.LifetimeNanos,
+		HostStartedAtNanos: hostStartedAt, ResourceStartedAtNanos: resourceStartedAt,
+		ExpectedDigest: workloadDigest(seed, 4<<20), Routes: []routeGeneration{initialRoute},
 		HostProcesses:        hostProcesses,
 		BaselineFinalTraffic: baseline.finalTraffic, BaselineClientTraffic: baseline.client,
 		BaselinePublisherTraffic: baseline.publisher, BaselineClientRoute: baseline.routes[0],

@@ -13,10 +13,14 @@ type replacementCandidate struct {
 
 type replacementCell struct {
 	Direction, Mode                                                            string
+	CellManifestDigest, FaultFamily                                            string
+	FailureRoles                                                               []string
+	FaultOffsets                                                               []uint32
 	HostProcesses                                                              map[string]processObservationEvidence
 	Seed, ExpectedDigest, ObservedDigest                                       [32]byte
-	Bytes                                                                      uint32
-	HostStartedAtNanos, TerminalNanos                                          int64
+	Bytes, ChunkBytes, CanaryBytes                                             uint32
+	ChunkDelayNanos, LifetimeNanos, HostStartedAtNanos, ResourceStartedAtNanos int64
+	TerminalNanos                                                              int64
 	ClientRouteGeneration, PublisherRouteGeneration                            uint64
 	ClientRecoveryCount, PublisherRecoveryCount                                uint32
 	ClientApplicationAccepts, PublisherApplicationAccepts                      uint32

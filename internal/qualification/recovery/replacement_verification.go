@@ -142,6 +142,9 @@ func verifyReplacementCell(cell replacementCell, candidates map[string][]replace
 		cell.ObservedDigest != cell.ExpectedDigest || cell.HostStartedAtNanos <= 0 || cell.TerminalNanos <= 0 {
 		return invalid("S4.2 replacement cell identity or workload is incomplete")
 	}
+	if result := verifyReplacementManifest(cell); result.Verdict != "pass" {
+		return result
+	}
 	if len(cell.Routes) != len(cell.Events)+1 || len(cell.Events) == 0 || len(cell.Events) > 3 ||
 		cell.ClientRouteGeneration != uint64(len(cell.Routes)) || cell.PublisherRouteGeneration != uint64(len(cell.Routes)) ||
 		cell.ClientRecoveryCount != uint32(len(cell.Events)) || cell.PublisherRecoveryCount != uint32(len(cell.Events)) ||

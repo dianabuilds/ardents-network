@@ -2,7 +2,6 @@ package recovery
 
 import (
 	"crypto/sha256"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -327,6 +326,9 @@ func s42Cell(imageID, direction, mode string, failures []string, sets map[string
 	processes := map[[32]byte]candidateProcess{}
 	cell := replacementCell{Direction: direction, Mode: mode, Seed: seed, Bytes: streamBytes,
 		ExpectedDigest: workloadDigest(seed, streamBytes), ObservedDigest: workloadDigest(seed, streamBytes),
+		FaultFamily: "route-process", ChunkBytes: 16_381, CanaryBytes: 32,
+		ChunkDelayNanos: int64(20 * time.Millisecond), LifetimeNanos: int64(30 * time.Second),
+		FailureRoles: append([]string(nil), failures...), FaultOffsets: []uint32{17 * 16_381},
 		ClientRouteGeneration: uint64(len(selections)), PublisherRouteGeneration: uint64(len(selections)),
 		ClientRecoveryCount: uint32(len(failures)), PublisherRecoveryCount: uint32(len(failures)),
 		ClientApplicationAccepts: 1, PublisherApplicationAccepts: 1,
@@ -337,7 +339,10 @@ func s42Cell(imageID, direction, mode string, failures []string, sets map[string
 	cell.TerminalNanos = int64(6 * time.Second)
 	if mode == "sequential-three" {
 		cell.TerminalNanos = int64(10*time.Minute + time.Second)
+		cell.ChunkDelayNanos, cell.LifetimeNanos = int64(2350*time.Millisecond), int64(12*time.Minute)
+		cell.FaultOffsets = []uint32{64 * 16_381, 128 * 16_381, 192 * 16_381}
 	}
+	cell.CellManifestDigest = replacementManifestDigest(cell)
 	cell.HostProcesses = endpointProcessTestSet(t, hostScope, imageID, hostStartedAt, map[string]string{
 		"client-endpoint": nextID(), "publisher-endpoint": nextID(),
 		"client-app": nextID(), "publisher-app": nextID(),
@@ -456,6 +461,7 @@ func s42Cell(imageID, direction, mode string, failures []string, sets map[string
 			cell.Events[index].IntroductionOpaqueDigest = [32]byte{78}
 		}
 	}
+	cell.ResourceStartedAtNanos = 1
 	cell.ResourceSamples = s42Samples(cell.TerminalNanos)
 	last := cell.ResourceSamples[len(cell.ResourceSamples)-1]
 	cell.FinalTraffic = last
@@ -471,29 +477,4 @@ func s42Cell(imageID, direction, mode string, failures []string, sets map[string
 	cell.ClientTrafficObserver = s42Observer(imageID, nextID(), cell.ClientRoute)
 	cell.PublisherTrafficObserver = s42Observer(imageID, nextID(), cell.PublisherRoute)
 	return cell
-}
-
-func s42IntroductionProof(value routeCase, manifest [32]byte,
-	selected map[string]replacementCandidate) (introductionProof, [32]byte) {
-	proof := introductionProof{ManifestDigest: manifest, NetworkID: value.NetworkID, EpochDigest: value.EpochDigest,
-		ViewRoot: value.ViewRoot, ProfileDigest: sha256.Sum256([]byte(value.Profile)),
-		CapabilitiesDigest: sha256.Sum256([]byte("ardents-h3-recovery-setup-capabilities-v1\x00tls13|single-use|no-application-data")),
-		IntroductionNode:   selected["introduction"].NodeID, RendezvousNode: selected["rendezvous"].NodeID,
-		RendezvousReachability: sha256.Sum256(append([]byte("ardents-h3-rendezvous-reachability-v1\x00"),
-			selected["rendezvous"].Endpoint...)), JoinHandle: [32]byte{70}, EndpointHandshake: [32]byte{71},
-		Reply: [32]byte{72}, ExpiresAtNanos: time.Unix(value.SelectionAt, 0).Add(time.Hour).UnixNano()}
-	body := make([]byte, 397)
-	copy(body[:5], "ASIS\x02")
-	fields := [][32]byte{proof.ManifestDigest, proof.NetworkID, proof.EpochDigest, proof.ViewRoot, proof.ProfileDigest,
-		proof.CapabilitiesDigest, proof.IntroductionNode, proof.RendezvousNode, proof.RendezvousReachability,
-		proof.JoinHandle, proof.EndpointHandshake}
-	for index, field := range fields {
-		copy(body[5+index*32:5+(index+1)*32], field[:])
-	}
-	binary.BigEndian.PutUint64(body[357:365], uint64(proof.ExpiresAtNanos))
-	proof.TranscriptContext = sha256.Sum256(append([]byte("ardents-h3-sealed-introduction-transcript-v2\x00"), body[:365]...))
-	copy(body[365:], proof.TranscriptContext[:])
-	receipt := append([]byte("ardents-h3-sealed-introduction-v2\x00"), body...)
-	receipt = append(receipt, proof.Reply[:]...)
-	return proof, sha256.Sum256(receipt)
 }

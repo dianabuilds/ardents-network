@@ -9,6 +9,20 @@ func verifyReplacementResources(cell replacementCell) Result {
 	if _, result := verifyResourceSamples(cell.ResourceSamples); result.Verdict != "pass" {
 		return result
 	}
+	first := cell.ResourceSamples[0].AtNanos
+	firstProcessObservation := int64(0)
+	for _, process := range cell.HostProcesses {
+		if firstProcessObservation == 0 || process.ObservedAtNanos < firstProcessObservation {
+			firstProcessObservation = process.ObservedAtNanos
+		}
+	}
+	if cell.ResourceStartedAtNanos <= 0 || first < cell.ResourceStartedAtNanos ||
+		first-cell.ResourceStartedAtNanos > int64(1500*time.Millisecond) ||
+		len(cell.Events) == 0 || cell.ResourceStartedAtNanos > cell.Events[0].LastDeliveryNanos ||
+		firstProcessObservation <= 0 ||
+		cell.HostStartedAtNanos+cell.ResourceStartedAtNanos > firstProcessObservation {
+		return invalid("S4.2 resource samples do not cover the workload start")
+	}
 	last := cell.ResourceSamples[len(cell.ResourceSamples)-1].AtNanos
 	if last > cell.TerminalNanos || cell.TerminalNanos-last > int64(2*time.Second) {
 		return invalid("S4.2 resource samples do not cover the terminal connection lifetime")

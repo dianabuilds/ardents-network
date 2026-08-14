@@ -77,10 +77,7 @@ func verifyReplacementRoutes(cell replacementCell, candidates map[string][]repla
 
 func verifyReplacementEvent(cell replacementCell, index int, event replacementEvent,
 	before, after routeGeneration) Result {
-	expectedOffset := uint32(17 * 16_381)
-	if cell.Mode == "sequential-three" {
-		expectedOffset = uint32((index + 1) * 64 * 16_381)
-	}
+	expectedOffset := cell.FaultOffsets[index]
 	if event.FaultOffset != expectedOffset || event.CanaryOffset != expectedOffset ||
 		event.Canary != workloadRange(cell.Seed, event.CanaryOffset) || event.FaultOffset < 256<<10 ||
 		event.FaultOffset%16_384 == 0 || event.CanaryOffset+32 > cell.Bytes ||
