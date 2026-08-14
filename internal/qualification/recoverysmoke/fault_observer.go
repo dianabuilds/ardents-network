@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -34,8 +35,11 @@ func (observer dockerObserver) waitGate(ctx context.Context, root, role string, 
 		raw, err := os.ReadFile(path)
 		if err == nil {
 			value, parseErr := strconv.ParseUint(strings.TrimSpace(string(raw)), 10, 32)
-			if parseErr != nil || uint32(value) != expected {
-				return 0, errors.New("host-controlled stream gate reported the wrong offset")
+			if parseErr != nil {
+				return 0, fmt.Errorf("decode host-controlled stream gate offset: %w", parseErr)
+			}
+			if uint32(value) != expected {
+				return 0, fmt.Errorf("host-controlled stream gate reported offset %d; want %d", value, expected)
 			}
 			return uint32(value), nil
 		}

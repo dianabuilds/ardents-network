@@ -22,7 +22,7 @@ func progressGate(role string) (uint32, func(uint32) error, error) {
 		if received != uint32(parsed) {
 			return errors.New("stream crossed its exact host-controlled gate")
 		}
-		if err := os.WriteFile(ready, []byte(strconv.FormatUint(uint64(received), 10)+"\n"), 0o600); err != nil {
+		if err := publishGateReady(ready, received); err != nil {
 			return err
 		}
 		deadline := time.Now().Add(15 * time.Second)
@@ -34,6 +34,14 @@ func progressGate(role string) (uint32, func(uint32) error, error) {
 		}
 		return errors.New("host did not release the exact stream gate")
 	}, nil
+}
+
+func publishGateReady(path string, offset uint32) error {
+	temporary := path + ".pending"
+	if err := os.WriteFile(temporary, []byte(strconv.FormatUint(uint64(offset), 10)+"\n"), 0o600); err != nil {
+		return err
+	}
+	return os.Rename(temporary, path)
 }
 
 func gatedWorkloadWriter(write func([]byte) (int, error), offset uint32,

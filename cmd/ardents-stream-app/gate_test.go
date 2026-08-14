@@ -1,6 +1,10 @@
 package main
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
 
 func TestGatedWriterStopsAtExactPrecommittedOffset(t *testing.T) {
 	var stored, observed uint32
@@ -16,5 +20,19 @@ func TestGatedWriterStopsAtExactPrecommittedOffset(t *testing.T) {
 	}
 	if _, err := gated([]byte{1}); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestGateReadinessIsPublishedAtomically(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "client.ready")
+	if err := publishGateReady(path, 176*16_381); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil || string(raw) != "2883056\n" {
+		t.Fatalf("published readiness %q err=%v", raw, err)
+	}
+	if _, err := os.Stat(path + ".pending"); !os.IsNotExist(err) {
+		t.Fatalf("temporary readiness remained: %v", err)
 	}
 }
