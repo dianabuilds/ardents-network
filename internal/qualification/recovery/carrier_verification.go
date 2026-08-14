@@ -56,7 +56,16 @@ func verifyCarrierEvidence(cell Cell, imageID string) Result {
 			return invalid("replacement observer identity overlaps a selected Route process")
 		}
 	}
+	for _, process := range []string{cell.ClientProcess, cell.PublisherProcess,
+		cell.ClientApplicationProcess, cell.PublisherApplicationProcess} {
+		if cell.FaultController == process {
+			return invalid("fault controller identity overlaps an Endpoint or Application process")
+		}
+	}
 	observer := cell.ReplacementObserver
+	if !containerID(cell.FaultController) || !cell.FaultControllerRemoved {
+		return invalid("fault controller identity or removal evidence is incomplete")
+	}
 	if observer.ContainerID == cell.FaultController {
 		return invalid("replacement observation did not use a separately confined process")
 	}

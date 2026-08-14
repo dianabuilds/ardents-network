@@ -84,7 +84,7 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 		return recovery.Cell{}, err
 	}
 	carrierObservedAt := time.Since(cellClock).Nanoseconds()
-	destroyedCarrier, faultAt, faultCompletedAt, carrierCutAfter, absenceAfter, resourceAbsent, err :=
+	destroyedCarrier, faultAt, faultCompletedAt, carrierCutAfter, absenceAfter, controllerRemoved, resourceAbsent, err :=
 		observer.destroyCarrier(ctx, faultController, identities["rendezvous"], network, initialCarrier, cellClock)
 	if err != nil || !resourceAbsent {
 		return recovery.Cell{}, errors.Join(err, errors.New("faulted Carrier socket remained available"))
@@ -137,7 +137,7 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 		Seed: seed, ExpectedDigest: expected, ObservedDigest: application.ReceivedDigest,
 		CellManifestDigest: manifestDigest,
 		FaultService:       "rendezvous-responder-carrier", FaultContainer: identities["rendezvous"], FaultNetwork: network,
-		FaultController: faultController, ReplacementObserver: replacementObserver,
+		FaultController: faultController, FaultControllerRemoved: controllerRemoved, ReplacementObserver: replacementObserver,
 		InitialRouteContainers: initialRouteContainers, RecoveredRouteContainers: recoveredRouteContainers,
 		InitialRoutePIDs: initialRoutePIDs, RecoveredRoutePIDs: recoveredRoutePIDs,
 		Canary: workloadCanary(seed, canaryOffset), Bytes: recoveryBytes, PlannedFaultOffset: faultThreshold,

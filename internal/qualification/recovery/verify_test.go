@@ -32,6 +32,15 @@ func TestVerifyRejectsMutationMissingEvidenceAndCandidateFailure(t *testing.T) {
 		"reused observer": func(value *Evidence) {
 			value.Cells[1].ReplacementObserver = value.Cells[0].ReplacementObserver
 		},
+		"controller not removed": func(value *Evidence) {
+			value.Cells[0].FaultControllerRemoved = false
+		},
+		"controller endpoint overlap": func(value *Evidence) {
+			value.Cells[0].ClientProcess = value.Cells[0].FaultController
+		},
+		"reused removed controller": func(value *Evidence) {
+			value.Cells[1].FaultController = value.Cells[0].FaultController
+		},
 		"observer privilege widened": func(value *Evidence) {
 			value.Cells[0].ReplacementObserver.CapDrop = nil
 		},
@@ -131,7 +140,8 @@ func validEvidence() Evidence {
 			DestroyedCarrier: strings.Repeat("1", 64), InitialCarrierInode: 1, ReplacementCarrierInode: 2,
 			InitialCarrierInterface: "eth1", ReplacementCarrierInterface: "eth1",
 			InitialCarrierInterfaceIndex: 3, ReplacementCarrierInterfaceIndex: 4,
-			FaultNetwork: "ardents-recovery-test_carrier_net", FaultController: "controller", FaultResourceAbsent: true,
+			FaultNetwork: "ardents-recovery-test_carrier_net", FaultController: strings.Repeat(string(rune('e'+index)), 64),
+			FaultControllerRemoved: true, FaultResourceAbsent: true,
 			InitialRouteContainers: map[string]string{}, RecoveredRouteContainers: map[string]string{},
 			InitialRoutePIDs: map[string]uint32{}, RecoveredRoutePIDs: map[string]uint32{},
 			Seed: seed, Bytes: streamBytes, PlannedFaultOffset: planned,

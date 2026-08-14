@@ -45,6 +45,7 @@ type Cell struct {
 	InitialCarrierInterfaceIndex, ReplacementCarrierInterfaceIndex int
 	CellManifestDigest                                             string
 	FaultService, FaultContainer, FaultNetwork, FaultController    string
+	FaultControllerRemoved                                         bool
 	ReplacementObserver                                            ObserverProcess
 	InitialRouteContainers, RecoveredRouteContainers               map[string]string
 	InitialRoutePIDs, RecoveredRoutePIDs                           map[string]uint32

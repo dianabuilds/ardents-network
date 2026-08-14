@@ -57,6 +57,7 @@ func Verify(value Evidence) Result {
 	}
 	directions := map[string]bool{}
 	observerIDs := map[string]bool{}
+	controllerIDs := map[string]bool{}
 	faultNetwork := ""
 	for index := range value.Cells {
 		directions[value.Cells[index].Direction] = true
@@ -68,6 +69,11 @@ func Verify(value Evidence) Result {
 			return invalid("directional cells reused a transient replacement observer")
 		}
 		observerIDs[observerID] = true
+		controllerID := value.Cells[index].FaultController
+		if controllerIDs[controllerID] {
+			return invalid("directional cells reused a removed fault controller")
+		}
+		controllerIDs[controllerID] = true
 		if faultNetwork == "" {
 			faultNetwork = value.Cells[index].FaultNetwork
 		} else if value.Cells[index].FaultNetwork != faultNetwork {
