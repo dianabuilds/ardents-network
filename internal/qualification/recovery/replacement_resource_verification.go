@@ -16,7 +16,8 @@ func verifyReplacementResources(cell replacementCell) Result {
 		return invalid("S4.2 resource samples do not cover the workload start")
 	}
 	last := cell.ResourceSamples[len(cell.ResourceSamples)-1].AtNanos
-	if last > cell.TerminalNanos || cell.TerminalNanos-last > int64(2*time.Second) {
+	if last-cell.TerminalNanos > int64(2*time.Second) ||
+		cell.TerminalNanos-last > int64(2*time.Second) {
 		return invalid("S4.2 resource samples do not cover the terminal connection lifetime")
 	}
 	clientTraffic := cell.FinalTraffic.ClientReceived + cell.FinalTraffic.ClientSent

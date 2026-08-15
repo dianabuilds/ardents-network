@@ -47,6 +47,23 @@ func TestReplacementResourcesRequireStartToTerminalCoverage(t *testing.T) {
 	if result := verifyReplacementResources(cell); result.Verdict != "pass" {
 		t.Fatalf("full resource coverage rejected: %+v", result)
 	}
+	last := len(cell.ResourceSamples) - 1
+	cell.ResourceSamples[last].AtNanos = cell.TerminalNanos + int64(500*time.Millisecond)
+	cell.FinalTraffic = cell.ResourceSamples[last]
+	if result := verifyReplacementResources(cell); result.Verdict != "pass" {
+		t.Fatalf("post-terminal complete Docker sample rejected: %+v", result)
+	}
+	cell.ResourceSamples[last].AtNanos = cell.TerminalNanos + int64(2*time.Second) + 1
+	cell.FinalTraffic = cell.ResourceSamples[last]
+	if result := verifyReplacementResources(cell); result.Verdict == "pass" {
+		t.Fatal("resource sample after the terminal bound passed")
+	}
+	cell = replacementCell{HostStartedAtNanos: 100, ActiveStartedAtNanos: 101,
+		TerminalNanos: int64(10*time.Minute + time.Second), ResourceStartedAtNanos: 1,
+		Events:        []replacementEvent{{LastDeliveryNanos: int64(2 * time.Minute)}},
+		HostProcesses: map[string]processObservationEvidence{"client-app": {ObservedAtNanos: 101}}}
+	cell.ResourceSamples = s42Samples(cell.TerminalNanos)
+	cell.FinalTraffic = cell.ResourceSamples[len(cell.ResourceSamples)-1]
 	cell.ResourceSamples = cell.ResourceSamples[len(cell.ResourceSamples)-3:]
 	cell.ResourceStartedAtNanos = cell.ResourceSamples[0].AtNanos
 	if result := verifyReplacementResources(cell); result.Verdict == "pass" {
