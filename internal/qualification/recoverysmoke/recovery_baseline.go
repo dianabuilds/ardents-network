@@ -81,16 +81,23 @@ func (observer dockerObserver) runNoFailureBaseline(ctx context.Context, directi
 	if err := writeRelease(gateRoot, sender); err != nil {
 		return trafficBaseline{}, err
 	}
-	for _, service := range recoveryServiceNames() {
-		if err := observer.waitContainer(ctx, identities[service], true); err != nil {
-			return trafficBaseline{}, fmt.Errorf("baseline %s: %w", service, err)
-		}
+	waitOrder, err := recoveryTerminalWaitOrder(receiver)
+	if err != nil {
+		return trafficBaseline{}, err
+	}
+	if err := observer.waitContainer(ctx, identities[waitOrder[0]], true); err != nil {
+		return trafficBaseline{}, fmt.Errorf("baseline %s: %w", waitOrder[0], err)
 	}
 	terminalNanos := time.Since(baselineClock).Nanoseconds()
 	samples, sampleErr := sampler.stop()
 	sampler = nil
 	if sampleErr != nil {
 		return trafficBaseline{}, sampleErr
+	}
+	for _, service := range waitOrder[1:] {
+		if err := observer.waitContainer(ctx, identities[service], true); err != nil {
+			return trafficBaseline{}, fmt.Errorf("baseline %s: %w", service, err)
+		}
 	}
 	finalTraffic, sampleErr := finalResourceSample(samples, terminalNanos)
 	if sampleErr != nil {

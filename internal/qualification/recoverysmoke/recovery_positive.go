@@ -128,10 +128,12 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 	for role, identity := range initialRouteContainers {
 		recoveredRouteContainers[role] = identity
 	}
-	for _, service := range recoveryServiceNames() {
-		if err := observer.waitContainer(ctx, identities[service], true); err != nil {
-			return recovery.Cell{}, fmt.Errorf("%s: %w", service, err)
-		}
+	waitOrder, err := recoveryTerminalWaitOrder(receiver)
+	if err != nil {
+		return recovery.Cell{}, err
+	}
+	if err := observer.waitContainer(ctx, identities[waitOrder[0]], true); err != nil {
+		return recovery.Cell{}, fmt.Errorf("%s: %w", waitOrder[0], err)
 	}
 	terminalAt := time.Since(cellClock).Nanoseconds()
 	samples, err := sampler.stop()
@@ -141,6 +143,11 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 	}
 	if err != nil {
 		return recovery.Cell{}, err
+	}
+	for _, service := range waitOrder[1:] {
+		if err := observer.waitContainer(ctx, identities[service], true); err != nil {
+			return recovery.Cell{}, fmt.Errorf("%s: %w", service, err)
+		}
 	}
 	finalTraffic, err := finalResourceSample(samples, terminalAt)
 	if err != nil {

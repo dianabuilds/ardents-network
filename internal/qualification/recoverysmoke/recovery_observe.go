@@ -65,6 +65,19 @@ func recoveryServiceNames() []string {
 		"client-endpoint", "publisher-endpoint", "client-app", "publisher-app"}
 }
 
+func recoveryTerminalWaitOrder(receiver string) ([]string, error) {
+	if receiver != "client-app" && receiver != "publisher-app" {
+		return nil, errors.New("recovery terminal receiver is not an Application process")
+	}
+	result := []string{receiver}
+	for _, service := range recoveryServiceNames() {
+		if service != receiver {
+			result = append(result, service)
+		}
+	}
+	return result, nil
+}
+
 func (observer dockerObserver) recoveryIdentities(ctx context.Context) (map[string]string, error) {
 	return observer.serviceIDs(ctx, recoveryServiceNames())
 }
