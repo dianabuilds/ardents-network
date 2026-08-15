@@ -65,3 +65,15 @@ func TestReplacementResourcesAcceptRoundedTerminalTraffic(t *testing.T) {
 		t.Fatalf("rounded terminal traffic rejected: %+v", result)
 	}
 }
+
+func TestTerminalTrafficSampleAllowsOneIncompleteDockerStatsRound(t *testing.T) {
+	terminal := int64(5 * time.Second)
+	sample := ResourceSample{AtNanos: int64(3100 * time.Millisecond), ClientSent: 1, PublisherReceived: 1}
+	if !terminalTrafficSample(sample, terminal) {
+		t.Fatal("complete sample from the prior Docker stats round rejected")
+	}
+	sample.AtNanos = int64(2999 * time.Millisecond)
+	if terminalTrafficSample(sample, terminal) {
+		t.Fatal("sample older than two seconds accepted")
+	}
+}

@@ -26,8 +26,8 @@ func verifyReplacementTraffic(cell replacementCell) Result {
 
 func terminalTrafficSample(value ResourceSample, terminalNanos int64) bool {
 	return value.AtNanos > 0 && terminalNanos > 0 &&
-		value.AtNanos <= terminalNanos+int64(1500*time.Millisecond) &&
-		terminalNanos-value.AtNanos <= int64(1500*time.Millisecond) &&
+		value.AtNanos <= terminalNanos+int64(2*time.Second) &&
+		terminalNanos-value.AtNanos <= int64(2*time.Second) &&
 		value.ClientReceived+value.ClientSent > 0 && value.PublisherReceived+value.PublisherSent > 0
 }
 

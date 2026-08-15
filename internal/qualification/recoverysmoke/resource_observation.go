@@ -12,8 +12,8 @@ func finalResourceSample(samples []recovery.ResourceSample, terminalNanos int64)
 		return recovery.ResourceSample{}, errors.New("terminal host resource sample is missing")
 	}
 	result := samples[len(samples)-1]
-	if result.AtNanos <= 0 || result.AtNanos > terminalNanos+int64(1500*time.Millisecond) ||
-		terminalNanos-result.AtNanos > int64(1500*time.Millisecond) ||
+	if result.AtNanos <= 0 || result.AtNanos > terminalNanos+int64(2*time.Second) ||
+		terminalNanos-result.AtNanos > int64(2*time.Second) ||
 		result.ClientReceived+result.ClientSent == 0 || result.PublisherReceived+result.PublisherSent == 0 {
 		return recovery.ResourceSample{}, errors.New("terminal host resource sample does not cover the active interval")
 	}
