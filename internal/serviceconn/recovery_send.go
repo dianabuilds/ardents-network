@@ -9,6 +9,13 @@ func (stream *recoveryStream) sendApplication(limit uint64) error {
 	buffer := make([]byte, maximumFrameData)
 	for {
 		stream.mu.Lock()
+		if stream.sendNext < stream.sendEnd && stream.terminal == nil {
+			stream.mu.Unlock()
+			if err := stream.flushAvailable(); err != nil {
+				return err
+			}
+			continue
+		}
 		for len(stream.sendData) >= logicalQueueLimit && stream.terminal == nil {
 			stream.cond.Wait()
 		}
