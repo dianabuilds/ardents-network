@@ -69,7 +69,7 @@ func verifyReplacementRoutes(cell replacementCell, candidates map[string][]repla
 			event.Failed.ObservedAtNanos > event.FailedResource.Fault.InvocationStartedNanos ||
 			event.FailedResource.Fault.InvocationStartedNanos-cell.ActiveStartedAtNanos != event.FaultAtNanos ||
 			event.FailedResource.Fault.InvocationCompletedNanos-cell.ActiveStartedAtNanos > event.CanaryNanos ||
-			event.FailedResource.ObservedAtNanos-cell.TerminalNanos > int64(30*time.Second) {
+			event.FailedResource.ObservedAtNanos > cell.LifetimeNanos+int64(2*time.Second) {
 			return fail("S4.2 failed and replacement candidate evidence is inconsistent")
 		}
 		if result := verifyReplacementEvent(cell, generationIndex, event, before, after); result.Verdict != "pass" {

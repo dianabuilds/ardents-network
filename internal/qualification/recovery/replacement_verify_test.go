@@ -145,6 +145,14 @@ func TestVerifyRejectsS42ReplacementMutations(t *testing.T) {
 		"proposal stop predates terminal": func(value *replacementEvidence) {
 			value.Cells[0].Proposals[0].Stopped[0].ObservedAtNanos = value.Cells[0].TerminalNanos - 1
 		},
+		"proposal stop exceeds lifetime": func(value *replacementEvidence) {
+			value.Cells[0].Proposals[0].Stopped[0].ObservedAtNanos =
+				value.Cells[0].LifetimeNanos + int64(2*time.Second) + 1
+		},
+		"failed resource stop exceeds lifetime": func(value *replacementEvidence) {
+			value.Cells[0].Events[0].FailedResource.ObservedAtNanos =
+				value.Cells[0].LifetimeNanos + int64(2*time.Second) + 1
+		},
 		"proposal process overlaps Endpoint": func(value *replacementEvidence) {
 			endpoint := value.Cells[0].HostProcesses["client-endpoint"]
 			process := &value.Cells[0].Proposals[0].Processes[0]

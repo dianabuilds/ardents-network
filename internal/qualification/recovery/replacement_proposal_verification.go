@@ -44,7 +44,7 @@ func verifyReplacementProposals(cell replacementCell, candidates map[string][]re
 				process.ObservedAtNanos > stopped.State.ObservedAtNanos ||
 				reserved[process.Host.Identity] ||
 				stopped.Running || stopped.ObservedAtNanos < cell.TerminalNanos ||
-				stopped.ObservedAtNanos-cell.TerminalNanos > int64(30*time.Second) {
+				stopped.ObservedAtNanos > cell.LifetimeNanos+int64(2*time.Second) {
 				return invalid("S4.2 proposed Route process or stopped receipt is invalid")
 			}
 			if prior, ok := processes[process.NodeID]; ok &&
