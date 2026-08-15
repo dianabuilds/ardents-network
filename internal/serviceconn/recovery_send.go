@@ -9,20 +9,20 @@ func (stream *recoveryStream) sendApplication(limit uint64) error {
 	buffer := make([]byte, maximumFrameData)
 	for {
 		stream.mu.Lock()
-		if stream.sendNext < stream.sendEnd && stream.terminal == nil {
-			stream.mu.Unlock()
-			if err := stream.flushAvailable(); err != nil {
-				return err
-			}
-			continue
-		}
-		for len(stream.sendData) >= logicalQueueLimit && stream.terminal == nil {
+		for stream.sendQueueBlockedLocked() && stream.terminal == nil {
 			stream.cond.Wait()
 		}
 		if stream.terminal != nil {
 			err := stream.terminal
 			stream.mu.Unlock()
 			return err
+		}
+		if stream.sendNext < stream.sendEnd {
+			stream.mu.Unlock()
+			if err := stream.flushAvailable(); err != nil {
+				return err
+			}
+			continue
 		}
 		if stream.sendEnd >= limit {
 			for stream.sendBase < limit && stream.terminal == nil {
@@ -66,6 +66,10 @@ func (stream *recoveryStream) sendApplication(limit uint64) error {
 			}
 		}
 	}
+}
+
+func (stream *recoveryStream) sendQueueBlockedLocked() bool {
+	return len(stream.sendData) >= logicalQueueLimit && stream.sendNext >= stream.sendEnd
 }
 
 func (stream *recoveryStream) sendTerminal() {
