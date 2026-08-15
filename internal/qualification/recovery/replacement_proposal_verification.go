@@ -36,9 +36,9 @@ func verifyReplacementProposals(cell replacementCell, candidates map[string][]re
 			if process.NodeID != selected[role].NodeID || process.PublicKey != selected[role].PublicKey ||
 				!validProcessRef(process, hostScope) ||
 				process.ObservedAtNanos < cell.HostStartedAtNanos ||
-				process.ObservedAtNanos > cell.HostStartedAtNanos+cell.TerminalNanos ||
+				process.ObservedAtNanos > cell.ActiveStartedAtNanos ||
 				!validProcessState(stopped.State, process) ||
-				stopped.ObservedAtNanos+cell.HostStartedAtNanos != stopped.State.ObservedAtNanos ||
+				stopped.ObservedAtNanos+cell.ActiveStartedAtNanos != stopped.State.ObservedAtNanos ||
 				process.ObservedAtNanos > stopped.State.ObservedAtNanos ||
 				reserved[process.Host.Identity] ||
 				stopped.Running || stopped.ObservedAtNanos < cell.TerminalNanos ||

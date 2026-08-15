@@ -25,7 +25,7 @@ func verifyReplacementRoutes(cell replacementCell, candidates map[string][]repla
 			if process.NodeID != candidate.NodeID || process.PublicKey != candidate.PublicKey ||
 				!validProcessRef(process, hostScope) ||
 				process.ObservedAtNanos < cell.HostStartedAtNanos ||
-				process.ObservedAtNanos > cell.HostStartedAtNanos+cell.TerminalNanos {
+				process.ObservedAtNanos > cell.ActiveStartedAtNanos {
 				return invalid("S4.2 selected candidate process does not match the recomputed Route")
 			}
 			if prior, ok := nodeProcesses[process.NodeID]; ok &&
@@ -60,11 +60,11 @@ func verifyReplacementRoutes(cell replacementCell, candidates map[string][]repla
 			event.FailedResource.ObservedAtNanos < cell.TerminalNanos ||
 			!validProcessState(event.FailedResource.State, event.Failed) ||
 			!validProcessFault(event.FailedResource.Fault, event.Failed) ||
-			event.FailedResource.ObservedAtNanos+cell.HostStartedAtNanos !=
+			event.FailedResource.ObservedAtNanos+cell.ActiveStartedAtNanos !=
 				event.FailedResource.State.ObservedAtNanos ||
 			event.Failed.ObservedAtNanos > event.FailedResource.Fault.InvocationStartedNanos ||
-			event.FailedResource.Fault.InvocationStartedNanos-cell.HostStartedAtNanos != event.FaultAtNanos ||
-			event.FailedResource.Fault.InvocationCompletedNanos-cell.HostStartedAtNanos > event.CanaryNanos ||
+			event.FailedResource.Fault.InvocationStartedNanos-cell.ActiveStartedAtNanos != event.FaultAtNanos ||
+			event.FailedResource.Fault.InvocationCompletedNanos-cell.ActiveStartedAtNanos > event.CanaryNanos ||
 			event.FailedResource.ObservedAtNanos-cell.TerminalNanos > int64(30*time.Second) {
 			return fail("S4.2 failed and replacement candidate evidence is inconsistent")
 		}

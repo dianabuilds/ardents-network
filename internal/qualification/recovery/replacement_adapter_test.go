@@ -42,7 +42,7 @@ func TestVerifyRejectsUnsupportedS42Adapter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result := Verify(value); result.Verdict != "invalid" {
+	if result := verifyS42Test(value); result.Verdict != "invalid" {
 		t.Fatalf("unsupported Adapter verdict = %+v, want invalid", result)
 	}
 }
@@ -53,7 +53,7 @@ func TestVerifyRejectsChangedS42HostScope(t *testing.T) {
 	hostScope.Machine[0]++
 	hostScope.Commitment = hostScopeCommitment(hostScope)
 	value.HostScope = encodeHostScopeTest(t, hostScope)
-	if result := Verify(value); result.Verdict == "pass" {
+	if result := verifyS42Test(value); result.Verdict == "pass" {
 		t.Fatal("changed campaign HostScope passed existing process observations")
 	}
 }

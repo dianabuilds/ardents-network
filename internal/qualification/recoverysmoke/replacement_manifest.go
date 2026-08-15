@@ -25,6 +25,19 @@ type replacementCellManifest struct {
 
 func prepareReplacementManifest(root, direction, mode string, seed [32]byte, failures []string,
 	offsets []uint32, lifetime, delay string) (replacementCellManifest, error) {
+	value, err := buildReplacementManifest(direction, mode, seed, failures, offsets, lifetime, delay)
+	if err != nil {
+		return replacementCellManifest{}, err
+	}
+	path := filepath.Join(root, "replacement-cell-manifest.json")
+	if err := byteio.WriteJSON(path, value, 64<<10); err != nil {
+		return replacementCellManifest{}, fmt.Errorf("write replacement cell manifest: %w", err)
+	}
+	return value, nil
+}
+
+func buildReplacementManifest(direction, mode string, seed [32]byte, failures []string,
+	offsets []uint32, lifetime, delay string) (replacementCellManifest, error) {
 	lifetimeValue, err := time.ParseDuration(lifetime)
 	if err != nil {
 		return replacementCellManifest{}, fmt.Errorf("parse replacement lifetime: %w", err)
@@ -43,10 +56,6 @@ func prepareReplacementManifest(root, direction, mode string, seed [32]byte, fai
 		LifetimeNanos: lifetimeValue.Nanoseconds(),
 		FailureRoles:  append([]string(nil), failures...), FaultOffsets: append([]uint32(nil), offsets...)}
 	value.Digest = replacementManifestDigest(value)
-	path := filepath.Join(root, "replacement-cell-manifest.json")
-	if err := byteio.WriteJSON(path, value, 64<<10); err != nil {
-		return replacementCellManifest{}, fmt.Errorf("write replacement cell manifest: %w", err)
-	}
 	return value, nil
 }
 

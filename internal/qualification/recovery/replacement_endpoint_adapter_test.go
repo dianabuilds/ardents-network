@@ -15,7 +15,7 @@ func TestVerifyUsesCommonS42ManagedProcessEvidence(t *testing.T) {
 			t.Fatalf("cell %d host process count = %d", index, len(cell.HostProcesses))
 		}
 	}
-	if result := Verify(value); result.Verdict != "pass" {
+	if result := verifyS42Test(value); result.Verdict != "pass" {
 		t.Fatalf("common Endpoint/Application process evidence was rejected: %+v", result)
 	}
 }

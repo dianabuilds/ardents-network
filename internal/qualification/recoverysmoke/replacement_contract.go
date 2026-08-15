@@ -1,16 +1,6 @@
 package recoverysmoke
 
-import (
-	"encoding/json"
-
-	"github.com/dianabuilds/ardents-network/internal/qualification/recovery"
-)
-
-type replacementEvidence struct {
-	RouteCase  json.RawMessage
-	Candidates []replacementCandidate
-	Cells      []replacementCell
-}
+import "github.com/dianabuilds/ardents-network/internal/qualification/recovery"
 
 type replacementCandidate struct {
 	Role, Family, Endpoint string
@@ -26,6 +16,7 @@ type replacementCell struct {
 	Seed, ExpectedDigest, ObservedDigest                                       [32]byte
 	Bytes, ChunkBytes, CanaryBytes                                             uint32
 	ChunkDelayNanos, SetupDeadlineNanos, LifetimeNanos, HostStartedAtNanos     int64
+	ActiveStartedAtNanos                                                       int64
 	ResourceStartedAtNanos                                                     int64
 	TerminalNanos                                                              int64
 	ClientRouteGeneration, PublisherRouteGeneration                            uint64
@@ -41,14 +32,8 @@ type replacementCell struct {
 	Routes                                                                     []routeGeneration
 	Proposals                                                                  []replacementProposal
 	Events                                                                     []replacementEvent
-	BaselineClientTrafficObserver, BaselinePublisherTrafficObserver            recovery.ObserverProcess
-	ClientTrafficObserver, PublisherTrafficObserver                            recovery.ObserverProcess
-	BaselineClientRoute, BaselinePublisherRoute                                string
-	ClientRoute, PublisherRoute                                                string
 	ResourceSamples                                                            []recovery.ResourceSample
-	FinalTraffic, BaselineFinalTraffic                                         recovery.ResourceSample
-	BaselineTerminalNanos                                                      int64
-	BaselineClientTraffic, BaselinePublisherTraffic                            uint64
+	FinalTraffic                                                               recovery.ResourceSample
 	FinalCanaryOffset                                                          uint32
 	FinalCanary                                                                [32]byte
 	FinalCanaryObservedNanos                                                   int64

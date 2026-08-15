@@ -14,7 +14,8 @@ import (
 const recoveryBytes = uint32(4 << 20)
 
 func (observer dockerObserver) runPositiveRecovery(ctx context.Context, direction string,
-	baseline trafficBaseline, hostScope hostScopeEvidence, hostClock time.Time) (recovery.Cell, error) {
+	baseline trafficBaseline, hostScope hostScopeEvidence, hostClock time.Time) (
+	result recovery.Cell, returnErr error) {
 	observer = observer.forRecoveryOperation(direction)
 	cellClock := time.Now()
 	cellHostStartedAt := max(int64(1), time.Since(hostClock).Nanoseconds())
@@ -60,17 +61,20 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 	if err != nil {
 		return recovery.Cell{}, err
 	}
-	traffic, err := observer.startTrafficObservers(ctx, identities)
-	if err != nil {
-		return recovery.Cell{}, err
-	}
-	defer func() { _ = traffic.remove(context.Background(), observer) }()
 	faultController, err := observer.serviceID(ctx, "carrier-fault")
 	if err != nil {
 		return recovery.Cell{}, err
 	}
 	sampler := observer.startStats(ctx, identities, cellClock)
-	defer func() { _, _ = sampler.stop() }()
+	defer func() {
+		if sampler != nil {
+			_, sampleErr := sampler.stop()
+			returnErr = errors.Join(returnErr, sampleErr)
+		}
+	}()
+	if err := sampler.waitReady(ctx); err != nil {
+		return recovery.Cell{}, err
+	}
 	receiver := "publisher-app"
 	if direction == "publisher-to-client" {
 		receiver = "client-app"
@@ -133,13 +137,17 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 		}
 	}
 	terminalAt := time.Since(cellClock).Nanoseconds()
-	finalTraffic, trafficErr := traffic.snapshotAndRemove(ctx, observer, cellClock)
 	samples, err := sampler.stop()
+	sampler = nil
 	if len(samples) < 3 {
 		err = errors.Join(err, errors.New("fewer than three one-second host resource samples"))
 	}
-	if err != nil || trafficErr != nil {
-		return recovery.Cell{}, errors.Join(err, trafficErr)
+	if err != nil {
+		return recovery.Cell{}, err
+	}
+	finalTraffic, err := finalResourceSample(samples, terminalAt)
+	if err != nil {
+		return recovery.Cell{}, err
 	}
 	clientEndpoint, publisherEndpoint, application, routes, err := observer.recoveryTerminals(ctx, receiver)
 	if err != nil {
@@ -205,10 +213,7 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 		TimerHighWater:      max(clientEndpoint.TimerHighWater, publisherEndpoint.TimerHighWater),
 		CarrierForwardBytes: forwardBytes, CarrierReverseBytes: reverseBytes, ResourceSamples: samples,
 		FinalTraffic: finalTraffic, BaselineClientTraffic: baseline.client, BaselinePublisherTraffic: baseline.publisher,
-		BaselineFinalTraffic: baseline.finalTraffic, BaselineTerminalNanos: baseline.terminalNanos,
-		BaselineClientRoute: baseline.routes[0], BaselinePublisherRoute: baseline.routes[1],
-		BaselineClientTrafficObserver: baseline.observers[0], BaselinePublisherTrafficObserver: baseline.observers[1],
-		ClientTrafficObserver: traffic.projections[0], PublisherTrafficObserver: traffic.projections[1]}
+		BaselineFinalTraffic: baseline.finalTraffic, BaselineTerminalNanos: baseline.terminalNanos}
 	if err := observer.resetRecoveryTopology(ctx, time.Minute); err != nil {
 		return recovery.Cell{}, err
 	}

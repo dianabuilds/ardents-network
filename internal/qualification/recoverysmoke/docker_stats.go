@@ -11,52 +11,10 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/qualification/recovery"
 )
-
-type statsSampler struct {
-	mu             sync.Mutex
-	samples        []recovery.ResourceSample
-	err            error
-	cancel         context.CancelFunc
-	done           chan struct{}
-	stopOnce       sync.Once
-	stoppedSamples []recovery.ResourceSample
-	stoppedErr     error
-}
-
-func (observer dockerObserver) startStats(ctx context.Context, identities map[string]string, clock time.Time) *statsSampler {
-	sampleCtx, cancel := context.WithCancel(ctx)
-	result := &statsSampler{cancel: cancel, done: make(chan struct{})}
-	go func() {
-		defer close(result.done)
-		samples, err := observer.streamResourceSamples(sampleCtx, identities, clock)
-		result.mu.Lock()
-		defer result.mu.Unlock()
-		result.samples = samples
-		result.err = err
-	}()
-	return result
-}
-
-func (sampler *statsSampler) stop() ([]recovery.ResourceSample, error) {
-	sampler.stopOnce.Do(func() {
-		sampler.cancel()
-		<-sampler.done
-		sampler.mu.Lock()
-		defer sampler.mu.Unlock()
-		for _, sample := range sampler.samples {
-			if sample.ClientRSS > 0 && sample.PublisherRSS > 0 {
-				sampler.stoppedSamples = append(sampler.stoppedSamples, sample)
-			}
-		}
-		sampler.stoppedErr = sampler.err
-	})
-	return append([]recovery.ResourceSample(nil), sampler.stoppedSamples...), sampler.stoppedErr
-}
 
 func resourceHighWater(samples []recovery.ResourceSample) (uint64, float64) {
 	var memory uint64
@@ -69,7 +27,7 @@ func resourceHighWater(samples []recovery.ResourceSample) (uint64, float64) {
 }
 
 func (observer dockerObserver) streamResourceSamples(ctx context.Context, identities map[string]string,
-	clock time.Time) ([]recovery.ResourceSample, error) {
+	clock time.Time, ready func()) ([]recovery.ResourceSample, error) {
 	services := []string{"client-endpoint", "client-app", "client", "publisher-endpoint", "publisher-app", "publisher"}
 	args := []string{"stats", "--format", "{{json .}}"}
 	for _, service := range services {
@@ -114,6 +72,7 @@ func (observer dockerObserver) streamResourceSamples(ctx context.Context, identi
 			if len(samples) == 0 || !sameResourceObservation(samples[len(samples)-1], sample) {
 				samples = append(samples, sample)
 			}
+			ready()
 			sample, seen = recovery.ResourceSample{}, map[string]bool{}
 		}
 	}
@@ -161,13 +120,15 @@ func addResourceRow(line []byte, identities map[string]string, services []string
 			if strings.HasPrefix(service, "client") {
 				result.ClientRSS += memory
 				result.ClientCPUPercent += cpu
-				result.ClientReceived += received
-				result.ClientSent += sent
 			} else {
 				result.PublisherRSS += memory
 				result.PublisherCPUPercent += cpu
-				result.PublisherReceived += received
-				result.PublisherSent += sent
+			}
+			if service == "client" {
+				result.ClientReceived, result.ClientSent = received, sent
+			}
+			if service == "publisher" {
+				result.PublisherReceived, result.PublisherSent = received, sent
 			}
 			return service, nil
 		}

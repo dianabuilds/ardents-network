@@ -53,13 +53,6 @@ type carrierRetirementReceipt struct {
 	Established                     bool   `json:"established"`
 }
 
-type trafficCounterReceipt struct {
-	Kind       string `json:"kind"`
-	Interfaces uint32 `json:"interfaces"`
-	Received   uint64 `json:"received_bytes"`
-	Sent       uint64 `json:"sent_bytes"`
-}
-
 func executeCarrierFault(arguments []string, output io.Writer) error {
 	encoder := json.NewEncoder(output)
 	if len(arguments) == 1 && arguments[0] == "wait" {
@@ -81,20 +74,6 @@ func executeCarrierFault(arguments []string, output io.Writer) error {
 			return err
 		}
 		return encoder.Encode(value)
-	}
-	if len(arguments) == 1 && arguments[0] == "traffic-wait" {
-		reports := make(chan os.Signal, 1)
-		signal.Notify(reports, syscall.Signal(10))
-		defer signal.Stop(reports)
-		waitCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-		defer stop()
-		ready := func() { _ = encoder.Encode(map[string]string{"kind": "ready"}) }
-		emit := func(value trafficCounterReceipt) error { return encoder.Encode(value) }
-		err := retainNetworkTraffic(waitCtx, reports, ready, emit, readNetworkTrafficFile)
-		if errors.Is(err, context.Canceled) {
-			return nil
-		}
-		return err
 	}
 	if len(arguments) == 2 && arguments[0] == "fault" {
 		value, err := faultCarrierSocket(arguments[1])

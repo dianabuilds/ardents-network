@@ -29,7 +29,7 @@ func TestVerifyRejectsUncommittedS42InputsAndTruncatedSamples(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if result := Verify(value); result.Verdict == "pass" {
+			if result := verifyS42Test(value); result.Verdict == "pass" {
 				t.Fatalf("uncommitted or truncated S4.2 evidence passed: %+v", result)
 			}
 		})
@@ -37,10 +37,11 @@ func TestVerifyRejectsUncommittedS42InputsAndTruncatedSamples(t *testing.T) {
 }
 
 func TestReplacementResourcesRequireStartToTerminalCoverage(t *testing.T) {
-	cell := replacementCell{HostStartedAtNanos: 100, TerminalNanos: int64(10*time.Minute + time.Second),
-		ResourceStartedAtNanos: 1, BaselineClientTraffic: 1, BaselinePublisherTraffic: 1,
-		Events:        []replacementEvent{{LastDeliveryNanos: int64(2 * time.Minute)}},
-		HostProcesses: map[string]processObservationEvidence{"client-app": {ObservedAtNanos: 101}}}
+	cell := replacementCell{HostStartedAtNanos: 100, ActiveStartedAtNanos: 101,
+		TerminalNanos:          int64(10*time.Minute + time.Second),
+		ResourceStartedAtNanos: 1,
+		Events:                 []replacementEvent{{LastDeliveryNanos: int64(2 * time.Minute)}},
+		HostProcesses:          map[string]processObservationEvidence{"client-app": {ObservedAtNanos: 101}}}
 	cell.ResourceSamples = s42Samples(cell.TerminalNanos)
 	cell.FinalTraffic = cell.ResourceSamples[len(cell.ResourceSamples)-1]
 	if result := verifyReplacementResources(cell); result.Verdict != "pass" {

@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 )
+
+var errReplacementProcessStillRunning = errors.New("replacement process remained live past its candidate bound")
 
 func parseAttachmentCount(raw []byte, role string) (uint32, error) {
 	var highest uint32
@@ -39,10 +42,23 @@ func (observer dockerObserver) waitContainerStopped(ctx context.Context, identit
 		return errors.New("replacement process identity is invalid")
 	}
 	deadline := time.Now().Add(limit)
+	observedRunning := false
+	var observationErr error
 	for time.Now().Before(deadline) {
 		raw, err := observer.docker(ctx, 10*time.Second, "inspect", "--format", "{{.Id}} {{.State.Running}}", identity)
-		if err == nil && strings.TrimSpace(string(raw)) == identity+" false" {
-			return nil
+		if err != nil {
+			observationErr = errors.Join(observationErr, fmt.Errorf("inspect replacement process state: %w", err))
+		} else {
+			state := strings.TrimSpace(string(raw))
+			switch state {
+			case identity + " false":
+				return nil
+			case identity + " true":
+				observedRunning = true
+			default:
+				observationErr = errors.Join(observationErr,
+					errors.New("replacement process state inspection is malformed"))
+			}
 		}
 		select {
 		case <-ctx.Done():
@@ -50,5 +66,8 @@ func (observer dockerObserver) waitContainerStopped(ctx context.Context, identit
 		case <-time.After(100 * time.Millisecond):
 		}
 	}
-	return errors.New("replacement process did not stop within its bounded lifetime")
+	if observedRunning && observationErr == nil {
+		return errReplacementProcessStillRunning
+	}
+	return errors.Join(observationErr, errors.New("replacement process terminal state was not observable"))
 }

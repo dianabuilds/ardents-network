@@ -3,13 +3,9 @@ package recoverysmoke
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/qualification/byteio"
@@ -35,7 +31,7 @@ func (observer dockerObserver) runRecoveryCell(ctx context.Context, fixture prep
 		WorkSafetyNotAfter: fixture.credentials[0].NotAfter, WorkSafetyMaximum: fixture.credentials[0].NotAfter,
 		NoNewRecoveryAfter: fixture.credentials[0].NotAfter}
 	evidence.Topology = append([]byte(nil), topology...)
-	extension := replacementEvidence{RouteCase: append(json.RawMessage(nil), fixture.routeCase...)}
+	var replacementCandidates []replacementCandidate
 	hostScope, scopeErr := observer.observeDockerHostScope(ctx, fixture.manifest, imageID)
 	if scopeErr != nil {
 		return observer.invalid(scopeErr)
@@ -55,7 +51,7 @@ func (observer dockerObserver) runRecoveryCell(ctx context.Context, fixture prep
 	evidence.IsolationContext = sha256.Sum256(append([]byte("isolation\x00"), fixture.manifest[:]...))
 	evidence.DestinationBinding = sha256.Sum256(append([]byte("destination\x00"), fixture.target[:]...))
 	for _, candidate := range fixture.candidates {
-		extension.Candidates = append(extension.Candidates, replacementCandidate{Role: candidate.Role, Family: candidate.Family,
+		replacementCandidates = append(replacementCandidates, replacementCandidate{Role: candidate.Role, Family: candidate.Family,
 			Endpoint: candidate.Endpoint, NodeID: candidate.NodeID, PublicKey: candidate.PublicKey})
 	}
 	var err error
@@ -66,6 +62,15 @@ func (observer dockerObserver) runRecoveryCell(ctx context.Context, fixture prep
 	observer.generation = filepath.Join(observer.input.FixtureRoot, "generations", "1")
 	observer.evidenceFile = filepath.Join(observer.input.EvidenceRoot, "empty.json")
 	campaignStarted := time.Now()
+	var replacementManifest json.RawMessage
+	var replacementAttemptFiles []string
+	if observer.input.Slice == "s4.2" {
+		replacementManifest, err = prepareReplacementCampaignManifest(observer, fixture, hostScope, imageID, topology,
+			replacementCandidates)
+		if err != nil {
+			return observer.invalid(err)
+		}
+	}
 	if observer.input.Slice == "s4.1" {
 		for {
 			for _, direction := range []string{"client-to-publisher", "publisher-to-client"} {
@@ -87,46 +92,34 @@ func (observer dockerObserver) runRecoveryCell(ctx context.Context, fixture prep
 		}
 	} else {
 		for _, direction := range []string{"client-to-publisher", "publisher-to-client"} {
-			baseline, err := observer.runNoFailureBaseline(ctx, direction)
-			if err != nil {
-				return observer.invalid(err)
-			}
-			cell, err := observer.runPositiveRecovery(ctx, direction, baseline, hostScope, hostClock)
-			if err != nil {
-				return Result{Verdict: "fail", Reason: direction + ": " + err.Error(), EvidenceRoot: observer.input.EvidenceRoot,
-					SourceCommit: observer.sourceCommit, ImageID: imageID}
-			}
-			evidence.Cells = append(evidence.Cells, cell)
 			for _, role := range replacementRoles {
-				baseline, err = observer.runNoFailureBaseline(ctx, direction)
-				if err != nil {
-					return observer.invalid(err)
+				verificationPath, result := runReplacementCampaignCell(ctx, observer, fixture, direction,
+					[]string{role}, false, hostScope, hostClock, replacementManifest, direction+" "+role)
+				if result != nil {
+					if result.Verdict == "fail" && verificationPath != "" {
+						replacementAttemptFiles = append(replacementAttemptFiles, verificationPath)
+						return observer.finishReplacementCampaign(ctx, imageID, replacementManifest,
+							replacementAttemptFiles)
+					}
+					return *result
 				}
-				replacement, replacementErr := observer.runReplacementRecovery(ctx, fixture, direction,
-					[]string{role}, baseline, false, hostScope, hostClock)
-				if replacementErr != nil {
-					return Result{Verdict: "fail", Reason: direction + " " + role + ": " + replacementErr.Error(),
-						EvidenceRoot: observer.input.EvidenceRoot, SourceCommit: observer.sourceCommit, ImageID: imageID}
+				replacementAttemptFiles = append(replacementAttemptFiles, verificationPath)
+			}
+			verificationPath, result := runReplacementCampaignCell(ctx, observer, fixture, direction,
+				[]string{"initiator", "rendezvous", "responder"}, true, hostScope, hostClock,
+				replacementManifest, direction+" sequential")
+			if result != nil {
+				if result.Verdict == "fail" && verificationPath != "" {
+					replacementAttemptFiles = append(replacementAttemptFiles, verificationPath)
+					return observer.finishReplacementCampaign(ctx, imageID, replacementManifest,
+						replacementAttemptFiles)
 				}
-				extension.Cells = append(extension.Cells, replacement)
+				return *result
 			}
-			baseline, err = observer.runNoFailureBaseline(ctx, direction)
-			if err != nil {
-				return observer.invalid(err)
-			}
-			sequential, sequentialErr := observer.runReplacementRecovery(ctx, fixture, direction,
-				[]string{"initiator", "rendezvous", "responder"}, baseline, true, hostScope, hostClock)
-			if sequentialErr != nil {
-				return Result{Verdict: "fail", Reason: direction + " sequential: " + sequentialErr.Error(),
-					EvidenceRoot: observer.input.EvidenceRoot, SourceCommit: observer.sourceCommit, ImageID: imageID}
-			}
-			extension.Cells = append(extension.Cells, sequential)
+			replacementAttemptFiles = append(replacementAttemptFiles, verificationPath)
 		}
-		raw, marshalErr := json.Marshal(extension)
-		if marshalErr != nil {
-			return observer.invalid(marshalErr)
-		}
-		evidence.S42 = raw
+		return observer.finishReplacementCampaign(ctx, imageID, replacementManifest,
+			replacementAttemptFiles)
 	}
 	evidence.RequestedNanos = observer.input.Duration.Nanoseconds()
 	if observer.input.Slice == "s4.2" {
@@ -177,56 +170,4 @@ func (observer dockerObserver) runRecoveryCell(ctx context.Context, fixture prep
 	return Result{Verdict: "pass", Reason: verdict.Reason, EvidenceRoot: observer.input.EvidenceRoot, Attempts: len(evidence.Cells),
 		SourceCommit: observer.sourceCommit, ImageID: imageID, attemptFiles: []string{path}, dockerProject: observer.project,
 		imageTag: observer.image, DockerCleanup: true, FixtureCleanup: true}
-}
-
-func (observer dockerObserver) invokeRecoveryVerifier(ctx context.Context) (recovery.Result, error) {
-	if err := os.Chmod(observer.evidenceFile, 0o444); err != nil {
-		return recovery.Result{}, err
-	}
-	defer os.Chmod(observer.evidenceFile, 0o600)
-	raw, err := observer.docker(ctx, time.Minute, "run", "--rm", "--network", "none", "--read-only",
-		"--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--user", "65532:65532",
-		"--mount", "type=bind,src="+observer.evidenceFile+",dst=/run/ardents/evidence.json,readonly",
-		resultImage(observer), "/usr/local/bin/ardents-recovery-qualify", "/run/ardents/evidence.json")
-	if err != nil {
-		return recovery.Result{}, err
-	}
-	var result recovery.Result
-	for _, line := range splitLines(raw) {
-		if json.Unmarshal(line, &result) == nil && result.Verdict != "" {
-			return result, nil
-		}
-	}
-	return result, errors.New("independent recovery verifier verdict is missing")
-}
-
-func resultImage(observer dockerObserver) string {
-	if observer.imageID != "" {
-		return observer.imageID
-	}
-	return observer.image
-}
-
-func (observer dockerObserver) assertDockerEmpty(ctx context.Context) error {
-	for _, kind := range []string{"container", "network", "volume"} {
-		raw, err := observer.docker(ctx, time.Minute, dockerOwnedListArguments(kind, observer.project)...)
-		if err != nil {
-			return fmt.Errorf("enumerate final owned Docker %s resources: %w", kind, err)
-		}
-		if strings.TrimSpace(string(raw)) != "" {
-			return fmt.Errorf("recovery Docker ownership retains a %s resource", kind)
-		}
-	}
-	return nil
-}
-
-func digestText(raw []byte) string {
-	digest := sha256.Sum256(raw)
-	return hex.EncodeToString(digest[:])
-}
-
-func recoveryReceiptPath(root string) string { return filepath.Join(root, "recovery-negative.json") }
-
-func writeRecoveryReceipt(root string, value any) error {
-	return byteio.WriteJSON(recoveryReceiptPath(root), value, 1<<20)
 }

@@ -115,18 +115,18 @@ func stopCandidate(ctx context.Context, observer hostProcessAdapter,
 }
 
 func candidateUnavailable(ctx context.Context, observer hostProcessAdapter,
-	process candidateProcess, hostStartedAt int64) (failedResourceReceipt, error) {
+	process candidateProcess, activeStartedAt int64) (failedResourceReceipt, error) {
 	observed, err := observer.AwaitProcessState(ctx, process.Host, processStopped, 10*time.Second)
 	if err != nil {
 		return failedResourceReceipt{}, fmt.Errorf("observe failed Route candidate state: %w", err)
 	}
-	if hostStartedAt <= 0 || observed.Ref != process.Host || observed.State != processStopped ||
-		observed.ObservedAtNanos <= hostStartedAt || observed.ObservedAtNanos < process.ObservedAtNanos {
+	if activeStartedAt <= 0 || observed.Ref != process.Host || observed.State != processStopped ||
+		observed.ObservedAtNanos <= activeStartedAt || observed.ObservedAtNanos < process.ObservedAtNanos {
 		return failedResourceReceipt{}, errors.New("failed route candidate became available again")
 	}
 	state := freezeProcessState(observed)
 	return failedResourceReceipt{ContainerID: process.Host.Identity,
-		ObservedAtNanos: observed.ObservedAtNanos - hostStartedAt, State: state}, nil
+		ObservedAtNanos: observed.ObservedAtNanos - activeStartedAt, State: state}, nil
 }
 
 func validateProcessObservation(value processObservation) error {

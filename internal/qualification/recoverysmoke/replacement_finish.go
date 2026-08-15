@@ -7,44 +7,35 @@ import (
 	"time"
 )
 
-func (observer dockerObserver) waitReplacementTerminal(ctx context.Context, processObserver hostProcessAdapter,
-	identities map[string]string, failed map[string]candidateProcess, sequential bool, hostStartedAt int64) error {
+func (observer dockerObserver) waitReplacementTerminal(ctx context.Context,
+	identities map[string]string, sequential bool) error {
 	limit := time.Minute
 	if sequential {
 		limit = 13 * time.Minute
 	}
-	clean := map[string]bool{"client": true, "publisher": true, "client-endpoint": true,
-		"publisher-endpoint": true, "client-app": true, "publisher-app": true}
 	for service, identity := range identities {
-		var err error
-		if clean[service] {
-			err = observer.waitContainerFor(ctx, identity, true, limit)
-		} else {
-			err = observer.waitContainerStopped(ctx, identity, limit)
-		}
-		if err != nil {
+		if err := observer.waitContainerStopped(ctx, identity, limit); err != nil {
 			return fmt.Errorf("replacement %s: %w", service, err)
-		}
-	}
-	for _, process := range failed {
-		if _, err := candidateUnavailable(ctx, processObserver, process, hostStartedAt); err != nil {
-			return err
 		}
 	}
 	return nil
 }
 
 func (observer dockerObserver) finishReplacementCell(ctx context.Context, processObserver hostProcessAdapter,
-	cell replacementCell, receiver string, traffic *trafficObservers, sampler *statsSampler,
+	cell replacementCell, receiver string, sampler *statsSampler,
 	failed map[string]candidateProcess, faultReceipts map[string]processFaultEvidence,
 	proposalRoutes []routeGeneration,
-	cellClock time.Time, hostStartedAt int64) (replacementCell, error) {
-	finalTraffic, trafficErr := traffic.snapshotAndRemove(ctx, observer, cellClock)
-	samples, sampleErr := sampler.stop()
-	if trafficErr != nil || sampleErr != nil || len(samples) < 3 {
-		return replacementCell{}, errors.Join(trafficErr, sampleErr,
+	cellClock time.Time, activeStartedAt int64) (replacementCell, error) {
+	samples, sampleErr := sampler.stopAfter(activeStartedAt)
+	if sampleErr != nil || len(samples) < 3 {
+		return replacementCell{}, errors.Join(sampleErr,
 			errors.New("replacement resource observations are incomplete"))
 	}
+	finalTraffic, sampleErr := finalResourceSample(samples, cell.TerminalNanos)
+	if sampleErr != nil {
+		return replacementCell{}, sampleErr
+	}
+	cell.ResourceStartedAtNanos = samples[0].AtNanos
 	client, publisher, application, terminalErr := observer.connectionTerminals(ctx, receiver)
 	if terminalErr != nil {
 		return replacementCell{}, terminalErr
@@ -85,7 +76,7 @@ func (observer dockerObserver) finishReplacementCell(ctx context.Context, proces
 	for proposalIndex := range cell.Proposals {
 		for roleIndex, role := range replacementRoles {
 			process := proposalRoutes[proposalIndex].Processes[role]
-			receipt, receiptErr := candidateUnavailable(ctx, processObserver, process, hostStartedAt)
+			receipt, receiptErr := candidateUnavailable(ctx, processObserver, process, activeStartedAt)
 			if receiptErr != nil {
 				return replacementCell{}, receiptErr
 			}
@@ -132,7 +123,7 @@ func (observer dockerObserver) finishReplacementCell(ctx context.Context, proces
 		if !ok {
 			return replacementCell{}, errors.New("failed Route candidate is absent from the stopped set")
 		}
-		receipt, err := candidateUnavailable(ctx, processObserver, process, hostStartedAt)
+		receipt, err := candidateUnavailable(ctx, processObserver, process, activeStartedAt)
 		if err != nil {
 			return replacementCell{}, err
 		}

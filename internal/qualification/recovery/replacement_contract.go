@@ -1,11 +1,5 @@
 package recovery
 
-type replacementEvidence struct {
-	RouteCase  routeCase
-	Candidates []replacementCandidate
-	Cells      []replacementCell
-}
-
 type replacementCandidate struct {
 	Role, Family, Endpoint string
 	NodeID, PublicKey      [32]byte
@@ -20,6 +14,7 @@ type replacementCell struct {
 	Seed, ExpectedDigest, ObservedDigest                                       [32]byte
 	Bytes, ChunkBytes, CanaryBytes                                             uint32
 	ChunkDelayNanos, SetupDeadlineNanos, LifetimeNanos, HostStartedAtNanos     int64
+	ActiveStartedAtNanos                                                       int64
 	ResourceStartedAtNanos                                                     int64
 	TerminalNanos                                                              int64
 	ClientRouteGeneration, PublisherRouteGeneration                            uint64
@@ -35,14 +30,8 @@ type replacementCell struct {
 	Routes                                                                     []routeGeneration
 	Proposals                                                                  []replacementProposal
 	Events                                                                     []replacementEvent
-	BaselineClientTrafficObserver, BaselinePublisherTrafficObserver            ObserverProcess
-	ClientTrafficObserver, PublisherTrafficObserver                            ObserverProcess
-	BaselineClientRoute, BaselinePublisherRoute                                string
-	ClientRoute, PublisherRoute                                                string
 	ResourceSamples                                                            []ResourceSample
-	FinalTraffic, BaselineFinalTraffic                                         ResourceSample
-	BaselineTerminalNanos                                                      int64
-	BaselineClientTraffic, BaselinePublisherTraffic                            uint64
+	FinalTraffic                                                               ResourceSample
 	FinalCanaryOffset                                                          uint32
 	FinalCanary                                                                [32]byte
 	FinalCanaryObservedNanos                                                   int64

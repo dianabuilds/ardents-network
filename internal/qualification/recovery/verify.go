@@ -19,9 +19,16 @@ var negativeNames = [...]string{"no-alternate", "cancellation", "deadline", "for
 
 // Verify recomputes every public S4.1 candidate conjunct without candidate packages.
 func Verify(value Evidence) Result {
-	s42 := value.Claim == "S4.2 four-position local development tracer only; does not qualify split-leg/Introduction topology"
+	if value.Schema == replacementAttemptEnvelopeSchema {
+		result := verifyReplacementAttempt(value)
+		result.EvidenceDigest = hexDigest(value.AttemptReceipt)
+		return result
+	}
+	if value.Schema == replacementCampaignEnvelopeSchema {
+		return verifyReplacementCampaign(value)
+	}
 	if value.Schema != schema || len(value.SourceCommit) != 40 || value.ImageID == "" || value.VerifierImageID != value.ImageID || value.TopologyDigest == "" ||
-		value.ManifestDigest == "" || value.Claim != "S4.1 local development evidence only" && !s42 {
+		value.ManifestDigest == "" || value.Claim != "S4.1 local development evidence only" {
 		return invalid("identity, schema, or claim binding is incomplete")
 	}
 	if len(value.Topology) == 0 || len(value.Topology) > 1<<20 || hexDigest(value.Topology) != value.TopologyDigest {
@@ -63,9 +70,6 @@ func Verify(value Evidence) Result {
 	}
 	maximumCampaign := min(value.RequestedNanos+int64(2*time.Minute), int64(30*time.Minute))
 	minimumCampaign := int64(10 * time.Minute)
-	if s42 {
-		minimumCampaign, maximumCampaign = int64(20*time.Minute), int64(30*time.Minute)
-	}
 	if value.RequestedNanos < minimumCampaign || value.RequestedNanos > int64(30*time.Minute) ||
 		value.CampaignNanos < value.RequestedNanos || value.CampaignNanos > maximumCampaign ||
 		value.CampaignCompletedAtNanos < value.CampaignNanos {
@@ -104,12 +108,6 @@ func Verify(value Evidence) Result {
 	if !directions["client-to-publisher"] || !directions["publisher-to-client"] {
 		return invalid("both directional cells are required")
 	}
-	if s42 {
-		if result := verifyReplacementEvidence(value, containerIDs, hostScope,
-			value.CampaignCompletedAtNanos); result.Verdict != "pass" {
-			return result
-		}
-	}
 	for _, name := range negativeNames {
 		negative, ok := value.Negatives[name]
 		if !ok {
@@ -147,11 +145,7 @@ func Verify(value Evidence) Result {
 		!value.Cleanup.FixtureAbsent || !value.Cleanup.PrivateMaterialAbsent {
 		return invalid("cleanup or private-material removal is incomplete")
 	}
-	reason := "all frozen S4.1 recovery conjuncts passed"
-	if s42 {
-		reason = "all frozen S4.1 and S4.2 recovery conjuncts passed"
-	}
-	return Result{Verdict: "pass", Reason: reason}
+	return Result{Verdict: "pass", Reason: "all frozen S4.1 recovery conjuncts passed"}
 }
 
 func verifyCell(cell Cell, manifestText, imageID string, hostScope hostScopeEvidence) Result {
@@ -169,7 +163,7 @@ func verifyCell(cell Cell, manifestText, imageID string, hostScope hostScopeEvid
 	if result := verifyChannelEvidence(cell, imageID, hostScope); result.Verdict != "pass" {
 		return result
 	}
-	if result := verifyTrafficObservers(cell, imageID); result.Verdict != "pass" {
+	if result := verifyTrafficSamples(cell); result.Verdict != "pass" {
 		return result
 	}
 	manifest, err := hex.DecodeString(manifestText)

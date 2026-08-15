@@ -10,7 +10,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/qualification/recovery"
 )
 
-const maximumEvidence = 4 << 20
+const maximumEvidence = 52 << 20
 
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
@@ -29,7 +29,7 @@ func run(arguments []string, output, diagnostics io.Writer) int {
 	defer file.Close()
 	info, err := file.Stat()
 	if err != nil || info.Size() > maximumEvidence {
-		fmt.Fprintln(diagnostics, "recovery evidence exceeds 4 MiB")
+		fmt.Fprintln(diagnostics, "recovery evidence exceeds 52 MiB")
 		return 2
 	}
 	raw, err := io.ReadAll(io.LimitReader(file, maximumEvidence+1))

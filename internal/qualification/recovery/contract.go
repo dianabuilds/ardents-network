@@ -17,7 +17,7 @@ type Evidence struct {
 	Topology                                                      []byte
 	Manifest                                                      PublicManifest
 	HostScope                                                     json.RawMessage
-	S42                                                           json.RawMessage
+	AttemptManifest, AttemptReceipt, AttemptCampaign              json.RawMessage
 	RequestedNanos, CampaignNanos, CampaignCompletedAtNanos       int64
 	Cells                                                         []Cell
 	Negatives                                                     map[string]Negative
@@ -38,57 +38,54 @@ type PublicManifest struct {
 
 // Cell records one externally observed directional Carrier recovery.
 type Cell struct {
-	ChannelEvidence                                                 json.RawMessage
-	Direction, ClientProcess, PublisherProcess                      string
-	ClientApplicationProcess, PublisherApplicationProcess           string
-	InitialCarrier, ReplacementCarrier                              string
-	InitialCarrierLocal, InitialCarrierRemote                       string
-	ReplacementCarrierLocal, ReplacementCarrierRemote               string
-	FaultedCarrier, RetiredCarrier                                  string
-	InitialCarrierInode, ReplacementCarrierInode                    uint32
-	InitialCarrierInterface, ReplacementCarrierInterface            string
-	InitialCarrierInterfaceIndex, ReplacementCarrierInterfaceIndex  int
-	CellManifestDigest                                              string
-	FaultService, FaultContainer, FaultNetwork, FaultController     string
-	FaultControllerRemoved                                          bool
-	ReplacementObserver                                             ObserverProcess
-	BaselineClientTrafficObserver, BaselinePublisherTrafficObserver ObserverProcess
-	ClientTrafficObserver, PublisherTrafficObserver                 ObserverProcess
-	BaselineClientRoute, BaselinePublisherRoute                     string
-	InitialRouteContainers, RecoveredRouteContainers                map[string]string
-	InitialRoutePIDs                                                map[string]uint32
-	InitialRouteIncarnations, RecoveredRouteIncarnations            map[string]string
-	Seed                                                            [32]byte
-	ExpectedDigest, ObservedDigest, Canary                          [32]byte
-	Bytes, PlannedFaultOffset, FaultOffset                          uint32
-	DeliveredBeforeFault, CanaryOffset                              uint32
-	LastDeliveryNanos, CarrierObservedNanos, FaultAtNanos           int64
-	HostStartedAtNanos, HostCompletedAtNanos                        int64
-	FaultCompletedNanos                                             int64
-	CarrierCutAfterNanos, AbsenceAfterNanos                         int64
-	CarrierAttachmentDeadlineNanos, ChunkDelayNanos                 int64
-	OldCarrierRetiredNanos                                          int64
-	CanaryAtNanos, ReplacementObservedNanos                         int64
-	TerminalAtNanos                                                 int64
-	ClientRouteGeneration, PublisherRouteGeneration                 uint64
-	ClientRecoveryCount, PublisherRecoveryCount                     uint32
-	ClientApplicationAccepts, PublisherApplicationAccepts           uint32
-	ClientRouteAccepts, PublisherRouteAccepts                       uint32
-	ClientContinuity, PublisherContinuity                           [32]byte
-	Ordered, Unique, SameConnection, ApplicationReconnected         bool
-	OldCarrierReused, OldCarrierRetired, TerminalClean              bool
-	FaultResourceAbsent, FailedResourceUnavailable                  bool
-	QueueHighWater                                                  uint32
-	MemoryHighWater, CarrierForwardBytes, CarrierReverseBytes       uint64
-	CPUSeconds                                                      float64
-	ExternalCPUPercent                                              float64
-	ExternalStatsObserved                                           bool
-	OpenFilesHighWater, GoroutinesHighWater, TimerHighWater         uint32
-	ResourceSamples                                                 []ResourceSample
-	FinalTraffic                                                    ResourceSample
-	BaselineFinalTraffic                                            ResourceSample
-	BaselineTerminalNanos                                           int64
-	BaselineClientTraffic, BaselinePublisherTraffic                 uint64
+	ChannelEvidence                                                json.RawMessage
+	Direction, ClientProcess, PublisherProcess                     string
+	ClientApplicationProcess, PublisherApplicationProcess          string
+	InitialCarrier, ReplacementCarrier                             string
+	InitialCarrierLocal, InitialCarrierRemote                      string
+	ReplacementCarrierLocal, ReplacementCarrierRemote              string
+	FaultedCarrier, RetiredCarrier                                 string
+	InitialCarrierInode, ReplacementCarrierInode                   uint32
+	InitialCarrierInterface, ReplacementCarrierInterface           string
+	InitialCarrierInterfaceIndex, ReplacementCarrierInterfaceIndex int
+	CellManifestDigest                                             string
+	FaultService, FaultContainer, FaultNetwork, FaultController    string
+	FaultControllerRemoved                                         bool
+	ReplacementObserver                                            ObserverProcess
+	InitialRouteContainers, RecoveredRouteContainers               map[string]string
+	InitialRoutePIDs                                               map[string]uint32
+	InitialRouteIncarnations, RecoveredRouteIncarnations           map[string]string
+	Seed                                                           [32]byte
+	ExpectedDigest, ObservedDigest, Canary                         [32]byte
+	Bytes, PlannedFaultOffset, FaultOffset                         uint32
+	DeliveredBeforeFault, CanaryOffset                             uint32
+	LastDeliveryNanos, CarrierObservedNanos, FaultAtNanos          int64
+	HostStartedAtNanos, HostCompletedAtNanos                       int64
+	FaultCompletedNanos                                            int64
+	CarrierCutAfterNanos, AbsenceAfterNanos                        int64
+	CarrierAttachmentDeadlineNanos, ChunkDelayNanos                int64
+	OldCarrierRetiredNanos                                         int64
+	CanaryAtNanos, ReplacementObservedNanos                        int64
+	TerminalAtNanos                                                int64
+	ClientRouteGeneration, PublisherRouteGeneration                uint64
+	ClientRecoveryCount, PublisherRecoveryCount                    uint32
+	ClientApplicationAccepts, PublisherApplicationAccepts          uint32
+	ClientRouteAccepts, PublisherRouteAccepts                      uint32
+	ClientContinuity, PublisherContinuity                          [32]byte
+	Ordered, Unique, SameConnection, ApplicationReconnected        bool
+	OldCarrierReused, OldCarrierRetired, TerminalClean             bool
+	FaultResourceAbsent, FailedResourceUnavailable                 bool
+	QueueHighWater                                                 uint32
+	MemoryHighWater, CarrierForwardBytes, CarrierReverseBytes      uint64
+	CPUSeconds                                                     float64
+	ExternalCPUPercent                                             float64
+	ExternalStatsObserved                                          bool
+	OpenFilesHighWater, GoroutinesHighWater, TimerHighWater        uint32
+	ResourceSamples                                                []ResourceSample
+	FinalTraffic                                                   ResourceSample
+	BaselineFinalTraffic                                           ResourceSample
+	BaselineTerminalNanos                                          int64
+	BaselineClientTraffic, BaselinePublisherTraffic                uint64
 }
 
 // ObserverProcess is the host-inspected public confinement projection of a transient Carrier observer.
@@ -133,6 +130,7 @@ type cleanup struct {
 
 // Result is exactly one independent pass, fail, or invalid verdict.
 type Result struct {
-	Verdict string `json:"verdict"`
-	Reason  string `json:"reason"`
+	Verdict        string `json:"verdict"`
+	Reason         string `json:"reason"`
+	EvidenceDigest string `json:"evidence_digest,omitempty"`
 }

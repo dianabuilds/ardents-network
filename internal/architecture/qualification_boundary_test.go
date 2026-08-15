@@ -6,7 +6,7 @@ func TestRepositoryArchitectureQualificationBoundary(t *testing.T) {
 	t.Parallel()
 	root := repositoryRoot(t)
 	registry := readPackageRegistry(t, root)
-	packages := []string{"internal/qualification/byteio", "internal/qualification/epochfixture", "internal/qualification/state",
+	packages := []string{"internal/qualification/byteio", "internal/qualification/campaign", "internal/qualification/epochfixture", "internal/qualification/state",
 		"internal/qualification/node", "internal/qualification/node/fixture", "internal/qualification/route", "internal/qualification/routesmoke",
 		"internal/qualification/recovery", "internal/qualification/recoverysmoke", "internal/qualification/service",
 		"internal/qualification/servicenegative", "internal/qualification/servicesmoke"}
@@ -43,8 +43,9 @@ func TestRepositoryArchitectureQualificationBoundary(t *testing.T) {
 				t.Errorf("%s has an unexpected import count", directory)
 			}
 		case "internal/qualification/recoverysmoke":
-			wanted := []string{"internal/qualification/byteio", "internal/qualification/recovery",
-				"internal/qualification/routesmoke", "internal/qualification/servicenegative", "internal/route", "internal/serviceconn"}
+			wanted := []string{"internal/qualification/byteio", "internal/qualification/campaign", "internal/qualification/recovery",
+				"internal/qualification/service", "internal/qualification/routesmoke",
+				"internal/qualification/servicenegative", "internal/route", "internal/serviceconn"}
 			if len(qualification.allowedImports) != len(wanted) {
 				t.Errorf("%s has an unexpected import count", directory)
 			}
@@ -81,7 +82,9 @@ func TestRepositoryArchitectureQualificationBoundary(t *testing.T) {
 				owner == "cmd/ardents-service-negative" && directory == "internal/qualification/servicenegative" ||
 				owner == "internal/qualification/routesmoke" ||
 				owner == "internal/qualification/recoverysmoke" &&
-					(directory == "internal/qualification/byteio" || directory == "internal/qualification/recovery" ||
+					(directory == "internal/qualification/byteio" || directory == "internal/qualification/campaign" ||
+						directory == "internal/qualification/recovery" ||
+						directory == "internal/qualification/service" ||
 						directory == "internal/qualification/routesmoke" || directory == "internal/qualification/servicenegative") ||
 				owner == "internal/qualification/servicesmoke" &&
 					(directory == "internal/qualification/byteio" || directory == "internal/qualification/routesmoke") ||

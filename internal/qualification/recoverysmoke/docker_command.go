@@ -22,6 +22,7 @@ type dockerObserver struct {
 	gateOffset                                             uint32
 	gateOffsets                                            []uint32
 	streamLifetime                                         string
+	startGate                                              bool
 }
 
 func (observer dockerObserver) compose(ctx context.Context, timeout time.Duration, arguments ...string) ([]byte, error) {
@@ -76,6 +77,11 @@ func (observer dockerObserver) configuredCommand(ctx context.Context, timeout ti
 		bytes = 64 << 10
 	}
 	command.Env = append(command.Env, observer.streamEnvironment(bytes)...)
+	if observer.startGate {
+		command.Env = append(command.Env, "ARDENTS_STREAM_START_GATE=1")
+	} else {
+		command.Env = append(command.Env, "ARDENTS_STREAM_START_GATE=")
+	}
 	if len(observer.gateOffsets) > 0 {
 		encoded := make([]string, len(observer.gateOffsets))
 		for index, offset := range observer.gateOffsets {

@@ -128,42 +128,21 @@ func TestVerifyRejectsMutationMissingEvidenceAndCandidateFailure(t *testing.T) {
 		"too few recovery resource samples": func(value *Evidence) {
 			value.Cells[0].ResourceSamples = value.Cells[0].ResourceSamples[:2]
 		},
-		"traffic observer not removed": func(value *Evidence) {
-			value.Cells[0].ClientTrafficObserver.Removed = false
-		},
 		"final traffic predates terminal": func(value *Evidence) {
-			value.Cells[0].FinalTraffic.AtNanos = value.Cells[0].TerminalAtNanos - 1
+			value.Cells[0].FinalTraffic.AtNanos = 0
 		},
 		"inflated paired baseline traffic": func(value *Evidence) {
 			value.Cells[0].BaselineClientTraffic++
 		},
 		"baseline traffic predates baseline terminal": func(value *Evidence) {
-			value.Cells[0].BaselineFinalTraffic.AtNanos = value.Cells[0].BaselineTerminalNanos - 1
-		},
-		"baseline Route overlaps controller": func(value *Evidence) {
-			cell := &value.Cells[0]
-			cell.BaselineClientRoute = cell.FaultController
-			cell.BaselineClientTrafficObserver.NetworkMode = "container:" + cell.FaultController
-		},
-		"baseline Route overlaps observer": func(value *Evidence) {
-			cell := &value.Cells[0]
-			cell.BaselineClientRoute = cell.BaselineClientTrafficObserver.ContainerID
-			cell.BaselineClientTrafficObserver.NetworkMode = "container:" + cell.BaselineClientRoute
+			value.Cells[0].BaselineFinalTraffic.AtNanos = 0
 		},
 		"malformed observer": func(value *Evidence) { value.Cells[0].ReplacementObserver.ContainerID = "observer" },
 		"reused observer": func(value *Evidence) {
 			value.Cells[1].ReplacementObserver = value.Cells[0].ReplacementObserver
 		},
-		"observer overlaps prior controller": func(value *Evidence) {
-			value.Cells[1].ClientTrafficObserver.ContainerID = value.Cells[0].FaultController
-		},
 		"endpoint overlaps prior observer": func(value *Evidence) {
 			value.Cells[1].ClientProcess = value.Cells[0].ReplacementObserver.ContainerID
-		},
-		"baseline Route overlaps prior observer": func(value *Evidence) {
-			cell := &value.Cells[1]
-			cell.BaselineClientRoute = value.Cells[0].ReplacementObserver.ContainerID
-			cell.BaselineClientTrafficObserver.NetworkMode = "container:" + cell.BaselineClientRoute
 		},
 		"controller not removed": func(value *Evidence) {
 			value.Cells[0].FaultControllerRemoved = false
@@ -323,17 +302,6 @@ func validEvidence(t *testing.T) Evidence {
 			Command: []string{"/usr/local/bin/ardents-qualify", "carrier-fault", "observe"},
 			CapDrop: []string{"ALL"}, SecurityOpt: []string{"no-new-privileges"}, ReadOnly: true, Removed: true,
 			PidsLimit: 16, MemoryLimit: 32 << 20, NanoCPUs: 250_000_000}
-		baselineRoutes := [2]string{identity(13), identity(14)}
-		trafficObserver := func(slot int, route string) ObserverProcess {
-			return ObserverProcess{ContainerID: identity(slot), ImageID: value.ImageID,
-				NetworkMode: "container:" + route, User: "65532:65532", IPCMode: "private",
-				Command: []string{"/usr/local/bin/ardents-qualify", "carrier-fault", "traffic-wait"},
-				CapDrop: []string{"ALL"}, SecurityOpt: []string{"no-new-privileges"}, ReadOnly: true, Removed: true,
-				PidsLimit: 16, MemoryLimit: 32 << 20, NanoCPUs: 250_000_000}
-		}
-		cell.BaselineClientRoute, cell.BaselinePublisherRoute = baselineRoutes[0], baselineRoutes[1]
-		cell.BaselineClientTrafficObserver = trafficObserver(15, baselineRoutes[0])
-		cell.BaselinePublisherTrafficObserver = trafficObserver(16, baselineRoutes[1])
 		cell.MemoryHighWater, cell.OpenFilesHighWater, cell.GoroutinesHighWater, cell.TimerHighWater = 1, 1, 1, 1
 		for roleIndex, role := range []string{"client", "initiator", "introduction", "rendezvous", "responder", "publisher"} {
 			cell.InitialRouteContainers[role], cell.RecoveredRouteContainers[role] = identity(5+roleIndex), identity(5+roleIndex)
@@ -341,8 +309,6 @@ func validEvidence(t *testing.T) Evidence {
 			incarnation := identity(5+roleIndex) + "@2026-08-14T08:04:05Z"
 			cell.InitialRouteIncarnations[role], cell.RecoveredRouteIncarnations[role] = incarnation, incarnation
 		}
-		cell.ClientTrafficObserver = trafficObserver(17, cell.InitialRouteContainers["client"])
-		cell.PublisherTrafficObserver = trafficObserver(18, cell.InitialRouteContainers["publisher"])
 		cell.FinalTraffic = ResourceSample{AtNanos: cell.TerminalAtNanos + 1,
 			ClientReceived: 3, ClientSent: 3, PublisherReceived: 3, PublisherSent: 3}
 		cell.BaselineTerminalNanos = int64(time.Second)

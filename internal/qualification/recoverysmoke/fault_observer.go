@@ -13,19 +13,33 @@ import (
 )
 
 func (observer dockerObserver) waitProgress(ctx context.Context, service string, minimum uint32) (uint32, error) {
-	deadline := time.Now().Add(15 * time.Second)
+	highest, reached, err := observer.observeProgress(ctx, service, minimum, 15*time.Second)
+	if err != nil || reached {
+		return highest, err
+	}
+	return highest, errors.New("receiver progress did not reach the seeded fault threshold")
+}
+
+func (observer dockerObserver) observeProgress(ctx context.Context, service string, minimum uint32,
+	within time.Duration) (uint32, bool, error) {
+	deadline := time.Now().Add(within)
+	var highest uint32
 	for time.Now().Before(deadline) {
-		highest, _ := observer.currentProgress(ctx, service)
+		current, err := observer.currentProgress(ctx, service)
+		if err != nil {
+			return highest, false, fmt.Errorf("observe %s Application progress: %w", service, err)
+		}
+		highest = max(highest, current)
 		if highest >= minimum && highest%16_384 != 0 {
-			return highest, nil
+			return highest, true, nil
 		}
 		select {
 		case <-ctx.Done():
-			return 0, ctx.Err()
+			return highest, false, ctx.Err()
 		case <-time.After(2 * time.Millisecond):
 		}
 	}
-	return 0, errors.New("receiver progress did not reach the seeded fault threshold")
+	return highest, false, nil
 }
 
 func (observer dockerObserver) waitGate(ctx context.Context, root, role string, expected uint32,
@@ -49,6 +63,46 @@ func resetSequentialGates(root string, offsets []uint32) error {
 		}
 	}
 	return removeHostGateState(paths)
+}
+
+func resetWorkloadStartGates(root string) error {
+	var paths []string
+	for _, role := range []string{"client", "publisher"} {
+		ready := filepath.Join(root, role+".start.ready")
+		paths = append(paths, ready, ready+".pending", filepath.Join(root, role+".start.release"))
+	}
+	return removeHostGateState(paths)
+}
+
+func waitWorkloadStartReady(ctx context.Context, root string) error {
+	var result error
+	for _, role := range []string{"client", "publisher"} {
+		_, err := (&dockerObserver{}).waitGateFile(ctx, filepath.Join(root, role+".start.ready"), 0, time.Minute)
+		if err != nil {
+			result = errors.Join(result, fmt.Errorf("wait for %s Application workload readiness: %w", role, err))
+		}
+	}
+	return result
+}
+
+func releaseWorkloadStart(root, senderRole string) (time.Time, error) {
+	var result error
+	roles := []string{"client", "publisher"}
+	if senderRole == "client" {
+		roles = []string{"publisher", "client"}
+	} else if senderRole != "publisher" {
+		return time.Time{}, errors.New("workload sender role is invalid")
+	}
+	for _, role := range roles {
+		path := filepath.Join(root, role+".start.release")
+		if err := os.WriteFile(path, []byte("release\n"), 0o600); err != nil {
+			result = errors.Join(result, fmt.Errorf("release %s Application workload: %w", role, err))
+		}
+	}
+	if result != nil {
+		return time.Time{}, result
+	}
+	return time.Now(), nil
 }
 
 func resetRecoveryGates(root string) error {

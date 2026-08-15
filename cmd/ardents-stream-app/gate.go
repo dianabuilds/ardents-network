@@ -9,32 +9,36 @@ import (
 	"time"
 )
 
-func progressGate(role string) (uint32, func(uint32) error, error) {
-	text, root := os.Getenv("ARDENTS_STREAM_GATE_OFFSET"), os.Getenv("ARDENTS_STREAM_GATE_ROOT")
-	if (text == "" || text == "0") && root == "" {
-		return 0, func(uint32) error { return nil }, nil
+func waitWorkloadRelease(role string) error {
+	if os.Getenv("ARDENTS_STREAM_START_GATE") == "" {
+		return nil
 	}
-	parsed, err := strconv.ParseUint(text, 10, 32)
-	if err != nil || parsed < 256<<10 || root != "/run/ardents/gate" {
-		return 0, nil, errors.New("stream gate configuration is invalid")
+	root := os.Getenv("ARDENTS_STREAM_GATE_ROOT")
+	if os.Getenv("ARDENTS_STREAM_START_GATE") != "1" || root != "/run/ardents/gate" {
+		return errors.New("stream start gate configuration is invalid")
 	}
-	ready, release := filepath.Join(root, role+".ready"), filepath.Join(root, role+".release")
-	return uint32(parsed), func(received uint32) error {
-		if received != uint32(parsed) {
-			return errors.New("stream crossed its exact host-controlled gate")
-		}
-		return waitGateRelease(ready, release, received)
-	}, nil
+	return waitGateReleaseWithin(filepath.Join(root, role+".start.ready"),
+		filepath.Join(root, role+".start.release"), 0, 4*time.Minute)
 }
 
 func progressGates(role string) ([]uint32, func(uint32) error, error) {
 	text := os.Getenv("ARDENTS_STREAM_GATE_OFFSETS")
 	if text == "" {
-		offset, gate, err := progressGate(role)
-		if offset == 0 {
-			return nil, gate, err
+		text, root := os.Getenv("ARDENTS_STREAM_GATE_OFFSET"), os.Getenv("ARDENTS_STREAM_GATE_ROOT")
+		if (text == "" || text == "0") && root == "" {
+			return nil, func(uint32) error { return nil }, nil
 		}
-		return []uint32{offset}, gate, err
+		parsed, err := strconv.ParseUint(text, 10, 32)
+		if err != nil || parsed < 256<<10 || root != "/run/ardents/gate" {
+			return nil, nil, errors.New("stream gate configuration is invalid")
+		}
+		return []uint32{uint32(parsed)}, func(received uint32) error {
+			if received != uint32(parsed) {
+				return errors.New("stream crossed its exact host-controlled gate")
+			}
+			return waitGateReleaseWithin(filepath.Join(root, role+".ready"),
+				filepath.Join(root, role+".release"), received, 15*time.Second)
+		}, nil
 	}
 	if os.Getenv("ARDENTS_STREAM_GATE_OFFSET") != "" || os.Getenv("ARDENTS_STREAM_GATE_ROOT") != "/run/ardents/gate" {
 		return nil, nil, errors.New("sequential stream gate configuration is invalid")
@@ -54,16 +58,16 @@ func progressGates(role string) ([]uint32, func(uint32) error, error) {
 	root := os.Getenv("ARDENTS_STREAM_GATE_ROOT")
 	return offsets, func(received uint32) error {
 		suffix := strconv.FormatUint(uint64(received), 10)
-		return waitGateRelease(filepath.Join(root, role+".ready."+suffix),
-			filepath.Join(root, role+".release."+suffix), received)
+		return waitGateReleaseWithin(filepath.Join(root, role+".ready."+suffix),
+			filepath.Join(root, role+".release."+suffix), received, 15*time.Second)
 	}, nil
 }
 
-func waitGateRelease(ready, release string, received uint32) error {
+func waitGateReleaseWithin(ready, release string, received uint32, within time.Duration) error {
 	if err := publishGateReady(ready, received); err != nil {
 		return err
 	}
-	deadline := time.Now().Add(15 * time.Second)
+	deadline := time.Now().Add(within)
 	for time.Now().Before(deadline) {
 		if _, err := os.Stat(release); err == nil {
 			return nil
@@ -81,11 +85,6 @@ func publishGateReady(path string, offset uint32) error {
 		return err
 	}
 	return os.Rename(temporary, path)
-}
-
-func gatedWorkloadWriter(write func([]byte) (int, error), offset uint32,
-	gate func(uint32) error) func([]byte) (int, error) {
-	return gatedWorkloadSequenceWriter(write, []uint32{offset}, gate)
 }
 
 func gatedWorkloadSequenceWriter(write func([]byte) (int, error), offsets []uint32,

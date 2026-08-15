@@ -41,6 +41,9 @@ func run(arguments []string, output io.Writer) error {
 		return err
 	}
 	defer connection.Close()
+	if err := waitWorkloadRelease(arguments[1]); err != nil {
+		return err
+	}
 	lifetime, err := streamLifetime()
 	if err != nil {
 		return err

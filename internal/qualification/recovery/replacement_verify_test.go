@@ -12,7 +12,7 @@ import (
 
 func TestVerifyAcceptsCompleteS42ReplacementEvidence(t *testing.T) {
 	value := validS42Evidence(t)
-	if result := Verify(value); result.Verdict != "pass" {
+	if result := verifyS42Test(value); result.Verdict != "pass" {
 		t.Fatalf("complete S4.2 evidence rejected: %+v", result)
 	}
 }
@@ -123,15 +123,6 @@ func TestVerifyRejectsS42ReplacementMutations(t *testing.T) {
 				[]byte(process.AdapterProjection), process.PID, true, process.ObservedAtNanos)
 			value.Cells[0].Routes[0].Processes["initiator"] = process
 		},
-		"host clock reset between cells": func(value *replacementEvidence) {
-			value.Cells[1].HostStartedAtNanos = 1
-		},
-		"next cell overlaps prior host observation": func(value *replacementEvidence) {
-			receipt := &value.Cells[0].Proposals[0].Stopped[0]
-			receipt.State.ObservedAtNanos = value.Cells[1].HostStartedAtNanos + 1
-			receipt.State.Commitment = processStateCommitment(receipt.State)
-			receipt.ObservedAtNanos = receipt.State.ObservedAtNanos - value.Cells[0].HostStartedAtNanos
-		},
 		"process observed after its fault": func(value *replacementEvidence) {
 			cell := &value.Cells[0]
 			process := cell.Routes[0].Processes["initiator"]
@@ -204,16 +195,16 @@ func TestVerifyRejectsS42ReplacementMutations(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if result := Verify(value); result.Verdict == "pass" {
+			if result := verifyS42Test(value); result.Verdict == "pass" {
 				t.Fatalf("S4.2 mutation passed: %+v", result)
 			}
 		})
 	}
 }
 
-func validS42Evidence(t *testing.T) Evidence {
+func validS42Evidence(t *testing.T) s42TestEvidence {
 	t.Helper()
-	value := validEvidence(t)
+	value := s42TestEvidence{Evidence: validEvidence(t)}
 	value.Claim = "S4.2 four-position local development tracer only; does not qualify split-leg/Introduction topology"
 	value.RequestedNanos = int64(20 * time.Minute)
 	value.CampaignNanos = int64(21 * time.Minute)
@@ -225,7 +216,7 @@ func validS42Evidence(t *testing.T) Evidence {
 	for _, role := range replacementRoleNames {
 		extension.Candidates = append(extension.Candidates, sets[role]...)
 	}
-	extension.RouteCase = s42RouteCase(value, seed, sets)
+	extension.RouteCase = s42RouteCase(value.Evidence, seed, sets)
 	routeDigest, err := commitRouteCase(extension.RouteCase)
 	if err != nil {
 		t.Fatal(err)
@@ -253,13 +244,13 @@ func validS42Evidence(t *testing.T) Evidence {
 			cell := s42Cell(value.ImageID, direction, "isolated-"+role, []string{role}, sets, seed,
 				extension.RouteCase, routeDigest, hostScope, hostStartedAt, nextID, t)
 			extension.Cells = append(extension.Cells, cell)
-			hostStartedAt += cell.TerminalNanos + 10
+			hostStartedAt = cell.ActiveStartedAtNanos + cell.TerminalNanos + 10
 		}
 		cell := s42Cell(value.ImageID, direction, "sequential-three",
 			[]string{"initiator", "rendezvous", "responder"}, sets, seed, extension.RouteCase, routeDigest,
 			hostScope, hostStartedAt, nextID, t)
 		extension.Cells = append(extension.Cells, cell)
-		hostStartedAt += cell.TerminalNanos + 10
+		hostStartedAt = cell.ActiveStartedAtNanos + cell.TerminalNanos + 10
 	}
 	value.S42, err = json.Marshal(extension)
 	if err != nil {
@@ -347,6 +338,7 @@ func s42Cell(imageID, direction, mode string, failures []string, sets map[string
 		ClientContinuity: [32]byte{9}, PublisherContinuity: [32]byte{9}, Ordered: true, Unique: true,
 		SameConnection: true, TerminalClean: true, ClientQueueHighWater: 1, PublisherQueueHighWater: 1}
 	cell.HostStartedAtNanos = hostStartedAt
+	cell.ActiveStartedAtNanos = hostStartedAt + int64(time.Second)
 	cell.TerminalNanos = int64(6 * time.Second)
 	if mode == "sequential-three" {
 		cell.TerminalNanos = int64(10*time.Minute + time.Second)
@@ -417,7 +409,7 @@ func s42Cell(imageID, direction, mode string, failures []string, sets map[string
 				processes[candidate.NodeID] = process
 			}
 			proposal.Processes[roleIndex] = process
-			proposal.Stopped[roleIndex] = testStoppedReceipt(process, cell.HostStartedAtNanos,
+			proposal.Stopped[roleIndex] = testStoppedReceipt(process, cell.ActiveStartedAtNanos,
 				cell.TerminalNanos+1, 0)
 			count := 0
 			switch proposalIndex {
@@ -471,7 +463,7 @@ func s42Cell(imageID, direction, mode string, failures []string, sets map[string
 			Introduction: after.Processes["introduction"], IntroductionAttachment: introductionAttachment,
 			FaultOffset: offset, CanaryOffset: offset, Canary: workloadRange(seed, offset),
 			LastDeliveryNanos: last, FaultAtNanos: last + 1, CanaryNanos: last + int64(time.Second),
-			FailedResource: testStoppedReceipt(before.Processes[failure], cell.HostStartedAtNanos,
+			FailedResource: testStoppedReceipt(before.Processes[failure], cell.ActiveStartedAtNanos,
 				cell.TerminalNanos+1, last+1)})
 		if failure == "rendezvous" {
 			cell.Events[index].Layer = "rendezvous"
@@ -486,15 +478,5 @@ func s42Cell(imageID, direction, mode string, failures []string, sets map[string
 	last := cell.ResourceSamples[len(cell.ResourceSamples)-1]
 	cell.FinalTraffic = last
 	cell.FinalTraffic.AtNanos = cell.TerminalNanos + 1
-	cell.BaselineFinalTraffic = ResourceSample{AtNanos: 2, ClientReceived: 1, ClientSent: 1,
-		PublisherReceived: 1, PublisherSent: 1}
-	cell.BaselineTerminalNanos = 1
-	cell.BaselineClientTraffic, cell.BaselinePublisherTraffic = 2, 2
-	cell.BaselineClientRoute, cell.BaselinePublisherRoute = nextID(), nextID()
-	cell.BaselineClientTrafficObserver = s42Observer(imageID, nextID(), cell.BaselineClientRoute)
-	cell.BaselinePublisherTrafficObserver = s42Observer(imageID, nextID(), cell.BaselinePublisherRoute)
-	cell.ClientRoute, cell.PublisherRoute = managedIDs["client"], managedIDs["publisher"]
-	cell.ClientTrafficObserver = s42Observer(imageID, nextID(), cell.ClientRoute)
-	cell.PublisherTrafficObserver = s42Observer(imageID, nextID(), cell.PublisherRoute)
 	return cell
 }

@@ -11,7 +11,7 @@ func verifyReplacementRouteProcesses(cell replacementCell, scope hostScopeEviden
 		process, ok := cell.HostProcesses[role]
 		if !ok || !validProcessObservation(process, scope) ||
 			process.ObservedAtNanos < cell.HostStartedAtNanos ||
-			process.ObservedAtNanos > cell.HostStartedAtNanos+cell.TerminalNanos ||
+			process.ObservedAtNanos > cell.ActiveStartedAtNanos ||
 			identities[process.Host.Identity] {
 			return invalid("S4.2 client or publisher Route process observation is invalid")
 		}

@@ -64,6 +64,15 @@ func TestResourceRowBindsTheExactContainerSide(t *testing.T) {
 		sample.ClientSent != 4000 || sample.PublisherRSS != 0 {
 		t.Fatalf("service=%q sample=%+v err=%v", service, sample, err)
 	}
+	endpointID := strings.Repeat("c", 64)
+	identities["client-endpoint"] = endpointID
+	service, err = addResourceRow([]byte(`{"ID":"`+endpointID[:12]+`","MemUsage":"2MiB / 32MiB",`+
+		`"CPUPerc":"1%","NetIO":"9kB / 10kB"}`), identities,
+		[]string{"client", "client-endpoint", "publisher"}, &sample)
+	if err != nil || service != "client-endpoint" || sample.ClientRSS != 12<<20 ||
+		sample.ClientReceived != 3000 || sample.ClientSent != 4000 {
+		t.Fatalf("endpoint resources changed exact Route traffic: service=%q sample=%+v err=%v", service, sample, err)
+	}
 	for name, identity := range map[string]string{"empty": "", "short": "a", "mismatch": clientID[:12] + "f"} {
 		t.Run(name, func(t *testing.T) {
 			row := []byte(`{"ID":"` + identity + `","MemUsage":"1MiB / 2MiB","CPUPerc":"1%","NetIO":"1kB / 1kB"}`)

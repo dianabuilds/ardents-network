@@ -73,7 +73,7 @@ services:
   publisher-app:
     <<: *local
     command: [/usr/local/bin/ardents-stream-app, run, publisher, /run/ardents/publisher-app/app.sock, /run/ardents/workload/publisher.hex, /run/ardents/workload/client.hex, "${ARDENTS_PUBLISHER_SEND_BYTES:-65536}", "${ARDENTS_PUBLISHER_RECEIVE_BYTES:-65536}"]
-    environment: {ARDENTS_STREAM_CHUNK_DELAY: "${ARDENTS_STREAM_CHUNK_DELAY:-}", ARDENTS_STREAM_PROGRESS: "${ARDENTS_STREAM_PROGRESS:-}", ARDENTS_STREAM_GATE_OFFSET: "${ARDENTS_STREAM_GATE_OFFSET:-}", ARDENTS_STREAM_GATE_OFFSETS: "${ARDENTS_STREAM_GATE_OFFSETS:-}", ARDENTS_STREAM_GATE_ROOT: "${ARDENTS_STREAM_GATE_ROOT:-}", ARDENTS_STREAM_LIFETIME: "${ARDENTS_STREAM_LIFETIME:-}"}
+    environment: {ARDENTS_STREAM_CHUNK_DELAY: "${ARDENTS_STREAM_CHUNK_DELAY:-}", ARDENTS_STREAM_PROGRESS: "${ARDENTS_STREAM_PROGRESS:-}", ARDENTS_STREAM_GATE_OFFSET: "${ARDENTS_STREAM_GATE_OFFSET:-}", ARDENTS_STREAM_GATE_OFFSETS: "${ARDENTS_STREAM_GATE_OFFSETS:-}", ARDENTS_STREAM_GATE_ROOT: "${ARDENTS_STREAM_GATE_ROOT:-}", ARDENTS_STREAM_LIFETIME: "${ARDENTS_STREAM_LIFETIME:-}", ARDENTS_STREAM_START_GATE: "${ARDENTS_STREAM_START_GATE:-}"}
     volumes:
       - publisher_app:/run/ardents/publisher-app
       - {type: bind, source: "${ARDENTS_SERVICE_GENERATION:?}/publisher-seed.hex", target: /run/ardents/workload/publisher.hex, read_only: true, bind: {create_host_path: false}}
@@ -90,7 +90,7 @@ services:
   client-app:
     <<: *local
     command: [/usr/local/bin/ardents-stream-app, run, client, /run/ardents/client-app/app.sock, /run/ardents/workload/client.hex, /run/ardents/workload/publisher.hex, "${ARDENTS_CLIENT_SEND_BYTES:-65536}", "${ARDENTS_CLIENT_RECEIVE_BYTES:-65536}"]
-    environment: {ARDENTS_STREAM_CHUNK_DELAY: "${ARDENTS_STREAM_CHUNK_DELAY:-}", ARDENTS_STREAM_PROGRESS: "${ARDENTS_STREAM_PROGRESS:-}", ARDENTS_STREAM_GATE_OFFSET: "${ARDENTS_STREAM_GATE_OFFSET:-}", ARDENTS_STREAM_GATE_OFFSETS: "${ARDENTS_STREAM_GATE_OFFSETS:-}", ARDENTS_STREAM_GATE_ROOT: "${ARDENTS_STREAM_GATE_ROOT:-}", ARDENTS_STREAM_LIFETIME: "${ARDENTS_STREAM_LIFETIME:-}"}
+    environment: {ARDENTS_STREAM_CHUNK_DELAY: "${ARDENTS_STREAM_CHUNK_DELAY:-}", ARDENTS_STREAM_PROGRESS: "${ARDENTS_STREAM_PROGRESS:-}", ARDENTS_STREAM_GATE_OFFSET: "${ARDENTS_STREAM_GATE_OFFSET:-}", ARDENTS_STREAM_GATE_OFFSETS: "${ARDENTS_STREAM_GATE_OFFSETS:-}", ARDENTS_STREAM_GATE_ROOT: "${ARDENTS_STREAM_GATE_ROOT:-}", ARDENTS_STREAM_LIFETIME: "${ARDENTS_STREAM_LIFETIME:-}", ARDENTS_STREAM_START_GATE: "${ARDENTS_STREAM_START_GATE:-}"}
     volumes:
       - client_app:/run/ardents/client-app
       - {type: bind, source: "${ARDENTS_SERVICE_GENERATION:?}/client-seed.hex", target: /run/ardents/workload/client.hex, read_only: true, bind: {create_host_path: false}}

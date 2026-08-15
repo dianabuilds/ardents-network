@@ -3,24 +3,16 @@ package recovery
 import "time"
 
 func verifyReplacementResources(cell replacementCell) Result {
-	if len(cell.ResourceSamples) < 3 || cell.BaselineClientTraffic == 0 || cell.BaselinePublisherTraffic == 0 {
-		return invalid("S4.2 paired baseline or one-second samples are incomplete")
+	if len(cell.ResourceSamples) < 3 {
+		return invalid("S4.2 one-second samples are incomplete")
 	}
 	if _, result := verifyResourceSamples(cell.ResourceSamples); result.Verdict != "pass" {
 		return result
 	}
 	first := cell.ResourceSamples[0].AtNanos
-	firstProcessObservation := int64(0)
-	for _, process := range cell.HostProcesses {
-		if firstProcessObservation == 0 || process.ObservedAtNanos < firstProcessObservation {
-			firstProcessObservation = process.ObservedAtNanos
-		}
-	}
 	if cell.ResourceStartedAtNanos <= 0 || first < cell.ResourceStartedAtNanos ||
 		first-cell.ResourceStartedAtNanos > int64(1500*time.Millisecond) ||
-		len(cell.Events) == 0 || cell.ResourceStartedAtNanos > cell.Events[0].LastDeliveryNanos ||
-		firstProcessObservation <= 0 ||
-		cell.HostStartedAtNanos+cell.ResourceStartedAtNanos > firstProcessObservation {
+		len(cell.Events) == 0 || cell.ResourceStartedAtNanos > cell.Events[0].LastDeliveryNanos {
 		return invalid("S4.2 resource samples do not cover the workload start")
 	}
 	last := cell.ResourceSamples[len(cell.ResourceSamples)-1].AtNanos
@@ -29,9 +21,12 @@ func verifyReplacementResources(cell replacementCell) Result {
 	}
 	clientTraffic := cell.FinalTraffic.ClientReceived + cell.FinalTraffic.ClientSent
 	publisherTraffic := cell.FinalTraffic.PublisherReceived + cell.FinalTraffic.PublisherSent
-	if trafficExcess(clientTraffic, cell.BaselineClientTraffic) > recoveryTrafficAllowance ||
-		trafficExcess(publisherTraffic, cell.BaselinePublisherTraffic) > recoveryTrafficAllowance {
-		return fail("S4.2 recovery exceeded paired endpoint traffic allowance")
+	if !replacementTrafficBound(clientTraffic, cell.Bytes) || !replacementTrafficBound(publisherTraffic, cell.Bytes) {
+		return fail("S4.2 exact Route traffic is outside its workload allowance")
 	}
 	return Result{Verdict: "pass"}
+}
+
+func replacementTrafficBound(value uint64, bytes uint32) bool {
+	return value >= uint64(bytes) && value <= uint64(bytes)+recoveryTrafficAllowance
 }

@@ -203,33 +203,102 @@ Docker limitation or prove Adapter integrity, but they must be normalized to
 the common process, channel, resource, fault, chronology, and cleanup facts
 before a cross-Adapter verdict rule consumes them.
 
-## Qualification-orchestrator Interface
+## Qualification-attempt Interface
 
-The orchestrator owns:
+Every maintained qualification scenario, independent of Stage or execution
+Adapter, uses one six-phase attempt:
+
+1. `prepare` creates owned resources and starts passive candidate processes;
+2. `arm` starts observation and waits for an Adapter-level ready receipt from
+   every required observer and sampler;
+3. `release` opens the precommitted qualification-Application workload gate and
+   fixes the active interval origin;
+4. `observe` waits for candidate terminal behavior while retaining samples;
+5. `freeze` obtains the terminal event and final immutable observation values;
+6. `cleanup` removes and independently enumerates the attempt's owned resources.
+
+`prepare` and `arm` complete before qualified candidate deadlines, recovery
+clocks, or resource-sample membership begin. Passive candidate processes may
+retain their ordinary bounded setup/lifetime contexts while arming; a process
+that terminates before release makes the attempt `not-run/invalid`, not a
+candidate failure. `ActiveNanos` begins after the sender workload gate is
+published and ends at the terminal observation that starts `freeze`; it
+includes only candidate behavior and its already-armed host observation.
+Evidence reads and persistence inside `freeze` are outside candidate time.
+`cleanup` begins afterward. Execution-Adapter create, start, inspect, log,
+stop, or remove latency is never candidate time merely because the current
+Adapter uses Docker.
+
+The attempt produces three independent terminal facts:
+
+- `candidate: pass | fail | not-run`, where `not-run` means candidate behavior
+  was not validly observed;
+- `observation: complete | invalid`; and
+- `cleanup: complete | invalid`.
+
+An orchestration, Adapter, observer, sampler, persistence, or verifier failure
+cannot produce `candidate: fail`. Before or during the active interval it yields
+`candidate: not-run` and makes observation invalid. A candidate
+failure is an explicit observed protocol or product result, never a Go error or
+an execution-management exit status. Cleanup failure changes only the cleanup
+fact and does not rewrite an already frozen candidate result.
+
+The qualification-attempt Module owns:
 
 - canonical manifest creation and precommitment;
+- the exact prepare/arm/release/observe/freeze/cleanup state machine;
 - workload and fault schedules;
 - candidate launch through the selected execution Adapter;
 - collection of candidate events and host observations;
 - baseline pairing, fault injection, and monotonic evidence clocks;
-- evidence redaction, freeze, digest, verifier invocation, and cleanup.
+- evidence redaction and freeze; and
+- atomic per-attempt receipt persistence.
 
-The orchestrator never forwards Application Data and never exposes its schedule
+Each attempt has a unique identity and atomically writes one immutable final
+receipt beneath that identity. The receipt binds the unchanged manifest digest,
+the measured run interval, all three terminal facts, and the frozen evidence
+commitment. A campaign aggregates final cell receipts; it is not one
+all-or-nothing evidence transaction.
+
+An observation-invalid attempt may be repeated only as a new attempt whose
+receipt preserves the original failure. An observed candidate failure is
+terminal for that manifest cell and cannot be rerun until green. Aggregation
+rejects missing attempts, manifest changes, duplicate identities, overwritten
+history, or a successful retry after an observed candidate failure.
+
+The retained layout is manifest-first and attempt-local:
+
+```text
+campaign-manifest.json
+cells/<cell-id>/attempt-0001/receipt.json
+cells/<cell-id>/attempt-0002/receipt.json
+campaign-verdict.json
+```
+
+Each receipt is frozen immediately after its attempt. Completion of later cells
+cannot overwrite or invalidate an earlier receipt. A Stage slice references
+accepted prerequisite receipts for the same candidate identity; it does not
+rerun an earlier Stage's full matrix inside the new Stage. A cheap explicitly
+manifested integration canary is allowed, but it is not a disguised prerequisite
+campaign.
+
+The Module never forwards Application Data and never exposes its schedule
 or host-management channel to the candidate. It may use a qualification-owned
 Application workload gate because that Application is the sender/receiver test
 Adapter; the gate is not part of the Route or Service Connection Interface.
 
-The orchestrator does not preload a candidate with a future failure script.
+The Module does not preload a candidate with a future failure script.
 Candidate replacement follows the maintained runtime policy from authenticated
 Candidate material and observed Attachment failure.
 
 ## Offline-verifier Interface
 
-`Verify(bundle) -> pass | fail | invalid`
+`Verify(receipts, manifest) -> candidate result + observation result + cleanup result`
 
 The verifier:
 
-- accepts one bounded canonical bundle;
+- accepts bounded canonical per-attempt receipts and one immutable campaign
+  manifest;
 - has no host, Docker, network, or candidate-management access;
 - recomputes candidate bindings and common observation commitments;
 - checks chronology using host monotonic observations, not candidate clocks;
@@ -237,6 +306,10 @@ The verifier:
 - treats missing, contradictory, ambiguous, secret-bearing, or Adapter-unbound
   evidence as `invalid`; and
 - never upgrades a candidate self-report into a host fact.
+
+The verifier never collapses the three results into one ambiguous verdict. A
+presentation Adapter may render an overall status, but the canonical evidence
+retains the independent candidate, observation, and cleanup facts.
 
 ## Metrics and dashboards
 
@@ -266,16 +339,33 @@ The following invalidate an affected qualification claim:
 
 ## Migration order
 
-1. freeze these Interfaces and add architecture tests preventing host/evidence
-   imports into product Modules;
-2. reduce Route output to candidate lifecycle events and move rendering into a
+1. freeze the project-wide attempt and receipt Interfaces and add architecture
+   tests preventing host/evidence imports into product Modules;
+2. add Docker-free regressions proving workload remains gated until sampler
+   readiness, infrastructure errors cannot become candidate failure,
+   prepare/cleanup delay cannot affect `ActiveNanos`, and a later invalid
+   attempt cannot erase an earlier receipt;
+3. remove transient traffic-observer containers and their verifier schema;
+   retain exact client and publisher Route counters in the host sampler rather
+   than summing an endpoint process tree;
+4. migrate isolated-Rendezvous to prepare/arm/release/observe/freeze/cleanup and delete
+   that scenario's previous orchestration, verdict, and campaign-wide evidence
+   path in the same change;
+5. stress that cell with artificial execution-Adapter prepare and cleanup delay;
+6. migrate the remaining S4.1 and S4.2 scenarios, atomically retaining each
+   attempt and permitting retries only under the rule above;
+7. aggregate receipts against the immutable campaign manifest and reference
+   compatible S4.1 and Stage 3 receipts instead of rerunning their matrices;
+8. reduce Route output to candidate lifecycle events and move rendering into a
    qualification Adapter;
-3. move Docker process, channel, resource, fault, and cleanup implementation
+9. move Docker process, channel, resource, fault, and cleanup implementation
    behind the host-observation Interface;
-4. rerun S4.1 and S4.2 through the Docker Adapter using only the common verdict
+10. rerun S4.1 and S4.2 through the Docker Adapter using only common verdict
    rules, retaining Docker projections as local provenance;
-5. add a native-host Adapter before any native-reference-host or cross-Adapter
+11. delete superseded Stage-specific orchestration and evidence code; migration
+   is incomplete while the new Module merely layers over an old path;
+12. add a native-host Adapter before any native-reference-host or cross-Adapter
    qualification claim and require the same common verdict rules;
-6. remove pre-scripted `AttachmentPlans`/`ConcurrentAttachments` from the
+13. remove pre-scripted `AttachmentPlans`/`ConcurrentAttachments` from the
    maintained Route Interface and make replacement follow runtime policy; and
-7. rerun the affected recovery slices before beginning S4.3.
+14. rerun the affected recovery slices before beginning S4.3.

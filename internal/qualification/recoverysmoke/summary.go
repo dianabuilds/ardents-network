@@ -68,8 +68,8 @@ func evidenceBundleDigest(root string) ([32]byte, error) {
 			return nil
 		}
 		info, err := entry.Info()
-		if err != nil || info.Size() > 4<<20 {
-			return errors.New("recovery evidence file exceeds 4 MiB")
+		if err != nil || info.Size() > 52<<20 {
+			return errors.New("recovery evidence file exceeds 52 MiB")
 		}
 		relative, err := filepath.Rel(root, path)
 		if err != nil {
