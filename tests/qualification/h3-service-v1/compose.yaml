@@ -186,6 +186,7 @@ services:
     networks: {route_net: {ipv4_address: 172.31.20.14}, carrier_net: {ipv4_address: 172.31.21.14}}
   carrier-fault:
     image: ${ARDENTS_SERVICE_IMAGE_TAG:?}
+    profiles: [s41]
     pull_policy: never
     read_only: true
     restart: "no"
