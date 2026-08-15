@@ -27,11 +27,18 @@ type replacementCampaignAttempt struct {
 
 func buildReplacementCampaignIndex(root string, manifestRaw json.RawMessage,
 	finalPaths []string) (json.RawMessage, []string, error) {
-	var manifest replacementCampaignManifest
-	if err := decodeCampaignJSON(manifestRaw, &manifest); err != nil {
+	var manifest struct {
+		Schema string
+		Cells  []replacementCampaignCell
+	}
+	if err := json.Unmarshal(manifestRaw, &manifest); err != nil {
 		return nil, nil, fmt.Errorf("decode retained replacement campaign manifest: %w", err)
 	}
-	if len(manifest.Cells) != 10 || len(finalPaths) == 0 || len(finalPaths) > len(manifest.Cells) {
+	expected := 10
+	if manifest.Schema == stressCampaignManifestSchema {
+		expected = 3
+	}
+	if len(manifest.Cells) != expected || len(finalPaths) == 0 || len(finalPaths) > len(manifest.Cells) {
 		return nil, nil, errors.New("replacement campaign final receipt cardinality is invalid")
 	}
 	index := replacementCampaignIndex{Schema: "ardents-qualification-campaign-index-v1",

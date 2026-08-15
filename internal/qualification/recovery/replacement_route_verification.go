@@ -12,7 +12,7 @@ func verifyReplacementRoutes(cell replacementCell, candidates map[string][]repla
 			return invalid("S4.2 Route generation numbering or cardinality is invalid")
 		}
 		proposal := generationIndex
-		if cell.Mode == "isolated-rendezvous" && generationIndex > 0 {
+		if (cell.Mode == "isolated-rendezvous" || cell.Mode == "overlap") && generationIndex > 0 {
 			proposal++
 		}
 		selected, err := layeredCandidates(candidates, selectionSeed, proposal)
@@ -77,12 +77,16 @@ func verifyReplacementRoutes(cell replacementCell, candidates map[string][]repla
 
 func verifyReplacementEvent(cell replacementCell, index int, event replacementEvent,
 	before, after routeGeneration) Result {
+	recoveryLimit := int64(5 * time.Second)
+	if cell.Mode == "overlap" {
+		recoveryLimit = int64(8 * time.Second)
+	}
 	expectedOffset := cell.FaultOffsets[index]
 	if event.FaultOffset != expectedOffset || event.CanaryOffset != expectedOffset ||
 		event.Canary != workloadRange(cell.Seed, event.CanaryOffset) || event.FaultOffset < 256<<10 ||
 		event.FaultOffset%16_384 == 0 || event.CanaryOffset+32 > cell.Bytes ||
 		event.LastDeliveryNanos <= 0 || event.FaultAtNanos < event.LastDeliveryNanos ||
-		event.CanaryNanos <= event.FaultAtNanos || event.CanaryNanos-event.LastDeliveryNanos > int64(5*time.Second) ||
+		event.CanaryNanos <= event.FaultAtNanos || event.CanaryNanos-event.LastDeliveryNanos > recoveryLimit ||
 		event.CanaryNanos > cell.TerminalNanos {
 		return fail("S4.2 replacement event timing, offset, or canary is invalid")
 	}
@@ -99,7 +103,14 @@ func verifyReplacementEvent(cell replacementCell, index int, event replacementEv
 		event.IntroductionAttachment != introductionAttachment {
 		return invalid("S4.2 Rendezvous or fresh Introduction evidence is incomplete")
 	}
-	if event.Role == "rendezvous" {
+	if cell.Mode == "overlap" {
+		if event.Layer != "overlap" || sameProcessIncarnation(event.RendezvousBefore, event.RendezvousAfter) ||
+			event.IntroductionSetupReceipt == [32]byte{} || event.IntroductionSetupAttachment != 3 ||
+			event.IntroductionOpaqueBytes == 0 || event.IntroductionOpaqueDigest == [32]byte{} ||
+			len(cell.Proposals) != 3 || event.IntroductionSetupReceipt != cell.Proposals[2].IntroductionReceipt {
+			return fail("S4.3 overlap did not abandon the struck replacement and commit the third path")
+		}
+	} else if event.Role == "rendezvous" {
 		if event.Layer != "rendezvous" || sameProcessIncarnation(event.RendezvousBefore, event.RendezvousAfter) ||
 			event.IntroductionSetupReceipt == [32]byte{} || event.IntroductionSetupAttachment != 3 ||
 			event.IntroductionOpaqueBytes == 0 || event.IntroductionOpaqueDigest == [32]byte{} ||

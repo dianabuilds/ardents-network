@@ -21,10 +21,16 @@ var negativeNames = [...]string{"no-alternate", "cancellation", "deadline", "for
 func Verify(value Evidence) Result {
 	if value.Schema == replacementAttemptEnvelopeSchema {
 		result := verifyReplacementAttempt(value)
+		if attemptSchema(value.AttemptManifest) == stressAttemptManifestSchema {
+			result = verifyStressAttempt(value)
+		}
 		result.EvidenceDigest = hexDigest(value.AttemptReceipt)
 		return result
 	}
 	if value.Schema == replacementCampaignEnvelopeSchema {
+		if attemptSchema(value.AttemptManifest) == stressAttemptManifestSchema {
+			return verifyStressCampaign(value)
+		}
 		return verifyReplacementCampaign(value)
 	}
 	if value.Schema != schema || len(value.SourceCommit) != 40 || value.ImageID == "" || value.VerifierImageID != value.ImageID || value.TopologyDigest == "" ||

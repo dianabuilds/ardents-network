@@ -49,6 +49,9 @@ func finalize(input config, result Result) Result {
 }
 
 func recoveryClaim(slice string) string {
+	if slice == "s4.3" {
+		return "S4.1-S4.3 recovery development complete; full Stage 4 capacity qualification remains gated"
+	}
 	if slice == "s4.2" {
 		return "S4.2 four-position local development tracer only; does not qualify split-leg/Introduction topology"
 	}

@@ -17,6 +17,7 @@ type replacementAttempt struct {
 	direction                      string
 	failures                       []string
 	sequential                     bool
+	overlap                        bool
 	hostScope                      hostScopeEvidence
 	hostClock, cellClock           time.Time
 	offsets                        []uint32
@@ -36,7 +37,21 @@ type replacementAttempt struct {
 	faultReceipts                  map[string]processFaultEvidence
 	receiver, senderRole           string
 	candidateFailure               string
+	overlapController              string
+	overlapBaseline                trafficBaseline
 	failureObservation             replacementFailureObservation
+}
+
+func newOverlapAttempt(observer dockerObserver, fixture prepared, direction string,
+	hostScope hostScopeEvidence, hostClock time.Time, baseline trafficBaseline) (*replacementAttempt, campaign.CellInput, *campaign.CellReceipt, error) {
+	failures := []string{"initiator"}
+	offsets, lifetime, delay, mode := overlapReplacementSchedule()
+	attempt, input, retained, err := newReplacementAttemptValues(observer, fixture, direction, failures, false, true,
+		hostScope, hostClock, offsets, lifetime, delay, mode)
+	if attempt != nil {
+		attempt.overlapBaseline = baseline
+	}
+	return attempt, input, retained, err
 }
 
 type replacementFailureObservation struct {
@@ -59,6 +74,14 @@ func newReplacementAttempt(observer dockerObserver, fixture prepared, direction 
 	if sequential {
 		offsets, lifetime, delay, mode = sequentialReplacementSchedule()
 	}
+	return newReplacementAttemptValues(observer, fixture, direction, failures, sequential, false,
+		hostScope, hostClock, offsets, lifetime, delay, mode)
+}
+
+func newReplacementAttemptValues(observer dockerObserver, fixture prepared, direction string, failures []string,
+	sequential, overlap bool, hostScope hostScopeEvidence, hostClock time.Time,
+	offsets []uint32, lifetime, delay, mode string) (
+	*replacementAttempt, campaign.CellInput, *campaign.CellReceipt, error) {
 	proposalCount, err := replacementProposalCount(mode)
 	if err != nil {
 		return nil, campaign.CellInput{}, nil, err
@@ -78,7 +101,7 @@ func newReplacementAttempt(observer dockerObserver, fixture prepared, direction 
 	observer.direction, observer.gateOffset, observer.gateOffsets = direction, 0, offsets
 	observer.streamLifetime, observer.input.ChunkDelay, observer.startGate = lifetime, delay, true
 	value := &replacementAttempt{observer: observer, fixture: fixture, direction: direction,
-		failures: append([]string(nil), failures...), sequential: sequential,
+		failures: append([]string(nil), failures...), sequential: sequential, overlap: overlap,
 		hostScope: hostScope, hostClock: hostClock, offsets: offsets, lifetime: lifetime, delay: delay,
 		mode: mode, proposalCount: proposalCount, seed: seed, manifest: manifest}
 	cellID := shortDirection + "-" + mode
@@ -92,6 +115,19 @@ func newReplacementAttempt(observer dockerObserver, fixture prepared, direction 
 	input := campaign.CellInput{CellID: cellID, AttemptID: attemptID,
 		ManifestDigest: manifest.Digest, ReceiptRoot: observer.input.EvidenceRoot}
 	return value, input, nil, nil
+}
+
+func runOverlapAttempt(ctx context.Context, observer dockerObserver, fixture prepared, direction string,
+	hostScope hostScopeEvidence, hostClock time.Time, baseline trafficBaseline) (replacementCell, campaign.CellReceipt, error) {
+	attempt, input, retained, err := newOverlapAttempt(observer, fixture, direction, hostScope, hostClock, baseline)
+	if err != nil {
+		return replacementCell{}, campaign.CellReceipt{}, err
+	}
+	if retained != nil {
+		return replacementCell{}, *retained, nil
+	}
+	receipt, err := campaign.RunCell(ctx, input, attempt)
+	return attempt.cell, receipt, err
 }
 
 func runReplacementAttempt(ctx context.Context, observer dockerObserver, fixture prepared, direction string,

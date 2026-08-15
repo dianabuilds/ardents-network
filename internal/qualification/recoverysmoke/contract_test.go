@@ -40,4 +40,13 @@ func TestParseConfigSelectsOnlyAnImplementedRecoverySlice(t *testing.T) {
 	if _, err := parseConfig([]string{"--slice", "s4.2"}); err == nil {
 		t.Fatal("S4.2 accepted missing prerequisite receipts")
 	}
+	value, err = parseConfig([]string{"--slice", "s4.3", "--s4.1-evidence", "s41.json",
+		"--s4.2-evidence", "s42.json", "--stage3-evidence", "s3.json", "--tool-image", "sha256:tool"})
+	if err != nil || value.Slice != "s4.3" {
+		t.Fatalf("S4.3 config=%+v err=%v", value, err)
+	}
+	if _, err := parseConfig([]string{"--slice", "s4.3", "--s4.1-evidence", "s41.json",
+		"--stage3-evidence", "s3.json"}); err == nil {
+		t.Fatal("S4.3 accepted missing S4.2/tooling prerequisites")
+	}
 }

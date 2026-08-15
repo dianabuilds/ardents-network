@@ -18,7 +18,9 @@ func verifyReplacementManifest(cell replacementCell) Result {
 	expectedOffsets := []uint32{17 * 16_381}
 	expectedDelay, expectedDeadline := int64(20*time.Millisecond), int64(2*time.Second)
 	expectedLifetime := int64(time.Minute)
-	if cell.Mode == "sequential-three" {
+	if cell.Mode == "overlap" {
+		expectedRoles = []string{"initiator"}
+	} else if cell.Mode == "sequential-three" {
 		expectedRoles = []string{"initiator", "rendezvous", "responder"}
 		expectedOffsets = []uint32{64 * 16_381, 128 * 16_381, 192 * 16_381}
 		expectedDelay, expectedLifetime = int64(2350*time.Millisecond), int64(12*time.Minute)

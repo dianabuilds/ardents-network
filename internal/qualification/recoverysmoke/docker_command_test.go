@@ -39,8 +39,8 @@ func TestRecoveryOperationLifetimeBindsEndpointAndApplicationPlans(t *testing.T)
 	}
 }
 
-func TestRecoveryDownIncludesReplacementProfile(t *testing.T) {
-	want := []string{"--profile", "s42", "down", "-v", "--remove-orphans"}
+func TestRecoveryDownIncludesAllRecoveryProfiles(t *testing.T) {
+	want := []string{"--profile", "*", "down", "-v", "--remove-orphans"}
 	if got := recoveryDownArguments(); !slices.Equal(got, want) {
 		t.Fatalf("recovery down arguments = %v; want %v", got, want)
 	}

@@ -6,6 +6,7 @@ import (
 	"net"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -55,7 +56,7 @@ func runNativeShaper(config nativeToolConfig, evidenceDirectory string) (runErr 
 		}
 	}()
 	for _, name := range interfaces {
-		state, err := applyNativeShaping(run, name, config.DelayMilliseconds)
+		state, err := applyNativeShaping(run, name, config)
 		if err != nil {
 			return err
 		}
@@ -93,12 +94,8 @@ func nativeNetworkInterfaces() ([]string, error) {
 	return result, nil
 }
 
-func applyNativeShaping(run externalCommand, networkInterface string, delayMilliseconds int) (string, error) {
-	arguments := []string{"qdisc", "replace", "dev", networkInterface, "root", "netem"}
-	if delayMilliseconds == 40 {
-		arguments = append(arguments, "delay", "40ms")
-	}
-	arguments = append(arguments, "rate", "100mbit", "limit", "1000")
+func applyNativeShaping(run externalCommand, networkInterface string, config nativeToolConfig) (string, error) {
+	arguments := nativeShapingArguments(config, networkInterface)
 	output, err := run("/usr/sbin/tc", arguments...)
 	if err != nil {
 		return "", fmt.Errorf("apply native tc netem: %w: %s", err, strings.TrimSpace(string(output)))
@@ -108,8 +105,34 @@ func applyNativeShaping(run externalCommand, networkInterface string, delayMilli
 		return "", fmt.Errorf("observe native tc netem: %w: %s", err, strings.TrimSpace(string(observed)))
 	}
 	state := strings.ToLower(string(observed))
-	if !strings.Contains(state, "netem") || !strings.Contains(state, "rate 100mbit") || !strings.Contains(state, "limit 1000") || delayMilliseconds == 40 && !strings.Contains(state, "delay 40ms") {
+	if !validNativeShapingState(state, config) {
 		return "", errors.New("effective native qdisc does not match the fixed impairment")
 	}
 	return strings.TrimSpace(string(observed)), nil
+}
+
+func nativeShapingArguments(config nativeToolConfig, networkInterface string) []string {
+	arguments := []string{"qdisc", "replace", "dev", networkInterface, "root", "netem", "limit", "1000"}
+	if config.Profile == "h3-s43-impaired-v1" {
+		arguments = append(arguments, "delay", "150ms", "60.8ms", "distribution", "normal",
+			"loss", "random", "5%", "seed", strconv.FormatUint(uint64(config.Seed), 10), "rate", "25mbit")
+	} else if config.DelayMilliseconds == 40 {
+		arguments = append(arguments, "delay", "40ms")
+	}
+	if config.Profile == "h3-s43-impaired-v1" {
+		return arguments
+	}
+	return append(arguments, "rate", "100mbit")
+}
+
+func validNativeShapingState(state string, config nativeToolConfig) bool {
+	if !strings.Contains(state, "netem") || !strings.Contains(state, "limit 1000") {
+		return false
+	}
+	if config.Profile == "h3-s43-impaired-v1" {
+		return strings.Contains(state, "delay 150ms") && strings.Contains(state, "loss 5%") &&
+			strings.Contains(state, "rate 25mbit")
+	}
+	return strings.Contains(state, "rate 100mbit") &&
+		(config.DelayMilliseconds != 40 || strings.Contains(state, "delay 40ms"))
 }

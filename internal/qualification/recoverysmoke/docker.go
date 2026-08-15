@@ -30,6 +30,19 @@ func runDocker(ctx context.Context, input config, fixture prepared) (result Resu
 	}()
 	observer.generation = filepath.Join(input.FixtureRoot, "generations", "1")
 	observer.evidenceFile = filepath.Join(input.EvidenceRoot, "empty.json")
+	if input.Slice == "s4.3" {
+		rawTool, toolErr := observer.docker(ctx, time.Minute, "image", "inspect", "--format", "{{.Id}}", input.ToolImage)
+		toolID := strings.TrimSpace(string(rawTool))
+		if toolErr != nil || !strings.HasPrefix(toolID, "sha256:") {
+			return observer.invalid(errors.Join(toolErr, errors.New("S4.3 tooling image identity is invalid")))
+		}
+		rawTarget, targetErr := observer.docker(ctx, time.Minute, "image", "inspect", "--format",
+			"{{index .Config.Labels \"io.ardents.carrier-lab.target\"}}", toolID)
+		if targetErr != nil || strings.TrimSpace(string(rawTarget)) != "tooling" {
+			return observer.invalid(errors.Join(targetErr, errors.New("S4.3 image is not the accepted tooling target")))
+		}
+		observer.input.ToolImage = toolID
+	}
 	topology, err := observer.compose(ctx, time.Minute, "--profile", "*", "config")
 	if err != nil {
 		return observer.invalid(err)

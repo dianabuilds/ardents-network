@@ -23,8 +23,10 @@ func (observer dockerObserver) runNoFailureBaseline(ctx context.Context, directi
 	if err := observer.resetRecoveryTopology(ctx, time.Minute); err != nil {
 		return trafficBaseline{}, err
 	}
-	if err := refreshWorkload(observer.generation); err != nil {
-		return trafficBaseline{}, err
+	if !observer.fixedWorkload {
+		if err := refreshWorkload(observer.generation); err != nil {
+			return trafficBaseline{}, err
+		}
 	}
 	observer = observer.forRecoveryOperation(direction)
 	seed, err := recoveryDirectionSeed(observer.generation, direction)

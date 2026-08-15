@@ -63,7 +63,14 @@ func verifyReplacementCell(cell replacementCell, candidates map[string][]replace
 	if result := verifyReplacementResources(cell); result.Verdict != "pass" {
 		return result
 	}
-	if cell.Mode == "sequential-three" {
+	if cell.Mode == "overlap" {
+		if len(cell.Events) != 1 || cell.TerminalNanos > int64(time.Minute) {
+			return fail("S4.3 overlapping recovery did not finish within its bounded cell")
+		}
+		if result := verifyOverlapEvidence(cell, hostScope, identities); result.Verdict != "pass" {
+			return result
+		}
+	} else if cell.Mode == "sequential-three" {
 		if len(cell.Events) != 3 || cell.TerminalNanos < int64(10*time.Minute) || cell.TerminalNanos > int64(13*time.Minute) {
 			return fail("S4.2 sequential connection did not remain continuously loaded for ten minutes")
 		}

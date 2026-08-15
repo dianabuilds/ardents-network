@@ -23,6 +23,9 @@ type dockerObserver struct {
 	gateOffsets                                            []uint32
 	streamLifetime                                         string
 	startGate                                              bool
+	fixedWorkload                                          bool
+	directClientFlow, directPublisherFlow, directSeedName  string
+	shaperRoot                                             string
 }
 
 func (observer dockerObserver) compose(ctx context.Context, timeout time.Duration, arguments ...string) ([]byte, error) {
@@ -71,6 +74,11 @@ func (observer dockerObserver) configuredCommand(ctx context.Context, timeout ti
 		"ARDENTS_SERVICE_EVIDENCE_FILE="+observer.evidenceFile,
 		"ARDENTS_RECOVERY_EVIDENCE_FILE="+observer.evidenceFile,
 		"ARDENTS_RECOVERY_GATE_HOST="+filepath.Join(observer.input.FixtureRoot, "gate"),
+		"ARDENTS_S43_TOOL_IMAGE="+observer.input.ToolImage,
+		"ARDENTS_S43_SHAPER_ROOT="+observer.shaperRoot,
+		"ARDENTS_DIRECT_CLIENT_FLOW="+observer.directClientFlow,
+		"ARDENTS_DIRECT_PUBLISHER_FLOW="+observer.directPublisherFlow,
+		"ARDENTS_DIRECT_SEED_NAME="+observer.directSeedName,
 		"ARDENTS_SERVICE_RUNTIME_USER="+observer.runtimeUser)
 	bytes := observer.input.Bytes
 	if bytes == 0 {
@@ -133,7 +141,7 @@ func (observer dockerObserver) forRecoveryOperation(direction string) dockerObse
 }
 
 func recoveryDownArguments() []string {
-	return []string{"--profile", "s42", "down", "-v", "--remove-orphans"}
+	return []string{"--profile", "*", "down", "-v", "--remove-orphans"}
 }
 
 func (observer dockerObserver) resetRecoveryTopology(ctx context.Context, timeout time.Duration) error {

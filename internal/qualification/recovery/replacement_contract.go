@@ -32,9 +32,22 @@ type replacementCell struct {
 	Events                                                                     []replacementEvent
 	ResourceSamples                                                            []ResourceSample
 	FinalTraffic                                                               ResourceSample
+	BaselineFinalTraffic                                                       ResourceSample
+	BaselineTerminalNanos                                                      int64
 	FinalCanaryOffset                                                          uint32
 	FinalCanary                                                                [32]byte
 	FinalCanaryObservedNanos                                                   int64
+	Overlap                                                                    overlapEvidence
+}
+
+type overlapEvidence struct {
+	Observer                                                 ObserverProcess
+	SocketDigest, LocalAddress, RemoteAddress, InterfaceName string
+	Inode                                                    uint32
+	InterfaceIndex                                           int
+	ObservedAtNanos, FaultAtNanos, FaultCompletedNanos       int64
+	CarrierCutAfterNanos, AbsenceAfterNanos                  int64
+	Absent, ObserverRemoved                                  bool
 }
 
 type replacementProposal struct {

@@ -20,6 +20,9 @@ func (attempt *replacementAttempt) Release(context.Context) (time.Time, error) {
 }
 
 func (attempt *replacementAttempt) Observe(ctx context.Context) (campaign.CellObservation, error) {
+	if attempt.overlap {
+		return attempt.observeOverlap(ctx)
+	}
 	var previousOffset uint32
 	for eventIndex, role := range attempt.failures {
 		offset := attempt.offsets[eventIndex]
@@ -129,4 +132,8 @@ func isolatedReplacementSchedule(failures []string) ([]uint32, string, string, s
 
 func sequentialReplacementSchedule() ([]uint32, string, string, string) {
 	return []uint32{64 * 16_381, 128 * 16_381, 192 * 16_381}, "12m", "2350ms", "sequential-three"
+}
+
+func overlapReplacementSchedule() ([]uint32, string, string, string) {
+	return []uint32{17 * 16_381}, "1m", "20ms", "overlap"
 }

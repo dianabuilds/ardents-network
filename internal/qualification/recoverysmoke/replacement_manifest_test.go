@@ -39,6 +39,15 @@ func TestPrepareReplacementManifestFreezesCellInputs(t *testing.T) {
 	}
 }
 
+func TestOverlapReplacementManifestFreezesOneEpisode(t *testing.T) {
+	offsets, lifetime, delay, mode := overlapReplacementSchedule()
+	value, err := buildReplacementManifest("client-to-publisher", mode, [32]byte{9},
+		[]string{"initiator"}, offsets, lifetime, delay)
+	if err != nil || value.Mode != "overlap" || len(value.FaultOffsets) != 1 || value.LifetimeNanos != int64(time.Minute) {
+		t.Fatalf("overlap manifest=%+v err=%v", value, err)
+	}
+}
+
 func TestPrepareReplacementManifestRejectsInvalidDurations(t *testing.T) {
 	if _, err := prepareReplacementManifest(t.TempDir(), "client-to-publisher", "isolated-initiator",
 		[32]byte{1}, []string{"initiator"}, []uint32{17 * 16_381}, "invalid", "20ms"); err == nil {

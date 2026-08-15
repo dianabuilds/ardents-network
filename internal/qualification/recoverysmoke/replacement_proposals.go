@@ -47,9 +47,13 @@ func replacementProposals(raw []byte, mode string) ([]replacementProposal, error
 		return nil, errors.New("replacement proposal evidence count is incomplete")
 	}
 	for index := range result {
-		wantCommitted := mode != "isolated-rendezvous" || index != 1
+		wantCommitted := mode != "isolated-rendezvous" && mode != "overlap" || index != 1
 		result[index].Committed = wantCommitted
-		if result[index].Terminal != "success" || (index == 2) != (result[index].IntroductionReceipt != [32]byte{}) {
+		wantTerminal := "success"
+		if mode == "overlap" && index == 1 {
+			wantTerminal = "error"
+		}
+		if result[index].Terminal != wantTerminal || (index == 2) != (result[index].IntroductionReceipt != [32]byte{}) {
 			return nil, errors.New("replacement proposal outcome or Introduction setup is inconsistent")
 		}
 	}

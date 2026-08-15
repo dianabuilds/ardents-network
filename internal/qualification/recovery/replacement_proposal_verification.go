@@ -13,6 +13,8 @@ func verifyReplacementProposals(cell replacementCell, candidates map[string][]re
 	expected := 2
 	if cell.Mode == "isolated-rendezvous" {
 		expected = 3
+	} else if cell.Mode == "overlap" {
+		expected = 3
 	} else if cell.Mode == "sequential-three" {
 		expected = 4
 	}
@@ -56,8 +58,12 @@ func verifyReplacementProposals(cell replacementCell, candidates map[string][]re
 			processes[process.NodeID] = process
 			resources[process.Host.Identity] = process
 		}
-		wantCommitted := cell.Mode != "isolated-rendezvous" || proposalIndex != 1
-		if proposal.Committed != wantCommitted || proposal.Terminal != "success" ||
+		wantCommitted := cell.Mode != "isolated-rendezvous" && cell.Mode != "overlap" || proposalIndex != 1
+		wantTerminal := "success"
+		if cell.Mode == "overlap" && proposalIndex == 1 {
+			wantTerminal = "error"
+		}
+		if proposal.Committed != wantCommitted || proposal.Terminal != wantTerminal ||
 			(proposalIndex == 2) != (proposal.IntroductionReceipt != [32]byte{}) {
 			return fail("S4.2 proposal outcome or sealed Introduction receipt is inconsistent")
 		}
@@ -70,7 +76,7 @@ func verifyReplacementProposals(cell replacementCell, candidates map[string][]re
 	}
 	for generationIndex, generation := range cell.Routes {
 		proposalIndex := generationIndex
-		if cell.Mode == "isolated-rendezvous" && generationIndex > 0 {
+		if (cell.Mode == "isolated-rendezvous" || cell.Mode == "overlap") && generationIndex > 0 {
 			proposalIndex++
 		}
 		proposal := cell.Proposals[proposalIndex]

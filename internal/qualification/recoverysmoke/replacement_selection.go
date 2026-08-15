@@ -53,6 +53,8 @@ func replacementProposalCount(mode string) (int, error) {
 		return 2, nil
 	case "isolated-rendezvous":
 		return 3, nil
+	case "overlap":
+		return 3, nil
 	case "sequential-three":
 		return 4, nil
 	default:

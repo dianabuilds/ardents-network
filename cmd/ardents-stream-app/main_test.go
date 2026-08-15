@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"net"
 	"testing"
 	"time"
@@ -20,47 +19,13 @@ func TestStreamLifetimeIsBoundedIndependentlyFromDial(t *testing.T) {
 	}
 }
 
-func TestExternalApplicationsExchangeOpaqueBytesWithoutArdentsState(t *testing.T) {
-	client, publisher := net.Pipe()
-	defer client.Close()
-	defer publisher.Close()
-	type outcome struct {
-		value observation
-		err   error
+func TestStreamCountsPermitBoundedSustainedStage4Workload(t *testing.T) {
+	send, receive, err := streamCounts("268435456", "0")
+	if err != nil || send != 256<<20 || receive != 0 {
+		t.Fatalf("sustained stream counts=%d/%d err=%v", send, receive, err)
 	}
-	results := make(chan outcome, 2)
-	go func() {
-		value, err := exchange(client, "client", [32]byte{17}, [32]byte{91}, 4096, 4096, nil, nil)
-		results <- outcome{value, err}
-	}()
-	go func() {
-		value, err := exchange(publisher, "publisher", [32]byte{91}, [32]byte{17}, 4096, 4096, nil, nil)
-		results <- outcome{value, err}
-	}()
-	for range 2 {
-		result := <-results
-		expected := workload(4096, result.value.ExpectSeed)
-		var tail [32]byte
-		copy(tail[:], expected[len(expected)-len(tail):])
-		if result.err != nil || result.value.Terminal != "success" || result.value.SentBytes != 4096 ||
-			result.value.ReceivedBytes != 4096 || result.value.ReceivedTail != tail {
-			t.Fatalf("opaque external Application failed: value=%+v err=%v", result.value, result.err)
-		}
-	}
-}
-
-func TestPacedWorkloadWriterUsesNonRecordAlignedFiniteChunks(t *testing.T) {
-	var output bytes.Buffer
-	writer, err := workloadWriter(&output, "1ms")
-	if err != nil {
-		t.Fatal(err)
-	}
-	written, err := writer(make([]byte, 32<<10))
-	if err != nil || written != 16_381 || output.Len() != 16_381 {
-		t.Fatalf("paced write=%d retained=%d err=%v", written, output.Len(), err)
-	}
-	if _, err := workloadWriter(&output, "3001ms"); err == nil {
-		t.Fatal("unbounded stream pacing accepted")
+	if _, _, err := streamCounts("268435457", "0"); err == nil {
+		t.Fatal("stream count above the Stage 4 bound was accepted")
 	}
 }
 

@@ -61,11 +61,18 @@ func (observer dockerObserver) runRecoveryCell(ctx context.Context, fixture prep
 	}
 	observer.generation = filepath.Join(observer.input.FixtureRoot, "generations", "1")
 	observer.evidenceFile = filepath.Join(observer.input.EvidenceRoot, "empty.json")
+	observer.fixedWorkload = observer.input.Slice != "s4.1"
 	campaignStarted := time.Now()
 	var replacementManifest json.RawMessage
 	var replacementAttemptFiles []string
 	if observer.input.Slice == "s4.2" {
 		replacementManifest, err = prepareReplacementCampaignManifest(observer, fixture, hostScope, imageID, topology,
+			replacementCandidates)
+		if err != nil {
+			return observer.invalid(err)
+		}
+	} else if observer.input.Slice == "s4.3" {
+		replacementManifest, err = prepareStressCampaignManifest(observer, fixture, hostScope, imageID, topology,
 			replacementCandidates)
 		if err != nil {
 			return observer.invalid(err)
@@ -90,7 +97,7 @@ func (observer dockerObserver) runRecoveryCell(ctx context.Context, fixture prep
 				break
 			}
 		}
-	} else {
+	} else if observer.input.Slice == "s4.2" {
 		for _, direction := range []string{"client-to-publisher", "publisher-to-client"} {
 			for _, role := range replacementRoles {
 				verificationPath, result := runReplacementCampaignCell(ctx, observer, fixture, direction,
@@ -108,6 +115,33 @@ func (observer dockerObserver) runRecoveryCell(ctx context.Context, fixture prep
 			verificationPath, result := runReplacementCampaignCell(ctx, observer, fixture, direction,
 				[]string{"initiator", "rendezvous", "responder"}, true, hostScope, hostClock,
 				replacementManifest, direction+" sequential")
+			if result != nil {
+				if result.Verdict == "fail" && verificationPath != "" {
+					replacementAttemptFiles = append(replacementAttemptFiles, verificationPath)
+					return observer.finishReplacementCampaign(ctx, imageID, replacementManifest,
+						replacementAttemptFiles)
+				}
+				return *result
+			}
+			replacementAttemptFiles = append(replacementAttemptFiles, verificationPath)
+		}
+		return observer.finishReplacementCampaign(ctx, imageID, replacementManifest,
+			replacementAttemptFiles)
+	} else {
+		verificationPath, result := runOverlapCampaignCell(ctx, observer, fixture, hostScope, hostClock,
+			replacementManifest)
+		if result != nil {
+			if result.Verdict == "fail" && verificationPath != "" {
+				replacementAttemptFiles = append(replacementAttemptFiles, verificationPath)
+				return observer.finishReplacementCampaign(ctx, imageID, replacementManifest,
+					replacementAttemptFiles)
+			}
+			return *result
+		}
+		replacementAttemptFiles = append(replacementAttemptFiles, verificationPath)
+		for _, direction := range []string{"client-to-publisher", "publisher-to-client"} {
+			verificationPath, result = runImpairedCampaignCell(ctx, observer, fixture, direction,
+				hostScope, hostClock, replacementManifest)
 			if result != nil {
 				if result.Verdict == "fail" && verificationPath != "" {
 					replacementAttemptFiles = append(replacementAttemptFiles, verificationPath)

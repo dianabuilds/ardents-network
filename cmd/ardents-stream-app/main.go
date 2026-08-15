@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/applicationipc"
+	"github.com/dianabuilds/ardents-network/internal/streamworkload"
 )
 
 func main() {
@@ -21,6 +22,9 @@ func main() {
 }
 
 func run(arguments []string, output io.Writer) error {
+	if len(arguments) > 0 && arguments[0] == "direct" {
+		return runDirect(arguments, output)
+	}
 	if len(arguments) != 7 || arguments[0] != "run" {
 		return errors.New("usage: ardents-stream-app run <role> <socket> <send-seed-file> <expect-seed-file> <send-bytes> <receive-bytes>")
 	}
@@ -51,7 +55,7 @@ func run(arguments []string, output io.Writer) error {
 	if err := connection.SetDeadline(time.Now().Add(lifetime)); err != nil {
 		return fmt.Errorf("bound Application stream lifetime: %w", err)
 	}
-	write, err := workloadWriter(connection, os.Getenv("ARDENTS_STREAM_CHUNK_DELAY"))
+	write, err := streamworkload.PacingWriter(connection, os.Getenv("ARDENTS_STREAM_CHUNK_DELAY"))
 	if err != nil {
 		return err
 	}
@@ -69,7 +73,8 @@ func run(arguments []string, output io.Writer) error {
 				"received_bytes": received})
 		}
 	}
-	result, streamErr := exchange(connection, arguments[1], sendSeed, expectSeed, sendCount, receiveCount, write, progress)
+	result, streamErr := streamworkload.Exchange(connection, arguments[1], sendSeed, expectSeed,
+		sendCount, receiveCount, write, progress)
 	classified, resultErr := applicationipc.Read(connection)
 	result.ResultClass, result.AuthenticatedTarget = classified.Class, classified.AuthenticatedTarget
 	if classified.Class != "clean service connection close" {
@@ -97,7 +102,7 @@ func streamLifetime() (time.Duration, error) {
 func streamCounts(sendText, receiveText string) (int, int, error) {
 	send64, sendErr := strconv.ParseInt(sendText, 10, 32)
 	receive64, receiveErr := strconv.ParseInt(receiveText, 10, 32)
-	if sendErr != nil || receiveErr != nil || send64 < 0 || receive64 < 0 || send64 > 4<<20 || receive64 > 4<<20 ||
+	if sendErr != nil || receiveErr != nil || send64 < 0 || receive64 < 0 || send64 > 256<<20 || receive64 > 256<<20 ||
 		(send64 == 0 && receive64 == 0) {
 		return 0, 0, errors.New("stream byte counts are outside their bound")
 	}

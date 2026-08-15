@@ -107,7 +107,7 @@ func (observer dockerObserver) finishReplacementCell(ctx context.Context, proces
 			return replacementCell{}, errors.New("fresh authenticated Introduction attachment is missing")
 		}
 		event.IntroductionAttachment = expected
-		if event.Role == "rendezvous" {
+		if event.Role == "rendezvous" || cell.Mode == "overlap" {
 			serviceRaw, logsErr := observer.compose(ctx, time.Minute, "logs", "--no-color", "--no-log-prefix", "publisher")
 			if logsErr != nil {
 				return replacementCell{}, logsErr

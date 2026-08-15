@@ -47,15 +47,23 @@ func replacementCandidateResult(cell replacementCell) (string, string) {
 		}
 	}
 	for index, proposal := range cell.Proposals {
-		committed := cell.Mode != "isolated-rendezvous" || index != 1
-		if proposal.Committed != committed || proposal.Terminal != "success" {
+		committed := cell.Mode != "isolated-rendezvous" && cell.Mode != "overlap" || index != 1
+		terminal := "success"
+		if cell.Mode == "overlap" && index == 1 {
+			terminal = "error"
+		}
+		if proposal.Committed != committed || proposal.Terminal != terminal {
 			return "fail", failed
 		}
 	}
 	if !replacementCandidateResources(cell) {
 		return "fail", failed
 	}
-	if cell.Mode == "sequential-three" {
+	if cell.Mode == "overlap" {
+		if events != 1 || cell.TerminalNanos > int64(time.Minute) || !candidateOverlapEvidence(cell) {
+			return "fail", failed
+		}
+	} else if cell.Mode == "sequential-three" {
 		if events != 3 || cell.TerminalNanos < int64(10*time.Minute) || cell.TerminalNanos > int64(13*time.Minute) {
 			return "fail", failed
 		}
@@ -66,15 +74,36 @@ func replacementCandidateResult(cell replacementCell) (string, string) {
 	return "pass", "replacement candidate satisfied the cell contract"
 }
 
+func candidateOverlapEvidence(cell replacementCell) bool {
+	value := cell.Overlap
+	event := cell.Events[0]
+	return value.SocketDigest != "" && value.LocalAddress != "" && value.RemoteAddress == "172.31.20.16:4606" &&
+		value.InterfaceName != "" && value.Inode != 0 && value.InterfaceIndex > 0 && value.ObservedAtNanos > event.FaultAtNanos &&
+		value.FaultAtNanos >= value.ObservedAtNanos && value.FaultAtNanos-event.FaultAtNanos <= int64(time.Second) &&
+		value.FaultCompletedNanos >= value.FaultAtNanos && value.CarrierCutAfterNanos > 0 &&
+		value.AbsenceAfterNanos >= value.CarrierCutAfterNanos && value.Absent && value.ObserverRemoved &&
+		event.CanaryNanos-event.LastDeliveryNanos <= int64(8*time.Second)
+}
+
 func replacementCandidateEvent(cell replacementCell, index int, event replacementEvent) bool {
+	recoveryLimit := int64(5 * time.Second)
+	if cell.Mode == "overlap" {
+		recoveryLimit = int64(8 * time.Second)
+	}
 	if index >= len(cell.FaultOffsets) || event.FaultOffset != cell.FaultOffsets[index] ||
 		event.CanaryOffset != event.FaultOffset || event.Canary != workloadCanary(cell.Seed, event.CanaryOffset) ||
 		event.LastDeliveryNanos <= 0 || event.FaultAtNanos < event.LastDeliveryNanos ||
 		event.CanaryNanos <= event.FaultAtNanos ||
-		event.CanaryNanos-event.LastDeliveryNanos > int64(5*time.Second) || event.CanaryNanos > cell.TerminalNanos {
+		event.CanaryNanos-event.LastDeliveryNanos > recoveryLimit || event.CanaryNanos > cell.TerminalNanos {
 		return false
 	}
 	before, after := cell.Routes[index], cell.Routes[index+1]
+	if cell.Mode == "overlap" {
+		return event.Layer == "overlap" && !sameProcessIncarnation(event.RendezvousBefore, event.RendezvousAfter) &&
+			event.IntroductionSetupReceipt != [32]byte{} && event.IntroductionSetupAttachment == 3 &&
+			event.IntroductionOpaqueBytes > 0 && event.IntroductionOpaqueDigest != [32]byte{} &&
+			event.CanaryNanos-event.LastDeliveryNanos <= int64(8*time.Second)
+	}
 	if event.Role == "rendezvous" {
 		return event.Layer == "rendezvous" &&
 			!sameProcessIncarnation(event.RendezvousBefore, event.RendezvousAfter) &&

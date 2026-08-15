@@ -16,6 +16,9 @@ import (
 )
 
 func run(arguments []string, output, diagnostics io.Writer) int {
+	if code, handled := recoverysmoke.RunOverlapFaultAdapter(arguments, output, diagnostics); handled {
+		return code
+	}
 	if code, handled := recoverysmoke.RunCarrierFaultAdapter(arguments, output, diagnostics); handled {
 		return code
 	}

@@ -11,9 +11,6 @@ func (attempt *replacementAttempt) Prepare(ctx context.Context) error {
 	if err := attempt.observer.resetRecoveryTopology(ctx, time.Minute); err != nil {
 		return err
 	}
-	if err := refreshWorkload(attempt.observer.generation); err != nil {
-		return err
-	}
 	if err := resetSequentialGates(attempt.gateRoot(), attempt.offsets); err != nil {
 		return err
 	}
@@ -75,6 +72,9 @@ func (attempt *replacementAttempt) Arm(ctx context.Context) error {
 		}
 	}
 	attempt.initializeCell()
+	if attempt.overlap {
+		return attempt.startOverlapController(ctx)
+	}
 	return nil
 }
 
@@ -92,5 +92,7 @@ func (attempt *replacementAttempt) initializeCell() {
 		ChunkDelayNanos: attempt.manifest.ChunkDelayNanos, SetupDeadlineNanos: attempt.manifest.SetupDeadlineNanos,
 		LifetimeNanos: attempt.manifest.LifetimeNanos, HostStartedAtNanos: attempt.hostStartedAt,
 		ExpectedDigest: workloadDigest(attempt.seed, 4<<20),
-		Routes:         []routeGeneration{attempt.proposalRoutes[0]}, HostProcesses: attempt.hostProcesses}
+		Routes:         []routeGeneration{attempt.proposalRoutes[0]}, HostProcesses: attempt.hostProcesses,
+		BaselineFinalTraffic:  attempt.overlapBaseline.finalTraffic,
+		BaselineTerminalNanos: attempt.overlapBaseline.terminalNanos}
 }

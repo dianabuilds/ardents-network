@@ -104,6 +104,72 @@ services:
     profiles: [negative]
     command: [/usr/local/bin/ardents-service-negative]
 
+  direct-client-anchor:
+    <<: *route
+    profiles: [s43-direct]
+    command: [/usr/local/bin/ardents-qualify, carrier-fault, wait]
+    networks: {route_net: {ipv4_address: 172.31.20.10}}
+  direct-publisher-anchor:
+    <<: *route
+    profiles: [s43-direct]
+    command: [/usr/local/bin/ardents-qualify, carrier-fault, wait]
+    networks: {route_net: {ipv4_address: 172.31.20.16}}
+  direct-client:
+    <<: *local
+    profiles: [s43-direct]
+    network_mode: service:direct-client-anchor
+    command: [/usr/local/bin/ardents-stream-app, direct, connect, "${ARDENTS_DIRECT_CLIENT_FLOW:-send}", 172.31.20.16:4700, /run/ardents/direct-seed.hex, "268435456"]
+    environment: {ARDENTS_STREAM_START_GATE: "1", ARDENTS_STREAM_GATE_ROOT: /run/ardents/gate}
+    volumes:
+      - {type: bind, source: "${ARDENTS_SERVICE_GENERATION:?}/${ARDENTS_DIRECT_SEED_NAME:-client-seed.hex}", target: /run/ardents/direct-seed.hex, read_only: true, bind: {create_host_path: false}}
+      - {type: bind, source: "${ARDENTS_RECOVERY_GATE_HOST:?}", target: /run/ardents/gate, bind: {create_host_path: false}}
+  direct-publisher:
+    <<: *local
+    profiles: [s43-direct]
+    network_mode: service:direct-publisher-anchor
+    command: [/usr/local/bin/ardents-stream-app, direct, listen, "${ARDENTS_DIRECT_PUBLISHER_FLOW:-receive}", 0.0.0.0:4700, /run/ardents/direct-seed.hex, "268435456"]
+    environment: {ARDENTS_STREAM_START_GATE: "1", ARDENTS_STREAM_GATE_ROOT: /run/ardents/gate}
+    volumes:
+      - {type: bind, source: "${ARDENTS_SERVICE_GENERATION:?}/${ARDENTS_DIRECT_SEED_NAME:-client-seed.hex}", target: /run/ardents/direct-seed.hex, read_only: true, bind: {create_host_path: false}}
+      - {type: bind, source: "${ARDENTS_RECOVERY_GATE_HOST:?}", target: /run/ardents/gate, bind: {create_host_path: false}}
+  direct-shape-client:
+    image: ${ARDENTS_S43_TOOL_IMAGE:-invalid}
+    profiles: [s43-direct]
+    pull_policy: never
+    read_only: true
+    restart: "no"
+    cap_drop: [ALL]
+    cap_add: [NET_ADMIN]
+    security_opt: [no-new-privileges:true]
+    user: "0:0"
+    network_mode: service:direct-client-anchor
+    cpus: 0.25
+    mem_limit: 32m
+    pids_limit: 16
+    command: [native-tool-role, /config/config.json, /evidence, /capture]
+    volumes:
+      - {type: bind, source: "${ARDENTS_S43_SHAPER_ROOT:-.}/client/config", target: /config, read_only: true, bind: {create_host_path: false}}
+      - {type: bind, source: "${ARDENTS_S43_SHAPER_ROOT:-.}/client/evidence", target: /evidence, bind: {create_host_path: false}}
+      - {type: bind, source: "${ARDENTS_S43_SHAPER_ROOT:-.}/client/capture", target: /capture, bind: {create_host_path: false}}
+      - {type: bind, source: "${ARDENTS_S43_SHAPER_ROOT:-.}/client/control", target: /control, bind: {create_host_path: false}}
+  direct-shape-publisher:
+    <<: *local
+    image: ${ARDENTS_S43_TOOL_IMAGE:-invalid}
+    profiles: [s43-direct]
+    pull_policy: never
+    cap_add: [NET_ADMIN]
+    user: "0:0"
+    network_mode: service:direct-publisher-anchor
+    cpus: 0.25
+    mem_limit: 32m
+    pids_limit: 16
+    command: [native-tool-role, /config/config.json, /evidence, /capture]
+    volumes:
+      - {type: bind, source: "${ARDENTS_S43_SHAPER_ROOT:-.}/publisher/config", target: /config, read_only: true, bind: {create_host_path: false}}
+      - {type: bind, source: "${ARDENTS_S43_SHAPER_ROOT:-.}/publisher/evidence", target: /evidence, bind: {create_host_path: false}}
+      - {type: bind, source: "${ARDENTS_S43_SHAPER_ROOT:-.}/publisher/capture", target: /capture, bind: {create_host_path: false}}
+      - {type: bind, source: "${ARDENTS_S43_SHAPER_ROOT:-.}/publisher/control", target: /control, bind: {create_host_path: false}}
+
   publisher:
     <<: *route
     command: [/usr/local/bin/ardents-route, run, /run/ardents/plan.json]
@@ -132,6 +198,46 @@ services:
     mem_limit: 32m
     pids_limit: 16
     command: [/usr/local/bin/ardents-qualify, carrier-fault, wait]
+  candidate-shape-client:
+    image: ${ARDENTS_S43_TOOL_IMAGE:-invalid}
+    profiles: [s43-candidate]
+    pull_policy: never
+    read_only: true
+    restart: "no"
+    cap_drop: [ALL]
+    cap_add: [NET_ADMIN]
+    security_opt: [no-new-privileges:true]
+    user: "0:0"
+    network_mode: service:client
+    cpus: 0.25
+    mem_limit: 32m
+    pids_limit: 16
+    command: [native-tool-role, /config/config.json, /evidence, /capture]
+    volumes:
+      - {type: bind, source: "${ARDENTS_S43_SHAPER_ROOT:-.}/client/config", target: /config, read_only: true, bind: {create_host_path: false}}
+      - {type: bind, source: "${ARDENTS_S43_SHAPER_ROOT:-.}/client/evidence", target: /evidence, bind: {create_host_path: false}}
+      - {type: bind, source: "${ARDENTS_S43_SHAPER_ROOT:-.}/client/capture", target: /capture, bind: {create_host_path: false}}
+      - {type: bind, source: "${ARDENTS_S43_SHAPER_ROOT:-.}/client/control", target: /control, bind: {create_host_path: false}}
+  candidate-shape-publisher:
+    image: ${ARDENTS_S43_TOOL_IMAGE:-invalid}
+    profiles: [s43-candidate]
+    pull_policy: never
+    read_only: true
+    restart: "no"
+    cap_drop: [ALL]
+    cap_add: [NET_ADMIN]
+    security_opt: [no-new-privileges:true]
+    user: "0:0"
+    network_mode: service:publisher
+    cpus: 0.25
+    mem_limit: 32m
+    pids_limit: 16
+    command: [native-tool-role, /config/config.json, /evidence, /capture]
+    volumes:
+      - {type: bind, source: "${ARDENTS_S43_SHAPER_ROOT:-.}/publisher/config", target: /config, read_only: true, bind: {create_host_path: false}}
+      - {type: bind, source: "${ARDENTS_S43_SHAPER_ROOT:-.}/publisher/evidence", target: /evidence, bind: {create_host_path: false}}
+      - {type: bind, source: "${ARDENTS_S43_SHAPER_ROOT:-.}/publisher/capture", target: /capture, bind: {create_host_path: false}}
+      - {type: bind, source: "${ARDENTS_S43_SHAPER_ROOT:-.}/publisher/control", target: /control, bind: {create_host_path: false}}
   rendezvous:
     <<: *route
     command: [/usr/local/bin/ardents-route, run, /run/ardents/plan.json]
