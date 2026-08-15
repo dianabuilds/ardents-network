@@ -95,10 +95,10 @@ func (attempt *replacementAttempt) observeOverlap(ctx context.Context) (campaign
 		Introduction: after.Processes["introduction"], FaultOffset: offset, CanaryOffset: offset,
 		Canary: workloadCanary(attempt.seed, offset), LastDeliveryNanos: lastDelivery,
 		FaultAtNanos: firstAt, CanaryNanos: canaryAt})
-	if err := attempt.observer.waitReplacementTerminal(ctx, attempt.identities, false); err != nil {
+	terminalAt, err := attempt.observer.waitReplacementTerminal(ctx, attempt.identities, attempt.receiver, false)
+	if err != nil {
 		return campaign.CellObservation{}, fmt.Errorf("overlap terminal: %w", err)
 	}
-	terminalAt := time.Now()
 	attempt.cell.TerminalNanos = terminalAt.Sub(attempt.cellClock).Nanoseconds()
 	return campaign.CellObservation{TerminalAt: terminalAt}, nil
 }

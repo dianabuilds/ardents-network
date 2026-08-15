@@ -8,17 +8,28 @@ import (
 )
 
 func (observer dockerObserver) waitReplacementTerminal(ctx context.Context,
-	identities map[string]string, sequential bool) error {
+	identities map[string]string, receiver string, sequential bool) (time.Time, error) {
 	limit := time.Minute
 	if sequential {
 		limit = 13 * time.Minute
 	}
+	receiverIdentity, ok := identities[receiver]
+	if !ok {
+		return time.Time{}, errors.New("replacement receiver Application identity is missing")
+	}
+	if err := observer.waitContainerStopped(ctx, receiverIdentity, limit); err != nil {
+		return time.Time{}, fmt.Errorf("replacement %s: %w", receiver, err)
+	}
+	terminalAt := time.Now()
 	for service, identity := range identities {
+		if service == receiver {
+			continue
+		}
 		if err := observer.waitContainerStopped(ctx, identity, limit); err != nil {
-			return fmt.Errorf("replacement %s: %w", service, err)
+			return time.Time{}, fmt.Errorf("replacement %s: %w", service, err)
 		}
 	}
-	return nil
+	return terminalAt, nil
 }
 
 func (observer dockerObserver) finishReplacementCell(ctx context.Context, processObserver hostProcessAdapter,

@@ -104,14 +104,15 @@ func (attempt *replacementAttempt) Observe(ctx context.Context) (campaign.CellOb
 		attempt.cell.Events = append(attempt.cell.Events, event)
 		previousOffset = offset
 	}
-	if err := attempt.observer.waitReplacementTerminal(ctx, attempt.identities, attempt.sequential); err != nil {
+	terminalAt, err := attempt.observer.waitReplacementTerminal(ctx, attempt.identities,
+		attempt.receiver, attempt.sequential)
+	if err != nil {
 		if errors.Is(err, errReplacementProcessStillRunning) {
 			return attempt.failCandidate("replacement process exceeded its candidate lifetime",
 				replacementFailureObservation{Kind: "lifetime", EventIndex: len(attempt.failures)}), nil
 		}
 		return campaign.CellObservation{}, err
 	}
-	terminalAt := time.Now()
 	attempt.cell.TerminalNanos = terminalAt.Sub(attempt.cellClock).Nanoseconds()
 	return campaign.CellObservation{TerminalAt: terminalAt}, nil
 }
