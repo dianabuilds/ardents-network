@@ -33,6 +33,23 @@ func TestStatsSamplerLeavesSampleCountToItsOwner(t *testing.T) {
 	}
 }
 
+func TestStatsSamplerRetainsCoverageBeforeActiveRelease(t *testing.T) {
+	done := make(chan struct{})
+	close(done)
+	sampler := &statsSampler{cancel: func() {}, done: done, samples: []recovery.ResourceSample{
+		{AtNanos: 100, ClientRSS: 1, PublisherRSS: 1},
+		{AtNanos: 300, ClientRSS: 1, PublisherRSS: 1},
+	}}
+	started, err := sampler.coverageStartedAfter(200)
+	if err != nil || started != 1 {
+		t.Fatalf("coverage start=%d err=%v", started, err)
+	}
+	samples, err := sampler.stopAfter(200)
+	if err != nil || len(samples) != 1 || samples[0].AtNanos != 100 {
+		t.Fatalf("active samples=%+v err=%v", samples, err)
+	}
+}
+
 func TestResourceObservationCoalescesOnlyExactDockerRedraw(t *testing.T) {
 	left := recovery.ResourceSample{AtNanos: 1, ClientRSS: 2, PublisherRSS: 3,
 		ClientCPUPercent: 4, PublisherCPUPercent: 5, ClientReceived: 6, ClientSent: 7,

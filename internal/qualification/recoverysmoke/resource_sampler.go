@@ -85,3 +85,11 @@ func (sampler *statsSampler) stopAfter(originNanos int64) ([]recovery.ResourceSa
 	}
 	return result, err
 }
+
+func (sampler *statsSampler) coverageStartedAfter(originNanos int64) (int64, error) {
+	samples, err := sampler.stop()
+	if originNanos <= 0 || len(samples) == 0 {
+		return 0, errors.Join(err, errors.New("resource sampling coverage origin is invalid"))
+	}
+	return max(int64(1), samples[0].AtNanos-originNanos), err
+}

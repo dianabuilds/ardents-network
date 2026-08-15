@@ -26,16 +26,17 @@ func (observer dockerObserver) finishReplacementCell(ctx context.Context, proces
 	failed map[string]candidateProcess, faultReceipts map[string]processFaultEvidence,
 	proposalRoutes []routeGeneration,
 	cellClock time.Time, activeStartedAt int64) (replacementCell, error) {
+	resourceStarted, startErr := sampler.coverageStartedAfter(activeStartedAt)
 	samples, sampleErr := sampler.stopAfter(activeStartedAt)
-	if sampleErr != nil || len(samples) < 3 {
-		return replacementCell{}, errors.Join(sampleErr,
+	if startErr != nil || sampleErr != nil || len(samples) < 3 {
+		return replacementCell{}, errors.Join(startErr, sampleErr,
 			errors.New("replacement resource observations are incomplete"))
 	}
 	finalTraffic, sampleErr := finalResourceSample(samples, cell.TerminalNanos)
 	if sampleErr != nil {
 		return replacementCell{}, sampleErr
 	}
-	cell.ResourceStartedAtNanos = samples[0].AtNanos
+	cell.ResourceStartedAtNanos = resourceStarted
 	client, publisher, application, terminalErr := observer.connectionTerminals(ctx, receiver)
 	if terminalErr != nil {
 		return replacementCell{}, terminalErr
