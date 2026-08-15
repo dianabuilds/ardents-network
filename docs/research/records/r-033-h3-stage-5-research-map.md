@@ -1,7 +1,7 @@
 ---
 id: R-033
 title: What is the exact Horizon 3 Stage 5 scope and decision order?
-status: review
+status: decided
 owner: product research
 started: 2026-08-14
 reviewed: 2026-08-15
@@ -234,10 +234,12 @@ Accessed 2026-08-14:
 
 ### Experiments
 
-No experiment is authorized by R-033. R-036 may later precommit one disposable
-Adapter conformance/feasibility harness for pinned obfs4 and WebTunnel artifacts.
-R-037 may later precommit one integrated Stage 5 campaign. Neither may begin
-before its falsification rules and immutable supply inputs are accepted.
+R-033 by itself authorizes no experiment. On 2026-08-15 the Product Owner
+accepted this record and separately authorized the narrow R-036 ordering
+exception: one disposable Adapter conformance/feasibility harness may exercise
+the two pinned artifacts after R-036's falsification rules and immutable supply
+inputs are fixed, before the final R-036 candidate selection. R-037 still owns
+the later integrated Stage 5 campaign.
 
 Generated keys, Invites, captures, candidate state, evidence, and build outputs
 remain outside Git.
@@ -345,9 +347,11 @@ trust, infrastructure, performance, and evidence questions.
 ## Recommendation
 
 Choose Option B with high confidence and freeze the exact scope in this record.
-R-034 is accepted. Continue with the contract portions of R-035 through R-037.
+R-034 and R-035 are accepted. Continue with R-036 and R-037.
 Do not write an implementation brief or run an Adapter experiment until every
-applicable predecessor decision is accepted.
+applicable predecessor decision is accepted. R-033 and R-035 were accepted on
+2026-08-15, and the Product Owner separately authorized the narrow R-036
+comparison before final selection.
 
 The strongest counterargument is the process cost of four records. The split is
 still narrower than a combined record because it prevents candidate technology,
@@ -355,10 +359,11 @@ public distribution, routing, and stronger privacy work from entering Stage 5.
 
 ## Disposition
 
-- State: `review`; the recommendation is ready for Product Owner acceptance.
-- R-034 is accepted; proposed open follow-ups are R-035 through R-037 only.
+- State: `decided`; the Product Owner accepted the recommendation on 2026-08-15.
+- R-034 and R-035 are accepted; remaining follow-ups are R-036 and R-037 only.
 - Stage 4 development/local evidence is complete; its official controlled-
   Ubuntu evidence gate and all public claims remain unchanged.
-- No accepted ADR or R-023 decision is modified by this review-stage record.
-- No experiment, implementation brief, dependency, package, binary, maintained
-  code, or public claim is authorized.
+- No accepted ADR or R-023 decision is modified by this decided record.
+- Only the separately authorized disposable R-036 comparison may run; no
+  implementation brief, dependency, maintained package/binary, integrated code,
+  or public claim is authorized.

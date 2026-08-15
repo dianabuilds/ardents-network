@@ -30,6 +30,8 @@ var/
 *.db-*
 research/private/
 .legacy-local/
+experiments/**/summary.json
+experiments/**/secret/
 
 # Tool-specific temporary files
 .codex-tmp/

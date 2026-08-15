@@ -1,7 +1,7 @@
 ---
 id: R-035
 title: What exact transport-neutral Bridge state does Horizon 3 maintain?
-status: review
+status: decided
 owner: product research
 started: 2026-08-15
 reviewed: 2026-08-15
@@ -559,7 +559,7 @@ distribution, availability, or censorship-resistance qualification.
 
 ## Disposition
 
-- State: `review`; the recommendation awaits explicit Product Owner acceptance.
+- State: `decided`; the Product Owner accepted the recommendation on 2026-08-15.
 - Selected research recommendation: one two-slot Initiator-domain Bridge Entry
   Set, one replacement per slot/Epoch, one bounded ordinary-to-Bridge transition,
   at most four contact starts, and restart without state reset.
@@ -567,6 +567,8 @@ distribution, availability, or censorship-resistance qualification.
   pinned supply, comparison, and maintained selection.
 - R-037 still owns exact numeric clocks, budgets, topology, observers, evidence,
   and `pass|fail|invalid` rules.
-- R-033 remains at review and no Stage 5 implementation brief exists.
-- No code, package, dependency, binary, experiment, public protocol, or public
-  security claim is authorized by this record.
+- R-033 is accepted; R-036 remains active and no Stage 5 implementation brief
+  exists.
+- This record authorizes no maintained code, package, dependency, binary,
+  public protocol, or public security claim. The Product Owner separately
+  authorized only the disposable R-036 comparison.

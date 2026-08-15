@@ -1,7 +1,7 @@
 ---
 id: R-036
 title: Which Camouflage Adapter and pinned implementation fits Horizon 3 Stage 5?
-status: blocked
+status: active
 owner: product research
 started: 2026-08-15
 reviewed: 2026-08-15
@@ -15,17 +15,16 @@ Freeze the exact candidate-neutral Camouflage Adapter contract and the compariso
 of exactly Lyrebird obfs4 and standalone WebTunnel that must precede selection
 of one pinned candidate for the maintained Horizon 3 Stage 5 slice.
 
-This is source and contract research only. It cannot close R-036: R-033 requires
-both candidates to be exercised before one is selected, while the controlling
-Stage 5 gate forbids an Adapter experiment until R-036 is already `decided` and
-an implementation brief is accepted. Source inspection cannot replace the
-required useful-work, process, DNS, resource, shutdown, and cleanup evidence.
+R-033 requires both candidates to be exercised before one is selected. On
+2026-08-15 the Product Owner accepted R-033 and R-035 and explicitly authorized
+the narrow ordering exception requested here: the disposable two-candidate
+R-036 comparison may run against this precommitted contract before final R-036
+selection, R-037, and the maintained Stage 5 implementation brief.
 
-The Product Owner must explicitly change that ordering before this record can
-advance. No dependency, runtime binary, Adapter experiment, package, command,
-integrated campaign, or censorship-resistance claim is authorized here. R-033
-and R-035 still need explicit acceptance; R-037 and a Stage 5 implementation
-brief remain independent gates.
+That authorization permits only temporary source preparation, candidate
+binaries outside Git, and the disposable Adapter harness. It does not authorize
+maintained Stage 5 runtime code, a root dependency, integrated campaign, or
+censorship-resistance claim.
 
 ## Current contract
 
@@ -316,7 +315,10 @@ is commit `f4bb5dd5725833bd880347b8fbaf60522ed0a710` and Git tree
 The supply environment is the repository-pinned Ubuntu image
 `ubuntu@sha256:7b202b0e2e0028c6250f5fcf41d04df492d145a1654c6995a6553f0c1f6f1960`
 and official `go1.26.6.linux-amd64.tar.gz` with SHA-256
-`5c2c3b16caefa1d968a94c1daca04a7ca301a496d9b086e17ad77bb81393f053`.
+`708effb774be8237570d0add163225abbdfaf4fca28b2611df167beba4feef89`.
+The earlier precommit value was rejected during preparation; the replacement
+matches both the downloaded `66,890,545`-byte archive and the official Go
+downloads JSON response observed on 2026-08-15.
 The online preparation, run outside this repository with empty owned caches,
 must use the exact candidate tree and execute:
 
@@ -377,16 +379,13 @@ Accessed 2026-08-15:
   and [Tor audit summary](https://blog.torproject.org/code-audit-censorship-circumvention-tools/)
   for the 2024 WebTunnel audit scope and its limitations.
 
-### Blocked conformance and integrated evidence
+### Authorized conformance and later integrated evidence
 
-This record authorizes no experiment. The present gate order would allow the
-comparison only after R-036 had already selected a candidate, contradicting the
-required evidence order. If the Product Owner authorizes a narrow ordering
-change, both candidates must first execute the source/supply preflight and the
-candidate-neutral contract tests. They remain separate campaign configurations;
-no run or failure switches candidates. Only the appended evidence and a later
-explicit Product Owner decision may then select one maintained profile and mark
-R-036 `decided`.
+The Product Owner authorized the narrow comparison on 2026-08-15. Both
+candidates must first execute the source/supply preflight and candidate-neutral
+contract tests. They remain separate campaign configurations; no run or failure
+switches candidates. Only appended evidence may select one maintained profile
+and mark R-036 `decided` under this authorization.
 
 The disposable feasibility evidence must include exact source/binary hashes,
 offline build transcript, licenses/SBOM/advisories, PT control transcript,
@@ -394,6 +393,93 @@ resolver trace, process tree, state manifest, listeners/sockets, resource and
 traffic series, useful-work digests, injected malformed control cases, every
 shutdown rung, and residual scan. R-037 owns the integrated blocked-entry cells
 and independent verifier.
+
+### Comparison execution — 2026-08-15
+
+The retained disposable harness is
+[experiments/r-036-h3-camouflage-adapter](../../../experiments/r-036-h3-camouflage-adapter/README.md).
+Candidate source, vendor trees, binaries, certificates, state, module cache, and
+raw logs remained under an owned system-temporary directory. The harness and
+its malformed-control tests use only the Go standard library and introduce no
+root module dependency.
+
+Supply preparation used Go `1.26.6`, `govulncheck v1.1.4`, vulnerability DB
+timestamp `2026-08-14T16:22:54Z`, and the pinned Ubuntu image. `go mod verify`
+passed for both source trees. Two independent `--network none`,
+`CGO_ENABLED=0`, `-mod=vendor`, `-trimpath`, empty-build-ID builds produced
+identical artifact hashes:
+
+| Artifact | Bytes | SHA-256 |
+|---|---:|---|
+| Lyrebird | 25,202,341 | `ae8fe150a98263d13967d07378a1f5af924ba8baad26bdffe6d8b489eee7ba62` |
+| WebTunnel client | 7,690,615 | `de581c8dd36193bb4168aee840406294af406bf8187817c10ac2bcd9464fd120` |
+| WebTunnel server | 5,899,325 | `5fe32f8ab736ed54fc66027775761084e68f0e1ec9b5fea7c3417c6617255336` |
+
+Canonical Git archive SHA-256 values were Lyrebird
+`893d07371a613485a0d29b85e017bc515e594ac3081179a905c1cd35e0757ad3`,
+WebTunnel `aee07ac29c683e86d25cd5e02f046628da724f1f14197baeeebe2b6e70afa13c5`,
+and goptlib `d239acc63dfbb1ad6929e6701fbe379b9b3380d3d7c954d99e5fa748b5c49af7`.
+The sorted path-plus-file-hash vendor manifests contained `2,752` Lyrebird
+files with aggregate SHA-256
+`2efa839f9085745239fd43f7c47e1363ea6684e0b65bb6fd8ac72393967d4a1f`
+and `9` WebTunnel files with aggregate SHA-256
+`e4a886933f85ba87137d011fd66dd20fa122dce32af208f249d5bf17f76bf64a`.
+Embedded build information confirmed `CGO_ENABLED=0`, Linux `amd64`, 61 linked
+Lyrebird modules, and one linked WebTunnel module.
+
+`govulncheck ./...` reported no vulnerability for standalone WebTunnel. The
+same command reported six reachable vulnerabilities in Lyrebird's linked
+multi-transport executable: `GO-2026-5970`, `GO-2026-5026`, `GO-2026-4918`,
+`GO-2026-4550`, `GO-2025-3754`, and `GO-2025-3595`. They affect pinned
+`x/text v0.22.0`, `x/net v0.35.0`, and CIRCL `v1.5.0`; the fixes require source
+identity changes. Several traces start in dormant meeklite, Snowflake, or
+WebTunnel registration paths, which the predeclared complete linked-closure rule
+does not permit H3 to ignore or patch locally. The Go vulnerability records do
+not assign severity; the two advisories with GitHub severity metadata are low.
+Therefore this evidence increases O1's maintenance cost but does not establish
+the precommitted high/critical falsifier and cannot reject O1 by itself.
+
+The two candidates then ran as separate no-fallback containers on the same
+internal network as UID/GID `65534`, with all capabilities dropped,
+`no-new-privileges`, read-only root and candidate mounts, one DNS trap, and one
+shared random workload seed. The resulting request and response SHA-256 values
+were identical across candidates:
+`2e4d8623b1b52f1d4d7153367c4424cb52b1494e32c5711c8e4fa837c6d02366`
+and `540d07e512c85bba8889c90a2f6174ca421f14e01fe0f51cc84dc2732d4c3f2f`.
+The request is a syntactically parsed HTTP/1.1 request of exactly `512` bytes
+with a fresh `32-byte` nonce in its path and header; the response is exactly
+`64 KiB` of seeded incompressible bytes.
+
+| Observation | Lyrebird obfs4 | standalone WebTunnel |
+|---|---:|---:|
+| provisional exact-workload probe | pass | pass |
+| startup | 79 ms | 107 ms |
+| useful-work transfer | <1 ms | <1 ms |
+| Endpoint client RSS | 12,800 KiB | 5,760 KiB |
+| Bridge server RSS, excluding WebTunnel front | 13,184 KiB | 4,352 KiB |
+| child sockets / descendants / capabilities | `3 / 0 / 0` | `3 / 0 / 0` |
+| combined candidate state | 4 entries / 979 bytes | 2 entries / 80 bytes |
+| observed DNS queries | 0 | 0 |
+| client/server shutdown rung | stdin / stdin | stdin / stdin |
+| child-only cleanup measurement | 2 ms | 1 ms |
+| secret run-manifest SHA-256 | `feb38346…f142` | `977b4e87…33aa` |
+
+The WebTunnel fixture additionally returned bounded HTTP `404` on a non-secret
+path before allowing the exact Upgrade path. Its numeric URL host, separate
+`bridge.invalid` SNI/Host, and certificate-chain pin completed useful work with
+no UDP datagram delivered to its configured resolver trap. That is not yet a
+complete interface-level DNS observation. Both client children owned three sockets; the harness's
+SOCKS endpoint is the fourth Endpoint-side socket permitted by the contract.
+Unit tests rejected missing/duplicate/out-of-order readiness, wrong method or
+SOCKS version, non-loopback listener, terminal error, non-ASCII keyword,
+oversized line, and oversized transcript. R-037 still owns repeated load,
+traffic, latency/goodput, pressure, blocking, active-probe, and integrated
+residual verdicts. Each secret manifest records the shared seed, actual
+candidate/harness SHA-256 values, and pinned image; the harness verifies the
+mounted files before execution and publishes only the manifest hash. This run
+is partial feasibility evidence, not the R-036 selection verdict: it did not yet
+observe every DNS path, charge resource and traffic series for all helpers,
+exercise forced shutdown rungs, or verify all helpers and state after cleanup.
 
 ### Failure scenarios and falsification
 
@@ -491,9 +577,10 @@ remains a mandatory offline build and reachability check. The Cure53 TTP-03
 scope lists WebTunnel but not Lyrebird, and no consulted official artifact binds
 an independent audit to the exact `lyrebird-0.8.1` commit.
 
-**Inference:** pinning 0.8.1 would either accept an unresolved security closure
-or create an Ardents-specific dependency fork. Both violate the maintenance and
-offline-supply gate for the current team.
+**Inference:** pinning 0.8.1 would accept a materially larger unresolved advisory
+and maintenance surface or require an Ardents-specific dependency fork. That is
+evidence against O1, but the current metadata does not prove the precommitted
+high/critical falsifier; final selection remains withheld.
 
 ### Finding 5 — standalone WebTunnel is the smaller maintained supply
 
@@ -558,14 +645,14 @@ evidence artifacts and are removed after review.
 
 ## Recommendation
 
-Do **not** choose a maintained candidate yet. Accept the candidate-neutral
-contract and supply precommit only after explicitly resolving the experiment-
-ordering conflict. Then exercise O1 and O2 as separate configurations under the
-same contract and select exactly one from that evidence; failure of both selects
-O0. Source evidence currently favors O2 for supply size and protocol-allow-list
-fit, but that is a prior for the comparison, not a selection.
+Do not select a maintained candidate yet. The partial comparison strengthens
+the WebTunnel prior: it has the smaller clean supply and lower observed client
+RSS, while both candidates carried the same exact HTTP workload. The missing
+complete DNS/resource observers, shutdown-rung, and post-cleanup
+evidence must be added and rerun before selection. Neither
+candidate may be used as fallback while R-036 remains active.
 
-The strongest argument against the current O2 prior is that its ordinary-HTTPS appearance depends
+The strongest argument against O2 is that its ordinary-HTTPS appearance depends
 on correct TLS/web-front operation and a secret path, while an informed probe or
 address blocker still wins and the current standalone client does not expose an
 explicit `addr` argument. The numeric-host construction and resolver observation
@@ -574,19 +661,17 @@ an indistinguishability or real-world censorship-resistance claim.
 
 ## Disposition
 
-- State: `blocked`; the Adapter contract is ready for review, but candidate
-  selection is correctly withheld.
-- Blocker: the required two-candidate exercise must precede selection, while the
-  controlling gate forbids that exercise until R-036 is already `decided` and a
-  brief exists. Product Owner authorization must change this ordering explicitly.
-- Candidates remain exactly standalone WebTunnel `v0.0.6` and Lyrebird obfs4
-  `0.8.1` at the commit/tree identities above; neither is maintained or packaged.
-- No runtime binary, module dependency, experiment, package, command, public
-  protocol, ADR, or implementation authority was created.
+- State: `active`; both candidates completed a useful but non-decisive first
+  probe. Candidate selection remains withheld until the listed observer,
+  shutdown, and cleanup gaps are closed.
+- Neither source is packaged and no candidate module enters the root `go.mod`;
+  generated artifacts remain outside Git.
+- This record creates a disposable experiment only. It creates no maintained
+  package, command, public protocol, ADR, or integrated implementation authority.
 - Generated source checkouts are disposable and must be deleted from the owned
   system-temporary directory after review checks.
-- Documents changed: this R-036 record and the R-036 row in
-  [questions.md](../questions.md).
-- Remaining gates before Stage 5 code: explicit acceptance of R-033, R-035, and
-  the R-036 ordering change plus final selection; completed and accepted R-037;
-  R-036 marked `decided`; and an explicit accepted Stage 5 implementation brief.
+- Documents changed: this R-036 record, its disposable experiment, and the
+  R-036 row in [questions.md](../questions.md).
+- Remaining gates before maintained Stage 5 code: completed R-036 evidence and
+  selection; completed R-037; both records marked `decided`; and an explicit
+  accepted Stage 5 implementation brief.
