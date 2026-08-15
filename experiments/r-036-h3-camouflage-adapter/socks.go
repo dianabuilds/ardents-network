@@ -13,8 +13,15 @@ import (
 	"time"
 )
 
-func openSOCKS(listener, target string, args map[string]string) (net.Conn, error) {
-	conn, err := net.DialTimeout("tcp", listener, 2*time.Second)
+func openSOCKS(listener, target string, args map[string]string, deadline time.Time) (net.Conn, error) {
+	timeout := time.Until(deadline)
+	if timeout <= 0 {
+		return nil, errors.New("startup deadline expired before SOCKS")
+	}
+	if timeout > 2*time.Second {
+		timeout = 2 * time.Second
+	}
+	conn, err := net.DialTimeout("tcp", listener, timeout)
 	if err != nil {
 		return nil, err
 	}
@@ -22,7 +29,7 @@ func openSOCKS(listener, target string, args map[string]string) (net.Conn, error
 		_ = conn.Close()
 		return nil, err
 	}
-	_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
+	_ = conn.SetDeadline(deadline)
 	if _, err = conn.Write([]byte{5, 1, 2}); err != nil {
 		return fail(err)
 	}

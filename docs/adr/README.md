@@ -21,6 +21,7 @@ Current decisions:
 - [0009 — Adopt Go as the maintained project foundation](0009-go-project-foundation.md)
 - [0010 — Keep a modular first-party monorepository](0010-modular-monorepository.md)
 - [0011 — Separate unit, end-to-end, and live tests](0011-separate-unit-e2e-and-live-tests.md)
+- [0012 — Select standalone WebTunnel for the H3 Camouflage Adapter](0012-select-webtunnel-for-h3-camouflage.md)
 
 New ADRs use the next four-digit number and should remain short. When a decision
 is superseded, retain the original record and link the replacement.

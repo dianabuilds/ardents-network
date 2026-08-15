@@ -12,14 +12,20 @@ import (
 )
 
 type runProvenance struct {
+	Candidate     string `json:"candidate"`
 	Seed          string `json:"seed"`
 	ClientSHA256  string `json:"client_sha256"`
 	ServerSHA256  string `json:"server_sha256"`
 	HarnessSHA256 string `json:"harness_sha256"`
 	Image         string `json:"image"`
+	ShutdownRung  string `json:"shutdown_rung"`
+	Observer      string `json:"observer"`
 }
 
 func verifyProvenance(candidate string, provenance runProvenance) error {
+	if provenance.Candidate != candidate {
+		return errors.New("candidate provenance mismatch")
+	}
 	clientPath, serverPath := "/candidate/lyrebird", "/candidate/lyrebird"
 	if candidate == "webtunnel" {
 		clientPath, serverPath = "/candidate/webtunnel-client", "/candidate/webtunnel-server"
@@ -44,6 +50,12 @@ func verifyProvenance(candidate string, provenance runProvenance) error {
 	}
 	if provenance.Image == "" {
 		return errors.New("runtime image identity is required")
+	}
+	if provenance.ShutdownRung != "stdin" && provenance.ShutdownRung != "sigterm" && provenance.ShutdownRung != "sigkill" {
+		return errors.New("shutdown rung must be stdin, sigterm, or sigkill")
+	}
+	if provenance.Observer != "af-packet-port53-v1" {
+		return errors.New("observer identity mismatch")
 	}
 	return nil
 }

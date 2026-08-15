@@ -15,11 +15,11 @@ Freeze the transport-neutral Bridge Invite, finite Bridge Entry Set, exposure,
 regime-change, contact, restart, expiry, replacement, and terminal-result
 contract for the smallest Horizon 3 Stage 5 slice.
 
-This record is documentation research only. Acceptance would close R-035 but
-would not authorize a Stage 5 implementation brief, package, dependency,
-binary, Adapter experiment, integrated campaign, or censorship-resistance
-claim. R-033, R-036, R-037, and a later explicit implementation brief remain
-independent gates.
+This record is documentation research only. Its acceptance closed R-035 but
+did not authorize a Stage 5 implementation brief, package, dependency,
+integrated campaign, or censorship-resistance claim. R-033 and R-036 are now
+decided; R-037 and a later explicit implementation brief remain independent
+gates.
 
 ## Current contract
 
@@ -563,12 +563,9 @@ distribution, availability, or censorship-resistance qualification.
 - Selected research recommendation: one two-slot Initiator-domain Bridge Entry
   Set, one replacement per slot/Epoch, one bounded ordinary-to-Bridge transition,
   at most four contact starts, and restart without state reset.
-- R-036 still owns the Adapter interface, exact candidate configurations,
-  pinned supply, comparison, and maintained selection.
+- R-036 selected standalone WebTunnel behind its candidate-neutral Adapter seam.
 - R-037 still owns exact numeric clocks, budgets, topology, observers, evidence,
   and `pass|fail|invalid` rules.
-- R-033 is accepted; R-036 remains active and no Stage 5 implementation brief
-  exists.
+- R-033 and R-036 are accepted; no Stage 5 implementation brief exists.
 - This record authorizes no maintained code, package, dependency, binary,
-  public protocol, or public security claim. The Product Owner separately
-  authorized only the disposable R-036 comparison.
+  public protocol, or public security claim. R-037 remains the next gate.

@@ -24,6 +24,13 @@ $random.Dispose()
 $workloadSeed = ([BitConverter]::ToString($seedBytes) -replace '-', '').ToLowerInvariant()
 
 New-Item -ItemType Directory -Force -Path $binaryDir, $runRoot | Out-Null
+foreach ($candidate in @('obfs4', 'webtunnel')) {
+    foreach ($rung in @('stdin', 'sigterm', 'sigkill')) {
+        New-Item -ItemType Directory -Force -Path `
+            (Join-Path $runRoot "results\$candidate\$rung"), `
+            (Join-Path $runRoot "observer-sync\$candidate\$rung") | Out-Null
+    }
+}
 $harness = Join-Path $binaryDir 'r036-adapter-lab'
 $image = 'ubuntu@sha256:7b202b0e2e0028c6250f5fcf41d04df492d145a1654c6995a6553f0c1f6f1960'
 $env:CGO_ENABLED = '0'
@@ -47,27 +54,62 @@ if ($webServerSHA -ne $pinnedWebServerSHA) { throw 'WebTunnel server does not ma
 
 docker network create --internal --subnet 192.0.2.0/24 $network | Out-Null
 try {
-    $common = @(
-        'run', '--rm', '--network', $network, '--ip', '192.0.2.3',
+    function Invoke-Campaign([string]$candidate, [string]$rung) {
+        $container = $network + '-' + $candidate + '-' + $rung
+        $evidence = "/evidence/results/$candidate/$rung"
+        $sync = "/evidence/observer-sync/$candidate/$rung"
+        $hashes = if ($candidate -eq 'obfs4') {
+            @($pinnedLyrebirdSHA, $pinnedLyrebirdSHA)
+        } else {
+            @($pinnedWebClientSHA, $pinnedWebServerSHA)
+        }
+        $candidateMounts = if ($candidate -eq 'obfs4') {
+            @('-v', "${Lyrebird}:/candidate/lyrebird:ro")
+        } else {
+            @('-v', "${WebTunnelClient}:/candidate/webtunnel-client:ro",
+                '-v', "${WebTunnelServer}:/candidate/webtunnel-server:ro")
+        }
+        $common = @(
+        'run', '-d', '--name', $container, '--network', $network, '--ip', '192.0.2.3',
         '--dns', '127.0.0.53', '--cap-drop', 'ALL',
         '--security-opt', 'no-new-privileges', '--user', '65534:65534',
         '--read-only', '--tmpfs', '/tmp:rw,noexec,nosuid,nodev,size=8m',
-        '-v', "${harness}:/lab:ro",
-        '-v', "${Lyrebird}:/candidate/lyrebird:ro",
-        '-v', "${WebTunnelClient}:/candidate/webtunnel-client:ro",
-        '-v', "${WebTunnelServer}:/candidate/webtunnel-server:ro",
+        '-v', "${harness}:/lab:ro"
+        ) + $candidateMounts + @(
         '-v', "${runRoot}:/evidence:rw",
         $image,
-        '/lab'
-    )
-    docker @common -candidate obfs4 -evidence /evidence/obfs4 -seed $workloadSeed `
-        -client-sha256 $pinnedLyrebirdSHA -server-sha256 $pinnedLyrebirdSHA `
-        -harness-sha256 $harnessSHA -image $image
-    if ($LASTEXITCODE -ne 0) { throw 'obfs4 campaign failed' }
-    docker @common -candidate webtunnel -evidence /evidence/webtunnel -seed $workloadSeed `
-        -client-sha256 $pinnedWebClientSHA -server-sha256 $pinnedWebServerSHA `
-        -harness-sha256 $harnessSHA -image $image
-    if ($LASTEXITCODE -ne 0) { throw 'webtunnel campaign failed' }
+        '/lab', '-candidate', $candidate, '-evidence', $evidence,
+        '-observer-sync', $sync, '-shutdown-rung', $rung, '-seed', $workloadSeed,
+        '-client-sha256', $hashes[0], '-server-sha256', $hashes[1],
+        '-harness-sha256', $harnessSHA, '-image', $image
+        )
+        docker @common | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "$candidate/$rung container start failed" }
+        try {
+            docker run --rm --network "container:$container" --cap-drop ALL `
+                --cap-add NET_RAW --security-opt no-new-privileges --user 0:0 `
+                --read-only -v "${harness}:/lab:ro" -v "${runRoot}:/evidence:rw" `
+                $image /lab -dns-observer -observer-sync $sync
+            if ($LASTEXITCODE -ne 0) {
+                docker logs $container
+                throw "$candidate/$rung DNS observer failed"
+            }
+            $campaignExit = (docker wait $container).Trim()
+            if ($LASTEXITCODE -ne 0 -or $campaignExit -ne '0') {
+                docker logs $container
+                throw "$candidate/$rung campaign failed with exit $campaignExit"
+            }
+        }
+        finally {
+            docker rm -f $container 2>$null | Out-Null
+        }
+    }
+
+    foreach ($candidate in @('obfs4', 'webtunnel')) {
+        foreach ($rung in @('stdin', 'sigterm', 'sigkill')) {
+            Invoke-Campaign $candidate $rung
+        }
+    }
 }
 finally {
     docker network rm $network | Out-Null

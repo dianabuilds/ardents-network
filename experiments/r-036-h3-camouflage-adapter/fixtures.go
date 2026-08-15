@@ -18,15 +18,16 @@ import (
 	"net"
 	"net/http"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
 const webTunnelPath = "/ardents-r036"
 
 type fixture struct {
-	listener net.Listener
-	done     chan error
+	listener  net.Listener
+	done      chan error
+	closeOnce sync.Once
+	closeErr  error
 }
 
 func startEcho(work workload) (*fixture, string, error) {
@@ -60,53 +61,27 @@ func startEcho(work workload) (*fixture, string, error) {
 }
 
 func (f *fixture) close() error {
-	_ = f.listener.Close()
-	select {
-	case err := <-f.done:
-		if errors.Is(err, net.ErrClosed) {
-			return nil
-		}
-		return err
-	case <-time.After(time.Second):
-		return errors.New("fixture did not stop")
-	}
-}
-
-type dnsTrap struct {
-	conn    *net.UDPConn
-	queries atomic.Int64
-}
-
-func startDNSTrap() (*dnsTrap, error) {
-	address := &net.UDPAddr{IP: net.ParseIP("127.0.0.53"), Port: 53}
-	conn, err := net.ListenUDP("udp4", address)
-	if err != nil {
-		return nil, err
-	}
-	trap := &dnsTrap{conn: conn}
-	go func() {
-		packet := make([]byte, 512)
-		for {
-			if _, _, err := conn.ReadFromUDP(packet); err != nil {
-				return
+	f.closeOnce.Do(func() {
+		_ = f.listener.Close()
+		select {
+		case err := <-f.done:
+			if !errors.Is(err, net.ErrClosed) {
+				f.closeErr = err
 			}
-			trap.queries.Add(1)
+		case <-time.After(time.Second):
+			f.closeErr = errors.New("fixture did not stop")
 		}
-	}()
-	return trap, nil
-}
-
-func (d *dnsTrap) close() int64 {
-	_ = d.conn.Close()
-	return d.queries.Load()
+	})
+	return f.closeErr
 }
 
 type tlsFront struct {
-	listener net.Listener
-	backend  string
-	config   *tls.Config
-	done     chan struct{}
-	wg       sync.WaitGroup
+	listener  net.Listener
+	backend   string
+	config    *tls.Config
+	done      chan struct{}
+	wg        sync.WaitGroup
+	closeOnce sync.Once
 }
 
 func startTLSFront(endpointIP, backend string) (*tlsFront, string, string, error) {
@@ -189,16 +164,18 @@ func (f *tlsFront) handle(client net.Conn) {
 	copyBoth(client, backend)
 }
 
-func (f *tlsFront) checkOrdinary(address string) error {
+func (f *tlsFront) checkOrdinary(address string, deadline time.Time) error {
 	config := f.config.Clone()
 	// The exact DER certificate is checked independently through the candidate
 	// pin. This probe exercises only the front's ordinary-path behavior.
 	config.InsecureSkipVerify = true
-	conn, err := tls.Dial("tcp4", address, config)
+	dialer := &net.Dialer{Deadline: deadline}
+	conn, err := tls.DialWithDialer(dialer, "tcp4", address, config)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
+	_ = conn.SetDeadline(deadline)
 	request, _ := http.NewRequest(http.MethodGet, "https://bridge.invalid/not-secret", nil)
 	request.Host = "bridge.invalid"
 	if err := request.Write(conn); err != nil {
@@ -216,8 +193,10 @@ func (f *tlsFront) checkOrdinary(address string) error {
 }
 
 func (f *tlsFront) close() {
-	_ = f.listener.Close()
-	f.wg.Wait()
+	f.closeOnce.Do(func() {
+		_ = f.listener.Close()
+		f.wg.Wait()
+	})
 }
 
 type nilReader struct{}

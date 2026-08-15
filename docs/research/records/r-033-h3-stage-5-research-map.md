@@ -347,11 +347,10 @@ trust, infrastructure, performance, and evidence questions.
 ## Recommendation
 
 Choose Option B with high confidence and freeze the exact scope in this record.
-R-034 and R-035 are accepted. Continue with R-036 and R-037.
-Do not write an implementation brief or run an Adapter experiment until every
-applicable predecessor decision is accepted. R-033 and R-035 were accepted on
-2026-08-15, and the Product Owner separately authorized the narrow R-036
-comparison before final selection.
+R-034 through R-036 are accepted. Continue with R-037. Do not write an
+implementation brief until every applicable predecessor decision is accepted.
+R-033 and R-035 were accepted on 2026-08-15, and the completed authorized R-036
+comparison selected standalone WebTunnel on 2026-08-16.
 
 The strongest counterargument is the process cost of four records. The split is
 still narrower than a combined record because it prevents candidate technology,
@@ -360,10 +359,10 @@ public distribution, routing, and stronger privacy work from entering Stage 5.
 ## Disposition
 
 - State: `decided`; the Product Owner accepted the recommendation on 2026-08-15.
-- R-034 and R-035 are accepted; remaining follow-ups are R-036 and R-037 only.
+- R-034 through R-036 are accepted; the remaining research follow-up is R-037.
 - Stage 4 development/local evidence is complete; its official controlled-
   Ubuntu evidence gate and all public claims remain unchanged.
 - No accepted ADR or R-023 decision is modified by this decided record.
-- Only the separately authorized disposable R-036 comparison may run; no
+- R-036 selected standalone WebTunnel behind the replaceable Adapter seam; no
   implementation brief, dependency, maintained package/binary, integrated code,
-  or public claim is authorized.
+  or public claim is authorized before R-037 is decided.

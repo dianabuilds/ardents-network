@@ -28,7 +28,12 @@ The run uses the source commits, Ubuntu image digest, Go archive, and build
 flags recorded in R-036. The container is attached alone to an internal Docker
 network at documentation address `192.0.2.3`, runs as UID/GID `65534`, drops all
 capabilities, sets `no-new-privileges`, and receives only read-only candidate
-binaries. A local DNS trap is installed through Docker's resolver setting.
+binaries. A separate root helper joins only its network namespace with exactly
+`NET_RAW`; its Linux `AF_PACKET` socket counts IPv4/IPv6 TCP or UDP packets
+whose source or destination port is `53`, including common IPv6 extension
+headers. Non-initial fragments, ESP, and overlong extension chains invalidate
+the cell as ambiguous instead of supporting a zero count. It is an observer,
+not a resolver.
 
 The workload contains fresh random `32-byte` client/server canaries, one
 nonce-bearing `512-byte` request, and a deterministic incompressible `64 KiB`
@@ -39,8 +44,9 @@ candidate arguments, certificates, keys, and addresses are secret evidence.
 
 `run.ps1` requires Docker and the three already verified Linux binaries in the
 external paths passed to it. It builds the harness with the repository Go
-toolchain, runs the candidates in separate containers, and writes evidence only
-under the external `-EvidenceRoot`.
+toolchain, runs `stdin`, `SIGTERM`, and `SIGKILL` cells for each candidate in
+separate containers, and writes evidence only under the external
+`-EvidenceRoot`.
 
 ```powershell
 ./experiments/r-036-h3-camouflage-adapter/run.ps1 `
@@ -64,20 +70,34 @@ go test ./experiments/r-036-h3-camouflage-adapter/control.go `
   ./experiments/r-036-h3-camouflage-adapter/control_test.go
 ```
 
+Cross-compile and run the complete parser suite, including the Linux-only raw
+packet observer tests, in the same pinned offline image with:
+
+```powershell
+$files = Get-ChildItem experiments/r-036-h3-camouflage-adapter -Filter *.go
+$env:GOOS = 'linux'; $env:GOARCH = 'amd64'; $env:CGO_ENABLED = '0'
+go test -c -trimpath -o $env:TEMP\r036-harness-tests $files.FullName
+docker run --rm --network none --cap-drop ALL `
+  -v "${env:TEMP}\r036-harness-tests:/tests:ro" `
+  ubuntu@sha256:7b202b0e2e0028c6250f5fcf41d04df492d145a1654c6995a6553f0c1f6f1960 /tests
+```
+
 ## Evidence and result
 
-Expected output is one `summary.json` and one secret evidence directory per
-candidate. `summary.json` records useful-work hashes, timings, DNS count,
-process/resource observations, shutdown rung, and the hash of the raw control
-transcript. The raw evidence is not committed.
+Expected output is six `summary.json` files and six secret evidence directories,
+one for each candidate/shutdown-rung cell. A summary records useful-work hashes,
+three resource/traffic samples, DNS packet count, process observations,
+requested and actual shutdown rung, residual checks, and hashes of the raw
+control transcript and secret run manifest. The raw evidence is not committed.
 
-Until the missing observer, forced-shutdown, and residual checks in
-R-036 are implemented, the summary verdict is deliberately `incomplete` even
-when `useful_work_verified` is true.
-
-The actual 2026-08-15 result and immutable binary hashes are recorded in R-036
-after the run. A future supply-preflight rejection would remain a rejection even
-if an isolated functional probe happened to carry bytes.
+The decisive 2026-08-16 campaign returned `pass` in all six cells. Every cell
+used the same exact request and response hashes, observed all three injected
+control flows (IPv4 UDP, IPv6 UDP, and IPv4 TCP; `16–20` captured packets) and
+zero candidate DNS packets, and restored the process, state, FD, PID-namespace,
+and goroutine baseline within `306 ms` or less.
+R-036 records the measurements and selects standalone WebTunnel `v0.0.6`. A
+future supply-preflight rejection remains a rejection even if an isolated
+functional probe carries bytes.
 
 ## Limitations and disposition
 

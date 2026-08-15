@@ -1,10 +1,10 @@
 ---
 id: R-036
 title: Which Camouflage Adapter and pinned implementation fits Horizon 3 Stage 5?
-status: active
+status: decided
 owner: product research
 started: 2026-08-15
-reviewed: 2026-08-15
+reviewed: 2026-08-16
 ---
 
 # R-036 — Horizon 3 Camouflage Adapter
@@ -25,6 +25,11 @@ That authorization permits only temporary source preparation, candidate
 binaries outside Git, and the disposable Adapter harness. It does not authorize
 maintained Stage 5 runtime code, a root dependency, integrated campaign, or
 censorship-resistance claim.
+
+The completed six-cell comparison on 2026-08-16 selects standalone WebTunnel
+`v0.0.6` for the maintained H3 Adapter profile. ADR-0012 records the bounded
+technology decision. R-037 and an accepted implementation brief remain required
+before maintained Stage 5 code.
 
 ## Current contract
 
@@ -481,6 +486,74 @@ is partial feasibility evidence, not the R-036 selection verdict: it did not yet
 observe every DNS path, charge resource and traffic series for all helpers,
 exercise forced shutdown rungs, or verify all helpers and state after cleanup.
 
+### Decisive six-cell rerun — 2026-08-16
+
+The completed harness ran `stdin`, direct `SIGTERM`, and direct `SIGKILL` cells
+for both candidates with one shared workload seed. A separate helper joined each
+candidate's network namespace with only `NET_RAW`; Linux `AF_PACKET` observation
+classified IPv4/IPv6 TCP or UDP packets whose source or destination port was
+`53`, including common IPv6 extension headers. Non-initial fragments, ESP, or
+an overlong extension chain invalidate the cell instead of being counted as
+zero. IPv4/IPv6 UDP and IPv4 TCP positive controls exercised the live observer;
+parser tests covered TCP, UDP, an IPv6 extension header, and fail-closed
+fragment handling. The observer drained the positive-control phase to an empty
+raw socket and acknowledged its closure before candidate startup, so the TCP
+control tuple was not exempt during candidate execution. Candidate containers
+remained UID/GID `65534` with zero
+capabilities and mounted only the executable or client/server pair for that
+cell; the alternate candidate was absent.
+The request SHA-256 was
+`13178b2a82cbfe4c4b24ad7eb0d233a5e69ef4ba192f76e8a6a852d3ad2515ad`
+in all six cells; the response SHA-256 was
+`b8a5e9e3ec873942654b8ab60be5e3087b621d35e7b0b596fcfd84de84046c0e`.
+
+| Final observation | Lyrebird obfs4 | standalone WebTunnel |
+|---|---:|---:|
+| cells and verdicts | 3 / 3 pass | 3 / 3 pass |
+| startup range | 64–150 ms | 118–176 ms |
+| useful-work range | 0–1 ms | 1 ms |
+| maximum Endpoint client RSS | 13,568 KiB | 6,016 KiB |
+| maximum Bridge server RSS, excluding harness TLS front | 13,312 KiB | 4,480 KiB |
+| maximum combined harness RSS | 6,144 KiB | 9,856 KiB |
+| client/server maximum FDs and sockets | `8 / 3` each | `8 / 3` each |
+| combined candidate state | 4 entries / 979 bytes | 2 entries / 80 bytes |
+| per-cell RX/TX byte delta range | 202,620–204,559 | 266,874–267,776 |
+| DNS / ambiguous packets | `0 / 0` | `0 / 0` |
+| positive-control packets / observer capabilities | `16–20 / NET_RAW only` | `16–20 / NET_RAW only` |
+| exercised client/server shutdown rungs | stdin, SIGTERM, SIGKILL | stdin, SIGTERM, SIGKILL |
+| complete cleanup range | 146–306 ms | 158–292 ms |
+| PID namespace, state, FD, and goroutine residual scan | baseline in all cells | baseline in all cells |
+
+Every cell retained three resource/traffic samples. The harness verified
+idempotent child shutdown, removed the candidate state directory, restored its
+pre-campaign FD and goroutine baseline, and published `pass` only after the DNS
+observer result and residual checks. The runner then removed every campaign
+container and internal Docker network. Raw addresses, arguments, certificates,
+logs, workload seeds, and manifests remained secret evidence outside Git.
+
+The immutable harness SHA-256 was
+`b63f02514c17de43de29d9a06f0a7899684a78a2390a4964eb21f8ea1d1f00e1`.
+Safe per-cell identities bind each canonical summary to its secret run manifest:
+
+| Cell | run-manifest SHA-256 | summary SHA-256 |
+|---|---|---|
+| obfs4 / stdin | `ee3f1bd8f5c6364cd0e93af05e6547382846db7066b9930e67a0831f69cc827a` | `b69c70c7b4ac9fd64b1e8445fa7944591717b6a994958e412244c301f9e27d3d` |
+| obfs4 / SIGTERM | `352f2d6885d968f065ee226cfa49f3829a22f14b01e323e6d1146518ad562796` | `7c9f87a37d3e6245b7d9c06fea56bacf6ea1bacad46acf83e9545b512bdd43cc` |
+| obfs4 / SIGKILL | `43b7ddbb47b11cba478aedb47dd181cab93f7213a5a87996b51c08e8fc28d8f5` | `748ed5f3aca769becaff373abb9e0f3c767f1480b8f59da946fd273152ce316b` |
+| WebTunnel / stdin | `00542abb09504337f5bc8e04b814ce6d6906f385913aa8758660331a58598df3` | `56c4d06826bbdb39122af175c69548db7d5d7dac86dfd7b856df9dd50251b440` |
+| WebTunnel / SIGTERM | `8a3c31922f423aa0d7c984e85902fd140b5416d0a70990583891eda82404fa17` | `b67926ffe9890d161a80be54503103e2a63de7e2ba9cdf5d7107504e99af6211` |
+| WebTunnel / SIGKILL | `8df043637dbd75c914c37859281fc783eed0ba17565076dc6fcaf7c40b9fcb5a` | `df54dc3422a6f7a5f195d68746f55f98533442359d0f340bcde05082f134fcb1` |
+
+Both candidates therefore satisfy the R-036 functional and structural gates.
+WebTunnel uses more fixture traffic and harness memory because its TLS/HTTP
+front is charged, while obfs4 has the stronger uninformed-probe handshake.
+WebTunnel nevertheless covers the required protocol-allow-list profile that
+obfs4 does not, uses less than half the observed candidate RSS, writes much less
+state, has one linked module rather than 61, and has no reachable advisory in
+the pinned scan. Those conjunctive product and maintenance differences select
+O2; performance qualification remains R-037 and cannot upgrade this controlled
+result into a censorship-resistance claim.
+
 ### Failure scenarios and falsification
 
 Either candidate is falsified by any of:
@@ -580,7 +653,8 @@ an independent audit to the exact `lyrebird-0.8.1` commit.
 **Inference:** pinning 0.8.1 would accept a materially larger unresolved advisory
 and maintenance surface or require an Ardents-specific dependency fork. That is
 evidence against O1, but the current metadata does not prove the precommitted
-high/critical falsifier; final selection remains withheld.
+high/critical falsifier. O2 is selected on the complete conjunctive comparison,
+not by relabeling these unscored advisories as a hard rejection.
 
 ### Finding 5 — standalone WebTunnel is the smaller maintained supply
 
@@ -645,12 +719,15 @@ evidence artifacts and are removed after review.
 
 ## Recommendation
 
-Do not select a maintained candidate yet. The partial comparison strengthens
-the WebTunnel prior: it has the smaller clean supply and lower observed client
-RSS, while both candidates carried the same exact HTTP workload. The missing
-complete DNS/resource observers, shutdown-rung, and post-cleanup
-evidence must be added and rerun before selection. Neither
-candidate may be used as fallback while R-036 remains active.
+Select O2, standalone WebTunnel `v0.0.6` at commit
+`d729fde1f38357dcefa2a751eb4752e9ca78f910`, behind the candidate-neutral
+Camouflage Adapter seam for the maintained H3 Stage 5 profile. Pin the exact
+client binary SHA-256
+`de581c8dd36193bb4168aee840406294af406bf8187817c10ac2bcd9464fd120`
+and server fixture SHA-256
+`5fe32f8ab736ed54fc66027775761084e68f0e1ec9b5fea7c3417c6617255336`.
+Do not package Lyrebird, retain it as fallback, or silently substitute its
+embedded WebTunnel. A changed source or binary identity repeats R-036.
 
 The strongest argument against O2 is that its ordinary-HTTPS appearance depends
 on correct TLS/web-front operation and a secret path, while an informed probe or
@@ -661,17 +738,16 @@ an indistinguishability or real-world censorship-resistance claim.
 
 ## Disposition
 
-- State: `active`; both candidates completed a useful but non-decisive first
-  probe. Candidate selection remains withheld until the listed observer,
-  shutdown, and cleanup gaps are closed.
+- State: `decided`; the precommitted two-candidate comparison selected
+  standalone WebTunnel `v0.0.6` for the one maintained H3 Adapter profile.
 - Neither source is packaged and no candidate module enters the root `go.mod`;
   generated artifacts remain outside Git.
-- This record creates a disposable experiment only. It creates no maintained
-  package, command, public protocol, ADR, or integrated implementation authority.
+- This record and ADR-0012 authorize the bounded candidate choice, not maintained
+  package code, a root dependency, a public protocol, or integrated execution.
 - Generated source checkouts are disposable and must be deleted from the owned
   system-temporary directory after review checks.
-- Documents changed: this R-036 record, its disposable experiment, and the
-  R-036 row in [questions.md](../questions.md).
-- Remaining gates before maintained Stage 5 code: completed R-036 evidence and
-  selection; completed R-037; both records marked `decided`; and an explicit
-  accepted Stage 5 implementation brief.
+- Documents changed: this R-036 record, its disposable experiment, ADR-0012,
+  the ADR index, the R-033/R-035 acceptance cleanup, and the R-036 row in
+  [questions.md](../questions.md).
+- Remaining gates before maintained Stage 5 code: completed R-037, R-037 marked
+  `decided`, and an explicit accepted Stage 5 implementation brief.

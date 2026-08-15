@@ -3,7 +3,6 @@
 package main
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -14,6 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -21,9 +21,15 @@ import (
 type child struct {
 	cmd        *exec.Cmd
 	stdin      io.WriteCloser
-	stderr     bytes.Buffer
+	stderr     boundedBuffer
 	wait       chan error
 	transcript []byte
+	stdoutDone chan struct{}
+	stopMu     sync.Mutex
+	stopped    bool
+	stopRung   string
+	stopTime   time.Duration
+	stopErr    error
 }
 
 type processObservation struct {
@@ -35,7 +41,10 @@ type processObservation struct {
 	RSSKiB       int64  `json:"rss_kib"`
 }
 
-func startChild(path string, env map[string]string, method, kind string) (*child, readiness, error) {
+func startChild(path string, env map[string]string, method, kind string, deadline time.Time) (*child, readiness, error) {
+	if !time.Now().Before(deadline) {
+		return nil, readiness{}, fmt.Errorf("%s startup deadline expired", method)
+	}
 	cmd := exec.Command(path)
 	cmd.Env = []string{"LANG=C", "GODEBUG=netdns=go+2"}
 	for key, value := range env {
@@ -49,7 +58,8 @@ func startChild(path string, env map[string]string, method, kind string) (*child
 	if err != nil {
 		return nil, readiness{}, err
 	}
-	c := &child{cmd: cmd, stdin: stdin, wait: make(chan error, 1)}
+	c := &child{cmd: cmd, stdin: stdin, wait: make(chan error, 1),
+		stderr: boundedBuffer{limit: maxControlTranscript}}
 	cmd.Stderr = &c.stderr
 	if err := cmd.Start(); err != nil {
 		return nil, readiness{}, err
@@ -72,15 +82,65 @@ func startChild(path string, env map[string]string, method, kind string) (*child
 			_ = c.forceStop()
 			return c, result.ready, result.err
 		}
+		if c.stderr.Exceeded() || len(c.transcript)+c.stderr.Len() > maxControlTranscript {
+			_ = c.forceStop()
+			return c, result.ready, errors.New("combined control output limit exceeded")
+		}
+		c.stdoutDone = make(chan struct{})
+		go func() {
+			_, _ = io.Copy(io.Discard, stdout)
+			close(c.stdoutDone)
+		}()
 		return c, result.ready, nil
-	case <-time.After(5 * time.Second):
+	case <-time.After(time.Until(deadline)):
 		_ = c.forceStop()
 		return c, readiness{}, fmt.Errorf("%s readiness timed out", method)
 	}
 }
 
-func (c *child) stop() (string, time.Duration, error) {
+func (c *child) stop(requested string) (string, time.Duration, error) {
+	c.stopMu.Lock()
+	defer c.stopMu.Unlock()
+	if c.stopped {
+		return c.stopRung, c.stopTime, c.stopErr
+	}
+	c.stopped = true
+	c.stopRung, c.stopTime, c.stopErr = c.stopOnce(requested)
+	if c.stopErr == nil && c.stdoutDone != nil {
+		select {
+		case <-c.stdoutDone:
+		case <-time.After(100 * time.Millisecond):
+			c.stopErr = errors.New("stdout drain did not stop")
+		}
+	}
+	return c.stopRung, c.stopTime, c.stopErr
+}
+
+func (c *child) stopOnce(requested string) (string, time.Duration, error) {
 	started := time.Now()
+	defer c.stdin.Close()
+	if requested == "sigterm" {
+		if err := c.cmd.Process.Signal(syscall.SIGTERM); err != nil {
+			return "sigterm-signal-failed", time.Since(started), err
+		}
+		select {
+		case <-c.wait:
+			return "sigterm", time.Since(started), nil
+		case <-time.After(1500 * time.Millisecond):
+			return "sigterm-timeout", time.Since(started), errors.New("SIGTERM did not reap child")
+		}
+	}
+	if requested == "sigkill" {
+		if err := c.cmd.Process.Kill(); err != nil {
+			return "sigkill-signal-failed", time.Since(started), err
+		}
+		select {
+		case <-c.wait:
+			return "sigkill", time.Since(started), nil
+		case <-time.After(500 * time.Millisecond):
+			return "unreaped", time.Since(started), fmt.Errorf("pid %d was not reaped", c.cmd.Process.Pid)
+		}
+	}
 	_ = c.stdin.Close()
 	select {
 	case err := <-c.wait:
@@ -103,14 +163,8 @@ func (c *child) stop() (string, time.Duration, error) {
 }
 
 func (c *child) forceStop() error {
-	_ = c.stdin.Close()
-	_ = c.cmd.Process.Kill()
-	select {
-	case <-c.wait:
-		return nil
-	case <-time.After(time.Second):
-		return errors.New("forced child reap timed out")
-	}
+	_, _, err := c.stop("sigkill")
+	return err
 }
 
 func exitOK(err error) error {
