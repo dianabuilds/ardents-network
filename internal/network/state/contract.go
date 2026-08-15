@@ -17,7 +17,7 @@ type Config struct {
 	NetworkID   [32]byte
 	Authorities map[[32]byte]ed25519.PublicKey
 	Threshold   int
-	// AcceptedProfile is empty for the Stage 1 role probe or explicitly names
+	// AcceptedProfile is empty for the role probe or explicitly names
 	// the replaceable H3 Route tracer profile.
 	AcceptedProfile string
 	Now             time.Time

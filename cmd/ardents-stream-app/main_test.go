@@ -19,13 +19,13 @@ func TestStreamLifetimeIsBoundedIndependentlyFromDial(t *testing.T) {
 	}
 }
 
-func TestStreamCountsPermitBoundedSustainedStage4Workload(t *testing.T) {
+func TestStreamCountsPermitBoundedSustainedWorkload(t *testing.T) {
 	send, receive, err := streamCounts("268435456", "0")
 	if err != nil || send != 256<<20 || receive != 0 {
 		t.Fatalf("sustained stream counts=%d/%d err=%v", send, receive, err)
 	}
 	if _, _, err := streamCounts("268435457", "0"); err == nil {
-		t.Fatal("stream count above the Stage 4 bound was accepted")
+		t.Fatal("stream count above the product bound was accepted")
 	}
 }
 

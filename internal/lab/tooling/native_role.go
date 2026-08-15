@@ -17,8 +17,6 @@ type nativeToolConfig struct {
 	RunID             string              `json:"run_id"`
 	Role              string              `json:"role"`
 	Mode              string              `json:"mode"`
-	Profile           string              `json:"profile,omitempty"`
-	Seed              uint32              `json:"seed,omitempty"`
 	DelayMilliseconds int                 `json:"delay_milliseconds,omitempty"`
 	Links             []nativeCaptureLink `json:"links,omitempty"`
 }
@@ -64,15 +62,6 @@ func readNativeToolConfig(path string) (nativeToolConfig, error) {
 		return nativeToolConfig{}, errors.New("native tooling identity is invalid")
 	}
 	if config.Mode == "shape" {
-		if config.Profile == "h3-s43-impaired-v1" {
-			if config.Seed == 0 || config.DelayMilliseconds != 0 || len(config.Links) != 0 {
-				return nativeToolConfig{}, errors.New("Stage 4 impaired shaping configuration is outside the fixed profile")
-			}
-			return config, nil
-		}
-		if config.Profile != "" || config.Seed != 0 {
-			return nativeToolConfig{}, errors.New("native shaping profile is unknown")
-		}
 		if config.DelayMilliseconds != 0 && config.DelayMilliseconds != 40 || len(config.Links) != 0 {
 			return nativeToolConfig{}, errors.New("native shaping configuration is outside the fixed impairment")
 		}

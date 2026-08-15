@@ -117,9 +117,9 @@ Control Plane risks rather than being hidden behind the word â€œdecentralized.â€
 
 The maintained Go tree contains the completed Carrier Lab and Named Site
 laboratories plus the first Horizon 3 product runtime: `cmd/ardents`,
-`cmd/ardents-node`, `cmd/ardents-qualify`, and cohesive product Modules under
-`internal/network`, `internal/node`, `internal/qualification`, and
-`internal/resource`. Product work never grows inside or imports the frozen
+`cmd/ardents-node`, `cmd/ardents-route`, `cmd/ardents-service`, and cohesive
+product Modules under `internal/network`, `internal/node`, `internal/route`,
+`internal/serviceconn`, and `internal/resource`. Product work never grows inside or imports the frozen
 `internal/lab` quarantine.
 
 The first completed maintained vertical slice was an Ubuntu-to-Ubuntu
@@ -197,12 +197,8 @@ system at once.
 
 ## Start here
 
-- [Complete Horizon 3 technical design](docs/development/horizon-3-technical-design.md)
-- [Accepted Horizon 3 Stage 4 recovery decision](docs/research/records/r-032-h3-same-connection-recovery.md)
-- [Authorized Horizon 3 Stage 4 implementation brief](docs/development/horizon-3-stage-4-brief.md)
-- [Authorized Horizon 3 Stage 3 decision](docs/research/records/r-031-h3-service-connection-application-interface.md)
-- [Horizon 3 Stage 3 implementation brief](docs/development/horizon-3-stage-3-brief.md)
-- [Horizon 3 Stage 2 Route decision](docs/research/records/r-030-h3-real-multi-node-route.md)
+- [Testing model](docs/development/testing.md)
+- [ADR-0011: independent unit, end-to-end, and live tests](docs/adr/0011-separate-unit-e2e-and-live-tests.md)
 - [Authoritative product scope and delivery horizons](docs/product/scope.md)
 - [Carrier Lab technology and experiment contract](docs/research/records/r-013-carrier-lab-technology-candidates.md)
 - [Language and runtime candidates](docs/research/records/r-014-language-runtime-candidates.md)
@@ -227,8 +223,9 @@ The normative [repository layout and growth
 rules](docs/development/repository-layout.md) separate the current factual tree
 from conditional future Modules and delivery zones. The [package
 map](docs/development/package-map.md) lists only Go packages that exist and their
-permitted current imports. Run `make quick-check` while working and `make check`
-before integration.
+permitted current imports. Run `make unit` while working, `make e2e` for
+cross-process behavior, `make live` for the real-container network, and
+`make check` before integration.
 
 Carrier Lab preflight is run with:
 

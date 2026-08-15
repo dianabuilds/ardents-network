@@ -16,6 +16,7 @@ import (
 )
 
 func TestIncompleteLatestUsesExactSameIndexFallback(t *testing.T) {
+	t.Parallel()
 	genesis := newFixture(t)
 	successor := nextFixture(t, genesis)
 	now := time.Unix(genesis.now, 0).UTC()

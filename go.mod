@@ -5,7 +5,6 @@ go 1.26.5
 require (
 	github.com/cloudflare/circl v1.6.3
 	github.com/openpcc/ohttp v0.0.80
-	golang.org/x/sys v0.45.0
 )
 
 require (
@@ -17,5 +16,6 @@ require (
 	go.opentelemetry.io/otel/trace v1.39.0 // indirect
 	golang.org/x/crypto v0.51.0 // indirect
 	golang.org/x/net v0.55.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
 	golang.org/x/text v0.39.0 // indirect
 )

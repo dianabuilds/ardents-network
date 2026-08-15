@@ -1,0 +1,68 @@
+x-route: &route
+  image: ${ARDENTS_LIVE_IMAGE:?}
+  pull_policy: never
+  read_only: true
+  restart: "no"
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  user: "0:0"
+  tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=8m"]
+  cpus: 0.5
+  mem_limit: 128m
+  pids_limit: 32
+  networks: [route_net]
+
+x-build: &build
+  build:
+    context: ../..
+    dockerfile: tests/live/network.Dockerfile
+
+services:
+  publisher:
+    <<: [*route, *build]
+    command: [/usr/local/bin/ardents-route, run, /run/ardents/plans/publisher.json]
+    volumes:
+      - ${ARDENTS_LIVE_ROOT:?}/plans:/run/ardents/plans:ro
+      - ${ARDENTS_LIVE_ROOT:?}/secrets:/run/ardents/secrets:ro
+    networks: {route_net: {ipv4_address: 172.31.20.16}}
+  responder:
+    <<: *route
+    command: [/usr/local/bin/ardents-route, run, /run/ardents/plans/responder.json]
+    volumes:
+      - ${ARDENTS_LIVE_ROOT:?}/plans:/run/ardents/plans:ro
+      - ${ARDENTS_LIVE_ROOT:?}/secrets:/run/ardents/secrets:ro
+    networks: {route_net: {ipv4_address: 172.31.20.14}}
+  rendezvous:
+    <<: *route
+    command: [/usr/local/bin/ardents-route, run, /run/ardents/plans/rendezvous.json]
+    volumes:
+      - ${ARDENTS_LIVE_ROOT:?}/plans:/run/ardents/plans:ro
+      - ${ARDENTS_LIVE_ROOT:?}/secrets:/run/ardents/secrets:ro
+    networks: {route_net: {ipv4_address: 172.31.20.13}}
+  introduction:
+    <<: *route
+    command: [/usr/local/bin/ardents-route, run, /run/ardents/plans/introduction.json]
+    volumes:
+      - ${ARDENTS_LIVE_ROOT:?}/plans:/run/ardents/plans:ro
+      - ${ARDENTS_LIVE_ROOT:?}/secrets:/run/ardents/secrets:ro
+    networks: {route_net: {ipv4_address: 172.31.20.12}}
+  initiator:
+    <<: *route
+    command: [/usr/local/bin/ardents-route, run, /run/ardents/plans/initiator.json]
+    volumes:
+      - ${ARDENTS_LIVE_ROOT:?}/plans:/run/ardents/plans:ro
+      - ${ARDENTS_LIVE_ROOT:?}/secrets:/run/ardents/secrets:ro
+    networks: {route_net: {ipv4_address: 172.31.20.11}}
+  client:
+    <<: *route
+    command: [/usr/local/bin/ardents-route, run, /run/ardents/plans/client.json]
+    volumes:
+      - ${ARDENTS_LIVE_ROOT:?}/plans:/run/ardents/plans:ro
+      - ${ARDENTS_LIVE_ROOT:?}/secrets:/run/ardents/secrets:ro
+      - ${ARDENTS_LIVE_ROOT:?}/state:/run/ardents/state
+    networks: {route_net: {ipv4_address: 172.31.20.10}}
+
+networks:
+  route_net:
+    internal: true
+    ipam: {config: [{subnet: 172.31.20.0/24}]}

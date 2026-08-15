@@ -10,6 +10,7 @@ import (
 )
 
 func TestInterruptedCycleResumesOnlyUnstartedLatestAttempt(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	storage, err := statestore.Open(root)
 	if err != nil {

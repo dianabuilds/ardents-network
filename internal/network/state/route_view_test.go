@@ -10,6 +10,7 @@ import (
 )
 
 func TestCurrentRouteViewOwnsEveryAuthenticatedCandidate(t *testing.T) {
+	t.Parallel()
 	value := newFixture(t)
 	opened, err := state.Open(state.Config{
 		Root: t.TempDir(), NetworkID: value.networkID,
@@ -47,6 +48,7 @@ func TestCurrentRouteViewOwnsEveryAuthenticatedCandidate(t *testing.T) {
 }
 
 func TestRouteViewUnavailableAfterStateClose(t *testing.T) {
+	t.Parallel()
 	value := newFixture(t)
 	opened, err := state.Open(state.Config{
 		Root: t.TempDir(), NetworkID: value.networkID,
@@ -65,6 +67,7 @@ func TestRouteViewUnavailableAfterStateClose(t *testing.T) {
 }
 
 func TestRouteProfileCannotConsumeRoleProbeEpoch(t *testing.T) {
+	t.Parallel()
 	value := newFixture(t)
 	opened, err := state.Open(state.Config{
 		Root: t.TempDir(), NetworkID: value.networkID,
@@ -76,6 +79,6 @@ func TestRouteProfileCannotConsumeRoleProbeEpoch(t *testing.T) {
 	}
 	defer opened.Close()
 	if _, err := opened.Accept(context.Background(), value.epoch, value.inputs, value.materializations); err == nil {
-		t.Fatal("Route-configured Network State accepted the Stage 1 role-probe profile")
+		t.Fatal("Route-configured Network State accepted the role-probe profile")
 	}
 }

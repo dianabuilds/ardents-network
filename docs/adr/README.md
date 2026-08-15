@@ -20,6 +20,7 @@ Current decisions:
 - [0008 — Stage route research before public-network implementation](0008-stage-research-before-public-network.md)
 - [0009 — Adopt Go as the maintained project foundation](0009-go-project-foundation.md)
 - [0010 — Keep a modular first-party monorepository](0010-modular-monorepository.md)
+- [0011 — Separate unit, end-to-end, and live tests](0011-separate-unit-e2e-and-live-tests.md)
 
 New ADRs use the next four-digit number and should remain short. When a decision
 is superseded, retain the original record and link the replacement.

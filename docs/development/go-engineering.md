@@ -35,13 +35,15 @@ architecture gate checks both records against the Go tree.
 ## Required workflow
 
 Run `make quick-check` while writing code. It performs structure/format checks,
-`go vet`, shuffled tests, a build, and a module-tidiness check without installing
-or upgrading anything.
+`go vet`, deterministic unit tests, a build, and a module-tidiness check without
+Docker or tool installation.
 
 Run `make check` before integration. It additionally verifies exact tool
-versions, runs the race detector, Staticcheck, and govulncheck. The vulnerability
-check reads the Go vulnerability database, so this full gate requires network
-access unless the database is already cached.
+versions, runs cross-process end-to-end tests, the unit race detector,
+Staticcheck, and govulncheck. Run `make live` separately on a Docker-capable
+host when network-container behavior changes. The vulnerability check reads the
+Go vulnerability database, so this full gate requires network access unless the
+database is already cached.
 
 Run `make tools-install` explicitly when the pinned development tools are
 missing. Run `bash ./scripts/install-git-hooks.sh` once per clone to enable the

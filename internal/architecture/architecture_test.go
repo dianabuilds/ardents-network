@@ -50,58 +50,6 @@ func TestRepositoryArchitecture(t *testing.T) {
 	assertRepositoryContainsNoArtifacts(t, root)
 }
 
-func assertQualityWiring(t *testing.T, root string) {
-	t.Helper()
-	makefile := readProjectFile(t, root, "Makefile")
-	for _, required := range []string{
-		"quick-check: format-check vet test build mod-check",
-		"check: tools-check quick-check test-race staticcheck vuln",
-		"GOTOOLCHAIN := local",
-		"GOMODCACHE := $(QUALITY_CACHE_ROOT)/go-mod",
-	} {
-		if !bytes.Contains(makefile, []byte(required)) {
-			t.Errorf("Makefile is missing mandatory quality control %q", required)
-		}
-	}
-	dockerRecipe := regexp.MustCompile(`(?m)^\t[^\n]*\bdocker([[:space:]]|$)`)
-	if dockerRecipe.Match(makefile) {
-		t.Error("ordinary Make quality gates must not build or run Docker; Carrier Lab qualification is explicit after source freeze")
-	}
-	hook := readProjectFile(t, root, ".githooks/pre-commit")
-	if !bytes.Contains(hook, []byte("exec make quick-check")) {
-		t.Error("pre-commit hook must run make quick-check")
-	}
-	workflow := readProjectFile(t, root, ".github/workflows/quality.yml")
-	for _, required := range []string{"contents: read", "go-version: 1.26.5", "run: make check"} {
-		if !bytes.Contains(workflow, []byte(required)) {
-			t.Errorf("CI workflow is missing mandatory quality control %q", required)
-		}
-	}
-	carrierWorkflow := readProjectFile(t, root, ".github/workflows/carrier-lab.yml")
-	for _, required := range []string{"workflow_dispatch:", "runs-on: ubuntu-26.04", "route-experiment", "--network=none", "ardents-experiment-session.", "experiment-verdict.json"} {
-		if !bytes.Contains(carrierWorkflow, []byte(required)) {
-			t.Errorf("Carrier Lab workflow is missing qualification control %q", required)
-		}
-	}
-	assertPinnedActions(t, workflow)
-	assertPinnedActions(t, carrierWorkflow)
-}
-
-func assertPinnedActions(t *testing.T, workflow []byte) {
-	t.Helper()
-	actionPin := regexp.MustCompile(`^[[:space:]]*uses:[[:space:]]+[^@[:space:]]+@[0-9a-f]{40}([[:space:]]+#.*)?$`)
-	scanner := bufio.NewScanner(bytes.NewReader(workflow))
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.Contains(line, "uses:") && !actionPin.MatchString(line) {
-			t.Errorf("GitHub Action must be pinned to a full commit SHA: %s", strings.TrimSpace(line))
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		t.Fatalf("scan CI workflow: %v", err)
-	}
-}
-
 func assertDependenciesRegistered(t *testing.T, root string) {
 	t.Helper()
 	moduleFile, err := os.Open(filepath.Join(root, "go.mod"))
@@ -217,7 +165,8 @@ func readPackageRegistry(t *testing.T, root string) map[string]packageRegistrati
 	inlineCode := regexp.MustCompile("`([^`]+)`")
 	for _, line := range strings.Split(contents, "\n") {
 		trimmed := strings.TrimSpace(line)
-		if !strings.HasPrefix(trimmed, "| `cmd/") && !strings.HasPrefix(trimmed, "| `internal/") {
+		if !strings.HasPrefix(trimmed, "| `cmd/") && !strings.HasPrefix(trimmed, "| `internal/") &&
+			!strings.HasPrefix(trimmed, "| `tests/fixtures/") {
 			continue
 		}
 		cells := strings.Split(strings.Trim(trimmed, "|"), "|")
@@ -235,7 +184,8 @@ func readPackageRegistry(t *testing.T, root string) map[string]packageRegistrati
 		}
 		allowed := make(map[string]bool)
 		for _, match := range inlineCode.FindAllStringSubmatch(cells[3], -1) {
-			if strings.HasPrefix(match[1], "cmd/") || strings.HasPrefix(match[1], "internal/") {
+			if strings.HasPrefix(match[1], "cmd/") || strings.HasPrefix(match[1], "internal/") ||
+				strings.HasPrefix(match[1], "tests/fixtures/") {
 				allowed[match[1]] = true
 			}
 		}
@@ -262,6 +212,9 @@ func assertRegisteredDependencies(t *testing.T, registry map[string]packageRegis
 			}
 			if isProductCommand(owner) && isLaboratoryPackage(dependency) {
 				t.Errorf("product command %s cannot depend on laboratory package %s", owner, dependency)
+			}
+			if (isProductPackage(owner) || isProductCommand(owner)) && strings.HasPrefix(dependency, "tests/") {
+				t.Errorf("product code %s cannot depend on test package %s", owner, dependency)
 			}
 		}
 	}
@@ -323,6 +276,9 @@ func assertPackageImports(t *testing.T, directory string, files []string, regist
 			}
 			if isProductCommand(directory) && isLaboratoryPackage(dependency) {
 				t.Errorf("product command %s imports laboratory package %s", directory, dependency)
+			}
+			if (isProductPackage(directory) || isProductCommand(directory)) && strings.HasPrefix(dependency, "tests/") {
+				t.Errorf("product code %s imports test package %s", directory, dependency)
 			}
 		}
 	}

@@ -25,7 +25,7 @@ co-location grants none of them access to another zone's authority material.
 | `internal/<domain>/` | Maintained cohesive deep Modules and their implementation. A directory exists only with real behavior and an owned Interface. |
 | `internal/lab/<name>/` | Maintained laboratory Modules, visibly quarantined from product Modules. The `lab` segment is a namespace, not a Go package. |
 | `lab/` | Human-authored Docker, topology, and immutable-supply inputs owned only by maintained laboratories. It contains no Go Module, generated dependency, runtime state, or evidence. |
-| `tests/` | Cross-Module or cross-process integration and qualification suites that have a real subject. Unit and single-Module integration tests do not move here. This zone has no second Go module. |
+| `tests/` | Shared fixtures, cross-process end-to-end tests, and explicit live-container tests. Unit and single-Module integration tests remain beside their implementation. This zone has no second Go module. |
 | `docs/product/` | Accepted product promise, delivery horizons, functions, journeys, and operating model. |
 | `docs/security/` | Threat model, claim conditions, adversaries, and honest limitations. |
 | `docs/research/` | Decision-relevant questions, completed evidence records, and the research template. |
@@ -54,8 +54,8 @@ because Docker needs repository-relative build, topology, and supply inputs.
 
 `internal/lab/` is a structural quarantine. Future product Modules live as
 factual siblings under `internal/<responsibility>` and may never import a
-laboratory Module. A laboratory or qualification Module may import a proven
-product Module only through its product Interface. The architecture gate
+laboratory Module. A laboratory Module may import a proven product Module only
+through its product Interface. The architecture gate
 enforces that direction from the path prefix rather than an editable list of
 special cases. Closed laboratory Modules change only for reproducibility,
 security maintenance, or an explicitly opened new experiment; a later Delivery
@@ -73,7 +73,6 @@ The first real product commands are:
 |---|---|
 | `cmd/ardents` | Run the local Endpoint process. It grows only through accepted Endpoint capabilities and remains a thin adapter over product Modules. |
 | `cmd/ardents-node` | Run one separately configured Contributor Node identity and one active role per process. Co-resident roles require distinct processes, keys, state, and resource ownership. |
-| `cmd/ardents-qualify` | Run controlled qualification campaigns against product processes. It is an engineering executable, is not distributed as the user product, and grants no runtime authority. |
 
 The maintained product Modules are:
 
@@ -88,18 +87,11 @@ The maintained product Modules are:
 | `internal/resource` | Own bounded OS/runtime measurement, process placement, hysteresis, and pressure decisions shared by State and Node; each consumer owns its reaction. |
 | `internal/planfile` | Own bounded operator-plan and credential decoding shared by command adapters. |
 
-Human-authored Dockerfiles, Compose manifests, and non-secret qualification
-inputs live under their owning `tests/qualification/<profile>/` slice. These
-paths are black-box qualification assets, not
-`internal/lab`, product runtime, packaging, or deployment. Images, keys, state,
-captures, evidence, caches, and generated manifests remain outside Git.
-
-`internal/qualification/{state,epochfixture,node,node/fixture,byteio}` are not product
-Modules. They own controlled manifests, faults, observers, independent evidence
-recomputation, campaign verdicts, and cleanup for `cmd/ardents-qualify`.
-Qualification observes and drives product executables as black boxes and does
-not reuse their verification implementation. No product Module or product
-runtime command may import it.
+Cross-process tests live under `tests/e2e/<behavior>/`. Live Docker inputs and
+their build-tagged Go tests live under `tests/live/`. Shared generated-input
+builders live under `tests/fixtures/`; unlike runtime packages, these fixture
+packages require real test callers rather than a production caller. Images,
+keys, state, captures, and generated manifests remain outside Git.
 
 This is a trunk, not a complete future directory tree. Route, Carrier,
 Publication, Service Connection, Namespace, Bridge, Release Safety, platform,
@@ -112,26 +104,15 @@ The product import direction is:
 ```text
 cmd/ardents -> internal/network/state, internal/network/source, internal/planfile
 cmd/ardents-node -> internal/network/state, internal/network/source, internal/node, internal/node/probe, internal/planfile
-cmd/ardents-qualify -> internal/qualification/state, internal/qualification/node
 internal/network/state -> internal/network/epoch, internal/network/epoch/assignment, internal/network/epoch/merkle, internal/network/framing, internal/network/source, internal/network/store, internal/resource
 internal/network/epoch -> internal/network/epoch/assignment, internal/network/epoch/merkle, internal/network/framing
 internal/node -> internal/node/probe, internal/resource
-internal/qualification/state -> internal/qualification/byteio
-internal/qualification/node -> internal/qualification/byteio, internal/qualification/node/fixture
-internal/qualification/node/fixture -> internal/network/epoch/assignment, internal/qualification/byteio, internal/qualification/epochfixture
-internal/qualification/epochfixture -> internal/network/epoch/assignment, internal/network/epoch/merkle
-internal/qualification/byteio -> standard library
 ```
 
-Qualification code may drive or observe product Interfaces but cannot implement
-missing product behavior on their behalf. A passing harness shortcut is a test
-failure, not a substitute for Endpoint or Node runtime behavior.
-
-The Node qualification owner exposes three separate campaign modes (`short`,
-`churn-2h`, and `unattended-24h`). Each requires a new sealed fixture and
-evidence root outside Git and binds the maintained production-source digest to
-the Docker image and inspected Go binaries. No combined run satisfies more than
-one mode.
+End-to-end and live tests drive product Interfaces and commands but cannot
+implement missing product behavior on their behalf. A passing harness shortcut
+is a test failure. Test runs are independent: no test consumes a receipt from a
+previous run or requires a stage/profile selector.
 
 A disposable Go spike under `experiments/` uses `//go:build ignore` so the root
 module and its `./...` quality gates do not treat it as maintained project code.
@@ -235,7 +216,7 @@ or directories:
 - Network State;
 - Release Safety;
 - Platform capabilities;
-- Carrier Lab and qualification.
+- Carrier Lab and verification.
 
 They guide future placement only after product evidence promotes their behavior:
 
@@ -394,7 +375,7 @@ Infrastructure Node
 Service Authority Custody
   -> Platform capabilities
 
-Carrier Lab / qualification
+Carrier Lab / verification
   -> proven product Modules
 ```
 
@@ -405,7 +386,7 @@ The following directions are forbidden:
 - Service Connection -> Namespace;
 - Service Authority Custody -> Endpoint Runtime;
 - Infrastructure Node -> User-facing or Application-specific Modules;
-- product Modules -> Carrier Lab, qualification harnesses, `experiments`, or
+- product Modules -> Carrier Lab, test harnesses, `experiments`, or
   `scripts`;
 - Ardents core -> an optional Overlay or Application;
 - cyclic project imports.
@@ -427,7 +408,7 @@ slice:
 2. define the smallest product Interface from the accepted behavior rather
    than from laboratory topology or tooling;
 3. place the maintained Implementation in its owning product Module and use it
-   from both the product caller and qualification harness;
+   from both the product caller and tests through the same Interface;
 4. update the factual package map, dependency tests, and product records;
 5. retain or remove laboratory code according to its evidence disposition.
 
@@ -440,14 +421,13 @@ controls, Docker assumptions, or experiment state.
 - Unit tests and integration tests contained within one Module live beside its
   implementation as `*_test.go` and exercise the Module Interface.
 - A test crossing several Modules or processes lives under
-  `tests/integration/<behavior>/` only when the real cross-boundary behavior is
+  `tests/e2e/<behavior>/` only when the real cross-boundary behavior is
   implemented. It uses the root module and owns no product Implementation.
-- Release or security qualification lives under
-  `tests/qualification/<profile>/` only after that profile and evidence
-  contract are promoted. Current Carrier Lab validation remains with its owning
-  harness and architecture packages.
-- `testdata/` lives directly below the Module, command, integration slice, or
-  qualification slice that owns it. Shared global fixtures are forbidden.
+- A real-container network test lives under `tests/live/`, is selected by the
+  `live` build tag, owns its complete lifecycle, and can run independently.
+- `testdata/` lives directly below the Module, command, or e2e test that owns
+  it. A narrowly scoped shared builder may live in `tests/fixtures/` when at
+  least two test surfaces use it.
 - Test Adapters satisfy the same Interface as real callers. Tests do not reach
   through a Seam to assert private implementation state.
 

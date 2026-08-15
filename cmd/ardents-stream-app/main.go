@@ -22,9 +22,6 @@ func main() {
 }
 
 func run(arguments []string, output io.Writer) error {
-	if len(arguments) > 0 && arguments[0] == "direct" {
-		return runDirect(arguments, output)
-	}
 	if len(arguments) != 7 || arguments[0] != "run" {
 		return errors.New("usage: ardents-stream-app run <role> <socket> <send-seed-file> <expect-seed-file> <send-bytes> <receive-bytes>")
 	}
@@ -45,9 +42,6 @@ func run(arguments []string, output io.Writer) error {
 		return err
 	}
 	defer connection.Close()
-	if err := waitWorkloadRelease(arguments[1]); err != nil {
-		return err
-	}
 	lifetime, err := streamLifetime()
 	if err != nil {
 		return err
@@ -60,16 +54,9 @@ func run(arguments []string, output io.Writer) error {
 		return err
 	}
 	encoder := json.NewEncoder(output)
-	gateOffsets, gate, err := progressGates(arguments[1])
-	if err != nil {
-		return err
-	}
-	if len(gateOffsets) > 0 && sendCount > 0 {
-		write = gatedWorkloadSequenceWriter(write, gateOffsets, gate)
-	}
 	progress := func(received uint32) {
 		if os.Getenv("ARDENTS_STREAM_PROGRESS") == "1" {
-			_ = encoder.Encode(map[string]any{"schema": "ardents-h3-stream-progress-v1", "role": arguments[1],
+			_ = encoder.Encode(map[string]any{"schema": "ardents-stream-progress-v1", "role": arguments[1],
 				"received_bytes": received})
 		}
 	}
@@ -94,7 +81,7 @@ func streamLifetime() (time.Duration, error) {
 	}
 	lifetime, err := time.ParseDuration(value)
 	if err != nil || lifetime < 15*time.Second || lifetime > 30*time.Minute {
-		return 0, errors.New("stream lifetime is outside the frozen development bound")
+		return 0, errors.New("stream lifetime is outside its bound")
 	}
 	return lifetime, nil
 }

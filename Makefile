@@ -12,7 +12,10 @@ export GOCACHE := $(QUALITY_CACHE_ROOT)/go-build
 export GOMODCACHE := $(QUALITY_CACHE_ROOT)/go-mod
 export STATICCHECK_CACHE := $(QUALITY_CACHE_ROOT)/staticcheck
 
-.PHONY: architecture build check format format-check mod-check quick-check staticcheck test test-race tools-check tools-install vet vuln
+.PHONY: architecture build check e2e format format-check lab-test live mod-check quick-check staticcheck test test-race tools-check tools-install unit vet vuln
+
+UNIT_PACKAGES := ./cmd/ardents ./cmd/ardents-node ./cmd/ardents-publish-app ./cmd/ardents-route ./cmd/ardents-service ./cmd/ardents-stream-app ./internal/applicationipc ./internal/architecture ./internal/network/... ./internal/node/... ./internal/planfile ./internal/resource ./internal/route ./internal/routeplan ./internal/serviceconn ./internal/serviceendpoint ./internal/streamworkload ./tests/fixtures/...
+LAB_PACKAGES := ./cmd/carrier-lab ./cmd/named-site-lab ./internal/lab/...
 
 format:
 	go fmt ./...
@@ -24,11 +27,22 @@ format-check architecture:
 vet:
 	go vet ./...
 
-test:
-	go test ./... -shuffle=on -count=1
+unit:
+	go test $(UNIT_PACKAGES) -short -shuffle=on -count=1
+
+e2e:
+	go test ./tests/e2e/... -shuffle=on -count=1
+
+lab-test:
+	go test $(LAB_PACKAGES) -short -shuffle=on -count=1
+
+live:
+	go test -tags=live ./tests/live/... -count=1 -timeout=30m
+
+test: unit e2e
 
 test-race:
-	go test ./... -race -shuffle=on -count=1
+	go test $(UNIT_PACKAGES) -short -race -shuffle=on -count=1
 
 build:
 	go build ./...
@@ -45,9 +59,9 @@ staticcheck: tools-check
 vuln: tools-check
 	govulncheck ./...
 
-quick-check: format-check vet test build mod-check
+quick-check: format-check vet unit build mod-check
 
-check: tools-check quick-check test-race staticcheck vuln
+check: tools-check quick-check e2e lab-test test-race staticcheck vuln
 
 tools-install:
 	go install honnef.co/go/tools/cmd/staticcheck@2025.1.1

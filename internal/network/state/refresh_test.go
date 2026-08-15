@@ -28,6 +28,7 @@ type testCertificate struct {
 }
 
 func TestRefreshWaitsForTwoAuthenticatedSourcesAndRestarts(t *testing.T) {
+	t.Parallel()
 	genesis := newFixture(t)
 	successor := nextFixture(t, genesis)
 	now := time.Unix(genesis.now, 0).UTC()
@@ -105,6 +106,7 @@ func TestRefreshWaitsForTwoAuthenticatedSourcesAndRestarts(t *testing.T) {
 }
 
 func TestRefreshPersistsObservedConflictAcrossRestart(t *testing.T) {
+	t.Parallel()
 	genesis := newFixture(t)
 	first := nextFixtureWithSeed(t, genesis, "conflict-first")
 	second := nextFixtureWithSeed(t, genesis, "conflict-second")
@@ -135,6 +137,7 @@ func TestRefreshPersistsObservedConflictAcrossRestart(t *testing.T) {
 }
 
 func TestRefreshPersistsTLSFailureBackoff(t *testing.T) {
+	t.Parallel()
 	genesis := newFixture(t)
 	successor := nextFixture(t, genesis)
 	config, closeSources := sourceEnvironment(t, genesis, successor, successor)
@@ -166,6 +169,7 @@ func TestRefreshPersistsTLSFailureBackoff(t *testing.T) {
 }
 
 func TestRefreshRecordsPartialWaveWithoutCompletenessClaim(t *testing.T) {
+	t.Parallel()
 	genesis := newFixture(t)
 	successor := nextFixture(t, genesis)
 	config, closeSources := sourceEnvironment(t, genesis, successor, successor)
@@ -187,6 +191,7 @@ func TestRefreshRecordsPartialWaveWithoutCompletenessClaim(t *testing.T) {
 }
 
 func TestSourceClientTransportKeyCannotReuseEpochSigner(t *testing.T) {
+	t.Parallel()
 	genesis := newFixture(t)
 	successor := nextFixture(t, genesis)
 	config, closeSources := sourceEnvironment(t, genesis, successor, successor)
@@ -207,6 +212,7 @@ func TestSourceClientTransportKeyCannotReuseEpochSigner(t *testing.T) {
 }
 
 func TestRefreshRejectsUncertainClockBeforeContact(t *testing.T) {
+	t.Parallel()
 	genesis := newFixture(t)
 	successor := nextFixture(t, genesis)
 	config, closeSources := sourceEnvironment(t, genesis, successor, successor)
@@ -227,6 +233,7 @@ func TestRefreshRejectsUncertainClockBeforeContact(t *testing.T) {
 }
 
 func TestRefreshStagesFutureEpochAndActivatesAfterRestart(t *testing.T) {
+	t.Parallel()
 	genesis := newFixture(t)
 	future := futureFixture(t, genesis, genesis.now+20)
 	config, closeSources := sourceEnvironment(t, genesis, future, future)

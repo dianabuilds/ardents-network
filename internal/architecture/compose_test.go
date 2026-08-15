@@ -45,64 +45,23 @@ func TestCarrierLabComposeIsolationContract(t *testing.T) {
 	}
 }
 
-func TestH3RouteSmokeComposeContract(t *testing.T) {
+func TestLiveNetworkComposeContract(t *testing.T) {
 	t.Parallel()
-	compose := readProjectFile(t, repositoryRoot(t), "tests/qualification/h3-route-v1/compose.yaml")
-	required := []string{
-		"client:", "initiator:", "introduction:", "rendezvous:", "responder:", "publisher:", "verifier:",
-		"${ARDENTS_ROUTE_IMAGE_TAG:?}", "${ARDENTS_ROUTE_ROOT:?}", "route_net:", "internal: true",
-		"read_only: true", "cap_drop:", "- ALL", "no-new-privileges:true", "restart: \"no\"",
-		"tmpfs:", "cpus:", "mem_limit:", "pids_limit:", "type: bind", "read_only: true", "create_host_path: false",
-	}
-	for _, value := range required {
-		if !bytes.Contains(compose, []byte(value)) {
-			t.Errorf("H3 Route smoke Compose is missing %q", value)
-		}
-	}
-	for _, forbidden := range []string{"ports:", "privileged:", "/var/run/docker.sock", "network_mode:", "external: true"} {
-		if bytes.Contains(compose, []byte(forbidden)) {
-			t.Errorf("H3 Route smoke Compose contains forbidden setting %q", forbidden)
-		}
-	}
-}
-
-func TestH3ServiceSmokeComposeContract(t *testing.T) {
-	t.Parallel()
-	compose := readProjectFile(t, repositoryRoot(t), "tests/qualification/h3-service-v1/compose.yaml")
+	compose := readProjectFile(t, repositoryRoot(t), "tests/live/network.compose.yaml")
 	required := []string{
 		"client:", "initiator:", "introduction:", "rendezvous:", "responder:", "publisher:",
-		"client-endpoint:", "publisher-endpoint:", "client-app:", "publisher-app:", "negative-suite:", "verifier:",
-		"${ARDENTS_SERVICE_IMAGE_TAG:?}", "${ARDENTS_SERVICE_RUNTIME_USER:?}", "route_net:", "internal: true",
-		"network_mode: none", "read_only: true", "cap_drop: [ALL]", "no-new-privileges:true", "restart: \"no\"",
-		"tmpfs:", "cpus:", "mem_limit:", "pids_limit:", "type: bind", "read_only: true", "create_host_path: false",
-		"user: \"0:0\"", "cap_add: [CHOWN, FOWNER]",
+		"${ARDENTS_LIVE_IMAGE:?}", "${ARDENTS_LIVE_ROOT:?}", "route_net:", "internal: true",
+		"read_only: true", "cap_drop: [ALL]", "no-new-privileges:true", "restart: \"no\"",
+		"tmpfs:", "cpus:", "mem_limit:", "pids_limit:", ":/run/ardents/plans:ro", ":/run/ardents/secrets:ro",
 	}
 	for _, value := range required {
 		if !bytes.Contains(compose, []byte(value)) {
-			t.Errorf("H3 Service smoke Compose is missing %q", value)
+			t.Errorf("live network Compose is missing %q", value)
 		}
 	}
-	for _, forbidden := range []string{"ports:", "privileged:", "/var/run/docker.sock", "network_mode: host", "external: true"} {
+	for _, forbidden := range []string{"ports:", "privileged:", "/var/run/docker.sock", "network_mode:", "external: true", "profiles:", "verifier:", "qualification", "s4"} {
 		if bytes.Contains(compose, []byte(forbidden)) {
-			t.Errorf("H3 Service smoke Compose contains forbidden setting %q", forbidden)
-		}
-	}
-}
-
-func TestH3Stage3ComposeKeepsCurrentStreamCLIAndFrozenTopology(t *testing.T) {
-	t.Parallel()
-	compose := readProjectFile(t, repositoryRoot(t), "tests/qualification/h3-service-v1/compose.stage3.yaml")
-	for _, command := range []string{
-		"run, publisher, /run/ardents/publisher-app/app.sock, /run/ardents/workload/publisher.hex, /run/ardents/workload/client.hex, \"65536\", \"65536\"",
-		"run, client, /run/ardents/client-app/app.sock, /run/ardents/workload/client.hex, /run/ardents/workload/publisher.hex, \"65536\", \"65536\"",
-	} {
-		if !bytes.Contains(compose, []byte(command)) {
-			t.Errorf("isolated Stage 3 Compose is missing current stream command %q", command)
-		}
-	}
-	for _, forbidden := range []string{"carrier_net:", "profiles: [s41]", "profiles: [s42]", "profiles: [s43"} {
-		if bytes.Contains(compose, []byte(forbidden)) {
-			t.Errorf("isolated Stage 3 Compose contains recovery topology %q", forbidden)
+			t.Errorf("live network Compose contains forbidden setting %q", forbidden)
 		}
 	}
 }

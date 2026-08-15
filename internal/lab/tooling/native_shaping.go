@@ -6,7 +6,6 @@ import (
 	"net"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -113,14 +112,8 @@ func applyNativeShaping(run externalCommand, networkInterface string, config nat
 
 func nativeShapingArguments(config nativeToolConfig, networkInterface string) []string {
 	arguments := []string{"qdisc", "replace", "dev", networkInterface, "root", "netem", "limit", "1000"}
-	if config.Profile == "h3-s43-impaired-v1" {
-		arguments = append(arguments, "delay", "150ms", "60.8ms", "distribution", "normal",
-			"loss", "random", "5%", "seed", strconv.FormatUint(uint64(config.Seed), 10), "rate", "25mbit")
-	} else if config.DelayMilliseconds == 40 {
+	if config.DelayMilliseconds == 40 {
 		arguments = append(arguments, "delay", "40ms")
-	}
-	if config.Profile == "h3-s43-impaired-v1" {
-		return arguments
 	}
 	return append(arguments, "rate", "100mbit")
 }
@@ -128,10 +121,6 @@ func nativeShapingArguments(config nativeToolConfig, networkInterface string) []
 func validNativeShapingState(state string, config nativeToolConfig) bool {
 	if !strings.Contains(state, "netem") || !strings.Contains(state, "limit 1000") {
 		return false
-	}
-	if config.Profile == "h3-s43-impaired-v1" {
-		return strings.Contains(state, "delay 150ms") && strings.Contains(state, "loss 5%") &&
-			strings.Contains(state, "rate 25mbit")
 	}
 	return strings.Contains(state, "rate 100mbit") &&
 		(config.DelayMilliseconds != 40 || strings.Contains(state, "delay 40ms"))
