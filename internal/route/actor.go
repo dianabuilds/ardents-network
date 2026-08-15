@@ -131,3 +131,18 @@ func emptyPlan(value Plan) bool {
 func emptyCertificate(value tls.Certificate) bool {
 	return len(value.Certificate) == 0 && value.PrivateKey == nil
 }
+
+func validateCapacity(input Actor) error {
+	maximum, target := input.MaximumAttachments, input.AttachmentTarget
+	if maximum == 0 {
+		maximum = 1
+	}
+	if target == 0 {
+		target = maximum
+	}
+	if maximum > maximumRoleAttachments || target > maximum ||
+		input.ResourceProfile != "" && input.ResourceProfile != "h3-np1-v1" {
+		return errors.New("route Attachment capacity contract is invalid")
+	}
+	return nil
+}

@@ -14,7 +14,9 @@ const (
 	publishCapability = uint32(1)
 	connectCapability = uint32(2)
 	maximumSessions   = 6
-	maximumStream     = uint32(256 << 20)
+	// MaximumStreamBytes is the largest declared byte count in either
+	// direction of one bounded Service Connection.
+	MaximumStreamBytes = uint32(256 << 20)
 )
 
 // Recovery fixes connection values and constrains one fresh Route Attachment.

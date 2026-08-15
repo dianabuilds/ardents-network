@@ -184,6 +184,23 @@ func TestConcurrentAttachmentPlanIsExplicitlyBoundedToPublisher(t *testing.T) {
 	}
 }
 
+func TestOneListenerCapacityIsBoundedToSixteenAttachments(t *testing.T) {
+	for _, role := range []string{"publisher", "initiator", "introduction", "rendezvous", "responder"} {
+		if err := (actorPlan{Role: role, MaximumAttachments: 16, AttachmentTarget: 4,
+			ResourceProfile: "h3-np1-v1"}).validateRoleLocal(); err != nil {
+			t.Fatalf("%s capacity plan: %v", role, err)
+		}
+	}
+	for _, plan := range []actorPlan{{Role: "client", MaximumAttachments: 2},
+		{Role: "rendezvous", MaximumAttachments: 17},
+		{Role: "responder", MaximumAttachments: 4, AttachmentTarget: 5},
+		{Role: "initiator", MaximumAttachments: 4, ResourceProfile: "unknown"}} {
+		if err := plan.validateRoleLocal(); err == nil {
+			t.Fatalf("invalid listener capacity was accepted: %+v", plan)
+		}
+	}
+}
+
 func TestClientSequenceStopsWhenEndpointClosesAfterAnAttachment(t *testing.T) {
 	sequence := &Sequence{plan: actorPlan{Role: "client", AttachmentPlans: []attachmentPlan{{}, {}}}, next: 1}
 	closed := &routeStreamUnavailable{err: errors.New("scoped Route socket closed")}

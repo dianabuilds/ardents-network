@@ -13,8 +13,9 @@ work order. Most decided rows below constrain a later Public Beta or Stable
 Network claim and are not current implementation tasks. Gate B and Gate C are
 complete. R-029 through R-031 are the decided sequential Horizon 3 vertical
 slices; their deferred official qualification gates remain open. Accepted
-R-032 authorizes S4.1–S4.3 recovery development; S4.4 remains a separate open
-P3-D3b4 decision gate.
+R-032 authorizes S4.1–S4.3 recovery development. The Product Owner authorized
+all S4.4 development on 2026-08-15; R-034 assigns Bridge-specific capacity to
+Stage 5 while P3-D3b4 is frozen from measured Stage 4 role evidence.
 Historical `V1` wording means the first public product contract, not the next
 prototype.
 

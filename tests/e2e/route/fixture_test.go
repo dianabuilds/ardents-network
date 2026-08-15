@@ -63,7 +63,7 @@ func newProcessFixture(t *testing.T) processFixture {
 		nodeID := sha256.Sum256([]byte("route-node-" + domain))
 		record, err := BuildRecord(RecordSpec{NetworkID: value.network, NodeID: nodeID,
 			Generation: 1, ValidFrom: value.now.Add(-time.Minute), ValidUntil: value.now.Add(time.Hour),
-			Family: family, Endpoint: value.addresses[index], Capability: 2, Capacity: 1,
+			Family: family, Endpoint: value.addresses[index], Capability: 2, Capacity: 4,
 			PrivateKey: value.identities[index].private})
 		if err != nil {
 			t.Fatal(err)

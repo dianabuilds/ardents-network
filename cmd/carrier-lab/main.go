@@ -16,7 +16,7 @@ func commandError(label string, err error) int {
 }
 func run(arguments []string) int {
 	if len(arguments) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: carrier-lab <bootstrap|evaluate|finalize-cleanup|compose-smoke|smoke-role|tooling-verify|tooling-smoke|tooling-role|direct-control|direct-role|direct-tamper|native-run|native-role|native-tool-role|native-negative|route-experiment> [options]")
+		fmt.Fprintln(os.Stderr, "usage: carrier-lab <bootstrap|evaluate|finalize-cleanup|compose-smoke|smoke-role|tooling-verify|tooling-smoke|tooling-role|direct-control|direct-role|direct-tamper|native-run|native-role|native-tool-role|native-negative|route-experiment|pressure-memory> [options]")
 		return 64
 	}
 	commands := map[string]func([]string) int{
@@ -26,6 +26,7 @@ func run(arguments []string) int {
 		"direct-control": directControl, "direct-role": directRole, "direct-tamper": directTamper,
 		"native-run": nativeRun, "native-role": nativeRole, "native-tool-role": nativeToolRole, "native-negative": nativeNegative,
 		"route-experiment": routeExperiment,
+		"pressure-memory":  pressureMemory,
 	}
 	if command := commands[arguments[0]]; command != nil {
 		return command(arguments[1:])

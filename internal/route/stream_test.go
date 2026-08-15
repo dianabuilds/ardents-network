@@ -79,12 +79,14 @@ func runBoundedOpaqueStream(t *testing.T, endpointSecured bool, setupDeadline, l
 		start(route.Actor{ManifestDigest: [32]byte{99}, NetworkID: plan.NetworkID, EpochDigest: plan.Digest,
 			Role: roles[index], NodeID: plan.Positions[index].NodeID, ListenAddress: addresses[index],
 			Certificate: identities[index].certificate, UpstreamPin: upstream, NextNodeID: nextID,
-			NextAddress: nextAddress, NextPin: nextPin, Deadline: setupDeadline, Lifetime: lifetime}, true)
+			NextAddress: nextAddress, NextPin: nextPin, Deadline: setupDeadline, Lifetime: lifetime,
+			MaximumAttachments: 4, AttachmentTarget: 1}, true)
 	}
 	publisher := route.Actor{Role: "publisher", ManifestDigest: [32]byte{99}, NetworkID: plan.NetworkID,
 		EpochDigest: plan.Digest, NodeID: [32]byte{90}, ListenAddress: addresses[4],
 		Certificate: identities[4].certificate, UpstreamPin: identities[3].public,
-		ServiceCertificate: identities[4].certificate, Stream: publisherRoute, Deadline: setupDeadline, Lifetime: lifetime}
+		ServiceCertificate: identities[4].certificate, Stream: publisherRoute, Deadline: setupDeadline, Lifetime: lifetime,
+		MaximumAttachments: 4, AttachmentTarget: 1}
 	client := route.Actor{Role: "client", ManifestDigest: [32]byte{99}, Plan: plan,
 		ClientCertificate: identities[5].certificate, PublisherPin: identities[4].public,
 		Stream: clientRoute, Deadline: setupDeadline, Lifetime: lifetime}

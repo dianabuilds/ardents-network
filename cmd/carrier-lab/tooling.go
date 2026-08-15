@@ -37,3 +37,11 @@ func toolingRole(arguments []string) int {
 	}
 	return 0
 }
+
+func pressureMemory(arguments []string) int {
+	if err := tooling.RunMemoryPressure(arguments); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 64
+	}
+	return 0
+}

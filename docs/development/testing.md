@@ -22,9 +22,12 @@ temporary directory and cleans them through `testing.T` ownership. Run all
 process tests with `make e2e`.
 
 The current process suites cover authenticated Network Source refresh, Node
-lifecycle, Route selection and transfer, plus Service command readiness,
-bounded failure, and cleanup. They do not claim a cross-process recovery path
-until a maintained Route Attachment command owns that boundary.
+lifecycle and pressure, Route selection, transfer, reference capacity, and
+fourfold functional scale-up, plus Service command readiness,
+bounded failure, cleanup, and same-connection recovery when the first
+replacement Route Attachment fails. Recovery is exercised through real
+Service and Application commands; only the public Route socket is replaced by
+the scenario-owned fixture.
 
 ## Live
 
@@ -35,11 +38,19 @@ keys, and state before returning. Run them explicitly with `make live` on a
 host with Docker.
 
 Live scenarios are named for behavior such as authenticated Route transfer,
-recovery, impairment, or pressure. They never use numerical stage/profile
-selectors. Each scenario is directly runnable and owns all prerequisites.
-The current network suite checks successful authenticated transfer and
-fail-closed behavior with a missing Route position; additional behavior is
-added here only when its production command seam exists.
+recovery, impairment, role capacity, or pressure. They never use numerical
+stage/profile selectors. Each scenario is directly runnable and owns all prerequisites.
+The current network suite checks successful authenticated transfer,
+fail-closed behavior with a missing Route position, declared concurrent role
+capacity, checked Route pressure/lifecycle under the declared cgroup profile,
+and sustained Service Connections in both data directions through the
+complete Route under real `tc/netem` delay, jitter, loss, and a finite link cap.
+Each impaired direction uses 60-second direct baselines before and after its
+batch, rejects baseline drift above 10%, samples endpoint CPU, RSS, carrier
+traffic, and per-direction bitrate, and asserts Application-visible identity
+and byte-stream continuity. It requires a locally built locked Carrier
+tooling image, selected by its identity label or `ARDENTS_LIVE_TOOL_IMAGE`; this
+is a live-host tool dependency, not a receipt from another test.
 
 ## Commands
 

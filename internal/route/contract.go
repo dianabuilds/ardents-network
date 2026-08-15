@@ -4,6 +4,8 @@ import (
 	"crypto/tls"
 	"io"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
 const observationSchema = "ardents-h3-route-observation-v1"
@@ -39,6 +41,12 @@ type Actor struct {
 	IntroductionSetupNode                         [32]byte
 	Deadline                                      time.Duration
 	Lifetime                                      time.Duration
+	MaximumAttachments                            uint16
+	AttachmentTarget                              uint16
+	ResourceProfile                               string
+	ResourceMeasure                               func() (resource.Sample, error)
+	ResourceCheck                                 func() error
+	PressureInterval                              time.Duration
 }
 
 // Evidence is bounded role-local evidence from one process.
@@ -70,6 +78,9 @@ type Evidence struct {
 	OpaqueDigest             [32]byte          `json:"opaque_digest,omitempty"`
 	ReverseOpaqueBytes       uint64            `json:"reverse_opaque_bytes,omitempty"`
 	ReverseOpaqueDigest      [32]byte          `json:"reverse_opaque_digest,omitempty"`
+	AttachmentsCompleted     uint16            `json:"attachments_completed,omitempty"`
+	AttachmentsRefused       uint16            `json:"attachments_refused,omitempty"`
+	AttachmentsAbandoned     uint16            `json:"attachments_abandoned,omitempty"`
 	CanaryLength             uint32            `json:"canary_length,omitempty"`
 	CanaryDigest             [32]byte          `json:"canary_digest,omitempty"`
 	Canary                   []byte            `json:"canary,omitempty"`
@@ -85,6 +96,10 @@ type Evidence struct {
 	Cleanup                  bool              `json:"cleanup"`
 	Terminal                 string            `json:"terminal"`
 	Error                    string            `json:"error,omitempty"`
+	State                    string            `json:"state,omitempty"`
+	Resource                 *resource.Sample  `json:"resource,omitempty"`
+	ResourceMaximum          *resource.Sample  `json:"resource_maximum,omitempty"`
+	ResourceSamples          uint32            `json:"resource_samples,omitempty"`
 }
 
 // introductionSetup is the retained public transcript of one mutually

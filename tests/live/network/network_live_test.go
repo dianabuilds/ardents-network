@@ -254,7 +254,7 @@ func newLiveFixture(t *testing.T) liveFixture {
 		nodeID := sha256.Sum256([]byte("live-node-" + domain))
 		record, err := BuildRecord(RecordSpec{NetworkID: value.network, NodeID: nodeID,
 			Generation: 1, ValidFrom: value.now.Add(-time.Minute), ValidUntil: value.now.Add(time.Hour),
-			Family: family, Endpoint: value.addresses[index], Capability: 2, Capacity: 1,
+			Family: family, Endpoint: value.addresses[index], Capability: 2, Capacity: 4,
 			PrivateKey: value.identities[index].private})
 		if err != nil {
 			t.Fatal(err)
@@ -290,18 +290,19 @@ func newLiveFixture(t *testing.T) liveFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	value.writePlans(t, plans, public)
+	value.writePlans(t, plans, public, 0)
 	return value
 }
 
-func (value liveFixture) writePlans(t *testing.T, plans string, authority ed25519.PublicKey) {
+func (value liveFixture) writePlans(t *testing.T, plans string, authority ed25519.PublicKey, capacity uint16) {
 	t.Helper()
 	writeLivePlan(t, plans, "publisher", map[string]any{
 		"Role": "publisher", "ManifestDigest": liveHex(value.manifest), "NetworkID": liveHex(value.network),
 		"EpochDigest": liveHex(value.epochDigest), "NodeID": liveHex(value.publisherID), "Listen": value.addresses[4],
 		"Certificate": value.identities[4].cert, "Key": value.identities[4].key,
 		"UpstreamPin": liveHex(value.identities[3].public), "ServiceCertificate": value.identities[4].cert,
-		"ServiceKey": value.identities[4].key, "Deadline": "10s",
+		"ServiceKey": value.identities[4].key, "MaximumAttachments": capacity, "AttachmentTarget": capacity,
+		"ResourceProfile": capacityResourceProfile(capacity), "Deadline": "10s",
 	})
 	for index, position := range value.plan.Positions {
 		upstream := value.identities[5].public
@@ -317,7 +318,8 @@ func (value liveFixture) writePlans(t *testing.T, plans string, authority ed2551
 			"EpochDigest": liveHex(value.epochDigest), "NodeID": liveHex(position.NodeID), "Listen": value.addresses[index],
 			"Certificate": value.identities[index].cert, "Key": value.identities[index].key,
 			"UpstreamPin": liveHex(upstream), "NextNodeID": liveHex(nextID), "Next": nextAddress,
-			"NextPin": liveHex(nextPin), "Deadline": "10s",
+			"NextPin": liveHex(nextPin), "MaximumAttachments": capacity, "AttachmentTarget": capacity,
+			"ResourceProfile": capacityResourceProfile(capacity), "Deadline": "10s",
 		})
 	}
 	writeLivePlan(t, plans, "client", map[string]any{
@@ -327,6 +329,13 @@ func (value liveFixture) writePlans(t *testing.T, plans string, authority ed2551
 		"Certificate": value.identities[5].cert, "Key": value.identities[5].key,
 		"PublisherPin": liveHex(value.identities[4].public), "Deadline": "10s",
 	})
+}
+
+func capacityResourceProfile(capacity uint16) string {
+	if capacity == 0 {
+		return ""
+	}
+	return "h3-np1-v1"
 }
 
 func writeLiveIdentity(t *testing.T, root string, marker byte, now time.Time) liveIdentity {

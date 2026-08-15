@@ -124,7 +124,7 @@ func applyRecoveryOutcome(result *Result, outcome recoveryOutcome) {
 
 func validateStreams(input Request) error {
 	sendBytes, receiveBytes := streamBounds(input)
-	if input.Route == nil || input.Application == nil || sendBytes > maximumStream || receiveBytes > maximumStream ||
+	if input.Route == nil || input.Application == nil || sendBytes > MaximumStreamBytes || receiveBytes > MaximumStreamBytes ||
 		(sendBytes == 0 && receiveBytes == 0) {
 		return errors.New("stream or byte bound is missing")
 	}

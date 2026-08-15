@@ -1,8 +1,7 @@
 SHELL := /bin/sh
 
-# Development quality gates are intentionally container-free. Carrier Lab
-# Docker qualification runs explicitly after a source freeze; see
-# docs/development/carrier-lab-preflight.md.
+# Fast product checks are container-free. Long live container scenarios remain
+# an explicit independent test surface; historical Carrier Lab is separate.
 
 QUALITY_CACHE_ROOT ?= $(if $(TEMP),$(TEMP),/tmp)/ardents-network-quality
 export GOENV := off
@@ -40,7 +39,7 @@ lab-test:
 	go test $(LAB_PACKAGES) -short -shuffle=on -count=1
 
 live:
-	go test -tags=live ./tests/live/... -count=1 -timeout=30m
+	go test -tags=live ./tests/live/... -count=1 -timeout=80m
 
 test: unit e2e
 

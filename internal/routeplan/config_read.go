@@ -23,14 +23,33 @@ type actorPlan struct {
 	ExcludedIdentities                                                      []string
 	Threshold                                                               int
 	Attachments                                                             uint32
+	MaximumAttachments                                                      uint16
+	AttachmentTarget                                                        uint16
+	ResourceProfile                                                         string
 	AttachmentPlans                                                         []attachmentPlan
 	ConcurrentAttachments                                                   bool
 }
 
+const (
+	maximumAttachmentProcesses = 4
+	maximumListenerCapacity    = 16
+)
+
 func (value actorPlan) validateRoleLocal() error {
-	if value.Attachments > 4 || len(value.AttachmentPlans) > 4 ||
+	if value.Attachments > maximumAttachmentProcesses || len(value.AttachmentPlans) > maximumAttachmentProcesses ||
 		(value.Attachments != 0 && len(value.AttachmentPlans) != 0) {
 		return errors.New("route Attachment process count is outside its bound")
+	}
+	if value.MaximumAttachments > maximumListenerCapacity ||
+		(value.Role == "client" && value.MaximumAttachments > 1) {
+		return errors.New("route listener capacity is outside its bound")
+	}
+	if value.AttachmentTarget > value.MaximumAttachments ||
+		(value.AttachmentTarget != 0 && value.MaximumAttachments == 0) {
+		return errors.New("route Attachment target is outside declared capacity")
+	}
+	if value.ResourceProfile != "" && value.ResourceProfile != "h3-np1-v1" {
+		return errors.New("route resource profile is not supported")
 	}
 	if value.ConcurrentAttachments && (value.Role != "publisher" || len(value.AttachmentPlans) < 2) {
 		return errors.New("concurrent Route Attachments require one bounded publisher plan")

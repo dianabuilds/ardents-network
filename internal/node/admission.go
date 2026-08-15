@@ -48,11 +48,14 @@ func resolveConfig(input Config) (runtimeConfig, error) {
 	}
 	var guard *resource.Guard
 	if enforcePressure {
-		guard, err = resource.New(resource.Config{Profile: input.ResourceProfile, Interval: input.PollInterval})
+		guard, err = resource.New(resource.Config{Profile: input.ResourceProfile, Interval: input.PollInterval,
+			Measure: input.ResourceMeasure})
 		if err != nil {
 			return runtimeConfig{}, err
 		}
-		input.CheckPlacement = guard.Check
+		if input.CheckPlacement == nil {
+			input.CheckPlacement = guard.Check
+		}
 	} else if input.CheckPlacement == nil {
 		input.CheckPlacement = func() error { return nil }
 	}

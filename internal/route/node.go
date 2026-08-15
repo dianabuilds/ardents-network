@@ -3,7 +3,6 @@ package route
 import (
 	"context"
 	"crypto/sha256"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -21,6 +20,9 @@ func serveNode(ctx context.Context, input Actor, ready func(Evidence)) (Evidence
 		NodeID: input.NodeID, PreviousPin: input.UpstreamPin, NextNodeID: input.NextNodeID}
 	if err := validateNode(input); err != nil {
 		return observation, err
+	}
+	if input.MaximumAttachments > 1 {
+		return serveNodeCapacity(ctx, input, ready, observation)
 	}
 	listener, err := net.Listen("tcp", input.ListenAddress)
 	if err != nil {
@@ -48,48 +50,11 @@ func serveNode(ctx context.Context, input Actor, ready func(Evidence)) (Evidence
 		upstream.Close()
 		return observation, fmt.Errorf("close %s bounded Attachment listener: %w", input.Role, err)
 	}
-	defer upstream.Close()
-	if err := configureCarrierLiveness(upstream); err != nil {
-		return observation, fmt.Errorf("configure upstream Carrier liveness: %w", err)
+	result, err := carryNodeConnection(ctx, input, upstream, observation, func() bool { return true })
+	if err == nil {
+		result.AttachmentsCompleted = 1
 	}
-	cancelUpstream := context.AfterFunc(ctx, func() { _ = upstream.Close() })
-	defer cancelUpstream()
-	deadline := time.Now().Add(input.Deadline)
-	_ = upstream.SetDeadline(deadline)
-	securedUpstream := tls.Server(upstream, serverTLS(input.Certificate, input.UpstreamPin))
-	if err := securedUpstream.HandshakeContext(ctx); err != nil {
-		return observation, fmt.Errorf("authenticate upstream: %w", err)
-	}
-	if err := acceptLegBinding(securedUpstream, input.NetworkID, input.EpochDigest, input.NodeID); err != nil {
-		return observation, fmt.Errorf("accept authenticated leg binding: %w", err)
-	}
-	downstream, err := dialTLS(ctx, input.NextAddress, input.Certificate, input.NextPin, input.Deadline)
-	if err != nil {
-		return observation, fmt.Errorf("authenticate next role: %w", err)
-	}
-	defer downstream.Close()
-	cancelDownstream := context.AfterFunc(ctx, func() { _ = downstream.Close() })
-	defer cancelDownstream()
-	_ = downstream.SetDeadline(deadline)
-	if err := confirmLegBinding(downstream, input.NetworkID, input.EpochDigest, input.NextNodeID); err != nil {
-		return observation, fmt.Errorf("confirm next authenticated leg binding: %w", err)
-	}
-	if err := errors.Join(securedUpstream.SetDeadline(time.Time{}), downstream.SetDeadline(time.Time{})); err != nil {
-		return observation, fmt.Errorf("clear %s authenticated leg setup deadlines: %w", input.Role, err)
-	}
-	observation.PeerAuthenticated = true
-	forward, reverse, err := relayOpaque(securedUpstream, downstream)
-	observation.OpaqueBytes, observation.OpaqueDigest = forward.count, forward.digest
-	observation.ReverseOpaqueBytes, observation.ReverseOpaqueDigest = reverse.count, reverse.digest
-	if err != nil {
-		if ctx.Err() != nil {
-			return observation, ctx.Err()
-		}
-		if !benignStreamError(err) {
-			return observation, err
-		}
-	}
-	return observation, nil
+	return result, err
 }
 
 func validateNode(input Actor) error {
@@ -103,9 +68,13 @@ func validateNode(input Actor) error {
 	for _, role := range routeRoles {
 		roleOK = roleOK || input.Role == role
 	}
-	if !roleOK || input.NetworkID == [32]byte{} || input.EpochDigest == [32]byte{} || input.NodeID == [32]byte{} ||
+	if !roleOK || input.MaximumAttachments > maximumRoleAttachments || input.NetworkID == [32]byte{} ||
+		input.EpochDigest == [32]byte{} || input.NodeID == [32]byte{} ||
 		input.UpstreamPin == [32]byte{} || input.NextNodeID == [32]byte{} || input.NextPin == [32]byte{} {
 		return errors.New("role-local carrier duty is invalid")
+	}
+	if err := validateCapacity(input); err != nil {
+		return err
 	}
 	if input.Role == "introduction" {
 		present := input.IntroductionSetupSocket != ""

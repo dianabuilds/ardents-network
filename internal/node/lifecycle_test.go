@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/node/probe"
+	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
 const (
@@ -148,6 +149,45 @@ func TestDrainCancelsEstablishedProbeAtDeadline(t *testing.T) {
 	_ = established.Close()
 }
 
+func TestProtectPreservesEstablishedWorkAndRejectsNewAdmission(t *testing.T) {
+	fixture := newLifecycleFixture(t)
+	events := make(chan Event, 32)
+	fixture.config.Current = func() (Facts, error) { return fixture.snapshot, nil }
+	fixture.config.Emit = func(_ context.Context, event Event) error { events <- event; return nil }
+	fixture.config.ResourceProfile = "h3-np1-v1"
+	fixture.config.ResourceMeasure = func() (resource.Sample, error) {
+		return resource.Sample{HighEvents: 1}, nil
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	result := make(chan Result, 1)
+	go func() { value, _ := Run(ctx, fixture.config); result <- value }()
+	waitForState(t, events, "READY")
+	established := dialProbe(t, fixture)
+	waitForState(t, events, "PROTECT")
+	if connection, err := tls.Dial("tcp", fixture.config.Probe.ListenAddress, probeClientTLS(fixture)); err == nil {
+		_ = connection.Close()
+		t.Fatal("PROTECT accepted new expensive work")
+	}
+	request := encodeProbeRequest(fixture.snapshot, [32]byte{11}, []byte("established work survives"))
+	if _, err := established.Write(request); err != nil {
+		t.Fatal(err)
+	}
+	response := make([]byte, testProbeHeaderBytes+sha256.Size)
+	if _, err := io.ReadFull(established, response); err != nil {
+		t.Fatalf("PROTECT interrupted established work: %v", err)
+	}
+	_ = established.Close()
+	cancel()
+	select {
+	case terminal := <-result:
+		if terminal.State != "WITHDRAWN" {
+			t.Fatalf("terminal result = %+v", terminal)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("protected Node did not shut down")
+	}
+}
+
 func TestRunFailsBeforeReadinessOnKeyMismatch(t *testing.T) {
 	fixture := newLifecycleFixture(t)
 	fixture.snapshot.NodePublicKey[0]++
@@ -228,7 +268,7 @@ func newLifecycleFixture(t *testing.T) *lifecycleFixture {
 	fixture := &lifecycleFixture{snapshot: snapshot, serverRoots: roots, client: client.certificate, serverName: "node.test"}
 	fixture.config = Config{NetworkID: snapshot.NetworkID, NodeID: snapshot.NodeID, IdentityKey: identityPrivate,
 		Probe: probe.Config{ListenAddress: address, Certificate: server.certificate, ClientRootPEM: ca.pem,
-			ClientKeyPins: [][32]byte{sha256.Sum256(pinBytes)}, MaximumDuty: time.Second, DrainTimeout: 100 * time.Millisecond},
+			ClientKeyPins: [][32]byte{sha256.Sum256(pinBytes)}, MaximumDuty: 2 * time.Second, DrainTimeout: time.Second},
 		PollInterval: 10 * time.Millisecond, Quarantine: time.Millisecond,
 		CheckPlacement: func() error { return nil }}
 	return fixture

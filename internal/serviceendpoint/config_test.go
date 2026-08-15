@@ -40,16 +40,16 @@ func TestEndpointPlanRejectsUnknownAndCrossRoleInputs(t *testing.T) {
 	}
 }
 
-func TestEndpointPlanAcceptsFrozenFourMiBStreamBound(t *testing.T) {
+func TestEndpointPlanAcceptsSustainedLiveStreamBound(t *testing.T) {
 	plan := endpointPlan{Role: "client", ApplicationSocket: "app", RouteSocket: "route", PublicationFile: "publication",
 		IntroductionPublic: "introduction", Target: "target", At: "2033-05-18T03:33:20Z", Deadline: "5s",
-		BytesEachDirection: 4 << 20}
+		BytesEachDirection: 256 << 20}
 	if err := plan.validate(); err != nil {
-		t.Fatalf("four MiB stream bound rejected: %v", err)
+		t.Fatalf("sustained live stream bound rejected: %v", err)
 	}
 	plan.BytesEachDirection++
 	if err := plan.validate(); err == nil {
-		t.Fatal("stream above four MiB was accepted")
+		t.Fatal("stream above the product bound was accepted")
 	}
 }
 

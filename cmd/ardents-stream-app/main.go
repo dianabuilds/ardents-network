@@ -22,8 +22,11 @@ func main() {
 }
 
 func run(arguments []string, output io.Writer) error {
+	if len(arguments) > 0 && (arguments[0] == "direct-listen" || arguments[0] == "direct-connect") {
+		return runDirectCommand(arguments, output)
+	}
 	if len(arguments) != 7 || arguments[0] != "run" {
-		return errors.New("usage: ardents-stream-app run <role> <socket> <send-seed-file> <expect-seed-file> <send-bytes> <receive-bytes>")
+		return errors.New("usage: ardents-stream-app run <role> <socket> <send-seed-file> <expect-seed-file> <send-bytes> <receive-bytes> | direct-<listen|connect> <address> <seed-file> <bytes>")
 	}
 	sendSeed, err := readSeed(arguments[3])
 	if err != nil {

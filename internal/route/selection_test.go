@@ -1,6 +1,12 @@
 package route
 
-import "testing"
+import (
+	"strconv"
+	"testing"
+	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+)
 
 func TestValidateRejectsIncompleteOrRepeatedRoutePositions(t *testing.T) {
 	valid := Plan{NetworkID: [32]byte{1}, Generation: "generation", Epoch: 1, Digest: [32]byte{2},
@@ -34,5 +40,36 @@ func TestValidateRejectsIncompleteOrRepeatedRoutePositions(t *testing.T) {
 				t.Fatal("invalid Route validated")
 			}
 		})
+	}
+}
+
+func TestMaximumExclusionUnionRetainsFourAttachmentFloor(t *testing.T) {
+	now := time.Now().UTC()
+	view := state.Snapshot{Generation: "generation", NetworkID: [32]byte{1}, Epoch: 1, Digest: [32]byte{2},
+		ValidUntil: now.Add(time.Hour), Profile: "h3-route-tracer-v1", ViewRoot: [32]byte{3},
+		Freshness: "fresh", CandidateCount: 8}
+	for index, role := range routeRoles {
+		for alternative := range 2 {
+			candidate := &view.Candidates[index*2+alternative]
+			candidate.NodeID = [32]byte{byte(index*2 + alternative + 1)}
+			candidate.PublicKey = [32]byte{byte(index*2 + alternative + 21)}
+			candidate.Family = role + string(rune('a'+alternative))
+			candidate.Endpoint = "127.0.0.1:" + strconv.Itoa(index*2+alternative+1)
+			candidate.Capacity, candidate.Domain = 4, role
+			candidate.ValidFrom, candidate.ValidUntil = now.Add(-time.Minute), now.Add(time.Hour)
+		}
+	}
+	selection := Selection{Seed: [32]byte{4}, At: now,
+		ExcludedIdentities: [][32]byte{view.Candidates[0].NodeID, view.Candidates[4].NodeID},
+		ExcludedFamilies:   []string{view.Candidates[2].Family, view.Candidates[6].Family},
+		ExcludedDomains:    []string{"bridge"}}
+	plan, err := Select(view, selection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, position := range plan.Positions {
+		if position.Capacity < 4 {
+			t.Fatalf("post-exclusion position has capacity %d: %+v", position.Capacity, position)
+		}
 	}
 }

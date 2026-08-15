@@ -1,15 +1,17 @@
 # Horizon 3 Stage 4 implementation brief
 
-Status: **authorized 2026-08-13 for S4.1–S4.3 recovery development; S4.4 remains
-gated on a separately accepted R-023 P3-D3b4 decision**
+Status: **Stage 4 development and local container evidence complete on
+2026-08-15; official controlled-Ubuntu qualification remains evidence-gated**
 
 Authoritative inputs: accepted ADRs, R-001, R-002, R-004,
 R-006, R-023, R-024, R-029 through R-031,
 [R-032](../research/records/r-032-h3-same-connection-recovery.md), the H3
 technical design, operating model, threat model, package map, dependency
 register, and repository rules. The Product Owner accepted R-032 and authorized
-this brief on 2026-08-13. That acceptance authorizes S4.1–S4.3 only and does not
-authorize S4.4 or any qualification/release claim.
+this brief on 2026-08-13. On 2026-08-15 the Product Owner authorized completion
+of all Stage 4 development. R-034 assigns Bridge-specific capacity to Stage 5;
+S4.4 covers the infrastructure roles implemented through Stage 4 and creates no
+qualification or release claim before its evidence gates pass.
 
 ## Entry gate and completion levels
 
@@ -407,14 +409,12 @@ threshold; they do not claim a qualified percentile from a smaller sample.
 
 ### S4.4 — Pressure, role capacity, and lifecycle
 
-Do not invent numerical Node floors in code or this brief. S4.1–S4.3 recovery
-counters are evidence inputs only; they do not satisfy P3-D3b4's prerequisite.
-Before S4.4 begins, the complete R-013 bounded prototype must make Entry,
-Interior, Rendezvous, Introduction, discovery, and Bridge work measurable on
-the accepted topology. Amend R-023 P3-D3b4 or create its explicitly linked
-follow-up record only from that complete evidence. The accepted decision must
-freeze each required production role/subrole separately, including Destination
-Resolution where the contract treats it as a Rendezvous subrole:
+R-038 now freezes P3-D3b4 for the Initiator, Introduction, Rendezvous, and
+Responder roles implemented through Stage 4. R-034 assigns Bridge-specific
+capacity to Stage 5; Destination Resolution and discovery receive no invented
+floor before their maintained roles exist. S4.1–S4.3 recovery counters remain
+evidence inputs rather than capacity by themselves. The accepted R-038 decision
+freezes for each maintained Stage 4 role:
 
 - the useful-work unit and offered-load mix;
 - setup, live-connection, forwarded-byte, recovery, abandoned-work, and control
@@ -443,9 +443,8 @@ resource collapse, never classify by IP/account/stable User identity, and never
 evict or silently downgrade established connections to manufacture capacity.
 
 S4.4 capacity evidence must run on the accepted controlled Ubuntu reference
-host and complete accepted split-leg/Introduction topology; Windows Docker
-Desktop or the four-position recovery fixture can provide development evidence
-only. Full Stage 4 completion requires S4.4 under that later accepted contract.
+host and complete maintained Stage 4 topology; Windows Docker Desktop remains
+development evidence only. Full Stage 4 completion requires S4.4 under R-038.
 A recovery-only pass leaves Stage 4 explicitly partial.
 
 ## TDD behavior order
@@ -494,7 +493,7 @@ protocol/vector tests may verify canonical encodings and cryptographic adapter
 use, but must not create a second exported testing interface. Run the smallest
 affected tests after each behavior, `make quick-check` throughout, and
 `make check` before every slice integration using the repository-approved Go
-1.26.5 toolchain.
+1.26.6 toolchain.
 
 ## Controlled development topology
 
@@ -793,9 +792,9 @@ Recovery development is complete only when:
 
 Full Stage 4 is complete only when, in addition:
 
-- the complete bounded R-013 role prototype exists and R-023 P3-D3b4 accepts
-  exact per-role useful-work and effective post-exclusion-capacity contracts
-  from complete role evidence, with recovery measurements as one input;
+- R-038's exact useful-work and effective post-exclusion-capacity contracts
+  pass for every infrastructure role implemented through Stage 4, with recovery
+  measurements as one input and Bridge-specific capacity remaining in Stage 5;
 - S4.4 passes those reference-role capacity, hostile pressure,
   `NORMAL/PROTECT/DRAIN/EXIT`, leak/GC, established-work, and stronger-host
   scale-up cells on the accepted Ubuntu reference host and complete accepted

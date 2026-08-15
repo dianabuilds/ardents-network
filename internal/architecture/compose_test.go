@@ -52,14 +52,16 @@ func TestLiveNetworkComposeContract(t *testing.T) {
 		"client:", "initiator:", "introduction:", "rendezvous:", "responder:", "publisher:",
 		"${ARDENTS_LIVE_IMAGE:?}", "${ARDENTS_LIVE_ROOT:?}", "route_net:", "internal: true",
 		"read_only: true", "cap_drop: [ALL]", "no-new-privileges:true", "restart: \"no\"",
-		"tmpfs:", "cpus:", "mem_limit:", "pids_limit:", ":/run/ardents/plans:ro", ":/run/ardents/secrets:ro",
+		"tmpfs:", "cpus:", "mem_limit:", "pids_limit:", "network_mode: none",
+		":/run/ardents/plans:ro", ":/run/ardents/secrets:ro",
 	}
 	for _, value := range required {
 		if !bytes.Contains(compose, []byte(value)) {
 			t.Errorf("live network Compose is missing %q", value)
 		}
 	}
-	for _, forbidden := range []string{"ports:", "privileged:", "/var/run/docker.sock", "network_mode:", "external: true", "profiles:", "verifier:", "qualification", "s4"} {
+	for _, forbidden := range []string{"ports:", "privileged:", "/var/run/docker.sock", "network_mode: service:",
+		"network_mode: host", "external: true", "profiles:", "verifier:", "qualification", "s4"} {
 		if bytes.Contains(compose, []byte(forbidden)) {
 			t.Errorf("live network Compose contains forbidden setting %q", forbidden)
 		}

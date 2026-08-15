@@ -44,6 +44,9 @@ type Config struct {
 	PollInterval    time.Duration
 	Quarantine      time.Duration
 	ResourceProfile string
+	// ResourceMeasure supplies the process/cgroup observation adapter. Nil uses
+	// the operating-system sampler for ResourceProfile.
+	ResourceMeasure func() (resource.Sample, error)
 	Now             func() time.Time
 	CheckPlacement  func() error
 	// Emit must honor ctx cancellation and return before its deadline.

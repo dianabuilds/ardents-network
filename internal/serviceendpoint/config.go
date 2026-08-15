@@ -95,9 +95,10 @@ func (value endpointPlan) connectionLifetime(deadline time.Duration) (time.Durat
 
 func (value endpointPlan) validStreamBounds() bool {
 	if value.SendBytes == 0 && value.ReceiveBytes == 0 {
-		return value.BytesEachDirection > 0 && value.BytesEachDirection <= 4<<20
+		return value.BytesEachDirection > 0 && value.BytesEachDirection <= serviceconn.MaximumStreamBytes
 	}
-	return value.BytesEachDirection == 0 && value.SendBytes <= 4<<20 && value.ReceiveBytes <= 4<<20 &&
+	return value.BytesEachDirection == 0 && value.SendBytes <= serviceconn.MaximumStreamBytes &&
+		value.ReceiveBytes <= serviceconn.MaximumStreamBytes &&
 		(value.SendBytes > 0 || value.ReceiveBytes > 0)
 }
 

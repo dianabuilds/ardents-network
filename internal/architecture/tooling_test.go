@@ -11,7 +11,7 @@ import (
 
 func TestCarrierLabToolingPackageHasOneSmallInterface(t *testing.T) {
 	t.Parallel()
-	assertPackageExports(t, "internal/lab/tooling", "NativeImageReceipt", "VerifyInputs", "VerifyNativeImages", "RunSmoke", "RunRole", "RunNativeRole")
+	assertPackageExports(t, "internal/lab/tooling", "NativeImageReceipt", "VerifyInputs", "VerifyNativeImages", "RunSmoke", "RunRole", "RunNativeRole", "RunMemoryPressure")
 }
 
 func TestCarrierLabContainerSourcesHaveFourResponsibilities(t *testing.T) {

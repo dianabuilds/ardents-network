@@ -34,7 +34,8 @@ func (raw actorPlan) listener() (route.Actor, func() error, error) {
 		return route.Actor{}, nil, fmt.Errorf("parse %s Route lifetime: %w", raw.Role, err)
 	}
 	actor := route.Actor{Role: raw.Role, ListenAddress: raw.Listen, Certificate: certificate,
-		Deadline: deadline, Lifetime: lifetime}
+		Deadline: deadline, Lifetime: lifetime, MaximumAttachments: raw.MaximumAttachments,
+		AttachmentTarget: raw.AttachmentTarget, ResourceProfile: raw.ResourceProfile}
 	actor.RawAttachment = raw.RawAttachment
 	actor.AcknowledgementSocket, actor.AcknowledgementKeyFile = raw.AcknowledgementSocket, raw.AcknowledgementKey
 	actor.IntroductionSetupSocket = raw.IntroductionSetupSocket

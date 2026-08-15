@@ -107,7 +107,7 @@ func executeConcurrent(ctx context.Context, tasks []concurrentTask, encode func(
 		return terminalErr
 	}
 	if successes == 0 {
-		return errors.New("every concurrent publisher Attachment failed")
+		return errors.New("every concurrent Route Attachment failed")
 	}
 	return nil
 }

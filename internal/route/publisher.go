@@ -2,8 +2,6 @@ package route
 
 import (
 	"context"
-	"crypto/sha256"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
@@ -17,6 +15,9 @@ func servePublisher(ctx context.Context, input Actor, ready func(Evidence)) (Evi
 		NodeID: input.NodeID, PreviousPin: input.UpstreamPin}
 	if err := validatePublisher(input); err != nil {
 		return observation, err
+	}
+	if input.MaximumAttachments > 1 {
+		return servePublisherCapacity(ctx, input, ready, observation)
 	}
 	listener, err := net.Listen("tcp", input.ListenAddress)
 	if err != nil {
@@ -43,61 +44,11 @@ func servePublisher(ctx context.Context, input Actor, ready func(Evidence)) (Evi
 		connection.Close()
 		return observation, fmt.Errorf("close publisher bounded Attachment listener: %w", err)
 	}
-	defer connection.Close()
-	if err := configureCarrierLiveness(connection); err != nil {
-		return observation, fmt.Errorf("configure responder Carrier liveness: %w", err)
+	result, err := carryPublisherConnection(ctx, input, connection, observation, func() bool { return true })
+	if err == nil {
+		result.AttachmentsCompleted = 1
 	}
-	cancelConnection := context.AfterFunc(ctx, func() { _ = connection.Close() })
-	defer cancelConnection()
-	deadline := time.Now().Add(input.Deadline)
-	_ = connection.SetDeadline(deadline)
-	outer := tls.Server(connection, serverTLS(input.Certificate, input.UpstreamPin))
-	if err := outer.HandshakeContext(ctx); err != nil {
-		return observation, fmt.Errorf("authenticate responder: %w", err)
-	}
-	if err := acceptLegBinding(outer, input.NetworkID, input.EpochDigest, input.NodeID); err != nil {
-		return observation, fmt.Errorf("accept authenticated responder leg: %w", err)
-	}
-	if input.RawAttachment {
-		if err := outer.SetDeadline(time.Time{}); err != nil {
-			return observation, fmt.Errorf("clear publisher raw Attachment setup deadline: %w", err)
-		}
-		observation.PeerAuthenticated = true
-		forward, reverse, streamErr := relayOpaque(outer, input.Stream)
-		observation.OpaqueBytes, observation.OpaqueDigest = forward.count, forward.digest
-		observation.ReverseOpaqueBytes, observation.ReverseOpaqueDigest = reverse.count, reverse.digest
-		if streamErr != nil && !benignStreamError(streamErr) {
-			return observation, fmt.Errorf("carry raw publisher attachment: %w", streamErr)
-		}
-		return observation, nil
-	}
-	inner := tls.Server(outer, &tls.Config{MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13,
-		Certificates: []tls.Certificate{input.ServiceCertificate}, SessionTicketsDisabled: true})
-	if err := inner.HandshakeContext(ctx); err != nil {
-		return observation, fmt.Errorf("accept end-to-end canary session: %w", err)
-	}
-	if err := inner.SetDeadline(time.Time{}); err != nil {
-		return observation, fmt.Errorf("clear publisher end-to-end setup deadline: %w", err)
-	}
-	observation.PeerAuthenticated = true
-	if input.Stream != nil {
-		forward, reverse, streamErr := relayOpaque(inner, input.Stream)
-		observation.OpaqueBytes, observation.OpaqueDigest = forward.count, forward.digest
-		observation.ReverseOpaqueBytes, observation.ReverseOpaqueDigest = reverse.count, reverse.digest
-		if streamErr != nil && !benignStreamError(streamErr) {
-			return observation, fmt.Errorf("carry bounded publisher stream: %w", streamErr)
-		}
-		return observation, nil
-	}
-	value, err := readCanary(inner)
-	if err != nil {
-		return observation, fmt.Errorf("read canary: %w", err)
-	}
-	observation.CanaryLength, observation.CanaryDigest = uint32(len(value)), sha256.Sum256(value)
-	if err := writeReceipt(inner, value); err != nil {
-		return observation, fmt.Errorf("write canary receipt: %w", err)
-	}
-	return observation, nil
+	return result, err
 }
 
 func validatePublisher(input Actor) error {
@@ -108,9 +59,13 @@ func validatePublisher(input Actor) error {
 		input.IntroductionServicePublic != [32]byte{} {
 		return errors.New("publisher received information outside its role-local duty")
 	}
-	if input.Role != "publisher" || input.NetworkID == [32]byte{} || input.EpochDigest == [32]byte{} ||
+	if input.Role != "publisher" || input.MaximumAttachments > maximumRoleAttachments ||
+		input.NetworkID == [32]byte{} || input.EpochDigest == [32]byte{} ||
 		input.NodeID == [32]byte{} || input.UpstreamPin == [32]byte{} {
 		return errors.New("publisher responder identity is required")
+	}
+	if err := validateCapacity(input); err != nil {
+		return err
 	}
 	if err := validateEndpoint(input.ListenAddress); err != nil {
 		return err
@@ -119,6 +74,13 @@ func validatePublisher(input Actor) error {
 		return err
 	}
 	setup := input.IntroductionSetupSocket != ""
+	target := input.AttachmentTarget
+	if target == 0 {
+		target = max(input.MaximumAttachments, 1)
+	}
+	if target > 1 && (input.RawAttachment || input.Stream != nil || setup) {
+		return errors.New("publisher multi-Attachment duty cannot share scoped stream or setup state")
+	}
 	if setup != (input.IntroductionSetupPeer != [32]byte{}) || setup != (input.IntroductionSetupNode != [32]byte{}) {
 		return errors.New("publisher sealed setup service duty is incomplete")
 	}
