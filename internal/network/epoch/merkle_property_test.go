@@ -10,7 +10,7 @@ import (
 
 func TestFrozenAssignmentTransition(t *testing.T) {
 	t.Parallel()
-	path := filepath.Join("..", "..", "..", "tests", "e2e", "network-state", "testdata", "assignment-transition.json")
+	path := filepath.Join("testdata", "assignment-transition.json")
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)

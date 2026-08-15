@@ -88,9 +88,8 @@ The maintained product Modules are:
 | `internal/planfile` | Own bounded operator-plan and credential decoding shared by command adapters. |
 
 Cross-process tests live under `tests/e2e/<behavior>/`. Live Docker inputs and
-their build-tagged Go tests live under `tests/live/`. Shared generated-input
-builders live under `tests/fixtures/`; unlike runtime packages, these fixture
-packages require real test callers rather than a production caller. Images,
+their build-tagged Go tests live under `tests/live/`. Test-only fixture builders
+remain `_test.go` implementation owned by the scenario that uses them. Images,
 keys, state, captures, and generated manifests remain outside Git.
 
 This is a trunk, not a complete future directory tree. Route, Carrier,
@@ -426,8 +425,7 @@ controls, Docker assumptions, or experiment state.
 - A real-container network test lives under `tests/live/`, is selected by the
   `live` build tag, owns its complete lifecycle, and can run independently.
 - `testdata/` lives directly below the Module, command, or e2e test that owns
-  it. A narrowly scoped shared builder may live in `tests/fixtures/` when at
-  least two test surfaces use it.
+  it. Test surfaces do not import fixtures or golden evidence from each other.
 - Test Adapters satisfy the same Interface as real callers. Tests do not reach
   through a Seam to assert private implementation state.
 

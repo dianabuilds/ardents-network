@@ -48,8 +48,6 @@ Only purpose-named `cmd/*-lab` adapters may start laboratory Modules.
 | `internal/resource` | `package resource` | Own shared OS/runtime measurement, fixed H3 placement, hysteresis, and the finite NORMAL/PROTECT/DRAIN pressure decision behind `Check` and `Observe`; consumers own readiness, admission, drain, and shutdown reactions. | standard library |
 | `internal/architecture` | `package architecture` | Test repository structure, names, dependencies, formatting, and quality wiring. | standard library |
 | `internal/applicationipc` | `package applicationipc` | Encode and decode bounded local Application Interface control and Route-opaque Connection Result framing. | standard library |
-| `tests/fixtures/networkfixture` | `package networkfixture` | Build ephemeral authenticated Network State records and Epochs shared by process and live-container tests. | `internal/network/epoch`, `internal/network/epoch/assignment`, `internal/network/epoch/merkle`, standard library |
-
 ## Carrier Lab command registry
 
 | Command | Owning Module | Fixed responsibility |

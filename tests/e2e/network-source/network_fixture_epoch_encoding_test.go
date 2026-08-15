@@ -1,4 +1,4 @@
-package networkfixture
+package state_test
 
 import (
 	"bytes"

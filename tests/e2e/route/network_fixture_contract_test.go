@@ -1,4 +1,4 @@
-package networkfixture
+package route_test
 
 import (
 	"crypto/ed25519"

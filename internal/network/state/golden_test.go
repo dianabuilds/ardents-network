@@ -16,7 +16,7 @@ import (
 
 func TestProductAcceptsFrozenOfflineVector(t *testing.T) {
 	t.Parallel()
-	base := filepath.Join("..", "..", "..", "tests", "e2e", "network-state", "testdata")
+	base := "testdata"
 	epoch := readGoldenHex(t, filepath.Join(base, "epoch.hex"))
 	inputs := make([][]byte, 8)
 	for index := range inputs {

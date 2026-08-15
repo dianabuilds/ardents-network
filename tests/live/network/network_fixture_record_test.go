@@ -1,4 +1,6 @@
-package networkfixture
+//go:build live
+
+package network_test
 
 import (
 	"bytes"

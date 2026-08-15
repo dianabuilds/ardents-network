@@ -20,7 +20,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/epoch/assignment"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
-	epochfixture "github.com/dianabuilds/ardents-network/tests/fixtures/networkfixture"
 )
 
 type processIdentity struct {
@@ -58,11 +57,11 @@ func newProcessFixture(t *testing.T) processFixture {
 	}
 	domains := []string{"initiator", "introduction", "rendezvous", "responder"}
 	seed := sha256.Sum256([]byte("h3-route-domain-assignment"))
-	inputs, accepted := make([][]byte, 0, 4), make([]epochfixture.Record, 0, 4)
+	inputs, accepted := make([][]byte, 0, 4), make([]Record, 0, 4)
 	for index, domain := range domains {
 		family := familyFor(t, value.network, seed, domain, domains)
 		nodeID := sha256.Sum256([]byte("route-node-" + domain))
-		record, err := epochfixture.BuildRecord(epochfixture.RecordSpec{NetworkID: value.network, NodeID: nodeID,
+		record, err := BuildRecord(RecordSpec{NetworkID: value.network, NodeID: nodeID,
 			Generation: 1, ValidFrom: value.now.Add(-time.Minute), ValidUntil: value.now.Add(time.Hour),
 			Family: family, Endpoint: value.addresses[index], Capability: 2, Capacity: 1,
 			PrivateKey: value.identities[index].private})
@@ -71,7 +70,7 @@ func newProcessFixture(t *testing.T) processFixture {
 		}
 		inputs, accepted = append(inputs, record.Raw), append(accepted, record)
 	}
-	epoch, err := epochfixture.BuildEpoch(epochfixture.EpochSpec{NetworkID: value.network, Number: 1,
+	epoch, err := BuildEpoch(EpochSpec{NetworkID: value.network, Number: 1,
 		ValidFrom: value.now.Add(-time.Minute), ValidUntil: value.now.Add(time.Hour), Inputs: inputs,
 		Accepted: accepted, AssignmentSeed: seed, Profile: "h3-route-tracer-v1", Domains: domains,
 		Authorities: []ed25519.PrivateKey{value.authority}})

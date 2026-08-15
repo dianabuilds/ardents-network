@@ -10,8 +10,6 @@ import (
 	"sort"
 	"testing"
 	"time"
-
-	epochfixture "github.com/dianabuilds/ardents-network/tests/fixtures/networkfixture"
 )
 
 type verifierFixture struct {
@@ -25,7 +23,7 @@ type verifierFixture struct {
 	epoch            uint64
 	materializations [][]byte
 	inputs           [][]byte
-	accepted         []epochfixture.Record
+	accepted         []Record
 	rejections       map[uint32]uint16
 }
 
@@ -42,7 +40,7 @@ func writeVerifierFixtureAt(t *testing.T, unix int64) verifierFixture {
 		"family-e", "127.0.0.1:4105", 2, now.Add(-time.Minute), now.Add(time.Hour))
 	future := verifierNodeRecord(t, network, 0x51, "family-f", "127.0.0.1:4106", 2, now.Add(time.Minute), now.Add(time.Hour))
 	inputs := [][]byte{first.Raw, rejected.Raw, second.Raw, []byte("malformed"), duplicate.Raw, duplicate.Raw, sourceCollision.Raw, future.Raw}
-	accepted := []epochfixture.Record{first, second}
+	accepted := []Record{first, second}
 	sort.Slice(accepted, func(i, j int) bool { return bytes.Compare(accepted[i].NodeID[:], accepted[j].NodeID[:]) < 0 })
 	rejections := map[uint32]uint16{1: 6, 3: 1, 4: 8, 5: 8, 6: 7, 7: 4}
 	built := buildVerifierEpoch(t, network, 1, [32]byte{}, now, inputs, accepted, rejections, authority)
@@ -72,10 +70,10 @@ func writeVerifierSuccessor(t *testing.T, previous verifierFixture) verifierFixt
 }
 
 func buildVerifierEpoch(t *testing.T, network [32]byte, number uint64, previous [32]byte, now time.Time, inputs [][]byte,
-	accepted []epochfixture.Record, rejections map[uint32]uint16, authority ed25519.PrivateKey) epochfixture.Epoch {
+	accepted []Record, rejections map[uint32]uint16, authority ed25519.PrivateKey) Epoch {
 	t.Helper()
 	seed := sha256.Sum256([]byte("assignment-seed-1"))
-	built, err := epochfixture.BuildEpoch(epochfixture.EpochSpec{NetworkID: network, Number: number, Previous: previous,
+	built, err := BuildEpoch(EpochSpec{NetworkID: network, Number: number, Previous: previous,
 		ValidFrom: now.Add(-30 * time.Second), ValidUntil: now.Add(30 * time.Minute), Inputs: inputs, Accepted: accepted,
 		Rejections: rejections, AssignmentSeed: seed, Domains: []string{"alpha", "beta"}, Authorities: []ed25519.PrivateKey{authority}})
 	if err != nil {
@@ -84,16 +82,16 @@ func buildVerifierEpoch(t *testing.T, network [32]byte, number uint64, previous 
 	return built
 }
 
-func verifierNodeRecord(t *testing.T, network [32]byte, marker byte, family, endpoint string, capacity uint16, from, until time.Time) epochfixture.Record {
+func verifierNodeRecord(t *testing.T, network [32]byte, marker byte, family, endpoint string, capacity uint16, from, until time.Time) Record {
 	t.Helper()
 	private := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{marker}, ed25519.SeedSize))
 	nodeID := sha256.Sum256([]byte{0x4e, marker})
 	return verifierRecordWithKey(t, network, nodeID, private, family, endpoint, capacity, from, until)
 }
 
-func verifierRecordWithKey(t *testing.T, network, nodeID [32]byte, private ed25519.PrivateKey, family, endpoint string, capacity uint16, from, until time.Time) epochfixture.Record {
+func verifierRecordWithKey(t *testing.T, network, nodeID [32]byte, private ed25519.PrivateKey, family, endpoint string, capacity uint16, from, until time.Time) Record {
 	t.Helper()
-	record, err := epochfixture.BuildRecord(epochfixture.RecordSpec{NetworkID: network, NodeID: nodeID, Generation: 1,
+	record, err := BuildRecord(RecordSpec{NetworkID: network, NodeID: nodeID, Generation: 1,
 		ValidFrom: from, ValidUntil: until, Family: family, Endpoint: endpoint, Capability: 1, Capacity: capacity, PrivateKey: private})
 	if err != nil {
 		t.Fatal(err)

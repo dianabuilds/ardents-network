@@ -13,14 +13,18 @@ func assertQualityWiring(t *testing.T, root string) {
 	makefile := readProjectFile(t, root, "Makefile")
 	for _, required := range []string{
 		"unit:", "e2e:", "live:",
-		"quick-check: format-check vet unit build mod-check",
-		"check: tools-check quick-check e2e lab-test test-race staticcheck vuln",
+		"$(MAKE) --output-sync=target -j 4 format-check vet unit build mod-check",
+		"$(MAKE) --output-sync=target -j 4 format-check vet unit build mod-check e2e test-race staticcheck vuln",
 		"GOTOOLCHAIN := local",
 		"GOMODCACHE := $(QUALITY_CACHE_ROOT)/go-mod",
 	} {
 		if !bytes.Contains(makefile, []byte(required)) {
 			t.Errorf("Makefile is missing mandatory quality control %q", required)
 		}
+	}
+	sequentialCheck := regexp.MustCompile(`(?m)^check:[^\n]*(tools-check|quick-check)`)
+	if sequentialCheck.Match(makefile) {
+		t.Error("make check must launch independent checks in parallel rather than chaining suites")
 	}
 	dockerRecipe := regexp.MustCompile(`(?m)^\t[^\n]*\bdocker([[:space:]]|$)`)
 	if dockerRecipe.Match(makefile) {

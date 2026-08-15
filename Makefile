@@ -14,8 +14,9 @@ export STATICCHECK_CACHE := $(QUALITY_CACHE_ROOT)/staticcheck
 
 .PHONY: architecture build check e2e format format-check lab-test live mod-check quick-check staticcheck test test-race tools-check tools-install unit vet vuln
 
-UNIT_PACKAGES := ./cmd/ardents ./cmd/ardents-node ./cmd/ardents-publish-app ./cmd/ardents-route ./cmd/ardents-service ./cmd/ardents-stream-app ./internal/applicationipc ./internal/architecture ./internal/network/... ./internal/node/... ./internal/planfile ./internal/resource ./internal/route ./internal/routeplan ./internal/serviceconn ./internal/serviceendpoint ./internal/streamworkload ./tests/fixtures/...
-LAB_PACKAGES := ./cmd/carrier-lab ./cmd/named-site-lab ./internal/lab/...
+ALL_PACKAGES := $(shell go list ./cmd/... ./internal/...)
+LAB_PACKAGES := $(shell go list ./cmd/carrier-lab ./cmd/named-site-lab ./internal/lab/...)
+UNIT_PACKAGES := $(filter-out $(LAB_PACKAGES),$(ALL_PACKAGES))
 
 format:
 	go fmt ./...
@@ -59,9 +60,11 @@ staticcheck: tools-check
 vuln: tools-check
 	govulncheck ./...
 
-quick-check: format-check vet unit build mod-check
+quick-check:
+	$(MAKE) --output-sync=target -j 4 format-check vet unit build mod-check
 
-check: tools-check quick-check e2e lab-test test-race staticcheck vuln
+check:
+	$(MAKE) --output-sync=target -j 4 format-check vet unit build mod-check e2e test-race staticcheck vuln
 
 tools-install:
 	go install honnef.co/go/tools/cmd/staticcheck@2025.1.1

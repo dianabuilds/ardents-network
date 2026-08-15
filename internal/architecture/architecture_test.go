@@ -165,8 +165,7 @@ func readPackageRegistry(t *testing.T, root string) map[string]packageRegistrati
 	inlineCode := regexp.MustCompile("`([^`]+)`")
 	for _, line := range strings.Split(contents, "\n") {
 		trimmed := strings.TrimSpace(line)
-		if !strings.HasPrefix(trimmed, "| `cmd/") && !strings.HasPrefix(trimmed, "| `internal/") &&
-			!strings.HasPrefix(trimmed, "| `tests/fixtures/") {
+		if !strings.HasPrefix(trimmed, "| `cmd/") && !strings.HasPrefix(trimmed, "| `internal/") {
 			continue
 		}
 		cells := strings.Split(strings.Trim(trimmed, "|"), "|")
@@ -184,8 +183,7 @@ func readPackageRegistry(t *testing.T, root string) map[string]packageRegistrati
 		}
 		allowed := make(map[string]bool)
 		for _, match := range inlineCode.FindAllStringSubmatch(cells[3], -1) {
-			if strings.HasPrefix(match[1], "cmd/") || strings.HasPrefix(match[1], "internal/") ||
-				strings.HasPrefix(match[1], "tests/fixtures/") {
+			if strings.HasPrefix(match[1], "cmd/") || strings.HasPrefix(match[1], "internal/") {
 				allowed[match[1]] = true
 			}
 		}
@@ -212,9 +210,6 @@ func assertRegisteredDependencies(t *testing.T, registry map[string]packageRegis
 			}
 			if isProductCommand(owner) && isLaboratoryPackage(dependency) {
 				t.Errorf("product command %s cannot depend on laboratory package %s", owner, dependency)
-			}
-			if (isProductPackage(owner) || isProductCommand(owner)) && strings.HasPrefix(dependency, "tests/") {
-				t.Errorf("product code %s cannot depend on test package %s", owner, dependency)
 			}
 		}
 	}
@@ -276,9 +271,6 @@ func assertPackageImports(t *testing.T, directory string, files []string, regist
 			}
 			if isProductCommand(directory) && isLaboratoryPackage(dependency) {
 				t.Errorf("product command %s imports laboratory package %s", directory, dependency)
-			}
-			if (isProductPackage(directory) || isProductCommand(directory)) && strings.HasPrefix(dependency, "tests/") {
-				t.Errorf("product code %s imports test package %s", directory, dependency)
 			}
 		}
 	}

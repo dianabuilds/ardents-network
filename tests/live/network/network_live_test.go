@@ -19,13 +19,13 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/epoch/assignment"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
-	"github.com/dianabuilds/ardents-network/tests/fixtures/networkfixture"
 )
 
 func TestContainersCarryOneAuthenticatedRoute(t *testing.T) {
@@ -46,11 +46,7 @@ func TestContainersCarryOneAuthenticatedRoute(t *testing.T) {
 		command.Dir, command.Env = root, environment
 		return command.CombinedOutput()
 	}
-	cleanup := func() {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-		defer cancel()
-		_, _ = compose(ctx, "down", "--volumes", "--remove-orphans", "--rmi", "local", "--timeout", "0")
-	}
+	cleanup := strictLiveCleanup(t, compose, project, image)
 	t.Cleanup(cleanup)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
@@ -87,12 +83,94 @@ func TestContainersCarryOneAuthenticatedRoute(t *testing.T) {
 		}
 	}
 	cleanup()
-	if output, err := compose(ctx, "ps", "-aq"); err != nil || strings.TrimSpace(string(output)) != "" {
-		t.Fatalf("live containers remain after cleanup: err=%v containers=%s", err, output)
+}
+
+func TestContainersFailClosedWhenRoutePositionIsMissing(t *testing.T) {
+	if _, err := exec.LookPath("docker"); err != nil {
+		t.Fatalf("live tests require Docker: %v", err)
 	}
+	root := repositoryRoot(t)
+	fixture := newLiveFixture(t)
+	project := fmt.Sprintf("ardents-live-fault-%d", time.Now().UnixNano())
+	image := project + ":test"
+	environment := append(os.Environ(), "ARDENTS_LIVE_IMAGE="+image, "ARDENTS_LIVE_ROOT="+filepath.ToSlash(fixture.root))
+	compose := func(ctx context.Context, arguments ...string) ([]byte, error) {
+		base := []string{"compose", "-p", project, "-f", filepath.Join(root, "tests", "live", "network.compose.yaml")}
+		command := exec.CommandContext(ctx, "docker", append(base, arguments...)...)
+		command.Dir, command.Env = root, environment
+		return command.CombinedOutput()
+	}
+	cleanup := strictLiveCleanup(t, compose, project, image)
+	t.Cleanup(cleanup)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	if output, err := compose(ctx, "build", "publisher"); err != nil {
+		t.Fatalf("build live image: %v\n%s", err, output)
+	}
+	passive := []string{"publisher", "responder", "rendezvous", "initiator"}
+	if output, err := compose(ctx, append([]string{"up", "-d", "--no-build"}, passive...)...); err != nil {
+		t.Fatalf("start incomplete live Route: %v\n%s", err, output)
+	}
+	for _, service := range passive {
+		waitForKind(t, ctx, compose, service, "ready")
+	}
+	clientOutput, err := compose(ctx, "run", "--rm", "--no-deps", "client")
+	if err == nil {
+		t.Fatalf("Client completed without the Introduction position:\n%s", clientOutput)
+	}
+	evidence, complete := findEvidence(clientOutput, "complete")
+	if !complete || evidence.Terminal != "error" || evidence.PeerAuthenticated || evidence.CanaryLength != 0 {
+		t.Fatalf("incomplete Route did not emit a fail-closed terminal result:\n%s", clientOutput)
+	}
+	cleanup()
 }
 
 type composeCall func(context.Context, ...string) ([]byte, error)
+
+func strictLiveCleanup(t *testing.T, compose composeCall, project, image string) func() {
+	t.Helper()
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+			defer cancel()
+			if output, err := compose(ctx, "down", "--volumes", "--remove-orphans", "--rmi", "local", "--timeout", "0"); err != nil {
+				t.Errorf("remove live Compose project: %v\n%s", err, output)
+			}
+			if output, err := dockerOutput(ctx, "image", "ls", "--quiet", image); err != nil {
+				t.Errorf("inspect live image: %v\n%s", err, output)
+			} else if strings.TrimSpace(string(output)) != "" {
+				if removeOutput, removeErr := dockerOutput(ctx, "image", "rm", "--force", image); removeErr != nil {
+					t.Errorf("remove live image: %v\n%s", removeErr, removeOutput)
+				}
+			}
+			assertNoDockerObjects(t, ctx, project, image)
+		})
+	}
+}
+
+func assertNoDockerObjects(t *testing.T, ctx context.Context, project, image string) {
+	t.Helper()
+	checks := []struct {
+		kind      string
+		arguments []string
+	}{
+		{"containers", []string{"ps", "-aq", "--filter", "label=com.docker.compose.project=" + project}},
+		{"networks", []string{"network", "ls", "-q", "--filter", "label=com.docker.compose.project=" + project}},
+		{"volumes", []string{"volume", "ls", "-q", "--filter", "label=com.docker.compose.project=" + project}},
+		{"image", []string{"image", "ls", "--quiet", image}},
+	}
+	for _, check := range checks {
+		output, err := dockerOutput(ctx, check.arguments...)
+		if err != nil || strings.TrimSpace(string(output)) != "" {
+			t.Errorf("live %s remain after cleanup: err=%v objects=%s", check.kind, err, output)
+		}
+	}
+}
+
+func dockerOutput(ctx context.Context, arguments ...string) ([]byte, error) {
+	return exec.CommandContext(ctx, "docker", arguments...).CombinedOutput()
+}
 
 func waitForKind(t *testing.T, ctx context.Context, compose composeCall, service, kind string) route.Evidence {
 	t.Helper()
@@ -170,11 +248,11 @@ func newLiveFixture(t *testing.T) liveFixture {
 	}
 	domains := []string{"initiator", "introduction", "rendezvous", "responder"}
 	seed := sha256.Sum256([]byte("live-route-assignment"))
-	inputs, accepted := make([][]byte, 0, 4), make([]networkfixture.Record, 0, 4)
+	inputs, accepted := make([][]byte, 0, 4), make([]Record, 0, 4)
 	for index, domain := range domains {
 		family := liveFamily(t, value.network, seed, domain, domains)
 		nodeID := sha256.Sum256([]byte("live-node-" + domain))
-		record, err := networkfixture.BuildRecord(networkfixture.RecordSpec{NetworkID: value.network, NodeID: nodeID,
+		record, err := BuildRecord(RecordSpec{NetworkID: value.network, NodeID: nodeID,
 			Generation: 1, ValidFrom: value.now.Add(-time.Minute), ValidUntil: value.now.Add(time.Hour),
 			Family: family, Endpoint: value.addresses[index], Capability: 2, Capacity: 1,
 			PrivateKey: value.identities[index].private})
@@ -183,7 +261,7 @@ func newLiveFixture(t *testing.T) liveFixture {
 		}
 		inputs, accepted = append(inputs, record.Raw), append(accepted, record)
 	}
-	epoch, err := networkfixture.BuildEpoch(networkfixture.EpochSpec{NetworkID: value.network, Number: 1,
+	epoch, err := BuildEpoch(EpochSpec{NetworkID: value.network, Number: 1,
 		ValidFrom: value.now.Add(-time.Minute), ValidUntil: value.now.Add(time.Hour), Inputs: inputs,
 		Accepted: accepted, AssignmentSeed: seed, Profile: "h3-route-tracer-v1", Domains: domains,
 		Authorities: []ed25519.PrivateKey{value.authority}})

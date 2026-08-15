@@ -10,7 +10,6 @@ import (
 )
 
 func TestCurrentRouteViewOwnsEveryAuthenticatedCandidate(t *testing.T) {
-	t.Parallel()
 	value := newFixture(t)
 	opened, err := state.Open(state.Config{
 		Root: t.TempDir(), NetworkID: value.networkID,
@@ -48,7 +47,6 @@ func TestCurrentRouteViewOwnsEveryAuthenticatedCandidate(t *testing.T) {
 }
 
 func TestRouteViewUnavailableAfterStateClose(t *testing.T) {
-	t.Parallel()
 	value := newFixture(t)
 	opened, err := state.Open(state.Config{
 		Root: t.TempDir(), NetworkID: value.networkID,
@@ -67,7 +65,6 @@ func TestRouteViewUnavailableAfterStateClose(t *testing.T) {
 }
 
 func TestRouteProfileCannotConsumeRoleProbeEpoch(t *testing.T) {
-	t.Parallel()
 	value := newFixture(t)
 	opened, err := state.Open(state.Config{
 		Root: t.TempDir(), NetworkID: value.networkID,

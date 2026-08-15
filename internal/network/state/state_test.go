@@ -266,7 +266,6 @@ func TestSuccessorChainSurvivesRestart(t *testing.T) {
 }
 
 func TestStateRootLeaseExcludesSecondStore(t *testing.T) {
-	t.Parallel()
 	fixture := newFixture(t)
 	config := state.Config{
 		Root: t.TempDir(), NetworkID: fixture.networkID,
@@ -291,7 +290,6 @@ func TestStateRootLeaseExcludesSecondStore(t *testing.T) {
 }
 
 func TestDistributionStateRepairsStaleCurrentMirror(t *testing.T) {
-	t.Parallel()
 	genesis := newFixture(t)
 	successor := nextFixture(t, genesis)
 	config := state.Config{
