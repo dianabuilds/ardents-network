@@ -21,6 +21,7 @@ func TestReplacementCandidateResultUsesCompleteCandidateRules(t *testing.T) {
 				cell.ResourceSamples[index].ClientRSS = 513 << 20
 			}
 		},
+		"missing traffic": func(cell *replacementCell) { cell.FinalTraffic = recovery.ResourceSample{} },
 	} {
 		t.Run(name, func(t *testing.T) {
 			cell := valid
@@ -30,6 +31,15 @@ func TestReplacementCandidateResultUsesCompleteCandidateRules(t *testing.T) {
 				t.Fatalf("%s violation classified %s", name, verdict)
 			}
 		})
+	}
+}
+
+func TestReplacementCandidateAcceptsRoundedTerminalTraffic(t *testing.T) {
+	cell := candidateResultFixture()
+	cell.FinalTraffic.ClientSent = uint64(cell.Bytes) - 128<<10
+	cell.FinalTraffic.PublisherReceived = uint64(cell.Bytes) - 128<<10
+	if verdict, reason := replacementCandidateResult(cell); verdict != "pass" {
+		t.Fatalf("rounded terminal traffic classified %s: %s", verdict, reason)
 	}
 }
 

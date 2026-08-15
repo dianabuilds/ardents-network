@@ -111,6 +111,21 @@ func TestVerifyIndependentReplacementAttempt(t *testing.T) {
 		t.Fatalf("unobserved replacement failure was accepted: %+v", result)
 	}
 
+	completedFailure := cell
+	completedFailure.TerminalClean = false
+	receipt.Evidence, err = json.Marshal(completedFailure)
+	if err != nil {
+		t.Fatal(err)
+	}
+	receipt.Candidate, receipt.Reason = "fail", "replacement candidate violated the cell contract"
+	value.AttemptReceipt, err = json.Marshal(receipt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result := Verify(value); result.Verdict != "fail" {
+		t.Fatalf("completed candidate failure was not independently verified: %+v", result)
+	}
+
 	receipt.Evidence = cellRaw
 	receipt.Candidate = "fail"
 	value.AttemptReceipt, err = json.Marshal(receipt)

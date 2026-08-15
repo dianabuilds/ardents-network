@@ -22,10 +22,14 @@ func verifyReplacementRoutes(cell replacementCell, candidates map[string][]repla
 		for _, role := range replacementRoles {
 			process := generation.Processes[role]
 			candidate := selected[role]
+			latestObservation := cell.ActiveStartedAtNanos + cell.TerminalNanos
+			if generationIndex == 0 {
+				latestObservation = cell.ActiveStartedAtNanos
+			}
 			if process.NodeID != candidate.NodeID || process.PublicKey != candidate.PublicKey ||
 				!validProcessRef(process, hostScope) ||
 				process.ObservedAtNanos < cell.HostStartedAtNanos ||
-				process.ObservedAtNanos > cell.ActiveStartedAtNanos {
+				process.ObservedAtNanos > latestObservation {
 				return invalid("S4.2 selected candidate process does not match the recomputed Route")
 			}
 			if prior, ok := nodeProcesses[process.NodeID]; ok &&

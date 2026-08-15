@@ -177,7 +177,7 @@ func percentilePosition(length int, fraction float64) int {
 }
 
 func directReplacementTraffic(value uint64, bytes uint32) bool {
-	return value >= uint64(bytes) && value <= uint64(bytes)+replacementTrafficLimit
+	return value > 0 && value <= uint64(bytes)+replacementTrafficLimit
 }
 
 func counterDelta(current, previous uint64) uint64 {

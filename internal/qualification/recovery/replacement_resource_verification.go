@@ -28,5 +28,5 @@ func verifyReplacementResources(cell replacementCell) Result {
 }
 
 func replacementTrafficBound(value uint64, bytes uint32) bool {
-	return value >= uint64(bytes) && value <= uint64(bytes)+recoveryTrafficAllowance
+	return value > 0 && value <= uint64(bytes)+recoveryTrafficAllowance
 }

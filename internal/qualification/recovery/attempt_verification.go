@@ -85,16 +85,23 @@ func verifyReplacementAttempt(value Evidence) Result {
 	if err != nil || !candidateCasesMatch(manifest.RouteCase.Candidates, manifest.Candidates) {
 		return invalid(errors.Join(err, errors.New("replacement candidates differ from the Route case")).Error())
 	}
-	if receipt.Candidate == "fail" {
+	completedFailure := receipt.Candidate == "fail" && receipt.Reason == "replacement candidate violated the cell contract"
+	if receipt.Candidate == "fail" && !completedFailure {
 		result := verifyReplacementAttemptFailure(receipt, cellManifest, manifest, hostScope, byRole)
 		if result.Verdict != "invalid" && cleanup.ObservedAtNanos <= failureHostEnd(receipt.Evidence) {
 			return invalid("replacement cleanup observation precedes candidate evidence")
 		}
 		return result
 	}
-	if receipt.Candidate != "pass" {
+	if receipt.Candidate != "pass" && !completedFailure {
 		return invalid("replacement attempt candidate verdict is invalid")
 	}
+	return verifyCompletedReplacementAttempt(receipt, cellManifest, manifest, hostScope, byRole, cleanup)
+}
+
+func verifyCompletedReplacementAttempt(receipt replacementAttemptReceipt, cellManifest replacementAttemptCell,
+	manifest replacementAttemptManifest, hostScope hostScopeEvidence,
+	byRole map[string][]replacementCandidate, cleanup cleanup) Result {
 	var cell replacementCell
 	if err := decodeAttemptValue(receipt.Evidence, 4<<20, &cell); err != nil {
 		return invalid("decode replacement cell evidence: " + err.Error())
@@ -115,7 +122,7 @@ func verifyReplacementAttempt(value Evidence) Result {
 	result := verifyReplacementCell(cell, byRole, manifest.RouteCase, manifest.RouteManifest,
 		manifest.ImageID, hostScope)
 	if result.Verdict != receipt.Candidate {
-		return invalid("replacement candidate result differs from independently verified evidence")
+		return invalid("replacement candidate result differs from independently verified evidence: " + result.Verdict + ": " + result.Reason)
 	}
 	return result
 }

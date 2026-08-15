@@ -372,6 +372,11 @@ func s42Cell(imageID, direction, mode string, failures []string, sets map[string
 					Host: testProcessRef(hostScope, container, incarnation)}, hostScope, imageID)
 				processes[candidate.NodeID] = process
 			}
+			if generation > 0 {
+				process.ObservedAtNanos = cell.ActiveStartedAtNanos + int64(generation)
+				process.HostObservation = processObservationCommitment(process.Host,
+					[]byte(process.AdapterProjection), process.PID, true, process.ObservedAtNanos)
+			}
 			routeGeneration.Processes[role] = process
 		}
 		cell.Routes = append(cell.Routes, routeGeneration)
@@ -446,7 +451,8 @@ func s42Cell(imageID, direction, mode string, failures []string, sets map[string
 		before, after := cell.Routes[index], cell.Routes[index+1]
 		introductionAttachment := uint32(0)
 		for generation := 0; generation <= index+1; generation++ {
-			if cell.Routes[generation].Processes["introduction"] == after.Processes["introduction"] {
+			if sameProcessIncarnation(cell.Routes[generation].Processes["introduction"],
+				after.Processes["introduction"]) {
 				introductionAttachment++
 			}
 		}

@@ -53,3 +53,15 @@ func TestReplacementResourcesRequireStartToTerminalCoverage(t *testing.T) {
 		t.Fatalf("terminal-only resource samples passed: %+v", result)
 	}
 }
+
+func TestReplacementResourcesAcceptRoundedTerminalTraffic(t *testing.T) {
+	cell := replacementCell{Bytes: streamBytes, TerminalNanos: int64(4 * time.Second),
+		ResourceStartedAtNanos: 1, Events: []replacementEvent{{LastDeliveryNanos: int64(time.Second)}}}
+	cell.ResourceSamples = s42Samples(cell.TerminalNanos)
+	cell.FinalTraffic = cell.ResourceSamples[len(cell.ResourceSamples)-1]
+	cell.FinalTraffic.ClientSent = uint64(cell.Bytes) - 128<<10
+	cell.FinalTraffic.PublisherReceived = uint64(cell.Bytes) - 128<<10
+	if result := verifyReplacementResources(cell); result.Verdict != "pass" {
+		t.Fatalf("rounded terminal traffic rejected: %+v", result)
+	}
+}
