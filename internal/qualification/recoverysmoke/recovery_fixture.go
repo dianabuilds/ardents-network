@@ -84,7 +84,7 @@ func setRouteAttachments(root string, count uint32) error {
 		if err := updatePlan(path, func(plan map[string]any) {
 			delete(plan, "AttachmentPlans")
 			delete(plan, "ConcurrentAttachments")
-			delete(plan, "Lifetime")
+			plan["Lifetime"] = recoveryOperationLifetime
 			plan["Attachments"] = count
 		}); err != nil {
 			return err

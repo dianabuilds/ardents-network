@@ -52,7 +52,7 @@ func TestBaselineAttachmentResetRemovesReplacementSequence(t *testing.T) {
 			t.Fatal(err)
 		}
 		if plan["Attachments"] != float64(1) || plan["AttachmentPlans"] != nil ||
-			plan["ConcurrentAttachments"] != nil || plan["Lifetime"] != nil {
+			plan["ConcurrentAttachments"] != nil || plan["Lifetime"] != recoveryOperationLifetime {
 			t.Fatalf("role %s baseline reset retained replacement sequence: %v", role, plan)
 		}
 	}
