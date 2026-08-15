@@ -72,6 +72,10 @@ func TestResourceObservationCoalescesOnlyExactDockerRedraw(t *testing.T) {
 
 func TestResourceObservationReplacesPriorPointForValidCadence(t *testing.T) {
 	first := recovery.ResourceSample{AtNanos: int64(time.Second), ClientSent: 1}
+	bootstrap := recovery.ResourceSample{AtNanos: int64(1500 * time.Millisecond), ClientSent: 2}
+	if got := appendResourceObservation([]recovery.ResourceSample{first}, bootstrap); len(got) != 1 || got[0] != first {
+		t.Fatalf("bootstrap observation moved before a cadence existed: %+v", got)
+	}
 	previous := recovery.ResourceSample{AtNanos: int64(2 * time.Second), ClientSent: 1}
 	partial := recovery.ResourceSample{AtNanos: int64(2500 * time.Millisecond), ClientSent: 2}
 	samples := appendResourceObservation([]recovery.ResourceSample{first, previous}, partial)

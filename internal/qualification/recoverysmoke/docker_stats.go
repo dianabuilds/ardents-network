@@ -102,7 +102,6 @@ func appendResourceObservation(samples []recovery.ResourceSample,
 		return samples
 	}
 	if len(samples) == 1 {
-		samples[0] = sample
 		return samples
 	}
 	priorInterval := sample.AtNanos - samples[len(samples)-2].AtNanos
