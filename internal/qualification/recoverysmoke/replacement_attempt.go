@@ -162,7 +162,7 @@ func (attempt *replacementAttempt) Freeze(ctx context.Context) (campaign.FrozenC
 	}
 	cell, err := attempt.observer.finishReplacementCell(ctx, attempt.processObserver, attempt.cell,
 		attempt.receiver, attempt.sampler, attempt.failed, attempt.faultReceipts, attempt.proposalRoutes,
-		attempt.cellClock, attempt.activeStartedAt)
+		attempt.activeStartedAt)
 	attempt.sampler = nil
 	if err != nil {
 		return campaign.FrozenCell{}, err

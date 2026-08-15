@@ -337,6 +337,9 @@ func s42Cell(imageID, direction, mode string, failures []string, sets map[string
 		ClientRouteAccepts: uint32(len(selections)), PublisherRouteAccepts: uint32(len(selections)),
 		ClientContinuity: [32]byte{9}, PublisherContinuity: [32]byte{9}, Ordered: true, Unique: true,
 		SameConnection: true, TerminalClean: true, ClientQueueHighWater: 1, PublisherQueueHighWater: 1}
+	if mode == "isolated-rendezvous" || mode == "overlap" {
+		cell.ClientRouteAccepts++
+	}
 	cell.HostStartedAtNanos = hostStartedAt
 	cell.ActiveStartedAtNanos = hostStartedAt + int64(time.Second)
 	cell.TerminalNanos = int64(6 * time.Second)

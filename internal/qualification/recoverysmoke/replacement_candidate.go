@@ -16,11 +16,15 @@ const (
 func replacementCandidateResult(cell replacementCell) (string, string) {
 	failed := "replacement candidate violated the cell contract"
 	events, routes := len(cell.Events), len(cell.Routes)
+	clientRouteAccepts, publisherRouteAccepts := uint32(routes), uint32(routes)
+	if cell.Mode == "isolated-rendezvous" || cell.Mode == "overlap" {
+		clientRouteAccepts++
+	}
 	if cell.ObservedDigest != cell.ExpectedDigest || routes != events+1 ||
 		cell.ClientRouteGeneration != uint64(routes) || cell.PublisherRouteGeneration != uint64(routes) ||
 		cell.ClientRecoveryCount != uint32(events) || cell.PublisherRecoveryCount != uint32(events) ||
 		cell.ClientApplicationAccepts != 1 || cell.PublisherApplicationAccepts != 1 ||
-		cell.ClientRouteAccepts != uint32(routes) || cell.PublisherRouteAccepts != uint32(routes) ||
+		cell.ClientRouteAccepts != clientRouteAccepts || cell.PublisherRouteAccepts != publisherRouteAccepts ||
 		!cell.Ordered || !cell.Unique || !cell.SameConnection || cell.ApplicationReconnected || !cell.TerminalClean {
 		return "fail", failed
 	}

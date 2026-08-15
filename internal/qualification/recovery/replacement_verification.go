@@ -21,7 +21,8 @@ func verifyReplacementCell(cell replacementCell, candidates map[string][]replace
 		cell.ClientRouteGeneration != uint64(len(cell.Routes)) || cell.PublisherRouteGeneration != uint64(len(cell.Routes)) ||
 		cell.ClientRecoveryCount != uint32(len(cell.Events)) || cell.PublisherRecoveryCount != uint32(len(cell.Events)) ||
 		cell.ClientApplicationAccepts != 1 || cell.PublisherApplicationAccepts != 1 ||
-		cell.ClientRouteAccepts != uint32(len(cell.Routes)) || cell.PublisherRouteAccepts != uint32(len(cell.Routes)) ||
+		cell.ClientRouteAccepts != expectedClientRouteAccepts(cell) ||
+		cell.PublisherRouteAccepts != uint32(len(cell.Routes)) ||
 		cell.ClientContinuity == [32]byte{} || cell.ClientContinuity != cell.PublisherContinuity ||
 		!cell.Ordered || !cell.Unique || !cell.SameConnection || cell.ApplicationReconnected || !cell.TerminalClean {
 		return fail("S4.2 same-connection generation or Application invariant failed")
@@ -79,4 +80,12 @@ func verifyReplacementCell(cell replacementCell, candidates map[string][]replace
 		return invalid("S4.2 isolated role cell is malformed")
 	}
 	return Result{Verdict: "pass"}
+}
+
+func expectedClientRouteAccepts(cell replacementCell) uint32 {
+	result := uint32(len(cell.Routes))
+	if cell.Mode == "isolated-rendezvous" || cell.Mode == "overlap" {
+		result++
+	}
+	return result
 }

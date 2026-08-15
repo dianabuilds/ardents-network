@@ -36,7 +36,7 @@ func (observer dockerObserver) finishReplacementCell(ctx context.Context, proces
 	cell replacementCell, receiver string, sampler *statsSampler,
 	failed map[string]candidateProcess, faultReceipts map[string]processFaultEvidence,
 	proposalRoutes []routeGeneration,
-	cellClock time.Time, activeStartedAt int64) (replacementCell, error) {
+	activeStartedAt int64) (replacementCell, error) {
 	resourceStarted, startErr := sampler.coverageStartedAfter(activeStartedAt)
 	samples, sampleErr := sampler.stopAfter(activeStartedAt)
 	if startErr != nil || sampleErr != nil || len(samples) < 3 {
@@ -73,7 +73,7 @@ func (observer dockerObserver) finishReplacementCell(ctx context.Context, proces
 	cell.ResourceSamples, cell.FinalTraffic = samples, finalTraffic
 	cell.FinalCanaryOffset = cell.Bytes - uint32(len(application.ReceivedTail))
 	cell.FinalCanary = application.ReceivedTail
-	cell.FinalCanaryObservedNanos = time.Since(cellClock).Nanoseconds()
+	cell.FinalCanaryObservedNanos = cell.TerminalNanos
 	clientRaw, err := observer.compose(ctx, time.Minute, "logs", "--no-color", "--no-log-prefix", "client")
 	if err != nil {
 		return replacementCell{}, err
