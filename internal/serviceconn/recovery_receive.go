@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"sort"
+	"time"
 )
 
 func (stream *recoveryStream) receiveApplication(receiveLimit, sendLimit uint64) error {
@@ -117,6 +118,7 @@ func (stream *recoveryStream) acceptData(attachment *securedAttachment, frame co
 		stream.mu.Lock()
 		stream.recent = append(stream.recent, ready.data...)
 		stream.recvNext += uint64(len(ready.data))
+		stream.lastProgress = time.Now()
 		stream.trimRecentLocked(stream.pendingBytesLocked())
 	}
 	next = stream.recvNext

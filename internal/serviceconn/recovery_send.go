@@ -3,6 +3,7 @@ package serviceconn
 import (
 	"errors"
 	"io"
+	"time"
 )
 
 func (stream *recoveryStream) sendApplication(limit uint64) error {
@@ -48,6 +49,7 @@ func (stream *recoveryStream) sendApplication(limit uint64) error {
 			stream.mu.Lock()
 			stream.sendData = append(stream.sendData, buffer[:read]...)
 			stream.sendEnd += uint64(read)
+			stream.lastProgress = time.Now()
 			if uint32(len(stream.sendData)) > stream.queueMax {
 				stream.queueMax = uint32(len(stream.sendData))
 			}

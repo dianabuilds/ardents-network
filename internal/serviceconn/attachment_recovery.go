@@ -30,7 +30,7 @@ func (stream *recoveryStream) recoverAttachment(failed *securedAttachment) error
 	}
 	stream.recovering = true
 	if stream.episodeEnd.IsZero() {
-		stream.episodeEnd = time.Now().Add(recoveryLimit)
+		stream.episodeEnd = recoveryEpisodeDeadline(stream.lastProgress, time.Now())
 	}
 	deadline := stream.episodeEnd
 	safetyRemaining := time.Unix(stream.binding.NoNewRecoveryAfter, 0).Sub(stream.authorizationTime())
@@ -110,6 +110,13 @@ func (stream *recoveryStream) recoverAttachment(failed *securedAttachment) error
 		stream.fail(last)
 	}
 	return last
+}
+
+func recoveryEpisodeDeadline(lastProgress, detected time.Time) time.Time {
+	if lastProgress.IsZero() || lastProgress.After(detected) {
+		lastProgress = detected
+	}
+	return lastProgress.Add(recoveryLimit)
 }
 
 func (stream *recoveryStream) commitAttachment(failed, attachment *securedAttachment, peer peerContinuity) error {
