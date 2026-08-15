@@ -40,6 +40,9 @@ func prepare(input Config) (prepared, error) {
 			return prepared{}, err
 		}
 	}
+	if err := os.Mkdir(filepath.Join(input.FixtureRoot, "gate"), 0o777); err != nil {
+		return prepared{}, err
+	}
 	at := time.Now().UTC().Truncate(time.Second)
 	route, err := routesmoke.PrepareStreamFixture(filepath.Join(input.FixtureRoot, "route"),
 		"/run/ardents/client-route/route.sock", "/run/ardents/publisher-route/route.sock", at)

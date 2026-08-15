@@ -30,19 +30,7 @@ func (observer dockerObserver) command(ctx context.Context, timeout time.Duratio
 	defer cancel()
 	command := exec.CommandContext(bounded, name, arguments...)
 	command.Dir = observer.input.SourceRoot
-	command.Env = append(os.Environ(),
-		"ARDENTS_SERVICE_IMAGE_TAG="+observer.image,
-		"ARDENTS_SERVICE_SOURCE_COMMIT="+observer.sourceCommit,
-		"ARDENTS_SERVICE_BUILD_CONTEXT="+observer.input.SourceRoot,
-		"ARDENTS_SERVICE_ROUTE_ROOT="+filepath.Join(observer.input.FixtureRoot, "route"),
-		"ARDENTS_SERVICE_GENERATION="+observer.generation,
-		"ARDENTS_SERVICE_EVIDENCE_FILE="+observer.evidenceFile,
-		"ARDENTS_RECOVERY_EVIDENCE_FILE="+observer.evidenceFile,
-		"ARDENTS_SERVICE_RUNTIME_USER="+observer.runtimeUser)
-	command.Env = append(command.Env,
-		"ARDENTS_CLIENT_SEND_BYTES=65536", "ARDENTS_CLIENT_RECEIVE_BYTES=65536",
-		"ARDENTS_PUBLISHER_SEND_BYTES=65536", "ARDENTS_PUBLISHER_RECEIVE_BYTES=65536",
-		"ARDENTS_STREAM_CHUNK_DELAY=", "ARDENTS_STREAM_PROGRESS=0")
+	command.Env = observer.composeEnvironment()
 	output, err := command.CombinedOutput()
 	if bounded.Err() != nil {
 		return output, bounded.Err()
@@ -51,6 +39,23 @@ func (observer dockerObserver) command(ctx context.Context, timeout time.Duratio
 		return output, errors.New(strings.TrimSpace(string(output)) + ": " + err.Error())
 	}
 	return output, nil
+}
+
+func (observer dockerObserver) composeEnvironment() []string {
+	values := append(os.Environ(),
+		"ARDENTS_SERVICE_IMAGE_TAG="+observer.image,
+		"ARDENTS_SERVICE_SOURCE_COMMIT="+observer.sourceCommit,
+		"ARDENTS_SERVICE_BUILD_CONTEXT="+observer.input.SourceRoot,
+		"ARDENTS_SERVICE_ROUTE_ROOT="+filepath.Join(observer.input.FixtureRoot, "route"),
+		"ARDENTS_SERVICE_GENERATION="+observer.generation,
+		"ARDENTS_SERVICE_EVIDENCE_FILE="+observer.evidenceFile,
+		"ARDENTS_RECOVERY_EVIDENCE_FILE="+observer.evidenceFile,
+		"ARDENTS_RECOVERY_GATE_HOST="+filepath.Join(observer.input.FixtureRoot, "gate"),
+		"ARDENTS_SERVICE_RUNTIME_USER="+observer.runtimeUser)
+	return append(values,
+		"ARDENTS_CLIENT_SEND_BYTES=65536", "ARDENTS_CLIENT_RECEIVE_BYTES=65536",
+		"ARDENTS_PUBLISHER_SEND_BYTES=65536", "ARDENTS_PUBLISHER_RECEIVE_BYTES=65536",
+		"ARDENTS_STREAM_CHUNK_DELAY=", "ARDENTS_STREAM_PROGRESS=0")
 }
 
 func cleanCommit(ctx context.Context, root string) (string, error) {
