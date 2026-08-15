@@ -106,6 +106,42 @@ func TestAuthenticatedRouteUsesSeparateRoleProcesses(t *testing.T) {
 	}
 }
 
+func TestClientProcessRejectsExcludingItsOnlyCandidate(t *testing.T) {
+	fixture := newProcessFixture(t)
+	binary := buildRouteBinary(t)
+	authority := fixture.authority.Public().(ed25519.PublicKey)
+	base := map[string]any{
+		"Role": "client", "ManifestDigest": hex32(fixture.manifestDigest),
+		"StateRoot": fixture.stateRoot, "NetworkID": hex32(fixture.network),
+		"Authorities": []string{hex.EncodeToString(authority)}, "Threshold": 1,
+		"At": fixture.now.Format(time.RFC3339), "Seed": hex32(fixture.selectionSeed),
+		"Certificate": fixture.identities[5].cert, "Key": fixture.identities[5].key,
+		"PublisherPin": hex32(fixture.identities[4].public), "Deadline": "5s",
+	}
+	tests := []struct {
+		name  string
+		field string
+		value string
+	}{
+		{"identity", "ExcludedIdentities", hex32(fixture.snapshot.Candidates[0].NodeID)},
+		{"family", "ExcludedFamilies", fixture.snapshot.Candidates[0].Family},
+		{"domain", "ExcludedDomains", fixture.snapshot.Candidates[0].Domain},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			plan := make(map[string]any, len(base)+1)
+			for key, value := range base {
+				plan[key] = value
+			}
+			plan[test.field] = []string{test.value}
+			output, err := exec.Command(binary, "run", writeProcessPlan(t, plan)).CombinedOutput()
+			if err == nil || !bytes.Contains(output, []byte("cannot fill every Route position")) {
+				t.Fatalf("excluded %s did not fail Route selection: err=%v\n%s", test.name, err, output)
+			}
+		})
+	}
+}
+
 type routeProcess struct {
 	command *exec.Cmd
 	decoder *json.Decoder

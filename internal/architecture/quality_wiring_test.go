@@ -13,8 +13,10 @@ func assertQualityWiring(t *testing.T, root string) {
 	makefile := readProjectFile(t, root, "Makefile")
 	for _, required := range []string{
 		"unit:", "e2e:", "live:",
-		"$(MAKE) --output-sync=target -j 4 format-check vet unit build mod-check",
-		"$(MAKE) --output-sync=target -j 4 format-check vet unit build mod-check e2e test-race staticcheck vuln",
+		"QUICK_CHECK_TARGETS := format-check vet unit build mod-check",
+		"CHECK_TARGETS := $(QUICK_CHECK_TARGETS) e2e test-race staticcheck vuln",
+		"$(MAKE) --output-sync=target -j 4 $(QUICK_CHECK_TARGETS)",
+		"$(MAKE) --output-sync=target -j 4 $(CHECK_TARGETS)",
 		"GOTOOLCHAIN := local",
 		"GOMODCACHE := $(QUALITY_CACHE_ROOT)/go-mod",
 	} {

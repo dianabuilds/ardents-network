@@ -17,6 +17,8 @@ export STATICCHECK_CACHE := $(QUALITY_CACHE_ROOT)/staticcheck
 ALL_PACKAGES := $(shell go list ./cmd/... ./internal/...)
 LAB_PACKAGES := $(shell go list ./cmd/carrier-lab ./cmd/named-site-lab ./internal/lab/...)
 UNIT_PACKAGES := $(filter-out $(LAB_PACKAGES),$(ALL_PACKAGES))
+QUICK_CHECK_TARGETS := format-check vet unit build mod-check
+CHECK_TARGETS := $(QUICK_CHECK_TARGETS) e2e test-race staticcheck vuln
 
 format:
 	go fmt ./...
@@ -61,10 +63,10 @@ vuln: tools-check
 	govulncheck ./...
 
 quick-check:
-	$(MAKE) --output-sync=target -j 4 format-check vet unit build mod-check
+	$(MAKE) --output-sync=target -j 4 $(QUICK_CHECK_TARGETS)
 
 check:
-	$(MAKE) --output-sync=target -j 4 format-check vet unit build mod-check e2e test-race staticcheck vuln
+	$(MAKE) --output-sync=target -j 4 $(CHECK_TARGETS)
 
 tools-install:
 	go install honnef.co/go/tools/cmd/staticcheck@2025.1.1

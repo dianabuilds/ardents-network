@@ -14,20 +14,16 @@ import (
 
 func TestServiceCommandReadinessTimeoutAndCleanup(t *testing.T) {
 	binary := buildServiceBinary(t)
-	root, err := os.MkdirTemp("", "ardents-service-e2e-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.RemoveAll(root) })
-	applicationSocket := filepath.Join(root, "application.sock")
-	routeSocket := filepath.Join(root, "route.sock")
+	root := t.TempDir()
+	applicationSocket := "application.sock"
+	routeSocket := "route.sock"
 	planPath := filepath.Join(root, "plan.json")
 	plan := map[string]any{
 		"Role": "client", "NetworkID": strings.Repeat("01", 32),
 		"BrokerID": strings.Repeat("02", 32), "AuthorityPublic": strings.Repeat("03", 32),
 		"ConnectionPrincipal": strings.Repeat("04", 32), "IntroductionPublic": strings.Repeat("05", 32),
 		"Target": strings.Repeat("06", 32), "ApplicationSocket": applicationSocket, "RouteSocket": routeSocket,
-		"PublicationFile": filepath.Join(root, "publication.bin"), "At": time.Now().UTC().Format(time.RFC3339),
+		"PublicationFile": "publication.bin", "At": time.Now().UTC().Format(time.RFC3339),
 		"Deadline": "500ms", "BytesEachDirection": 32,
 	}
 	raw, err := json.Marshal(plan)
@@ -37,7 +33,9 @@ func TestServiceCommandReadinessTimeoutAndCleanup(t *testing.T) {
 	if err := os.WriteFile(planPath, raw, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	output, err := exec.Command(binary, "run", planPath).CombinedOutput()
+	command := exec.Command(binary, "run", planPath)
+	command.Dir = root
+	output, err := command.CombinedOutput()
 	if err == nil {
 		t.Fatalf("Service command reported success without an Application: %s", output)
 	}
@@ -51,7 +49,7 @@ func TestServiceCommandReadinessTimeoutAndCleanup(t *testing.T) {
 	if !ready {
 		t.Fatalf("Service command did not expose readiness before its bounded failure:\n%s", output)
 	}
-	for _, path := range []string{applicationSocket, routeSocket} {
+	for _, path := range []string{filepath.Join(root, applicationSocket), filepath.Join(root, routeSocket)} {
 		if _, statErr := os.Stat(path); !os.IsNotExist(statErr) {
 			t.Fatalf("Service command retained socket %s after failure: %v", path, statErr)
 		}
