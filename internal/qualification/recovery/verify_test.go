@@ -18,6 +18,20 @@ func TestVerifyAcceptsTwoCompleteDirectionalCells(t *testing.T) {
 	}
 }
 
+func TestVerifyAcceptsEvidenceAfterIndentedEnvelopeRoundTrip(t *testing.T) {
+	raw, err := json.MarshalIndent(validEvidence(t), "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var evidence Evidence
+	if err := json.Unmarshal(raw, &evidence); err != nil {
+		t.Fatal(err)
+	}
+	if result := Verify(evidence); result.Verdict != "pass" {
+		t.Fatalf("indented evidence envelope verdict = %+v, want pass", result)
+	}
+}
+
 func TestVerifyRejectsMissingHostScope(t *testing.T) {
 	value := validEvidence(t)
 	value.HostScope = nil

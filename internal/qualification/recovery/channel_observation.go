@@ -96,7 +96,7 @@ func decodeCanonicalChannelEvidence(raw []byte, value *commonChannelEvidence) er
 		return errors.New("common Carrier channel evidence contains multiple values")
 	}
 	canonical, err := json.Marshal(value)
-	if err != nil || !bytes.Equal(canonical, raw) {
+	if err != nil || !canonicalJSONEqual(raw, canonical) {
 		return errors.Join(err, errors.New("common Carrier channel evidence is not canonical"))
 	}
 	return nil
@@ -169,7 +169,7 @@ func channelEventCommitment(kind string, subject [32]byte, first, second string,
 	binary.BigEndian.PutUint64(encoded[8:16], uint64(started))
 	binary.BigEndian.PutUint64(encoded[16:], uint64(completed))
 	_, _ = hash.Write(encoded[:])
-	digest := sha256.Sum256(projection)
+	digest := sha256.Sum256(compactJSON(projection))
 	_, _ = hash.Write(digest[:])
 	return sum32(hash)
 }

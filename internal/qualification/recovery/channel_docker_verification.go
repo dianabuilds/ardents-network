@@ -61,7 +61,7 @@ func canonicalProjection[T any](raw []byte, expected T) bool {
 		return false
 	}
 	want, err := json.Marshal(expected)
-	return err == nil && bytes.Equal(raw, want)
+	return err == nil && canonicalJSONEqual(raw, want)
 }
 
 func decodeCanonicalProjection(raw []byte, value any) bool {
@@ -71,7 +71,7 @@ func decodeCanonicalProjection(raw []byte, value any) bool {
 		return false
 	}
 	canonical, err := json.Marshal(value)
-	return err == nil && bytes.Equal(canonical, raw)
+	return err == nil && canonicalJSONEqual(raw, canonical)
 }
 
 func dockerChannelNetworkScope(scope hostScopeEvidence, network string) [32]byte {

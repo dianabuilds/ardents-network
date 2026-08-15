@@ -10,7 +10,7 @@ func cleanupObservationCommitment(value cleanup) [32]byte {
 	_, _ = hash.Write([]byte("ardents-qualification-cleanup-observation-v1\x00"))
 	_, _ = hash.Write(value.Scope[:])
 	_, _ = hash.Write([]byte(value.Adapter))
-	projection := sha256.Sum256(value.AdapterProjection)
+	projection := sha256.Sum256(compactJSON(value.AdapterProjection))
 	_, _ = hash.Write(projection[:])
 	var encoded [8]byte
 	binary.BigEndian.PutUint64(encoded[:], uint64(value.ObservedAtNanos))

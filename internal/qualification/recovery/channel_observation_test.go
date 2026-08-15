@@ -109,12 +109,32 @@ func TestVerifyRejectsMutatedCommonChannelEvidence(t *testing.T) {
 	}
 }
 
+func TestVerifyAcceptsChannelEvidenceIndentedByTheEvidenceEnvelope(t *testing.T) {
+	bundle := validEvidence(t)
+	var indented bytes.Buffer
+	if err := json.Indent(&indented, bundle.Cells[0].ChannelEvidence, "", "  "); err != nil {
+		t.Fatal(err)
+	}
+	bundle.Cells[0].ChannelEvidence = indented.Bytes()
+	if result := Verify(bundle); result.Verdict != "pass" {
+		t.Fatalf("indented common channel evidence verdict = %+v, want pass", result)
+	}
+}
+
 func TestVerifyRejectsMalformedCommonChannelEvidence(t *testing.T) {
 	base := validEvidence(t).Cells[0].ChannelEvidence
 	unknown := append([]byte(nil), bytes.TrimSuffix(base, []byte("}"))...)
 	unknown = append(unknown, []byte(`,"Unknown":true}`)...)
+	var fields map[string]any
+	if err := json.Unmarshal(base, &fields); err != nil {
+		t.Fatal(err)
+	}
+	reordered, err := json.Marshal(fields)
+	if err != nil || bytes.Equal(reordered, base) {
+		t.Fatalf("construct reordered channel evidence: equal=%t err=%v", bytes.Equal(reordered, base), err)
+	}
 	for name, raw := range map[string][]byte{
-		"noncanonical":    append([]byte(" "), base...),
+		"noncanonical":    reordered,
 		"unknown field":   unknown,
 		"multiple values": append(append([]byte(nil), base...), base...),
 		"oversized":       bytes.Repeat([]byte("x"), (128<<10)+1),

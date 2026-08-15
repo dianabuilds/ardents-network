@@ -156,14 +156,30 @@ func TestLogicalQueueBackpressuresAtFrozenDirectionalCap(t *testing.T) {
 		outcomes <- serviceOutcome{result, err}
 	}()
 	writeDone := make(chan error, 1)
+	writeProgress := make(chan struct{}, 256)
 	go func() {
-		_, err := clientApplication.Write(seededBytes(4<<20, 33))
-		writeDone <- err
+		payload := seededBytes(4<<20, 33)
+		for offset := 0; offset < len(payload); offset += 16 << 10 {
+			end := min(offset+(16<<10), len(payload))
+			if _, err := clientApplication.Write(payload[offset:end]); err != nil {
+				writeDone <- err
+				return
+			}
+			writeProgress <- struct{}{}
+		}
+		writeDone <- nil
 	}()
+	for range 2 {
+		select {
+		case <-writeProgress:
+		case <-time.After(2 * time.Second):
+			t.Fatal("Application did not exercise the logical send queue")
+		}
+	}
 	select {
 	case err := <-writeDone:
 		t.Fatalf("slow remote Application did not backpressure four MiB write: %v", err)
-	case <-time.After(100 * time.Millisecond):
+	default:
 	}
 	cancel()
 	bounded := false

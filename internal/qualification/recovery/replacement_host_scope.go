@@ -29,7 +29,7 @@ func decodeHostScope(raw []byte) (hostScopeEvidence, error) {
 		return value, errors.New("host-observation scope contains multiple values")
 	}
 	canonical, err := json.Marshal(value)
-	if err != nil || !bytes.Equal(canonical, raw) {
+	if err != nil || !canonicalJSONEqual(raw, canonical) {
 		return value, errors.Join(err, errors.New("host-observation scope is not canonical"))
 	}
 	return value, nil

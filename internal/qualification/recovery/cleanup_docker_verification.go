@@ -19,7 +19,7 @@ func validDockerCleanupProjection(value cleanup, scope hostScopeEvidence) bool {
 		return false
 	}
 	canonical, err := json.Marshal(projection)
-	return err == nil && bytes.Equal(canonical, value.AdapterProjection) &&
+	return err == nil && canonicalJSONEqual(value.AdapterProjection, canonical) &&
 		projection.Project == scope.AdapterProjection && projection.Containers == 0 &&
 		projection.Networks == 0 && projection.Volumes == 0
 }

@@ -18,6 +18,9 @@ func (observer dockerObserver) endpointRestartNegative(ctx context.Context) (rec
 	}
 	observer.direction, observer.gateOffset = "client-to-publisher", 17*16_381
 	observer.generation = filepath.Join(observer.input.FixtureRoot, "generations", "1")
+	if err := setRouteAttachments(observer.input.FixtureRoot, 1); err != nil {
+		return recovery.Negative{}, err
+	}
 	if err := configureRecoveryDirection(observer.generation, observer.direction); err != nil {
 		return recovery.Negative{}, err
 	}
