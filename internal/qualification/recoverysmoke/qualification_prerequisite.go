@@ -47,9 +47,8 @@ func loadQualificationPrerequisites(input config, sourceCommit string) ([]qualif
 		if err := decodeQualificationJSON(s42Raw, &envelope); err != nil {
 			return nil, errors.Join(err, errors.New("S4.2 prerequisite evidence is malformed"))
 		}
-		var manifest struct{ SourceCommit string }
-		if err := decodeQualificationJSON(envelope.AttemptManifest, &manifest); err != nil ||
-			recovery.Verify(envelope).Verdict != "pass" || manifest.SourceCommit != sourceCommit {
+		manifestSourceCommit, err := sourceCommitFromManifest(envelope.AttemptManifest)
+		if err != nil || recovery.Verify(envelope).Verdict != "pass" || manifestSourceCommit != sourceCommit {
 			return nil, errors.Join(err, errors.New("S4.2 prerequisite does not pass for the current source"))
 		}
 		values = append(values, qualificationPrerequisite{Stage: "S4.2", SourceCommit: sourceCommit,
@@ -107,6 +106,18 @@ func decodeQualificationJSON(raw []byte, target any) error {
 		return errors.New("qualification evidence contains multiple JSON values")
 	}
 	return nil
+}
+
+func sourceCommitFromManifest(raw []byte) (string, error) {
+	var manifest struct{ SourceCommit string }
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	if err := decoder.Decode(&manifest); err != nil {
+		return "", err
+	}
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		return "", errors.New("qualification manifest contains multiple JSON values")
+	}
+	return manifest.SourceCommit, nil
 }
 
 func digestPrerequisite(raw []byte) string {
