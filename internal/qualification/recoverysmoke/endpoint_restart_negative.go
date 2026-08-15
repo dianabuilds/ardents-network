@@ -53,7 +53,7 @@ func (observer dockerObserver) endpointRestartNegative(ctx context.Context) (rec
 	if err != nil {
 		return recovery.Negative{}, err
 	}
-	if _, err := observer.compose(ctx, time.Minute, "restart", "publisher-endpoint"); err != nil {
+	if _, err := observer.compose(ctx, time.Minute, endpointRestartArguments()...); err != nil {
 		return recovery.Negative{}, err
 	}
 	afterProcess, err := observer.containerProcessIdentity(ctx, publisherID)
@@ -84,6 +84,10 @@ func (observer dockerObserver) endpointRestartNegative(ctx context.Context) (rec
 	return recovery.Negative{TerminalCount: 1, Class: terminal.Class, WithinNanos: elapsed.Nanoseconds(), Passed: passed,
 		ContainerID: publisherID, InjectedResource: "publisher-endpoint",
 		BeforeProcess: beforeProcess, AfterProcess: afterProcess}, nil
+}
+
+func endpointRestartArguments() []string {
+	return []string{"restart", "--timeout", "1", "publisher-endpoint"}
 }
 
 func writeRelease(root, role string) error {
