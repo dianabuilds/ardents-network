@@ -1,14 +1,15 @@
 # Horizon 3 Stage 5 implementation brief
 
-Status: **proposed on 2026-08-16; awaits explicit Product Owner acceptance**
+Status: **accepted by the Product Owner on 2026-08-16; S5.1-S5.5 authorized in order**
 
 Authoritative inputs: accepted ADR-0005, ADR-0009, ADR-0012, R-009, R-023,
 R-028, R-032 through R-038, the product contract, threat model, operating
 model, H3 technical design, package map, dependency register, and repository
 rules. The Product Owner accepted R-037 option O1 and profile
-`h3-s5-b1-v1` on 2026-08-16. That acceptance authorizes this brief, not code.
+`h3-s5-b1-v1` on 2026-08-16, then explicitly accepted this implementation
+brief on 2026-08-16.
 
-Explicit acceptance of this brief authorizes S5.1 through S5.5 in order. It
+That explicit acceptance authorizes S5.1 through S5.5 in order. It
 does not authorize public distribution, a release claim, a new Go module
 dependency, an unpinned runtime download, or any broader Stage 5 scope.
 
@@ -271,7 +272,10 @@ inspection surface is added.
 
 ### S5.1 — Invite import and Bridge owner
 
-- add `internal/bridge` and `cmd/ardents-bridge import` together;
+- add `internal/bridge`, the pure WebTunnel-envelope validator in
+  `internal/camouflage`, and `cmd/ardents-bridge import` together so the
+  transport-neutral Bridge can validate its opaque envelope through the
+  accepted Adapter seam;
 - freeze both golden encodings and strict bounds;
 - exercise valid/idempotent import, every invalid field, expiry, wrong
   network/Epoch/profile/domain, role/family conflict, two slots, one
@@ -284,8 +288,9 @@ R-035 state negatives pass, and no process/network action occurs during import.
 
 ### S5.2 — WebTunnel Adapter carrier
 
-- add `internal/camouflage`, `cmd/ardents-bridge serve`, and the optional
-  client entry-plan composition in `cmd/ardents-route`;
+- deepen `internal/camouflage` with its runtime carrier, add
+  `cmd/ardents-bridge serve`, and add the optional client entry-plan
+  composition in `cmd/ardents-route`;
 - register and verify offline supply before process startup;
 - test pure config validation, sanitized environment, PT v1 transcript,
   SOCKS5 grant/refusal, malformed control, stdout/stderr quarantine, startup,

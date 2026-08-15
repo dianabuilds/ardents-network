@@ -559,16 +559,16 @@ trustworthy terminal verdict.
 
 - State: `decided`; the Product Owner accepted option O1 and profile
   `h3-s5-b1-v1` on 2026-08-16.
-- Authorized follow-up: prepare and review one Stage 5 implementation brief
-  mapping the accepted seams onto maintained code.
+- Authorized follow-up: the Product Owner explicitly accepted the Stage 5
+  implementation brief on 2026-08-16, authorizing S5.1 through S5.5 in order.
 - Documents changed by acceptance: this R-037 record, the R-037 row in
-  [questions.md](../questions.md), and the proposed
+  [questions.md](../questions.md), and the accepted
   [Stage 5 implementation brief](../../development/horizon-3-stage-5-brief.md).
 - No ADR is created: this record operationalizes accepted ADR-0005/0009/0012
   and does not select another hard-to-reverse technology.
-- No integrated experiment, package, command, dependency, binary, runtime code,
-  or public claim is authorized until that implementation brief is explicitly
-  accepted.
+- That acceptance authorizes only the brief's maintained code and integrated
+  local experiment; it does not authorize public distribution, a release
+  claim, a new module dependency, or unpinned runtime supply.
 - The prior R-036 disposable harness remains retained source evidence; all
   generated candidates, keys, captures, state, and run evidence stay outside
   Git.
