@@ -69,9 +69,7 @@ func (observer dockerObserver) streamResourceSamples(ctx context.Context, identi
 		seen[service] = true
 		if len(seen) == len(services) {
 			sample.AtNanos = time.Since(clock).Nanoseconds()
-			if retainResourceObservation(samples, sample) {
-				samples = append(samples, sample)
-			}
+			samples = appendResourceObservation(samples, sample)
 			ready()
 			sample, seen = recovery.ResourceSample{}, map[string]bool{}
 		}
@@ -91,13 +89,27 @@ func (observer dockerObserver) streamResourceSamples(ctx context.Context, identi
 	return samples, errors.Join(parseErr, scanErr, waitErr)
 }
 
-func retainResourceObservation(samples []recovery.ResourceSample, sample recovery.ResourceSample) bool {
+func appendResourceObservation(samples []recovery.ResourceSample,
+	sample recovery.ResourceSample) []recovery.ResourceSample {
 	if len(samples) == 0 {
-		return true
+		return append(samples, sample)
 	}
-	previous := samples[len(samples)-1]
-	return sample.AtNanos-previous.AtNanos >= int64(900*time.Millisecond) &&
-		!sameResourceObservation(previous, sample)
+	interval := sample.AtNanos - samples[len(samples)-1].AtNanos
+	if interval >= int64(900*time.Millisecond) {
+		return append(samples, sample)
+	}
+	if interval < 0 {
+		return samples
+	}
+	if len(samples) == 1 {
+		samples[0] = sample
+		return samples
+	}
+	priorInterval := sample.AtNanos - samples[len(samples)-2].AtNanos
+	if priorInterval >= int64(900*time.Millisecond) && priorInterval <= int64(1500*time.Millisecond) {
+		samples[len(samples)-1] = sample
+	}
+	return samples
 }
 
 func addResourceRow(line []byte, identities map[string]string, services []string,

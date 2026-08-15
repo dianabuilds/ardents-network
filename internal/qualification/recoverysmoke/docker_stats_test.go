@@ -70,15 +70,23 @@ func TestResourceObservationCoalescesOnlyExactDockerRedraw(t *testing.T) {
 	}
 }
 
-func TestResourceObservationDropsChangedPartialRedraw(t *testing.T) {
+func TestResourceObservationReplacesPriorPointForValidCadence(t *testing.T) {
+	first := recovery.ResourceSample{AtNanos: int64(time.Second), ClientSent: 1}
 	previous := recovery.ResourceSample{AtNanos: int64(2 * time.Second), ClientSent: 1}
 	partial := recovery.ResourceSample{AtNanos: int64(2500 * time.Millisecond), ClientSent: 2}
-	if retainResourceObservation([]recovery.ResourceSample{previous}, partial) {
-		t.Fatal("changed partial Docker redraw was retained as a one-second sample")
+	samples := appendResourceObservation([]recovery.ResourceSample{first, previous}, partial)
+	if len(samples) != 2 || samples[1] != partial {
+		t.Fatalf("latest valid-cadence Docker redraw was not retained: %+v", samples)
 	}
-	complete := recovery.ResourceSample{AtNanos: int64(3 * time.Second), ClientSent: 2}
-	if !retainResourceObservation([]recovery.ResourceSample{previous}, complete) {
-		t.Fatal("complete one-second Docker observation was dropped")
+	tooSoon := recovery.ResourceSample{AtNanos: int64(2600 * time.Millisecond), ClientSent: 3}
+	got := appendResourceObservation(samples, tooSoon)
+	if len(got) != 2 || got[1] != partial {
+		t.Fatalf("redraw outside a valid cadence changed the series: %+v", got)
+	}
+	complete := recovery.ResourceSample{AtNanos: int64(3500 * time.Millisecond), ClientSent: 3}
+	got = appendResourceObservation(got, complete)
+	if len(got) != 3 || got[2] != complete {
+		t.Fatalf("complete one-second Docker observation was dropped: %+v", got)
 	}
 }
 
