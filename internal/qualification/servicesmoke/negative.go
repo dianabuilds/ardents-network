@@ -23,8 +23,7 @@ func (observer dockerObserver) negativeReceipt(ctx context.Context) (negativeRec
 		return negativeReceipt{}, err
 	}
 	var value negativeReceipt
-	if json.Unmarshal(bytes.TrimSpace(raw), &value) != nil || value.Schema != "ardents-h3-service-negative-v1" ||
-		len(value.Negatives) != 24 || len(value.Mechanisms) != 24 || len(value.Operations) != 3 {
+	if json.Unmarshal(bytes.TrimSpace(raw), &value) != nil || !validNegativeReceiptShape(value) {
 		return negativeReceipt{}, errors.New("stage 3 negative-suite receipt is malformed")
 	}
 	for _, passed := range value.Negatives {
@@ -38,4 +37,9 @@ func (observer dockerObserver) negativeReceipt(ctx context.Context) (negativeRec
 		}
 	}
 	return value, nil
+}
+
+func validNegativeReceiptShape(value negativeReceipt) bool {
+	return value.Schema == "ardents-h3-service-negative-v1" && len(value.Negatives) == 24 &&
+		len(value.Mechanisms) == 24 && len(value.Operations) == 4
 }
