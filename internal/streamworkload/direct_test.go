@@ -116,6 +116,7 @@ func TestDirectWorkloadRejectsUnboundedBytesAndCancelsStartDelay(t *testing.T) {
 func TestTimedDirectWorkloadReportsDeliveredBytesInFixedWindow(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
+	const measurementWindow = 200 * time.Millisecond
 	seed := [32]byte{8}
 	ready := make(chan string, 1)
 	type outcome struct {
@@ -126,13 +127,13 @@ func TestTimedDirectWorkloadReportsDeliveredBytesInFixedWindow(t *testing.T) {
 	go func() {
 		var result outcome
 		result.err = Direct(ctx, DirectConfig{Role: "direct-listen", Address: "127.0.0.1:0", Seed: seed,
-			Bytes: maximumDirectBytes, MeasureDuration: 20 * time.Millisecond, Output: &result.output,
+			Bytes: maximumDirectBytes, MeasureDuration: measurementWindow, Output: &result.output,
 			Ready: func(address string) { ready <- address }})
 		serverResult <- result
 	}()
 	var clientOutput bytes.Buffer
 	if err := Direct(ctx, DirectConfig{Role: "direct-connect", Address: <-ready, Seed: seed,
-		Bytes: maximumDirectBytes, MeasureDuration: 20 * time.Millisecond, Output: &clientOutput}); err != nil {
+		Bytes: maximumDirectBytes, MeasureDuration: measurementWindow, Output: &clientOutput}); err != nil {
 		t.Fatal(err)
 	}
 	server := <-serverResult
@@ -144,7 +145,7 @@ func TestTimedDirectWorkloadReportsDeliveredBytesInFixedWindow(t *testing.T) {
 		json.Unmarshal(bytes.TrimSpace(server.output.Bytes()), &receiver) != nil ||
 		client.Terminal != "success" || receiver.Terminal != "success" || client.SentBytes == 0 ||
 		client.SentBytes != receiver.ReceivedBytes || client.SentDigest != receiver.ReceivedDigest ||
-		client.DurationMillis < 20 {
+		client.DurationMillis < uint32(measurementWindow/time.Millisecond) {
 		t.Fatalf("timed direct observations differ: client=%+v receiver=%+v", client, receiver)
 	}
 }
