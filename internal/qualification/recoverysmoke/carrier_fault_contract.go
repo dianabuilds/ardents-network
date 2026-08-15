@@ -116,7 +116,7 @@ func observeCarrierSocket(remote string) (carrierObservation, error) {
 }
 
 func faultCarrierSocket(socketID string) (receipt carrierFaultReceipt, err error) {
-	value, _, err := decodeCarrierSocketID(socketID)
+	value, raw, err := decodeCarrierSocketID(socketID)
 	if err != nil {
 		return receipt, err
 	}
@@ -129,6 +129,9 @@ func faultCarrierSocket(socketID string) (receipt carrierFaultReceipt, err error
 	}
 	started := time.Now()
 	if err := platformDeleteCarrierInterface(interfaceName); err != nil {
+		return receipt, err
+	}
+	if err := platformDestroyCarrierSocket(raw); err != nil {
 		return receipt, err
 	}
 	cutAfter := time.Since(started).Nanoseconds()

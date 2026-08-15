@@ -3,6 +3,7 @@
 package recoverysmoke
 
 import (
+	"bytes"
 	"encoding/binary"
 	"net"
 	"os"
@@ -22,6 +23,20 @@ func TestCarrierDiagRequestAndMalformedResponse(t *testing.T) {
 	binary.NativeEndian.PutUint32(malformed[:4], 15)
 	if _, _, err := parseCarrierDiagDatagram(malformed); err == nil {
 		t.Fatal("malformed response passed")
+	}
+}
+
+func TestCarrierDestroyRequestTargetsOnlyTheExactSocket(t *testing.T) {
+	socketID := make([]byte, carrierSocketIDBytes)
+	for index := range socketID {
+		socketID[index] = byte(index + 1)
+	}
+	request := makeCarrierDiagRequest(unix.SOCK_DESTROY, unix.NLM_F_REQUEST|unix.NLM_F_ACK, socketID)
+	if binary.NativeEndian.Uint16(request[4:6]) != unix.SOCK_DESTROY ||
+		binary.NativeEndian.Uint16(request[6:8]) != unix.NLM_F_REQUEST|unix.NLM_F_ACK ||
+		binary.NativeEndian.Uint32(request[20:24]) != ^uint32(0) ||
+		!bytes.Equal(request[24:], socketID) {
+		t.Fatalf("destroy request did not preserve the exact socket identity: %x", request)
 	}
 }
 

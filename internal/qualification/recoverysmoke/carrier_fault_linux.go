@@ -60,6 +60,14 @@ func platformCarrierSocketEstablished(socketID []byte, timeout time.Duration) (b
 	return state == carrierTCPEstablished, err
 }
 
+func platformDestroyCarrierSocket(socketID []byte) error {
+	if len(socketID) != carrierSocketIDBytes {
+		return errors.New("Carrier socket destroy identity is invalid")
+	}
+	_, err := carrierDiagExchange(unix.SOCK_DESTROY, unix.NLM_F_REQUEST|unix.NLM_F_ACK, socketID, time.Second)
+	return err
+}
+
 func exactCarrierSocketState(messages [][]byte, socketID []byte) (byte, error) {
 	if len(messages) != 1 || len(messages[0]) < 52 || string(messages[0][4:52]) != string(socketID) {
 		return 0, errors.New("exact inet_diag socket response is missing or mismatched")
