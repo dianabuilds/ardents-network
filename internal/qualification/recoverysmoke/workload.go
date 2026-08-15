@@ -25,6 +25,13 @@ func refreshWorkload(generationRoot string) error {
 	return nil
 }
 
+func initializeRecoveryWorkload(generationRoot string, fixed bool) error {
+	if !fixed {
+		return nil
+	}
+	return refreshWorkload(generationRoot)
+}
+
 func recoveryDirectionSeed(root, direction string) ([32]byte, error) {
 	name := "client-seed.hex"
 	if direction == "publisher-to-client" {

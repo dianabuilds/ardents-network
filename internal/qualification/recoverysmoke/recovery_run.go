@@ -62,6 +62,9 @@ func (observer dockerObserver) runRecoveryCell(ctx context.Context, fixture prep
 	observer.generation = filepath.Join(observer.input.FixtureRoot, "generations", "1")
 	observer.evidenceFile = filepath.Join(observer.input.EvidenceRoot, "empty.json")
 	observer.fixedWorkload = observer.input.Slice != "s4.1"
+	if err := initializeRecoveryWorkload(observer.generation, observer.fixedWorkload); err != nil {
+		return observer.invalid(err)
+	}
 	campaignStarted := time.Now()
 	var replacementManifest json.RawMessage
 	var replacementAttemptFiles []string
