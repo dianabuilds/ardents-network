@@ -38,7 +38,7 @@ func runDocker(ctx context.Context, input Config, fixture prepared) (result Resu
 	}()
 	observer.generation = filepath.Join(input.FixtureRoot, "generations", "1")
 	observer.evidenceFile = filepath.Join(input.EvidenceRoot, "empty.json")
-	topology, err := observer.compose(ctx, time.Minute, "--profile", "*", "config")
+	topology, err := observer.compose(ctx, time.Minute, serviceTopologyArguments()...)
 	if err != nil {
 		return observer.invalid(err)
 	}
@@ -104,6 +104,10 @@ func runDocker(ctx context.Context, input Config, fixture prepared) (result Resu
 	return Result{Verdict: "pass", Reason: fmt.Sprintf("local Docker H3 Stage 3 smoke passed %d migration attempts", attempts),
 		EvidenceRoot: input.EvidenceRoot, Attempts: attempts, SourceCommit: commit, ImageID: imageID,
 		attemptFiles: attemptFiles, dockerProject: observer.project, imageTag: observer.image}
+}
+
+func serviceTopologyArguments() []string {
+	return []string{"--profile", "negative", "--profile", "verify", "--profile", "setup", "config"}
 }
 
 func verifyRetained(ctx context.Context, input Config, result *Result) error {

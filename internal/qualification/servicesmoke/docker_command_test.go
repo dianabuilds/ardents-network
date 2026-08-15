@@ -2,6 +2,7 @@ package servicesmoke
 
 import (
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -15,4 +16,11 @@ func TestComposeEnvironmentProvidesSharedRecoveryGateRoot(t *testing.T) {
 		}
 	}
 	t.Fatalf("Compose environment does not contain %q", want)
+}
+
+func TestServiceTopologyExcludesLaterRecoveryProfiles(t *testing.T) {
+	want := []string{"--profile", "negative", "--profile", "verify", "--profile", "setup", "config"}
+	if got := serviceTopologyArguments(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("service topology arguments=%v; want %v", got, want)
+	}
 }
