@@ -16,3 +16,5 @@ func compactJSON(raw []byte) []byte {
 	}
 	return compact.Bytes()
 }
+
+func jsonDigest(raw []byte) string { return hexDigest(compactJSON(raw)) }

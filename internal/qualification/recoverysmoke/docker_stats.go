@@ -69,7 +69,7 @@ func (observer dockerObserver) streamResourceSamples(ctx context.Context, identi
 		seen[service] = true
 		if len(seen) == len(services) {
 			sample.AtNanos = time.Since(clock).Nanoseconds()
-			if len(samples) == 0 || !sameResourceObservation(samples[len(samples)-1], sample) {
+			if retainResourceObservation(samples, sample) {
 				samples = append(samples, sample)
 			}
 			ready()
@@ -89,6 +89,15 @@ func (observer dockerObserver) streamResourceSamples(ctx context.Context, identi
 		waitErr = fmt.Errorf("docker stats stream failed (stderr_sha256=%x): %w", digest, waitErr)
 	}
 	return samples, errors.Join(parseErr, scanErr, waitErr)
+}
+
+func retainResourceObservation(samples []recovery.ResourceSample, sample recovery.ResourceSample) bool {
+	if len(samples) == 0 {
+		return true
+	}
+	previous := samples[len(samples)-1]
+	return sample.AtNanos-previous.AtNanos >= int64(900*time.Millisecond) &&
+		!sameResourceObservation(previous, sample)
 }
 
 func addResourceRow(line []byte, identities map[string]string, services []string,

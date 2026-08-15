@@ -14,7 +14,7 @@ func verifyStressCampaign(value Evidence) Result {
 		return invalid("decode S4.3 campaign index: " + err.Error())
 	}
 	if manifest.Schema != stressAttemptManifestSchema || len(manifest.Cells) != 3 ||
-		index.Schema != replacementCampaignIndexSchema || index.ManifestDigest != hexDigest(value.AttemptManifest) {
+		index.Schema != replacementCampaignIndexSchema || index.ManifestDigest != jsonDigest(value.AttemptManifest) {
 		return invalid("S4.3 campaign identity is invalid")
 	}
 	hostScope, err := decodeHostScope(manifest.HostScope)
@@ -41,7 +41,7 @@ func verifyStressCampaign(value Evidence) Result {
 			if entry.CellID != cell.CellID || entry.AttemptID != expectedAttempt ||
 				receipt.CellID != entry.CellID || receipt.AttemptID != entry.AttemptID ||
 				receipt.Schema != replacementAttemptReceiptSchema || receipt.ManifestDigest != cell.ManifestDigest ||
-				entry.ReceiptPath != expectedRoot+"receipt.json" || entry.ReceiptDigest != hexDigest(entry.Receipt) {
+				entry.ReceiptPath != expectedRoot+"receipt.json" || entry.ReceiptDigest != jsonDigest(entry.Receipt) {
 				return invalid("S4.3 campaign receipt identity or order is invalid")
 			}
 			position++
@@ -55,7 +55,7 @@ func verifyStressCampaign(value Evidence) Result {
 			}
 			verified := verifyStressAttempt(Evidence{AttemptManifest: value.AttemptManifest,
 				AttemptReceipt: entry.Receipt})
-			verified.EvidenceDigest = hexDigest(entry.Receipt)
+			verified.EvidenceDigest = jsonDigest(entry.Receipt)
 			if receipt.Observation != "complete" || receipt.Cleanup != "complete" ||
 				entry.VerifierPath != expectedRoot+"verifier.json" || entry.Verifier != verified ||
 				verified.Verdict != receipt.Candidate {
@@ -76,7 +76,7 @@ func verifyStressCampaign(value Evidence) Result {
 	if position != len(index.Attempts) {
 		return invalid("S4.3 campaign contains an extra or duplicate receipt")
 	}
-	return Result{Verdict: "pass", EvidenceDigest: hexDigest(value.AttemptCampaign)}
+	return Result{Verdict: "pass", EvidenceDigest: jsonDigest(value.AttemptCampaign)}
 }
 
 func validInfrastructureInvalid(receipt replacementAttemptReceipt, scope hostScopeEvidence) bool {

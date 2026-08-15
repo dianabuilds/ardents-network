@@ -42,7 +42,7 @@ func buildReplacementCampaignIndex(root string, manifestRaw json.RawMessage,
 		return nil, nil, errors.New("replacement campaign final receipt cardinality is invalid")
 	}
 	index := replacementCampaignIndex{Schema: "ardents-qualification-campaign-index-v1",
-		ManifestDigest: digestPrerequisite(manifestRaw)}
+		ManifestDigest: digestCampaignJSON(manifestRaw)}
 	artifacts := make([]string, 0, len(manifest.Cells)*3)
 	for cellIndex, cell := range manifest.Cells[:len(finalPaths)] {
 		cellRoot := filepath.Join(root, "cells", cell.CellID)
@@ -66,7 +66,7 @@ func buildReplacementCampaignIndex(root string, manifestRaw json.RawMessage,
 				return nil, nil, fmt.Errorf("decode durable replacement receipt: %w", err)
 			}
 			entryValue := replacementCampaignAttempt{CellID: receipt.CellID, AttemptID: receipt.AttemptID,
-				ReceiptPath: relativeCampaignPath(root, receiptPath), ReceiptDigest: digestPrerequisite(raw),
+				ReceiptPath: relativeCampaignPath(root, receiptPath), ReceiptDigest: digestCampaignJSON(raw),
 				Receipt: append(json.RawMessage(nil), raw...)}
 			artifacts = append(artifacts, receiptPath)
 			if receipt.Candidate == "pass" || receipt.Candidate == "fail" {
@@ -94,6 +94,14 @@ func buildReplacementCampaignIndex(root string, manifestRaw json.RawMessage,
 		return nil, nil, fmt.Errorf("encode replacement campaign index: %w", err)
 	}
 	return raw, artifacts, nil
+}
+
+func digestCampaignJSON(raw []byte) string {
+	var compact bytes.Buffer
+	if json.Compact(&compact, raw) != nil {
+		return digestPrerequisite(raw)
+	}
+	return digestPrerequisite(compact.Bytes())
 }
 
 func decodeCampaignJSON(raw []byte, target any) error {

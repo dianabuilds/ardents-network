@@ -24,7 +24,7 @@ func Verify(value Evidence) Result {
 		if attemptSchema(value.AttemptManifest) == stressAttemptManifestSchema {
 			result = verifyStressAttempt(value)
 		}
-		result.EvidenceDigest = hexDigest(value.AttemptReceipt)
+		result.EvidenceDigest = jsonDigest(value.AttemptReceipt)
 		return result
 	}
 	if value.Schema == replacementCampaignEnvelopeSchema {

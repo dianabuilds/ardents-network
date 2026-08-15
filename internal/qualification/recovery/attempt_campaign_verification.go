@@ -31,7 +31,7 @@ func verifyReplacementCampaign(value Evidence) Result {
 		return invalid("decode replacement campaign index: " + err.Error())
 	}
 	if manifest.Schema != replacementAttemptManifestSchema || len(manifest.Cells) != 10 ||
-		index.Schema != replacementCampaignIndexSchema || index.ManifestDigest != hexDigest(value.AttemptManifest) {
+		index.Schema != replacementCampaignIndexSchema || index.ManifestDigest != jsonDigest(value.AttemptManifest) {
 		return invalid("replacement campaign identity is invalid")
 	}
 	for _, cell := range manifest.Cells {
@@ -61,7 +61,7 @@ func verifyReplacementCampaign(value Evidence) Result {
 				receipt.CellID != entry.CellID || receipt.AttemptID != entry.AttemptID ||
 				receipt.Schema != replacementAttemptReceiptSchema || receipt.ManifestDigest != cell.ManifestDigest ||
 				entry.ReceiptPath != expectedRoot+"receipt.json" ||
-				entry.ReceiptDigest != hexDigest(entry.Receipt) {
+				entry.ReceiptDigest != jsonDigest(entry.Receipt) {
 				return invalid("replacement campaign receipt identity or order is invalid")
 			}
 			position++
@@ -83,7 +83,7 @@ func verifyReplacementCampaign(value Evidence) Result {
 			}
 			verified := verifyReplacementAttempt(Evidence{AttemptManifest: value.AttemptManifest,
 				AttemptReceipt: entry.Receipt})
-			verified.EvidenceDigest = hexDigest(entry.Receipt)
+			verified.EvidenceDigest = jsonDigest(entry.Receipt)
 			if receipt.Observation != "complete" || receipt.Cleanup != "complete" ||
 				entry.VerifierPath != expectedRoot+"verifier.json" || entry.Verifier != verified ||
 				verified.Verdict != receipt.Candidate {
@@ -104,5 +104,5 @@ func verifyReplacementCampaign(value Evidence) Result {
 	if position != len(index.Attempts) {
 		return invalid("replacement campaign contains an extra or duplicate receipt")
 	}
-	return Result{Verdict: "pass", EvidenceDigest: hexDigest(value.AttemptCampaign)}
+	return Result{Verdict: "pass", EvidenceDigest: jsonDigest(value.AttemptCampaign)}
 }

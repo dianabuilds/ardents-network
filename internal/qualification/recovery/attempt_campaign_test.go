@@ -136,8 +136,16 @@ func assertReplacementCampaignVerdict(t *testing.T, manifest json.RawMessage,
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := Verify(Evidence{Schema: replacementCampaignEnvelopeSchema,
-		AttemptManifest: manifest, AttemptCampaign: indexRaw})
+	envelope, err := json.MarshalIndent(Evidence{Schema: replacementCampaignEnvelopeSchema,
+		AttemptManifest: manifest, AttemptCampaign: indexRaw}, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var formatted Evidence
+	if err := json.Unmarshal(envelope, &formatted); err != nil {
+		t.Fatal(err)
+	}
+	result := Verify(formatted)
 	if result.Verdict != wanted {
 		t.Fatalf("campaign verdict = %+v, want %s", result, wanted)
 	}

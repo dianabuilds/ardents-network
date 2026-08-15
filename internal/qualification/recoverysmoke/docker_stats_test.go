@@ -70,6 +70,18 @@ func TestResourceObservationCoalescesOnlyExactDockerRedraw(t *testing.T) {
 	}
 }
 
+func TestResourceObservationDropsChangedPartialRedraw(t *testing.T) {
+	previous := recovery.ResourceSample{AtNanos: int64(2 * time.Second), ClientSent: 1}
+	partial := recovery.ResourceSample{AtNanos: int64(2500 * time.Millisecond), ClientSent: 2}
+	if retainResourceObservation([]recovery.ResourceSample{previous}, partial) {
+		t.Fatal("changed partial Docker redraw was retained as a one-second sample")
+	}
+	complete := recovery.ResourceSample{AtNanos: int64(3 * time.Second), ClientSent: 2}
+	if !retainResourceObservation([]recovery.ResourceSample{previous}, complete) {
+		t.Fatal("complete one-second Docker observation was dropped")
+	}
+}
+
 func TestResourceRowBindsTheExactContainerSide(t *testing.T) {
 	clientID, publisherID := strings.Repeat("a", 64), strings.Repeat("b", 64)
 	identities := map[string]string{"client": clientID, "publisher": publisherID}
