@@ -197,6 +197,14 @@ The signed body contains, in this exact order:
 11. one `uint16` length plus `1..1024` opaque candidate-envelope bytes; and
 12. `32-byte issuer_key_id`, followed by signed-body EOF.
 
+For this fixture, `family_id` is SHA-256 of the authenticated canonical family
+bytes, `node_record_digest` is SHA-256 of the authenticated canonical Node
+Record, `domain_proof` is that record's canonical current-Epoch
+materialization, `assignment_not_after` is the authenticated Epoch assignment
+bound, and `issuer_key_id` is SHA-256 of the Node Record's Ed25519 public key.
+The importer derives all five values from current authenticated Network State;
+the operator plan cannot assert them.
+
 The signature input is ASCII
 `ardents-h3-bridge-invite-signature-v1` plus one NUL byte plus the exact signed
 body. The Invite ID is SHA-256 over ASCII
