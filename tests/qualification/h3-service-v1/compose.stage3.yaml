@@ -67,7 +67,7 @@ services:
     volumes: [administration:/run/ardents/admin]
   publisher-app:
     <<: *local
-    command: [/usr/local/bin/ardents-stream-app, run, publisher, /run/ardents/publisher-app/app.sock, /run/ardents/workload/publisher.hex, /run/ardents/workload/client.hex, "65536"]
+    command: [/usr/local/bin/ardents-stream-app, run, publisher, /run/ardents/publisher-app/app.sock, /run/ardents/workload/publisher.hex, /run/ardents/workload/client.hex, "65536", "65536"]
     volumes:
       - publisher_app:/run/ardents/publisher-app
       - {type: bind, source: "${ARDENTS_SERVICE_GENERATION:?}/publisher-seed.hex", target: /run/ardents/workload/publisher.hex, read_only: true, bind: {create_host_path: false}}
@@ -82,7 +82,7 @@ services:
       - publication:/run/ardents/publication:ro
   client-app:
     <<: *local
-    command: [/usr/local/bin/ardents-stream-app, run, client, /run/ardents/client-app/app.sock, /run/ardents/workload/client.hex, /run/ardents/workload/publisher.hex, "65536"]
+    command: [/usr/local/bin/ardents-stream-app, run, client, /run/ardents/client-app/app.sock, /run/ardents/workload/client.hex, /run/ardents/workload/publisher.hex, "65536", "65536"]
     volumes:
       - client_app:/run/ardents/client-app
       - {type: bind, source: "${ARDENTS_SERVICE_GENERATION:?}/client-seed.hex", target: /run/ardents/workload/client.hex, read_only: true, bind: {create_host_path: false}}

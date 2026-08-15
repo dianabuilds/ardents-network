@@ -88,3 +88,21 @@ func TestH3ServiceSmokeComposeContract(t *testing.T) {
 		}
 	}
 }
+
+func TestH3Stage3ComposeKeepsCurrentStreamCLIAndFrozenTopology(t *testing.T) {
+	t.Parallel()
+	compose := readProjectFile(t, repositoryRoot(t), "tests/qualification/h3-service-v1/compose.stage3.yaml")
+	for _, command := range []string{
+		"run, publisher, /run/ardents/publisher-app/app.sock, /run/ardents/workload/publisher.hex, /run/ardents/workload/client.hex, \"65536\", \"65536\"",
+		"run, client, /run/ardents/client-app/app.sock, /run/ardents/workload/client.hex, /run/ardents/workload/publisher.hex, \"65536\", \"65536\"",
+	} {
+		if !bytes.Contains(compose, []byte(command)) {
+			t.Errorf("isolated Stage 3 Compose is missing current stream command %q", command)
+		}
+	}
+	for _, forbidden := range []string{"carrier_net:", "profiles: [s41]", "profiles: [s42]", "profiles: [s43"} {
+		if bytes.Contains(compose, []byte(forbidden)) {
+			t.Errorf("isolated Stage 3 Compose contains recovery topology %q", forbidden)
+		}
+	}
+}

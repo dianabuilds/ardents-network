@@ -79,7 +79,7 @@ func (observer dockerObserver) runGeneration(ctx context.Context, fixture prepar
 		}
 		identities = append(identities, identity)
 		if err := observer.waitContainer(ctx, identity, true); err != nil {
-			return generationEvidence{}, hostileRejected, err
+			return generationEvidence{}, hostileRejected, errors.Join(errors.New(service+" failed"), err)
 		}
 	}
 	identities = append(identities, operatorID, hostileID)
