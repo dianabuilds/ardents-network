@@ -44,7 +44,6 @@ func (observer dockerObserver) endpointRestartNegative(ctx context.Context) (rec
 	if delivered, err := observer.waitProgress(ctx, "publisher-app", observer.gateOffset); err != nil || delivered != observer.gateOffset {
 		return recovery.Negative{}, errors.Join(err, errors.New("endpoint restart cell did not reach its exact gate"))
 	}
-	started := time.Now()
 	publisherID, err := observer.serviceID(ctx, "publisher-endpoint")
 	if err != nil {
 		return recovery.Negative{}, err
@@ -53,6 +52,7 @@ func (observer dockerObserver) endpointRestartNegative(ctx context.Context) (rec
 	if err != nil {
 		return recovery.Negative{}, err
 	}
+	started := time.Now()
 	if _, err := observer.compose(ctx, time.Minute, endpointRestartArguments()...); err != nil {
 		return recovery.Negative{}, err
 	}
