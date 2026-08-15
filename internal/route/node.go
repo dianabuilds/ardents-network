@@ -43,6 +43,11 @@ func serveNode(ctx context.Context, input Actor, ready func(Evidence)) (Evidence
 	if err != nil {
 		return observation, contextError(ctx, err)
 	}
+	stop()
+	if err := listener.Close(); err != nil {
+		upstream.Close()
+		return observation, fmt.Errorf("close %s bounded Attachment listener: %w", input.Role, err)
+	}
 	defer upstream.Close()
 	if err := configureCarrierLiveness(upstream); err != nil {
 		return observation, fmt.Errorf("configure upstream Carrier liveness: %w", err)

@@ -136,6 +136,39 @@ func TestCancelledRouteListenerReleasesItsAddress(t *testing.T) {
 	listener.Close()
 }
 
+func TestRouteNodeStopsAcceptingAfterItsBoundedAttachment(t *testing.T) {
+	identity, upstream := routeIdentity(t, 51), routeIdentity(t, 52)
+	address := unusedAddress(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	ready, done := make(chan route.Evidence, 1), make(chan error, 1)
+	go func() {
+		_, err := route.Run(ctx, route.Actor{Role: "initiator", ManifestDigest: [32]byte{99},
+			NetworkID: [32]byte{1}, EpochDigest: [32]byte{2}, NodeID: [32]byte{3}, ListenAddress: address,
+			Certificate: identity.certificate, UpstreamPin: upstream.public, NextNodeID: [32]byte{4},
+			NextAddress: unusedAddress(t), NextPin: upstream.public, Deadline: time.Second},
+			func(value route.Evidence) { ready <- value })
+		done <- err
+	}()
+	<-ready
+	first, err := net.DialTimeout("tcp", address, time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer first.Close()
+	time.Sleep(25 * time.Millisecond)
+	second, err := net.DialTimeout("tcp", address, 100*time.Millisecond)
+	if err == nil {
+		second.Close()
+		t.Fatal("bounded Route Attachment listener accepted a queued successor")
+	}
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("bounded Route Attachment did not terminate after cancellation")
+	}
+}
+
 func TestCancellationDuringActiveRelayReleasesConnectionsAndGoroutines(t *testing.T) {
 	node, upstream, downstream := routeIdentity(t, 61), routeIdentity(t, 62), routeIdentity(t, 63)
 	nodeAddress := unusedAddress(t)

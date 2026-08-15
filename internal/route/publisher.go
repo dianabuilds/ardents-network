@@ -38,6 +38,11 @@ func servePublisher(ctx context.Context, input Actor, ready func(Evidence)) (Evi
 	if err != nil {
 		return observation, contextError(ctx, err)
 	}
+	stop()
+	if err := listener.Close(); err != nil {
+		connection.Close()
+		return observation, fmt.Errorf("close publisher bounded Attachment listener: %w", err)
+	}
 	defer connection.Close()
 	if err := configureCarrierLiveness(connection); err != nil {
 		return observation, fmt.Errorf("configure responder Carrier liveness: %w", err)
