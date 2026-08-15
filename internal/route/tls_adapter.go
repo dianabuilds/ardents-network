@@ -81,6 +81,10 @@ func dialTLS(ctx context.Context, address string, certificate tls.Certificate, p
 		attempt := min(remaining, 250*time.Millisecond)
 		raw, err = (&net.Dialer{Timeout: attempt}).DialContext(ctx, "tcp", address)
 		if err == nil {
+			if err = configureCarrierLiveness(raw); err != nil {
+				raw.Close()
+				return nil, err
+			}
 			break
 		}
 		select {

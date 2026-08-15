@@ -44,6 +44,9 @@ func serveNode(ctx context.Context, input Actor, ready func(Evidence)) (Evidence
 		return observation, contextError(ctx, err)
 	}
 	defer upstream.Close()
+	if err := configureCarrierLiveness(upstream); err != nil {
+		return observation, fmt.Errorf("configure upstream Carrier liveness: %w", err)
+	}
 	cancelUpstream := context.AfterFunc(ctx, func() { _ = upstream.Close() })
 	defer cancelUpstream()
 	deadline := time.Now().Add(input.Deadline)

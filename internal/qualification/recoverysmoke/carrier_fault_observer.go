@@ -114,7 +114,7 @@ type carrierFaultOutcome struct {
 }
 
 func (observer dockerObserver) destroyCarrier(ctx context.Context, controller, rendezvous, network string,
-	value carrierObservation, cellClock, hostClock time.Time) (carrierFaultOutcome, error) {
+	value carrierObservation, cellClock, hostClock time.Time, release func() error) (carrierFaultOutcome, error) {
 	result := carrierFaultOutcome{faultAt: time.Since(cellClock).Nanoseconds(),
 		hostFaultAt: time.Since(hostClock).Nanoseconds()}
 	raw, err := observer.docker(ctx, 10*time.Second, "exec", controller,
@@ -130,6 +130,9 @@ func (observer dockerObserver) destroyCarrier(ctx context.Context, controller, r
 	}
 	result.commitment, result.cutAfter = receipt.SocketIDSHA256, receipt.CarrierCutAfterNanos
 	result.absenceAfter, result.resourceAbsent = receipt.AbsenceAfterNanos, true
+	if err := release(); err != nil {
+		return result, fmt.Errorf("release post-fault workload: %w", err)
+	}
 	retiredRaw, err := observer.docker(ctx, 6*time.Second, "exec", controller,
 		"/usr/local/bin/ardents-qualify", "carrier-fault", "await-retired", value.SocketID)
 	if err != nil {

@@ -104,12 +104,9 @@ func (observer dockerObserver) runPositiveRecovery(ctx context.Context, directio
 	carrierObservedAt := time.Since(cellClock).Nanoseconds()
 	carrierHostObservedAt := time.Since(hostClock).Nanoseconds()
 	fault, err := observer.destroyCarrier(ctx, faultController, identities["rendezvous"], network,
-		initialCarrier, cellClock, hostClock)
+		initialCarrier, cellClock, hostClock, func() error { return writeRelease(gateRoot, senderRole) })
 	if err != nil || !fault.resourceAbsent {
 		return recovery.Cell{}, errors.Join(err, errors.New("faulted Carrier resource remained available"))
-	}
-	if err := writeRelease(gateRoot, senderRole); err != nil {
-		return recovery.Cell{}, err
 	}
 	canaryOffset := delivered + 32
 	canaryDelivered, err := observer.waitProgress(ctx, receiver, canaryOffset+32)

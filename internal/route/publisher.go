@@ -39,6 +39,9 @@ func servePublisher(ctx context.Context, input Actor, ready func(Evidence)) (Evi
 		return observation, contextError(ctx, err)
 	}
 	defer connection.Close()
+	if err := configureCarrierLiveness(connection); err != nil {
+		return observation, fmt.Errorf("configure responder Carrier liveness: %w", err)
+	}
 	cancelConnection := context.AfterFunc(ctx, func() { _ = connection.Close() })
 	defer cancelConnection()
 	deadline := time.Now().Add(input.Deadline)
