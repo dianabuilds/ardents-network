@@ -1,7 +1,7 @@
 ---
 id: R-037
 title: Which controlled evidence contract qualifies Horizon 3 Stage 5?
-status: active
+status: decided
 owner: product research
 started: 2026-08-16
 reviewed: 2026-08-16
@@ -13,13 +13,14 @@ reviewed: 2026-08-16
 
 Freeze the controlled topology, censor profiles, clocks, resource budgets,
 sample floors, evidence split, and independent `pass|fail|invalid` rules for the
-smallest Horizon 3 Stage 5 Bridge slice. If the Product Owner accepts this
-record, an implementation brief may map R-035 Bridge state and the R-036
-WebTunnel Adapter onto maintained packages and one integrated tracer.
+smallest Horizon 3 Stage 5 Bridge slice. The accepted decision authorizes an
+implementation brief mapping R-035 Bridge state and the R-036 WebTunnel Adapter
+onto maintained packages and one integrated tracer.
 
-Acceptance of this record would authorize preparation and review of that brief.
-It would not by itself authorize maintained Stage 5 code, a runtime dependency,
-candidate packaging, a public wire protocol, or a censorship-resistance claim.
+The Product Owner accepted option O1 and `h3-s5-b1-v1` on 2026-08-16. This
+authorizes preparation and review of the implementation brief. It does not by
+itself authorize maintained Stage 5 code, a runtime dependency, candidate
+packaging, a public wire protocol, or a censorship-resistance claim.
 
 ## Current contract
 
@@ -556,16 +557,18 @@ trustworthy terminal verdict.
 
 ## Disposition
 
-- State: `active`, ready for Product Owner review; it is not `decided` or
-  accepted by this draft.
-- Recommended follow-up after explicit acceptance: prepare and review one
-  Stage 5 implementation brief mapping the accepted seams onto maintained code.
-- Documents changed by this research slice: this R-037 record and the R-037 row
-  in [questions.md](../questions.md).
+- State: `decided`; the Product Owner accepted option O1 and profile
+  `h3-s5-b1-v1` on 2026-08-16.
+- Authorized follow-up: prepare and review one Stage 5 implementation brief
+  mapping the accepted seams onto maintained code.
+- Documents changed by acceptance: this R-037 record, the R-037 row in
+  [questions.md](../questions.md), and the proposed
+  [Stage 5 implementation brief](../../development/horizon-3-stage-5-brief.md).
 - No ADR is created: this record operationalizes accepted ADR-0005/0009/0012
   and does not select another hard-to-reverse technology.
 - No integrated experiment, package, command, dependency, binary, runtime code,
-  or public claim is authorized while the record remains active.
+  or public claim is authorized until that implementation brief is explicitly
+  accepted.
 - The prior R-036 disposable harness remains retained source evidence; all
   generated candidates, keys, captures, state, and run evidence stay outside
   Git.
