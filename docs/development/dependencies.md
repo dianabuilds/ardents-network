@@ -6,15 +6,16 @@ maintenance and security signals, alternatives considered, and removal plan.
 
 ## Current runtime dependencies
 
-The maintained product-shaped Modules still use the Go standard library only.
-Gate C adds the following exact runtime closure to the maintained
+The maintained product-shaped Modules use the Go standard library plus the
+Windows-only `golang.org/x/sys/windows` ACL surface described below. Gate C
+adds the following exact runtime closure to the maintained
 `internal/lab/namedsite` laboratory Module. The OHTTP closure is selected by
 [R-026](../research/records/r-026-private-resolution-adapter.md), while the bounded
 external socket fault use is selected by [R-032](../research/records/r-032-h3-same-connection-recovery.md); the set must enter
 `go.mod` as this reviewed set rather than as the vulnerable versions declared
 by `openpcc/ohttp v0.0.80`.
 
-| Module | Reviewed version | License | Gate C purpose |
+| Module | Reviewed version | License | Purpose |
 |---|---:|---|---|
 | `github.com/openpcc/ohttp` | `v0.0.80`, commit `79bec89d804248df1a71a0f56c882b116579035d` | Apache-2.0 | RFC 9458 client and Gateway encapsulation |
 | `github.com/openpcc/twoway` | `v0.0.73` | Apache-2.0 | request/response HPKE context used by OHTTP |
@@ -26,12 +27,24 @@ by `openpcc/ohttp v0.0.80`.
 | `go.opentelemetry.io/otel/trace` | `v1.39.0` | Apache-2.0 | OHTTP tracing Interface |
 | `golang.org/x/crypto` | `v0.51.0` | BSD-3-Clause | selected cryptographic support closure |
 | `golang.org/x/net` | `v0.55.0` | BSD-3-Clause | BHTTP HTTP support; raised from vulnerable `v0.48.0` |
-| `golang.org/x/sys` | `v0.45.0` | BSD-3-Clause | transitive operating-system support in the reviewed closure |
+| `golang.org/x/sys` | `v0.45.0` | BSD-3-Clause | direct Windows owner-only DACL enforcement for Bridge/local-role state; transitive Gate C operating-system support elsewhere |
 | `golang.org/x/text` | `v0.39.0` | BSD-3-Clause | BHTTP normalization; raised from vulnerable `v0.32.0` |
 
 **Need and owner:** RFC 9458 is the accepted external-first Private Resolution
 shape. `internal/lab/namedsite` is the sole first-party owner of the OHTTP/CIRCL
-Interface. No product Module imports this dependency closure.
+Interface. No product Module imports the OHTTP/CIRCL portion of this closure.
+
+**Stage 5 Windows ACL need and owner:** `internal/bridge` and
+`internal/localroles` use only `golang.org/x/sys/windows` on Windows to apply a
+protected DACL granting the current process owner full control and nobody else.
+The module was already pinned and reviewed in the Gate C closure; this makes
+that exact version a direct platform-specific product dependency. It avoids a
+child PowerShell process during Invite import and avoids first-party `unsafe`.
+Unix builds retain the standard-library permission implementation.
+`x/sys` is the Go project's maintained, tagged operating-system support module;
+the selected version has the existing checksum/license review, passes the
+repository's offline build/tests and reachable vulnerability scan, and the two
+callers use no cgo or first-party `unsafe`.
 
 **Maintenance and security review:** `openpcc/ohttp` has versioned releases, an
 Apache-2.0 license, tests including RFC vectors and malformed inputs, and a
@@ -47,6 +60,14 @@ MIT/BSD closure and passes after CIRCL is raised to `v1.6.3`, but has no release
 and declares its implementation/API experimental. First-party OHTTP/PIR, local
 lookup, direct/DNS/HTTP resolution, alternate Namespace, and cached-success
 fallback are rejected.
+
+For Windows ACL enforcement, an external PowerShell/`icacls` subprocess breaks
+the no-process import contract, while raw first-party system calls require the
+forbidden `unsafe` surface. Default inherited ACLs are not owner-only and fail
+closed security requirements. Remove the direct use when the Go standard
+library exposes equivalent protected-DACL construction and inspection; a
+version change repeats dependency, license, advisory, Windows behavior, and
+offline-build review.
 
 **Offline supply:** an explicit preparation step runs `go mod download` and
 `go mod verify` outside the repository, then supplies a temporary vendor context

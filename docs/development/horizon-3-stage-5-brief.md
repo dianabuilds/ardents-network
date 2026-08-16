@@ -109,8 +109,9 @@ through the supplied validator before new work.
 This new package owns one Endpoint-local, owner-only role-state root used by
 every maintained Direct Source, Node, Route-selection, and Bridge command. Its
 bounded read-through Interface atomically replaces one producer's complete duty
-set, removes a producer after terminal cleanup, and answers identity/family
-conflict queries from the latest durable generation. Plans name only this root;
+set only when it is conflict-free against other non-Initiator producers,
+removes a producer after terminal cleanup, and answers identity/family conflict
+queries from the latest durable generation. Plans name only this root;
 they cannot assert a conflict-free result or supply editable identity/family
 exceptions.
 
@@ -128,8 +129,9 @@ The maintained source client/server, Node lifecycle, and authenticated client
 Route selection update this owner before relevant work and clear only after
 terminal cleanup. Bridge import holds the same local-role root generation lease,
 reads it for every validation, and fails closed if the root is absent, stale,
-unreadable, over-bound, or cannot be locked. The package imports only the
-standard library and exposes no generic role registry or network surface.
+unreadable, over-bound, or cannot be locked. The package imports the standard
+library plus the already reviewed, Windows-only `golang.org/x/sys/windows` ACL
+surface and exposes no generic role registry or network surface.
 
 ### `internal/camouflage` — selected Adapter implementation
 
