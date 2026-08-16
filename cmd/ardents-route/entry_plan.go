@@ -23,7 +23,6 @@ type entryPlan struct {
 	LocalRoleStateRoot  string   `json:"local_role_state_root"`
 	Binary              string   `json:"binary"`
 	CandidateStateRoot  string   `json:"candidate_state_root"`
-	Deadline            string   `json:"deadline"`
 	RouteManifestDigest string   `json:"route_manifest_digest"`
 	TransitionHandle    string   `json:"transition_handle"`
 }
@@ -46,17 +45,14 @@ func loadEntryPlan(path string) (runtime *entryRuntime, runErr error) {
 	if err != nil {
 		return nil, err
 	}
-	deadline, err := time.Parse(time.RFC3339, raw.Deadline)
-	if err != nil {
-		return nil, err
-	}
 	transition, err := openInheritedPipe(raw.TransitionHandle)
 	if err != nil {
 		return nil, err
 	}
+	cleanup := transition.Close
 	defer func() {
 		if runErr != nil {
-			runErr = errors.Join(runErr, transition.Close())
+			runErr = errors.Join(runErr, cleanup())
 		}
 	}()
 	network, err := state.Open(state.Config{Root: raw.NetworkStateRoot, NetworkID: networkID,
@@ -64,20 +60,12 @@ func loadEntryPlan(path string) (runtime *entryRuntime, runErr error) {
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		if runErr != nil {
-			runErr = errors.Join(runErr, network.Close())
-		}
-	}()
+	cleanup = func() error { return errors.Join(network.Close(), transition.Close()) }
 	roles, err := localroles.Open(localroles.Config{Root: raw.LocalRoleStateRoot, Clock: time.Now})
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		if runErr != nil {
-			runErr = errors.Join(runErr, roles.Close())
-		}
-	}()
+	cleanup = func() error { return errors.Join(roles.Close(), network.Close(), transition.Close()) }
 	config := bridge.Config{Root: raw.BridgeStateRoot, RouteProfile: raw.RouteProfile,
 		CurrentNetwork: network.Current, Clock: time.Now, RoleConflict: roles.Conflict,
 		ValidateCandidate: func(value []byte, identity [32]byte) ([32]byte, string, error) {
@@ -94,8 +82,7 @@ func loadEntryPlan(path string) (runtime *entryRuntime, runErr error) {
 		}
 	}()
 	runtime = &entryRuntime{bridge: bridgeOwner, closeNetwork: network.Close, closeRoles: roles.Close,
-		transition: transition, deadline: deadline,
-		client: camouflage.Client{Binary: raw.Binary, StateRoot: raw.CandidateStateRoot, Deadline: deadline}}
+		transition: transition, client: camouflage.Client{Binary: raw.Binary, StateRoot: raw.CandidateStateRoot}}
 	if err := planfile.FixedHex(raw.RouteManifestDigest, runtime.manifest[:]); err != nil {
 		return nil, err
 	}

@@ -51,10 +51,14 @@ func (owner *owner) Import(raw []byte) (Result, error) {
 			result.Class = classReplacementRejected
 			return result, nil
 		}
-		next.Records[activeIndex].Status = memberRetired
-		next.Records[activeIndex].Invite = nil
-		next.Records[activeIndex].Commitment = [32]byte{}
-		next.Records[activeIndex].ProfileID = ""
+		if next.Attempt != nil && next.Attempt.Terminal == "" {
+			next.Records[activeIndex].Status = memberDraining
+		} else {
+			next.Records[activeIndex].Status = memberRetired
+			next.Records[activeIndex].Invite = nil
+			next.Records[activeIndex].Commitment = [32]byte{}
+			next.Records[activeIndex].ProfileID = ""
+		}
 	}
 	if len(next.Records) >= 4 {
 		result.Class = classSetFull
@@ -66,6 +70,9 @@ func (owner *owner) Import(raw []byte) (Result, error) {
 		Slot: decoded.slot, Generation: decoded.slotGeneration,
 		Status: memberActive, Invite: append([]byte(nil), raw...),
 	})
+	if next.Attempt != nil && next.Attempt.Terminal == "" && replacesActive {
+		next.Records[len(next.Records)-1].Status = memberVerified
+	}
 	if err := owner.commit(next, !replacesActive); err != nil {
 		owner.failed = err
 		return Result{}, err

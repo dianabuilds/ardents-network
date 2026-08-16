@@ -26,23 +26,14 @@ func openInheritedPipe(encoded string) (*os.File, error) {
 }
 
 func readInheritedPipe(ctx context.Context, pipe *os.File, maximum int64) ([]byte, error) {
-	type result struct {
-		raw []byte
-		err error
-	}
-	read := make(chan result, 1)
-	go func() {
-		raw, err := io.ReadAll(io.LimitReader(pipe, maximum+1))
-		read <- result{raw: raw, err: err}
-	}()
-	select {
-	case value := <-read:
-		if value.err != nil || int64(len(value.raw)) > maximum {
-			return nil, errors.New("inherited control frame is invalid")
-		}
-		return value.raw, nil
-	case <-ctx.Done():
-		_ = pipe.Close()
+	stop := context.AfterFunc(ctx, func() { _ = pipe.Close() })
+	raw, err := io.ReadAll(io.LimitReader(pipe, maximum+1))
+	stopped := stop()
+	if !stopped && ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
+	if err != nil || int64(len(raw)) > maximum {
+		return nil, errors.New("inherited control frame is invalid")
+	}
+	return raw, nil
 }

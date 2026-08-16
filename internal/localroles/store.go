@@ -8,7 +8,7 @@ import (
 
 // Open claims one initialized local-role root, or creates it only when Create
 // is explicit. Every retained generation is verified before return.
-func Open(input Config) (*Store, error) {
+func Open(input Config) (*store, error) {
 	if input.Root == "" || input.Clock == nil || input.Clock().IsZero() {
 		return nil, errors.New("local role configuration is incomplete")
 	}
@@ -45,7 +45,7 @@ func Open(input Config) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	store := &Store{root: root, clock: input.Clock, lease: lease, state: state, current: current}
+	store := &store{root: root, clock: input.Clock, lease: lease, state: state, current: current}
 	if current == "" {
 		if !input.Create {
 			return nil, errors.New("local role state is not initialized")
@@ -59,7 +59,7 @@ func Open(input Config) (*Store, error) {
 }
 
 // Replace atomically replaces one producer's complete current duty set.
-func (store *Store) Replace(producer [32]byte, duties []Duty) error {
+func (store *store) Replace(producer [32]byte, duties []Duty) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	if store.closed || store.failed != nil || producer == ([32]byte{}) || len(duties) > 32 {
@@ -89,11 +89,11 @@ func (store *Store) Replace(producer [32]byte, duties []Duty) error {
 }
 
 // Remove atomically removes every duty owned by producer.
-func (store *Store) Remove(producer [32]byte) error { return store.Replace(producer, nil) }
+func (store *store) Remove(producer [32]byte) error { return store.Replace(producer, nil) }
 
 // Conflict reads the held current generation and reports one non-Initiator,
 // unexpired identity or family collision.
-func (store *Store) Conflict(identity, family [32]byte) (bool, error) {
+func (store *store) Conflict(identity, family [32]byte) (bool, error) {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	if store.closed || store.failed != nil {
@@ -113,7 +113,7 @@ func (store *Store) Conflict(identity, family [32]byte) (bool, error) {
 }
 
 // Close releases the exclusive root lease. It is idempotent.
-func (store *Store) Close() error {
+func (store *store) Close() error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	if store.closed {

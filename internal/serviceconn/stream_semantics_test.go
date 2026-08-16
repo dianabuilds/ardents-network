@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 	"net"
+	"sync"
 	"testing"
 	"time"
 
@@ -12,6 +13,17 @@ import (
 )
 
 type finalEOFApplication struct{ *bytes.Reader }
+
+type observedApplication struct {
+	net.Conn
+	entered chan struct{}
+	once    sync.Once
+}
+
+func (application *observedApplication) Read(value []byte) (int, error) {
+	application.once.Do(func() { close(application.entered) })
+	return application.Conn.Read(value)
+}
 
 func (application *finalEOFApplication) Read(value []byte) (int, error) {
 	read, _ := application.Reader.Read(value)
@@ -115,12 +127,22 @@ func TestSlowConsumersApplyBackpressureUntilLocalCancellation(t *testing.T) {
 	defer clientApplication.Close()
 	defer publisherApplication.Close()
 	ctx, cancel := context.WithCancel(context.Background())
+	clientEntered, publisherEntered := make(chan struct{}), make(chan struct{})
 	outcomes := runConnections(ctx, fixture, client, publisher, publication,
-		clientRoute, publisherRoute, clientEndpoint, publisherEndpoint)
+		clientRoute, publisherRoute,
+		&observedApplication{Conn: clientEndpoint, entered: clientEntered},
+		&observedApplication{Conn: publisherEndpoint, entered: publisherEntered})
+	for _, entered := range []chan struct{}{clientEntered, publisherEntered} {
+		select {
+		case <-entered:
+		case <-time.After(time.Second):
+			t.Fatal("Service Connection did not reach Application backpressure")
+		}
+	}
 	select {
 	case outcome := <-outcomes:
 		t.Fatalf("blocked Application completed without input: %+v %v", outcome.result, outcome.err)
-	case <-time.After(50 * time.Millisecond):
+	default:
 	}
 	cancel()
 	for range 2 {

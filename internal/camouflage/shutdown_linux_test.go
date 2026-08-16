@@ -3,7 +3,9 @@
 package camouflage
 
 import (
+	"os"
 	"os/exec"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -36,7 +38,13 @@ func TestCandidateCleanupEscalatesThroughSIGKILL(t *testing.T) {
 func shellChild(t *testing.T, script string) *candidateChild {
 	t.Helper()
 	command := exec.Command("/bin/sh", "-c", script)
-	configureCandidateProcess(command)
+	stateRoot := filepath.Join(t.TempDir(), "state")
+	if err := os.Mkdir(stateRoot, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := configureCandidateProcess(command, stateRoot); err != nil {
+		t.Fatal(err)
+	}
 	stdin, err := command.StdinPipe()
 	if err != nil {
 		t.Fatal(err)

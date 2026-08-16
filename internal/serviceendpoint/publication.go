@@ -93,12 +93,15 @@ func listenLocal(path string, deadline time.Duration) (*net.UnixListener, error)
 	if err != nil {
 		return nil, err
 	}
-	_ = os.Chmod(path, 0o600)
+	if err := os.Chmod(path, 0o600); err != nil {
+		return nil, errors.Join(err, listener.Close(), os.Remove(path))
+	}
 	if err := listener.SetDeadline(time.Now().Add(deadline)); err != nil {
 		return nil, errors.Join(err, listener.Close(), os.Remove(path))
 	}
 	return listener, nil
 }
+
 func deliverResult(output io.Writer, result serviceconn.Result) error {
 	return applicationipc.Write(output, applicationipc.Result{Class: result.Class, Reason: result.Reason,
 		AuthenticatedTarget: result.AuthenticatedTarget, AcceptedBytes: result.AcceptedBytes,

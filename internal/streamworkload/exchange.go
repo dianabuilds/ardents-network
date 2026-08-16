@@ -23,12 +23,25 @@ type Observation struct {
 	AuthenticatedTarget [32]byte `json:"authenticated_target"`
 	SendSeed            [32]byte `json:"send_seed"`
 	ExpectSeed          [32]byte `json:"expect_seed"`
+	Corpus              string   `json:"corpus,omitempty"`
+	RequestNonce        [32]byte `json:"request_nonce,omitempty"`
+	CompletedAtUnixNano int64    `json:"completed_at_unix_nano,omitempty"`
 }
+
+type byteFiller interface{ fill([]byte) }
 
 // Exchange concurrently sends and validates deterministic bytes without a
 // payload-sized allocation. A nil writer uses the supplied connection.
 func Exchange(connection io.ReadWriter, role string, sendSeed, expectSeed [32]byte,
 	sendCount, receiveCount int, write func([]byte) (int, error), progress func(uint32)) (Observation, error) {
+	return exchange(connection, role, sendSeed, expectSeed, sendCount, receiveCount, write, progress,
+		&generator{seed: sendSeed}, &generator{seed: expectSeed})
+}
+
+func exchange(connection io.ReadWriter, role string, sendSeed, expectSeed [32]byte,
+	sendCount, receiveCount int, write func([]byte) (int, error), progress func(uint32),
+	sendSource, expectSource byteFiller,
+) (Observation, error) {
 	result := Observation{Schema: "ardents-h3-stream-application-v1", Role: role,
 		SendSeed: sendSeed, ExpectSeed: expectSeed, SentBytes: uint32(sendCount)}
 	type transfer struct {
@@ -43,11 +56,11 @@ func Exchange(connection io.ReadWriter, role string, sendSeed, expectSeed [32]by
 	writes.Add(1)
 	go func() {
 		defer writes.Done()
-		hash, generator, buffer := sha256.New(), generator{seed: sendSeed}, make([]byte, 16_381)
+		hash, buffer := sha256.New(), make([]byte, 16_381)
 		written := 0
 		for written < sendCount {
 			chunk := min(len(buffer), sendCount-written)
-			generator.fill(buffer[:chunk])
+			sendSource.fill(buffer[:chunk])
 			pending := buffer[:chunk]
 			for len(pending) > 0 {
 				if write == nil {
@@ -70,7 +83,7 @@ func Exchange(connection io.ReadWriter, role string, sendSeed, expectSeed [32]by
 		transfers <- transfer{digest: digest, count: uint32(written), sending: true}
 	}()
 	go func() {
-		hash, generator := sha256.New(), generator{seed: expectSeed}
+		hash := sha256.New()
 		value, expected := make([]byte, 16_381), make([]byte, 16_381)
 		var tail [32]byte
 		read := 0
@@ -78,7 +91,7 @@ func Exchange(connection io.ReadWriter, role string, sendSeed, expectSeed [32]by
 		for read < receiveCount {
 			want := min(len(value), receiveCount-read)
 			count, readErr := io.ReadFull(connection, value[:want])
-			generator.fill(expected[:count])
+			expectSource.fill(expected[:count])
 			if !bytes.Equal(value[:count], expected[:count]) {
 				readErr = errors.Join(readErr, errors.New("opaque stream length, order, or bytes differ"))
 			}

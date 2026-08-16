@@ -8,49 +8,75 @@ import (
 )
 
 const transitionMagic = "ardents-h3-bridge-transition-v1"
+const attemptDuration = 64 * time.Second
 
 // BeginContact validates one inherited owner/policy transition, durably enters
 // BRIDGE, and publishes the first contact exposure before returning its bytes.
 func (owner *owner) BeginContact(frame []byte, manifest [32]byte, deadline time.Time) (
-	[32]byte, []byte, byte, error,
+	[32]byte, []byte, byte, uint64, time.Time, error,
 ) {
 	transition, err := parseTransition(frame)
+	now := owner.config.Clock()
 	if err != nil || transition.manifest != manifest || manifest == ([32]byte{}) ||
-		!owner.config.Clock().Before(deadline) {
-		return [32]byte{}, nil, 0, errors.New("bridge transition is invalid")
+		!deadline.IsZero() && !now.Before(deadline) {
+		return [32]byte{}, nil, 0, 0, time.Time{}, errors.New("bridge-ineligible")
 	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if owner.closed || owner.failed != nil || owner.state.Regime != nil || len(owner.state.Contacts) != 0 {
-		return [32]byte{}, nil, 0, errors.New("bridge transition is unavailable")
+	if owner.closed || owner.failed != nil {
+		return [32]byte{}, nil, 0, 0, time.Time{}, errors.New("bridge-local-denial")
 	}
-	index, ordinal, present := owner.firstContact()
+	if owner.state.Attempt != nil {
+		return [32]byte{}, nil, 0, 0, time.Time{}, errors.New(owner.attemptClass())
+	}
+	if owner.state.Regime != nil || len(owner.state.Contacts) != 0 {
+		return [32]byte{}, nil, 0, 0, time.Time{}, errors.New("bridge-ineligible")
+	}
+	index, decoded, ordinal, present := owner.firstEligibleContact()
 	if !present {
-		return [32]byte{}, nil, 0, errors.New("bridge contact unavailable")
+		return [32]byte{}, nil, 0, 0, time.Time{}, errors.New("bridge-not-configured")
 	}
 	record := owner.state.Records[index]
-	decoded, class, err := owner.validate(record.Invite)
-	if err != nil || class != classAccepted || decoded.id != record.InviteID ||
-		decoded.identity != record.Identity || decoded.commitment != record.Commitment ||
-		decoded.adapterProfile != record.ProfileID {
-		return [32]byte{}, nil, 0, errors.New("bridge contact unavailable")
+	attemptDeadline := now.Add(attemptDuration)
+	if !deadline.IsZero() && deadline.Before(attemptDeadline) {
+		attemptDeadline = deadline
 	}
+	for slot := byte(0); slot < 2; slot++ {
+		active, present := owner.state.active(slot)
+		if !present {
+			continue
+		}
+		member, memberClass, memberErr := owner.validate(owner.state.Records[active].Invite)
+		if memberErr != nil || memberClass != classAccepted {
+			continue
+		}
+		bound := time.Unix(member.notAfter, 0)
+		if bound.Before(attemptDeadline) {
+			attemptDeadline = bound
+		}
+	}
+	if !now.Before(attemptDeadline) {
+		return [32]byte{}, nil, 0, 0, time.Time{}, errors.New("bridge-ineligible")
+	}
+	deadlineOffset := transition.offset + uint64(attemptDeadline.Sub(now))
 	next := owner.state.clone()
 	next.Regime = &regimeRecord{AttemptID: transition.attemptID, Trigger: transition.trigger,
 		PolicyID: transition.policyID, Offset: transition.offset, Manifest: manifest,
-		Deadline: deadline.UnixNano()}
+		Deadline: attemptDeadline.UnixNano(), DeadlineOffset: deadlineOffset}
+	next.Attempt = &attemptRecord{AttemptID: transition.attemptID, Started: transition.offset,
+		Deadline: attemptDeadline.UnixNano(), DeadlineOffset: deadlineOffset}
 	next.Contacts = append(next.Contacts, contactRecord{AttemptID: transition.attemptID,
 		InviteID: record.InviteID, ProfileID: record.ProfileID, Slot: record.Slot,
 		Ordinal: ordinal, Started: transition.offset})
 	if err := owner.commit(next, false); err != nil {
 		owner.failed = err
-		return [32]byte{}, nil, 0, err
+		return [32]byte{}, nil, 0, 0, time.Time{}, err
 	}
-	return decoded.identity, bytes.Clone(decoded.candidate), ordinal, nil
+	return decoded.identity, bytes.Clone(decoded.candidate), ordinal, transition.offset, attemptDeadline, nil
 }
 
 // FinishContact durably classifies one published contact and its cleanup.
-func (owner *owner) FinishContact(ordinal byte, opened, cleanup bool) error {
+func (owner *owner) FinishContact(ordinal byte, terminal uint64, opened, cleanup bool) error {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	index := -1
@@ -64,7 +90,7 @@ func (owner *owner) FinishContact(ordinal byte, opened, cleanup bool) error {
 	}
 	current := owner.state.Contacts[index]
 	if current.Outcome != "" {
-		if current.Cleanup == cleanup && current.Outcome == contactOutcome(opened) {
+		if current.Cleanup == cleanup && current.Outcome == contactOutcome(opened) && current.Terminal == terminal {
 			return nil
 		}
 		return errors.New("bridge contact result conflicts")
@@ -72,6 +98,18 @@ func (owner *owner) FinishContact(ordinal byte, opened, cleanup bool) error {
 	next := owner.state.clone()
 	next.Contacts[index].Outcome = contactOutcome(opened)
 	next.Contacts[index].Cleanup = cleanup
+	next.Contacts[index].Terminal = terminal
+	if terminal < current.Started {
+		return errors.New("bridge contact terminal offset is invalid")
+	}
+	if opened {
+		next.Attempt.Terminal, next.Attempt.TerminalOffset = "opened", terminal
+	} else if !cleanup {
+		next.Attempt.Terminal, next.Attempt.TerminalOffset = "bridge-local-denial", terminal
+	}
+	if next.Attempt.Terminal != "" {
+		next.settleReplacements()
+	}
 	if err := owner.commit(next, false); err != nil {
 		owner.failed = err
 		return err
@@ -79,12 +117,31 @@ func (owner *owner) FinishContact(ordinal byte, opened, cleanup bool) error {
 	return nil
 }
 
-func (owner *owner) firstContact() (int, byte, bool) {
-	if index, present := owner.state.active(0); present {
-		return index, 0, true
+func (owner *owner) attemptClass() string {
+	if owner.state.Attempt != nil && owner.state.Attempt.Terminal != "" {
+		if owner.state.Attempt.Terminal == "opened" {
+			return "bridge-attempt-exhausted"
+		}
+		return owner.state.Attempt.Terminal
 	}
-	index, present := owner.state.active(1)
-	return index, 2, present
+	return "bridge-ineligible"
+}
+
+func (owner *owner) firstEligibleContact() (int, invite, byte, bool) {
+	for slot := byte(0); slot < 2; slot++ {
+		index, present := owner.state.active(slot)
+		if !present {
+			continue
+		}
+		record := owner.state.Records[index]
+		decoded, class, err := owner.validate(record.Invite)
+		if err == nil && class == classAccepted && decoded.id == record.InviteID &&
+			decoded.identity == record.Identity && decoded.commitment == record.Commitment &&
+			decoded.adapterProfile == record.ProfileID {
+			return index, decoded, slot * 2, true
+		}
+	}
+	return 0, invite{}, 0, false
 }
 
 type transitionFrame struct {

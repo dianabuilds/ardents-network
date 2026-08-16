@@ -30,6 +30,17 @@ type Result struct {
 	Generation uint8    `json:"generation"`
 }
 
+// AttemptEvidence is the bounded retained Route-facing result of one Bridge
+// attempt. It exposes neither members nor contact ordering.
+type AttemptEvidence struct {
+	AttemptDigest   [32]byte `json:"attempt_digest"`
+	DeadlineOffset  uint64   `json:"deadline_offset_ns"`
+	TerminalOffset  uint64   `json:"terminal_offset_ns"`
+	ContactStarts   uint8    `json:"contact_starts"`
+	Terminal        string   `json:"terminal"`
+	CleanupComplete bool     `json:"cleanup_complete"`
+}
+
 type owner struct {
 	mu      sync.Mutex
 	root    string

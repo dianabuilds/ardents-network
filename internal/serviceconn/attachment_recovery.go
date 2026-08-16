@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+const recoveryPublicationReserve = 10 * time.Millisecond
+
 func (stream *recoveryStream) recoverAttachment(failed *securedAttachment) error {
 	stream.mu.Lock()
 	for stream.recovering && stream.terminal == nil && stream.current == failed {
@@ -32,7 +34,7 @@ func (stream *recoveryStream) recoverAttachment(failed *securedAttachment) error
 	if stream.episodeEnd.IsZero() {
 		stream.episodeEnd = recoveryEpisodeDeadline(stream.lastProgress, time.Now())
 	}
-	deadline := stream.episodeEnd
+	deadline := recoveryWorkDeadline(stream.episodeEnd)
 	safetyRemaining := time.Unix(stream.binding.NoNewRecoveryAfter, 0).Sub(stream.authorizationTime())
 	if safetyDeadline := time.Now().Add(safetyRemaining); safetyDeadline.Before(deadline) {
 		deadline = safetyDeadline
@@ -102,21 +104,23 @@ func (stream *recoveryStream) recoverAttachment(failed *securedAttachment) error
 	if last == nil {
 		last = errors.New("route Attachment proposal limit or recovery deadline reached")
 	}
-	stream.mu.Lock()
-	stream.recovering = false
-	stream.cond.Broadcast()
-	stream.mu.Unlock()
-	if errors.Is(last, errActiveViolation) {
-		stream.fail(last)
-	}
+	stream.fail(last)
 	return last
 }
 
 func recoveryEpisodeDeadline(lastProgress, detected time.Time) time.Time {
+	return recoveryEpisodeStart(lastProgress, detected).Add(recoveryLimit)
+}
+
+func recoveryWorkDeadline(episodeEnd time.Time) time.Time {
+	return episodeEnd.Add(-recoveryPublicationReserve)
+}
+
+func recoveryEpisodeStart(lastProgress, detected time.Time) time.Time {
 	if lastProgress.IsZero() || lastProgress.After(detected) {
 		lastProgress = detected
 	}
-	return lastProgress.Add(recoveryLimit)
+	return lastProgress
 }
 
 func (stream *recoveryStream) commitAttachment(failed, attachment *securedAttachment, peer peerContinuity) error {

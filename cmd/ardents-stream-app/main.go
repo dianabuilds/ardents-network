@@ -7,7 +7,6 @@ import (
 	"io"
 	"net"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/applicationipc"
@@ -25,8 +24,8 @@ func run(arguments []string, output io.Writer) error {
 	if len(arguments) > 0 && (arguments[0] == "direct-listen" || arguments[0] == "direct-connect") {
 		return runDirectCommand(arguments, output)
 	}
-	if len(arguments) != 7 || arguments[0] != "run" {
-		return errors.New("usage: ardents-stream-app run <role> <socket> <send-seed-file> <expect-seed-file> <send-bytes> <receive-bytes> | direct-<listen|connect> <address> <seed-file> <bytes>")
+	if len(arguments) != 7 || arguments[0] != "run" && arguments[0] != "run-short" {
+		return errors.New("usage: ardents-stream-app run[-short] <role> <socket> <send-seed-file> <expect-seed-file> <send-bytes> <receive-bytes> | direct-<listen|connect> <address> <seed-file> <bytes>")
 	}
 	sendSeed, err := readSeed(arguments[3])
 	if err != nil {
@@ -40,19 +39,38 @@ func run(arguments []string, output io.Writer) error {
 	if err != nil {
 		return err
 	}
-	connection, err := net.DialTimeout("unix", arguments[2], 5*time.Second)
+	resultPath, err := applicationipc.ResultPath(arguments[2])
 	if err != nil {
 		return err
 	}
-	defer connection.Close()
+	resultConnection, err := net.DialTimeout("unix", resultPath, 5*time.Second)
+	if err != nil {
+		return err
+	}
+	connection, err := net.DialTimeout("unix", arguments[2], 5*time.Second)
+	if err != nil {
+		_ = resultConnection.Close()
+		return err
+	}
 	lifetime, err := streamLifetime()
 	if err != nil {
+		_ = connection.Close()
+		_ = resultConnection.Close()
 		return err
 	}
 	if err := connection.SetDeadline(time.Now().Add(lifetime)); err != nil {
+		_ = connection.Close()
+		_ = resultConnection.Close()
 		return fmt.Errorf("bound Application stream lifetime: %w", err)
 	}
-	write, err := streamworkload.PacingWriter(connection, os.Getenv("ARDENTS_STREAM_CHUNK_DELAY"))
+	if err := resultConnection.SetDeadline(time.Now().Add(lifetime)); err != nil {
+		_ = connection.Close()
+		_ = resultConnection.Close()
+		return fmt.Errorf("bound Application result lifetime: %w", err)
+	}
+	stream := applicationipc.NewConnection(connection, resultConnection)
+	defer stream.Close()
+	write, err := streamworkload.PacingWriter(stream, os.Getenv("ARDENTS_STREAM_CHUNK_DELAY"))
 	if err != nil {
 		return err
 	}
@@ -60,13 +78,25 @@ func run(arguments []string, output io.Writer) error {
 	progress := func(received uint32) {
 		if os.Getenv("ARDENTS_STREAM_PROGRESS") == "1" {
 			_ = encoder.Encode(map[string]any{"schema": "ardents-stream-progress-v1", "role": arguments[1],
-				"received_bytes": received})
+				"received_bytes": received, "at_unix_nano": time.Now().UnixNano()})
 		}
 	}
-	result, streamErr := streamworkload.Exchange(connection, arguments[1], sendSeed, expectSeed,
-		sendCount, receiveCount, write, progress)
-	classified, resultErr := applicationipc.Read(connection)
+	classifiedResult := waitForResult(stream)
+	var result streamworkload.Observation
+	var streamErr error
+	if arguments[0] == "run-short" {
+		if sendCount+receiveCount != 512+(64<<10) {
+			return errors.New("short corpus byte counts are not canonical")
+		}
+		result, streamErr = streamworkload.ExchangeShort(stream, arguments[1], sendSeed, expectSeed, write, progress)
+	} else {
+		result, streamErr = streamworkload.Exchange(stream, arguments[1], sendSeed, expectSeed,
+			sendCount, receiveCount, write, progress)
+	}
+	classifiedOutcome := <-classifiedResult
+	classified, resultErr := classifiedOutcome.result, classifiedOutcome.err
 	result.ResultClass, result.AuthenticatedTarget = classified.Class, classified.AuthenticatedTarget
+	result.CompletedAtUnixNano = time.Now().UnixNano()
 	if classified.Class != "clean service connection close" {
 		resultErr = errors.Join(resultErr, errors.New("connection result is not semantic success"))
 	}
@@ -75,26 +105,4 @@ func run(arguments []string, output io.Writer) error {
 		return errors.Join(err, encodeErr)
 	}
 	return err
-}
-
-func streamLifetime() (time.Duration, error) {
-	value := os.Getenv("ARDENTS_STREAM_LIFETIME")
-	if value == "" {
-		return 15 * time.Second, nil
-	}
-	lifetime, err := time.ParseDuration(value)
-	if err != nil || lifetime < 15*time.Second || lifetime > 30*time.Minute {
-		return 0, errors.New("stream lifetime is outside its bound")
-	}
-	return lifetime, nil
-}
-
-func streamCounts(sendText, receiveText string) (int, int, error) {
-	send64, sendErr := strconv.ParseInt(sendText, 10, 32)
-	receive64, receiveErr := strconv.ParseInt(receiveText, 10, 32)
-	if sendErr != nil || receiveErr != nil || send64 < 0 || receive64 < 0 || send64 > 256<<20 || receive64 > 256<<20 ||
-		(send64 == 0 && receive64 == 0) {
-		return 0, 0, errors.New("stream byte counts are outside their bound")
-	}
-	return int(send64), int(receive64), nil
 }

@@ -23,8 +23,8 @@ type Duty struct {
 	NotAfter time.Time
 }
 
-// Store serializes one bounded durable generation and owns its root lease.
-type Store struct {
+// store serializes one bounded durable generation and owns its root lease.
+type store struct {
 	mu      sync.Mutex
 	root    string
 	clock   func() time.Time

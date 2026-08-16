@@ -1,0 +1,277 @@
+x-product: &product
+  image: ${ARDENTS_BLOCKED_IMAGE:?}
+  pull_policy: never
+  read_only: true
+  restart: "no"
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  user: "65532:65532"
+  tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=16m,mode=0700,uid=65532,gid=65532", "/run/secure:rw,nosuid,nodev,size=8m,mode=0700,uid=65532,gid=65532"]
+  cpus: 2.0
+  mem_limit: 512m
+  pids_limit: 128
+  ulimits: {nofile: {soft: 256, hard: 256}}
+  environment: {GOMAXPROCS: "2", GOMEMLIMIT: "384MiB", GOGC: "100"}
+
+x-observer: &observer
+  image: ${ARDENTS_BLOCKED_IMAGE:?}
+  pull_policy: never
+  read_only: true
+  restart: "no"
+  cap_drop: [ALL]
+  cap_add: [NET_RAW]
+  security_opt: [no-new-privileges:true]
+  # Privileged test observers are isolated from maintained product processes.
+  user: "0:0"
+  pids_limit: 16
+  cpus: 0.25
+  mem_limit: 48m
+  ulimits: {nofile: {soft: 32, hard: 32}}
+  environment: {ARDENTS_DNS_OBSERVER: "1"}
+  command: [/usr/local/bin/camouflage.test, -test.run, "^$"]
+
+services:
+  endpoint:
+    <<: *product
+    build:
+      context: ../..
+      dockerfile: tests/live/blocked-entry.Dockerfile
+    command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
+    environment: {ARDENTS_BLOCKED_ROLE: endpoint, ARDENTS_BLOCKED_PROFILE: "${ARDENTS_BLOCKED_PROFILE:?}", ARDENTS_DNS_SYNC: /run/evidence, ARDENTS_STREAM_LIFETIME: 5m}
+    volumes:
+      - ${ARDENTS_BLOCKED_ROOT:?}/input/endpoint:/run/input:ro
+      - ${ARDENTS_BLOCKED_ROOT:?}/sync/endpoint:/run/evidence
+      - ${ARDENTS_WEBTUNNEL_CLIENT:?}:/candidate/webtunnel-client:ro
+      - client_route:/run/ardents/client-route
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=16m,mode=0700,uid=65532,gid=65532", "/run/secure:rw,nosuid,nodev,size=8m,mode=0700,uid=65532,gid=65532", "/run/state:rw,nosuid,nodev,size=16m,mode=0700,uid=65532,gid=65532"]
+    networks:
+      entry_net: {ipv4_address: 203.0.113.7}
+      route_net: {ipv4_address: 172.31.20.7}
+  endpoint-observer:
+    <<: *observer
+    network_mode: service:endpoint
+    environment: {ARDENTS_DNS_OBSERVER: "1", ARDENTS_DNS_SYNC: /run/evidence}
+    volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/endpoint:/run/evidence"]
+  policy:
+    <<: *observer
+    cap_add: [NET_ADMIN]
+    network_mode: service:endpoint
+    environment: {ARDENTS_BLOCKED_ROLE: policy, ARDENTS_BLOCKED_POLICY_TARGETS: "172.31.20.11", ARDENTS_DNS_SYNC: /run/evidence}
+    command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
+    volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/endpoint:/run/evidence"]
+
+  bridge:
+    <<: [*product]
+    command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
+    environment: {ARDENTS_BLOCKED_ROLE: bridge, ARDENTS_BLOCKED_PROFILE: "${ARDENTS_BLOCKED_PROFILE:?}", ARDENTS_DNS_SYNC: /run/evidence}
+    volumes:
+      - ${ARDENTS_BLOCKED_ROOT:?}/input/bridge:/run/input:ro
+      - ${ARDENTS_BLOCKED_ROOT:?}/sync/bridge:/run/evidence
+      - ${ARDENTS_WEBTUNNEL_SERVER:?}:/candidate/webtunnel-server:ro
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=16m,mode=0700,uid=65532,gid=65532", "/run/secure:rw,nosuid,nodev,size=8m,mode=0700,uid=65532,gid=65532", "/run/state:rw,nosuid,nodev,size=16m,mode=0700,uid=65532,gid=65532"]
+    networks:
+      entry_net: {ipv4_address: 203.0.113.8}
+      route_net: {ipv4_address: 172.31.20.8}
+  bridge-observer:
+    <<: *observer
+    network_mode: service:bridge
+    environment: {ARDENTS_DNS_OBSERVER: "1", ARDENTS_DNS_SYNC: /run/evidence}
+    volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/bridge:/run/evidence"]
+
+  probe:
+    <<: *product
+    command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
+    environment: {ARDENTS_BLOCKED_ROLE: probe, ARDENTS_DNS_SYNC: /run/evidence}
+    volumes:
+      - ${ARDENTS_BLOCKED_ROOT:?}/input/probe:/run/input:ro
+      - ${ARDENTS_BLOCKED_ROOT:?}/sync/probe:/run/evidence
+      - ${ARDENTS_WEBTUNNEL_CLIENT:?}:/candidate/webtunnel-client:ro
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=16m,mode=0700,uid=65532,gid=65532", "/run/secure:rw,nosuid,nodev,size=8m,mode=0700,uid=65532,gid=65532", "/run/state:rw,nosuid,nodev,size=16m,mode=0700,uid=65532,gid=65532"]
+    networks: {entry_net: {ipv4_address: 203.0.113.10}}
+  probe-observer:
+    <<: *observer
+    network_mode: service:probe
+    environment: {ARDENTS_DNS_OBSERVER: "1", ARDENTS_DNS_SYNC: /run/evidence}
+    volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/probe:/run/evidence"]
+
+  negative-endpoint:
+    <<: *product
+    command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
+    environment: {ARDENTS_BLOCKED_ROLE: negative-endpoint, ARDENTS_BLOCKED_PROFILE: "${ARDENTS_NEGATIVE_PROFILE:-C3}", ARDENTS_DNS_SYNC: /run/evidence}
+    volumes:
+      - ${ARDENTS_BLOCKED_ROOT:?}/input/negative-endpoint:/run/input:ro
+      - ${ARDENTS_BLOCKED_ROOT:?}/sync/negative-endpoint:/run/evidence
+      - ${ARDENTS_WEBTUNNEL_CLIENT:?}:/candidate/webtunnel-client:ro
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=16m,mode=0700,uid=65532,gid=65532", "/run/secure:rw,nosuid,nodev,size=8m,mode=0700,uid=65532,gid=65532", "/run/state:rw,nosuid,nodev,size=16m,mode=0700,uid=65532,gid=65532", "/run/ardents:rw,nosuid,nodev,size=4m,mode=0700,uid=65532,gid=65532"]
+    networks: {entry_net: {ipv4_address: 203.0.113.7}}
+  negative-observer:
+    <<: *observer
+    network_mode: service:negative-endpoint
+    environment: {ARDENTS_DNS_OBSERVER: "1", ARDENTS_DNS_SYNC: /run/evidence}
+    volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/negative-endpoint:/run/evidence"]
+  negative-policy:
+    <<: *observer
+    cap_add: [NET_ADMIN]
+    network_mode: service:negative-endpoint
+    environment: {ARDENTS_BLOCKED_ROLE: policy, ARDENTS_BLOCKED_POLICY_TARGETS: "203.0.113.20,203.0.113.21", ARDENTS_BLOCKED_POLICY_SIGNAL: negative-result.json, ARDENTS_DNS_SYNC: /run/evidence}
+    command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
+    volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/negative-endpoint:/run/evidence"]
+  recovery-endpoint:
+    <<: *product
+    command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
+    environment: {ARDENTS_BLOCKED_ROLE: recovery-endpoint, ARDENTS_DNS_SYNC: /run/evidence}
+    volumes:
+      - ${ARDENTS_BLOCKED_ROOT:?}/input/recovery-endpoint:/run/input:ro
+      - ${ARDENTS_BLOCKED_ROOT:?}/sync/recovery-endpoint:/run/evidence
+      - ${ARDENTS_WEBTUNNEL_CLIENT:?}:/candidate/webtunnel-client:ro
+      - client_route:/run/ardents/client-route
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=16m,mode=0700,uid=65532,gid=65532", "/run/secure:rw,nosuid,nodev,size=8m,mode=0700,uid=65532,gid=65532", "/run/state:rw,nosuid,nodev,size=16m,mode=0700,uid=65532,gid=65532", "/run/ardents:rw,nosuid,nodev,size=4m,mode=0700,uid=65532,gid=65532"]
+    networks:
+      entry_net: {ipv4_address: 203.0.113.7}
+      route_net: {ipv4_address: 172.31.20.7}
+  recovery-observer:
+    <<: *observer
+    network_mode: service:recovery-endpoint
+    environment: {ARDENTS_DNS_OBSERVER: "1", ARDENTS_DNS_SYNC: /run/evidence}
+    volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/recovery-endpoint:/run/evidence"]
+  fault-zero:
+    <<: *product
+    command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
+    environment: {ARDENTS_BLOCKED_ROLE: fault-zero, ARDENTS_DNS_SYNC: /run/evidence}
+    volumes: ["${ARDENTS_BLOCKED_ROOT:?}/input/fault-zero:/run/input:ro", "${ARDENTS_BLOCKED_ROOT:?}/sync/fault-zero:/run/evidence"]
+    networks: {entry_net: {ipv4_address: 203.0.113.20}}
+  fault-one:
+    <<: *product
+    command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
+    environment: {ARDENTS_BLOCKED_ROLE: fault-one, ARDENTS_FAULT_MODE: "${ARDENTS_FAULT_MODE:-C4}", ARDENTS_DNS_SYNC: /run/evidence}
+    volumes:
+      - ${ARDENTS_BLOCKED_ROOT:?}/input/fault-one:/run/input:ro
+      - ${ARDENTS_BLOCKED_ROOT:?}/sync/fault-one:/run/evidence
+      - ${ARDENTS_WEBTUNNEL_SERVER:?}:/candidate/webtunnel-server:ro
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=16m,mode=0700,uid=65532,gid=65532", "/run/secure:rw,nosuid,nodev,size=8m,mode=0700,uid=65532,gid=65532", "/run/state:rw,nosuid,nodev,size=16m,mode=0700,uid=65532,gid=65532"]
+    networks: {entry_net: {ipv4_address: 203.0.113.21}}
+
+  initiator:
+    <<: *product
+    command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
+    environment: {ARDENTS_BLOCKED_ROLE: initiator, ARDENTS_BLOCKED_PROFILE: "${ARDENTS_BLOCKED_PROFILE:?}", ARDENTS_DNS_SYNC: /run/evidence}
+    volumes: ["${ARDENTS_BLOCKED_ROOT:?}/input/initiator:/run/input:ro", "${ARDENTS_BLOCKED_ROOT:?}/sync/initiator:/run/evidence"]
+    networks: {route_net: {ipv4_address: 172.31.20.11}}
+  initiator-observer:
+    <<: *observer
+    network_mode: service:initiator
+    environment: {ARDENTS_DNS_OBSERVER: "1", ARDENTS_DNS_SYNC: /run/evidence}
+    volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/initiator:/run/evidence"]
+
+  introduction:
+    <<: *product
+    command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
+    environment: {ARDENTS_BLOCKED_ROLE: introduction, ARDENTS_DNS_SYNC: /run/evidence}
+    volumes:
+      - ${ARDENTS_BLOCKED_ROOT:?}/input/introduction:/run/input:ro
+      - ${ARDENTS_BLOCKED_ROOT:?}/sync/introduction:/run/evidence
+      - introduction_ack:/run/ardents/introduction-ack
+    networks: {route_net: {ipv4_address: 172.31.20.12}}
+  introduction-observer:
+    <<: *observer
+    network_mode: service:introduction
+    environment: {ARDENTS_DNS_OBSERVER: "1", ARDENTS_DNS_SYNC: /run/evidence}
+    volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/introduction:/run/evidence"]
+
+  rendezvous:
+    <<: *product
+    command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
+    environment: {ARDENTS_BLOCKED_ROLE: rendezvous, ARDENTS_DNS_SYNC: /run/evidence}
+    volumes: ["${ARDENTS_BLOCKED_ROOT:?}/input/rendezvous:/run/input:ro", "${ARDENTS_BLOCKED_ROOT:?}/sync/rendezvous:/run/evidence"]
+    networks: {route_net: {ipv4_address: 172.31.20.13}}
+  rendezvous-observer:
+    <<: *observer
+    network_mode: service:rendezvous
+    environment: {ARDENTS_DNS_OBSERVER: "1", ARDENTS_DNS_SYNC: /run/evidence}
+    volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/rendezvous:/run/evidence"]
+
+  responder:
+    <<: *product
+    command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
+    environment: {ARDENTS_BLOCKED_ROLE: responder, ARDENTS_DNS_SYNC: /run/evidence}
+    volumes: ["${ARDENTS_BLOCKED_ROOT:?}/input/responder:/run/input:ro", "${ARDENTS_BLOCKED_ROOT:?}/sync/responder:/run/evidence"]
+    networks: {route_net: {ipv4_address: 172.31.20.14}}
+  responder-observer:
+    <<: *observer
+    network_mode: service:responder
+    environment: {ARDENTS_DNS_OBSERVER: "1", ARDENTS_DNS_SYNC: /run/evidence}
+    volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/responder:/run/evidence"]
+
+  publisher:
+    <<: *product
+    command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
+    environment: {ARDENTS_BLOCKED_ROLE: publisher, ARDENTS_DNS_SYNC: /run/evidence}
+    volumes:
+      - ${ARDENTS_BLOCKED_ROOT:?}/input/publisher:/run/input:ro
+      - ${ARDENTS_BLOCKED_ROOT:?}/sync/publisher:/run/evidence
+      - publisher_route:/run/ardents/publisher-route
+    networks: {route_net: {ipv4_address: 172.31.20.16}}
+  publisher-observer:
+    <<: *observer
+    network_mode: service:publisher
+    environment: {ARDENTS_DNS_OBSERVER: "1", ARDENTS_DNS_SYNC: /run/evidence}
+    volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/publisher:/run/evidence"]
+
+  publisher-service:
+    <<: *product
+    network_mode: none
+    command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
+    environment: {ARDENTS_BLOCKED_ROLE: publisher-service}
+    volumes:
+      - ${ARDENTS_BLOCKED_ROOT:?}/input/publisher-service:/run/input:ro
+      - publisher_app:/run/ardents/publisher-app
+      - publisher_route:/run/ardents/publisher-route
+      - administration:/run/ardents/admin
+      - publication:/run/ardents/publication
+      - introduction_ack:/run/ardents/introduction-ack
+      - lifecycle:/run/ardents/lifecycle
+  client-service:
+    <<: *product
+    network_mode: none
+    command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
+    environment: {ARDENTS_BLOCKED_ROLE: client-service}
+    volumes:
+      - ${ARDENTS_BLOCKED_ROOT:?}/input/client-service:/run/input:ro
+      - client_app:/run/ardents/client-app
+      - client_route:/run/ardents/client-route
+      - publication:/run/ardents/publication:ro
+  publication-operator:
+    <<: *product
+    network_mode: none
+    command: [/usr/local/bin/ardents-publish-app, publish, /run/ardents/admin/admin.sock]
+    volumes: [administration:/run/ardents/admin]
+  client-app:
+    <<: *product
+    network_mode: none
+    command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
+    environment: {ARDENTS_BLOCKED_ROLE: client-app, ARDENTS_STREAM_LIFETIME: 5m, ARDENTS_STREAM_PROGRESS: "${ARDENTS_STREAM_PROGRESS:-0}", ARDENTS_STREAM_CHUNK_DELAY: "${ARDENTS_STREAM_CHUNK_DELAY:-}"}
+    volumes: ["${ARDENTS_BLOCKED_ROOT:?}/input/client-app:/run/input:ro", "client_app:/run/ardents/client-app"]
+  publisher-app:
+    <<: *product
+    network_mode: none
+    command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
+    environment: {ARDENTS_BLOCKED_ROLE: publisher-app, ARDENTS_STREAM_LIFETIME: 5m, ARDENTS_STREAM_PROGRESS: "${ARDENTS_STREAM_PROGRESS:-0}", ARDENTS_STREAM_CHUNK_DELAY: "${ARDENTS_STREAM_CHUNK_DELAY:-}"}
+    volumes: ["${ARDENTS_BLOCKED_ROOT:?}/input/publisher-app:/run/input:ro", "publisher_app:/run/ardents/publisher-app"]
+
+networks:
+  entry_net:
+    internal: true
+    ipam: {config: [{subnet: 203.0.113.0/24}]}
+  route_net:
+    internal: true
+    ipam: {config: [{subnet: 172.31.20.0/24}]}
+
+volumes:
+  client_route: {}
+  publisher_route: {}
+  client_app: {}
+  publisher_app: {}
+  administration: {}
+  publication: {}
+  introduction_ack: {}
+  lifecycle: {}

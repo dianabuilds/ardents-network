@@ -47,7 +47,7 @@ type Actor struct {
 	AttachmentTarget                              uint16
 	ResourceProfile                               string
 	LocalRoleStateRoot                            string
-	OpenEntry                                     func(context.Context) (net.Conn, func() error, error)
+	OpenEntry                                     func(context.Context, func(context.Context, net.Conn) (*tls.Conn, error)) (*tls.Conn, func() error, error)
 	ResourceMeasure                               func() (resource.Sample, error)
 	ResourceCheck                                 func() error
 	PressureInterval                              time.Duration

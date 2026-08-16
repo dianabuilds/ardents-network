@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"io"
+	"log"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -65,7 +67,7 @@ func startTLSFront(config Config, certificate tls.Certificate, backend string) (
 	front := &tlsFront{listener: admit, admit: admit, done: make(chan error, 1)}
 	front.server = &http.Server{
 		Handler: handler, ReadHeaderTimeout: 2 * time.Second, IdleTimeout: 5 * time.Second,
-		MaxHeaderBytes: 16 << 10,
+		MaxHeaderBytes: 16 << 10, ErrorLog: log.New(io.Discard, "", 0),
 	}
 	go func() { front.done <- front.server.Serve(front.listener) }()
 	return front, nil

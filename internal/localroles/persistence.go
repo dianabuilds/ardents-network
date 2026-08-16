@@ -101,7 +101,7 @@ func loadWatermark(root string) (uint64, string, bool, error) {
 	return generation, parts[1], true, nil
 }
 
-func (store *Store) commit(next durableState) error {
+func (store *store) commit(next durableState) error {
 	next.Version = 1
 	next.Generation = store.state.Generation + 1
 	next.Previous = store.current

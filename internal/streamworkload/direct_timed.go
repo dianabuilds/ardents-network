@@ -25,7 +25,7 @@ func sendTimedDirect(ctx context.Context, connection net.Conn, config DirectConf
 	if err := connection.SetWriteDeadline(deadline); err != nil {
 		return err
 	}
-	hash, source := sha256.New(), generator{seed: config.Seed}
+	source := generator{seed: config.Seed}
 	buffer := make([]byte, 16_381)
 	written := 0
 	for time.Now().Before(deadline) && written < config.Bytes {
@@ -35,7 +35,6 @@ func sendTimedDirect(ctx context.Context, connection net.Conn, config DirectConf
 		for len(pending) > 0 {
 			count, err := connection.Write(pending)
 			if count > 0 {
-				_, _ = hash.Write(pending[:count])
 				written += count
 				pending = pending[count:]
 			}
@@ -66,22 +65,36 @@ func sendTimedDirect(ctx context.Context, connection net.Conn, config DirectConf
 	if err := tcp.CloseWrite(); err != nil {
 		return err
 	}
-	var digest [32]byte
-	copy(digest[:], hash.Sum(nil))
 	receipt := make([]byte, timedDirectReceiptBytes)
 	if _, err := io.ReadFull(connection, receipt); err != nil {
 		return err
 	}
-	if binary.BigEndian.Uint64(receipt[:8]) != uint64(written) || !bytes.Equal(receipt[8:], digest[:]) {
+	delivered := binary.BigEndian.Uint64(receipt[:8])
+	deliveredDigest := directPrefixDigest(config.Seed, int(delivered))
+	if delivered == 0 || delivered > uint64(config.Bytes) || !bytes.Equal(receipt[8:], deliveredDigest[:]) {
 		return errors.New("timed direct workload receipt does not match delivered bytes")
 	}
 	if err := awaitDirectHalfClose(connection); err != nil {
 		return err
 	}
 	result := Observation{Schema: "ardents-h3-stream-application-v1", Role: "direct-client", Terminal: "success",
-		SentBytes: uint32(written), SentDigest: digest, SendSeed: config.Seed,
+		SentBytes: uint32(delivered), SentDigest: deliveredDigest, SendSeed: config.Seed,
 		DurationMillis: uint32(measured / time.Millisecond)}
 	return json.NewEncoder(config.Output).Encode(result)
+}
+
+func directPrefixDigest(seed [32]byte, count int) [32]byte {
+	hash, source := sha256.New(), generator{seed: seed}
+	buffer := make([]byte, 16_381)
+	for generated := 0; generated < count; {
+		chunk := min(len(buffer), count-generated)
+		source.fill(buffer[:chunk])
+		_, _ = hash.Write(buffer[:chunk])
+		generated += chunk
+	}
+	var digest [32]byte
+	copy(digest[:], hash.Sum(nil))
+	return digest
 }
 
 func receiveTimedDirect(ctx context.Context, connection net.Conn, config DirectConfig) error {

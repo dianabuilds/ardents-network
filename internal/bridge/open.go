@@ -50,15 +50,28 @@ func Open(input Config) (*owner, error) {
 	}
 	owner := &owner{root: root, lease: lease, config: config, state: state, current: current}
 	changed := false
+	terminalOffset := uint64(0)
 	for index := range owner.state.Contacts {
 		if owner.state.Contacts[index].Outcome == "" {
 			owner.state.Contacts[index].Outcome = "interrupted"
+			owner.state.Contacts[index].Terminal = owner.state.Contacts[index].Started
 			changed = true
 		}
+		if owner.state.Contacts[index].Terminal > terminalOffset {
+			terminalOffset = owner.state.Contacts[index].Terminal
+		}
+	}
+	if owner.state.Attempt != nil && owner.state.Attempt.Terminal == "" {
+		owner.state.Attempt.Terminal = "bridge-interrupted"
+		owner.state.Attempt.TerminalOffset = terminalOffset
+		changed = true
+	}
+	if owner.state.Attempt != nil && owner.state.Attempt.Terminal != "" {
+		owner.state.settleReplacements()
 	}
 	for index := range owner.state.Records {
 		record := &owner.state.Records[index]
-		if record.Status != memberActive {
+		if record.Status != memberActive && record.Status != memberDraining && record.Status != memberVerified {
 			continue
 		}
 		invite, class, validateErr := owner.validate(record.Invite)

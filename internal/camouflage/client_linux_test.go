@@ -8,6 +8,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/binary"
@@ -16,6 +17,7 @@ import (
 	"io"
 	"math/big"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -70,6 +72,11 @@ func TestPinnedWebTunnelCarriesUsefulWorkAndCleansRepeatedly(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+	for episode := range 20 {
+		t.Run("uninformed-probe-"+strconv.Itoa(episode), func(t *testing.T) {
+			assertUninformedProbes(t, certificatePath)
+		})
 	}
 	clientState := filepath.Join(root, "client-state")
 	carrier, cleanup, err := camouflage.OpenClient(ctx, config, camouflage.Client{
@@ -138,6 +145,69 @@ func TestPinnedWebTunnelCarriesUsefulWorkAndCleansRepeatedly(t *testing.T) {
 	_ = rebound.Close()
 }
 
+func assertUninformedProbes(t *testing.T, certificatePath string) {
+	t.Helper()
+	certificate, err := os.ReadFile(certificatePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	roots := x509.NewCertPool()
+	if !roots.AppendCertsFromPEM(certificate) {
+		t.Fatal("front certificate was not accepted as a probe root")
+	}
+	tlsConfig := &tls.Config{RootCAs: roots, ServerName: "front.example", MinVersion: tls.VersionTLS13}
+	client := &http.Client{Transport: &http.Transport{Proxy: nil, TLSClientConfig: tlsConfig}, Timeout: 5 * time.Second}
+	for _, path := range []string{"/", "/missing"} {
+		request, err := http.NewRequest(http.MethodGet, "https://203.0.113.7:8443"+path, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		request.Host = "front.example"
+		response, err := client.Do(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, readErr := io.ReadAll(io.LimitReader(response.Body, 1024))
+		closeErr := response.Body.Close()
+		if readErr != nil || closeErr != nil || response.StatusCode != http.StatusNotFound {
+			t.Fatalf("uninformed path %q = %d %q, %v %v", path, response.StatusCode, body, readErr, closeErr)
+		}
+		lower := strings.ToLower(string(body))
+		if strings.Contains(lower, "ardents") || strings.Contains(lower, "webtunnel") || strings.Contains(lower, "cmethod") {
+			t.Fatalf("uninformed response exposed an implementation identifier: %q", body)
+		}
+	}
+	raw, err := net.DialTimeout("tcp4", "203.0.113.7:8443", time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = raw.SetDeadline(time.Now().Add(5 * time.Second))
+	_, _ = raw.Write([]byte("not tls"))
+	one := make([]byte, 1)
+	if _, err := raw.Read(one); isTimeout(err) {
+		t.Fatal("malformed TLS was not closed or alerted within 5 seconds")
+	}
+	_ = raw.Close()
+	dialer := &net.Dialer{Timeout: time.Second}
+	secured, err := tls.DialWithDialer(dialer, "tcp4", "203.0.113.7:8443", tlsConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = secured.SetDeadline(time.Now().Add(5 * time.Second))
+	_, _ = secured.Write([]byte("BROKEN\x00HTTP\r\n\r\n"))
+	response := make([]byte, 64)
+	count, readErr := secured.Read(response)
+	_ = secured.Close()
+	if isTimeout(readErr) || readErr == nil && !bytes.Contains(response[:count], []byte(" 400 ")) {
+		t.Fatalf("malformed HTTP returned an unexpected oracle: %q", response[:count])
+	}
+}
+
+func isTimeout(err error) bool {
+	var networkError net.Error
+	return errors.As(err, &networkError) && networkError.Timeout()
+}
+
 func TestPinnedClientUsesSanitizedPTAndOneNumericDialBeforeRefusal(t *testing.T) {
 	binaryPath := os.Getenv("ARDENTS_WEBTUNNEL_CLIENT")
 	if binaryPath == "" {
@@ -204,6 +274,16 @@ func assertCandidateBounds(t *testing.T, pids []int, maximumFDs, maximumSockets 
 	t.Helper()
 	if len(pids) != 1 {
 		t.Fatalf("candidate process count = %d, want 1", len(pids))
+	}
+	status, err := os.ReadFile(filepath.Join("/proc", strconv.Itoa(pids[0]), "status"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range strings.Split(string(status), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) >= 3 && fields[0] == "Uid:" && fields[2] == "0" {
+			t.Fatal("candidate process retained effective UID 0")
+		}
 	}
 	entries, err := os.ReadDir(filepath.Join("/proc", strconv.Itoa(pids[0]), "fd"))
 	if err != nil {

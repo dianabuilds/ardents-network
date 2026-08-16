@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"syscall"
 	"testing"
@@ -35,6 +36,21 @@ func TestMain(tests *testing.M) {
 		os.Exit(2)
 	}
 	code := tests.Run()
+	if wrapped := os.Getenv("ARDENTS_DNS_WRAPPED"); code == 0 && wrapped != "" {
+		for _, executable := range filepath.SplitList(wrapped) {
+			arguments := []string{"-test.count=1", "-test.v"}
+			if run := os.Getenv("ARDENTS_DNS_WRAPPED_RUN"); run != "" {
+				arguments = append(arguments, "-test.run", run)
+			}
+			command := exec.Command(executable, arguments...)
+			command.Stdout, command.Stderr = os.Stdout, os.Stderr
+			if err := command.Run(); err != nil {
+				fmt.Fprintf(os.Stderr, "wrapped DNS-proof test failed: %v\n", err)
+				code = 1
+				break
+			}
+		}
+	}
 	observation, err := stopDNSProof(root)
 	if err != nil || observation.Controls < 6 || observation.Packets != 0 || observation.Ambiguous != 0 {
 		fmt.Fprintf(os.Stderr, "DNS proof = %+v, error = %v\n", observation, err)
@@ -50,29 +66,33 @@ func observeDNS(root string) error {
 		return errors.New("DNS observer root is not absolute")
 	}
 	if err := os.MkdirAll(root, 0o777); err != nil {
-		return err
-	}
-	if err := os.Chmod(root, 0o777); err != nil {
-		return err
+		return fmt.Errorf("prepare observer evidence root: %w", err)
 	}
 	fd, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW, int(networkShort(0x0003)))
 	if err != nil {
-		return err
+		return fmt.Errorf("open AF_PACKET observer: %w", err)
 	}
 	defer syscall.Close(fd)
+	if err := syscall.SetsockoptInt(fd, syscall.SOL_SOCKET, syscall.SO_RCVBUF, 4<<20); err != nil {
+		return fmt.Errorf("bound observer receive buffer: %w", err)
+	}
 	timeout := syscall.NsecToTimeval((100 * time.Millisecond).Nanoseconds())
 	if err := syscall.SetsockoptTimeval(fd, syscall.SOL_SOCKET, syscall.SO_RCVTIMEO, &timeout); err != nil {
-		return err
+		return fmt.Errorf("bound observer receive timeout: %w", err)
 	}
 	if err := os.WriteFile(filepath.Join(root, "ready"), []byte("ready\n"), 0o666); err != nil {
-		return err
+		return fmt.Errorf("publish observer readiness: %w", err)
 	}
 	var observation dnsObservation
+	var paths pathObserver
 	packet := make([]byte, 65535)
 	control := true
 	controlDone := false
-	deadline := time.Now().Add(90 * time.Second)
+	deadline := time.Now().Add(10 * time.Minute)
 	for time.Now().Before(deadline) {
+		if err := paths.poll(root); err != nil {
+			return err
+		}
 		if control && exists(filepath.Join(root, "control-done")) {
 			controlDone = true
 		}
@@ -93,6 +113,7 @@ func observeDNS(root string) error {
 		if receiveErr != nil {
 			return receiveErr
 		}
+		paths.observe(packet[:n])
 		if _, _, ambiguous, ok := packetTransport(packet[:n]); ok && ambiguous {
 			observation.Ambiguous++
 		} else if isDNSControl(packet[:n], control) {

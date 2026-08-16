@@ -22,8 +22,7 @@ type concurrentResult struct {
 	closeErr error
 }
 
-// RunConcurrent constructs and runs one bounded concurrent role sequence while serializing evidence.
-func RunConcurrent(ctx context.Context, sequence *Sequence, encode func(any) error) error {
+func runConcurrent(ctx context.Context, sequence *Sequence, encode func(any) error) error {
 	tasks, err := collectConcurrent(func() (concurrentTask, bool, error) {
 		step, ok, nextErr := sequence.Next()
 		return concurrentTask{actor: step.Actor, attachment: step.Attachment, close: step.Close}, ok, nextErr

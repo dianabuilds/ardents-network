@@ -10,6 +10,11 @@
 !lab/**
 
 **/*_test.go
+!internal/camouflage/*_test.go
+!tests
+!tests/live
+!tests/live/network
+!tests/live/network/*_test.go
 .git
 .github
 .githooks

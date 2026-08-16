@@ -98,7 +98,7 @@ func validState(state durableState) bool {
 		return false
 	}
 	seen := make(map[[32]byte]bool, len(state.Records))
-	active := [2]bool{}
+	active, retained := [2]bool{}, [2]uint8{}
 	for _, record := range state.Records {
 		if seen[record.InviteID] || record.Slot > 1 || record.Generation < 1 || record.Generation > 2 {
 			return false
@@ -110,6 +110,13 @@ func validState(state durableState) bool {
 				return false
 			}
 			active[record.Slot] = true
+			retained[record.Slot]++
+		} else if record.Status == memberDraining || record.Status == memberVerified {
+			if len(record.Invite) == 0 || record.Commitment == ([32]byte{}) || len(record.ProfileID) > 63 ||
+				!ascii(record.ProfileID) || retained[record.Slot] >= 2 {
+				return false
+			}
+			retained[record.Slot]++
 		} else if record.Status != memberRetired || len(record.Invite) != 0 ||
 			record.Commitment != ([32]byte{}) || record.ProfileID != "" {
 			return false
@@ -123,11 +130,17 @@ func validState(state durableState) bool {
 
 func validRuntimeState(state durableState) bool {
 	if state.Regime == nil {
-		return len(state.Contacts) == 0
+		return state.Attempt == nil && len(state.Contacts) == 0
 	}
 	regime := state.Regime
+	attempt := state.Attempt
 	if regime.AttemptID == ([32]byte{}) || regime.PolicyID == ([32]byte{}) || regime.Manifest == ([32]byte{}) ||
-		regime.Offset == 0 || regime.Deadline <= 0 || regime.Trigger != "owner" && regime.Trigger != "policy" {
+		regime.Offset == 0 || regime.Deadline <= 0 || regime.DeadlineOffset < regime.Offset ||
+		regime.Trigger != "owner" && regime.Trigger != "policy" ||
+		attempt == nil || attempt.AttemptID != regime.AttemptID || attempt.Started != regime.Offset ||
+		attempt.Deadline != regime.Deadline || attempt.DeadlineOffset != regime.DeadlineOffset ||
+		attempt.Terminal == "" && attempt.TerminalOffset != 0 ||
+		attempt.Terminal != "" && attempt.TerminalOffset < attempt.Started || !validAttemptTerminal(attempt.Terminal) {
 		return false
 	}
 	previous := -1
@@ -135,13 +148,24 @@ func validRuntimeState(state durableState) bool {
 		if contact.AttemptID != regime.AttemptID || contact.InviteID == ([32]byte{}) ||
 			len(contact.ProfileID) > 63 || !ascii(contact.ProfileID) || contact.Slot > 1 ||
 			contact.Ordinal > 3 || int(contact.Ordinal) <= previous ||
-			contact.Started < regime.Offset || contact.Outcome != "" && contact.Outcome != "opened" &&
-			contact.Outcome != "failed" && contact.Outcome != "interrupted" {
+			contact.Started < regime.Offset || contact.Outcome == "" && contact.Terminal != 0 ||
+			contact.Outcome != "" && contact.Terminal < contact.Started ||
+			contact.Outcome != "" && contact.Outcome != "opened" &&
+				contact.Outcome != "failed" && contact.Outcome != "interrupted" {
 			return false
 		}
 		previous = int(contact.Ordinal)
 	}
 	return true
+}
+
+func validAttemptTerminal(value string) bool {
+	switch value {
+	case "", "opened", "bridge-attempt-exhausted", "bridge-deadline-exceeded", "bridge-interrupted", "bridge-local-denial":
+		return true
+	default:
+		return false
+	}
 }
 
 func (owner *owner) commit(next durableState, retainPrevious bool) error {

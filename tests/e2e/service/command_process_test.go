@@ -49,7 +49,8 @@ func TestServiceCommandReadinessTimeoutAndCleanup(t *testing.T) {
 	if !ready {
 		t.Fatalf("Service command did not expose readiness before its bounded failure:\n%s", output)
 	}
-	for _, path := range []string{filepath.Join(root, applicationSocket), filepath.Join(root, routeSocket)} {
+	for _, path := range []string{filepath.Join(root, applicationSocket),
+		filepath.Join(root, applicationSocket+".result"), filepath.Join(root, routeSocket)} {
 		if _, statErr := os.Stat(path); !os.IsNotExist(statErr) {
 			t.Fatalf("Service command retained socket %s after failure: %v", path, statErr)
 		}

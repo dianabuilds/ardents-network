@@ -2,10 +2,12 @@ package bridge_test
 
 import (
 	"bytes"
+	"context"
 	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
+	"net"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -339,8 +341,13 @@ func newFixture(t *testing.T) fixture {
 type bridgeOwner interface {
 	Import([]byte) (bridge.Result, error)
 	Contact() ([32]byte, []byte, error)
-	BeginContact([]byte, [32]byte, time.Time) ([32]byte, []byte, byte, error)
-	FinishContact(byte, bool, bool) error
+	BeginContact([]byte, [32]byte, time.Time) ([32]byte, []byte, byte, uint64, time.Time, error)
+	NextContact(context.Context) ([32]byte, []byte, byte, error)
+	FinishContact(byte, uint64, bool, bool) error
+	Acquire(context.Context, []byte, [32]byte, time.Time,
+		func(context.Context, [32]byte, []byte, time.Time) (net.Conn, func() error, bool, error),
+	) (net.Conn, func() error, error)
+	Evidence() (bridge.AttemptEvidence, error)
 	Close() error
 }
 

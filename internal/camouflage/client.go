@@ -66,7 +66,11 @@ func OpenClient(ctx context.Context, config Config, client Client) (net.Conn, fu
 		once.Do(func() {
 			close(stopped)
 			deadline := cleanupDeadline(client.Deadline)
-			closeErr = cleanupFailure(errors.Join(carrier.Close(), child.closeBefore(deadline),
+			carrierErr := carrier.Close()
+			if errors.Is(carrierErr, net.ErrClosed) {
+				carrierErr = nil
+			}
+			closeErr = cleanupFailure(errors.Join(carrierErr, child.closeBefore(deadline),
 				removeAndVerifyState(client.StateRoot, deadline)))
 		})
 		return closeErr

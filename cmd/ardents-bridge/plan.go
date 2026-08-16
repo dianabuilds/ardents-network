@@ -22,7 +22,6 @@ type importPlan struct {
 	RouteProfile       string   `json:"route_profile"`
 	LocalRoleStateRoot string   `json:"local_role_state_root"`
 }
-
 type importRuntime struct {
 	config                    bridge.Config
 	inviteFile, localRoleRoot string
@@ -57,15 +56,12 @@ func loadImportPlan(path string, clock func() time.Time) (importRuntime, error) 
 		_ = network.Close()
 		return importRuntime{}, fmt.Errorf("read authenticated Network State: %w", currentErr)
 	}
-	roles, err := localroles.Open(localroles.Config{Root: raw.LocalRoleStateRoot, Clock: clock})
-	if err != nil {
-		_ = network.Close()
-		return importRuntime{}, fmt.Errorf("open current local role state: %w", err)
-	}
 	config := bridge.Config{
 		Root: raw.StateRoot, RouteProfile: raw.RouteProfile, CurrentNetwork: network.Current, Clock: clock,
-		RoleConflict: roles.Conflict,
+		RoleConflict: func(identity, family [32]byte) (bool, error) {
+			return localroles.ReadConflict(raw.LocalRoleStateRoot, clock, identity, family)
+		},
 	}
 	return importRuntime{config: config, inviteFile: raw.InviteFile, localRoleRoot: raw.LocalRoleStateRoot,
-		close: func() error { return errors.Join(roles.Close(), network.Close()) }}, nil
+		close: network.Close}, nil
 }

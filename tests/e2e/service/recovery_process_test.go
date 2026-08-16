@@ -74,7 +74,9 @@ func TestServiceProcessesKeepConnectionWhenReplacementFails(t *testing.T) {
 		t.Fatalf("Application bytes or terminal result changed: client=%+v publisher=%+v",
 			clientApplication, publisherApplication)
 	}
-	for _, path := range []string{fixture.clientApplication, fixture.publisherApplication, fixture.clientRoute,
+	for _, path := range []string{fixture.clientApplication,
+		fixture.clientApplication + ".result", fixture.publisherApplication,
+		fixture.publisherApplication + ".result", fixture.clientRoute,
 		fixture.publisherRoute, fixture.administration} {
 		if pathExists(path) {
 			t.Fatalf("process-owned socket remained after completion: %s", path)

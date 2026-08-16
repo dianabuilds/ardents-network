@@ -149,7 +149,11 @@ func (stream *recoveryStream) fail(err error) {
 		if stream.current != nil {
 			stream.current.close()
 		}
-		_ = stream.application.Close()
+		if deadline, ok := stream.application.(interface{ SetDeadline(time.Time) error }); ok {
+			_ = deadline.SetDeadline(time.Now())
+		} else {
+			_ = stream.application.Close()
+		}
 	}
 	stream.recovering = false
 	stream.cond.Broadcast()

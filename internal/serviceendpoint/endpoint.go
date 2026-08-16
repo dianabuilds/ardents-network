@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net"
 	"os"
 	"time"
 
@@ -46,6 +47,12 @@ func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (servicec
 	setup.Resources("control-file", 1)
 	defer setup.Resources("control-file", -1)
 	defer func() { _ = applicationListener.Close(); _ = os.Remove(plan.ApplicationSocket) }()
+	resultPath, resultListener := optionalResultListener(plan.ApplicationSocket, deadline)
+	if resultListener != nil {
+		setup.Resources("control-file", 1)
+		defer setup.Resources("control-file", -1)
+		defer func() { _ = resultListener.Close(); _ = os.Remove(resultPath) }()
+	}
 	routeListener, err := listenLocal(plan.RouteSocket, deadline)
 	if err != nil {
 		return serviceconn.Result{}, err
@@ -66,29 +73,38 @@ func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (servicec
 	} else if ready != nil {
 		ready()
 	}
-	application, err := applicationListener.Accept()
+	applicationSocket, err := applicationListener.Accept()
 	if err != nil {
 		return serviceconn.Result{}, err
+	}
+	var resultSocket net.Conn
+	if resultListener != nil {
+		resultSocket, _ = acceptOptionalResult(resultListener)
 	}
 	setup.Resources("accepted-ipc", 1)
 	setup.Resources("application-accept", 1)
 	defer setup.Resources("accepted-ipc", -1)
-	defer application.Close()
+	defer applicationSocket.Close()
+	if resultSocket != nil {
+		setup.Resources("result-ipc", 1)
+		defer setup.Resources("result-ipc", -1)
+		defer resultSocket.Close()
+	}
 	openAttachment := routeAttachmentOpener(routeListener, setup.Resources)
 	route, err := openAttachment(ctx, serviceconn.Recovery{Generation: 1, Deadline: time.Now().Add(deadline)})
 	if err != nil {
-		application.Close()
+		applicationSocket.Close()
 		return serviceconn.Result{}, err
 	}
 	defer route.Close()
 	session, err := admit(endpoint, setup.ConnectionPrincipal, "connection", at)
 	if err != nil {
-		application.Close()
+		applicationSocket.Close()
 		route.Close()
 		return serviceconn.Result{}, err
 	}
 	request := serviceconn.Request{Action: plan.roleAction(), Principal: setup.ConnectionPrincipal,
-		Session: session, Route: route, Application: application,
+		Session: session, Route: route, Application: applicationSocket,
 		BytesEachDirection: plan.BytesEachDirection, SendBytes: plan.SendBytes, ReceiveBytes: plan.ReceiveBytes, At: at}
 	request.RecoveryBinding, err = plan.recoveryBinding()
 	if err != nil {
@@ -123,7 +139,12 @@ func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (servicec
 		result.IntroductionAcknowledgement = published.IntroductionAcknowledgement
 		err = errors.Join(err, os.Remove(plan.PublicationFile))
 	}
-	err = errors.Join(err, deliverResult(application, result))
+	err = errors.Join(err, applicationSocket.SetDeadline(time.Time{}))
+	resultOutput := io.Writer(applicationSocket)
+	if resultSocket != nil {
+		resultOutput = resultSocket
+	}
+	err = errors.Join(err, deliverResult(resultOutput, result))
 	return result, err
 }
 func (plan endpointPlan) roleAction() string {

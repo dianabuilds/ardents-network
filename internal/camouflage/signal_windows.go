@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func configureCandidateProcess(*exec.Cmd) {}
+func configureCandidateProcess(*exec.Cmd, string) error { return nil }
 
 func signalTerminate(process *os.Process) error { return process.Signal(os.Interrupt) }
 

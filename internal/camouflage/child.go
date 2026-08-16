@@ -41,7 +41,9 @@ func startCandidateProcess(ctx context.Context, binary string, environment []str
 		return nil, "", errors.New("startup deadline expired")
 	}
 	command := exec.Command(binary)
-	configureCandidateProcess(command)
+	if err := configureCandidateProcess(command, stateRootFromEnvironment(environment)); err != nil {
+		return nil, "", err
+	}
 	command.Env = environment
 	stdin, err := command.StdinPipe()
 	if err != nil {
@@ -91,6 +93,16 @@ func startCandidateProcess(ctx context.Context, binary string, environment []str
 		cleanupErr := child.closeBefore(cleanupDeadline(parent))
 		return nil, "", errors.Join(errors.New("client readiness timed out"), cleanupFailure(cleanupErr))
 	}
+}
+
+func stateRootFromEnvironment(environment []string) string {
+	const prefix = "TOR_PT_STATE_LOCATION="
+	for _, value := range environment {
+		if len(value) > len(prefix) && value[:len(prefix)] == prefix {
+			return value[len(prefix):]
+		}
+	}
+	return ""
 }
 
 func (child *candidateChild) closeBefore(deadline time.Time) error {

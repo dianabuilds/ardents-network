@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/serviceendpoint"
 )
@@ -29,5 +30,10 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 	if encodeErr := encoder.Encode(result); encodeErr != nil {
 		return errors.Join(err, encodeErr)
 	}
-	return err
+	publishedAt := time.Now()
+	publishErr := encoder.Encode(struct {
+		Kind       string `json:"kind"`
+		AtUnixNano int64  `json:"at_unix_nano"`
+	}{Kind: "connection-result-published", AtUnixNano: publishedAt.UnixNano()})
+	return errors.Join(err, publishErr)
 }

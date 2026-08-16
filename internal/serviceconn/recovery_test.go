@@ -12,6 +12,7 @@ import (
 	"io"
 	"math/big"
 	"net"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -244,6 +245,12 @@ func TestExpiredWorkSafetyBlocksFreshAttachment(t *testing.T) {
 }
 
 func TestNoAlternateTerminatesConnectionPromptly(t *testing.T) {
+	for episode := range 5 {
+		t.Run(strconv.Itoa(episode), testNoAlternateTerminatesConnectionPromptly)
+	}
+}
+
+func testNoAlternateTerminatesConnectionPromptly(t *testing.T) {
 	fixture := newFixture(t)
 	binding := testRecoveryBinding(fixture)
 	client, publisher, publication := connectedEndpoints(t, fixture)

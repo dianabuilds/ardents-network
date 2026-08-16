@@ -10,8 +10,23 @@ import (
 	"time"
 )
 
-func configureCandidateProcess(command *exec.Cmd) {
+const candidateUID = 65532
+
+func configureCandidateProcess(command *exec.Cmd, stateRoot string) error {
 	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	if os.Geteuid() != 0 {
+		return nil
+	}
+	if stateRoot == "" {
+		return errors.New("candidate state root is absent")
+	}
+	if err := os.Chown(stateRoot, candidateUID, candidateUID); err != nil {
+		return err
+	}
+	command.SysProcAttr.Credential = &syscall.Credential{
+		Uid: candidateUID, Gid: candidateUID, NoSetGroups: true,
+	}
+	return nil
 }
 
 func signalTerminate(process *os.Process) error { return syscall.Kill(-process.Pid, syscall.SIGTERM) }

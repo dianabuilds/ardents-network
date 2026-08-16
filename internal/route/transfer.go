@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"time"
 )
@@ -68,9 +69,6 @@ func transfer(ctx context.Context, input Actor) (evidence Evidence, runErr error
 	}
 	defer func() { runErr = errors.Join(runErr, outer.Close(), closeEntry()) }()
 	_ = outer.SetDeadline(time.Now().Add(input.Deadline))
-	if err := confirmLegBinding(outer, input.Plan.NetworkID, input.Plan.Digest, first.NodeID); err != nil {
-		return evidence, fmt.Errorf("confirm initiator Network State binding: %w", err)
-	}
 	if input.RawAttachment {
 		if err := outer.SetDeadline(time.Time{}); err != nil {
 			return evidence, fmt.Errorf("clear client raw Attachment setup deadline: %w", err)
@@ -115,18 +113,30 @@ func transfer(ctx context.Context, input Actor) (evidence Evidence, runErr error
 func openInitiator(ctx context.Context, input Actor, first Position) (*tls.Conn, func() error, error) {
 	if input.OpenEntry == nil {
 		connection, err := dialTLS(ctx, first.Endpoint, input.ClientCertificate, first.PublicKey, input.Deadline)
-		return connection, func() error { return nil }, err
+		if err != nil {
+			return nil, func() error { return nil }, err
+		}
+		if err := confirmLegBinding(connection, input.Plan.NetworkID, input.Plan.Digest, first.NodeID); err != nil {
+			return nil, func() error { return nil }, errors.Join(err, connection.Close())
+		}
+		return connection, func() error { return nil }, nil
 	}
-	raw, cleanup, err := input.OpenEntry(ctx)
+	authenticate := func(handshakeCtx context.Context, raw net.Conn) (*tls.Conn, error) {
+		outer := tls.Client(raw, clientTLS(input.ClientCertificate, first.PublicKey))
+		if err := outer.HandshakeContext(handshakeCtx); err != nil {
+			return nil, err
+		}
+		if err := confirmLegBinding(outer, input.Plan.NetworkID, input.Plan.Digest, first.NodeID); err != nil {
+			return nil, fmt.Errorf("confirm initiator Network State binding: %w", err)
+		}
+		return outer, nil
+	}
+	outer, cleanup, err := input.OpenEntry(ctx, authenticate)
 	if err != nil {
 		return nil, func() error { return nil }, err
 	}
-	if raw == nil || cleanup == nil {
+	if outer == nil || cleanup == nil {
 		return nil, func() error { return nil }, errors.New("bridge entry opener returned incomplete ownership")
-	}
-	outer := tls.Client(raw, clientTLS(input.ClientCertificate, first.PublicKey))
-	if err := outer.HandshakeContext(ctx); err != nil {
-		return nil, cleanup, errors.Join(err, raw.Close(), cleanup())
 	}
 	return outer, cleanup, nil
 }
