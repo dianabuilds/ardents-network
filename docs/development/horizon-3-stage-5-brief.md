@@ -104,6 +104,33 @@ remain signed, opaque, and length-bounded. The package persists only the opaque
 envelope and its validation commitment; every open/restart revalidates it
 through the supplied validator before new work.
 
+### `internal/localroles` — endpoint-local duty truth
+
+This new package owns one Endpoint-local, owner-only role-state root used by
+every maintained Direct Source, Node, Route-selection, and Bridge command. Its
+bounded read-through Interface atomically replaces one producer's complete duty
+set, removes a producer after terminal cleanup, and answers identity/family
+conflict queries from the latest durable generation. Plans name only this root;
+they cannot assert a conflict-free result or supply editable identity/family
+exceptions.
+
+Each retained duty binds producer ID, authenticated Node identity, canonical
+family digest, exact duty class and lifecycle state, and finite `not_after`.
+There are at most `32` duties and `16` producers in `64 KiB`. Expired duties are
+ignored and removed on the next successful write. A crashed producer therefore
+fails conservatively until its precommitted bound; restart cannot reset the
+generation. Ordinary Initiator Entry membership is explicitly nonconflicting,
+while Direct Source Exposure, Interior, Rendezvous, Responder, Introduction,
+Destination Resolution, prepared/quarantined non-Initiator duty, and live
+non-Initiator Route state conflict.
+
+The maintained source client/server, Node lifecycle, and authenticated client
+Route selection update this owner before relevant work and clear only after
+terminal cleanup. Bridge import holds the same local-role root generation lease,
+reads it for every validation, and fails closed if the root is absent, stale,
+unreadable, over-bound, or cannot be locked. The package imports only the
+standard library and exposes no generic role registry or network surface.
+
 ### `internal/camouflage` — selected Adapter implementation
 
 This new package owns the accepted R-036 Adapter seam and only:
@@ -281,9 +308,12 @@ inspection surface is added.
 ### S5.1 — Invite import and Bridge owner
 
 - add `internal/bridge`, the pure WebTunnel-envelope validator in
-  `internal/camouflage`, and `cmd/ardents-bridge import` together so the
+  `internal/camouflage`, `internal/localroles`, and `cmd/ardents-bridge import`
+  together so the
   transport-neutral Bridge can validate its opaque envelope through the
   accepted Adapter seam;
+- connect existing Direct Source, Node, and authenticated Route-selection
+  owners to the same bounded local-role root before Bridge import can succeed;
 - freeze both golden encodings and strict bounds;
 - exercise valid/idempotent import, every invalid field, expiry, wrong
   network/Epoch/profile/domain, role/family conflict, two slots, one
