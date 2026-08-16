@@ -27,15 +27,17 @@ by `openpcc/ohttp v0.0.80`.
 | `go.opentelemetry.io/otel/trace` | `v1.39.0` | Apache-2.0 | OHTTP tracing Interface |
 | `golang.org/x/crypto` | `v0.51.0` | BSD-3-Clause | selected cryptographic support closure |
 | `golang.org/x/net` | `v0.55.0` | BSD-3-Clause | BHTTP HTTP support; raised from vulnerable `v0.48.0` |
-| `golang.org/x/sys` | `v0.45.0` | BSD-3-Clause | direct Windows owner-only DACL enforcement for Bridge/local-role state; transitive Gate C operating-system support elsewhere |
+| `golang.org/x/sys` | `v0.45.0` | BSD-3-Clause | Windows owner-only DACL enforcement plus Linux/Windows atomic no-replace Stage 5 evidence publication; transitive Gate C operating-system support elsewhere |
 | `golang.org/x/text` | `v0.39.0` | BSD-3-Clause | BHTTP normalization; raised from vulnerable `v0.32.0` |
 
 **Need and owner:** RFC 9458 is the accepted external-first Private Resolution
 shape. `internal/lab/namedsite` is the sole first-party owner of the OHTTP/CIRCL
 Interface. No product Module imports the OHTTP/CIRCL portion of this closure.
 
-**Stage 5 Windows ACL need and owner:** `internal/bridge` and
-`internal/localroles` use only `golang.org/x/sys/windows` on Windows to apply a
+**Stage 5 Windows ACL need and owner:** `internal/bridge`,
+`internal/localroles`, `internal/lab/blockedentry`, and
+`internal/lab/blockedverify` use only
+`golang.org/x/sys/windows` on Windows to apply a
 protected DACL granting the current process owner full control and nobody else.
 The module was already pinned and reviewed in the Gate C closure; this makes
 that exact version a direct platform-specific product dependency. It avoids a
@@ -43,8 +45,26 @@ child PowerShell process during Invite import and avoids first-party `unsafe`.
 Unix builds retain the standard-library permission implementation.
 `x/sys` is the Go project's maintained, tagged operating-system support module;
 the selected version has the existing checksum/license review, passes the
-repository's offline build/tests and reachable vulnerability scan, and the two
+repository's offline build/tests and reachable vulnerability scan, and the four
 callers use no cgo or first-party `unsafe`.
+
+**Stage 5 evidence-publication need and owner:**
+`internal/lab/blockedentry` uses `unix.Renameat2(..., RENAME_NOREPLACE)` on
+Linux and `windows.MoveFile` on Windows to publish one completed external
+evidence directory without replacing an existing path. The standard-library
+`os.Rename` may replace an existing empty directory on Unix, so it cannot meet
+the immutable/no-replay publication contract. Other platforms fail closed.
+This use is removed when the standard library exposes a portable atomic
+no-replace directory rename; copying or check-then-rename remain rejected
+because they expose partial evidence or a replacement race.
+
+`internal/lab/blockedverify` uses `unix.Flock` or Windows `LockFileEx` plus the
+platform atomic replace/write-through operations to serialize and durably
+replace its external consumed-run registry. The lock is advisory and released
+by the operating system after a verifier crash; the single registry state file
+is recovered from any uncommitted temporary successor. This use is removed
+when the standard library provides equivalent cross-process file locking and a
+durable atomic replacement primitive on both maintained platforms.
 
 **Maintenance and security review:** `openpcc/ohttp` has versioned releases, an
 Apache-2.0 license, tests including RFC vectors and malformed inputs, and a
