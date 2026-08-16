@@ -88,6 +88,9 @@ func (s *networkState) startSource(workContext context.Context) error {
 	if s.current == nil {
 		return errors.New("source mode requires a current generation")
 	}
+	if err := s.retainSourceServer(); err != nil {
+		return err
+	}
 	s.serverDone = make(chan struct{})
 	ready := make(chan error, 1)
 	go func() {
@@ -100,7 +103,7 @@ func (s *networkState) startSource(workContext context.Context) error {
 	if err := <-ready; err != nil {
 		s.workCancel()
 		<-s.serverDone
-		return err
+		return errors.Join(err, s.releaseSourceServer())
 	}
 	return nil
 }

@@ -1,0 +1,153 @@
+package main
+
+import (
+	"bytes"
+	"crypto/ed25519"
+	"encoding/binary"
+	"encoding/hex"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/localroles"
+)
+
+func TestImportCommandUsesAuthenticatedNetworkState(t *testing.T) {
+	t.Parallel()
+	directory := t.TempDir()
+	now := time.Now().UTC().Truncate(time.Second)
+	network := prepareCommandNetwork(t, directory, now)
+	invite := commandInvite(network, now)
+	invitePath := filepath.Join(directory, "bridge.invite")
+	if err := os.WriteFile(invitePath, invite, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	planPath := filepath.Join(directory, "import.json")
+	rolesRoot := filepath.Join(directory, "local-roles")
+	roles, err := localroles.Open(localroles.Config{Root: rolesRoot, Clock: func() time.Time { return now }, Create: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := roles.Close(); err != nil {
+		t.Fatal(err)
+	}
+	plan := map[string]any{
+		"state_root": filepath.Join(directory, "bridge-state"), "network_state_root": network.root,
+		"invite_file": invitePath, "network_id": hex32(network.snapshot.NetworkID),
+		"network_authorities": []string{hex.EncodeToString(network.authorityPublic)},
+		"network_threshold":   1, "network_profile": "h3-role-probe-v1",
+		"route_profile": "h3-interactive-v1", "local_role_state_root": rolesRoot,
+	}
+	rawPlan, err := json.Marshal(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(planPath, rawPlan, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var output bytes.Buffer
+	if err := run(t.Context(), []string{"import", planPath}, &output); err != nil {
+		t.Fatalf("run import: %v", err)
+	}
+	var event struct {
+		Class      string `json:"class"`
+		InviteID   string `json:"invite_id"`
+		Slot       uint8  `json:"slot"`
+		Generation uint8  `json:"generation"`
+	}
+	if err := json.Unmarshal(output.Bytes(), &event); err != nil {
+		t.Fatal(err)
+	}
+	if event.Class != "accepted" || len(event.InviteID) != 64 || event.Slot != 0 || event.Generation != 1 {
+		t.Fatalf("unexpected import event: %+v", event)
+	}
+	output.Reset()
+	if err := run(t.Context(), []string{"import", planPath}, &output); err != nil {
+		t.Fatalf("run idempotent import: %v", err)
+	}
+	if err := json.Unmarshal(output.Bytes(), &event); err != nil || event.Class != "already-present" {
+		t.Fatalf("idempotent event = %+v, %v", event, err)
+	}
+
+	plan["state_root"] = filepath.Join(directory, "conflicting-bridge-state")
+	candidateFacts, _ := network.snapshot.BridgeCandidateByKey(network.snapshot.Candidates[0].KeyID)
+	roles, err = localroles.Open(localroles.Config{Root: rolesRoot, Clock: func() time.Time { return now }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := roles.Replace([32]byte{9}, []localroles.Duty{{Identity: candidateFacts.NodeID,
+		Family: candidateFacts.FamilyID, Class: "route-rendezvous", State: "live", NotAfter: now.Add(time.Hour)}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := roles.Close(); err != nil {
+		t.Fatal(err)
+	}
+	rawPlan, err = json.Marshal(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(planPath, rawPlan, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	output.Reset()
+	if err := run(t.Context(), []string{"import", planPath}, &output); err != nil {
+		t.Fatalf("run conflicting import: %v", err)
+	}
+	if err := json.Unmarshal(output.Bytes(), &event); err != nil || event.Class != "conflicting-role" {
+		t.Fatalf("conflicting event = %+v, %v", event, err)
+	}
+}
+
+func commandInvite(fixture commandNetwork, now time.Time) []byte {
+	snapshot := fixture.snapshot
+	var candidate bytes.Buffer
+	candidate.WriteString("ardents-h3-wt1")
+	candidate.WriteByte(1)
+	writeCommandBytes(&candidate, []byte("webtunnel-v0.0.6"), 1)
+	candidate.Write([]byte{93, 184, 216, 34})
+	_ = binary.Write(&candidate, binary.BigEndian, uint16(443))
+	writeCommandBytes(&candidate, []byte("/entry"), 2)
+	writeCommandBytes(&candidate, []byte("front.example"), 1)
+	candidate.Write(bytes.Repeat([]byte{0x5a}, 32))
+
+	var body bytes.Buffer
+	_ = binary.Write(&body, binary.BigEndian, uint16(1))
+	body.Write(snapshot.NetworkID[:])
+	_ = binary.Write(&body, binary.BigEndian, snapshot.Epoch)
+	body.Write(snapshot.Digest[:])
+	writeCommandBytes(&body, []byte("h3-interactive-v1"), 1)
+	body.WriteByte(1)
+	candidateFacts, _ := snapshot.BridgeCandidateByKey(snapshot.Candidates[0].KeyID)
+	body.Write(candidateFacts.NodeID[:])
+	body.Write(candidateFacts.FamilyID[:])
+	body.Write(candidateFacts.RecordDigest[:])
+	writeCommandBytes(&body, fixture.domainProof, 2)
+	_ = binary.Write(&body, binary.BigEndian, candidateFacts.AssignmentNotAfter.Unix())
+	_ = binary.Write(&body, binary.BigEndian, now.Add(-time.Minute).Unix())
+	_ = binary.Write(&body, binary.BigEndian, now.Add(30*time.Minute).Unix())
+	body.Write([]byte{1, 0, 0})
+	writeCommandBytes(&body, candidate.Bytes(), 2)
+	body.Write(candidateFacts.KeyID[:])
+
+	var raw bytes.Buffer
+	raw.WriteString("ardents-h3-bi1")
+	_ = binary.Write(&raw, binary.BigEndian, uint16(body.Len()))
+	raw.Write(body.Bytes())
+	signed := append([]byte("ardents-h3-bridge-invite-signature-v1\x00"), body.Bytes()...)
+	raw.Write(ed25519.Sign(fixture.nodePrivate, signed))
+	return raw.Bytes()
+}
+
+func writeCommandBytes(target *bytes.Buffer, raw []byte, width int) {
+	if width == 1 {
+		target.WriteByte(byte(len(raw)))
+	} else {
+		_ = binary.Write(target, binary.BigEndian, uint16(len(raw)))
+	}
+	target.Write(raw)
+}
+
+func hex32(value [32]byte) string { return hex.EncodeToString(value[:]) }

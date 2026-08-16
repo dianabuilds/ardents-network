@@ -25,7 +25,7 @@ type admission struct {
 }
 
 func resolveConfig(input Config) (runtimeConfig, error) {
-	if input.Current == nil || input.Emit == nil {
+	if input.Current == nil || input.Emit == nil || input.LocalRoleStateRoot == "" {
 		return runtimeConfig{}, errors.New("node lifecycle callbacks are required")
 	}
 	if len(input.IdentityKey) != ed25519.PrivateKeySize {

@@ -27,6 +27,7 @@ type Facts struct {
 	NodePublicKey    [32]byte
 	RecordValidFrom  time.Time
 	RecordValidUntil time.Time
+	DeclaredFamily   string
 	ProbeEndpoint    string
 	ProbeCapacity    uint16
 	Assignment       string
@@ -36,14 +37,15 @@ type Facts struct {
 
 // Config binds one local identity, authenticated duty facts, and private role-probe listener.
 type Config struct {
-	NetworkID       [32]byte
-	NodeID          [32]byte
-	IdentityKey     ed25519.PrivateKey
-	Current         func() (Facts, error)
-	Probe           probe.Config
-	PollInterval    time.Duration
-	Quarantine      time.Duration
-	ResourceProfile string
+	NetworkID          [32]byte
+	NodeID             [32]byte
+	IdentityKey        ed25519.PrivateKey
+	Current            func() (Facts, error)
+	Probe              probe.Config
+	PollInterval       time.Duration
+	Quarantine         time.Duration
+	ResourceProfile    string
+	LocalRoleStateRoot string
 	// ResourceMeasure supplies the process/cgroup observation adapter. Nil uses
 	// the operating-system sampler for ResourceProfile.
 	ResourceMeasure func() (resource.Sample, error)

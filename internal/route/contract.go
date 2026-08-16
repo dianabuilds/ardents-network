@@ -44,6 +44,7 @@ type Actor struct {
 	MaximumAttachments                            uint16
 	AttachmentTarget                              uint16
 	ResourceProfile                               string
+	LocalRoleStateRoot                            string
 	ResourceMeasure                               func() (resource.Sample, error)
 	ResourceCheck                                 func() error
 	PressureInterval                              time.Duration

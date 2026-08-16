@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/localroles"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
@@ -79,6 +80,17 @@ func TestRefreshWaitsForTwoAuthenticatedSourcesAndRestarts(t *testing.T) {
 	}
 	if refreshed.Epoch != 2 || refreshed.Digest != successor.epochDigest || refreshed.SourceAttempts != 2 {
 		t.Fatalf("unexpected refreshed snapshot: %+v", refreshed)
+	}
+	roles, err := localroles.Open(localroles.Config{Root: endpointConfig.LocalRoleStateRoot, Clock: endpointConfig.Clock})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if conflict, err := roles.Conflict(endpointConfig.Source.Sources[0].Identity,
+		sha256.Sum256([]byte(endpointConfig.Source.Sources[0].Family))); err != nil || !conflict {
+		t.Fatalf("Direct Source local duty = %v, %v", conflict, err)
+	}
+	if err := roles.Close(); err != nil {
+		t.Fatal(err)
 	}
 	if err := endpoint.Close(); err != nil {
 		t.Fatal(err)
@@ -303,7 +315,7 @@ func sourceEnvironment(t *testing.T, genesis, firstValue, secondValue fixture) (
 
 func fixtureConfig(value fixture, root string, now time.Time) state.Config {
 	return state.Config{
-		Root: root, NetworkID: value.networkID,
+		Root: root, LocalRoleStateRoot: root + "-local-roles", NetworkID: value.networkID,
 		Authorities: map[[32]byte]ed25519.PublicKey{value.authorityID: value.authorityPublic},
 		Threshold:   1, Now: now,
 	}

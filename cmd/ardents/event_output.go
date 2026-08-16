@@ -12,7 +12,6 @@ type eventOutput struct {
 }
 
 func newEventOutput(target io.Writer) *eventOutput { return &eventOutput{target: target} }
-
 func (output *eventOutput) encode(value any) error {
 	output.mu.Lock()
 	defer output.mu.Unlock()

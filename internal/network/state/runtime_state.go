@@ -50,6 +50,7 @@ type config struct {
 	automatic       time.Duration
 	profile         string
 	resources       func([]byte) error
+	localRoles      string
 	anchorWall      time.Time
 	anchorMono      time.Time
 }

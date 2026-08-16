@@ -10,7 +10,7 @@ import (
 )
 
 // Run owns one bounded Client, Node-position, or Publisher process lifetime.
-func Run(ctx context.Context, input Actor, ready func(Evidence)) (Evidence, error) {
+func Run(ctx context.Context, input Actor, ready func(Evidence)) (result Evidence, runErr error) {
 	if input.ManifestDigest == [32]byte{} {
 		return Evidence{}, errors.New("route manifest commitment is required")
 	}
@@ -25,7 +25,13 @@ func Run(ctx context.Context, input Actor, ready func(Evidence)) (Evidence, erro
 		return Evidence{}, err
 	}
 	input.Lifetime = lifetime
-	attempt, cancel := context.WithTimeout(ctx, lifetime)
+	terminal := time.Now().Add(lifetime)
+	producer, err := retainLocalRoute(input, terminal)
+	if err != nil {
+		return Evidence{}, err
+	}
+	defer func() { runErr = errors.Join(runErr, releaseLocalRoute(input, producer)) }()
+	attempt, cancel := context.WithDeadline(ctx, terminal)
 	defer cancel()
 	var acknowledgement <-chan error
 	var introductionSetup <-chan introductionSetupResult
@@ -63,8 +69,8 @@ func Run(ctx context.Context, input Actor, ready func(Evidence)) (Evidence, erro
 		cleanups = append(cleanups, stop)
 		introductionSetup = completed
 	}
-	var result Evidence
-	var err error
+	result = Evidence{}
+	err = nil
 	switch input.Role {
 	case "client":
 		if ready != nil {

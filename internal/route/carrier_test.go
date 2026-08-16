@@ -88,7 +88,7 @@ func TestCanaryCrossesEveryRealRoutePosition(t *testing.T) {
 	}
 	result, err := route.Run(ctx, route.Actor{Role: "client", ManifestDigest: [32]byte{99}, Plan: plan,
 		ClientCertificate: identities[5].certificate, PublisherPin: identities[4].public,
-		Deadline: 5 * time.Second}, nil)
+		LocalRoleStateRoot: t.TempDir(), Deadline: 5 * time.Second}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -184,16 +184,17 @@ func TestRoleProcessesServeConcurrentAttachments(t *testing.T) {
 	}
 	time.Sleep(25 * time.Millisecond)
 	clients := make(chan error, 2)
-	for range 2 {
-		go func() {
+	localRoleRoots := [2]string{t.TempDir(), t.TempDir()}
+	for index := range 2 {
+		go func(localRoleRoot string) {
 			result, err := route.Run(ctx, route.Actor{Role: "client", ManifestDigest: [32]byte{99}, Plan: plan,
 				ClientCertificate: identities[5].certificate, PublisherPin: identities[4].public,
-				Deadline: 5 * time.Second}, nil)
+				LocalRoleStateRoot: localRoleRoot, Deadline: 5 * time.Second}, nil)
 			if err == nil && (result.CanaryLength != 32 || len(result.Canary) != 32) {
 				err = errors.New("capacity client received an invalid canary result")
 			}
 			clients <- err
-		}()
+		}(localRoleRoots[index])
 	}
 	for range 2 {
 		if err := <-clients; err != nil {
@@ -337,7 +338,7 @@ func TestActorsRejectCrossRoleInformation(t *testing.T) {
 			ListenAddress: unusedAddress(t), Certificate: identity.certificate, UpstreamPin: upstream.public,
 			ServiceCertificate: identity.certificate, NextNodeID: [32]byte{4}, Deadline: time.Second}},
 		{"Client listener", route.Actor{Role: "client", ManifestDigest: [32]byte{99}, Plan: plan, ClientCertificate: identity.certificate,
-			PublisherPin: upstream.public, ListenAddress: unusedAddress(t), Deadline: time.Second}},
+			PublisherPin: upstream.public, ListenAddress: unusedAddress(t), LocalRoleStateRoot: t.TempDir(), Deadline: time.Second}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

@@ -54,7 +54,8 @@ func TestAuthenticatedRouteUsesSeparateRoleProcesses(t *testing.T) {
 	clientPlan := writeProcessPlan(t, map[string]any{
 		"Role": "client", "ManifestDigest": hex32(fixture.manifestDigest),
 		"StateRoot": fixture.stateRoot, "NetworkID": hex32(fixture.network),
-		"Authorities": []string{hex.EncodeToString(authority)}, "Threshold": 1,
+		"LocalRoleStateRoot": filepath.Join(filepath.Dir(fixture.stateRoot), "local-roles"),
+		"Authorities":        []string{hex.EncodeToString(authority)}, "Threshold": 1,
 		"At": fixture.now.Format(time.RFC3339), "Seed": hex32(fixture.selectionSeed),
 		"Certificate": fixture.identities[5].cert, "Key": fixture.identities[5].key,
 		"PublisherPin": hex32(fixture.identities[4].public), "Deadline": "5s",
@@ -166,7 +167,8 @@ func TestEachRouteProcessCarriesFourTimesReferenceAttachments(t *testing.T) {
 	for index := range capacity + 1 {
 		clientPlan := writeProcessPlan(t, map[string]any{
 			"Role": "client", "ManifestDigest": hex32(fixture.manifestDigest), "StateRoot": stateRoots[index],
-			"NetworkID": hex32(fixture.network), "Authorities": []string{hex.EncodeToString(authority)}, "Threshold": 1,
+			"LocalRoleStateRoot": stateRoots[index] + "-local-roles",
+			"NetworkID":          hex32(fixture.network), "Authorities": []string{hex.EncodeToString(authority)}, "Threshold": 1,
 			"At": fixture.now.Format(time.RFC3339), "Seed": hex32(fixture.selectionSeed),
 			"Certificate": fixture.identities[5].cert, "Key": fixture.identities[5].key,
 			"PublisherPin": hex32(fixture.identities[4].public), "Deadline": "5s",
@@ -219,7 +221,8 @@ func TestClientProcessRejectsExcludingItsOnlyCandidate(t *testing.T) {
 	base := map[string]any{
 		"Role": "client", "ManifestDigest": hex32(fixture.manifestDigest),
 		"StateRoot": fixture.stateRoot, "NetworkID": hex32(fixture.network),
-		"Authorities": []string{hex.EncodeToString(authority)}, "Threshold": 1,
+		"LocalRoleStateRoot": filepath.Join(filepath.Dir(fixture.stateRoot), "local-roles-exclusion"),
+		"Authorities":        []string{hex.EncodeToString(authority)}, "Threshold": 1,
 		"At": fixture.now.Format(time.RFC3339), "Seed": hex32(fixture.selectionSeed),
 		"Certificate": fixture.identities[5].cert, "Key": fixture.identities[5].key,
 		"PublisherPin": hex32(fixture.identities[4].public), "Deadline": "5s",

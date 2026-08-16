@@ -9,25 +9,25 @@ import (
 )
 
 type actorPlan struct {
-	Role, ManifestDigest, NetworkID, EpochDigest, NodeID                    string
-	Listen, Certificate, Key, UpstreamPin                                   string
-	NextNodeID, Next, NextPin, ServiceCertificate, ServiceKey               string
-	Deadline, Lifetime, StateRoot, At, Seed, PublisherPin                   string
-	Stream                                                                  string
-	RawAttachment                                                           bool
-	AcknowledgementSocket, AcknowledgementKey                               string
-	IntroductionSetupSocket, IntroductionSetupPeer, IntroductionSetupPublic string
-	IntroductionForwardSocket, IntroductionForwardPublic                    string
-	IntroductionServicePublic, IntroductionSetupNode                        string
-	Authorities, ExcludedFamilies, ExcludedDomains                          []string
-	ExcludedIdentities                                                      []string
-	Threshold                                                               int
-	Attachments                                                             uint32
-	MaximumAttachments                                                      uint16
-	AttachmentTarget                                                        uint16
-	ResourceProfile                                                         string
-	AttachmentPlans                                                         []attachmentPlan
-	ConcurrentAttachments                                                   bool
+	Role, ManifestDigest, NetworkID, EpochDigest, NodeID                      string
+	Listen, Certificate, Key, UpstreamPin                                     string
+	NextNodeID, Next, NextPin, ServiceCertificate, ServiceKey                 string
+	Deadline, Lifetime, StateRoot, LocalRoleStateRoot, At, Seed, PublisherPin string
+	Stream                                                                    string
+	RawAttachment                                                             bool
+	AcknowledgementSocket, AcknowledgementKey                                 string
+	IntroductionSetupSocket, IntroductionSetupPeer, IntroductionSetupPublic   string
+	IntroductionForwardSocket, IntroductionForwardPublic                      string
+	IntroductionServicePublic, IntroductionSetupNode                          string
+	Authorities, ExcludedFamilies, ExcludedDomains                            []string
+	ExcludedIdentities                                                        []string
+	Threshold                                                                 int
+	Attachments                                                               uint32
+	MaximumAttachments                                                        uint16
+	AttachmentTarget                                                          uint16
+	ResourceProfile                                                           string
+	AttachmentPlans                                                           []attachmentPlan
+	ConcurrentAttachments                                                     bool
 }
 
 const (
@@ -66,7 +66,7 @@ func (value actorPlan) validateRoleLocal() error {
 }
 
 func (value actorPlan) validateSingleRoleLocal() error {
-	clientOnly := value.StateRoot != "" || value.At != "" || value.Seed != "" || value.PublisherPin != "" ||
+	clientOnly := value.StateRoot != "" || value.LocalRoleStateRoot != "" || value.At != "" || value.Seed != "" || value.PublisherPin != "" ||
 		len(value.Authorities) != 0 || value.Threshold != 0 || len(value.ExcludedIdentities) != 0 ||
 		len(value.ExcludedFamilies) != 0 || len(value.ExcludedDomains) != 0
 	nextOnly := value.NextNodeID != "" || value.Next != "" || value.NextPin != ""
@@ -74,7 +74,7 @@ func (value actorPlan) validateSingleRoleLocal() error {
 	listenerOnly := value.Listen != "" || value.UpstreamPin != "" || value.NodeID != "" || value.EpochDigest != ""
 	switch value.Role {
 	case "client":
-		if listenerOnly || nextOnly || serviceOnly {
+		if listenerOnly || nextOnly || serviceOnly || value.LocalRoleStateRoot == "" {
 			return errors.New("client plan contains information outside its role-local duty")
 		}
 		if value.RawAttachment && (value.Stream == "" || value.PublisherPin != "") {

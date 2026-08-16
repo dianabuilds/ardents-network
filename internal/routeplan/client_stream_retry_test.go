@@ -17,27 +17,36 @@ func TestClientStreamRetryBridgesOneRecoveryPublicationGap(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	accepted := make(chan net.Conn, 1)
-	listenerReady := make(chan struct{})
+	type dialResult struct {
+		connection net.Conn
+		err        error
+	}
+	started := make(chan struct{})
+	result := make(chan dialResult, 1)
 	go func() {
-		time.Sleep(40 * time.Millisecond)
-		listener, err := net.Listen("unix", path)
-		if err != nil {
-			close(listenerReady)
-			return
-		}
-		defer listener.Close()
-		close(listenerReady)
+		close(started)
+		connection, err := dialClientStream(path, 5*time.Second, 5*time.Second)
+		result <- dialResult{connection: connection, err: err}
+	}()
+	<-started
+	time.Sleep(40 * time.Millisecond)
+	listener, err := net.Listen("unix", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	accepted := make(chan net.Conn, 1)
+	go func() {
 		connection, err := listener.Accept()
 		if err == nil {
 			accepted <- connection
 		}
 	}()
-	connection, err := dialClientStream(path, time.Second, replacementStreamWait)
-	if err != nil {
-		<-listenerReady
-		t.Fatal(err)
+	dialed := <-result
+	if dialed.err != nil {
+		t.Fatal(dialed.err)
 	}
+	connection := dialed.connection
 	defer connection.Close()
 	peer := <-accepted
 	defer peer.Close()

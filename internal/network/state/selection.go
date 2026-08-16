@@ -41,7 +41,11 @@ func (s *networkState) startSourceWave(now time.Time) ([2]int, time.Time, error)
 				return [2]int{}, time.Time{}, err
 			}
 		}
-		return [2]int{int(state.sourceOrder[0]), int(state.sourceOrder[1])}, time.Unix(state.cycleDeadline, 0), nil
+		deadline := time.Unix(state.cycleDeadline, 0)
+		if err := s.retainSourceExposures(deadline); err != nil {
+			return [2]int{}, time.Time{}, err
+		}
+		return [2]int{int(state.sourceOrder[0]), int(state.sourceOrder[1])}, deadline, nil
 	}
 	state.sequence++
 	state.trustedTimeFloor = max(state.trustedTimeFloor, now.Unix())
@@ -70,7 +74,11 @@ func (s *networkState) startSourceWave(now time.Time) ([2]int, time.Time, error)
 	if err := s.commitDistribution(state); err != nil {
 		return order, time.Time{}, err
 	}
-	return order, time.Unix(state.cycleDeadline, 0), nil
+	deadline := time.Unix(state.cycleDeadline, 0)
+	if err := s.retainSourceExposures(deadline); err != nil {
+		return order, time.Time{}, err
+	}
+	return order, deadline, nil
 }
 
 func (s *networkState) completeSourceWave(now time.Time, base *Snapshot, results []sourceResult) (Snapshot, error) {

@@ -10,12 +10,18 @@ import (
 )
 
 // Run owns one Node duty and returns only after terminal cleanup.
-func Run(ctx context.Context, input Config) (Result, error) {
+func Run(ctx context.Context, input Config) (result Result, runErr error) {
 	config, err := resolveConfig(input)
 	if err != nil {
 		return Result{}, err
 	}
 	machine := stateMachine{current: stateAbsent}
+	retained := false
+	defer func() {
+		if retained {
+			runErr = errors.Join(runErr, releaseLocalDuty(config))
+		}
+	}()
 	if err := emitState(config, machine, Facts{}, "process started"); err != nil {
 		return Result{State: stateNames[stateFailed], Reason: err.Error()}, err
 	}
@@ -31,9 +37,17 @@ func Run(ctx context.Context, input Config) (Result, error) {
 		case admissionFailed:
 			return fail(config, &machine, nil, admission.reason, errors.New(admission.reason))
 		case admissionReady:
+			if err := retainLocalDuty(config, snapshot, "prepared"); err != nil {
+				return fail(config, &machine, nil, "local role state is unavailable", err)
+			}
+			retained = true
 			return runDuty(ctx, config, &machine, snapshot)
 		case admissionPrepared:
 			if machine.current == stateAbsent {
+				if err := retainLocalDuty(config, snapshot, "prepared"); err != nil {
+					return fail(config, &machine, nil, "local role state is unavailable", err)
+				}
+				retained = true
 				if err := moveAndEmit(config, &machine, statePrepared, snapshot, admission.reason); err != nil {
 					return fail(config, &machine, nil, "external evidence channel failed", err)
 				}
@@ -52,6 +66,9 @@ func Run(ctx context.Context, input Config) (Result, error) {
 }
 
 func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, snapshot Facts) (Result, error) {
+	if err := retainLocalDuty(config, snapshot, "quarantined"); err != nil {
+		return fail(config, machine, nil, "local role state is unavailable", err)
+	}
 	if machine.current == stateAbsent {
 		if err := moveAndEmit(config, machine, statePrepared, snapshot, "verified assignment is quarantined"); err != nil {
 			return fail(config, machine, nil, "external evidence channel failed", err)
@@ -76,6 +93,9 @@ func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, s
 	server, err := config.probe.Start(probeDuty(current))
 	if err != nil {
 		return fail(config, machine, nil, "role-probe listener failed", err)
+	}
+	if err := retainLocalDuty(config, current, "live"); err != nil {
+		return fail(config, machine, server, "local role state is unavailable", err)
 	}
 	if err := moveAndEmit(config, machine, stateReady, current, ""); err != nil {
 		return fail(config, machine, server, "external evidence channel failed", err)

@@ -35,7 +35,7 @@ func runNode(ctx context.Context, path string, output io.Writer) error {
 			Profile: snapshot.Profile, Fresh: snapshot.Freshness == "fresh", Conflicting: snapshot.Conflicting,
 			RecordPresent: snapshot.RecordPresent, NodeID: snapshot.NodeID,
 			NodePublicKey: snapshot.NodePublicKey, RecordValidFrom: snapshot.RecordValidFrom,
-			RecordValidUntil: snapshot.RecordValidUntil, ProbeEndpoint: snapshot.ProbeEndpoint,
+			RecordValidUntil: snapshot.RecordValidUntil, DeclaredFamily: snapshot.DeclaredFamily, ProbeEndpoint: snapshot.ProbeEndpoint,
 			ProbeCapacity: snapshot.ProbeCapacity, Assignment: snapshot.Assignment,
 			AssignmentDigest: snapshot.AssignmentDigest,
 		}, nil

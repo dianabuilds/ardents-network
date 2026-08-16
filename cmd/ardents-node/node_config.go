@@ -46,10 +46,11 @@ func readNodePlan(path string) (nodeRuntime, error) {
 	if err := planfile.Decode(path, 64<<10, &plan); err != nil {
 		return nodeRuntime{}, fmt.Errorf("decode node plan: %w", err)
 	}
-	if plan.Schema != "ardents-h3-node-plan-v1" || len(plan.Sources) != 2 || len(plan.AuthorityPublic) == 0 || len(plan.AuthorityPublic) > 16 {
+	if plan.Schema != "ardents-h3-node-plan-v1" || plan.LocalRoleStateRoot == "" || len(plan.Sources) != 2 || len(plan.AuthorityPublic) == 0 || len(plan.AuthorityPublic) > 16 {
 		return nodeRuntime{}, errors.New("node plan is not canonical or complete")
 	}
-	state := state.Config{Root: plan.StateRoot, Threshold: plan.Threshold, Authorities: make(map[[32]byte]ed25519.PublicKey), Clock: time.Now,
+	state := state.Config{Root: plan.StateRoot, LocalRoleStateRoot: plan.LocalRoleStateRoot,
+		Threshold: plan.Threshold, Authorities: make(map[[32]byte]ed25519.PublicKey), Clock: time.Now,
 		Source: source.Config{MaterialIndex: plan.MaterializationIndex}, AutomaticRefreshInterval: 5 * time.Second, ClockObservationFile: plan.ClockObservationFile}
 	if err := planfile.FixedHex(plan.NetworkID, state.NetworkID[:]); err != nil {
 		return nodeRuntime{}, err

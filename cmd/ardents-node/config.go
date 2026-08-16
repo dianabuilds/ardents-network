@@ -14,6 +14,7 @@ import (
 type sourceServerPlan struct {
 	Schema               string   `json:"schema"`
 	StateRoot            string   `json:"state_root"`
+	LocalRoleStateRoot   string   `json:"local_role_state_root"`
 	NetworkID            string   `json:"network_id"`
 	AuthorityPublic      []string `json:"authority_public"`
 	Threshold            int      `json:"threshold"`
@@ -27,23 +28,25 @@ type sourceServerPlan struct {
 	RuntimeProfile       string   `json:"runtime_profile,omitempty"`
 }
 
-func openSource(path string, emit func([]byte) error) (interface {
+type sourceStore interface {
 	Current() (state.Snapshot, error)
 	Wait(context.Context) error
 	Close() error
-}, error) {
+}
+
+func openSource(path string, emit func([]byte) error) (sourceStore, error) {
 	var err error
 	var plan sourceServerPlan
 	if err := planfile.Decode(path, 32<<10, &plan); err != nil {
 		return nil, fmt.Errorf("decode source server plan: %w", err)
 	}
-	if plan.Schema != "ardents-h3-source-server-v1" {
+	if plan.Schema != "ardents-h3-source-server-v1" || plan.LocalRoleStateRoot == "" {
 		return nil, errors.New("source server plan is not canonical")
 	}
 	if len(plan.ClientKeyDigests) == 0 || len(plan.ClientKeyDigests) > 3 {
 		return nil, errors.New("source server trust-map count is invalid")
 	}
-	config := state.Config{Root: plan.StateRoot, Threshold: plan.Threshold,
+	config := state.Config{Root: plan.StateRoot, LocalRoleStateRoot: plan.LocalRoleStateRoot, Threshold: plan.Threshold,
 		Source: source.Config{ServeAddress: plan.Listen, MaterialIndex: plan.MaterializationIndex}, RuntimeProfile: plan.RuntimeProfile}
 	config.ObserveResources = emit
 	if err := planfile.FixedHex(plan.NetworkID, config.NetworkID[:]); err != nil {
@@ -69,5 +72,9 @@ func openSource(path string, emit func([]byte) error) (interface {
 	if err != nil {
 		return nil, err
 	}
-	return state.Open(config)
+	store, err := state.Open(config)
+	if err != nil {
+		return nil, err
+	}
+	return store, nil
 }

@@ -35,6 +35,7 @@ type Config struct {
 	ObserveClock             func() time.Time
 	AutomaticRefreshInterval time.Duration
 	RuntimeProfile           string
+	LocalRoleStateRoot       string
 	ObserveResources         func([]byte) error
 }
 
@@ -81,13 +82,33 @@ type Snapshot struct {
 	Candidates         [64]routeCandidate
 }
 
+// BridgeCandidate is the bounded authenticated projection needed to verify a
+// Bridge Invite issuer. It contains no candidate-specific transport data.
+type BridgeCandidate struct {
+	NodeID             [32]byte
+	PublicKey          [32]byte
+	KeyID              [32]byte
+	FamilyID           [32]byte
+	RecordDigest       [32]byte
+	DomainProofDigest  [32]byte
+	Domain             string
+	ValidFrom          time.Time
+	ValidUntil         time.Time
+	AssignmentNotAfter time.Time
+}
+
 type routeCandidate struct {
-	NodeID     [32]byte
-	PublicKey  [32]byte
-	Family     string
-	Endpoint   string
-	Capacity   uint16
-	Domain     string
-	ValidFrom  time.Time
-	ValidUntil time.Time
+	NodeID             [32]byte
+	PublicKey          [32]byte
+	KeyID              [32]byte
+	FamilyID           [32]byte
+	RecordDigest       [32]byte
+	DomainProofDigest  [32]byte
+	Family             string
+	Endpoint           string
+	Capacity           uint16
+	Domain             string
+	ValidFrom          time.Time
+	ValidUntil         time.Time
+	AssignmentNotAfter time.Time
 }

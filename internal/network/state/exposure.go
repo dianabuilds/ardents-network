@@ -1,6 +1,7 @@
 package state
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"time"
@@ -101,6 +102,22 @@ func (s *networkState) snapshotWithDistribution(now time.Time) Snapshot {
 	return snapshot
 }
 
+// BridgeCandidateByKey returns one immutable authenticated Invite-issuer
+// projection. Key lookup lets callers authenticate bytes before classifying
+// the asserted identity or role.
+func (snapshot Snapshot) BridgeCandidateByKey(keyID [32]byte) (BridgeCandidate, bool) {
+	for _, candidate := range snapshot.Candidates[:snapshot.CandidateCount] {
+		if candidate.KeyID == keyID {
+			return BridgeCandidate{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey,
+				KeyID: candidate.KeyID, FamilyID: candidate.FamilyID, RecordDigest: candidate.RecordDigest,
+				DomainProofDigest: candidate.DomainProofDigest, Domain: candidate.Domain,
+				ValidFrom: candidate.ValidFrom, ValidUntil: candidate.ValidUntil,
+				AssignmentNotAfter: candidate.AssignmentNotAfter}, true
+		}
+	}
+	return BridgeCandidate{}, false
+}
+
 func routeCandidates(decision *candidateDecision) ([64]routeCandidate, uint8) {
 	var result [64]routeCandidate
 	if decision == nil {
@@ -108,9 +125,11 @@ func routeCandidates(decision *candidateDecision) ([64]routeCandidate, uint8) {
 	}
 	verified := decision.verified
 	for index := range verified.NodeIDs {
-		result[index] = routeCandidate{NodeID: verified.NodeIDs[index], PublicKey: verified.PublicKeys[index],
+		result[index] = routeCandidate{NodeID: verified.NodeIDs[index], PublicKey: verified.PublicKeys[index], KeyID: verified.KeyIDs[index],
+			FamilyID: verified.FamilyIDs[index], RecordDigest: verified.RecordDigests[index], DomainProofDigest: sha256.Sum256(verified.DomainProofs[index]),
 			Family: verified.Families[index], Endpoint: verified.Endpoints[index], Capacity: verified.Capacities[index],
-			Domain: verified.Domains[index], ValidFrom: verified.ValidFrom[index], ValidUntil: verified.ValidUntil[index]}
+			Domain: verified.Domains[index], ValidFrom: verified.ValidFrom[index], ValidUntil: verified.ValidUntil[index],
+			AssignmentNotAfter: verified.AssignmentNotAfter[index]}
 	}
 	return result, uint8(len(verified.NodeIDs))
 }

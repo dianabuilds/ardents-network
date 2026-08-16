@@ -66,6 +66,9 @@ func validateConfig(input Config) (config, error) {
 	if err != nil {
 		return config{}, err
 	}
+	if (sourceInfo.Configured || sourceInfo.Serving) && input.LocalRoleStateRoot == "" {
+		return config{}, errors.New("direct Source work requires local role state")
+	}
 	acceptedProfile := input.AcceptedProfile
 	if acceptedProfile == "" {
 		acceptedProfile = "h3-role-probe-v1"
@@ -79,6 +82,7 @@ func validateConfig(input Config) (config, error) {
 		source: sourcePlan, sourceInfo: sourceInfo, observation: input.ClockObservation.UTC(), observe: observe,
 		automatic: input.AutomaticRefreshInterval, profile: input.RuntimeProfile,
 		resources:  input.ObserveResources,
+		localRoles: input.LocalRoleStateRoot,
 		anchorWall: initial, anchorMono: time.Now(),
 	}
 	if resolved.profile != "" && resolved.profile != "h3-s-v1" {

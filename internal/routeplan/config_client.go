@@ -74,7 +74,8 @@ func (raw actorPlan) client(initialStream bool) (route.Actor, func() error, erro
 		return route.Actor{}, nil, errors.Join(fmt.Errorf("parse client Route lifetime: %w", err), opened.Close())
 	}
 	actor := route.Actor{Role: "client", ManifestDigest: manifest, Plan: plan, ClientCertificate: certificate,
-		PublisherPin: publisher, Deadline: deadline, Lifetime: lifetime, RawAttachment: raw.RawAttachment}
+		PublisherPin: publisher, Deadline: deadline, Lifetime: lifetime, RawAttachment: raw.RawAttachment,
+		LocalRoleStateRoot: raw.LocalRoleStateRoot}
 	actor.IntroductionSetupSocket = raw.IntroductionSetupSocket
 	if raw.IntroductionSetupPublic != "" {
 		if err := fixedHex(raw.IntroductionSetupPublic, actor.IntroductionSetupPublic[:]); err != nil {

@@ -69,7 +69,8 @@ func TestFiniteSourceCommandsAsBlackBoxProcesses(t *testing.T) {
 
 	plan := map[string]any{
 		"schema": "ardents-h3-source-plan-v1", "network_id": hex.EncodeToString(fixture.networkID[:]),
-		"authority_public": []string{hex.EncodeToString(fixture.authorityPublic)}, "threshold": 1,
+		"local_role_state_root": endpointRoot + "-local-roles",
+		"authority_public":      []string{hex.EncodeToString(fixture.authorityPublic)}, "threshold": 1,
 		"clock_observed_at":     time.Now().UTC().Format(time.RFC3339),
 		"order_seed":            hexDigest(sha256.Sum256([]byte("black-box-source-order"))),
 		"materialization_index": 0, "client_certificate": client.certificatePath, "client_key": client.keyPath,
@@ -184,8 +185,9 @@ func writeServerPlan(t *testing.T, fixture verifierFixture, root, address string
 	t.Helper()
 	return writeProcessJSON(t, "source-server-plan.json", map[string]any{
 		"schema": "ardents-h3-source-server-v1", "state_root": root,
-		"network_id":       hex.EncodeToString(fixture.networkID[:]),
-		"authority_public": []string{hex.EncodeToString(fixture.authorityPublic)}, "threshold": 1,
+		"local_role_state_root": root + "-local-roles",
+		"network_id":            hex.EncodeToString(fixture.networkID[:]),
+		"authority_public":      []string{hex.EncodeToString(fixture.authorityPublic)}, "threshold": 1,
 		"at": time.Unix(fixture.now, 0).UTC().Format(time.RFC3339), "listen": address,
 		"server_certificate": server.certificatePath, "server_key": server.keyPath,
 		"client_root": clientRoot, "client_key_digests": []string{hex.EncodeToString(clientPin[:])},

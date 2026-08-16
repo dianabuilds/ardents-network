@@ -44,6 +44,9 @@ func newestSourceDecision(valid []candidateDecision) candidateDecision {
 }
 
 func (s *networkState) commitPendingSourceWave(now time.Time, selected candidateDecision, summary sourceWaveSummary) (Snapshot, error) {
+	if err := s.retainSourceExposures(selected.epoch.validUntil); err != nil {
+		return Snapshot{}, err
+	}
 	newPending := s.pendingDecision == nil
 	if newPending {
 		if err := stageGeneration(s.storage, selected); err != nil {
@@ -66,6 +69,9 @@ func (s *networkState) commitPendingSourceWave(now time.Time, selected candidate
 }
 
 func (s *networkState) commitActiveSourceWave(now time.Time, selected candidateDecision, summary sourceWaveSummary) (Snapshot, error) {
+	if err := s.retainSourceExposures(selected.epoch.validUntil); err != nil {
+		return Snapshot{}, err
+	}
 	state := s.distribution
 	state.observedEpochs, state.observedDigests = summary.observedEpochs, summary.observedDigests
 	if err := finishWaveState(&state, now, summary.outcomes); err != nil {

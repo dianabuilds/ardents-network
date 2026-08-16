@@ -54,18 +54,22 @@ type Snapshot struct {
 // verified result. Its slices are owned immutable copies and preserve canonical
 // input order. A zero Decision has not been verified.
 type Decision struct {
-	EpochBytes []byte
-	Inputs     [][]byte
-	Snapshot   Snapshot
-	NodeIDs    [][32]byte
-	KeyIDs     [][32]byte
-	PublicKeys [][32]byte
-	Families   []string
-	Endpoints  []string
-	Capacities []uint16
-	Domains    []string
-	ValidFrom  []time.Time
-	ValidUntil []time.Time
+	EpochBytes         []byte
+	Inputs             [][]byte
+	Snapshot           Snapshot
+	NodeIDs            [][32]byte
+	KeyIDs             [][32]byte
+	PublicKeys         [][32]byte
+	FamilyIDs          [][32]byte
+	Families           []string
+	RecordDigests      [][32]byte
+	DomainProofs       [][]byte
+	Endpoints          []string
+	Capacities         []uint16
+	Domains            []string
+	ValidFrom          []time.Time
+	ValidUntil         []time.Time
+	AssignmentNotAfter []time.Time
 
 	epoch      epochEnvelope
 	accepted   []nodeRecord

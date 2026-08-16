@@ -24,11 +24,11 @@ type sourcePlan struct {
 	MaterializationIndex uint32             `json:"materialization_index"`
 	RefreshIntervalMS    uint32             `json:"refresh_interval_ms,omitempty"`
 	RuntimeProfile       string             `json:"runtime_profile,omitempty"`
+	LocalRoleStateRoot   string             `json:"local_role_state_root"`
 	ClientCertificate    string             `json:"client_certificate"`
 	ClientKey            string             `json:"client_key"`
 	Sources              []sourcePlanMember `json:"sources"`
 }
-
 type sourcePlanMember struct {
 	Address        string `json:"address"`
 	ServerName     string `json:"server_name"`
@@ -83,17 +83,16 @@ func runRefreshSources(ctx context.Context, arguments []string, output io.Writer
 	}
 	return store.Wait(ctx)
 }
-
 func readSourcePlan(root, path string) (state.Config, error) {
 	var plan sourcePlan
 	if err := planfile.Decode(path, 32<<10, &plan); err != nil {
 		return state.Config{}, fmt.Errorf("decode source plan: %w", err)
 	}
-	if plan.Schema != "ardents-h3-source-plan-v1" || len(plan.Sources) != 2 {
+	if plan.Schema != "ardents-h3-source-plan-v1" || plan.LocalRoleStateRoot == "" || len(plan.Sources) != 2 {
 		return state.Config{}, errors.New("source plan is not canonical or complete")
 	}
 	var err error
-	config := state.Config{Root: root, Threshold: plan.Threshold,
+	config := state.Config{Root: root, LocalRoleStateRoot: plan.LocalRoleStateRoot, Threshold: plan.Threshold,
 		Source: source.Config{MaterialIndex: plan.MaterializationIndex}, RuntimeProfile: plan.RuntimeProfile,
 		AutomaticRefreshInterval: time.Duration(plan.RefreshIntervalMS) * time.Millisecond}
 	if err := planfile.FixedHex(plan.NetworkID, config.NetworkID[:]); err != nil {
@@ -111,5 +110,8 @@ func readSourcePlan(root, path string) (state.Config, error) {
 	if err := planfile.FixedHex(plan.OrderSeed, config.Source.OrderSeed[:]); err != nil {
 		return config, err
 	}
-	return config, loadSourceCredentials(&config, plan)
+	if err := loadSourceCredentials(&config, plan); err != nil {
+		return config, err
+	}
+	return config, nil
 }

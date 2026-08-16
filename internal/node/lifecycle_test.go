@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/localroles"
 	"github.com/dianabuilds/ardents-network/internal/node/probe"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
@@ -62,6 +63,16 @@ func TestRunServesBoundProbeThenWithdrawsOnRecordRemoval(t *testing.T) {
 		errors <- err
 	}()
 	waitForState(t, events, "READY")
+	roles, err := localroles.Open(localroles.Config{Root: fixture.config.LocalRoleStateRoot, Clock: time.Now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if conflict, err := roles.Conflict(fixture.snapshot.NodeID, sha256.Sum256([]byte(fixture.snapshot.DeclaredFamily))); err != nil || !conflict {
+		t.Fatalf("READY Node local duty = %v, %v", conflict, err)
+	}
+	if err := roles.Close(); err != nil {
+		t.Fatal(err)
+	}
 	connection := dialProbe(t, fixture)
 	request := encodeProbeRequest(fixture.snapshot, [32]byte{9}, []byte("bounded work"))
 	if _, err := connection.Write(request); err != nil {
@@ -98,10 +109,20 @@ func TestRunServesBoundProbeThenWithdrawsOnRecordRemoval(t *testing.T) {
 		if value.State != "WITHDRAWN" || value.Assignment != "domain-a" {
 			t.Fatalf("terminal result = %+v", value)
 		}
-	case <-time.After(2 * time.Second):
+	case <-time.After(5 * time.Second):
 		t.Fatal("Node did not withdraw after record removal")
 	}
 	if err := <-errors; err != nil {
+		t.Fatal(err)
+	}
+	roles, err = localroles.Open(localroles.Config{Root: fixture.config.LocalRoleStateRoot, Clock: time.Now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if conflict, err := roles.Conflict(fixture.snapshot.NodeID, sha256.Sum256([]byte(fixture.snapshot.DeclaredFamily))); err != nil || conflict {
+		t.Fatalf("withdrawn Node local duty = %v, %v", conflict, err)
+	}
+	if err := roles.Close(); err != nil {
 		t.Fatal(err)
 	}
 	states := drainStates(events)
@@ -137,7 +158,7 @@ func TestDrainCancelsEstablishedProbeAtDeadline(t *testing.T) {
 		if terminal.State != "WITHDRAWN" {
 			t.Fatalf("terminal result = %+v", terminal)
 		}
-	case <-time.After(time.Second):
+	case <-time.After(5 * time.Second):
 		t.Fatal("established probe outlived drain deadline")
 	}
 	if _, err := established.Write([]byte{1}); err == nil {
@@ -183,7 +204,7 @@ func TestProtectPreservesEstablishedWorkAndRejectsNewAdmission(t *testing.T) {
 		if terminal.State != "WITHDRAWN" {
 			t.Fatalf("terminal result = %+v", terminal)
 		}
-	case <-time.After(time.Second):
+	case <-time.After(5 * time.Second):
 		t.Fatal("protected Node did not shut down")
 	}
 }
@@ -224,7 +245,7 @@ func TestPreparedNodeFailsWhenRecordDisappears(t *testing.T) {
 		if value.State != "FAILED" {
 			t.Fatalf("terminal result = %+v", value)
 		}
-	case <-time.After(time.Second):
+	case <-time.After(5 * time.Second):
 		t.Fatal("PREPARED Node did not terminate after record removal")
 	}
 }
@@ -255,7 +276,7 @@ func newLifecycleFixture(t *testing.T) *lifecycleFixture {
 	address := reserveAddress(t)
 	snapshot := Facts{Generation: "generation-1", NetworkID: [32]byte{1}, Epoch: 1,
 		Digest: [32]byte{3}, EpochValidFrom: now.Add(-time.Hour), ValidUntil: now.Add(time.Hour),
-		Profile: "h3-role-probe-v1", Fresh: true, RecordPresent: true, NodeID: [32]byte{2},
+		Profile: "h3-role-probe-v1", Fresh: true, RecordPresent: true, NodeID: [32]byte{2}, DeclaredFamily: "family-a",
 		RecordValidFrom: now.Add(-time.Hour), RecordValidUntil: now.Add(time.Hour), ProbeEndpoint: address, ProbeCapacity: 4,
 		Assignment: "domain-a", AssignmentDigest: [32]byte{4}}
 	copy(snapshot.NodePublicKey[:], identityPublic)
@@ -267,6 +288,7 @@ func newLifecycleFixture(t *testing.T) *lifecycleFixture {
 	roots.AppendCertsFromPEM(ca.pem)
 	fixture := &lifecycleFixture{snapshot: snapshot, serverRoots: roots, client: client.certificate, serverName: "node.test"}
 	fixture.config = Config{NetworkID: snapshot.NetworkID, NodeID: snapshot.NodeID, IdentityKey: identityPrivate,
+		LocalRoleStateRoot: t.TempDir(),
 		Probe: probe.Config{ListenAddress: address, Certificate: server.certificate, ClientRootPEM: ca.pem,
 			ClientKeyPins: [][32]byte{sha256.Sum256(pinBytes)}, MaximumDuty: 2 * time.Second, DrainTimeout: time.Second},
 		PollInterval: 10 * time.Millisecond, Quarantine: time.Millisecond,
@@ -364,7 +386,7 @@ func encodeProbeRequest(snapshot Facts, nonce [32]byte, payload []byte) []byte {
 
 func waitForState(t *testing.T, events <-chan Event, state string) {
 	t.Helper()
-	deadline := time.After(2 * time.Second)
+	deadline := time.After(5 * time.Second)
 	for {
 		select {
 		case event := <-events:

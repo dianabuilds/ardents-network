@@ -15,11 +15,14 @@ func TestInterruptedCycleResumesOnlyUnstartedLatestAttempt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, _, err := source.New(source.Config{OrderSeed: sha256.Sum256([]byte("resume-order"))}, nil)
+	plan, details, err := source.New(source.Config{OrderSeed: sha256.Sum256([]byte("resume-order"))}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	config := config{root: root, source: plan}
+	config := config{root: root, source: plan, sourceInfo: details,
+		localRoles: root + "-local-roles", clock: func() time.Time { return time.Unix(1_800_000_100, 0).UTC() }}
+	config.sourceInfo.Identities = [2][32]byte{{1}, {2}}
+	config.sourceInfo.Families = [2]string{"source-family-one", "source-family-two"}
 	initial := &networkState{config: config, storage: storage}
 	if err := initial.loadDistributionState(); err != nil {
 		t.Fatal(err)

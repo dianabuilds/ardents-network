@@ -3,6 +3,7 @@ package route_test
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"errors"
 	"net"
@@ -10,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/localroles"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
@@ -22,11 +24,11 @@ func TestEndpointSecuredAttachmentCrossesRouteWithoutPublisherCredential(t *test
 }
 
 func TestActiveAttachmentOutlivesItsSetupDeadline(t *testing.T) {
-	runBoundedOpaqueStream(t, true, 150*time.Millisecond, 2*time.Second, 0, 300*time.Millisecond)
+	runBoundedOpaqueStream(t, true, 500*time.Millisecond, 3*time.Second, 0, 750*time.Millisecond)
 }
 
 func TestWaitingAttachmentUsesLifetimeBeforeSetupDeadline(t *testing.T) {
-	runBoundedOpaqueStream(t, true, 150*time.Millisecond, 2*time.Second, 300*time.Millisecond, 0)
+	runBoundedOpaqueStream(t, true, 500*time.Millisecond, 3*time.Second, 750*time.Millisecond, 0)
 }
 
 func runBoundedOpaqueStream(t *testing.T, endpointSecured bool, setupDeadline, lifetime,
@@ -87,9 +89,10 @@ func runBoundedOpaqueStream(t *testing.T, endpointSecured bool, setupDeadline, l
 		Certificate: identities[4].certificate, UpstreamPin: identities[3].public,
 		ServiceCertificate: identities[4].certificate, Stream: publisherRoute, Deadline: setupDeadline, Lifetime: lifetime,
 		MaximumAttachments: 4, AttachmentTarget: 1}
+	localRoleRoot := t.TempDir()
 	client := route.Actor{Role: "client", ManifestDigest: [32]byte{99}, Plan: plan,
 		ClientCertificate: identities[5].certificate, PublisherPin: identities[4].public,
-		Stream: clientRoute, Deadline: setupDeadline, Lifetime: lifetime}
+		Stream: clientRoute, LocalRoleStateRoot: localRoleRoot, Deadline: setupDeadline, Lifetime: lifetime}
 	if endpointSecured {
 		publisher.ServiceCertificate = tls.Certificate{}
 		publisher.RawAttachment = true
@@ -108,13 +111,24 @@ func runBoundedOpaqueStream(t *testing.T, endpointSecured bool, setupDeadline, l
 		time.Sleep(startDelay)
 	}
 	start(client, false)
-	applicationDeadline := time.Now().Add(2 * time.Second)
+	applicationDeadline := time.Now().Add(5 * time.Second)
 	if err := errors.Join(clientApplication.SetDeadline(applicationDeadline),
 		publisherApplication.SetDeadline(applicationDeadline)); err != nil {
 		t.Fatal(err)
 	}
 	if hold > 0 {
 		time.Sleep(hold)
+		roles, err := localroles.Open(localroles.Config{Root: localRoleRoot, Clock: time.Now})
+		if err != nil {
+			t.Fatal(err)
+		}
+		position := plan.Positions[1]
+		if conflict, err := roles.Conflict(position.NodeID, sha256.Sum256([]byte(position.Family))); err != nil || !conflict {
+			t.Fatalf("active Route local duty = %v, %v", conflict, err)
+		}
+		if err := roles.Close(); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	repetitions := 1024
