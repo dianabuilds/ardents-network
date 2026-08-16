@@ -20,7 +20,7 @@ const (
 	classReplay              Class = "replay"
 )
 
-func (owner *Owner) validate(raw []byte) (invite, Class, error) {
+func (owner *owner) validate(raw []byte) (invite, Class, error) {
 	decoded, decodeClass := decodeInvite(raw)
 	if decodeClass != classAccepted {
 		return invite{}, decodeClass, nil
@@ -75,10 +75,11 @@ func (owner *Owner) validate(raw []byte) (invite, Class, error) {
 		notAfter.After(candidate.AssignmentNotAfter) {
 		return decoded, classExpired, nil
 	}
-	commitment, err := owner.config.ValidateCandidate(decoded.candidate, decoded.identity)
-	if err != nil || commitment == ([32]byte{}) {
+	commitment, profile, err := owner.config.ValidateCandidate(decoded.candidate, decoded.identity)
+	if err != nil || commitment == ([32]byte{}) || len(profile) > 63 || !ascii(profile) {
 		return decoded, classInvalid, nil
 	}
 	decoded.commitment = commitment
+	decoded.adapterProfile = profile
 	return decoded, classAccepted, nil
 }

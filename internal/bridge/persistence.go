@@ -94,7 +94,7 @@ func verifyPrevious(root string, state durableState) error {
 }
 
 func validState(state durableState) bool {
-	if state.Version != 1 || len(state.Records) > 4 || state.Generation == 0 {
+	if state.Version != 1 || len(state.Records) > 4 || len(state.Contacts) > 4 || state.Generation == 0 {
 		return false
 	}
 	seen := make(map[[32]byte]bool, len(state.Records))
@@ -105,18 +105,46 @@ func validState(state durableState) bool {
 		}
 		seen[record.InviteID] = true
 		if record.Status == memberActive {
-			if active[record.Slot] || len(record.Invite) == 0 || record.Commitment == ([32]byte{}) {
+			if active[record.Slot] || len(record.Invite) == 0 || record.Commitment == ([32]byte{}) ||
+				len(record.ProfileID) > 63 || !ascii(record.ProfileID) {
 				return false
 			}
 			active[record.Slot] = true
-		} else if record.Status != memberRetired || len(record.Invite) != 0 || record.Commitment != ([32]byte{}) {
+		} else if record.Status != memberRetired || len(record.Invite) != 0 ||
+			record.Commitment != ([32]byte{}) || record.ProfileID != "" {
 			return false
 		}
+	}
+	if !validRuntimeState(state) {
+		return false
 	}
 	return state.Previous == "" || stateName.MatchString(state.Previous)
 }
 
-func (owner *Owner) commit(next durableState, retainPrevious bool) error {
+func validRuntimeState(state durableState) bool {
+	if state.Regime == nil {
+		return len(state.Contacts) == 0
+	}
+	regime := state.Regime
+	if regime.AttemptID == ([32]byte{}) || regime.PolicyID == ([32]byte{}) || regime.Manifest == ([32]byte{}) ||
+		regime.Offset == 0 || regime.Deadline <= 0 || regime.Trigger != "owner" && regime.Trigger != "policy" {
+		return false
+	}
+	previous := -1
+	for _, contact := range state.Contacts {
+		if contact.AttemptID != regime.AttemptID || contact.InviteID == ([32]byte{}) ||
+			len(contact.ProfileID) > 63 || !ascii(contact.ProfileID) || contact.Slot > 1 ||
+			contact.Ordinal > 3 || int(contact.Ordinal) <= previous ||
+			contact.Started < regime.Offset || contact.Outcome != "" && contact.Outcome != "opened" &&
+			contact.Outcome != "failed" && contact.Outcome != "interrupted" {
+			return false
+		}
+		previous = int(contact.Ordinal)
+	}
+	return true
+}
+
+func (owner *owner) commit(next durableState, retainPrevious bool) error {
 	next.Version = 1
 	next.Generation = owner.state.Generation + 1
 	next.Previous = ""

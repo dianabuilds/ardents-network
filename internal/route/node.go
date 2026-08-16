@@ -59,7 +59,7 @@ func serveNode(ctx context.Context, input Actor, ready func(Evidence)) (Evidence
 
 func validateNode(input Actor) error {
 	if !emptyPlan(input.Plan) || input.PublisherPin != [32]byte{} || input.Stream != nil ||
-		!emptyCertificate(input.ClientCertificate) || !emptyCertificate(input.ServiceCertificate) || input.RawAttachment ||
+		!emptyCertificate(input.ClientCertificate) || !emptyCertificate(input.ServiceCertificate) || input.RawAttachment || input.OpenEntry != nil ||
 		input.IntroductionSetupPublic != [32]byte{} || input.IntroductionServicePublic != [32]byte{} ||
 		input.IntroductionSetupNode != [32]byte{} {
 		return errors.New("node received information outside its role-local duty")

@@ -1,10 +1,6 @@
 package main
 
 import (
-	"crypto/ed25519"
-	"crypto/x509"
-	"encoding/pem"
-	"errors"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/node"
@@ -13,21 +9,9 @@ import (
 )
 
 func loadNodeIdentity(plan nodePlan, networkID [32]byte) (node.Config, error) {
-	identityPEM, err := planfile.Read(plan.IdentityKey, 64<<10)
+	identity, err := node.IdentityKey(plan.IdentityKey)
 	if err != nil {
 		return node.Config{}, err
-	}
-	block, _ := pem.Decode(identityPEM)
-	if block == nil {
-		return node.Config{}, errors.New("node identity key is invalid")
-	}
-	parsed, err := x509.ParsePKCS8PrivateKey(block.Bytes)
-	if err != nil {
-		return node.Config{}, err
-	}
-	identity, ok := parsed.(ed25519.PrivateKey)
-	if !ok {
-		return node.Config{}, errors.New("node identity key is not Ed25519")
 	}
 	certificate, err := planfile.KeyPair(plan.ServerCertificate, plan.ServerKey)
 	if err != nil {

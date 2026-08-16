@@ -32,9 +32,10 @@ func writeCommandError(output io.Writer, err error) error {
 	return nil
 }
 
-func run(ctx context.Context, arguments []string, output io.Writer) error {
-	if len(arguments) != 2 || arguments[0] != "run" || arguments[1] == "" {
-		return errors.New("usage: ardents-route run <role-plan.json>")
+func run(ctx context.Context, arguments []string, output io.Writer) (runErr error) {
+	if len(arguments) != 2 && len(arguments) != 4 || arguments[0] != "run" || arguments[1] == "" ||
+		len(arguments) == 4 && (arguments[2] != "--entry-plan" || arguments[3] == "") {
+		return errors.New("usage: ardents-route run <role-plan.json> [--entry-plan <bridge-entry-plan.json>]")
 	}
 	sequence, err := routeplan.Load(arguments[1])
 	if err != nil {
@@ -42,8 +43,19 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 	}
 	encoder := json.NewEncoder(output)
 	encoder.SetEscapeHTML(false)
+	var entry *entryRuntime
+	if len(arguments) == 4 {
+		entry, err = loadEntryPlan(arguments[3])
+		if err != nil {
+			return fmt.Errorf("load bridge entry plan: %w", err)
+		}
+		defer func() { runErr = errors.Join(runErr, entry.close()) }()
+	}
 	if sequence.Concurrent() {
-		return runConcurrent(ctx, sequence, encoder)
+		if entry != nil {
+			return errors.New("bridge entry plan is valid only for one client actor")
+		}
+		return routeplan.RunConcurrent(ctx, sequence, encoder.Encode)
 	}
 	for {
 		step, ok, err := sequence.Next()
@@ -52,6 +64,13 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 		}
 		if !ok {
 			return nil
+		}
+		if entry != nil {
+			if step.Actor.Role != "client" || step.Actor.ManifestDigest != entry.manifest {
+				_ = step.Close()
+				return errors.New("bridge entry plan does not bind this client Route manifest")
+			}
+			step.Actor.OpenEntry = entry.open
 		}
 		var readyErr error
 		var ready func(route.Evidence)

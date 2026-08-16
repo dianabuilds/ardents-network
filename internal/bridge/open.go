@@ -7,7 +7,7 @@ import (
 
 // Open claims one exclusive state root, verifies its durable generation, and
 // revalidates or retires every retained Invite before returning.
-func Open(input Config) (*Owner, error) {
+func Open(input Config) (*owner, error) {
 	config, err := copyConfig(input)
 	if err != nil {
 		return nil, err
@@ -48,8 +48,14 @@ func Open(input Config) (*Owner, error) {
 	if err := cleanupGenerations(root, current, state.Previous); err != nil {
 		return nil, err
 	}
-	owner := &Owner{root: root, lease: lease, config: config, state: state, current: current}
+	owner := &owner{root: root, lease: lease, config: config, state: state, current: current}
 	changed := false
+	for index := range owner.state.Contacts {
+		if owner.state.Contacts[index].Outcome == "" {
+			owner.state.Contacts[index].Outcome = "interrupted"
+			changed = true
+		}
+	}
 	for index := range owner.state.Records {
 		record := &owner.state.Records[index]
 		if record.Status != memberActive {
@@ -59,10 +65,12 @@ func Open(input Config) (*Owner, error) {
 		if validateErr != nil {
 			return nil, validateErr
 		}
-		if class != classAccepted || invite.id != record.InviteID || invite.commitment != record.Commitment {
+		if class != classAccepted || invite.id != record.InviteID || invite.commitment != record.Commitment ||
+			invite.adapterProfile != record.ProfileID {
 			record.Status = memberRetired
 			record.Invite = nil
 			record.Commitment = [32]byte{}
+			record.ProfileID = ""
 			changed = true
 		}
 	}
@@ -76,7 +84,7 @@ func Open(input Config) (*Owner, error) {
 }
 
 // Close releases the exclusive root lease. It is idempotent.
-func (owner *Owner) Close() error {
+func (owner *owner) Close() error {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if owner.closed {

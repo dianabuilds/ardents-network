@@ -1,8 +1,10 @@
 package route
 
 import (
+	"context"
 	"crypto/tls"
 	"io"
+	"net"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/resource"
@@ -45,6 +47,7 @@ type Actor struct {
 	AttachmentTarget                              uint16
 	ResourceProfile                               string
 	LocalRoleStateRoot                            string
+	OpenEntry                                     func(context.Context) (net.Conn, func() error, error)
 	ResourceMeasure                               func() (resource.Sample, error)
 	ResourceCheck                                 func() error
 	PressureInterval                              time.Duration

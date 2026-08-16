@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-func transfer(ctx context.Context, input Actor) (Evidence, error) {
-	evidence := Evidence{Schema: observationSchema, Kind: "complete", Role: "client", PID: os.Getpid(),
+func transfer(ctx context.Context, input Actor) (evidence Evidence, runErr error) {
+	evidence = Evidence{Schema: observationSchema, Kind: "complete", Role: "client", PID: os.Getpid(),
 		NetworkID: input.Plan.NetworkID, Generation: input.Plan.Generation, Epoch: input.Plan.Epoch,
 		EpochDigest: input.Plan.Digest, Profile: input.Plan.Profile, ViewRoot: input.Plan.ViewRoot,
 		SelectionSeed: input.Plan.Seed, SelectionAt: input.Plan.SelectionAt,
@@ -62,11 +62,11 @@ func transfer(ctx context.Context, input Actor) (Evidence, error) {
 		return evidence, fmt.Errorf("draw canary: %w", err)
 	}
 	first := input.Plan.Positions[0]
-	outer, err := dialTLS(ctx, first.Endpoint, input.ClientCertificate, first.PublicKey, input.Deadline)
+	outer, closeEntry, err := openInitiator(ctx, input, first)
 	if err != nil {
 		return evidence, fmt.Errorf("authenticate initiator: %w", err)
 	}
-	defer outer.Close()
+	defer func() { runErr = errors.Join(runErr, outer.Close(), closeEntry()) }()
 	_ = outer.SetDeadline(time.Now().Add(input.Deadline))
 	if err := confirmLegBinding(outer, input.Plan.NetworkID, input.Plan.Digest, first.NodeID); err != nil {
 		return evidence, fmt.Errorf("confirm initiator Network State binding: %w", err)
@@ -110,4 +110,23 @@ func transfer(ctx context.Context, input Actor) (Evidence, error) {
 	}
 	evidence.CanaryLength, evidence.CanaryDigest, evidence.Canary = result.length, result.digest, result.bytes
 	return evidence, nil
+}
+
+func openInitiator(ctx context.Context, input Actor, first Position) (*tls.Conn, func() error, error) {
+	if input.OpenEntry == nil {
+		connection, err := dialTLS(ctx, first.Endpoint, input.ClientCertificate, first.PublicKey, input.Deadline)
+		return connection, func() error { return nil }, err
+	}
+	raw, cleanup, err := input.OpenEntry(ctx)
+	if err != nil {
+		return nil, func() error { return nil }, err
+	}
+	if raw == nil || cleanup == nil {
+		return nil, func() error { return nil }, errors.New("bridge entry opener returned incomplete ownership")
+	}
+	outer := tls.Client(raw, clientTLS(input.ClientCertificate, first.PublicKey))
+	if err := outer.HandshakeContext(ctx); err != nil {
+		return nil, cleanup, errors.Join(err, raw.Close(), cleanup())
+	}
+	return outer, cleanup, nil
 }

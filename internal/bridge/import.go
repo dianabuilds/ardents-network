@@ -7,7 +7,7 @@ import (
 // Import validates and atomically publishes one bounded Invite. Classified
 // input rejection is returned in Result; error is reserved for owner/store
 // failures.
-func (owner *Owner) Import(raw []byte) (Result, error) {
+func (owner *owner) Import(raw []byte) (Result, error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if owner.closed {
@@ -54,6 +54,7 @@ func (owner *Owner) Import(raw []byte) (Result, error) {
 		next.Records[activeIndex].Status = memberRetired
 		next.Records[activeIndex].Invite = nil
 		next.Records[activeIndex].Commitment = [32]byte{}
+		next.Records[activeIndex].ProfileID = ""
 	}
 	if len(next.Records) >= 4 {
 		result.Class = classSetFull
@@ -61,7 +62,8 @@ func (owner *Owner) Import(raw []byte) (Result, error) {
 	}
 	next.Records = append(next.Records, memberRecord{
 		InviteID: decoded.id, Identity: decoded.identity, Family: decoded.family,
-		Commitment: decoded.commitment, Slot: decoded.slot, Generation: decoded.slotGeneration,
+		Commitment: decoded.commitment, ProfileID: decoded.adapterProfile,
+		Slot: decoded.slot, Generation: decoded.slotGeneration,
 		Status: memberActive, Invite: append([]byte(nil), raw...),
 	})
 	if err := owner.commit(next, !replacesActive); err != nil {

@@ -40,6 +40,10 @@ func TestOwnerImportsIdempotentlyAndRestarts(t *testing.T) {
 	if err != nil || restarted.Class != "already-present" || restarted.InviteID != accepted.InviteID {
 		t.Fatalf("restart import = %+v, %v", restarted, err)
 	}
+	identity, candidate, err := owner.Contact()
+	if err != nil || identity != fixture.members[0].identity || !bytes.Equal(candidate, fixture.candidate) {
+		t.Fatalf("restarted contact = %x %x, %v", identity, candidate, err)
+	}
 }
 
 func TestBridgeInviteGoldenEncoding(t *testing.T) {
@@ -332,7 +336,15 @@ func newFixture(t *testing.T) fixture {
 	return value
 }
 
-func (f fixture) open(t *testing.T) *bridge.Owner {
+type bridgeOwner interface {
+	Import([]byte) (bridge.Result, error)
+	Contact() ([32]byte, []byte, error)
+	BeginContact([]byte, [32]byte, time.Time) ([32]byte, []byte, byte, error)
+	FinishContact(byte, bool, bool) error
+	Close() error
+}
+
+func (f fixture) open(t *testing.T) bridgeOwner {
 	t.Helper()
 	owner, err := bridge.Open(f.config())
 	if err != nil {
@@ -346,9 +358,9 @@ func (f fixture) config() bridge.Config {
 		Root: f.root, RouteProfile: "h3-interactive-v1", Clock: func() time.Time { return f.now },
 		CurrentNetwork: func() (state.Snapshot, error) { return f.snapshot, nil },
 		RoleConflict:   func([32]byte, [32]byte) (bool, error) { return false, nil },
-		ValidateCandidate: func(raw []byte, identity [32]byte) ([32]byte, error) {
+		ValidateCandidate: func(raw []byte, identity [32]byte) ([32]byte, string, error) {
 			input := append(bytes.Clone(raw), identity[:]...)
-			return sha256.Sum256(input), nil
+			return sha256.Sum256(input), "test-adapter-v1", nil
 		},
 	}
 }

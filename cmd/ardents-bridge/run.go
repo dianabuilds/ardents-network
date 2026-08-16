@@ -10,31 +10,30 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/bridge"
-	"github.com/dianabuilds/ardents-network/internal/camouflage"
 	"github.com/dianabuilds/ardents-network/internal/planfile"
 )
 
 func run(ctx context.Context, arguments []string, output io.Writer) (runErr error) {
-	if len(arguments) != 2 || arguments[0] != "import" {
-		return errors.New("usage: ardents-bridge import <plan>")
+	if len(arguments) != 2 || arguments[0] != "import" && arguments[0] != "serve" {
+		return errors.New("usage: ardents-bridge import|serve <plan>")
 	}
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	config, invitePath, closeNetwork, err := loadImportPlan(arguments[1], time.Now)
+	if arguments[0] == "serve" {
+		return runServe(ctx, arguments[1], output)
+	}
+	runtime, err := loadImportPlan(arguments[1], time.Now)
 	if err != nil {
 		return fmt.Errorf("load import plan: %w", err)
 	}
-	defer func() { runErr = errors.Join(runErr, closeNetwork()) }()
-	invite, err := planfile.Read(invitePath, 4096)
+	defer func() { runErr = errors.Join(runErr, runtime.close()) }()
+	invite, err := planfile.Read(runtime.inviteFile, 4096)
 	if err != nil {
 		return fmt.Errorf("read Bridge Invite: %w", err)
 	}
-	config.ValidateCandidate = func(raw []byte, identity [32]byte) ([32]byte, error) {
-		candidate, validateErr := camouflage.Validate(raw, identity)
-		return candidate.Commitment(), validateErr
-	}
-	owner, err := bridge.Open(config)
+	runtime.config.ValidateCandidate = candidateCommitment
+	owner, err := bridge.Open(runtime.config)
 	if err != nil {
 		return fmt.Errorf("open Bridge state: %w", err)
 	}

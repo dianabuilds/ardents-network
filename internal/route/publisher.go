@@ -53,7 +53,7 @@ func servePublisher(ctx context.Context, input Actor, ready func(Evidence)) (Evi
 
 func validatePublisher(input Actor) error {
 	if !emptyPlan(input.Plan) || input.PublisherPin != [32]byte{} ||
-		!emptyCertificate(input.ClientCertificate) || input.NextNodeID != [32]byte{} || input.NextAddress != "" ||
+		!emptyCertificate(input.ClientCertificate) || input.OpenEntry != nil || input.NextNodeID != [32]byte{} || input.NextAddress != "" ||
 		input.NextPin != [32]byte{} || input.IntroductionSetupPublic != [32]byte{} ||
 		input.IntroductionForwardSocket != "" || input.IntroductionForwardPublic != [32]byte{} ||
 		input.IntroductionServicePublic != [32]byte{} {

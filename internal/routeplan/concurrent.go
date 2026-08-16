@@ -1,14 +1,12 @@
-package main
+package routeplan
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
-	"github.com/dianabuilds/ardents-network/internal/routeplan"
 )
 
 type concurrentTask struct {
@@ -24,7 +22,8 @@ type concurrentResult struct {
 	closeErr error
 }
 
-func runConcurrent(ctx context.Context, sequence *routeplan.Sequence, encoder *json.Encoder) error {
+// RunConcurrent constructs and runs one bounded concurrent role sequence while serializing evidence.
+func RunConcurrent(ctx context.Context, sequence *Sequence, encode func(any) error) error {
 	tasks, err := collectConcurrent(func() (concurrentTask, bool, error) {
 		step, ok, nextErr := sequence.Next()
 		return concurrentTask{actor: step.Actor, attachment: step.Attachment, close: step.Close}, ok, nextErr
@@ -32,7 +31,7 @@ func runConcurrent(ctx context.Context, sequence *routeplan.Sequence, encoder *j
 	if err != nil {
 		return err
 	}
-	return executeConcurrent(ctx, tasks, encoder.Encode, route.Run)
+	return executeConcurrent(ctx, tasks, encode, route.Run)
 }
 
 func collectConcurrent(next func() (concurrentTask, bool, error)) ([]concurrentTask, error) {

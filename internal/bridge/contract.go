@@ -15,7 +15,7 @@ type Config struct {
 	CurrentNetwork    func() (state.Snapshot, error)
 	Clock             func() time.Time
 	RoleConflict      func([32]byte, [32]byte) (bool, error)
-	ValidateCandidate func([]byte, [32]byte) ([32]byte, error)
+	ValidateCandidate func([]byte, [32]byte) ([32]byte, string, error)
 }
 
 // Class is one closed local import outcome. Values are serialized as the exact
@@ -30,9 +30,7 @@ type Result struct {
 	Generation uint8    `json:"generation"`
 }
 
-// Owner holds the exclusive lifetime lease and hides all persisted membership
-// and generation details.
-type Owner struct {
+type owner struct {
 	mu      sync.Mutex
 	root    string
 	lease   rootLease

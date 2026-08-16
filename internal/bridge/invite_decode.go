@@ -34,6 +34,7 @@ type invite struct {
 	candidate          []byte
 	issuerID           [32]byte
 	commitment         [32]byte
+	adapterProfile     string
 }
 
 func decodeInvite(raw []byte) (invite, Class) {

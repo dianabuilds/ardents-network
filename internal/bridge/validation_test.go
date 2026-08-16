@@ -167,8 +167,8 @@ func TestOwnerRequiresFreshConflictFreeStateAndCandidateValidation(t *testing.T)
 
 	fixture := newFixture(t)
 	config := fixture.config()
-	config.ValidateCandidate = func([]byte, [32]byte) ([32]byte, error) {
-		return [32]byte{}, errors.New("rejected candidate")
+	config.ValidateCandidate = func([]byte, [32]byte) ([32]byte, string, error) {
+		return [32]byte{}, "", errors.New("rejected candidate")
 	}
 	owner, err := bridge.Open(config)
 	if err != nil {
