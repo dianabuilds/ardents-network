@@ -130,15 +130,38 @@ official `go1.26.6.linux-amd64.tar.gz` SHA-256
 `708effb774be8237570d0add163225abbdfaf4fca28b2611df167beba4feef89`,
 and `govulncheck v1.1.4`. An owned empty-cache preparation downloads the module
 graph, verifies it, creates the vendor tree, and scans the complete package
-graph with the exact R-036 commands,
-then records the source, module, vendor, license, SBOM, advisory, and recipe
-hashes. Two clean `--network none` builds run with `CGO_ENABLED=0`,
-`GOOS=linux`, `GOARCH=amd64`, `GOPROXY=off`, `GOSUMDB=off`, `-mod=vendor`,
-`-trimpath`, `-buildvcs=false`, and an empty build ID against `./main/client`
-and `./main/server`; both builds must reproduce the binary hashes above. At
-runtime the image verifies those hashes before startup and cannot fetch or
-repair an input. Source, vendor, caches, binaries, keys, and build evidence stay
-outside Git.
+graph with the exact R-036 commands, then records the source, module, vendor,
+license, SBOM, advisory, and recipe hashes. Two clean `--network none` builds
+run with `CGO_ENABLED=0`, `GOOS=linux`, `GOARCH=amd64`, `GOPROXY=off`,
+`GOSUMDB=off`, `-mod=vendor`, `-trimpath`, `-buildvcs=false`, and an empty build
+ID against `./main/client` and `./main/server`; both builds must reproduce the
+binary hashes above. At runtime the image verifies those hashes before startup
+and cannot fetch or repair an input. Source, vendor, caches, binaries, keys,
+and build evidence stay outside Git.
+
+The Go archive identity comes from the official Go downloads JSON
+`https://go.dev/dl/?mode=json&include=all`, accessed 2026-08-15, and was
+cross-checked against the downloaded 66,890,545-byte archive as recorded in
+R-036. Stage 5's versioned supply lock repeats that accepted identity; it does
+not introduce a second source claim. The qualifying builder recipe is
+`tests/live/stage5-final/go-builder.Dockerfile`; its SHA-256 is stored beside
+the archive hash in the supply lock and embedded into the builder and product
+receipts. A separately generated deterministic module-cache archive contains
+the complete `go mod download all` graph; its hash is locked and embedded by
+the same recipe, while the cache itself remains outside Git. Preparation
+verifies the exact builder base ancestry and recipe/archive/module-cache labels
+and receipt files before the offline product build. The maintained generator
+`scripts/generate-stage5-module-cache.go` starts from an empty external cache,
+runs `go mod download all`, `go mod verify`, and `go list -m all`, then writes
+a canonical archive with committed `go.mod`/`go.sum` hashes and the exact module
+list. It fixes the official Go proxy/checksum service and disables ambient Go,
+proxy, private-module, credential, and workspace settings. After online
+verification it removes volatile checksum-database, version-list, lock,
+temporary, and partial-download state. It preserves the deterministic
+`cache/download` `.mod`, `.zip`, `.ziphash`, and `.info` verification inputs
+required by offline `go mod verify`, together with the extracted modules and
+manifest. The offline product build repeats all three consistency checks
+before compilation.
 
 **Maintenance and security:** R-036 found no reachable vulnerability with the
 recorded database timestamp `2026-08-14T16:22:54Z`, no cgo or Go `unsafe`

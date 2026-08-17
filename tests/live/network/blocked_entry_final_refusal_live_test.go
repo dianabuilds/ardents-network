@@ -72,17 +72,21 @@ func TestBlockedEntryFinalProjectedAdmissionAndChurn(t *testing.T) {
 	client := requireBlockedCandidate(t, "ARDENTS_WEBTUNNEL_CLIENT", blockedClientHash)
 	server := requireBlockedCandidate(t, "ARDENTS_WEBTUNNEL_SERVER", blockedServerHash)
 	repository, toolImage := repositoryRoot(t), liveToolImage(t)
-	image := fmt.Sprintf("ardents-s55-refusal-%d:test", time.Now().UnixNano())
+	image, ownedImage := finalProductImage(t, fmt.Sprintf("ardents-s55-refusal-%d:test", time.Now().UnixNano()))
 	buildFixture := newBlockedEntryFixture(t, client, server)
-	buildProject := fmt.Sprintf("ardents-s55-refusal-build-%d", time.Now().UnixNano())
+	buildProject := finalProjectName(fmt.Sprintf("ardents-s55-refusal-build-%d", time.Now().UnixNano()))
 	build := blockedCompose(repository, buildProject, image, buildFixture, "final-pressure")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	if output, err := build(ctx, "build", "endpoint"); err != nil {
-		cancel()
-		t.Fatalf("build final refusal image: %v\n%s", err, output)
+	if ownedImage {
+		if output, err := build(ctx, "build", "endpoint"); err != nil {
+			cancel()
+			t.Fatalf("build final refusal image: %v\n%s", err, output)
+		}
 	}
 	cancel()
-	t.Cleanup(func() { removeBlockedPressureImage(t, image, buildProject) })
+	if ownedImage {
+		t.Cleanup(func() { removeBlockedPressureImage(t, image, buildProject) })
+	}
 	if selected := os.Getenv("ARDENTS_FINAL_CELL"); selected != "" {
 		runSelectedFinalRefusalCell(t, repository, image, toolImage, client, server, selected)
 		return
@@ -142,7 +146,7 @@ func runFinalRefusalBatch(t *testing.T, repository, image, toolImage, client, se
 		"ARDENTS_CAPACITY_OFFERS": fmt.Sprint(offers), "ARDENTS_CAPACITY_CADENCE": "100ms"} {
 		t.Setenv(name, value)
 	}
-	project := fmt.Sprintf("ardents-s55-refusal-%02d-%d", batch, time.Now().UnixNano())
+	project := finalProjectName(fmt.Sprintf("ardents-s55-refusal-%02d-%d", batch, time.Now().UnixNano()))
 	compose := blockedCompose(repository, project, image, fixture, "final-pressure")
 	cleanup := blockedProjectCleanup(t, compose, project)
 	t.Cleanup(cleanup)

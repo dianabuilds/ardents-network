@@ -50,7 +50,8 @@ func verifyManifest(value manifest, canaryRaw []byte, executableHash string) []s
 		}
 		if value.SourceIdentity != "repository:"+value.FinalSpec.RepositoryCommit+":"+value.FinalSpec.SourceSHA256 ||
 			value.SupplyClass != "pinned-offline-webtunnel" || value.ClientSHA256 != value.FinalSpec.ClientSHA256 ||
-			value.ServerSHA256 != value.FinalSpec.ServerSHA256 {
+			value.ServerSHA256 != value.FinalSpec.ServerSHA256 ||
+			value.RunnerSHA256 != value.FinalSpec.ProductReceipt.NetworkSHA256 {
 			reasons = append(reasons, "final campaign source, profile, or supply identity is invalid")
 		}
 		reasons = append(reasons, verifyFinalSpec(*value.FinalSpec)...)

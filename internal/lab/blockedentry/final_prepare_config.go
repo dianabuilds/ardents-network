@@ -1,10 +1,7 @@
 package blockedentry
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
-	"io"
 	"os"
 	"path/filepath"
 )
@@ -41,7 +38,8 @@ func freezePreparationConfigurations(sourceRoot, outputRoot string) ([]artifactC
 }
 
 func exactFinalSpec(commit, sourceHash string, config Config, clientHash, serverHash string,
-	configurations []artifactCommitment,
+	configurations []artifactCommitment, runtimeCompose artifactCommitment,
+	supplyLock artifactCommitment, productReceipt finalProductReceipt, toolReceipt finalToolReceipt,
 ) finalSpec {
 	common := func(id string, vcpu uint16, memory uint32, down, up uint16) finalHostClass {
 		return finalHostClass{ID: id, OperatingSystem: "ubuntu-lts", Architecture: "x86-64",
@@ -62,6 +60,10 @@ func exactFinalSpec(commit, sourceHash string, config Config, clientHash, server
 	strong.MinimumReservePC = 20
 	return finalSpec{Schema: "ardents-h3-s5-final-spec-v1", RepositoryCommit: commit,
 		SourceSHA256: sourceHash, LinuxImage: config.LinuxImage, ImageSHA256: config.ImageSHA256,
+		ProductImageID: config.ProductImageID, ToolImageID: config.ToolImageID,
+		GoBuilderImageID: config.GoBuilderImageID, GoBuilderVersion: finalGoBuilderVersion,
+		SupplyLock: supplyLock, RuntimeCompose: runtimeCompose,
+		ProductReceipt: productReceipt, ToolReceipt: toolReceipt,
 		Kernel: config.Kernel, ClientSHA256: clientHash, ServerSHA256: serverHash, Endpoint: endpoint,
 		ReferenceBridge: reference, StrongerBridge: strong,
 		Collector: common("h3-s5-collector-v1", 16, 32_768, 1_000, 1_000),
@@ -70,18 +72,6 @@ func exactFinalSpec(commit, sourceHash string, config Config, clientHash, server
 			AttemptMillis: 64_000, ContactMillis: 15_000, StartupMillis: 5_000,
 			InterContactMillis: 1_000, AdapterCleanupMillis: 6_000, CellCleanupMillis: 15_000},
 		CellOrder: finalCellOrder(), Configurations: configurations}
-}
-
-func hashReader(reader io.Reader) (string, int64, error) {
-	digest := sha256.New()
-	size, err := io.Copy(digest, io.LimitReader(reader, (1<<31)+1))
-	if err != nil || size == 0 {
-		return "", 0, errors.Join(err, errors.New("committed source archive is empty or unreadable"))
-	}
-	if size > 1<<31 {
-		return "", 0, errors.New("committed source archive exceeds its bound")
-	}
-	return hex.EncodeToString(digest.Sum(nil)), size, nil
 }
 
 func ensureParent(path string) error { return os.MkdirAll(filepath.Dir(path), 0o700) }

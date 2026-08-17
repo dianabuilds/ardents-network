@@ -2,6 +2,8 @@
 
 package network_test
 
+import "encoding/json"
+
 type finalRunnerPlan struct {
 	Schema           string `json:"schema"`
 	EventID          string `json:"event_id"`
@@ -14,8 +16,58 @@ type finalRunnerPlan struct {
 }
 
 type finalRunnerSchedule struct {
-	CellOrder []string `json:"cell_order"`
-	Seeds     []string `json:"seeds"`
+	Schema           string                    `json:"schema"`
+	RepositoryCommit string                    `json:"repository_commit"`
+	SourceSHA256     string                    `json:"source_sha256"`
+	LinuxImage       string                    `json:"linux_image"`
+	ImageSHA256      string                    `json:"image_sha256"`
+	ProductImageID   string                    `json:"product_image_id"`
+	ToolImageID      string                    `json:"tool_image_id"`
+	GoBuilderImageID string                    `json:"go_builder_image_id"`
+	GoBuilderVersion string                    `json:"go_builder_version"`
+	SupplyLock       finalRunnerArtifact       `json:"supply_lock"`
+	RuntimeCompose   finalRunnerArtifact       `json:"runtime_compose"`
+	ProductReceipt   finalRunnerProductReceipt `json:"product_receipt"`
+	ToolReceipt      finalRunnerToolReceipt    `json:"tool_receipt"`
+	Kernel           string                    `json:"kernel"`
+	ClientSHA256     string                    `json:"client_sha256"`
+	ServerSHA256     string                    `json:"server_sha256"`
+	Endpoint         json.RawMessage           `json:"endpoint"`
+	ReferenceBridge  json.RawMessage           `json:"reference_bridge"`
+	StrongerBridge   json.RawMessage           `json:"stronger_bridge"`
+	Collector        json.RawMessage           `json:"collector"`
+	Network          json.RawMessage           `json:"network"`
+	Clocks           json.RawMessage           `json:"clocks"`
+	CellOrder        []string                  `json:"cell_order"`
+	Seeds            []string                  `json:"seeds"`
+	Configurations   json.RawMessage           `json:"configurations"`
+}
+
+type finalRunnerProductReceipt struct {
+	SourceSHA256    string `json:"source_sha256"`
+	GoArchiveSHA256 string `json:"go_archive_sha256"`
+	GoRecipeSHA256  string `json:"go_builder_recipe_sha256"`
+	GoModuleSHA256  string `json:"go_module_cache_sha256"`
+	RouteSHA256     string `json:"route_sha256"`
+	BridgeSHA256    string `json:"bridge_sha256"`
+	ServiceSHA256   string `json:"service_sha256"`
+	StreamSHA256    string `json:"stream_sha256"`
+	PublishSHA256   string `json:"publish_sha256"`
+	NetworkSHA256   string `json:"network_test_sha256"`
+	AdapterSHA256   string `json:"adapter_test_sha256"`
+}
+
+type finalRunnerToolReceipt struct {
+	BaseDigest     string `json:"base_digest"`
+	ToolLockSHA256 string `json:"tool_lock_sha256"`
+	SourceSHA256   string `json:"source_sha256"`
+	CarrierSHA256  string `json:"carrier_sha256"`
+}
+
+type finalRunnerArtifact struct {
+	Path   string `json:"path"`
+	SHA256 string `json:"sha256"`
+	Bytes  int64  `json:"bytes"`
 }
 
 type finalWorkerResult struct {

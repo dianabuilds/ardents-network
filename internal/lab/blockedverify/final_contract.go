@@ -1,7 +1,6 @@
 package blockedverify
 
 import (
-	"encoding/hex"
 	"fmt"
 	"reflect"
 	"strings"
@@ -143,6 +142,16 @@ func verifyFinalSpec(value finalSpec) []string {
 	if value.Schema != "ardents-h3-s5-final-spec-v1" || !isHexDigest(value.RepositoryCommit, 20) ||
 		!isHexDigest(value.SourceSHA256, 32) || value.LinuxImage != acceptedFinalLinuxImage ||
 		value.ImageSHA256 != acceptedFinalImageHash || value.Kernel == "" ||
+		!isImageID(value.ProductImageID) || !isImageID(value.ToolImageID) ||
+		!isImageID(value.GoBuilderImageID) || value.ProductImageID == value.ToolImageID ||
+		value.ProductImageID == value.GoBuilderImageID || value.ToolImageID == value.GoBuilderImageID ||
+		value.GoBuilderVersion != "go version go1.26.6 linux/amd64" ||
+		value.SupplyLock.Path != "runtime/supply.lock.json" ||
+		!isHexDigest(value.SupplyLock.SHA256, 32) || value.SupplyLock.Bytes < 1 ||
+		value.RuntimeCompose.Path != "runtime/blocked-entry.compose.yaml" ||
+		!isHexDigest(value.RuntimeCompose.SHA256, 32) || value.RuntimeCompose.Bytes < 1 ||
+		!validFinalProductReceipt(value.ProductReceipt, value.SourceSHA256) ||
+		!validFinalToolReceipt(value.ToolReceipt) ||
 		value.ClientSHA256 != acceptedFinalClientHash || value.ServerSHA256 != acceptedFinalServerHash {
 		reasons = append(reasons, "final campaign source or supply identity is incomplete")
 	}
@@ -184,6 +193,24 @@ func verifyFinalSpec(value finalSpec) []string {
 	return reasons
 }
 
+func isImageID(value string) bool {
+	return strings.HasPrefix(value, "sha256:") && isHexDigest(strings.TrimPrefix(value, "sha256:"), 32)
+}
+
+func validFinalProductReceipt(value finalProductReceipt, source string) bool {
+	return value.SourceSHA256 == source && isHexDigest(value.GoArchiveSHA256, 32) &&
+		isHexDigest(value.GoRecipeSHA256, 32) && isHexDigest(value.GoModuleSHA256, 32) &&
+		isHexDigest(value.RouteSHA256, 32) &&
+		isHexDigest(value.BridgeSHA256, 32) && isHexDigest(value.ServiceSHA256, 32) &&
+		isHexDigest(value.StreamSHA256, 32) && isHexDigest(value.PublishSHA256, 32) &&
+		isHexDigest(value.NetworkSHA256, 32) && isHexDigest(value.AdapterSHA256, 32)
+}
+
+func validFinalToolReceipt(value finalToolReceipt) bool {
+	return value.BaseDigest == acceptedFinalImageHash && isHexDigest(value.ToolLockSHA256, 32) &&
+		isHexDigest(value.SourceSHA256, 32) && isHexDigest(value.CarrierSHA256, 32)
+}
+
 func requiredFinalCellOrder() []string {
 	var result []string
 	floors := []struct {
@@ -217,9 +244,4 @@ func requiredFinalCellOrder() []string {
 		result = append(result, "hostile/"+identity.id)
 	}
 	return result
-}
-
-func isHexDigest(value string, bytes int) bool {
-	decoded, err := hex.DecodeString(value)
-	return err == nil && len(decoded) == bytes
 }

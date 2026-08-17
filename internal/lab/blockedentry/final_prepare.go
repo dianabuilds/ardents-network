@@ -5,12 +5,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
 
-func prepareFinal(config Config) (Result, error) {
+func prepareFinal(config Config) (result Result, returnErr error) {
 	workspace, workspaceErr := filepath.Abs(config.WorkspaceRoot)
 	output, outputErr := filepath.Abs(config.PreparationRoot)
 	configuration, configurationErr := filepath.Abs(config.ConfigurationRoot)
@@ -33,15 +32,47 @@ func prepareFinal(config Config) (Result, error) {
 	if _, err := os.Lstat(output); !os.IsNotExist(err) {
 		return Result{}, errors.New("final campaign preparation root must not already exist")
 	}
-	if config.LinuxImage != finalLinuxImage || config.ImageSHA256 != finalImageHash || config.Kernel == "" {
+	if config.LinuxImage != finalLinuxImage || config.ImageSHA256 != finalImageHash || config.Kernel == "" ||
+		!imageID(config.GoBuilderImageID) || !imageID(config.ToolImageID) ||
+		config.GoBuilderImageID == config.ToolImageID || config.ProductImageID != "" {
 		return Result{}, errors.New("final image or kernel identity differs from the accepted profile")
 	}
 	if err := validateFinalConfigurationTree(configuration); err != nil {
 		return Result{}, err
 	}
-	commit, sourceHash, err := committedSourceIdentity(workspace)
+	commit, sourceHash, sourceRoot, temporarySource, err := materializeCommittedSource(workspace)
 	if err != nil {
 		return Result{}, err
+	}
+	var productCleanup func() error
+	defer func() {
+		sourceCleanupErr := os.RemoveAll(temporarySource)
+		if returnErr != nil || sourceCleanupErr != nil {
+			if productCleanup != nil {
+				returnErr = errors.Join(returnErr, sourceCleanupErr, productCleanup())
+				return
+			}
+		}
+		returnErr = errors.Join(returnErr, sourceCleanupErr)
+	}()
+	supplyLock, err := loadFinalSupplyLock(sourceRoot)
+	if err != nil {
+		return Result{}, err
+	}
+	if config.GoBuilderImageID != supplyLock.GoBuilderImageID || config.ToolImageID != supplyLock.ToolImageID {
+		return Result{}, errors.New("final image arguments differ from the accepted supply lock")
+	}
+	archivePath := filepath.Join(temporarySource, "source.tar")
+	config.ProductImageID, productCleanup, err = buildFinalProductImage(archivePath, sourceHash, config, supplyLock)
+	if err != nil {
+		return Result{}, err
+	}
+	productReceipt, toolReceipt, err := inspectFinalImageReceipts(sourceRoot, config, sourceHash)
+	if err != nil {
+		return Result{}, err
+	}
+	if toolReceipt.CarrierSHA256 != supplyLock.CarrierLabSHA256 {
+		return Result{}, errors.New("carrier binary differs from the accepted supply lock")
 	}
 	clientHash, _, clientErr := hashFile(config.ClientPath)
 	serverHash, _, serverErr := hashFile(config.ServerPath)
@@ -57,14 +88,27 @@ func prepareFinal(config Config) (Result, error) {
 	complete := false
 	defer func() {
 		if !complete {
-			_ = os.RemoveAll(output)
+			returnErr = errors.Join(returnErr, os.RemoveAll(output))
 		}
 	}()
+	runnerPath, err := exportFinalRunner(config.ProductImageID, output, productReceipt.NetworkSHA256)
+	if err != nil {
+		return Result{}, err
+	}
 	configurations, err := freezePreparationConfigurations(configuration, output)
 	if err != nil {
 		return Result{}, err
 	}
-	value := exactFinalSpec(commit, sourceHash, config, clientHash, serverHash, configurations)
+	runtimeCompose, err := freezeRuntimeCompose(sourceRoot, output)
+	if err != nil {
+		return Result{}, err
+	}
+	supplyLockCommitment, err := freezeFinalSupplyLock(sourceRoot, output)
+	if err != nil {
+		return Result{}, err
+	}
+	value := exactFinalSpec(commit, sourceHash, config, clientHash, serverHash, configurations, runtimeCompose,
+		supplyLockCommitment, productReceipt, toolReceipt)
 	for range len(value.CellOrder) {
 		seed := make([]byte, 32)
 		if _, err := rand.Read(seed); err != nil {
@@ -83,34 +127,14 @@ func prepareFinal(config Config) (Result, error) {
 		return Result{}, err
 	}
 	complete = true
-	return Result{SpecPath: path}, nil
-}
-
-func committedSourceIdentity(workspace string) (string, string, error) {
-	status := exec.Command("git", "-C", workspace, "diff", "--quiet", "HEAD", "--")
-	if err := status.Run(); err != nil {
-		return "", "", errors.New("tracked workspace changes must be committed before final preparation")
-	}
-	command := exec.Command("git", "-C", workspace, "rev-parse", "HEAD")
-	raw, err := command.Output()
-	commit := strings.TrimSpace(string(raw))
-	if err != nil || !hexDigest(commit, 20) {
-		return "", "", errors.Join(err, errors.New("repository commit identity is unavailable"))
-	}
-	archive := exec.Command("git", "-C", workspace, "archive", "--format=tar", "HEAD")
-	pipe, err := archive.StdoutPipe()
-	if err != nil {
-		return "", "", err
-	}
-	if err := archive.Start(); err != nil {
-		return "", "", err
-	}
-	hash, _, hashErr := hashReader(pipe)
-	waitErr := archive.Wait()
-	return commit, hash, errors.Join(hashErr, waitErr)
+	return Result{SpecPath: path, RunnerPath: runnerPath}, nil
 }
 
 func hexDigest(value string, bytes int) bool {
 	decoded, err := hex.DecodeString(value)
 	return err == nil && len(decoded) == bytes
+}
+
+func imageID(value string) bool {
+	return strings.HasPrefix(value, "sha256:") && hexDigest(strings.TrimPrefix(value, "sha256:"), 32)
 }

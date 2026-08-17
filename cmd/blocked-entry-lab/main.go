@@ -28,6 +28,8 @@ func run(arguments []string) int {
 	configurationRoot := flags.String("configuration-root", "", "private S5.5 configuration input root")
 	linuxImage := flags.String("linux-image", "", "pinned Ubuntu LTS image identity")
 	imageHash := flags.String("image-sha256", "", "pinned image SHA-256")
+	toolImage := flags.String("tool-image-id", "", "preloaded content-addressed observer tooling image ID")
+	goBuilder := flags.String("go-builder-image-id", "", "preloaded content-addressed Go builder image ID")
 	kernel := flags.String("kernel", "", "pinned qualifying Linux kernel identity")
 	if err := flags.Parse(arguments); err != nil || flags.NArg() != 0 {
 		return 2
@@ -35,7 +37,8 @@ func run(arguments []string) int {
 	if *prepareRoot != "" {
 		prepared, err := blockedentry.Run(blockedentry.Config{WorkspaceRoot: *workspace,
 			PreparationRoot: *prepareRoot, ConfigurationRoot: *configurationRoot, LinuxImage: *linuxImage,
-			ImageSHA256: *imageHash, Kernel: *kernel, ClientPath: *client, ServerPath: *server})
+			ImageSHA256: *imageHash, ToolImageID: *toolImage, GoBuilderImageID: *goBuilder,
+			Kernel: *kernel, ClientPath: *client, ServerPath: *server})
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "blocked-entry-lab:", err)
 			return 1

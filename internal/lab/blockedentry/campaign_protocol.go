@@ -48,6 +48,15 @@ func campaignCommand(ctx context.Context, config Config) *exec.Cmd {
 		"ARDENTS_BLOCKED_CAMPAIGN_SPEC=" + config.CampaignSpecPath,
 		"ARDENTS_BLOCKED_SECRET_ROOT=" + config.EvidenceRoot + ".partial/secret",
 		"ARDENTS_BLOCKED_CELL_HELPER=1", "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")}
+	if config.CampaignSpecPath != "" {
+		dockerConfig := config.EvidenceRoot + ".partial/secret/runtime/docker-config"
+		command.Env = append(command.Env, "ARDENTS_BLOCKED_WORKSPACE_ROOT="+config.WorkspaceRoot,
+			"ARDENTS_BLOCKED_COMPOSE_FILE="+config.RuntimeComposePath,
+			"ARDENTS_BLOCKED_PRODUCT_IMAGE="+config.ProductImageID,
+			"ARDENTS_BLOCKED_TOOL_IMAGE="+config.ToolImageID,
+			"PATH=/usr/bin:/bin", "DOCKER_HOST=unix:///var/run/docker.sock",
+			"DOCKER_CONFIG="+dockerConfig)
+	}
 	return command
 }
 

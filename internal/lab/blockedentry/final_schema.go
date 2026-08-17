@@ -6,6 +6,14 @@ type finalSpec struct {
 	SourceSHA256     string               `json:"source_sha256"`
 	LinuxImage       string               `json:"linux_image"`
 	ImageSHA256      string               `json:"image_sha256"`
+	ProductImageID   string               `json:"product_image_id"`
+	ToolImageID      string               `json:"tool_image_id"`
+	GoBuilderImageID string               `json:"go_builder_image_id"`
+	GoBuilderVersion string               `json:"go_builder_version"`
+	SupplyLock       artifactCommitment   `json:"supply_lock"`
+	RuntimeCompose   artifactCommitment   `json:"runtime_compose"`
+	ProductReceipt   finalProductReceipt  `json:"product_receipt"`
+	ToolReceipt      finalToolReceipt     `json:"tool_receipt"`
 	Kernel           string               `json:"kernel"`
 	ClientSHA256     string               `json:"client_sha256"`
 	ServerSHA256     string               `json:"server_sha256"`

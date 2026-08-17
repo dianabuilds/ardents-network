@@ -23,16 +23,21 @@ func TestBlockedEntryNegativeCommandsAcrossNamespaces(t *testing.T) {
 	client := requireBlockedCandidate(t, "ARDENTS_WEBTUNNEL_CLIENT", blockedClientHash)
 	server := requireBlockedCandidate(t, "ARDENTS_WEBTUNNEL_SERVER", blockedServerHash)
 	repository := repositoryRoot(t)
-	image := fmt.Sprintf("ardents-s53-negative-%d:test", time.Now().UnixNano())
+	image, ownedImage := finalProductImage(t, fmt.Sprintf("ardents-s53-negative-%d:test", time.Now().UnixNano()))
 	buildFixture := newBlockedNegativeFixture(t, client, server)
-	buildProject := fmt.Sprintf("ardents-s53-negative-build-%d", time.Now().UnixNano())
+	buildProject := finalProjectName(fmt.Sprintf("ardents-s53-negative-build-%d", time.Now().UnixNano()))
 	build := blockedCompose(repository, buildProject, image, buildFixture, "C3")
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
 	defer cancel()
-	if output, err := build(ctx, "build", "endpoint"); err != nil {
-		t.Fatalf("build negative image: %v\n%s", err, output)
+	if ownedImage {
+		if output, err := build(ctx, "build", "endpoint"); err != nil {
+			t.Fatalf("build negative image: %v\n%s", err, output)
+		}
 	}
 	t.Cleanup(func() {
+		if !ownedImage {
+			return
+		}
 		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cleanupCancel()
 		if output, err := dockerOutput(cleanupCtx, "image", "rm", "--force", image); err != nil {
@@ -64,7 +69,7 @@ func runBlockedNegativeEpisode(t *testing.T, repository, image string, fixture b
 	profile string, episode int,
 ) {
 	t.Helper()
-	project := fmt.Sprintf("ardents-s53-%s-%d-%d", strings.ToLower(profile), episode, time.Now().UnixNano())
+	project := finalProjectName(fmt.Sprintf("ardents-s53-%s-%d-%d", strings.ToLower(profile), episode, time.Now().UnixNano()))
 	compose := blockedCompose(repository, project, image, fixture, profile)
 	cleanup := blockedProjectCleanup(t, compose, project)
 	t.Cleanup(cleanup)

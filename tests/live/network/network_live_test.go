@@ -397,6 +397,9 @@ func liveHex(value [32]byte) string { return hex.EncodeToString(value[:]) }
 
 func repositoryRoot(t *testing.T) string {
 	t.Helper()
+	if root := os.Getenv("ARDENTS_BLOCKED_WORKSPACE_ROOT"); root != "" {
+		return filepath.Clean(root)
+	}
 	_, current, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("cannot locate repository root")

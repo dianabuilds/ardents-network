@@ -27,6 +27,9 @@ func secretArtifacts(secretRoot string, config Config) ([]artifactCommitment, er
 	} else {
 		paths = append(paths, "final-spec.json")
 		paths = append(paths, finalConfigurationPaths...)
+		paths = append(paths, finalRuntimeComposePath)
+		paths = append(paths, finalSupplyLockPath)
+		paths = append(paths, finalDockerConfigPath)
 	}
 	artifacts := make([]artifactCommitment, 0, len(paths))
 	for _, path := range paths {

@@ -24,6 +24,7 @@ func Run(config Config) (Result, error) {
 	if workspaceErr != nil || evidenceErr != nil || registryErr != nil {
 		return Result{}, errors.Join(workspaceErr, evidenceErr, registryErr)
 	}
+	config.WorkspaceRoot = workspace
 	workspaceAliased, workspaceAliasErr := pathHasSymlink(workspace)
 	evidenceAliased, evidenceAliasErr := pathHasSymlink(filepath.Dir(evidenceRoot))
 	registryAliased, registryAliasErr := pathHasSymlink(filepath.Dir(registryRoot))
@@ -75,6 +76,11 @@ func Run(config Config) (Result, error) {
 	config, finalSpecValue, err := freezeCampaignSpec(config, secretRoot)
 	if err != nil {
 		return Result{}, err
+	}
+	if finalSpecValue != nil {
+		if err := freezeFinalRuntimeAuthority(secretRoot); err != nil {
+			return Result{}, err
+		}
 	}
 	canaries, canaryHash, err := createCanaries(secretRoot)
 	if err != nil {

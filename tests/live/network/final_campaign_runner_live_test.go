@@ -36,7 +36,7 @@ func runFinalCampaignRunner() int {
 		result, ok := cached[plan.CellID]
 		if !ok {
 			groupStarted := uint64(time.Since(started).Milliseconds())
-			group, groupErr := executeFinalCellGroup(plan.CellID)
+			group, groupErr := executeFinalCellGroup(schedule, plan.CellID)
 			if groupErr != nil {
 				fmt.Fprintln(os.Stderr, "final runner:", groupErr)
 				return 1
@@ -74,7 +74,8 @@ func loadFinalRunnerSchedule(path string) (finalRunnerSchedule, error) {
 	decoder := json.NewDecoder(io.LimitReader(input, 4<<20))
 	var schedule finalRunnerSchedule
 	if err := decoder.Decode(&schedule); err != nil || decoder.Decode(&struct{}{}) != io.EOF ||
-		len(schedule.CellOrder) != 594 || len(schedule.Seeds) != len(schedule.CellOrder) {
+		!validFinalRunnerSupplyIdentity(schedule) || len(schedule.CellOrder) != 594 ||
+		len(schedule.Seeds) != len(schedule.CellOrder) {
 		return finalRunnerSchedule{}, errors.New("frozen cell schedule is invalid")
 	}
 	return schedule, nil
@@ -128,12 +129,12 @@ func validFinalRunnerPlan(plan finalRunnerPlan) bool {
 	return true
 }
 
-func executeFinalCellGroup(cell string) ([]finalWorkerResult, error) {
+func executeFinalCellGroup(schedule finalRunnerSchedule, cell string) ([]finalWorkerResult, error) {
 	test := finalWorkerTest(cell)
 	if test == "" {
 		return nil, errors.New("hostile final cell worker is not implemented: " + cell)
 	}
-	return nil, fmt.Errorf("worker %s has no retained terminal/observer/cleanup evidence hook", test)
+	return runFinalCellWorker(schedule, cell, test)
 }
 
 func finalWorkerTest(cell string) string {

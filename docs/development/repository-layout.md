@@ -137,6 +137,7 @@ internal/
     directcontrol/             Direct TLS measurement control and wire fault
     nativecircuit/             native C-5/C2 laboratory candidate and lifecycle
     routecomparison/           frozen R-013 sequence, metrics, verdict, and report
+    modulecache/               canonical external Stage 5 Go module supply
     namedsite/                 frozen Gate C scenario and role lifecycle
 scripts/
   check-tools.go               build-ignored developer tool-version check
@@ -145,6 +146,7 @@ scripts/
   prepare-carrier-tools.sh     explicit online preparation of locked tool inputs
   prepare-carrier-reference.sh explicit online preparation of locked reference inputs
   prepare-go-vendor.go         verified disposable vendor context outside Git
+  generate-stage5-module-cache.go thin launcher for canonical Stage 5 module supply
 .github/workflows/
   quality.yml                  mandatory ordinary CI quality gate
   carrier-lab.yml              explicit official Ubuntu R-013 qualification

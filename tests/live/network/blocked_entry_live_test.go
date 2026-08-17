@@ -35,16 +35,21 @@ func TestBlockedEntryCommandsAcrossNamespaces(t *testing.T) {
 	client := requireBlockedCandidate(t, "ARDENTS_WEBTUNNEL_CLIENT", blockedClientHash)
 	server := requireBlockedCandidate(t, "ARDENTS_WEBTUNNEL_SERVER", blockedServerHash)
 	repository := repositoryRoot(t)
-	image := fmt.Sprintf("ardents-s53-%d:test", time.Now().UnixNano())
+	image, ownedImage := finalProductImage(t, fmt.Sprintf("ardents-s53-%d:test", time.Now().UnixNano()))
 	fixture := newBlockedEntryFixture(t, client, server)
-	buildProject := fmt.Sprintf("ardents-s53-build-%d", time.Now().UnixNano())
+	buildProject := finalProjectName(fmt.Sprintf("ardents-s53-build-%d", time.Now().UnixNano()))
 	build := blockedCompose(repository, buildProject, image, fixture)
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
 	defer cancel()
-	if output, err := build(ctx, "build", "endpoint"); err != nil {
-		t.Fatalf("build blocked-entry image: %v\n%s", err, output)
+	if ownedImage {
+		if output, err := build(ctx, "build", "endpoint"); err != nil {
+			t.Fatalf("build blocked-entry image: %v\n%s", err, output)
+		}
 	}
 	t.Cleanup(func() {
+		if !ownedImage {
+			return
+		}
 		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cleanupCancel()
 		if output, err := dockerOutput(cleanupCtx, "image", "rm", "--force", image); err != nil {
@@ -84,7 +89,7 @@ func runBlockedEntryEpisode(t *testing.T, repository, image string, fixture bloc
 	profile string, episode int,
 ) {
 	t.Helper()
-	project := fmt.Sprintf("ardents-s53-%s-%d-%d", strings.ToLower(profile), episode, time.Now().UnixNano())
+	project := finalProjectName(fmt.Sprintf("ardents-s53-%s-%d-%d", strings.ToLower(profile), episode, time.Now().UnixNano()))
 	compose := blockedCompose(repository, project, image, fixture, profile)
 	cleanup := blockedProjectCleanup(t, compose, project)
 	t.Cleanup(cleanup)
@@ -169,9 +174,13 @@ func blockedCompose(repository, project, image string, fixture blockedEntryFixtu
 		environment = append(environment, "ARDENTS_STREAM_PROGRESS=1", "ARDENTS_STREAM_CHUNK_DELAY=2s")
 	}
 	return func(ctx context.Context, arguments ...string) ([]byte, error) {
-		base := []string{"compose", "-p", project, "-f", filepath.Join(repository, "tests", "live", "blocked-entry.compose.yaml")}
+		composeFile, directory := filepath.Join(repository, "tests", "live", "blocked-entry.compose.yaml"), repository
+		if frozen := os.Getenv("ARDENTS_BLOCKED_COMPOSE_FILE"); frozen != "" {
+			composeFile, directory = frozen, filepath.Dir(frozen)
+		}
+		base := []string{"compose", "-p", project, "-f", composeFile}
 		command := exec.CommandContext(ctx, "docker", append(base, arguments...)...)
-		command.Dir, command.Env = repository, environment
+		command.Dir, command.Env = directory, environment
 		return command.CombinedOutput()
 	}
 }

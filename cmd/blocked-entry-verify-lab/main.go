@@ -14,6 +14,7 @@ func main() { os.Exit(run(os.Args[1:])) }
 func run(arguments []string) int {
 	flags := flag.NewFlagSet("blocked-entry-verify-lab", flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
+	workspace := flags.String("workspace-root", "", "repository root for final supply verification")
 	manifest := flags.String("manifest", "", "immutable manifest")
 	evidence := flags.String("evidence", "", "canonical publishable evidence")
 	closure := flags.String("closure", "", "canonical evidence closure")
@@ -25,7 +26,8 @@ func run(arguments []string) int {
 	if err := flags.Parse(arguments); err != nil || flags.NArg() != 0 {
 		return 2
 	}
-	result, err := blockedverify.Verify(blockedverify.Config{ManifestPath: *manifest, EvidencePath: *evidence,
+	result, err := blockedverify.Verify(blockedverify.Config{WorkspaceRoot: *workspace,
+		ManifestPath: *manifest, EvidencePath: *evidence,
 		ClosurePath: *closure, SecretRoot: *secretRoot, RegistryRoot: *registry,
 		CanaryPath: *canaries, PublishableRoot: *publishable, OutputPath: *output})
 	if err != nil {

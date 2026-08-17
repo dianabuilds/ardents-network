@@ -43,6 +43,10 @@ func Verify(config Config) (Result, error) {
 		return finish(config.OutputPath, result, nil)
 	}
 	foundationInvalid := verifyManifest(manifestValue, canaryRaw, verifierHash)
+	if manifestValue.CampaignKind == "final-local" && manifestValue.FinalSpec != nil {
+		foundationInvalid = append(foundationInvalid,
+			verifyFinalRepositorySupply(config.WorkspaceRoot, *manifestValue.FinalSpec)...)
+	}
 	rootHash := sha256.Sum256([]byte(filepath.Clean(bundleRoot)))
 	if manifestValue.EvidenceRootHash != hex.EncodeToString(rootHash[:]) {
 		foundationInvalid = append(foundationInvalid, "bundle root does not match its immutable replay binding")

@@ -23,7 +23,7 @@ func TestBlockedEntryDrainsAtExactEmergencySocketPressure(t *testing.T) {
 	client := requireBlockedCandidate(t, "ARDENTS_WEBTUNNEL_CLIENT", blockedClientHash)
 	server := requireBlockedCandidate(t, "ARDENTS_WEBTUNNEL_SERVER", blockedServerHash)
 	repository := repositoryRoot(t)
-	image := fmt.Sprintf("ardents-s55-p3-%d:test", time.Now().UnixNano())
+	image, ownedImage := finalProductImage(t, fmt.Sprintf("ardents-s55-p3-%d:test", time.Now().UnixNano()))
 	fixture := newBlockedEntryFixture(t, client, server)
 	bindFinalFixtureSeed(t, fixture, "pressure/P3", "established-work")
 	bindFinalPressureSeed(t, fixture, "pressure/P3", "partial-handshakes")
@@ -43,14 +43,16 @@ func TestBlockedEntryDrainsAtExactEmergencySocketPressure(t *testing.T) {
 	} {
 		t.Setenv(name, value)
 	}
-	project := fmt.Sprintf("ardents-s55-p3-%d", time.Now().UnixNano())
+	project := finalProjectName(fmt.Sprintf("ardents-s55-p3-%d", time.Now().UnixNano()))
 	compose := blockedCompose(repository, project, image, fixture, "final-pressure")
 	cleanup := blockedProjectCleanup(t, compose, project)
 	t.Cleanup(cleanup)
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 	defer cancel()
-	if output, err := compose(ctx, "build", "endpoint"); err != nil {
-		t.Fatalf("build final emergency-pressure image: %v\n%s", err, output)
+	if ownedImage {
+		if output, err := compose(ctx, "build", "endpoint"); err != nil {
+			t.Fatalf("build final emergency-pressure image: %v\n%s", err, output)
+		}
 	}
 	startBlockedPressureWork(t, ctx, compose)
 	waitForBridgeSocketSamples(t, ctx, compose, 6, 1)
@@ -79,7 +81,9 @@ func TestBlockedEntryDrainsAtExactEmergencySocketPressure(t *testing.T) {
 		waitBlockedContainer(t, ctx, compose, service)
 	}
 	cleanup()
-	removeBlockedPressureImage(t, image, project)
+	if ownedImage {
+		removeBlockedPressureImage(t, image, project)
+	}
 	emitFinalWorkerCell(t, "pressure/P3", "drain", started)
 }
 

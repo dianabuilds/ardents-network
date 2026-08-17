@@ -2,6 +2,7 @@ package blockedverify
 
 // Config names the immutable verifier inputs and canonical output.
 type Config struct {
+	WorkspaceRoot   string
 	ManifestPath    string
 	EvidencePath    string
 	ClosurePath     string

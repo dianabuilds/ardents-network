@@ -5,6 +5,8 @@ import (
 	"strings"
 )
 
+const emptyDockerConfigSHA256 = "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+
 var requiredMeasurementArtifacts = []string{
 	"candidate/client.stderr",
 	"candidate/server.stderr",
@@ -50,7 +52,7 @@ func verifyMeasurementArtifacts(root string, summary *finalSummary) []string {
 }
 
 func verifyFinalInputArtifacts(values []artifactCommitment, spec finalSpec) []string {
-	if len(values) != 5+len(requiredFinalConfigurations) {
+	if len(values) != 8+len(requiredFinalConfigurations) {
 		return []string{"final immutable input artifact inventory is incomplete"}
 	}
 	byPath := make(map[string]artifactCommitment, len(values))
@@ -62,6 +64,14 @@ func verifyFinalInputArtifacts(values []artifactCommitment, spec finalSpec) []st
 	}
 	if byPath["canaries.json"].Path == "" || byPath["final-spec.json"].Path == "" {
 		return []string{"final immutable input artifact inventory is incomplete"}
+	}
+	if !reflect.DeepEqual(byPath[spec.RuntimeCompose.Path], spec.RuntimeCompose) ||
+		!reflect.DeepEqual(byPath[spec.SupplyLock.Path], spec.SupplyLock) {
+		return []string{"final runtime supply artifact differs from its frozen specification"}
+	}
+	dockerConfig := byPath["runtime/docker-config/config.json"]
+	if dockerConfig.Path == "" || dockerConfig.Bytes != 3 || dockerConfig.SHA256 != emptyDockerConfigSHA256 {
+		return []string{"final Docker authority configuration is not exactly empty"}
 	}
 	for _, expected := range spec.Configurations {
 		if !reflect.DeepEqual(byPath[expected.Path], expected) {

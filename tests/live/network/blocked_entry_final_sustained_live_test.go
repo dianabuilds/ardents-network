@@ -57,17 +57,21 @@ func TestBlockedEntryFinalSustainedEvidence(t *testing.T) {
 	client := requireBlockedCandidate(t, "ARDENTS_WEBTUNNEL_CLIENT", blockedClientHash)
 	server := requireBlockedCandidate(t, "ARDENTS_WEBTUNNEL_SERVER", blockedServerHash)
 	repository, toolImage := repositoryRoot(t), liveToolImage(t)
-	image := fmt.Sprintf("ardents-s55-sustained-%d:test", time.Now().UnixNano())
+	image, ownedImage := finalProductImage(t, fmt.Sprintf("ardents-s55-sustained-%d:test", time.Now().UnixNano()))
 	buildFixture := newBlockedEntryFixture(t, client, server)
-	buildProject := fmt.Sprintf("ardents-s55-sustained-build-%d", time.Now().UnixNano())
+	buildProject := finalProjectName(fmt.Sprintf("ardents-s55-sustained-build-%d", time.Now().UnixNano()))
 	build := blockedCompose(repository, buildProject, image, buildFixture, "final-sustained")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	if output, err := build(ctx, "build", "endpoint"); err != nil {
-		cancel()
-		t.Fatalf("build final sustained image: %v\n%s", err, output)
+	if ownedImage {
+		if output, err := build(ctx, "build", "endpoint"); err != nil {
+			cancel()
+			t.Fatalf("build final sustained image: %v\n%s", err, output)
+		}
 	}
 	cancel()
-	t.Cleanup(func() { removeBlockedPressureImage(t, image, buildProject) })
+	if ownedImage {
+		t.Cleanup(func() { removeBlockedPressureImage(t, image, buildProject) })
+	}
 	timeline := time.Now()
 	if selected := os.Getenv("ARDENTS_FINAL_CELL"); selected != "" {
 		runSelectedFinalSustainedCell(t, repository, image, toolImage, client, server, selected, timeline)
@@ -94,7 +98,7 @@ func runSelectedFinalSustainedCell(t *testing.T, repository, image, toolImage, c
 		fixture := newBlockedEntryFixture(t, client, server)
 		bindFinalFixturePairSeed(t, fixture, "sustained/"+direction+"/direct-before",
 			"sustained/"+direction+"/direct-after", "direct-stream")
-		project := fmt.Sprintf("ardents-s55-direct-selected-%d", time.Now().UnixNano())
+		project := finalProjectName(fmt.Sprintf("ardents-s55-direct-selected-%d", time.Now().UnixNano()))
 		compose := blockedCompose(repository, project, image, fixture, "final-sustained")
 		cleanup := blockedProjectCleanup(t, compose, project)
 		t.Cleanup(cleanup)
@@ -124,7 +128,7 @@ func runFinalSustainedDirection(t *testing.T, repository, image, toolImage, clie
 	directBeforeCell := "sustained/" + direction + "/direct-before"
 	directAfterCell := "sustained/" + direction + "/direct-after"
 	bindFinalFixturePairSeed(t, baselineFixture, directBeforeCell, directAfterCell, "direct-stream")
-	project := fmt.Sprintf("ardents-s55-direct-%d", time.Now().UnixNano())
+	project := finalProjectName(fmt.Sprintf("ardents-s55-direct-%d", time.Now().UnixNano()))
 	compose := blockedCompose(repository, project, image, baselineFixture, "final-sustained")
 	cleanup := blockedProjectCleanup(t, compose, project)
 	t.Cleanup(cleanup)
@@ -188,7 +192,7 @@ func runFinalSustainedCarrier(t *testing.T, repository, image, toolImage, client
 		"ARDENTS_STREAM_LIFETIME": "15m"} {
 		t.Setenv(name, value)
 	}
-	project := fmt.Sprintf("ardents-s55-sustained-%s-%d-%d", direction, run, time.Now().UnixNano())
+	project := finalProjectName(fmt.Sprintf("ardents-s55-sustained-%s-%d-%d", direction, run, time.Now().UnixNano()))
 	compose := blockedCompose(repository, project, image, fixture, "final-sustained")
 	cleanup := blockedProjectCleanup(t, compose, project)
 	t.Cleanup(cleanup)

@@ -38,7 +38,29 @@ func freezeCampaignSpec(config Config, secretRoot string) (Config, *finalSpec, e
 		len(value.Seeds) != len(value.CellOrder) || len(value.Configurations) != len(finalConfigurationPaths) {
 		return Config{}, nil, errors.New("final campaign specification is incomplete")
 	}
+	if !imageID(value.ProductImageID) || !imageID(value.ToolImageID) || !imageID(value.GoBuilderImageID) ||
+		value.ProductImageID == value.ToolImageID || value.ProductImageID == value.GoBuilderImageID ||
+		value.ToolImageID == value.GoBuilderImageID || value.GoBuilderVersion != finalGoBuilderVersion {
+		return Config{}, nil, errors.New("final campaign image supply is invalid")
+	}
+	if value.SupplyLock.Path != finalSupplyLockPath || !hexDigest(value.SupplyLock.SHA256, 32) ||
+		value.SupplyLock.Bytes < 1 {
+		return Config{}, nil, errors.New("final campaign supply lock commitment is invalid")
+	}
+	if !validProductReceipt(value.ProductReceipt, value.SourceSHA256) || !validToolReceipt(value.ToolReceipt) {
+		return Config{}, nil, errors.New("final campaign image receipts are invalid")
+	}
+	if err := verifyFinalSupplyLockWorkspace(config.WorkspaceRoot, value); err != nil {
+		return Config{}, nil, err
+	}
 	root := filepath.Dir(config.CampaignSpecPath)
+	config, err := freezeRuntimeComposeInput(config, secretRoot, root, value.RuntimeCompose)
+	if err != nil {
+		return Config{}, nil, err
+	}
+	if err := freezeFinalSupplyLockInput(secretRoot, root, value.SupplyLock); err != nil {
+		return Config{}, nil, err
+	}
 	for index, expected := range finalConfigurationPaths {
 		commitment := value.Configurations[index]
 		if commitment.Path != expected || commitment.Bytes < 1 {
@@ -58,6 +80,8 @@ func freezeCampaignSpec(config Config, secretRoot string) (Config, *finalSpec, e
 		}
 	}
 	config.CampaignSpecPath = target
+	config.ProductImageID, config.ToolImageID = value.ProductImageID, value.ToolImageID
+	config.GoBuilderImageID = value.GoBuilderImageID
 	return config, &value, nil
 }
 

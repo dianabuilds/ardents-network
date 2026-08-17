@@ -32,17 +32,21 @@ func TestBlockedEntryFinalReferenceAndStrongCapacity(t *testing.T) {
 	server := requireBlockedCandidate(t, "ARDENTS_WEBTUNNEL_SERVER", blockedServerHash)
 	repository := repositoryRoot(t)
 	toolImage := liveToolImage(t)
-	image := fmt.Sprintf("ardents-s55-capacity-%d:test", time.Now().UnixNano())
+	image, ownedImage := finalProductImage(t, fmt.Sprintf("ardents-s55-capacity-%d:test", time.Now().UnixNano()))
 	buildFixture := newBlockedEntryFixture(t, client, server)
-	buildProject := fmt.Sprintf("ardents-s55-capacity-build-%d", time.Now().UnixNano())
+	buildProject := finalProjectName(fmt.Sprintf("ardents-s55-capacity-build-%d", time.Now().UnixNano()))
 	build := blockedCompose(repository, buildProject, image, buildFixture, "final-capacity")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	if output, err := build(ctx, "build", "endpoint"); err != nil {
-		cancel()
-		t.Fatalf("build final capacity image: %v\n%s", err, output)
+	if ownedImage {
+		if output, err := build(ctx, "build", "endpoint"); err != nil {
+			cancel()
+			t.Fatalf("build final capacity image: %v\n%s", err, output)
+		}
 	}
 	cancel()
-	t.Cleanup(func() { removeBlockedPressureImage(t, image, buildProject) })
+	if ownedImage {
+		t.Cleanup(func() { removeBlockedPressureImage(t, image, buildProject) })
+	}
 	for _, profile := range []struct {
 		name     string
 		capacity int
@@ -94,7 +98,7 @@ func runBlockedCapacityBatch(t *testing.T, repository, image, toolImage, client,
 			t.Setenv(name, value)
 		}
 	}
-	project := fmt.Sprintf("ardents-s55-cap-%s-%d-%d", profile, batch, time.Now().UnixNano())
+	project := finalProjectName(fmt.Sprintf("ardents-s55-cap-%s-%d-%d", profile, batch, time.Now().UnixNano()))
 	compose := blockedCompose(repository, project, image, fixture, "final-capacity")
 	cleanup := blockedProjectCleanup(t, compose, project)
 	t.Cleanup(cleanup)

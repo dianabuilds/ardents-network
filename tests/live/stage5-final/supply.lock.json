@@ -1,0 +1,11 @@
+{
+  "schema": "ardents-h3-s5-supply-lock-v1",
+  "go_builder_image_id": "pending-qualifying-stand",
+  "go_builder_version": "go version go1.26.6 linux/amd64",
+  "go_archive_sha256": "708effb774be8237570d0add163225abbdfaf4fca28b2611df167beba4feef89",
+  "go_builder_recipe_sha256": "c7de1217f3abfe7146e2d29a2ece485a3823083fb589301139b0f3c451b83fc4",
+  "go_module_cache_sha256": "pending-qualifying-stand",
+  "tool_image_id": "pending-qualifying-stand",
+  "tool_lock_sha256": "827ecbe397b0bbce442b35918b20b43c62ea14c1a1cc99a8d19cd7a9b9fb7bf2",
+  "carrier_sha256": "pending-qualifying-stand"
+}

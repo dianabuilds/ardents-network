@@ -25,9 +25,27 @@ or symlinked input, missing configuration, and a configuration hash mismatch.
 It binds the Git commit, SHA-256 of `git archive HEAD`, Ubuntu image and kernel,
 pinned WebTunnel binaries, the exact reference/strong/collector classes,
 network and clock envelopes, seven configuration artifacts, all `594` ordered
-cells, and one unique random 32-byte seed per cell. The checked-in non-secret
+cells, distinct content-addressed product/tool/Go-builder image IDs, and one
+unique random 32-byte seed per cell. Preparation materializes that Git archive
+outside the repository and builds the product from only that frozen tree, with
+network disabled and the exact preloaded Go-builder image ID. It independently
+verifies that builder against the versioned recipe, official archive hash,
+hash-bound complete Go module cache, base ancestry, embedded receipts, and exact Go version. The
+product carries those receipts forward for runner and independent-verifier
+revalidation. It reads and freezes the resulting source/seven-binary receipt and the Carrier
+tooling base/tool-lock/source/binary receipt. The Compose topology is copied
+from the same materialized archive into the external runtime supply with its
+own hash and byte count. Builder/tool image IDs, the official Go archive hash,
+the tool-lock hash, and the expected Carrier binary hash must first match the
+versioned `tests/live/stage5-final/supply.lock.json` inside that same archive.
+Its current `pending-qualifying-stand` entries intentionally prevent final
+preparation until those reviewed stand-specific identities are accepted. The
+checked-in non-secret
 configuration vocabulary lives under `tests/live/stage5-final/`; raw Invites,
 addresses, TLS/path secrets, and Route credentials remain external.
+The runner environment fixes `/usr/bin:/bin`, the local Docker Unix socket,
+and an empty owner-only Docker config. It does not inherit a Docker context,
+credential helper, home directory, or caller-selected executable path.
 
 The final manifest uses `campaign_kind=final-local`, profile `h3-s5-b1-v1`,
 mode `final-campaign`, and supply class `pinned-offline-webtunnel`. The verifier
@@ -58,10 +76,13 @@ harness-control sentinels are excluded from product evidence accounting.
 This intermediate slice deliberately cannot emit an S5.5 `pass`. The frozen
 `network-live.test` binary implements strict plan decoding, exact 594-cell
 identity/seed ordering, and the selected-test dispatch map for the `144`
-non-hostile cells. It does not execute that map yet: retained terminal,
-nine-boundary observer, ten-kind residual, bounded streaming, and frozen
-source/image hooks are incomplete, so every mapped worker is rejected before
-product startup. It also rejects every hostile cell, and the verifier still
+non-hostile cells. Before each mapped worker it rehashes the exact clean Git
+archive, requires the frozen commit and source hash, verifies both preloaded
+content-addressed image IDs and their product/tool/base/source labels, then
+uses `--no-build` paths and bounded stdout/stderr capture. The worker result is
+still structurally incomplete because retained terminal, nine-boundary
+observer, and ten-kind residual hooks are not connected; it therefore cannot
+be admitted as evidence. The runner also rejects every hostile cell, and the verifier still
 records `maintained final runner raw-to-verdict recomputation is not
 implemented`. Removing those fail-closed blockers requires measured workers
 for all cells and independent derivation of every aggregate from per-second/raw
@@ -90,7 +111,14 @@ before atomic publication.
 Before hashing or starting a cell, the harness copies the runner, client, and
 server into its owner-only external secret tree, synchronizes those private
 copies, removes write permission, hashes the copies, and executes only them.
-The mutable caller paths are therefore not reopened during the campaign.
+For a final campaign, the runner hash must equal the `network-live.test` hash
+from the archive-built product receipt; a separately substituted build is
+rejected.
+The final runner reopens the repository only to prove that its clean `HEAD` and
+`git archive --format=tar HEAD` still equal the precommitted source identities;
+it never builds from that path. Product cells consume only the preloaded image
+ID whose Ubuntu-base and source labels match the specification. Observer
+impairment consumes only the distinct preloaded Carrier tooling image ID.
 
 The harness does not manufacture successful events. It sends each entry of the
 ordered `450`-event plan to one separately built, precommitted hostile-cell
@@ -188,18 +216,21 @@ blocked-entry-lab -workspace-root <repo> \
   -prepare-final-root <new-external-spec-root> \
   -configuration-root <external-input-root> \
   -linux-image <pinned-ubuntu-image> -image-sha256 <image-hash> \
+  -go-builder-image-id <sha256:offline-builder-id> \
+  -tool-image-id <sha256:tool-id> \
   -kernel <kernel-id> -client <pinned-client> -server <pinned-server>
 
 blocked-entry-lab -workspace-root <repo> -evidence-root <new-external-root> \
   -run-id <id> -mode pass -registry-root <authoritative-external-registry> \
-  -runner <hostile-cell-runner> \
+  -runner <external-spec-root>/runtime/network-live.test \
   -verifier <pinned-verifier> \
   -client <pinned-client> -server <pinned-server>
 
 # The qualifying invocation changes mode to final-campaign and adds:
 # -campaign-spec <external-spec-root>/final-spec.json
 
-blocked-entry-verify-lab -manifest <root>/publishable/manifest.json \
+blocked-entry-verify-lab -workspace-root <repo> \
+  -manifest <root>/publishable/manifest.json \
   -evidence <root>/publishable/evidence.json \
   -closure <root>/publishable/closure.json -secret-root <root>/secret \
   -registry-root <separate-external-registry> \

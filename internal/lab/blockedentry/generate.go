@@ -44,6 +44,9 @@ func buildManifest(config Config, finalSpecValue *finalSpec, canaryHash, nonceHa
 	if err != nil {
 		return manifest{}, err
 	}
+	if err := validateFinalRunnerBinding(runnerHash, finalSpecValue); err != nil {
+		return manifest{}, err
+	}
 	clientHash, _, err := hashFile(config.ClientPath)
 	if err != nil {
 		return manifest{}, err
@@ -86,6 +89,13 @@ func buildManifest(config Config, finalSpecValue *finalSpec, canaryHash, nonceHa
 		result.FinalSpec = finalSpecValue
 	}
 	return result, nil
+}
+
+func validateFinalRunnerBinding(runnerHash string, value *finalSpec) error {
+	if value != nil && runnerHash != value.ProductReceipt.NetworkSHA256 {
+		return errors.New("final runner differs from the archive-built product receipt")
+	}
+	return nil
 }
 
 func createNonceHash() (string, error) {

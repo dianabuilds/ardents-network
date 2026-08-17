@@ -27,7 +27,7 @@ func TestBlockedEntryReturnsFromExactRecoverableSocketPressure(t *testing.T) {
 	client := requireBlockedCandidate(t, "ARDENTS_WEBTUNNEL_CLIENT", blockedClientHash)
 	server := requireBlockedCandidate(t, "ARDENTS_WEBTUNNEL_SERVER", blockedServerHash)
 	repository := repositoryRoot(t)
-	image := fmt.Sprintf("ardents-s55-p2-%d:test", time.Now().UnixNano())
+	image, ownedImage := finalProductImage(t, fmt.Sprintf("ardents-s55-p2-%d:test", time.Now().UnixNano()))
 	fixture := newBlockedEntryFixture(t, client, server)
 	bindFinalFixtureSeed(t, fixture, "pressure/P2", "established-work")
 	bindFinalPressureSeed(t, fixture, "pressure/P2", "partial-handshakes")
@@ -42,14 +42,16 @@ func TestBlockedEntryReturnsFromExactRecoverableSocketPressure(t *testing.T) {
 	t.Setenv("ARDENTS_STREAM_CHUNK_DELAY", "100ms")
 	t.Setenv("ARDENTS_STREAM_LIFETIME", "15m")
 	t.Setenv("ARDENTS_PRESSURE_CONNECTIONS", "20")
-	project := fmt.Sprintf("ardents-s55-p2-%d", time.Now().UnixNano())
+	project := finalProjectName(fmt.Sprintf("ardents-s55-p2-%d", time.Now().UnixNano()))
 	compose := blockedCompose(repository, project, image, fixture, "final-pressure")
 	cleanup := blockedProjectCleanup(t, compose, project)
 	t.Cleanup(cleanup)
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
 	defer cancel()
-	if output, err := compose(ctx, "build", "endpoint"); err != nil {
-		t.Fatalf("build final pressure image: %v\n%s", err, output)
+	if ownedImage {
+		if output, err := compose(ctx, "build", "endpoint"); err != nil {
+			t.Fatalf("build final pressure image: %v\n%s", err, output)
+		}
 	}
 	startBlockedPressureWork(t, ctx, compose)
 	waitForBridgeSocketSamples(t, ctx, compose, 6, 1)
@@ -69,7 +71,9 @@ func TestBlockedEntryReturnsFromExactRecoverableSocketPressure(t *testing.T) {
 	}
 	finishBlockedPressureWork(t, ctx, compose, fixture, transferBytes)
 	cleanup()
-	removeBlockedPressureImage(t, image, project)
+	if ownedImage {
+		removeBlockedPressureImage(t, image, project)
+	}
 	emitFinalWorkerCell(t, "pressure/P2", "normal", started)
 }
 
