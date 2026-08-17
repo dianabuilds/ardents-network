@@ -118,7 +118,7 @@ services:
   probe:
     <<: *product
     command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
-    environment: {ARDENTS_BLOCKED_ROLE: probe, ARDENTS_DNS_SYNC: /run/evidence}
+    environment: {ARDENTS_BLOCKED_ROLE: probe, ARDENTS_BLOCKED_PROBE_PROFILE: "${ARDENTS_BLOCKED_PROBE_PROFILE:-C5}", ARDENTS_DNS_SYNC: /run/evidence}
     volumes:
       - ${ARDENTS_BLOCKED_ROOT:?}/input/probe:/run/input:ro
       - ${ARDENTS_BLOCKED_ROOT:?}/sync/probe:/run/evidence

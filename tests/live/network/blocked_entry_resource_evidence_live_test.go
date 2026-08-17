@@ -32,6 +32,14 @@ type blockedProcessSample struct {
 	Boundary        string `json:"boundary,omitempty"`
 }
 
+type blockedCarrierSample struct {
+	Schema       string `json:"schema"`
+	Ordinal      uint16 `json:"ordinal"`
+	OffsetMillis uint64 `json:"offset_millis"`
+	Bytes        uint64 `json:"bytes"`
+	Boundary     string `json:"boundary,omitempty"`
+}
+
 func readBlockedProcessSamples(path string) ([]blockedProcessSample, error) {
 	input, err := os.Open(path)
 	if err != nil {

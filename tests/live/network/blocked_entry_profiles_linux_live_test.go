@@ -5,6 +5,7 @@ package network_test
 import (
 	"bufio"
 	"bytes"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -122,25 +123,36 @@ func runBlockedProbe(t *testing.T) {
 	if !pool.AppendCertsFromPEM(certificate) {
 		t.Fatal("probe front certificate is invalid")
 	}
+	seed, err := os.ReadFile("/run/secure/corpus-seed.bin")
+	if err != nil || len(seed) != 32 {
+		t.Fatalf("probe corpus seed is invalid: %v", err)
+	}
 	tlsConfig := &tls.Config{RootCAs: pool, ServerName: plan.ServerName, MinVersion: tls.VersionTLS13}
-	for _, path := range []string{"/", "/wrong-path"} {
-		status := blockedProbeHTTP(t, plan.Address, path, tlsConfig)
-		if !strings.Contains(status, " 404 ") {
-			t.Fatalf("uninformed %s status = %q", path, status)
+	profile := os.Getenv("ARDENTS_BLOCKED_PROBE_PROFILE")
+	if profile == "C5" {
+		for index, path := range []string{"/", "/wrong-path"} {
+			status := blockedProbeHTTP(t, plan.Address, path, tlsConfig, probeCanary(seed, byte(index)))
+			if !strings.Contains(status, " 404 ") {
+				t.Fatalf("uninformed %s status = %q", path, status)
+			}
 		}
+		blockedMalformedTLS(t, plan.Address, probeCanary(seed, 2))
+		blockedMalformedHTTP(t, plan.Address, tlsConfig, probeCanary(seed, 3))
+		fmt.Println(`{"kind":"probe-result","profile":"C5","requests":4}`)
+	} else if profile == "C6" {
+		informedStatus := blockedProbeHTTP(t, plan.Address, plan.Path, tlsConfig, probeCanary(seed, 4))
+		if strings.Contains(informedStatus, " 404 ") {
+			t.Fatalf("disclosed path was not detected: %q", informedStatus)
+		}
+		fmt.Printf("{\"kind\":\"probe-result\",\"profile\":\"C6\",\"disclosed_path\":\"detected\",\"status\":%q}\n",
+			strings.TrimSpace(informedStatus))
+	} else {
+		t.Fatalf("unknown blocked probe profile %q", profile)
 	}
-	blockedMalformedTLS(t, plan.Address)
-	blockedMalformedHTTP(t, plan.Address, tlsConfig)
-	informedStatus := blockedProbeHTTP(t, plan.Address, plan.Path, tlsConfig)
-	if strings.Contains(informedStatus, " 404 ") {
-		t.Fatalf("disclosed path was not detected: %q", informedStatus)
-	}
-	fmt.Printf("{\"kind\":\"probe-result\",\"c5_requests\":4,\"c6_disclosed_path\":\"detected\",\"status\":%q}\n",
-		strings.TrimSpace(informedStatus))
 	finishBlockedObservation(t)
 }
 
-func blockedProbeHTTP(t *testing.T, address, path string, config *tls.Config) string {
+func blockedProbeHTTP(t *testing.T, address, path string, config *tls.Config, canary [32]byte) string {
 	t.Helper()
 	connection, err := tls.DialWithDialer(&net.Dialer{Timeout: 3 * time.Second}, "tcp4", address, config.Clone())
 	if err != nil {
@@ -148,7 +160,9 @@ func blockedProbeHTTP(t *testing.T, address, path string, config *tls.Config) st
 	}
 	defer connection.Close()
 	_ = connection.SetDeadline(time.Now().Add(5 * time.Second))
-	if _, err := fmt.Fprintf(connection, "GET %s HTTP/1.1\r\nHost: front.example\r\nConnection: close\r\n\r\n", path); err != nil {
+	if _, err := fmt.Fprintf(connection,
+		"GET %s HTTP/1.1\r\nHost: front.example\r\nX-Ardents-Probe: %x\r\nConnection: close\r\n\r\n",
+		path, canary); err != nil {
 		t.Fatal(err)
 	}
 	status, err := bufio.NewReader(connection).ReadString('\n')
@@ -158,7 +172,7 @@ func blockedProbeHTTP(t *testing.T, address, path string, config *tls.Config) st
 	return status
 }
 
-func blockedMalformedTLS(t *testing.T, address string) {
+func blockedMalformedTLS(t *testing.T, address string, canary [32]byte) {
 	t.Helper()
 	started := time.Now()
 	connection, err := net.DialTimeout("tcp4", address, 3*time.Second)
@@ -167,7 +181,7 @@ func blockedMalformedTLS(t *testing.T, address string) {
 	}
 	defer connection.Close()
 	_ = connection.SetDeadline(time.Now().Add(5 * time.Second))
-	_, _ = connection.Write([]byte("not-tls"))
+	_, _ = connection.Write(append([]byte("not-tls"), canary[:]...))
 	response, readErr := io.ReadAll(io.LimitReader(connection, 256))
 	if isBlockedTimeout(readErr) || time.Since(started) > 5*time.Second {
 		t.Fatalf("malformed TLS did not alert or close within 5s: %v", readErr)
@@ -177,7 +191,7 @@ func blockedMalformedTLS(t *testing.T, address string) {
 	}
 }
 
-func blockedMalformedHTTP(t *testing.T, address string, config *tls.Config) {
+func blockedMalformedHTTP(t *testing.T, address string, config *tls.Config, canary [32]byte) {
 	t.Helper()
 	started := time.Now()
 	connection, err := tls.DialWithDialer(&net.Dialer{Timeout: 3 * time.Second}, "tcp4", address, config.Clone())
@@ -186,7 +200,9 @@ func blockedMalformedHTTP(t *testing.T, address string, config *tls.Config) {
 	}
 	defer connection.Close()
 	_ = connection.SetDeadline(time.Now().Add(5 * time.Second))
-	_, _ = connection.Write([]byte("BROKEN\x00HTTP\r\n\r\n"))
+	if _, err := fmt.Fprintf(connection, "BROKEN\x00HTTP\r\nX-Ardents-Probe: %x\r\n\r\n", canary); err != nil {
+		t.Fatal(err)
+	}
 	response, readErr := io.ReadAll(io.LimitReader(connection, 512))
 	if isBlockedTimeout(readErr) || time.Since(started) > 5*time.Second {
 		t.Fatalf("malformed HTTP did not reject or close within 5s: %v", readErr)
@@ -197,6 +213,10 @@ func blockedMalformedHTTP(t *testing.T, address string, config *tls.Config) {
 	if bytesContainIdentifier(response) {
 		t.Fatal("malformed HTTP exposed an Ardents identifier")
 	}
+}
+
+func probeCanary(seed []byte, ordinal byte) [32]byte {
+	return sha256.Sum256(append(append([]byte(nil), seed...), ordinal))
 }
 
 func bytesContainIdentifier(value []byte) bool {

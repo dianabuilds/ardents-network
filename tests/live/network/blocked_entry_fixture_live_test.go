@@ -188,6 +188,8 @@ func writeBlockedBridgeInputs(t *testing.T, root string, route liveFixture) {
 	writeLiveFile(t, filepath.Join(root, "input", "capacity-probe", "front-cert.pem"), frontCertificate)
 	writeLiveFile(t, filepath.Join(root, "input", "capacity-probe", "corpus-seed.bin"),
 		bytes.Repeat([]byte{0xc5}, 32))
+	writeLiveFile(t, filepath.Join(root, "input", "probe", "corpus-seed.bin"),
+		bytes.Repeat([]byte{0xc6}, 32))
 	writeLiveFile(t, filepath.Join(bridge, "front-key.pem"), frontKey)
 	writeNodeIdentity(t, filepath.Join(bridge, "identity-key.pem"), network.nodePrivate)
 	probeCertificate, probeKey, probeRoot, probePin := blockedProbeCredentials(t, now)

@@ -52,12 +52,15 @@ func TestBlockedEntryCommandsAcrossNamespaces(t *testing.T) {
 		}
 		assertNoDockerObjects(t, cleanupCtx, buildProject, image)
 	})
-	for _, profile := range []string{"C0", "C1", "C2"} {
+	for _, profile := range []string{"C0", "C1", "C2", "C5", "C6"} {
 		t.Run(profile, func(t *testing.T) {
 			for episode := range 20 {
 				t.Run(fmt.Sprint(episode), func(t *testing.T) {
-					if profile != "C0" || episode != 0 {
-						fixture = newBlockedEntryFixture(t, client, server)
+					fixture = newBlockedEntryFixture(t, client, server)
+					cell := fmt.Sprintf("profile/%s/%02d", profile, episode)
+					bindFinalFixtureSeed(t, fixture, cell, "short-workload")
+					if profile == "C5" || profile == "C6" {
+						bindFinalProbeSeed(t, fixture, cell, "probe-corpus")
 					}
 					runBlockedEntryEpisode(t, repository, image, fixture, profile, episode)
 				})
@@ -119,7 +122,7 @@ func runBlockedEntryEpisode(t *testing.T, repository, image string, fixture bloc
 			t.Fatalf("blocked %s Route = %+v", role, result)
 		}
 	}
-	if profile == "C2" {
+	if profile == "C5" || profile == "C6" {
 		if output, err := compose(ctx, "up", "-d", "--no-build", "--no-deps", "probe", "probe-observer"); err != nil {
 			t.Fatalf("start external probes: %v\n%s", err, output)
 		}
@@ -140,11 +143,16 @@ func blockedCompose(repository, project, image string, fixture blockedEntryFixtu
 	if len(profile) > 0 {
 		selected = profile[0]
 	}
+	productProfile := selected
+	if selected == "C5" || selected == "C6" {
+		productProfile = "C2"
+	}
 	environment := append(os.Environ(), "ARDENTS_BLOCKED_IMAGE="+image,
 		"ARDENTS_BLOCKED_ROOT="+filepath.ToSlash(fixture.root),
 		"ARDENTS_WEBTUNNEL_CLIENT="+filepath.ToSlash(fixture.clientBinary),
 		"ARDENTS_WEBTUNNEL_SERVER="+filepath.ToSlash(fixture.serverBinary),
-		"ARDENTS_BLOCKED_PROFILE="+selected, "ARDENTS_NEGATIVE_PROFILE="+selected,
+		"ARDENTS_BLOCKED_PROFILE="+productProfile, "ARDENTS_BLOCKED_PROBE_PROFILE="+selected,
+		"ARDENTS_NEGATIVE_PROFILE="+selected,
 		"ARDENTS_FAULT_MODE="+selected)
 	if selected == "recovery" {
 		environment = append(environment, "ARDENTS_STREAM_PROGRESS=1", "ARDENTS_STREAM_CHUNK_DELAY=2s")
@@ -201,7 +209,7 @@ func blockedContainers(profile string) []string {
 	if profile != "C0" {
 		containers = append(containers, "policy", "bridge", "bridge-observer")
 	}
-	if profile == "C2" {
+	if profile == "C5" || profile == "C6" {
 		containers = append(containers, "probe", "probe-observer")
 	}
 	return containers

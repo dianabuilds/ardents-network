@@ -13,14 +13,6 @@ import (
 	"time"
 )
 
-type blockedCarrierSample struct {
-	Schema       string `json:"schema"`
-	Ordinal      uint16 `json:"ordinal"`
-	OffsetMillis uint64 `json:"offset_millis"`
-	Bytes        uint64 `json:"bytes"`
-	Boundary     string `json:"boundary,omitempty"`
-}
-
 func runBlockedCarrierCollector(t *testing.T) {
 	t.Helper()
 	root := blockedSync()

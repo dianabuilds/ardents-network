@@ -16,6 +16,10 @@ path. Raw Invites, addresses, TLS/path secrets, and role keys stay outside Git.
 Preparation rejects missing files, mutable tracked source, an existing output
 root, or an output root inside the repository. The resulting `final-spec.json`
 precommits all 594 cells and a unique 32-byte seed for each cell.
+The live fixture purpose-separates that seed for Application streams, bounded
+capacity offers, partial handshakes, and C5/C6 probe corpora; it does not reuse
+the development fixture's fixed corpus bytes in a final campaign.
+P0 uses four ordinal-specific derivations and four named peer pairs.
 
 This directory is not evidence and cannot satisfy S5.5 by itself. The final
 campaign remains incomplete until the frozen bundle runs on the qualifying

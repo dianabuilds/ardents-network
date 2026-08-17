@@ -61,6 +61,13 @@ func runBlockedCapacityBatch(t *testing.T, repository, image, toolImage, client,
 ) {
 	t.Helper()
 	fixture := newBlockedEntryFixture(t, client, server)
+	profileID := "h3-s5-b1-v1"
+	if profile == "strong" {
+		profileID = "h3-s5-b1-v1-strong"
+	}
+	cell := fmt.Sprintf("capacity/%s/%d", profileID, batch)
+	bindFinalFixtureSeed(t, fixture, cell, "useful-work")
+	bindFinalOfferSeed(t, fixture, cell, "bounded-extra-offer")
 	rewriteBlockedCapacity(t, fixture, uint16(capacity))
 	addresses := make([]string, capacity)
 	for index := range capacity {
@@ -103,7 +110,7 @@ func runBlockedCapacityBatch(t *testing.T, repository, image, toolImage, client,
 		bridgeRate = "400mbit"
 	}
 	applyFinalBridgeInfrastructure(t, ctx, compose, toolImage, bridgeRate)
-	units := startBlockedCapacityUnits(t, ctx, project, image, toolImage, fixture, capacity)
+	units := startBlockedCapacityUnits(t, ctx, project, image, toolImage, fixture, capacity, "", "")
 	waitForBridgeSocketSamples(t, ctx, compose, uint64(2+4*capacity), 1)
 	if output, err := compose(ctx, "up", "-d", "--no-build", "--no-deps", "capacity-probe"); err != nil {
 		t.Fatalf("start capacity refusal probe: %v\n%s", err, output)

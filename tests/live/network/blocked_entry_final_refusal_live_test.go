@@ -111,6 +111,13 @@ func runFinalRefusalBatch(t *testing.T, repository, image, toolImage, client, se
 ) finalRefusalBatch {
 	t.Helper()
 	fixture := newBlockedEntryFixture(t, client, server)
+	workCell, workLabel, offerCell, offerLabel := "pressure/P0", "established-work", "pressure/P1", "offers"
+	if batch > 0 {
+		workCell, offerCell = "pressure/P4", "pressure/P4"
+		workLabel, offerLabel = fmt.Sprintf("batch-%02d-work", batch-1), fmt.Sprintf("batch-%02d-offers", batch-1)
+	}
+	bindFinalFixtureSeed(t, fixture, workCell, workLabel)
+	bindFinalOfferSeed(t, fixture, offerCell, offerLabel)
 	rewriteBlockedCapacity(t, fixture, 4)
 	rewriteBlockedWorkload(t, fixture, "publisher-to-endpoint", finalPressureBytes)
 	chunks := (uint64(finalPressureBytes) + 16_380) / 16_381
@@ -141,12 +148,8 @@ func runFinalRefusalBatch(t *testing.T, repository, image, toolImage, client, se
 	startLiveContainer(t, ctx, compose, "bridge-resource-collector")
 	startLiveService(t, ctx, compose, "publisher-service", "publisher")
 	runLiveOneShot(t, ctx, compose, "publication-operator")
-	if output, err := compose(ctx, "up", "-d", "--no-build", "--no-deps", "--scale", "publisher-app=4",
-		"publisher-app"); err != nil {
-		t.Fatalf("start pressure publisher Applications: %v\n%s", err, output)
-	}
 	applyFinalBridgeInfrastructure(t, ctx, compose, toolImage)
-	units := startBlockedCapacityUnits(t, ctx, project, image, toolImage, fixture, 4)
+	units := startBlockedCapacityUnits(t, ctx, project, image, toolImage, fixture, 4, workCell, workLabel)
 	before := waitCapacityProgress(t, ctx, units, nil)
 	beforeAdmission := waitBridgeAdmission(t, ctx, compose, func(sample resource.Sample) bool {
 		return sample.AdmissionActive == 4
@@ -175,7 +178,9 @@ func runFinalRefusalBatch(t *testing.T, repository, image, toolImage, client, se
 		waitNamedContainer(t, ctx, unit.endpoint+"-observer")
 		waitNamedContainer(t, ctx, unit.endpoint+"-policy")
 	}
-	waitScaledComposeService(t, ctx, compose, "publisher-app", 4)
+	for _, unit := range units {
+		waitNamedContainer(t, ctx, unit.publisherApplication)
+	}
 	if result := waitForServiceResult(t, ctx, compose, "publisher-service"); result.RouteAttachmentsAccepted != 4 || result.ApplicationIPCAccepts != 4 {
 		t.Fatalf("pressure publisher Service = %+v", result)
 	}
@@ -247,6 +252,26 @@ func waitNamedApplication(t *testing.T, ctx context.Context, name string) stream
 		select {
 		case <-ctx.Done():
 			t.Fatalf("wait for %s Application: %v", name, ctx.Err())
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
+}
+
+func waitNamedApplicationReady(t *testing.T, ctx context.Context, name string) {
+	t.Helper()
+	for {
+		logs, _ := dockerOutput(ctx, "logs", name)
+		for _, line := range bytes.Split(logs, []byte{'\n'}) {
+			var value struct {
+				Schema string `json:"schema"`
+			}
+			if json.Unmarshal(bytes.TrimSpace(line), &value) == nil && value.Schema == "ardents-stream-ready-v1" {
+				return
+			}
+		}
+		select {
+		case <-ctx.Done():
+			t.Fatalf("wait for %s Application readiness: %v", name, ctx.Err())
 		case <-time.After(100 * time.Millisecond):
 		}
 	}

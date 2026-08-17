@@ -70,11 +70,14 @@ func run(arguments []string, output io.Writer) error {
 	}
 	stream := applicationipc.NewConnection(connection, resultConnection)
 	defer stream.Close()
+	encoder := json.NewEncoder(output)
+	if err := encoder.Encode(map[string]string{"schema": "ardents-stream-ready-v1", "role": arguments[1]}); err != nil {
+		return err
+	}
 	write, err := streamworkload.PacingWriter(stream, os.Getenv("ARDENTS_STREAM_CHUNK_DELAY"))
 	if err != nil {
 		return err
 	}
-	encoder := json.NewEncoder(output)
 	progress := func(received uint32) {
 		if os.Getenv("ARDENTS_STREAM_PROGRESS") == "1" {
 			_ = encoder.Encode(map[string]any{"schema": "ardents-stream-progress-v1", "role": arguments[1],

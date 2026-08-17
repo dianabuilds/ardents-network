@@ -70,6 +70,14 @@ cleanup bound. The 450 hostile observations must reproduce the same offsets in
 the hostile event ledger; a reordered, repeated, or substituted cell is
 `invalid` even when its aggregate counters look correct.
 
+The live fixture derives purpose-separated Application, capacity-offer, probe,
+and partial-handshake corpora from that cell seed. C5 and C6 execute separate
+episodes: C5 sends only the four uninformed requests, while C6 sends only the
+single disclosed-path request whose detection is the retained limitation.
+P0 additionally derives one ordinal-specific corpus per unit and pairs each
+Endpoint Application with a named publisher Application, so the four
+concurrent 10 Mbit/s streams cannot share or race a corpus.
+
 The complete construction tree is owner-only: Unix rejects group/other access,
 and Windows applies a protected current-user DACL to every directory and file
 before atomic publication.

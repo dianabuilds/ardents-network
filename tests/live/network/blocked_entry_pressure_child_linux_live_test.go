@@ -3,6 +3,7 @@
 package network_test
 
 import (
+	"crypto/sha256"
 	"errors"
 	"net"
 	"os"
@@ -25,6 +26,14 @@ func runBlockedPressure(t *testing.T) {
 	}()
 	prefix := make([]byte, 128)
 	prefix[0], prefix[1], prefix[2], prefix[3], prefix[4] = 22, 3, 3, 0x10, 0
+	if seed, readErr := os.ReadFile("/run/input/corpus-seed.bin"); readErr == nil && len(seed) == 32 {
+		for offset := 5; offset < len(prefix); {
+			block := sha256.Sum256(append(append([]byte(nil), seed...), byte(offset)))
+			offset += copy(prefix[offset:], block[:])
+		}
+	} else if readErr != nil && !errors.Is(readErr, os.ErrNotExist) || readErr == nil && len(seed) != 32 {
+		t.Fatalf("partial-handshake corpus seed is invalid: %v", readErr)
+	}
 	for range count {
 		connection, dialErr := net.DialTimeout("tcp4", "203.0.113.8:8480", time.Second)
 		if dialErr != nil {

@@ -80,6 +80,9 @@ func runFinalSustainedDirection(t *testing.T, repository, image, toolImage, clie
 ) {
 	t.Helper()
 	baselineFixture := newBlockedEntryFixture(t, client, server)
+	directBeforeCell := "sustained/" + direction + "/direct-before"
+	directAfterCell := "sustained/" + direction + "/direct-after"
+	bindFinalFixturePairSeed(t, baselineFixture, directBeforeCell, directAfterCell, "direct-stream")
 	project := fmt.Sprintf("ardents-s55-direct-%d", time.Now().UnixNano())
 	compose := blockedCompose(repository, project, image, baselineFixture, "final-sustained")
 	cleanup := blockedProjectCleanup(t, compose, project)
@@ -117,6 +120,7 @@ func runFinalSustainedCarrier(t *testing.T, repository, image, toolImage, client
 ) (finalSustainedRunEvidence, uint64, uint64) {
 	t.Helper()
 	fixture := newBlockedEntryFixture(t, client, server)
+	bindFinalFixtureSeed(t, fixture, fmt.Sprintf("sustained/%s/run-%d", direction, run), "sustained-stream")
 	rewriteBlockedWorkload(t, fixture, direction, finalSustainedBytes)
 	chunkCount := (uint64(finalSustainedBytes) + 16_380) / 16_381
 	delay := (10 * time.Minute) / time.Duration(chunkCount-1)

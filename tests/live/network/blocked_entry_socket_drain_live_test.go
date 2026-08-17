@@ -24,6 +24,8 @@ func TestBlockedEntryDrainsAtExactEmergencySocketPressure(t *testing.T) {
 	repository := repositoryRoot(t)
 	image := fmt.Sprintf("ardents-s55-p3-%d:test", time.Now().UnixNano())
 	fixture := newBlockedEntryFixture(t, client, server)
+	bindFinalFixtureSeed(t, fixture, "pressure/P3", "established-work")
+	bindFinalPressureSeed(t, fixture, "pressure/P3", "partial-handshakes")
 	const transferBytes = uint32(32 << 20)
 	rewriteBlockedWorkload(t, fixture, "endpoint-to-publisher", transferBytes)
 	for name, value := range map[string]string{
