@@ -5,32 +5,102 @@ package camouflage
 import (
 	"bytes"
 	"encoding/binary"
+	"strings"
+	"testing"
 )
 
-var dnsControlPayload = []byte("ardents-s5-dns-positive-control")
+const dnsControlPrefix = "ardents-s5-dns-positive-control-v2\x00"
 
 func isDNSPacket(packet []byte) bool {
 	offset, protocol, ambiguous, ok := packetTransport(packet)
 	return ok && !ambiguous && transportUsesDNS(packet, offset, protocol)
 }
 
-func isDNSControl(packet []byte, allowTCP bool) bool {
+func dnsControlClass(packet []byte, allowTCP bool) (byte, string, string) {
 	offset, protocol, ambiguous, ok := packetTransport(packet)
 	if !ok || ambiguous || !transportUsesDNS(packet, offset, protocol) || len(packet) < offset+4 {
-		return false
+		return 0, "", ""
 	}
 	source := binary.BigEndian.Uint16(packet[offset : offset+2])
 	destination := binary.BigEndian.Uint16(packet[offset+2 : offset+4])
+	var payload []byte
 	if protocol == 6 {
-		return allowTCP && ((source == 53 && destination == 53053) ||
-			(source == 53053 && destination == 53))
+		if !allowTCP || source != 53 && destination != 53 || len(packet) < offset+20 {
+			return 0, "", ""
+		}
+		header := int(packet[offset+12]>>4) * 4
+		if header < 20 || len(packet) < offset+header {
+			return 0, "", ""
+		}
+		payload = packet[offset+header:]
+		if len(payload) == 0 && (source == 53 && destination == 53053 || source == 53053 && destination == 53) {
+			return 4, "", ""
+		}
+	} else if protocol == 17 && len(packet) >= offset+8 {
+		length := int(binary.BigEndian.Uint16(packet[offset+4 : offset+6]))
+		if length < 8 || len(packet) < offset+length {
+			return 0, "", ""
+		}
+		payload = packet[offset+8 : offset+length]
+	} else {
+		return 0, "", ""
 	}
-	if protocol != 17 || len(packet) < offset+8 {
-		return false
+	name, token, ok := decodeDNSControlPayload(payload)
+	if !ok {
+		return 0, "", ""
 	}
-	length := int(binary.BigEndian.Uint16(packet[offset+4 : offset+6]))
-	return length >= 8 && len(packet) >= offset+length &&
-		bytes.Equal(packet[offset+8:offset+length], dnsControlPayload)
+	ipOffset := 14
+	if len(packet) >= 18 && binary.BigEndian.Uint16(packet[12:14]) == 0x8100 {
+		ipOffset = 18
+	}
+	if len(packet) <= ipOffset {
+		return 0, "", ""
+	}
+	class := byte(0)
+	switch {
+	case packet[ipOffset]>>4 == 4 && protocol == 17:
+		class = 1
+	case packet[ipOffset]>>4 == 6 && protocol == 17:
+		class = 2
+	case packet[ipOffset]>>4 == 4 && protocol == 6:
+		class = 3
+	}
+	return class, name, token
+}
+
+func encodeDNSControlPayload(name, token string) []byte {
+	return []byte(dnsControlPrefix + token + "\x00" + name)
+}
+
+func decodeDNSControlPayload(payload []byte) (string, string, bool) {
+	if !bytes.HasPrefix(payload, []byte(dnsControlPrefix)) {
+		return "", "", false
+	}
+	parts := strings.Split(string(payload[len(dnsControlPrefix):]), "\x00")
+	if len(parts) != 2 || len(parts[0]) != 32 || parts[1] == "" || len(parts[1]) > 128 {
+		return "", "", false
+	}
+	for _, value := range parts[0] {
+		if !strings.ContainsRune("0123456789abcdef", value) {
+			return "", "", false
+		}
+	}
+	return parts[1], parts[0], true
+}
+
+func TestDNSControlRejectsNamespaceSubstitution(t *testing.T) {
+	value := dnsObservation{BoundaryControls: make(map[string]dnsControlObservation)}
+	accepted := dnsControlTarget{Name: "E-to-B-front", IfIndex: 7, Token: strings.Repeat("a", 32)}
+	if !recordDNSControl(&value, accepted, 1) {
+		t.Fatal("manifest-bound control was rejected")
+	}
+	foreignToken := accepted
+	foreignToken.Token = strings.Repeat("b", 32)
+	foreignInterface := accepted
+	foreignInterface.IfIndex = 8
+	if recordDNSControl(&value, foreignToken, 2) || recordDNSControl(&value, foreignInterface, 3) {
+		t.Fatal("cross-namespace control substitution was accepted")
+	}
 }
 
 func packetTransport(packet []byte) (int, byte, bool, bool) {

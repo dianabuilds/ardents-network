@@ -80,6 +80,17 @@ campaign `-runner`; the harness and verifier reject every other hash.
 
 The same frozen binary owns the streaming runner and exact-cell worker. The
 current implementation validates the 594-cell schedule, verifies the frozen
-supply, and maps the 144 non-hostile cells. Those cells remain inadmissible
-until real terminal/observer/cleanup evidence is connected. The 450-cell
-hostile matrix is also unimplemented, so this slice cannot produce `pass`.
+supply, and maps the 144 non-hostile cells. A selected worker now reports its
+measured terminal and reads the role-owned path/DNS observer results; only the
+parent runner, after the worker exits, removes and rechecks the token-owned
+Docker project, verifies the parent-owned worker root is empty, and rejects a
+retained process-group descendant. It then marks evidence complete only when
+the pre-cleanup terminal marker and final cleanup share the parent monotonic
+clock, every batch/exact Endpoint has all nine boundary results, and each
+boundary has its own three controls captured on the manifest-bound interface.
+Those checksummed controls carry a per-run boundary nonce and use the local
+interface MAC, so another namespace or mutable synchronization file cannot
+substitute their attribution.
+Cells without that complete boundary coverage remain inadmissible. The
+450-cell hostile matrix and retained raw-to-verdict aggregation are also
+unimplemented, so this slice cannot produce `pass`.

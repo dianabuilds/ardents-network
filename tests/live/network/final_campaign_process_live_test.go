@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"sort"
@@ -20,9 +21,11 @@ const maximumFinalWorkerStream = 16 << 20
 
 type finalWorkerCapture struct {
 	buffer   bytes.Buffer
+	line     bytes.Buffer
 	written  int64
 	overflow bool
 	limit    int
+	onLine   func([]byte)
 }
 
 func (capture *finalWorkerCapture) Write(value []byte) (int, error) {
@@ -42,10 +45,34 @@ func (capture *finalWorkerCapture) Write(value []byte) (int, error) {
 	if capture.written > int64(limit) {
 		capture.overflow = true
 	}
+	capture.observeLines(value)
 	return len(value), nil
 }
 
-func runFinalCellWorker(schedule finalRunnerSchedule, cell, test string) ([]finalWorkerResult, error) {
+func (capture *finalWorkerCapture) observeLines(value []byte) {
+	if capture.onLine == nil {
+		return
+	}
+	for len(value) > 0 {
+		index := bytes.IndexByte(value, '\n')
+		if index < 0 {
+			_, _ = capture.line.Write(value)
+			break
+		}
+		_, _ = capture.line.Write(value[:index])
+		capture.onLine(capture.line.Bytes())
+		capture.line.Reset()
+		value = value[index+1:]
+	}
+	if capture.line.Len() > 1<<20 {
+		capture.overflow = true
+		capture.line.Reset()
+	}
+}
+
+func runFinalCellWorker(schedule finalRunnerSchedule, cell, test string,
+	clockOrigin time.Time,
+) (results []finalWorkerResult, err error) {
 	projectToken, err := newFinalProjectToken()
 	if err != nil {
 		return nil, err
@@ -53,6 +80,16 @@ func runFinalCellWorker(schedule finalRunnerSchedule, cell, test string) ([]fina
 	if err := verifyFinalRunnerSupply(schedule, projectToken); err != nil {
 		return nil, errors.Join(err, cleanupFinalWorkerProjects(projectToken))
 	}
+	workerRoot, err := prepareFinalWorkerRoot(projectToken)
+	if err != nil {
+		return nil, errors.Join(err, cleanupFinalWorkerProjects(projectToken))
+	}
+	rootOwned := true
+	defer func() {
+		if rootOwned {
+			err = errors.Join(err, cleanupFinalWorkerRoot(workerRoot))
+		}
+	}()
 	executable, err := os.Executable()
 	if err != nil {
 		return nil, errors.Join(err, cleanupFinalWorkerProjects(projectToken))
@@ -69,8 +106,11 @@ func runFinalCellWorker(schedule finalRunnerSchedule, cell, test string) ([]fina
 		"ARDENTS_FINAL_PRODUCT_IMAGE":  schedule.ProductImageID,
 		"ARDENTS_BLOCKED_COMPOSE_FILE": os.Getenv("ARDENTS_BLOCKED_COMPOSE_FILE"),
 		"ARDENTS_FINAL_PROJECT_TOKEN":  projectToken,
+		"ARDENTS_FINAL_WORKER_ROOT":    workerRoot,
 	})
-	stdout, stderr, err := runFinalBoundedProcess(command, maximumFinalWorkerStream)
+	startedOffset := uint64(time.Since(clockOrigin).Milliseconds())
+	stdout, stderr, receipt, err := runFinalBoundedWorkerProcess(command,
+		maximumFinalWorkerStream, clockOrigin, cell)
 	composeErr := verifyFinalRuntimeCompose(schedule)
 	cleanupErr := cleanupFinalWorkerProjects(projectToken)
 	if ctx.Err() != nil {
@@ -82,17 +122,120 @@ func runFinalCellWorker(schedule finalRunnerSchedule, cell, test string) ([]fina
 	if err != nil {
 		return nil, fmt.Errorf("worker %s failed: %w: %s", test, err, bytes.TrimSpace(stderr))
 	}
-	return decodeFinalWorkerResults(stdout)
+	var decodeErr error
+	results, decodeErr = decodeFinalWorkerResults(stdout)
+	if decodeErr != nil {
+		return nil, decodeErr
+	}
+	if len(results) != 1 || results[0].CellID != cell || results[0].Terminal != receipt.Terminal {
+		return nil, errors.New("final worker terminal receipt does not match its selected result")
+	}
+	if err := releaseFinalWorkerRoot(workerRoot); err != nil {
+		return nil, err
+	}
+	rootOwned = false
+	cleanupOffset := uint64(time.Since(clockOrigin).Milliseconds())
+	terminalOffset := uint64(receipt.At.Milliseconds())
+	completeFinalWorkerEvidence(results, startedOffset, terminalOffset, cleanupOffset)
+	return results, nil
 }
 
 func runFinalBoundedProcess(command *exec.Cmd, limit int) ([]byte, []byte, error) {
+	return runFinalBoundedProcessObserved(command, limit, nil)
+}
+
+type finalTerminalReceipt struct {
+	At       time.Duration
+	CellID   string
+	Terminal string
+	count    uint32
+	results  uint32
+	invalid  bool
+}
+
+func runFinalBoundedWorkerProcess(command *exec.Cmd, limit int,
+	clockOrigin time.Time, expectedCell string,
+) ([]byte, []byte, finalTerminalReceipt, error) {
+	receipt := finalTerminalReceipt{At: -1}
+	observe := func(line []byte) {
+		value, recognized, decodeErr := decodeFinalTerminalMarker(line)
+		if recognized {
+			receipt.count++
+			if decodeErr != nil || receipt.count != 1 || receipt.results != 0 || value.CellID != expectedCell {
+				receipt.invalid = true
+				return
+			}
+			receipt.At = time.Since(clockOrigin)
+			receipt.CellID, receipt.Terminal = value.CellID, value.Terminal
+			return
+		}
+		_, recognized, decodeErr = decodeFinalWorkerResultLine(line)
+		if !recognized {
+			return
+		}
+		receipt.results++
+		if decodeErr != nil || receipt.count != 1 || receipt.results != 1 {
+			receipt.invalid = true
+		}
+	}
+	stdout, stderr, err := runFinalBoundedProcessObserved(command, limit, observe)
+	if receipt.count != 1 || receipt.results != 1 || receipt.invalid || receipt.At < 0 {
+		err = errors.Join(err, errors.New("final worker terminal receipt is missing, duplicated, or invalid"))
+	}
+	return stdout, stderr, receipt, err
+}
+
+func decodeFinalTerminalMarker(line []byte) (struct {
+	Schema   string `json:"schema"`
+	CellID   string `json:"cell_id"`
+	Terminal string `json:"terminal"`
+}, bool, error) {
+	var probe struct {
+		Schema string `json:"schema"`
+	}
+	var value struct {
+		Schema   string `json:"schema"`
+		CellID   string `json:"cell_id"`
+		Terminal string `json:"terminal"`
+	}
+	if err := json.Unmarshal(line, &probe); err != nil {
+		if bytes.Contains(line, []byte("ardents-h3-final-worker-terminal-v1")) {
+			return value, true, err
+		}
+		return value, false, nil
+	}
+	if probe.Schema != "ardents-h3-final-worker-terminal-v1" {
+		return value, false, nil
+	}
+	decoder := json.NewDecoder(bytes.NewReader(line))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&value); err != nil || decoder.Decode(&struct{}{}) != io.EOF ||
+		value.CellID == "" || value.Terminal == "" {
+		return value, true, errors.New("final worker terminal marker is malformed")
+	}
+	canonical, err := json.Marshal(value)
+	if err != nil || !bytes.Equal(line, canonical) {
+		return value, true, errors.New("final worker terminal marker is not canonical")
+	}
+	return value, true, nil
+}
+
+func runFinalBoundedProcessObserved(command *exec.Cmd, limit int,
+	observe func([]byte),
+) ([]byte, []byte, error) {
 	prepareFinalProcess(command)
 	command.WaitDelay = 5 * time.Second
 	command.Cancel = func() error { return terminateFinalProcess(command) }
-	stdout := finalWorkerCapture{limit: limit}
+	stdout := finalWorkerCapture{limit: limit, onLine: observe}
 	stderr := finalWorkerCapture{limit: limit}
 	command.Stdout, command.Stderr = &stdout, &stderr
 	err := command.Run()
+	groupErr := terminateFinalProcess(command)
+	if groupErr == nil {
+		err = errors.Join(err, errors.New("final process retained a descendant after parent exit"))
+	} else if !errors.Is(groupErr, os.ErrProcessDone) {
+		err = errors.Join(err, fmt.Errorf("verify final process-group cleanup: %w", groupErr))
+	}
 	if stdout.overflow || stderr.overflow {
 		return nil, nil, errors.New("final process output exceeded its bound")
 	}
@@ -124,14 +267,43 @@ func decodeFinalWorkerResults(output []byte) ([]finalWorkerResult, error) {
 	scanner := bufio.NewScanner(bytes.NewReader(output))
 	scanner.Buffer(make([]byte, 64<<10), 1<<20)
 	for scanner.Scan() {
-		line := bytes.TrimSpace(scanner.Bytes())
-		var value finalWorkerResult
-		if json.Unmarshal(line, &value) == nil && value.Schema == "ardents-h3-final-worker-cell-v1" {
+		line := scanner.Bytes()
+		value, recognized, err := decodeFinalWorkerResultLine(line)
+		if err != nil {
+			return nil, err
+		}
+		if recognized {
 			result = append(result, value)
 		}
 	}
-	if err := scanner.Err(); err != nil || len(result) == 0 {
-		return nil, errors.Join(err, errors.New("worker emitted no final cell result"))
+	if err := scanner.Err(); err != nil || len(result) != 1 {
+		return nil, errors.Join(err, errors.New("worker must emit exactly one strict final cell result"))
 	}
 	return result, nil
+}
+
+func decodeFinalWorkerResultLine(line []byte) (finalWorkerResult, bool, error) {
+	var probe struct {
+		Schema string `json:"schema"`
+	}
+	var value finalWorkerResult
+	if err := json.Unmarshal(line, &probe); err != nil {
+		if bytes.Contains(line, []byte("ardents-h3-final-worker-cell-v1")) {
+			return value, true, err
+		}
+		return value, false, nil
+	}
+	if probe.Schema != "ardents-h3-final-worker-cell-v1" {
+		return value, false, nil
+	}
+	decoder := json.NewDecoder(bytes.NewReader(line))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&value); err != nil || decoder.Decode(&struct{}{}) != io.EOF {
+		return value, true, errors.New("final worker cell result is malformed")
+	}
+	canonical, err := json.Marshal(value)
+	if err != nil || !bytes.Equal(line, canonical) {
+		return value, true, errors.New("final worker cell result is not canonical")
+	}
+	return value, true, nil
 }

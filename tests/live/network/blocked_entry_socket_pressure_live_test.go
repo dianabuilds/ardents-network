@@ -69,12 +69,13 @@ func TestBlockedEntryReturnsFromExactRecoverableSocketPressure(t *testing.T) {
 	if bridgeHasResourceState(t, ctx, compose, "DRAIN") {
 		t.Fatal("recoverable socket pressure entered DRAIN")
 	}
+	armFinalWorkerTerminal("normal")
 	finishBlockedPressureWork(t, ctx, compose, fixture, transferBytes)
 	cleanup()
 	if ownedImage {
 		removeBlockedPressureImage(t, image, project)
 	}
-	emitFinalWorkerCell(t, "pressure/P2", "normal", started)
+	emitFinalWorkerCell(t, "pressure/P2", "normal", started, fixture.root)
 }
 
 func waitForBlockedHostFile(t *testing.T, ctx context.Context, path string) {

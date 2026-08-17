@@ -80,12 +80,26 @@ non-hostile cells. Before each mapped worker it rehashes the exact clean Git
 archive, requires the frozen commit and source hash, verifies both preloaded
 content-addressed image IDs and their product/tool/base/source labels, then
 uses `--no-build` paths and bounded stdout/stderr capture. The worker result is
-still structurally incomplete because retained terminal, nine-boundary
-observer, and ten-kind residual hooks are not connected; it therefore cannot
-be admitted as evidence. The runner also rejects every hostile cell, and the verifier still
-records `maintained final runner raw-to-verdict recomputation is not
-implemented`. Removing those fail-closed blockers requires measured workers
-for all cells and independent derivation of every aggregate from per-second/raw
+now terminal-bearing and reads the completed role-owned path/DNS results. The
+child cannot set `evidence_complete`: the parent owns the worker's only
+temporary root and process group, verifies that the group has no descendant,
+removes and rechecks every token-owned Docker object, and requires the root to
+be empty before removing it. A terminal marker is timestamped as it reaches
+the parent, before the armed project cleanup starts; start, terminal, and final
+cleanup therefore share the runner's monotonic origin. Only after cleanup does
+the parent encode the fixed ten-kind zero-residual inventory. It admits the
+result only when every batch and exact `capacity-00`…`03/15` Endpoint contains
+all nine boundary records. Each boundary has separate IPv4 UDP, IPv6 UDP, and
+IPv4 TCP positive controls injected as checksummed, per-run nonced unicast
+frames and captured on the manifest-bound Linux interface index. The boundary,
+nonce, and protocol class travel in the frame rather than a candidate-writable
+coordination label. C0/direct/negative/recovery
+cells that do not yet expose every required
+boundary therefore remain structurally incomplete. The runner also rejects
+every hostile cell, and the verifier still records `maintained final runner
+raw-to-verdict recomputation is not implemented`. Removing those fail-closed
+blockers requires measured workers for all cells, retained raw observer data,
+and independent derivation of every aggregate from per-second/raw
 observations. Merely duplicating a runner-authored summary into JSONL is not
 sufficient.
 

@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -74,7 +75,7 @@ func TestFinalRunnerObservationPreservesWorkerEvidence(t *testing.T) {
 	seed := strings.Repeat("a", 64)
 	plan := finalRunnerPlan{Schema: "ardents-h3-blocked-cell-plan-v1", CellID: "profile/C1/00", Seed: seed}
 	worker := finalWorkerResult{CellID: plan.CellID, Terminal: "success", EvidenceComplete: true, StartedOffsetMillis: 4,
-		TerminalOffsetMillis: 8, CleanupOffsetMillis: 11,
+		TerminalOffsetMillis: 8, CleanupOffsetMillis: 11, ObserverSets: 1,
 		Observers: fixtureFinalRunnerObservers(), Residuals: fixtureFinalRunnerResiduals()}
 	if !validFinalRunnerPlan(plan) {
 		t.Fatal("valid final plan rejected")
@@ -98,6 +99,148 @@ func TestFinalRunnerObservationPreservesWorkerEvidence(t *testing.T) {
 	incomplete.EvidenceComplete = false
 	if validFinalWorkerResult(incomplete) {
 		t.Fatal("worker without retained evidence was accepted")
+	}
+}
+
+func TestFinalWorkerEvidenceRequiresRetainedObserversAndPostCleanupRoot(t *testing.T) {
+	parent := t.TempDir()
+	root, err := os.MkdirTemp(parent, "fixture-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeFinalObserverRoot(t, root, []string{"endpoint"})
+	observers := collectFinalWorkerObservers("profile/C1/00", []string{root})
+	if len(observers) != 9 {
+		t.Fatalf("retained observers=%d", len(observers))
+	}
+	value := []finalWorkerResult{{CellID: "profile/C1/00", TerminalOffsetMillis: 4,
+		Observers: observers, ObserverSets: 1}}
+	if err := releaseFinalWorkerRoot(parent); err == nil {
+		t.Fatal("live worker root was accepted before cleanup")
+	}
+	if err := os.RemoveAll(root); err != nil {
+		t.Fatal(err)
+	}
+	if err := releaseFinalWorkerRoot(parent); err != nil {
+		t.Fatal(err)
+	}
+	completeFinalWorkerEvidence(value, 3, 4, 5)
+	if !value[0].EvidenceComplete ||
+		len(value[0].Residuals) != 10 || value[0].StartedOffsetMillis != 3 ||
+		value[0].TerminalOffsetMillis != 4 || value[0].CleanupOffsetMillis != 5 {
+		t.Fatalf("post-cleanup evidence=%+v", value[0])
+	}
+}
+
+func TestFinalWorkerRootCleanupIsOwnershipScoped(t *testing.T) {
+	secret := t.TempDir()
+	t.Setenv("ARDENTS_BLOCKED_SECRET_ROOT", secret)
+	root, err := prepareFinalWorkerRoot(strings.Repeat("a", 24))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "residual"), []byte("test"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := cleanupFinalWorkerRoot(root); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(root); !os.IsNotExist(err) {
+		t.Fatalf("owned worker root remained: %v", err)
+	}
+	if err := cleanupFinalWorkerRoot(filepath.Join(secret, "outside")); err == nil {
+		t.Fatal("cleanup accepted an unowned path")
+	}
+}
+
+func TestFinalWorkerEvidenceRejectsMissingCapacityUnitAndLaterBatch(t *testing.T) {
+	reference := filepath.Join(t.TempDir(), "reference")
+	writeFinalObserverRoot(t, reference, []string{"capacity-00", "capacity-01", "capacity-02", "capacity-03"})
+	if len(collectFinalWorkerObservers("capacity/h3-s5-b1-v1/0", []string{reference})) != 9 {
+		t.Fatal("complete four-unit capacity observers were rejected")
+	}
+	exact := filepath.Join(reference, "sync", "capacity-03")
+	substitute := filepath.Join(reference, "sync", "capacity-copy")
+	if err := os.Rename(exact, substitute); err != nil {
+		t.Fatal(err)
+	}
+	if collectFinalWorkerObservers("capacity/h3-s5-b1-v1/0", []string{reference}) != nil {
+		t.Fatal("capacity cell accepted a substituted Endpoint identity")
+	}
+	if err := os.Rename(substitute, exact); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(reference, "sync", "capacity-03", "result.json")); err != nil {
+		t.Fatal(err)
+	}
+	if collectFinalWorkerObservers("capacity/h3-s5-b1-v1/0", []string{reference}) != nil {
+		t.Fatal("capacity cell accepted a missing Endpoint observer")
+	}
+	first, second := filepath.Join(t.TempDir(), "batch-0"), filepath.Join(t.TempDir(), "batch-1")
+	for _, root := range []string{first, second} {
+		writeFinalObserverRoot(t, root, []string{"capacity-00", "capacity-01", "capacity-02", "capacity-03"})
+	}
+	if err := os.Remove(filepath.Join(second, "sync", "bridge", "result.json")); err != nil {
+		t.Fatal(err)
+	}
+	if collectFinalWorkerObservers("pressure/P4", []string{first, second}) != nil {
+		t.Fatal("P4 accepted observer loss in a later batch")
+	}
+	boundaryRoot := filepath.Join(t.TempDir(), "boundary")
+	writeFinalObserverRoot(t, boundaryRoot, []string{"endpoint"})
+	dnsPath := filepath.Join(boundaryRoot, "sync", "bridge", "result.json")
+	var dns finalDNSObservation
+	raw, err := os.ReadFile(dnsPath)
+	if err != nil || json.Unmarshal(raw, &dns) != nil {
+		t.Fatal("read boundary-control fixture")
+	}
+	delete(dns.BoundaryControls, "B-to-Initiator")
+	raw, _ = json.Marshal(dns)
+	if err := os.WriteFile(dnsPath, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if collectFinalWorkerObservers("profile/C1/00", []string{boundaryRoot}) != nil {
+		t.Fatal("worker accepted a missing boundary-specific DNS control")
+	}
+}
+
+func writeFinalObserverRoot(t *testing.T, root string, endpoints []string) {
+	t.Helper()
+	flows := map[string]int64{"E-to-B-front": 1, "B-to-Initiator": 1,
+		"Responder-to-Publisher": 1, "Initiator-to-Introduction": 1,
+		"Introduction-to-Rendezvous": 1, "Rendezvous-to-Responder": 1}
+	roles := append(append([]string(nil), endpoints...), "bridge", "publisher", "initiator", "introduction",
+		"rendezvous", "responder")
+	for _, role := range roles {
+		directory := filepath.Join(root, "sync", role)
+		if err := os.MkdirAll(directory, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		phaseRole := role
+		if strings.HasPrefix(role, "capacity-") {
+			phaseRole = "endpoint"
+		}
+		pathRaw, _ := json.Marshal(finalPathObservation{Phase: "s5.3-" + phaseRole, Counts: flows,
+			DynamicBindings: map[string]finalTarget{"front-to-WebTunnel-server": {Address: "127.0.0.1", Port: 1}},
+			Packets:         1, Passed: true})
+		controls := make(map[string]finalDNSControl, len(flows)+1)
+		for flow := range flows {
+			controls[flow] = finalDNSControl{IPv4UDP: 2, IPv6UDP: 2, IPv4TCP: 2, IfIndex: 1,
+				Token: strings.Repeat("a", 32)}
+		}
+		controls["front-to-WebTunnel-server"] = finalDNSControl{
+			IPv4UDP: 2, IPv6UDP: 2, IPv4TCP: 2, IfIndex: 1, Token: strings.Repeat("a", 32),
+		}
+		count := int64(len(controls))
+		dnsRaw, _ := json.Marshal(finalDNSObservation{Controls: 6 * count,
+			IPv4UDPControls: 2 * count, IPv6UDPControls: 2 * count, IPv4TCPControls: 2 * count,
+			BoundaryControls: controls})
+		if err := os.WriteFile(filepath.Join(directory, "path-result.json"), pathRaw, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(directory, "result.json"), dnsRaw, 0o600); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 
@@ -191,13 +334,86 @@ func TestFinalBoundedProcessStopsHungCommand(t *testing.T) {
 	}
 }
 
+func TestFinalWorkerTerminalUsesParentReceiptClock(t *testing.T) {
+	t.Setenv("ARDENTS_FINAL_COMMAND_FIXTURE", "terminal-delay")
+	command := exec.CommandContext(context.Background(), os.Args[0], "-test.run", "^TestFinalCommandFixture$")
+	command.Env = os.Environ()
+	origin := time.Now()
+	_, _, receipt, err := runFinalBoundedWorkerProcess(command, 1<<20, origin, "profile/C1/00")
+	elapsed := time.Since(origin)
+	if err != nil || receipt.At < 0 || receipt.At >= elapsed-100*time.Millisecond ||
+		receipt.CellID != "profile/C1/00" || receipt.Terminal != "success" {
+		t.Fatalf("terminal receipt=%+v elapsed=%s err=%v", receipt, elapsed, err)
+	}
+}
+
+func TestFinalWorkerTerminalRejectsDuplicateAndMismatchedMarkers(t *testing.T) {
+	for _, mode := range []string{"terminal-duplicate", "terminal-wrong-cell", "result-before-terminal",
+		"result-unknown", "result-duplicate-key", "result-noncanonical", "result-malformed-extra"} {
+		t.Run(mode, func(t *testing.T) {
+			t.Setenv("ARDENTS_FINAL_COMMAND_FIXTURE", mode)
+			command := exec.CommandContext(context.Background(), os.Args[0], "-test.run", "^TestFinalCommandFixture$")
+			command.Env = os.Environ()
+			if _, _, _, err := runFinalBoundedWorkerProcess(command, 1<<20, time.Now(), "profile/C1/00"); err == nil {
+				t.Fatal("invalid terminal marker was accepted")
+			}
+		})
+	}
+}
+
 func TestFinalCommandFixture(t *testing.T) {
 	switch os.Getenv("ARDENTS_FINAL_COMMAND_FIXTURE") {
 	case "oversized":
 		_, _ = os.Stdout.Write(make([]byte, (1<<20)+1))
 	case "hang":
 		time.Sleep(time.Hour)
+	case "terminal-delay":
+		writeFinalCommandTerminal("profile/C1/00")
+		time.Sleep(200 * time.Millisecond)
+		writeFinalCommandResult("")
+	case "terminal-duplicate":
+		for range 2 {
+			writeFinalCommandTerminal("profile/C1/00")
+		}
+		writeFinalCommandResult("")
+	case "terminal-wrong-cell":
+		writeFinalCommandTerminal("profile/C1/01")
+		writeFinalCommandResult("")
+	case "result-before-terminal":
+		writeFinalCommandResult("")
+		writeFinalCommandTerminal("profile/C1/00")
+	case "result-unknown", "result-duplicate-key", "result-noncanonical":
+		writeFinalCommandTerminal("profile/C1/00")
+		writeFinalCommandResult(os.Getenv("ARDENTS_FINAL_COMMAND_FIXTURE"))
+	case "result-malformed-extra":
+		writeFinalCommandTerminal("profile/C1/00")
+		writeFinalCommandResult("")
+		_, _ = os.Stdout.WriteString("{\"schema\":\"ardents-h3-final-worker-cell-v1\"\n")
 	}
+}
+
+func writeFinalCommandTerminal(cell string) {
+	value := struct {
+		Schema   string `json:"schema"`
+		CellID   string `json:"cell_id"`
+		Terminal string `json:"terminal"`
+	}{Schema: "ardents-h3-final-worker-terminal-v1", CellID: cell, Terminal: "success"}
+	raw, _ := json.Marshal(value)
+	_, _ = os.Stdout.Write(append(raw, '\n'))
+}
+
+func writeFinalCommandResult(mutation string) {
+	raw, _ := json.Marshal(finalWorkerResult{Schema: "ardents-h3-final-worker-cell-v1",
+		CellID: "profile/C1/00", Terminal: "success"})
+	switch mutation {
+	case "result-unknown":
+		raw = append(raw[:len(raw)-1], []byte(",\"unknown\":true}")...)
+	case "result-duplicate-key":
+		raw = append([]byte("{\"schema\":\"ardents-h3-final-worker-cell-v1\","), raw[1:]...)
+	case "result-noncanonical":
+		raw = append([]byte(" "), raw...)
+	}
+	_, _ = os.Stdout.Write(append(raw, '\n'))
 }
 
 func fixtureFinalRunnerObservers() []finalRunnerObserver {

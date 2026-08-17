@@ -75,7 +75,7 @@ func runBlockedNegativeEndpoint(t *testing.T) {
 	if runErr == nil || pipeErr != nil || !strings.Contains(captured.String(), "bridge-attempt-exhausted") {
 		t.Fatalf("%s terminal = %v, pipe=%v\n%s", profile, runErr, pipeErr, captured.String())
 	}
-	finishBlockedObservation(t)
+	finishBlockedObservation(t, manifest)
 	result := map[string]any{"kind": "negative-result", "profile": profile,
 		"terminal": "bridge-attempt-exhausted", "forbidden_fallbacks": 0}
 	raw, _ := json.Marshal(result)

@@ -107,17 +107,19 @@ func runSelectedFinalSustainedCell(t *testing.T, repository, image, toolImage, c
 		pairDigest := sha256.Sum256([]byte("ardents-h3-final-direct-pair-v1/" + direction))
 		pairID := hex.EncodeToString(pairDigest[:])
 		_, _ = runFinalDirectBaseline(t, ctx, compose, toolImage, direction, fixture.root, pairID, timeline)
+		armFinalWorkerTerminal("complete")
 		cleanup()
-		emitFinalWorkerCell(t, cell, "complete", started)
+		emitFinalWorkerCell(t, cell, "complete", started, fixture.root)
 		return
 	}
 	var run int
 	if _, err := fmt.Sscanf(parts[2], "run-%d", &run); err != nil || run < 0 || run > 4 {
 		t.Fatalf("invalid selected sustained run %q", cell)
 	}
-	_, _, _ = runFinalSustainedCarrier(t, repository, image, toolImage, client, server,
+	armFinalWorkerTerminal("complete")
+	_, _, _, root := runFinalSustainedCarrier(t, repository, image, toolImage, client, server,
 		direction, run, timeline)
-	emitFinalWorkerCell(t, cell, "complete", started)
+	emitFinalWorkerCell(t, cell, "complete", started, root)
 }
 
 func runFinalSustainedDirection(t *testing.T, repository, image, toolImage, client, server,
@@ -139,14 +141,14 @@ func runFinalSustainedDirection(t *testing.T, repository, image, toolImage, clie
 	directBeforeStarted := time.Now()
 	directBefore, beforeEvidence := runFinalDirectBaseline(t, ctx, compose, toolImage, direction,
 		baselineFixture.root, pairID, timeline)
-	emitFinalWorkerCell(t, directBeforeCell, "complete", directBeforeStarted)
+	emitFinalWorkerCell(t, directBeforeCell, "complete", directBeforeStarted, baselineFixture.root)
 	cell := finalSustainedCellEvidence{Schema: "ardents-h3-final-sustained-v1", Direction: direction,
 		DirectBeforeMbit: directBefore, DirectBeforeValid: true, DirectPairID: pairID, DirectBefore: beforeEvidence}
 	for run := range 5 {
 		runStarted := time.Now()
-		result, endpointBytes, publisherBytes := runFinalSustainedCarrier(t, repository, image, toolImage,
+		result, endpointBytes, publisherBytes, root := runFinalSustainedCarrier(t, repository, image, toolImage,
 			client, server, direction, run, timeline)
-		emitFinalWorkerCell(t, fmt.Sprintf("sustained/%s/run-%d", direction, run), "complete", runStarted)
+		emitFinalWorkerCell(t, fmt.Sprintf("sustained/%s/run-%d", direction, run), "complete", runStarted, root)
 		cell.Runs = append(cell.Runs, result)
 		cell.EndpointCarrierBytes += endpointBytes
 		cell.PublisherCarrierBytes += publisherBytes
@@ -157,7 +159,7 @@ func runFinalSustainedDirection(t *testing.T, repository, image, toolImage, clie
 	directAfterStarted := time.Now()
 	cell.DirectAfterMbit, cell.DirectAfter = runFinalDirectBaseline(t, ctx, compose, toolImage, direction,
 		baselineFixture.root, pairID, timeline)
-	emitFinalWorkerCell(t, directAfterCell, "complete", directAfterStarted)
+	emitFinalWorkerCell(t, directAfterCell, "complete", directAfterStarted, baselineFixture.root)
 	cell.DirectAfterValid = true
 	assertFinalSustainedCell(t, cell)
 	if err := json.NewEncoder(os.Stdout).Encode(cell); err != nil {
@@ -168,7 +170,7 @@ func runFinalSustainedDirection(t *testing.T, repository, image, toolImage, clie
 
 func runFinalSustainedCarrier(t *testing.T, repository, image, toolImage, client, server,
 	direction string, run int, timeline time.Time,
-) (finalSustainedRunEvidence, uint64, uint64) {
+) (finalSustainedRunEvidence, uint64, uint64, string) {
 	t.Helper()
 	fixture := newBlockedEntryFixture(t, client, server)
 	bindFinalFixtureSeed(t, fixture, fmt.Sprintf("sustained/%s/run-%d", direction, run), "sustained-stream")
@@ -235,6 +237,7 @@ func runFinalSustainedCarrier(t *testing.T, repository, image, toolImage, client
 			t.Fatalf("final sustained %s Route = %+v", role, route)
 		}
 	}
+	publishFinalWorkerTerminal()
 	writeLiveFile(t, filepath.Join(fixture.root, "sync", "bridge", "bridge-stop"), []byte("stop\n"))
 	for _, role := range []string{"endpoint", "bridge"} {
 		waitForBlockedHostFile(t, ctx,
@@ -282,7 +285,7 @@ func runFinalSustainedCarrier(t *testing.T, repository, image, toolImage, client
 	result.FinishedOffsetMillis = uint64(time.Since(timeline).Milliseconds())
 	result.Resources = mergeFinalCarrierReserve(result.Resources, carrier["bridge"])
 	cleanup()
-	return result, finalCarrierDelta(carrier["endpoint"]), finalCarrierDelta(carrier["publisher"])
+	return result, finalCarrierDelta(carrier["endpoint"]), finalCarrierDelta(carrier["publisher"]), fixture.root
 }
 
 func assertFinalSustainedCell(t *testing.T, cell finalSustainedCellEvidence) {

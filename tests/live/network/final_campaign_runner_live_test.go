@@ -35,8 +35,9 @@ func runFinalCampaignRunner() int {
 		}
 		result, ok := cached[plan.CellID]
 		if !ok {
-			groupStarted := uint64(time.Since(started).Milliseconds())
-			group, groupErr := executeFinalCellGroup(schedule, plan.CellID)
+			groupOrigin := time.Now()
+			groupStarted := uint64(groupOrigin.Sub(started).Milliseconds())
+			group, groupErr := executeFinalCellGroup(schedule, plan.CellID, groupOrigin)
 			if groupErr != nil {
 				fmt.Fprintln(os.Stderr, "final runner:", groupErr)
 				return 1
@@ -98,7 +99,12 @@ func finalObservationFromWorker(plan finalRunnerPlan, result finalWorkerResult) 
 }
 
 func validFinalWorkerResult(value finalWorkerResult) bool {
+	expectedSets := uint16(1)
+	if value.CellID == "pressure/P4" {
+		expectedSets = 10
+	}
 	if !value.EvidenceComplete || value.CellID == "" || value.Terminal == "" ||
+		value.ObserverSets != expectedSets ||
 		value.TerminalOffsetMillis < value.StartedOffsetMillis ||
 		value.CleanupOffsetMillis < value.TerminalOffsetMillis || len(value.Observers) != 9 || len(value.Residuals) != 10 {
 		return false
@@ -129,12 +135,14 @@ func validFinalRunnerPlan(plan finalRunnerPlan) bool {
 	return true
 }
 
-func executeFinalCellGroup(schedule finalRunnerSchedule, cell string) ([]finalWorkerResult, error) {
+func executeFinalCellGroup(schedule finalRunnerSchedule, cell string,
+	clockOrigin time.Time,
+) ([]finalWorkerResult, error) {
 	test := finalWorkerTest(cell)
 	if test == "" {
 		return nil, errors.New("hostile final cell worker is not implemented: " + cell)
 	}
-	return runFinalCellWorker(schedule, cell, test)
+	return runFinalCellWorker(schedule, cell, test, clockOrigin)
 }
 
 func finalWorkerTest(cell string) string {

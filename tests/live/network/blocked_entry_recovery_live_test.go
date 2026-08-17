@@ -62,8 +62,9 @@ func TestBlockedEntryRecoveryParentCommandsAcrossNamespaces(t *testing.T) {
 			}
 			started := time.Now()
 			bindFinalFixtureSeed(t, fixture, cell, "recovery-stream")
+			armFinalWorkerTerminal("abrupt connection loss")
 			runBlockedRecoveryEpisode(t, repository, image, fixture, episode)
-			emitFinalWorkerCell(t, cell, "abrupt connection loss", started)
+			emitFinalWorkerCell(t, cell, "abrupt connection loss", started, fixture.root)
 		})
 	}
 }
@@ -172,6 +173,7 @@ func runBlockedRecoveryEpisode(t *testing.T, repository, image string, fixture b
 		applicationAt.Sub(lastByte) > 15*time.Second {
 		t.Fatalf("recovery Application result = %+v received after %s", application, applicationAt.Sub(lastByte))
 	}
+	publishFinalWorkerTerminal()
 	for _, service := range []string{"recovery-endpoint", "recovery-observer", "fault-one"} {
 		waitBlockedContainer(t, ctx, compose, service)
 	}

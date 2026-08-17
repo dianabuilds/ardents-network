@@ -71,14 +71,15 @@ func TestBlockedEntryCommandsAcrossNamespaces(t *testing.T) {
 					if profile == "C5" || profile == "C6" {
 						bindFinalProbeSeed(t, fixture, cell, "probe-corpus")
 					}
-					runBlockedEntryEpisode(t, repository, image, fixture, profile, episode)
 					terminal := "success"
 					if profile == "C5" {
 						terminal = "probe-contained"
 					} else if profile == "C6" {
 						terminal = "limitation-recorded"
 					}
-					emitFinalWorkerCell(t, cell, terminal, started)
+					armFinalWorkerTerminal(terminal)
+					runBlockedEntryEpisode(t, repository, image, fixture, profile, episode)
+					emitFinalWorkerCell(t, cell, terminal, started, fixture.root)
 				})
 			}
 		})
@@ -145,6 +146,7 @@ func runBlockedEntryEpisode(t *testing.T, repository, image string, fixture bloc
 		waitBlockedContainer(t, ctx, compose, "probe")
 		waitBlockedContainer(t, ctx, compose, "probe-observer")
 	}
+	publishFinalWorkerTerminal()
 	if profile != "C0" {
 		writeLiveFile(t, filepath.Join(fixture.root, "sync", "bridge", "bridge-stop"), []byte("stop\n"))
 	}
@@ -190,6 +192,7 @@ func blockedProjectCleanup(t *testing.T, compose composeCall, project string) fu
 	var once sync.Once
 	return func() {
 		once.Do(func() {
+			publishFinalWorkerTerminal()
 			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 			defer cancel()
 			if output, err := compose(ctx, "down", "--volumes", "--remove-orphans", "--timeout", "0"); err != nil {

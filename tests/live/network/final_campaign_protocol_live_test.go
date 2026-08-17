@@ -80,6 +80,7 @@ type finalWorkerResult struct {
 	CleanupOffsetMillis  uint64                `json:"cleanup_offset_millis"`
 	Observers            []finalRunnerObserver `json:"observers"`
 	Residuals            []finalRunnerResidual `json:"residuals"`
+	ObserverSets         uint16                `json:"observer_sets"`
 }
 
 type finalRunnerObservation struct {

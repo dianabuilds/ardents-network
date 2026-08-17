@@ -149,7 +149,7 @@ func runBlockedProbe(t *testing.T) {
 	} else {
 		t.Fatalf("unknown blocked probe profile %q", profile)
 	}
-	finishBlockedObservation(t)
+	finishBlockedObservation(t, blockedManifest("probe"))
 }
 
 func blockedProbeHTTP(t *testing.T, address, path string, config *tls.Config, canary [32]byte) string {

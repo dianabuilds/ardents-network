@@ -63,7 +63,9 @@ func TestBlockedEntryDrainsAtExactEmergencySocketPressure(t *testing.T) {
 	waitForBlockedHostFile(t, ctx, filepath.Join(fixture.root, "sync", "pressure", "pressure-ready"))
 	waitForBridgeSocketSamples(t, ctx, compose, 29, 1)
 	drainObserved := time.Now()
+	armFinalWorkerTerminal("drain")
 	waitForBridgeResourceState(t, ctx, compose, "DRAIN")
+	publishFinalWorkerTerminal()
 	waitForBridgeResourceState(t, ctx, compose, "EXIT")
 	waitBlockedContainer(t, ctx, compose, "bridge")
 	if elapsed := time.Since(drainObserved); elapsed > 60*time.Second {
@@ -84,7 +86,7 @@ func TestBlockedEntryDrainsAtExactEmergencySocketPressure(t *testing.T) {
 	if ownedImage {
 		removeBlockedPressureImage(t, image, project)
 	}
-	emitFinalWorkerCell(t, "pressure/P3", "drain", started)
+	emitFinalWorkerCell(t, "pressure/P3", "drain", started, fixture.root)
 }
 
 func latestLiveProgressForService(t *testing.T, ctx context.Context, compose composeCall, service string) uint32 {

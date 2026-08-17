@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -45,7 +44,15 @@ type blockedPathResult struct {
 }
 
 type blockedDNSResult struct {
-	Packets, Controls, Ambiguous int64
+	Packets, Controls, Ambiguous                      int64
+	IPv4UDPControls, IPv6UDPControls, IPv4TCPControls int64
+	BoundaryControls                                  map[string]blockedDNSControl
+}
+
+type blockedDNSControl struct {
+	IPv4UDP, IPv6UDP, IPv4TCP int64
+	IfIndex                   int
+	Token                     string
 }
 
 func writeBlockedJSON(t *testing.T, path string, value any) {
@@ -172,7 +179,7 @@ func runBlockedBridge(t *testing.T) {
 				t.Fatalf("Bridge exited before stop: %v\n%s", err, captured.String())
 			}
 			publishBlockedResourceCleanup(t)
-			finishBlockedObservation(t)
+			finishBlockedObservation(t, blockedManifest("bridge"))
 			return
 		case <-time.After(25 * time.Millisecond):
 		}
@@ -193,7 +200,7 @@ func runBlockedBridge(t *testing.T) {
 		t.Fatal("Bridge command exceeded the cleanup deadline")
 	}
 	publishBlockedResourceCleanup(t)
-	finishBlockedObservation(t)
+	finishBlockedObservation(t, blockedManifest("bridge"))
 }
 
 func runBlockedObserved(t *testing.T, _ string, manifest blockedPathManifest, run func(*testing.T)) {
@@ -201,7 +208,7 @@ func runBlockedObserved(t *testing.T, _ string, manifest blockedPathManifest, ru
 	prepareBlockedObservation(t, manifest)
 	run(t)
 	publishBlockedResourceCleanup(t)
-	finishBlockedObservation(t)
+	finishBlockedObservation(t, manifest)
 }
 
 func publishBlockedResourceCleanup(t *testing.T) {
@@ -272,19 +279,7 @@ func prepareBlockedObservation(t *testing.T, manifest blockedPathManifest) {
 	t.Helper()
 	root := blockedSync()
 	waitBlockedFile(t, filepath.Join(root, "ready"), 10*time.Second)
-	for _, target := range []struct{ network, address string }{{"udp4", "127.0.0.1:53"}, {"udp6", "[::1]:53"}} {
-		connection, err := net.Dial(target.network, target.address)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := connection.Write([]byte("ardents-s5-dns-positive-control")); err != nil {
-			t.Fatal(err)
-		}
-		_ = connection.Close()
-	}
-	sendBlockedTCPControl(t)
-	writeBlockedSignal(t, filepath.Join(root, "control-done"))
-	waitBlockedFile(t, filepath.Join(root, "control-stopped"), 3*time.Second)
+	runBlockedControlPlan(t, root, manifest)
 	raw, err := json.Marshal(manifest)
 	if err != nil {
 		t.Fatal(err)
@@ -295,7 +290,7 @@ func prepareBlockedObservation(t *testing.T, manifest blockedPathManifest) {
 	waitBlockedFile(t, filepath.Join(root, "path-ready"), 3*time.Second)
 }
 
-func finishBlockedObservation(t *testing.T) {
+func finishBlockedObservation(t *testing.T, manifest blockedPathManifest) {
 	t.Helper()
 	root := blockedSync()
 	writeBlockedSignal(t, filepath.Join(root, "path-done"))
@@ -309,40 +304,11 @@ func finishBlockedObservation(t *testing.T) {
 	waitBlockedFile(t, filepath.Join(root, "result.json"), 3*time.Second)
 	var dns blockedDNSResult
 	readBlockedJSON(t, filepath.Join(root, "result.json"), &dns)
-	if dns.Controls < 6 || dns.Packets != 0 || dns.Ambiguous != 0 {
+	if !completeBlockedDNSObservation(dns, manifest) || dns.Packets != 0 || dns.Ambiguous != 0 {
 		t.Fatalf("DNS evidence = %+v", dns)
 	}
 	fmt.Printf("{\"kind\":\"blocked-observation\",\"path_packets\":%d,\"dns_controls\":%d}\n",
 		path.Packets, dns.Controls)
-}
-
-func sendBlockedTCPControl(t *testing.T) {
-	t.Helper()
-	listener, err := net.Listen("tcp4", "127.0.0.1:53")
-	if err != nil {
-		t.Fatal(err)
-	}
-	accepted := make(chan error, 1)
-	go func() {
-		connection, acceptErr := listener.Accept()
-		if acceptErr == nil {
-			_, acceptErr = connection.Write([]byte("ardents-s5-dns-positive-control"))
-			_ = connection.Close()
-		}
-		accepted <- acceptErr
-	}()
-	dialer := net.Dialer{LocalAddr: &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: 53053}}
-	connection, dialErr := dialer.Dial("tcp4", "127.0.0.1:53")
-	if dialErr == nil {
-		_ = connection.SetReadDeadline(time.Now().Add(time.Second))
-		control := make([]byte, 1)
-		_, dialErr = io.ReadFull(connection, control)
-		_ = connection.Close()
-	}
-	_ = listener.Close()
-	if err := errors.Join(dialErr, <-accepted); err != nil {
-		t.Fatal(err)
-	}
 }
 
 func blockedManifest(role string) blockedPathManifest {

@@ -62,9 +62,10 @@ func TestBlockedEntryFinalReferenceAndStrongCapacity(t *testing.T) {
 					return
 				}
 				started := time.Now()
-				runBlockedCapacityBatch(t, repository, image, toolImage, client, server,
+				armFinalWorkerTerminal("complete")
+				root := runBlockedCapacityBatch(t, repository, image, toolImage, client, server,
 					profile.name, profile.capacity, batch)
-				emitFinalWorkerCell(t, cell, "complete", started)
+				emitFinalWorkerCell(t, cell, "complete", started, root)
 			})
 		}
 	}
@@ -72,7 +73,7 @@ func TestBlockedEntryFinalReferenceAndStrongCapacity(t *testing.T) {
 
 func runBlockedCapacityBatch(t *testing.T, repository, image, toolImage, client, server, profile string,
 	capacity, batch int,
-) {
+) string {
 	t.Helper()
 	fixture := newBlockedEntryFixture(t, client, server)
 	profileID := "h3-s5-b1-v1"
@@ -155,6 +156,7 @@ func runBlockedCapacityBatch(t *testing.T, repository, image, toolImage, client,
 			t.Fatalf("%s capacity result = %+v", role, result)
 		}
 	}
+	publishFinalWorkerTerminal()
 	writeLiveFile(t, filepath.Join(fixture.root, "sync", "bridge", "bridge-stop"), []byte("stop\n"))
 	for _, service := range []string{"bridge", "bridge-observer", "initiator-observer", "introduction-observer",
 		"rendezvous-observer", "responder-observer", "publisher-observer", "publisher-service"} {
@@ -162,6 +164,7 @@ func runBlockedCapacityBatch(t *testing.T, repository, image, toolImage, client,
 	}
 	removeCapacityProjectObjects(t, project)
 	cleanup()
+	return fixture.root
 }
 
 func readHostJSON(t *testing.T, path string, value any) {

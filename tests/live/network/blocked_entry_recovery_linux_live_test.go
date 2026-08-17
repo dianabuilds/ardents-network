@@ -47,7 +47,7 @@ func runBlockedRecoveryParent(t *testing.T) {
 		t.Fatalf("recovery command terminal is not clipped:\n%s", commandOutput)
 	}
 	evidence := assertBlockedRecoveryEvidence(t)
-	finishBlockedObservation(t)
+	finishBlockedObservation(t, blockedNegativeManifest("recovery"))
 	if _, err := os.Stat("/run/state/candidate"); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("recovery candidate residue: %v", err)
 	}

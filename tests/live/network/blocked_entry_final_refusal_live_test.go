@@ -60,6 +60,7 @@ type finalRefusalBatch struct {
 	progress  bool
 	oom       uint16
 	reconcile finalReconciliationEvidence
+	root      string
 }
 
 func TestBlockedEntryFinalProjectedAdmissionAndChurn(t *testing.T) {
@@ -100,13 +101,15 @@ func TestBlockedEntryFinalProjectedAdmissionAndChurn(t *testing.T) {
 		Terminal: "normal", Offers: 100, Refused: first.admission.Refused, CadenceMillis: 100,
 		DurationMillis: 10_000, MaximumRefusalMillis: first.admission.MaximumMillis,
 		Progress: first.progress, Cleanup: true, OOMEvents: first.oom})
-	emitFinalWorkerCell(t, "pressure/P0", "normal", firstStarted)
-	emitFinalWorkerCell(t, "pressure/P1", "normal", firstStarted)
+	emitFinalWorkerCell(t, "pressure/P0", "normal", firstStarted, first.root)
+	emitFinalWorkerCell(t, "pressure/P1", "normal", firstStarted, first.root)
 	churn := finalPressureEvidence{Schema: "ardents-h3-final-pressure-v1", ID: "P4", Terminal: "normal",
 		Offers: 1_000, CadenceMillis: 100, DurationMillis: 100_000, Batches: 10, Progress: true, Cleanup: true}
 	churnStarted := time.Now()
+	var churnRoots []string
 	for batch := range 10 {
 		observed := runFinalRefusalBatch(t, repository, image, toolImage, client, server, batch+1, 100)
+		churnRoots = append(churnRoots, observed.root)
 		churn.Refused += observed.admission.Refused
 		churn.MaximumRefusalMillis = max(churn.MaximumRefusalMillis, observed.admission.MaximumMillis)
 		churn.Progress = churn.Progress && observed.progress
@@ -116,7 +119,7 @@ func TestBlockedEntryFinalProjectedAdmissionAndChurn(t *testing.T) {
 	}
 	churn.UpwardTrend = !exactLiveReconciliations(churn.Reconciliations)
 	emitFinalPressure(t, churn)
-	emitFinalWorkerCell(t, "pressure/P4", "normal", churnStarted)
+	emitFinalWorkerCell(t, "pressure/P4", "normal", churnStarted, churnRoots...)
 }
 
 func runFinalRefusalBatch(t *testing.T, repository, image, toolImage, client, server string,
@@ -205,6 +208,7 @@ func runFinalRefusalBatch(t *testing.T, repository, image, toolImage, client, se
 			t.Fatalf("pressure %s Route = %+v", role, result)
 		}
 	}
+	publishFinalWorkerTerminal()
 	writeLiveFile(t, filepath.Join(fixture.root, "sync", "bridge", "bridge-stop"), []byte("stop\n"))
 	waitForBlockedHostFile(t, ctx,
 		filepath.Join(fixture.root, "sync", "bridge", "resource-cleanup-captured"))
@@ -222,7 +226,7 @@ func runFinalRefusalBatch(t *testing.T, repository, image, toolImage, client, se
 	cleanup()
 	reconciliation.Residuals = blockedProjectResiduals(t, ctx, project)
 	return finalRefusalBatch{admission: admission, progress: allProgressAdvanced(before, after), oom: oom,
-		reconcile: reconciliation}
+		reconcile: reconciliation, root: fixture.root}
 }
 
 func adapterReady(line []byte) bool {

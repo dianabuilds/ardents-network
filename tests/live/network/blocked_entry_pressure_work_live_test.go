@@ -52,6 +52,7 @@ func finishBlockedPressureWork(t *testing.T, ctx context.Context, compose compos
 			t.Fatalf("pressure %s Route = %+v", role, result)
 		}
 	}
+	publishFinalWorkerTerminal()
 	writeLiveFile(t, filepath.Join(fixture.root, "sync", "bridge", "bridge-stop"), []byte("stop\n"))
 	for _, service := range blockedContainers("C1") {
 		waitBlockedContainer(t, ctx, compose, service)

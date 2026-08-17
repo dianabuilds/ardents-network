@@ -57,8 +57,9 @@ func TestBlockedEntryNegativeCommandsAcrossNamespaces(t *testing.T) {
 					started := time.Now()
 					bindFinalFixtureSeed(t, fixture, cell,
 						"short-workload")
+					armFinalWorkerTerminal("bridge-attempt-exhausted")
 					runBlockedNegativeEpisode(t, repository, image, fixture, profile, episode)
-					emitFinalWorkerCell(t, cell, "bridge-attempt-exhausted", started)
+					emitFinalWorkerCell(t, cell, "bridge-attempt-exhausted", started, fixture.root)
 				})
 			}
 		})
@@ -105,6 +106,7 @@ func runBlockedNegativeEpisode(t *testing.T, repository, image string, fixture b
 		return json.Unmarshal(line, &value) == nil && value.Kind == "negative-result" &&
 			value.Profile == profile && value.Terminal == "bridge-attempt-exhausted"
 	})
+	publishFinalWorkerTerminal()
 	waitBlockedContainer(t, ctx, compose, "negative-endpoint")
 	waitBlockedContainer(t, ctx, compose, "negative-observer")
 	if profile == "C3" {

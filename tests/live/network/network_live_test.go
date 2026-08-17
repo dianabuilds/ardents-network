@@ -230,7 +230,7 @@ type liveFixture struct {
 
 func newLiveFixture(t *testing.T) liveFixture {
 	t.Helper()
-	root := t.TempDir()
+	root := finalLiveTempDir(t)
 	value := liveFixture{root: root, stateRoot: filepath.Join(root, "state"),
 		network: sha256.Sum256([]byte("live-network")), now: time.Now().UTC().Truncate(time.Second),
 		authority:   ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0xa1}, ed25519.SeedSize)),
@@ -292,6 +292,27 @@ func newLiveFixture(t *testing.T) liveFixture {
 	}
 	value.writePlans(t, plans, public, 0)
 	return value
+}
+
+func finalLiveTempDir(t *testing.T) string {
+	t.Helper()
+	parent := os.Getenv("ARDENTS_FINAL_WORKER_ROOT")
+	if parent == "" {
+		return t.TempDir()
+	}
+	root, err := os.MkdirTemp(parent, "fixture-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.RemoveAll(root); err != nil {
+			t.Errorf("remove final worker fixture: %v", err)
+		}
+	})
+	return root
 }
 
 func (value liveFixture) writePlans(t *testing.T, plans string, authority ed25519.PublicKey, capacity uint16) {
