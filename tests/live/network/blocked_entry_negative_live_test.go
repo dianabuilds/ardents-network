@@ -45,9 +45,15 @@ func TestBlockedEntryNegativeCommandsAcrossNamespaces(t *testing.T) {
 			for episode := range 5 {
 				t.Run(fmt.Sprint(episode), func(t *testing.T) {
 					fixture := newBlockedNegativeFixture(t, client, server)
-					bindFinalFixtureSeed(t, fixture, fmt.Sprintf("profile/%s/%02d", profile, episode),
+					cell := fmt.Sprintf("profile/%s/%02d", profile, episode)
+					if !selectedFinalCell(cell) {
+						return
+					}
+					started := time.Now()
+					bindFinalFixtureSeed(t, fixture, cell,
 						"short-workload")
 					runBlockedNegativeEpisode(t, repository, image, fixture, profile, episode)
+					emitFinalWorkerCell(t, cell, "bridge-attempt-exhausted", started)
 				})
 			}
 		})

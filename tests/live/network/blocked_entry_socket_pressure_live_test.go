@@ -17,6 +17,7 @@ import (
 )
 
 func TestBlockedEntryReturnsFromExactRecoverableSocketPressure(t *testing.T) {
+	started := time.Now()
 	if os.Getenv("ARDENTS_BLOCKED_ROLE") != "" {
 		t.Skip("host orchestrator only")
 	}
@@ -69,6 +70,7 @@ func TestBlockedEntryReturnsFromExactRecoverableSocketPressure(t *testing.T) {
 	finishBlockedPressureWork(t, ctx, compose, fixture, transferBytes)
 	cleanup()
 	removeBlockedPressureImage(t, image, project)
+	emitFinalWorkerCell(t, "pressure/P2", "normal", started)
 }
 
 func waitForBlockedHostFile(t *testing.T, ctx context.Context, path string) {

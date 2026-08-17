@@ -51,8 +51,14 @@ func TestBlockedEntryRecoveryParentCommandsAcrossNamespaces(t *testing.T) {
 	for episode := range 5 {
 		t.Run(fmt.Sprint(episode), func(t *testing.T) {
 			fixture := newBlockedNegativeFixture(t, client, server)
-			bindFinalFixtureSeed(t, fixture, fmt.Sprintf("recovery/%d", episode), "recovery-stream")
+			cell := fmt.Sprintf("recovery/%d", episode)
+			if !selectedFinalCell(cell) {
+				return
+			}
+			started := time.Now()
+			bindFinalFixtureSeed(t, fixture, cell, "recovery-stream")
 			runBlockedRecoveryEpisode(t, repository, image, fixture, episode)
+			emitFinalWorkerCell(t, cell, "abrupt connection loss", started)
 		})
 	}
 }

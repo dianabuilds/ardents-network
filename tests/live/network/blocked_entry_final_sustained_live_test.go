@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -68,11 +69,51 @@ func TestBlockedEntryFinalSustainedEvidence(t *testing.T) {
 	cancel()
 	t.Cleanup(func() { removeBlockedPressureImage(t, image, buildProject) })
 	timeline := time.Now()
+	if selected := os.Getenv("ARDENTS_FINAL_CELL"); selected != "" {
+		runSelectedFinalSustainedCell(t, repository, image, toolImage, client, server, selected, timeline)
+		return
+	}
 	for _, direction := range []string{"endpoint-to-publisher", "publisher-to-endpoint"} {
 		t.Run(direction, func(t *testing.T) {
 			runFinalSustainedDirection(t, repository, image, toolImage, client, server, direction, timeline)
 		})
 	}
+}
+
+func runSelectedFinalSustainedCell(t *testing.T, repository, image, toolImage, client, server,
+	cell string, timeline time.Time,
+) {
+	t.Helper()
+	parts := strings.Split(cell, "/")
+	if len(parts) != 3 || parts[0] != "sustained" ||
+		parts[1] != "endpoint-to-publisher" && parts[1] != "publisher-to-endpoint" {
+		t.Fatalf("invalid selected sustained cell %q", cell)
+	}
+	direction, started := parts[1], time.Now()
+	if parts[2] == "direct-before" || parts[2] == "direct-after" {
+		fixture := newBlockedEntryFixture(t, client, server)
+		bindFinalFixturePairSeed(t, fixture, "sustained/"+direction+"/direct-before",
+			"sustained/"+direction+"/direct-after", "direct-stream")
+		project := fmt.Sprintf("ardents-s55-direct-selected-%d", time.Now().UnixNano())
+		compose := blockedCompose(repository, project, image, fixture, "final-sustained")
+		cleanup := blockedProjectCleanup(t, compose, project)
+		t.Cleanup(cleanup)
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+		defer cancel()
+		pairDigest := sha256.Sum256([]byte("ardents-h3-final-direct-pair-v1/" + direction))
+		pairID := hex.EncodeToString(pairDigest[:])
+		_, _ = runFinalDirectBaseline(t, ctx, compose, toolImage, direction, fixture.root, pairID, timeline)
+		cleanup()
+		emitFinalWorkerCell(t, cell, "complete", started)
+		return
+	}
+	var run int
+	if _, err := fmt.Sscanf(parts[2], "run-%d", &run); err != nil || run < 0 || run > 4 {
+		t.Fatalf("invalid selected sustained run %q", cell)
+	}
+	_, _, _ = runFinalSustainedCarrier(t, repository, image, toolImage, client, server,
+		direction, run, timeline)
+	emitFinalWorkerCell(t, cell, "complete", started)
 }
 
 func runFinalSustainedDirection(t *testing.T, repository, image, toolImage, client, server,
@@ -91,13 +132,17 @@ func runFinalSustainedDirection(t *testing.T, repository, image, toolImage, clie
 	defer cancel()
 	pairDigest := sha256.Sum256([]byte("ardents-h3-final-direct-pair-v1/" + direction))
 	pairID := hex.EncodeToString(pairDigest[:])
+	directBeforeStarted := time.Now()
 	directBefore, beforeEvidence := runFinalDirectBaseline(t, ctx, compose, toolImage, direction,
 		baselineFixture.root, pairID, timeline)
+	emitFinalWorkerCell(t, directBeforeCell, "complete", directBeforeStarted)
 	cell := finalSustainedCellEvidence{Schema: "ardents-h3-final-sustained-v1", Direction: direction,
 		DirectBeforeMbit: directBefore, DirectBeforeValid: true, DirectPairID: pairID, DirectBefore: beforeEvidence}
 	for run := range 5 {
+		runStarted := time.Now()
 		result, endpointBytes, publisherBytes := runFinalSustainedCarrier(t, repository, image, toolImage,
 			client, server, direction, run, timeline)
+		emitFinalWorkerCell(t, fmt.Sprintf("sustained/%s/run-%d", direction, run), "complete", runStarted)
 		cell.Runs = append(cell.Runs, result)
 		cell.EndpointCarrierBytes += endpointBytes
 		cell.PublisherCarrierBytes += publisherBytes
@@ -105,8 +150,10 @@ func runFinalSustainedDirection(t *testing.T, repository, image, toolImage, clie
 	}
 	cell.EndpointCarrierRatio = float64(cell.EndpointCarrierBytes) / float64(cell.DeliveredBytes)
 	cell.PublisherCarrierRatio = float64(cell.PublisherCarrierBytes) / float64(cell.DeliveredBytes)
+	directAfterStarted := time.Now()
 	cell.DirectAfterMbit, cell.DirectAfter = runFinalDirectBaseline(t, ctx, compose, toolImage, direction,
 		baselineFixture.root, pairID, timeline)
+	emitFinalWorkerCell(t, directAfterCell, "complete", directAfterStarted)
 	cell.DirectAfterValid = true
 	assertFinalSustainedCell(t, cell)
 	if err := json.NewEncoder(os.Stdout).Encode(cell); err != nil {

@@ -49,8 +49,18 @@ func TestBlockedEntryFinalReferenceAndStrongCapacity(t *testing.T) {
 	}{{"reference", 4}, {"strong", 16}} {
 		for batch := range 5 {
 			t.Run(fmt.Sprintf("%s-%d", profile.name, batch), func(t *testing.T) {
+				profileID := "h3-s5-b1-v1"
+				if profile.name == "strong" {
+					profileID = "h3-s5-b1-v1-strong"
+				}
+				cell := fmt.Sprintf("capacity/%s/%d", profileID, batch)
+				if !selectedFinalCell(cell) {
+					return
+				}
+				started := time.Now()
 				runBlockedCapacityBatch(t, repository, image, toolImage, client, server,
 					profile.name, profile.capacity, batch)
+				emitFinalWorkerCell(t, cell, "complete", started)
 			})
 		}
 	}

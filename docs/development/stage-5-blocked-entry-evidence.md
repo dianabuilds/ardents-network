@@ -55,13 +55,18 @@ same-lifecycle `baseline` and `after-churn` samples. The later `post-cleanup`
 sample separately proves zero candidate sockets, descendants, and state bytes;
 harness-control sentinels are excluded from product evidence accounting.
 
-This intermediate slice deliberately cannot emit an S5.5 `pass`: after all
-currently implemented structural checks the verifier records
-`maintained final runner raw-to-verdict recomputation is not implemented`.
-Removing that fail-closed blocker requires the maintained runner to stream all
-594 cells and the independent verifier to derive every aggregate from the
-per-second/raw observations. Merely duplicating a runner-authored summary into
-JSONL is not sufficient.
+This intermediate slice deliberately cannot emit an S5.5 `pass`. The frozen
+`network-live.test` binary implements strict plan decoding, exact 594-cell
+identity/seed ordering, and the selected-test dispatch map for the `144`
+non-hostile cells. It does not execute that map yet: retained terminal,
+nine-boundary observer, ten-kind residual, bounded streaming, and frozen
+source/image hooks are incomplete, so every mapped worker is rejected before
+product startup. It also rejects every hostile cell, and the verifier still
+records `maintained final runner raw-to-verdict recomputation is not
+implemented`. Removing those fail-closed blockers requires measured workers
+for all cells and independent derivation of every aggregate from per-second/raw
+observations. Merely duplicating a runner-authored summary into JSONL is not
+sufficient.
 
 Every final observation is additionally bound index-for-index to the frozen
 594-cell identity and seed schedule. Its start, terminal, and cleanup offsets

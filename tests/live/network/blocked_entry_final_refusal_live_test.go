@@ -83,7 +83,12 @@ func TestBlockedEntryFinalProjectedAdmissionAndChurn(t *testing.T) {
 	}
 	cancel()
 	t.Cleanup(func() { removeBlockedPressureImage(t, image, buildProject) })
-	first := runFinalRefusalBatch(t, repository, image, toolImage, client, server, 0)
+	if selected := os.Getenv("ARDENTS_FINAL_CELL"); selected != "" {
+		runSelectedFinalRefusalCell(t, repository, image, toolImage, client, server, selected)
+		return
+	}
+	firstStarted := time.Now()
+	first := runFinalRefusalBatch(t, repository, image, toolImage, client, server, 0, 100)
 	emitFinalPressure(t, finalPressureEvidence{Schema: "ardents-h3-final-pressure-v1", ID: "P0",
 		Terminal: "normal", Units: 4, StreamMbit: 10, DurationMillis: 30_000,
 		Progress: first.progress, Cleanup: true, OOMEvents: first.oom})
@@ -91,10 +96,13 @@ func TestBlockedEntryFinalProjectedAdmissionAndChurn(t *testing.T) {
 		Terminal: "normal", Offers: 100, Refused: first.admission.Refused, CadenceMillis: 100,
 		DurationMillis: 10_000, MaximumRefusalMillis: first.admission.MaximumMillis,
 		Progress: first.progress, Cleanup: true, OOMEvents: first.oom})
+	emitFinalWorkerCell(t, "pressure/P0", "normal", firstStarted)
+	emitFinalWorkerCell(t, "pressure/P1", "normal", firstStarted)
 	churn := finalPressureEvidence{Schema: "ardents-h3-final-pressure-v1", ID: "P4", Terminal: "normal",
 		Offers: 1_000, CadenceMillis: 100, DurationMillis: 100_000, Batches: 10, Progress: true, Cleanup: true}
+	churnStarted := time.Now()
 	for batch := range 10 {
-		observed := runFinalRefusalBatch(t, repository, image, toolImage, client, server, batch+1)
+		observed := runFinalRefusalBatch(t, repository, image, toolImage, client, server, batch+1, 100)
 		churn.Refused += observed.admission.Refused
 		churn.MaximumRefusalMillis = max(churn.MaximumRefusalMillis, observed.admission.MaximumMillis)
 		churn.Progress = churn.Progress && observed.progress
@@ -104,10 +112,11 @@ func TestBlockedEntryFinalProjectedAdmissionAndChurn(t *testing.T) {
 	}
 	churn.UpwardTrend = !exactLiveReconciliations(churn.Reconciliations)
 	emitFinalPressure(t, churn)
+	emitFinalWorkerCell(t, "pressure/P4", "normal", churnStarted)
 }
 
 func runFinalRefusalBatch(t *testing.T, repository, image, toolImage, client, server string,
-	batch int,
+	batch, offers int,
 ) finalRefusalBatch {
 	t.Helper()
 	fixture := newBlockedEntryFixture(t, client, server)
@@ -130,7 +139,7 @@ func runFinalRefusalBatch(t *testing.T, repository, image, toolImage, client, se
 		"ARDENTS_BLOCKED_PUBLISHER_SEND_BYTES":    fmt.Sprint(finalPressureBytes),
 		"ARDENTS_BLOCKED_PUBLISHER_RECEIVE_BYTES": "0", "ARDENTS_STREAM_PROGRESS": "1",
 		"ARDENTS_STREAM_CHUNK_DELAY": delay.String(), "ARDENTS_STREAM_LIFETIME": "5m",
-		"ARDENTS_CAPACITY_OFFERS": "100", "ARDENTS_CAPACITY_CADENCE": "100ms"} {
+		"ARDENTS_CAPACITY_OFFERS": fmt.Sprint(offers), "ARDENTS_CAPACITY_CADENCE": "100ms"} {
 		t.Setenv(name, value)
 	}
 	project := fmt.Sprintf("ardents-s55-refusal-%02d-%d", batch, time.Now().UnixNano())
@@ -155,15 +164,18 @@ func runFinalRefusalBatch(t *testing.T, repository, image, toolImage, client, se
 		return sample.AdmissionActive == 4
 	})
 	capturePressureResourceBoundary(t, ctx, fixture.root, "baseline")
-	if output, err := compose(ctx, "up", "-d", "--no-build", "--no-deps", "capacity-probe"); err != nil {
-		t.Fatalf("start projected-admission probe: %v\n%s", err, output)
-	}
-	waitBlockedContainer(t, ctx, compose, "capacity-probe")
 	var admission blockedAdmissionResult
-	readHostJSON(t, filepath.Join(fixture.root, "sync", "capacity-probe", "admission-result.json"), &admission)
-	afterAdmission := waitBridgeAdmission(t, ctx, compose, func(sample resource.Sample) bool {
-		return sample.AdmissionRefused >= beforeAdmission.AdmissionRefused+uint64(admission.Offers)
-	})
+	afterAdmission := beforeAdmission
+	if offers > 0 {
+		if output, err := compose(ctx, "up", "-d", "--no-build", "--no-deps", "capacity-probe"); err != nil {
+			t.Fatalf("start projected-admission probe: %v\n%s", err, output)
+		}
+		waitBlockedContainer(t, ctx, compose, "capacity-probe")
+		readHostJSON(t, filepath.Join(fixture.root, "sync", "capacity-probe", "admission-result.json"), &admission)
+		afterAdmission = waitBridgeAdmission(t, ctx, compose, func(sample resource.Sample) bool {
+			return sample.AdmissionRefused >= beforeAdmission.AdmissionRefused+uint64(admission.Offers)
+		})
+	}
 	capturePressureResourceBoundary(t, ctx, fixture.root, "after-churn")
 	allocationDelta := int32(afterAdmission.AdmissionAccepted - beforeAdmission.AdmissionAccepted)
 	after := waitCapacityProgress(t, ctx, units, before)

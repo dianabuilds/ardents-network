@@ -58,11 +58,22 @@ func TestBlockedEntryCommandsAcrossNamespaces(t *testing.T) {
 				t.Run(fmt.Sprint(episode), func(t *testing.T) {
 					fixture = newBlockedEntryFixture(t, client, server)
 					cell := fmt.Sprintf("profile/%s/%02d", profile, episode)
+					if !selectedFinalCell(cell) {
+						return
+					}
+					started := time.Now()
 					bindFinalFixtureSeed(t, fixture, cell, "short-workload")
 					if profile == "C5" || profile == "C6" {
 						bindFinalProbeSeed(t, fixture, cell, "probe-corpus")
 					}
 					runBlockedEntryEpisode(t, repository, image, fixture, profile, episode)
+					terminal := "success"
+					if profile == "C5" {
+						terminal = "probe-contained"
+					} else if profile == "C6" {
+						terminal = "limitation-recorded"
+					}
+					emitFinalWorkerCell(t, cell, terminal, started)
 				})
 			}
 		})

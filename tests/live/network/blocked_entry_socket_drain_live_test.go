@@ -13,6 +13,7 @@ import (
 )
 
 func TestBlockedEntryDrainsAtExactEmergencySocketPressure(t *testing.T) {
+	started := time.Now()
 	if os.Getenv("ARDENTS_BLOCKED_ROLE") != "" {
 		t.Skip("host orchestrator only")
 	}
@@ -79,6 +80,7 @@ func TestBlockedEntryDrainsAtExactEmergencySocketPressure(t *testing.T) {
 	}
 	cleanup()
 	removeBlockedPressureImage(t, image, project)
+	emitFinalWorkerCell(t, "pressure/P3", "drain", started)
 }
 
 func latestLiveProgressForService(t *testing.T, ctx context.Context, compose composeCall, service string) uint32 {
