@@ -14,6 +14,7 @@ import (
 	"math/big"
 	"net"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -176,7 +177,11 @@ func TestProtectPreservesEstablishedWorkAndRejectsNewAdmission(t *testing.T) {
 	fixture.config.Current = func() (Facts, error) { return fixture.snapshot, nil }
 	fixture.config.Emit = func(_ context.Context, event Event) error { events <- event; return nil }
 	fixture.config.ResourceProfile = "h3-np1-v1"
+	var protect atomic.Bool
 	fixture.config.ResourceMeasure = func() (resource.Sample, error) {
+		if !protect.Load() {
+			return resource.Sample{}, nil
+		}
 		return resource.Sample{HighEvents: 1}, nil
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -184,6 +189,7 @@ func TestProtectPreservesEstablishedWorkAndRejectsNewAdmission(t *testing.T) {
 	go func() { value, _ := Run(ctx, fixture.config); result <- value }()
 	waitForState(t, events, "READY")
 	established := dialProbe(t, fixture)
+	protect.Store(true)
 	waitForState(t, events, "PROTECT")
 	if connection, err := tls.Dial("tcp", fixture.config.Probe.ListenAddress, probeClientTLS(fixture)); err == nil {
 		_ = connection.Close()
