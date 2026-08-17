@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"syscall"
 	"testing"
@@ -30,9 +31,11 @@ type blockedPathTarget struct {
 type blockedPathManifest struct {
 	Phase           string                `json:"phase"`
 	Required        []blockedPathBoundary `json:"required"`
+	ControlOnly     []blockedPathBoundary `json:"control_only,omitempty"`
 	Forbidden       []blockedPathBoundary `json:"forbidden,omitempty"`
 	AllowedExternal []blockedPathTarget   `json:"allowed_external,omitempty"`
 	DynamicLoopback []string              `json:"dynamic_loopback,omitempty"`
+	ControlLoopback []string              `json:"control_loopback,omitempty"`
 }
 
 type blockedPathResult struct {
@@ -74,12 +77,18 @@ func TestBlockedEntryRole(t *testing.T) {
 	if start := os.Getenv("ARDENTS_BLOCKED_START_FILE"); start != "" {
 		waitBlockedFile(t, start, 2*time.Minute)
 	}
-	if role != "policy" {
+	if role != "policy" && role != "control-sender" {
 		if err := copyBlockedDirectory("/run/input", "/run/secure"); err != nil {
 			t.Fatal(err)
 		}
 	}
+	if os.Getenv("ARDENTS_BLOCKED_OBSERVE_ONLY") == "1" {
+		runBlockedObserveOnly(t, role)
+		return
+	}
 	switch role {
+	case "control-sender":
+		runBlockedControlSender(t)
 	case "endpoint":
 		runBlockedObserved(t, role, blockedManifest(role), runBlockedEndpoint)
 	case "bridge":
@@ -117,6 +126,43 @@ func TestBlockedEntryRole(t *testing.T) {
 	default:
 		t.Fatalf("unknown blocked-entry role %q", role)
 	}
+}
+
+func runBlockedControlSender(t *testing.T) {
+	t.Helper()
+	root := blockedSync()
+	waitBlockedFile(t, filepath.Join(root, "control-plan-ready"), 20*time.Second)
+	var manifest blockedPathManifest
+	readBlockedJSON(t, filepath.Join(root, "control-manifest.json"), &manifest)
+	wanted := blockedManifest(os.Getenv("ARDENTS_BLOCKED_CONTROL_ROLE"))
+	wanted.ControlOnly = append([]blockedPathBoundary(nil), wanted.Required...)
+	wanted.Required = nil
+	wanted.ControlLoopback = append([]string(nil), wanted.DynamicLoopback...)
+	wanted.DynamicLoopback = nil
+	if !reflect.DeepEqual(manifest, wanted) {
+		t.Fatalf("control manifest = %+v, want %+v", manifest, wanted)
+	}
+	runBlockedControlPlan(t, root, manifest)
+	writeBlockedSignal(t, filepath.Join(root, "control-plan-done"))
+}
+
+func runBlockedObserveOnly(t *testing.T, role string) {
+	switch role {
+	case "endpoint":
+		prepareBlockedState(t, "bridge-network", "bridge-network")
+		prepareBlockedState(t, "local-roles", "local-roles")
+	case "bridge", "initiator", "introduction", "rendezvous", "responder", "publisher":
+	default:
+		t.Fatalf("role %q has no observe-only contract", role)
+	}
+	manifest := blockedManifest(role)
+	manifest.ControlOnly = append([]blockedPathBoundary(nil), manifest.Required...)
+	manifest.Required = nil
+	manifest.ControlLoopback = append([]string(nil), manifest.DynamicLoopback...)
+	manifest.DynamicLoopback = nil
+	runBlockedObserved(t, role, manifest, func(t *testing.T) {
+		waitBlockedFile(t, filepath.Join(blockedSync(), "observe-stop"), 2*time.Minute)
+	})
 }
 
 func runBlockedEndpoint(t *testing.T) {
@@ -276,13 +322,21 @@ func copyBlockedDirectory(source, destination string) error {
 }
 
 func prepareBlockedObservation(t *testing.T, manifest blockedPathManifest) {
-	t.Helper()
 	root := blockedSync()
 	waitBlockedFile(t, filepath.Join(root, "ready"), 10*time.Second)
-	runBlockedControlPlan(t, root, manifest)
 	raw, err := json.Marshal(manifest)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if os.Getenv("ARDENTS_BLOCKED_OBSERVE_ONLY") == "1" || os.Getenv("ARDENTS_BLOCKED_EXTERNAL_CONTROLS") == "1" {
+		if err := os.WriteFile(filepath.Join(root, "control-manifest.json"), raw, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		writeBlockedSignal(t, filepath.Join(root, "control-plan-ready"))
+		waitBlockedFile(t, filepath.Join(root, "control-plan-done"), 20*time.Second)
+		loadBlockedControlTargets(t, root)
+	} else {
+		runBlockedControlPlan(t, root, manifest)
 	}
 	if err := os.WriteFile(filepath.Join(root, "path-manifest.json"), raw, 0o644); err != nil {
 		t.Fatal(err)
@@ -297,7 +351,8 @@ func finishBlockedObservation(t *testing.T, manifest blockedPathManifest) {
 	waitBlockedFile(t, filepath.Join(root, "path-result.json"), 3*time.Second)
 	var path blockedPathResult
 	readBlockedJSON(t, filepath.Join(root, "path-result.json"), &path)
-	if !path.Passed || path.UnexpectedExternal != 0 || path.Packets == 0 {
+	if !path.Passed || path.UnexpectedExternal != 0 ||
+		(path.Packets == 0 && os.Getenv("ARDENTS_BLOCKED_OBSERVE_ONLY") != "1") {
 		t.Fatalf("path evidence = %+v", path)
 	}
 	writeBlockedSignal(t, filepath.Join(root, "stop"))

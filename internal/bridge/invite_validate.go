@@ -66,10 +66,16 @@ func (owner *owner) validate(raw []byte) (invite, Class, error) {
 	if conflicting {
 		return decoded, classConflictingRole, nil
 	}
+	if !owner.config.TimeConfidence() {
+		return decoded, classIncompatible, nil
+	}
 	now := owner.config.Clock().UTC()
 	notBefore := time.Unix(decoded.notBefore, 0).UTC()
 	notAfter := time.Unix(decoded.notAfter, 0).UTC()
-	if !notBefore.Before(notAfter) || now.Before(notBefore) || !now.Before(notAfter) ||
+	if now.Before(notBefore) {
+		return decoded, classIncompatible, nil
+	}
+	if !notBefore.Before(notAfter) || !now.Before(notAfter) ||
 		notBefore.Before(snapshot.EpochValidFrom) || notAfter.After(snapshot.ValidUntil) ||
 		notBefore.Before(candidate.ValidFrom) || notAfter.After(candidate.ValidUntil) ||
 		notAfter.After(candidate.AssignmentNotAfter) {

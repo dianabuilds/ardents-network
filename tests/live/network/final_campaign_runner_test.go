@@ -26,14 +26,15 @@ func TestFinalRunnerDispatchesMaintainedCellWorkers(t *testing.T) {
 		"pressure/P2":                           "TestBlockedEntryReturnsFromExactRecoverableSocketPressure",
 		"pressure/P3":                           "TestBlockedEntryDrainsAtExactEmergencySocketPressure",
 		"recovery/0":                            "TestBlockedEntryRecoveryParentCommandsAcrossNamespaces",
+		"hostile/G1-invite/malformed/0":         "TestBlockedEntryFinalHostileInvite",
 	}
 	for cell, want := range cases {
 		if got := finalWorkerTest(cell); got != want {
 			t.Fatalf("worker for %s=%q want %q", cell, got, want)
 		}
 	}
-	if got := finalWorkerTest("hostile/G1-invite/malformed/0"); got != "" {
-		t.Fatalf("unimplemented hostile worker was silently dispatched to %q", got)
+	if got := finalWorkerTest("hostile/G2-domain-collision/responder/0"); got != "" {
+		t.Fatalf("unimplemented later hostile group was silently dispatched to %q", got)
 	}
 }
 

@@ -182,8 +182,11 @@ func writeBlockedBridgeInputs(t *testing.T, root string, route liveFixture) {
 		"network_profile": "h3-role-probe-v1", "route_profile": "h3-route-tracer-v1",
 		"local_role_state_root": "/run/state/local-roles", "binary": "/candidate/webtunnel-client",
 		"candidate_state_root": "/run/state/candidate", "route_manifest_digest": liveHex(route.manifest),
-		"transition_handle": "3"})
+		"transition_handle": "3", "time_confidence_file": "/run/secure/time-confidence"})
 	bridge := filepath.Join(root, "input", "bridge")
+	for _, role := range []string{"endpoint", "bridge"} {
+		writeLiveFile(t, filepath.Join(root, "input", role, "time-confidence"), []byte("observed\n"))
+	}
 	writeLiveFile(t, filepath.Join(bridge, "front-cert.pem"), frontCertificate)
 	writeLiveFile(t, filepath.Join(root, "input", "capacity-probe", "front-cert.pem"), frontCertificate)
 	writeLiveFile(t, filepath.Join(root, "input", "capacity-probe", "corpus-seed.bin"),

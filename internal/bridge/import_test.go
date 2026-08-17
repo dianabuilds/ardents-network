@@ -89,7 +89,7 @@ func TestOwnerRejectsBeforeChangingLogicalState(t *testing.T) {
 		"wrong domain": "wrong-domain", "wrong identity": "wrong-domain",
 		"wrong family": "wrong-domain", "wrong record": "wrong-domain",
 		"wrong proof": "wrong-domain", "wrong assignment": "wrong-domain",
-		"future": "expired", "expired": "expired", "bad signature": "invalid", "trailing": "invalid",
+		"future": "incompatible", "expired": "expired", "bad signature": "invalid", "trailing": "invalid",
 	}
 	for name, mutate := range tests {
 		name, mutate := name, mutate
@@ -363,6 +363,7 @@ func (f fixture) open(t *testing.T) bridgeOwner {
 func (f fixture) config() bridge.Config {
 	return bridge.Config{
 		Root: f.root, RouteProfile: "h3-interactive-v1", Clock: func() time.Time { return f.now },
+		TimeConfidence: func() bool { return true },
 		CurrentNetwork: func() (state.Snapshot, error) { return f.snapshot, nil },
 		RoleConflict:   func([32]byte, [32]byte) (bool, error) { return false, nil },
 		ValidateCandidate: func(raw []byte, identity [32]byte) ([32]byte, string, error) {

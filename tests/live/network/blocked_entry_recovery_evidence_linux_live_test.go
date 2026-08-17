@@ -46,7 +46,7 @@ func assertBlockedRecoveryEvidence(t *testing.T) bridge.AttemptEvidence {
 		t.Fatal(err)
 	}
 	owner, err := bridge.Open(bridge.Config{Root: raw.StateRoot, RouteProfile: raw.RouteProfile,
-		CurrentNetwork: network.Current, Clock: time.Now,
+		CurrentNetwork: network.Current, Clock: time.Now, TimeConfidence: func() bool { return true },
 		RoleConflict: func(identity, family [32]byte) (bool, error) {
 			return localroles.ReadConflict(raw.LocalRoleStateRoot, time.Now, identity, family)
 		}, ValidateCandidate: func(value []byte, identity [32]byte) ([32]byte, string, error) {

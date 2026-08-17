@@ -6,6 +6,9 @@ import (
 	"os"
 )
 
+// ErrTooLarge identifies a bounded input rejected before it is parsed.
+var ErrTooLarge = errors.New("plan file exceeds its bound")
+
 // Read loads at most maximum bytes and closes the owned file before returning.
 func Read(path string, maximum int64) ([]byte, error) {
 	if maximum <= 0 {
@@ -24,7 +27,7 @@ func Read(path string, maximum int64) ([]byte, error) {
 		return nil, closeErr
 	}
 	if int64(len(contents)) > maximum {
-		return nil, errors.New("plan file exceeds its bound")
+		return contents, ErrTooLarge
 	}
 	return contents, nil
 }

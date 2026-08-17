@@ -21,6 +21,7 @@ type importPlan struct {
 	NetworkProfile     string   `json:"network_profile"`
 	RouteProfile       string   `json:"route_profile"`
 	LocalRoleStateRoot string   `json:"local_role_state_root"`
+	TimeConfidenceFile string   `json:"time_confidence_file"`
 }
 type importRuntime struct {
 	config                    bridge.Config
@@ -34,7 +35,8 @@ func loadImportPlan(path string, clock func() time.Time) (importRuntime, error) 
 		return importRuntime{}, err
 	}
 	if raw.StateRoot == "" || raw.NetworkStateRoot == "" || raw.InviteFile == "" ||
-		raw.RouteProfile == "" || raw.NetworkProfile == "" || raw.LocalRoleStateRoot == "" {
+		raw.RouteProfile == "" || raw.NetworkProfile == "" || raw.LocalRoleStateRoot == "" ||
+		raw.TimeConfidenceFile == "" {
 		return importRuntime{}, errors.New("import plan is incomplete")
 	}
 	var networkID [32]byte
@@ -58,6 +60,7 @@ func loadImportPlan(path string, clock func() time.Time) (importRuntime, error) 
 	}
 	config := bridge.Config{
 		Root: raw.StateRoot, RouteProfile: raw.RouteProfile, CurrentNetwork: network.Current, Clock: clock,
+		TimeConfidence: planfile.FreshRegular(raw.TimeConfidenceFile, clock, 2*time.Second),
 		RoleConflict: func(identity, family [32]byte) (bool, error) {
 			return localroles.ReadConflict(raw.LocalRoleStateRoot, clock, identity, family)
 		},

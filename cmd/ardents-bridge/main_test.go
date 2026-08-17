@@ -25,6 +25,13 @@ func TestImportCommandUsesAuthenticatedNetworkState(t *testing.T) {
 		t.Fatal(err)
 	}
 	planPath := filepath.Join(directory, "import.json")
+	confidencePath := filepath.Join(directory, "time-confidence")
+	if err := os.WriteFile(confidencePath, []byte("observed\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(confidencePath, time.Now(), time.Now()); err != nil {
+		t.Fatal(err)
+	}
 	rolesRoot := filepath.Join(directory, "local-roles")
 	roles, err := localroles.Open(localroles.Config{Root: rolesRoot, Clock: func() time.Time { return now }, Create: true})
 	if err != nil {
@@ -39,6 +46,7 @@ func TestImportCommandUsesAuthenticatedNetworkState(t *testing.T) {
 		"network_authorities": []string{hex.EncodeToString(network.authorityPublic)},
 		"network_threshold":   1, "network_profile": "h3-role-probe-v1",
 		"route_profile": "h3-interactive-v1", "local_role_state_root": rolesRoot,
+		"time_confidence_file": confidencePath,
 	}
 	rawPlan, err := json.Marshal(plan)
 	if err != nil {
@@ -49,6 +57,9 @@ func TestImportCommandUsesAuthenticatedNetworkState(t *testing.T) {
 	}
 
 	var output bytes.Buffer
+	if err := os.Chtimes(confidencePath, time.Now(), time.Now()); err != nil {
+		t.Fatal(err)
+	}
 	if err := run(t.Context(), []string{"import", planPath}, &output); err != nil {
 		t.Fatalf("run import: %v", err)
 	}
@@ -65,11 +76,35 @@ func TestImportCommandUsesAuthenticatedNetworkState(t *testing.T) {
 		t.Fatalf("unexpected import event: %+v", event)
 	}
 	output.Reset()
+	if err := os.Chtimes(confidencePath, time.Now(), time.Now()); err != nil {
+		t.Fatal(err)
+	}
 	if err := run(t.Context(), []string{"import", planPath}, &output); err != nil {
 		t.Fatalf("run idempotent import: %v", err)
 	}
 	if err := json.Unmarshal(output.Bytes(), &event); err != nil || event.Class != "already-present" {
 		t.Fatalf("idempotent event = %+v, %v", event, err)
+	}
+	plan["state_root"] = filepath.Join(directory, "uncertain-bridge-state")
+	if err := os.Chtimes(confidencePath, now.Add(-time.Minute), now.Add(-time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	rawPlan, err = json.Marshal(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(planPath, rawPlan, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	output.Reset()
+	if err := run(t.Context(), []string{"import", planPath}, &output); err != nil {
+		t.Fatalf("run uncertain import: %v", err)
+	}
+	if err := json.Unmarshal(output.Bytes(), &event); err != nil || event.Class != "incompatible" {
+		t.Fatalf("uncertain event = %+v, %v", event, err)
+	}
+	if err := os.Chtimes(confidencePath, time.Now(), time.Now()); err != nil {
+		t.Fatal(err)
 	}
 
 	plan["state_root"] = filepath.Join(directory, "conflicting-bridge-state")
@@ -93,6 +128,9 @@ func TestImportCommandUsesAuthenticatedNetworkState(t *testing.T) {
 		t.Fatal(err)
 	}
 	output.Reset()
+	if err := os.Chtimes(confidencePath, time.Now(), time.Now()); err != nil {
+		t.Fatal(err)
+	}
 	if err := run(t.Context(), []string{"import", planPath}, &output); err != nil {
 		t.Fatalf("run conflicting import: %v", err)
 	}

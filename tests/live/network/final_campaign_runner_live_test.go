@@ -165,6 +165,8 @@ func finalWorkerTest(cell string) string {
 		return "TestBlockedEntryDrainsAtExactEmergencySocketPressure"
 	case strings.HasPrefix(cell, "recovery/"):
 		return "TestBlockedEntryRecoveryParentCommandsAcrossNamespaces"
+	case strings.HasPrefix(cell, "hostile/G1-invite/"):
+		return "TestBlockedEntryFinalHostileInvite"
 	default:
 		return ""
 	}

@@ -31,9 +31,11 @@ type pathTarget struct {
 type pathManifest struct {
 	Phase           string         `json:"phase"`
 	Required        []pathBoundary `json:"required"`
+	ControlOnly     []pathBoundary `json:"control_only,omitempty"`
 	Forbidden       []pathBoundary `json:"forbidden"`
 	AllowedExternal []pathTarget   `json:"allowed_external"`
 	DynamicLoopback []string       `json:"dynamic_loopback"`
+	ControlLoopback []string       `json:"control_loopback,omitempty"`
 }
 
 type pathResult struct {
@@ -192,11 +194,14 @@ func ipv6LinkControl(source, destination net.IP) bool {
 }
 
 func validPathManifest(manifest pathManifest) bool {
-	if manifest.Phase == "" || len(manifest.Required) == 0 {
+	if manifest.Phase == "" || len(manifest.Required)+len(manifest.ControlOnly)+
+		len(manifest.DynamicLoopback)+len(manifest.ControlLoopback) == 0 {
 		return false
 	}
 	seen := map[string]bool{}
-	for _, boundary := range append(manifest.Required, manifest.Forbidden...) {
+	boundaries := append(append([]pathBoundary(nil), manifest.Required...), manifest.ControlOnly...)
+	boundaries = append(boundaries, manifest.Forbidden...)
+	for _, boundary := range boundaries {
 		if boundary.Name == "" || boundary.Port == 0 || net.ParseIP(boundary.Address) == nil ||
 			boundary.Source != "" && net.ParseIP(boundary.Source) == nil || seen[boundary.Name] {
 			return false
@@ -208,7 +213,8 @@ func validPathManifest(manifest pathManifest) bool {
 			return false
 		}
 	}
-	for _, name := range manifest.DynamicLoopback {
+	loopbacks := append(append([]string(nil), manifest.DynamicLoopback...), manifest.ControlLoopback...)
+	for _, name := range loopbacks {
 		if name == "" || seen[name] {
 			return false
 		}

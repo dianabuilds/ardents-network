@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
@@ -31,6 +32,26 @@ func TestInviteEveryTruncationAndMutationFailsClosed(t *testing.T) {
 		if err != nil || result.Class == "accepted" || result.Class == "already-present" {
 			t.Fatalf("mutation %d accepted: %+v, %v", offset, result, err)
 		}
+	}
+}
+
+func TestImportRejectsInsufficientTimeConfidenceWithoutDurableMutation(t *testing.T) {
+	t.Parallel()
+	fixture := newFixture(t)
+	config := fixture.config()
+	config.TimeConfidence = func() bool { return false }
+	owner, err := bridge.Open(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer owner.Close()
+	before := durableFiles(t, fixture.root)
+	result, err := owner.Import(fixture.invite(t, 0, 1, nil, fixture.notBefore, fixture.notAfter))
+	if err != nil || result.Class != "incompatible" {
+		t.Fatalf("insufficient Time Confidence = %+v, %v", result, err)
+	}
+	if after := durableFiles(t, fixture.root); !reflect.DeepEqual(before, after) {
+		t.Fatal("insufficient Time Confidence changed durable Bridge state")
 	}
 }
 

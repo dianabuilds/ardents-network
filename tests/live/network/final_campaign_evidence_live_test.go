@@ -96,7 +96,7 @@ func collectFinalRootObservers(identity, root string) []finalRunnerObserver {
 		}
 		role := binding.role
 		path, dns, ok := readFinalRoleObservation(root, role)
-		if !validFinalRoleObservation(path, dns, binding.role, binding.flow, ok) {
+		if !validFinalRoleObservation(identity, path, dns, binding.role, binding.flow, ok) {
 			return nil
 		}
 		result = append(result, cleanFinalObserver(binding.boundary))
@@ -134,25 +134,32 @@ func collectFinalEndpointObserver(identity, root string) bool {
 			return false
 		}
 		path, dns, ok := readFinalRoleObservation(root, role)
-		if !validFinalRoleObservation(path, dns, "endpoint", "E-to-B-front", ok) {
+		if !validFinalRoleObservation(identity, path, dns, "endpoint", "E-to-B-front", ok) {
 			return false
 		}
 	}
 	return true
 }
 
-func validFinalRoleObservation(path finalPathObservation, dns finalDNSObservation,
+func validFinalRoleObservation(identity string, path finalPathObservation, dns finalDNSObservation,
 	role, flow string, decoded bool,
 ) bool {
 	controlNames := finalObservedControlNames(path, flow)
 	return decoded && path.Phase == "s5.3-"+role && path.Passed && len(controlNames) > 0 &&
-		path.UnexpectedExternal == 0 && len(path.UnexpectedFlows) == 0 && path.Packets > 0 &&
+		path.UnexpectedExternal == 0 && len(path.UnexpectedFlows) == 0 &&
+		(path.Packets > 0 || strings.HasPrefix(identity, "hostile/G1-invite/")) &&
 		validFinalDNSControls(dns, controlNames) && dns.Controls >= 6 &&
 		dns.IPv4UDPControls >= 2 && dns.IPv6UDPControls >= 2 &&
 		dns.IPv4TCPControls >= 2 && dns.Packets == 0 && dns.Ambiguous == 0
 }
 
 func finalObservedControlNames(path finalPathObservation, flow string) []string {
+	if strings.HasPrefix(path.Phase, "s5.3-") && path.Packets == 0 {
+		if flow == "dynamic" {
+			return []string{"front-to-WebTunnel-server"}
+		}
+		return []string{flow}
+	}
 	if flow == "dynamic" {
 		if _, ok := path.DynamicBindings["front-to-WebTunnel-server"]; ok {
 			return []string{"front-to-WebTunnel-server"}

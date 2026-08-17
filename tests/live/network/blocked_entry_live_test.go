@@ -165,7 +165,12 @@ func blockedCompose(repository, project, image string, fixture blockedEntryFixtu
 	if selected == "C5" || selected == "C6" {
 		productProfile = "C2"
 	}
+	dockerfile := "tests/live/blocked-entry.Dockerfile"
+	if os.Getenv("ARDENTS_FINAL_PRODUCT_IMAGE") == "" {
+		dockerfile = "tests/live/blocked-entry.dev.Dockerfile"
+	}
 	environment := append(os.Environ(), "ARDENTS_BLOCKED_IMAGE="+image,
+		"ARDENTS_BLOCKED_DOCKERFILE="+dockerfile,
 		"ARDENTS_BLOCKED_ROOT="+filepath.ToSlash(fixture.root),
 		"ARDENTS_WEBTUNNEL_CLIENT="+filepath.ToSlash(fixture.clientBinary),
 		"ARDENTS_WEBTUNNEL_SERVER="+filepath.ToSlash(fixture.serverBinary),
@@ -174,6 +179,10 @@ func blockedCompose(repository, project, image string, fixture blockedEntryFixtu
 		"ARDENTS_FAULT_MODE="+selected)
 	if selected == "recovery" {
 		environment = append(environment, "ARDENTS_STREAM_PROGRESS=1", "ARDENTS_STREAM_CHUNK_DELAY=2s")
+	}
+	if selected == "final-hostile" {
+		environment = append(environment, "ARDENTS_BLOCKED_OBSERVE_ONLY=1",
+			"ARDENTS_BLOCKED_EXTERNAL_CONTROLS=1")
 	}
 	return func(ctx context.Context, arguments ...string) ([]byte, error) {
 		composeFile, directory := filepath.Join(repository, "tests", "live", "blocked-entry.compose.yaml"), repository

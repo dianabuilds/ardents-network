@@ -25,6 +25,7 @@ type entryPlan struct {
 	CandidateStateRoot  string   `json:"candidate_state_root"`
 	RouteManifestDigest string   `json:"route_manifest_digest"`
 	TransitionHandle    string   `json:"transition_handle"`
+	TimeConfidenceFile  string   `json:"time_confidence_file"`
 }
 
 func loadEntryPlan(path string) (runtime *entryRuntime, runErr error) {
@@ -34,7 +35,8 @@ func loadEntryPlan(path string) (runtime *entryRuntime, runErr error) {
 	}
 	if raw.Schema != "ardents-h3-bridge-entry-plan-v1" || raw.BridgeStateRoot == "" ||
 		raw.NetworkStateRoot == "" || raw.NetworkProfile == "" || raw.RouteProfile == "" ||
-		raw.LocalRoleStateRoot == "" || raw.Binary == "" || raw.CandidateStateRoot == "" {
+		raw.LocalRoleStateRoot == "" || raw.Binary == "" || raw.CandidateStateRoot == "" ||
+		raw.TimeConfidenceFile == "" {
 		return nil, errors.New("bridge entry plan is not canonical or complete")
 	}
 	var networkID [32]byte
@@ -67,7 +69,9 @@ func loadEntryPlan(path string) (runtime *entryRuntime, runErr error) {
 	}
 	cleanup = func() error { return errors.Join(roles.Close(), network.Close(), transition.Close()) }
 	config := bridge.Config{Root: raw.BridgeStateRoot, RouteProfile: raw.RouteProfile,
-		CurrentNetwork: network.Current, Clock: time.Now, RoleConflict: roles.Conflict,
+		CurrentNetwork: network.Current, Clock: time.Now,
+		TimeConfidence: planfile.FreshRegular(raw.TimeConfidenceFile, time.Now, 2*time.Second),
+		RoleConflict:   roles.Conflict,
 		ValidateCandidate: func(value []byte, identity [32]byte) ([32]byte, string, error) {
 			candidate, validateErr := camouflage.Validate(value, identity)
 			return candidate.Commitment(), "webtunnel-v0.0.6", validateErr

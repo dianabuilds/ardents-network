@@ -35,9 +35,9 @@ services:
     <<: *product
     build:
       context: ../..
-      dockerfile: tests/live/blocked-entry.Dockerfile
+      dockerfile: ${ARDENTS_BLOCKED_DOCKERFILE:-tests/live/blocked-entry.Dockerfile}
     command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
-    environment: {ARDENTS_BLOCKED_ROLE: endpoint, ARDENTS_BLOCKED_PROFILE: "${ARDENTS_BLOCKED_PROFILE:?}", ARDENTS_BLOCKED_EXPECT_DRAIN: "${ARDENTS_BLOCKED_EXPECT_DRAIN:-0}", ARDENTS_BLOCKED_ENDPOINT_ADDRESS: "${ARDENTS_BLOCKED_ENDPOINT_ADDRESS:-203.0.113.7}", ARDENTS_DNS_SYNC: /run/evidence, ARDENTS_STREAM_LIFETIME: 5m}
+    environment: {ARDENTS_BLOCKED_ROLE: endpoint, ARDENTS_BLOCKED_PROFILE: "${ARDENTS_BLOCKED_PROFILE:?}", ARDENTS_BLOCKED_EXPECT_DRAIN: "${ARDENTS_BLOCKED_EXPECT_DRAIN:-0}", ARDENTS_BLOCKED_OBSERVE_ONLY: "${ARDENTS_BLOCKED_OBSERVE_ONLY:-0}", ARDENTS_BLOCKED_ENDPOINT_ADDRESS: "${ARDENTS_BLOCKED_ENDPOINT_ADDRESS:-203.0.113.7}", ARDENTS_DNS_SYNC: /run/evidence, ARDENTS_STREAM_LIFETIME: 5m}
     volumes:
       - ${ARDENTS_BLOCKED_ROOT:?}/input/endpoint:/run/input:ro
       - ${ARDENTS_BLOCKED_ROOT:?}/sync/endpoint:/run/evidence
@@ -51,6 +51,12 @@ services:
     <<: *observer
     network_mode: service:endpoint
     environment: {ARDENTS_DNS_OBSERVER: "1", ARDENTS_DNS_SYNC: /run/evidence}
+    volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/endpoint:/run/evidence"]
+  endpoint-control:
+    <<: *observer
+    network_mode: service:endpoint
+    environment: {ARDENTS_BLOCKED_ROLE: control-sender, ARDENTS_BLOCKED_CONTROL_ROLE: endpoint, ARDENTS_BLOCKED_PROFILE: "${ARDENTS_BLOCKED_PROFILE:?}", ARDENTS_BLOCKED_ENDPOINT_ADDRESS: "${ARDENTS_BLOCKED_ENDPOINT_ADDRESS:-203.0.113.7}", ARDENTS_DNS_SYNC: /run/evidence}
+    command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
     volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/endpoint:/run/evidence"]
   endpoint-resource-collector:
     <<: *observer
@@ -84,7 +90,7 @@ services:
     pids_limit: ${ARDENTS_BRIDGE_PIDS:-512}
     ulimits: {nofile: {soft: 4096, hard: 4096}}
     command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
-    environment: {ARDENTS_BLOCKED_ROLE: bridge, ARDENTS_BLOCKED_PROFILE: "${ARDENTS_BLOCKED_PROFILE:?}", ARDENTS_BLOCKED_EXPECT_DRAIN: "${ARDENTS_BLOCKED_EXPECT_DRAIN:-0}", ARDENTS_BLOCKED_ENDPOINT_ADDRESSES: "${ARDENTS_BLOCKED_ENDPOINT_ADDRESSES:-203.0.113.7}", ARDENTS_DNS_SYNC: /run/evidence, GOMAXPROCS: "${ARDENTS_BRIDGE_GOMAXPROCS:-2}", GOMEMLIMIT: "${ARDENTS_BRIDGE_GOMEMLIMIT:-768MiB}"}
+    environment: {ARDENTS_BLOCKED_ROLE: bridge, ARDENTS_BLOCKED_PROFILE: "${ARDENTS_BLOCKED_PROFILE:?}", ARDENTS_BLOCKED_EXPECT_DRAIN: "${ARDENTS_BLOCKED_EXPECT_DRAIN:-0}", ARDENTS_BLOCKED_OBSERVE_ONLY: "${ARDENTS_BLOCKED_OBSERVE_ONLY:-0}", ARDENTS_BLOCKED_ENDPOINT_ADDRESSES: "${ARDENTS_BLOCKED_ENDPOINT_ADDRESSES:-203.0.113.7}", ARDENTS_DNS_SYNC: /run/evidence, GOMAXPROCS: "${ARDENTS_BRIDGE_GOMAXPROCS:-2}", GOMEMLIMIT: "${ARDENTS_BRIDGE_GOMEMLIMIT:-768MiB}"}
     volumes:
       - ${ARDENTS_BLOCKED_ROOT:?}/input/bridge:/run/input:ro
       - ${ARDENTS_BLOCKED_ROOT:?}/sync/bridge:/run/evidence
@@ -97,6 +103,12 @@ services:
     <<: *observer
     network_mode: service:bridge
     environment: {ARDENTS_DNS_OBSERVER: "1", ARDENTS_DNS_SYNC: /run/evidence}
+    volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/bridge:/run/evidence"]
+  bridge-control:
+    <<: *observer
+    network_mode: service:bridge
+    environment: {ARDENTS_BLOCKED_ROLE: control-sender, ARDENTS_BLOCKED_CONTROL_ROLE: bridge, ARDENTS_BLOCKED_PROFILE: "${ARDENTS_BLOCKED_PROFILE:?}", ARDENTS_BLOCKED_ENDPOINT_ADDRESSES: "${ARDENTS_BLOCKED_ENDPOINT_ADDRESSES:-203.0.113.7}", ARDENTS_DNS_SYNC: /run/evidence}
+    command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
     volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/bridge:/run/evidence"]
   bridge-resource-collector:
     <<: *observer
@@ -211,7 +223,7 @@ services:
   initiator:
     <<: *product
     command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
-    environment: {ARDENTS_BLOCKED_ROLE: initiator, ARDENTS_BLOCKED_PROFILE: "${ARDENTS_BLOCKED_PROFILE:?}", ARDENTS_BLOCKED_EXPECT_DRAIN: "${ARDENTS_BLOCKED_EXPECT_DRAIN:-0}", ARDENTS_DNS_SYNC: /run/evidence}
+    environment: {ARDENTS_BLOCKED_ROLE: initiator, ARDENTS_BLOCKED_PROFILE: "${ARDENTS_BLOCKED_PROFILE:?}", ARDENTS_BLOCKED_EXPECT_DRAIN: "${ARDENTS_BLOCKED_EXPECT_DRAIN:-0}", ARDENTS_BLOCKED_OBSERVE_ONLY: "${ARDENTS_BLOCKED_OBSERVE_ONLY:-0}", ARDENTS_DNS_SYNC: /run/evidence}
     volumes: ["${ARDENTS_BLOCKED_ROOT:?}/input/initiator:/run/input:ro", "${ARDENTS_BLOCKED_ROOT:?}/sync/initiator:/run/evidence"]
     networks: {route_net: {ipv4_address: 172.31.20.11}}
   initiator-observer:
@@ -219,11 +231,17 @@ services:
     network_mode: service:initiator
     environment: {ARDENTS_DNS_OBSERVER: "1", ARDENTS_DNS_SYNC: /run/evidence}
     volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/initiator:/run/evidence"]
+  initiator-control:
+    <<: *observer
+    network_mode: service:initiator
+    environment: {ARDENTS_BLOCKED_ROLE: control-sender, ARDENTS_BLOCKED_CONTROL_ROLE: initiator, ARDENTS_BLOCKED_PROFILE: "${ARDENTS_BLOCKED_PROFILE:?}", ARDENTS_DNS_SYNC: /run/evidence}
+    command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
+    volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/initiator:/run/evidence"]
 
   introduction:
     <<: *product
     command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
-    environment: {ARDENTS_BLOCKED_ROLE: introduction, ARDENTS_BLOCKED_EXPECT_DRAIN: "${ARDENTS_BLOCKED_EXPECT_DRAIN:-0}", ARDENTS_DNS_SYNC: /run/evidence}
+    environment: {ARDENTS_BLOCKED_ROLE: introduction, ARDENTS_BLOCKED_EXPECT_DRAIN: "${ARDENTS_BLOCKED_EXPECT_DRAIN:-0}", ARDENTS_BLOCKED_OBSERVE_ONLY: "${ARDENTS_BLOCKED_OBSERVE_ONLY:-0}", ARDENTS_DNS_SYNC: /run/evidence}
     volumes:
       - ${ARDENTS_BLOCKED_ROOT:?}/input/introduction:/run/input:ro
       - ${ARDENTS_BLOCKED_ROOT:?}/sync/introduction:/run/evidence
@@ -234,11 +252,17 @@ services:
     network_mode: service:introduction
     environment: {ARDENTS_DNS_OBSERVER: "1", ARDENTS_DNS_SYNC: /run/evidence}
     volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/introduction:/run/evidence"]
+  introduction-control:
+    <<: *observer
+    network_mode: service:introduction
+    environment: {ARDENTS_BLOCKED_ROLE: control-sender, ARDENTS_BLOCKED_CONTROL_ROLE: introduction, ARDENTS_DNS_SYNC: /run/evidence}
+    command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
+    volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/introduction:/run/evidence"]
 
   rendezvous:
     <<: *product
     command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
-    environment: {ARDENTS_BLOCKED_ROLE: rendezvous, ARDENTS_BLOCKED_EXPECT_DRAIN: "${ARDENTS_BLOCKED_EXPECT_DRAIN:-0}", ARDENTS_DNS_SYNC: /run/evidence}
+    environment: {ARDENTS_BLOCKED_ROLE: rendezvous, ARDENTS_BLOCKED_EXPECT_DRAIN: "${ARDENTS_BLOCKED_EXPECT_DRAIN:-0}", ARDENTS_BLOCKED_OBSERVE_ONLY: "${ARDENTS_BLOCKED_OBSERVE_ONLY:-0}", ARDENTS_DNS_SYNC: /run/evidence}
     volumes: ["${ARDENTS_BLOCKED_ROOT:?}/input/rendezvous:/run/input:ro", "${ARDENTS_BLOCKED_ROOT:?}/sync/rendezvous:/run/evidence"]
     networks: {route_net: {ipv4_address: 172.31.20.13}}
   rendezvous-observer:
@@ -246,11 +270,17 @@ services:
     network_mode: service:rendezvous
     environment: {ARDENTS_DNS_OBSERVER: "1", ARDENTS_DNS_SYNC: /run/evidence}
     volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/rendezvous:/run/evidence"]
+  rendezvous-control:
+    <<: *observer
+    network_mode: service:rendezvous
+    environment: {ARDENTS_BLOCKED_ROLE: control-sender, ARDENTS_BLOCKED_CONTROL_ROLE: rendezvous, ARDENTS_DNS_SYNC: /run/evidence}
+    command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
+    volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/rendezvous:/run/evidence"]
 
   responder:
     <<: *product
     command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
-    environment: {ARDENTS_BLOCKED_ROLE: responder, ARDENTS_BLOCKED_EXPECT_DRAIN: "${ARDENTS_BLOCKED_EXPECT_DRAIN:-0}", ARDENTS_DNS_SYNC: /run/evidence}
+    environment: {ARDENTS_BLOCKED_ROLE: responder, ARDENTS_BLOCKED_EXPECT_DRAIN: "${ARDENTS_BLOCKED_EXPECT_DRAIN:-0}", ARDENTS_BLOCKED_OBSERVE_ONLY: "${ARDENTS_BLOCKED_OBSERVE_ONLY:-0}", ARDENTS_DNS_SYNC: /run/evidence}
     volumes: ["${ARDENTS_BLOCKED_ROOT:?}/input/responder:/run/input:ro", "${ARDENTS_BLOCKED_ROOT:?}/sync/responder:/run/evidence"]
     networks: {route_net: {ipv4_address: 172.31.20.14}}
   responder-observer:
@@ -258,11 +288,17 @@ services:
     network_mode: service:responder
     environment: {ARDENTS_DNS_OBSERVER: "1", ARDENTS_DNS_SYNC: /run/evidence}
     volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/responder:/run/evidence"]
+  responder-control:
+    <<: *observer
+    network_mode: service:responder
+    environment: {ARDENTS_BLOCKED_ROLE: control-sender, ARDENTS_BLOCKED_CONTROL_ROLE: responder, ARDENTS_DNS_SYNC: /run/evidence}
+    command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
+    volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/responder:/run/evidence"]
 
   publisher:
     <<: *product
     command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
-    environment: {ARDENTS_BLOCKED_ROLE: publisher, ARDENTS_BLOCKED_EXPECT_DRAIN: "${ARDENTS_BLOCKED_EXPECT_DRAIN:-0}", ARDENTS_DNS_SYNC: /run/evidence}
+    environment: {ARDENTS_BLOCKED_ROLE: publisher, ARDENTS_BLOCKED_EXPECT_DRAIN: "${ARDENTS_BLOCKED_EXPECT_DRAIN:-0}", ARDENTS_BLOCKED_OBSERVE_ONLY: "${ARDENTS_BLOCKED_OBSERVE_ONLY:-0}", ARDENTS_DNS_SYNC: /run/evidence}
     volumes:
       - ${ARDENTS_BLOCKED_ROOT:?}/input/publisher:/run/input:ro
       - ${ARDENTS_BLOCKED_ROOT:?}/sync/publisher:/run/evidence
@@ -272,6 +308,12 @@ services:
     <<: *observer
     network_mode: service:publisher
     environment: {ARDENTS_DNS_OBSERVER: "1", ARDENTS_DNS_SYNC: /run/evidence}
+    volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/publisher:/run/evidence"]
+  publisher-control:
+    <<: *observer
+    network_mode: service:publisher
+    environment: {ARDENTS_BLOCKED_ROLE: control-sender, ARDENTS_BLOCKED_CONTROL_ROLE: publisher, ARDENTS_DNS_SYNC: /run/evidence}
+    command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
     volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/publisher:/run/evidence"]
   publisher-carrier-collector:
     <<: *observer

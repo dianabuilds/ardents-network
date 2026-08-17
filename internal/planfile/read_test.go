@@ -1,6 +1,7 @@
 package planfile_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -19,7 +20,7 @@ func TestReadAndDecodeEnforceBoundsAndShape(t *testing.T) {
 	if err := planfile.Decode(path, 32, &value); err != nil || value.Name != "node" {
 		t.Fatalf("decode = %+v, %v", value, err)
 	}
-	if _, err := planfile.Read(path, 4); err == nil {
-		t.Fatal("oversized plan was accepted")
+	if prefix, err := planfile.Read(path, 4); !errors.Is(err, planfile.ErrTooLarge) || len(prefix) != 5 {
+		t.Fatalf("oversized plan prefix = %q, %v", prefix, err)
 	}
 }

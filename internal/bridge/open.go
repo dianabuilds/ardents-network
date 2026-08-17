@@ -112,6 +112,9 @@ func copyConfig(input Config) (Config, error) {
 		input.CurrentNetwork == nil || input.RoleConflict == nil || input.Clock == nil {
 		return Config{}, errors.New("bridge configuration is incomplete")
 	}
+	if input.TimeConfidence == nil {
+		return Config{}, errors.New("bridge Time Confidence is unavailable")
+	}
 	if input.Clock().IsZero() {
 		return Config{}, errors.New("bridge clock is invalid")
 	}

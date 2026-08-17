@@ -25,6 +25,7 @@ var blockedExpectedDNSControls map[string]blockedDNSControlTarget
 func runBlockedControlPlan(t *testing.T, root string, manifest blockedPathManifest) {
 	t.Helper()
 	targets := blockedDNSControlTargets(t, manifest)
+	writeBlockedJSON(t, filepath.Join(root, "control-targets.json"), targets)
 	blockedExpectedDNSControls = make(map[string]blockedDNSControlTarget, len(targets))
 	for _, target := range targets {
 		blockedExpectedDNSControls[target.Name] = target
@@ -41,8 +42,23 @@ func runBlockedControlPlan(t *testing.T, root string, manifest blockedPathManife
 	waitBlockedFile(t, filepath.Join(root, "controls-stopped"), 3*time.Second)
 }
 
+func loadBlockedControlTargets(t *testing.T, root string) {
+	t.Helper()
+	var targets []blockedDNSControlTarget
+	readBlockedJSON(t, filepath.Join(root, "control-targets.json"), &targets)
+	blockedExpectedDNSControls = make(map[string]blockedDNSControlTarget, len(targets))
+	for _, target := range targets {
+		if target.Name == "" || target.IfIndex <= 0 || len(target.Token) != 32 ||
+			blockedExpectedDNSControls[target.Name].Name != "" {
+			t.Fatal("external DNS control targets are invalid")
+		}
+		blockedExpectedDNSControls[target.Name] = target
+	}
+}
+
 func completeBlockedDNSObservation(value blockedDNSResult, manifest blockedPathManifest) bool {
-	if len(blockedExpectedDNSControls) != len(manifest.Required)+len(manifest.DynamicLoopback) ||
+	if len(blockedExpectedDNSControls) != len(manifest.Required)+len(manifest.ControlOnly)+
+		len(manifest.DynamicLoopback)+len(manifest.ControlLoopback) ||
 		len(value.BoundaryControls) != len(blockedExpectedDNSControls) {
 		return false
 	}
@@ -69,9 +85,11 @@ func blockedDNSControlTargets(t *testing.T, manifest blockedPathManifest) []bloc
 }
 
 func blockedDNSControlTargetsWithoutTest(manifest blockedPathManifest) ([]blockedDNSControlTarget, bool) {
-	result := make([]blockedDNSControlTarget, 0, len(manifest.Required)+len(manifest.DynamicLoopback))
+	boundaries := append(append([]blockedPathBoundary(nil), manifest.Required...), manifest.ControlOnly...)
+	loopbacks := append(append([]string(nil), manifest.DynamicLoopback...), manifest.ControlLoopback...)
+	result := make([]blockedDNSControlTarget, 0, len(boundaries)+len(loopbacks))
 	seen := make(map[string]bool)
-	for _, boundary := range manifest.Required {
+	for _, boundary := range boundaries {
 		index := blockedInterfaceForAddresses(boundary.Source, boundary.Address)
 		token, tokenErr := blockedDNSControlToken()
 		if boundary.Name == "" || index <= 0 || seen[boundary.Name] || tokenErr != nil {
@@ -84,7 +102,7 @@ func blockedDNSControlTargetsWithoutTest(manifest blockedPathManifest) ([]blocke
 	if err != nil {
 		return nil, false
 	}
-	for _, name := range manifest.DynamicLoopback {
+	for _, name := range loopbacks {
 		token, tokenErr := blockedDNSControlToken()
 		if name == "" || seen[name] || tokenErr != nil {
 			return nil, false

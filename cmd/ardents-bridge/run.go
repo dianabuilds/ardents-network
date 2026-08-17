@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -29,7 +28,7 @@ func run(ctx context.Context, arguments []string, output io.Writer) (runErr erro
 	}
 	defer func() { runErr = errors.Join(runErr, runtime.close()) }()
 	invite, err := planfile.Read(runtime.inviteFile, 4096)
-	if err != nil {
+	if err != nil && !errors.Is(err, planfile.ErrTooLarge) {
 		return fmt.Errorf("read Bridge Invite: %w", err)
 	}
 	runtime.config.ValidateCandidate = candidateCommitment
@@ -47,10 +46,5 @@ func run(ctx context.Context, arguments []string, output io.Writer) (runErr erro
 	}
 	encoder := json.NewEncoder(output)
 	encoder.SetEscapeHTML(false)
-	return encoder.Encode(struct {
-		Class      string `json:"class"`
-		InviteID   string `json:"invite_id"`
-		Slot       uint8  `json:"slot"`
-		Generation uint8  `json:"generation"`
-	}{string(result.Class), hex.EncodeToString(result.InviteID[:]), result.Slot, result.Generation})
+	return encoder.Encode(result)
 }

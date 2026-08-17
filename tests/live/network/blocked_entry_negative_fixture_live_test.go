@@ -20,7 +20,7 @@ func newBlockedNegativeFixture(t *testing.T, clientBinary, serverBinary string) 
 		mustMkdirShared(t, filepath.Join(root, "sync", role))
 	}
 	endpoint := filepath.Join(root, "input", "negative-endpoint")
-	for _, name := range []string{"route.json", "transition.bin", "cert.pem", "key.pem"} {
+	for _, name := range []string{"route.json", "transition.bin", "cert.pem", "key.pem", "time-confidence"} {
 		copyFile(t, filepath.Join(root, "input", "endpoint", name), filepath.Join(endpoint, name))
 	}
 	copyTree(t, filepath.Join(root, "input", "endpoint", "route-state"), filepath.Join(endpoint, "route-state"))
@@ -51,10 +51,10 @@ func newBlockedNegativeFixture(t *testing.T, clientBinary, serverBinary string) 
 		"network_threshold": 1, "network_profile": "h3-role-probe-v1", "route_profile": "h3-route-tracer-v1",
 		"local_role_state_root": "/run/state/local-roles", "binary": "/candidate/webtunnel-client",
 		"candidate_state_root": "/run/state/candidate", "route_manifest_digest": liveHex(fixture.manifest),
-		"transition_handle": "3"}
+		"transition_handle": "3", "time_confidence_file": "/run/secure/time-confidence"}
 	writeLivePlan(t, endpoint, "entry", entryPlan)
 	recovery := filepath.Join(root, "input", "recovery-endpoint")
-	for _, name := range []string{"route.json", "transition.bin", "cert.pem", "key.pem"} {
+	for _, name := range []string{"route.json", "transition.bin", "cert.pem", "key.pem", "time-confidence"} {
 		copyFile(t, filepath.Join(endpoint, name), filepath.Join(recovery, name))
 	}
 	copyTree(t, filepath.Join(endpoint, "route-state"), filepath.Join(recovery, "route-state"))

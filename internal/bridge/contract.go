@@ -14,6 +14,7 @@ type Config struct {
 	RouteProfile      string
 	CurrentNetwork    func() (state.Snapshot, error)
 	Clock             func() time.Time
+	TimeConfidence    func() bool
 	RoleConflict      func([32]byte, [32]byte) (bool, error)
 	ValidateCandidate func([]byte, [32]byte) ([32]byte, string, error)
 }
