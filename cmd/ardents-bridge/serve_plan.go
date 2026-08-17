@@ -39,11 +39,6 @@ type serveRuntime struct {
 	node   node.Config
 }
 
-type adapterServer interface {
-	Protect(bool)
-	Close() error
-}
-
 func loadServePlan(path string) (serveRuntime, error) {
 	var raw servePlan
 	if err := planfile.Decode(path, 32<<10, &raw); err != nil {
@@ -51,7 +46,7 @@ func loadServePlan(path string) (serveRuntime, error) {
 	}
 	if raw.Schema != "ardents-h3-bridge-serve-plan-v1" || raw.ImportPlan == "" || raw.IdentityKey == "" ||
 		raw.MaximumDutyMilliseconds == 0 || raw.MaximumDutyMilliseconds > 15000 ||
-		raw.DrainTimeoutMilliseconds == 0 || raw.DrainTimeoutMilliseconds > 15000 {
+		raw.DrainTimeoutMilliseconds == 0 || raw.DrainTimeoutMilliseconds > 15000 || (raw.ResourceProfile != "h3-s-v1" && raw.ResourceProfile != "h3-s-v1-strong") {
 		return serveRuntime{}, errors.New("serve plan is not canonical or complete")
 	}
 	bridgeRuntime, err := loadImportPlan(raw.ImportPlan, time.Now)
@@ -91,7 +86,7 @@ func loadServePlan(path string) (serveRuntime, error) {
 	}
 	runtime := serveRuntime{bridge: bridgeRuntime}
 	runtime.server = camouflage.Server{Binary: raw.Binary, StateRoot: raw.CandidateStateRoot,
-		Certificate: raw.Certificate, Key: raw.Key, NextLeg: nextLeg, Deadline: deadline}
+		Certificate: raw.Certificate, Key: raw.Key, NextLeg: nextLeg, Deadline: deadline, ResourceProfile: raw.ResourceProfile}
 	runtime.node = node.Config{IdentityKey: identity, LocalRoleStateRoot: bridgeRuntime.localRoleRoot,
 		Probe: probe.Config{ListenAddress: raw.ProbeListen, Certificate: certificate, ClientRootPEM: clientRoot,
 			ClientKeyPins: pins, MaximumDuty: time.Duration(raw.MaximumDutyMilliseconds) * time.Millisecond,

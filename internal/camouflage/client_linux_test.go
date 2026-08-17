@@ -68,7 +68,7 @@ func TestPinnedWebTunnelCarriesUsefulWorkAndCleansRepeatedly(t *testing.T) {
 	defer cancel()
 	serving, err := camouflage.Serve(ctx, config, camouflage.Server{
 		Binary: serverPath, StateRoot: serverState, Certificate: certificatePath, Key: keyPath,
-		NextLeg: echo.Addr().String(), Deadline: time.Now().Add(5 * time.Second),
+		NextLeg: echo.Addr().String(), Deadline: time.Now().Add(5 * time.Second), ResourceProfile: "h3-s-v1",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -79,7 +79,7 @@ func TestPinnedWebTunnelCarriesUsefulWorkAndCleansRepeatedly(t *testing.T) {
 		})
 	}
 	clientState := filepath.Join(root, "client-state")
-	carrier, cleanup, err := camouflage.OpenClient(ctx, config, camouflage.Client{
+	carrier, cleanup, _, err := camouflage.OpenClient(ctx, config, camouflage.Client{
 		Binary: clientPath, StateRoot: clientState, Deadline: time.Now().Add(5 * time.Second),
 	})
 	if err != nil {
@@ -228,7 +228,7 @@ func TestPinnedClientUsesSanitizedPTAndOneNumericDialBeforeRefusal(t *testing.T)
 	}
 	result := make(chan openResult, 1)
 	go func() {
-		carrier, cleanup, err := camouflage.OpenClient(context.Background(), config, camouflage.Client{
+		carrier, cleanup, _, err := camouflage.OpenClient(context.Background(), config, camouflage.Client{
 			Binary: binaryPath, StateRoot: stateRoot, Deadline: time.Now().Add(5 * time.Second),
 		})
 		if carrier != nil {

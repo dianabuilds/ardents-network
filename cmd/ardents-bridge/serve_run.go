@@ -56,10 +56,14 @@ func runServe(ctx context.Context, path string, output io.Writer) (runErr error)
 	nodeDone := make(chan error, 1)
 	go func() { _, runErr := node.Run(nodeCtx, runtime.node); nodeDone <- runErr }()
 	encoder := json.NewEncoder(output)
-	var serving adapterServer
+	var serving camouflage.ServerControl
 	for {
 		select {
 		case event := <-events:
+			if serving != nil && event.Resource != nil {
+				event.Resource.AdmissionActive, event.Resource.AdmissionAccepted,
+					event.Resource.AdmissionRefused = serving.Admission()
+			}
 			if err := encoder.Encode(event); err != nil {
 				cancelNode()
 				return errors.Join(err, stopAdapter(serving), <-nodeDone)
@@ -99,7 +103,7 @@ func candidateCommitment(raw []byte, identity [32]byte) ([32]byte, string, error
 	return config.Commitment(), "webtunnel-v0.0.6", err
 }
 
-func stopAdapter(serving adapterServer) error {
+func stopAdapter(serving camouflage.ServerControl) error {
 	if serving == nil {
 		return nil
 	}

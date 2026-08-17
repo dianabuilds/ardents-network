@@ -9,9 +9,6 @@ import (
 
 var errCleanupFailed = errors.New("adapter cleanup failed")
 
-// CleanupComplete reports whether a failed open still removed every owned Adapter resource.
-func CleanupComplete(err error) bool { return !errors.Is(err, errCleanupFailed) }
-
 func cleanupFailure(err error) error {
 	if err == nil {
 		return nil

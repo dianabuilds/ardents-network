@@ -43,7 +43,7 @@ func TestEndpointPlanRejectsUnknownAndCrossRoleInputs(t *testing.T) {
 func TestEndpointPlanAcceptsSustainedLiveStreamBound(t *testing.T) {
 	plan := endpointPlan{Role: "client", ApplicationSocket: "app", RouteSocket: "route", PublicationFile: "publication",
 		IntroductionPublic: "introduction", Target: "target", At: "2033-05-18T03:33:20Z", Deadline: "5s",
-		BytesEachDirection: 256 << 20}
+		BytesEachDirection: 768 << 20}
 	if err := plan.validate(); err != nil {
 		t.Fatalf("sustained live stream bound rejected: %v", err)
 	}
@@ -67,5 +67,18 @@ func TestEndpointPlanSeparatesSetupDeadlineFromConnectionLifetime(t *testing.T) 
 	plan.Lifetime = "10s"
 	if err := plan.validate(); err == nil {
 		t.Fatal("connection lifetime shorter than setup deadline was accepted")
+	}
+}
+
+func TestEndpointPlanBoundsConcurrentConnectionsForStage5Capacity(t *testing.T) {
+	plan := endpointPlan{Role: "client", ApplicationSocket: "app", RouteSocket: "route", PublicationFile: "publication",
+		IntroductionPublic: "introduction", Target: "target", At: "2033-05-18T03:33:20Z", Deadline: "15s",
+		Lifetime: "12m", BytesEachDirection: 4 << 20, MaximumConnections: 16}
+	if err := plan.validate(); err != nil {
+		t.Fatalf("sixteen bounded connections rejected: %v", err)
+	}
+	plan.MaximumConnections = 17
+	if err := plan.validate(); err == nil {
+		t.Fatal("connection capacity above sixteen was accepted")
 	}
 }

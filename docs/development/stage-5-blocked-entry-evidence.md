@@ -1,6 +1,8 @@
 # Stage 5 blocked-entry evidence harness
 
-Status: maintained S5.4 development contract.
+Status: maintained S5.4 verifier and an in-progress S5.5 campaign contract.
+The qualifying S5.5 run remains pending both the maintained full-campaign
+runner/raw recomputation slice and the later non-overcommitted final stand.
 
 `cmd/blocked-entry-lab` owns only the external hostile-campaign bundle. It
 requires a new evidence root outside the repository, hashes its own executable,
@@ -15,6 +17,58 @@ S5.4 uses the distinct profile `h3-s5-b1-development-fixture-v1`. It does not
 claim the accepted `h3-s5-b1-v1` campaign profile, whose repository commit,
 Linux image/kernel, configuration, cgroups, workload seeds, clocks, and budgets
 are frozen only by the S5.5 campaign manifest.
+
+For S5.5, the same command first creates a new external `final-spec.json` from
+committed source and an external configuration root. Preparation rejects a
+dirty tracked tree, an existing destination, repository-local output, mutable
+or symlinked input, missing configuration, and a configuration hash mismatch.
+It binds the Git commit, SHA-256 of `git archive HEAD`, Ubuntu image and kernel,
+pinned WebTunnel binaries, the exact reference/strong/collector classes,
+network and clock envelopes, seven configuration artifacts, all `594` ordered
+cells, and one unique random 32-byte seed per cell. The checked-in non-secret
+configuration vocabulary lives under `tests/live/stage5-final/`; raw Invites,
+addresses, TLS/path secrets, and Route credentials remain external.
+
+The final manifest uses `campaign_kind=final-local`, profile `h3-s5-b1-v1`,
+mode `final-campaign`, and supply class `pinned-offline-webtunnel`. The verifier
+requires complete C0-C6 floors, five reference and five stronger capacity
+batches, ten sustained runs and 100 ordered windows, paired direct baselines,
+both carrier ratios, P0-P4, five recovery episodes, the complete hostile
+matrix, exact resource series, non-overcommitted host allocation, and twelve
+hash-checked raw measurement/candidate/capture artifacts. Missing or malformed
+measurement basis is `invalid`; a trustworthy missed product/resource gate is
+`fail`. Development summaries cannot enter this branch.
+
+The sustained fixture uses one manifest-start clock across both directions.
+Per-second CPU/memory and process/state streams reject a gap outside the
+declared cadence instead of treating a record count as completeness. Exact
+Endpoint, Bridge, and publisher network-namespace counters are read by charged
+collector sidecars before release and after product cleanup; the harness never
+injects `docker exec` into a measured role. Harness-monotonic observations of
+cumulative Application progress bracket each fixed manifest boundary, and the
+harness interpolates the counter at that boundary before deriving each
+non-overlapping 60-second window. Carrier ratios use the complete before/after
+integer deltas, including terminal and cleanup traffic. Process/state streams
+also retain an explicit post-cleanup boundary sample before their collectors
+release the product wrappers. For P4, zero-delta reconciliation uses explicit
+same-lifecycle `baseline` and `after-churn` samples. The later `post-cleanup`
+sample separately proves zero candidate sockets, descendants, and state bytes;
+harness-control sentinels are excluded from product evidence accounting.
+
+This intermediate slice deliberately cannot emit an S5.5 `pass`: after all
+currently implemented structural checks the verifier records
+`maintained final runner raw-to-verdict recomputation is not implemented`.
+Removing that fail-closed blocker requires the maintained runner to stream all
+594 cells and the independent verifier to derive every aggregate from the
+per-second/raw observations. Merely duplicating a runner-authored summary into
+JSONL is not sufficient.
+
+Every final observation is additionally bound index-for-index to the frozen
+594-cell identity and seed schedule. Its start, terminal, and cleanup offsets
+must be monotonic, non-overlapping with the next cell, and within the frozen
+cleanup bound. The 450 hostile observations must reproduce the same offsets in
+the hostile event ledger; a reordered, repeated, or substituted cell is
+`invalid` even when its aggregate counters look correct.
 
 The complete construction tree is owner-only: Unix rejects group/other access,
 and Windows applies a protected current-user DACL to every directory and file
@@ -113,11 +167,24 @@ WebTunnel supply.
 Example invocation (all paths are explicit and no command downloads supply):
 
 ```text
+scripts/prepare-stage5-final-inputs.ps1 \
+  -ConfigurationRoot <new-external-input-root> \
+  -InviteRoot <private-invites> -RouteCredentialRoot <private-role-credentials>
+
+blocked-entry-lab -workspace-root <repo> \
+  -prepare-final-root <new-external-spec-root> \
+  -configuration-root <external-input-root> \
+  -linux-image <pinned-ubuntu-image> -image-sha256 <image-hash> \
+  -kernel <kernel-id> -client <pinned-client> -server <pinned-server>
+
 blocked-entry-lab -workspace-root <repo> -evidence-root <new-external-root> \
   -run-id <id> -mode pass -registry-root <authoritative-external-registry> \
   -runner <hostile-cell-runner> \
   -verifier <pinned-verifier> \
   -client <pinned-client> -server <pinned-server>
+
+# The qualifying invocation changes mode to final-campaign and adds:
+# -campaign-spec <external-spec-root>/final-spec.json
 
 blocked-entry-verify-lab -manifest <root>/publishable/manifest.json \
   -evidence <root>/publishable/evidence.json \

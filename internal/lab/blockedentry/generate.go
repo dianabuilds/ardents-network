@@ -29,7 +29,7 @@ var topology = []topologyRole{
 	{"publisher-application", "application", "app-p", "none"},
 }
 
-func buildManifest(config Config, canaryHash, nonceHash string,
+func buildManifest(config Config, finalSpecValue *finalSpec, canaryHash, nonceHash string,
 	artifacts, supplemental []artifactCommitment,
 ) (manifest, error) {
 	harnessHash, _, err := hashFile(configExecutable())
@@ -66,7 +66,7 @@ func buildManifest(config Config, canaryHash, nonceHash string,
 	for _, group := range hostileMatrix() {
 		groups = append(groups, manifestGroup{ID: group.ID, Variants: group.Variants, Episodes: 5})
 	}
-	return manifest{Schema: "ardents-h3-blocked-entry-manifest-v1", CampaignKind: "development-fixture",
+	result := manifest{Schema: "ardents-h3-blocked-entry-manifest-v1", CampaignKind: "development-fixture",
 		Profile: developmentFixtureProfile, RunID: config.RunID, FixtureMode: config.Mode,
 		SourceIdentity: "development-fixture:" + harnessHash + ":" + runnerHash,
 		SupplyClass:    "unrestricted-schema-fixture",
@@ -76,7 +76,16 @@ func buildManifest(config Config, canaryHash, nonceHash string,
 		SecretArtifacts: artifacts, SupplementalArtifacts: supplemental,
 		CreatedUnixNano: time.Now().UnixNano(), ManifestNonceHash: nonceHash,
 		EvidenceRootHash: hex.EncodeToString(rootHash[:]), RegistryRootHash: hex.EncodeToString(registryHash[:]),
-		AttributionSources: attributionSources}, nil
+		AttributionSources: attributionSources}
+	if finalSpecValue != nil {
+		result.CampaignKind = "final-local"
+		result.Profile = finalCampaignProfile
+		result.FixtureMode = "final-campaign"
+		result.SourceIdentity = "repository:" + finalSpecValue.RepositoryCommit + ":" + finalSpecValue.SourceSHA256
+		result.SupplyClass = "pinned-offline-webtunnel"
+		result.FinalSpec = finalSpecValue
+	}
+	return result, nil
 }
 
 func createNonceHash() (string, error) {
@@ -97,7 +106,7 @@ func configExecutable() string {
 }
 
 func buildEvidence(config Config, manifestHash string, artifacts, supplemental []artifactCommitment,
-	canaries canaryCorpus,
+	canaries canaryCorpus, finalSpecValue *finalSpec,
 ) (evidence, []byte, error) {
 	mode := config.Mode
 	if mode == "" {
@@ -112,6 +121,7 @@ func buildEvidence(config Config, manifestHash string, artifacts, supplemental [
 	allowed["blocker-loss"] = true
 	allowed["forbidden-owner-mismatch"] = true
 	allowed["candidate-fail-harness-invalid"] = true
+	allowed["final-campaign"] = true
 	for _, field := range []string{"invite", "address", "path", "certificate"} {
 		allowed["candidate-canary-"+field] = true
 		allowed["pipeline-canary-"+field] = true
@@ -119,7 +129,7 @@ func buildEvidence(config Config, manifestHash string, artifacts, supplemental [
 	if !allowed[mode] {
 		return evidence{}, nil, errors.New("blocked-entry harness mode is unsupported")
 	}
-	events, observers, cleanup, err := collectEvents(config, canaries)
+	events, observers, cleanup, finalSummaryValue, err := collectEvents(config, canaries, finalSpecValue)
 	if err != nil {
 		return evidence{}, nil, err
 	}
@@ -131,7 +141,11 @@ func buildEvidence(config Config, manifestHash string, artifacts, supplemental [
 		Profile: developmentFixtureProfile,
 		RunID:   config.RunID, ManifestSHA256: manifestHash, Events: events, Observers: observers, Cleanup: cleanup,
 		SecretArtifacts: artifacts, SupplementalArtifacts: supplemental,
-		AttributionArtifacts: attributions, CollectionClosed: true}
+		AttributionArtifacts: attributions, CollectionClosed: true, FinalSummary: finalSummaryValue}
+	if finalSummaryValue != nil {
+		result.CampaignKind = "final-local"
+		result.Profile = finalCampaignProfile
+	}
 	return injectMode(result, mode, canaries)
 }
 
@@ -213,30 +227,4 @@ func variantIn(value string, wanted ...string) bool {
 		}
 	}
 	return false
-}
-
-func secretArtifacts(secretRoot string, config Config) ([]artifactCommitment, error) {
-	generated := []string{"candidate/client.stderr", "candidate/server.stderr", "capture/packets.bin"}
-	for _, path := range generated {
-		absolute := filepath.Join(secretRoot, filepath.FromSlash(path))
-		if err := os.MkdirAll(filepath.Dir(absolute), 0o700); err != nil {
-			return nil, err
-		}
-		if err := os.WriteFile(absolute, []byte("secret-only fixture\n"), 0o600); err != nil {
-			return nil, err
-		}
-	}
-	paths := []string{"canaries.json", generated[0], generated[1], generated[2],
-		filepath.ToSlash(filepath.Join("supply", filepath.Base(config.RunnerPath))),
-		filepath.ToSlash(filepath.Join("supply", filepath.Base(config.ClientPath))),
-		filepath.ToSlash(filepath.Join("supply", filepath.Base(config.ServerPath)))}
-	artifacts := make([]artifactCommitment, 0, len(paths))
-	for _, path := range paths {
-		value, err := commitment(secretRoot, path)
-		if err != nil {
-			return nil, err
-		}
-		artifacts = append(artifacts, value)
-	}
-	return artifacts, nil
 }

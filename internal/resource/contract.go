@@ -13,6 +13,7 @@ type Sample struct {
 	MemoryBytes       uint64  `json:"memory_bytes"`
 	GoMemoryBytes     uint64  `json:"go_memory_bytes"`
 	SocketMemoryBytes uint64  `json:"socket_memory_bytes"`
+	Sockets           uint64  `json:"sockets"`
 	FDs               uint64  `json:"fds"`
 	Goroutines        uint64  `json:"goroutines"`
 	Threads           uint64  `json:"threads"`
@@ -24,6 +25,9 @@ type Sample struct {
 	IOPressure        float64 `json:"io_pressure"`
 	HighEvents        uint64  `json:"high_events"`
 	EmergencyEvents   uint64  `json:"emergency_events"`
+	AdmissionActive   uint64  `json:"admission_active"`
+	AdmissionAccepted uint64  `json:"admission_accepted"`
+	AdmissionRefused  uint64  `json:"admission_refused"`
 }
 
 // Check verifies the fixed runtime and OS placement for this guard's profile.

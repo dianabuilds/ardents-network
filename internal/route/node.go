@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const maximumOpaqueBytes = 256 << 20
+const maximumOpaqueBytes = 768 << 20
 
 func serveNode(ctx context.Context, input Actor, ready func(Evidence)) (Evidence, error) {
 	observation := Evidence{Schema: observationSchema, Kind: "complete", Role: input.Role,

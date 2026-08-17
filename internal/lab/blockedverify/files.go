@@ -12,7 +12,10 @@ import (
 	"strings"
 )
 
-const maximumInput = 16 << 20
+const (
+	maximumInput        = 16 << 20
+	maximumArtifactFile = int64(2 << 30)
+)
 
 func decodeStrict(path string, value any) ([]byte, error) {
 	pathInfo, err := os.Lstat(path)
@@ -26,7 +29,7 @@ func decodeStrict(path string, value any) ([]byte, error) {
 	defer file.Close()
 	info, err := file.Stat()
 	if err != nil || !info.Mode().IsRegular() || !os.SameFile(pathInfo, info) ||
-		info.Size() < 1 || info.Size() > maximumInput {
+		info.Size() < 1 || info.Size() > maximumArtifactFile {
 		return nil, errors.Join(err, errors.New("verifier input is missing, empty, or oversized"))
 	}
 	raw, err := io.ReadAll(io.LimitReader(file, maximumInput+1))
@@ -62,15 +65,37 @@ func hashFile(path string) (string, int64, error) {
 	defer file.Close()
 	info, err := file.Stat()
 	if err != nil || !info.Mode().IsRegular() || !os.SameFile(pathInfo, info) ||
-		info.Size() < 1 || info.Size() > maximumInput {
+		info.Size() < 1 || info.Size() > maximumArtifactFile {
 		return "", 0, errors.Join(err, errors.New("committed secret artifact is invalid"))
 	}
 	hash := sha256.New()
-	written, err := io.Copy(hash, io.LimitReader(file, maximumInput+1))
+	written, err := io.Copy(hash, io.LimitReader(file, maximumArtifactFile+1))
 	if err != nil || written != info.Size() {
 		return "", 0, errors.Join(err, errors.New("committed secret artifact changed while reading"))
 	}
 	return hex.EncodeToString(hash.Sum(nil)), info.Size(), nil
+}
+
+func snapshotMeasurement(path string) ([]byte, string, int64, error) {
+	pathInfo, err := os.Lstat(path)
+	if err != nil || pathInfo.Mode()&os.ModeSymlink != 0 {
+		return nil, "", 0, errors.Join(err, errors.New("measurement artifact path is invalid"))
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, "", 0, err
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil || !info.Mode().IsRegular() || !os.SameFile(pathInfo, info) ||
+		info.Size() < 1 || info.Size() > maximumInput {
+		return nil, "", 0, errors.Join(err, errors.New("measurement artifact handle is invalid"))
+	}
+	raw, err := io.ReadAll(io.LimitReader(file, maximumInput+1))
+	if err != nil || int64(len(raw)) != info.Size() {
+		return nil, "", 0, errors.Join(err, errors.New("measurement artifact changed while snapshotting"))
+	}
+	return raw, digest(raw), info.Size(), nil
 }
 
 func readStableFile(path string) ([]byte, error) {

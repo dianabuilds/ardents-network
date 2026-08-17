@@ -1,8 +1,10 @@
 package routeplan
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"sync"
 	"time"
@@ -15,6 +17,7 @@ type deferredUnixStream struct {
 	timeout     time.Duration
 	mu          sync.Mutex
 	stream      net.Conn
+	attachments map[net.Conn]struct{}
 	closed      bool
 	writeClosed bool
 }
@@ -43,9 +46,41 @@ func (value *deferredUnixStream) Close() error {
 	}
 	value.closed = true
 	if value.stream == nil {
-		return nil
+		return value.closeAttachments()
 	}
-	return value.stream.Close()
+	return errors.Join(value.stream.Close(), value.closeAttachments())
+}
+
+// OpenAttachment creates one separately owned publisher IPC stream for a
+// bounded concurrent Route Attachment.
+func (value *deferredUnixStream) OpenAttachment(ctx context.Context) (io.ReadWriteCloser, error) {
+	value.mu.Lock()
+	defer value.mu.Unlock()
+	if value.closed || value.writeClosed {
+		return nil, net.ErrClosed
+	}
+	if len(value.attachments) >= 16 {
+		return nil, errors.New("publisher attachment stream capacity is full")
+	}
+	dialer := net.Dialer{Timeout: value.timeout}
+	stream, err := dialer.DialContext(ctx, "unix", value.path)
+	if err != nil {
+		return nil, err
+	}
+	if value.attachments == nil {
+		value.attachments = make(map[net.Conn]struct{}, 16)
+	}
+	value.attachments[stream] = struct{}{}
+	return stream, nil
+}
+
+func (value *deferredUnixStream) closeAttachments() error {
+	var err error
+	for stream := range value.attachments {
+		err = errors.Join(err, stream.Close())
+		delete(value.attachments, stream)
+	}
+	return err
 }
 
 func (value *deferredUnixStream) CloseWrite() error {

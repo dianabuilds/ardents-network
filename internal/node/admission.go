@@ -43,7 +43,8 @@ func resolveConfig(input Config) (runtimeConfig, error) {
 		return runtimeConfig{}, err
 	}
 	enforcePressure := input.ResourceProfile != ""
-	if enforcePressure && input.ResourceProfile != "h3-np1-v1" {
+	if enforcePressure && input.ResourceProfile != "h3-np1-v1" && input.ResourceProfile != "h3-s-v1" &&
+		input.ResourceProfile != "h3-s-v1-strong" {
 		return runtimeConfig{}, errors.New("node resource profile is not supported")
 	}
 	var guard *resource.Guard

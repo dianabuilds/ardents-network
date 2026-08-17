@@ -23,7 +23,7 @@ func TestOpenClientRejectsUnpinnedBinaryBeforeMutation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	carrier, cleanup, err := camouflage.OpenClient(context.Background(), config, camouflage.Client{
+	carrier, cleanup, cleanupComplete, err := camouflage.OpenClient(context.Background(), config, camouflage.Client{
 		Binary: binaryPath, StateRoot: stateRoot, Deadline: time.Now().Add(time.Second),
 	})
 	if err == nil || err.Error() != "adapter-supply-invalid" {
@@ -31,6 +31,9 @@ func TestOpenClientRejectsUnpinnedBinaryBeforeMutation(t *testing.T) {
 	}
 	if carrier != nil || cleanup != nil {
 		t.Fatal("rejected supply returned a carrier or cleanup owner")
+	}
+	if !cleanupComplete {
+		t.Fatal("pre-mutation supply rejection was reported as cleanup failure")
 	}
 	if _, statErr := os.Stat(stateRoot); !errors.Is(statErr, os.ErrNotExist) {
 		t.Fatalf("rejected supply mutated state root: %v", statErr)

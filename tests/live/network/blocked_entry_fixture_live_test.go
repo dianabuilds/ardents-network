@@ -42,7 +42,8 @@ func newBlockedEntryFixture(t *testing.T, clientBinary, serverBinary string) blo
 	base := newLiveFixture(t)
 	root := filepath.Join(base.root, "blocked-entry")
 	for _, role := range []string{"endpoint", "bridge", "probe", "initiator", "introduction", "rendezvous",
-		"responder", "publisher", "client-service", "publisher-service", "client-app", "publisher-app"} {
+		"responder", "publisher", "client-service", "publisher-service", "client-app", "publisher-app", "pressure",
+		"capacity-probe", "direct"} {
 		mustMkdir(t, filepath.Join(root, "input", role))
 		mustMkdirShared(t, filepath.Join(root, "sync", role))
 	}
@@ -184,6 +185,9 @@ func writeBlockedBridgeInputs(t *testing.T, root string, route liveFixture) {
 		"transition_handle": "3"})
 	bridge := filepath.Join(root, "input", "bridge")
 	writeLiveFile(t, filepath.Join(bridge, "front-cert.pem"), frontCertificate)
+	writeLiveFile(t, filepath.Join(root, "input", "capacity-probe", "front-cert.pem"), frontCertificate)
+	writeLiveFile(t, filepath.Join(root, "input", "capacity-probe", "corpus-seed.bin"),
+		bytes.Repeat([]byte{0xc5}, 32))
 	writeLiveFile(t, filepath.Join(bridge, "front-key.pem"), frontKey)
 	writeNodeIdentity(t, filepath.Join(bridge, "identity-key.pem"), network.nodePrivate)
 	probeCertificate, probeKey, probeRoot, probePin := blockedProbeCredentials(t, now)
@@ -199,15 +203,8 @@ func writeBlockedBridgeInputs(t *testing.T, root string, route liveFixture) {
 		"identity_key": "/run/secure/identity-key.pem", "probe_listen": "127.0.0.1:4101",
 		"probe_certificate": "/run/secure/probe-cert.pem", "probe_key": "/run/secure/probe-key.pem",
 		"probe_client_root": "/run/secure/probe-root.pem", "probe_client_key_digests": []string{hex.EncodeToString(probePin[:])},
-		"maximum_duty_ms": 1000, "drain_timeout_ms": 1000})
+		"maximum_duty_ms": 1000, "drain_timeout_ms": 1000, "resource_profile": "h3-s-v1"})
 	writeBlockedProbeInputs(t, root, frontCertificate, envelope, network.snapshot.Candidates[0].NodeID)
-}
-func blockedImportPlan(network blockedBridgeNetwork, _ string) map[string]any {
-	return map[string]any{"state_root": "/run/state/bridge", "network_state_root": "/run/state/bridge-network",
-		"invite_file": "/run/secure/invite.bin", "network_id": liveHex(network.snapshot.NetworkID),
-		"network_authorities": []string{hex.EncodeToString(network.authorityPublic)}, "network_threshold": 1,
-		"network_profile": "h3-role-probe-v1", "route_profile": "h3-route-tracer-v1",
-		"local_role_state_root": "/run/state/local-roles"}
 }
 func prepareBlockedBridgeNetwork(t *testing.T, directory string, now time.Time) blockedBridgeNetwork {
 	t.Helper()

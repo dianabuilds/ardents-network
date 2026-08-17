@@ -64,6 +64,9 @@ func TestBlockedEntryRole(t *testing.T) {
 	if role == "" {
 		t.Skip("container role only")
 	}
+	if start := os.Getenv("ARDENTS_BLOCKED_START_FILE"); start != "" {
+		waitBlockedFile(t, start, 2*time.Minute)
+	}
 	if role != "policy" {
 		if err := copyBlockedDirectory("/run/input", "/run/secure"); err != nil {
 			t.Fatal(err)
@@ -86,6 +89,14 @@ func TestBlockedEntryRole(t *testing.T) {
 		runBlockedFaultOne(t)
 	case "recovery-endpoint":
 		runBlockedRecoveryParent(t)
+	case "pressure":
+		runBlockedPressure(t)
+	case "capacity-probe":
+		runBlockedCapacityProbe(t)
+	case "resource-collector":
+		runBlockedResourceCollector(t)
+	case "carrier-collector":
+		runBlockedCarrierCollector(t)
 	case "initiator", "introduction", "rendezvous", "responder", "publisher":
 		runBlockedObserved(t, role, blockedManifest(role), func(t *testing.T) {
 			runBlockedCommand(t, "/usr/local/bin/ardents-route", "run", "/run/secure/plan.json")
@@ -93,11 +104,9 @@ func TestBlockedEntryRole(t *testing.T) {
 	case "client-service", "publisher-service":
 		runBlockedCommand(t, "/usr/local/bin/ardents-service", "run", "/run/secure/plan.json")
 	case "client-app":
-		runBlockedCommand(t, "/usr/local/bin/ardents-stream-app", "run-short", "client",
-			"/run/ardents/client-app/app.sock", "/run/secure/own.hex", "/run/secure/peer.hex", "512", "65536")
+		runBlockedCommand(t, "/usr/local/bin/ardents-stream-app", blockedStreamArguments(t, "client")...)
 	case "publisher-app":
-		runBlockedCommand(t, "/usr/local/bin/ardents-stream-app", "run-short", "publisher",
-			"/run/ardents/publisher-app/app.sock", "/run/secure/own.hex", "/run/secure/peer.hex", "65536", "512")
+		runBlockedCommand(t, "/usr/local/bin/ardents-stream-app", blockedStreamArguments(t, "publisher")...)
 	default:
 		t.Fatalf("unknown blocked-entry role %q", role)
 	}
@@ -132,7 +141,7 @@ func runBlockedEndpoint(t *testing.T) {
 		_, writeErr := writer.Write(transition)
 		done <- errors.Join(writeErr, writer.Close())
 	}()
-	runPreparedBlockedCommand(t, command, false)
+	runPreparedBlockedCommand(t, command, os.Getenv("ARDENTS_BLOCKED_EXPECT_DRAIN") != "1")
 	if err := errors.Join(<-done, reader.Close()); err != nil {
 		t.Fatal(err)
 	}
@@ -157,7 +166,14 @@ func runBlockedBridge(t *testing.T) {
 	for !fileExists(stopPath) {
 		select {
 		case err := <-wait:
-			t.Fatalf("Bridge exited before stop: %v\n%s", err, captured.String())
+			if os.Getenv("ARDENTS_BLOCKED_EXPECT_DRAIN") != "1" || err != nil ||
+				!strings.Contains(captured.String(), `"state":"DRAIN"`) ||
+				!strings.Contains(captured.String(), `"state":"EXIT"`) {
+				t.Fatalf("Bridge exited before stop: %v\n%s", err, captured.String())
+			}
+			publishBlockedResourceCleanup(t)
+			finishBlockedObservation(t)
+			return
 		case <-time.After(25 * time.Millisecond):
 		}
 		if time.Now().After(deadline) {
@@ -176,6 +192,7 @@ func runBlockedBridge(t *testing.T) {
 		_ = command.Process.Kill()
 		t.Fatal("Bridge command exceeded the cleanup deadline")
 	}
+	publishBlockedResourceCleanup(t)
 	finishBlockedObservation(t)
 }
 
@@ -183,12 +200,24 @@ func runBlockedObserved(t *testing.T, _ string, manifest blockedPathManifest, ru
 	t.Helper()
 	prepareBlockedObservation(t, manifest)
 	run(t)
+	publishBlockedResourceCleanup(t)
 	finishBlockedObservation(t)
+}
+
+func publishBlockedResourceCleanup(t *testing.T) {
+	t.Helper()
+	root := blockedSync()
+	if !fileExists(filepath.Join(root, "resource-ready")) {
+		return
+	}
+	writeLiveFile(t, filepath.Join(root, "resource-cleanup"), []byte("cleanup\n"))
+	waitBlockedFile(t, filepath.Join(root, "resource-cleanup-captured"), 3*time.Second)
+	waitBlockedFile(t, filepath.Join(root, "resource-release"), 2*time.Minute)
 }
 
 func runBlockedCommand(t *testing.T, executable string, arguments ...string) {
 	t.Helper()
-	runPreparedBlockedCommand(t, exec.Command(executable, arguments...), true)
+	runPreparedBlockedCommand(t, exec.Command(executable, arguments...), os.Getenv("ARDENTS_BLOCKED_EXPECT_DRAIN") != "1")
 }
 
 func runPreparedBlockedCommand(t *testing.T, command *exec.Cmd, requireSuccess bool) {
@@ -199,8 +228,8 @@ func runPreparedBlockedCommand(t *testing.T, command *exec.Cmd, requireSuccess b
 	if requireSuccess && err != nil {
 		t.Fatalf("%s failed: %v\n%s", filepath.Base(command.Path), err, captured.String())
 	}
-	if !requireSuccess && err != nil {
-		t.Fatalf("%s failed: %v\n%s", filepath.Base(command.Path), err, captured.String())
+	if !requireSuccess && err == nil {
+		t.Fatalf("%s unexpectedly completed during emergency DRAIN\n%s", filepath.Base(command.Path), captured.String())
 	}
 }
 
@@ -323,17 +352,32 @@ func blockedManifest(role string) blockedPathManifest {
 	manifest := blockedPathManifest{Phase: "s5.3-" + role}
 	switch role {
 	case "endpoint":
+		endpointAddress := os.Getenv("ARDENTS_BLOCKED_ENDPOINT_ADDRESS")
+		if endpointAddress == "" {
+			endpointAddress = "203.0.113.7"
+		}
 		if os.Getenv("ARDENTS_BLOCKED_PROFILE") == "C0" {
 			manifest.Required = []blockedPathBoundary{boundary("E-to-O-Initiator", "172.31.20.7", "172.31.20.11", 4601)}
 			manifest.AllowedExternal = []blockedPathTarget{{Address: "172.31.20.11", Port: 4601}}
 			break
 		}
-		manifest.Required = []blockedPathBoundary{boundary("E-to-B-front", "203.0.113.7", "203.0.113.8", 8480)}
+		manifest.Required = []blockedPathBoundary{boundary("E-to-B-front", endpointAddress, "203.0.113.8", 8480)}
 		manifest.AllowedExternal = []blockedPathTarget{{Address: "203.0.113.8", Port: 8480}}
 		manifest.DynamicLoopback = []string{"candidate-socks"}
 	case "bridge":
-		manifest.Required = []blockedPathBoundary{boundary("E-to-B-front", "203.0.113.7", "203.0.113.8", 8480),
-			boundary("B-to-Initiator", "172.31.20.8", "172.31.20.11", 4601)}
+		addresses := []string{"203.0.113.7"}
+		if encoded := os.Getenv("ARDENTS_BLOCKED_ENDPOINT_ADDRESSES"); encoded != "" {
+			addresses = strings.Split(encoded, ",")
+		}
+		for index, address := range addresses {
+			name := "E-to-B-front"
+			if len(addresses) > 1 {
+				name = fmt.Sprintf("E-to-B-front-%02d", index)
+			}
+			manifest.Required = append(manifest.Required, boundary(name, address, "203.0.113.8", 8480))
+		}
+		manifest.Required = append(manifest.Required,
+			boundary("B-to-Initiator", "172.31.20.8", "172.31.20.11", 4601))
 		manifest.AllowedExternal = []blockedPathTarget{{Address: "203.0.113.8", Port: 8480},
 			{Address: "172.31.20.11", Port: 4601}}
 		if os.Getenv("ARDENTS_BLOCKED_PROFILE") == "C2" {

@@ -55,6 +55,13 @@ func writeAttribution(evidenceRoot, eventID, owner string) (string, error) {
 }
 
 func fixtureOwner(mode, eventID string) string {
+	if mode == "final-campaign" {
+		if strings.Contains(eventID, "/collector-loss/") || strings.Contains(eventID, "/blocker-loss/") ||
+			strings.Contains(eventID, "/pipeline-contamination-") {
+			return "harness"
+		}
+		return "candidate"
+	}
 	first := strings.HasSuffix(eventID, "/0") && strings.HasPrefix(eventID, "G1-invite/malformed/")
 	switch {
 	case first && (mode == "candidate-fail" || mode == "candidate-fail-harness-invalid" ||

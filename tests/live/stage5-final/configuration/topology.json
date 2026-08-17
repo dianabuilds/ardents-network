@@ -1,0 +1,21 @@
+{
+  "schema": "ardents-h3-s5-final-topology-v1",
+  "roles": [
+    {"id":"collector","count":1,"class":"h3-s5-collector-v1","network_namespace":"collector"},
+    {"id":"endpoint","count":16,"class":"endpoint-reference","network_namespace":"distinct"},
+    {"id":"endpoint-application","count":16,"class":"networkless-application","network_namespace":"none"},
+    {"id":"publisher","count":1,"class":"endpoint-reference","network_namespace":"publisher"},
+    {"id":"publisher-application","count":1,"class":"networkless-application","network_namespace":"none"},
+    {"id":"bridge","count":1,"class":"selected-by-cell","network_namespace":"bridge"},
+    {"id":"ordinary-entry","count":1,"class":"infrastructure-reference","network_namespace":"ordinary-entry"},
+    {"id":"initiator","count":1,"class":"infrastructure-reference","network_namespace":"initiator"},
+    {"id":"introduction","count":1,"class":"infrastructure-reference","network_namespace":"introduction"},
+    {"id":"rendezvous","count":1,"class":"infrastructure-reference","network_namespace":"rendezvous"},
+    {"id":"responder","count":1,"class":"infrastructure-reference","network_namespace":"responder"}
+  ],
+  "management_removed_before_ready": true,
+  "internet": false,
+  "dns": false,
+  "package_manager": false,
+  "proxy": false
+}

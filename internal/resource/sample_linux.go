@@ -24,6 +24,7 @@ func sampleProcess(profile profile) (Sample, error) {
 	cpu, cpuErr := counter(files["cpu.stat"], "usage_usec")
 	memory, memoryErr := strconv.ParseUint(strings.TrimSpace(files["memory.current"]), 10, 64)
 	socket, socketErr := counter(files["memory.stat"], "sock")
+	sockets, socketsErr := tcpSocketCount()
 	high, highErr := counter(files["memory.events.local"], "high")
 	maximum, maxErr := counter(files["memory.events.local"], "max")
 	oom, oomErr := counter(files["memory.events.local"], "oom")
@@ -34,11 +35,32 @@ func sampleProcess(profile profile) (Sample, error) {
 	cpuPSI, cpuPSIErr := pressureAverage(files["cpu.pressure"], "some")
 	memoryPSI, memoryPSIErr := pressureAverage(files["memory.pressure"], "some")
 	ioPSI, ioPSIErr := pressureAverage(files["io.pressure"], "full")
-	err := errors.Join(cpuErr, memoryErr, socketErr, highErr, maxErr, oomErr, killErr, fdErr, threadErr,
+	err := errors.Join(cpuErr, memoryErr, socketErr, socketsErr, highErr, maxErr, oomErr, killErr, fdErr, threadErr,
 		goErr, cpuPSIErr, memoryPSIErr, ioPSIErr)
 	return Sample{CPUUsageUsec: cpu, MemoryBytes: memory, GoMemoryBytes: goMemory, SocketMemoryBytes: socket,
-		FDs: fds, Goroutines: uint64(runtime.NumGoroutine()), Threads: threads, CPUPressure: cpuPSI,
+		Sockets: sockets, FDs: fds, Goroutines: uint64(runtime.NumGoroutine()), Threads: threads, CPUPressure: cpuPSI,
 		MemoryPressure: memoryPSI, IOPressure: ioPSI, HighEvents: high, EmergencyEvents: maximum + oom + kill}, err
+}
+
+func tcpSocketCount() (uint64, error) {
+	var total uint64
+	for _, path := range []string{"/proc/self/net/tcp", "/proc/self/net/tcp6"} {
+		raw, err := boundedFile(path, 1<<20)
+		if err != nil {
+			return 0, err
+		}
+		lines := strings.Split(strings.TrimSpace(raw), "\n")
+		if len(lines) == 0 || !strings.Contains(lines[0], "local_address") {
+			return 0, errors.New("TCP socket inventory header is invalid")
+		}
+		for _, line := range lines[1:] {
+			if len(strings.Fields(line)) < 10 {
+				return 0, errors.New("TCP socket inventory entry is invalid")
+			}
+			total++
+		}
+	}
+	return total, nil
 }
 
 func counter(raw, name string) (uint64, error) {

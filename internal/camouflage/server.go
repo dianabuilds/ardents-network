@@ -17,12 +17,20 @@ const (
 
 // Server names the fixed external WebTunnel server and TLS front inputs.
 type Server struct {
-	Binary      string
-	StateRoot   string
-	Certificate string
-	Key         string
-	NextLeg     string
-	Deadline    time.Time
+	Binary          string
+	StateRoot       string
+	Certificate     string
+	Key             string
+	NextLeg         string
+	Deadline        time.Time
+	ResourceProfile string
+}
+
+// ServerControl is the bounded Bridge-side Adapter lifecycle and evidence seam.
+type ServerControl interface {
+	Protect(bool)
+	Admission() (uint64, uint64, uint64)
+	Close() error
 }
 
 type serving struct {
@@ -47,6 +55,10 @@ func Serve(ctx context.Context, config Config, server Server) (*serving, error) 
 	if config.commitment == ([32]byte{}) || server.StateRoot == "" || !filepath.IsAbs(server.StateRoot) ||
 		!validNextLeg(server.NextLeg) || !time.Now().Before(server.Deadline) {
 		return nil, errInvalidConfig
+	}
+	capacity, err := serverCapacity(server.ResourceProfile)
+	if err != nil {
+		return nil, err
 	}
 	certificate, err := loadServerCertificate(config, server.Certificate, server.Key)
 	if err != nil {
@@ -74,7 +86,7 @@ func Serve(ctx context.Context, config Config, server Server) (*serving, error) 
 		return nil, errors.Join(fmt.Errorf("adapter-startup-failed: %w", err),
 			cleanupFailure(removeAndVerifyState(server.StateRoot, cleanupDeadline(server.Deadline))))
 	}
-	front, err := startTLSFront(config, certificate, bind)
+	front, err := startTLSFront(config, certificate, bind, capacity)
 	if err != nil {
 		deadline := cleanupDeadline(server.Deadline)
 		cleanupErr := errors.Join(child.closeBefore(deadline), removeAndVerifyState(server.StateRoot, deadline))
@@ -92,8 +104,29 @@ func Serve(ctx context.Context, config Config, server Server) (*serving, error) 
 	return serving, nil
 }
 
+type bridgeCapacity struct {
+	sessions   uint16
+	rawSockets uint16
+}
+
+func serverCapacity(profile string) (bridgeCapacity, error) {
+	switch profile {
+	case "h3-s-v1":
+		return bridgeCapacity{sessions: 4, rawSockets: 32}, nil
+	case "h3-s-v1-strong":
+		return bridgeCapacity{sessions: 16, rawSockets: 128}, nil
+	default:
+		return bridgeCapacity{}, errInvalidConfig
+	}
+}
+
 // Protect rejects new front admissions while preserving established work.
 func (serving *serving) Protect(enabled bool) { serving.front.protect(enabled) }
+
+// Admission reports the exact authenticated-session counters for external resource evidence.
+func (serving *serving) Admission() (uint64, uint64, uint64) {
+	return serving.front.session.snapshot()
+}
 
 // Close stops admissions, closes all owned resources, and is idempotent.
 func (serving *serving) Close() error {

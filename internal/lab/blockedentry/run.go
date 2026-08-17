@@ -12,6 +12,9 @@ import (
 
 // Run creates one immutable external evidence bundle without computing its verdict.
 func Run(config Config) (Result, error) {
+	if config.PreparationRoot != "" {
+		return prepareFinal(config)
+	}
 	if config.Mode == "" {
 		config.Mode = "pass"
 	}
@@ -69,6 +72,10 @@ func Run(config Config) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
+	config, finalSpecValue, err := freezeCampaignSpec(config, secretRoot)
+	if err != nil {
+		return Result{}, err
+	}
 	canaries, canaryHash, err := createCanaries(secretRoot)
 	if err != nil {
 		return Result{}, err
@@ -82,7 +89,7 @@ func Run(config Config) (Result, error) {
 		return Result{}, err
 	}
 	supplemental, plannedContamination := plannedSupplemental(config.Mode, canaries)
-	manifestValue, err := buildManifest(config, canaryHash, nonceHash, artifacts, supplemental)
+	manifestValue, err := buildManifest(config, finalSpecValue, canaryHash, nonceHash, artifacts, supplemental)
 	if err != nil {
 		return Result{}, err
 	}
@@ -99,7 +106,8 @@ func Run(config Config) (Result, error) {
 	}
 	manifestDigest := sha256.Sum256(manifestRaw)
 	manifestHash := hex.EncodeToString(manifestDigest[:])
-	evidenceValue, contamination, err := buildEvidence(config, manifestHash, artifacts, supplemental, canaries)
+	evidenceValue, contamination, err := buildEvidence(config, manifestHash, artifacts, supplemental, canaries,
+		finalSpecValue)
 	if err != nil {
 		return Result{}, err
 	}

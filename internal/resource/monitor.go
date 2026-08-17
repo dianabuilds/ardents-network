@@ -12,6 +12,7 @@ const (
 
 type limits struct {
 	cpu, memory, goMemory, socketMemory     uint64
+	sockets                                 uint64
 	fds, goroutines, threads, timers        uint64
 	queueItems, queueBytes                  uint64
 	cpuPressure, memoryPressure, ioPressure float64
@@ -47,12 +48,26 @@ var profiles = map[string]profile{
 		name: "h3-s-v1", maximumFDs: 4096, maximumThreads: 512,
 		goMaxProcs: 2, goMemory: 768 << 20, exactGoMemory: true, noFile: 4096, placementWait: 10 * time.Second,
 		cgroup: map[string]string{"cpu.max": "160000 100000", "memory.low": "1207959552", "memory.max": "1342177280", "pids.max": "512"},
-		high: limits{cpu: 1_280_000, memory: 960 << 20, goMemory: 691 << 20, fds: 205, goroutines: 820,
+		high: limits{cpu: 1_280_000, memory: 960 << 20, goMemory: 691 << 20, sockets: 26, fds: 205, goroutines: 820,
 			threads: 64, timers: 205, socketMemory: 128 << 20, cpuPressure: 20, memoryPressure: 5, ioPressure: 1},
-		low: limits{cpu: 960_000, memory: 896 << 20, goMemory: 614 << 20, fds: 154, goroutines: 614,
+		low: limits{cpu: 960_000, memory: 896 << 20, goMemory: 614 << 20, sockets: 20, fds: 154, goroutines: 614,
 			threads: 48, timers: 154, socketMemory: 64 << 20, cpuPressure: 10, memoryPressure: 2.5, ioPressure: .5},
-		emergency: limits{memory: 1152 << 20, fds: 231, goroutines: 922, threads: 256,
+		emergency: limits{memory: 1152 << 20, sockets: 29, fds: 231, goroutines: 922, threads: 256,
 			timers: 231, socketMemory: 192 << 20},
+	},
+	"h3-s-v1-strong": {
+		name: "h3-s-v1-strong", maximumFDs: 4096, maximumThreads: 512,
+		goMaxProcs: 6, goMemory: 3072 << 20, exactGoMemory: true, noFile: 4096, placementWait: 10 * time.Second,
+		cgroup: map[string]string{"cpu.max": "640000 100000", "memory.low": "4831838208",
+			"memory.max": "5368709120", "pids.max": "2048"},
+		high: limits{cpu: 5_120_000, memory: 3840 << 20, goMemory: 2764 << 20, sockets: 104, fds: 820,
+			goroutines: 3280, threads: 256, timers: 820, socketMemory: 512 << 20,
+			cpuPressure: 20, memoryPressure: 5, ioPressure: 1},
+		low: limits{cpu: 3_840_000, memory: 3584 << 20, goMemory: 2456 << 20, sockets: 80, fds: 616,
+			goroutines: 2456, threads: 192, timers: 616, socketMemory: 256 << 20,
+			cpuPressure: 10, memoryPressure: 2.5, ioPressure: .5},
+		emergency: limits{memory: 4608 << 20, sockets: 116, fds: 924, goroutines: 3688, threads: 1024,
+			timers: 924, socketMemory: 768 << 20},
 	},
 }
 
@@ -114,6 +129,7 @@ func (monitor *monitor) observe(profile profile, sample Sample) level {
 
 func crossesMaximum(sample Sample, limit limits) bool {
 	return atLeast(sample.MemoryBytes, limit.memory) || atLeast(sample.SocketMemoryBytes, limit.socketMemory) ||
+		atLeast(sample.Sockets, limit.sockets) ||
 		atLeast(sample.FDs, limit.fds) || atLeast(sample.Goroutines, limit.goroutines) || atLeast(sample.Threads, limit.threads) ||
 		atLeast(sample.Timers, limit.timers) || atLeast(sample.QueueItems, limit.queueItems) ||
 		atLeast(sample.QueueBytes, limit.queueBytes)
@@ -123,7 +139,8 @@ func atLeast(value, limit uint64) bool { return limit > 0 && value >= limit }
 
 func crossesHigh(sample Sample, limit limits) bool {
 	return sample.CPUUsageUsec >= limit.cpu || sample.MemoryBytes >= limit.memory || sample.GoMemoryBytes >= limit.goMemory ||
-		sample.SocketMemoryBytes >= limit.socketMemory || sample.FDs >= limit.fds || sample.Goroutines >= limit.goroutines ||
+		sample.SocketMemoryBytes >= limit.socketMemory || limit.sockets > 0 && sample.Sockets >= limit.sockets ||
+		sample.FDs >= limit.fds || sample.Goroutines >= limit.goroutines ||
 		sample.Threads >= limit.threads || sample.Timers >= limit.timers || limit.queueItems > 0 && sample.QueueItems >= limit.queueItems ||
 		limit.queueBytes > 0 && sample.QueueBytes >= limit.queueBytes ||
 		sample.CPUPressure >= limit.cpuPressure || sample.MemoryPressure >= limit.memoryPressure || sample.IOPressure >= limit.ioPressure
@@ -131,7 +148,8 @@ func crossesHigh(sample Sample, limit limits) bool {
 
 func crossesLow(sample Sample, limit limits) bool {
 	return sample.CPUUsageUsec < limit.cpu && sample.MemoryBytes <= limit.memory && sample.GoMemoryBytes < limit.goMemory &&
-		sample.SocketMemoryBytes < limit.socketMemory && sample.FDs < limit.fds && sample.Goroutines < limit.goroutines &&
+		sample.SocketMemoryBytes < limit.socketMemory && (limit.sockets == 0 || sample.Sockets < limit.sockets) &&
+		sample.FDs < limit.fds && sample.Goroutines < limit.goroutines &&
 		sample.Threads < limit.threads && sample.Timers < limit.timers && (limit.queueItems == 0 || sample.QueueItems < limit.queueItems) &&
 		(limit.queueBytes == 0 || sample.QueueBytes < limit.queueBytes) &&
 		sample.CPUPressure < limit.cpuPressure && sample.MemoryPressure < limit.memoryPressure && sample.IOPressure < limit.ioPressure
@@ -140,6 +158,7 @@ func crossesLow(sample Sample, limit limits) bool {
 func mergeMaximum(target *Sample, value Sample) {
 	target.MemoryBytes, target.GoMemoryBytes = max(target.MemoryBytes, value.MemoryBytes), max(target.GoMemoryBytes, value.GoMemoryBytes)
 	target.SocketMemoryBytes, target.FDs = max(target.SocketMemoryBytes, value.SocketMemoryBytes), max(target.FDs, value.FDs)
+	target.Sockets = max(target.Sockets, value.Sockets)
 	target.Goroutines, target.Threads = max(target.Goroutines, value.Goroutines), max(target.Threads, value.Threads)
 	target.Timers, target.QueueItems = max(target.Timers, value.Timers), max(target.QueueItems, value.QueueItems)
 	target.QueueBytes = max(target.QueueBytes, value.QueueBytes)

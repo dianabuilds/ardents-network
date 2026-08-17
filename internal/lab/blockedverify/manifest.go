@@ -32,17 +32,31 @@ var requiredAttributionSources = []attributionSource{
 
 func verifyManifest(value manifest, canaryRaw []byte, executableHash string) []string {
 	var reasons []string
-	if value.Schema != "ardents-h3-blocked-entry-manifest-v1" || value.CampaignKind != "development-fixture" ||
-		value.Profile != developmentFixtureProfile ||
-		value.RunID == "" || value.CreatedUnixNano <= 0 {
+	if value.Schema != "ardents-h3-blocked-entry-manifest-v1" || value.RunID == "" || value.CreatedUnixNano <= 0 {
 		reasons = append(reasons, "manifest identity is incomplete or unsupported")
 	}
-	if value.SourceIdentity != "development-fixture:"+value.HarnessSHA256+":"+value.RunnerSHA256 ||
-		value.SupplyClass != "unrestricted-schema-fixture" {
-		reasons = append(reasons, "development source or fixture supply identity is invalid")
-	}
-	if !fixtureModes[value.FixtureMode] {
-		reasons = append(reasons, "development fixture mode is unsupported")
+	switch value.CampaignKind {
+	case "development-fixture":
+		if value.Profile != developmentFixtureProfile || value.FinalSpec != nil ||
+			value.SourceIdentity != "development-fixture:"+value.HarnessSHA256+":"+value.RunnerSHA256 ||
+			value.SupplyClass != "unrestricted-schema-fixture" || !fixtureModes[value.FixtureMode] {
+			reasons = append(reasons, "development source or fixture supply identity is invalid")
+		}
+		reasons = append(reasons, verifyDevelopmentInputArtifacts(value.SecretArtifacts)...)
+	case "final-local":
+		if value.Profile != finalCampaignProfile || value.FixtureMode != "final-campaign" || value.FinalSpec == nil {
+			reasons = append(reasons, "final campaign source, profile, or supply identity is invalid")
+			break
+		}
+		if value.SourceIdentity != "repository:"+value.FinalSpec.RepositoryCommit+":"+value.FinalSpec.SourceSHA256 ||
+			value.SupplyClass != "pinned-offline-webtunnel" || value.ClientSHA256 != value.FinalSpec.ClientSHA256 ||
+			value.ServerSHA256 != value.FinalSpec.ServerSHA256 {
+			reasons = append(reasons, "final campaign source, profile, or supply identity is invalid")
+		}
+		reasons = append(reasons, verifyFinalSpec(*value.FinalSpec)...)
+		reasons = append(reasons, verifyFinalInputArtifacts(value.SecretArtifacts, *value.FinalSpec)...)
+	default:
+		reasons = append(reasons, "manifest campaign kind is unsupported")
 	}
 	for name, hash := range map[string]string{"harness": value.HarnessSHA256, "runner": value.RunnerSHA256,
 		"verifier": value.VerifierSHA256,

@@ -1,0 +1,10 @@
+{
+  "schema": "ardents-h3-s5-final-cgroups-v1",
+  "endpoint": {"cpu_mean_cores":0.5,"cpu_p95_cores":1.0,"rss_p95_mib":512},
+  "adapter": {"rss_p95_mib":64,"fds":16,"sockets":4,"state_mib":1,"state_entries":32},
+  "bridge_reference": {"cpu_max_cores":1.6,"cpu_mean_cores":1.12,"cpu_p95_cores":1.28,"memory_max_mib":1280,"memory_p95_mib":896,"helper_rss_p95_mib":128,"helper_fds":64,"helper_sockets":32,"reserve_percent":20},
+  "bridge_strong": {"cpu_max_cores":6.4,"cpu_mean_cores":4.48,"cpu_p95_cores":5.12,"memory_max_mib":5120,"memory_p95_mib":3584,"helper_rss_p95_mib":512,"helper_fds":256,"helper_sockets":128,"reserve_percent":20},
+  "swap_events": 0,
+  "oom_events": 0,
+  "sample_interval_millis": 1000
+}

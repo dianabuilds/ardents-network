@@ -49,6 +49,56 @@ func TestGuardProtectsRecoversAndDrains(t *testing.T) {
 	}
 }
 
+func TestStrongBridgeProfileIsAvailable(t *testing.T) {
+	guard, err := resource.New(resource.Config{Profile: "h3-s-v1-strong", Interval: time.Second,
+		Measure: func() (resource.Sample, error) { return resource.Sample{}, nil }})
+	if err != nil || guard == nil {
+		t.Fatalf("strong Bridge resource profile unavailable: %v", err)
+	}
+}
+
+func TestBridgeSocketPressureUsesExactR037Thresholds(t *testing.T) {
+	var sample resource.Sample
+	guard, err := resource.New(resource.Config{Profile: "h3-s-v1", Interval: time.Second,
+		Measure: func() (resource.Sample, error) { return sample, nil }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sample.Sockets = 6
+	if _, err := guard.Observe(0, 0, 0); err != nil {
+		t.Fatal(err)
+	}
+	sample.Sockets = 26
+	for index := range 3 {
+		observation, observeErr := guard.Observe(0, 0, 0)
+		if observeErr != nil {
+			t.Fatal(observeErr)
+		}
+		if observation.Protect != (index == 2) || observation.Drain {
+			t.Fatalf("26-socket sample %d = %+v", index, observation)
+		}
+	}
+	sample.Sockets = 6
+	for index := range 120 {
+		observation, observeErr := guard.Observe(0, 0, 0)
+		if observeErr != nil {
+			t.Fatal(observeErr)
+		}
+		if observation.Protect != (index < 119) || observation.Drain {
+			t.Fatalf("socket recovery sample %d = %+v", index, observation)
+		}
+	}
+	emergency, err := resource.New(resource.Config{Profile: "h3-s-v1", Interval: time.Second,
+		Measure: func() (resource.Sample, error) { return resource.Sample{Sockets: 29}, nil }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	observation, err := emergency.Observe(0, 0, 0)
+	if err != nil || !observation.Protect || !observation.Drain {
+		t.Fatalf("29-socket emergency = %+v, %v", observation, err)
+	}
+}
+
 func TestSourceGuardUsesSourceProfileThresholds(t *testing.T) {
 	var sample resource.Sample
 	guard, err := resource.New(resource.Config{

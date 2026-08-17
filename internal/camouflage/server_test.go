@@ -24,7 +24,7 @@ func TestServeRejectsUnpinnedBinaryBeforeMutation(t *testing.T) {
 		t.Fatal(err)
 	}
 	serving, err := camouflage.Serve(context.Background(), config, camouflage.Server{
-		Binary: binaryPath, StateRoot: stateRoot, Deadline: time.Now().Add(time.Second),
+		Binary: binaryPath, StateRoot: stateRoot, Deadline: time.Now().Add(time.Second), ResourceProfile: "h3-s-v1",
 	})
 	if err == nil || err.Error() != "adapter-supply-invalid" {
 		t.Fatalf("Serve() error = %v, want adapter-supply-invalid", err)

@@ -13,54 +13,29 @@ import (
 
 const maximumCampaignOutput = 16 << 20
 
-type cellPlan struct {
-	Schema           string `json:"schema"`
-	EventID          string `json:"event_id"`
-	Group            string `json:"group"`
-	Variant          string `json:"variant"`
-	Episode          int    `json:"episode"`
-	ExpectedTerminal string `json:"expected_terminal"`
-}
-
-type cellObservation struct {
-	Schema               string     `json:"schema"`
-	EventID              string     `json:"event_id"`
-	ObservedTerminal     string     `json:"observed_terminal"`
-	ProductStarted       bool       `json:"product_started"`
-	FaultInjected        bool       `json:"fault_injected"`
-	FaultOwner           string     `json:"fault_owner"`
-	Attribution          string     `json:"attribution"`
-	AttributionEvidence  string     `json:"attribution_evidence"`
-	Diagnostic           string     `json:"diagnostic"`
-	StartedOffsetMillis  uint64     `json:"started_offset_millis"`
-	TerminalOffsetMillis uint64     `json:"terminal_offset_millis"`
-	CleanupOffsetMillis  uint64     `json:"cleanup_offset_millis"`
-	AdapterCleanupMillis uint64     `json:"adapter_cleanup_millis"`
-	Observers            []observer `json:"observers"`
-	Residuals            []residual `json:"residuals"`
-}
-
-func collectEvents(config Config, canaries canaryCorpus) ([]event, []observer, cleanupInventory, error) {
+func collectEvents(config Config, canaries canaryCorpus, finalSpecValue *finalSpec) (
+	[]event, []observer, cleanupInventory, *finalSummary, error,
+) {
 	if err := os.Mkdir(attributionRoot(config.EvidenceRoot), 0o700); err != nil {
-		return nil, nil, cleanupInventory{}, err
+		return nil, nil, cleanupInventory{}, nil, err
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	command := campaignCommand(ctx, config)
 	stdin, err := command.StdinPipe()
 	if err != nil {
-		return nil, nil, cleanupInventory{}, err
+		return nil, nil, cleanupInventory{}, nil, err
 	}
 	stdout, err := command.StdoutPipe()
 	if err != nil {
-		return nil, nil, cleanupInventory{}, err
+		return nil, nil, cleanupInventory{}, nil, err
 	}
 	stderr, err := command.StderrPipe()
 	if err != nil {
-		return nil, nil, cleanupInventory{}, err
+		return nil, nil, cleanupInventory{}, nil, err
 	}
 	if err := command.Start(); err != nil {
-		return nil, nil, cleanupInventory{}, err
+		return nil, nil, cleanupInventory{}, nil, err
 	}
 	stderrResult := make(chan []byte, 1)
 	go readBounded(stderr, stderrResult)
@@ -69,25 +44,45 @@ func collectEvents(config Config, canaries canaryCorpus) ([]event, []observer, c
 	decoder.DisallowUnknownFields()
 	observers, cleanup := pristineObservers(), pristineCleanup()
 	commitments := canaryCommitments(canaries)
+	cellBound := 31 * time.Second
+	if config.Mode == "final-campaign" {
+		cellBound = 3 * time.Hour
+	}
 	var events []event
+	var cells []finalCellObservation
+	if finalSpecValue != nil {
+		cells, err = collectFinalPrelude(ctx, encoder, decoder, finalSpecValue, cellBound)
+		if err != nil {
+			return nil, nil, cleanupInventory{}, nil, stopCampaign(command, stdin, stderrResult, err)
+		}
+	}
 	for _, group := range hostileMatrix() {
 		for _, variant := range group.Variants {
 			for episode := range 5 {
 				plan := cellPlan{Schema: "ardents-h3-blocked-cell-plan-v1",
 					EventID: eventID(group.ID, variant, episode), Group: group.ID, Variant: variant,
 					Episode: episode, ExpectedTerminal: expectedTerminal(group.ID, variant)}
-				if err := encoder.Encode(plan); err != nil {
-					return nil, nil, cleanupInventory{}, stopCampaign(command, stdin, stderrResult, err)
+				if finalSpecValue != nil {
+					index := finalCellIndex("hostile/" + plan.EventID)
+					if index < 0 || index >= len(finalSpecValue.Seeds) {
+						return nil, nil, cleanupInventory{}, nil, stopCampaign(command, stdin, stderrResult,
+							errors.New("hostile cell is absent from the frozen final schedule"))
+					}
+					plan.CellID, plan.Seed = finalSpecValue.CellOrder[index], finalSpecValue.Seeds[index]
 				}
-				output, err := decodeCell(ctx, decoder)
-				if err != nil || output.Schema != "ardents-h3-blocked-cell-observation-v1" || output.EventID != plan.EventID {
-					return nil, nil, cleanupInventory{}, stopCampaign(command, stdin, stderrResult,
+				if err := encoder.Encode(plan); err != nil {
+					return nil, nil, cleanupInventory{}, nil, stopCampaign(command, stdin, stderrResult, err)
+				}
+				output, err := decodeCell(ctx, decoder, cellBound)
+				if err != nil || output.Schema != "ardents-h3-blocked-cell-observation-v1" || output.EventID != plan.EventID ||
+					output.CellID != plan.CellID || output.Seed != plan.Seed {
+					return nil, nil, cleanupInventory{}, nil, stopCampaign(command, stdin, stderrResult,
 						errors.Join(err, errors.New("hostile cell evidence is missing or reordered")))
 				}
 				owner := fixtureOwner(config.Mode, plan.EventID)
 				attributionHash, err := writeAttribution(config.EvidenceRoot, plan.EventID, owner)
 				if err != nil {
-					return nil, nil, cleanupInventory{}, stopCampaign(command, stdin, stderrResult, err)
+					return nil, nil, cleanupInventory{}, nil, stopCampaign(command, stdin, stderrResult, err)
 				}
 				gatePassed := output.ObservedTerminal == plan.ExpectedTerminal
 				trustworthy := output.ProductStarted && output.FaultInjected && output.Attribution == "exact" &&
@@ -102,13 +97,33 @@ func collectEvents(config Config, canaries canaryCorpus) ([]event, []observer, c
 					CleanupOffsetMillis: output.CleanupOffsetMillis, AdapterCleanupMillis: output.AdapterCleanupMillis})
 				mergeObservers(observers, output.Observers, owner, trustworthy)
 				mergeResiduals(&cleanup, output.Residuals, owner, attributionHash)
+				if finalSpecValue != nil {
+					cells = append(cells, finalCellFromOutput(output))
+				}
 				if stopAfterCell(output, gatePassed, trustworthy, owner, canaries) {
-					return events, observers, cleanup, finishCampaign(command, stdin, decoder, stderrResult)
+					summary, finishErr := finishCampaign(command, stdin, decoder, stderrResult)
+					if summary != nil && finalSpecValue != nil {
+						summary.Cells = cells
+					}
+					return events, observers, cleanup, summary, finishErr
 				}
 			}
 		}
 	}
-	return events, observers, cleanup, finishCampaign(command, stdin, decoder, stderrResult)
+	summary, finishErr := finishCampaign(command, stdin, decoder, stderrResult)
+	if summary != nil && finalSpecValue != nil {
+		summary.Cells = cells
+	}
+	return events, observers, cleanup, summary, finishErr
+}
+
+func finalCellIndex(identity string) int {
+	for index, candidate := range finalCellOrder() {
+		if candidate == identity {
+			return index
+		}
+	}
+	return -1
 }
 
 func forbiddenOwnersMatch(observers []observer, owner string) bool {
@@ -118,35 +133,6 @@ func forbiddenOwnersMatch(observers []observer, owner string) bool {
 		}
 	}
 	return true
-}
-
-func campaignCommand(ctx context.Context, config Config) *exec.Cmd {
-	command := exec.CommandContext(ctx, config.RunnerPath)
-	command.Env = []string{"ARDENTS_BLOCKED_MODE=" + config.Mode, "ARDENTS_BLOCKED_CLIENT=" + config.ClientPath,
-		"ARDENTS_BLOCKED_SERVER=" + config.ServerPath, "ARDENTS_BLOCKED_CANARY_FILE=" + canaryPath(config.EvidenceRoot),
-		"ARDENTS_BLOCKED_CELL_HELPER=1", "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")}
-	return command
-}
-
-func decodeCell(ctx context.Context, decoder *json.Decoder) (cellObservation, error) {
-	type decoded struct {
-		value cellObservation
-		err   error
-	}
-	result := make(chan decoded, 1)
-	go func() {
-		var value cellObservation
-		err := decoder.Decode(&value)
-		result <- decoded{value: value, err: err}
-	}()
-	select {
-	case item := <-result:
-		return item.value, item.err
-	case <-time.After(31 * time.Second):
-		return cellObservation{}, errors.New("hostile cell exceeded its execution and cleanup bound")
-	case <-ctx.Done():
-		return cellObservation{}, ctx.Err()
-	}
 }
 
 func stopAfterCell(output cellObservation, gatePassed, trustworthy bool, owner string, canaries canaryCorpus) bool {
@@ -184,17 +170,19 @@ func diagnosticContainsCanary(diagnostic string, canaries canaryCorpus) bool {
 	return false
 }
 
-func finishCampaign(command *exec.Cmd, stdin io.WriteCloser, decoder *json.Decoder, stderr <-chan []byte) error {
+func finishCampaign(command *exec.Cmd, stdin io.WriteCloser, decoder *json.Decoder, stderr <-chan []byte) (
+	*finalSummary, error,
+) {
 	if err := stdin.Close(); err != nil {
-		return stopCampaign(command, stdin, stderr, err)
+		return nil, stopCampaign(command, stdin, stderr, err)
 	}
 	closed, closeErr, waitErr := waitForCampaignEnd(command, decoder, 31*time.Second)
 	diagnostic := <-stderr
 	if closeErr != nil || closed.Schema != "ardents-h3-blocked-campaign-closed-v1" ||
 		closed.EventID != "" || waitErr != nil || len(diagnostic) > maximumCampaignOutput {
-		return errors.New("hostile campaign runner failed or emitted trailing evidence")
+		return nil, errors.New("hostile campaign runner failed or emitted trailing evidence")
 	}
-	return nil
+	return closed.FinalSummary, nil
 }
 
 func waitForCampaignEnd(command *exec.Cmd, decoder *json.Decoder, bound time.Duration) (

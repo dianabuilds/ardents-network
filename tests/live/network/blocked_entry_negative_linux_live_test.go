@@ -203,7 +203,8 @@ func runBlockedFaultOne(t *testing.T) {
 	defer cancel()
 	serving, err := camouflage.Serve(ctx, config, camouflage.Server{Binary: "/candidate/webtunnel-server",
 		StateRoot: "/run/state/fault-server", Certificate: "/run/secure/front-cert.pem",
-		Key: "/run/secure/front-key.pem", NextLeg: next.Addr().String(), Deadline: time.Now().Add(50 * time.Second)})
+		Key: "/run/secure/front-key.pem", NextLeg: next.Addr().String(), Deadline: time.Now().Add(50 * time.Second),
+		ResourceProfile: "h3-s-v1"})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -27,6 +27,7 @@ func verifyEvents(events []event, canaryCommitments map[string]string, attributi
 			invalid = append(invalid, "event canary-set binding is invalid: "+observed.ID)
 		}
 		if observed.TerminalOffsetMillis < observed.StartedOffsetMillis ||
+			observed.TerminalOffsetMillis-observed.StartedOffsetMillis > 15_000 ||
 			observed.CleanupOffsetMillis < observed.TerminalOffsetMillis ||
 			observed.CleanupOffsetMillis-observed.TerminalOffsetMillis > 15_000 ||
 			observed.AdapterCleanupMillis > 6_000 {

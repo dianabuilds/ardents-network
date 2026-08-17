@@ -20,6 +20,7 @@ type endpointPlan struct {
 	At, Deadline, Lifetime                                                string
 	BytesEachDirection                                                    uint32
 	SendBytes, ReceiveBytes                                               uint32
+	MaximumConnections                                                    uint16
 	WorkSafetyNotAfter, WorkSafetyMaximum, NoNewRecoveryAfter             int64
 }
 
@@ -38,7 +39,7 @@ func (value endpointPlan) validate() error {
 		return errors.New("endpoint role is invalid")
 	}
 	if value.ApplicationSocket == "" || value.RouteSocket == "" || value.PublicationFile == "" ||
-		value.At == "" || value.Deadline == "" || !value.validStreamBounds() {
+		value.At == "" || value.Deadline == "" || !value.validStreamBounds() || value.MaximumConnections > 16 {
 		return errors.New("endpoint plan is incomplete or outside its bound")
 	}
 	if value.IntroductionPublic == "" {

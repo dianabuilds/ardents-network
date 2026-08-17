@@ -28,35 +28,36 @@ type Client struct {
 
 // OpenClient verifies the pinned supply before starting one WebTunnel client
 // and returning its single owned carrier.
-func OpenClient(ctx context.Context, config Config, client Client) (net.Conn, func() error, error) {
+func OpenClient(ctx context.Context, config Config, client Client) (net.Conn, func() error, bool, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, nil, err
+		return nil, nil, true, err
 	}
 	if config.commitment == ([32]byte{}) || client.StateRoot == "" || !filepath.IsAbs(client.StateRoot) ||
 		!time.Now().Before(client.Deadline) {
-		return nil, nil, errInvalidConfig
+		return nil, nil, true, errInvalidConfig
 	}
 	if err := verifyExecutable(client.Binary, pinnedClientBytes, pinnedClientSHA256); err != nil {
-		return nil, nil, err
+		return nil, nil, true, err
 	}
 	startupDeadline := client.Deadline
 	if maximum := time.Now().Add(5 * time.Second); maximum.Before(startupDeadline) {
 		startupDeadline = maximum
 	}
 	if err := os.Mkdir(client.StateRoot, 0o700); err != nil {
-		return nil, nil, fmt.Errorf("adapter-state-invalid: %w", err)
+		return nil, nil, true, fmt.Errorf("adapter-state-invalid: %w", err)
 	}
 	child, listener, err := startClientProcess(ctx, client.Binary, client.StateRoot, startupDeadline, client.Deadline)
 	if err != nil {
 		deadline := cleanupDeadline(client.Deadline)
 		stateErr := removeAndVerifyState(client.StateRoot, deadline)
-		return nil, nil, errors.Join(fmt.Errorf("adapter-startup-failed: %w", err), cleanupFailure(stateErr))
+		return nil, nil, stateErr == nil,
+			errors.Join(fmt.Errorf("adapter-startup-failed: %w", err), cleanupFailure(stateErr))
 	}
 	carrier, err := openClientSOCKS(listener, config, startupDeadline)
 	if err != nil {
 		deadline := cleanupDeadline(client.Deadline)
 		cleanupErr := errors.Join(child.closeBefore(deadline), removeAndVerifyState(client.StateRoot, deadline))
-		return nil, nil, errors.Join(fmt.Errorf("adapter-socks-refused: %w", err),
+		return nil, nil, cleanupErr == nil, errors.Join(fmt.Errorf("adapter-socks-refused: %w", err),
 			cleanupFailure(cleanupErr))
 	}
 	var once sync.Once
@@ -82,7 +83,7 @@ func OpenClient(ctx context.Context, config Config, client Client) (net.Conn, fu
 		case <-stopped:
 		}
 	}()
-	return carrier, cleanup, nil
+	return carrier, cleanup, true, nil
 }
 
 func verifyExecutable(path string, size int64, expected string) error {

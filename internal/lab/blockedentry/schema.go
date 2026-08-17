@@ -1,6 +1,7 @@
 package blockedentry
 
 const developmentFixtureProfile = "h3-s5-b1-development-fixture-v1"
+const finalCampaignProfile = "h3-s5-b1-v1"
 
 type manifest struct {
 	Schema                string               `json:"schema"`
@@ -27,6 +28,7 @@ type manifest struct {
 	EvidenceRootHash      string               `json:"evidence_root_hash"`
 	RegistryRootHash      string               `json:"registry_root_hash"`
 	AttributionSources    []attributionSource  `json:"attribution_sources"`
+	FinalSpec             *finalSpec           `json:"final_spec,omitempty"`
 }
 
 type topologyRole struct {
@@ -61,6 +63,7 @@ type evidence struct {
 	SupplementalArtifacts []artifactCommitment `json:"supplemental_artifacts"`
 	AttributionArtifacts  []artifactCommitment `json:"attribution_artifacts"`
 	CollectionClosed      bool                 `json:"collection_closed"`
+	FinalSummary          *finalSummary        `json:"final_summary,omitempty"`
 }
 
 type evidenceClosure struct {

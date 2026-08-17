@@ -1,6 +1,7 @@
 package routeplan
 
 import (
+	"context"
 	"errors"
 	"net"
 	"os"
@@ -8,6 +9,54 @@ import (
 	"testing"
 	"time"
 )
+
+func TestDeferredPublisherStreamOpensOneConnectionPerCapacityUnit(t *testing.T) {
+	path := filepath.Join(os.TempDir(), "arp-capacity-"+time.Now().Format("150405.000000")+".sock")
+	listener, err := net.Listen("unix", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = listener.Close(); _ = os.Remove(path) })
+	stream := &deferredUnixStream{path: path, timeout: time.Second}
+	accepted := make(chan net.Conn, 2)
+	go func() {
+		for range 2 {
+			connection, acceptErr := listener.Accept()
+			if acceptErr == nil {
+				accepted <- connection
+			}
+		}
+	}()
+	first, err := stream.OpenAttachment(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := stream.OpenAttachment(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	firstPeer, secondPeer := <-accepted, <-accepted
+	defer first.Close()
+	defer second.Close()
+	defer firstPeer.Close()
+	defer secondPeer.Close()
+	if _, err := first.Write([]byte{1}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := second.Write([]byte{2}); err != nil {
+		t.Fatal(err)
+	}
+	firstByte, secondByte := make([]byte, 1), make([]byte, 1)
+	if _, err := firstPeer.Read(firstByte); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := secondPeer.Read(secondByte); err != nil {
+		t.Fatal(err)
+	}
+	if firstByte[0] == secondByte[0] {
+		t.Fatal("capacity attachments shared one publisher IPC stream")
+	}
+}
 
 func TestDeferredPublisherStreamPreservesHalfCloseBeforeOpen(t *testing.T) {
 	path := filepath.Join(os.TempDir(), "arp-half-"+time.Now().Format("150405.000000")+".sock")

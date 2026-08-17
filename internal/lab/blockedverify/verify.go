@@ -85,6 +85,21 @@ func Verify(config Config) (Result, error) {
 	failures = append(failures, observerFailures...)
 	cleanupInvalid, cleanupFailures := verifyCleanup(evidenceValue.Cleanup, attributions)
 	operationalInvalid, failures = append(operationalInvalid, cleanupInvalid...), append(failures, cleanupFailures...)
+	if manifestValue.CampaignKind == "final-local" {
+		finalInvalid, finalFailures := verifyFinalCampaign(manifestValue.FinalSpec, evidenceValue.FinalSummary)
+		operationalInvalid = append(operationalInvalid, finalInvalid...)
+		if evidenceValue.FinalSummary != nil {
+			operationalInvalid = append(operationalInvalid,
+				verifyHostileCellBindings(evidenceValue.Events, evidenceValue.FinalSummary.Cells)...)
+		}
+		failures = append(failures, finalFailures...)
+		operationalInvalid = append(operationalInvalid,
+			verifyMeasurementArtifacts(config.SecretRoot, evidenceValue.FinalSummary)...)
+		operationalInvalid = append(operationalInvalid,
+			"maintained final runner raw-to-verdict recomputation is not implemented")
+	} else if evidenceValue.FinalSummary != nil {
+		operationalInvalid = append(operationalInvalid, "development evidence contains an unsupported final summary")
+	}
 	if canaryErr == nil {
 		canaryInvalid, canaryFailures := scanPublishable(config.PublishableRoot, config.EvidencePath,
 			config.OutputPath, rawCanaries, encodedCanaries, candidateCanaries)

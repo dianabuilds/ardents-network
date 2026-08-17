@@ -16,7 +16,7 @@ const (
 	maximumSessions   = 6
 	// MaximumStreamBytes is the largest declared byte count in either
 	// direction of one bounded Service Connection.
-	MaximumStreamBytes = uint32(256 << 20)
+	MaximumStreamBytes = uint32(768 << 20)
 )
 
 // Recovery fixes connection values and constrains one fresh Route Attachment.

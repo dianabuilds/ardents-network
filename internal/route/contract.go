@@ -53,6 +53,10 @@ type Actor struct {
 	PressureInterval                              time.Duration
 }
 
+type attachmentStreamSource interface {
+	OpenAttachment(context.Context) (io.ReadWriteCloser, error)
+}
+
 // Evidence is bounded role-local evidence from one process.
 type Evidence struct {
 	Schema                   string            `json:"schema"`

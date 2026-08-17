@@ -4,7 +4,9 @@ import (
 	"context"
 	"crypto/sha256"
 	"crypto/tls"
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"time"
 )
@@ -39,7 +41,14 @@ func carryPublisherConnection(ctx context.Context, input Actor, connection net.C
 			return observation, fmt.Errorf("clear publisher raw Attachment setup deadline: %w", err)
 		}
 		observation.PeerAuthenticated = true
-		forward, reverse, streamErr := relayOpaque(outer, input.Stream)
+		stream, owned, openErr := publisherAttachmentStream(ctx, input.Stream)
+		if openErr != nil {
+			return observation, fmt.Errorf("open publisher attachment stream: %w", openErr)
+		}
+		forward, reverse, streamErr := relayOpaque(outer, stream)
+		if owned {
+			streamErr = errors.Join(streamErr, stream.Close())
+		}
 		observation.OpaqueBytes, observation.OpaqueDigest = forward.count, forward.digest
 		observation.ReverseOpaqueBytes, observation.ReverseOpaqueDigest = reverse.count, reverse.digest
 		if streamErr != nil && !benignStreamError(streamErr) {
@@ -74,4 +83,13 @@ func carryPublisherConnection(ctx context.Context, input Actor, connection net.C
 		return observation, fmt.Errorf("write canary receipt: %w", err)
 	}
 	return observation, nil
+}
+
+func publisherAttachmentStream(ctx context.Context, stream io.ReadWriteCloser) (io.ReadWriteCloser, bool, error) {
+	source, ok := stream.(attachmentStreamSource)
+	if !ok {
+		return stream, false, nil
+	}
+	opened, err := source.OpenAttachment(ctx)
+	return opened, true, err
 }

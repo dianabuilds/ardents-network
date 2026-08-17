@@ -24,8 +24,7 @@ func verifyArtifacts(root string, manifestArtifacts, evidenceArtifacts []artifac
 			reasons = append(reasons, "secret artifact commitment mismatch: "+artifact.Path)
 		}
 	}
-	if len(seen) != 7 || !seen["canaries.json"] || !seen["candidate/client.stderr"] ||
-		!seen["candidate/server.stderr"] || !seen["capture/packets.bin"] {
+	if !seen["canaries.json"] {
 		reasons = append(reasons, "secret artifact inventory is incomplete")
 	}
 	return reasons

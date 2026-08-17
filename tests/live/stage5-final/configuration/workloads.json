@@ -1,0 +1,8 @@
+{
+  "schema": "ardents-h3-s5-final-workloads-v1",
+  "short": {"connection_canary_bytes":32,"request_bytes":512,"response_bytes":65536,"response_p95_millis":8000},
+  "capacity": {"reference_units":4,"strong_units":16,"batches":5,"extra_offers":1,"refusal_millis":1000},
+  "sustained": {"runs_per_direction":5,"run_seconds":600,"windows_per_run":10,"window_seconds":60,"p05_floor_mbit":10,"baseline_fraction":0.5,"baseline_drift_ratio":1.1,"carrier_ratio":1.5},
+  "pressure": {"p0_units":4,"p0_mbit":10,"p0_seconds":30,"p1_offers":100,"p1_cadence_millis":100,"p2_baseline_sockets":6,"p2_partial_connections":20,"p2_high_samples":3,"p2_low_samples":120,"p3_partial_connections":23,"p3_peak_sockets":29,"p3_exit_seconds":60,"p4_batches":10,"p4_offers":1000},
+  "recovery": {"episodes":5,"stall_release_seconds":8,"cleanup_seconds":14,"terminal_seconds":15}
+}

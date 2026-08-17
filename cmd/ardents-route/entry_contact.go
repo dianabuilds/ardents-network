@@ -24,9 +24,9 @@ func (opener entryContactOpener) openContact(ctx context.Context, identity [32]b
 	}
 	client := opener.client
 	client.Deadline = deadline
-	carrier, cleanup, err := camouflage.OpenClient(ctx, config, client)
+	carrier, cleanup, cleanupComplete, err := camouflage.OpenClient(ctx, config, client)
 	if err != nil {
-		return nil, nil, camouflage.CleanupComplete(err), err
+		return nil, nil, cleanupComplete, err
 	}
 	secured, authErr := opener.authenticate(ctx, carrier)
 	if authErr != nil {

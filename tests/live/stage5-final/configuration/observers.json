@@ -1,0 +1,9 @@
+{
+  "schema": "ardents-h3-s5-final-observers-v1",
+  "boundaries": ["endpoint-adapter","tls-front","webtunnel-server","bridge-next-leg","publisher-endpoint","ordinary-initiator","ordinary-introduction","ordinary-rendezvous","ordinary-responder"],
+  "positive_controls": ["ipv4-udp","ipv6-udp","ipv4-tcp"],
+  "classify": ["dns-port-53","proxy","connect-target","all-boundary-packets","process","cgroup"],
+  "ambiguous_is_invalid": true,
+  "collector_loss_is_invalid": true,
+  "blocker_loss_is_invalid": true
+}

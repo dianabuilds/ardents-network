@@ -78,8 +78,14 @@ func validatePublisher(input Actor) error {
 	if target == 0 {
 		target = max(input.MaximumAttachments, 1)
 	}
-	if target > 1 && (input.RawAttachment || input.Stream != nil || setup) {
-		return errors.New("publisher multi-Attachment duty cannot share scoped stream or setup state")
+	if target > 1 && setup {
+		return errors.New("publisher multi-Attachment duty cannot share setup state")
+	}
+	if target > 1 && (input.RawAttachment || input.Stream != nil) {
+		_, capacityStream := input.Stream.(attachmentStreamSource)
+		if !input.RawAttachment || input.Stream == nil || !capacityStream {
+			return errors.New("publisher multi-Attachment duty requires separately owned raw streams")
+		}
 	}
 	if setup != (input.IntroductionSetupPeer != [32]byte{}) || setup != (input.IntroductionSetupNode != [32]byte{}) {
 		return errors.New("publisher sealed setup service duty is incomplete")
