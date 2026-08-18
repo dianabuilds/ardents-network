@@ -843,6 +843,39 @@ Every stage applies these invariants even if its positive claim is narrower:
 12. the project states protected information, adversary, conditions, measurement,
     and limitation for every privacy/security claim.
 
+### Stage 9 - Stabilization and Technical Closure
+
+**Outcome:** the functionally integrated H3 candidate becomes one clean stable
+baseline before Horizon 4: no placeholders, laboratory packages/commands,
+temporary infrastructure, or completed-stage development documentation remains;
+retained mechanisms have current technical documentation and a fixed verification
+owner.
+
+Includes:
+
+- complete code/package/command/document/test/infrastructure disposition ledger;
+- production simplification and removal or promotion of all laboratory surfaces;
+- conversion of stage plans/checklists into one active technical-document set;
+- fixed fast/full/platform/qualification/reproduction check tiers;
+- clean-checkout build, dependency, supply, privilege, and cleanup stabilization;
+- post-cleanup source/supply freeze and complete affected H3 requalification on a
+  dedicated powerful non-overcommitted pre-H4 stand; and
+- independent final verdict and Product Owner H3 closure disposition.
+
+**Pass:** the cleaned source contains no unfinished or laboratory surface, active
+documentation describes only the final system, every retained artifact is owned
+and mapped, production excludes qualification tooling, and the fixed complete
+verification set passes against the frozen post-cleanup identity.
+
+**Stop/redesign:** cleanup changes behavior without a new decision, technical
+truth still depends on obsolete stage plans, hidden infrastructure or mutable
+supply is required, or final evidence applies to a pre-cleanup source identity.
+
+[R-040](../research/records/r-040-h3-stabilization-closure.md) and the
+[Stage 9 brief](horizon-3-stage-9-brief.md) define the mandatory H3-to-H4 closure
+gate. Stage 8 integration evidence is input to Stage 9, not a waiver of final
+post-cleanup qualification.
+
 ## 9. Evidence and decision model
 
 Each stage begins only after its research record freezes:
@@ -877,8 +910,9 @@ can replace the complete declared adversarial matrix.
 
 Horizon 3 is complete only when all are true:
 
-- Stages 1–7 have accepted candidate results and Stage 8 passes their integrated
-  contracts without a hidden parallel subsystem;
+- Stages 1-8 have accepted functional and integrated candidate results, and Stage
+  9 passes stabilization plus final post-cleanup qualification without a hidden
+  parallel subsystem;
 - User can connect to an exact Target and exact known Service Name through the
   ordinary and declared Bridge regimes;
 - Developer can publish, stop, restart, and migrate a Service Instance through
