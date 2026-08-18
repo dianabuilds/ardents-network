@@ -45,12 +45,15 @@ func TestBlockedEntryNegativeCommandsAcrossNamespaces(t *testing.T) {
 		}
 		assertNoDockerObjects(t, cleanupCtx, buildProject, image)
 	})
-	for _, profile := range []string{"C3", "C4"} {
+	for _, profile := range []string{"C3", "C4", "G5"} {
 		t.Run(profile, func(t *testing.T) {
 			for episode := range 5 {
 				t.Run(fmt.Sprint(episode), func(t *testing.T) {
 					fixture := newBlockedNegativeFixture(t, client, server)
 					cell := fmt.Sprintf("profile/%s/%02d", profile, episode)
+					if profile == "G5" {
+						cell = fmt.Sprintf("hostile/G5-adapter-fault/accept-then-stall/%d", episode)
+					}
 					if !selectedFinalCell(cell) {
 						return
 					}
@@ -76,11 +79,15 @@ func runBlockedNegativeEpisode(t *testing.T, repository, image string, fixture b
 	t.Cleanup(cleanup)
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
-	if profile == "C4" {
-		if output, err := compose(ctx, "up", "-d", "--no-build", "fault-zero", "fault-one"); err != nil {
+	if profile == "C4" || profile == "G5" {
+		faults := []string{"fault-zero"}
+		if profile == "C4" {
+			faults = append(faults, "fault-one")
+		}
+		if output, err := compose(ctx, append([]string{"up", "-d", "--no-build"}, faults...)...); err != nil {
 			t.Fatalf("start C4 faults: %v\n%s", err, output)
 		}
-		for _, service := range []string{"fault-zero", "fault-one"} {
+		for _, service := range faults {
 			waitForBlockedJSON(t, ctx, compose, service, func(line []byte) bool {
 				var value struct{ Kind, State string }
 				return json.Unmarshal(line, &value) == nil && value.Kind == "fault" && value.State == "READY"
@@ -111,9 +118,11 @@ func runBlockedNegativeEpisode(t *testing.T, repository, image string, fixture b
 	waitBlockedContainer(t, ctx, compose, "negative-observer")
 	if profile == "C3" {
 		waitBlockedContainer(t, ctx, compose, "negative-policy")
-	} else {
+	} else if profile == "C4" {
 		waitBlockedContainer(t, ctx, compose, "fault-zero")
 		waitBlockedContainer(t, ctx, compose, "fault-one")
+	} else {
+		waitBlockedContainer(t, ctx, compose, "fault-zero")
 	}
 	cleanup()
 }

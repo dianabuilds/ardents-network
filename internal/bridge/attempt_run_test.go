@@ -49,6 +49,76 @@ func TestAcquireOwnsRetryAndDurableCompletion(t *testing.T) {
 	}
 }
 
+func TestAcquireStopsCarrierWorkAfterTimeConfidenceLoss(t *testing.T) {
+	fixture := newFixture(t)
+	confident := true
+	config := fixture.config()
+	config.TimeConfidence = func() bool { return confident }
+	owner, err := bridge.Open(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = owner.Close() })
+	if _, err := owner.Import(fixture.invite(t, 0, 1, nil, fixture.notBefore, fixture.notAfter)); err != nil {
+		t.Fatal(err)
+	}
+	manifest := sha256.Sum256([]byte("carrier time confidence manifest"))
+	client, server := net.Pipe()
+	defer server.Close()
+	channel, cleanup, err := owner.Acquire(context.Background(), transitionFrame(manifest), manifest, fixture.now.Add(time.Minute),
+		func(context.Context, [32]byte, []byte, time.Time) (net.Conn, func() error, bool, error) {
+			return client, func() error { return net.ErrClosed }, true, nil
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	confident = false
+	if _, writeErr := channel.Write([]byte("forbidden")); writeErr == nil ||
+		writeErr.Error() != "bridge carrier is no longer eligible" {
+		t.Fatalf("carrier write after lost Time Confidence = %v", writeErr)
+	}
+	if err := cleanup(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAcquireCarrierCannotClearAttemptDeadline(t *testing.T) {
+	fixture := newFixture(t)
+	now := fixture.now
+	config := fixture.config()
+	config.Clock = func() time.Time { return now }
+	owner, err := bridge.Open(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = owner.Close() })
+	if _, err := owner.Import(fixture.invite(t, 0, 1, nil, fixture.notBefore, fixture.notAfter)); err != nil {
+		t.Fatal(err)
+	}
+	manifest := sha256.Sum256([]byte("carrier deadline reset manifest"))
+	client, server := net.Pipe()
+	defer server.Close()
+	deadline := now.Add(time.Second)
+	channel, cleanup, err := owner.Acquire(context.Background(), transitionFrame(manifest), manifest, deadline,
+		func(context.Context, [32]byte, []byte, time.Time) (net.Conn, func() error, bool, error) {
+			return client, client.Close, true, nil
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := channel.SetDeadline(time.Time{}); err != nil {
+		t.Fatal(err)
+	}
+	now = deadline
+	if _, writeErr := channel.Write([]byte("late")); writeErr == nil ||
+		writeErr.Error() != "bridge carrier is no longer eligible" {
+		t.Fatalf("carrier write after cleared deadline = %v", writeErr)
+	}
+	if err := cleanup(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 type sequenceOpener struct {
 	starts int
 }

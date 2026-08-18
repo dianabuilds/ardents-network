@@ -194,10 +194,22 @@ func runBlockedEndpoint(t *testing.T) {
 		_, writeErr := writer.Write(transition)
 		done <- errors.Join(writeErr, writer.Close())
 	}()
-	runPreparedBlockedCommand(t, command, os.Getenv("ARDENTS_BLOCKED_EXPECT_DRAIN") != "1")
+	if expected := blockedExpectedTerminal(); expected != "" {
+		runExpectedBlockedCommand(t, command, expected)
+	} else {
+		runPreparedBlockedCommand(t, command, os.Getenv("ARDENTS_BLOCKED_EXPECT_DRAIN") != "1")
+	}
 	if err := errors.Join(<-done, reader.Close()); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func blockedExpectedTerminal() string {
+	raw, err := os.ReadFile(filepath.Join(blockedSync(), "expected-terminal"))
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(raw))
 }
 
 func runBlockedBridge(t *testing.T) {
@@ -283,6 +295,15 @@ func runPreparedBlockedCommand(t *testing.T, command *exec.Cmd, requireSuccess b
 	}
 	if !requireSuccess && err == nil {
 		t.Fatalf("%s unexpectedly completed during emergency DRAIN\n%s", filepath.Base(command.Path), captured.String())
+	}
+}
+
+func runExpectedBlockedCommand(t *testing.T, command *exec.Cmd, terminal string) {
+	t.Helper()
+	var captured bytes.Buffer
+	command.Stdout, command.Stderr = io.MultiWriter(os.Stdout, &captured), io.MultiWriter(os.Stderr, &captured)
+	if err := command.Run(); err == nil || !strings.Contains(captured.String(), terminal) {
+		t.Fatalf("%s terminal=%q, err=%v\n%s", filepath.Base(command.Path), terminal, err, captured.String())
 	}
 }
 

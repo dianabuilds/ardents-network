@@ -125,6 +125,19 @@ func TestOwnerEnforcesTwoSlotsAndOneReplacement(t *testing.T) {
 	if result0.Class != "accepted" || result1.Class != "accepted" {
 		t.Fatalf("initial slots = %q, %q", result0.Class, result1.Class)
 	}
+	conflictingGeneration, err := owner.Import(fixture.inviteFor(t, 1, 0, 1, nil, fixture.notBefore, fixture.notAfter))
+	if err != nil || conflictingGeneration.Class != "replacement-rejected" {
+		t.Fatalf("cross-identity same-generation substitution = %+v, %v", conflictingGeneration, err)
+	}
+	sameIdentity := fixture.fields(0, 1, nil, fixture.notBefore, fixture.notAfter)
+	index := bytes.Index(sameIdentity.candidate, []byte{203, 0, 113, 7})
+	if index < 0 {
+		t.Fatal("fixture candidate address is absent")
+	}
+	sameIdentity.candidate[index+3] = 9
+	if replay, replayErr := owner.Import(fixture.encode(t, sameIdentity)); replayErr != nil || replay.Class != "replay" {
+		t.Fatalf("same-identity candidate substitution = %+v, %v", replay, replayErr)
+	}
 	if err := owner.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -152,6 +165,16 @@ func TestOwnerEnforcesTwoSlotsAndOneReplacement(t *testing.T) {
 	third, err := owner.Import(fixture.inviteFor(t, 3, 0, 2, &replacement.InviteID, fixture.notBefore, fixture.notAfter))
 	if err != nil || third.Class != "replacement-rejected" {
 		t.Fatalf("second replacement = %+v, %v", third, err)
+	}
+
+	replacement1, err := owner.Import(fixture.inviteFor(t, 3, 1, 2, &result1.InviteID, fixture.notBefore, fixture.notAfter))
+	if err != nil || replacement1.Class != "accepted" {
+		t.Fatalf("second slot replacement = %+v, %v", replacement1, err)
+	}
+	full := fixture.fields(0, 1, nil, fixture.notBefore, fixture.notAfter)
+	full.candidate[len(full.candidate)-1] ^= 1
+	if result, err := owner.Import(fixture.encode(t, full)); err != nil || result.Class != "set-full" {
+		t.Fatalf("full retained set = %+v, %v", result, err)
 	}
 }
 
@@ -462,35 +485,4 @@ func candidateEnvelope() []byte {
 	writeBytes(&raw, []byte("front.example"), 1)
 	raw.Write(bytes.Repeat([]byte{0x5a}, 32))
 	return raw.Bytes()
-}
-
-func durableFiles(t *testing.T, root string) map[string][]byte {
-	t.Helper()
-	entries, err := os.ReadDir(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	result := make(map[string][]byte)
-	for _, entry := range entries {
-		if entry.IsDir() || entry.Name() == ".ardents-bridge-state-lock" {
-			continue
-		}
-		raw, err := os.ReadFile(filepath.Join(root, entry.Name()))
-		if err != nil {
-			t.Fatal(err)
-		}
-		result[entry.Name()] = raw
-	}
-	return result
-}
-
-func hexDigest(raw []byte) string {
-	digest := sha256.Sum256(raw)
-	const alphabet = "0123456789abcdef"
-	encoded := make([]byte, 64)
-	for index, value := range digest {
-		encoded[index*2] = alphabet[value>>4]
-		encoded[index*2+1] = alphabet[value&15]
-	}
-	return string(encoded)
 }

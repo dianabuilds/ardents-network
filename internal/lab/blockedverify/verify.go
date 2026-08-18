@@ -90,15 +90,26 @@ func Verify(config Config) (Result, error) {
 	cleanupInvalid, cleanupFailures := verifyCleanup(evidenceValue.Cleanup, attributions)
 	operationalInvalid, failures = append(operationalInvalid, cleanupInvalid...), append(failures, cleanupFailures...)
 	if manifestValue.CampaignKind == "final-local" {
-		finalInvalid, finalFailures := verifyFinalCampaign(manifestValue.FinalSpec, evidenceValue.FinalSummary)
+		finalSummaryValue, measurementInvalid := verifyMeasurementArtifacts(config.SecretRoot, evidenceValue.FinalSummary)
+		operationalInvalid = append(operationalInvalid, measurementInvalid...)
+		if finalSummaryValue == nil {
+			finalSummaryValue = evidenceValue.FinalSummary
+		}
+		finalInvalid, finalFailures := verifyFinalCampaign(manifestValue.FinalSpec, finalSummaryValue)
 		operationalInvalid = append(operationalInvalid, finalInvalid...)
-		if evidenceValue.FinalSummary != nil {
+		if finalSummaryValue != nil {
 			operationalInvalid = append(operationalInvalid,
-				verifyHostileCellBindings(evidenceValue.Events, evidenceValue.FinalSummary.Cells)...)
+				verifyHostileCellBindings(evidenceValue.Events, finalSummaryValue.Cells)...)
 		}
 		failures = append(failures, finalFailures...)
-		operationalInvalid = append(operationalInvalid,
-			verifyMeasurementArtifacts(config.SecretRoot, evidenceValue.FinalSummary)...)
+		if finalSummaryValue != nil {
+			operationalInvalid = append(operationalInvalid,
+				verifyFinalObserverEvidence(config.SecretRoot, finalSummaryValue.Cells)...)
+			operationalInvalid = append(operationalInvalid,
+				verifyFinalTelemetryEvidence(config.SecretRoot, finalSummaryValue.Cells)...)
+			operationalInvalid = append(operationalInvalid,
+				verifyFinalTelemetryAggregates(config.SecretRoot, finalSummaryValue)...)
+		}
 		operationalInvalid = append(operationalInvalid,
 			"maintained final runner raw-to-verdict recomputation is not implemented")
 	} else if evidenceValue.FinalSummary != nil {

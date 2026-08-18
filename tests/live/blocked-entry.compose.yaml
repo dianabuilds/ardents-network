@@ -41,9 +41,10 @@ services:
     volumes:
       - ${ARDENTS_BLOCKED_ROOT:?}/input/endpoint:/run/input:ro
       - ${ARDENTS_BLOCKED_ROOT:?}/sync/endpoint:/run/evidence
+      - ${ARDENTS_BLOCKED_ROOT:?}/state/endpoint:/run/state
       - ${ARDENTS_WEBTUNNEL_CLIENT:?}:/candidate/webtunnel-client:ro
       - client_route:/run/ardents/client-route
-    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=16m,mode=0700,uid=65532,gid=65532", "/run/secure:rw,nosuid,nodev,size=8m,mode=0700,uid=65532,gid=65532", "/run/state:rw,nosuid,nodev,size=16m,mode=0700,uid=65532,gid=65532"]
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=16m,mode=0700,uid=65532,gid=65532", "/run/secure:rw,nosuid,nodev,size=8m,mode=0700,uid=65532,gid=65532"]
     networks:
       entry_net: {ipv4_address: 203.0.113.7}
       route_net: {ipv4_address: 172.31.20.7}
@@ -94,8 +95,9 @@ services:
     volumes:
       - ${ARDENTS_BLOCKED_ROOT:?}/input/bridge:/run/input:ro
       - ${ARDENTS_BLOCKED_ROOT:?}/sync/bridge:/run/evidence
+      - ${ARDENTS_BLOCKED_ROOT:?}/state/bridge:/run/state
       - ${ARDENTS_WEBTUNNEL_SERVER:?}:/candidate/webtunnel-server:ro
-    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=16m,mode=0700,uid=65532,gid=65532", "/run/secure:rw,nosuid,nodev,size=8m,mode=0700,uid=65532,gid=65532", "/run/state:rw,nosuid,nodev,size=16m,mode=0700,uid=65532,gid=65532"]
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=16m,mode=0700,uid=65532,gid=65532", "/run/secure:rw,nosuid,nodev,size=8m,mode=0700,uid=65532,gid=65532"]
     networks:
       entry_net: {ipv4_address: 203.0.113.8}
       route_net: {ipv4_address: 172.31.20.8}
@@ -170,8 +172,9 @@ services:
     volumes:
       - ${ARDENTS_BLOCKED_ROOT:?}/input/negative-endpoint:/run/input:ro
       - ${ARDENTS_BLOCKED_ROOT:?}/sync/negative-endpoint:/run/evidence
+      - ${ARDENTS_BLOCKED_ROOT:?}/state/negative-endpoint:/run/state
       - ${ARDENTS_WEBTUNNEL_CLIENT:?}:/candidate/webtunnel-client:ro
-    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=16m,mode=0700,uid=65532,gid=65532", "/run/secure:rw,nosuid,nodev,size=8m,mode=0700,uid=65532,gid=65532", "/run/state:rw,nosuid,nodev,size=16m,mode=0700,uid=65532,gid=65532", "/run/ardents:rw,nosuid,nodev,size=4m,mode=0700,uid=65532,gid=65532"]
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=16m,mode=0700,uid=65532,gid=65532", "/run/secure:rw,nosuid,nodev,size=8m,mode=0700,uid=65532,gid=65532", "/run/ardents:rw,nosuid,nodev,size=4m,mode=0700,uid=65532,gid=65532"]
     networks: {entry_net: {ipv4_address: 203.0.113.7}}
   negative-observer:
     <<: *observer
@@ -192,9 +195,10 @@ services:
     volumes:
       - ${ARDENTS_BLOCKED_ROOT:?}/input/recovery-endpoint:/run/input:ro
       - ${ARDENTS_BLOCKED_ROOT:?}/sync/recovery-endpoint:/run/evidence
+      - ${ARDENTS_BLOCKED_ROOT:?}/state/recovery-endpoint:/run/state
       - ${ARDENTS_WEBTUNNEL_CLIENT:?}:/candidate/webtunnel-client:ro
       - client_route:/run/ardents/client-route
-    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=16m,mode=0700,uid=65532,gid=65532", "/run/secure:rw,nosuid,nodev,size=8m,mode=0700,uid=65532,gid=65532", "/run/state:rw,nosuid,nodev,size=16m,mode=0700,uid=65532,gid=65532", "/run/ardents:rw,nosuid,nodev,size=4m,mode=0700,uid=65532,gid=65532"]
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=16m,mode=0700,uid=65532,gid=65532", "/run/secure:rw,nosuid,nodev,size=8m,mode=0700,uid=65532,gid=65532", "/run/ardents:rw,nosuid,nodev,size=4m,mode=0700,uid=65532,gid=65532"]
     networks:
       entry_net: {ipv4_address: 203.0.113.7}
       route_net: {ipv4_address: 172.31.20.7}

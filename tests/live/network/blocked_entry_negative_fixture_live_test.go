@@ -19,6 +19,9 @@ func newBlockedNegativeFixture(t *testing.T, clientBinary, serverBinary string) 
 		mustMkdir(t, filepath.Join(root, "input", role))
 		mustMkdirShared(t, filepath.Join(root, "sync", role))
 	}
+	for _, role := range []string{"negative-endpoint", "recovery-endpoint", "fault-one"} {
+		mustMkdirShared(t, filepath.Join(root, "state", role))
+	}
 	endpoint := filepath.Join(root, "input", "negative-endpoint")
 	for _, name := range []string{"route.json", "transition.bin", "cert.pem", "key.pem", "time-confidence"} {
 		copyFile(t, filepath.Join(root, "input", "endpoint", name), filepath.Join(endpoint, name))

@@ -18,6 +18,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/localroles"
 )
 
 var hostileInviteTerminals = map[string]string{
@@ -27,13 +29,20 @@ var hostileInviteTerminals = map[string]string{
 	"expired": "expired", "not-yet-valid": "incompatible", "insufficient-time-confidence": "incompatible",
 }
 
-func TestBlockedEntryFinalHostileInvite(t *testing.T) {
+var hostileDomainTerminals = map[string]string{
+	"responder": "wrong-domain", "introduction": "wrong-domain", "rendezvous": "wrong-domain",
+	"resolution": "wrong-domain", "unknown-domain": "wrong-domain",
+	"conflicting-retained-family": "conflicting-role", "direct-source-exposure": "conflicting-role",
+	"interior-live-route": "conflicting-role", "drain": "conflicting-role", "quarantine": "conflicting-role",
+}
+
+func TestBlockedEntryFinalHostileInviteValidation(t *testing.T) {
 	if os.Getenv("ARDENTS_BLOCKED_ROLE") != "" {
 		t.Skip("host orchestrator only")
 	}
 	cell, variant, ok := selectedHostileInviteCell(os.Getenv("ARDENTS_FINAL_CELL"))
 	if !ok {
-		t.Skip("selected G1 final cell only")
+		t.Skip("selected Invite-validation hostile cell only")
 	}
 	if _, err := exec.LookPath("docker"); err != nil {
 		t.Fatalf("live tests require Docker: %v", err)
@@ -41,9 +50,9 @@ func TestBlockedEntryFinalHostileInvite(t *testing.T) {
 	client := requireBlockedCandidate(t, "ARDENTS_WEBTUNNEL_CLIENT", blockedClientHash)
 	server := requireBlockedCandidate(t, "ARDENTS_WEBTUNNEL_SERVER", blockedServerHash)
 	repository := repositoryRoot(t)
-	image, ownedImage := finalProductImage(t, fmt.Sprintf("ardents-s55-g1-%d:test", time.Now().UnixNano()))
+	image, ownedImage := finalProductImage(t, fmt.Sprintf("ardents-s55-invite-%d:test", time.Now().UnixNano()))
 	fixture := newBlockedEntryFixture(t, client, server)
-	project := finalProjectName(fmt.Sprintf("ardents-s55-g1-%d", time.Now().UnixNano()))
+	project := finalProjectName(fmt.Sprintf("ardents-s55-invite-%d", time.Now().UnixNano()))
 	compose := blockedCompose(repository, project, image, fixture, "final-hostile")
 	cleanup := blockedProjectCleanup(t, compose, project)
 	t.Cleanup(cleanup)
@@ -51,7 +60,7 @@ func TestBlockedEntryFinalHostileInvite(t *testing.T) {
 	defer cancel()
 	if ownedImage {
 		if output, err := compose(ctx, "build", "endpoint"); err != nil {
-			t.Fatalf("build G1 product image: %v\n%s", err, output)
+			t.Fatalf("build hostile Invite product image: %v\n%s", err, output)
 		}
 	}
 	prepareHostileInviteInput(t, fixture, variant)
@@ -67,7 +76,47 @@ func TestBlockedEntryFinalHostileInvite(t *testing.T) {
 	armFinalWorkerTerminal(terminal)
 	observed := runHostileInviteImport(t, ctx, compose)
 	if observed != terminal {
-		t.Fatalf("G1 %s terminal=%s want=%s", variant, observed, terminal)
+		t.Fatalf("Invite validation %s terminal=%s want=%s", variant, observed, terminal)
+	}
+	publishFinalWorkerTerminal()
+	stopHostileInviteObservers(t, ctx, compose, fixture.root)
+	cleanup()
+	emitFinalWorkerCell(t, cell, terminal, started, fixture.root)
+}
+
+func TestBlockedEntryFinalHostileDomainCollision(t *testing.T) {
+	if os.Getenv("ARDENTS_BLOCKED_ROLE") != "" {
+		t.Skip("host orchestrator only")
+	}
+	cell, variant, ok := selectedHostileDomainCell(os.Getenv("ARDENTS_FINAL_CELL"))
+	if !ok {
+		t.Skip("selected G2 final cell only")
+	}
+	if _, err := exec.LookPath("docker"); err != nil {
+		t.Fatalf("live tests require Docker: %v", err)
+	}
+	client := requireBlockedCandidate(t, "ARDENTS_WEBTUNNEL_CLIENT", blockedClientHash)
+	server := requireBlockedCandidate(t, "ARDENTS_WEBTUNNEL_SERVER", blockedServerHash)
+	repository := repositoryRoot(t)
+	image, ownedImage := finalProductImage(t, fmt.Sprintf("ardents-s55-g2-%d:test", time.Now().UnixNano()))
+	fixture := newBlockedEntryFixture(t, client, server)
+	project := finalProjectName(fmt.Sprintf("ardents-s55-g2-%d", time.Now().UnixNano()))
+	compose := blockedCompose(repository, project, image, fixture, "final-hostile")
+	cleanup := blockedProjectCleanup(t, compose, project)
+	t.Cleanup(cleanup)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+	if ownedImage {
+		if output, err := compose(ctx, "build", "endpoint"); err != nil {
+			t.Fatalf("build G2 product image: %v\n%s", err, output)
+		}
+	}
+	prepareHostileDomainInput(t, fixture, variant)
+	startHostileInviteObservers(t, ctx, compose, fixture.root)
+	started, terminal := time.Now(), hostileDomainTerminals[variant]
+	armFinalWorkerTerminal(terminal)
+	if observed := runHostileInviteImport(t, ctx, compose); observed != terminal {
+		t.Fatalf("G2 %s terminal=%s want=%s", variant, observed, terminal)
 	}
 	publishFinalWorkerTerminal()
 	stopHostileInviteObservers(t, ctx, compose, fixture.root)
@@ -77,11 +126,47 @@ func TestBlockedEntryFinalHostileInvite(t *testing.T) {
 
 func selectedHostileInviteCell(cell string) (string, string, bool) {
 	parts := strings.Split(cell, "/")
-	if len(parts) != 4 || parts[0] != "hostile" || parts[1] != "G1-invite" {
+	if len(parts) != 4 || parts[0] != "hostile" {
 		return "", "", false
 	}
 	episode, err := strconv.Atoi(parts[3])
-	_, known := hostileInviteTerminals[parts[2]]
+	variant := parts[2]
+	if parts[1] == "G6-substitution" {
+		variant = mapHostileInviteSubstitution(variant)
+	} else if parts[1] == "G9-ledger-leakage" {
+		variant = mapHostileInviteLedgerLeakage(variant)
+	} else if parts[1] != "G1-invite" {
+		return "", "", false
+	}
+	_, known := hostileInviteTerminals[variant]
+	return cell, variant, err == nil && episode >= 0 && episode < 5 && known
+}
+
+func mapHostileInviteLedgerLeakage(variant string) string {
+	if variant == "unknown-invite-field" {
+		return "trailing-field"
+	}
+	return ""
+}
+
+func mapHostileInviteSubstitution(variant string) string {
+	switch variant {
+	case "network":
+		return "wrong-network"
+	case "route-profile":
+		return "wrong-profile"
+	default:
+		return ""
+	}
+}
+
+func selectedHostileDomainCell(cell string) (string, string, bool) {
+	parts := strings.Split(cell, "/")
+	if len(parts) != 4 || parts[0] != "hostile" || parts[1] != "G2-domain-collision" {
+		return "", "", false
+	}
+	episode, err := strconv.Atoi(parts[3])
+	_, known := hostileDomainTerminals[parts[2]]
 	return cell, parts[2], err == nil && episode >= 0 && episode < 5 && known
 }
 
@@ -112,6 +197,78 @@ func prepareHostileInviteInput(t *testing.T, fixture blockedEntryFixture, varian
 	writeLivePlan(t, input, "hostile-import", plan)
 }
 
+func prepareHostileDomainInput(t *testing.T, fixture blockedEntryFixture, variant string) {
+	t.Helper()
+	input := filepath.Join(fixture.root, "input", "endpoint")
+	invitePath := filepath.Join(input, "invite.bin")
+	raw, err := os.ReadFile(invitePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hostileDomainTerminals[variant] == "wrong-domain" {
+		body := hostileInviteBody(t, raw)
+		proof := hostileInviteProofOffset(t, body)
+		body[proof] ^= 1
+		writeLiveFile(t, invitePath, signHostileInvite(body))
+	} else {
+		identity, family := hostileInviteIdentityFamily(t, raw)
+		roles, openErr := localroles.Open(localroles.Config{Root: filepath.Join(input, "local-roles"), Clock: time.Now})
+		if openErr != nil {
+			t.Fatal(openErr)
+		}
+		class, state := hostileDomainDuty(variant)
+		replaceErr := roles.Replace([32]byte{2}, []localroles.Duty{{Identity: identity, Family: family,
+			Class: class, State: state, NotAfter: time.Now().Add(time.Hour)}})
+		if closeErr := roles.Close(); replaceErr == nil {
+			replaceErr = closeErr
+		}
+		if replaceErr != nil {
+			t.Fatal(replaceErr)
+		}
+	}
+	plan := map[string]any{"state_root": "/run/state/bridge", "network_state_root": "/run/state/bridge-network",
+		"invite_file": "/run/input/invite.bin", "network_id": readPlanString(t, filepath.Join(input, "import.json"), "network_id"),
+		"network_authorities": readPlanValue(t, filepath.Join(input, "import.json"), "network_authorities"),
+		"network_threshold":   1, "network_profile": "h3-role-probe-v1", "route_profile": "h3-route-tracer-v1",
+		"local_role_state_root": "/run/state/local-roles", "time_confidence_file": "/run/input/time-confidence"}
+	writeLivePlan(t, input, "hostile-import", plan)
+}
+
+func hostileInviteProofOffset(t *testing.T, body []byte) int {
+	t.Helper()
+	position := 74 + 1 + int(body[74]) + 1 + 32 + 32 + 32
+	if position+3 > len(body) || binary.BigEndian.Uint16(body[position:position+2]) == 0 {
+		t.Fatal("fixture Invite proof is invalid")
+	}
+	return position + 2
+}
+
+func hostileInviteIdentityFamily(t *testing.T, raw []byte) ([32]byte, [32]byte) {
+	t.Helper()
+	body := hostileInviteBody(t, raw)
+	position := 74 + 1 + int(body[74]) + 1
+	if position+64 > len(body) {
+		t.Fatal("fixture Invite identity is truncated")
+	}
+	var identity, family [32]byte
+	copy(identity[:], body[position:position+32])
+	copy(family[:], body[position+32:position+64])
+	return identity, family
+}
+
+func hostileDomainDuty(variant string) (string, string) {
+	switch variant {
+	case "direct-source-exposure":
+		return "direct-source", "exposed"
+	case "interior-live-route":
+		return "route-interior", "live"
+	case "drain":
+		return "node-duty", "prepared"
+	default:
+		return "route-rendezvous", "quarantined"
+	}
+}
+
 func runHostileInviteImport(t *testing.T, ctx context.Context, compose composeCall) string {
 	t.Helper()
 	output, err := compose(ctx, "exec", "-T", "endpoint", "/usr/local/bin/ardents-bridge",
@@ -120,6 +277,11 @@ func runHostileInviteImport(t *testing.T, ctx context.Context, compose composeCa
 		logs, _ := compose(ctx, "logs", "--no-color", "--no-log-prefix", "endpoint", "endpoint-control")
 		t.Fatalf("run hostile Invite import: %v\n%s\n%s", err, output, logs)
 	}
+	return decodeHostileImportClass(t, output)
+}
+
+func decodeHostileImportClass(t *testing.T, output []byte) string {
+	t.Helper()
 	var event struct {
 		Class      string `json:"class"`
 		InviteID   string `json:"invite_id"`

@@ -29,8 +29,8 @@ func (owner *owner) NextContact(ctx context.Context) ([32]byte, []byte, byte, er
 		owner.mu.Unlock()
 		return [32]byte{}, nil, 0, errors.New("bridge-local-denial")
 	}
-	if _, _, _, present := owner.nextEligible(last.Ordinal); !present {
-		err := owner.endAttemptLocked("bridge-attempt-exhausted", last.Terminal)
+	if _, _, _, terminal, present := owner.nextEligible(last.Ordinal); !present {
+		err := owner.endAttemptLocked(terminal, last.Terminal)
 		owner.mu.Unlock()
 		return [32]byte{}, nil, 0, err
 	}
@@ -59,9 +59,9 @@ func (owner *owner) NextContact(ctx context.Context) ([32]byte, []byte, byte, er
 	if !owner.config.Clock().Before(deadline) {
 		return [32]byte{}, nil, 0, owner.endAttemptLocked("bridge-deadline-exceeded", last.Terminal)
 	}
-	record, decoded, ordinal, present := owner.nextEligible(last.Ordinal)
+	record, decoded, ordinal, terminal, present := owner.nextEligible(last.Ordinal)
 	if !present {
-		return [32]byte{}, nil, 0, owner.endAttemptLocked("bridge-attempt-exhausted", last.Terminal)
+		return [32]byte{}, nil, 0, owner.endAttemptLocked(terminal, last.Terminal)
 	}
 	next := owner.state.clone()
 	next.Contacts = append(next.Contacts, contactRecord{AttemptID: next.Regime.AttemptID,
@@ -74,7 +74,8 @@ func (owner *owner) NextContact(ctx context.Context) ([32]byte, []byte, byte, er
 	return decoded.identity, bytes.Clone(decoded.candidate), ordinal, nil
 }
 
-func (owner *owner) nextEligible(after byte) (memberRecord, invite, byte, bool) {
+func (owner *owner) nextEligible(after byte) (memberRecord, invite, byte, string, bool) {
+	terminal := "bridge-attempt-exhausted"
 	for ordinal := after + 1; ordinal < 4; ordinal++ {
 		record, present := owner.recordForOrdinal(ordinal)
 		if !present {
@@ -84,10 +85,11 @@ func (owner *owner) nextEligible(after byte) (memberRecord, invite, byte, bool) 
 		if err == nil && class == classAccepted && decoded.id == record.InviteID &&
 			decoded.identity == record.Identity && decoded.commitment == record.Commitment &&
 			decoded.adapterProfile == record.ProfileID {
-			return record, decoded, ordinal, true
+			return record, decoded, ordinal, "", true
 		}
+		terminal = "bridge-ineligible"
 	}
-	return memberRecord{}, invite{}, 0, false
+	return memberRecord{}, invite{}, 0, terminal, false
 }
 
 func (owner *owner) endAttemptLocked(class string, offset uint64) error {
@@ -102,6 +104,9 @@ func (owner *owner) endAttemptLocked(class string, offset uint64) error {
 		offset = next.Attempt.Started
 	}
 	next.Attempt.Terminal, next.Attempt.TerminalOffset = class, offset
+	if err := owner.retireInvalidVerifiedLocked(&next); err != nil {
+		return errors.Join(errors.New("bridge-local-denial"), err)
+	}
 	next.settleReplacements()
 	if err := owner.commit(next, false); err != nil {
 		owner.failed = err

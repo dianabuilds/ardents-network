@@ -14,7 +14,6 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"math/big"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -46,6 +45,12 @@ func newBlockedEntryFixture(t *testing.T, clientBinary, serverBinary string) blo
 		"capacity-probe", "direct"} {
 		mustMkdir(t, filepath.Join(root, "input", role))
 		mustMkdirShared(t, filepath.Join(root, "sync", role))
+	}
+	// State is private to each role but survives a process/container restart
+	// inside one fixture. The fixture root itself is unique and removed after
+	// the cell, so it cannot carry state into another episode.
+	for _, role := range []string{"endpoint", "bridge"} {
+		mustMkdirShared(t, filepath.Join(root, "state", role))
 	}
 	writeBlockedRouteInputs(t, root, base)
 	target := writeBlockedServiceInputs(t, root, base)
@@ -454,47 +459,4 @@ func writeNodeIdentity(t *testing.T, path string, private ed25519.PrivateKey) {
 		t.Fatal(err)
 	}
 	writeLiveFile(t, path, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: raw}))
-}
-
-func mustMkdir(t *testing.T, path string) {
-	t.Helper()
-	if err := os.MkdirAll(path, 0o700); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func mustMkdirShared(t *testing.T, path string) {
-	t.Helper()
-	if err := os.MkdirAll(path, 0o777); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(path, 0o777); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func copyTree(t *testing.T, source, destination string) {
-	t.Helper()
-	mustMkdir(t, destination)
-	entries, err := os.ReadDir(source)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, entry := range entries {
-		from, to := filepath.Join(source, entry.Name()), filepath.Join(destination, entry.Name())
-		if entry.IsDir() {
-			copyTree(t, from, to)
-		} else {
-			copyFile(t, from, to)
-		}
-	}
-}
-
-func copyFile(t *testing.T, source, destination string) {
-	t.Helper()
-	raw, err := os.ReadFile(source)
-	if err != nil {
-		t.Fatal(err)
-	}
-	writeLiveFile(t, destination, raw)
 }

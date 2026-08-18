@@ -37,6 +37,10 @@ func (owner *owner) Import(raw []byte) (Result, error) {
 		return result, nil
 	}
 	next := owner.state.clone()
+	if len(next.Records) >= 4 {
+		result.Class = classSetFull
+		return result, nil
+	}
 	activeIndex, occupied := next.active(decoded.slot)
 	replacesActive := occupied
 	if !occupied {
@@ -46,6 +50,11 @@ func (owner *owner) Import(raw []byte) (Result, error) {
 		}
 	} else {
 		active := next.Records[activeIndex]
+		if decoded.slotGeneration == 1 && active.Generation == 1 && decoded.identity == active.Identity &&
+			decoded.family == active.Family {
+			result.Class = classReplay
+			return result, nil
+		}
 		if decoded.slotGeneration != 2 || decoded.replaces == nil || *decoded.replaces != active.InviteID ||
 			active.Generation != 1 {
 			result.Class = classReplacementRejected
@@ -59,10 +68,6 @@ func (owner *owner) Import(raw []byte) (Result, error) {
 			next.Records[activeIndex].Commitment = [32]byte{}
 			next.Records[activeIndex].ProfileID = ""
 		}
-	}
-	if len(next.Records) >= 4 {
-		result.Class = classSetFull
-		return result, nil
 	}
 	next.Records = append(next.Records, memberRecord{
 		InviteID: decoded.id, Identity: decoded.identity, Family: decoded.family,

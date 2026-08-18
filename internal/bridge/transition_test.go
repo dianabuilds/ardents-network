@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/binary"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -28,8 +29,13 @@ func TestTransitionPublishesOneContactBeforeCarrierWork(t *testing.T) {
 		ordinal != 0 || started != 1 {
 		t.Fatalf("begin contact = %x %x %d %d, %v", identity, candidate, ordinal, started, err)
 	}
-	if _, _, _, _, _, err := owner.BeginContact(frame, manifest, fixture.now.Add(time.Minute)); err == nil {
-		t.Fatal("second transition obtained another contact")
+	before := durableFiles(t, fixture.root)
+	if _, _, _, _, _, err := owner.BeginContact(frame, manifest, fixture.now.Add(time.Minute)); err == nil ||
+		!strings.Contains(err.Error(), "bridge-local-denial") {
+		t.Fatalf("second transition = %v", err)
+	}
+	if after := durableFiles(t, fixture.root); !reflect.DeepEqual(before, after) {
+		t.Fatal("second transition changed durable Bridge state")
 	}
 	if err := owner.FinishContact(ordinal, 2, true, true); err != nil {
 		t.Fatal(err)
@@ -41,6 +47,39 @@ func TestTransitionPublishesOneContactBeforeCarrierWork(t *testing.T) {
 	t.Cleanup(func() { _ = owner.Close() })
 	if _, _, _, _, _, err := owner.BeginContact(frame, manifest, fixture.now.Add(time.Minute)); err == nil {
 		t.Fatal("restart reset the consumed transition")
+	}
+}
+
+func TestTransitionRejectsNewAttemptIDWithoutResettingLedger(t *testing.T) {
+	t.Parallel()
+	fixture := newFixture(t)
+	owner := fixture.open(t)
+	t.Cleanup(func() { _ = owner.Close() })
+	if _, err := owner.Import(fixture.invite(t, 0, 1, nil, fixture.notBefore, fixture.notAfter)); err != nil {
+		t.Fatal(err)
+	}
+	manifest := sha256.Sum256([]byte("ledger reset manifest"))
+	frame := transitionFrame(manifest)
+	_, _, ordinal, _, _, err := owner.BeginContact(frame, manifest, fixture.now.Add(time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := owner.FinishContact(ordinal, 2, true, true); err != nil {
+		t.Fatal(err)
+	}
+	before := durableFiles(t, fixture.root)
+	newAttempt := append([]byte(nil), frame...)
+	newAttempt[len("ardents-h3-bridge-transition-v1")] ^= 1
+	if _, _, _, _, _, err := owner.BeginContact(newAttempt, manifest, fixture.now.Add(time.Minute)); err == nil ||
+		!strings.Contains(err.Error(), "bridge-local-denial") {
+		t.Fatalf("new attempt reset ledger: %v", err)
+	}
+	evidence, err := owner.Evidence()
+	if err != nil || evidence.Terminal != "opened" || evidence.ContactStarts != 1 {
+		t.Fatalf("ledger changed after rejected reset: %+v, %v", evidence, err)
+	}
+	if after := durableFiles(t, fixture.root); !reflect.DeepEqual(before, after) {
+		t.Fatal("rejected reset changed durable Bridge state")
 	}
 }
 
@@ -174,6 +213,35 @@ func TestRestartDurablyInterruptsUnfinishedAttempt(t *testing.T) {
 	}
 }
 
+func TestRestartInterruptsTerminalContactWithoutCleanup(t *testing.T) {
+	fixture := newFixture(t)
+	owner := fixture.open(t)
+	if _, err := owner.Import(fixture.invite(t, 0, 1, nil, fixture.notBefore, fixture.notAfter)); err != nil {
+		t.Fatal(err)
+	}
+	manifest := sha256.Sum256([]byte("terminal-before-cleanup manifest"))
+	_, _, ordinal, _, _, err := owner.BeginContact(transitionFrame(manifest), manifest, time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := owner.FinishContact(ordinal, 2, true, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := owner.Close(); err != nil {
+		t.Fatal(err)
+	}
+	owner = fixture.open(t)
+	t.Cleanup(func() { _ = owner.Close() })
+	if _, _, _, _, _, err := owner.BeginContact(transitionFrame(manifest), manifest, time.Time{}); err == nil ||
+		!strings.Contains(err.Error(), "bridge-interrupted") {
+		t.Fatalf("restart preserved a terminal contact without cleanup: %v", err)
+	}
+	evidence, err := owner.Evidence()
+	if err != nil || evidence.Terminal != "bridge-interrupted" || evidence.CleanupComplete {
+		t.Fatalf("interrupted cleanup evidence = %+v, %v", evidence, err)
+	}
+}
+
 func TestParentDeadlineIsDurableAndStopsLaterContacts(t *testing.T) {
 	for episode := range 5 {
 		t.Run(strconv.Itoa(episode), testParentDeadlineIsDurableAndStopsLaterContacts)
@@ -223,6 +291,64 @@ func TestInviteExpiryClipsAttemptDeadline(t *testing.T) {
 	_, _, _, _, deadline, err := owner.BeginContact(transitionFrame(manifest), manifest, time.Time{})
 	if err != nil || !deadline.Equal(expires.Truncate(time.Second)) {
 		t.Fatalf("Invite-clipped deadline = %s, %v", deadline, err)
+	}
+}
+
+func TestLostTimeConfidenceTerminalizesPendingRetryAsIneligible(t *testing.T) {
+	fixture := newFixture(t)
+	confident := true
+	config := fixture.config()
+	config.TimeConfidence = func() bool { return confident }
+	owner, err := bridge.Open(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = owner.Close() })
+	if result, importErr := owner.Import(fixture.invite(t, 0, 1, nil, fixture.notBefore, fixture.notAfter)); importErr != nil || result.Class != "accepted" {
+		t.Fatalf("import = %+v, %v", result, importErr)
+	}
+	manifest := sha256.Sum256([]byte("lost time confidence manifest"))
+	_, _, ordinal, _, _, err := owner.BeginContact(transitionFrame(manifest), manifest, time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := owner.FinishContact(ordinal, 2, false, true); err != nil {
+		t.Fatal(err)
+	}
+	confident = false
+	if _, _, _, retryErr := owner.NextContact(context.Background()); retryErr == nil ||
+		!strings.Contains(retryErr.Error(), "bridge-ineligible") {
+		t.Fatalf("lost Time Confidence retry = %v", retryErr)
+	}
+	evidence, err := owner.Evidence()
+	if err != nil || evidence.Terminal != "bridge-ineligible" || evidence.ContactStarts != 1 {
+		t.Fatalf("lost Time Confidence evidence = %+v, %v", evidence, err)
+	}
+}
+
+func TestExpiredInviteIsRetiredBeforeContact(t *testing.T) {
+	fixture := newFixture(t)
+	now := fixture.now
+	config := fixture.config()
+	config.Clock = func() time.Time { return now }
+	owner, err := bridge.Open(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = owner.Close() })
+	expires := fixture.now.Add(time.Second)
+	invite := fixture.invite(t, 0, 1, nil, fixture.notBefore, expires)
+	if result, importErr := owner.Import(invite); importErr != nil || result.Class != "accepted" {
+		t.Fatalf("import expiring Invite = %+v, %v", result, importErr)
+	}
+	now = expires.Add(time.Second)
+	manifest := sha256.Sum256([]byte("retire expired Invite"))
+	if _, _, _, _, _, beginErr := owner.BeginContact(transitionFrame(manifest), manifest, time.Time{}); beginErr == nil ||
+		!strings.Contains(beginErr.Error(), "bridge-ineligible") {
+		t.Fatalf("expired Invite begin = %v", beginErr)
+	}
+	if result, importErr := owner.Import(invite); importErr != nil || result.Class != "replay" {
+		t.Fatalf("retired expired Invite replay = %+v, %v", result, importErr)
 	}
 }
 

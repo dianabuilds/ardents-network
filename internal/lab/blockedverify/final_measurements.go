@@ -26,29 +26,45 @@ type finalHostRecord struct {
 	Hosts  []finalObservedHost `json:"hosts"`
 }
 
-func verifyFinalMeasurementContent(snapshots map[string][]byte, summary *finalSummary) []string {
-	if summary == nil {
-		return []string{"final measurement summary is missing"}
+func recomputeFinalSummary(snapshots map[string][]byte, published *finalSummary) (*finalSummary, []string) {
+	if published == nil {
+		return nil, []string{"final measurement summary is missing"}
 	}
+	result := &finalSummary{Schema: published.Schema, ImageHash: published.ImageHash,
+		ClientHash: published.ClientHash, ServerHash: published.ServerHash, Artifacts: published.Artifacts}
 	var reasons []string
-	compareLines(snapshots, "measurements/profiles.jsonl", summary.Profiles, &reasons)
-	compareLines(snapshots, "measurements/cells.jsonl", summary.Cells, &reasons)
-	compareLines(snapshots, "measurements/capacity.jsonl", summary.Capacity, &reasons)
-	compareLines(snapshots, "measurements/sustained.jsonl", summary.Sustained, &reasons)
-	compareLines(snapshots, "measurements/pressure.jsonl", summary.Pressure, &reasons)
-	recovery, err := decodeLines[finalRecovery](snapshots["measurements/recovery.jsonl"], 1)
-	if err != nil || len(recovery) != 1 || !reflect.DeepEqual(recovery[0], summary.Recovery) {
-		reasons = append(reasons, "final recovery measurements do not reproduce the summary")
+	result.Profiles = decodeFinalLines[finalProfileResult](snapshots, "measurements/profiles.jsonl", 7, &reasons)
+	result.Cells = decodeFinalLines[finalCellObservation](snapshots, "measurements/cells.jsonl", 594, &reasons)
+	result.Capacity = decodeFinalLines[finalCapacityBatch](snapshots, "measurements/capacity.jsonl", 10, &reasons)
+	result.Sustained = decodeFinalLines[finalSustainedCell](snapshots, "measurements/sustained.jsonl", 2, &reasons)
+	result.Pressure = decodeFinalLines[finalPressureCell](snapshots, "measurements/pressure.jsonl", 5, &reasons)
+	recovery := decodeFinalLines[finalRecovery](snapshots, "measurements/recovery.jsonl", 1, &reasons)
+	if len(recovery) == 1 {
+		result.Recovery = recovery[0]
 	}
-	wantResources, wantTraffic := summaryMeasurementRecords(summary)
+	var hosts finalHostRecord
+	if err := decodeCanonicalSnapshot(snapshots["measurements/host.json"], &hosts); err != nil ||
+		hosts.Schema != "ardents-h3-final-host-v1" {
+		reasons = append(reasons, "final host measurements are invalid")
+	} else {
+		result.Hosts = hosts.Hosts
+	}
+	wantResources, wantTraffic := summaryMeasurementRecords(result)
 	compareLines(snapshots, "measurements/resources.jsonl", wantResources, &reasons)
 	compareLines(snapshots, "measurements/traffic.jsonl", wantTraffic, &reasons)
-	var hosts finalHostRecord
-	hostErr := decodeCanonicalSnapshot(snapshots["measurements/host.json"], &hosts)
-	if hostErr != nil || hosts.Schema != "ardents-h3-final-host-v1" || !reflect.DeepEqual(hosts.Hosts, summary.Hosts) {
-		reasons = append(reasons, "final host measurements do not reproduce the summary")
+	if !reflect.DeepEqual(*result, *published) {
+		reasons = append(reasons, "final published summary differs from raw measurements")
 	}
-	return reasons
+	return result, reasons
+}
+
+func decodeFinalLines[T any](snapshots map[string][]byte, relative string, count int, reasons *[]string) []T {
+	values, err := decodeLines[T](snapshots[relative], count)
+	if err != nil {
+		*reasons = append(*reasons, "final raw measurements do not reproduce "+relative)
+		return nil
+	}
+	return values
 }
 
 func compareLines[T any](snapshots map[string][]byte, relative string, wanted []T, reasons *[]string) {

@@ -18,23 +18,60 @@ import (
 
 func TestFinalRunnerDispatchesMaintainedCellWorkers(t *testing.T) {
 	cases := map[string]string{
-		"profile/C1/00":                         "TestBlockedEntryCommandsAcrossNamespaces",
-		"profile/C4/04":                         "TestBlockedEntryNegativeCommandsAcrossNamespaces",
-		"capacity/h3-s5-b1-v1/0":                "TestBlockedEntryFinalReferenceAndStrongCapacity",
-		"sustained/endpoint-to-publisher/run-0": "TestBlockedEntryFinalSustainedEvidence",
-		"pressure/P0":                           "TestBlockedEntryFinalProjectedAdmissionAndChurn",
-		"pressure/P2":                           "TestBlockedEntryReturnsFromExactRecoverableSocketPressure",
-		"pressure/P3":                           "TestBlockedEntryDrainsAtExactEmergencySocketPressure",
-		"recovery/0":                            "TestBlockedEntryRecoveryParentCommandsAcrossNamespaces",
-		"hostile/G1-invite/malformed/0":         "TestBlockedEntryFinalHostileInvite",
+		"profile/C1/00":                                   "TestBlockedEntryCommandsAcrossNamespaces",
+		"profile/C4/04":                                   "TestBlockedEntryNegativeCommandsAcrossNamespaces",
+		"capacity/h3-s5-b1-v1/0":                          "TestBlockedEntryFinalReferenceAndStrongCapacity",
+		"sustained/endpoint-to-publisher/run-0":           "TestBlockedEntryFinalSustainedEvidence",
+		"pressure/P0":                                     "TestBlockedEntryFinalProjectedAdmissionAndChurn",
+		"pressure/P2":                                     "TestBlockedEntryReturnsFromExactRecoverableSocketPressure",
+		"pressure/P3":                                     "TestBlockedEntryDrainsAtExactEmergencySocketPressure",
+		"recovery/0":                                      "TestBlockedEntryRecoveryParentCommandsAcrossNamespaces",
+		"hostile/G8-lifecycle/cancellation/0":             "TestBlockedEntryRecoveryParentCommandsAcrossNamespaces",
+		"hostile/G1-invite/malformed/0":                   "TestBlockedEntryFinalHostileInviteValidation",
+		"hostile/G2-domain-collision/responder/0":         "TestBlockedEntryFinalHostileDomainCollision",
+		"hostile/G3-replay-replacement/active-reimport/0": "TestBlockedEntryFinalHostileReplay",
+		"hostile/G3-replay-replacement/retired-replay/0":  "TestBlockedEntryFinalHostileReplay",
+		"hostile/G3-replay-replacement/same-generation-different-bytes/0": "TestBlockedEntryFinalHostileReplay",
+		"hostile/G3-replay-replacement/wrong-replacement-id/0":            "TestBlockedEntryFinalHostileReplay",
+		"hostile/G3-replay-replacement/skipped-generation/0":              "TestBlockedEntryFinalHostileReplay",
+		"hostile/G3-replay-replacement/third-generation/0":                "TestBlockedEntryFinalHostileReplay",
+		"hostile/G3-replay-replacement/full-set/0":                        "TestBlockedEntryFinalHostileReplay",
+		"hostile/G3-replay-replacement/cross-slot-replacement/0":          "TestBlockedEntryFinalHostileReplay",
+		"hostile/G4-restart/after-regime-publication/0":                   "TestBlockedEntryFinalHostileRestart",
+		"hostile/G4-restart/after-exposure-0/0":                           "TestBlockedEntryFinalHostileRestart",
+		"hostile/G5-adapter-fault/accept-then-stall/0":                    "TestBlockedEntryNegativeCommandsAcrossNamespaces",
+		"hostile/G8-lifecycle/endpoint-restart/0":                         "TestBlockedEntryFinalHostileRestart",
+		"hostile/G6-substitution/network/0":                               "TestBlockedEntryFinalHostileInviteValidation",
+		"hostile/G6-substitution/route-profile/0":                         "TestBlockedEntryFinalHostileInviteValidation",
+		"hostile/G9-ledger-leakage/unknown-invite-field/0":                "TestBlockedEntryFinalHostileInviteValidation",
 	}
 	for cell, want := range cases {
 		if got := finalWorkerTest(cell); got != want {
 			t.Fatalf("worker for %s=%q want %q", cell, got, want)
 		}
 	}
-	if got := finalWorkerTest("hostile/G2-domain-collision/responder/0"); got != "" {
+	if got := finalWorkerTest("hostile/G4-restart/after-import/0"); got != "" {
 		t.Fatalf("unimplemented later hostile group was silently dispatched to %q", got)
+	}
+}
+
+func TestRecoveryWorkerSelectsOnlyItsTwoObservedCellFamilies(t *testing.T) {
+	for _, test := range []struct {
+		cell, wantCell, wantTerminal string
+		selected                     bool
+	}{
+		{"recovery/2", "recovery/2", "abrupt connection loss", true},
+		{"hostile/G8-lifecycle/cancellation/2", "hostile/G8-lifecycle/cancellation/2", "bridge-deadline-exceeded", true},
+		{"hostile/G8-lifecycle/endpoint-restart/2", "", "", false},
+	} {
+		t.Run(test.cell, func(t *testing.T) {
+			t.Setenv("ARDENTS_FINAL_CELL", test.cell)
+			cell, terminal, selected := selectedRecoveryFinalCell(2)
+			if cell != test.wantCell || terminal != test.wantTerminal || selected != test.selected {
+				t.Fatalf("selection=(%q,%q,%t), want=(%q,%q,%t)",
+					cell, terminal, selected, test.wantCell, test.wantTerminal, test.selected)
+			}
+		})
 	}
 }
 
@@ -87,6 +124,7 @@ func TestFinalRunnerObservationPreservesWorkerEvidence(t *testing.T) {
 	}
 	observed := finalObservationFromWorker(plan, worker)
 	if observed.CellID != plan.CellID || observed.Seed != seed || observed.ObservedTerminal != "success" ||
+		!observed.ProductStarted || !observed.FaultInjected || observed.FaultOwner != "none" ||
 		observed.StartedOffsetMillis != 4 || observed.TerminalOffsetMillis != 8 ||
 		observed.CleanupOffsetMillis != 11 || observed.AdapterCleanupMillis != 3 ||
 		len(observed.Observers) != 9 || len(observed.Residuals) != 10 {
@@ -110,12 +148,12 @@ func TestFinalWorkerEvidenceRequiresRetainedObserversAndPostCleanupRoot(t *testi
 		t.Fatal(err)
 	}
 	writeFinalObserverRoot(t, root, []string{"endpoint"})
-	observers := collectFinalWorkerObservers("profile/C1/00", []string{root})
+	observers, rawObservers := collectFinalWorkerObservers("profile/C1/00", []string{root})
 	if len(observers) != 9 {
 		t.Fatalf("retained observers=%d", len(observers))
 	}
 	value := []finalWorkerResult{{CellID: "profile/C1/00", TerminalOffsetMillis: 4,
-		Observers: observers, ObserverSets: 1}}
+		Observers: observers, RawObservers: rawObservers, ObserverSets: 1}}
 	if err := releaseFinalWorkerRoot(parent); err == nil {
 		t.Fatal("live worker root was accepted before cleanup")
 	}
@@ -157,7 +195,8 @@ func TestFinalWorkerRootCleanupIsOwnershipScoped(t *testing.T) {
 func TestFinalWorkerEvidenceRejectsMissingCapacityUnitAndLaterBatch(t *testing.T) {
 	reference := filepath.Join(t.TempDir(), "reference")
 	writeFinalObserverRoot(t, reference, []string{"capacity-00", "capacity-01", "capacity-02", "capacity-03"})
-	if len(collectFinalWorkerObservers("capacity/h3-s5-b1-v1/0", []string{reference})) != 9 {
+	observers, _ := collectFinalWorkerObservers("capacity/h3-s5-b1-v1/0", []string{reference})
+	if len(observers) != 9 {
 		t.Fatal("complete four-unit capacity observers were rejected")
 	}
 	exact := filepath.Join(reference, "sync", "capacity-03")
@@ -165,7 +204,7 @@ func TestFinalWorkerEvidenceRejectsMissingCapacityUnitAndLaterBatch(t *testing.T
 	if err := os.Rename(exact, substitute); err != nil {
 		t.Fatal(err)
 	}
-	if collectFinalWorkerObservers("capacity/h3-s5-b1-v1/0", []string{reference}) != nil {
+	if observers, _ := collectFinalWorkerObservers("capacity/h3-s5-b1-v1/0", []string{reference}); observers != nil {
 		t.Fatal("capacity cell accepted a substituted Endpoint identity")
 	}
 	if err := os.Rename(substitute, exact); err != nil {
@@ -174,7 +213,7 @@ func TestFinalWorkerEvidenceRejectsMissingCapacityUnitAndLaterBatch(t *testing.T
 	if err := os.Remove(filepath.Join(reference, "sync", "capacity-03", "result.json")); err != nil {
 		t.Fatal(err)
 	}
-	if collectFinalWorkerObservers("capacity/h3-s5-b1-v1/0", []string{reference}) != nil {
+	if observers, _ := collectFinalWorkerObservers("capacity/h3-s5-b1-v1/0", []string{reference}); observers != nil {
 		t.Fatal("capacity cell accepted a missing Endpoint observer")
 	}
 	first, second := filepath.Join(t.TempDir(), "batch-0"), filepath.Join(t.TempDir(), "batch-1")
@@ -184,7 +223,7 @@ func TestFinalWorkerEvidenceRejectsMissingCapacityUnitAndLaterBatch(t *testing.T
 	if err := os.Remove(filepath.Join(second, "sync", "bridge", "result.json")); err != nil {
 		t.Fatal(err)
 	}
-	if collectFinalWorkerObservers("pressure/P4", []string{first, second}) != nil {
+	if observers, _ := collectFinalWorkerObservers("pressure/P4", []string{first, second}); observers != nil {
 		t.Fatal("P4 accepted observer loss in a later batch")
 	}
 	boundaryRoot := filepath.Join(t.TempDir(), "boundary")
@@ -200,7 +239,7 @@ func TestFinalWorkerEvidenceRejectsMissingCapacityUnitAndLaterBatch(t *testing.T
 	if err := os.WriteFile(dnsPath, raw, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if collectFinalWorkerObservers("profile/C1/00", []string{boundaryRoot}) != nil {
+	if observers, _ := collectFinalWorkerObservers("profile/C1/00", []string{boundaryRoot}); observers != nil {
 		t.Fatal("worker accepted a missing boundary-specific DNS control")
 	}
 }

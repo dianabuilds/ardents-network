@@ -62,54 +62,60 @@ type finalDNSControl struct {
 	Token                     string
 }
 
-func collectFinalWorkerObservers(identity string, roots []string) []finalRunnerObserver {
+func collectFinalWorkerObservers(identity string, roots []string) ([]finalRunnerObserver, []finalRawObserverSet) {
 	if len(roots) == 0 {
-		return nil
+		return nil, nil
 	}
 	var aggregate []finalRunnerObserver
+	rawSets := make([]finalRawObserverSet, 0, len(roots))
 	for _, root := range roots {
-		observed := collectFinalRootObservers(identity, root)
+		observed, raw := collectFinalRootObservers(identity, root)
 		if observed == nil {
-			return nil
+			return nil, nil
 		}
 		if aggregate == nil {
 			aggregate = observed
 		} else if !reflect.DeepEqual(aggregate, observed) {
-			return nil
+			return nil, nil
 		}
+		rawSets = append(rawSets, finalRawObserverSet{Observers: raw})
 	}
-	return aggregate
+	return aggregate, rawSets
 }
 
-func collectFinalRootObservers(identity, root string) []finalRunnerObserver {
+func collectFinalRootObservers(identity, root string) ([]finalRunnerObserver, []finalRawObserver) {
 	if root == "" {
-		return nil
+		return nil, nil
 	}
 	result := make([]finalRunnerObserver, 0, len(finalObserverBindings))
+	raw := make([]finalRawObserver, 0, len(finalObserverBindings))
 	for _, binding := range finalObserverBindings {
 		if binding.boundary == "endpoint-adapter" {
-			if !collectFinalEndpointObserver(identity, root) {
-				return nil
+			endpointRaw, ok := collectFinalEndpointObserver(identity, root)
+			if !ok {
+				return nil, nil
 			}
 			result = append(result, cleanFinalObserver(binding.boundary))
+			raw = append(raw, endpointRaw...)
 			continue
 		}
 		role := binding.role
 		path, dns, ok := readFinalRoleObservation(root, role)
 		if !validFinalRoleObservation(identity, path, dns, binding.role, binding.flow, ok) {
-			return nil
+			return nil, nil
 		}
 		result = append(result, cleanFinalObserver(binding.boundary))
+		raw = append(raw, finalRawObserver{Boundary: binding.boundary, Role: role, Path: path, DNS: dns})
 	}
-	return result
+	return result, raw
 }
 
-func collectFinalEndpointObserver(identity, root string) bool {
+func collectFinalEndpointObserver(identity, root string) ([]finalRawObserver, bool) {
 	roles := []string{"endpoint"}
 	if !finalObservationExists(root, "endpoint") {
 		entries, err := os.ReadDir(filepath.Join(root, "sync"))
 		if err != nil {
-			return false
+			return nil, false
 		}
 		roles = roles[:0]
 		for _, entry := range entries {
@@ -127,18 +133,20 @@ func collectFinalEndpointObserver(identity, root string) bool {
 		expected = 4
 	}
 	if len(roles) != expected {
-		return false
+		return nil, false
 	}
+	retained := make([]finalRawObserver, 0, len(roles))
 	for index, role := range roles {
 		if expected > 1 && role != fmt.Sprintf("capacity-%02d", index) {
-			return false
+			return nil, false
 		}
 		path, dns, ok := readFinalRoleObservation(root, role)
 		if !validFinalRoleObservation(identity, path, dns, "endpoint", "E-to-B-front", ok) {
-			return false
+			return nil, false
 		}
+		retained = append(retained, finalRawObserver{Boundary: "endpoint-adapter", Role: role, Path: path, DNS: dns})
 	}
-	return true
+	return retained, true
 }
 
 func validFinalRoleObservation(identity string, path finalPathObservation, dns finalDNSObservation,

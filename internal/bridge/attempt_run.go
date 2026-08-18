@@ -41,8 +41,18 @@ func (owner *owner) Acquire(ctx context.Context, frame []byte, manifest [32]byte
 			}
 			continue
 		}
+		guarded := &guardedConnection{Conn: channel, deadline: deadline, clock: owner.config.Clock,
+			confident: owner.config.TimeConfidence}
+		if err := guarded.SetDeadline(deadline); err != nil {
+			cancel()
+			finishErr := owner.finishAt(ordinal, baseOffset, baseTime, false, cleanupContact() == nil)
+			return nil, nil, errors.Join(errors.New("bridge-local-denial"), err, finishErr)
+		}
 		cleanup := func() error {
 			cleanupErr := cleanupContact()
+			if errors.Is(cleanupErr, net.ErrClosed) {
+				cleanupErr = nil
+			}
 			cancel()
 			finishErr := owner.finishAt(ordinal, baseOffset, baseTime, true, cleanupErr == nil)
 			if cleanupErr != nil {
@@ -50,7 +60,7 @@ func (owner *owner) Acquire(ctx context.Context, frame []byte, manifest [32]byte
 			}
 			return finishErr
 		}
-		return channel, cleanup, nil
+		return guarded, cleanup, nil
 	}
 }
 

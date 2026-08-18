@@ -50,6 +50,7 @@ func Open(input Config) (*owner, error) {
 	}
 	owner := &owner{root: root, lease: lease, config: config, state: state, current: current}
 	changed := false
+	interrupted := false
 	terminalOffset := uint64(0)
 	for index := range owner.state.Contacts {
 		if owner.state.Contacts[index].Outcome == "" {
@@ -57,17 +58,17 @@ func Open(input Config) (*owner, error) {
 			owner.state.Contacts[index].Terminal = owner.state.Contacts[index].Started
 			changed = true
 		}
+		if !owner.state.Contacts[index].Cleanup {
+			interrupted = true
+		}
 		if owner.state.Contacts[index].Terminal > terminalOffset {
 			terminalOffset = owner.state.Contacts[index].Terminal
 		}
 	}
-	if owner.state.Attempt != nil && owner.state.Attempt.Terminal == "" {
+	if owner.state.Attempt != nil && (owner.state.Attempt.Terminal == "" || interrupted) {
 		owner.state.Attempt.Terminal = "bridge-interrupted"
 		owner.state.Attempt.TerminalOffset = terminalOffset
 		changed = true
-	}
-	if owner.state.Attempt != nil && owner.state.Attempt.Terminal != "" {
-		owner.state.settleReplacements()
 	}
 	for index := range owner.state.Records {
 		record := &owner.state.Records[index]
@@ -80,12 +81,12 @@ func Open(input Config) (*owner, error) {
 		}
 		if class != classAccepted || invite.id != record.InviteID || invite.commitment != record.Commitment ||
 			invite.adapterProfile != record.ProfileID {
-			record.Status = memberRetired
-			record.Invite = nil
-			record.Commitment = [32]byte{}
-			record.ProfileID = ""
+			retireMember(record)
 			changed = true
 		}
+	}
+	if owner.state.Attempt != nil && owner.state.Attempt.Terminal != "" {
+		changed = owner.state.settleReplacements() || changed
 	}
 	if changed {
 		if err := owner.commit(owner.state, false); err != nil {

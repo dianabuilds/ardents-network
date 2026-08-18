@@ -79,8 +79,30 @@ type finalWorkerResult struct {
 	TerminalOffsetMillis uint64                `json:"terminal_offset_millis"`
 	CleanupOffsetMillis  uint64                `json:"cleanup_offset_millis"`
 	Observers            []finalRunnerObserver `json:"observers"`
+	RawObservers         []finalRawObserverSet `json:"raw_observers"`
+	RawTelemetry         []finalRawTelemetry   `json:"raw_telemetry"`
 	Residuals            []finalRunnerResidual `json:"residuals"`
 	ObserverSets         uint16                `json:"observer_sets"`
+}
+
+// finalRawObserverSet retains one role-bound parser result per worker root.
+// It is sent only to the parent harness, which stores it in the secret tree.
+type finalRawObserverSet struct {
+	Observers []finalRawObserver `json:"observers"`
+}
+
+type finalRawObserver struct {
+	Boundary string               `json:"boundary"`
+	Role     string               `json:"role"`
+	Path     finalPathObservation `json:"path"`
+	DNS      finalDNSObservation  `json:"dns"`
+}
+
+type finalRawTelemetry struct {
+	Root uint16 `json:"root"`
+	Role string `json:"role"`
+	Kind string `json:"kind"`
+	Data []byte `json:"data"`
 }
 
 type finalRunnerObservation struct {
@@ -100,6 +122,8 @@ type finalRunnerObservation struct {
 	CleanupOffsetMillis  uint64                `json:"cleanup_offset_millis"`
 	AdapterCleanupMillis uint64                `json:"adapter_cleanup_millis"`
 	Observers            []finalRunnerObserver `json:"observers"`
+	RawObservers         []finalRawObserverSet `json:"raw_observers,omitempty"`
+	RawTelemetry         []finalRawTelemetry   `json:"raw_telemetry,omitempty"`
 	Residuals            []finalRunnerResidual `json:"residuals"`
 }
 

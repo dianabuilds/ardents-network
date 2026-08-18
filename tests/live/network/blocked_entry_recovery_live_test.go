@@ -56,17 +56,33 @@ func TestBlockedEntryRecoveryParentCommandsAcrossNamespaces(t *testing.T) {
 	for episode := range 5 {
 		t.Run(fmt.Sprint(episode), func(t *testing.T) {
 			fixture := newBlockedNegativeFixture(t, client, server)
-			cell := fmt.Sprintf("recovery/%d", episode)
-			if !selectedFinalCell(cell) {
+			cell, terminal, selected := selectedRecoveryFinalCell(episode)
+			if !selected {
 				return
 			}
 			started := time.Now()
 			bindFinalFixtureSeed(t, fixture, cell, "recovery-stream")
-			armFinalWorkerTerminal("abrupt connection loss")
+			armFinalWorkerTerminal(terminal)
 			runBlockedRecoveryEpisode(t, repository, image, fixture, episode)
-			emitFinalWorkerCell(t, cell, "abrupt connection loss", started, fixture.root)
+			emitFinalWorkerCell(t, cell, terminal, started, fixture.root)
 		})
 	}
+}
+
+// selectedRecoveryFinalCell exposes the recovery scenario under its ordinary
+// result cell and under G8 cancellation. Both execute the same real parent
+// cancellation during a published Bridge contact; the hostile cell retains the
+// Bridge terminal while recovery retains the Application connection result.
+func selectedRecoveryFinalCell(episode int) (string, string, bool) {
+	for _, candidate := range []struct{ cell, terminal string }{
+		{fmt.Sprintf("recovery/%d", episode), "abrupt connection loss"},
+		{fmt.Sprintf("hostile/G8-lifecycle/cancellation/%d", episode), "bridge-deadline-exceeded"},
+	} {
+		if selectedFinalCell(candidate.cell) {
+			return candidate.cell, candidate.terminal, true
+		}
+	}
+	return "", "", false
 }
 
 func runBlockedRecoveryEpisode(t *testing.T, repository, image string, fixture blockedEntryFixture, episode int) {

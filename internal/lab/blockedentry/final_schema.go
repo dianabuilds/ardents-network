@@ -84,12 +84,14 @@ type finalSummary struct {
 }
 
 type finalCellObservation struct {
-	ID                   string `json:"id"`
-	Seed                 string `json:"seed"`
-	Terminal             string `json:"terminal"`
-	StartedOffsetMillis  uint64 `json:"started_offset_millis"`
-	TerminalOffsetMillis uint64 `json:"terminal_offset_millis"`
-	CleanupOffsetMillis  uint64 `json:"cleanup_offset_millis"`
+	ID                   string             `json:"id"`
+	Seed                 string             `json:"seed"`
+	Terminal             string             `json:"terminal"`
+	StartedOffsetMillis  uint64             `json:"started_offset_millis"`
+	TerminalOffsetMillis uint64             `json:"terminal_offset_millis"`
+	CleanupOffsetMillis  uint64             `json:"cleanup_offset_millis"`
+	ObserverEvidence     artifactCommitment `json:"observer_evidence"`
+	TelemetryEvidence    artifactCommitment `json:"telemetry_evidence"`
 }
 
 type finalProfileResult struct {

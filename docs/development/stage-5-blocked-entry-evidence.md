@@ -76,7 +76,10 @@ harness-control sentinels are excluded from product evidence accounting.
 This intermediate slice deliberately cannot emit an S5.5 `pass`. The frozen
 `network-live.test` binary implements strict plan decoding, exact 594-cell
 identity/seed ordering, and the selected-test dispatch map for the `144`
-non-hostile cells. Before each mapped worker it rehashes the exact clean Git
+non-hostile cells plus the currently maintained hostile workers: G1, G2, all
+eight G3 replay/replacement variants, G4's atomic regime/exposure-0 restart,
+G6 Network/Route-Profile substitutions, G8 cancellation/Endpoint restart, and G9 unknown
+Invite field. Before each mapped worker it rehashes the exact clean Git
 archive, requires the frozen commit and source hash, verifies both preloaded
 content-addressed image IDs and their product/tool/base/source labels, then
 uses `--no-build` paths and bounded stdout/stderr capture. The worker result is
@@ -95,13 +98,14 @@ frames and captured on the manifest-bound Linux interface index. The boundary,
 nonce, and protocol class travel in the frame rather than a candidate-writable
 coordination label. C0/direct/negative/recovery
 cells that do not yet expose every required
-boundary therefore remain structurally incomplete. The runner also rejects
-every hostile cell, and the verifier still records `maintained final runner
-raw-to-verdict recomputation is not implemented`. Removing those fail-closed
-blockers requires measured workers for all cells, retained raw observer data,
-and independent derivation of every aggregate from per-second/raw
-observations. Merely duplicating a runner-authored summary into JSONL is not
-sufficient.
+boundary therefore remain structurally incomplete. Each mapped final cell now
+retains its parser-level boundary evidence in the secret bundle and binds its
+canonical hash in the public cell record; the independent verifier re-reads
+and rejects a missing, altered, incomplete, or non-clean boundary set. Unmapped
+hostile cells remain fail-closed, and the verifier still records `maintained
+final runner raw-to-verdict recomputation is not implemented` until it can
+derive every aggregate from the retained per-second/raw observations. Merely
+duplicating a runner-authored summary into JSONL is not sufficient.
 
 Every final observation is additionally bound index-for-index to the frozen
 594-cell identity and seed schedule. Its start, terminal, and cleanup offsets

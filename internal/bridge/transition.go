@@ -27,13 +27,23 @@ func (owner *owner) BeginContact(frame []byte, manifest [32]byte, deadline time.
 		return [32]byte{}, nil, 0, 0, time.Time{}, errors.New("bridge-local-denial")
 	}
 	if owner.state.Attempt != nil {
+		if owner.state.Attempt.AttemptID != transition.attemptID {
+			return [32]byte{}, nil, 0, 0, time.Time{}, errors.New("bridge-local-denial")
+		}
 		return [32]byte{}, nil, 0, 0, time.Time{}, errors.New(owner.attemptClass())
 	}
 	if owner.state.Regime != nil || len(owner.state.Contacts) != 0 {
 		return [32]byte{}, nil, 0, 0, time.Time{}, errors.New("bridge-ineligible")
 	}
+	retired, retireErr := owner.retireInvalidActiveLocked()
+	if retireErr != nil {
+		return [32]byte{}, nil, 0, 0, time.Time{}, errors.New("bridge-local-denial")
+	}
 	index, decoded, ordinal, present := owner.firstEligibleContact()
 	if !present {
+		if retired {
+			return [32]byte{}, nil, 0, 0, time.Time{}, errors.New("bridge-ineligible")
+		}
 		return [32]byte{}, nil, 0, 0, time.Time{}, errors.New("bridge-not-configured")
 	}
 	record := owner.state.Records[index]
@@ -108,6 +118,9 @@ func (owner *owner) FinishContact(ordinal byte, terminal uint64, opened, cleanup
 		next.Attempt.Terminal, next.Attempt.TerminalOffset = "bridge-local-denial", terminal
 	}
 	if next.Attempt.Terminal != "" {
+		if err := owner.retireInvalidVerifiedLocked(&next); err != nil {
+			return err
+		}
 		next.settleReplacements()
 	}
 	if err := owner.commit(next, false); err != nil {
@@ -124,7 +137,7 @@ func (owner *owner) attemptClass() string {
 		}
 		return owner.state.Attempt.Terminal
 	}
-	return "bridge-ineligible"
+	return "bridge-local-denial"
 }
 
 func (owner *owner) firstEligibleContact() (int, invite, byte, bool) {

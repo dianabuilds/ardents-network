@@ -90,12 +90,13 @@ func matchesFinalRunnerSchedule(schedule finalRunnerSchedule, ordinal int, plan 
 func finalObservationFromWorker(plan finalRunnerPlan, result finalWorkerResult) finalRunnerObservation {
 	return finalRunnerObservation{Schema: "ardents-h3-blocked-cell-observation-v1", EventID: plan.EventID,
 		CellID: plan.CellID, Seed: plan.Seed, ObservedTerminal: result.Terminal, ProductStarted: true,
-		FaultInjected: plan.EventID != "", FaultOwner: "none", Attribution: "exact",
+		FaultInjected: true, FaultOwner: "none", Attribution: "exact",
 		Diagnostic:          "frozen live worker completed the selected cell",
 		StartedOffsetMillis: result.StartedOffsetMillis, TerminalOffsetMillis: result.TerminalOffsetMillis,
 		CleanupOffsetMillis:  result.CleanupOffsetMillis,
 		AdapterCleanupMillis: result.CleanupOffsetMillis - result.TerminalOffsetMillis,
-		Observers:            result.Observers, Residuals: result.Residuals}
+		Observers:            result.Observers, RawObservers: result.RawObservers,
+		RawTelemetry: result.RawTelemetry, Residuals: result.Residuals}
 }
 
 func validFinalWorkerResult(value finalWorkerResult) bool {
@@ -106,7 +107,8 @@ func validFinalWorkerResult(value finalWorkerResult) bool {
 	if !value.EvidenceComplete || value.CellID == "" || value.Terminal == "" ||
 		value.ObserverSets != expectedSets ||
 		value.TerminalOffsetMillis < value.StartedOffsetMillis ||
-		value.CleanupOffsetMillis < value.TerminalOffsetMillis || len(value.Observers) != 9 || len(value.Residuals) != 10 {
+		value.CleanupOffsetMillis < value.TerminalOffsetMillis || len(value.Observers) != 9 ||
+		len(value.RawObservers) != int(expectedSets) || len(value.Residuals) != 10 {
 		return false
 	}
 	for _, observed := range value.Observers {
@@ -153,6 +155,8 @@ func finalWorkerTest(cell string) string {
 		return "TestBlockedEntryCommandsAcrossNamespaces"
 	case strings.HasPrefix(cell, "profile/C3/"), strings.HasPrefix(cell, "profile/C4/"):
 		return "TestBlockedEntryNegativeCommandsAcrossNamespaces"
+	case strings.HasPrefix(cell, "hostile/G5-adapter-fault/accept-then-stall/"):
+		return "TestBlockedEntryNegativeCommandsAcrossNamespaces"
 	case strings.HasPrefix(cell, "capacity/"):
 		return "TestBlockedEntryFinalReferenceAndStrongCapacity"
 	case strings.HasPrefix(cell, "sustained/"):
@@ -165,8 +169,30 @@ func finalWorkerTest(cell string) string {
 		return "TestBlockedEntryDrainsAtExactEmergencySocketPressure"
 	case strings.HasPrefix(cell, "recovery/"):
 		return "TestBlockedEntryRecoveryParentCommandsAcrossNamespaces"
+	case strings.HasPrefix(cell, "hostile/G8-lifecycle/cancellation/"):
+		return "TestBlockedEntryRecoveryParentCommandsAcrossNamespaces"
 	case strings.HasPrefix(cell, "hostile/G1-invite/"):
-		return "TestBlockedEntryFinalHostileInvite"
+		return "TestBlockedEntryFinalHostileInviteValidation"
+	case strings.HasPrefix(cell, "hostile/G2-domain-collision/"):
+		return "TestBlockedEntryFinalHostileDomainCollision"
+	case strings.HasPrefix(cell, "hostile/G3-replay-replacement/active-reimport/"),
+		strings.HasPrefix(cell, "hostile/G3-replay-replacement/retired-replay/"),
+		strings.HasPrefix(cell, "hostile/G3-replay-replacement/same-generation-different-bytes/"),
+		strings.HasPrefix(cell, "hostile/G3-replay-replacement/wrong-replacement-id/"),
+		strings.HasPrefix(cell, "hostile/G3-replay-replacement/skipped-generation/"),
+		strings.HasPrefix(cell, "hostile/G3-replay-replacement/third-generation/"),
+		strings.HasPrefix(cell, "hostile/G3-replay-replacement/full-set/"),
+		strings.HasPrefix(cell, "hostile/G3-replay-replacement/cross-slot-replacement/"):
+		return "TestBlockedEntryFinalHostileReplay"
+	case strings.HasPrefix(cell, "hostile/G4-restart/after-regime-publication/"),
+		strings.HasPrefix(cell, "hostile/G4-restart/after-exposure-0/"),
+		strings.HasPrefix(cell, "hostile/G8-lifecycle/endpoint-restart/"):
+		return "TestBlockedEntryFinalHostileRestart"
+	case strings.HasPrefix(cell, "hostile/G6-substitution/network/"),
+		strings.HasPrefix(cell, "hostile/G6-substitution/route-profile/"):
+		return "TestBlockedEntryFinalHostileInviteValidation"
+	case strings.HasPrefix(cell, "hostile/G9-ledger-leakage/unknown-invite-field/"):
+		return "TestBlockedEntryFinalHostileInviteValidation"
 	default:
 		return ""
 	}

@@ -97,7 +97,8 @@ func (state durableState) find(id [32]byte) (memberRecord, bool) {
 	return memberRecord{}, false
 }
 
-func (state *durableState) settleReplacements() {
+func (state *durableState) settleReplacements() bool {
+	changed := false
 	for slot := byte(0); slot < 2; slot++ {
 		verified := -1
 		for index := range state.Records {
@@ -105,17 +106,23 @@ func (state *durableState) settleReplacements() {
 				verified = index
 			}
 		}
-		if verified < 0 {
-			continue
-		}
 		for index := range state.Records {
 			if state.Records[index].Slot == slot && state.Records[index].Status == memberDraining {
-				state.Records[index].Status = memberRetired
-				state.Records[index].Invite = nil
-				state.Records[index].Commitment = [32]byte{}
-				state.Records[index].ProfileID = ""
+				retireMember(&state.Records[index])
+				changed = true
 			}
 		}
-		state.Records[verified].Status = memberActive
+		if verified >= 0 {
+			state.Records[verified].Status = memberActive
+			changed = true
+		}
 	}
+	return changed
+}
+
+func retireMember(record *memberRecord) {
+	record.Status = memberRetired
+	record.Invite = nil
+	record.Commitment = [32]byte{}
+	record.ProfileID = ""
 }

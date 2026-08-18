@@ -39,7 +39,11 @@ func runBlockedNegativeEndpoint(t *testing.T) {
 	prepareBlockedState(t, "route-state", "route-network")
 	prepareBlockedState(t, "bridge-network", "bridge-network")
 	prepareBlockedState(t, "local-roles", "local-roles")
-	for slot := range 2 {
+	slots := 2
+	if profile == "G5" {
+		slots = 1
+	}
+	for slot := range slots {
 		runBlockedCommand(t, "/usr/local/bin/ardents-bridge", "import",
 			fmt.Sprintf("/run/secure/import-%d.json", slot))
 	}
@@ -123,6 +127,12 @@ func blockedNegativeManifest(profile string) blockedPathManifest {
 		manifest.Required = append(manifest.Required,
 			boundary("slot-zero-fault", "203.0.113.7", "203.0.113.20", 8481),
 			boundary("slot-one-fault", "203.0.113.7", "203.0.113.21", 8482))
+	}
+	if profile == "G5" {
+		manifest.Required = append(manifest.Required,
+			boundary("accept-then-stall", "203.0.113.7", "203.0.113.20", 8481))
+		manifest.AllowedExternal = manifest.AllowedExternal[:1]
+		manifest.DynamicLoopback = manifest.DynamicLoopback[:1]
 	}
 	return manifest
 }

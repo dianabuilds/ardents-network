@@ -9,7 +9,7 @@ import (
 )
 
 func collectFinalPrelude(ctx context.Context, encoder *json.Encoder, decoder *json.Decoder,
-	spec *finalSpec, bound time.Duration,
+	spec *finalSpec, secretRoot string, bound time.Duration,
 ) ([]finalCellObservation, error) {
 	hostileCount := 0
 	for _, group := range hostileMatrix() {
@@ -32,15 +32,27 @@ func collectFinalPrelude(ctx context.Context, encoder *json.Encoder, decoder *js
 			!cleanFinalObservation(output, !strings.Contains(plan.CellID, "/direct-")) {
 			return nil, errors.Join(err, errors.New("final non-hostile cell evidence is missing or invalid"))
 		}
-		cells = append(cells, finalCellFromOutput(output))
+		cell, captureErr := finalCellFromOutput(secretRoot, output)
+		if captureErr != nil {
+			return nil, captureErr
+		}
+		cells = append(cells, cell)
 	}
 	return cells, nil
 }
 
-func finalCellFromOutput(output cellObservation) finalCellObservation {
+func finalCellFromOutput(secretRoot string, output cellObservation) (finalCellObservation, error) {
+	artifact, err := captureFinalObserverEvidence(secretRoot, output)
+	if err != nil {
+		return finalCellObservation{}, err
+	}
+	telemetry, err := captureFinalTelemetryEvidence(secretRoot, output)
+	if err != nil {
+		return finalCellObservation{}, err
+	}
 	return finalCellObservation{ID: output.CellID, Seed: output.Seed, Terminal: output.ObservedTerminal,
 		StartedOffsetMillis: output.StartedOffsetMillis, TerminalOffsetMillis: output.TerminalOffsetMillis,
-		CleanupOffsetMillis: output.CleanupOffsetMillis}
+		CleanupOffsetMillis: output.CleanupOffsetMillis, ObserverEvidence: artifact, TelemetryEvidence: telemetry}, nil
 }
 
 func cleanFinalObservation(output cellObservation, productRequired bool) bool {

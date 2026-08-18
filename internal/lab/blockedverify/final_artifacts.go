@@ -22,9 +22,9 @@ var requiredMeasurementArtifacts = []string{
 	"measurements/cells.jsonl",
 }
 
-func verifyMeasurementArtifacts(root string, summary *finalSummary) []string {
+func verifyMeasurementArtifacts(root string, summary *finalSummary) (*finalSummary, []string) {
 	if summary == nil || len(summary.Artifacts) != len(requiredMeasurementArtifacts) {
-		return []string{"final measurement artifact inventory is incomplete"}
+		return nil, []string{"final measurement artifact inventory is incomplete"}
 	}
 	var reasons []string
 	snapshots := make(map[string][]byte, len(requiredMeasurementArtifacts))
@@ -47,8 +47,9 @@ func verifyMeasurementArtifacts(root string, summary *finalSummary) []string {
 			reasons = append(reasons, "final measurement artifact commitment mismatch: "+artifact.Path)
 		}
 	}
-	reasons = append(reasons, verifyFinalMeasurementContent(snapshots, summary)...)
-	return reasons
+	recomputed, measurementReasons := recomputeFinalSummary(snapshots, summary)
+	reasons = append(reasons, measurementReasons...)
+	return recomputed, reasons
 }
 
 func verifyFinalInputArtifacts(values []artifactCommitment, spec finalSpec) []string {

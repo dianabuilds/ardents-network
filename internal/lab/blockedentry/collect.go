@@ -51,7 +51,8 @@ func collectEvents(config Config, canaries canaryCorpus, finalSpecValue *finalSp
 	var events []event
 	var cells []finalCellObservation
 	if finalSpecValue != nil {
-		cells, err = collectFinalPrelude(ctx, encoder, decoder, finalSpecValue, cellBound)
+		cells, err = collectFinalPrelude(ctx, encoder, decoder, finalSpecValue,
+			config.EvidenceRoot+".partial/secret", cellBound)
 		if err != nil {
 			return nil, nil, cleanupInventory{}, nil, stopCampaign(command, stdin, stderrResult, err)
 		}
@@ -98,7 +99,11 @@ func collectEvents(config Config, canaries canaryCorpus, finalSpecValue *finalSp
 				mergeObservers(observers, output.Observers, owner, trustworthy)
 				mergeResiduals(&cleanup, output.Residuals, owner, attributionHash)
 				if finalSpecValue != nil {
-					cells = append(cells, finalCellFromOutput(output))
+					cell, captureErr := finalCellFromOutput(config.EvidenceRoot+".partial/secret", output)
+					if captureErr != nil {
+						return nil, nil, cleanupInventory{}, nil, stopCampaign(command, stdin, stderrResult, captureErr)
+					}
+					cells = append(cells, cell)
 				}
 				if stopAfterCell(output, gatePassed, trustworthy, owner, canaries) {
 					summary, finishErr := finishCampaign(command, stdin, decoder, stderrResult)
