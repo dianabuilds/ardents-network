@@ -16,31 +16,40 @@ type finalRunnerPlan struct {
 }
 
 type finalRunnerSchedule struct {
-	Schema           string                    `json:"schema"`
-	RepositoryCommit string                    `json:"repository_commit"`
-	SourceSHA256     string                    `json:"source_sha256"`
-	LinuxImage       string                    `json:"linux_image"`
-	ImageSHA256      string                    `json:"image_sha256"`
-	ProductImageID   string                    `json:"product_image_id"`
-	ToolImageID      string                    `json:"tool_image_id"`
-	GoBuilderImageID string                    `json:"go_builder_image_id"`
-	GoBuilderVersion string                    `json:"go_builder_version"`
-	SupplyLock       finalRunnerArtifact       `json:"supply_lock"`
-	RuntimeCompose   finalRunnerArtifact       `json:"runtime_compose"`
-	ProductReceipt   finalRunnerProductReceipt `json:"product_receipt"`
-	ToolReceipt      finalRunnerToolReceipt    `json:"tool_receipt"`
-	Kernel           string                    `json:"kernel"`
-	ClientSHA256     string                    `json:"client_sha256"`
-	ServerSHA256     string                    `json:"server_sha256"`
-	Endpoint         json.RawMessage           `json:"endpoint"`
-	ReferenceBridge  json.RawMessage           `json:"reference_bridge"`
-	StrongerBridge   json.RawMessage           `json:"stronger_bridge"`
-	Collector        json.RawMessage           `json:"collector"`
-	Network          json.RawMessage           `json:"network"`
-	Clocks           json.RawMessage           `json:"clocks"`
-	CellOrder        []string                  `json:"cell_order"`
-	Seeds            []string                  `json:"seeds"`
-	Configurations   json.RawMessage           `json:"configurations"`
+	Schema            string                        `json:"schema"`
+	RepositoryCommit  string                        `json:"repository_commit"`
+	SourceSHA256      string                        `json:"source_sha256"`
+	LinuxImage        string                        `json:"linux_image"`
+	ImageSHA256       string                        `json:"image_sha256"`
+	ProductImageID    string                        `json:"product_image_id"`
+	ToolImageID       string                        `json:"tool_image_id"`
+	GoBuilderImageID  string                        `json:"go_builder_image_id"`
+	GoBuilderVersion  string                        `json:"go_builder_version"`
+	SupplyLock        finalRunnerArtifact           `json:"supply_lock"`
+	RuntimeCompose    finalRunnerArtifact           `json:"runtime_compose"`
+	ProductReceipt    finalRunnerProductReceipt     `json:"product_receipt"`
+	ToolReceipt       finalRunnerToolReceipt        `json:"tool_receipt"`
+	Kernel            string                        `json:"kernel"`
+	ClientSHA256      string                        `json:"client_sha256"`
+	ServerSHA256      string                        `json:"server_sha256"`
+	Endpoint          json.RawMessage               `json:"endpoint"`
+	ReferenceBridge   json.RawMessage               `json:"reference_bridge"`
+	StrongerBridge    json.RawMessage               `json:"stronger_bridge"`
+	Collector         json.RawMessage               `json:"collector"`
+	Network           json.RawMessage               `json:"network"`
+	Clocks            json.RawMessage               `json:"clocks"`
+	CellOrder         []string                      `json:"cell_order"`
+	Seeds             []string                      `json:"seeds"`
+	MutationCampaigns []finalRunnerMutationCampaign `json:"mutation_campaigns"`
+	Configurations    json.RawMessage               `json:"configurations"`
+	Hosts             []finalRunnerObservedHost     `json:"hosts"`
+}
+
+type finalRunnerMutationCampaign struct {
+	ID              string   `json:"id"`
+	CellOrder       []string `json:"cell_order"`
+	Seeds           []string `json:"seeds"`
+	ExpectedVerdict string   `json:"expected_verdict"`
 }
 
 type finalRunnerProductReceipt struct {
@@ -83,6 +92,8 @@ type finalWorkerResult struct {
 	TelemetryEvidence    finalRunnerArtifact    `json:"telemetry_evidence"`
 	Sustained            *finalWorkerSustained  `json:"sustained,omitempty"`
 	Pressure             *finalPressureEvidence `json:"pressure,omitempty"`
+	Capacity             *finalWorkerCapacity   `json:"capacity,omitempty"`
+	Recovery             *finalWorkerRecovery   `json:"recovery,omitempty"`
 	Residuals            []finalRunnerResidual  `json:"residuals"`
 	ObserverSets         uint16                 `json:"observer_sets"`
 }
@@ -110,6 +121,9 @@ type finalRunnerSummary struct {
 	Profiles   []finalRunnerProfile         `json:"profiles,omitempty"`
 	Sustained  []finalSustainedCellEvidence `json:"sustained,omitempty"`
 	Pressure   []finalRunnerPressure        `json:"pressure,omitempty"`
+	Capacity   []finalWorkerCapacity        `json:"capacity,omitempty"`
+	Recovery   finalRunnerRecovery          `json:"recovery"`
+	Hosts      []finalRunnerObservedHost    `json:"hosts,omitempty"`
 	ImageHash  string                       `json:"image_hash"`
 	ClientHash string                       `json:"client_hash"`
 	ServerHash string                       `json:"server_hash"`

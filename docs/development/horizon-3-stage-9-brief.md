@@ -330,6 +330,23 @@ After S9.1-S9.5 complete:
    verification matrix, known limitations, and H3 closure report; and
 10. obtain the Product Owner `advance-to-H4`, `redesign`, or `stop` disposition.
 
+For the Stage 5 contract, step 6 includes the complete unchanged R-037
+`h3-s5-b1-v1` suite of one 564-cell candidate campaign and six independent
+five-episode evidence-integrity campaigns: reference and stronger capacity/refusal,
+ten-minute sustained work in both directions, P0-P4, C0-C6, all nine hostile
+groups, recovery, repeated shutdown, and final cleanup. S9.6 replaces every
+`pending-qualifying-stand` supply-lock value with the reviewed stand identity,
+runs the already complete Stage 5 campaign implementation, and independently
+verifies the immutable bundle. The 2026-08-19
+Stage 5 development advance waives none of these final H3 gates.
+
+The S9.6 stand collector derives runtime allocation evidence from the actual
+candidate process trees rather than accepting it from the Stage 5 reservation
+input. For every reserved host allocation it records the exact disjoint CPU
+set, cgroup path and memory limit, and network-namespace inode. The independent
+verifier rejects a missing, shared, out-of-range, or manifest-inconsistent
+allocation before it can report `pass`.
+
 Any source, dependency, configuration, schema, technical contract, or
 qualification change after step 1 creates a new candidate identity and reruns the
 complete affected scope. A favorable earlier-stage result cannot waive this rule.

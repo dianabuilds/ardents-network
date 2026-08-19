@@ -21,6 +21,7 @@ func startBlockedPressureWork(t *testing.T, ctx context.Context, compose compose
 	for _, role := range []string{"initiator", "introduction", "rendezvous", "responder", "publisher"} {
 		waitForKind(t, ctx, compose, role, "ready")
 	}
+	startLiveContainer(t, ctx, compose, "bridge-resource-collector")
 	startLiveService(t, ctx, compose, "publisher-service", "publisher")
 	runLiveOneShot(t, ctx, compose, "publication-operator")
 	startLiveService(t, ctx, compose, "client-service", "client")
@@ -54,6 +55,11 @@ func finishBlockedPressureWork(t *testing.T, ctx context.Context, compose compos
 	}
 	publishFinalWorkerTerminal()
 	writeLiveFile(t, filepath.Join(fixture.root, "sync", "bridge", "bridge-stop"), []byte("stop\n"))
+	waitForBlockedHostFile(t, ctx,
+		filepath.Join(fixture.root, "sync", "bridge", "resource-cleanup-captured"))
+	writeLiveFile(t, filepath.Join(fixture.root, "sync", "bridge", "resource-stop"), []byte("stop\n"))
+	waitBlockedContainer(t, ctx, compose, "bridge-resource-collector")
+	writeLiveFile(t, filepath.Join(fixture.root, "sync", "bridge", "resource-release"), []byte("release\n"))
 	for _, service := range blockedContainers("C1") {
 		waitBlockedContainer(t, ctx, compose, service)
 	}

@@ -40,6 +40,10 @@ func prepareFinal(config Config) (result Result, returnErr error) {
 	if err := validateFinalConfigurationTree(configuration); err != nil {
 		return Result{}, err
 	}
+	hosts, err := loadFinalHostAllocation(config.HostAllocationPath)
+	if err != nil {
+		return Result{}, err
+	}
 	commit, sourceHash, sourceRoot, temporarySource, err := materializeCommittedSource(workspace)
 	if err != nil {
 		return Result{}, err
@@ -108,13 +112,36 @@ func prepareFinal(config Config) (result Result, returnErr error) {
 		return Result{}, err
 	}
 	value := exactFinalSpec(commit, sourceHash, config, clientHash, serverHash, configurations, runtimeCompose,
-		supplyLockCommitment, productReceipt, toolReceipt)
+		supplyLockCommitment, productReceipt, toolReceipt, hosts)
+	seenSeeds := make(map[string]bool, 594)
+	newSeed := func() (string, error) {
+		for {
+			seed := make([]byte, 32)
+			if _, err := rand.Read(seed); err != nil {
+				return "", err
+			}
+			encoded := hex.EncodeToString(seed)
+			if !seenSeeds[encoded] {
+				seenSeeds[encoded] = true
+				return encoded, nil
+			}
+		}
+	}
 	for range len(value.CellOrder) {
-		seed := make([]byte, 32)
-		if _, err := rand.Read(seed); err != nil {
+		seed, err := newSeed()
+		if err != nil {
 			return Result{}, err
 		}
-		value.Seeds = append(value.Seeds, hex.EncodeToString(seed))
+		value.Seeds = append(value.Seeds, seed)
+	}
+	for index := range value.MutationCampaigns {
+		for range len(value.MutationCampaigns[index].CellOrder) {
+			seed, err := newSeed()
+			if err != nil {
+				return Result{}, err
+			}
+			value.MutationCampaigns[index].Seeds = append(value.MutationCampaigns[index].Seeds, seed)
+		}
 	}
 	path := filepath.Join(output, "final-spec.json")
 	if err := writeJSON(path, value); err != nil {

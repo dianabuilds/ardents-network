@@ -236,7 +236,10 @@ func runFinalRefusalBatch(t *testing.T, repository, image, toolImage, client, se
 	removeCapacityProjectObjects(t, project)
 	cleanup()
 	reconciliation.Residuals = blockedProjectResiduals(t, ctx, project)
-	return finalRefusalBatch{admission: admission, progress: allProgressAdvanced(before, after), oom: oom,
+	progress := allProgressAdvanced(before, after)
+	writeFinalPressureInput(t, fixture.root, max(0, batch-1), admission, beforeAdmission, afterAdmission,
+		progress, reconciliation.Residuals)
+	return finalRefusalBatch{admission: admission, progress: progress, oom: oom,
 		reconcile: reconciliation, root: fixture.root}
 }
 

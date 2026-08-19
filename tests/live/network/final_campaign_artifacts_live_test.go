@@ -18,9 +18,10 @@ import (
 const maximumFinalHandoffArtifact = 16 << 20
 
 type finalWorkerObserverEvidence struct {
-	Schema string                `json:"schema"`
-	CellID string                `json:"cell_id"`
-	Sets   []finalRawObserverSet `json:"sets"`
+	Schema   string                `json:"schema"`
+	CellID   string                `json:"cell_id"`
+	Sets     []finalRawObserverSet `json:"sets"`
+	Exercise *finalFaultExercise   `json:"exercise,omitempty"`
 }
 
 type finalWorkerTelemetryEvidence struct {
@@ -47,7 +48,10 @@ func writeFinalWorkerHandoff(root, cell string, observers []finalRawObserverSet,
 		return err
 	}
 	observer := finalWorkerObserverEvidence{Schema: "ardents-h3-final-raw-observers-v1",
-		CellID: cell, Sets: observers}
+		CellID: cell, Sets: observers, Exercise: consumeFinalFaultExercise(cell)}
+	if strings.HasPrefix(cell, "hostile/") && observer.Exercise == nil {
+		return errors.New("hostile final worker omitted its external fault exercise")
+	}
 	if err := writeFinalWorkerArtifact(filepath.Join(directory, "observers.json"), observer); err != nil {
 		return err
 	}
@@ -79,26 +83,79 @@ func writeFinalWorkerHandoff(root, cell string, observers []finalRawObserverSet,
 }
 
 func validFinalWorkerTelemetryInventory(files []finalRawTelemetry, cell string) bool {
-	roots := 1
-	if cell == "pressure/P4" {
-		roots = 10
-	}
-	if len(files) != roots*6 {
+	wanted := finalWorkerTelemetryLayout(cell)
+	if len(files) != len(wanted) {
 		return false
 	}
-	index := 0
-	for root := range roots {
-		for _, role := range []string{"endpoint", "bridge", "publisher"} {
-			for _, kind := range []string{"resource.jsonl", "carrier.jsonl"} {
-				file := files[index]
-				if file.Root != uint16(root) || file.Role != role || file.Kind != kind {
-					return false
-				}
-				index++
-			}
+	for index, expected := range wanted {
+		file := files[index]
+		if file.Root != expected.root || file.Role != expected.role || file.Kind != expected.kind {
+			return false
 		}
 	}
 	return true
+}
+
+type finalTelemetrySlot struct {
+	root uint16
+	role string
+	kind string
+}
+
+func finalWorkerTelemetryLayout(cell string) []finalTelemetrySlot {
+	var result []finalTelemetrySlot
+	appendRole := func(root uint16, role string, tree bool) {
+		kinds := []string{"resource.jsonl", "carrier.jsonl"}
+		if tree {
+			kinds = append(kinds, "tree.jsonl")
+			if role == "bridge" {
+				kinds = append(kinds, "runtime.jsonl")
+			}
+		}
+		for _, kind := range kinds {
+			result = append(result, finalTelemetrySlot{root: root, role: role, kind: kind})
+		}
+	}
+	capacity := 0
+	if strings.HasPrefix(cell, "capacity/h3-s5-b1-v1-strong/") {
+		capacity = 16
+	} else if strings.HasPrefix(cell, "capacity/h3-s5-b1-v1/") {
+		capacity = 4
+	}
+	if capacity > 0 {
+		for root := range capacity {
+			appendRole(uint16(root), "endpoint", true)
+		}
+		appendRole(0, "bridge", true)
+		appendRole(0, "publisher", true)
+		return result
+	}
+	if strings.HasPrefix(cell, "pressure/") {
+		roots := 1
+		if cell == "pressure/P4" {
+			roots = 10
+		}
+		for root := range roots {
+			result = append(result, finalTelemetrySlot{root: uint16(root), role: "bridge", kind: "resource.jsonl"})
+			if cell == "pressure/P0" || cell == "pressure/P1" || cell == "pressure/P4" {
+				result = append(result, finalTelemetrySlot{root: uint16(root), role: "bridge", kind: "pressure-input.json"})
+			} else {
+				result = append(result, finalTelemetrySlot{root: uint16(root), role: "pressure", kind: "pressure-injection.jsonl"})
+				result = append(result, finalTelemetrySlot{root: uint16(root), role: "bridge", kind: "pressure-state.jsonl"})
+			}
+		}
+		return append(result, finalTelemetrySlot{root: 0, role: "bridge", kind: "pressure.json"})
+	}
+	roots := 1
+	for root := range roots {
+		for _, role := range []string{"endpoint", "bridge", "publisher"} {
+			appendRole(uint16(root), role, strings.HasPrefix(cell, "sustained/"))
+		}
+	}
+	if strings.HasPrefix(cell, "recovery/") {
+		result = append(result, finalTelemetrySlot{root: 0, role: "bridge", kind: "recovery.json"})
+	}
+	return result
 }
 
 func publishFinalWorkerHandoff(root, secret, cell string) (finalRunnerArtifact, finalRunnerArtifact, error) {

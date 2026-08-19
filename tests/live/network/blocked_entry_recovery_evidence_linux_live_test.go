@@ -3,7 +3,9 @@
 package network_test
 
 import (
+	"context"
 	"errors"
+	"net"
 	"testing"
 	"time"
 
@@ -26,10 +28,43 @@ type blockedRecoveryImportPlan struct {
 	LocalRoleStateRoot string   `json:"local_role_state_root"`
 }
 
+type blockedBridgeOwner interface {
+	Contact() ([32]byte, []byte, error)
+	BeginContact([]byte, [32]byte, time.Time) ([32]byte, []byte, byte, uint64, time.Time, error)
+	NextContact(context.Context) ([32]byte, []byte, byte, error)
+	FinishContact(byte, uint64, bool, bool) error
+	Acquire(context.Context, []byte, [32]byte, time.Time,
+		func(context.Context, [32]byte, []byte, time.Time) (net.Conn, func() error, bool, error),
+	) (net.Conn, func() error, error)
+	Evidence() (bridge.AttemptEvidence, error)
+	Close() error
+}
+
 func assertBlockedRecoveryEvidence(t *testing.T) bridge.AttemptEvidence {
 	t.Helper()
+	owner, closeOwner := openBlockedBridgeOwner(t, "/run/secure/import.json", time.Now)
+	evidence, evidenceErr := owner.Evidence()
+	if closeErr := closeOwner(); evidenceErr == nil {
+		evidenceErr = closeErr
+	}
+	if evidenceErr != nil || evidence.AttemptDigest == ([32]byte{}) || evidence.ContactStarts != 1 ||
+		evidence.Terminal != "bridge-deadline-exceeded" || !evidence.CleanupComplete ||
+		evidence.TerminalOffset > evidence.DeadlineOffset {
+		t.Fatalf("recovery Bridge evidence = %+v, %v", evidence, evidenceErr)
+	}
+	return evidence
+}
+
+func openBlockedBridgeOwner(t *testing.T, plan string, clock func() time.Time) (blockedBridgeOwner, func() error) {
+	return openBlockedBridgeOwnerWithConfidence(t, plan, clock, func() bool { return true })
+}
+
+func openBlockedBridgeOwnerWithConfidence(t *testing.T, plan string, clock func() time.Time,
+	confidence func() bool,
+) (blockedBridgeOwner, func() error) {
+	t.Helper()
 	var raw blockedRecoveryImportPlan
-	if err := planfile.Decode("/run/secure/import.json", 16<<10, &raw); err != nil {
+	if err := planfile.Decode(plan, 16<<10, &raw); err != nil {
 		t.Fatal(err)
 	}
 	var networkID [32]byte
@@ -41,14 +76,14 @@ func assertBlockedRecoveryEvidence(t *testing.T) bridge.AttemptEvidence {
 		t.Fatal(err)
 	}
 	network, err := state.Open(state.Config{Root: raw.NetworkStateRoot, NetworkID: networkID,
-		Authorities: authorities, Threshold: raw.NetworkThreshold, AcceptedProfile: raw.NetworkProfile, Clock: time.Now})
+		Authorities: authorities, Threshold: raw.NetworkThreshold, AcceptedProfile: raw.NetworkProfile, Clock: clock})
 	if err != nil {
 		t.Fatal(err)
 	}
 	owner, err := bridge.Open(bridge.Config{Root: raw.StateRoot, RouteProfile: raw.RouteProfile,
-		CurrentNetwork: network.Current, Clock: time.Now, TimeConfidence: func() bool { return true },
+		CurrentNetwork: network.Current, Clock: clock, TimeConfidence: confidence,
 		RoleConflict: func(identity, family [32]byte) (bool, error) {
-			return localroles.ReadConflict(raw.LocalRoleStateRoot, time.Now, identity, family)
+			return localroles.ReadConflict(raw.LocalRoleStateRoot, clock, identity, family)
 		}, ValidateCandidate: func(value []byte, identity [32]byte) ([32]byte, string, error) {
 			candidate, validateErr := camouflage.Validate(value, identity)
 			return candidate.Commitment(), "webtunnel-v0.0.6", validateErr
@@ -57,14 +92,5 @@ func assertBlockedRecoveryEvidence(t *testing.T) bridge.AttemptEvidence {
 		_ = network.Close()
 		t.Fatal(err)
 	}
-	evidence, evidenceErr := owner.Evidence()
-	if closeErr := errors.Join(owner.Close(), network.Close()); evidenceErr == nil {
-		evidenceErr = closeErr
-	}
-	if evidenceErr != nil || evidence.AttemptDigest == ([32]byte{}) || evidence.ContactStarts != 1 ||
-		evidence.Terminal != "bridge-deadline-exceeded" || !evidence.CleanupComplete ||
-		evidence.TerminalOffset > evidence.DeadlineOffset {
-		t.Fatalf("recovery Bridge evidence = %+v, %v", evidence, evidenceErr)
-	}
-	return evidence
+	return owner, func() error { return errors.Join(owner.Close(), network.Close()) }
 }

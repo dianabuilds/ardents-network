@@ -181,6 +181,9 @@ func blockedCompose(repository, project, image string, fixture blockedEntryFixtu
 		"ARDENTS_NEGATIVE_PROFILE="+selected,
 		"ARDENTS_FAULT_MODE="+selected,
 		"ARDENTS_BLOCKED_TIMELINE_MONOTONIC_ANCHOR_MILLIS="+timelineAnchor)
+	if parts := strings.Split(os.Getenv("ARDENTS_FINAL_CELL"), "/"); len(parts) == 4 && parts[0] == "hostile" {
+		environment = append(environment, "ARDENTS_HOSTILE_VARIANT="+parts[2])
+	}
 	if selected == "recovery" {
 		environment = append(environment, "ARDENTS_STREAM_PROGRESS=1", "ARDENTS_STREAM_CHUNK_DELAY=2s")
 	}

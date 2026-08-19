@@ -15,10 +15,20 @@ import (
 )
 
 type blockedAdmissionResult struct {
-	Schema        string `json:"schema"`
-	Offers        uint16 `json:"offers"`
-	Refused       uint16 `json:"refused"`
-	MaximumMillis uint32 `json:"maximum_millis"`
+	Schema        string                  `json:"schema"`
+	Offers        uint16                  `json:"offers"`
+	Refused       uint16                  `json:"refused"`
+	MaximumMillis uint32                  `json:"maximum_millis"`
+	Outcomes      []blockedAdmissionOffer `json:"outcomes"`
+}
+
+type blockedAdmissionOffer struct {
+	Ordinal               uint16 `json:"ordinal"`
+	CanarySHA256          string `json:"canary_sha256"`
+	ScheduledOffsetMillis uint32 `json:"scheduled_offset_millis"`
+	StartedOffsetMillis   uint32 `json:"started_offset_millis"`
+	RefusalMillis         uint32 `json:"refusal_millis"`
+	Refused               bool   `json:"refused"`
 }
 
 func TestBlockedEntryFinalReferenceAndStrongCapacity(t *testing.T) {
@@ -63,9 +73,9 @@ func TestBlockedEntryFinalReferenceAndStrongCapacity(t *testing.T) {
 				}
 				started := time.Now()
 				armFinalWorkerTerminal("complete")
-				root := runBlockedCapacityBatch(t, repository, image, toolImage, client, server,
+				root, measurement := runBlockedCapacityBatch(t, repository, image, toolImage, client, server,
 					profile.name, profile.capacity, batch)
-				emitFinalWorkerCell(t, cell, "complete", started, root)
+				emitFinalWorkerCapacity(t, cell, started, measurement, root)
 			})
 		}
 	}
@@ -73,7 +83,7 @@ func TestBlockedEntryFinalReferenceAndStrongCapacity(t *testing.T) {
 
 func runBlockedCapacityBatch(t *testing.T, repository, image, toolImage, client, server, profile string,
 	capacity, batch int,
-) string {
+) (string, finalWorkerCapacity) {
 	t.Helper()
 	fixture := newBlockedEntryFixture(t, client, server)
 	profileID := "h3-s5-b1-v1"
@@ -125,12 +135,33 @@ func runBlockedCapacityBatch(t *testing.T, repository, image, toolImage, client,
 		bridgeRate = "400mbit"
 	}
 	applyFinalBridgeInfrastructure(t, ctx, compose, toolImage, bridgeRate)
-	// Retain the Bridge resource stream for the final worker. The parent hashes
-	// this raw stream; final capacity verdict reduction remains fail-closed until
-	// the corresponding Endpoint-unit accounting is available.
-	startLiveContainer(t, ctx, compose, "bridge-resource-collector")
+	for _, service := range []string{"bridge-resource-collector", "bridge-carrier-collector",
+		"publisher-resource-collector", "publisher-carrier-collector"} {
+		startLiveContainer(t, ctx, compose, service)
+	}
+	for _, role := range []string{"bridge", "publisher"} {
+		waitForBlockedHostFile(t, ctx, filepath.Join(fixture.root, "sync", role, "resource-ready"))
+		waitForBlockedHostFile(t, ctx, filepath.Join(fixture.root, "sync", role, "carrier-ready"))
+		writeLiveFile(t, filepath.Join(fixture.root, "sync", role, "carrier-start"), []byte("start\n"))
+		waitForBlockedHostFile(t, ctx, filepath.Join(fixture.root, "sync", role, "carrier-started"))
+	}
 	units := startBlockedCapacityUnits(t, ctx, project, image, toolImage, fixture, capacity, "", "")
 	waitForBridgeSocketSamples(t, ctx, compose, uint64(2+4*capacity), 1)
+	timeline, timelineErr := finalWorkerTimelineOrigin()
+	if timelineErr != nil {
+		t.Fatal(timelineErr)
+	}
+	endpointTrees := make([]finalTreeSample, 0, len(units))
+	for _, unit := range units {
+		endpointTrees = append(endpointTrees, writeFinalCapacityTreeSnapshot(t, ctx,
+			filepath.Join(unit.sync, "tree.jsonl"), timeline, unit.endpoint, unit.service, unit.application))
+	}
+	bridgeTree := writeFinalCapacityTreeSnapshot(t, ctx,
+		filepath.Join(fixture.root, "sync", "bridge", "tree.jsonl"), timeline,
+		finalComposeContainerIDs(t, ctx, compose, "bridge")...)
+	publisherTree := writeFinalCapacityTreeSnapshot(t, ctx,
+		filepath.Join(fixture.root, "sync", "publisher", "tree.jsonl"), timeline,
+		finalComposeContainerIDs(t, ctx, compose, "publisher", "publisher-service", "publisher-app")...)
 	if output, err := compose(ctx, "up", "-d", "--no-build", "--no-deps", "capacity-probe"); err != nil {
 		t.Fatalf("start capacity refusal probe: %v\n%s", err, output)
 	}
@@ -141,13 +172,6 @@ func runBlockedCapacityBatch(t *testing.T, repository, image, toolImage, client,
 	readHostJSON(t, resultPath, &admission)
 	if admission.Offers != 1 || admission.Refused != 1 || admission.MaximumMillis > 1_000 {
 		t.Fatalf("bounded %d+1 refusal = %+v", capacity, admission)
-	}
-	for _, unit := range units {
-		for _, name := range []string{unit.endpoint, unit.service, unit.application,
-			unit.endpoint + "-observer", unit.endpoint + "-policy"} {
-			waitNamedContainer(t, ctx, name)
-		}
-		assertContainerDuration(t, ctx, unit.endpoint, unit.released, 8*time.Second)
 	}
 	waitScaledComposeService(t, ctx, compose, "publisher-app", capacity)
 	if result := waitForServiceResult(t, ctx, compose, "publisher-service"); result.Class != "clean service connection close" ||
@@ -162,17 +186,50 @@ func runBlockedCapacityBatch(t *testing.T, repository, image, toolImage, client,
 	}
 	publishFinalWorkerTerminal()
 	writeLiveFile(t, filepath.Join(fixture.root, "sync", "bridge", "bridge-stop"), []byte("stop\n"))
-	waitForBlockedHostFile(t, ctx, filepath.Join(fixture.root, "sync", "bridge", "resource-cleanup-captured"))
-	writeLiveFile(t, filepath.Join(fixture.root, "sync", "bridge", "resource-stop"), []byte("stop\n"))
-	waitBlockedContainer(t, ctx, compose, "bridge-resource-collector")
-	writeLiveFile(t, filepath.Join(fixture.root, "sync", "bridge", "resource-release"), []byte("release\n"))
+	resourceRoles := []string{"bridge", "publisher"}
+	responseDurations := make([]time.Duration, 0, len(units))
+	for _, unit := range units {
+		resourceRoles = append(resourceRoles, filepath.Base(unit.sync))
+	}
+	for _, role := range resourceRoles {
+		waitForBlockedHostFile(t, ctx, filepath.Join(fixture.root, "sync", role, "resource-cleanup-captured"))
+		writeLiveFile(t, filepath.Join(fixture.root, "sync", role, "resource-stop"), []byte("stop\n"))
+	}
+	for _, service := range []string{"bridge-resource-collector", "publisher-resource-collector"} {
+		waitBlockedContainer(t, ctx, compose, service)
+	}
+	for _, unit := range units {
+		waitNamedContainer(t, ctx, unit.endpoint+"-resource-collector")
+	}
+	for _, role := range resourceRoles {
+		writeLiveFile(t, filepath.Join(fixture.root, "sync", role, "resource-release"), []byte("release\n"))
+	}
+	for _, unit := range units {
+		for _, name := range []string{unit.endpoint, unit.service, unit.application,
+			unit.endpoint + "-observer", unit.endpoint + "-policy"} {
+			waitNamedContainer(t, ctx, name)
+		}
+		assertContainerDuration(t, ctx, unit.endpoint, unit.released, 8*time.Second)
+		responseDurations = append(responseDurations, finalContainerDuration(t, ctx, unit.endpoint, unit.released))
+	}
 	for _, service := range []string{"bridge", "bridge-observer", "initiator-observer", "introduction-observer",
 		"rendezvous-observer", "responder-observer", "publisher-observer", "publisher-service"} {
 		waitBlockedContainer(t, ctx, compose, service)
 	}
+	for _, role := range resourceRoles {
+		writeLiveFile(t, filepath.Join(fixture.root, "sync", role, "carrier-stop"), []byte("stop\n"))
+	}
+	for _, service := range []string{"bridge-carrier-collector", "publisher-carrier-collector"} {
+		waitBlockedContainer(t, ctx, compose, service)
+	}
+	for _, unit := range units {
+		waitNamedContainer(t, ctx, unit.endpoint+"-carrier-collector")
+	}
+	measurement := finalCapacityMeasurement(t, fixture.root, profileID, batch, admission,
+		endpointTrees, bridgeTree, publisherTree, responseDurations, bridgeRuntimeSamples(t, ctx, compose))
 	removeCapacityProjectObjects(t, project)
 	cleanup()
-	return fixture.root
+	return fixture.root, measurement
 }
 
 func readHostJSON(t *testing.T, path string, value any) {

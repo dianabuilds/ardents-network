@@ -8,9 +8,6 @@ import (
 const emptyDockerConfigSHA256 = "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
 
 var requiredMeasurementArtifacts = []string{
-	"candidate/client.stderr",
-	"candidate/server.stderr",
-	"capture/packets.bin",
 	"measurements/profiles.jsonl",
 	"measurements/capacity.jsonl",
 	"measurements/sustained.jsonl",

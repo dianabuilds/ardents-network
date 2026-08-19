@@ -714,6 +714,13 @@ Includes:
 contacts and exposure remain bounded; Bridge cannot occupy conflicting Route or
 resolution duties; failure is explicit.
 
+The Product Owner recorded the maintained Stage 5 development `advance` on
+2026-08-19. The complete R-037 594-episode suite (564 candidate cells plus six
+five-episode evidence-integrity campaigns), long-sustained, capacity, pressure,
+hostile, recovery, and cleanup campaign is retained unchanged for post-cleanup
+S9.6 qualification. This development advance is not a Route Qualification or
+censorship-resistance claim.
+
 **Stop/redesign:** success requires public DNS, a permanently mandatory project
 address, unbounded probing, false undetectability, or Bridge multi-role reuse.
 

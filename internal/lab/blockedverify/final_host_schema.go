@@ -10,6 +10,21 @@ type finalObservedHost struct {
 	CgroupV2           bool                      `json:"cgroup_v2"`
 	SwapEvents         uint16                    `json:"swap_events"`
 	Allocations        []finalObservedAllocation `json:"allocations"`
+	Runtime            *finalRuntimeHost         `json:"runtime,omitempty"`
+}
+
+type finalRuntimeHost struct {
+	Schema                 string                   `json:"schema"`
+	CapturedMonotonicNanos uint64                   `json:"captured_monotonic_nanos"`
+	Allocations            []finalRuntimeAllocation `json:"allocations"`
+}
+
+type finalRuntimeAllocation struct {
+	ID                     string   `json:"id"`
+	CPUSet                 []uint16 `json:"cpu_set"`
+	Cgroups                []string `json:"cgroups"`
+	NetworkNamespaceInodes []uint64 `json:"network_namespace_inodes"`
+	MemoryMaxBytes         uint64   `json:"memory_max_bytes"`
 }
 
 type finalObservedAllocation struct {

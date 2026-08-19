@@ -22,6 +22,22 @@ authorizes preparation and review of the implementation brief. It does not by
 itself authorize maintained Stage 5 code, a runtime dependency, candidate
 packaging, a public wire protocol, or a censorship-resistance claim.
 
+On 2026-08-19 the Product Owner completed maintained Stage 5 development while
+moving the complete qualification campaign to S9.6. This is a scheduling and
+promotion decision, not a qualification result. The Product Owner clarified on 2026-08-19 that the evidence
+contract is one 564-cell candidate campaign plus six independent five-episode
+evidence-integrity campaigns. All 594 episodes,
+numeric thresholds, long sustained runs, supply identity, independent verdict,
+and cleanup requirements remain mandatory for the final cleaned H3 candidate.
+No Stage 5 qualification pass is recorded.
+
+The Stage 5 input records only the reviewed host reservation. At S9.6 a
+stand-side collector must derive the actual per-allocation CPU set, cgroup path
+and memory limit, and network-namespace inode from the running process trees.
+The independent verifier requires that process-derived attestation and rejects
+missing or overlapping runtime ownership; a manifest-authored pseudo-namespace
+cannot satisfy the contract.
+
 ## Current contract
 
 The applicable product and development contracts are:
@@ -467,8 +483,8 @@ evidence schemas, verifier inputs, build supply, and vertical order before code.
 
 The later maintained campaign reproduces `h3-s5-b1-v1` with no runtime fetch,
 retains all generated material outside Git, runs deterministic unit/command E2E
-cells during development, and runs the full Ubuntu Docker campaign before the
-Stage 5 local verdict. The record may be falsified before implementation by
+cells during development, and runs the full Ubuntu Docker suite at S9.6 against
+the cleaned integrated H3 candidate. The record may be falsified before implementation by
 showing that any numeric budget cannot fit the fixed R-035/R-036 parent
 mechanics or contradicts an accepted higher-authority contract.
 

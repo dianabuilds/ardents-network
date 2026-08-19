@@ -45,6 +45,19 @@ func TestControlRejectsMalformedOrOverBoundTranscripts(t *testing.T) {
 	}
 }
 
+func TestG5ControlFaultContract(t *testing.T) {
+	t.Parallel()
+	for name, input := range map[string]string{
+		"malformed-pt-control":        "VERSION 1\nCMETHOD webtunnel socks5 127.0.0.1:not-a-port\nCMETHODS DONE\n",
+		"wrong-socks-listener-method": "VERSION 1\nCMETHOD webtunnel socks4 127.0.0.1:4123\nCMETHODS DONE\n",
+	} {
+		if _, transcript, err := readClientReadiness(strings.NewReader(input)); err == nil ||
+			!strings.HasPrefix(string(transcript), "VERSION 1\n") {
+			t.Fatalf("%s accepted or failed to retain its bounded PT transcript: %v", name, err)
+		}
+	}
+}
+
 func TestBoundedCandidateOutputQuarantinesOverflow(t *testing.T) {
 	t.Parallel()
 	output := boundedOutput{limit: 4}

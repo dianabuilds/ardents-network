@@ -56,19 +56,20 @@ func TestBlockedEntryDrainsAtExactEmergencySocketPressure(t *testing.T) {
 	}
 	startBlockedPressureWork(t, ctx, compose)
 	waitForBridgeSocketSamples(t, ctx, compose, 6, 1)
+	writeFinalPressureState(t, fixture.root, "NORMAL", 0)
 	progress := waitForLiveProgressAbove(t, ctx, compose, "publisher-app", 0)
 	if output, err := compose(ctx, "up", "-d", "--no-build", "--no-deps", "pressure"); err != nil {
 		t.Fatalf("start emergency partial-handshake collector: %v\n%s", err, output)
 	}
 	waitForBlockedHostFile(t, ctx, filepath.Join(fixture.root, "sync", "pressure", "pressure-ready"))
 	waitForBridgeSocketSamples(t, ctx, compose, 29, 1)
-	drainObserved := time.Now()
 	armFinalWorkerTerminal("drain")
 	waitForBridgeResourceState(t, ctx, compose, "DRAIN")
+	drainObserved := writeFinalPressureState(t, fixture.root, "DRAIN", 1)
 	publishFinalWorkerTerminal()
 	waitForBridgeResourceState(t, ctx, compose, "EXIT")
-	waitBlockedContainer(t, ctx, compose, "bridge")
-	exitMillis := uint32(time.Since(drainObserved).Milliseconds())
+	exitObserved := writeFinalPressureState(t, fixture.root, "EXIT", 2)
+	exitMillis := uint32(exitObserved.OffsetMillis - drainObserved.OffsetMillis)
 	if exitMillis > 60_000 {
 		t.Fatalf("emergency Bridge exit took %s", time.Duration(exitMillis)*time.Millisecond)
 	}
@@ -80,6 +81,11 @@ func TestBlockedEntryDrainsAtExactEmergencySocketPressure(t *testing.T) {
 	}
 	writeLiveFile(t, filepath.Join(fixture.root, "sync", "pressure", "pressure-release"), []byte("release\n"))
 	waitBlockedContainer(t, ctx, compose, "pressure")
+	waitForBlockedHostFile(t, ctx,
+		filepath.Join(fixture.root, "sync", "bridge", "resource-cleanup-captured"))
+	writeLiveFile(t, filepath.Join(fixture.root, "sync", "bridge", "resource-stop"), []byte("stop\n"))
+	waitBlockedContainer(t, ctx, compose, "bridge-resource-collector")
+	writeLiveFile(t, filepath.Join(fixture.root, "sync", "bridge", "resource-release"), []byte("release\n"))
 	for _, service := range blockedContainers("C1") {
 		waitBlockedContainer(t, ctx, compose, service)
 	}

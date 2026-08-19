@@ -59,6 +59,9 @@ func collectEvents(config Config, canaries canaryCorpus, finalSpecValue *finalSp
 	}
 	for _, group := range hostileMatrix() {
 		for _, variant := range group.Variants {
+			if finalSpecValue != nil && finalEvidenceMutationVariant(group.ID, variant) {
+				continue
+			}
 			for episode := range 5 {
 				plan := cellPlan{Schema: "ardents-h3-blocked-cell-plan-v1",
 					EventID: eventID(group.ID, variant, episode), Group: group.ID, Variant: variant,

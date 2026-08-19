@@ -19,9 +19,8 @@ import (
 )
 
 type capacityOfferOutcome struct {
-	refused bool
-	elapsed uint32
-	err     error
+	offer blockedAdmissionOffer
+	err   error
 }
 
 func runBlockedCapacityProbe(t *testing.T) {
@@ -51,17 +50,19 @@ func runBlockedCapacityProbe(t *testing.T) {
 	outcomes := make(chan capacityOfferOutcome, offers)
 	start := time.Now().Add(100 * time.Millisecond)
 	for index := range offers {
-		go runCapacityOffer(client, seed, index, start.Add(time.Duration(index)*cadence), outcomes)
+		go runCapacityOffer(client, seed, index, start, cadence, outcomes)
 	}
-	for index := range offers {
+	result.Outcomes = make([]blockedAdmissionOffer, offers)
+	for range offers {
 		observed := <-outcomes
 		if observed.err != nil {
-			t.Fatalf("capacity offer %d: %v", index, observed.err)
+			t.Fatalf("capacity offer %d: %v", observed.offer.Ordinal, observed.err)
 		}
-		if observed.refused {
+		if observed.offer.Refused {
 			result.Refused++
 		}
-		result.MaximumMillis = max(result.MaximumMillis, observed.elapsed)
+		result.MaximumMillis = max(result.MaximumMillis, observed.offer.RefusalMillis)
+		result.Outcomes[observed.offer.Ordinal] = observed.offer
 	}
 	writeBlockedJSON(t, "/run/evidence/admission-result.json", result)
 	if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
@@ -69,22 +70,28 @@ func runBlockedCapacityProbe(t *testing.T) {
 	}
 }
 
-func runCapacityOffer(client *http.Client, seed []byte, index int, at time.Time,
+func runCapacityOffer(client *http.Client, seed []byte, index int, origin time.Time, cadence time.Duration,
 	result chan<- capacityOfferOutcome,
 ) {
+	at := origin.Add(time.Duration(index) * cadence)
 	if wait := time.Until(at); wait > 0 {
 		time.Sleep(wait)
 	}
 	started := time.Now()
+	offer := blockedAdmissionOffer{Ordinal: uint16(index),
+		ScheduledOffsetMillis: uint32((time.Duration(index) * cadence).Milliseconds()),
+		StartedOffsetMillis:   uint32(max(int64(0), started.Sub(origin).Milliseconds()))}
 	request, requestErr := http.NewRequest(http.MethodGet, "https://203.0.113.8:8480/entry", nil)
 	if requestErr != nil {
-		result <- capacityOfferOutcome{err: requestErr}
+		result <- capacityOfferOutcome{offer: offer, err: requestErr}
 		return
 	}
 	request.Host = "front.example"
 	ordinal := make([]byte, 8)
 	binary.BigEndian.PutUint64(ordinal, uint64(index))
 	canary := sha256.Sum256(append(append([]byte(nil), seed...), ordinal...))
+	canaryDigest := sha256.Sum256(canary[:])
+	offer.CanarySHA256 = hex.EncodeToString(canaryDigest[:])
 	request.Header.Set("X-Ardents-Probe", hex.EncodeToString(canary[:]))
 	response, responseErr := client.Do(request)
 	requestErr = errors.Join(requestErr, responseErr)
@@ -94,5 +101,7 @@ func runCapacityOffer(client *http.Client, seed []byte, index int, at time.Time,
 		requestErr = errors.Join(requestErr, response.Body.Close())
 		refused = response.StatusCode == http.StatusServiceUnavailable
 	}
-	result <- capacityOfferOutcome{refused, uint32(time.Since(started).Milliseconds()), requestErr}
+	offer.Refused = refused
+	offer.RefusalMillis = uint32(time.Since(started).Milliseconds())
+	result <- capacityOfferOutcome{offer: offer, err: requestErr}
 }

@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -51,8 +53,14 @@ func TestBlockedEntryNegativeCommandsAcrossNamespaces(t *testing.T) {
 				t.Run(fmt.Sprint(episode), func(t *testing.T) {
 					fixture := newBlockedNegativeFixture(t, client, server)
 					cell := fmt.Sprintf("profile/%s/%02d", profile, episode)
+					terminal := "bridge-attempt-exhausted"
 					if profile == "G5" {
-						cell = fmt.Sprintf("hostile/G5-adapter-fault/accept-then-stall/%d", episode)
+						var selected bool
+						cell, terminal, selected = selectedG5FinalCell(episode)
+						if !selected {
+							return
+						}
+						prepareG5FinalFixture(t, fixture, strings.Split(cell, "/")[2])
 					}
 					if !selectedFinalCell(cell) {
 						return
@@ -60,9 +68,13 @@ func TestBlockedEntryNegativeCommandsAcrossNamespaces(t *testing.T) {
 					started := time.Now()
 					bindFinalFixtureSeed(t, fixture, cell,
 						"short-workload")
-					armFinalWorkerTerminal("bridge-attempt-exhausted")
-					runBlockedNegativeEpisode(t, repository, image, fixture, profile, episode)
-					emitFinalWorkerCell(t, cell, "bridge-attempt-exhausted", started, fixture.root)
+					armFinalWorkerTerminal(terminal)
+					receipt := runBlockedNegativeEpisode(t, repository, image, fixture, profile, episode, terminal)
+					if profile == "G5" {
+						variant := strings.Split(cell, "/")[2]
+						recordFinalFault(cell, []byte("adapter-ready"), []byte(variant), receipt)
+					}
+					emitFinalWorkerCell(t, cell, terminal, started, fixture.root)
 				})
 			}
 		})
@@ -70,8 +82,8 @@ func TestBlockedEntryNegativeCommandsAcrossNamespaces(t *testing.T) {
 }
 
 func runBlockedNegativeEpisode(t *testing.T, repository, image string, fixture blockedEntryFixture,
-	profile string, episode int,
-) {
+	profile string, episode int, terminal string,
+) []byte {
 	t.Helper()
 	project := finalProjectName(fmt.Sprintf("ardents-s53-%s-%d-%d", strings.ToLower(profile), episode, time.Now().UnixNano()))
 	compose := blockedCompose(repository, project, image, fixture, profile)
@@ -79,19 +91,37 @@ func runBlockedNegativeEpisode(t *testing.T, repository, image string, fixture b
 	t.Cleanup(cleanup)
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
+	variant := os.Getenv("ARDENTS_HOSTILE_VARIANT")
+	childControlFault := profile == "G5" &&
+		(variant == "malformed-pt-control" || variant == "wrong-socks-listener-method")
 	if profile == "C4" || profile == "G5" {
 		faults := []string{"fault-zero"}
 		if profile == "C4" {
 			faults = append(faults, "fault-one")
 		}
-		if output, err := compose(ctx, append([]string{"up", "-d", "--no-build"}, faults...)...); err != nil {
-			t.Fatalf("start C4 faults: %v\n%s", err, output)
+		if childControlFault {
+			faults = nil
+		}
+		if len(faults) > 0 {
+			if output, err := compose(ctx, append([]string{"up", "-d", "--no-build"}, faults...)...); err != nil {
+				t.Fatalf("start C4 faults: %v\n%s", err, output)
+			}
 		}
 		for _, service := range faults {
 			waitForBlockedJSON(t, ctx, compose, service, func(line []byte) bool {
 				var value struct{ Kind, State string }
 				return json.Unmarshal(line, &value) == nil && value.Kind == "fault" && value.State == "READY"
 			})
+		}
+		if profile == "G5" && (os.Getenv("ARDENTS_HOSTILE_VARIANT") == "sigterm" ||
+			os.Getenv("ARDENTS_HOSTILE_VARIANT") == "sigkill") {
+			signal := "SIGTERM"
+			if os.Getenv("ARDENTS_HOSTILE_VARIANT") == "sigkill" {
+				signal = "SIGKILL"
+			}
+			if output, err := compose(ctx, "kill", "-s", signal, "fault-zero"); err != nil {
+				t.Fatalf("inject G5 %s: %v\n%s", signal, err, output)
+			}
 		}
 	}
 	services := []string{"negative-endpoint", "negative-observer"}
@@ -111,8 +141,12 @@ func runBlockedNegativeEpisode(t *testing.T, repository, image string, fixture b
 	waitForBlockedJSON(t, ctx, compose, "negative-endpoint", func(line []byte) bool {
 		var value struct{ Kind, Profile, Terminal string }
 		return json.Unmarshal(line, &value) == nil && value.Kind == "negative-result" &&
-			value.Profile == profile && value.Terminal == "bridge-attempt-exhausted"
+			value.Profile == profile && value.Terminal == terminal
 	})
+	receipt, logErr := compose(ctx, "logs", "--no-color", "--no-log-prefix", "negative-endpoint")
+	if logErr != nil || len(receipt) == 0 {
+		t.Fatalf("read causal negative endpoint receipt: %v\n%s", logErr, receipt)
+	}
 	publishFinalWorkerTerminal()
 	waitBlockedContainer(t, ctx, compose, "negative-endpoint")
 	waitBlockedContainer(t, ctx, compose, "negative-observer")
@@ -121,8 +155,49 @@ func runBlockedNegativeEpisode(t *testing.T, repository, image string, fixture b
 	} else if profile == "C4" {
 		waitBlockedContainer(t, ctx, compose, "fault-zero")
 		waitBlockedContainer(t, ctx, compose, "fault-one")
-	} else {
+	} else if !childControlFault {
 		waitBlockedContainer(t, ctx, compose, "fault-zero")
 	}
 	cleanup()
+	return receipt
+}
+
+func selectedG5FinalCell(episode int) (string, string, bool) {
+	cell := os.Getenv("ARDENTS_FINAL_CELL")
+	parts := strings.Split(cell, "/")
+	if len(parts) != 4 || parts[0] != "hostile" || parts[1] != "G5-adapter-fault" ||
+		parts[3] != strconv.Itoa(episode) {
+		return "", "", false
+	}
+	terminal := "bridge-attempt-exhausted"
+	if parts[2] == "evidence-write-exhaustion" {
+		terminal = "bridge-local-denial"
+	}
+	return cell, terminal, true
+}
+
+func prepareG5FinalFixture(t *testing.T, fixture blockedEntryFixture, variant string) {
+	t.Helper()
+	path := filepath.Join(fixture.root, "input", "negative-endpoint", "entry.json")
+	if variant == "malformed-pt-control" || variant == "wrong-socks-listener-method" {
+		transcript := "VERSION 1\\nCMETHOD webtunnel socks5 127.0.0.1:not-a-port\\nCMETHODS DONE\\n"
+		if variant == "wrong-socks-listener-method" {
+			transcript = "VERSION 1\\nCMETHOD webtunnel socks4 127.0.0.1:4123\\nCMETHODS DONE\\n"
+		}
+		script := "#!/bin/sh\nprintf '" + transcript + "'\n"
+		faultPath := filepath.Join(fixture.root, "input", "negative-endpoint", "pt-control-fault")
+		if err := os.WriteFile(faultPath, []byte(script), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		rewriteBlockedPlan(t, path, func(plan map[string]any) {
+			plan["binary"] = "/run/input/pt-control-fault"
+		})
+		return
+	}
+	if variant != "evidence-write-exhaustion" {
+		return
+	}
+	rewriteBlockedPlan(t, path, func(plan map[string]any) {
+		plan["candidate_state_root"] = "/proc/1/ardents-evidence-denied"
+	})
 }

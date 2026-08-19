@@ -31,10 +31,11 @@ func recomputeFinalSummary(snapshots map[string][]byte, published *finalSummary)
 		return nil, []string{"final measurement summary is missing"}
 	}
 	result := &finalSummary{Schema: published.Schema, ImageHash: published.ImageHash,
-		ClientHash: published.ClientHash, ServerHash: published.ServerHash, Artifacts: published.Artifacts}
+		ClientHash: published.ClientHash, ServerHash: published.ServerHash, Artifacts: published.Artifacts,
+		MutationArtifacts: published.MutationArtifacts}
 	var reasons []string
 	result.Profiles = decodeFinalLines[finalProfileResult](snapshots, "measurements/profiles.jsonl", 7, &reasons)
-	result.Cells = decodeFinalLines[finalCellObservation](snapshots, "measurements/cells.jsonl", 594, &reasons)
+	result.Cells = decodeFinalLines[finalCellObservation](snapshots, "measurements/cells.jsonl", 564, &reasons)
 	result.Capacity = decodeFinalLines[finalCapacityBatch](snapshots, "measurements/capacity.jsonl", 10, &reasons)
 	result.Sustained = decodeFinalLines[finalSustainedCell](snapshots, "measurements/sustained.jsonl", 2, &reasons)
 	result.Pressure = decodeFinalLines[finalPressureCell](snapshots, "measurements/pressure.jsonl", 5, &reasons)

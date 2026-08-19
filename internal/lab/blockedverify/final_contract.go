@@ -1,7 +1,6 @@
 package blockedverify
 
 import (
-	"fmt"
 	"reflect"
 	"strings"
 )
@@ -175,16 +174,33 @@ func verifyFinalSpec(value finalSpec) []string {
 	if !reflect.DeepEqual(value.CellOrder, requiredFinalCellOrder()) {
 		reasons = append(reasons, "final campaign cell order is incomplete or reordered")
 	}
+	if !reflect.DeepEqual(finalMutationCampaignIdentities(value.MutationCampaigns),
+		finalMutationCampaignIdentities(requiredFinalMutationCampaigns())) {
+		reasons = append(reasons, "final evidence-integrity campaign order is incomplete or reordered")
+	}
 	if len(value.Seeds) != len(value.CellOrder) {
 		reasons = append(reasons, "final campaign seeds do not cover every scheduled cell")
 	} else {
-		seen := make(map[string]bool, len(value.Seeds))
+		seen := make(map[string]bool, 594)
 		for _, seed := range value.Seeds {
 			if !isHexDigest(seed, 32) || seen[seed] {
 				reasons = append(reasons, "final campaign seed is invalid or reused")
 				break
 			}
 			seen[seed] = true
+		}
+		for _, campaign := range value.MutationCampaigns {
+			if len(campaign.Seeds) != len(campaign.CellOrder) {
+				reasons = append(reasons, "final evidence-integrity seeds are incomplete")
+				break
+			}
+			for _, seed := range campaign.Seeds {
+				if !isHexDigest(seed, 32) || seen[seed] {
+					reasons = append(reasons, "final campaign seed is invalid or reused")
+					break
+				}
+				seen[seed] = true
+			}
 		}
 	}
 	if reason := verifyFinalConfigurations(value.Configurations); reason != "" {
@@ -209,39 +225,4 @@ func validFinalProductReceipt(value finalProductReceipt, source string) bool {
 func validFinalToolReceipt(value finalToolReceipt) bool {
 	return value.BaseDigest == acceptedFinalImageHash && isHexDigest(value.ToolLockSHA256, 32) &&
 		isHexDigest(value.SourceSHA256, 32) && isHexDigest(value.CarrierSHA256, 32)
-}
-
-func requiredFinalCellOrder() []string {
-	var result []string
-	floors := []struct {
-		id    string
-		count int
-	}{{"C0", 20}, {"C1", 20}, {"C2", 20}, {"C3", 5}, {"C4", 5}, {"C5", 20}, {"C6", 20}}
-	for _, profile := range floors {
-		for episode := range profile.count {
-			result = append(result, fmt.Sprintf("profile/%s/%02d", profile.id, episode))
-		}
-	}
-	for _, profile := range []string{"h3-s5-b1-v1", "h3-s5-b1-v1-strong"} {
-		for batch := range 5 {
-			result = append(result, fmt.Sprintf("capacity/%s/%d", profile, batch))
-		}
-	}
-	for _, direction := range []string{"endpoint-to-publisher", "publisher-to-endpoint"} {
-		result = append(result, "sustained/"+direction+"/direct-before")
-		for run := range 5 {
-			result = append(result, fmt.Sprintf("sustained/%s/run-%d", direction, run))
-		}
-		result = append(result, "sustained/"+direction+"/direct-after")
-	}
-	for cell := range 5 {
-		result = append(result, fmt.Sprintf("pressure/P%d", cell))
-	}
-	for episode := range 5 {
-		result = append(result, fmt.Sprintf("recovery/%d", episode))
-	}
-	for _, identity := range expectedEventSequence() {
-		result = append(result, "hostile/"+identity.id)
-	}
-	return result
 }

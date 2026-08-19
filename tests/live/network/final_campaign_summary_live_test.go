@@ -38,13 +38,57 @@ func finalRunnerSummaryFromWorkers(schedule finalRunnerSchedule, cached map[stri
 			return nil
 		}
 	}
-	if finalScheduleHasPrefix(schedule, "capacity/") || finalScheduleHasPrefix(schedule, "recovery/") {
-		// These sections still lack a reducer from their retained raw telemetry.
-		// Publishing a partial final summary would defer an avoidable invalid
-		// decision to the verifier and make its cause less local.
-		return nil
+	if finalScheduleHasPrefix(schedule, "capacity/") {
+		var ok bool
+		if summary.Capacity, ok = finalRunnerCapacityFromWorkers(cached); !ok {
+			return nil
+		}
+	}
+	if finalScheduleHasPrefix(schedule, "recovery/") {
+		var ok bool
+		if summary.Recovery, ok = finalRunnerRecoveryFromWorkers(cached); !ok {
+			return nil
+		}
 	}
 	return summary
+}
+
+func finalRunnerCapacityFromWorkers(cached map[string]finalWorkerResult) ([]finalWorkerCapacity, bool) {
+	result := make([]finalWorkerCapacity, 0, 10)
+	for _, profile := range []string{"h3-s5-b1-v1", "h3-s5-b1-v1-strong"} {
+		for batch := range 5 {
+			cell := fmt.Sprintf("capacity/%s/%d", profile, batch)
+			worker, ok := cached[cell]
+			if !ok || worker.Capacity == nil || worker.Capacity.Profile != profile ||
+				worker.Capacity.Batch != uint16(batch) || worker.Capacity.Terminal != worker.Terminal {
+				return nil, false
+			}
+			result = append(result, *worker.Capacity)
+		}
+	}
+	return result, true
+}
+
+func finalRunnerRecoveryFromWorkers(cached map[string]finalWorkerResult) (finalRunnerRecovery, bool) {
+	result := finalRunnerRecovery{AttemptIdentityStable: true, DeadlineStable: true}
+	for episode := range 5 {
+		cell := fmt.Sprintf("recovery/%d", episode)
+		worker, ok := cached[cell]
+		if !ok || worker.Recovery == nil || worker.Recovery.Episode != uint16(episode) {
+			return finalRunnerRecovery{}, false
+		}
+		value := worker.Recovery
+		connectionLoss, attemptStable, deadlineStable := finalRecoveryOutcome(*value)
+		result.Attempts++
+		if connectionLoss {
+			result.ConnectionLoss++
+		}
+		result.LaterStarts += value.LaterOrdinals
+		result.Residuals += value.Residuals
+		result.AttemptIdentityStable = result.AttemptIdentityStable && attemptStable
+		result.DeadlineStable = result.DeadlineStable && deadlineStable
+	}
+	return result, true
 }
 
 func finalScheduleIncludesProfiles(schedule finalRunnerSchedule) bool {

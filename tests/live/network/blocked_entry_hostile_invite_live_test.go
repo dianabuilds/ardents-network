@@ -63,8 +63,20 @@ func TestBlockedEntryFinalHostileInviteValidation(t *testing.T) {
 			t.Fatalf("build hostile Invite product image: %v\n%s", err, output)
 		}
 	}
-	prepareHostileInviteInput(t, fixture, variant)
-	startHostileInviteObservers(t, ctx, compose, fixture.root)
+	unknownLedgerField := strings.Contains(cell, "/G9-ledger-leakage/unknown-invite-field/")
+	var faultBefore, faultAfter []byte
+	var stateBefore []byte
+	if unknownLedgerField {
+		startHostileInviteObservers(t, ctx, compose, fixture.root)
+		if baseline := runHostileInviteImport(t, ctx, compose, "/run/input/import.json"); baseline != "accepted" {
+			t.Fatalf("establish G9 durable baseline: %s", baseline)
+		}
+		faultBefore, faultAfter = prepareHostileInviteInput(t, fixture, variant)
+		stateBefore = blockedStateTreeHash(t, filepath.Join(fixture.root, "state", "endpoint", "bridge"))
+	} else {
+		faultBefore, faultAfter = prepareHostileInviteInput(t, fixture, variant)
+		startHostileInviteObservers(t, ctx, compose, fixture.root)
+	}
 	if variant != "insufficient-time-confidence" {
 		now := time.Now()
 		if err := os.Chtimes(filepath.Join(fixture.root, "input", "endpoint", "time-confidence"), now, now); err != nil {
@@ -77,6 +89,22 @@ func TestBlockedEntryFinalHostileInviteValidation(t *testing.T) {
 	observed := runHostileInviteImport(t, ctx, compose)
 	if observed != terminal {
 		t.Fatalf("Invite validation %s terminal=%s want=%s", variant, observed, terminal)
+	}
+	if stateBefore != nil {
+		stateAfter := blockedStateTreeHash(t, filepath.Join(fixture.root, "state", "endpoint", "bridge"))
+		receipt, err := json.Marshal(struct {
+			Schema           string `json:"schema"`
+			BaselineTerminal string `json:"baseline_terminal"`
+			Terminal         string `json:"terminal"`
+			BeforeInput      []byte `json:"before_input"`
+			AfterInput       []byte `json:"after_input"`
+		}{"ardents-h3-g9-unknown-invite-v1", "accepted", observed, faultBefore, faultAfter})
+		if err != nil {
+			t.Fatal(err)
+		}
+		recordFinalFault(cell, stateBefore, stateAfter, receipt)
+	} else {
+		recordFinalFault(cell, faultBefore, faultAfter, []byte(observed))
 	}
 	publishFinalWorkerTerminal()
 	stopHostileInviteObservers(t, ctx, compose, fixture.root)
@@ -111,12 +139,14 @@ func TestBlockedEntryFinalHostileDomainCollision(t *testing.T) {
 			t.Fatalf("build G2 product image: %v\n%s", err, output)
 		}
 	}
-	prepareHostileDomainInput(t, fixture, variant)
+	faultBefore, faultAfter := prepareHostileDomainInput(t, fixture, variant)
 	startHostileInviteObservers(t, ctx, compose, fixture.root)
 	started, terminal := time.Now(), hostileDomainTerminals[variant]
 	armFinalWorkerTerminal(terminal)
 	if observed := runHostileInviteImport(t, ctx, compose); observed != terminal {
 		t.Fatalf("G2 %s terminal=%s want=%s", variant, observed, terminal)
+	} else {
+		recordFinalFault(cell, faultBefore, faultAfter, []byte(observed))
 	}
 	publishFinalWorkerTerminal()
 	stopHostileInviteObservers(t, ctx, compose, fixture.root)
@@ -170,7 +200,7 @@ func selectedHostileDomainCell(cell string) (string, string, bool) {
 	return cell, parts[2], err == nil && episode >= 0 && episode < 5 && known
 }
 
-func prepareHostileInviteInput(t *testing.T, fixture blockedEntryFixture, variant string) {
+func prepareHostileInviteInput(t *testing.T, fixture blockedEntryFixture, variant string) ([]byte, []byte) {
 	t.Helper()
 	input := filepath.Join(fixture.root, "input", "endpoint")
 	invitePath := filepath.Join(input, "invite.bin")
@@ -178,11 +208,13 @@ func prepareHostileInviteInput(t *testing.T, fixture blockedEntryFixture, varian
 	if err != nil {
 		t.Fatal(err)
 	}
+	before := bytes.Clone(raw)
 	if variant == "insufficient-time-confidence" {
 		stale := time.Now().Add(-time.Minute)
 		if err := os.Chtimes(filepath.Join(input, "time-confidence"), stale, stale); err != nil {
 			t.Fatal(err)
 		}
+		raw = []byte(stale.UTC().Format(time.RFC3339Nano))
 	} else {
 		raw = hostileInviteMutation(t, raw, variant)
 		writeLiveFile(t, invitePath, raw)
@@ -195,9 +227,10 @@ func prepareHostileInviteInput(t *testing.T, fixture blockedEntryFixture, varian
 		"local_role_state_root": "/run/state/local-roles", "time_confidence_file": "/run/input/time-confidence",
 	}
 	writeLivePlan(t, input, "hostile-import", plan)
+	return before, raw
 }
 
-func prepareHostileDomainInput(t *testing.T, fixture blockedEntryFixture, variant string) {
+func prepareHostileDomainInput(t *testing.T, fixture blockedEntryFixture, variant string) ([]byte, []byte) {
 	t.Helper()
 	input := filepath.Join(fixture.root, "input", "endpoint")
 	invitePath := filepath.Join(input, "invite.bin")
@@ -205,6 +238,7 @@ func prepareHostileDomainInput(t *testing.T, fixture blockedEntryFixture, varian
 	if err != nil {
 		t.Fatal(err)
 	}
+	before := bytes.Clone(raw)
 	if hostileDomainTerminals[variant] == "wrong-domain" {
 		body := hostileInviteBody(t, raw)
 		proof := hostileInviteProofOffset(t, body)
@@ -225,6 +259,10 @@ func prepareHostileDomainInput(t *testing.T, fixture blockedEntryFixture, varian
 		if replaceErr != nil {
 			t.Fatal(replaceErr)
 		}
+		raw, err = os.ReadFile(filepath.Join(input, "local-roles", "current"))
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 	plan := map[string]any{"state_root": "/run/state/bridge", "network_state_root": "/run/state/bridge-network",
 		"invite_file": "/run/input/invite.bin", "network_id": readPlanString(t, filepath.Join(input, "import.json"), "network_id"),
@@ -232,6 +270,7 @@ func prepareHostileDomainInput(t *testing.T, fixture blockedEntryFixture, varian
 		"network_threshold":   1, "network_profile": "h3-role-probe-v1", "route_profile": "h3-route-tracer-v1",
 		"local_role_state_root": "/run/state/local-roles", "time_confidence_file": "/run/input/time-confidence"}
 	writeLivePlan(t, input, "hostile-import", plan)
+	return before, raw
 }
 
 func hostileInviteProofOffset(t *testing.T, body []byte) int {
@@ -269,10 +308,15 @@ func hostileDomainDuty(variant string) (string, string) {
 	}
 }
 
-func runHostileInviteImport(t *testing.T, ctx context.Context, compose composeCall) string {
+func runHostileInviteImport(t *testing.T, ctx context.Context, compose composeCall, plans ...string) string {
 	t.Helper()
-	output, err := compose(ctx, "exec", "-T", "endpoint", "/usr/local/bin/ardents-bridge",
-		"import", "/run/input/hostile-import.json")
+	plan := "/run/input/hostile-import.json"
+	if len(plans) == 1 {
+		plan = plans[0]
+	} else if len(plans) != 0 {
+		t.Fatal("hostile Invite import accepts at most one plan")
+	}
+	output, err := compose(ctx, "exec", "-T", "endpoint", "/usr/local/bin/ardents-bridge", "import", plan)
 	if err != nil {
 		logs, _ := compose(ctx, "logs", "--no-color", "--no-log-prefix", "endpoint", "endpoint-control")
 		t.Fatalf("run hostile Invite import: %v\n%s\n%s", err, output, logs)

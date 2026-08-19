@@ -1,6 +1,8 @@
 package blockedentry
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -51,19 +53,97 @@ type finalRawDNSControl struct {
 }
 
 type finalRawObserverEvidence struct {
-	Schema string                `json:"schema"`
-	CellID string                `json:"cell_id"`
-	Sets   []finalRawObserverSet `json:"sets"`
+	Schema   string                `json:"schema"`
+	CellID   string                `json:"cell_id"`
+	Sets     []finalRawObserverSet `json:"sets"`
+	Exercise *finalFaultExercise   `json:"exercise,omitempty"`
+}
+
+type finalFaultExercise struct {
+	Schema         string `json:"schema"`
+	CellID         string `json:"cell_id"`
+	Group          string `json:"group"`
+	Variant        string `json:"variant"`
+	Episode        string `json:"episode"`
+	InjectionClass string `json:"injection_class"`
+	Subject        string `json:"subject"`
+	BeforeSHA256   string `json:"before_sha256"`
+	AfterSHA256    string `json:"after_sha256"`
+	Relation       string `json:"relation"`
+	ReceiptSHA256  string `json:"receipt_sha256"`
+	Receipt        []byte `json:"receipt"`
+	ActorSHA256    string `json:"actor_sha256"`
+	SeedSHA256     string `json:"seed_sha256"`
+	OffsetMillis   uint64 `json:"offset_millis"`
+	External       bool   `json:"external"`
 }
 
 func admitFinalObserverEvidence(secretRoot string, output cellObservation) (artifactCommitment, error) {
 	var raw finalRawObserverEvidence
 	if err := readFinalHandoffArtifact(secretRoot, "final-observers", output.CellID,
 		output.ObserverEvidence, &raw); err != nil || raw.Schema != "ardents-h3-final-raw-observers-v1" ||
-		raw.CellID != output.CellID || !validFinalRawObserverEvidence(output.CellID, raw.Sets) {
+		raw.CellID != output.CellID || !validFinalRawObserverEvidence(output.CellID, raw.Sets) ||
+		!validFinalFaultExercise(output.CellID, output.Seed, raw.Exercise) {
 		return artifactCommitment{}, errors.New("final cell raw observer evidence is incomplete")
 	}
 	return output.ObserverEvidence, nil
+}
+
+func validFinalFaultExercise(cell, seed string, value *finalFaultExercise) bool {
+	if !strings.HasPrefix(cell, "hostile/") {
+		return value == nil
+	}
+	parts := strings.Split(cell, "/")
+	return value != nil && len(parts) == 4 && value.Schema == "ardents-h3-final-fault-exercise-v4" &&
+		value.CellID == cell && value.Group == parts[1] && value.Variant == parts[2] &&
+		value.Episode == parts[3] && value.Subject == parts[1]+"/"+parts[2] && value.External &&
+		value.OffsetMillis > 0 && validFinalFaultRelation(value) &&
+		validFinalFaultDigest(value.BeforeSHA256) && validFinalFaultDigest(value.AfterSHA256) &&
+		validFinalFaultReceipt(value, parts[1], parts[2]) && validFinalFaultDigest(value.ActorSHA256) &&
+		value.SeedSHA256 == finalFaultSeedDigest(seed) &&
+		finalFaultClass(parts[1]) == value.InjectionClass
+}
+
+func finalFaultSeedDigest(seed string) string {
+	raw, err := hex.DecodeString(seed)
+	if err != nil || len(raw) != 32 {
+		return ""
+	}
+	digest := sha256.Sum256(raw)
+	return hex.EncodeToString(digest[:])
+}
+
+func validFinalFaultRelation(value *finalFaultExercise) bool {
+	if finalFaultRequiresStableState(value.Group, value.Variant) {
+		return value.Relation == "same" && value.BeforeSHA256 == value.AfterSHA256
+	}
+	return value.Relation == "same" && value.BeforeSHA256 == value.AfterSHA256 ||
+		value.Relation == "different" && value.BeforeSHA256 != value.AfterSHA256
+}
+
+func finalFaultRequiresStableState(group, variant string) bool {
+	return group == "G9-ledger-leakage" && variantIn(variant, "unknown-invite-field", "regime-oscillation", "slot1-before-slot0",
+		"retry-before-initial", "duplicate-ordinal", "ledger-reset-restart", "ledger-reset-new-operation")
+}
+
+func validFinalFaultDigest(value string) bool {
+	if len(value) != 64 {
+		return false
+	}
+	for _, digit := range value {
+		if !strings.ContainsRune("0123456789abcdef", digit) {
+			return false
+		}
+	}
+	return true
+}
+
+func finalFaultClass(group string) string {
+	return map[string]string{"G1-invite": "input-mutation", "G2-domain-collision": "state-mutation",
+		"G3-replay-replacement": "state-mutation", "G4-restart": "lifecycle-fault",
+		"G5-adapter-fault": "adapter-fault", "G6-substitution": "binding-substitution",
+		"G7-forbidden-path": "forbidden-path", "G8-lifecycle": "lifecycle-fault",
+		"G9-ledger-leakage": "ledger-mutation"}[group]
 }
 
 func validFinalRawObserverEvidence(cellID string, sets []finalRawObserverSet) bool {

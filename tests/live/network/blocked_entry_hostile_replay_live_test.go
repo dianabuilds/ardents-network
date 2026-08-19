@@ -47,6 +47,10 @@ func TestBlockedEntryFinalHostileReplay(t *testing.T) {
 	}
 	startHostileInviteObservers(t, ctx, compose, fixture.root)
 	started := time.Now()
+	faultBefore, err := os.ReadFile(filepath.Join(fixture.root, "input", "endpoint", "invite.bin"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	if observed := runHostileReplayImport(t, ctx, compose, "/run/input/import.json"); observed != "accepted" {
 		t.Fatalf("G3 initial import terminal=%s want accepted", observed)
 	}
@@ -74,6 +78,13 @@ func TestBlockedEntryFinalHostileReplay(t *testing.T) {
 	armFinalWorkerTerminal(terminal)
 	if observed := runHostileReplayImport(t, ctx, compose, replayPlan); observed != terminal {
 		t.Fatalf("G3 replay terminal=%s want=%s", observed, terminal)
+	} else {
+		faultAfter, readErr := os.ReadFile(filepath.Join(fixture.root, "input", "endpoint",
+			filepath.Base(strings.TrimSuffix(replayPlan, ".json"))+".bin"))
+		if readErr != nil {
+			faultAfter = faultBefore
+		}
+		recordFinalFault(cell, faultBefore, faultAfter, []byte(observed))
 	}
 	publishFinalWorkerTerminal()
 	stopHostileInviteObservers(t, ctx, compose, fixture.root)

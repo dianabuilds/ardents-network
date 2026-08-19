@@ -32,5 +32,6 @@ repeated cleanup, process residue, candidate-state removal, zero candidate DNS,
 and the exact numeric dial target. The script
 removes its network and owned temporary directory on success or failure.
 
-Pressure, traffic/resource time series, and the full C0-C6/hostile campaign
-remain S5.3-S5.5 gates; this command does not claim them.
+Pressure and traffic/resource behavior remain bounded Stage 5 test concerns.
+The complete C0-C6/hostile/long-sustained campaign is an S9.6 qualification
+gate; this command does not claim it.

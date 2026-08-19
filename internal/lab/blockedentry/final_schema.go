@@ -1,31 +1,33 @@
 package blockedentry
 
 type finalSpec struct {
-	Schema           string               `json:"schema"`
-	RepositoryCommit string               `json:"repository_commit"`
-	SourceSHA256     string               `json:"source_sha256"`
-	LinuxImage       string               `json:"linux_image"`
-	ImageSHA256      string               `json:"image_sha256"`
-	ProductImageID   string               `json:"product_image_id"`
-	ToolImageID      string               `json:"tool_image_id"`
-	GoBuilderImageID string               `json:"go_builder_image_id"`
-	GoBuilderVersion string               `json:"go_builder_version"`
-	SupplyLock       artifactCommitment   `json:"supply_lock"`
-	RuntimeCompose   artifactCommitment   `json:"runtime_compose"`
-	ProductReceipt   finalProductReceipt  `json:"product_receipt"`
-	ToolReceipt      finalToolReceipt     `json:"tool_receipt"`
-	Kernel           string               `json:"kernel"`
-	ClientSHA256     string               `json:"client_sha256"`
-	ServerSHA256     string               `json:"server_sha256"`
-	Endpoint         finalHostClass       `json:"endpoint"`
-	ReferenceBridge  finalHostClass       `json:"reference_bridge"`
-	StrongerBridge   finalHostClass       `json:"stronger_bridge"`
-	Collector        finalHostClass       `json:"collector"`
-	Network          finalNetwork         `json:"network"`
-	Clocks           finalClocks          `json:"clocks"`
-	CellOrder        []string             `json:"cell_order"`
-	Seeds            []string             `json:"seeds"`
-	Configurations   []artifactCommitment `json:"configurations"`
+	Schema            string                  `json:"schema"`
+	RepositoryCommit  string                  `json:"repository_commit"`
+	SourceSHA256      string                  `json:"source_sha256"`
+	LinuxImage        string                  `json:"linux_image"`
+	ImageSHA256       string                  `json:"image_sha256"`
+	ProductImageID    string                  `json:"product_image_id"`
+	ToolImageID       string                  `json:"tool_image_id"`
+	GoBuilderImageID  string                  `json:"go_builder_image_id"`
+	GoBuilderVersion  string                  `json:"go_builder_version"`
+	SupplyLock        artifactCommitment      `json:"supply_lock"`
+	RuntimeCompose    artifactCommitment      `json:"runtime_compose"`
+	ProductReceipt    finalProductReceipt     `json:"product_receipt"`
+	ToolReceipt       finalToolReceipt        `json:"tool_receipt"`
+	Kernel            string                  `json:"kernel"`
+	ClientSHA256      string                  `json:"client_sha256"`
+	ServerSHA256      string                  `json:"server_sha256"`
+	Endpoint          finalHostClass          `json:"endpoint"`
+	ReferenceBridge   finalHostClass          `json:"reference_bridge"`
+	StrongerBridge    finalHostClass          `json:"stronger_bridge"`
+	Collector         finalHostClass          `json:"collector"`
+	Network           finalNetwork            `json:"network"`
+	Clocks            finalClocks             `json:"clocks"`
+	CellOrder         []string                `json:"cell_order"`
+	Seeds             []string                `json:"seeds"`
+	MutationCampaigns []finalMutationCampaign `json:"mutation_campaigns"`
+	Configurations    []artifactCommitment    `json:"configurations"`
+	Hosts             []finalObservedHost     `json:"hosts"`
 }
 
 type finalHostClass struct {
@@ -69,18 +71,19 @@ type finalClocks struct {
 }
 
 type finalSummary struct {
-	Schema     string                 `json:"schema"`
-	Cells      []finalCellObservation `json:"cells"`
-	Profiles   []finalProfileResult   `json:"profiles"`
-	Capacity   []finalCapacityBatch   `json:"capacity"`
-	Sustained  []finalSustainedCell   `json:"sustained"`
-	Pressure   []finalPressureCell    `json:"pressure"`
-	Recovery   finalRecovery          `json:"recovery"`
-	Hosts      []finalObservedHost    `json:"hosts"`
-	ImageHash  string                 `json:"image_hash"`
-	ClientHash string                 `json:"client_hash"`
-	ServerHash string                 `json:"server_hash"`
-	Artifacts  []artifactCommitment   `json:"measurement_artifacts"`
+	Schema            string                 `json:"schema"`
+	Cells             []finalCellObservation `json:"cells"`
+	Profiles          []finalProfileResult   `json:"profiles"`
+	Capacity          []finalCapacityBatch   `json:"capacity"`
+	Sustained         []finalSustainedCell   `json:"sustained"`
+	Pressure          []finalPressureCell    `json:"pressure"`
+	Recovery          finalRecovery          `json:"recovery"`
+	Hosts             []finalObservedHost    `json:"hosts"`
+	ImageHash         string                 `json:"image_hash"`
+	ClientHash        string                 `json:"client_hash"`
+	ServerHash        string                 `json:"server_hash"`
+	Artifacts         []artifactCommitment   `json:"measurement_artifacts"`
+	MutationArtifacts []artifactCommitment   `json:"mutation_artifacts"`
 }
 
 type finalCellObservation struct {
@@ -194,6 +197,7 @@ type finalResourceObservation struct {
 }
 
 type finalPressureCell struct {
+	Schema               string                `json:"schema,omitempty"`
 	ID                   string                `json:"id"`
 	Terminal             string                `json:"terminal"`
 	BaselineSockets      uint16                `json:"baseline_sockets"`
@@ -222,7 +226,6 @@ type finalPressureCell struct {
 	UpwardTrend          bool                  `json:"upward_trend"`
 	Reconciliations      []finalReconciliation `json:"reconciliations,omitempty"`
 }
-
 type finalReconciliation struct {
 	Batch                uint16 `json:"batch"`
 	AllocationDelta      int32  `json:"allocation_delta"`
@@ -236,13 +239,4 @@ type finalReconciliation struct {
 	CleanupDescendants   uint16 `json:"cleanup_descendants"`
 	CleanupStateBytes    uint64 `json:"cleanup_state_bytes"`
 	Residuals            uint16 `json:"residuals"`
-}
-
-type finalRecovery struct {
-	Attempts              uint16 `json:"attempts"`
-	ConnectionLoss        uint16 `json:"connection_loss"`
-	LaterStarts           uint16 `json:"later_starts"`
-	Residuals             uint16 `json:"residuals"`
-	AttemptIdentityStable bool   `json:"attempt_identity_stable"`
-	DeadlineStable        bool   `json:"deadline_stable"`
 }

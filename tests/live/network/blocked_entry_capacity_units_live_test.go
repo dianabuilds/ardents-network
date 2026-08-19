@@ -53,6 +53,10 @@ func startBlockedCapacityUnits(t *testing.T, ctx context.Context, project, image
 		}
 		startCapacitySidecar(t, ctx, project, image, unit, "observer")
 		startCapacitySidecar(t, ctx, project, image, unit, "policy")
+		startCapacitySidecar(t, ctx, project, image, unit, "resource-collector")
+		startCapacitySidecar(t, ctx, project, image, unit, "carrier-collector")
+		waitForBlockedHostFile(t, ctx, filepath.Join(unit.sync, "resource-ready"))
+		waitForBlockedHostFile(t, ctx, filepath.Join(unit.sync, "carrier-ready"))
 		createCapacityApplication(t, ctx, project, image, unit)
 		createCapacityService(t, ctx, project, image, fixture, unit, publication)
 		if distinctSeedCell != "" {
@@ -65,6 +69,8 @@ func startBlockedCapacityUnits(t *testing.T, ctx context.Context, project, image
 			finalNetworkBoundary{units[index].endpoint, "203.0.113.8", "20mbit", "40ms", "5ms",
 				fmt.Sprintf("%d", 55200+index)})
 		units[index].released = time.Now()
+		writeLiveFile(t, filepath.Join(units[index].sync, "carrier-start"), []byte("start\n"))
+		waitForBlockedHostFile(t, ctx, filepath.Join(units[index].sync, "carrier-started"))
 		writeLiveFile(t, filepath.Join(units[index].sync, "capacity-start"), []byte("start\n"))
 		if distinctSeedCell != "" {
 			if output, err := dockerOutput(ctx, "start", units[index].publisherApplication); err != nil {

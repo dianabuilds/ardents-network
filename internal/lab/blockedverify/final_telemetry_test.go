@@ -2,6 +2,7 @@ package blockedverify
 
 import (
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"os"
@@ -25,13 +26,79 @@ func TestFinalTelemetryRejectsUnknownOrEmptyFiles(t *testing.T) {
 func TestFinalTelemetryP4RequiresAllOrderedStreams(t *testing.T) {
 	cell := "pressure/P4"
 	valid := fixtureFinalTelemetryIndex(cell)
-	if len(valid) != 60 || !validFinalRawTelemetry(valid, cell) {
+	if len(valid) != 21 || !validFinalRawTelemetry(valid, cell) {
 		t.Fatal("complete P4 telemetry inventory was rejected")
 	}
 	valid[7], valid[8] = valid[8], valid[7]
 	if validFinalRawTelemetry(valid, cell) {
 		t.Fatal("reordered P4 telemetry inventory was accepted")
 	}
+}
+
+func TestFinalTelemetryValidatesWorkerPressureAndRecoveryMeasurements(t *testing.T) {
+	pressure := finalPressureCell{Schema: "ardents-h3-final-pressure-v1", ID: "P2", Terminal: "normal"}
+	recovery := finalRecoveryMeasurement{Schema: "ardents-h3-final-recovery-episode-v1", Episode: 3,
+		ServiceClass: "abrupt connection loss", RecoveryClass: "bridge-deadline-exceeded",
+		Attempt: strings.Repeat("a", 64), ContactStarts: 1, Cleanup: true}
+	files := []finalRawTelemetry{{Kind: "pressure.json", Data: telemetryLines(t, []finalPressureCell{pressure})},
+		{Kind: "recovery.json", Data: telemetryLines(t, []finalRecoveryMeasurement{recovery})}}
+	if !validFinalTelemetryStreams(files) {
+		t.Fatal("valid final worker measurements were rejected")
+	}
+	files[1].Data = telemetryLines(t, []finalRecoveryMeasurement{{Schema: recovery.Schema, Episode: 5}})
+	if validFinalTelemetryStreams(files) {
+		t.Fatal("out-of-range recovery episode was accepted")
+	}
+}
+
+func TestFinalPressureRecomputesAdmissionFromRawInput(t *testing.T) {
+	cellSeed := strings.Repeat("01", 32)
+	outcomes := fixtureFinalAdmissionOffers(t, cellSeed, "offers")
+	input := finalPressureInput{Schema: "ardents-h3-final-pressure-input-v1", Progress: true,
+		Admission: finalAdmissionInput{Schema: "ardents-h3-s5-admission-result-v1",
+			Offers: 100, Refused: 100, MaximumMillis: 250, Outcomes: outcomes}}
+	pressure := finalPressureCell{Schema: "ardents-h3-final-pressure-v1", ID: "P1", Terminal: "normal",
+		Offers: 100, Refused: 100, MaximumRefusalMillis: 250, Progress: true}
+	files := []finalRawTelemetry{
+		{Role: "bridge", Kind: "resource.jsonl", Data: resourceTelemetryLines(t, 1<<20, 3, 2, 2)},
+		{Role: "bridge", Kind: "pressure-input.json", Data: telemetryLines(t, []finalPressureInput{input})},
+		{Role: "bridge", Kind: "pressure.json", Data: telemetryLines(t, []finalPressureCell{pressure})},
+	}
+	if _, ok := finalPressureFromTelemetry(files, "P1", cellSeed); !ok {
+		t.Fatal("valid raw admission basis did not reproduce P1")
+	}
+	pressure.Refused--
+	files[2].Data = telemetryLines(t, []finalPressureCell{pressure})
+	if _, ok := finalPressureFromTelemetry(files, "P1", cellSeed); ok {
+		t.Fatal("changed P1 refusal aggregate was accepted")
+	}
+	pressure.Refused++
+	input.Admission.Outcomes[11].ScheduledOffsetMillis++
+	files[1].Data = telemetryLines(t, []finalPressureInput{input})
+	files[2].Data = telemetryLines(t, []finalPressureCell{pressure})
+	if _, ok := finalPressureFromTelemetry(files, "P1", cellSeed); ok {
+		t.Fatal("changed P1 offer cadence was accepted")
+	}
+}
+
+func fixtureFinalAdmissionOffers(t *testing.T, cellSeed, label string) []finalAdmissionOffer {
+	t.Helper()
+	seed, err := hex.DecodeString(cellSeed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	derived := sha256.Sum256(append(append(append([]byte(nil), seed...), 0), label...))
+	result := make([]finalAdmissionOffer, 100)
+	for index := range result {
+		ordinal := make([]byte, 8)
+		binary.BigEndian.PutUint64(ordinal, uint64(index))
+		canary := sha256.Sum256(append(append([]byte(nil), derived[:]...), ordinal...))
+		digest := sha256.Sum256(canary[:])
+		result[index] = finalAdmissionOffer{Ordinal: uint16(index), CanarySHA256: hex.EncodeToString(digest[:]),
+			ScheduledOffsetMillis: uint32(index * 100), StartedOffsetMillis: uint32(index * 100),
+			RefusalMillis: 250, Refused: true}
+	}
+	return result
 }
 
 func TestLoadFinalTelemetryV2RejectsChangedStream(t *testing.T) {
@@ -94,13 +161,22 @@ func TestFinalTelemetryRejectsMissingOrCoalescedStreamRecords(t *testing.T) {
 }
 
 func TestFinalTelemetryReproducesBridgeHelpersWithoutChargingPublisher(t *testing.T) {
+	carrier := sustainedCarrierSamples(0)
+	for index := range carrier {
+		carrier[index].Bytes = 0
+	}
 	files := []finalRawTelemetry{
 		{Role: "endpoint", Kind: "resource.jsonl", Data: resourceTelemetryLines(t, 3<<20, 7, 3, 5)},
+		{Role: "endpoint", Kind: "tree.jsonl", Data: treeTelemetryLines(t, 601, 0, 0)},
 		{Role: "bridge", Kind: "resource.jsonl", Data: resourceTelemetryLines(t, 1<<20, 3, 1, 2)},
+		{Role: "bridge", Kind: "tree.jsonl", Data: treeTelemetryLines(t, 601, 0, 0)},
+		{Role: "bridge", Kind: "carrier.jsonl", Data: telemetryLines(t, carrier)},
+		{Role: "bridge", Kind: "runtime.jsonl", Data: runtimeTelemetryLines(t)},
 		{Role: "publisher", Kind: "resource.jsonl", Data: resourceTelemetryLines(t, 2<<20, 5, 2, 4)},
 	}
 	want := finalResourceObservation{HelperRSSP95MiB: 1, HelperFDPeak: 3, HelperSocketPeak: 1,
 		ThreadsPeak: 2, AdapterRSSP95MiB: 3, AdapterFDPeak: 7, AdapterSocketPeak: 3,
+		ReservePercent: 100, Samples: 600, SamplesComplete: true,
 		Collected: []string{"endpoint-cpu", "endpoint-rss", "adapter-rss", "adapter-fds", "adapter-sockets",
 			"adapter-state", "bridge-cpu", "bridge-memory", "helper-rss", "helper-fds", "helper-sockets",
 			"swap-oom", "threads", "goroutines", "timers", "queues", "durable-state", "evidence",
@@ -127,16 +203,40 @@ func TestFinalTelemetryRejectsShortSustainedRoleResources(t *testing.T) {
 }
 
 func TestFinalTelemetryResourceP95ExcludesOutsideWindow(t *testing.T) {
+	carrier := sustainedCarrierSamples(0)
+	for index := range carrier {
+		carrier[index].Bytes = 0
+	}
 	files := []finalRawTelemetry{
 		{Role: "endpoint", Kind: "resource.jsonl", Data: windowedResourceTelemetryLines(t, 1<<20)},
+		{Role: "endpoint", Kind: "tree.jsonl", Data: treeTelemetryLines(t, 701, 0, 0)},
 		{Role: "bridge", Kind: "resource.jsonl", Data: windowedResourceTelemetryLines(t, 10<<20)},
+		{Role: "bridge", Kind: "tree.jsonl", Data: treeTelemetryLines(t, 701, 0, 0)},
+		{Role: "bridge", Kind: "carrier.jsonl", Data: telemetryLines(t, carrier)},
+		{Role: "bridge", Kind: "runtime.jsonl", Data: runtimeTelemetryLines(t)},
 		{Role: "publisher", Kind: "resource.jsonl", Data: windowedResourceTelemetryLines(t, 1<<20)},
 	}
 	want := finalResourceObservation{HelperRSSP95MiB: 10, AdapterRSSP95MiB: 1,
+		ReservePercent: 100, Samples: 600, SamplesComplete: true,
 		Collected: requiredResourceObservations()}
 	if !reproducesFinalRoleResources(files, want, 100_000, 700_000) {
 		t.Fatal("active-window p95 did not reproduce with low setup samples")
 	}
+}
+
+func treeTelemetryLines(t *testing.T, count int, cpu float64, rss uint64) []byte {
+	t.Helper()
+	values := make([]finalTreeSample, 0, count)
+	for ordinal := range count {
+		values = append(values, finalTreeSample{Schema: "ardents-h3-tree-resource-v1",
+			Ordinal: uint16(ordinal), OffsetMillis: uint64(ordinal * 1_000), CPUCores: cpu, RSSBytes: rss})
+	}
+	return telemetryLines(t, values)
+}
+
+func runtimeTelemetryLines(t *testing.T) []byte {
+	t.Helper()
+	return telemetryLines(t, []finalBridgeRuntime{{Schema: "ardents-h3-bridge-runtime-v1"}})
 }
 
 func TestFinalCarrierDeltaUsesBeforeAndAfterCounters(t *testing.T) {
@@ -155,6 +255,34 @@ func TestFinalCarrierDeltaRejectsSparseTenMinuteStream(t *testing.T) {
 	if _, ok := finalCarrierDelta([]finalRawTelemetry{{Role: "endpoint", Kind: "carrier.jsonl",
 		Data: telemetryLines(t, carrier)}}, "endpoint", 0, 600_000); ok {
 		t.Fatal("sparse ten-minute carrier stream was accepted")
+	}
+}
+
+func TestFinalCapacityResourcesReproduceEveryEndpointRoot(t *testing.T) {
+	resource := telemetryLines(t, []finalResourceSample{{Schema: "ardents-h3-process-resource-v1", Processes: 2}})
+	tree := treeTelemetryLines(t, 1, 0, 0)
+	files := make([]finalRawTelemetry, 0, 19)
+	for root := range 4 {
+		files = append(files, finalRawTelemetry{Root: uint16(root), Role: "endpoint", Kind: "resource.jsonl", Data: resource},
+			finalRawTelemetry{Root: uint16(root), Role: "endpoint", Kind: "tree.jsonl", Data: tree})
+	}
+	carrier := []finalCarrierSample{{Schema: "ardents-h3-carrier-counter-v1", Boundary: "before"},
+		{Schema: "ardents-h3-carrier-counter-v1", Ordinal: 1, OffsetMillis: 1_000},
+		{Schema: "ardents-h3-carrier-counter-v1", Ordinal: 2, OffsetMillis: 2_000, Boundary: "after"}}
+	files = append(files, finalRawTelemetry{Role: "bridge", Kind: "resource.jsonl", Data: resource},
+		finalRawTelemetry{Role: "bridge", Kind: "tree.jsonl", Data: tree},
+		finalRawTelemetry{Role: "bridge", Kind: "carrier.jsonl", Data: telemetryLines(t, carrier)},
+		finalRawTelemetry{Role: "bridge", Kind: "runtime.jsonl", Data: runtimeTelemetryLines(t)},
+		finalRawTelemetry{Role: "publisher", Kind: "resource.jsonl", Data: resource},
+		finalRawTelemetry{Role: "publisher", Kind: "tree.jsonl", Data: tree})
+	want := finalResourceObservation{ReservePercent: 100, Samples: 6, SamplesComplete: true,
+		Collected: requiredResourceObservations()}
+	if !reproducesFinalCapacityResources(files, want, false) {
+		t.Fatal("valid reference capacity resources were not independently reproduced")
+	}
+	files = files[2:]
+	if reproducesFinalCapacityResources(files, want, false) {
+		t.Fatal("missing capacity Endpoint root was accepted")
 	}
 }
 
@@ -226,20 +354,12 @@ func windowedResourceTelemetryLines(t *testing.T, highRSS uint64) []byte {
 }
 
 func fixtureFinalTelemetryIndex(cell string) []finalRawTelemetry {
-	roots := 1
-	if cell == "pressure/P4" {
-		roots = 10
-	}
-	result := make([]finalRawTelemetry, 0, roots*6)
-	for root := range roots {
-		for _, role := range []string{"endpoint", "bridge", "publisher"} {
-			for _, kind := range []string{"resource.jsonl", "carrier.jsonl"} {
-				index := len(result)
-				result = append(result, finalRawTelemetry{Root: uint16(root), Role: role, Kind: kind,
-					Artifact: artifactCommitment{Path: finalTelemetryStreamPath(cell, index),
-						SHA256: strings.Repeat("a", 64), Bytes: 7}})
-			}
-		}
+	layout := finalTelemetryLayout(cell)
+	result := make([]finalRawTelemetry, 0, len(layout))
+	for index, slot := range layout {
+		result = append(result, finalRawTelemetry{Root: slot.root, Role: slot.role, Kind: slot.kind,
+			Artifact: artifactCommitment{Path: finalTelemetryStreamPath(cell, index),
+				SHA256: strings.Repeat("a", 64), Bytes: 7}})
 	}
 	return result
 }

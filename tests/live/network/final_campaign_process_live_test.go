@@ -110,9 +110,14 @@ func runFinalCellWorker(schedule finalRunnerSchedule, cell, test string,
 	}
 	startedOffset := uint64(time.Since(clockOrigin).Milliseconds())
 	command := exec.CommandContext(ctx, executable, "-test.run", "^"+test+"$", "-test.count=1", "-test.v")
-	command.Env = finalWorkerEnvironment(map[string]string{
+	cellSeed, ok := finalRunnerCellSeed(schedule, cell)
+	if !ok {
+		return nil, errors.New("final worker cell seed is absent from the frozen schedule")
+	}
+	values := map[string]string{
 		"ARDENTS_BLOCKED_CELL_WORKER":                    "1",
 		"ARDENTS_FINAL_CELL":                             cell,
+		"ARDENTS_FINAL_CELL_SEED":                        cellSeed,
 		"ARDENTS_WEBTUNNEL_CLIENT":                       workerClient,
 		"ARDENTS_WEBTUNNEL_SERVER":                       workerServer,
 		"ARDENTS_LIVE_TOOL_IMAGE":                        schedule.ToolImageID,
@@ -121,7 +126,15 @@ func runFinalCellWorker(schedule finalRunnerSchedule, cell, test string,
 		"ARDENTS_FINAL_PROJECT_TOKEN":                    projectToken,
 		"ARDENTS_FINAL_WORKER_ROOT":                      workerRoot,
 		"ARDENTS_FINAL_CAMPAIGN_MONOTONIC_ANCHOR_MILLIS": strconv.FormatInt(campaignAnchor, 10),
-	})
+	}
+	canary, err := finalCandidateCanary(cell, os.Getenv("ARDENTS_BLOCKED_CANARY_FILE"))
+	if err != nil {
+		return nil, err
+	}
+	if canary != "" {
+		values["ARDENTS_FINAL_CANDIDATE_CANARY"] = canary
+	}
+	command.Env = finalWorkerEnvironment(values)
 	results, receipt, err := completeFinalWorkerProcess(command, maximumFinalWorkerStream, clockOrigin,
 		cell, workerRoot, os.Getenv("ARDENTS_BLOCKED_SECRET_ROOT"), func() error {
 			return errors.Join(cleanupFinalWorkerInputs(workerRoot), verifyFinalRuntimeCompose(schedule),
@@ -138,6 +151,18 @@ func runFinalCellWorker(schedule finalRunnerSchedule, cell, test string,
 	terminalOffset := uint64(receipt.At.Milliseconds())
 	completeFinalWorkerEvidence(results, startedOffset, terminalOffset, cleanupOffset)
 	return results, nil
+}
+
+func finalRunnerCellSeed(schedule finalRunnerSchedule, cell string) (string, bool) {
+	if len(schedule.CellOrder) != len(schedule.Seeds) {
+		return "", false
+	}
+	for index, identity := range schedule.CellOrder {
+		if identity == cell {
+			return schedule.Seeds[index], true
+		}
+	}
+	return "", false
 }
 
 func finalCampaignMonotonicAnchor(clockOrigin time.Time) (int64, error) {

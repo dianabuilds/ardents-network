@@ -1,18 +1,19 @@
 package blockedentry
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
 
 func TestFinalPreparationFreezesEveryScheduledCell(t *testing.T) {
 	order := finalCellOrder()
-	if len(order) != 594 {
-		t.Fatalf("final cell order count=%d want=594", len(order))
+	if len(order) != 564 {
+		t.Fatalf("final candidate cell order count=%d want=564", len(order))
 	}
 	if order[0] != "profile/C0/00" || order[109] != "profile/C6/19" ||
 		order[110] != "capacity/h3-s5-b1-v1/0" || order[len(order)-1] !=
-		"hostile/G9-ledger-leakage/pipeline-contamination-certificate/4" {
+		"hostile/G9-ledger-leakage/candidate-leak-certificate/4" {
 		t.Fatalf("final cell order boundaries changed: first=%s profile-end=%s capacity=%s last=%s",
 			order[0], order[109], order[110], order[len(order)-1])
 	}
@@ -25,6 +26,51 @@ func TestFinalPreparationFreezesEveryScheduledCell(t *testing.T) {
 	}
 }
 
+func TestFinalPreparationSeparatesEvidenceIntegrityCampaigns(t *testing.T) {
+	campaigns := finalMutationCampaigns()
+	if len(campaigns) != 6 {
+		t.Fatalf("evidence-integrity campaigns=%d want=6", len(campaigns))
+	}
+	seen := make(map[string]bool)
+	for _, campaign := range campaigns {
+		if campaign.ID == "" || campaign.ExpectedVerdict != "invalid" || len(campaign.CellOrder) != 5 {
+			t.Fatalf("invalid evidence-integrity campaign: %+v", campaign)
+		}
+		for _, cell := range campaign.CellOrder {
+			if seen[cell] || finalCellIndex(cell) >= 0 {
+				t.Fatalf("mutation cell is duplicated or present in candidate order: %s", cell)
+			}
+			seen[cell] = true
+		}
+	}
+	if len(seen) != 30 {
+		t.Fatalf("evidence-integrity episodes=%d want=30", len(seen))
+	}
+}
+
+func TestFinalSuiteOrderRejectsSeedReuseAcrossCampaigns(t *testing.T) {
+	value := finalSpec{CellOrder: finalCellOrder(), MutationCampaigns: finalMutationCampaigns()}
+	seed := 1
+	for range value.CellOrder {
+		value.Seeds = append(value.Seeds, fmt.Sprintf("%064x", seed))
+		seed++
+	}
+	for index := range value.MutationCampaigns {
+		for range value.MutationCampaigns[index].CellOrder {
+			value.MutationCampaigns[index].Seeds = append(value.MutationCampaigns[index].Seeds,
+				fmt.Sprintf("%064x", seed))
+			seed++
+		}
+	}
+	if !validFinalSuiteOrder(value) {
+		t.Fatal("valid final suite order rejected")
+	}
+	value.MutationCampaigns[0].Seeds[0] = value.Seeds[0]
+	if validFinalSuiteOrder(value) {
+		t.Fatal("cross-campaign seed reuse accepted")
+	}
+}
+
 func TestExactFinalSpecUsesAcceptedProfiles(t *testing.T) {
 	config := Config{LinuxImage: "ubuntu:24.04", ImageSHA256: "image", Kernel: "kernel",
 		ProductImageID:   "sha256:" + strings.Repeat("a", 64),
@@ -34,7 +80,7 @@ func TestExactFinalSpecUsesAcceptedProfiles(t *testing.T) {
 	lock := artifactCommitment{Path: finalSupplyLockPath, SHA256: strings.Repeat("e", 64), Bytes: 10}
 	product := finalProductReceipt{SourceSHA256: "source"}
 	tool := finalToolReceipt{BaseDigest: finalImageHash}
-	value := exactFinalSpec("commit", "source", config, "client", "server", nil, compose, lock, product, tool)
+	value := exactFinalSpec("commit", "source", config, "client", "server", nil, compose, lock, product, tool, nil)
 	if value.ReferenceBridge.ID != "h3-s5-b1-v1" || value.ReferenceBridge.VCPU != 2 ||
 		value.ReferenceBridge.MemoryMiB != 2_048 || value.ReferenceBridge.HelperSockets != 32 ||
 		value.StrongerBridge.ID != "h3-s5-b1-v1-strong" || value.StrongerBridge.VCPU != 8 ||

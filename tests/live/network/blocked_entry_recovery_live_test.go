@@ -63,8 +63,14 @@ func TestBlockedEntryRecoveryParentCommandsAcrossNamespaces(t *testing.T) {
 			started := time.Now()
 			bindFinalFixtureSeed(t, fixture, cell, "recovery-stream")
 			armFinalWorkerTerminal(terminal)
-			runBlockedRecoveryEpisode(t, repository, image, fixture, episode)
-			emitFinalWorkerCell(t, cell, terminal, started, fixture.root)
+			measurement := runBlockedRecoveryEpisode(t, repository, image, fixture, episode)
+			if cell == fmt.Sprintf("recovery/%d", episode) {
+				emitFinalWorkerRecovery(t, cell, terminal, started, measurement, fixture.root)
+			} else {
+				recordFinalFault(cell, []byte("published-contact"), []byte("cancelled-parent"),
+					[]byte(terminal))
+				emitFinalWorkerCell(t, cell, terminal, started, fixture.root)
+			}
 		})
 	}
 }
@@ -85,7 +91,9 @@ func selectedRecoveryFinalCell(episode int) (string, string, bool) {
 	return "", "", false
 }
 
-func runBlockedRecoveryEpisode(t *testing.T, repository, image string, fixture blockedEntryFixture, episode int) {
+func runBlockedRecoveryEpisode(t *testing.T, repository, image string, fixture blockedEntryFixture,
+	episode int,
+) finalWorkerRecovery {
 	t.Helper()
 	project := finalProjectName(fmt.Sprintf("ardents-s53-recovery-%d-%d", episode, time.Now().UnixNano()))
 	compose := blockedCompose(repository, project, image, fixture, "recovery")
@@ -156,10 +164,16 @@ func runBlockedRecoveryEpisode(t *testing.T, repository, image string, fixture b
 	lastByte := time.Unix(0, progress.AtUnixNano)
 	writeLivePlan(t, filepath.Join(fixture.root, "sync", "recovery-endpoint"), "recovery-cutoff",
 		blockedRecoveryCutoff{LastByte: lastByte})
+	var recovery struct {
+		Kind, Class   string
+		Attempt       string `json:"attempt"`
+		ContactStarts uint16 `json:"contact_starts"`
+		LaterOrdinals uint16 `json:"later_ordinals"`
+		Cleanup       bool   `json:"cleanup"`
+	}
 	waitForBlockedJSON(t, ctx, compose, "recovery-endpoint", func(line []byte) bool {
-		var value struct{ Kind, Class string }
-		return json.Unmarshal(line, &value) == nil && value.Kind == "recovery-result" &&
-			value.Class == "bridge-deadline-exceeded"
+		return json.Unmarshal(line, &recovery) == nil && recovery.Kind == "recovery-result" &&
+			recovery.Class == "bridge-deadline-exceeded"
 	})
 	if time.Since(lastByte) > 14*time.Second {
 		t.Fatal("recovery command cleanup missed +14s")
@@ -194,4 +208,8 @@ func runBlockedRecoveryEpisode(t *testing.T, repository, image string, fixture b
 		waitBlockedContainer(t, ctx, compose, service)
 	}
 	cleanup()
+	return finalWorkerRecovery{Episode: uint16(episode), ServiceClass: result.Class, RecoveryClass: recovery.Class,
+		Attempt: recovery.Attempt, ContactStarts: recovery.ContactStarts, LaterOrdinals: recovery.LaterOrdinals,
+		Cleanup: recovery.Cleanup, PublishedDelayMillis: uint32(publishedAt.Sub(lastByte).Milliseconds()),
+		ApplicationDelayMillis: uint32(applicationAt.Sub(lastByte).Milliseconds())}
 }

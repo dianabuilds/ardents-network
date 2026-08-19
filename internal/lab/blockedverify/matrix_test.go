@@ -21,7 +21,9 @@ func TestIndependentTerminalContractUsesAcceptedVocabulary(t *testing.T) {
 		"G1-invite/malformed":                             "invalid",
 		"G2-domain-collision/unknown-domain":              "wrong-domain",
 		"G3-replay-replacement/retired-replay":            "replay",
+		"G4-restart/after-import":                         "success",
 		"G4-restart/after-exposure-0":                     "bridge-interrupted",
+		"G4-restart/after-terminal-record":                "opened",
 		"G5-adapter-fault/malformed-pt-control":           "bridge-attempt-exhausted",
 		"G6-substitution/target":                          "bridge-local-denial",
 		"G7-forbidden-path/deadline-exposure-reset":       "bridge-deadline-exceeded",
@@ -62,7 +64,7 @@ func independentEvidenceOnlyVariant(group, variant string) bool {
 
 func independentAcceptedTerminals() map[string]bool {
 	return map[string]bool{
-		"accepted": true, "already-present": true, "invalid": true, "incompatible": true,
+		"accepted": true, "success": true, "opened": true, "already-present": true, "invalid": true, "incompatible": true,
 		"wrong-domain": true, "conflicting-role": true, "set-full": true,
 		"replacement-rejected": true, "expired": true, "replay": true,
 		"bridge-not-configured": true, "bridge-ineligible": true,

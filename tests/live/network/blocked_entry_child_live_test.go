@@ -105,6 +105,16 @@ func TestBlockedEntryRole(t *testing.T) {
 		runBlockedFaultOne(t)
 	case "recovery-endpoint":
 		runBlockedRecoveryParent(t)
+	case "hostile-ledger":
+		runBlockedHostileLedger(t)
+	case "hostile-contract":
+		runBlockedHostileContract(t)
+	case "hostile-lifecycle":
+		runBlockedHostileLifecycle(t)
+	case "hostile-bridge-restart":
+		runBlockedBridgeRestartProcess(t)
+	case "hostile-g4-phase":
+		runBlockedG4PhaseProcess(t)
 	case "pressure":
 		runBlockedPressure(t)
 	case "capacity-probe":

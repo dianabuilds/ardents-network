@@ -78,6 +78,20 @@ func verifyFinalTelemetryAggregates(root string, summary *finalSummary) []string
 			return []string{"final sustained carrier ratios do not reproduce raw telemetry"}
 		}
 	}
+	for _, capacity := range summary.Capacity {
+		cell, ok := byID[fmt.Sprintf("capacity/%s/%d", capacity.Profile, capacity.Batch)]
+		if !ok {
+			return []string{"final capacity telemetry cell is missing"}
+		}
+		raw, reason := loadFinalRawTelemetry(root, cell)
+		if reason != "" || !reproducesFinalCapacityResources(raw.Files, capacity.Resources,
+			capacity.Profile == "h3-s5-b1-v1-strong") {
+			return []string{"final capacity resource telemetry does not reproduce its aggregate"}
+		}
+	}
+	if !reproduceFinalPressureRecovery(root, byID, summary.Pressure, summary.Recovery) {
+		return []string{"final pressure or recovery telemetry does not reproduce its aggregate"}
+	}
 	return nil
 }
 
@@ -148,18 +162,13 @@ func finalTelemetryEvidencePath(cell string) string {
 }
 
 func validFinalRawTelemetry(files []finalRawTelemetry, cell string) bool {
-	roots := 1
-	if cell == "pressure/P4" {
-		roots = 10
-	}
-	if len(files) != roots*6 {
+	wanted := finalTelemetryLayout(cell)
+	if len(files) != len(wanted) {
 		return false
 	}
 	for index, file := range files {
-		root := index / 6
-		role := []string{"endpoint", "bridge", "publisher"}[(index%6)/2]
-		kind := []string{"resource.jsonl", "carrier.jsonl"}[index%2]
-		if file.Root != uint16(root) || file.Role != role || file.Kind != kind ||
+		expected := wanted[index]
+		if file.Root != expected.root || file.Role != expected.role || file.Kind != expected.kind ||
 			file.Artifact.Path != finalTelemetryStreamPath(cell, index) || file.Artifact.Bytes < 1 ||
 			file.Artifact.Bytes > maximumFinalTelemetryBytes || !isHexDigest(file.Artifact.SHA256, 32) {
 			return false

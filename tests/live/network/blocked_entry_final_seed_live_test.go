@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -91,6 +92,18 @@ func bindFinalProbeSeed(t *testing.T, fixture blockedEntryFixture, cell, label s
 
 func finalDerivedCellSeed(t *testing.T, cell, label string) ([32]byte, bool) {
 	t.Helper()
+	if encoded := os.Getenv("ARDENTS_FINAL_CELL_SEED"); encoded != "" {
+		if selected := os.Getenv("ARDENTS_FINAL_CELL"); selected != cell {
+			t.Fatalf("final worker seed cell=%q want=%q", selected, cell)
+		}
+		seed, err := hex.DecodeString(encoded)
+		if err != nil || len(seed) != 32 {
+			t.Fatalf("final worker cell seed is invalid: %v", err)
+		}
+		var fixed [32]byte
+		copy(fixed[:], seed)
+		return finalSeedDigest(fixed, label), true
+	}
 	path := os.Getenv("ARDENTS_BLOCKED_CAMPAIGN_SPEC")
 	if path == "" {
 		return [32]byte{}, false
@@ -153,5 +166,15 @@ func TestFinalDerivedCellSeedBindsCellSeedAndPurpose(t *testing.T) {
 	unit1 := finalCapacityUnitSeed(t, "profile/C1/00", "pressure", 1)
 	if unit0 == unit1 || unit0 == workload || unit1 == workload {
 		t.Fatalf("capacity-unit streams are not independently derived: %x %x", unit0, unit1)
+	}
+}
+
+func TestFinalWorkerSeedIsBoundWithoutSecretSpecPath(t *testing.T) {
+	t.Setenv("ARDENTS_FINAL_CELL", "profile/C1/00")
+	t.Setenv("ARDENTS_FINAL_CELL_SEED", strings.Repeat("ab", 32))
+	first, ok := finalDerivedCellSeed(t, "profile/C1/00", "first")
+	second, secondOK := finalDerivedCellSeed(t, "profile/C1/00", "second")
+	if !ok || !secondOK || first == second {
+		t.Fatalf("worker seeds are not purpose separated: %x %x", first, second)
 	}
 }

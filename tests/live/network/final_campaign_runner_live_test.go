@@ -28,6 +28,14 @@ func runFinalCampaignRunner() int {
 			closed := finalRunnerClosed{Schema: "ardents-h3-blocked-campaign-closed-v1"}
 			if len(cached) == len(schedule.CellOrder) {
 				closed.FinalSummary = finalRunnerSummaryFromWorkers(schedule, cached)
+				if closed.FinalSummary != nil {
+					hosts, hostErr := finalCampaignHostAllocation(schedule.Hosts)
+					if hostErr != nil {
+						fmt.Fprintln(os.Stderr, "final runner:", hostErr)
+						return 1
+					}
+					closed.FinalSummary.Hosts = hosts
+				}
 			}
 			if encoder.Encode(closed) != nil {
 				return 1
@@ -74,7 +82,7 @@ func loadFinalRunnerSchedule(path string) (finalRunnerSchedule, error) {
 	decoder := json.NewDecoder(io.LimitReader(input, 4<<20))
 	var schedule finalRunnerSchedule
 	if err := decoder.Decode(&schedule); err != nil || decoder.Decode(&struct{}{}) != io.EOF ||
-		!validFinalRunnerSupplyIdentity(schedule) || len(schedule.CellOrder) != 594 ||
+		!validFinalRunnerSupplyIdentity(schedule) || len(schedule.CellOrder) != 564 ||
 		len(schedule.Seeds) != len(schedule.CellOrder) {
 		return finalRunnerSchedule{}, errors.New("frozen cell schedule is invalid")
 	}
@@ -156,7 +164,7 @@ func finalWorkerTest(cell string) string {
 		return "TestBlockedEntryCommandsAcrossNamespaces"
 	case strings.HasPrefix(cell, "profile/C3/"), strings.HasPrefix(cell, "profile/C4/"):
 		return "TestBlockedEntryNegativeCommandsAcrossNamespaces"
-	case strings.HasPrefix(cell, "hostile/G5-adapter-fault/accept-then-stall/"):
+	case strings.HasPrefix(cell, "hostile/G5-adapter-fault/"):
 		return "TestBlockedEntryNegativeCommandsAcrossNamespaces"
 	case strings.HasPrefix(cell, "capacity/"):
 		return "TestBlockedEntryFinalReferenceAndStrongCapacity"
@@ -172,6 +180,10 @@ func finalWorkerTest(cell string) string {
 		return "TestBlockedEntryRecoveryParentCommandsAcrossNamespaces"
 	case strings.HasPrefix(cell, "hostile/G8-lifecycle/cancellation/"):
 		return "TestBlockedEntryRecoveryParentCommandsAcrossNamespaces"
+	case strings.HasPrefix(cell, "hostile/G8-lifecycle/expiry-revocation/"),
+		strings.HasPrefix(cell, "hostile/G8-lifecycle/clock-discontinuity/"),
+		strings.HasPrefix(cell, "hostile/G8-lifecycle/residual-injection/"):
+		return "TestBlockedEntryFinalHostileLifecycle"
 	case strings.HasPrefix(cell, "hostile/G1-invite/"):
 		return "TestBlockedEntryFinalHostileInviteValidation"
 	case strings.HasPrefix(cell, "hostile/G2-domain-collision/"):
@@ -185,15 +197,20 @@ func finalWorkerTest(cell string) string {
 		strings.HasPrefix(cell, "hostile/G3-replay-replacement/full-set/"),
 		strings.HasPrefix(cell, "hostile/G3-replay-replacement/cross-slot-replacement/"):
 		return "TestBlockedEntryFinalHostileReplay"
-	case strings.HasPrefix(cell, "hostile/G4-restart/after-regime-publication/"),
-		strings.HasPrefix(cell, "hostile/G4-restart/after-exposure-0/"),
-		strings.HasPrefix(cell, "hostile/G8-lifecycle/endpoint-restart/"):
+	case strings.HasPrefix(cell, "hostile/G4-restart/"),
+		strings.HasPrefix(cell, "hostile/G8-lifecycle/endpoint-restart/"),
+		strings.HasPrefix(cell, "hostile/G8-lifecycle/bridge-restart/"):
 		return "TestBlockedEntryFinalHostileRestart"
 	case strings.HasPrefix(cell, "hostile/G6-substitution/network/"),
 		strings.HasPrefix(cell, "hostile/G6-substitution/route-profile/"):
 		return "TestBlockedEntryFinalHostileInviteValidation"
+	case strings.HasPrefix(cell, "hostile/G6-substitution/"),
+		strings.HasPrefix(cell, "hostile/G7-forbidden-path/"):
+		return "TestBlockedEntryFinalHostileBindingAndPath"
 	case strings.HasPrefix(cell, "hostile/G9-ledger-leakage/unknown-invite-field/"):
 		return "TestBlockedEntryFinalHostileInviteValidation"
+	case strings.HasPrefix(cell, "hostile/G9-ledger-leakage/"):
+		return "TestBlockedEntryFinalHostileLedger"
 	default:
 		return ""
 	}

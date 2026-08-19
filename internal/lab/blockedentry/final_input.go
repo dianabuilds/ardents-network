@@ -34,8 +34,8 @@ func freezeCampaignSpec(config Config, secretRoot string) (Config, *finalSpec, e
 	if err := decodeCanonical(target, &value); err != nil {
 		return Config{}, nil, err
 	}
-	if value.Schema != "ardents-h3-s5-final-spec-v1" || len(value.CellOrder) == 0 ||
-		len(value.Seeds) != len(value.CellOrder) || len(value.Configurations) != len(finalConfigurationPaths) {
+	if value.Schema != "ardents-h3-s5-final-spec-v1" || !validFinalSuiteOrder(value) ||
+		len(value.Configurations) != len(finalConfigurationPaths) || !validFinalHostAllocation(value.Hosts) {
 		return Config{}, nil, errors.New("final campaign specification is incomplete")
 	}
 	if !imageID(value.ProductImageID) || !imageID(value.ToolImageID) || !imageID(value.GoBuilderImageID) ||

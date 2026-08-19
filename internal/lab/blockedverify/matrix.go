@@ -74,6 +74,23 @@ func expectedEventSequence() []eventExpectation {
 	return result
 }
 
+func expectedFinalEventSequence() []eventExpectation {
+	result := make([]eventExpectation, 0, 420)
+	for _, value := range expectedEventSequence() {
+		if !finalEvidenceMutationVariant(value.group, value.variant) {
+			result = append(result, value)
+		}
+	}
+	return result
+}
+
+func finalEvidenceMutationVariant(group, variant string) bool {
+	return group == "G8-lifecycle" && variantIn(variant, "collector-loss", "blocker-loss") ||
+		group == "G9-ledger-leakage" && variantIn(variant, "pipeline-contamination-invite",
+			"pipeline-contamination-address", "pipeline-contamination-path",
+			"pipeline-contamination-certificate")
+}
+
 func expectedTerminal(group, variant string) string {
 	switch group {
 	case "G1-invite":
@@ -102,6 +119,12 @@ func expectedTerminal(group, variant string) string {
 			return "replacement-rejected"
 		}
 	case "G4-restart":
+		if variant == "after-import" {
+			return "success"
+		}
+		if variant == "after-terminal-record" {
+			return "opened"
+		}
 		return "bridge-interrupted"
 	case "G5-adapter-fault":
 		if variant == "evidence-write-exhaustion" {

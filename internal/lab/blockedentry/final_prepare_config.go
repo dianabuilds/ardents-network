@@ -40,6 +40,7 @@ func freezePreparationConfigurations(sourceRoot, outputRoot string) ([]artifactC
 func exactFinalSpec(commit, sourceHash string, config Config, clientHash, serverHash string,
 	configurations []artifactCommitment, runtimeCompose artifactCommitment,
 	supplyLock artifactCommitment, productReceipt finalProductReceipt, toolReceipt finalToolReceipt,
+	hosts []finalObservedHost,
 ) finalSpec {
 	common := func(id string, vcpu uint16, memory uint32, down, up uint16) finalHostClass {
 		return finalHostClass{ID: id, OperatingSystem: "ubuntu-lts", Architecture: "x86-64",
@@ -71,7 +72,8 @@ func exactFinalSpec(commit, sourceHash string, config Config, clientHash, server
 		Clocks: finalClocks{OrdinaryBlockedMillis: 3_000, TransitionMillis: 2_000,
 			AttemptMillis: 64_000, ContactMillis: 15_000, StartupMillis: 5_000,
 			InterContactMillis: 1_000, AdapterCleanupMillis: 6_000, CellCleanupMillis: 15_000},
-		CellOrder: finalCellOrder(), Configurations: configurations}
+		CellOrder: finalCellOrder(), MutationCampaigns: finalMutationCampaigns(), Configurations: configurations,
+		Hosts: hosts}
 }
 
 func ensureParent(path string) error { return os.MkdirAll(filepath.Dir(path), 0o700) }

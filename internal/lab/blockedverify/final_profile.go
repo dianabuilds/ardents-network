@@ -3,6 +3,7 @@ package blockedverify
 import (
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 const (
@@ -85,7 +86,9 @@ func verifyFinalHosts(values []finalObservedHost) []string {
 		for _, allocation := range value.Allocations {
 			if allocation.ID == "" || observed[allocation.ID].ID != "" || allocation.ProcessNamespace == "" ||
 				allocation.NetworkNamespace == "" || processNamespaces[allocation.ProcessNamespace] ||
-				networkNamespaces[allocation.NetworkNamespace] {
+				networkNamespaces[allocation.NetworkNamespace] ||
+				strings.HasPrefix(allocation.ProcessNamespace, "allocation:") ||
+				strings.HasPrefix(allocation.NetworkNamespace, "allocation:") {
 				return []string{"final campaign role allocation or namespace identity is ambiguous"}
 			}
 			observed[allocation.ID] = allocation
@@ -96,6 +99,9 @@ func verifyFinalHosts(values []finalObservedHost) []string {
 		}
 		if hostCPU != value.AllocatedVCPU || hostMemory != value.AllocatedMemoryMiB {
 			return []string{"final campaign host allocation does not reconcile to its roles"}
+		}
+		if !validFinalRuntimeHost(value) {
+			return []string{"final campaign runtime host attestation is missing or invalid"}
 		}
 	}
 	wanted := expectedFinalAllocations()

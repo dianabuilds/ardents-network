@@ -12,6 +12,7 @@ type Config struct {
 	ClientPath         string
 	ServerPath         string
 	CampaignSpecPath   string
+	HostAllocationPath string
 	RuntimeComposePath string
 	PreparationRoot    string
 	ConfigurationRoot  string

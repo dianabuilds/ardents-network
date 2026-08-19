@@ -38,19 +38,21 @@ func TestFinalRunnerDispatchesMaintainedCellWorkers(t *testing.T) {
 		"hostile/G3-replay-replacement/full-set/0":                        "TestBlockedEntryFinalHostileReplay",
 		"hostile/G3-replay-replacement/cross-slot-replacement/0":          "TestBlockedEntryFinalHostileReplay",
 		"hostile/G4-restart/after-regime-publication/0":                   "TestBlockedEntryFinalHostileRestart",
+		"hostile/G4-restart/after-import/0":                               "TestBlockedEntryFinalHostileRestart",
 		"hostile/G4-restart/after-exposure-0/0":                           "TestBlockedEntryFinalHostileRestart",
 		"hostile/G5-adapter-fault/accept-then-stall/0":                    "TestBlockedEntryNegativeCommandsAcrossNamespaces",
 		"hostile/G8-lifecycle/endpoint-restart/0":                         "TestBlockedEntryFinalHostileRestart",
 		"hostile/G6-substitution/network/0":                               "TestBlockedEntryFinalHostileInviteValidation",
 		"hostile/G6-substitution/route-profile/0":                         "TestBlockedEntryFinalHostileInviteValidation",
 		"hostile/G9-ledger-leakage/unknown-invite-field/0":                "TestBlockedEntryFinalHostileInviteValidation",
+		"hostile/G9-ledger-leakage/duplicate-ordinal/0":                   "TestBlockedEntryFinalHostileLedger",
 	}
 	for cell, want := range cases {
 		if got := finalWorkerTest(cell); got != want {
 			t.Fatalf("worker for %s=%q want %q", cell, got, want)
 		}
 	}
-	if got := finalWorkerTest("hostile/G4-restart/after-import/0"); got != "" {
+	if got := finalWorkerTest("hostile/G8-lifecycle/collector-loss/0"); got != "" {
 		t.Fatalf("unimplemented later hostile group was silently dispatched to %q", got)
 	}
 }

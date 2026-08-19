@@ -61,9 +61,12 @@ func TestFinalWorkerHandoffPublishesTelemetryBeyondAggregateControlBound(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	payload := bytes.Repeat([]byte("x"), 300<<10)
+	payload := bytes.Repeat([]byte("x"), 900<<10)
 	cellID := "pressure/P4"
 	telemetry := fixtureFinalRawTelemetry(cellID, payload)
+	if len(telemetry)*len(payload) <= maximumFinalHandoffArtifact {
+		t.Fatal("fixture does not exceed the aggregate control bound")
+	}
 	if err := writeFinalWorkerHandoff(root, cellID, []finalRawObserverSet{{}}, telemetry); err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +97,7 @@ func TestFinalCampaignControlStreamFitsAllCellsWithoutRawEvidence(t *testing.T) 
 		}
 	}
 	if stream.Len() >= 16<<20 {
-		t.Fatalf("594-cell control stream exceeds campaign bound: %d", stream.Len())
+		t.Fatalf("594-episode control stream exceeds campaign bound: %d", stream.Len())
 	}
 }
 
@@ -162,18 +165,11 @@ func TestFinalWorkerHandoffRejectsSymlinkedArtifact(t *testing.T) {
 }
 
 func fixtureFinalRawTelemetry(cell string, payload []byte) []finalRawTelemetry {
-	roots := 1
-	if cell == "pressure/P4" {
-		roots = 10
-	}
-	result := make([]finalRawTelemetry, 0, roots*6)
-	for root := range roots {
-		for _, role := range []string{"endpoint", "bridge", "publisher"} {
-			for _, kind := range []string{"resource.jsonl", "carrier.jsonl"} {
-				result = append(result, finalRawTelemetry{Root: uint16(root), Role: role,
-					Kind: kind, Data: payload})
-			}
-		}
+	layout := finalWorkerTelemetryLayout(cell)
+	result := make([]finalRawTelemetry, 0, len(layout))
+	for _, stream := range layout {
+		result = append(result, finalRawTelemetry{Root: stream.root, Role: stream.role,
+			Kind: stream.kind, Data: payload})
 	}
 	return result
 }

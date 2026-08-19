@@ -24,6 +24,7 @@ func run(arguments []string) int {
 	client := flags.String("client", "", "pinned WebTunnel client")
 	server := flags.String("server", "", "pinned WebTunnel server")
 	campaignSpec := flags.String("campaign-spec", "", "canonical frozen S5.5 campaign specification")
+	hostAllocation := flags.String("host-allocation", "", "canonical qualifying-stand allocation record")
 	prepareRoot := flags.String("prepare-final-root", "", "new external root for a frozen S5.5 specification")
 	configurationRoot := flags.String("configuration-root", "", "private S5.5 configuration input root")
 	linuxImage := flags.String("linux-image", "", "pinned Ubuntu LTS image identity")
@@ -38,7 +39,7 @@ func run(arguments []string) int {
 		prepared, err := blockedentry.Run(blockedentry.Config{WorkspaceRoot: *workspace,
 			PreparationRoot: *prepareRoot, ConfigurationRoot: *configurationRoot, LinuxImage: *linuxImage,
 			ImageSHA256: *imageHash, ToolImageID: *toolImage, GoBuilderImageID: *goBuilder,
-			Kernel: *kernel, ClientPath: *client, ServerPath: *server})
+			Kernel: *kernel, ClientPath: *client, ServerPath: *server, HostAllocationPath: *hostAllocation})
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "blocked-entry-lab:", err)
 			return 1

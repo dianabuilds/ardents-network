@@ -15,7 +15,11 @@ func collectFinalPrelude(ctx context.Context, encoder *json.Encoder, decoder *js
 ) ([]finalCellObservation, error) {
 	hostileCount := 0
 	for _, group := range hostileMatrix() {
-		hostileCount += len(group.Variants) * 5
+		for _, variant := range group.Variants {
+			if !finalEvidenceMutationVariant(group.ID, variant) {
+				hostileCount += 5
+			}
+		}
 	}
 	limit := len(spec.CellOrder) - hostileCount
 	if limit <= 0 || len(spec.Seeds) != len(spec.CellOrder) {

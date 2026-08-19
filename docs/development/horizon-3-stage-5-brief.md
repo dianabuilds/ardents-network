@@ -1,6 +1,7 @@
 # Horizon 3 Stage 5 implementation brief
 
-Status: **accepted by the Product Owner on 2026-08-16; S5.1-S5.5 authorized in order**
+Status: **accepted by the Product Owner on 2026-08-16; maintained Stage 5
+development completed on 2026-08-19; final qualification deferred to S9.6**
 
 Authoritative inputs: accepted ADR-0005, ADR-0009, ADR-0012, R-009, R-023,
 R-028, R-032 through R-038, the product contract, threat model, operating
@@ -23,13 +24,12 @@ The Stage 4 local development topology, real Route roles, exact-Target Service
 Connection, recovery, resource behavior, and Application byte stream are the
 unchanged base.
 
-Stage 5 has two completion levels:
-
-- **maintained development complete:** S5.1-S5.4 pass unit, command E2E, and
-  bounded short Docker cells; and
-- **local Stage 5 evidence complete:** S5.5 additionally passes the complete
-  accepted `h3-s5-b1-v1` reference/stronger, sustained, pressure, hostile, and
-  cleanup campaign through the independent verifier.
+Stage 5 has one development completion level. S5.1-S5.5 must establish the
+maintained product behavior, bounded negative/resource/lifecycle checks,
+independent-verifier seam, and the frozen `h3-s5-b1-v1` qualification contract.
+The complete reference/stronger, sustained, pressure, hostile, recovery, and
+cleanup campaign is not a Stage 5 completion condition. It runs once against
+the cleaned integrated H3 candidate in S9.6.
 
 Neither level is Ubuntu/Windows product qualification, public Bridge supply,
 real-censor validation, anonymity, invisibility, independence, or production
@@ -376,24 +376,35 @@ same Route/Target or fail exactly; all forbidden paths remain zero.
 Exit: command E2E proves `pass|fail|invalid` recomputation, mutation coverage,
 fail-closed missing/ambiguous evidence, and zero owned residue.
 
-### S5.5 — Capacity, sustained, pressure, and final local campaign
+### S5.5 — Bounded resource evidence and qualification handoff
 
-- run five four-unit reference batches plus bounded fifth refusal;
-- run five 16-unit stronger batches plus seventeenth refusal under the exact
-  stronger host/cgroup/link profile;
-- run five ten-minute sustained transfers per direction, fifty ordered windows
-  per cell, paired direct baselines, endpoint carrier ratios, and all R-023
-  invalidation rules;
-- run P0-P4 with exact six-socket baseline, offered counts, PROTECT hysteresis,
-  emergency DRAIN/EXIT, refusal churn, and established-work progress;
-- execute the complete C0-C6 and nine-group manifest, independent verifier,
-  repeated shutdown, final external cleanup, and evidence retention; and
-- update R-037 findings/disposition with immutable run, manifest, summary,
-  verifier, image, binary, source, and evidence hashes.
+- implement bounded behavior tests for capacity admission/refusal, sustained
+  cadence and active-window aggregation, pressure transitions, process
+  lifecycle, cleanup, immutable file handoff, and campaign-monotonic clocks;
+- keep the harness/verifier split fail-closed and prove `pass|fail|invalid`,
+  mutation, replay, missing-evidence, and residue behavior at their declared
+  command and Module Interfaces;
+- freeze the complete `h3-s5-b1-v1` evidence suite: one `564`-cell candidate
+  campaign plus six independently verified five-episode evidence-integrity
+  campaigns, resource/evidence schema,
+  stand reservation inputs, the required runtime-attestation shape,
+  supply-lock requirements, and independent-verdict rules without
+  weakening any R-037 threshold;
+- implement every scheduled worker and the complete capacity, recovery,
+  telemetry, hostile-binding, and raw-to-verdict reduction path so a frozen
+  campaign can run without an unimplemented product-cell branch; the collector
+  that derives runtime CPU-set/cgroup/network-namespace attestation from the
+  allocated stand belongs to S9.6; and
+- hand only execution of the full reference/stronger, ten-minute sustained,
+  P0-P4, C0-C6, hostile, recovery, and cleanup campaign to S9.6, where it
+  qualifies the cleaned integrated candidate rather than an earlier Stage 5
+  snapshot.
 
-Exit: the complete local bundle verifies `pass`, or Stage 5 remains explicitly
-failed/invalid. A failed gate is fixed and the full affected frozen campaign is
-rerun; thresholds are never weakened after evidence.
+Exit: bounded maintained tests and repository gates pass, every final worker
+and reducer is implemented and fail-closed, and the only deferred inputs are
+actual campaign execution, runtime allocation attestation, plus identities that
+can be known only after the S9.6 stand is frozen. No Stage 5 development result may be described as a
+qualification pass.
 
 ## Test and review gates
 
@@ -408,9 +419,9 @@ While implementing:
 - final two-axis Standards/Spec review against this brief and the accepted
   records, with no unresolved high-confidence finding.
 
-The full Docker campaign is not a pre-commit unit test. It is required before
-S5.5 completion and retains its exact external evidence identity. Generated
-evidence is never staged.
+The full Docker campaign is not a Stage 5 test. S9.6 must run it against the
+post-cleanup frozen H3 candidate with its exact external evidence identity.
+Generated evidence is never staged.
 
 ## Stop and redesign conditions
 
@@ -431,7 +442,7 @@ Stop before the next slice if implementation needs any of:
 
 ## Definition of done
 
-Stage 5 local development is complete only when:
+Stage 5 maintained development is complete only when:
 
 - this brief was explicitly accepted before code;
 - S5.1-S5.5 pass in order with scoped commits and package-map truth;
@@ -442,12 +453,20 @@ Stage 5 local development is complete only when:
 - every negative produces the accepted result with zero forbidden fallback;
 - Adapter/front/server and all helpers are included in resource/traffic/DNS/
   cleanup accounting;
-- reference, stronger, sustained, pressure, hostile, and recovery cells meet
-  every R-037 threshold;
-- the independent verifier recomputes the frozen bundle and all generated
+- bounded capacity, sustained, pressure, hostile, recovery, evidence, and
+  cleanup behavior is exercised at the maintained public seams;
+- the independent verifier recomputes development-fixture verdicts, while the
+  deferred final branch rejects incomplete evidence and all generated
   secret/evidence/build artifacts remain outside Git;
-- final cleanup finds zero owned resources;
+- bounded cleanup tests find zero owned resources;
 - `git diff --check`, relevant tests, `make quick-check`, and `make check` pass;
   and
-- final Standards/Spec review is clean and the report states only controlled H3
-  evidence, never a production censorship-resistance claim.
+- final Standards/Spec review is clean, the Product Owner records `advance`, and
+  the report states only maintained H3 development evidence, never a
+  qualification or production censorship-resistance claim.
+
+The complete R-037 matrix, long sustained cells, stand-specific supply freeze,
+process-derived runtime allocation attestation, independent final verdict, and
+external cleanup remain mandatory S9.6 inputs.
+Deferral changes scheduling, not their thresholds or the whole-H3 completion
+gate.

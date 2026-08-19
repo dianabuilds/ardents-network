@@ -37,6 +37,42 @@ type finalCarrierSample struct {
 	Boundary     string `json:"boundary,omitempty"`
 }
 
+type finalTreeSample struct {
+	Schema       string  `json:"schema"`
+	Ordinal      uint16  `json:"ordinal"`
+	OffsetMillis uint64  `json:"offset_millis"`
+	CPUCores     float64 `json:"cpu_cores"`
+	RSSBytes     uint64  `json:"rss_bytes"`
+}
+
+type finalRuntimeResource struct {
+	CPUUsageUsec      uint64  `json:"cpu_usage_usec"`
+	MemoryBytes       uint64  `json:"memory_bytes"`
+	GoMemoryBytes     uint64  `json:"go_memory_bytes"`
+	SocketMemoryBytes uint64  `json:"socket_memory_bytes"`
+	Sockets           uint64  `json:"sockets"`
+	FDs               uint64  `json:"fds"`
+	Goroutines        uint64  `json:"goroutines"`
+	Threads           uint64  `json:"threads"`
+	Timers            uint64  `json:"timers"`
+	QueueItems        uint64  `json:"queue_items"`
+	QueueBytes        uint64  `json:"queue_bytes"`
+	CPUPressure       float64 `json:"cpu_pressure"`
+	MemoryPressure    float64 `json:"memory_pressure"`
+	IOPressure        float64 `json:"io_pressure"`
+	HighEvents        uint64  `json:"high_events"`
+	EmergencyEvents   uint64  `json:"emergency_events"`
+	AdmissionActive   uint64  `json:"admission_active"`
+	AdmissionAccepted uint64  `json:"admission_accepted"`
+	AdmissionRefused  uint64  `json:"admission_refused"`
+}
+
+type finalBridgeRuntime struct {
+	Schema   string               `json:"schema"`
+	Ordinal  uint16               `json:"ordinal"`
+	Resource finalRuntimeResource `json:"resource"`
+}
+
 func validFinalTelemetryStreams(files []finalRawTelemetry) bool {
 	seen := make(map[string]bool, len(files))
 	for _, file := range files {
@@ -46,11 +82,47 @@ func validFinalTelemetryStreams(files []finalRawTelemetry) bool {
 		}
 		seen[key] = true
 		if file.Kind == "resource.jsonl" && !validFinalResourceStream(file.Data) ||
-			file.Kind == "carrier.jsonl" && !validFinalCarrierStream(file.Data) {
+			file.Kind == "carrier.jsonl" && !validFinalCarrierStream(file.Data) ||
+			file.Kind == "tree.jsonl" && !validFinalTreeStream(file.Data) ||
+			file.Kind == "runtime.jsonl" && !validFinalRuntimeStream(file.Data) ||
+			file.Kind == "pressure-input.json" && !validFinalPressureInput(file.Data) ||
+			file.Kind == "pressure-injection.jsonl" && !validFinalPressureInjectionStream(file.Data) ||
+			file.Kind == "pressure-state.jsonl" && !validFinalPressureStateStream(file.Data) ||
+			file.Kind == "pressure.json" && !validFinalPressureMeasurement(file.Data) ||
+			file.Kind == "recovery.json" && !validFinalRecoveryMeasurement(file.Data) {
 			return false
 		}
 	}
 	return true
+}
+
+func validFinalRuntimeStream(raw []byte) bool {
+	var samples []finalBridgeRuntime
+	if !decodeFinalTelemetryLines(raw, &samples) || len(samples) == 0 {
+		return false
+	}
+	for index, sample := range samples {
+		if sample.Schema != "ardents-h3-bridge-runtime-v1" || sample.Ordinal != uint16(index) {
+			return false
+		}
+	}
+	return true
+}
+
+func validFinalTreeStream(raw []byte) bool {
+	var samples []finalTreeSample
+	if !decodeFinalTelemetryLines(raw, &samples) || len(samples) == 0 {
+		return false
+	}
+	offsets := make([]uint64, len(samples))
+	for index, sample := range samples {
+		if sample.Schema != "ardents-h3-tree-resource-v1" || sample.Ordinal != uint16(index) ||
+			sample.CPUCores < 0 || sample.CPUCores != sample.CPUCores {
+			return false
+		}
+		offsets[index] = sample.OffsetMillis
+	}
+	return validFinalTelemetryCadence(offsets)
 }
 
 func validFinalResourceStream(raw []byte) bool {

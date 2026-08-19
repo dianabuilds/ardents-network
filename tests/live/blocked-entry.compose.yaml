@@ -37,7 +37,7 @@ services:
       context: ../..
       dockerfile: ${ARDENTS_BLOCKED_DOCKERFILE:-tests/live/blocked-entry.Dockerfile}
     command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
-    environment: {ARDENTS_BLOCKED_ROLE: endpoint, ARDENTS_BLOCKED_PROFILE: "${ARDENTS_BLOCKED_PROFILE:?}", ARDENTS_BLOCKED_EXPECT_DRAIN: "${ARDENTS_BLOCKED_EXPECT_DRAIN:-0}", ARDENTS_BLOCKED_OBSERVE_ONLY: "${ARDENTS_BLOCKED_OBSERVE_ONLY:-0}", ARDENTS_BLOCKED_ENDPOINT_ADDRESS: "${ARDENTS_BLOCKED_ENDPOINT_ADDRESS:-203.0.113.7}", ARDENTS_DNS_SYNC: /run/evidence, ARDENTS_STREAM_LIFETIME: 5m}
+    environment: {ARDENTS_BLOCKED_ROLE: "${ARDENTS_ENDPOINT_ROLE:-endpoint}", ARDENTS_G4_PHASE: "${ARDENTS_G4_PHASE:-}", ARDENTS_BLOCKED_PROFILE: "${ARDENTS_BLOCKED_PROFILE:?}", ARDENTS_BLOCKED_EXPECT_DRAIN: "${ARDENTS_BLOCKED_EXPECT_DRAIN:-0}", ARDENTS_BLOCKED_OBSERVE_ONLY: "${ARDENTS_BLOCKED_OBSERVE_ONLY:-0}", ARDENTS_BLOCKED_ENDPOINT_ADDRESS: "${ARDENTS_BLOCKED_ENDPOINT_ADDRESS:-203.0.113.7}", ARDENTS_FINAL_CANDIDATE_CANARY: "${ARDENTS_FINAL_CANDIDATE_CANARY:-}", ARDENTS_DNS_SYNC: /run/evidence, ARDENTS_STREAM_LIFETIME: 5m}
     volumes:
       - ${ARDENTS_BLOCKED_ROOT:?}/input/endpoint:/run/input:ro
       - ${ARDENTS_BLOCKED_ROOT:?}/sync/endpoint:/run/evidence
@@ -168,7 +168,7 @@ services:
   negative-endpoint:
     <<: *product
     command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
-    environment: {ARDENTS_BLOCKED_ROLE: negative-endpoint, ARDENTS_BLOCKED_PROFILE: "${ARDENTS_NEGATIVE_PROFILE:-C3}", ARDENTS_DNS_SYNC: /run/evidence}
+    environment: {ARDENTS_BLOCKED_ROLE: negative-endpoint, ARDENTS_BLOCKED_PROFILE: "${ARDENTS_NEGATIVE_PROFILE:-C3}", ARDENTS_BLOCKED_EXPECTED_TERMINAL: "${ARDENTS_BLOCKED_EXPECTED_TERMINAL:-bridge-attempt-exhausted}", ARDENTS_DNS_SYNC: /run/evidence}
     volumes:
       - ${ARDENTS_BLOCKED_ROOT:?}/input/negative-endpoint:/run/input:ro
       - ${ARDENTS_BLOCKED_ROOT:?}/sync/negative-endpoint:/run/evidence
@@ -210,7 +210,7 @@ services:
   fault-zero:
     <<: *product
     command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
-    environment: {ARDENTS_BLOCKED_ROLE: fault-zero, ARDENTS_DNS_SYNC: /run/evidence}
+    environment: {ARDENTS_BLOCKED_ROLE: fault-zero, ARDENTS_HOSTILE_VARIANT: "${ARDENTS_HOSTILE_VARIANT:-accept-then-stall}", ARDENTS_DNS_SYNC: /run/evidence}
     volumes: ["${ARDENTS_BLOCKED_ROOT:?}/input/fault-zero:/run/input:ro", "${ARDENTS_BLOCKED_ROOT:?}/sync/fault-zero:/run/evidence"]
     networks: {entry_net: {ipv4_address: 203.0.113.20}}
   fault-one:

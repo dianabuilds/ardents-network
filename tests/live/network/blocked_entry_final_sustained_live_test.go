@@ -227,7 +227,7 @@ func runFinalSustainedCarrier(t *testing.T, repository, image, toolImage, client
 	for _, role := range []string{"client-app", "publisher-app"} {
 		writeLiveFile(t, filepath.Join(fixture.root, "input", role, "sustained.start"), []byte("start\n"))
 	}
-	result := monitorFinalSustained(t, ctx, compose, receiver, finalSustainedBytes, started, timeline)
+	result := monitorFinalSustained(t, ctx, compose, receiver, finalSustainedBytes, started, timeline, fixture.root)
 	clientApp, publisherApp := waitForApplication(t, ctx, compose, "client-app"),
 		waitForApplication(t, ctx, compose, "publisher-app")
 	if clientApp.Terminal != "success" || publisherApp.Terminal != "success" {
@@ -272,7 +272,9 @@ func runFinalSustainedCarrier(t *testing.T, repository, image, toolImage, client
 		t.Fatal(err)
 	}
 	result.Resources = resources
-	for _, sample := range bridgeRuntimeSamples(t, ctx, compose) {
+	runtimeSamples := bridgeRuntimeSamples(t, ctx, compose)
+	writeFinalBridgeRuntime(t, fixture.root, runtimeSamples)
+	for _, sample := range runtimeSamples {
 		result.Resources.GoroutinesPeak = max(result.Resources.GoroutinesPeak, uint16(sample.Goroutines))
 		result.Resources.TimersPeak = max(result.Resources.TimersPeak, uint16(sample.Timers))
 		result.Resources.QueueItemsPeak = max(result.Resources.QueueItemsPeak, uint16(sample.QueueItems))

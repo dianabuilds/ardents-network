@@ -93,6 +93,22 @@ func TestFinalCampaignRejectsMissingResourceDimensionAndOrdinaryEntry(t *testing
 	}
 }
 
+func TestFinalCampaignRejectsReservationWithoutRuntimeAttestation(t *testing.T) {
+	spec := validFinalSpec()
+	summary := validFinalSummary()
+	summary.Hosts[0].Runtime = nil
+	invalid, failures := verifyFinalCampaign(&spec, &summary)
+	if len(invalid) == 0 || len(failures) != 0 {
+		t.Fatalf("reservation-only host invalid=%v failures=%v", invalid, failures)
+	}
+	summary = validFinalSummary()
+	summary.Hosts[0].Runtime.Allocations[1].CPUSet[0] = summary.Hosts[0].Runtime.Allocations[0].CPUSet[0]
+	invalid, failures = verifyFinalCampaign(&spec, &summary)
+	if len(invalid) == 0 || len(failures) != 0 {
+		t.Fatalf("shared dedicated CPU invalid=%v failures=%v", invalid, failures)
+	}
+}
+
 func TestFinalCampaignRejectsImpossibleNegativeResourceMeasurements(t *testing.T) {
 	for name, mutate := range map[string]func(*finalResourceObservation){
 		"adapter RSS": func(value *finalResourceObservation) { value.AdapterRSSP95MiB = -1 },
@@ -149,9 +165,17 @@ func validFinalSpec() finalSpec {
 		Clocks: finalClocks{OrdinaryBlockedMillis: 3_000, TransitionMillis: 2_000,
 			AttemptMillis: 64_000, ContactMillis: 15_000, StartupMillis: 5_000,
 			InterContactMillis: 1_000, AdapterCleanupMillis: 6_000, CellCleanupMillis: 15_000},
-		CellOrder: requiredFinalCellOrder()}
+		CellOrder: requiredFinalCellOrder(), MutationCampaigns: requiredFinalMutationCampaigns()}
 	for index := range spec.CellOrder {
 		spec.Seeds = append(spec.Seeds, fmt.Sprintf("%064x", index+1))
+	}
+	seedIndex := len(spec.CellOrder) + 1
+	for campaign := range spec.MutationCampaigns {
+		for range spec.MutationCampaigns[campaign].CellOrder {
+			spec.MutationCampaigns[campaign].Seeds = append(spec.MutationCampaigns[campaign].Seeds,
+				fmt.Sprintf("%064x", seedIndex))
+			seedIndex++
+		}
 	}
 	for _, path := range requiredFinalConfigurations {
 		configurationHash := hash
@@ -162,6 +186,20 @@ func validFinalSpec() finalSpec {
 			artifactCommitment{Path: path, SHA256: configurationHash, Bytes: 1})
 	}
 	return spec
+}
+
+func TestIndependentFinalSpecRequiresCandidateAndMutationSuite(t *testing.T) {
+	spec := validFinalSpec()
+	if len(spec.CellOrder) != 564 || len(spec.MutationCampaigns) != 6 {
+		t.Fatalf("suite inventory candidate=%d mutations=%d", len(spec.CellOrder), len(spec.MutationCampaigns))
+	}
+	if reasons := verifyFinalSpec(spec); len(reasons) != 0 {
+		t.Fatalf("valid suite rejected: %v", reasons)
+	}
+	spec.MutationCampaigns[0].CellOrder[0] = spec.CellOrder[0]
+	if reasons := verifyFinalSpec(spec); len(reasons) == 0 {
+		t.Fatal("candidate cell reused by mutation campaign")
+	}
 }
 
 func validFinalSummary() finalSummary {
@@ -224,12 +262,22 @@ func validFinalSummary() finalSummary {
 func validObservedHost() finalObservedHost {
 	host := finalObservedHost{ID: "stand-0", LogicalCPUs: 128, MemoryMiB: 196_608,
 		AllocatedVCPU: 102, AllocatedMemoryMiB: 190_464, DedicatedThreads: true, CgroupV2: true}
+	host.Runtime = &finalRuntimeHost{Schema: "ardents-h3-final-host-runtime-v1", CapturedMonotonicNanos: 1}
 	wanted := expectedFinalAllocations()
+	cpu := uint16(0)
 	for index, id := range requiredAllocationOrder() {
 		value := wanted[id]
 		value.ProcessNamespace = fmt.Sprintf("pid-%02d", index)
 		value.NetworkNamespace = fmt.Sprintf("net-%02d", index)
 		host.Allocations = append(host.Allocations, value)
+		runtime := finalRuntimeAllocation{ID: id, MemoryMaxBytes: uint64(value.MemoryMiB) << 20,
+			Cgroups:                []string{fmt.Sprintf("/ardents/%s/member-0", id)},
+			NetworkNamespaceInodes: []uint64{uint64(index + 1)}}
+		for range value.VCPU {
+			runtime.CPUSet = append(runtime.CPUSet, cpu)
+			cpu++
+		}
+		host.Runtime.Allocations = append(host.Runtime.Allocations, runtime)
 	}
 	return host
 }

@@ -65,9 +65,9 @@ type finalSustainedRunEvidence struct {
 }
 
 type finalRuntimeSample struct {
-	at                                             time.Time
-	endpointCPU, endpointRSS, bridgeCPU, bridgeRSS float64
-	emergency                                      uint64
+	at                                                                         time.Time
+	endpointCPU, endpointRSS, bridgeCPU, bridgeRSS, publisherCPU, publisherRSS float64
+	emergency                                                                  uint64
 }
 
 type finalProgressPoint struct {
@@ -76,7 +76,7 @@ type finalProgressPoint struct {
 }
 
 func monitorFinalSustained(t *testing.T, ctx context.Context, compose composeCall, receiver string,
-	logical uint32, started, timeline time.Time,
+	logical uint32, started, timeline time.Time, root string,
 ) finalSustainedRunEvidence {
 	t.Helper()
 	services := []string{"endpoint", "client-service", "client-app", "bridge", "publisher",
@@ -123,6 +123,7 @@ func monitorFinalSustained(t *testing.T, ctx context.Context, compose composeCal
 		t.Fatalf("final sustained progress exceeded workload: %.0f > %d", previousBytes, logical)
 	}
 	result.Resources = summarizeFinalResources(t, samples)
+	writeFinalRuntimeTrees(t, root, timeline, samples)
 	result.FinishedOffsetMillis = uint64(time.Since(timeline).Milliseconds())
 	result.Complete = len(result.WindowsMbit) == 10
 	return result
@@ -186,8 +187,13 @@ func readFinalRuntimeSample(t *testing.T, ctx context.Context, compose composeCa
 		endpointCPU, endpointRSS = endpointCPU+values[service].cpu, endpointRSS+values[service].rss
 	}
 	bridge := values["bridge"]
+	publisherCPU, publisherRSS := 0.0, 0.0
+	for _, service := range []string{"publisher", "publisher-service", "publisher-app"} {
+		publisherCPU, publisherRSS = publisherCPU+values[service].cpu, publisherRSS+values[service].rss
+	}
 	return finalRuntimeSample{at: time.Now(), endpointCPU: endpointCPU, endpointRSS: endpointRSS,
-		bridgeCPU: bridge.cpu, bridgeRSS: bridge.rss, emergency: latestBridgeEmergency(t, ctx, compose)}
+		bridgeCPU: bridge.cpu, bridgeRSS: bridge.rss, publisherCPU: publisherCPU, publisherRSS: publisherRSS,
+		emergency: latestBridgeEmergency(t, ctx, compose)}
 }
 
 func latestBridgeEmergency(t *testing.T, ctx context.Context, compose composeCall) uint64 {

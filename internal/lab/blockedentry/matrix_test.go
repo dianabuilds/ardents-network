@@ -43,9 +43,9 @@ func TestHostileTerminalContractUsesAcceptedOwnerAndRouteVocabulary(t *testing.T
 		"G3-replay-replacement/retired-replay":            "replay",
 		"G3-replay-replacement/full-set":                  "set-full",
 		"G3-replay-replacement/skipped-generation":        "replacement-rejected",
-		"G4-restart/after-import":                         "bridge-interrupted",
+		"G4-restart/after-import":                         "success",
 		"G4-restart/after-exposure-0":                     "bridge-interrupted",
-		"G4-restart/after-terminal-record":                "bridge-interrupted",
+		"G4-restart/after-terminal-record":                "opened",
 		"G5-adapter-fault/malformed-pt-control":           "bridge-attempt-exhausted",
 		"G5-adapter-fault/evidence-write-exhaustion":      "bridge-local-denial",
 		"G6-substitution/network":                         "incompatible",
@@ -95,7 +95,7 @@ func evidenceOnlyVariant(group, variant string) bool {
 
 func acceptedTerminals() map[string]bool {
 	return map[string]bool{
-		"accepted": true, "already-present": true, "invalid": true, "incompatible": true,
+		"accepted": true, "success": true, "opened": true, "already-present": true, "invalid": true, "incompatible": true,
 		"wrong-domain": true, "conflicting-role": true, "set-full": true,
 		"replacement-rejected": true, "expired": true, "replay": true,
 		"bridge-not-configured": true, "bridge-ineligible": true,

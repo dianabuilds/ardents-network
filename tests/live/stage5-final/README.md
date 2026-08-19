@@ -1,7 +1,7 @@
 # Stage 5 final campaign inputs
 
-These versioned files define the non-secret S5.5 topology, cgroup, network,
-workload, and observer contracts. They are copied to a new external
+These versioned files define the non-secret S5.5-to-S9.6 topology, cgroup,
+network, workload, and observer handoff contracts. They are copied to a new external
 configuration root before `blocked-entry-lab -prepare-final-root` runs.
 
 The external root must additionally contain:
@@ -21,7 +21,7 @@ capacity offers, partial handshakes, and C5/C6 probe corpora; it does not reuse
 the development fixture's fixed corpus bytes in a final campaign.
 P0 uses four ordinal-specific derivations and four named peer pairs.
 
-This directory is not evidence and cannot satisfy S5.5 by itself. The final
+This directory is not evidence and cannot satisfy S9.6 qualification by itself. The final
 campaign remains incomplete until the frozen bundle runs on the qualifying
 non-overcommitted host and the independent verifier emits `pass`.
 
@@ -79,8 +79,12 @@ the product receipt, and returns it as `runner_path`. Use only that path for the
 campaign `-runner`; the harness and verifier reject every other hash.
 
 The same frozen binary owns the streaming runner and exact-cell worker. The
-current implementation validates the 594-cell schedule, verifies the frozen
-supply, and maps the 144 non-hostile cells. A selected worker now reports its
+current implementation validates the 594-episode suite (564 candidate cells
+plus six five-episode evidence-integrity campaigns), verifies the frozen
+supply, and dispatches all 144 non-hostile and 420 product-hostile candidate
+cells. The six evidence-integrity campaigns are materialized separately from
+retained candidate evidence and must independently produce `invalid`. A
+selected worker reports its
 measured terminal and reads the role-owned path/DNS observer results; only the
 parent runner, after the worker exits, removes and rechecks the token-owned
 Docker project, verifies the parent-owned worker root is empty, and rejects a
@@ -92,5 +96,8 @@ Those checksummed controls carry a per-run boundary nonce and use the local
 interface MAC, so another namespace or mutable synchronization file cannot
 substitute their attribution.
 Cells without that complete boundary coverage remain inadmissible. The
-450-cell hostile matrix and retained raw-to-verdict aggregation are also
-unimplemented, so this slice cannot produce `pass`.
+separately built verifier reopens the retained observer, telemetry, hostile,
+and mutation artifacts and independently derives the candidate and mutation
+components. A final `pass` is deliberately impossible until S9.6 supplies the
+reviewed stand identities, process-derived runtime allocation attestation, and
+the complete qualifying run.

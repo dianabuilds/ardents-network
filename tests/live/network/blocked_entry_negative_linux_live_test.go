@@ -29,6 +29,10 @@ type blockedFaultPlan struct {
 func runBlockedNegativeEndpoint(t *testing.T) {
 	t.Helper()
 	profile := os.Getenv("ARDENTS_BLOCKED_PROFILE")
+	expected := os.Getenv("ARDENTS_BLOCKED_EXPECTED_TERMINAL")
+	if expected == "" {
+		expected = "bridge-attempt-exhausted"
+	}
 	var timeline blockedTimeline
 	if profile == "C4" {
 		timeline = startBlockedTimeline(t)
@@ -76,12 +80,12 @@ func runBlockedNegativeEndpoint(t *testing.T) {
 	pipeErr := errors.Join(<-done, reader.Close())
 	_ = attachment.Close()
 	<-attachmentDone
-	if runErr == nil || pipeErr != nil || !strings.Contains(captured.String(), "bridge-attempt-exhausted") {
+	if runErr == nil || pipeErr != nil || !strings.Contains(captured.String(), expected) {
 		t.Fatalf("%s terminal = %v, pipe=%v\n%s", profile, runErr, pipeErr, captured.String())
 	}
 	finishBlockedObservation(t, manifest)
 	result := map[string]any{"kind": "negative-result", "profile": profile,
-		"terminal": "bridge-attempt-exhausted", "forbidden_fallbacks": 0}
+		"terminal": expected, "forbidden_fallbacks": 0}
 	raw, _ := json.Marshal(result)
 	if err := os.WriteFile(filepath.Join(blockedSync(), "negative-result.json"), raw, 0o644); err != nil {
 		t.Fatal(err)
@@ -129,9 +133,14 @@ func blockedNegativeManifest(profile string) blockedPathManifest {
 			boundary("slot-one-fault", "203.0.113.7", "203.0.113.21", 8482))
 	}
 	if profile == "G5" {
-		manifest.Required = append(manifest.Required,
-			boundary("accept-then-stall", "203.0.113.7", "203.0.113.20", 8481))
-		manifest.AllowedExternal = manifest.AllowedExternal[:1]
+		variant := os.Getenv("ARDENTS_HOSTILE_VARIANT")
+		if variant == "malformed-pt-control" || variant == "wrong-socks-listener-method" {
+			manifest.AllowedExternal = nil
+		} else {
+			manifest.Required = append(manifest.Required,
+				boundary("accept-then-stall", "203.0.113.7", "203.0.113.20", 8481))
+			manifest.AllowedExternal = manifest.AllowedExternal[:1]
+		}
 		manifest.DynamicLoopback = manifest.DynamicLoopback[:1]
 	}
 	return manifest
@@ -170,17 +179,32 @@ func runBlockedFaultZero(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer listener.Close()
+	variant := os.Getenv("ARDENTS_HOSTILE_VARIANT")
 	fmt.Println(`{"kind":"fault","state":"READY","slot":0}`)
+	if variant == "child-exit" {
+		return
+	}
 	first, err := listener.Accept()
 	if err != nil {
 		t.Fatal(err)
+	}
+	if variant == "slow-partial-handshake" {
+		_, _ = first.Write([]byte{0x16, 0x03})
+		time.Sleep(6 * time.Second)
+	} else if variant == "malformed-pt-control" || variant == "wrong-socks-listener-method" ||
+		variant == "malformed-carriage" {
+		_, _ = first.Write([]byte("malformed-" + variant))
 	}
 	_ = first.Close()
 	second, err := listener.Accept()
 	if err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(6 * time.Second)
+	if variant == "accept-then-stall" || variant == "evidence-write-exhaustion" {
+		time.Sleep(6 * time.Second)
+	} else {
+		_, _ = second.Write([]byte("rejected-" + variant))
+	}
 	_ = second.Close()
 }
 

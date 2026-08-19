@@ -9,19 +9,19 @@ func TestEventDecisionDistinguishesCandidateFailureFromInvalidEvidence(t *testin
 	events := completeEvents()
 	commitments := testCanaryCommitments()
 	attributions := testAttributions(events)
-	invalid, failures, _ := verifyEvents(events, commitments, attributions, nil)
+	invalid, failures, _ := verifyEvents(events, commitments, attributions, nil, false)
 	if len(invalid) != 0 || len(failures) != 0 {
 		t.Fatalf("complete events invalid=%v failures=%v", invalid, failures)
 	}
 	events[0].GatePassed = false
 	events[0].FaultOwner = "candidate"
 	attributions = testAttributions(events)
-	invalid, failures, _ = verifyEvents(events, commitments, attributions, nil)
+	invalid, failures, _ = verifyEvents(events, commitments, attributions, nil, false)
 	if len(invalid) != 0 || len(failures) != 1 {
 		t.Fatalf("candidate failure invalid=%v failures=%v", invalid, failures)
 	}
 	events[0].FaultOwner = "harness"
-	invalid, failures, _ = verifyEvents(events, commitments, attributions, nil)
+	invalid, failures, _ = verifyEvents(events, commitments, attributions, nil, false)
 	if len(invalid) == 0 || len(failures) != 0 {
 		t.Fatalf("harness failure invalid=%v failures=%v", invalid, failures)
 	}
@@ -31,12 +31,12 @@ func TestEventDecisionRejectsClockAndCardinalityTamper(t *testing.T) {
 	events := completeEvents()
 	commitments := testCanaryCommitments()
 	events[0].CleanupOffsetMillis = events[0].TerminalOffsetMillis + 15_001
-	invalid, _, _ := verifyEvents(events, commitments, testAttributions(events), nil)
+	invalid, _, _ := verifyEvents(events, commitments, testAttributions(events), nil, false)
 	if len(invalid) == 0 {
 		t.Fatal("cleanup deadline tamper was accepted")
 	}
 	events = completeEvents()[1:]
-	invalid, _, _ = verifyEvents(events, commitments, testAttributions(events), nil)
+	invalid, _, _ = verifyEvents(events, commitments, testAttributions(events), nil, false)
 	if len(invalid) == 0 {
 		t.Fatal("missing event was accepted")
 	}
@@ -54,7 +54,7 @@ func TestEventDecisionRejectsEveryOrderMutation(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			events := completeEvents()
 			mutate(events)
-			invalid, _, _ := verifyEvents(events, testCanaryCommitments(), testAttributions(events), nil)
+			invalid, _, _ := verifyEvents(events, testCanaryCommitments(), testAttributions(events), nil, false)
 			if len(invalid) == 0 {
 				t.Fatal("event order mutation was accepted")
 			}

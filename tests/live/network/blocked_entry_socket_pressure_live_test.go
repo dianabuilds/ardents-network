@@ -55,6 +55,7 @@ func TestBlockedEntryReturnsFromExactRecoverableSocketPressure(t *testing.T) {
 	}
 	startBlockedPressureWork(t, ctx, compose)
 	waitForBridgeSocketSamples(t, ctx, compose, 6, 1)
+	writeFinalPressureState(t, fixture.root, "NORMAL", 0)
 	progress := waitForLiveProgressAbove(t, ctx, compose, "publisher-app", 0)
 	if output, err := compose(ctx, "up", "-d", "--no-build", "--no-deps", "pressure"); err != nil {
 		t.Fatalf("start partial-handshake collector: %v\n%s", err, output)
@@ -62,11 +63,13 @@ func TestBlockedEntryReturnsFromExactRecoverableSocketPressure(t *testing.T) {
 	waitForBlockedHostFile(t, ctx, filepath.Join(fixture.root, "sync", "pressure", "pressure-ready"))
 	waitForBridgeSocketSamples(t, ctx, compose, 26, 3)
 	waitForBridgeResourceState(t, ctx, compose, "PROTECT")
+	writeFinalPressureState(t, fixture.root, "PROTECT", 1)
 	waitForLiveProgressAbove(t, ctx, compose, "publisher-app", progress)
 	lowBeforeRelease := bridgeSocketSampleCount(t, ctx, compose, 6)
 	writeLiveFile(t, filepath.Join(fixture.root, "sync", "pressure", "pressure-release"), []byte("release\n"))
 	waitBlockedContainer(t, ctx, compose, "pressure")
 	waitForBridgeResourceState(t, ctx, compose, "NORMAL")
+	writeFinalPressureState(t, fixture.root, "NORMAL", 2)
 	waitForBridgeSocketSamples(t, ctx, compose, 6, lowBeforeRelease+120)
 	if bridgeHasResourceState(t, ctx, compose, "DRAIN") {
 		t.Fatal("recoverable socket pressure entered DRAIN")

@@ -79,8 +79,9 @@ func Verify(config Config) (Result, error) {
 	attributions, attributionInvalid := verifyAttributions(config.SecretRoot, evidenceValue.AttributionArtifacts,
 		manifestValue)
 	eventInvalid, failures, candidateCanaries := verifyEvents(evidenceValue.Events, canaryCommitments, attributions,
-		encodedCanaries)
+		encodedCanaries, manifestValue.CampaignKind == "final-local")
 	operationalInvalid := append([]string(nil), eventInvalid...)
+	var mutationInvalid []string
 	operationalInvalid = append(operationalInvalid,
 		verifyCandidateCanaryExercise(manifestValue.FixtureMode, canaries, candidateCanaries)...)
 	operationalInvalid = append(operationalInvalid, attributionInvalid...)
@@ -90,6 +91,10 @@ func Verify(config Config) (Result, error) {
 	cleanupInvalid, cleanupFailures := verifyCleanup(evidenceValue.Cleanup, attributions)
 	operationalInvalid, failures = append(operationalInvalid, cleanupInvalid...), append(failures, cleanupFailures...)
 	if manifestValue.CampaignKind == "final-local" {
+		components, invalidMutations := verifyFinalMutationCampaigns(config.SecretRoot, manifestValue.FinalSpec,
+			evidenceValue.FinalSummary, canaries)
+		result.Components = components
+		mutationInvalid = invalidMutations
 		finalSummaryValue, measurementInvalid := verifyMeasurementArtifacts(config.SecretRoot, evidenceValue.FinalSummary)
 		operationalInvalid = append(operationalInvalid, measurementInvalid...)
 		if finalSummaryValue == nil {
@@ -110,8 +115,6 @@ func Verify(config Config) (Result, error) {
 			operationalInvalid = append(operationalInvalid,
 				verifyFinalTelemetryAggregates(config.SecretRoot, finalSummaryValue)...)
 		}
-		operationalInvalid = append(operationalInvalid,
-			"maintained final runner raw-to-verdict recomputation is not implemented")
 	} else if evidenceValue.FinalSummary != nil {
 		operationalInvalid = append(operationalInvalid, "development evidence contains an unsupported final summary")
 	}
@@ -126,6 +129,10 @@ func Verify(config Config) (Result, error) {
 	if expected, safe := safeArtifactPath(config.SecretRoot, "canaries.json"); !safe || !samePath(expected, config.CanaryPath) {
 		foundationInvalid = append(foundationInvalid, "private canary corpus is outside the committed secret tree")
 	}
+	if len(result.Components) > 0 {
+		result.Components[0] = finalCandidateComponent(foundationInvalid, failures, operationalInvalid)
+	}
+	operationalInvalid = append(operationalInvalid, mutationInvalid...)
 	replayEligible := len(foundationInvalid) == 0
 	switch {
 	case len(foundationInvalid) > 0:
@@ -175,6 +182,17 @@ func Verify(config Config) (Result, error) {
 		}
 	}
 	return finished, nil
+}
+
+func finalCandidateComponent(foundation, failures, operational []string) string {
+	switch {
+	case len(foundation) > 0 || len(operational) > 0:
+		return "candidate:invalid:564"
+	case len(failures) > 0:
+		return "candidate:fail:564"
+	default:
+		return "candidate:pass:564"
+	}
 }
 
 func recoverPublished(path, manifestHash, runID, decisionHash string) (Result, error) {

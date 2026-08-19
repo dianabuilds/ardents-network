@@ -24,4 +24,5 @@ type Result struct {
 	EvidenceSHA256   string   `json:"evidence_sha256"`
 	VerifierSHA256   string   `json:"verifier_sha256"`
 	VerifiedUnixNano int64    `json:"verified_unix_nano"`
+	Components       []string `json:"components,omitempty"`
 }

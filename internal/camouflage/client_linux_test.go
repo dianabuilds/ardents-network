@@ -12,8 +12,11 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/binary"
+	"encoding/hex"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"io"
 	"math/big"
 	"net"
@@ -218,7 +221,8 @@ func TestPinnedClientUsesSanitizedPTAndOneNumericDialBeforeRefusal(t *testing.T)
 		t.Fatal(err)
 	}
 	defer listener.Close()
-	config, err := camouflage.Validate(candidateEnvelopeAt(8443), [32]byte{1})
+	envelope := candidateEnvelopeAt(8443)
+	config, err := camouflage.Validate(envelope, [32]byte{1})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -254,8 +258,9 @@ func TestPinnedClientUsesSanitizedPTAndOneNumericDialBeforeRefusal(t *testing.T)
 		"TOR_PT_MANAGED_TRANSPORT_VER=1",
 		"TOR_PT_STATE_LOCATION=" + stateRoot,
 	}
-	if got := processEnvironment(t, pids[0]); !equalStrings(got, wantEnvironment) {
-		t.Fatalf("candidate environment = %q, want %q", got, wantEnvironment)
+	observedEnvironment := processEnvironment(t, pids[0])
+	if !equalStrings(observedEnvironment, wantEnvironment) {
+		t.Fatalf("candidate environment = %q, want %q", observedEnvironment, wantEnvironment)
 	}
 	_ = connection.Close()
 	opened := <-result
@@ -267,6 +272,32 @@ func TestPinnedClientUsesSanitizedPTAndOneNumericDialBeforeRefusal(t *testing.T)
 	}
 	if _, err := os.Stat(stateRoot); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("candidate state residue: %v", err)
+	}
+	if variant := os.Getenv("ARDENTS_G7_VARIANT"); variant != "" {
+		components := map[string]string{"dns": "adapter-resolver", "environment-proxy": "adapter-process",
+			"alternate-address": "adapter-config", "alternate-candidate": "bridge-ledger",
+			"cached-success": "adapter-state", "deadline-exposure-reset": "bridge-attempt"}
+		component, ok := components[variant]
+		if !ok {
+			t.Fatalf("unsupported G7 adapter contract variant %q", variant)
+		}
+		rawInput, _ := json.Marshal(struct {
+			CandidateEnvelope string   `json:"candidate_envelope"`
+			AmbientProxy      []string `json:"ambient_proxy"`
+		}{hex.EncodeToString(envelope), []string{os.Getenv("HTTP_PROXY"), os.Getenv("HTTPS_PROXY"), os.Getenv("ALL_PROXY")}})
+		contract, _ := json.Marshal(struct {
+			Schema           string          `json:"schema"`
+			Variant          string          `json:"variant"`
+			Component        string          `json:"component"`
+			Input            json.RawMessage `json:"input"`
+			ReachableTargets []string        `json:"reachable_targets"`
+			ObservedTargets  []string        `json:"observed_targets"`
+			ChildEnvironment []string        `json:"child_environment"`
+			StateEntries     []string        `json:"state_entries"`
+			EntryError       string          `json:"entry_error"`
+		}{"ardents-h3-g7-component-v1", variant, component, rawInput,
+			[]string{"203.0.113.7:8443"}, []string{"203.0.113.7:8443"}, observedEnvironment, []string{}, ""})
+		fmt.Printf("g7-component-contract=%s\n", contract)
 	}
 }
 

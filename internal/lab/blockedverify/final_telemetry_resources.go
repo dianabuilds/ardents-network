@@ -19,7 +19,31 @@ func reproducesFinalRoleResources(files []finalRawTelemetry, published finalReso
 		return false
 	}
 	derived := finalRoleResourceAggregate(endpointActive, bridgeActive)
-	return published.HelperRSSP95MiB == derived.HelperRSSP95MiB &&
+	endpointTree, endpointTreeOK := finalActiveTreeSamples(files, "endpoint", started, finished, true)
+	bridgeTree, bridgeTreeOK := finalActiveTreeSamples(files, "bridge", started, finished, true)
+	if !endpointTreeOK || !bridgeTreeOK {
+		return false
+	}
+	mergeFinalTreeResources(&derived, endpointTree, bridgeTree)
+	derived.ReservePercent = finalTreeReserve(derived, 1.6, 1280)
+	if link, ok := finalCarrierReserve(files, "bridge"); ok {
+		derived.ReservePercent = min(derived.ReservePercent, link)
+	} else {
+		return false
+	}
+	derived.Samples, derived.SamplesComplete = uint16(len(endpointTree)), true
+	if !mergeFinalRuntimeResources(files, &derived) {
+		return false
+	}
+	return published.EndpointCPUMean == derived.EndpointCPUMean &&
+		published.EndpointCPUP95 == derived.EndpointCPUP95 &&
+		published.EndpointRSSP95MiB == derived.EndpointRSSP95MiB &&
+		published.BridgeCPUMean == derived.BridgeCPUMean &&
+		published.BridgeCPUP95 == derived.BridgeCPUP95 &&
+		published.BridgeMemoryP95MiB == derived.BridgeMemoryP95MiB &&
+		published.ReservePercent == derived.ReservePercent && published.Samples == derived.Samples &&
+		published.SamplesComplete == derived.SamplesComplete &&
+		published.HelperRSSP95MiB == derived.HelperRSSP95MiB &&
 		published.HelperFDPeak == derived.HelperFDPeak &&
 		published.HelperSocketPeak == derived.HelperSocketPeak &&
 		published.SwapEvents == derived.SwapEvents && published.OOMEvents == derived.OOMEvents &&
@@ -29,6 +53,9 @@ func reproducesFinalRoleResources(files []finalRawTelemetry, published finalReso
 		published.AdapterStateBytes == derived.AdapterStateBytes &&
 		published.AdapterStateEntries == derived.AdapterStateEntries &&
 		published.ThreadsPeak == derived.ThreadsPeak &&
+		published.GoroutinesPeak == derived.GoroutinesPeak &&
+		published.TimersPeak == derived.TimersPeak && published.QueueItemsPeak == derived.QueueItemsPeak &&
+		published.QueueBytesPeak == derived.QueueBytesPeak && published.EvidenceDropped == derived.EvidenceDropped &&
 		published.DurableMembers == derived.DurableMembers &&
 		published.DurableContacts == derived.DurableContacts &&
 		published.DurableAttempts == derived.DurableAttempts &&
@@ -38,6 +65,79 @@ func reproducesFinalRoleResources(files []finalRawTelemetry, published finalReso
 		published.EvidenceProjectedPC == derived.EvidenceProjectedPC &&
 		published.Descendants == derived.Descendants && published.Capabilities == derived.Capabilities &&
 		reflect.DeepEqual(published.Collected, requiredResourceObservations())
+}
+
+func finalActiveTreeSamples(files []finalRawTelemetry, role string, started, finished uint64,
+	sustained bool,
+) ([]finalTreeSample, bool) {
+	for _, file := range files {
+		if file.Role != role || file.Kind != "tree.jsonl" {
+			continue
+		}
+		var samples []finalTreeSample
+		if !validFinalTreeStream(file.Data) || !decodeFinalTelemetryLines(file.Data, &samples) {
+			return nil, false
+		}
+		if !sustained {
+			return samples, len(samples) > 0
+		}
+		active := samples[:0]
+		for _, sample := range samples {
+			if sample.OffsetMillis >= started && sample.OffsetMillis < finished {
+				active = append(active, sample)
+			}
+		}
+		return active, len(active) >= 600
+	}
+	return nil, false
+}
+
+func mergeFinalTreeResources(value *finalResourceObservation, endpoint, bridge []finalTreeSample) {
+	endpointCPU, endpointRSS := make([]float64, 0, len(endpoint)), make([]float64, 0, len(endpoint))
+	bridgeCPU, bridgeMemory := make([]float64, 0, len(bridge)), make([]float64, 0, len(bridge))
+	for _, sample := range endpoint {
+		endpointCPU, endpointRSS = append(endpointCPU, sample.CPUCores),
+			append(endpointRSS, float64(sample.RSSBytes)/(1<<20))
+	}
+	for _, sample := range bridge {
+		bridgeCPU, bridgeMemory = append(bridgeCPU, sample.CPUCores),
+			append(bridgeMemory, float64(sample.RSSBytes)/(1<<20))
+	}
+	value.EndpointCPUMean, value.EndpointCPUP95 = finalMean(endpointCPU), finalPercentile(endpointCPU, .95)
+	value.EndpointRSSP95MiB = finalPercentile(endpointRSS, .95)
+	value.BridgeCPUMean, value.BridgeCPUP95 = finalMean(bridgeCPU), finalPercentile(bridgeCPU, .95)
+	value.BridgeMemoryP95MiB = finalPercentile(bridgeMemory, .95)
+}
+
+func finalTreeReserve(value finalResourceObservation, cpuMax, memoryMaxMiB float64) float64 {
+	return min(100*(1-value.BridgeCPUP95/cpuMax), 100*(1-value.BridgeMemoryP95MiB/memoryMaxMiB))
+}
+
+func finalCarrierReserve(files []finalRawTelemetry, role string) (float64, bool) {
+	return finalCarrierReserveAt(files, role, 100)
+}
+
+func finalCarrierReserveAt(files []finalRawTelemetry, role string, linkMbit float64) (float64, bool) {
+	for _, file := range files {
+		if file.Role != role || file.Kind != "carrier.jsonl" {
+			continue
+		}
+		samples, ok := decodeFinalCarrierStream(file.Data)
+		if !ok || len(samples) < 3 {
+			return 0, false
+		}
+		rates := make([]float64, 0, len(samples)-2)
+		for index := 1; index < len(samples)-1; index++ {
+			gap := samples[index].OffsetMillis - samples[index-1].OffsetMillis
+			if gap == 0 {
+				return 0, false
+			}
+			rates = append(rates, float64(samples[index].Bytes-samples[index-1].Bytes)*8/
+				(float64(gap)/1_000)/1e6)
+		}
+		return 100 * (1 - finalPercentile(rates, .95)/linkMbit), true
+	}
+	return 0, false
 }
 
 func finalResourceSamples(files []finalRawTelemetry, role string) ([]finalResourceSample, bool) {

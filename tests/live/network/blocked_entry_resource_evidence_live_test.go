@@ -225,13 +225,19 @@ func finalCarrierDelta(samples []blockedCarrierSample) uint64 {
 }
 
 func mergeFinalCarrierReserve(value finalResourceEvidence, samples []blockedCarrierSample) finalResourceEvidence {
+	return mergeFinalCarrierReserveAt(value, samples, 100)
+}
+
+func mergeFinalCarrierReserveAt(value finalResourceEvidence, samples []blockedCarrierSample,
+	linkMbit float64,
+) finalResourceEvidence {
 	rates := make([]float64, 0, len(samples)-2)
 	for index := 1; index < len(samples)-1; index++ {
 		bytes := samples[index].Bytes - samples[index-1].Bytes
 		seconds := float64(samples[index].OffsetMillis-samples[index-1].OffsetMillis) / 1_000
 		rates = append(rates, float64(bytes)*8/seconds/1e6)
 	}
-	linkReserve := 100 * (1 - percentile(rates, .95)/100)
+	linkReserve := 100 * (1 - percentile(rates, .95)/linkMbit)
 	value.ReservePercent = min(value.ReservePercent, linkReserve)
 	return value
 }

@@ -3,11 +3,14 @@ package blockedverify
 import "strings"
 
 func verifyEvents(events []event, canaryCommitments map[string]string, attributions map[string]attributionFact,
-	encodedCanaries []string,
+	encodedCanaries []string, finalCampaign bool,
 ) (
 	invalid, failures []string, candidateCanaries map[string]bool,
 ) {
 	expected := expectedEventSequence()
+	if finalCampaign {
+		expected = expectedFinalEventSequence()
+	}
 	candidateCanaries = make(map[string]bool)
 	if len(events) != len(expected) {
 		invalid = append(invalid, "mandatory five-episode hostile matrix is incomplete")

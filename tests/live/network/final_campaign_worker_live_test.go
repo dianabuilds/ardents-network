@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -70,27 +71,49 @@ func publishFinalWorkerTerminal() {
 }
 
 func emitFinalWorkerCell(t *testing.T, identity, terminal string, started time.Time, ownedRoots ...string) {
-	emitFinalWorkerResult(t, identity, terminal, started, nil, nil, ownedRoots...)
+	emitFinalWorkerResult(t, identity, terminal, started, nil, nil, nil, nil, ownedRoots...)
 }
 
 func emitFinalWorkerSustained(t *testing.T, identity, terminal string, started time.Time,
 	measurement finalWorkerSustained, ownedRoots ...string,
 ) {
-	emitFinalWorkerResult(t, identity, terminal, started, &measurement, nil, ownedRoots...)
+	emitFinalWorkerResult(t, identity, terminal, started, &measurement, nil, nil, nil, ownedRoots...)
 }
 
 func emitFinalWorkerPressure(t *testing.T, identity, terminal string, started time.Time,
 	measurement finalPressureEvidence, ownedRoots ...string,
 ) {
-	emitFinalWorkerResult(t, identity, terminal, started, nil, &measurement, ownedRoots...)
+	emitFinalWorkerResult(t, identity, terminal, started, nil, &measurement, nil, nil, ownedRoots...)
+}
+
+func emitFinalWorkerCapacity(t *testing.T, identity string, started time.Time,
+	measurement finalWorkerCapacity, ownedRoots ...string,
+) {
+	emitFinalWorkerResult(t, identity, measurement.Terminal, started, nil, nil,
+		&measurement, nil, ownedRoots...)
+}
+
+func emitFinalWorkerRecovery(t *testing.T, identity, terminal string, started time.Time,
+	measurement finalWorkerRecovery, ownedRoots ...string,
+) {
+	emitFinalWorkerResult(t, identity, terminal, started, nil, nil,
+		nil, &measurement, ownedRoots...)
 }
 
 func emitFinalWorkerResult(t *testing.T, identity, terminal string, started time.Time,
-	sustained *finalWorkerSustained, pressure *finalPressureEvidence, ownedRoots ...string,
+	sustained *finalWorkerSustained, pressure *finalPressureEvidence,
+	capacity *finalWorkerCapacity, recovery *finalWorkerRecovery, ownedRoots ...string,
 ) {
 	t.Helper()
 	if os.Getenv("ARDENTS_BLOCKED_CELL_WORKER") != "1" {
 		return
+	}
+	if pressure != nil {
+		writeFinalWorkerMeasurement(t, ownedRoots, "pressure.json", pressure)
+	}
+	if recovery != nil {
+		recovery.Schema = "ardents-h3-final-recovery-episode-v1"
+		writeFinalWorkerMeasurement(t, ownedRoots, "recovery.json", recovery)
 	}
 	terminalAt := time.Since(finalWorkerProcessStart)
 	observers, rawObservers := collectFinalWorkerObservers(identity, ownedRoots)
@@ -105,11 +128,26 @@ func emitFinalWorkerResult(t *testing.T, identity, terminal string, started time
 	value := finalWorkerResult{Schema: "ardents-h3-final-worker-cell-v1", CellID: identity, Terminal: terminal,
 		StartedOffsetMillis:  uint64(started.Sub(finalWorkerProcessStart).Milliseconds()),
 		TerminalOffsetMillis: uint64(terminalAt.Milliseconds()), CleanupOffsetMillis: uint64(terminalAt.Milliseconds()),
-		Observers: observers, Sustained: sustained, Pressure: pressure,
+		Observers: observers, Sustained: sustained, Pressure: pressure, Capacity: capacity, Recovery: recovery,
 		ObserverSets: uint16(len(ownedRoots))}
 	raw, err := json.Marshal(value)
 	if err != nil {
 		t.Fatal(err)
 	}
 	fmt.Println(string(raw))
+}
+
+func writeFinalWorkerMeasurement(t *testing.T, roots []string, name string, value any) {
+	t.Helper()
+	if len(roots) == 0 {
+		t.Fatal("final worker measurement has no owned root")
+	}
+	raw, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(roots[0], "sync", "bridge", name)
+	if err := os.WriteFile(path, append(raw, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
 }
