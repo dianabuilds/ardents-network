@@ -12,7 +12,7 @@ import (
 
 const maximumFinalTelemetryFile = 2 << 20
 
-func collectFinalWorkerTelemetry(roots []string) ([]finalRawTelemetry, bool) {
+func collectFinalWorkerTelemetry(cell string, roots []string) ([]finalRawTelemetry, bool) {
 	var result []finalRawTelemetry
 	for rootIndex, root := range roots {
 		for _, role := range []string{"endpoint", "bridge", "publisher"} {
@@ -27,7 +27,7 @@ func collectFinalWorkerTelemetry(roots []string) ([]finalRawTelemetry, bool) {
 			}
 		}
 	}
-	return result, true
+	return result, validFinalWorkerTelemetryInventory(result, cell)
 }
 
 func readFinalTelemetry(path string) ([]byte, bool, error) {
@@ -55,16 +55,26 @@ func readFinalTelemetry(path string) ([]byte, bool, error) {
 
 func TestCollectFinalWorkerTelemetryRetainsRoleStreams(t *testing.T) {
 	root := t.TempDir()
-	path := filepath.Join(root, "sync", "bridge")
-	if err := os.MkdirAll(path, 0o700); err != nil {
-		t.Fatal(err)
+	for _, role := range []string{"endpoint", "bridge", "publisher"} {
+		path := filepath.Join(root, "sync", role)
+		if err := os.MkdirAll(path, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		for _, kind := range []string{"resource.jsonl", "carrier.jsonl"} {
+			if err := os.WriteFile(filepath.Join(path, kind), []byte(role+"/"+kind+"\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}
 	}
-	if err := os.WriteFile(filepath.Join(path, "resource.jsonl"), []byte("sample\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	files, complete := collectFinalWorkerTelemetry([]string{root})
-	if !complete || len(files) != 1 || files[0].Role != "bridge" || files[0].Kind != "resource.jsonl" ||
-		string(files[0].Data) != "sample\n" {
+	cell := "sustained/endpoint-to-publisher/run-0"
+	files, complete := collectFinalWorkerTelemetry(cell, []string{root})
+	if !complete || len(files) != 6 || files[4].Role != "publisher" || files[4].Kind != "resource.jsonl" {
 		t.Fatalf("telemetry=%+v complete=%t", files, complete)
+	}
+	if err := os.Remove(filepath.Join(root, "sync", "publisher", "resource.jsonl")); err != nil {
+		t.Fatal(err)
+	}
+	if _, complete := collectFinalWorkerTelemetry(cell, []string{root}); complete {
+		t.Fatal("incomplete sustained role inventory was accepted")
 	}
 }

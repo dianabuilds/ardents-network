@@ -8,10 +8,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -169,6 +171,7 @@ func blockedCompose(repository, project, image string, fixture blockedEntryFixtu
 	if os.Getenv("ARDENTS_FINAL_PRODUCT_IMAGE") == "" {
 		dockerfile = "tests/live/blocked-entry.dev.Dockerfile"
 	}
+	timelineAnchor := blockedMonotonicAnchorMillis()
 	environment := append(os.Environ(), "ARDENTS_BLOCKED_IMAGE="+image,
 		"ARDENTS_BLOCKED_DOCKERFILE="+dockerfile,
 		"ARDENTS_BLOCKED_ROOT="+filepath.ToSlash(fixture.root),
@@ -176,7 +179,8 @@ func blockedCompose(repository, project, image string, fixture blockedEntryFixtu
 		"ARDENTS_WEBTUNNEL_SERVER="+filepath.ToSlash(fixture.serverBinary),
 		"ARDENTS_BLOCKED_PROFILE="+productProfile, "ARDENTS_BLOCKED_PROBE_PROFILE="+selected,
 		"ARDENTS_NEGATIVE_PROFILE="+selected,
-		"ARDENTS_FAULT_MODE="+selected)
+		"ARDENTS_FAULT_MODE="+selected,
+		"ARDENTS_BLOCKED_TIMELINE_MONOTONIC_ANCHOR_MILLIS="+timelineAnchor)
 	if selected == "recovery" {
 		environment = append(environment, "ARDENTS_STREAM_PROGRESS=1", "ARDENTS_STREAM_CHUNK_DELAY=2s")
 	}
@@ -194,6 +198,32 @@ func blockedCompose(repository, project, image string, fixture blockedEntryFixtu
 		command.Dir, command.Env = directory, environment
 		return command.CombinedOutput()
 	}
+}
+
+func blockedMonotonicAnchorMillis() string {
+	hostMillis, err := linuxMonotonicMillis()
+	if err != nil {
+		return "invalid"
+	}
+	origin, err := finalWorkerTimelineOrigin()
+	if err != nil {
+		return "invalid"
+	}
+	campaignMillis := time.Since(origin).Milliseconds()
+	return strconv.FormatInt(campaignMillis-hostMillis, 10)
+}
+
+func linuxMonotonicMillis() (int64, error) {
+	raw, err := os.ReadFile("/proc/uptime")
+	fields := strings.Fields(string(raw))
+	if err != nil || len(fields) == 0 {
+		return 0, errors.Join(err, errors.New("Linux monotonic clock is unavailable"))
+	}
+	seconds, err := strconv.ParseFloat(fields[0], 64)
+	if err != nil || seconds < 0 {
+		return 0, errors.Join(err, errors.New("Linux monotonic clock is invalid"))
+	}
+	return int64(seconds * 1_000), nil
 }
 
 func blockedProjectCleanup(t *testing.T, compose composeCall, project string) func() {

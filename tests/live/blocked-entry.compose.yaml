@@ -65,14 +65,14 @@ services:
     user: "65532:65532"
     network_mode: none
     pid: service:endpoint
-    environment: {ARDENTS_BLOCKED_ROLE: resource-collector, ARDENTS_DNS_SYNC: /run/evidence}
+    environment: {ARDENTS_BLOCKED_ROLE: resource-collector, ARDENTS_DNS_SYNC: /run/evidence, ARDENTS_BLOCKED_TIMELINE_MONOTONIC_ANCHOR_MILLIS: "${ARDENTS_BLOCKED_TIMELINE_MONOTONIC_ANCHOR_MILLIS:?}"}
     command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
     volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/endpoint:/run/evidence"]
   endpoint-carrier-collector:
     <<: *observer
     cap_add: []
     network_mode: service:endpoint
-    environment: {ARDENTS_BLOCKED_ROLE: carrier-collector, ARDENTS_DNS_SYNC: /run/evidence}
+    environment: {ARDENTS_BLOCKED_ROLE: carrier-collector, ARDENTS_DNS_SYNC: /run/evidence, ARDENTS_BLOCKED_TIMELINE_MONOTONIC_ANCHOR_MILLIS: "${ARDENTS_BLOCKED_TIMELINE_MONOTONIC_ANCHOR_MILLIS:?}"}
     command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
     volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/endpoint:/run/evidence"]
   policy:
@@ -118,14 +118,14 @@ services:
     user: "65532:65532"
     network_mode: none
     pid: service:bridge
-    environment: {ARDENTS_BLOCKED_ROLE: resource-collector, ARDENTS_DNS_SYNC: /run/evidence}
+    environment: {ARDENTS_BLOCKED_ROLE: resource-collector, ARDENTS_DNS_SYNC: /run/evidence, ARDENTS_BLOCKED_TIMELINE_MONOTONIC_ANCHOR_MILLIS: "${ARDENTS_BLOCKED_TIMELINE_MONOTONIC_ANCHOR_MILLIS:?}"}
     command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
     volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/bridge:/run/evidence"]
   bridge-carrier-collector:
     <<: *observer
     cap_add: []
     network_mode: service:bridge
-    environment: {ARDENTS_BLOCKED_ROLE: carrier-collector, ARDENTS_DNS_SYNC: /run/evidence}
+    environment: {ARDENTS_BLOCKED_ROLE: carrier-collector, ARDENTS_DNS_SYNC: /run/evidence, ARDENTS_BLOCKED_TIMELINE_MONOTONIC_ANCHOR_MILLIS: "${ARDENTS_BLOCKED_TIMELINE_MONOTONIC_ANCHOR_MILLIS:?}"}
     command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
     volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/bridge:/run/evidence"]
 
@@ -319,11 +319,20 @@ services:
     environment: {ARDENTS_BLOCKED_ROLE: control-sender, ARDENTS_BLOCKED_CONTROL_ROLE: publisher, ARDENTS_DNS_SYNC: /run/evidence}
     command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
     volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/publisher:/run/evidence"]
+  publisher-resource-collector:
+    <<: *observer
+    cap_add: []
+    user: "65532:65532"
+    network_mode: none
+    pid: service:publisher
+    environment: {ARDENTS_BLOCKED_ROLE: resource-collector, ARDENTS_DNS_SYNC: /run/evidence, ARDENTS_BLOCKED_TIMELINE_MONOTONIC_ANCHOR_MILLIS: "${ARDENTS_BLOCKED_TIMELINE_MONOTONIC_ANCHOR_MILLIS:?}"}
+    command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
+    volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/publisher:/run/evidence"]
   publisher-carrier-collector:
     <<: *observer
     cap_add: []
     network_mode: service:publisher
-    environment: {ARDENTS_BLOCKED_ROLE: carrier-collector, ARDENTS_DNS_SYNC: /run/evidence}
+    environment: {ARDENTS_BLOCKED_ROLE: carrier-collector, ARDENTS_DNS_SYNC: /run/evidence, ARDENTS_BLOCKED_TIMELINE_MONOTONIC_ANCHOR_MILLIS: "${ARDENTS_BLOCKED_TIMELINE_MONOTONIC_ANCHOR_MILLIS:?}"}
     command: [/usr/local/bin/network-live.test, -test.count=1, -test.v, -test.run, "^TestBlockedEntryRole$"]
     volumes: ["${ARDENTS_BLOCKED_ROOT:?}/sync/publisher:/run/evidence"]
 

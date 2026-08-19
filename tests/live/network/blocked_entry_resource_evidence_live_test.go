@@ -85,17 +85,19 @@ func completeBlockedResourceCadence(samples []blockedProcessSample) bool {
 	return len(periodic) > 0
 }
 
-func mergeFinalProcessResources(path string, value finalResourceEvidence) (finalResourceEvidence, error) {
+func mergeFinalBridgeHelperResources(path string, value finalResourceEvidence, started, finished uint64) (finalResourceEvidence, error) {
 	samples, err := readBlockedProcessSamples(path)
-	if err != nil || len(samples) < 600 || !hasPostCleanupSample(samples) {
-		return value, errors.Join(err, errors.New("Bridge process resource stream is incomplete"))
+	active, complete := finalSustainedResourceInterval(samples, started, finished)
+	if err != nil || !complete {
+		return value, errors.Join(err, errors.New("Bridge helper resource stream does not cover the sustained window"))
 	}
 	rss := make([]float64, 0, len(samples))
-	for _, sample := range samples {
+	var fdPeak, socketPeak, threadPeak uint16
+	for _, sample := range active {
 		rss = append(rss, float64(sample.RSSBytes)/(1<<20))
-		value.HelperFDPeak = max(value.HelperFDPeak, sample.FDs)
-		value.HelperSocketPeak = max(value.HelperSocketPeak, sample.Sockets)
-		value.ThreadsPeak = max(value.ThreadsPeak, sample.Threads)
+		fdPeak = max(fdPeak, sample.FDs)
+		socketPeak = max(socketPeak, sample.Sockets)
+		threadPeak = max(threadPeak, sample.Threads)
 		value.DurableStateBytes = max(value.DurableStateBytes, uint32(sample.StateBytes))
 		value.DurableMembers = max(value.DurableMembers, sample.DurableMembers)
 		value.DurableContacts = max(value.DurableContacts, sample.DurableContacts)
@@ -110,17 +112,21 @@ func mergeFinalProcessResources(path string, value finalResourceEvidence) (final
 		value.OOMEvents = uint16(max(uint64(value.OOMEvents), sample.EmergencyEvents))
 	}
 	value.HelperRSSP95MiB = percentile(rss, .95)
+	value.HelperFDPeak = fdPeak
+	value.HelperSocketPeak = socketPeak
+	value.ThreadsPeak = threadPeak
 	value.EvidenceProjectedPC = float64(value.EvidenceBytes) * 100 / (16 << 20)
 	return value, nil
 }
 
-func mergeFinalAdapterResources(path string, value finalResourceEvidence) (finalResourceEvidence, error) {
+func mergeFinalAdapterResources(path string, value finalResourceEvidence, started, finished uint64) (finalResourceEvidence, error) {
 	samples, err := readBlockedProcessSamples(path)
-	if err != nil || len(samples) < 600 || !hasPostCleanupSample(samples) {
-		return value, errors.Join(err, errors.New("Endpoint Adapter resource stream is incomplete"))
+	active, complete := finalSustainedResourceInterval(samples, started, finished)
+	if err != nil || !complete {
+		return value, errors.Join(err, errors.New("Endpoint Adapter resource stream does not cover the sustained window"))
 	}
 	rss := make([]float64, 0, len(samples))
-	for _, sample := range samples {
+	for _, sample := range active {
 		rss = append(rss, float64(sample.RSSBytes)/(1<<20))
 		value.AdapterFDPeak = max(value.AdapterFDPeak, sample.FDs)
 		value.AdapterSocketPeak = max(value.AdapterSocketPeak, sample.Sockets)
@@ -131,6 +137,32 @@ func mergeFinalAdapterResources(path string, value finalResourceEvidence) (final
 	}
 	value.AdapterRSSP95MiB = percentile(rss, .95)
 	return value, nil
+}
+
+func admitFinalPublisherResources(path string, started, finished uint64) error {
+	samples, err := readBlockedProcessSamples(path)
+	_, complete := finalSustainedResourceInterval(samples, started, finished)
+	if err != nil || !complete {
+		return errors.Join(err, errors.New("Publisher resource stream does not cover the sustained window"))
+	}
+	return nil
+}
+
+func finalSustainedResourceInterval(samples []blockedProcessSample, started, finished uint64) ([]blockedProcessSample, bool) {
+	periodic := make([]blockedProcessSample, 0, len(samples))
+	active := make([]blockedProcessSample, 0, len(samples))
+	for _, sample := range samples {
+		if sample.Boundary == "" {
+			periodic = append(periodic, sample)
+			if sample.OffsetMillis >= started && sample.OffsetMillis < finished {
+				active = append(active, sample)
+			}
+		}
+	}
+	complete := len(periodic) >= 600 && len(active) >= 600 && started < finished && finished-started >= 10*60*1_000 &&
+		periodic[0].OffsetMillis <= started && periodic[len(periodic)-1].OffsetMillis >= finished &&
+		hasPostCleanupSample(samples)
+	return active, complete
 }
 
 func hasPostCleanupSample(samples []blockedProcessSample) bool {

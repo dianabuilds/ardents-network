@@ -32,7 +32,7 @@ func runBlockedResourceCollector(t *testing.T) {
 	next, ordinal, cleanupCaptured := started, uint16(0), false
 	captured := map[string]bool{}
 	emit := func(boundary string) {
-		value := collectBlockedResourceSample(t, started, ordinal, boundary)
+		value := collectBlockedResourceSample(t, ordinal, boundary)
 		if err := encoder.Encode(value); err != nil {
 			t.Fatal(err)
 		}
@@ -67,9 +67,7 @@ func runBlockedResourceCollector(t *testing.T) {
 	}
 }
 
-func collectBlockedResourceSample(t *testing.T, started time.Time, ordinal uint16,
-	boundary string,
-) blockedProcessSample {
+func collectBlockedResourceSample(t *testing.T, ordinal uint16, boundary string) blockedProcessSample {
 	t.Helper()
 	rss, fds, sockets, processes, threads, capabilities, processErr := sampleBlockedProcesses()
 	swap, emergency, cgroupErr := sampleBlockedCgroup()
@@ -80,12 +78,29 @@ func collectBlockedResourceSample(t *testing.T, started time.Time, ordinal uint1
 		t.Fatal(err)
 	}
 	return blockedProcessSample{Schema: "ardents-h3-process-resource-v1", Ordinal: ordinal,
-		OffsetMillis: uint64(time.Since(started) / time.Millisecond), RSSBytes: rss,
+		OffsetMillis: blockedTimelineOffsetMillis(t), RSSBytes: rss,
 		FDs: fds, Sockets: sockets, Processes: processes, Threads: threads, SwapBytes: swap,
 		EmergencyEvents: emergency, StateBytes: stateBytes, StateEntries: stateEntries,
 		EvidenceRecords: evidenceRecords, EvidenceBytes: evidenceBytes, Capabilities: capabilities,
 		DurableMembers: members, DurableContacts: contacts, DurableAttempts: attempts,
 		DurableRegimes: regimes, Boundary: boundary}
+}
+
+func blockedTimelineOffsetMillis(t *testing.T) uint64 {
+	t.Helper()
+	name := "ARDENTS_BLOCKED_TIMELINE_MONOTONIC_ANCHOR_MILLIS"
+	anchor, err := strconv.ParseInt(os.Getenv(name), 10, 64)
+	raw, readErr := os.ReadFile("/proc/uptime")
+	fields := strings.Fields(string(raw))
+	if err != nil || readErr != nil || len(fields) == 0 {
+		t.Fatalf("invalid blocked-entry monotonic timeline anchor %q", os.Getenv(name))
+	}
+	seconds, parseErr := strconv.ParseFloat(fields[0], 64)
+	offset := int64(seconds*1_000) + anchor
+	if parseErr != nil || seconds < 0 || offset < 0 {
+		t.Fatal("blocked-entry monotonic timeline offset is invalid")
+	}
+	return uint64(offset)
 }
 
 func blockedDurableCounts() (uint16, uint16, uint16, uint16, error) {

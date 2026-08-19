@@ -27,7 +27,7 @@ func runBlockedCarrierCollector(t *testing.T) {
 	ordinal := uint16(0)
 	emit := func(boundary string) {
 		value := blockedCarrierSample{Schema: "ardents-h3-carrier-counter-v1", Ordinal: ordinal,
-			OffsetMillis: uint64(time.Since(started) / time.Millisecond), Bytes: readBlockedCarrierBytes(t),
+			OffsetMillis: blockedTimelineOffsetMillis(t), Bytes: readBlockedCarrierBytes(t),
 			Boundary: boundary}
 		if err := encoder.Encode(value); err != nil {
 			t.Fatal(err)

@@ -44,6 +44,11 @@ func verifyFinalTelemetryAggregates(root string, summary *finalSummary) []string
 	for _, sustained := range summary.Sustained {
 		var endpoint, publisher uint64
 		for run := range sustained.Runs {
+			observation := sustained.Runs[run]
+			if len(observation.WindowEndsMillis) != 10 {
+				return []string{"final sustained telemetry window schedule is incomplete"}
+			}
+			windowFinished := observation.WindowEndsMillis[len(observation.WindowEndsMillis)-1]
 			cell, ok := byID[fmt.Sprintf("sustained/%s/run-%d", sustained.Direction, run)]
 			if !ok {
 				return []string{"final sustained telemetry cell is missing"}
@@ -52,8 +57,14 @@ func verifyFinalTelemetryAggregates(root string, summary *finalSummary) []string
 			if reason != "" {
 				return []string{"final sustained telemetry is unavailable"}
 			}
-			endpointDelta, endpointOK := finalCarrierDelta(raw.Files, "endpoint")
-			publisherDelta, publisherOK := finalCarrierDelta(raw.Files, "publisher")
+			if !reproducesFinalRoleResources(raw.Files, observation.Resources,
+				observation.StartedOffsetMillis, windowFinished) {
+				return []string{"final sustained resource telemetry does not reproduce its aggregate"}
+			}
+			endpointDelta, endpointOK := finalCarrierDelta(raw.Files, "endpoint",
+				observation.StartedOffsetMillis, windowFinished)
+			publisherDelta, publisherOK := finalCarrierDelta(raw.Files, "publisher",
+				observation.StartedOffsetMillis, windowFinished)
 			if !endpointOK || !publisherOK || ^uint64(0)-endpoint < endpointDelta || ^uint64(0)-publisher < publisherDelta {
 				return []string{"final sustained carrier telemetry is incomplete"}
 			}
@@ -98,18 +109,37 @@ func loadFinalRawTelemetry(root string, cell finalCellObservation) (finalRawTele
 	return raw, ""
 }
 
-func finalCarrierDelta(files []finalRawTelemetry, role string) (uint64, bool) {
+func finalCarrierDelta(files []finalRawTelemetry, role string, started, finished uint64) (uint64, bool) {
 	for _, file := range files {
 		if file.Role != role || file.Kind != "carrier.jsonl" {
 			continue
 		}
 		samples, ok := decodeFinalCarrierStream(file.Data)
-		if !ok || !validFinalTelemetryCadence(carrierOffsets(samples[1:len(samples)-1])) {
+		if !ok || !completeFinalSustainedCarrier(samples, started, finished) {
 			return 0, false
 		}
 		return samples[len(samples)-1].Bytes - samples[0].Bytes, true
 	}
 	return 0, false
+}
+
+func completeFinalSustainedCarrier(samples []finalCarrierSample, started, finished uint64) bool {
+	if len(samples) < 602 || started >= finished || finished-started < 10*60*1_000 ||
+		samples[0].OffsetMillis > started || samples[len(samples)-1].OffsetMillis < finished {
+		return false
+	}
+	active := 0
+	for index := 1; index < len(samples)-1; index++ {
+		gap := samples[index].OffsetMillis - samples[index-1].OffsetMillis
+		if gap < 750 || gap > 1_250 {
+			return false
+		}
+		if samples[index].OffsetMillis > started && samples[index].OffsetMillis <= finished {
+			active++
+		}
+	}
+	last, prior := samples[len(samples)-1], samples[len(samples)-2]
+	return active >= 600 && last.OffsetMillis >= prior.OffsetMillis && last.OffsetMillis-prior.OffsetMillis <= 1_250
 }
 
 func finalTelemetryEvidencePath(cell string) string {

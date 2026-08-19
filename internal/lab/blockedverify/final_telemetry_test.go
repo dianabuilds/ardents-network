@@ -93,15 +93,80 @@ func TestFinalTelemetryRejectsMissingOrCoalescedStreamRecords(t *testing.T) {
 	}
 }
 
+func TestFinalTelemetryReproducesBridgeHelpersWithoutChargingPublisher(t *testing.T) {
+	files := []finalRawTelemetry{
+		{Role: "endpoint", Kind: "resource.jsonl", Data: resourceTelemetryLines(t, 3<<20, 7, 3, 5)},
+		{Role: "bridge", Kind: "resource.jsonl", Data: resourceTelemetryLines(t, 1<<20, 3, 1, 2)},
+		{Role: "publisher", Kind: "resource.jsonl", Data: resourceTelemetryLines(t, 2<<20, 5, 2, 4)},
+	}
+	want := finalResourceObservation{HelperRSSP95MiB: 1, HelperFDPeak: 3, HelperSocketPeak: 1,
+		ThreadsPeak: 2, AdapterRSSP95MiB: 3, AdapterFDPeak: 7, AdapterSocketPeak: 3,
+		Collected: []string{"endpoint-cpu", "endpoint-rss", "adapter-rss", "adapter-fds", "adapter-sockets",
+			"adapter-state", "bridge-cpu", "bridge-memory", "helper-rss", "helper-fds", "helper-sockets",
+			"swap-oom", "threads", "goroutines", "timers", "queues", "durable-state", "evidence",
+			"traffic", "descendants", "capabilities", "reserve"}}
+	if !reproducesFinalRoleResources(files, want, 0, 600_000) {
+		t.Fatal("published sustained resources did not reproduce all three raw role streams")
+	}
+	want.HelperFDPeak--
+	if reproducesFinalRoleResources(files, want, 0, 600_000) {
+		t.Fatal("changed helper resource aggregate was accepted")
+	}
+}
+
+func TestFinalTelemetryRejectsShortSustainedRoleResources(t *testing.T) {
+	files := []finalRawTelemetry{
+		{Role: "endpoint", Kind: "resource.jsonl", Data: resourceTelemetryLines(t, 1, 1, 1, 1)},
+		{Role: "bridge", Kind: "resource.jsonl", Data: resourceTelemetryLines(t, 1, 1, 1, 1)},
+		{Role: "publisher", Kind: "resource.jsonl", Data: resourceTelemetryLines(t, 1, 1, 1, 1)},
+	}
+	files[2].Data = shortResourceTelemetryLines(t)
+	if reproducesFinalRoleResources(files, finalResourceObservation{Collected: requiredResourceObservations()}, 0, 600_000) {
+		t.Fatal("599 seconds plus a post-cleanup record reproduced a ten-minute resource window")
+	}
+}
+
+func TestFinalTelemetryResourceP95ExcludesOutsideWindow(t *testing.T) {
+	files := []finalRawTelemetry{
+		{Role: "endpoint", Kind: "resource.jsonl", Data: windowedResourceTelemetryLines(t, 1<<20)},
+		{Role: "bridge", Kind: "resource.jsonl", Data: windowedResourceTelemetryLines(t, 10<<20)},
+		{Role: "publisher", Kind: "resource.jsonl", Data: windowedResourceTelemetryLines(t, 1<<20)},
+	}
+	want := finalResourceObservation{HelperRSSP95MiB: 10, AdapterRSSP95MiB: 1,
+		Collected: requiredResourceObservations()}
+	if !reproducesFinalRoleResources(files, want, 100_000, 700_000) {
+		t.Fatal("active-window p95 did not reproduce with low setup samples")
+	}
+}
+
 func TestFinalCarrierDeltaUsesBeforeAndAfterCounters(t *testing.T) {
-	carrier := []finalCarrierSample{{Schema: "ardents-h3-carrier-counter-v1", Ordinal: 0, Bytes: 7, Boundary: "before"},
-		{Schema: "ardents-h3-carrier-counter-v1", Ordinal: 1, OffsetMillis: 1_000, Bytes: 11},
-		{Schema: "ardents-h3-carrier-counter-v1", Ordinal: 2, OffsetMillis: 2_000, Bytes: 23, Boundary: "after"}}
+	carrier := sustainedCarrierSamples(7)
 	delta, ok := finalCarrierDelta([]finalRawTelemetry{{Role: "endpoint", Kind: "carrier.jsonl",
-		Data: telemetryLines(t, carrier)}}, "endpoint")
-	if !ok || delta != 16 {
+		Data: telemetryLines(t, carrier)}}, "endpoint", 0, 600_000)
+	if !ok || delta != 601 {
 		t.Fatalf("delta=%d ok=%t", delta, ok)
 	}
+}
+
+func TestFinalCarrierDeltaRejectsSparseTenMinuteStream(t *testing.T) {
+	carrier := []finalCarrierSample{{Schema: "ardents-h3-carrier-counter-v1", Ordinal: 0, Boundary: "before"},
+		{Schema: "ardents-h3-carrier-counter-v1", Ordinal: 1, OffsetMillis: 1_000},
+		{Schema: "ardents-h3-carrier-counter-v1", Ordinal: 2, OffsetMillis: 600_000, Boundary: "after"}}
+	if _, ok := finalCarrierDelta([]finalRawTelemetry{{Role: "endpoint", Kind: "carrier.jsonl",
+		Data: telemetryLines(t, carrier)}}, "endpoint", 0, 600_000); ok {
+		t.Fatal("sparse ten-minute carrier stream was accepted")
+	}
+}
+
+func sustainedCarrierSamples(initial uint64) []finalCarrierSample {
+	result := []finalCarrierSample{{Schema: "ardents-h3-carrier-counter-v1", Ordinal: 0,
+		Bytes: initial, Boundary: "before"}}
+	for ordinal := 1; ordinal <= 600; ordinal++ {
+		result = append(result, finalCarrierSample{Schema: "ardents-h3-carrier-counter-v1",
+			Ordinal: uint16(ordinal), OffsetMillis: uint64(ordinal * 1_000), Bytes: initial + uint64(ordinal)})
+	}
+	return append(result, finalCarrierSample{Schema: "ardents-h3-carrier-counter-v1", Ordinal: 601,
+		OffsetMillis: 601_000, Bytes: initial + 601, Boundary: "after"})
 }
 
 func telemetryLines[T any](t *testing.T, values []T) []byte {
@@ -116,6 +181,48 @@ func telemetryLines[T any](t *testing.T, values []T) []byte {
 		result = append(result, '\n')
 	}
 	return result
+}
+
+func resourceTelemetryLines(t *testing.T, rss uint64, fds, sockets, threads uint16) []byte {
+	t.Helper()
+	values := make([]finalResourceSample, 0, 602)
+	for ordinal := range 601 {
+		values = append(values, finalResourceSample{Schema: "ardents-h3-process-resource-v1",
+			Ordinal: uint16(ordinal), OffsetMillis: uint64(ordinal * 1_000), RSSBytes: rss,
+			FDs: fds, Sockets: sockets, Processes: 2, Threads: threads})
+	}
+	values = append(values, finalResourceSample{Schema: "ardents-h3-process-resource-v1", Ordinal: 601,
+		OffsetMillis: 601_000, RSSBytes: rss, FDs: fds, Sockets: sockets, Processes: 2,
+		Threads: threads, Boundary: "post-cleanup"})
+	return telemetryLines(t, values)
+}
+
+func shortResourceTelemetryLines(t *testing.T) []byte {
+	t.Helper()
+	values := make([]finalResourceSample, 0, 601)
+	for ordinal := range 600 {
+		values = append(values, finalResourceSample{Schema: "ardents-h3-process-resource-v1",
+			Ordinal: uint16(ordinal), OffsetMillis: uint64(ordinal * 1_000), Processes: 2})
+	}
+	values = append(values, finalResourceSample{Schema: "ardents-h3-process-resource-v1", Ordinal: 600,
+		OffsetMillis: 600_000, Processes: 2, Boundary: "post-cleanup"})
+	return telemetryLines(t, values)
+}
+
+func windowedResourceTelemetryLines(t *testing.T, highRSS uint64) []byte {
+	t.Helper()
+	values := make([]finalResourceSample, 0, 702)
+	for ordinal := range 701 {
+		rss := uint64(1 << 20)
+		if ordinal >= 669 && ordinal < 700 {
+			rss = highRSS
+		}
+		values = append(values, finalResourceSample{Schema: "ardents-h3-process-resource-v1",
+			Ordinal: uint16(ordinal), OffsetMillis: uint64(ordinal * 1_000), RSSBytes: rss, Processes: 2})
+	}
+	values = append(values, finalResourceSample{Schema: "ardents-h3-process-resource-v1", Ordinal: 701,
+		OffsetMillis: 701_000, Processes: 2, Boundary: "post-cleanup"})
+	return telemetryLines(t, values)
 }
 
 func fixtureFinalTelemetryIndex(cell string) []finalRawTelemetry {

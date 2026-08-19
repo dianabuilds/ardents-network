@@ -72,7 +72,10 @@ func TestBlockedEntryFinalSustainedEvidence(t *testing.T) {
 	if ownedImage {
 		t.Cleanup(func() { removeBlockedPressureImage(t, image, buildProject) })
 	}
-	timeline := time.Now()
+	timeline, err := finalWorkerTimelineOrigin()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if selected := os.Getenv("ARDENTS_FINAL_CELL"); selected != "" {
 		runSelectedFinalSustainedCell(t, repository, image, toolImage, client, server, selected, timeline)
 		return
@@ -203,13 +206,16 @@ func runFinalSustainedCarrier(t *testing.T, repository, image, toolImage, client
 	ctx, cancel := context.WithTimeout(context.Background(), 14*time.Minute)
 	defer cancel()
 	startBlockedPressureWork(t, ctx, compose)
-	startLiveContainer(t, ctx, compose, "bridge-resource-collector")
-	startLiveContainer(t, ctx, compose, "endpoint-resource-collector")
+	for _, service := range []string{"endpoint-resource-collector", "bridge-resource-collector",
+		"publisher-resource-collector"} {
+		startLiveContainer(t, ctx, compose, service)
+	}
 	for _, service := range []string{"endpoint-carrier-collector", "bridge-carrier-collector",
 		"publisher-carrier-collector"} {
 		startLiveContainer(t, ctx, compose, service)
 	}
 	for _, role := range []string{"endpoint", "bridge", "publisher"} {
+		waitForBlockedHostFile(t, ctx, filepath.Join(fixture.root, "sync", role, "resource-ready"))
 		waitForBlockedHostFile(t, ctx, filepath.Join(fixture.root, "sync", role, "carrier-ready"))
 	}
 	applyFinalBlockedNetwork(t, ctx, compose, toolImage)
@@ -241,22 +247,27 @@ func runFinalSustainedCarrier(t *testing.T, repository, image, toolImage, client
 	}
 	publishFinalWorkerTerminal()
 	writeLiveFile(t, filepath.Join(fixture.root, "sync", "bridge", "bridge-stop"), []byte("stop\n"))
-	for _, role := range []string{"endpoint", "bridge"} {
+	for _, role := range []string{"endpoint", "bridge", "publisher"} {
 		waitForBlockedHostFile(t, ctx,
 			filepath.Join(fixture.root, "sync", role, "resource-cleanup-captured"))
 	}
-	writeLiveFile(t, filepath.Join(fixture.root, "sync", "bridge", "resource-stop"), []byte("stop\n"))
-	writeLiveFile(t, filepath.Join(fixture.root, "sync", "endpoint", "resource-stop"), []byte("stop\n"))
-	waitBlockedContainer(t, ctx, compose, "bridge-resource-collector")
-	waitBlockedContainer(t, ctx, compose, "endpoint-resource-collector")
-	resources, err := mergeFinalProcessResources(filepath.Join(fixture.root, "sync", "bridge", "resource.jsonl"),
-		result.Resources)
+	for _, role := range []string{"endpoint", "bridge", "publisher"} {
+		writeLiveFile(t, filepath.Join(fixture.root, "sync", role, "resource-stop"), []byte("stop\n"))
+		waitBlockedContainer(t, ctx, compose, role+"-resource-collector")
+	}
+	windowFinished := result.WindowEndsMillis[len(result.WindowEndsMillis)-1]
+	resources, err := mergeFinalBridgeHelperResources(filepath.Join(fixture.root, "sync", "bridge", "resource.jsonl"),
+		result.Resources, result.StartedOffsetMillis, windowFinished)
 	if err != nil {
 		t.Fatal(err)
 	}
 	result.Resources = resources
+	if err := admitFinalPublisherResources(filepath.Join(fixture.root, "sync", "publisher", "resource.jsonl"),
+		result.StartedOffsetMillis, windowFinished); err != nil {
+		t.Fatal(err)
+	}
 	resources, err = mergeFinalAdapterResources(filepath.Join(fixture.root, "sync", "endpoint", "resource.jsonl"),
-		result.Resources)
+		result.Resources, result.StartedOffsetMillis, windowFinished)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -268,7 +279,7 @@ func runFinalSustainedCarrier(t *testing.T, repository, image, toolImage, client
 		result.Resources.QueueBytesPeak = max(result.Resources.QueueBytesPeak, uint32(sample.QueueBytes))
 	}
 	result.Resources.Collected = finalResourceObservations()
-	for _, role := range []string{"endpoint", "bridge"} {
+	for _, role := range []string{"endpoint", "bridge", "publisher"} {
 		writeLiveFile(t, filepath.Join(fixture.root, "sync", role, "resource-release"), []byte("release\n"))
 	}
 	for _, service := range blockedContainers("C1") {

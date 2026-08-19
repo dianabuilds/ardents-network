@@ -39,17 +39,12 @@ func runFinalCampaignRunner() int {
 		}
 		result, ok := cached[plan.CellID]
 		if !ok {
-			groupOrigin := time.Now()
-			groupStarted := uint64(groupOrigin.Sub(started).Milliseconds())
-			group, groupErr := executeFinalCellGroup(schedule, plan.CellID, groupOrigin)
+			group, groupErr := executeFinalCellGroup(schedule, plan.CellID, started)
 			if groupErr != nil {
 				fmt.Fprintln(os.Stderr, "final runner:", groupErr)
 				return 1
 			}
 			for _, value := range group {
-				value.StartedOffsetMillis += groupStarted
-				value.TerminalOffsetMillis += groupStarted
-				value.CleanupOffsetMillis += groupStarted
 				if _, duplicate := cached[value.CellID]; duplicate {
 					fmt.Fprintln(os.Stderr, "final runner: worker duplicated a cell")
 					return 1

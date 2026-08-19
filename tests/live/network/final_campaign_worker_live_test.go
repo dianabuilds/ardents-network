@@ -4,8 +4,11 @@ package network_test
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"strconv"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -14,6 +17,29 @@ import (
 var finalWorkerProcessStart = time.Now()
 var finalWorkerTerminalArmed atomic.Bool
 var finalWorkerTerminalClass atomic.Value
+var finalWorkerTimelineOnce sync.Once
+var finalWorkerTimeline time.Time
+var finalWorkerTimelineErr error
+
+func finalWorkerTimelineOrigin() (time.Time, error) {
+	finalWorkerTimelineOnce.Do(func() {
+		finalWorkerTimeline = finalWorkerProcessStart
+		name := "ARDENTS_FINAL_CAMPAIGN_MONOTONIC_ANCHOR_MILLIS"
+		if os.Getenv(name) == "" {
+			return
+		}
+		anchor, parseErr := strconv.ParseInt(os.Getenv(name), 10, 64)
+		hostMillis, clockErr := linuxMonotonicMillis()
+		offset := hostMillis + anchor
+		if parseErr != nil || clockErr != nil || offset < 0 {
+			finalWorkerTimelineErr = errors.Join(parseErr, clockErr,
+				errors.New("final worker campaign monotonic anchor is invalid"))
+			return
+		}
+		finalWorkerTimeline = time.Now().Add(-time.Duration(offset) * time.Millisecond)
+	})
+	return finalWorkerTimeline, finalWorkerTimelineErr
+}
 
 func selectedFinalCell(identity string) bool {
 	selected := os.Getenv("ARDENTS_FINAL_CELL")
@@ -68,7 +94,7 @@ func emitFinalWorkerResult(t *testing.T, identity, terminal string, started time
 	}
 	terminalAt := time.Since(finalWorkerProcessStart)
 	observers, rawObservers := collectFinalWorkerObservers(identity, ownedRoots)
-	rawTelemetry, telemetryComplete := collectFinalWorkerTelemetry(ownedRoots)
+	rawTelemetry, telemetryComplete := collectFinalWorkerTelemetry(identity, ownedRoots)
 	if !telemetryComplete {
 		t.Fatal("final worker telemetry is unstable or malformed")
 	}

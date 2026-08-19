@@ -116,9 +116,20 @@ all nine boundary records. Each boundary has separate IPv4 UDP, IPv6 UDP, and
 IPv4 TCP positive controls injected as checksummed, per-run nonced unicast
 frames and captured on the manifest-bound Linux interface index. The boundary,
 nonce, and protocol class travel in the frame rather than a candidate-writable
-coordination label. C0/direct/negative/recovery
-cells that do not yet expose every required
-boundary therefore remain structurally incomplete. Each mapped final cell now
+coordination label. C0/direct/profile/capacity/pressure/recovery and hostile
+cells that do not yet expose every required boundary and telemetry stream
+therefore remain structurally incomplete. The ten sustained run cells now
+retain the ordered Endpoint/Bridge/Publisher resource/carrier inventory. The
+runner anchors each worker to its campaign-monotonic offset, and the Linux
+collectors translate the host/container shared monotonic clock into that same
+origin without using wall time. The runner and verifier require each role's
+periodic resource and carrier stream to cover the complete ten-minute window
+independently of its cleanup boundary record. Resource aggregates use only
+periodic samples inside that active window. The Publisher stream
+remains its own endpoint-role evidence rather than being charged to the
+WebTunnel Bridge helper boundary. The verifier independently reproduces the
+combined Bridge-helper and Endpoint Adapter aggregates and both carrier ratios
+from the raw streams. Each mapped final cell now
 retains its parser-level boundary evidence in the secret bundle and binds its
 canonical hash in the public cell record; the independent verifier re-reads
 and rejects a missing, altered, incomplete, or non-clean boundary set. Unmapped

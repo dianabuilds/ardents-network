@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -103,19 +104,24 @@ func runFinalCellWorker(schedule finalRunnerSchedule, cell, test string,
 	if err != nil {
 		return nil, err
 	}
+	campaignAnchor, err := finalCampaignMonotonicAnchor(clockOrigin)
+	if err != nil {
+		return nil, err
+	}
+	startedOffset := uint64(time.Since(clockOrigin).Milliseconds())
 	command := exec.CommandContext(ctx, executable, "-test.run", "^"+test+"$", "-test.count=1", "-test.v")
 	command.Env = finalWorkerEnvironment(map[string]string{
-		"ARDENTS_BLOCKED_CELL_WORKER":  "1",
-		"ARDENTS_FINAL_CELL":           cell,
-		"ARDENTS_WEBTUNNEL_CLIENT":     workerClient,
-		"ARDENTS_WEBTUNNEL_SERVER":     workerServer,
-		"ARDENTS_LIVE_TOOL_IMAGE":      schedule.ToolImageID,
-		"ARDENTS_FINAL_PRODUCT_IMAGE":  schedule.ProductImageID,
-		"ARDENTS_BLOCKED_COMPOSE_FILE": workerCompose,
-		"ARDENTS_FINAL_PROJECT_TOKEN":  projectToken,
-		"ARDENTS_FINAL_WORKER_ROOT":    workerRoot,
+		"ARDENTS_BLOCKED_CELL_WORKER":                    "1",
+		"ARDENTS_FINAL_CELL":                             cell,
+		"ARDENTS_WEBTUNNEL_CLIENT":                       workerClient,
+		"ARDENTS_WEBTUNNEL_SERVER":                       workerServer,
+		"ARDENTS_LIVE_TOOL_IMAGE":                        schedule.ToolImageID,
+		"ARDENTS_FINAL_PRODUCT_IMAGE":                    schedule.ProductImageID,
+		"ARDENTS_BLOCKED_COMPOSE_FILE":                   workerCompose,
+		"ARDENTS_FINAL_PROJECT_TOKEN":                    projectToken,
+		"ARDENTS_FINAL_WORKER_ROOT":                      workerRoot,
+		"ARDENTS_FINAL_CAMPAIGN_MONOTONIC_ANCHOR_MILLIS": strconv.FormatInt(campaignAnchor, 10),
 	})
-	startedOffset := uint64(time.Since(clockOrigin).Milliseconds())
 	results, receipt, err := completeFinalWorkerProcess(command, maximumFinalWorkerStream, clockOrigin,
 		cell, workerRoot, os.Getenv("ARDENTS_BLOCKED_SECRET_ROOT"), func() error {
 			return errors.Join(cleanupFinalWorkerInputs(workerRoot), verifyFinalRuntimeCompose(schedule),
@@ -132,6 +138,14 @@ func runFinalCellWorker(schedule finalRunnerSchedule, cell, test string,
 	terminalOffset := uint64(receipt.At.Milliseconds())
 	completeFinalWorkerEvidence(results, startedOffset, terminalOffset, cleanupOffset)
 	return results, nil
+}
+
+func finalCampaignMonotonicAnchor(clockOrigin time.Time) (int64, error) {
+	hostMillis, err := linuxMonotonicMillis()
+	if err != nil {
+		return 0, err
+	}
+	return time.Since(clockOrigin).Milliseconds() - hostMillis, nil
 }
 
 func completeFinalWorkerProcess(command *exec.Cmd, limit int, clockOrigin time.Time, cell, workerRoot, secret string,
