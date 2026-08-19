@@ -19,7 +19,7 @@ reproducible releases, two desktop platforms, general Application isolation,
 and a large performance matrix appear to be prerequisites for the next line of
 research code.
 
-That interpretation is rejected. Ardents now has one Product Core and four
+That interpretation is rejected. Ardents now has one Product Core and five
 explicit delivery horizons. A
 decision can be fixed for a later horizon without entering the current backlog.
 The horizons are conditional research gates, not a committed roadmap: passing
@@ -223,10 +223,32 @@ The following are **promotion gates**, not current implementation tasks:
 - measured independent operator/source capacity and external security review.
 
 Public Beta uses beta thresholds. **Stable Network** is a later promotion of a
-running beta, not a fifth design backlog: its larger effective family counts,
-mature operational drills, and extended external evidence are evaluated only
-after beta operation produces real data. Missing people or independent operators
-block the claim; they do not create work for the current one-to-one team.
+running beta, not Horizon 5: its larger effective family counts, mature
+operational drills, and extended external evidence are evaluated only after beta
+operation produces real data. Missing people or independent operators block the
+claim; they do not create work for the current one-to-one team.
+
+The first public product contract retains only the qualified Interactive Route
+claim. Ardents does not reopen the complete security/privacy model or add a
+Shielded Route Profile before Horizon 4 is complete. The existing Route Profile
+seam remains; it creates no H3 or H4 implementation work and permits no stronger
+claim in advance.
+
+## Horizon 5 — Security and Privacy Model Review
+
+Horizon 5 opens only after Horizon 4 has produced the first public product and
+Public Beta operational and Qualification evidence. It reassesses the security
+and privacy model against observed traffic, failures, concentration, abuse, and
+operator behavior rather than expanding the model from controlled-test
+assumptions.
+
+The review may reopen the Interactive Route adversary boundary and R-005. A
+Shielded Route Profile is one possible result, not a preselected feature. It
+requires a named Application job, exact protected information and adversary,
+measurable correlation advantage, finite latency/traffic/resource budgets, no
+silent downgrade, and independent Qualification. Timing re-shaping, padding,
+cover traffic, mixing, multiplexing, and multipath remain candidates until that
+review. Horizon 5 does not retroactively strengthen claims made by Public Beta.
 
 ## Outside the network core
 
