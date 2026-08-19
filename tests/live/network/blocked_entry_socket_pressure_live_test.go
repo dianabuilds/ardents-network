@@ -63,11 +63,16 @@ func TestBlockedEntryReturnsFromExactRecoverableSocketPressure(t *testing.T) {
 	waitForBridgeSocketSamples(t, ctx, compose, 26, 3)
 	waitForBridgeResourceState(t, ctx, compose, "PROTECT")
 	waitForLiveProgressAbove(t, ctx, compose, "publisher-app", progress)
+	lowBeforeRelease := bridgeSocketSampleCount(t, ctx, compose, 6)
 	writeLiveFile(t, filepath.Join(fixture.root, "sync", "pressure", "pressure-release"), []byte("release\n"))
 	waitBlockedContainer(t, ctx, compose, "pressure")
 	waitForBridgeResourceState(t, ctx, compose, "NORMAL")
+	waitForBridgeSocketSamples(t, ctx, compose, 6, lowBeforeRelease+120)
 	if bridgeHasResourceState(t, ctx, compose, "DRAIN") {
 		t.Fatal("recoverable socket pressure entered DRAIN")
+	}
+	if bridgeHasOOMEvent(t, ctx, compose) {
+		t.Fatal("recoverable socket pressure recorded OOM")
 	}
 	armFinalWorkerTerminal("normal")
 	finishBlockedPressureWork(t, ctx, compose, fixture, transferBytes)
@@ -75,7 +80,10 @@ func TestBlockedEntryReturnsFromExactRecoverableSocketPressure(t *testing.T) {
 	if ownedImage {
 		removeBlockedPressureImage(t, image, project)
 	}
-	emitFinalWorkerCell(t, "pressure/P2", "normal", started, fixture.root)
+	emitFinalWorkerPressure(t, "pressure/P2", "normal", started, finalPressureEvidence{Schema: "ardents-h3-final-pressure-v1",
+		ID: "P2", Terminal: "normal", BaselineSockets: 6, Injected: 20, PeakSockets: 26, PartialBytes: 128,
+		RatePerSecond: 2, HighSamples: 3, LowSamples: 120, Progress: true, Protect: true, Normal: true,
+		Cleanup: true}, fixture.root)
 }
 
 func waitForBlockedHostFile(t *testing.T, ctx context.Context, path string) {
@@ -105,29 +113,35 @@ func removeBlockedPressureImage(t *testing.T, image, project string) {
 func waitForBridgeSocketSamples(t *testing.T, ctx context.Context, compose composeCall, sockets uint64, count int) {
 	t.Helper()
 	for {
-		observed := 0
-		output, err := compose(ctx, "logs", "--no-color", "--no-log-prefix", "bridge")
-		if err == nil {
-			for _, line := range bytes.Split(output, []byte{'\n'}) {
-				var event struct {
-					Kind     string           `json:"kind"`
-					Resource *resource.Sample `json:"resource"`
-				}
-				if json.Unmarshal(bytes.TrimSpace(line), &event) == nil && event.Kind == "resource-sample" &&
-					event.Resource != nil && event.Resource.Sockets == sockets {
-					observed++
-				}
-			}
-			if observed >= count {
-				return
-			}
+		if bridgeSocketSampleCount(t, ctx, compose, sockets) >= count {
+			return
 		}
 		select {
 		case <-ctx.Done():
-			t.Fatalf("wait for %d Bridge samples at %d sockets: %v\n%s", count, sockets, ctx.Err(), output)
+			t.Fatalf("wait for %d Bridge samples at %d sockets: %v", count, sockets, ctx.Err())
 		case <-time.After(250 * time.Millisecond):
 		}
 	}
+}
+
+func bridgeSocketSampleCount(t *testing.T, ctx context.Context, compose composeCall, sockets uint64) int {
+	t.Helper()
+	output, err := compose(ctx, "logs", "--no-color", "--no-log-prefix", "bridge")
+	if err != nil {
+		return 0
+	}
+	result := 0
+	for _, line := range bytes.Split(output, []byte{'\n'}) {
+		var event struct {
+			Kind     string           `json:"kind"`
+			Resource *resource.Sample `json:"resource"`
+		}
+		if json.Unmarshal(bytes.TrimSpace(line), &event) == nil && event.Kind == "resource-sample" &&
+			event.Resource != nil && event.Resource.Sockets == sockets {
+			result++
+		}
+	}
+	return result
 }
 
 func waitForBridgeResourceState(t *testing.T, ctx context.Context, compose composeCall, state string) {

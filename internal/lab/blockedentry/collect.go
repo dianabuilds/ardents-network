@@ -106,19 +106,15 @@ func collectEvents(config Config, canaries canaryCorpus, finalSpecValue *finalSp
 					cells = append(cells, cell)
 				}
 				if stopAfterCell(output, gatePassed, trustworthy, owner, canaries) {
-					summary, finishErr := finishCampaign(command, stdin, decoder, stderrResult)
-					if summary != nil && finalSpecValue != nil {
-						summary.Cells = cells
-					}
+					summary, finishErr := finishCollectedCampaign(command, stdin, decoder, stderrResult,
+						cells, finalSpecValue != nil)
 					return events, observers, cleanup, summary, finishErr
 				}
 			}
 		}
 	}
-	summary, finishErr := finishCampaign(command, stdin, decoder, stderrResult)
-	if summary != nil && finalSpecValue != nil {
-		summary.Cells = cells
-	}
+	summary, finishErr := finishCollectedCampaign(command, stdin, decoder, stderrResult,
+		cells, finalSpecValue != nil)
 	return events, observers, cleanup, summary, finishErr
 }
 

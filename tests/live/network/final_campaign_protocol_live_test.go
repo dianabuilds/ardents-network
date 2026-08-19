@@ -71,18 +71,111 @@ type finalRunnerArtifact struct {
 }
 
 type finalWorkerResult struct {
-	Schema               string                `json:"schema"`
-	CellID               string                `json:"cell_id"`
-	Terminal             string                `json:"terminal"`
-	EvidenceComplete     bool                  `json:"evidence_complete"`
-	StartedOffsetMillis  uint64                `json:"started_offset_millis"`
-	TerminalOffsetMillis uint64                `json:"terminal_offset_millis"`
-	CleanupOffsetMillis  uint64                `json:"cleanup_offset_millis"`
-	Observers            []finalRunnerObserver `json:"observers"`
-	RawObservers         []finalRawObserverSet `json:"raw_observers"`
-	RawTelemetry         []finalRawTelemetry   `json:"raw_telemetry"`
-	Residuals            []finalRunnerResidual `json:"residuals"`
-	ObserverSets         uint16                `json:"observer_sets"`
+	Schema               string                 `json:"schema"`
+	CellID               string                 `json:"cell_id"`
+	Terminal             string                 `json:"terminal"`
+	EvidenceComplete     bool                   `json:"evidence_complete"`
+	StartedOffsetMillis  uint64                 `json:"started_offset_millis"`
+	TerminalOffsetMillis uint64                 `json:"terminal_offset_millis"`
+	CleanupOffsetMillis  uint64                 `json:"cleanup_offset_millis"`
+	Observers            []finalRunnerObserver  `json:"observers"`
+	RawObservers         []finalRawObserverSet  `json:"raw_observers"`
+	RawTelemetry         []finalRawTelemetry    `json:"raw_telemetry"`
+	Sustained            *finalWorkerSustained  `json:"sustained,omitempty"`
+	Pressure             *finalPressureEvidence `json:"pressure,omitempty"`
+	Residuals            []finalRunnerResidual  `json:"residuals"`
+	ObserverSets         uint16                 `json:"observer_sets"`
+}
+
+// finalWorkerSustained is one manifest-bound sustained measurement. The runner
+// combines the two direct records and five carrier runs for each direction.
+type finalWorkerSustained struct {
+	Direction             string                     `json:"direction"`
+	Kind                  string                     `json:"kind"`
+	DirectMbit            float64                    `json:"direct_mbit,omitempty"`
+	Direct                *finalDirectRunEvidence    `json:"direct,omitempty"`
+	Run                   *finalSustainedRunEvidence `json:"run,omitempty"`
+	EndpointCarrierBytes  uint64                     `json:"endpoint_carrier_bytes,omitempty"`
+	PublisherCarrierBytes uint64                     `json:"publisher_carrier_bytes,omitempty"`
+}
+
+type finalRunnerClosed struct {
+	Schema       string              `json:"schema"`
+	FinalSummary *finalRunnerSummary `json:"final_summary,omitempty"`
+}
+
+type finalRunnerSummary struct {
+	Schema     string                       `json:"schema"`
+	Cells      []finalRunnerCell            `json:"cells"`
+	Profiles   []finalRunnerProfile         `json:"profiles,omitempty"`
+	Sustained  []finalSustainedCellEvidence `json:"sustained,omitempty"`
+	Pressure   []finalRunnerPressure        `json:"pressure,omitempty"`
+	ImageHash  string                       `json:"image_hash"`
+	ClientHash string                       `json:"client_hash"`
+	ServerHash string                       `json:"server_hash"`
+}
+
+type finalRunnerProfile struct {
+	ID         string `json:"id"`
+	Terminal   string `json:"terminal"`
+	Attempts   uint16 `json:"attempts"`
+	Successful uint16 `json:"successful"`
+}
+
+// finalRunnerPressure deliberately omits the worker-only schema marker. Its
+// JSON shape matches the final evidence schema consumed by blockedentry.
+type finalRunnerPressure struct {
+	ID                   string                      `json:"id"`
+	Terminal             string                      `json:"terminal"`
+	BaselineSockets      uint16                      `json:"baseline_sockets"`
+	Injected             uint16                      `json:"injected"`
+	PeakSockets          uint16                      `json:"peak_sockets"`
+	Offers               uint16                      `json:"offers"`
+	Refused              uint16                      `json:"refused"`
+	HighSamples          uint16                      `json:"high_samples"`
+	LowSamples           uint16                      `json:"low_samples"`
+	Batches              uint16                      `json:"batches"`
+	Units                uint16                      `json:"units"`
+	StreamMbit           uint16                      `json:"stream_mbit"`
+	DurationMillis       uint32                      `json:"duration_millis"`
+	CadenceMillis        uint32                      `json:"cadence_millis"`
+	PartialBytes         uint16                      `json:"partial_bytes"`
+	RatePerSecond        uint16                      `json:"rate_per_second"`
+	MaximumRefusalMillis uint32                      `json:"maximum_refusal_millis"`
+	ExitMillis           uint32                      `json:"exit_millis"`
+	Progress             bool                        `json:"progress"`
+	Protect              bool                        `json:"protect"`
+	Drain                bool                        `json:"drain"`
+	Normal               bool                        `json:"normal"`
+	Cleanup              bool                        `json:"cleanup"`
+	OOMEvents            uint16                      `json:"oom_events"`
+	Residuals            uint16                      `json:"residuals"`
+	UpwardTrend          bool                        `json:"upward_trend"`
+	Reconciliations      []finalRunnerReconciliation `json:"reconciliations,omitempty"`
+}
+
+type finalRunnerReconciliation struct {
+	Batch                uint16 `json:"batch"`
+	AllocationDelta      int32  `json:"allocation_delta"`
+	FDDelta              int32  `json:"fd_delta"`
+	SocketDelta          int32  `json:"socket_delta"`
+	GoroutineDelta       int32  `json:"goroutine_delta"`
+	TimerDelta           int32  `json:"timer_delta"`
+	StateBytesDelta      int64  `json:"state_bytes_delta"`
+	EvidenceRecordsDelta int32  `json:"evidence_records_delta"`
+	CleanupSockets       uint16 `json:"cleanup_sockets"`
+	CleanupDescendants   uint16 `json:"cleanup_descendants"`
+	CleanupStateBytes    uint64 `json:"cleanup_state_bytes"`
+	Residuals            uint16 `json:"residuals"`
+}
+
+type finalRunnerCell struct {
+	ID                   string `json:"id"`
+	Seed                 string `json:"seed"`
+	Terminal             string `json:"terminal"`
+	StartedOffsetMillis  uint64 `json:"started_offset_millis"`
+	TerminalOffsetMillis uint64 `json:"terminal_offset_millis"`
+	CleanupOffsetMillis  uint64 `json:"cleanup_offset_millis"`
 }
 
 // finalRawObserverSet retains one role-bound parser result per worker root.

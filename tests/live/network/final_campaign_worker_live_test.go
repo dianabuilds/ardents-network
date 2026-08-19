@@ -44,6 +44,24 @@ func publishFinalWorkerTerminal() {
 }
 
 func emitFinalWorkerCell(t *testing.T, identity, terminal string, started time.Time, ownedRoots ...string) {
+	emitFinalWorkerResult(t, identity, terminal, started, nil, nil, ownedRoots...)
+}
+
+func emitFinalWorkerSustained(t *testing.T, identity, terminal string, started time.Time,
+	measurement finalWorkerSustained, ownedRoots ...string,
+) {
+	emitFinalWorkerResult(t, identity, terminal, started, &measurement, nil, ownedRoots...)
+}
+
+func emitFinalWorkerPressure(t *testing.T, identity, terminal string, started time.Time,
+	measurement finalPressureEvidence, ownedRoots ...string,
+) {
+	emitFinalWorkerResult(t, identity, terminal, started, nil, &measurement, ownedRoots...)
+}
+
+func emitFinalWorkerResult(t *testing.T, identity, terminal string, started time.Time,
+	sustained *finalWorkerSustained, pressure *finalPressureEvidence, ownedRoots ...string,
+) {
 	t.Helper()
 	if os.Getenv("ARDENTS_BLOCKED_CELL_WORKER") != "1" {
 		return
@@ -57,7 +75,7 @@ func emitFinalWorkerCell(t *testing.T, identity, terminal string, started time.T
 	value := finalWorkerResult{Schema: "ardents-h3-final-worker-cell-v1", CellID: identity, Terminal: terminal,
 		StartedOffsetMillis:  uint64(started.Sub(finalWorkerProcessStart).Milliseconds()),
 		TerminalOffsetMillis: uint64(terminalAt.Milliseconds()), CleanupOffsetMillis: uint64(terminalAt.Milliseconds()),
-		Observers: observers, RawObservers: rawObservers, RawTelemetry: rawTelemetry,
+		Observers: observers, RawObservers: rawObservers, RawTelemetry: rawTelemetry, Sustained: sustained, Pressure: pressure,
 		ObserverSets: uint16(len(ownedRoots))}
 	raw, err := json.Marshal(value)
 	if err != nil {

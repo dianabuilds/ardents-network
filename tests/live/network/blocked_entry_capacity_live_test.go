@@ -125,6 +125,10 @@ func runBlockedCapacityBatch(t *testing.T, repository, image, toolImage, client,
 		bridgeRate = "400mbit"
 	}
 	applyFinalBridgeInfrastructure(t, ctx, compose, toolImage, bridgeRate)
+	// Retain the Bridge resource stream for the final worker. The parent hashes
+	// this raw stream; final capacity verdict reduction remains fail-closed until
+	// the corresponding Endpoint-unit accounting is available.
+	startLiveContainer(t, ctx, compose, "bridge-resource-collector")
 	units := startBlockedCapacityUnits(t, ctx, project, image, toolImage, fixture, capacity, "", "")
 	waitForBridgeSocketSamples(t, ctx, compose, uint64(2+4*capacity), 1)
 	if output, err := compose(ctx, "up", "-d", "--no-build", "--no-deps", "capacity-probe"); err != nil {
@@ -158,6 +162,10 @@ func runBlockedCapacityBatch(t *testing.T, repository, image, toolImage, client,
 	}
 	publishFinalWorkerTerminal()
 	writeLiveFile(t, filepath.Join(fixture.root, "sync", "bridge", "bridge-stop"), []byte("stop\n"))
+	waitForBlockedHostFile(t, ctx, filepath.Join(fixture.root, "sync", "bridge", "resource-cleanup-captured"))
+	writeLiveFile(t, filepath.Join(fixture.root, "sync", "bridge", "resource-stop"), []byte("stop\n"))
+	waitBlockedContainer(t, ctx, compose, "bridge-resource-collector")
+	writeLiveFile(t, filepath.Join(fixture.root, "sync", "bridge", "resource-release"), []byte("release\n"))
 	for _, service := range []string{"bridge", "bridge-observer", "initiator-observer", "introduction-observer",
 		"rendezvous-observer", "responder-observer", "publisher-observer", "publisher-service"} {
 		waitBlockedContainer(t, ctx, compose, service)

@@ -106,10 +106,11 @@ func runSelectedFinalSustainedCell(t *testing.T, repository, image, toolImage, c
 		defer cancel()
 		pairDigest := sha256.Sum256([]byte("ardents-h3-final-direct-pair-v1/" + direction))
 		pairID := hex.EncodeToString(pairDigest[:])
-		_, _ = runFinalDirectBaseline(t, ctx, compose, toolImage, direction, fixture.root, pairID, timeline)
+		directMbit, direct := runFinalDirectBaseline(t, ctx, compose, toolImage, direction, fixture.root, pairID, timeline)
 		armFinalWorkerTerminal("complete")
 		cleanup()
-		emitFinalWorkerCell(t, cell, "complete", started, fixture.root)
+		emitFinalWorkerSustained(t, cell, "complete", started, finalWorkerSustained{Direction: direction,
+			Kind: parts[2], DirectMbit: directMbit, Direct: &direct}, fixture.root)
 		return
 	}
 	var run int
@@ -117,9 +118,10 @@ func runSelectedFinalSustainedCell(t *testing.T, repository, image, toolImage, c
 		t.Fatalf("invalid selected sustained run %q", cell)
 	}
 	armFinalWorkerTerminal("complete")
-	_, _, _, root := runFinalSustainedCarrier(t, repository, image, toolImage, client, server,
+	runResult, endpointBytes, publisherBytes, root := runFinalSustainedCarrier(t, repository, image, toolImage, client, server,
 		direction, run, timeline)
-	emitFinalWorkerCell(t, cell, "complete", started, root)
+	emitFinalWorkerSustained(t, cell, "complete", started, finalWorkerSustained{Direction: direction,
+		Kind: parts[2], Run: &runResult, EndpointCarrierBytes: endpointBytes, PublisherCarrierBytes: publisherBytes}, root)
 }
 
 func runFinalSustainedDirection(t *testing.T, repository, image, toolImage, client, server,

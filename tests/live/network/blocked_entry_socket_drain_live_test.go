@@ -68,8 +68,9 @@ func TestBlockedEntryDrainsAtExactEmergencySocketPressure(t *testing.T) {
 	publishFinalWorkerTerminal()
 	waitForBridgeResourceState(t, ctx, compose, "EXIT")
 	waitBlockedContainer(t, ctx, compose, "bridge")
-	if elapsed := time.Since(drainObserved); elapsed > 60*time.Second {
-		t.Fatalf("emergency Bridge exit took %s", elapsed)
+	exitMillis := uint32(time.Since(drainObserved).Milliseconds())
+	if exitMillis > 60_000 {
+		t.Fatalf("emergency Bridge exit took %s", time.Duration(exitMillis)*time.Millisecond)
 	}
 	if bridgeHasResourceState(t, ctx, compose, "NORMAL") || bridgeHasOOMEvent(t, ctx, compose) {
 		t.Fatal("emergency socket pressure recovered to NORMAL or recorded OOM")
@@ -86,7 +87,9 @@ func TestBlockedEntryDrainsAtExactEmergencySocketPressure(t *testing.T) {
 	if ownedImage {
 		removeBlockedPressureImage(t, image, project)
 	}
-	emitFinalWorkerCell(t, "pressure/P3", "drain", started, fixture.root)
+	emitFinalWorkerPressure(t, "pressure/P3", "drain", started, finalPressureEvidence{Schema: "ardents-h3-final-pressure-v1",
+		ID: "P3", Terminal: "drain", BaselineSockets: 6, Injected: 23, PeakSockets: 29, PartialBytes: 128,
+		RatePerSecond: 2, ExitMillis: exitMillis, Progress: true, Drain: true, Cleanup: true}, fixture.root)
 }
 
 func latestLiveProgressForService(t *testing.T, ctx context.Context, compose composeCall, service string) uint32 {

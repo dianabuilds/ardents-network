@@ -25,7 +25,11 @@ func runFinalCampaignRunner() int {
 	for {
 		var plan finalRunnerPlan
 		if err := decoder.Decode(&plan); err == io.EOF {
-			if encoder.Encode(map[string]string{"schema": "ardents-h3-blocked-campaign-closed-v1"}) != nil {
+			closed := finalRunnerClosed{Schema: "ardents-h3-blocked-campaign-closed-v1"}
+			if len(cached) == len(schedule.CellOrder) {
+				closed.FinalSummary = finalRunnerSummaryFromWorkers(schedule, cached)
+			}
+			if encoder.Encode(closed) != nil {
 				return 1
 			}
 			return 0

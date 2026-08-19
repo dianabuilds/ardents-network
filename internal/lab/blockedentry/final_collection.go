@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
+	"os/exec"
 	"strings"
 	"time"
 )
@@ -39,6 +41,17 @@ func collectFinalPrelude(ctx context.Context, encoder *json.Encoder, decoder *js
 		cells = append(cells, cell)
 	}
 	return cells, nil
+}
+
+func finishCollectedCampaign(command *exec.Cmd, stdin io.WriteCloser, decoder *json.Decoder,
+	stderr <-chan []byte, cells []finalCellObservation, attachCells bool,
+) (*finalSummary, error) {
+	summary, err := finishCampaign(command, stdin, decoder, stderr)
+	if err != nil || summary == nil || !attachCells {
+		return summary, err
+	}
+	summary.Cells = cells
+	return summary, nil
 }
 
 func finalCellFromOutput(secretRoot string, output cellObservation) (finalCellObservation, error) {

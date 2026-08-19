@@ -24,15 +24,26 @@ type finalPressureEvidence struct {
 	Schema               string                        `json:"schema"`
 	ID                   string                        `json:"id"`
 	Terminal             string                        `json:"terminal"`
+	BaselineSockets      uint16                        `json:"baseline_sockets,omitempty"`
+	Injected             uint16                        `json:"injected,omitempty"`
+	PeakSockets          uint16                        `json:"peak_sockets,omitempty"`
 	Offers               uint16                        `json:"offers,omitempty"`
 	Refused              uint16                        `json:"refused,omitempty"`
+	HighSamples          uint16                        `json:"high_samples,omitempty"`
+	LowSamples           uint16                        `json:"low_samples,omitempty"`
 	Batches              uint16                        `json:"batches,omitempty"`
 	Units                uint16                        `json:"units,omitempty"`
 	StreamMbit           uint16                        `json:"stream_mbit,omitempty"`
 	DurationMillis       uint32                        `json:"duration_millis,omitempty"`
 	CadenceMillis        uint32                        `json:"cadence_millis,omitempty"`
+	PartialBytes         uint16                        `json:"partial_bytes,omitempty"`
+	RatePerSecond        uint16                        `json:"rate_per_second,omitempty"`
 	MaximumRefusalMillis uint32                        `json:"maximum_refusal_millis,omitempty"`
+	ExitMillis           uint32                        `json:"exit_millis,omitempty"`
 	Progress             bool                          `json:"progress"`
+	Protect              bool                          `json:"protect"`
+	Drain                bool                          `json:"drain"`
+	Normal               bool                          `json:"normal"`
 	Cleanup              bool                          `json:"cleanup"`
 	UpwardTrend          bool                          `json:"upward_trend"`
 	OOMEvents            uint16                        `json:"oom_events,omitempty"`
