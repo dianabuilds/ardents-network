@@ -12,8 +12,8 @@ func applyConflict(current *Record, op Op) (Record, error) {
 	if current.Name != op.Name {
 		return Record{}, Error{Action: opConflict, Reason: "record name mismatch"}
 	}
-	if current.State != stateActive && current.State != stateGrace && current.State != stateReleased {
-		return Record{}, Error{Action: opConflict, Reason: "conflict can only be created for active names"}
+	if current.State != stateActive && current.State != stateGrace {
+		return Record{}, Error{Action: opConflict, Reason: "conflict can only be created for active or grace names (R-039)"}
 	}
 	if strings.TrimSpace(op.ConflictContext) == "" {
 		return Record{}, Error{Action: opConflict, Reason: "conflict context is required"}

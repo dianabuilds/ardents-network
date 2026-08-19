@@ -26,6 +26,11 @@ type Record struct {
 	RecoveryExpiresAt  int64
 	Continuity         uint64
 	ConflictIdentifier string
+	// Signature is the Ed25519 signature by the Record's Authority
+	// over the canonical Record payload (R-044 + ADR-0013). It is
+	// optional during Apply; a verifier that requires authentication
+	// must check it through Record.Verify.
+	Signature []byte
 }
 
 // Op is a command-like transition input for Apply.
@@ -156,6 +161,9 @@ func applyRelease(current *Record, op Op) (Record, error) {
 	}
 	if current.State == stateReleased {
 		return Record{}, Error{Action: opRelease, Reason: "name is already released"}
+	}
+	if current.State == stateConflict {
+		return Record{}, Error{Action: opRelease, Reason: "conflict cannot force release (R-039)"}
 	}
 	result := *current
 	result.Revision++

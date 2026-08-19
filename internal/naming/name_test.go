@@ -47,29 +47,29 @@ func TestParseServiceLinkAndCanonicalize(t *testing.T) {
 		t.Fatalf("ParseServiceLink = %q, want %q", name, "blog.example")
 	}
 
-	canonical, err := Canonicalize("  Blog.Example ")
+	canonical, err := canonicalize("  Blog.Example ")
 	if err != nil {
-		t.Fatalf("Canonicalize: %v", err)
+		t.Fatalf("canonicalize: %v", err)
 	}
 	if canonical != "blog.example" {
-		t.Fatalf("Canonicalize = %q, want %q", canonical, "blog.example")
+		t.Fatalf("canonicalize = %q, want %q", canonical, "blog.example")
 	}
 }
 
 func TestLabelsAndDescendant(t *testing.T) {
 	t.Parallel()
 
-	labels, err := Labels("blog.example")
+	labels, err := labelsOf("blog.example")
 	if err != nil {
-		t.Fatalf("Labels: %v", err)
+		t.Fatalf("labelsOf: %v", err)
 	}
 	if len(labels) != 2 || labels[0] != "blog" || labels[1] != "example" {
-		t.Fatalf("Labels = %v", labels)
+		t.Fatalf("labelsOf = %v", labels)
 	}
-	if IsDescendant("blog.example", "example") != true {
+	if !isDescendant("blog.example", "example") {
 		t.Fatalf("expected blog.example descendant of example")
 	}
-	if IsDescendant("example", "blog.example") {
+	if isDescendant("example", "blog.example") {
 		t.Fatalf("expected example not descendant of blog.example")
 	}
 }
