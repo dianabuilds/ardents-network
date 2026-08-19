@@ -244,6 +244,9 @@ func runHarness(t *testing.T, harness, verifier, workspace, client, server, mode
 	if _, err := os.Stat(root + ".partial"); !os.IsNotExist(err) {
 		t.Fatalf("harness construction residue remained: %v", err)
 	}
+	if _, err := os.Stat(filepath.Join(root, "runner-staging")); !os.IsNotExist(err) {
+		t.Fatalf("runner staging escaped into the committed bundle: %v", err)
+	}
 	return result
 }
 

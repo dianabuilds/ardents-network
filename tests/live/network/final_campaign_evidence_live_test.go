@@ -264,7 +264,7 @@ func releaseFinalWorkerRoot(workerRoot string) error {
 	if err := os.Remove(workerRoot); err != nil {
 		return err
 	}
-	return nil
+	return os.Remove(filepath.Dir(workerRoot))
 }
 
 func completeFinalWorkerEvidence(values []finalWorkerResult,

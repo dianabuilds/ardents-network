@@ -63,10 +63,14 @@ func Run(config Config) (Result, error) {
 	}
 	publishable := filepath.Join(temporary, "publishable")
 	secretRoot := filepath.Join(temporary, "secret")
+	stagingRoot := filepath.Join(temporary, "runner-staging")
 	if err := os.Mkdir(publishable, 0o700); err != nil {
 		return Result{}, err
 	}
 	if err := os.Mkdir(secretRoot, 0o700); err != nil {
+		return Result{}, err
+	}
+	if err := os.Mkdir(stagingRoot, 0o700); err != nil {
 		return Result{}, err
 	}
 	config, err := freezeSupply(config, secretRoot)
@@ -117,6 +121,9 @@ func Run(config Config) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
+	if err := removeEmptyFinalStaging(stagingRoot); err != nil {
+		return Result{}, err
+	}
 	evidencePath := filepath.Join(publishable, "evidence.json")
 	if err := writeJSON(evidencePath, evidenceValue); err != nil {
 		return Result{}, err
@@ -153,6 +160,14 @@ func Run(config Config) (Result, error) {
 		ClosurePath:  filepath.Join(evidenceRoot, "publishable", "closure.json"),
 		SecretRoot:   filepath.Join(evidenceRoot, "secret"), CanaryPath: filepath.Join(evidenceRoot, "secret", "canaries.json"),
 		PublishableRoot: filepath.Join(evidenceRoot, "publishable"), ManifestSHA256: manifestHash}, nil
+}
+
+func removeEmptyFinalStaging(root string) error {
+	entries, err := os.ReadDir(root)
+	if err != nil || len(entries) != 0 {
+		return errors.Join(err, errors.New("blocked-entry runner staging retained files"))
+	}
+	return os.Remove(root)
 }
 
 func validateWorkspace(root string) error {

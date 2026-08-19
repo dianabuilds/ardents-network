@@ -4,12 +4,16 @@ package network_test
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 )
+
+const maximumFinalWorkerInput = 256 << 20
 
 func newFinalProjectToken() (string, error) {
 	raw := make([]byte, 12)
@@ -20,11 +24,11 @@ func newFinalProjectToken() (string, error) {
 }
 
 func prepareFinalWorkerRoot(token string) (string, error) {
-	secret := os.Getenv("ARDENTS_BLOCKED_SECRET_ROOT")
-	if !filepath.IsAbs(secret) || token == "" {
+	staging := os.Getenv("ARDENTS_BLOCKED_STAGING_ROOT")
+	if !filepath.IsAbs(staging) || token == "" {
 		return "", errors.New("final worker root inputs are invalid")
 	}
-	parent := filepath.Join(secret, "measurements", "workers")
+	parent := filepath.Join(staging, "workers")
 	if err := os.MkdirAll(parent, 0o700); err != nil {
 		return "", err
 	}
@@ -36,10 +40,10 @@ func prepareFinalWorkerRoot(token string) (string, error) {
 }
 
 func cleanupFinalWorkerRoot(root string) error {
-	secret := os.Getenv("ARDENTS_BLOCKED_SECRET_ROOT")
-	parent := filepath.Clean(filepath.Join(secret, "measurements", "workers"))
+	staging := os.Getenv("ARDENTS_BLOCKED_STAGING_ROOT")
+	parent := filepath.Clean(filepath.Join(staging, "workers"))
 	clean := filepath.Clean(root)
-	if !filepath.IsAbs(secret) || filepath.Dir(clean) != parent || len(filepath.Base(clean)) != 24 {
+	if !filepath.IsAbs(staging) || filepath.Dir(clean) != parent || len(filepath.Base(clean)) != 24 {
 		return errors.New("refused to clean an unowned final worker root")
 	}
 	if _, err := hex.DecodeString(filepath.Base(clean)); err != nil {
@@ -50,6 +54,72 @@ func cleanupFinalWorkerRoot(root string) error {
 	}
 	if _, err := os.Lstat(clean); !errors.Is(err, os.ErrNotExist) {
 		return errors.Join(err, errors.New("final worker root remained after cleanup"))
+	}
+	if err := os.Remove(parent); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	return nil
+}
+
+func prepareFinalWorkerInputs(root, client, server, compose, clientHash, serverHash, composeHash string) (
+	string, string, string, error,
+) {
+	directory := filepath.Join(root, "input")
+	if err := os.Mkdir(directory, 0o700); err != nil {
+		return "", "", "", err
+	}
+	paths := []string{filepath.Join(directory, "client"), filepath.Join(directory, "server"),
+		filepath.Join(directory, "compose.yml")}
+	for index, source := range []string{client, server, compose} {
+		expected := []string{clientHash, serverHash, composeHash}[index]
+		if err := copyFinalWorkerInput(source, paths[index], expected); err != nil {
+			return "", "", "", err
+		}
+	}
+	return paths[0], paths[1], paths[2], nil
+}
+
+func copyFinalWorkerInput(source, target, expectedHash string) error {
+	info, err := os.Lstat(source)
+	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() ||
+		info.Size() < 1 || info.Size() > maximumFinalWorkerInput || len(expectedHash) != 64 {
+		return errors.Join(err, errors.New("final worker input is not a bounded regular file"))
+	}
+	input, err := os.Open(source)
+	if err != nil {
+		return err
+	}
+	opened, err := input.Stat()
+	if err != nil || !os.SameFile(info, opened) || info.Size() != opened.Size() ||
+		info.ModTime() != opened.ModTime() {
+		_ = input.Close()
+		return errors.Join(err, errors.New("final worker input changed before copy"))
+	}
+	output, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o500)
+	if err != nil {
+		_ = input.Close()
+		return err
+	}
+	digest := sha256.New()
+	written, copyErr := io.Copy(io.MultiWriter(output, digest), io.LimitReader(input, maximumFinalWorkerInput+1))
+	after, statErr := input.Stat()
+	closeErr := errors.Join(input.Close(), output.Sync(), output.Close())
+	actualHash := hex.EncodeToString(digest.Sum(nil))
+	if copyErr != nil || statErr != nil || closeErr != nil || written != info.Size() ||
+		!os.SameFile(info, after) || info.Size() != after.Size() || info.ModTime() != after.ModTime() ||
+		actualHash != expectedHash {
+		return errors.Join(copyErr, statErr, closeErr, errors.New("final worker input copy is incomplete"))
+	}
+	return nil
+}
+
+func cleanupFinalWorkerInputs(root string) error {
+	directory := filepath.Join(root, "input")
+	if err := os.RemoveAll(directory); err != nil {
+		return err
+	}
+	if _, err := os.Lstat(directory); !errors.Is(err, os.ErrNotExist) {
+		return errors.Join(err, errors.New("final worker input copies remained after cleanup"))
 	}
 	return nil
 }

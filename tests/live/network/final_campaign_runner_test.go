@@ -177,8 +177,8 @@ func TestFinalWorkerEvidenceRequiresRetainedObserversAndPostCleanupRoot(t *testi
 }
 
 func TestFinalWorkerRootCleanupIsOwnershipScoped(t *testing.T) {
-	secret := t.TempDir()
-	t.Setenv("ARDENTS_BLOCKED_SECRET_ROOT", secret)
+	staging := t.TempDir()
+	t.Setenv("ARDENTS_BLOCKED_STAGING_ROOT", staging)
 	root, err := prepareFinalWorkerRoot(strings.Repeat("a", 24))
 	if err != nil {
 		t.Fatal(err)
@@ -192,7 +192,7 @@ func TestFinalWorkerRootCleanupIsOwnershipScoped(t *testing.T) {
 	if _, err := os.Stat(root); !os.IsNotExist(err) {
 		t.Fatalf("owned worker root remained: %v", err)
 	}
-	if err := cleanupFinalWorkerRoot(filepath.Join(secret, "outside")); err == nil {
+	if err := cleanupFinalWorkerRoot(filepath.Join(staging, "outside")); err == nil {
 		t.Fatal("cleanup accepted an unowned path")
 	}
 }
@@ -344,9 +344,15 @@ func TestFinalWorkerCaptureDrainsButRejectsOversizedOutput(t *testing.T) {
 
 func TestFinalWorkerEnvironmentReplacesFrozenInputs(t *testing.T) {
 	t.Setenv("ARDENTS_FINAL_CELL", "stale")
+	t.Setenv("ARDENTS_BLOCKED_SECRET_ROOT", `C:\secret-must-not-reach-worker`)
+	t.Setenv("ARDENTS_BLOCKED_CANARY_FILE", `C:\secret-must-not-reach-worker\canaries.json`)
+	t.Setenv("DOCKER_CONFIG", `C:\secret-must-not-reach-worker\docker-config`)
 	environment := finalWorkerEnvironment(map[string]string{"ARDENTS_FINAL_CELL": "profile/C1/00"})
 	count := 0
 	for _, value := range environment {
+		if strings.Contains(value, "secret-must-not-reach-worker") {
+			t.Fatalf("final worker inherited a runner secret path: %q", value)
+		}
 		if strings.HasPrefix(value, "ARDENTS_FINAL_CELL=") {
 			count++
 			if value != "ARDENTS_FINAL_CELL=profile/C1/00" {

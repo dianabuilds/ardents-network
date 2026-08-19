@@ -14,7 +14,7 @@ import (
 
 func TestFinalWorkerPublishesFileBackedEvidenceWithoutStreamingPayload(t *testing.T) {
 	secret := t.TempDir()
-	t.Setenv("ARDENTS_BLOCKED_SECRET_ROOT", secret)
+	t.Setenv("ARDENTS_BLOCKED_STAGING_ROOT", t.TempDir())
 	root, err := prepareFinalWorkerRoot(strings.Repeat("a", 24))
 	if err != nil {
 		t.Fatal(err)
@@ -24,7 +24,7 @@ func TestFinalWorkerPublishesFileBackedEvidenceWithoutStreamingPayload(t *testin
 		Path: finalPathObservation{Phase: "measured", Counts: map[string]int64{}, Passed: true},
 		DNS:  finalDNSObservation{BoundaryControls: map[string]finalDNSControl{}}}}}}
 	payload := bytes.Repeat([]byte("raw-sample-must-not-enter-control-stream\n"), 24_000)
-	telemetry := []finalRawTelemetry{{Role: "bridge", Kind: "resource.jsonl", Data: payload}}
+	telemetry := fixtureFinalRawTelemetry(cellID, payload)
 	if err := writeFinalWorkerHandoff(root, cellID, observers, telemetry); err != nil {
 		t.Fatal(err)
 	}
@@ -54,6 +54,28 @@ func TestFinalWorkerPublishesFileBackedEvidenceWithoutStreamingPayload(t *testin
 	}
 }
 
+func TestFinalWorkerHandoffPublishesTelemetryBeyondAggregateControlBound(t *testing.T) {
+	secret := t.TempDir()
+	t.Setenv("ARDENTS_BLOCKED_STAGING_ROOT", t.TempDir())
+	root, err := prepareFinalWorkerRoot(strings.Repeat("d", 24))
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload := bytes.Repeat([]byte("x"), 300<<10)
+	cellID := "pressure/P4"
+	telemetry := fixtureFinalRawTelemetry(cellID, payload)
+	if err := writeFinalWorkerHandoff(root, cellID, []finalRawObserverSet{{}}, telemetry); err != nil {
+		t.Fatal(err)
+	}
+	_, artifact, err := publishFinalWorkerHandoff(root, secret, cellID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifact.Bytes >= maximumFinalHandoffArtifact {
+		t.Fatalf("telemetry index retained aggregate payload: %d", artifact.Bytes)
+	}
+}
+
 func TestFinalCampaignControlStreamFitsAllCellsWithoutRawEvidence(t *testing.T) {
 	var stream bytes.Buffer
 	encoder := json.NewEncoder(&stream)
@@ -78,7 +100,7 @@ func TestFinalCampaignControlStreamFitsAllCellsWithoutRawEvidence(t *testing.T) 
 
 func TestFinalWorkerHandoffRejectsUnownedAndDuplicatePublication(t *testing.T) {
 	secret := t.TempDir()
-	t.Setenv("ARDENTS_BLOCKED_SECRET_ROOT", secret)
+	t.Setenv("ARDENTS_BLOCKED_STAGING_ROOT", t.TempDir())
 	cellID := "profile/C1/00"
 	write := func(token string) string {
 		root, err := prepareFinalWorkerRoot(token)
@@ -86,7 +108,7 @@ func TestFinalWorkerHandoffRejectsUnownedAndDuplicatePublication(t *testing.T) {
 			t.Fatal(err)
 		}
 		if err := writeFinalWorkerHandoff(root, cellID, []finalRawObserverSet{{}},
-			[]finalRawTelemetry{{Role: "bridge", Kind: "resource.jsonl", Data: []byte("sample\n")}}); err != nil {
+			fixtureFinalRawTelemetry(cellID, []byte("sample\n"))); err != nil {
 			t.Fatal(err)
 		}
 		return root
@@ -109,14 +131,14 @@ func TestFinalWorkerHandoffRejectsUnownedAndDuplicatePublication(t *testing.T) {
 
 func TestFinalWorkerHandoffRejectsSymlinkedArtifact(t *testing.T) {
 	secret := t.TempDir()
-	t.Setenv("ARDENTS_BLOCKED_SECRET_ROOT", secret)
+	t.Setenv("ARDENTS_BLOCKED_STAGING_ROOT", t.TempDir())
 	root, err := prepareFinalWorkerRoot(strings.Repeat("c", 24))
 	if err != nil {
 		t.Fatal(err)
 	}
 	cellID := "profile/C1/00"
 	if err := writeFinalWorkerHandoff(root, cellID, []finalRawObserverSet{{}},
-		[]finalRawTelemetry{{Role: "bridge", Kind: "resource.jsonl", Data: []byte("sample\n")}}); err != nil {
+		fixtureFinalRawTelemetry(cellID, []byte("sample\n"))); err != nil {
 		t.Fatal(err)
 	}
 	observerPath := filepath.Join(root, "handoff", "observers.json")
@@ -137,4 +159,21 @@ func TestFinalWorkerHandoffRejectsSymlinkedArtifact(t *testing.T) {
 	if _, _, err := publishFinalWorkerHandoff(root, secret, cellID); err == nil {
 		t.Fatal("symlinked final worker artifact was accepted")
 	}
+}
+
+func fixtureFinalRawTelemetry(cell string, payload []byte) []finalRawTelemetry {
+	roots := 1
+	if cell == "pressure/P4" {
+		roots = 10
+	}
+	result := make([]finalRawTelemetry, 0, roots*6)
+	for root := range roots {
+		for _, role := range []string{"endpoint", "bridge", "publisher"} {
+			for _, kind := range []string{"resource.jsonl", "carrier.jsonl"} {
+				result = append(result, finalRawTelemetry{Root: uint16(root), Role: role,
+					Kind: kind, Data: payload})
+			}
+		}
+	}
+	return result
 }

@@ -96,54 +96,70 @@ func runFinalCellWorker(schedule finalRunnerSchedule, cell, test string,
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
+	workerClient, workerServer, workerCompose, err := prepareFinalWorkerInputs(workerRoot,
+		os.Getenv("ARDENTS_BLOCKED_CLIENT"), os.Getenv("ARDENTS_BLOCKED_SERVER"),
+		os.Getenv("ARDENTS_BLOCKED_COMPOSE_FILE"), schedule.ClientSHA256, schedule.ServerSHA256,
+		schedule.RuntimeCompose.SHA256)
+	if err != nil {
+		return nil, err
+	}
 	command := exec.CommandContext(ctx, executable, "-test.run", "^"+test+"$", "-test.count=1", "-test.v")
 	command.Env = finalWorkerEnvironment(map[string]string{
 		"ARDENTS_BLOCKED_CELL_WORKER":  "1",
 		"ARDENTS_FINAL_CELL":           cell,
-		"ARDENTS_WEBTUNNEL_CLIENT":     os.Getenv("ARDENTS_BLOCKED_CLIENT"),
-		"ARDENTS_WEBTUNNEL_SERVER":     os.Getenv("ARDENTS_BLOCKED_SERVER"),
+		"ARDENTS_WEBTUNNEL_CLIENT":     workerClient,
+		"ARDENTS_WEBTUNNEL_SERVER":     workerServer,
 		"ARDENTS_LIVE_TOOL_IMAGE":      schedule.ToolImageID,
 		"ARDENTS_FINAL_PRODUCT_IMAGE":  schedule.ProductImageID,
-		"ARDENTS_BLOCKED_COMPOSE_FILE": os.Getenv("ARDENTS_BLOCKED_COMPOSE_FILE"),
+		"ARDENTS_BLOCKED_COMPOSE_FILE": workerCompose,
 		"ARDENTS_FINAL_PROJECT_TOKEN":  projectToken,
 		"ARDENTS_FINAL_WORKER_ROOT":    workerRoot,
 	})
 	startedOffset := uint64(time.Since(clockOrigin).Milliseconds())
-	stdout, stderr, receipt, err := runFinalBoundedWorkerProcess(command,
-		maximumFinalWorkerStream, clockOrigin, cell)
-	composeErr := verifyFinalRuntimeCompose(schedule)
-	cleanupErr := cleanupFinalWorkerProjects(projectToken)
+	results, receipt, err := completeFinalWorkerProcess(command, maximumFinalWorkerStream, clockOrigin,
+		cell, workerRoot, os.Getenv("ARDENTS_BLOCKED_SECRET_ROOT"), func() error {
+			return errors.Join(cleanupFinalWorkerInputs(workerRoot), verifyFinalRuntimeCompose(schedule),
+				cleanupFinalWorkerProjects(projectToken))
+		})
 	if ctx.Err() != nil {
 		return nil, errors.New("final worker execution exceeded its bound")
 	}
-	if composeErr != nil || cleanupErr != nil {
-		return nil, errors.Join(composeErr, cleanupErr)
-	}
 	if err != nil {
-		return nil, fmt.Errorf("worker %s failed: %w: %s", test, err, bytes.TrimSpace(stderr))
-	}
-	var decodeErr error
-	results, decodeErr = decodeFinalWorkerResults(stdout)
-	if decodeErr != nil {
-		return nil, decodeErr
-	}
-	if len(results) != 1 || results[0].CellID != cell || results[0].Terminal != receipt.Terminal {
-		return nil, errors.New("final worker terminal receipt does not match its selected result")
-	}
-	observerArtifact, telemetryArtifact, err := publishFinalWorkerHandoff(workerRoot,
-		os.Getenv("ARDENTS_BLOCKED_SECRET_ROOT"), cell)
-	if err != nil {
-		return nil, err
-	}
-	results[0].ObserverEvidence, results[0].TelemetryEvidence = observerArtifact, telemetryArtifact
-	if err := releaseFinalWorkerRoot(workerRoot); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("worker %s failed: %w", test, err)
 	}
 	rootOwned = false
 	cleanupOffset := uint64(time.Since(clockOrigin).Milliseconds())
 	terminalOffset := uint64(receipt.At.Milliseconds())
 	completeFinalWorkerEvidence(results, startedOffset, terminalOffset, cleanupOffset)
 	return results, nil
+}
+
+func completeFinalWorkerProcess(command *exec.Cmd, limit int, clockOrigin time.Time, cell, workerRoot, secret string,
+	cleanup func() error,
+) ([]finalWorkerResult, finalTerminalReceipt, error) {
+	stdout, stderr, receipt, runErr := runFinalBoundedWorkerProcess(command, limit, clockOrigin, cell)
+	var cleanupErr error
+	if cleanup != nil {
+		cleanupErr = cleanup()
+	}
+	if runErr != nil || cleanupErr != nil {
+		return nil, receipt, errors.Join(runErr, cleanupErr,
+			fmt.Errorf("final worker stderr: %s", bytes.TrimSpace(stderr)))
+	}
+	results, err := decodeFinalWorkerResults(stdout)
+	if err != nil || len(results) != 1 || results[0].CellID != cell || results[0].Terminal != receipt.Terminal {
+		return nil, receipt, errors.Join(err,
+			errors.New("final worker terminal receipt does not match its selected result"))
+	}
+	observerArtifact, telemetryArtifact, err := publishFinalWorkerHandoff(workerRoot, secret, cell)
+	if err != nil {
+		return nil, receipt, err
+	}
+	results[0].ObserverEvidence, results[0].TelemetryEvidence = observerArtifact, telemetryArtifact
+	if err := releaseFinalWorkerRoot(workerRoot); err != nil {
+		return nil, receipt, err
+	}
+	return results, receipt, nil
 }
 
 func runFinalBoundedProcess(command *exec.Cmd, limit int) ([]byte, []byte, error) {
@@ -250,8 +266,13 @@ func runFinalBoundedProcessObserved(command *exec.Cmd, limit int,
 
 func finalWorkerEnvironment(values map[string]string) []string {
 	result := make([]string, 0, len(os.Environ())+len(values))
+	allowed := map[string]bool{"PATH": true, "SYSTEMROOT": true, "WINDIR": true, "COMSPEC": true,
+		"PATHEXT": true, "TEMP": true, "TMP": true, "TMPDIR": true, "DOCKER_HOST": true}
 	for _, current := range os.Environ() {
 		name, _, _ := strings.Cut(current, "=")
+		if !allowed[strings.ToUpper(name)] {
+			continue
+		}
 		if _, replaced := values[name]; !replaced {
 			result = append(result, current)
 		}

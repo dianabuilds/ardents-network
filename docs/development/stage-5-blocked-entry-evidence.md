@@ -84,15 +84,28 @@ archive, requires the frozen commit and source hash, verifies both preloaded
 content-addressed image IDs and their product/tool/base/source labels, then
 uses `--no-build` paths and bounded stdout/stderr capture. The worker result is
 now terminal-bearing and reads the completed role-owned path/DNS results. Raw
-observer and telemetry payloads do not enter either streaming control channel:
-the exact-cell worker writes two canonical files into its parent-owned root,
-the streaming runner snapshots them only after the worker exits, publishes
-them under cell-ID-derived no-replace names in the external secret tree, and
-returns only path/hash/size commitments. The harness independently reopens the
-stable regular files, rejects path substitution, mutation, non-canonical JSON,
-or commitment mismatch, and binds the accepted commitments into the cell.
-The child cannot set `evidence_complete`: the parent owns the worker's only
-temporary root and process group, verifies that the group has no descendant,
+observer and telemetry payloads do not enter either streaming control channel.
+The exact-cell worker writes a canonical observer artifact, a bounded canonical
+telemetry index, and one at-most-2-MiB file per telemetry stream into a
+parent-created staging root outside the secret tree. The streaming runner
+snapshots them only after the worker exits, publishes them under cell-ID- and
+ordinal-derived no-replace names in the external secret tree, and returns only
+path/hash/size commitments. The aggregate telemetry volume is therefore not
+constrained by the 16-MiB control or index bound. The harness independently
+performs the structural admission: it reopens stable regular files, requires
+the cell-derived root count and ordered Endpoint/Bridge/Publisher
+resource/carrier inventory for every root, and rejects path substitution,
+mutation, non-canonical indexes, or commitment mismatch. The separately built
+verifier repeats those checks and owns semantic JSONL schema, ordinal, boundary,
+and cadence validation. The maintained collector child receives disposable
+stable-read copies of its three read-only executable/compose inputs under
+staging; the runner rechecks each copied byte stream against the frozen
+client/server/runtime-compose SHA-256 commitment before execution. It does
+not inherit a runner secret-tree path; candidate containers receive neither
+host root as a mount. This same-account child isolation is a trust boundary
+between maintained harness components, not an OS sandbox claim.
+The child cannot set `evidence_complete`: the parent owns its process group,
+verifies that the group has no descendant,
 removes and rechecks every token-owned Docker object, and requires the root to
 be empty before removing it. A terminal marker is timestamped as it reaches
 the parent, before the armed project cleanup starts; start, terminal, and final

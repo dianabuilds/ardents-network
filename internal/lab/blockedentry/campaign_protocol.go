@@ -49,6 +49,7 @@ func campaignCommand(ctx context.Context, config Config) *exec.Cmd {
 		"ARDENTS_BLOCKED_SERVER=" + config.ServerPath, "ARDENTS_BLOCKED_CANARY_FILE=" + canaryPath(config.EvidenceRoot),
 		"ARDENTS_BLOCKED_CAMPAIGN_SPEC=" + config.CampaignSpecPath,
 		"ARDENTS_BLOCKED_SECRET_ROOT=" + config.EvidenceRoot + ".partial/secret",
+		"ARDENTS_BLOCKED_STAGING_ROOT=" + config.EvidenceRoot + ".partial/runner-staging",
 		"ARDENTS_BLOCKED_CELL_HELPER=1", "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")}
 	if config.CampaignSpecPath != "" {
 		dockerConfig := config.EvidenceRoot + ".partial/secret/runtime/docker-config"

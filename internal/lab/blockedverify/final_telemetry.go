@@ -10,10 +10,11 @@ import (
 const maximumFinalTelemetryBytes = 2 << 20
 
 type finalRawTelemetry struct {
-	Root uint16 `json:"root"`
-	Role string `json:"role"`
-	Kind string `json:"kind"`
-	Data []byte `json:"data"`
+	Root     uint16             `json:"root"`
+	Role     string             `json:"role"`
+	Kind     string             `json:"kind"`
+	Artifact artifactCommitment `json:"artifact"`
+	Data     []byte             `json:"-"`
 }
 
 type finalRawTelemetryEvidence struct {
@@ -25,7 +26,7 @@ type finalRawTelemetryEvidence struct {
 func verifyFinalTelemetryEvidence(root string, cells []finalCellObservation) []string {
 	for _, cell := range cells {
 		raw, reason := loadFinalRawTelemetry(root, cell)
-		if reason != "" || !validFinalRawTelemetry(raw.Files) || !validFinalTelemetryStreams(raw.Files) {
+		if reason != "" || !validFinalRawTelemetry(raw.Files, cell.ID) || !validFinalTelemetryStreams(raw.Files) {
 			return []string{"final cell raw telemetry is incomplete or invalid"}
 		}
 	}
@@ -83,8 +84,16 @@ func loadFinalRawTelemetry(root string, cell finalCellObservation) (finalRawTele
 	var raw finalRawTelemetryEvidence
 	input, err := readStableFile(path)
 	if err != nil || decodeCanonicalSnapshot(input, &raw) != nil ||
-		raw.Schema != "ardents-h3-final-raw-telemetry-v1" || raw.CellID != cell.ID {
+		raw.Schema != "ardents-h3-final-raw-telemetry-v2" || raw.CellID != cell.ID ||
+		!validFinalRawTelemetry(raw.Files, cell.ID) {
 		return finalRawTelemetryEvidence{}, "contents"
+	}
+	for index := range raw.Files {
+		stream, streamReason := loadFinalTelemetryStream(root, cell.ID, index, raw.Files[index].Artifact)
+		if streamReason != "" {
+			return finalRawTelemetryEvidence{}, streamReason
+		}
+		raw.Files[index].Data = stream
 	}
 	return raw, ""
 }
@@ -108,13 +117,47 @@ func finalTelemetryEvidencePath(cell string) string {
 	return filepath.ToSlash(filepath.Join("final-telemetry", hex.EncodeToString(digest[:])+".json"))
 }
 
-func validFinalRawTelemetry(files []finalRawTelemetry) bool {
-	for _, file := range files {
-		if file.Role != "endpoint" && file.Role != "bridge" && file.Role != "publisher" ||
-			file.Kind != "resource.jsonl" && file.Kind != "carrier.jsonl" ||
-			len(file.Data) == 0 || len(file.Data) > maximumFinalTelemetryBytes {
+func validFinalRawTelemetry(files []finalRawTelemetry, cell string) bool {
+	roots := 1
+	if cell == "pressure/P4" {
+		roots = 10
+	}
+	if len(files) != roots*6 {
+		return false
+	}
+	for index, file := range files {
+		root := index / 6
+		role := []string{"endpoint", "bridge", "publisher"}[(index%6)/2]
+		kind := []string{"resource.jsonl", "carrier.jsonl"}[index%2]
+		if file.Root != uint16(root) || file.Role != role || file.Kind != kind ||
+			file.Artifact.Path != finalTelemetryStreamPath(cell, index) || file.Artifact.Bytes < 1 ||
+			file.Artifact.Bytes > maximumFinalTelemetryBytes || !isHexDigest(file.Artifact.SHA256, 32) {
 			return false
 		}
 	}
 	return true
+}
+
+func loadFinalTelemetryStream(root, cell string, index int, artifact artifactCommitment) ([]byte, string) {
+	expected := finalTelemetryStreamPath(cell, index)
+	path, safe := safeArtifactPath(root, expected)
+	if !safe || artifact.Path != expected || artifact.Bytes < 1 ||
+		artifact.Bytes > maximumFinalTelemetryBytes || !isHexDigest(artifact.SHA256, 32) {
+		return nil, "commitment"
+	}
+	raw, err := readStableFile(path)
+	if err != nil || len(raw) > maximumFinalTelemetryBytes || int64(len(raw)) != artifact.Bytes {
+		return nil, "contents"
+	}
+	digest := sha256.Sum256(raw)
+	if hex.EncodeToString(digest[:]) != artifact.SHA256 {
+		return nil, "hash"
+	}
+	return raw, ""
+}
+
+func finalTelemetryStreamPath(cell string, index int) string {
+	digest := sha256.Sum256([]byte(cell))
+	return filepath.ToSlash(filepath.Join("final-telemetry", hex.EncodeToString(digest[:]),
+		fmt.Sprintf("%03d.jsonl", index)))
 }

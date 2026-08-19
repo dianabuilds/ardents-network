@@ -22,8 +22,23 @@ func TestFinalCellAdmitsFileBackedEvidence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	telemetry := finalRawTelemetryEvidence{Schema: "ardents-h3-final-raw-telemetry-v1", CellID: cellID,
-		Files: []finalRawTelemetry{{Role: "bridge", Kind: "resource.jsonl", Data: []byte("sample\n")}}}
+	streams := fixtureFinalTelemetryIndex(cellID)
+	for index := range streams {
+		streamPath := finalTelemetryStreamPath(cellID, index)
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(secret, filepath.FromSlash(streamPath))), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(secret, filepath.FromSlash(streamPath)), []byte("sample\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		streamCommitment, err := commitment(secret, streamPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		streams[index].Artifact = streamCommitment
+	}
+	telemetry := finalRawTelemetryEvidence{Schema: "ardents-h3-final-raw-telemetry-v2", CellID: cellID,
+		Files: streams}
 	telemetryPath := finalArtifactPath("final-telemetry", cellID)
 	if err := os.MkdirAll(filepath.Dir(filepath.Join(secret, filepath.FromSlash(telemetryPath))), 0o700); err != nil {
 		t.Fatal(err)
