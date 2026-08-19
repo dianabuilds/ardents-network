@@ -20,7 +20,7 @@ var (
 // public-key bytes themselves are not signed into the payload: a
 // verifier must already know which public key the Record is bound to
 // (the Authority field carries its identifier). The payload is what
-// R-041 / R-044 freezes: name, generation, revision, state,
+// the feasibility tracer currently covers: name, generation, revision, state,
 // authority, target, parent.
 func signedPayload(r Record) []byte {
 	h := sha256.New()
@@ -39,7 +39,7 @@ func signedPayload(r Record) []byte {
 }
 
 // sign signs the canonical Record payload with the supplied Ed25519
-// private key (per R-044 / ADR-0013) and stores the signature in
+// private key and stores the signature in
 // r.Signature. The Caller is responsible for ensuring the matching
 // public key is what r.Authority is bound to.
 func (r *Record) sign(priv ed25519.PrivateKey) error {
@@ -57,8 +57,8 @@ func (r *Record) sign(priv ed25519.PrivateKey) error {
 // verify returns nil iff r.Signature is a valid Ed25519 signature by
 // pub over the canonical Record payload. The check is replay-safe
 // only when combined with the generation/revision/parent/epoch
-// invariants enforced at Apply time; R-044 is a cryptographic
-// guarantee, replay is a state-machine guarantee.
+// invariants enforced at Apply time. R-044 remains open, so this helper
+// demonstrates feasibility rather than selecting the Stage 6 suite.
 func (r Record) verify(pub ed25519.PublicKey) error {
 	if len(r.Signature) == 0 {
 		return errSignatureMissing

@@ -1,15 +1,16 @@
 # Horizon 3 Stage 6 implementation brief
 
-Status: **S6.0 freezes all decided (R-041, R-046, R-044 + ADR-0013, R-043,
-R-042, R-045). Corrected brief, plan, readiness checklist, and evidence contract
-require Product Owner acceptance before the coding start decision. Stage 6
-coding gate remains closed until §A.2 and §A.4 of the readiness checklist are
-recorded.**
+Status: **not ready. R-041 and R-043 are decided; R-042, R-044, R-045,
+R-046, exact evidence serialization, document acceptance, and the Product Owner
+coding-start decision remain open. ADR-0013 is withdrawn.**
 
-Authoritative inputs: accepted ADR-0005, ADR-0009, ADR-0012, ADR-0013, R-003,
-R-024, R-026, R-039, R-041, R-042, R-043, R-044, R-045, R-046, the product
-contract, threat model, operating model, H3 technical design, package map, and
-repository rules.
+Authoritative inputs: accepted ADR-0005, ADR-0009, ADR-0012, R-003, R-024,
+R-026, R-039, R-041, R-043, the product contract, threat model, operating
+model, H3 technical design, package map, and repository rules.
+
+Blocking research/status references: open R-042, R-044, R-045, R-046,
+withdrawn ADR-0013, the readiness checklist, and the S6.0 preparation summary.
+They constrain entry status but are not accepted design authority.
 
 ## Current disposition
 
@@ -17,17 +18,16 @@ repository rules.
 - The Product Owner recorded the maintained Stage 5 S5.1-S5.5 development
   `advance` on 2026-08-19. Full R-037 qualification remains an S9.6 gate and is
   not a Stage 6 predecessor.
-- All six S6.0 freezes are decided on 2026-08-19: R-041 (canonical name
-  limits and `schema_version`), R-046 (field-level role matrix),
-  R-042 (claim ordering and Conflict/Fork classification), R-045 (Anonymous
-  Cost and local admission), R-043 (persistence, restart, rollback,
-  cache-proof ownership), R-044 + ADR-0013 (cryptographic suite with
-  replaceable Go interface boundary).
+- R-041 freezes the canonical name profile and R-043 freezes the semantic
+  persistence boundary. R-042 ordering/inclusion, R-044 cryptography,
+  R-045 measured admission, and R-046 field-level role views are open.
+- ADR-0013 is withdrawn and authorizes no cryptographic dependency or interface.
 - Existing Stage 6 foundation packages are work in progress, not evidence that
   the Stage 6 entry or completion gate has passed.
 
-The current entry verdict is **not ready** (Product Owner acceptance of
-corrected documents and the coding start decision are pending).
+The current entry verdict is **not ready** because four research decisions and
+the evidence serialization are unresolved; document acceptance and coding-start
+authorization follow those decisions.
 
 ## Entry gate
 
@@ -39,10 +39,8 @@ Stage 6 implementation may start only when all of the following are true:
 2. This brief, the development plan, readiness checklist, and evidence contract
    have been accepted by the Product Owner after review.
 3. R-003 remains authoritative without a contradictory interpretation.
-4. One accepted S6.0 decision profile freezes the six values referenced above.
-   **All six S6.0 freezes are decided 2026-08-19; the product owner
-   acceptance of this brief and the readiness checklist remains the
-   final gate.**
+4. One accepted S6.0 decision profile freezes all six required boundaries.
+   **Open: R-042, R-044, R-045, and R-046.**
 5. Package and command ownership is factual in `package-map.md`; any new verifier
    package or command is added only with its implementation, tests, non-test
    caller, `doc.go`, and exact permitted imports.
@@ -63,7 +61,7 @@ fallback is permitted.
 Stage 6 has two non-interchangeable completion levels:
 
 - **Slice complete:** the slice behavior and negative cases pass maintained tests
-  against the frozen S6.0 profile.
+  against the accepted S6.0 decisions relevant to that slice.
 - **Stage complete:** all slices are wired into the maintained service path; the
   immutable evidence campaign passes independent verification; J02, J03, and J05
   are traceable; and the Product Owner records the Stage 6 disposition.
@@ -84,7 +82,7 @@ Lease, consistency, and recovery are separate state dimensions:
   Lease indefinitely.
 
 `Conflict -> Released` is forbidden. Release occurs only through an authenticated
-release transition allowed by the frozen policy or through lifecycle expiry after
+release transition allowed by the accepted lifecycle or through expiry after
 Grace. Injecting conflict must never become a forced-release mechanism.
 
 Each accepted claim creates a new Name Generation. Reclaim never revives records,
@@ -154,23 +152,35 @@ and the absence of name secrecy or non-enumerability.
 
 ### S6.5 - Concurrency, fork, and abuse resistance
 
-- distinguish a claim ordered by the frozen deterministic rule from a state where
+- distinguish a claim ordered by the accepted authenticated rule from a state where
   order cannot be established;
 - give a deterministic loser only when authenticated shared state proves the
   ordering; otherwise expose Conflict, Fork, or Unavailable and fail resolution;
 - cover observation copying, front-running, withholding, flooding, partition,
   rollback, equivocation, and incompatible rule forks;
-- enforce the accepted bounded Anonymous Cost and local resource-admission profile
+- enforce the measured and accepted Anonymous Cost and resource-admission profile
   without money, global account, identity document, IP reputation, stable
   identity, wallet, token, or fairness/personhood claim;
 - never select a canonical branch from in-memory race timing or local best effort.
+
+### S6.6 - Independent evidence and verifier
+
+- freeze canonical manifest, observation, cleanup, and verdict serialization
+  only after R-042, R-044, R-045, and R-046 are decided;
+- run the A0-D6 behavior inventory through a runner that cannot author a verdict;
+- independently reconstruct every predicate from immutable raw evidence and
+  return only `pass`, `fail`, or `invalid`;
+- reject unknown, missing, duplicated, reordered, stale, contaminated, or
+  non-canonical artifacts; and
+- retain the exact profile identity, source commitments, clocks, observations,
+  and cleanup inventory needed to reproduce the result.
 
 ## Pass conditions
 
 Stage 6 passes only when all of these conjuncts hold:
 
 1. Encoding, schema version, finite limits, hierarchy, and Service Link behavior
-   exactly match the frozen S6.0 profile.
+   exactly match the accepted R-041 profile.
 2. Lease, generation, revision, parent/child, consistency, recovery, and cache
    transitions satisfy the normative state model, including explicit failure.
 3. Rotation, transfer, delegation, policy mutation, and recovery have no stale-key,
@@ -209,5 +219,6 @@ Stage 6 has three disjoint artifact classes:
 - `verdict`: independent recomputation to `pass|fail|invalid`.
 
 The runner cannot author or mutate a verdict. Command exit text is never evidence
-of Stage 6 success. The complete matrix and verifier predicates are defined in
-`stage-6-private-naming-evidence.md`.
+of Stage 6 success. The current A0-D6 inventory and draft responsibilities are
+defined in `stage-6-private-naming-evidence.md`; serialization and exact
+predicates remain open until the unresolved S6.0 research closes.

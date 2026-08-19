@@ -38,8 +38,8 @@ func TestWire_RoundTrip(t *testing.T) {
 	}
 }
 
-// TestWire_SchemaVersionPrefixIsBigEndianTwoBytes per R-041 and
-// ADR-0013: the first two bytes of every encoded name are the
+// TestWire_SchemaVersionPrefixIsBigEndianTwoBytes per R-041: the first two
+// bytes of every encoded name are the
 // big-endian uint16 schema_version (value 1).
 func TestWire_SchemaVersionPrefixIsBigEndianTwoBytes(t *testing.T) {
 	t.Parallel()

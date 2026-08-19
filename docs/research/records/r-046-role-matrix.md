@@ -1,153 +1,118 @@
 ---
 id: R-046
-title: What exact field-level role matrix freezes Stage 6 resolution and naming control operations so no ordinary role receives both endpoint location and exact Service Name?
-status: decided
+title: What exact field-level role matrix enforces Stage 6 naming knowledge separation?
+status: open
 owner: Product Owner
 started: 2026-08-19
-reviewed: 2026-08-19
+reviewed: 2026-08-20
 ---
 
-# R-046 — Stage 6 role matrix
+# R-046 — Stage 6 field-level role matrix
 
 ## Decision this unlocks
 
-Freeze the role set, per-role field-level visibility, stable-identifier
-rules, Role Domain assignments, identity/known-family exclusion,
-Isolation Context boundary, and fail-closed behavior so the S6.2
-(role separation) implementation can compile-check the privacy claim
-and the S6.5 (concurrency/fork) implementation can reference the role.
-Without this freeze, S6.2 would replace the contract with a convention
-(`do not pass a superset object and hide fields by convention`) and the
-verifier could not test the field-level boundary mechanically.
+Freeze exact per-operation inputs, outputs, observations, stable identifiers,
+Role Domains, known-family exclusions, and Isolation Context boundaries. S6.2
+cannot claim compiler-enforced knowledge separation until the matrix names every
+field rather than only naming roles.
 
 ## Current contract
 
-R-039 § Fixed product contract fixes:
+R-039 requires that one ordinary Node never receive both User/Endpoint location
+and the exact Service Name or lookup value under the stated conditions. Names
+remain guessable; naming-side metadata, collusion, Correlated Control, and a
+Broad Traffic Observer remain limitations. ADR-0005 supplies Role Domains, and
+CONTEXT.md supplies Isolation Context and Network-Isolated Application Boundary.
 
-- exact-name resolution and naming control operations separate endpoint
-  location from the exact name/control view for any one ordinary Node
-  under the accepted conditions;
-- Private Resolution separates User location from the exact name/lookup
-  view against one ordinary Node and across Isolation Contexts; names
-  remain guessable, naming-side metadata and collusion remain visible
-  limits, and no less-private resolver fallback exists.
-
-`horizon-3-stage-6-brief.md` S6.2 fixes the goal and the high-level
-separation. ADR-0005 fixes the Route Domain concept and its adjacency
-rules. ADR-0009 fixes the Go project foundation (concrete types, not
-interface hiding). R-005 fixes hostile bootstrap, R-035 fixes Bridge
-state, CONTEXT.md defines `Network-Isolated Application Boundary`,
-`Application Principal`, `Role Domain`, `Entry Set`, and `Destination
-Resolution Role`.
-
-What remains open before S6.2 can start is the exact matrix: which roles,
-which fields per role, which rules bind identifiers and Role Domains, and
-the fail-closed contract.
+The five candidate roles (`endpoint-adjacent`, `naming-rendezvous`,
+`local-resolver`, `authority-operation`, `observer`) are vocabulary, not a
+field-level decision. The former record did not list operation-specific request,
+response, logging, error, retry, cache, or evidence fields and is reopened.
 
 ## Hypotheses
 
-- **H1:** five named roles with per-role request/observation types and a
-  single forbidden combined view are sufficient to satisfy R-039's
-  privacy claim and the S6.2 / S6.5 dependencies.
-- **H2:** a smaller role set with hidden fields by convention is
-  functionally equivalent and faster to implement.
-- **H0:** a superset object model is required to model the dynamic
-  between resolver and authority work, so the contract cannot be
-  per-role types.
+- **H1:** five operation-specific role families with concrete request and
+  observation types can enforce the forbidden combined view.
+- **H2:** fewer role families are sufficient if resolution and control
+  operations use distinct types.
+- **H0:** the current route/naming composition necessarily exposes the forbidden
+  combined view and must be redesigned before Stage 6.
 
 ## Evaluation criteria
 
-1. **Per-role types are concrete Go types** (ADR-0009); no interface
-   that hides fields by convention.
-2. **Forbidden combined view:** no role sees both `User/Endpoint
-   location` and `exact Service Name / lookup value` at the same time.
-3. **Stable identifiers** (`query_id`, `session_id`, `nonce`,
-   `ephemeral_handle`) are scoped to one role and one Isolation Context;
-   they do not cross contexts, do not appear in evidence paths, and do
-   not enter long-term state.
-4. **Role Domain** assignments follow ADR-0005:
-   `endpoint-adjacent` → Initiator / Responder; `naming-rendezvous` →
-   Introduction / Rendezvous; `local-resolver` → Destination Resolution
-   in the non-adjacent Rendezvous Domain only; `authority-operation` is
-   its own state machine, not a Route role; `observer` is read-only.
-5. **Identity/known-family exclusion** follows ADR-0005, R-005, and
-   R-035: a Node identity and its known family cannot serve
-   conflicting Role Domain duties in the same destination context.
-6. **Isolation Context boundary** follows CONTEXT.md
-   § Network-Isolated Application Boundary and the Application Principal
-   definition: a role outside its boundary is fail-closed.
-7. **Fail-closed behavior** on missing role proof, invalid signature,
-   stale Role Domain, or expired role state: resolution stops, no Lease
-   mutation, classified failure (per R-002 Connection Result taxonomy).
+1. For claim, renew, resolve, record, delegate, policy, recovery, and observe,
+   list every input, output, cache key, retry token, error field, log field, and
+   retained evidence field.
+2. Mark every field `required`, `optional`, or `forbidden` for every role; no
+   superset object or convention-based hiding.
+3. Bind identifiers to one role, operation, and Isolation Context; define
+   lifetime, unlinkability boundary, and permitted evidence commitment.
+4. Assign Role Domain and known-family exclusions to every network operation.
+5. Missing/invalid role proof fails closed before name disclosure or Lease
+   mutation and maps to an R-002 result.
+6. State the protected information, adversary, conditions, measurement, and
+   honest limitation for each claimed separation.
 
 ## Evidence plan
 
-Primary sources, accessed 2026-08-19:
+### Primary sources
 
-- R-039 — H3 private naming lifecycle (accepted 2026-08-17).
-- `horizon-3-stage-6-brief.md` S6.2 (role separation).
-- `stage-6-readiness-checklist.md` §B.6.
-- ADR-0005 — Route Domains and Bounded Entry Exposure.
-- ADR-0009 — Go Project Foundation.
-- R-005 — Hostile Bootstrap and Bridge Entry.
-- R-035 — H3 Bridge State.
-- R-002 — Service Connection Connection Result taxonomy.
-- CONTEXT.md — `Network-Isolated Application Boundary`, `Application
-  Principal`, `Role Domain`, `Entry Set`, `Destination Resolution Role`.
+- R-039, accessed 2026-08-20 — exact privacy and role-separation contract.
+- ADR-0005, accessed 2026-08-20 — Role Domain and adjacency rules.
+- R-005 and R-035, accessed 2026-08-20 — hostile bootstrap and Bridge state.
+- R-002, accessed 2026-08-20 — Connection Result taxonomy.
+- CONTEXT.md, accessed 2026-08-20 — Isolation Context, Application Principal,
+  Role Domain, and Destination Resolution Role.
 
-The matrix itself is implemented in S6.2 against this contract; no new
-experiment is required for R-046.
+### Experiment
 
-## Failure scenarios
+First produce the matrix as a checked-in table. Then build a bounded tracer that
+serializes each role's actual request, response, error, log, and evidence shape.
+Mutation tests add every forbidden field one at a time; the declared interface
+and independent verifier must reject it. Run cross-context and known-family
+reuse cases as separate cells.
 
-- `endpoint-adjacent` receives the exact Service Name through carrier
-  bytes, SOCKS logging, or an error path.
-- `naming-rendezvous` receives the querying User location through an
-  observation copy or timing side channel.
-- A stable identifier from one Isolation Context appears in evidence,
-  in another context, or in long-term state.
-- A Node identity and its known family serve both `Initiator` and
-  `Destination Resolution` for the same destination.
-- Resolution proceeds after missing or invalid role proof.
-- A Lease mutates because of a role-level error (release from
-  conflict, claim from a stale generation).
-- `authority-operation` receives Application-level data.
-- `observer` reads query content, User location, or exact name.
+### Failure scenarios
 
-## Options and recommendation
+- Endpoint-adjacent input, logs, or errors contain exact name/lookup bytes.
+- Naming-side input or observation contains User/Endpoint location.
+- Retry, cache, or evidence identifiers link Isolation Contexts.
+- One identity or known family occupies conflicting Role Domains.
+- Missing role proof reaches a resolver or mutates a Lease.
+- Observer or authority-operation input contains Application data not required
+  for its operation.
 
-1. **Option A — five roles, per-role concrete types (recommended).**
-   Each role is a distinct Go type for both request and observation
-   shapes. The compiler rejects accidental superset passing. The
-   forbidden combined view is a contract test, not a convention. The
-   implementation in S6.2 mirrors the contract one-to-one.
-2. **Option B — three roles with hidden fields by convention.**
-   `endpoint`, `naming`, `authority` collapsed to three; one superset
-   object with role-tagged visibility. Rejected: violates the brief's
-   explicit `do not pass a superset object and hide fields by
-   convention`; a logging or error path can leak a field; the
-   contract cannot be compiler-checked.
-3. **Option C — five roles with a superset object and runtime
-   visibility checks.** Same five role names, one Go struct with
-   `omitempty` per role, runtime guard. Rejected: same convention
-   problem as B; a future maintainer can drop the guard or copy a
-   field.
+## Findings
 
-Recommendation: **Option A**, accepted by the Product Owner on
-2026-08-19.
+- **Sourced fact:** R-039 fixes the forbidden combined view and explicit
+  limitations, not a concrete field layout.
+- **Sourced fact:** ADR-0005 prevents conflicting Role Domain knowledge from
+  being hidden behind one identity family.
+- **Inference:** role names without field lists cannot be verified mechanically
+  and permit leaks through errors, logs, retries, or caches.
+- **Assumption:** concrete operation-specific Go types can encode the matrix once
+  its fields are decided.
+
+## Options
+
+1. **Five role families with operation-specific concrete types.** Candidate;
+   preserves current vocabulary but requires the full matrix.
+2. **Fewer role families with separate resolution/control types.** Candidate if
+   it produces the same field exclusions with a smaller interface.
+3. **Superset object plus runtime visibility checks.** Rejected: hidden fields by
+   convention do not enforce the accepted privacy boundary.
+
+## Recommendation
+
+Complete the matrix and mutation tracer before choosing between Options 1 and 2.
+Confidence is high that the former record is incomplete. The strongest
+counterargument is documentation size; that cost is necessary because omitted
+error/log/cache fields are part of the privacy boundary.
 
 ## Disposition
 
-- R-046 becomes `decided`. The open row in `docs/research/questions.md`
-  is updated to point at this record and the frozen contract.
-- §B.6 of `stage-6-readiness-checklist.md` is checked.
-- S6.2 (role separation) may define per-role request/observation
-  concrete types and a verifier predicate against the forbidden combined
-  view. S6.5 (concurrency/fork) may reference the role set when
-  classifying the loser.
-- This freeze does not authorize code; the Stage 6 coding gate remains
-  closed until §B.2 through §B.5 of the readiness checklist are also
-  checked and the corrected brief, plan, and evidence contract are
-  accepted.
-- No ADR is required: this is a contract freeze, not a technology
-  selection that creates lock-in.
+- State: `open`; five role names remain candidate vocabulary, not a frozen
+  field-level contract.
+- S6.2 and dependent evidence schema work remain blocked.
+- The next revision must contain the complete matrix and a coverage mapping from
+  every Stage 6 operation to its concrete role inputs and observations.

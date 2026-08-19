@@ -1,9 +1,8 @@
 # Stage 6 private naming evidence contract
 
-Status: **S6.0 freezes are all decided (R-041 through R-046, ADR-0013); the
-evidence contract now references their frozen values. Document-level
-acceptance by the Product Owner is the only remaining gate item before the
-Stage 6 coding start decision.**
+Status: **draft behavior inventory. R-042, R-044, R-045, R-046 and the
+canonical artifact serialization are open; ADR-0013 is withdrawn. This document
+does not yet authorize an S6.6 campaign or coding start.**
 
 This document defines what Stage 6 must prove. It does not select persistence,
 consensus, cryptography, ordering, Anonymous Cost, or wire mechanisms.
@@ -30,28 +29,21 @@ An expected runtime failure such as `state-conflict` can produce verifier `pass`
 when fail-closed behavior is the cell's declared outcome. Command exit text is
 never a verdict.
 
-## Required artifact schema
+## Required artifact responsibilities and open schema
 
-S6.0 freezes the canonical serialization and exact values. At minimum, every
-manifest contains:
+The authority split below is required, but canonical manifest, evidence,
+cleanup, and verdict bytes are **not frozen**. After R-042, R-044, R-045, and
+R-046 close, a schema revision must define at minimum:
 
-- `schema_version` (R-041: `1`, `uint16` big-endian), `profile_id`, `run_id`,
-  `cell_id`, and source identity;
-- Namespace rule version and canonical-name limit profile (R-041: lowercase
-  ASCII, label 1–63, total ≤ 253, depth ≤ 127, charset `[a-z0-9-]`, parent on
-  the right, no leading/trailing/empty label, no leading/trailing or
-  consecutive hyphen, no all-digit root, length-prefixed wire encoding);
+- artifact schema/profile identity, run/cell identity, and source commitments;
+- the accepted R-041 textual and wire name profile;
 - fixture, authority, generation, record, target, parent, policy, and role-view
   commitments appropriate to the cell;
-- deterministic sequence IDs (R-042: order key
-  `(network_id, epoch_number, SHA-256(canonical claim payload))`), monotonic
-  clock origin (R-029 Network Epoch), deadlines, and cache bounds
-  (R-043: `epoch_number` replay-bound);
-- expected runtime state/failure class (R-046 five roles with forbidden
-  combined view; R-002 Connection Result taxonomy) and the exact predicates
-  to verify; and
+- the future R-042 eligible-set/order proof, monotonic clock origin, deadlines,
+  and R-043 cache/replay bounds;
+- the future R-046 role views, expected runtime class, and exact predicates; and
 - separate paths and hashes for manifest, evidence, private fixture material, and
-  verifier output. Hashes use SHA-256 (R-044, ADR-0013).
+  verifier output, using the commitment algorithm selected by R-044.
 
 Evidence contains only declared per-role inputs/observations, ordered transitions,
 terminal outcomes, resource observations, and complete cleanup inventory. It
@@ -78,7 +70,7 @@ Runtime outcomes use at least:
 - `fork-unresolved`: partition or rule fork cannot establish one Namespace state;
 - `recovery-policy-absent`: recovery was requested without an effective policy;
 - `recovery-pending`: resolution or ordinary transition is blocked by recovery;
-- `admission-denied`: the frozen bounded cost/resource gate rejects work.
+- `admission-denied`: the accepted bounded cost/resource gate rejects work.
 
 These runtime classes are distinct from verifier `invalid`.
 
@@ -109,7 +101,7 @@ of the declared positive or adversarial fixture has expected verifier result
 | C4 | Concurrent claims with provable accepted ordering | Exactly one accepted claim and deterministic loser from authenticated order | `pass` |
 | C5 | Concurrent/partitioned claims without provable order | `state-conflict` or `fork-unresolved`; Lease is not forced to Released | `pass` |
 | C6 | Observation copying, front-running, withholding, rollback, and equivocation | No local-arrival priority or silent canonical branch; classified failure where order is unresolved | `pass` |
-| C7 | Sustained claim/renew/resolve/policy/recovery pressure | Frozen Anonymous Cost and local limits remain bounded; excess work is `admission-denied` | `pass` |
+| C7 | Sustained claim/renew/resolve/policy/recovery pressure | Accepted measured Anonymous Cost and local limits remain bounded; excess work is `admission-denied` | `pass` |
 | D0 | Resolver knowledge split | No ordinary role observes both User location and exact name/publicly testable lookup value | `pass` |
 | D1 | Entry query hiding and Rendezvous restrictions | Entry lacks query value; destination-aware identity is in the allowed Role Domain and excluded family | `pass` |
 | D2 | Claim/update/renew/release/policy/recovery control path | No ordinary role observes both controlling Endpoint location and name/control history | `pass` |
@@ -142,7 +134,7 @@ The independently built verifier must recompute at least:
 - predecessor and recovery-policy authorization at each authority transition;
 - per-role allowed/forbidden field sets and cross-context identifier checks;
 - expected runtime outcome for every required cell;
-- resource/admission observations against the frozen C7 profile; and
+- resource/admission observations against the future accepted C7 profile; and
 - complete cleanup before the next cell and after terminal state.
 
 The verifier cannot import runner command sets, trust runner summaries, read an
@@ -166,22 +158,19 @@ Stage 6 evidence fails if any valid cell shows:
 
 ## Blocking S6.0 decisions
 
-The evidence contract references S6.0 frozen values from the following
-research records and ADR. A future replacement of any frozen value requires
-a new research record and, where the replacement creates technology lock-in,
-a new ADR.
+The behavior inventory depends on these decisions. Only `decided` rows may
+contribute exact verifier predicates.
 
-| Decision | Frozen value | Record / ADR |
-|---|---|---|
-| Canonical name limits and `schema_version` | label 1–63 ASCII, total ≤ 253, depth ≤ 127, `[a-z0-9-]`, parent on the right, no leading/trailing/empty label, no leading/trailing or consecutive hyphen, no all-digit root, length-prefixed wire encoding, `schema_version = 1` | [R-041](../research/records/r-041-canonical-name-limits.md) |
-| Field-level role matrix | five roles with per-role concrete types (`endpoint-adjacent`, `naming-rendezvous`, `local-resolver`, `authority-operation`, `observer`), forbidden combined view, stable identifier scope, Role Domain per ADR-0005, identity/known-family exclusion, fail-closed on missing/invalid role proof | [R-046](../research/records/r-046-role-matrix.md) |
-| Persistence, restart, rollback, cache-proof | Go `Storage` interface in `internal/namelease/store.go`, default `internal/network/store`; durable / restart-derived / cache-bounded sets; tamper fail-closed; `epoch_number` replay-bound; atomic write | [R-043](../research/records/r-043-persistence-restart-rollback.md) |
-| Cryptographic suite | Ed25519 (Name Authority), BLS12-381 (Recovery Policy threshold), OHTTP (resolver query hiding, R-026 supply), SHA-256 + HKDF-SHA-256, replaceable Go interface boundary; no local primitive | [R-044](../research/records/r-044-cryptographic-suite.md), [ADR-0013](../adr/0013-stage-6-cryptographic-suite.md) |
-| Claim ordering and Conflict/Fork | order key `(network_id, epoch_number, SHA-256(canonical claim payload))`, five-state classification, coverage map for the eight brief scenarios | [R-042](../research/records/r-042-claim-ordering.md) |
-| Anonymous Cost and local admission | Hashcash-style SHA-256 PoW (k leading zero bits), per-endpoint per-epoch rate limit, scoped short-lived capability (TTL ≤ 60 s); per-surface table: claim 1/20/100, renewal 10/16/1000, resolution 100/8/10000, policy 1/18/10, recovery 0/22/1 per generation | [R-045](../research/records/r-045-anonymous-cost.md) |
+| Decision | Status | Evidence consequence | Record / ADR |
+|---|---|---|---|
+| Canonical name profile | decided | A0/A1 textual and wire vectors may be specified | [R-041](../research/records/r-041-canonical-name-limits.md) |
+| Persistence property boundary | decided | restart/tamper/stale/atomic predicates may be designed; adapter evidence remains future work | [R-043](../research/records/r-043-persistence-restart-rollback.md) |
+| Field-level role matrix | open | D0-D4 exact field predicates cannot be frozen | [R-046](../research/records/r-046-role-matrix.md) |
+| Cryptographic suite and Recovery Authorities | open; ADR-0013 withdrawn | B0-B5 and query-hiding proof formats cannot be frozen | [R-044](../research/records/r-044-cryptographic-suite.md), [ADR-0013](../adr/0013-stage-6-cryptographic-suite.md) |
+| Claim ordering and inclusion | open | C4-C6 cannot name a deterministic loser | [R-042](../research/records/r-042-claim-ordering.md) |
+| Anonymous Cost and admission | open | C7 has no accepted numeric thresholds | [R-045](../research/records/r-045-anonymous-cost.md) |
 
-A development-fixture verdict is explicitly `development-fixture` campaign-kind
-and is not citable as an S6.6 campaign result. The 564-cell candidate campaign
-plus six five-episode evidence-integrity campaigns and the independent
-`pass|fail|invalid` verdict are the S9.6 work, not Stage 6 development
-evidence.
+A development fixture may exercise the inventory but is not citable as an S6.6
+result. Stage 6 has no frozen campaign identity, episode count, or qualification
+schedule yet. The Stage 5 R-037/S9.6 campaign is unrelated and is not inherited
+by this evidence contract.

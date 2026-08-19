@@ -206,12 +206,13 @@ resource/evidence appendices, not standalone implementation slices. This
   (Initiator, Introduction, Rendezvous, Responder); S4.4 is now authorized and
   its local Docker development evidence is complete. The Product Owner accepted
   [R-037](../research/records/r-037-h3-blocked-entry-evidence.md) and the
-  [Stage 5 implementation brief](horizon-3-stage-5-brief.md) on 2026-08-16,
+  [Stage 5 implementation brief](../development/horizon-3-stage-5-brief.md) on 2026-08-16,
   and advanced maintained Stage 5 development on 2026-08-19 while moving the
   complete `564`-cell candidate campaign plus six evidence-integrity campaigns
-  to S9.6. The Stage 6 private-naming foundation
-  ([R-039](../research/records/r-039-h3-private-naming-lifecycle.md)) has also
-  landed. These local results do not change the official gates; Ubuntu Stage 1
+  to S9.6. The Stage 6 product contract
+  ([R-039](../research/records/r-039-h3-private-naming-lifecycle.md)) is accepted,
+  but R-042, R-044, R-045, R-046 and coding authorization remain open. These
+  local results do not change the official gates; Ubuntu Stage 1
   `short`, current `churn-2h`, independent `unattended-24h`, applicable R-023
   qualification, and the deferred S9.6 final campaign remain prerequisites for
   the integrated H3 verdict or any stronger external, privacy, security, or

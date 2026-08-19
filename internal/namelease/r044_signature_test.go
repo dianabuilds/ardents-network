@@ -6,9 +6,10 @@ import (
 	"testing"
 )
 
-// TestR044_SignatureAcceptsValidAndRejectsTampered per R-044 /
-// ADR-0013: an Ed25519 signature over the canonical Record payload is
-// accepted iff the payload has not been tampered with.
+// TestR044_SignatureAcceptsValidAndRejectsTampered is a feasibility vector:
+// an Ed25519 signature over the canonical Record payload is accepted iff the
+// payload has not been tampered with. R-044 remains open and this test does not
+// select the Stage 6 suite.
 func TestR044_SignatureAcceptsValidAndRejectsTampered(t *testing.T) {
 	t.Parallel()
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)

@@ -122,8 +122,10 @@ Control Plane risks rather than being hidden behind the word “decentralized.�
 The maintained Go tree contains the completed Carrier Lab and Named Site
 laboratories plus the Horizon 3 product runtime. Stage 1–4 development is
 complete with local Docker evidence; Stage 5 Bridge + WebTunnel development is
-complete, its final qualification remains S9.6, and the Stage 6 private-naming
-foundation is work in progress. The current
+complete and its final qualification remains S9.6. Stage 6 private-naming
+packages are feasibility work only: R-042, R-044, R-045, R-046, evidence
+serialization, and Product Owner coding authorization remain open, so they are
+not accepted Stage 6 progress or evidence. The current
 maintained product commands are `cmd/ardents`, `cmd/ardents-node`,
 `cmd/ardents-route`, `cmd/ardents-service`, `cmd/ardents-bridge`,
 `cmd/ardents-stream-app`, and `cmd/ardents-publish-app`. Cohesive product

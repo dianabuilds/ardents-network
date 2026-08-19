@@ -4,7 +4,7 @@ title: What exact canonical Service Name limits and schema_version freeze the pa
 status: decided
 owner: Product Owner
 started: 2026-08-19
-reviewed: 2026-08-19
+reviewed: 2026-08-20
 ---
 
 # R-041 — Canonical Service Name limits and schema_version
@@ -55,21 +55,24 @@ encoding (length-prefixed form and the frozen `schema_version`).
 1. **Charset:** lowercase ASCII letters, digits, hyphen. No case folding,
    no IDNA processing, no Punycode decoding.
 2. **Label rule:** non-empty, length 1–63, regex
-   `^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`. No leading or trailing hyphen.
-   No all-numeric top label (numeric root disambiguation, no other reason).
+   `^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`, plus an explicit rejection of
+   `--`. No leading or trailing hyphen. No all-numeric top label (numeric root
+   disambiguation, no other reason).
 3. **Total rule:** canonical representation ≤ 253 ASCII characters.
 4. **Depth:** ≤ 127 labels.
-5. **Canonical encoder:** length-prefixed. One `uint8` length, N label
-   bytes, ordered from leaf to root (parent on the right). Wire serialization
-   is defined in S6.1 against this profile.
-6. **Service Link:** `ardents://<canonical encoding>`. The link rejects
-   the exact bytes that the canonical parser rejects.
+5. **Canonical name wire encoding:** `schema_version` as one `uint16`
+   big-endian value, followed by repeated `uint8` label length plus lowercase
+   ASCII label bytes, from leaf to root, until the bounded name field ends.
+6. **Service Link:** `ardents://<canonical textual Service Name>`. The link
+   parser applies the same textual validation as the ordinary Service Name
+   parser; binary wire bytes never appear in a Service Link.
 7. **Schema version:** `schema_version = 1`, `uint16` big-endian in wire
    encoding. Any future change to the encoding requires a new
    `schema_version` and a new record.
 8. **Rejection:** the parser rejects without allocation or state mutation
-   every non-canonical form (Unicode, IDNA, Punycode, uppercase, leading
-   hyphen, consecutive dots, leading/trailing dot, all-numeric top label,
+   every non-canonical form (Unicode, IDNA, Punycode, uppercase, leading or
+   trailing hyphen, consecutive hyphens or dots, leading/trailing dot,
+   all-numeric top label,
    empty label, length overflow).
 9. **Falsification:** a label that is valid by these rules but the parser
    silently accepts in another form; a parent that outlives its child
@@ -78,6 +81,8 @@ encoding (length-prefixed form and the frozen `schema_version`).
    output.
 
 ## Evidence plan
+
+### Primary sources
 
 Primary sources, accessed 2026-08-19:
 
@@ -92,19 +97,21 @@ Primary sources, accessed 2026-08-19:
   adopted.
 - IETF RFC 5890 (IDNA) — referenced only to confirm the rejection
   contract.
-- IETF RFC 8618 (OHTTP) — referenced indirectly via R-026 for the
+- IETF RFC 9458 (OHTTP) — referenced indirectly via R-026 for the
   existing fixed-pad encoder experience.
 
-The encoder itself is implemented in S6.1 against this frozen profile; no
-new experiment is required for R-041.
+### Experiment
 
-## Failure scenarios
+No comparative experiment is required for this bounded syntax choice. S6.1
+must provide behavior vectors that round-trip the exact textual and wire forms
+and reject every non-canonical form without state mutation.
+
+### Failure scenarios
 
 - Uppercase, mixed-case, or full-width characters are silently accepted via
   case folding or width normalization.
 - An IDNA-compatible form (`xn--…`) is silently accepted and translated.
-- A leading digit at the root is accepted and creates confusion with
-  numeric IP-style names.
+- An all-numeric root is accepted. A mixed root such as `3d` remains valid.
 - An empty label or a leading/trailing dot is accepted and produces a
   shorter or different canonical form.
 - A `schema_version` change is silently introduced in code without
@@ -113,7 +120,18 @@ new experiment is required for R-041.
   differ only in delimiter placement hash to the same identifier only
   when the canonical form is identical.
 
-## Options and recommendation
+## Findings
+
+- **Sourced fact:** R-003 fixes lowercase ASCII dot hierarchy, the parent on
+  the right, and textual `ardents://<Service Name>` links.
+- **Sourced fact:** RFC 1035 supplies a useful size comparison but does not
+  make Ardents names DNS names or authorize DNS parsing or fallback.
+- **Assumption:** 253 textual bytes and 127 labels are sufficient for the V1
+  Developer journey; implementation evidence must expose usability problems.
+- **Inference:** a separate versioned binary form prevents link syntax from
+  being confused with protocol framing.
+
+## Options
 
 1. **Option A — DNS-derived (RFC 1035).** Label 1–63 octets, total ≤ 253
    octets, depth ≤ 127, binary labels. Familiar to engineers and 1:1 with
@@ -130,7 +148,13 @@ new experiment is required for R-041.
    and depth ≤ 63. Rejected: shorter than the accepted Onion v3 spec and
    no measured reason to tighten.
 
-Recommendation: **Option B**, accepted by the Product Owner on 2026-08-19.
+## Recommendation
+
+Choose **Option B**, accepted by the Product Owner on 2026-08-19. Confidence is
+medium: the form is deterministic and bounded, but the usability of the maximum
+depth is not measured. The strongest counterargument is that smaller bounds
+would simplify implementations; no current product requirement justifies that
+additional restriction.
 
 ## Disposition
 

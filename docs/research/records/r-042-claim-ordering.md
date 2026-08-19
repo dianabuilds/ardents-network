@@ -1,144 +1,122 @@
 ---
 id: R-042
-title: What authenticated order key, proof structure, and classification contract freeze S6.0 deterministic claim ordering and ordered-collision proof?
-status: decided
+title: What authenticated ordering and inclusion proof makes a permissionless root claim first-valid without rewarding copied pending claims?
+status: open
 owner: Product Owner
 started: 2026-08-19
-reviewed: 2026-08-19
+reviewed: 2026-08-20
 ---
 
-# R-042 — Stage 6 claim ordering and classification
+# R-042 — Stage 6 claim ordering and inclusion
 
 ## Decision this unlocks
 
-Freeze the authenticated order key, the claim proof structure, the
-five-state classification contract, and the coverage map that the
-S6.5 (concurrency/fork/abuse) implementation will use to name a
-deterministic loser in an ordered collision and to fail-closed on every
-other unresolved state. Without this freeze, S6.5 would fall back to
-in-memory race timing or local best effort, which the brief explicitly
-rejects, and the verifier could not test the ordering against an
-external time source.
+Select the mechanism and proof that let every honest verifier distinguish an
+ordered losing claim from Conflict, partition, withholding, equivocation, or a
+rule Fork. S6.5 cannot implement root-claim acceptance until this is decided.
 
 ## Current contract
 
-R-039 § Fixed product contract fixes:
+R-003 and R-039 require first-valid, deterministic, permissionless root claims.
+Local arrival time, wall clock, one resolver's view, project preference, and
+manual dispute resolution are forbidden. A copied pending claim must not win
+merely by changing bytes or obtaining more favorable propagation. R-029 supplies
+authenticated Network Epoch identity and time confidence, but it does not prove
+that an observer saw the complete eligible claim set for an epoch.
 
-- root canonical names use first-valid deterministic permissionless
-  claims that create renewable time-bounded Name Leases for Name
-  Authority;
-- a parent may issue names only inside its subtree;
-- bounded Anonymous Cost protects naming work without money, a global
-  account, identity document, IP reputation, stable identity, wallet,
-  token, or registrar and makes no personhood or fairness claim.
-
-R-005 fixes Time Confidence and the loss boundary. R-029 freezes the
-authenticated Network Epoch mechanism that the order key reuses.
-R-002 fixes the Connection Result taxonomy used for `claim-loses-
-ordered`, `state-conflict`, `fork-unresolved`, and `state-unavailable`
-classifications. R-046 freezes the role set the order proof must
-reference. R-041 freezes the canonical encoding the order proof consumes.
-
-What remains open before S6.5 can start is the exact order key, the
-proof structure, the five-state classification contract, and the
-mapping from the eight brief scenarios to those five states.
+The earlier candidate `(network_id, epoch_number, SHA-256(claim))` only sorts
+claims already known to a verifier. It neither proves inclusion/completeness nor
+prevents digest grinding, copying, withholding, or different partitions from
+ordering different sets. It is therefore not an accepted ordering mechanism.
 
 ## Hypotheses
 
-- **H1:** a single global order key
-  `(network_id, epoch_number, claim_digest)` with `claim_digest =
-  SHA-256(canonical claim payload)` is sufficient to name the loser in
-  any ordered collision and is globally verifiable without new
-  infrastructure.
-- **H2:** a monotonic clock from a single coordinator is also
-  sufficient.
-- **H0:** no global order key can be constructed without weakening the
-  R-029 Epoch contract or introducing a new infrastructure root.
+- **H1:** a bounded commit/reveal protocol plus authenticated epoch inclusion
+  can make copied claims ineligible and produce a globally verifiable loser.
+- **H2:** an authenticated ordered log or quorum inclusion proof can establish
+  one eligible set without a separate reveal phase.
+- **H0:** no candidate fits the privacy, availability, governance, and modest
+  hardware bounds; permissionless root claims must then be removed or reopened.
 
 ## Evaluation criteria
 
-1. **Global determinism:** the order key is independent of any one
-   observer's local clock or arrival time.
-2. **Authenticated source:** the order key reuses an already accepted,
-   audited mechanism (R-029 Network Epoch) and does not invent a new
-   trust root.
-3. **Collision resistance:** two distinct valid claim payloads cannot
-   share the same order key.
-4. **Forward monotonicity:** `epoch_number` increases monotonically;
-   rollbacks do not produce a valid earlier order key.
-5. **Five-state contract:** every ordering outcome is one of
-   `ordered`, `conflict`, `fork`, `unavailable`, `partition`, each with
-   an explicit Connection Result and an explicit Lease-mutation rule.
-6. **Coverage:** all eight brief scenarios
-   (observation copying, front-running, withholding, flooding,
-   partition, rollback, equivocation, rule fork) map cleanly into the
-   five states.
-7. **No identity coupling:** the order key and proof do not require
-   accounts, IP reputation, KYC, or stable cross-context identity.
+1. The proof authenticates the rule version, network, epoch, complete canonical
+   claim, eligibility window, and inclusion position.
+2. Copying an observed pending claim or grinding irrelevant bytes cannot improve
+   priority.
+3. Withholding, partition, rollback, and equivocation produce explicit
+   `conflict`, `partition`, `unavailable`, or `fork` outcomes with no Lease
+   mutation.
+4. Different honest verifiers with the same authenticated evidence reach the
+   same result without local arrival time.
+5. The mechanism introduces no hidden registrar, coordinator, payment system,
+   stable User identity, or unmeasured global infrastructure.
+6. Claim latency, retained bytes, verification work, and recovery behavior fit
+   the accepted R-023 reference-host budget.
 
 ## Evidence plan
 
-Primary sources, accessed 2026-08-19:
+### Primary sources
 
-- R-039 — H3 private naming lifecycle (accepted 2026-08-17).
-- `horizon-3-stage-6-brief.md` S6.5.
-- `stage-6-readiness-checklist.md` §B.2.
-- R-029 — authenticated Node lifecycle (Network Epoch).
-- R-005 — hostile bootstrap and Time Confidence.
-- R-002 — Service Connection Connection Result taxonomy.
-- R-041 — canonical name limits and `schema_version`.
-- R-046 — role matrix.
+- R-003 and R-039, accessed 2026-08-20 — product claim and failure contract.
+- R-005 and R-029, accessed 2026-08-20 — Time Confidence and authenticated
+  Network Epoch boundary.
+- R-002, accessed 2026-08-20 — Connection Result taxonomy.
+- Candidate protocol specifications and maintained source code must be added
+  before comparing an ordered log, commit/reveal, or another mechanism.
 
-The order key and classifier are implemented in S6.5 against this
-contract; no new experiment is required for R-042.
+### Experiment
 
-## Failure scenarios
+Build a disposable simulator under `experiments/r-042-claim-ordering/`. Run the
+same signed claims through permutations of observation copying, reveal
+withholding, flooding, partition, rollback, equivocation, and rule fork. Retain
+the exact eligible-set proof and verify it independently. Define latency,
+storage, verification-work, and false-accept thresholds before running it.
 
-- The loser is named without a `claim_digest` over
-  `network_id + epoch + payload`.
-- Two distinct valid claim payloads produce the same `claim_digest`
-  (collision resistance broken).
-- The `conflict` state mutates a Lease.
-- The `fork` state returns a successful resolution.
-- The `unavailable` state (no authenticated Epoch) issues a Lease.
-- A front-runner wins despite the original claimant having a smaller
-  order key.
-- A rollback returns a previous epoch as valid without monotonicity
-  check.
-- Equivocation (same identity, different `network_id`) is not classified
-  as `fork`.
-- The order key uses wall clock or local arrival time.
+### Failure scenarios
 
-## Options and recommendation
+- A copied or digest-ground claim outranks the original commitment.
+- Two honest partitions accept different controllers for one complete name.
+- A verifier names a loser without proving the eligible claim set.
+- Missing reveal or inclusion evidence mutates a Lease.
+- Rollback or a different rule version is classified as an ordered collision.
+- One coordinator becomes the unrecorded source of ordering truth.
 
-1. **Option A — `(network_id, epoch_number, claim_digest)` with
-   `claim_digest = SHA-256(canonical claim payload)` (recommended).**
-   Reuses the R-029 Network Epoch as the authenticated time source and
-   collision-resistant hash as the tie-break. Globally deterministic
-   and forward-monotonic. No new trust root.
-2. **Option B — `(network_id, monotonic_clock, claim_digest)`.** A
-   network-coordinator monotonic clock replaces the Epoch. Rejected:
-   requires a new trust root that does not exist in the H3 contract
-   and diverges from R-029; observers in different partitions can
-   disagree.
-3. **Option C — local arrival time.** Rejected: explicitly forbidden by
-   the brief ("never select a canonical branch from in-memory race
-   timing or local best effort").
+## Findings
 
-Recommendation: **Option A**, accepted by the Product Owner on
-2026-08-19.
+- **Sourced fact:** R-003 leaves commitment, reveal, and shared-state mechanism
+  selection open and explicitly requires front-running analysis.
+- **Sourced fact:** R-029 authenticates an epoch but does not attest that every
+  eligible claim was included or observed.
+- **Inference:** hashing a claim is a deterministic tie-break only after an
+  authenticated eligible set exists.
+- **Assumption:** a bounded multi-step claim flow may be acceptable if its cost
+  and recovery behavior are measured against the Developer journey.
+
+## Options
+
+1. **Epoch plus claim digest only.** Rejected: sortable but grindable and has no
+   inclusion/completeness proof.
+2. **Commit/reveal plus authenticated inclusion.** Candidate: can bind priority
+   before payload disclosure, but adds latency, withholding, cleanup, and state.
+3. **Authenticated ordered log or quorum proof.** Candidate: may produce one
+   eligible order, but adds governance, availability, and fork dependencies.
+4. **No permissionless root claim in V1.** Fallback if no candidate meets the
+   accepted contract.
+
+## Recommendation
+
+Run the named experiment before choosing. Confidence is high that the previous
+digest-only option is insufficient and low that any replacement fits without a
+meaningful governance or availability cost. The strongest counterargument is
+that commit/reveal may still reward denial and add too much latency.
 
 ## Disposition
 
-- R-042 becomes `decided`. The open row in `docs/research/questions.md`
-  is updated to point at this record and the frozen contract.
-- §B.2 of `stage-6-readiness-checklist.md` is checked.
-- S6.5 (concurrency/fork/abuse) may implement the order-key check, the
-  five-state classifier, and the coverage map. The verifier may test
-  every state transition against the manifest.
-- This freeze does not authorize code; the Stage 6 coding gate remains
-  closed until §B.3 through §B.5 of the readiness checklist are also
-  checked and the corrected brief, plan, and evidence contract are
-  accepted.
-- No ADR is required: this is a contract freeze that reuses the
-  already-decided R-029 Epoch mechanism.
+- State: `open`; the former Option A is withdrawn.
+- S6.5 claim ordering and every evidence predicate that depends on it remain
+  blocked.
+- R-041 canonical encoding may be used as experiment input; no production claim
+  mechanism or Lease mutation is authorized.
+- A decision must include the promised eight-scenario coverage map and exact
+  independent proof schema.

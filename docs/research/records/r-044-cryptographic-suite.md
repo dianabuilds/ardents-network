@@ -1,155 +1,131 @@
 ---
 id: R-044
-title: Which cryptographic mechanism or replaceable interface for Name Authority signing, Recovery Policy threshold, and resolver query hiding is accepted for S6.0?
-status: decided
+title: Which maintained cryptographic suite implements Name Authority, threshold Recovery Authorities, and resolver query hiding?
+status: open
 owner: Product Owner
 started: 2026-08-19
-reviewed: 2026-08-19
+reviewed: 2026-08-20
 ---
 
 # R-044 — Stage 6 cryptographic suite
 
 ## Decision this unlocks
 
-Freeze the Stage 6 cryptographic suite: the signature scheme used by
-Name Authority, the threshold scheme used by Recovery Policy, the
-query-hiding scheme used by the resolver, the hash and KDF primitives,
-and the recommended Go interface boundary that lets a future ADR swap
-an implementation without rewriting S6.2, S6.4, or S6.5. Without this
-freeze, no Stage 6 implementation slice could import a primitive
-without violating the research discipline rule against silent
-technology selection. With this freeze, every Stage 6 cryptographic
-import is justified by the ADR that records the selection.
+Select reviewed implementations and a replaceable interface for Name Authority
+signing, a real `t`-of-`n` Recovery Policy operated by scoped Recovery
+Authorities, and resolver query hiding. The selection must precede S6.2, S6.4,
+and cryptographic evidence claims.
 
 ## Current contract
 
-R-039 § Fixed product contract fixes:
+R-003 and CONTEXT.md separate Name Authority from the set of Recovery
+Authorities. A Recovery Policy precommits participant scope, threshold, and a
+visible delay; the current Name Authority alone cannot cancel or satisfy a
+recovery intended to survive its compromise. No project coordinator, registrar,
+or administrator may become an implicit recovery root.
 
-- Name Authority rotation or transfer is an authenticated successor
-  transition;
-- optional recovery requires a precommitted delayed threshold
-  Recovery Policy;
-- exact-name resolution and naming control operations separate endpoint
-  location from the exact name/lookup view for any one ordinary Node.
-
-R-009 and R-035 already use Ed25519 for Bridge Invite signing and
-Bridge state. R-026 selected `openpcc/ohttp v0.0.80` at commit
-`79bec89d8042` for the Gate C Private Resolution Adapter. R-041 fixes
-`schema_version = 1` and the canonical encoding. R-042 fixes the
-order key. R-046 fixes the role matrix. ADR-0009 fixes the Go project
-foundation. ADR-0012 fixed the Stage 5 Camouflage Adapter.
-
-What remains open before S6.2, S6.4, and S6.5 can start is the
-concrete cryptographic suite and the interface boundary that lets a
-future ADR replace an implementation.
+Ed25519 and OHTTP remain plausible reused components. The previous ADR-0013
+selection is withdrawn: `golang.org/x/crypto/bls12381` does not exist, and
+ordinary BLS signature aggregation is not by itself a threshold-key setup,
+share-generation, partial-signature, participant-authentication, or recovery
+protocol. No Stage 6 threshold implementation is currently selected.
 
 ## Hypotheses
 
-- **H1:** the existing H3 supply (Ed25519, SHA-256, OHTTP) is
-  sufficient for Name Authority and resolver query hiding, and a
-  single new dependency (`golang.org/x/crypto/bls12381`) is sufficient
-  for Recovery Policy threshold.
-- **H2:** a memory-hard post-quantum suite is required.
-- **H0:** the existing H3 supply cannot satisfy the R-039 contract
-  for Recovery Policy threshold.
+- **H1:** a maintained threshold-signature implementation with documented key
+  generation and participant authentication can satisfy Recovery Policy.
+- **H2:** a policy can verify `t` individually authenticated signatures without
+  threshold aggregation while preserving bounded size and privacy.
+- **H0:** no maintained Go implementation fits the trust and operational model;
+  V1 recovery must be reduced or deferred rather than implemented locally.
 
 ## Evaluation criteria
 
-1. **No local primitive.** Every Stage 6 cryptographic import is a
-   reviewed Go standard library symbol or a reviewed external
-   dependency listed in the ADR.
-2. **Suite coverage:** Name Authority signing, Recovery Policy
-   threshold, resolver query hiding, hash, and KDF are all fixed.
-3. **No new trust root:** the threshold scheme is operated by the
-   existing Name Authority holder, not by a new coordinator.
-4. **Compatibility:** the suite does not break R-013 (Carrier Lab
-   Ed25519), R-026 (OHTTP), R-035 (Bridge state), or R-009 (Bridge
-   Invite) supply identities.
-5. **Threshold correctness:** the threshold scheme provides
-   unforgeability under the accepted `t`-of-`n` policy and
-   fail-closed behavior on missing signatures.
-6. **Query-hiding isolation:** the query-hiding scheme prevents the
-   endpoint-adjacent role from learning the exact Service Name or
-   lookup value.
-7. **Falsification:** a Stage 6 slice imports a primitive not in the
-   ADR; a Stage 6 slice builds a custom primitive; a Stage 6 slice
-   bypasses the interface boundary.
+1. Recovery is authorized by `t` distinct scoped Recovery Authorities, never by
+   the current Name Authority alone.
+2. Key/share setup, replacement, loss, participant identity, proof of
+   possession, rogue-key defense, transcript binding, and domain separation are
+   specified and independently testable.
+3. Malformed, duplicate, unknown, stale-generation, and cross-policy shares fail
+   closed without changing recovery state.
+4. The implementation is maintained, versioned, license-compatible, reviewed,
+   misuse-resistant, and recorded in `dependencies.md` before import.
+5. Signature, proof, state, latency, CPU, and memory fit the R-023 reference
+   profile.
+6. Query hiding preserves the R-026/R-039 role boundary and has no less-private
+   fallback.
 
 ## Evidence plan
 
-Primary sources, accessed 2026-08-19:
+### Primary sources
 
-- R-013 — Carrier Lab technology candidates (Ed25519 baseline).
-- R-009 — hostile bootstrap and Bridge entry (Bridge Invite signing).
-- R-026 — Private Resolution Adapter selection (OHTTP at
-  `openpcc/ohttp v0.0.80` commit `79bec89d8042`).
-- R-035 — H3 Bridge state (Bridge auth).
-- ADR-0009 — Go project foundation.
-- ADR-0012 — Stage 5 camouflage selection.
-- RFC 8032 — Edwards-curve Digital Signature Algorithm (Ed25519).
-- IETF draft `draft-irtf-cfrg-bls-signature-04` — BLS12-381 signature
-  scheme.
-- RFC 5869 — HMAC-based Extract-and-Expand Key Derivation Function
-  (HKDF).
-- FIPS 180-4 — Secure Hash Standard (SHA-256).
-- Go standard library `crypto/ed25519`, `crypto/sha256`, `crypto/hkdf`.
-- `golang.org/x/crypto/bls12381` — Go team maintained BLS12-381
-  implementation (BSD-3-Clause).
+- R-003 and CONTEXT.md, accessed 2026-08-20 — Recovery Policy trust model.
+- [RFC 8032](https://www.rfc-editor.org/rfc/rfc8032), accessed 2026-08-20 —
+  Ed25519.
+- [RFC 9591](https://www.rfc-editor.org/rfc/rfc9591), accessed 2026-08-20 —
+  FROST threshold Schnorr signatures.
+- [CFRG BLS signatures draft](https://datatracker.ietf.org/doc/draft-irtf-cfrg-bls-signature/),
+  accessed 2026-08-20 — BLS signatures and aggregation.
+- [`golang.org/x/crypto` source](https://github.com/golang/crypto), accessed
+  2026-08-20 — confirms the formerly named package is absent.
+- [CIRCL BLS API](https://pkg.go.dev/github.com/cloudflare/circl/sign/bls),
+  accessed 2026-08-20 — available BLS aggregation API, not a complete Recovery
+  Policy protocol.
+- [RFC 9458](https://www.rfc-editor.org/rfc/rfc9458), accessed 2026-08-20 —
+  Oblivious HTTP.
 
-The selected suite is recorded in ADR-0013. Stage 6 code is not
-authorized until the ADR is accepted and the readiness checklist §B.4
-is checked.
+### Experiment
 
-## Failure scenarios
+Create `experiments/r-044-recovery-crypto/` after candidate implementations are
+identified. Exercise setup, `t-1`, `t`, and `n` participants; duplicate and
+rogue keys; mixed policies/generations; lost participants; delayed completion;
+restart; malformed shares; and independent verification. Measure retained bytes,
+CPU, memory, and latency on the R-023 host.
 
-- A Name Record is signed with anything other than the selected
-  signature scheme.
-- A Recovery Policy proof is checked as a single signature, not as a
-  threshold aggregation.
-- A resolver query is visible to the endpoint-adjacent role in plain
-  bytes.
-- A Stage 6 slice imports a hash that is not SHA-256 or a KDF that is
-  not HKDF-SHA-256.
-- A Stage 6 slice builds a custom cryptographic primitive.
-- A Stage 6 slice imports a cryptographic dependency that is not
-  listed in the ADR.
-- A future replacement of an implementation bypasses the documented
-  Go interface boundary.
+### Failure scenarios
 
-## Options and recommendation
+- Current Name Authority can satisfy or disable recovery alone.
+- Aggregation accepts duplicate keys or fewer than `t` distinct participants.
+- A participant/share is replayed across policy, name, or generation.
+- Setup requires an undocumented trusted dealer or online coordinator.
+- A malformed proof changes Recovery Pending state.
+- Query hiding silently falls back to a direct or plaintext resolver.
 
-1. **Option A — Ed25519 (name) + BLS12-381 (threshold) + OHTTP (reused)
-   + SHA-256 + HKDF-SHA-256 (recommended).** The suite reuses the
-   verified H3 supply where it exists and adds one new Go-team
-   dependency (`golang.org/x/crypto/bls12381`) for the threshold
-   scheme.
-2. **Option B — Ed25519 only.** No native threshold. Rejected: the
-   `t`-of-`n` Recovery Policy cannot be expressed natively.
-3. **Option C — BLS12-381 for everything.** Single curve. Rejected:
-   signature size and verification cost are larger than needed for
-   single-signer Name Records.
-4. **Option D — Post-quantum (Dilithium + Kyber).** Forward-looking.
-   Rejected: no H3 precedent; doubles the dependency surface without
-   a threat-model driver in R-001 / R-009 / R-035.
+## Findings
 
-Recommendation: **Option A**, accepted by the Product Owner on
-2026-08-19. The recommended Go interface boundary (`Signer`,
-`ThresholdVerifier`, `QueryHider` in `internal/nameauthority/sig.go`)
-is the implementation pattern that any Stage 6 slice is expected to
-use so a future ADR can swap an implementation without rewriting
-S6.2, S6.4, or S6.5.
+- **Sourced fact:** the accepted product model assigns recovery to distinct
+  scoped Recovery Authorities.
+- **Sourced fact:** the named `golang.org/x/crypto/bls12381` package is absent.
+- **Sourced fact:** available BLS aggregation APIs do not define the complete
+  threshold custody and recovery protocol required here.
+- **Inference:** the earlier `ThresholdVerifier` interface was too shallow: it
+  could not express participant identity, threshold policy, setup, or shares.
+- **Assumption:** reusing Ed25519 and OHTTP may still be appropriate, but that
+  does not authorize a partial suite before recovery is solved.
+
+## Options
+
+1. **FROST-based threshold recovery.** Candidate; requires maintained Go supply,
+   key setup, participant authentication, and measured operational behavior.
+2. **Individually authenticated `t`-of-`n` signatures.** Candidate; simpler
+   trust semantics, larger proofs, and possible participant-linkage costs.
+3. **BLS-based threshold recovery.** Candidate only with a real threshold
+   construction and maintained implementation; ordinary aggregation is
+   insufficient.
+4. **Defer Recovery Policy.** Required fallback if no candidate meets the V1
+   threat and maintenance model.
+
+## Recommendation
+
+Choose none yet. Run the experiment after a source review identifies at least
+one maintained implementation. Confidence is high that ADR-0013 cannot be used;
+confidence in a replacement is currently low. The strongest counterargument to
+FROST is its setup and interactive operational burden for a one-person product.
 
 ## Disposition
 
-- R-044 becomes `decided`. The open row in `docs/research/questions.md`
-  is updated to point at this record and the ADR.
-- **ADR-0013** records the suite and the interface boundary.
-- §B.4 of `stage-6-readiness-checklist.md` is checked.
-- S6.2, S6.4, and S6.5 may import the selected primitives. Any other
-  import is a new research question and a new ADR.
-- A future replacement of an implementation (e.g., a new signature
-  scheme, a new KDF, a new query-hiding primitive) requires a new
-  research record and a superseding ADR.
-- The suite is not a production cryptographic audit. Every Stage 6
-  cryptographic import remains subject to the repository's existing
-  dependency and advisory policy in `docs/development/dependencies.md`.
+- State: `open`; ADR-0013 is withdrawn and provides no import authorization.
+- S6.2 query-hiding integration, S6.4 recovery, and their final evidence remain
+  blocked. Existing R-026 OHTTP research may be reused as evidence, not assumed.
+- Any selected runtime dependency requires `dependencies.md`, an accepted ADR,
+  exact conformance vectors, and failure-path tests.

@@ -23,5 +23,9 @@ Current decisions:
 - [0011 — Separate unit, end-to-end, and live tests](0011-separate-unit-e2e-and-live-tests.md)
 - [0012 — Select standalone WebTunnel for the H3 Camouflage Adapter](0012-select-webtunnel-for-h3-camouflage.md)
 
+Withdrawn decisions retained for history:
+
+- [0013 — Withdraw the initial Stage 6 cryptographic suite](0013-stage-6-cryptographic-suite.md)
+
 New ADRs use the next four-digit number and should remain short. When a decision
 is superseded, retain the original record and link the replacement.

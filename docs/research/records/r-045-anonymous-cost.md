@@ -1,176 +1,113 @@
 ---
 id: R-045
-title: Which R-010-compatible bounded Anonymous Cost and local admission profile freezes Stage 6 claim, renewal, resolution, policy, and recovery surfaces?
-status: decided
+title: Which measured Anonymous Cost and local admission profile protects Stage 6 naming surfaces?
+status: open
 owner: Product Owner
 started: 2026-08-19
-reviewed: 2026-08-19
+reviewed: 2026-08-20
 ---
 
-# R-045 — Stage 6 Anonymous Cost and local admission
+# R-045 — Stage 6 Anonymous Cost and admission
 
 ## Decision this unlocks
 
-Freeze the cost mechanism set, the per-surface difficulty and budget
-calibrated to the R-023 reference host, the stateless → state admission
-order, and the fail-closed behavior so S6.5 (concurrency/fork/abuse)
-can implement bounded admission and the verifier can test exhaustion
-without ambiguity. Without this freeze, S6.5 would either embed an
-unmeasured cost or fall back to identity-coupled admission, which the
-R-010 product boundary forbids.
+Select finite, measurable admission for claim, renewal, resolution, policy, and
+recovery without money, accounts, IP reputation, stable identity, wallet,
+token, or personhood claims. S6.5 and its resource verdict remain blocked until
+candidate limits are measured on the accepted reference host.
 
 ## Current contract
 
-R-010 (decided product boundary) fixes:
+R-003, R-010, R-023, R-039, and the threat model require bounded anonymous work
+and explicitly state that a mechanism must be selected and measured. Anonymous
+Cost raises mass-abuse cost but proves no personhood, fairness, legitimate use,
+or rightful control. Per-endpoint state must not become a stable cross-context
+identity.
 
-- resource-specific staged admission uses cheap stateless validation
-  before expensive bounded state;
-- may add scoped short-lived capabilities or bounded puzzles under
-  load;
-- no money, account, IP reputation, stable identity, personhood, or
-  fairness claim;
-- exact mechanisms remain experiments.
-
-`horizon-3-stage-6-brief.md` S6.5 fixes the surfaces that the cost
-must cover and the no-identity / no-fairness rule. R-002 fixes the
-Connection Result taxonomy (`admission-denied`). R-005 fixes Time
-Confidence; R-029 fixes the Network Epoch; R-041 fixes the
-`schema_version`; R-042 fixes the order key; R-046 fixes the role
-matrix. R-023 fixes the `2 vCPU` / `2 GiB` Ubuntu reference host used
-to calibrate the per-surface difficulty.
-
-What remains open before S6.5 can start is the concrete mechanism,
-the per-surface bit-difficulty and budget, the admission order, the
-capability shape, and the fail-closed contract.
+The previously printed Hashcash difficulty and rate tables were hypotheses, not
+measurements. They are no longer frozen and must not appear as accepted limits.
 
 ## Hypotheses
 
-- **H1:** Hashcash-style SHA-256 PoW (k leading zero bits) combined
-  with a per-endpoint rate limit and a scoped short-lived capability
-  is sufficient to bound the five naming surfaces on the R-023
-  reference host, with no identity coupling.
-- **H2:** a memory-hard PoW (Argon2id) is required to resist
-  commodity-hardware adversaries.
-- **H0:** no bounded mechanism satisfies the no-identity rule under
-  the R-023 reference profile.
+- **H1:** bounded SHA-256 work plus local per-epoch counters and short-lived
+  scoped capabilities can protect all five surfaces within R-023 budgets.
+- **H2:** resource-only local admission without client work is sufficient.
+- **H0:** no identity-free mechanism keeps both legitimate accessibility and
+  adversarial work bounded; the Stage 6 surface must be reduced.
 
 ## Evaluation criteria
 
-1. **No identity coupling:** the cost is CPU time plus a counter; no
-   account, no IP reputation, no KYC, no personhood, no fairness
-   claim, no stable cross-context identifier.
-2. **Measurable exhaustion:** the verifier can independently reproduce
-   `admission-denied` from the counter and the manifest.
-3. **Surface coverage:** every naming surface (claim, renewal,
-   resolution, policy, recovery) has a stated bit-difficulty and
-   per-epoch hard cap.
-4. **Calibrated to R-023:** the per-surface difficulty fits the
-   `2 vCPU` / `2 GiB` reference host without starving legitimate
-   workloads.
-5. **Stateless before state:** the admission order is
-   `epoch → role → schema → counter → PoW (when required)`, so the
-   cheap path dominates ordinary traffic.
-6. **Capability is bounded:** TTL ≤ 60 s, scoped to
-   `(endpoint_pubkey, surface, target_epoch)`, and not transferable.
-7. **Fail-closed on exhaustion:** `admission-denied` is a terminal
-   Connection Result; no retry-with-bigger-cost shortcut, no override
-   path.
-8. **Reproducible cost on non-reference hosts:** stronger or weaker
-   hardware takes proportionally more or less wall time, with no
-   differential admission behavior.
+1. Predeclare per-surface legitimate throughput, attacker budget, CPU, memory,
+   storage, bandwidth, queue, and latency limits.
+2. Measure modest and stronger clients; do not calibrate only on the verifier
+   host.
+3. Bind every token/counter to surface, epoch, operation, and Isolation Context
+   without a reusable cross-context identifier.
+4. Exhaustion fails `admission-denied` before expensive work and never mutates a
+   Lease, policy, recovery, or durable counter incorrectly.
+5. Rollback, replay, parallelism, restart, and capability theft fail closed.
+6. The mechanism has no payment, global account, IP reputation, operator
+   override, or hidden allow-list.
 
 ## Evidence plan
 
-Primary sources, accessed 2026-08-19:
+### Primary sources
 
-- R-010 — operational product closure § security (decided).
-- R-023 — interactive route performance budget (reference host).
-- `horizon-3-stage-6-brief.md` S6.5.
-- `stage-6-readiness-checklist.md` §B.5.
-- R-002 — Service Connection Connection Result taxonomy.
-- R-005 — hostile bootstrap and Time Confidence.
-- R-029 — authenticated Node lifecycle (Network Epoch).
-- R-041 — canonical name limits and `schema_version`.
-- R-042 — claim ordering.
-- R-046 — role matrix.
-- Adam Back, *Hashcash - A Denial of Service Counter-Measure* (2002),
-  for the SHA-256 PoW pattern.
-- IETF RFC 9485 / RFC 9458 (OHTTP) — referenced indirectly via R-026
-  for capability shape, not adopted here.
+- R-003 and R-010, accessed 2026-08-20 — Anonymous Cost product boundary.
+- R-023, accessed 2026-08-20 — reference-host resource methodology.
+- R-039, accessed 2026-08-20 — Stage 6 lifecycle and privacy boundary.
+- Threat model § naming abuse, accessed 2026-08-20 — selection and measurement
+  requirement.
+- Candidate proof-of-work and admission specifications must be cited before an
+  implementation is selected.
 
-The admission path and coverage are implemented in S6.5 against this
-contract; no new experiment is required for R-045.
+### Experiment
 
-## Failure scenarios
+Create `experiments/r-045-anonymous-cost/`. Before running it, freeze a matrix of
+the five surfaces, legitimate rates, attacker concurrency, candidate work
+factors, capability TTLs, restart/rollback cases, and pass/fail resource limits.
+Measure latency distributions, CPU, RSS, queue depth, accepted/rejected work,
+energy proxy, and retained state on R-023 reference hardware and a weaker client.
 
-- An endpoint exceeds the stateless limit without PoW and admission
-  accepts the request.
-- A PoW with `k = 20` bits is accepted for a surface that requires
-  `k = 22`.
-- A capability with TTL 60 s is used on second 61.
-- A capability scoped to `(endpoint_A, claim)` is accepted for
-  `(endpoint_A, renewal)`.
-- The per-epoch counter is reset between epochs (epoch monotonicity
-  broken).
-- Exhaustion returns success instead of `admission-denied`.
-- The reference host executes a `k = 20` surface faster than the
-  calibration expects, indicating an underestimated cost.
-- An identity attribute (account, IP, personhood, fairness) is
-  consumed as a cost input.
+### Failure scenarios
 
-## Options and recommendation
+- One cheap request causes materially more verifier work than claimant work.
+- A capability crosses surface, epoch, endpoint, or Isolation Context.
+- Restart or rollback restores spent capacity.
+- Parallel requests bypass a local limit.
+- Resolution becomes inaccessible on modest hardware.
+- Admission creates a stable identity or operator exception path.
 
-1. **Option A — Hashcash-style PoW + rate limit + capability
-   (recommended).** SHA-256 with `k` required leading zero bits;
-   per-endpoint per-epoch rate limit; scoped short-lived capability
-   (TTL ≤ 60 s, scoped to `(endpoint_pubkey, surface, target_epoch)`)
-   for batched operations. Per-surface bit-difficulty and hard cap
-   calibrated to the R-023 reference host:
+## Findings
 
-   | Surface | Stateless / epoch | PoW (bits) | Hard cap / epoch | Notes |
-   |---|---|---|---|---|
-   | Claim (new Lease) | 1 | 20 | 100 | most expensive |
-   | Renewal (active Lease) | 10 | 16 | 1000 | medium |
-   | Resolution (Name → Target) | 100 | 8 | 10000 | cheapest, cache-friendly |
-   | Policy (Recovery Policy add/replace/disable) | 1 | 18 | 10 | visible delay preserved |
-   | Recovery (post-pending successor record) | 0 | 22 | 1 per generation | bounded, one-time |
+- **Sourced fact:** accepted documents require both mechanism selection and
+  measurement.
+- **Measurement:** none has yet been recorded for the proposed Stage 6 table.
+- **Inference:** the former exact values cannot be cited as calibrated limits.
+- **Assumption:** SHA-256 work may be implementable with existing supply, but its
+  accessibility and amplification behavior are unknown.
 
-   Admission order:
-   `epoch (R-005/R-029) → role (R-046) → schema (R-041) → counter →
-   PoW (when required)`. Capability flow: endpoint requests a
-   capability by paying the next-tier PoW; receives a token bound to
-   `(endpoint_pubkey, surface, target_epoch)`; uses it within TTL.
+## Options
 
-2. **Option B — Memory-hard PoW (Argon2id).** ASIC-resistant and
-   friendlier to commodity hardware. Rejected: requires substantial
-   memory under load and is not compatible with the H3 reference
-   profile `2 GiB`; verifier cost is asymmetric.
+1. **Client work + local counters + scoped capability.** Candidate; potentially
+   bounds amplification but needs calibration and privacy analysis.
+2. **Local resource admission only.** Candidate; simpler client journey but may
+   make distributed Sybil flooding too cheap.
+3. **Reduce or delay expensive naming surfaces.** Fallback when no candidate
+   fits accessibility and abuse budgets.
 
-3. **Option C — Pure rate limit, no PoW.** Simplest and least
-   expensive. Rejected: distributed flooding remains possible within
-   the rate limit; the brief explicitly mentions bounded puzzles
-   under load.
+## Recommendation
 
-4. **Option D — Capability only, no PoW.** Bearer-friendly. Rejected:
-   a transferable bearer becomes a stable cross-context identifier
-   and violates the R-010 no-stable-identity rule.
-
-Recommendation: **Option A**, accepted by the Product Owner on
-2026-08-19.
+Run the named experiment and choose none until its thresholds are frozen in
+advance. Confidence is high that the former table is unsupported; confidence in
+any candidate is low without measurements. The strongest argument against proof
+of work is that it can exclude weak devices while remaining cheap for specialized
+attackers.
 
 ## Disposition
 
-- R-045 becomes `decided`. The open row in `docs/research/questions.md`
-  is updated to point at this record and the frozen contract.
-- §B.5 of `stage-6-readiness-checklist.md` is checked.
-- S6.5 (concurrency/fork/abuse) may implement the admission path, the
-  per-surface cost table, the capability flow, and the fail-closed
-  contract. The verifier may independently recompute `admission-denied`
-  from the counter and the manifest.
-- This freeze does not authorize code; the Stage 6 coding gate remains
-  closed until §B.3 and §B.4 of the readiness checklist are also
-  checked and the corrected brief, plan, and evidence contract are
-  accepted.
-- No ADR is required: this is a configuration freeze that uses a
-  well-known PoW pattern under an already-decided product boundary
-  (R-010).
+- State: `open`; former per-surface rates, difficulties, capacities, and TTL are
+  hypotheses only.
+- S6.5 admission implementation and evidence predicates remain blocked.
+- The experiment must end in a decided record or an explicit reduction of the
+  Stage 6 surface.

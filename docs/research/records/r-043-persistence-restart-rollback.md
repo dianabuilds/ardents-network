@@ -4,7 +4,7 @@ title: Which exact persistence, restart, rollback, and cache-proof ownership bou
 status: decided
 owner: Product Owner
 started: 2026-08-19
-reviewed: 2026-08-19
+reviewed: 2026-08-20
 ---
 
 # R-043 — Stage 6 persistence, restart, rollback, cache-proof
@@ -34,10 +34,10 @@ R-039 § Fixed product contract fixes:
 state ownership: exclusive state root, bounded durable files,
 immutable generations, control journal, atomic pointers, write-new →
 fsync → atomic rename → directory fsync. R-005 fixes Time Confidence.
-R-029 fixes the authenticated Network Epoch. R-042 fixes the order
-key, which already includes `epoch_number`. R-044 fixes Ed25519 and
-BLS12-381 for signed entries. R-045 fixes the per-surface capability
-counter that must survive restart.
+R-029 fixes the authenticated Network Epoch. The exact claim-ordering,
+recovery-signature, and Anonymous Cost mechanisms remain open in R-042,
+R-044, and R-045. Their eventual durable values must fit the property
+classes below, but R-043 does not select those mechanisms by implication.
 
 `horizon-3-stage-6-brief.md` S6.4 fixes the requirement that the
 predecessor permanently loses future authority power, that delegation
@@ -80,6 +80,8 @@ rule, the replay-bound contract, and the storage interface boundary.
 
 ## Evidence plan
 
+### Primary sources
+
 Primary sources, accessed 2026-08-19:
 
 - R-039 — H3 private naming lifecycle (accepted 2026-08-17).
@@ -89,16 +91,19 @@ Primary sources, accessed 2026-08-19:
   `package-map.md`).
 - R-005 — hostile bootstrap and Time Confidence.
 - R-029 — authenticated Node lifecycle (Network Epoch).
-- R-042 — claim ordering and `epoch_number` binding.
-- R-044 — Ed25519 and BLS12-381 (signed entries).
-- R-045 — Anonymous Cost capability counter (durable).
+- R-042 — open claim-ordering research.
+- R-044 — open recovery-cryptography research.
+- R-045 — open Anonymous Cost research.
 - ADR-0009 — Go project foundation.
 
-The property boundary, tamper rule, and replay-bound are implemented
-in S6.4 against this contract; no new experiment is required for
-R-043.
+### Experiment
 
-## Failure scenarios
+S6.4 must provide a conformance test showing that the domain-owned storage
+boundary can be backed by `internal/network/store` without exposing its file
+protocol to naming callers. The test must cover restart, tamper, stale epoch,
+partial batch, and crash recovery. R-043 selects no new engine.
+
+### Failure scenarios
 
 - A durable entry reads back after a modification that bypasses the
   signed-entry check.
@@ -115,7 +120,18 @@ R-043.
 - S6.4 imports a new storage engine (BoltDB, BadgerDB, LevelDB, etc.)
   without a new ADR.
 
-## Options and recommendation
+## Findings
+
+- **Sourced fact:** `internal/network/store` owns an exclusive root, immutable
+  generations, a control journal, atomic publication, and directory sync.
+- **Sourced fact:** R-039 requires durable generation/lifecycle state and
+  fail-closed stale or conflicting reads.
+- **Assumption:** the existing store can back a naming-owned interface without
+  leaking storage-specific paths or transaction details.
+- **Inference:** the interface belongs to the naming domain; the current store
+  is a candidate adapter, not an already-existing generic `Storage` API.
+
+## Options
 
 1. **Option A — reuse `internal/network/store` as-is (no interface).**
    Zero new code, but no compiler-checked contract and no
@@ -134,18 +150,23 @@ R-043.
    LevelDB, etc.).** New dependency, new audit, new lock-in.
    Rejected: no threat-model driver in R-001 / R-005 / R-029.
 
-Recommendation: **Option B**, accepted by the Product Owner on
-2026-08-19.
+## Recommendation
+
+Choose **Option B**, accepted by the Product Owner on 2026-08-19, as a semantic
+boundary rather than a claim that `internal/namelease/store.go` already exists.
+Confidence is medium until the adapter conformance test passes. The strongest
+counterargument is that the existing store may not support the required atomic
+batch without widening its interface; that result must reopen R-043 rather than
+silently select another engine.
 
 ## Disposition
 
 - R-043 becomes `decided`. The open row in `docs/research/questions.md`
   is updated to point at this record and the frozen contract.
 - §B.3 of `stage-6-readiness-checklist.md` is checked.
-- S6.4 (authority/delegation/recovery) may implement durable,
-  restart-derived, and cache-bounded state through the `Storage`
-  interface, with `internal/network/store` as the default
-  implementation.
+- S6.4 may define a naming-owned storage interface and an
+  `internal/network/store` adapter. Neither the interface file nor the adapter
+  exists at S6.0, and this record does not claim otherwise.
 - A future replacement of the default storage engine is a new
   research record and a new ADR; the interface boundary does not
   change.

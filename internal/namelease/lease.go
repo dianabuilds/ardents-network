@@ -27,7 +27,8 @@ type Record struct {
 	Continuity         uint64
 	ConflictIdentifier string
 	// Signature is the Ed25519 signature by the Record's Authority
-	// over the canonical Record payload (R-044 + ADR-0013). It is
+	// over the canonical Record payload. This is feasibility work while R-044
+	// remains open; it is not the accepted Stage 6 cryptographic suite. It is
 	// optional during Apply; a verifier that requires authentication
 	// must check it through Record.Verify.
 	Signature []byte
