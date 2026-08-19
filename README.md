@@ -15,9 +15,13 @@ evidence to learn from, not an architecture to continue by default.
 The documents describe several delivery horizons. They are not one backlog.
 The controlled Ubuntu **Gate C** terminal experiment defined in
 [product scope](docs/product/scope.md) is complete with `advance`. The next
-permitted scope is one bounded Horizon 3 Closed Test Network slice; public
-naming, Bridges, production updates, Windows qualification, multiparty control,
-and the complete release test matrix remain later promotion gates.
+permitted scope is one bounded Horizon 3 Closed Test Network slice at a time;
+within H3, Stage 1–4 local development is complete and Stage 5 Bridge + WebTunnel
+development is complete, with the final qualification campaign deferred to
+Stage 9.6. Stage 6 private naming remains work in progress. Public naming,
+permissionless public Bridge distribution, production
+updates, Windows qualification, multiparty control, and the complete release
+test matrix remain later promotion gates.
 
 ## Product hypothesis
 
@@ -116,10 +120,19 @@ Control Plane risks rather than being hidden behind the word “decentralized.�
 ## Current implementation state
 
 The maintained Go tree contains the completed Carrier Lab and Named Site
-laboratories plus the first Horizon 3 product runtime: `cmd/ardents`,
-`cmd/ardents-node`, `cmd/ardents-route`, `cmd/ardents-service`, and cohesive
-product Modules under `internal/network`, `internal/node`, `internal/route`,
-`internal/serviceconn`, and `internal/resource`. Product work never grows inside or imports the frozen
+laboratories plus the Horizon 3 product runtime. Stage 1–4 development is
+complete with local Docker evidence; Stage 5 Bridge + WebTunnel development is
+complete, its final qualification remains S9.6, and the Stage 6 private-naming
+foundation is work in progress. The current
+maintained product commands are `cmd/ardents`, `cmd/ardents-node`,
+`cmd/ardents-route`, `cmd/ardents-service`, `cmd/ardents-bridge`,
+`cmd/ardents-stream-app`, and `cmd/ardents-publish-app`. Cohesive product
+modules live under `internal/network`, `internal/node`, `internal/route`,
+`internal/serviceconn`, `internal/serviceendpoint`, `internal/resource`,
+`internal/applicationipc`, `internal/streamworkload`, `internal/planfile`,
+`internal/bridge`, `internal/camouflage`, `internal/localroles`,
+`internal/naming`, `internal/namelease`, `internal/nameauthority`, and
+`internal/nameresolver`. Product work never grows inside or imports the frozen
 `internal/lab` quarantine.
 
 The first completed maintained vertical slice was an Ubuntu-to-Ubuntu
@@ -154,6 +167,23 @@ returned `advance` after Direct, C-3, C-5/C2, all seven negative cases, resource
 and cleanup gates, and an isolated Tor/Chutney reference passed. This retains a
 plausible shape for the next controlled slice; it is not a Route Qualification,
 an anonymity claim, or a production networking decision.
+
+Horizon 3 has since progressed past the Gate C tracer. R-029 through R-031
+recorded the local Stage 1, Stage 2 (`95/95`), and Stage 3 (`27/27`) Docker
+development campaigns. R-032 authorized the bounded S4.1–S4.3 recovery work,
+and R-038 (`P3-D3b4`, accepted 2026-08-15) froze the four-role capacity
+contract; Stage 4 development and local evidence are complete. R-033 through
+R-036 are decided and authorized the Stage 5 Bridge + WebTunnel slice
+(R-036 pins standalone WebTunnel `v0.0.6` at commit
+`d729fde1f38357dcefa2a751eb4752e9ca78f910`); R-037 fixed the controlled
+evidence contract and profile `h3-s5-b1-v1`. The Stage 5 implementation brief
+was accepted on 2026-08-16, and the Product Owner advanced maintained Stage 5
+development on 2026-08-19 while moving the complete `564`-cell candidate
+campaign plus six evidence-integrity campaigns to S9.6. R-039 added the Stage 6
+private-naming foundation. None of these local results close Ubuntu Stage 1
+`short` / `churn-2h` / independent `unattended-24h`, applicable R-023
+qualification, the deferred S9.6 final campaign, or any stronger external,
+privacy, security, or release gate.
 
 ## First conditional Reference Application
 
@@ -216,6 +246,22 @@ system at once.
 - [Carrier Lab preflight contract](docs/development/carrier-lab-preflight.md)
 - [Contributor workflow](CONTRIBUTING.md)
 - [Architecture decisions](docs/adr/README.md)
+- [H3 technical design](docs/development/horizon-3-technical-design.md)
+- [Stage 4 implementation brief](docs/development/horizon-3-stage-4-brief.md)
+- [Stage 5 implementation brief](docs/development/horizon-3-stage-5-brief.md)
+- [Stage 6 implementation brief](docs/development/horizon-3-stage-6-brief.md)
+- [Stage 9 stabilization and technical closure brief](docs/development/horizon-3-stage-9-brief.md)
+- [R-029 authenticated Node lifecycle (H3 Stage 1)](docs/research/records/r-029-h3-authenticated-node-lifecycle.md)
+- [R-030 real multi-node route (H3 Stage 2)](docs/research/records/r-030-h3-real-multi-node-route.md)
+- [R-031 Service Connection + Application Interface (H3 Stage 3)](docs/research/records/r-031-h3-service-connection-application-interface.md)
+- [R-032 same-connection recovery (H3 Stage 4)](docs/research/records/r-032-h3-same-connection-recovery.md)
+- [R-033 Stage 5 research map](docs/research/records/r-033-h3-stage-5-research-map.md)
+- [R-034 Stage 4 Bridge capacity sequencing](docs/research/records/r-034-stage-4-bridge-capacity-sequencing.md)
+- [R-035 Bridge state](docs/research/records/r-035-h3-bridge-state.md)
+- [R-036 WebTunnel camouflage adapter](docs/research/records/r-036-h3-camouflage-adapter.md)
+- [R-037 blocked-entry evidence contract](docs/research/records/r-037-h3-blocked-entry-evidence.md)
+- [R-038 Stage 4 role capacity (`P3-D3b4`)](docs/research/records/r-038-h3-stage-4-role-capacity.md)
+- [R-039 private naming lifecycle (H3 Stage 6)](docs/research/records/r-039-h3-private-naming-lifecycle.md)
 
 ## Repository shape
 

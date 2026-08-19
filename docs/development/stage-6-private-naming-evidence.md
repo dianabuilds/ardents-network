@@ -1,7 +1,9 @@
 # Stage 6 private naming evidence contract
 
-Status: **revised and ready for Product Owner review; not yet accepted as the
-coding gate. Exact S6.0 profile values and implementation artifacts are absent.**
+Status: **S6.0 freezes are all decided (R-041 through R-046, ADR-0013); the
+evidence contract now references their frozen values. Document-level
+acceptance by the Product Owner is the only remaining gate item before the
+Stage 6 coding start decision.**
 
 This document defines what Stage 6 must prove. It does not select persistence,
 consensus, cryptography, ordering, Anonymous Cost, or wire mechanisms.
@@ -33,14 +35,23 @@ never a verdict.
 S6.0 freezes the canonical serialization and exact values. At minimum, every
 manifest contains:
 
-- `schema_version`, `profile_id`, `run_id`, `cell_id`, and source identity;
-- Namespace rule version and canonical-name limit profile;
+- `schema_version` (R-041: `1`, `uint16` big-endian), `profile_id`, `run_id`,
+  `cell_id`, and source identity;
+- Namespace rule version and canonical-name limit profile (R-041: lowercase
+  ASCII, label 1–63, total ≤ 253, depth ≤ 127, charset `[a-z0-9-]`, parent on
+  the right, no leading/trailing/empty label, no leading/trailing or
+  consecutive hyphen, no all-digit root, length-prefixed wire encoding);
 - fixture, authority, generation, record, target, parent, policy, and role-view
   commitments appropriate to the cell;
-- deterministic sequence IDs, monotonic clock origin, deadlines, and cache bounds;
-- expected runtime state/failure class and the exact predicates to verify; and
+- deterministic sequence IDs (R-042: order key
+  `(network_id, epoch_number, SHA-256(canonical claim payload))`), monotonic
+  clock origin (R-029 Network Epoch), deadlines, and cache bounds
+  (R-043: `epoch_number` replay-bound);
+- expected runtime state/failure class (R-046 five roles with forbidden
+  combined view; R-002 Connection Result taxonomy) and the exact predicates
+  to verify; and
 - separate paths and hashes for manifest, evidence, private fixture material, and
-  verifier output.
+  verifier output. Hashes use SHA-256 (R-044, ADR-0013).
 
 Evidence contains only declared per-role inputs/observations, ordered transitions,
 terminal outcomes, resource observations, and complete cleanup inventory. It
@@ -155,9 +166,22 @@ Stage 6 evidence fails if any valid cell shows:
 
 ## Blocking S6.0 decisions
 
-The evidence contract is structurally complete, but it is not executable until
-S6.0 freezes exact name limits/schema, claim ordering proof, persistence and cache
-model, cryptographic interfaces/mechanisms, Anonymous Cost parameters, role-field
-matrix, clocks, and per-cell fixture hashes. These choices must be recorded before
-implementation; they cannot be selected opportunistically by the runner or
-verifier.
+The evidence contract references S6.0 frozen values from the following
+research records and ADR. A future replacement of any frozen value requires
+a new research record and, where the replacement creates technology lock-in,
+a new ADR.
+
+| Decision | Frozen value | Record / ADR |
+|---|---|---|
+| Canonical name limits and `schema_version` | label 1–63 ASCII, total ≤ 253, depth ≤ 127, `[a-z0-9-]`, parent on the right, no leading/trailing/empty label, no leading/trailing or consecutive hyphen, no all-digit root, length-prefixed wire encoding, `schema_version = 1` | [R-041](../research/records/r-041-canonical-name-limits.md) |
+| Field-level role matrix | five roles with per-role concrete types (`endpoint-adjacent`, `naming-rendezvous`, `local-resolver`, `authority-operation`, `observer`), forbidden combined view, stable identifier scope, Role Domain per ADR-0005, identity/known-family exclusion, fail-closed on missing/invalid role proof | [R-046](../research/records/r-046-role-matrix.md) |
+| Persistence, restart, rollback, cache-proof | Go `Storage` interface in `internal/namelease/store.go`, default `internal/network/store`; durable / restart-derived / cache-bounded sets; tamper fail-closed; `epoch_number` replay-bound; atomic write | [R-043](../research/records/r-043-persistence-restart-rollback.md) |
+| Cryptographic suite | Ed25519 (Name Authority), BLS12-381 (Recovery Policy threshold), OHTTP (resolver query hiding, R-026 supply), SHA-256 + HKDF-SHA-256, replaceable Go interface boundary; no local primitive | [R-044](../research/records/r-044-cryptographic-suite.md), [ADR-0013](../adr/0013-stage-6-cryptographic-suite.md) |
+| Claim ordering and Conflict/Fork | order key `(network_id, epoch_number, SHA-256(canonical claim payload))`, five-state classification, coverage map for the eight brief scenarios | [R-042](../research/records/r-042-claim-ordering.md) |
+| Anonymous Cost and local admission | Hashcash-style SHA-256 PoW (k leading zero bits), per-endpoint per-epoch rate limit, scoped short-lived capability (TTL ≤ 60 s); per-surface table: claim 1/20/100, renewal 10/16/1000, resolution 100/8/10000, policy 1/18/10, recovery 0/22/1 per generation | [R-045](../research/records/r-045-anonymous-cost.md) |
+
+A development-fixture verdict is explicitly `development-fixture` campaign-kind
+and is not citable as an S6.6 campaign result. The 564-cell candidate campaign
+plus six five-episode evidence-integrity campaigns and the independent
+`pass|fail|invalid` verdict are the S9.6 work, not Stage 6 development
+evidence.

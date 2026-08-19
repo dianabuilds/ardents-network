@@ -199,10 +199,24 @@ resource/evidence appendices, not standalone implementation slices. This
   `6c8faf9` passed one retained `27/27` bundle; independent verification replayed
   that same bundle rather than creating a second campaign. Proposed
   [R-032](../research/records/r-032-h3-same-connection-recovery.md) was accepted
-  on 2026-08-13 and authorizes bounded S4.1–S4.3 recovery development. S4.4
-  remains gated on a separately accepted P3-D3b4 decision. These local results
-  do not change the official gates; all later H3 stages remain sequential
-  research and Product Owner decision gates.
+  on 2026-08-13 and authorizes bounded S4.1–S4.3 recovery development.
+  [R-038](../research/records/r-038-h3-stage-4-role-capacity.md) was accepted
+  on 2026-08-15 as the P3-D3b4 decision and freezes role-specific useful-work
+  units and capacity floors for the four Stage 4 infrastructure roles
+  (Initiator, Introduction, Rendezvous, Responder); S4.4 is now authorized and
+  its local Docker development evidence is complete. The Product Owner accepted
+  [R-037](../research/records/r-037-h3-blocked-entry-evidence.md) and the
+  [Stage 5 implementation brief](horizon-3-stage-5-brief.md) on 2026-08-16,
+  and advanced maintained Stage 5 development on 2026-08-19 while moving the
+  complete `564`-cell candidate campaign plus six evidence-integrity campaigns
+  to S9.6. The Stage 6 private-naming foundation
+  ([R-039](../research/records/r-039-h3-private-naming-lifecycle.md)) has also
+  landed. These local results do not change the official gates; Ubuntu Stage 1
+  `short`, current `churn-2h`, independent `unattended-24h`, applicable R-023
+  qualification, and the deferred S9.6 final campaign remain prerequisites for
+  the integrated H3 verdict or any stronger external, privacy, security, or
+  release claim. All later H3 stages remain sequential research and Product
+  Owner decision gates.
 
 ## Horizon 4 — Public Beta
 

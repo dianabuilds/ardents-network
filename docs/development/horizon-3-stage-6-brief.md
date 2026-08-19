@@ -1,41 +1,48 @@
 # Horizon 3 Stage 6 implementation brief
 
-Status: **revised after two-axis review; accepted scope retained; corrected brief
-and coding entry require Product Owner acceptance. Stage 6 coding gate is closed.**
+Status: **S6.0 freezes all decided (R-041, R-046, R-044 + ADR-0013, R-043,
+R-042, R-045). Corrected brief, plan, readiness checklist, and evidence contract
+require Product Owner acceptance before the coding start decision. Stage 6
+coding gate remains closed until §A.2 and §A.4 of the readiness checklist are
+recorded.**
 
-Authoritative inputs: accepted ADR-0005, ADR-0009, ADR-0012, R-003, R-024,
-R-026, R-039, the product contract, threat model, operating model, H3 technical
-design, package map, and repository rules.
+Authoritative inputs: accepted ADR-0005, ADR-0009, ADR-0012, ADR-0013, R-003,
+R-024, R-026, R-039, R-041, R-042, R-043, R-044, R-045, R-046, the product
+contract, threat model, operating model, H3 technical design, package map, and
+repository rules.
 
 ## Current disposition
 
 - R-039 accepts the bounded Stage 6 scope; it does not authorize implementation.
-- Stage 5 S5.4/S5.5 `advance` is still required before Stage 6 code may start.
+- The Product Owner recorded the maintained Stage 5 S5.1-S5.5 development
+  `advance` on 2026-08-19. Full R-037 qualification remains an S9.6 gate and is
+  not a Stage 6 predecessor.
+- All six S6.0 freezes are decided on 2026-08-19: R-041 (canonical name
+  limits and `schema_version`), R-046 (field-level role matrix),
+  R-042 (claim ordering and Conflict/Fork classification), R-045 (Anonymous
+  Cost and local admission), R-043 (persistence, restart, rollback,
+  cache-proof ownership), R-044 + ADR-0013 (cryptographic suite with
+  replaceable Go interface boundary).
 - Existing Stage 6 foundation packages are work in progress, not evidence that
   the Stage 6 entry or completion gate has passed.
-- Persistence, cryptography, ordering, numeric limits, Anonymous Cost, and the
-  field-level role contract must be frozen through the S6.0 decision gate below.
 
-The current entry verdict is **not ready**.
+The current entry verdict is **not ready** (Product Owner acceptance of
+corrected documents and the coding start decision are pending).
 
 ## Entry gate
 
 Stage 6 implementation may start only when all of the following are true:
 
-1. R-033 through R-037 are decided and the Product Owner has recorded the final
-   Stage 5 `advance`, including S5.4 and S5.5.
+1. R-033 through R-037 are decided and the Product Owner has recorded the
+   maintained Stage 5 `advance`, including S5.4 and S5.5. **Satisfied
+   2026-08-19.**
 2. This brief, the development plan, readiness checklist, and evidence contract
    have been accepted by the Product Owner after review.
 3. R-003 remains authoritative without a contradictory interpretation.
-4. One accepted S6.0 decision profile freezes:
-   - exact name limits and canonical schema version;
-   - deterministic claim ordering and the distinction between ordered collision,
-     unresolved conflict, partition, and rule fork;
-   - persistence, restart, rollback, and cache-proof boundaries;
-   - cryptographic/key-management mechanisms or replaceable interfaces, with a
-     research record and ADR where selection creates lock-in;
-   - bounded Anonymous Cost and local admission behavior;
-   - field-level role views for resolution and naming control operations.
+4. One accepted S6.0 decision profile freezes the six values referenced above.
+   **All six S6.0 freezes are decided 2026-08-19; the product owner
+   acceptance of this brief and the readiness checklist remains the
+   final gate.**
 5. Package and command ownership is factual in `package-map.md`; any new verifier
    package or command is added only with its implementation, tests, non-test
    caller, `doc.go`, and exact permitted imports.
