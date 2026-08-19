@@ -2,7 +2,6 @@ package nameresolver
 
 import (
 	"errors"
-	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/namelease"
 )
@@ -120,8 +119,4 @@ func IsFresh(now int64, record namelease.Record) bool {
 	default:
 		return false
 	}
-}
-
-func nowUnix() int64 {
-	return time.Now().UTC().Unix()
 }

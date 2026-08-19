@@ -82,16 +82,10 @@ func parseName(raw string, allowServiceLink bool, canonicalize bool) (Name, erro
 		return "", ParseError{Input: raw, Reason: "name must not contain URL scheme"}
 	}
 
-	labels, err := parseLabels(text)
-	if err != nil {
-		if !canonicalize || !strings.Contains(err.Error(), "uppercase") {
-			return "", ParseError{Input: raw, Reason: err.Error()}
-		}
-	}
 	if canonicalize {
 		text = strings.ToLower(text)
-		labels, err = parseLabels(text)
 	}
+	labels, err := parseLabels(text)
 	if err != nil {
 		return "", ParseError{Input: raw, Reason: err.Error()}
 	}
@@ -110,9 +104,6 @@ func parseName(raw string, allowServiceLink bool, canonicalize bool) (Name, erro
 		return "", ParseError{Input: raw, Reason: "serialized Service Name exceeds Stage 6 bound"}
 	}
 
-	if canonicalize {
-		return Name(strings.Join(labels, ".")), nil
-	}
 	return Name(strings.Join(labels, ".")), nil
 }
 
@@ -121,7 +112,7 @@ func parseLabels(text string) ([]string, error) {
 		return nil, errors.New("empty Service Name")
 	}
 	if strings.HasPrefix(text, ".") || strings.HasSuffix(text, ".") || strings.Contains(text, "..") {
-		return nil, errors.New("Service Name must contain dot-separated labels without empty segments")
+		return nil, errors.New("name must contain dot-separated labels without empty segments")
 	}
 	segments := strings.Split(text, ".")
 	labels := make([]string, 0, len(segments))
