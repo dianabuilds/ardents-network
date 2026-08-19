@@ -99,8 +99,8 @@ func finalObservationFromWorker(plan finalRunnerPlan, result finalWorkerResult) 
 		StartedOffsetMillis: result.StartedOffsetMillis, TerminalOffsetMillis: result.TerminalOffsetMillis,
 		CleanupOffsetMillis:  result.CleanupOffsetMillis,
 		AdapterCleanupMillis: result.CleanupOffsetMillis - result.TerminalOffsetMillis,
-		Observers:            result.Observers, RawObservers: result.RawObservers,
-		RawTelemetry: result.RawTelemetry, Residuals: result.Residuals}
+		Observers:            result.Observers, ObserverEvidence: result.ObserverEvidence,
+		TelemetryEvidence: result.TelemetryEvidence, Residuals: result.Residuals}
 }
 
 func validFinalWorkerResult(value finalWorkerResult) bool {
@@ -110,9 +110,11 @@ func validFinalWorkerResult(value finalWorkerResult) bool {
 	}
 	if !value.EvidenceComplete || value.CellID == "" || value.Terminal == "" ||
 		value.ObserverSets != expectedSets ||
+		!validFinalArtifactCommitment(value.ObserverEvidence, "final-observers", value.CellID) ||
+		!validFinalArtifactCommitment(value.TelemetryEvidence, "final-telemetry", value.CellID) ||
 		value.TerminalOffsetMillis < value.StartedOffsetMillis ||
 		value.CleanupOffsetMillis < value.TerminalOffsetMillis || len(value.Observers) != 9 ||
-		len(value.RawObservers) != int(expectedSets) || len(value.Residuals) != 10 {
+		len(value.Residuals) != 10 {
 		return false
 	}
 	for _, observed := range value.Observers {

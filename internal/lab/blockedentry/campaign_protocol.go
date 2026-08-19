@@ -21,26 +21,26 @@ type cellPlan struct {
 }
 
 type cellObservation struct {
-	Schema               string                `json:"schema"`
-	EventID              string                `json:"event_id"`
-	CellID               string                `json:"cell_id,omitempty"`
-	Seed                 string                `json:"seed,omitempty"`
-	ObservedTerminal     string                `json:"observed_terminal"`
-	ProductStarted       bool                  `json:"product_started"`
-	FaultInjected        bool                  `json:"fault_injected"`
-	FaultOwner           string                `json:"fault_owner"`
-	Attribution          string                `json:"attribution"`
-	AttributionEvidence  string                `json:"attribution_evidence"`
-	Diagnostic           string                `json:"diagnostic"`
-	StartedOffsetMillis  uint64                `json:"started_offset_millis"`
-	TerminalOffsetMillis uint64                `json:"terminal_offset_millis"`
-	CleanupOffsetMillis  uint64                `json:"cleanup_offset_millis"`
-	AdapterCleanupMillis uint64                `json:"adapter_cleanup_millis"`
-	Observers            []observer            `json:"observers"`
-	RawObservers         []finalRawObserverSet `json:"raw_observers,omitempty"`
-	RawTelemetry         []finalRawTelemetry   `json:"raw_telemetry,omitempty"`
-	Residuals            []residual            `json:"residuals"`
-	FinalSummary         *finalSummary         `json:"final_summary,omitempty"`
+	Schema               string             `json:"schema"`
+	EventID              string             `json:"event_id"`
+	CellID               string             `json:"cell_id,omitempty"`
+	Seed                 string             `json:"seed,omitempty"`
+	ObservedTerminal     string             `json:"observed_terminal"`
+	ProductStarted       bool               `json:"product_started"`
+	FaultInjected        bool               `json:"fault_injected"`
+	FaultOwner           string             `json:"fault_owner"`
+	Attribution          string             `json:"attribution"`
+	AttributionEvidence  string             `json:"attribution_evidence"`
+	Diagnostic           string             `json:"diagnostic"`
+	StartedOffsetMillis  uint64             `json:"started_offset_millis"`
+	TerminalOffsetMillis uint64             `json:"terminal_offset_millis"`
+	CleanupOffsetMillis  uint64             `json:"cleanup_offset_millis"`
+	AdapterCleanupMillis uint64             `json:"adapter_cleanup_millis"`
+	Observers            []observer         `json:"observers"`
+	ObserverEvidence     artifactCommitment `json:"observer_evidence,omitempty"`
+	TelemetryEvidence    artifactCommitment `json:"telemetry_evidence,omitempty"`
+	Residuals            []residual         `json:"residuals"`
+	FinalSummary         *finalSummary      `json:"final_summary,omitempty"`
 }
 
 func campaignCommand(ctx context.Context, config Config) *exec.Cmd {

@@ -114,7 +114,11 @@ func TestFinalRunnerObservationPreservesWorkerEvidence(t *testing.T) {
 	plan := finalRunnerPlan{Schema: "ardents-h3-blocked-cell-plan-v1", CellID: "profile/C1/00", Seed: seed}
 	worker := finalWorkerResult{CellID: plan.CellID, Terminal: "success", EvidenceComplete: true, StartedOffsetMillis: 4,
 		TerminalOffsetMillis: 8, CleanupOffsetMillis: 11, ObserverSets: 1,
-		Observers: fixtureFinalRunnerObservers(), Residuals: fixtureFinalRunnerResiduals()}
+		Observers: fixtureFinalRunnerObservers(), Residuals: fixtureFinalRunnerResiduals(),
+		ObserverEvidence: finalRunnerArtifact{Path: finalRunnerArtifactPath("final-observers", plan.CellID),
+			SHA256: strings.Repeat("c", 64), Bytes: 100},
+		TelemetryEvidence: finalRunnerArtifact{Path: finalRunnerArtifactPath("final-telemetry", plan.CellID),
+			SHA256: strings.Repeat("d", 64), Bytes: 200}}
 	if !validFinalRunnerPlan(plan) {
 		t.Fatal("valid final plan rejected")
 	}
@@ -127,7 +131,8 @@ func TestFinalRunnerObservationPreservesWorkerEvidence(t *testing.T) {
 		!observed.ProductStarted || !observed.FaultInjected || observed.FaultOwner != "none" ||
 		observed.StartedOffsetMillis != 4 || observed.TerminalOffsetMillis != 8 ||
 		observed.CleanupOffsetMillis != 11 || observed.AdapterCleanupMillis != 3 ||
-		len(observed.Observers) != 9 || len(observed.Residuals) != 10 {
+		observed.ObserverEvidence != worker.ObserverEvidence || observed.TelemetryEvidence != worker.TelemetryEvidence ||
+		len(observed.Observers) != 9 || len(observed.Residuals) != 10 || !validFinalWorkerResult(worker) {
 		t.Fatalf("runner observation=%+v", observed)
 	}
 	plan.Seed = strings.Repeat("A", 64)
@@ -148,12 +153,12 @@ func TestFinalWorkerEvidenceRequiresRetainedObserversAndPostCleanupRoot(t *testi
 		t.Fatal(err)
 	}
 	writeFinalObserverRoot(t, root, []string{"endpoint"})
-	observers, rawObservers := collectFinalWorkerObservers("profile/C1/00", []string{root})
+	observers, _ := collectFinalWorkerObservers("profile/C1/00", []string{root})
 	if len(observers) != 9 {
 		t.Fatalf("retained observers=%d", len(observers))
 	}
 	value := []finalWorkerResult{{CellID: "profile/C1/00", TerminalOffsetMillis: 4,
-		Observers: observers, RawObservers: rawObservers, ObserverSets: 1}}
+		Observers: observers, ObserverSets: 1}}
 	if err := releaseFinalWorkerRoot(parent); err == nil {
 		t.Fatal("live worker root was accepted before cleanup")
 	}

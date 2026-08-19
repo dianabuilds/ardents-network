@@ -79,8 +79,8 @@ type finalWorkerResult struct {
 	TerminalOffsetMillis uint64                 `json:"terminal_offset_millis"`
 	CleanupOffsetMillis  uint64                 `json:"cleanup_offset_millis"`
 	Observers            []finalRunnerObserver  `json:"observers"`
-	RawObservers         []finalRawObserverSet  `json:"raw_observers"`
-	RawTelemetry         []finalRawTelemetry    `json:"raw_telemetry"`
+	ObserverEvidence     finalRunnerArtifact    `json:"observer_evidence"`
+	TelemetryEvidence    finalRunnerArtifact    `json:"telemetry_evidence"`
 	Sustained            *finalWorkerSustained  `json:"sustained,omitempty"`
 	Pressure             *finalPressureEvidence `json:"pressure,omitempty"`
 	Residuals            []finalRunnerResidual  `json:"residuals"`
@@ -215,8 +215,8 @@ type finalRunnerObservation struct {
 	CleanupOffsetMillis  uint64                `json:"cleanup_offset_millis"`
 	AdapterCleanupMillis uint64                `json:"adapter_cleanup_millis"`
 	Observers            []finalRunnerObserver `json:"observers"`
-	RawObservers         []finalRawObserverSet `json:"raw_observers,omitempty"`
-	RawTelemetry         []finalRawTelemetry   `json:"raw_telemetry,omitempty"`
+	ObserverEvidence     finalRunnerArtifact   `json:"observer_evidence,omitempty"`
+	TelemetryEvidence    finalRunnerArtifact   `json:"telemetry_evidence,omitempty"`
 	Residuals            []finalRunnerResidual `json:"residuals"`
 }
 

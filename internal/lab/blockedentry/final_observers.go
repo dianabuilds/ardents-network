@@ -1,12 +1,8 @@
 package blockedentry
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -60,21 +56,14 @@ type finalRawObserverEvidence struct {
 	Sets   []finalRawObserverSet `json:"sets"`
 }
 
-func captureFinalObserverEvidence(secretRoot string, output cellObservation) (artifactCommitment, error) {
-	if !validFinalRawObserverEvidence(output.CellID, output.RawObservers) {
+func admitFinalObserverEvidence(secretRoot string, output cellObservation) (artifactCommitment, error) {
+	var raw finalRawObserverEvidence
+	if err := readFinalHandoffArtifact(secretRoot, "final-observers", output.CellID,
+		output.ObserverEvidence, &raw); err != nil || raw.Schema != "ardents-h3-final-raw-observers-v1" ||
+		raw.CellID != output.CellID || !validFinalRawObserverEvidence(output.CellID, raw.Sets) {
 		return artifactCommitment{}, errors.New("final cell raw observer evidence is incomplete")
 	}
-	digest := sha256.Sum256([]byte(output.CellID))
-	relative := filepath.ToSlash(filepath.Join("final-observers", hex.EncodeToString(digest[:])+".json"))
-	absolute := filepath.Join(secretRoot, filepath.FromSlash(relative))
-	if err := os.MkdirAll(filepath.Dir(absolute), 0o700); err != nil {
-		return artifactCommitment{}, err
-	}
-	if err := writeJSON(absolute, finalRawObserverEvidence{Schema: "ardents-h3-final-raw-observers-v1",
-		CellID: output.CellID, Sets: output.RawObservers}); err != nil {
-		return artifactCommitment{}, err
-	}
-	return commitment(secretRoot, relative)
+	return output.ObserverEvidence, nil
 }
 
 func validFinalRawObserverEvidence(cellID string, sets []finalRawObserverSet) bool {

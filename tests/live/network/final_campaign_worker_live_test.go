@@ -72,10 +72,14 @@ func emitFinalWorkerResult(t *testing.T, identity, terminal string, started time
 	if !telemetryComplete {
 		t.Fatal("final worker telemetry is unstable or malformed")
 	}
+	if err := writeFinalWorkerHandoff(os.Getenv("ARDENTS_FINAL_WORKER_ROOT"), identity,
+		rawObservers, rawTelemetry); err != nil {
+		t.Fatal(err)
+	}
 	value := finalWorkerResult{Schema: "ardents-h3-final-worker-cell-v1", CellID: identity, Terminal: terminal,
 		StartedOffsetMillis:  uint64(started.Sub(finalWorkerProcessStart).Milliseconds()),
 		TerminalOffsetMillis: uint64(terminalAt.Milliseconds()), CleanupOffsetMillis: uint64(terminalAt.Milliseconds()),
-		Observers: observers, RawObservers: rawObservers, RawTelemetry: rawTelemetry, Sustained: sustained, Pressure: pressure,
+		Observers: observers, Sustained: sustained, Pressure: pressure,
 		ObserverSets: uint16(len(ownedRoots))}
 	raw, err := json.Marshal(value)
 	if err != nil {

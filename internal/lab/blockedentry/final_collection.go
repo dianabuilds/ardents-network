@@ -55,11 +55,11 @@ func finishCollectedCampaign(command *exec.Cmd, stdin io.WriteCloser, decoder *j
 }
 
 func finalCellFromOutput(secretRoot string, output cellObservation) (finalCellObservation, error) {
-	artifact, err := captureFinalObserverEvidence(secretRoot, output)
+	artifact, err := admitFinalObserverEvidence(secretRoot, output)
 	if err != nil {
 		return finalCellObservation{}, err
 	}
-	telemetry, err := captureFinalTelemetryEvidence(secretRoot, output)
+	telemetry, err := admitFinalTelemetryEvidence(secretRoot, output)
 	if err != nil {
 		return finalCellObservation{}, err
 	}

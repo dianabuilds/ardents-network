@@ -130,6 +130,12 @@ func runFinalCellWorker(schedule finalRunnerSchedule, cell, test string,
 	if len(results) != 1 || results[0].CellID != cell || results[0].Terminal != receipt.Terminal {
 		return nil, errors.New("final worker terminal receipt does not match its selected result")
 	}
+	observerArtifact, telemetryArtifact, err := publishFinalWorkerHandoff(workerRoot,
+		os.Getenv("ARDENTS_BLOCKED_SECRET_ROOT"), cell)
+	if err != nil {
+		return nil, err
+	}
+	results[0].ObserverEvidence, results[0].TelemetryEvidence = observerArtifact, telemetryArtifact
 	if err := releaseFinalWorkerRoot(workerRoot); err != nil {
 		return nil, err
 	}

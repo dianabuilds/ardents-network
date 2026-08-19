@@ -1,11 +1,7 @@
 package blockedentry
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
-	"os"
-	"path/filepath"
 )
 
 const maximumFinalTelemetryBytes = 2 << 20
@@ -23,21 +19,14 @@ type finalRawTelemetryEvidence struct {
 	Files  []finalRawTelemetry `json:"files"`
 }
 
-func captureFinalTelemetryEvidence(secretRoot string, output cellObservation) (artifactCommitment, error) {
-	if !validFinalRawTelemetry(output.RawTelemetry) {
+func admitFinalTelemetryEvidence(secretRoot string, output cellObservation) (artifactCommitment, error) {
+	var raw finalRawTelemetryEvidence
+	if err := readFinalHandoffArtifact(secretRoot, "final-telemetry", output.CellID,
+		output.TelemetryEvidence, &raw); err != nil || raw.Schema != "ardents-h3-final-raw-telemetry-v1" ||
+		raw.CellID != output.CellID || !validFinalRawTelemetry(raw.Files) {
 		return artifactCommitment{}, errors.New("final cell raw telemetry is incomplete or invalid")
 	}
-	digest := sha256.Sum256([]byte(output.CellID))
-	relative := filepath.ToSlash(filepath.Join("final-telemetry", hex.EncodeToString(digest[:])+".json"))
-	path := filepath.Join(secretRoot, filepath.FromSlash(relative))
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-		return artifactCommitment{}, err
-	}
-	if err := writeJSON(path, finalRawTelemetryEvidence{
-		Schema: "ardents-h3-final-raw-telemetry-v1", CellID: output.CellID, Files: output.RawTelemetry}); err != nil {
-		return artifactCommitment{}, err
-	}
-	return commitment(secretRoot, relative)
+	return output.TelemetryEvidence, nil
 }
 
 func validFinalRawTelemetry(files []finalRawTelemetry) bool {

@@ -83,8 +83,15 @@ Invite field. Before each mapped worker it rehashes the exact clean Git
 archive, requires the frozen commit and source hash, verifies both preloaded
 content-addressed image IDs and their product/tool/base/source labels, then
 uses `--no-build` paths and bounded stdout/stderr capture. The worker result is
-now terminal-bearing and reads the completed role-owned path/DNS results. The
-child cannot set `evidence_complete`: the parent owns the worker's only
+now terminal-bearing and reads the completed role-owned path/DNS results. Raw
+observer and telemetry payloads do not enter either streaming control channel:
+the exact-cell worker writes two canonical files into its parent-owned root,
+the streaming runner snapshots them only after the worker exits, publishes
+them under cell-ID-derived no-replace names in the external secret tree, and
+returns only path/hash/size commitments. The harness independently reopens the
+stable regular files, rejects path substitution, mutation, non-canonical JSON,
+or commitment mismatch, and binds the accepted commitments into the cell.
+The child cannot set `evidence_complete`: the parent owns the worker's only
 temporary root and process group, verifies that the group has no descendant,
 removes and rechecks every token-owned Docker object, and requires the root to
 be empty before removing it. A terminal marker is timestamped as it reaches
