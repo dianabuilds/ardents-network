@@ -1,8 +1,9 @@
 # Stage 6 private naming evidence contract
 
-Status: **draft behavior inventory. R-042, R-044, R-045, R-046 and the
-canonical artifact serialization are open; ADR-0013 is withdrawn. This document
-does not yet authorize an S6.6 campaign or coding start.**
+Status: **draft behavior inventory. R-046/R-047 are decided; R-042, R-044,
+R-045, and the decision-ready R-055 S6E1 artifact profile remain open.
+ADR-0013 is withdrawn. This document does not yet authorize an S6.6 campaign or
+general coding start.**
 
 This document defines what Stage 6 must prove. It does not select persistence,
 consensus, cryptography, ordering, Anonymous Cost, or wire mechanisms.
@@ -41,9 +42,9 @@ R-046 close, a schema revision must define at minimum:
   commitments appropriate to the cell;
 - the future R-042 eligible-set/order proof, monotonic clock origin, deadlines,
   and R-043 cache/replay bounds;
-- the future R-046 role views, expected runtime class, and exact predicates; and
+- the accepted R-046 role views, expected runtime class, and exact predicates; and
 - separate paths and hashes for manifest, evidence, private fixture material, and
-  verifier output, using the commitment algorithm selected by R-044.
+  verifier output, using the artifact commitment algorithm selected by R-055.
 
 Evidence contains only declared per-role inputs/observations, ordered transitions,
 terminal outcomes, resource observations, and complete cleanup inventory. It
@@ -165,10 +166,11 @@ contribute exact verifier predicates.
 |---|---|---|---|
 | Canonical name profile | decided | A0/A1 textual and wire vectors may be specified | [R-041](../research/records/r-041-canonical-name-limits.md) |
 | Persistence property boundary | decided | restart/tamper/stale/atomic predicates may be designed; adapter evidence remains future work | [R-043](../research/records/r-043-persistence-restart-rollback.md) |
-| Field-level role matrix | open | D0-D4 exact field predicates cannot be frozen | [R-046](../research/records/r-046-role-matrix.md) |
-| Cryptographic suite and Recovery Authorities | open; ADR-0013 withdrawn | B0-B5 and query-hiding proof formats cannot be frozen | [R-044](../research/records/r-044-cryptographic-suite.md), [ADR-0013](../adr/0013-stage-6-cryptographic-suite.md) |
+| Field-level role matrix and query hiding | decided | D0-D4 exact field predicates use R-046/R-047 and ADR-0014 | [R-046](../research/records/r-046-role-matrix.md), [R-047](../research/records/r-047-stage-6-query-hiding.md), [ADR-0014](../adr/0014-private-naming-ohttp.md) |
+| Threshold Recovery Authorities | open; ADR-0013 withdrawn | B2-B5 recovery proof formats cannot be frozen | [R-044](../research/records/r-044-cryptographic-suite.md), [ADR-0013](../adr/0013-stage-6-cryptographic-suite.md) |
 | Claim ordering and inclusion | open | C4-C6 cannot name a deterministic loser | [R-042](../research/records/r-042-claim-ordering.md) |
 | Anonymous Cost and admission | open | C7 has no accepted numeric thresholds | [R-045](../research/records/r-045-anonymous-cost.md) |
+| Artifact serialization | open, decision-ready | No S6.6 campaign may claim a canonical bundle/verdict yet | [R-055](../research/records/r-055-stage-6-evidence-serialization.md) |
 
 A development fixture may exercise the inventory but is not citable as an S6.6
 result. Stage 6 has no frozen campaign identity, episode count, or qualification
