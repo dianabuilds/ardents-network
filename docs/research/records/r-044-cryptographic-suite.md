@@ -67,6 +67,9 @@ protocol. No Stage 6 threshold implementation is currently selected.
   accessed 2026-08-20 — BLS signatures and aggregation.
 - [`golang.org/x/crypto` source](https://github.com/golang/crypto), accessed
   2026-08-20 — confirms the formerly named package is absent.
+- [Go `crypto/ed25519`](https://pkg.go.dev/crypto/ed25519), accessed
+  2026-08-20 — maintained standard-library RFC 8032 signing and verification;
+  private-key operations are documented as constant time.
 - [CIRCL BLS API](https://pkg.go.dev/github.com/cloudflare/circl/sign/bls),
   accessed 2026-08-20 — available BLS aggregation API, not a complete Recovery
   Policy protocol.
@@ -80,6 +83,12 @@ identified. Exercise setup, `t-1`, `t`, and `n` participants; duplicate and
 rogue keys; mixed policies/generations; lost participants; delayed completion;
 restart; malformed shares; and independent verification. Measure retained bytes,
 CPU, memory, and latency on the R-023 host.
+
+The frozen O2 experiment uses the worst supported `5-of-8` policy with all
+eight signatures, caps logical policy-plus-proof bytes at `2 KiB`, verification
+at `2 ms` p95 on the declared weaker `1 vCPU/512 MiB` Linux container, and Go
+heap allocation at `8 KiB` per verification. Every hostile vector must have
+zero false authorizations. These are experiment gates, not a reliability claim.
 
 ### Failure scenarios
 
@@ -115,16 +124,70 @@ CPU, memory, and latency on the R-023 host.
 4. **Defer Recovery Policy.** Required fallback if no candidate meets the V1
    threat and maintenance model.
 
+## Decision-ready candidate O2 — individually authenticated threshold
+
+This candidate is not accepted until its experiment passes and the Product
+Owner chooses it. It interprets `t`-of-`n` literally: one proof carries at least
+`t` distinct RFC 8032 Ed25519 signatures rather than hiding them behind an
+aggregate or distributed key.
+
+- One generation-scoped Recovery Policy contains `2 <= t <= n <= 8`, exactly
+  `n` strictly ordered canonical Ed25519 public keys, one visible pending delay
+  from `72 hours` through `30 days`, a monotonic policy revision, and its
+  domain-separated digest.
+- No Recovery Authority key may equal the current Name Authority. Duplicate or
+  unknown participants, duplicate signatures, and non-canonical order fail.
+- Every participant signs the same canonical transcript: domain literal,
+  network, canonical Name wire bytes, generation, effective policy digest,
+  recovery operation identifier, successor Name Authority, start boundary, and
+  completion boundary.
+- At least `t` valid distinct signatures initiate Recovery Pending. The current
+  Name Authority cannot initiate, cancel, shorten, or extend it alone.
+- Cancellation requires another `t`-of-`n` proof under the same effective policy
+  and a distinct cancellation domain. Without cancellation, the precommitted
+  successor becomes eligible exactly at the fixed boundary and must publish a
+  fresh monotonic Name Record before resolution resumes.
+- Add/replace/disable of a Recovery Policy is delayed by the same visible policy
+  delay. The preceding policy remains effective until the change completes, so
+  a compromised current authority cannot erase already usable recovery.
+
+O2 needs no dealer, DKG, aggregation, proof of possession, or new runtime
+dependency. Its intentional costs are linear proof size and public participant
+keys/signatures. At `n = 8`, raw keys plus signatures are `768` bytes before
+bounded framing; participant privacy is not claimed.
+
+## Measurements
+
+- **Measurement:** the positive `2-of-3` case and hostile `t-1`, duplicate,
+  unknown, current-authority, cross-network/name/generation/policy, successor,
+  deadline, operation-domain, and malformed-signature vectors passed ten
+  consecutive runs with zero false authorization and no input mutation.
+- **Measurement:** the worst supported `5-of-8` proof used `1,248` logical
+  policy-plus-proof bytes. On the Windows endpoint it allocated about `1,721`
+  heap bytes per verification and completed within the clock's approximately
+  `1 ms` resolution at p95.
+- **Measurement:** in the pinned Ubuntu image, offline/read-only, capped to
+  `1 vCPU`, `512 MiB`, `64` PIDs, no capabilities, and no network, `10,000`
+  worst-case verifications used `1,720` heap bytes per run and completed in
+  `0.404001 ms` p95 (`0.242362 ms` p50, `6.250771 ms` maximum). O2 passed every
+  frozen resource gate.
+- **Inference:** individual signatures are materially simpler than FROST/BLS
+  for this bounded policy and fit the tracer budget. The experiment does not
+  prove participant independence, custody quality, or recovery availability.
+
 ## Recommendation
 
-Choose none yet. Run the experiment after a source review identifies at least
-one maintained implementation. Confidence is high that ADR-0013 cannot be used;
-confidence in a replacement is currently low. The strongest counterargument to
-FROST is its setup and interactive operational burden for a one-person product.
+Choose O2 after Product Owner review and record a replacement recovery ADR.
+Confidence is high that ADR-0013 cannot be used and high that individually
+authenticated Ed25519 signatures implement the bounded cryptographic threshold.
+The strongest counterargument is that policy membership and every signer become
+visible and proof size grows linearly; neither participant privacy nor recovery
+availability is provided.
 
 ## Disposition
 
-- State: `open`; ADR-0013 is withdrawn and provides no import authorization.
+- State: `open`, O2 decision-ready; ADR-0013 is withdrawn and provides no import
+  authorization.
 - S6.4 recovery and its final evidence remain blocked. R-047 is the separate
   decision-ready gate for S6.2 authentication and query hiding.
 - Any selected runtime dependency requires `dependencies.md`, an accepted ADR,
