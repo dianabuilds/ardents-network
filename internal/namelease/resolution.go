@@ -1,22 +1,11 @@
 package namelease
 
-// CanResolve returns whether a Record and its immediate-parent-to-root lineage
-// permit successful resolution at now.
-func CanResolve(current Record, now int64, parents []Record) (bool, string) {
-	if err := validateRecord(current); err != nil {
-		return false, "name record is invalid"
+func canResolve(current Record, now int64, parents []Record) (bool, string) {
+	_, warning, err := ResolveBinding(current, now, parents)
+	if err != nil {
+		return false, err.Error()
 	}
-	if ok, reason := liveLease(current, now); !ok {
-		return false, reason
-	}
-	if current.Target == "" {
-		return false, "name has no current Service Target binding"
-	}
-	parent, err := validateParents(current.Name, parents, now)
-	if err != nil || !sameParent(&current, parent) {
-		return false, "parent lineage is missing or stale"
-	}
-	return true, leaseWarning(current)
+	return true, warning
 }
 
 func liveLease(current Record, now int64) (bool, string) {

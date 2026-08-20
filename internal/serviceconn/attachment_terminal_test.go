@@ -28,7 +28,7 @@ func TestRecoveryExhaustionPublishesTerminalBeforeWakingWaiter(t *testing.T) {
 	now := time.Now()
 	stream := newRecoveryStream(t.Context(), application, Credential{}, Recovery{
 		NoNewRecoveryAfter: now.Add(time.Minute).Unix(),
-	}, nil, true, opener, failed, [32]byte{1}, now, newResourceObserver())
+	}, nil, true, opener, failed, [32]byte{1}, now, DestinationBinding{}, nil, newResourceObserver())
 	results := make(chan error, 2)
 	go func() { results <- stream.recoverAttachment(failed) }()
 	<-firstProposal

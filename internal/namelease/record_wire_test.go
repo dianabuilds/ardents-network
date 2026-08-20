@@ -34,13 +34,13 @@ func TestRecordEncoderRejectsUnknownStateAndPreservesOpaqueField(t *testing.T) {
 		t.Fatal("EncodeRecord accepted an unknown consistency state")
 	}
 	record.Consistency = consistencyCurrent
-	record.Target = strings.Repeat("x", 5000)
+	record.Authority = strings.Repeat("x", 5000)
 	wire, err := EncodeRecord(record)
 	if err != nil {
 		t.Fatalf("EncodeRecord rejected an opaque field without a selected bound: %v", err)
 	}
 	decoded, err := DecodeRecord(wire)
-	if err != nil || decoded.Target != record.Target {
+	if err != nil || decoded.Authority != record.Authority {
 		t.Fatalf("opaque field round trip failed: %v", err)
 	}
 }
@@ -54,7 +54,7 @@ func TestRecordDecoderRejectsMutationAndTrailingBytes(t *testing.T) {
 	}
 	for _, mutated := range [][]byte{
 		append(append([]byte(nil), wire...), 0),
-		append([]byte{0, 2}, wire[2:]...),
+		append([]byte{0, 4}, wire[2:]...),
 		wire[:len(wire)-1],
 	} {
 		if _, err := DecodeRecord(mutated); err == nil {

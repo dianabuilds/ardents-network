@@ -26,6 +26,7 @@ Current decisions:
 - [0017 — Order root-name claims through authenticated epoch input](0017-authenticated-name-claim-ordering.md)
 - [0018 — Authorize recovery with bounded individual signatures](0018-threshold-recovery-multisignatures.md)
 - [0019 — Bound naming admission with scoped anonymous work](0019-bounded-anonymous-name-admission.md)
+- [0020 — Authenticate the current Namespace in each Network Epoch](0020-authenticate-current-namespace-materialization.md)
 
 Withdrawn decisions retained for history:
 

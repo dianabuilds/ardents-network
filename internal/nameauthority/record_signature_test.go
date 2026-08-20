@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"testing"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/namelease"
@@ -35,7 +36,7 @@ func TestSignedRecordBindsAuthorityNetworkAndCanonicalRecord(t *testing.T) {
 	network := [32]byte{1, 2, 3}
 	record := namelease.Record{Name: "alice", Generation: 1, Revision: 4,
 		Lease: "active", Consistency: "current", Recovery: "stable",
-		Authority: hex.EncodeToString(public), Target: "target-a",
+		Authority: hex.EncodeToString(public), Target: [32]byte{1},
 		LeaseExpiresAt: 200, GraceExpiresAt: 220}
 
 	signed, err := nameauthority.SignRecord(network, record, private)
@@ -77,9 +78,12 @@ func TestSignedRecordBindsEveryLifecycleField(t *testing.T) {
 	network := [32]byte{9, 8, 7}
 	base := namelease.Record{Name: "leaf.sub.root", Generation: 3, Revision: 4,
 		Lease: "active", Consistency: "fork", Recovery: "recovery-pending",
-		Authority: hex.EncodeToString(public), Target: "target-a", ParentName: "sub.root",
+		Authority: hex.EncodeToString(public), Target: [32]byte{1}, ParentName: "sub.root",
 		ParentGeneration: 2, LeaseExpiresAt: 200, GraceExpiresAt: 220,
-		RecoveryExpiresAt: 180, Continuity: 6, ConflictIdentifier: "fork-a"}
+		RecoveryStartedAt: 1_000, RecoveryExpiresAt: 1_000 + (72 * time.Hour).Milliseconds(),
+		RecoveryOperation: [32]byte{3}, RecoverySuccessor: [32]byte{4},
+		RecoveryPolicy: [32]byte{5}, RecoveryPolicyRev: 1,
+		RecoveryPolicyDelay: (72 * time.Hour).Milliseconds(), Continuity: 6, ConflictIdentifier: "fork-a"}
 	signed, err := nameauthority.SignRecord(network, base, private)
 	if err != nil {
 		t.Fatal(err)
@@ -91,16 +95,31 @@ func TestSignedRecordBindsEveryLifecycleField(t *testing.T) {
 		"revision":    func(r *namelease.Record) { r.Revision++ },
 		"lease":       func(r *namelease.Record) { r.Lease = "grace" },
 		"consistency": func(r *namelease.Record) { r.Consistency = "unavailable" },
-		"recovery":    func(r *namelease.Record) { r.Recovery = "stable"; r.RecoveryExpiresAt = 0 },
+		"recovery": func(r *namelease.Record) {
+			r.Recovery = "stable"
+			r.RecoveryStartedAt, r.RecoveryExpiresAt = 0, 0
+			r.RecoveryOperation, r.RecoverySuccessor = [32]byte{}, [32]byte{}
+		},
 		"authority": func(r *namelease.Record) {
 			r.Authority = hex.EncodeToString(bytes.Repeat([]byte{7}, ed25519.PublicKeySize))
 		},
-		"target":              func(r *namelease.Record) { r.Target = "target-b" },
-		"parent name":         func(r *namelease.Record) { r.ParentName = "root" },
-		"parent generation":   func(r *namelease.Record) { r.ParentGeneration++ },
-		"lease expiry":        func(r *namelease.Record) { r.LeaseExpiresAt++ },
-		"grace expiry":        func(r *namelease.Record) { r.GraceExpiresAt++ },
-		"recovery expiry":     func(r *namelease.Record) { r.RecoveryExpiresAt++ },
+		"target":            func(r *namelease.Record) { r.Target = [32]byte{2} },
+		"parent name":       func(r *namelease.Record) { r.ParentName = "root" },
+		"parent generation": func(r *namelease.Record) { r.ParentGeneration++ },
+		"lease expiry":      func(r *namelease.Record) { r.LeaseExpiresAt++ },
+		"grace expiry":      func(r *namelease.Record) { r.GraceExpiresAt++ },
+		"recovery window": func(r *namelease.Record) {
+			r.RecoveryStartedAt++
+			r.RecoveryExpiresAt++
+		},
+		"recovery operation":  func(r *namelease.Record) { r.RecoveryOperation[0]++ },
+		"recovery successor":  func(r *namelease.Record) { r.RecoverySuccessor[0]++ },
+		"recovery policy":     func(r *namelease.Record) { r.RecoveryPolicy[0]++ },
+		"recovery policy rev": func(r *namelease.Record) { r.RecoveryPolicyRev++ },
+		"recovery policy delay": func(r *namelease.Record) {
+			r.RecoveryPolicyDelay++
+			r.RecoveryExpiresAt++
+		},
 		"continuity":          func(r *namelease.Record) { r.Continuity++ },
 		"conflict identifier": func(r *namelease.Record) { r.ConflictIdentifier = "fork-b" },
 	}
@@ -139,7 +158,7 @@ func TestSignRecordRejectsWrongAuthorityAndMalformedKeys(t *testing.T) {
 	}
 	record := namelease.Record{Name: "alice", Generation: 1, Revision: 1,
 		Lease: "active", Consistency: "current", Recovery: "stable",
-		Authority: "not-an-ed25519-key", Target: "target-a",
+		Authority: "not-an-ed25519-key", Target: [32]byte{1},
 		LeaseExpiresAt: 200, GraceExpiresAt: 220}
 	if _, err := nameauthority.SignRecord([32]byte{1}, record, private); err == nil {
 		t.Fatal("record was signed for a malformed Authority")

@@ -10,8 +10,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameauthority"
-	"github.com/dianabuilds/ardents-network/internal/namelease"
+	"github.com/dianabuilds/ardents-network/internal/namestore"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/openpcc/ohttp"
 )
@@ -27,6 +26,9 @@ func Open(view state.Snapshot, selection Selection, profile GatewayProfile, isol
 	if err != nil || isolation == [32]byte{} || base == nil {
 		return nil, errors.New("private resolution client configuration is invalid")
 	}
+	if !plan.AdmissionChallenge.BindsIsolation(isolation) {
+		return nil, errors.New("private resolution admission does not bind the Isolation Context")
+	}
 	var key ohttp.KeyConfig
 	if err := key.UnmarshalBinary(plan.GatewayKeyConfig); err != nil {
 		return nil, errors.New("private resolution Gateway key is invalid")
@@ -37,12 +39,15 @@ func Open(view state.Snapshot, selection Selection, profile GatewayProfile, isol
 	if err != nil {
 		return nil, err
 	}
-	return &resolver{plan: clonePlan(plan), client: client, transport: transport}, nil
+	role := resolverRoleEvidence{Operation: "resolve", Isolation: isolation, Network: plan.NetworkID,
+		Relay: plan.Relay.NodeID, Gateway: plan.Gateway.NodeID,
+		Rendezvous: plan.ConnectionRendezvous.NodeID, Deadline: plan.Deadline}
+	return &resolver{plan: clonePlan(plan), client: client, transport: transport, roleEvidence: role}, nil
 }
 
 // Resolve performs one fresh, fixed-size private lookup and independently
 // authenticates the complete child-to-root Record chain before returning Target.
-func (resolver *resolver) Resolve(ctx context.Context, serviceName string, at time.Time) (Result, error) {
+func (resolver *resolver) Resolve(ctx context.Context, serviceName string, at time.Time) (result, error) {
 	if !resolver.begin() {
 		return resolver.failure(policyDenialClass, errors.New("private resolution Adapter is single-use"))
 	}
@@ -56,8 +61,16 @@ func (resolver *resolver) Resolve(ctx context.Context, serviceName string, at ti
 	if _, err := rand.Read(nonce[:]); err != nil {
 		return resolver.failure(resolutionUnavailableClass, err)
 	}
+	resolver.mu.Lock()
+	resolver.roleEvidence.Name, resolver.roleEvidence.Nonce = serviceName, nonce
+	resolver.mu.Unlock()
+	operationDigest, err := resolutionAdmissionDigest(resolver.plan.NetworkID, serviceName, resolver.plan.Deadline)
+	if err != nil || operationDigest != resolver.plan.AdmissionChallenge.OperationDigest {
+		return resolver.failure(policyDenialClass, errors.New("resolution admission operation is invalid"))
+	}
+	admissionProof, _ := resolver.plan.AdmissionChallenge.Solve()
 	payload, err := encodeRequest(resolutionRequest{network: resolver.plan.NetworkID, nonce: nonce,
-		deadline: resolver.plan.Deadline, name: serviceName})
+		deadline: resolver.plan.Deadline, name: serviceName, admission: admissionProof})
 	if err == nil {
 		payload, err = padMessage(payload)
 	}
@@ -99,27 +112,22 @@ func (resolver *resolver) Resolve(ctx context.Context, serviceName string, at ti
 	if response.result != resultResolved {
 		return resolver.failure(resolutionUnavailableClass, errors.New("name is unavailable"))
 	}
-	records := make([]namelease.Record, len(response.chain))
-	for index, signed := range response.chain {
-		records[index], err = nameauthority.VerifyRecord(resolver.plan.NetworkID, signed)
-		if err != nil {
-			return resolver.failure(invalidEvidenceClass, err)
-		}
-	}
-	if len(records) == 0 || records[0].Name != serviceName {
+	record, binding, warning, epoch, err := namestore.Verify(resolver.plan.MaterializationPolicy,
+		response.proof, resolver.plan.Epoch, resolver.plan.EpochDigest, at.Unix())
+	if err != nil || record.Name != serviceName || epoch != resolver.plan.Epoch {
 		return resolver.failure(invalidEvidenceClass, errors.New("resolution returned the wrong name"))
 	}
-	if records[0].Generation != response.generation || records[0].Revision != response.revision {
+	if record.Generation != response.generation || record.Revision != response.revision {
 		return resolver.failure(invalidEvidenceClass, errors.New("resolution response Record version is inconsistent"))
-	}
-	resolvable, warning := namelease.CanResolve(records[0], at.Unix(), records[1:])
-	if !resolvable {
-		return resolver.failure(invalidEvidenceClass, errors.New("resolved Name Record is not current"))
 	}
 	resolver.mu.Lock()
 	resolver.observation.Resolved++
+	resolver.roleEvidence.Result = resolvedClass
+	resolver.roleEvidence.Target = binding.Target
+	resolver.roleEvidence.Generation = record.Generation
+	resolver.roleEvidence.Revision = record.Revision
 	resolver.mu.Unlock()
-	return Result{Class: resolvedClass, Warning: warning, Record: records[0]}, nil
+	return result{Class: resolvedClass, Warning: warning, Record: record, Binding: binding}, nil
 }
 
 func isolatedHTTPClient(base *http.Transport) *http.Client {
@@ -155,11 +163,12 @@ func (resolver *resolver) ConnectionExclusions() ([][32]byte, []string, [32]byte
 		append([]string(nil), resolver.plan.ExcludedFamilies...), resolver.plan.ConnectionRendezvous.NodeID
 }
 
-func (resolver *resolver) failure(class string, _ error) (Result, error) {
+func (resolver *resolver) failure(class string, _ error) (result, error) {
 	resolver.mu.Lock()
 	resolver.observation.Failed++
+	resolver.roleEvidence.Result = class
 	resolver.mu.Unlock()
-	return Result{Class: class}, errors.New(class)
+	return result{Class: class}, errors.New(class)
 }
 
 func (resolver *resolver) begin() bool {
@@ -177,5 +186,6 @@ func clonePlan(plan plan) plan {
 	plan.GatewayKeyConfig = append([]byte(nil), plan.GatewayKeyConfig...)
 	plan.ExcludedIdentities = append([][32]byte(nil), plan.ExcludedIdentities...)
 	plan.ExcludedFamilies = append([]string(nil), plan.ExcludedFamilies...)
+	plan.MaterializationPolicy = cloneMaterializationPolicy(plan.MaterializationPolicy)
 	return plan
 }

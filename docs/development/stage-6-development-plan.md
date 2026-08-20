@@ -1,8 +1,10 @@
 # Stage 6 development plan
 
-Status: **S6.1 and S6.2 are implemented. On 2026-08-20 the Product Owner
+Status: **S6.1-S6.6 maintained implementation is complete. On 2026-08-20 the Product Owner
 accepted R-042 O1b, R-044 O2, R-045 O1b, S6E1, ADR-0017 through ADR-0019, and
-authorized maintained S6.3-S6.6 implementation. Stage 6 completion remains open.**
+authorized maintained S6.3-S6.6 implementation. The bounded S6E1 command
+campaign received independent `pass`; final Product Owner disposition remains
+open.**
 
 This plan maps accepted R-003/R-039 semantics and the Stage 6 brief into
 sequential implementation slices without selecting undecided foundations in code.
@@ -181,9 +183,11 @@ Production packages cannot import `internal/lab/*`.
 
 ## 3. Command and integration impact
 
-S6.1 adds `cmd/ardents-name` only as a bounded canonical encoding validator. It
-cannot claim, update, renew, release, resolve, publish, or recover a Name and
-therefore does not select an R-046 role view or an R-042/R-044 mechanism.
+S6.1 introduced `cmd/ardents-name` as a bounded canonical encoding validator.
+The authorized later slices now also expose one admitted private resolution or
+one of the eight frozen private control shapes. Both return bounded terminal
+receipts; neither supplies DNS, search, alias, alternate Namespace, or
+less-private fallback.
 
 Stage 6 command impact is limited to maintained paths that:
 

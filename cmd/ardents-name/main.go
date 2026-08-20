@@ -72,11 +72,20 @@ func runWithRuntime(arguments []string, output io.Writer, transport *http.Transp
 			return err
 		}
 		return runResolution(arguments[1], arguments[2], isolation, output, transport, load)
+	case "control":
+		if len(arguments) != 4 {
+			return usageError()
+		}
+		isolation, err := decodeContext(arguments[3])
+		if err != nil {
+			return err
+		}
+		return runControl(arguments[1], arguments[2], isolation, output, transport, load)
 	default:
 		return usageError()
 	}
 }
 
 func usageError() error {
-	return errors.New("usage: ardents-name encode-name <name> | validate-record <file> | resolve <input-file> <name> <context-hex>")
+	return errors.New("usage: ardents-name encode-name <name> | validate-record <file> | resolve <input-file> <name> <context-hex> | control <input-file> <operation-file> <context-hex>")
 }

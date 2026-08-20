@@ -2,8 +2,10 @@
 
 Status: **accepted S6E1 development-evidence contract. The Product Owner
 accepted R-042, R-044, R-045, R-055, and ADR-0017 through ADR-0019 and
-authorized S6.3-S6.6 implementation on 2026-08-20. No Stage 6 completion or
-Qualification verdict has yet been produced.**
+authorized S6.3-S6.6 implementation on 2026-08-20. Maintained implementation,
+mutation coverage, and the bounded command campaign are complete with independent
+`pass`; Product Owner disposition remains pending. This is development evidence,
+not a Qualification verdict.**
 
 This document defines what Stage 6 must prove. Accepted records own persistence
 properties, ordering, recovery cryptography, Anonymous Cost, and artifact
@@ -115,6 +117,14 @@ For every row, a valid artifact set showing behavior different from the expected
 runtime outcome receives verifier `fail`. Missing or contaminated required
 artifacts receive `invalid`.
 
+D2 contains twelve exchanges covering the eight frozen claim, renew, record,
+release, transfer, delegate, policy, and recovery families, including policy
+add/disable and recovery initiate/cancel/complete/resume. Anonymous admission binds the digest of every
+canonical static operation field, not a caller-authored label. Evidence retains
+the predecessor and authority-produced canonical result records; the independent
+verifier recomputes the admission binding, transition authorization, monotonic
+state effect, and forbidden role-field separation.
+
 ## Privacy measurement contract
 
 | Claim | Protected information | Adversary | Conditions | Measurement | Honest limitation |
@@ -135,6 +145,8 @@ The independently built verifier must recompute at least:
 - predecessor and recovery-policy authorization at each authority transition;
 - per-role allowed/forbidden field sets and cross-context identifier checks;
 - expected runtime outcome for every required cell;
+- the exact maximum-depth `127`-label Namespace proof size from its complete
+  signed Record corpus, independently of a runner-authored counter;
 - resource/admission observations against the future accepted C7 profile; and
 - complete cleanup before the next cell and after terminal state.
 
@@ -176,3 +188,18 @@ A development fixture is citable only after the complete S6E1 campaign receives
 an independent `pass`. S6E1 freezes one deterministic episode per A0-D6 cell;
 it is not a qualification schedule. The Stage 5 R-037/S9.6 campaign is unrelated
 and is not inherited by this evidence contract.
+
+## Bounded campaign result
+
+The separate launcher and verifier commands completed on 2026-08-20 with
+`status=pass` and no diagnostics. The retained commitments were:
+
+- source commit: `7b474ab020d29bfacf5ad2e9aad4ec63cf9c8499`;
+- dirty-worktree digest: `5407c6f35f4cdfe9a7f2ed4c4cfa17ab0b5e2fac5bd1c25e0a3c7edbbdf9439d`;
+- campaign: `d33428e3c0bf6dc5d86ee688a12d311cac643408471c7954f6b78551485c4083`;
+- evidence: `138aff9d4b3e44f7139835bb32e3d4f3ce52947476d4b6357734e1c619b2dcfb`;
+- verifier: `b1df251975c28f18e3d396abe65ddf0cea008d66796de184febd5fd528e118a8`.
+
+Generated roots remain outside the repository as required. These commitments
+identify the exact dirty development snapshot; they do not convert it into a
+release or qualification result.

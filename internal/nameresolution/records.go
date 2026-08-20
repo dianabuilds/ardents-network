@@ -1,72 +1,43 @@
 package nameresolution
 
 import (
+	"crypto/ed25519"
+	"crypto/sha256"
 	"errors"
 
-	"github.com/dianabuilds/ardents-network/internal/nameauthority"
-	"github.com/dianabuilds/ardents-network/internal/namelease"
+	"github.com/dianabuilds/ardents-network/internal/namestore"
 )
 
-func newRecordSet(network [32]byte, chains [][][]byte) (recordSet, error) {
-	if network == [32]byte{} || len(chains) == 0 {
-		return recordSet{}, errors.New("private resolution Record set is empty")
+func newRecordSet(store *namestore.Store, network [32]byte, minimumEpoch uint64) (recordSet, error) {
+	if store == nil || network == [32]byte{} || minimumEpoch == 0 {
+		return recordSet{}, errors.New("private resolution Record store is invalid")
 	}
-	result := recordSet{network: network, chains: make(map[string]recordChain, len(chains))}
-	for _, chain := range chains {
-		head, copied, err := validateSignedChain(network, chain)
-		name := head.Name
-		_, duplicate := result.chains[name]
-		if err != nil || duplicate {
-			return recordSet{}, errors.New("private resolution Record chain is invalid or duplicated")
-		}
-		sample, encodeErr := encodeResponse(resolutionResponse{network: network, nonce: [32]byte{1}, deadline: 1,
-			name: name, generation: head.Generation, revision: head.Revision, result: resultResolved, chain: copied})
-		if encodeErr != nil {
-			return recordSet{}, errors.New("private resolution Record chain does not fit the fixed response")
-		}
-		if _, padErr := padMessage(sample); padErr != nil {
-			return recordSet{}, errors.New("private resolution Record chain does not fit the fixed response")
-		}
-		result.chains[name] = recordChain{head: head, signed: copied}
-	}
-	return result, nil
+	return recordSet{network: network, store: store, minimumEpoch: minimumEpoch}, nil
 }
 
-func validateSignedChain(network [32]byte, chain [][]byte) (namelease.Record, [][]byte, error) {
-	if len(chain) == 0 || len(chain) > 127 {
-		return namelease.Record{}, nil, errors.New("signed Record chain has invalid depth")
+func validMaterializationPolicy(value namestore.Policy, network [32]byte) bool {
+	if value.Network != network || value.Rule != "ardents-namespace-materialization-v1" || value.Threshold < 2 ||
+		value.Threshold > len(value.Authorities) || len(value.Authorities) > 16 {
+		return false
 	}
-	records := make([]namelease.Record, len(chain))
-	copied := make([][]byte, len(chain))
-	for index, signed := range chain {
-		record, err := nameauthority.VerifyRecord(network, signed)
-		if err != nil {
-			return namelease.Record{}, nil, err
-		}
-		records[index] = record
-		copied[index] = append([]byte(nil), signed...)
-	}
-	for index := 1; index < len(records); index++ {
-		child, parent := records[index-1], records[index]
-		if child.ParentName != parent.Name || child.ParentGeneration != parent.Generation {
-			return namelease.Record{}, nil, errors.New("signed Record chain is discontinuous")
+	for id, public := range value.Authorities {
+		if len(public) != ed25519.PublicKeySize || sha256.Sum256(public) != id {
+			return false
 		}
 	}
-	if records[len(records)-1].ParentName != "" {
-		return namelease.Record{}, nil, errors.New("signed Record chain does not reach a root")
-	}
-	return records[0], copied, nil
+	return true
 }
 
-func (records recordSet) lookup(name string) (recordChain, bool) {
-	chain, ok := records.chains[name]
-	if !ok {
-		return recordChain{}, false
+func cloneMaterializationPolicy(value namestore.Policy) namestore.Policy {
+	copyValue := namestore.Policy{Network: value.Network, Rule: value.Rule,
+		Authorities: make(map[[32]byte]ed25519.PublicKey, len(value.Authorities)), Threshold: value.Threshold}
+	for id, public := range value.Authorities {
+		copyValue.Authorities[id] = append(ed25519.PublicKey(nil), public...)
 	}
-	copied := make([][]byte, len(chain.signed))
-	for index := range chain.signed {
-		copied[index] = append([]byte(nil), chain.signed[index]...)
-	}
-	chain.signed = copied
-	return chain, true
+	return copyValue
+}
+
+func (records recordSet) lookup(name string) ([]byte, bool) {
+	proof, err := records.store.Lookup(name, records.minimumEpoch)
+	return proof, err == nil
 }

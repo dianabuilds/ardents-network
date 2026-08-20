@@ -96,6 +96,9 @@ vectors and bounded summaries are retained.
   Stage 5 aggregate-size failure and one large in-memory duplicate.
 - **Inference:** one deterministic episode per behavior cell establishes Stage
   6 development behavior but cannot support a statistical Qualification claim.
+- **Measurement:** the maintained launcher/worker/verifier split produces the
+  exact 27-cell inventory; structural mutations become `invalid`, and one
+  committed behavioral mutation for every A0-D6 cell becomes `fail`.
 - **Assumption:** same-account process separation detects ordinary accidental or
   candidate-authored contamination but is not an OS security boundary against a
   malicious process with the same account privileges.
@@ -205,5 +208,8 @@ hostile-OS isolation or independent external audit.
 
 - State: `decided`; the Product Owner accepted S6E1 on 2026-08-20.
 - S6.6 implementation is authorized through `Stage6Verifier.Verify`.
+- Maintained implementation and exhaustive mutation coverage are complete; the
+  bounded command campaign and its independent verdict remain the completion
+  gate.
 - The Stage 6 evidence contract, readiness checklist, package map, and brief
   must remain synchronized with the maintained implementation.

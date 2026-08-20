@@ -33,6 +33,9 @@ type recoveryStream struct {
 	authorized  time.Time
 	started     time.Time
 	resources   func(string, int) uint32
+	nameBinding DestinationBinding
+	nameUpdates <-chan DestinationBinding
+	done        chan struct{}
 
 	mu           sync.Mutex
 	cond         *sync.Cond
@@ -74,11 +77,14 @@ type recoveryOutcome struct {
 func newRecoveryStream(ctx context.Context, application io.ReadWriteCloser, credential Credential,
 	binding Recovery, private ed25519.PrivateKey, client bool,
 	opener func(context.Context, Recovery) (net.Conn, error), initial *securedAttachment,
-	continuity [32]byte, authorized time.Time, resources func(string, int) uint32) *recoveryStream {
+	continuity [32]byte, authorized time.Time, nameBinding DestinationBinding,
+	nameUpdates <-chan DestinationBinding,
+	resources func(string, int) uint32) *recoveryStream {
 	now := time.Now()
 	stream := &recoveryStream{ctx: ctx, application: application, credential: credential, binding: binding,
 		private: private, client: client, opener: opener, current: initial, continuity: continuity,
-		ackSignal: make(chan struct{}, 1), authorized: authorized, started: now, lastProgress: now, resources: resources}
+		ackSignal: make(chan struct{}, 1), authorized: authorized, started: now, lastProgress: now,
+		nameBinding: nameBinding, nameUpdates: nameUpdates, done: make(chan struct{}), resources: resources}
 	stream.cond = sync.NewCond(&stream.mu)
 	return stream
 }
@@ -88,6 +94,8 @@ func (stream *recoveryStream) authorizationTime() time.Time {
 }
 
 func (stream *recoveryStream) run(sendCount, receiveCount uint32) (recoveryOutcome, error) {
+	defer close(stream.done)
+	stream.watchNameOrigin()
 	stop := context.AfterFunc(stream.ctx, func() { stream.fail(stream.ctx.Err()) })
 	defer stop()
 	if stream.binding.WorkSafetyNotAfter != 0 {

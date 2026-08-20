@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
@@ -11,12 +13,16 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/nameadmission"
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/nameresolution"
+	"github.com/dianabuilds/ardents-network/internal/namestore"
+	"github.com/dianabuilds/ardents-network/internal/naming"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
@@ -30,7 +36,7 @@ func TestResolveCommandRunsPrivateResolution(t *testing.T) {
 	}
 	record := namelease.Record{Name: "alice", Generation: 1, Revision: 1,
 		Lease: "active", Consistency: "current", Recovery: "stable",
-		Authority: hex.EncodeToString(public), Target: "target-a",
+		Authority: hex.EncodeToString(public), Target: [32]byte{1},
 		LeaseExpiresAt: now.Add(time.Hour).Unix(), GraceExpiresAt: now.Add(2 * time.Hour).Unix()}
 	signed, err := nameauthority.SignRecord(network, record, private)
 	if err != nil {
@@ -40,11 +46,19 @@ func TestResolveCommandRunsPrivateResolution(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	gateway, err := nameresolution.NewGateway(nameresolution.GatewayConfig{NetworkID: network,
+	admission, err := nameadmission.NewAdmission([32]byte{2}, network, 1, [32]byte{6})
+	if err != nil {
+		t.Fatal(err)
+	}
+	recordStore, materialization := commandRecordStore(t, network, signed)
+	gatewayState, err := nameresolution.BindGatewayState(recordStore, materialization, 1, [32]byte{1}, admission, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gateway, err := nameresolution.NewGateway(nameresolution.GatewayConfig{
 		NodeID: [32]byte{2}, Family: "gateway-family", Domain: "rendezvous",
 		AssignmentNotAfter: now.Add(time.Minute), MaximumPending: 8,
-		SignedRecordChains: [][][]byte{{signed}}, IdentityKey: gatewayPrivate,
-		Clock: func() time.Time { return now }})
+		IdentityKey: gatewayPrivate, Clock: func() time.Time { return now }, State: gatewayState})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,12 +74,21 @@ func TestResolveCommandRunsPrivateResolution(t *testing.T) {
 	t.Cleanup(relayServer.Close)
 
 	view := commandResolutionView(t, network, now, relayServer.URL, gatewayServer.URL, gatewayPublic)
+	bindCommandMaterialization(&view, materialization)
+	isolation := [32]byte{1}
+	digest := commandResolutionAdmissionDigest(t, network, "alice", now.Add(15*time.Second).UnixNano())
+	challenge, err := admission.Issue(now.UnixMilli(), "resolution", digest, isolation,
+		now.Add(15*time.Second).UnixMilli(), [16]byte{1})
+	if err != nil {
+		t.Fatal(err)
+	}
 	input := resolutionInput{Schema: resolutionInputSchema, StateRoot: t.TempDir(),
-		NetworkID: hex.EncodeToString(network[:]), AuthorityPublic: []string{hex.EncodeToString(public)},
-		AuthorityThreshold: 1, AcceptedProfile: "h3-route-tracer-v1",
+		NetworkID: hex.EncodeToString(network[:]), AuthorityPublic: commandPolicyPublic(materialization),
+		AuthorityThreshold: materialization.Threshold, AcceptedProfile: "h3-route-tracer-v1",
 		SelectionAt: now.Format(time.RFC3339Nano), Deadline: now.Add(15 * time.Second).Format(time.RFC3339Nano),
 		RelayNodeID: fixedNodeID(1), GatewayNodeID: fixedNodeID(2),
-		ConnectionRendezvousNodeID: fixedNodeID(3), GatewayProfile: gateway.Profile()}
+		ConnectionRendezvousNodeID: fixedNodeID(3), GatewayProfile: gateway.Profile(),
+		AdmissionChallenge: challenge}
 	planRaw, err := json.Marshal(input)
 	if err != nil {
 		t.Fatal(err)
@@ -81,8 +104,22 @@ func TestResolveCommandRunsPrivateResolution(t *testing.T) {
 	if err := runWithRuntime([]string{"resolve", planPath, "alice", contextHex}, &output, transport, load); err != nil {
 		t.Fatalf("resolve command: %v", err)
 	}
-	if output.String() != "resolved target-a\n" {
-		t.Fatalf("output=%q", output.String())
+	var receipt struct {
+		Schema        string `json:"schema"`
+		Class         string `json:"class"`
+		Name          string `json:"name"`
+		Generation    uint64 `json:"generation"`
+		Revision      uint64 `json:"revision"`
+		Target        string `json:"target"`
+		RecordSHA256  string `json:"record_sha256"`
+		BindingSHA256 string `json:"binding_sha256"`
+	}
+	if err := json.Unmarshal(bytes.TrimSpace(output.Bytes()), &receipt); err != nil ||
+		receipt.Schema != "ardents-name-resolution-result-v1" || receipt.Class != "resolved" ||
+		receipt.Name != "alice" || receipt.Generation != 1 || receipt.Revision != 1 ||
+		receipt.Target != "0100000000000000000000000000000000000000000000000000000000000000" ||
+		len(receipt.RecordSHA256) != 64 || len(receipt.BindingSHA256) != 64 {
+		t.Fatalf("receipt=%+v output=%q err=%v", receipt, output.String(), err)
 	}
 	input.StateRoot = t.TempDir()
 	planRaw, err = json.Marshal(input)
@@ -95,6 +132,90 @@ func TestResolveCommandRunsPrivateResolution(t *testing.T) {
 	if err := runWithTransport([]string{"resolve", planPath, "alice", contextHex}, &bytes.Buffer{}, transport); err == nil {
 		t.Fatal("resolve accepted an input without recovered authenticated Network State")
 	}
+}
+
+func commandRecordStore(t *testing.T, network [32]byte, signed ...[]byte) (*namestore.Store, namestore.Policy) {
+	t.Helper()
+	policy, signers := commandMaterializationPolicy(network)
+	store, err := namestore.Open(t.TempDir(), policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	epoch := namestore.Epoch{Number: 1, Digest: [32]byte{1}, CutoffOffset: 1,
+		TransitionRoot: sha256.Sum256([]byte("transitions")), TransitionLength: 1,
+		RejectionRoot: sha256.Sum256([]byte("rejections"))}
+	if err := store.Commit(epoch, signed, func(transcript []byte) ([][32]byte, [][]byte, error) {
+		ids, signatures := make([][32]byte, 2), make([][]byte, 2)
+		for index, private := range signers[:2] {
+			ids[index] = sha256.Sum256(private.Public().(ed25519.PublicKey))
+			signatures[index] = ed25519.Sign(private, transcript)
+		}
+		if bytes.Compare(ids[0][:], ids[1][:]) > 0 {
+			ids[0], ids[1], signatures[0], signatures[1] = ids[1], ids[0], signatures[1], signatures[0]
+		}
+		return ids, signatures, nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return store, policy
+}
+
+func commandMaterializationPolicy(network [32]byte) (namestore.Policy, []ed25519.PrivateKey) {
+	policy := namestore.Policy{Network: network, Rule: "ardents-namespace-materialization-v1",
+		Authorities: make(map[[32]byte]ed25519.PublicKey), Threshold: 2}
+	var signers []ed25519.PrivateKey
+	for index := 0; index < 3; index++ {
+		seed := sha256.Sum256([]byte("command-namespace-" + string(rune('0'+index))))
+		private := ed25519.NewKeyFromSeed(seed[:])
+		public := private.Public().(ed25519.PublicKey)
+		policy.Authorities[sha256.Sum256(public)] = public
+		signers = append(signers, private)
+	}
+	return policy, signers
+}
+
+func commandPolicyIDs(policy namestore.Policy) [][32]byte {
+	ids := make([][32]byte, 0, len(policy.Authorities))
+	for id := range policy.Authorities {
+		ids = append(ids, id)
+	}
+	sort.Slice(ids, func(i, j int) bool { return bytes.Compare(ids[i][:], ids[j][:]) < 0 })
+	return ids
+}
+
+func commandPolicyPublic(policy namestore.Policy) []string {
+	ids, values := commandPolicyIDs(policy), make([]string, 0, len(policy.Authorities))
+	for _, id := range ids {
+		values = append(values, hex.EncodeToString(policy.Authorities[id]))
+	}
+	return values
+}
+
+func bindCommandMaterialization(view *state.Snapshot, policy namestore.Policy) {
+	ids := commandPolicyIDs(policy)
+	view.EpochAuthorityCount, view.EpochThreshold = uint8(len(ids)), uint8(policy.Threshold)
+	for index, id := range ids {
+		view.EpochAuthorityIDs[index] = id
+		copy(view.EpochAuthorityKeys[index][:], policy.Authorities[id])
+	}
+}
+
+func commandResolutionAdmissionDigest(t *testing.T, network [32]byte, raw string, deadline int64) [32]byte {
+	t.Helper()
+	name, err := naming.Parse(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wire, err := naming.EncodeWire(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	transcript := []byte("ardents-name-resolution-operation-v1\x00")
+	transcript = append(transcript, network[:]...)
+	transcript = binary.BigEndian.AppendUint64(transcript, uint64(deadline))
+	transcript = binary.BigEndian.AppendUint16(transcript, uint16(len(wire)))
+	return sha256.Sum256(append(transcript, wire...))
 }
 
 func fixedNodeID(marker byte) string {

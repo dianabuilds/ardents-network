@@ -10,10 +10,10 @@ var testPolicy = Policy{DefaultLeaseDuration: 12 * time.Second, DefaultGraceDura
 func TestLeaseLifecycleRequiresExactGenerationAndRevision(t *testing.T) {
 	t.Parallel()
 	claimed := claimRoot(t, "site", "alice", 100)
-	if claimed.Target != "" {
+	if claimed.Target != ([32]byte{}) {
 		t.Fatalf("initial Lease claim bound a Service Target: %+v", claimed)
 	}
-	if ok, _ := CanResolve(claimed, 100, nil); ok {
+	if ok, _ := canResolve(claimed, 100, nil); ok {
 		t.Fatal("unbound initial Lease resolved without a Service Target")
 	}
 
@@ -72,7 +72,7 @@ func TestConflictIsOrthogonalToLease(t *testing.T) {
 	if conflicted.Consistency != consistencyConflict {
 		t.Fatalf("consistency = %q", conflicted.Consistency)
 	}
-	if ok, _ := CanResolve(conflicted, 101, nil); ok {
+	if ok, _ := canResolve(conflicted, 101, nil); ok {
 		t.Fatal("conflicted record resolved")
 	}
 	if _, err := Apply(&conflicted, 102, Op{Kind: "release", Name: conflicted.Name,

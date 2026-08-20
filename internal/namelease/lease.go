@@ -3,6 +3,8 @@ package namelease
 import (
 	"fmt"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/namerecovery"
 )
 
 // Policy defines the timing parameters for Lease transitions.
@@ -27,37 +29,55 @@ const (
 
 // Record is one immutable revision inside one Name Generation.
 type Record struct {
-	Name               string
-	Generation         uint64
-	Revision           uint64
-	Lease              string
-	Consistency        string
-	Recovery           string
-	Authority          string
-	Target             string
-	ParentName         string
-	ParentGeneration   uint64
-	LeaseExpiresAt     int64
-	GraceExpiresAt     int64
-	RecoveryExpiresAt  int64
-	Continuity         uint64
-	ConflictIdentifier string
+	Name                string
+	Generation          uint64
+	Revision            uint64
+	Lease               string
+	Consistency         string
+	Recovery            string
+	Authority           string
+	Target              [32]byte
+	ParentName          string
+	ParentGeneration    uint64
+	LeaseExpiresAt      int64
+	GraceExpiresAt      int64
+	RecoveryExpiresAt   int64
+	RecoveryStartedAt   int64
+	RecoveryOperation   [32]byte
+	RecoverySuccessor   [32]byte
+	RecoveryPolicy      [32]byte
+	RecoveryPolicyRev   uint64
+	RecoveryPolicyDelay int64
+	PendingPolicy       [32]byte
+	PendingPolicyRev    uint64
+	PendingPolicyDelay  int64
+	PolicyActivatesAt   int64
+	Continuity          uint64
+	ConflictIdentifier  string
 }
 
 // Op is one transition input. Every transition against an existing Record is
 // bound to its exact generation and revision. Parents are ordered immediate
 // parent first and root last.
 type Op struct {
-	Kind               string
-	Name               string
-	Generation         uint64
-	ExpectedGeneration uint64
-	ExpectedRevision   uint64
-	Authority          string
-	Parents            []Record
-	LeaseDuration      time.Duration
-	GraceDuration      time.Duration
-	ConflictContext    string
+	Kind                  string
+	Name                  string
+	Generation            uint64
+	ClaimOrdinal          uint32
+	ExpectedGeneration    uint64
+	ExpectedRevision      uint64
+	Authority             string
+	Target                [32]byte
+	Parents               []Record
+	LeaseDuration         time.Duration
+	GraceDuration         time.Duration
+	ConflictContext       string
+	SuccessorAuthority    string
+	PolicyDigest          [32]byte
+	PolicyRevision        uint64
+	PolicyDelay           time.Duration
+	PolicyActivatesAt     int64
+	RecoveryAuthorization namerecovery.Authorization
 }
 
 type transitionError struct {
@@ -70,11 +90,20 @@ func (e transitionError) Error() string {
 }
 
 const (
-	opClaim    = "claim"
-	opRenew    = "renew"
-	opRelease  = "release"
-	opAdvance  = "advance"
-	opConflict = "conflict"
+	opClaim                  = "claim"
+	opRenew                  = "renew"
+	opRelease                = "release"
+	opAdvance                = "advance"
+	opConflict               = "conflict"
+	opPublish                = "publish"
+	opRotate                 = "rotate"
+	opTransfer               = "transfer"
+	opScheduleRecoveryPolicy = "schedule-recovery-policy"
+	opActivateRecoveryPolicy = "activate-recovery-policy"
+	opStartRecovery          = "start-recovery"
+	opCancelRecovery         = "cancel-recovery"
+	opCompleteRecovery       = "complete-recovery"
+	opResumeRecovery         = "resume-recovery"
 )
 
 // Apply applies one transition without authenticating its caller. Authority
@@ -110,6 +139,14 @@ func Apply(current *Record, now int64, op Op, policy Policy) (Record, error) {
 		return applyAdvance(current, now, op)
 	case opConflict:
 		return applyConflict(current, op)
+	case opPublish:
+		return applyPublish(current, now, op)
+	case opRotate, opTransfer:
+		return applyRotate(current, now, op)
+	case opScheduleRecoveryPolicy, opActivateRecoveryPolicy:
+		return applyRecoveryPolicy(current, now, op)
+	case opStartRecovery, opCancelRecovery, opCompleteRecovery, opResumeRecovery:
+		return applyRecovery(current, now, op)
 	default:
 		return Record{}, transitionError{Action: op.Kind, Reason: "operation is unavailable in S6.1"}
 	}

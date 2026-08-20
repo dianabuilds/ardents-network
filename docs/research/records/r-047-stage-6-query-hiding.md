@@ -95,11 +95,19 @@ Network State; a digest copied beside an unsigned configuration is not proof.
 The local execution plan remains entirely inside the naming Module after that
 verification and is never exposed as a serializable authority source.
 
-Later control-operation codecs use a distinct fixed literal
-`ardents-name-control-v1` followed by network ID, operation discriminator, and
-their complete canonical bytes. R-042/R-044/R-045 must freeze those bytes before
-the operations are implemented; no generic map or caller-authored digest is a
-signature transcript.
+The accepted control-operation admission digest is SHA-256 over the literal
+`ardents-name-control-operation-v1` followed by one zero byte and the complete
+canonical JSON operation with the digest field zeroed. Network, nonce, and
+deadline are zero in this static operation and are added only inside the bounded
+exchange. The digest therefore binds every operation field before a challenge is
+issued; a generic map, label, or caller-authored unverified digest is forbidden.
+The `policy` family represents disable with an empty canonical policy and the
+next revision; its activation is exactly the preceding effective policy delay.
+Add and replace use exactly the embedded policy delay. The `recovery` family
+requires the effective `policy_id` and an explicit `recovery_step` from
+`initiate`, `cancel`, `complete`, or `resume`; the first three require the
+threshold proof, while resume requires the installed successor's signature and
+a fresh non-zero Target.
 
 ## Evidence plan
 

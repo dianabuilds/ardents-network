@@ -20,7 +20,8 @@ func (input resolutionInput) runtimeValues() (state.Config, nameresolution.Selec
 	if err != nil {
 		return config, nameresolution.Selection{}, err
 	}
-	selection := nameresolution.Selection{ExcludedFamilies: append([]string(nil), input.ExcludedFamilies...)}
+	selection := nameresolution.Selection{ExcludedFamilies: append([]string(nil), input.ExcludedFamilies...),
+		AdmissionChallenge: input.AdmissionChallenge}
 	if selection.At, err = time.Parse(time.RFC3339Nano, input.SelectionAt); err != nil {
 		return config, selection, errors.New("selection_at is not canonical RFC3339")
 	}

@@ -10,6 +10,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/serviceconn"
 )
 
+const maximumEndpointStreamBytes = uint32(768 << 20)
+
 type endpointPlan struct {
 	Role, NetworkID, BrokerID, AuthorityPublic, ConnectionPrincipal       string
 	AdministrationPrincipal, Target                                       string
@@ -96,10 +98,10 @@ func (value endpointPlan) connectionLifetime(deadline time.Duration) (time.Durat
 
 func (value endpointPlan) validStreamBounds() bool {
 	if value.SendBytes == 0 && value.ReceiveBytes == 0 {
-		return value.BytesEachDirection > 0 && value.BytesEachDirection <= serviceconn.MaximumStreamBytes
+		return value.BytesEachDirection > 0 && value.BytesEachDirection <= maximumEndpointStreamBytes
 	}
-	return value.BytesEachDirection == 0 && value.SendBytes <= serviceconn.MaximumStreamBytes &&
-		value.ReceiveBytes <= serviceconn.MaximumStreamBytes &&
+	return value.BytesEachDirection == 0 && value.SendBytes <= maximumEndpointStreamBytes &&
+		value.ReceiveBytes <= maximumEndpointStreamBytes &&
 		(value.SendBytes > 0 || value.ReceiveBytes > 0)
 }
 

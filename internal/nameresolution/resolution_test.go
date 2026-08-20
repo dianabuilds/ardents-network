@@ -6,6 +6,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"io"
@@ -17,9 +18,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/nameadmission"
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/nameresolution"
+	"github.com/dianabuilds/ardents-network/internal/namestore"
+	"github.com/dianabuilds/ardents-network/internal/naming"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/openpcc/ohttp"
 )
@@ -29,7 +33,8 @@ func TestResolveSeparatesRelayAndGatewayViews(t *testing.T) {
 	fixture := newResolutionFixture(t)
 	contexts := [][32]byte{{1}, {2}}
 	for index, isolation := range contexts {
-		resolver, err := nameresolution.Open(fixture.view, fixture.selection, fixture.gatewayProfile(), isolation,
+		selection := fixture.admitted(t, fixture.selection, "alice", isolation, byte(index+1))
+		resolver, err := nameresolution.Open(fixture.view, selection, fixture.gatewayProfile(), isolation,
 			relayTransport(fixture.relayServer))
 		if err != nil {
 			t.Fatal(err)
@@ -47,7 +52,8 @@ func TestResolveSeparatesRelayAndGatewayViews(t *testing.T) {
 		if resolveErr != nil {
 			t.Fatalf("Resolve: %v", resolveErr)
 		}
-		if result.Class != "resolved" || result.Record.Target != "target-a" {
+		if result.Class != "resolved" || result.Record.Target != ([32]byte{1}) ||
+			result.Binding.Target != result.Record.Target || result.Binding.Commitment == ([32]byte{}) {
 			t.Fatalf("result = %+v", result)
 		}
 		again, againErr := resolver.Resolve(context.Background(), "alice", fixture.now)
@@ -60,7 +66,8 @@ func TestResolveSeparatesRelayAndGatewayViews(t *testing.T) {
 		t.Fatalf("OHTTP envelopes are not fixed and fresh: sizes=%d/%d", len(envelopes[0]), len(envelopes[1]))
 	}
 	for index, envelope := range envelopes {
-		if bytes.Contains(envelope, []byte("alice")) || bytes.Contains(envelope, []byte("target-a")) ||
+		target := [32]byte{1}
+		if bytes.Contains(envelope, []byte("alice")) || bytes.Contains(envelope, target[:]) ||
 			bytes.Contains(envelope, contexts[index][:]) {
 			t.Fatalf("Relay envelope %d contains a forbidden view", index)
 		}
@@ -94,7 +101,8 @@ func TestResolveFailsClosedOnRoleConflictAndTampering(t *testing.T) {
 	}
 
 	fixture.setTamper(true)
-	resolver, err := nameresolution.Open(fixture.view, fixture.selection, fixture.gatewayProfile(), [32]byte{3},
+	selection := fixture.admitted(t, fixture.selection, "alice", [32]byte{3}, 3)
+	resolver, err := nameresolution.Open(fixture.view, selection, fixture.gatewayProfile(), [32]byte{3},
 		relayTransport(fixture.relayServer))
 	if err != nil {
 		t.Fatal(err)
@@ -163,7 +171,8 @@ func TestResolveContactsOnlyTheSelectedRelayAndReturnsABoundedError(t *testing.T
 		mu.Unlock()
 		return nil, errors.New("dial included secret peer 192.0.2.1")
 	}}
-	resolver, err := nameresolution.Open(fixture.view, fixture.selection, fixture.gatewayProfile(), [32]byte{5}, transport)
+	selection := fixture.admitted(t, fixture.selection, "alice", [32]byte{5}, 5)
+	resolver, err := nameresolution.Open(fixture.view, selection, fixture.gatewayProfile(), [32]byte{5}, transport)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,7 +190,8 @@ func TestResolveContactsOnlyTheSelectedRelayAndReturnsABoundedError(t *testing.T
 func TestResolveDoesNotExposeUnboundOrUnknownNames(t *testing.T) {
 	t.Parallel()
 	fixture := newResolutionFixture(t)
-	resolver, err := nameresolution.Open(fixture.view, fixture.selection, fixture.gatewayProfile(), [32]byte{4},
+	selection := fixture.admitted(t, fixture.selection, "missing", [32]byte{4}, 4)
+	resolver, err := nameresolution.Open(fixture.view, selection, fixture.gatewayProfile(), [32]byte{4},
 		relayTransport(fixture.relayServer))
 	if err != nil {
 		t.Fatal(err)
@@ -206,10 +216,19 @@ type resolutionFixture struct {
 	gatewayRejected func() uint32
 	relayRequests   func() uint32
 	relayEvidence   func() ([][]byte, []string)
+	roleEvidence    func() ([]gatewayRoleView, []relayRoleView)
 	setTamper       func(bool)
+	admission       *nameadmission.Admission
 }
 
 func newResolutionFixture(t *testing.T) resolutionFixture {
+	return newResolutionFixtureWithControl(t, nil)
+}
+
+func newResolutionFixtureWithControl(t *testing.T, control interface {
+	Apply([]byte, nameadmission.Proof) (string, uint64, uint64, []byte)
+},
+) resolutionFixture {
 	t.Helper()
 	now := time.Unix(1_800_000_000, 0).UTC()
 	network := [32]byte{9}
@@ -219,7 +238,7 @@ func newResolutionFixture(t *testing.T) resolutionFixture {
 	}
 	record := namelease.Record{Name: "alice", Generation: 1, Revision: 1,
 		Lease: "active", Consistency: "current", Recovery: "stable",
-		Authority: hex.EncodeToString(public), Target: "target-a",
+		Authority: hex.EncodeToString(public), Target: [32]byte{1},
 		LeaseExpiresAt: now.Add(time.Hour).Unix(), GraceExpiresAt: now.Add(2 * time.Hour).Unix()}
 	signed, err := nameauthority.SignRecord(network, record, private)
 	if err != nil {
@@ -229,11 +248,19 @@ func newResolutionFixture(t *testing.T) resolutionFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	gateway, err := nameresolution.NewGateway(nameresolution.GatewayConfig{NetworkID: network,
+	admission, err := nameadmission.NewAdmission([32]byte{2}, network, 1, [32]byte{6})
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, materialization := resolutionRecordStore(t, network, signed)
+	gatewayState, err := nameresolution.BindGatewayState(store, materialization.policy, 1, [32]byte{1}, admission, control)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gateway, err := nameresolution.NewGateway(nameresolution.GatewayConfig{
 		NodeID: [32]byte{2}, Family: "gateway-family", Domain: "rendezvous",
 		AssignmentNotAfter: now.Add(time.Minute), MaximumPending: 16,
-		SignedRecordChains: [][][]byte{{signed}}, IdentityKey: gatewayPrivate,
-		Clock: func() time.Time { return now }})
+		IdentityKey: gatewayPrivate, Clock: func() time.Time { return now }, State: gatewayState})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -251,14 +278,75 @@ func newResolutionFixture(t *testing.T) resolutionFixture {
 	t.Cleanup(relayServer.Close)
 
 	view := resolutionView(t, network, now, relayServer.URL, gatewayServer.URL, gatewayPublic)
+	bindNamespacePolicy(&view, materialization.policy)
 	selection := nameresolution.Selection{At: now, Deadline: now.Add(15 * time.Second),
 		RelayNodeID: [32]byte{1}, GatewayNodeID: [32]byte{2}, ConnectionRendezvousNodeID: [32]byte{3}}
-	return resolutionFixture{now: now, view: view, selection: selection, relayServer: relayServer,
+	return resolutionFixture{now: now, view: view, selection: selection, relayServer: relayServer, admission: admission,
 		gatewayProfile:  gateway.Profile,
 		gatewayRequests: func() uint32 { requests, _, _ := gateway.Observation(); return requests },
 		gatewayRejected: func() uint32 { _, _, rejected := gateway.Observation(); return rejected },
 		relayRequests:   func() uint32 { requests, _, _ := relay.Observation(); return requests },
-		relayEvidence:   capture.evidence, setTamper: capture.setTamper}
+		roleEvidence: func() ([]gatewayRoleView, []relayRoleView) {
+			gatewayEvidence := gateway.RoleEvidence()
+			gatewayViews := make([]gatewayRoleView, len(gatewayEvidence))
+			for index, view := range gatewayEvidence {
+				gatewayViews[index] = gatewayRoleView{operation: view.Operation, name: view.Name, result: view.Result,
+					network: view.Network, nonce: view.Nonce, target: view.Target, deadline: view.Deadline,
+					generation: view.Generation, revision: view.Revision}
+			}
+			relayEvidence := relay.RoleEvidence()
+			relayViews := make([]relayRoleView, len(relayEvidence))
+			for index, view := range relayEvidence {
+				relayViews[index] = relayRoleView{origin: view.Origin, gateway: view.Gateway,
+					request: view.Request, response: view.Response, requestBytes: view.RequestBytes,
+					responseBytes: view.ResponseBytes, keyID: view.KeyID}
+			}
+			return gatewayViews, relayViews
+		},
+		relayEvidence: capture.evidence, setTamper: capture.setTamper}
+}
+
+func resolutionRecordStore(t *testing.T, network [32]byte, signed ...[]byte) (*namestore.Store, namespaceFixture) {
+	t.Helper()
+	materialization := testNamespaceFixture(network, "resolution-namespace")
+	store, err := namestore.Open(t.TempDir(), materialization.policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	materialization.commit(t, store, 1, signed)
+	return store, materialization
+}
+
+func (fixture resolutionFixture) admitted(t *testing.T, selection nameresolution.Selection,
+	name string, isolation [32]byte, nonce byte,
+) nameresolution.Selection {
+	t.Helper()
+	digest := testResolutionAdmissionDigest(t, fixture.view.NetworkID, name, selection.Deadline.UnixNano())
+	challenge, err := fixture.admission.Issue(selection.At.UnixMilli(), "resolution", digest, isolation,
+		selection.Deadline.UnixMilli(), [16]byte{nonce})
+	if err != nil {
+		t.Fatal(err)
+	}
+	selection.AdmissionChallenge = challenge
+	return selection
+}
+
+func testResolutionAdmissionDigest(t *testing.T, network [32]byte, raw string, deadline int64) [32]byte {
+	t.Helper()
+	name, err := naming.Parse(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wire, err := naming.EncodeWire(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := []byte("ardents-name-resolution-operation-v1\x00")
+	out = append(out, network[:]...)
+	out = binary.BigEndian.AppendUint64(out, uint64(deadline))
+	out = binary.BigEndian.AppendUint16(out, uint16(len(wire)))
+	return sha256.Sum256(append(out, wire...))
 }
 
 func resolutionView(t *testing.T, network [32]byte, now time.Time, relayURL, gatewayURL string,

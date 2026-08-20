@@ -54,9 +54,29 @@ func validRecordLifetimes(record Record) bool {
 		}
 	}
 	if record.Recovery == recoveryStable {
-		return record.RecoveryExpiresAt == 0
+		return record.RecoveryExpiresAt == 0 && record.RecoveryStartedAt == 0 &&
+			record.RecoveryOperation == [32]byte{} && record.RecoverySuccessor == [32]byte{}
 	}
-	return record.RecoveryExpiresAt > 0
+	return record.RecoveryExpiresAt > record.RecoveryStartedAt && record.RecoveryStartedAt > 0 &&
+		record.RecoveryOperation != [32]byte{} && record.RecoverySuccessor != [32]byte{} &&
+		record.RecoveryPolicy != [32]byte{} && record.RecoveryPolicyRev > 0 &&
+		record.RecoveryExpiresAt-record.RecoveryStartedAt == record.RecoveryPolicyDelay
+}
+
+func validRecoveryBindings(record Record) bool {
+	if record.RecoveryPolicyRev == 0 && (record.RecoveryPolicy != [32]byte{} || record.RecoveryPolicyDelay != 0) {
+		return false
+	}
+	if record.RecoveryPolicyRev > 0 && (record.RecoveryPolicyDelay < minimumRecoveryDelay.Milliseconds() ||
+		record.RecoveryPolicyDelay > maximumRecoveryDelay.Milliseconds()) {
+		return false
+	}
+	if record.PendingPolicyRev == 0 {
+		return record.PendingPolicy == [32]byte{} && record.PendingPolicyDelay == 0 && record.PolicyActivatesAt == 0
+	}
+	return record.PendingPolicyRev > record.RecoveryPolicyRev &&
+		record.PendingPolicyDelay >= minimumRecoveryDelay.Milliseconds() &&
+		record.PendingPolicyDelay <= maximumRecoveryDelay.Milliseconds() && record.PolicyActivatesAt > 0
 }
 
 func hasRequiredParent(record Record) bool {

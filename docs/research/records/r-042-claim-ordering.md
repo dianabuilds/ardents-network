@@ -174,6 +174,8 @@ strict commitment-ordinal order, the materialization inclusion path, and its
 winner/loser ordinals. The development verifier additionally receives the
 complete bounded epoch input and rejection corpora and recomputes every root,
 admission binding, reveal opening, eligibility decision, and materialization.
+Proof verification rejects duplicate or decreasing ordinals as non-canonical;
+it never sorts or otherwise normalizes caller-supplied reveal order.
 An ordinary proof can verify what the threshold published; only the complete
 corpus can test whether the threshold followed the accepted rule. Canonical
 artifact encoding is owned by S6E1 rather than this ordering record.

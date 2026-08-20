@@ -2,6 +2,7 @@ package nameresolution
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"errors"
 	"io"
 	"net/http"
@@ -63,5 +64,12 @@ func (relay *relay) forward(writer http.ResponseWriter, request *http.Request) {
 	relay.observation.Requests++
 	relay.observation.RequestBytes += uint64(len(body))
 	relay.observation.ResponseBytes += uint64(len(responseBody))
+	deadline := int64(0)
+	if value, ok := request.Context().Deadline(); ok {
+		deadline = value.UnixNano()
+	}
+	relay.roleEvidence = append(relay.roleEvidence, relayRoleEvidence{Origin: request.RemoteAddr,
+		Gateway: relay.gateway, Request: sha256.Sum256(body), Response: sha256.Sum256(responseBody),
+		RequestBytes: uint64(len(body)), ResponseBytes: uint64(len(responseBody)), KeyID: body[0], Deadline: deadline})
 	relay.mu.Unlock()
 }

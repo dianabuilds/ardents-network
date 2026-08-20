@@ -20,6 +20,9 @@ func (endpoint *endpoint) connect(ctx context.Context, input Request) (Result, e
 	if err != nil || input.Target == [32]byte{} || input.Target != credential.Target {
 		return failed("service target authentication failure", "exact Service Target could not be authenticated", errors.New("target or publication mismatch"))
 	}
+	if err := validateNameOrigin(input, credential); err != nil {
+		return failed("service target authentication failure", "Service Name binding is invalid", err)
+	}
 	if err := validateStreams(input); err != nil {
 		return failed("local authorization or policy denial", "bounded local stream input is invalid", err)
 	}
@@ -44,7 +47,8 @@ func (endpoint *endpoint) connect(ctx context.Context, input Request) (Result, e
 		return failed("service target authentication failure", "current Service Instance proof failed", err)
 	}
 	stream := newRecoveryStream(ctx, input.Application, credential, binding,
-		nil, true, input.OpenAttachment, attachment, continuity, input.At, endpoint.resources)
+		nil, true, input.OpenAttachment, attachment, continuity, input.At,
+		input.NameBinding, input.NameUpdates, endpoint.resources)
 	sendBytes, receiveBytes := streamBounds(input)
 	outcome, err := stream.run(sendBytes, receiveBytes)
 	if err != nil {
@@ -98,7 +102,8 @@ func (endpoint *endpoint) accept(ctx context.Context, input Request) (Result, er
 		return failed("service target authentication failure", "incoming exact Target proof failed", err)
 	}
 	stream := newRecoveryStream(ctx, input.Application, credential, binding,
-		private, false, input.OpenAttachment, attachment, continuity, input.At, endpoint.resources)
+		private, false, input.OpenAttachment, attachment, continuity, input.At,
+		DestinationBinding{}, nil, endpoint.resources)
 	sendBytes, receiveBytes := streamBounds(input)
 	outcome, err := stream.run(sendBytes, receiveBytes)
 	if err != nil {
@@ -124,7 +129,7 @@ func applyRecoveryOutcome(result *Result, outcome recoveryOutcome) {
 
 func validateStreams(input Request) error {
 	sendBytes, receiveBytes := streamBounds(input)
-	if input.Route == nil || input.Application == nil || sendBytes > MaximumStreamBytes || receiveBytes > MaximumStreamBytes ||
+	if input.Route == nil || input.Application == nil || sendBytes > maximumStreamBytes || receiveBytes > maximumStreamBytes ||
 		(sendBytes == 0 && receiveBytes == 0) {
 		return errors.New("stream or byte bound is missing")
 	}

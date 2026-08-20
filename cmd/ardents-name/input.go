@@ -8,10 +8,7 @@ import (
 	"os"
 )
 
-const (
-	maxRecordInput     = 16 << 20
-	maxResolutionInput = 1 << 20
-)
+const maxRecordInput, maxResolutionInput = 16 << 20, 1 << 20
 
 func readBoundedRecord(path string) ([]byte, error) {
 	return readBounded(path, maxRecordInput, "name record")

@@ -18,7 +18,8 @@ The controlled Ubuntu **Gate C** terminal experiment defined in
 permitted scope is one bounded Horizon 3 Closed Test Network slice at a time;
 within H3, Stage 1–4 local development is complete and Stage 5 Bridge + WebTunnel
 development is complete, with the final qualification campaign deferred to
-Stage 9.6. Stage 6 private naming remains work in progress. Public naming,
+Stage 9.6. Stage 6 private naming implementation and bounded development evidence
+are complete; final Product Owner disposition remains. Public naming,
 permissionless public Bridge distribution, production
 updates, Windows qualification, multiparty control, and the complete release
 test matrix remain later promotion gates.
@@ -123,20 +124,21 @@ The maintained Go tree contains the completed Carrier Lab and Named Site
 laboratories plus the Horizon 3 product runtime. Stage 1–4 development is
 complete with local Docker evidence; Stage 5 Bridge + WebTunnel development is
 complete and its final qualification remains S9.6. The Product Owner authorized
-the bounded S6.1 parser/encoding/lifecycle and S6.2 authenticated private
-resolution implementations on 2026-08-20; their independent evidence is still
-pending. On the same date the Product Owner accepted R-042/R-044/R-045/R-055,
-ADR-0017 through ADR-0019, and authorized S6.3-S6.6. Those slices and the final
-independent S6E1 verdict remain incomplete. The current
+Stage 6 on 2026-08-20 after accepting R-042/R-044/R-045/R-055 and ADR-0017
+through ADR-0019. Maintained S6.1-S6.6 implementation, journey trace, and
+mutation coverage are complete; the bounded independent S6E1 command verdict is
+`pass`, and final Product Owner disposition remains. The current
 maintained product commands are `cmd/ardents`, `cmd/ardents-node`,
 `cmd/ardents-route`, `cmd/ardents-service`, `cmd/ardents-bridge`,
-`cmd/ardents-stream-app`, `cmd/ardents-publish-app`, and the bounded S6.1/S6.2
-`cmd/ardents-name` validator/private resolver. Cohesive product
+`cmd/ardents-stream-app`, `cmd/ardents-publish-app`, and the bounded Stage 6
+`cmd/ardents-name` validator/private resolver/control adapter. Cohesive product
 modules live under `internal/network`, `internal/node`, `internal/route`,
 `internal/serviceconn`, `internal/serviceendpoint`, `internal/resource`,
 `internal/applicationipc`, `internal/streamworkload`, `internal/planfile`,
 `internal/bridge`, `internal/camouflage`, `internal/localroles`,
-`internal/naming` and `internal/namelease`. Product work never grows inside or imports the frozen
+`internal/naming`, `internal/namelease`, `internal/nameauthority`,
+`internal/nameclaim`, `internal/nameadmission`, `internal/namerecovery`,
+`internal/nameresolution`, and `internal/namestore`. Product work never grows inside or imports the frozen
 `internal/lab` quarantine.
 
 The first completed maintained vertical slice was an Ubuntu-to-Ubuntu

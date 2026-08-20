@@ -17,25 +17,32 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/nameadmission"
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/nameresolution"
+	"github.com/dianabuilds/ardents-network/internal/namestore"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
 const roleProcessConfigEnvironment = "ARDENTS_RESOLUTION_ROLE_CONFIG"
 
 type roleProcessConfig struct {
-	Role               string
-	Network            [32]byte
-	NodeID             [32]byte
-	Family             string
-	AssignmentNotAfter int64
-	MaximumPending     uint16
-	SignedChains       [][][]byte
-	IdentityKey        []byte
-	Now                int64
-	GatewayURL         string
-	GatewayCertificate []byte
+	Role                string
+	Network             [32]byte
+	NodeID              [32]byte
+	Family              string
+	AssignmentNotAfter  int64
+	MaximumPending      uint16
+	NamingStoreRoot     string
+	IdentityKey         []byte
+	Now                 int64
+	AdmissionBootSecret [32]byte
+	EpochAuthorityIDs   [][32]byte
+	EpochAuthorityKeys  [][]byte
+	EpochThreshold      int
+	GatewayURL          string
+	GatewayCertificate  []byte
 }
 
 type roleProcessReady struct {
@@ -54,7 +61,7 @@ func TestResolutionRolesRunInSeparateProcesses(t *testing.T) {
 	}
 	record := namelease.Record{Name: "alice", Generation: 1, Revision: 1,
 		Lease: "active", Consistency: "current", Recovery: "stable",
-		Authority: hex.EncodeToString(authorityPublic), Target: "target-a",
+		Authority: hex.EncodeToString(authorityPublic), Target: [32]byte{1},
 		LeaseExpiresAt: now.Add(time.Hour).Unix(), GraceExpiresAt: now.Add(2 * time.Hour).Unix()}
 	signed, err := nameauthority.SignRecord(network, record, authorityPrivate)
 	if err != nil {
@@ -64,9 +71,23 @@ func TestResolutionRolesRunInSeparateProcesses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	bootSecret := [32]byte{6}
+	storeRoot := t.TempDir()
+	materialization := testNamespaceFixture(network, "process-namespace")
+	store, err := namestore.Open(storeRoot, materialization.policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	materialization.commit(t, store, 1, [][]byte{signed})
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
 	gateway := startResolutionRole(t, roleProcessConfig{Role: "gateway", Network: network,
 		NodeID: [32]byte{2}, Family: "gateway-family", AssignmentNotAfter: now.Add(time.Minute).UnixNano(),
-		MaximumPending: 8, SignedChains: [][][]byte{{signed}}, IdentityKey: gatewayPrivate, Now: now.UnixNano()})
+		MaximumPending: 8, NamingStoreRoot: storeRoot, IdentityKey: gatewayPrivate,
+		Now: now.UnixNano(), AdmissionBootSecret: bootSecret,
+		EpochAuthorityIDs: policyIDs(materialization.policy), EpochAuthorityKeys: policyKeys(materialization.policy),
+		EpochThreshold: materialization.policy.Threshold})
 	relay := startResolutionRole(t, roleProcessConfig{Role: "relay", GatewayURL: gateway.ready.URL,
 		GatewayCertificate: gateway.ready.Certificate})
 	if gateway.ready.PID == relay.ready.PID || gateway.ready.PID == os.Getpid() || relay.ready.PID == os.Getpid() {
@@ -74,15 +95,26 @@ func TestResolutionRolesRunInSeparateProcesses(t *testing.T) {
 	}
 
 	view := resolutionView(t, network, now, relay.ready.URL, gateway.ready.URL, gatewayPublic)
+	bindNamespacePolicy(&view, materialization.policy)
 	selection := nameresolution.Selection{At: now, Deadline: now.Add(15 * time.Second),
 		RelayNodeID: [32]byte{1}, GatewayNodeID: [32]byte{2}, ConnectionRendezvousNodeID: [32]byte{3}}
+	admission, err := nameadmission.NewAdmission([32]byte{2}, network, 1, bootSecret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest := testResolutionAdmissionDigest(t, network, "alice", selection.Deadline.UnixNano())
+	selection.AdmissionChallenge, err = admission.Issue(now.UnixMilli(), "resolution", digest,
+		[32]byte{1}, selection.Deadline.UnixMilli(), [16]byte{1})
+	if err != nil {
+		t.Fatal(err)
+	}
 	resolver, err := nameresolution.Open(view, selection, gateway.ready.Profile, [32]byte{1},
 		roleTLSTransport(t, relay.ready.Certificate))
 	if err != nil {
 		t.Fatal(err)
 	}
 	result, err := resolver.Resolve(context.Background(), "alice", now)
-	if err != nil || result.Record.Target != "target-a" {
+	if err != nil || result.Record.Target != ([32]byte{1}) {
 		t.Fatalf("process resolution=%+v err=%v", result, err)
 	}
 }
@@ -150,11 +182,26 @@ func TestResolutionRoleProcess(t *testing.T) {
 	ready := roleProcessReady{PID: os.Getpid()}
 	switch config.Role {
 	case "gateway":
-		gateway, openErr := nameresolution.NewGateway(nameresolution.GatewayConfig{NetworkID: config.Network,
+		admission, admissionErr := nameadmission.NewAdmission(config.NodeID, config.Network, 1, config.AdmissionBootSecret)
+		if admissionErr != nil {
+			t.Fatal(admissionErr)
+		}
+		materializationPolicy := roleMaterializationPolicy(config)
+		recordStore, storeErr := namestore.Open(config.NamingStoreRoot, materializationPolicy)
+		if storeErr != nil {
+			t.Fatal(storeErr)
+		}
+		defer recordStore.Close()
+		gatewayState, stateErr := nameresolution.BindGatewayState(recordStore, materializationPolicy, 1,
+			[32]byte{1}, admission, nil)
+		if stateErr != nil {
+			t.Fatal(stateErr)
+		}
+		gateway, openErr := nameresolution.NewGateway(nameresolution.GatewayConfig{
 			NodeID: config.NodeID, Family: config.Family, Domain: "rendezvous",
 			AssignmentNotAfter: time.Unix(0, config.AssignmentNotAfter), MaximumPending: config.MaximumPending,
-			SignedRecordChains: config.SignedChains, IdentityKey: ed25519.PrivateKey(config.IdentityKey),
-			Clock: func() time.Time { return time.Unix(0, config.Now) }})
+			IdentityKey: ed25519.PrivateKey(config.IdentityKey),
+			Clock:       func() time.Time { return time.Unix(0, config.Now) }, State: gatewayState})
 		if openErr != nil {
 			t.Fatal(openErr)
 		}
@@ -176,6 +223,30 @@ func TestResolutionRoleProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, _ = io.Copy(io.Discard, os.Stdin)
+}
+
+func policyIDs(policy namestore.Policy) [][32]byte {
+	view := state.Snapshot{}
+	bindNamespacePolicy(&view, policy)
+	return append([][32]byte(nil), view.EpochAuthorityIDs[:view.EpochAuthorityCount]...)
+}
+
+func policyKeys(policy namestore.Policy) [][]byte {
+	ids := policyIDs(policy)
+	keys := make([][]byte, len(ids))
+	for index, id := range ids {
+		keys[index] = append([]byte(nil), policy.Authorities[id]...)
+	}
+	return keys
+}
+
+func roleMaterializationPolicy(config roleProcessConfig) namestore.Policy {
+	policy := namestore.Policy{Network: config.Network, Rule: "ardents-namespace-materialization-v1",
+		Authorities: make(map[[32]byte]ed25519.PublicKey), Threshold: config.EpochThreshold}
+	for index, id := range config.EpochAuthorityIDs {
+		policy.Authorities[id] = append(ed25519.PublicKey(nil), config.EpochAuthorityKeys[index]...)
+	}
+	return policy
 }
 
 func roleTLSTransport(t *testing.T, certificate []byte) *http.Transport {

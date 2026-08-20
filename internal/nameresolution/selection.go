@@ -1,12 +1,14 @@
 package nameresolution
 
 import (
+	"crypto/ed25519"
 	"crypto/sha256"
 	"errors"
 	"net"
 	"strconv"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/namestore"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
@@ -24,16 +26,27 @@ func selectPlan(view state.Snapshot, input Selection, profile GatewayProfile) (p
 		collides(relay, gateway, rendezvous) || excluded(input, relay) || excluded(input, gateway) || excluded(input, rendezvous) {
 		return plan{}, errors.New("private resolution roles conflict or are unavailable")
 	}
-	result := plan{NetworkID: view.NetworkID, Generation: view.Generation, EpochDigest: view.Digest,
+	result := plan{NetworkID: view.NetworkID, Generation: view.Generation, Epoch: view.Epoch, EpochDigest: view.Digest,
 		ViewRoot: view.ViewRoot, SelectionAt: input.At.UnixNano(), Deadline: input.Deadline.UnixNano(),
 		Relay: relay, Gateway: gateway, ConnectionRendezvous: rendezvous,
 		GatewayKeyConfig: append([]byte(nil), profile.KeyConfig...), GatewayKeyConfigDigest: profile.KeyConfigDigest,
 		ExcludedIdentities: appendDistinctIdentities(input.ExcludedIdentities, relay.NodeID, gateway.NodeID),
-		ExcludedFamilies:   appendDistinctFamilies(input.ExcludedFamilies, relay.Family, gateway.Family)}
+		ExcludedFamilies:   appendDistinctFamilies(input.ExcludedFamilies, relay.Family, gateway.Family),
+		AdmissionChallenge: input.AdmissionChallenge, MaterializationPolicy: namespacePolicy(view)}
 	if err := validatePlan(result); err != nil {
 		return plan{}, err
 	}
 	return result, nil
+}
+
+func namespacePolicy(view state.Snapshot) namestore.Policy {
+	policy := namestore.Policy{Network: view.NetworkID, Rule: "ardents-namespace-materialization-v1",
+		Authorities: make(map[[32]byte]ed25519.PublicKey), Threshold: int(view.EpochThreshold)}
+	for index := 0; index < int(view.EpochAuthorityCount); index++ {
+		key := append(ed25519.PublicKey(nil), view.EpochAuthorityKeys[index][:]...)
+		policy.Authorities[view.EpochAuthorityIDs[index]] = key
+	}
+	return policy
 }
 
 func appendDistinctIdentities(existing [][32]byte, values ...[32]byte) [][32]byte {
@@ -66,12 +79,19 @@ func appendDistinctFamilies(existing []string, values ...string) []string {
 
 func validatePlan(plan plan) error {
 	selectionAt, deadline := time.Unix(0, plan.SelectionAt), time.Unix(0, plan.Deadline)
-	if plan.NetworkID == [32]byte{} || plan.Generation == "" || plan.EpochDigest == [32]byte{} ||
+	if plan.NetworkID == [32]byte{} || plan.Generation == "" || plan.Epoch == 0 || plan.EpochDigest == [32]byte{} ||
 		plan.ViewRoot == [32]byte{} || plan.SelectionAt <= 0 || !selectionAt.Before(deadline) ||
 		len(plan.GatewayKeyConfig) == 0 || sha256.Sum256(plan.GatewayKeyConfig) != plan.GatewayKeyConfigDigest ||
 		plan.Relay.Domain != initiatorDomain || plan.Gateway.Domain != rendezvousDomain ||
-		plan.ConnectionRendezvous.Domain != rendezvousDomain || collides(plan.Relay, plan.Gateway, plan.ConnectionRendezvous) {
+		plan.ConnectionRendezvous.Domain != rendezvousDomain || collides(plan.Relay, plan.Gateway, plan.ConnectionRendezvous) ||
+		plan.MaterializationPolicy.Network != plan.NetworkID || plan.MaterializationPolicy.Threshold < 2 ||
+		plan.MaterializationPolicy.Threshold > len(plan.MaterializationPolicy.Authorities) {
 		return errors.New("private resolution Plan is invalid")
+	}
+	challenge := plan.AdmissionChallenge
+	if challenge.Node != plan.Gateway.NodeID || challenge.Network != plan.NetworkID || challenge.Surface != "resolution" ||
+		challenge.WorkBits != 16 || challenge.IssuedAt > selectionAt.UnixMilli() || challenge.ExpiresAt < deadline.UnixMilli() {
+		return errors.New("private resolution admission Challenge is invalid")
 	}
 	for _, position := range []position{plan.Relay, plan.Gateway, plan.ConnectionRendezvous} {
 		if position.NodeID == [32]byte{} || position.Family == "" || !literalEndpoint(position.Endpoint) ||

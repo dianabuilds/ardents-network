@@ -1,3 +1,3 @@
-// Package nameauthority authenticates canonical Name Records with the accepted
-// S6.2 Ed25519 transcript and strict signed-record container.
+// Package nameauthority authenticates canonical Name Records and applies exact
+// admitted predecessor- or threshold-authorized control transitions.
 package nameauthority

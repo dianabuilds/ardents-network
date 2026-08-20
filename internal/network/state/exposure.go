@@ -1,9 +1,11 @@
 package state
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	stateepoch "github.com/dianabuilds/ardents-network/internal/network/epoch"
@@ -69,6 +71,16 @@ func (s *networkState) snapshotWithDistribution(now time.Time) Snapshot {
 		return Snapshot{}
 	}
 	snapshot := *s.current
+	ids := make([][32]byte, 0, len(s.config.authorities))
+	for id := range s.config.authorities {
+		ids = append(ids, id)
+	}
+	sort.Slice(ids, func(i, j int) bool { return bytes.Compare(ids[i][:], ids[j][:]) < 0 })
+	snapshot.EpochAuthorityCount, snapshot.EpochThreshold = uint8(len(ids)), uint8(s.config.threshold)
+	for index, id := range ids {
+		snapshot.EpochAuthorityIDs[index] = id
+		copy(snapshot.EpochAuthorityKeys[index][:], s.config.authorities[id])
+	}
 	snapshot.Candidates, snapshot.CandidateCount = routeCandidates(s.currentDecision)
 	snapshot.Conflicting = s.distribution.conflicting
 	snapshot.SourceAttempts = uint16(len(s.distribution.history))

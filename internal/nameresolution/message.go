@@ -5,21 +5,23 @@ import (
 	"encoding/binary"
 	"errors"
 
+	"github.com/dianabuilds/ardents-network/internal/nameadmission"
 	"github.com/dianabuilds/ardents-network/internal/naming"
 )
 
 const (
-	messageSchema     uint16 = 1
+	messageSchema     uint16 = 3
 	resolveOperation  byte   = 1
 	resultResolved    byte   = 1
 	resultUnavailable byte   = 2
 )
 
 type resolutionRequest struct {
-	network  [32]byte
-	nonce    [32]byte
-	deadline int64
-	name     string
+	network   [32]byte
+	nonce     [32]byte
+	deadline  int64
+	name      string
+	admission nameadmission.Proof
 }
 
 type resolutionResponse struct {
@@ -30,7 +32,7 @@ type resolutionResponse struct {
 	generation uint64
 	revision   uint64
 	result     byte
-	chain      [][]byte
+	proof      []byte
 }
 
 func encodeRequest(value resolutionRequest) ([]byte, error) {
@@ -49,7 +51,13 @@ func encodeRequest(value resolutionRequest) ([]byte, error) {
 	out = append(out, value.nonce[:]...)
 	out = binary.BigEndian.AppendUint64(out, uint64(value.deadline))
 	out = binary.BigEndian.AppendUint16(out, uint16(len(wire)))
-	return append(out, wire...), nil
+	out = append(out, wire...)
+	admission, err := encodeAdmissionProof(value.admission)
+	if err != nil {
+		return nil, err
+	}
+	out = binary.BigEndian.AppendUint16(out, uint16(len(admission)))
+	return append(out, admission...), nil
 }
 
 func decodeRequest(raw []byte) (resolutionRequest, error) {
@@ -61,18 +69,26 @@ func decodeRequest(raw []byte) (resolutionRequest, error) {
 	copy(value.nonce[:], raw[35:67])
 	value.deadline = int64(binary.BigEndian.Uint64(raw[67:75]))
 	size := int(binary.BigEndian.Uint16(raw[75:77]))
-	if size == 0 || len(raw) != 77+size {
+	if size == 0 || len(raw) < 79+size {
 		return resolutionRequest{}, errors.New("resolution request length is invalid")
 	}
-	name, err := naming.DecodeWire(raw[77:])
+	name, err := naming.DecodeWire(raw[77 : 77+size])
 	if err != nil {
 		return resolutionRequest{}, err
 	}
 	canonical, err := naming.EncodeWire(name)
-	if err != nil || !bytes.Equal(canonical, raw[77:]) {
+	if err != nil || !bytes.Equal(canonical, raw[77:77+size]) {
 		return resolutionRequest{}, errors.New("resolution request name is non-canonical")
 	}
 	value.name = string(name)
+	proofSize := int(binary.BigEndian.Uint16(raw[77+size : 79+size]))
+	if proofSize == 0 || len(raw) != 79+size+proofSize {
+		return resolutionRequest{}, errors.New("resolution admission proof length is invalid")
+	}
+	value.admission, err = decodeAdmissionProof(raw[79+size:])
+	if err != nil {
+		return resolutionRequest{}, err
+	}
 	return value, nil
 }
 
@@ -80,8 +96,8 @@ func encodeResponse(value resolutionResponse) ([]byte, error) {
 	name, nameErr := naming.Parse(value.name)
 	nameWire, wireErr := naming.EncodeWire(name)
 	if value.network == [32]byte{} || value.nonce == [32]byte{} || value.deadline <= 0 ||
-		(value.result != resultResolved && value.result != resultUnavailable) || len(value.chain) > 127 ||
-		(value.result == resultResolved) != (len(value.chain) > 0) || nameErr != nil || wireErr != nil || len(nameWire) > 0xffff ||
+		(value.result != resultResolved && value.result != resultUnavailable) || len(value.proof) > 0xffff ||
+		(value.result == resultResolved) != (len(value.proof) > 0) || nameErr != nil || wireErr != nil || len(nameWire) > 0xffff ||
 		(value.result == resultResolved) != (value.generation > 0 && value.revision > 0) {
 		return nil, errors.New("resolution response is invalid")
 	}
@@ -95,19 +111,13 @@ func encodeResponse(value resolutionResponse) ([]byte, error) {
 	out = append(out, nameWire...)
 	out = binary.BigEndian.AppendUint64(out, value.generation)
 	out = binary.BigEndian.AppendUint64(out, value.revision)
-	out = append(out, value.result, byte(len(value.chain)))
-	for _, signed := range value.chain {
-		if len(signed) == 0 || len(signed) > 0xffff {
-			return nil, errors.New("signed Record does not fit resolution response")
-		}
-		out = binary.BigEndian.AppendUint16(out, uint16(len(signed)))
-		out = append(out, signed...)
-	}
-	return out, nil
+	out = append(out, value.result)
+	out = binary.BigEndian.AppendUint16(out, uint16(len(value.proof)))
+	return append(out, value.proof...), nil
 }
 
 func decodeResponse(raw []byte) (resolutionResponse, error) {
-	if len(raw) < 95 || binary.BigEndian.Uint16(raw[:2]) != messageSchema || raw[2] != resolveOperation {
+	if len(raw) < 97 || binary.BigEndian.Uint16(raw[:2]) != messageSchema || raw[2] != resolveOperation {
 		return resolutionResponse{}, errors.New("resolution response schema is invalid")
 	}
 	var value resolutionResponse
@@ -115,7 +125,7 @@ func decodeResponse(raw []byte) (resolutionResponse, error) {
 	copy(value.nonce[:], raw[35:67])
 	value.deadline = int64(binary.BigEndian.Uint64(raw[67:75]))
 	nameSize := int(binary.BigEndian.Uint16(raw[75:77]))
-	if nameSize == 0 || len(raw) < 95+nameSize {
+	if nameSize == 0 || len(raw) < 96+nameSize {
 		return resolutionResponse{}, errors.New("resolution response name is malformed")
 	}
 	name, err := naming.DecodeWire(raw[77 : 77+nameSize])
@@ -127,21 +137,14 @@ func decodeResponse(raw []byte) (resolutionResponse, error) {
 	value.generation = binary.BigEndian.Uint64(raw[offset:])
 	value.revision = binary.BigEndian.Uint64(raw[offset+8:])
 	value.result = raw[offset+16]
-	count := int(raw[offset+17])
-	offset += 18
-	for range count {
-		if len(raw)-offset < 2 {
-			return resolutionResponse{}, errors.New("resolution response is truncated")
-		}
-		size := int(binary.BigEndian.Uint16(raw[offset:]))
-		offset += 2
-		if size == 0 || len(raw)-offset < size {
-			return resolutionResponse{}, errors.New("resolution response Record is malformed")
-		}
-		value.chain = append(value.chain, append([]byte(nil), raw[offset:offset+size]...))
-		offset += size
+	proofSize := int(binary.BigEndian.Uint16(raw[offset+17:]))
+	offset += 19
+	if proofSize > len(raw)-offset {
+		return resolutionResponse{}, errors.New("resolution response proof is malformed")
 	}
-	if offset != len(raw) || (value.result == resultResolved) != (len(value.chain) > 0) ||
+	value.proof = append([]byte(nil), raw[offset:offset+proofSize]...)
+	offset += proofSize
+	if offset != len(raw) || (value.result == resultResolved) != (len(value.proof) > 0) ||
 		(value.result == resultResolved) != (value.generation > 0 && value.revision > 0) ||
 		(value.result != resultResolved && value.result != resultUnavailable) {
 		return resolutionResponse{}, errors.New("resolution response is non-canonical")

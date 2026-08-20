@@ -144,7 +144,7 @@ func liveSustainedWorkload(directGoodput float64) (uint32, string) {
 	target := math.Max(.05, math.Min(2.5, directGoodput*.5))
 	count := uint64(target * 1e6 * (10 * time.Minute).Seconds() / 8)
 	count = max(count, 4<<20)
-	count = min(count, uint64(serviceconn.MaximumStreamBytes))
+	count = min(count, uint64(768<<20))
 	chunks := (count + 16_380) / 16_381
 	delay := (10*time.Minute + 2*time.Second) / time.Duration(max(chunks-1, 1))
 	return uint32(count), delay.String()

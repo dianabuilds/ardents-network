@@ -9,7 +9,7 @@ import (
 
 // recordSchemaVersion identifies the bounded internal Name Record encoding.
 // It is not a selected public naming protocol.
-const recordSchemaVersion uint16 = 1
+const recordSchemaVersion uint16 = 3
 
 // EncodeRecord deterministically encodes one validated lifecycle Record.
 func EncodeRecord(record Record) ([]byte, error) {
@@ -22,12 +22,17 @@ func EncodeRecord(record Record) ([]byte, error) {
 	out = binary.BigEndian.AppendUint64(out, record.Generation)
 	out = binary.BigEndian.AppendUint64(out, record.Revision)
 	out = append(out, leaseCode(record.Lease), consistencyCode(record.Consistency), recoveryCode(record.Recovery))
-	for _, value := range []string{record.Authority, record.Target} {
-		out = appendRecordString(out, value)
-	}
+	out = appendRecordString(out, record.Authority)
+	out = append(out, record.Target[:]...)
+	out = append(out, record.RecoveryPolicy[:]...)
+	out = append(out, record.PendingPolicy[:]...)
+	out = append(out, record.RecoveryOperation[:]...)
+	out = append(out, record.RecoverySuccessor[:]...)
 	out = appendRecordString(out, record.ParentName)
 	for _, value := range []uint64{record.ParentGeneration, uint64(record.LeaseExpiresAt),
-		uint64(record.GraceExpiresAt), uint64(record.RecoveryExpiresAt), record.Continuity} {
+		uint64(record.GraceExpiresAt), uint64(record.RecoveryExpiresAt), uint64(record.RecoveryStartedAt),
+		record.RecoveryPolicyRev, uint64(record.RecoveryPolicyDelay), record.PendingPolicyRev,
+		uint64(record.PendingPolicyDelay), uint64(record.PolicyActivatesAt), record.Continuity} {
 		out = binary.BigEndian.AppendUint64(out, value)
 	}
 	out = appendRecordString(out, record.ConflictIdentifier)
@@ -61,7 +66,23 @@ func DecodeRecord(raw []byte) (Record, error) {
 	if err != nil {
 		return Record{}, err
 	}
-	target, err := c.text()
+	target, err := c.target()
+	if err != nil {
+		return Record{}, err
+	}
+	recoveryPolicy, err := c.target()
+	if err != nil {
+		return Record{}, err
+	}
+	pendingPolicy, err := c.target()
+	if err != nil {
+		return Record{}, err
+	}
+	recoveryOperation, err := c.target()
+	if err != nil {
+		return Record{}, err
+	}
+	recoverySuccessor, err := c.target()
 	if err != nil {
 		return Record{}, err
 	}
@@ -69,7 +90,7 @@ func DecodeRecord(raw []byte) (Record, error) {
 	if err != nil {
 		return Record{}, err
 	}
-	numbers := make([]uint64, 5)
+	numbers := make([]uint64, 11)
 	for i := range numbers {
 		numbers[i], err = c.uint64()
 		if err != nil {
@@ -82,10 +103,14 @@ func DecodeRecord(raw []byte) (Record, error) {
 	}
 	record := Record{Name: name, Generation: generation, Revision: revision,
 		Lease: lease, Consistency: consistency, Recovery: recovery,
-		Authority: authority, Target: target, ParentName: parent,
+		Authority: authority, Target: target, RecoveryPolicy: recoveryPolicy,
+		PendingPolicy: pendingPolicy, RecoveryOperation: recoveryOperation,
+		RecoverySuccessor: recoverySuccessor, ParentName: parent,
 		ParentGeneration: numbers[0], LeaseExpiresAt: int64(numbers[1]),
-		GraceExpiresAt: int64(numbers[2]), RecoveryExpiresAt: int64(numbers[3]),
-		Continuity: numbers[4], ConflictIdentifier: conflict}
+		GraceExpiresAt: int64(numbers[2]), RecoveryExpiresAt: int64(numbers[3]), RecoveryStartedAt: int64(numbers[4]),
+		RecoveryPolicyRev: numbers[5], RecoveryPolicyDelay: int64(numbers[6]),
+		PendingPolicyRev: numbers[7], PendingPolicyDelay: int64(numbers[8]),
+		PolicyActivatesAt: int64(numbers[9]), Continuity: numbers[10], ConflictIdentifier: conflict}
 	if err := validateRecord(record); err != nil {
 		return Record{}, err
 	}
@@ -119,6 +144,9 @@ func validateRecord(record Record) error {
 	}
 	if record.Consistency == consistencyConflict && record.ConflictIdentifier == "" {
 		return errors.New("conflict record is missing evidence identifier")
+	}
+	if !validRecoveryBindings(record) {
+		return errors.New("name record recovery binding is invalid")
 	}
 	return nil
 }
@@ -159,6 +187,16 @@ func (c *recordCursor) text() (string, error) {
 	value := string(c.raw[c.offset : c.offset+int(size)])
 	c.offset += int(size)
 	return value, nil
+}
+
+func (c *recordCursor) target() ([32]byte, error) {
+	var target [32]byte
+	if len(c.raw)-c.offset < len(target) {
+		return target, errors.New("name record Target is truncated")
+	}
+	copy(target[:], c.raw[c.offset:c.offset+len(target)])
+	c.offset += len(target)
+	return target, nil
 }
 
 func (c *recordCursor) states() (string, string, string, error) {

@@ -1,4 +1,3 @@
-// Command ardents-name validates bounded canonical naming inputs and runs one
-// S6.2 private resolution from recovered authenticated Network State without a
-// fallback or control operation.
+// Command ardents-name validates bounded naming inputs and runs admitted private
+// resolution or control from recovered authenticated Network State without fallback.
 package main

@@ -4,12 +4,27 @@ import (
 	"bytes"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/nameadmission"
 )
 
 func TestMessageCodecRejectsNonCanonicalMutations(t *testing.T) {
 	t.Parallel()
 	request := resolutionRequest{network: [32]byte{1}, nonce: [32]byte{2},
 		deadline: time.Unix(1_800_000_000, 0).Add(time.Second).UnixNano(), name: "alice"}
+	gate, err := nameadmission.NewAdmission([32]byte{3}, request.network, 1, [32]byte{4})
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest, err := resolutionAdmissionDigest(request.network, request.name, request.deadline)
+	if err != nil {
+		t.Fatal(err)
+	}
+	challenge, err := gate.Issue(100, "resolution", digest, [32]byte{5}, 1_000, [16]byte{6})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.admission, _ = challenge.Solve()
 	raw, err := encodeRequest(request)
 	if err != nil {
 		t.Fatal(err)
@@ -77,17 +92,17 @@ func TestFixedEnvelopeHasOneShape(t *testing.T) {
 func TestResponseCodecBindsNameAndRecordVersion(t *testing.T) {
 	t.Parallel()
 	response := resolutionResponse{network: [32]byte{1}, nonce: [32]byte{2}, deadline: 10,
-		name: "alice", generation: 4, revision: 7, result: resultResolved, chain: [][]byte{{1}}}
+		name: "alice", generation: 4, revision: 7, result: resultResolved, proof: []byte{1}}
 	raw, err := encodeResponse(response)
 	if err != nil {
 		t.Fatal(err)
 	}
 	decoded, err := decodeResponse(raw)
 	if err != nil || decoded.name != response.name || decoded.generation != response.generation ||
-		decoded.revision != response.revision || !bytes.Equal(decoded.chain[0], response.chain[0]) {
+		decoded.revision != response.revision || !bytes.Equal(decoded.proof, response.proof) {
 		t.Fatalf("response round trip=%+v err=%v", decoded, err)
 	}
-	response.result, response.chain = resultUnavailable, nil
+	response.result, response.proof = resultUnavailable, nil
 	if _, err := encodeResponse(response); err == nil {
 		t.Fatal("unavailable response carried a Record version")
 	}

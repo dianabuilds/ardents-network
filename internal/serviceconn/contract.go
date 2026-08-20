@@ -11,12 +11,10 @@ import (
 )
 
 const (
-	publishCapability = uint32(1)
-	connectCapability = uint32(2)
-	maximumSessions   = 6
-	// MaximumStreamBytes is the largest declared byte count in either
-	// direction of one bounded Service Connection.
-	MaximumStreamBytes = uint32(768 << 20)
+	publishCapability  = uint32(1)
+	connectCapability  = uint32(2)
+	maximumSessions    = 6
+	maximumStreamBytes = uint32(768 << 20)
 )
 
 // Recovery fixes connection values and constrains one fresh Route Attachment.
@@ -32,6 +30,20 @@ type Recovery struct {
 	WorkSafetyNotAfter int64
 	WorkSafetyMaximum  int64
 	NoNewRecoveryAfter int64
+}
+
+// DestinationBinding is the opaque, immutable destination-continuity fact
+// supplied by the Endpoint composition layer for a name-origin connection.
+type DestinationBinding struct {
+	Name             string
+	Generation       uint64
+	Revision         uint64
+	Authority        string
+	Target           [32]byte
+	ParentName       string
+	ParentGeneration uint64
+	RecordDigest     [32]byte
+	Commitment       [32]byte
 }
 
 // Credential is one public bounded authorization for an exclusive Instance.
@@ -74,6 +86,8 @@ type Request struct {
 	Application                 io.ReadWriteCloser
 	OpenAttachment              func(context.Context, Recovery) (net.Conn, error)
 	RecoveryBinding             Recovery
+	NameBinding                 DestinationBinding
+	NameUpdates                 <-chan DestinationBinding
 	BytesEachDirection          uint32
 	SendBytes, ReceiveBytes     uint32
 	At                          time.Time

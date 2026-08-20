@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/cloudflare/circl/hpke"
+	"github.com/dianabuilds/ardents-network/internal/namestore"
 	"github.com/openpcc/ohttp"
 )
 
@@ -17,10 +18,11 @@ import (
 func NewGateway(config GatewayConfig) (*gateway, error) {
 	if config.NodeID == [32]byte{} || config.Family == "" || config.Domain != rendezvousDomain ||
 		config.AssignmentNotAfter.IsZero() || config.MaximumPending == 0 || config.Clock == nil ||
-		len(config.IdentityKey) != ed25519.PrivateKeySize {
+		len(config.IdentityKey) != ed25519.PrivateKeySize || config.State.recordStore == nil ||
+		config.State.admission == nil || config.State.epochDigest == [32]byte{} {
 		return nil, errors.New("naming Gateway role is invalid")
 	}
-	records, err := newRecordSet(config.NetworkID, config.SignedRecordChains)
+	records, err := newRecordSet(config.State.recordStore, config.State.network, config.State.minimum)
 	if err != nil {
 		return nil, err
 	}
@@ -44,9 +46,10 @@ func NewGateway(config GatewayConfig) (*gateway, error) {
 		AssignmentNotAfter: config.AssignmentNotAfter}
 	profile.Signature = signGatewayProfile(profile, config.IdentityKey)
 	config.IdentityKey = nil
-	config.SignedRecordChains = nil
-	gateway := &gateway{config: config, records: records, seen: make(map[[32]byte]int64), profile: profile}
-	application := http.HandlerFunc(gateway.resolve)
+	state := config.State
+	config.State = gatewayState{}
+	gateway := &gateway{config: config, state: state, records: records, seen: make(map[[32]byte]int64), profile: profile}
+	application := http.HandlerFunc(gateway.serve)
 	middleware := ohttp.Middleware(adapter, application)
 	gateway.handler = http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if !config.Clock().Before(config.AssignmentNotAfter) {
@@ -56,6 +59,14 @@ func NewGateway(config GatewayConfig) (*gateway, error) {
 		middleware.ServeHTTP(writer, request)
 	})
 	return gateway, nil
+}
+
+func (gateway *gateway) serve(writer http.ResponseWriter, request *http.Request) {
+	if request.URL.Path == "/control" {
+		gateway.control(writer, request)
+		return
+	}
+	gateway.resolve(writer, request)
 }
 
 // Handler returns the role-local OHTTP server Adapter.
@@ -93,21 +104,36 @@ func (gateway *gateway) resolve(writer http.ResponseWriter, request *http.Reques
 	}
 	query, err := decodeRequest(payload)
 	now := gateway.config.Clock()
+	operationDigest, digestErr := resolutionAdmissionDigest(query.network, query.name, query.deadline)
+	admitted := false
+	if err == nil && digestErr == nil && query.admission.Challenge.OperationDigest == operationDigest &&
+		query.admission.Challenge.Node == gateway.config.NodeID {
+		admitted, _ = gateway.state.admission.Verify(now.UnixMilli(), query.admission)
+	}
 	if err != nil || query.network != gateway.records.network || query.deadline <= now.UnixNano() ||
-		query.deadline > now.Add(15*time.Second).UnixNano() || !gateway.acceptNonce(query.nonce, query.deadline, now) {
+		query.deadline > now.Add(15*time.Second).UnixNano() || !admitted ||
+		!gateway.acceptNonce(query.nonce, query.deadline, now) {
 		gateway.reject(writer)
 		return
 	}
-	chain, found := gateway.records.lookup(query.name)
+	proof, found := gateway.records.lookup(query.name)
 	result := byte(resultUnavailable)
 	generation, revision := uint64(0), uint64(0)
+	target := [32]byte{}
 	if found {
+		record, _, _, _, verifyErr := namestore.Verify(gateway.state.policy, proof,
+			gateway.state.minimum, gateway.state.epochDigest, now.Unix())
+		if verifyErr != nil {
+			gateway.reject(writer)
+			return
+		}
 		result = resultResolved
-		generation, revision = chain.head.Generation, chain.head.Revision
+		generation, revision = record.Generation, record.Revision
+		target = record.Target
 	}
 	response, err := encodeResponse(resolutionResponse{network: query.network, nonce: query.nonce,
 		deadline: query.deadline, name: query.name, generation: generation, revision: revision,
-		result: result, chain: chain.signed})
+		result: result, proof: proof})
 	if err == nil {
 		response, err = padMessage(response)
 	}
@@ -119,11 +145,16 @@ func (gateway *gateway) resolve(writer http.ResponseWriter, request *http.Reques
 	_, _ = writer.Write(response)
 	gateway.mu.Lock()
 	gateway.observation.Requests++
+	role := gatewayRoleEvidence{Operation: "resolve", Name: query.name, Network: query.network,
+		Nonce: query.nonce, Target: target, Deadline: query.deadline,
+		Generation: generation, Revision: revision, Result: resolutionUnavailableClass}
 	if found {
 		gateway.observation.Resolved++
+		role.Result = resolvedClass
 	} else {
 		gateway.observation.Rejected++
 	}
+	gateway.roleEvidence = append(gateway.roleEvidence, role)
 	gateway.mu.Unlock()
 }
 

@@ -1,9 +1,10 @@
 # Horizon 3 Stage 6 implementation brief
 
-Status: **ready for maintained S6.3-S6.6 implementation. On 2026-08-20 the
+Status: **maintained S6.1-S6.6 implementation and mutation coverage are complete. On 2026-08-20 the
 Product Owner accepted R-042 O1b, R-044 O2, R-045 O1b, S6E1, and ADR-0017
-through ADR-0019. S6.1/S6.2 are implemented; Stage 6 completion evidence remains
-open. ADR-0013 is withdrawn and ADR-0014 is accepted.**
+through ADR-0019. The bounded S6E1 command campaign received independent `pass`;
+Product Owner disposition remains open. ADR-0013 is withdrawn and ADR-0014 is
+accepted.**
 
 Authoritative inputs: accepted ADR-0005, ADR-0009, ADR-0012, ADR-0014,
 ADR-0017 through ADR-0019, R-003, R-024, R-026, R-039, R-041 through R-047,
@@ -34,7 +35,8 @@ accepted decisions above.
   resolution after accepting R-046, R-047, and ADR-0014. Concrete naming
   control-operation proof codecs remain in their later gated slices.
 
-The general entry verdict is **ready**. The completion verdict remains open.
+The general entry verdict is **ready**. Implementation and development evidence
+are complete; the completion verdict awaits Product Owner disposition.
 
 ## Entry gate
 
@@ -228,4 +230,6 @@ Stage 6 has three disjoint artifact classes:
 The runner cannot author or mutate a verdict. Command exit text is never
 evidence of Stage 6 success. The A0-D6 inventory, S6E1 serialization, and exact
 responsibilities are defined in `stage-6-private-naming-evidence.md` and R-055.
-Their implementation and mutation evidence remain open until S6.6 passes.
+Their maintained implementation and mutation coverage are complete. Stage 6
+still requires the separately built command campaign to publish an independent
+`pass` and the Product Owner to record the disposition.

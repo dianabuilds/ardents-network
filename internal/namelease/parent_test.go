@@ -13,12 +13,12 @@ func TestChildBindsToLiveParentGeneration(t *testing.T) {
 	if child.LeaseExpiresAt > parent.LeaseExpiresAt || child.GraceExpiresAt > parent.GraceExpiresAt {
 		t.Fatalf("child outlives parent: child=%+v parent=%+v", child, parent)
 	}
-	if ok, _ := CanResolve(child, 102, []Record{parent}); ok {
+	if ok, _ := canResolve(child, 102, []Record{parent}); ok {
 		t.Fatal("unbound child resolved without a Service Target")
 	}
 	bound := child
-	bound.Target = "child-target"
-	if ok, reason := CanResolve(bound, 102, []Record{parent}); !ok {
+	bound.Target = [32]byte{4}
+	if ok, reason := canResolve(bound, 102, []Record{parent}); !ok {
 		t.Fatalf("valid child did not resolve: %s", reason)
 	}
 }
@@ -30,12 +30,12 @@ func TestChildFailsAfterParentReleaseOrReclaim(t *testing.T) {
 		Authority: "chosen-child-key", Parents: []Record{parent}})
 	released := applyOK(t, &parent, 102, Op{Kind: "release", Name: parent.Name,
 		Authority: parent.Authority, ExpectedGeneration: parent.Generation, ExpectedRevision: parent.Revision})
-	if ok, _ := CanResolve(child, 102, []Record{released}); ok {
+	if ok, _ := canResolve(child, 102, []Record{released}); ok {
 		t.Fatal("child survived parent release")
 	}
 	reclaimed := applyOK(t, &released, 103, Op{Kind: "claim", Name: parent.Name, Generation: 2,
 		Authority: "new-key", ExpectedGeneration: 1, ExpectedRevision: 2})
-	if ok, _ := CanResolve(child, 103, []Record{reclaimed}); ok {
+	if ok, _ := canResolve(child, 103, []Record{reclaimed}); ok {
 		t.Fatal("old child revived under reclaimed parent generation")
 	}
 }

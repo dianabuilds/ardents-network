@@ -28,6 +28,14 @@ func applyAdvance(current *Record, now int64, op Op) (Record, error) {
 		return Record{}, err
 	}
 	result := *current
+	if current.Recovery == recoveryPending {
+		if now*1_000 < current.RecoveryExpiresAt {
+			return result, nil
+		}
+		completePendingRecovery(&result)
+		result.Revision++
+		return result, nil
+	}
 	switch current.Lease {
 	case leaseActive:
 		if now <= current.LeaseExpiresAt {
