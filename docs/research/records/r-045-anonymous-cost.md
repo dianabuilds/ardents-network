@@ -60,6 +60,10 @@ measurements. They are no longer frozen and must not appear as accepted limits.
   requirement.
 - Candidate proof-of-work and admission specifications must be cited before an
   implementation is selected.
+- [Hashcash papers](https://www.hashcash.org/papers/), accessed 2026-08-20 —
+  non-interactive publicly auditable hash work, expiry, and service-string
+  binding; this supports a candidate cost function, not an anti-Sybil or
+  fairness claim.
 
 ### Experiment
 
@@ -82,7 +86,8 @@ energy proxy, and retained state on R-023 reference hardware and a weaker client
 
 - **Sourced fact:** accepted documents require both mechanism selection and
   measurement.
-- **Measurement:** none has yet been recorded for the proposed Stage 6 table.
+- **Measurement:** O1 failed every predeclared honest solve-latency gate on both
+  the Windows development endpoint and the weaker Linux profile.
 - **Inference:** the former exact values cannot be cited as calibrated limits.
 - **Assumption:** SHA-256 work may be implementable with existing supply, but its
   accessibility and amplification behavior are unknown.
@@ -96,18 +101,124 @@ energy proxy, and retained state on R-023 reference hardware and a weaker client
 3. **Reduce or delay expensive naming surfaces.** Fallback when no candidate
    fits accessibility and abuse budgets.
 
+## Predeclared candidate O1 — scoped challenge work
+
+This candidate is not accepted until the predeclared experiment measures it and
+the Product Owner chooses the resulting profile.
+
+Each admitting Node issues a stateless HMAC-SHA-256 challenge bound to its
+random boot secret, Node identity, network/epoch, surface, operation digest,
+Isolation Context, expiry, and a fresh `16-byte` nonce. The claimant searches a
+`uint64` nonce until SHA-256 of the canonical challenge/proof transcript has the
+required number of leading zero bits. Verification performs one HMAC and one
+SHA-256 evaluation before any expensive naming work.
+
+Successful proofs are single-use. Each surface owns a finite spent-digest set;
+when it is full, new work fails `admission-denied` rather than evicting a live
+entry or growing memory. Restart creates a new boot secret, so every pre-restart
+challenge fails closed without restoring spent capacity. The proof is local to
+one Node and one Isolation Context and is carried inside the accepted private
+naming path; it is neither a global identity nor a transferable capability.
+
+The experiment starts with these hypotheses, not accepted limits:
+
+| Surface | Initial work bits | Maximum outstanding/spent entries | Target honest p95 solve time |
+|---|---:|---:|---:|
+| exact-name resolution | 18 | 4,096 | `<= 100 ms` weaker client |
+| renewal/update | 19 | 2,048 | `<= 200 ms` weaker client |
+| policy/recovery | 20 | 1,024 | `<= 350 ms` weaker client |
+| root claim commit/reveal | 22 | 1,024 | `<= 1 s` weaker client |
+
+The experiment rejects O1 if verifier work exceeds `100 us` p95, proof state
+exceeds `1 MiB` per surface at its cap, any cross-surface/epoch/Node/context
+replay succeeds, parallelism bypasses the cap, restart accepts an old proof, or
+the weaker-client latency target fails. Passing does not establish fairness,
+personhood, energy efficiency, or resistance to specialized hardware.
+
+### O1 measurement — rejected
+
+The harness used `20` deterministic challenges per surface and `100,000`
+successful verification iterations per surface. The Windows endpoint reported
+Go `1.26.6`, `windows/amd64`, an `AuthenticAMD` family 26/model 68 processor,
+and 12 logical processors. The weaker run used the pinned
+`ubuntu@sha256:7b202b0e2e0028c6250f5fcf41d04df492d145a1654c6995a6553f0c1f6f1960`
+image with `--network none`, `1 vCPU`, `512 MiB`, 64 PIDs, a read-only root,
+and all capabilities dropped. Its binary SHA-256 was
+`e9b8b8a48a8770fa6f741227d531f6acc22e74586f30c173992b44f06c99125a`.
+
+| Surface | O1 bits | Windows solve p95 | Weaker Linux solve p95 | Linux verify p95 | Heap at cap |
+|---|---:|---:|---:|---:|---:|
+| exact-name resolution | 18 | 316.63 ms | 340.90 ms | 1.47 us | 394,584 B |
+| renewal/update | 19 | 443.02 ms | 835.99 ms | 2.38 us | 197,784 B |
+| policy/recovery | 20 | 1,066.95 ms | 1,119.40 ms | 1.59 us | 99,400 B |
+| root claim | 22 | 8,984.37 ms | 5,098.40 ms | 1.39 us | 99,496 B |
+
+O1 is rejected: all four weaker-client solve p95 values exceed their frozen
+limits. Verification, retained heap, hostile scope/replay/restart cases, and
+the one-winner parallel test passed, but they cannot rescue the accessibility
+failure. Windows sub-millisecond verification quantiles are omitted because
+that clock reported zero-duration samples.
+
+### Predeclared candidate O1b — accessible work and bounded admission
+
+O1b changes only the failed work factors and adds an explicit no-wait
+verification concurrency bound; it does not reinterpret O1. The spent caps,
+TTL maximum, transcript, hostile corpus, and all earlier pass/fail gates remain
+unchanged.
+
+| Surface | O1b work bits | Maximum in-flight verifications | Solve p95 gate |
+|---|---:|---:|---:|
+| exact-name resolution | 16 | 64 | `<= 100 ms` |
+| renewal/update | 16 | 32 | `<= 200 ms` |
+| policy/recovery | 17 | 16 | `<= 350 ms` |
+| root claim | 18 | 8 | `<= 1 s` |
+
+The implementation must reject immediately when a surface's in-flight slots
+are full; it must not create an unbounded application queue. O1b will use the
+same `20` solve samples and `100,000` verifier iterations per surface on both
+hosts. Passing O1b would show only bounded local amplification and acceptable
+latency under these profiles. Sixteen to eighteen bits remain cheap for
+specialized hardware, so this is not a global anti-Sybil or anti-squatting
+mechanism.
+
+### O1b measurement — passed
+
+The unchanged harness and hostile corpus used the predeclared `20` solve
+samples and `100,000` verifier iterations per surface. The Linux binary
+SHA-256 was
+`d950980fa3adc05fab9c02b92b46ec3022e754c43e901ebf6fa21f98be26e0cf`;
+the host, pinned image, and container restrictions were otherwise identical to
+the O1 run.
+
+| Surface | O1b bits | Windows solve p95 | Weaker Linux solve p95 | Linux verify p95 | Heap at cap |
+|---|---:|---:|---:|---:|---:|
+| exact-name resolution | 16 | 60.66 ms | 72.73 ms | 2.19 us | 395,032 B |
+| renewal/update | 16 | 75.43 ms | 103.70 ms | 1.81 us | 198,168 B |
+| policy/recovery | 17 | 131.89 ms | 235.51 ms | 4.19 us | 99,784 B |
+| root claim | 18 | 511.78 ms | 524.81 ms | 2.84 us | 99,768 B |
+
+All predeclared solve, verifier, and retained-state gates passed. Ten hostile
+matrix repetitions passed for scope binding, expiry, replay, boot-secret
+restart, per-surface saturation, no-wait busy rejection, exactly one accepted
+parallel duplicate, and no spent-state mutation after invalid work. Logical
+proof size was 262–267 bytes.
+
+**Inference:** O1b is suitable as the Stage 6 local amplification guard under
+the measured profiles. **Honest limitation:** it does not stop a specialized
+solver from exhausting a Node's finite per-surface window, distribute trust,
+or establish personhood, fairness, or anti-squatting.
+
 ## Recommendation
 
-Run the named experiment and choose none until its thresholds are frozen in
-advance. Confidence is high that the former table is unsupported; confidence in
-any candidate is low without measurements. The strongest argument against proof
-of work is that it can exclude weak devices while remaining cheap for specialized
-attackers.
+Select O1b for Stage 6 local admission, subject to Product Owner acceptance of
+its explicit limitations. Confidence is high in the measured local bounds and
+moderate in their portability beyond the two profiles. O1b must never be
+described as global Sybil resistance.
 
 ## Disposition
 
-- State: `open`; former per-surface rates, difficulties, capacities, and TTL are
-  hypotheses only.
-- S6.5 admission implementation and evidence predicates remain blocked.
-- The experiment must end in a decided record or an explicit reduction of the
-  Stage 6 surface.
+- State: `open`, decision-ready; O1 is rejected and O1b passed its frozen gates.
+- S6.5 remains blocked only on Product Owner acceptance and the S6E1 evidence
+  freeze.
+- If accepted, O1b's bits, caps, in-flight limits, 30-second maximum TTL, reason
+  classes, and honest limitations become normative Stage 6 inputs.
