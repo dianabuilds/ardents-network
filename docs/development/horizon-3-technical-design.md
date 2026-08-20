@@ -774,6 +774,18 @@ process tree.
 privilege broader than the declared broker, unsafe rollback, lost Authority,
 unverifiable process ownership, or a false claim about arbitrary Application code.
 
+The acceptance-ready Stage 7 preparation set is R-048, the
+[Stage 7 brief](horizon-3-stage-7-brief.md),
+[lifecycle specification](stage-7-lifecycle-spec.md),
+[development plan](stage-7-development-plan.md),
+[readiness checklist](stage-7-readiness-checklist.md), and
+[evidence contract](stage-7-platform-evidence.md). The linked
+[readiness checklist](stage-7-readiness-checklist.md) is the sole normative
+Stage 7 coding-start gate. H3 test roots, threshold
+members, rebuilds, distributors, hosts, and review are project-controlled; their
+mechanics cannot satisfy the independent-custodian, independent-builder, or
+independent-review gates of Horizon 4.
+
 ### Stage 8 — Integrated Closed Test Network
 
 **Outcome:** all accepted Stage 1–7 mechanisms operate together in one persistent

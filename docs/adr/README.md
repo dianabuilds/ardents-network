@@ -22,6 +22,7 @@ Current decisions:
 - [0010 — Keep a modular first-party monorepository](0010-modular-monorepository.md)
 - [0011 — Separate unit, end-to-end, and live tests](0011-separate-unit-e2e-and-live-tests.md)
 - [0012 — Select standalone WebTunnel for the H3 Camouflage Adapter](0012-select-webtunnel-for-h3-camouflage.md)
+- [0014 — Authenticate and hide Stage 6 private naming exchanges](0014-private-naming-ohttp.md)
 
 Withdrawn decisions retained for history:
 

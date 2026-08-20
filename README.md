@@ -253,6 +253,7 @@ system at once.
 - [Stage 4 implementation brief](docs/development/horizon-3-stage-4-brief.md)
 - [Stage 5 implementation brief](docs/development/horizon-3-stage-5-brief.md)
 - [Stage 6 implementation brief](docs/development/horizon-3-stage-6-brief.md)
+- [Stage 7 preparation and implementation brief](docs/development/horizon-3-stage-7-brief.md)
 - [Stage 9 stabilization and technical closure brief](docs/development/horizon-3-stage-9-brief.md)
 - [R-029 authenticated Node lifecycle (H3 Stage 1)](docs/research/records/r-029-h3-authenticated-node-lifecycle.md)
 - [R-030 real multi-node route (H3 Stage 2)](docs/research/records/r-030-h3-real-multi-node-route.md)
@@ -265,6 +266,7 @@ system at once.
 - [R-037 blocked-entry evidence contract](docs/research/records/r-037-h3-blocked-entry-evidence.md)
 - [R-038 Stage 4 role capacity (`P3-D3b4`)](docs/research/records/r-038-h3-stage-4-role-capacity.md)
 - [R-039 private naming lifecycle (H3 Stage 6)](docs/research/records/r-039-h3-private-naming-lifecycle.md)
+- [R-048 Stage 7 contract and decision order](docs/research/records/r-048-h3-stage-7-contract.md)
 
 ## Repository shape
 
