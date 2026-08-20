@@ -64,6 +64,14 @@ ordering different sets. It is therefore not an accepted ordering mechanism.
 - R-002, accessed 2026-08-20 — Connection Result taxonomy.
 - Candidate protocol specifications and maintained source code must be added
   before comparing an ordered log, commit/reveal, or another mechanism.
+- [RFC 9162](https://www.rfc-editor.org/rfc/rfc9162.html), accessed
+  2026-08-20 — domain-separated Merkle trees, signed tree heads, inclusion
+  proofs, and consistency proofs. These prove membership and append-only
+  consistency; they do not by themselves prove that an operator accepted every
+  eligible submission.
+- R-029, accessed 2026-08-20 — the already accepted threshold-authenticated
+  input-log/View/rejection model and its explicit captured-threshold,
+  withholding, auditor, and fork limitations.
 
 ### Experiment
 
@@ -72,6 +80,12 @@ same signed claims through permutations of observation copying, reveal
 withholding, flooding, partition, rollback, equivocation, and rule fork. Retain
 the exact eligible-set proof and verify it independently. Define latency,
 storage, verification-work, and false-accept thresholds before running it.
+
+The frozen experiment caps one claim set at `64` commitments, its logical proof
+encoding at `64 KiB`, and one verification at `10 ms` p95 on the declared weaker
+`1 vCPU/512 MiB` Linux container. Every hostile scenario must have zero false
+accepts, and all reveal-order permutations must return the same winner and loser
+ordinals. These are experiment gates, not accepted production capacity.
 
 ### Failure scenarios
 
@@ -104,19 +118,119 @@ storage, verification-work, and false-accept thresholds before running it.
 4. **No permissionless root claim in V1.** Fallback if no candidate meets the
    accepted contract.
 
+## Decision-ready candidate O1b — epoch commit/reveal
+
+This candidate is not accepted until its experiment passes and the Product
+Owner chooses it. It deliberately reuses the existing Network Epoch trust root
+instead of inventing a second registrar or consensus mechanism.
+
+O1 used a `64`-claim per-Name conflict cap and failed its predeclared weaker-host
+p95 verification gate. O1b changes only that per-Name cap to `32`; it does not
+cap the complete epoch input log or total distinct names.
+
+1. During commit epoch `E`, a claimant submits a canonical commitment over the
+   network, rule version, canonical Name wire bytes, proposed Name Authority,
+   and a fresh `32-byte` secret. The published commitment does not disclose the
+   Name. A Node-local R-045 admission proof binds this commitment as its
+   operation digest and accompanies the submission; it is not an ordering key.
+2. The threshold-authenticated close of `E` commits the ordered input-log root,
+   cutoff, accepted commitment root/length, and deterministic rejection
+   root/length. Every input has exactly one accepted or rejected outcome.
+3. During reveal epoch `E+1`, the claimant reveals the exact Name, secret, and
+   signed claim. A reveal is eligible only when it opens one accepted `E`
+   commitment and authenticates the same proposed Name Authority.
+4. Claims for one Name are ordered only by their accepted commitment input
+   ordinal. The lowest eligible ordinal is accepted; later eligible ordinals
+   are deterministic `ordered-collision` losers. Reveal arrival order and claim
+   digest never choose the winner.
+5. A copied commitment cannot be opened without the secret and Authority key.
+   A commitment made before observing the reveal is an independent competing
+   claim and remains subject to admission cost and the authenticated ordinal.
+6. Missing reveal, missing full-set evidence, withholding, stale cutoff, or an
+   invalid proof mutates no Lease. Two threshold-authenticated roots for the
+   same network/rule/epoch are `fork`; incomplete evidence is `unavailable`.
+
+The proof presented to an ordinary verifier contains the exact Network Epoch,
+commitment and reveal, their input ordinals, accepted/rejected materializations,
+and Merkle paths. The independent S6.6 verifier receives the complete bounded
+input corpora and recomputes both trees, every rejection, every reveal opening,
+and the per-Name winner. This preserves the accepted distinction between local
+materialization verification and global completeness auditing.
+
+### Frozen proof fields
+
+The threshold-authenticated epoch close contains exactly: `network[32]`,
+`epoch uint64`, the ASCII rule identifier, monotonic cutoff offset, input-log
+root and length, accepted-materialization root and length, rejection root and
+length, and sorted distinct epoch-authority signatures. One committed input
+contains `ordinal uint32`, `commitment[32]`, and the digest of its locally
+accepted R-045 transcript. One rejection contains the same ordinal and
+commitment plus a closed reason code. A reveal contains canonical Name wire
+bytes, `secret[32]`, proposed Authority `key[32]`, commitment ordinal, and one
+Ed25519 signature by that proposed Authority.
+
+The ordinary proof contains the epoch close, one Name's at-most-`32` reveals in
+strict commitment-ordinal order, the materialization inclusion path, and its
+winner/loser ordinals. The development verifier additionally receives the
+complete bounded epoch input and rejection corpora and recomputes every root,
+admission binding, reveal opening, eligibility decision, and materialization.
+An ordinary proof can verify what the threshold published; only the complete
+corpus can test whether the threshold followed the accepted rule. Canonical
+artifact encoding is owned by S6E1 rather than this ordering record.
+
+### Eight-scenario coverage map
+
+| Scenario | Required outcome |
+|---|---|
+| two independent valid commitments | lowest eligible input ordinal wins; later ordinal is `ordered-collision` |
+| copied commitment or copied reveal | cannot authenticate/open as a distinct eligible claim |
+| reveal withholding | no mutation for the missing reveal; remaining complete set is deterministic |
+| input withholding or partition | `unavailable`/`conflict`; no deterministic loser is named |
+| more than 32 claims for one Name | bounded `unavailable`; no Lease mutation |
+| prior-epoch rollback | `unavailable`; no old winner revival |
+| two authenticated roots for one epoch/rule | `fork` |
+| authenticated incompatible rule version | `fork` |
+
+The honest limitation is explicit: a captured Network Epoch threshold can
+censor inputs or fork the entire Namespace log. O1b makes that behavior
+inspectable and fail-closed; it does not eliminate governance capture or prove
+that a submission reached an honest signer.
+
+## Measurements
+
+- **Measurement:** the deterministic hostile matrix passed ten consecutive test
+  runs with zero false accepts. Copied reveal, incomplete set, cap overflow,
+  mixed names, duplicate signer, rollback, equivocation, and incompatible rule
+  version all produced their predeclared outcomes; reveal permutations selected
+  the same ordinal.
+- **Measurement:** on the Windows `amd64` endpoint with Go `1.26.6`, O1 verified
+  `64` claims in `3.082100 ms` p95 over `1,000` iterations and retained `11,468`
+  logical proof bytes.
+- **Measurement:** in the pinned Ubuntu image, offline/read-only, capped to
+  `1 vCPU`, `512 MiB`, `64` PIDs, no capabilities, and no network, O1 took
+  `13.842151 ms` p95 and failed the frozen `10 ms` gate.
+- **Measurement:** under the identical Linux constraints, O1b verified `32`
+  claims in `1.640826 ms` p95 (`1.115748 ms` p50, `9.941401 ms` maximum) over
+  `1,000` iterations and retained `5,932` logical proof bytes. O1b passed.
+- **Inference:** the threshold-authenticated set and commit/reveal semantics are
+  viable for the bounded Stage 6 tracer at a `32`-claim per-Name cap. This does
+  not measure distributed log availability, signer independence, or censorship.
+
 ## Recommendation
 
-Run the named experiment before choosing. Confidence is high that the previous
-digest-only option is insufficient and low that any replacement fits without a
-meaningful governance or availability cost. The strongest counterargument is
-that commit/reveal may still reward denial and add too much latency.
+Choose O1b after Product Owner review. Confidence is high that the previous
+digest-only option is insufficient and moderate that O1b meets the bounded V1
+semantic contract. The strongest counterargument is that the Network Epoch
+threshold becomes the visible claim-log inclusion authority and can still
+censor or fork the Namespace.
 
 ## Disposition
 
-- State: `open`; the former Option A is withdrawn.
+- State: `open`, O1b decision-ready; the former digest-only option and measured
+  O1/64 profile are rejected.
 - S6.5 claim ordering and every evidence predicate that depends on it remain
   blocked.
 - R-041 canonical encoding may be used as experiment input; no production claim
   mechanism or Lease mutation is authorized.
-- A decision must include the promised eight-scenario coverage map and exact
-  independent proof schema.
+- The frozen field inventory and eight-scenario map above become S6.5/S6.6
+  acceptance tests if O1b is selected.
